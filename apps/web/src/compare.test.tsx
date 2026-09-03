@@ -4,7 +4,15 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { RunCompare } from "./pages/RunCompare";
-import { OTHER_RUN, RUN, RUNS, TEST_CASE, platformResponse } from "./fixtures/platform";
+import { CompareTable } from "./pages/Compare";
+import {
+  OTHER_RUN,
+  RUN,
+  RUNS,
+  TEST_CASE,
+  platformResponse,
+  skillDetail,
+} from "./fixtures/platform";
 
 /**
  * 02:EVAL-003 — 比較頁的門把。
@@ -76,9 +84,10 @@ function json(body: unknown, status = 200) {
  * 分岔是刻意的:fixture 的 `/runs` 剝掉 query 才比對,所以一個忘記帶 `test_case_id`
  * 的請求會拿到一模一樣的答案,測試也就押不住「候選來自同一個 Test Case」。
  */
-function stubPlatform() {
+function stubPlatform(calls?: string[]) {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
+    calls?.push(url);
     if (pathOf(url) === "/runs") {
       return json(url.includes(`test_case_id=${TEST_CASE}`) ? RUNS : { runs: [FOREIGN_RUN] });
     }
@@ -86,6 +95,17 @@ function stubPlatform() {
     return json(body, status);
   });
 }
+
+test("EVAL-003 waits for the Test Case before loading candidate runs", async () => {
+  const calls: string[] = [];
+  stubPlatform(calls);
+  await render(<RunCompare />);
+  await waitFor(() => candidateButtons().length > 0);
+
+  const runLists = calls.filter((url) => pathOf(url) === "/runs");
+  expect(runLists.length).toBeGreaterThan(0);
+  expect(runLists.every((url) => url.includes(`test_case_id=${TEST_CASE}`))).toBe(true);
+});
 
 async function render(node: ReactNode) {
   await act(async () => {
@@ -117,6 +137,33 @@ const candidateButtons = () =>
   Array.from(container.querySelectorAll("button")).filter((b) =>
     (b.textContent ?? "").startsWith("與這一次比較"),
   );
+
+test("DISC-009 comparison gives absent fields their actual state", async () => {
+  const missingURL = skillDetail("a", "A");
+  missingURL.source = { ...missingURL.source!, url: undefined };
+  missingURL.version = undefined;
+  missingURL.enrichment.tags = undefined;
+  const pending = skillDetail("b", "B");
+  pending.enrichment = { status: "pending", note: "正在處理" };
+  await render(<CompareTable skills={[missingURL, pending]} />);
+
+  expect(text()).toContain("來源網址：未提供");
+  expect(text()).not.toContain("來源網址：未測量");
+  for (const heading of ["輸入", "輸出", "依賴"]) {
+    const row = Array.from(container.querySelectorAll("tbody tr")).find((candidate) =>
+      candidate.querySelector("th")?.textContent?.startsWith(heading),
+    );
+    expect(row, `${heading} row`).toBeDefined();
+    const cells = row!.querySelectorAll("td");
+    expect(cells[0].textContent, `${heading} enriched absence`).toBe("未測量");
+    expect(cells[1].textContent, `${heading} pending absence`).toBe("處理中");
+  }
+  const versionRow = Array.from(container.querySelectorAll("tbody tr")).find((row) =>
+    row.querySelector("th")?.textContent?.includes("版本與時間"),
+  );
+  expect(versionRow).toBeDefined();
+  expect(versionRow?.querySelector("td")?.textContent).toBe("未提供");
+});
 
 test("EVAL-003 到站時就有同一個 Test Case 的候選,而且認得出它的不是 uuid", async () => {
   stubPlatform();
@@ -180,4 +227,30 @@ test("EVAL-003 只跑過一次的 Test Case:說原因,不是把控制項拿掉(�
   expect(candidateButtons().length).toBe(0);
   expect(container.querySelector("#against")).not.toBeNull();
   expect(text()).toContain("輸入另一個 Run 的 ID 後開始比較。");
+});
+
+test("EVAL-003 目前 Run 讀取失敗不會冒充沒有其他 Run", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (pathOf(url) === `/runs/${RUN}`) return json({ error: "boom" }, 500);
+    const { body, status } = platformResponse(url);
+    return json(body, status);
+  });
+  await render(<RunCompare />);
+
+  expect(text()).toContain("無法讀取目前這次 Run");
+  expect(text()).not.toContain("這個 Test Case 目前只有這一次 Run");
+});
+
+test("EVAL-003 候選歷史讀取失敗不會冒充空歷史", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (pathOf(url) === "/runs") return json({ error: "boom" }, 500);
+    const { body, status } = platformResponse(url);
+    return json(body, status);
+  });
+  await render(<RunCompare />);
+
+  expect(text()).toContain("無法讀取可比較的 Run");
+  expect(text()).not.toContain("這個 Test Case 目前只有這一次 Run");
 });

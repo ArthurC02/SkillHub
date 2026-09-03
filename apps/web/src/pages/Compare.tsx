@@ -60,7 +60,15 @@ type CompareRow = {
   signature: (skill: SkillDetail) => string | undefined;
   /** Richer cell rendering. Only called when `signature` is defined. */
   render?: (skill: SkillDetail) => ReactNode;
+  /** The row-specific meaning of absent data; absence is not always a measurement. */
+  absent?: (skill: SkillDetail) => ReactNode;
 };
+
+const enrichmentAbsence = (skill: SkillDetail) =>
+  skill.enrichment.status === "pending" ? "處理中" : "未提供";
+
+const tagAbsence = (skill: SkillDetail) =>
+  skill.enrichment.status === "pending" ? "處理中" : "未測量";
 
 const ROWS: CompareRow[] = [
   {
@@ -73,10 +81,12 @@ const ROWS: CompareRow[] = [
     // and the note the server wrote for it says which.
     signature: (skill) =>
       skill.enrichment.status === "enriched" ? skill.enrichment.summary : undefined,
+    absent: enrichmentAbsence,
   },
   {
     label: "可以用來做什麼（AI 產生的任務範例）",
     signature: (skill) => skill.enrichment.task_examples?.join("\n") || undefined,
+    absent: enrichmentAbsence,
     render: (skill) => (
       <ul>
         {skill.enrichment.task_examples?.map((example) => (
@@ -113,16 +123,19 @@ const ROWS: CompareRow[] = [
     label: "輸入",
     signature: (skill) => tagBucket(skill, "inputs"),
     render: tagRenderer("inputs"),
+    absent: tagAbsence,
   },
   {
     label: "輸出",
     signature: (skill) => tagBucket(skill, "outputs"),
     render: tagRenderer("outputs"),
+    absent: tagAbsence,
   },
   {
     label: "依賴",
     signature: (skill) => tagBucket(skill, "dependencies"),
     render: tagRenderer("dependencies"),
+    absent: tagAbsence,
   },
   {
     label: "套件宣告可用的工具（權限）",
@@ -164,11 +177,16 @@ const ROWS: CompareRow[] = [
               </a>
             </p>
           ) : (
-            /* 設計 §2.1 給這一頁的詞是「未知」，而這一列的其他缺席都已經用
-               `.compare-unknown` 印它。「沒有記錄來源網址」是這一頁上唯一一句
-               自己發明的缺席措辭。 */
+            /* 設計 §2.9: 「未知」不在那張封閉的六詞表上。§2.1 本文自己寫著
+               「缺席有型別，見 §2.9。只寫『未知』已經不夠了」，而這一頁的每一格
+               缺席都是這個詞——它比 §2.9 早。表上對得起這一格的是「未測量」：
+               平台有這個欄位，只是這一份沒有記到值。
+
+               §2.9 真正要的另一半還沒做：**型別要是資料層的列舉，不是渲染層的
+               falsy**，而下面那張表用一個 `undefined` 服務十四列不同的缺席。逐列
+               宣告自己是哪一型，記在 04 丙-131。 */
             <p className="note">
-              來源網址：<span className="compare-unknown">未知</span>
+              來源網址：<span className="compare-unknown">未提供</span>
             </p>
           )}
           {skill.source.source_version && (
@@ -224,7 +242,7 @@ const ROWS: CompareRow[] = [
 ];
 
 /** The table itself, taking already-loaded skills. */
-function CompareTable({ skills }: { skills: SkillDetail[] }) {
+export function CompareTable({ skills }: { skills: SkillDetail[] }) {
   return (
     <>
       {/*
@@ -254,10 +272,10 @@ function CompareTable({ skills }: { skills: SkillDetail[] }) {
           <tbody>
             {ROWS.map((row) => {
               const signatures = skills.map(row.signature);
-              // 未知 is its own value here: one skill declaring MIT and another
+              // An absent value is its own value here: one skill declaring MIT and another
               // declaring nothing is a difference, and the sentinel keeps it from
               // colliding with a genuine empty-ish signature.
-              const differs = new Set(signatures.map((value) => value ?? "\u0000未知")).size > 1;
+              const differs = new Set(signatures.map((value) => value ?? "\u0000未提供")).size > 1;
               return (
                 <tr key={row.label} className={differs ? "compare-differs" : undefined}>
                   <th scope="row">
@@ -267,7 +285,7 @@ function CompareTable({ skills }: { skills: SkillDetail[] }) {
                   {skills.map((skill, index) => (
                     <td key={skill.skill_id}>
                       {signatures[index] === undefined ? (
-                        <span className="compare-unknown">未知</span>
+                        <span className="compare-unknown">{row.absent?.(skill) ?? "未提供"}</span>
                       ) : (
                         (row.render?.(skill) ?? signatures[index])
                       )}
@@ -285,11 +303,14 @@ function CompareTable({ skills }: { skills: SkillDetail[] }) {
 
 export function Compare() {
   const { ids } = useSearch({ from: "/compare" });
-  const skillIds = ids
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean)
-    .slice(0, MAX_COMPARE);
+  const skillIds = [
+    ...new Set(
+      ids
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, MAX_COMPARE);
 
   // useQueries, not a loop of a hook: the hook count has to stay stable and the
   // id list changes with the URL.

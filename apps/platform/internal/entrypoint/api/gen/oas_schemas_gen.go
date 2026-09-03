@@ -287,6 +287,184 @@ type AddAcceptanceCriterionUnauthorized Error
 
 func (*AddAcceptanceCriterionUnauthorized) addAcceptanceCriterionRes() {}
 
+type BrowseCatalogAgent string
+
+const (
+	BrowseCatalogAgentNative     BrowseCatalogAgent = "native"
+	BrowseCatalogAgentTranspiled BrowseCatalogAgent = "transpiled"
+	BrowseCatalogAgentFailed     BrowseCatalogAgent = "failed"
+	BrowseCatalogAgentUnverified BrowseCatalogAgent = "unverified"
+)
+
+// AllValues returns all BrowseCatalogAgent values.
+func (BrowseCatalogAgent) AllValues() []BrowseCatalogAgent {
+	return []BrowseCatalogAgent{
+		BrowseCatalogAgentNative,
+		BrowseCatalogAgentTranspiled,
+		BrowseCatalogAgentFailed,
+		BrowseCatalogAgentUnverified,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BrowseCatalogAgent) MarshalText() ([]byte, error) {
+	switch s {
+	case BrowseCatalogAgentNative:
+		return []byte(s), nil
+	case BrowseCatalogAgentTranspiled:
+		return []byte(s), nil
+	case BrowseCatalogAgentFailed:
+		return []byte(s), nil
+	case BrowseCatalogAgentUnverified:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BrowseCatalogAgent) UnmarshalText(data []byte) error {
+	switch BrowseCatalogAgent(data) {
+	case BrowseCatalogAgentNative:
+		*s = BrowseCatalogAgentNative
+		return nil
+	case BrowseCatalogAgentTranspiled:
+		*s = BrowseCatalogAgentTranspiled
+		return nil
+	case BrowseCatalogAgentFailed:
+		*s = BrowseCatalogAgentFailed
+		return nil
+	case BrowseCatalogAgentUnverified:
+		*s = BrowseCatalogAgentUnverified
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type BrowseCatalogScript string
+
+const (
+	BrowseCatalogScriptYes BrowseCatalogScript = "yes"
+	BrowseCatalogScriptNo  BrowseCatalogScript = "no"
+)
+
+// AllValues returns all BrowseCatalogScript values.
+func (BrowseCatalogScript) AllValues() []BrowseCatalogScript {
+	return []BrowseCatalogScript{
+		BrowseCatalogScriptYes,
+		BrowseCatalogScriptNo,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BrowseCatalogScript) MarshalText() ([]byte, error) {
+	switch s {
+	case BrowseCatalogScriptYes:
+		return []byte(s), nil
+	case BrowseCatalogScriptNo:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BrowseCatalogScript) UnmarshalText(data []byte) error {
+	switch BrowseCatalogScript(data) {
+	case BrowseCatalogScriptYes:
+		*s = BrowseCatalogScriptYes
+		return nil
+	case BrowseCatalogScriptNo:
+		*s = BrowseCatalogScriptNo
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type BrowseCatalogTier string
+
+const (
+	BrowseCatalogTierCurated BrowseCatalogTier = "curated"
+	BrowseCatalogTierIndexed BrowseCatalogTier = "indexed"
+)
+
+// AllValues returns all BrowseCatalogTier values.
+func (BrowseCatalogTier) AllValues() []BrowseCatalogTier {
+	return []BrowseCatalogTier{
+		BrowseCatalogTierCurated,
+		BrowseCatalogTierIndexed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BrowseCatalogTier) MarshalText() ([]byte, error) {
+	switch s {
+	case BrowseCatalogTierCurated:
+		return []byte(s), nil
+	case BrowseCatalogTierIndexed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BrowseCatalogTier) UnmarshalText(data []byte) error {
+	switch BrowseCatalogTier(data) {
+	case BrowseCatalogTierCurated:
+		*s = BrowseCatalogTierCurated
+		return nil
+	case BrowseCatalogTierIndexed:
+		*s = BrowseCatalogTierIndexed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type BrowseCatalogValidation string
+
+const (
+	BrowseCatalogValidationPassed     BrowseCatalogValidation = "passed"
+	BrowseCatalogValidationUnverified BrowseCatalogValidation = "unverified"
+)
+
+// AllValues returns all BrowseCatalogValidation values.
+func (BrowseCatalogValidation) AllValues() []BrowseCatalogValidation {
+	return []BrowseCatalogValidation{
+		BrowseCatalogValidationPassed,
+		BrowseCatalogValidationUnverified,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BrowseCatalogValidation) MarshalText() ([]byte, error) {
+	switch s {
+	case BrowseCatalogValidationPassed:
+		return []byte(s), nil
+	case BrowseCatalogValidationUnverified:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BrowseCatalogValidation) UnmarshalText(data []byte) error {
+	switch BrowseCatalogValidation(data) {
+	case BrowseCatalogValidationPassed:
+		*s = BrowseCatalogValidationPassed
+		return nil
+	case BrowseCatalogValidationUnverified:
+		*s = BrowseCatalogValidationUnverified
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type CancelAccountDeletionOK struct {
 	// Always null here - the field exists so a client can read the post-cancel state from the same shape
 	// it reads elsewhere, rather than inferring it from a bare 200.
@@ -796,6 +974,77 @@ func (*CancelRunNotFound) cancelRunRes() {}
 type CancelRunUnauthorized Error
 
 func (*CancelRunUnauthorized) cancelRunRes() {}
+
+// 02:DISC-006. Four fields and no more: this response is a page of a list, and every field search
+// carries that is missing here is missing because it would have been a constant (see the operation's
+// description).
+// Ref: #/components/schemas/CatalogResponse
+type CatalogResponse struct {
+	// The same row type search returns, and that is deliberate: the same card renders both states of the
+	// same screen, and 02:NFR-007 第 3 條 does not allow one surface to word a fact two ways. Every row
+	// here carries `rank: null` plus a `rank_note` naming the ordering.
+	Results []PublicSearchResult `json:"results"`
+	// How many rows this page carries at most — the `limit` parameter if given, otherwise the default.
+	// Named only because it is enforced (設計系統 §2.2).
+	Limit int `json:"limit"`
+	// How many skills are in the catalogue under the filters given, before `limit` cut the page down.
+	// 設計系統 §4.3 requires a truncated list to say 「共 N 筆，這裡顯示 M 筆，因為 X」,
+	// and a lower bound cannot say 共.
+	//
+	// `count(*) OVER ()` inside the retrieval statement, not a second COUNT query, for the reason the
+	// search route documents at length: a parallel count restates every predicate and the first
+	// disagreement makes the page report a total that does not describe the list under it. Exact on this
+	// path always — unlike search's hybrid leg, a browse has no candidate window, so there is no size at
+	// which this quietly becomes a lower bound.
+	//
+	// `total == len(results)` whenever `truncated` is false.
+	Total int `json:"total"`
+	// True when the catalogue holds more than this page shows. ADR-042 決策 3: a truncated list must say
+	// so, or it reads as the whole answer.
+	Truncated bool `json:"truncated"`
+}
+
+// GetResults returns the value of Results.
+func (s *CatalogResponse) GetResults() []PublicSearchResult {
+	return s.Results
+}
+
+// GetLimit returns the value of Limit.
+func (s *CatalogResponse) GetLimit() int {
+	return s.Limit
+}
+
+// GetTotal returns the value of Total.
+func (s *CatalogResponse) GetTotal() int {
+	return s.Total
+}
+
+// GetTruncated returns the value of Truncated.
+func (s *CatalogResponse) GetTruncated() bool {
+	return s.Truncated
+}
+
+// SetResults sets the value of Results.
+func (s *CatalogResponse) SetResults(val []PublicSearchResult) {
+	s.Results = val
+}
+
+// SetLimit sets the value of Limit.
+func (s *CatalogResponse) SetLimit(val int) {
+	s.Limit = val
+}
+
+// SetTotal sets the value of Total.
+func (s *CatalogResponse) SetTotal(val int) {
+	s.Total = val
+}
+
+// SetTruncated sets the value of Truncated.
+func (s *CatalogResponse) SetTruncated(val bool) {
+	s.Truncated = val
+}
+
+func (*CatalogResponse) browseCatalogRes() {}
 
 // Validation findings grouped by severity (INGEST-008/SKILL-002): blocking errors, non-blocking
 // warnings, and informational notes are separate lists rather than one undifferentiated feed.
@@ -2685,6 +2934,8 @@ func (s *DeterministicFindingSeverity) UnmarshalText(data []byte) error {
 // DevLoginNoContent is response for DevLogin operation.
 type DevLoginNoContent struct{}
 
+func (*DevLoginNoContent) devLoginRes() {}
+
 type DevLoginReq struct {
 	// Dev user handle; defaults to "dev".
 	User OptString `json:"user"`
@@ -3206,10 +3457,11 @@ func (s *Error) SetError(val string) {
 	s.Error = val
 }
 
+func (*Error) browseCatalogRes()          {}
 func (*Error) cancelAccountDeletionRes()  {}
 func (*Error) deleteDownloadArtifactRes() {}
 func (*Error) deleteRunArtifactRes()      {}
-func (*Error) finishGithubLoginRes()      {}
+func (*Error) devLoginRes()               {}
 func (*Error) getDatasetLimitsRes()       {}
 func (*Error) getDispatchStatusRes()      {}
 func (*Error) getMeRes()                  {}
@@ -3246,6 +3498,7 @@ func (s *ErrorHeaders) SetResponse(val Error) {
 	s.Response = val
 }
 
+func (*ErrorHeaders) browseCatalogRes()      {}
 func (*ErrorHeaders) generateSkillRes()      {}
 func (*ErrorHeaders) importSkillFromURLRes() {}
 func (*ErrorHeaders) publicSearchSkillsRes() {}
@@ -4418,10 +4671,18 @@ func (s *FindingSeverity) UnmarshalText(data []byte) error {
 	}
 }
 
+type FinishGithubLoginConflict Error
+
+func (*FinishGithubLoginConflict) finishGithubLoginRes() {}
+
 // FinishGithubLoginFound is response for FinishGithubLogin operation.
 type FinishGithubLoginFound struct{}
 
 func (*FinishGithubLoginFound) finishGithubLoginRes() {}
+
+type FinishGithubLoginUnauthorized Error
+
+func (*FinishGithubLoginUnauthorized) finishGithubLoginRes() {}
 
 type ForkSkillConflict Error
 
@@ -6226,6 +6487,9 @@ func (*ListRunArtifactsNotFound) listRunArtifactsRes() {}
 
 type ListRunArtifactsOK struct {
 	Artifacts []RunArtifact `json:"artifacts"`
+	// True when the run's frozen artifact limits dropped any output, including when every file was
+	// dropped.
+	Truncated bool `json:"truncated"`
 }
 
 // GetArtifacts returns the value of Artifacts.
@@ -6233,9 +6497,19 @@ func (s *ListRunArtifactsOK) GetArtifacts() []RunArtifact {
 	return s.Artifacts
 }
 
+// GetTruncated returns the value of Truncated.
+func (s *ListRunArtifactsOK) GetTruncated() bool {
+	return s.Truncated
+}
+
 // SetArtifacts sets the value of Artifacts.
 func (s *ListRunArtifactsOK) SetArtifacts(val []RunArtifact) {
 	s.Artifacts = val
+}
+
+// SetTruncated sets the value of Truncated.
+func (s *ListRunArtifactsOK) SetTruncated(val bool) {
+	s.Truncated = val
 }
 
 func (*ListRunArtifactsOK) listRunArtifactsRes() {}
@@ -6883,6 +7157,190 @@ func (o OptBool) Get() (v bool, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptBool) Or(d bool) bool {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptBrowseCatalogAgent returns new OptBrowseCatalogAgent with value set to v.
+func NewOptBrowseCatalogAgent(v BrowseCatalogAgent) OptBrowseCatalogAgent {
+	return OptBrowseCatalogAgent{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBrowseCatalogAgent is optional BrowseCatalogAgent.
+type OptBrowseCatalogAgent struct {
+	Value BrowseCatalogAgent
+	Set   bool
+}
+
+// IsSet returns true if OptBrowseCatalogAgent was set.
+func (o OptBrowseCatalogAgent) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBrowseCatalogAgent) Reset() {
+	var v BrowseCatalogAgent
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBrowseCatalogAgent) SetTo(v BrowseCatalogAgent) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBrowseCatalogAgent) Get() (v BrowseCatalogAgent, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBrowseCatalogAgent) Or(d BrowseCatalogAgent) BrowseCatalogAgent {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptBrowseCatalogScript returns new OptBrowseCatalogScript with value set to v.
+func NewOptBrowseCatalogScript(v BrowseCatalogScript) OptBrowseCatalogScript {
+	return OptBrowseCatalogScript{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBrowseCatalogScript is optional BrowseCatalogScript.
+type OptBrowseCatalogScript struct {
+	Value BrowseCatalogScript
+	Set   bool
+}
+
+// IsSet returns true if OptBrowseCatalogScript was set.
+func (o OptBrowseCatalogScript) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBrowseCatalogScript) Reset() {
+	var v BrowseCatalogScript
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBrowseCatalogScript) SetTo(v BrowseCatalogScript) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBrowseCatalogScript) Get() (v BrowseCatalogScript, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBrowseCatalogScript) Or(d BrowseCatalogScript) BrowseCatalogScript {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptBrowseCatalogTier returns new OptBrowseCatalogTier with value set to v.
+func NewOptBrowseCatalogTier(v BrowseCatalogTier) OptBrowseCatalogTier {
+	return OptBrowseCatalogTier{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBrowseCatalogTier is optional BrowseCatalogTier.
+type OptBrowseCatalogTier struct {
+	Value BrowseCatalogTier
+	Set   bool
+}
+
+// IsSet returns true if OptBrowseCatalogTier was set.
+func (o OptBrowseCatalogTier) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBrowseCatalogTier) Reset() {
+	var v BrowseCatalogTier
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBrowseCatalogTier) SetTo(v BrowseCatalogTier) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBrowseCatalogTier) Get() (v BrowseCatalogTier, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBrowseCatalogTier) Or(d BrowseCatalogTier) BrowseCatalogTier {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptBrowseCatalogValidation returns new OptBrowseCatalogValidation with value set to v.
+func NewOptBrowseCatalogValidation(v BrowseCatalogValidation) OptBrowseCatalogValidation {
+	return OptBrowseCatalogValidation{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBrowseCatalogValidation is optional BrowseCatalogValidation.
+type OptBrowseCatalogValidation struct {
+	Value BrowseCatalogValidation
+	Set   bool
+}
+
+// IsSet returns true if OptBrowseCatalogValidation was set.
+func (o OptBrowseCatalogValidation) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBrowseCatalogValidation) Reset() {
+	var v BrowseCatalogValidation
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBrowseCatalogValidation) SetTo(v BrowseCatalogValidation) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBrowseCatalogValidation) Get() (v BrowseCatalogValidation, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBrowseCatalogValidation) Or(d BrowseCatalogValidation) BrowseCatalogValidation {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -10246,14 +10704,15 @@ type PublicSearchResult struct {
 	// well here and be passed over by the agent, and nothing about the enriched summary changes what the
 	// downloaded package says.
 	SummarySource PublicSearchResultSummarySource `json:"summary_source"`
-	// Cosine similarity to the query, 0..1, higher is better (DISC-002 — never star count). Results are
-	// ordered by it.
+	// Cosine similarity to the query, 0..1, higher is better (DISC-002 — never star count). Search
+	// results with a non-null rank are ordered by it.
 	//
 	// Null when this page was not ranked by similarity, and the ordering is then something else entirely
-	// — see `rank_note`. Two cases reach it: the whole answer came from the lexical leg (`degraded`), or
-	// this one row has no embedding yet (`partial_index`). The lexical score is not returned in its place:
-	// `ts_rank_cd` is unbounded (a local answer measured 1.4) and is not the same quantity as a cosine
-	// similarity, so squeezing it into 0..1 would be false precision.
+	// — see `rank_note`. Three cases reach it: the whole answer came from the lexical leg (`degraded`),
+	// this one row has no embedding yet (`partial_index`), or the row belongs to the browse catalog, which
+	// uses its documented catalog ordering. The lexical score is not returned in its place: `ts_rank_cd`
+	// is unbounded (a local answer measured 1.4) and is not the same quantity as a cosine similarity, so
+	// squeezing it into 0..1 would be false precision.
 	Rank NilFloat64 `json:"rank"`
 	// Why `rank` is null and what ordered the page instead. Present only when `rank` is null.
 	RankNote OptString `json:"rank_note"`

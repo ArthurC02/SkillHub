@@ -81,7 +81,7 @@ export function RunCompare() {
    */
   const self = useRun(runId);
   const testCaseId = self.data?.test_case_id;
-  const siblings = useRuns(testCaseId);
+  const siblings = useRuns(testCaseId, Boolean(testCaseId));
   // Self-comparison is a 400 from the server, so this side is not a candidate.
   // Gated on `testCaseId` as well: until it resolves the list is the whole
   // workspace's history, which is not the same question.
@@ -96,7 +96,17 @@ export function RunCompare() {
 
   const pickForm = (
     <>
-      {candidates.length > 0 ? (
+      {self.isPending ? (
+        <Loading what="目前這次 Run" />
+      ) : self.error ? (
+        <ReadFailure error={self.error} what="目前這次 Run" />
+      ) : !testCaseId ? (
+        <p>這次 Run 的 Test Case 已無法解析，因此無法列出同一個 Test Case 的其他 Run。</p>
+      ) : siblings.isPending ? (
+        <Loading what="可比較的 Run" />
+      ) : siblings.error ? (
+        <ReadFailure error={siblings.error} what="可比較的 Run" />
+      ) : candidates.length > 0 ? (
         // Same two axes and the same order as the other two run histories
         // (WorkspaceRuns, TestCases): 任務判定 first, 執行狀態 second, time last.
         // No uuid on the row — not showing one is the entire point of this list.
@@ -371,7 +381,7 @@ function ComparisonTables({ data }: { data: RunComparison }) {
                       {/* null is "no verdict on this side" — a different fact from
                         undetermined, which is a verdict that was reached. */}
                       {r.result === null ? (
-                        <span className="compare-unknown">無判定</span>
+                        <span className="compare-unknown">未評估</span>
                       ) : (
                         CRITERION_LABEL[r.result]
                       )}

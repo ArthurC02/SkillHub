@@ -97,7 +97,7 @@ export type RunListItem = {
  * 建立 → 試跑 → 回來看 loop. Matched against the test case each run's snapshot
  * was frozen from, so a run stays listed after the draft has been edited.
  */
-export function useRuns(testCaseId?: string) {
+export function useRuns(testCaseId?: string, enabled = true) {
   return useInfiniteQuery({
     queryKey: ["runs", testCaseId ?? ""],
     initialPageParam: 0,
@@ -110,6 +110,7 @@ export function useRuns(testCaseId?: string) {
       }));
     },
     getNextPageParam: (last) => last.nextOffset,
+    enabled,
     retry: false,
   });
 }
@@ -137,10 +138,12 @@ export type RunArtifact = {
   purged: boolean;
 };
 
+export type RunArtifacts = { artifacts: RunArtifact[]; truncated: boolean };
+
 export function useRunArtifacts(runId: string) {
   return useQuery({
     queryKey: ["run", runId, "artifacts"],
-    queryFn: () => apiFetch<{ artifacts: RunArtifact[] }>(`/runs/${runId}/artifacts`),
+    queryFn: () => apiFetch<RunArtifacts>(`/runs/${runId}/artifacts`),
     enabled: runId.length > 0,
     retry: false,
   });

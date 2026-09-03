@@ -16,6 +16,36 @@ type Handler interface {
 	//
 	// POST /test-cases/{id}/criteria
 	AddAcceptanceCriterion(ctx context.Context, req *AddAcceptanceCriterionReq, params AddAcceptanceCriterionParams) (AddAcceptanceCriterionRes, error)
+	// BrowseCatalog implements browseCatalog operation.
+	//
+	// What is in the catalogue, for a caller who has not asked a question yet.
+	//
+	// This is a second operation and not a `q`-less mode of `GET /api/skills/search`, because the two
+	// answer different questions and the difference is visible in the payload. Search answers 「what
+	// matches this sentence」 and everything about its response is downstream of that: the ordering is a
+	// similarity, `no_results` is a distance cut-off, `query_suggestion` is advice about the words. A
+	// browse has none of those, and folding it in would have shipped a response whose `query` is empty,
+	// whose `no_results` means 「the catalogue is empty」 on one path and 「nothing was close enough」
+	// on the other, and whose `rank` is null for every row. The separate envelope keeps browse from
+	// pretending to be a query-less search; rows still share the public Skill card shape, and `rank_note`
+	// explicitly explains this third kind of absent rank.
+	//
+	// Ordering: curated first, then newest version first, then by id. ADR-041 / 設計系統 §2.11(b)
+	// forbid popularity as a default order and this product has no popularity signal to misuse anyway;
+	// `curation_tier` is the one ordering input backed by a human review (PDM-002's nine items), and the
+	// id tiebreak keeps the order stable between two calls. Every row carries `rank: null` and a
+	// `rank_note` saying so, which is the same contract the degraded search path already uses — a client
+	// never has to guess why a page is not ranked by similarity.
+	//
+	// Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can
+	// widen it (CORE-006, ADR-011).
+	//
+	// The four DISC-003 filters apply here for the reason they exist: they are the controls on the same
+	// screen, and a filter that only bites after a search would be a live control that narrows nothing
+	// (設計系統 §2.2).
+	//
+	// GET /api/skills/catalog
+	BrowseCatalog(ctx context.Context, params BrowseCatalogParams) (BrowseCatalogRes, error)
 	// CancelAccountDeletion implements cancelAccountDeletion operation.
 	//
 	// Valid for the whole grace period. Idempotent: cancelling when nothing is pending is a no-op.
@@ -237,7 +267,7 @@ type Handler interface {
 	// absent and returns 404.
 	//
 	// POST /auth/dev/login
-	DevLogin(ctx context.Context, req OptDevLoginReq) error
+	DevLogin(ctx context.Context, req OptDevLoginReq) (DevLoginRes, error)
 	// DiffSkillVersions implements diffSkillVersions operation.
 	//
 	// Compare any two versions of a skill (WS-003).

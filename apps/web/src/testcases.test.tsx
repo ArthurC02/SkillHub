@@ -82,6 +82,7 @@ const RUN = {
 type Overrides = {
   /** POST .../criteria/suggest — proposals, or an ApiError status to fail with. */
   suggest?: { suggestions: { text: string }[] } | { status: number; error: string };
+  suggestResponse?: Promise<Response>;
   runs?: unknown[];
   datasets?: unknown[];
   testCases?: unknown[];
@@ -104,6 +105,7 @@ function stubPlatform(over: Overrides = {}) {
     const path = url.split("?")[0];
     calls.push({ url, method: init?.method ?? "GET", body: init?.body as string | undefined });
     if (url.includes("/criteria/suggest")) {
+      if (over.suggestResponse) return over.suggestResponse;
       const s = over.suggest ?? { suggestions: [] };
       return "status" in s ? json({ error: s.error }, s.status) : json(s);
     }
@@ -151,6 +153,19 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
   }
   throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
 }
+
+test("a disabled prompt save exposes its visible reason to assistive technology", async () => {
+  stubPlatform();
+  await render();
+
+  const name = container.querySelector<HTMLInputElement>("#edit-name")!;
+  await act(async () => setValue(name, ""));
+  const save = button("儲存");
+  expect(save.disabled).toBe(true);
+  const reasonID = save.getAttribute("aria-describedby");
+  expect(reasonID).toBe("edit-required-reason");
+  expect(container.querySelector(`#${reasonID}`)?.textContent).toContain("名稱是空的");
+});
 
 function button(label: string): HTMLButtonElement {
   const found = Array.from(container.querySelectorAll("button")).find(
@@ -322,6 +337,28 @@ test("TEST-002 a 503 is worded as unavailable and names the manual path", async 
   expect(container.textContent).toContain("可以自己手動輸入");
 });
 
+test("a pending suggestion says why its button is disabled", async () => {
+  let finish!: (response: Response) => void;
+  const suggestResponse = new Promise<Response>((resolve) => {
+    finish = resolve;
+  });
+  stubPlatform({ suggestResponse });
+  await render();
+
+  await act(async () => button("請系統建議（選用）").click());
+  await waitFor(() => (container.textContent ?? "").includes("建議中…"));
+  expect(button("建議中…").disabled).toBe(true);
+
+  await act(async () =>
+    finish(
+      new Response(JSON.stringify({ suggestions: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ),
+  );
+});
+
 // --- 步驟 6: 回程 ------------------------------------------------------------
 
 test("執行歷史 lists this test case's runs and links to each one", async () => {
@@ -421,13 +458,19 @@ test("設計 §2.4 the Rubric save button says why it cannot be pressed", async 
   const box = container.querySelector<HTMLTextAreaElement>("#rubric-c1")!;
   await act(async () => setValue(box, "引出顯示列數變少的那一句。"));
 
-  expect(button("儲存 Rubric").disabled).toBe(true);
+  const saveButton = button("儲存 Rubric");
+  expect(saveButton.disabled).toBe(true);
+  expect(saveButton.getAttribute("aria-describedby")).toBe("rubric-version-reason");
+  expect(container.querySelector("#rubric-version-reason")?.textContent).toContain(
+    "Rubric 版本是空的",
+  );
   expect(container.textContent).toContain("還不能儲存，因為 Rubric 版本是空的");
 
   // And the reason goes when the cause does.
   const version = container.querySelector<HTMLInputElement>("#rubric-version")!;
   await act(async () => setValue(version, "content-007/writing/v1"));
-  expect(button("儲存 Rubric").disabled).toBe(false);
+  expect(saveButton.disabled).toBe(false);
+  expect(saveButton.getAttribute("aria-describedby")).toBeNull();
   expect(container.textContent).not.toContain("還不能儲存，因為 Rubric 版本是空的");
 });
 

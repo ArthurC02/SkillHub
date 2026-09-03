@@ -83,6 +83,17 @@ function stubSession(
         new Response(JSON.stringify({ failures: failures ?? [] }), { status: 200 }),
       );
     }
+    // 02:DISC-006: the home page reads the catalogue before anyone has searched,
+    // and the catch-all below answers `{skills: []}` — a 200 with no `results`,
+    // which is not a shape any endpoint returns and which made the page throw
+    // before these tests could type into it.
+    if (path.startsWith("/api/skills/catalog")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ results: [], limit: 20, total: 0, truncated: false }), {
+          status: 200,
+        }),
+      );
+    }
     if (path.startsWith("/api/skills/search")) {
       searchGets.push(path);
       return Promise.resolve(new Response(JSON.stringify(NO_RESULTS), { status: 200 }));

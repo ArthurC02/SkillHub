@@ -268,6 +268,14 @@ func TestParseFiltersAgentRuntime(t *testing.T) {
 	}
 }
 
+func TestParseFiltersRejectsExplicitEmptyValues(t *testing.T) {
+	for _, name := range []string{"script", "validation", "agent", "tier"} {
+		if _, err := parseFilters(httptest.NewRequest(http.MethodGet, "/?"+name+"=", nil)); err == nil {
+			t.Errorf("explicitly empty %s filter was treated as absent", name)
+		}
+	}
+}
+
 // DISC-004: a field with no data says unknown and is never read as passed. The
 // unavailable branch used to report `level: none` — the lowest rung of a
 // three-value ladder — while ScanStatus and Note both said there was no scan.

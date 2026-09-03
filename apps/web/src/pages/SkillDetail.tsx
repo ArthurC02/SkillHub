@@ -101,6 +101,51 @@ export function SkillDetail() {
         <CompatibilityStatus compatibility={skill.compatibility} />
       </section>
 
+      {/*
+        設計 §1.2. Measured 2026-09-03 in a 1280×900 window: the four things a
+        reader can DO on this page sat at y568（打包）, y2482（檔案樹）,
+        y2569（試跑）and y2680（Fork）on a 2845px page — Fork, the ONLY way a
+        visitor moves from 探索 to 試跑, at 94% of the scroll. They are one group
+        now, directly after the four verdicts.
+
+        Moved as whole SECTIONS and not as buttons, which is the whole design of
+        this change: every one of these controls carries the reason it is closed
+        right beside it（打包 the redistribution gate, 試跑 the 「不在你的工作區」
+        corridor, Fork the 「登入後」 line）, and hoisting the control alone would
+        leave the reason three screens behind it — §2.4 and §2.10 第 5 項.
+
+        They stay BELOW 風險揭露／可散布性／License／相容性 and that is not a
+        compromise, it is §0: 安全與不誤導 is priority 1 and 速度與版面 is 4. The
+        comment above those four sections records what it cost the last time the
+        page was ordered the other way round. So the fix here is not 「操作進第一
+        屏」, it is 「操作在一個地方」.
+      */}
+      {/*
+        0023: with a licensing hold open, the advanced view is closed and the
+        link goes with it — a link that leads to a 403 is worse than no link.
+        The reason is stated where the link used to be, so the absence reads as
+        a decision rather than as a missing feature.
+      */}
+      {skill.version && !skill.access_restriction && (
+        <nav>
+          <Link to="/skills/$skillId/files" params={{ skillId }}>
+            查看 SKILL.md 與檔案樹（進階模式）
+          </Link>
+        </nav>
+      )}
+
+      <TrialEntry skillId={skillId} isLoggedIn={!!me} />
+
+      <section>
+        {/*
+          丙-116 的另一半：這個動作以前是整頁唯一沒有標題的區塊。它對非擁有者
+          是**唯一**能往前的東西，卻不在 12 個 h2 裡，所以按標題導覽的人找不到
+          它——而 axe 不會說話，沒有標題不是違規。
+        */}
+        <h2>Fork 到你的工作區</h2>
+        <ForkAction skillId={skillId} isLoggedIn={!!me} />
+      </section>
+
       <Enrichment enrichment={skill.enrichment} />
 
       <Limitations limitations={skill.limitations} />
@@ -182,32 +227,6 @@ export function SkillDetail() {
           </p>
         )}
       </details>
-
-      {/*
-        0023: with a licensing hold open, the advanced view is closed and the
-        link goes with it — a link that leads to a 403 is worse than no link.
-        The reason is stated where the link used to be, so the absence reads as
-        a decision rather than as a missing feature.
-      */}
-      {skill.version && !skill.access_restriction && (
-        <nav>
-          <Link to="/skills/$skillId/files" params={{ skillId }}>
-            查看 SKILL.md 與檔案樹（進階模式）
-          </Link>
-        </nav>
-      )}
-
-      <TrialEntry skillId={skillId} isLoggedIn={!!me} />
-
-      <section>
-        {/*
-          丙-116 的另一半：這個動作以前是整頁唯一沒有標題的區塊。它對非擁有者
-          是**唯一**能往前的東西，卻不在 12 個 h2 裡，所以按標題導覽的人找不到
-          它——而 axe 不會說話，沒有標題不是違規。
-        */}
-        <h2>Fork 到你的工作區</h2>
-        <ForkAction skillId={skillId} isLoggedIn={!!me} />
-      </section>
     </article>
   );
 }
@@ -277,7 +296,9 @@ function VersionHistory({ skillId }: { skillId: string }) {
                 return (
                   <li key={version.version_id} className="search-result">
                     <p>
-                      <strong>v{version.version_number}</strong>
+                      {/* 設計 §3 第 15 條：這兩個相鄰元素之間沒有任何東西，於是
+                          渲染成 「v2建立時間：2026/08/17」——量到 0.0px。 */}
+                      <strong>v{version.version_number}</strong>{" "}
                       <span className="note">
                         建立時間：
                         <Timestamp at={version.created_at} />
@@ -358,6 +379,7 @@ function Redistribution({ skill }: { skill: SkillDetailModel }) {
       ) : skill.version ? (
         <p>
           <Link
+            className="action"
             to="/skills/$skillId/package"
             params={{ skillId: skill.skill_id }}
             search={{ version: skill.version.version_id }}
@@ -517,7 +539,7 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
             </p>
           ) : (
             <p key={key}>
-              {label}：<span className="note">未知（沒有擷取到，不代表沒有）</span>
+              {label}：<span className="note">未測量（沒有擷取到，不代表沒有）</span>
             </p>
           ),
         )}
@@ -706,7 +728,7 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
       {inMyWorkspace ? (
         <>
           <p>
-            <Link to="/lab/test-cases" search={{ skill: skillId }}>
+            <Link className="action" to="/lab/test-cases" search={{ skill: skillId }}>
               此 Skill 的 Test Case
             </Link>
           </p>

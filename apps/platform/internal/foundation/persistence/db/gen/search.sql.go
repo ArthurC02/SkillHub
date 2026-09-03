@@ -12,6 +12,149 @@ import (
 	"github.com/pgvector/pgvector-go"
 )
 
+const browseCatalogSkills = `-- name: BrowseCatalogSkills :many
+SELECT s.skill_id, s.name,
+       COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
+       CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
+           AS summary_source,
+       s.tags, s.scan, ver.created_at AS verified_at,
+       COALESCE(cmp.capability, 'unverified') AS agent_capability,
+       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
+       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
+       cmp.measured_at AS agent_measured_at,
+       COALESCE(cur.tier, 'indexed') AS curation_tier,
+       count(*) OVER ()::bigint AS total_matches
+FROM search_documents s
+JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
+LEFT JOIN LATERAL (
+    SELECT v.id, v.created_at
+    FROM skill_versions v
+    WHERE v.skill_id = s.skill_id
+    ORDER BY v.version_number DESC
+    LIMIT 1
+) ver ON true
+LEFT JOIN LATERAL (
+    SELECT c.capability, c.runtime, c.runtime_image, c.measured_at
+    FROM skill_runtime_compatibility c
+    WHERE c.skill_version_id = ver.id
+    ORDER BY c.measured_at DESC
+    LIMIT 1
+) cmp ON true
+LEFT JOIN LATERAL (
+    SELECT CASE
+        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
+        THEN 'curated' ELSE 'indexed'
+    END AS tier
+    FROM skills sk
+    WHERE sk.id = s.skill_id
+) cur ON true
+WHERE (
+    $1::bool IS NULL
+    OR (s.scan IS NOT NULL
+        AND (s.scan->'codes' @> '["script-file"]'::jsonb
+             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $1::bool)
+  )
+  AND (
+    $2::bool IS NULL
+    OR (ver.created_at IS NOT NULL) = $2::bool
+  )
+  AND (
+    $3::text IS NULL
+    OR COALESCE(cmp.runtime, 'unverified') = $3::text
+  )
+  AND (
+    $4::text IS NULL
+    OR COALESCE(cur.tier, 'indexed') = $4::text
+  )
+ORDER BY (COALESCE(cur.tier, 'indexed') = 'curated') DESC,
+         ver.created_at DESC NULLS LAST,
+         s.skill_id
+LIMIT $5
+`
+
+type BrowseCatalogSkillsParams struct {
+	HasScript     *bool
+	SpecValidated *bool
+	AgentRuntime  *string
+	CurationTier  *string
+	ResultLimit   int32
+}
+
+type BrowseCatalogSkillsRow struct {
+	SkillID           pgtype.UUID
+	Name              string
+	Summary           string
+	SummarySource     string
+	Tags              []byte
+	Scan              []byte
+	VerifiedAt        pgtype.Timestamptz
+	AgentCapability   string
+	AgentRuntime      string
+	AgentRuntimeImage string
+	AgentMeasuredAt   pgtype.Timestamptz
+	CurationTier      string
+	TotalMatches      int64
+}
+
+// 02:DISC-006 —— 目錄本身，給還沒有問題可問的人。
+//
+// 為什麼是新的一條而不是把 PublicSearchSkills 的述詞變成選用：那條查詢的每一個
+// 部分都是「這個查詢字串排出來的順序」——ts_rank_cd 排序、no_results 的距離門檻、
+// query_suggestion。把 query 變成 nullable 之後，rank 對每一列都會是空的，而
+// 設計 §2.9 說缺席要有型別；一個永遠不填的 rank 不是缺席，是這個回應根本不該有
+// 那個欄位。兩個問題（「什麼東西符合我這句話」與「這裡面有什麼」）各自一條。
+//
+// SELECT 清單與 PublicSearchSkills 逐欄相同，而且必須相同：同一張卡片會在同一頁
+// 的兩個狀態下渲染，02:NFR-007 第 3 條不允許它們對同一個事實講不同的話。
+//
+// 排序：精選在前，其餘依版本建立時間由新到舊。ADR-041／設計 §2.11(b) 禁止把人氣
+// 當預設排序，而這裡也沒有人氣可用；curation_tier 是人真的審過的結論，是這個目錄
+// 唯一一個有證據支撐的排序訊號。skill_id 收尾讓分頁邊界不會抖。
+//
+// 篩選與搜尋那條共用同四個維度：篩選條件是這一頁的控制項，而一個只在搜尋之後才
+// 生效的篩選器，等於在目錄狀態下顯示一排不強制任何事的控制項（設計 §2.2）。
+//
+// total_matches 的理由與上面那條相同，而在這條路上它永遠精確：沒有候選窗。
+func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkillsParams) ([]BrowseCatalogSkillsRow, error) {
+	rows, err := q.db.Query(ctx, browseCatalogSkills,
+		arg.HasScript,
+		arg.SpecValidated,
+		arg.AgentRuntime,
+		arg.CurationTier,
+		arg.ResultLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BrowseCatalogSkillsRow
+	for rows.Next() {
+		var i BrowseCatalogSkillsRow
+		if err := rows.Scan(
+			&i.SkillID,
+			&i.Name,
+			&i.Summary,
+			&i.SummarySource,
+			&i.Tags,
+			&i.Scan,
+			&i.VerifiedAt,
+			&i.AgentCapability,
+			&i.AgentRuntime,
+			&i.AgentRuntimeImage,
+			&i.AgentMeasuredAt,
+			&i.CurationTier,
+			&i.TotalMatches,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteSearchDocument = `-- name: DeleteSearchDocument :exec
 DELETE FROM search_documents WHERE skill_id = $1 AND workspace_id = $2
 `
@@ -75,7 +218,8 @@ func (q *Queries) ListCatalogSkillScans(ctx context.Context, skillIds []pgtype.U
 }
 
 const listPendingEnrichment = `-- name: ListPendingEnrichment :many
-SELECT sd.skill_id, sd.workspace_id, sd.name, sv.package_object_key
+WITH candidates AS (
+SELECT sd.skill_id, sv.package_object_key
 FROM search_documents sd
 JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
     AND sk.redistribution <> 'generated'
@@ -87,8 +231,16 @@ JOIN LATERAL (
     LIMIT 1
 ) sv ON true
 WHERE sd.enrichment_status = 'pending'
-ORDER BY sd.updated_at
-LIMIT $1
+  AND (sd.enrichment_attempted_at IS NULL OR sd.enrichment_attempted_at < now() - interval '15 minutes')
+ORDER BY sd.enrichment_attempted_at NULLS FIRST, sd.enrichment_attempted_at, sd.updated_at, sd.skill_id
+LIMIT $1 FOR UPDATE OF sd SKIP LOCKED
+), claimed AS (
+    UPDATE search_documents sd SET enrichment_attempted_at = now()
+    FROM candidates c WHERE sd.skill_id = c.skill_id
+    RETURNING sd.skill_id, sd.workspace_id, sd.name
+)
+SELECT c.skill_id, c.workspace_id, c.name, candidates.package_object_key
+FROM claimed c JOIN candidates USING (skill_id)
 `
 
 type ListPendingEnrichmentRow struct {
@@ -803,6 +955,9 @@ SET workspace_id = EXCLUDED.workspace_id,
     enrichment_status = EXCLUDED.enrichment_status,
     enrichment_model = EXCLUDED.enrichment_model,
     enrichment_prompt_version = EXCLUDED.enrichment_prompt_version,
+    enrichment_attempted_at = CASE
+        WHEN EXCLUDED.enrichment_status = 'pending' THEN NULL
+        ELSE search_documents.enrichment_attempted_at END,
     updated_at = now()
 `
 

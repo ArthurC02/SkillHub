@@ -237,6 +237,189 @@ func (s *Server) handleAddAcceptanceCriterionRequest(args [1]string, argsEscaped
 	}
 }
 
+// handleBrowseCatalogRequest handles browseCatalog operation.
+//
+// What is in the catalogue, for a caller who has not asked a question yet.
+//
+// This is a second operation and not a `q`-less mode of `GET /api/skills/search`, because the two
+// answer different questions and the difference is visible in the payload. Search answers 「what
+// matches this sentence」 and everything about its response is downstream of that: the ordering is a
+// similarity, `no_results` is a distance cut-off, `query_suggestion` is advice about the words. A
+// browse has none of those, and folding it in would have shipped a response whose `query` is empty,
+// whose `no_results` means 「the catalogue is empty」 on one path and 「nothing was close enough」
+// on the other, and whose `rank` is null for every row. The separate envelope keeps browse from
+// pretending to be a query-less search; rows still share the public Skill card shape, and `rank_note`
+// explicitly explains this third kind of absent rank.
+//
+// Ordering: curated first, then newest version first, then by id. ADR-041 / 設計系統 §2.11(b)
+// forbid popularity as a default order and this product has no popularity signal to misuse anyway;
+// `curation_tier` is the one ordering input backed by a human review (PDM-002's nine items), and the
+// id tiebreak keeps the order stable between two calls. Every row carries `rank: null` and a
+// `rank_note` saying so, which is the same contract the degraded search path already uses — a client
+// never has to guess why a page is not ranked by similarity.
+//
+// Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can
+// widen it (CORE-006, ADR-011).
+//
+// The four DISC-003 filters apply here for the reason they exist: they are the controls on the same
+// screen, and a filter that only bites after a search would be a live control that narrows nothing
+// (設計系統 §2.2).
+//
+// GET /api/skills/catalog
+func (s *Server) handleBrowseCatalogRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("browseCatalog"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/api/skills/catalog"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), BrowseCatalogOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: BrowseCatalogOperation,
+			ID:   "browseCatalog",
+		}
+	)
+	params, err := decodeBrowseCatalogParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+
+	var response BrowseCatalogRes
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    BrowseCatalogOperation,
+			OperationSummary: "Browse the public skill catalogue (02:DISC-006)",
+			OperationID:      "browseCatalog",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "limit",
+					In:   "query",
+				}: params.Limit,
+				{
+					Name: "script",
+					In:   "query",
+				}: params.Script,
+				{
+					Name: "validation",
+					In:   "query",
+				}: params.Validation,
+				{
+					Name: "agent",
+					In:   "query",
+				}: params.Agent,
+				{
+					Name: "tier",
+					In:   "query",
+				}: params.Tier,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = BrowseCatalogParams
+			Response = BrowseCatalogRes
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackBrowseCatalogParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.BrowseCatalog(ctx, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.BrowseCatalog(ctx, params)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeBrowseCatalogResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleCancelAccountDeletionRequest handles cancelAccountDeletion operation.
 //
 // Valid for the whole grace period. Idempotent: cancelling when nothing is pending is a no-op.
@@ -3523,7 +3706,7 @@ func (s *Server) handleDevLoginRequest(args [0]string, argsEscaped bool, w http.
 		}
 	}()
 
-	var response *DevLoginNoContent
+	var response DevLoginRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -3539,7 +3722,7 @@ func (s *Server) handleDevLoginRequest(args [0]string, argsEscaped bool, w http.
 		type (
 			Request  = OptDevLoginReq
 			Params   = struct{}
-			Response = *DevLoginNoContent
+			Response = DevLoginRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -3550,12 +3733,12 @@ func (s *Server) handleDevLoginRequest(args [0]string, argsEscaped bool, w http.
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.DevLogin(ctx, request)
+				response, err = s.h.DevLogin(ctx, request)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.DevLogin(ctx, request)
+		response, err = s.h.DevLogin(ctx, request)
 	}
 	if err != nil {
 		defer recordError("Internal", err)

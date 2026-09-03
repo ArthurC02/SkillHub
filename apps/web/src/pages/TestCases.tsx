@@ -70,7 +70,7 @@ function CreateValidation({
 
   if (missing.length === 0) return null;
   return (
-    <p className="note" role="status">
+    <p className="note" role="status" id="create-why">
       還不能建立，因為：{missing.join("、")}。三個都是必填。
     </p>
   );
@@ -257,8 +257,11 @@ export function TestCaseList() {
         <button
           type="submit"
           disabled={create.isPending || skillId === "" || name === "" || prompt.trim() === ""}
+          aria-describedby={
+            skillId === "" || name === "" || prompt.trim() === "" ? "create-why" : undefined
+          }
         >
-          建立
+          {create.isPending ? "建立中…" : "建立"}
         </button>
       </form>
       {message && <p role="alert">{message}</p>}
@@ -322,13 +325,20 @@ export function TestCaseDetail() {
       <RubricSection testCase={testCase.data} />
       <DatasetSection testCaseId={testCaseId} />
       <h2>開始試跑</h2>
-      <p className="note">
+      {/* 這一頁存在的理由，長得像這一頁存在的理由（index.css `a.action`）。它
+          以前是一個包在 .note 段落裡的純文字連結，也就是**被降級成次要文字的主要
+          動作**——而同一頁的「儲存」「新增」「刪除」都是按鈕。說明留在下面，是說
+          明的樣子。 */}
+      <p>
         <Link
+          className="action"
           to="/lab/run"
           search={{ skill: testCase.data.skill_id, test_case: testCaseId, version: lastVersion }}
         >
           前往執行前權限確認
         </Link>
+      </p>
+      <p className="note">
         （要跑哪一個 Skill Version 在那個頁面上選
         {lastVersion ? "，預設是這個 Test Case 上次跑的那一版" : ""}）。開始 Run
         前一定會再顯示一次權限摘要並要求確認。
@@ -455,7 +465,7 @@ function DeleteTestCase({
       <p>
         <ConfirmDelete
           scopeId={`delete-scope-${testCaseId}`}
-          scope="會刪掉這個草稿與它已上傳的檔案。已經跑過的 Run 及其快照不受影響——那是那些 Run 執行內容的紀錄。"
+          scope="會刪掉這個草稿與它已上傳的檔案。沒有回收桶也沒有保留期，這一頁沒有還原的地方，按下去就沒有了。已經跑過的 Run 及其快照不受影響——那是那些 Run 執行內容的紀錄。"
           pending={remove.isPending}
           onAsk={() => setMessage("")}
           onConfirm={() => remove.mutate()}
@@ -506,14 +516,17 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
       <button
         type="button"
         disabled={save.isPending || prompt.trim() === "" || name.trim() === ""}
+        aria-describedby={
+          name.trim() === "" || prompt.trim() === "" ? "edit-required-reason" : undefined
+        }
         onClick={() => save.mutate()}
       >
-        儲存
+        {save.isPending ? "儲存中…" : "儲存"}
       </button>{" "}
       {/* 設計 §2.4 — 停用要說原因,原因是看得見的文字而不是 title。同一頁上方的
           CreateValidation 已經是這個形狀,這裡往下套用同一個。 */}
       {(name.trim() === "" || prompt.trim() === "") && (
-        <span className="note" role="status">
+        <span id="edit-required-reason" className="note" role="status">
           還不能儲存，因為：
           {[
             name.trim() === "" ? "名稱是空的" : "",
@@ -610,16 +623,19 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
         <button
           type="button"
           disabled={add.isPending || text.trim() === ""}
+          aria-describedby={text.trim() === "" ? "criterion-add-why" : undefined}
           onClick={() => add.mutate()}
         >
-          新增
+          {add.isPending ? "新增中…" : "新增"}
         </button>{" "}
         <button type="button" disabled={suggest.isPending} onClick={() => suggest.mutate()}>
-          請系統建議（選用）
+          {suggest.isPending ? "建議中…" : "請系統建議（選用）"}
         </button>{" "}
-        {/* 設計 §2.4. */}
+        {/* 設計 §2.4，含 aria-describedby：理由在畫面上而沒有接到控制項上，對用
+            螢幕閱讀器按到那顆灰按鈕的人來說等於不存在，而 NFR-007 沒有「看得見
+            的人」這個限定。 */}
         {text.trim() === "" && (
-          <span className="note" role="status">
+          <span className="note" role="status" id="criterion-add-why">
             還不能新增，因為左邊的欄位是空的。
           </span>
         )}
@@ -639,7 +655,11 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
                 <p>{s}</p>
                 <p>
                   <button type="button" disabled={adopt.isPending} onClick={() => adopt.mutate(s)}>
-                    採納
+                    {adopt.isPending
+                      ? adopt.variables === s
+                        ? "採納中…"
+                        : "採納（另一項處理中…）"
+                      : "採納"}
                   </button>{" "}
                   <button
                     type="button"
@@ -683,6 +703,16 @@ function CriterionRow({
   });
 
   const edited = draft !== criterion.text;
+  // One expression instead of two sibling blocks, because the two conditions are
+  // the two ways 儲存文字 can be dead and a control has one reason at a time. It
+  // is also what makes `aria-describedby` conditional in the same place the
+  // sentence is chosen — the previous shape had the reason in one branch and the
+  // button in another, which is how they drifted apart.
+  const saveReason = !edited
+    ? "「儲存文字」現在不能按，因為文字和已儲存的內容一樣，沒有變更要存。"
+    : draft.trim() === ""
+      ? "「儲存文字」現在不能按，因為驗收條件不能是空白。"
+      : null;
 
   return (
     <li className="criterion">
@@ -715,9 +745,14 @@ function CriterionRow({
         <button
           type="button"
           disabled={mutate.isPending || !edited || draft.trim() === ""}
+          aria-describedby={saveReason ? `criterion-save-${criterion.id}` : undefined}
           onClick={() => mutate.mutate("save")}
         >
-          儲存文字
+          {mutate.isPending
+            ? mutate.variables === "save"
+              ? "儲存中…"
+              : "儲存文字（另一項處理中…）"
+            : "儲存文字"}
         </button>{" "}
         {criterion.confirmed_at ? (
           <button
@@ -725,7 +760,11 @@ function CriterionRow({
             disabled={mutate.isPending}
             onClick={() => mutate.mutate("unconfirm")}
           >
-            取消確認
+            {mutate.isPending
+              ? mutate.variables === "unconfirm"
+                ? "取消確認中…"
+                : "取消確認（另一項處理中…）"
+              : "取消確認"}
           </button>
         ) : (
           <button
@@ -734,7 +773,11 @@ function CriterionRow({
             aria-describedby={edited ? `criterion-edited-${criterion.id}` : undefined}
             onClick={() => mutate.mutate("confirm")}
           >
-            確認
+            {mutate.isPending
+              ? mutate.variables === "confirm"
+                ? "確認中…"
+                : "確認（另一項處理中…）"
+              : "確認"}
           </button>
         )}{" "}
         {/*
@@ -768,20 +811,26 @@ function CriterionRow({
         設計 §2.4 — this pair is the worst of the four on this screen, because
         neither condition can be read off the screen: 儲存文字 is dead when the
         box matches what is stored, and 確認 is dead when it does not.
+
+        Two things were wrong with the version below this one, and both were
+        invisible to the existing gate — `a11y.test.tsx` requires
+        `aria-describedby` on `[disabled][title]`, and these carry no `title`,
+        so a reason that is on the screen and wired to nothing passes it.
+
+        **① The sentence was not associated with the control.** A sighted reader
+        got the reason; a screen-reader user tabbing onto a dead 儲存文字 got a
+        button and silence. §2.4 is about the reason existing *for the person who
+        hit the control*, and NFR-007 does not have a sighted-only clause.
+
+        **② 確認's reason was rendered twice, in two different sentences.** The
+        one above the buttons（`criterion-edited-…`, already wired）and a second
+        one here saying the same thing another way — 設計 §3 第 14 條, on the row
+        where a reader is deciding whether their own edit is saved. The second
+        copy is gone; the wired one stays.
       */}
-      {!edited && (
-        <p className="note" role="status">
-          「儲存文字」現在不能按，因為文字和已儲存的內容一樣，沒有變更要存。
-        </p>
-      )}
-      {edited && draft.trim() === "" && (
-        <p className="note" role="status">
-          「儲存文字」現在不能按，因為驗收條件不能是空白。
-        </p>
-      )}
-      {edited && !criterion.confirmed_at && (
-        <p className="note" role="status">
-          「確認」現在不能按，因為文字改過還沒儲存——確認的是已儲存的那段文字，請先按「儲存文字」。
+      {saveReason && (
+        <p className="note" role="status" id={`criterion-save-${criterion.id}`}>
+          {saveReason}
         </p>
       )}
       {message && <p role="alert">{message}</p>}
@@ -919,9 +968,12 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
           <button
             type="button"
             disabled={save.isPending || (used > 0 && version.trim() === "")}
+            aria-describedby={
+              used > 0 && version.trim() === "" ? "rubric-version-reason" : undefined
+            }
             onClick={() => save.mutate()}
           >
-            儲存 Rubric
+            {save.isPending ? "儲存中…" : "儲存 Rubric"}
           </button>{" "}
           <span className="note">
             {used === 0
@@ -933,7 +985,7 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
               同一頁另外四處（CreateValidation、新增驗收條件、儲存文字／確認）已經是
               這個形狀。 */}
           {used > 0 && version.trim() === "" && (
-            <span className="note" role="status">
+            <span id="rubric-version-reason" className="note" role="status">
               還不能儲存，因為 Rubric 版本是空的。有內容的 rubric
               一定要有版本——評估報告要記下這次判定是在哪個版本下做的。
             </span>
@@ -962,12 +1014,12 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
   return (
     <>
       <h2>測試資料</h2>
-      <p className="note">
-        <Link to="/lab/datasets" search={{ test_case: testCaseId }}>
+      <p>
+        <Link className="action" to="/lab/datasets" search={{ test_case: testCaseId }}>
           上傳檔案
         </Link>
-        （上傳規則會在選檔前顯示）。
       </p>
+      <p className="note">（上傳規則會在選檔前顯示）。</p>
       {datasets.isPending && <Loading what="檔案清單" />}
       <ReadFailure error={datasets.error} what="檔案清單" />
       {datasets.data &&

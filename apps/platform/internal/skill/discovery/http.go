@@ -167,6 +167,7 @@ const (
 	searchRiskUnknown   = "此結果尚無掃描紀錄,狀態未知——不代表已通過檢查。"
 	rankNoteDegraded    = "此次搜尋未使用語意向量,排序來自關鍵字比對分數,與相似度不同量綱,因此不提供分數。"
 	rankNotePendingItem = "此 Skill 尚未建立語意索引,是以關鍵字比對進入結果,未與查詢計算過相似度。"
+	rankNoteCatalog     = "這是目錄本身,不是某一句話的搜尋結果,所以沒有相似度可以顯示;排序是精選在前、其餘依版本建立時間由新到舊。"
 )
 
 // resultFacets fills the DISC-002 columns that are the same for every row of
@@ -371,6 +372,11 @@ func parseFilters(r *http.Request) (searchFilters, error) {
 	}
 	var out searchFilters
 	var err error
+	for _, name := range []string{"script", "validation", "agent", "tier"} {
+		if q.Has(name) && q.Get(name) == "" {
+			return searchFilters{}, errors.New(name + " must not be empty")
+		}
+	}
 	if out.HasScript, err = triState(q.Get("script"), "yes", "no"); err != nil {
 		return searchFilters{}, errors.New(`script must be "yes" or "no"`)
 	}
@@ -559,6 +565,65 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		resp.QuerySuggestion = noResultsSuggestion
 	}
 	httpx.WriteJSON(w, http.StatusOK, resp)
+}
+
+// catalogResponse is 02:DISC-006's payload: a page of a list and nothing else.
+//
+// Four fields, and the ones missing are missing because they would have been
+// constants. `query` would always be empty, `degraded` always false (no model
+// call on this path), `no_results` would mean 「the catalogue is empty」 here and
+// 「nothing was close enough」 there — one name for two facts. A response that
+// carries a field it can never fill is 設計系統 §2.9's failure at the contract
+// layer, not a convenience.
+type catalogResponse struct {
+	Results []searchResult `json:"results"`
+	// Limit is named because it is enforced (§2.2), and Truncated plus Total are
+	// §4.3's 「共 N 筆，這裡顯示 M 筆」. Total is exact on this path always: there
+	// is no candidate window to make it quietly become a lower bound, which is
+	// the ceiling the search route has to declare and this one does not.
+	Limit     int32 `json:"limit"`
+	Total     int64 `json:"total"`
+	Truncated bool  `json:"truncated"`
+}
+
+// BrowseCatalog handles GET /api/skills/catalog.
+//
+// 02:DISC-006. The home page asked every visitor to describe a task before it
+// showed them anything, so a reader who did not already know what was in the
+// catalogue had to guess a sentence to find out — 義務 1.2「快到第一個判斷」
+// cannot be met by a page whose first judgement requires a correct guess. It is
+// also the exit 資訊架構 IA-5 records as missing: when a search finds nothing,
+// 「what IS here」 had no address at all.
+//
+// Anonymous, like search: DISC-001 serves the catalogue to anyone, the scope is
+// fixed to catalogue workspaces inside the SQL (CORE-006), and no parameter can
+// widen it.
+func (h *Handler) BrowseCatalog(w http.ResponseWriter, r *http.Request) {
+	// Parsed before anything is retrieved, and refused rather than ignored, for
+	// the reason PublicSearch states: answering a filtered request with an
+	// unfiltered page presents the whole catalogue as the filtered subset.
+	filters, err := parseFilters(r)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	limit, err := parseLimit(r)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	hits, total, err := h.Svc.Browse(r.Context(), limit, filters)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "catalog read failed")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, catalogResponse{
+		Results:   hits,
+		Limit:     limit,
+		Total:     total,
+		Truncated: total > int64(len(hits)),
+	})
 }
 
 // anyUnranked reports whether the page carries a not-yet-enriched document.

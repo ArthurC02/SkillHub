@@ -136,6 +136,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: The account already entered its deletion flow and cannot create a new session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /auth/dev/login:
     post:
       operationId: devLogin
@@ -158,6 +164,12 @@ paths:
       responses:
         "204":
           description: Logged in; session cookie set.
+        "409":
+          description: The account already entered its deletion flow and cannot create a new session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /auth/logout:
     post:
       operationId: logout
@@ -827,6 +839,99 @@ paths:
             message names the dimension and why it is
             unavailable, and the UI shows the same reason on a disabled control
             rather than offering a filter that does nothing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /api/skills/catalog:
+    get:
+      operationId: browseCatalog
+      summary: Browse the public skill catalogue (02:DISC-006)
+      description: |
+        What is in the catalogue, for a caller who has not asked a question yet.
+
+        This is a second operation and not a `q`-less mode of
+        `GET /api/skills/search`, because the two answer different questions and
+        the difference is visible in the payload. Search answers 「what matches
+        this sentence」 and everything about its response is downstream of that:
+        the ordering is a similarity, `no_results` is a distance cut-off,
+        `query_suggestion` is advice about the words. A browse has none of those,
+        and folding it in would have shipped a response whose `query` is empty,
+        whose `no_results` means 「the catalogue is empty」 on one path and
+        「nothing was close enough」 on the other, and whose `rank` is null for
+        every row. The separate envelope keeps browse from pretending to be a
+        query-less search; rows still share the public Skill card shape, and
+        `rank_note` explicitly explains this third kind of absent rank.
+
+        **Ordering: curated first, then newest version first, then by id.**
+        ADR-041 / 設計系統 §2.11(b) forbid popularity as a default order and this
+        product has no popularity signal to misuse anyway; `curation_tier` is the
+        one ordering input backed by a human review (PDM-002's nine items), and
+        the id tiebreak keeps the order stable between two calls. Every row
+        carries `rank: null` and a `rank_note` saying so, which is the same
+        contract the degraded search path already uses — a client never has to
+        guess why a page is not ranked by similarity.
+
+        Scope is the public catalogue only, identical to search: catalogue
+        workspaces, and no parameter can widen it (CORE-006, ADR-011).
+
+        The four DISC-003 filters apply here for the reason they exist: they are
+        the controls on the same screen, and a filter that only bites after a
+        search would be a live control that narrows nothing (設計系統 §2.2).
+      security: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: script
+          in: query
+          required: false
+          schema: { type: string, enum: ["yes", "no"] }
+          description: As on `GET /api/skills/search`. Absent = not filtered.
+        - name: validation
+          in: query
+          required: false
+          schema: { type: string, enum: [passed, unverified] }
+          description: As on `GET /api/skills/search`. Absent = not filtered.
+        - name: agent
+          in: query
+          required: false
+          schema: { type: string, enum: [native, transpiled, failed, unverified] }
+          description: As on `GET /api/skills/search`. Absent = not filtered.
+        - name: tier
+          in: query
+          required: false
+          schema: { type: string, enum: [curated, indexed] }
+          description: As on `GET /api/skills/search`. Absent = not filtered.
+      responses:
+        "200":
+          description: A page of the catalogue, or an empty list when it is empty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogResponse"
+        "429":
+          description: |
+            Too many requests from this address, with `Retry-After` in seconds.
+            Same limiter and same reason as the search route: this is a 4xx the
+            caller is expected to retry, and a client that cannot tell it apart
+            backs off wrongly or not at all (02:NFR-001 clause 5).
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              required: true
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "400":
+          description: |
+            A `limit` outside `1..100` inclusive, or a `script`/`validation`/
+            `agent`/`tier` value outside its enum, or one of the two DISC-002
+            dimensions this build has no per-row data for (`category`, `mcp`).
+            Refused rather than ignored, for the reason the search route states:
+            answering a filtered request with an unfiltered page presents the
+            whole catalogue as the filtered subset.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2358,11 +2463,6 @@ paths:
             case the run's snapshot was frozen from, so a run stays in the list
             after the draft has been edited. Workspace scoped like the unfiltered
             list; another workspace's id matches nothing (WS-006).
-
-            ponytail: the filter is applied over the newest 500 runs of the
-            workspace rather than in the SQL. A workspace with more runs than
-            that will not see the older ones in a filtered list; the upgrade is
-            a predicate on ListWorkspaceRuns.
         - name: limit
           in: query
           required: false
@@ -2470,11 +2570,14 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [artifacts]
+                required: [artifacts, truncated]
                 properties:
                   artifacts:
                     type: array
                     items: { $ref: "#/components/schemas/RunArtifact" }
+                  truncated:
+                    type: boolean
+                    description: True when the run's frozen artifact limits dropped any output, including when every file was dropped.
         "401":
           description: No valid session.
           content:
@@ -4601,6 +4704,51 @@ components:
               type: [string, "null"]
               format: date-time
               description: Present only when `value` is `scanned`.
+    CatalogResponse:
+      type: object
+      required: [results, limit, total, truncated]
+      description: |
+        02:DISC-006. Four fields and no more: this response is a page of a list, and
+        every field search carries that is missing here is missing because it
+        would have been a constant (see the operation's description).
+      properties:
+        results:
+          type: array
+          description: |
+            The same row type search returns, and that is deliberate: the same
+            card renders both states of the same screen, and 02:NFR-007 第 3 條
+            does not allow one surface to word a fact two ways. Every row here
+            carries `rank: null` plus a `rank_note` naming the ordering.
+          items:
+            $ref: "#/components/schemas/PublicSearchResult"
+        limit:
+          type: integer
+          description: |
+            How many rows this page carries at most — the `limit` parameter if
+            given, otherwise the default. Named only because it is enforced
+            (設計系統 §2.2).
+        total:
+          type: integer
+          minimum: 0
+          description: |
+            How many skills are in the catalogue under the filters given, before
+            `limit` cut the page down. 設計系統 §4.3 requires a truncated list to
+            say 「共 N 筆，這裡顯示 M 筆，因為 X」, and a lower bound cannot say 共.
+
+            `count(*) OVER ()` inside the retrieval statement, not a second COUNT
+            query, for the reason the search route documents at length: a
+            parallel count restates every predicate and the first disagreement
+            makes the page report a total that does not describe the list under
+            it. **Exact on this path always** — unlike search's hybrid leg, a
+            browse has no candidate window, so there is no size at which this
+            quietly becomes a lower bound.
+
+            `total == len(results)` whenever `truncated` is false.
+        truncated:
+          type: boolean
+          description: |
+            True when the catalogue holds more than this page shows. ADR-042
+            決策 3: a truncated list must say so, or it reads as the whole answer.
     PublicSearchResponse:
       type: object
       required:
@@ -4799,12 +4947,14 @@ components:
           maximum: 1
           description: |
             Cosine similarity to the query, 0..1, higher is better (DISC-002 —
-            never star count). Results are ordered by it.
+            never star count). Search results with a non-null rank are ordered by it.
 
             Null when this page was not ranked by similarity, and the ordering
-            is then something else entirely — see `rank_note`. Two cases reach
-            it: the whole answer came from the lexical leg (`degraded`), or this
-            one row has no embedding yet (`partial_index`). The lexical score is
+            is then something else entirely — see `rank_note`. Three cases reach
+            it: the whole answer came from the lexical leg (`degraded`), this
+            one row has no embedding yet (`partial_index`), or the row belongs
+            to the browse catalog, which uses its documented catalog ordering.
+            The lexical score is
             not returned in its place: `ts_rank_cd` is unbounded (a local answer
             measured 1.4) and is not the same quantity as a cosine similarity,
             so squeezing it into 0..1 would be false precision.

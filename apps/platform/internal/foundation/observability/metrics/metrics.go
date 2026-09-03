@@ -205,7 +205,7 @@ var PackageSizeRefused = promauto.NewCounterVec(prometheus.CounterOpts{
 // exists to shed") is correct about logs and does not transfer to an atomic
 // increment.
 //
-// `route` is a closed four-value vocabulary — the routes limited() wraps — so
+// `route` is a closed five-value vocabulary — the routes limited() wraps — so
 // no traffic can add a series. No IP, no workspace, no path (rule 1 above): the
 // question this answers is "is the limiter working and is anything hitting it",
 // and naming who is a job for the edge, which is also where the durable limiter
@@ -215,6 +215,7 @@ const (
 	RouteImportURL    = "skills_import_url"
 	RouteGenerate     = "skills_generate"
 	RoutePublicSearch = "public_search"
+	RouteCatalog      = "catalog_browse"
 )
 
 var RateLimited = promauto.NewCounterVec(prometheus.CounterOpts{

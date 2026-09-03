@@ -9,6 +9,7 @@ import { router } from "./router";
 import { LicenseBadge, LicenseNotes } from "./components/LicenseBadge";
 import { RiskIndicator } from "./components/RiskIndicator";
 import type {
+  CatalogResponse,
   PublicSearchResponse,
   PublicSearchResult,
   SkillDetail,
@@ -69,6 +70,20 @@ function stubSearch(body: PublicSearchResponse) {
   return calls;
 }
 
+function stubCatalog(body: CatalogResponse, status = 200) {
+  const calls: string[] = [];
+  vi.stubGlobal("fetch", (input: string) => {
+    calls.push(String(input));
+    if (String(input).includes("/api/skills/catalog")) {
+      return Promise.resolve(new Response(JSON.stringify(body), { status }));
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }),
+    );
+  });
+  return calls;
+}
+
 async function submitSearch(text: string) {
   const input = container.querySelector("input")!;
   const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
@@ -83,6 +98,25 @@ async function submitSearch(text: string) {
   });
   await waitFor(() => !container.textContent?.includes("搜尋中…"));
 }
+
+test("DISC-001 keeps the search draft in sync with URL navigation", async () => {
+  stubSearch(EMPTY);
+  await render(<App />);
+
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "first" } });
+  });
+  expect(container.querySelector<HTMLInputElement>('input[aria-label="任務描述"]')?.value).toBe(
+    "first",
+  );
+
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "second" } });
+  });
+  expect(container.querySelector<HTMLInputElement>('input[aria-label="任務描述"]')?.value).toBe(
+    "second",
+  );
+});
 
 /** Polls until the query has settled and React has flushed the result. */
 async function waitFor(done: () => boolean, timeoutMs = 2000) {
@@ -139,6 +173,127 @@ const EMPTY: PublicSearchResponse = {
   truncated: false,
   total: 0,
 };
+
+test("DISC-006: catalog serializes filters and explains one truncated result list once", async () => {
+  const rankNote = "server-owned-catalog-order-sentinel";
+  const calls = stubCatalog({
+    results: [
+      {
+        ...HIT_FACETS,
+        skill_id: "catalog-one",
+        name: "Catalog One",
+        summary: "A browsable skill.",
+        rank: null,
+        rank_note: rankNote,
+        verified_at: "2026-09-03T00:00:00Z",
+        match_reason: "",
+        match_reason_source: "template",
+      },
+    ],
+    limit: 20,
+    total: 3,
+    truncated: true,
+  });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/", search: { script: "no" } });
+  });
+  await waitFor(() => container.textContent?.includes("Catalog One") ?? false);
+
+  expect(calls.some((url) => url.includes("/api/skills/catalog?limit=20&script=no"))).toBe(true);
+  expect(container.textContent).toContain("目錄共 3 個 Skill，這裡列出 1 個");
+  expect(container.textContent?.split(rankNote).length - 1).toBe(1);
+  expect(container.textContent).not.toContain("未計算語意相似度");
+});
+
+test("DISC-006: an empty catalog is distinct from a failed catalog read", async () => {
+  stubCatalog({ results: [], limit: 20, total: 0, truncated: false });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/", search: {} });
+  });
+  await waitFor(() => container.textContent?.includes("目錄現在是空的") ?? false);
+  expect(container.textContent).toContain("這不是讀取失敗");
+  expect(container.textContent).not.toContain("清掉篩選條件");
+  await act(async () => root.unmount());
+  queryClient.clear();
+  container.replaceChildren();
+  stubCatalog({ results: [], limit: 20, total: 0, truncated: false }, 503);
+  await render(<App />);
+  await waitFor(() => container.textContent?.includes("無法讀取目錄") ?? false);
+  expect(container.textContent).not.toContain("目錄現在是空的");
+});
+
+test("DISC-006: an empty filtered catalog explains how to recover", async () => {
+  stubCatalog({ results: [], limit: 20, total: 0, truncated: false });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/", search: { tier: "curated" } });
+  });
+  await waitFor(() => container.textContent?.includes("沒有 Skill 符合目前的篩選條件") ?? false);
+  expect(container.textContent).toContain("清掉篩選條件");
+  expect(container.textContent).not.toContain("部署還沒有匯入任何 Skill");
+});
+
+test("returning to browse does not render a cached search beside the catalog", async () => {
+  const searchHit: PublicSearchResult = {
+    ...HIT_FACETS,
+    skill_id: "cached-search",
+    name: "Cached Search Only",
+    summary: "search result",
+    rank: 0.9,
+    verified_at: "2026-09-03T00:00:00Z",
+    match_reason: "matched",
+    match_reason_source: "template",
+  };
+  const catalogHit: PublicSearchResult = {
+    ...searchHit,
+    skill_id: "catalog-only",
+    name: "Catalog Only",
+    summary: "catalog result",
+    rank: null,
+    rank_note: "catalog order",
+  };
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/api/skills/search")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            ...EMPTY,
+            results: [searchHit],
+            total: 1,
+          }),
+          { status: 200 },
+        ),
+      );
+    }
+    if (url.includes("/api/skills/catalog")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            results: [catalogHit],
+            limit: 20,
+            total: 1,
+            truncated: false,
+          }),
+          { status: 200 },
+        ),
+      );
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }),
+    );
+  });
+
+  await render(<App />);
+  await act(async () => router.navigate({ to: "/", search: { q: "" } }));
+  await waitFor(() => container.textContent?.includes("Cached Search Only") ?? false);
+  await act(async () => router.navigate({ to: "/", search: {} }));
+  await waitFor(() => container.textContent?.includes("Catalog Only") ?? false);
+
+  expect(container.textContent).not.toContain("Cached Search Only");
+});
 
 test("DISC-001: search hits the public endpoint, which needs no session", async () => {
   const calls = stubSearch({ ...EMPTY, query: "pdf 摘要", no_results: true });
@@ -274,7 +429,7 @@ test("DISC-002: a truncated result page says so, and says how many it is showing
   await render(<App />);
   await submitSearch("pdf");
 
-  expect(container.textContent).toContain("只列出最接近的 20 個");
+  expect(container.textContent).toContain("只列出最接近的 1 個");
   // 設計系統 §4.3 wants 「共 N 筆，這裡顯示 M 筆，因為 X」. The population, and not
   // the page size a second time: until 2026-08-25 this notice read 「超過 20 個」,
   // which is the cap talking about itself. A reader could not tell 21 from 2100.
@@ -534,6 +689,21 @@ test("DISC-009: comparison needs two candidates and accepts at most three", asyn
   );
 });
 
+test("DISC-009: direct URL navigation clears selections from the previous result state", async () => {
+  stubSearch(TWO_HITS);
+  await render(<App />);
+  await submitSearch("pdf");
+  await pick(0);
+  await pick(1);
+  expect(compareLink()).not.toBeNull();
+
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "another-task" } });
+  });
+  await waitFor(() => compareLink() === null);
+  expect(container.textContent).toContain("勾選 2 至 3 個 Skill");
+});
+
 function detailFixture(overrides: Partial<SkillDetail>): SkillDetail {
   return {
     skill_id: "unset",
@@ -686,6 +856,19 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
   }
 });
 
+test("DISC-009: a repeated URL id is still only one comparison candidate", async () => {
+  const skill = detailFixture({ skill_id: "id-left", name: "Only Skill" });
+  const calls = stubSearchAndDetails(EMPTY, { "id-left": skill });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/compare", search: { ids: "id-left,id-left" } });
+  });
+  await waitFor(() => calls.some((url) => url.includes("/api/skills/id-left?")));
+
+  expect(container.textContent).toContain("請從搜尋結果選擇 2 到 3 個 Skill");
+  expect(container.querySelector("table.compare-table")).toBeNull();
+});
+
 test("DISC-009: a failed read on /compare says so at once, not after seven seconds of 載入中", async () => {
   // `useQueries` here was the one place in the app without `retry: false`. Three
   // retries keep `fetchStatus` at "fetching" for the whole backoff, so the page
@@ -817,6 +1000,26 @@ async function chooseFilter(label: string, value: string) {
   await waitFor(() => !container.textContent?.includes("搜尋中…"));
 }
 
+test("DISC-003: history navigation to a different active filter reopens its controls", async () => {
+  stubSearch({ ...EMPTY, query: "pdf", no_results: true });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "pdf", tier: "curated" } });
+  });
+  const details = container.querySelector<HTMLDetailsElement>("details.filter-disclosure")!;
+  await waitFor(() => details.open);
+  await act(async () => {
+    details.open = false;
+    details.dispatchEvent(new Event("toggle", { bubbles: true }));
+  });
+  expect(details.open).toBe(false);
+
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "pdf", tier: "indexed" } });
+  });
+  await waitFor(() => details.open);
+});
+
 test("DISC-003: a chosen filter reaches the request and the shareable URL", async () => {
   const calls = stubSearch({ ...EMPTY, query: "pdf", no_results: true });
   await render(<App />);
@@ -888,6 +1091,68 @@ test("DISC-003: the filters the platform has no data for are disabled and say wh
   expect(text).not.toContain("人工精選審查尚未開始");
   // The reason a dimension is dead must not read as "nothing matched".
   expect(text).toContain("不是因為所有 Skill 都不符合");
+});
+
+/**
+ * 設計 §0 的裁定: 「數量留在外面，段落收進去」 — so the two numbers on the summary
+ * have to be the two numbers in the bar.
+ *
+ * This is the assertion that stops the disclosure becoming a lie. The paragraph
+ * saying WHY a dimension is dead is now one click away on a phone, and the only
+ * thing left outside is a count; a count that stops describing the controls
+ * beneath it is worse than no count, because the reader would have no reason to
+ * open the bar and look. A seventh filter, or a dead one going live, changes
+ * what is rendered — and this fails until the summary is changed with it.
+ */
+test("設計 §0: the filter summary counts the filters that are actually there", async () => {
+  stubSearch({ ...EMPTY, query: "pdf", no_results: true });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  const selects = [...container.querySelectorAll<HTMLSelectElement>(".filter-bar select")];
+  const dead = selects.filter((s) => s.disabled).length;
+  const live = selects.length - dead;
+  expect(live, "no live filters found — the picker below is measuring nothing").toBeGreaterThan(0);
+  expect(dead, "no dead filters found — 「N 項目前無法篩選」 would be a claim about nothing").toBe(
+    2,
+  );
+
+  const summary = container
+    .querySelector(".filter-disclosure > summary")!
+    .textContent!.replace(/\s+/g, "");
+  expect(summary).toContain(`${live}項可用`);
+  expect(summary).toContain(`${dead}項目前無法篩選`);
+});
+
+/**
+ * 設計 §0 ＋ §2.2: the bar starts open when it is doing something, and shut when
+ * it is not.
+ *
+ * Both halves are load-bearing and they fail in opposite directions, so both are
+ * asserted. Shut-when-idle is 義務 1.2 — measured 2026-09-03, the six controls
+ * and their six paragraphs put the first result at y958 in a 900px window with
+ * the bar open, and y613 with it shut. Open-when-active is §2.2「會擋住人的東西
+ * 必須在他撞上之前顯示」: a filter is removing rows from the answer, and a reader
+ * who followed a shared ?tier=curated link would otherwise see a short result
+ * list with nothing on screen saying why.
+ */
+test("設計 §0: the filter bar starts shut when idle and open when it is narrowing", async () => {
+  stubSearch({ ...EMPTY, query: "pdf", no_results: true });
+  await render(<App />);
+  await submitSearch("pdf");
+  expect(
+    container.querySelector<HTMLDetailsElement>(".filter-disclosure")!.open,
+    "no filter is set, yet the bar opens above the answer",
+  ).toBe(false);
+
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "pdf", tier: "curated" } });
+  });
+  await waitFor(() => !container.textContent?.includes("搜尋中…"));
+  expect(
+    container.querySelector<HTMLDetailsElement>(".filter-disclosure")!.open,
+    "a filter is narrowing the results and nothing on screen says so",
+  ).toBe(true);
 });
 
 // DISC-002 來源層級, live since migration 0042 gave `skills.curation_tier` a
@@ -1082,7 +1347,11 @@ test("DISC-002: a result row carries all seven columns, and infers none of them"
   const unscanned = rows[1].textContent ?? "";
   expect(unscanned).toContain("尚無掃描紀錄");
   expect(unscanned).not.toContain("未發現警告");
-  expect(unscanned).toContain("未擷取到依賴資訊");
+  // 設計 §2.9 的表是封閉的六個詞。這一格以前寫「未擷取到依賴資訊」——意思對，
+  // 詞不在表上，而表的用處正是讓「0」與「沒量到」在同一張截圖上長得不一樣。
+  // 兩半都釘：表上的型別詞，以及「這不是零」那一句。
+  expect(unscanned).toContain("未測量");
+  expect(unscanned).toContain("不等於沒有依賴");
   expect(unscanned).toContain("規格驗證：未驗證");
 });
 

@@ -225,6 +225,49 @@ button {
   cursor: pointer;
 }
 
+/* --- A link that IS the page's action -------------------------------------
+   設計 §1.2 / §4.3. Measured 2026-09-03 across the 18 routes, the affordances in
+   this app are inverted: 儲存／新增／刪除／確認 — the incidental operations — are
+   buttons with a box, while the thing each page exists for is a bare text link
+   in a paragraph. 「開始試跑」 on a Test Case, 「打包並下載這個版本」 on a skill,
+   「與另一個 Run 比較」 on a run. **The most important control on the page looks
+   the least pressable**, which is the mechanism behind 「無法聚焦操作區塊」: there
+   is nothing for the eye to land on, so every page reads as one continuous
+   column of prose.
+
+   Not a new surface (§5 的入場規則): it is the base control layer's own box,
+   applied to an anchor. Every value here is already declared above for
+   `button`, so there is nothing new to keep true.
+
+   **Where it goes, and where it must not.** A link earns this when it is what
+   this page is FOR — the next step in 找到 → 驗證 → 下載. It does not get it for
+   being a reference（來源 Skill、查看 SKILL.md 與檔案樹、資料保存政策）or a way
+   back; if everything is emphasised nothing is, and the app already ran that
+   experiment in the other direction.
+
+   Still an `<a>`: it navigates, so it must keep a link's keyboard and
+   right-click behaviour. The box is what carries the affordance now, which is
+   why the underline can go — a bare `.action` inside running text would be a
+   different question, and there are none. */
+a.action {
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--link);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  min-height: 32px;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
+a.action:hover {
+  border-color: var(--accent-border);
+}
+
 /* The two controls the layer above excludes still need their selected state to
    be visible: left to the UA, dark mode renders a checked box in a grey that
    sits a hair off the unchecked one. --accent is 4.39:1 on --bg — under AA for
@@ -334,6 +377,29 @@ main {
   padding: 0 24px;
 }
 
+/* --- Measure ---------------------------------------------------------------
+   #root is 1126px wide and, until here, so was every paragraph in the app.
+
+   Measured 2026-09-03 across all 18 routes: the longest line on a page ran
+   between 60 and 104 CJK characters (packaging's 104), against a comfortable
+   25–40. Eight of the 18 routes are also 65–83% `.note` by character count, so
+   most of what a reader crosses at that line length is the secondary layer.
+   That combination is what 「整頁文字非常滿，無法聚焦操作區塊」 describes: the
+   complaint is about the SHAPE of the text, not its amount, and 設計 §0 is
+   explicit that a lower-priority rule gives way in form while the content of a
+   higher one keeps every word. Nothing here removes or hides a sentence.
+
+   `em`, not px, so the cap follows the element's own step of the §4.1 scale:
+   40em is 40 CJK characters at any size — and ~80 Latin ones, which is the same
+   comfortable line for both scripts, from one value.
+
+   Tables are excluded on purpose (`td`/`th` are not in the list): a comparison
+   table's column widths are the table's decision, and capping a cell would move
+   the dead space one level in rather than remove it. */
+main :is(p, li, dd, dt, summary) {
+  max-width: 40em;
+}
+
 /* BETA-003/004: the site-wide feedback entry. Last in reading order and last in
    the tab sequence — it is a closed disclosure holding a whole form, and above
    the page it would stand between every reader and the page's own controls. */
@@ -361,6 +427,23 @@ main {
    `.badge-row` and `.tag-list` are untouched: they are flex containers with
    their own `gap`, and neither is in the selector below. */
 :is(li, p, h2, h3, h4, td, th) > .badge:not(:first-child) {
+  margin-left: 8px;
+}
+
+/* The other half of the same rule, and it was missing for a year: a note that
+   FOLLOWS a badge had nothing between it and the pill's border. Measured
+   2026-09-03 at 0.0px on four routes at both widths — 「已收錄收錄不等於精選。」,
+   「含可執行 Script 檔案平台不曾執行它們——」, 「可再散布MIT，可再散布。」 — and
+   every one of those sentences is a §2.11(c) disclaimer, i.e. the one thing on
+   the row whose whole job is to stop the badge being read as an endorsement.
+   Fused to the pill it reads as part of the badge instead of as a limit on it.
+
+   `span` is in the list because RiskSummary wraps each flag in one to key it;
+   the four flex containers are excluded because they already state a `gap` and
+   a margin would add to it. */
+:is(li, p, h2, h3, h4, td, th, span):not(.badge-row, .tag-list, .license-badge, .match-reason)
+  > .badge
+  + .note {
   margin-left: 8px;
 }
 
@@ -504,6 +587,18 @@ main {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+/* 設計 §0 的裁定，落地: the bar is inside a <details> whose <summary> keeps the
+   two counts outside. Only the margins move here — the summary is a summary and
+   takes the shared rule; the bar keeps its own border, because when it is open
+   it is still the same object it was. */
+.filter-disclosure {
+  margin: 12px 0;
+}
+
+.filter-disclosure > .filter-bar {
+  margin: 8px 0 0;
 }
 
 /* No max-width: the grid track is the width now, and capping the label inside

@@ -5,6 +5,10 @@ type AddAcceptanceCriterionRes interface {
 	addAcceptanceCriterionRes()
 }
 
+type BrowseCatalogRes interface {
+	browseCatalogRes()
+}
+
 type CancelAccountDeletionRes interface {
 	cancelAccountDeletionRes()
 }
@@ -67,6 +71,10 @@ type DeleteSkillRes interface {
 
 type DeleteTestCaseRes interface {
 	deleteTestCaseRes()
+}
+
+type DevLoginRes interface {
+	devLoginRes()
 }
 
 type DiffSkillVersionsRes interface {

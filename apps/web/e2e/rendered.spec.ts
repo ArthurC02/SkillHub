@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { SKILL } from "../src/fixtures/platform";
 import { PHONE_ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
 
@@ -163,6 +164,120 @@ test.describe("QA-008 real layout", () => {
     expect(scroller.scrollWidth, "nothing to scroll — the table squeezed instead").toBeGreaterThan(
       scroller.clientWidth,
     );
+  });
+
+  /**
+   * 設計 §4.5 的行長上限，量在真的排版過的段落上。
+   *
+   * jsdom cannot decide this at all: it has no line boxes, so a paragraph is as
+   * wide as the assertion imagines. Before the cap, #root's 1126px was every
+   * paragraph's width — measured 2026-09-03, the longest line on a page ran
+   * between 60 and 104 CJK characters against a comfortable 25–40, and eight of
+   * the 18 routes are 65–83% `.note` by character count. That is the shape
+   * behind 「整頁文字非常滿」.
+   *
+   * Asserted on the element's own font-size rather than on a pixel width, which
+   * is the rule itself: 40em is 40 CJK characters at any step of the §4.1 scale.
+   * Tables are skipped for the same reason they are out of the CSS selector —
+   * a cell's width belongs to its table.
+   */
+  test("no paragraph is wider than the §4.5 measure", async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`/skills/${SKILL}`);
+    await expect(page.locator("h1")).toBeVisible();
+
+    const over = await page.evaluate(() => {
+      const bad: string[] = [];
+      for (const el of Array.from(document.querySelectorAll("main p, main li, main dd"))) {
+        if (el.closest("table")) continue;
+        const text = (el.textContent || "").replace(/\s+/g, "");
+        if (text.length < 20) continue;
+        const em = parseFloat(getComputedStyle(el).fontSize);
+        // The widest LINE, not the widest box: a card's padding and a pill's
+        // border are not line length, and measuring the box would report them
+        // as if they were.
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const w = Math.max(...Array.from(range.getClientRects()).map((r) => r.width), 0);
+        if (w > 40 * em + 1) bad.push(`${Math.round(w / em)}em: ${text.slice(0, 20)}`);
+      }
+      return bad;
+    });
+    expect(over, `wider than 40em: ${over.join(" / ")}`).toEqual([]);
+  });
+
+  /**
+   * The link that IS the page's action has a control's box, not a sentence's.
+   *
+   * `design-system.test.ts` proves the class has a CSS rule somewhere;
+   * only a real engine proves the rule reaches this element and produces a
+   * pressable target. Measured against the same floor as every other control —
+   * WCAG 2.2 2.5.8's 24px, which the app sets at 32 — because that floor is the
+   * whole reason to give a link a box: before this, 打包並下載這個版本 was a 20px
+   * line of text in a paragraph while 儲存 and 刪除, on the same screens, were
+   * boxes. Delete the rule and this drops to the line height.
+   */
+  test("a primary action link is a control-sized target", async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`/skills/${SKILL}`);
+    await expect(page.locator("a.action").first()).toBeVisible();
+
+    const boxes = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("a.action")).map((a) => ({
+        text: (a.textContent || "").trim().slice(0, 14),
+        height: Math.round(a.getBoundingClientRect().height),
+        border: getComputedStyle(a).borderTopWidth,
+      })),
+    );
+    expect(boxes.length, "no primary action on the skill page").toBeGreaterThan(0);
+    for (const b of boxes) {
+      expect(
+        b.height,
+        `「${b.text}」 is ${b.height}px tall — a line, not a control`,
+      ).toBeGreaterThanOrEqual(32);
+      expect(b.border, `「${b.text}」 has no box`).not.toBe("0px");
+    }
+  });
+
+  /**
+   * A `.note` that follows a `.badge` is separated from the pill's border.
+   *
+   * The note in that position is always a §2.11(c) disclaimer — 「收錄不等於精
+   * 選。」, 「平台不曾執行它們——」 — whose entire job is to stop the badge being
+   * read as an endorsement. Measured 2026-09-03 at 0.0px on four routes at both
+   * widths, i.e. rendered as 「已收錄收錄不等於精選。」, which reads as part of the
+   * badge instead of as a limit on it.
+   *
+   * Only a real engine can see it: the pill is `inline-flex` with 12px of its
+   * own padding, so the glyphs are 12px apart while the border touches — the
+   * defect is between an element's box and a neighbour's text, and jsdom has
+   * neither.
+   */
+  test("a disclaimer beside a badge is not fused to it", async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/?q=pdf+%E6%91%98%E8%A6%81");
+    await expect(page.locator(".search-result").first()).toBeVisible();
+
+    const fused = await page.evaluate(() => {
+      const bad: string[] = [];
+      for (const pill of Array.from(document.querySelectorAll(".badge"))) {
+        const note = pill.nextElementSibling;
+        if (!note?.classList.contains("note")) continue;
+        const range = document.createRange();
+        range.selectNodeContents(note);
+        const first = Array.from(range.getClientRects()).find((r) => r.width > 0);
+        const box = pill.getBoundingClientRect();
+        if (!first) continue;
+        if (Math.min(box.bottom, first.bottom) - Math.max(box.top, first.top) <= 4) continue;
+        const gap = first.left - box.right;
+        if (gap < 6) bad.push(`${gap.toFixed(1)}px after 「${pill.textContent?.trim()}」`);
+      }
+      return bad;
+    });
+    expect(fused, `fused to the badge: ${fused.join(" / ")}`).toEqual([]);
   });
 });
 

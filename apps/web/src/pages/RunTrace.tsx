@@ -63,8 +63,13 @@ export function RunTrace() {
           record, not part of it. axe does not catch this: it flags a skipped
           level, never a level that should have been nested and was not. */}
       <h2>執行紀錄</h2>
-      <p className="note">
-        <Link to="/runs/$runId/compare" params={{ runId }} search={{ against: "" }}>
+      <p>
+        <Link
+          className="action"
+          to="/runs/$runId/compare"
+          params={{ runId }}
+          search={{ against: "" }}
+        >
           與另一個 Run 比較
         </Link>
       </p>
@@ -184,10 +189,19 @@ function RunArtifacts({ runId }: { runId: string }) {
       {artifacts.isPending && <Loading what="產出清單" />}
       <ReadFailure error={artifacts.error} what="產出清單" />
       {message && <p role="status">{message}</p>}
+      {artifacts.data?.truncated && (
+        <p className="notice" role="status">
+          有些產出未被收集；清單只保留成功收集的檔案。
+        </p>
+      )}
 
       {artifacts.data &&
         (artifacts.data.artifacts.length === 0 ? (
-          <p>這次 Run 沒有留下任何檔案產出。</p>
+          <p>
+            {artifacts.data.truncated
+              ? "收集結果為空，無法據此判定這次 Run 沒有產生檔案。"
+              : "這次 Run 沒有留下任何檔案產出。"}
+          </p>
         ) : (
           <ul className="download-list">
             {artifacts.data.artifacts.map((artifact) => (
@@ -202,7 +216,8 @@ function RunArtifacts({ runId }: { runId: string }) {
                     scope={
                       <>
                         刪除的是這個檔案本身，這個 Run
-                        的執行紀錄與評估判定都會保留。引用過這個檔案的評估不會被改寫，
+                        的執行紀錄與評估判定都會保留。沒有回收桶也沒有保留期，這一頁沒有還原的地方，
+                        刪了就取不回這個檔案。引用過這個檔案的評估不會被改寫，
                         它會顯示證據已不存在——那是當時真的看過的東西，判定不因為檔案被刪就變得不成立。
                         重複刪除不算失敗。
                       </>
@@ -448,21 +463,46 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
       <p className="note">
         分頁依平台接收順序排列；每頁內依事件時間排序。這能讓執行中的 Trace 不漏掉較晚送達的事件。
       </p>
+      {/*
+        設計 §2.4 — three dead controls in one row, and none of them said why.
+        Found 2026-09-03 by the new gate in `a11y.test.tsx`, not by reading: 上一頁
+        went dead on page 1 with **no sentence anywhere**, 下一頁 had one beside it
+        （「沒有更多事件。」）attached to nothing, and 重新整理 went dead mid-fetch
+        with an unchanged label. All three read as a broken toolbar rather than as
+        a boundary of the data — and this is the 進階模式 view, where a reader has
+        gone looking for evidence and needs to know whether they have seen all of
+        it. 「沒有更多事件」 is also §2.9's 0: a true value, not an absence.
+      */}
       <nav aria-label="Trace event pages">
-        <button type="button" disabled={pageIndex === 0} onClick={() => goTo(pushed.slice(0, -1))}>
+        <button
+          type="button"
+          disabled={pageIndex === 0}
+          aria-describedby={pageIndex === 0 ? "trace-page-first" : undefined}
+          onClick={() => goTo(pushed.slice(0, -1))}
+        >
           上一頁
         </button>
         <span>第 {pageIndex + 1} 頁</span>
         <button
           type="button"
           disabled={!trace.has_more}
+          aria-describedby={!trace.has_more ? "trace-page-last" : undefined}
           onClick={() => goTo([...pushed, trace.next_after])}
         >
           下一頁
-        </button>
-        {!trace.has_more && <span className="note"> 沒有更多事件。</span>}{" "}
+        </button>{" "}
+        {pageIndex === 0 && (
+          <span className="note" id="trace-page-first">
+            這是第一頁。
+          </span>
+        )}
+        {!trace.has_more && (
+          <span className="note" id="trace-page-last">
+            沒有更多事件。
+          </span>
+        )}{" "}
         <button type="button" disabled={isFetching} onClick={() => void refetch()}>
-          重新整理 Trace
+          {isFetching ? "重新整理中…" : "重新整理 Trace"}
         </button>
       </nav>
 

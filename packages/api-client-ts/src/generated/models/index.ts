@@ -7,6 +7,7 @@ export * from './AccountDeletion';
 export * from './AddAcceptanceCriterionRequest';
 export * from './CancelAccountDeletion200Response';
 export * from './CancelRun202Response';
+export * from './CatalogResponse';
 export * from './CategorizedFindings';
 export * from './ClearSkillRestrictionRequest';
 export * from './ConfirmRunPreflight201Response';

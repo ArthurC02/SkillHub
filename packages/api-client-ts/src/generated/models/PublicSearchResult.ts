@@ -82,12 +82,14 @@ export interface PublicSearchResult {
     summarySource: PublicSearchResultSummarySourceEnum;
     /**
      * Cosine similarity to the query, 0..1, higher is better (DISC-002 —
-     * never star count). Results are ordered by it.
+     * never star count). Search results with a non-null rank are ordered by it.
      * 
      * Null when this page was not ranked by similarity, and the ordering
-     * is then something else entirely — see `rank_note`. Two cases reach
-     * it: the whole answer came from the lexical leg (`degraded`), or this
-     * one row has no embedding yet (`partial_index`). The lexical score is
+     * is then something else entirely — see `rank_note`. Three cases reach
+     * it: the whole answer came from the lexical leg (`degraded`), this
+     * one row has no embedding yet (`partial_index`), or the row belongs
+     * to the browse catalog, which uses its documented catalog ordering.
+     * The lexical score is
      * not returned in its place: `ts_rank_cd` is unbounded (a local answer
      * measured 1.4) and is not the same quantity as a cosine similarity,
      * so squeezing it into 0..1 would be false precision.

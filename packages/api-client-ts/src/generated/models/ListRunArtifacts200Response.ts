@@ -33,6 +33,12 @@ export interface ListRunArtifacts200Response {
      * @memberof ListRunArtifacts200Response
      */
     artifacts: Array<RunArtifact>;
+    /**
+     * True when the run's frozen artifact limits dropped any output, including when every file was dropped.
+     * @type {boolean}
+     * @memberof ListRunArtifacts200Response
+     */
+    truncated: boolean;
 }
 
 /**
@@ -40,6 +46,7 @@ export interface ListRunArtifacts200Response {
  */
 export function instanceOfListRunArtifacts200Response(value: object): value is ListRunArtifacts200Response {
     if (!('artifacts' in value) || value['artifacts'] === undefined) return false;
+    if (!('truncated' in value) || value['truncated'] === undefined) return false;
     return true;
 }
 
@@ -54,6 +61,7 @@ export function ListRunArtifacts200ResponseFromJSONTyped(json: any, ignoreDiscri
     return {
         
         'artifacts': ((json['artifacts'] as Array<any>).map(RunArtifactFromJSON)),
+        'truncated': json['truncated'],
     };
 }
 
@@ -69,6 +77,7 @@ export function ListRunArtifacts200ResponseToJSONTyped(value?: ListRunArtifacts2
     return {
         
         'artifacts': ((value['artifacts'] as Array<any>).map(RunArtifactToJSON)),
+        'truncated': value['truncated'],
     };
 }
 

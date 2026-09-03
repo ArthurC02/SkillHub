@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type {
+  CatalogResponse,
   ForkedSkill,
   PublicSearchResponse,
   SearchFilters,
@@ -69,6 +70,45 @@ export function useSkillSearch(query: string, filters: SearchFilters, enabled: b
       filters.tier ?? "",
     ],
     queryFn: () => searchSkills(query, filters),
+    enabled,
+    retry: false,
+  });
+}
+
+/**
+ * 02:DISC-006 — 目錄本身。
+ *
+ * A separate call and not `searchSkills("")`: the two endpoints answer two
+ * questions and their payloads differ (see the contract). Sharing the filter
+ * serialisation is deliberate, though — the same four controls sit above both
+ * states of the same page, and a filter that serialised differently on one of
+ * them would narrow one list and not the other.
+ */
+export function browseCatalog(filters: SearchFilters = {}, limit = 20) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (filters.script) params.set("script", filters.script);
+  if (filters.validation) params.set("validation", filters.validation);
+  if (filters.agent) params.set("agent", filters.agent);
+  if (filters.tier) params.set("tier", filters.tier);
+  return apiFetch<CatalogResponse>(`/api/skills/catalog?${params.toString()}`);
+}
+
+/**
+ * `enabled` is「還沒有人問問題」: the catalogue is what the page shows *instead of*
+ * results, so the two reads are never in flight together and neither can be
+ * seen answering for the other.
+ */
+export function useCatalog(filters: SearchFilters, enabled: boolean) {
+  return useQuery({
+    queryKey: [
+      "skills",
+      "catalog",
+      filters.script ?? "",
+      filters.validation ?? "",
+      filters.agent ?? "",
+      filters.tier ?? "",
+    ],
+    queryFn: () => browseCatalog(filters),
     enabled,
     retry: false,
   });

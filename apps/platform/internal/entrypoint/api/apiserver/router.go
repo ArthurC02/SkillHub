@@ -133,6 +133,11 @@ func NewRouter(d Deps) http.Handler {
 	// endpoint NFR-001 clause 5 names that was genuinely open and unlimited,
 	// since M1 (04 丙-54's correction: the naked endpoint was never generation).
 	mux.HandleFunc("GET /api/skills/search", limited(d, metrics.RoutePublicSearch, d.Search.PublicSearch))
+	// 02:DISC-006. Anonymous like the search beside it, and behind the same
+	// limiter: it is the same catalogue read from the same table by the same
+	// unauthenticated public, so exempting it would leave an unmetered door into
+	// the projection right next to a metered one.
+	mux.HandleFunc("GET /api/skills/catalog", limited(d, metrics.RouteCatalog, d.Search.BrowseCatalog))
 	// DISC-006/007/008/010: public detail and file views, no login required.
 	// OptionalSession, not RequireSession: anonymous callers get the catalog and
 	// a signed-in caller additionally gets their own private skills through the

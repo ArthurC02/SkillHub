@@ -7,6 +7,7 @@ type OperationName = string
 
 const (
 	AddAcceptanceCriterionOperation            OperationName = "AddAcceptanceCriterion"
+	BrowseCatalogOperation                     OperationName = "BrowseCatalog"
 	CancelAccountDeletionOperation             OperationName = "CancelAccountDeletion"
 	CancelRunOperation                         OperationName = "CancelRun"
 	ClearSkillRestrictionOperation             OperationName = "ClearSkillRestriction"

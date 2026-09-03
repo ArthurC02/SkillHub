@@ -368,6 +368,7 @@ export function Packaging() {
                     when the server serves the bytes, so the list this page just
                     invalidated on build is stale again the moment this is clicked. */}
                 <a
+                  className="action"
                   href={downloadHref(built.artifact_id)}
                   onClick={() => void client.invalidateQueries({ queryKey: ["downloads"] })}
                 >

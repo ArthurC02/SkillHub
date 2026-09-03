@@ -313,6 +313,59 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 	return hits, total, nil
 }
 
+// Browse is 02:DISC-006: the catalogue itself, for a caller who has not asked a
+// question yet.
+//
+// It is not Search with an empty query. Search's whole shape is downstream of
+// the sentence a reader typed — the ordering is a similarity, the empty answer
+// is a distance cut-off, the suggestion is advice about the words — and none of
+// that exists here. What IS shared is the row: same projection, same facets,
+// same wording, because the same card renders both states of the same screen
+// and 02:NFR-007 第 3 條 does not let one surface word a fact two ways.
+//
+// No LLM call anywhere on this path, which is the second reason it is separate:
+// browsing is what a first visit does, and hanging it off the embedding service
+// would put the model gateway's availability in front of 「what is even in
+// here」. It cannot degrade, so it has no degraded flag to carry.
+func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters) ([]searchResult, int64, error) {
+	queries := gen.New(s.Pool)
+	rows, err := queries.BrowseCatalogSkills(ctx, gen.BrowseCatalogSkillsParams{
+		ResultLimit:   limit,
+		HasScript:     filters.HasScript,
+		SpecValidated: filters.SpecValidated,
+		AgentRuntime:  filters.AgentRuntime,
+		CurationTier:  filters.CurationTier,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	// Same window count on every row, so row 0 answers for all of them; no rows
+	// is an honest zero rather than a gap (identical to the lexical path below).
+	var total int64
+	if len(rows) > 0 {
+		total = rows[0].TotalMatches
+	}
+
+	hits := make([]searchResult, 0, len(rows))
+	for _, row := range rows {
+		hit := searchResult{
+			SkillID:       pgconv.UUIDString(row.SkillID),
+			Name:          row.Name,
+			Summary:       row.Summary,
+			SummarySource: row.SummarySource,
+			// Every row on this page is unranked, and says why. 設計系統 §2.9:
+			// an absent value states which kind of absence it is, and this one
+			// is 「nothing computed a similarity, because nobody asked a
+			// question」 — not 「the similarity is low」.
+			RankNote: rankNoteCatalog,
+		}
+		resultFacets(&hit, row.CurationTier, row.Tags, row.Scan, row.VerifiedAt,
+			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
+		hits = append(hits, hit)
+	}
+	return hits, total, nil
+}
+
 // ftsOnlySearch is the degradation path when the LLM service is unavailable.
 // Same catalog-only scope as the hybrid path; the degraded path must not be
 // the one that leaks (CORE-006).

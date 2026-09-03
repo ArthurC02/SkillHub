@@ -227,6 +227,31 @@ export interface PublicSearchResult {
   match_reason_source?: MatchReasonSource;
 }
 
+/**
+ * 02:DISC-006 — 目錄的一頁。
+ *
+ * Four fields. Everything `PublicSearchResponse` carries that is missing here is
+ * missing because it would have been a constant on this path: there is no query
+ * to echo, no model call to degrade, and no distance cut-off to produce
+ * `no_results`. The rows are the same type, on purpose — one card renders both
+ * states of the home page and 02:NFR-007 第 3 條 does not allow the two to word a
+ * fact differently. Every row arrives with `rank: null` and a `rank_note`.
+ */
+export interface CatalogResponse {
+  results: PublicSearchResult[];
+  /** How many rows this page carries at most. Named because it is enforced. */
+  limit: number;
+  /**
+   * How many are in the catalogue under these filters, before `limit` cut the
+   * page down — 設計系統 §4.3's 「共 N 筆，這裡顯示 M 筆」. Exact on this path
+   * always: a browse has no candidate window, so unlike search's total there is
+   * no size at which it quietly becomes a lower bound.
+   */
+  total: number;
+  /** The catalogue holds more than this page shows (ADR-042 決策 3). */
+  truncated: boolean;
+}
+
 export interface PublicSearchResponse {
   query: string;
   results: PublicSearchResult[];

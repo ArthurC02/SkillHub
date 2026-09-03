@@ -84,6 +84,45 @@ export const HIT_FACETS = {
   "tier" | "risk" | "dependencies" | "compatibility" | "verified_at"
 >;
 
+/**
+ * 02:DISC-006 —— 目錄的一頁，也就是首頁在還沒有人搜尋時渲染的東西。
+ *
+ * The same two rows the search fixture carries, and that is the point rather
+ * than laziness: one card renders both states of that screen, so a fixture that
+ * gave the catalogue its own rows would let the two drift in a suite whose whole
+ * job is to notice drift. What differs is what the contract says differs —
+ * `rank` is null on every row and `rank_note` says why, there is no
+ * `match_reason` because nothing was matched, and the envelope carries the four
+ * fields a browse has instead of search's ten.
+ */
+export const CATALOG = {
+  results: [
+    {
+      ...HIT_FACETS,
+      skill_id: SKILL,
+      name: "PDF Summariser",
+      summary: "把 PDF 整理成摘要",
+      summary_source: "model",
+      rank: null,
+      rank_note:
+        "這是目錄本身,不是某一句話的搜尋結果,所以沒有相似度可以顯示;排序是精選在前、其餘依版本建立時間由新到舊。",
+    },
+    {
+      ...HIT_FACETS,
+      skill_id: SKILL_B,
+      name: "Doc Splitter",
+      summary: "切分文件",
+      summary_source: "package",
+      rank: null,
+      rank_note:
+        "這是目錄本身,不是某一句話的搜尋結果,所以沒有相似度可以顯示;排序是精選在前、其餘依版本建立時間由新到舊。",
+    },
+  ],
+  limit: 20,
+  total: 2,
+  truncated: false,
+};
+
 export const SEARCH = {
   query: "pdf 摘要",
   results: [
@@ -371,6 +410,7 @@ export const RUNS = {
 };
 
 export const RUN_ARTIFACTS = {
+  truncated: false,
   artifacts: [
     {
       artifact_id: "aaaa1111-2222-3333-4444-555566667777",
@@ -721,6 +761,9 @@ export function platformResponse(input: string): { body: unknown; status: number
   const path = url.split("?")[0];
 
   if (path.startsWith("/api/skills/search")) return ok(SEARCH);
+  // 02:DISC-006. Matched before the `/api/skills/` prefix below, which would
+  // otherwise read 「catalog」 as a skill id and answer with a detail body.
+  if (path.startsWith("/api/skills/catalog")) return ok(CATALOG);
   if (path.endsWith("/files")) return ok(FILES);
   if (path.startsWith("/api/skills/"))
     return ok(skillDetail(path.slice("/api/skills/".length), "PDF Summariser"));

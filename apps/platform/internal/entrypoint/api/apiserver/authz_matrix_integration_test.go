@@ -86,6 +86,10 @@ var anonymousRoutes = []anonCase{
 	// reconnaissance.
 	{pattern: "GET /readyz", want: http.StatusOK},
 	{pattern: "GET /api/skills/search", query: "?q=anything", want: http.StatusOK},
+	// 02:DISC-006. Anonymous for the same reason search is: the catalogue is the
+	// public half of the product, and a browse that needed a session would put a
+	// login in front of 「what is in here」 — the question a first visit asks.
+	{pattern: "GET /api/skills/catalog", want: http.StatusOK},
 	// OptionalSession: no session is not an error here, an unknown id is.
 	{pattern: "GET /api/skills/{id}", want: http.StatusNotFound},
 	{pattern: "GET /api/skills/{id}/files", want: http.StatusNotFound},

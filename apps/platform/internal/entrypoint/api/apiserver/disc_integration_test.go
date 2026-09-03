@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"unicode"
 
@@ -177,6 +178,111 @@ func stubLLM(t *testing.T, embedAxis int, reason string) string {
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall(t *testing.T) {
+	pool := requireDB(t)
+	var modelCalls atomic.Int32
+	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		modelCalls.Add(1)
+		http.Error(w, "model must not be called while browsing", http.StatusInternalServerError)
+	}))
+	t.Cleanup(model.Close)
+	a := newAPIWithLLM(t, pool, model.URL)
+	curator := a.login(t, uniqueWorklistLabel("catalog-browse"))
+	markCatalog(t, pool, curator.workspaceID)
+	private := a.login(t, uniqueWorklistLabel("catalog-private"))
+
+	curatedID := importPackage(t, pool, a.packages, curator, uniqueWorklistLabel("catalog-curated"), true)
+	plainID := importPackage(t, pool, a.packages, curator, uniqueWorklistLabel("catalog-plain"), false)
+	otherRuntimeID := importPackage(t, pool, a.packages, curator, uniqueWorklistLabel("catalog-other-runtime"), true)
+	noVersionID := seedSkill(t, pool, curator.workspaceID, uniqueWorklistLabel("catalog-no-version"))
+	privateID := importPackage(t, pool, a.packages, private, uniqueWorklistLabel("catalog-hidden"), true)
+	versionedName := uniqueWorklistLabel("catalog-version-order")
+	versionedID := importPackage(t, pool, a.packages, curator, versionedName, true)
+	var latestVersion pgtype.UUID
+	if err := pool.QueryRow(t.Context(), `
+		INSERT INTO skill_versions
+			(workspace_id, skill_id, version_number, content_hash, package_object_key,
+			 manifest, license_expression, license_source, created_at)
+		SELECT workspace_id, skill_id, version_number + 1, content_hash || '-v2',
+		       package_object_key, manifest, license_expression, license_source,
+		       '2000-01-01'::timestamptz
+		FROM skill_versions WHERE skill_id = $1
+		RETURNING id`, mustUUID(t, versionedID)).Scan(&latestVersion); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), `INSERT INTO skill_runtime_compatibility
+		(skill_version_id, runtime_image, capability, runtime)
+		VALUES ($1, 'ghcr.io/example/runtime@sha256:2222', 'activated', 'native')`, latestVersion); err != nil {
+		t.Fatal(err)
+	}
+	curatedVersion := newestVersion(t, pool, curatedID)
+	curate(t, pool, curatedID, curatedVersion)
+	for skillID, runtime := range map[string]string{curatedID: "native", otherRuntimeID: "transpiled"} {
+		versionID := newestVersion(t, pool, skillID)
+		if _, err := pool.Exec(t.Context(), `INSERT INTO skill_runtime_compatibility
+			(skill_version_id, runtime_image, capability, runtime)
+			VALUES ($1, 'ghcr.io/example/runtime@sha256:1111', 'activated', $2)`, mustUUID(t, versionID), runtime); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+	page := anon.search(t, "/api/skills/catalog?limit=100")
+	if page.Total < 5 || len(page.Results) < 5 {
+		t.Fatalf("catalog page = total %d rows %d, want at least this test's five rows", page.Total, len(page.Results))
+	}
+	positions := map[string]int{}
+	for i, row := range page.Results {
+		positions[row.SkillID] = i
+		if row.SkillID == privateID {
+			t.Fatal("private workspace row leaked into public catalog")
+		}
+	}
+	curatedPos, ok := positions[curatedID]
+	if !ok || curatedPos >= positions[plainID] || curatedPos >= positions[otherRuntimeID] || curatedPos >= positions[noVersionID] {
+		t.Fatalf("curated row was not ahead of this test's indexed rows: positions=%v", positions)
+	}
+	curatedRow := page.Results[curatedPos]
+	if curatedRow.Rank != nil || curatedRow.RankNote == "" {
+		t.Fatalf("catalog rank shape = %+v", curatedRow)
+	}
+	versionedPos, ok := positions[versionedID]
+	if !ok {
+		t.Fatalf("catalog omitted version-order fixture: positions=%v", positions)
+	}
+	versionedRow := page.Results[versionedPos]
+	if versionedRow.Compatibility.Runtime.Value != "native" {
+		t.Fatalf("catalog chose an older version by timestamp: %+v", versionedRow.Compatibility)
+	}
+	limited := anon.search(t, "/api/skills/catalog?limit=2")
+	if len(limited.Results) != 2 || !limited.Truncated || limited.Total != page.Total {
+		t.Fatalf("limited catalog page = total %d rows %d truncated %v", limited.Total, len(limited.Results), limited.Truncated)
+	}
+	assertOwnFilter := func(query, want string, reject ...string) {
+		t.Helper()
+		body := anon.search(t, "/api/skills/catalog?limit=100&"+query)
+		found := map[string]bool{}
+		for _, row := range body.Results {
+			found[row.SkillID] = true
+		}
+		if !found[want] {
+			t.Fatalf("catalog filter %q omitted %s: %+v", query, want, body.Results)
+		}
+		for _, id := range reject {
+			if found[id] {
+				t.Fatalf("catalog filter %q retained rejected test row %s", query, id)
+			}
+		}
+	}
+	assertOwnFilter("script=no", plainID, curatedID, otherRuntimeID)
+	assertOwnFilter("validation=unverified", noVersionID, curatedID, plainID, otherRuntimeID)
+	assertOwnFilter("agent=native", versionedID, plainID, otherRuntimeID, noVersionID)
+	assertOwnFilter("tier=curated", curatedID, plainID, otherRuntimeID, noVersionID)
+	if got := modelCalls.Load(); got != 0 {
+		t.Fatalf("browse made %d model calls", got)
+	}
 }
 
 // importPackage runs a package through the real import pipeline — validation,
@@ -1062,9 +1168,16 @@ func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
 		"&mcp=no",            // no signal exists anywhere
 		"&script=maybe",      // outside the enum
 		"&validation=failed", // spec validation is never reported as failed
+		"&script=",           // present-but-empty is outside the enum too
+		"&validation=",
+		"&agent=",
+		"&tier=",
 	} {
 		if got := anon.status(t, http.MethodGet, "/api/skills/search?q=beamish"+q); got != http.StatusBadRequest {
 			t.Errorf("%s: got %d, want 400 — an unusable filter must not be silently dropped", q, got)
+		}
+		if got := anon.status(t, http.MethodGet, "/api/skills/catalog?"+strings.TrimPrefix(q, "&")); got != http.StatusBadRequest {
+			t.Errorf("catalog %s: got %d, want 400 — both handwritten routes must enforce the contract", q, got)
 		}
 	}
 

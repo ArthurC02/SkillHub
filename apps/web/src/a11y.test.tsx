@@ -160,6 +160,36 @@ async function scan(where: string) {
     ).not.toBeNull();
   }
 
+  // ...and the half the rule above structurally cannot see, found 2026-09-03 by
+  // walking every route: four disabled controls (建立, 新增, 儲存文字 ×2) whose
+  // reason WAS on the screen, in a `.note` beside them, and was attached to
+  // nothing. They carry no `title`, so the check above never looked at them.
+  //
+  // A sighted reader got the sentence; anyone who arrived at the dead control by
+  // Tab got a button and silence, and 02:NFR-007 has no sighted-only clause.
+  //
+  // The exemption list is the shape this repo already uses for `allow:` and
+  // KNOWN_DEVIATIONS: named, reasoned, **may only get shorter**. Everything on it
+  // states its cause in its own label — which is a legitimate way to satisfy
+  // §2.4 and the reason this cannot simply require the attribute everywhere.
+  const SELF_EXPLAINING = [
+    "送出中…", // ConfirmDelete, both buttons, while the request is in flight
+    "已送出，無法取消",
+    "打包中…", // Packaging
+    "Fork 中…", // SkillDetail
+    "載入中…", // 「載入更多」 while fetching
+    "重新整理中…", // RunTrace, while the Trace page is being refetched
+  ];
+  for (const el of container.querySelectorAll("button[disabled], select[disabled]")) {
+    const label = (el.textContent ?? "").trim();
+    if (SELF_EXPLAINING.includes(label)) continue;
+    expect(
+      el.getAttribute("aria-describedby") ?? el.getAttribute("title"),
+      `${where}: 「${label}」 is disabled and says why to nobody — ` +
+        `wire the sentence beside it with aria-describedby, or state the cause in the label (§2.4)`,
+    ).not.toBeNull();
+  }
+
   // system.md §2.3 / 02:NFR-007. Colour is the second channel and the border is
   // the third; the word is the first. A badge with no text has skipped to the
   // second and made the tint the fact.
@@ -280,6 +310,21 @@ test("QA-009: 首頁與搜尋結果", async () => {
   });
   await waitFor(has("PDF Summariser"));
   await scan("/");
+}, 30000);
+
+test("QA-009: 首頁的目錄狀態（02:DISC-006）", async () => {
+  // The route scan above navigates with `?q=`, so until this existed the only
+  // state of `/` anything looked at was the one AFTER a search — and 02:DISC-006
+  // made the catalogue the state every first visit lands on. A default state
+  // with no machine on it is the shape §6 keeps recording: 「每條路由只掃一個
+  // 狀態」, and this is the second one that matters on this route.
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/" });
+  });
+  await waitFor(has("目錄裡有什麼"));
+  await scan("/ 目錄");
 }, 30000);
 
 test("NFR-007: 搜尋結果的即時區是筆數，不是整份清單", async () => {

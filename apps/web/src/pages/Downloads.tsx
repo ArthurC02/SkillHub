@@ -153,6 +153,7 @@ function DownloadActions({
     <p>
       {artifact.servable ? (
         <a
+          className="action"
           href={downloadHref(artifact.artifact_id)}
           // The server writes a `download_records` row when it serves the bytes,
           // and this list's `download_count` is computed from that table. A click

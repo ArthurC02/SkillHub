@@ -80,6 +80,368 @@ func decodeAddAcceptanceCriterionParams(args [1]string, argsEscaped bool, r *htt
 	return params, nil
 }
 
+// BrowseCatalogParams is parameters of browseCatalog operation.
+type BrowseCatalogParams struct {
+	Limit OptInt `json:",omitempty,omitzero"`
+	// As on `GET /api/skills/search`. Absent = not filtered.
+	Script OptBrowseCatalogScript `json:",omitempty,omitzero"`
+	// As on `GET /api/skills/search`. Absent = not filtered.
+	Validation OptBrowseCatalogValidation `json:",omitempty,omitzero"`
+	// As on `GET /api/skills/search`. Absent = not filtered.
+	Agent OptBrowseCatalogAgent `json:",omitempty,omitzero"`
+	// As on `GET /api/skills/search`. Absent = not filtered.
+	Tier OptBrowseCatalogTier `json:",omitempty,omitzero"`
+}
+
+func unpackBrowseCatalogParams(packed middleware.Parameters) (params BrowseCatalogParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "limit",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Limit = v.(OptInt)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "script",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Script = v.(OptBrowseCatalogScript)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "validation",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Validation = v.(OptBrowseCatalogValidation)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "agent",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Agent = v.(OptBrowseCatalogAgent)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "tier",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Tier = v.(OptBrowseCatalogTier)
+		}
+	}
+	return params
+}
+
+func decodeBrowseCatalogParams(args [0]string, argsEscaped bool, r *http.Request) (params BrowseCatalogParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Set default value for query: limit.
+	{
+		val := int(20)
+		params.Limit.SetTo(val)
+	}
+	// Decode query: limit.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotLimitVal int
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToInt(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotLimitVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Limit.SetTo(paramsDotLimitVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Limit.Get(); ok {
+					if err := func() error {
+						if err := (validate.Int{
+							MinSet:        true,
+							Min:           1,
+							MaxSet:        true,
+							Max:           100,
+							MinExclusive:  false,
+							MaxExclusive:  false,
+							MultipleOfSet: false,
+							MultipleOf:    0,
+							Pattern:       nil,
+						}).Validate(int64(value)); err != nil {
+							return errors.Wrap(err, "int")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "limit",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: script.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "script",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotScriptVal BrowseCatalogScript
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotScriptVal = BrowseCatalogScript(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Script.SetTo(paramsDotScriptVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Script.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "script",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: validation.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "validation",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotValidationVal BrowseCatalogValidation
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotValidationVal = BrowseCatalogValidation(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Validation.SetTo(paramsDotValidationVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Validation.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "validation",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: agent.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "agent",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotAgentVal BrowseCatalogAgent
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAgentVal = BrowseCatalogAgent(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Agent.SetTo(paramsDotAgentVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Agent.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "agent",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: tier.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "tier",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotTierVal BrowseCatalogTier
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotTierVal = BrowseCatalogTier(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Tier.SetTo(paramsDotTierVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Tier.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tier",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // CancelRunParams is parameters of cancelRun operation.
 type CancelRunParams struct {
 	ID uuid.UUID
@@ -2924,10 +3286,6 @@ type ListRunsParams struct {
 	// 試跑 → 回來看 loop. Matched against the test case the run's snapshot was frozen from, so a
 	// run stays in the list after the draft has been edited. Workspace scoped like the unfiltered list;
 	// another workspace's id matches nothing (WS-006).
-	//
-	// ponytail: the filter is applied over the newest 500 runs of the workspace rather than in the SQL. A
-	// workspace with more runs than that will not see the older ones in a filtered list; the upgrade is a
-	// predicate on ListWorkspaceRuns.
 	TestCaseID OptUUID `json:",omitempty,omitzero"`
 	// Refused with a 400 when outside the schema, not clamped: both bounds are inclusive and an
 	// out-of-range value is not replaced by the default.

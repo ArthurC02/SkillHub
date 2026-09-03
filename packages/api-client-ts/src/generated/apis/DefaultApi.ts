@@ -20,6 +20,7 @@ import type {
   AddAcceptanceCriterionRequest,
   CancelAccountDeletion200Response,
   CancelRun202Response,
+  CatalogResponse,
   CategorizedFindings,
   ClearSkillRestrictionRequest,
   ConfirmRunPreflight201Response,
@@ -108,6 +109,8 @@ import {
     CancelAccountDeletion200ResponseToJSON,
     CancelRun202ResponseFromJSON,
     CancelRun202ResponseToJSON,
+    CatalogResponseFromJSON,
+    CatalogResponseToJSON,
     CategorizedFindingsFromJSON,
     CategorizedFindingsToJSON,
     ClearSkillRestrictionRequestFromJSON,
@@ -265,6 +268,14 @@ import {
 export interface AddAcceptanceCriterionOperationRequest {
     id: string;
     addAcceptanceCriterionRequest: AddAcceptanceCriterionRequest;
+}
+
+export interface BrowseCatalogRequest {
+    limit?: number;
+    script?: BrowseCatalogScriptEnum;
+    validation?: BrowseCatalogValidationEnum;
+    agent?: BrowseCatalogAgentEnum;
+    tier?: BrowseCatalogTierEnum;
 }
 
 export interface CancelRunRequest {
@@ -562,6 +573,26 @@ export interface DefaultApiInterface {
      * Add an acceptance criterion (TEST-003)
      */
     addAcceptanceCriterion(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
+
+    /**
+     * What is in the catalogue, for a caller who has not asked a question yet.  This is a second operation and not a `q`-less mode of `GET /api/skills/search`, because the two answer different questions and the difference is visible in the payload. Search answers 「what matches this sentence」 and everything about its response is downstream of that: the ordering is a similarity, `no_results` is a distance cut-off, `query_suggestion` is advice about the words. A browse has none of those, and folding it in would have shipped a response whose `query` is empty, whose `no_results` means 「the catalogue is empty」 on one path and 「nothing was close enough」 on the other, and whose `rank` is null for every row. The separate envelope keeps browse from pretending to be a query-less search; rows still share the public Skill card shape, and `rank_note` explicitly explains this third kind of absent rank.  **Ordering: curated first, then newest version first, then by id.** ADR-041 / 設計系統 §2.11(b) forbid popularity as a default order and this product has no popularity signal to misuse anyway; `curation_tier` is the one ordering input backed by a human review (PDM-002\'s nine items), and the id tiebreak keeps the order stable between two calls. Every row carries `rank: null` and a `rank_note` saying so, which is the same contract the degraded search path already uses — a client never has to guess why a page is not ranked by similarity.  Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can widen it (CORE-006, ADR-011).  The four DISC-003 filters apply here for the reason they exist: they are the controls on the same screen, and a filter that only bites after a search would be a live control that narrows nothing (設計系統 §2.2). 
+     * @summary Browse the public skill catalogue (02:DISC-006)
+     * @param {number} [limit] 
+     * @param {'yes' | 'no'} [script] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
+     * @param {'passed' | 'unverified'} [validation] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
+     * @param {'native' | 'transpiled' | 'failed' | 'unverified'} [agent] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
+     * @param {'curated' | 'indexed'} [tier] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    browseCatalogRaw(requestParameters: BrowseCatalogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CatalogResponse>>;
+
+    /**
+     * What is in the catalogue, for a caller who has not asked a question yet.  This is a second operation and not a `q`-less mode of `GET /api/skills/search`, because the two answer different questions and the difference is visible in the payload. Search answers 「what matches this sentence」 and everything about its response is downstream of that: the ordering is a similarity, `no_results` is a distance cut-off, `query_suggestion` is advice about the words. A browse has none of those, and folding it in would have shipped a response whose `query` is empty, whose `no_results` means 「the catalogue is empty」 on one path and 「nothing was close enough」 on the other, and whose `rank` is null for every row. The separate envelope keeps browse from pretending to be a query-less search; rows still share the public Skill card shape, and `rank_note` explicitly explains this third kind of absent rank.  **Ordering: curated first, then newest version first, then by id.** ADR-041 / 設計系統 §2.11(b) forbid popularity as a default order and this product has no popularity signal to misuse anyway; `curation_tier` is the one ordering input backed by a human review (PDM-002\'s nine items), and the id tiebreak keeps the order stable between two calls. Every row carries `rank: null` and a `rank_note` saying so, which is the same contract the degraded search path already uses — a client never has to guess why a page is not ranked by similarity.  Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can widen it (CORE-006, ADR-011).  The four DISC-003 filters apply here for the reason they exist: they are the controls on the same screen, and a filter that only bites after a search would be a live control that narrows nothing (設計系統 §2.2). 
+     * Browse the public skill catalogue (02:DISC-006)
+     */
+    browseCatalog(requestParameters: BrowseCatalogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CatalogResponse>;
 
     /**
      * Valid for the whole grace period. Idempotent: cancelling when nothing is pending is a no-op. 
@@ -1351,7 +1382,7 @@ export interface DefaultApiInterface {
     /**
      * 02:WS-002 第 1 條\'s \"Run 歷史\". Workspace scoped from the session like every other run route (iron rule 3).  Each row carries what happened, to which skill, and when. The status transitions and the per-attempt provider ids stay on GET /runs/{id}: they are what a reader opens one run to see, and serving them for a page of runs would make the list the heaviest read in the API for information nobody reads a page of. 
      * @summary The workspace\'s run history, newest first (WS-004)
-     * @param {string} [testCaseId] Only runs of this test case — the \&quot;執行歷史\&quot; of one draft, which is what closes the 建立 → 試跑 → 回來看 loop. Matched against the test case the run\&#39;s snapshot was frozen from, so a run stays in the list after the draft has been edited. Workspace scoped like the unfiltered list; another workspace\&#39;s id matches nothing (WS-006).  ponytail: the filter is applied over the newest 500 runs of the workspace rather than in the SQL. A workspace with more runs than that will not see the older ones in a filtered list; the upgrade is a predicate on ListWorkspaceRuns. 
+     * @param {string} [testCaseId] Only runs of this test case — the \&quot;執行歷史\&quot; of one draft, which is what closes the 建立 → 試跑 → 回來看 loop. Matched against the test case the run\&#39;s snapshot was frozen from, so a run stays in the list after the draft has been edited. Workspace scoped like the unfiltered list; another workspace\&#39;s id matches nothing (WS-006). 
      * @param {number} [limit] Refused with a 400 when outside the schema, not clamped: both bounds are inclusive and an out-of-range value is not replaced by the default. 
      * @param {number} [offset] 
      * @param {*} [options] Override http request option.
@@ -1787,6 +1818,57 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async addAcceptanceCriterion(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase> {
         const response = await this.addAcceptanceCriterionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * What is in the catalogue, for a caller who has not asked a question yet.  This is a second operation and not a `q`-less mode of `GET /api/skills/search`, because the two answer different questions and the difference is visible in the payload. Search answers 「what matches this sentence」 and everything about its response is downstream of that: the ordering is a similarity, `no_results` is a distance cut-off, `query_suggestion` is advice about the words. A browse has none of those, and folding it in would have shipped a response whose `query` is empty, whose `no_results` means 「the catalogue is empty」 on one path and 「nothing was close enough」 on the other, and whose `rank` is null for every row. The separate envelope keeps browse from pretending to be a query-less search; rows still share the public Skill card shape, and `rank_note` explicitly explains this third kind of absent rank.  **Ordering: curated first, then newest version first, then by id.** ADR-041 / 設計系統 §2.11(b) forbid popularity as a default order and this product has no popularity signal to misuse anyway; `curation_tier` is the one ordering input backed by a human review (PDM-002\'s nine items), and the id tiebreak keeps the order stable between two calls. Every row carries `rank: null` and a `rank_note` saying so, which is the same contract the degraded search path already uses — a client never has to guess why a page is not ranked by similarity.  Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can widen it (CORE-006, ADR-011).  The four DISC-003 filters apply here for the reason they exist: they are the controls on the same screen, and a filter that only bites after a search would be a live control that narrows nothing (設計系統 §2.2). 
+     * Browse the public skill catalogue (02:DISC-006)
+     */
+    async browseCatalogRaw(requestParameters: BrowseCatalogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CatalogResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['script'] != null) {
+            queryParameters['script'] = requestParameters['script'];
+        }
+
+        if (requestParameters['validation'] != null) {
+            queryParameters['validation'] = requestParameters['validation'];
+        }
+
+        if (requestParameters['agent'] != null) {
+            queryParameters['agent'] = requestParameters['agent'];
+        }
+
+        if (requestParameters['tier'] != null) {
+            queryParameters['tier'] = requestParameters['tier'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/skills/catalog`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CatalogResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * What is in the catalogue, for a caller who has not asked a question yet.  This is a second operation and not a `q`-less mode of `GET /api/skills/search`, because the two answer different questions and the difference is visible in the payload. Search answers 「what matches this sentence」 and everything about its response is downstream of that: the ordering is a similarity, `no_results` is a distance cut-off, `query_suggestion` is advice about the words. A browse has none of those, and folding it in would have shipped a response whose `query` is empty, whose `no_results` means 「the catalogue is empty」 on one path and 「nothing was close enough」 on the other, and whose `rank` is null for every row. The separate envelope keeps browse from pretending to be a query-less search; rows still share the public Skill card shape, and `rank_note` explicitly explains this third kind of absent rank.  **Ordering: curated first, then newest version first, then by id.** ADR-041 / 設計系統 §2.11(b) forbid popularity as a default order and this product has no popularity signal to misuse anyway; `curation_tier` is the one ordering input backed by a human review (PDM-002\'s nine items), and the id tiebreak keeps the order stable between two calls. Every row carries `rank: null` and a `rank_note` saying so, which is the same contract the degraded search path already uses — a client never has to guess why a page is not ranked by similarity.  Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can widen it (CORE-006, ADR-011).  The four DISC-003 filters apply here for the reason they exist: they are the controls on the same screen, and a filter that only bites after a search would be a live control that narrows nothing (設計系統 §2.2). 
+     * Browse the public skill catalogue (02:DISC-006)
+     */
+    async browseCatalog(requestParameters: BrowseCatalogRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CatalogResponse> {
+        const response = await this.browseCatalogRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -4824,6 +4906,40 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 }
 
+/**
+ * @export
+ */
+export const BrowseCatalogScriptEnum = {
+    Yes: 'yes',
+    No: 'no'
+} as const;
+export type BrowseCatalogScriptEnum = typeof BrowseCatalogScriptEnum[keyof typeof BrowseCatalogScriptEnum];
+/**
+ * @export
+ */
+export const BrowseCatalogValidationEnum = {
+    Passed: 'passed',
+    Unverified: 'unverified'
+} as const;
+export type BrowseCatalogValidationEnum = typeof BrowseCatalogValidationEnum[keyof typeof BrowseCatalogValidationEnum];
+/**
+ * @export
+ */
+export const BrowseCatalogAgentEnum = {
+    Native: 'native',
+    Transpiled: 'transpiled',
+    Failed: 'failed',
+    Unverified: 'unverified'
+} as const;
+export type BrowseCatalogAgentEnum = typeof BrowseCatalogAgentEnum[keyof typeof BrowseCatalogAgentEnum];
+/**
+ * @export
+ */
+export const BrowseCatalogTierEnum = {
+    Curated: 'curated',
+    Indexed: 'indexed'
+} as const;
+export type BrowseCatalogTierEnum = typeof BrowseCatalogTierEnum[keyof typeof BrowseCatalogTierEnum];
 /**
  * @export
  */

@@ -81,6 +81,66 @@ func encodeAddAcceptanceCriterionResponse(response AddAcceptanceCriterionRes, w 
 	}
 }
 
+func encodeBrowseCatalogResponse(response BrowseCatalogRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *CatalogResponse:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *Error:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(400)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ErrorHeaders:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Access-Control-Expose-Headers", "Retry-After")
+		// Encoding response headers.
+		{
+			h := uri.NewHeaderEncoder(w.Header())
+			// Encode "Retry-After" header.
+			{
+				cfg := uri.HeaderParameterEncodingConfig{
+					Name:    "Retry-After",
+					Explode: false,
+				}
+				if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+					return e.EncodeValue(conv.IntToString(response.RetryAfter))
+				}); err != nil {
+					return errors.Wrap(err, "encode Retry-After header")
+				}
+			}
+		}
+		w.WriteHeader(429)
+
+		e := new(jx.Encoder)
+		response.Response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeCancelAccountDeletionResponse(response CancelAccountDeletionRes, w http.ResponseWriter, span trace.Span) error {
 	switch response := response.(type) {
 	case *CancelAccountDeletionOK:
@@ -869,10 +929,28 @@ func encodeDeleteTestCaseResponse(response DeleteTestCaseRes, w http.ResponseWri
 	}
 }
 
-func encodeDevLoginResponse(response *DevLoginNoContent, w http.ResponseWriter, span trace.Span) error {
-	w.WriteHeader(204)
+func encodeDevLoginResponse(response DevLoginRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *DevLoginNoContent:
+		w.WriteHeader(204)
 
-	return nil
+		return nil
+
+	case *Error:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
 }
 
 func encodeDiffSkillVersionsResponse(response DiffSkillVersionsRes, w http.ResponseWriter, span trace.Span) error {
@@ -1027,9 +1105,21 @@ func encodeFinishGithubLoginResponse(response FinishGithubLoginRes, w http.Respo
 
 		return nil
 
-	case *Error:
+	case *FinishGithubLoginUnauthorized:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(401)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *FinishGithubLoginConflict:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
 
 		e := new(jx.Encoder)
 		response.Encode(e)

@@ -851,14 +851,14 @@ const RUN_ARTIFACT = {
 };
 
 /** Everything the run page reads; the parts this test is not about answer 404. */
-function stubRunPage(artifacts: unknown[], onDelete?: (url: string) => void) {
+function stubRunPage(artifacts: unknown[], onDelete?: (url: string) => void, truncated = false) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
     if (init?.method === "DELETE") {
       onDelete?.(url);
       return Promise.resolve(new Response(null, { status: 204 }));
     }
-    if (url.includes("/artifacts")) return json({ artifacts });
+    if (url.includes("/artifacts")) return json({ artifacts, truncated });
     if (url.includes("/trace"))
       return json({
         run_id: RUN,
@@ -912,6 +912,15 @@ test("SEC-006 a purged output keeps its row and says the bytes are gone", async 
   // "It expired" and "it never existed" are different answers; the row is the
   // first one and the empty state is the second.
   expect(text()).toContain("曾經產生過這個檔案」仍然是事實");
+});
+
+test("RUN-002 says when the sandbox had to drop some output files", async () => {
+  stubRunPage([], undefined, true);
+  await render(<RunTrace />, () => text().includes("有些產出未被收集"));
+
+  expect(text()).toContain("清單只保留成功收集的檔案");
+  expect(text()).toContain("無法據此判定這次 Run 沒有產生檔案");
+  expect(text()).not.toContain("這次 Run 沒有留下任何檔案產出");
 });
 
 test("WS-004 a package nobody downloaded says so instead of loading an empty list", async () => {

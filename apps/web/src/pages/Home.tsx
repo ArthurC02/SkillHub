@@ -1,10 +1,11 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
-import { useSkillSearch } from "../api/skills";
+import { useEffect, useState, type FormEvent } from "react";
+import { useCatalog, useSkillSearch } from "../api/skills";
 import { ReadFailure } from "../components/LoginRequired";
 import { useGenerateEntryPoint } from "../api/generate";
 import { useMe } from "../api/me";
 import { GenerateSkill } from "../components/GenerateSkill";
+import { Loading } from "../components/Loading";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { RiskSummary } from "../components/RiskIndicator";
 import { MAX_COMPARE } from "./Compare";
@@ -28,6 +29,7 @@ export function Home() {
   const search = useSearch({ from: "/" });
   const navigate = useNavigate({ from: "/" });
   const [draft, setDraft] = useState(search.q ?? "");
+  useEffect(() => setDraft(search.q ?? ""), [search.q]);
   const [selected, setSelected] = useState<string[]>([]);
   const generateExposed = useGenerateEntryPoint();
   // DISC-001 serves this page to anyone; the exits below must not assume a session.
@@ -48,6 +50,26 @@ export function Home() {
     filters,
     search.q !== undefined,
   );
+  /*
+    02:DISC-006. Until this, a first visit was a heading, an empty box and nothing
+    else: the page asked every reader to describe a task before it would show
+    them anything, so someone who did not already know what was in the catalogue
+    had to guess a sentence to find out. 義務 1.2「快到第一個判斷」 cannot be met
+    by a screen whose first judgement is behind a correct guess, and 資訊架構
+    IA-5 records the same hole from the other end — when a search finds nothing,
+    「what IS here」 had no address.
+
+    Exclusive with the search read and never in flight beside it, so neither can
+    be seen answering for the other. 資訊架構 R1「一個位址回答一個問題」 still
+    holds: both states answer 「which skills should I look at」, one before the
+    reader has narrowed it and one after.
+  */
+  const browsing = search.q === undefined;
+  const catalog = useCatalog(filters, browsing);
+
+  useEffect(() => {
+    setSelected([]);
+  }, [search.q, search.script, search.validation, search.agent, search.tier]);
 
   /**
    * Any change to the question — new query or new filter — makes the old
@@ -108,20 +130,33 @@ export function Home() {
         <button type="submit">搜尋</button>
       </form>
 
-      <FilterBar
-        filters={filters}
-        onChange={(next) => submitSearch(next)}
-        disabled={search.q === undefined}
-      />
+      {/*
+        No `disabled` any more. The four live dimensions used to be dead until a
+        search had been run — 「先描述一次任務，才會有結果可以篩」 — because there
+        was nothing on the page to narrow. There is now: they filter the
+        catalogue below. A control that is live in one state of a screen and
+        dead in the other, for a reason the reader has to be told, is one fewer
+        thing to explain once the reason stops being true.
+      */}
+      <FilterBar filters={filters} onChange={(next) => submitSearch(next)} />
 
-      {isFetching && <p role="status">搜尋中…</p>}
+      {browsing && (
+        <Catalog
+          query={catalog}
+          selected={selected}
+          onToggle={toggleSelected}
+          narrowing={Object.values(filters).some((value) => value !== undefined)}
+        />
+      )}
+
+      {!browsing && isFetching && <p role="status">搜尋中…</p>}
       {/* DISC-001 serves this page to anyone, so a 401 here is not the ordinary
           case — but `/api/skills/search` is the one read that can answer one
           anyway, and 「搜尋失敗，請稍後再試。」 told a reader to retry something
           retrying cannot fix, while throwing away what the server said. */}
-      <ReadFailure error={error} what="搜尋結果" />
+      {!browsing && <ReadFailure error={error} what="搜尋結果" />}
 
-      {data && (
+      {!browsing && data && (
         <>
           {/* DISC-001: the original query is kept and echoed, not rewritten away. */}
           <p>
@@ -155,7 +190,7 @@ export function Home() {
           */}
           {data.truncated && (
             <p className="notice" role="status">
-              符合的 Skill 共 {data.total} 個，這裡只列出最接近的 {data.limit} 個。
+              符合的 Skill 共 {data.total} 個，這裡只列出最接近的 {data.results.length} 個。
               目前沒有翻頁；縮小任務描述或加上篩選條件會讓排序更貼近你要的。
             </p>
           )}
@@ -278,6 +313,93 @@ export function Home() {
 }
 
 /**
+ * 02:DISC-006 —— 目錄，也就是「還沒問問題的人看到什麼」。
+ *
+ * The rows are `SearchResultRow`, unchanged and not a variant. The server sends
+ * the same `PublicSearchResult` here as it does for a search — same facets, same
+ * wording — because these are two states of ONE screen and 02:NFR-007 第 3 條
+ * does not let one surface word a fact two ways. Every row arrives with
+ * `rank: null` and the server's own `rank_note` saying what ordered the page,
+ * which is the contract the degraded search path already uses.
+ *
+ * 比較 works from here too（the checkboxes are the same ones）: 「並排比較這兩個」
+ * is exactly the question a browsing reader has, and it was previously reachable
+ * only by first guessing a search that returned both.
+ */
+function Catalog({
+  query,
+  selected,
+  onToggle,
+  narrowing,
+}: {
+  query: ReturnType<typeof useCatalog>;
+  selected: string[];
+  onToggle: (skillId: string) => void;
+  narrowing: boolean;
+}) {
+  if (query.isPending) return <Loading what="目錄" />;
+  if (query.error) return <ReadFailure error={query.error} what="目錄" />;
+  if (!query.data) return null;
+
+  const { results, total, truncated } = query.data;
+  return (
+    <section aria-labelledby="catalog-heading">
+      <h2 id="catalog-heading">目錄裡有什麼</h2>
+      {/*
+        設計 §2.1 的強形式：空狀態要說出這個「空」**不是**什麼。An empty catalogue
+        and a catalogue that failed to load look identical if the empty one says
+        nothing, and the two call for opposite actions.
+      */}
+      {results.length === 0 ? (
+        <p>
+          {narrowing
+            ? "沒有 Skill 符合目前的篩選條件；這不是讀取失敗。清掉篩選條件可查看完整目錄。"
+            : "目錄現在是空的——代表這個部署還沒有匯入任何 Skill；這不是讀取失敗。"}
+        </p>
+      ) : (
+        <>
+          {/*
+            DISC-002「排序依據需可被簡要說明」，而且只講強制得了的事（§2.2）：這兩
+            句各自指得出強制它的那一行——排序在 BrowseCatalogSkills 的 ORDER BY，
+            「不用人氣排序」是那條 ORDER BY 裡沒有的東西，不是一句承諾。
+          */}
+          <p className="note">{results[0]?.rank_note ?? "未提供目錄排序說明。"}</p>
+          <CompareBar selected={selected} />
+          {/*
+            設計 §4.3：被截斷的清單必須說出總數與截斷理由。這條路上的 total 永遠精確
+            （沒有候選窗），所以它說得出「共」而不是「超過」。
+          */}
+          <p role="status" className="note">
+            {truncated
+              ? `目錄共 ${total} 個 Skill，這裡列出 ${results.length} 個。目前沒有翻頁；用上面的搜尋或篩選縮小範圍。`
+              : `目錄共 ${total} 個 Skill，全部列在下面。`}
+          </p>
+          <ul className="search-results" aria-label="目錄">
+            {results.map((hit) => (
+              <SearchResultRow
+                key={hit.skill_id}
+                hit={hit}
+                checked={selected.includes(hit.skill_id)}
+                atLimit={selected.length >= MAX_COMPARE}
+                onToggle={onToggle}
+                /* 設計 §3 第 14 條. Every row on this page carries the SAME
+                   `rank_note` — one sentence, N copies, directly under a
+                   sentence at the top of the list that says the same thing.
+                   The server still sends it（a client rendering one row alone
+                   needs it, and `rank: null` owes an explanation）; this page
+                   states it once, which is the 標記說明 precedent above and
+                   §0's 「數量留在外面，段落收進去」. */
+                rankNoteInList={false}
+              />
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
  * DISC-003 (spec 02:DISC-002「使用者可依類別、來源層級、Agent、是否包含 Script、
  * 是否需要 MCP 與驗證狀態篩選」).
  *
@@ -315,11 +437,9 @@ const UNAVAILABLE_FILTERS: Array<{ key: string; label: string; reason: string }>
 function FilterBar({
   filters,
   onChange,
-  disabled,
 }: {
   filters: SearchFilters;
   onChange: (next: SearchFilters) => void;
-  disabled: boolean;
 }) {
   /*
     §2.4「停用要說原因」: these three are live filters, dead only until there is a
@@ -332,16 +452,97 @@ function FilterBar({
     footnote. One node, referenced by all three — three copies of one sentence
     is noise, and aria-describedby may be pointed at a shared id.
   */
-  const whyDisabled = disabled ? "filter-why-query" : undefined;
+  /*
+    設計 §0 的裁定，落地。
 
+    §0 uses this exact bar as its worked example of two correct rules breaking a
+    screen between them: 原則 2.4 puts a full paragraph beside every dead
+    control, and the six of them together pushed the first search result to
+    1180px on a phone — 義務 1.2's 「為了拿到頭條而費力」. It also wrote the answer:
+    「把六個篩選在窄螢幕收進一個 <details>，<summary> 上留「3 個條件目前無法篩選」
+    ——數量留在外面，段落收進去」, because 順位低的規則讓步時，讓的是形式，順位高的
+    規則的內容一個字都不能少. Nothing below is deleted or reworded.
+
+    Measured 2026-09-03, before this: the first result sat at y1437 on a phone —
+    further down than the 1180 §0 recorded, i.e. the example had got worse in
+    the year nobody implemented its ruling.
+
+    **The starting position is decided by whether a filter is ON, not by the
+    viewport width**, and the second version of this is the one worth keeping.
+
+    A width test was the obvious reading of 「窄螢幕」 and it was wrong twice over.
+    It left the desktop measurably failing 義務 1.2 — measured the same day, the
+    first result at y958 in a 900px window, with the bar open above it — and it
+    answers a question nobody asked: what decides whether these controls are
+    worth 330px of the screen is not how wide the screen is, it is whether they
+    are doing anything.
+
+    Open when any filter is set, because then the bar is not an offer, it is the
+    thing removing rows from the answer — 設計 §2.2「會擋住人的東西必須在他撞上
+    之前顯示」. A shared URL carrying ?tier=curated opens showing what is
+    narrowing it.
+
+    Closed otherwise, including on the catalogue state: 330px of controls and
+    their six paragraphs, above the list the reader came to look at.
+
+    After the first render it is the reader's, with one exception in one
+    direction: a filter arriving later re-opens it, and nothing ever shuts it.
+    The exception is not tidiness — the first version decided this on mount
+    only, and a reader who followed a ?tier=curated link from an unfiltered page
+    got a shut bar over a shortened list with nothing on screen saying what had
+    removed the rows, which is the §2.2 failure this rule exists to prevent.
+    One-way is also what §1.3 / ADR-042 決策 5 permits: a rule that can only
+    expand is a default, a rule that can shut things is 「精簡模式」.
+
+    Toggling it does not survive a reload, for the same reason.
+  */
+  const narrowing = Object.values(filters).some(Boolean);
+  const [open, setOpen] = useState(narrowing);
+  useEffect(() => {
+    if (narrowing) setOpen(true);
+  }, [narrowing, filters.script, filters.validation, filters.agent, filters.tier]);
+
+  return (
+    <details
+      className="filter-disclosure"
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+    >
+      {/*
+        The counts are 設計 §0 的「數量留在外面」, and they are COUNTED rather than
+        typed: a hand-written 「2 項」 beside two hand-written labels is a number
+        that goes wrong the first time somebody adds a third, silently, which is
+        the shape this whole review keeps finding. `disc.test.tsx` pins the two
+        numbers to the controls actually rendered.
+      */}
+      <summary>
+        篩選條件（{LIVE_FILTERS} 項可用、{UNAVAILABLE_FILTERS.length} 項目前無法篩選）
+      </summary>
+      <FilterControls filters={filters} onChange={onChange} />
+    </details>
+  );
+}
+
+/**
+ * The number of filters that are dimensions of the platform rather than
+ * placeholders. Declared beside the controls it counts, and pinned to them by a
+ * test, because it is read out in the summary above.
+ */
+const LIVE_FILTERS = 4;
+
+function FilterControls({
+  filters,
+  onChange,
+}: {
+  filters: SearchFilters;
+  onChange: (next: SearchFilters) => void;
+}) {
   return (
     <div className="filter-bar" role="group" aria-label="篩選條件">
       <label>
         是否包含 Script
         <select
           value={filters.script ?? ""}
-          disabled={disabled}
-          aria-describedby={whyDisabled}
           onChange={(event) =>
             onChange({ script: (event.target.value || undefined) as SearchFilters["script"] })
           }
@@ -356,8 +557,6 @@ function FilterBar({
         驗證狀態
         <select
           value={filters.validation ?? ""}
-          disabled={disabled}
-          aria-describedby={whyDisabled}
           onChange={(event) =>
             onChange({
               validation: (event.target.value || undefined) as SearchFilters["validation"],
@@ -380,8 +579,6 @@ function FilterBar({
         Agent 相容（實測）
         <select
           value={filters.agent ?? ""}
-          disabled={disabled}
-          aria-describedby={whyDisabled}
           onChange={(event) =>
             onChange({ agent: (event.target.value || undefined) as SearchFilters["agent"] })
           }
@@ -408,8 +605,7 @@ function FilterBar({
         來源層級
         <select
           value={filters.tier ?? ""}
-          disabled={disabled}
-          aria-describedby={`${whyDisabled ? `${whyDisabled} ` : ""}filter-why-tier`}
+          aria-describedby="filter-why-tier"
           onChange={(event) =>
             onChange({ tier: (event.target.value || undefined) as SearchFilters["tier"] })
           }
@@ -430,12 +626,6 @@ function FilterBar({
           包含出了新版本、審查還沒跟上的那些，不等於從沒被審過。
         </span>
       </label>
-
-      {disabled && (
-        <p className="note" id="filter-why-query">
-          先描述一次任務，才會有結果可以篩：上面四項在第一次搜尋之後才能使用。
-        </p>
-      )}
 
       {UNAVAILABLE_FILTERS.map(({ key, label, reason }) => (
         <label key={key} title={reason}>
@@ -616,7 +806,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
         {hit.dependencies.length > 0 ? (
           hit.dependencies.join("、")
         ) : (
-          <span className="note">未擷取到依賴資訊（不等於沒有依賴）</span>
+          <span className="note">未測量——沒有擷取到依賴資訊，不等於沒有依賴。</span>
         )}
       </dd>
 
@@ -630,7 +820,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
         {hit.verified_at ? (
           hit.verified_at.slice(0, 10)
         ) : (
-          <span className="note">尚未匯入內容</span>
+          <span className="note">未測量——這個 Skill 還沒有匯入內容可以驗證。</span>
         )}
       </dd>
     </dl>
@@ -642,11 +832,18 @@ function SearchResultRow({
   checked,
   atLimit,
   onToggle,
+  rankNoteInList = true,
 }: {
   hit: PublicSearchResult;
   checked: boolean;
   atLimit: boolean;
   onToggle: (skillId: string) => void;
+  /**
+   * False when the list already states, once, why nothing here has a
+   * similarity. Only the catalogue does: on a search page the reason is
+   * per-row（this one was not enriched, that one was）and has to stay per row.
+   */
+  rankNoteInList?: boolean;
 }) {
   return (
     <li className="search-result">
@@ -731,11 +928,13 @@ function SearchResultRow({
         substituted for it: a live FTS-only answer measured 1.4, and printing
         that under a 「相似度」 label would state a number it does not mean.
       */}
-      <p className="rank">
-        {hit.rank === null
-          ? (hit.rank_note ?? "未計算語意相似度。")
-          : `相似度 ${hit.rank.toFixed(2)}`}
-      </p>
+      {(hit.rank !== null || rankNoteInList) && (
+        <p className="rank">
+          {hit.rank === null
+            ? (hit.rank_note ?? "未計算語意相似度。")
+            : `相似度 ${hit.rank.toFixed(2)}`}
+        </p>
+      )}
     </li>
   );
 }
