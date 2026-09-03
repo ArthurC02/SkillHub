@@ -279,7 +279,9 @@ function GenerateFailed({
           ? "平台已經自動用同一段描述再試過一次，第二次仍然沒有通過。下面是檢查逐字回報的內容，沒有經過改寫。"
           : "這一次沒有自動重試——被擋下的原因不是排版手滑，同一段描述再送一次會得到同樣的結果。下面是檢查逐字回報的內容，沒有經過改寫。"}
       </p>
-      <Findings findings={rejected} />
+      {/* h4：這一段的標題是上面那個 `h3 生成失敗`，而分組是它的內容。
+          預設 3 對匯入頁是對的（那裡的父標題是 h2），對這裡不是。 */}
+      <Findings findings={rejected} level={4} />
       <p>
         <button type="button" onClick={onRetry}>
           再試一次

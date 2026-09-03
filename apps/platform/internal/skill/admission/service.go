@@ -178,7 +178,7 @@ func (s *Service) UploadZip(ctx context.Context, ws identity.Workspace, data []b
 // it through the same import pipeline as uploads.
 func (s *Service) ImportURL(ctx context.Context, ws identity.Workspace, rawURL string) (Result, error) {
 	if s.Fetcher == nil {
-		return Result{}, fmt.Errorf("%w: url import not configured", ErrFetch)
+		return Result{}, fmt.Errorf("%w: 這個部署沒有啟用「從網址匯入」。", ErrFetch)
 	}
 	sourceURL, err := s.Fetcher.Normalize(rawURL)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -168,7 +169,23 @@ func (h *Handler) ImportURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
-	if errors.Is(err, skillpkg.ErrBadArchive) || errors.Is(err, ErrFetch) {
+	// 04 丙-138. The sentence goes out without the sentinel that classified it:
+	// `ErrFetch`'s own text is a Go identifier ("fetch failed"), and leaving it
+	// on produced 「匯入失敗：fetch failed: …」 — the client already says which
+	// action failed, so the prefix was a second 「失敗」 in a second language.
+	// `errors.Is` above did the classification; nothing downstream needs the
+	// word. The messages themselves are Chinese now (fetch.go), which is the
+	// standard `writeTooLarge` in this same file already set.
+	if errors.Is(err, ErrFetch) {
+		httpx.WriteError(w, http.StatusBadRequest, strings.TrimPrefix(err.Error(), ErrFetch.Error()+": "))
+		return
+	}
+	// ErrBadArchive is deliberately NOT given the same treatment here. Its ~20
+	// messages live in `shared/skillpkg`, they are shared with the packaging and
+	// clean-mode paths, and several of them name a zip internal (entry name,
+	// compression method) that is closer to a finding than to a sentence. That
+	// is its own piece of work, not a side effect of this one — 04 丙-140.
+	if errors.Is(err, skillpkg.ErrBadArchive) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}

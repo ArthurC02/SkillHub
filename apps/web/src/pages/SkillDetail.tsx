@@ -53,10 +53,28 @@ export function SkillDetail() {
         <h1>{skill.name}</h1>
         {/* The package author's own frontmatter description, never the model's. */}
         <p>{skill.summary}</p>
+        {/*
+          04 丙-137。License 判定以前在這一頁出現兩次——這裡與下方的 §License 區塊
+          渲染的是**同一個元件、同一組 props**，所以連伺服器那句限定語都印了兩遍
+          （實測 2026-09-03：「License 已宣告」「尚未經人工核對。」「來源：repo 根目錄
+          LICENSE」三個文字節點各 x2）。設計 §3 第 14 條，而 `LabelledBadge` 的檔頭
+          自己寫著「Callers that printed the same string themselves have stopped」。
+
+          **為什麼只能是「拿掉一個徽章」而不是「拿掉一句但書」**：§2.11(c) 要求每一個
+          徽章在同一個區塊以文字說出它不涵蓋什麼，所以兩個徽章必然是兩份但書——留一個
+          沒有但書的徽章會把 §3 第 14 條的問題換成 §2.11(c) 的問題，而後者在 §0 的
+          順位表上高三階。
+
+          **為什麼留下面那一個**：它有標題（可被標題導覽到）、有 `LicenseNotes` 這半段
+          散文陪著，而 §2.10 第 3 項要的「不折疊」它照樣滿足。實測 y=657（桌面）／
+          y=855（手機），兩者都在第一屏之內，所以第一屏沒有失去這個判定。相對地標頭
+          這一列在手機上是 **147px 四行**，三個徽章各帶一句但書；少一個就少約兩行，
+          而桌面那一行本來就只有 36px、拿掉不省任何東西。**這不是版面優化，是
+          §3 第 14 條；版面只是決定了刪哪一個。**
+        */}
         <div className="badge-row">
           <LabelledBadge kind="tier" value={skill.tier} />
           {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
-          <LicenseBadge license={skill.license} />
         </div>
       </header>
 

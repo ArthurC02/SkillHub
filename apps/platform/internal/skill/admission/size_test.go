@@ -4,6 +4,7 @@ package ingest
 // the caller sent (NFR-001), and is counted.
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -111,4 +112,44 @@ func refusalCount(t *testing.T, ceiling string) float64 {
 		}
 	}
 	return 0 // never incremented: Prometheus does not export an untouched child
+}
+
+// 04 丙-138 — the sentence a creator reads when a URL import is refused.
+//
+// It used to be 「匯入失敗：fetch failed: host "gitlab.com" is not on the allowed
+// source list」: an English clause inside a Chinese one, two 「失敗」 stacked, and
+// for a Chinese reader the refusal did not even establish what was wrong. The
+// standard was already set two functions up in this same file — `writeTooLarge`
+// answers in full Chinese with both numbers.
+//
+// Both halves are pinned, because either one alone is passable by a wrong
+// implementation: the sentence has to be the readable one, and the sentinel's
+// own text — a Go identifier, not copy — must not travel with it.
+func TestAUrlRefusalReachesTheCreatorAsOneChineseSentence(t *testing.T) {
+	f := &URLFetcher{Allowed: map[string]bool{"github.com": true}}
+	_, _, err := f.Fetch(t.Context(), "https://gitlab.com/example/skill/archive/main.zip")
+	if err == nil {
+		t.Fatal("a host off the allow list was not refused")
+	}
+
+	w := httptest.NewRecorder()
+	(&Handler{}).respond(w, Result{}, err)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status %d, want 400", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "不在允許清單內") {
+		t.Errorf("the refusal is not the sentence a reader can act on: %s", body)
+	}
+	if !strings.Contains(body, "gitlab.com") {
+		t.Errorf("the refusal does not name the host that was refused: %s", body)
+	}
+	// The classification stays on the error and off the screen.
+	if strings.Contains(body, "fetch failed") {
+		t.Errorf("the Go sentinel's own text reached the client: %s", body)
+	}
+	if !errors.Is(err, ErrFetch) {
+		t.Error("stripping the prefix must not cost the classification")
+	}
 }

@@ -21,6 +21,23 @@ import (
 
 // ErrFetch marks URL-import failures the client can fix: disallowed host,
 // unreachable URL, oversized package.
+//
+// **The sentinel stays English; the messages wrapped in it do not** (04 丙-138).
+// `errors.Is` matches on identity, never on text, so the two are free to differ
+// -- and they have to. This sentinel is a Go identifier read by this package;
+// the sentences are read by a person on `/workspace/import`, where 「匯入失敗：
+// fetch failed: host "gitlab.com" is not on the allowed source list」 put an
+// English clause inside a Chinese one and stacked two 「失敗」. The standard was
+// already the team's own: the same handler's `writeTooLarge` answers in full
+// Chinese with both numbers. `respond` strips this prefix before the sentence
+// reaches the client, so what a user sees is one sentence and what a log line
+// keeps is the classification.
+//
+// Two of the wrapped sentences are also written by the background source sweep
+// (`CheckSources`/`Probe` in sources.go), which nobody reads on a screen. They
+// are worded for the person, not the sweep: one product, one language, and the
+// operator reading a log is better served by the same sentence than by a second
+// vocabulary.
 var ErrFetch = errors.New("fetch failed")
 
 // URLFetcher downloads skill packages from allow-listed hosts only (INGEST-001,
@@ -180,20 +197,20 @@ func classify(err error) error {
 	var ne net.Error
 	switch {
 	case errors.Is(err, errTooManyRedirects):
-		return fmt.Errorf("%w: too many redirects", ErrFetch)
+		return fmt.Errorf("%w: 來源網址的轉址次數超過上限，平台不再往下追。請直接給出套件 zip 的最終網址。", ErrFetch)
 	case errors.Is(err, errBlockedDestination), errors.Is(err, ErrFetch):
 		// An ErrFetch out here came from CheckRedirect, so its text describes a
 		// redirect target the caller did not choose and may not be told about.
-		return fmt.Errorf("%w: destination is not allowed", ErrFetch)
+		return fmt.Errorf("%w: 轉址之後落在不允許的位址，下載已停止。", ErrFetch)
 	case errors.Is(err, context.DeadlineExceeded), errors.As(err, &ne) && ne.Timeout():
-		return fmt.Errorf("%w: timed out", ErrFetch)
+		return fmt.Errorf("%w: 連線來源逾時。稍後再試，或先確認這個網址在外部下載得到。", ErrFetch)
 	}
-	return fmt.Errorf("%w: source could not be fetched", ErrFetch)
+	return fmt.Errorf("%w: 連不上這個來源。", ErrFetch)
 }
 
 func (f *URLFetcher) checkURL(u *url.URL) error {
 	if u.Scheme != "https" && (!f.AllowInsecure || u.Scheme != "http") {
-		return fmt.Errorf("%w: only https URLs are supported", ErrFetch)
+		return fmt.Errorf("%w: 來源網址必須是 https。", ErrFetch)
 	}
 	if !f.Allowed[strings.ToLower(u.Host)] {
 		// This one names the host, and reaches the caller verbatim through
@@ -204,10 +221,10 @@ func (f *URLFetcher) checkURL(u *url.URL) error {
 		// difference between a fixable refusal and a mystery. The resolved
 		// addresses are handled the other way -- see classify(), which swaps them
 		// for a category precisely so the internal network never leaks.
-		return fmt.Errorf("%w: host %q is not on the allowed source list", ErrFetch, u.Host)
+		return fmt.Errorf("%w: 來源網域 %q 不在允許清單內。", ErrFetch, u.Host)
 	}
 	if u.User != nil || u.RawQuery != "" || u.Fragment != "" {
-		return fmt.Errorf("%w: source URLs cannot contain credentials, query parameters, or fragments", ErrFetch)
+		return fmt.Errorf("%w: 來源網址不得帶帳號密碼、查詢字串或錨點。", ErrFetch)
 	}
 	return nil
 }
@@ -217,7 +234,7 @@ func (f *URLFetcher) checkURL(u *url.URL) error {
 func (f *URLFetcher) Normalize(rawURL string) (string, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return "", fmt.Errorf("%w: invalid URL", ErrFetch)
+		return "", fmt.Errorf("%w: 這不是一個合法的網址。", ErrFetch)
 	}
 	if err := f.checkURL(u); err != nil {
 		return "", err
@@ -299,7 +316,7 @@ func (f *URLFetcher) candidates(u *url.URL) ([]candidate, string) {
 func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("%w: invalid URL", ErrFetch)
+		return nil, fmt.Errorf("%w: 這不是一個合法的網址。", ErrFetch)
 	}
 	// The allow list decides which names may be ASKED FOR (02:SEC-003), and until
 	// 2026-08-29 it only ever saw the URL the user typed. do() re-checks redirect
@@ -322,7 +339,7 @@ func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
-		return nil, fmt.Errorf("%w: source returned status %d", ErrFetch, resp.StatusCode)
+		return nil, fmt.Errorf("%w: 來源回應 HTTP %d，沒有取得檔案。", ErrFetch, resp.StatusCode)
 	}
 
 	// Counted while reading, not after: LimitReader stops one byte past the cap,
@@ -337,7 +354,7 @@ func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error
 		// cap, so nobody in this process knows how big the source really was.
 		// Content-Length is the remote's claim about bytes we chose not to read.
 		metrics.PackageSizeRefused.WithLabelValues(metrics.CeilingURL).Inc()
-		return nil, fmt.Errorf("%w: package from this source is over the %s import limit",
+		return nil, fmt.Errorf("%w: 這個來源的套件超過平台的 %s 匯入上限。",
 			ErrFetch, skillpkg.HumanMB(skillpkg.MaxZipBytes))
 	}
 	return data, nil

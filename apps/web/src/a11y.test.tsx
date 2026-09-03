@@ -200,6 +200,37 @@ async function scan(where: string) {
     ).not.toBe("");
   }
 
+  // system.md §3 第 14 條「同一個事實，這一頁講了幾次？講得一樣嗎？」 — listed in
+  // §6 as having no machine at all, which is how 04 丙-137 survived: the skill
+  // page rendered `LicenseBadge` twice, from the same component with the same
+  // props, so the server's qualifier appeared twice on one screen.
+  //
+  // **Scoped to `.note`, and the scope IS the rule.** A first draft counted every
+  // repeated text node and reported fourteen, nearly all of them legitimate:
+  // a comparison table repeats a verdict once per column, the nav names the page
+  // you are on, and a visitor's skill page carries three 使用 GitHub 登入 links
+  // because §2.2 第三向 requires every blocked action to carry its own next step.
+  // Those are one fact per subject, not one fact twice. What cannot legitimately
+  // repeat is a **qualifier**: `.note` is this app's class for 「what this badge
+  // does not cover」 (§2.11(c)), and one subject never needs the same caveat
+  // twice. Rows are excluded for the same reason — twenty cards each carrying
+  // 「未測量」 is twenty facts.
+  const REPEATED_QUALIFIER: string[] = [];
+  const qualifiers = new Map<string, number>();
+  for (const note of container.querySelectorAll(".note")) {
+    if (note.closest("li, td, th")) continue;
+    const text = (note.textContent ?? "").replace(/\s+/g, " ").trim();
+    if (text.length < 8) continue;
+    qualifiers.set(text, (qualifiers.get(text) ?? 0) + 1);
+  }
+  const saidTwice = [...qualifiers.entries()]
+    .filter(([text, n]) => n > 1 && !REPEATED_QUALIFIER.includes(text))
+    .map(([text, n]) => `x${n} 「${text.slice(0, 44)}」`);
+  expect(
+    saidTwice,
+    `${where}: the same qualifier stated more than once on one screen (§3 第 14 條)`,
+  ).toEqual([]);
+
   // system.md §3 item 6 / §6 — the one rule with a known defect and no gate.
   // axe fails a *skipped* level, never a level that should have gone down and
   // didn't, so eight wrong `h2` in RunTrace lived for weeks. This does not

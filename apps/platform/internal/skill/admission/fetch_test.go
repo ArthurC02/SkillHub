@@ -245,7 +245,10 @@ func wantBlocked(t *testing.T, err error) {
 	if !errors.Is(err, ErrFetch) {
 		t.Fatalf("want ErrFetch, got %v", err)
 	}
-	if got, want := err.Error(), "fetch failed: destination is not allowed"; got != want {
+	// 04 丙-138：sentinel 保留英文身分（`errors.Is` 比對的是它），訊息換成使用者讀得懂
+	// 的那一句。這一支釘的是**兩者都在**——前綴少了代表分類不見了，句子換了代表
+	// 使用者看到的東西變了。
+	if got, want := err.Error(), "fetch failed: 轉址之後落在不允許的位址，下載已停止。"; got != want {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
@@ -305,7 +308,8 @@ func TestFetchRedirectLimit(t *testing.T) {
 	host := strings.TrimPrefix(srv.URL, "http://")
 	f := &URLFetcher{Allowed: map[string]bool{host: true}, AllowInsecure: true}
 	_, _, err := f.Fetch(context.Background(), srv.URL+"/pkg.zip")
-	if err == nil || err.Error() != "fetch failed: too many redirects" {
+	if err == nil ||
+		err.Error() != "fetch failed: 來源網址的轉址次數超過上限，平台不再往下追。請直接給出套件 zip 的最終網址。" {
 		t.Fatalf("want the redirect budget to stop this, got %v", err)
 	}
 	if hops != 1+maxRedirects {

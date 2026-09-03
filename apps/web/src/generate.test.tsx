@@ -62,6 +62,8 @@ function stubSession(
   features?: Record<string, boolean>,
   failures?: unknown[],
   generateResult?: unknown,
+  /** A categorised 422 — the package's own findings, verbatim (02:GEN-003). */
+  generateRejection?: unknown,
 ) {
   const posted: { path: string; body: string }[] = [];
   const searchGets: string[] = [];
@@ -73,6 +75,9 @@ function stubSession(
       posted.push({ path, body: String(init.body ?? "") });
       if (path === "/skills/generate" && generateResult) {
         return Promise.resolve(new Response(JSON.stringify(generateResult), { status: 201 }));
+      }
+      if (path === "/skills/generate" && generateRejection) {
+        return Promise.resolve(new Response(JSON.stringify(generateRejection), { status: 422 }));
       }
       return Promise.resolve(
         new Response(JSON.stringify({ error: "not implemented in this stub" }), { status: 502 }),
@@ -304,6 +309,51 @@ test("GEN-008: a successful generation does not re-run the search behind it", as
   await waitFor(() => (container.textContent ?? "").includes("已經產生一個 Skill"));
 
   expect(searchGets.length).toBe(before);
+});
+
+/**
+ * 04 丙-139 — 「阻擋錯誤（N）」 is the CONTENT of 生成失敗, not its sibling.
+ *
+ * The shared `Findings` hardcoded `h3`, which is right under `ImportSkill`'s
+ * `h2 匯入失敗` and wrong under this panel: the outline read
+ * `h2 沒有夠接近的？` → `h3 生成失敗` → `h3 阻擋錯誤（2）`, so a reader navigating
+ * by headings met the group as a peer of the failure rather than as what the
+ * failure consists of. **axe cannot see this** — it fails a skipped level,
+ * never a level that should have gone down and did not — and this panel is
+ * behind the exposure flag, so no `__outlines__` snapshot covers it either.
+ * `Packaging`'s own findings list has run h3 → h4 all along.
+ */
+test("設計 §3 第 9 條：生成失敗底下的發現分組是它的內容，不是它的兄弟", async () => {
+  stubSession({ generate_skill: true }, [], undefined, {
+    attempts: 1,
+    errors: [{ code: "skill-md-missing", message: "SKILL.md not found at package root" }],
+    warnings: [],
+    infos: [],
+  });
+  await render();
+  await submitSearch("沒有人做過的事");
+  await act(async () => {
+    container.querySelectorAll("textarea").forEach((t) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+      setter.call(t, "把 PDF 轉成摘要");
+      t.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  });
+  await act(async () => {
+    container.querySelectorAll("button").forEach((b) => {
+      if (b.textContent === "生成一個 Skill") b.click();
+    });
+  });
+  await waitFor(() => (container.textContent ?? "").includes("阻擋錯誤"));
+
+  const outline = Array.from(container.querySelectorAll("h2,h3,h4")).map(
+    (h) => `${h.tagName.toLowerCase()} ${h.textContent?.trim().slice(0, 12)}`,
+  );
+  const failure = outline.findIndex((h) => h.includes("生成失敗"));
+  expect(failure, `生成失敗 not in the outline: ${outline.join(" | ")}`).toBeGreaterThan(-1);
+  expect(outline[failure]).toMatch(/^h3 /);
+  // The group that follows it is one level deeper, never a second h3.
+  expect(outline[failure + 1], outline.join(" | ")).toMatch(/^h4 阻擋錯誤/);
 });
 
 // The collision sentence must be true for BOTH kinds of neighbour: since the

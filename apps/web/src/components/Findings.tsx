@@ -8,8 +8,25 @@ import type { CategorizedFindings, ImportFinding } from "../api/import";
  * `skillpkg.Validate`'s findings 逐字, exactly as a failed import does. Two
  * copies is how one of the two screens quietly starts rewriting them into
  * reassurance.
+ *
+ * `level` exists because the two callers name these groups from two different
+ * depths, and a shared component that hardcodes one of them makes the other
+ * wrong (04 丙-139). `ImportSkill` puts them under an `h2`（匯入失敗 /
+ * 靜態檢查結果）so `h3` is right there; the generation panel's own heading is an
+ * `h2`, its result heading is an `h3`, and groups printed as a second `h3`
+ * read as siblings of 生成失敗 rather than as its contents. **axe cannot see
+ * this** — it fails a skipped level, never a level that should have gone down
+ * and did not (§6 says so in its own row). `Packaging`'s local findings list
+ * already runs h3 → h4; this is the shared one catching up with that.
  */
-export function Findings({ findings }: { findings: CategorizedFindings }) {
+export function Findings({
+  findings,
+  level = 3,
+}: {
+  findings: CategorizedFindings;
+  level?: 3 | 4;
+}) {
+  const GroupHeading = `h${level}` as "h3" | "h4";
   const groups = [
     ["阻擋錯誤", findings.errors],
     ["警告", findings.warnings],
@@ -36,9 +53,9 @@ export function Findings({ findings }: { findings: CategorizedFindings }) {
       {groups.map(([label, items]) =>
         items.length ? (
           <section key={label}>
-            <h3>
+            <GroupHeading>
               {label}（{items.length}）
-            </h3>
+            </GroupHeading>
             {/* §4.3: a finding is the definition of 一則可以被單獨採信或拒絕的
                 東西 — a code, a path and a claim the reader weighs before
                 trusting the package — and it was a bare UA `<ul>` with discs.
