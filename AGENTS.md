@@ -108,6 +108,21 @@ Monorepo 的 CI/CD 基線見 **ADR-019**，頂層收納由 **ADR-031（Accepted�
 8. **Query ownership（ADR-033、035）**：每條 query 的 owner context 宣告在 `db/query-owners.yaml`，由 `devctl automation-check` 強制——**跨 context 的 write query 呼叫會 FAIL**（read 已一併強制）。新增或刪除 `db/queries/*.sql` 的 query，同一批要改 `db/query-owners.yaml`，漏了 CI 會 FAIL；該檔的 `allow:`／`read_allow:` 是**存量漂移清單，不是擴充點**——新的跨 context 存取要改程式，不准往下面加行。
 9. **修好一個東西之後，把修法弄壞一次**：改完跑一次測試是綠的，那只證明測試存在，不證明它會紅。**把修正那一行還原、跑對應的測試、確認它變紅、再改回來**（`git diff` 確認為空）。本專案已經三次「修好了但測試沒有牙齒」：invalidate 用錯 query key（改回錯的、171 支全綠）、placeholder 六條規則有三條零正面測試（同時刪掉、全綠）、兩條 import 路由的速率限制包裝（無聲刪掉、全套綠）。**三次都不是 code review 找到的**，是突變找到的。成本是一次 `sed` 加一次 `go test`。<br>**不適用於**：純文案、純註解、以及本來就沒有斷言可言的變更。**適用於**：任何你在 commit 訊息裡寫「修好了 X」的東西——那句話的證據就是那次紅。
 
+## 分區指標與攔阻（2026-09-03 新增）
+
+**動某個區域之前，先讀那個區域的 `AGENTS.md`**——它列出「你要做的事 → 先讀哪一段 → 沒讀會被哪個測試擋」，本檔不複述：
+
+| 你要動 | 先讀 |
+| --- | --- |
+| `apps/web/` | [`apps/web/AGENTS.md`](apps/web/AGENTS.md) |
+| `apps/platform/internal/` | [`apps/platform/internal/AGENTS.md`](apps/platform/internal/AGENTS.md) ＋ 目標套件的 `doc.go` |
+
+**這張表存在，是因為目錄層的 `AGENTS.md` 不保證送達**：Claude Code 會在讀到該目錄的檔案時載入它（2026-09-03 實測成立），但**剛建立的檔案不會立刻被發現**（同一 session 內兩次探測都沒出現，稍後才生效）；Codex 只有在工作目錄位於該目錄之內時才走得到；其他工具各家不一。所以這張表是唯一保證送達的入口，分區卡片是它的延伸而非替代。
+
+Claude Code 另有三個機制（其他工具吃不到，**不得用來取代上述文件**）：`.claude/rules/` 按路徑觸發指標、`.claude/agents/` 的角色定義、`.claude/skills/` 的通用程序。技能只放「換一個 repo 還成立」的做法；**判準與規則一律留在 `docs/`**。
+
+`.claude/settings.json` 的 `permissions.deny` 把幾條慣例變成真的拒絕（`git stash`、`git add -A`、對未知修改的 `reset`／`clean`／`checkout`、`push --force`、`commit --amend`），**deny 對子代理同樣生效**。注意它只是**更早發現**：其他工具不受它管，真正的保證仍在 `automation-check`、測試與 CI。
+
 ## 快速判斷「我該看哪份文件」
 
 | 你要做的事 | 先看 |
