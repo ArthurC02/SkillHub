@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // pkgWithScriptAndEmbeddedCode is a package that carries risk on both axes the
@@ -77,7 +76,7 @@ func TestDefaultRiskIsUnavailableNotClean(t *testing.T) {
 	}
 }
 
-func TestOwnerReadsFailClosedWhenRegistryIsMissing(t *testing.T) {
+func TestOwnerReadsFailClosedWhenCallbacksAreMissing(t *testing.T) {
 	if _, _, err := (&Service{}).CatalogSkill(t.Context(), pgtype.UUID{}); err == nil {
 		t.Fatal("CatalogSkill succeeded without Registry's owner read")
 	}
@@ -108,7 +107,7 @@ func TestFileTreeMarksScriptsAndOmitsDirectories(t *testing.T) {
 // repo-root license is not the package declaring one for itself.
 func TestLicenseKeepsProvenanceTierAndNeverConfirms(t *testing.T) {
 	expr, src := "MIT", "repo-license-file"
-	got := licenseFrom(registry.Version{LicenseExpression: &expr, LicenseSource: &src})
+	got := licenseFrom(VersionFacts{LicenseExpression: &expr, LicenseSource: &src})
 	if got.Expression != "MIT" || got.Source != "repo-license-file" {
 		t.Fatalf("license = %+v, want MIT from repo-license-file", got)
 	}
@@ -119,7 +118,7 @@ func TestLicenseKeepsProvenanceTierAndNeverConfirms(t *testing.T) {
 		t.Errorf("status = %q, want declared; nothing records a reviewer's confirmation", got.Status.Value)
 	}
 
-	unknown := licenseFrom(registry.Version{})
+	unknown := licenseFrom(VersionFacts{})
 	if unknown.Status.Value != string(LicenseStatusUnknown) || unknown.Expression != "" {
 		t.Errorf("missing license = %+v, want unknown with no expression", unknown)
 	}

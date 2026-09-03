@@ -26,7 +26,8 @@
 // # Relationships (ADR-032 §2)
 //
 //	catalog -> registry     synchronous owner reads for Skill, latest Version
-//	                        and runtime compatibility; only Registry DTOs cross.
+//	                        and runtime compatibility; the composition root
+//	                        translates them into Catalog-owned facts.
 //	catalog -> registry     synchronous write (Customer–Supplier). The operator
 //	                        hold writes one column of registry's `skills` through
 //	                        registry.SetAccessRestriction, which takes this
@@ -73,8 +74,8 @@
 //
 // # What is deliberately not here
 //
-// Not `skills` or `skill_versions`: catalog reads their owner DTOs and writes
-// exactly one column through Registry's owner API.
+// Not `skills` or `skill_versions`: catalog receives consumer-owned facts and
+// writes exactly one column through Registry's owner API.
 //
 // Not the download gate. LicenseStatusConfirmed means "a human verified this
 // licence", not "this may be redistributed" — the second question is

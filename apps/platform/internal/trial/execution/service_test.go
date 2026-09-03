@@ -7,7 +7,14 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
+
+func TestRequireTestLabDoesNotInspectOwnerInternals(t *testing.T) {
+	if err := (&Service{TestLab: &testlab.Service{}}).requireTestLab(); err != nil {
+		t.Fatalf("requireTestLab rejected an injected owner service: %v", err)
+	}
+}
 
 func TestDeleteArtifactRefusesWithoutOwnerCounter(t *testing.T) {
 	ws := identity.Workspace{}

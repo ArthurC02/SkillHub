@@ -175,7 +175,7 @@ type OldestVersion struct {
 }
 
 func (s *Service) requireOwnerReads() error {
-	if s.TestLab == nil || s.TestLab.Pool == nil || s.AppliedSuggestions == nil || s.SourceLineage == nil || s.ReadSkill == nil ||
+	if s.TestLab == nil || s.AppliedSuggestions == nil || s.SourceLineage == nil || s.ReadSkill == nil ||
 		s.ReadVersion == nil || s.ReadCompatibility == nil || s.ReadPrevious == nil ||
 		s.ReadLineage == nil || s.ReadOldest == nil {
 		return errOwnerReadNotConfigured

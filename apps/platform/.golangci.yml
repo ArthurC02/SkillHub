@@ -366,6 +366,8 @@ linters:
             - "**/internal/foundation/storage/objreconcile/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
@@ -424,6 +426,12 @@ linters:
               desc: "shared kernel must not import a bounded context (ADR-037)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
               desc: "shared kernel must not import a bounded context (ADR-037)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
+              desc: "shared kernel must not import a process composition root (ADR-032 §5)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "shared kernel must not import a process composition root (ADR-032 §5)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
+              desc: "shared kernel must not import a generic worker (ADR-037)"
 
         # Generic subdomains (ADR-032 §1): mechanisms and technical base, no
         # domain rules. They must not import any context or the presentation
@@ -467,5 +475,7 @@ linters:
               desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
               desc: "presentation layer / composition root; generic subdomains must not import it (ADR-032 §5)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "composition root; generic subdomains must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain must not import another generic worker (ADR-032 appendix A)"

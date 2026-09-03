@@ -23,10 +23,37 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
+
+func TestRequireOwnerReadsDoesNotInspectTestLabInternals(t *testing.T) {
+	svc := &Service{
+		TestLab:            &testlab.Service{},
+		AppliedSuggestions: func(context.Context, pgtype.UUID, pgtype.UUID) ([]AppliedSuggestion, error) { return nil, nil },
+		SourceLineage:      func(context.Context, pgtype.UUID) (LineageSource, error) { return LineageSource{}, nil },
+		ReadSkill: func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error) {
+			return SkillFacts{}, false, nil
+		},
+		ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
+			return VersionFacts{}, false, nil
+		},
+		ReadCompatibility: func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error) {
+			return RuntimeCompatibility{}, false, nil
+		},
+		ReadPrevious: func(context.Context, pgtype.UUID, pgtype.UUID, int32) (PreviousVersion, bool, error) {
+			return PreviousVersion{}, false, nil
+		},
+		ReadLineage: func(context.Context, pgtype.UUID) (LineageStep, bool, error) { return LineageStep{}, false, nil },
+		ReadOldest:  func(context.Context, pgtype.UUID) (OldestVersion, bool, error) { return OldestVersion{}, false, nil },
+	}
+	if err := svc.requireOwnerReads(); err != nil {
+		t.Fatalf("injected Test Lab owner was rejected because of its private configuration: %v", err)
+	}
+}
 
 // realProfilesDir is the shipped configuration, not a copy of it. Reading the
 // real files is what makes these tests notice a profile edit that would change

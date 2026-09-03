@@ -42,6 +42,20 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 
 前兩種關係的理由與強制規則見 ADR-032；Shared Kernel 的單一範圍與組裝位置見 ADR-040。若需要新增跨界 import，必須同批更新 ADR-032 附錄 A 與 `apps/platform/.golangci.yml`，讓 depguard 反映新關係。
 
+### 同步 owner 讀取的兩種形狀（2026-09-03 新增）
+
+上表第一列在程式裡有兩種寫法，**判準是對方回給你的是不是 generated row，或建立在 generated row 之上的型別**：
+
+- **owner 的公開面本身就是領域語言** → consumer 直接持有 `*owner.Service` 欄位，呼叫那個窄方法（例如 Evaluation 持有 `TestLab` 取不可變快照）。
+- **owner 的回傳是 sqlc row 或以它為基礎的型別，或直接 import 會成環** → consumer **自己宣告 `XxxFacts` 與 `Read*` 函式欄位**，由 `apiserver.NewApp` 裡的 `wireXxxReaders(...)` 翻譯後注入；領域檔因此完全不 import 對方。Catalog、Packaging、Evaluation 的 Registry 讀取都是這一種。這是 [ADR-034](../adr/ADR-034-cross-context-writes-close-by-inversion-not-by-events.md) 的**讀取側鏡像**——寫入側用同一手法拆掉 `registry -> catalog` 的編譯期環。
+
+兩件容易做錯的事：
+
+- **Facts 只放你真的會用到的欄位。** 同樣是讀 Skill，`catalog.SkillFacts` 有十二個欄位、`eval.SkillFacts` 只有四個。把 owner 的欄位抄滿，等於把它的形狀複製一份放在自己家，對方改欄位你還是得跟著改——ACL 的意義就沒了。
+- **翻譯只發生在 composition root。** `wireXxxReaders(...)` 與 `xxxFacts(...)` 轉換函式住在 `app.go`；一旦下放到領域套件，那個套件就得 import 對方，整個做法就白做了。
+
+同理，**不要靠讀合作者的內部欄位來確認它接好了**（`s.TestLab.Pool != nil` 這種寫法）：知道對方有一個 `Pool`，就是知道對方怎麼實作。守衛只判 `s.TestLab == nil`。
+
 ## Query ownership 不等於資料庫方便性
 
 `db/query-owners.yaml` 宣告每條 query 的 owner；直接透過另一個 context 的 query 讀寫都是架構邊界問題。新的跨 context write 與 read 都會被強制拒絕，不能靠擴增 allowlist 過關。應改為 owner Service 的公開操作、自己的投影，或在確有理由時先提出 ADR。[ADR-033](../adr/ADR-033-sqlc-query-ownership-and-cross-context-write-enforcement.md) 解釋 write，[ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 解釋 read 與完整性對帳。

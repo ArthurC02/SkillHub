@@ -28,6 +28,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
+func TestRequireTestLabDoesNotInspectOwnerInternals(t *testing.T) {
+	if err := (&Service{TestLab: &testlab.Service{}}).requireTestLab(); err != nil {
+		t.Fatalf("injected Test Lab owner was rejected because of its private configuration: %v", err)
+	}
+}
+
 // --- fixtures ----------------------------------------------------------------
 
 const (

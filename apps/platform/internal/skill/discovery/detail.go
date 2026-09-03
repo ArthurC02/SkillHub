@@ -38,7 +38,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // ObjectStore is the slice of object storage the detail views need.
@@ -410,7 +409,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 
 // SkillDetail assembles the DISC-006/008 body for an already-resolved skill.
 // Scope is left blank — the caller owns it.
-func (s *Service) SkillDetail(ctx context.Context, skill registry.Skill) (skillDetail, error) {
+func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetail, error) {
 	q := gen.New(s.Pool)
 
 	out := skillDetail{
@@ -455,10 +454,10 @@ func (s *Service) SkillDetail(ctx context.Context, skill registry.Skill) (skillD
 		return skillDetail{}, err
 	}
 
-	if s.Registry == nil {
+	if s.ReadLatestVersion == nil {
 		return skillDetail{}, errOwnerReadNotConfigured
 	}
-	ver, found, err := s.Registry.LatestVersion(ctx, skill.WorkspaceID, skill.ID)
+	ver, found, err := s.ReadLatestVersion(ctx, skill.WorkspaceID, skill.ID)
 	if !found && err == nil {
 		// A skill with no version yet (a fork created ahead of its content) is a
 		// real state, not an error. Everything version-derived stays absent.
@@ -479,7 +478,10 @@ func (s *Service) SkillDetail(ctx context.Context, skill registry.Skill) (skillD
 	// DISC-002「Agent 相容」. Absent is the normal state for anything nobody has
 	// run yet, and it leaves the two axes on unverified rather than failing the
 	// request — a skill with no measurement is still a skill worth showing.
-	if c, found, err := s.Registry.RuntimeCompatibility(ctx, ver.ID); err == nil && found {
+	if s.ReadRuntimeCompatibility == nil {
+		return skillDetail{}, errOwnerReadNotConfigured
+	}
+	if c, found, err := s.ReadRuntimeCompatibility(ctx, ver.ID); err == nil && found {
 		out.Compat.Capability = axis(capabilityWords, c.Capability)
 		out.Compat.Runtime = axis(runtimeWords, c.Runtime)
 		out.Compat.RuntimeImage = c.RuntimeImage
@@ -598,11 +600,11 @@ var (
 // skill's newest stored version. The 0023 licensing hold is checked by the
 // caller, before this runs: the hold is on reproducing the bytes, and this is
 // the only thing that reproduces them.
-func (s *Service) SkillFiles(ctx context.Context, skill registry.Skill) (skillFiles, error) {
-	if s.Registry == nil {
+func (s *Service) SkillFiles(ctx context.Context, skill SkillFacts) (skillFiles, error) {
+	if s.ReadLatestVersion == nil {
 		return skillFiles{}, errOwnerReadNotConfigured
 	}
-	ver, found, err := s.Registry.LatestVersion(ctx, skill.WorkspaceID, skill.ID)
+	ver, found, err := s.ReadLatestVersion(ctx, skill.WorkspaceID, skill.ID)
 	if !found && err == nil {
 		return skillFiles{}, errNoSavedVersion
 	}
@@ -649,7 +651,7 @@ func (s *Service) SkillFiles(ctx context.Context, skill registry.Skill) (skillFi
 // restrictionOf turns the stored reason code into the block the API returns.
 // One place, because the detail view, the files view and the run gate must not
 // be able to disagree about whether a skill is on hold.
-func restrictionOf(s registry.Skill) *accessRestriction {
+func restrictionOf(s SkillFacts) *accessRestriction {
 	if s.AccessRestriction == nil || strings.TrimSpace(*s.AccessRestriction) == "" {
 		return nil
 	}
@@ -721,11 +723,11 @@ const (
 // is the only scope an anonymous caller has and the one both callers share; the
 // caller's own workspace is tried second and only with a session. Neither read
 // takes a scope from the request.
-func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (registry.Skill, string, bool) {
+func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFacts, string, bool) {
 	var id pgtype.UUID
 	if err := id.Scan(r.PathValue("id")); err != nil {
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
-		return registry.Skill{}, "", false
+		return SkillFacts{}, "", false
 	}
 	ctx := r.Context()
 
@@ -736,33 +738,33 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (registry
 		// and was withdrawn, which is a different fact from never existing.
 		if skill.TakedownAt.Valid {
 			httpx.WriteError(w, http.StatusGone, "this skill has been withdrawn from the catalog")
-			return registry.Skill{}, "", false
+			return SkillFacts{}, "", false
 		}
 		return skill, "catalog", true
 	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "skill lookup failed")
-		return registry.Skill{}, "", false
+		return SkillFacts{}, "", false
 	}
 
 	user, ok := identity.SessionUser(ctx)
 	if !ok {
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
-		return registry.Skill{}, "", false
+		return SkillFacts{}, "", false
 	}
 	ws, err := h.Identity.PersonalWorkspace(ctx, user)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
-		return registry.Skill{}, "", false
+		return SkillFacts{}, "", false
 	}
 	skill, found, err = h.Svc.WorkspaceSkill(ctx, id, ws.ID)
 	if !found && err == nil {
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
-		return registry.Skill{}, "", false
+		return SkillFacts{}, "", false
 	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "skill lookup failed")
-		return registry.Skill{}, "", false
+		return SkillFacts{}, "", false
 	}
 	return skill, "private", true
 }
@@ -771,18 +773,18 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (registry
 // Neither takes a scope from the request: the first has catalog membership baked
 // into the SQL, the second takes the workspace the session resolved to (iron
 // rule 3).
-func (s *Service) CatalogSkill(ctx context.Context, id pgtype.UUID) (registry.Skill, bool, error) {
-	if s.Registry == nil {
-		return registry.Skill{}, false, errOwnerReadNotConfigured
+func (s *Service) CatalogSkill(ctx context.Context, id pgtype.UUID) (SkillFacts, bool, error) {
+	if s.ReadCatalogSkill == nil {
+		return SkillFacts{}, false, errOwnerReadNotConfigured
 	}
-	return s.Registry.CatalogSkill(ctx, id)
+	return s.ReadCatalogSkill(ctx, id)
 }
 
-func (s *Service) WorkspaceSkill(ctx context.Context, id, workspaceID pgtype.UUID) (registry.Skill, bool, error) {
-	if s.Registry == nil {
-		return registry.Skill{}, false, errOwnerReadNotConfigured
+func (s *Service) WorkspaceSkill(ctx context.Context, id, workspaceID pgtype.UUID) (SkillFacts, bool, error) {
+	if s.ReadWorkspaceSkill == nil {
+		return SkillFacts{}, false, errOwnerReadNotConfigured
 	}
-	return s.Registry.WorkspaceSkill(ctx, workspaceID, id)
+	return s.ReadWorkspaceSkill(ctx, workspaceID, id)
 }
 
 func (s *Service) storeGet(ctx context.Context, key string) ([]byte, error) {
@@ -829,7 +831,7 @@ func tierLabel(t Tier) labelled {
 //
 // Membership of a catalog workspace is still not a review, and neither is a
 // tier written in a seed file: the only thing this trusts is the column.
-func curationTier(skill registry.Skill, latestVersionID pgtype.UUID) Tier {
+func curationTier(skill SkillFacts, latestVersionID pgtype.UUID) Tier {
 	if skill.CurationTier != string(TierCurated) {
 		return TierIndexed
 	}
@@ -861,7 +863,7 @@ func trustLabel(t SourceTrust) labelled {
 	return labelled{Value: string(t), Label: d.Label, Note: d.Note}
 }
 
-func derivation(s registry.Skill) derivationInfo {
+func derivation(s SkillFacts) derivationInfo {
 	isFork := s.ForkedFromSkillID.Valid
 	b := Derivation(isFork)
 	out := derivationInfo{IsFork: isFork, Label: b.Label, Note: b.Note}
@@ -935,7 +937,7 @@ func nonEmptyLines(s string) []string {
 // licenseFrom reads the license off the version row, not off a re-scan: the row
 // is what the import decided and what a fork carried forward, and the two axes
 // (expression, provenance tier) travel together (ADR-021).
-func licenseFrom(v registry.Version) licenseInfo {
+func licenseFrom(v VersionFacts) licenseInfo {
 	if v.LicenseExpression == nil || *v.LicenseExpression == "" {
 		return licenseInfo{Status: statusLabel(LicenseStatusUnknown)}
 	}

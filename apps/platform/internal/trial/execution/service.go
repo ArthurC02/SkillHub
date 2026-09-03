@@ -95,16 +95,6 @@ type Service struct {
 	// ask, because the deployment it guards has no isolation boundary at all -
 	// see requireCuratedContent.
 	ReadContentSource func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
-	// RunVerdicts is eval's owner read of the standing verdict for a page of
-	// runs, injected by the composition root (ADR-034, 04 丙-32). A JOIN to
-	// `evaluations` from a query in this context would pass CI — the ownership
-	// checker sees which context calls which query, not which tables a query
-	// touches — and that blind spot is exactly what ADR-033 was written to close.
-	//
-	// The block crosses as bytes because nothing here reads a field of it: the
-	// wording folds the evaluation's status together with its verdict, and only
-	// eval can tell 「評估中」 from 「無法判斷」.
-	RunVerdicts func(context.Context, pgtype.UUID, []pgtype.UUID) (map[string]json.RawMessage, error)
 	// WorkspaceCreatedAt is identity's pool-backed owner read for quota display.
 	WorkspaceCreatedAt func(context.Context, pgtype.UUID) (time.Time, error)
 	// ActiveArtifactReferences is packaging's owner read, injected by each
@@ -161,7 +151,7 @@ type Service struct {
 }
 
 func (s *Service) requireTestLab() error {
-	if s.TestLab == nil || s.TestLab.Pool == nil {
+	if s.TestLab == nil {
 		return errors.New("run: test lab service not injected")
 	}
 	return nil

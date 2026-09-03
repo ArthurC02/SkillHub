@@ -55,7 +55,8 @@ func denyConfig() string {
 		rule("catalog", "**/internal/skill/discovery/**",
 			"entrypoint/api/apiserver", "foundation/storage/objreconcile") +
 		rule("trace", "**/internal/trial/evidence/**",
-			"creator/workspace", "skill/discovery", "entrypoint/api/apiserver", "foundation/storage/objreconcile")
+			"creator/workspace", "skill/discovery", "entrypoint/api/apiserver", "foundation/storage/objreconcile") +
+		rule("objreconcile", "**/internal/foundation/storage/objreconcile/**")
 }
 
 func writeDenyFixture(t *testing.T, adr, lint string) string {
@@ -135,7 +136,12 @@ func TestDepguardDenyRejectsAPermissionGrantedByDeletion(t *testing.T) {
 		name: "a deny entry names a package no §1 row declares",
 		adr:  denyADRTable,
 		lint: strings.Replace(denyConfig(), denyPrefix+"skill/discovery", denyPrefix+"skill/discovry", 1),
-		want: "denies internal/skill/discovry, which no",
+		want: "denies internal/skill/discovry, which is not an exact",
+	}, {
+		name: "a narrower child deny does not cover the context root",
+		adr:  denyADRTable,
+		lint: strings.Replace(denyConfig(), denyPrefix+"skill/discovery", denyPrefix+"skill/discovery/nonexistent", 1),
+		want: "not an exact",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -144,6 +150,75 @@ func TestDepguardDenyRejectsAPermissionGrantedByDeletion(t *testing.T) {
 				t.Fatalf("want a problem containing %q, got %v", tc.want, problems)
 			}
 		})
+	}
+}
+
+func TestDepguardDenyStillChecksARuleWithDuplicateSelectors(t *testing.T) {
+	t.Parallel()
+	lint := strings.Replace(denyConfig(),
+		"            - \"**/internal/creator/workspace/**\"\n",
+		"            - \"**/internal/creator/workspace/**\"\n            - \"**/internal/creator/workspace/**\"\n", 1)
+	lint = strings.Replace(lint,
+		"            - pkg: "+denyPrefix+"skill/discovery\n"+
+			"              desc: \"cross-context import forbidden by ADR-032\"\n", "", 1)
+	problems := strings.Join(depguardDenyProblems(writeDenyFixture(t, denyADRTable, lint)), "\n")
+	if !strings.Contains(problems, `rule "identity" does not deny "catalog"`) {
+		t.Fatalf("a duplicate selector bypassed deny reconciliation: %s", problems)
+	}
+}
+
+func TestDepguardDenyChecksProseGovernedRules(t *testing.T) {
+	t.Parallel()
+	adr := strings.Replace(denyADRTable,
+		"| — | Generic | objreconcile | foundation/storage/objreconcile | — |",
+		"| — | Generic | objreconcile | foundation/storage/objreconcile | — |\n"+
+			"| — | Generic | worker | entrypoint/worker | — |\n"+
+			"| — | Generic | audit | foundation/observability/audit | — |\n"+
+			"| — | Shared Kernel | skillpkg | shared/skillpkg | — |", 1)
+	bounded := []string{"creator/workspace", "skill/discovery", "trial/evidence"}
+	composition := []string{"entrypoint/api/apiserver", "entrypoint/worker", "foundation/storage/objreconcile"}
+	sharedDenied := append(append([]string{}, bounded...), composition...)
+	sharedRule := rule("shared-kernel", "**/internal/shared/skillpkg/**", sharedDenied...)
+	genericRule := rule("generic", "**/internal/foundation/observability/audit/**",
+		"creator/workspace", "skill/discovery", "trial/evidence",
+		"entrypoint/api/apiserver", "entrypoint/worker", "foundation/storage/objreconcile")
+	objRule := rule("objreconcile", "**/internal/foundation/storage/objreconcile/**",
+		"creator/workspace", "skill/discovery", "trial/evidence",
+		"entrypoint/api/apiserver", "entrypoint/worker")
+	identityRule := rule("identity", "**/internal/creator/workspace/**", "skill/discovery", "trial/evidence", "entrypoint/api/apiserver", "entrypoint/worker", "foundation/storage/objreconcile")
+	catalogRule := rule("catalog", "**/internal/skill/discovery/**", "entrypoint/api/apiserver", "entrypoint/worker", "foundation/storage/objreconcile")
+	traceRule := rule("trace", "**/internal/trial/evidence/**", "creator/workspace", "skill/discovery", "entrypoint/api/apiserver", "entrypoint/worker", "foundation/storage/objreconcile")
+	coreConfig := "version: \"2\"\nlinters:\n  settings:\n    depguard:\n      rules:\n" +
+		identityRule + catalogRule +
+		traceRule
+	config := coreConfig + sharedRule + genericRule + objRule
+	if problems := depguardDenyProblems(writeDenyFixture(t, adr, config)); len(problems) != 0 {
+		t.Fatalf("complete prose-governed rules were rejected: %v", problems)
+	}
+
+	for _, test := range []struct {
+		name, old, replacement, want string
+	}{
+		{"shared kernel loses a bounded context", sharedRule, rule("shared-kernel", "**/internal/shared/skillpkg/**", append(append([]string{}, bounded[:2]...), composition...)...), `rule "shared-kernel" does not deny "trace"`},
+		{"shared kernel loses a composition root", sharedRule, rule("shared-kernel", "**/internal/shared/skillpkg/**", append(append([]string{}, bounded...), composition[1:]...)...), `rule "shared-kernel" does not deny "apiserver"`},
+		{"generic loses worker", genericRule, rule("generic", "**/internal/foundation/observability/audit/**", "creator/workspace", "skill/discovery", "trial/evidence", "entrypoint/api/apiserver", "foundation/storage/objreconcile"), `rule "generic" does not deny "worker"`},
+		{"objreconcile loses identity", objRule, rule("objreconcile", "**/internal/foundation/storage/objreconcile/**", "skill/discovery", "trial/evidence", "entrypoint/api/apiserver", "entrypoint/worker"), `rule "objreconcile" does not deny "identity"`},
+		{"ordinary context loses worker", catalogRule, rule("catalog", "**/internal/skill/discovery/**", "entrypoint/api/apiserver", "foundation/storage/objreconcile"), `rule "catalog" does not deny "worker"`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			mutated := strings.Replace(config, test.old, test.replacement, 1)
+			problems := strings.Join(depguardDenyProblems(writeDenyFixture(t, adr, mutated)), "\n")
+			if !strings.Contains(problems, test.want) {
+				t.Fatalf("want %q after mutation, got %s", test.want, problems)
+			}
+		})
+	}
+
+	misplaced := strings.Replace(config,
+		"            - \"**/internal/skill/discovery/**\"\n            - \"!$test\"",
+		"            - \"**/internal/skill/discovery/**\"\n            - \"**/internal/foundation/observability/audit/**\"\n            - \"!$test\"", 1)
+	if problems := strings.Join(depguardDenyProblems(writeDenyFixture(t, adr, misplaced)), "\n"); !strings.Contains(problems, `rule "catalog" unexpectedly selects "audit"`) {
+		t.Fatalf("moving a Generic selector under a context rule was accepted: %s", problems)
 	}
 }
 
@@ -157,6 +232,37 @@ func TestDepguardDenyAllowsARuleToRefuseTheBlanketGrant(t *testing.T) {
 	for _, problem := range depguardDenyProblems(writeDenyFixture(t, denyADRTable, denyConfig())) {
 		if strings.Contains(problem, "identity") {
 			t.Fatalf("refusing the blanket identity grant was reported: %q", problem)
+		}
+	}
+}
+
+func TestDepguardSelectorsAcceptTerminalWildcardContextPaths(t *testing.T) {
+	t.Parallel()
+	declared := map[string]packageIdentity{
+		"catalog":  {Kind: architectureCore, ID: "catalog", Path: "skill/*"},
+		"skillpkg": {Kind: architectureSharedKernel, ID: "skillpkg", Path: "shared/skillpkg"},
+		"contract": {Kind: architectureSharedKernel, ID: "contract", Path: "shared/contract"},
+	}
+	shared := strings.Replace(
+		rule("shared-kernel", "**/internal/shared/skillpkg/**"),
+		"            - \"!$test\"",
+		"            - \"**/internal/shared/contract/**\"\n            - \"!$test\"", 1)
+	rules := depguardRules("version: \"2\"\nlinters:\n  settings:\n    depguard:\n      rules:\n" +
+		rule("catalog", "**/internal/skill/**") + shared)
+	if problems := depguardSelectorProblems(rules, declared, "lint.yml"); len(problems) != 0 {
+		t.Fatalf("terminal wildcard context path was rejected: %v", problems)
+	}
+}
+
+func TestDepguardSelectorsRejectMalformedGlobs(t *testing.T) {
+	t.Parallel()
+	declared := map[string]packageIdentity{
+		"catalog": {Kind: architectureCore, ID: "catalog", Path: "skill/discovery"},
+	}
+	for _, selector := range []string{"NO**/internal/skill/discovery/**", "**/internal/skill/discovery/**NO"} {
+		rules := depguardRules("version: \"2\"\nlinters:\n  settings:\n    depguard:\n      rules:\n" + rule("catalog", selector))
+		if problems := depguardSelectorProblems(rules, declared, "lint.yml"); len(problems) == 0 {
+			t.Fatalf("malformed selector %q was accepted", selector)
 		}
 	}
 }

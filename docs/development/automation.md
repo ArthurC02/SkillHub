@@ -97,6 +97,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | --- | --- | --- |
 | `drift-marker` | ADR-032 附錄 A 與 `apps/platform/.golangci.yml` 的 `drift: DDD-n` 標記多重集必須一致 | `tools/devctl/automation_check.go` |
 | `depguard-deny` | depguard deny 清單的**內容**與 ADR-032 附錄 A 相符——刪兩行就等於默默開一條跨 context 權限 | `tools/devctl/depguard_deny.go` |
+| `service-construction` | 非 composition root 不得現場建構其他 Bounded Context 的 `Service`（ADR-032 §5） | `tools/devctl/service_construction.go` |
 | `one-number` | 帶 `one-number:` 標記的各站點數值相同，且標記要在 `sharedNumberRoster` 名冊上（雙向） | `tools/devctl/shared_number.go` |
 | `query-owner` | 每條 sqlc query 的呼叫方是 `db/query-owners.yaml` 宣告的 owner context（ADR-033／035） | `tools/devctl/query_owners.go` |
 | `context-map` | ADR-032 §1 Context 對照表與 `.golangci.yml` 的 `files:` 清單逐套件對帳 | `tools/devctl/query_owners.go`（`contextMapProblems`） |

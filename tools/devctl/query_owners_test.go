@@ -48,8 +48,7 @@ func writeQueryOwnerFixtureWithADR(t *testing.T, adr, declaration string, sql ma
 	}
 	for context, body := range callers {
 		write("apps/platform/internal/"+context+"/service.go",
-			"package "+filepath.Base(context)+"\n\nimport \"github.com/ArthurC02/skillhub/apps/platform/"+
-				strings.TrimSuffix(genImportPath, "\"")+"\"\n\n"+body+"\n")
+			"package "+filepath.Base(context)+"\n\nimport \""+genImportPath+"\"\n\n"+body+"\n")
 	}
 	return root
 }
@@ -57,7 +56,12 @@ func writeQueryOwnerFixtureWithADR(t *testing.T, adr, declaration string, sql ma
 // decl appends the two sections the ownership cases do not exercise. They are
 // required to exist, so a declaration that omits them fails to parse before the
 // case under test gets a chance to run.
-func decl(declaration string) string { return declaration + "immutable:\nimmutable_allow:\n" }
+func decl(declaration string) string {
+	if !strings.Contains(declaration, "\nread_allow:") {
+		declaration += "read_allow:\n"
+	}
+	return declaration + "immutable:\nimmutable_allow:\n"
+}
 
 func TestQueryOwnerProblems(t *testing.T) {
 	t.Parallel()
@@ -104,30 +108,48 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 			want:        `GetRun is owned by "run" but "eval" reads it`,
 		},
 		{
-			name:        "read_allow entry lets a known drift through",
+			name:        "comments cannot split a query call away from ownership",
+			declaration: baseDeclaration,
+			callers:     map[string]string{"eval": "func f(q Q) { q.GetRun/* intentional */(ctx) }"},
+			want:        `GetRun is owned by "run" but "eval" reads it`,
+		},
+		{
+			name:        "query method values remain owned",
+			declaration: baseDeclaration,
+			callers:     map[string]string{"eval": "func f(q Q) { call := q.GetRun; call(ctx) }"},
+			want:        `GetRun is owned by "run" but "eval" reads it`,
+		},
+		{
+			name:        "comments and strings are not query calls",
+			declaration: baseDeclaration,
+			callers:     map[string]string{"eval": "// q.GetRun(ctx)\nvar note = \".GetRun(\""},
+		},
+		{
+			name:        "read_allow cannot re-open a cleared drift",
 			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\nread_allow:\n  GetRun: eval\n"),
 			callers:     map[string]string{"eval": "func f(q Q) { q.GetRun(ctx) }"},
+			want:        "read_allow.GetRun is forbidden",
 		},
 		{
 			name:        "stale read_allow entry is reported",
 			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\nread_allow:\n  GetRun: eval\n"),
 			callers:     map[string]string{"run": "func f(q Q) { q.GetRun(ctx) }"},
-			want:        "read_allow.GetRun = \"eval\" no longer calls it",
+			want:        "read_allow.GetRun is forbidden",
 		},
 		{
 			name:        "a write parked in read_allow is sent to the other section",
 			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\nread_allow:\n  CreateRun: eval\n"),
-			want:        "read_allow.CreateRun is a write query; declare it in allow:",
+			want:        "read_allow.CreateRun is forbidden",
 		},
 		{
 			name:        "a read parked in allow is sent to the other section",
 			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\n  GetRun: eval\nread_allow:\n"),
-			want:        "allow.GetRun is a read query; declare it in read_allow:",
+			want:        "allow.GetRun is forbidden",
 		},
 		{
 			name:        "read_allow entry for a vanished query is reported",
 			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\nread_allow:\n  ListRuns: eval\n"),
-			want:        "read_allow.ListRuns is not a query in db/queries",
+			want:        "read_allow.ListRuns is forbidden",
 		},
 		{
 			name:        "foreign context writing is blocked",
@@ -142,15 +164,16 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 			want:        `PurgeRuns is owned by "run" but "eval" writes it`,
 		},
 		{
-			name:        "allow entry lets a known drift through",
+			name:        "allow cannot re-open a cleared drift",
 			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\n  CreateRun: eval\n"),
 			callers:     map[string]string{"eval": "func f(q Q) { q.CreateRun(ctx) }"},
+			want:        "allow.CreateRun is forbidden",
 		},
 		{
 			name:        "stale allow entry is reported",
 			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\n  CreateRun: eval\n"),
 			callers:     map[string]string{"run": "func f(q Q) { q.CreateRun(ctx) }"},
-			want:        "allow.CreateRun = \"eval\" no longer calls it",
+			want:        "allow.CreateRun is forbidden",
 		},
 		{
 			name:        "undeclared sql file is reported",
@@ -201,6 +224,58 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 	}
 }
 
+func TestOwnerDeclarationRequiresBothClearedAllowSections(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), queryOwnersFile)
+	if err := os.WriteFile(path, []byte("files:\nqueries:\nallow:\nimmutable:\nimmutable_allow:\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parseOwnerDeclaration(path); err == nil || !strings.Contains(err.Error(), `missing section "read_allow"`) {
+		t.Fatalf("deleting read_allow did not fail closed: %v", err)
+	}
+}
+
+func TestQueryOwnerFindsConsumerInterfaceWithoutGeneratedImport(t *testing.T) {
+	t.Parallel()
+	const queries = "-- name: GetRun :one\nSELECT * FROM runs WHERE id = $1;\n"
+	root := writeQueryOwnerFixture(t, decl("files:\n  runs.sql: run\nqueries:\nallow:\n"), map[string]string{"runs.sql": queries}, nil)
+	path := filepath.Join(root, "apps", "platform", "internal", "eval", "service.go")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	source := "package eval\ntype runReader interface { GetRun(any) error }\nfunc f(q runReader) { _ = q.GetRun(nil) }\n"
+	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	problems := strings.Join(queryOwnerProblems(root), "\n")
+	if !strings.Contains(problems, `GetRun is owned by "run" but "a query-shaped interface" reads it`) {
+		t.Fatalf("consumer interface bypassed query ownership: %s", problems)
+	}
+	ownerPath := filepath.Join(root, "apps", "platform", "internal", "run", "reader.go")
+	if err := os.MkdirAll(filepath.Dir(ownerPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ownerPath, []byte("package run\ntype Reader interface { GetRun(any) error }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	problems = strings.Join(queryOwnerProblems(root), "\n")
+	if !strings.Contains(problems, `but "a query-shaped interface" reads it`) {
+		t.Fatalf("an owner-declared interface could be injected into another context: %s", problems)
+	}
+}
+
+func TestOwnerDeclarationRejectsDuplicateSections(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), queryOwnersFile)
+	declaration := "files:\nqueries:\nallow:\n  CreateRun: eval\nallow:\nread_allow:\nimmutable:\nimmutable_allow:\n"
+	if err := os.WriteFile(path, []byte(declaration), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parseOwnerDeclaration(path); err == nil || !strings.Contains(err.Error(), `section "allow" declared twice`) {
+		t.Fatalf("a duplicate section erased its forbidden entries: %v", err)
+	}
+}
+
 func TestQueryOwnerProblemsNestedCallerUsesBoundaryID(t *testing.T) {
 	t.Parallel()
 	adr := strings.Replace(queryOwnerADRFixture, "| run | run | RUN |", "| run | trial/execution | RUN |", 1)
@@ -215,21 +290,23 @@ func TestQueryOwnerProblemsNestedCallerUsesBoundaryID(t *testing.T) {
 	}
 }
 
-func TestQueryOwnerProblemsIgnoresTestsAndNonImporters(t *testing.T) {
+func TestQueryOwnerProblemsIgnoresTestsAndUnrelatedSelectors(t *testing.T) {
 	t.Parallel()
-	// A cross-context write in a _test.go file, or in a file that never imports
-	// the sqlc package, is not a production data-access path. Counting either
-	// would make the check fire on integration tests that drive fixtures.
+	// A cross-context write in a _test.go file is not a production data-access
+	// path. A production selector whose name is not a sqlc query is irrelevant.
 	root := writeQueryOwnerFixture(t,
 		decl("files:\n  runs.sql: run\nqueries:\nallow:\n"),
 		map[string]string{"runs.sql": "-- name: CreateRun :one\nINSERT INTO runs (id) VALUES ($1);\n"},
 		nil)
-	for _, relative := range []string{"eval/service_test.go", "eval/helper.go"} {
-		path := filepath.Join(root, "apps", "platform", "internal", filepath.FromSlash(relative))
+	for _, fixture := range []struct{ relative, body string }{
+		{"eval/service_test.go", "func f(q Q) { q.CreateRun(ctx) }"},
+		{"eval/helper.go", "func f(q Q) { q.Unrelated(ctx) }"},
+	} {
+		path := filepath.Join(root, "apps", "platform", "internal", filepath.FromSlash(fixture.relative))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(path, []byte("package eval\n\nfunc f(q Q) { q.CreateRun(ctx) }\n"), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte("package eval\n\n"+fixture.body+"\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -246,8 +323,7 @@ func writeCommand(t *testing.T, root, name, body string) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	source := "package main\n\nimport \"github.com/ArthurC02/skillhub/apps/platform/" +
-		strings.TrimSuffix(genImportPath, "\"") + "\"\n\n" + body + "\n"
+	source := "package main\n\nimport \"" + genImportPath + "\"\n\n" + body + "\n"
 	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +524,7 @@ CREATE TRIGGER notes_immutable
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			root := writeQueryOwnerFixture(t,
-				"files:\n  versions.sql: registry\nqueries:\nallow:\n"+test.suffix,
+				"files:\n  versions.sql: registry\nqueries:\nallow:\nread_allow:\n"+test.suffix,
 				map[string]string{"versions.sql": test.queries}, nil)
 			path := filepath.Join(root, "db", "migrations", "0005_immutability.sql")
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

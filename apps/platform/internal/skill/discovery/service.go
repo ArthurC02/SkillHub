@@ -22,14 +22,16 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // Service owns the non-HTTP dependencies of discovery.
 type Service struct {
 	Pool *pgxpool.Pool
-	// Registry owns Skill, Version and runtime-compatibility facts.
-	Registry *registry.Service
+	// Registry reads are adapted to Catalog-owned facts at the composition root.
+	ReadCatalogSkill         func(context.Context, pgtype.UUID) (SkillFacts, bool, error)
+	ReadWorkspaceSkill       func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
+	ReadLatestVersion        func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+	ReadRuntimeCompatibility func(context.Context, pgtype.UUID) (RuntimeCompatibilityFacts, bool, error)
 	// SourceByID is ingest's owner read, adapted at the composition root because
 	// catalog -> ingest is deliberately denied to avoid a cycle.
 	SourceByID func(context.Context, pgtype.UUID, pgtype.UUID) (SourceFacts, bool, error)
@@ -47,6 +49,42 @@ type Service struct {
 	// Never a source of truth and never able to fail a search: every call is fire
 	// and forget (ADR-029 決策 1).
 	Analytics *analytics.Service
+}
+
+// SkillFacts is the Registry-owned skill state consumed by Catalog views.
+type SkillFacts struct {
+	ID                  pgtype.UUID
+	WorkspaceID         pgtype.UUID
+	Name                string
+	Summary             *string
+	ForkedFromSkillID   pgtype.UUID
+	ForkedFromVersionID pgtype.UUID
+	TakedownAt          pgtype.Timestamptz
+	AccessRestriction   *string
+	Redistribution      string
+	CurationTier        string
+	CuratedVersionID    pgtype.UUID
+	Category            *string
+}
+
+// VersionFacts is the immutable Registry version state consumed by Catalog views.
+type VersionFacts struct {
+	ID                pgtype.UUID
+	WorkspaceID       pgtype.UUID
+	SourceID          pgtype.UUID
+	VersionNumber     int32
+	ContentHash       string
+	PackageObjectKey  string
+	LicenseExpression *string
+	CreatedAt         pgtype.Timestamptz
+	LicenseSource     *string
+}
+
+type RuntimeCompatibilityFacts struct {
+	Capability   string
+	Runtime      string
+	RuntimeImage string
+	MeasuredAt   pgtype.Timestamptz
 }
 
 // SourceFacts is the provenance shape consumed by Catalog detail views.

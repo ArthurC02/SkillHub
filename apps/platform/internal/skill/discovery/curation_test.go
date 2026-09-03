@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
-
-	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 func uuid(t *testing.T, s string) pgtype.UUID {
@@ -27,23 +25,23 @@ func TestCurationTierNeedsBothHalvesOfTheRecord(t *testing.T) {
 
 	for _, c := range []struct {
 		name   string
-		skill  registry.Skill
+		skill  SkillFacts
 		newest pgtype.UUID
 		want   Tier
 	}{
 		{"reviewed version is still the newest",
-			registry.Skill{CurationTier: "curated", CuratedVersionID: reviewed}, reviewed, TierCurated},
+			SkillFacts{CurationTier: "curated", CuratedVersionID: reviewed}, reviewed, TierCurated},
 		{"the content moved on after the review",
-			registry.Skill{CurationTier: "curated", CuratedVersionID: reviewed}, newer, TierIndexed},
+			SkillFacts{CurationTier: "curated", CuratedVersionID: reviewed}, newer, TierIndexed},
 		{"no verdict recorded",
-			registry.Skill{CurationTier: "indexed"}, reviewed, TierIndexed},
+			SkillFacts{CurationTier: "indexed"}, reviewed, TierIndexed},
 		// Reachable only through 0042's ON DELETE SET NULL, when the reviewed
 		// version was purged. Fail closed: the bytes somebody read can no longer
 		// be produced, so the badge cannot be about them.
 		{"verdict without the version it judged",
-			registry.Skill{CurationTier: "curated"}, reviewed, TierIndexed},
+			SkillFacts{CurationTier: "curated"}, reviewed, TierIndexed},
 		{"a skill with no version at all",
-			registry.Skill{CurationTier: "curated", CuratedVersionID: reviewed}, pgtype.UUID{}, TierIndexed},
+			SkillFacts{CurationTier: "curated", CuratedVersionID: reviewed}, pgtype.UUID{}, TierIndexed},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			if got := curationTier(c.skill, c.newest); got != c.want {

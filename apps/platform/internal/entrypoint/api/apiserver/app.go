@@ -281,7 +281,7 @@ func NewApp(cfg Config) (*App, error) {
 	wirePackagingRegistryReaders(packagingSvc, registrySvc)
 	runSvc.ActiveArtifactReferences = packagingSvc.ActiveArtifactReferences
 	catalogSvc := &catalog.Service{
-		Pool: cfg.Pool, Registry: registrySvc, LLM: cfg.LLM, Store: cfg.Store, Analytics: funnel,
+		Pool: cfg.Pool, LLM: cfg.LLM, Store: cfg.Store, Analytics: funnel,
 		SourceByID: func(ctx context.Context, workspaceID, sourceID pgtype.UUID) (catalog.SourceFacts, bool, error) {
 			source, found, err := versions.ReadSource(ctx, workspaceID, sourceID)
 			return catalog.SourceFacts{
@@ -293,6 +293,7 @@ func NewApp(cfg Config) (*App, error) {
 			}, found, err
 		},
 	}
+	wireCatalogRegistryReaders(catalogSvc, registrySvc)
 	// The read half of the same inversion as registrySvc's two projection writes
 	// (ADR-034): catalog's column, catalog's wording, handed to the owner's list
 	// rather than imported by it. Assigned here rather than inside the literal
@@ -306,7 +307,6 @@ func NewApp(cfg Config) (*App, error) {
 	// The run history's second axis (04 丙-32). Same shape and same reason as the
 	// two above: eval owns `evaluations`, and a JOIN to it from a run-owned query
 	// would slip past the ownership checker rather than satisfy it.
-	runSvc.RunVerdicts = evalSvc.RunVerdicts
 
 	return &App{
 		Deps: Deps{
@@ -329,7 +329,7 @@ func NewApp(cfg Config) (*App, error) {
 				Svc:      testlabSvc,
 				Identity: auth.Service,
 			},
-			Runs:      &run.Handler{Svc: runSvc, Identity: auth.Service},
+			Runs:      &run.Handler{Svc: runSvc, Identity: auth.Service, RunVerdicts: evalSvc.RunVerdicts},
 			Trace:     &trace.Handler{Svc: traceSvc, Identity: auth.Service},
 			Eval:      &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 			Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
@@ -452,6 +452,51 @@ func wireEvaluationRegistryReaders(service *eval.Service, registryService *regis
 		return eval.RuntimeCompatibility{
 			Capability: compat.Capability, Runtime: compat.Runtime, RuntimeImage: compat.RuntimeImage,
 		}, found, err
+	}
+}
+
+func wireCatalogRegistryReaders(service *catalog.Service, registryService *registry.Service) {
+	service.ReadCatalogSkill = func(ctx context.Context, skillID pgtype.UUID) (catalog.SkillFacts, bool, error) {
+		skill, found, err := registryService.CatalogSkill(ctx, skillID)
+		return catalogSkillFacts(skill), found, err
+	}
+	service.ReadWorkspaceSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (catalog.SkillFacts, bool, error) {
+		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, skillID)
+		return catalogSkillFacts(skill), found, err
+	}
+	service.ReadLatestVersion = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (catalog.VersionFacts, bool, error) {
+		version, found, err := registryService.LatestVersion(ctx, workspaceID, skillID)
+		return catalogVersionFacts(version), found, err
+	}
+	service.ReadRuntimeCompatibility = func(ctx context.Context, versionID pgtype.UUID) (catalog.RuntimeCompatibilityFacts, bool, error) {
+		compat, found, err := registryService.RuntimeCompatibility(ctx, versionID)
+		return catalogRuntimeCompatibilityFacts(compat), found, err
+	}
+}
+
+func catalogSkillFacts(skill registry.Skill) catalog.SkillFacts {
+	return catalog.SkillFacts{
+		ID: skill.ID, WorkspaceID: skill.WorkspaceID, Name: skill.Name, Summary: skill.Summary,
+		ForkedFromSkillID: skill.ForkedFromSkillID, ForkedFromVersionID: skill.ForkedFromVersionID,
+		TakedownAt: skill.TakedownAt, AccessRestriction: skill.AccessRestriction,
+		Redistribution: skill.Redistribution, CurationTier: skill.CurationTier,
+		CuratedVersionID: skill.CuratedVersionID, Category: skill.Category,
+	}
+}
+
+func catalogVersionFacts(version registry.Version) catalog.VersionFacts {
+	return catalog.VersionFacts{
+		ID: version.ID, WorkspaceID: version.WorkspaceID, SourceID: version.SourceID,
+		VersionNumber: version.VersionNumber, ContentHash: version.ContentHash,
+		PackageObjectKey: version.PackageObjectKey, LicenseExpression: version.LicenseExpression,
+		CreatedAt: version.CreatedAt, LicenseSource: version.LicenseSource,
+	}
+}
+
+func catalogRuntimeCompatibilityFacts(compat registry.RuntimeCompatibility) catalog.RuntimeCompatibilityFacts {
+	return catalog.RuntimeCompatibilityFacts{
+		Capability: compat.Capability, Runtime: compat.Runtime,
+		RuntimeImage: compat.RuntimeImage, MeasuredAt: compat.MeasuredAt,
 	}
 }
 

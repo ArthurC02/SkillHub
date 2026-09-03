@@ -255,6 +255,13 @@ type Service struct {
 	JudgePromptVersion string
 }
 
+func (s *Service) requireTestLab() error {
+	if s.TestLab == nil {
+		return errors.New("eval: test lab service not injected")
+	}
+	return nil
+}
+
 // RunFacts is the consumer-owned Run shape used by Evaluation.
 type RunFacts struct {
 	ID                 pgtype.UUID
@@ -642,8 +649,8 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 	if m.skill, _, err = s.ReadSkill(ctx, workspaceID, m.version.SkillID); err != nil {
 		return m, err
 	}
-	if s.TestLab == nil || s.TestLab.Pool == nil {
-		return m, errors.New("eval: test lab service not injected")
+	if err := s.requireTestLab(); err != nil {
+		return m, err
 	}
 	if m.snapshot, err = s.TestLab.ReadSnapshot(ctx, workspaceID, m.run.TestCaseSnapshotID); err != nil {
 		return m, err

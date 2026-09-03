@@ -24,11 +24,11 @@ const queryOwnersFile = "query-owners.yaml"
 // Only files that import the sqlc package can call a query, which is also what
 // keeps the generated packages themselves out of the scan: db/gen does not
 // import itself and api/gen never imports it.
-const genImportPath = "internal/foundation/persistence/db/gen\""
+const genImportPath = "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 
 // 跨 context read 的具名豁免所在 section（ADR-035）。形狀與 `allow:` 完全一致：
 // key 是 query 名、value 是被容忍的呼叫端 context 清單，理由寫在上方的分組註解。
-// section 不存在＝零條豁免，是最嚴格的預設，故不列入必要 section。
+// section 必須存在且保持空白；刪除或加入例外都會 FAIL。
 const readAllowSection = "read_allow"
 
 type sqlQuery struct {
@@ -149,6 +149,16 @@ func queryOwnerProblems(root string) []string {
 		{write: false, section: readAllowSection, other: "allow", verb: "read", otherVerb: "write"},
 	} {
 		tolerated := sections[side.section]
+		// ADR-033/035's migration inventories are empty now. Keeping these
+		// sections parseable is useful because deleting either heading would make
+		// the policy ambiguous, but adding an entry must never grant a new
+		// cross-context query permission. A new collaboration goes through an
+		// owner Service API, not a self-approved YAML exception.
+		for _, name := range sortedKeys(tolerated) {
+			problems = append(problems, fmt.Sprintf(
+				"db/%s: %s.%s is forbidden; %s must stay empty after the DDD migration",
+				queryOwnersFile, side.section, name, side.section))
+		}
 		for _, name := range sortedKeys(queries) {
 			if queries[name].write != side.write {
 				continue
@@ -172,33 +182,6 @@ func queryOwnerProblems(root string) []string {
 			}
 		}
 
-		// A tolerated drift whose call site is gone must be deleted from the file;
-		// leaving it there quietly re-opens the hole for the next caller.
-		for _, name := range sortedKeys(tolerated) {
-			query, ok := queries[name]
-			if !ok {
-				problems = append(problems, fmt.Sprintf(
-					"db/%s: %s.%s is not a query in db/queries", queryOwnersFile, side.section, name))
-				continue
-			}
-			for _, context := range splitList(tolerated[name]) {
-				switch {
-				case !knownBoundaryID(identities, context):
-					problems = append(problems, fmt.Sprintf(
-						"db/%s: %s.%s = %q is not a Boundary ID in ADR-032 §1", queryOwnersFile, side.section, name, context))
-				case query.write != side.write:
-					problems = append(problems, fmt.Sprintf(
-						"db/%s: %s.%s is a %s query; declare it in %s:",
-						queryOwnersFile, side.section, name, side.otherVerb, side.other))
-				case context == ownerBoundary(name):
-					problems = append(problems, fmt.Sprintf(
-						"db/%s: %s.%s = %q is the owner; the entry is redundant", queryOwnersFile, side.section, name, context))
-				case !callsFrom(calls[name], context):
-					problems = append(problems, fmt.Sprintf(
-						"db/%s: %s.%s = %q no longer calls it; delete the entry", queryOwnersFile, side.section, name, context))
-				}
-			}
-		}
 	}
 	problems = append(problems, immutableTableProblems(root, sections, queries)...)
 	return append(problems, rawSQLProblems(root, sections[rawSQLAllowSection])...)
@@ -368,6 +351,9 @@ func parseOwnerDeclaration(path string) (map[string]map[string]string, error) {
 			if value != "" {
 				return nil, fmt.Errorf("line %d: section %q must have no inline value", number+1, key)
 			}
+			if _, duplicate := sections[key]; duplicate {
+				return nil, fmt.Errorf("line %d: section %q declared twice", number+1, key)
+			}
 			current, sections[key] = key, map[string]string{}
 			continue
 		}
@@ -379,7 +365,7 @@ func parseOwnerDeclaration(path string) (map[string]map[string]string, error) {
 		}
 		sections[current][key] = value
 	}
-	for _, section := range []string{"files", "queries", "allow", "immutable", "immutable_allow"} {
+	for _, section := range []string{"files", "queries", "allow", readAllowSection, "immutable", "immutable_allow"} {
 		if _, ok := sections[section]; !ok {
 			return nil, fmt.Errorf("missing section %q", section)
 		}
@@ -482,13 +468,6 @@ var commandContexts = map[string]string{
 }
 
 func queryCallSites(platform string, names map[string]bool, identities map[string]packageIdentity) (map[string][]callSite, error) {
-	alternatives := make([]string, 0, len(names))
-	for name := range names {
-		alternatives = append(alternatives, regexp.QuoteMeta(name))
-	}
-	sort.Strings(alternatives)
-	callPattern := regexp.MustCompile(`\.(` + strings.Join(alternatives, "|") + `)\(`)
-
 	calls := map[string][]callSite{}
 	for _, tree := range []string{"internal", "cmd"} {
 		base := filepath.Join(platform, tree)
@@ -502,12 +481,48 @@ func queryCallSites(platform string, names map[string]bool, identities map[strin
 			if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 				return nil
 			}
-			data, err := os.ReadFile(path)
+			normalizedPath := filepath.ToSlash(path)
+			for _, skipped := range rawSQLSkippedDirs {
+				if strings.Contains(normalizedPath, "/"+skipped+"/") {
+					return nil
+				}
+			}
+			file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 			if err != nil {
 				return err
 			}
-			text := string(data)
-			if !strings.Contains(text, genImportPath) {
+			importsGen := false
+			for _, spec := range file.Imports {
+				importPath, err := strconv.Unquote(spec.Path.Value)
+				if err == nil && importPath == genImportPath {
+					importsGen = true
+					break
+				}
+			}
+			// Direct query selectors require the generated import. Query-shaped
+			// interface methods are reserved even without it: otherwise a consumer
+			// could inject *gen.Queries behind an interface and evade ownership.
+			seen := map[string]bool{}
+			interfaceQueries := map[string]bool{}
+			ast.Inspect(file, func(node ast.Node) bool {
+				switch node := node.(type) {
+				case *ast.SelectorExpr:
+					if importsGen && names[node.Sel.Name] {
+						seen[node.Sel.Name] = true
+					}
+				case *ast.InterfaceType:
+					for _, method := range node.Methods.List {
+						for _, name := range method.Names {
+							if names[name.Name] {
+								seen[name.Name] = true
+								interfaceQueries[name.Name] = true
+							}
+						}
+					}
+				}
+				return true
+			})
+			if len(seen) == 0 {
 				return nil
 			}
 			relative, err := filepath.Rel(base, path)
@@ -526,15 +541,14 @@ func queryCallSites(platform string, names map[string]bool, identities map[strin
 			}
 			// One entry per query per file: the report names the file, and a second
 			// call on the next line adds nothing to it.
-			seen := map[string]bool{}
-			for _, match := range callPattern.FindAllStringSubmatch(text, -1) {
-				if seen[match[1]] {
-					continue
+			for name := range seen {
+				siteBoundary, caller := boundary, boundary
+				if interfaceQueries[name] {
+					siteBoundary, caller = "", "a query-shaped interface"
 				}
-				seen[match[1]] = true
-				calls[match[1]] = append(calls[match[1]], callSite{
-					boundary: boundary,
-					caller:   boundary,
+				calls[name] = append(calls[name], callSite{
+					boundary: siteBoundary,
+					caller:   caller,
 					path:     "apps/platform/" + tree + "/" + relative,
 				})
 			}
@@ -843,7 +857,8 @@ var (
 	boundaryIDPattern   = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 	contextPathPattern  = regexp.MustCompile(`^[a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*(?:/\*)?$`)
 	// depguard 規則的 files: 清單，例如 `- "**/internal/trial/execution/**"`。
-	depguardFilePattern = regexp.MustCompile(`\*\*/internal/([a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*)/\*\*`)
+	depguardFilePattern     = regexp.MustCompile(`(?m)^\s*-\s*"\*\*/internal/([a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*)/\*\*"\s*$`)
+	depguardSelectorPattern = regexp.MustCompile(`^\*\*/internal/([a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*)/\*\*$`)
 )
 
 func contextMapProblems(root string) []string {

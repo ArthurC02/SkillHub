@@ -5,11 +5,60 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
+
+func TestCatalogRegistryFactsPreserveEveryConsumedField(t *testing.T) {
+	uuid := func(marker byte) pgtype.UUID { return pgtype.UUID{Bytes: [16]byte{marker}, Valid: true} }
+	skillID, workspaceID := uuid(1), uuid(2)
+	forkSkillID, forkVersionID, curatedVersionID := uuid(3), uuid(4), uuid(5)
+	versionID, sourceID := uuid(6), uuid(7)
+	ts := pgtype.Timestamptz{Time: time.Unix(123, 0), Valid: true}
+	summary, restriction, category := "summary", "license-review", "automation"
+	skill := registry.Skill{
+		ID: skillID, WorkspaceID: workspaceID, Name: "name", Summary: &summary,
+		ForkedFromSkillID: forkSkillID, ForkedFromVersionID: forkVersionID, TakedownAt: ts,
+		AccessRestriction: &restriction, Redistribution: "allowed", CurationTier: "curated",
+		CuratedVersionID: curatedVersionID, Category: &category,
+	}
+	wantSkill := catalog.SkillFacts{
+		ID: skillID, WorkspaceID: workspaceID, Name: "name", Summary: &summary,
+		ForkedFromSkillID: forkSkillID, ForkedFromVersionID: forkVersionID, TakedownAt: ts,
+		AccessRestriction: &restriction, Redistribution: "allowed", CurationTier: "curated",
+		CuratedVersionID: curatedVersionID, Category: &category,
+	}
+	if got := catalogSkillFacts(skill); !reflect.DeepEqual(got, wantSkill) {
+		t.Fatalf("catalog skill facts lost a Registry field: got %+v want %+v", got, wantSkill)
+	}
+
+	license, source := "MIT", "package"
+	version := registry.Version{
+		ID: versionID, WorkspaceID: workspaceID, SourceID: sourceID, VersionNumber: 7,
+		ContentHash: "sha256:abc", PackageObjectKey: "packages/a.zip",
+		LicenseExpression: &license, CreatedAt: ts, LicenseSource: &source,
+	}
+	wantVersion := catalog.VersionFacts{
+		ID: versionID, WorkspaceID: workspaceID, SourceID: sourceID, VersionNumber: 7,
+		ContentHash: "sha256:abc", PackageObjectKey: "packages/a.zip",
+		LicenseExpression: &license, CreatedAt: ts, LicenseSource: &source,
+	}
+	if got := catalogVersionFacts(version); !reflect.DeepEqual(got, wantVersion) {
+		t.Fatalf("catalog version facts lost a Registry field: got %+v want %+v", got, wantVersion)
+	}
+
+	compat := registry.RuntimeCompatibility{Capability: "activated", Runtime: "native", RuntimeImage: "sha256:image", MeasuredAt: ts}
+	wantCompat := catalog.RuntimeCompatibilityFacts{Capability: "activated", Runtime: "native", RuntimeImage: "sha256:image", MeasuredAt: ts}
+	if got := catalogRuntimeCompatibilityFacts(compat); !reflect.DeepEqual(got, wantCompat) {
+		t.Fatalf("catalog compatibility facts lost a Registry field: got %+v want %+v", got, wantCompat)
+	}
+}
 
 // The one invariant BetaGateClosed exists for: an unaudited cohort must not
 // produce an empty invite list, because an empty one admits everybody (ADR-028
@@ -127,8 +176,9 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	if reg := app.Deps.Registry.Svc; reg.SkillRisks == nil || reg.CatalogSkillRisks == nil {
 		t.Error("the registry service is missing catalog's projected scan read")
 	}
-	if search := app.Deps.Search.Svc; search.Registry != app.Deps.Registry.Svc || search.SourceByID == nil {
-		t.Error("the catalog service is missing owner-scoped registry or source reads")
+	if search := app.Deps.Search.Svc; search.ReadCatalogSkill == nil || search.ReadWorkspaceSkill == nil ||
+		search.ReadLatestVersion == nil || search.ReadRuntimeCompatibility == nil || search.SourceByID == nil {
+		t.Error("the catalog service is missing owner-scoped Registry or source reads")
 	}
 	if app.PackagingSvc.AppliedSuggestions == nil || app.PackagingSvc.SourceLineage == nil {
 		t.Error("the packaging service is missing manifest provenance owner reads")
@@ -144,8 +194,8 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	// Unset, GET /runs answers 500 rather than a history with one axis: a column
 	// of 「執行完成」 with no verdict beside it is the reading ADR-025 exists to
 	// prevent (04 丙-32).
-	if app.RunSvc.RunVerdicts == nil {
-		t.Error("the run service is missing eval's standing verdict read")
+	if app.Deps.Runs.RunVerdicts == nil {
+		t.Error("the run handler is missing eval's standing verdict read")
 	}
 	if app.RunSvc.WorkspaceCreatedAt == nil {
 		t.Error("the run service is missing identity's workspace creation reader")

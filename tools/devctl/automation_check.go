@@ -111,6 +111,7 @@ func documentCheckers() []namedChecker {
 	return []namedChecker{
 		{"drift-marker", driftMarkerProblems},
 		{"depguard-deny", depguardDenyProblems},
+		{"service-construction", serviceConstructionProblems},
 		{"one-number", sharedNumberProblems},
 		{"query-owner", queryOwnerProblems},
 		{"context-map", contextMapProblems},

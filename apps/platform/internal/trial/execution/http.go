@@ -1,6 +1,7 @@
 package run
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +24,10 @@ import (
 type Handler struct {
 	Svc      *Service
 	Identity *identity.Service
+	// RunVerdicts is eval's owner read for the HTTP run-list projection. Keeping
+	// it here avoids making worker-side orchestration depend on a presentation-only
+	// collaboration (ADR-034, 04 丙-32).
+	RunVerdicts func(context.Context, pgtype.UUID, []pgtype.UUID) (map[string]json.RawMessage, error)
 }
 
 func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Workspace, identity.User, bool) {
@@ -394,7 +399,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	// row and ahead of the execution status; a page that silently lost it is a
 	// column of 「執行完成」 with nothing to qualify it, which is the exact reading
 	// ADR-025 exists to prevent. app_test.go asserts the wiring.
-	if h.Svc.RunVerdicts == nil {
+	if h.RunVerdicts == nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "run list failed")
 		return
 	}
@@ -402,7 +407,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		runIDs = append(runIDs, row.ID)
 	}
-	verdicts, err := h.Svc.RunVerdicts(r.Context(), ws.ID, runIDs)
+	verdicts, err := h.RunVerdicts(r.Context(), ws.ID, runIDs)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "run list failed")
 		return

@@ -38,21 +38,16 @@ import (
 // where `permitted` is parsed out of appendix A's table. Both directions fail,
 // with one deliberate asymmetry described at wildcardGrantee below.
 //
-// NOT in scope: the `generic`, `shared-kernel` and `objreconcile` rules. Their
-// permitted sets are not written in appendix A at all (ADR-032 §1 and ADR-037
-// govern them, in prose), so arithmetic against the appendix would be arithmetic
-// against a document that does not answer the question. They are named here so
-// the gap is a stated limit rather than a silence.
+// The prose-governed `generic`, `shared-kernel` and `objreconcile` rules are
+// checked separately against the exact sets ADR-032/037 define.
 const denyPackagePrefix = "github.com/ArthurC02/skillhub/apps/platform/internal/"
 
-// The two non-context packages every context rule must also deny. Neither is a
-// bounded context, so neither comes out of §1's Core/Supporting rows, and both
-// are denied by every single rule in the file today: `apiserver` is the
-// composition root (ADR-032 §5, "contexts must not import it") and
-// `objreconcile` is a generic worker (appendix A). Hard-coded rather than
+// The three non-context packages every context rule must also deny. They do not
+// come out of §1's Core/Supporting rows: `apiserver` and `worker` are process
+// composition roots, while `objreconcile` is a generic worker. Hard-coded rather than
 // inferred from the rules themselves, because inferring the universe from the
 // deny lists is how a check ends up agreeing with whatever the deny lists say.
-var alwaysDenied = []string{"apiserver", "objreconcile"}
+var alwaysDenied = []string{"apiserver", "worker", "objreconcile"}
 
 var (
 	appendixHeading = "## 附錄 A"
@@ -98,15 +93,18 @@ func depguardDenyProblems(root string) []string {
 	}
 	for _, id := range alwaysDenied {
 		if !knownBoundaryID(declared, id) {
-			problems = append(problems, fmt.Sprintf(
-				"depguard-deny: %s §1 has no Boundary ID %q, which every context rule is required to deny", adrPath, id))
 			continue
 		}
 		universe[id] = true
 	}
 
 	rules := depguardRules(string(lint))
+	problems = append(problems, depguardSelectorProblems(rules, declared, lintPath)...)
 	checked := 0
+	pathIDs := map[string]string{}
+	for id, identity := range declared {
+		pathIDs[strings.TrimSuffix(identity.Path, "/*")] = id
+	}
 	for _, rule := range sortedKeys(rules) {
 		files, deny := rules[rule]["files"], rules[rule]["deny"]
 		// Only single-selector rules that guard one Core/Supporting context: the
@@ -126,13 +124,13 @@ func depguardDenyProblems(root string) []string {
 					"depguard-deny: %s rule %q denies %q, which is not an apps/platform/internal package", lintPath, rule, pkg))
 				continue
 			}
-			identity, known := resolveContextPath(path, declared)
+			id, known := pathIDs[path]
 			if !known {
 				problems = append(problems, fmt.Sprintf(
-					"depguard-deny: %s rule %q denies internal/%s, which no %s §1 row declares", lintPath, rule, path, contextMapADR))
+					"depguard-deny: %s rule %q denies internal/%s, which is not an exact %s §1 package path", lintPath, rule, path, contextMapADR))
 				continue
 			}
-			denied[identity.ID] = true
+			denied[id] = true
 		}
 
 		// The asymmetry: a rule may refuse a BLANKET grant (`各 context → identity`)
@@ -163,8 +161,137 @@ func depguardDenyProblems(root string) []string {
 			"depguard-deny: %s has no depguard rule guarding a single Core/Supporting context; this check has lost its subject",
 			lintPath))
 	}
+	problems = append(problems, specialDepguardProblems(rules, declared, lintPath)...)
 	sort.Strings(problems)
 	return problems
+}
+
+// specialDepguardProblems covers the grouped Generic rule, Shared Kernel and
+// objreconcile. Appendix A does not enumerate their permissions, so their exact
+// deny sets come from ADR-032 §1/§5 and ADR-037: shared code cannot depend on a
+// bounded context; generic foundations cannot point into domain or composition
+// roots; objreconcile is itself a generic worker and may depend on foundations.
+func specialDepguardProblems(rules map[string]map[string][]string, declared map[string]packageIdentity, lintPath string) []string {
+	// Older unit fixtures predate the worker composition-root identity. The real
+	// context-map check requires it; its presence marks the complete rule set.
+	if _, ok := declared["worker"]; !ok {
+		return nil
+	}
+	bounded := map[string]bool{}
+	pathIDs := map[string]string{}
+	for id, identity := range declared {
+		pathIDs[strings.TrimSuffix(identity.Path, "/*")] = id
+		if identity.Kind == architectureCore || identity.Kind == architectureSupporting {
+			bounded[id] = true
+		}
+	}
+	expected := map[string]map[string]bool{
+		"shared-kernel": copySet(bounded),
+		"generic":       copySet(bounded),
+		"objreconcile":  copySet(bounded),
+	}
+	for _, id := range []string{"apiserver", "worker", "objreconcile"} {
+		expected["generic"][id] = true
+		expected["shared-kernel"][id] = true
+	}
+	for _, id := range []string{"apiserver", "worker"} {
+		expected["objreconcile"][id] = true
+	}
+
+	var problems []string
+	for _, rule := range []string{"generic", "objreconcile", "shared-kernel"} {
+		actual := map[string]bool{}
+		for _, pkg := range rules[rule]["deny"] {
+			path, ok := strings.CutPrefix(pkg, denyPackagePrefix)
+			if !ok {
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q denies non-platform package %q", lintPath, rule, pkg))
+				continue
+			}
+			id, ok := pathIDs[path]
+			if !ok {
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q denies internal/%s, which is not an exact ADR-032 §1 package path", lintPath, rule, path))
+				continue
+			}
+			actual[id] = true
+		}
+		for _, id := range sortedKeys(expected[rule]) {
+			if !actual[id] {
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q does not deny %q", lintPath, rule, id))
+			}
+		}
+		for _, id := range sortedKeys(actual) {
+			if !expected[rule][id] {
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q unexpectedly denies %q", lintPath, rule, id))
+			}
+		}
+	}
+	return problems
+}
+
+// depguardSelectorProblems prevents a package from being moved under a rule
+// with wider permissions while keeping the global set of covered paths intact.
+func depguardSelectorProblems(rules map[string]map[string][]string, declared map[string]packageIdentity, lintPath string) []string {
+	expected := map[string]map[string]bool{}
+	pathIDs := map[string]string{}
+	for id, identity := range declared {
+		pathIDs[strings.TrimSuffix(identity.Path, "/*")] = id
+		switch {
+		case identity.Kind == architectureCore || identity.Kind == architectureSupporting:
+			expected[id] = map[string]bool{id: true}
+		case identity.Kind == architectureSharedKernel:
+			if expected["shared-kernel"] == nil {
+				expected["shared-kernel"] = map[string]bool{}
+			}
+			expected["shared-kernel"][id] = true
+		case identity.Kind == architectureGeneric && id != "apiserver" && id != "api" && id != "worker" && id != "objreconcile":
+			if expected["generic"] == nil {
+				expected["generic"] = map[string]bool{}
+			}
+			expected["generic"][id] = true
+		case id == "objreconcile":
+			expected["objreconcile"] = map[string]bool{id: true}
+		}
+	}
+
+	var problems []string
+	for rule, want := range expected {
+		actual := map[string]bool{}
+		for _, selector := range rules[rule]["files"] {
+			if selector == "!$test" {
+				continue
+			}
+			match := depguardSelectorPattern.FindStringSubmatch(selector)
+			if match == nil {
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q has unrecognised files selector %q", lintPath, rule, selector))
+				continue
+			}
+			id, known := pathIDs[match[1]]
+			if !known {
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q selector internal/%s is not an exact ADR-032 §1 package path", lintPath, rule, match[1]))
+				continue
+			}
+			actual[id] = true
+		}
+		for _, id := range sortedKeys(want) {
+			if !actual[id] {
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q does not select %q", lintPath, rule, id))
+			}
+		}
+		for _, id := range sortedKeys(actual) {
+			if !want[id] {
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q unexpectedly selects %q", lintPath, rule, id))
+			}
+		}
+	}
+	return problems
+}
+
+func copySet(source map[string]bool) map[string]bool {
+	result := make(map[string]bool, len(source))
+	for key := range source {
+		result[key] = true
+	}
+	return result
 }
 
 // appendixPermissions reads appendix A's table. A row is `| A → B、C | … | 保留 |`:
@@ -275,20 +402,23 @@ func depguardRules(lint string) map[string]map[string][]string {
 // `!$test` is depguard's own exclusion token, not a path; more than one real
 // selector means the rule covers a group (`generic`) and has no single self.
 func soleContextOfRule(files []string, declared map[string]packageIdentity) (string, bool) {
-	var ids []string
+	ids := map[string]bool{}
 	for _, selector := range files {
-		m := depguardFilePattern.FindStringSubmatch(selector)
+		m := depguardSelectorPattern.FindStringSubmatch(selector)
 		if m == nil {
 			continue
 		}
 		if identity, ok := resolveContextPath(m[1], declared); ok {
-			ids = append(ids, identity.ID)
+			ids[identity.ID] = true
 		}
 	}
 	if len(ids) != 1 {
 		return "", false
 	}
-	return ids[0], true
+	for id := range ids {
+		return id, true
+	}
+	return "", false
 }
 
 // stripYAMLComments removes trailing `#` comments, honouring quotes.

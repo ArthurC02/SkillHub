@@ -122,6 +122,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019**，頂層收納由 **ADR-031（Accepted�
 | 安全與信任 | ADR-005、007、015；部署拓撲與安全門檻定值見 ADR-022 |
 | 派送被停了、要怎麼判斷與解除 | [docs/runbooks/p1-dispatch-halt.md](docs/runbooks/p1-dispatch-halt.md)（P1 判準、誤觸分辨與解除前檢查） |
 | Query 屬於哪個 context、能不能直接讀寫 | ADR-033（write）＋ADR-035（read、context 對照表對帳）＋`db/query-owners.yaml` |
+| 跨 context 要拿別人的事實，注入該長什麼樣 | ADR-034（反轉，讀寫兩側同一手法）＋ [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)〈同步 owner 讀取的兩種形狀〉；**動手前先讀目標套件的 `doc.go`** |
 | 目前還缺什麼、誰在等誰 | `docs/plans/04-backlog-and-handoffs.md`（殘項三類清單＋跨里程碑待辦） |
 | 我現在要簽什麼 | [docs/plans/05-pending-rulings.md](docs/plans/05-pending-rulings.md)（逐項附事實、建議與**不決定的代價**） |
 | 封測上線前要做什麼、誰做 | `docs/plans/mvp/m4/release-checklist.md`（程式面尚缺／部署期／負責人動作三段） |

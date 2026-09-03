@@ -206,8 +206,8 @@ func (s *Service) comparisonSide(
 	detail.skillID = version.SkillID
 	side.SkillID = pgconv.UUIDString(version.SkillID)
 
-	if s.TestLab == nil || s.TestLab.Pool == nil {
-		return comparisonSide{}, sideDetail{}, errors.New("eval: test lab service not injected")
+	if err := s.requireTestLab(); err != nil {
+		return comparisonSide{}, sideDetail{}, err
 	}
 	snapshot, err := s.TestLab.ReadSnapshot(ctx, workspaceID, run.TestCaseSnapshotID)
 	if err != nil {
