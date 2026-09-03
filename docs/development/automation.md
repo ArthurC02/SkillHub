@@ -80,8 +80,10 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
   | --- | --- | --- | --- |
   | **旗艦** | 主線代理自己用的等級 | **子代理禁用**——它是派工者，不是被派的 | Fable／Sol |
   | **深度推論** | 善用推論思考，會停下來判斷 | 跨模組推理、規格含糊要判斷、安全或資料遺失路徑、對抗性審查 | Opus／Terra |
-  | **快速執行** | 執行快、推論不多 | 規格與邊界都清楚的多檔實作、照分區卡與現成模式做、驗證回報、文件整理 | Sonnet／— |
+  | **快速執行** | 執行快、推論不多 | 規格與邊界都清楚的多檔實作、照分區卡與現成模式做、驗證回報、文件整理 | Sonnet／Luna |
   | **機械執行** | 推論極少，正因如此會像機械操作一樣照目標做完 | 規格完全明確、有測試判對錯：改一行跑一條測試、抄表、查值、突變稽核 | Haiku／Luna |
+
+  Luna 介於快速執行與機械執行之間，Codex 側這兩級都派它。
 
   Claude Code 的三個角色檔（`.claude/agents/`）以機械執行／快速執行為 frontmatter 預設下限，派工時可指定更高；`automation-check` 的 `harness` 檢查擋角色檔出現旗艦級（名稱寫在檢查器裡，那是唯一需要名字的地方）。Codex 側沒有等價的機器，這張表與根 `AGENTS.md` 那一句是它唯一吃得到的規則。
 - **Claude Code 另有一層攔阻**（`.claude/settings.json` 的 `permissions.deny` 把 `stash`／`add -A`／`commit -a`／`restore`／`checkout .`／`reset --hard`／`clean`／`push --force`／`commit --amend` 變成真的拒絕，對子代理同樣生效），**但它只是提早發現**：其他 coding agent 不受它管，本節的規則本體與 `automation-check`、測試、CI 才是保證。角色與技能的放置規則見下方〈Harness〉。
