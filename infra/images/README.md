@@ -482,3 +482,140 @@ docker run --rm -v "$PWD/scan:/scan" anchore/grype:v0.117.0 sbom:/scan/sbom.spdx
 ```
 
 Windows／Git Bash 需在 `docker run` 前加 `MSYS_NO_PATHCONV=1`，否則掛載路徑會被改寫。
+
+## 服務映像（ADR-019 job 5）
+
+`04` 丙-158：三個應用程式服務（`apps/platform`、`apps/llm`、`apps/web`）原本沒有映像，
+CI 的 `images` job 是空殼，平台自己「建得起來、部署得動」這件事從未被證明過。本節是三份
+Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明；**CI 端要接
+GHCR push 仍是協調者的工作**（本批範圍只到映像與本機驗證，不動 `.github/workflows/`）。
+
+### 三個映像各裝什麼
+
+| 映像 | 來源 | 內容 | 執行 |
+| --- | --- | --- | --- |
+| [`platform/`](platform/) | `apps/platform`（單一 Go module） | build stage 用 `golang:1.27.0-bookworm`（與 `devtools/Dockerfile` 同一 digest）靜態編譯 `api`／`worker`／`maintenance`／`reindex` 四個指令；runtime stage 是 `gcr.io/distroless/static-debian12:nonroot`（無 shell、無套件管理器——這是鐵律 1 要保護的控制平面，能少一樣東西可用就少一樣），另外把 `contracts/packaging/profiles` 複製進去供 `PACKAGING_PROFILES_DIR` 使用 | 無 `ENTRYPOINT`，靠 distroless 內建的 `PATH` 解析：`CMD ["api"]` 是預設，`docker run <image> worker\|maintenance\|reindex ...` 換另外三個 |
+| [`llm/`](llm/) | `apps/llm`（FastAPI＋uv，build context 是 `apps/llm` 本身，不是 repo root——`packages/api-stub-py` 那個本機路徑依賴只在 `dev` dependency group，`--no-dev` sync 用不到） | build stage 裝 `uv`（版本與 sha256 installer 校驗值取自 `tools/toolchain.yaml`，做法與 `devtools/Dockerfile` 相同），`uv sync --frozen --no-dev --no-editable` 到 `/opt/venv`——**`--no-editable` 是必要的**：預設的 editable 安裝是一個指回 build stage `/src/src` 的 `.pth` 檔，runtime stage 只複製 `/opt/venv` 的話 `import skillhub_llm` 會找不到套件（本批實測撞過這個） | `uvicorn skillhub_llm.app:app --host 0.0.0.0 --port 8000`，match `contracts/openapi/llm-internal.yaml` 的 `servers[0]`；`/healthz` 不需要 `LLM_SERVICE_TOKEN`，掛了 `HEALTHCHECK` |
+| [`web/`](web/) | `apps/web` ＋ `packages/api-client-ts`（build context 是 repo root，因為 `apps/web` 的 `file:../../packages/api-client-ts` 依賴需要兩棵樹都在） | build stage 依序 `npm ci`＋`npm run build`（先 client 套件再 web，與 `Taskfile.yml` 的 `build:web`／`build:api-client` 一致；`npm run build` 本身會跑 `check-bundle-origins.mjs`，建置失敗代表 bundle 裡出現了預期外的絕對網址）；runtime stage 是 `nginx:1.29-alpine-slim`，只放編譯好的 `dist/` 與 [`nginx.conf`](web/nginx.conf) | 見下一節 |
+
+### `web` 的反向代理：為什麼不是 `location /api/`
+
+`api/client.ts` 的 `API_BASE_URL` 預設空字串（同源），這在 clean test mode（`cmd/api`
+自己端出 `apps/web/dist`）與 `vite preview` 下成立，但**一般容器化部署（這個 `app`
+profile）沒有任何東西讓它成立，除非有東西幫忙**——`web` 這個 nginx 容器就是那個東西。
+
+原本設想是單一 `/api/` 前綴代理，但 `contracts/openapi/public.yaml` 沒有這個前綴：
+路徑是扁平的（`/skills`、`/runs/{id}`、`/auth/...`、`/me`……），只有四條真的在 `/api/`
+下面。更根本的問題是**同一個路徑同時是頁面與 API**：`GET /skills/{id}` 是 JSON，也是
+Skill 詳情頁 `/skills/$skillId`（`apps/web/src/router.tsx`）的網址；`GET /runs/{id}`
+同理是 Trace 頁。`apps/web/vite.config.ts` 的註解原文就寫著這件事——「the obvious dev
+setup — proxy a list of path prefixes — cannot work with these routes」，該檔用兩個
+origin＋CORS 迴避；`cmd/api` 的 clean mode（`SKILLHUB_CLEAN_MODE=1`）用
+`spaFallback`／`navigationCatcher`（檢查 API 回應的狀態碼與 Content-Type，把
+404／405／2xx-JSON 吞掉换成 `index.html`）解決同一個問題，但那段邏輯活在 `cmd/api`
+自己的行程裡，`web` 容器前面站的是**另一個**容器的 nginx，看不到那個回應。
+
+[`nginx.conf`](web/nginx.conf) 改用請求端就有的訊號——同一份 `spaFallback` 註解自己
+點名的那個訊號：「Every client of this API is fetch(), which sends `*/*` or
+`application/json`；a browser address bar is the only thing that says
+`text/html`」。規則因此是：GET 且 `Accept` 含 `text/html` → 一律當作瀏覽器導覽，回
+`index.html`（前端路由自己決定要顯示哪一頁）；其餘（`apps/web` 每一支 `api/*.ts` 的
+`fetch()` 呼叫）→ 全部轉給 `platform-api`。這對現有的每一組「頁面路徑＝API 路徑」都
+正確，**不需要檢查回應**。
+
+例外兩條，寫在規則之前：`/auth/`（GitHub OAuth 的兩個 302 導向）與 `/downloads/`
+（`<a href>` 直接導覽拿檔案位元組，不是 `fetch()`）——這兩條是「真的需要瀏覽器導覽、
+且 API 必須自己回答」的路徑，一律直接轉發，不吃 `Accept: text/html` 那條規則。以
+2026-09-05 對照 `contracts/openapi/public.yaml` 與 `router.tsx` 的結果，這是目前唯二
+的例外。
+
+**誠實的已知落差**：這是用請求端訊號去逼近 clean mode 用回應端資訊做的決定，對現有
+路徑表是完整的，但**不會自動涵蓋未來**——如果之後新增一條頂層 GET 路徑，同時（a）是
+真正的瀏覽器導覽目標（redirect、串流、任何非 JSON 的答案）且（b）與某個前端頁面路徑
+完全同名，就要比照 `/auth/`／`/downloads/` 在 [`nginx.conf`](web/nginx.conf) 手動加一條
+無條件轉發——不會被現有規則自動接住。新增路由時請一併檢查這件事。
+
+另外 `/healthz` 被 `nginx.conf` 佔用作容器自身的存活探針（回固定字串，不轉發），理由
+與位置寫在該檔——`GET /` 這種預設探針方式在沒有 `Accept: text/html` 時會被轉發到
+`platform-api`（它沒有 `/` 這條路由），量到的是上游死活而非 nginx 自己，本批實測撞過
+（容器一直卡 `unhealthy`，換成 `/healthz` 後才對）。副作用是這個 profile 下經
+`web` 容器打 `/healthz` 拿到的是 nginx 的固定回應，不是 `platform-api` 自己的
+`/healthz`——需要探 API 本身請直接打它自己的埠（見下）。
+
+### 本機建置與驗證
+
+```bash
+docker build -f infra/images/platform/Dockerfile -t skillhub/platform:local .
+docker build -f infra/images/llm/Dockerfile -t skillhub/llm:local apps/llm
+docker build -f infra/images/web/Dockerfile -t skillhub/web:local .
+
+docker run --rm skillhub/llm:local python -c "import skillhub_llm"
+docker compose -f infra/compose/docker-compose.yml --profile app config
+```
+
+三個 Dockerfile 的 build context 不一樣（`platform`／`web` 是 repo root，`llm` 是
+`apps/llm`），理由各自寫在對應 Dockerfile 檔頭。
+
+### `docker-compose.yml` 的 `app` profile
+
+新增 `platform-api`、`platform-worker`、`llm`、`web` 四個服務，全部掛
+`profiles: ["app"]`——`task dev`（無 `--profile`）行為不變，仍只起 Postgres 與
+SeaweedFS；要含這四個服務得 `docker compose --profile app up`。與既有 `postgres`／
+`seaweedfs` 的連線資訊（含 SeaweedFS 的開發身分 `skillhubdev`／`skillhubdevsecret`，
+本身是 `seaweedfs-s3.json` 裡已提交的非機密佔位值）用字面值寫死在 compose 檔——與
+`litellm` 服務既有的 `DATABASE_URL` 寫法同一個理由：這些主機名由這份檔案自己的拓撲
+決定，不是部署時要選的東西。其餘變數照 `.env.example` 的名字透穿（`${VAR:-}`，空值
+預設），與 `apps/platform` 原生跑在 host 上讀到的是同一組名字。
+
+**`LLM_SERVICE_TOKEN` 原本想比照做成 `${LLM_SERVICE_TOKEN:?set in .env}`**：
+`apps/llm`（`app.py` 的 `require_service_token`）用它擋掉除 `/healthz` 外的每一條
+路由，若兩邊都空字串，等於「雙方都沒填、驗證形同虛設」而不是「沒有驗證」，看起來
+正是 `${VAR:?...}` 要擋的那種假綠燈。**這個寫法本批實測後撤掉了**：Compose 對整份
+檔案的變數插值是一次做完、**不分 profile**——`docker compose -f
+infra/compose/docker-compose.yml up -d postgres seaweedfs`（`task dev` 本身的
+呼叫方式，automation.md 紅線 2 要求它在完全沒有任何密鑰的情況下也要能跑）在
+`:?` 版本下直接失敗，即使 `platform-api`／`llm` 兩個服務根本沒被啟動。單一
+compose 檔案沒有「只在用到的 profile 才插值」這種機制，所以 `LLM_SERVICE_TOKEN`
+最終跟這份檔案其餘變數一樣是 `${LLM_SERVICE_TOKEN:-}`（空值預設）——它重開的那個
+缺口（兩邊都不填時驗證形同虛設）就留在這裡誠實記著，不是用 compose 語法擋掉的。
+
+`SKILLHUB_CLEAN_MODE` 刻意在這四個服務裡完全沒出現——這個 profile 是多容器形狀，
+`cmd/worker` 自己會拒絕在該旗標開著時啟動（ADR-060 決策 6：clean mode 是單一行程），
+把它接進來只會讓 `platform-worker` 啟動就死。
+
+`platform-api` 對外開 `127.0.0.1:8080`（除錯直接打 API 用）；`web` 開
+`127.0.0.1:8081`（同源入口，瀏覽器該開的網址）；`llm` 不對外開埠——只有
+`platform-api`／`platform-worker` 內部呼叫它。`maintenance`／`reindex` 沒有對應的常駐
+服務：它們是 operator 手動觸發的一次性指令，仍在 `platform` 這個映像裡，用
+`docker compose --profile app run platform-api maintenance <subcommand>` 之類的方式
+單次執行。
+
+### 已實測，含 base image digest 來源
+
+三個映像都已在本機建置成功並驗證跑得動（`docker build`／`docker run`／完整
+`docker compose --profile app up` 對照真正的 `postgres`／`seaweedfs`）。Base image
+digest 由 `docker pull` 後 `docker inspect --format '{{index .RepoDigests 0}}'`
+取得，做法與上面「Digest 更新程序」一節相同：
+
+| 映像 | Digest 來源 |
+| --- | --- |
+| `golang:1.27.0-bookworm` | 沿用 `devtools/Dockerfile` 已經釘的那個（同一個工具鏈版本） |
+| `gcr.io/distroless/static-debian12:nonroot` | `sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab`（2026-09-04 `docker pull` 當下） |
+| `python:3.12-slim-bookworm` | `sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254`（同上） |
+| `node:22.14.0-bookworm-slim` | `sha256:1c18d9ab3af4585870b92e4dbc5cac5a0dc77dd13df1a5905cea89fc720eb05b`（同上） |
+| `nginx:1.29-alpine-slim` | `sha256:c9366b8c560169b101ca0e5422ed063b20779e6454c2326b9c9704225c9b0c08`（同上） |
+
+映像大小（`docker images`，本機建置）：`skillhub/platform:local` 124 MB、
+`skillhub/llm:local` 216 MB、`skillhub/web:local` 21.3 MB。
+
+**Tag 慣例：commit SHA，絕不用 `latest`**——理由與 `runtime-agent-sdk` 那條一致
+（ADR-019 job 5 原文、本檔「Digest 更新程序」一節）：部署與回滾都要能指向明確的
+commit，`latest` 是會動的標的。本批只建到本機 `:local` tag 供驗證；CI 端建置後
+`push` 到 GHCR、打 commit SHA tag，是協調者要接上 `.github/workflows/ci.yml` 的
+`images` job 的部分，不在本批範圍內。
+
+**掃描與 attestation 不比照 `runtime-agent-sdk`**：那一節的 syft／grype／GHCR
+attestation 流水線是 SEC-002 對「會執行不受信任內容」的 Sandbox Runtime Image 的
+要求（鐵律 1）；`platform`／`llm`／`web` 是控制平面／能力提供者／靜態前端，不執行
+不受信任內容，本 ADR-019 job 5 原文對它們也只要求 tag＋push，沒有 SBOM／掃描閘門的
+字面要求。是否比照辦理是留給協調者與負責人的政策問題，本批未擅自決定。

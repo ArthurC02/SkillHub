@@ -135,6 +135,53 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 			Without: "不收集任何漏斗事件",
 			Fix:     "設一個保存期，例如 4320h",
 		},
+		{
+			ID:      "github_login",
+			Name:    "GitHub OAuth 登入",
+			Needs:   []string{"GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "OAUTH_REDIRECT_URL"},
+			Without: "沒有人能用 GitHub 帳號登入——除非 DEV_LOGIN=1 開著，這個部署完全沒有登入方式",
+			Fix:     "在 GitHub 建一個 OAuth App，把用戶端 ID、密鑰與導回網址填進這三個變數",
+		},
+		{
+			ID:    "dev_login",
+			Name:  "離線登入（開發／clean test mode）",
+			Needs: []string{"DEV_LOGIN"},
+			Without: "沒有離線登入（ADR-020）：只能用 GitHub OAuth 登入——GITHUB_CLIENT_ID 等三個變數沒填的話，" +
+				"這個部署完全登不進去",
+			Fix: "設 DEV_LOGIN=1 供本機或 clean test mode 使用；同時要 COOKIE_INSECURE=1，" +
+				"否則行程會在啟動時拒絕（DEV_LOGIN=1 與安全 Cookie 互相矛盾，見 devLoginRefusal）——" +
+				"正式環境兩者都不可開，DEV_LOGIN=1 代表任何名字都能免密碼登入",
+		},
+		{
+			ID:      "beta_gate",
+			Name:    "封測名單管制（BETA-001 admission）",
+			Needs:   []string{"BETA_ALLOWLIST"},
+			Without: "沒有名單管制：任何登入的 GitHub 帳號都能 Fork／試跑／下載",
+			Fix:     "填入允許的 provider_user_id（逗號分隔）",
+		},
+		{
+			ID:    "object_store",
+			Name:  "物件儲存（套件、產物、Trace 附件）",
+			Needs: []string{"OBJSTORE_ENDPOINT", "OBJSTORE_ACCESS_KEY", "OBJSTORE_SECRET_KEY", "OBJSTORE_BUCKET"},
+			Without: "ENDPOINT 與 BUCKET 有本機預設值（localhost:8333／skillhub），ACCESS_KEY／SECRET_KEY 留空代表" +
+				"匿名存取——只在本機 SeaweedFS 這樣設。正式環境沒有指到真正的物件儲存或金鑰不對時，" +
+				"EnsureBucket 會在啟動時失敗，整個行程結束",
+			Fix: "指向一個 S3 相容服務（本機用 SeaweedFS）並帶入它的存取金鑰",
+		},
+		{
+			ID:    "generation_entry",
+			Name:  "M5 生成入口（ADR-052）",
+			Needs: []string{"GENERATE_SKILL_EXPOSED"},
+			// This is an exposure BOUNDARY, not a feature waiting to be turned on:
+			// 01 §10 forbids the generation entry point from appearing to
+			// closed-beta users until 01 §11.2's first funnel segment has a
+			// reading. The Fix sentence below says when NOT to set it, on purpose
+			// — wording this as encouragement would contradict the boundary it
+			// documents.
+			Without: "刻意的狀態：POST /skills/generate 不掛載、GET /me 不列 generate_skill，畫面不畫出生成入口",
+			Fix: "不要在 01 §11.2 第一段漏斗量到讀數之前設成 on——這是 M5 對封測使用者的曝光邊界（01 §10），" +
+				"不是一個等著被打開的功能",
+		},
 	}
 	if servesWeb {
 		caps = append(caps, envx.Capability{

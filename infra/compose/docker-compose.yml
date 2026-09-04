@@ -111,9 +111,158 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  # TODO(CORE-001): add api / worker / llm / web services once infra/images/
-  # holds their Dockerfiles. Build contexts are the repo root, since the Go
-  # build needs apps/platform and the generated packages/ output.
+  # TODO(CORE-001) resolved 2026-09-05 (04 丙-158): the four service images
+  # below exist now (infra/images/{platform,llm,web}/Dockerfile), behind
+  # `profiles: ["app"]` so `task dev` (no --profile) still starts only
+  # Postgres and SeaweedFS. What remains native is everything this profile
+  # does not start: `task dev:model` (litellm, still opt-in/paid) and the
+  # operator-invoked apps/platform commands (`maintenance`, `reindex`) —
+  # the platform image can run either via `docker compose --profile app run
+  # platform-api maintenance <subcommand>`, but neither runs as a standing
+  # service. SKILLHUB_CLEAN_MODE is deliberately never set on any service
+  # here: this profile is the multi-process shape ADR-060 決策 6 draws the
+  # line against — cmd/worker refuses to start under it (own comment,
+  # apps/platform/cmd/worker/main.go), and clean mode is a single-process
+  # bundle these four containers are not.
+  #
+  # Every URL/credential pair below that names a compose service by hostname
+  # (postgres, seaweedfs, llm, platform-api) is a literal — same convention
+  # as the litellm service above (DATABASE_URL there is not sourced from
+  # .env either): those hosts and the SeaweedFS dev identity
+  # (seaweedfs-s3.json, itself a committed non-secret placeholder) are fixed
+  # by this file's own topology, not a deployment choice. Everything else
+  # comes from the repo-root .env (task env:init), blank-default, exactly as
+  # apps/platform reads it running natively.
+  #
+  # LLM_SERVICE_TOKEN specifically was tried as a required
+  # `${LLM_SERVICE_TOKEN:?set in .env}` (both sides blank would mean the
+  # bearer check in apps/llm's require_service_token passes trivially —
+  # silent no-authentication, not "no token configured"). That broke `task
+  # dev` itself: Compose interpolates every service's environment for the
+  # whole file before profile filtering is applied, so `docker compose -f
+  # this-file.yml up -d postgres seaweedfs` — the zero-cost baseline
+  # automation.md's harness rule 2 requires to keep working with no secrets
+  # set at all — failed outright with this variable undefined, even though
+  # neither app-profile service was being started. Measured here 2026-09-05.
+  # A single-file compose setup has no profile-scoped interpolation, so this
+  # stays blank-default like every other credential in this file; the gap it
+  # reopens (an unset LLM_SERVICE_TOKEN silently disables the check on both
+  # sides) is recorded in infra/images/README.md's 服務映像 section instead
+  # of enforced here.
+  platform-api:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: infra/images/platform/Dockerfile
+    command: ["api"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://skillhub:skillhub@postgres:5432/skillhub
+      OBJSTORE_ENDPOINT: seaweedfs:8333
+      OBJSTORE_ACCESS_KEY: skillhubdev
+      OBJSTORE_SECRET_KEY: skillhubdevsecret
+      OBJSTORE_BUCKET: skillhub
+      OBJSTORE_SSL: "0"
+      LLM_SERVICE_URL: http://llm:8000
+      LLM_SERVICE_TOKEN: ${LLM_SERVICE_TOKEN:-}
+      SKILLHUB_TRACE_INGEST_URL: http://platform-api:8080
+      SKILLHUB_TRACE_INGEST_SECRET: ${SKILLHUB_TRACE_INGEST_SECRET:-}
+      METRICS_ADDR: ${METRICS_ADDR:-}
+      COOKIE_INSECURE: ${COOKIE_INSECURE:-}
+      DEV_LOGIN: ${DEV_LOGIN:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      OAUTH_REDIRECT_URL: ${OAUTH_REDIRECT_URL:-}
+      APP_URL: ${APP_URL:-}
+      OPERATOR_USER_IDS: ${OPERATOR_USER_IDS:-}
+      BETA_ALLOWLIST: ${BETA_ALLOWLIST:-}
+      DEV_CORS_ORIGIN: ${DEV_CORS_ORIGIN:-}
+      IMPORT_ALLOW_INSECURE: ${IMPORT_ALLOW_INSECURE:-}
+      IMPORT_EXTRA_HOSTS: ${IMPORT_EXTRA_HOSTS:-}
+      DOWNLOAD_ARTIFACT_RETENTION: ${DOWNLOAD_ARTIFACT_RETENTION:-}
+      RUN_QUOTA: ${RUN_QUOTA:-}
+      GENERATE_QUOTA: ${GENERATE_QUOTA:-}
+      RATE_LIMIT: ${RATE_LIMIT:-}
+      GENERATE_SKILL_EXPOSED: ${GENERATE_SKILL_EXPOSED:-}
+      FEEDBACK_RETENTION: ${FEEDBACK_RETENTION:-}
+      ANALYTICS_RETENTION: ${ANALYTICS_RETENTION:-}
+    ports:
+      # Direct access for debugging; `web` below is the same-origin entry
+      # point an actual browser should use.
+      - "127.0.0.1:8080:8080"
+
+  # River queue consumer (ADR-010 deployment unit 3 / iron rule 7). Same
+  # image as platform-api — only `command` differs, per the Dockerfile's own
+  # dispatch comment.
+  platform-worker:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: infra/images/platform/Dockerfile
+    command: ["worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://skillhub:skillhub@postgres:5432/skillhub
+      OBJSTORE_ENDPOINT: seaweedfs:8333
+      OBJSTORE_ACCESS_KEY: skillhubdev
+      OBJSTORE_SECRET_KEY: skillhubdevsecret
+      OBJSTORE_BUCKET: skillhub
+      OBJSTORE_SSL: "0"
+      LLM_SERVICE_URL: http://llm:8000
+      LLM_SERVICE_TOKEN: ${LLM_SERVICE_TOKEN:-}
+      SKILLHUB_TRACE_INGEST_URL: http://platform-api:8080
+      SKILLHUB_TRACE_INGEST_SECRET: ${SKILLHUB_TRACE_INGEST_SECRET:-}
+      METRICS_ADDR: ${METRICS_ADDR:-}
+
+  # Internal capability provider (ADR-016 rule 6/7): only platform-api and
+  # platform-worker call it, over internal HTTP, so it carries no host port.
+  llm:
+    profiles: ["app"]
+    build:
+      context: ../../apps/llm
+      dockerfile: ../../infra/images/llm/Dockerfile
+    environment:
+      LLM_SERVICE_TOKEN: ${LLM_SERVICE_TOKEN:-}
+      # LiteLLM is the `model` profile (task dev:model, paid) — deliberately
+      # not a `depends_on` here. Unset/unreachable means every /embed,
+      # /suggest-criteria etc. call fails at request time with a gateway
+      # error, not at container startup, matching how apps/llm already
+      # behaves when run natively without LiteLLM up.
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-}
+      # See .env.example's own warning before setting this: a VIRTUAL key,
+      # never LITELLM_MASTER_KEY.
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+      # Read only so gateway() can refuse LITELLM_API_KEY if it equals this
+      # (see apps/llm/src/skillhub_llm/gateway.py) — apps/llm never uses it
+      # as a credential itself.
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-}
+      ENRICH_MODEL: ${ENRICH_MODEL:-}
+      JUDGE_MODEL: ${JUDGE_MODEL:-}
+      GENERATE_SKILL_MODEL: ${GENERATE_SKILL_MODEL:-}
+      MATCH_REASON_MODEL: ${MATCH_REASON_MODEL:-}
+      SUGGEST_CRITERIA_MODEL: ${SUGGEST_CRITERIA_MODEL:-}
+
+  # Same-origin entry point (nginx serving apps/web's build, reverse-proxying
+  # to platform-api — infra/images/web/nginx.conf carries the routing design
+  # and its known gaps). This is the address a browser should open, not
+  # platform-api's own port.
+  web:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: infra/images/web/Dockerfile
+    depends_on:
+      - platform-api
+    ports:
+      - "127.0.0.1:8081:80"
 
 networks:
   default:

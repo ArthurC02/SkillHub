@@ -46,6 +46,14 @@ var capabilityLedger = []struct {
 			"APP_URL", "COOKIE_INSECURE", "DEV_CORS_ORIGIN", "METRICS_ADDR",
 			"OBJSTORE_SSL", "SKILLHUB_CLEAN_MODE", "SKILLHUB_MODEL_GATEWAY_ADMIN_URL",
 			"SKILLHUB_RUN_MAX_BUDGET_USD", "SKILLHUB_RUN_TPM_LIMIT",
+			// URL import already works with no configuration at all
+			// (ingest.DefaultAllowedHosts() in cmd/api/main.go's
+			// importFetcherFromEnv). These two only loosen its host allowlist
+			// (extra hosts, plain http/loopback/RFC1918) for local stubs and
+			// E2E — never production. A capability row for them would have an
+			// empty 「沒有它會怎樣」 too: the capability they would attach to
+			// (URL import) already works without either one.
+			"IMPORT_ALLOW_INSECURE", "IMPORT_EXTRA_HOSTS",
 		},
 	},
 	{
@@ -84,17 +92,12 @@ var capabilityLedger = []struct {
 		reason: "啟動器自己鑄造（R-36 第一段的第①類）",
 		vars:   []string{"SKILLHUB_TRACE_INGEST_SECRET", "SKILLHUB_TRACE_INGEST_URL"},
 	},
-	{
-		// ⛔ These four genuinely gate something and are not in the table yet.
-		// They are the debt this ledger exists to make visible, not to excuse.
-		reason: "⛔ 欠一列能力表：它們確實擋著東西，只是還沒有人寫下擋著什麼",
-		vars: []string{
-			"BETA_ALLOWLIST", "DEV_LOGIN", "GENERATE_SKILL_EXPOSED",
-			"GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "IMPORT_ALLOW_INSECURE",
-			"IMPORT_EXTRA_HOSTS", "OAUTH_REDIRECT_URL",
-			"OBJSTORE_ACCESS_KEY", "OBJSTORE_BUCKET", "OBJSTORE_ENDPOINT", "OBJSTORE_SECRET_KEY",
-		},
-	},
+	// The ⛔ bucket that used to sit here (12 variables that gate something but
+	// no capability said what) is gone: every one of them now has a capability
+	// row in apps/platform/cmd/api/capabilities.go (github_login, dev_login,
+	// beta_gate, object_store, generation_entry) or, for the two that are
+	// parameters rather than gates, moved into the first bucket above
+	// (05 R-36, closed 2026-09-05).
 }
 
 var envExampleVar = regexp.MustCompile(`(?m)^([A-Z][A-Z0-9_]*)=`)

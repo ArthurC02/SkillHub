@@ -87,19 +87,31 @@ def gateway() -> tuple[str, str]:
             status_code=503,
             detail="LiteLLM gateway not configured: set LITELLM_BASE_URL and LITELLM_API_KEY",
         )
+    # `os.getenv("LITELLM_MASTER_KEY")` is None when the var is unset, and
+    # `api_key == None` is False (api_key already passed the `not api_key`
+    # check above) - so an unset master key never matches and this branch does
+    # not fire.
     if api_key == os.getenv("LITELLM_MASTER_KEY"):
         # ADR-017: the provider keys live at the gateway and every other
         # component holds a Virtual Key. LiteLLM's master key is not "a key with
         # a large budget", it is the gateway's admin credential - it mints keys,
         # reads every key's spend, and can move model routes. This process
         # handles untrusted package content and user prompts; it must not hold
-        # that. Loud rather than fail-closed: every recorded real run in this
-        # repo was launched with LITELLM_API_KEY=$LITELLM_MASTER_KEY, so failing
-        # closed here would break the one workflow that exists today.
+        # that. Fail closed: the launcher (tools/cleanmode/start.mjs) now mints
+        # a Virtual Key for this process, so "every recorded real run in this
+        # repo was launched with LITELLM_API_KEY=$LITELLM_MASTER_KEY" is no
+        # longer true and no longer an excuse to stay loud-only here.
         logger.error(
             "LITELLM_API_KEY is the gateway master key. It must be a Virtual Key "
             "with its own budget and model allowlist (ADR-017); the master key "
             "is the gateway's admin credential and this process must not hold it."
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "LITELLM_API_KEY 是閘道的 master key；"
+                "這個服務只能拿有預算與模型白名單的 Virtual Key（ADR-017）"
+            ),
         )
     return base_url, api_key
 

@@ -448,16 +448,22 @@ jobs:
       - name: Build the runtime image (SBX-002)
         run: docker build -t skillhub/runtime-agent-sdk:ci infra/images/runtime-agent-sdk
         working-directory: .
-      # SEC-009 Suite 1 (ADR-022 附錄). `latest` rather than a pin because the
-      # pin belongs in infra/nodes/gvisor-baseline.txt and that file is still
-      # `unset` — there is no node yet to be reconciled against. Point this at
-      # the baseline the moment the first node fills it, so CI and the pool
-      # cannot drift.
+      # SEC-009 Suite 1 (ADR-022 附錄), on the version infra/nodes/gvisor-baseline.txt
+      # names — the same one node admission will compare against — so CI and
+      # the pool cannot drift apart. Until 2026-09-05 this installed `latest`
+      # because the baseline was `unset`; an unset baseline now fails this step
+      # instead of quietly testing whatever upstream shipped that morning.
       - name: Install gVisor
         run: |
           set -euo pipefail
+          BASELINE=$(awk '!/^#/ && NF {print $1; exit}' infra/nodes/gvisor-baseline.txt)
+          if [ -z "$BASELINE" ] || [ "$BASELINE" = unset ]; then
+            echo "::error::infra/nodes/gvisor-baseline.txt is unset; Suite 1 has no version to test"
+            exit 1
+          fi
           ARCH="$(uname -m)"
-          URL="https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}"
+          # Release tags read `release-YYYYMMDD.N`; the download path drops the prefix.
+          URL="https://storage.googleapis.com/gvisor/releases/release/${BASELINE#release-}/${ARCH}"
           wget -q "${URL}/runsc" "${URL}/runsc.sha512"                "${URL}/containerd-shim-runsc-v1" "${URL}/containerd-shim-runsc-v1.sha512"
           sha512sum -c runsc.sha512 -c containerd-shim-runsc-v1.sha512
           sudo install -m 0755 -t /usr/local/bin runsc containerd-shim-runsc-v1
@@ -699,16 +705,39 @@ jobs:
             echo "ok: --mutate=$mutation failed as it must"
           done
 
-  # Registry is still open (ADR-019 open question 1) and infra/images/ has no
-  # Dockerfiles yet, so this job only records the intended shape.
+  # ADR-019 job 5, wired 2026-09-05 (04 丙-158): the three service images are
+  # built on every run so a Dockerfile that no longer builds is a red PR, and
+  # pushed to GHCR (ADR-019 open question 1, closed in ADR-022) only from main.
+  # Tags are the commit SHA and never `latest`, so a deploy and a rollback both
+  # name an exact commit. The runtime image has its own workflow
+  # (runtime-image.yml) because it carries SBOM and scan attestations; these
+  # three are the platform's own code and get the ordinary build.
   images:
     # Filtered-out upstream jobs are skipped, not failed, so gate on !failure().
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !failure() && !cancelled()
-    needs: [web, platform, llm, sandbox, sandbox-windows, contracts-drift, qa002, tools-pglite]
+    if: ${{ !failure() && !cancelled() }}
+    needs: [web, platform, llm, contracts-drift]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io/arthurc02
     steps:
-      - name: Build and push service images
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build service images
         run: |
-          echo "Image build is not wired yet. Enable once infra/images/ holds the"
-          echo "Dockerfiles and ADR-019 open question 1 (container registry) is closed."
-          echo "Images are tagged with ${{ github.sha }}, never 'latest'."
+          set -euo pipefail
+          # platform and web build from the repo root (go.work, packages/);
+          # llm's context is apps/llm alone, the way its compose entry builds it.
+          docker build -f infra/images/platform/Dockerfile -t "${REGISTRY}/skillhub-platform:${GITHUB_SHA}" .
+          docker build -f infra/images/web/Dockerfile      -t "${REGISTRY}/skillhub-web:${GITHUB_SHA}" .
+          docker build -f infra/images/llm/Dockerfile      -t "${REGISTRY}/skillhub-llm:${GITHUB_SHA}" apps/llm
+          docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep skillhub-
+      - name: Push to GHCR (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+          for svc in platform llm web; do
+            docker push "${REGISTRY}/skillhub-${svc}:${GITHUB_SHA}"
+          done

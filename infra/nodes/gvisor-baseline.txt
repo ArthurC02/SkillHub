@@ -9,7 +9,12 @@
 # gvisor-baseline.yml checks that daily and opens an issue when it drifts; the
 # 24h escape-CVE SLA in ADR-022 starts from that issue being opened.
 #
-# `unset` = no sandbox node has been provisioned yet. The daily check skips
-# instead of failing, and IaC rendering an unset baseline is fail-closed: the
-# admission probe has nothing to compare against, so no node is admitted.
-unset
+# `unset` = no baseline chosen. The daily check skips instead of failing, and
+# IaC rendering an unset baseline is fail-closed: the admission probe has
+# nothing to compare against, so no node is admitted.
+#
+# Set on 2026-09-05 (04 甲-5) before any node exists, so that the daily N/N-1
+# check and CI's Suite 1 (which installs exactly this version) stop being a
+# no-op. The pool is still empty; the first node (DEPLOY-IAC-001) must join at
+# this version or newer.
+release-20260817.0

@@ -24,6 +24,7 @@ import os
 from collections.abc import Callable
 
 import pytest
+from fastapi import HTTPException
 from openai import AsyncOpenAI
 
 from skillhub_llm import app as app_module
@@ -75,38 +76,50 @@ def test_the_client_makes_one_attempt_with_the_declared_ceiling(
     assert str(client.base_url).rstrip("/") == os.environ["LITELLM_BASE_URL"].rstrip("/"), name
 
 
-def test_the_master_key_is_reported_as_a_deployment_defect(monkeypatch, caplog) -> None:
+def test_the_master_key_is_rejected(monkeypatch, caplog) -> None:
     """ADR-017: the provider keys live at the gateway and every other component
     holds a Virtual Key. LiteLLM's master key is not "a key with a big budget",
     it is the gateway's ADMIN credential - it mints keys, reads every key's
     spend and can move model routes - and this process handles untrusted package
-    content and user prompts.
-
-    Every recorded real run in this repo was launched with
-    `LITELLM_API_KEY=$LITELLM_MASTER_KEY` (m3/report-suggest-baseline.md,
-    m3/report-judge-regression.md, generate_integration_test.go), and
-    .env.example says nothing about it. Loud, not fail-closed: failing closed
-    would break the one workflow that exists today.
+    content and user prompts. Fail closed: the launcher (tools/cleanmode/start.mjs)
+    now mints a Virtual Key for this process, so there is no workflow left that
+    failing closed here would break.
     """
-    monkeypatch.setenv("LITELLM_API_KEY", "sk-fake-master-for-this-test")
-    monkeypatch.setenv("LITELLM_MASTER_KEY", "sk-fake-master-for-this-test")
+    monkeypatch.setenv("LITELLM_API_KEY", "sk-fake-master")
+    monkeypatch.setenv("LITELLM_MASTER_KEY", "sk-fake-master")
 
     with caplog.at_level(logging.ERROR, logger="skillhub_llm.gateway"):
-        gateway.gateway()
+        with pytest.raises(HTTPException) as excinfo:
+            gateway.gateway()
 
+    assert excinfo.value.status_code == 503
+    assert "master key" in excinfo.value.detail
     assert any("master key" in r.message for r in caplog.records), caplog.text
 
 
-def test_a_virtual_key_is_not_reported_as_anything(monkeypatch, caplog) -> None:
-    """The other half: a correct deployment must stay quiet, or the message
-    becomes noise and stops being read."""
+def test_a_virtual_key_is_returned(monkeypatch, caplog) -> None:
+    """The other half: a correct deployment must stay quiet and pass through, or
+    the message becomes noise and stops being read."""
     monkeypatch.setenv("LITELLM_API_KEY", "sk-fake-virtual-key")
     monkeypatch.setenv("LITELLM_MASTER_KEY", "sk-fake-master-key")
 
     with caplog.at_level(logging.ERROR, logger="skillhub_llm.gateway"):
-        gateway.gateway()
+        base_url, api_key = gateway.gateway()
 
+    assert (base_url, api_key) == (os.environ["LITELLM_BASE_URL"], "sk-fake-virtual-key")
     assert caplog.records == []
+
+
+def test_an_unset_master_key_does_not_match_a_real_virtual_key(monkeypatch) -> None:
+    """`os.getenv` returns None for an unset var, and `api_key == None` is False
+    for any real key - so a deployment that never set LITELLM_MASTER_KEY must
+    not have its Virtual Key rejected."""
+    monkeypatch.setenv("LITELLM_API_KEY", "sk-fake-virtual-key")
+    monkeypatch.delenv("LITELLM_MASTER_KEY", raising=False)
+
+    base_url, api_key = gateway.gateway()
+
+    assert (base_url, api_key) == (os.environ["LITELLM_BASE_URL"], "sk-fake-virtual-key")
 
 
 def test_every_ceiling_is_a_real_number() -> None:
