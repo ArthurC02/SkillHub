@@ -305,7 +305,7 @@ docker run -d --name skillhub-sandboxd --network skillhub_default --network-alia
   -e SKILLHUB_SANDBOX_TOKEN=devsandboxtoken \
   -e SKILLHUB_SANDBOX_NETWORK=skillhub_egress \
   -e SKILLHUB_SANDBOX_EGRESS_ALLOW=/etc/skillhub/egress-allow.json \
-  -e SKILLHUB_SANDBOX_IMAGE=skillhub/runtime-agent-sdk:2026.08-5 \
+  -e SKILLHUB_SANDBOX_IMAGE=skillhub/runtime-agent-sdk:2026.08-8 \
   debian:12-slim /usr/local/bin/sandboxd
 ```
 

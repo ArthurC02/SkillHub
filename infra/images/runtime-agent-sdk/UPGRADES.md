@@ -435,14 +435,19 @@ skipped 1
 份稽核跑在 Windows host 上，該測項需要 Unix 檔案模式位元），與本批的 lock 檔案改動無關；
 `run.mjs`／`run.test.mjs` 本批完全未動（不在 path allowlist 內）。
 
-### ADR-023 四項：待跑
+### 2026-09-05：ADR-023 §2 四項，全部跑在 CI 發佈的 digest 上
 
-| # | 測項 | 狀態 |
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:45d418683f750acd88614fd5ee4da7a89f2b160b40c812b772b2f65c19b35272`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-8`，[runtime-image #33899168665](https://github.com/ArthurC02/SkillHub/actions/runs/33899168665) 於 commit `387809b` 發佈；`docker pull` 後以 `RepoDigests` 讀出） |
+| 環境 | 與 `-5` 那節同：本機 LiteLLM（跑了五天的那個 `skillhub-litellm-1`）＋ `skillhub_egress` ＋ 主機上以 `debian:12-slim` 容器跑的交叉編譯 `sandboxd`（`SKILLHUB_SANDBOX_IMAGE` 設成上面的 digest 參照）；dev 用的 egress 允許清單另渲一份到 scratchpad（`pinned_ip` 指 litellm 在 `skillhub_egress` 的位址），committed 的那份一字未動 |
+| 費用 | 三次模型呼叫合計約 **$0.06**（`gpt-5.4-mini`）；用一把 6 小時、0.5 USD 上限、只准 `gpt-5.4-mini` 的 Virtual Key 跑第 3 項，跑完即以 `/key/delete` 撤銷 |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
 | --- | --- | --- |
-| 1 | Skill 載入條件 | 待跑（需真映像＋真沙箱） |
-| 2 | 閘道相容（撤銷後 401） | 待跑 |
-| 3 | Prompt caching 計費欄位與對帳 | 待跑 |
-| 4 | `usage` 事件的發出條件 | 待跑 |
+| **1. 依賴集以新 digest 跑 import 檢查** | ✅ **通過** | `docker run --rm --network none --user 65532:65532 --entrypoint python3 ghcr.io/…@sha256:45d41868… -c 'import pandas, …, stdnum'` → `OK 17/17 3.11.2`（exit 0），無網路、非 root。同一映像 `node --version` → `v22.23.2`、`python3 --version` → `3.11.2`、`command -v nc` → `NO_NC`、`command -v npm` → `NO_NPM`（lock 改用 `npm ci` 之後 npm 照樣被拆掉） |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（24.29s）：真套件進 SeaweedFS → preflight → 確認 → 派送到 sandboxd → 沙箱容器只到得了閘道 → `gateway-reported cost for this run: $0.021624` → artifact 收回、金鑰撤銷後的 401 由該測試自己斷言 |
+| **3. usage 發出條件、caching 欄位與對帳** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（`in=16504 out=20 token_source=result cost=0.01282875/gateway`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（撞上限仍回報 `in=16504 out=21 cost=0.025662`）。閘道側逐分錢對帳這次**沒有做**：`/spend/logs` 以日期查回 0 列（端點參數形狀與 08-30 那次不同，沒有再追），成本數字以測試自己從閘道讀回的為準 |
+| **4. Skill 載入條件（含套件內腳本真的被執行）** | ✅ **通過** | 同第 2 項那支測試：`e2eSkillPackage` 的 `scripts/check.py` 在映像自己的直譯器上跑出 `SKILLHUB-SCRIPT-RAN py3.`，斷言在測試裡（`-5` 那節說明過它為什麼抄不出來） |
 
-四項全部要在 CI 實際發佈出來的 `2026.08-8` digest 上跑，不是本節記的本機 digest（`-5` 那次
-的教訓）。
+**預設映像同批從 `-5` 移到 `-8`**：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE` 與 `p02_docker_test.go` 的常數、`automation.md` 的實跑範例。`-6`／`-7` 兩節寫的「四項實測尚未跑」到此為止：它們的行為變更（`run.mjs`）都包含在 `-8` 這個 digest 裡，本次四項就是對它們的實測。

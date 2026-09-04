@@ -393,7 +393,7 @@ jobs:
       # reads that too, and it would move every dockerdrv test off busybox. When
       # a new IMAGE_VERSION has passed ADR-023's four measured tests, move the
       # tag below and the test's constant together.
-      RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-5
+      RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-8
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
@@ -405,7 +405,7 @@ jobs:
       - name: Pull the Runtime Image the P-02 probe dials from
         run: |
           docker pull "$RUNTIME_IMAGE_FOR_PROBE"
-          docker tag "$RUNTIME_IMAGE_FOR_PROBE" skillhub/runtime-agent-sdk:2026.08-5
+          docker tag "$RUNTIME_IMAGE_FOR_PROBE" skillhub/runtime-agent-sdk:2026.08-8
       # BEFORE `go test ./...`, not after. localdrv's seven tests skip when node
       # is not on PATH, and until now they ran against whatever Node the runner
       # image happened to ship rather than the one this job installs -- so a

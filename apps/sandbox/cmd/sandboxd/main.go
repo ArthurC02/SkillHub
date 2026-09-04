@@ -43,7 +43,7 @@ func main() {
 	}
 
 	runtime := os.Getenv("SKILLHUB_SANDBOX_RUNTIME") // "runsc" in production
-	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-5")
+	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-8")
 	allowDevCmd := os.Getenv("SKILLHUB_SANDBOX_DEV_CMD") == "1"
 	// SKILLHUB_CLEAN_MODE is the one flag ADR-060 decision 6 allows for this
 	// axis: it swaps the whole execution strategy, not a capability, and there
