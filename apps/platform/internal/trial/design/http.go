@@ -55,6 +55,14 @@ func pathUUID(w http.ResponseWriter, r *http.Request, name string) (pgtype.UUID,
 	return id, true
 }
 
+// stripSentinelPrefix removes the "<sentinel english text>: " prefix that
+// fmt.Errorf("%w: <detail>", sentinel) leaves on err.Error(), so the wire body
+// carries only <detail>. The sentinel keeps its English Go identity for
+// errors.Is; only the string written to the client is affected (丙-138 做法).
+func stripSentinelPrefix(err, sentinel error) string {
+	return strings.TrimPrefix(err.Error(), sentinel.Error()+": ")
+}
+
 // fail maps a domain error to a status. ErrLimitExceeded and ErrUnsupportedType
 // carry their own message through to the client because 02:TEST-002 requires the
 // user to understand why an upload was refused; every other internal failure
@@ -64,11 +72,11 @@ func fail(w http.ResponseWriter, err error, generic string) {
 	case errors.Is(err, ErrNotFound):
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrInvalid):
-		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		httpx.WriteError(w, http.StatusBadRequest, stripSentinelPrefix(err, ErrInvalid))
 	case errors.Is(err, ErrUnsupportedType):
 		httpx.WriteError(w, http.StatusUnsupportedMediaType, err.Error())
 	case errors.Is(err, ErrLimitExceeded):
-		httpx.WriteError(w, http.StatusRequestEntityTooLarge, err.Error())
+		httpx.WriteError(w, http.StatusRequestEntityTooLarge, stripSentinelPrefix(err, ErrLimitExceeded))
 	// TEST-002 is an optional enhancement, so its absence is a 503 that names the
 	// manual path rather than a failure of the request. The wrapped cause stays in
 	// the log; the client is told only that it is unavailable.
@@ -545,7 +553,7 @@ func (h *Handler) UploadDataset(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, MaxFileBytes+(1<<20))
 	if err := r.ParseMultipartForm(4 << 20); err != nil {
 		httpx.WriteError(w, http.StatusRequestEntityTooLarge,
-			"file is larger than "+humanMB(MaxFileBytes)+" or the upload is malformed")
+			"檔案超過 "+humanMB(MaxFileBytes)+"，或上傳內容不完整")
 		return
 	}
 	defer func() { _ = r.MultipartForm.RemoveAll() }()
@@ -620,7 +628,6 @@ func (h *Handler) DeleteDataset(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"deleted":    true,
 		"dataset_id": pgconv.UUIDString(ds.ID),
-		"note": "the stored file is removed; snapshots of past runs keep its name " +
-			"and content hash so those runs stay traceable",
+		"note":       "檔案已移除；過去 Run 的快照仍保留它的檔名與內容雜湊，那些 Run 仍可追溯。",
 	})
 }

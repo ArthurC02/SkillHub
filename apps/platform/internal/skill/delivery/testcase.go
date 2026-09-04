@@ -64,6 +64,33 @@ type ExcludedTestCase struct {
 	TestCaseID string `json:"-"`
 	Name       string `json:"name"`
 	Reason     string `json:"reason"`
+	Label      string `json:"label"`
+	Note       string `json:"note"`
+}
+
+// excludedCaseWords is the served wording for each excluded_test_cases[].reason,
+// the same three-part shape as excludedFileWords one field over (manifest.go):
+// `code` stays for machines, `label`/`note` are what the page shows a person
+// (04 丙-154 ①).
+var excludedCaseWords = map[string][2]string{
+	ExcludedUserUploadedDataset: {"含你上傳的資料集",
+		"你上傳的資料不能隨套件散布（授權未定），這個 Test Case 因此不打包。"},
+	ExcludedNotCurated: {"未經策展",
+		"只有平台策展的 Test Case 會隨套件散布，你自己的 Test Case 留在工作區。"},
+	ExcludedUserOptedOut: {"你選擇不包含",
+		"打包選項沒有勾選散布 Test Case。"},
+	ExcludedUnsafeDatasetFileName: {"資料集檔名無法安全寫入",
+		"有一個資料集的檔名不能原樣放進 data/，平台不改名，所以整個 Test Case 不打包。"},
+}
+
+// withWords fills the served label and note for a reason.
+func (e ExcludedTestCase) withWords() ExcludedTestCase {
+	if w, ok := excludedCaseWords[e.Reason]; ok {
+		e.Label, e.Note = w[0], w[1]
+		return e
+	}
+	e.Label, e.Note = e.Reason, "這個平台版本沒有這個排除原因的說明，值照原樣顯示，不猜測它的意思。"
+	return e
 }
 
 // portableTestCase is one test-cases/<slug>/case.json.
@@ -120,7 +147,7 @@ func (s *Service) selectTestCases(
 		case !include:
 			excluded = append(excluded, ExcludedTestCase{
 				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedUserOptedOut,
-			})
+			}.withWords())
 			continue
 		case !ws.IsCatalog && len(datasets) > 0:
 			// The more specific of the two refusals, and the one worth naming: it
@@ -128,18 +155,18 @@ func (s *Service) selectTestCases(
 			// defect in their test case.
 			excluded = append(excluded, ExcludedTestCase{
 				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedUserUploadedDataset,
-			})
+			}.withWords())
 			continue
 		case !ws.IsCatalog:
 			excluded = append(excluded, ExcludedTestCase{
 				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedNotCurated,
-			})
+			}.withWords())
 			continue
 		case unsafeDatasetName(datasets):
 			excluded = append(excluded, ExcludedTestCase{
 				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name,
 				Reason: ExcludedUnsafeDatasetFileName,
-			})
+			}.withWords())
 			continue
 		}
 

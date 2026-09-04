@@ -98,8 +98,12 @@ export interface IncludedTestCase {
 export interface ExcludedTestCase {
   test_case_id: string;
   name: string;
-  /** Why it will not travel. Server-owned copy. */
+  /** Machine code, e.g. `not_curated`. Never the visible word — see `label`. */
   reason: string;
+  /** The server's word for the reason (設計系統 §4.4). Mirrors `ExcludedFile.label`. */
+  label: string;
+  /** Why, in the reader's own terms. Mirrors `ExcludedFile.note`. */
+  note: string;
 }
 
 /**

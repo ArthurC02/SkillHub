@@ -61,9 +61,19 @@ export function SkillFiles() {
       {/* 410 and 403 above keep their own sentences — they are facts about this
           listing, not read failures. Everything else goes through the shared
           component so a 401 says to log in and a 500 still says what broke;
-          「載入檔案失敗。」 said neither. */}
+          「載入檔案失敗。」 said neither.
+          04 丙-149/150：404 與 503 曾經落進通用分支，印伺服器的英文句
+          （`skill not found`／`stored package is not readable`）——現在 Go 已經
+          把兩者都改成中文（`discovery/detail.go`），但這一頁自己的句子仍然按
+          status 挑，不轉印 `error.message`。 */}
       {!(error instanceof ApiError && (error.status === 410 || error.status === 403)) && (
-        <ReadFailure error={error} what="套件檔案清單" />
+        <ReadFailure error={error} what="套件檔案清單">
+          {error instanceof ApiError && error.status === 404 ? (
+            <p role="alert">找不到這個 Skill 的檔案清單，它可能還沒有保存的版本。</p>
+          ) : error instanceof ApiError && error.status === 503 ? (
+            <p role="alert">儲存的套件目前讀不到，稍後再試一次。</p>
+          ) : undefined}
+        </ReadFailure>
       )}
 
       {data && (

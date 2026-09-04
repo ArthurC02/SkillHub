@@ -27,7 +27,7 @@ var (
 	// same answer for "does not exist" and "not yours" (WS-006).
 	ErrNotFound = errors.New("skill not found")
 	// ErrNameTaken: the caller already has a skill with this name.
-	ErrNameTaken = errors.New("a skill with this name already exists in your workspace")
+	ErrNameTaken = errors.New("你的工作區已經有同名的 Skill")
 )
 
 // ObjectStore is the slice of object storage the registry needs (diff reads).

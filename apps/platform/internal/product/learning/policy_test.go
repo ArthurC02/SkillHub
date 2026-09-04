@@ -181,7 +181,7 @@ func TestDataRetentionDisclosesTheFeedbackClass(t *testing.T) {
 	}
 	// ADR-029 決策 5: an account deletion de-identifies these rows rather than
 	// removing them, and a reader deciding whether to write one is owed that.
-	if !strings.Contains(body.Feedback.OnAccountDeletion, "de-identified") {
+	if !strings.Contains(body.Feedback.OnAccountDeletion, "去識別") {
 		t.Errorf("the disclosure does not say what account deletion does to a report: %q", body.Feedback.OnAccountDeletion)
 	}
 }
@@ -207,7 +207,7 @@ func TestDataRetentionSaysSoWhenFeedbackHasNoWindow(t *testing.T) {
 		t.Errorf("retention_days = %v with FEEDBACK_RETENTION unset, want null", body.Feedback["retention_days"])
 	}
 	note, _ := body.Feedback["note"].(string)
-	if !strings.Contains(note, "FEEDBACK_RETENTION") || !strings.Contains(note, "indefinitely") {
+	if !strings.Contains(note, "FEEDBACK_RETENTION") || !strings.Contains(note, "一直保留") {
 		t.Errorf("the note does not say the reports are kept indefinitely and which variable would change that: %q", note)
 	}
 }

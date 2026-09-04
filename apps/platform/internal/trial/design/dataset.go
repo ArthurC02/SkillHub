@@ -43,7 +43,7 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 		return gen.Dataset{}, fmt.Errorf("%w: file is empty", ErrInvalid)
 	}
 	if len(data) > MaxFileBytes {
-		return gen.Dataset{}, fmt.Errorf("%w: file is larger than %s", ErrLimitExceeded, humanMB(MaxFileBytes))
+		return gen.Dataset{}, fmt.Errorf("%w: 檔案超過 %s", ErrLimitExceeded, humanMB(MaxFileBytes))
 	}
 	contentType, err := detectContentType(data)
 	if err != nil {
@@ -160,11 +160,11 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 		return gen.Dataset{}, err
 	}
 	if usage.FileCount+1 > MaxFilesPerTestCase {
-		return gen.Dataset{}, fmt.Errorf("%w: a test case may hold at most %d files",
+		return gen.Dataset{}, fmt.Errorf("%w: 一個 Test Case 最多 %d 個檔案",
 			ErrLimitExceeded, MaxFilesPerTestCase)
 	}
 	if usage.TotalBytes+int64(len(data)) > MaxTestCaseBytes {
-		return gen.Dataset{}, fmt.Errorf("%w: a test case may hold at most %s of files in total",
+		return gen.Dataset{}, fmt.Errorf("%w: 一個 Test Case 的檔案總量最多 %s",
 			ErrLimitExceeded, humanMB(MaxTestCaseBytes))
 	}
 

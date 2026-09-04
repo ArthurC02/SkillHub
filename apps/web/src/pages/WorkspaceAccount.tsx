@@ -4,8 +4,24 @@ import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { ApiError } from "../api/client";
 import { useCancelAccountDeletion, useMe, useRequestAccountDeletion } from "../api/me";
 import { ConfirmDelete } from "../components/ConfirmDelete";
+
+/**
+ * 04 丙-150. Both mutations here used to fall through to
+ * `err instanceof Error ? err.message : "…失敗，請再試一次。"` — since `ApiError
+ * extends Error`, that Chinese fallback never ran, and a session that expired
+ * mid-request showed the server's raw English body. 401 goes through
+ * `ReadFailure` like every other read/write on this page; the remaining
+ * statuses get this page's own sentence. 409 is the one status this endpoint's
+ * pair (`ErrAccountPurging`) can actually mean: a deletion already past the
+ * point of no return.
+ */
+function deletionFailureSentence(error: unknown): string {
+  if (error instanceof ApiError && error.status === 409) return "刪除已經不可逆，無法再變更。";
+  return "這個要求沒有記錄成功，可以再按一次。";
+}
 
 /**
  * CORE-007 / 02:SEC-006 — the account, and the second of the two deletion planes
@@ -72,6 +88,16 @@ export function WorkspaceAccount() {
       */}
       <ReadFailure error={me.error} what="帳號資料" />
       {message && <p role="status">{message}</p>}
+      {request.error && (
+        <ReadFailure error={request.error} what="帳號刪除申請">
+          <p role="alert">{deletionFailureSentence(request.error)}</p>
+        </ReadFailure>
+      )}
+      {cancel.error && (
+        <ReadFailure error={cancel.error} what="取消刪除申請">
+          <p role="alert">{deletionFailureSentence(cancel.error)}</p>
+        </ReadFailure>
+      )}
 
       {me.data && (
         <>
@@ -99,8 +125,6 @@ export function WorkspaceAccount() {
                     setMessage("已取消。帳號不會被刪除，資料照舊。");
                     await refresh();
                   },
-                  onError: (err) =>
-                    setMessage(err instanceof Error ? err.message : "取消失敗，請再試一次。"),
                 })
               }
             />
@@ -118,8 +142,6 @@ export function WorkspaceAccount() {
                       setMessage(result.scope);
                       await refresh();
                     },
-                    onError: (err) =>
-                      setMessage(err instanceof Error ? err.message : "刪除申請失敗，請再試一次。"),
                   })
                 }
                 scope={
@@ -177,7 +199,7 @@ function PendingDeletion({
             寬限期在 <Timestamp at={purgeAfter} /> 結束，之後才會真的刪除。
           </>
         ) : (
-          "伺服器沒有回報寬限期結束的日期——那不表示沒有期限，是這一頁問不到它。"
+          "未測量——伺服器沒有回報寬限期結束的日期，那不表示沒有期限，是這一頁問不到它。"
         )}
       </p>
       {/*
@@ -190,7 +212,7 @@ function PendingDeletion({
         <p>{scope}</p>
       ) : (
         <p className="note">
-          伺服器沒有附上刪除範圍的說明。這不代表範圍是空的——代表這一頁現在讀不到它。
+          未測量——伺服器沒有附上刪除範圍的說明。這不代表範圍是空的，代表這一頁現在讀不到它。
         </p>
       )}
       <p className="note">

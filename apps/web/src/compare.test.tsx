@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { RunCompare } from "./pages/RunCompare";
-import { CompareTable } from "./pages/Compare";
+import { Compare, CompareTable } from "./pages/Compare";
 import {
   COMPARISON,
   comparisonSide,
@@ -66,7 +66,7 @@ const navigations: { search?: { against?: string } }[] = [];
  * 這個檔案渲染不出比較表本身，2026-09-03 丙-142 對 `RunCompare` 的四項改動因此
  * 一支測試都沒有。改成可變的之後，`beforeEach` 會把它復位，預設行為不變。
  */
-let search: { against?: string } = {};
+let search: { against?: string; ids?: string } = {};
 
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ runId: RUN }),
@@ -156,8 +156,10 @@ test("DISC-009 comparison gives absent fields their actual state", async () => {
   pending.enrichment = { status: "pending", note: "正在處理" };
   await render(<CompareTable skills={[missingURL, pending]} />);
 
-  expect(text()).toContain("來源網址：未提供");
-  expect(text()).not.toContain("來源網址：未測量");
+  // 04 丙-155 ①：共用的「未提供」不在 §2.9 表上，逐列型別落地之後這一格是
+  // 「未測量」（平台有 `source` 這一列，只是這一份沒有記到網址）。
+  expect(text()).toContain("來源網址：未測量");
+  expect(text()).not.toContain("未提供");
   for (const heading of ["輸入", "輸出", "依賴"]) {
     const row = Array.from(container.querySelectorAll("tbody tr")).find((candidate) =>
       candidate.querySelector("th")?.textContent?.startsWith(heading),
@@ -167,11 +169,32 @@ test("DISC-009 comparison gives absent fields their actual state", async () => {
     expect(cells[0].textContent, `${heading} enriched absence`).toBe("未測量");
     expect(cells[1].textContent, `${heading} pending absence`).toBe("處理中");
   }
+  // 版本結構上就不存在（型別註解：「Absent for a skill with no saved content
+  // yet」）——不適用，不是量不到。
   const versionRow = Array.from(container.querySelectorAll("tbody tr")).find((row) =>
     row.querySelector("th")?.textContent?.includes("版本與時間"),
   );
   expect(versionRow).toBeDefined();
-  expect(versionRow?.querySelector("td")?.textContent).toBe("未提供");
+  expect(versionRow?.querySelector("td")?.textContent).toBe("不適用");
+});
+
+/**
+ * 04 丙-155 ①：一個最小匯入的 Skill（沒有 summary、沒有 allowed_tools、沒有
+ * source、沒有 version、沒有 limitations）不得在任何一格印出表外詞「未提供」，
+ * 而 enrichment／scan 沒記到的那幾格要印「未測量」。
+ */
+test("DISC-009 最小匯入的 Skill：不印表外詞「未提供」", async () => {
+  const minimal = skillDetail("m", "M");
+  minimal.summary = "";
+  minimal.allowed_tools = undefined;
+  minimal.source = undefined;
+  minimal.version = undefined;
+  minimal.limitations = [];
+  const full = skillDetail("f", "F");
+  await render(<CompareTable skills={[minimal, full]} />);
+
+  expect(text()).not.toContain("未提供");
+  expect(text()).toContain("未測量");
 });
 
 /**
@@ -369,4 +392,24 @@ test("§3 第 14 條：挑另一個 Run 的說明在同一屏上只有一段", a
   await waitFor(() => candidateButtons().length > 0);
 
   expect(occurrences("後開始比較")).toBe(1);
+});
+
+/**
+ * 04 丙-150：帶不到 2 個 id 到站(例如直接開 /compare)是正常的到站狀態，不是
+ * 一次失敗——role 應該是 status，不是 alert。
+ */
+test("DISC-009 帶不到 2 個 id 到站是正常狀態，不是失敗", async () => {
+  search = { ids: "a" };
+  stubPlatform();
+  await render(<Compare />);
+
+  const notice = Array.from(container.querySelectorAll('[role="status"]')).find((el) =>
+    (el.textContent ?? "").includes("請從首頁的搜尋結果或目錄選擇"),
+  );
+  expect(notice).toBeDefined();
+  expect(
+    Array.from(container.querySelectorAll('[role="alert"]')).some((el) =>
+      (el.textContent ?? "").includes("請從首頁的搜尋結果或目錄選擇"),
+    ),
+  ).toBe(false);
 });

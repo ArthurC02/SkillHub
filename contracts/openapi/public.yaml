@@ -226,6 +226,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: |
+            The grace period has already ended and the deletion is irreversible;
+            there is nothing left to request or to cancel. Declared 2026-09-04
+            (04 丙-154 ④) — the handler answered it before the contract said so.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /me/deletion/cancel:
     post:
       operationId: cancelAccountDeletion
@@ -251,6 +260,14 @@ paths:
                       elsewhere, rather than inferring it from a bare 200.
         "401":
           description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: |
+            The deletion is already irreversible and cannot be withdrawn (same
+            state as the 409 on DELETE /me). Declared 2026-09-04 (04 丙-154 ④).
           content:
             application/json:
               schema:
@@ -1042,6 +1059,14 @@ paths:
             still in circulation, so a withdrawal answers 410 rather than 404:
             the content existed and was taken down, which is a different fact
             from never having existed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: |
+            The catalog or workspace lookup itself failed (a database error, not
+            a missing skill). A client must not read it as 404: the skill may
+            well exist. Declared 2026-09-04 (04 丙-154 ⑤).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3783,6 +3808,15 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: |
+            This deployment has no packaging targets configured, so there is
+            nothing to list. The same three-cause 503 the preview and create
+            operations below declare; it was answered here all along and only
+            declared on 2026-09-04 (04 丙-154 ③).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/versions/{versionId}/packaging/preview:
     get:
       operationId: previewPackaging
@@ -5945,7 +5979,7 @@ components:
         this deployment actually applies. Served from the constants in
         internal/analytics, never from numbers typed into a document.
       type: object
-      required: [collecting, retention_days, events, note]
+      required: [collecting, retention_days, events, note, feedback]
       properties:
         collecting:
           type: boolean
@@ -5982,6 +6016,34 @@ components:
                 type: string
                 description: The disclosure that a summary of what *is* stored would hide.
         note: { type: string }
+        feedback:
+          type: object
+          description: |
+            The one other collected class this deployment holds: reports
+            submitted at POST /feedback (BETA-003/004/005). Their `message` is
+            the only free-text column anywhere, so the disclosure names it
+            separately from the four events above. Served since the endpoint
+            existed; declared 2026-09-04 (04 丙-154 ②) so a page can render it.
+          required: [what, collected, free_text, kind, page_path, run_id, on_account_deletion, retention_days]
+          properties:
+            what: { type: string }
+            collected:
+              type: array
+              description: The columns a report writes, one entry each.
+              items: { type: string }
+            free_text: { type: string }
+            kind:
+              type: array
+              items: { type: string, enum: [blocking_issue, need_signal] }
+            page_path: { type: string }
+            run_id: { type: string }
+            on_account_deletion: { type: string }
+            retention_days:
+              type: [integer, "null"]
+              description: |
+                Null when FEEDBACK_RETENTION is unset: nothing purges these rows
+                and they are kept until a window is configured. `note` says so.
+            note: { type: string }
     RunPermissionSummary:
       description: |
         Everything a run will be able to touch, shown before it starts
@@ -7375,11 +7437,20 @@ components:
             a decision about licensing and not a defect in their test case.
           items:
             type: object
-            required: [test_case_id, name, reason]
+            required: [test_case_id, name, reason, label, note]
             properties:
               test_case_id: { type: string, format: uuid }
               name: { type: string }
-              reason: { type: string }
+              reason:
+                type: string
+                description: |
+                  The machine code. Until 2026-09-04 this was the only field and
+                  the page printed it raw (「not_curated」); `label` and `note`
+                  are the served words, the same three-part shape as
+                  `excluded_files` one field down (04 丙-154 ①).
+                enum: [user_uploaded_dataset, not_curated, user_opted_out, unsafe_dataset_file_name]
+              label: { type: string }
+              note: { type: string }
         excluded_files:
           type: array
           description: |

@@ -1,7 +1,19 @@
 import { useState } from "react";
+import { ApiError } from "../api/client";
+import { isCategorizedFindings } from "../api/import";
+import { Findings } from "./Findings";
 import { ReadFailure } from "./LoginRequired";
 import { useSkillVersions } from "../api/skills";
 import { useSaveSkillVersion } from "../api/versions";
+
+/** 04 丙-151：按 status 選這一頁自己的句子，從不印 `error.message`。 */
+function versionUploadErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 413) return "檔案超過上限，請縮小套件再上傳。";
+    if (error.status === 404) return "找不到這個 Skill，它可能已被刪除。";
+  }
+  return "上傳沒有成功，可以再按一次。";
+}
 
 /**
  * 02:WS-002 的「使用者可以把改過的套件存成下一版」，也就是 `POST /skills/{id}/versions`
@@ -36,6 +48,23 @@ export function VersionUpload({ skillId }: { skillId: string }) {
       <p className="note" data-role="teaching">
         把你改過的套件上傳成這個 Skill 的新版本；舊版本原封不動留著（ADR-003）。
       </p>
+      {/*
+        04 丙-151：匯入頁在檔案框前有規則句（`ImportSkill.tsx` 的大小上限與 zip
+        結構要求），這一頁原本什麼都沒說——`public.yaml` 寫著「Same static
+        validation as import」，所以規則是同一組，這裡照抄那兩條（來源限制與
+        https 那兩條屬於 URL 匯入，這一頁只收 zip，不適用）。
+      */}
+      <ul className="note">
+        <li>
+          大小上限見拒絕訊息——平台強制 zip 與解壓後的兩個上限，但這一頁還讀不到它們的值，
+          所以這裡不印一個沒有來源的數字。
+        </li>
+        <li>
+          zip 的最上層（或單一頂層資料夾）要有 <code>SKILL.md</code>，而且它的 frontmatter 要有{" "}
+          <code>name</code> 與 <code>description</code>——名稱、描述與 License 都從那裡讀，
+          不必在這一頁手打。
+        </li>
+      </ul>
       <form
         className="version-upload"
         onSubmit={(event) => {
@@ -55,13 +84,29 @@ export function VersionUpload({ skillId }: { skillId: string }) {
           {save.isPending ? "上傳中…" : "上傳成新版本"}
         </button>
       </form>
-      {save.isError && (
-        <ReadFailure error={save.error} what="上傳新版本">
-          <p role="alert">
-            上傳沒有成功：{save.error instanceof Error ? save.error.message : String(save.error)}
-          </p>
-        </ReadFailure>
-      )}
+      {/*
+        04 丙-151：這一頁打的是與 `ImportSkill` 同一支 `admission/http.go` 的
+        `respond()`——套件被靜態驗證擋下時回 422，body 是 `CategorizedFindings`，
+        沒有 `error` 鍵，所以 `apiFetch` 退回 `response.statusText`，畫面曾經印
+        「上傳沒有成功：Unprocessable Entity」。`isCategorizedFindings` 是
+        `ImportSkill.tsx` 已經在用的同一個判斷；422 以外的狀態換這一頁自己的
+        句子，401 交給 `ReadFailure`，一律不印 `save.error.message`。
+      */}
+      {save.isError &&
+        (save.error instanceof ApiError && isCategorizedFindings(save.error.body) ? (
+          // No heading of its own: the component's <h3>上傳新版本</h3> is the
+          // parent, and Findings' group headings are h4 under it. A second h4
+          // here would make 阻擋錯誤／警告 siblings of the sentence instead of
+          // its contents (Findings.tsx's own docstring, 04 丙-139).
+          <section role="alert">
+            <p>上傳被擋下：套件沒有通過驗證。</p>
+            <Findings findings={save.error.body} level={4} />
+          </section>
+        ) : (
+          <ReadFailure error={save.error} what="上傳新版本">
+            <p role="alert">{versionUploadErrorMessage(save.error)}</p>
+          </ReadFailure>
+        ))}
       {save.isSuccess && (
         // `duplicate` 是契約自己的欄位（「Identical content returns the existing
         // version with duplicate=true」）。兩件事分開講：多了一版，與什麼都沒多——

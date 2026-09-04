@@ -791,7 +791,10 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
       return json({
         deleted: true,
         versions_retained: 2,
-        note: "skill removed from your workspace, lists, and search; version snapshots are retained for the 30-day grace period",
+        // Go's own wording (04 丙-149, skill/library/http.go:157, strings-go-
+        // skill.md) — the exact string another writer's page (WorkspaceSkills)
+        // reads and prints verbatim.
+        note: "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；Fork 引用的共用套件物件不受影響",
       });
     }
     return json({
@@ -821,7 +824,7 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
 
   // After the fact the server's own note is what is shown — not a second copy of
   // the scope written on this side.
-  await waitFor(() => text().includes("version snapshots are retained"));
+  await waitFor(() => text().includes("維持凍結"));
 });
 
 // --- deleting the account (CORE-007, 04 丙-22 ②) -----------------------------
@@ -836,6 +839,13 @@ const ME = {
   deletion_scope: null,
 };
 
+// Go's own wording (04 丙-149, creator/workspace/http.go:540 `deletionScope`,
+// strings-149-152-154-go-workspace-learning.md). Served verbatim from both
+// DELETE /me's `scope` and GET /me's `deletion_scope` — same constant, both
+// endpoints (04 丙-30).
+const DELETION_SCOPE =
+  "寬限期結束前，你的帳號照常可用。到期後，你上傳的資料集、Run 產出，以及沒有任何人 Fork 或執行過的 Skill 會連同檔案永久刪除。被其他使用者 Fork 過、或歷史 Run 使用過的 Skill 版本會保留（它們的內容是別人的來源鏈），但你的身分會從上面移除，顯示為已刪除的使用者所有。";
+
 test("CORE-007 requesting account deletion starts a grace period and shows the server's scope", async () => {
   const calls: [string, string | undefined][] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
@@ -845,7 +855,7 @@ test("CORE-007 requesting account deletion starts a grace period and shows the s
         deletion_requested_at: "2026-08-18T00:00:00Z",
         purge_after: "2026-09-17T00:00:00Z",
         cancellable: true,
-        scope: "Your account stays usable until the grace period ends.",
+        scope: DELETION_SCOPE,
       });
     }
     return json(ME);
@@ -859,8 +869,57 @@ test("CORE-007 requesting account deletion starts a grace period and shows the s
   expect(calls.some(([, m]) => m === "DELETE")).toBe(false);
 
   await act(async () => button("確認開始刪除")?.click());
-  await waitFor(() => text().includes("Your account stays usable"));
+  await waitFor(() => text().includes("寬限期結束前"));
   expect(calls.find(([, m]) => m === "DELETE")?.[0]).toContain("/me");
+});
+
+// 04 丙-150. `request`/`cancel`'s `onError` used to fall through to
+// `err instanceof Error ? err.message : "…失敗，請再試一次。"` — since
+// `ApiError extends Error`, that Chinese fallback never ran and the server's
+// raw body reached the screen. 409 is `ErrAccountPurging`: the one status this
+// pair can mean, a deletion already past the point of no return.
+test("丙-150 a failed deletion request says the fixed sentence, not the server's raw body, in role=alert", async () => {
+  vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+    if (init?.method === "DELETE") {
+      return json({ error: "internal error exploding pants" }, 500);
+    }
+    return json(ME);
+  });
+  await render(<WorkspaceAccount />, () => text().includes("刪除我的帳號"));
+
+  await act(async () => button("刪除我的帳號")?.click());
+  await act(async () => button("確認開始刪除")?.click());
+  await waitFor(() => text().includes("這個要求沒有記錄成功"));
+
+  const alert = Array.from(container.querySelectorAll('[role="alert"]')).find((n) =>
+    (n.textContent ?? "").includes("這個要求沒有記錄成功"),
+  );
+  expect(alert, "the failure sentence is not in role=alert").toBeTruthy();
+  expect(text()).not.toContain("exploding pants");
+  // Success and failure must not share one live region (04 丙-150).
+  const status = container.querySelector('[role="status"]');
+  expect(status?.textContent ?? "").not.toContain("這個要求沒有記錄成功");
+});
+
+test("丙-150 a 409 on cancel (deletion already irreversible) says so, not the server's raw body", async () => {
+  vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      // The server's own 409 body (creator/workspace/http.go, 04 丙-149) — the
+      // page must still say its own sentence, not this one.
+      return json({ error: "刪除已經不可逆，無法再變更" }, 409);
+    }
+    return json({
+      ...ME,
+      deletion_requested_at: "2026-08-18T00:00:00Z",
+      purge_after: "2026-09-17T00:00:00Z",
+      deletion_scope: DELETION_SCOPE,
+    });
+  });
+  await render(<WorkspaceAccount />, () => text().includes("刪除申請中"));
+
+  await act(async () => button("取消刪除申請")?.click());
+  await waitFor(() => text().includes("刪除已經不可逆，無法再變更。"));
+  expect(text()).not.toContain("already irreversible");
 });
 
 test("設計 §2.6 the workspace UUID is behind a disclosure, not flat beside the account name", async () => {
@@ -898,7 +957,7 @@ test("CORE-007 a pending deletion is a state with a date and a way out, not a re
       ...ME,
       deletion_requested_at: "2026-08-18T00:00:00Z",
       purge_after: "2026-09-17T00:00:00Z",
-      deletion_scope: "Your account stays usable until the grace period ends.",
+      deletion_scope: DELETION_SCOPE,
     });
   });
   await render(<WorkspaceAccount />, () => text().includes("刪除申請中"));
@@ -912,7 +971,7 @@ test("CORE-007 a pending deletion is a state with a date and a way out, not a re
   // was gone by the time the user came back to look for it. 設計 §2.8 calls the
   // scope sentence the entire disclosure and §2.10 forbids hiding it, and a
   // disclosure that survives one render is not stated.
-  expect(text()).toContain("Your account stays usable until the grace period ends.");
+  expect(text()).toContain(DELETION_SCOPE);
 
   await act(async () => button("取消刪除申請")?.click());
   await waitFor(() => posts.length > 0);

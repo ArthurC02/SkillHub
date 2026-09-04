@@ -47,6 +47,11 @@ func TestPublicSearchRejectsOversizedQueryBeforeLLMOrDatabase(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("oversized query returned %d, want 400; body=%s", rec.Code, rec.Body.String())
 	}
+	// 04 丙-149: the refusal is a Traditional Chinese sentence, not the Go
+	// validation message.
+	if !strings.Contains(rec.Body.String(), "搜尋文字最多 2000 字") {
+		t.Errorf("the refusal is not the Chinese sentence: %s", rec.Body.String())
+	}
 }
 
 func scanJSON(t *testing.T, warnings int, codes ...string) []byte {

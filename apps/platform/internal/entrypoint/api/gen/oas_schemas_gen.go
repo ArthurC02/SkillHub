@@ -513,6 +513,10 @@ func (s *BrowseCatalogValidation) UnmarshalText(data []byte) error {
 	}
 }
 
+type CancelAccountDeletionConflict Error
+
+func (*CancelAccountDeletionConflict) cancelAccountDeletionRes() {}
+
 type CancelAccountDeletionOK struct {
 	// Always null here - the field exists so a client can read the post-cancel state from the same shape
 	// it reads elsewhere, rather than inferring it from a bare 200.
@@ -530,6 +534,10 @@ func (s *CancelAccountDeletionOK) SetDeletionRequestedAt(val NilDateTime) {
 }
 
 func (*CancelAccountDeletionOK) cancelAccountDeletionRes() {}
+
+type CancelAccountDeletionUnauthorized Error
+
+func (*CancelAccountDeletionUnauthorized) cancelAccountDeletionRes() {}
 
 // Merged schema.
 type CancelRunAccepted struct {
@@ -2131,6 +2139,11 @@ type DataRetentionPolicy struct {
 	// answers it (ADR-029 決策 1).
 	Events []DataRetentionPolicyEventsItem `json:"events"`
 	Note   string                          `json:"note"`
+	// The one other collected class this deployment holds: reports submitted at POST /feedback
+	// (BETA-003/004/005). Their `message` is the only free-text column anywhere, so the disclosure names
+	// it separately from the four events above. Served since the endpoint existed; declared 2026-09-04 (04
+	// 丙-154 ②) so a page can render it.
+	Feedback DataRetentionPolicyFeedback `json:"feedback"`
 }
 
 // GetCollecting returns the value of Collecting.
@@ -2153,6 +2166,11 @@ func (s *DataRetentionPolicy) GetNote() string {
 	return s.Note
 }
 
+// GetFeedback returns the value of Feedback.
+func (s *DataRetentionPolicy) GetFeedback() DataRetentionPolicyFeedback {
+	return s.Feedback
+}
+
 // SetCollecting sets the value of Collecting.
 func (s *DataRetentionPolicy) SetCollecting(val bool) {
 	s.Collecting = val
@@ -2171,6 +2189,11 @@ func (s *DataRetentionPolicy) SetEvents(val []DataRetentionPolicyEventsItem) {
 // SetNote sets the value of Note.
 func (s *DataRetentionPolicy) SetNote(val string) {
 	s.Note = val
+}
+
+// SetFeedback sets the value of Feedback.
+func (s *DataRetentionPolicy) SetFeedback(val DataRetentionPolicyFeedback) {
+	s.Feedback = val
 }
 
 type DataRetentionPolicyEventsItem struct {
@@ -2272,6 +2295,156 @@ func (s *DataRetentionPolicyEventsItemName) UnmarshalText(data []byte) error {
 		return nil
 	case DataRetentionPolicyEventsItemNameDownloadStarted:
 		*s = DataRetentionPolicyEventsItemNameDownloadStarted
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// The one other collected class this deployment holds: reports submitted at POST /feedback
+// (BETA-003/004/005). Their `message` is the only free-text column anywhere, so the disclosure names
+// it separately from the four events above. Served since the endpoint existed; declared 2026-09-04 (04
+// 丙-154 ②) so a page can render it.
+type DataRetentionPolicyFeedback struct {
+	What string `json:"what"`
+	// The columns a report writes, one entry each.
+	Collected         []string                              `json:"collected"`
+	FreeText          string                                `json:"free_text"`
+	Kind              []DataRetentionPolicyFeedbackKindItem `json:"kind"`
+	PagePath          string                                `json:"page_path"`
+	RunID             string                                `json:"run_id"`
+	OnAccountDeletion string                                `json:"on_account_deletion"`
+	// Null when FEEDBACK_RETENTION is unset: nothing purges these rows and they are kept until a window is
+	// configured. `note` says so.
+	RetentionDays NilInt    `json:"retention_days"`
+	Note          OptString `json:"note"`
+}
+
+// GetWhat returns the value of What.
+func (s *DataRetentionPolicyFeedback) GetWhat() string {
+	return s.What
+}
+
+// GetCollected returns the value of Collected.
+func (s *DataRetentionPolicyFeedback) GetCollected() []string {
+	return s.Collected
+}
+
+// GetFreeText returns the value of FreeText.
+func (s *DataRetentionPolicyFeedback) GetFreeText() string {
+	return s.FreeText
+}
+
+// GetKind returns the value of Kind.
+func (s *DataRetentionPolicyFeedback) GetKind() []DataRetentionPolicyFeedbackKindItem {
+	return s.Kind
+}
+
+// GetPagePath returns the value of PagePath.
+func (s *DataRetentionPolicyFeedback) GetPagePath() string {
+	return s.PagePath
+}
+
+// GetRunID returns the value of RunID.
+func (s *DataRetentionPolicyFeedback) GetRunID() string {
+	return s.RunID
+}
+
+// GetOnAccountDeletion returns the value of OnAccountDeletion.
+func (s *DataRetentionPolicyFeedback) GetOnAccountDeletion() string {
+	return s.OnAccountDeletion
+}
+
+// GetRetentionDays returns the value of RetentionDays.
+func (s *DataRetentionPolicyFeedback) GetRetentionDays() NilInt {
+	return s.RetentionDays
+}
+
+// GetNote returns the value of Note.
+func (s *DataRetentionPolicyFeedback) GetNote() OptString {
+	return s.Note
+}
+
+// SetWhat sets the value of What.
+func (s *DataRetentionPolicyFeedback) SetWhat(val string) {
+	s.What = val
+}
+
+// SetCollected sets the value of Collected.
+func (s *DataRetentionPolicyFeedback) SetCollected(val []string) {
+	s.Collected = val
+}
+
+// SetFreeText sets the value of FreeText.
+func (s *DataRetentionPolicyFeedback) SetFreeText(val string) {
+	s.FreeText = val
+}
+
+// SetKind sets the value of Kind.
+func (s *DataRetentionPolicyFeedback) SetKind(val []DataRetentionPolicyFeedbackKindItem) {
+	s.Kind = val
+}
+
+// SetPagePath sets the value of PagePath.
+func (s *DataRetentionPolicyFeedback) SetPagePath(val string) {
+	s.PagePath = val
+}
+
+// SetRunID sets the value of RunID.
+func (s *DataRetentionPolicyFeedback) SetRunID(val string) {
+	s.RunID = val
+}
+
+// SetOnAccountDeletion sets the value of OnAccountDeletion.
+func (s *DataRetentionPolicyFeedback) SetOnAccountDeletion(val string) {
+	s.OnAccountDeletion = val
+}
+
+// SetRetentionDays sets the value of RetentionDays.
+func (s *DataRetentionPolicyFeedback) SetRetentionDays(val NilInt) {
+	s.RetentionDays = val
+}
+
+// SetNote sets the value of Note.
+func (s *DataRetentionPolicyFeedback) SetNote(val OptString) {
+	s.Note = val
+}
+
+type DataRetentionPolicyFeedbackKindItem string
+
+const (
+	DataRetentionPolicyFeedbackKindItemBlockingIssue DataRetentionPolicyFeedbackKindItem = "blocking_issue"
+	DataRetentionPolicyFeedbackKindItemNeedSignal    DataRetentionPolicyFeedbackKindItem = "need_signal"
+)
+
+// AllValues returns all DataRetentionPolicyFeedbackKindItem values.
+func (DataRetentionPolicyFeedbackKindItem) AllValues() []DataRetentionPolicyFeedbackKindItem {
+	return []DataRetentionPolicyFeedbackKindItem{
+		DataRetentionPolicyFeedbackKindItemBlockingIssue,
+		DataRetentionPolicyFeedbackKindItemNeedSignal,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DataRetentionPolicyFeedbackKindItem) MarshalText() ([]byte, error) {
+	switch s {
+	case DataRetentionPolicyFeedbackKindItemBlockingIssue:
+		return []byte(s), nil
+	case DataRetentionPolicyFeedbackKindItemNeedSignal:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DataRetentionPolicyFeedbackKindItem) UnmarshalText(data []byte) error {
+	switch DataRetentionPolicyFeedbackKindItem(data) {
+	case DataRetentionPolicyFeedbackKindItemBlockingIssue:
+		*s = DataRetentionPolicyFeedbackKindItemBlockingIssue
+		return nil
+	case DataRetentionPolicyFeedbackKindItemNeedSignal:
+		*s = DataRetentionPolicyFeedbackKindItemNeedSignal
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -3506,7 +3679,6 @@ func (s *Error) SetError(val string) {
 }
 
 func (*Error) browseCatalogRes()          {}
-func (*Error) cancelAccountDeletionRes()  {}
 func (*Error) deleteDownloadArtifactRes() {}
 func (*Error) deleteRunArtifactRes()      {}
 func (*Error) devLoginRes()               {}
@@ -3514,11 +3686,9 @@ func (*Error) getDatasetLimitsRes()       {}
 func (*Error) getDispatchStatusRes()      {}
 func (*Error) getMeRes()                  {}
 func (*Error) listDownloadArtifactsRes()  {}
-func (*Error) listPackagingTargetsRes()   {}
 func (*Error) listSkillVersionsRes()      {}
 func (*Error) listSkillsRes()             {}
 func (*Error) publicSearchSkillsRes()     {}
-func (*Error) requestAccountDeletionRes() {}
 
 // ErrorHeaders wraps Error with response headers.
 type ErrorHeaders struct {
@@ -5941,6 +6111,10 @@ type GetSkillDetailGone Error
 
 func (*GetSkillDetailGone) getSkillDetailRes() {}
 
+type GetSkillDetailInternalServerError Error
+
+func (*GetSkillDetailInternalServerError) getSkillDetailRes() {}
+
 type GetSkillDetailNotFound Error
 
 func (*GetSkillDetailNotFound) getSkillDetailRes() {}
@@ -6542,6 +6716,14 @@ func (s *ListPackagingTargetsOK) SetTargets(val []PackagingTarget) {
 
 func (*ListPackagingTargetsOK) listPackagingTargetsRes() {}
 
+type ListPackagingTargetsServiceUnavailable Error
+
+func (*ListPackagingTargetsServiceUnavailable) listPackagingTargetsRes() {}
+
+type ListPackagingTargetsUnauthorized Error
+
+func (*ListPackagingTargetsUnauthorized) listPackagingTargetsRes() {}
+
 type ListRunArtifactsNotFound Error
 
 func (*ListRunArtifactsNotFound) listRunArtifactsRes() {}
@@ -7036,6 +7218,51 @@ func (o NilFloat64) Get() (v float64, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o NilFloat64) Or(d float64) float64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewNilInt returns new NilInt with value set to v.
+func NewNilInt(v int) NilInt {
+	return NilInt{
+		Value: v,
+	}
+}
+
+// NilInt is nullable int.
+type NilInt struct {
+	Value int
+	Null  bool
+}
+
+// SetTo sets value to v.
+func (o *NilInt) SetTo(v int) {
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o NilInt) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *NilInt) SetToNull() {
+	o.Null = true
+	var v int
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o NilInt) Get() (v int, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o NilInt) Or(d int) int {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -10206,7 +10433,12 @@ func (s *PackagingPreviewExcludedFilesItemReason) UnmarshalText(data []byte) err
 type PackagingPreviewExcludedTestCasesItem struct {
 	TestCaseID uuid.UUID `json:"test_case_id"`
 	Name       string    `json:"name"`
-	Reason     string    `json:"reason"`
+	// The machine code. Until 2026-09-04 this was the only field and the page printed it raw
+	// (「not_curated」); `label` and `note` are the served words, the same three-part shape as
+	// `excluded_files` one field down (04 丙-154 ①).
+	Reason PackagingPreviewExcludedTestCasesItemReason `json:"reason"`
+	Label  string                                      `json:"label"`
+	Note   string                                      `json:"note"`
 }
 
 // GetTestCaseID returns the value of TestCaseID.
@@ -10220,8 +10452,18 @@ func (s *PackagingPreviewExcludedTestCasesItem) GetName() string {
 }
 
 // GetReason returns the value of Reason.
-func (s *PackagingPreviewExcludedTestCasesItem) GetReason() string {
+func (s *PackagingPreviewExcludedTestCasesItem) GetReason() PackagingPreviewExcludedTestCasesItemReason {
 	return s.Reason
+}
+
+// GetLabel returns the value of Label.
+func (s *PackagingPreviewExcludedTestCasesItem) GetLabel() string {
+	return s.Label
+}
+
+// GetNote returns the value of Note.
+func (s *PackagingPreviewExcludedTestCasesItem) GetNote() string {
+	return s.Note
 }
 
 // SetTestCaseID sets the value of TestCaseID.
@@ -10235,8 +10477,76 @@ func (s *PackagingPreviewExcludedTestCasesItem) SetName(val string) {
 }
 
 // SetReason sets the value of Reason.
-func (s *PackagingPreviewExcludedTestCasesItem) SetReason(val string) {
+func (s *PackagingPreviewExcludedTestCasesItem) SetReason(val PackagingPreviewExcludedTestCasesItemReason) {
 	s.Reason = val
+}
+
+// SetLabel sets the value of Label.
+func (s *PackagingPreviewExcludedTestCasesItem) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetNote sets the value of Note.
+func (s *PackagingPreviewExcludedTestCasesItem) SetNote(val string) {
+	s.Note = val
+}
+
+// The machine code. Until 2026-09-04 this was the only field and the page printed it raw
+// (「not_curated」); `label` and `note` are the served words, the same three-part shape as
+// `excluded_files` one field down (04 丙-154 ①).
+type PackagingPreviewExcludedTestCasesItemReason string
+
+const (
+	PackagingPreviewExcludedTestCasesItemReasonUserUploadedDataset   PackagingPreviewExcludedTestCasesItemReason = "user_uploaded_dataset"
+	PackagingPreviewExcludedTestCasesItemReasonNotCurated            PackagingPreviewExcludedTestCasesItemReason = "not_curated"
+	PackagingPreviewExcludedTestCasesItemReasonUserOptedOut          PackagingPreviewExcludedTestCasesItemReason = "user_opted_out"
+	PackagingPreviewExcludedTestCasesItemReasonUnsafeDatasetFileName PackagingPreviewExcludedTestCasesItemReason = "unsafe_dataset_file_name"
+)
+
+// AllValues returns all PackagingPreviewExcludedTestCasesItemReason values.
+func (PackagingPreviewExcludedTestCasesItemReason) AllValues() []PackagingPreviewExcludedTestCasesItemReason {
+	return []PackagingPreviewExcludedTestCasesItemReason{
+		PackagingPreviewExcludedTestCasesItemReasonUserUploadedDataset,
+		PackagingPreviewExcludedTestCasesItemReasonNotCurated,
+		PackagingPreviewExcludedTestCasesItemReasonUserOptedOut,
+		PackagingPreviewExcludedTestCasesItemReasonUnsafeDatasetFileName,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PackagingPreviewExcludedTestCasesItemReason) MarshalText() ([]byte, error) {
+	switch s {
+	case PackagingPreviewExcludedTestCasesItemReasonUserUploadedDataset:
+		return []byte(s), nil
+	case PackagingPreviewExcludedTestCasesItemReasonNotCurated:
+		return []byte(s), nil
+	case PackagingPreviewExcludedTestCasesItemReasonUserOptedOut:
+		return []byte(s), nil
+	case PackagingPreviewExcludedTestCasesItemReasonUnsafeDatasetFileName:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PackagingPreviewExcludedTestCasesItemReason) UnmarshalText(data []byte) error {
+	switch PackagingPreviewExcludedTestCasesItemReason(data) {
+	case PackagingPreviewExcludedTestCasesItemReasonUserUploadedDataset:
+		*s = PackagingPreviewExcludedTestCasesItemReasonUserUploadedDataset
+		return nil
+	case PackagingPreviewExcludedTestCasesItemReasonNotCurated:
+		*s = PackagingPreviewExcludedTestCasesItemReasonNotCurated
+		return nil
+	case PackagingPreviewExcludedTestCasesItemReasonUserOptedOut:
+		*s = PackagingPreviewExcludedTestCasesItemReasonUserOptedOut
+		return nil
+	case PackagingPreviewExcludedTestCasesItemReasonUnsafeDatasetFileName:
+		*s = PackagingPreviewExcludedTestCasesItemReasonUnsafeDatasetFileName
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 type PackagingPreviewIncludedTestCasesItem struct {
@@ -11401,6 +11711,14 @@ func (s *RejectedSuggestion) SetBlockedReason(val SuggestionBlockedReason) {
 func (s *RejectedSuggestion) SetMessage(val string) {
 	s.Message = val
 }
+
+type RequestAccountDeletionConflict Error
+
+func (*RequestAccountDeletionConflict) requestAccountDeletionRes() {}
+
+type RequestAccountDeletionUnauthorized Error
+
+func (*RequestAccountDeletionUnauthorized) requestAccountDeletionRes() {}
 
 // A user-editable strengthening of the acceptance criteria (CONTENT-007) — not a second mechanism.
 // Its items map onto the same `criterion_results` entries the criteria produce; a rubric only adds

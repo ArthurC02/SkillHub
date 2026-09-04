@@ -1,5 +1,6 @@
 import { Loading } from "../components/Loading";
 import { ReadFailure } from "../components/LoginRequired";
+import { ApiError } from "../api/client";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -81,7 +82,9 @@ export function WorkspaceSkills() {
       setMessage(`已刪除。${result.note}`);
       await client.invalidateQueries({ queryKey: ["own-skills"] });
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "刪除失敗。"),
+    // 丙-150: keep the error object rather than `err.message`; ReadFailure
+    // decides the sentence by status (401 → login, otherwise this page's own).
+    onError: () => {},
   });
 
   return (
@@ -110,6 +113,17 @@ export function WorkspaceSkills() {
       {skills.isPending && <Loading what="你的 Skill 清單" />}
       <ReadFailure error={skills.error} what="你的 Skill 清單" />
       {message && <p role="status">{message}</p>}
+      {/* 丙-150: success and failure never share one element — success stays
+          the `role="status"` message above, failure is its own alert here. */}
+      {remove.error && (
+        <ReadFailure error={remove.error} what="刪除 Skill">
+          <p role="alert">
+            {remove.error instanceof ApiError && remove.error.status === 404
+              ? "這個 Skill 已經不在了。"
+              : "沒有刪成，可以再按一次。"}
+          </p>
+        </ReadFailure>
+      )}
 
       {/*
         Still true and still needed, narrowed to what is genuinely not here.
@@ -277,7 +291,10 @@ export function WorkspaceSkills() {
                   <ConfirmDelete
                     scopeId={`skill-delete-scope-${s.skill_id}`}
                     pending={remove.isPending}
-                    onAsk={() => setMessage("")}
+                    onAsk={() => {
+                      setMessage("");
+                      remove.reset();
+                    }}
                     onConfirm={() => remove.mutate(s.skill_id)}
                     scope={
                       <>

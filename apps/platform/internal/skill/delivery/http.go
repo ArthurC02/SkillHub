@@ -58,7 +58,7 @@ func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Wo
 func (h *Handler) configured(w http.ResponseWriter) bool {
 	if h.Svc == nil || len(h.Svc.Profiles) == 0 {
 		httpx.WriteError(w, http.StatusServiceUnavailable,
-			"no packaging targets are configured on this deployment")
+			"這個部署沒有設定任何打包目標")
 		return false
 	}
 	return true
@@ -267,6 +267,8 @@ type excludedCaseView struct {
 	TestCaseID string `json:"test_case_id"`
 	Name       string `json:"name"`
 	Reason     string `json:"reason"`
+	Label      string `json:"label"`
+	Note       string `json:"note"`
 }
 
 // Preview handles GET .../packaging/preview. Nothing is written and no object is
@@ -365,7 +367,7 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, err error) bool {
 	case err == nil:
 		return true
 	case errors.Is(err, ErrNotFound):
-		httpx.WriteError(w, http.StatusNotFound, "skill version not found")
+		httpx.WriteError(w, http.StatusNotFound, "找不到這個 Skill 版本")
 	case errors.Is(err, ErrUnknownTarget):
 		httpx.WriteError(w, http.StatusBadRequest,
 			"`target` must be one of standard, claude-code, claude-agent-sdk")
@@ -395,11 +397,11 @@ func excludedViews(in []ExcludedTestCase) []excludedCaseView {
 
 func pathIDs(w http.ResponseWriter, r *http.Request) (skillID, versionID pgtype.UUID, ok bool) {
 	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "skill version not found")
+		httpx.WriteError(w, http.StatusNotFound, "找不到這個 Skill 版本")
 		return skillID, versionID, false
 	}
 	if err := versionID.Scan(r.PathValue("versionId")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "skill version not found")
+		httpx.WriteError(w, http.StatusNotFound, "找不到這個 Skill 版本")
 		return skillID, versionID, false
 	}
 	return skillID, versionID, true

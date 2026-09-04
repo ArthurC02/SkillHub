@@ -39,6 +39,22 @@ func TestAnOversizedUploadIsToldBothNumbers(t *testing.T) {
 	}
 }
 
+// A body that could not be read at all (not a size refusal — writeTooLarge
+// covers that) gets a Traditional Chinese sentence a reader can act on, not the
+// Go read error (04 丙-149).
+func TestAnUnreadableUploadBodyIsToldInChinese(t *testing.T) {
+	w := httptest.NewRecorder()
+	writeBadBody(w)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status %d, want 400", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "讀不到上傳的內容") {
+		t.Errorf("the refusal is not the Chinese sentence: %s", body)
+	}
+}
+
 // http.MaxBytesReader stops at limit+1 and never learns how much more there was,
 // so when the request does not declare a size over the ceiling there is no honest
 // second number. Saying the ceiling alone is the requirement; inventing a size

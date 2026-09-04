@@ -39,7 +39,6 @@ export function Downloads() {
       setMessage("已刪除。檔案不再提供下載，下載紀錄本身保留。");
       await client.invalidateQueries({ queryKey: ["downloads"] });
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "刪除失敗。"),
   });
 
   return (
@@ -52,6 +51,9 @@ export function Downloads() {
       {downloads.isPending && <Loading what="下載紀錄" />}
       <ReadFailure error={downloads.error} what="下載紀錄" />
       {message && <p role="status">{message}</p>}
+      <ReadFailure error={remove.error} what="刪除">
+        <p role="alert">沒有刪成，可以再按一次。</p>
+      </ReadFailure>
 
       {downloads.data &&
         (downloads.data.downloads.length === 0 ? (

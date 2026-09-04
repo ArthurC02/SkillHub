@@ -938,6 +938,17 @@ func (s *DataRetentionPolicy) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if err := s.Feedback.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "feedback",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
@@ -987,6 +998,68 @@ func (s DataRetentionPolicyEventsItemName) Validate() error {
 	case "session_started":
 		return nil
 	case "download_started":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s *DataRetentionPolicyFeedback) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if s.Collected == nil {
+			return errors.New("nil is invalid value")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "collected",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if s.Kind == nil {
+			return errors.New("nil is invalid value")
+		}
+		var failures []validate.FieldError
+		for i, elem := range s.Kind {
+			if err := func() error {
+				if err := elem.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				failures = append(failures, validate.FieldError{
+					Name:  fmt.Sprintf("[%d]", i),
+					Error: err,
+				})
+			}
+		}
+		if len(failures) > 0 {
+			return &validate.Error{Fields: failures}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "kind",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s DataRetentionPolicyFeedbackKindItem) Validate() error {
+	switch s {
+	case "blocking_issue":
+		return nil
+	case "need_signal":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
@@ -3151,6 +3224,23 @@ func (s *PackagingPreview) Validate() error {
 		if s.ExcludedTestCases == nil {
 			return errors.New("nil is invalid value")
 		}
+		var failures []validate.FieldError
+		for i, elem := range s.ExcludedTestCases {
+			if err := func() error {
+				if err := elem.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				failures = append(failures, validate.FieldError{
+					Name:  fmt.Sprintf("[%d]", i),
+					Error: err,
+				})
+			}
+		}
+		if len(failures) > 0 {
+			return &validate.Error{Fields: failures}
+		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
@@ -3245,6 +3335,44 @@ func (s PackagingPreviewExcludedFilesItemReason) Validate() error {
 	case "not_a_regular_file":
 		return nil
 	case "unsafe_path":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s *PackagingPreviewExcludedTestCasesItem) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.Reason.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "reason",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s PackagingPreviewExcludedTestCasesItemReason) Validate() error {
+	switch s {
+	case "user_uploaded_dataset":
+		return nil
+	case "not_curated":
+		return nil
+	case "user_opted_out":
+		return nil
+	case "unsafe_dataset_file_name":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

@@ -107,7 +107,7 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 		name = "dev"
 	}
 	if len(name) > 64 {
-		httpx.WriteError(w, http.StatusBadRequest, "user name too long")
+		httpx.WriteError(w, http.StatusBadRequest, "使用者名稱最多 64 個字元")
 		return
 	}
 	token, err := h.Service.LoginOrSignup(r.Context(), ExternalIdentity{
@@ -197,7 +197,7 @@ func (h *Handler) setSessionCookie(w http.ResponseWriter, token string) {
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookie); err == nil && c.Value != "" {
 		if err := h.Service.Logout(r.Context(), c.Value); err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, "logout failed")
+			httpx.WriteError(w, http.StatusInternalServerError, "登出沒有完成，可以再試一次")
 			return
 		}
 	}
@@ -537,22 +537,20 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 // deletionScope is the WS-002/PDM-006 §6.1 requirement that the deletion scope
 // is stated up front, not discovered afterwards: the user has to know that
 // content other people built on keeps existing without their name on it.
-const deletionScope = "Your account stays usable until the grace period ends. " +
-	"At that point your uploaded datasets, run artifacts, and every skill nobody " +
-	"else forked or ran are permanently deleted, files included. Skill versions " +
-	"that other users forked or that historical runs used are kept — their content " +
-	"is another user's provenance chain — but your identity is removed from them " +
-	"and they show as belonging to a deleted user."
+const deletionScope = "寬限期結束前，你的帳號照常可用。到期後，你上傳的資料集、Run 產出，" +
+	"以及沒有任何人 Fork 或執行過的 Skill 會連同檔案永久刪除。被其他使用者 Fork 過、" +
+	"或歷史 Run 使用過的 Skill 版本會保留（它們的內容是別人的來源鏈），" +
+	"但你的身分會從上面移除，顯示為已刪除的使用者所有。"
 
 func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {
 	user, _ := SessionUser(r.Context())
 	updated, err := h.Service.RequestAccountDeletion(r.Context(), user)
 	if err != nil {
 		if errors.Is(err, ErrAccountPurging) {
-			httpx.WriteError(w, http.StatusConflict, "account deletion is already irreversible")
+			httpx.WriteError(w, http.StatusConflict, "刪除已經不可逆，無法再變更")
 			return
 		}
-		httpx.WriteError(w, http.StatusInternalServerError, "deletion request failed")
+		httpx.WriteError(w, http.StatusInternalServerError, "刪除要求沒有記錄成功，可以再試一次")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
@@ -567,10 +565,10 @@ func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
 	user, _ := SessionUser(r.Context())
 	if _, err := h.Service.CancelAccountDeletion(r.Context(), user); err != nil {
 		if errors.Is(err, ErrAccountPurging) {
-			httpx.WriteError(w, http.StatusConflict, "account deletion is already irreversible")
+			httpx.WriteError(w, http.StatusConflict, "刪除已經不可逆，無法再變更")
 			return
 		}
-		httpx.WriteError(w, http.StatusInternalServerError, "deletion cancel failed")
+		httpx.WriteError(w, http.StatusInternalServerError, "取消刪除沒有記錄成功，可以再試一次")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"deletion_requested_at": nil})

@@ -3,6 +3,7 @@ package skillpkg
 import (
 	"fmt"
 	"io/fs"
+	"regexp"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -181,7 +182,7 @@ func TestURLDisclosuresAggregateByHost(t *testing.T) {
 	}
 	// Sorted by host: other.example.org before schemas.example.com.
 	big := urls[1]
-	if !strings.Contains(big.Message, "40 external URL(s) on schemas.example.com") {
+	if big.Code != "external-url" || !strings.Contains(big.Message, "schemas.example.com") || !strings.Contains(big.Message, "40") {
 		t.Fatalf("summary must name host and count, got %q", big.Message)
 	}
 	if strings.Count(big.Message, "https://") > urlExamplesPerHost {
@@ -942,5 +943,27 @@ func TestEveryDisclosureCodeIsDistinctAndNonEmpty(t *testing.T) {
 	}
 	if len(DisclosureCodes) == 0 {
 		t.Fatal("DisclosureCodes is empty; the catalogue assertion would pass vacuously")
+	}
+}
+
+// 04 丙-152: the Findings component prints Message verbatim in role="alert" on
+// the import page, the version-upload form, the packaging page and the
+// generation panel — and until this test existed, nothing ever rendered a
+// Report with a non-empty findings list, so the English sentences that command
+// used to reach that alert region were never caught by fixture or by CI.
+var cjkRune = regexp.MustCompile(`\p{Han}`)
+
+func TestFindingMessagesAreTraditionalChinese(t *testing.T) {
+	r := Validate(pkg("---\nname: BadName!\n---\n", nil))
+	c := r.Categorize()
+	all := append(append([]Finding{}, c.Errors...), c.Warnings...)
+	all = append(all, c.Infos...)
+	if len(all) == 0 {
+		t.Fatal("fixture must produce at least one finding")
+	}
+	for _, f := range all {
+		if !cjkRune.MatchString(f.Message) {
+			t.Errorf("%s: message has no Traditional Chinese sentence, got %q", f.Code, f.Message)
+		}
 	}
 }

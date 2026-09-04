@@ -154,9 +154,8 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 // that enforces it". It was not. Hard-deleting a user's content on a deadline
 // nobody has signed is worse than keeping it, so the claim goes and the job
 // waits for the signature.
-const deletionNote = "skill removed from your workspace, lists, and search; " +
-	"version snapshots stay frozen and are not removed by this deletion; " +
-	"shared package objects referenced by forks are unaffected"
+const deletionNote = "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；" +
+	"Fork 引用的共用套件物件不受影響"
 
 // Takedown handles POST /skills/{id}/takedown (INGEST-010). The caller must own
 // the workspace the skill lives in; see Service.Takedown for why that is the

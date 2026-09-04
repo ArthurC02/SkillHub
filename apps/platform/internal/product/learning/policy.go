@@ -65,13 +65,13 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 	// written here — the rule the four events above already follow, and the
 	// reason the number on this page cannot promise a sweep nobody performs.
 	feedback := map[string]any{
-		"what":                "a report submitted at POST /feedback by a signed-in participant (BETA-003/004/005)",
-		"collected":           []string{"kind", "message", "page_path", "run_id", "workspace_id", "user_id"},
-		"free_text":           "message is free text, up to 2000 characters, in the participant's own words. It is the only free-text column this deployment stores, and it is not masked, summarised or truncated",
+		"what":                "由已登入的參與者在 POST /feedback 送出的回報（BETA-003/004/005）",
+		"collected":           []string{"kind", "message", "page_path", "run_id", "build_id", "workspace_id", "user_id"},
+		"free_text":           "message 是參與者自己寫的自由文字，最多 2000 字。它是這個部署唯一的自由文字欄位，不遮罩、不摘要、不截斷",
 		"kind":                []string{"blocking_issue", "need_signal"},
-		"page_path":           "the route they were on, never a full URL: a query string can carry personal data and this is not that channel",
-		"run_id":              "the run they were looking at, when there was one, and only after it was verified to be their own",
-		"on_account_deletion": "de-identified rather than deleted: workspace_id and user_id are set to NULL and the words are kept (ADR-029 決策 5 rests a scope review on what people said, so a deleted account must not silently withdraw a report the review already counted)",
+		"page_path":           "他當時所在的路由，從不是完整網址：查詢字串可能帶個資，這個管道不收",
+		"run_id":              "他當時看的 Run（若有），而且只在確認是他自己的 Run 之後",
+		"on_account_deletion": "去識別而不是刪除：workspace_id 與 user_id 設為 NULL，文字保留（ADR-029 決策 5 的範圍複審建立在人們說了什麼之上，帳號刪除不能悄悄撤回已被計入的回報）",
 	}
 	if fd := feedbackDays(h.FeedbackRetention); fd >= 0 {
 		feedback["retention_days"] = fd
@@ -81,7 +81,7 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 		// most needs to see: PDM-006 has ratified no window for this class, so
 		// nothing deletes these rows and they are kept until somebody decides.
 		feedback["retention_days"] = nil
-		feedback["note"] = "no retention period is configured for this deployment (FEEDBACK_RETENTION is unset), so these reports are kept indefinitely until one is set and `maintenance purge-feedback` is run"
+		feedback["note"] = "這個部署沒有設定回報的保存期限（FEEDBACK_RETENTION 未設），所以這些回報會一直保留，直到設定期限並執行 maintenance purge-feedback"
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{

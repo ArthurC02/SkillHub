@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { LoginRequired, unauthenticated } from "./LoginRequired";
+import { LoginRequired, ReadFailure, unauthenticated } from "./LoginRequired";
 import { useMe } from "../api/me";
 import {
   BUILD_ID,
@@ -190,11 +190,21 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
       )}
 
       {invalid && <p role="alert">{invalid}</p>}
+      {/*
+        04 丙-150. `send.error.message` used to reach the screen verbatim — for a
+        session that expired mid-typing that was the server's English
+        `not authenticated`, even though the form itself is already hidden for a
+        visitor who was logged out before it rendered (`unauthenticated(me.error)`
+        above). 401 goes through `ReadFailure` like every other read/write;
+        every other status keeps this page's own sentence, unchanged in fact
+        from what it said before.
+      */}
       {send.error && (
-        <p role="alert">
-          送不出去：{send.error.message}
-          。這份內容還留在上面，可以稍後再按一次送出。目前沒有第二條回報管道——這個表單是唯一的一條。
-        </p>
+        <ReadFailure error={send.error} what="回報">
+          <p role="alert">
+            送不出去。這份內容還留在上面，可以稍後再按一次送出；目前沒有第二條回報管道。
+          </p>
+        </ReadFailure>
       )}
       {sent && (
         <p role="status">

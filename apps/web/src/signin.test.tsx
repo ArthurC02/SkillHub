@@ -99,6 +99,8 @@ test("submitting posts the typed name to the offline endpoint", async () => {
 });
 
 // 失敗不得被吞掉：畫面上不說的話，操作者看到的是一個按了沒有反應的按鈕。
+// 04 丙-150：`signIn.error.message` 從來到不了畫面（`ApiError extends Error`,
+// 所以 `instanceof Error` 分支永遠先中），這裡是這個部署自己的句子。
 test("a refused sign-in says so instead of looking like nothing happened", async () => {
   window.__SKILLHUB_DEV_LOGIN__ = true;
   vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("nope", { status: 500 }));
@@ -108,5 +110,42 @@ test("a refused sign-in says so instead of looking like nothing happened", async
     container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true }));
   });
 
-  expect(container.querySelector('[role="alert"]')?.textContent ?? "").toContain("登入失敗");
+  expect(container.querySelector('[role="alert"]')?.textContent ?? "").toContain(
+    "登入沒有成功，可以再試一次。",
+  );
+});
+
+// 04 丙-149／150. Go's own 400 body (`devLogin`, 400 at 64 bytes) — a fixture
+// that said something else would hide the same class of defect an English
+// fixture would (04 丙-143's rule).
+test("丙-150 a 64-char name refused by the server says the number, not the raw body", async () => {
+  window.__SKILLHUB_DEV_LOGIN__ = true;
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response(JSON.stringify({ error: "使用者名稱最多 64 個字元" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+  await mount();
+
+  const deadline = Date.now() + 2000;
+  let alertText = "";
+  while (Date.now() < deadline && !alertText) {
+    await act(async () => {
+      container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    });
+    alertText = container.querySelector('[role="alert"]')?.textContent ?? "";
+  }
+
+  expect(alertText).toContain("使用者名稱最多 64 個字元。");
+});
+
+// 04 丙-155 ⑥. The server counts bytes, ASCII names make that a character
+// count too — `maxLength` stops the offline case before it can hit the 400.
+test("丙-155⑥ the offline name field caps input at 64 characters", async () => {
+  window.__SKILLHUB_DEV_LOGIN__ = true;
+  await mount();
+
+  expect(offlineBox()?.maxLength).toBe(64);
 });

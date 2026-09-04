@@ -90,7 +90,7 @@ func TestVerificationDistinguishesForkFromImport(t *testing.T) {
 // again, the purge job has to exist first, and this test has to be changed by
 // the person who wrote it -- which is the point at which they will read why.
 func TestTheDeletionNoteDoesNotPromiseAPurgeNothingPerforms(t *testing.T) {
-	for _, banned := range []string{"purge", "grace", "30-day", "30 day", "days"} {
+	for _, banned := range []string{"purge", "grace", "30-day", "30 day", "days", "天後", "寬限", "清除"} {
 		if strings.Contains(strings.ToLower(deletionNote), banned) {
 			t.Errorf("the note claims a deletion deadline (%q) and nothing in this repo enforces one: %q",
 				banned, deletionNote)
@@ -98,7 +98,7 @@ func TestTheDeletionNoteDoesNotPromiseAPurgeNothingPerforms(t *testing.T) {
 	}
 	// The other half: stripping the false promise must not leave the user with
 	// less than WS-005 requires, which is the scope of what just happened.
-	for _, required := range []string{"search", "frozen", "forks"} {
+	for _, required := range []string{"搜尋", "凍結", "Fork"} {
 		if !strings.Contains(deletionNote, required) {
 			t.Errorf("the note stopped saying what the deletion covers (%q missing): %q",
 				required, deletionNote)

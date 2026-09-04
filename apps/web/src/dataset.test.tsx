@@ -100,6 +100,41 @@ test("02:TEST-002 without the rules there is no upload control at all", async ()
   expect(container.querySelector("input[type=file]")).toBeNull();
 });
 
+/**
+ * 04 丙-150(e)/丙-149: filetype.go:18 (`ErrUnsupportedType`) now answers 415 with
+ * the Chinese sentence itself, and the page prints it verbatim rather than a
+ * generic fallback — it is the one place the server knows something the page
+ * does not (which type it actually detected the file as).
+ */
+test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/test-cases/limits")) {
+      return Promise.resolve(
+        new Response(JSON.stringify(LIMITS), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ error: "不支援這種檔案類型" }), {
+        status: 415,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await renderUpload();
+
+  const input = container.querySelector<HTMLInputElement>("input[type=file]")!;
+  const file = new File(["bogus"], "a.exe", { type: "application/octet-stream" });
+  Object.defineProperty(input, "files", { value: [file], configurable: true });
+  await act(async () => uploadButton().click());
+  await waitFor(() => (container.textContent ?? "").includes("不支援這種檔案類型"));
+
+  expect(container.textContent).not.toContain("上傳沒有成功");
+});
+
 test("02:TEST-002 changing the Test Case clears what was uploaded to the previous one", async () => {
   // `?test_case=` is a search param on this route, so a change re-renders instead
   // of remounting. 「已上傳 a.csv」 and the last error survived into a different

@@ -26,7 +26,7 @@ import (
 // ErrSuggestUnavailable: the suggestion could not be produced. Never fatal to the
 // user's work — 02:TEST-001 makes automatic suggestion 可選強化, so the manual
 // path (AddCriterion) is always the fallback and the message says so.
-var ErrSuggestUnavailable = errors.New("acceptance criteria suggestions are unavailable right now; add them manually")
+var ErrSuggestUnavailable = errors.New("目前無法自動建議驗收條件，請自己手動輸入")
 
 const (
 	// suggestTimeout bounds the internal call to the Python service. Go owns the

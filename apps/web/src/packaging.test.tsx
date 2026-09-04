@@ -201,6 +201,16 @@ const targets = {
 
 const emptyValidation = { blocked: false, errors: [], warnings: [], infos: [] };
 
+// 丙-154 ①：`label`／`note` 是 delivery/testcase.go 的 `excludedCaseWords` 真字串，
+// `reason` 是機器碼（`user_uploaded_dataset`），畫面不印它。
+const EXCLUDED_TEST_CASE = {
+  test_case_id: "tc1",
+  name: "我上傳的資料",
+  reason: "user_uploaded_dataset",
+  label: "含你上傳的資料集",
+  note: "你上傳的資料不能隨套件散布（授權未定），這個 Test Case 因此不打包。",
+};
+
 const artifact: DownloadArtifact = {
   artifact_id: ARTIFACT,
   skill_id: SKILL,
@@ -246,6 +256,14 @@ function stubPlatform(
       label: string;
       note: string;
     }[];
+    /** 不會進包的 Test Case。預設是 user_uploaded_dataset 那一列，見下方常數。 */
+    excludedTestCases?: {
+      test_case_id: string;
+      name: string;
+      reason: string;
+      label: string;
+      note: string;
+    }[];
   } = {},
 ) {
   // 23 and never 30. 30 is what a deployment actually configures, so a mock
@@ -267,15 +285,13 @@ function stubPlatform(
               target: "standard",
               allowed: false,
               blocked_reason: "license_unknown",
-              blocked_message: "nobody has established whether this skill may be redistributed",
+              blocked_message: "沒有人確認過這個 Skill 可不可以再散布，未確認的授權視同不允許",
               validation: emptyValidation,
               // A gate closed before any bytes were read, so there is nothing to
               // have dependencies — not a package that has none.
               dependencies: [],
               included_test_cases: [],
-              excluded_test_cases: [
-                { test_case_id: "tc1", name: "我上傳的資料", reason: "user-uploaded dataset" },
-              ],
+              excluded_test_cases: options.excludedTestCases ?? [EXCLUDED_TEST_CASE],
               excluded_files: options.excludedFiles ?? [],
               retention_days: retention,
             }
@@ -437,11 +453,33 @@ test("PACK-001 a blocked preview names which lock closed and refuses to offer th
 
   // The reason code, the platform's own sentence, and what it means for the reader.
   expect(text()).toContain("license_unknown");
-  expect(text()).toContain("nobody has established whether this skill may be redistributed");
+  expect(text()).toContain("沒有人確認過這個 Skill 可不可以再散布，未確認的授權視同不允許");
   expect(text()).toContain("授權未知一律當成不可散布處理");
   expect(button("建立下載套件")?.disabled).toBe(true);
   // What will not travel is listed rather than silently missing.
   expect(text()).toContain("我上傳的資料");
+});
+
+// 丙-154 ①: excluded_test_cases[] 現在跟 excluded_files[] 一樣是四件式；`reason`
+// 是機器碼，`label`/`note` 才是畫面該印的字（delivery/testcase.go 的
+// `excludedCaseWords`）。
+test("丙-154① 不會進包的 Test Case 印 label/note，不印機器碼 reason", async () => {
+  stubPlatform({
+    blocked: true,
+    excludedTestCases: [
+      {
+        test_case_id: "tc2",
+        name: "我的 CSV 清理測試",
+        reason: "not_curated",
+        label: "未經策展",
+        note: "只有平台策展的 Test Case 會隨套件散布，你自己的 Test Case 留在工作區。",
+      },
+    ],
+  });
+  await render(<Packaging />, () => text().includes("不能打包"));
+
+  expect(text()).toContain("未經策展");
+  expect(text()).not.toContain("not_curated");
 });
 
 test("PACK-001 warnings are shown even when packaging is allowed", async () => {
@@ -759,10 +797,11 @@ test("§2.4 不能下載的那一列，在連結原本的位置說出是哪一�
         {
           ...artifact,
           servable: false,
+          // 丙-155⑧: packaging.go withServeState 的真字串（半形逗號/括號一字未改）。
           serve_state: {
             value: "quarantined",
-            label: "檢查中,尚未提供下載",
-            note: "這一份還在掃描,掃完才會開放。",
+            label: "檢查中(尚未可下載)",
+            note: "打包完成,驗證還沒結束。這是暫時狀態(ADR-003 隔離)。",
           },
         },
       ],
@@ -775,7 +814,7 @@ test("§2.4 不能下載的那一列，在連結原本的位置說出是哪一�
   const row = container.querySelector(".download-item")!;
   const paragraphs = Array.from(row.children).filter((el) => el.tagName === "P");
   const actions = paragraphs[paragraphs.length - 1];
-  expect(actions.textContent).toContain("檢查中,尚未提供下載");
+  expect(actions.textContent).toContain("檢查中(尚未可下載)");
   expect(
     Array.from(container.querySelectorAll("a")).filter((a) =>
       (a.getAttribute("href") ?? "").includes("/content"),
@@ -938,4 +977,142 @@ test("R4: picking a version changes the address, so the packaging preview can be
     calls.some((u) => u.includes(`/versions/${OLDER_VERSION}/packaging/preview`)),
   );
   expect(select.value).toBe(OLDER_VERSION);
+});
+
+// --- 丙-153: the invite gate on the build button --------------------------
+
+test("丙-153 建立套件的按鈕前先說邀請限制，403 印中文並指向頁尾回報", async () => {
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/versions")) return json(VERSIONS);
+    if (url.includes("/packaging/targets")) return json(targets);
+    if (url.includes("/packaging/preview")) {
+      return json({
+        target: "standard",
+        allowed: true,
+        validation: emptyValidation,
+        dependencies: [],
+        included_test_cases: [],
+        excluded_test_cases: [],
+        excluded_files: [],
+        retention_days: 23,
+      });
+    }
+    if (url.includes("/packaging") && init?.method === "POST") {
+      return json({ error: "closed beta" }, 403);
+    }
+    if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
+    return json({ error: "not found" }, 404);
+  });
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+
+  // Stated before the button is pressed, same shape as CreateHub.tsx:76-82 and
+  // RunPreflight.tsx.
+  expect(text()).toContain(
+    "建立下載套件需要封測邀請，這道限制由平台強制；還沒有邀請的話，這一步會被擋下來。",
+  );
+
+  await act(async () => button("建立下載套件")?.click());
+  await waitFor(() => text().includes("這個帳號還沒有封測邀請"));
+
+  expect(text()).toContain("用頁尾的「回報問題」選「我想要的東西，這裡沒有」");
+  expect(text()).not.toContain("closed beta");
+});
+
+test("丙-150 建立套件失敗（非 403）說可以再按一次，不印 err.message", async () => {
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/versions")) return json(VERSIONS);
+    if (url.includes("/packaging/targets")) return json(targets);
+    if (url.includes("/packaging/preview")) {
+      return json({
+        target: "standard",
+        allowed: true,
+        validation: emptyValidation,
+        dependencies: [],
+        included_test_cases: [],
+        excluded_test_cases: [],
+        excluded_files: [],
+        retention_days: 23,
+      });
+    }
+    if (url.includes("/packaging") && init?.method === "POST") {
+      return json({ error: "internal error" }, 500);
+    }
+    if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
+    return json({ error: "not found" }, 404);
+  });
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+
+  await act(async () => button("建立下載套件")?.click());
+  await waitFor(() => text().includes("套件沒有建立成功，可以再按一次。"));
+
+  expect(text()).not.toContain("internal error");
+});
+
+// --- 丙-150 §2.9: the packaging preview's 404/503 each say their own thing --
+
+test("丙-150 打包預覽讀不到這個版本時，說回上一步重新挑一次版本", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/versions")) return json(VERSIONS);
+    if (url.includes("/packaging/targets")) return json(targets);
+    if (url.includes("/packaging/preview")) return json({ error: "skill version not found" }, 404);
+    if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
+    return json({ error: "not found" }, 404);
+  });
+  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+  await waitFor(() => text().includes("這個版本讀不到"));
+
+  expect(text()).toContain("回上一步重新挑一次版本");
+  expect(text()).not.toContain("skill version not found");
+});
+
+test("丙-150 部署沒有設定打包目標時，503 說沒有預覽而不是英文句子", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/versions")) return json(VERSIONS);
+    if (url.includes("/packaging/targets")) return json(targets);
+    if (url.includes("/packaging/preview")) {
+      return json({ error: "no packaging targets are configured on this deployment" }, 503);
+    }
+    if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
+    return json({ error: "not found" }, 404);
+  });
+  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+  await waitFor(() => text().includes("這個部署沒有設定任何打包目標，所以沒有預覽。"));
+
+  expect(text()).not.toContain("no packaging targets are configured");
+});
+
+// --- 丙-155 ⑦: serve_state=purged is a third non-status value ---------------
+
+test("丙-155⑦ purged 印 serve_state.note，不印到期時間或到期後檔案刪除", async () => {
+  vi.stubGlobal("fetch", () =>
+    json({
+      downloads: [
+        {
+          ...artifact,
+          artifact_id: "purged-1",
+          servable: false,
+          // packaging.go withServeState's real strings for the `purged` branch.
+          serve_state: {
+            value: "purged",
+            label: "檔案已不存在,紀錄保留",
+            note: "儲存的位元組已經不在了,而這一列還在。同一版本可以再打包一次。",
+          },
+          // Deliberately in the future, same reason as the `lost` fixture above:
+          // a purged row must not be told the retention story either.
+          expires_at: "2099-01-01T00:00:00Z",
+        },
+      ],
+    }),
+  );
+  await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
+
+  expect(text()).toContain("儲存的位元組已經不在了");
+  const row = container.querySelector(".download-item")!;
+  expect(row.textContent).not.toContain("到期時間");
+  expect(row.textContent).not.toContain("到期後檔案刪除");
+  expect(row.textContent).not.toContain("這筆紀錄保留。「已過期");
 });

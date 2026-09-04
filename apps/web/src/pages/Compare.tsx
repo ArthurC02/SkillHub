@@ -65,15 +65,26 @@ type CompareRow = {
 };
 
 const enrichmentAbsence = (skill: SkillDetail) =>
-  skill.enrichment.status === "pending" ? "處理中" : "未提供";
+  skill.enrichment.status === "pending" ? "處理中" : "未測量";
 
 const tagAbsence = (skill: SkillDetail) =>
   skill.enrichment.status === "pending" ? "處理中" : "未測量";
 
+/**
+ * 04 丙-155 ①：共用的「未提供」不在 §2.9 那張表上（見 `system.md` §2.9）。
+ * 逐列宣告自己是哪一型（04 丙-131 記著的那一半）：這一批分兩種——
+ * 「enrichment／scan 沒有記到值」＝未測量，「這個物件結構上就沒有這個東西」＝不適用。
+ */
+const notMeasured = () => "未測量";
+const notApplicable = () => "不適用";
+
 const ROWS: CompareRow[] = [
   {
     label: "套件自述摘要",
+    // `summary` 來自匯入時讀到的 frontmatter，不是 enrichment／scan——空字串
+    // 代表匯入沒有記到這段文字，不是這個套件結構上不能有摘要。
     signature: (skill) => skill.summary || undefined,
+    absent: notMeasured,
   },
   {
     label: "白話摘要（AI 產生）",
@@ -101,6 +112,8 @@ const ROWS: CompareRow[] = [
     // the skill has none, so it reads 未知 rather than an encouraging blank.
     signature: (skill) =>
       skill.limitations.map((limit) => `${limit.source}:${limit.text}`).join("\n") || undefined,
+    // 「Empty 代表兩個來源都沒有記」——註解本來就這樣寫，enrichment／scan 沒說＝未測量。
+    absent: notMeasured,
     render: (skill) => (
       <ul>
         {skill.limitations.map((limit) => (
@@ -142,7 +155,10 @@ const ROWS: CompareRow[] = [
   },
   {
     label: "套件宣告可用的工具（權限）",
+    // `allowed_tools` 是 frontmatter 的選填欄位——不宣告是套件作者的選擇，不是
+    // 平台沒測到，物件結構上就沒有這個限制清單。
     signature: (skill) => skill.allowed_tools?.join(" ") || undefined,
+    absent: notApplicable,
     render: (skill) => (
       <ul className="tag-list">
         {skill.allowed_tools?.map((tool) => (
@@ -166,9 +182,12 @@ const ROWS: CompareRow[] = [
   {
     label: "來源",
     // Both axes of provenance: how far the source was traced (trust) and where
-    // it came from (url). A skill with no source record at all is 未知.
+    // it came from (url). `source` is optional on the type — a skill built on
+    // the platform rather than imported from one has no import origin at all,
+    // which is a structural 不適用, not a measurement that failed.
     signature: (skill) =>
       skill.source && `${skill.source.trust.value} ${skill.source.url ?? ""}`.trim(),
+    absent: notApplicable,
     render: (skill) =>
       skill.source && (
         <>
@@ -183,13 +202,14 @@ const ROWS: CompareRow[] = [
             /* 設計 §2.9: 「未知」不在那張封閉的六詞表上。§2.1 本文自己寫著
                「缺席有型別，見 §2.9。只寫『未知』已經不夠了」，而這一頁的每一格
                缺席都是這個詞——它比 §2.9 早。表上對得起這一格的是「未測量」：
-               平台有這個欄位，只是這一份沒有記到值。
+               平台有這個欄位（`source` 這一列已經存在，也就是有 `trust`），
+               只是這一份沒有記到網址這個子欄位的值。
 
-               §2.9 真正要的另一半還沒做：**型別要是資料層的列舉，不是渲染層的
-               falsy**，而下面那張表用一個 `undefined` 服務十四列不同的缺席。逐列
-               宣告自己是哪一型，記在 04 丙-131。 */
+               04 丙-131／丙-155 ①落地：型別現在是逐列宣告的資料層列舉
+               （見上面 `notMeasured`／`notApplicable`），不再是渲染層的 falsy；
+               這一格沿用同一套字，不再印 §2.9 表外的「未提供」。 */
             <p className="note">
-              來源網址：<span className="compare-unknown">未提供</span>
+              來源網址：<span className="compare-unknown">未測量</span>
             </p>
           )}
           {skill.source.source_version && (
@@ -236,8 +256,11 @@ const ROWS: CompareRow[] = [
   },
   {
     label: "版本與時間",
+    // `version` 的型別註解本身寫著「Absent for a skill with no saved content
+    // yet」——結構上就沒有版本可以講，是不適用，不是量不到。
     signature: (skill) =>
       skill.version && `v${skill.version.version_number} ${skill.version.created_at}`,
+    absent: notApplicable,
     render: (skill) =>
       skill.version && (
         <>
@@ -295,7 +318,10 @@ export function CompareTable({ skills }: { skills: SkillDetail[] }) {
                   {skills.map((skill, index) => (
                     <td key={skill.skill_id}>
                       {signatures[index] === undefined ? (
-                        <span className="compare-unknown">{row.absent?.(skill) ?? "未提供"}</span>
+                        // 04 丙-155 ①：每一列現在都宣告了自己的 `absent`（見上面
+                        // ROWS）；這個備援只在有人新增一列卻忘了宣告時才會出現，
+                        // 給的仍然是 §2.9 表內詞，不是「未提供」。
+                        <span className="compare-unknown">{row.absent?.(skill) ?? "未測量"}</span>
                       ) : (
                         (row.render?.(skill) ?? signatures[index])
                       )}
@@ -365,9 +391,13 @@ export function Compare() {
 
       {/* 「搜尋結果」以前是唯一的來源，而 2026-09-03 起目錄也有同一組勾選框
           （Home 的 `CompareBar` 在兩種狀態下都渲染），這句話沒有跟上。設計 §3
-          第 14 條：同一件事在兩處講得不一樣。 */}
+          第 14 條：同一件事在兩處講得不一樣。
+
+          04 丙-150：帶不到 2 個 id 到站是這一頁最平常的到站狀態（例如從 /compare
+          直接開啟），不是一次失敗——role 改回 status，失敗留給下面 401／讀取
+          失敗那兩段。 */}
       {skillIds.length < 2 && (
-        <p role="alert">請從首頁的搜尋結果或目錄選擇 2 到 3 個 Skill 再進行比較。</p>
+        <p role="status">請從首頁的搜尋結果或目錄選擇 2 到 3 個 Skill 再進行比較。</p>
       )}
       {/*
         The count, because it is already in hand and it changes: three parallel

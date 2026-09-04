@@ -88,6 +88,8 @@ type Overrides = {
   testCases?: unknown[];
   /** The single test case GET /test-cases/{id} answers with. Defaults to `draft`. */
   testCase?: TestCase;
+  /** POST /test-cases — an ApiError status to fail with, instead of 201. */
+  create?: { status: number; error: string };
 };
 
 function stubPlatform(over: Overrides = {}) {
@@ -113,6 +115,10 @@ function stubPlatform(over: Overrides = {}) {
     if (path === "/runs") return json({ runs: over.runs ?? [] });
     if (path === "/skills")
       return json({ skills: [{ skill_id: SKILL, name: "去重複工具", summary: "" }] });
+    if (init?.method === "POST" && path === "/test-cases") {
+      if (over.create) return json({ error: over.create.error }, over.create.status);
+      return json(draft, 201);
+    }
     if (path === "/test-cases") return json({ test_cases: over.testCases ?? [] });
     if (init?.method === "DELETE" && path === `/test-cases/${TEST_CASE}`)
       return json({ deleted: true, datasets_deleted: 2, note: "server note" });
@@ -173,6 +179,11 @@ function button(label: string): HTMLButtonElement {
   );
   if (!found) throw new Error(`no ${label} button; DOM was:\n${container.textContent}`);
   return found;
+}
+
+function selectValue(select: HTMLSelectElement, value: string) {
+  select.value = value;
+  select.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string) {
@@ -328,13 +339,69 @@ test("TEST-002 an adopted suggestion is listed as 系統建議，尚未確認", 
   expect(container.textContent).toContain("系統建議，尚未確認");
 });
 
-test("TEST-002 a 503 is worded as unavailable and names the manual path", async () => {
-  stubPlatform({ suggest: { status: 503, error: "suggestions are unavailable right now" } });
+/**
+ * 04 丙-150(b): the old copy interpolated `err.message` into the sentence
+ * (「目前無法自動建議（${err.message}）」), which put whatever the server wrote —
+ * in English before 丙-149, in Chinese after — into the middle of a Chinese
+ * sentence. The fixed sentence now stands alone regardless of the server's
+ * wording, so the fixture below is deliberately a DIFFERENT string from what
+ * the page prints: if the page were still interpolating, this test would show
+ * the fixture's words on screen and it does not.
+ */
+test("TEST-002 a 503 is worded as unavailable and names the manual path, without the server's own words", async () => {
+  stubPlatform({ suggest: { status: 503, error: "目前無法自動建議驗收條件，請自己手動輸入" } });
   await render();
 
   await act(async () => button("請系統建議（選用）").click());
   await waitFor(() => (container.textContent ?? "").includes("目前無法自動建議"));
-  expect(container.textContent).toContain("可以自己手動輸入");
+  expect(container.textContent).toContain("驗收條件可以自己手動輸入");
+  // The server's own sentence (different wording, per the fixture above) must
+  // not be on screen — the page's own fixed sentence stands alone.
+  expect(container.textContent).not.toContain("目前無法自動建議驗收條件，請自己手動輸入");
+});
+
+// --- 04 丙-150/155: 寫入路徑的 401、bytes 上限與伺服器句子 -------------------
+
+test("丙-150 建立失敗於 401 走 ReadFailure，印登入而不是 not authenticated", async () => {
+  const calls = stubPlatform({ create: { status: 401, error: "not authenticated" } });
+  await renderList();
+
+  await act(async () =>
+    selectValue(container.querySelector<HTMLSelectElement>("#tc-skill")!, SKILL),
+  );
+  await act(async () => setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "名稱"));
+  await act(async () =>
+    setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "prompt"),
+  );
+  await act(async () => button("建立").click());
+  await waitFor(() => (container.textContent ?? "").includes("需要登入"));
+
+  expect(container.textContent).not.toContain("not authenticated");
+  expect(calls.some((c) => c.method === "POST" && c.url === "/test-cases")).toBe(true);
+});
+
+/**
+ * 04 丙-155③: testlab.go 用 bytes 算長度，不是字元數。這裡用 ASCII 湊出剛好超過
+ * 200 bytes 的名稱（1 字元＝1 byte），檢查在送出前就擋下來——沒有任何一次 POST
+ * /test-cases 被送出。
+ */
+test("丙-155③ 名稱超過 200 bytes 送出前先擋下，不送出請求", async () => {
+  const calls = stubPlatform();
+  await renderList();
+
+  await act(async () =>
+    selectValue(container.querySelector<HTMLSelectElement>("#tc-skill")!, SKILL),
+  );
+  await act(async () =>
+    setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "x".repeat(201)),
+  );
+  await act(async () =>
+    setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "prompt"),
+  );
+
+  expect(container.textContent).toContain("名稱最多 200 bytes，目前 201 bytes。");
+  expect(button("建立").disabled).toBe(true);
+  expect(calls.some((c) => c.method === "POST" && c.url === "/test-cases")).toBe(false);
 });
 
 test("a pending suggestion says why its button is disabled", async () => {

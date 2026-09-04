@@ -26,7 +26,9 @@ export function AuthControls() {
       <button type="button" disabled={signOut.isPending} onClick={() => signOut.mutate()}>
         登出
       </button>
-      {signOut.error && <span role="alert">登出失敗：{signOut.error.message}</span>}
+      {/* 04 丙-150／149: this was `signOut.error.message`, the Go server's raw
+          English body. */}
+      {signOut.error && <span role="alert">登出沒有完成，可以再試一次。</span>}
     </span>
   );
 }

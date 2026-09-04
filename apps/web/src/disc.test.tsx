@@ -440,6 +440,60 @@ test("DISC-002 類別: the chip row and the filter select write the same URL par
 });
 
 /**
+ * 04 丙-150／丙-155 ②：`useCatalogTotal` 失敗時以前沒有任何分支讀 `isError`，
+ * 於是括號裡的「…」永遠停在那裡——一個量過但失敗的東西跟一個還沒開始量的東西
+ * 印出同一個字。§2.9：檢查跑過且出錯，要說「測量失敗」。
+ */
+test("DISC-002 類別: chip 數量的請求失敗時印「測量失敗」，不是停在「…」", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/api/skills/catalog")) {
+      const params = new URLSearchParams(url.split("?")[1] ?? "");
+      if (params.get("limit") === "1") {
+        return Promise.resolve(new Response(JSON.stringify({ error: "boom" }), { status: 500 }));
+      }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ results: [CATALOG_ROW], limit: 100, total: 1, truncated: false }),
+          { status: 200 },
+        ),
+      );
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }),
+    );
+  });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/", search: {} });
+  });
+  await waitFor(() => container.textContent?.includes("Catalog One") ?? false);
+  await waitFor(() => chips().some((c) => c.includes("測量失敗")));
+
+  expect(chips().every((c) => c.includes("測量失敗"))).toBe(true);
+  expect(chips().some((c) => c.includes("…"))).toBe(false);
+});
+
+/**
+ * 04 丙-150／丙-155 ⑤：伺服器現在對 `q` 拒收超過 2000 字（`discovery/http.go`
+ * 「搜尋文字最多 2000 字」），事前沒有任何地方說過。上限先說出來、擋下送出，
+ * 不是撞到伺服器才看見英文 400。
+ *
+ * 押的是「沒有打伺服器」：把送出前的檢查拿掉，這支測試會在 `calls` 裡看到一次
+ * `/api/skills/search`。
+ */
+test("DISC-001 搜尋文字超過 2000 字：送出前擋下並說明，不打伺服器", async () => {
+  const calls = stubSearch(EMPTY);
+  await render(<App />);
+
+  await submitSearch("a".repeat(2001));
+
+  const alert = container.querySelector('[role="alert"]');
+  expect(alert?.textContent).toBe("搜尋文字最多 2000 字，目前 2001 字。");
+  expect(calls.some((url) => url.includes("/api/skills/search"))).toBe(false);
+});
+
+/**
  * r3 提案 A —— the curated shelf.
  *
  * `BrowseCatalogSkills` has put curated rows first since migration 0042 and the

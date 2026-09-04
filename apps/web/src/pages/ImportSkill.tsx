@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Findings } from "../components/Findings";
-import { LoginRequired, unauthenticated } from "../components/LoginRequired";
+import { LoginRequired, ReadFailure, unauthenticated } from "../components/LoginRequired";
 import { useMe } from "../api/me";
 import { ApiError } from "../api/client";
 import {
@@ -213,9 +213,20 @@ export function ImportSkill() {
         </form>
       )}
 
-      {/* A failure the server did not categorise: no findings to show, so the
-          message is all there is. The categorised 422 renders below instead. */}
-      {mutation.error && !rejected && <p role="alert">匯入失敗：{mutation.error.message}</p>}
+      {/* A failure the server did not categorise: no findings to show, so a
+          page-owned sentence by status is all there is. The categorised 422
+          renders below instead (丙-150: no more raw err.message). */}
+      {mutation.error && !rejected && (
+        <ReadFailure error={mutation.error} what="匯入 Skill">
+          <p role="alert">
+            {mutation.error instanceof ApiError && mutation.error.status === 400
+              ? "這個檔案不是可用的 zip 套件，或網址抓不到內容。"
+              : mutation.error instanceof ApiError && mutation.error.status === 413
+                ? "檔案超過上限。"
+                : "匯入失敗，可以再按一次。"}
+          </p>
+        </ReadFailure>
+      )}
 
       {rejected && (
         <section role="alert">

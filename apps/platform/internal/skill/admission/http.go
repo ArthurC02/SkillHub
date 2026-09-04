@@ -75,6 +75,15 @@ func writeTooLarge(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteError(w, http.StatusRequestEntityTooLarge, msg)
 }
 
+// writeBadBody is what both upload doors answer when the request body itself
+// could not be read (any failure other than the size ceiling, which
+// writeTooLarge already covers): a truncated upload, a dropped connection, a
+// client that closed early. There is nothing to blame on the content, because
+// no content was ever fully received.
+func writeBadBody(w http.ResponseWriter) {
+	httpx.WriteError(w, http.StatusBadRequest, "讀不到上傳的內容，請重新選擇檔案再試一次")
+}
+
 // Upload handles POST /skills/import/upload. Wrap with RequireSession; the
 // workspace is derived from the session, never from the client (iron rule 3).
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +105,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 			writeTooLarge(w, r)
 			return
 		}
-		httpx.WriteError(w, http.StatusBadRequest, "could not read request body")
+		writeBadBody(w)
 		return
 	}
 
@@ -131,7 +140,7 @@ func (h *Handler) SaveVersion(w http.ResponseWriter, r *http.Request) {
 			writeTooLarge(w, r)
 			return
 		}
-		httpx.WriteError(w, http.StatusBadRequest, "could not read request body")
+		writeBadBody(w)
 		return
 	}
 

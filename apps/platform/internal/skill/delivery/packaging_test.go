@@ -724,6 +724,22 @@ func TestADatasetNameThatCannotBeWrittenExcludesTheCase(t *testing.T) {
 	}
 }
 
+// TestExcludedTestCaseServesLabelAndNoteForNotCurated is 04 丙-154 ①: until
+// 2026-09-04 excluded_test_cases[].reason was the only field and the page
+// printed the machine code raw ("not_curated"). label/note are the served
+// words, the same three-part shape excluded_files already has.
+func TestExcludedTestCaseServesLabelAndNoteForNotCurated(t *testing.T) {
+	tc := ExcludedTestCase{
+		TestCaseID: "id-1", Name: "My case", Reason: ExcludedNotCurated,
+	}.withWords()
+	if tc.Label != "未經策展" {
+		t.Errorf("label = %q, want 未經策展", tc.Label)
+	}
+	if tc.Note != "只有平台策展的 Test Case 會隨套件散布，你自己的 Test Case 留在工作區。" {
+		t.Errorf("note = %q, unexpected wording", tc.Note)
+	}
+}
+
 // The prose a reader has to comprehend is the product's, and this product's
 // interface language is Traditional Chinese — `apps/web/index.html` declares
 // `lang="zh-Hant"` and says in as many words that every string the app renders

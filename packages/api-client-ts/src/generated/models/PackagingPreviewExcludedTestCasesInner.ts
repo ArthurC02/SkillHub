@@ -32,12 +32,41 @@ export interface PackagingPreviewExcludedTestCasesInner {
      */
     name: string;
     /**
+     * The machine code. Until 2026-09-04 this was the only field and
+     * the page printed it raw (「not_curated」); `label` and `note`
+     * are the served words, the same three-part shape as
+     * `excluded_files` one field down (04 丙-154 ①).
      * 
      * @type {string}
      * @memberof PackagingPreviewExcludedTestCasesInner
      */
-    reason: string;
+    reason: PackagingPreviewExcludedTestCasesInnerReasonEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof PackagingPreviewExcludedTestCasesInner
+     */
+    label: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof PackagingPreviewExcludedTestCasesInner
+     */
+    note: string;
 }
+
+
+/**
+ * @export
+ */
+export const PackagingPreviewExcludedTestCasesInnerReasonEnum = {
+    UserUploadedDataset: 'user_uploaded_dataset',
+    NotCurated: 'not_curated',
+    UserOptedOut: 'user_opted_out',
+    UnsafeDatasetFileName: 'unsafe_dataset_file_name'
+} as const;
+export type PackagingPreviewExcludedTestCasesInnerReasonEnum = typeof PackagingPreviewExcludedTestCasesInnerReasonEnum[keyof typeof PackagingPreviewExcludedTestCasesInnerReasonEnum];
+
 
 /**
  * Check if a given object implements the PackagingPreviewExcludedTestCasesInner interface.
@@ -46,6 +75,8 @@ export function instanceOfPackagingPreviewExcludedTestCasesInner(value: object):
     if (!('testCaseId' in value) || value['testCaseId'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('reason' in value) || value['reason'] === undefined) return false;
+    if (!('label' in value) || value['label'] === undefined) return false;
+    if (!('note' in value) || value['note'] === undefined) return false;
     return true;
 }
 
@@ -62,6 +93,8 @@ export function PackagingPreviewExcludedTestCasesInnerFromJSONTyped(json: any, i
         'testCaseId': json['test_case_id'],
         'name': json['name'],
         'reason': json['reason'],
+        'label': json['label'],
+        'note': json['note'],
     };
 }
 
@@ -79,6 +112,8 @@ export function PackagingPreviewExcludedTestCasesInnerToJSONTyped(value?: Packag
         'test_case_id': value['testCaseId'],
         'name': value['name'],
         'reason': value['reason'],
+        'label': value['label'],
+        'note': value['note'],
     };
 }
 

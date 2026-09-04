@@ -1,7 +1,21 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { API_BASE_URL } from "../api/client";
+import { API_BASE_URL, ApiError } from "../api/client";
 import { devLogin, useDevLogin } from "../api/me";
+
+/**
+ * 04 丙-155 ⑥／150. The server counts `len(name)` bytes (`devLogin`, 400 at 64),
+ * which is the same figure as a character count only because the offline case
+ * is an ASCII name — `maxLength` on the input is a UTF-16 code unit count, not
+ * a byte count, but the two agree for that alphabet. 400 gets its own sentence
+ * with the number the ledger states; every other status keeps the page's prior
+ * fallback, which `err.message` never actually reached (`ApiError extends
+ * Error`, so the `instanceof Error` branch always won).
+ */
+function signInFailureSentence(error: unknown): string {
+  if (error instanceof ApiError && error.status === 400) return "使用者名稱最多 64 個字元。";
+  return "登入沒有成功，可以再試一次。";
+}
 
 /**
  * 登入這個動作，**全 app 只有這一份**。
@@ -59,6 +73,7 @@ function OfflineSignIn() {
         value={user}
         onChange={(e) => setUser(e.target.value)}
         autoComplete="off"
+        maxLength={64}
       />{" "}
       <button type="submit" disabled={signIn.isPending}>
         登入
@@ -68,7 +83,7 @@ function OfflineSignIn() {
         而是「這個部署沒有掛離線登入」——但那不可能發生在這個分支，因為畫出這個
         表單的前提就是旗標為真。所以失敗只會是伺服器端的意外，照實說。
       */}
-      {signIn.error && <span role="alert">登入失敗：{signIn.error.message}</span>}
+      {signIn.error && <span role="alert">{signInFailureSentence(signIn.error)}</span>}
     </form>
   );
 }

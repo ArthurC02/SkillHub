@@ -15,7 +15,7 @@ import (
 // The message is deliberately the same for every rejected kind — 02:TEST-002
 // requires an error that does not leak system information, so the caller never
 // learns which magic bytes were detected or which rule fired.
-var ErrUnsupportedType = errors.New("file type is not supported")
+var ErrUnsupportedType = errors.New("不支援這種檔案類型")
 
 // sniffLen is what http.DetectContentType actually reads.
 const sniffLen = 512

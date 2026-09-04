@@ -212,9 +212,9 @@ func (d *depScan) report(r *Report) {
 	r.Findings = append(r.Findings, Finding{
 		Severity: SeverityInfo, Code: CodePackageDependencies, Path: "SKILL.md",
 		Message: fmt.Sprintf(
-			"package evidences %d third-party dependency/dependencies: %s. "+
-				"Read from import statements and install lines, never by running anything; "+
-				"the Runtime Image decides separately which of these it carries.",
+			"套件顯示出 %d 個第三方依賴套件：%s。"+
+				"這是從 import 陳述式與安裝指令行讀出的，不曾執行任何東西；"+
+				"Runtime Image 會另外決定實際承載哪些。",
 			len(all), strings.Join(all, ", ")),
 		Details: all,
 	})
@@ -229,9 +229,9 @@ func (d *depScan) report(r *Report) {
 	r.Findings = append(r.Findings, Finding{
 		Severity: SeverityWarning, Code: CodeUndeclaredDependency, Path: "SKILL.md",
 		Message: fmt.Sprintf(
-			"code imports %d package(s) the package never declares — no dependency manifest, "+
-				"and no install line names %s. Whoever installs the runtime cannot learn of "+
-				"these without reading every script.",
+			"程式碼匯入了 %d 個套件從未宣告的依賴套件——沒有依賴清單檔，"+
+				"也沒有任何安裝指令行提到 %s。安裝 Runtime 的人若不逐一讀過每支 Script，"+
+				"無從得知這些依賴。",
 			len(undeclared), strings.Join(undeclared, ", ")),
 		Details: undeclared,
 	})

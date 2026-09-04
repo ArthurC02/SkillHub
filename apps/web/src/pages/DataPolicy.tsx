@@ -124,6 +124,34 @@ export function DataPolicy() {
               </tbody>
             </table>
           </div>
+
+          {/*
+            04 丙-154 ②. `feedback` reached this endpoint's response body since
+            POST /feedback existed; this section is the first time a screen reads
+            it. What it discloses is a fact about the report pipeline
+            (BETA-003/004/005), not about the events above, so it gets its own
+            heading rather than a row in that table.
+          */}
+          <h2>回報問題的資料</h2>
+          <p>{policy.data.feedback.what}</p>
+          <ul className="risk-list">
+            {policy.data.feedback.collected.map((column) => (
+              <li key={column}>
+                <code>{column}</code>
+              </li>
+            ))}
+          </ul>
+          <p>{policy.data.feedback.free_text}</p>
+          <p>{policy.data.feedback.page_path}</p>
+          <p>{policy.data.feedback.run_id}</p>
+          <p>{policy.data.feedback.on_account_deletion}</p>
+          {policy.data.feedback.retention_days !== null ? (
+            <p>
+              保存 <strong>{policy.data.feedback.retention_days} 天</strong>，到期後刪除。
+            </p>
+          ) : (
+            <p className="note">保存期限：尚未定值。{policy.data.feedback.note}</p>
+          )}
         </>
       )}
 

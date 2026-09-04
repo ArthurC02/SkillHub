@@ -579,6 +579,19 @@ export const LIMITS = {
 export const RETENTION_POLICY = {
   collecting: true,
   retention_days: 180,
+  // 04 丙-154 ②: the server's own sentences (product/learning/policy.go), not a
+  // paraphrase — a fixture that says what we wish it said hides drift (丙-143).
+  feedback: {
+    what: "由已登入的參與者在 POST /feedback 送出的回報（BETA-003/004/005）",
+    collected: ["kind", "message", "page_path", "run_id", "build_id", "workspace_id", "user_id"],
+    free_text:
+      "message 是參與者自己寫的自由文字，最多 2000 字。它是這個部署唯一的自由文字欄位，不遮罩、不摘要、不截斷",
+    page_path: "他當時所在的路由，從不是完整網址：查詢字串可能帶個資，這個管道不收",
+    run_id: "他當時看的 Run（若有），而且只在確認是他自己的 Run 之後",
+    on_account_deletion:
+      "去識別而不是刪除：workspace_id 與 user_id 設為 NULL，文字保留（ADR-029 決策 5 的範圍複審建立在人們說了什麼之上，帳號刪除不能悄悄撤回已被計入的回報）",
+    retention_days: 90,
+  },
   events: [
     {
       name: "search_performed",

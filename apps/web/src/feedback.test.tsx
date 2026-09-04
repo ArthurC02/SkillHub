@@ -69,6 +69,17 @@ async function submit() {
 
 const text = () => container.textContent ?? "";
 
+// The Go server's own wording (04 丙-149, strings-149-152-154-go-workspace-
+// learning.md `apps/platform/internal/product/learning/feedback.go`). A
+// fixture that said something else would hide the same class of defect an
+// English fixture would (04 丙-143's rule).
+const FEEDBACK_400_BODY = "message 不能空白，且最多 2000 字";
+const FEEDBACK_500_BODY = "回報沒有記錄成功，可以再送一次";
+// `RequireSession`'s body — left English on purpose (149's "left untouched"
+// list): every page routes 401 through the shared `ReadFailure` component
+// rather than through this string.
+const NOT_AUTHENTICATED_BODY = "not authenticated";
+
 /** Records every call so a test can assert nothing was sent as well as what was. */
 function stubPlatform(status = 204) {
   const calls: Array<{ url: string; body: unknown }> = [];
@@ -92,13 +103,18 @@ function stubPlatform(status = 204) {
       );
     }
     calls.push({ url: String(input), body: JSON.parse(String(init?.body ?? "null")) });
+    if (status === 204) return Promise.resolve(new Response(null, { status: 204 }));
+    const message =
+      status === 401
+        ? NOT_AUTHENTICATED_BODY
+        : status === 500
+          ? FEEDBACK_500_BODY
+          : FEEDBACK_400_BODY;
     return Promise.resolve(
-      status === 204
-        ? new Response(null, { status: 204 })
-        : new Response(JSON.stringify({ error: "message must not be blank" }), {
-            status,
-            headers: { "Content-Type": "application/json" },
-          }),
+      new Response(JSON.stringify({ error: message }), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
     );
   });
   return calls;
@@ -203,6 +219,20 @@ test("BETA-004 a failed submit keeps the words and says what to do next", async 
   expect(text()).toContain("目前沒有第二條回報管道");
   expect(text()).not.toContain("寫信");
   expect(text()).not.toContain("已收到");
+});
+
+// 04 丙-150. The form is already hidden for a visitor who was logged out
+// before it rendered (`unauthenticated(me.error)`); this is the other case —
+// a session that expires between opening the form and pressing 送出回報.
+test("丙-150 a session that expires mid-typing shows 需要登入, not the server's raw body", async () => {
+  stubPlatform(401);
+  await render(<FeedbackEntry pathname="/" />);
+
+  await type("Fork 之後找不到我 Fork 出來的東西。");
+  await submit();
+  await waitFor(() => text().includes("需要登入"));
+
+  expect(text()).not.toContain(NOT_AUTHENTICATED_BODY);
 });
 
 test("BETA-005 the two kinds are the reporter's choice and the need signal is one of them", async () => {

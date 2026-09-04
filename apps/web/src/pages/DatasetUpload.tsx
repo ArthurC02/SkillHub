@@ -3,6 +3,7 @@ import { ReadFailure } from "../components/LoginRequired";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { ApiError } from "../api/client";
 import { getDatasetLimits, uploadDataset, type Dataset } from "../api/lab";
 
 /**
@@ -35,6 +36,7 @@ export function DatasetUpload() {
   const { test_case: testCase = "" } = useSearch({ strict: false }) as UploadSearch;
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
+  const [uploadError, setUploadError] = useState<unknown>(null);
   const [uploaded, setUploaded] = useState<Dataset[]>([]);
   // `test_case` is a search param on this same route, so changing it re-renders
   // rather than remounting: 「已上傳 X」 and the last error survived into a
@@ -42,6 +44,7 @@ export function DatasetUpload() {
   // RunPreflight and Packaging write for the same reason.
   useEffect(() => {
     setMessage("");
+    setUploadError(null);
     setUploaded([]);
   }, [testCase]);
 
@@ -56,12 +59,14 @@ export function DatasetUpload() {
     onSuccess: (d) => {
       setUploaded((prev) => [...prev, d]);
       setMessage("");
+      setUploadError(null);
       if (fileInput.current) fileInput.current.value = "";
     },
-    // The server's message is shown as-is: 02:TEST-002 requires it to be
-    // understandable and to leak nothing about the system, and it is written to
-    // that rule. Rewriting it here would be a second place to get that wrong.
-    onError: (err) => setMessage(err instanceof Error ? err.message : "上傳失敗。"),
+    // 04 丙-150(e): the error object, not its raw `.message` — 401 goes through
+    // `ReadFailure`, and only 400/413/415 (dataset.go / filetype.go, 丙-149
+    // already made these Chinese) print the server's own sentence, because those
+    // are the ones that carry a size or a type this page cannot know on its own.
+    onError: (err) => setUploadError(err),
   });
 
   return (
@@ -164,6 +169,13 @@ export function DatasetUpload() {
       )}
 
       {message && <p role="alert">{message}</p>}
+      <ReadFailure error={uploadError} what="上傳">
+        <p role="alert">
+          {uploadError instanceof ApiError && [400, 413, 415].includes(uploadError.status)
+            ? uploadError.message
+            : "上傳沒有成功，可以再按一次。"}
+        </p>
+      </ReadFailure>
 
       {uploaded.length > 0 && (
         <ul>

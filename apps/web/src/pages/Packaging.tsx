@@ -184,11 +184,9 @@ export function Packaging() {
   const [chosen, setChosen] = useState<PackagingTargetId | "">("");
   const [includeTestCases, setIncludeTestCases] = useState(false);
   const [built, setBuilt] = useState<CreatedDownloadArtifact | null>(null);
-  const [message, setMessage] = useState("");
   const navigate = useNavigate();
   useEffect(() => {
     setBuilt(null);
-    setMessage("");
   }, [skillId, version]);
 
   // The version being packaged: the one in the URL, else the skill's latest.
@@ -208,13 +206,13 @@ export function Packaging() {
       createDownloadArtifact(skillId, versionId, target as PackagingTargetId, includeTestCases),
     onSuccess: async (artifact) => {
       setBuilt(artifact);
-      setMessage("");
       await client.invalidateQueries({ queryKey: ["downloads"] });
     },
-    onError: async (err) => {
+    onError: async () => {
       // The server re-checks the four gates and it is the one that decides. Read
       // the preview again so the page stops offering what was just refused.
-      setMessage(err instanceof Error ? err.message : "打包失敗。");
+      // The refusal itself is rendered from `build.error` below (rule 2: never
+      // interpolate `err.message` blindly, branch on `ApiError.status`).
       await preview.refetch();
     },
   });
@@ -372,12 +370,36 @@ export function Packaging() {
 
           <h2>打包預覽</h2>
           {preview.isPending && target !== "" && <p>計算這些設定會產生什麼…</p>}
-          <ReadFailure error={preview.error} what="打包預覽" />
+          <ReadFailure error={preview.error} what="打包預覽">
+            {preview.error instanceof ApiError && preview.error.status === 404 ? (
+              <p role="alert">這個版本讀不到，可能已經不屬於這個 Skill。回上一步重新挑一次版本。</p>
+            ) : preview.error instanceof ApiError && preview.error.status === 503 ? (
+              <p role="alert">這個部署沒有設定任何打包目標，所以沒有預覽。</p>
+            ) : (
+              <p role="alert">
+                無法讀取打包預覽：
+                {preview.error instanceof Error ? preview.error.message : String(preview.error)}
+              </p>
+            )}
+          </ReadFailure>
           {preview.data && <PreviewReport preview={preview.data} />}
 
-          {message && <p role="alert">{message}</p>}
-
           {preview.data?.allowed && <RetentionNotice preview={preview.data} />}
+
+          <p className="note">
+            {/* 設計 §2.2 第三向：限制要在撞到之前說，CreateHub.tsx:76-82／
+                RunPreflight.tsx 的邀請句同一形狀。 */}
+            建立下載套件需要封測邀請，這道限制由平台強制；還沒有邀請的話，這一步會被擋下來。
+          </p>
+          <ReadFailure error={build.error} what="套件建立">
+            {build.error instanceof ApiError && build.error.status === 403 ? (
+              <p role="alert">
+                這個帳號還沒有封測邀請，所以套件沒有建立。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。
+              </p>
+            ) : (
+              <p role="alert">套件沒有建立成功，可以再按一次。</p>
+            )}
+          </ReadFailure>
 
           <p>
             {/* 設計 §4.6.3（ADR-064）：這一頁的工作是「做出那份套件」，而在此之前
@@ -720,8 +742,8 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
         <ul className="risk-list">
           {preview.excluded_test_cases.map((tc) => (
             <li key={tc.test_case_id}>
-              {tc.name}
-              <span className="note">：{tc.reason}</span>
+              {tc.name} {tc.label}
+              <span className="note">：{tc.note}</span>
             </li>
           ))}
         </ul>

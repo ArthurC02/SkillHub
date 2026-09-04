@@ -48,7 +48,7 @@ type ObjectStore interface {
 // errSkillNotFound is the single answer for "no such skill" and "not visible to
 // you" (WS-006): the two must be indistinguishable or the 404 becomes an
 // existence oracle for other people's private content.
-var errSkillNotFound = errors.New("skill not found")
+var errSkillNotFound = errors.New("找不到這個 Skill")
 
 var errOwnerReadNotConfigured = errors.New("catalog: owner read is not configured")
 
@@ -592,8 +592,8 @@ func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
 // but cannot be read back. They stay apart because the second is an outage of
 // the object store and the first is a permanent property of the skill.
 var (
-	errNoSavedVersion    = errors.New("skill has no saved version")
-	errPackageUnreadable = errors.New("stored package is not readable")
+	errNoSavedVersion    = errors.New("這個 Skill 還沒有保存的版本")
+	errPackageUnreadable = errors.New("儲存的套件目前讀不到，稍後再試一次")
 )
 
 // SkillFiles reads the DISC-007 view — SKILL.md text and the file tree — off the
@@ -737,13 +737,13 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFac
 		// circulation, so it answers 410 rather than 404 — the content existed
 		// and was withdrawn, which is a different fact from never existing.
 		if skill.TakedownAt.Valid {
-			httpx.WriteError(w, http.StatusGone, "this skill has been withdrawn from the catalog")
+			httpx.WriteError(w, http.StatusGone, "這個 Skill 已從目錄下架")
 			return SkillFacts{}, "", false
 		}
 		return skill, "catalog", true
 	}
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "skill lookup failed")
+		httpx.WriteError(w, http.StatusInternalServerError, "Skill 讀取失敗，稍後再試一次")
 		return SkillFacts{}, "", false
 	}
 
@@ -754,7 +754,7 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFac
 	}
 	ws, err := h.Identity.PersonalWorkspace(ctx, user)
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
+		httpx.WriteError(w, http.StatusInternalServerError, "工作區讀取失敗，稍後再試一次")
 		return SkillFacts{}, "", false
 	}
 	skill, found, err = h.Svc.WorkspaceSkill(ctx, id, ws.ID)
@@ -763,7 +763,7 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFac
 		return SkillFacts{}, "", false
 	}
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "skill lookup failed")
+		httpx.WriteError(w, http.StatusInternalServerError, "Skill 讀取失敗，稍後再試一次")
 		return SkillFacts{}, "", false
 	}
 	return skill, "private", true

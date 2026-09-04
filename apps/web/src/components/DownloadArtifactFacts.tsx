@@ -83,6 +83,11 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
   // Not folded into `expired`: everything below that used the flag would then
   // tell a lost package the retention story, which is the whole of 04 丙-91.
   const lost = artifact.serve_state.value === "lost";
+  // A third non-status value (contract §, 04 丙-155 ⑦): the stored object is
+  // gone but the row itself was never claimed expired or lost. Folded with
+  // `lost` below — both print the server's own sentence and neither gets an
+  // expiry date, for the same reason `lost` does not.
+  const purged = artifact.serve_state.value === "purged";
 
   return (
     <>
@@ -91,8 +96,10 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         <span className="badge">
           {artifact.includes_test_cases ? "含 Test Case" : "不含 Test Case"}
         </span>{" "}
-        {(expired || lost) && (
-          <span className="badge badge-expired">{lost ? "檔案遺失" : "已過期"}</span>
+        {(expired || lost || purged) && (
+          <span className="badge badge-expired">
+            {lost ? "檔案遺失" : purged ? "檔案不存在" : "已過期"}
+          </span>
         )}
       </p>
       {/* 04 丙-42: this row used to name its version only as a uuid, folded inside
@@ -110,7 +117,7 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         ｜已下載 {artifact.download_count} 次
       </p>
       <p className="note">
-        {lost ? (
+        {lost || purged ? (
           // The server's own sentence, not a copy — the wording of a fault is
           // one place's job (設計系統 §4.4), and this surface has no way to know
           // it was a fault other than by being told.

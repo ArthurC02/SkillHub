@@ -110,16 +110,16 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 		BuildID  string `json:"build_id"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with kind and message")
+		httpx.WriteError(w, http.StatusBadRequest, "內容必須是 JSON，且包含 kind 與 message")
 		return
 	}
 	if body.Kind != "blocking_issue" && body.Kind != "need_signal" {
-		httpx.WriteError(w, http.StatusBadRequest, "kind must be blocking_issue or need_signal")
+		httpx.WriteError(w, http.StatusBadRequest, "kind 必須是 blocking_issue 或 need_signal")
 		return
 	}
 	message := strings.TrimSpace(body.Message)
 	if message == "" || len([]rune(message)) > maxFeedbackMessage {
-		httpx.WriteError(w, http.StatusBadRequest, "message must not be blank and must be at most 2000 characters")
+		httpx.WriteError(w, http.StatusBadRequest, "message 不能空白，且最多 2000 字")
 		return
 	}
 
@@ -160,7 +160,7 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := gen.New(h.Svc.Pool).InsertFeedbackReport(r.Context(), p); err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "feedback not recorded")
+		httpx.WriteError(w, http.StatusInternalServerError, "回報沒有記錄成功，可以再送一次")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

@@ -33,11 +33,23 @@ function parseSelection(value: string | undefined): string[] {
   return value ? value.split(",").filter(Boolean).slice(0, MAX_COMPARE) : [];
 }
 
+/**
+ * 04 丙-150／丙-155 ⑤：伺服器對 `q` 的上限（`discovery/http.go`）現在是
+ * 「搜尋文字最多 2000 字」，事前沒有任何地方說過，撞到才看見英文 400。
+ * 上限先說出來，而不是等伺服器拒絕。
+ *
+ * Code points, not UTF-16 code units — `maxLength` 與 `.length` 數的是後者，
+ * 一個 emoji 算兩個，見 `components/FeedbackEntry.tsx` 同一個理由。
+ */
+const SEARCH_MAX_QUERY = 2000;
+const runes = (s: string) => [...s].length;
+
 export function Home() {
   const search = useSearch({ from: "/" });
   const navigate = useNavigate({ from: "/" });
   const [draft, setDraft] = useState(search.q ?? "");
   useEffect(() => setDraft(search.q ?? ""), [search.q]);
+  const [queryError, setQueryError] = useState("");
   /**
    * DISC-009 的候選勾選，來源是網址而不是元件狀態。
    *
@@ -119,11 +131,19 @@ export function Home() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const trimmed = draft.trim();
+    // 04 丙-150／丙-155 ⑤：伺服器拒絕超過 2000 字的 q，在送出前先說、不送出。
+    const count = runes(trimmed);
+    if (count > SEARCH_MAX_QUERY) {
+      setQueryError(`搜尋文字最多 ${SEARCH_MAX_QUERY} 字，目前 ${count} 字。`);
+      return;
+    }
+    setQueryError("");
     // `|| undefined` 是「回到目錄」那條路。`browsing` 的判準是 `q === undefined`，
     // 而空字串是字串，所以把搜尋框清空再按搜尋——也就是「那你就把有的都給我看」
     // 這個最自然的手勢——以前送出的是 `q=""`，伺服器對空查詢走 no_results，畫面
     // 回「沒有夠接近的 Skill」。目錄明明就在同一個位址上，而這個手勢到不了它。
-    submitSearch({ q: draft.trim() || undefined });
+    submitSearch({ q: trimmed || undefined });
   }
 
   /**
@@ -159,10 +179,15 @@ export function Home() {
         <input
           type="text"
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            if (queryError) setQueryError("");
+          }}
           placeholder="例如：把這份 PDF 整理成摘要"
           aria-label="任務描述"
         />
+        {/* 04 丙-150／丙-155 ⑤：撞到伺服器的 2000 字上限時說一句，不送出。 */}
+        {queryError && <p role="alert">{queryError}</p>}
         {/* 設計 §4.6.3：這一頁的工作就是「用一句話描述任務」然後搜尋，所以整頁
             唯一的主要動作是這一顆。 */}
         <button type="submit" className="action">
@@ -671,8 +696,10 @@ function CategoryNav({ filters, browsing }: { filters: SearchFilters; browsing: 
               activeOptions={{ explicitUndefined: true }}
             >
               {/* 設計 §2.9: a count that has not arrived says so with a word
-                  rather than with a 0 — 「（0）」 would be a measurement. */}
-              {label}（{total === undefined ? "…" : total}）
+                  rather than with a 0 — 「（0）」 would be a measurement.
+                  04 丙-150／丙-155 ②：請求失敗是另一個狀態，不是「還沒到」——
+                  沒有這一分支時失敗的請求會讓「…」停在畫面上不會再變。 */}
+              {label}（{total !== undefined ? total : totals[index].isError ? "測量失敗" : "…"}）
             </Link>
           );
         })}

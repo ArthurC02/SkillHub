@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { DataRetentionPolicyFeedback } from './DataRetentionPolicyFeedback';
+import {
+    DataRetentionPolicyFeedbackFromJSON,
+    DataRetentionPolicyFeedbackFromJSONTyped,
+    DataRetentionPolicyFeedbackToJSON,
+    DataRetentionPolicyFeedbackToJSONTyped,
+} from './DataRetentionPolicyFeedback';
 import type { DataRetentionPolicyEventsInner } from './DataRetentionPolicyEventsInner';
 import {
     DataRetentionPolicyEventsInnerFromJSON,
@@ -61,6 +68,12 @@ export interface DataRetentionPolicy {
      * @memberof DataRetentionPolicy
      */
     note: string;
+    /**
+     * 
+     * @type {DataRetentionPolicyFeedback}
+     * @memberof DataRetentionPolicy
+     */
+    feedback: DataRetentionPolicyFeedback;
 }
 
 /**
@@ -71,6 +84,7 @@ export function instanceOfDataRetentionPolicy(value: object): value is DataReten
     if (!('retentionDays' in value) || value['retentionDays'] === undefined) return false;
     if (!('events' in value) || value['events'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
+    if (!('feedback' in value) || value['feedback'] === undefined) return false;
     return true;
 }
 
@@ -88,6 +102,7 @@ export function DataRetentionPolicyFromJSONTyped(json: any, ignoreDiscriminator:
         'retentionDays': json['retention_days'],
         'events': ((json['events'] as Array<any>).map(DataRetentionPolicyEventsInnerFromJSON)),
         'note': json['note'],
+        'feedback': DataRetentionPolicyFeedbackFromJSON(json['feedback']),
     };
 }
 
@@ -106,6 +121,7 @@ export function DataRetentionPolicyToJSONTyped(value?: DataRetentionPolicy | nul
         'retention_days': value['retentionDays'],
         'events': ((value['events'] as Array<any>).map(DataRetentionPolicyEventsInnerToJSON)),
         'note': value['note'],
+        'feedback': DataRetentionPolicyFeedbackToJSON(value['feedback']),
     };
 }
 

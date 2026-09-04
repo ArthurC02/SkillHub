@@ -67,9 +67,31 @@ const EVENTS = [
   },
 ];
 
+// The Go server's own wording (04 丙-154 ②, strings-149-152-154-go-workspace-
+// learning.md) — a fixture that paraphrased this would hide a contract drift
+// the same way an English fixture would (04 丙-143's rule).
+const FEEDBACK = {
+  what: "由已登入的參與者在 POST /feedback 送出的回報（BETA-003/004/005）",
+  collected: ["kind", "message", "page_path", "run_id"],
+  free_text:
+    "message 是參與者自己寫的自由文字，最多 2000 字。它是這個部署唯一的自由文字欄位，不遮罩、不摘要、不截斷",
+  page_path: "他當時所在的路由，從不是完整網址：查詢字串可能帶個資，這個管道不收",
+  run_id: "他當時看的 Run（若有），而且只在確認是他自己的 Run 之後",
+  on_account_deletion:
+    "去識別而不是刪除：workspace_id 與 user_id 設為 NULL，文字保留（ADR-029 決策 5 的範圍複審建立在人們說了什麼之上，帳號刪除不能悄悄撤回已被計入的回報）",
+  retention_days: null,
+  note: "這個部署沒有設定回報的保存期限（FEEDBACK_RETENTION 未設），所以這些回報會一直保留，直到設定期限並執行 maintenance purge-feedback",
+};
+
 test("O11Y-004 an unconfigured deployment says 目前不收集 rather than a proposed number", async () => {
   vi.stubGlobal("fetch", () =>
-    json({ collecting: false, retention_days: 0, events: EVENTS, note: "no free-text column" }),
+    json({
+      collecting: false,
+      retention_days: 0,
+      events: EVENTS,
+      note: "no free-text column",
+      feedback: FEEDBACK,
+    }),
   );
   await render(<DataPolicy />, () => text().includes("目前不收集"));
 
@@ -86,7 +108,13 @@ test("O11Y-004 an unconfigured deployment says 目前不收集 rather than a pro
 
 test("O11Y-004 a collecting deployment states the window it actually applies", async () => {
   vi.stubGlobal("fetch", () =>
-    json({ collecting: true, retention_days: 180, events: EVENTS, note: "no free-text column" }),
+    json({
+      collecting: true,
+      retention_days: 180,
+      events: EVENTS,
+      note: "no free-text column",
+      feedback: FEEDBACK,
+    }),
   );
   await render(<DataPolicy />, () => text().includes("180"));
 
@@ -102,4 +130,48 @@ test("O11Y-004 a failed read is a failed read, never an implied 'nothing is coll
 
   expect(text()).toContain("讀不到不等於沒有收集");
   expect(text()).not.toContain("目前不收集");
+});
+
+// 04 丙-154 ②. GET /policy/data-retention has sent `feedback` since POST
+// /feedback existed; this page never read it. It gets its own section under
+// the four analytics events, rendered with the server's own sentences.
+test("丙-154② the feedback data class is disclosed with the server's own sentences", async () => {
+  vi.stubGlobal("fetch", () =>
+    json({
+      collecting: false,
+      retention_days: 0,
+      events: EVENTS,
+      note: "no free-text column",
+      feedback: FEEDBACK,
+    }),
+  );
+  await render(<DataPolicy />, () => text().includes("回報問題的資料"));
+
+  expect(text()).toContain(FEEDBACK.what);
+  for (const column of FEEDBACK.collected) {
+    expect(text()).toContain(column);
+  }
+  expect(text()).toContain(FEEDBACK.free_text);
+  expect(text()).toContain(FEEDBACK.page_path);
+  expect(text()).toContain(FEEDBACK.run_id);
+  expect(text()).toContain(FEEDBACK.on_account_deletion);
+  // §2.9: a null retention_days is the type-level absence word, not a blank.
+  expect(text()).toContain("尚未定值");
+  expect(text()).toContain(FEEDBACK.note);
+});
+
+test("丙-154② a configured retention window prints the number, not 尚未定值", async () => {
+  vi.stubGlobal("fetch", () =>
+    json({
+      collecting: false,
+      retention_days: 0,
+      events: EVENTS,
+      note: "no free-text column",
+      feedback: { ...FEEDBACK, retention_days: 90, note: undefined },
+    }),
+  );
+  await render(<DataPolicy />, () => text().includes("回報問題的資料"));
+
+  expect(text()).toContain("90 天");
+  expect(text()).not.toContain("尚未定值");
 });

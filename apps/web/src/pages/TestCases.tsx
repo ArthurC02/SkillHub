@@ -78,6 +78,56 @@ function CreateValidation({
   );
 }
 
+// 04 丙-149/155③: testlab.go 的 validateDraft 用 bytes 算長度,不是字元數,`maxLength`
+// 數的是 UTF-16 code unit——同一個中文字元兩者算法不同,所以檢查一律用
+// `TextEncoder`,而且在送出前算,不是等 400 回來才知道。
+const MAX_NAME_BYTES = 200;
+const MAX_PROMPT_BYTES = 32768;
+// testlab.go:643 AddCriterion 的驗收條件上限（04 丙-155④,只在新增控制項旁說一次）。
+const MAX_CRITERIA = 50;
+
+function byteLength(s: string): number {
+  return new TextEncoder().encode(s).length;
+}
+
+/** 上限在畫面上先說一次（設計 §2.2 第三向）；超過時擋下送出並說目前是幾 bytes。 */
+function oversizeReason(name: string, prompt: string): string | null {
+  const n = byteLength(name);
+  if (n > MAX_NAME_BYTES) return `名稱最多 ${MAX_NAME_BYTES} bytes，目前 ${n} bytes。`;
+  const p = byteLength(prompt);
+  if (p > MAX_PROMPT_BYTES) return `Prompt 最多 ${MAX_PROMPT_BYTES} bytes，目前 ${p} bytes。`;
+  return null;
+}
+
+/**
+ * 04 丙-150 補法：mutation 的 `onError` 存錯誤物件，不是它的 `.message`——
+ * `ApiError extends Error`，所以舊寫法的中文 fallback 永遠不會被用到。401 交給
+ * `ReadFailure`（登入）；其餘印這一頁自己的句子，只有 `serverSaysStatuses`
+ * 列出的 status 才印伺服器那句本身，因為只有那幾個（丙-149 已經改成中文）帶著
+ * 這一頁自己不知道的數字——名稱／Prompt 長度、驗收條件上限、檔案上限。
+ */
+function MutationError({
+  error,
+  what,
+  fallback,
+  serverSaysStatuses = [],
+}: {
+  error: unknown;
+  what: string;
+  fallback: string;
+  serverSaysStatuses?: number[];
+}) {
+  return (
+    <ReadFailure error={error} what={what}>
+      <p role="alert">
+        {error instanceof ApiError && serverSaysStatuses.includes(error.status)
+          ? error.message
+          : fallback}
+      </p>
+    </ReadFailure>
+  );
+}
+
 function criterionState(c: AcceptanceCriterion): string {
   if (c.confirmed_at) return `已確認（${formatAt(c.confirmed_at)}）`;
   return c.source === "suggested" ? "系統建議，尚未確認" : "尚未確認";
@@ -91,7 +141,8 @@ export function TestCaseList() {
   const [skillId, setSkillId] = useState("");
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [message, setMessage] = useState("");
+  const [createError, setCreateError] = useState<unknown>(null);
+  const sizeReason = oversizeReason(name, prompt);
   const rows = testCases.data?.pages.flatMap((page) => page.test_cases) ?? [];
   // 丙-116. `?skill=` accepts any UUID (router.tsx only checks the shape), while
   // the create form below only accepts what `GET /skills` returns — so the two
@@ -114,9 +165,11 @@ export function TestCaseList() {
 
   const create = useMutation({
     mutationFn: () => createTestCase(chosenSkill, name, prompt),
-    onSuccess: (tc) =>
-      navigate({ to: "/lab/test-cases/$testCaseId", params: { testCaseId: tc.test_case_id } }),
-    onError: (err) => setMessage(err instanceof Error ? err.message : "無法建立 Test Case。"),
+    onSuccess: (tc) => {
+      setCreateError(null);
+      navigate({ to: "/lab/test-cases/$testCaseId", params: { testCaseId: tc.test_case_id } });
+    },
+    onError: (err) => setCreateError(err),
   });
 
   return (
@@ -242,6 +295,9 @@ export function TestCaseList() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          // 04 丙-155③: bytes 上限在畫面上已經先說了,這裡是最後一道:超過的話
+          // 不送出,按鈕本來就已經停用,這一行擋的是 Enter 直接送出表單。
+          if (oversizeReason(name, prompt)) return;
           create.mutate();
         }}
       >
@@ -266,7 +322,13 @@ export function TestCaseList() {
         </p>
         <p className="field">
           <label htmlFor="tc-name">名稱</label>
-          <input id="tc-name" value={name} onChange={(e) => setName(e.target.value)} size={40} />
+          <input
+            id="tc-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            size={40}
+          />{" "}
+          <span className="note">名稱最多 {MAX_NAME_BYTES} bytes。</span>
         </p>
         <p className="field">
           <label htmlFor="tc-prompt">User Prompt</label>
@@ -277,8 +339,15 @@ export function TestCaseList() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
           />
+          <br />
+          <span className="note">User Prompt 最多 {MAX_PROMPT_BYTES} bytes。</span>
         </p>
         <CreateValidation skillId={chosenSkill} name={name} prompt={prompt} />
+        {sizeReason && (
+          <p className="note" role="status" id="create-size-why">
+            {sizeReason}
+          </p>
+        )}
         {/* 設計 §4.6.3（ADR-064）的表，`/lab/test-cases` 那一列：這一頁的工作是
             「建立一個 Test Case」。上面的清單是**很多列**，一列一顆填色按鈕等於
             零顆，所以強調只給這一顆。停用態不變（§4.4 虛線優先，理由由
@@ -286,15 +355,30 @@ export function TestCaseList() {
         <button
           type="submit"
           className="action"
-          disabled={create.isPending || chosenSkill === "" || name === "" || prompt.trim() === ""}
+          disabled={
+            create.isPending ||
+            chosenSkill === "" ||
+            name.trim() === "" ||
+            prompt.trim() === "" ||
+            sizeReason !== null
+          }
           aria-describedby={
-            chosenSkill === "" || name === "" || prompt.trim() === "" ? "create-why" : undefined
+            chosenSkill === "" || name.trim() === "" || prompt.trim() === ""
+              ? "create-why"
+              : sizeReason
+                ? "create-size-why"
+                : undefined
           }
         >
           {create.isPending ? "建立中…" : "建立"}
         </button>
       </form>
-      {message && <p role="alert">{message}</p>}
+      <MutationError
+        error={createError}
+        what="Test Case"
+        fallback="建立沒有成功，可以再按一次。"
+        serverSaysStatuses={[400]}
+      />
     </section>
   );
 }
@@ -494,18 +578,19 @@ function DeleteTestCase({
   onDeleted: (result: { datasets_deleted: number }) => void;
 }) {
   const client = useQueryClient();
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState<unknown>(null);
 
   const remove = useMutation({
     mutationFn: () => deleteTestCase(testCaseId),
     onSuccess: async (result) => {
+      setError(null);
       // The whole ["test-cases"] subtree: this draft's own read, every filtered
       // list, and the unfiltered one. Narrower keys would leave the list the
       // user is about to land on still showing the row that just went.
       await client.invalidateQueries({ queryKey: ["test-cases"] });
       onDeleted(result);
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "刪除失敗。"),
+    onError: (err) => setError(err),
   });
 
   return (
@@ -516,7 +601,7 @@ function DeleteTestCase({
           scopeId={`delete-scope-${testCaseId}`}
           scope="會刪掉這個草稿與它已上傳的檔案。沒有回收桶也沒有保留期，這一頁沒有還原的地方，按下去就沒有了。已經跑過的 Run 及其快照不受影響——那是那些 Run 執行內容的紀錄。"
           pending={remove.isPending}
-          onAsk={() => setMessage("")}
+          onAsk={() => setError(null)}
           onConfirm={() => remove.mutate()}
           // Distinct from the 刪除 on every criterion and every uploaded file:
           // three unlabelled 刪除 buttons on one page is three ways to destroy
@@ -525,7 +610,7 @@ function DeleteTestCase({
           confirmLabel="確認刪除整個 Test Case"
         />
       </p>
-      {message && <p role="alert">{message}</p>}
+      <MutationError error={error} what="這個 Test Case" fallback="刪除沒有成功，可以再試一次。" />
     </>
   );
 }
@@ -535,14 +620,17 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
   const [name, setName] = useState(testCase.name);
   const [prompt, setPrompt] = useState(testCase.user_prompt);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState<unknown>(null);
+  const sizeReason = oversizeReason(name, prompt);
 
   const save = useMutation({
     mutationFn: () => updateTestCase(testCase.test_case_id, { name, user_prompt: prompt }),
     onSuccess: async () => {
       setMessage("已儲存。");
+      setError(null);
       await client.invalidateQueries({ queryKey: ["test-cases"] });
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "儲存失敗。"),
+    onError: (err) => setError(err),
   });
 
   return (
@@ -550,7 +638,13 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
       <h2>名稱與 User Prompt</h2>
       <p className="field">
         <label htmlFor="edit-name">名稱</label>
-        <input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} size={40} />
+        <input
+          id="edit-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          size={40}
+        />{" "}
+        <span className="note">名稱最多 {MAX_NAME_BYTES} bytes。</span>
       </p>
       <p className="field">
         <label htmlFor="edit-prompt">User Prompt</label>
@@ -561,14 +655,26 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
         />
+        <br />
+        <span className="note">User Prompt 最多 {MAX_PROMPT_BYTES} bytes。</span>
       </p>
       <button
         type="button"
-        disabled={save.isPending || prompt.trim() === "" || name.trim() === ""}
-        aria-describedby={
-          name.trim() === "" || prompt.trim() === "" ? "edit-required-reason" : undefined
+        disabled={
+          save.isPending || prompt.trim() === "" || name.trim() === "" || sizeReason !== null
         }
-        onClick={() => save.mutate()}
+        aria-describedby={
+          name.trim() === "" || prompt.trim() === ""
+            ? "edit-required-reason"
+            : sizeReason
+              ? "edit-size-reason"
+              : undefined
+        }
+        onClick={() => {
+          // 04 丙-155③: 按鈕已經因為超過而停用,這裡擋的是萬一 disabled 沒擋到的情況。
+          if (sizeReason) return;
+          save.mutate();
+        }}
       >
         {save.isPending ? "儲存中…" : "儲存"}
       </button>{" "}
@@ -586,7 +692,18 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
           。兩個都是必填。
         </span>
       )}
+      {sizeReason && name.trim() !== "" && prompt.trim() !== "" && (
+        <span id="edit-size-reason" className="note" role="status">
+          {sizeReason}
+        </span>
+      )}
       {message && <p role="status">{message}</p>}
+      <MutationError
+        error={error}
+        what="名稱與 User Prompt"
+        fallback="儲存沒有成功，可以再試一次。"
+        serverSaysStatuses={[400]}
+      />
     </>
   );
 }
@@ -595,6 +712,9 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
   const client = useQueryClient();
   const [text, setText] = useState("");
   const [message, setMessage] = useState("");
+  const [addError, setAddError] = useState<unknown>(null);
+  const [suggestError, setSuggestError] = useState<unknown>(null);
+  const [adoptError, setAdoptError] = useState<unknown>(null);
   // Proposals, held on the client only. Nothing was written by asking, so
   // walking away from this list leaves the draft exactly as it was.
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -604,26 +724,20 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
     mutationFn: () => addCriterion(testCase.test_case_id, text),
     onSuccess: async () => {
       setText("");
-      setMessage("");
+      setAddError(null);
       await refresh();
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "無法新增驗收條件。"),
+    onError: (err) => setAddError(err),
   });
 
   const suggest = useMutation({
     mutationFn: () => suggestCriteria(testCase.test_case_id),
     onSuccess: (res) => {
       setSuggestions(res.suggestions.map((s) => s.text));
+      setSuggestError(null);
       setMessage(res.suggestions.length === 0 ? "這次沒有可用的建議，請自己手動輸入。" : "");
     },
-    onError: (err) =>
-      setMessage(
-        err instanceof ApiError && err.status === 503
-          ? `目前無法自動建議（${err.message}）。驗收條件可以自己手動輸入，不需要這個功能。`
-          : err instanceof Error
-            ? err.message
-            : "無法取得建議。",
-      ),
+    onError: (err) => setSuggestError(err),
   });
 
   // Adoption is the ordinary add route with the wording labelled as a model's,
@@ -635,10 +749,10 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
       addCriterion(testCase.test_case_id, proposal, "suggested").then(() => proposal),
     onSuccess: async (proposal) => {
       setSuggestions((prev) => prev.filter((s) => s !== proposal));
-      setMessage("");
+      setAdoptError(null);
       await refresh();
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "無法採納這條建議。"),
+    onError: (err) => setAdoptError(err),
   });
 
   return (
@@ -666,6 +780,8 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
         </ul>
       )}
 
+      {/* 04 丙-155④: testlab.go:643 的 50 條上限,只在新增控制項旁說一次——不是每一列。 */}
+      <p className="note">一個 Test Case 最多 {MAX_CRITERIA} 條驗收條件。</p>
       <p>
         <label htmlFor="new-criterion">新增驗收條件</label>{" "}
         <input
@@ -697,7 +813,22 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
           </span>
         )}
       </p>
-      {message && <p role="alert">{message}</p>}
+      <MutationError
+        error={addError}
+        what="這一條驗收條件"
+        fallback="無法新增，可以再試一次。"
+        serverSaysStatuses={[413]}
+      />
+      {/* 04 丙-150(b): 503 印固定句、不內插伺服器那句——不管伺服器那句怎麼變,
+          「可以自己手動輸入」都成立,而伺服器那句是給 log 看的技術性描述。 */}
+      <ReadFailure error={suggestError} what="建議">
+        <p role="alert">
+          {suggestError instanceof ApiError && suggestError.status === 503
+            ? "目前無法自動建議，驗收條件可以自己手動輸入。"
+            : "無法取得建議，可以再試一次。"}
+        </p>
+      </ReadFailure>
+      {message && <p role="status">{message}</p>}
 
       {suggestions.length > 0 && (
         <>
@@ -728,6 +859,12 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
               </li>
             ))}
           </ul>
+          <MutationError
+            error={adoptError}
+            what="這條建議"
+            fallback="無法採納，可以再試一次。"
+            serverSaysStatuses={[413]}
+          />
         </>
       )}
     </>
@@ -743,7 +880,7 @@ function CriterionRow({
 }) {
   const client = useQueryClient();
   const [draft, setDraft] = useState(criterion.text);
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState<unknown>(null);
   const refresh = () => client.invalidateQueries({ queryKey: ["test-cases"] });
 
   const mutate = useMutation({
@@ -753,10 +890,10 @@ function CriterionRow({
       return updateCriterion(testCaseId, criterion.id, { confirmed: action === "confirm" });
     },
     onSuccess: async () => {
-      setMessage("");
+      setError(null);
       await refresh();
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "操作失敗。"),
+    onError: (err) => setError(err),
   });
 
   const edited = draft !== criterion.text;
@@ -854,7 +991,7 @@ function CriterionRow({
             </>
           }
           pending={mutate.isPending}
-          onAsk={() => setMessage("")}
+          onAsk={() => setError(null)}
           onConfirm={() => mutate.mutate("delete")}
           // Distinct from 刪除整個 Test Case and from a file's 刪除: three
           // unlabelled 刪除 on one page is three different destructions told
@@ -889,7 +1026,7 @@ function CriterionRow({
           {saveReason}
         </p>
       )}
-      {message && <p role="alert">{message}</p>}
+      <MutationError error={error} what="這一條驗收條件" fallback="操作沒有成功，可以再試一次。" />
     </li>
   );
 }
@@ -912,6 +1049,7 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
     Object.fromEntries((stored?.items ?? []).map((i) => [i.id, i])),
   );
   const [message, setMessage] = useState("");
+  const [error, setError] = useState<unknown>(null);
 
   const save = useMutation({
     mutationFn: () => {
@@ -926,9 +1064,10 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
     },
     onSuccess: async () => {
       setMessage("已儲存。");
+      setError(null);
       await client.invalidateQueries({ queryKey: ["test-cases"] });
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "儲存失敗。"),
+    onError: (err) => setError(err),
   });
 
   const update = (id: string, patch: Partial<RubricItem>) =>
@@ -1046,6 +1185,12 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
             </span>
           )}
           {message && <p role="status">{message}</p>}
+          <MutationError
+            error={error}
+            what="Rubric"
+            fallback="儲存沒有成功，可以再試一次。"
+            serverSaysStatuses={[413]}
+          />
         </>
       )}
     </>
@@ -1056,14 +1201,18 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
   const client = useQueryClient();
   const datasets = useTestCaseDatasets(testCaseId);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState<unknown>(null);
 
   const remove = useMutation({
     mutationFn: (datasetId: string) => deleteDataset(testCaseId, datasetId),
     onSuccess: async (result) => {
+      // The server's own note (dataset.go DeleteDataset), forwarded as-is — 丙-149
+      // put it in Chinese, so this is no longer a translation this page has to do.
       setMessage(result.note);
+      setError(null);
       await client.invalidateQueries({ queryKey: ["test-cases", testCaseId, "datasets"] });
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "刪除失敗。"),
+    onError: (err) => setError(err),
   });
 
   return (
@@ -1124,7 +1273,7 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
                       </>
                     }
                     pending={remove.isPending}
-                    onAsk={() => setMessage("")}
+                    onAsk={() => setError(null)}
                     onConfirm={() => remove.mutate(d.dataset_id)}
                     label="刪除這個檔案"
                     confirmLabel="確認刪除這個檔案"
@@ -1146,6 +1295,7 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
           </>
         ))}
       {message && <p role="status">{message}</p>}
+      <MutationError error={error} what="這個檔案" fallback="刪除沒有成功，可以再試一次。" />
     </>
   );
 }

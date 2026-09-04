@@ -573,7 +573,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 
 	out, err := h.Svc.Search(r.Context(), q, limit, filters)
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "search failed")
+		httpx.WriteError(w, http.StatusInternalServerError, "搜尋失敗，這不是你的輸入造成的，稍後再試一次")
 		return
 	}
 
@@ -650,7 +650,7 @@ func (h *Handler) BrowseCatalog(w http.ResponseWriter, r *http.Request) {
 
 	hits, total, err := h.Svc.Browse(r.Context(), limit, filters)
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "catalog read failed")
+		httpx.WriteError(w, http.StatusInternalServerError, "目錄讀取失敗，稍後再試一次")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, catalogResponse{
@@ -850,7 +850,7 @@ const maxQueryRunes = 2000
 // queryTooLong returns the 400 message for an over-long query, or "".
 func queryTooLong(q string) string {
 	if utf8.RuneCountInString(q) > maxQueryRunes {
-		return "query parameter q must be at most 2000 characters"
+		return "搜尋文字最多 2000 字"
 	}
 	return ""
 }
@@ -947,7 +947,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.Svc.SearchWorkspace(r.Context(), ws.ID, q, limit)
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "search failed")
+		httpx.WriteError(w, http.StatusInternalServerError, "搜尋失敗，這不是你的輸入造成的，稍後再試一次")
 		return
 	}
 

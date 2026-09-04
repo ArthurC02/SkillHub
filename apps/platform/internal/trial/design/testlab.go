@@ -222,7 +222,7 @@ func validateRubric(r Rubric, criteria []Criterion) (Rubric, error) {
 		// they all went missing".
 		return Rubric{}, fmt.Errorf("%w: a rubric must have at least one item; send null to remove it", ErrInvalid)
 	case len(r.Items) > MaxRubricItems:
-		return Rubric{}, fmt.Errorf("%w: at most %d rubric items per test case", ErrLimitExceeded, MaxRubricItems)
+		return Rubric{}, fmt.Errorf("%w: 一個 Test Case 的 rubric 最多 %d 條", ErrLimitExceeded, MaxRubricItems)
 	}
 
 	known := make(map[string]bool, len(criteria))
@@ -557,13 +557,13 @@ func validateDraft(name, prompt string) (string, string, error) {
 	case name == "":
 		return "", "", fmt.Errorf("%w: name must not be blank", ErrInvalid)
 	case len(name) > MaxNameBytes:
-		return "", "", fmt.Errorf("%w: name must be at most %d bytes", ErrInvalid, MaxNameBytes)
+		return "", "", fmt.Errorf("%w: 名稱最多 %d bytes", ErrInvalid, MaxNameBytes)
 	// 02:TEST-001 "每個 Run 必須包含非空白 User Prompt" — enforced at the draft, so
 	// a run can never be started from a test case that has no prompt.
 	case prompt == "":
 		return "", "", fmt.Errorf("%w: user_prompt must not be blank", ErrInvalid)
 	case len(prompt) > MaxPromptBytes:
-		return "", "", fmt.Errorf("%w: user_prompt must be at most %d bytes", ErrInvalid, MaxPromptBytes)
+		return "", "", fmt.Errorf("%w: Prompt 最多 %d bytes", ErrInvalid, MaxPromptBytes)
 	}
 	return name, prompt, nil
 }
@@ -640,7 +640,7 @@ func (s *Service) AddCriterion(
 	}
 	return s.mutateCriteria(ctx, ws, id, func(list []Criterion) ([]Criterion, error) {
 		if len(list) >= MaxCriteria {
-			return nil, fmt.Errorf("%w: at most %d acceptance criteria per test case", ErrLimitExceeded, MaxCriteria)
+			return nil, fmt.Errorf("%w: 一個 Test Case 最多 %d 條驗收條件", ErrLimitExceeded, MaxCriteria)
 		}
 		return append(list, Criterion{ID: newCriterionID(), Text: text, Source: source}), nil
 	})

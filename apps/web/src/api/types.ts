@@ -97,6 +97,31 @@ export interface DataRetentionPolicy {
   retention_days: number;
   events: AnalyticsEventDisclosure[];
   note: string;
+  /**
+   * The one other collected class this deployment holds: reports submitted at
+   * POST /feedback (BETA-003/004/005). Served since the endpoint existed;
+   * declared here 04 丙-154 ② so this page can render it (it was previously
+   * absent from both this type and the screen).
+   */
+  feedback: DataRetentionPolicyFeedback;
+}
+
+/** See `DataRetentionPolicy.feedback`. */
+export interface DataRetentionPolicyFeedback {
+  what: string;
+  /** The columns a report writes, one entry each. */
+  collected: string[];
+  free_text: string;
+  kind: ("blocking_issue" | "need_signal")[];
+  page_path: string;
+  run_id: string;
+  on_account_deletion: string;
+  /**
+   * Null when FEEDBACK_RETENTION is unset: nothing purges these rows and they
+   * are kept until a window is configured. `note` says so — see §2.9.
+   */
+  retention_days: number | null;
+  note?: string;
 }
 
 /**

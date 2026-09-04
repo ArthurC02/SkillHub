@@ -1033,6 +1033,16 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
   );
 }
 
+/** 04 丙-150：按 status 選這一頁自己的句子，從不印 `error.message`（見 ForkAction）。 */
+function forkErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 403)
+      return "這個帳號還沒有封測邀請，所以 Fork 沒有成功。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。";
+    if (error.status === 409) return "你的工作區已經有同名的 Skill。";
+  }
+  return "Fork 沒有成功，可以再按一次。";
+}
+
 function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: boolean }) {
   const fork = useForkSkill();
   /*
@@ -1073,6 +1083,14 @@ function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
   return (
     <div>
       {/*
+        04 丙-153：`CreateHub.tsx:76-82` 對「到目錄挑一個來改」那張卡說了同一句
+        （Fork 需要封測邀請，由平台強制），但這一頁的 Fork 按鈕在此之前沒有這句
+        話——按下去才知道要有邀請。§2.2 第三向：擋住人的限制要在撞上之前說。
+      */}
+      <p className="note">
+        Fork 需要封測邀請，這道限制由平台強制；還沒有邀請的話，那一步會被擋下來。
+      </p>
+      {/*
         r4 B2：按鈕上的字從「Fork 這個 Skill」改成「以這個 Skill 為起點建立我自己的」。
         動詞沒有變、端點沒有變、繼承的東西沒有變（`redistribution` 與
         `access_restriction` 仍然逐字繼承）——變的是這顆按鈕現在說得出它產生什麼。
@@ -1089,24 +1107,19 @@ function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
         {fork.isPending ? "建立中…" : "以這個 Skill 為起點建立我自己的"}
       </button>
       {/*
-        「Fork 失敗，請稍後再試。」 was one sentence for every refusal, and for
-        two of them it was a *false* next step. `POST /skills/{id}/fork` refuses
-        four ways: 401, 403 (封測邀請名單 — ADR-028 決策 1 names fork, run and
-        download as the three actions the gate covers), 404, and 409 (a skill
-        with this name already exists in your workspace). Waiting does not fix
-        403 or 409; the server writes a usable sentence for each and `apiFetch`
-        already puts it in `ApiError.message`. This line threw it away.
-        The read path on this page settled the same question in the other
-        direction long ago — see the 檔頭 note about answering a 500 with
-        「找不到」, i.e. with the wrong fact. The write path had not followed.
-        `children` carries the wording because `ReadFailure`'s default says
-        「無法讀取」, and this is a write.
+        04 丙-150：「Fork 沒有成功：{err.message}」 was one sentence for every
+        refusal, printing whatever `ApiError.message` held — the server's own
+        wording for 409, but `betaNotInvited`'s English paragraph for 403.
+        `POST /skills/{id}/fork` refuses four ways: 401 (→ `ReadFailure`'s
+        default), 403 (封測邀請名單 — ADR-028 決策 1 names fork, run and download
+        as the three actions the gate covers), 404, and 409 (a skill with this
+        name already exists in your workspace). Each non-401 status gets this
+        page's own Chinese sentence — never `fork.error.message` — so a 403
+        never surfaces `betaNotInvited`'s English text.
       */}
       {fork.isError && (
         <ReadFailure error={fork.error} what="Fork 這個 Skill">
-          <p role="alert">
-            Fork 沒有成功：{fork.error instanceof Error ? fork.error.message : String(fork.error)}
-          </p>
+          <p role="alert">{forkErrorMessage(fork.error)}</p>
         </ReadFailure>
       )}
       {fork.isSuccess && (

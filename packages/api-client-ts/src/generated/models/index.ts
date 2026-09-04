@@ -22,6 +22,7 @@ export * from './CreateTestCaseRequest';
 export * from './CriterionResult';
 export * from './DataRetentionPolicy';
 export * from './DataRetentionPolicyEventsInner';
+export * from './DataRetentionPolicyFeedback';
 export * from './Dataset';
 export * from './DatasetLimits';
 export * from './DecideSuggestionRequest';

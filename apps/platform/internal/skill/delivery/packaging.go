@@ -423,8 +423,7 @@ func gate(skill SkillFacts) (reason, message string) {
 func gateFlags(accessRestriction *string, redistribution string) (reason, message string) {
 	if accessRestriction != nil && *accessRestriction != "" {
 		return BlockedLicenseHold,
-			"this skill's materials are held back while a licensing question about them is open, " +
-				"so no package can be produced from them"
+			"這個 Skill 的內容因授權問題尚未釐清而被保留，所以無法從中產出套件"
 	}
 	switch redistribution {
 	case RedistributionAllowed:
@@ -447,13 +446,11 @@ func gateFlags(accessRestriction *string, redistribution string) (reason, messag
 		return "", ""
 	case RedistributionBlocked:
 		return BlockedNotRedistributable,
-			"this skill's licence does not permit redistribution, so Skill Hub does not hand out " +
-				"copies of it. A manually confirmed licence is not the same statement as a " +
-				"redistributable one"
+			"這個 Skill 的授權不允許再散布，所以 Skill Hub 不會提供副本。" +
+				"人工確認過授權，不代表這份授權允許再散布"
 	default:
 		return BlockedLicenseUnknown,
-			"nobody has established whether this skill may be redistributed, and an unestablished " +
-				"licence is treated as one that does not permit it"
+			"沒有人確認過這個 Skill 可不可以再散布，未確認的授權視同不允許"
 	}
 }
 
@@ -494,7 +491,7 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspa
 			Warnings: toManifestFindings(cat.Warnings), Infos: toManifestFindings(cat.Infos),
 		}
 		p.BlockedReason = BlockedValidation
-		p.BlockedMessage = "the stored source package no longer passes import validation"
+		p.BlockedMessage = "儲存的來源套件已經不符合匯入驗證"
 		return nil
 	}
 	files, dropped, err := collect(fsys)
@@ -599,8 +596,7 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspa
 	if final.Blocked {
 		p.Validation = carriedValidation(final)
 		p.BlockedReason = BlockedValidation
-		p.BlockedMessage = "the package these settings would produce does not pass the validation " +
-			"an import has to pass, so it must not be presented as a valid package"
+		p.BlockedMessage = "這些設定會產出無法通過匯入驗證的套件，因此不能當成有效套件提供"
 		return nil
 	}
 	// 02:NFR-007 clause 3: the account printed inside skillhub-manifest.json and
