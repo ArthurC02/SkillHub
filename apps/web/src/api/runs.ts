@@ -36,6 +36,25 @@ export type Run = {
    * is the platform refusing before anything ran.
    */
   failure_class?: Labelled;
+  /**
+   * `{value, label, note}`, same field and same reason as
+   * `RunListItem.cleanup_status` — see there (04 丙-29 ②).
+   */
+  cleanup_status: Labelled;
+  /**
+   * Run.attempts (contracts/openapi/public.yaml, RUN-003) — one entry per
+   * execution attempt. Served, not yet rendered on this page (04 丙-145).
+   */
+  attempts?: Array<{
+    run_attempt_id: string;
+    attempt_number: number;
+    provider: string;
+    provider_run_id?: string;
+    error_class?: string;
+    error_message?: string;
+    started_at?: string;
+    finished_at?: string;
+  }>;
 };
 
 export function useRun(runId: string) {

@@ -8848,6 +8848,8 @@ func (s *EvaluationCostSource) Decode(d *jx.Decoder) error {
 		*s = EvaluationCostSourceGateway
 	case EvaluationCostSourceEstimated:
 		*s = EvaluationCostSourceEstimated
+	case EvaluationCostSourceUnreported:
+		*s = EvaluationCostSourceUnreported
 	default:
 		*s = EvaluationCostSource(v)
 	}

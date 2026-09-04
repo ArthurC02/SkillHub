@@ -223,7 +223,30 @@ export function RunPreflight() {
         await preflight.refetch();
         return;
       }
-      setMessage(err instanceof Error ? err.message : "無法開始 Run。");
+      if (err instanceof ApiError && err.status === 403) {
+        setMessage(
+          "這個帳號還沒有封測邀請，所以 Run 沒有開始。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。",
+        );
+        return;
+      }
+      if (err instanceof ApiError && err.status === 503) {
+        setMessage(
+          "執行環境暫時無法使用，這次 Run 沒有開始。可以直接再按一次，不需要重新確認權限。",
+        );
+        return;
+      }
+      if (err instanceof ApiError && err.status === 404) {
+        setMessage("找不到這個 Skill 版本或 Test Case，可能已被刪除。");
+        return;
+      }
+      if (unauthenticated(err)) {
+        // Rendered via ReadFailure below, off `confirmAndRun.error` — same
+        // as every read on this page, rule (2): 401 never becomes a message
+        // string.
+        setMessage("");
+        return;
+      }
+      setMessage("無法開始 Run，可以再按一次。");
     },
   });
 
@@ -275,13 +298,20 @@ export function RunPreflight() {
     <section>
       <h1>執行前權限確認</h1>
       <p>
-        Skill：<strong>{skillName ?? (ownSkills.isPending ? "讀取中…" : "不在你的清單裡")}</strong>
+        Skill：
+        <strong>
+          {skillName ??
+            (ownSkills.isPending ? "讀取中…" : ownSkills.error ? "讀取失敗" : "不在你的清單裡")}
+        </strong>
         {" ・ "}
         Test Case：
         <strong>
-          {testCaseInfo.data?.name ?? (testCaseInfo.isPending ? "讀取中…" : "讀不到名稱")}
+          {testCaseInfo.data?.name ??
+            (testCaseInfo.isPending ? "讀取中…" : testCaseInfo.error ? "讀取失敗" : "讀不到名稱")}
         </strong>
       </p>
+      {ownSkills.error && <ReadFailure error={ownSkills.error} what="你的 Skill 清單" />}
+      {testCaseInfo.error && <ReadFailure error={testCaseInfo.error} what="Test Case" />}
       {criteria === 0 && (
         // 這一句要在最後一個可以反悔的畫面上說。沒有驗收條件的 Run 跑得起來、會花掉
         // 額度、而且不會產生任何逐條判定——在此之前沒有一個畫面提過。
@@ -506,6 +536,9 @@ export function RunPreflight() {
         </p>
       ))}
 
+      {unauthenticated(confirmAndRun.error) && (
+        <ReadFailure error={confirmAndRun.error} what="Run" />
+      )}
       {message && <p role="alert">{message}</p>}
 
       {runId ? (
@@ -526,21 +559,26 @@ export function RunPreflight() {
           </span>
         </p>
       ) : (
-        // 設計 §4.6.3（ADR-064）：授權確認**可以**是主要動作——§2.2 引用的 VS Code
-        // 實測正是「被動、不顯眼的授權提示會失敗」。這一頁的工作是「看完權限、決定
-        // 要不要跑」，完成它的就是這一顆。
-        <button
-          type="button"
-          className="action"
-          disabled={confirmAndRun.isPending}
-          onClick={() => confirmAndRun.mutate(hash)}
-        >
-          {/* 設計 §2.4：停用要說原因，而這裡的原因（正在送出）以前一個字都沒有——
+        <>
+          <p className="note">
+            開始 Run 需要封測邀請，這道限制由平台強制；還沒有邀請的話，這一步會被擋下來。
+          </p>
+          {/* 設計 §4.6.3（ADR-064）：授權確認**可以**是主要動作——§2.2 引用的 VS Code
+            實測正是「被動、不顯眼的授權提示會失敗」。這一頁的工作是「看完權限、決定
+            要不要跑」，完成它的就是這一顆。 */}
+          <button
+            type="button"
+            className="action"
+            disabled={confirmAndRun.isPending}
+            onClick={() => confirmAndRun.mutate(hash)}
+          >
+            {/* 設計 §2.4：停用要說原因，而這裡的原因（正在送出）以前一個字都沒有——
               按鈕只是變灰。這顆按鈕會依序發兩個請求（confirmPreflight 然後
               startRun），是整個發動側唯二真的產生副作用的按鈕之一。同一個 app 裡
               另外十一顆按鈕全部不是這樣：建立中…、儲存中…、Fork 中…。 */}
-          {confirmAndRun.isPending ? "開始中…" : "我確認以上權限,開始 Run"}
-        </button>
+            {confirmAndRun.isPending ? "開始中…" : "我確認以上權限,開始 Run"}
+          </button>
+        </>
       )}
       <p>不同意就不要按下按鈕:未確認的 Run 不會被建立。</p>
     </>,

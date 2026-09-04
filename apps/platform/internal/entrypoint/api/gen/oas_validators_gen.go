@@ -1539,6 +1539,8 @@ func (s EvaluationCostSource) Validate() error {
 		return nil
 	case "estimated":
 		return nil
+	case "unreported":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}

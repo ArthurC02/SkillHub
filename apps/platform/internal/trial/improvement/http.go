@@ -466,12 +466,10 @@ func costViewOf(ev gen.Evaluation) costView {
 	}
 	switch {
 	case v.EvaluationUSD == nil:
-		v.Note = "the judge call reported no spend, so this is unreported and not $0. " +
-			"The authoritative figure is the gateway's per-key spend for this evaluation_id (ADR-017)"
+		v.Note = "Judge 這一次呼叫沒有回報花費：這裡是未測量，不是 0 美元。" +
+			"權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）。"
 	case ev.CostIsLowerBound:
-		v.Note = "what this judgement cost, never added to the run's own cost: the two are " +
-			"spent by different workloads under different keys. The authoritative figure " +
-			"is the gateway's per-key spend (ADR-017)"
+		v.Note = "權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）。"
 	}
 	return v
 }

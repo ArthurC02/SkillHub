@@ -156,7 +156,7 @@ test("a running Run requires confirmation before cancellation", async () => {
         skill_id: "skill-1",
         skill_version_id: "version-1",
         test_case_snapshot_id: "snapshot-1",
-        note: "cancellation requested",
+        note: "已送出取消要求；在工作負載真的停下來之前，這個 Run 會維持目前的狀態。",
       },
       202,
     ),

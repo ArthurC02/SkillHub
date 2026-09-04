@@ -36,7 +36,11 @@ export interface EvaluationCost {
     /**
      * `gateway` is the LiteLLM per-key spend for this evaluation, which is
      * the authoritative figure (ADR-017). `estimated` is a computed one
-     * and must be labelled as such wherever it is shown.
+     * and must be labelled as such wherever it is shown. `unreported` is
+     * what the server sends when the gateway reported nothing: it goes
+     * with a null `evaluation_usd`, and a page must not attach either of
+     * the other two labels to it (the value was on the wire before it was
+     * in this enum; 04 丙-147).
      * 
      * @type {string}
      * @memberof EvaluationCost
@@ -56,7 +60,8 @@ export interface EvaluationCost {
  */
 export const EvaluationCostSourceEnum = {
     Gateway: 'gateway',
-    Estimated: 'estimated'
+    Estimated: 'estimated',
+    Unreported: 'unreported'
 } as const;
 export type EvaluationCostSourceEnum = typeof EvaluationCostSourceEnum[keyof typeof EvaluationCostSourceEnum];
 

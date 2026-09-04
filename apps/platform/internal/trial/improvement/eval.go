@@ -819,6 +819,11 @@ func (s *Service) fail(
 	ctx context.Context, m material, ev gen.Evaluation,
 	findings []Finding, evidenceComplete bool, cause error,
 ) error {
+	// Summary is a fixed sentence, not cause interpolated: cause is an internal
+	// Go/HTTP error string and must not reach the page (04 丙-143). It is not
+	// dropped — reason below still carries it into the orchestrator trace event's
+	// failure_reason (進階模式), which is what the sentence points the reader at.
+	const summary = "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。"
 	reason := fmt.Sprintf("the task-effect judgement could not be produced: %v", cause)
 	encoded, err := json.Marshal(nonNilFindings(findings))
 	if err != nil {
@@ -834,7 +839,7 @@ func (s *Service) fail(
 
 	if _, err := q.FailEvaluation(ctx, gen.FailEvaluationParams{
 		ID: ev.ID, WorkspaceID: ev.WorkspaceID,
-		Summary:               strPtr(reason),
+		Summary:               strPtr(summary),
 		DeterministicFindings: encoded,
 		EvidenceComplete:      evidenceComplete,
 	}); errors.Is(err, pgx.ErrNoRows) {

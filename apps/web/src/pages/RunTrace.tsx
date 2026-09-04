@@ -1,6 +1,7 @@
 import { Loading } from "../components/Loading";
 import { Timestamp } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
+import { ApiError } from "../api/client";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
@@ -16,6 +17,7 @@ import { InFlight } from "../components/InFlight";
 import { useTrace, IN_FLIGHT_RUN_STATUSES } from "../api/trace";
 import type { TraceAdvanced, TraceEvent, TraceSummary } from "../api/trace";
 import { EvaluationPanel, runStatusLabel } from "./RunEvaluation";
+import { CLEANUP_BADGE } from "./WorkspaceRuns";
 
 /**
  * TRACE-006 and TRACE-007: the two modes of the run trace.
@@ -60,6 +62,11 @@ export function RunTrace() {
         Only the title said otherwise.
       */}
       <h1>Run 結果</h1>
+      {/* 04 丙-145: `run.error` was read by nothing — a failed GET /runs/{id}
+          left the page silently short of the one field (`failure_class`) that
+          says why a run failed, with no sentence anywhere saying the read
+          itself had failed. */}
+      <ReadFailure error={run.error} what="這個 Run" />
       {/*
         這一頁以前是一條死路：整頁唯一的頁內去向是「與另一個 Run 比較」，而指向
         Skill 或打包的連結只長在 `AppliedResult` 裡——只有在使用者採納了改善建議並
@@ -153,6 +160,20 @@ export function RunTrace() {
 // 「還能取消」 and 「還沒結束」 cannot answer differently about one status.
 const CANCELLABLE = IN_FLIGHT_RUN_STATUSES;
 
+/**
+ * 04 丙-143(c). `error.message` used to land on screen verbatim — for a 401
+ * that was the server's English `not authenticated`, in a Chinese sentence.
+ * 401 goes through `ReadFailure` like every other read/write; the remaining
+ * statuses get this page's own sentence, keyed by what a cancel request can
+ * actually mean: the run already ended (409), or it never existed (404).
+ */
+function cancelFailureSentence(error: unknown): string {
+  if (error instanceof ApiError && error.status === 409)
+    return "這個 Run 已經結束，沒有東西可以取消。";
+  if (error instanceof ApiError && error.status === 404) return "找不到這個 Run。";
+  return "取消要求沒有送出，可以再按一次。";
+}
+
 export function CancelRunControl({ runId, status }: { runId: string; status?: string }) {
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
@@ -167,14 +188,24 @@ export function CancelRunControl({ runId, status }: { runId: string; status?: st
         queryClient.invalidateQueries({ queryKey: ["run", runId] }),
       ]);
     },
-    onError: async (error) => {
+    onError: async () => {
       setConfirming(false);
-      setMessage(error instanceof Error ? error.message : "取消失敗。");
       await queryClient.invalidateQueries({ queryKey: ["trace", runId] });
     },
   });
+  const failure = cancel.error ? (
+    <ReadFailure error={cancel.error} what="取消這個 Run">
+      <p role="alert">{cancelFailureSentence(cancel.error)}</p>
+    </ReadFailure>
+  ) : null;
 
-  if (!status || !CANCELLABLE.has(status)) return message ? <p role="status">{message}</p> : null;
+  if (!status || !CANCELLABLE.has(status))
+    return (
+      <>
+        {failure}
+        {message && <p role="status">{message}</p>}
+      </>
+    );
   if (!confirming) {
     return (
       <p>
@@ -182,6 +213,7 @@ export function CancelRunControl({ runId, status }: { runId: string; status?: st
           取消這個 Run
         </button>
         {message && <span role="status"> {message}</span>}
+        {failure}
       </p>
     );
   }
@@ -198,7 +230,7 @@ export function CancelRunControl({ runId, status }: { runId: string; status?: st
       <button type="button" disabled={cancel.isPending} onClick={() => setConfirming(false)}>
         返回
       </button>
-      {message && <p role="alert">{message}</p>}
+      {failure}
     </div>
   );
 }
@@ -228,7 +260,7 @@ function RunArtifacts({ runId }: { runId: string }) {
       setMessage("已刪除。檔案不再存在，引用過它的評估會顯示證據已不存在。");
       await client.invalidateQueries({ queryKey: ["run", runId, "artifacts"] });
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "刪除失敗。"),
+    onError: () => {},
   });
 
   return (
@@ -236,6 +268,9 @@ function RunArtifacts({ runId }: { runId: string }) {
       <h2>這次 Run 的產出</h2>
       {artifacts.isPending && <Loading what="產出清單" />}
       <ReadFailure error={artifacts.error} what="產出清單" />
+      <ReadFailure error={remove.error} what="刪除這個產出">
+        <p role="alert">沒有刪成，可以再按一次。</p>
+      </ReadFailure>
       {message && <p role="status">{message}</p>}
       {artifacts.data?.truncated && (
         <p className="notice" role="status">
@@ -363,6 +398,10 @@ function IncompleteNotice({ complete }: { complete: boolean }) {
 function FailureClass({ runId, status }: { runId: string; status: string }) {
   const run = useRun(runId);
   if (status !== "failed") return null;
+  // The `<h1>` above already says the read itself failed (or needs login);
+  // 未記錄 here would claim the platform recorded nothing, which is a
+  // different fact from "this page could not read the run".
+  if (run.error) return null;
   return (
     <>
       <p>
@@ -374,6 +413,25 @@ function FailureClass({ runId, status }: { runId: string; status: string }) {
           `capability_mismatch` 是平台在跑之前就拒絕、會被讀成當機。 */}
       {run.data?.failure_class && <p className="note">{run.data.failure_class.note}</p>}
     </>
+  );
+}
+
+/**
+ * 04 丙-145: same field, same rendering as `WorkspaceRuns.tsx`'s row —
+ * `cleanup_status` is served since 04 丙-29 ② and was never printed on the
+ * run's own page, only on the list it is opened from.
+ */
+function RunCleanupStatus({ runId }: { runId: string }) {
+  const run = useRun(runId);
+  if (!run.data?.cleanup_status) return null;
+  const { cleanup_status } = run.data;
+  return (
+    <p className="badge-row">
+      <span className={CLEANUP_BADGE[cleanup_status.value] ?? "badge badge-unverified"}>
+        清理狀態：{cleanup_status.label}
+      </span>{" "}
+      <span className="note">{cleanup_status.note}</span>
+    </p>
   );
 }
 
@@ -408,6 +466,7 @@ function GeneralMode({ runId }: { runId: string }) {
         {trace.status_reason ? `（${trace.status_reason}）` : null}
       </p>
       <FailureClass runId={runId} status={trace.status} />
+      <RunCleanupStatus runId={runId} />
 
       <h3>進度</h3>
       {/*

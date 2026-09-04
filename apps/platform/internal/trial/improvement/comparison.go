@@ -34,7 +34,7 @@ import (
 
 // runCostAuthority names where the settling figure lives, in the response rather
 // than in a UI's memory (ADR-017, handoff 丙-3).
-const runCostAuthority = "the LiteLLM gateway's per-key spend for this run (ADR-017)"
+const runCostAuthority = "模型閘道對這個 Run 的 per-key 實付（ADR-017）"
 
 type comparisonView struct {
 	Runs            []comparisonSide `json:"runs"`

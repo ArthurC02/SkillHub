@@ -30,6 +30,14 @@ var (
 	// ErrNotFound covers "no such run" and "not yours" alike: existence is itself
 	// private (WS-006), so callers turn this into a 404 either way.
 	ErrNotFound = errors.New("run not found")
+	// ErrPreflightTargetNotFound is a missing Skill Version or Test Case draft,
+	// asked about before any run row exists (the preflight summary, and Create's
+	// same lookup before it opens a transaction). ErrNotFound's own comment says
+	// "run not found" is the right noun once a run exists to be missing; here
+	// there is no run yet, so reusing it told the reader to go looking for a run
+	// that was never the thing that went missing (04 丙-148 ④). Sentinel keeps its
+	// English identity (04 丙-138); only the user-facing message is Chinese.
+	ErrPreflightTargetNotFound = errors.New("找不到這個 Skill 版本或 Test Case")
 	// ErrRunFinished is a cancel arriving after the run reached a terminal state.
 	ErrRunFinished               = errors.New("run has already finished")
 	errRegistryReadNotConfigured = errors.New("run: registry owner read is not configured")
@@ -364,7 +372,9 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	// is "not found" rather than "forbidden" (WS-006).
 	version, found, err := s.ReadVersion(ctx, p.WorkspaceID, p.VersionID)
 	if !found && err == nil {
-		return gen.Run{}, ErrNotFound
+		// Same lookup as preflight's permissionSummaryFor, before this run row
+		// exists (04 丙-148 ④) — the version-missing sentinel, not "run not found".
+		return gen.Run{}, ErrPreflightTargetNotFound
 	}
 	if err != nil {
 		return gen.Run{}, err

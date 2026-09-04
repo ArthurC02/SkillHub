@@ -261,6 +261,24 @@ async function scan(where: string) {
     `${where}: an <svg> that is not aria-hidden — §4.7 icons never carry meaning on their own`,
   ).toHaveLength(0);
 
+  // 04 丙-143: the server's English reached the screen by three routes (a
+  // hand-written success note, a mutation's `err.message`, the 503 fallback),
+  // and the fixtures hid all three by stubbing Chinese the Go side never sends.
+  // This reads every live region on the page: a sentence with no Chinese
+  // character in it is not something this product wrote for its reader — it is
+  // `err.message`, a Go constant, or a contract string printed raw. Digits,
+  // punctuation and symbols are stripped first, so 「US$0.02」 never trips it;
+  // an identifier on its own would, and a live region holding nothing but an
+  // identifier is a §2.6 failure anyway.
+  for (const region of container.querySelectorAll("[role=alert], [role=status]")) {
+    const text = (region.textContent ?? "").replace(/[\s\d\p{P}\p{S}]/gu, "");
+    if (text === "") continue;
+    expect(
+      /\p{Script=Han}/u.test(text),
+      `${where}: a live region with no Chinese in it — the server's English reached the screen: 「${(region.textContent ?? "").trim()}」`,
+    ).toBe(true);
+  }
+
   // system.md §3 第 14 條「同一個事實，這一頁講了幾次？講得一樣嗎？」 — listed in
   // §6 as having no machine at all, which is how 04 丙-137 survived: the skill
   // page rendered `LicenseBadge` twice, from the same component with the same

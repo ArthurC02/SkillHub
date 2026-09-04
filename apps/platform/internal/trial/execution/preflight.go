@@ -304,7 +304,9 @@ func (s *Service) permissionSummaryFor(
 		)
 		version, found, err = s.ReadVersion(ctx, workspaceID, versionID)
 		if !found && err == nil {
-			return PermissionSummary{}, ErrNotFound
+			// No run exists yet at this point (03:TEST-008) — the version itself is
+			// missing, not "run not found" (04 丙-148 ④).
+			return PermissionSummary{}, ErrPreflightTargetNotFound
 		}
 		if err != nil {
 			return PermissionSummary{}, err
@@ -326,7 +328,9 @@ func (s *Service) permissionSummaryFor(
 		var err error
 		draft, err = s.TestLab.ReadDraft(ctx, workspaceID, testCaseID)
 		if errors.Is(err, testlab.ErrNotFound) {
-			return PermissionSummary{}, ErrNotFound
+			// Same reason as the version branch above: the Test Case draft is
+			// missing, no run exists yet (04 丙-148 ④).
+			return PermissionSummary{}, ErrPreflightTargetNotFound
 		}
 		if err != nil {
 			return PermissionSummary{}, err
@@ -565,7 +569,7 @@ func (h *Handler) Preflight(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	summary, err := h.Svc.PermissionSummaryFor(r.Context(), ws.ID, skillID, versionID, testCaseID)
-	if errors.Is(err, ErrNotFound) {
+	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
@@ -600,7 +604,7 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := h.Svc.ConfirmPermissions(r.Context(), ws.ID, user.ID, skillID, versionID, testCaseID, body.SummaryHash)
 	switch {
-	case errors.Is(err, ErrNotFound):
+	case errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound):
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	// 422 rather than 409: the request is well formed, but it agrees to a summary

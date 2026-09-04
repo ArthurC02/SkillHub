@@ -75,7 +75,12 @@ export type DeterministicFinding = {
 export type EvaluationCost = {
   /** null means the gateway reported nothing. Never render it as 0. */
   evaluation_usd: number | null;
-  source: "gateway" | "estimated";
+  /**
+   * `unreported` travels with a null `evaluation_usd` and takes neither of the
+   * other two labels — the server sent it long before the contract listed it,
+   * and the page's `else` branch called it 「模型閘道實付」 (04 丙-147).
+   */
+  source: "gateway" | "estimated" | "unreported";
   note: string;
 };
 

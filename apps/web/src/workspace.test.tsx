@@ -20,6 +20,8 @@ import { useForkSkill } from "./api/skills";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
+// The Go server's own wording for POST /runs/{id}/cancel's `note` (04 丙-143).
+const CANCEL_NOTE = "已送出取消要求；在工作負載真的停下來之前，這個 Run 會維持目前的狀態。";
 const ARTIFACT = "33333333-3333-3333-3333-333333333333";
 
 let container: HTMLDivElement;
@@ -1187,7 +1189,7 @@ test("SKILL-002 an import invalidates 我的 Skill, and does not re-run the sear
 
 test("RUN-005 cancelling a run invalidates its trace and its row, not every trace", async () => {
   vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
-    if (init?.method === "POST") return json({ note: "已送出取消要求。" }, 202);
+    if (init?.method === "POST") return json({ note: CANCEL_NOTE }, 202);
     return json({ error: "not found" }, 404);
   });
   queryClient.setQueryData(["trace", RUN, "general", 0], { status: "running" });
@@ -1203,13 +1205,57 @@ test("RUN-005 cancelling a run invalidates its trace and its row, not every trac
   );
   await act(async () => button("取消這個 Run")?.click());
   await act(async () => button("確認取消")?.click());
-  await waitFor(() => text().includes("已送出取消要求"));
+  await waitFor(() => text().includes(CANCEL_NOTE));
 
   expect(queryClient.getQueryState(["trace", RUN, "general", 0])?.isInvalidated).toBe(true);
   expect(queryClient.getQueryState(["run", RUN])?.isInvalidated).toBe(true);
   expect(queryClient.getQueryState(["trace", "other-run", "general", 0])?.isInvalidated).toBe(
     false,
   );
+});
+
+/**
+ * 04 丙-143(c): `CancelRunControl` used to `setMessage(error.message)` — for a
+ * 401 that put the server's raw English `not authenticated` on screen inside
+ * a Chinese sentence. 401 now goes through `ReadFailure` like every other
+ * read/write on this page.
+ */
+test("04 丙-143(c): cancelling a run that needs login says so, not the raw server string", async () => {
+  vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+    if (init?.method === "POST") return json({ error: "not authenticated" }, 401);
+    return json({ error: "not found" }, 404);
+  });
+  queryClient.setQueryData(["trace", RUN, "general", 0], { status: "running" });
+  queryClient.setQueryData(["run", RUN], { run_id: RUN });
+
+  await render(
+    <CancelRunControl runId={RUN} status="running" />,
+    () => button("取消這個 Run") !== undefined,
+  );
+  await act(async () => button("取消這個 Run")?.click());
+  await act(async () => button("確認取消")?.click());
+  await waitFor(() => text().includes("需要登入"));
+
+  expect(text()).not.toContain("not authenticated");
+});
+
+/** 04 丙-143(c): a 409 means the run already ended — a different next step
+ * from "try again", so it gets its own sentence rather than a generic one. */
+test("04 丙-143(c): cancelling a run that already ended says so (409)", async () => {
+  vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+    if (init?.method === "POST") return json({ error: "already terminal" }, 409);
+    return json({ error: "not found" }, 404);
+  });
+  queryClient.setQueryData(["trace", RUN, "general", 0], { status: "running" });
+  queryClient.setQueryData(["run", RUN], { run_id: RUN });
+
+  await render(
+    <CancelRunControl runId={RUN} status="running" />,
+    () => button("取消這個 Run") !== undefined,
+  );
+  await act(async () => button("取消這個 Run")?.click());
+  await act(async () => button("確認取消")?.click());
+  await waitFor(() => text().includes("已經結束"));
 });
 
 test("CORE-007 cancelling a deletion request invalidates /me, so the badge goes away", async () => {

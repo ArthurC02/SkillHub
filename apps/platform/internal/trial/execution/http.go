@@ -253,7 +253,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusServiceUnavailable, err.Error())
 		return
 	}
-	if errors.Is(err, ErrNotFound) {
+	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
@@ -669,8 +669,7 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	resp := struct {
 		runResponse
 		Note string `json:"note"`
-	}{body, "cancellation requested; the run keeps its current status " +
-		"until the workload has actually stopped"}
+	}{body, "已送出取消要求；在工作負載真的停下來之前，這個 Run 會維持目前的狀態。"}
 	httpx.WriteJSON(w, http.StatusAccepted, resp)
 }
 

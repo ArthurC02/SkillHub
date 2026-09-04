@@ -553,6 +553,115 @@ test("R4: the advanced Trace opens on the page its address names, and paging wri
  * recognised while silently rewriting the rest would be inventing words for a
  * system whose words it does not have.
  */
+/**
+ * 04 丙-145: `run.error` was fetched by `useRun` and read by nothing — a
+ * failed `GET /runs/{id}` left the page with no sentence anywhere saying the
+ * read had failed, and `FailureClass` (which calls `useRun` again for the
+ * same reason) printed 未記錄 in its place, claiming the platform had
+ * recorded nothing rather than that this page could not read it.
+ */
+test("04 丙-145: a run that fails to load says so on its own page, and 失敗類別 does not claim 未記錄", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (/\/runs\/[^/?]+$/.test(url.split("?")[0])) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: "boom" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (url.includes("/artifacts")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ artifacts: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (url.includes("/evaluation") || url.includes("/suggestions")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify(summary), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await render();
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("無法讀取這個 Run");
+  expect(text).not.toContain("未記錄");
+});
+
+test("04 丙-145: a run read that needs login says so, on its own page", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (/\/runs\/[^/?]+$/.test(url.split("?")[0])) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: "not authenticated" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (url.includes("/artifacts")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ artifacts: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (url.includes("/evaluation") || url.includes("/suggestions")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify(summary), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await render();
+
+  expect(container.textContent ?? "").toContain("需要登入");
+});
+
+/**
+ * 04 丙-145: `cleanup_status` is served on `GET /runs/{id}` (same field,
+ * labels and tint as `WorkspaceRuns.tsx`'s row) and was never rendered on
+ * the run's own page — only on the list it is opened from.
+ */
+test("04 丙-145: cleanup_status renders on the run's own page", async () => {
+  stubTrace(summary, advanced, {
+    run_id: summary.run_id,
+    skill_id: "s-1",
+    skill_version_id: "v-1",
+    test_case_snapshot_id: "snap-1",
+    cleanup_status: {
+      value: "failed",
+      label: "清理失敗",
+      note: "沙箱清理失敗，可能仍佔用資源。",
+    },
+  });
+  await render();
+
+  expect(container.textContent ?? "").toContain("清理失敗");
+});
+
 test("丙-115 進度 writes the status in this app's own words and relays the reason untouched", async () => {
   stubTrace(summary, advanced);
   await render();

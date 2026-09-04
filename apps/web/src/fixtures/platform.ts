@@ -699,7 +699,11 @@ export const EVALUATION = {
   judge_prompt_version: "judge-2026-08-17",
   rubric_version: "content-007/writing/v1",
   evidence_complete: false,
-  cost: { evaluation_usd: 0.0212, source: "gateway", note: "閘道對這次評估的實付。" },
+  cost: {
+    evaluation_usd: 0.0212,
+    source: "gateway",
+    note: "權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）。",
+  },
   feedback: { helpful: false, comment: "沒說到重點。", submitted_at: "2026-08-17T03:00:00Z" },
   evaluated_at: "2026-08-17T02:00:00Z",
   superseded_at: null,
@@ -758,7 +762,11 @@ export function comparisonSide(runId: string, evaluated: boolean) {
     final_output: "Removed 17 duplicate rows.",
     errors: [{ category: "provision", code: "provider_error", message: "no slot" }],
     duration_ms: 4200,
-    cost: { usd: 0.13, is_lower_bound: true, authoritative_source: "模型閘道 per-key 實付" },
+    cost: {
+      usd: 0.13,
+      is_lower_bound: true,
+      authoritative_source: "模型閘道對這個 Run 的 per-key 實付（ADR-017）",
+    },
     inputs_available: evaluated,
   };
 }

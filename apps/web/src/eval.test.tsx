@@ -56,7 +56,13 @@ test("a terminal run polls evaluation from 404 through pending to completed", as
     if (url.includes("/evaluation")) {
       calls++;
       if (calls === 1) return json({ error: "not found" }, 404);
-      if (calls === 2) return json({ ...evaluation, status: "pending", summary: "poll pending" });
+      if (calls === 2)
+        return json({
+          ...evaluation,
+          status: "pending",
+          overall: "undetermined",
+          summary: "poll pending",
+        });
       return json({ ...evaluation, status: "completed", summary: "poll complete" });
     }
     return json({ error: "not found" }, 404);
@@ -256,7 +262,11 @@ const evaluation: Evaluation = {
   judge_model: "gpt-5.6-terra",
   judge_prompt_version: "judge-2026-08-17",
   evidence_complete: false,
-  cost: { evaluation_usd: 0.0212, source: "gateway", note: "閘道對這次評估的實付。" },
+  cost: {
+    evaluation_usd: 0.0212,
+    source: "gateway",
+    note: "權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）。",
+  },
   evaluated_at: "2026-08-17T02:00:00Z",
   superseded_at: null,
 };
@@ -336,7 +346,11 @@ function stubPlatform(options: {
     }
     if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
     if (url.includes("/evaluation"))
-      return json(options.pending ? { ...evaluation, status: "pending" } : evaluation);
+      return json(
+        options.pending
+          ? { ...evaluation, status: "pending", overall: "undetermined" }
+          : evaluation,
+      );
     if (url.includes("/suggestions/s1/diff")) return json(blockedDiff);
     if (url.includes("/suggestions"))
       return json({
@@ -434,6 +448,10 @@ test("§2.12 a judge still running is 進行中, not a verdict — and says you 
 
   const text = container.textContent ?? "";
   expect(text).toContain("評估進行中");
+  // 04 丙-146: a `pending` row's `overall` is a filler, not a verdict — the
+  // verdict paragraph ("任務判定：…", distinct from the section's own h2
+  // heading "任務判定") must not render underneath the banner.
+  expect(text).not.toContain("任務判定：");
   // The three sentences §2.12 asks for.
   expect(text).toContain("會自己完成");
   // 設計 §2.13: 「會變的量永遠平鋪，不會變的理由才可以折」. The permission stays
@@ -759,7 +777,7 @@ test("EVAL-001 a judge that never finishes stops being polled, and the promise s
     if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
     if (url.includes("/evaluation")) {
       calls++;
-      return json({ ...evaluation, status: "pending" });
+      return json({ ...evaluation, status: "pending", overall: "undetermined" });
     }
     return json({ error: "not found" }, 404);
   });
@@ -818,7 +836,9 @@ test("EVAL-002 a re-evaluation landing while the page is open brings the revisio
     }
     if (url.includes("/evaluation")) {
       evaluations++;
-      return json(evaluations === 1 ? { ...evaluation, status: "pending" } : second);
+      return json(
+        evaluations === 1 ? { ...evaluation, status: "pending", overall: "undetermined" } : second,
+      );
     }
     return json({ error: "not found" }, 404);
   });
@@ -912,4 +932,146 @@ test("R4: the evaluation revision comes from the address, and the switcher write
   });
   expect(navigations).toHaveLength(1);
   expect(navigations[0].evaluation).toBeUndefined();
+});
+
+// --- 04 丙-143/146/147/148, the six-change patrol -----------------------------
+
+function runRead() {
+  return json({
+    run_id: RUN,
+    skill_id: SKILL,
+    skill_version_id: "22222222-2222-2222-2222-222222222222",
+    test_case_snapshot_id: "33333333-3333-3333-3333-333333333333",
+    test_case_id: TEST_CASE,
+  });
+}
+
+test("04 丙-147 an unreported cost shows 未測量 and never claims 模型閘道實付", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/runs/" + RUN)) return runRead();
+    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+    if (url.includes("/evaluation")) {
+      return json({
+        ...evaluation,
+        cost: {
+          evaluation_usd: null,
+          source: "unreported",
+          note: "Judge 這一次呼叫沒有回報花費：這裡是未測量，不是 0 美元。",
+        },
+      });
+    }
+    if (url.includes("/suggestions")) return json({ evaluation_id: "eval-1", suggestions: [] });
+    return json({ error: "not found" }, 404);
+  });
+
+  await render("succeeded");
+  const text = container.textContent ?? "";
+  expect(text).toContain("未測量");
+  expect(text).not.toContain("模型閘道實付");
+});
+
+test("04 丙-148③ a run with no judge folds the two blank lines into one sentence", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/runs/" + RUN)) return runRead();
+    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+    if (url.includes("/evaluation"))
+      return json({ ...evaluation, judge_model: "", judge_prompt_version: "" });
+    if (url.includes("/suggestions")) return json({ evaluation_id: "eval-1", suggestions: [] });
+    return json({ error: "not found" }, 404);
+  });
+
+  await render("succeeded");
+  const text = container.textContent ?? "";
+  expect(text).toContain("這次沒有跑");
+  expect(text).not.toContain("未使用模型");
+  expect(text).not.toContain("Judge prompt 版本：");
+});
+
+test("04 丙-143(c) a feedback 401 reads as 需要登入, never the raw server message", async () => {
+  stubPlatform({ evaluated: true });
+  await render("succeeded");
+  await waitFor(() => (container.textContent ?? "").includes("有幫助"));
+
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/evaluation/feedback")) return json({ error: "not authenticated" }, 401);
+    if (url.endsWith("/runs/" + RUN)) return runRead();
+    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+    if (url.includes("/evaluation")) return json(evaluation);
+    if (url.includes("/suggestions")) return json({ evaluation_id: "eval-1", suggestions: [] });
+    return json({ error: "not found" }, 404);
+  });
+
+  const helpful = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "有幫助",
+  );
+  await act(async () => helpful?.click());
+  await waitFor(() => (container.textContent ?? "").includes("需要登入"));
+  expect(container.textContent).not.toContain("not authenticated");
+});
+
+test("04 丙-143(c) an apply 422 shows every rejected suggestion's own reason", async () => {
+  stubPlatform({ evaluated: true, accepted: true });
+  await render("succeeded");
+  await waitFor(() => (container.textContent ?? "").includes("建立新版本"));
+
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/versions/from-suggestions")) {
+      return json(
+        {
+          error: "not one of the suggestions could be applied, so no version was created",
+          rejected_suggestions: [
+            { suggestion_id: "s1", blocked_reason: "target_changed", message: "s1 目標檔案變了。" },
+            { suggestion_id: "s2", blocked_reason: "diff_unavailable", message: "s2 算不出差異。" },
+          ],
+        },
+        422,
+      );
+    }
+    if (url.endsWith("/runs/" + RUN)) return runRead();
+    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+    if (url.includes("/evaluation")) return json(evaluation);
+    if (url.includes("/suggestions"))
+      return json({
+        evaluation_id: "eval-1",
+        suggestions: [{ ...suggestion, decision: "accepted" }, suggestion2],
+      });
+    return json({ error: "not found" }, 404);
+  });
+
+  const apply = Array.from(container.querySelectorAll("button")).find((b) =>
+    (b.textContent ?? "").includes("建立新版本"),
+  );
+  await act(async () => apply?.click());
+  await waitFor(() => (container.textContent ?? "").includes("沒有一項建議可以套用"));
+  expect(container.textContent).toContain("s1 目標檔案變了。");
+  expect(container.textContent).toContain("s2 算不出差異。");
+});
+
+test("04 丙-143(e) a suggestion already built into a version cannot be rejected from here", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/runs/" + RUN)) return runRead();
+    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+    if (url.includes("/evaluation")) return json(evaluation);
+    if (url.includes("/suggestions"))
+      return json({
+        evaluation_id: "eval-1",
+        suggestions: [
+          { ...suggestion, decision: "accepted", applied_skill_version_id: NEW_VERSION },
+        ],
+      });
+    return json({ error: "not found" }, 404);
+  });
+
+  await render("succeeded");
+  await waitFor(() => (container.textContent ?? "").includes("拒絕"));
+  const reject = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "拒絕",
+  );
+  expect(reject?.disabled).toBe(true);
+  expect(container.textContent).toContain("已建成版本的建議不能撤回");
 });

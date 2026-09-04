@@ -3771,6 +3771,9 @@ type EvaluationCost struct {
 	EvaluationUsd NilFloat64 `json:"evaluation_usd"`
 	// `gateway` is the LiteLLM per-key spend for this evaluation, which is the authoritative figure
 	// (ADR-017). `estimated` is a computed one and must be labelled as such wherever it is shown.
+	// `unreported` is what the server sends when the gateway reported nothing: it goes with a null
+	// `evaluation_usd`, and a page must not attach either of the other two labels to it (the value was on
+	// the wire before it was in this enum; 04 丙-147).
 	Source EvaluationCostSource `json:"source"`
 	Note   string               `json:"note"`
 }
@@ -3807,11 +3810,15 @@ func (s *EvaluationCost) SetNote(val string) {
 
 // `gateway` is the LiteLLM per-key spend for this evaluation, which is the authoritative figure
 // (ADR-017). `estimated` is a computed one and must be labelled as such wherever it is shown.
+// `unreported` is what the server sends when the gateway reported nothing: it goes with a null
+// `evaluation_usd`, and a page must not attach either of the other two labels to it (the value was on
+// the wire before it was in this enum; 04 丙-147).
 type EvaluationCostSource string
 
 const (
-	EvaluationCostSourceGateway   EvaluationCostSource = "gateway"
-	EvaluationCostSourceEstimated EvaluationCostSource = "estimated"
+	EvaluationCostSourceGateway    EvaluationCostSource = "gateway"
+	EvaluationCostSourceEstimated  EvaluationCostSource = "estimated"
+	EvaluationCostSourceUnreported EvaluationCostSource = "unreported"
 )
 
 // AllValues returns all EvaluationCostSource values.
@@ -3819,6 +3826,7 @@ func (EvaluationCostSource) AllValues() []EvaluationCostSource {
 	return []EvaluationCostSource{
 		EvaluationCostSourceGateway,
 		EvaluationCostSourceEstimated,
+		EvaluationCostSourceUnreported,
 	}
 }
 
@@ -3828,6 +3836,8 @@ func (s EvaluationCostSource) MarshalText() ([]byte, error) {
 	case EvaluationCostSourceGateway:
 		return []byte(s), nil
 	case EvaluationCostSourceEstimated:
+		return []byte(s), nil
+	case EvaluationCostSourceUnreported:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -3842,6 +3852,9 @@ func (s *EvaluationCostSource) UnmarshalText(data []byte) error {
 		return nil
 	case EvaluationCostSourceEstimated:
 		*s = EvaluationCostSourceEstimated
+		return nil
+	case EvaluationCostSourceUnreported:
+		*s = EvaluationCostSourceUnreported
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

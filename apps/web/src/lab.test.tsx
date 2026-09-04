@@ -107,6 +107,10 @@ function stubPlatform(
   const calls: { url: string; body?: string }[] = [];
   let current = initial;
   let refusal = "";
+  let runStatus = 0;
+  let runBody: unknown = undefined;
+  let ownSkillsStatus = 0;
+  let testCaseStatus = 0;
   const json = (body: unknown, status = 200) =>
     Promise.resolve(
       new Response(JSON.stringify(body), {
@@ -121,9 +125,12 @@ function stubPlatform(
     if (url.endsWith("/versions")) return json(VERSIONS);
     // 主詞的兩個來源。這一頁鉅細靡遺地列出這次 Run 碰得到什麼，卻沒說它是**誰**的
     // 什麼——所以這兩個端點以前在這個替身裡是 404，而沒有任何一支測試發現。
-    if (url.split("?")[0].endsWith("/skills"))
+    if (url.split("?")[0].endsWith("/skills")) {
+      if (ownSkillsStatus) return json({ error: "own skills failed" }, ownSkillsStatus);
       return json({ skills: [{ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。" }] });
-    if (url.includes(`/test-cases/${TEST_CASE}`))
+    }
+    if (url.includes(`/test-cases/${TEST_CASE}`)) {
+      if (testCaseStatus) return json({ error: "test case failed" }, testCaseStatus);
       return json({
         test_case_id: TEST_CASE,
         skill_id: SKILL,
@@ -133,6 +140,7 @@ function stubPlatform(
         created_at: "2026-08-01T00:00:00Z",
         updated_at: "2026-08-01T00:00:00Z",
       });
+    }
     if (url.includes("/runs/preflight/confirm")) {
       const sent = JSON.parse(String(init?.body)) as { summary_hash: string };
       return sent.summary_hash === current.summary_hash
@@ -144,6 +152,7 @@ function stubPlatform(
       // Gate B answers 422 for six different refusals, not one. `refuseWith`
       // lets a test be the server saying something other than "stale hash".
       if (refusal) return json({ error: refusal }, 422);
+      if (runStatus) return json(runBody ?? { error: "run failed" }, runStatus);
       const sent = JSON.parse(String(init?.body)) as { confirmed_summary_hash: string };
       return sent.confirmed_summary_hash === current.summary_hash
         ? json({ run_id: "run-1", status: "queued", provider: "unassigned" }, 201)
@@ -159,6 +168,19 @@ function stubPlatform(
     },
     refuseWith(message: string) {
       refusal = message;
+    },
+    /** 04 丙-148①②: ownSkills read fails with the given status (401/500/…). */
+    failOwnSkills(status: number) {
+      ownSkillsStatus = status;
+    },
+    /** 04 丙-148①②: testCaseInfo read fails with the given status. */
+    failTestCase(status: number) {
+      testCaseStatus = status;
+    },
+    /** 04 丙-143/144: the run-start hop itself answers non-422 (403/503/404/500). */
+    failRunWith(status: number, body?: unknown) {
+      runStatus = status;
+      runBody = body;
     },
   };
 }
@@ -514,4 +536,79 @@ test("02:RUN-003 the token ceiling says what it depends on, not just a number", 
   expect(text).toContain("取決於每一輪的工具呼叫次數");
   expect(text).toContain("5 輪");
   expect(text).toContain("15 輪");
+});
+
+// --- 04 丙-148①②: the shell header must not print absence for a failed read ---
+
+test("04 丙-148 ownSkills read failure says so, not 不在你的清單裡", async () => {
+  const platform = stubPlatform();
+  platform.failOwnSkills(500);
+  await renderLab();
+
+  await waitFor(() => text().includes("讀取失敗"));
+  expect(text()).toContain("無法讀取你的 Skill 清單");
+  expect(text()).not.toContain("不在你的清單裡");
+});
+
+test("04 丙-148 ownSkills read failure on 401 says login, not 讀取失敗 with a raw message", async () => {
+  const platform = stubPlatform();
+  platform.failOwnSkills(401);
+  await renderLab();
+
+  await waitFor(() => text().includes("需要登入"));
+});
+
+test("04 丙-148 testCase read failure says so, not 讀不到名稱", async () => {
+  const platform = stubPlatform();
+  platform.failTestCase(500);
+  await renderLab();
+
+  await waitFor(() => text().includes("讀取失敗"));
+  expect(text()).toContain("無法讀取Test Case");
+  expect(text()).not.toContain("讀不到名稱");
+});
+
+// --- 04 丙-144: the invite gate is stated before the button, and on refusal ---
+
+test("04 丙-144 the invite requirement is stated before the confirm button", async () => {
+  stubPlatform();
+  await renderLab();
+
+  await waitFor(() => confirmButton() !== undefined);
+  expect(text()).toContain("開始 Run 需要封測邀請，這道限制由平台強制");
+});
+
+test("04 丙-144 a 403 on run-start says no invite, not the raw server message", async () => {
+  const platform = stubPlatform();
+  platform.failRunWith(403, { error: "closed beta" });
+  await renderLab();
+
+  await clickConfirm();
+
+  expect(text()).toContain("這個帳號還沒有封測邀請");
+  expect(text()).not.toContain("closed beta");
+});
+
+// --- 04 丙-143(d): non-422 run-start failures get the page's own sentence ---
+
+test("04 丙-143 a 503 on run-start says try again, not the raw server message", async () => {
+  const platform = stubPlatform();
+  platform.failRunWith(503, { error: "sandbox pool temporarily unavailable" });
+  await renderLab();
+
+  await clickConfirm();
+
+  expect(text()).toContain("再按一次");
+  expect(text()).not.toContain("temporarily unavailable");
+});
+
+test("04 丙-143 a 404 on run-start says the skill version or test case is gone", async () => {
+  const platform = stubPlatform();
+  platform.failRunWith(404, { error: "run not found" });
+  await renderLab();
+
+  await clickConfirm();
+
+  expect(text()).toContain("找不到");
+  expect(text()).not.toContain("run not found");
 });

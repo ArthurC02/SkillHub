@@ -26,6 +26,7 @@ import type {
   EvidenceMatch,
   EvidenceRef,
   ImprovementSuggestion,
+  RejectedSuggestion,
   SuggestionBlockedReason,
   VersionFromSuggestions,
 } from "../api/evaluation";
@@ -319,7 +320,13 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
 
       {!notEvaluated && <ReadFailure error={evaluation.error} what="評估結果" />}
 
-      {evaluation.data && <EvaluationReport evaluation={evaluation.data} runStatus={runStatus} />}
+      {/* 04 丙-146: `pending` is the third axis the banner above already speaks
+          for. Rendering the report underneath it prints a verdict for a
+          judgement that has not landed — 任務判定 for an evaluation whose
+          `overall` is a filler `undetermined`, not a real answer yet. */}
+      {evaluation.data && !evaluating && (
+        <EvaluationReport evaluation={evaluation.data} runStatus={runStatus} />
+      )}
 
       {/* No verdict for it to sit under, so it stands on its own here. With a
           verdict on screen it belongs immediately below it (design §2.5), which
@@ -473,7 +480,11 @@ function EvaluationReport({
       <h3>評估本身的成本</h3>
       <p>
         {usd(evaluation.cost.evaluation_usd)}
-        {evaluation.cost.source === "estimated" ? "（估算值）" : "（模型閘道實付）"}
+        {/* 04 丙-147: `unreported` travels with a null amount that `usd()`
+            already prints as 未測量 — appending 「（模型閘道實付）」 to that
+            would claim the gateway paid an amount it never reported. */}
+        {evaluation.cost.source === "gateway" && "（模型閘道實付）"}
+        {evaluation.cost.source === "estimated" && "（估算值）"}
       </p>
       <p className="note">
         {evaluation.cost.note}
@@ -486,8 +497,20 @@ function EvaluationReport({
       <details>
         <summary>判定資訊（Judge 模型與版本）</summary>
         <ul className="note">
-          <li>Judge 模型：{evaluation.judge_model || "未使用模型"}</li>
-          <li>Judge prompt 版本：{evaluation.judge_prompt_version}</li>
+          {/* 04 丙-148③: no judge means no model and no prompt version to
+              report — two blank-looking fallback lines, folded into one
+              sentence that says why neither exists. */}
+          {evaluation.judge_model ? (
+            <>
+              <li>Judge 模型：{evaluation.judge_model}</li>
+              <li>Judge prompt 版本：{evaluation.judge_prompt_version}</li>
+            </>
+          ) : (
+            <li>
+              Judge：這次沒有跑（沒有驗收條件，或平台沒有設定 Judge），所以沒有模型與 prompt
+              版本可記
+            </li>
+          )}
           <li>Rubric 版本：{evaluation.rubric_version ?? "無 rubric（不是採用預設 rubric）"}</li>
           <li>
             評估時間：
@@ -807,14 +830,18 @@ function FeedbackForm({
   const client = useQueryClient();
   const [comment, setComment] = useState(evaluation.feedback?.comment ?? "");
   const [message, setMessage] = useState("");
+  // 04 丙-143(c): the error object, not its raw `.message` — a page sentence
+  // chosen by status renders it, and 401 goes through ReadFailure.
+  const [error, setError] = useState<unknown>(null);
 
   const submit = useMutation({
     mutationFn: (helpful: boolean) => setEvaluationFeedback(runId, helpful, comment),
     onSuccess: async () => {
       setMessage("已送出回饋。");
+      setError(null);
       await client.invalidateQueries({ queryKey: ["evaluation", runId] });
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "回饋送出失敗。"),
+    onError: (err) => setError(err),
   });
 
   if (disabled) {
@@ -848,6 +875,13 @@ function FeedbackForm({
         </button>
       </p>
       {message && <p role="status">{message}</p>}
+      <ReadFailure error={error} what="回饋">
+        <p role="alert">
+          {error instanceof ApiError && error.status === 404
+            ? "這個 Run 目前沒有可以附回饋的判定。"
+            : "回饋沒有送出，可以再按一次。"}
+        </p>
+      </ReadFailure>
     </div>
   );
 }
@@ -865,17 +899,18 @@ function SuggestionsPanel({ runId }: { runId: string }) {
   const run = useRun(runId).data;
   const skillId = run?.skill_id;
   const [applied, setApplied] = useState<VersionFromSuggestions | null>(null);
-  const [message, setMessage] = useState("");
+  // 04 丙-143(c): the error object, not its raw `.message`.
+  const [error, setError] = useState<unknown>(null);
 
   const apply = useMutation({
     mutationFn: (ids: string[]) =>
       createVersionFromSuggestions(skillId as string, suggestions.data?.evaluation_id ?? "", ids),
     onSuccess: async (result) => {
       setApplied(result);
-      setMessage("");
+      setError(null);
       await client.invalidateQueries({ queryKey: ["suggestions", runId] });
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "建立新版本失敗。"),
+    onError: (err) => setError(err),
   });
 
   const notFound = suggestions.error instanceof ApiError && suggestions.error.status === 404;
@@ -929,10 +964,58 @@ function SuggestionsPanel({ runId }: { runId: string }) {
         </div>
       )}
 
-      {message && <p role="alert">{message}</p>}
+      <ReadFailure error={error} what="建立新版本">
+        {/* One live region, next to the component that owns the 401 case: the
+            IA-6 ratchet in design-system.test.ts reads adjacency, and a
+            failure sentence composed three screens away from ReadFailure is
+            exactly the shape it exists to refuse. */}
+        <div role="alert">
+          <ApplyFailureBody error={error} />
+        </div>
+      </ReadFailure>
       {applied && <AppliedResult result={applied} testCaseId={run?.test_case_id} />}
     </section>
   );
+}
+
+/**
+ * 04 丙-143(c). The 422 branch is the half-success case
+ * (`suggestions_http.go` ~341-350): nothing was applied, so the body names
+ * which suggestion was rejected and why — the same shape and the same
+ * sentence per item as a successful apply's own rejected list
+ * (`AppliedResult` below), so a reader sees one vocabulary for "this
+ * suggestion did not make it in" regardless of which path produced it. The
+ * 500 branch is the OTHER half-success (`errProvenanceNotRecorded`): a
+ * version may already exist under the version list even though this call
+ * failed, and the sentence says so rather than inviting a retry that would
+ * only produce a duplicate.
+ */
+function ApplyFailureBody({ error }: { error: unknown }) {
+  if (!(error instanceof ApiError)) return <p>套用失敗，可以再按一次。</p>;
+  if (error.status === 422) {
+    const body = error.body as { rejected_suggestions?: RejectedSuggestion[] } | undefined;
+    const rejected = body?.rejected_suggestions ?? [];
+    return (
+      <>
+        <p>沒有一項建議可以套用，所以沒有建立新版本。</p>
+        {rejected.length > 0 && (
+          <ul>
+            {rejected.map((r) => (
+              <li key={r.suggestion_id}>
+                {r.message}（{BLOCKED_REASON_LABEL[r.blocked_reason]}）
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    );
+  }
+  if (error.status === 500) {
+    return (
+      <p>套用失敗。如果版本清單裡已經出現新版本，它可以用，只是「由哪些建議產生」的紀錄沒寫成。</p>
+    );
+  }
+  return <p>套用失敗，可以再按一次。</p>;
 }
 
 function SuggestionItem({
@@ -944,16 +1027,17 @@ function SuggestionItem({
 }) {
   const client = useQueryClient();
   const [showDiff, setShowDiff] = useState(false);
-  const [message, setMessage] = useState("");
+  // 04 丙-143(c): the error object, not its raw `.message`.
+  const [error, setError] = useState<unknown>(null);
 
   const decide = useMutation({
     mutationFn: (decision: "accepted" | "rejected") =>
       decideSuggestion(suggestion.suggestion_id, decision),
     onSuccess: async () => {
-      setMessage("");
+      setError(null);
       await client.invalidateQueries({ queryKey: ["suggestions", runId] });
     },
-    onError: (err) => setMessage(err instanceof Error ? err.message : "無法記錄決定。"),
+    onError: (err) => setError(err),
   });
 
   return (
@@ -982,7 +1066,12 @@ function SuggestionItem({
         <button
           type="button"
           aria-pressed={suggestion.decision === "rejected"}
-          disabled={decide.isPending}
+          disabled={decide.isPending || Boolean(suggestion.applied_skill_version_id)}
+          aria-describedby={
+            suggestion.applied_skill_version_id
+              ? `reject-note-${suggestion.suggestion_id}`
+              : undefined
+          }
           onClick={() => decide.mutate("rejected")}
         >
           拒絕
@@ -996,8 +1085,19 @@ function SuggestionItem({
               : "尚未決定"}
           {suggestion.applied_skill_version_id ? "（已套用於新版本）" : ""}
         </span>
+        {/* 設計 §2.4: a disabled control needs its reason on screen, not just
+            in a title/hover. The server answers 409 (English) for a reject
+            on an already-applied suggestion; this is why the button never
+            gets there. */}
+        {suggestion.applied_skill_version_id && (
+          <span className="note" id={`reject-note-${suggestion.suggestion_id}`}>
+            已建成版本的建議不能撤回
+          </span>
+        )}
       </p>
-      {message && <p role="alert">{message}</p>}
+      <ReadFailure error={error} what="決定">
+        <p role="alert">這個決定沒有記錄，可以再按一次。</p>
+      </ReadFailure>
       {showDiff && <SuggestionDiffView suggestionId={suggestion.suggestion_id} />}
     </li>
   );

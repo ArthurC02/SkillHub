@@ -353,7 +353,7 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 
 - ~~**那兩句既有前例（`SkillDetail` 與 `WorkspaceAccount`）此前一支測試都沒有。**~~ **同批補上，落點 [`session.test.tsx`](../../apps/web/src/session.test.tsx)**（14 支：元件本身、七個抵達點、兩句前例、一支 `retry` 探針），每個抵達點結尾都跑一次「`not authenticated` 不得抵達畫面**且**畫面上要有登入入口」。<br>**落地過程本身記一筆**：那批測試的第一版沒有牙齒，而且失效方式與本專案前三次同型——它等的 settle 條件就是「需要登入」，所以還原呼叫點只會得到 `waitFor timed out`，紅的是逾時不是斷言。改成等一個「修好與壞掉都成立」的條件之後才真的在測東西。八次突變裡**第六次第一輪是綠的**（`retry: false` 原本一支測試都不擋），補了探針才紅。
 - 登入之後要不要回到原本那一頁（deep-link 還原）**不在本裁定內**：本裁定只要求抵達誠實，不要求記住去向。要做的話它是一項新工作，不是這一項的殘留。
-- **寫入路徑不在那 21 處裡**（2026-09-04 沿試跑主線量到，[`04` 丙-143](../plans/04-backlog-and-handoffs.md)）：裁定與 `session.test.tsx` 守的都是**讀取**的匯流點與抵達那一刻。Run 頁的取消、刪除產出與評估回饋三個 mutation 的 `onError` 直印 `err.message`，抵達之後才過期的 session 在按下取消時又把 `not authenticated` 印回畫面，`assertHonestArrival` 跑在抵達時所以看不到。**修法照 `ReadFailure` 的形狀給寫入一個匯流點，不另開裁定**——裁定本身沒有錯，是它的「21 處」數的只有一半。
+- **寫入路徑不在那 21 處裡**（2026-09-04 沿試跑主線量到，[`04` 丙-143](../plans/04-backlog-and-handoffs.md)）：裁定與 `session.test.tsx` 守的都是**讀取**的匯流點與抵達那一刻。Run 頁的取消、刪除產出與評估回饋三個 mutation 的 `onError` 直印 `err.message`，抵達之後才過期的 session 在按下取消時又把 `not authenticated` 印回畫面，`assertHonestArrival` 跑在抵達時所以看不到。**修法照 `ReadFailure` 的形狀給寫入一個匯流點，不另開裁定**——裁定本身沒有錯，是它的「21 處」數的只有一半。**同日落地**：Run 頁的取消／刪除產出、評估頁的回饋／決定／套用、Preflight 的開始 Run，六個 mutation 改存 error 物件、經 `ReadFailure` 渲染；`a11y.test.tsx` 另守一條「live region 裡沒有任何中文字即 FAIL」，這一條不分讀取與寫入，是 `assertHonestArrival` 只守一個字串的那個缺口的通用版。
 
 ### IA-7 ✅ 已裁定（2026-08-24）：三個都是 R3 的「具名」那一支，不補第二條
 

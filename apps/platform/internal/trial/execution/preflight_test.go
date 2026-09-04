@@ -1,6 +1,14 @@
 package run
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+)
 
 // The allow list is rendered, not stringified. While it is empty (SBX-005/006 has
 // not minted a grant yet) nothing on screen shows which it is, so this feeds the
@@ -68,5 +76,38 @@ func TestInjectedSecretsFollowTheGrantAndNotAConstant(t *testing.T) {
 	}}
 	if got := injectedSecretsFor(other); len(got) != 0 {
 		t.Errorf("only a model_gateway grant injects these, got %v", got)
+	}
+}
+
+// 04 丙-148 ④: a missing Skill Version, asked about before any run row exists
+// (GET .../runs/preflight), used to come back as ErrNotFound — "run not found" —
+// even though there was never a run to not find. Preflight's handler writes
+// err.Error() straight onto the 404 body (httpx.WriteError), so asserting the
+// sentinel's text here is asserting what the client actually reads.
+//
+// Revert the ErrPreflightTargetNotFound return in permissionSummaryFor's version
+// branch (preflight.go) back to ErrNotFound and this test goes red: the body
+// reverts to "run not found" instead of this sentence.
+func TestPreflightMissingVersionIsPreflightTargetNotFound(t *testing.T) {
+	svc := &Service{
+		TestLab: &testlab.Service{},
+		ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
+			return VersionFacts{}, false, nil
+		},
+	}
+	var ws, skill, versionID, testCaseID pgtype.UUID
+	for _, u := range []*pgtype.UUID{&ws, &skill, &versionID, &testCaseID} {
+		if err := u.Scan("11111111-1111-1111-1111-111111111111"); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	_, err := svc.PermissionSummaryFor(context.Background(), ws, skill, versionID, testCaseID)
+	if !errors.Is(err, ErrPreflightTargetNotFound) {
+		t.Fatalf("err = %v, want ErrPreflightTargetNotFound", err)
+	}
+	const want = "找不到這個 Skill 版本或 Test Case"
+	if err.Error() != want {
+		t.Errorf("404 body = %q, want %q", err.Error(), want)
 	}
 }
