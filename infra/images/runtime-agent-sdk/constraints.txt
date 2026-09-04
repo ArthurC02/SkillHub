@@ -1,0 +1,88 @@
+# Python dependency constraints for the Sandbox Runtime Image
+# (SUPPLY-RUNTIME-LOCK-001, docs/plans/mvp/m4/release-checklist.md §2.8).
+#
+# WHY A CONSTRAINTS FILE, NOT A HASHED requirements.txt: the Dockerfile's own
+# comment above `pip3 install` used to argue that a hand-maintained lock is "a
+# second, drifting answer to a question the SBOM already answers" -- that
+# argument answers the wrong question. The SBOM (I-03) says what a build
+# CONTAINED; it says nothing about what the NEXT build will contain, because
+# transitive versions were left to the resolver. This file is the second
+# question's answer: pin every transitive package too, so a `--no-cache` build
+# next month resolves the same graph instead of "whatever the resolver picks
+# that day". `--require-hashes` would add a THIRD property (byte-for-byte
+# artifact integrity), which is strictly more than the checklist item asks
+# for: it asks for a *consistent dependency tree*, proven by diffing two
+# clean-cache builds (see UPGRADES.md 2026.08-7 -> 2026.08-8), not tamper
+# detection on top of it. Generating reliable hashes would also need a
+# `pip download` per package matched to this exact manylinux/cp311 target,
+# which is more moving parts for a property this task does not require.
+#
+# HOW THIS FILE WAS GENERATED: `pip freeze` cannot run after this Dockerfile's
+# own build purges `python3-pip` (see the `apt-get purge -y python3-pip` step
+# below), so the resolve has to happen in a twin container that never purges
+# it -- same base digest, same apt packages, same `pip3 install` command this
+# Dockerfile runs, stopped one step earlier:
+#
+#   docker run --rm \
+#     node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436 \
+#     bash -c '
+#       apt-get update -qq
+#       apt-get install -y -qq --no-install-recommends python3 python3-pip
+#       pip3 install --break-system-packages --no-cache-dir -q \
+#         pandas==3.0.5 numpy==2.4.6 openpyxl==3.1.5 lxml==6.1.1 \
+#         python-dateutil==2.9.0.post0 python-docx==1.2.0 python-pptx==1.0.2 \
+#         pypdf==6.16.1 pdfplumber==0.11.10 pycountry==26.2.16 chardet==7.6.0 \
+#         defusedxml==0.7.1 ftfy==6.3.1 confusable-homoglyphs==3.3.1 \
+#         pytz==2026.3.post1 phonenumbers==9.0.37 python-stdnum==2.2
+#       pip3 freeze'
+#
+# Run 2026-09-05, Python 3.11.2 (the base image's system python3 -- this
+# image runs Python 3.11, not the devtools toolchain version; R-44 is the
+# separate ruling on whether that should change). Output pasted verbatim
+# below, alphabetical (pip freeze's own order).
+#
+# `pip3 install -c constraints.txt <direct pins>` (below) keeps every direct
+# version exactly as this Dockerfile already writes it; this file only adds a
+# floor+ceiling on the transitive graph so a re-resolve cannot silently drift.
+#
+# FINDING, not fixed by this file (out of this task's path allowlist):
+# `pypdfium2==5.13.0` below is a REQUIRED (non-optional) dependency of
+# `pdfplumber==0.11.10` as of this version -- `pip3 show -f pdfplumber` lists
+# `pypdfium2>=5.9.0` unconditionally. infra/images/README.md's 拒收 table
+# lists `pypdfium2` as rejected ("頁面點陣化不可用", native PDFium binding,
+# fails the pure-Python-wheel admission bar) and implies it is not installed.
+# It already IS installed, transitively, in every image since pdfplumber was
+# added -- "間接依賴不釘" meant nobody pinned it, and pinning it here is the
+# first time anyone looked at what it actually resolved to. This constraints
+# file records reality; it does not change what gets installed, and does not
+# decide the admission-bar policy question that follows from it. Flagged for
+# the coordinator/owner in the delivery report.
+cffi==2.1.1
+chardet==7.6.0
+charset-normalizer==3.5.1
+confusable-homoglyphs==3.3.1
+cryptography==50.0.1
+defusedxml==0.7.1
+et_xmlfile==2.0.0
+ftfy==6.3.1
+lxml==6.1.1
+numpy==2.4.6
+openpyxl==3.1.5
+pandas==3.0.5
+pdfminer.six==20260107
+pdfplumber==0.11.10
+phonenumbers==9.0.37
+pillow==12.3.0
+pycountry==26.2.16
+pycparser==3.0
+pypdf==6.16.1
+pypdfium2==5.13.0
+python-dateutil==2.9.0.post0
+python-docx==1.2.0
+python-pptx==1.0.2
+python-stdnum==2.2
+pytz==2026.3.post1
+six==1.17.0
+typing_extensions==4.16.0
+wcwidth==0.8.3
+xlsxwriter==3.2.9

@@ -302,3 +302,147 @@ marker 那一半仍綠，然後改回來。
 
 `node --test infra/images/runtime-agent-sdk/run.test.mjs` 在**主機**上綠（該檔同批擴充）。
 這**不算四項實測**，理由與上一節逐字相同：它跑在主機的 `run.mjs` 上，不在新 digest 的容器裡。
+
+## `2026.08-7` → `2026.08-8`（2026-09-05）— 四項實測尚未跑；預設映像仍留在 `-5`
+
+> **與上兩節同一種狀態**：變更已合、ADR-023 §2 的四項實測**一項都沒跑**，本節不主張任何
+> 一項通過。[`04` 丙-125](../../../docs/plans/04-backlog-and-handoffs.md) 那一列繼續開著，
+> 標的從 `-7` 變成 `-8`。
+>
+> **本次也沒有推上 GHCR**：這批只做到本機建置與驗證（`SUPPLY-RUNTIME-LOCK-001`，
+> [release-checklist §2.8](../../../docs/plans/mvp/m4/release-checklist.md)），commit／push
+> 是協調者的動作。`runtime-image.yml` 由 `infra/images/` 的 diff 觸發，所以合併後會建置並
+> 發佈；**四項實測與本節其餘欄位都必須在那個發佈出來的 digest 上重跑／重填**，不是本節
+> 記的本機 digest——這正是 `-5` 那次的教訓（見該節），這裡不重犯。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | 新增 `constraints.txt`（Python transitive 版本鎖）、`package.json`＋`package-lock.json`（Node SDK 版本鎖）；`Dockerfile` 的 `pip3 install` 加 `-c constraints.txt`，`npm install` 改 `npm ci --omit=dev`，並加一支 build-time 檢查斷言 `package.json` 的 SDK 版本與 `ARG CLAUDE_AGENT_SDK_VERSION` 一致（不一致直接 fail build）。同批把 `pip3 install` 上方「手寫 lock 是第二份會漂移的答案」那段註解改寫——那個論點答錯了問題：SBOM 說的是這次建置裡有什麼，不是下次建置會不會一樣；lock 檔案回答的是後面那句 |
+| 為什麼是升級而不是整理 | 它不改變任何一次 Run 的行為（SDK 版本、Python 套件版本、基底 digest 全部照舊），但它改變**下一次 `--no-cache` 重建會不會是同一組位元組**——依 ADR-023 §1「任何會改變 digest 的變更都是升級」，加鎖檔案會改 digest（多兩個 `COPY` 層），所以照規矩走版本號 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
+| 映像 digest（本機，非 GHCR） | 兩次獨立 `--no-cache --pull` 建置，見下方「兩次乾淨建置的一致性證據」。**不是**發佈用的 digest——本批未 push，見上方警語 |
+| 依賴集 | **未變（0 增 0 減）**——證據見下節，直接把新建置的套件清單與目前發佈中的 `2026.08-7`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-7`）逐項比對，而不是憑「Dockerfile 沒改 pip3 install 那份清單」推論 |
+| 預設映像 | **仍是 `-5`**：`sandboxd/main.go`、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`、`p02_docker_test.go` 三處都沒有動，不在本批範圍 |
+| Python 版本 | 3.11.2（基底映像自帶；本批不改，R-44 是另一條裁決） |
+
+### 依賴集比對：新建置 vs 目前發佈的 `2026.08-7`
+
+拉 `ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-7`（目前 `ARG IMAGE_VERSION` 指向
+的那個發佈版），逐一列出兩邊 `/usr/local/lib/python3.11/dist-packages/*.dist-info` 的名字，
+以及兩邊 `/opt/skillhub/node_modules` 底下每個 `package.json` 的 `name@version`，排序後
+diff：
+
+```
+docker pull ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-7
+docker run --rm --entrypoint sh ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-7 -c \
+  "ls /usr/local/lib/python3.11/dist-packages | grep -E '\.(dist-info|egg-info)$'" | sort
+docker run --rm --entrypoint sh ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-7 -c \
+  "find /opt/skillhub/node_modules -name package.json -maxdepth 3 -exec node -e \
+    'const p=require(process.argv[1]);console.log(p.name+\"@\"+p.version)' {} \;" | sort
+```
+
+**Python：29/29 逐行相同，diff 空。**
+
+**Node：第一次比對不是空的**——新建置多了 105 個套件裡沒有的
+`@anthropic-ai/claude-agent-sdk-linux-x64`（SDK 的必要 native 二進位檔，`linux-x64` 平台）
+完全缺席，原因見下節「意外發現」；修正後（第二次比對）**106/106 逐行相同，diff 空**，
+包含間接／peer 依賴的 patch 版本（`@anthropic-ai/sdk`、`fast-uri`、`jose` 等）也逐一相同。
+
+### 意外發現，且已修：`npm ci` 需要的 `libc` 欄位，`npm install`／`npm install --package-lock-only` 都不寫
+
+生成 `package-lock.json` 的第一次嘗試（`npm install --package-lock-only`，在有殘留
+`node_modules`（他人本機測試 `run.mjs` 留下、非本批產物、`.gitignore` 排除）的目錄下跑）
+產出一份**沒有 `resolved`／`integrity` 欄位**的殘缺 lockfile——npm 重用了殘留目錄的舊解析
+結果，而非真的打了 registry。換一個乾淨目錄重跑後拿到完整 lockfile，但比對 `2026.08-7`
+時發現新建置**完全沒裝任何** `@anthropic-ai/claude-agent-sdk-<platform>` 二進位檔——`npm ci`
+只信 lockfile，而 lockfile 裡這幾個平台專屬套件的節點只有 `os`／`cpu`，沒有 `libc`，導致
+在 glibc 的 `node:22-bookworm-slim` 上四個 `linux-*` 變體（`x64`／`arm64`／各自的 `-musl`）
+全部被判定「符合 os/cpu」而**全部裝上**，而先前的作法（無 lockfile、直接
+`npm install "@anthropic-ai/claude-agent-sdk@0.3.233"`）能正確只裝 `linux-x64` 一個——因為
+它是活查 registry 完整 packument（含 `libc` 欄位），不是重放一份殘缺的 lockfile。
+
+即使换成真正的 `npm install`（非 `--package-lock-only`，實際下載並解壓每個套件），寫出來
+的 `package-lock.json` 一樣不含 `libc` 欄位——npm 10.9.8 在**安裝時**確實讀了每個平台套件
+自己 `package.json` 裡的 `"libc":["glibc"]`／`"libc":["musl"]`（已用
+`docker run … cat node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/package.json`
+逐一核對），但寫回 lockfile 時把這個欄位漏掉了——這是 npm 這個版本序列化 lockfile 的落差，
+不是本批引入的。
+
+處置：手動在 `package-lock.json` 的四個 `linux-*` 節點各補一行 `"libc": ["glibc"]` 或
+`"libc": ["musl"]`（值取自對應套件實際安裝出來的 `package.json`，見上），重建後
+`npm ci` 正確只裝 `claude-agent-sdk-linux-x64` 一個——與依賴集比對節那個「diff 空」的結果
+就是修正後的版本。**這是一次性的手動修正**：只要 `package.json` 裡的版本不變，這份
+lockfile 不需要重新生成；版本一變，重新生成後要記得重複這個檢查（見
+`../README.md` 本機重跑一節新增的小節）。
+
+### 另一個意外發現，未修（不在本批 path allowlist 內，回報給協調者/負責人）
+
+`pdfplumber==0.11.10` 的 `pypdfium2>=5.9.0` 是**必要**依賴，不是選用（`pip3 show -f
+pdfplumber` 逐字列出）。`../README.md` 的拒收表把 `pypdfium2` 列為「擋在編譯擴充／原生
+綁定」、暗示未安裝——但它作為 `pdfplumber` 的傳遞依賴其實**一直都在映像裡**（至少從
+`2026.08-3` 加入 `pdfplumber` 那次起），因為「間接依賴不釘」政策從未真的去看傳遞解析出
+什麼。`constraints.txt` 如實記錄了 `pypdfium2==5.13.0`（生成時的實際解析結果），檔頭同一
+發現也寫了一份。**本批不處理**：改准入政策或拒收表是政策問題，不在
+`Path allowlist: infra/images/runtime-agent-sdk/{Dockerfile,constraints.txt,package.json,
+package-lock.json,UPGRADES.md} + infra/images/README.md 一小節` 之內。
+
+### 兩次乾淨建置的一致性證據
+
+```
+docker build --no-cache --pull -t skillhub/runtime-agent-sdk:lock-a infra/images/runtime-agent-sdk
+docker build --no-cache --pull -t skillhub/runtime-agent-sdk:lock-b infra/images/runtime-agent-sdk
+```
+
+本機 image digest（`docker images --digests`，非 GHCR）：
+
+| Tag | Digest（本機） |
+| --- | --- |
+| `lock-a` | `sha256:f3660908ef791cf82421eea9f8ecccc4f5aa4a65b29ddc04f1dd3e84770b7941` |
+| `lock-b` | `sha256:22ad2ec648b1ee3ceb59f693ed7e6541e36ba881666078b9b519588f21e2db80` |
+
+两者 image ID 不同（建置本身不是位元可重現——與 `../README.md`「已發佈的 digest」一節記載
+的性質一致），但**內容**：
+
+```
+docker run --rm --entrypoint sh skillhub/runtime-agent-sdk:lock-a -c \
+  "ls /usr/local/lib/python3.11/dist-packages | grep -E '\.(dist-info|egg-info)$'" | sort
+docker run --rm --entrypoint sh skillhub/runtime-agent-sdk:lock-a -c \
+  "find /opt/skillhub/node_modules -name package.json -maxdepth 3 -exec node -e \
+    'const p=require(process.argv[1]);console.log(p.name+\"@\"+p.version)' {} \;" | sort
+# 同兩支指令對 lock-b 各跑一次，兩份輸出各自 diff
+```
+
+**Python：29/29 逐行相同，diff 空。Node：106/106 逐行相同，diff 空。**（含
+`@anthropic-ai/claude-agent-sdk-linux-x64` 這一顆必要的 native 二進位檔，兩邊都在、只有這
+一個 `linux-*` 變體，如上節修正後的結果。）
+
+### `run.test.mjs`（不是四項清單，未受本批影響）
+
+`node --test infra/images/runtime-agent-sdk/run.test.mjs`——**誠實記一句**：本批指示原文
+寫「19/19」，那是 `2026.08-5` 落地當時（2026-08-29）的測項數；`-6`／`-7` 之後這支檔案又
+長大了。今天實測是 **57 個測項、56 通過、1 skip、0 fail**：
+
+```
+tests 57
+pass 56
+fail 0
+cancelled 0
+skipped 1
+```
+
+唯一的 skip 是 `preserves executable mode bits from a Unix-created archive`——平台門檻（這
+份稽核跑在 Windows host 上，該測項需要 Unix 檔案模式位元），與本批的 lock 檔案改動無關；
+`run.mjs`／`run.test.mjs` 本批完全未動（不在 path allowlist 內）。
+
+### ADR-023 四項：待跑
+
+| # | 測項 | 狀態 |
+| --- | --- | --- |
+| 1 | Skill 載入條件 | 待跑（需真映像＋真沙箱） |
+| 2 | 閘道相容（撤銷後 401） | 待跑 |
+| 3 | Prompt caching 計費欄位與對帳 | 待跑 |
+| 4 | `usage` 事件的發出條件 | 待跑 |
+
+四項全部要在 CI 實際發佈出來的 `2026.08-8` digest 上跑，不是本節記的本機 digest（`-5` 那次
+的教訓）。

@@ -116,7 +116,7 @@ Skill 的基準都判「符合」——因為 Agent 繞過了那條驗證路徑�
 | --- | --- | --- | --- |
 | `pyarrow` | `add-iso3166`、`add-data-dictionary`、`data-comparability`、`data-cleanliness-scan` | 編譯擴充（Arrow C++），157 MB | **Parquet 讀寫不可用。** 四個 Skill 都把 Parquet 列為多種輸入格式之一，CSV／JSON／XLSX 路徑不受影響。這是 4 個 Skill、也是本次拒收清單中影響面最大的一項 |
 | `reportlab` | `pdf` | C 擴充（`_rl_accel`）＋需字型資源，31 MB | PDF **生成**不可用；讀取／抽取／合併（`pypdf`＋`pdfplumber`＋`pillow`）可用 |
-| `pypdfium2` | `pdf` | 綁 PDFium native，9 MB | 頁面點陣化不可用 |
+| `pypdfium2` | `pdf` | 綁 PDFium native，9 MB | 頁面點陣化不可用。**2026-09-05 訂正**：它其實從 `pdfplumber` 加入那次起就以必要依賴的身分在映像裡（`pip3 show -f pdfplumber` 逐字證實，`constraints.txt` 鎖 `5.13.0`）；本列「拒收」實際上只剩「不另外宣告給 Skill 使用」這一半，要不要正式收進依賴集是准入政策問題，留給負責人 |
 | `pdf2image` | `pdf` | 需 `poppler-utils` 系統二進位檔 | 同上 |
 | `pytesseract` | `pdf` | 需 `tesseract-ocr` 二進位檔＋語言資料 | **掃描件 OCR 不可用** |
 | `presidio-analyzer`／`presidio-anonymizer` | `pii-flag` | 拉進 spaCy（native）＋**首次使用時才下載語言模型**，357 MB | PII **偵測引擎**不可用；可用的是模型自身判讀 ＋ `phonenumbers`／`python-stdnum` 格式驗證。沙箱無網路，模型下載這條路在執行期必然失敗，**裝了也不會動** |
@@ -482,6 +482,45 @@ docker run --rm -v "$PWD/scan:/scan" anchore/grype:v0.117.0 sbom:/scan/sbom.spdx
 ```
 
 Windows／Git Bash 需在 `docker run` 前加 `MSYS_NO_PATHCONV=1`，否則掛載路徑會被改寫。
+
+### 重新產生依賴鎖檔（`constraints.txt`／`package-lock.json`，SUPPLY-RUNTIME-LOCK-001）
+
+`runtime-agent-sdk/constraints.txt` 鎖 Python transitive 版本，`runtime-agent-sdk/package.json`
+＋`package-lock.json` 鎖 Node SDK 及其 transitive／peer 版本；兩者都不是手打的，是從**與
+Dockerfile 完全相同的 base digest** 上實際解析出來的結果。直接依賴（Python 17 個、SDK 1 個）
+的版本仍然只寫在 Dockerfile 裡——鎖檔只補「resolver 選了哪個 transitive 版本」這一半。
+
+**什麼時候要重跑**：改了 Dockerfile 裡任何一個直接依賴的版本號、新增／移除依賴，或換了
+`FROM` 的 base digest。改 `ARG IMAGE_VERSION` 這種與依賴無關的變更不需要。
+
+```bash
+# constraints.txt：在一個裝了 pip、還沒 purge 的雙生容器裡跑 Dockerfile 同一段安裝指令，
+# 因為 pip 在正式映像裡建置到一半就被移除了，正式映像自己跑不出 `pip freeze`。
+docker run --rm node:22-bookworm-slim@sha256:<與 Dockerfile FROM 相同> bash -c '
+  apt-get update -qq
+  apt-get install -y -qq --no-install-recommends python3 python3-pip
+  pip3 install --break-system-packages --no-cache-dir -q <把 Dockerfile pip3 install 那段直接依賴貼過來>
+  pip3 freeze'
+# 把輸出貼進 constraints.txt，保留檔頭那段方法說明與已知發現（不要整篇重寫）。
+
+# package-lock.json：在乾淨目錄（不能有殘留 node_modules——見 UPGRADES.md `2026.08-8`
+# 那節「意外發現」，殘留目錄會讓 npm 重放舊解析結果而不是真的查 registry）跑一次
+# 真正的 `npm install`（不要用 --package-lock-only，同一節記錄了它在這個 npm 版本上
+# 遺漏 `libc` 欄位的方式相同，兩者都要靠下一步手動補）：
+docker run --rm -v "$(pwd)/infra/images/runtime-agent-sdk:/work" -w /work \
+  node:22-bookworm-slim@sha256:<與 Dockerfile FROM 相同> npm install --no-audit --no-fund
+
+# 補 libc 欄位：package-lock.json 裡每個 `@anthropic-ai/claude-agent-sdk-linux-*` 節點
+# （目前 4 個：linux-x64、linux-x64-musl、linux-arm64、linux-arm64-musl）手動加一行
+# `"libc": ["glibc"]` 或 `"libc": ["musl"]`（依名字尾巴判斷，值可從
+# `docker run --rm --entrypoint sh <剛建好的映像> -c "cat node_modules/@anthropic-ai/<套件名>/package.json"`
+# 核對）。少這一步，`npm ci` 會把同一顆架構下 glibc／musl 兩個變體都裝進映像——
+# 多裝一個永遠用不到的 native 二進位檔，不是正確性問題，但體積與供應鏈面都是白算的帳。
+```
+
+驗證方法見 [`UPGRADES.md`](runtime-agent-sdk/UPGRADES.md) `2026.08-8` 節：`--no-cache --pull`
+建置兩次，比對兩邊的 Python `dist-info` 清單與 Node `package.json` 清單（`find … -exec node -e`
+印 `name@version`），diff 必須是空的。
 
 ## 服務映像（ADR-019 job 5）
 

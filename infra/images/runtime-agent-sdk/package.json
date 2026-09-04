@@ -1,0 +1,9 @@
+{
+  "name": "skillhub-runtime-agent-sdk",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Lockfile-only manifest for the Claude Agent SDK dependency baked into the Sandbox runtime image (SUPPLY-RUNTIME-LOCK-001). ARG CLAUDE_AGENT_SDK_VERSION in the Dockerfile stays the single source of the version; the Dockerfile fails the build if this pin and the ARG disagree.",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.233"
+  }
+}

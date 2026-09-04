@@ -20,7 +20,7 @@
 #         (SBX-011). Thresholds are settled in ADR-022 §2.
 #
 # Build:
-#   docker build -t skillhub/runtime-agent-sdk:2026.08-6 infra/images/runtime-agent-sdk
+#   docker build -t skillhub/runtime-agent-sdk:2026.08-8 infra/images/runtime-agent-sdk
 FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
 # The SDK version is pinned, not floated: it is the runtime_version the
@@ -39,7 +39,7 @@ ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 # running on a host process with no cgroup behind it. Both are behaviour
 # changes inside the image, so both are ADR-023 upgrades and both are written up
 # in UPGRADES.md.
-ARG IMAGE_VERSION=2026.08-7
+ARG IMAGE_VERSION=2026.08-8
 
 # Non-root from the image on up (C-02). The provider also passes --user, but an
 # image whose only account is root is one bad flag away from running as root.
@@ -100,14 +100,24 @@ RUN apt-get update \
 # Each direct dependency is pinned to the newest release the I-06 gate accepts:
 # the first pass pinned a conservative older set and grype found fixable High
 # findings in lxml, pypdf and pdfminer.six, which have no waiver path (ADR-022).
-# Transitive dependencies are left to the resolver — the image digest and the
-# SBOM published beside it (SBX-011) are what make a build reproducible and
-# auditable, and a hand-maintained lock file would be a second, drifting answer
-# to a question the SBOM already answers exactly.
+#
+# Transitive dependencies used to be left to the resolver, on the argument that
+# the image digest and the SBOM published beside it (SBX-011) already make a
+# build auditable and a hand-maintained lock would be a second, drifting answer
+# to a question the SBOM already answers. That argument answers the wrong
+# question: the SBOM says what a build CONTAINED; it says nothing about what
+# the NEXT build will contain, because the resolver was free to pick a
+# different transitive version each time. constraints.txt (SUPPLY-RUNTIME-LOCK-001)
+# is the answer to that second question — every transitive package pinned to
+# what this exact base+install actually resolved to, so a `--no-cache` rebuild
+# gets the same dependency tree instead of whatever the resolver picks that
+# day. Generation method and a flagged finding (pypdfium2 is a required,
+# not optional, transitive of pdfplumber) are in the file's own header comment.
 #
 # pip goes the way npm went below — a package manager inside a sandbox that runs
 # untrusted code is a liability, and with no network it cannot even do its job.
-RUN pip3 install --break-system-packages --no-cache-dir \
+COPY constraints.txt /tmp/constraints.txt
+RUN pip3 install --break-system-packages --no-cache-dir -c /tmp/constraints.txt \
       pandas==3.0.5 \
       numpy==2.4.6 \
       openpyxl==3.1.5 \
@@ -127,11 +137,33 @@ RUN pip3 install --break-system-packages --no-cache-dir \
       python-stdnum==2.2 \
     && apt-get purge -y python3-pip \
     && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /root/.cache
+    && rm -rf /var/lib/apt/lists/* /root/.cache /tmp/constraints.txt
 
 WORKDIR /opt/skillhub
-RUN npm install --omit=dev --no-audit --no-fund \
-    "@anthropic-ai/claude-agent-sdk@${CLAUDE_AGENT_SDK_VERSION}" \
+# package.json pins the exact same version as ARG CLAUDE_AGENT_SDK_VERSION
+# above (SUPPLY-RUNTIME-LOCK-001); the ARG stays the single source of truth,
+# so this check fails the build the moment the two disagree instead of
+# silently installing whichever one npm ci picks up. package-lock.json pins
+# every transitive/peer package the SDK resolves to (generated the same way
+# as constraints.txt: `npm install` in a throwaway container on this exact
+# base digest, before npm is removed below).
+#
+# The four `@anthropic-ai/claude-agent-sdk-linux-*`/`-win32-*`/`-darwin-*`
+# optionalDependencies entries in package-lock.json each carry a hand-added
+# "libc" field (glibc/musl) that npm 10.9.8 does not itself write into
+# package-lock.json even though it reads it from the real package.json during
+# a live `npm install`. Without it, `npm ci` -- which trusts only the
+# lockfile, no live registry lookups -- cannot tell glibc and musl builds
+# apart and installs both onto this glibc image. Confirmed by inspecting the
+# published packages' own package.json (`"libc":["glibc"]` /
+# `"libc":["musl"]`) and by rebuilding with and without the field.
+COPY package.json package-lock.json /opt/skillhub/
+RUN node -e "const v=require('./package.json').dependencies['@anthropic-ai/claude-agent-sdk']; \
+    if (v !== process.env.CLAUDE_AGENT_SDK_VERSION) { \
+      console.error('package.json pins '+v+' but ARG CLAUDE_AGENT_SDK_VERSION='+process.env.CLAUDE_AGENT_SDK_VERSION); \
+      process.exit(1); \
+    } console.log('package.json matches ARG CLAUDE_AGENT_SDK_VERSION:', v);"
+RUN npm ci --omit=dev --no-audit --no-fund \
     && npm cache clean --force \
     # npm and corepack are build-time only: the entrypoint is `node run.mjs` and
     # the only address a sandbox can reach is the model gateway (SBX-007), so
