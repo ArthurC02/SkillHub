@@ -623,7 +623,7 @@ Run 至少支援：
 允收準則：
 
 - Given 登入使用者輸入一段任務描述，When 送出生成，Then 系統產生一個符合 [ADR-044](../adr/ADR-044-agent-skills-specification-conformance.md) 釘選規格的 Skill 套件，並在該使用者的個人工作區建立第一個版本。
-- 生成**不以任何既有 Skill 版本為輸入**。以既有版本為起點的改寫是 `EVAL-002` 的範圍，兩者不共用端點（ADR-046 決策 3）。
+- 生成**不以任何既有 Skill 版本為輸入**。以既有版本為起點的改寫是 `EVAL-002` 的範圍，兩者不共用端點（ADR-046 決策 3）。**2026-09-05 narrowed by [ADR-066](../adr/ADR-066-generation-takes-a-diagram-or-reference-skills-as-input.md)／`GEN-006`：這句話約束的是輸出的版本鏈起點（生成物永遠是新 Skill 的第一個版本），不再約束模型可以讀什麼——參考既有 Skill 的 SKILL.md 作為材料是允許的，見 `GEN-006`。**
 - 空白或無法理解的任務描述不得建立生成工作，並應提示使用者補充任務、輸入或預期輸出（與 `DISC-001` 同一條紀律）。
 - 生成前顯示預估成本與本次將消耗的額度，並套用 [ADR-028](../adr/ADR-028-beta-admission-and-quota-enforcement-points.md) 的既有配額強制點；額度不足時**在呼叫模型之前**拒絕，不得先花錢再說。<br>**2026-08-29 條件化（形式同 `RUN-003` 對 `TokenBudget` 欄位的既有處理）**：**「本次將消耗的額度」這一半，只在 `GENERATE_QUOTA` 為強制時適用。** 出貨值依 [ADR-056](../adr/ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md) 是 `off`，此時畫面上**刻意不顯示任何額度數字**——`04` 乙-2 的裁定是「顯示但不強制是兩者中最壞的一種」，畫一個沒被強制的數字就是那個缺陷（`GenerateSkill.tsx` 的註解逐字記著這個理由）。**開關一旦轉為強制，這一格要跟著出現**，落點是 `GenerateSkill.tsx` 的同一個 `<dl>`。成本那一半無條件適用且已落地（`03:GEN-008`）。
 - 模型呼叫走 LiteLLM 閘道（鐵律 8）；生成的提示詞版本可識別，與 `judge-run`／`suggest-improvements` 同一套版本化紀律。
@@ -672,6 +672,31 @@ Run 至少支援：
 **未涵蓋**：生成物**發佈到目錄的完整路徑與審核流程**——[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 3 只定出三個解鎖前置，尚未落成需求 ID 與允收準則。
 
 （**2026-08-23 訂正**：本段原本還列了「重試次數上限」與「Fork 來源」兩項並指向 ADR-046 的待決策章節。**兩項都已在本節上方有準則**——重試見 `GEN-003`、Fork 見 `GEN-002`——而 ADR-046 的待決策章節已由 ADR-047 全部回答。一份文件同時說「可以」與「待決策」，是本批稽核抓到最嚴重的一處自相矛盾。）
+
+#### GEN-005：上傳流程圖生成 Skill
+
+本項於 **2026-09-05 新增**。依據：負責人裁定「自建三種方式必須徹底實現」（[ADR-066](../adr/ADR-066-generation-takes-a-diagram-or-reference-skills-as-input.md)），一次凍結例外（`01` §10 裁定 4 仍生效，本項是負責人本人放行的例外）。
+
+允收準則：
+
+- Given 登入使用者上傳一張流程圖（`image/png`、`image/jpeg` 或 `image/webp`，解碼後 ≤ **4,000,000** bytes，常數 `generateMaxDiagramBytes`），可以只有圖沒有文字，When 送出生成，Then 系統把圖片交給模型（走 LiteLLM 閘道，鐵律 8）作為生成材料，產生的 Skill 走與 `GEN-001` 相同的驗證與建版路徑。
+- `task_description` 與 `diagram` **至少要有一個**；兩者都缺即 422（單一錯誤形狀，同 `DISC-001` 對空白查詢的既有紀律）。
+- 格式或大小不合法（非允許的三種媒體類型、base64 無法解碼、解碼後超過上限）回 **400**，與「輸入本身無效」的既有語意一致，不是 422 的業務規則拒絕。
+- **SVG 不接受**——它是可挾帶腳本與外部引用的標記語言，不是純位元圖；允許清單只有 PNG／JPEG／WebP 三種點陣格式。
+- 系統**不落地儲存圖片位元組**。生成物的來源紀錄只保留這次輸入的 `sha256`／媒體類型／位元組數三個數位指紋，供稽核核對「這次生成用的是哪一張圖」，不供事後複現或下載。
+- 生成物在驗證、揭露、`redistribution`、入口曝光上與 `GEN-001`～`004` 的既有準則**逐字相同**，不因為輸入包含圖片而有任何差別待遇。
+
+#### GEN-006：參考既有 Skill 生成
+
+本項於 **2026-09-05 新增**。依據：[ADR-066](../adr/ADR-066-generation-takes-a-diagram-or-reference-skills-as-input.md)，裁定 [`05` R-41](05-pending-rulings.md) 為 (b)。
+
+允收準則：
+
+- Given 登入使用者附上最多 **3** 個（常數 `generateMaxReferences`）既有 Skill 的 id（`reference_skill_ids`）連同任務描述，When 送出生成，Then 系統把每一個參考 Skill **最新版本**的 `SKILL.md` 全文（超過 **20,000** runes 截斷並明確標記截斷點，常數 `generateMaxReferenceChars`）以**不可信資料**的形式 fence 進 prompt，模型讀它們作為既有實務的參考材料，**不是**生成請求的起點版本。
+- 附超過 3 個 `reference_skill_ids`，或其中任一個 Skill **讀不到**（既有 scope 規則：非呼叫者自己的工作區、也不在目錄）、**已下架**、**受 `access_restriction` 限制**、或 **`redistribution = blocked`**，整批請求以**單一錯誤形狀 422** 拒絕；不得部分放行、部分丟棄。**拒絕訊息不指名是哪一個 id、也不說是四種原因裡的哪一種**（2026-09-05 稍晚訂正，落地時的判斷：說出「那個 id 是別人工作區的私有 Skill」本身就是在描述別人的私有內容，`NFR-002` 與鐵律 3 都不允許；使用者能做的事——換一個——四種原因下都一樣）。
+- 生成物仍是**新 Skill 的第一個版本**，不延續任何參考 Skill 的版本鏈；`redistribution` 仍為 `generated`（**不因參考了別人的內容而改變**——參考是模型讀過的材料，不是套件裡的位元組，見 [ADR-066](../adr/ADR-066-generation-takes-a-diagram-or-reference-skills-as-input.md) 決策 2）。
+- 系統保存參考清單（各參考的 `skill_id`／`version_id`／`name`）作為來源紀錄的一部分，**不保存參考 Skill 的內容本身**——那份內容仍完整存在於它自己的版本裡，不需要第二份拷貝。
+- `task_description`／`diagram`／`reference_skill_ids` 三者可以任意組合出現（`reference_skill_ids` 不能單獨構成請求，仍需至少一個 `task_description` 或 `diagram`）；本項不改變 `GEN-001`～`005` 對驗證、額度、揭露、入口曝光的既有準則。
 
 ### 4.10 受限環境下的可攜執行（M6）
 

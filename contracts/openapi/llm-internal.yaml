@@ -282,15 +282,25 @@ paths:
   /v1/generate-skill:
     post:
       operationId: generateSkill
-      summary: Generate a Skill package from a task description (GEN-001)
+      summary: Generate a Skill package from a task description and/or a diagram, optionally with reference Skills (GEN-001, GEN-005, GEN-006)
       description: |
-        A task description in, a package out. No existing Skill Version is an
-        input: starting from one is improvement, and that is
-        /suggest-improvements' territory (ADR-046 決策 3). Keeping the two apart
-        at the input is what stops one endpoint carrying two meanings for
-        "evidence" - /suggest-improvements verifies every citation against an
-        excerpt the platform put in the digest, and from nothing there is no
-        excerpt to verify against.
+        A task description and/or a diagram in, a package out. Since ADR-066 the
+        request may also carry up to three existing Skills' SKILL.md as
+        REFERENCES: worked examples the model reads for shape and level of
+        detail, fenced as untrusted data like the task itself. This is still
+        not /suggest-improvements' territory (ADR-046 決策 3, narrowed by
+        ADR-066 rather than reversed): that endpoint edits ONE version against
+        an evaluation digest and verifies every citation against an excerpt; this
+        one writes a NEW skill from nothing but the inputs here, cites nothing,
+        and the references are never the thing being changed. Go decides which
+        skills may be referenced (readable scope, no takedown, no licensing
+        hold, not `blocked`) and passes content, not ids — this service has no
+        idea what a Skill Version is.
+
+        The diagram is passed inline as base64 and sent to the gateway as an
+        image content part. At least one of `task_description` and `diagram`
+        must be present; Go refuses the request before it gets here, and the
+        validator on this side is the backstop.
 
         Single-shot, like every other endpoint here. If a "generate, validate,
         retry" loop is ever needed it belongs in Go, which already owns the zip,
@@ -1345,7 +1355,10 @@ components:
           maxLength: 60000  # one-number: suggestMaxTargetFileChars
     GenerateSkillRequest:
       type: object
-      required: [task_description]
+      description: |
+        No property is individually required: a description alone, a diagram
+        alone, or both are all valid, and the "at least one" rule is a
+        validator on both sides because `required` cannot say it.
       properties:
         task_description:
           type: string
@@ -1358,7 +1371,50 @@ components:
 
             Go refuses blank and unintelligible input before this call, so the
             length floor here is a backstop and not the product rule
-            (02:GEN-001, same discipline as DISC-001).
+            (02:GEN-001, same discipline as DISC-001). Absent when the diagram
+            is the whole input (GEN-005).
+        diagram:
+          $ref: "#/components/schemas/GenerateDiagram"
+        references:
+          type: array
+          maxItems: 3  # one-number: generateMaxReferences
+          items:
+            $ref: "#/components/schemas/GenerateReference"
+          description: |
+            Existing Skills the model reads before writing (GEN-006). Content,
+            not ids: Go has already decided these may be read and has fetched
+            the latest version's SKILL.md. Each is fenced as untrusted data
+            under its own tag, and the prompt says what a reference is for —
+            shape, level of detail, conventions — and what it is not: the
+            answer. A reference longer than the cap is cut by Go before it
+            arrives, and the cut is marked, so the model is never shown half a
+            file as if it were whole.
+
+    GenerateDiagram:
+      type: object
+      required: [media_type, data]
+      description: The same shape the public contract accepts; Go passes it through after checking the media type and the decoded size.
+      properties:
+        media_type:
+          type: string
+          enum: [image/png, image/jpeg, image/webp]
+        data:
+          type: string
+          format: byte
+          x-max-decoded-bytes: 4000000  # one-number: generateMaxDiagramBytes
+          description: Standard base64; the decoded size cap is `x-max-decoded-bytes`.
+
+    GenerateReference:
+      type: object
+      required: [name, skill_md]
+      properties:
+        name:
+          type: string
+          description: The skill's name, so the model can say which one it took a convention from.
+        skill_md:
+          type: string
+          maxLength: 20000  # one-number: generateMaxReferenceChars
+          description: The latest version's SKILL.md, frontmatter included, as text.
 
     GeneratedSkill:
       type: object

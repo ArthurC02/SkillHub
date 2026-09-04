@@ -2,8 +2,13 @@ package ingest
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,7 +18,9 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // GEN-003. Every case here guards something that fails without a symptom: a
@@ -153,14 +160,19 @@ func TestPossibleSecretIsNotRetried(t *testing.T) {
 	}
 }
 
-// 02:GEN-001: a blank box must not reach the gateway. The service has no pool
-// here, so anything that got past the check would panic rather than return —
-// which is what makes this a test of the ordering and not only of the message.
+// 02:GEN-001/005: a box that is blank AND carries no diagram must not reach
+// the gateway. The service has no pool here, so anything that got past the
+// check would panic rather than return — which is what makes this a test of
+// the ordering and not only of the message.
+//
+// ErrGenerateNoInput, not ErrGenerateBlank: nothing at all was given, which is
+// a different refusal from "you gave a description, but it is too short" —
+// see TestATooShortOrTooLongDescriptionNeverReachesTheGateway for that one.
 func TestBlankTaskDescriptionNeverReachesTheGateway(t *testing.T) {
 	svc := &Service{LLM: &llmclient.Client{}}
 	for _, in := range []string{"", "   ", "\n\t \n"} {
-		if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrGenerateBlank) {
-			t.Errorf("GenerateSkill(%q) err = %v, want ErrGenerateBlank", in, err)
+		if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, GenerateInput{TaskDescription: in}); !errors.Is(err, ErrGenerateNoInput) {
+			t.Errorf("GenerateSkill(%q) err = %v, want ErrGenerateNoInput", in, err)
 		}
 	}
 }
@@ -233,17 +245,17 @@ func TestATooShortOrTooLongDescriptionNeverReachesTheGateway(t *testing.T) {
 	ctx, ws := context.Background(), identity.Workspace{}
 
 	for _, in := range []string{"abc", "  短  ", strings.Repeat("a", minTaskDescriptionRunes-1)} {
-		if _, err := svc.GenerateSkill(ctx, ws, in); !errors.Is(err, ErrGenerateBlank) {
+		if _, err := svc.GenerateSkill(ctx, ws, GenerateInput{TaskDescription: in}); !errors.Is(err, ErrGenerateBlank) {
 			t.Errorf("GenerateSkill(%q) err = %v, want ErrGenerateBlank", in, err)
 		}
 	}
 	// Runes, not bytes: 「整理發票單據」 is six characters and eighteen bytes, and
 	// a byte count would have let it through while the floor exists to stop it.
-	if _, err := svc.GenerateSkill(ctx, ws, "整理發票單據"); !errors.Is(err, ErrGenerateBlank) {
+	if _, err := svc.GenerateSkill(ctx, ws, GenerateInput{TaskDescription: "整理發票單據"}); !errors.Is(err, ErrGenerateBlank) {
 		t.Errorf("a six-character description was measured in bytes: %v", err)
 	}
 	long := strings.Repeat("台", maxTaskDescriptionRunes+1)
-	if _, err := svc.GenerateSkill(ctx, ws, long); !errors.Is(err, ErrGenerateTooLong) {
+	if _, err := svc.GenerateSkill(ctx, ws, GenerateInput{TaskDescription: long}); !errors.Is(err, ErrGenerateTooLong) {
 		t.Errorf("an over-long description err = %v, want ErrGenerateTooLong", err)
 	}
 }
@@ -260,7 +272,7 @@ func TestOneGenerationPerWorkspaceAtATime(t *testing.T) {
 	if !svc.holdGenerateSlot(ws.ID) {
 		t.Fatal("the first hold on a fresh workspace failed")
 	}
-	if _, err := svc.GenerateSkill(context.Background(), ws, "把掃描的單據整理成表格。"); !errors.Is(err, ErrGenerateInFlight) {
+	if _, err := svc.GenerateSkill(context.Background(), ws, GenerateInput{TaskDescription: "把掃描的單據整理成表格。"}); !errors.Is(err, ErrGenerateInFlight) {
 		t.Fatalf("err = %v, want ErrGenerateInFlight", err)
 	}
 	// Per workspace, not global: one busy workspace must not stop another. This
@@ -358,7 +370,7 @@ func TestAGenerationRecordsTheCostTheGatewayReported(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := gatewayReturning(t, "{"+skill+tc.usage+"}")
-			resp, err := svc.generateOnce(context.Background(), "把掃描的單據整理成表格。")
+			resp, err := svc.generateOnce(context.Background(), "把掃描的單據整理成表格。", nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -422,5 +434,285 @@ func TestARetriedGenerationCostsWhatBothAttemptsCost(t *testing.T) {
 	}
 	if out.PromptTokens != 300 {
 		t.Errorf("prompt_tokens = %d, want 300", out.PromptTokens)
+	}
+}
+
+// --- 02:GEN-005 (diagram) and 02:GEN-006 (reference skills) ------------------
+
+// requestCapturingStub serves one generate-skill response and records the
+// request body it received, so a test can assert on what actually crossed the
+// wire rather than only on the Go-side error.
+func requestCapturingStub(t *testing.T, body string) (*Service, *[]byte) {
+	t.Helper()
+	var captured []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		captured = b
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	return &Service{LLM: &llmclient.Client{BaseURL: srv.URL}}, &captured
+}
+
+// A diagram with no task description still reaches the gateway (02:GEN-005),
+// carrying `task_description` empty (`omitempty` drops it from the wire
+// entirely — a JSON body must not be able to say "described" and "" at once).
+func TestDiagramOnlyReachesTheGatewayWithAnEmptyTaskDescription(t *testing.T) {
+	const skillResp = `{"skill":{"name":"a","description":"b","body":"c"},"model":"m","prompt_version":"v"}`
+	svc, captured := requestCapturingStub(t, skillResp)
+
+	diagram := &GenerateDiagram{MediaType: "image/png", Data: []byte("not really a png, just bytes")}
+	if _, err := svc.generateOnce(context.Background(), "", diagram, nil); err != nil {
+		t.Fatalf("generateOnce: %v", err)
+	}
+
+	var sent map[string]any
+	if err := json.Unmarshal(*captured, &sent); err != nil {
+		t.Fatalf("decode what was sent: %v", err)
+	}
+	if _, present := sent["task_description"]; present {
+		t.Errorf("task_description was sent as %v; omitempty should have dropped an empty one", sent["task_description"])
+	}
+	diag, ok := sent["diagram"].(map[string]any)
+	if !ok {
+		t.Fatalf("no diagram in the request: %v", sent)
+	}
+	if diag["media_type"] != "image/png" {
+		t.Errorf("media_type = %v, want image/png", diag["media_type"])
+	}
+	if diag["data"] != base64.StdEncoding.EncodeToString(diagram.Data) {
+		t.Errorf("data was not standard base64 of the decoded bytes")
+	}
+}
+
+// generation_inputs (0055, ADR-066) records a digest and a size, never the
+// bytes — the exact shape the diagram-only 201 integration test reads back
+// out of the database.
+func TestGenerationInputsRecordsTheDiagramDigestNotTheBytes(t *testing.T) {
+	diagram := &GenerateDiagram{MediaType: "image/webp", Data: []byte("some diagram bytes")}
+	raw, err := marshalGenerationInputs(diagram, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "some diagram bytes") {
+		t.Fatal("the raw image bytes leaked into generation_inputs")
+	}
+	var got struct {
+		Diagram struct {
+			MediaType string `json:"media_type"`
+			SHA256    string `json:"sha256"`
+			Bytes     int    `json:"bytes"`
+		} `json:"diagram"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(diagram.Data)
+	if got.Diagram.MediaType != "image/webp" {
+		t.Errorf("media_type = %q, want image/webp", got.Diagram.MediaType)
+	}
+	if got.Diagram.SHA256 != hex.EncodeToString(sum[:]) {
+		t.Errorf("sha256 = %q, want the digest of the decoded bytes", got.Diagram.SHA256)
+	}
+	if got.Diagram.Bytes != len(diagram.Data) {
+		t.Errorf("bytes = %d, want %d", got.Diagram.Bytes, len(diagram.Data))
+	}
+}
+
+// A caption under the eight-rune floor is not a blank refusal once a diagram
+// is attached (02:GEN-005): the floor exists to stop a bare box, not to force
+// a caption up to eight runes when the diagram carries the task. Exercised at
+// the pure function rather than through GenerateSkill: past this check the
+// service reaches the allowance/audit path, which needs a Pool this file does
+// not have.
+func TestAShortCaptionWithADiagramIsNotBlank(t *testing.T) {
+	if err := classifyTaskDescription("abc", true); err != nil {
+		t.Errorf("classifyTaskDescription(short, withDiagram) = %v, want nil", err)
+	}
+	if err := classifyTaskDescription("abc", false); !errors.Is(err, ErrGenerateBlank) {
+		t.Errorf("classifyTaskDescription(short, noDiagram) = %v, want ErrGenerateBlank", err)
+	}
+	if err := classifyTaskDescription("", true); err != nil {
+		t.Errorf("classifyTaskDescription(empty, withDiagram) = %v, want nil", err)
+	}
+}
+
+// Neither text nor a diagram: refused before the model is asked, so a box
+// left empty on both sides costs nothing (02:GEN-005).
+func TestNoTextAndNoDiagramNeverReachesTheGateway(t *testing.T) {
+	svc := &Service{LLM: &llmclient.Client{}}
+	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, GenerateInput{}); !errors.Is(err, ErrGenerateNoInput) {
+		t.Errorf("err = %v, want ErrGenerateNoInput", err)
+	}
+}
+
+// A diagram over generateMaxDiagramBytes once decoded is refused before the
+// gateway is ever asked — the platform does not resize an oversized image, it
+// refuses it (ADR-047 決策 1's "no editing of inputs", one door earlier).
+func TestAnOversizedDiagramIsRefusedBeforeTheGateway(t *testing.T) {
+	svc := &Service{LLM: &llmclient.Client{}} // empty BaseURL: any call would fail loudly and differently
+	in := GenerateInput{Diagram: &GenerateDiagram{
+		MediaType: "image/png",
+		Data:      make([]byte, generateMaxDiagramBytes+1),
+	}}
+	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrDiagramInvalid) {
+		t.Errorf("err = %v, want ErrDiagramInvalid", err)
+	}
+}
+
+// More than generateMaxReferences ids is refused before the gateway
+// (02:GEN-006) — the same "refuse before you spend" discipline the task
+// description floor already follows.
+func TestFourReferencesIsRefusedBeforeTheGateway(t *testing.T) {
+	svc := &Service{LLM: &llmclient.Client{}}
+	var ids []pgtype.UUID
+	for i := 1; i <= generateMaxReferences+1; i++ {
+		ids = append(ids, mustUUIDForTest(t, fmt.Sprintf("00000000-0000-0000-0000-%012d", i)))
+	}
+	in := GenerateInput{TaskDescription: "把掃描的單據整理成一份表格。", ReferenceSkillIDs: ids}
+	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrTooManyReferences) {
+		t.Errorf("err = %v, want ErrTooManyReferences", err)
+	}
+}
+
+// fakeReferenceReader is admission.ReferenceReader without a database: three
+// maps, keyed by the id string, standing in for *registry.Service.
+type fakeReferenceReader struct {
+	workspace map[string]registry.Skill
+	catalog   map[string]registry.Skill
+	versions  map[string]registry.Version // keyed by skill id string
+}
+
+func (f fakeReferenceReader) WorkspaceSkill(_ context.Context, _, skillID pgtype.UUID) (registry.Skill, bool, error) {
+	s, ok := f.workspace[pgconv.UUIDString(skillID)]
+	return s, ok, nil
+}
+
+func (f fakeReferenceReader) CatalogSkill(_ context.Context, skillID pgtype.UUID) (registry.Skill, bool, error) {
+	s, ok := f.catalog[pgconv.UUIDString(skillID)]
+	return s, ok, nil
+}
+
+func (f fakeReferenceReader) LatestVersion(_ context.Context, _, skillID pgtype.UUID) (registry.Version, bool, error) {
+	v, ok := f.versions[pgconv.UUIDString(skillID)]
+	return v, ok, nil
+}
+
+// fakeObjectStore is admission.ObjectStore without object storage: a map.
+type fakeObjectStore map[string][]byte
+
+func (f fakeObjectStore) Put(_ context.Context, key string, data []byte) error {
+	f[key] = data
+	return nil
+}
+
+func (f fakeObjectStore) Get(_ context.Context, key string) ([]byte, error) {
+	data, ok := f[key]
+	if !ok {
+		return nil, fmt.Errorf("fakeObjectStore: no object %q", key)
+	}
+	return data, nil
+}
+
+// A reference id the reader cannot find in either scope — not in the caller's
+// workspace, not in the catalogue — is refused before the gateway
+// (02:GEN-006), the same shape a taken-down, access-restricted or
+// redistribution-blocked reference gets (see resolveReference).
+func TestAnUnresolvableReferenceIsRefusedBeforeTheGateway(t *testing.T) {
+	svc := &Service{
+		LLM:        &llmclient.Client{},
+		References: fakeReferenceReader{},
+	}
+	missing := mustUUIDForTest(t, "99999999-9999-9999-9999-999999999999")
+	in := GenerateInput{TaskDescription: "把掃描的單據整理成一份表格。", ReferenceSkillIDs: []pgtype.UUID{missing}}
+	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrReferenceUnavailable) {
+		t.Errorf("err = %v, want ErrReferenceUnavailable", err)
+	}
+}
+
+// A readable reference's SKILL.md is what actually crosses the wire inside
+// references[0].skill_md, and what resolveReference hands back for the
+// provenance row is identifiers only — its skill id, version id and name, the
+// same restraint referenceProvenance's own comment states (02:GEN-006,
+// ADR-066).
+func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
+	const skillMDContent = "---\nname: reference-skill\ndescription: A worked example.\n---\n\nDo the thing.\n"
+	ws := identity.Workspace{ID: mustUUIDForTest(t, "10000000-0000-0000-0000-000000000001")}
+	skillID := mustUUIDForTest(t, "20000000-0000-0000-0000-000000000002")
+	versionID := mustUUIDForTest(t, "30000000-0000-0000-0000-000000000003")
+	const objectKey = "packages/reference.zip"
+
+	store := fakeObjectStore{objectKey: zipBytes(t, map[string]string{"SKILL.md": skillMDContent})}
+	svc := &Service{
+		Store: store,
+		References: fakeReferenceReader{
+			workspace: map[string]registry.Skill{
+				pgconv.UUIDString(skillID): {ID: skillID, WorkspaceID: ws.ID, Name: "reference-skill", Redistribution: "self_supplied"},
+			},
+			versions: map[string]registry.Version{
+				pgconv.UUIDString(skillID): {ID: versionID, SkillID: skillID, WorkspaceID: ws.ID, PackageObjectKey: objectKey},
+			},
+		},
+	}
+
+	ref, prov, err := svc.resolveReference(context.Background(), ws, skillID)
+	if err != nil {
+		t.Fatalf("resolveReference: %v", err)
+	}
+	if ref.Name != "reference-skill" || ref.SkillMD != skillMDContent {
+		t.Errorf("resolved reference = %+v, want the stored SKILL.md verbatim", ref)
+	}
+	if prov.SkillID != skillID || prov.VersionID != versionID || prov.Name != "reference-skill" {
+		t.Errorf("provenance = %+v, want skill/version ids and the name", prov)
+	}
+
+	// And it is genuinely what reaches the gateway, not only what this function
+	// returns: the same path GenerateSkill takes, one level down.
+	const skillResp = `{"skill":{"name":"a","description":"b","body":"c"},"model":"m","prompt_version":"v"}`
+	fakeSvc, captured := requestCapturingStub(t, skillResp)
+	if _, err := fakeSvc.generateOnce(context.Background(), "抽出重點。", nil,
+		[]llmclient.GenerateReference{ref}); err != nil {
+		t.Fatalf("generateOnce: %v", err)
+	}
+	var sent struct {
+		References []struct {
+			Name    string `json:"name"`
+			SkillMD string `json:"skill_md"`
+		} `json:"references"`
+	}
+	if err := json.Unmarshal(*captured, &sent); err != nil {
+		t.Fatal(err)
+	}
+	if len(sent.References) != 1 || sent.References[0].SkillMD != skillMDContent {
+		t.Errorf("references[0].skill_md = %+v, want the reference's SKILL.md verbatim", sent.References)
+	}
+
+	// The provenance row generated from it: identifiers only.
+	raw, err := marshalGenerationInputs(nil, []referenceProvenance{prov})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), skillMDContent) {
+		t.Fatal("the reference's SKILL.md content leaked into generation_inputs")
+	}
+	var got struct {
+		References []struct {
+			SkillID   string `json:"skill_id"`
+			VersionID string `json:"version_id"`
+			Name      string `json:"name"`
+		} `json:"references"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.References) != 1 ||
+		got.References[0].SkillID != pgconv.UUIDString(skillID) ||
+		got.References[0].VersionID != pgconv.UUIDString(versionID) ||
+		got.References[0].Name != "reference-skill" {
+		t.Errorf("generation_inputs.references = %+v, want one entry naming the resolved skill/version", got.References)
 	}
 }

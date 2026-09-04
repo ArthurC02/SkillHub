@@ -108,10 +108,17 @@ var sharedNumberRoster = []string{
 	"excerptLimit",
 	"generateFailureLimit",
 	"generateMaxAttempts",
+	// generateMaxDiagramBytes, generateMaxReferenceChars and generateMaxReferences
+	// are ADR-066's three inputs: the diagram's decoded byte cap, how much of each
+	// reference SKILL.md the model is shown, and how many references one
+	// generation may read.
+	"generateMaxDiagramBytes",
 	"generateMaxExtraFiles",
 	"generateMaxFileChars",
 	"generateMaxOutputTokens",
 	"generateMaxPathChars",
+	"generateMaxReferenceChars",
+	"generateMaxReferences",
 	"generateMaxTaskRunes",
 	"judgeMaxCriterionResults",
 	"judgeMaxEvidenceRefs",

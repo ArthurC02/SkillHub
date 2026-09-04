@@ -64,13 +64,19 @@ function stubSession(
   generateResult?: unknown,
   /** A categorised 422 — the package's own findings, verbatim (02:GEN-003). */
   generateRejection?: unknown,
+  /**
+   * 02:GEN-006's reference picker searches the same `/api/skills/search`
+   * endpoint the home page's own search box uses, with a different `q`. This
+   * stubs its answer, keyed on the query text, without disturbing the home
+   * page's own `NO_RESULTS` answer for `submitSearch("沒有人做過的事")` above.
+   */
+  referenceSearch?: { query: string; result: unknown; ownSkills?: unknown },
 ) {
   const posted: { path: string; body: string }[] = [];
   const searchGets: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
-    const path = String(input)
-      .replace(/^https?:\/\/[^/]+/, "")
-      .split("?")[0];
+    const url = new URL(String(input), "http://localhost");
+    const path = url.pathname;
     if (init?.method === "POST") {
       posted.push({ path, body: String(init.body ?? "") });
       if (path === "/skills/generate" && generateResult) {
@@ -101,7 +107,18 @@ function stubSession(
     }
     if (path.startsWith("/api/skills/search")) {
       searchGets.push(path);
+      const q = url.searchParams.get("q") ?? "";
+      if (referenceSearch && q === referenceSearch.query) {
+        return Promise.resolve(
+          new Response(JSON.stringify(referenceSearch.result), { status: 200 }),
+        );
+      }
       return Promise.resolve(new Response(JSON.stringify(NO_RESULTS), { status: 200 }));
+    }
+    if (path === "/skills" && referenceSearch?.ownSkills) {
+      return Promise.resolve(
+        new Response(JSON.stringify(referenceSearch.ownSkills), { status: 200 }),
+      );
     }
     if (path === "/me") {
       return Promise.resolve(
@@ -370,6 +387,175 @@ test("GEN-003: the collision sentence does not claim the neighbour is not genera
   });
   expect(sentence).toContain("同名");
   expect(sentence).not.toContain("不是生成的");
+});
+
+// 02:GEN-005. A diagram alone — no task description — must be a submittable
+// generation, and the request must carry the diagram and omit
+// task_description entirely (not send it as "").
+test("GEN-005: a diagram file with no text enables submit and posts the diagram, not task_description", async () => {
+  const { posted } = stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  // The textarea is seeded from the search query (GEN-008); this test is
+  // about the diagram-only path, so it starts from a genuinely empty box.
+  await act(async () => {
+    const textarea = container.querySelector("#generate-task")!;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    setter.call(textarea, "");
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  const fileInput = container.querySelector<HTMLInputElement>("#generate-diagram-file")!;
+  const file = new File([new Uint8Array([137, 80, 78, 71])], "flow.png", { type: "image/png" });
+  await act(async () => {
+    Object.defineProperty(fileInput, "files", { value: [file], configurable: true });
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("flow.png"));
+
+  const submitBtn = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "生成一個 Skill",
+  )!;
+  expect(submitBtn.disabled).toBe(false);
+
+  await act(async () => {
+    submitBtn.click();
+  });
+  await waitFor(() => posted.some((p) => p.path === "/skills/generate"));
+
+  const body = JSON.parse(posted.find((p) => p.path === "/skills/generate")!.body);
+  expect(body.diagram.media_type).toBe("image/png");
+  expect(typeof body.diagram.data).toBe("string");
+  expect(body.diagram.data.length).toBeGreaterThan(0);
+  expect(body.task_description).toBeUndefined();
+});
+
+// 02:GEN-005's client-side echo of generateMaxDiagramBytes: a file over the
+// ceiling must never leave the browser.
+test("GEN-005: an oversized file is refused client-side with an alert, and nothing is posted", async () => {
+  const { posted } = stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const fileInput = container.querySelector<HTMLInputElement>("#generate-diagram-file")!;
+  const big = new File([new Uint8Array(4_000_001)], "big.png", { type: "image/png" });
+  await act(async () => {
+    Object.defineProperty(fileInput, "files", { value: [big], configurable: true });
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  const alert = container.querySelector('[role="alert"]');
+  expect(alert?.textContent).toContain("上限");
+  expect(posted.some((p) => p.path === "/skills/generate")).toBe(false);
+});
+
+const REFERENCE_HIT = (n: number) => ({
+  skill_id: `ref-${n}`,
+  name: `參考 Skill ${n}`,
+  summary: `摘要 ${n}`,
+  summary_source: "package",
+});
+
+// 02:GEN-006. Typing a query lists a result from the public search hook;
+// ticking it and submitting alongside the task text sends both.
+test("GEN-006: searching lists a result, and ticking it sends reference_skill_ids with the task text", async () => {
+  const { posted } = stubSession({ generate_skill: true }, [], undefined, undefined, {
+    query: "分析報表",
+    result: {
+      query: "分析報表",
+      results: [REFERENCE_HIT(1)],
+      limit: 20,
+      truncated: false,
+      degraded: false,
+      partial_index: false,
+      filtered_out: false,
+      no_results: false,
+    },
+  });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  await act(async () => {
+    const textarea = container.querySelector("#generate-task")!;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    setter.call(textarea, "把 PDF 轉成摘要");
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  const refInput = container.querySelector<HTMLInputElement>("#generate-reference-query")!;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(refInput, "分析報表");
+    refInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("參考 Skill 1"));
+
+  const checkbox = Array.from(
+    container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+  ).find((c) => c.closest("li")?.textContent?.includes("參考 Skill 1"))!;
+  await act(async () => {
+    checkbox.click();
+  });
+
+  const submitBtn = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "生成一個 Skill",
+  )!;
+  await act(async () => {
+    submitBtn.click();
+  });
+  await waitFor(() => posted.some((p) => p.path === "/skills/generate"));
+
+  const body = JSON.parse(posted.find((p) => p.path === "/skills/generate")!.body);
+  expect(body.reference_skill_ids).toEqual(["ref-1"]);
+  expect(body.task_description).toBe("把 PDF 轉成摘要");
+});
+
+// 02:GEN-006's ceiling: GENERATE_MAX_REFERENCES. A fourth tick must not be
+// possible — the fourth checkbox is disabled rather than silently accepted.
+test("GEN-006: a fourth reference selection is not possible", async () => {
+  stubSession({ generate_skill: true }, [], undefined, undefined, {
+    query: "分析報表",
+    result: {
+      query: "分析報表",
+      results: [REFERENCE_HIT(1), REFERENCE_HIT(2), REFERENCE_HIT(3), REFERENCE_HIT(4)],
+      limit: 20,
+      truncated: false,
+      degraded: false,
+      partial_index: false,
+      filtered_out: false,
+      no_results: false,
+    },
+  });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const refInput = container.querySelector<HTMLInputElement>("#generate-reference-query")!;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(refInput, "分析報表");
+    refInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("參考 Skill 4"));
+
+  function checkboxFor(name: string) {
+    return Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).find(
+      (c) => c.closest("li")?.textContent?.includes(name),
+    )!;
+  }
+  for (const n of [1, 2, 3]) {
+    await act(async () => {
+      checkboxFor(`參考 Skill ${n}`).click();
+    });
+  }
+
+  const fourth = checkboxFor("參考 Skill 4");
+  expect(fourth.disabled).toBe(true);
+  await act(async () => {
+    fourth.click();
+  });
+  expect(fourth.checked).toBe(false);
+  expect(container.textContent).toContain("已經選滿 3 個");
 });
 
 // IA-5's exit has to be true for the visitor too: DISC-001 serves this page

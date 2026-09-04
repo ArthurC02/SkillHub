@@ -13,7 +13,20 @@
  */
 
 import { mapValues } from '../runtime';
+import type { GenerateDiagram } from './GenerateDiagram';
+import {
+    GenerateDiagramFromJSON,
+    GenerateDiagramFromJSONTyped,
+    GenerateDiagramToJSON,
+    GenerateDiagramToJSONTyped,
+} from './GenerateDiagram';
+
 /**
+ * No property is individually required. Go refuses the request
+ * (422) when neither `task_description` nor `diagram` is present
+ * (02:GEN-005); an OpenAPI `required` list cannot say "one of
+ * these two", so the rule lives in the handler and is stated
+ * here.
  * 
  * @export
  * @interface GenerateSkillRequest
@@ -22,19 +35,42 @@ export interface GenerateSkillRequest {
     /**
      * The user's own words. Stored as the generated version's
      * provenance record (GEN-002) and subject to NFR-002 deletion
-     * like any other user content.
+     * like any other user content. Optional since GEN-005: a
+     * diagram alone is enough. When present it is bounded on both
+     * sides exactly as before.
      * 
      * @type {string}
      * @memberof GenerateSkillRequest
      */
-    taskDescription: string;
+    taskDescription?: string;
+    /**
+     * 
+     * @type {GenerateDiagram}
+     * @memberof GenerateSkillRequest
+     */
+    diagram?: GenerateDiagram;
+    /**
+     * Existing Skills the model should read before writing
+     * (02:GEN-006). Each must be readable by the caller — their
+     * own workspace or the public catalogue, the same scope Fork
+     * uses — and must not be taken down, under a licensing hold
+     * (`access_restriction`), or `redistribution = blocked`; any
+     * other id is refused (422) and nothing is generated. The
+     * latest version's SKILL.md is what the model sees, fenced as
+     * untrusted data. The generated package still takes
+     * `redistribution = generated`: a reference is something the
+     * model read, not something the package contains (ADR-066).
+     * 
+     * @type {Array<string>}
+     * @memberof GenerateSkillRequest
+     */
+    referenceSkillIds?: Array<string>;
 }
 
 /**
  * Check if a given object implements the GenerateSkillRequest interface.
  */
 export function instanceOfGenerateSkillRequest(value: object): value is GenerateSkillRequest {
-    if (!('taskDescription' in value) || value['taskDescription'] === undefined) return false;
     return true;
 }
 
@@ -48,7 +84,9 @@ export function GenerateSkillRequestFromJSONTyped(json: any, ignoreDiscriminator
     }
     return {
         
-        'taskDescription': json['task_description'],
+        'taskDescription': json['task_description'] == null ? undefined : json['task_description'],
+        'diagram': json['diagram'] == null ? undefined : GenerateDiagramFromJSON(json['diagram']),
+        'referenceSkillIds': json['reference_skill_ids'] == null ? undefined : json['reference_skill_ids'],
     };
 }
 
@@ -64,6 +102,8 @@ export function GenerateSkillRequestToJSONTyped(value?: GenerateSkillRequest | n
     return {
         
         'task_description': value['taskDescription'],
+        'diagram': GenerateDiagramToJSON(value['diagram']),
+        'reference_skill_ids': value['referenceSkillIds'],
     };
 }
 

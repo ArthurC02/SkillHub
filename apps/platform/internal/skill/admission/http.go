@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -278,19 +279,76 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		TaskDescription string `json:"task_description"`
+		Diagram         *struct {
+			MediaType string `json:"media_type"`
+			Data      string `json:"data"`
+		} `json:"diagram"`
+		ReferenceSkillIDs []string `json:"reference_skill_ids"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16*1024)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a task_description")
+	// 6 MiB, up from 16 KiB: a decoded diagram is capped at 4 MB
+	// (generateMaxDiagramBytes) and standard base64 inflates that to ~5.4 MB, so
+	// the old text-only ceiling — which predates GEN-005 — would reject every
+	// diagram upload as an oversized body before the request is even parsed.
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 6<<20)).Decode(&body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a task_description, a diagram, or both")
 		return
 	}
 
-	res, err := h.Svc.GenerateSkill(r.Context(), ws, body.TaskDescription)
+	in := GenerateInput{TaskDescription: body.TaskDescription}
+	if body.Diagram != nil {
+		// Rejected on the RAW base64 text before decoding, so an oversized claim
+		// cannot force an allocation the size cap exists to prevent — the same
+		// reasoning llmclient's own MaxResponseBytes states for the response side.
+		if len(body.Diagram.Data) > base64.StdEncoding.EncodedLen(generateMaxDiagramBytes)+4 {
+			httpx.WriteError(w, http.StatusBadRequest,
+				"diagram 超過 4 MB 上限，或不是合法的 base64。接受的格式：PNG、JPEG、WebP。")
+			return
+		}
+		decoded, err := base64.StdEncoding.DecodeString(body.Diagram.Data)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "diagram.data 不是合法的 base64。")
+			return
+		}
+		in.Diagram = &GenerateDiagram{MediaType: body.Diagram.MediaType, Data: decoded}
+	}
+	for _, raw := range body.ReferenceSkillIDs {
+		var id pgtype.UUID
+		if err := id.Scan(raw); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "reference_skill_ids 裡有不合法的 id。")
+			return
+		}
+		in.ReferenceSkillIDs = append(in.ReferenceSkillIDs, id)
+	}
+
+	res, err := h.Svc.GenerateSkill(r.Context(), ws, in)
 	switch {
 	case errors.Is(err, ErrGenerateBlank):
 		// Same discipline DISC-001 already applies to an empty search: say what
 		// to add, do not just refuse (02:GEN-001).
 		httpx.WriteError(w, http.StatusUnprocessableEntity,
 			"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼。")
+	case errors.Is(err, ErrGenerateNoInput):
+		// 02:GEN-005: neither input was given. A different sentence from
+		// ErrGenerateBlank's on purpose — a caller who typed nothing and attached
+		// nothing is not the same caller as one who typed three characters.
+		// Still says what to add (02:GEN-001's advice rule, held by
+		// TestABlankTaskDescriptionIsRefusedWithAdvice), plus the second way in.
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼；或上傳一張流程圖／示意圖。兩者至少要有一項。")
+	case errors.Is(err, ErrDiagramInvalid):
+		// 400, not 422: a malformed request, the same class as the base64 checks
+		// above, worded the same way so the two 400s do not read as two rules.
+		httpx.WriteError(w, http.StatusBadRequest,
+			"diagram 不是可用的圖片。接受的格式：PNG、JPEG、WebP，解碼後大小不超過 4 MB。")
+	case errors.Is(err, ErrTooManyReferences):
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"參考的 Skill 最多三個，請減少後再試一次。")
+	case errors.Is(err, ErrReferenceUnavailable):
+		// Never echoes which id, or why (not found vs. taken down vs. access
+		// restricted vs. redistribution blocked): NFR-002/iron rule 3 both say not
+		// to describe another workspace's private skill by name in a refusal.
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"其中一個參考的 Skill 無法使用，請換一個再試一次。")
 	case errors.Is(err, policy.ErrGenerateQuotaExceeded):
 		// 422 like every other allowance refusal: the request is well formed and
 		// the platform is working, the account has nothing left in this window.

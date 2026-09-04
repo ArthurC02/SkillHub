@@ -219,6 +219,12 @@ func NewApp(cfg Config) (*App, error) {
 		},
 		RemoveFromIndex: catalog.RemoveSkillFromIndex,
 	}
+	// 02:GEN-006's reference-skill reads (ADR-066). *registry.Service satisfies
+	// ingest.ReferenceReader as-is (WorkspaceSkill, CatalogSkill, LatestVersion);
+	// injected here, right after registrySvc exists, rather than constructed
+	// inside admission (platform-ddd-practices 跨 Context 協作 — no context
+	// builds another context's Service inside a method).
+	versions.References = registrySvc
 	testlabSvc.Store = cfg.Store
 	testlabSvc.LLM = suggesterOrNil(cfg.LLM)
 	testlabSvc.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (testlab.SkillFacts, bool, error) {

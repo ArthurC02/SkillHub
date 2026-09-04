@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import { useMe } from "./me";
-import type { GenerateSkillResult, GenerationFailure } from "./types";
+import type { GenerateSkillRequest, GenerateSkillResult, GenerationFailure } from "./types";
 
 /**
  * POST /skills/generate — GEN-001.
@@ -15,12 +15,23 @@ import type { GenerateSkillResult, GenerationFailure } from "./types";
  * why the in-flight copy says the tab must stay open: unlike a Run, closing it
  * cancels the request (design system §2.12 第 2 條 requires saying so, §2.2
  * requires it to be true).
+ *
+ * Three input modes as of 02:GEN-005/006 (ADR-066): task description, an
+ * uploaded diagram, and up to three reference Skills — any combination, at
+ * least one of task_description/diagram. Absent keys are omitted rather than
+ * sent as `undefined` — an empty `reference_skill_ids: []` is a different
+ * statement from "not sent" and the contract only requires the former to be
+ * absent-or-nonempty on the wire.
  */
-export function generateSkill(taskDescription: string) {
+export function generateSkill(request: GenerateSkillRequest) {
+  const body: GenerateSkillRequest = {};
+  if (request.task_description) body.task_description = request.task_description;
+  if (request.diagram) body.diagram = request.diagram;
+  if (request.reference_skill_ids?.length) body.reference_skill_ids = request.reference_skill_ids;
   return apiFetch<GenerateSkillResult>("/skills/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task_description: taskDescription }),
+    body: JSON.stringify(body),
   });
 }
 

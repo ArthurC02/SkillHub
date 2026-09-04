@@ -5119,6 +5119,92 @@ type ForkSkillUnauthorized Error
 
 func (*ForkSkillUnauthorized) forkSkillRes() {}
 
+// A flowchart or diagram the model reads as the task (02:GEN-005). Sent inline as base64 rather than
+// through a separate upload endpoint: the image is an INPUT to one synchronous call, not an object the
+// platform keeps — only its digest, media type and byte count land in the provenance row (ADR-066),
+// so nothing in object storage needs a retention rule for it. The decoded bytes are capped; over the
+// cap is a 400, never a resize (the platform does not edit inputs any more than it edits outputs,
+// ADR-047 決策 1).
+// Ref: #/components/schemas/GenerateDiagram
+type GenerateDiagram struct {
+	// What `data` decodes to. Three formats, all of which the mini tier reads natively; SVG is refused
+	// because it is text that can carry scripts and the diagram path must not become a second import path.
+	MediaType GenerateDiagramMediaType `json:"media_type"`
+	// Standard base64 (RFC 4648 §4, padding allowed). The decoded size cap is `x-max-decoded-bytes` above
+	// — a `maxLength` on the base64 text would be a different number for the same rule.
+	Data []byte `json:"data"`
+}
+
+// GetMediaType returns the value of MediaType.
+func (s *GenerateDiagram) GetMediaType() GenerateDiagramMediaType {
+	return s.MediaType
+}
+
+// GetData returns the value of Data.
+func (s *GenerateDiagram) GetData() []byte {
+	return s.Data
+}
+
+// SetMediaType sets the value of MediaType.
+func (s *GenerateDiagram) SetMediaType(val GenerateDiagramMediaType) {
+	s.MediaType = val
+}
+
+// SetData sets the value of Data.
+func (s *GenerateDiagram) SetData(val []byte) {
+	s.Data = val
+}
+
+// What `data` decodes to. Three formats, all of which the mini tier reads natively; SVG is refused
+// because it is text that can carry scripts and the diagram path must not become a second import path.
+type GenerateDiagramMediaType string
+
+const (
+	GenerateDiagramMediaTypeImagePNG  GenerateDiagramMediaType = "image/png"
+	GenerateDiagramMediaTypeImageJpeg GenerateDiagramMediaType = "image/jpeg"
+	GenerateDiagramMediaTypeImageWEBP GenerateDiagramMediaType = "image/webp"
+)
+
+// AllValues returns all GenerateDiagramMediaType values.
+func (GenerateDiagramMediaType) AllValues() []GenerateDiagramMediaType {
+	return []GenerateDiagramMediaType{
+		GenerateDiagramMediaTypeImagePNG,
+		GenerateDiagramMediaTypeImageJpeg,
+		GenerateDiagramMediaTypeImageWEBP,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s GenerateDiagramMediaType) MarshalText() ([]byte, error) {
+	switch s {
+	case GenerateDiagramMediaTypeImagePNG:
+		return []byte(s), nil
+	case GenerateDiagramMediaTypeImageJpeg:
+		return []byte(s), nil
+	case GenerateDiagramMediaTypeImageWEBP:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *GenerateDiagramMediaType) UnmarshalText(data []byte) error {
+	switch GenerateDiagramMediaType(data) {
+	case GenerateDiagramMediaTypeImagePNG:
+		*s = GenerateDiagramMediaTypeImagePNG
+		return nil
+	case GenerateDiagramMediaTypeImageJpeg:
+		*s = GenerateDiagramMediaTypeImageJpeg
+		return nil
+	case GenerateDiagramMediaTypeImageWEBP:
+		*s = GenerateDiagramMediaTypeImageWEBP
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type GenerateSkillBadGateway Error
 
 func (*GenerateSkillBadGateway) generateSkillRes() {}
@@ -5280,20 +5366,52 @@ func (s *GenerateSkillRejected) SetAttempts(val int) {
 	s.Attempts = val
 }
 
+// No property is individually required. Go refuses the request (422) when neither `task_description`
+// nor `diagram` is present (02:GEN-005); an OpenAPI `required` list cannot say "one of these two", so
+// the rule lives in the handler and is stated here.
 type GenerateSkillReq struct {
 	// The user's own words. Stored as the generated version's provenance record (GEN-002) and subject to
-	// NFR-002 deletion like any other user content.
-	TaskDescription string `json:"task_description"`
+	// NFR-002 deletion like any other user content. Optional since GEN-005: a diagram alone is enough.
+	// When present it is bounded on both sides exactly as before.
+	TaskDescription OptString          `json:"task_description"`
+	Diagram         OptGenerateDiagram `json:"diagram"`
+	// Existing Skills the model should read before writing (02:GEN-006). Each must be readable by the
+	// caller — their own workspace or the public catalogue, the same scope Fork uses — and must not be
+	// taken down, under a licensing hold (`access_restriction`), or `redistribution = blocked`; any other
+	// id is refused (422) and nothing is generated. The latest version's SKILL.md is what the model sees,
+	// fenced as untrusted data. The generated package still takes `redistribution = generated`: a
+	// reference is something the model read, not something the package contains (ADR-066).
+	ReferenceSkillIds []uuid.UUID `json:"reference_skill_ids"`
 }
 
 // GetTaskDescription returns the value of TaskDescription.
-func (s *GenerateSkillReq) GetTaskDescription() string {
+func (s *GenerateSkillReq) GetTaskDescription() OptString {
 	return s.TaskDescription
 }
 
+// GetDiagram returns the value of Diagram.
+func (s *GenerateSkillReq) GetDiagram() OptGenerateDiagram {
+	return s.Diagram
+}
+
+// GetReferenceSkillIds returns the value of ReferenceSkillIds.
+func (s *GenerateSkillReq) GetReferenceSkillIds() []uuid.UUID {
+	return s.ReferenceSkillIds
+}
+
 // SetTaskDescription sets the value of TaskDescription.
-func (s *GenerateSkillReq) SetTaskDescription(val string) {
+func (s *GenerateSkillReq) SetTaskDescription(val OptString) {
 	s.TaskDescription = val
+}
+
+// SetDiagram sets the value of Diagram.
+func (s *GenerateSkillReq) SetDiagram(val OptGenerateDiagram) {
+	s.Diagram = val
+}
+
+// SetReferenceSkillIds sets the value of ReferenceSkillIds.
+func (s *GenerateSkillReq) SetReferenceSkillIds(val []uuid.UUID) {
+	s.ReferenceSkillIds = val
 }
 
 // Merged schema.
@@ -7997,6 +8115,52 @@ func (o OptFloat64) Get() (v float64, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptFloat64) Or(d float64) float64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGenerateDiagram returns new OptGenerateDiagram with value set to v.
+func NewOptGenerateDiagram(v GenerateDiagram) OptGenerateDiagram {
+	return OptGenerateDiagram{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGenerateDiagram is optional GenerateDiagram.
+type OptGenerateDiagram struct {
+	Value GenerateDiagram
+	Set   bool
+}
+
+// IsSet returns true if OptGenerateDiagram was set.
+func (o OptGenerateDiagram) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGenerateDiagram) Reset() {
+	var v GenerateDiagram
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGenerateDiagram) SetTo(v GenerateDiagram) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGenerateDiagram) Get() (v GenerateDiagram, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGenerateDiagram) Or(d GenerateDiagram) GenerateDiagram {
 	if v, ok := o.Get(); ok {
 		return v
 	}

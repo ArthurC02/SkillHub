@@ -1,5 +1,7 @@
 # M5：從任務描述生成 Skill
 
+**2026-09-05 狀態更新**：自建 Skill 的三種輸入方式（只用白話描述、上傳流程圖、參考既有 Skill＋描述）皆已立需求 ID 並開工，依 [ADR-066](../../../adr/ADR-066-generation-takes-a-diagram-or-reference-skills-as-input.md)（負責人裁定「自建方式必須三種都徹底實現」，一次凍結例外）——見 [`02:GEN-005`](../../02-specifications-and-acceptance-criteria.md)（流程圖）與 [`02:GEN-006`](../../02-specifications-and-acceptance-criteria.md)（參考既有 Skill）、[`03` §19](../../03-work-items.md) 的 `GEN-012`～`014`。曝光邊界不受影響：兩種新模式一樣掛在下方「⛔ 這個放行沒有授權曝光」那條邊界後面。
+
 - 狀態：**全面開工**（2026-08-23）——投入上限已由**授權**解除（[ADR-054](../../../adr/ADR-054-the-cap-was-lifted-by-authorisation-not-by-evidence.md)，**不是由 `ask-5` 的證據解除；那個假設的證據量仍然是零**）——三個啟動條件**全部暫時放行**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**剩下一條邊界**：生成入口**不得對封測使用者曝光**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)，綁漏斗讀數，與本次授權無關）。見下方§啟動條件與§投入上限
 - 決策：[ADR-046](../../../adr/ADR-046-generating-a-skill-from-a-task-description.md)
 - 規格：[`02` §4.9](../../02-specifications-and-acceptance-criteria.md)（`GEN-001`～`004`）
@@ -80,5 +82,7 @@ ADR-046 的決策 3 與決策 6 各壓了一個經驗假設，而 `01` §7.3 把
 | `gen009-round-d/` | **③ 的原始資料**：20 段語料（14 段逐字取自閘門情境卡、6 段這一輪新寫）與逐段結果。報告是 `report-generate-baseline.md` §9 |
 | （無 `audit.md`） | **本里程碑沒有獨立的 audit.md**：跨 08-23～08-24 的多輪對抗式稽核——**這裡刻意不寫輪數**：每落一輪這個數字就過期一次，前兩版（「五輪」「六輪」）都是這樣被抓的。輪次、發現數與逐條處置以 `git log --oneline` 的 `fix(m5)` 系列 commit 訊息為準逐條記在 `03` §19 各工作項的行內，因為每一條發現都改了某一項的勾選或狀態，拆成另一份檔會讓同一件事有兩份帳。骨架規則的意圖（稽核可查）由 `03` 行內滿足 |
 | `report-generate-baseline.md` | B 輪＋mini 對照：**失敗是不是隨機的**（不完全是）、**mini 夠不夠用**（更好且便宜 21 倍 → [ADR-051](../../../adr/ADR-051-the-cheaper-model-generated-better-packages.md)）、`possible-secret` 命中率（0／59） |
+| `report-generate-modes.md` | 2026-09-05：三種輸入模式（純文字、只有流程圖、描述＋參考 Skill）各對真實閘道跑一次，路通、模型有讀圖、參考只借形狀；逐字產出與成本。三筆不是分布 |
+| `generate-modes-flowchart.png` | 上面那次「只有流程圖」用的那張圖（六節點、一個判斷、全中文；System.Drawing 畫的） |
 
 量測 harness 在 [`apps/platform/internal/shared/skillpkg/generate_spike_test.go`](../../../../apps/platform/internal/shared/skillpkg/generate_spike_test.go)（env-gated，形狀照 `spec_census_test.go`）。生成端的腳本是一次性的，不進 repo——**跑那三輪的當下 `POST /v1/generate-skill` 還不存在**（`GEN-001`／`GEN-002` 同日稍晚才做完），腳本直接打閘道，逐字內容記在報告的附錄。**那也是那批數字不能直接當成端點的基線的原因**：它們量的是模型在一段自寫 prompt 下的表現，而端點交給模型的是型別化 schema——`GEN-001` 的說明寫了為什麼那個差別會改變失敗分布。

@@ -46,6 +46,7 @@ export * from './EvidenceRefCharRange';
 export * from './FileDiff';
 export * from './Finding';
 export * from './ForkSkill201Response';
+export * from './GenerateDiagram';
 export * from './GenerateSkillRefusal';
 export * from './GenerateSkillRefusalMessage';
 export * from './GenerateSkillRejected';

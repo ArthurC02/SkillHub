@@ -59,10 +59,10 @@ func (q *Queries) CountGeneratedSkills(ctx context.Context, arg CountGeneratedSk
 const createSkillSource = `-- name: CreateSkillSource :one
 INSERT INTO skill_sources (
     workspace_id, source_type, source_url, source_ref, content_hash, fetched_at,
-    task_description, generator_model, generator_prompt_version
+    task_description, generator_model, generator_prompt_version, generation_inputs
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version, content_changed_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version, content_changed_at, generation_inputs
 `
 
 type CreateSkillSourceParams struct {
@@ -75,10 +75,13 @@ type CreateSkillSourceParams struct {
 	TaskDescription        *string
 	GeneratorModel         *string
 	GeneratorPromptVersion *string
+	GenerationInputs       []byte
 }
 
 // The three generator columns are NULL for git and upload; 0037's one-way CHECK
 // requires all three when source_type is 'generated' (GEN-005).
+// generation_inputs (0055) is NULL unless the generation had a diagram or
+// reference skills behind it (ADR-066).
 func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourceParams) (SkillSource, error) {
 	row := q.db.QueryRow(ctx, createSkillSource,
 		arg.WorkspaceID,
@@ -90,6 +93,7 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 		arg.TaskDescription,
 		arg.GeneratorModel,
 		arg.GeneratorPromptVersion,
+		arg.GenerationInputs,
 	)
 	var i SkillSource
 	err := row.Scan(
@@ -107,6 +111,7 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 		&i.GeneratorModel,
 		&i.GeneratorPromptVersion,
 		&i.ContentChangedAt,
+		&i.GenerationInputs,
 	)
 	return i, err
 }

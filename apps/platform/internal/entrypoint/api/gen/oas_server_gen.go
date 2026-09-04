@@ -314,6 +314,14 @@ type Handler interface {
 	// must read that field rather than probing here — an entry point that has to be discovered by a
 	// failed request has already been drawn.
 	//
+	// Three ways in, one path out (ADR-066). The input is a task description in the user's own words
+	// (GEN-001), a flowchart or diagram image (GEN-005), or both together; and any of those may name up to
+	// three existing Skills the user found by searching, which the model reads as worked examples and not
+	// as bytes to copy (GEN-006). Whatever the input shape, the output is the same: one new Skill, version
+	// 1, `redistribution = generated`, and a provenance row that names every input. At least one of
+	// `task_description` and `diagram` must be present; references alone are refused (422), because "make
+	// me one like this" with nothing said about the task is a fork, and Fork already exists.
+	//
 	// Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation.
 	// Nothing inside the produced package is ever executed, and it goes through exactly the validation
 	// path an upload does. A blocking finding after one retry rejects the whole thing and creates no

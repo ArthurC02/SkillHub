@@ -11200,6 +11200,159 @@ func (s *ForkSkillUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode implements json.Marshaler.
+func (s *GenerateDiagram) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *GenerateDiagram) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("media_type")
+		s.MediaType.Encode(e)
+	}
+	{
+		e.FieldStart("data")
+		e.Base64(s.Data)
+	}
+}
+
+var jsonFieldsNameOfGenerateDiagram = [2]string{
+	0: "media_type",
+	1: "data",
+}
+
+// Decode decodes GenerateDiagram from json.
+func (s *GenerateDiagram) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GenerateDiagram to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "media_type":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.MediaType.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"media_type\"")
+			}
+		case "data":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Base64()
+				s.Data = []byte(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"data\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode GenerateDiagram")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfGenerateDiagram) {
+					name = jsonFieldsNameOfGenerateDiagram[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GenerateDiagram) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GenerateDiagram) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GenerateDiagramMediaType as json.
+func (s GenerateDiagramMediaType) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes GenerateDiagramMediaType from json.
+func (s *GenerateDiagramMediaType) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GenerateDiagramMediaType to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch GenerateDiagramMediaType(v) {
+	case GenerateDiagramMediaTypeImagePNG:
+		*s = GenerateDiagramMediaTypeImagePNG
+	case GenerateDiagramMediaTypeImageJpeg:
+		*s = GenerateDiagramMediaTypeImageJpeg
+	case GenerateDiagramMediaTypeImageWEBP:
+		*s = GenerateDiagramMediaTypeImageWEBP
+	default:
+		*s = GenerateDiagramMediaType(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s GenerateDiagramMediaType) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GenerateDiagramMediaType) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes GenerateSkillBadGateway as json.
 func (s *GenerateSkillBadGateway) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -11770,13 +11923,33 @@ func (s *GenerateSkillReq) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *GenerateSkillReq) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("task_description")
-		e.Str(s.TaskDescription)
+		if s.TaskDescription.Set {
+			e.FieldStart("task_description")
+			s.TaskDescription.Encode(e)
+		}
+	}
+	{
+		if s.Diagram.Set {
+			e.FieldStart("diagram")
+			s.Diagram.Encode(e)
+		}
+	}
+	{
+		if s.ReferenceSkillIds != nil {
+			e.FieldStart("reference_skill_ids")
+			e.ArrStart()
+			for _, elem := range s.ReferenceSkillIds {
+				json.EncodeUUID(e, elem)
+			}
+			e.ArrEnd()
+		}
 	}
 }
 
-var jsonFieldsNameOfGenerateSkillReq = [1]string{
+var jsonFieldsNameOfGenerateSkillReq = [3]string{
 	0: "task_description",
+	1: "diagram",
+	2: "reference_skill_ids",
 }
 
 // Decode decodes GenerateSkillReq from json.
@@ -11784,21 +11957,47 @@ func (s *GenerateSkillReq) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode GenerateSkillReq to nil")
 	}
-	var requiredBitSet [1]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
 		case "task_description":
-			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Str()
-				s.TaskDescription = string(v)
-				if err != nil {
+				s.TaskDescription.Reset()
+				if err := s.TaskDescription.Decode(d); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"task_description\"")
+			}
+		case "diagram":
+			if err := func() error {
+				s.Diagram.Reset()
+				if err := s.Diagram.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"diagram\"")
+			}
+		case "reference_skill_ids":
+			if err := func() error {
+				s.ReferenceSkillIds = make([]uuid.UUID, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem uuid.UUID
+					v, err := json.DecodeUUID(d)
+					elem = v
+					if err != nil {
+						return err
+					}
+					s.ReferenceSkillIds = append(s.ReferenceSkillIds, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"reference_skill_ids\"")
 			}
 		default:
 			return d.Skip()
@@ -11806,38 +12005,6 @@ func (s *GenerateSkillReq) Decode(d *jx.Decoder) error {
 		return nil
 	}); err != nil {
 		return errors.Wrap(err, "decode GenerateSkillReq")
-	}
-	// Validate required fields.
-	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
-		0b00000001,
-	} {
-		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
-			// Mask only required fields and check equality to mask using XOR.
-			//
-			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
-			// Bits of fields which would be set are actually bits of missed fields.
-			missed := bits.OnesCount8(result)
-			for bitN := 0; bitN < missed; bitN++ {
-				bitIdx := bits.TrailingZeros8(result)
-				fieldIdx := i*8 + bitIdx
-				var name string
-				if fieldIdx < len(jsonFieldsNameOfGenerateSkillReq) {
-					name = jsonFieldsNameOfGenerateSkillReq[fieldIdx]
-				} else {
-					name = strconv.Itoa(fieldIdx)
-				}
-				failures = append(failures, validate.FieldError{
-					Name:  name,
-					Error: validate.ErrFieldRequired,
-				})
-				// Reset bit.
-				result &^= 1 << bitIdx
-			}
-		}
-	}
-	if len(failures) > 0 {
-		return &validate.Error{Fields: failures}
 	}
 
 	return nil
@@ -18605,6 +18772,39 @@ func (s OptFloat64) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptFloat64) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GenerateDiagram as json.
+func (o OptGenerateDiagram) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes GenerateDiagram from json.
+func (o *OptGenerateDiagram) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptGenerateDiagram to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptGenerateDiagram) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptGenerateDiagram) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

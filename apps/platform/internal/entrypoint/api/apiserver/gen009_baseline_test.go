@@ -53,6 +53,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
@@ -166,7 +167,7 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	for i, tc := range corpus {
 		row := gen009Row{ID: tc.ID, Group: tc.Group}
 		t.Run(tc.ID, func(t *testing.T) {
-			res, err := a.versions.GenerateSkill(ctx, ws, tc.Description)
+			res, err := a.versions.GenerateSkill(ctx, ws, ingest.GenerateInput{TaskDescription: tc.Description})
 			if err != nil {
 				row.Note = "generate: " + err.Error()
 				t.Logf("%s generate failed: %v", tc.ID, err)

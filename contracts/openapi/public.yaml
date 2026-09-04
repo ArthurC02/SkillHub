@@ -496,7 +496,7 @@ paths:
   /skills/generate:
     post:
       operationId: generateSkill
-      summary: Generate a Skill from a task description (GEN-001)
+      summary: Generate a Skill from a task description, a diagram, or both, optionally guided by existing Skills (GEN-001, GEN-005, GEN-006)
       description: |
         Requires a session and an invite. **Mounted only where the deployment
         turns the M5 exposure flag on** (ADR-052); everywhere else this route
@@ -506,6 +506,18 @@ paths:
         `generate_skill` among its features. A client must read that field rather
         than probing here — an entry point that has to be discovered by a failed
         request has already been drawn.
+
+        Three ways in, one path out (ADR-066). The input is a task description
+        in the user's own words (GEN-001), a flowchart or diagram image
+        (GEN-005), or both together; and any of those may name up to three
+        existing Skills the user found by searching, which the model reads as
+        worked examples and not as bytes to copy (GEN-006). Whatever the input
+        shape, the output is the same: one new Skill, version 1,
+        `redistribution = generated`, and a provenance row that names every
+        input. **At least one of `task_description` and `diagram` must be
+        present**; references alone are refused (422), because "make me one
+        like this" with nothing said about the task is a fork, and Fork already
+        exists.
 
         Synchronous: there is no job and no run id, so an abandoned request is a
         cancelled generation. Nothing inside the produced package is ever
@@ -518,7 +530,12 @@ paths:
           application/json:
             schema:
               type: object
-              required: [task_description]
+              description: |
+                No property is individually required. Go refuses the request
+                (422) when neither `task_description` nor `diagram` is present
+                (02:GEN-005); an OpenAPI `required` list cannot say "one of
+                these two", so the rule lives in the handler and is stated
+                here.
               properties:
                 task_description:
                   type: string
@@ -527,7 +544,28 @@ paths:
                   description: |
                     The user's own words. Stored as the generated version's
                     provenance record (GEN-002) and subject to NFR-002 deletion
-                    like any other user content.
+                    like any other user content. Optional since GEN-005: a
+                    diagram alone is enough. When present it is bounded on both
+                    sides exactly as before.
+                diagram:
+                  $ref: "#/components/schemas/GenerateDiagram"
+                reference_skill_ids:
+                  type: array
+                  maxItems: 3 # one-number: generateMaxReferences
+                  items:
+                    type: string
+                    format: uuid
+                  description: |
+                    Existing Skills the model should read before writing
+                    (02:GEN-006). Each must be readable by the caller — their
+                    own workspace or the public catalogue, the same scope Fork
+                    uses — and must not be taken down, under a licensing hold
+                    (`access_restriction`), or `redistribution = blocked`; any
+                    other id is refused (422) and nothing is generated. The
+                    latest version's SKILL.md is what the model sees, fenced as
+                    untrusted data. The generated package still takes
+                    `redistribution = generated`: a reference is something the
+                    model read, not something the package contains (ADR-066).
       responses:
         "201":
           description: A package was generated, validated and stored as version 1.
@@ -536,7 +574,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/GenerateSkillResult"
         "400":
-          description: Body was not JSON with a task_description.
+          description: |
+            Body was not JSON in the shape above, or a `diagram` could not be
+            decoded (not base64, over the byte cap, or a media type outside the
+            three accepted). Nothing was called and nothing was spent.
           content:
             application/json:
               schema:
@@ -576,6 +617,12 @@ paths:
             model service: a description under the floor used to travel to the
             gateway and come back as a 502, which told the user the platform was
             broken when the fix was "write a bit more".
+
+            Since GEN-005/006 three more refusals land here, all before the
+            model is called and all as the single-error shape: neither a
+            description nor a diagram was given; a `reference_skill_ids` entry
+            the caller cannot read, or that is taken down, on a licensing hold
+            or `redistribution = blocked`; more than three references.
           content:
             application/json:
               schema:
@@ -5663,6 +5710,31 @@ components:
           description: True when identical content already existed as a version of this skill.
         findings:
           $ref: "#/components/schemas/CategorizedFindings"
+    GenerateDiagram:
+      type: object
+      required: [media_type, data]
+      description: |
+        A flowchart or diagram the model reads as the task (02:GEN-005). Sent
+        inline as base64 rather than through a separate upload endpoint: the
+        image is an INPUT to one synchronous call, not an object the platform
+        keeps — only its digest, media type and byte count land in the
+        provenance row (ADR-066), so nothing in object storage needs a
+        retention rule for it. The decoded bytes are capped; over the cap is a
+        400, never a resize (the platform does not edit inputs any more than it
+        edits outputs, ADR-047 決策 1).
+      properties:
+        media_type:
+          type: string
+          enum: [image/png, image/jpeg, image/webp]
+          description: What `data` decodes to. Three formats, all of which the mini tier reads natively; SVG is refused because it is text that can carry scripts and the diagram path must not become a second import path.
+        data:
+          type: string
+          format: byte
+          x-max-decoded-bytes: 4000000 # one-number: generateMaxDiagramBytes
+          description: |
+            Standard base64 (RFC 4648 §4, padding allowed). The decoded size
+            cap is `x-max-decoded-bytes` above — a `maxLength` on the base64
+            text would be a different number for the same rule.
     GenerateSkillRefusal:
       description: |
         The 422 body of POST /skills/generate: either the package's own findings

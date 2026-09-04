@@ -3693,7 +3693,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								switch method {
 								case "POST":
 									r.name = GenerateSkillOperation
-									r.summary = "Generate a Skill from a task description (GEN-001)"
+									r.summary = "Generate a Skill from a task description, a diagram, or both, optionally guided by existing Skills (GEN-001, GEN-005, GEN-006)"
 									r.operationID = "generateSkill"
 									r.operationGroup = ""
 									r.pathPattern = "/skills/generate"

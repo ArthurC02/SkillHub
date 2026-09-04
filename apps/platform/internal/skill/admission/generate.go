@@ -4,9 +4,14 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"path"
 	"slices"
@@ -21,8 +26,10 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // Generation from a task description (GEN-003, ADR-046).
@@ -68,6 +75,90 @@ const (
 // (ADR-046 決策 1). See the check in GenerateSkill for why it is enforced rather
 // than assumed.
 var ErrGenerateNotForCatalogue = errors.New("ingest: the catalogue does not generate skills")
+
+// ErrGenerateNoInput: neither a task description nor a diagram was given
+// (02:GEN-005). Refused before the gateway, same reasoning as ErrGenerateBlank.
+var ErrGenerateNoInput = errors.New("ingest: nothing to generate from — write a description or attach a diagram")
+
+// ErrDiagramInvalid: the diagram is not a usable image — wrong media type,
+// zero bytes, or over generateMaxDiagramBytes once decoded (02:GEN-005). The
+// platform does not resize an oversized image, it refuses it (ADR-047 決策 1's
+// "no editing of inputs" applied one door earlier).
+var ErrDiagramInvalid = errors.New("ingest: diagram is not a usable image")
+
+// ErrTooManyReferences: more than generateMaxReferences reference skill ids
+// were given (02:GEN-006).
+var ErrTooManyReferences = errors.New("ingest: too many reference skills")
+
+// ErrReferenceUnavailable: a reference skill id could not be used as a
+// worked example — not found in the caller's workspace or the catalogue, taken
+// down, under a licensing hold, `redistribution = blocked`, or its SKILL.md
+// could not be read back out of storage (02:GEN-006). One sentinel for every
+// one of those: which of them it was is not something the caller acts on
+// differently, and NFR-002/iron rule 3 both say not to describe another
+// workspace's private skill by name in a refusal.
+var ErrReferenceUnavailable = errors.New("ingest: a reference skill could not be used")
+
+// generateMaxDiagramBytes bounds a diagram's DECODED size (02:GEN-005). Same
+// number as contracts/openapi/public.yaml's GenerateDiagram.data
+// x-max-decoded-bytes and llm-internal.yaml's GenerateDiagram.
+const generateMaxDiagramBytes = 4_000_000 // one-number: generateMaxDiagramBytes
+
+// generateMaxReferences bounds how many existing Skills the model reads as
+// worked examples in one generation (02:GEN-006).
+const generateMaxReferences = 3 // one-number: generateMaxReferences
+
+// generateMaxReferenceChars caps one reference's SKILL.md, in runes, the same
+// way improvement/suggest.go's firstChars caps a target file: cut, not
+// dropped, so the model still sees the start of a document that ran long.
+const generateMaxReferenceChars = 20000 // one-number: generateMaxReferenceChars
+
+// classifyTaskDescription is 02:GEN-001/005's whole bound-checking rule for
+// the task description, pulled out of GenerateSkill so it can be tested
+// without a Pool: task is already trimmed, hasDiagram says whether a diagram
+// travels alongside it.
+func classifyTaskDescription(task string, hasDiagram bool) error {
+	n := len([]rune(task))
+	switch {
+	case n == 0 && !hasDiagram:
+		return ErrGenerateNoInput
+	case n > maxTaskDescriptionRunes:
+		return ErrGenerateTooLong
+	case n > 0 && n < minTaskDescriptionRunes && !hasDiagram:
+		return ErrGenerateBlank
+	}
+	return nil
+}
+
+// GenerateDiagram is a decoded diagram image, admission's own shape —
+// llmclient.GenerateDiagram carries the base64 text instead, because only the
+// wire format needs to be text.
+type GenerateDiagram struct {
+	MediaType string
+	Data      []byte
+}
+
+// GenerateInput is everything GenerateSkill can be asked to generate from
+// (02:GEN-001/005/006). At least one of TaskDescription/Diagram must survive
+// trimming, checked in GenerateSkill itself — a product rule, so it lives in
+// Go and not in the request decoder (iron rule 6).
+type GenerateInput struct {
+	TaskDescription   string
+	Diagram           *GenerateDiagram
+	ReferenceSkillIDs []pgtype.UUID
+}
+
+// ReferenceReader is the read slice ingest needs from registry to resolve a
+// reference skill id (02:GEN-006, ADR-034 style narrow interface). *registry.Service
+// already has exactly these three methods; the composition root wires it in
+// (apiserver/app.go) rather than this package importing registry for a
+// concrete type it would then have to construct itself (platform-ddd-practices
+// 跨 Context 協作).
+type ReferenceReader interface {
+	WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtype.UUID) (registry.Skill, bool, error)
+	CatalogSkill(ctx context.Context, skillID pgtype.UUID) (registry.Skill, bool, error)
+	LatestVersion(ctx context.Context, workspaceID, skillID pgtype.UUID) (registry.Version, bool, error)
+}
 
 // ErrGeneratedPackageInvalid: the answer parsed but cannot be made into an
 // archive at all. Distinct from a blocked report — there is no Report to show —
@@ -157,14 +248,15 @@ func (r *GenerateResult) addUsage(u *llmclient.GatewayUsage) {
 	r.CostUSD = &total
 }
 
-// GenerateSkill writes one Skill from a task description and imports it
-// (GEN-001, GEN-003).
+// GenerateSkill writes one Skill from a task description, a diagram, existing
+// reference Skills, or a combination, and imports it (GEN-001, GEN-003,
+// 02:GEN-005, 02:GEN-006).
 //
 // Nothing here is executed and nothing inside the package is either, at any
 // point: generation and validation are static analysis over bytes the same way
 // import is, and any Script the model wrote only ever runs in a Sandbox
 // (iron rule 1, 02:GEN-003).
-func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, taskDescription string) (GenerateResult, error) {
+func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in GenerateInput) (GenerateResult, error) {
 	if s.LLM == nil {
 		return GenerateResult{}, errors.New("ingest: generation needs an LLM service")
 	}
@@ -178,17 +270,53 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 	if ws.IsCatalog {
 		return GenerateResult{}, ErrGenerateNotForCatalogue
 	}
-	task := strings.TrimSpace(taskDescription)
+	task := strings.TrimSpace(in.TaskDescription)
 	// Both bounds in Go, because both are product rules and only one of them was
 	// here. apps/llm enforces `min_length=8, max_length=4000` on its own side, so
 	// a three-character description used to travel all the way there, come back a
 	// Pydantic 422, and reach the user as **502 「generation failed」** — the
 	// platform reporting itself broken when the fix was "write a bit more".
 	// Counted in runes: 「整理發票」 is four characters and eight bytes.
-	if n := len([]rune(task)); n == 0 || n < minTaskDescriptionRunes {
-		return GenerateResult{}, ErrGenerateBlank
-	} else if n > maxTaskDescriptionRunes {
-		return GenerateResult{}, ErrGenerateTooLong
+	//
+	// GEN-005 loosened the floor without removing it: a description is either
+	// absent (fine, as long as a diagram carries the task) or held to the same
+	// eight-rune minimum it always was — a three-character caption next to a
+	// diagram is still not a task description, it is a label.
+	if err := classifyTaskDescription(task, in.Diagram != nil); err != nil {
+		return GenerateResult{}, err
+	}
+
+	if in.Diagram != nil {
+		if !validDiagramMediaType(in.Diagram.MediaType) ||
+			len(in.Diagram.Data) == 0 || len(in.Diagram.Data) > generateMaxDiagramBytes {
+			return GenerateResult{}, ErrDiagramInvalid
+		}
+	}
+
+	if len(in.ReferenceSkillIDs) > generateMaxReferences {
+		return GenerateResult{}, ErrTooManyReferences
+	}
+	// Resolved and read BEFORE the allowance check and the gateway (02:GEN-006):
+	// an id the caller cannot use must not cost anything, the same rule
+	// ErrGenerateBlank already follows for the task description.
+	var references []llmclient.GenerateReference
+	var refProvenance []referenceProvenance
+	if len(in.ReferenceSkillIDs) > 0 {
+		if s.References == nil {
+			return GenerateResult{}, ErrReferenceUnavailable
+		}
+		for _, id := range in.ReferenceSkillIDs {
+			ref, prov, err := s.resolveReference(ctx, ws, id)
+			if err != nil {
+				return GenerateResult{}, err
+			}
+			references = append(references, ref)
+			refProvenance = append(refProvenance, prov)
+		}
+	}
+	generationInputsJSON, err := marshalGenerationInputs(in.Diagram, refProvenance)
+	if err != nil {
+		return GenerateResult{}, fmt.Errorf("ingest: generation_inputs: %w", err)
 	}
 
 	// One generation per workspace at a time. It bounds CONCURRENCY and not rate:
@@ -228,7 +356,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 			failure = FailureUnavailable
 		}
 		// GenerateResult{}: refused before the gateway, so no attempt and no cost.
-		s.auditGenerateFailure(ctx, ws, task, GenerateResult{}, map[string]any{
+		s.auditGenerateFailure(ctx, ws, task, in, GenerateResult{}, map[string]any{
 			"failure": failure,
 			"reason":  reason,
 		})
@@ -263,7 +391,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 		// Same prompt, same model, no correction hint added from the first
 		// failure (ADR-047 決策 1). Feeding the findings back would be a second
 		// prompt, and then the provenance row no longer reproduces the package.
-		gen, err := s.generateOnce(ctx, task)
+		gen, err := s.generateOnce(ctx, task, in.Diagram, references)
 		if err != nil {
 			// Logged as well as audited. The audit row records that a generation
 			// failed at the gateway; nothing recorded WHY, so a deployment failing
@@ -276,7 +404,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 			// the same answer (ADR-047 決策 2). Neither is a gateway refusal,
 			// for the reason SuggestImprovements already gives — a gateway that
 			// refused this input refuses it again.
-			s.auditGenerateFailure(ctx, ws, task, out, map[string]any{
+			s.auditGenerateFailure(ctx, ws, task, in, out, map[string]any{
 				"failure":   FailureGateway,
 				"truncated": errors.Is(err, llmclient.ErrGenerateTruncated),
 			})
@@ -289,7 +417,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 
 		data, err := buildGeneratedPackage(gen.Skill)
 		if err != nil {
-			s.auditGenerateFailure(ctx, ws, task, out, map[string]any{"failure": FailureUnpackageable})
+			s.auditGenerateFailure(ctx, ws, task, in, out, map[string]any{"failure": FailureUnpackageable})
 			return out, err
 		}
 
@@ -304,13 +432,16 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 			CostUSD:          out.CostUSD,
 			PromptTokens:     out.PromptTokens,
 			CompletionTokens: out.CompletionTokens,
+			// nil unless a diagram or references were behind this generation
+			// (ADR-066); the image bytes themselves are never stored.
+			GenerationInputs: generationInputsJSON,
 		})
 		if err != nil {
 			// A refused generation is still a paid one, and 02:GEN-003 asks for a
 			// record of it. The name collision arrives here rather than as a
 			// blocked report, so without this the one failure a user can actually
 			// act on was the one that left nothing behind.
-			s.auditGenerateFailure(ctx, ws, task, out, map[string]any{
+			s.auditGenerateFailure(ctx, ws, task, in, out, map[string]any{
 				"failure":   FailureRejected,
 				"collision": errors.Is(err, ErrGeneratedNameCollision),
 			})
@@ -326,7 +457,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 		// so there is no half-made version to clean up (02:GEN-003 「不得留下一個
 		// 半成品版本」).
 		if !shouldRetry(attempt, res.Report) {
-			s.auditGenerateFailure(ctx, ws, task, out, map[string]any{
+			s.auditGenerateFailure(ctx, ws, task, in, out, map[string]any{
 				"failure": FailureBlocked,
 				// Codes and nothing else. A finding's Message never carries the
 				// matched value (skillpkg.go:909) and this must not become the
@@ -371,10 +502,157 @@ func shouldRetry(attempt int, r skillpkg.Report) bool {
 // budget-over: generate.LLM_TIMEOUT_SECONDS
 const generateTimeout = 130 * time.Second
 
-func (s *Service) generateOnce(ctx context.Context, task string) (*llmclient.GenerateSkillResponse, error) {
+func (s *Service) generateOnce(
+	ctx context.Context, task string, diagram *GenerateDiagram, references []llmclient.GenerateReference,
+) (*llmclient.GenerateSkillResponse, error) {
 	callCtx, cancel := context.WithTimeout(ctx, generateTimeout)
 	defer cancel()
-	return s.LLM.GenerateSkill(callCtx, task)
+	req := llmclient.GenerateSkillRequest{TaskDescription: task, References: references}
+	if diagram != nil {
+		// Standard base64 (RFC 4648 §4), the encoding public.yaml's GenerateDiagram
+		// and llm-internal.yaml's both name explicitly.
+		req.Diagram = &llmclient.GenerateDiagram{
+			MediaType: diagram.MediaType,
+			Data:      base64.StdEncoding.EncodeToString(diagram.Data),
+		}
+	}
+	return s.LLM.GenerateSkill(callCtx, req)
+}
+
+// validDiagramMediaType is the three formats 02:GEN-005 and GenerateDiagram's
+// contract enum accept. SVG is deliberately not one of them: it is text that
+// can carry scripts, and the diagram path must not become a second import
+// path (iron rule 1).
+func validDiagramMediaType(mediaType string) bool {
+	switch mediaType {
+	case "image/png", "image/jpeg", "image/webp":
+		return true
+	default:
+		return false
+	}
+}
+
+// referenceProvenance is what a resolved reference skill leaves in
+// generation_inputs (ADR-066) — identifiers only, never its SKILL.md content.
+type referenceProvenance struct {
+	SkillID   pgtype.UUID
+	VersionID pgtype.UUID
+	Name      string
+}
+
+// resolveReference reads one 02:GEN-006 reference skill id into the SKILL.md
+// text the model sees and the identifiers the provenance row keeps.
+//
+// Scope order is Fork's (registry.go): the caller's own workspace first, then
+// the public catalogue — so a caller's private skill is never shadowed by a
+// catalogue skill sharing an id. Refused, as ErrReferenceUnavailable, for
+// anything not found in either scope, taken down, under a licensing hold, or
+// `redistribution = blocked` — the same four words 02:GEN-006 names — and for
+// a stored package this side cannot read back, because a reference silently
+// skipped is a reference the caller was told was used and was not.
+func (s *Service) resolveReference(
+	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
+) (llmclient.GenerateReference, referenceProvenance, error) {
+	skill, found, err := s.References.WorkspaceSkill(ctx, ws.ID, id)
+	if err != nil {
+		return llmclient.GenerateReference{}, referenceProvenance{}, err
+	}
+	if !found {
+		skill, found, err = s.References.CatalogSkill(ctx, id)
+		if err != nil {
+			return llmclient.GenerateReference{}, referenceProvenance{}, err
+		}
+	}
+	if !found || skill.TakedownAt.Valid || skill.AccessRestriction != nil || skill.Redistribution == "blocked" {
+		return llmclient.GenerateReference{}, referenceProvenance{}, ErrReferenceUnavailable
+	}
+
+	version, found, err := s.References.LatestVersion(ctx, skill.WorkspaceID, skill.ID)
+	if err != nil {
+		return llmclient.GenerateReference{}, referenceProvenance{}, err
+	}
+	if !found {
+		return llmclient.GenerateReference{}, referenceProvenance{}, ErrReferenceUnavailable
+	}
+
+	data, err := s.Store.Get(ctx, version.PackageObjectKey)
+	if err != nil {
+		return llmclient.GenerateReference{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
+	}
+	fsys, err := skillpkg.PackageFS(data)
+	if err != nil {
+		return llmclient.GenerateReference{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
+	}
+	md, err := fs.ReadFile(fsys, "SKILL.md")
+	if err != nil {
+		return llmclient.GenerateReference{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
+	}
+
+	content, truncated := cutRunes(strings.ToValidUTF8(string(md), ""), generateMaxReferenceChars)
+	if truncated {
+		content += "…[truncated]"
+	}
+	return llmclient.GenerateReference{Name: skill.Name, SkillMD: content},
+		referenceProvenance{SkillID: skill.ID, VersionID: version.ID, Name: skill.Name}, nil
+}
+
+// cutRunes is judge.go's `cut` restated here: this package does not import
+// trial/improvement for one four-line helper, and a shared home for it is not
+// this brief's problem to solve.
+func cutRunes(s string, limit int) (string, bool) {
+	runes := []rune(s)
+	if len(runes) <= limit {
+		return s, false
+	}
+	return string(runes[:limit]), true
+}
+
+// generationInputsDiagram is generation_inputs' `diagram` object (0055,
+// ADR-066): a digest and a size, never the bytes.
+type generationInputsDiagram struct {
+	MediaType string `json:"media_type"`
+	SHA256    string `json:"sha256"`
+	Bytes     int    `json:"bytes"`
+}
+
+// generationInputsReference is one entry of generation_inputs' `references`
+// array: identifiers only, the same restraint referenceProvenance keeps.
+type generationInputsReference struct {
+	SkillID   string `json:"skill_id"`
+	VersionID string `json:"version_id"`
+	Name      string `json:"name"`
+}
+
+// generationInputsRecord is the whole shape of `skill_sources.generation_inputs`
+// (0055 migration comment, ADR-066).
+type generationInputsRecord struct {
+	Diagram    *generationInputsDiagram    `json:"diagram,omitempty"`
+	References []generationInputsReference `json:"references,omitempty"`
+}
+
+// marshalGenerationInputs builds generation_inputs, or returns nil when
+// neither a diagram nor references were behind this generation — the column
+// is nullable exactly so a plain task-description generation writes nothing
+// new.
+func marshalGenerationInputs(diagram *GenerateDiagram, refs []referenceProvenance) ([]byte, error) {
+	if diagram == nil && len(refs) == 0 {
+		return nil, nil
+	}
+	rec := generationInputsRecord{}
+	if diagram != nil {
+		sum := sha256.Sum256(diagram.Data)
+		rec.Diagram = &generationInputsDiagram{
+			MediaType: diagram.MediaType,
+			SHA256:    hex.EncodeToString(sum[:]),
+			Bytes:     len(diagram.Data),
+		}
+	}
+	for _, r := range refs {
+		rec.References = append(rec.References, generationInputsReference{
+			SkillID: pgconv.UUIDString(r.SkillID), VersionID: pgconv.UUIDString(r.VersionID), Name: r.Name,
+		})
+	}
+	return json.Marshal(rec)
 }
 
 // blockingCodes lists the distinct error-level codes, in report order.
@@ -499,10 +777,14 @@ func buildGeneratedPackage(g llmclient.GeneratedSkill) ([]byte, error) {
 // days under a different rule, and one copy under each is a retention promise
 // nobody made (ADR-029 decision 3 draws the same line for analytics).
 func (s *Service) auditGenerateFailure(
-	ctx context.Context, ws identity.Workspace, task string, out GenerateResult, meta map[string]any,
+	ctx context.Context, ws identity.Workspace, task string, in GenerateInput, out GenerateResult, meta map[string]any,
 ) {
 	meta["attempts"] = out.Attempts
 	meta["task_description_chars"] = len([]rune(task))
+	// Never content (iron rule 11): a bool and a count, the same restraint
+	// task_description_chars already keeps for the text.
+	meta["diagram"] = in.Diagram != nil
+	meta["references"] = len(in.ReferenceSkillIDs)
 	usageMeta(meta, out.CostUSD, out.PromptTokens, out.CompletionTokens)
 	// WithoutCancel: the commonest failure is the gateway call running out of the
 	// caller's deadline, and that same dead ctx would take the record with it.

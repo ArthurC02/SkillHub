@@ -494,11 +494,41 @@ func (c *Client) SuggestImprovements(
 
 // --- /v1/generate-skill (GEN-001, GEN-002) -----------------------------------
 
-// GenerateSkillRequest carries the user's own words and nothing else. No
-// existing Skill Version is an input: starting from one is improvement and goes
-// to /suggest-improvements (ADR-046 決策 3).
+// GenerateSkillRequest carries the user's own task description, an optional
+// diagram, and up to three reference Skills (02:GEN-005, 02:GEN-006, ADR-066).
+// No existing Skill Version is an EDIT target here: starting from one to
+// change it is improvement and goes to /suggest-improvements (ADR-046 決策 3) —
+// References below is worked-example content Go has already vetted for the
+// model to read, not a target to modify.
+//
+// No field is required: apps/llm's schema leaves all three optional and Go
+// enforces "at least a description or a diagram" itself (iron rule 6, see
+// admission/generate.go).
 type GenerateSkillRequest struct {
-	TaskDescription string `json:"task_description"`
+	TaskDescription string              `json:"task_description,omitempty"`
+	Diagram         *GenerateDiagram    `json:"diagram,omitempty"`
+	References      []GenerateReference `json:"references,omitempty"`
+}
+
+// GenerateDiagram is a flowchart or diagram image, standard base64 (02:GEN-005,
+// ADR-066). The decoded bytes are never stored by the platform — only their
+// digest, media type and size land in the version's provenance row
+// (admission/generate.go's generationInputsDiagram).
+type GenerateDiagram struct {
+	MediaType string `json:"media_type"`
+	Data      string `json:"data"`
+}
+
+// GenerateReference is one existing Skill's SKILL.md, already read and vetted
+// by Go (found, not taken down, not access-restricted, not
+// `redistribution = blocked` — see admission/generate.go's resolveReference)
+// and handed to the model as a worked example (02:GEN-006). Content Go
+// already trusts, not an id apps/llm would have to look anything up by —
+// ADR-066 keeps the model service a capability provider with no database
+// (iron rule 6).
+type GenerateReference struct {
+	Name    string `json:"name"`
+	SkillMD string `json:"skill_md"`
 }
 
 // GeneratedFile is one package file besides SKILL.md.
@@ -563,13 +593,13 @@ var ErrGenerateTruncated = errors.New("llmclient: generated skill was truncated 
 // the false positive.
 const truncationMarker = "generate model output was truncated at the token ceiling"
 
-// GenerateSkill asks the LLM service to write one Skill from a task description
-// (GEN-001). One call, no retry here: whether to try again is a decision made
-// against the validation report, which only exists after Go has packaged the
-// answer (iron rule 6, see skill/admission/generate.go).
-func (c *Client) GenerateSkill(ctx context.Context, taskDescription string) (*GenerateSkillResponse, error) {
-	resp, err := post[GenerateSkillRequest, GenerateSkillResponse](
-		ctx, c, "/v1/generate-skill", GenerateSkillRequest{TaskDescription: taskDescription})
+// GenerateSkill asks the LLM service to write one Skill from a task
+// description, a diagram, reference Skills, or a combination (GEN-001,
+// 02:GEN-005, 02:GEN-006). One call, no retry here: whether to try again is a
+// decision made against the validation report, which only exists after Go has
+// packaged the answer (iron rule 6, see skill/admission/generate.go).
+func (c *Client) GenerateSkill(ctx context.Context, req GenerateSkillRequest) (*GenerateSkillResponse, error) {
+	resp, err := post[GenerateSkillRequest, GenerateSkillResponse](ctx, c, "/v1/generate-skill", req)
 	if err != nil && strings.Contains(err.Error(), truncationMarker) {
 		return nil, fmt.Errorf("%w: %v", ErrGenerateTruncated, err)
 	}

@@ -403,6 +403,29 @@ export interface GenerateRejected extends CategorizedFindings {
 }
 
 /**
+ * 02:GEN-005 diagram input. `data` is base64 of the raw file bytes — decoded
+ * size is enforced server-side; `GENERATE_MAX_DIAGRAM_BYTES` in
+ * GenerateSkill.tsx is the client-side echo of the same ceiling.
+ */
+export interface GenerateDiagram {
+  media_type: "image/png" | "image/jpeg" | "image/webp";
+  data: string;
+}
+
+/**
+ * POST /skills/generate body (02:GEN-001/005/006). Every field is optional on
+ * the wire and at least one of `task_description`/`diagram` is required
+ * (422 otherwise, enforced server-side) — `generateSkill` omits absent keys
+ * rather than sending them as `undefined`.
+ */
+export interface GenerateSkillRequest {
+  task_description?: string;
+  diagram?: GenerateDiagram;
+  /** At most 3 (`GENERATE_MAX_REFERENCES` in GenerateSkill.tsx), reference-skill ids read as worked examples (02:GEN-006). */
+  reference_skill_ids?: string[];
+}
+
+/**
  * POST /skills/generate — ImportResult plus how it got here (GEN-001).
  *
  * It extends the import shape rather than restating it: a generated package IS

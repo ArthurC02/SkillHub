@@ -1,6 +1,6 @@
 # ADR-046：從任務描述生成 Skill——生成物是工作區私有，不是目錄的第四層
 
-- 狀態：Accepted
+- 狀態：Accepted（**決策 3 與決策 5 於 2026-09-05 由 [ADR-066](./ADR-066-generation-takes-a-diagram-or-reference-skills-as-input.md) 部分縮限**）
 - 日期：2026-08-23
 - 相關：[ADR-013](./ADR-013-intent-search-architecture.md)（檢索與無結果）、[ADR-016](./ADR-016-language-and-framework-selection.md)（Go／Python 分工）、[ADR-017](./ADR-017-model-gateway-and-llm-observability.md)（唯一模型閘道）、[ADR-021](./ADR-021-skill-license-provenance.md)（License 溯源）、[ADR-027](./ADR-027-download-artifact-shape-reproducibility-and-integrity.md)（四道鎖）、[ADR-028](./ADR-028-beta-admission-and-quota-enforcement-points.md)（配額強制點）、[ADR-044](./ADR-044-agent-skills-specification-conformance.md)（規格釘選）、[ADR-045](./ADR-045-self-supplied-content-is-not-redistribution.md)（同一把尺的第一個案例）、`01` §2.1／§7.3／§10／§12、`02` §4.9（`GEN-001`～`004`）、`03` §19、`04` 乙-21、丙-38
 

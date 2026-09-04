@@ -43,6 +43,9 @@ def test_generated_enrich_request_validates_the_internal_contract() -> None:
         # endpoint, and the new one was the one it did not.
         "GenerateSkillRequest",
         "GenerateSkillResponse",
+        # GEN-005/GEN-006: the two new nested shapes, same drift risk.
+        "GenerateDiagram",
+        "GenerateReference",
     ],
 )
 def test_runtime_transport_shape_matches_generated_contract(name: str) -> None:

@@ -5,6 +5,7 @@ path anchors the shape; the rest guard rules that exist because of a
 measurement and would otherwise degrade into "it still returns something".
 """
 
+import base64
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -266,3 +267,80 @@ def test_a_long_body_is_not_refused_for_being_long(capture):
     capture(json.dumps({**GOOD_SKILL, "body": "step " * 15_000}))
     r = client.post("/v1/generate-skill", json={"task_description": TASK})
     assert r.status_code == 200, r.text
+
+
+# GEN-005/GEN-006: diagram image and reference-skill input modes.
+
+DIAGRAM_DATA = base64.b64encode(b"\x89PNG fake bytes").decode("ascii")
+
+
+def test_diagram_only_sends_an_image_url_and_no_task_fence(capture):
+    """A diagram with no task_description is a legal request (at-least-one is
+    satisfied by the diagram alone), and the model sees the image with no
+    <untrusted_task_description> block at all - there is no task text to fence.
+    """
+    calls = capture(json.dumps(GOOD_SKILL))
+    r = client.post(
+        "/v1/generate-skill",
+        json={"diagram": {"media_type": "image/png", "data": DIAGRAM_DATA}},
+    )
+    assert r.status_code == 200, r.text
+
+    user = calls[0]["messages"][1]["content"]
+    assert isinstance(user, list)
+    image_part = next(p for p in user if p["type"] == "image_url")
+    assert image_part["image_url"]["url"] == f"data:image/png;base64,{DIAGRAM_DATA}"
+    text_part = next(p for p in user if p["type"] == "text")
+    assert generate.DATA_TAG not in text_part["text"]
+
+
+def test_a_reference_skill_md_is_fenced_under_its_own_tag_with_the_name_shown(capture):
+    calls = capture(json.dumps(GOOD_SKILL))
+    r = client.post(
+        "/v1/generate-skill",
+        json={
+            "task_description": TASK,
+            "references": [{"name": "invoice-ocr", "skill_md": "# invoice-ocr\n\nread receipts"}],
+        },
+    )
+    assert r.status_code == 200, r.text
+
+    user = calls[0]["messages"][1]["content"]
+    tag = generate.REFERENCE_TAG
+    assert "Reference: invoice-ocr" in user
+    assert f"<{tag}>\n# invoice-ocr\n\nread receipts\n</{tag}>" in user
+
+
+def test_neither_task_description_nor_diagram_is_422_without_touching_the_client(capture):
+    calls = capture(json.dumps(GOOD_SKILL))
+    r = client.post("/v1/generate-skill", json={})
+    assert r.status_code == 422
+    assert calls == []
+
+
+def test_a_diagram_over_the_byte_cap_is_422_without_touching_the_client(capture):
+    calls = capture(json.dumps(GOOD_SKILL))
+    oversized = base64.b64encode(b"x" * (generate.MAX_DIAGRAM_BYTES + 1)).decode("ascii")
+    r = client.post(
+        "/v1/generate-skill",
+        json={"diagram": {"media_type": "image/png", "data": oversized}},
+    )
+    assert r.status_code == 422
+    assert calls == []
+
+
+def test_four_references_is_422(capture):
+    calls = capture(json.dumps(GOOD_SKILL))
+    refs = [{"name": f"skill-{i}", "skill_md": "x"} for i in range(generate.MAX_REFERENCES + 1)]
+    r = client.post(
+        "/v1/generate-skill",
+        json={"task_description": TASK, "references": refs},
+    )
+    assert r.status_code == 422
+    assert calls == []
+
+
+def test_prompt_version_reported_is_v3(capture):
+    capture(json.dumps(GOOD_SKILL))
+    body = client.post("/v1/generate-skill", json={"task_description": TASK}).json()
+    assert body["prompt_version"] == "generate-skill/v3"

@@ -2,6 +2,9 @@ package apiserver_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -98,7 +101,7 @@ func TestGeneratedSkillLandsAsAVersionWithItsOwnProvenance(t *testing.T) {
 	c := a.login(t, "gen-owner")
 
 	task := "我每個月要把廠商寄來的掃描單據整理成一份表格交出去。"
-	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), task)
+	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: task})
 	if err != nil {
 		t.Fatalf("GenerateSkill: %v", err)
 	}
@@ -169,7 +172,7 @@ func TestGenerationRetriesExactlyOnce(t *testing.T) {
 	a := newAPIWithLLM(t, pool, stub.URL)
 	c := a.login(t, "gen-retry")
 
-	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), "把 PDF 轉成純文字。")
+	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: "把 PDF 轉成純文字。"})
 	if err != nil {
 		t.Fatalf("GenerateSkill: %v", err)
 	}
@@ -198,7 +201,7 @@ func TestPossibleSecretIsNotRetriedEndToEnd(t *testing.T) {
 	a := newAPIWithLLM(t, pool, stub.URL)
 	c := a.login(t, "gen-secret")
 
-	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), "幫我設定 AWS 憑證。")
+	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: "幫我設定 AWS 憑證。"})
 	if err != nil {
 		t.Fatalf("GenerateSkill: %v", err)
 	}
@@ -242,7 +245,7 @@ func TestAGeneratedSkillIsNotFoundBySearchIncludingItsOwnCreator(t *testing.T) {
 	c := a.login(t, "gen-hidden")
 
 	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c),
-		"Collate my zarquon widgets into one report.")
+		ingest.GenerateInput{TaskDescription: "Collate my zarquon widgets into one report."})
 	if err != nil || res.Report.Blocked {
 		t.Fatalf("GenerateSkill: %v %+v", err, res.Report.Findings)
 	}
@@ -284,7 +287,7 @@ func TestAForkOfAGeneratedSkillStaysGenerated(t *testing.T) {
 	a := newAPIWithLLM(t, pool, stub.URL)
 	c := a.login(t, "gen-forker")
 
-	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), "整理我的會議紀錄。")
+	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: "整理我的會議紀錄。"})
 	if err != nil || res.Report.Blocked {
 		t.Fatalf("GenerateSkill: %v %+v", err, res.Report.Findings)
 	}
@@ -314,7 +317,7 @@ func TestTheCatalogueDoesNotGenerateSkills(t *testing.T) {
 	c := a.login(t, "gen-curator")
 	markCatalog(t, pool, c.workspaceID)
 
-	_, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), "任何任務。")
+	_, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: "任何任務。"})
 	if !errors.Is(err, ingest.ErrGenerateNotForCatalogue) {
 		t.Fatalf("err = %v, want ErrGenerateNotForCatalogue", err)
 	}
@@ -458,7 +461,7 @@ func TestAGeneratedNameCollisionIsRefusedInBothDirections(t *testing.T) {
 			"SKILL.md": "---\nname: pdf-extract\ndescription: An uploaded one.\n---\n\nDo it.\n",
 		})
 
-		_, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), "抽出 PDF 文字。")
+		_, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"})
 		if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
 			t.Fatalf("err = %v, want ErrGeneratedNameCollision", err)
 		}
@@ -468,7 +471,7 @@ func TestAGeneratedNameCollisionIsRefusedInBothDirections(t *testing.T) {
 		stub := newGenerateStub(t, generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n"))
 		a := newAPIWithLLM(t, pool, stub.URL)
 		c := a.login(t, "gen-collide-b")
-		if _, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), "抽出 PDF 文字。"); err != nil {
+		if _, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"}); err != nil {
 			t.Fatalf("GenerateSkill: %v", err)
 		}
 
@@ -493,10 +496,10 @@ func TestAGeneratedNameCollisionIsRefusedInBothDirections(t *testing.T) {
 		a := newAPIWithLLM(t, pool, stub.URL)
 		c := a.login(t, "gen-collide-c")
 		ws := workspaceOf(t, pool, c)
-		if _, err := a.versions.GenerateSkill(context.Background(), ws, "抽出 PDF 文字。"); err != nil {
+		if _, err := a.versions.GenerateSkill(context.Background(), ws, ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"}); err != nil {
 			t.Fatalf("first GenerateSkill: %v", err)
 		}
-		_, err := a.versions.GenerateSkill(context.Background(), ws, "抽出 PDF 文字。")
+		_, err := a.versions.GenerateSkill(context.Background(), ws, ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"})
 		if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
 			t.Fatalf("second generation of the same name: err = %v, want ErrGeneratedNameCollision", err)
 		}
@@ -527,7 +530,7 @@ func TestAGeneratedNameCollisionIsRefusedInBothDirections(t *testing.T) {
 		a := newAPIWithLLM(t, pool, stub.URL)
 		c := a.login(t, "gen-collide-d")
 		ws := workspaceOf(t, pool, c)
-		res, err := a.versions.GenerateSkill(context.Background(), ws, "抽出 PDF 文字。")
+		res, err := a.versions.GenerateSkill(context.Background(), ws, ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"})
 		if err != nil {
 			t.Fatalf("GenerateSkill: %v", err)
 		}
@@ -888,6 +891,180 @@ func TestGenerationIsRateLimitedWhenALimiterIsConfigured(t *testing.T) {
 	t.Fatalf("five POSTs to /skills/generate against a burst of two never saw a 429: %v", codes)
 }
 
+// --- 02:GEN-005 (diagram) and 02:GEN-006 (reference skills), end to end ------
+
+// A diagram alone, no task description at all, still produces a version
+// (02:GEN-005). generation_inputs (0055, ADR-066) records the digest, media
+// type and size the diagram-only generation left behind — never the bytes.
+func TestADiagramOnlyGenerationIsCreated(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t, generatedSkill("diagram-only-flow", "# 流程圖轉來的技能\n\n1. 照圖示做。\n"))
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	c := a.login(t, "gen-diagram-only")
+
+	diagram := []byte("not a real png, just some bytes to hash")
+	body := `{"diagram":{"media_type":"image/png","data":"` + base64.StdEncoding.EncodeToString(diagram) + `"}}`
+	code, resp := postJSON(t, c, "/skills/generate", body)
+	if code != http.StatusCreated {
+		t.Fatalf("got %d %v, want 201", code, resp)
+	}
+	if stub.calls != 1 {
+		t.Errorf("model called %d times, want 1", stub.calls)
+	}
+
+	versionID, _ := resp["version_id"].(string)
+	var taskDescription string
+	var generationInputs []byte
+	if err := pool.QueryRow(context.Background(), `
+		SELECT s.task_description, s.generation_inputs
+		FROM skill_sources s JOIN skill_versions v ON v.source_id = s.id
+		WHERE v.id = $1`, mustUUID(t, versionID),
+	).Scan(&taskDescription, &generationInputs); err != nil {
+		t.Fatal(err)
+	}
+	if taskDescription != "" {
+		t.Errorf("task_description = %q, want empty: no description was given", taskDescription)
+	}
+	sum := sha256.Sum256(diagram)
+	var got struct {
+		Diagram struct {
+			MediaType string `json:"media_type"`
+			SHA256    string `json:"sha256"`
+			Bytes     int    `json:"bytes"`
+		} `json:"diagram"`
+	}
+	if err := json.Unmarshal(generationInputs, &got); err != nil {
+		t.Fatalf("generation_inputs did not decode: %v (%s)", err, generationInputs)
+	}
+	if got.Diagram.MediaType != "image/png" || got.Diagram.Bytes != len(diagram) ||
+		got.Diagram.SHA256 != hex.EncodeToString(sum[:]) {
+		t.Errorf("generation_inputs.diagram = %+v, want media_type/bytes/sha256 of the sent image", got.Diagram)
+	}
+	if strings.Contains(string(generationInputs), base64.StdEncoding.EncodeToString(diagram)) {
+		t.Error("the image bytes themselves leaked into generation_inputs")
+	}
+}
+
+// A reference from the caller's own workspace: 201, and its SKILL.md reached
+// the model (the stub answers regardless of what it received; the assertion
+// that matters is what got persisted) while generation_inputs names the
+// resolved skill and version (02:GEN-006, ADR-066).
+func TestAReferenceFromTheCallersOwnWorkspaceIsUsed(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t, generatedSkill("built-from-a-reference", "# 參考既有 Skill\n\n1. 照範例做。\n"))
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	c := a.login(t, "gen-reference-own")
+
+	refSkillID, refVersionID := importFiles(t, a, pool, c, map[string]string{
+		"SKILL.md": "---\nname: reference-source\ndescription: An existing skill to read as a worked example.\n---\n\nDo the thing well.\n",
+	})
+
+	body := `{"task_description":"照現有 Skill 的風格再做一個。","reference_skill_ids":["` + refSkillID + `"]}`
+	code, resp := postJSON(t, c, "/skills/generate", body)
+	if code != http.StatusCreated {
+		t.Fatalf("got %d %v, want 201", code, resp)
+	}
+
+	versionID, _ := resp["version_id"].(string)
+	var generationInputs []byte
+	if err := pool.QueryRow(context.Background(), `
+		SELECT s.generation_inputs FROM skill_sources s JOIN skill_versions v ON v.source_id = s.id
+		WHERE v.id = $1`, mustUUID(t, versionID),
+	).Scan(&generationInputs); err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		References []struct {
+			SkillID   string `json:"skill_id"`
+			VersionID string `json:"version_id"`
+			Name      string `json:"name"`
+		} `json:"references"`
+	}
+	if err := json.Unmarshal(generationInputs, &got); err != nil {
+		t.Fatalf("generation_inputs did not decode: %v (%s)", err, generationInputs)
+	}
+	if len(got.References) != 1 || got.References[0].SkillID != refSkillID ||
+		got.References[0].VersionID != refVersionID || got.References[0].Name != "reference-source" {
+		t.Errorf("generation_inputs.references = %+v, want one entry naming %s/%s", got.References, refSkillID, refVersionID)
+	}
+}
+
+// A reference id naming another user's private skill is refused (422): scope
+// is the caller's own workspace plus the public catalogue, the same order
+// Fork uses, and this skill is in neither (02:GEN-006).
+func TestAReferenceToAnotherUsersPrivateSkillIs422(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t) // no answers queued: a gateway call fails the test
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	owner := a.login(t, "gen-ref-owner")
+	other := a.login(t, "gen-ref-other")
+
+	privateSkillID, _ := importFiles(t, a, pool, owner, map[string]string{
+		"SKILL.md": "---\nname: someone-elses-skill\ndescription: Not yours to read.\n---\n\nPrivate.\n",
+	})
+
+	body := `{"task_description":"照別人的 Skill 做一個。","reference_skill_ids":["` + privateSkillID + `"]}`
+	code, resp := postJSON(t, other, "/skills/generate", body)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("got %d %v, want 422", code, resp)
+	}
+	msg, _ := resp["error"].(string)
+	if strings.Contains(msg, "someone-elses-skill") || strings.Contains(msg, privateSkillID) {
+		t.Errorf("the refusal named the private skill: %q", msg)
+	}
+	if stub.calls != 0 {
+		t.Errorf("an unresolvable reference still paid for %d gateway call(s)", stub.calls)
+	}
+}
+
+// A catalogue skill under `redistribution = blocked` is refused as a
+// reference (422), the same word 02:GEN-006 names alongside taken-down and
+// access-restricted.
+func TestABlockedRedistributionCatalogueSkillIs422(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t) // no answers queued: a gateway call fails the test
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	curator := a.login(t, "gen-ref-curator")
+	markCatalog(t, pool, curator.workspaceID)
+	blockedSkillID, _ := importFiles(t, a, pool, curator, map[string]string{
+		"SKILL.md": "---\nname: blocked-catalogue-skill\ndescription: Under a redistribution hold.\n---\n\nContent.\n",
+	})
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE skills SET redistribution = 'blocked' WHERE id = $1", mustUUID(t, blockedSkillID),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	caller := a.login(t, "gen-ref-caller")
+	body := `{"task_description":"照目錄裡的 Skill 做一個。","reference_skill_ids":["` + blockedSkillID + `"]}`
+	code, resp := postJSON(t, caller, "/skills/generate", body)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("got %d %v, want 422", code, resp)
+	}
+	if stub.calls != 0 {
+		t.Errorf("a blocked reference still paid for %d gateway call(s)", stub.calls)
+	}
+}
+
+// Bad base64 in `diagram.data` is a 400, before anything is called
+// (02:GEN-005's contract: "not base64, over the byte cap, or a media type
+// outside the three accepted").
+func TestBadBase64DiagramDataIs400(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t) // no answers queued: a gateway call fails the test
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	c := a.login(t, "gen-bad-base64")
+
+	code, resp := postJSON(t, c, "/skills/generate",
+		`{"diagram":{"media_type":"image/png","data":"not valid base64!!"}}`)
+	if code != http.StatusBadRequest {
+		t.Fatalf("got %d %v, want 400", code, resp)
+	}
+	if stub.calls != 0 {
+		t.Errorf("bad base64 still paid for %d gateway call(s)", stub.calls)
+	}
+}
+
 // The one generation with no fake on any leg (GEN-008, `04` 丙-53, `05` R-10).
 //
 // Every other test above queues its own `usage` block, so what they prove is
@@ -923,7 +1100,7 @@ func TestARealGatewayGenerationRecordsWhatItActuallyCost(t *testing.T) {
 	c := a.login(t, "gen-real-gateway")
 
 	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c),
-		"我每個月要把廠商寄來的掃描單據整理成一份表格交出去。")
+		ingest.GenerateInput{TaskDescription: "我每個月要把廠商寄來的掃描單據整理成一份表格交出去。"})
 	if err != nil {
 		t.Fatalf("GenerateSkill against a real gateway: %v", err)
 	}

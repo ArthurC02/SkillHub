@@ -58,6 +58,14 @@ type Service struct {
 	// each. Zero value is ready to use; see GenerateSkill for what it bounds and
 	// what it deliberately does not.
 	generating sync.Map
+	// References resolves a 02:GEN-006 reference skill id to its Skill/Version
+	// facts. Nil disables reference-based generation: a request naming any
+	// reference id is refused (ErrReferenceUnavailable) rather than silently
+	// generating without them, because "your references were dropped" is not a
+	// thing GenerateSkill's caller can tell from a 201. *registry.Service already
+	// satisfies this (apiserver/app.go wires it in; ADR-034 injection, not an
+	// import — see ReferenceReader).
+	References ReferenceReader
 }
 
 // SkillProjection is the complete search data produced by ingest.
@@ -166,6 +174,12 @@ type sourceMeta struct {
 	CostUSD          *float64
 	PromptTokens     int64
 	CompletionTokens int64
+	// GenerationInputs is 0055's `skill_sources.generation_inputs` (ADR-066):
+	// {"diagram":{media_type,sha256,bytes},"references":[{skill_id,version_id,name}]},
+	// marshalled by admission/generate.go's marshalGenerationInputs. nil unless
+	// a diagram or reference skills were behind this generation — the image
+	// BYTES are never stored anywhere, only their digest and size.
+	GenerationInputs []byte
 }
 
 // UploadZip validates data as an Agent Skills package and, if it passes,
@@ -529,6 +543,7 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		TaskDescription:        src.TaskDescription,
 		GeneratorModel:         src.GeneratorModel,
 		GeneratorPromptVersion: src.GeneratorPromptVersion,
+		GenerationInputs:       src.GenerationInputs,
 	})
 	if err != nil {
 		return registry.Version{}, false, err

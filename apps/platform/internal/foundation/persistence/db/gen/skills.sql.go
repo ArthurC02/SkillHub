@@ -206,7 +206,7 @@ func (q *Queries) GetSkillEnrichment(ctx context.Context, arg GetSkillEnrichment
 }
 
 const getSkillSource = `-- name: GetSkillSource :one
-SELECT id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version, content_changed_at FROM skill_sources
+SELECT id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version, content_changed_at, generation_inputs FROM skill_sources
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -238,6 +238,7 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 		&i.GeneratorModel,
 		&i.GeneratorPromptVersion,
 		&i.ContentChangedAt,
+		&i.GenerationInputs,
 	)
 	return i, err
 }

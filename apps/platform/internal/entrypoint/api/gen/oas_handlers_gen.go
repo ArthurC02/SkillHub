@@ -4497,6 +4497,14 @@ func (s *Server) handleForkSkillRequest(args [1]string, argsEscaped bool, w http
 // must read that field rather than probing here — an entry point that has to be discovered by a
 // failed request has already been drawn.
 //
+// Three ways in, one path out (ADR-066). The input is a task description in the user's own words
+// (GEN-001), a flowchart or diagram image (GEN-005), or both together; and any of those may name up to
+// three existing Skills the user found by searching, which the model reads as worked examples and not
+// as bytes to copy (GEN-006). Whatever the input shape, the output is the same: one new Skill, version
+// 1, `redistribution = generated`, and a provenance row that names every input. At least one of
+// `task_description` and `diagram` must be present; references alone are refused (422), because "make
+// me one like this" with nothing said about the task is a fork, and Fork already exists.
+//
 // Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation.
 // Nothing inside the produced package is ever executed, and it goes through exactly the validation
 // path an upload does. A blocking finding after one retry rejects the whole thing and creates no
@@ -4641,7 +4649,7 @@ func (s *Server) handleGenerateSkillRequest(args [0]string, argsEscaped bool, w 
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GenerateSkillOperation,
-			OperationSummary: "Generate a Skill from a task description (GEN-001)",
+			OperationSummary: "Generate a Skill from a task description, a diagram, or both, optionally guided by existing Skills (GEN-001, GEN-005, GEN-006)",
 			OperationID:      "generateSkill",
 			Body:             request,
 			RawBody:          rawBody,

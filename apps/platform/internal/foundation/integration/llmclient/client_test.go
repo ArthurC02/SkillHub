@@ -155,7 +155,8 @@ func TestTruncationComesBackAsItsOwnError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			_, err := (&Client{BaseURL: srv.URL}).GenerateSkill(context.Background(), "任何任務")
+			_, err := (&Client{BaseURL: srv.URL}).GenerateSkill(context.Background(),
+				GenerateSkillRequest{TaskDescription: "任何任務"})
 			if err == nil {
 				t.Fatal("a 502 came back as success")
 			}

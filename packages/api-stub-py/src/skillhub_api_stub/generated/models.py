@@ -409,10 +409,27 @@ class TargetFile(BaseModel):
     content: constr(max_length=60000)
 
 
-class GenerateSkillRequest(BaseModel):
-    task_description: constr(min_length=8, max_length=4000) = Field(
+class MediaType(Enum):
+    image_png = 'image/png'
+    image_jpeg = 'image/jpeg'
+    image_webp = 'image/webp'
+
+
+class GenerateDiagram(BaseModel):
+    media_type: MediaType
+    data: str = Field(
         ...,
-        description='What the user wants done, in their own words. Not a Skill name and\nnot a query - the whole point of GEN-001 is that the user does not\nhave to know what a Skill is (01 §2.1 學習者).\n\nGo refuses blank and unintelligible input before this call, so the\nlength floor here is a backstop and not the product rule\n(02:GEN-001, same discipline as DISC-001).\n',
+        description='Standard base64; the decoded size cap is `x-max-decoded-bytes`.',
+    )
+
+
+class GenerateReference(BaseModel):
+    name: str = Field(
+        ...,
+        description="The skill's name, so the model can say which one it took a convention from.",
+    )
+    skill_md: constr(max_length=20000) = Field(
+        ..., description="The latest version's SKILL.md, frontmatter included, as text."
     )
 
 
@@ -558,6 +575,19 @@ class MatchReasonsResponse(BaseModel):
     usage: Optional[GatewayUsage] = Field(
         None,
         description='What the batch cost at the gateway. Optional, same rule as\nJudgeRunResponse.usage. Reported even when `reasons` is empty: an\nanswer the service could not use was still a paid call.\n',
+    )
+
+
+class GenerateSkillRequest(BaseModel):
+    task_description: Optional[constr(min_length=8, max_length=4000)] = Field(
+        None,
+        description='What the user wants done, in their own words. Not a Skill name and\nnot a query - the whole point of GEN-001 is that the user does not\nhave to know what a Skill is (01 §2.1 學習者).\n\nGo refuses blank and unintelligible input before this call, so the\nlength floor here is a backstop and not the product rule\n(02:GEN-001, same discipline as DISC-001). Absent when the diagram\nis the whole input (GEN-005).\n',
+    )
+    diagram: Optional[GenerateDiagram] = None
+    references: Optional[List[GenerateReference]] = Field(
+        None,
+        description="Existing Skills the model reads before writing (GEN-006). Content,\nnot ids: Go has already decided these may be read and has fetched\nthe latest version's SKILL.md. Each is fenced as untrusted data\nunder its own tag, and the prompt says what a reference is for —\nshape, level of detail, conventions — and what it is not: the\nanswer. A reference longer than the cap is cut by Go before it\narrives, and the cut is marked, so the model is never shown half a\nfile as if it were whole.\n",
+        max_length=3,
     )
 
 

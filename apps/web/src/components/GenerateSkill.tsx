@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import { useGenerateFailures, useGenerateSkill } from "../api/generate";
 import { isCategorizedFindings } from "../api/import";
-import type { GenerateRejected } from "../api/types";
+import { useSkillSearch } from "../api/skills";
+import { useOwnSkills } from "../api/testcases";
+import type { GenerateDiagram, GenerateRejected } from "../api/types";
 import { Findings } from "./Findings";
 import { GeneratedNotice } from "./GeneratedNotice";
 import { failureSentence } from "./generateFailureSentence";
@@ -77,40 +79,103 @@ const GENERATE_COST_HIGH_USD = 0.03;
  */
 const GENERATE_FAILURE_LIMIT = 20; // one-number: generateFailureLimit
 
+/**
+ * 02:GEN-005's ceiling on the diagram upload — decoded bytes, enforced by
+ * admission (`generateMaxDiagramBytes`). Checked here against `File.size`
+ * directly: the browser holds the same bytes the server decodes, there is no
+ * base64 step on this side of the wire that would change the count.
+ */
+const GENERATE_MAX_DIAGRAM_BYTES = 4000000; // one-number: generateMaxDiagramBytes
+const GENERATE_DIAGRAM_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+
+/** 02:GEN-006's ceiling on reference Skills read as worked examples. */
+const GENERATE_MAX_REFERENCES = 3; // one-number: generateMaxReferences
+
 export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
   const [task, setTask] = useState(initialTask);
+  const [diagram, setDiagram] = useState<GenerateDiagram>();
+  const [diagramName, setDiagramName] = useState("");
+  const [diagramError, setDiagramError] = useState("");
+  const [references, setReferences] = useState<{ id: string; name: string }[]>([]);
   const [rejected, setRejected] = useState<GenerateRejected>();
   const queryClient = useQueryClient();
   const mutation = useGenerateSkill();
 
+  function handleDiagramChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setDiagramError("");
+    if (!file) return;
+    if (!GENERATE_DIAGRAM_TYPES.includes(file.type as (typeof GENERATE_DIAGRAM_TYPES)[number])) {
+      setDiagramError("圖片格式需為 PNG、JPEG 或 WebP。");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > GENERATE_MAX_DIAGRAM_BYTES) {
+      setDiagramError("圖片超過大小上限，請換一張較小的圖。");
+      event.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result);
+      setDiagram({
+        media_type: file.type as GenerateDiagram["media_type"],
+        data: result.slice(result.indexOf(",") + 1),
+      });
+      setDiagramName(file.name);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeDiagram() {
+    setDiagram(undefined);
+    setDiagramName("");
+    setDiagramError("");
+  }
+
+  function toggleReference(id: string, name: string) {
+    setReferences((prev) => {
+      if (prev.some((r) => r.id === id)) return prev.filter((r) => r.id !== id);
+      if (prev.length >= GENERATE_MAX_REFERENCES) return prev;
+      return [...prev, { id, name }];
+    });
+  }
+
   const submit = () => {
     setRejected(undefined);
-    mutation.mutate(task, {
-      onSuccess: async () => {
-        // The workspace list's key, not ["skills"]. The wrong key did two
-        // things: left the list on /workspace/skills stale after a success,
-        // and on Home matched ["skills","search",…] — re-running the search
-        // and writing a second search_performed analytics event per success,
-        // which is the funnel number the ⛔ boundary exists to protect.
-        await queryClient.invalidateQueries({ queryKey: ["own-skills"] });
+    mutation.mutate(
+      {
+        task_description: task.trim() ? task : undefined,
+        diagram,
+        reference_skill_ids: references.length ? references.map((r) => r.id) : undefined,
       },
-      onSettled: async () => {
-        // Both ways: a failure adds a row, and a success does not — but the
-        // list is stale either way once a generation has been attempted.
-        await queryClient.invalidateQueries({ queryKey: ["generate", "failures"] });
+      {
+        onSuccess: async () => {
+          // The workspace list's key, not ["skills"]. The wrong key did two
+          // things: left the list on /workspace/skills stale after a success,
+          // and on Home matched ["skills","search",…] — re-running the search
+          // and writing a second search_performed analytics event per success,
+          // which is the funnel number the ⛔ boundary exists to protect.
+          await queryClient.invalidateQueries({ queryKey: ["own-skills"] });
+        },
+        onSettled: async () => {
+          // Both ways: a failure adds a row, and a success does not — but the
+          // list is stale either way once a generation has been attempted.
+          await queryClient.invalidateQueries({ queryKey: ["generate", "failures"] });
+        },
+        onError: (error) => {
+          // The categorised 422 is the package's own findings, verbatim, exactly
+          // as a failed import renders them (02:GEN-003). The uncategorised one is
+          // a refusal around the model call — blank input, no allowance left,
+          // output truncated — and has a sentence instead.
+          setRejected(
+            error instanceof ApiError && isCategorizedFindings(error.body)
+              ? (error.body as GenerateRejected)
+              : undefined,
+          );
+        },
       },
-      onError: (error) => {
-        // The categorised 422 is the package's own findings, verbatim, exactly
-        // as a failed import renders them (02:GEN-003). The uncategorised one is
-        // a refusal around the model call — blank input, no allowance left,
-        // output truncated — and has a sentence instead.
-        setRejected(
-          error instanceof ApiError && isCategorizedFindings(error.body)
-            ? (error.body as GenerateRejected)
-            : undefined,
-        );
-      },
-    });
+    );
   };
 
   return (
@@ -128,6 +193,37 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         value={task}
         onChange={(e) => setTask(e.target.value)}
         placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
+        disabled={mutation.isPending}
+      />
+
+      {/*
+        02:GEN-005. `<input type="file">` shape copied from VersionUpload.tsx —
+        this is the same "read a File, refuse it client-side before it ever
+        reaches a request" pattern, just against an image type/size ceiling
+        instead of a zip one.
+      */}
+      <label htmlFor="generate-diagram-file">流程圖或架構圖（選填）</label>
+      <input
+        id="generate-diagram-file"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        disabled={mutation.isPending}
+        onChange={handleDiagramChange}
+      />
+      <p className="note">圖片會傳給模型參考，平台不會保留圖片本身，只留下它的雜湊。</p>
+      {diagramError && <p role="alert">{diagramError}</p>}
+      {diagram && (
+        <p>
+          已選擇 {diagramName}{" "}
+          <button type="button" onClick={removeDiagram} disabled={mutation.isPending}>
+            移除
+          </button>
+        </p>
+      )}
+
+      <ReferencePicker
+        references={references}
+        onToggle={toggleReference}
         disabled={mutation.isPending}
       />
 
@@ -156,7 +252,11 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         </dd>
       </dl>
 
-      <button type="button" onClick={submit} disabled={mutation.isPending || task.trim() === ""}>
+      <button
+        type="button"
+        onClick={submit}
+        disabled={mutation.isPending || (task.trim() === "" && !diagram)}
+      >
         {mutation.isPending ? "生成中…" : "生成一個 Skill"}
       </button>
 
@@ -175,6 +275,153 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
 
       <GenerateHistory />
     </section>
+  );
+}
+
+/**
+ * 02:GEN-006: pick up to three Skills for the model to read as worked
+ * examples. Two sources, same reason `useOwnSkills` is a second call rather
+ * than a client-side filter of the search results: `useSkillSearch` is the
+ * public catalogue (DISC-001, no session required) and does not include a
+ * private, unpublished Skill the caller owns — the two lists answer different
+ * questions about the same query text.
+ *
+ * The query is local state and debounced, not the URL: unlike Home's search
+ * this picker has no shareable result page, only a selection that feeds one
+ * submit.
+ */
+function ReferencePicker({
+  references,
+  onToggle,
+  disabled,
+}: {
+  references: { id: string; name: string }[];
+  onToggle: (id: string, name: string) => void;
+  disabled: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const searching = debounced.length > 0;
+  const search = useSkillSearch(debounced, {}, searching);
+  const ownSkills = useOwnSkills();
+  const ownMatches = searching
+    ? (ownSkills.data?.skills ?? []).filter(
+        (s) =>
+          s.name.toLowerCase().includes(debounced.toLowerCase()) ||
+          s.summary.toLowerCase().includes(debounced.toLowerCase()),
+      )
+    : [];
+
+  const atLimit = references.length >= GENERATE_MAX_REFERENCES;
+  const selectedIds = new Set(references.map((r) => r.id));
+
+  return (
+    <div>
+      <label htmlFor="generate-reference-query">搜尋要參考的 Skill</label>
+      <input
+        id="generate-reference-query"
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="輸入名稱或關鍵字"
+        disabled={disabled}
+      />
+      <p className="note">
+        模型會把最多 {GENERATE_MAX_REFERENCES} 個你選的 Skill 的 SKILL.md
+        當範例讀，產出仍是你工作區裡一個全新的 Skill。
+      </p>
+
+      {references.length > 0 && (
+        <ul className="badge-row" aria-label="已選的參考 Skill">
+          {references.map((r) => (
+            <li key={r.id}>
+              <button type="button" onClick={() => onToggle(r.id, r.name)} disabled={disabled}>
+                {r.name} ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {atLimit && (
+        <p className="note" id="generate-reference-limit">
+          已經選滿 {GENERATE_MAX_REFERENCES} 個，取消一個才能改選別的。
+        </p>
+      )}
+
+      {searching && (
+        <>
+          <h3>搜尋結果</h3>
+          {search.isFetching && <p className="note">搜尋中…</p>}
+          <ul className="search-results">
+            {(search.data?.results ?? []).map((hit) => (
+              <ReferenceRow
+                key={hit.skill_id}
+                skillId={hit.skill_id}
+                name={hit.name}
+                summary={hit.summary}
+                className="search-result"
+                checked={selectedIds.has(hit.skill_id)}
+                disabled={disabled || (!selectedIds.has(hit.skill_id) && atLimit)}
+                onToggle={() => onToggle(hit.skill_id, hit.name)}
+              />
+            ))}
+          </ul>
+          <h3>我的 Skill</h3>
+          <ul className="search-results">
+            {ownMatches.map((s) => (
+              <ReferenceRow
+                key={s.skill_id}
+                skillId={s.skill_id}
+                name={s.name}
+                summary={s.summary}
+                className="download-item"
+                checked={selectedIds.has(s.skill_id)}
+                disabled={disabled || (!selectedIds.has(s.skill_id) && atLimit)}
+                onToggle={() => onToggle(s.skill_id, s.name)}
+              />
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ReferenceRow({
+  name,
+  summary,
+  className,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  skillId: string;
+  name: string;
+  summary: string;
+  className: string;
+  checked: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <li className={className}>
+      <label>
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          aria-describedby={disabled && !checked ? "generate-reference-limit" : undefined}
+          onChange={onToggle}
+        />
+        {name}
+      </label>
+      <p className="note">{summary}</p>
+    </li>
   );
 }
 
