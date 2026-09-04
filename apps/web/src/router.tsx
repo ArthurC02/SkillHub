@@ -93,6 +93,19 @@ function RootLayout() {
           {" ｜ "}
           <Link to="/workspace/account">帳號與刪除</Link>
         </p>
+        {/*
+          資訊架構 IA-11 (2026-09-04). Nothing on any page said which build the
+          reader was looking at, and 04 already records one "green on windows,
+          red on ubuntu" incident; a closed-beta report of 「這一頁怪怪的」 with no
+          build behind it cannot be reproduced. An identifier, so §2.6 folds it
+          — a `<details>` whose summary names what it hides — and it is injected
+          at build time (vite.config.ts), never fetched: the page must be able
+          to say what it is even when the API is down.
+        */}
+        <details className="note">
+          <summary>Build 識別碼</summary>
+          <code>{import.meta.env.VITE_BUILD_ID ?? "未由建置注入（本機開發）"}</code>
+        </details>
       </footer>
     </div>
   );

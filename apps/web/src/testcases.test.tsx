@@ -631,3 +631,13 @@ test("丙-121 a test case whose skill is gone says it is gone, not that you may 
   // And the id is still not what a reader is shown in place of a name.
   expect(text).not.toContain(SKILL);
 });
+
+test("§2.12 第 6 條 執行歷史 with a run still going says how old the list is and can be refreshed", async () => {
+  stubPlatform({ runs: [{ ...RUN, status: "running", finished_at: undefined }] });
+  await render();
+  await waitFor(() => (container.textContent ?? "").includes("上次取得於"));
+
+  const refresh = button("重新整理");
+  expect(refresh, "no visible refresh control on a history with a running row").toBeTruthy();
+  expect(refresh.closest("p")!.querySelector("time")).not.toBeNull();
+});

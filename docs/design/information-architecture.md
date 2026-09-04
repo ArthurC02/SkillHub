@@ -128,7 +128,7 @@
 | --- | --- | --- |
 | 標題 | `Skill Hub` | `/` |
 | 主要導覽（`<nav aria-label="主要導覽">`） | 我的 Skill、Run 歷史、匯入 Skill、Test Case、下載紀錄 | `/workspace/skills`、`/workspace/runs`、`/workspace/import`、`/lab/test-cases`、`/workspace/downloads` |
-| 頁尾 | 回報問題（面板，非路由）、資料保存政策、帳號與刪除 | `/policy`、`/workspace/account` |
+| 頁尾 | 回報問題（面板，非路由）、資料保存政策、帳號與刪除、**Build 識別碼**（`<details>`，非路由；IA-11，2026-09-04） | `/policy`、`/workspace/account` |
 | 右上 | `AuthControls`（未登入時是「使用 GitHub 登入」） | 外部 `/auth/github/login` |
 
 「你在哪裡」不靠 `activeProps`：router 自己在相符的連結上標 `data-status="active"` 與 `aria-current="page"`，視覺與語意各一半，樣式在 `index.css` 的 `.app-nav`。
@@ -400,7 +400,9 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 
 **誰能決定**：不需要產品負責人，是技術題。
 
-### IA-11（2026-09-04 新增，未裁定）：畫面上沒有任何地方說出這是哪一個 build
+### IA-11 ✅ 已解決（2026-09-04，入列當日負責人指示「著手調整」）：畫面上沒有任何地方說出這是哪一個 build
+
+**落地**：`RootLayout` 頁尾多一個 `<details>`，`<summary>` 是「Build 識別碼」、內容是 `<code>`；值在建置時由 `vite.config.ts` 的 `define` 注入 `VITE_BUILD_ID`——CI 取 `GITHUB_SHA` 前 12 碼，本機建置取 `git rev-parse` 並在字串裡說出「本機建置，未經 CI」，兩者都沒有時是一句具名的缺席而不是空字串（§2.9）。不新增路由、不新增導覽項（R7 不受影響）；`App.test.tsx` 斷言它存在、預設收合、`<code>` 非空。要不要進封測回報單仍是負責人的事，本檔不代簽。原文保留在下面。
 
 **這一項是拿別人的畫面對照出來的**：另一個團隊的內部平台在側欄標題下方印著自己的版本字串（`v0.0.0-deploy-tui-dev-…`）。我們的 `RootLayout` 沒有——標題、導覽、頁尾（§2.1）三處都沒有一個字說出使用者看到的是哪一個 build。
 

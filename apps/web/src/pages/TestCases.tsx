@@ -21,6 +21,8 @@ import {
 } from "../api/testcases";
 import { useRuns, type RunListItem } from "../api/runs";
 import { RunVerdict } from "../components/RunVerdict";
+import { ListFreshness } from "../components/ListFreshness";
+import { IN_FLIGHT_RUN_STATUSES } from "../api/trace";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { runStatusLabel } from "./RunEvaluation";
 // One byte formatter for the app, not a third copy of the same four lines.
@@ -406,6 +408,15 @@ function RunHistory({
       </p>
       {runs.isPending && <Loading what="執行歷史" />}
       <ReadFailure error={runs.error} what="執行歷史" />
+      {/* 設計 §2.12 第 6 條: a list with a running row is an in-flight screen. */}
+      {runs.data && (
+        <ListFreshness
+          inFlight={history.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
+          updatedAt={runs.dataUpdatedAt}
+          fetching={runs.isFetching && !runs.isFetchingNextPage}
+          refetch={runs.refetch}
+        />
+      )}
       {runs.data &&
         (history.length === 0 ? (
           <p>尚無執行。這個 Test Case 還沒有跑過任何 Run。</p>

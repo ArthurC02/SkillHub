@@ -5,6 +5,8 @@ import { Link } from "@tanstack/react-router";
 import { useRuns, type RunListItem } from "../api/runs";
 import { runStatusLabel } from "./RunEvaluation";
 import { RunVerdict } from "../components/RunVerdict";
+import { ListFreshness } from "../components/ListFreshness";
+import { IN_FLIGHT_RUN_STATUSES } from "../api/trace";
 
 /**
  * 02:WS-002 第 1 條「Run 歷史」, served by GET /runs (WS-004).
@@ -38,6 +40,15 @@ export function WorkspaceRuns() {
 
       {runs.isPending && <Loading what=" Run 歷史" />}
       <ReadFailure error={runs.error} what=" Run 歷史" />
+      {/* 設計 §2.12 第 6 條: a list with a running row is an in-flight screen. */}
+      {runs.data && (
+        <ListFreshness
+          inFlight={rows.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
+          updatedAt={runs.dataUpdatedAt}
+          fetching={runs.isFetching && !runs.isFetchingNextPage}
+          refetch={runs.refetch}
+        />
+      )}
 
       {runs.data &&
         (rows.length === 0 ? (

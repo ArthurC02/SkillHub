@@ -1334,3 +1334,43 @@ test("丙-116 the one action that does work is a named section, not a bare butto
   // r4 B2 的「以這個 Skill 為起點建立我自己的」，端點與行為一字未改。）
   expect(button("以這個 Skill 為起點建立我自己的")).not.toBeUndefined();
 });
+
+// --- 設計 §2.12 第 6 條: a list with a running row is an in-flight screen -----
+
+test("§2.12 第 6 條 a run history with a run still going says how old it is and can be refreshed", async () => {
+  const fetchSpy = vi.fn(() =>
+    json({
+      runs: [
+        RUN_ROW,
+        {
+          ...RUN_ROW,
+          run_id: "run-live",
+          status: "running",
+          finished_at: undefined,
+          evaluation: { value: "not_evaluated", label: "未評估", note: "還在跑。" },
+        },
+      ],
+    }),
+  );
+  vi.stubGlobal("fetch", fetchSpy);
+  await render(<WorkspaceRuns />, () => text().includes("上次取得於"));
+
+  const refresh = button("重新整理");
+  expect(refresh, "no visible refresh control on a list with a running row").toBeTruthy();
+  // 「多久沒動了」 is a <time>, not a sentence: the same element every other
+  // timestamp in the app uses, so it is machine-readable and relative.
+  const freshness = refresh!.closest("p")!;
+  expect(freshness.querySelector("time")).not.toBeNull();
+
+  const before = fetchSpy.mock.calls.length;
+  await act(async () => refresh!.click());
+  await waitFor(() => fetchSpy.mock.calls.length > before);
+});
+
+test("§2.12 第 6 條 a run history with nothing running carries no refresh control", async () => {
+  vi.stubGlobal("fetch", () => json({ runs: [RUN_ROW] }));
+  await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
+
+  expect(button("重新整理")).toBeUndefined();
+  expect(text()).not.toContain("上次取得於");
+});
