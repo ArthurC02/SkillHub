@@ -146,7 +146,7 @@ func TestAccountDeletionGraceIsCancellable(t *testing.T) {
 	}
 	// WS-002/PDM-006 6.1: the scope has to be stated before the deletion, and
 	// it has to admit that forked versions survive without the user's identity.
-	if scope, _ := body["scope"].(string); !strings.Contains(scope, "forked") {
+	if scope, _ := body["scope"].(string); !strings.Contains(scope, "Fork 過") {
 		t.Fatalf("DELETE /me did not state the deletion scope: %v", body["scope"])
 	}
 	if body["purge_after"] == "" || body["purge_after"] == nil {

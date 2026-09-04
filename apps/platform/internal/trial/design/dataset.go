@@ -37,10 +37,10 @@ import (
 func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID, fileName string, data []byte) (gen.Dataset, error) {
 	name := sanitizeFileName(fileName)
 	if name == "" {
-		return gen.Dataset{}, fmt.Errorf("%w: file name is required", ErrInvalid)
+		return gen.Dataset{}, fmt.Errorf("%w: 檔案需要有檔名", ErrInvalid)
 	}
 	if len(data) == 0 {
-		return gen.Dataset{}, fmt.Errorf("%w: file is empty", ErrInvalid)
+		return gen.Dataset{}, fmt.Errorf("%w: 檔案是空的", ErrInvalid)
 	}
 	if len(data) > MaxFileBytes {
 		return gen.Dataset{}, fmt.Errorf("%w: 檔案超過 %s", ErrLimitExceeded, humanMB(MaxFileBytes))

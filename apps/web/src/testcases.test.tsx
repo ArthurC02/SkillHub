@@ -121,7 +121,12 @@ function stubPlatform(over: Overrides = {}) {
     }
     if (path === "/test-cases") return json({ test_cases: over.testCases ?? [] });
     if (init?.method === "DELETE" && path === `/test-cases/${TEST_CASE}`)
-      return json({ deleted: true, datasets_deleted: 2, note: "server note" });
+      return json({
+        deleted: true,
+        datasets_deleted: 2,
+        // 04 丙-143 的規矩：抄 trial/design/http.go Delete 真的回的句子。
+        note: "Test Case 與它上傳的檔案已移除，檔案本身也刪了；過去 Run 的快照仍保留 Prompt、驗收條件，以及每個檔案的檔名與內容雜湊。",
+      });
     return json(over.testCase ?? draft);
   });
 

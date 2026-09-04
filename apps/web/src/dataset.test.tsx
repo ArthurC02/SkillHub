@@ -30,8 +30,12 @@ const LIMITS = {
   max_test_case_bytes: 100 << 20,
   max_files_per_test_case: 20,
   retention_days: 90,
-  allowed_kinds: ["text (.txt .md .csv)", "documents (.pdf .docx)"],
-  note: "file type is decided by content, not by file extension",
+  // 04 丙-143 的規矩：fixture 抄 Go 真的回的句子（trial/design/http.go Limits）。
+  allowed_kinds: [
+    "文字檔（.txt .md .csv .tsv .json .jsonl .xml .yaml .yml）",
+    "文件（.pdf .docx .xlsx .pptx）",
+  ],
+  note: "檔案類型看內容判斷，不看副檔名；上傳的檔案只有這個 Test Case 的 Run 讀得到，到保存期限或你刪除時就會刪掉。",
 };
 
 function stubPlatform(limitsStatus = 200) {

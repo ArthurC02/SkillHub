@@ -153,10 +153,10 @@ func inspectZip(data []byte) error {
 		unpacked += f.UncompressedSize64
 	}
 	if files > MaxFilesPerTestCase && !ooxml {
-		return fmt.Errorf("%w: archive holds more than %d files", ErrLimitExceeded, MaxFilesPerTestCase)
+		return fmt.Errorf("%w: 壓縮檔裡超過 %d 個檔案", ErrLimitExceeded, MaxFilesPerTestCase)
 	}
 	if unpacked > uint64(MaxTestCaseBytes) {
-		return fmt.Errorf("%w: archive unpacks to more than %s", ErrLimitExceeded, humanMB(MaxTestCaseBytes))
+		return fmt.Errorf("%w: 壓縮檔解開後超過 %s", ErrLimitExceeded, humanMB(MaxTestCaseBytes))
 	}
 	return nil
 }

@@ -207,9 +207,16 @@ const ROWS: CompareRow[] = [
 
                04 丙-131／丙-155 ①落地：型別現在是逐列宣告的資料層列舉
                （見上面 `notMeasured`／`notApplicable`），不再是渲染層的 falsy；
-               這一格沿用同一套字，不再印 §2.9 表外的「未提供」。 */
+               這一格沿用同一套字，不再印 §2.9 表外的「未提供」。
+
+               例外是 `generated`：在平台上生成的套件結構上就沒有上游網址
+               （SkillSource 的註解：它的 provenance 是 task_description 與
+               generator_model，不是 url），所以那一格是「不適用」，不是量不到。 */
             <p className="note">
-              來源網址：<span className="compare-unknown">未測量</span>
+              來源網址：
+              <span className="compare-unknown">
+                {skill.source.trust.value === "generated" ? "不適用" : "未測量"}
+              </span>
             </p>
           )}
           {skill.source.source_version && (

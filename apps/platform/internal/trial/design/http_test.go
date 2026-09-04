@@ -10,7 +10,7 @@ import (
 
 // TestFailWritesChineseLimitBody covers 丙-149: a limit refusal must reach the
 // client as a plain Chinese sentence, with no English sentinel prefix such as
-// "limit exceeded:" ahead of it (04 丙-138 boundary-strip precedent).
+// "超過上限:" ahead of it (04 丙-138 boundary-strip precedent).
 func TestFailWritesChineseLimitBody(t *testing.T) {
 	err := fmt.Errorf("%w: 一個 Test Case 最多 %d 條驗收條件", ErrLimitExceeded, MaxCriteria)
 

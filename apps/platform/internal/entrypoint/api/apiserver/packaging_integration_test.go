@@ -1165,7 +1165,7 @@ func TestThePreviewCarriesTheDependenciesTheInstallInstructionsWillList(t *testi
 	if !strings.Contains(joined, "pandas") {
 		t.Errorf("the preview does not name the dependency: %v", preview.Dependencies)
 	}
-	if !strings.Contains(joined, "never declares") {
+	if !strings.Contains(joined, "從未宣告") {
 		t.Errorf("the preview does not say the dependency was never declared: %v", preview.Dependencies)
 	}
 

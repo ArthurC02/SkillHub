@@ -340,7 +340,9 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 
 	var fields map[string]any
 	if err := yaml.Unmarshal([]byte(fm), &fields); err != nil {
-		r.add(SeverityError, "frontmatter-invalid-yaml", "SKILL.md", fmt.Sprintf("frontmatter 不是合法的 YAML：%v", err))
+		// The parser's own English ("yaml: line 2: did not find expected ...") stays
+		// out of the message; the code and the file name are what a reader acts on.
+		r.add(SeverityError, "frontmatter-invalid-yaml", "SKILL.md", "frontmatter 不是合法的 YAML")
 		return body
 	}
 

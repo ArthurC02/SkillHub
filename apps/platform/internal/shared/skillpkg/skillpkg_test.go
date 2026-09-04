@@ -83,6 +83,22 @@ func TestFrontmatterRules(t *testing.T) {
 	}
 }
 
+// The YAML parser's own English ("yaml: line 2: did not find expected ...")
+// used to be interpolated into the finding and reach the screen (04 丙-149).
+func TestBadYAMLFindingKeepsTheParserOut(t *testing.T) {
+	r := Validate(pkg("---\nname: [unclosed\n---\nbody", nil))
+	for _, f := range r.Findings {
+		if f.Code != "frontmatter-invalid-yaml" {
+			continue
+		}
+		if strings.Contains(f.Message, "yaml:") || strings.Contains(f.Message, "expected") {
+			t.Fatalf("the parser's English reached the finding: %q", f.Message)
+		}
+		return
+	}
+	t.Fatal("no frontmatter-invalid-yaml finding")
+}
+
 // ADR-044 decision 4: a warning until 2026-08-22, an error since. The unlock
 // was one measurement, not a preference - TestSpecFrontmatterCensus counted 0
 // of 106 packages across the 11 pinned source repos carrying a field outside

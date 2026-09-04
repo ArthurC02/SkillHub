@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -371,11 +372,30 @@ func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if !invited {
-			httpx.WriteError(w, http.StatusForbidden, betaNotInvited)
+			writeNotInvited(w, r)
 			return
 		}
 		next(w, r)
 	}
+}
+
+// notInvitedHTML is the refusal as a document, for the one gated route a browser
+// navigates to directly: the download link is an <a href>, so no page is there
+// to catch a 403 and the JSON body was landing in the tab as-is (04 丙-149).
+const notInvitedHTML = `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>需要封測邀請</title>` +
+	`<p>Skill Hub 還在封測：瀏覽與 Skill 詳情對所有人開放，但 Fork、試跑與下載只開放給受邀的測試者。` +
+	`回到上一頁，用頁尾的「回報問題」告訴我們你想做什麼。</p>`
+
+// writeNotInvited answers the gate's refusal. An API caller gets the same JSON
+// body as every other refusal; a request that asks for HTML gets notInvitedHTML.
+func writeNotInvited(w http.ResponseWriter, r *http.Request) {
+	if strings.Contains(r.Header.Get("Accept"), "text/html") {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(notInvitedHTML))
+		return
+	}
+	httpx.WriteError(w, http.StatusForbidden, betaNotInvited)
 }
 
 // invited answers the beta-cohort question for one user. Extracted so that /me

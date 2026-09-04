@@ -51,12 +51,12 @@ const (
 var (
 	// ErrNotFound: not visible in the caller's workspace. Deliberately the same
 	// answer for "does not exist" and "belongs to someone else" (WS-006).
-	ErrNotFound = errors.New("test case not found")
+	ErrNotFound = errors.New("找不到這個 Test Case")
 	// ErrInvalid: the request violates a documented input rule.
-	ErrInvalid = errors.New("invalid request")
+	ErrInvalid = errors.New("請求內容無效")
 	// ErrLimitExceeded: a PDM-005 quota would be broken. Messages name the limit
 	// that was hit and nothing about the system behind it (02:TEST-002).
-	ErrLimitExceeded             = errors.New("limit exceeded")
+	ErrLimitExceeded             = errors.New("超過上限")
 	errRegistryReadNotConfigured = errors.New("testlab: registry owner read is not configured")
 	errPersistenceNotConfigured  = errors.New("testlab: persistence is not configured")
 )
@@ -213,14 +213,14 @@ func validateRubric(r Rubric, criteria []Criterion) (Rubric, error) {
 	r.Version = strings.TrimSpace(r.Version)
 	switch {
 	case r.Version == "":
-		return Rubric{}, fmt.Errorf("%w: rubric version must not be blank", ErrInvalid)
+		return Rubric{}, fmt.Errorf("%w: rubric 的 version 不能空白", ErrInvalid)
 	case len(r.Version) > MaxRubricVersionBytes:
-		return Rubric{}, fmt.Errorf("%w: rubric version must be at most %d bytes", ErrInvalid, MaxRubricVersionBytes)
+		return Rubric{}, fmt.Errorf("%w: rubric 的 version 最多 %d bytes", ErrInvalid, MaxRubricVersionBytes)
 	case len(r.Items) == 0:
 		// An empty rubric is not a rubric. Clearing one is done by sending null,
 		// which is a statement the reader can tell apart from "there are items but
 		// they all went missing".
-		return Rubric{}, fmt.Errorf("%w: a rubric must have at least one item; send null to remove it", ErrInvalid)
+		return Rubric{}, fmt.Errorf("%w: rubric 至少要有一條；要移除 rubric 請送 null", ErrInvalid)
 	case len(r.Items) > MaxRubricItems:
 		return Rubric{}, fmt.Errorf("%w: 一個 Test Case 的 rubric 最多 %d 條", ErrLimitExceeded, MaxRubricItems)
 	}
@@ -236,14 +236,13 @@ func validateRubric(r Rubric, criteria []Criterion) (Rubric, error) {
 		switch {
 		case !known[it.ID]:
 			return Rubric{}, fmt.Errorf(
-				"%w: rubric item %q does not name an acceptance criterion of this test case; "+
-					"an item's id is the criterion it strengthens", ErrInvalid, it.ID)
+				"%w: rubric 條目 %q 對不上任何驗收條件；條目的 id 必須是它要強化的那條驗收條件", ErrInvalid, it.ID)
 		case seen[it.ID]:
-			return Rubric{}, fmt.Errorf("%w: two rubric items for criterion %q", ErrInvalid, it.ID)
+			return Rubric{}, fmt.Errorf("%w: 驗收條件 %q 有兩條 rubric", ErrInvalid, it.ID)
 		case it.Text == "":
-			return Rubric{}, fmt.Errorf("%w: rubric item text must not be blank", ErrInvalid)
+			return Rubric{}, fmt.Errorf("%w: rubric 條目的文字不能空白", ErrInvalid)
 		case len(it.Text) > MaxCriterionBytes:
-			return Rubric{}, fmt.Errorf("%w: rubric item text must be at most %d bytes", ErrInvalid, MaxCriterionBytes)
+			return Rubric{}, fmt.Errorf("%w: rubric 條目的文字最多 %d bytes", ErrInvalid, MaxCriterionBytes)
 		}
 		seen[it.ID] = true
 		items = append(items, it)
@@ -555,13 +554,13 @@ func validateDraft(name, prompt string) (string, string, error) {
 	prompt = strings.TrimSpace(prompt)
 	switch {
 	case name == "":
-		return "", "", fmt.Errorf("%w: name must not be blank", ErrInvalid)
+		return "", "", fmt.Errorf("%w: 名稱不能空白", ErrInvalid)
 	case len(name) > MaxNameBytes:
 		return "", "", fmt.Errorf("%w: 名稱最多 %d bytes", ErrInvalid, MaxNameBytes)
 	// 02:TEST-001 "每個 Run 必須包含非空白 User Prompt" — enforced at the draft, so
 	// a run can never be started from a test case that has no prompt.
 	case prompt == "":
-		return "", "", fmt.Errorf("%w: user_prompt must not be blank", ErrInvalid)
+		return "", "", fmt.Errorf("%w: Prompt 不能空白", ErrInvalid)
 	case len(prompt) > MaxPromptBytes:
 		return "", "", fmt.Errorf("%w: Prompt 最多 %d bytes", ErrInvalid, MaxPromptBytes)
 	}
@@ -662,7 +661,7 @@ func (s *Service) UpdateCriterion(ctx context.Context, ws identity.Workspace, id
 	return s.mutateCriteria(ctx, ws, id, func(list []Criterion) ([]Criterion, error) {
 		i := indexOfCriterion(list, criterionID)
 		if i < 0 {
-			return nil, fmt.Errorf("%w: acceptance criterion not found", ErrNotFound)
+			return nil, fmt.Errorf("%w: 找不到這條驗收條件", ErrNotFound)
 		}
 		if text != nil && newText != list[i].Text {
 			list[i].Text = newText
@@ -689,7 +688,7 @@ func (s *Service) DeleteCriterion(ctx context.Context, ws identity.Workspace, id
 	return s.mutateCriteria(ctx, ws, id, func(list []Criterion) ([]Criterion, error) {
 		i := indexOfCriterion(list, criterionID)
 		if i < 0 {
-			return nil, fmt.Errorf("%w: acceptance criterion not found", ErrNotFound)
+			return nil, fmt.Errorf("%w: 找不到這條驗收條件", ErrNotFound)
 		}
 		return append(list[:i], list[i+1:]...), nil
 	})
@@ -787,10 +786,10 @@ func DecodeCriteria(raw []byte) ([]Criterion, error) {
 func validateCriterion(text string) (string, error) {
 	text = strings.TrimSpace(text)
 	if text == "" {
-		return "", fmt.Errorf("%w: criterion text must not be blank", ErrInvalid)
+		return "", fmt.Errorf("%w: 驗收條件的文字不能空白", ErrInvalid)
 	}
 	if len(text) > MaxCriterionBytes {
-		return "", fmt.Errorf("%w: criterion text must be at most %d bytes", ErrInvalid, MaxCriterionBytes)
+		return "", fmt.Errorf("%w: 驗收條件的文字最多 %d bytes", ErrInvalid, MaxCriterionBytes)
 	}
 	return text, nil
 }

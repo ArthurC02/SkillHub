@@ -559,7 +559,7 @@ func TestDatasetUploadJudgesTypeByContentNotExtension(t *testing.T) {
 			t.Errorf("upload of executable content named %q: got %d, body %v", tc.name, code, body)
 		}
 		// 02:TEST-002: understandable, and silent about the system behind it.
-		if msg, _ := body["error"].(string); msg != "file type is not supported" {
+		if msg, _ := body["error"].(string); msg != "不支援這種檔案類型" {
 			t.Errorf("refusal message for %q leaks detail or is unclear: %q", tc.name, msg)
 		}
 	}

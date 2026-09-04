@@ -38,7 +38,7 @@ func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Wo
 	}
 	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
+		httpx.WriteError(w, http.StatusInternalServerError, "讀取 Workspace 失敗")
 		return identity.Workspace{}, false
 	}
 	return ws, true
@@ -143,7 +143,7 @@ func toDatasetResponse(d gen.Dataset) datasetResponse {
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBytes)).Decode(v); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be valid JSON")
+		httpx.WriteError(w, http.StatusBadRequest, "請求內容不是合法的 JSON")
 		return false
 	}
 	return true
@@ -170,7 +170,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	tc, err := h.Svc.CreateTestCase(r.Context(), ws, skillID, body.Name, body.UserPrompt)
 	if err != nil {
-		fail(w, err, "create failed")
+		fail(w, err, "建立失敗")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, toTestCaseResponse(tc))
@@ -211,7 +211,7 @@ func parseListLimit(r *http.Request) (int32, error) {
 	// (present, empty) is refused too, since allowEmptyValue is not set.
 	n, err := strconv.Atoi(q.Get("limit"))
 	if err != nil || n < 1 || n > 101 {
-		return 0, errors.New("query parameter limit must be a whole number between 1 and 101")
+		return 0, errors.New("limit 必須是 1 到 101 之間的整數")
 	}
 	return int32(n), nil
 }
@@ -239,7 +239,7 @@ func parseListOffset(r *http.Request) (int32, error) {
 	}
 	n, err := strconv.ParseInt(q.Get("offset"), 10, 32)
 	if err != nil || n < 0 {
-		return 0, fmt.Errorf("query parameter offset must be a whole number between 0 and %d", math.MaxInt32)
+		return 0, fmt.Errorf("offset 必須是 0 到 %d 之間的整數", math.MaxInt32)
 	}
 	return int32(n), nil
 }
@@ -275,7 +275,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := h.Svc.ListTestCases(r.Context(), ws, skillID, limit, offset)
 	if err != nil {
-		fail(w, err, "list failed")
+		fail(w, err, "讀取清單失敗")
 		return
 	}
 	out := make([]testCaseListItem, 0, len(rows))
@@ -308,7 +308,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	tc, err := h.Svc.GetTestCase(r.Context(), ws, id)
 	if err != nil {
-		fail(w, err, "read failed")
+		fail(w, err, "讀取失敗")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
@@ -326,7 +326,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	current, err := h.Svc.GetTestCase(r.Context(), ws, id)
 	if err != nil {
-		fail(w, err, "read failed")
+		fail(w, err, "讀取失敗")
 		return
 	}
 	// Absent fields keep their stored value, so a client editing only the prompt
@@ -365,27 +365,27 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if len(body.Rubric) > 0 && strings.TrimSpace(string(body.Rubric)) != "null" {
 		rubric = &Rubric{}
 		if err := json.Unmarshal(body.Rubric, rubric); err != nil {
-			httpx.WriteError(w, http.StatusBadRequest, "rubric must be an object with a version and items")
+			httpx.WriteError(w, http.StatusBadRequest, "rubric 必須是含 version 與 items 的物件")
 			return
 		}
 		criteria, err := DecodeCriteria(current.AcceptanceCriteria)
 		if err != nil {
-			fail(w, err, "read failed")
+			fail(w, err, "讀取失敗")
 			return
 		}
 		if _, err := validateRubric(*rubric, criteria); err != nil {
-			fail(w, err, "rubric update failed")
+			fail(w, err, "更新 rubric 失敗")
 			return
 		}
 	}
 	tc, err := h.Svc.UpdateTestCase(r.Context(), ws, id, name, prompt)
 	if err != nil {
-		fail(w, err, "update failed")
+		fail(w, err, "更新失敗")
 		return
 	}
 	if len(body.Rubric) > 0 {
 		if tc, err = h.Svc.SetRubric(r.Context(), ws, id, rubric); err != nil {
-			fail(w, err, "rubric update failed")
+			fail(w, err, "更新 rubric 失敗")
 			return
 		}
 	}
@@ -404,17 +404,20 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := h.Svc.DeleteTestCase(r.Context(), ws, id)
 	if err != nil {
-		fail(w, err, "delete failed")
+		fail(w, err, "刪除失敗")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"deleted":          true,
 		"datasets_deleted": res.DatasetsDeleted,
-		"note": "test case and its uploaded files are removed, files included; " +
-			"snapshots of past runs are retained and keep the prompt, the acceptance " +
-			"criteria and each file's name and content hash",
+		"note":             deleteTestCaseNote,
 	})
 }
+
+// deleteTestCaseNote is DELETE /test-cases/{id}'s wire note (WS-002 刪除範圍).
+// Package level so messages_test.go reads the exact string the handler writes.
+const deleteTestCaseNote = "Test Case 與它上傳的檔案已移除，檔案本身也刪了；" +
+	"過去 Run 的快照仍保留 Prompt、驗收條件，以及每個檔案的檔名與內容雜湊。"
 
 // AddCriterion handles POST /test-cases/{id}/criteria (TEST-003).
 func (h *Handler) AddCriterion(w http.ResponseWriter, r *http.Request) {
@@ -438,7 +441,7 @@ func (h *Handler) AddCriterion(w http.ResponseWriter, r *http.Request) {
 	}
 	tc, err := h.Svc.AddCriterion(r.Context(), ws, id, body.Text, body.Source)
 	if err != nil {
-		fail(w, err, "add criterion failed")
+		fail(w, err, "新增驗收條件失敗")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, toTestCaseResponse(tc))
@@ -458,7 +461,7 @@ func (h *Handler) SuggestCriteria(w http.ResponseWriter, r *http.Request) {
 	}
 	suggestions, err := h.Svc.SuggestCriteria(r.Context(), ws, id)
 	if err != nil {
-		fail(w, err, "suggestion failed")
+		fail(w, err, "建議失敗")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"suggestions": suggestions})
@@ -483,12 +486,12 @@ func (h *Handler) UpdateCriterion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if body.Text == nil && body.Confirmed == nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must set text, confirmed, or both")
+		httpx.WriteError(w, http.StatusBadRequest, "請求至少要帶 text 或 confirmed 其中一個")
 		return
 	}
 	tc, err := h.Svc.UpdateCriterion(r.Context(), ws, id, r.PathValue("criterionId"), body.Text, body.Confirmed)
 	if err != nil {
-		fail(w, err, "update criterion failed")
+		fail(w, err, "更新驗收條件失敗")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
@@ -506,7 +509,7 @@ func (h *Handler) DeleteCriterion(w http.ResponseWriter, r *http.Request) {
 	}
 	tc, err := h.Svc.DeleteCriterion(r.Context(), ws, id, r.PathValue("criterionId"))
 	if err != nil {
-		fail(w, err, "delete criterion failed")
+		fail(w, err, "刪除驗收條件失敗")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
@@ -522,17 +525,26 @@ func (h *Handler) Limits(w http.ResponseWriter, _ *http.Request) {
 		"max_test_case_bytes":     int64(MaxTestCaseBytes),
 		"max_files_per_test_case": MaxFilesPerTestCase,
 		"retention_days":          int(DatasetRetention / (24 * time.Hour)),
-		"allowed_kinds": []string{
-			"text (.txt .md .csv .tsv .json .jsonl .xml .yaml .yml)",
-			"documents (.pdf .docx .xlsx .pptx)",
-			"images (.png .jpg .webp)",
-			"archives (.zip, single layer)",
-		},
-		"note": "file type is decided by content, not by file extension; uploaded " +
-			"files are readable only by runs of this test case and are deleted after " +
-			"the retention window or whenever you delete them",
+		"allowed_kinds":           allowedKindsWire,
+		"note":                    limitsNote,
 	})
 }
+
+// allowedKindsWire and limitsNote are GET /test-cases/limits's wire strings
+// (02:TEST-002). Package level so messages_test.go reads the exact values the
+// handler writes.
+var allowedKindsWire = []string{
+	"文字檔（.txt .md .csv .tsv .json .jsonl .xml .yaml .yml）",
+	"文件（.pdf .docx .xlsx .pptx）",
+	"圖片（.png .jpg .webp）",
+	"壓縮檔（.zip，只能一層）",
+}
+
+const limitsNote = "檔案類型看內容判斷，不看副檔名；" +
+	"上傳的檔案只有這個 Test Case 的 Run 讀得到，到保存期限或你刪除時就會刪掉。"
+
+// deleteDatasetNote is DELETE /test-cases/{id}/datasets/{datasetId}'s wire note.
+const deleteDatasetNote = "檔案已移除；過去 Run 的快照仍保留它的檔名與內容雜湊，那些 Run 仍可追溯。"
 
 // UploadDataset handles POST /test-cases/{id}/datasets (TEST-004), multipart
 // with one "file" part.
@@ -560,20 +572,20 @@ func (h *Handler) UploadDataset(w http.ResponseWriter, r *http.Request) {
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "multipart body must carry one 'file' part")
+		httpx.WriteError(w, http.StatusBadRequest, "上傳內容必須帶一個名為 file 的檔案欄位")
 		return
 	}
 	defer func() { _ = file.Close() }()
 
 	data, err := io.ReadAll(io.LimitReader(file, MaxFileBytes+1))
 	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "could not read the uploaded file")
+		httpx.WriteError(w, http.StatusBadRequest, "讀不到上傳的檔案")
 		return
 	}
 
 	ds, err := h.Svc.UploadDataset(r.Context(), ws, id, header.Filename, data)
 	if err != nil {
-		fail(w, err, "upload failed")
+		fail(w, err, "上傳失敗")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, toDatasetResponse(ds))
@@ -591,7 +603,7 @@ func (h *Handler) ListDatasets(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := h.Svc.ListDatasets(r.Context(), ws, id)
 	if err != nil {
-		fail(w, err, "list failed")
+		fail(w, err, "讀取清單失敗")
 		return
 	}
 	out := make([]datasetResponse, 0, len(rows))
@@ -622,12 +634,12 @@ func (h *Handler) DeleteDataset(w http.ResponseWriter, r *http.Request) {
 	}
 	ds, err := h.Svc.DeleteDataset(r.Context(), ws, id, datasetID)
 	if err != nil {
-		fail(w, err, "delete failed")
+		fail(w, err, "刪除失敗")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"deleted":    true,
 		"dataset_id": pgconv.UUIDString(ds.ID),
-		"note":       "檔案已移除；過去 Run 的快照仍保留它的檔名與內容雜湊，那些 Run 仍可追溯。",
+		"note":       deleteDatasetNote,
 	})
 }

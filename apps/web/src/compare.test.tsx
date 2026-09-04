@@ -198,6 +198,26 @@ test("DISC-009 最小匯入的 Skill：不印表外詞「未提供」", async ()
 });
 
 /**
+ * 04 丙-149 收尾：在平台上生成的套件結構上就沒有上游網址（SkillSource：它的
+ * provenance 是 task_description 與 generator_model），所以來源網址那一格是
+ * 「不適用」；匯入來的套件沒記到網址才是「未測量」。
+ */
+test("DISC-009 生成的套件：來源網址是不適用，不是未測量", async () => {
+  const generated = skillDetail("g", "G");
+  generated.source = {
+    ...generated.source!,
+    url: undefined,
+    trust: { value: "generated", label: "平台生成", note: "" },
+  };
+  const imported = skillDetail("i", "I");
+  imported.source = { ...imported.source!, url: undefined };
+  await render(<CompareTable skills={[generated, imported]} />);
+
+  expect(text()).toContain("來源網址：不適用");
+  expect(text()).toContain("來源網址：未測量");
+});
+
+/**
  * 慣例 9 的牙齒,而且這一列曾經沒有牙齒。
  *
  * 「相容性」的 `signature` 內插的是三個 `Labelled` **物件**,於是每一個 Skill 都算出
