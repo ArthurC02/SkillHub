@@ -14,7 +14,9 @@ export const meta = {
 const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet' })
 
 // args: {
-//   briefs: [{ key, paths: [...allowlist], brief, test: 'vitest file or pattern' }],
+//   briefs: [{ key, paths: [...allowlist], brief, test: 'vitest file or pattern',
+//             test_cmd: 'optional full command run from the repo root instead of vitest — for Go briefs:
+//                        "go -C apps/platform test ./internal/trial/design/..."' }],
 //   context: 'text every writer and verifier gets first',
 //   gate: 'shell command whose success line the gate agent must quote',
 //   gate_success: 'the literal line that means the gate passed',
@@ -83,7 +85,9 @@ const results = await pipeline(
       '',
       b.brief,
       '',
-      `When done, run: npx vitest run ${b.test} — and quote the pass line. Then name the single source line whose removal would make that test red (you will be checked).`,
+      b.test_cmd
+        ? `When done, run from the repo root: ${b.test_cmd} — redirect the output to a file in the scratchpad and read it, then quote the pass line. Then name the single source line whose removal would make that test red (you will be checked).`
+        : `When done, run inside apps/web: npx vitest run ${b.test} — and quote the pass line. Then name the single source line whose removal would make that test red (you will be checked).`,
       'Read the files you edit in full before editing. If the brief contradicts what the code actually does, stop and report; do not follow the brief into the code.',
     ].join('\n'),
     { label: `write:${b.key}`, phase: 'Write', schema: WRITE_RESULT, agentType: 'general-purpose', effort: 'medium' },
@@ -110,11 +114,14 @@ const results = await pipeline(
     if (!r || !r.v || !r.v.ok) return r
     // A brief whose only machine is coordinator-owned (an e2e ratchet, say) has
     // nothing a writer can make red; say so in the log instead of pretending.
-    if (!b.test) { log(`${b.key}: no writer-owned test named, mutation left to the coordinator`); return r }
+    if (!b.test && !b.test_cmd) { log(`${b.key}: no writer-owned test named, mutation left to the coordinator`); return r }
+    const runTest = b.test_cmd
+      ? `run from the repo root: ${b.test_cmd} (redirect to a scratchpad file and read it)`
+      : 'run npx vitest run ' + r.w.test_file.replace(/^apps\/web\//, '') + ' from inside apps/web'
     return run(
       [
         `Mutation check for brief ${b.key}. The writer says test ${r.w.test_file} goes red when this line is removed: ${r.w.red_line}.`,
-        'Do exactly this: (1) record git diff -- <file> for the file holding that line; (2) remove or neuter that one line with the Edit tool; (3) run npx vitest run ' + r.w.test_file.replace(/^apps\/web\//, '') + ' from inside apps/web and capture the head of the failure output; (4) restore the line with Edit; (5) run git diff -- <file> again and confirm it equals step 1 byte for byte.',
+        `Do exactly this: (1) record git diff -- <file> for the file holding that line; (2) remove or neuter that one line with the Edit tool; (3) ${runTest} and capture the head of the failure output; (4) restore the line with Edit; (5) run git diff -- <file> again and confirm it equals step 1 byte for byte.`,
         'If the test stays green after step 2, report went_red=false — that is the finding. A red that is not an assertion — "document is not defined", "no test files found", a module that cannot be resolved — is NOT red: it means vitest did not run the test (wrong directory or wrong path); fix the invocation and run again. Never leave the file mutated. No git writes.',
       ].join('\n'),
       { label: `mutate:${b.key}`, phase: 'Mutate', schema: MUTATION_RESULT, agentType: 'general-purpose', model: 'haiku', effort: 'low' },
