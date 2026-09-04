@@ -249,6 +249,26 @@ python tools/sec009/_syscall_fuzz.py --self-check   # 需要 Linux
 
 自檢**製造**那個 hang 而不是等它出現:子程序照隨機 `rt_sigprocmask` 的方式擋掉 SIGALRM 再睡十分鐘,`reap` 必須在預算內收掉它;反方向也驗(正常結束的子程序要被 reap 不是被殺),免得「reap 殺掉所有東西」冒充成修好了。把 `reap` 還原成原本的 `waitpid`,自檢會掛到 `timeout` 把它殺掉(rc=124)。
 
+## 2026-09-05 重跑：T1 抓到自己第四個同型 bug，T2 四項官方判準全過
+
+起因是 [`05` R-44](../../docs/plans/05-pending-rulings.md)（runtime image 的 base OS 要不要換），
+證據落在 [`docs/plans/mvp/m4/sec-009-acceptance/2026-09-05-nested-dev-container/`](../../docs/plans/mvp/m4/sec-009-acceptance/2026-09-05-nested-dev-container/)。
+
+**T1 的 `no kernel taint` 這次先 FAIL**：`dmesg | grep -qi taint` 連核心自己乾淨狀態的
+crash-trace 表頭「`Comm: X Not tainted <version>`」都算命中——這台開發機的 `dmesg` 環形緩衝區
+跨每一次巢狀容器共用，只要曾經有任何一次探測（例如 `dd if=/dev/mem`）在核心印過一行帶
+call trace 的訊息，那一行就會躺在緩衝區裡被下一次重跑撿到。2026-08-26 那次跑的時候緩衝區還
+沒累積到，這次累積到了。**改讀 `/proc/sys/kernel/tainted`**（單一整數，0＝乾淨）取代文字比對，
+重跑 PASS，負對照重跑確認沒壞。這是本檔第四次同型錯誤：探針讀了描述狀態的散文，不是狀態本身。
+
+**T2 跑滿 4×1800s**：官方三項判準（Sentry 沒死、host 無 oops、沒有非預期權限）全部獨立通過。
+腳本自己另一條更嚴的簿記檢查（四個 worker 都要留下最終紀錄）沒過——第 4 個 worker 在
+294,907 calls 處被 SIGKILL，`EXIT` 那一行有印出來（不是 08-26 那次的輸出遺失）。**追查過記憶體
+假說，這次不成立**：取樣峰值 8067 MiB，這台 VM 有 23.4 GiB、跑完還剩 21 GiB；`dmesg` 裡確實有
+memcg OOM kill 的紀錄，但全部是三天前殺掉幾 KB 大小 `dd` 探針的舊事件，沒有任何一筆點名今天的
+`python3` worker 或落在今天的執行窗口內。**原因目前誠實記為未歸因**（`unknown`），不算通過也不
+算安全發現——詳細推理見證據目錄的 README。
+
 ## T5 的網路外洩（2026-08-27 新增）
 
 [`t5-network-egress.sh`](t5-network-egress.sh) 在一個 privileged 容器裡把節點的網路形狀搭出來——一張 `skillhub-sbx` bridge、兩個當成 Run 的 netns、一條假上行後面放著 T5 點名的每一個目的地——然後**把 `tools/egress/render.py` 渲出來的 ruleset 真的 `nft -f` 進去**，跑 T5-1～T5-9 與 ADR-022 要求的兩個反向驗證。

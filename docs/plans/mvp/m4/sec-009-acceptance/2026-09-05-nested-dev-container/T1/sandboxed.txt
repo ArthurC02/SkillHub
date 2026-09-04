@@ -1,0 +1,20 @@
+runsc: OK
+runsc:         runsc version release-20260817.0
+host kernel:   Linux 6.6.87.2-microsoft-standard-WSL2
+
+T1 generic attempts (inside the sandbox):
+  write /proc/sys/kernel/core_pattern  PASS    REFUSED
+  mount(2) cannot reach the host       PASS    REFUSED mounted the sandbox own proc
+  load a kernel module                 PASS    REFUSED
+  read /dev/mem                        PASS    REFUSED
+  see a host process                   PASS    REFUSED
+  find any unix socket                 PASS    REFUSED
+  reach the docker socket              PASS    REFUSED
+
+Node-side observations (T1 requires these too):
+  no file planted on the node          PASS
+  no kernel taint                      PASS
+
+T1 GENERIC: every attempt refused, no side effect observed
+
+t1 generic: procedure executed, all refused — NOT the SEC-009 acceptance

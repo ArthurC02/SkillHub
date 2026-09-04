@@ -1,0 +1,37 @@
+SEC-009 Suite 1 partial -- nested developer container, NOT a node
+date: 2026-09-05
+
+[host]
+os:               Windows 11 Pro 10.0.26200 (Docker Desktop)
+docker server:    29.7.2
+vm kernel:        Linux 6.6.87.2-microsoft-standard-WSL2
+
+[sandbox runtime, inside the privileged container]
+runsc:            release-20260817.0  (downloaded per run, sha512 verified)
+sandbox kernel:   Linux 4.19.0-gvisor
+platform:         systrap  (no nested virtualization, no /dev/kvm)
+
+[repo]
+commit:           11f3f5d7479499cd7d983e792b9581865fd95f36
+branch:           main
+
+[what this run is and is not]
+Re-run of the 2026-08-26 nested-container T1/T2 procedure, prompted by R-44
+(docs/plans/05-pending-rulings.md): before proposing a base-image swap
+(node:22-bookworm-slim -> node:22-trixie-slim) for the runtime-agent-sdk
+image, check whether this exact gVisor build (release-20260817.0, same as
+infra/nodes/gvisor-baseline.txt) still holds its boundary on this host.
+
+T1/T2 do NOT exercise the skillhub-runtime-agent-sdk image itself -- both
+scripts default SMOKE_IMAGE to a bare ubuntu:24.04 used only as the OUTER
+privileged container, and every probe inside runs via `runsc do sh -c ...`,
+not `docker run <our image>`. So this run is real evidence that gVisor's
+boundary (this pinned release, this host kernel) is intact -- it is NOT
+evidence about whether Python 3.13 under node:22-trixie-slim specifically
+behaves differently inside that boundary. That narrower question still needs
+the actual candidate image run under a registered runsc runtime (what CI's
+`sandbox` job does on a real Linux runner), which this session did not do.
+
+[what is NOT pinned here]
+infra/nodes/gvisor-baseline.txt:      release-20260817.0 (set 2026-09-05, 甲-5)
+infra/egress allowlist pinned_ip:     4 occurrence(s) of 'unset'

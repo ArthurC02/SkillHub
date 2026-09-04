@@ -1,0 +1,20 @@
+runsc: OK
+runsc:         runsc version release-20260817.0
+host kernel:   Linux 6.6.87.2-microsoft-standard-WSL2
+
+T1 generic attempts (NEGATIVE CONTROL: no sandbox, failures are expected):
+  write /proc/sys/kernel/core_pattern  FAIL    ESCAPED wrote core_pattern
+  mount(2) cannot reach the host       FAIL    ESCAPED host proc: Linux version 6.6.87.2-microsoft-standard-WSL2 (root@439a258ad544) (gcc (GCC) 11.2.0, GNU ld (GNU Binutils) 2.37) #1 SMP PREEMPT_DYNAMIC Thu Jun 5 18:30:46 UTC 2025
+  load a kernel module                 PASS    REFUSED
+  read /dev/mem                        FAIL    ESCAPED read /dev/mem
+  see a host process                   PASS    REFUSED
+  find any unix socket                 PASS    REFUSED
+  reach the docker socket              PASS    REFUSED
+
+Node-side observations (T1 requires these too):
+  no file planted on the node          FAIL    /tmp/skillhub-sec009-t1-escaped exists on the node
+  no kernel taint                      PASS
+
+NEGATIVE CONTROL OK: 3 attempt(s) succeeded unsandboxed, so these probes can see a failure
+
+t1 negative control: the probes can see a failure

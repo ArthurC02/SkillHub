@@ -47,6 +47,20 @@
 #             is now made from inside and graded only from outside. Third
 #             instance of the same mistake in this file: a probe that cannot
 #             observe the thing it is grading will still confidently grade it.
+#   taint     (2026-09-05) 'no kernel taint' did `dmesg | grep -qi taint`, and
+#             the kernel's own oops/WARN preamble is "CPU: N PID: M Comm: X
+#             Not tainted <version> #N" -- a CLEAN kernel's crash-trace header
+#             contains the literal word "taint". This developer container
+#             shares the WSL2 kernel's dmesg ring buffer across every run ever
+#             made against it (T2's own comment says so), so the first dd-style
+#             probe anywhere that ever provoked a kernel trace leaves a "Not
+#             tainted" line sitting in the buffer for every later run to grep.
+#             2026-08-26's run passed; this run's dmesg had eight such lines,
+#             all "Not tainted", zero "Tainted:" -- the buffer had filled in
+#             between. Fixed by reading /proc/sys/kernel/tainted (a single
+#             integer, 0 = clean) instead of pattern-matching prose that talks
+#             about tainting whether or not it happened. Fourth instance of the
+#             same shape: a probe read a symptom instead of the fact.
 #
 # Usage: tools/sec009/t1-escape-attempts.sh
 # Exit:  0 every attempt refused, no side effect observed
@@ -186,13 +200,17 @@ else
   printf '  %-36s PASS\n' 'no file planted on the node'
 fi
 
-# A taint means the kernel noticed something it did not like.
-if dmesg 2>/dev/null | grep -qi 'taint'; then
-  printf '  %-36s FAIL    dmesg reports a taint\n' 'no kernel taint'; fail=2
-elif dmesg >/dev/null 2>&1; then
-  printf '  %-36s PASS\n' 'no kernel taint'
+# A nonzero /proc/sys/kernel/tainted means the running kernel is tainted. See
+# PROBE NOTES 'taint': dmesg text-matching "taint" also matches a clean
+# kernel's own "Not tainted" crash-trace header, which sits in the shared
+# ring buffer left over from any past run's dd(1)-style probes.
+TAINTED="\$(cat /proc/sys/kernel/tainted 2>/dev/null)"
+if [ -z "\$TAINTED" ]; then
+  printf '  %-36s UNKNOWN /proc/sys/kernel/tainted not readable here\n' 'no kernel taint'; [ \$fail -eq 0 ] && fail=2
+elif [ "\$TAINTED" != 0 ]; then
+  printf '  %-36s FAIL    tainted=%s\n' 'no kernel taint' "\$TAINTED"; fail=2
 else
-  printf '  %-36s UNKNOWN dmesg not readable here\n' 'no kernel taint'; [ \$fail -eq 0 ] && fail=2
+  printf '  %-36s PASS\n' 'no kernel taint'
 fi
 
 echo

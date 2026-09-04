@@ -1523,3 +1523,5 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 **建議**：R-43 一旦有值、`甲-5` 的節點立起來，把 (A) 的 Dockerfile 改動（已驗證，改動極小）連同 SEC-009 重跑一起送；ADR-023 四項與 SUPPLY-RUNTIME-LOCK-001 的一致性同批做。在那之前，**不把這個 base image 換動推上 `main`**——`runtime-image.yml` 由 diff 觸發即發佈，發佈了就是下一次 Run 實際會跑的 digest，而它還沒有 SEC-009 證據。
 
 **不決定的代價**：本已回答（沒有值就不能動）；**現在是有值但不能動**，代價變成純粹是時間——每天 image 仍停在 3.11、`-9` 版本沒有開出來，直到 R-43 解鎖。
+
+**2026-09-05 訂正一句自己的話**：上面寫「這件事在純 Docker 下測不出來」——那句話漏了一條已經存在的路。`tools/sec009/` 的 T1／T2 用巢狀 privileged 容器跑的是**真的 `runsc`**（`release-20260817.0`，與 `infra/nodes/gvisor-baseline.txt` 同一版），不是純 Docker；2026-08-26 已經跑過一次，本次（見 [T1/T2 證據](mvp/m4/sec-009-acceptance/2026-09-05-nested-dev-container/README.md)）重跑：T1 抓到並修好探針自己的一個 bug（`dmesg` 文字比對誤判乾淨核心為已 taint），修完全過；T2 跑滿 ADR-022 的 4×1800s，官方三項判準全過，一項腳本自帶的更嚴檢查未過且原因未能歸因（誠實記 `unknown`，非安全發現）。**這確實是真的 gVisor 邊界證據，比純 Docker 強**——但兩支腳本都不吃受測 image（`SMOKE_IMAGE` 固定用 `ubuntu:24.04` 當外層容器，探針走 `runsc do`，不是 `docker run <本專案映像>`），回答不了「trixie 這顆 image 本身在 gVisor 下行不行」這個窄問題。**結論不變**：R-44 的落地仍然卡在同一道牆——要驗的是候選映像本身在已註冊 `runsc` 的 Docker runtime 下能不能正常跑（CI 的 `sandbox` job 在真 Linux runner 上做的那件事），不是 gVisor 邊界守不守得住；後者現在有更新的證據,前者還沒有。

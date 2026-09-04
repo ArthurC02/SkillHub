@@ -7,6 +7,7 @@
 | 子目錄 | 是什麼 | 是驗收嗎 |
 | --- | --- | --- |
 | [`2026-08-26-nested-dev-container/`](2026-08-26-nested-dev-container/) | Suite 1 的一部分，在一台 Windows 開發機的巢狀 gVisor 容器裡跑，外加 CI 的 gVisor leg 與 GHCR 稽核 | **不是。** 目錄名刻意不是 node-id，因為沒有節點 |
+| [`2026-09-05-nested-dev-container/`](2026-09-05-nested-dev-container/) | 同一套巢狀技術重跑 T1／T2（起因是 [`05` R-44](../../../05-pending-rulings.md) 要不要換 runtime image 的 base OS）。T1 抓到探針自己的一個 bug 並修好；T2 四項官方判準全過，一項腳本自帶的更嚴檢查未過且原因未能歸因，如實記為 `unknown` | **不是，理由同上；且兩支腳本都不吃受測 image**，回答不了「換了 base OS 之後這個映像本身在 gVisor 下行不行」 |
 
 ## 判定的規矩，一句話
 
