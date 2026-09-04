@@ -245,7 +245,7 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-category.
 ### 2.8 仍待定值或部署驗證的技術債
 
 - [ ] **`DEPLOY-IAC-001`**：部署負責人建立 ADR-022 的 sandbox node IaC／cloud-init/render；pinned IP 未填時不得產生放行規則，並以 SEC-009 真機證據驗收。
-- [ ] **`RUNTIME-PYTHON-001`**：負責人先定值 Python runtime 版本；部署負責人令 runtime image、文件與真實 gVisor 證據一致。不得把目前 image 的版本視為追認。
+- [ ] **`RUNTIME-PYTHON-001`**：負責人先定值 Python runtime 版本；部署負責人令 runtime image、文件與真實 gVisor 證據一致。不得把目前 image 的版本視為追認。**✅ 2026-09-05 定值：3.13**（[`05` R-44](../../05-pending-rulings.md)）。落地路徑已本機驗證（`node:22-trixie-slim` 讓 apt 原生 `python3` 就是 3.13.5，`constraints.txt` 的鎖版不變），**但未推上 main**：`infra/images/README.md`（2026-08-29 夯實稽核）已把「換 base 發行版需要重跑 SEC-009」列為前提，而 SEC-009 需要的 gVisor 節點就是甲-5／R-43 還沒有的那台。這一格因此仍未勾，理由從「沒有值」變成「有值但沒有 gVisor 證據」。
 - [ ] **`LLM-RES-001`（partial）**：既有 query 長度三層上限保留；部署負責人補 anonymous search 的分散式 rate limit／成本保護，並證明拒絕請求不會呼叫 embedding 或 match-reason LLM。
 - [x] **`SUPPLY-RUNTIME-LOCK-001`**：runtime image owner 將 Python／Node transitive dependency 改為 repo-owned lock 或 constraints；以乾淨 cache 的兩次 build 證明 dependency tree 一致。**✅ 2026-09-05**：`constraints.txt`＋`package-lock.json`，兩次 `--no-cache --pull` build 的 29 個 Python distribution 與 106 個 Node 套件逐行相同；映像升 `2026.08-8`，ADR-023 四項在 CI 發佈的 digest 上全過，預設映像同批移到 `-8`（`UPGRADES.md`）。
 
