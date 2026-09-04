@@ -867,9 +867,12 @@ type Handler interface {
 	// Not the same channel as PUT /runs/{id}/evaluation/feedback, which answers "was this judgement
 	// useful" about one evaluation. Merging them would produce one bucket that answers neither.
 	//
-	// `page_path` and `run_id` are what the client already knows about where the report came from. Nothing
-	// is captured beyond them — no screenshot, no console, no automatic context grab (beta-design §5):
-	// the message is the user's own words and everything else is a field they can see.
+	// `page_path`, `run_id` and `build_id` are what the client already knows about where the report came
+	// from. Nothing is captured beyond them — no screenshot, no console, no automatic context grab
+	// (beta-design §5): the message is the user's own words and everything else is a field they can see.
+	// `build_id` (2026-09-04, 資訊架構 IA-11) is the identifier the page prints in its own footer; it
+	// names the software, not the person, and it is what makes a report reproducible against a rolling
+	// deployment.
 	//
 	// POST /feedback
 	SubmitFeedback(ctx context.Context, req *SubmitFeedbackReq) (SubmitFeedbackRes, error)

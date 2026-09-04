@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { LoginRequired, unauthenticated } from "./LoginRequired";
 import { useMe } from "../api/me";
 import {
+  BUILD_ID,
   FEEDBACK_MAX_MESSAGE,
   feedbackPagePath,
   feedbackRunID,
@@ -76,7 +77,13 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
 
   const send = useMutation({
     mutationFn: () =>
-      submitFeedback({ kind, message: message.trim(), page_path: pagePath, run_id: runID }),
+      submitFeedback({
+        kind,
+        message: message.trim(),
+        page_path: pagePath,
+        run_id: runID,
+        build_id: BUILD_ID,
+      }),
     onSuccess: () => {
       setSent(true);
       setMessage("");
@@ -160,6 +167,13 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
             {runID ? (
               <>
                 、你正在看的 Run <code>{runID}</code>
+              </>
+            ) : (
+              ""
+            )}
+            {BUILD_ID ? (
+              <>
+                、這一頁的 Build 識別碼 <code>{BUILD_ID}</code>
               </>
             ) : (
               ""

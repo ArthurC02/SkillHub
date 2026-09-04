@@ -99,8 +99,9 @@ WHERE workspace_id = $1;
 -- name: InsertFeedbackReport :exec
 -- BETA-003/004/005. Workspace and user come from the session (iron rule 3); run_id
 -- has already been checked to belong to that workspace by the caller, or dropped.
-INSERT INTO feedback_reports (workspace_id, user_id, kind, message, page_path, run_id)
-VALUES (@workspace_id, @user_id, @kind, @message, @page_path, @run_id);
+-- build_id (0054, IA-11) is the footer's own identifier, sent by the form.
+INSERT INTO feedback_reports (workspace_id, user_id, kind, message, page_path, run_id, build_id)
+VALUES (@workspace_id, @user_id, @kind, @message, @page_path, @run_id, @build_id);
 
 -- name: RunInWorkspace :one
 -- Does this run belong to the caller's workspace? Used only to decide whether a

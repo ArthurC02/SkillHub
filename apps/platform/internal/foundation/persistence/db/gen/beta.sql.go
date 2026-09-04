@@ -255,8 +255,8 @@ func (q *Queries) InsertAnalyticsEvent(ctx context.Context, arg InsertAnalyticsE
 }
 
 const insertFeedbackReport = `-- name: InsertFeedbackReport :exec
-INSERT INTO feedback_reports (workspace_id, user_id, kind, message, page_path, run_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO feedback_reports (workspace_id, user_id, kind, message, page_path, run_id, build_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type InsertFeedbackReportParams struct {
@@ -266,10 +266,12 @@ type InsertFeedbackReportParams struct {
 	Message     string
 	PagePath    *string
 	RunID       pgtype.UUID
+	BuildID     *string
 }
 
 // BETA-003/004/005. Workspace and user come from the session (iron rule 3); run_id
 // has already been checked to belong to that workspace by the caller, or dropped.
+// build_id (0054, IA-11) is the footer's own identifier, sent by the form.
 func (q *Queries) InsertFeedbackReport(ctx context.Context, arg InsertFeedbackReportParams) error {
 	_, err := q.db.Exec(ctx, insertFeedbackReport,
 		arg.WorkspaceID,
@@ -278,6 +280,7 @@ func (q *Queries) InsertFeedbackReport(ctx context.Context, arg InsertFeedbackRe
 		arg.Message,
 		arg.PagePath,
 		arg.RunID,
+		arg.BuildID,
 	)
 	return err
 }

@@ -320,6 +320,7 @@ type FeedbackReport struct {
 	PagePath    *string
 	RunID       pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
+	BuildID     *string
 }
 
 // Package object keys whose last referencing skill_versions row was deleted (04 丙-73). A key is removed from storage only when no skill_versions row references it, because the object is shared with every fork of the same content.

@@ -13,7 +13,9 @@ import { apiFetch } from "./client";
  *    refusing; dropping it here means what the form shows is what is sent.
  * 2. **`message` is the user's own words and must not be blank.** Everything
  *    else travelling with it is a field they can see on screen — no screenshot,
- *    no console, no automatic context grab.
+ *    no console, no automatic context grab. `build_id` (資訊架構 IA-11) passes
+ *    that test the same way `page_path` does: it is the footer's own 「Build
+ *    識別碼」, on every page, and it names the software rather than the person.
  */
 
 export type FeedbackKind = "blocking_issue" | "need_signal";
@@ -26,7 +28,11 @@ export interface FeedbackReport {
   message: string;
   page_path?: string;
   run_id?: string;
+  build_id?: string;
 }
+
+/** The build this page was served from — the same value the footer prints. */
+export const BUILD_ID: string | undefined = import.meta.env.VITE_BUILD_ID;
 
 /** 204 and no body: there is no read surface for feedback and no id to hand back. */
 export function submitFeedback(report: FeedbackReport) {

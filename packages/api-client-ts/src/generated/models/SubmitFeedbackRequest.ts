@@ -56,6 +56,16 @@ export interface SubmitFeedbackRequest {
      * @memberof SubmitFeedbackRequest
      */
     runId?: string;
+    /**
+     * The build the page was served from, exactly as the footer's
+     * 「Build 識別碼」 shows it (a commit SHA prefix in CI, a
+     * labelled local build otherwise). Sent by the form, never
+     * typed; anything over the length is dropped, not refused.
+     * 
+     * @type {string}
+     * @memberof SubmitFeedbackRequest
+     */
+    buildId?: string;
 }
 
 
@@ -92,6 +102,7 @@ export function SubmitFeedbackRequestFromJSONTyped(json: any, ignoreDiscriminato
         'message': json['message'],
         'pagePath': json['page_path'] == null ? undefined : json['page_path'],
         'runId': json['run_id'] == null ? undefined : json['run_id'],
+        'buildId': json['build_id'] == null ? undefined : json['build_id'],
     };
 }
 
@@ -110,6 +121,7 @@ export function SubmitFeedbackRequestToJSONTyped(value?: SubmitFeedbackRequest |
         'message': value['message'],
         'page_path': value['pagePath'],
         'run_id': value['runId'],
+        'build_id': value['buildId'],
     };
 }
 

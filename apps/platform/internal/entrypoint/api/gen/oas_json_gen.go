@@ -32601,13 +32601,20 @@ func (s *SubmitFeedbackReq) encodeFields(e *jx.Encoder) {
 			s.RunID.Encode(e)
 		}
 	}
+	{
+		if s.BuildID.Set {
+			e.FieldStart("build_id")
+			s.BuildID.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfSubmitFeedbackReq = [4]string{
+var jsonFieldsNameOfSubmitFeedbackReq = [5]string{
 	0: "kind",
 	1: "message",
 	2: "page_path",
 	3: "run_id",
+	4: "build_id",
 }
 
 // Decode decodes SubmitFeedbackReq from json.
@@ -32660,6 +32667,16 @@ func (s *SubmitFeedbackReq) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"run_id\"")
+			}
+		case "build_id":
+			if err := func() error {
+				s.BuildID.Reset()
+				if err := s.BuildID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"build_id\"")
 			}
 		default:
 			return d.Skip()

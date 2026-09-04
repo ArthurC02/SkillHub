@@ -16682,6 +16682,10 @@ type SubmitFeedbackReq struct {
 	// The run they were looking at, when there was one. Must be the caller's own; a run that is not is
 	// dropped rather than failing the report, because losing the feedback would be the worse outcome.
 	RunID OptUUID `json:"run_id"`
+	// The build the page was served from, exactly as the footer's 「Build 識別碼」 shows it (a commit
+	// SHA prefix in CI, a labelled local build otherwise). Sent by the form, never typed; anything over
+	// the length is dropped, not refused.
+	BuildID OptString `json:"build_id"`
 }
 
 // GetKind returns the value of Kind.
@@ -16704,6 +16708,11 @@ func (s *SubmitFeedbackReq) GetRunID() OptUUID {
 	return s.RunID
 }
 
+// GetBuildID returns the value of BuildID.
+func (s *SubmitFeedbackReq) GetBuildID() OptString {
+	return s.BuildID
+}
+
 // SetKind sets the value of Kind.
 func (s *SubmitFeedbackReq) SetKind(val SubmitFeedbackReqKind) {
 	s.Kind = val
@@ -16722,6 +16731,11 @@ func (s *SubmitFeedbackReq) SetPagePath(val OptString) {
 // SetRunID sets the value of RunID.
 func (s *SubmitFeedbackReq) SetRunID(val OptUUID) {
 	s.RunID = val
+}
+
+// SetBuildID sets the value of BuildID.
+func (s *SubmitFeedbackReq) SetBuildID(val OptString) {
+	s.BuildID = val
 }
 
 // `blocking_issue` — something stopped the user from getting further (BETA-004). `need_signal` —

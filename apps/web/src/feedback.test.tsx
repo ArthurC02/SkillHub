@@ -142,7 +142,12 @@ test("BETA-003 a report carries only what the reporter can see on screen", async
     message: "按了建立下載套件之後畫面沒有任何反應。",
     page_path: `/runs/${RUN}`,
     run_id: RUN,
+    // 資訊架構 IA-11: the footer's own build identifier travels with the report,
+    // injected at build time — so it is a real string here too, never typed by
+    // anyone. Not asserted against a literal: the value is this checkout's SHA.
+    build_id: import.meta.env.VITE_BUILD_ID,
   });
+  expect(calls[0].body).toHaveProperty("build_id", expect.any(String));
   await waitFor(() => text().includes("已收到"));
   // 204 carries no id, so the confirmation must not imply a ticket to look up.
   expect(text()).toContain("沒有回覆機制");
@@ -218,6 +223,7 @@ test("BETA-005 the two kinds are the reporter's choice and the need signal is on
     page_path: "/workspace/downloads",
     // No run in the address, so no run id — not an empty string.
     run_id: undefined,
+    build_id: import.meta.env.VITE_BUILD_ID,
   });
 });
 

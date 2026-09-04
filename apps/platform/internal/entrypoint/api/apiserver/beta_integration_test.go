@@ -697,23 +697,28 @@ func TestFeedbackIsRecordedWithWorkspaceScope(t *testing.T) {
 	bobRun := bob.start(t)
 
 	body := fmt.Sprintf(
-		`{"kind":"blocking_issue","message":"the run page never left queued","page_path":"/runs/x","run_id":%q}`,
+		`{"kind":"blocking_issue","message":"the run page never left queued","page_path":"/runs/x","run_id":%q,"build_id":"abc123def456"}`,
 		bobRun.RunID)
 	if code, out := alice.doJSON(t, http.MethodPost, "/feedback", body); code != http.StatusNoContent {
 		t.Fatalf("POST /feedback: got %d, body %v", code, out)
 	}
 
 	var kind, path string
-	var runID *string
+	var runID, buildID *string
 	var workspace string
 	err := pool.QueryRow(context.Background(), `
-		SELECT kind, page_path, run_id::text, workspace_id::text FROM feedback_reports
-		ORDER BY created_at DESC LIMIT 1`).Scan(&kind, &path, &runID, &workspace)
+		SELECT kind, page_path, run_id::text, workspace_id::text, build_id FROM feedback_reports
+		ORDER BY created_at DESC LIMIT 1`).Scan(&kind, &path, &runID, &workspace, &buildID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if kind != "blocking_issue" || path != "/runs/x" {
 		t.Errorf("stored kind=%q page_path=%q", kind, path)
+	}
+	// 資訊架構 IA-11: the build the page came from travels with the report, so
+	// 「這一頁怪怪的」 can be reproduced against the deployment that served it.
+	if buildID == nil || *buildID != "abc123def456" {
+		t.Errorf("build_id was not stored on the report: %v", buildID)
 	}
 	if workspace != alice.workspaceID {
 		t.Errorf("the report was filed against workspace %s, want the session's %s", workspace, alice.workspaceID)

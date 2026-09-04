@@ -107,6 +107,7 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 		Message  string `json:"message"`
 		PagePath string `json:"page_path"`
 		RunID    string `json:"run_id"`
+		BuildID  string `json:"build_id"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with kind and message")
@@ -135,6 +136,13 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 	if path := strings.TrimSpace(body.PagePath); strings.HasPrefix(path, "/") &&
 		!strings.ContainsAny(path, "?#") && len(path) <= 512 {
 		p.PagePath = &path
+	}
+	// The build the page came from (0054, 資訊架構 IA-11): the footer's own
+	// identifier, sent by the form. It names the software, not the person, and it
+	// is what lets 「這一頁怪怪的」 be reproduced against a rolling deployment.
+	// Same drop-not-refuse rule as the path, and the length is the contract's.
+	if build := strings.TrimSpace(body.BuildID); build != "" && len(build) <= 64 {
+		p.BuildID = &build
 	}
 	// Same rule for the run: it has to be the caller's own, and one that is not is
 	// dropped, not rejected. Existence stays private either way (WS-006) — a
