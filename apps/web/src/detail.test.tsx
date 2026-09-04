@@ -194,6 +194,12 @@ test("§2.10: 十項判斷事實一項都不在 <details> 裡", async () => {
       elementSaying(fact).closest("details"),
       `「${fact}」被折進 <details> 了——§2.10 是封閉清單，§0 順位 2`,
     ).toBeNull();
+    // §2.13 第 1 條：Tip 是第四種揭露機制（ADR-065），同一條封閉清單對它同樣成立。
+    // 問法沿 `closest("details")`——`textContent` 讀得到收合的 Tip 裡的字，位置才說得出真話。
+    expect(
+      elementSaying(fact).closest("[data-tip]"),
+      `「${fact}」被折進 Tip 了——§2.10 的十項一項都不准進去（§2.13 第 1 條）`,
+    ).toBeNull();
   }
 });
 

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { SKILL } from "../src/fixtures/platform";
+import { RUN, SKILL, platformResponse } from "../src/fixtures/platform";
 import { PHONE_ROUTES, ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
 
@@ -264,7 +264,14 @@ test.describe("QA-008 real layout", () => {
     const fused = await page.evaluate(() => {
       const bad: string[] = [];
       for (const pill of Array.from(document.querySelectorAll(".badge"))) {
-        const note = pill.nextElementSibling;
+        // The next `.note`, not the next sibling: §4.7 lets a Tip trigger sit
+        // between a badge and its qualifier, and `nextElementSibling` would then
+        // find the button, skip the row, and pass without measuring anything.
+        let note: Element | null = pill.nextElementSibling;
+        while (note && !note.classList.contains("note")) {
+          if (!note.classList.contains("tip")) break;
+          note = note.nextElementSibling;
+        }
         if (!note?.classList.contains("note")) continue;
         const range = document.createRange();
         range.selectNodeContents(note);
@@ -481,5 +488,152 @@ test.describe("QA-008 the real Tab key", () => {
     expect(seen.length, "Tab reached nothing in the page at all").toBeGreaterThan(2);
     const sorted = [...seen].sort((x, y) => x - y);
     expect(seen, `focus jumped backwards: ${seen.join(" → ")}`).toEqual(sorted);
+  });
+});
+
+test.describe("ADR-065 the text budget and the fourth disclosure, in a real engine", () => {
+  /**
+   * 設計 §2.13 / ADR-065 決策 1. Class D (teaching) is the one class of visible
+   * text with a budget, and until 2026-09-04 the class existed only in people's
+   * heads — §6 said so. `data-role="teaching"` is the mark; this sums it per
+   * route in the state §2.13 calls default (logged in, loaded, one row, nothing
+   * expanded), counting runes the way `FeedbackEntry.tsx` does.
+   *
+   * Two assertions, of two kinds. Per block, the rule's own number: no flat D
+   * block over 100 runes. Per route, a RATCHET and not a threshold — ADR-065
+   * 待決策 1 says the value is set from the first measured distribution and may
+   * only move down, so the table is that distribution and an entry may only get
+   * smaller. A route absent from the table has no flat D at all. Text inside a
+   * closed Tip counts zero: it has no client rect, which is the whole point of
+   * having moved it.
+   *
+   * What it cannot see: A/B/C, so it cannot check 「D＋F ≤ A＋B＋C」 — nobody
+   * has marked those and §6 keeps saying so. What it will not do: judge whether
+   * a mark is on the right sentence. The audit that placed them is the
+   * argument; a mark on a caveat makes the caveat count, it does not hide it.
+   */
+  const TEACHING_FLAT: Record<string, number> = {
+    // Measured 2026-09-04 (chromium, 1280×900, shared fixtures). The largest is
+    // the Test Case detail page — nine separate teaching notes — and it is the
+    // one route the audit found over 「D＋F ≤ A＋B＋C」; §2.13 第 6 條 says the
+    // way down from there is copy and dedup, not Tips.
+    policy: 95,
+    "skill-detail": 78,
+    packaging: 61,
+    "lab-run": 84,
+    "lab-datasets": 16,
+    "lab-test-cases": 37,
+    "lab-test-case-detail": 319,
+    "run-trace": 51,
+    "workspace-account": 42,
+    "workspace-downloads": 107,
+    "workspace-runs": 18,
+    "workspace-skills": 112,
+  };
+
+  test("flat teaching text: ≤100 runes a block, and never more than the day it was measured", async ({
+    page,
+  }) => {
+    test.slow();
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    const bad: string[] = [];
+    const measured: Record<string, number> = {};
+    for (const [name, url] of ROUTES) {
+      await page.goto(url);
+      await expect(page.locator(".app-nav a").first()).toBeVisible();
+      const blocks = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('[data-role="teaching"]')).map((el) => ({
+          flat: !el.closest("[hidden]") && el.getClientRects().length > 0,
+          runes: [...(el.textContent ?? "").replace(/\s+/g, "")].length,
+          head: (el.textContent ?? "").trim().slice(0, 16),
+        })),
+      );
+      const flat = blocks.filter((b) => b.flat);
+      measured[name] = flat.reduce((sum, b) => sum + b.runes, 0);
+      for (const b of flat) {
+        if (b.runes > 100) {
+          bad.push(
+            `${name}: a ${b.runes}-rune teaching block 「${b.head}」 — §2.13 單一 D 區塊 ≤100`,
+          );
+        }
+      }
+      const cap = TEACHING_FLAT[name] ?? 0;
+      if (measured[name] > cap) {
+        bad.push(
+          `${name}: ${measured[name]} flat teaching runes, over the ${cap} measured on 2026-09-04 — the ratchet only moves down`,
+        );
+      }
+    }
+    // The vacuous pass: every mark deleted, every route at zero, table satisfied.
+    if (Object.values(measured).every((n) => n === 0)) {
+      bad.push("no route has any data-role=teaching — the marks are gone or the scan broke");
+    }
+    expect(
+      bad,
+      `§2.13 D 類預算: ${bad.join(" / ")}\nmeasured: ${JSON.stringify(measured)}`,
+    ).toEqual([]);
+  });
+
+  /**
+   * 設計 §2.13 Tip 第 2 條 and §4.7: the half of the Tip contract only layout can
+   * decide. `tip.test.tsx` proves the DOM shape; this proves that opening one
+   * moves nothing else on the page (a folded thing that pushes its neighbours is
+   * a `<details>`, and would have been written as one), that the trigger is a
+   * real target (WCAG 2.5.8, the app's 32px floor), and that Escape closes it
+   * with focus still on the button.
+   *
+   * The run has to be in flight for `InFlight` — the Tip's first and so far only
+   * home — to render at all, and the shared fixture's run is finished. One route
+   * override, registered after the stub so it wins, turns the summary into a
+   * running one; everything else stays the shared body.
+   */
+  test("a Tip opens without moving a neighbour, and Escape closes it", async ({ page }) => {
+    await stubPlatform(page);
+    await page.route(`**/runs/${RUN}/trace`, (route) => {
+      const { body, status } = platformResponse(route.request().url());
+      return route.fulfill({ status, json: { ...(body as object), status: "running" } });
+    });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`/runs/${RUN}`);
+
+    const trigger = page.locator("button.tip-trigger");
+    await expect(trigger).toHaveCount(1);
+    await expect(trigger).toContainText("為什麼可以關掉這一頁");
+    const content = page.locator("p.tip-content");
+    await expect(content).toBeHidden();
+
+    const box = await trigger.boundingBox();
+    expect(box?.height ?? 0, "the trigger is smaller than the 24px floor").toBeGreaterThanOrEqual(
+      24,
+    );
+
+    // Document coordinates, not viewport: the click scrolls the trigger into
+    // view, and every viewport-relative top shifts by that scroll. What must
+    // not move is where things sit on the page.
+    const positions = () =>
+      page.evaluate(() =>
+        Array.from(document.querySelectorAll("main *"))
+          // An <option> has no box of its own: Chromium reports 0 for it until the
+          // page has been interacted with, then the select's box. Not layout.
+          .filter((el) => !el.closest("[data-tip]") && el.tagName !== "OPTION")
+          .map((el) => Math.round(el.getBoundingClientRect().top + window.scrollY)),
+      );
+    const before = await positions();
+    const heightBefore = await page.evaluate(() => document.documentElement.scrollHeight);
+
+    await trigger.click();
+    await expect(content).toBeVisible();
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(await positions(), "opening the Tip moved something else on the page").toEqual(before);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollHeight),
+      "opening the Tip changed the page height",
+    ).toBe(heightBefore);
+
+    await page.keyboard.press("Escape");
+    await expect(content).toBeHidden();
+    await expect(trigger).toBeFocused();
   });
 });

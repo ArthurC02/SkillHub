@@ -1,4 +1,5 @@
 import type { Labelled } from "../api/types";
+import { StateIcon } from "./StateIcon";
 
 /**
  * Renders a server-owned `Labelled` (trust, license status, tier). The copy
@@ -54,9 +55,17 @@ export function LabelledBadge({
    */
   noteInRow?: boolean;
 }) {
+  const stateClass = `badge-${kind}-${value.value}`;
+  // §4.7: tier and category badges (精選, 文件, 作者原文) are categories, not
+  // §4.4 rows, and get no icon. Only the two §4.4 rows this generic badge can
+  // land on — 未知／未驗證 — do.
+  const showUnknownIcon = stateClass.endsWith("-unknown") || stateClass.endsWith("-unverified");
   return (
     <>
-      <span className={`badge badge-${kind}-${value.value}`}>{value.label}</span>
+      <span className={`badge ${stateClass}`}>
+        {showUnknownIcon && <StateIcon state="unknown" />}
+        {value.label}
+      </span>
       {noteInRow && value.note && <span className="note">{value.note}</span>}
     </>
   );

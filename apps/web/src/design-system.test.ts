@@ -568,3 +568,40 @@ test("IA-6: a page that writes its own read-failure sentence has to be listed", 
     4,
   );
 });
+
+/**
+ * 設計 §4.7 / ADR-065 決策 5: icons are allowed, at most SIX shapes app-wide,
+ * inline in the component, `aria-hidden`, never an asset directory or a font.
+ *
+ * ADR-064 決策 7 said 「不做圖示集」 and ADR-065 keeps that: six shapes each with
+ * an argument is not a set. The count that keeps it from becoming one is the
+ * number of `<svg` sites in the markup — an icon that lives in a component is
+ * one site, and a set would be a file of them. `a11y.test.tsx` proves per route
+ * that a word stands beside each; this proves the ceiling, and that none of
+ * them has been given a meaning of its own (`aria-hidden` on every one).
+ */
+test("ADR-065 §4.7: at most six icon shapes, every one inline and aria-hidden", () => {
+  const sites: string[] = [];
+  const meaningful: string[] = [];
+  for (const [file, body] of componentFiles()) {
+    // Comments first: StateIcon.tsx's own header talks about `<svg` sites, and
+    // prose about an icon is not an icon.
+    const code = body.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    for (const at of code.matchAll(/<svg\s([^>]*)>/g)) {
+      sites.push(file);
+      if (!/aria-hidden="true"/.test(at[1])) meaningful.push(file);
+    }
+  }
+  expect(
+    sites.length,
+    "no <svg> in any component — the scan broke (Tip.tsx has one)",
+  ).toBeGreaterThan(0);
+  expect(sites, "more than six icon sites — §4.7: 六個以內、逐個有主張的形狀不是集").toHaveLength(
+    Math.min(sites.length, 6),
+  );
+  expect(meaningful, "an <svg> without aria-hidden — §4.7: 圖示不得單獨承載語義").toEqual([]);
+  expect(
+    readdirSync(join(import.meta.dirname, "..")).filter((f) => /icons?$/i.test(String(f))),
+    "an icon directory — §4.7: 不加資產目錄、不加字型、不加套件",
+  ).toEqual([]);
+});

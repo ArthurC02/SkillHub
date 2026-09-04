@@ -119,7 +119,7 @@ export function DatasetUpload() {
                   <li key={k}>{k}</li>
                 ))}
               </ul>
-              <p>檔案類型以內容判定,不看副檔名。</p>
+              <p data-role="teaching">檔案類型以內容判定,不看副檔名。</p>
             </dd>
 
             <dt>保存政策</dt>

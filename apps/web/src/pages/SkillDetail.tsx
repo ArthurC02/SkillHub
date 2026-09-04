@@ -1013,7 +1013,9 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
               此 Skill 的 Test Case
             </Link>
           </p>
-          <p className="note">Test Case 是試跑用的草稿：User Prompt、測試資料與驗收條件。</p>
+          <p className="note" data-role="teaching">
+            Test Case 是試跑用的草稿：User Prompt、測試資料與驗收條件。
+          </p>
         </>
       ) : (
         // 設計 §2.2「顯示與強制成對」: said before the reader spends three

@@ -98,6 +98,13 @@
 - [ ] `name`／`description` 合規格（dogfood 測試會驗）
 - [ ] 不出現 `docs/`、ADR 編號、需求 ID（`harness` 檢查會驗）
 
+**新增一個 workflow**（`.claude/workflows/<name>.js`）
+- [ ] 通過「這個程序的形狀會重複嗎」——只跑一次的事不寫成 workflow，直接派子代理
+- [ ] `export const meta = { name, description, phases }` 是第一個敘述，`name` 等於檔名
+- [ ] 每個 `agent(` 同一行有 `model:`（一行 wrapper），沒有 fable／sol／inherit（`harness` 檢查會驗）
+- [ ] 寫入型的最後一步是 repo 的閘門，回報要引成功那一行；純量測型的最後一步是反駁或找漏讀
+- [ ] 第一次跑完讀 `journal.jsonl` 對一次回傳值，再信它的摘要
+
 **改根 `AGENTS.md`**
 - [ ] 沒有新增日期或刪除線
 - [ ] 砍掉的每個事實在別處有家（逐條核對）

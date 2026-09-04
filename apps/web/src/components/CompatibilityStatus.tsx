@@ -1,4 +1,5 @@
 import type { SkillCompatibility } from "../api/types";
+import { StateIcon, type IconState } from "./StateIcon";
 import { Timestamp } from "./Timestamp";
 
 /**
@@ -33,6 +34,19 @@ export const BADGE_TINT: Record<string, string> = {
   failed: "failed",
 };
 
+// §4.7: the badge's own tint already says 不通過／未知；`passed` is the one
+// remaining §4.4 row an untinted `.badge` can still be, so it gets an icon on
+// top of no tint. Any other untinted value (e.g. the measured `transpiled`
+// answer) gets none — it is a measurement, not a state. No axis value spells
+// 降級 today (api/types.ts, contracts/), so there is no branch for it: the
+// dashed row is the criterion badges' business in RunEvaluation.tsx.
+function axisIconState(value: string, tint?: string): IconState | undefined {
+  if (tint === "unverified") return "unknown";
+  if (tint === "failed") return "fail";
+  if (value === "passed") return "pass";
+  return undefined;
+}
+
 export function CompatibilityStatus({ compatibility }: { compatibility: SkillCompatibility }) {
   const axes = [
     { key: "spec_validation", label: "規格驗證", axis: compatibility.spec_validation },
@@ -49,16 +63,20 @@ export function CompatibilityStatus({ compatibility }: { compatibility: SkillCom
       {/* Each row IS the badge, so .compat-list turns off the flex `stretch`
           that ran these pills the full width of the page. */}
       <ul className="compat-list">
-        {axes.map(({ key, label, axis }) => (
-          <li
-            key={key}
-            className={
-              BADGE_TINT[axis.value] ? `badge badge-compat-${BADGE_TINT[axis.value]}` : "badge"
-            }
-          >
-            {label}：{axis.label}
-          </li>
-        ))}
+        {axes.map(({ key, label, axis }) => {
+          const iconState = axisIconState(axis.value, BADGE_TINT[axis.value]);
+          return (
+            <li
+              key={key}
+              className={
+                BADGE_TINT[axis.value] ? `badge badge-compat-${BADGE_TINT[axis.value]}` : "badge"
+              }
+            >
+              {iconState && <StateIcon state={iconState} />}
+              {label}：{axis.label}
+            </li>
+          );
+        })}
       </ul>
       {/*
         Only the axes that carry one. The server leaves `note` empty for the

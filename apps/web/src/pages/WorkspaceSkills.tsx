@@ -89,7 +89,9 @@ export function WorkspaceSkills() {
       <h1>我的 Skill</h1>
       {/* §2.13,D 類:兩句講的是同一件事的正反面,而反面（公開目錄的不在）才是讀者
           會弄錯的那半。合成一句,沒有任何新的宣稱。 */}
-      <p className="note">Fork 與匯入的都在這裡；公開目錄的不在。</p>
+      <p className="note" data-role="teaching">
+        Fork 與匯入的都在這裡；公開目錄的不在。
+      </p>
 
       {/*
         建立一個 Skill — the three ways in, gathered above the list instead of
@@ -340,7 +342,7 @@ export function WorkspaceSkills() {
           <Link to="/workspace/account">帳號</Link>
         </li>
       </ul>
-      <p className="note">
+      <p className="note" data-role="teaching">
         要刪掉哪一樣東西、以及刪掉之後什麼會留下，一份寫在
         <Link to="/policy">資料保存政策</Link>。
       </p>

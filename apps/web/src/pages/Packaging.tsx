@@ -334,7 +334,9 @@ export function Packaging() {
           </p>
 
           <h2>打包目標</h2>
-          <p className="note">每個目標的安裝說明也隨套件內的 INSTALL.md 一起下載。</p>
+          <p className="note" data-role="teaching">
+            每個目標的安裝說明也隨套件內的 INSTALL.md 一起下載。
+          </p>
           {targets.isPending && <Loading what="打包目標" />}
           <ReadFailure error={targets.error} what="打包目標" />
           {targets.data && (
@@ -492,7 +494,9 @@ function RetentionNotice({ preview }: { preview: PackagingPreview }) {
     <p className="note" role="status">
       <strong>保留期限</strong>：打包完成後，這份下載套件會保留{" "}
       <strong>{days >= 1 ? `${days} 天` : "不到 1 天"}</strong>，到期後平台自動刪除它。
-      <strong>過期不等於做白工</strong>——打包是冪等的，再打一次得到的是同一份內容。
+      <span data-role="teaching">
+        <strong>過期不等於做白工</strong>——打包是冪等的，再打一次得到的是同一份內容。
+      </span>
     </p>
   );
 }

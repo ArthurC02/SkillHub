@@ -159,6 +159,8 @@ func TestMain(m *testing.M) {
 	// harness only speaks about files that exist: a skill bound to this repo
 	// is the smallest thing that gives it one.
 	write(".claude/skills/x/SKILL.md", "---\nname: x\ndescription: y\n---\n\n見 docs/plans/04。\n")
+	// ...and a workflow whose agent() would inherit the dispatcher's model.
+	write(".claude/workflows/x.js", "export const meta = { name: 'x', description: 'y' }\nawait agent('go')\n")
 
 	var out bytes.Buffer
 	if err := automationCheck(root, &out); err == nil {

@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { StateIcon, type IconState } from "../components/StateIcon";
 import { Timestamp, formatAt } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
 import { useEffect, useRef, useState } from "react";
@@ -563,6 +564,13 @@ function CriterionItem({
   listSource?: CriterionResult["source"];
 }) {
   const downgraded = isEvidenceUnverifiable(c);
+  const criterionIconState: IconState = downgraded
+    ? "degraded"
+    : c.result === "passed"
+      ? "pass"
+      : c.result === "failed"
+        ? "fail"
+        : "unknown";
 
   return (
     <li className={`criterion criterion-${c.result}${downgraded ? " criterion-unverifiable" : ""}`}>
@@ -572,6 +580,7 @@ function CriterionItem({
             downgraded ? " badge-criterion-unverifiable" : ""
           }`}
         >
+          <StateIcon state={criterionIconState} />
           {downgraded ? "證據無法回驗" : CRITERION_LABEL[c.result]}
         </span>{" "}
         {c.text}
@@ -673,6 +682,15 @@ const MATCH_BADGE: Record<MatchKey, string> = {
   unrecorded: "badge badge-unverified",
 };
 
+/** Same three tints as `MATCH_BADGE`, as the §4.7 icon that rides on top of them. */
+const MATCH_ICON: Record<MatchKey, IconState> = {
+  exact: "pass",
+  normalized: "pass",
+  not_found: "fail",
+  not_checked: "unknown",
+  unrecorded: "unknown",
+};
+
 /** Print order for the legend. Stable, so two reports do not shuffle it. */
 const MATCH_ORDER: MatchKey[] = ["exact", "normalized", "not_found", "not_checked", "unrecorded"];
 
@@ -705,7 +723,11 @@ function MatchLegend({ evidence }: { evidence: EvidenceRef[] }) {
     <ul className="note">
       {kinds.map((k) => (
         <li key={k}>
-          <span className={MATCH_BADGE[k]}>{MATCH_WORD[k]}</span> {MATCH_NOTE[k]}
+          <span className={MATCH_BADGE[k]}>
+            <StateIcon state={MATCH_ICON[k]} />
+            {MATCH_WORD[k]}
+          </span>{" "}
+          {MATCH_NOTE[k]}
         </li>
       ))}
     </ul>
@@ -728,7 +750,10 @@ function EvidenceList({ evidence }: { evidence: EvidenceRef[] }) {
               in the legend — a reader who never reaches the legend still knows
               which of the five this citation is. */}
           <p className="note">
-            <span className={MATCH_BADGE[matchKey(e)]}>{MATCH_WORD[matchKey(e)]}</span>{" "}
+            <span className={MATCH_BADGE[matchKey(e)]}>
+              <StateIcon state={MATCH_ICON[matchKey(e)]} />
+              {MATCH_WORD[matchKey(e)]}
+            </span>{" "}
             {e.kind === "trace_event" && "Trace 事件"}
             {e.kind === "artifact" &&
               `Artifact ${e.artifact_path ?? ""}${

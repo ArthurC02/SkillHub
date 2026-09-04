@@ -1450,3 +1450,43 @@ summary {
     width: 140px;
   }
 }
+
+/* --- Tip: 設計 §1.3 的第四種揭露機制（ADR-065 決策 3, §4.7）------------------
+   A toggletip, and nothing about it is new vocabulary: the trigger is a plain
+   secondary button (the base control layer above already gives it --surface on
+   --border-strong and the 32px floor), the content is a paragraph on the
+   surface with the same 8px 12px a .notice wears, and the only thing this block
+   adds is POSITION. §2.13 第 2 條 says opening a Tip may not change the height
+   of anything around it — a folded thing that pushes its neighbours is a
+   <details> and should be written as one — so the content is taken out of flow.
+   This is the app's second `position` declaration (the first is the detail
+   rail's sticky, §4.5), and it is the rule, not a convenience.
+
+   No hover state opens it, no `title` carries it, and `[hidden]` (not opacity)
+   closes it: the reasons are §2.4 第 3 項 and §2.7, in that order. */
+.tip {
+  position: relative;
+  display: inline-block;
+}
+
+.tip-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tip-content {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  width: max-content;
+  max-width: min(40em, calc(100vw - 24px));
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+}

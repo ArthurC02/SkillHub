@@ -33,7 +33,7 @@ export function VersionUpload({ skillId }: { skillId: string }) {
   return (
     <section>
       <h3>上傳新版本</h3>
-      <p className="note">
+      <p className="note" data-role="teaching">
         把你改過的套件上傳成這個 Skill 的新版本；舊版本原封不動留著（ADR-003）。
       </p>
       <form

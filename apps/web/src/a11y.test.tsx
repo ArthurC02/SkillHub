@@ -199,6 +199,68 @@ async function scan(where: string) {
     ).not.toBe("");
   }
 
+  // 設計 §2.13 Tip 六條入場條件（ADR-065 決策 3）— the ones a route scan can
+  // ask. Tip is the fourth disclosure mechanism (§1.3) and the first the app
+  // builds itself, so every existing gate that knew `<details>` was blind to
+  // it: the tab walkthrough, `closest("details")`, the `title` scan. The
+  // component's own shape is proven in `tip.test.tsx`; §2.10 against
+  // `[data-tip]` in `detail.test.tsx`; 「open does not move a neighbour」 in
+  // `e2e/rendered.spec.ts`. This is the per-page half.
+  const tips = container.querySelectorAll("[data-tip]");
+  expect(
+    tips.length,
+    `${where}: ${tips.length} Tips on one page — 一頁至多三個 (§2.13 第 5 條)：十個問號和沒有問號一樣沒有指向`,
+  ).toBeLessThanOrEqual(3);
+  // §2.13 第 3 條's own counter-examples, verbatim. The rule is 「錨點必須自己成
+  // 立」 and a machine cannot judge that; it can refuse the words the rule names.
+  const NOT_AN_ANCHOR = ["?", "？", "詳情", "說明", "更多", "為什麼", "說明？", "為什麼？"];
+  for (const tip of tips) {
+    const trigger = tip.querySelector(":scope > button.tip-trigger");
+    expect(trigger, `${where}: a [data-tip] without its own button`).not.toBeNull();
+    const label = (trigger!.textContent ?? "").trim();
+    expect(
+      NOT_AN_ANCHOR.includes(label),
+      `${where}: Tip anchor 「${label}」 does not stand on its own (§2.13 第 3 條) — name the subject`,
+    ).toBe(false);
+    expect(
+      label.length,
+      `${where}: a Tip trigger with no visible text (§2.13 第 4 條)`,
+    ).toBeGreaterThan(1);
+    expect(
+      trigger!.getAttribute("title"),
+      `${where}: a Tip carried in title= (§2.13 第 2 條)`,
+    ).toBeNull();
+    const content = tip.querySelector(":scope > p.tip-content");
+    expect(
+      content,
+      `${where}: Tip content is not a <p> — §4.7 says a <div> hides from the 40em measure`,
+    ).not.toBeNull();
+    expect(
+      trigger!.getAttribute("aria-controls"),
+      `${where}: the Tip button does not point at its content`,
+    ).toBe(content!.id);
+    // §2.13 第 1 條: only D and F go in. A `.note` is this app's class for a
+    // qualifier (C) and a `.badge` is a claim (A); either inside a Tip is the
+    // content the rule forbids, wearing the class the other gates look for.
+    expect(
+      content!.querySelector(".note, .badge, [role=status], [role=alert]"),
+      `${where}: a qualifier, a claim or live text inside a Tip — A／B／C／G never go in (§2.13 第 1 條)`,
+    ).toBeNull();
+  }
+
+  // 設計 §4.7: an icon is the THIRD signal and the word is always beside it.
+  // axe's button-name/link-name only catch 「no name at all」; an icon plus an
+  // aria-label and no visible word passes axe and fails §4.7, so this reads the
+  // visible text next to every decorative SVG.
+  for (const svg of container.querySelectorAll("svg[aria-hidden='true']")) {
+    const beside = (svg.parentElement?.textContent ?? "").replace(/\s+/g, "");
+    expect(beside, `${where}: an icon with no visible word beside it (§4.7)`).not.toBe("");
+  }
+  expect(
+    container.querySelectorAll("svg:not([aria-hidden='true'])"),
+    `${where}: an <svg> that is not aria-hidden — §4.7 icons never carry meaning on their own`,
+  ).toHaveLength(0);
+
   // system.md §3 第 14 條「同一個事實，這一頁講了幾次？講得一樣嗎？」 — listed in
   // §6 as having no machine at all, which is how 04 丙-137 survived: the skill
   // page rendered `LicenseBadge` twice, from the same component with the same

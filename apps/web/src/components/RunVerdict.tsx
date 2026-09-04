@@ -1,4 +1,5 @@
 import type { Labelled } from "../api/types";
+import { StateIcon } from "./StateIcon";
 
 /**
  * The task verdict as it appears on a list row (ADR-025, 設計 §2.5, 04 丙-32).
@@ -38,6 +39,13 @@ export function RunVerdict({ verdict }: { verdict: Labelled }) {
   return (
     <>
       <span className={VERDICT_BADGE[verdict.value] ?? "badge badge-unverified"}>
+        {verdict.value === "met" ? (
+          <StateIcon state="pass" />
+        ) : verdict.value === "not_met" ? (
+          <StateIcon state="fail" />
+        ) : (
+          <StateIcon state="unknown" />
+        )}
         任務判定：{verdict.label}
       </span>
       {NOTE_SHOWN.has(verdict.value) && <span className="note">{verdict.note}</span>}

@@ -45,7 +45,7 @@ export function Downloads() {
   return (
     <section>
       <h1>下載紀錄</h1>
-      <p className="note">
+      <p className="note" data-role="teaching">
         這個工作區打包過的套件，新的在上面。到期的仍然列在這裡並標示已過期——那與「沒有這一筆」是兩個不同的答案。
       </p>
 
@@ -93,7 +93,7 @@ export function Downloads() {
               位置在清單下方而不是上方：它們是讀完一列之後才成立的限定語，而 §2.11(c)
               要的是「同一個區塊」，不是「在它前面」。
             */}
-            <p className="note">
+            <p className="note" data-role="teaching">
               每一列的徽章是打包目標；安裝說明在套件內的 INSTALL.md。到期後檔案刪除，
               同一版本隨時可以再打包一次。
             </p>

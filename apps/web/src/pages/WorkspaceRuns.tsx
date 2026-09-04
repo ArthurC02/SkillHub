@@ -32,7 +32,9 @@ export function WorkspaceRuns() {
         「兩列、判定在前」這個**版面事實**——那由每一列自己的兩個徽章帶著主詞說出來
         （任務判定：／執行狀態：）,不是由這段字說出來。兩列一個字都沒有動。
       */}
-      <p className="note">這個工作區跑過的 Run，新的在上面。</p>
+      <p className="note" data-role="teaching">
+        這個工作區跑過的 Run，新的在上面。
+      </p>
 
       {runs.isPending && <Loading what=" Run 歷史" />}
       <ReadFailure error={runs.error} what=" Run 歷史" />

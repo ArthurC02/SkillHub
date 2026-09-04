@@ -411,6 +411,33 @@ test("設計 §2.13：進行中留下事實與強制者，推導與指路句不�
   expect(container.querySelector('time[datetime="2026-08-22T10:04:00Z"]')).not.toBeNull();
 });
 
+/**
+ * 設計 §2.13 — the Tip that carries the worker/sandbox derivation.
+ *
+ * At most one Tip on an in-flight route, its trigger names itself, its
+ * content is folded by default and marked as the teaching-budget class, and
+ * the flat enforcer sentence stays flat — outside the Tip, not inside it.
+ */
+test("§2.13：進行中的 Tip 只有一個，預設收合，推導不與那句事實同一個節點", async () => {
+  stubTrace({ ...summary, status: "running", last_event_at: "2026-08-22T10:04:00Z" }, advanced);
+  await render();
+
+  const tips = container.querySelectorAll("[data-tip]");
+  expect(tips.length).toBe(1);
+
+  const trigger = tips[0].querySelector("button.tip-trigger");
+  expect(trigger?.textContent).toBe("為什麼可以關掉這一頁");
+
+  const content = tips[0].querySelector("p.tip-content");
+  expect(content?.hasAttribute("hidden")).toBe(true);
+  expect(content?.getAttribute("data-role")).toBe("teaching");
+
+  const flatSentence = Array.from(container.querySelectorAll("p")).find((p) =>
+    (p.textContent ?? "").includes("可以關掉這一頁"),
+  );
+  expect(flatSentence?.closest("[data-tip]")).toBeNull();
+});
+
 test("§2.12: the banner is gone once the run is terminal", async () => {
   // A finished run already answers with a verdict and an execution state; a
   // third answer about waiting would be one fact worded twice (§3 第 14 條).

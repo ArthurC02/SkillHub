@@ -457,7 +457,7 @@ export function RunPreflight() {
             之前看得見）。伺服器自己的說法走 `notes[]`；這一句**無條件**印，
             因為 fail-open 到什麼都不說正是這一格原本的狀態。
           */}
-          <p className="note">
+          <p className="note" data-role="teaching">
             Token 上限能跑幾輪，取決於每一輪的工具呼叫次數——每次工具結果回填都要重送整個前綴，
             所以同樣的 300K input，工具密集的 Run 大約只夠 5 輪，純對話大約夠 15 輪。
           </p>

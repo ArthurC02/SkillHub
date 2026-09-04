@@ -2,6 +2,7 @@ import { TERMINAL_RUN_STATUSES } from "../api/trace";
 import { Timestamp } from "./Timestamp";
 import type { TraceSummary } from "../api/trace";
 import { runStatusLabel } from "../pages/RunEvaluation";
+import { Tip } from "./Tip";
 
 /**
  * 設計 §2.12: 進行中是第三軸，不是判定的一個值。
@@ -24,8 +25,8 @@ import { runStatusLabel } from "../pages/RunEvaluation";
  *    and its enforcer are.** 「可以關掉這一頁（平台在跑，不是你的瀏覽器）」 keeps the
  *    fact (G) and the enforcer attribution (§2.2 第三向); the worker/sandbox
  *    walk-through above is D — a reason that never changes and never changes
- *    what the reader presses — so it belongs in a Tip (§1.3), which does not
- *    exist yet (丙-142 第二批). Until then it lives here, not in the banner.
+ *    what the reader presses — so it belongs in a Tip (§1.3). It now lives in
+ *    one, right after that sentence, not in the banner's flat text.
  *    The pointer to 「取消這個 Run」 went with it: that button is the very next
  *    thing on the page, deliberately placed under this banner (see RunTrace).
  *  - **一個會變的量** — events so far, which moves while the poll runs.
@@ -50,6 +51,10 @@ export function InFlight({ summary }: { summary: TraceSummary }) {
       </p>
       <p className="note">
         可以關掉這一頁（平台在跑，不是你的瀏覽器）；回到這個網址就會看到當下的進度。
+        <Tip anchor="為什麼可以關掉這一頁">
+          這個 Run 是資料庫裡佇列的一項工作，由平台的 Worker 執行；沙箱把過程中的事件直接送回平台的
+          API。瀏覽器不在這兩條路徑上，分頁開著或關掉都不影響 Run 本身或它的紀錄。
+        </Tip>
       </p>
       <p className="note">
         目前已記錄 {moved} 件事（工具呼叫、Skill 載入與錯誤合計）

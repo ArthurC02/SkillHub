@@ -117,7 +117,7 @@ export function RunTrace() {
           `aria-label`，畫面上零個字說明按下去會換掉什麼、以及它只影響這一節。
           順帶把那個 `aria-label` 從「檢視模式」換掉——容器詞正是 R5 拒絕的東西，
           而這個檔案的 h1 才剛因為 R5 從「Run 詳情」改成「Run 結果」。 */}
-      <p className="note">
+      <p className="note" data-role="teaching">
         一般模式是摘要，進階模式是這次 Run 的原始事件（已遮罩）——同一份紀錄的兩種詳細度，
         只影響下面這一節。
       </p>
@@ -557,7 +557,7 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
       {/* Design §4.3: explanatory prose, so .note — not the notice surface,
           which is reserved for what the platform is currently doing to this
           page (the incomplete banner right above it is one). */}
-      <p className="note">
+      <p className="note" data-role="teaching">
         分頁依平台接收順序排列；每頁內依事件時間排序。這能讓執行中的 Trace 不漏掉較晚送達的事件。
       </p>
       {/*

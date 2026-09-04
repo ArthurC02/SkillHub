@@ -84,3 +84,47 @@ func TestHarnessRejectsARootAgentsDocOverTheCap(t *testing.T) {
 		t.Fatalf("an AGENTS.md over the Codex cap was accepted: %v", problems)
 	}
 }
+
+const cleanWorkflow = "export const meta = {\n  name: 'x',\n  description: 'y',\n}\nconst run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet' })\nawait run('do it', { label: 'a' })\n"
+
+func TestHarnessAcceptsAWorkflowThatNamesItsModels(t *testing.T) {
+	t.Parallel()
+	root := writeHarnessFixture(t, cleanSkill, cleanAgent, "# 導覽\n")
+	writeAt(t, root, harnessWorkflowsDir+"/x.js", cleanWorkflow)
+	if problems := harnessProblems(root); len(problems) != 0 {
+		t.Fatalf("a clean workflow was rejected: %v", problems)
+	}
+}
+
+func TestHarnessRejectsAWorkflowThatInheritsTheDispatcherModel(t *testing.T) {
+	t.Parallel()
+	for name, script := range map[string]string{
+		"bare agent()":  cleanWorkflow + "await agent('again')\n",
+		"agent split":   cleanWorkflow + "await agent(\n  'again',\n  { model: 'sonnet' },\n)\n",
+		"fable literal": cleanWorkflow + "await run('again', { model: 'claude-fable-5-1' })\n",
+		"sol literal":   cleanWorkflow + "await run('again', { model: 'sol' })\n",
+		"inherit":       cleanWorkflow + "await run('again', { model: 'inherit' })\n",
+		"no meta":       "const run = (p, o = {}) => agent(p, { ...o, model: 'sonnet' })\n",
+		"name mismatch": strings.Replace(cleanWorkflow, "name: 'x'", "name: 'y'", 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			root := writeHarnessFixture(t, cleanSkill, cleanAgent, "# 導覽\n")
+			writeAt(t, root, harnessWorkflowsDir+"/x.js", script)
+			problems := harnessProblems(root)
+			if len(problems) != 1 || !strings.Contains(problems[0], ".claude/workflows/x.js") {
+				t.Fatalf("a workflow that can reach the dispatcher's model was accepted: %v", problems)
+			}
+		})
+	}
+}
+
+func TestHarnessIgnoresProseAboutAgentCalls(t *testing.T) {
+	t.Parallel()
+	root := writeHarnessFixture(t, cleanSkill, cleanAgent, "# 導覽\n")
+	// After meta, not before: meta must be the file's first statement.
+	writeAt(t, root, harnessWorkflowsDir+"/x.js", cleanWorkflow+"// a bare agent() would inherit\n")
+	if problems := harnessProblems(root); len(problems) != 0 {
+		t.Fatalf("a comment mentioning agent() was treated as a call: %v", problems)
+	}
+}

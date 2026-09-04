@@ -1,4 +1,5 @@
 import type { Disclosure, SearchResultRisk, SkillRisk } from "../api/types";
+import { StateIcon } from "./StateIcon";
 
 /**
  * DISC-008 risk disclosure. Deliberately no single "safe" badge (NFR-001):
@@ -52,7 +53,10 @@ function RiskLevel({ risk }: { risk: { level?: string } }) {
   if (risk.level !== "unknown") return null;
   return (
     <>
-      <span className="badge badge-unverified">未掃描</span>
+      <span className="badge badge-unverified">
+        <StateIcon state="unknown" />
+        未掃描
+      </span>
       {/* §4.4 規則 1: 未執行 has to say WHICH check did not run — 「未掃描」 alone
           is a state without a subject, and a reader can only act on the
           difference between 「掃過了，沒事」 and 「沒掃」 if the second one names
@@ -87,14 +91,22 @@ export function RiskSummary({
       <RiskLevel risk={risk} />
       {risk.scan_status === "scanned" && (
         <>
-          {risk.warnings > 0 && <span className="badge badge-risk">警告 {risk.warnings}</span>}
+          {risk.warnings > 0 && (
+            <span className="badge badge-risk">
+              <StateIcon state="fail" />
+              警告 {risk.warnings}
+            </span>
+          )}
           {flags.length > 0
             ? flags.map((d: Disclosure) => (
                 <span key={d.code}>
                   {/* No `title=`: `{d.note}` is the visible line directly below,
                       so the tooltip only made a screen reader announce the same
                       sentence twice (設計 §2.13 去重 2, ADR-065). */}
-                  <span className="badge badge-risk-flag">{d.label}</span>
+                  <span className="badge badge-risk-flag">
+                    <StateIcon state="fail" />
+                    {d.label}
+                  </span>
                   {/* Visible, not `title`-only. This file's own header used to
                       argue 「a compact row has nowhere to put it」; 設計 §0 puts
                       安全與不誤導 above 版面, and §0 also says the way a lower
@@ -122,7 +134,10 @@ export function RiskIndicator({ risk }: { risk: SkillRisk }) {
   if (risk.scan_status === "unavailable") {
     return (
       <div>
-        <p className="badge badge-risk">風險掃描結果未知：無法讀取已保存的套件內容。</p>
+        <p className="badge badge-risk">
+          <StateIcon state="unknown" />
+          風險掃描結果未知：無法讀取已保存的套件內容。
+        </p>
         <p className="note">{risk.note}</p>
       </div>
     );
@@ -141,6 +156,7 @@ export function RiskIndicator({ risk }: { risk: SkillRisk }) {
         <ul className="risk-list">
           {risk.highlights.map((finding, i) => (
             <li key={`${finding.code}-${finding.path ?? ""}-${i}`} className="badge badge-risk">
+              <StateIcon state="fail" />
               <strong>{finding.severity === "error" ? "錯誤" : "警告"}</strong>
               <span className="risk-code">{finding.code}</span>
               {finding.path && <code>{finding.path}</code>}
@@ -160,6 +176,7 @@ export function RiskIndicator({ risk }: { risk: SkillRisk }) {
               does not allow. */}
           {flags.map((d: Disclosure) => (
             <li key={d.code} className="badge badge-risk-flag">
+              <StateIcon state="fail" />
               {d.label}
               {d.note && <span className="note">{d.note}</span>}
             </li>
@@ -172,7 +189,10 @@ export function RiskIndicator({ risk }: { risk: SkillRisk }) {
           reading as a 「安全」 badge (NFR-001). `badge-risk-none` carried no rule
           and no meaning, so it is gone rather than left as a hook. */}
       {risk.highlights.length === 0 && flags.length === 0 && (
-        <p className="badge">靜態掃描未發現錯誤或警告；這不等於安全。</p>
+        <p className="badge">
+          <StateIcon state="pass" />
+          靜態掃描未發現錯誤或警告；這不等於安全。
+        </p>
       )}
 
       {/* `risk-infos` has no CSS rule, but it is not dead markup either:

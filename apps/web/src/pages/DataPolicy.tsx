@@ -47,7 +47,7 @@ export function DataPolicy() {
   return (
     <section>
       <h1>資料保存政策</h1>
-      <p className="note">
+      <p className="note" data-role="teaching">
         這一頁講兩件事：平台在你沒有主動送出任何東西的情況下記了什麼，以及你要刪掉自己的東西時該去哪裡。
       </p>
 
@@ -138,7 +138,7 @@ export function DataPolicy() {
         page states its own scope at the moment of the deletion, and one of them
         (WorkspaceAccount) gets the real end date from the server.
       */}
-      <p className="note">
+      <p className="note" data-role="teaching">
         刪除都是分兩步的：按下去之後會先說明這一次刪掉的是什麼、什麼會留下、期限多長，確認才真的執行。
       </p>
       <ul className="risk-list">

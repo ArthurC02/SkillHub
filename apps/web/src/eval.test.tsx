@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { EvaluationPanel, MATCH_NOTE } from "./pages/RunEvaluation";
+import { RunVerdict } from "./components/RunVerdict";
 import { EVALUATION_POLL_MAX_404, EVALUATION_POLL_MAX_PENDING } from "./api/evaluation";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./api/evaluation";
 
@@ -555,6 +556,40 @@ test("§2.13 引文回驗結果是徽章，解釋在清單層級只印一次", a
 function occurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1;
 }
+
+/*
+ * 設計 §4.7: an icon is the third signal and always rides beside the word, on
+ * every badge that lands on a §4.4 row — never as a replacement for the word,
+ * never on a badge that is a category. This checks the whole evaluation page's
+ * worth of state badges at once (criterion verdicts, downgraded evidence, the
+ * five citation re-verification badges) plus the one this suite does not
+ * otherwise render: a `met` run's verdict badge, which is the RunVerdict.tsx
+ * `pass` branch.
+ */
+test("§4.7 每個表狀態徽章都帶一個 aria-hidden 圖示，且圖示旁邊仍有詞", async () => {
+  stubPlatform({ evaluated: true });
+  await render("succeeded");
+
+  const stateBadges = Array.from(container.querySelectorAll(".badge")).filter((b) =>
+    /-(failed|danger|unverifiable|undetermined|unverified|passed)\b/.test(b.className),
+  );
+  expect(stateBadges.length).toBeGreaterThan(0);
+  for (const badge of stateBadges) {
+    expect(badge.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(1);
+    expect((badge.textContent ?? "").trim().length).toBeGreaterThan(0);
+  }
+
+  const verdictContainer = document.createElement("div");
+  document.body.appendChild(verdictContainer);
+  const verdictRoot = createRoot(verdictContainer);
+  await act(async () => {
+    verdictRoot.render(<RunVerdict verdict={{ value: "met", label: "符合", note: "" }} />);
+  });
+  const verdictBadge = verdictContainer.querySelector(".badge")!;
+  expect(verdictBadge.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  await act(async () => verdictRoot.unmount());
+  verdictContainer.remove();
+});
 
 /*
  * 設計 §2.13 去重 1, and `components/RunVerdict.tsx` is the precedent its own

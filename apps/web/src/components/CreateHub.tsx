@@ -51,7 +51,9 @@ export function CreateHub({ generateExposed }: { generateExposed: boolean }) {
               /workspace/import 上有一份逐字的同義句（「套件只會做靜態檢查；匯入期間
               不執行其中的 Script。」）,而那一頁才是撞上這件事的地方——這張卡是通往
               那一頁的門,門上與門後講同一句話,讀者只讀得到第二次（§2.13 第 2 條）。 */}
-          <p className="note">貼一個 GitHub URL，或上傳一個 zip。平台會做規格驗證與靜態掃描。</p>
+          <p className="note" data-role="teaching">
+            貼一個 GitHub URL，或上傳一個 zip。平台會做規格驗證與靜態掃描。
+          </p>
           {/*
             The one filled action on this page (§4.6.3 一頁至多一個). It was zero
             before, so this adds a row to that table rather than competing with
@@ -69,7 +71,7 @@ export function CreateHub({ generateExposed }: { generateExposed: boolean }) {
           <p className="note">
             {/* §2.13,D 類:三步驟的教學縮成一句。按鈕上的字（「以這個 Skill 為起點
                 建立我自己的」）在目錄那一頁就看得到,不必在門上先背一次。 */}
-            從目錄複製一份到你的工作區，再上傳改過的版本。
+            <span data-role="teaching">從目錄複製一份到你的工作區，再上傳改過的版本。</span>
             {/*
               §2.2 第三向: the restriction is real, it is stated before the user
               walks into it, and it names who enforces it. Fork is

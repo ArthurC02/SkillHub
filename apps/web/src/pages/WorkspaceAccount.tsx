@@ -139,7 +139,7 @@ export function WorkspaceAccount() {
             留 /policy 那一份:它是 02:O11Y-004 的揭露義務所在,也是四份裡唯一寫了
             「刪不掉的東西會留下什麼」的。這裡指過去,而不是再寫一次逐項的落點。
           */}
-          <p className="note">
+          <p className="note" data-role="teaching">
             只想刪掉某幾樣東西，不想刪帳號？哪一樣刪在哪裡、刪掉之後什麼會留下，見
             <Link to="/policy">資料保存政策</Link>。
           </p>

@@ -126,7 +126,9 @@ export function TestCaseList() {
         的後果（改了不會動到已經跑過的 Run）只有在**正在編輯**的地方才決定得了任何
         事，而這一頁不能編輯任何一條。內容一個字都沒有改寫，只是不再印第二、三次。
       */}
-      <p className="note">Test Case 是可編輯的草稿：User Prompt、測試資料與驗收條件。</p>
+      <p className="note" data-role="teaching">
+        Test Case 是可編輯的草稿：User Prompt、測試資料與驗收條件。
+      </p>
 
       {/*
         設計 checklist 1 / 義務 §1.2: 這一頁要回答的是「我有哪些 Test Case」,而
@@ -364,7 +366,7 @@ export function TestCaseDetail() {
           前往執行前權限確認
         </Link>
       </p>
-      <p className="note">
+      <p className="note" data-role="teaching">
         （要跑哪一個 Skill Version 在那個頁面上選
         {lastVersion ? "，預設是這個 Test Case 上次跑的那一版" : ""}）。開始 Run
         前一定會再顯示一次權限摘要並要求確認。
@@ -399,7 +401,9 @@ function RunHistory({
         自己的兩個徽章帶著主詞說出來（任務判定：／執行狀態：）。兩列一個字都沒有動,
         少掉的只有那段定義（§2.13,D 類）。
       */}
-      <p className="note">逐條驗收結果在各自的 Run 頁面上。</p>
+      <p className="note" data-role="teaching">
+        逐條驗收結果在各自的 Run 頁面上。
+      </p>
       {runs.isPending && <Loading what="執行歷史" />}
       <ReadFailure error={runs.error} what="執行歷史" />
       {runs.data &&
@@ -635,7 +639,7 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
         動到已經跑過的 Run）只有在這裡決定得了事情。主詞從「這裡」放寬成「這一頁」,
         因為被凍結的是 Prompt、驗收條件與 rubric,而那正是被刪掉的兩份各自涵蓋的。
       */}
-      <p className="note">
+      <p className="note" data-role="teaching">
         每一條都會被逐項判定為通過／未通過／無法判斷。 開始 Run
         時，這一頁的內容會被凍結成快照：之後修改只影響<strong>下一次</strong>
         Run，不會改寫任何已經完成的 Run 或已經寫好的評估。
@@ -934,7 +938,7 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
         level, not a level that should have gone down and didn't (§6).
       */}
       <h3>Rubric（選用）</h3>
-      <p className="note">
+      <p className="note" data-role="teaching">
         Rubric 是驗收條件的<strong>加強說法</strong>，不是另一套判定：每一條都掛在上面某一條驗收
         條件上，只是額外說明「做到什麼程度算過」以及「要不要引原文」。權重只是給模型看的相對
         重要性，平台不拿它算分。
@@ -954,7 +958,7 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
               placeholder="例如 content-007/writing/v1"
             />
             <br />
-            <span className="note">
+            <span className="note" data-role="teaching">
               改任何一條的文字、權重或引文要求就是新版本；評估報告會記下這次判定是在哪個版本下做的。
             </span>
           </p>
@@ -1067,7 +1071,9 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
           上傳檔案
         </Link>
       </p>
-      <p className="note">（上傳規則會在選檔前顯示）。</p>
+      <p className="note" data-role="teaching">
+        （上傳規則會在選檔前顯示）。
+      </p>
       {datasets.isPending && <Loading what="檔案清單" />}
       <ReadFailure error={datasets.error} what="檔案清單" />
       {datasets.data &&

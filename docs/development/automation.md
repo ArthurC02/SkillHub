@@ -98,20 +98,21 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 **三次都不是 code review 找到的**，是突變找到的。成本是一次 `sed` 加一次 `go test`。程序：把修正那一行還原、跑對應的那一條測試、確認變紅、改回來、`git diff` 確認為空。不適用於純文案、純註解與本來就沒有斷言可言的變更；適用於任何你在 commit 訊息裡寫「修好了 X」的東西。Claude Code 的 `mutation-check` 技能與 `skillhub-mutation` 角色是這條的可執行版本。
 
-## Harness：角色、技能、rules 與 deny 的放置規則（2026-09-03 建立，09-04 重整）
+## Harness：角色、技能、rules、workflows 與 deny 的放置規則（2026-09-03 建立，09-04 重整）
 
 `AGENTS.md`〈分區指標與攔阻〉只放入口；規則本體在這裡；**建立這套東西的歷程、洞見、工序與功法在 [harness/](./harness/README.md)**。**判準：換一個 repo 還成立嗎？** 成立才進 `.claude/skills/`；不成立留在 `docs/`、各層 `AGENTS.md`、`.claude/rules/` 或 deny／CI。每一層只放一種東西：
 
 - **`.claude/rules/`**：按路徑觸發的指標，內容只有「先讀哪一份、會被哪個檢查擋」。實測會送達子代理，首次命中注入一次。
 - **`.claude/agents/`**：按**風險**切的三個角色——`skillhub-writer`（寫，路徑範圍由簡報給）、`skillhub-verify`（唯讀驗證）、`skillhub-mutation`（證明測試會紅）。**角色不按目錄切、不新增**：某個區域該先讀什麼、哪些檔屬於 coordinator，寫在該區域的 `AGENTS.md`，由 rules 按路徑送達。禁令只有一份（`AGENTS.md` 開發自動化第 3 條），角色檔引用不複述。
 - **`.claude/skills/`**：換一個 repo 還成立的程序。技能不得引用 `docs/`、ADR 編號或需求 ID——引用了就隨那份文件過期。
+- **`.claude/workflows/`**（2026-09-04 起）：**有固定形狀的多代理程序**——哪些事平行、哪一步驗證、最後跑什麼閘門——寫成一支 `<name>.js`，以 `/<name>` 呼叫；判斷本身仍在子代理，腳本只決定順序與扇出。每支的**最後一步是 repo 自己的閘門**（`typecheck`＋`vitest`＋`lint`＋`format:check`，或 `automation-check`），不是「寫完了」。**腳本裡的 `agent()` 不指定模型就繼承派工者的旗艦級**，所以每一個 `agent(` 呼叫都要在同一行寫 `model:`（慣例是一行 wrapper：`const run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet' })`），`harness` 檢查逐行看。現有兩支：`ux-text-audit`（逐檔分類可見文字、去反駁、找漏讀）、`parallel-page-edit`（互斥路徑的寫入簡報 → 唯讀驗證 → 突變證明 → 閘門一次）。
 - **`permissions.deny`**（`.claude/settings.json`）：把慣例變成真的拒絕——`stash`、`reset --hard`、`clean`、`checkout -- `、`checkout .`、`restore`、`add -A`／`--all`／`.`、`commit -a`／`--all`、`push --force`／`-f`、`commit --amend`。對子代理同樣生效、不需 workspace trust。**每條加完要親自撞一次**（2026-09-03 就撞出一個誤擋 `git add .claude/` 的偽陽性）。陷阱：路徑型規則只認 `Edit(...)` 與 `Read(...)`，寫成 `Write(...)`／`Glob(...)` 會被接受但永不被查詢。
 
 **送達的實測事實**：子代理啟動時只有全域 `CLAUDE.md`、專案 `CLAUDE.md`→根 `AGENTS.md`、記憶索引；目錄層 `AGENTS.md`（配一行 `@AGENTS.md` 的 `CLAUDE.md`）會在讀到該目錄檔案時載入，但剛建立的檔案不保證立刻被發現；Codex 只走「repo 根 → 它的 cwd」，且指示總量上限 32 KiB（`project_doc_max_bytes`），所以根 `AGENTS.md` 有大小上限。Claude 這幾層**其他工具吃不到，只是提早發現**；真正的保證仍在 `automation-check`、測試與 CI。
 
 **新增一個區域的三步配方**（不新增角色）：①在該目錄放 `AGENTS.md`（指標表：要做的事 → 先讀哪段 → 沒讀會被哪個閘門擋；加一行 `@AGENTS.md` 的 `CLAUDE.md`）；②在 `.claude/rules/` 加一條 `paths:` 指向它；③在根 `AGENTS.md`〈分區指標與攔阻〉的表加一列。
 
-**守它的機器**：名冊裡的 `harness`（技能不引用本地文件、角色必須指定 `model` 且不得 fable／sol／inherit、根 `AGENTS.md` 不超過上限）與 `apps/platform/internal/shared/skillpkg/repo_skills_test.go`（技能過產品自己的 `skillpkg.Validate`）。
+**守它的機器**：名冊裡的 `harness`（技能不引用本地文件、角色必須指定 `model` 且不得 fable／sol／inherit、根 `AGENTS.md` 不超過上限、workflow 的每個 `agent(` 同一行有 `model:` 且 `meta.name` 等於檔名）與 `apps/platform/internal/shared/skillpkg/repo_skills_test.go`（技能過產品自己的 `skillpkg.Validate`）。
 
 ## 常見失敗
 
@@ -158,7 +159,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `goldenset-mirror` | `tools/goldenset/evaluate.py` 的 `enriched_index_text` 與 Go 的 `embeddingText` 以 digest 綁在一起 | `tools/devctl/goldenset_mirror.go` |
 | `capability-table` | `.env.example` 的每個變數都要說出它擋著什麼（`05` R-36），見下節 | `tools/devctl/capability_table.go` |
 | `doc-links` | 每一條相對路徑的 markdown 連結都要指得到真實檔案（只驗路徑，不驗 `#` 錨點、不連外） | `tools/devctl/doc_links.go` |
-| `harness` | `.claude/skills/` 不得引用 `docs/`、ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／sol／inherit；預設是各角色 frontmatter 的低階模型，簡報依任務難度升級）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
+| `harness` | `.claude/skills/` 不得引用 `docs/`、ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／sol／inherit；預設是各角色 frontmatter 的低階模型，簡報依任務難度升級）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）；`.claude/workflows/*.js` 以 `export const meta = { name }` 開頭、`name` 等於檔名，且每個 `agent(` 呼叫同一行要有 `model:`、字面值不得 fable／sol／inherit（裸 `agent()` 會繼承派工者的旗艦級）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
 
 ### 新增一個 `.env.example` 變數，要同批說出它擋什麼
 
