@@ -114,8 +114,8 @@ const results = await pipeline(
     return run(
       [
         `Mutation check for brief ${b.key}. The writer says test ${r.w.test_file} goes red when this line is removed: ${r.w.red_line}.`,
-        'Do exactly this: (1) record git diff -- <file> for the file holding that line; (2) remove or neuter that one line with the Edit tool; (3) run npx vitest run ' + r.w.test_file + ' and capture the head of the failure output; (4) restore the line with Edit; (5) run git diff -- <file> again and confirm it equals step 1 byte for byte.',
-        'If the test stays green after step 2, report went_red=false — that is the finding. Never leave the file mutated. No git writes.',
+        'Do exactly this: (1) record git diff -- <file> for the file holding that line; (2) remove or neuter that one line with the Edit tool; (3) run npx vitest run ' + r.w.test_file.replace(/^apps\/web\//, '') + ' from inside apps/web and capture the head of the failure output; (4) restore the line with Edit; (5) run git diff -- <file> again and confirm it equals step 1 byte for byte.',
+        'If the test stays green after step 2, report went_red=false — that is the finding. A red that is not an assertion — "document is not defined", "no test files found", a module that cannot be resolved — is NOT red: it means vitest did not run the test (wrong directory or wrong path); fix the invocation and run again. Never leave the file mutated. No git writes.',
       ].join('\n'),
       { label: `mutate:${b.key}`, phase: 'Mutate', schema: MUTATION_RESULT, agentType: 'general-purpose', model: 'haiku', effort: 'low' },
     ).then((m) => ({ ...r, m }))
