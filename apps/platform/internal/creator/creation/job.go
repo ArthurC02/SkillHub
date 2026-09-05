@@ -187,7 +187,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 		}
 	}()
 	ws := identity.Workspace{ID: a.WorkspaceID}
-	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, AcceptanceCriteria: e.Snapshot.AcceptanceCriteria, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls), MaxOutputTokens: e.Limits.MaxOutputTokens}
+	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, AcceptanceCriteria: e.Snapshot.AcceptanceCriteria, SampleInput: e.Snapshot.SampleInput, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls), MaxOutputTokens: e.Limits.MaxOutputTokens}
 	draft := e.Snapshot.Draft
 	// A correction after a validated draft falls back to PreviousDraft: send it
 	// as the working draft, but never its (now stale) validation result, or
@@ -432,6 +432,9 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	if err := validateCriteria(r.AcceptanceCriteria); err != nil {
 		return "", false, err
 	}
+	if utf8.RuneCountInString(r.SampleInput) > MaxSampleInputRunes {
+		return "", false, ErrInvalidCommand
+	}
 	p.Model = r.Model
 	p.PromptVersion = r.PromptVersion
 	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: r.Message})
@@ -446,12 +449,16 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	}
 	briefChanged := r.Brief != "" && r.Brief != p.Brief
 	criteriaChanged := len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)
-	if briefChanged || criteriaChanged {
+	sampleChanged := r.SampleInput != "" && r.SampleInput != p.SampleInput
+	if briefChanged || criteriaChanged || sampleChanged {
 		if briefChanged {
 			p.Brief = r.Brief
 		}
 		if criteriaChanged {
 			p.AcceptanceCriteria = r.AcceptanceCriteria
+		}
+		if sampleChanged {
+			p.SampleInput = r.SampleInput
 		}
 		p.BriefConfirmed = false
 		invalidate(p)
@@ -485,7 +492,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		p.PendingAction = "confirm_diagram"
 		return "waiting_confirmation", false, nil
 	case "draft":
-		if !confirmed(*p) || r.Brief != p.Brief || (len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
+		if !confirmed(*p) || r.Brief != p.Brief || (len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) || (r.SampleInput != "" && r.SampleInput != p.SampleInput) || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
 			return "", false, ErrInvalidCommand
 		}
 		hash, report, blocked, err := s.ValidateDraft(ctx, *r.Draft)
@@ -533,7 +540,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			p.PendingAction = "confirm_references"
 			return "waiting_confirmation", false, nil
 		case "validate_draft":
-			if !confirmed(*p) || r.Brief != p.Brief || (len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
+			if !confirmed(*p) || r.Brief != p.Brief || (len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) || (r.SampleInput != "" && r.SampleInput != p.SampleInput) || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
 				return "", false, ErrInvalidCommand
 			}
 			hash, report, blocked, err := s.ValidateDraft(ctx, *r.Draft)

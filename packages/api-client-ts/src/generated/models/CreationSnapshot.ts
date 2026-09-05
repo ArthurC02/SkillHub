@@ -67,6 +67,12 @@ export interface CreationSnapshot {
      */
     acceptanceCriteria: Array<string>;
     /**
+     * The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt of the candidate's Test Case. Empty until proposed.
+     * @type {string}
+     * @memberof CreationSnapshot
+     */
+    sampleInput?: string;
+    /**
      * 
      * @type {boolean}
      * @memberof CreationSnapshot
@@ -221,6 +227,7 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'messages': ((json['messages'] as Array<any>).map(CreationMessageFromJSON)),
         'brief': json['brief'],
         'acceptanceCriteria': json['acceptance_criteria'],
+        'sampleInput': json['sample_input'] == null ? undefined : json['sample_input'],
         'briefConfirmed': json['brief_confirmed'],
         'diagramUnderstanding': json['diagram_understanding'],
         'diagramConfirmed': json['diagram_confirmed'],
@@ -258,6 +265,7 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'messages': ((value['messages'] as Array<any>).map(CreationMessageToJSON)),
         'brief': value['brief'],
         'acceptance_criteria': value['acceptanceCriteria'],
+        'sample_input': value['sampleInput'],
         'brief_confirmed': value['briefConfirmed'],
         'diagram_understanding': value['diagramUnderstanding'],
         'diagram_confirmed': value['diagramConfirmed'],

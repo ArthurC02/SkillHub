@@ -2898,7 +2898,10 @@ type CreationSnapshot struct {
 	Brief    string            `json:"brief"`
 	// Observable acceptance sentences proposed with the brief and confirmed by the same confirm_brief;
 	// materialize turns them into the candidate's Test Case (05 R-46).
-	AcceptanceCriteria   []string             `json:"acceptance_criteria"`
+	AcceptanceCriteria []string `json:"acceptance_criteria"`
+	// The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt
+	// of the candidate's Test Case. Empty until proposed.
+	SampleInput          OptString            `json:"sample_input"`
 	BriefConfirmed       bool                 `json:"brief_confirmed"`
 	DiagramUnderstanding string               `json:"diagram_understanding"`
 	DiagramConfirmed     bool                 `json:"diagram_confirmed"`
@@ -2935,6 +2938,11 @@ func (s *CreationSnapshot) GetBrief() string {
 // GetAcceptanceCriteria returns the value of AcceptanceCriteria.
 func (s *CreationSnapshot) GetAcceptanceCriteria() []string {
 	return s.AcceptanceCriteria
+}
+
+// GetSampleInput returns the value of SampleInput.
+func (s *CreationSnapshot) GetSampleInput() OptString {
+	return s.SampleInput
 }
 
 // GetBriefConfirmed returns the value of BriefConfirmed.
@@ -3050,6 +3058,11 @@ func (s *CreationSnapshot) SetBrief(val string) {
 // SetAcceptanceCriteria sets the value of AcceptanceCriteria.
 func (s *CreationSnapshot) SetAcceptanceCriteria(val []string) {
 	s.AcceptanceCriteria = val
+}
+
+// SetSampleInput sets the value of SampleInput.
+func (s *CreationSnapshot) SetSampleInput(val OptString) {
+	s.SampleInput = val
 }
 
 // SetBriefConfirmed sets the value of BriefConfirmed.

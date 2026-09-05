@@ -440,7 +440,15 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 			return ErrConflict
 		}
 		if s.CreateAcceptanceTestCase != nil && len(current.Snapshot.AcceptanceCriteria) > 0 {
-			id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, "創作驗收條件", current.Snapshot.Brief, current.Snapshot.AcceptanceCriteria)
+			// The Test Case prompt is the example input, not the brief: a brief
+			// describes the Skill, and an agent handed a description asks for the
+			// material (run d, 2026-09-06). The brief is the fallback for sessions
+			// confirmed before sample_input existed.
+			prompt := current.Snapshot.SampleInput
+			if strings.TrimSpace(prompt) == "" {
+				prompt = current.Snapshot.Brief
+			}
+			id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, "創作驗收條件", prompt, current.Snapshot.AcceptanceCriteria)
 			if err != nil {
 				return err
 			}

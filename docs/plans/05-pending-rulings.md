@@ -1561,7 +1561,7 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 | `retention_seconds` | **2,592,000（30 天）** | 與 Download Artifact 的 30 天同級距、短於 Dataset／Trace 的 90 天：未完成會話裡有私人草稿與對話，不該比產物活得久；同意書 §3 新增一列 |
 | `max_output_tokens` | **16,000** | 同單次生成（`generateMaxOutputTokens`）與 Python cap |
 
-**量測門檻（`02:GEN-012` 證據條）**：三種入口各 5 個任務＝15 場多輪會話，同 15 個任務以單次生成對照；格式通過（`skillpkg.Validate` 不阻擋）≥ 14／15；任務達成（附加 Run 的評估 `met`）≥ 9／15；真人願意採用 ≥ 12／15（單次基線是 15／19，多輪不得更差）；每場成本中位 ≤ $0.50；每次模型呼叫等待 p50 ≤ 60 s、p95 ≤ 90 s。~~**沒有跑**：真閘道與真人那兩半仍待負責人親自起（代理權限不允許啟動付費服務），門檻先定、樣本後補。~~ **2026-09-06 稍晚：負責人授權後跑了三次**（[報告](mvp/m5/creation-measure/report.md)）——run c 格式 15／15、成本中位 $0.018、p50 5 s、p95 7 s，三個機器門檻過；`met`／`kept` 待 Run 與真人。值不改。
+**量測門檻（`02:GEN-012` 證據條）**：三種入口各 5 個任務＝15 場多輪會話，同 15 個任務以單次生成對照；格式通過（`skillpkg.Validate` 不阻擋）≥ 14／15；任務達成（附加 Run 的評估 `met`）≥ 9／15；真人願意採用 ≥ 12／15（單次基線是 15／19，多輪不得更差）；每場成本中位 ≤ $0.50；每次模型呼叫等待 p50 ≤ 60 s、p95 ≤ 90 s。~~**沒有跑**：真閘道與真人那兩半仍待負責人親自起（代理權限不允許啟動付費服務），門檻先定、樣本後補。~~ **2026-09-06 稍晚：負責人授權後跑了三次**（[報告](mvp/m5/creation-measure/report.md)）——run c 格式 15／15、成本中位 $0.018、p50 5 s、p95 7 s，三個機器門檻過；`met`／`kept` 待 Run 與真人。值不改。**同日深夜 run d／e 接上 Run 階段**（[報告 §5](mvp/m5/creation-measure/report.md)）：run d 的 `met` 2／14 全是「Test Case 的 prompt 是 brief、Agent 反問」的假數字；改成 `sample_input` 之後 run e **`met` 2／14、`not_met` 5——門檻 ≥ 9／15 沒過**。值仍不改：門檻是對的，紅的是產品。三個可能的下一步（提示調整、條件寫法限制、一場多份輸入）記在 `04` 丙-175，等負責人挑。
 
 **未解除的事**：本裁定不解除 `01` §10 的 M5 曝光邊界；`CREATION_EXPOSED` 仍為空。`04` 乙-33 結案。
 
@@ -1582,3 +1582,5 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 3. **拒絕類文案由 Go 出句子**：`llm-internal` 的回應多一個 `reason` 枚舉（六個碼，只由 Python 的護欄設、模型設不到），Go 在 `proposal()` 以自己的對照表換句子；Python 的 `message` 退成語言中性的備援。`creation.py` 不再有中文句子。
 
 `04` 乙-34 結案；落地與證據見同日 commit 與 [開發手冊](../development/interactive-creation.md)。
+
+**2026-09-06 深夜補記（(b) 多綁一件）**：run d 把候選接上真 Run 之後發現 (b) 少了一半——條件變成了 Test Case，但 Test Case 的 prompt 是 brief，一段描述交給 Agent 只會換來反問，五條條件四條 `undetermined`。模型現在在同一個決策裡多提 `sample_input`（一份真實、完整、可直接交給 Skill 的範例輸入，≤ 4000 字），與 brief、條件同一個 `confirm_brief` 綁定、換了就退回確認，`materialize` 用它當 Test Case 的 prompt。契約 `llm-internal`／`public` 同批；`creation-step/v3`。

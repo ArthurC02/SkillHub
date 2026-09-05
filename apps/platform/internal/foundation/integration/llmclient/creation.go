@@ -17,6 +17,7 @@ type CreationStepRequest struct {
 	Messages             []CreationMessage        `json:"messages"`
 	Brief                string                   `json:"brief"`
 	AcceptanceCriteria   []string                 `json:"acceptance_criteria"`
+	SampleInput          string                   `json:"sample_input"`
 	BriefConfirmed       bool                     `json:"brief_confirmed"`
 	DiagramUnderstanding string                   `json:"diagram_understanding"`
 	DiagramConfirmed     bool                     `json:"diagram_confirmed"`
@@ -47,6 +48,7 @@ type CreationStepResponse struct {
 	Message              string   `json:"message"`
 	Brief                string   `json:"brief"`
 	AcceptanceCriteria   []string `json:"acceptance_criteria"`
+	SampleInput          string   `json:"sample_input"`
 	DiagramUnderstanding string   `json:"diagram_understanding"`
 	// Reason is set by Python's own guard rails (never by the model); Go owns
 	// the sentence shown for each code (05 R-46 (c)).

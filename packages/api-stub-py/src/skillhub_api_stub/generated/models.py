@@ -717,6 +717,10 @@ class CreationStepRequest(BaseModel):
         description='Observable acceptance sentences confirmed together with the brief; empty until the model proposes them. Go turns the confirmed list into a Test Case at materialize (05 R-46).',
         max_length=12,
     )
+    sample_input: constr(max_length=4000) = Field(
+        ...,
+        description='One realistic, complete example of what a user would hand the Skill (the content itself, not a description of it), proposed and confirmed with the brief. It becomes the prompt of the Test Case the criteria are judged against; without it the trial run has nothing to work on and every criterion comes back undetermined (2026-09-06 run d). Empty until the model proposes it.',
+    )
     brief_confirmed: bool
     diagram_understanding: constr(max_length=20000) = Field(
         ...,
@@ -753,6 +757,10 @@ class CreationStepResponse(BaseModel):
         ...,
         description='The criteria that accompany the brief in this proposal; empty means unchanged.',
         max_length=12,
+    )
+    sample_input: constr(max_length=4000) = Field(
+        ...,
+        description='The example input that accompanies the brief in this proposal; empty means unchanged.',
     )
     diagram_understanding: constr(max_length=20000) = Field(
         ...,

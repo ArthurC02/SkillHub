@@ -1,4 +1,4 @@
-# 互動創作 15 場 ＋ 單次 15 題：2026-09-06 的三次實跑
+# 互動創作 15 場 ＋ 單次 15 題：2026-09-06 的五次實跑
 
 負責人「可以花錢」後，`TestCreationMeasureFifteenSessionsAgainstSingleShot` 對真實閘道（`gpt-5.4-mini`，經 LiteLLM，Virtual Key 限額）跑了三次。每次的 `results.json`、30 份 `SKILL.md`（run b 起另有 15 份逐場對話）在 `run-2026-09-06-a/`、`-b/`、`-c/`。**三次不是重複量測，是修一次跑一次**：a 量出問題、b 的修法製造了新問題、c 是現在的程式。門檻取 [`05` R-45](../../../05-pending-rulings.md)。
 
@@ -24,10 +24,46 @@
 
 ## 3. 這三次量到什麼、沒量到什麼
 
-量到：格式（Go `skillpkg` 驗證不阻擋）、成本、等待、每場幾次呼叫、驗收條件有沒有變成資料、Test Case 有沒有建。**沒量到**：`met`（要把候選接上 Run 跑評估）、`kept`（要一個人讀 30 份 `SKILL.md`）——`results.json` 每列的 `met_by_owner`／`kept_by_owner` 留空。R-45 的六個門檻裡機器能判的三個（格式、成本、等待）在 run c 全過，人要判的兩個還沒有數字。
+量到：格式（Go `skillpkg` 驗證不阻擋）、成本、等待、每場幾次呼叫、驗收條件有沒有變成資料、Test Case 有沒有建。**a～c 沒量到**：`met`（要把候選接上 Run 跑評估）、`kept`（要一個人讀 30 份 `SKILL.md`）。`met` 在同日稍晚的 run d／e 補上了（§5）；`kept` 仍要人。
 
 另外要記：harness 的「使用者」是一個對每個提案都說好、最多補兩句通用話的假人。它量的是「流程會不會卡、會不會爆錢、會不會慢」，不是「真人會不會滿意」。
 
 ## 4. 同一天單次路徑的 20＋20
 
 見 [report-generate-modes.md §8](../report-generate-modes.md)：流程圖 20／20 生成、19／20 節點全讀到；參考 20／20、標記句 0／60 被抄。
+
+## 5. 接上 Run 階段：run d 與 run e（同日稍晚，負責人加了一條權限規則讓代理起 sandboxd）
+
+沙箱（runc、`2026.08-8` 映像）、SeaweedFS、LiteLLM 都是本機的；harness 二進位放進 `--network container:skillhub-postgres-1` 跑，每個候選用它自己的 Test Case 起一次真的 Run、等真的 Judge。配方與五個坑在 [README](README.md)〈跑法（含 Run 階段）〉。**d 與 e 之間又修了一件事**，所以還是「修一次跑一次」，不是重複量測。
+
+| | run d（Test Case 的 prompt＝brief） | **run e（prompt＝模型提、人確認的 `sample_input`）** | R-45 門檻 |
+| --- | --- | --- | --- |
+| 有通過驗證的草稿 | 15／15 | **15／15** | ≥ 14／15 |
+| 走到候選＋Test Case＋Run 跑到終態 | 14／15（R07 停在 `draft_ready`） | **14／15**（R03 停在 `draft_ready`） | — |
+| 評估 `met`／`partially_met`／`not_met` | 2／12／0 | **2／7／5** | `met` ≥ 9／15 |
+| 逐條驗收條件 通過／不通過／無法判定 | 42／10／19（共 72） | **25／29／19**（共 73） | — |
+| attach_run 之後模型改了草稿 | 2／14 | **2／14** | — |
+| 每場會話成本中位／最大（不含 Run 與 Judge） | $0.020／$0.035 | **$0.023／$0.041** | 中位 ≤ $0.50 |
+| Judge 每場（14 場合計） | $0.26 | **$0.26** | — |
+| 每次模型呼叫 p50／p95 | 3.7 s／6.9 s | **6.2 s／9.5 s** | ≤ 60 s／≤ 90 s |
+| 單次對照（同 15 題） | 15／15，中位 $0.0043 | 15／15，$0.0045 | — |
+
+輸出在 `run-2026-09-06-d/`、`-e/`（`results.json` 多了 `run_status`／`eval_status`／`overall`／`met`／`revised_after_run`）。兩次合計約 US$1.6（會話 $0.69、單次 $0.13、Judge $0.52、Run 內的模型呼叫走每場短效 Virtual Key，未計入）。
+
+### 5.1 run d 量出來的不是品質，是 harness 自己的洞
+
+run d 的 12 個 `partially_met` 幾乎同一個形狀：Test Case 的 prompt 是 **brief**——一段「這個 Skill 要做什麼」的描述——被拿去當使用者輸入，跑起來的 Agent 只會回「可以，請把逐字稿貼上來」，Judge 對五條條件裡四條寫 `undetermined`、只給「輸出保持繁體中文」一條 `passed`。72 條裡 42 條「通過」有一半是這種。**這個數字看起來比 run e 好，但它什麼都沒量到。**
+
+修法進了契約：模型在提 brief 的同一個決策裡多回 `sample_input`（一份真實、完整、可以直接交給 Skill 的範例輸入，≤ 4000 字；不是描述），與 brief、`acceptance_criteria` 同一個 `confirm_brief` 綁定，換了就退回確認；`materialize` 用它當 Test Case 的 prompt，沒有時才退回 brief。`TestCreationMaterializeCreatesTheAcceptanceTestCase` 現在斷言 prompt 是範例輸入而不是 brief，把那一行還原會紅。
+
+### 5.2 run e 量出來的才是品質——而且它沒過
+
+換成範例輸入之後 Judge 開始分辨：R01（逐字稿→待辦）五條全過；R02（Excel 去重）的 Skill 只認出欄位、反問使用者要做什麼，一條都沒做；R05（支出彙整）按星期加總了，但沒有依要求出逐筆表格與類別欄位。**`met` 2／14，R-45 要 ≥ 9／15，差很遠**；`not_met` 5 場都是「Skill 少做了 brief 裡明寫的一件事」，不是格式或閘道問題。
+
+三件事要分開看：
+
+1. **候選 Skill 的品質**：mini 模型寫出來的 SKILL.md 在單一次試跑裡多半做不完自己答應的事。這是 GEN-007～012 真正的產品數字，之前四次跑都看不到。
+2. **一份範例輸入撐不起所有條件**：73 條裡仍有 19 條 `undetermined`，多是「原文沒有負責人時要標示缺漏」這類要特定情境才驗得到的邊界條件，而一份範例只能走一條路。要嘛條件寫法限制在「這份輸入驗得到」，要嘛一場配多份輸入——這是 R-45 之後的下一個裁定，記在 `04` 丙-175。
+3. **看到 Run 之後模型很少改稿**：`attach_run` 把 Run 餵回會話再推一步，14 場只有 2 場草稿變了。review 相的提示與 Run 摘要的形狀都還沒針對這件事調過。
+
+harness 的「使用者」仍是一個對每個提案說好的假人，所以這 14 個判定量的是「模型自己提的條件、自己提的輸入、自己寫的 Skill」三者是否自洽——一個真人會在確認 brief 時改條件、改輸入，數字會不一樣，方向未知。

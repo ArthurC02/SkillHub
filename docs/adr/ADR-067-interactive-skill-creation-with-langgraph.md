@@ -33,3 +33,5 @@ Python 不直接執行不可信 Skill 或 Script、不直連核心 DB、不消�
 **2026-09-06 補記（不改寫上文）**：決策段第一段的「LangGraph 尚未安裝」自 2026-09-05 `d8132c4` 起不成立——`langgraph` 已是 `apps/llm` 的釘選依賴，圖在 `creation.py` 內每個 Job 重建、仍不用原生 checkpointer，與本 ADR 的邊界一致；狀態句「規劃已同意，尚未實作」以 `01` §10 與 `04` 丙-166 為準。第六段「超限、提權或新試跑才重新要求阻斷確認」以 `raise_budget` 命令落地（`05` R-46）；R-45 的數值於同日由負責人授權代理定值。
 
 框架概念參照官方 [workflows and agents](https://docs.langchain.com/oss/python/langgraph/workflows-agents) 與 [interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts)；本案刻意不採用後者的跨程序持久化模式，以維持 Go 唯一持久化邊界。
+
+**2026-09-06 深夜補記（不改寫上文）**：`05` R-46 (b) 的「驗收條件成為 Test Case」在接上真 Run 之後量出少了一半——Test Case 還需要一份輸入。會話狀態多了 `sample_input`（模型提、人與 brief 一起確認、Go 綁定），是 Test Case 的 prompt；契約 `llm-internal` 與 `public` 同批。這不改本 ADR 的邊界（Go 仍是唯一持久化與確認的擁有者，Python 仍只回結構化提案），只是把「一次試跑能證實或推翻」這句話所需要的第三樣東西補進來。量測結果與未過的門檻見 [`04` 丙-175](../plans/04-backlog-and-handoffs.md)。

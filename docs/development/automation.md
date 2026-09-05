@@ -331,11 +331,16 @@ docker run --rm --network container:skillhub-postgres-1 \
   -e SKILLHUB_E2E_SANDBOX_URL=http://sandboxd:9000 -e SKILLHUB_E2E_SANDBOX_TOKEN=devsandboxtoken \
   -e SKILLHUB_MODEL_GATEWAY_URL=http://litellm:4000 -e SKILLHUB_MODEL_GATEWAY_KEY="$LITELLM_MASTER_KEY" \
   -e SKILLHUB_RUN_MODEL=gpt-5.4-mini -e SKILLHUB_E2E_PUBLIC_HOST=postgres \
+  -e DEV_LOGIN=1 \
   debian:12-slim /usr/local/bin/e2e.test \
   -test.run TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey -test.v -test.timeout 20m
 ```
 
 **`-w` 那一行是必要的**：測試以相對路徑 `../../../../../../db/migrations` 找 migration。
+
+**`DEV_LOGIN=1` 也是必要的（2026-09-06 補）**：`execution.Match` 對隔離等級是允許清單，這台 sandboxd 跑 runc、自報 `container`，只有標成開發部署的程序才接受它，否則每個 Run 都是 422「which this deployment does not accept」。這不是繞過——它就是那條規則為開發機留的門，生產部署不設它。同日的互動創作量測第一次跑 Run 階段就撞到這裡，14 場全 422 才發現配方缺這一行。
+
+**Git Bash 跑上面這段時**：MSYS 會把以 `/` 開頭的參數與環境變數值改寫成 Windows 路徑（`-e X=/etc/foo` 進容器變成 `C:/Program Files/Git/etc/foo`）。整段前面加 `MSYS_NO_PATHCONV=1`，或把容器內路徑寫成 `//etc/foo`（Linux 把雙斜線當單斜線）。掛載來源用 `C:/...` 的寫法就不會被動。
 
 ### 它證明了什麼、沒證明什麼
 

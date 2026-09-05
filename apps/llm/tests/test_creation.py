@@ -36,6 +36,7 @@ def request(**changes):
         "messages": [{"role": "user", "content": "Help me check invoices"}],
         "brief": "",
         "acceptance_criteria": [],
+        "sample_input": "",
         "brief_confirmed": False,
         "diagram_understanding": "",
         "diagram_confirmed": False,
@@ -53,6 +54,7 @@ def decision(**changes):
         "message": "What output do you need?",
         "brief": None,
         "acceptance_criteria": None,
+        "sample_input": None,
         "diagram_understanding": None,
         "tool_intent": None,
         "draft": None,
@@ -256,6 +258,26 @@ def test_acceptance_criteria_proposed_with_confirm_brief_come_back():
     assert response.json()["acceptance_criteria"] == [
         "Given a sample invoice CSV, output lists every missing total."
     ]
+
+
+def test_sample_input_proposed_with_confirm_brief_comes_back_and_locks():
+    # Run d (2026-09-06): a Test Case whose prompt is the brief gives the agent
+    # nothing to work on; the example input travels with the brief instead.
+    response, _ = invoke(
+        request(),
+        decision(
+            outcome="confirm_brief",
+            brief="Report missing invoice totals as CSV.",
+            acceptance_criteria=["Every row without a total is listed."],
+            sample_input="invoice,total\nA-1,120\nA-2,\nA-3,40",
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["sample_input"] == "invoice,total\nA-1,120\nA-2,\nA-3,40"
+    locked = request(brief="agreed", brief_confirmed=True, sample_input="original")
+    response, _ = invoke(locked, decision(sample_input="different"))
+    assert response.status_code == 200
+    assert response.json()["sample_input"] == "original"
 
 
 def test_acceptance_criteria_locked_once_brief_confirmed():

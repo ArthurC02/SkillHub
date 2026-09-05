@@ -1,0 +1,33 @@
+{
+  "acceptance_criteria": [
+    "在輸入一份完整的新員工到職通知時，輸出會依序包含 8 個步驟，且步驟名稱與已確認 diagram 的節點一致。",
+    "輸出會以可逐項檢核的條列或表格呈現，而不是只給一段敘述。",
+    "輸出不會新增 diagram 中沒有出現的分支、條件或步驟。",
+    "若輸入內容缺少必要資訊，Skill 會明確指出缺漏，而不是自行補完。",
+    "輸出會保留「第 30 天面談」與「記錄到人資系統」兩個後續動作，且順序正確。"
+  ],
+  "brief": "建立一個「新員工到職流程」Skill，將到職通知後的標準作業整理成可執行的步驟清單與檢核結果；輸入為新人到職通知內容或到職任務資料，輸出為結構化的到職流程建議/檢核清單。此 Skill 先依照已確認的 diagram understanding，不新增未出現的分支或條件。",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "我先把流程圖整理成可確認的結構，請你確認是否正確：\n\n```json\n{\"nodes\":[\"收到新人到職通知\",\"建立公司信箱\",\"加入 Slack 頻道\",\"準備筆電與門禁卡\",\"安排第一週訓練\",\"指派導師\",\"第 30 天面談\",\"記錄到人資系統\"],\"conditions\":[],\"branches\":[],\"uncertainties\":[]}\n```\n\n這個理解目前沒有看到分支或條件判斷，所以我先不補充任何未出現的步驟。若你確認這份 diagram_understanding 無誤，我下一步會再請你確認要建立的 Skill brief。"
+    },
+    {
+      "role": "assistant",
+      "content": "請先確認這份 Skill brief：\n\n**brief**\n建立一個「新員工到職流程」Skill，將到職通知後的標準作業整理成可執行的步驟清單與檢核結果；輸入為新人到職通知內容或到職任務資料，輸出為結構化的到職流程建議/檢核清單。此 Skill 先依照已確認的 diagram understanding，不新增未出現的分支或條件。\n\n**acceptance_criteria**\n1. 在輸入一份完整的新員工到職通知時，輸出會依序包含 8 個步驟，且步驟名稱與已確認 diagram 的節點一致。\n2. 輸出會以可逐項檢核的條列或表格呈現，而不是只給一段敘述。\n3. 輸出不會新增 diagram 中沒有出現的分支、條件或步驟。\n4. 若輸入內容缺少必要資訊，Skill 會明確指出缺漏，而不是自行補完。\n5. 輸出會保留「第 30 天面談」與「記錄到人資系統」兩個後續動作，且順序正確。\n\n**sample_input**\n請依照以下新人到職通知，整理成標準到職流程檢核清單：\n\n- 員工姓名：陳怡君\n- 部門：行銷部\n- 到職日：2026-10-01\n- 職稱：內容行銷專員\n- 需要建立公司信箱\n- 需要加入 Slack 頻道\n- 需要準備筆電與門禁卡\n- 需要安排第一週訓練\n- 需要指派導師\n- 需要安排第 30 天面談\n- 需要記錄到人資系統\n\n請確認這份 brief、acceptance_criteria 和 sample_input 是否要採用。"
+    },
+    {
+      "role": "assistant",
+      "content": "已根據確認的 brief 與 diagram 開始組成草稿。以下是可供 Go 驗證的完整 Skill 草稿。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "The draft meets the confirmed brief and diagram. The only validation finding is a non-blocking warning about unknown license; since inventing licenses is disallowed, I am returning the validated draft unchanged."
+    }
+  ],
+  "state": "candidate_ready"
+}

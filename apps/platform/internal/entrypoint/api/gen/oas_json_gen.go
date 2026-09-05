@@ -7138,6 +7138,12 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		e.ArrEnd()
 	}
 	{
+		if s.SampleInput.Set {
+			e.FieldStart("sample_input")
+			s.SampleInput.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("brief_confirmed")
 		e.Bool(s.BriefConfirmed)
 	}
@@ -7243,30 +7249,31 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [23]string{
+var jsonFieldsNameOfCreationSnapshot = [24]string{
 	0:  "messages",
 	1:  "brief",
 	2:  "acceptance_criteria",
-	3:  "brief_confirmed",
-	4:  "diagram_understanding",
-	5:  "diagram_confirmed",
-	6:  "diagram_fingerprint",
-	7:  "references",
-	8:  "draft",
-	9:  "candidate",
-	10: "pending_action",
-	11: "budget_usd",
-	12: "reserved_usd",
-	13: "spent_usd",
-	14: "usage_unknown",
-	15: "steps",
-	16: "tool_calls",
-	17: "draft_retries",
-	18: "model",
-	19: "prompt_version",
-	20: "diagram_media_type",
-	21: "diagram_bytes",
-	22: "previous_draft",
+	3:  "sample_input",
+	4:  "brief_confirmed",
+	5:  "diagram_understanding",
+	6:  "diagram_confirmed",
+	7:  "diagram_fingerprint",
+	8:  "references",
+	9:  "draft",
+	10: "candidate",
+	11: "pending_action",
+	12: "budget_usd",
+	13: "reserved_usd",
+	14: "spent_usd",
+	15: "usage_unknown",
+	16: "steps",
+	17: "tool_calls",
+	18: "draft_retries",
+	19: "model",
+	20: "prompt_version",
+	21: "diagram_media_type",
+	22: "diagram_bytes",
+	23: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -7328,8 +7335,18 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"acceptance_criteria\"")
 			}
+		case "sample_input":
+			if err := func() error {
+				s.SampleInput.Reset()
+				if err := s.SampleInput.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"sample_input\"")
+			}
 		case "brief_confirmed":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				v, err := d.Bool()
 				s.BriefConfirmed = bool(v)
@@ -7341,7 +7358,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"brief_confirmed\"")
 			}
 		case "diagram_understanding":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := d.Str()
 				s.DiagramUnderstanding = string(v)
@@ -7353,7 +7370,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"diagram_understanding\"")
 			}
 		case "diagram_confirmed":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				v, err := d.Bool()
 				s.DiagramConfirmed = bool(v)
@@ -7375,7 +7392,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"diagram_fingerprint\"")
 			}
 		case "references":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				s.References = make([]CreationReference, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -7413,7 +7430,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"candidate\"")
 			}
 		case "pending_action":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				v, err := d.Str()
 				s.PendingAction = string(v)
@@ -7425,7 +7442,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"pending_action\"")
 			}
 		case "budget_usd":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				v, err := d.Float64()
 				s.BudgetUsd = float64(v)
@@ -7437,7 +7454,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"budget_usd\"")
 			}
 		case "reserved_usd":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				v, err := d.Float64()
 				s.ReservedUsd = float64(v)
@@ -7459,7 +7476,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"spent_usd\"")
 			}
 		case "usage_unknown":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				v, err := d.Bool()
 				s.UsageUnknown = bool(v)
@@ -7471,7 +7488,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usage_unknown\"")
 			}
 		case "steps":
-			requiredBitSet[1] |= 1 << 7
+			requiredBitSet[2] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int()
 				s.Steps = int(v)
@@ -7483,7 +7500,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"steps\"")
 			}
 		case "tool_calls":
-			requiredBitSet[2] |= 1 << 0
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				v, err := d.Int()
 				s.ToolCalls = int(v)
@@ -7564,9 +7581,9 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [3]uint8{
-		0b10111111,
-		0b11011100,
-		0b00000001,
+		0b01110111,
+		0b10111001,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

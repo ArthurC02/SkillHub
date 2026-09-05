@@ -265,3 +265,22 @@ func TestProposalRetriesOnceWhenTheDraftIsMissing(t *testing.T) {
 		t.Fatalf("the person did not get Go's sentence: %+v", last)
 	}
 }
+
+// A proposal that changes the example input un-confirms the brief exactly as a
+// changed criterion does: the Test Case prompt is confirmed input (run d).
+func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
+	s := &Service{}
+	zero := 0.0
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "old", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "again", Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "new"}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.SampleInput != "new" || e.Snapshot.PendingAction != "confirm_brief" {
+		t.Fatalf("changed sample_input did not reopen the confirmation: state=%q next=%v snap=%+v err=%v", state, next, e.Snapshot, err)
+	}
+	r.SampleInput = ""
+	e.Snapshot.BriefConfirmed = true
+	state, _, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	if err != nil || state != "waiting_input" || !e.Snapshot.BriefConfirmed {
+		t.Fatalf("an empty sample_input must mean unchanged: state=%q confirmed=%v err=%v", state, e.Snapshot.BriefConfirmed, err)
+	}
+}

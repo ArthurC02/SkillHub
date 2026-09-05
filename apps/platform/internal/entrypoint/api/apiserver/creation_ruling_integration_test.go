@@ -31,11 +31,16 @@ func TestCreationMaterializeCreatesTheAcceptanceTestCase(t *testing.T) {
 		t.Fatalf("candidate without a test case: %+v", v.Snapshot.Candidate)
 	}
 	var raw []byte
+	var prompt string
 	err := testPool.QueryRow(context.Background(),
-		"SELECT acceptance_criteria FROM test_cases WHERE id=$1 AND skill_id=$2",
-		v.Snapshot.Candidate.TestCaseID, v.Snapshot.Candidate.SkillID).Scan(&raw)
+		"SELECT acceptance_criteria, user_prompt FROM test_cases WHERE id=$1 AND skill_id=$2",
+		v.Snapshot.Candidate.TestCaseID, v.Snapshot.Candidate.SkillID).Scan(&raw, &prompt)
 	if err != nil {
 		t.Fatal(err)
+	}
+	// Run d (2026-09-06): the prompt is the confirmed example input, not the brief.
+	if prompt != v.Snapshot.SampleInput || prompt == v.Snapshot.Brief {
+		t.Fatalf("test case prompt is not the sample input: prompt=%q sample=%q", prompt, v.Snapshot.SampleInput)
 	}
 	var criteria []struct {
 		Text        string     `json:"text"`

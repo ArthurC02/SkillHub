@@ -523,6 +523,12 @@ export function CreationSession() {
               ) : (
                 <p>模型尚未提出驗收條件</p>
               )}
+              {p.sample_input && (
+                <>
+                  <h5>試跑用的範例輸入</h5>
+                  <pre>{p.sample_input}</pre>
+                </>
+              )}
               <p>{p.brief_confirmed ? "需求摘要與驗收條件皆已確認" : "尚未確認"}</p>
               {p.pending_action === "confirm_brief" && (
                 <button disabled={locked} onClick={() => void perform("confirm_brief")}>

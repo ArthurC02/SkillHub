@@ -1,4 +1,4 @@
-# 互動創作 vs 單次生成的量測（harness 就位，2026-09-06；**2026-09-06 跑了三次，見 [report.md](report.md)**）
+# 互動創作 vs 單次生成的量測（harness 就位，2026-09-06；**2026-09-06 跑了五次——a～c 不含 Run、d／e 含 Run 階段——見 [report.md](report.md)**）
 
 02:GEN-012 的證據條與 05 R-45 的量測門檻要的是一份分布：同 15 個任務，一次跑互動創作（15 場多輪會話：文字、流程圖、參考各 5 場），一次跑單次生成，兩邊對比。這個目錄就是把它變成分布所需的一切，除了那筆錢——啟動 `apps/llm` 對真實閘道那一步要負責人親自起（代理權限擋下了，這裡也一樣擋）。
 
@@ -54,6 +54,14 @@ SKILLHUB_MODEL_GATEWAY_URL / SKILLHUB_MODEL_GATEWAY_KEY
 ```
 
 這五組就是 `gen009_baseline_test.go`（GEN-009 ③）已經在用的那一組，起 Postgres／SeaweedFS／LiteLLM／`sandboxd` 三個程序的完整配方（含跨平台限制、映像版本與容器內跑測試的理由）不重抄一份，見 [automation.md〈三個程序〉](../../../../development/automation.md#三個程序) 與其後「測試程序要跑在容器裡」兩節。任一變數沒設，這個測試就照舊只到 `candidate_ready`，`met` 全部是 `null`。
+
+**2026-09-06 跑通這段時另外撞到的五件事**（run d／e 的配方，逐字在 [report.md §5](report.md)）：
+
+1. **`DEV_LOGIN=1`**：本機 sandboxd 是 runc，`execution.Match` 只在開發部署接受 `container` 隔離；少了它 14 場全 422。
+2. **`with-service-key.mjs` 會把 `SKILLHUB_MODEL_GATEWAY_KEY` 從子程序環境拿掉**——那是它存在的目的（apps/llm 不得拿 master key）。但 Run 階段的 Go 要用它簽每場 Run 的短效 Virtual Key，所以要用 `-e SKILLHUB_MODEL_GATEWAY_KEY="$K"` 明寫（值只在 shell 變數，不落地），不能靠 `-e VAR` 轉送。
+3. **`apps/llm` 要 `--host 0.0.0.0`**，容器內以 `http://host.docker.internal:8000` 呼叫它（`--network container:skillhub-postgres-1` 裡解析得到）。
+4. **harness 的 River worker 沒註冊 `creation_step`**：log 會刷「Unhandled job kind creation_step」，那是 worker 撿到會話排的工作而不認得；會話由 harness 自己逐步推進，不受影響。
+5. **每場的 Run 不會回頭讀會話的 brief**：Test Case 的 prompt 是什麼，Judge 就拿什麼判——run d 用 brief 當 prompt，代理只會反問「請貼逐字稿」，五條驗收條件四條 `undetermined`。這是 `sample_input` 進契約的原因（run e 起）。
 
 ## 跑完之後（負責人的事，這個 harness 做不到）
 

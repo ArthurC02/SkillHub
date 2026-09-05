@@ -8255,6 +8255,9 @@ components:
           items:
             type: "string"
           description: "Observable acceptance sentences proposed with the brief and confirmed by the same confirm_brief; materialize turns them into the candidate's Test Case (05 R-46)."
+        sample_input:
+          type: "string"
+          description: "The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt of the candidate's Test Case. Empty until proposed."
         brief_confirmed:
           type: "boolean"
         diagram_understanding:

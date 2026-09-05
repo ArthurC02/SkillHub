@@ -1,0 +1,32 @@
+{
+  "acceptance_criteria": [
+    "Skill 成品中明確包含這 8 個節點，且名稱與已確認內容一致。",
+    "成品不包含任何未在流程理解中出現的分支條件或額外節點。",
+    "成品為可攜式 Skill 格式，含完整 manifest 欄位與 Markdown body。",
+    "成品能被一次試跑/驗證確認其輸出結構符合上述範圍。"
+  ],
+  "brief": "任務：根據已確認的新人到職流程圖，撰寫一個可攜式 Agent Skill，內容要把流程節點整理成清楚的執行指引。\n- 輸入：已確認的圖示理解（節點：收到新人到職通知、建立公司信箱、加入 Slack 頻道、準備筆電與門禁卡、安排第一週訓練、指派導師、第 30 天面談、記錄到人資系統）。\n- 輸出：一個完整 Skill，包含 manifest 欄位與 Markdown 正文，並忠實反映上述流程，不新增未確認的分支。\n- 工具需求：只在需要時使用允許的工具；目前可用工具為 search_catalog 與 validate_draft。\n- 限制：不得憑空補充分支或步驟；不得改動已確認的流程理解。",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "我已整理出圖示的流程理解，請先確認是否正確：\n\n```json\n{\"nodes\":[\"收到新人到職通知\",\"建立公司信箱\",\"加入 Slack 頻道\",\"準備筆電與門禁卡\",\"安排第一週訓練\",\"指派導師\",\"第 30 天面談\",\"記錄到人資系統\"],\"conditions\":[],\"branches\":[],\"uncertainties\":[]}\n```\n\n如有任何節點名稱、順序或是否漏掉分支需要修正，請直接指出。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的任務簡述，請你確認是否要依此建立 Skill：\n\n**Brief**\n- 任務：根據已確認的新人到職流程圖，撰寫一個可攜式 Agent Skill，內容要把流程節點整理成清楚的執行指引。\n- 輸入：已確認的圖示理解（節點：收到新人到職通知、建立公司信箱、加入 Slack 頻道、準備筆電與門禁卡、安排第一週訓練、指派導師、第 30 天面談、記錄到人資系統）。\n- 輸出：一個完整 Skill，包含 manifest 欄位與 Markdown 正文，並忠實反映上述流程，不新增未確認的分支。\n- 工具需求：只在需要時使用允許的工具；目前可用工具為 search_catalog 與 validate_draft。\n- 限制：不得憑空補充分支或步驟；不得改動已確認的流程理解。\n\n**Acceptance criteria**\n1. Skill 成品中明確包含這 8 個節點，且名稱與已確認內容一致。\n2. 成品不包含任何未在流程理解中出現的分支條件或額外節點。\n3. 成品為可攜式 Skill 格式，含完整 manifest 欄位與 Markdown body。\n4. 成品能被一次試跑/驗證確認其輸出結構符合上述範圍。\n\n如果這份 brief 可以，我就繼續往下做；若你要改成別的用途、輸出格式或語氣，請直接告訴我。"
+    },
+    {
+      "role": "assistant",
+      "content": "已根據確認的簡述與流程理解起草 Skill，並保留為可供 Go 驗證的完整版本。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "Validated draft is acceptable to proceed despite the non-blocking unknown-license warning. The brief and confirmed diagram remain unchanged, and the draft matches the confirmed eight-node onboarding flow without added branches or conditions."
+    }
+  ],
+  "state": "candidate_ready"
+}

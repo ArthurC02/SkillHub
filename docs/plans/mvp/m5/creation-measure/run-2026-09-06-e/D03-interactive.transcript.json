@@ -1,0 +1,37 @@
+{
+  "acceptance_criteria": [
+    "Given a support-ticket input, the Skill outputs a four-step workflow aligned to receiving, tagging, drafting, and sending/closing.",
+    "The Skill explicitly states that the Zendesk category/taxonomy is unspecified when not provided.",
+    "The Skill treats the 200-word reply length as an unresolved constraint unless the user clarifies whether it is a hard limit or a target.",
+    "The Skill does not invent alternate branches or decision points when none are present in the source.",
+    "The Skill’s output is concise enough to be portable as an Agent Skill and uses the confirmed diagram understanding unchanged."
+  ],
+  "brief": "Create a portable Skill that turns a support ticket into a Zendesk-tagged, 200-word reply and a closed-ticket action.",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "I read the diagram as a simple linear support-ticket workflow. Please confirm this understanding before I draft anything."
+    },
+    {
+      "role": "assistant",
+      "content": "I need you to confirm the diagram understanding before I draft anything. Please review the four explicit sections below.\n\ndiagram_understanding:\n{\"nodes\":[\"Receive support ticket\",\"Tag with Zendesk category\",\"Draft reply in 200 words\",\"Send and close ticket\"],\"conditions\":[],\"branches\":[],\"uncertainties\":[\"The diagram does not show any decision points or alternate paths.\",\"The exact Zendesk category taxonomy is not specified.\",\"It is unclear whether the 200-word reply is a hard limit or a target.\"]}\n\nReply with either:\n- confirm, or\n- corrections to any node, condition, branch, or uncertainty."
+    },
+    {
+      "role": "assistant",
+      "content": "I’m missing the actual task brief for the Skill. Please confirm this proposed brief so I can proceed:\n\nbrief:\nCreate a portable Skill that turns a support ticket into a Zendesk-tagged, 200-word reply and a closed-ticket action.\n\nacceptance_criteria:\n1. Given a support-ticket input, the Skill outputs a four-step workflow aligned to receiving, tagging, drafting, and sending/closing.\n2. The Skill explicitly states that the Zendesk category/taxonomy is unspecified when not provided.\n3. The Skill treats the 200-word reply length as an unresolved constraint unless the user clarifies whether it is a hard limit or a target.\n4. The Skill does not invent alternate branches or decision points when none are present in the source.\n5. The Skill’s output is concise enough to be portable as an Agent Skill and uses the confirmed diagram understanding unchanged.\n\nsample_input:\nA customer writes: “My order arrived damaged and I need a replacement immediately. Order number 48291. Please help.” The desired result is a Zendesk-tagged response draft of about 200 words and a clear close-ticket action.\n\nPlease reply with confirm or corrections to the brief, criteria, or sample input."
+    },
+    {
+      "role": "assistant",
+      "content": "Draft composed from the confirmed brief and diagram understanding. I kept the scope to the linear support-ticket workflow and preserved the noted uncertainties about Zendesk taxonomy and the 200-word constraint."
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "The draft is valid to the confirmed brief and diagram understanding. Static validation only raised a warning about an unknown license, which does not block creation. No changes are required unless you want to add an explicit license field in a future revision."
+    }
+  ],
+  "state": "candidate_ready"
+}

@@ -48,7 +48,9 @@ const (
 	// MaxAcceptanceCriteria mirrors llm-internal.yaml's maxItems on
 	// acceptance_criteria; each item is capped at MaxCriterionRunes there too.
 	MaxAcceptanceCriteria = 12
-	MaxCriterionRunes     = 500
+	// MaxSampleInputRunes mirrors llm-internal.yaml's maxLength on sample_input.
+	MaxSampleInputRunes = 4000
+	MaxCriterionRunes   = 500
 )
 
 type Limits struct {
@@ -125,7 +127,13 @@ type Snapshot struct {
 	// AcceptanceCriteria are proposed by the model together with the brief and
 	// confirmed with it (confirm_brief binds both). Observable sentences, not
 	// prose inside the brief: at materialize they become a Test Case.
-	AcceptanceCriteria   []string    `json:"acceptance_criteria"`
+	AcceptanceCriteria []string `json:"acceptance_criteria"`
+	// SampleInput is one complete example of what a user hands the Skill,
+	// proposed and confirmed with the brief; it is the prompt of the Test Case
+	// the criteria are judged against. Run d (2026-09-06) judged the brief
+	// itself: the agent asked for the material and every criterion came back
+	// undetermined.
+	SampleInput          string      `json:"sample_input"`
 	BriefConfirmed       bool        `json:"brief_confirmed"`
 	DiagramUnderstanding string      `json:"diagram_understanding"`
 	DiagramConfirmed     bool        `json:"diagram_confirmed"`

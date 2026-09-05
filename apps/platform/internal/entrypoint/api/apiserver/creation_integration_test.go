@@ -55,8 +55,10 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 		// 05 R-46 (b): the brief proposal carries its acceptance criteria; later
 		// turns echo the confirmed list back, as the prompt tells the real model to.
 		out.AcceptanceCriteria = in.AcceptanceCriteria
+		out.SampleInput = in.SampleInput
 		if out.Outcome == "confirm_brief" && len(out.AcceptanceCriteria) == 0 {
 			out.AcceptanceCriteria = []string{"輸出摘要含所有輸入重點"}
+			out.SampleInput = "會議紀錄：一、預算案通過。二、下週三交付報告。"
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(out)

@@ -437,13 +437,13 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 		row := runInteractiveSession(t, a, set.Creation, ctx, task, limits, outDir, trial)
 		results.Interactive = append(results.Interactive, row)
 		flush()
-		t.Logf("interactive %s (%s): state=%s draft=%v cost=%v calls=%d", task.ID, task.Kind, row.FinalState, row.Draft, row.CostUSD, row.ModelCalls)
+		t.Logf("interactive %s (%s): state=%s draft=%v cost=%s met=%s calls=%d", task.ID, task.Kind, row.FinalState, row.Draft, costLabel(row.CostUSD), metLabel(row), row.ModelCalls)
 	}
 	for _, task := range tasks {
 		row := runSingleShot(t, a, ctx, task, outDir)
 		results.SingleShot = append(results.SingleShot, row)
 		flush()
-		t.Logf("single-shot %s (%s): generated=%v attempts=%d cost=%v", task.ID, task.Kind, row.Generated, row.Attempts, row.CostUSD)
+		t.Logf("single-shot %s (%s): generated=%v attempts=%d cost=%s", task.ID, task.Kind, row.Generated, row.Attempts, costLabel(row.CostUSD))
 	}
 
 	for _, row := range results.Interactive {
@@ -653,4 +653,24 @@ func runSingleShot(t *testing.T, a *api, ctx context.Context, task measureTask, 
 		t.Fatal(err)
 	}
 	return row
+}
+
+// costLabel and metLabel keep the progress log readable: a nil pointer printed
+// with %v is an address, and the run stage's outcome or its reason is what
+// somebody watching a paid run wants to see per session.
+func costLabel(c *float64) string {
+	if c == nil {
+		return "unknown"
+	}
+	return fmt.Sprintf("$%.4f", *c)
+}
+
+func metLabel(row sessionRow) string {
+	if row.Met != nil {
+		return fmt.Sprintf("%v (%s)", *row.Met, row.Overall)
+	}
+	if row.MetNote != "" {
+		return "null: " + row.MetNote
+	}
+	return "null"
 }

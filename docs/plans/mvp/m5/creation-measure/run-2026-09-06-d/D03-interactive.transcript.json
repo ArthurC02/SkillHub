@@ -1,0 +1,38 @@
+{
+  "acceptance_criteria": [
+    "Given a ticket input, the skill outputs a workflow that includes all four steps in order.",
+    "The skill’s reply draft is approximately 200 words.",
+    "The skill mentions or uses a Zendesk category tag step.",
+    "The skill does not invent a specific Zendesk category when none is provided.",
+    "The skill does not add extra workflow branches or approval steps.",
+    "The skill clearly distinguishes the send step from the close-ticket step, or states that they are combined only if you confirm that interpretation."
+  ],
+  "brief": "Create a skill that follows the confirmed 4-step support-ticket workflow: receive a support ticket, tag it with a Zendesk category, draft a 200-word reply, then send and close the ticket.",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "I read the diagram as a linear support-ticket workflow. Please confirm this understanding:\n\n```json\n{\"nodes\":[\"Receive support ticket\",\"Tag with Zendesk category\",\"Draft reply in 200 words\",\"Send and close ticket\"],\"conditions\":[],\"branches\":[],\"uncertainties\":[\"The diagram does not specify which Zendesk category to use.\",\"The diagram does not say whether the 200-word reply has any required tone, template, or approval step.\",\"The diagram does not specify whether 'send' happens before or after 'close ticket' as separate actions or one combined step.\"]}\n```\n\nAcceptance criteria for confirming this understanding:\n1. The JSON lists exactly four nodes in the order shown.\n2. The JSON contains no conditions and no branches.\n3. The JSON includes the three explicit uncertainties about category choice, reply constraints, and send/close sequencing.\n4. A single read of the diagram can verify that the flow is linear from top to bottom.\n5. The node names match the text shown in the boxes/terminators."
+    },
+    {
+      "role": "assistant",
+      "content": "I can help turn this into a portable Agent Skill, but I still need the skill’s intended task and constraints. Please confirm a brief I can use:\n\n**Proposed brief**\n- **Task:** Create a skill that follows the confirmed 4-step support-ticket workflow: receive a support ticket, tag it with a Zendesk category, draft a 200-word reply, then send and close the ticket.\n- **Inputs:** A support ticket and any available ticket context.\n- **Outputs:** A concise, actionable reply draft and the completed workflow state.\n- **Tool requirements:** Must support Zendesk-category tagging and ticket send/close actions; no other tools assumed.\n- **Limitations:** The category is unspecified; the reply style/template/approval rules are unspecified; the send/close order may need to be treated as sequential unless you say otherwise.\n\n**Acceptance criteria**\n1. Given a ticket input, the skill outputs a workflow that includes all four steps in order.\n2. The skill’s reply draft is approximately 200 words.\n3. The skill mentions or uses a Zendesk category tag step.\n4. The skill does not invent a specific Zendesk category when none is provided.\n5. The skill does not add extra workflow branches or approval steps.\n6. The skill clearly distinguishes the send step from the close-ticket step, or states that they are combined only if you confirm that interpretation.\n\nPlease reply with **confirm** or tell me what to change."
+    },
+    {
+      "role": "assistant",
+      "content": "模型這一步沒有交出草稿，已自動再試一次。"
+    },
+    {
+      "role": "assistant",
+      "content": "I’ll validate the draft against the confirmed requirements before finalizing it."
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "The draft matches the confirmed brief and diagram. The only validation issue is a non-blocking warning about an unknown license; since licenses must not be invented, no change is needed unless you want to add a real license later."
+    }
+  ],
+  "state": "candidate_ready"
+}

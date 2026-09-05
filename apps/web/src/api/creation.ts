@@ -34,6 +34,7 @@ export interface CreationSnapshot {
   brief: string;
   brief_confirmed: boolean;
   acceptance_criteria: string[];
+  sample_input?: string;
   diagram_understanding: string;
   diagram_confirmed: boolean;
   references: CreationReference[];

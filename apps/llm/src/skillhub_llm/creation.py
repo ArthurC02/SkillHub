@@ -26,7 +26,7 @@ from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
 router = APIRouter()
 MODEL = "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v2"
+PROMPT_VERSION = "creation-step/v3"
 DATA_TAG = "untrusted_creation_snapshot"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
 Reason = Literal[
@@ -92,6 +92,7 @@ class CreationStepRequest(BaseModel):
     messages: list[CreationMessage] = Field(..., max_length=100)
     brief: str = Field(..., max_length=20000)
     acceptance_criteria: list[Annotated[str, Field(max_length=500)]] = Field(..., max_length=12)
+    sample_input: str = Field(..., max_length=4000)
     brief_confirmed: bool
     diagram_understanding: str = Field(..., max_length=20000)
     diagram_confirmed: bool
@@ -112,6 +113,7 @@ class CreationDecision(BaseModel):
     message: str
     brief: str | None
     acceptance_criteria: list[str] | None
+    sample_input: str | None
     diagram_understanding: str | None
     tool_intent: CreationToolIntent | None
     draft: GeneratedSkill | None
@@ -124,6 +126,7 @@ class CreationStepResponse(BaseModel):
     reason: Reason | None = None
     brief: str
     acceptance_criteria: list[str]
+    sample_input: str
     diagram_understanding: str
     tool_intent: CreationToolIntent | None = None
     draft: GeneratedSkill | None = None
@@ -214,8 +217,11 @@ def _reason_node(gateway_key: str, phase: str):
             "then ask the user to confirm it. "
             "Propose the brief and 3-8 acceptance_criteria together: each an observable sentence "
             "a single trial run can confirm or refute (what output, in what shape, under what "
-            "input). confirm_brief covers both; once brief_confirmed, keep brief and "
-            "acceptance_criteria unchanged or propose a new confirmation. "
+            "input). Propose sample_input with them: one realistic, complete example of what "
+            "a user would hand this Skill (the actual content, not a description of it), so a "
+            "single trial run can exercise every criterion. confirm_brief covers all three; once "
+            "brief_confirmed, keep brief, acceptance_criteria and sample_input unchanged or "
+            "propose a new confirmation. "
             "Read diagrams into named nodes, conditions, branches and explicit uncertainties; "
             "diagram_understanding must be a JSON-encoded object with exactly nodes, conditions, "
             "branches, uncertainties: each is an array of concrete strings; "
@@ -304,6 +310,8 @@ def _reason_node(gateway_key: str, phase: str):
                 len(decision.acceptance_criteria) > 12
                 or any(len(c) > 500 for c in decision.acceptance_criteria)
             ):
+                raise ValueError("over cap")
+            if len(decision.sample_input or "") > 4000:
                 raise ValueError("over cap")
             return {"decision": decision, "usage": _usage(completion, raw.headers)}
         except (OpenAIError, ValidationError, IndexError, AttributeError, TypeError, ValueError):
@@ -461,11 +469,13 @@ def _render(state: _State) -> dict:
     # its confirmation bit when accepting such a proposal.
     brief = d.brief or req.brief
     acceptance_criteria = d.acceptance_criteria or req.acceptance_criteria
+    sample_input = d.sample_input or req.sample_input
     diagram = d.diagram_understanding or req.diagram_understanding
     reason = state.get("reason")
     if req.brief_confirmed and d.outcome != "confirm_brief":
         brief = req.brief
         acceptance_criteria = req.acceptance_criteria
+        sample_input = req.sample_input
     if req.diagram_confirmed and d.outcome != "confirm_diagram":
         diagram = req.diagram_understanding
     if diagram:
@@ -489,6 +499,7 @@ def _render(state: _State) -> dict:
             reason=reason,
             brief=brief,
             acceptance_criteria=acceptance_criteria,
+            sample_input=sample_input,
             diagram_understanding=diagram,
             tool_intent=d.tool_intent,
             draft=d.draft,
