@@ -15,6 +15,9 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -37,9 +40,10 @@ import (
 // Deployment inputs only, in the same spirit as apiserver.Config: reading them is
 // main's job, and building a domain Service out of them is BuildWorkers'.
 type Deps struct {
-	Providers *run.Registry
-	Store     *objstore.Client
-	Gateway   *run.Gateway
+	CreationLimits creation.Limits
+	Providers      *run.Registry
+	Store          *objstore.Client
+	Gateway        *run.Gateway
 	// TraceSigner and TraceIngestBaseURL are one setting in two halves: either
 	// both are configured or no trace is collected.
 	TraceSigner        *trace.Signer
@@ -61,6 +65,7 @@ type Deps struct {
 // than returned as a started client, because "which dependency reached which
 // service" is exactly what the wiring test has to be able to look at.
 type Set struct {
+	Creation    *creation.Service
 	Runs        *run.Service
 	Evaluations *eval.Service
 	Packaging   *packaging.Service
@@ -187,7 +192,14 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	}
 	outboxWorker := &outbox.Worker{Pool: pool, Deliver: set.Events.Deliver}
 
+	set.Creation = &creation.Service{Pool: pool, Limits: deps.CreationLimits, LLM: deps.LLM}
+	creationVersions := &ingest.Service{Pool: pool, Store: deps.Store, References: registrySvc}
+	creationSearch := &catalog.Service{Pool: pool}
+	wireCreationReads(set.Creation, creationVersions, creationSearch)
+	wireCreationGateway(set.Creation, deps.Gateway)
 	workers := river.NewWorkers()
+	addWorker(set, workers, &creation.Worker{Svc: set.Creation})
+	addWorker(set, workers, &creation.ExpiryWorker{Svc: set.Creation})
 	// Every job kind the platform knows about is registered here. A kind with no
 	// worker is not a silent no-op — River fails the job — which is the behaviour
 	// we want if a deploy ever drops one.
@@ -240,6 +252,9 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	}
 	schedule(eval.RecoveryArgs{}, eval.RecoveryInterval, true)
 	schedule(run.SuperviseArgs{}, run.SuperviseInterval, true)
+	if deps.CreationLimits.Valid() {
+		schedule(creation.ExpiryArgs{}, time.Minute, true)
+	}
 	schedule(run.OrphanScanArgs{}, run.OrphanScanInterval, true)
 	// RunOnStart because an evaluation now waits on this drain: a restart that
 	// left events in the backlog should not cost the user a full interval before
@@ -263,6 +278,10 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		return nil, fmt.Errorf("queue client: %w", err)
 	}
 	set.Queue = client
+	set.Creation.Insert = func(ctx context.Context, tx pgx.Tx, a creation.JobArgs) error {
+		_, err := client.InsertTx(ctx, tx, a, &river.InsertOpts{MaxAttempts: 1})
+		return err
+	}
 
 	// The worker enqueues jobs as well as working them: a terminal transition owes
 	// a cleanup, and the supervisor's backlog sweep re-enqueues the ones that were

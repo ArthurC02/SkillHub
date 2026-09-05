@@ -77,6 +77,28 @@ func TestGatewayRefusesAResponsePastItsReadLimit(t *testing.T) {
 	}
 }
 
+func TestCreationGrantUsesSessionAttribution(t *testing.T) {
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Error(err)
+		}
+		_, _ = w.Write([]byte(`{"key":"test-creation-key"}`))
+	}))
+	defer srv.Close()
+	g := &Gateway{AdminBaseURL: srv.URL, HTTP: srv.Client(), Model: "gpt-5.4-mini", MaxBudgetUSD: .1}
+	if _, err := g.IssueCreation(context.Background(), "session-1", "receipt-1", 30*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	metadata, _ := got["metadata"].(map[string]any)
+	if len(metadata) != 2 || metadata["creation_session_id"] != "session-1" || metadata["creation_attempt_id"] != "receipt-1" {
+		t.Fatalf("creation spend attributed to wrong identity: %v", metadata)
+	}
+	if got["max_budget"] != .1 || got["duration"] != "30s" {
+		t.Fatalf("creation grant lost its bound: %v", got)
+	}
+}
+
 func TestBoundedResponseAcceptsItsExactLimit(t *testing.T) {
 	const limit = int64(32)
 	body := strings.Repeat("x", int(limit))

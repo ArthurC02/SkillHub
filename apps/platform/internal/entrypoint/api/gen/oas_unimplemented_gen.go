@@ -13,6 +13,15 @@ type UnimplementedHandler struct{}
 
 var _ Handler = UnimplementedHandler{}
 
+// ActOnCreationSession implements actOnCreationSession operation.
+//
+// ActOnCreationSession.
+//
+// POST /creation-sessions/{session_id}/actions
+func (UnimplementedHandler) ActOnCreationSession(ctx context.Context, req *CreationAction, params ActOnCreationSessionParams) (r ActOnCreationSessionRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // AddAcceptanceCriterion implements addAcceptanceCriterion operation.
 //
 // The one write path for a criterion, whether the user typed it or adopted a proposal from POST
@@ -137,6 +146,15 @@ func (UnimplementedHandler) CompareRuns(ctx context.Context, params CompareRunsP
 //
 // POST /skills/{id}/runs/preflight/confirm
 func (UnimplementedHandler) ConfirmRunPreflight(ctx context.Context, req *ConfirmRunPreflightReq, params ConfirmRunPreflightParams) (r ConfirmRunPreflightRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// CreateCreationSession implements createCreationSession operation.
+//
+// CreateCreationSession.
+//
+// POST /creation-sessions
+func (UnimplementedHandler) CreateCreationSession(ctx context.Context, req *CreateCreationSession) (r CreateCreationSessionRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -403,6 +421,15 @@ func (UnimplementedHandler) ForkSkill(ctx context.Context, params ForkSkillParam
 //
 // POST /skills/generate
 func (UnimplementedHandler) GenerateSkill(ctx context.Context, req *GenerateSkillReq) (r GenerateSkillRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetCreationSession implements getCreationSession operation.
+//
+// GetCreationSession.
+//
+// GET /creation-sessions/{session_id}
+func (UnimplementedHandler) GetCreationSession(ctx context.Context, params GetCreationSessionParams) (r GetCreationSessionRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -720,6 +747,15 @@ func (UnimplementedHandler) IngestTraceEvents(ctx context.Context, req []Sandbox
 //
 // DELETE /admin/dispatch/halt
 func (UnimplementedHandler) LiftDispatchHalt(ctx context.Context, req *LiftDispatchHaltReq) (r LiftDispatchHaltRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// ListCreationSessions implements listCreationSessions operation.
+//
+// ListCreationSessions.
+//
+// GET /creation-sessions
+func (UnimplementedHandler) ListCreationSessions(ctx context.Context) (r ListCreationSessionsRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

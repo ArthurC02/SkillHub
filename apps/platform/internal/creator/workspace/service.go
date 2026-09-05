@@ -40,6 +40,7 @@ type Service struct {
 	PurgeTestData      WorkspacePurge
 	PurgeRunArtifacts  WorkspacePurge
 	PurgeDownloads     WorkspacePurge
+	PurgeCreation      WorkspacePurge
 	PurgeSkills        WorkspacePurge
 	PurgeImportSources WorkspacePurge
 

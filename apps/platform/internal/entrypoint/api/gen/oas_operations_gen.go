@@ -6,6 +6,7 @@ package publicapi
 type OperationName = string
 
 const (
+	ActOnCreationSessionOperation              OperationName = "ActOnCreationSession"
 	AddAcceptanceCriterionOperation            OperationName = "AddAcceptanceCriterion"
 	BrowseCatalogOperation                     OperationName = "BrowseCatalog"
 	CancelAccountDeletionOperation             OperationName = "CancelAccountDeletion"
@@ -13,6 +14,7 @@ const (
 	ClearSkillRestrictionOperation             OperationName = "ClearSkillRestriction"
 	CompareRunsOperation                       OperationName = "CompareRuns"
 	ConfirmRunPreflightOperation               OperationName = "ConfirmRunPreflight"
+	CreateCreationSessionOperation             OperationName = "CreateCreationSession"
 	CreateDownloadArtifactOperation            OperationName = "CreateDownloadArtifact"
 	CreateSkillVersionFromSuggestionsOperation OperationName = "CreateSkillVersionFromSuggestions"
 	CreateTestCaseOperation                    OperationName = "CreateTestCase"
@@ -30,6 +32,7 @@ const (
 	FinishGithubLoginOperation                 OperationName = "FinishGithubLogin"
 	ForkSkillOperation                         OperationName = "ForkSkill"
 	GenerateSkillOperation                     OperationName = "GenerateSkill"
+	GetCreationSessionOperation                OperationName = "GetCreationSession"
 	GetDataRetentionPolicyOperation            OperationName = "GetDataRetentionPolicy"
 	GetDatasetLimitsOperation                  OperationName = "GetDatasetLimits"
 	GetDispatchStatusOperation                 OperationName = "GetDispatchStatus"
@@ -49,6 +52,7 @@ const (
 	ImportSkillFromURLOperation                OperationName = "ImportSkillFromURL"
 	IngestTraceEventsOperation                 OperationName = "IngestTraceEvents"
 	LiftDispatchHaltOperation                  OperationName = "LiftDispatchHalt"
+	ListCreationSessionsOperation              OperationName = "ListCreationSessions"
 	ListDatasetsOperation                      OperationName = "ListDatasets"
 	ListDownloadArtifactsOperation             OperationName = "ListDownloadArtifacts"
 	ListDownloadRecordsOperation               OperationName = "ListDownloadRecords"

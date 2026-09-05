@@ -25,11 +25,45 @@ linters:
     # integration tests' cross-context imports are handled by DDD-011.
     depguard:
       rules:
+        creation:
+          files:
+            - "**/internal/creator/creation/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
+              desc: "creation uses injected owner APIs (ADR-067)"
+
         identity:
           files:
             - "**/internal/creator/workspace/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
@@ -62,6 +96,8 @@ linters:
             - "**/internal/product/learning/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
@@ -100,6 +136,8 @@ linters:
             - "**/internal/skill/discovery/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
@@ -131,6 +169,8 @@ linters:
             - "**/internal/trial/improvement/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
@@ -160,6 +200,8 @@ linters:
             - "**/internal/skill/admission/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
@@ -187,6 +229,8 @@ linters:
             - "**/internal/skill/delivery/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
@@ -217,6 +261,8 @@ linters:
             - "**/internal/product/entitlements/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -249,6 +295,8 @@ linters:
             - "**/internal/skill/library/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
@@ -282,6 +330,8 @@ linters:
             - "**/internal/trial/execution/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
@@ -306,6 +356,8 @@ linters:
             - "**/internal/trial/design/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
@@ -336,6 +388,8 @@ linters:
             - "**/internal/trial/evidence/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
@@ -366,6 +420,8 @@ linters:
             - "**/internal/foundation/storage/objreconcile/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -404,6 +460,8 @@ linters:
             - "**/internal/shared/skillpkg/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
               desc: "shared kernel must not import a bounded context (ADR-037)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -451,6 +509,8 @@ linters:
             - "**/internal/foundation/runtime/httpx/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
               desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning

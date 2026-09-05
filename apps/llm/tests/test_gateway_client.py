@@ -39,6 +39,7 @@ BUILDERS: list[tuple[str, Callable[[], AsyncOpenAI], float]] = [
     # judge's ceiling would have silently raised generate's and eaten the margin
     # Go's generateTimeout is built on, with nothing able to go red.
     ("generate", generate._client, generate.LLM_TIMEOUT_SECONDS),
+    ("creation", lambda: gateway.client(120.0), 120.0),
     (
         "app:/embed",
         lambda: app_module._client(app_module.EMBED_TIMEOUT_SECONDS),

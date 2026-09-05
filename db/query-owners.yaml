@@ -33,6 +33,7 @@
 
 # 每個 db/queries/*.sql 的預設 owner。
 files:
+  creation.sql: creation
   auth.sql: identity
   beta.sql:
   dispatch.sql: run

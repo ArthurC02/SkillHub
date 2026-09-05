@@ -101,6 +101,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"log/slog"
 	"os"
 	"strconv"
@@ -484,6 +485,7 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 		PurgeDownloads:             packagingSvc.PurgeWorkspace,
 		PurgeSkills:                registrySvc.PurgeWorkspace,
 		PurgeImportSources:         ingestSvc.PurgeWorkspace,
+		PurgeCreation:              (&creation.Service{Pool: pool}).PurgeWorkspace,
 		DatasetObjectKeys:          testlabSvc.WorkspaceObjectKeys,
 		RunArtifactObjectKeys:      runSvc.WorkspaceObjectKeys,
 		DownloadArtifactObjectKeys: packagingSvc.WorkspaceObjectKeys,

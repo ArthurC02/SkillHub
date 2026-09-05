@@ -328,6 +328,13 @@ func (s *Service) beginPackageWrite(ctx context.Context, ws identity.Workspace, 
 }
 
 func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []byte, src sourceMeta) (Result, error) {
+	return s.importZipWithCommit(ctx, ws, data, src, nil)
+}
+
+// importZipWithCommit keeps admission's object fence and transaction ownership.
+// The callback is deliberately invoked before admission commits, which is how a
+// caller may atomically record the fact that a validated package became useful.
+func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace, data []byte, src sourceMeta, after func(context.Context, pgx.Tx, Result) error) (Result, error) {
 	p, err := s.prepare(ctx, data)
 	if err != nil || p.report.Blocked {
 		return Result{Report: p.report}, err
@@ -424,6 +431,11 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 	usageMeta(importMeta, src.CostUSD, src.PromptTokens, src.CompletionTokens)
 	if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, importMeta); err != nil {
 		return Result{}, err
+	}
+	if after != nil {
+		if err := after(ctx, tx, res); err != nil {
+			return Result{}, err
+		}
 	}
 	return res, tx.Commit(ctx)
 }

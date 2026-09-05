@@ -512,6 +512,46 @@ class SuggestImprovementsResponse(BaseModel):
     )
 
 
+class Role(Enum):
+    user = 'user'
+    assistant = 'assistant'
+    tool = 'tool'
+
+
+class CreationMessage(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    role: Role
+    content: constr(max_length=20000)
+
+
+class Kind1(Enum):
+    search_catalog = 'search_catalog'
+    validate_draft = 'validate_draft'
+
+
+class CreationToolIntent(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    kind: Kind1
+    query: constr(max_length=4000)
+
+
+class AllowedTool(Enum):
+    search_catalog = 'search_catalog'
+    validate_draft = 'validate_draft'
+
+
+class Outcome(Enum):
+    clarification = 'clarification'
+    confirm_brief = 'confirm_brief'
+    confirm_diagram = 'confirm_diagram'
+    tool_intent = 'tool_intent'
+    draft = 'draft'
+
+
 class EmbedResponse(BaseModel):
     embeddings: List[List[float]]
     model: str
@@ -638,3 +678,46 @@ class GenerateSkillResponse(BaseModel):
         None,
         description='What the generation cost at the gateway. Measured median for a mini\ngeneration is about $0.0055; the quota is charged per generation and\nnot per call, so a retry does not double it and a failure costs the\nuser nothing (ADR-047 決策 2).\n',
     )
+
+
+class CreationStepRequest(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    session_id: constr(min_length=1)
+    revision: conint(ge=0)
+    messages: List[CreationMessage] = Field(..., max_length=100)
+    brief: constr(max_length=20000)
+    brief_confirmed: bool
+    diagram_understanding: constr(max_length=20000) = Field(
+        ...,
+        description='Structured nodes, conditions, branches and uncertainties confirmed by the user.',
+    )
+    diagram_confirmed: bool
+    diagram: Optional[GenerateDiagram] = None
+    references: List[GenerateReference] = Field(
+        ...,
+        description='Only user-confirmed, fixed-version references freshly authorized by Go.',
+        max_length=3,
+    )
+    draft: Optional[GeneratedSkill] = None
+    allowed_tools: List[AllowedTool]
+    timeout_seconds: conint(ge=1, le=120) = Field(
+        ..., description='Remaining per-call deadline authorized by Go.'
+    )
+    max_output_tokens: conint(ge=1, le=16000)
+
+
+class CreationStepResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    outcome: Outcome
+    message: constr(max_length=20000)
+    brief: constr(max_length=20000)
+    diagram_understanding: constr(max_length=20000)
+    tool_intent: Optional[CreationToolIntent] = None
+    draft: Optional[GeneratedSkill] = None
+    model: str
+    prompt_version: str
+    usage: Optional[GatewayUsage] = None

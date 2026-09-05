@@ -133,6 +133,15 @@ func keyAlias(runAttemptID string) string { return "skillhub-attempt-" + runAtte
 // see the gateway network and has no credential for it, which is a run that
 // fails later and less clearly.
 func (g *Gateway) Issue(ctx context.Context, runID, runAttemptID string, ttl time.Duration) (*ModelGatewayGrant, error) {
+	return g.issue(ctx, runAttemptID, ttl, map[string]string{"run_id": runID, "run_attempt_id": runAttemptID})
+}
+
+// IssueCreation attributes a creation key to its session, never to a fictitious Run.
+func (g *Gateway) IssueCreation(ctx context.Context, sessionID, attemptID string, ttl time.Duration) (*ModelGatewayGrant, error) {
+	return g.issue(ctx, attemptID, ttl, map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID})
+}
+func (g *Gateway) issue(ctx context.Context, runAttemptID string, ttl time.Duration, metadata map[string]string) (*ModelGatewayGrant, error) {
+
 	if ttl <= 0 {
 		ttl = time.Hour
 	}
@@ -143,7 +152,7 @@ func (g *Gateway) Issue(ctx context.Context, runID, runAttemptID string, ttl tim
 		"tpm_limit":  g.TPMLimit,
 		// Attribution for the spend the gateway records against this key. The
 		// platform run_id is the correlation everywhere (iron rule 10).
-		"metadata": map[string]string{"run_id": runID, "run_attempt_id": runAttemptID},
+		"metadata": metadata,
 	}
 	if g.Model != "" {
 		// Scope the key to the tier this run was priced for. A key that can call

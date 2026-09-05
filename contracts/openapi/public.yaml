@@ -4305,6 +4305,248 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /creation-sessions:
+    get:
+      operationId: "listCreationSessions"
+      summary: "listCreationSessions"
+      responses:
+        200:
+          description: "Workspace-scoped creation snapshot"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/CreationSession"
+        400:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        401:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        404:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        409:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        422:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        503:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        403:
+          description: "Invitation required"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: "createCreationSession"
+      summary: "createCreationSession"
+      responses:
+        200:
+          description: "Workspace-scoped creation snapshot"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreationSession"
+        400:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        401:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        404:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        409:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        422:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        503:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        403:
+          description: "Invitation required"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCreationSession"
+  /creation-sessions/{session_id}:
+    parameters:
+      -
+        name: "session_id"
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+          format: "uuid"
+    get:
+      operationId: "getCreationSession"
+      summary: "getCreationSession"
+      responses:
+        200:
+          description: "Workspace-scoped creation snapshot"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreationSession"
+        400:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        401:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        404:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        409:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        422:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        503:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        403:
+          description: "Invitation required"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /creation-sessions/{session_id}/actions:
+    parameters:
+      -
+        name: "session_id"
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+          format: "uuid"
+    post:
+      operationId: "actOnCreationSession"
+      summary: "actOnCreationSession"
+      responses:
+        200:
+          description: "Workspace-scoped creation snapshot"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreationSession"
+        400:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        401:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        404:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        409:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        422:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        503:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        403:
+          description: "Invitation required"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreationAction"
+
 components:
   securitySchemes:
     sessionCookie:
@@ -7836,3 +8078,286 @@ components:
                 the same transaction and under the same advisory lock as the
                 allowance, which is the only place where a run is about to exist
                 and nothing has been spent yet.
+
+    CreationMessage:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "role"
+        - "content"
+      properties:
+        role:
+          type: "string"
+          enum:
+            - "user"
+            - "assistant"
+            - "tool"
+        content:
+          type: "string"
+
+    CreationSkill:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "name"
+        - "description"
+        - "compatibility"
+        - "allowed_tools"
+        - "body"
+        - "files"
+      properties:
+        name:
+          type: "string"
+        description:
+          type: "string"
+        compatibility:
+          type: "string"
+        allowed_tools:
+          type: "string"
+        body:
+          type: "string"
+        files:
+          type: "array"
+          items:
+            type: "object"
+            additionalProperties: false
+            required:
+              - "path"
+              - "content"
+            properties:
+              path:
+                type: "string"
+              content:
+                type: "string"
+
+    CreationReference:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "skill_id"
+        - "version_id"
+        - "name"
+        - "confirmed"
+        - "available"
+      properties:
+        skill_id:
+          type: "string"
+          format: "uuid"
+        version_id:
+          type: "string"
+          format: "uuid"
+        name:
+          type: "string"
+        confirmed:
+          type: "boolean"
+        available:
+          type: "boolean"
+
+    CreationDraft:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "revision"
+        - "content_hash"
+        - "skill"
+        - "validation"
+        - "blocked"
+      properties:
+        revision:
+          type: "integer"
+        content_hash:
+          type: "string"
+        skill:
+          $ref: "#/components/schemas/CreationSkill"
+        validation:
+          type: "string"
+        blocked:
+          type: "boolean"
+
+    CreationCandidate:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "skill_id"
+        - "version_id"
+      properties:
+        skill_id:
+          type: "string"
+          format: "uuid"
+        version_id:
+          type: "string"
+          format: "uuid"
+        run_id:
+          type: "string"
+          format: "uuid"
+
+    CreationSnapshot:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "messages"
+        - "brief"
+        - "brief_confirmed"
+        - "diagram_understanding"
+        - "diagram_confirmed"
+        - "references"
+        - "pending_action"
+        - "budget_usd"
+        - "reserved_usd"
+        - "usage_unknown"
+        - "steps"
+        - "tool_calls"
+      properties:
+        messages:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/CreationMessage"
+        brief:
+          type: "string"
+        brief_confirmed:
+          type: "boolean"
+        diagram_understanding:
+          type: "string"
+        diagram_confirmed:
+          type: "boolean"
+        diagram_fingerprint:
+          type: "string"
+        references:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/CreationReference"
+        draft:
+          $ref: "#/components/schemas/CreationDraft"
+        candidate:
+          $ref: "#/components/schemas/CreationCandidate"
+        pending_action:
+          type: "string"
+        budget_usd:
+          type: "number"
+        reserved_usd:
+          type: "number"
+        spent_usd:
+          type: "number"
+        usage_unknown:
+          type: "boolean"
+        steps:
+          type: "integer"
+        tool_calls:
+          type: "integer"
+        model:
+          type: "string"
+        prompt_version:
+          type: "string"
+        diagram_media_type:
+          type: "string"
+        diagram_bytes:
+          type: "integer"
+          minimum: 0
+        previous_draft:
+          $ref: "#/components/schemas/CreationDraft"
+
+    CreationSession:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "id"
+        - "revision"
+        - "state"
+        - "snapshot"
+        - "created_at"
+        - "updated_at"
+        - "expires_at"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        revision:
+          type: "integer"
+        state:
+          type: "string"
+          enum:
+            - "queued"
+            - "working"
+            - "waiting_input"
+            - "waiting_confirmation"
+            - "draft_ready"
+            - "candidate_ready"
+            - "saved"
+            - "cancelled"
+            - "failed"
+            - "needs_reupload"
+        snapshot:
+          $ref: "#/components/schemas/CreationSnapshot"
+        created_at:
+          type: "string"
+          format: "date-time"
+        updated_at:
+          type: "string"
+          format: "date-time"
+        expires_at:
+          type: "string"
+          format: "date-time"
+
+    CreateCreationSession:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "id"
+        - "message"
+        - "budget_usd"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        message:
+          type: "string"
+          maxLength: 4000
+        budget_usd:
+          type: "number"
+          minimum: 0
+      description: "An empty message creates an unbilled session awaiting its first diagram or reference selection. The supplied budget is a user-approved ceiling, bounded again by deployment policy."
+
+    CreationAction:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "command_id"
+        - "expected_revision"
+        - "kind"
+      properties:
+        command_id:
+          type: "string"
+          format: "uuid"
+        expected_revision:
+          type: "integer"
+          minimum: 1
+        kind:
+          type: "string"
+          enum:
+            - "message"
+            - "confirm_brief"
+            - "confirm_diagram"
+            - "select_references"
+            - "confirm_references"
+            - "materialize"
+            - "finalize"
+            - "cancel"
+            - "diagram"
+            - "attach_run"
+        message:
+          type: "string"
+          maxLength: 4000
+        reference_skill_ids:
+          type: "array"
+          maxItems: 3
+          items:
+            type: "string"
+            format: "uuid"
+        content_hash:
+          type: "string"
+        diagram:
+          $ref: "#/components/schemas/GenerateDiagram"
+        run_id:
+          type: "string"
+          format: "uuid"
+      description: "Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, and run_id for attach_run. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service."

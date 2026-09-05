@@ -16,6 +16,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -455,6 +456,9 @@ func devLoginRefusal(devLogin, secure bool) string {
 }
 
 func main() {
+	creationLimits, _ := creation.LimitsFromEnv()
+	var cleanWorker *worker.Set
+	creationTransient := creation.TransientClient(os.Getenv("CREATION_WORKER_INTERNAL_URL"), os.Getenv("CREATION_WORKER_INTERNAL_TOKEN"), creationLimits.CallTimeout+30*time.Second)
 	// `--capabilities` prints the declared table and exits, before anything is
 	// read or dialled. `devctl automation-check` runs this to compare the table
 	// against .env.example without standing a deployment up (05 R-36's checker).
@@ -592,6 +596,14 @@ func main() {
 	capabilities := capabilityTable(pool, len(profiles), clean)
 	reportCapabilities(ctx, capabilities)
 
+	if clean {
+		creationTransient = func(ctx context.Context, a creation.JobArgs, d *llmclient.GenerateDiagram) error {
+			if cleanWorker == nil {
+				return creation.ErrUnavailable
+			}
+			return cleanWorker.Creation.Step(ctx, a, d)
+		}
+	}
 	app, err := apiserver.NewApp(apiserver.Config{
 		Pool:               pool,
 		Readiness:          capabilities,
@@ -620,7 +632,8 @@ func main() {
 		Quota:           quotaFromEnv(),
 		GenerateQuota:   generateQuotaFromEnv(),
 		GenerateExposed: generateExposedFromEnv(),
-		RateLimits:      rateLimitsFromEnv(),
+		CreationExposed: creation.Exposed(), CreationLimits: creationLimits, CreationTransient: creationTransient,
+		RateLimits: rateLimitsFromEnv(),
 		// The same `clean` bool every other consequence below is gated on. It
 		// travels as a Config field so features() does not read the variable a
 		// second time: cleanModeFromEnv's comment promises one choice point, and
@@ -640,13 +653,14 @@ func main() {
 	// 決策 6). PollOnly:true is required, not cosmetic — with pool_max_conns=1
 	// there is no second connection for River to LISTEN on, and without
 	// PollOnly the queue client fails to start rather than falling back.
-	var cleanWorker *worker.Set
+
 	if clean {
 		if err := queue.EnsureSchema(ctx, pool); err != nil {
 			slog.Error("clean mode: queue schema", "error", err)
 			os.Exit(1)
 		}
 		cleanWorker, err = worker.BuildWorkers(pool, worker.Deps{
+			CreationLimits:     creationLimits,
 			Providers:          providers,
 			Store:              store,
 			Gateway:            run.GatewayFromEnv(),

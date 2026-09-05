@@ -422,6 +422,56 @@ paths:
                 $ref: "#/components/schemas/Error"
         "503":
           $ref: "#/components/responses/Unavailable"
+  /v1/creation/step:
+    post:
+      operationId: creationStep
+      parameters:
+        - name: X-Creation-Gateway-Key
+          in: header
+          required: true
+          description: Ephemeral Go-issued budget-limited Virtual Key; never persisted or logged.
+          schema: {type: string, minLength: 1}
+      summary: One bounded LangGraph creation step reconstructed from a Go snapshot
+      description: |
+        ADR-067. Returns proposals or tool intentions only. Go owns confirmation,
+        budgets, persistence and tool execution. No Python checkpoint or queue.
+        Diagram bytes are transient and must never enter a durable job payload.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreationStepRequest'
+      responses:
+        "200":
+          description: A proposed next step and the actual gateway usage, when known.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreationStepResponse'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "422":
+          description: Invalid or out-of-bounds snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "499":
+          description: Caller disconnected; model await is cancelled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Gateway failure or unusable model output; usage may be unknown.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "503":
+          $ref: '#/components/responses/Unavailable'
+
 components:
   responses:
     Unauthorized:
@@ -1732,3 +1782,104 @@ components:
             same optionality as JudgeRunResponse.usage: generating suggestions is
             a second charged call on the judge tier, so it is reported rather than
             silently folded into the judgement's cost.
+
+    CreationMessage:
+      type: object
+      additionalProperties: false
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant, tool]
+        content:
+          type: string
+          maxLength: 20000
+    CreationToolIntent:
+      type: object
+      additionalProperties: false
+      required: [kind, query]
+      properties:
+        kind:
+          type: string
+          enum: [search_catalog, validate_draft]
+        query:
+          type: string
+          maxLength: 4000
+    CreationStepRequest:
+      type: object
+      additionalProperties: false
+      required: [session_id, revision, messages, brief, brief_confirmed, diagram_understanding, diagram_confirmed, references, allowed_tools, timeout_seconds, max_output_tokens]
+      properties:
+        session_id:
+          type: string
+          minLength: 1
+        revision:
+          type: integer
+          minimum: 0
+        messages:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CreationMessage'
+        brief:
+          type: string
+          maxLength: 20000
+        brief_confirmed:
+          type: boolean
+        diagram_understanding:
+          type: string
+          maxLength: 20000
+          description: Structured nodes, conditions, branches and uncertainties confirmed by the user.
+        diagram_confirmed:
+          type: boolean
+        diagram:
+          $ref: '#/components/schemas/GenerateDiagram'
+        references:
+          type: array
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/GenerateReference'
+          description: Only user-confirmed, fixed-version references freshly authorized by Go.
+        draft:
+          $ref: '#/components/schemas/GeneratedSkill'
+        allowed_tools:
+          type: array
+          items:
+            type: string
+            enum: [search_catalog, validate_draft]
+        timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 120
+          description: Remaining per-call deadline authorized by Go.
+        max_output_tokens:
+          type: integer
+          minimum: 1
+          maximum: 16000
+    CreationStepResponse:
+      type: object
+      additionalProperties: false
+      required: [outcome, message, brief, diagram_understanding, model, prompt_version]
+      properties:
+        outcome:
+          type: string
+          enum: [clarification, confirm_brief, confirm_diagram, tool_intent, draft]
+        message:
+          type: string
+          maxLength: 20000
+        brief:
+          type: string
+          maxLength: 20000
+        diagram_understanding:
+          type: string
+          maxLength: 20000
+        tool_intent:
+          $ref: '#/components/schemas/CreationToolIntent'
+        draft:
+          $ref: '#/components/schemas/GeneratedSkill'
+        model:
+          type: string
+        prompt_version:
+          type: string
+        usage:
+          $ref: '#/components/schemas/GatewayUsage'

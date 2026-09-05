@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from skillhub_llm.creation import router as creation_router
 from skillhub_llm.enrich import router as enrich_router
 from skillhub_llm.evaluate import router as evaluate_router
 from skillhub_llm.gateway import GatewayUsage, _embedding_usage, _metadata, _usage, close_client
@@ -66,6 +67,7 @@ protected = [Depends(require_service_token)]
 app.include_router(enrich_router, dependencies=protected)
 app.include_router(evaluate_router, dependencies=protected)
 app.include_router(generate_router, dependencies=protected)
+app.include_router(creation_router, dependencies=protected)
 logger = logging.getLogger("skillhub_llm")
 
 

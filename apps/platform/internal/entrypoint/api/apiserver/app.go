@@ -10,7 +10,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
@@ -97,7 +99,10 @@ type Config struct {
 	// a beta participant cannot meet "搜不到 → 生成一個" — the funnel's first
 	// segment measures whether search works, and that number has one chance with
 	// twelve people.
-	GenerateExposed bool
+	GenerateExposed   bool
+	CreationExposed   bool
+	CreationLimits    creation.Limits
+	CreationTransient func(context.Context, creation.JobArgs, *llmclient.GenerateDiagram) error
 	// RateLimits is NFR-001 clause 5's limiter for anonymous search and the two
 	// import endpoints. Nil = no limiting; cmd/api sets it unless RATE_LIMIT=off
 	// (unset = enforced with defaults, the RUN_QUOTA convention — a protection
@@ -131,6 +136,7 @@ type App struct {
 	EvalSvc      *eval.Service
 	PackagingSvc *packaging.Service
 	Versions     *ingest.Service
+	CreationSvc  *creation.Service
 	TraceSvc     *trace.Service
 }
 
@@ -152,12 +158,14 @@ func NewApp(cfg Config) (*App, error) {
 	packagingPurgeSvc := &packaging.Service{Pool: cfg.Pool}
 	registryPurgeSvc := &registry.Service{Pool: cfg.Pool}
 	ingestPurgeSvc := &ingest.Service{Pool: cfg.Pool}
+	creationPurgeSvc := &creation.Service{Pool: cfg.Pool}
 	// Identity coordinates the cross-context deletion, while every callback
 	// remains implemented by the context that owns the affected rows.
 	identitySvc.PurgeAnalytics = analyticsPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeTestData = testlabSvc.PurgeWorkspace
 	identitySvc.PurgeRunArtifacts = runPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeDownloads = packagingPurgeSvc.PurgeWorkspace
+	identitySvc.PurgeCreation = creationPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeSkills = registryPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeImportSources = ingestPurgeSvc.PurgeWorkspace
 	identitySvc.DatasetObjectKeys = testlabSvc.WorkspaceObjectKeys
@@ -315,12 +323,21 @@ func NewApp(cfg Config) (*App, error) {
 	// two above: eval owns `evaluations`, and a JOIN to it from a run-owned query
 	// would slip past the ownership checker rather than satisfy it.
 
+	creationSvc := &creation.Service{Pool: cfg.Pool, Limits: cfg.CreationLimits}
+	creationSvc.Insert = func(ctx context.Context, tx pgx.Tx, a creation.JobArgs) error {
+		_, err := jobs.InsertTx(ctx, tx, a, &river.InsertOpts{MaxAttempts: 1})
+		return err
+	}
+	wireCreationReads(creationSvc, versions, catalogSvc)
+	wireCreationWrites(creationSvc, versions, runSvc, evalSvc)
 	return &App{
 		Deps: Deps{
-			Auth:      auth,
-			Readiness: cfg.Readiness,
-			CleanMode: cfg.CleanMode,
-			Importer:  &ingest.Handler{Svc: versions, Identity: auth.Service},
+			Auth:            auth,
+			Creation:        &creationHandler{Svc: creationSvc, Identity: identitySvc, Transient: cfg.CreationTransient},
+			CreationExposed: creationEnabled(cfg),
+			Readiness:       cfg.Readiness,
+			CleanMode:       cfg.CleanMode,
+			Importer:        &ingest.Handler{Svc: versions, Identity: auth.Service},
 			Search: &catalog.Handler{
 				Svc:      catalogSvc,
 				Identity: auth.Service,
@@ -352,6 +369,7 @@ func NewApp(cfg Config) (*App, error) {
 		EvalSvc:      evalSvc,
 		PackagingSvc: packagingSvc,
 		Versions:     versions,
+		CreationSvc:  creationSvc,
 		TraceSvc:     traceSvc,
 	}, nil
 }
@@ -688,10 +706,17 @@ func suggesterOrNil(c *llmclient.Client) testlab.CriteriaSuggester {
 // entryPointFeatures are the optional routes this deployment mounts. Gated per
 // caller at /me, because drawing an entry point for somebody the route will
 // refuse is the failure ADR-052's flag exists to prevent, one scope down.
+func creationEnabled(cfg Config) bool {
+	return cfg.GenerateExposed && cfg.CreationExposed && cfg.CreationLimits.Valid() && cfg.CreationTransient != nil
+}
+
 func entryPointFeatures(cfg Config) map[string]bool {
 	f := map[string]bool{}
 	if cfg.GenerateExposed {
 		f["generate_skill"] = true
+		if creationEnabled(cfg) {
+			f["creation_skill"] = true
+		}
 	}
 	return f
 }

@@ -24,6 +24,7 @@ import pytest
 from pydantic import BaseModel
 
 from skillhub_llm.app import MatchReasons, SuggestedCriteria
+from skillhub_llm.creation import CreationDecision
 from skillhub_llm.enrich import Enrichment
 from skillhub_llm.evaluate import ImprovementProposals, JudgeVerdict
 from skillhub_llm.generate import GeneratedSkill
@@ -70,6 +71,7 @@ MODEL_FACING = [
     JudgeVerdict,
     ImprovementProposals,
     GeneratedSkill,
+    CreationDecision,
 ]
 
 

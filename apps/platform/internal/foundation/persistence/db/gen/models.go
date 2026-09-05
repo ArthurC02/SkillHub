@@ -188,6 +188,40 @@ type AuditEvent struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+type CreationReceipt struct {
+	ID               pgtype.UUID
+	SessionID        pgtype.UUID
+	WorkspaceID      pgtype.UUID
+	Kind             string
+	Status           string
+	ExpectedRevision int64
+	RequestHash      string
+	Result           []byte
+	Usage            []byte
+	CreatedAt        pgtype.Timestamptz
+	FinishedAt       pgtype.Timestamptz
+}
+
+type CreationSession struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	State       string
+	Revision    int64
+	Snapshot    []byte
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	ExpiresAt   pgtype.Timestamptz
+}
+
+type CreationSessionEvent struct {
+	SessionID   pgtype.UUID
+	WorkspaceID pgtype.UUID
+	Revision    int64
+	EventType   string
+	Snapshot    []byte
+	CreatedAt   pgtype.Timestamptz
+}
+
 type Dataset struct {
 	ID                   pgtype.UUID
 	WorkspaceID          pgtype.UUID

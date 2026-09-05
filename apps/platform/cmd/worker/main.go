@@ -14,10 +14,14 @@ package main
 
 import (
 	"context"
+	"errors"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -135,7 +139,9 @@ func main() {
 		slog.Warn("LLM_SERVICE_URL not set; evaluations will be recorded as failed with no task verdict")
 	}
 
+	creationLimits, _ := creation.LimitsFromEnv()
 	set, err := worker.BuildWorkers(pool, worker.Deps{
+		CreationLimits:     creationLimits,
 		Providers:          providers,
 		Store:              store,
 		Gateway:            gateway,
@@ -151,6 +157,19 @@ func main() {
 	if err := set.Queue.Start(ctx); err != nil {
 		slog.Error("queue start", "error", err)
 		os.Exit(1)
+	}
+	if addr, token := os.Getenv("CREATION_WORKER_INTERNAL_ADDR"), os.Getenv("CREATION_WORKER_INTERNAL_TOKEN"); addr != "" && token != "" && creationLimits.Valid() {
+		server := &http.Server{Addr: addr, Handler: set.Creation.TransientHandler(token), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
+		go func() {
+			if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				slog.Error("creation internal listener failed")
+			}
+		}()
+		defer func() {
+			stop, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = server.Shutdown(stop)
+		}()
 	}
 	go metrics.Serve(os.Getenv("METRICS_ADDR"))
 	slog.Info("worker started")

@@ -30,15 +30,17 @@ import (
 // caller: cmd/api reads them from the environment, tests point them at a
 // throwaway database.
 type Deps struct {
-	Auth      *identity.Handler
-	Importer  *ingest.Handler
-	Search    *catalog.Handler
-	Registry  *registry.Handler
-	TestLab   *testlab.Handler
-	Runs      *run.Handler
-	Trace     *trace.Handler
-	Eval      *eval.Handler
-	Packaging *packaging.Handler
+	Creation        *creationHandler
+	CreationExposed bool
+	Auth            *identity.Handler
+	Importer        *ingest.Handler
+	Search          *catalog.Handler
+	Registry        *registry.Handler
+	TestLab         *testlab.Handler
+	Runs            *run.Handler
+	Trace           *trace.Handler
+	Eval            *eval.Handler
+	Packaging       *packaging.Handler
 	// Analytics serves POST /feedback and carries the funnel-event writer the
 	// public handlers use (02:O11Y-004, BETA-003/004/005).
 	Analytics *analytics.Handler
@@ -129,6 +131,12 @@ func NewRouter(d Deps) http.Handler {
 			auth.RequireSession(auth.RequireInvited(d.Importer.GenerateFailures)))
 	}
 
+	if d.GenerateExposed && d.CreationExposed && d.Creation != nil {
+		mux.HandleFunc("GET /creation-sessions", auth.RequireSession(auth.RequireInvited(d.Creation.List)))
+		mux.HandleFunc("POST /creation-sessions", limited(d, metrics.RouteGenerate, auth.RequireSession(auth.RequireInvited(d.Creation.Create))))
+		mux.HandleFunc("GET /creation-sessions/{session_id}", auth.RequireSession(auth.RequireInvited(d.Creation.Get)))
+		mux.HandleFunc("POST /creation-sessions/{session_id}/actions", limited(d, metrics.RouteGenerate, auth.RequireSession(auth.RequireInvited(d.Creation.Act))))
+	}
 	// DISC-001: public search works without login — which made it the one
 	// endpoint NFR-001 clause 5 names that was genuinely open and unlimited,
 	// since M1 (04 丙-54's correction: the naked endpoint was never generation).

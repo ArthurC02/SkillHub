@@ -15,6 +15,8 @@ dependencies = [
     # fastapi's transitive dependency, which is a version this project does not
     # control and would not notice losing.
     "pydantic>=2",
+    "langgraph>=1,<2",
+    "langsmith>=0.12,<1",
 ]
 # litellm was declared here and imported nowhere. app.py argues at length why
 # its entry point is deliberately NOT used - it picks a provider handler from

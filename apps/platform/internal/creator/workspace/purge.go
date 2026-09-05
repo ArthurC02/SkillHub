@@ -63,6 +63,7 @@ func (s *Service) purgeSteps() []purgeStep {
 		{"testlab", s.PurgeTestData},
 		{"run", s.PurgeRunArtifacts},
 		{"packaging", s.PurgeDownloads},
+		{"creation", s.PurgeCreation},
 		// registry before ingest, and this order is load-bearing. ingest's step
 		// removes the import sources that no skill_versions row still points at;
 		// registry's step is what deletes those version rows. Run the other way

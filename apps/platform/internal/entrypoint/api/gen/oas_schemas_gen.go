@@ -197,6 +197,34 @@ func (s *AccountDeletion) SetScope(val string) {
 
 func (*AccountDeletion) requestAccountDeletionRes() {}
 
+type ActOnCreationSessionBadRequest Error
+
+func (*ActOnCreationSessionBadRequest) actOnCreationSessionRes() {}
+
+type ActOnCreationSessionConflict Error
+
+func (*ActOnCreationSessionConflict) actOnCreationSessionRes() {}
+
+type ActOnCreationSessionForbidden Error
+
+func (*ActOnCreationSessionForbidden) actOnCreationSessionRes() {}
+
+type ActOnCreationSessionNotFound Error
+
+func (*ActOnCreationSessionNotFound) actOnCreationSessionRes() {}
+
+type ActOnCreationSessionServiceUnavailable Error
+
+func (*ActOnCreationSessionServiceUnavailable) actOnCreationSessionRes() {}
+
+type ActOnCreationSessionUnauthorized Error
+
+func (*ActOnCreationSessionUnauthorized) actOnCreationSessionRes() {}
+
+type ActOnCreationSessionUnprocessableEntity Error
+
+func (*ActOnCreationSessionUnprocessableEntity) actOnCreationSessionRes() {}
+
 type AddAcceptanceCriterionBadRequest Error
 
 func (*AddAcceptanceCriterionBadRequest) addAcceptanceCriterionRes() {}
@@ -1276,6 +1304,73 @@ type ConfirmRunPreflightUnprocessableEntity Error
 
 func (*ConfirmRunPreflightUnprocessableEntity) confirmRunPreflightRes() {}
 
+// An empty message creates an unbilled session awaiting its first diagram or reference selection. The
+// supplied budget is a user-approved ceiling, bounded again by deployment policy.
+// Ref: #/components/schemas/CreateCreationSession
+type CreateCreationSession struct {
+	ID        uuid.UUID `json:"id"`
+	Message   string    `json:"message"`
+	BudgetUsd float64   `json:"budget_usd"`
+}
+
+// GetID returns the value of ID.
+func (s *CreateCreationSession) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetMessage returns the value of Message.
+func (s *CreateCreationSession) GetMessage() string {
+	return s.Message
+}
+
+// GetBudgetUsd returns the value of BudgetUsd.
+func (s *CreateCreationSession) GetBudgetUsd() float64 {
+	return s.BudgetUsd
+}
+
+// SetID sets the value of ID.
+func (s *CreateCreationSession) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetMessage sets the value of Message.
+func (s *CreateCreationSession) SetMessage(val string) {
+	s.Message = val
+}
+
+// SetBudgetUsd sets the value of BudgetUsd.
+func (s *CreateCreationSession) SetBudgetUsd(val float64) {
+	s.BudgetUsd = val
+}
+
+type CreateCreationSessionBadRequest Error
+
+func (*CreateCreationSessionBadRequest) createCreationSessionRes() {}
+
+type CreateCreationSessionConflict Error
+
+func (*CreateCreationSessionConflict) createCreationSessionRes() {}
+
+type CreateCreationSessionForbidden Error
+
+func (*CreateCreationSessionForbidden) createCreationSessionRes() {}
+
+type CreateCreationSessionNotFound Error
+
+func (*CreateCreationSessionNotFound) createCreationSessionRes() {}
+
+type CreateCreationSessionServiceUnavailable Error
+
+func (*CreateCreationSessionServiceUnavailable) createCreationSessionRes() {}
+
+type CreateCreationSessionUnauthorized Error
+
+func (*CreateCreationSessionUnauthorized) createCreationSessionRes() {}
+
+type CreateCreationSessionUnprocessableEntity Error
+
+func (*CreateCreationSessionUnprocessableEntity) createCreationSessionRes() {}
+
 type CreateDownloadArtifactBadRequest Error
 
 func (*CreateDownloadArtifactBadRequest) createDownloadArtifactRes() {}
@@ -1929,6 +2024,939 @@ func (s *CreateTestCaseReq) SetUserPrompt(val string) {
 type CreateTestCaseUnauthorized Error
 
 func (*CreateTestCaseUnauthorized) createTestCaseRes() {}
+
+// Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, and
+// run_id for attach_run. expected_revision binds the exact displayed snapshot including draft revision
+// and candidate identity. These conditional requirements are enforced by the domain service.
+// Ref: #/components/schemas/CreationAction
+type CreationAction struct {
+	CommandID         uuid.UUID          `json:"command_id"`
+	ExpectedRevision  int                `json:"expected_revision"`
+	Kind              CreationActionKind `json:"kind"`
+	Message           OptString          `json:"message"`
+	ReferenceSkillIds []uuid.UUID        `json:"reference_skill_ids"`
+	ContentHash       OptString          `json:"content_hash"`
+	Diagram           OptGenerateDiagram `json:"diagram"`
+	RunID             OptUUID            `json:"run_id"`
+}
+
+// GetCommandID returns the value of CommandID.
+func (s *CreationAction) GetCommandID() uuid.UUID {
+	return s.CommandID
+}
+
+// GetExpectedRevision returns the value of ExpectedRevision.
+func (s *CreationAction) GetExpectedRevision() int {
+	return s.ExpectedRevision
+}
+
+// GetKind returns the value of Kind.
+func (s *CreationAction) GetKind() CreationActionKind {
+	return s.Kind
+}
+
+// GetMessage returns the value of Message.
+func (s *CreationAction) GetMessage() OptString {
+	return s.Message
+}
+
+// GetReferenceSkillIds returns the value of ReferenceSkillIds.
+func (s *CreationAction) GetReferenceSkillIds() []uuid.UUID {
+	return s.ReferenceSkillIds
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *CreationAction) GetContentHash() OptString {
+	return s.ContentHash
+}
+
+// GetDiagram returns the value of Diagram.
+func (s *CreationAction) GetDiagram() OptGenerateDiagram {
+	return s.Diagram
+}
+
+// GetRunID returns the value of RunID.
+func (s *CreationAction) GetRunID() OptUUID {
+	return s.RunID
+}
+
+// SetCommandID sets the value of CommandID.
+func (s *CreationAction) SetCommandID(val uuid.UUID) {
+	s.CommandID = val
+}
+
+// SetExpectedRevision sets the value of ExpectedRevision.
+func (s *CreationAction) SetExpectedRevision(val int) {
+	s.ExpectedRevision = val
+}
+
+// SetKind sets the value of Kind.
+func (s *CreationAction) SetKind(val CreationActionKind) {
+	s.Kind = val
+}
+
+// SetMessage sets the value of Message.
+func (s *CreationAction) SetMessage(val OptString) {
+	s.Message = val
+}
+
+// SetReferenceSkillIds sets the value of ReferenceSkillIds.
+func (s *CreationAction) SetReferenceSkillIds(val []uuid.UUID) {
+	s.ReferenceSkillIds = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *CreationAction) SetContentHash(val OptString) {
+	s.ContentHash = val
+}
+
+// SetDiagram sets the value of Diagram.
+func (s *CreationAction) SetDiagram(val OptGenerateDiagram) {
+	s.Diagram = val
+}
+
+// SetRunID sets the value of RunID.
+func (s *CreationAction) SetRunID(val OptUUID) {
+	s.RunID = val
+}
+
+type CreationActionKind string
+
+const (
+	CreationActionKindMessage           CreationActionKind = "message"
+	CreationActionKindConfirmBrief      CreationActionKind = "confirm_brief"
+	CreationActionKindConfirmDiagram    CreationActionKind = "confirm_diagram"
+	CreationActionKindSelectReferences  CreationActionKind = "select_references"
+	CreationActionKindConfirmReferences CreationActionKind = "confirm_references"
+	CreationActionKindMaterialize       CreationActionKind = "materialize"
+	CreationActionKindFinalize          CreationActionKind = "finalize"
+	CreationActionKindCancel            CreationActionKind = "cancel"
+	CreationActionKindDiagram           CreationActionKind = "diagram"
+	CreationActionKindAttachRun         CreationActionKind = "attach_run"
+)
+
+// AllValues returns all CreationActionKind values.
+func (CreationActionKind) AllValues() []CreationActionKind {
+	return []CreationActionKind{
+		CreationActionKindMessage,
+		CreationActionKindConfirmBrief,
+		CreationActionKindConfirmDiagram,
+		CreationActionKindSelectReferences,
+		CreationActionKindConfirmReferences,
+		CreationActionKindMaterialize,
+		CreationActionKindFinalize,
+		CreationActionKindCancel,
+		CreationActionKindDiagram,
+		CreationActionKindAttachRun,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreationActionKind) MarshalText() ([]byte, error) {
+	switch s {
+	case CreationActionKindMessage:
+		return []byte(s), nil
+	case CreationActionKindConfirmBrief:
+		return []byte(s), nil
+	case CreationActionKindConfirmDiagram:
+		return []byte(s), nil
+	case CreationActionKindSelectReferences:
+		return []byte(s), nil
+	case CreationActionKindConfirmReferences:
+		return []byte(s), nil
+	case CreationActionKindMaterialize:
+		return []byte(s), nil
+	case CreationActionKindFinalize:
+		return []byte(s), nil
+	case CreationActionKindCancel:
+		return []byte(s), nil
+	case CreationActionKindDiagram:
+		return []byte(s), nil
+	case CreationActionKindAttachRun:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreationActionKind) UnmarshalText(data []byte) error {
+	switch CreationActionKind(data) {
+	case CreationActionKindMessage:
+		*s = CreationActionKindMessage
+		return nil
+	case CreationActionKindConfirmBrief:
+		*s = CreationActionKindConfirmBrief
+		return nil
+	case CreationActionKindConfirmDiagram:
+		*s = CreationActionKindConfirmDiagram
+		return nil
+	case CreationActionKindSelectReferences:
+		*s = CreationActionKindSelectReferences
+		return nil
+	case CreationActionKindConfirmReferences:
+		*s = CreationActionKindConfirmReferences
+		return nil
+	case CreationActionKindMaterialize:
+		*s = CreationActionKindMaterialize
+		return nil
+	case CreationActionKindFinalize:
+		*s = CreationActionKindFinalize
+		return nil
+	case CreationActionKindCancel:
+		*s = CreationActionKindCancel
+		return nil
+	case CreationActionKindDiagram:
+		*s = CreationActionKindDiagram
+		return nil
+	case CreationActionKindAttachRun:
+		*s = CreationActionKindAttachRun
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/CreationCandidate
+type CreationCandidate struct {
+	SkillID   uuid.UUID `json:"skill_id"`
+	VersionID uuid.UUID `json:"version_id"`
+	RunID     OptUUID   `json:"run_id"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *CreationCandidate) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *CreationCandidate) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetRunID returns the value of RunID.
+func (s *CreationCandidate) GetRunID() OptUUID {
+	return s.RunID
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *CreationCandidate) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *CreationCandidate) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetRunID sets the value of RunID.
+func (s *CreationCandidate) SetRunID(val OptUUID) {
+	s.RunID = val
+}
+
+// Ref: #/components/schemas/CreationDraft
+type CreationDraft struct {
+	Revision    int           `json:"revision"`
+	ContentHash string        `json:"content_hash"`
+	Skill       CreationSkill `json:"skill"`
+	Validation  string        `json:"validation"`
+	Blocked     bool          `json:"blocked"`
+}
+
+// GetRevision returns the value of Revision.
+func (s *CreationDraft) GetRevision() int {
+	return s.Revision
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *CreationDraft) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetSkill returns the value of Skill.
+func (s *CreationDraft) GetSkill() CreationSkill {
+	return s.Skill
+}
+
+// GetValidation returns the value of Validation.
+func (s *CreationDraft) GetValidation() string {
+	return s.Validation
+}
+
+// GetBlocked returns the value of Blocked.
+func (s *CreationDraft) GetBlocked() bool {
+	return s.Blocked
+}
+
+// SetRevision sets the value of Revision.
+func (s *CreationDraft) SetRevision(val int) {
+	s.Revision = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *CreationDraft) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetSkill sets the value of Skill.
+func (s *CreationDraft) SetSkill(val CreationSkill) {
+	s.Skill = val
+}
+
+// SetValidation sets the value of Validation.
+func (s *CreationDraft) SetValidation(val string) {
+	s.Validation = val
+}
+
+// SetBlocked sets the value of Blocked.
+func (s *CreationDraft) SetBlocked(val bool) {
+	s.Blocked = val
+}
+
+// Ref: #/components/schemas/CreationMessage
+type CreationMessage struct {
+	Role    CreationMessageRole `json:"role"`
+	Content string              `json:"content"`
+}
+
+// GetRole returns the value of Role.
+func (s *CreationMessage) GetRole() CreationMessageRole {
+	return s.Role
+}
+
+// GetContent returns the value of Content.
+func (s *CreationMessage) GetContent() string {
+	return s.Content
+}
+
+// SetRole sets the value of Role.
+func (s *CreationMessage) SetRole(val CreationMessageRole) {
+	s.Role = val
+}
+
+// SetContent sets the value of Content.
+func (s *CreationMessage) SetContent(val string) {
+	s.Content = val
+}
+
+type CreationMessageRole string
+
+const (
+	CreationMessageRoleUser      CreationMessageRole = "user"
+	CreationMessageRoleAssistant CreationMessageRole = "assistant"
+	CreationMessageRoleTool      CreationMessageRole = "tool"
+)
+
+// AllValues returns all CreationMessageRole values.
+func (CreationMessageRole) AllValues() []CreationMessageRole {
+	return []CreationMessageRole{
+		CreationMessageRoleUser,
+		CreationMessageRoleAssistant,
+		CreationMessageRoleTool,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreationMessageRole) MarshalText() ([]byte, error) {
+	switch s {
+	case CreationMessageRoleUser:
+		return []byte(s), nil
+	case CreationMessageRoleAssistant:
+		return []byte(s), nil
+	case CreationMessageRoleTool:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreationMessageRole) UnmarshalText(data []byte) error {
+	switch CreationMessageRole(data) {
+	case CreationMessageRoleUser:
+		*s = CreationMessageRoleUser
+		return nil
+	case CreationMessageRoleAssistant:
+		*s = CreationMessageRoleAssistant
+		return nil
+	case CreationMessageRoleTool:
+		*s = CreationMessageRoleTool
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/CreationReference
+type CreationReference struct {
+	SkillID   uuid.UUID `json:"skill_id"`
+	VersionID uuid.UUID `json:"version_id"`
+	Name      string    `json:"name"`
+	Confirmed bool      `json:"confirmed"`
+	Available bool      `json:"available"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *CreationReference) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *CreationReference) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetName returns the value of Name.
+func (s *CreationReference) GetName() string {
+	return s.Name
+}
+
+// GetConfirmed returns the value of Confirmed.
+func (s *CreationReference) GetConfirmed() bool {
+	return s.Confirmed
+}
+
+// GetAvailable returns the value of Available.
+func (s *CreationReference) GetAvailable() bool {
+	return s.Available
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *CreationReference) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *CreationReference) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetName sets the value of Name.
+func (s *CreationReference) SetName(val string) {
+	s.Name = val
+}
+
+// SetConfirmed sets the value of Confirmed.
+func (s *CreationReference) SetConfirmed(val bool) {
+	s.Confirmed = val
+}
+
+// SetAvailable sets the value of Available.
+func (s *CreationReference) SetAvailable(val bool) {
+	s.Available = val
+}
+
+// Ref: #/components/schemas/CreationSession
+type CreationSession struct {
+	ID        uuid.UUID            `json:"id"`
+	Revision  int                  `json:"revision"`
+	State     CreationSessionState `json:"state"`
+	Snapshot  CreationSnapshot     `json:"snapshot"`
+	CreatedAt time.Time            `json:"created_at"`
+	UpdatedAt time.Time            `json:"updated_at"`
+	ExpiresAt time.Time            `json:"expires_at"`
+}
+
+// GetID returns the value of ID.
+func (s *CreationSession) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetRevision returns the value of Revision.
+func (s *CreationSession) GetRevision() int {
+	return s.Revision
+}
+
+// GetState returns the value of State.
+func (s *CreationSession) GetState() CreationSessionState {
+	return s.State
+}
+
+// GetSnapshot returns the value of Snapshot.
+func (s *CreationSession) GetSnapshot() CreationSnapshot {
+	return s.Snapshot
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *CreationSession) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *CreationSession) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *CreationSession) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// SetID sets the value of ID.
+func (s *CreationSession) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetRevision sets the value of Revision.
+func (s *CreationSession) SetRevision(val int) {
+	s.Revision = val
+}
+
+// SetState sets the value of State.
+func (s *CreationSession) SetState(val CreationSessionState) {
+	s.State = val
+}
+
+// SetSnapshot sets the value of Snapshot.
+func (s *CreationSession) SetSnapshot(val CreationSnapshot) {
+	s.Snapshot = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *CreationSession) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *CreationSession) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *CreationSession) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+func (*CreationSession) actOnCreationSessionRes()  {}
+func (*CreationSession) createCreationSessionRes() {}
+func (*CreationSession) getCreationSessionRes()    {}
+
+type CreationSessionState string
+
+const (
+	CreationSessionStateQueued              CreationSessionState = "queued"
+	CreationSessionStateWorking             CreationSessionState = "working"
+	CreationSessionStateWaitingInput        CreationSessionState = "waiting_input"
+	CreationSessionStateWaitingConfirmation CreationSessionState = "waiting_confirmation"
+	CreationSessionStateDraftReady          CreationSessionState = "draft_ready"
+	CreationSessionStateCandidateReady      CreationSessionState = "candidate_ready"
+	CreationSessionStateSaved               CreationSessionState = "saved"
+	CreationSessionStateCancelled           CreationSessionState = "cancelled"
+	CreationSessionStateFailed              CreationSessionState = "failed"
+	CreationSessionStateNeedsReupload       CreationSessionState = "needs_reupload"
+)
+
+// AllValues returns all CreationSessionState values.
+func (CreationSessionState) AllValues() []CreationSessionState {
+	return []CreationSessionState{
+		CreationSessionStateQueued,
+		CreationSessionStateWorking,
+		CreationSessionStateWaitingInput,
+		CreationSessionStateWaitingConfirmation,
+		CreationSessionStateDraftReady,
+		CreationSessionStateCandidateReady,
+		CreationSessionStateSaved,
+		CreationSessionStateCancelled,
+		CreationSessionStateFailed,
+		CreationSessionStateNeedsReupload,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreationSessionState) MarshalText() ([]byte, error) {
+	switch s {
+	case CreationSessionStateQueued:
+		return []byte(s), nil
+	case CreationSessionStateWorking:
+		return []byte(s), nil
+	case CreationSessionStateWaitingInput:
+		return []byte(s), nil
+	case CreationSessionStateWaitingConfirmation:
+		return []byte(s), nil
+	case CreationSessionStateDraftReady:
+		return []byte(s), nil
+	case CreationSessionStateCandidateReady:
+		return []byte(s), nil
+	case CreationSessionStateSaved:
+		return []byte(s), nil
+	case CreationSessionStateCancelled:
+		return []byte(s), nil
+	case CreationSessionStateFailed:
+		return []byte(s), nil
+	case CreationSessionStateNeedsReupload:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreationSessionState) UnmarshalText(data []byte) error {
+	switch CreationSessionState(data) {
+	case CreationSessionStateQueued:
+		*s = CreationSessionStateQueued
+		return nil
+	case CreationSessionStateWorking:
+		*s = CreationSessionStateWorking
+		return nil
+	case CreationSessionStateWaitingInput:
+		*s = CreationSessionStateWaitingInput
+		return nil
+	case CreationSessionStateWaitingConfirmation:
+		*s = CreationSessionStateWaitingConfirmation
+		return nil
+	case CreationSessionStateDraftReady:
+		*s = CreationSessionStateDraftReady
+		return nil
+	case CreationSessionStateCandidateReady:
+		*s = CreationSessionStateCandidateReady
+		return nil
+	case CreationSessionStateSaved:
+		*s = CreationSessionStateSaved
+		return nil
+	case CreationSessionStateCancelled:
+		*s = CreationSessionStateCancelled
+		return nil
+	case CreationSessionStateFailed:
+		*s = CreationSessionStateFailed
+		return nil
+	case CreationSessionStateNeedsReupload:
+		*s = CreationSessionStateNeedsReupload
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/CreationSkill
+type CreationSkill struct {
+	Name          string                   `json:"name"`
+	Description   string                   `json:"description"`
+	Compatibility string                   `json:"compatibility"`
+	AllowedTools  string                   `json:"allowed_tools"`
+	Body          string                   `json:"body"`
+	Files         []CreationSkillFilesItem `json:"files"`
+}
+
+// GetName returns the value of Name.
+func (s *CreationSkill) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *CreationSkill) GetDescription() string {
+	return s.Description
+}
+
+// GetCompatibility returns the value of Compatibility.
+func (s *CreationSkill) GetCompatibility() string {
+	return s.Compatibility
+}
+
+// GetAllowedTools returns the value of AllowedTools.
+func (s *CreationSkill) GetAllowedTools() string {
+	return s.AllowedTools
+}
+
+// GetBody returns the value of Body.
+func (s *CreationSkill) GetBody() string {
+	return s.Body
+}
+
+// GetFiles returns the value of Files.
+func (s *CreationSkill) GetFiles() []CreationSkillFilesItem {
+	return s.Files
+}
+
+// SetName sets the value of Name.
+func (s *CreationSkill) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *CreationSkill) SetDescription(val string) {
+	s.Description = val
+}
+
+// SetCompatibility sets the value of Compatibility.
+func (s *CreationSkill) SetCompatibility(val string) {
+	s.Compatibility = val
+}
+
+// SetAllowedTools sets the value of AllowedTools.
+func (s *CreationSkill) SetAllowedTools(val string) {
+	s.AllowedTools = val
+}
+
+// SetBody sets the value of Body.
+func (s *CreationSkill) SetBody(val string) {
+	s.Body = val
+}
+
+// SetFiles sets the value of Files.
+func (s *CreationSkill) SetFiles(val []CreationSkillFilesItem) {
+	s.Files = val
+}
+
+type CreationSkillFilesItem struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+// GetPath returns the value of Path.
+func (s *CreationSkillFilesItem) GetPath() string {
+	return s.Path
+}
+
+// GetContent returns the value of Content.
+func (s *CreationSkillFilesItem) GetContent() string {
+	return s.Content
+}
+
+// SetPath sets the value of Path.
+func (s *CreationSkillFilesItem) SetPath(val string) {
+	s.Path = val
+}
+
+// SetContent sets the value of Content.
+func (s *CreationSkillFilesItem) SetContent(val string) {
+	s.Content = val
+}
+
+// Ref: #/components/schemas/CreationSnapshot
+type CreationSnapshot struct {
+	Messages             []CreationMessage    `json:"messages"`
+	Brief                string               `json:"brief"`
+	BriefConfirmed       bool                 `json:"brief_confirmed"`
+	DiagramUnderstanding string               `json:"diagram_understanding"`
+	DiagramConfirmed     bool                 `json:"diagram_confirmed"`
+	DiagramFingerprint   OptString            `json:"diagram_fingerprint"`
+	References           []CreationReference  `json:"references"`
+	Draft                OptCreationDraft     `json:"draft"`
+	Candidate            OptCreationCandidate `json:"candidate"`
+	PendingAction        string               `json:"pending_action"`
+	BudgetUsd            float64              `json:"budget_usd"`
+	ReservedUsd          float64              `json:"reserved_usd"`
+	SpentUsd             OptFloat64           `json:"spent_usd"`
+	UsageUnknown         bool                 `json:"usage_unknown"`
+	Steps                int                  `json:"steps"`
+	ToolCalls            int                  `json:"tool_calls"`
+	Model                OptString            `json:"model"`
+	PromptVersion        OptString            `json:"prompt_version"`
+	DiagramMediaType     OptString            `json:"diagram_media_type"`
+	DiagramBytes         OptInt               `json:"diagram_bytes"`
+	PreviousDraft        OptCreationDraft     `json:"previous_draft"`
+}
+
+// GetMessages returns the value of Messages.
+func (s *CreationSnapshot) GetMessages() []CreationMessage {
+	return s.Messages
+}
+
+// GetBrief returns the value of Brief.
+func (s *CreationSnapshot) GetBrief() string {
+	return s.Brief
+}
+
+// GetBriefConfirmed returns the value of BriefConfirmed.
+func (s *CreationSnapshot) GetBriefConfirmed() bool {
+	return s.BriefConfirmed
+}
+
+// GetDiagramUnderstanding returns the value of DiagramUnderstanding.
+func (s *CreationSnapshot) GetDiagramUnderstanding() string {
+	return s.DiagramUnderstanding
+}
+
+// GetDiagramConfirmed returns the value of DiagramConfirmed.
+func (s *CreationSnapshot) GetDiagramConfirmed() bool {
+	return s.DiagramConfirmed
+}
+
+// GetDiagramFingerprint returns the value of DiagramFingerprint.
+func (s *CreationSnapshot) GetDiagramFingerprint() OptString {
+	return s.DiagramFingerprint
+}
+
+// GetReferences returns the value of References.
+func (s *CreationSnapshot) GetReferences() []CreationReference {
+	return s.References
+}
+
+// GetDraft returns the value of Draft.
+func (s *CreationSnapshot) GetDraft() OptCreationDraft {
+	return s.Draft
+}
+
+// GetCandidate returns the value of Candidate.
+func (s *CreationSnapshot) GetCandidate() OptCreationCandidate {
+	return s.Candidate
+}
+
+// GetPendingAction returns the value of PendingAction.
+func (s *CreationSnapshot) GetPendingAction() string {
+	return s.PendingAction
+}
+
+// GetBudgetUsd returns the value of BudgetUsd.
+func (s *CreationSnapshot) GetBudgetUsd() float64 {
+	return s.BudgetUsd
+}
+
+// GetReservedUsd returns the value of ReservedUsd.
+func (s *CreationSnapshot) GetReservedUsd() float64 {
+	return s.ReservedUsd
+}
+
+// GetSpentUsd returns the value of SpentUsd.
+func (s *CreationSnapshot) GetSpentUsd() OptFloat64 {
+	return s.SpentUsd
+}
+
+// GetUsageUnknown returns the value of UsageUnknown.
+func (s *CreationSnapshot) GetUsageUnknown() bool {
+	return s.UsageUnknown
+}
+
+// GetSteps returns the value of Steps.
+func (s *CreationSnapshot) GetSteps() int {
+	return s.Steps
+}
+
+// GetToolCalls returns the value of ToolCalls.
+func (s *CreationSnapshot) GetToolCalls() int {
+	return s.ToolCalls
+}
+
+// GetModel returns the value of Model.
+func (s *CreationSnapshot) GetModel() OptString {
+	return s.Model
+}
+
+// GetPromptVersion returns the value of PromptVersion.
+func (s *CreationSnapshot) GetPromptVersion() OptString {
+	return s.PromptVersion
+}
+
+// GetDiagramMediaType returns the value of DiagramMediaType.
+func (s *CreationSnapshot) GetDiagramMediaType() OptString {
+	return s.DiagramMediaType
+}
+
+// GetDiagramBytes returns the value of DiagramBytes.
+func (s *CreationSnapshot) GetDiagramBytes() OptInt {
+	return s.DiagramBytes
+}
+
+// GetPreviousDraft returns the value of PreviousDraft.
+func (s *CreationSnapshot) GetPreviousDraft() OptCreationDraft {
+	return s.PreviousDraft
+}
+
+// SetMessages sets the value of Messages.
+func (s *CreationSnapshot) SetMessages(val []CreationMessage) {
+	s.Messages = val
+}
+
+// SetBrief sets the value of Brief.
+func (s *CreationSnapshot) SetBrief(val string) {
+	s.Brief = val
+}
+
+// SetBriefConfirmed sets the value of BriefConfirmed.
+func (s *CreationSnapshot) SetBriefConfirmed(val bool) {
+	s.BriefConfirmed = val
+}
+
+// SetDiagramUnderstanding sets the value of DiagramUnderstanding.
+func (s *CreationSnapshot) SetDiagramUnderstanding(val string) {
+	s.DiagramUnderstanding = val
+}
+
+// SetDiagramConfirmed sets the value of DiagramConfirmed.
+func (s *CreationSnapshot) SetDiagramConfirmed(val bool) {
+	s.DiagramConfirmed = val
+}
+
+// SetDiagramFingerprint sets the value of DiagramFingerprint.
+func (s *CreationSnapshot) SetDiagramFingerprint(val OptString) {
+	s.DiagramFingerprint = val
+}
+
+// SetReferences sets the value of References.
+func (s *CreationSnapshot) SetReferences(val []CreationReference) {
+	s.References = val
+}
+
+// SetDraft sets the value of Draft.
+func (s *CreationSnapshot) SetDraft(val OptCreationDraft) {
+	s.Draft = val
+}
+
+// SetCandidate sets the value of Candidate.
+func (s *CreationSnapshot) SetCandidate(val OptCreationCandidate) {
+	s.Candidate = val
+}
+
+// SetPendingAction sets the value of PendingAction.
+func (s *CreationSnapshot) SetPendingAction(val string) {
+	s.PendingAction = val
+}
+
+// SetBudgetUsd sets the value of BudgetUsd.
+func (s *CreationSnapshot) SetBudgetUsd(val float64) {
+	s.BudgetUsd = val
+}
+
+// SetReservedUsd sets the value of ReservedUsd.
+func (s *CreationSnapshot) SetReservedUsd(val float64) {
+	s.ReservedUsd = val
+}
+
+// SetSpentUsd sets the value of SpentUsd.
+func (s *CreationSnapshot) SetSpentUsd(val OptFloat64) {
+	s.SpentUsd = val
+}
+
+// SetUsageUnknown sets the value of UsageUnknown.
+func (s *CreationSnapshot) SetUsageUnknown(val bool) {
+	s.UsageUnknown = val
+}
+
+// SetSteps sets the value of Steps.
+func (s *CreationSnapshot) SetSteps(val int) {
+	s.Steps = val
+}
+
+// SetToolCalls sets the value of ToolCalls.
+func (s *CreationSnapshot) SetToolCalls(val int) {
+	s.ToolCalls = val
+}
+
+// SetModel sets the value of Model.
+func (s *CreationSnapshot) SetModel(val OptString) {
+	s.Model = val
+}
+
+// SetPromptVersion sets the value of PromptVersion.
+func (s *CreationSnapshot) SetPromptVersion(val OptString) {
+	s.PromptVersion = val
+}
+
+// SetDiagramMediaType sets the value of DiagramMediaType.
+func (s *CreationSnapshot) SetDiagramMediaType(val OptString) {
+	s.DiagramMediaType = val
+}
+
+// SetDiagramBytes sets the value of DiagramBytes.
+func (s *CreationSnapshot) SetDiagramBytes(val OptInt) {
+	s.DiagramBytes = val
+}
+
+// SetPreviousDraft sets the value of PreviousDraft.
+func (s *CreationSnapshot) SetPreviousDraft(val OptCreationDraft) {
+	s.PreviousDraft = val
+}
 
 // One acceptance criterion's verdict. `criterion_id` refers to the run's frozen test case snapshot, so
 // editing the draft afterwards cannot rewrite what was judged (iron rule 4).
@@ -5878,6 +6906,34 @@ func (s *GenerationInputsReferencesItem) SetName(val string) {
 	s.Name = val
 }
 
+type GetCreationSessionBadRequest Error
+
+func (*GetCreationSessionBadRequest) getCreationSessionRes() {}
+
+type GetCreationSessionConflict Error
+
+func (*GetCreationSessionConflict) getCreationSessionRes() {}
+
+type GetCreationSessionForbidden Error
+
+func (*GetCreationSessionForbidden) getCreationSessionRes() {}
+
+type GetCreationSessionNotFound Error
+
+func (*GetCreationSessionNotFound) getCreationSessionRes() {}
+
+type GetCreationSessionServiceUnavailable Error
+
+func (*GetCreationSessionServiceUnavailable) getCreationSessionRes() {}
+
+type GetCreationSessionUnauthorized Error
+
+func (*GetCreationSessionUnauthorized) getCreationSessionRes() {}
+
+type GetCreationSessionUnprocessableEntity Error
+
+func (*GetCreationSessionUnprocessableEntity) getCreationSessionRes() {}
+
 type GetDispatchStatusOK struct {
 	// False when nothing can be dispatched at all — the pool is halted, or every configured provider is
 	// drained one at a time, which is the same operational fact.
@@ -6866,6 +7922,38 @@ func (s *LiftDispatchHaltReq) SetProvider(val OptString) {
 func (s *LiftDispatchHaltReq) SetNote(val string) {
 	s.Note = val
 }
+
+type ListCreationSessionsBadRequest Error
+
+func (*ListCreationSessionsBadRequest) listCreationSessionsRes() {}
+
+type ListCreationSessionsConflict Error
+
+func (*ListCreationSessionsConflict) listCreationSessionsRes() {}
+
+type ListCreationSessionsForbidden Error
+
+func (*ListCreationSessionsForbidden) listCreationSessionsRes() {}
+
+type ListCreationSessionsNotFound Error
+
+func (*ListCreationSessionsNotFound) listCreationSessionsRes() {}
+
+type ListCreationSessionsOKApplicationJSON []CreationSession
+
+func (*ListCreationSessionsOKApplicationJSON) listCreationSessionsRes() {}
+
+type ListCreationSessionsServiceUnavailable Error
+
+func (*ListCreationSessionsServiceUnavailable) listCreationSessionsRes() {}
+
+type ListCreationSessionsUnauthorized Error
+
+func (*ListCreationSessionsUnauthorized) listCreationSessionsRes() {}
+
+type ListCreationSessionsUnprocessableEntity Error
+
+func (*ListCreationSessionsUnprocessableEntity) listCreationSessionsRes() {}
 
 type ListDatasetsNotFound Error
 
@@ -7950,6 +9038,98 @@ func (o OptBrowseCatalogValidation) Get() (v BrowseCatalogValidation, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptBrowseCatalogValidation) Or(d BrowseCatalogValidation) BrowseCatalogValidation {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptCreationCandidate returns new OptCreationCandidate with value set to v.
+func NewOptCreationCandidate(v CreationCandidate) OptCreationCandidate {
+	return OptCreationCandidate{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCreationCandidate is optional CreationCandidate.
+type OptCreationCandidate struct {
+	Value CreationCandidate
+	Set   bool
+}
+
+// IsSet returns true if OptCreationCandidate was set.
+func (o OptCreationCandidate) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCreationCandidate) Reset() {
+	var v CreationCandidate
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCreationCandidate) SetTo(v CreationCandidate) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCreationCandidate) Get() (v CreationCandidate, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCreationCandidate) Or(d CreationCandidate) CreationCandidate {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptCreationDraft returns new OptCreationDraft with value set to v.
+func NewOptCreationDraft(v CreationDraft) OptCreationDraft {
+	return OptCreationDraft{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCreationDraft is optional CreationDraft.
+type OptCreationDraft struct {
+	Value CreationDraft
+	Set   bool
+}
+
+// IsSet returns true if OptCreationDraft was set.
+func (o OptCreationDraft) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCreationDraft) Reset() {
+	var v CreationDraft
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCreationDraft) SetTo(v CreationDraft) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCreationDraft) Get() (v CreationDraft, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCreationDraft) Or(d CreationDraft) CreationDraft {
 	if v, ok := o.Get(); ok {
 		return v
 	}

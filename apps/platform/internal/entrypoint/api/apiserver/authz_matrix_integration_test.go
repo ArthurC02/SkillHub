@@ -53,6 +53,10 @@ type anonCase struct {
 // can be read side by side; identity.Handler.Mount's routes come first because
 // auth.Mount is the first call in NewRouter.
 var anonymousRoutes = []anonCase{
+	{pattern: "GET /creation-sessions", want: http.StatusNotFound, conditional: "creationEnabled"},
+	{pattern: "POST /creation-sessions", want: http.StatusNotFound, conditional: "creationEnabled"},
+	{pattern: "GET /creation-sessions/{session_id}", want: http.StatusNotFound, conditional: "creationEnabled"},
+	{pattern: "POST /creation-sessions/{session_id}/actions", want: http.StatusNotFound, conditional: "creationEnabled"},
 	// --- identity.Handler.Mount (ADR-020) ---------------------------------------
 	// The auth handshake is the public surface by definition: these are the routes
 	// a caller with no session uses to get one.

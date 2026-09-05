@@ -25,6 +25,7 @@ import type {
   ClearSkillRestrictionRequest,
   ConfirmRunPreflight201Response,
   ConfirmRunPreflightRequest,
+  CreateCreationSession,
   CreateDownloadArtifact201Response,
   CreateDownloadArtifact422Response,
   CreateDownloadArtifactRequest,
@@ -32,6 +33,8 @@ import type {
   CreateSkillVersionFromSuggestions422Response,
   CreateSkillVersionFromSuggestionsRequest,
   CreateTestCaseRequest,
+  CreationAction,
+  CreationSession,
   DataRetentionPolicy,
   Dataset,
   DatasetLimits,
@@ -119,6 +122,8 @@ import {
     ConfirmRunPreflight201ResponseToJSON,
     ConfirmRunPreflightRequestFromJSON,
     ConfirmRunPreflightRequestToJSON,
+    CreateCreationSessionFromJSON,
+    CreateCreationSessionToJSON,
     CreateDownloadArtifact201ResponseFromJSON,
     CreateDownloadArtifact201ResponseToJSON,
     CreateDownloadArtifact422ResponseFromJSON,
@@ -133,6 +138,10 @@ import {
     CreateSkillVersionFromSuggestionsRequestToJSON,
     CreateTestCaseRequestFromJSON,
     CreateTestCaseRequestToJSON,
+    CreationActionFromJSON,
+    CreationActionToJSON,
+    CreationSessionFromJSON,
+    CreationSessionToJSON,
     DataRetentionPolicyFromJSON,
     DataRetentionPolicyToJSON,
     DatasetFromJSON,
@@ -265,6 +274,11 @@ import {
     UploadResultToJSON,
 } from '../models/index';
 
+export interface ActOnCreationSessionRequest {
+    sessionId: string;
+    creationAction: CreationAction;
+}
+
 export interface AddAcceptanceCriterionOperationRequest {
     id: string;
     addAcceptanceCriterionRequest: AddAcceptanceCriterionRequest;
@@ -296,6 +310,10 @@ export interface CompareRunsRequest {
 export interface ConfirmRunPreflightOperationRequest {
     id: string;
     confirmRunPreflightRequest: ConfirmRunPreflightRequest;
+}
+
+export interface CreateCreationSessionRequest {
+    createCreationSession: CreateCreationSession;
 }
 
 export interface CreateDownloadArtifactOperationRequest {
@@ -374,6 +392,10 @@ export interface ForkSkillRequest {
 
 export interface GenerateSkillOperationRequest {
     generateSkillRequest: GenerateSkillRequest;
+}
+
+export interface GetCreationSessionRequest {
+    sessionId: string;
 }
 
 export interface GetDownloadArtifactRequest {
@@ -561,6 +583,22 @@ export interface UploadSkillPackageRequest {
  */
 export interface DefaultApiInterface {
     /**
+     * 
+     * @summary actOnCreationSession
+     * @param {string} sessionId 
+     * @param {CreationAction} creationAction 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    actOnCreationSessionRaw(requestParameters: ActOnCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>>;
+
+    /**
+     * actOnCreationSession
+     */
+    actOnCreationSession(requestParameters: ActOnCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationSession>;
+
+    /**
      * The one write path for a criterion, whether the user typed it or adopted a proposal from POST .../criteria/suggest. Either way it arrives unconfirmed: adopting a wording is not yet agreeing to it (TEST-003). 
      * @summary Add an acceptance criterion (TEST-003)
      * @param {string} id 
@@ -679,6 +717,21 @@ export interface DefaultApiInterface {
      * Record agreement to a permission summary (TEST-009)
      */
     confirmRunPreflight(requestParameters: ConfirmRunPreflightOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfirmRunPreflight201Response>;
+
+    /**
+     * 
+     * @summary createCreationSession
+     * @param {CreateCreationSession} createCreationSession 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createCreationSessionRaw(requestParameters: CreateCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>>;
+
+    /**
+     * createCreationSession
+     */
+    createCreationSession(requestParameters: CreateCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationSession>;
 
     /**
      * Reads the version\'s stored bytes, filters them against the PACK-004 allow-list, applies the target\'s profile, adds the platform\'s own three files, and validates the result before any of it becomes downloadable. The skill version is neither created nor modified (iron rule 4); a Download Artifact is a new row every time.  **Idempotent.** The same (version, target, include_test_cases, packager version) that already has an unexpired `available` artifact returns that one with `duplicate: true` rather than spending the bytes again — the same answer POST /skills/{id}/versions gives for identical content. Re-packaging is this call again; there is no separate re-package endpoint, because a second route to here would be a second route around the four checks below (the same ruling that left EVAL-003 without a re-run endpoint).  Four things can refuse it, and `blocked_reason` says which, because whether the user can do anything about it depends entirely on that: a licensing hold, content that may not be redistributed, a licence nobody could establish, and a package that would not validate. The first three fail closed — an unknown restriction code restricts and an unestablished licence blocks, in the same direction every read of those flags already faces (SEC-011, 02:DISC-003).  A refusal writes no object and leaves no artifact behind. A build that gets as far as bytes and then fails validation keeps its row at `rejected` with the reason, so \"why can I not download this\" has an answer that outlives the request (packaging-design §4.6). 
@@ -958,6 +1011,21 @@ export interface DefaultApiInterface {
      * Generate a Skill from a task description, a diagram, or both, optionally guided by existing Skills (GEN-001, GEN-005, GEN-006)
      */
     generateSkill(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateSkillResult>;
+
+    /**
+     * 
+     * @summary getCreationSession
+     * @param {string} sessionId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreationSessionRaw(requestParameters: GetCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>>;
+
+    /**
+     * getCreationSession
+     */
+    getCreationSession(requestParameters: GetCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationSession>;
 
     /**
      * 02:O11Y-004: product analytics is the only data class a user produces without submitting anything, so its disclosure obligation is no lower than any other\'s. This is that disclosure as an endpoint rather than a document, for the reason GET /test-cases/limits is one — the values come from the constants the writer itself reads, so the page and the behaviour cannot drift.  No session. A data policy a visitor has to log in to read is not a policy they can decide by, and the funnel\'s first segment is measured before any login exists. Nothing user-specific is read or returned.  `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5\'s 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no cookie. 
@@ -1258,6 +1326,20 @@ export interface DefaultApiInterface {
      * Resume dispatching (SEC-012)
      */
     liftDispatchHalt(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * 
+     * @summary listCreationSessions
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listCreationSessionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CreationSession>>>;
+
+    /**
+     * listCreationSessions
+     */
+    listCreationSessions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CreationSession>>;
 
     /**
      * 
@@ -1779,6 +1861,53 @@ export interface DefaultApiInterface {
 export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
     /**
+     * actOnCreationSession
+     */
+    async actOnCreationSessionRaw(requestParameters: ActOnCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>> {
+        if (requestParameters['sessionId'] == null) {
+            throw new runtime.RequiredError(
+                'sessionId',
+                'Required parameter "sessionId" was null or undefined when calling actOnCreationSession().'
+            );
+        }
+
+        if (requestParameters['creationAction'] == null) {
+            throw new runtime.RequiredError(
+                'creationAction',
+                'Required parameter "creationAction" was null or undefined when calling actOnCreationSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/creation-sessions/{session_id}/actions`;
+        urlPath = urlPath.replace(`{${"session_id"}}`, encodeURIComponent(String(requestParameters['sessionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreationActionToJSON(requestParameters['creationAction']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreationSessionFromJSON(jsonValue));
+    }
+
+    /**
+     * actOnCreationSession
+     */
+    async actOnCreationSession(requestParameters: ActOnCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationSession> {
+        const response = await this.actOnCreationSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The one write path for a criterion, whether the user typed it or adopted a proposal from POST .../criteria/suggest. Either way it arrives unconfirmed: adopting a wording is not yet agreeing to it (TEST-003). 
      * Add an acceptance criterion (TEST-003)
      */
@@ -2096,6 +2225,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async confirmRunPreflight(requestParameters: ConfirmRunPreflightOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfirmRunPreflight201Response> {
         const response = await this.confirmRunPreflightRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * createCreationSession
+     */
+    async createCreationSessionRaw(requestParameters: CreateCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>> {
+        if (requestParameters['createCreationSession'] == null) {
+            throw new runtime.RequiredError(
+                'createCreationSession',
+                'Required parameter "createCreationSession" was null or undefined when calling createCreationSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/creation-sessions`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateCreationSessionToJSON(requestParameters['createCreationSession']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreationSessionFromJSON(jsonValue));
+    }
+
+    /**
+     * createCreationSession
+     */
+    async createCreationSession(requestParameters: CreateCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationSession> {
+        const response = await this.createCreationSessionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -2852,6 +3020,43 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * getCreationSession
+     */
+    async getCreationSessionRaw(requestParameters: GetCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>> {
+        if (requestParameters['sessionId'] == null) {
+            throw new runtime.RequiredError(
+                'sessionId',
+                'Required parameter "sessionId" was null or undefined when calling getCreationSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/creation-sessions/{session_id}`;
+        urlPath = urlPath.replace(`{${"session_id"}}`, encodeURIComponent(String(requestParameters['sessionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreationSessionFromJSON(jsonValue));
+    }
+
+    /**
+     * getCreationSession
+     */
+    async getCreationSession(requestParameters: GetCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationSession> {
+        const response = await this.getCreationSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * 02:O11Y-004: product analytics is the only data class a user produces without submitting anything, so its disclosure obligation is no lower than any other\'s. This is that disclosure as an endpoint rather than a document, for the reason GET /test-cases/limits is one — the values come from the constants the writer itself reads, so the page and the behaviour cannot drift.  No session. A data policy a visitor has to log in to read is not a policy they can decide by, and the funnel\'s first segment is measured before any login exists. Nothing user-specific is read or returned.  `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5\'s 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no cookie. 
      * What the product analytics events record, and for how long (O11Y-004)
      */
@@ -3577,6 +3782,35 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async liftDispatchHalt(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.liftDispatchHaltRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * listCreationSessions
+     */
+    async listCreationSessionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CreationSession>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/creation-sessions`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CreationSessionFromJSON));
+    }
+
+    /**
+     * listCreationSessions
+     */
+    async listCreationSessions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CreationSession>> {
+        const response = await this.listCreationSessionsRaw(initOverrides);
+        return await response.value();
     }
 
     /**

@@ -25,6 +25,7 @@ ADR-002 的領域模組正式對映為 Bounded Context。每個 Go package dir �
 | 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
 | --- | --- | --- | --- | --- |
 | 創作者帳戶與工作區／Identity & Workspace | Core | identity | creator/workspace | WS、SEC |
+| 互動 Skill 創作／Skill Creation | Core | creation | creator/creation | GEN |
 | Skill 探索／Catalog & Discovery | Core | catalog | skill/discovery | DISC |
 | Skill 資產與版本歷史／Skill Registry & Versioning | Core | registry | skill/library | SKILL |
 | Skill 接納與信任／Trust & Supply Chain | Core | ingest | skill/admission | SKILL、SEC |
@@ -193,3 +194,5 @@ Generic 列的套件**不得包含領域規則**：`foundation/observability/aud
 2026-08-21（DDD-031 實作註記）：上一段的「鎖列→寫欄位→寫 audit 仍是同一個 commit」**結論不變，但取鎖的人換了**。當時 `SELECT … FOR UPDATE` 還留在 `catalog`，只有 `UPDATE` 回到 owner；[ADR-035](./ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 把這種「鎖與它保護的不變量分屬兩個 context」判為正確性問題（B 組），DDD-031 據此把鎖搬進 `registry.SetAccessRestriction`，並讓它把 before-state 當回傳值交給 `catalog`——`catalog` 不再自己讀那一列。交易仍是 `catalog` 開的、audit event 仍由 `catalog` 在同一個 commit 內寫、理由碼與授權檢查仍在 `catalog`，鐵律 9 與上表 `catalog` → `registry` 那一列的判定和處置都不變；本註記只更正**誰取鎖**這一點。同批的 `run` → `testlab` 沒有動附錄 A：該方向本來就在上表，`run` 只是改為呼叫 owner 匯出的 `testlab.LockDraft` 而不是直接下 owner 的 query。
 
 2026-08-23（[ADR-056](./ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md)）：`ingest` → `policy` 自 deny 移入白名單（上表新增一列）。M5 的生成路徑要在呼叫模型之前問額度（`02:GEN-001`「不得先花錢再說」），而額度規則屬 Policy & Usage；方向與既有的 `run` → `policy`、`packaging` → `policy` 完全相同——**policy 只決策不動作，強制點留在問問題的那個 context**。**沒有動 `db/query-owners.yaml`**：計數查的是 `skill_sources`，那本來就是 `ingest` 自己的表，`CountGeneratedSkills` 落在 `skill_import.sql` 的既有 owner 之下。
+
+2026-09-05（ADR-067 實作）：新增 creation，擁有版本化創作會話、事件與命令／模型嘗試收據；引用、接納與試跑經 composition root 的窄介面反轉，creation 不 import 這些 context。各 context 對 creation 的直接依賴禁止，API／worker composition root 與帳號清除 callback 接線例外。

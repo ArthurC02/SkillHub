@@ -8,6 +8,12 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// ActOnCreationSession implements actOnCreationSession operation.
+	//
+	// ActOnCreationSession.
+	//
+	// POST /creation-sessions/{session_id}/actions
+	ActOnCreationSession(ctx context.Context, req *CreationAction, params ActOnCreationSessionParams) (ActOnCreationSessionRes, error)
 	// AddAcceptanceCriterion implements addAcceptanceCriterion operation.
 	//
 	// The one write path for a criterion, whether the user typed it or adopted a proposal from POST
@@ -114,6 +120,12 @@ type Handler interface {
 	//
 	// POST /skills/{id}/runs/preflight/confirm
 	ConfirmRunPreflight(ctx context.Context, req *ConfirmRunPreflightReq, params ConfirmRunPreflightParams) (ConfirmRunPreflightRes, error)
+	// CreateCreationSession implements createCreationSession operation.
+	//
+	// CreateCreationSession.
+	//
+	// POST /creation-sessions
+	CreateCreationSession(ctx context.Context, req *CreateCreationSession) (CreateCreationSessionRes, error)
 	// CreateDownloadArtifact implements createDownloadArtifact operation.
 	//
 	// Reads the version's stored bytes, filters them against the PACK-004 allow-list, applies the target's
@@ -329,6 +341,12 @@ type Handler interface {
 	//
 	// POST /skills/generate
 	GenerateSkill(ctx context.Context, req *GenerateSkillReq) (GenerateSkillRes, error)
+	// GetCreationSession implements getCreationSession operation.
+	//
+	// GetCreationSession.
+	//
+	// GET /creation-sessions/{session_id}
+	GetCreationSession(ctx context.Context, params GetCreationSessionParams) (GetCreationSessionRes, error)
 	// GetDataRetentionPolicy implements getDataRetentionPolicy operation.
 	//
 	// 02:O11Y-004: product analytics is the only data class a user produces without submitting anything,
@@ -589,6 +607,12 @@ type Handler interface {
 	//
 	// DELETE /admin/dispatch/halt
 	LiftDispatchHalt(ctx context.Context, req *LiftDispatchHaltReq) (LiftDispatchHaltRes, error)
+	// ListCreationSessions implements listCreationSessions operation.
+	//
+	// ListCreationSessions.
+	//
+	// GET /creation-sessions
+	ListCreationSessions(ctx context.Context) (ListCreationSessionsRes, error)
 	// ListDatasets implements listDatasets operation.
 	//
 	// List a test case's uploaded files (TEST-004).
