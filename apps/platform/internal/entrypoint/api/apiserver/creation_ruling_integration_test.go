@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // 05 R-46 (b): the acceptance criteria the person confirmed with the brief
@@ -81,4 +84,68 @@ func TestCreationRaiseBudgetLetsALimitedSessionContinue(t *testing.T) {
 	if after.State != "queued" {
 		t.Fatalf("confirming after the raise did not queue a step: %+v", after)
 	}
+}
+
+// ADR-067: the session's budget and the single-shot allowance are separate.
+// The candidate is written through the generated door, so without the marker
+// ten finished sessions would silently eat GENERATE_QUOTA's daily ten.
+func TestCreationCandidateDoesNotCountAgainstTheSingleShotAllowance(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	alice := a.login(t, "creation-quota-alice")
+	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v = creationStep(t, s, v)
+	v = creationAct(t, alice, v, "confirm_brief")
+	v = creationStep(t, s, v)
+	v = creationAct(t, alice, v, "materialize")
+	if v.Snapshot.Candidate == nil {
+		t.Fatal("no candidate")
+	}
+	ws := workspaceOf(t, testPool, alice)
+	row, err := gen.New(testPool).CountGeneratedSkills(context.Background(), gen.CountGeneratedSkillsParams{WorkspaceID: ws.ID, Since: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.Used != 0 {
+		t.Fatalf("an interactive candidate was counted against the single-shot allowance: used=%d", row.Used)
+	}
+	var sources int
+	if err := testPool.QueryRow(context.Background(), "SELECT count(*) FROM skill_sources WHERE workspace_id=$1 AND source_type='generated'", ws.ID).Scan(&sources); err != nil {
+		t.Fatal(err)
+	}
+	if sources != 1 {
+		t.Fatalf("the candidate's source row is missing: %d", sources)
+	}
+}
+
+// 02 GEN-012: account deletion needs a reproducible counter-test for the
+// creation tables. Removing creation from workspace/purge.go's step list must
+// turn this red, not stay green.
+func TestAccountPurgeRemovesCreationSessions(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	alice := a.login(t, "creation-purge-alice")
+	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v = creationStep(t, s, v)
+	ws := workspaceOf(t, testPool, alice)
+	count := func(q string) int {
+		var n int
+		if err := testPool.QueryRow(context.Background(), q, ws.ID).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if count("SELECT count(*) FROM creation_session_events WHERE workspace_id=$1") == 0 || count("SELECT count(*) FROM creation_receipts WHERE workspace_id=$1") == 0 {
+		t.Fatal("the session left no events or receipts to purge")
+	}
+	if code := alice.status(t, "DELETE", "/me"); code != 200 {
+		t.Fatalf("DELETE /me: %d", code)
+	}
+	if _, err := a.auth.Service.PurgeExpiredAccounts(context.Background(), a.packages, 0, 10); err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range []string{"creation_sessions", "creation_session_events", "creation_receipts"} {
+		if n := count("SELECT count(*) FROM " + table + " WHERE workspace_id=$1"); n != 0 {
+			t.Fatalf("%d %s rows survived account deletion", n, table)
+		}
+	}
+	_ = v
 }

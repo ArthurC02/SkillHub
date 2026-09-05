@@ -411,6 +411,9 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 	if p.DiagramFingerprint != "" {
 		m["diagram"] = map[string]any{"sha256": p.DiagramFingerprint, "media_type": p.DiagramMediaType, "bytes": p.DiagramBytes}
 	}
+	// ADR-067: the candidate goes through the generated door but is paid for by
+	// the session's own budget; CountGeneratedSkills skips rows carrying this.
+	m["interactive"] = true
 	inputs, _ := json.Marshal(m)
 	provenance := Provenance{p.Brief, p.Model, p.PromptVersion, e.ExistingSkillID, inputs}
 	var result View

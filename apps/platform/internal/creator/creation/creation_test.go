@@ -207,3 +207,26 @@ func TestCriteriaValidationRejectsTooManyOrTooLong(t *testing.T) {
 		t.Fatal("blank criterion accepted")
 	}
 }
+
+// The reason code is the only thing Python is trusted to say about a refusal;
+// the sentence the person reads comes from Go's table (05 R-46 (c)). Deleting
+// the lookup in proposal() would hand the English fallback to a zh-TW reader.
+func TestProposalReplacesTheMessageFromTheReasonTable(t *testing.T) {
+	s := &Service{}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, &llmclient.CreationStepResponse{Outcome: "clarification", Message: "tool unavailable", Reason: "tool_unavailable"})
+	if err != nil || next || state != "waiting_input" {
+		t.Fatalf("clarification with a reason: state=%q next=%v err=%v", state, next, err)
+	}
+	last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]
+	if last.Role != "assistant" || last.Content != reasonSentences["tool_unavailable"] {
+		t.Fatalf("Go did not own the sentence: %+v", last)
+	}
+	if _, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, &llmclient.CreationStepResponse{Outcome: "clarification", Message: "x", Reason: "made_up"}); err == nil {
+		t.Fatal("an unknown reason code was accepted")
+	}
+}
+
+func testLimitsForProposal() Limits {
+	return Limits{MaxCostUSD: 1, MaxCallCostUSD: .1, MaxSteps: 8, MaxToolCalls: 3, CallTimeout: 2 * time.Second, SessionTimeout: time.Minute, Retention: time.Hour, MaxOutputTokens: 1000}
+}

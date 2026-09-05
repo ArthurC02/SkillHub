@@ -83,6 +83,8 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 - **`raise_budget`**：額度被拒的會話可提高預算後從 `waiting_input` 繼續；區間由 `/creation-sessions/limits` 公布，超出回 422 並寫出區間。
 - **`reason` 碼**：Python 護欄只回碼，Go 出句子；`creation.py` 不再有中文。
 - 值與門檻見 `05` R-45；同意書 §3 新增互動創作一列（法務尚未看過，功能封測期間不曝光）。
+- **逐句稽核後補的兩刀（同日稍晚）**：候選的 `generation_inputs` 帶 `interactive: true`，`CountGeneratedSkills` 排除它——互動創作不吃單次生成額度；`TestAccountPurgeRemovesCreationSessions` 守住帳號清除的 creation 步驤。
+- **量測 harness**：`TestCreationMeasureFifteenSessionsAgainstSingleShot`（跑法見 [creation-measure/README](../plans/mvp/m5/creation-measure/README.md)）——15 場多輪（三入口各 5）＋同 15 題單次對照，記錄每次呼叫秒數、費用、格式通過、驗收條件數、Test Case；`met`／`kept` 兩欄留給負責人與真人。**尚未跑。**
 
 ## 尚待量測與核准
 

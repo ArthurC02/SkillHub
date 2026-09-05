@@ -49,4 +49,8 @@ SELECT
 FROM skill_sources
 WHERE workspace_id = @workspace_id
   AND source_type = 'generated'
+  -- ADR-067: an interactive creation session has its own budget (05 R-45) and
+  -- its candidate is written through the same generated door, so it must not
+  -- also consume the single-shot allowance. The session marks its row.
+  AND NOT COALESCE(generation_inputs @> '{"interactive": true}', false)
   AND fetched_at > @since;
