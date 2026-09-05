@@ -56,8 +56,11 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 	if !s.Limits.Valid() {
 		return View{}, ErrUnavailable
 	}
-	if !id.Valid || !finite(budget) || budget < s.Limits.MaxCallCostUSD || budget > s.Limits.MaxCostUSD || utf8.RuneCountInString(message) > 4000 {
+	if !id.Valid || !finite(budget) || utf8.RuneCountInString(message) > 4000 {
 		return View{}, ErrInvalidCommand
+	}
+	if budget < s.Limits.MaxCallCostUSD || budget > s.Limits.MaxCostUSD {
+		return View{}, ErrBudgetOutOfBand
 	}
 	key := digest(struct {
 		Message string
@@ -92,6 +95,9 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 	q := gen.New(tx)
 	row, err := q.CreateCreationSession(ctx, gen.CreateCreationSessionParams{ID: id, WorkspaceID: ws.ID, State: state, Snapshot: b, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(s.Limits.Retention), Valid: true}})
 	if err != nil {
+		// migration 0057 makes the PK (id, workspace_id): a conflict here only
+		// means this workspace already holds this id. Cross-workspace id reuse
+		// is closed by that composite key, not by this recovery branch.
 		_ = tx.Rollback(ctx)
 		r, getErr := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: id, WorkspaceID: ws.ID})
 		if getErr != nil {
@@ -190,7 +196,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		return View{}, nil, err
 	}
 	if c.Kind != "cancel" && !e.Deadline.After(time.Now()) {
-		return View{}, nil, ErrLimit
+		return View{}, nil, ErrDeadline
 	}
 	if row.State == "working" || row.State == "queued" {
 		if c.Kind != "cancel" {
@@ -223,12 +229,12 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		}
 		e.ActiveReceipt = pgtype.UUID{}
 	case "message":
-		if strings.TrimSpace(c.Message) == "" || utf8.RuneCountInString(c.Message) > 4000 || len(p.Messages) >= 98 {
+		if strings.TrimSpace(c.Message) == "" || utf8.RuneCountInString(c.Message) > 4000 || len(p.Messages) >= MaxMessages {
 			return View{}, nil, ErrInvalidCommand
 		}
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "user", Content: c.Message})
 		p.BriefConfirmed = false
-		invalidate(p)
+		p.PendingAction = ""
 		queueStep = true
 	case "confirm_brief":
 		if p.PendingAction != "confirm_brief" || strings.TrimSpace(p.Brief) == "" {
@@ -277,6 +283,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 				return View{}, nil, ErrNotFound
 			}
 			p.References[i].Confirmed = true
+			p.References[i].Available = true
 		}
 		p.PendingAction = ""
 		queueStep = true
@@ -285,7 +292,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			return View{}, nil, ErrInvalidCommand
 		}
 		b, err := base64.StdEncoding.DecodeString(c.Diagram.Data)
-		if err != nil || len(b) == 0 || len(b) > 4_000_000 {
+		if err != nil || len(b) == 0 || len(b) > MaxDiagramBytes {
 			return View{}, nil, ErrInvalidCommand
 		}
 		switch c.Diagram.MediaType {
@@ -304,7 +311,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		queueStep = true
 		transient = true
 	case "attach_run":
-		if p.Candidate == nil || s.ReadRun == nil || c.RunID == "" {
+		if p.Candidate == nil || s.ReadRun == nil || c.RunID == "" || len(p.Messages) >= MaxMessages {
 			return View{}, nil, ErrInvalidCommand
 		}
 		observation, err := s.ReadRun(ctx, ws, c.RunID, *p.Candidate)
@@ -372,9 +379,27 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 	}
 	return v, job, nil
 }
+
+// materializedReference is the subset of Reference kept in generation_inputs;
+// the reference's own manifest content (description, compatibility, allowed
+// tools) is not stored a second time (02 line ~700).
+type materializedReference struct {
+	SkillID   string `json:"skill_id"`
+	VersionID string `json:"version_id"`
+	Name      string `json:"name"`
+}
+
 func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, e envelope) (View, *JobArgs, error) {
 	p := e.Snapshot
-	inputs, _ := json.Marshal(map[string]any{"diagram": map[string]any{"sha256": p.DiagramFingerprint, "media_type": p.DiagramMediaType, "bytes": p.DiagramBytes}, "references": p.References})
+	refs := make([]materializedReference, len(p.References))
+	for i, r := range p.References {
+		refs[i] = materializedReference{r.SkillID, r.VersionID, r.Name}
+	}
+	m := map[string]any{"references": refs}
+	if p.DiagramFingerprint != "" {
+		m["diagram"] = map[string]any{"sha256": p.DiagramFingerprint, "media_type": p.DiagramMediaType, "bytes": p.DiagramBytes}
+	}
+	inputs, _ := json.Marshal(m)
 	provenance := Provenance{p.Brief, p.Model, p.PromptVersion, e.ExistingSkillID, inputs}
 	var result View
 	err := s.Materialize(ctx, ws, p.Draft.Skill, provenance, func(ctx context.Context, tx pgx.Tx, candidate Candidate) error {

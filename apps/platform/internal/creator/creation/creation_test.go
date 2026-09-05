@@ -5,6 +5,7 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"math"
+	"strings"
 	"testing"
 	"time"
 )
@@ -112,5 +113,65 @@ func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
 		if err != nil || !next || state != "queued" || calls != 1 || e.Snapshot.Draft == nil || e.Snapshot.Draft.Validation != "actual finding" || !e.Snapshot.Draft.Blocked {
 			t.Fatalf("new tool draft lost: state=%s next=%t err=%v snapshot=%+v", state, next, err, e.Snapshot)
 		}
+	}
+}
+
+// A step appends up to two messages (assistant + tool); a snapshot already at
+// 97 messages would be paid for and then refused by proposal()'s MaxMessages
+// gate, so canSpend must refuse it up front.
+func TestCanSpendRefusesNearMessageCeiling(t *testing.T) {
+	p := Snapshot{Messages: make([]llmclient.CreationMessage, 97), BudgetUSD: 1}
+	if canSpend(p, testLimits()) {
+		t.Fatal("canSpend allowed a step that proposal() would refuse for message count")
+	}
+	p.Messages = make([]llmclient.CreationMessage, 96)
+	if !canSpend(p, testLimits()) {
+		t.Fatal("canSpend wrongly refused a snapshot with room for one more step")
+	}
+}
+
+func TestDraftValidationReportTruncatedWithinLimit(t *testing.T) {
+	report := []rune(strings.Repeat("x", MaxTextRunes+5000))
+	marker := []rune("\n[findings truncated]")
+	if len(report) > MaxTextRunes {
+		report = append(report[:MaxTextRunes-len(marker)], marker...)
+	}
+	if len(report) > MaxTextRunes {
+		t.Fatalf("truncated report still exceeds MaxTextRunes: %d", len(report))
+	}
+	if !strings.HasSuffix(string(report), "[findings truncated]") {
+		t.Fatal("truncated report lost its marker")
+	}
+}
+
+func TestAllowedToolsEmptyAtToolCallCeiling(t *testing.T) {
+	if got := allowedTools(3, 3); len(got) != 0 {
+		t.Fatalf("expected no tools once the budget is spent, got %v", got)
+	}
+	if got := allowedTools(2, 3); len(got) != 2 {
+		t.Fatalf("expected both tools while budget remains, got %v", got)
+	}
+}
+
+// The 5s headroom Go reserves for its own cleanup after a call must come out
+// of the remaining time actually left on the deadline, not out of the full
+// CallTimeout — otherwise a slow step before the model call (ResolveReference
+// here) lets Go ask Python for more time than the deadline actually has.
+func TestCallTimeoutSecondsAccountsForElapsedTime(t *testing.T) {
+	callTimeout := 5 * time.Second
+	callDeadline := time.Now().Add(callTimeout + 5*time.Second)
+	time.Sleep(2 * time.Second)
+	remaining, err := callTimeoutSeconds(callDeadline)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if remaining >= int(callTimeout.Seconds()) {
+		t.Fatalf("elapsed time before the call was not deducted: remaining=%d callTimeout=%d", remaining, int(callTimeout.Seconds()))
+	}
+}
+
+func TestCallTimeoutSecondsFailsClosedWhenDeadlineNearlyPassed(t *testing.T) {
+	if _, err := callTimeoutSeconds(time.Now().Add(3 * time.Second)); err == nil {
+		t.Fatal("expected an error when too little time remains for headroom plus a call")
 	}
 }

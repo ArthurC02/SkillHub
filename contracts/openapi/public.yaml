@@ -4418,6 +4418,30 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateCreationSession"
+  /creation-sessions/limits:
+    get:
+      operationId: "getCreationLimits"
+      summary: "getCreationLimits"
+      description: "The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves."
+      responses:
+        200:
+          description: "Enforced ceilings for one creation session"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreationLimits"
+        401:
+          description: "Rejected; no implicit confirmation or missing-capability fallback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        503:
+          description: "Limits are not configured; sessions cannot start"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /creation-sessions/{session_id}:
     parameters:
       -
@@ -8274,6 +8298,7 @@ components:
         - "created_at"
         - "updated_at"
         - "expires_at"
+        - "deadline"
       properties:
         id:
           type: "string"
@@ -8304,6 +8329,39 @@ components:
         expires_at:
           type: "string"
           format: "date-time"
+        deadline:
+          type: "string"
+          format: "date-time"
+          description: "Session-timeout clock: after this instant every command except cancel is refused (GEN-012). Distinct from expires_at, the retention clock that decides when the row is deleted."
+
+    CreationLimits:
+      type: "object"
+      additionalProperties: false
+      description: "The ceilings this deployment enforces on one interactive creation session (CREATION_LIMITS_JSON, values ruled by 05 R-45). Published so the first action, choosing a budget, is not a guess, and so the screen can show used/allowed instead of a bare count."
+      required:
+        - "min_budget_usd"
+        - "max_budget_usd"
+        - "max_steps"
+        - "max_tool_calls"
+        - "call_timeout_seconds"
+        - "session_timeout_seconds"
+        - "retention_seconds"
+      properties:
+        min_budget_usd:
+          type: "number"
+          description: "Lowest budget a session may start with: one model call's reserved cost."
+        max_budget_usd:
+          type: "number"
+        max_steps:
+          type: "integer"
+        max_tool_calls:
+          type: "integer"
+        call_timeout_seconds:
+          type: "integer"
+        session_timeout_seconds:
+          type: "integer"
+        retention_seconds:
+          type: "integer"
 
     CreateCreationSession:
       type: "object"

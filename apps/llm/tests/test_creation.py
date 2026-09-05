@@ -476,6 +476,43 @@ def test_diagram_confirmation_requires_all_four_sections(interpretation):
     assert response.status_code == 502
 
 
+def test_field_rules_are_in_compose_but_not_understand_phase():
+    response, calls = invoke(request(), decision())
+    assert response.status_code == 200
+    understand_prompt = calls[0]["messages"][0]["content"]
+    assert "lowercase letters, digits and single hyphens" not in understand_prompt
+
+    response, calls = invoke(
+        request(brief="agreed", brief_confirmed=True), decision(outcome="draft", draft=SKILL)
+    )
+    assert response.status_code == 200
+    compose_prompt = calls[0]["messages"][0]["content"]
+    assert "lowercase letters, digits and single hyphens" in compose_prompt
+
+
+def test_platform_facts_sentence_precedes_the_data_fence():
+    response, calls = invoke(request(), decision())
+    assert response.status_code == 200
+    system = calls[0]["messages"][0]["content"]
+    assert system.index("platform facts recorded by Go") < system.index(f"<{creation.DATA_TAG}>")
+
+
+def test_blank_search_query_becomes_a_clarification():
+    response, _ = invoke(
+        request(allowed_tools=["search_catalog"]),
+        decision(outcome="tool_intent", tool_intent={"kind": "search_catalog", "query": "   "}),
+    )
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "clarification"
+    assert response.json()["tool_intent"] is None
+
+
+def test_truncated_output_gets_its_own_detail():
+    response, _ = invoke(request(), decision(), finish="length")
+    assert response.status_code == 502
+    assert response.json()["detail"] == "creation model output was truncated"
+
+
 def test_legacy_diagram_requires_structured_reconfirmation():
     req = request(
         brief="check invoices",

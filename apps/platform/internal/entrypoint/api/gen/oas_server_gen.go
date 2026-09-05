@@ -341,6 +341,13 @@ type Handler interface {
 	//
 	// POST /skills/generate
 	GenerateSkill(ctx context.Context, req *GenerateSkillReq) (GenerateSkillRes, error)
+	// GetCreationLimits implements getCreationLimits operation.
+	//
+	// The session ceilings this deployment enforces. Mounted under the same double exposure flag as the
+	// sessions themselves.
+	//
+	// GET /creation-sessions/limits
+	GetCreationLimits(ctx context.Context) (GetCreationLimitsRes, error)
 	// GetCreationSession implements getCreationSession operation.
 	//
 	// GetCreationSession.

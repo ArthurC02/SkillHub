@@ -34,6 +34,7 @@ import type {
   CreateSkillVersionFromSuggestionsRequest,
   CreateTestCaseRequest,
   CreationAction,
+  CreationLimits,
   CreationSession,
   DataRetentionPolicy,
   Dataset,
@@ -140,6 +141,8 @@ import {
     CreateTestCaseRequestToJSON,
     CreationActionFromJSON,
     CreationActionToJSON,
+    CreationLimitsFromJSON,
+    CreationLimitsToJSON,
     CreationSessionFromJSON,
     CreationSessionToJSON,
     DataRetentionPolicyFromJSON,
@@ -1011,6 +1014,21 @@ export interface DefaultApiInterface {
      * Generate a Skill from a task description, a diagram, or both, optionally guided by existing Skills (GEN-001, GEN-005, GEN-006)
      */
     generateSkill(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateSkillResult>;
+
+    /**
+     * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
+     * @summary getCreationLimits
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreationLimitsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationLimits>>;
+
+    /**
+     * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
+     * getCreationLimits
+     */
+    getCreationLimits(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationLimits>;
 
     /**
      * 
@@ -3016,6 +3034,37 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async generateSkill(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateSkillResult> {
         const response = await this.generateSkillRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
+     * getCreationLimits
+     */
+    async getCreationLimitsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationLimits>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/creation-sessions/limits`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreationLimitsFromJSON(jsonValue));
+    }
+
+    /**
+     * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
+     * getCreationLimits
+     */
+    async getCreationLimits(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationLimits> {
+        const response = await this.getCreationLimitsRaw(initOverrides);
         return await response.value();
     }
 

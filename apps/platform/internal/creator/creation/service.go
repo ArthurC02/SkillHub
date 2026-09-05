@@ -25,6 +25,26 @@ var (
 	ErrInvalidCommand = errors.New("creation: invalid command")
 	ErrLimit          = errors.New("creation: limit reached")
 	ErrUnavailable    = errors.New("creation: capability unavailable")
+	// ErrDeadline: the session's wall clock (Limits.SessionTimeout) ran out. Kept
+	// apart from ErrLimit so the API can say "time", not "budget".
+	ErrDeadline = errors.New("creation: session deadline passed")
+	// ErrBudgetOutOfBand: Create was asked for a budget outside
+	// [MaxCallCostUSD, MaxCostUSD]; the API names the band in its reply.
+	ErrBudgetOutOfBand = errors.New("creation: budget outside the permitted band")
+)
+
+const (
+	// MaxMessages is the transcript ceiling both the pre-call gate and the
+	// proposal check use. llm-internal.yaml caps messages at 100; a step may
+	// append two (assistant + tool), so the gate must leave room for both.
+	MaxMessages = 98
+	// MaxTextRunes mirrors llm-internal.yaml's maxLength on message, brief,
+	// diagram_understanding and draft_validation.report. A truncation marker
+	// must fit INSIDE it, not after it.
+	MaxTextRunes = 20000
+	// MaxDiagramBytes is the decoded size cap for an uploaded flow diagram,
+	// enforced at the command and again when the bytes reach the worker.
+	MaxDiagramBytes = 4_000_000 // one-number: creationMaxDiagramBytes
 )
 
 type Limits struct {
@@ -132,6 +152,9 @@ type View struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	ExpiresAt time.Time `json:"expires_at"`
+	// Deadline is the session-timeout clock (distinct from ExpiresAt, the
+	// retention clock); after it every command except cancel is refused.
+	Deadline time.Time `json:"deadline"`
 }
 type Provenance struct {
 	Brief, Model, PromptVersion, ExistingSkillID string
@@ -179,7 +202,7 @@ func decode(row gen.CreationSession) (envelope, error) {
 }
 func view(row gen.CreationSession) (View, error) {
 	e, err := decode(row)
-	return View{UUID(row.ID), row.Revision, row.State, e.Snapshot, row.CreatedAt.Time, row.UpdatedAt.Time, row.ExpiresAt.Time}, err
+	return View{UUID(row.ID), row.Revision, row.State, e.Snapshot, row.CreatedAt.Time, row.UpdatedAt.Time, row.ExpiresAt.Time, e.Deadline}, err
 }
 func live(row gen.CreationSession) bool { return row.ExpiresAt.Time.After(time.Now()) }
 func terminal(state string) bool        { return state == "saved" || state == "cancelled" }

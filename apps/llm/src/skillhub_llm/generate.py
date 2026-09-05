@@ -273,17 +273,11 @@ class GenerateSkillResponse(BaseModel):
     usage: GatewayUsage | None = None
 
 
-SYSTEM_PROMPT = (
-    """You write one Agent Skill from a description of a task.
-
-A Skill is a set of instructions an AI agent loads and follows when it recognises
-the task. You are writing those instructions, for an agent, not documentation for
-a person.
-
-Return the frontmatter as fields and the instructions as `body`. Do not write YAML
-front matter yourself; do not write `---` delimiters; do not include a licence.
-
-- `name`: lowercase letters, digits and single hyphens, at most 64 characters.
+# The per-field drafting rules, shared verbatim with the interactive creation
+# prompt (creation.py) for its compose/revise/review phases: these sentences
+# were what fixed the m5 baseline's failure modes, and the single-shot prompt
+# below must stay byte-identical to what it was before this was extracted.
+FIELD_RULES = """- `name`: lowercase letters, digits and single hyphens, at most 64 characters.
 - `description`: what the skill does AND when to use it, in one or two sentences.
   This is the only thing an agent sees when deciding whether to load the skill, so
   say the trigger, not just the capability.
@@ -295,7 +289,21 @@ front matter yourself; do not write `---` delimiters; do not include a licence.
   can follow. No placeholders for someone to fill in later, no "TODO", no
   "insert X here" - if you do not know a value, write instructions for finding it.
 - `files`: only when a script genuinely does the work better than instructions.
-  Prefer instructions.
+  Prefer instructions."""
+
+SYSTEM_PROMPT = (
+    """You write one Agent Skill from a description of a task.
+
+A Skill is a set of instructions an AI agent loads and follows when it recognises
+the task. You are writing those instructions, for an agent, not documentation for
+a person.
+
+Return the frontmatter as fields and the instructions as `body`. Do not write YAML
+front matter yourself; do not write `---` delimiters; do not include a licence.
+
+"""
+    + FIELD_RULES
+    + """
 
 Write in the language of the task description, or of the diagram's own labels
 when there is no task description.

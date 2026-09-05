@@ -74,6 +74,9 @@
           },
           "503": {
             "description": "Unavailable; upload original diagram again."
+          },
+          "404": {
+            "description": "Wrong method or path. The listener serves exactly one route; nothing about the session is disclosed."
           }
         }
       }

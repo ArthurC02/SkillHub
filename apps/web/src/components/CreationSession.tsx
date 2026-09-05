@@ -5,14 +5,19 @@ import { ApiError } from "../api/client";
 import {
   actOnCreationSession,
   createCreationSession,
+  getCreationLimits,
   getCreationSession,
   listCreationSessions,
   type CreationAction,
   type CreationSession as Session,
+  type CreationSnapshot,
   type CreationState,
 } from "../api/creation";
+import type { CategorizedFindings, ImportFinding } from "../api/import";
 import { ReadFailure } from "./LoginRequired";
 import { ReferencePicker } from "./GenerateSkill";
+import { Findings } from "./Findings";
+import { Timestamp } from "./Timestamp";
 const labels: Record<CreationState, string> = {
   queued: "等待處理",
   working: "正在創作",
@@ -31,9 +36,11 @@ function readImage(file: File): Promise<{ media_type: string; data: string }> {
   if (
     !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
     file.size === 0 ||
-    file.size > 4_000_000
+    file.size > 4_000_000 // one-number: creationMaxDiagramBytes
   )
-    return Promise.reject(new Error("請選擇 4 MB 以內的 PNG、JPEG 或 WebP 流程圖。"));
+    return Promise.reject(
+      new Error("請選擇最多 4,000,000 位元組（約 3.8 MB）以內的 PNG、JPEG 或 WebP 流程圖。"),
+    );
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("流程圖無法讀取，請重新選擇。"));
@@ -42,21 +49,56 @@ function readImage(file: File): Promise<{ media_type: string; data: string }> {
     reader.readAsDataURL(file);
   });
 }
-function Findings({ raw }: { raw: string }) {
-  let messages: string[] = [];
+/**
+ * apps/platform's `skillpkg.Report` (creator/creation's `ValidateCreationDraft`
+ * marshals it verbatim) is `{findings: Finding[], blocked, ...}` — a flat
+ * array, not import's pre-grouped `{errors,warnings,infos}`. `Finding` itself
+ * is field-for-field `ImportFinding` (severity/code/path/message/details), so
+ * group by severity and reuse the SAME renderer failed imports use
+ * (Findings.tsx) instead of a second component that flattens every finding
+ * into identical bullets.
+ */
+function groupDraftFindings(raw: string): CategorizedFindings | undefined {
   try {
-    const report = JSON.parse(raw) as { findings?: { message?: string; code?: string }[] };
-    messages = (report.findings ?? []).map((f) => f.message ?? f.code ?? "需檢查的項目");
+    const parsed = JSON.parse(raw) as { findings?: unknown };
+    if (!Array.isArray(parsed.findings)) return undefined;
+    const groups: CategorizedFindings = { errors: [], warnings: [], infos: [] };
+    for (const item of parsed.findings as ImportFinding[]) {
+      if (item.severity === "error") groups.errors.push(item);
+      else if (item.severity === "warning") groups.warnings.push(item);
+      else if (item.severity === "info") groups.infos.push(item);
+    }
+    return groups;
   } catch {
-    messages = [raw];
+    return undefined;
   }
-  return (
-    <ul>
-      {messages.map((message, i) => (
-        <li key={i}>{message}</li>
-      ))}
-    </ul>
-  );
+}
+function DraftFindings({ raw }: { raw: string }) {
+  const grouped = groupDraftFindings(raw);
+  return grouped ? <Findings findings={grouped} level={4} /> : <p>{raw}</p>;
+}
+type RunObservation = {
+  execution_status: string;
+  evaluation?: { evaluation_available: boolean; overall?: string };
+};
+/** The newest `tool` message reporting on this run (creation.go's `attach_run`
+ * appends one such message per confirmation; a later confirmation can attach
+ * a newer run under the same candidate). */
+function findRunObservation(
+  messages: CreationSnapshot["messages"],
+  runID: string,
+): RunObservation | undefined {
+  let found: RunObservation | undefined;
+  for (const m of messages) {
+    if (m.role !== "tool") continue;
+    try {
+      const parsed = JSON.parse(m.content) as RunObservation & { run_id?: string };
+      if (parsed.run_id === runID) found = parsed;
+    } catch {
+      // Not every tool message is a run observation.
+    }
+  }
+  return found;
 }
 type DiagramUnderstanding = {
   nodes: string[];
@@ -147,6 +189,11 @@ export function CreationSession() {
     queryFn: listCreationSessions,
     retry: false,
   });
+  const limits = useQuery({
+    queryKey: ["creation-limits"],
+    queryFn: getCreationLimits,
+    retry: false,
+  });
   const current = useQuery({
     queryKey: ["creation-session", id],
     queryFn: () => getCreationSession(id),
@@ -157,6 +204,9 @@ export function CreationSession() {
   });
   const session = current.data,
     p = session?.snapshot;
+  const run = p?.candidate?.run_id ? findRunObservation(p.messages, p.candidate.run_id) : undefined;
+  const runNotPassing =
+    !!run && (run.execution_status !== "succeeded" || run.evaluation?.overall !== "met");
   const terminal = !!session && ["saved", "cancelled"].includes(session.state);
   const working = !!session && ["queued", "working"].includes(session.state);
   const locked = busy || working || terminal;
@@ -218,6 +268,13 @@ export function CreationSession() {
         const amount = Number(budget);
         if (!Number.isFinite(amount) || amount <= 0)
           throw new Error("請填寫這次同意支付的美元預算上限。");
+        if (
+          limits.data &&
+          (amount < limits.data.min_budget_usd || amount > limits.data.max_budget_usd)
+        )
+          throw new Error(
+            `請填寫介於 $${limits.data.min_budget_usd} 與 $${limits.data.max_budget_usd} 之間的預算上限。`,
+          );
         const initial = mode === "message" ? message : "";
         const key = JSON.stringify([initial, amount]);
         if (startPending.current?.key !== key)
@@ -282,15 +339,43 @@ export function CreationSession() {
         </label>
       )}
       {session && <p role="status">創作狀態：{labels[session.state]}</p>}
-      {p ? (
+      {session && !terminal && (
         <p>
-          預算上限 $ {p.budget_usd}；已知費用{" "}
-          {p.spent_usd === undefined ? "未知" : "$ " + p.spent_usd}；仍占用預算 $ {p.reserved_usd}。
-          {p.usage_unknown && "部分用量未能取得，費用仍是未知，不能當作零。"}
+          這次創作可進行到 <Timestamp at={session.deadline} />
+          ；紀錄保留到 <Timestamp at={session.expires_at} />。
         </p>
+      )}
+      {working && (
+        <p className="note">
+          可以關掉這一頁；回來時從「恢復創作」繼續。上次更新{" "}
+          {/* `current` polls every 1s while queued/working (refetchInterval
+              above), the same cadence InFlight.tsx uses to justify its own
+              `relative` Timestamp — see InFlight.tsx. */}
+          <Timestamp at={session.updated_at} relative />
+        </p>
+      )}
+      {p ? (
+        <>
+          <p>
+            預算上限 $ {p.budget_usd}；已知費用{" "}
+            {p.spent_usd === undefined ? "未知" : "$ " + p.spent_usd}；仍占用預算 $ {p.reserved_usd}
+            。{p.usage_unknown && "部分用量未能取得，費用仍是未知，不能當作零。"}
+          </p>
+          {limits.data && (
+            <p>
+              已用 {p.steps}／{limits.data.max_steps} 步、工具 {p.tool_calls}／
+              {limits.data.max_tool_calls} 次
+            </p>
+          )}
+        </>
       ) : (
         <label>
           這次預算上限（美元）
+          {limits.data && (
+            <span className="note">
+              （介於 $ {limits.data.min_budget_usd} 與 $ {limits.data.max_budget_usd} 之間）
+            </span>
+          )}
           <input
             aria-label="這次預算上限（美元）"
             inputMode="decimal"
@@ -335,7 +420,7 @@ export function CreationSession() {
           )}
           {mode === "diagram" && (
             <label>
-              流程圖（PNG、JPEG、WebP，最多 4 MB）
+              流程圖（PNG、JPEG、WebP；最多 4,000,000 位元組，約 3.8 MB）
               <input
                 aria-label="流程圖"
                 type="file"
@@ -371,9 +456,11 @@ export function CreationSession() {
           <p role="alert">
             {error instanceof ApiError && error.status === 409
               ? "進度已更新，輸入仍保留。請檢查最新內容後再送出。"
-              : error instanceof Error
-                ? error.message
-                : "這一步未完成，請重試。"}
+              : error instanceof TypeError
+                ? "網路連線失敗，請重試。"
+                : error instanceof Error
+                  ? error.message
+                  : "這一步未完成，請重試。"}
           </p>
         </ReadFailure>
       )}
@@ -480,7 +567,7 @@ export function CreationSession() {
                   <pre>{f.content}</pre>
                 </details>
               ))}
-              <Findings raw={p.draft.validation} />
+              <DraftFindings raw={p.draft.validation} />
               <p>
                 {p.draft.blocked
                   ? "靜態檢查阻擋保存，請補充需求後修訂。"
@@ -511,9 +598,17 @@ export function CreationSession() {
                     </Link>
                   </p>
                   {p.candidate.run_id ? (
-                    <Link to="/runs/$runId" params={{ runId: p.candidate.run_id }}>
-                      查看這次 Run 結果
-                    </Link>
+                    <>
+                      <Link to="/runs/$runId" params={{ runId: p.candidate.run_id }}>
+                        查看這次 Run 結果
+                      </Link>
+                      {run && (
+                        <p>
+                          試跑結果：{run.execution_status}；評估：
+                          {run.evaluation?.overall ?? "無評估"}
+                        </p>
+                      )}
+                    </>
                   ) : (
                     <p>目前尚未連結試跑結果。</p>
                   )}
@@ -541,6 +636,7 @@ export function CreationSession() {
                 <>
                   <p>
                     保存將採用目前顯示的草稿與版本。{!p.candidate?.run_id && "這份草稿尚未試跑。"}
+                    {runNotPassing && "試跑未通過或未評估；保存前請確認。"}
                   </p>
                   <button
                     disabled={locked || p.draft.blocked || !p.draft.content_hash}

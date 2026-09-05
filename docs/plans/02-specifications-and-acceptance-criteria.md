@@ -741,13 +741,13 @@ Run 至少支援：
 創作會話以 Go／Postgres 的版本化快照與 append-only 事件為唯一事實來源。重啟可恢復；重複或遲到工具結果、CAS 衝突與重送不得重建版本或重做副作用；取消或逾時後不得偷偷前進。所有讀寫、檢索、工具結果及候選版本都受 Workspace scope 與 AuthZ 約束。
 
 - Given 取消、逾時或重送，When Job／工具結果後續抵達，Then 狀態不自行前進且副作用至多一次。
-- Given 未獲授權的其他 Workspace 私有資料，When 讀取會話、參考或候選，Then 拒絕且不洩漏存在性；可讀 Catalog 參考仍依 GEN-006 允許，不以 Workspace 不同一律拒絕。
+- Given 未獲授權的其他 Workspace 私有資料，When 讀取會話、參考或候選，Then 拒絕且不洩漏存在性；可讀 Catalog 參考仍依 GEN-006 允許，不以 Workspace 不同一律拒絕。<br>**2026-09-05 稍晚補充**：`POST /creation-sessions` 對他人的會話 id 回 409、對沒人用過的 id 回 200，是本條說的存在性洩漏（六線稽核 draft-to-version-5）。migration 0057 把 sessions／events／receipts 的主鍵改成含 workspace（session）的複合鍵，兩種 id 現在同樣回 200；`TestCreationBatchForeignSessionIDIsNotAnOracle`。
 
 #### GEN-012：成本、工具授權與證據
 
 開始對話即如實揭露模型用量與會話總預算；失敗或取消不得說成零模型費。互動會話的模型／總預算、既有單次生成次數額度與 Run 額度分開計；已確認會話預算內由 Go 逐次核准模型呼叫，超限、提權或新試跑才重新阻斷確認。數值預算、步數／工具呼叫／時間上限與未完成會話保存期限依 `05` R-45 在功能啟用前定值；沒有有效上限的部署不得啟用會話。量測義務如下，不因門檻未定而省略。
 
-- Given 會話預算已確認，When 每次模型／工具呼叫前，Then Go 檢查剩餘預算、步數與權限；取消後不得新派呼叫，已發出的用量照實記錄，缺少閘道用量只能標未知，不能補零。
+- Given 會話預算已確認，When 每次模型／工具呼叫前，Then Go 檢查剩餘預算、步數與權限；取消後不得新派呼叫，已發出的用量照實記錄，缺少閘道用量只能標未知，不能補零。<br>**2026-09-05 稍晚補充**：「如實揭露」的前半在畫面上是做不到的——上限沒有公布，預算是盲填，超出區間與超過時間上限回同一句。現在 `GET /creation-sessions/limits` 公布區間與步數／工具上限，畫面在開始前就顯示並在本機先擋，`View.deadline` 讓時間上限成為一個看得到的時鐘；`TestCreationBudgetOutOfBandNamesTheBand`、`TestCreationDeadlineIsNotTheBudgetSentence`、`TestCreationLimitsEndpoint`。
 - 驗收證據涵蓋三種輸入各至少一條真實多輪任務，包含使用者更正、人工確認、至少一輪依驗證回饋修訂；用固定草稿與真實 Run 評估任務效果，分開報告格式通過、任務達成、人類願意採用及成本／等待時間，附樣本與分母。與同一批任務的單次生成基礎比較，不能只用 HTTP 200 或 mock 宣稱創作品質改善。
 - 中斷恢復、重送／遲到結果、跨 Workspace 越權、預算耗盡及帳號刪除須有可重現的反證測試。會話原文、摘要、草稿與工具結果均須納入保存／刪除清冊；刪除開始後的遲到 Job 不得重新寫回私人資料。
 - 模型端到端與人類採用驗收各自記錄已執行／跳過，不以機器測試代替真人判斷；實際模型呼叫另依付費授權執行。

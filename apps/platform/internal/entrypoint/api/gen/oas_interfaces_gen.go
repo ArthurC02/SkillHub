@@ -105,6 +105,10 @@ type GenerateSkillRes interface {
 	generateSkillRes()
 }
 
+type GetCreationLimitsRes interface {
+	getCreationLimitsRes()
+}
+
 type GetCreationSessionRes interface {
 	getCreationSessionRes()
 }

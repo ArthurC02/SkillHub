@@ -3,7 +3,6 @@ package ingest
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io/fs"
 	"strings"
 	"unicode/utf8"
@@ -62,12 +61,15 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 	if err != nil {
 		return Result{}, err
 	}
-	if duplicate {
-		return Result{}, errors.New("ingest: candidate revision duplicates an existing version")
-	}
-	res := Result{Report: prepared.report, Skill: existing, Version: version}
-	if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, map[string]any{"source_type": sourceGenerated}); err != nil {
-		return Result{}, err
+	// GEN-010: confirming the same candidate twice must be a no-op, not a 503.
+	// persistVersion already resolved `duplicate` to the existing version row
+	// (INGEST-005) rather than erroring, so there is nothing left to audit or
+	// write here — only to report the version the caller already has.
+	res := Result{Report: prepared.report, Skill: existing, Version: version, Duplicate: duplicate}
+	if !duplicate {
+		if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, map[string]any{"source_type": sourceGenerated}); err != nil {
+			return Result{}, err
+		}
 	}
 	if after != nil {
 		if err := after(ctx, tx, res); err != nil {

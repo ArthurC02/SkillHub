@@ -64,6 +64,19 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 
 最終審查另補上「有流程理解、沒有圖像指紋」的保存防線：仍須完成結構化確認。此變更後創作單元測試 8 通過、API 創作整合測試 11 通過，均無跳過；重新限制為僅檢查圖像指紋時測試失敗，恢復後通過。相關 lint 與契約一致性再次成功。
 
+## 2026-09-05 深化批（六線稽核後的修補）
+
+負責人要求持續深化。先以工作流做六線稽核（Go 會話核心、三程序接縫、Python 圖、草稿到版本、Web 會話、Skill 品質；各一讀者、一反駁者，一位補漏評論者），再以 `parallel-page-edit` 六個 writer 落地；逐條見 [`04` 丙-167～172](../plans/04-backlog-and-handoffs.md)，三個要簽的設計見 [`05` R-46](../plans/05-pending-rulings.md)。
+
+- **接縫**：`draft_validation.report` 截斷落在上限之內；`allowed_tools` 依剩餘工具次數計算；`canSpend` 檢查訊息數而不再檢查工具數；`timeout_seconds` 是呼叫當下剩餘的秒數；舊草稿不再帶著通過的驗證送出；過期的瞬時上傳回 409（契約補 404）。
+- **會話事實**：使用者訊息不再清掉草稿與候選；`confirm_references` 同時恢復 `Available`；被恢復程序取代的嘗試遲到只寫收據；`queued` 列只在會話時鐘過了才掃；保存期限清除不再被恢復錯誤擋住；`generation_inputs` 不寫空的 diagram、參考只留 id。
+- **主鍵**：migration 0057 把 `creation_sessions`／`creation_session_events`／`creation_receipts` 改成含 workspace（session）的複合主鍵，關掉他人 id 的存在性 oracle。
+- **公布上限**：`GET /creation-sessions/limits`；`View.deadline`；三種 422 各有自己的句子（同名、區間、時間上限）。
+- **模型看到什麼**：compose／revise／review 相帶著單次路徑的 `FIELD_RULES`；圍欄外一句平台事實的權威聲明；`revise` 相知道「沒有驗證＝在更正之前」。
+- **畫面**：預算區間、已用步數／工具次數、可以離開、上次更新、兩個時鐘、共用 `Findings`、Run 結果、TypeError 中文。
+
+本機證據（2026-09-05 深夜）：Go 全套 27 個套件 ok（含 DB）；Python 224 通過、4 跳過；Web 464 通過，型別、lint、格式檢查成功；golangci-lint 0 issues；契約生成一致、automation contract 成功。新增測試：Go 15、Python 4、Web 3；六份簡報各有一次突變紅／綠證據。這些仍是免費替身上的證據，不代表付費模型品質或真人採用。
+
 ## 尚待量測與核准
 
 R-45 的實際部署預算／保存期限／量測門檻、三種輸入的真實模型多輪任務、與單次生成的效果比較及人類採用率仍待收齊。GEN-016～023 的 checkbox 保持未勾，直到各自完整允收證據齊備；已接線不等於產品品質或曝光驗收完成。本批沒有啟用曝光、部署服務或執行未核准的付費模型。

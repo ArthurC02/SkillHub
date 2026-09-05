@@ -2313,6 +2313,93 @@ func (s *CreationDraft) SetBlocked(val bool) {
 	s.Blocked = val
 }
 
+// The ceilings this deployment enforces on one interactive creation session (CREATION_LIMITS_JSON,
+// values ruled by 05 R-45). Published so the first action, choosing a budget, is not a guess, and so
+// the screen can show used/allowed instead of a bare count.
+// Ref: #/components/schemas/CreationLimits
+type CreationLimits struct {
+	// Lowest budget a session may start with: one model call's reserved cost.
+	MinBudgetUsd          float64 `json:"min_budget_usd"`
+	MaxBudgetUsd          float64 `json:"max_budget_usd"`
+	MaxSteps              int     `json:"max_steps"`
+	MaxToolCalls          int     `json:"max_tool_calls"`
+	CallTimeoutSeconds    int     `json:"call_timeout_seconds"`
+	SessionTimeoutSeconds int     `json:"session_timeout_seconds"`
+	RetentionSeconds      int     `json:"retention_seconds"`
+}
+
+// GetMinBudgetUsd returns the value of MinBudgetUsd.
+func (s *CreationLimits) GetMinBudgetUsd() float64 {
+	return s.MinBudgetUsd
+}
+
+// GetMaxBudgetUsd returns the value of MaxBudgetUsd.
+func (s *CreationLimits) GetMaxBudgetUsd() float64 {
+	return s.MaxBudgetUsd
+}
+
+// GetMaxSteps returns the value of MaxSteps.
+func (s *CreationLimits) GetMaxSteps() int {
+	return s.MaxSteps
+}
+
+// GetMaxToolCalls returns the value of MaxToolCalls.
+func (s *CreationLimits) GetMaxToolCalls() int {
+	return s.MaxToolCalls
+}
+
+// GetCallTimeoutSeconds returns the value of CallTimeoutSeconds.
+func (s *CreationLimits) GetCallTimeoutSeconds() int {
+	return s.CallTimeoutSeconds
+}
+
+// GetSessionTimeoutSeconds returns the value of SessionTimeoutSeconds.
+func (s *CreationLimits) GetSessionTimeoutSeconds() int {
+	return s.SessionTimeoutSeconds
+}
+
+// GetRetentionSeconds returns the value of RetentionSeconds.
+func (s *CreationLimits) GetRetentionSeconds() int {
+	return s.RetentionSeconds
+}
+
+// SetMinBudgetUsd sets the value of MinBudgetUsd.
+func (s *CreationLimits) SetMinBudgetUsd(val float64) {
+	s.MinBudgetUsd = val
+}
+
+// SetMaxBudgetUsd sets the value of MaxBudgetUsd.
+func (s *CreationLimits) SetMaxBudgetUsd(val float64) {
+	s.MaxBudgetUsd = val
+}
+
+// SetMaxSteps sets the value of MaxSteps.
+func (s *CreationLimits) SetMaxSteps(val int) {
+	s.MaxSteps = val
+}
+
+// SetMaxToolCalls sets the value of MaxToolCalls.
+func (s *CreationLimits) SetMaxToolCalls(val int) {
+	s.MaxToolCalls = val
+}
+
+// SetCallTimeoutSeconds sets the value of CallTimeoutSeconds.
+func (s *CreationLimits) SetCallTimeoutSeconds(val int) {
+	s.CallTimeoutSeconds = val
+}
+
+// SetSessionTimeoutSeconds sets the value of SessionTimeoutSeconds.
+func (s *CreationLimits) SetSessionTimeoutSeconds(val int) {
+	s.SessionTimeoutSeconds = val
+}
+
+// SetRetentionSeconds sets the value of RetentionSeconds.
+func (s *CreationLimits) SetRetentionSeconds(val int) {
+	s.RetentionSeconds = val
+}
+
+func (*CreationLimits) getCreationLimitsRes() {}
+
 // Ref: #/components/schemas/CreationMessage
 type CreationMessage struct {
 	Role    CreationMessageRole `json:"role"`
@@ -2489,6 +2576,9 @@ type CreationSession struct {
 	CreatedAt time.Time            `json:"created_at"`
 	UpdatedAt time.Time            `json:"updated_at"`
 	ExpiresAt time.Time            `json:"expires_at"`
+	// Session-timeout clock: after this instant every command except cancel is refused (GEN-012). Distinct
+	// from expires_at, the retention clock that decides when the row is deleted.
+	Deadline time.Time `json:"deadline"`
 }
 
 // GetID returns the value of ID.
@@ -2526,6 +2616,11 @@ func (s *CreationSession) GetExpiresAt() time.Time {
 	return s.ExpiresAt
 }
 
+// GetDeadline returns the value of Deadline.
+func (s *CreationSession) GetDeadline() time.Time {
+	return s.Deadline
+}
+
 // SetID sets the value of ID.
 func (s *CreationSession) SetID(val uuid.UUID) {
 	s.ID = val
@@ -2559,6 +2654,11 @@ func (s *CreationSession) SetUpdatedAt(val time.Time) {
 // SetExpiresAt sets the value of ExpiresAt.
 func (s *CreationSession) SetExpiresAt(val time.Time) {
 	s.ExpiresAt = val
+}
+
+// SetDeadline sets the value of Deadline.
+func (s *CreationSession) SetDeadline(val time.Time) {
+	s.Deadline = val
 }
 
 func (*CreationSession) actOnCreationSessionRes()  {}
@@ -6939,6 +7039,14 @@ func (s *GenerationInputsReferencesItem) SetVersionID(val uuid.UUID) {
 func (s *GenerationInputsReferencesItem) SetName(val string) {
 	s.Name = val
 }
+
+type GetCreationLimitsServiceUnavailable Error
+
+func (*GetCreationLimitsServiceUnavailable) getCreationLimitsRes() {}
+
+type GetCreationLimitsUnauthorized Error
+
+func (*GetCreationLimitsUnauthorized) getCreationLimitsRes() {}
 
 type GetCreationSessionBadRequest Error
 

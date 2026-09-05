@@ -424,6 +424,16 @@ func (UnimplementedHandler) GenerateSkill(ctx context.Context, req *GenerateSkil
 	return r, ht.ErrNotImplemented
 }
 
+// GetCreationLimits implements getCreationLimits operation.
+//
+// The session ceilings this deployment enforces. Mounted under the same double exposure flag as the
+// sessions themselves.
+//
+// GET /creation-sessions/limits
+func (UnimplementedHandler) GetCreationLimits(ctx context.Context) (r GetCreationLimitsRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetCreationSession implements getCreationSession operation.
 //
 // GetCreationSession.

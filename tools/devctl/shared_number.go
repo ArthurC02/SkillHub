@@ -104,6 +104,10 @@ var sharedNumberRoster = []string{
 	// The pgvector column width. Its third copy is db/migrations/0007_search.sql,
 	// which cannot carry a marker because an applied migration is history; the
 	// embedding-dims check reads that one and compares it with these.
+	// creationMaxDiagramBytes: ADR-067's interactive path takes the same shape of
+	// input as ADR-066 but through its own command; one constant, two marked
+	// sites (the Go constant and the web upload check).
+	"creationMaxDiagramBytes",
 	"embeddingDimensions",
 	"excerptLimit",
 	"generateFailureLimit",

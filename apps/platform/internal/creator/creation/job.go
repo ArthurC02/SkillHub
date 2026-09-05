@@ -47,18 +47,37 @@ type ExpiryWorker struct {
 }
 
 func (w *ExpiryWorker) Work(ctx context.Context, _ *river.Job[ExpiryArgs]) error {
-	if err := w.Svc.Recover(ctx); err != nil {
-		return err
-	}
-	_, err := PurgeExpired(ctx, w.Svc.Pool, w.Svc.Limits.Retention)
-	return err
+	recoverErr := w.Svc.Recover(ctx)
+	_, purgeErr := PurgeExpired(ctx, w.Svc.Pool, w.Svc.Limits.Retention)
+	return errors.Join(recoverErr, purgeErr)
 }
 func canSpend(p Snapshot, l Limits) bool {
 	spent := 0.0
 	if p.SpentUSD != nil {
 		spent = *p.SpentUSD
 	}
-	return l.Valid() && p.Steps < l.MaxSteps && p.ToolCalls <= l.MaxToolCalls && spent+p.ReservedUSD+l.MaxCallCostUSD <= math.Min(p.BudgetUSD, l.MaxCostUSD)+1e-10
+	return l.Valid() && p.Steps < l.MaxSteps && len(p.Messages)+2 <= MaxMessages && spent+p.ReservedUSD+l.MaxCallCostUSD <= math.Min(p.BudgetUSD, l.MaxCostUSD)+1e-10
+}
+
+// allowedTools hides the tool-call intents from the model once the session
+// has already spent its tool-call budget. Python turns a disallowed tool
+// intent into a clarification, so this cannot fail proposal() with ErrLimit.
+func allowedTools(toolCalls, maxToolCalls int) []string {
+	if toolCalls < maxToolCalls {
+		return []string{"search_catalog", "validate_draft"}
+	}
+	return []string{}
+}
+
+// callTimeoutSeconds converts a call's absolute deadline into the seconds Python
+// should be told to use, leaving a 5s headroom for Go's own cleanup after the
+// call returns. It fails closed when too little time is left to make a call at all.
+func callTimeoutSeconds(deadline time.Time) (int, error) {
+	remaining := int(time.Until(deadline).Seconds()) - 5
+	if remaining < 1 {
+		return 0, ErrUnavailable
+	}
+	return remaining, nil
 }
 func settleCost(p *Snapshot, reserved float64, usage *llmclient.GatewayUsage) {
 	if usage == nil || usage.CostUSD == nil || !finite(*usage.CostUSD) || *usage.CostUSD < 0 {
@@ -94,13 +113,19 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 		return err
 	}
 	if row.State != "queued" || e.ActiveReceipt != a.ReceiptID || !live(row) {
+		if diagram != nil {
+			return ErrConflict
+		}
 		return nil
 	}
 	r, err := q.GetCreationReceipt(ctx, gen.GetCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID})
 	if err != nil {
 		return err
 	}
-	if r.Status != "queued" || r.ExpectedRevision != a.Revision || row.Revision != a.Revision+1 {
+	if r.Status != "queued" || r.ExpectedRevision != a.Revision {
+		if diagram != nil {
+			return ErrConflict
+		}
 		return nil
 	}
 	if diagram != nil && !diagramMatches(e.Snapshot, diagram) {
@@ -126,7 +151,8 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 	if err = tx.Commit(ctx); err != nil {
 		return err
 	}
-	callCtx, cancel := context.WithTimeout(ctx, e.Limits.CallTimeout+5*time.Second)
+	callDeadline := time.Now().Add(e.Limits.CallTimeout + 5*time.Second)
+	callCtx, cancel := context.WithDeadline(ctx, callDeadline)
 	defer cancel()
 	// Cross-process cancellation: the durable row is authoritative, not this goroutine.
 	stopWatch := make(chan struct{})
@@ -148,18 +174,26 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 		}
 	}()
 	ws := identity.Workspace{ID: a.WorkspaceID}
-	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: []string{"search_catalog", "validate_draft"}, TimeoutSeconds: int(e.Limits.CallTimeout.Seconds()), MaxOutputTokens: e.Limits.MaxOutputTokens}
+	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls), MaxOutputTokens: e.Limits.MaxOutputTokens}
 	draft := e.Snapshot.Draft
+	// A correction after a validated draft falls back to PreviousDraft: send it
+	// as the working draft, but never its (now stale) validation result, or
+	// Python's _observe would treat this as "review" and hand back the
+	// pre-correction draft as finished.
+	sendValidation := draft != nil
 	if draft == nil {
 		draft = e.PreviousDraft
 	}
 	if draft != nil {
 		req.Draft = &draft.Skill
-		report := []rune(draft.Validation)
-		if len(report) > 20000 {
-			report = append(report[:19980], []rune("\n[findings truncated]")...)
+		if sendValidation {
+			report := []rune(draft.Validation)
+			marker := []rune("\n[findings truncated]")
+			if len(report) > MaxTextRunes {
+				report = append(report[:MaxTextRunes-len(marker)], marker...)
+			}
+			req.DraftValidation = &llmclient.CreationDraftValidation{ContentHash: draft.ContentHash, Blocked: draft.Blocked, Report: string(report)}
 		}
-		req.DraftValidation = &llmclient.CreationDraftValidation{ContentHash: draft.ContentHash, Blocked: draft.Blocked, Report: string(report)}
 	}
 	var response *llmclient.CreationStepResponse
 	var callErr error
@@ -182,10 +216,14 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 	if callErr == nil {
 		req.GatewayKey, callErr = s.IssueKey(callCtx, UUID(a.SessionID), UUID(a.ReceiptID), e.Limits.MaxCallCostUSD, e.Limits.CallTimeout+10*time.Second)
 		if callErr == nil {
-			usage = nil // From this point onward, absence of usage can never mean zero.
-			response, callErr = s.LLM.CreationStep(callCtx, req)
-			if response != nil {
-				usage = response.Usage
+			var remaining int
+			if remaining, callErr = callTimeoutSeconds(callDeadline); callErr == nil {
+				req.TimeoutSeconds = remaining
+				usage = nil // From this point onward, absence of usage can never mean zero.
+				response, callErr = s.LLM.CreationStep(callCtx, req)
+				if response != nil {
+					usage = response.Usage
+				}
 			}
 		}
 	}
@@ -236,6 +274,20 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 	e, err := decode(row)
 	if err != nil {
 		return err
+	}
+	if receipt.Status == "unknown" {
+		// Recovery already declared this attempt's spend unknown and moved the
+		// session on. Record the usage on its own receipt only: no revision
+		// bump, no event row, the snapshot stays untouched — a bump here is what
+		// used to drop the queued attempt that replaced this one.
+		// A receipt still "running" while ActiveReceipt points elsewhere is a
+		// cancellation mid-call; that one falls through so settleCost can mark
+		// the spend unknown on the snapshot, without proposing anything.
+		u, _ := json.Marshal(usage)
+		if _, err := q.FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: "finished", Result: []byte("{}"), Usage: u}); err != nil {
+			return err
+		}
+		return tx.Commit(ctx)
 	}
 	settleCost(&e.Snapshot, e.Limits.MaxCallCostUSD, usage)
 	state := row.State
@@ -297,7 +349,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	if r.DiagramUnderstanding != "" && !validDiagramInterpretation(r.DiagramUnderstanding) {
 		return "", false, ErrInvalidCommand
 	}
-	if r.Message == "" || utf8.RuneCountInString(r.Message) > 20000 || utf8.RuneCountInString(r.Brief) > 20000 || utf8.RuneCountInString(r.DiagramUnderstanding) > 20000 || len(p.Messages) >= 98 {
+	if r.Message == "" || utf8.RuneCountInString(r.Message) > MaxTextRunes || utf8.RuneCountInString(r.Brief) > MaxTextRunes || utf8.RuneCountInString(r.DiagramUnderstanding) > MaxTextRunes || len(p.Messages) >= MaxMessages {
 		return "", false, ErrInvalidCommand
 	}
 	p.Model = r.Model
@@ -359,8 +411,12 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		p.ToolCalls++
 		switch r.ToolIntent.Kind {
 		case "search_catalog":
-			if s.SearchReferences == nil || strings.TrimSpace(r.ToolIntent.Query) == "" {
+			if s.SearchReferences == nil {
 				return "", false, ErrUnavailable
+			}
+			if strings.TrimSpace(r.ToolIntent.Query) == "" {
+				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄搜尋需要關鍵字；這次沒有搜尋。"})
+				return "queued", true, nil
 			}
 			refs, err := s.SearchReferences(ctx, ws, r.ToolIntent.Query)
 			if err != nil {

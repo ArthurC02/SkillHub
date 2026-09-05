@@ -54,7 +54,7 @@ func diagramMatches(p Snapshot, d *llmclient.GenerateDiagram) bool {
 		return false
 	}
 	b, err := base64.StdEncoding.DecodeString(d.Data)
-	if err != nil || len(b) == 0 || len(b) > 4_000_000 {
+	if err != nil || len(b) == 0 || len(b) > MaxDiagramBytes {
 		return false
 	}
 	h := sha256.Sum256(b)
@@ -88,7 +88,14 @@ func (s *Service) TransientHandler(token string) http.Handler {
 		}
 		a := JobArgs{in.SessionID, in.WorkspaceID, in.ExpectedRevision, in.ReceiptID}
 		if err := s.Step(r.Context(), a, &in.Diagram); err != nil {
-			http.Error(w, "step unavailable", http.StatusServiceUnavailable)
+			switch {
+			case errors.Is(err, ErrConflict):
+				http.Error(w, "consumed or stale command", http.StatusConflict)
+			case errors.Is(err, ErrInvalidCommand):
+				http.Error(w, "invalid transient input", http.StatusBadRequest)
+			default:
+				http.Error(w, "step unavailable", http.StatusServiceUnavailable)
+			}
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -194,6 +201,13 @@ func (s *Service) Recover(ctx context.Context) error {
 		e, err := decode(row)
 		if err != nil {
 			return err
+		}
+		// A queued row is a River job still healthy in the queue (a worker
+		// restart or a backlog, not a stalled attempt); only fail it once the
+		// session's own wall clock has actually passed. A working row keeps
+		// the existing call-timeout threshold.
+		if row.State == "queued" && e.Deadline.After(time.Now()) {
+			continue
 		}
 		if err = s.recoverAttempt(ctx, JobArgs{row.ID, row.WorkspaceID, row.Revision, e.ActiveReceipt}, false); err != nil {
 			return err

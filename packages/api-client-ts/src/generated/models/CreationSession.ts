@@ -69,6 +69,12 @@ export interface CreationSession {
      * @memberof CreationSession
      */
     expiresAt: Date;
+    /**
+     * Session-timeout clock: after this instant every command except cancel is refused (GEN-012). Distinct from expires_at, the retention clock that decides when the row is deleted.
+     * @type {Date}
+     * @memberof CreationSession
+     */
+    deadline: Date;
 }
 
 
@@ -101,6 +107,7 @@ export function instanceOfCreationSession(value: object): value is CreationSessi
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
     if (!('expiresAt' in value) || value['expiresAt'] === undefined) return false;
+    if (!('deadline' in value) || value['deadline'] === undefined) return false;
     return true;
 }
 
@@ -121,6 +128,7 @@ export function CreationSessionFromJSONTyped(json: any, ignoreDiscriminator: boo
         'createdAt': (new Date(json['created_at'])),
         'updatedAt': (new Date(json['updated_at'])),
         'expiresAt': (new Date(json['expires_at'])),
+        'deadline': (new Date(json['deadline'])),
     };
 }
 
@@ -142,6 +150,7 @@ export function CreationSessionToJSONTyped(value?: CreationSession | null, ignor
         'created_at': value['createdAt'].toISOString(),
         'updated_at': value['updatedAt'].toISOString(),
         'expires_at': value['expiresAt'].toISOString(),
+        'deadline': value['deadline'].toISOString(),
     };
 }
 

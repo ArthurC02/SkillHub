@@ -32,6 +32,7 @@ const (
 	FinishGithubLoginOperation                 OperationName = "FinishGithubLogin"
 	ForkSkillOperation                         OperationName = "ForkSkill"
 	GenerateSkillOperation                     OperationName = "GenerateSkill"
+	GetCreationLimitsOperation                 OperationName = "GetCreationLimits"
 	GetCreationSessionOperation                OperationName = "GetCreationSession"
 	GetDataRetentionPolicyOperation            OperationName = "GetDataRetentionPolicy"
 	GetDatasetLimitsOperation                  OperationName = "GetDatasetLimits"

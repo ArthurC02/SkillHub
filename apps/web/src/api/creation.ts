@@ -66,6 +66,16 @@ export interface CreationSession {
   created_at: string;
   updated_at: string;
   expires_at: string;
+  deadline: string;
+}
+export interface CreationLimits {
+  min_budget_usd: number;
+  max_budget_usd: number;
+  max_steps: number;
+  max_tool_calls: number;
+  call_timeout_seconds: number;
+  session_timeout_seconds: number;
+  retention_seconds: number;
 }
 export interface CreationAction {
   command_id: string;
@@ -88,6 +98,7 @@ export interface CreationAction {
   run_id?: string;
 }
 export const listCreationSessions = () => apiFetch<CreationSession[]>("/creation-sessions");
+export const getCreationLimits = () => apiFetch<CreationLimits>("/creation-sessions/limits");
 export const getCreationSession = (id: string) =>
   apiFetch<CreationSession>("/creation-sessions/" + id);
 export const createCreationSession = (body: { id: string; message: string; budget_usd: number }) =>

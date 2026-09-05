@@ -136,6 +136,7 @@ func NewRouter(d Deps) http.Handler {
 		mux.HandleFunc("POST /creation-sessions", limited(d, metrics.RouteGenerate, auth.RequireSession(auth.RequireInvited(d.Creation.Create))))
 		mux.HandleFunc("GET /creation-sessions/{session_id}", auth.RequireSession(auth.RequireInvited(d.Creation.Get)))
 		mux.HandleFunc("POST /creation-sessions/{session_id}/actions", limited(d, metrics.RouteGenerate, auth.RequireSession(auth.RequireInvited(d.Creation.Act))))
+		mux.HandleFunc("GET /creation-sessions/limits", auth.RequireSession(auth.RequireInvited(d.Creation.Limits)))
 	}
 	// DISC-001: public search works without login — which made it the one
 	// endpoint NFR-001 clause 5 names that was genuinely open and unlimited,

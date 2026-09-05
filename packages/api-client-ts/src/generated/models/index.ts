@@ -23,6 +23,7 @@ export * from './CreateTestCaseRequest';
 export * from './CreationAction';
 export * from './CreationCandidate';
 export * from './CreationDraft';
+export * from './CreationLimits';
 export * from './CreationMessage';
 export * from './CreationReference';
 export * from './CreationSession';

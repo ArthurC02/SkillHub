@@ -37,12 +37,28 @@ const sample = (patch: Partial<Session> = {}): Session => ({
   created_at: "2026-09-05T00:00:00Z",
   updated_at: "2026-09-05T00:00:00Z",
   expires_at: "2026-09-06T00:00:00Z",
+  deadline: "2026-09-05T01:00:00Z",
   ...patch,
 });
 const response = (v: unknown, status = 200) =>
   Promise.resolve(
     new Response(JSON.stringify(v), { status, headers: { "Content-Type": "application/json" } }),
   );
+const LIMITS = {
+  min_budget_usd: 0.1,
+  max_budget_usd: 5,
+  max_steps: 20,
+  max_tool_calls: 10,
+  call_timeout_seconds: 120,
+  session_timeout_seconds: 3600,
+  retention_seconds: 604800,
+};
+/** Every GET fires against one of three routes; `/limits` is checked first
+ * since it also ends in neither of the other two suffixes. */
+function routeGet(url: string, list: unknown, single: unknown) {
+  if (url.endsWith("/creation-sessions/limits")) return response(LIMITS);
+  return response(url.endsWith("/creation-sessions") ? list : single);
+}
 beforeEach(() => {
   box = document.createElement("div");
   document.body.appendChild(box);
@@ -111,7 +127,7 @@ test("natural language creates one budgeted session", async () => {
         posts.push(JSON.parse(String(init.body)));
         return response(sample({ state: "queued" }));
       }
-      return response(url.endsWith("/creation-sessions") ? [] : sample());
+      return routeGet(url, [], sample());
     }),
   );
   await render();
@@ -131,7 +147,7 @@ test("diagram starts with an unbilled empty session then sends transient input",
         posts.push(JSON.parse(String(init.body)));
         return response(sample({ revision: posts.length }));
       }
-      return response(url.endsWith("/creation-sessions") ? [] : sample());
+      return routeGet(url, [], sample());
     }),
   );
   await render();
@@ -170,7 +186,7 @@ test("structured diagram understanding renders all four sections", async () => {
         posts.push(JSON.parse(String(init.body)));
         return response(v);
       }
-      return response(url.endsWith("/creation-sessions") ? [v] : v);
+      return routeGet(url, [v], v);
     }),
   );
   await render();
@@ -191,7 +207,7 @@ test("legacy diagram understanding stays visible with refresh notice", async () 
   v.snapshot.pending_action = "confirm_diagram";
   vi.stubGlobal(
     "fetch",
-    vi.fn((url: string) => response(url.endsWith("/creation-sessions") ? [v] : v)),
+    vi.fn((url: string) => routeGet(url, [v], v)),
   );
   await render();
   await resume();
@@ -225,7 +241,7 @@ test("catalog references can start a session and require confirmation", async ()
         posts.push(JSON.parse(String(init.body)));
         return response(posts.length === 1 ? sample({ revision: 1 }) : v);
       }
-      return response(url.endsWith("/creation-sessions") ? [] : v);
+      return routeGet(url, [], v);
     }),
   );
   await render();
@@ -267,7 +283,7 @@ test("resume shows unknown costs and confirms the displayed diagram revision", a
         posts.push(JSON.parse(String(init.body)));
         return response(v);
       }
-      return response(url.endsWith("/creation-sessions") ? [v] : v);
+      return routeGet(url, [v], v);
     }),
   );
   await render();
@@ -291,7 +307,7 @@ test("409 preserves input and needs an explicit action with the refreshed revisi
         }
         return response(current);
       }
-      return response(url.endsWith("/creation-sessions") ? [current] : current);
+      return routeGet(url, [current], current);
     }),
   );
   await render();
@@ -318,7 +334,7 @@ test("network retry reuses the command ID and payload", async () => {
           ? Promise.reject(new TypeError("network unavailable"))
           : response(v);
       }
-      return response(url.endsWith("/creation-sessions") ? [v] : v);
+      return routeGet(url, [v], v);
     }),
   );
   await render();
@@ -326,9 +342,84 @@ test("network retry reuses the command ID and payload", async () => {
   await input("想完成的任務", "重試同一個修改");
   await click("送出素材");
   await waitFor(() => !!box.querySelector('[role="alert"]'));
+  expect(box.textContent).toContain("網路連線失敗");
   await click("送出素材");
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toEqual(posts[0]);
+});
+test("budget band is shown and an out-of-band amount is refused locally", async () => {
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(sample({ state: "queued" }));
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await waitFor(() => box.textContent!.includes("之間"));
+  expect(box.textContent).toContain("介於 $ 0.1 與 $ 5 之間");
+  await input("這次預算上限（美元）", "50");
+  await input("想完成的任務", "超出預算的任務");
+  await click("開始互動創作");
+  await waitFor(() => !!box.querySelector('[role="alert"]'));
+  expect(box.textContent).toContain("介於 $0.1 與 $5 之間");
+  expect(posts).toHaveLength(0);
+});
+test("an open session shows its deadline and retention", async () => {
+  const v = sample();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const deadline = box.querySelector(`time[datetime="${v.deadline}"]`);
+  const expires = box.querySelector(`time[datetime="${v.expires_at}"]`);
+  expect(deadline).toBeTruthy();
+  expect(expires).toBeTruthy();
+});
+test("a failed or unevaluated run warns before saving instead of claiming no run happened", async () => {
+  const v = sample({
+    state: "candidate_ready",
+    revision: 9,
+  });
+  v.snapshot.draft = {
+    revision: 1,
+    content_hash: "a".repeat(64),
+    skill: {
+      name: "摘要",
+      description: "",
+      compatibility: "",
+      allowed_tools: "",
+      body: "",
+      files: [],
+    },
+    validation: JSON.stringify({ findings: [], blocked: false }),
+    blocked: false,
+  };
+  v.snapshot.candidate = { skill_id: "sk-1", version_id: "v1", run_id: "run-1" };
+  v.snapshot.messages = [
+    {
+      role: "tool",
+      content: JSON.stringify({
+        run_id: "run-1",
+        execution_status: "failed",
+        evaluation: { evaluation_available: false },
+      }),
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  expect(box.textContent).toContain("試跑未通過或未評估");
+  expect(box.textContent).not.toContain("這份草稿尚未試跑");
 });
 function EntryPointProbe() {
   return <>{String(useCreationEntryPoint())}</>;
