@@ -85,7 +85,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
   Luna 介於快速執行與機械執行之間，Codex 側這兩級都派它。
 
-  Claude Code 的三個角色檔（`.claude/agents/`）以機械執行／快速執行為 frontmatter 預設下限，派工時可指定更高；`automation-check` 的 `harness` 檢查擋角色檔出現旗艦級（名稱寫在檢查器裡，那是唯一需要名字的地方）。Codex 側沒有等價的機器，這張表與根 `AGENTS.md` 那一句是它唯一吃得到的規則。
+  Claude Code 的三個角色檔（`.claude/agents/`）以機械執行／快速執行為 frontmatter 預設下限，派工時可指定更高；`automation-check` 的 `harness` 檢查擋角色檔出現旗艦級（名稱寫在檢查器裡，那是唯一需要名字的地方）。可攜角色與 skills 的唯一來源是 `.claude/agents/`、`.claude/skills/`；`task agents:sync` 在本機與 CI 產生 `.agents/skills` 與 `.codex/agents`，兩者是忽略的快取，永不手改、永不提交。新一輪 Agent 工作前由唯一 Writer 同步，已啟動的 Agent 必須重新派送才會讀到新版本。
 - **Claude Code 另有一層攔阻**（`.claude/settings.json` 的 `permissions.deny` 把 `stash`／`add -A`／`commit -a`／`restore`／`checkout .`／`reset --hard`／`clean`／`push --force`／`commit --amend` 變成真的拒絕，對子代理同樣生效），**但它只是提早發現**：其他 coding agent 不受它管，本節的規則本體與 `automation-check`、測試、CI 才是保證。角色與技能的放置規則見下方〈Harness〉。
 
 ## 修好一個東西之後，把修法弄壞一次：三次前例
@@ -100,17 +100,17 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 ## Harness：角色、技能、rules、workflows 與 deny 的放置規則（2026-09-03 建立，09-04 重整）
 
-`AGENTS.md`〈分區指標與攔阻〉只放入口；規則本體在這裡；**建立這套東西的歷程、洞見、工序與功法在 [harness/](./harness/README.md)**。**判準：換一個 repo 還成立嗎？** 成立才進 `.claude/skills/`；不成立留在 `docs/`、各層 `AGENTS.md`、`.claude/rules/` 或 deny／CI。每一層只放一種東西：
+`AGENTS.md`〈分區指標與攔阻〉只放入口；分層與派工契約見[開發者指示](./agent-instructions.md)；規則本體在這裡；**建立這套東西的歷程、洞見、工序與功法在 [harness/](./harness/README.md)**。**判準：換一個 repo 還成立嗎？** 成立才進 `.claude/skills/`；不成立留在 `docs/`、各層 `AGENTS.md`、`.claude/rules/` 或 deny／CI。`.claude/` 不是整體可攜來源：只有 roles／skills 的來源檔可攜，rules／workflows 是本 repo harness。每一層只放一種東西：
 
 - **`.claude/rules/`**：按路徑觸發的指標，內容只有「先讀哪一份、會被哪個檢查擋」。實測會送達子代理，首次命中注入一次。
 - **`.claude/agents/`**：按**風險**切的三個角色——`skillhub-writer`（寫，路徑範圍由簡報給）、`skillhub-verify`（唯讀驗證）、`skillhub-mutation`（證明測試會紅）。**角色不按目錄切、不新增**：某個區域該先讀什麼、哪些檔屬於 coordinator，寫在該區域的 `AGENTS.md`，由 rules 按路徑送達。禁令只有一份（`AGENTS.md` 開發自動化第 3 條），角色檔引用不複述。
 - **`.claude/skills/`**：換一個 repo 還成立的程序。技能不得引用 `docs/`、ADR 編號或需求 ID——引用了就隨那份文件過期。
-- **`.claude/workflows/`**（2026-09-04 起）：**有固定形狀的多代理程序**——哪些事平行、哪一步驗證、最後跑什麼閘門——寫成一支 `<name>.js`，以 `/<name>` 呼叫；判斷本身仍在子代理，腳本只決定順序與扇出。每支的**最後一步是 repo 自己的閘門**（`typecheck`＋`vitest`＋`lint`＋`format:check`，或 `automation-check`），不是「寫完了」。**腳本裡的 `agent()` 不指定模型就繼承派工者的旗艦級**，所以每一個 `agent(` 呼叫都要在同一行寫 `model:`（慣例是一行 wrapper：`const run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet' })`），`harness` 檢查逐行看。現有三支：`ux-text-audit`（逐檔分類可見文字、去反駁、找漏讀）、`parallel-page-edit`（互斥路徑的寫入簡報 → 唯讀驗證 → 突變證明 → 閘門一次）、`error-path-audit`（一條功能線一個讀者，從 Go handler 經契約到頁面與測試列出每一條失敗／缺席路徑，逐條反駁後才進帳本；獵的是 `04` 丙-143～148 教的七種形狀）。**兩支稽核型 workflow 的最後一步不是閘門而是反駁**——它們不改檔，閘門守的是改檔的那一支。
+- **`.claude/workflows/`**（2026-09-04 起）：**有固定形狀的多代理程序**——哪些事平行、哪一步驗證、由流程決定是否有 gate——寫成一支 `<name>.js`，以 `/<name>` 呼叫；判斷本身仍在子代理，腳本只決定順序與扇出。`ux-text-audit` 與 `error-path-audit` 都是 Read → Refute → Critic 的唯讀稽核；`parallel-page-edit` 才是寫入後 Verify → Mutation → Gate。跨工具契約、無 runtime 時的原生派工映射與完成判定見[開發者指示](./agent-instructions.md)；原生腳本的扇出安全不是跨工具保證。**腳本裡的 `agent()` 不指定模型就繼承派工者的旗艦級**，所以每一個 `agent(` 呼叫都要在同一行寫 `model:`（慣例是一行 wrapper：`const run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet' })`），`harness` 檢查逐行看。
 - **`permissions.deny`**（`.claude/settings.json`）：把慣例變成真的拒絕——`stash`、`reset --hard`、`clean`、`checkout -- `、`checkout .`、`restore`、`add -A`／`--all`／`.`、`commit -a`／`--all`、`push --force`／`-f`、`commit --amend`。對子代理同樣生效、不需 workspace trust。**每條加完要親自撞一次**（2026-09-03 就撞出一個誤擋 `git add .claude/` 的偽陽性）。陷阱：路徑型規則只認 `Edit(...)` 與 `Read(...)`，寫成 `Write(...)`／`Glob(...)` 會被接受但永不被查詢。
 
-**送達的實測事實**：子代理啟動時只有全域 `CLAUDE.md`、專案 `CLAUDE.md`→根 `AGENTS.md`、記憶索引；目錄層 `AGENTS.md`（配一行 `@AGENTS.md` 的 `CLAUDE.md`）會在讀到該目錄檔案時載入，但剛建立的檔案不保證立刻被發現；Codex 只走「repo 根 → 它的 cwd」，且指示總量上限 32 KiB（`project_doc_max_bytes`），所以根 `AGENTS.md` 有大小上限。Claude 這幾層**其他工具吃不到，只是提早發現**；真正的保證仍在 `automation-check`、測試與 CI。
+**送達與契約**：官方啟動載入規則見 [Agent configuration](https://learn.chatgpt.com/docs/agent-configuration/agents-md)；若有 `AGENTS.override.md` 必須先讀並檢查衝突。派工介面未提供 `cwd` 參數時（例如本次驗證的 `spawn_agent`），代理共享目前工作目錄；工具不保證按檔案自動載入，brief 必須列出 root → 目標父目錄的明確讀取路徑。Codex 指示總量上限 32 KiB（`project_doc_max_bytes`），所以根 `AGENTS.md` 有大小上限。Claude 的額外層是提早發現，真正的保證仍在 `automation-check`、測試與 CI。
 
-**新增一個區域的三步配方**（不新增角色）：①在該目錄放 `AGENTS.md`（指標表：要做的事 → 先讀哪段 → 沒讀會被哪個閘門擋；加一行 `@AGENTS.md` 的 `CLAUDE.md`）；②在 `.claude/rules/` 加一條 `paths:` 指向它；③在根 `AGENTS.md`〈分區指標與攔阻〉的表加一列。
+**新增一個區域的三步配方**（不新增角色）：①在該目錄放 `AGENTS.md`（指標表：要做的事 → 先讀哪段 → 沒讀會被哪個閘門擋；加一行 `@AGENTS.md` 的 `CLAUDE.md`），遵循[開發者指示](./agent-instructions.md)的分層／派工流程；②在 `.claude/rules/` 加一條 `paths:` 指向它，規則提示改讀該區域 `AGENTS.md`；③在根 `AGENTS.md`〈分區指標與攔阻〉的表加一列。
 
 **守它的機器**：名冊裡的 `harness`（技能不引用本地文件、角色必須指定 `model` 且不得 fable／sol／inherit、根 `AGENTS.md` 不超過上限、workflow 的每個 `agent(` 同一行有 `model:` 且 `meta.name` 等於檔名）與 `apps/platform/internal/shared/skillpkg/repo_skills_test.go`（技能過產品自己的 `skillpkg.Validate`）。
 

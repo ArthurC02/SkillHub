@@ -2,7 +2,7 @@
 
 ## 這是什麼專案
 
-Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然語言描述任務 → 探索候選 Skill → 用自己的 Prompt 與測試資料在隔離 Sandbox 試跑 → 依 Trace 與評估報告改善 → 下載符合 Agent Skills 規格的可攜套件。
+Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私人訂製／公開散布；搜尋、隔離試跑、評估與可攜套件支援這段旅程。互動創作採用 LangGraph 的規劃見 [ADR-067](docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md)，目前尚未實作。
 
 ## 系統怎麼跑
 
@@ -17,7 +17,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 
 ## 現在在哪
 
-M0～M6 的程式面皆已收斂；**「程式面收斂」不等於「完成」**——M1 驗證閘門、M4 封測、M5 曝光都在等真人數字。**新功能凍結生效中**，逐次放行紀錄、閘門期間條款與三條 ⛔ 邊界只在 [`01` §10](docs/plans/01-goals-and-plan.md)；其中最硬的一條：**M5 的生成入口不得對封測使用者出現**。狀態變動改 `01` §10 與 `04`，不改這裡——本檔不放日期、不放數字。
+各里程碑與新增創作旅程的實作狀態以 [`01` §10](docs/plans/01-goals-and-plan.md) 為準；**「程式面收斂」不等於「完成」**——M1 驗證閘門、M4 封測、M5 曝光都在等真人數字。**新功能凍結生效中**，逐次放行紀錄、閘門期間條款與三條 ⛔ 邊界只在 [`01` §10](docs/plans/01-goals-and-plan.md)；其中最硬的一條：**M5 的生成入口不得對封測使用者出現**。狀態變動改 `01` §10 與 `04`，不改這裡——本檔不放日期、不放數字。
 
 ## 目錄地圖
 
@@ -33,27 +33,13 @@ M0～M6 的程式面皆已收斂；**「程式面收斂」不等於「完成」*
 | `docs/adr/` | 架構決策；份數、狀態與取代關係見 [索引](docs/adr/README.md) |
 | `docs/design/` | 前端兩把尺：[system.md](docs/design/system.md) 管一頁之內、[information-architecture.md](docs/design/information-architecture.md) 管頁與頁之間；**兩份都有機器測試直接解析** |
 | `docs/development/` | 開工前讀的手冊；[docs/runbooks/](docs/runbooks/) 是出事時讀的 |
+| `docs/` | 文件區共同規則見 [`docs/AGENTS.md`](docs/AGENTS.md)；動文件前先讀根規範與該區域指示 |
 
 收納語意由 ADR-031 定義，CI/CD 基線見 ADR-019；結構性偏離先更新 ADR。
 
-## 技術棧
+## 技術棧摘要
 
-| 層 | 選擇 | 依據 |
-| --- | --- | --- |
-| 前端 | React + TS（Vite、TanStack Router/Query） | ADR-016 |
-| 平台後端 | Go：薄 HTTP 層、pgx + sqlc、River | ADR-016、018 |
-| LLM 工作負載 | Python FastAPI（uv），內部服務 | ADR-016 |
-| 模型供應商 | OpenAI（試跑預設 mini 級；Embedding `text-embedding-3-small`），一律經 LiteLLM，每 Run 短效 Virtual Key | ADR-017 |
-| 資料 | PostgreSQL 中心 ＋ S3 相容物件儲存；核心元件容器化自架 | ADR-018 |
-| 搜尋 | 混合檢索（向量腿 ＋ FTS 腿 `UNION` 擴充候選，不做 RRF）＋ 索引時 LLM 增強 | ADR-013 |
-| Agent Runtime | Claude Agent SDK，事實來源是 image digest；版本字串釘在 `infra/images/runtime-agent-sdk/Dockerfile` 的 `ARG`，**不在 `tools/toolchain.yaml`**；升級必重跑四項實測 | ADR-023 |
-| 身分 | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | ADR-020 |
-| Sandbox | gVisor `systrap`，獨立 VM 池，nftables default-deny ＋固定 DNS，不部署 L7 Proxy | ADR-015、005、022 |
-| Runtime Image | 自建映像發佈至 GHCR，SBOM 與掃描以 attestation 隨 digest 保存 | ADR-022 |
-| LLM 觀測 | Langfuse Cloud（工程調優用，非事實來源；**MVP 未實作**，見 [`05` R-24](docs/plans/05-pending-rulings.md)） | ADR-017 |
-| 契約 | OpenAPI-first；Go 側 models-only，handler 手寫並逐條對齊 | ADR-016、030 |
-
-**Local Runner 與遠端 MCP 已移出 MVP 首發**（決策保留於 ADR-006）。
+技術棧的完整選擇、依據與 Local Runner／遠端 MCP 的 MVP 邊界見[開發者指示](docs/development/agent-instructions.md)。系統採 React／TypeScript 前端、Go 控制平面、Python 能力提供者、PostgreSQL＋S3 資料層、LiteLLM 模型閘道與 gVisor Sandbox；跨程序契約以 OpenAPI-first 管理。
 
 ## 實作鐵律（違反任何一條 = 架構回歸）
 
@@ -70,14 +56,9 @@ M0～M6 的程式面皆已收斂；**「程式面收斂」不等於「完成」*
 11. Secrets 不得出現在套件、Log、Trace 明文或分析事件；顯示前完成遮罩。（NFR-002、TRACE-001）
 12. 跨語言介面先寫 OpenAPI schema 再實作；CI 以 codegen 檢查 drift。（ADR-016）
 
-## 文件維護規則
+## 文件規則摘要
 
-- 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
-- 改 `04` 的殘項數字時，同一格末尾的 `<!-- open: … -->` 要一起改（`backlog-tally` 會對帳）。
-- `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
-- ADR 是決策歷史：推翻＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫；下一號＝[索引](docs/adr/README.md)最大號 + 1，新增後更新索引。
-- 活文件放 `docs/plans/` 根層；里程碑產出放 `docs/plans/mvp/mX/`，完結即凍結，不回溯修正（含 `03` 的歷史 flat path）。
-- 里程碑目錄固定骨架：`README.md`（計畫＋狀態＋檔案地圖）、`audit.md`、報告用 `report-*` 前綴；目錄內檔名不重複 `mX` 前綴（M3 起適用，既有檔名不回溯改）。
+ADR 是決策歷史，不原地改寫；凍結的里程碑產出也不回溯修正；只有完全符合允收準則才勾選。完整六條文件維護規則與文件區路由見 [`docs/AGENTS.md`](docs/AGENTS.md)；動任何 `docs/` 文件前必須先讀它。
 
 ## 慣例
 
@@ -92,6 +73,7 @@ M0～M6 的程式面皆已收斂；**「程式面收斂」不等於「完成」*
 1. **先診斷再修改**：`task --list`，再 `task doctor`（未裝 Task 時 `go -C tools/devctl run . doctor`）。版本來源是各語言原生檔與 `tools/toolchain.yaml`；doctor 的版本不符是診斷結果，不得靠跳過檢查偽裝成通過。
 2. **預設不花錢**：`task dev` 只起 Postgres 與 SeaweedFS。`task dev:model` 會產生費用，**不得由唯讀 SubAgent 自行啟動**。
 3. **共享工作樹、單一 Writer**：SubAgent 預設唯讀，同一時間只能有一個 Writer；寫入 SubAgent 必須有精確 path allowlist，不得自行執行 repo-wide formatter、package install、Compose down、Git 寫入或 lockfile 更新。**禁止 `git stash`**（會連他人未提交與未追蹤的工作一起收走，本專案已三度因此出事）；對未知修改同樣禁止 `git reset`、`git clean`、`git checkout -- <path>`——看到不屬於自己的 delta 就保留並回報。只以明確 pathspec stage 自己的檔案、push 前 `git pull --rebase`；暫存產物放 scratchpad。**子代理的模型**：每次派工明確指定，**禁用旗艦級（主線自己用的那一級）**；按這件事需要多少推論選——機械執行、快速執行、深度推論——從能做完的最低一級起，升級要有理由。四個等級的特性、派什麼事、現行名稱對應在 automation.md〈共享工作樹與 SubAgent〉。
+   **Agent artifacts**：可攜角色與 skills 的唯一可修改來源是 `.claude/agents/`、`.claude/skills/`；`.agents/`、`.codex/` 是本機生成快取，永不手改、永不提交。主 Agent 在啟動或重新派送會用到它們的 Agent 前執行 `go -C tools/devctl run . agent-sync`；共享工作樹中只有單一 Writer 可執行它。來源變更後，已啟動的 Agent 不會自動重載，必須先同步再重新派送。
 4. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/`。
 5. **generated files 禁止手改**：`task gen:sql`／`task gen:openapi` 由主 Agent 序列化執行；提交前一律 `task gen:check`；generated 目錄的衝突在來源解決後重生。
 6. **Go generated router 不擁有 AuthZ**：ogen server 只在 `router.go` 的精確 `GET /healthz` pattern 後；其他 route 逐條套 `RequireSession`／`RequireOperator`／`OptionalSession`，不得整批 mount，每移一條要加 route 測試。
@@ -103,12 +85,24 @@ M0～M6 的程式面皆已收斂；**「程式面收斂」不等於「完成」*
 
 **動某個區域之前，先讀那個區域的 `AGENTS.md`**——它列出「你要做的事 → 先讀哪一段 → 沒讀會被哪個閘門擋」：
 
+主／子代理在讀或改目標前，必須沿 repo root 到目標父目錄讀取適用指示；跨區工作要讀每個涉及區域的指示，並在開始前回報已讀檔案與關鍵限制。不要假設工具會自動按檔案載入指示。
+
+**新增或搬移區域指示時**：同目錄必須有 `AGENTS.md` 與 `CLAUDE.md`；後者內容僅為 `@AGENTS.md`，規則正文只維護在前者。同一批同步本節分區導航與適用的 `.claude/rules/`，並確認引用路徑有效，避免任何工具漏讀或讀到舊入口。
+
 | 你要動 | 先讀 |
 | --- | --- |
 | `apps/web/` | [`apps/web/AGENTS.md`](apps/web/AGENTS.md) |
+| `apps/platform/` | [`apps/platform/AGENTS.md`](apps/platform/AGENTS.md)；動 `internal/` 時再讀 [`apps/platform/internal/AGENTS.md`](apps/platform/internal/AGENTS.md) ＋目標套件的 `doc.go` |
+| `apps/llm/` | [`apps/llm/AGENTS.md`](apps/llm/AGENTS.md) |
+| `apps/sandbox/` | [`apps/sandbox/AGENTS.md`](apps/sandbox/AGENTS.md) |
 | `apps/platform/internal/` | [`apps/platform/internal/AGENTS.md`](apps/platform/internal/AGENTS.md) ＋ 目標套件的 `doc.go` |
+| `docs/` | [`docs/AGENTS.md`](docs/AGENTS.md)；調整指示或派工前加讀[分層與派工](docs/development/agent-instructions.md) |
 
-這張表是唯一保證送達的入口（目錄層 `AGENTS.md` 各工具送達方式不一）。Claude Code 另有 `.claude/rules/`（按路徑送指標）、`.claude/agents/`（按風險切的三個角色：writer／verify／mutation）、`.claude/skills/`（換一個 repo 還成立的程序）、`.claude/workflows/`（固定形狀的多代理程序，最後一步永遠是 repo 的閘門）與 `permissions.deny`；**它們不取代文件，只是提早發現**，放置規則、新增區域配方與守它們的機器見 automation.md〈Harness〉。
+這張表是唯一保證送達的入口（目錄層 `AGENTS.md` 各工具送達方式不一）。Claude Code 另有 `.claude/rules/`（按路徑送指標）、`.claude/agents/`（按風險切的三個角色：writer／verify／mutation）、`.claude/skills/`（換一個 repo 還成立的程序）、`.claude/workflows/`（固定形狀的多代理程序）與 `permissions.deny`；**它們不取代文件，只是提早發現**，放置規則、新增區域配方與守它們的機器見 automation.md〈Harness〉。
+
+## 任務導航
+
+先判斷任務，再沿上表讀目標區域指示；工具不保證自動載入。直接問答或小任務由主代理查證後回答；小型明確修改可由主代理完成，協作修改才建立 brief、path allowlist 與單一 Writer。任務→流程：可見文案分類稽核→`ux-text-audit`；跨前後端失敗／缺席路徑→`error-path-audit`；已明確允收的批次修補→`parallel-page-edit` 契約（跨工具預設仍序列派工）。跨工具流程契約、輸入、證據與停止條件集中在 [`docs/development/agent-instructions.md`](docs/development/agent-instructions.md)。
 
 ## 去哪看
 

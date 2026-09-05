@@ -2,6 +2,10 @@
 .env
 /.claude/settings.local.json
 
+# Generated from .claude at the start of an Agent session; never edit or commit.
+/.agents/
+/.codex/
+
 # Python
 __pycache__/
 *.pyc

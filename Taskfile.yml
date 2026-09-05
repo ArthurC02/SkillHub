@@ -54,10 +54,19 @@ tasks:
     desc: Verify Agent docs, task descriptions and generated ownership markers
     cmd: go -C tools/devctl run . automation-check
 
+  agents:sync:
+    desc: Generate portable .agents and .codex artifacts from .claude
+    cmd: go -C tools/devctl run . agent-sync
+
+  agents:check:
+    desc: Verify local portable Agent artifacts match .claude sources
+    cmd: go -C tools/devctl run . agent-sync --check
+
   ci:
     desc: Run the local secret-free CI sequence in deterministic order
     cmds:
       - go -C tools/devctl run . automation-check
+      - go -C tools/devctl run . agent-sync
       - go -C tools/devctl run . gen --check
       - task: check
       - task: test

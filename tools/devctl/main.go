@@ -23,6 +23,7 @@ Usage:
   devctl env-init   create .env from .env.example without overwriting it
 	devctl profile-check model  verify a profile's required variables without printing values
 	devctl gen [--check] [--scope=sql|openapi|all]  regenerate or check committed output
+	devctl agent-sync [--check]  regenerate or check portable Agent artifacts from .claude
 	devctl automation-check  verify Task, Agent docs and generated ownership markers
 	devctl test-report dir [go test args]  run the suite and report what skipped and why
 	devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
@@ -67,6 +68,10 @@ func main() {
 		}
 	case "gen":
 		if err := generate(root, os.Args[2:], os.Stdout); err != nil {
+			fatal(err)
+		}
+	case "agent-sync":
+		if err := agentSync(root, os.Args[2:], os.Stdout); err != nil {
 			fatal(err)
 		}
 	case "automation-check":

@@ -105,3 +105,7 @@ internal/
 [`apiserver.NewApp`](entrypoint/api/apiserver/app.go)，worker process 的 wiring 在
 [`cmd/worker/main.go`](../cmd/worker/main.go)；maintenance 與 reindex 則各自於其 deployment
 unit 的 root 建構所需服務。詳見 ADR-032 §5。
+
+## 規劃中的互動創作（尚未實作）
+
+[ADR-067](../../../docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md) 規劃由 Python LangGraph 編排創作，Go 持有會話、授權、成本、版本與 Run 的事實。現有套件地圖不代表這些新能力已存在；實作前先定義契約，新增套件須依 ADR-032 登記 owner。[GEN-007～012](../../../docs/plans/02-specifications-and-acceptance-criteria.md) 是允收來源。

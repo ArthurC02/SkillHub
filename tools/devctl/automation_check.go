@@ -55,7 +55,7 @@ func automationCheck(root string, out io.Writer) error {
 			problems = append(problems, fmt.Sprintf("Taskfile.yml: task %s has no desc", name))
 		}
 	}
-	for _, name := range []string{"doctor", "bootstrap", "env:init", "gen", "gen:check", "ci"} {
+	for _, name := range []string{"doctor", "bootstrap", "env:init", "gen", "gen:check", "agents:sync", "agents:check", "ci"} {
 		if _, ok := tasks[name]; !ok {
 			problems = append(problems, fmt.Sprintf("Taskfile.yml: missing discoverable task %s", name))
 		}

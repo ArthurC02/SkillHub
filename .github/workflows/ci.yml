@@ -572,6 +572,8 @@ jobs:
       - run: go -C tools/devctl test -race -count=1 ./...
       - name: Agent automation contract
         run: go -C tools/devctl run . automation-check
+      - name: Generate portable Agent artifacts from Claude sources
+        run: go -C tools/devctl run . agent-sync
       # devctl reads the pinned sqlc version from tools/toolchain.yaml, writes
       # into same-filesystem scratch space, and compares every file including
       # untracked additions. CI and local development therefore use one path.
