@@ -5,8 +5,9 @@ package apiserver_test
 // sessions (5 text, 5 diagram, 5 reference), the same 15 tasks through
 // versions.GenerateSkill once each. See
 // docs/plans/mvp/m5/creation-measure/README.md for how to run this and what
-// the owner still has to do afterward (attach a Run for "met", read the
-// drafts for "kept" — this harness cannot do either).
+// the owner still has to do afterward (read the drafts for "kept" — this
+// harness cannot do that; "met" is filled automatically when the run stage
+// below is configured, subject to a person's override in met_by_owner).
 //
 // Usage (spends money — one command runs everything):
 //
@@ -15,12 +16,21 @@ package apiserver_test
 //	CREATION_MEASURE_OUT       dir for results.json and *.SKILL.md
 //	SKILLHUB_E2E_LLM_URL       a running apps/llm pointed at a real gateway
 //	LITELLM_API_KEY            the creation gateway key (see with-service-key.mjs)
+//
+// Optional run stage (fills the "met" column, 02:GEN-012): set
+// SKILLHUB_E2E_SANDBOX_URL and the rest of gen009_baseline_test.go's paid-run
+// env (SKILLHUB_E2E_SANDBOX_TOKEN, OBJSTORE_ENDPOINT/ACCESS_KEY/SECRET_KEY,
+// SKILLHUB_E2E_PUBLIC_HOST, SKILLHUB_MODEL_GATEWAY_URL/_KEY). Unset, this
+// harness behaves exactly as it did before this stage existed.
 
 import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/fs"
+	"net"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -30,14 +40,18 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 // creationMeasureLimits is 05 R-45's ruled values (裁定 2026-09-06).
@@ -74,9 +88,25 @@ type sessionRow struct {
 	CriteriaCount  int       `json:"criteria_count"`
 	TestCaseID     bool      `json:"test_case_id"`
 	Error          string    `json:"error,omitempty"`
-	// MetByOwner/KeptByOwner are left null for the owner to fill in after a Run
-	// is attached (met) and a person has read the SKILL.md (kept) — the two
-	// halves of 05 R-45's threshold this harness cannot produce on its own.
+	// The optional run stage (SKILLHUB_E2E_SANDBOX_URL configured): a Run of
+	// the materialized candidate against its own Test Case, the attach_run
+	// observation fed back to the session, and one more step to see whether
+	// the model revised its draft. Left at their zero values when the stage is
+	// not configured, exactly as before this stage existed.
+	RunStatus  string `json:"run_status,omitempty"`
+	EvalStatus string `json:"eval_status,omitempty"`
+	Overall    string `json:"overall,omitempty"`
+	// Met is filled automatically from Overall once EvalStatus reaches a
+	// finished status ("completed" or "failed"); left null with MetNote saying
+	// why when the run stage is not configured or did not reach a verdict.
+	Met     *bool  `json:"met"`
+	MetNote string `json:"met_note,omitempty"`
+	// RevisedAfterRun is set after the post-attach_run step: true when the
+	// draft's content hash changed, false when the model kept the same draft.
+	RevisedAfterRun *bool `json:"revised_after_run,omitempty"`
+	// KeptByOwner is left null for the owner to fill in after a person has
+	// read the SKILL.md — 05 R-45's other half this harness cannot produce on
+	// its own. MetByOwner stays for a person to overrule the automatic Met.
 	MetByOwner  *bool `json:"met_by_owner"`
 	KeptByOwner *bool `json:"kept_by_owner"`
 }
@@ -105,6 +135,11 @@ type creationMeasureSummary struct {
 	CostMedian float64 `json:"cost_median"`
 	P50Seconds float64 `json:"p50_seconds"`
 	P95Seconds float64 `json:"p95_seconds"`
+	// MetCount/MetDenominator are the run stage's automatic tally: how many
+	// sessions reached a verdict (denominator) and how many of those were
+	// "met" (count). Both stay 0 when the run stage is not configured.
+	MetCount       int `json:"met_count"`
+	MetDenominator int `json:"met_denominator"`
 }
 type creationMeasureResults struct {
 	Interactive []sessionRow              `json:"interactive"`
@@ -153,6 +188,152 @@ func creationMessage(t *testing.T, c *client, v creation.View, message string) c
 	}, 200)
 }
 
+// creationAttachRun sends the "attach_run" command creationAct does not cover
+// (it carries a run_id, not a content_hash).
+func creationAttachRun(t *testing.T, c *client, v creation.View, runID string) creation.View {
+	t.Helper()
+	return creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
+		"command_id": creationID(t), "expected_revision": v.Revision, "kind": "attach_run", "run_id": runID,
+	}, 200)
+}
+
+// trialRun carries what the optional paid run stage needs across sessions:
+// the real object store the sandbox reads packages from, and the pool for
+// the one query neither the creation nor the run API exposes (a version's
+// package_object_key).
+type trialRun struct {
+	store *objstore.Client
+	pool  *pgxpool.Pool
+}
+
+// withTrialRunning gates 05 R-45's optional "met" stage on
+// SKILLHUB_E2E_SANDBOX_URL, exactly as gen009_baseline_test.go gates its own
+// paid run. Unset, it returns nil and a is untouched — the harness measures
+// exactly as it did before this stage existed. Set, it wires a's run service
+// to a real object store and sandbox provider, opens a trace listener the
+// sandbox host can reach, and starts a worker running the real judge —
+// reusing gen009's own helpers (objstoreBucket, startWorkerWith,
+// waitForTerminalSoft, waitForEvaluation) rather than copying them.
+func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, traceSigner *trace.Signer) *trialRun {
+	t.Helper()
+	sandboxURL := os.Getenv("SKILLHUB_E2E_SANDBOX_URL")
+	if sandboxURL == "" {
+		return nil
+	}
+	ctx := context.Background()
+	store, err := objstore.New(
+		os.Getenv("OBJSTORE_ENDPOINT"), os.Getenv("OBJSTORE_ACCESS_KEY"),
+		os.Getenv("OBJSTORE_SECRET_KEY"), objstoreBucket(), false,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.EnsureBucket(ctx); err != nil {
+		t.Fatal(err)
+	}
+	a.runs.Store = store
+	a.runs.Providers = run.NewRegistry(run.NewProvider(
+		"self_hosted", sandboxURL, os.Getenv("SKILLHUB_E2E_SANDBOX_TOKEN")))
+	a.runs.Gateway = run.GatewayFromEnv()
+	if a.runs.Gateway == nil {
+		t.Fatal("SKILLHUB_MODEL_GATEWAY_URL / _KEY are required alongside SKILLHUB_E2E_SANDBOX_URL")
+	}
+	a.runs.PollInterval = time.Second
+	a.runs.MaxAttempts = 1
+	a.runs.TraceSigner = traceSigner
+
+	// The sandbox host pushes trace back, and httptest binds loopback. Same
+	// second listener gen009 and the e2e test use, for the same reason.
+	public := httptest.NewUnstartedServer(a.handler)
+	listener, err := net.Listen("tcp", "0.0.0.0:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	public.Listener = listener
+	public.Start()
+	t.Cleanup(public.Close)
+	a.runs.TraceIngestBaseURL = fmt.Sprintf("http://%s:%d",
+		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), listener.Addr().(*net.TCPAddr).Port)
+
+	// The judge is the worker's, not the API's, same reasoning as gen009: a
+	// read must never pay for a model call, so this is set on a copy.
+	judging := *a.evaluations
+	judging.Judge = &llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")}
+	startWorkerWith(t, a.runs, &judging)
+
+	return &trialRun{store: store, pool: pool}
+}
+
+// attachTrialRun is the optional stage 05 R-45 needs for "met" (02:GEN-012):
+// it puts the materialized candidate's package into the real object store,
+// starts a Run against the candidate's own Test Case the way gen009 does
+// (fixture.startNoFatal, waitForTerminalSoft, waitForEvaluation), folds the
+// verdict into row, then feeds the run back into the session with attach_run
+// and runs one more step to see whether the model revised its draft. Never
+// t.Fatal's on a run/eval problem — one session's sandbox trouble must not
+// cost the other rows their spend — recording the reason on row.MetNote
+// instead.
+func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *creation.Service, trial *trialRun, v creation.View, row sessionRow) sessionRow {
+	t.Helper()
+	candidate := v.Snapshot.Candidate
+	if candidate == nil {
+		row.MetNote = "no candidate to run"
+		return row
+	}
+	if candidate.TestCaseID == "" {
+		row.MetNote = "candidate has no test_case_id"
+		return row
+	}
+	var key string
+	if err := trial.pool.QueryRow(ctx, "SELECT package_object_key FROM skill_versions WHERE id = $1",
+		mustUUID(t, candidate.VersionID)).Scan(&key); err != nil {
+		row.MetNote = "package_object_key lookup: " + err.Error()
+		return row
+	}
+	pkg, ok := a.packages[key]
+	if !ok {
+		row.MetNote = "the candidate package is not in the API's store under " + key
+		return row
+	}
+	if err := trial.store.Put(ctx, key, pkg); err != nil {
+		row.MetNote = "put package: " + err.Error()
+		return row
+	}
+
+	f := fixture{client: c, skillID: candidate.SkillID, versionID: candidate.VersionID, testCaseID: candidate.TestCaseID}
+	code, rv := f.startNoFatal(t)
+	if code != http.StatusCreated && code != http.StatusOK {
+		row.MetNote = fmt.Sprintf("POST run: %d %s", code, rv.Error)
+		return row
+	}
+	final := waitForTerminalSoft(t, c, rv.RunID, 8*time.Minute)
+	row.RunStatus = final.Status
+	ev := waitForEvaluation(t, c, rv.RunID, 4*time.Minute)
+	row.EvalStatus = ev.Status
+	row.Overall = ev.Overall
+	switch ev.Status {
+	case "completed", "failed":
+		met := ev.Overall == "met"
+		row.Met = &met
+	default:
+		row.MetNote = "evaluation did not finish: " + ev.Status
+	}
+
+	beforeHash := ""
+	if v.Snapshot.Draft != nil {
+		beforeHash = v.Snapshot.Draft.ContentHash
+	}
+	v = creationAttachRun(t, c, v, rv.RunID)
+	v = creationStep(t, s, v)
+	afterHash := ""
+	if v.Snapshot.Draft != nil {
+		afterHash = v.Snapshot.Draft.ContentHash
+	}
+	revised := beforeHash != afterHash
+	row.RevisedAfterRun = &revised
+	return row
+}
+
 func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	corpusPath := os.Getenv("CREATION_MEASURE_CORPUS")
 	diagramDir := os.Getenv("CREATION_MEASURE_DIAGRAMS")
@@ -188,10 +369,15 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	transient := httptest.NewServer(set.Creation.TransientHandler("creation-measure"))
 	t.Cleanup(transient.Close)
 	packages := packageStore{}
+	// A fixed secret, same shape as authz_integration_test.go's default
+	// harness: unused unless withTrialRunning wires it onto the run service
+	// below, harmless otherwise.
+	traceSigner := &trace.Signer{Secret: []byte("creation-measure-trace-secret")}
 	app, err := apiserver.NewApp(apiserver.Config{
 		Pool: pool, Store: packages, LLM: llm, OAuth: &identity.GitHubOAuth{}, DevLogin: true,
 		GenerateExposed: true, CreationExposed: true, CreationLimits: limits,
 		CreationTransient: creation.TransientClient(transient.URL, "creation-measure", 95*time.Second),
+		TraceSigner:       traceSigner,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -200,8 +386,12 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	handler := app.Handler()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	a := &api{Server: server, auth: app.Auth, app: app, packages: packages, handler: handler, versions: app.Versions}
+	a := &api{
+		Server: server, auth: app.Auth, app: app, packages: packages, handler: handler,
+		versions: app.Versions, runs: app.RunSvc, evaluations: app.EvalSvc, traceSigner: traceSigner,
+	}
 	ctx := context.Background()
+	trial := withTrialRunning(t, a, pool, base, traceSigner)
 
 	// Build the 15 tasks: text = reference[0..4] (description only), diagram =
 	// diagram[0..4], reference = reference[5..9] (description + its own
@@ -244,7 +434,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	}
 
 	for _, task := range tasks {
-		row := runInteractiveSession(t, a, set.Creation, ctx, task, limits, outDir)
+		row := runInteractiveSession(t, a, set.Creation, ctx, task, limits, outDir, trial)
 		results.Interactive = append(results.Interactive, row)
 		flush()
 		t.Logf("interactive %s (%s): state=%s draft=%v cost=%v calls=%d", task.ID, task.Kind, row.FinalState, row.Draft, row.CostUSD, row.ModelCalls)
@@ -259,6 +449,12 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	for _, row := range results.Interactive {
 		if row.Draft && !row.Blocked {
 			results.Summary.FormatPass++
+		}
+		if row.Met != nil {
+			results.Summary.MetDenominator++
+			if *row.Met {
+				results.Summary.MetCount++
+			}
 		}
 	}
 	for _, row := range results.SingleShot {
@@ -297,7 +493,7 @@ func dumpDraftMD(t *testing.T, outDir, id, suffix, name, description, body strin
 // runInteractiveSession drives one multi-turn session to a terminal state (or
 // until the loop/message budget runs out), materializing a draft if one is
 // reached, and dumps the resulting draft.
-func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx context.Context, task measureTask, limits creation.Limits, outDir string) sessionRow {
+func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx context.Context, task measureTask, limits creation.Limits, outDir string, trial *trialRun) sessionRow {
 	t.Helper()
 	row := sessionRow{ID: task.ID, Kind: task.Kind}
 	c := a.login(t, "creation-measure-"+strings.ToLower(task.ID))
@@ -377,7 +573,11 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 		case "draft_ready":
 			v = creationAct(t, c, v, "materialize")
 			row.FinalState = v.State
-			return finishSession(t, v, row, outDir)
+			row = finishSession(t, v, row, outDir)
+			if trial != nil {
+				row = attachTrialRun(t, a, ctx, c, s, trial, v, row)
+			}
+			return row
 		default:
 			row.FinalState = v.State
 			row.Error = "unexpected state: " + v.State

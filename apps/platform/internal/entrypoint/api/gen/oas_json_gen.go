@@ -7206,6 +7206,12 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		e.Int(s.ToolCalls)
 	}
 	{
+		if s.DraftRetries.Set {
+			e.FieldStart("draft_retries")
+			s.DraftRetries.Encode(e)
+		}
+	}
+	{
 		if s.Model.Set {
 			e.FieldStart("model")
 			s.Model.Encode(e)
@@ -7237,7 +7243,7 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [22]string{
+var jsonFieldsNameOfCreationSnapshot = [23]string{
 	0:  "messages",
 	1:  "brief",
 	2:  "acceptance_criteria",
@@ -7255,11 +7261,12 @@ var jsonFieldsNameOfCreationSnapshot = [22]string{
 	14: "usage_unknown",
 	15: "steps",
 	16: "tool_calls",
-	17: "model",
-	18: "prompt_version",
-	19: "diagram_media_type",
-	20: "diagram_bytes",
-	21: "previous_draft",
+	17: "draft_retries",
+	18: "model",
+	19: "prompt_version",
+	20: "diagram_media_type",
+	21: "diagram_bytes",
+	22: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -7486,6 +7493,16 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"tool_calls\"")
+			}
+		case "draft_retries":
+			if err := func() error {
+				s.DraftRetries.Reset()
+				if err := s.DraftRetries.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"draft_retries\"")
 			}
 		case "model":
 			if err := func() error {

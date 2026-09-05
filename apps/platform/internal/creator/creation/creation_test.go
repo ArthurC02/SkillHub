@@ -244,3 +244,24 @@ func TestProposalKeepsAConfirmedBriefWhenTheModelMerelyRestatesIt(t *testing.T) 
 		t.Fatalf("the confirmation was thrown away: %+v", e.Snapshot)
 	}
 }
+
+// A model that says "draft" and hands over nothing gets one paid retry, then
+// the turn goes back to the person (2026-09-06 run c).
+func TestProposalRetriesOnceWhenTheDraftIsMissing(t *testing.T) {
+	s := &Service{}
+	zero := 0.0
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &llmclient.CreationStepResponse{Outcome: "clarification", Message: "draft missing", Reason: "draft_missing"}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || !next || state != "queued" || e.Snapshot.DraftRetries != 1 {
+		t.Fatalf("first draft_missing should requeue once: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
+	}
+	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	if err != nil || next || state != "waiting_input" || e.Snapshot.DraftRetries != 1 {
+		t.Fatalf("second draft_missing should hand the turn back: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
+	}
+	last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]
+	if last.Content != reasonSentences["draft_missing"] {
+		t.Fatalf("the person did not get Go's sentence: %+v", last)
+	}
+}

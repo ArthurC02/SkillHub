@@ -8285,6 +8285,9 @@ components:
           type: "integer"
         tool_calls:
           type: "integer"
+        draft_retries:
+          type: "integer"
+          description: "Automatic re-queues after the model answered outcome=draft with no draft (at most one per session)."
         model:
           type: "string"
         prompt_version:

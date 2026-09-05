@@ -85,6 +85,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 - 值與門檻見 `05` R-45；同意書 §3 新增互動創作一列（法務尚未看過，功能封測期間不曝光）。
 - **逐句稽核後補的兩刀（同日稍晚）**：候選的 `generation_inputs` 帶 `interactive: true`，`CountGeneratedSkills` 排除它——互動創作不吃單次生成額度；`TestAccountPurgeRemovesCreationSessions` 守住帳號清除的 creation 步驤。
 - **量測 harness**：`TestCreationMeasureFifteenSessionsAgainstSingleShot`（跑法見 [creation-measure/README](../plans/mvp/m5/creation-measure/README.md)）——15 場多輪（三入口各 5）＋同 15 題單次對照，記錄每次呼叫秒數、費用、格式通過、驗收條件數、Test Case；`met`／`kept` 兩欄留給負責人與真人。**2026-09-06 跑了三次**（a→b→c，各修一次；[報告](../plans/mvp/m5/creation-measure/report.md)）：run c 15／15 草稿、13／15 候選＋Test Case、$0.018／場、p50 5 s。兩個只在真模型下才出現的缺陷（確認迴圈、`draft: null` 被判 502）由此修掉（`04` 丙-174）。啟動細節：`.env` 沒有 `LITELLM_BASE_URL`／`SKILLHUB_MODEL_GATEWAY_*` 時，用命令列帶入（值不落地）；第二把金鑰要 `SKILLHUB_SERVICE_KEY_ALIAS`，預算用 `SKILLHUB_SERVICE_KEY_BUDGET_USD`。
+- **`met` 那一欄（同日稍晚）**：harness 多了可選的 Run 階段——設 `SKILLHUB_E2E_SANDBOX_URL`（＋ `SKILLHUB_E2E_SANDBOX_TOKEN`、`OBJSTORE_*`、`SKILLHUB_E2E_PUBLIC_HOST`）時，每個候選會用它的 Test Case 起一次 Run、等評估、把 `overall=="met"` 填進 `met`，再 `attach_run` 回會話跑一步看模型改不改稿。**沒跑**：代理啟動 sandboxd（掛 docker.sock）那一步被權限層擋下。要跑的人照 [automation.md〈三個程序〉](automation.md) 起 sandboxd（本機映像用 `ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-8`；dev 版 egress 白名單先用 `tools/egress/render.py` 對 litellm 在 `skillhub_egress` 上的 IP 渲一份），再把 harness 的測試二進位放進共用 postgres 網路命名空間的容器裡跑（`SKILLHUB_E2E_LLM_URL=http://host.docker.internal:8000`，apps/llm 要以 `--host 0.0.0.0` 啟動）。另外兩個修法出自 run c 的逐場對話：使用者訊息不再清掉 brief 的確認（模型在需求變了時自己重提），`draft_missing` 先自動重排一次再問人。
 
 ## 尚待量測與核准
 

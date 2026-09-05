@@ -2913,11 +2913,13 @@ type CreationSnapshot struct {
 	UsageUnknown         bool                 `json:"usage_unknown"`
 	Steps                int                  `json:"steps"`
 	ToolCalls            int                  `json:"tool_calls"`
-	Model                OptString            `json:"model"`
-	PromptVersion        OptString            `json:"prompt_version"`
-	DiagramMediaType     OptString            `json:"diagram_media_type"`
-	DiagramBytes         OptInt               `json:"diagram_bytes"`
-	PreviousDraft        OptCreationDraft     `json:"previous_draft"`
+	// Automatic re-queues after the model answered outcome=draft with no draft (at most one per session).
+	DraftRetries     OptInt           `json:"draft_retries"`
+	Model            OptString        `json:"model"`
+	PromptVersion    OptString        `json:"prompt_version"`
+	DiagramMediaType OptString        `json:"diagram_media_type"`
+	DiagramBytes     OptInt           `json:"diagram_bytes"`
+	PreviousDraft    OptCreationDraft `json:"previous_draft"`
 }
 
 // GetMessages returns the value of Messages.
@@ -3003,6 +3005,11 @@ func (s *CreationSnapshot) GetSteps() int {
 // GetToolCalls returns the value of ToolCalls.
 func (s *CreationSnapshot) GetToolCalls() int {
 	return s.ToolCalls
+}
+
+// GetDraftRetries returns the value of DraftRetries.
+func (s *CreationSnapshot) GetDraftRetries() OptInt {
+	return s.DraftRetries
 }
 
 // GetModel returns the value of Model.
@@ -3113,6 +3120,11 @@ func (s *CreationSnapshot) SetSteps(val int) {
 // SetToolCalls sets the value of ToolCalls.
 func (s *CreationSnapshot) SetToolCalls(val int) {
 	s.ToolCalls = val
+}
+
+// SetDraftRetries sets the value of DraftRetries.
+func (s *CreationSnapshot) SetDraftRetries(val OptInt) {
+	s.DraftRetries = val
 }
 
 // SetModel sets the value of Model.

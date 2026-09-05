@@ -151,6 +151,12 @@ export interface CreationSnapshot {
      */
     toolCalls: number;
     /**
+     * Automatic re-queues after the model answered outcome=draft with no draft (at most one per session).
+     * @type {number}
+     * @memberof CreationSnapshot
+     */
+    draftRetries?: number;
+    /**
      * 
      * @type {string}
      * @memberof CreationSnapshot
@@ -229,6 +235,7 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'usageUnknown': json['usage_unknown'],
         'steps': json['steps'],
         'toolCalls': json['tool_calls'],
+        'draftRetries': json['draft_retries'] == null ? undefined : json['draft_retries'],
         'model': json['model'] == null ? undefined : json['model'],
         'promptVersion': json['prompt_version'] == null ? undefined : json['prompt_version'],
         'diagramMediaType': json['diagram_media_type'] == null ? undefined : json['diagram_media_type'],
@@ -265,6 +272,7 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'usage_unknown': value['usageUnknown'],
         'steps': value['steps'],
         'tool_calls': value['toolCalls'],
+        'draft_retries': value['draftRetries'],
         'model': value['model'],
         'prompt_version': value['promptVersion'],
         'diagram_media_type': value['diagramMediaType'],

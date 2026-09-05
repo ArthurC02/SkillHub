@@ -35,9 +35,12 @@ func TestCreationBatchCandidateSurvivesAMessage(t *testing.T) {
 	if v.Snapshot.Candidate == nil || *v.Snapshot.Candidate != candidate {
 		t.Fatalf("message discarded the materialized candidate: %+v", v)
 	}
+	// Since 2026-09-06 a message keeps the confirmed brief (proposal() still
+	// un-confirms when the model changes it), so the next step drafts directly.
 	v = creationStep(t, s, v)
-	v = creationAct(t, c, v, "confirm_brief")
-	v = creationStep(t, s, v)
+	if !v.Snapshot.BriefConfirmed {
+		t.Fatalf("an ordinary message un-confirmed the brief: %+v", v)
+	}
 	if v.Snapshot.Draft == nil || v.Snapshot.Draft.ContentHash != draftHash {
 		t.Fatalf("draft changed after an ordinary message: %+v", v)
 	}

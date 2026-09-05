@@ -149,3 +149,21 @@ func TestAccountPurgeRemovesCreationSessions(t *testing.T) {
 	}
 	_ = v
 }
+
+// 2026-09-06 run c: a plain 「請繼續」 after a confirmed brief must not send
+// the session back through propose→confirm.
+func TestCreationMessageKeepsAConfirmedBrief(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	alice := a.login(t, "creation-keep-brief")
+	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v = creationStep(t, s, v)
+	v = creationAct(t, alice, v, "confirm_brief")
+	v = creationStep(t, s, v)
+	if !v.Snapshot.BriefConfirmed {
+		t.Fatal("fixture did not confirm the brief")
+	}
+	v = creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "message", "message": "請繼續。"}, 200)
+	if !v.Snapshot.BriefConfirmed || v.State != "queued" {
+		t.Fatalf("a message un-confirmed the brief: confirmed=%v state=%s", v.Snapshot.BriefConfirmed, v.State)
+	}
+}

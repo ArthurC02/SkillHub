@@ -235,7 +235,11 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			return View{}, nil, ErrInvalidCommand
 		}
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "user", Content: c.Message})
-		p.BriefConfirmed = false
+		// The confirmation is NOT cleared here (2026-09-06 run c: 「請繼續」 after
+		// a confirmed brief sent two sessions back through propose→confirm for
+		// nothing). GEN-007's 「更正已確認的需求→確認失效」 still holds: the model
+		// is told to propose a new confirmation when the newest user message
+		// changes the requirements, and proposal() un-confirms on any change.
 		p.PendingAction = ""
 		queueStep = true
 	case "confirm_brief":

@@ -413,6 +413,15 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			return "", false, err
 		}
 		r.Message = sentence
+		if r.Reason == "draft_missing" && p.DraftRetries < 1 && canSpend(*p, e.Limits) {
+			// run c (2026-09-06): the model sometimes answers outcome=draft with
+			// draft null and gets it right on the next call. One paid retry
+			// before asking the person costs one call and saves a whole turn.
+			p.DraftRetries++
+			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "模型這一步沒有交出草稿，已自動再試一次。"})
+			p.PendingAction = ""
+			return "queued", true, nil
+		}
 	}
 	if r.DiagramUnderstanding != "" && !validDiagramInterpretation(r.DiagramUnderstanding) {
 		return "", false, ErrInvalidCommand

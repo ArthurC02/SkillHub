@@ -8,11 +8,12 @@
 
 會自動記錄的：格式是否通過（`skillpkg.Validate` 沒擋）、每場會話的輪數／模型呼叫次數／工具呼叫次數／自動確認次數／澄清次數、成本（`Snapshot.SpentUSD`，未知時標 `usage_unknown`）、每次模型呼叫的秒數與 p50/p95、最終狀態、是否產出草稿與是否被擋、驗收條件數、是否建立了 Test Case。
 
+現在會自動記錄的（設定了下面的「跑法（含 Run 階段）」才會有）：**任務達成（`met`）**——materialize 出候選 Skill 後對它自己的 Test Case 跑一次真的 Run（同 `gen009_baseline_test.go` 的呼叫方式：真物件儲存、真 Sandbox provider、真 Judge），等到終態與評估結果，`met` = 評估的 `overall` 是否為 `"met"`；接著把這個 Run 用 `attach_run` 餵回會話，再跑一步看模型是否修改了草稿（`revised_after_run`）。評估沒能跑到終態時 `met` 留 `null`，原因記在 `met_note`。`results.json` 的 `summary` 多了 `met_count`／`met_denominator`（達成數／有評估結果的場數）。
+
 量不到的：
-- **任務達成（`met`）** 需要把候選 Skill 接上一次 Run，讓 `GEN-009 ③④`／評估流程判定；這個 harness 只到「草稿驗證通過」為止，不跑 Sandbox，也不叫 Judge。
 - **真人願意採用（`kept`）** 需要一個人讀過產出的 SKILL.md 判斷值不值得用；這個 harness 只負責把 30 份（15 互動＋15 單次）dump 出來給人讀。
 
-`results.json` 的每筆互動會話列都留了 `met_by_owner`／`kept_by_owner` 兩個欄位，值是 `null`——填這兩欄是這份文件下面「跑完之後」那一節的事，不是這個測試的事。
+`results.json` 的每筆互動會話列還留了 `met_by_owner`／`kept_by_owner` 兩個欄位：`met_by_owner` 給一個人覆核／推翻自動填的 `met`（值仍是 `null`，只在需要覆核時填），`kept_by_owner` 一樣要人填——填 `kept_by_owner`（與需要覆核時的 `met_by_owner`）是這份文件下面「跑完之後」那一節的事，不是這個測試的事。
 
 ## 跑法（約數美元，15 場會話 × 最高 $1 上限，實際多半個位數美元）
 
@@ -41,12 +42,24 @@ node tools/cleanmode/with-service-key.mjs -- env \
 
 跑完把 `<scratch>/out/results.json` 與 30 份 `*.SKILL.md`（`<id>-interactive.SKILL.md`、`<id>-single.SKILL.md`）搬進這個目錄。
 
+### 跑法（含 Run 階段，選配——多花 Sandbox 與 Judge 那筆錢）
+
+不設定就完全不影響上面的跑法。要讓 `met` 自動填，另外設定：
+
+```
+SKILLHUB_E2E_SANDBOX_URL / SKILLHUB_E2E_SANDBOX_TOKEN
+OBJSTORE_ENDPOINT / OBJSTORE_ACCESS_KEY / OBJSTORE_SECRET_KEY
+SKILLHUB_E2E_PUBLIC_HOST
+SKILLHUB_MODEL_GATEWAY_URL / SKILLHUB_MODEL_GATEWAY_KEY
+```
+
+這五組就是 `gen009_baseline_test.go`（GEN-009 ③）已經在用的那一組，起 Postgres／SeaweedFS／LiteLLM／`sandboxd` 三個程序的完整配方（含跨平台限制、映像版本與容器內跑測試的理由）不重抄一份，見 [automation.md〈三個程序〉](../../../../development/automation.md#三個程序) 與其後「測試程序要跑在容器裡」兩節。任一變數沒設，這個測試就照舊只到 `candidate_ready`，`met` 全部是 `null`。
+
 ## 跑完之後（負責人的事，這個 harness 做不到）
 
-1. 對每場互動會話的候選 Skill（`Snapshot.Candidate` 非空的那幾筆）跑一次 Run，用評估流程判定 `met`，把結果填進 `results.json` 對應列的 `met_by_owner`。
-2. 找人讀完 30 份 SKILL.md（15 互動＋15 單次），判斷願不願意採用，填 `kept_by_owner`。
-3. 對照 05 R-45 的門檻：格式通過 ≥ 14/15、任務達成 ≥ 9/15、真人採用 ≥ 12/15（單次基線 15/19，多輪不得更差）、每場成本中位 ≤ $0.50、每次模型呼叫等待 p50 ≤ 60s、p95 ≤ 90s（`results.json` 的 `thresholds` 與 `summary` 兩個區塊已經算好 `format_pass`／成本中位／p50／p95，`met`／`kept` 那兩項自己數）。
-4. 把跑出來的數字寫回 `05-pending-rulings.md` R-45（或它的後續紀錄），不要回頭改這份 README。
+1. 找人讀完 30 份 SKILL.md（15 互動＋15 單次），判斷願不願意採用，填 `kept_by_owner`。
+2. 對照 05 R-45 的門檻：格式通過 ≥ 14/15、任務達成 ≥ 9/15、真人採用 ≥ 12/15（單次基線 15/19，多輪不得更差）、每場成本中位 ≤ $0.50、每次模型呼叫等待 p50 ≤ 60s、p95 ≤ 90s（`results.json` 的 `thresholds`／`summary` 已經算好 `format_pass`／成本中位／p50／p95／`met_count`／`met_denominator`；沒跑 Run 階段時後兩者是 0，`kept` 仍要人數）。看到某筆自動 `met` 判斷有問題（例如評估用的驗收條件本身有爭議），在 `met_by_owner` 覆寫並說明。
+3. 把跑出來的數字寫回 `05-pending-rulings.md` R-45（或它的後續紀錄），不要回頭改這份 README。
 
 **尚未跑。**
 

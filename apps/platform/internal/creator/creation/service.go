@@ -137,14 +137,17 @@ type Snapshot struct {
 	UsageUnknown         bool        `json:"usage_unknown"`
 	Steps                int         `json:"steps"`
 	ToolCalls            int         `json:"tool_calls"`
-	Draft                *Draft      `json:"draft,omitempty"`
-	PreviousDraft        *Draft      `json:"previous_draft,omitempty"`
-	Candidate            *Candidate  `json:"candidate,omitempty"`
-	DiagramFingerprint   string      `json:"diagram_fingerprint,omitempty"`
-	DiagramMediaType     string      `json:"diagram_media_type,omitempty"`
-	DiagramBytes         int         `json:"diagram_bytes,omitempty"`
-	Model                string      `json:"model,omitempty"`
-	PromptVersion        string      `json:"prompt_version,omitempty"`
+	// DraftRetries counts the automatic re-queues after the model answered
+	// outcome=draft with no draft (reason draft_missing); at most one per session.
+	DraftRetries       int        `json:"draft_retries,omitempty"`
+	Draft              *Draft     `json:"draft,omitempty"`
+	PreviousDraft      *Draft     `json:"previous_draft,omitempty"`
+	Candidate          *Candidate `json:"candidate,omitempty"`
+	DiagramFingerprint string     `json:"diagram_fingerprint,omitempty"`
+	DiagramMediaType   string     `json:"diagram_media_type,omitempty"`
+	DiagramBytes       int        `json:"diagram_bytes,omitempty"`
+	Model              string     `json:"model,omitempty"`
+	PromptVersion      string     `json:"prompt_version,omitempty"`
 }
 type envelope struct {
 	Snapshot        Snapshot    `json:"snapshot"`
