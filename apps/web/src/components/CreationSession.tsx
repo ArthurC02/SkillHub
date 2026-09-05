@@ -31,9 +31,9 @@ function readImage(file: File): Promise<{ media_type: string; data: string }> {
   if (
     !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
     file.size === 0 ||
-    file.size > 5 * 1024 * 1024
+    file.size > 4_000_000
   )
-    return Promise.reject(new Error("請選擇 5 MiB 以內的 PNG、JPEG 或 WebP 流程圖。"));
+    return Promise.reject(new Error("請選擇 4 MB 以內的 PNG、JPEG 或 WebP 流程圖。"));
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("流程圖無法讀取，請重新選擇。"));
@@ -57,6 +57,75 @@ function Findings({ raw }: { raw: string }) {
       ))}
     </ul>
   );
+}
+type DiagramUnderstanding = {
+  nodes: string[];
+  conditions: string[];
+  branches: string[];
+  uncertainties: string[];
+};
+const diagramSections: (keyof DiagramUnderstanding)[] = [
+  "nodes",
+  "conditions",
+  "branches",
+  "uncertainties",
+];
+const diagramLabels: Record<keyof DiagramUnderstanding, string> = {
+  nodes: "節點",
+  conditions: "條件",
+  branches: "分支",
+  uncertainties: "不確定處",
+};
+function parseDiagramUnderstanding(raw: string): DiagramUnderstanding | undefined {
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    const record = value as Record<string, unknown>;
+    if (Object.keys(record).length !== diagramSections.length) return undefined;
+    if (!diagramSections.every((key) => Array.isArray(record[key]))) return undefined;
+    const sections = Object.fromEntries(
+      diagramSections.map((key) => [key, record[key] as unknown[]]),
+    ) as Record<keyof DiagramUnderstanding, unknown[]>;
+    if (sections.nodes.length === 0) return undefined;
+    if (!diagramSections.every((key) => sections[key].every((item) => typeof item === "string")))
+      return undefined;
+    return Object.fromEntries(
+      diagramSections.map((key) => [key, sections[key] as string[]]),
+    ) as DiagramUnderstanding;
+  } catch {
+    return undefined;
+  }
+}
+function DiagramUnderstandingView({ raw }: { raw: string }) {
+  const structured = parseDiagramUnderstanding(raw);
+  if (!structured)
+    return (
+      <>
+        <p>{raw}</p>
+        <p className="note">請在對話要求重新整理，或重新上傳後確認。</p>
+      </>
+    );
+  return (
+    <div>
+      {diagramSections.map((key) => (
+        <section key={key}>
+          <h5>{diagramLabels[key]}</h5>
+          {structured[key].length > 0 ? (
+            <ul>
+              {structured[key].map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>未列出</p>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+function declaredReferenceField(value?: string) {
+  return value?.trim() ? value : "未宣告";
 }
 export function CreationSession() {
   const client = useQueryClient();
@@ -266,7 +335,7 @@ export function CreationSession() {
           )}
           {mode === "diagram" && (
             <label>
-              流程圖（PNG、JPEG、WebP，最多 5 MiB）
+              流程圖（PNG、JPEG、WebP，最多 4 MB）
               <input
                 aria-label="流程圖"
                 type="file"
@@ -333,10 +402,13 @@ export function CreationSession() {
           {p.diagram_understanding && (
             <section>
               <h4>流程圖理解</h4>
-              <p>{p.diagram_understanding}</p>
+              <DiagramUnderstandingView raw={p.diagram_understanding} />
               <p>{p.diagram_confirmed ? "已確認" : "尚未確認"}</p>
               {p.pending_action === "confirm_diagram" && (
-                <button disabled={locked} onClick={() => void perform("confirm_diagram")}>
+                <button
+                  disabled={locked || !parseDiagramUnderstanding(p.diagram_understanding)}
+                  onClick={() => void perform("confirm_diagram")}
+                >
                   確認流程圖理解
                 </button>
               )}
@@ -345,17 +417,35 @@ export function CreationSession() {
           {(p.references.length > 0 || p.pending_action === "confirm_references") && (
             <section>
               <h4>參考 Skill</h4>
-              <ul>
-                {p.references.map((r) => (
-                  <li key={r.skill_id}>
-                    {r.name}：{!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}
-                    <details>
-                      <summary>固定版本</summary>
-                      {r.version_id}
-                    </details>
-                  </li>
-                ))}
-              </ul>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Skill</th>
+                    <th>摘要</th>
+                    <th>相容</th>
+                    <th>工具</th>
+                    <th>版本</th>
+                    <th>狀態</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {p.references.map((r) => (
+                    <tr key={r.skill_id}>
+                      <th scope="row">{r.name}</th>
+                      <td>{declaredReferenceField(r.description)}</td>
+                      <td>{declaredReferenceField(r.compatibility)}</td>
+                      <td>{declaredReferenceField(r.allowed_tools)}</td>
+                      <td>
+                        <details>
+                          <summary>固定版本</summary>
+                          {r.version_id}
+                        </details>
+                      </td>
+                      <td>{!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
               {p.pending_action === "confirm_references" && (
                 <button
                   disabled={locked || p.references.some((r) => !r.available)}

@@ -18,19 +18,23 @@ export interface CreationSkill {
   body: string;
   files: { path: string; content: string }[];
 }
+export interface CreationReference {
+  skill_id: string;
+  version_id: string;
+  name: string;
+  confirmed: boolean;
+  available: boolean;
+  description?: string;
+  compatibility?: string;
+  allowed_tools?: string;
+}
 export interface CreationSnapshot {
   messages: { role: "user" | "assistant" | "tool"; content: string }[];
   brief: string;
   brief_confirmed: boolean;
   diagram_understanding: string;
   diagram_confirmed: boolean;
-  references: {
-    skill_id: string;
-    version_id: string;
-    name: string;
-    confirmed: boolean;
-    available: boolean;
-  }[];
+  references: CreationReference[];
   pending_action: string;
   budget_usd: number;
   reserved_usd: number;

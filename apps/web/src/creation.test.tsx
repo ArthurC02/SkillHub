@@ -152,13 +152,71 @@ test("diagram starts with an unbilled empty session then sends transient input",
     diagram: { media_type: "image/png", data: btoa("private diagram") },
   });
 });
+test("structured diagram understanding renders all four sections", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.diagram_understanding = JSON.stringify({
+    nodes: ["開始", "整理"],
+    conditions: [],
+    branches: ["完成"],
+    uncertainties: [],
+  });
+  v.snapshot.pending_action = "confirm_diagram";
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(v);
+      }
+      return response(url.endsWith("/creation-sessions") ? [v] : v);
+    }),
+  );
+  await render();
+  await resume();
+  expect(box.textContent).toContain("節點");
+  expect(box.textContent).toContain("條件");
+  expect(box.textContent).toContain("分支");
+  expect(box.textContent).toContain("不確定處");
+  expect(box.textContent).toContain("未列出");
+  expect(box.textContent).toContain("開始");
+  expect(box.textContent).toContain("完成");
+  await click("確認流程圖理解");
+  expect(posts[0]).toMatchObject({ kind: "confirm_diagram", expected_revision: 7 });
+});
+test("legacy diagram understanding stays visible with refresh notice", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.diagram_understanding = "開始 → 摘要";
+  v.snapshot.pending_action = "confirm_diagram";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => response(url.endsWith("/creation-sessions") ? [v] : v)),
+  );
+  await render();
+  await resume();
+  expect(box.textContent).toContain("開始 → 摘要");
+  expect(box.textContent).toContain("請在對話要求重新整理，或重新上傳後確認");
+  expect(box.textContent).not.toContain("節點");
+  expect(button("確認流程圖理解").disabled).toBe(true);
+});
 test("catalog references can start a session and require confirmation", async () => {
   const posts: Record<string, unknown>[] = [];
   const v = sample();
   v.snapshot.pending_action = "confirm_references";
   v.snapshot.references = [
-    { skill_id: "ref-1", version_id: "v1", name: "摘要 Skill", available: true, confirmed: false },
+    {
+      skill_id: "ref-1",
+      version_id: "v1",
+      name: "摘要 Skill",
+      available: true,
+      confirmed: false,
+      description: "整理輸入並輸出摘要",
+      compatibility: "需要文字輸入",
+      allowed_tools: "Bash",
+    },
   ];
+  v.snapshot.model = "secret-model";
+  v.snapshot.prompt_version = "secret-prompt";
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
@@ -177,13 +235,28 @@ test("catalog references can start a session and require confirmation", async ()
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toMatchObject({ kind: "select_references", reference_skill_ids: ["ref-1"] });
   await waitFor(() => box.textContent!.includes("確認參考 Skill"));
+  expect(box.textContent).toContain("整理輸入並輸出摘要");
+  expect(box.textContent).toContain("需要文字輸入");
+  expect(box.textContent).toContain("Bash");
+  expect(box.textContent).toContain("固定版本");
+  expect(box.textContent).not.toContain("secret-model");
+  expect(box.textContent).not.toContain("secret-prompt");
+  const urls = (fetch as unknown as { mock: { calls: [string, RequestInit?][] } }).mock.calls.map(
+    ([url]) => url,
+  );
+  expect(urls.some((url) => /latest|detail|files/.test(url))).toBe(false);
   await click("確認參考 Skill");
   await waitFor(() => posts.length === 3);
   expect(posts[2]).toMatchObject({ kind: "confirm_references", expected_revision: 7 });
 });
 test("resume shows unknown costs and confirms the displayed diagram revision", async () => {
   const v = sample({ state: "waiting_confirmation" });
-  v.snapshot.diagram_understanding = "開始 → 摘要";
+  v.snapshot.diagram_understanding = JSON.stringify({
+    nodes: ["開始", "摘要"],
+    conditions: [],
+    branches: [],
+    uncertainties: [],
+  });
   v.snapshot.pending_action = "confirm_diagram";
   const posts: Record<string, unknown>[] = [];
   vi.stubGlobal(
