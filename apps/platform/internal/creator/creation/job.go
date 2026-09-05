@@ -367,6 +367,7 @@ var reasonSentences = map[string]string{
 	"validation_unavailable": "目前無法驗證草稿，請補充需求或稍後再試。",
 	"diagram_incomplete":     "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
 	"search_query_missing":   "請告訴我要在目錄中搜尋什麼關鍵字。",
+	"draft_missing":          "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。",
 }
 
 // reasonSentence looks up the sentence for a guard-rail reason code; an
@@ -455,6 +456,14 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	case "confirm_brief":
 		if strings.TrimSpace(p.Brief) == "" {
 			return "", false, ErrInvalidCommand
+		}
+		if p.BriefConfirmed {
+			// The brief and criteria did not change (a change was handled above),
+			// yet the model asks for the same confirmation again. 2026-09-06's
+			// measurement saw 3/15 sessions loop here until the step budget was
+			// gone. Keep the confirmation and hand the turn back to the person.
+			p.PendingAction = ""
+			return "waiting_input", false, nil
 		}
 		p.BriefConfirmed = false
 		p.PendingAction = "confirm_brief"

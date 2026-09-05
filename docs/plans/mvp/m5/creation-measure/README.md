@@ -1,4 +1,4 @@
-# 互動創作 vs 單次生成的量測（harness 就位，2026-09-06；**尚未跑**）
+# 互動創作 vs 單次生成的量測（harness 就位，2026-09-06；**2026-09-06 跑了三次，見 [report.md](report.md)**）
 
 02:GEN-012 的證據條與 05 R-45 的量測門檻要的是一份分布：同 15 個任務，一次跑互動創作（15 場多輪會話：文字、流程圖、參考各 5 場），一次跑單次生成，兩邊對比。這個目錄就是把它變成分布所需的一切，除了那筆錢——啟動 `apps/llm` 對真實閘道那一步要負責人親自起（代理權限擋下了，這裡也一樣擋）。
 
@@ -26,7 +26,7 @@ task dev:llm
 # 3) 再一個終端，從 repo root：用 with-service-key.mjs 簽一把限額 Virtual Key 給這個 go test 進程，
 #    當作互動創作每一步要用的 X-Creation-Gateway-Key
 node tools/cleanmode/with-service-key.mjs -- env \
-  CREATION_MEASURE_CORPUS=docs/plans/mvp/m5/gen-modes-batch/corpus.json \
+  CREATION_MEASURE_CORPUS=<repo 絕對路徑>/docs/plans/mvp/m5/gen-modes-batch/corpus.json \
   CREATION_MEASURE_DIAGRAMS=<scratch>/diagrams \
   CREATION_MEASURE_OUT=<scratch>/out \
   SKILLHUB_E2E_LLM_URL=http://127.0.0.1:8000 \
@@ -49,3 +49,5 @@ node tools/cleanmode/with-service-key.mjs -- env \
 4. 把跑出來的數字寫回 `05-pending-rulings.md` R-45（或它的後續紀錄），不要回頭改這份 README。
 
 **尚未跑。**
+
+三個路徑都用**絕對路徑**：`go -C apps/platform` 會把相對路徑從套件目錄解析（第一次實跑就撞到 `open …corpus.json: cannot find`）。第二把金鑰要帶 `SKILLHUB_SERVICE_KEY_ALIAS=<不同名字>`，LiteLLM 拒絕重複的 key alias；預算用 `SKILLHUB_SERVICE_KEY_BUDGET_USD`（0～20）。

@@ -1,0 +1,26 @@
+{
+  "acceptance_criteria": [
+    "Given a single support ticket input, the Skill output describes the four workflow steps in order: receive, tag, draft 200-word reply, send and close.",
+    "The output explicitly mentions Zendesk tagging but does not invent a specific category value.",
+    "The output includes a 200-word reply drafting requirement.",
+    "The output does not add any decision branches or alternate paths.",
+    "The output does not assume unstated tools, users, or closure mechanisms.",
+    "The produced Skill is portable and formatted as Markdown with lowercase hyphenated names."
+  ],
+  "brief": "Create a portable Agent Skill that follows the confirmed support-ticket workflow from the diagram: receive a support ticket, tag it with a Zendesk category, draft a reply in 200 words, then send the reply and close the ticket. The Skill should be written in Markdown, use lowercase hyphenated naming, and stay within the confirmed workflow only. It should not invent missing Zendesk categories, branching logic, or closure details.",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "I read the diagram as a simple linear support-ticket workflow. Please confirm this understanding before I draft the Skill."
+    },
+    {
+      "role": "assistant",
+      "content": "I don’t have a confirmed task brief yet. Please confirm this brief and the acceptance criteria, or edit them if needed:\n\nBrief: Create a portable Agent Skill that follows the confirmed support-ticket workflow from the diagram: receive a support ticket, tag it with a Zendesk category, draft a reply in 200 words, then send the reply and close the ticket. The Skill should be written in Markdown, use lowercase hyphenated naming, and stay within the confirmed workflow only. It should not invent missing Zendesk categories, branching logic, or closure details.\n\nAcceptance criteria:\n1. Given a single support ticket input, the Skill output describes the four workflow steps in order: receive, tag, draft 200-word reply, send and close.\n2. The output explicitly mentions Zendesk tagging but does not invent a specific category value.\n3. The output includes a 200-word reply drafting requirement.\n4. The output does not add any decision branches or alternate paths.\n5. The output does not assume unstated tools, users, or closure mechanisms.\n6. The produced Skill is portable and formatted as Markdown with lowercase hyphenated names.\n\nPlease reply with confirm or request changes."
+    },
+    {
+      "role": "assistant",
+      "content": "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
+    }
+  ],
+  "state": "failed"
+}

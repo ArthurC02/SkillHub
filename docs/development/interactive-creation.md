@@ -84,7 +84,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 - **`reason` 碼**：Python 護欄只回碼，Go 出句子；`creation.py` 不再有中文。
 - 值與門檻見 `05` R-45；同意書 §3 新增互動創作一列（法務尚未看過，功能封測期間不曝光）。
 - **逐句稽核後補的兩刀（同日稍晚）**：候選的 `generation_inputs` 帶 `interactive: true`，`CountGeneratedSkills` 排除它——互動創作不吃單次生成額度；`TestAccountPurgeRemovesCreationSessions` 守住帳號清除的 creation 步驤。
-- **量測 harness**：`TestCreationMeasureFifteenSessionsAgainstSingleShot`（跑法見 [creation-measure/README](../plans/mvp/m5/creation-measure/README.md)）——15 場多輪（三入口各 5）＋同 15 題單次對照，記錄每次呼叫秒數、費用、格式通過、驗收條件數、Test Case；`met`／`kept` 兩欄留給負責人與真人。**尚未跑。**
+- **量測 harness**：`TestCreationMeasureFifteenSessionsAgainstSingleShot`（跑法見 [creation-measure/README](../plans/mvp/m5/creation-measure/README.md)）——15 場多輪（三入口各 5）＋同 15 題單次對照，記錄每次呼叫秒數、費用、格式通過、驗收條件數、Test Case；`met`／`kept` 兩欄留給負責人與真人。**2026-09-06 跑了三次**（a→b→c，各修一次；[報告](../plans/mvp/m5/creation-measure/report.md)）：run c 15／15 草稿、13／15 候選＋Test Case、$0.018／場、p50 5 s。兩個只在真模型下才出現的缺陷（確認迴圈、`draft: null` 被判 502）由此修掉（`04` 丙-174）。啟動細節：`.env` 沒有 `LITELLM_BASE_URL`／`SKILLHUB_MODEL_GATEWAY_*` 時，用命令列帶入（值不落地）；第二把金鑰要 `SKILLHUB_SERVICE_KEY_ALIAS`，預算用 `SKILLHUB_SERVICE_KEY_BUDGET_USD`。
 
 ## 尚待量測與核准
 

@@ -1,0 +1,33 @@
+{
+  "acceptance_criteria": [
+    "在輸入為一份伺服器 log 檔時，Skill 會描述先篩出 ERROR 行，再依錯誤數量是否超過 10 筆分支處理。",
+    "在錯誤數量大於 10 筆的情境下，Skill 會包含建立 Jira 問題單、通知值班工程師，並在最後寫入每日摘要。",
+    "在錯誤數量不大於 10 筆的情境下，Skill 只會包含寫入每日摘要，不會加入建立 Jira 或通知工程師的步驟。",
+    "Skill 會清楚列出需要的工具需求，且只提及流程中明確出現的工具或動作。",
+    "Skill 不會宣稱存在未在流程圖中確認的額外分支或步驟。"
+  ],
+  "brief": "建立一個可攜式 Agent Skill：從伺服器 log 中找出 ERROR 行，判斷錯誤數量是否超過 10 筆，若超過則建立 Jira 問題單並通知值班工程師，最後輸出每日摘要。Skill 應明確說明輸入、輸出、條件分支與工具需求，並只依據已確認的流程圖內容，不新增未提供的分支。",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "我已讀取流程圖，先整理成可確認的結構如下，請確認是否正確；我不會在你確認前開始撰寫 Skill。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先提出一個可確認的創作簡報，請你確認後我再進一步處理。這次不重述已確認的流程圖理解。"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是依照已確認的簡報與流程圖理解撰寫的 Skill 草案。我保留了既有範圍，不新增未確認的步驟。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "The confirmed brief and diagram are already satisfied by the current draft. No new requirements are pending; the only validation finding is an unknown-license warning, which is not a blocker under the current brief."
+    }
+  ],
+  "state": "candidate_ready"
+}

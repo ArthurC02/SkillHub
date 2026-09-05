@@ -564,6 +564,7 @@ class Reason(Enum):
     validation_unavailable = 'validation_unavailable'
     diagram_incomplete = 'diagram_incomplete'
     search_query_missing = 'search_query_missing'
+    draft_missing = 'draft_missing'
 
 
 class CreationDraftValidation(BaseModel):

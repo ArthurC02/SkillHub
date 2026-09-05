@@ -1878,7 +1878,7 @@ components:
           maxLength: 20000
         reason:
           type: string
-          enum: [tool_unavailable, confirm_diagram_first, confirm_brief_first, validation_unavailable, diagram_incomplete, search_query_missing]
+          enum: [tool_unavailable, confirm_diagram_first, confirm_brief_first, validation_unavailable, diagram_incomplete, search_query_missing, draft_missing]
           description: Set only by the service's own guard rails, never by the model. When present, Go replaces message with its own sentence for the code; message is then a language-neutral fallback (05 R-46 (c)).
         brief:
           type: string

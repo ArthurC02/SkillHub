@@ -1,0 +1,33 @@
+{
+  "acceptance_criteria": [
+    "The Skill body includes the full four-part structure and reflects the confirmed diagram steps without adding any unconfirmed decision branches.",
+    "The Skill explicitly lists the diagram uncertainties about manual vs automated import, missing-field specifics, and manual vs automatic customer reply.",
+    "The Skill describes the workflow in a way that can be followed as a portable skill document, not as a one-off task note.",
+    "The Skill does not claim any tool use, automation, or success that was not confirmed.",
+    "The Skill uses only the confirmed diagram content and does not introduce extra steps beyond the five named nodes."
+  ],
+  "brief": "Create a portable Agent Skill that describes a workflow for processing a customer Excel order by converting it to CSV, checking for missing fields, importing it into Shopify admin, and replying that the order has been placed. The Skill should stay faithful to the confirmed diagram, avoid inventing any missing branches, and explicitly note the current uncertainties about automation, required fields, and reply handling. No external tools are required unless you want the Skill to include optional validation or catalog lookup guidance.",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "I read the flow as a simple linear process. Please confirm this diagram understanding before I draft anything:\n\n```json\n{\n  \"nodes\": [\n    \"receive customer Excel order\",\n    \"convert to CSV format\",\n    \"check for missing fields\",\n    \"import into Shopify admin\",\n    \"reply to customer that the order has been placed\"\n  ],\n  \"conditions\": [],\n  \"branches\": [],\n  \"uncertainties\": [\n    \"The diagram does not show any decision branches for missing fields; it only shows a check step.\",\n    \"It is unclear whether the Shopify import is manual or automated.\",\n    \"It is unclear what specific fields are considered missing.\",\n    \"It is unclear whether the customer reply is automatic or manual.\"\n  ]\n}"
+    },
+    {
+      "role": "assistant",
+      "content": "Before drafting, please confirm this brief and the acceptance criteria.\n\nBrief:\nCreate a portable Agent Skill that describes a workflow for processing a customer Excel order by converting it to CSV, checking for missing fields, importing it into Shopify admin, and replying that the order has been placed. The Skill should stay faithful to the confirmed diagram, avoid inventing any missing branches, and explicitly note the current uncertainties about automation, required fields, and reply handling. No external tools are required unless you want the Skill to include optional validation or catalog lookup guidance.\n\nAcceptance criteria:\n1. The Skill body includes the full four-part structure and reflects the confirmed diagram steps without adding any unconfirmed decision branches.\n2. The Skill explicitly lists the diagram uncertainties about manual vs automated import, missing-field specifics, and manual vs automatic customer reply.\n3. The Skill describes the workflow in a way that can be followed as a portable skill document, not as a one-off task note.\n4. The Skill does not claim any tool use, automation, or success that was not confirmed.\n5. The Skill uses only the confirmed diagram content and does not introduce extra steps beyond the five named nodes.\n\nIf you want this brief adjusted, tell me what to change; otherwise confirm it and I’ll draft the Skill."
+    },
+    {
+      "role": "assistant",
+      "content": "I have the confirmed brief and diagram. I’ll draft the Skill, then validate it before finishing."
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "The draft satisfies the confirmed brief and diagram. The only validation finding is a non-blocking warning about unknown license, which does not invalidate the skill under the confirmed requirements."
+    }
+  ],
+  "state": "candidate_ready"
+}

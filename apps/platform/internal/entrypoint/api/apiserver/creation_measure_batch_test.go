@@ -302,13 +302,25 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 	row := sessionRow{ID: task.ID, Kind: task.Kind}
 	c := a.login(t, "creation-measure-"+strings.ToLower(task.ID))
 
+	// A session created with a message is already queued, and Act refuses every
+	// command but cancel while a step is queued (409). The diagram session starts
+	// empty so the upload is its first input; the reference session runs its
+	// first step before the references are selected.
 	initialMessage := task.Description
 	if task.Kind == "diagram" {
-		initialMessage = "請依這張流程圖建立 Skill。"
+		initialMessage = ""
 	}
 	v := creationPost(t, c, "/creation-sessions", map[string]any{
 		"id": creationID(t), "message": initialMessage, "budget_usd": limits.MaxCostUSD,
 	}, 200)
+	// The transcript is what explains a row that never reached a draft; the
+	// summary line cannot. Written on every exit path of this function.
+	defer func() {
+		data, err := json.MarshalIndent(map[string]any{"state": v.State, "brief": v.Snapshot.Brief, "acceptance_criteria": v.Snapshot.AcceptanceCriteria, "messages": v.Snapshot.Messages}, "", "  ")
+		if err == nil {
+			_ = os.WriteFile(filepath.Join(outDir, task.ID+"-interactive.transcript.json"), data, 0o600)
+		}
+	}()
 
 	if task.Kind == "diagram" {
 		encoded := base64.StdEncoding.EncodeToString(task.Diagram.Data)
@@ -320,6 +332,8 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 	}
 	if task.Kind == "reference" {
 		refID, _ := importFiles(t, a, testPool, c, map[string]string{"SKILL.md": task.ReferenceMD})
+		v = creationStep(t, s, v)
+		row.ModelCalls++
 		v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
 			"command_id": creationID(t), "expected_revision": v.Revision, "kind": "select_references",
 			"reference_skill_ids": []string{refID},

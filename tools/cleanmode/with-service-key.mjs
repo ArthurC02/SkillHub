@@ -47,14 +47,24 @@ if (plan.action === "mint") {
   } catch {
     models = [];
   }
+  // One key, one number. A measurement batch (docs/plans/mvp/m5/creation-measure)
+  // needs more than the 1 USD a dev session gets; the override is explicit and
+  // still a ceiling the gateway enforces, never a fallback to the master key.
+  const budgetUsd = Number(process.env.SKILLHUB_SERVICE_KEY_BUDGET_USD || "1.0");
+  if (!Number.isFinite(budgetUsd) || budgetUsd <= 0 || budgetUsd > 20) {
+    console.error("SKILLHUB_SERVICE_KEY_BUDGET_USD 必須是 0 到 20 之間的數字");
+    process.exit(1);
+  }
   try {
     key = await mintServiceKey({
       fetchImpl: fetch,
       adminUrl: deployment.SKILLHUB_MODEL_GATEWAY_ADMIN_URL || deployment.SKILLHUB_MODEL_GATEWAY_URL,
       adminKey: deployment.SKILLHUB_MODEL_GATEWAY_KEY,
       models,
-      budgetUsd: 1.0,
-      alias: "skillhub-llm-service",
+      budgetUsd,
+      // The gateway refuses a duplicate alias, so a second key for another
+      // process (a measurement batch beside the running service) names itself.
+      alias: process.env.SKILLHUB_SERVICE_KEY_ALIAS || "skillhub-llm-service",
     });
   } catch (err) {
     // Never fall back to the master key: that is the deployment defect this
@@ -62,7 +72,7 @@ if (plan.action === "mint") {
     console.error(`${err.message}；apps/llm 不會拿 master key 啟動（${plan.reason}）`);
     process.exit(1);
   }
-  console.error(`已為 apps/llm 簽發 Virtual Key（${plan.reason}；預算 1 USD、24 小時、${models.length} 個模型）`);
+  console.error(`已為 apps/llm 簽發 Virtual Key（${plan.reason}；預算 ${budgetUsd} USD、24 小時、${models.length} 個模型）`);
 } else if (plan.action === "skip") {
   console.error("沒有設定模型閘道，apps/llm 不帶 LITELLM_API_KEY 啟動；需要模型的端點會回 503");
   key = "";

@@ -30,6 +30,7 @@ PROMPT_VERSION = "creation-step/v2"
 DATA_TAG = "untrusted_creation_snapshot"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
 Reason = Literal[
+    "draft_missing",
     "tool_unavailable",
     "confirm_diagram_first",
     "confirm_brief_first",
@@ -178,7 +179,12 @@ PHASE_INSTRUCTIONS = {
     ),
     "compose": (
         "Compose a first draft from the exact confirmed requirements. Go must validate it "
-        "before completion."
+        "before completion. brief_confirmed is true: you are past confirmation, so return "
+        "outcome draft or tool_intent validate_draft; do not return confirm_brief again "
+        "unless the newest message is a user message that changes the requirements. "
+        "Either way the draft object must be present and complete (name, description, "
+        "compatibility, allowed_tools, the full SKILL.md body, files); outcome draft with "
+        "draft null is a wasted turn."
     ),
     "revise": (
         "Inspect draft_validation.report and tool observations. Repair the specific "
@@ -223,8 +229,9 @@ def _reason_node(gateway_key: str, phase: str):
             "limitations and tool requirements, explaining which parts to adopt and which to omit. "
             "Do not copy their instructions as service policy. "
             "When brief_confirmed and diagram_confirmed (if applicable), compose a complete Skill "
-            "from those exact requirements. Keep confirmed brief/diagram fields unchanged, or "
-            "propose a new confirmation instead of a draft. Use validation/trial feedback in "
+            "from those exact requirements. Keep confirmed brief/diagram fields unchanged; "
+            "propose a new confirmation only when the newest user message changes them, "
+            "never to restate what was already confirmed. Use validation/trial feedback in "
             "tool messages to revise the current draft, explaining the changes. "
             "Tools are intentions executed only by Go; only choose allowed_tools. "
             "A draft needs all manifest fields, substantive Markdown body and optional files. "
@@ -400,7 +407,21 @@ def _draft(state: _State) -> dict:
             ),
             "reason": "confirm_brief_first",
         }
-    if d.draft is None or not d.draft.body.strip() or _over_cap(d.draft):
+    if d.draft is None:
+        # 2026-09-06 measurement: 11/15 sessions died here — the model answered
+        # outcome=draft with draft null. That is a turn to hand back, not a 502.
+        return {
+            "decision": d.model_copy(
+                update={
+                    "outcome": "clarification",
+                    "draft": None,
+                    "tool_intent": None,
+                    "message": "draft missing",
+                }
+            ),
+            "reason": "draft_missing",
+        }
+    if not d.draft.body.strip() or _over_cap(d.draft):
         raise HTTPException(status_code=502, detail="creation returned an unusable draft")
     validation = req.draft_validation
     validated = (

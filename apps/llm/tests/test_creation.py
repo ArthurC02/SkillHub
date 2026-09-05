@@ -383,7 +383,8 @@ def test_search_intent_and_returned_observations_use_separate_jobs():
 @pytest.mark.parametrize(
     "result,finish",
     [
-        (decision(outcome="draft", draft=None), "stop"),
+        # outcome=draft with draft null is a clarification since 2026-09-06, see
+        # test_draft_outcome_without_a_draft_is_a_clarification_not_a_502.
         (decision(outcome="draft", draft=SKILL | {"body": ""}), "stop"),
         (
             decision(
@@ -582,6 +583,10 @@ def test_field_rules_are_in_compose_but_not_understand_phase():
     assert response.status_code == 200
     compose_prompt = calls[0]["messages"][0]["content"]
     assert "lowercase letters, digits and single hyphens" in compose_prompt
+    # 2026-09-06 measurement: 3/15 sessions looped confirm_brief -> confirm_brief after
+    # confirmation; the compose phase now says so explicitly.
+    assert "do not return confirm_brief again" in compose_prompt
+    assert "do not return confirm_brief again" not in understand_prompt
 
 
 def test_platform_facts_sentence_precedes_the_data_fence():
@@ -633,3 +638,15 @@ def test_legacy_diagram_requires_structured_reconfirmation():
     assert response.status_code == 200
     assert response.json()["outcome"] == "clarification"
     assert response.json()["diagram_understanding"] == ""
+
+
+def test_draft_outcome_without_a_draft_is_a_clarification_not_a_502():
+    response, _ = invoke(
+        request(brief="agreed", brief_confirmed=True, acceptance_criteria=["a"]),
+        decision(outcome="draft", brief="agreed", acceptance_criteria=["a"], draft=None),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["outcome"] == "clarification"
+    assert body["reason"] == "draft_missing"
+    assert body["draft"] is None

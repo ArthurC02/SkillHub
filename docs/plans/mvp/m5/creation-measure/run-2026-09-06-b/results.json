@@ -1,0 +1,509 @@
+{
+  "interactive": [
+    {
+      "id": "R01",
+      "kind": "text",
+      "turns": 3,
+      "model_calls": 2,
+      "tool_calls": 0,
+      "auto_confirms": 1,
+      "clarifications": 0,
+      "cost_usd": 0.00305925,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        4.3706877,
+        2.6448684
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "R02",
+      "kind": "text",
+      "turns": 4,
+      "model_calls": 3,
+      "tool_calls": 1,
+      "auto_confirms": 1,
+      "clarifications": 0,
+      "cost_usd": 0.0175035,
+      "usage_unknown": false,
+      "seconds_per_call": [
+        4.8953994,
+        6.8212762,
+        5.5868158
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "candidate_ready",
+      "draft": true,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": true,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "R03",
+      "kind": "text",
+      "turns": 3,
+      "model_calls": 2,
+      "tool_calls": 0,
+      "auto_confirms": 1,
+      "clarifications": 0,
+      "cost_usd": 0.0039052500000000003,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        5.0008786,
+        2.129503
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "R04",
+      "kind": "text",
+      "turns": 3,
+      "model_calls": 2,
+      "tool_calls": 0,
+      "auto_confirms": 1,
+      "clarifications": 0,
+      "cost_usd": 0.002781,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        2.9959863,
+        2.8476507
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "R05",
+      "kind": "text",
+      "turns": 3,
+      "model_calls": 2,
+      "tool_calls": 0,
+      "auto_confirms": 1,
+      "clarifications": 0,
+      "cost_usd": 0.00265275,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        2.9573467,
+        2.8500017
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "D01",
+      "kind": "diagram",
+      "turns": 4,
+      "model_calls": 3,
+      "tool_calls": 0,
+      "auto_confirms": 2,
+      "clarifications": 0,
+      "cost_usd": 0.00741375,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        4.9408026,
+        4.1435698
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 6,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "D02",
+      "kind": "diagram",
+      "turns": 4,
+      "model_calls": 3,
+      "tool_calls": 0,
+      "auto_confirms": 2,
+      "clarifications": 0,
+      "cost_usd": 0.0077115000000000005,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        4.742599,
+        1.7986725
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "D03",
+      "kind": "diagram",
+      "turns": 4,
+      "model_calls": 3,
+      "tool_calls": 0,
+      "auto_confirms": 2,
+      "clarifications": 0,
+      "cost_usd": 0.005423250000000001,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        3.7971605,
+        3.0938993
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 6,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "D04",
+      "kind": "diagram",
+      "turns": 4,
+      "model_calls": 3,
+      "tool_calls": 0,
+      "auto_confirms": 2,
+      "clarifications": 0,
+      "cost_usd": 0.0072239999999999995,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        6.0050218,
+        4.109646
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "D05",
+      "kind": "diagram",
+      "turns": 6,
+      "model_calls": 4,
+      "tool_calls": 0,
+      "auto_confirms": 3,
+      "clarifications": 0,
+      "cost_usd": 0.00948825,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        2.5611744,
+        4.8335374,
+        1.5371393
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "R06",
+      "kind": "reference",
+      "turns": 4,
+      "model_calls": 4,
+      "tool_calls": 1,
+      "auto_confirms": 1,
+      "clarifications": 0,
+      "cost_usd": 0.0093975,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        3.052061,
+        2.4837954,
+        2.8101328
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "R07",
+      "kind": "reference",
+      "turns": 4,
+      "model_calls": 4,
+      "tool_calls": 1,
+      "auto_confirms": 1,
+      "clarifications": 0,
+      "cost_usd": 0.01746525,
+      "usage_unknown": false,
+      "seconds_per_call": [
+        3.058754,
+        5.3551292,
+        4.5398496999999995
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "candidate_ready",
+      "draft": true,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": true,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "R08",
+      "kind": "reference",
+      "turns": 5,
+      "model_calls": 5,
+      "tool_calls": 2,
+      "auto_confirms": 1,
+      "clarifications": 0,
+      "cost_usd": 0.021389250000000002,
+      "usage_unknown": false,
+      "seconds_per_call": [
+        3.499926,
+        2.3511812,
+        6.0479399,
+        4.6971096
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "candidate_ready",
+      "draft": true,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": true,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "R09",
+      "kind": "reference",
+      "turns": 5,
+      "model_calls": 5,
+      "tool_calls": 2,
+      "auto_confirms": 1,
+      "clarifications": 0,
+      "cost_usd": 0.020595000000000002,
+      "usage_unknown": false,
+      "seconds_per_call": [
+        3.1589983,
+        2.1811423,
+        6.6116321,
+        5.1837036
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "candidate_ready",
+      "draft": true,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": true,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "R10",
+      "kind": "reference",
+      "turns": 5,
+      "model_calls": 4,
+      "tool_calls": 0,
+      "auto_confirms": 2,
+      "clarifications": 0,
+      "cost_usd": 0.01555575,
+      "usage_unknown": true,
+      "seconds_per_call": [
+        5.4629215,
+        7.1689879,
+        5.0845492
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "failed",
+      "draft": false,
+      "blocked": false,
+      "criteria_count": 5,
+      "test_case_id": false,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    }
+  ],
+  "single_shot": [
+    {
+      "id": "R01",
+      "kind": "text",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.004488
+    },
+    {
+      "id": "R02",
+      "kind": "text",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.0053325000000000004
+    },
+    {
+      "id": "R03",
+      "kind": "text",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.0046455
+    },
+    {
+      "id": "R04",
+      "kind": "text",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.00437625
+    },
+    {
+      "id": "R05",
+      "kind": "text",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.0055305
+    },
+    {
+      "id": "D01",
+      "kind": "diagram",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.0026752499999999997
+    },
+    {
+      "id": "D02",
+      "kind": "diagram",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.0027577500000000002
+    },
+    {
+      "id": "D03",
+      "kind": "diagram",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.002124
+    },
+    {
+      "id": "D04",
+      "kind": "diagram",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.0027255
+    },
+    {
+      "id": "D05",
+      "kind": "diagram",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.00305625
+    },
+    {
+      "id": "R06",
+      "kind": "reference",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.0063195
+    },
+    {
+      "id": "R07",
+      "kind": "reference",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.004875
+    },
+    {
+      "id": "R08",
+      "kind": "reference",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.003657
+    },
+    {
+      "id": "R09",
+      "kind": "reference",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.004781250000000001
+    },
+    {
+      "id": "R10",
+      "kind": "reference",
+      "generated": true,
+      "blocked": false,
+      "attempts": 1,
+      "cost_usd": 0.00468075
+    }
+  ],
+  "thresholds": {
+    "format_pass_min": 14,
+    "met_min": 9,
+    "kept_min": 12,
+    "cost_median_max": 0.5,
+    "p50_seconds_max": 60,
+    "p95_seconds_max": 90
+  },
+  "summary": {
+    "format_pass": 19,
+    "cost_median": 0.0077115000000000005,
+    "p50_seconds": 4.109646,
+    "p95_seconds": 6.6116321
+  }
+}

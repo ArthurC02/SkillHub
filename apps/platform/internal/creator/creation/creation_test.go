@@ -230,3 +230,17 @@ func TestProposalReplacesTheMessageFromTheReasonTable(t *testing.T) {
 func testLimitsForProposal() Limits {
 	return Limits{MaxCostUSD: 1, MaxCallCostUSD: .1, MaxSteps: 8, MaxToolCalls: 3, CallTimeout: 2 * time.Second, SessionTimeout: time.Minute, Retention: time.Hour, MaxOutputTokens: 1000}
 }
+
+// A confirmed brief re-proposed unchanged must not become a confirmation loop
+// (2026-09-06 measurement: 3/15 sessions burned their step budget this way).
+func TestProposalKeepsAConfirmedBriefWhenTheModelMerelyRestatesIt(t *testing.T) {
+	s := &Service{}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "整理輸入資料，依指定格式輸出摘要。", BriefConfirmed: true, AcceptanceCriteria: []string{"輸出含摘要"}}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "請再確認一次。", Brief: e.Snapshot.Brief, AcceptanceCriteria: []string{"輸出含摘要"}})
+	if err != nil || next || state != "waiting_input" {
+		t.Fatalf("restated brief: state=%q next=%v err=%v", state, next, err)
+	}
+	if !e.Snapshot.BriefConfirmed || e.Snapshot.PendingAction != "" {
+		t.Fatalf("the confirmation was thrown away: %+v", e.Snapshot)
+	}
+}
