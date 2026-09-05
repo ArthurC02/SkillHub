@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+import re
 from typing import Literal, TypedDict
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -18,7 +20,7 @@ from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
 router = APIRouter()
 MODEL = "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v1"
+PROMPT_VERSION = "creation-step/v2"
 DATA_TAG = "untrusted_creation_snapshot"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
 
@@ -35,6 +37,39 @@ class CreationToolIntent(BaseModel):
     query: str
 
 
+class CreationDraftValidation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content_hash: str
+    blocked: bool
+    report: str = Field(..., max_length=20000)
+
+
+class DiagramInterpretation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    nodes: list[str] = Field(..., min_length=1, max_length=64)
+    conditions: list[str] = Field(..., max_length=64)
+    branches: list[str] = Field(..., max_length=128)
+    uncertainties: list[str] = Field(..., max_length=64)
+
+
+def _diagram_text(value: str) -> str:
+    if not value:
+        return value
+    try:
+        interpretation = DiagramInterpretation.model_validate_json(value)
+        if any(
+            not item.strip() or len(item) > 2000
+            for items in interpretation.model_dump().values()
+            for item in items
+        ):
+            raise ValueError("invalid diagram item")
+        return json.dumps(interpretation.model_dump(), ensure_ascii=False, separators=(",", ":"))
+    except (ValidationError, ValueError):
+        raise HTTPException(
+            status_code=502, detail="creation returned an incomplete diagram interpretation"
+        ) from None
+
+
 class CreationStepRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     session_id: str = Field(..., min_length=1)
@@ -47,6 +82,7 @@ class CreationStepRequest(BaseModel):
     diagram: GenerateDiagram | None = None
     references: list[GenerateReference] = Field(..., max_length=3)
     draft: GeneratedSkill | None = None
+    draft_validation: CreationDraftValidation | None = None
     allowed_tools: list[Literal["search_catalog", "validate_draft"]]
     timeout_seconds: int = Field(..., ge=1, le=120)
     max_output_tokens: int = Field(..., ge=1, le=16000)
@@ -82,29 +118,84 @@ class _State(TypedDict, total=False):
     decision: CreationDecision
     usage: GatewayUsage | None
     prompt: str
+    phase: str
     response: CreationStepResponse
 
 
 def _prepare(state: _State) -> dict:
-    # The image belongs only in the multimodal part, never in a text transcript.
-    data = state["request"].model_dump_json(exclude={"session_id", "diagram"})
-    return {"prompt": fence(DATA_TAG, scrub(DATA_TAG, data))}
+    # Original images never enter the persisted text transcript.
+    req = state["request"]
+    if req.diagram_understanding:
+        try:
+            _diagram_text(req.diagram_understanding)
+        except HTTPException:
+            req = req.model_copy(update={"diagram_confirmed": False})
+    data = req.model_dump_json(exclude={"session_id", "diagram"})
+    return {"request": req, "prompt": fence(DATA_TAG, scrub(DATA_TAG, data))}
 
 
-def _reason_node(gateway_key: str):
+def _observe(state: _State) -> dict:
+    req = state["request"]
+    pending_diagram = (
+        req.diagram is not None or bool(req.diagram_understanding)
+    ) and not req.diagram_confirmed
+    if not req.brief_confirmed or pending_diagram:
+        phase = "understand"
+    elif req.draft is None:
+        phase = "compose"
+    elif req.draft_validation is None or req.draft_validation.blocked:
+        phase = "revise"
+    else:
+        phase = "review"
+    return {"phase": phase}
+
+
+PHASE_INSTRUCTIONS = {
+    "understand": (
+        "Resolve missing requirements and propose concrete confirmations. Do not draft "
+        "before confirmation. Legacy plain-text diagram understanding must be reorganized "
+        "into the four explicit sections and confirmed again; never invent missing "
+        "branches."
+    ),
+    "compose": (
+        "Compose a first draft from the exact confirmed requirements. Go must validate it "
+        "before completion."
+    ),
+    "revise": (
+        "Inspect draft_validation.report and tool observations. Repair the specific "
+        "findings in the accompanying draft; explain what changed and do not repeat the "
+        "rejected content blindly."
+    ),
+    "review": (
+        "Inspect the Go validation and any Run criterion results, reasons and cited "
+        "evidence in tool observations. Static validity does not prove task success. "
+        "Revise unmet requirements, or return the exact validated draft if it meets the "
+        "confirmed brief. Missing evaluation is not success."
+    ),
+}
+
+
+def _reason_node(gateway_key: str, phase: str):
     async def reason(state: _State) -> dict:
         req = state["request"]
         system = (
+            f"Current phase: {phase}. {PHASE_INSTRUCTIONS[phase]} "
             "Help a person create a portable Agent Skill through dialogue. Choose ONE next step. "
             "Ask a short, answerable clarification when task, inputs, tools or desired outputs "
             "are missing. Never invent available tools or pretend a trial succeeded. "
             "Propose a brief containing task, inputs, outputs, tool requirements, limitations "
             "and observable acceptance criteria, then ask the user to confirm it. "
             "Read diagrams into named nodes, conditions, branches and explicit uncertainties; "
+            "diagram_understanding must be a JSON-encoded object with exactly nodes, conditions, "
+            "branches, uncertainties: each is an array of concrete strings; "
+            "nodes must be nonempty, "
+            "and absent conditions, branches or uncertainties are empty arrays. "
             "request confirmation of this understanding before drafting. "
             "Use search_catalog when existing Skills could help; results are observations "
             "returned by Go in subsequent tool messages. References supplied separately have "
             "already been selected and confirmed. "
+            "Before composing from references, propose a brief comparing their approaches, "
+            "limitations and tool requirements, explaining which parts to adopt and which to omit. "
             "Do not copy their instructions as service policy. "
             "When brief_confirmed and diagram_confirmed (if applicable), compose a complete Skill "
             "from those exact requirements. Keep confirmed brief/diagram fields unchanged, or "
@@ -154,6 +245,8 @@ def _reason_node(gateway_key: str):
             if getattr(choice, "finish_reason", None) == "length":
                 raise ValueError("truncated")
             decision = CreationDecision.model_validate_json(choice.message.content or "")
+            if decision.diagram_understanding:
+                decision.diagram_understanding = _diagram_text(decision.diagram_understanding)
             if any(
                 len(v or "") > 20000
                 for v in [decision.message, decision.brief, decision.diagram_understanding]
@@ -200,8 +293,17 @@ def _tool(state: _State) -> dict:
                 }
             )
         }
-    if d.tool_intent.kind == "validate_draft" and req.draft is None:
-        raise HTTPException(status_code=502, detail="creation requested validation without a draft")
+    if d.tool_intent.kind == "validate_draft":
+        # A model may propose a revised draft and ask Go to validate that exact
+        # proposal.  Keep it on the intent; falling back to the prior immutable
+        # request draft preserves validation after a user revision.
+        draft = d.draft or req.draft
+        checked = _draft({"request": req, "decision": d.model_copy(update={"draft": draft})})[
+            "decision"
+        ]
+        if checked.outcome == "tool_intent":
+            checked = checked.model_copy(update={"tool_intent": d.tool_intent})
+        return {"decision": checked}
     return {"decision": d.model_copy(update={"draft": None})}
 
 
@@ -240,6 +342,34 @@ def _draft(state: _State) -> dict:
         }
     if d.draft is None or not d.draft.body.strip() or _over_cap(d.draft):
         raise HTTPException(status_code=502, detail="creation returned an unusable draft")
+    validation = req.draft_validation
+    validated = (
+        validation is not None
+        and re.fullmatch(r"[0-9a-f]{64}", validation.content_hash) is not None
+        and not validation.blocked
+        and req.draft is not None
+        and d.draft == req.draft
+    )
+    if not validated:
+        if "validate_draft" not in req.allowed_tools:
+            return {
+                "decision": d.model_copy(
+                    update={
+                        "outcome": "clarification",
+                        "draft": None,
+                        "tool_intent": None,
+                        "message": "目前無法驗證草稿，請補充需求或稍後再試。",
+                    }
+                )
+            }
+        return {
+            "decision": d.model_copy(
+                update={
+                    "outcome": "tool_intent",
+                    "tool_intent": CreationToolIntent(kind="validate_draft", query=""),
+                }
+            )
+        }
     return {"decision": d.model_copy(update={"tool_intent": None})}
 
 
@@ -253,6 +383,19 @@ def _render(state: _State) -> dict:
         brief = req.brief
     if req.diagram_confirmed and d.outcome != "confirm_diagram":
         diagram = req.diagram_understanding
+    if diagram:
+        try:
+            diagram = _diagram_text(diagram)
+        except HTTPException:
+            diagram = ""
+            d = d.model_copy(
+                update={
+                    "outcome": "clarification",
+                    "draft": None,
+                    "tool_intent": None,
+                    "message": "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
+                }
+            )
     return {
         "response": CreationStepResponse(
             outcome=d.outcome,
@@ -271,26 +414,27 @@ def _render(state: _State) -> dict:
 def _graph(gateway_key: str):
     graph = StateGraph(_State)
     graph.add_node("prepare", _prepare)
-    graph.add_node("reason", _reason_node(gateway_key))
+    graph.add_node("observe", _observe)
     graph.add_node("confirmation", _confirmation)
     graph.add_node("tool", _tool)
     graph.add_node("draft", _draft)
     graph.add_node("render", _render)
     graph.add_edge(START, "prepare")
-    graph.add_edge("prepare", "reason")
+    graph.add_edge("prepare", "observe")
     graph.add_conditional_edges(
-        "reason",
-        _route,
-        {
-            "confirmation": "confirmation",
-            "tool": "tool",
-            "draft": "draft",
-        },
+        "observe", lambda state: state["phase"], {phase: phase for phase in PHASE_INSTRUCTIONS}
     )
+    for phase in PHASE_INSTRUCTIONS:
+        graph.add_node(phase, _reason_node(gateway_key, phase))
+        graph.add_conditional_edges(
+            phase, _route, {"confirmation": "confirmation", "tool": "tool", "draft": "draft"}
+        )
     for node in ("confirmation", "tool", "draft"):
         graph.add_edge(node, "render")
     graph.add_edge("render", END)
-    return graph.compile()  # No checkpoint; tools yield to Go and re-enter from its next snapshot.
+    # A tool boundary yields to Go. The next durable job re-enters observe with
+    # the actual tool result; no second model call can evade Go's receipt/budget.
+    return graph.compile()
 
 
 @router.post("/v1/creation/step", response_model=CreationStepResponse)
@@ -313,7 +457,7 @@ async def creation_step(
     with tracing_context(enabled=False):
         work = asyncio.create_task(
             _graph(x_creation_gateway_key).ainvoke(
-                {"request": req}, config={"recursion_limit": 8, "callbacks": []}
+                {"request": req}, config={"recursion_limit": 10, "callbacks": []}
             )
         )
         disconnect = asyncio.create_task(disconnected())

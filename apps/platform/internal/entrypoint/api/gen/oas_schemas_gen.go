@@ -2394,6 +2394,10 @@ type CreationReference struct {
 	Name      string    `json:"name"`
 	Confirmed bool      `json:"confirmed"`
 	Available bool      `json:"available"`
+	// Description read from this exact immutable reference version.
+	Description   OptString `json:"description"`
+	Compatibility OptString `json:"compatibility"`
+	AllowedTools  OptString `json:"allowed_tools"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -2421,6 +2425,21 @@ func (s *CreationReference) GetAvailable() bool {
 	return s.Available
 }
 
+// GetDescription returns the value of Description.
+func (s *CreationReference) GetDescription() OptString {
+	return s.Description
+}
+
+// GetCompatibility returns the value of Compatibility.
+func (s *CreationReference) GetCompatibility() OptString {
+	return s.Compatibility
+}
+
+// GetAllowedTools returns the value of AllowedTools.
+func (s *CreationReference) GetAllowedTools() OptString {
+	return s.AllowedTools
+}
+
 // SetSkillID sets the value of SkillID.
 func (s *CreationReference) SetSkillID(val uuid.UUID) {
 	s.SkillID = val
@@ -2444,6 +2463,21 @@ func (s *CreationReference) SetConfirmed(val bool) {
 // SetAvailable sets the value of Available.
 func (s *CreationReference) SetAvailable(val bool) {
 	s.Available = val
+}
+
+// SetDescription sets the value of Description.
+func (s *CreationReference) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetCompatibility sets the value of Compatibility.
+func (s *CreationReference) SetCompatibility(val OptString) {
+	s.Compatibility = val
+}
+
+// SetAllowedTools sets the value of AllowedTools.
+func (s *CreationReference) SetAllowedTools(val OptString) {
+	s.AllowedTools = val
 }
 
 // Ref: #/components/schemas/CreationSession

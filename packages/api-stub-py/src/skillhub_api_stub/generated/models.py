@@ -552,6 +552,15 @@ class Outcome(Enum):
     draft = 'draft'
 
 
+class CreationDraftValidation(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    content_hash: str
+    blocked: bool
+    report: constr(max_length=20000)
+
+
 class EmbedResponse(BaseModel):
     embeddings: List[List[float]]
     model: str
@@ -691,7 +700,7 @@ class CreationStepRequest(BaseModel):
     brief_confirmed: bool
     diagram_understanding: constr(max_length=20000) = Field(
         ...,
-        description='Structured nodes, conditions, branches and uncertainties confirmed by the user.',
+        description='Empty before interpretation; otherwise a JSON-encoded object with exactly nodes, conditions, branches and uncertainties string arrays. Nodes must be nonempty. Legacy plain text must be reinterpreted and reconfirmed.',
     )
     diagram_confirmed: bool
     diagram: Optional[GenerateDiagram] = None
@@ -701,6 +710,7 @@ class CreationStepRequest(BaseModel):
         max_length=3,
     )
     draft: Optional[GeneratedSkill] = None
+    draft_validation: Optional[CreationDraftValidation] = None
     allowed_tools: List[AllowedTool]
     timeout_seconds: conint(ge=1, le=120) = Field(
         ..., description='Remaining per-call deadline authorized by Go.'
@@ -715,7 +725,10 @@ class CreationStepResponse(BaseModel):
     outcome: Outcome
     message: constr(max_length=20000)
     brief: constr(max_length=20000)
-    diagram_understanding: constr(max_length=20000)
+    diagram_understanding: constr(max_length=20000) = Field(
+        ...,
+        description='Empty or a JSON-encoded object with exactly nodes, conditions, branches and uncertainties string arrays; nodes must be nonempty.',
+    )
     tool_intent: Optional[CreationToolIntent] = None
     draft: Optional[GeneratedSkill] = None
     model: str

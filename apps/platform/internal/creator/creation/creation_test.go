@@ -71,3 +71,42 @@ func TestLimitsFailClosed(t *testing.T) {
 		t.Fatal("missing limits enabled")
 	}
 }
+
+func TestDiagramInterpretationRequiresAllSectionsBeforeSaving(t *testing.T) {
+	valid := `{"nodes":["start"],"conditions":[],"branches":[],"uncertainties":[]}`
+	for _, value := range []string{"legacy paragraph", `{"nodes":["start"]}`, `{"nodes":[],"conditions":[],"branches":[],"uncertainties":[]}`, `{"nodes":["start"],"conditions":[],"branches":[],"uncertainties":[" "]}`} {
+		p := Snapshot{Brief: "task", BriefConfirmed: true, DiagramFingerprint: "digest", DiagramConfirmed: true, DiagramUnderstanding: value}
+		if validDiagramInterpretation(value) || confirmed(p) {
+			t.Errorf("invalid interpretation accepted: %s", value)
+		}
+	}
+	if !validDiagramInterpretation(valid) {
+		t.Fatal("complete sections rejected")
+	}
+}
+func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
+	for _, confirmedBrief := range []bool{false, true} {
+		calls := 0
+		s := Service{ValidateDraft: func(_ context.Context, draft llmclient.GeneratedSkill) (string, string, bool, error) {
+			calls++
+			if draft.Body != "newly proposed body" {
+				t.Error("validated stale content")
+			}
+			return "new-hash", "actual finding", true, nil
+		}}
+		e := envelope{Snapshot: Snapshot{Brief: "task", BriefConfirmed: confirmedBrief}, Limits: testLimits()}
+		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &llmclient.CreationStepResponse{
+			Outcome: "tool_intent", Message: "validate", Brief: "task", ToolIntent: &llmclient.CreationToolIntent{Kind: "validate_draft"},
+			Draft: &llmclient.GeneratedSkill{Body: "newly proposed body"},
+		})
+		if !confirmedBrief {
+			if err == nil || calls != 0 {
+				t.Fatal("tool bypassed confirmation")
+			}
+			continue
+		}
+		if err != nil || !next || state != "queued" || calls != 1 || e.Snapshot.Draft == nil || e.Snapshot.Draft.Validation != "actual finding" || !e.Snapshot.Draft.Blocked {
+			t.Fatalf("new tool draft lost: state=%s next=%t err=%v snapshot=%+v", state, next, err, e.Snapshot)
+		}
+	}
+}

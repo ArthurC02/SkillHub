@@ -149,7 +149,7 @@ func confirmed(p Snapshot) bool {
 	if !p.BriefConfirmed || strings.TrimSpace(p.Brief) == "" {
 		return false
 	}
-	if p.DiagramFingerprint != "" && (!p.DiagramConfirmed || p.DiagramUnderstanding == "") {
+	if p.DiagramFingerprint != "" && (!p.DiagramConfirmed || !validDiagramInterpretation(p.DiagramUnderstanding)) {
 		return false
 	}
 	for _, r := range p.References {
@@ -238,7 +238,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		p.PendingAction = ""
 		queueStep = true
 	case "confirm_diagram":
-		if p.PendingAction != "confirm_diagram" || p.DiagramUnderstanding == "" {
+		if p.PendingAction != "confirm_diagram" || !validDiagramInterpretation(p.DiagramUnderstanding) {
 			return View{}, nil, ErrInvalidCommand
 		}
 		p.DiagramConfirmed = true
@@ -285,7 +285,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			return View{}, nil, ErrInvalidCommand
 		}
 		b, err := base64.StdEncoding.DecodeString(c.Diagram.Data)
-		if err != nil || len(b) == 0 || len(b) > 5<<20 {
+		if err != nil || len(b) == 0 || len(b) > 4_000_000 {
 			return View{}, nil, ErrInvalidCommand
 		}
 		switch c.Diagram.MediaType {

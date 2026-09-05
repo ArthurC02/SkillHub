@@ -15,8 +15,31 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"io"
 	"net/http"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
+
+// Diagram interpretations have four explicit sections, even when a section is
+// empty. A paragraph cannot silently omit an uncertain branch before confirmation.
+func validDiagramInterpretation(value string) bool {
+	var sections map[string][]string
+	if json.Unmarshal([]byte(value), &sections) != nil || len(sections) != 4 || len(sections["nodes"]) == 0 {
+		return false
+	}
+	for name, limit := range map[string]int{"nodes": 64, "conditions": 64, "branches": 128, "uncertainties": 64} {
+		items, ok := sections[name]
+		if !ok || items == nil || len(items) > limit {
+			return false
+		}
+		for _, item := range items {
+			if strings.TrimSpace(item) == "" || utf8.RuneCountInString(item) > 2000 {
+				return false
+			}
+		}
+	}
+	return utf8.RuneCountInString(value) <= 20000
+}
 
 type TransientRequest struct {
 	WorkspaceID      pgtype.UUID               `json:"workspace_id"`
@@ -31,7 +54,7 @@ func diagramMatches(p Snapshot, d *llmclient.GenerateDiagram) bool {
 		return false
 	}
 	b, err := base64.StdEncoding.DecodeString(d.Data)
-	if err != nil || len(b) == 0 || len(b) > 5<<20 {
+	if err != nil || len(b) == 0 || len(b) > 4_000_000 {
 		return false
 	}
 	h := sha256.Sum256(b)

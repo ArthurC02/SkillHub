@@ -78,9 +78,12 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 }
 
 type FixedCreationReference struct {
-	SkillID   pgtype.UUID
-	VersionID pgtype.UUID
-	Name      string
+	SkillID       pgtype.UUID
+	VersionID     pgtype.UUID
+	Name          string
+	Description   string
+	Compatibility string
+	AllowedTools  string
 }
 
 // ReadCreationReference checks current availability before reading an immutable
@@ -130,7 +133,14 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 	if truncated {
 		text += referenceTruncationMarker
 	}
-	return FixedCreationReference{skill.ID, version.ID, skill.Name}, llmclient.GenerateReference{Name: skill.Name, SkillMD: text}, nil
+	fixed := FixedCreationReference{SkillID: skill.ID, VersionID: version.ID, Name: skill.Name}
+	report := skillpkg.Validate(tree)
+	if report.Manifest != nil {
+		fixed.Description = report.Manifest.Description
+		fixed.Compatibility = report.Manifest.Compatibility
+		fixed.AllowedTools = strings.Join(report.Manifest.AllowedTools, " ")
+	}
+	return fixed, llmclient.GenerateReference{Name: skill.Name, SkillMD: text}, nil
 }
 
 // ValidateCreationDraft uses the exact admission validator and package hash.

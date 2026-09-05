@@ -49,6 +49,24 @@ export interface CreationReference {
      * @memberof CreationReference
      */
     available: boolean;
+    /**
+     * Description read from this exact immutable reference version.
+     * @type {string}
+     * @memberof CreationReference
+     */
+    description?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreationReference
+     */
+    compatibility?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreationReference
+     */
+    allowedTools?: string;
 }
 
 /**
@@ -78,6 +96,9 @@ export function CreationReferenceFromJSONTyped(json: any, ignoreDiscriminator: b
         'name': json['name'],
         'confirmed': json['confirmed'],
         'available': json['available'],
+        'description': json['description'] == null ? undefined : json['description'],
+        'compatibility': json['compatibility'] == null ? undefined : json['compatibility'],
+        'allowedTools': json['allowed_tools'] == null ? undefined : json['allowed_tools'],
     };
 }
 
@@ -97,6 +118,9 @@ export function CreationReferenceToJSONTyped(value?: CreationReference | null, i
         'name': value['name'],
         'confirmed': value['confirmed'],
         'available': value['available'],
+        'description': value['description'],
+        'compatibility': value['compatibility'],
+        'allowed_tools': value['allowedTools'],
     };
 }
 

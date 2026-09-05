@@ -8152,6 +8152,13 @@ components:
           type: "boolean"
         available:
           type: "boolean"
+        description:
+          type: string
+          description: Description read from this exact immutable reference version.
+        compatibility:
+          type: string
+        allowed_tools:
+          type: string
 
     CreationDraft:
       type: "object"

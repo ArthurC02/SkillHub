@@ -21,6 +21,13 @@ SKILL = {
 }
 
 
+def diagram_text(label="A -> B"):
+    return json.dumps(
+        {"nodes": [label], "conditions": [], "branches": [], "uncertainties": []},
+        separators=(",", ":"),
+    )
+
+
 def request(**changes):
     value = {
         "session_id": "s1",
@@ -98,7 +105,8 @@ def test_multiround_confirmation_and_tool_observation_revision():
     confirmed = request(messages=messages, brief=brief, brief_confirmed=True)
     response, calls = invoke(confirmed, decision(outcome="draft", draft=SKILL))
     assert response.status_code == 200
-    assert response.json()["draft"]["body"] == SKILL["body"]
+    assert response.json()["outcome"] == "clarification"
+    assert response.json()["draft"] is None
     assert response.json()["usage"]["cost_usd"] == 0.001
     assert calls[0]["max_tokens"] == 100
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
@@ -108,13 +116,23 @@ def test_multiround_confirmation_and_tool_observation_revision():
         decision(outcome="tool_intent", tool_intent={"kind": "validate_draft", "query": ""}),
     )
     assert response.json()["tool_intent"]["kind"] == "validate_draft"
+
+    response, _ = invoke(
+        confirmed | {"allowed_tools": ["validate_draft"]},
+        decision(
+            outcome="tool_intent", tool_intent={"kind": "validate_draft", "query": ""}, draft=SKILL
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["draft"]["body"] == SKILL["body"]
     revised = SKILL | {"body": "Report missing totals as CSV, with invoice_id and reason columns."}
     observations = messages + [{"role": "tool", "content": "Validation: CSV columns are missing."}]
     response, calls = invoke(
         confirmed | {"messages": observations, "draft": SKILL},
         decision(outcome="draft", draft=revised),
     )
-    assert response.json()["draft"]["body"] == revised["body"]
+    assert response.json()["outcome"] == "clarification"
+    assert response.json()["draft"] is None
     assert "CSV columns are missing" in calls[0]["messages"][1]["content"]
     assert SKILL["body"] != revised["body"]  # The prior immutable snapshot was not edited.
 
@@ -127,7 +145,7 @@ def test_multiround_confirmation_and_tool_observation_revision():
             {
                 "brief": "agreed",
                 "brief_confirmed": True,
-                "diagram_understanding": "A -> B",
+                "diagram_understanding": diagram_text(),
                 "diagram_confirmed": False,
             },
             "confirm_diagram",
@@ -154,12 +172,66 @@ def test_unconfirmed_inputs_cannot_produce_draft(changes, outcome):
 )
 def test_changed_confirmed_input_requires_new_confirmation(field, outcome):
     req = request(
-        brief="agreed", brief_confirmed=True, diagram_understanding="A -> B", diagram_confirmed=True
+        brief="agreed",
+        brief_confirmed=True,
+        diagram_understanding=diagram_text(),
+        diagram_confirmed=True,
     )
-    response, _ = invoke(req, decision(outcome="draft", draft=SKILL, **{field: "changed"}))
+    response, _ = invoke(
+        req,
+        decision(
+            outcome="draft",
+            draft=SKILL,
+            **{field: diagram_text("changed") if field == "diagram_understanding" else "changed"},
+        ),
+    )
     assert response.status_code == 200
     assert response.json()["outcome"] == outcome
     assert response.json()["draft"] is None
+
+
+@pytest.mark.parametrize(
+    "changes,outcome",
+    [
+        ({}, "confirm_brief"),
+        (
+            {"brief": "agreed", "brief_confirmed": True, "diagram_understanding": diagram_text()},
+            "confirm_diagram",
+        ),
+        (
+            {
+                "brief": "agreed",
+                "brief_confirmed": True,
+                "diagram_understanding": diagram_text("A"),
+                "diagram_confirmed": True,
+            },
+            "confirm_diagram",
+        ),
+        ({"brief": "agreed", "brief_confirmed": True}, "confirm_brief"),
+    ],
+)
+def test_validate_intent_cannot_bypass_confirmation(changes, outcome):
+    req = request(allowed_tools=["validate_draft"], **changes)
+    changed = (
+        {"diagram_understanding": diagram_text("changed")}
+        if outcome == "confirm_diagram" and changes.get("diagram_confirmed")
+        else {"brief": "changed"}
+        if outcome == "confirm_brief" and changes.get("brief_confirmed")
+        else {}
+    )
+    response, _ = invoke(
+        req,
+        decision(
+            outcome="tool_intent",
+            tool_intent={"kind": "validate_draft", "query": ""},
+            draft=SKILL,
+            **changed,
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["outcome"] == outcome
+    assert response.json()["draft"] is None
+    assert response.json()["tool_intent"] is None
 
 
 def test_nonconfirmation_cannot_replace_confirmed_input():
@@ -178,7 +250,10 @@ def test_image_is_only_multimodal_and_requires_confirmation():
     }
     response, calls = invoke(
         request(diagram=diagram),
-        decision(outcome="confirm_diagram", diagram_understanding="Input -> validation -> CSV"),
+        decision(
+            outcome="confirm_diagram",
+            diagram_understanding=diagram_text("Input -> validation -> CSV"),
+        ),
     )
     assert response.status_code == 200
     parts = calls[0]["messages"][1]["content"]
@@ -331,3 +406,99 @@ def test_service_and_scoped_key_required(monkeypatch):
         ).status_code
         == 503
     )
+
+
+def test_graph_repairs_findings_then_reviews_exact_validated_content():
+    req = request(brief="agreed", brief_confirmed=True, allowed_tools=["validate_draft"])
+    bad = SKILL | {"description": ""}
+    response, calls = invoke(req, decision(outcome="draft", draft=bad))
+    assert len(calls) == 1
+    assert "Current phase: compose" in calls[0]["messages"][0]["content"]
+    assert response.json()["outcome"] == "tool_intent"
+    assert response.json()["draft"] == bad
+
+    rejected = req | {
+        "draft": bad,
+        "draft_validation": {
+            "content_hash": "a" * 64,
+            "blocked": True,
+            "report": "description-missing: description is required",
+        },
+    }
+    response, calls = invoke(rejected, decision(outcome="draft", draft=SKILL))
+    assert len(calls) == 1
+    assert "Current phase: revise" in calls[0]["messages"][0]["content"]
+    assert "description-missing" in calls[0]["messages"][1]["content"]
+    assert response.json()["outcome"] == "tool_intent"
+    assert response.json()["draft"] == SKILL
+
+    accepted = req | {
+        "draft": SKILL,
+        "draft_validation": {"content_hash": "b" * 64, "blocked": False, "report": "passed"},
+    }
+    response, calls = invoke(accepted, decision(outcome="draft", draft=SKILL))
+    assert len(calls) == 1
+    assert "Current phase: review" in calls[0]["messages"][0]["content"]
+    assert response.json()["outcome"] == "draft"
+    changed = SKILL | {"body": "A different, unvalidated implementation."}
+    response, _ = invoke(accepted, decision(outcome="draft", draft=changed))
+    assert response.json()["outcome"] == "tool_intent"
+    assert response.json()["draft"] == changed
+    assert accepted["draft"] == SKILL
+
+
+@pytest.mark.parametrize("content_hash", ["", "   ", "bogus"])
+def test_invalid_hash_cannot_complete_a_draft(content_hash):
+    req = request(
+        brief="agreed",
+        brief_confirmed=True,
+        draft=SKILL,
+        allowed_tools=["validate_draft"],
+        draft_validation={"content_hash": content_hash, "blocked": False, "report": ""},
+    )
+    response, _ = invoke(req, decision(outcome="draft", draft=SKILL))
+    assert response.json()["outcome"] == "tool_intent"
+
+
+@pytest.mark.parametrize(
+    "interpretation",
+    [
+        "A -> B",
+        json.dumps({"nodes": ["A"], "conditions": [], "branches": []}),
+        json.dumps({"nodes": [], "conditions": [], "branches": [], "uncertainties": []}),
+        json.dumps({"nodes": ["A"], "conditions": [], "branches": [], "uncertainties": [""]}),
+    ],
+)
+def test_diagram_confirmation_requires_all_four_sections(interpretation):
+    response, _ = invoke(
+        request(), decision(outcome="confirm_diagram", diagram_understanding=interpretation)
+    )
+    assert response.status_code == 502
+
+
+def test_legacy_diagram_requires_structured_reconfirmation():
+    req = request(
+        brief="check invoices",
+        brief_confirmed=True,
+        diagram_understanding="A -> B",
+        diagram_confirmed=True,
+        draft=SKILL,
+        allowed_tools=["validate_draft"],
+    )
+    response, calls = invoke(
+        req,
+        decision(
+            outcome="draft",
+            draft=SKILL,
+            diagram_understanding=diagram_text(),
+        ),
+    )
+    assert response.status_code == 200
+    assert "Current phase: understand" in calls[0]["messages"][0]["content"]
+    assert response.json()["outcome"] == "confirm_diagram"
+    assert response.json()["draft"] is None
+    assert json.loads(response.json()["diagram_understanding"])["nodes"] == ["A -> B"]
+    response, _ = invoke(req, decision())
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "clarification"
+    assert response.json()["diagram_understanding"] == ""

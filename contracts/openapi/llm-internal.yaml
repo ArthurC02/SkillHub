@@ -1829,7 +1829,7 @@ components:
         diagram_understanding:
           type: string
           maxLength: 20000
-          description: Structured nodes, conditions, branches and uncertainties confirmed by the user.
+          description: Empty before interpretation; otherwise a JSON-encoded object with exactly nodes, conditions, branches and uncertainties string arrays. Nodes must be nonempty. Legacy plain text must be reinterpreted and reconfirmed.
         diagram_confirmed:
           type: boolean
         diagram:
@@ -1842,6 +1842,8 @@ components:
           description: Only user-confirmed, fixed-version references freshly authorized by Go.
         draft:
           $ref: '#/components/schemas/GeneratedSkill'
+        draft_validation:
+          $ref: '#/components/schemas/CreationDraftValidation'
         allowed_tools:
           type: array
           items:
@@ -1873,6 +1875,7 @@ components:
         diagram_understanding:
           type: string
           maxLength: 20000
+          description: Empty or a JSON-encoded object with exactly nodes, conditions, branches and uncertainties string arrays; nodes must be nonempty.
         tool_intent:
           $ref: '#/components/schemas/CreationToolIntent'
         draft:
@@ -1883,3 +1886,16 @@ components:
           type: string
         usage:
           $ref: '#/components/schemas/GatewayUsage'
+    CreationDraftValidation:
+      type: object
+      additionalProperties: false
+      required: [content_hash, blocked, report]
+      description: Go validation of exactly the accompanying draft, including findings for revision.
+      properties:
+        content_hash:
+          type: string
+        blocked:
+          type: boolean
+        report:
+          type: string
+          maxLength: 20000

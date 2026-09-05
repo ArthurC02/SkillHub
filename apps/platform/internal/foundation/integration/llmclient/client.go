@@ -552,10 +552,10 @@ type GeneratedFile struct {
 type GeneratedSkill struct {
 	Name          string          `json:"name"`
 	Description   string          `json:"description"`
-	Compatibility string          `json:"compatibility,omitempty"`
-	AllowedTools  string          `json:"allowed_tools,omitempty"`
+	Compatibility string          `json:"compatibility"`
+	AllowedTools  string          `json:"allowed_tools"`
 	Body          string          `json:"body"`
-	Files         []GeneratedFile `json:"files,omitempty"`
+	Files         []GeneratedFile `json:"files"`
 }
 
 // GenerateSkillResponse separates model output (`Skill`) from what the service

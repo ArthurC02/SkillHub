@@ -48,6 +48,7 @@ def test_generated_enrich_request_validates_the_internal_contract() -> None:
         "GenerateReference",
         "CreationMessage",
         "CreationToolIntent",
+        "CreationDraftValidation",
         "CreationStepRequest",
         "CreationStepResponse",
     ],

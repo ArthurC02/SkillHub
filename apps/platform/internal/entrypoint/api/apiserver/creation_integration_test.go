@@ -38,7 +38,7 @@ func creationFixture(t *testing.T) (*api, *creation.Service, *atomic.Int32) {
 		out := llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "請確認任務與成功條件。", Brief: "整理輸入資料，依指定格式輸出摘要。", DiagramUnderstanding: in.DiagramUnderstanding, Model: "fixture-model", PromptVersion: "creation-test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost}}
 		if in.Diagram != nil {
 			out.Outcome = "confirm_diagram"
-			out.DiagramUnderstanding = "開始 → 整理輸入 → 輸出摘要；需確認格式。"
+			out.DiagramUnderstanding = `{"nodes":["開始","整理輸入","輸出摘要"],"conditions":[],"branches":[],"uncertainties":["需確認格式"]}`
 			out.Brief = ""
 		}
 		if in.BriefConfirmed {

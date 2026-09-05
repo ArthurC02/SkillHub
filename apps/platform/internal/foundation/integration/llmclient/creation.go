@@ -12,20 +12,26 @@ import (
 // CreationStepRequest is the bounded proposal request. GatewayKey is a
 // short-lived credential and deliberately has no JSON representation.
 type CreationStepRequest struct {
-	SessionID            string              `json:"session_id"`
-	Revision             int64               `json:"revision"`
-	Messages             []CreationMessage   `json:"messages"`
-	Brief                string              `json:"brief"`
-	BriefConfirmed       bool                `json:"brief_confirmed"`
-	DiagramUnderstanding string              `json:"diagram_understanding"`
-	DiagramConfirmed     bool                `json:"diagram_confirmed"`
-	Diagram              *GenerateDiagram    `json:"diagram,omitempty"`
-	References           []GenerateReference `json:"references"`
-	Draft                *GeneratedSkill     `json:"draft,omitempty"`
-	AllowedTools         []string            `json:"allowed_tools"`
-	TimeoutSeconds       int                 `json:"timeout_seconds"`
-	MaxOutputTokens      int                 `json:"max_output_tokens"`
-	GatewayKey           string              `json:"-"`
+	SessionID            string                   `json:"session_id"`
+	Revision             int64                    `json:"revision"`
+	Messages             []CreationMessage        `json:"messages"`
+	Brief                string                   `json:"brief"`
+	BriefConfirmed       bool                     `json:"brief_confirmed"`
+	DiagramUnderstanding string                   `json:"diagram_understanding"`
+	DiagramConfirmed     bool                     `json:"diagram_confirmed"`
+	Diagram              *GenerateDiagram         `json:"diagram,omitempty"`
+	References           []GenerateReference      `json:"references"`
+	Draft                *GeneratedSkill          `json:"draft,omitempty"`
+	DraftValidation      *CreationDraftValidation `json:"draft_validation,omitempty"`
+	AllowedTools         []string                 `json:"allowed_tools"`
+	TimeoutSeconds       int                      `json:"timeout_seconds"`
+	MaxOutputTokens      int                      `json:"max_output_tokens"`
+	GatewayKey           string                   `json:"-"`
+}
+type CreationDraftValidation struct {
+	ContentHash string `json:"content_hash"`
+	Blocked     bool   `json:"blocked"`
+	Report      string `json:"report"`
 }
 type CreationMessage struct {
 	Role    string `json:"role"`
@@ -63,6 +69,13 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 	}
 	if in.AllowedTools == nil {
 		in.AllowedTools = []string{}
+	}
+	if in.Draft != nil {
+		draft := *in.Draft
+		if draft.Files == nil {
+			draft.Files = []GeneratedFile{}
+		}
+		in.Draft = &draft
 	}
 	body, err := json.Marshal(in)
 	if err != nil {

@@ -149,10 +149,17 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 	}()
 	ws := identity.Workspace{ID: a.WorkspaceID}
 	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: []string{"search_catalog", "validate_draft"}, TimeoutSeconds: int(e.Limits.CallTimeout.Seconds()), MaxOutputTokens: e.Limits.MaxOutputTokens}
-	if e.Snapshot.Draft != nil {
-		req.Draft = &e.Snapshot.Draft.Skill
-	} else if e.PreviousDraft != nil {
-		req.Draft = &e.PreviousDraft.Skill
+	draft := e.Snapshot.Draft
+	if draft == nil {
+		draft = e.PreviousDraft
+	}
+	if draft != nil {
+		req.Draft = &draft.Skill
+		report := []rune(draft.Validation)
+		if len(report) > 20000 {
+			report = append(report[:19980], []rune("\n[findings truncated]")...)
+		}
+		req.DraftValidation = &llmclient.CreationDraftValidation{ContentHash: draft.ContentHash, Blocked: draft.Blocked, Report: string(report)}
 	}
 	var response *llmclient.CreationStepResponse
 	var callErr error
@@ -287,6 +294,9 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 }
 func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *llmclient.CreationStepResponse) (string, bool, error) {
 	p := &e.Snapshot
+	if r.DiagramUnderstanding != "" && !validDiagramInterpretation(r.DiagramUnderstanding) {
+		return "", false, ErrInvalidCommand
+	}
 	if r.Message == "" || utf8.RuneCountInString(r.Message) > 20000 || utf8.RuneCountInString(r.Brief) > 20000 || utf8.RuneCountInString(r.DiagramUnderstanding) > 20000 || len(p.Messages) >= 98 {
 		return "", false, ErrInvalidCommand
 	}
@@ -336,8 +346,10 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			return "", false, err
 		}
 		p.PreviousDraft = e.PreviousDraft
+		if p.Draft == nil || p.Draft.ContentHash != hash {
+			p.Candidate = nil
+		}
 		p.Draft = &Draft{revision, hash, *r.Draft, report, blocked}
-		p.Candidate = nil
 		p.PendingAction = ""
 		return "draft_ready", false, nil
 	case "tool_intent":
@@ -366,23 +378,27 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			}
 			p.References = refs
 			invalidate(p)
+			p.BriefConfirmed = false
 			p.PendingAction = "confirm_references"
 			return "waiting_confirmation", false, nil
 		case "validate_draft":
-			if r.Draft != nil && confirmed(*p) {
-				p.Draft = &Draft{Skill: *r.Draft}
-			}
-			if p.Draft == nil || s.ValidateDraft == nil {
+			if !confirmed(*p) || r.Brief != p.Brief || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
 				return "", false, ErrInvalidCommand
 			}
-			hash, report, blocked, err := s.ValidateDraft(ctx, p.Draft.Skill)
+			hash, report, blocked, err := s.ValidateDraft(ctx, *r.Draft)
 			if err != nil {
 				return "", false, err
 			}
-			p.Draft.ContentHash = hash
-			p.Draft.Validation = report
-			p.Draft.Blocked = blocked
-			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("Go 靜態驗證（不代表試跑成功）：%s", report)})
+			if p.Draft != nil && p.Draft.ContentHash != hash {
+				e.PreviousDraft = p.Draft
+			}
+			if p.Draft == nil || p.Draft.ContentHash != hash {
+				p.Candidate = nil
+			}
+			p.PreviousDraft = e.PreviousDraft
+			p.Draft = &Draft{revision, hash, *r.Draft, report, blocked}
+			p.PendingAction = ""
+			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("Go 靜態驗證完成，blocked=%t；完整 finding 隨 draft_validation 提供，不代表試跑成功。", blocked)})
 			return "queued", true, nil
 		}
 	}

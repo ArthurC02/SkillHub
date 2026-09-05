@@ -6116,14 +6116,35 @@ func (s *CreationReference) encodeFields(e *jx.Encoder) {
 		e.FieldStart("available")
 		e.Bool(s.Available)
 	}
+	{
+		if s.Description.Set {
+			e.FieldStart("description")
+			s.Description.Encode(e)
+		}
+	}
+	{
+		if s.Compatibility.Set {
+			e.FieldStart("compatibility")
+			s.Compatibility.Encode(e)
+		}
+	}
+	{
+		if s.AllowedTools.Set {
+			e.FieldStart("allowed_tools")
+			s.AllowedTools.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfCreationReference = [5]string{
+var jsonFieldsNameOfCreationReference = [8]string{
 	0: "skill_id",
 	1: "version_id",
 	2: "name",
 	3: "confirmed",
 	4: "available",
+	5: "description",
+	6: "compatibility",
+	7: "allowed_tools",
 }
 
 // Decode decodes CreationReference from json.
@@ -6194,6 +6215,36 @@ func (s *CreationReference) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"available\"")
+			}
+		case "description":
+			if err := func() error {
+				s.Description.Reset()
+				if err := s.Description.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"description\"")
+			}
+		case "compatibility":
+			if err := func() error {
+				s.Compatibility.Reset()
+				if err := s.Compatibility.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"compatibility\"")
+			}
+		case "allowed_tools":
+			if err := func() error {
+				s.AllowedTools.Reset()
+				if err := s.AllowedTools.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"allowed_tools\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)

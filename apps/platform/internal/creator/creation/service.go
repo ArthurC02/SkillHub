@@ -70,11 +70,14 @@ func LimitsFromEnv() (Limits, error) {
 func Exposed() bool { return os.Getenv("CREATION_EXPOSED") == "on" }
 
 type Reference struct {
-	SkillID   string `json:"skill_id"`
-	VersionID string `json:"version_id"`
-	Name      string `json:"name"`
-	Confirmed bool   `json:"confirmed"`
-	Available bool   `json:"available"`
+	SkillID       string `json:"skill_id"`
+	VersionID     string `json:"version_id"`
+	Name          string `json:"name"`
+	Confirmed     bool   `json:"confirmed"`
+	Available     bool   `json:"available"`
+	Description   string `json:"description,omitempty"`
+	Compatibility string `json:"compatibility,omitempty"`
+	AllowedTools  string `json:"allowed_tools,omitempty"`
 }
 type Draft struct {
 	Revision    int64                    `json:"revision"`

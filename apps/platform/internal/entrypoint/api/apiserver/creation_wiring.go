@@ -30,7 +30,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 			}
 		}
 		fixed, content, err := versions.ReadCreationReference(ctx, ws, sid, vid)
-		return creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil}, content, err
+		return creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil, Description: fixed.Description, Compatibility: fixed.Compatibility, AllowedTools: fixed.AllowedTools}, content, err
 	}
 	s.SearchReferences = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, error) {
 		ids, err := search.CreationReferenceIDs(ctx, query)
@@ -83,11 +83,11 @@ func wireCreationWrites(s *creation.Service, versions *ingest.Service, runs *run
 		default:
 			return "", creation.ErrInvalidCommand
 		}
-		verdicts, err := evaluations.RunVerdicts(ctx, ws.ID, []pgtype.UUID{id})
+		feedback, err := evaluations.CreationFeedback(ctx, ws.ID, id)
 		if err != nil {
 			return "", err
 		}
-		b, err := json.Marshal(map[string]any{"run_id": runID, "skill_version_id": candidate.VersionID, "execution_status": r.Status, "evaluation": verdicts[runID]})
+		b, err := json.Marshal(map[string]any{"run_id": runID, "skill_version_id": candidate.VersionID, "execution_status": r.Status, "failure_class": r.FailureClass, "evaluation": feedback})
 		return string(b), err
 	}
 }
