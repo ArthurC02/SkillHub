@@ -84,5 +84,6 @@ ADR-046 的決策 3 與決策 6 各壓了一個經驗假設，而 `01` §7.3 把
 | `report-generate-baseline.md` | B 輪＋mini 對照：**失敗是不是隨機的**（不完全是）、**mini 夠不夠用**（更好且便宜 21 倍 → [ADR-051](../../../adr/ADR-051-the-cheaper-model-generated-better-packages.md)）、`possible-secret` 命中率（0／59） |
 | `report-generate-modes.md` | 2026-09-05：三種輸入模式（純文字、只有流程圖、描述＋參考 Skill）各對真實閘道跑一次，路通、模型有讀圖、參考只借形狀；逐字產出與成本。三筆不是分布 |
 | `generate-modes-flowchart.png` | 上面那次「只有流程圖」用的那張圖（六節點、一個判斷、全中文；System.Drawing 畫的） |
+| `gen-modes-batch/` | 2026-09-05 收尾：兩種新模式各 20 段的語料、畫圖腳本與 harness 跑法；**尚未跑**（要負責人親自起 `apps/llm` 對真實閘道） |
 
 量測 harness 在 [`apps/platform/internal/shared/skillpkg/generate_spike_test.go`](../../../../apps/platform/internal/shared/skillpkg/generate_spike_test.go)（env-gated，形狀照 `spec_census_test.go`）。生成端的腳本是一次性的，不進 repo——**跑那三輪的當下 `POST /v1/generate-skill` 還不存在**（`GEN-001`／`GEN-002` 同日稍晚才做完），腳本直接打閘道，逐字內容記在報告的附錄。**那也是那批數字不能直接當成端點的基線的原因**：它們量的是模型在一段自寫 prompt 下的表現，而端點交給模型的是型別化 schema——`GEN-001` 的說明寫了為什麼那個差別會改變失敗分布。

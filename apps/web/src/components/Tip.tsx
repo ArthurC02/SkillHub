@@ -54,7 +54,15 @@ export function Tip({
         className="tip-trigger"
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpen((v) => !v)}
+        // WebKit does not focus a button on click (Safari's long-standing
+        // behaviour; the Windows and macOS ports, not the Linux one CI runs).
+        // Without the focus the keydown below fires on <body>, outside this
+        // span, and Escape closes nothing. The APG shape says focus stays on
+        // the trigger, so put it there ourselves rather than trust the engine.
+        onClick={(e) => {
+          e.currentTarget.focus();
+          setOpen((v) => !v);
+        }}
       >
         {/* §4.7: one of the app's at-most-six shapes, the Tip trigger's own.
             Decorative — the visible text is the name; the shape only says

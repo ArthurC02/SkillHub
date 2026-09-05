@@ -140,3 +140,7 @@ description: 將會議錄音逐字稿整理成待辦清單，適用於需要從�
 - 流程圖只試了一張乾淨的、全中文的、六節點的圖；手繪、照片、多頁、英文、二十個節點的圖行不行，不知道。
 - 參考只試了一個、而且是呼叫者自己工作區的；目錄裡別人的 Skill 當參考，只有整合測試（替身閘道）覆蓋 422 那一半。
 - Web 端沒有在瀏覽器裡真的上傳過一次——`generate.test.tsx` 覆蓋的是請求形狀（`FileReader` → base64 → `diagram` 欄位、勾選 → `reference_skill_ids`），不是一次真的 HTTP。
+
+## 7. 分布的 harness（2026-09-05 收尾；沒有跑）
+
+§6 第一條的答案已經備妥但沒有付款：[gen-modes-batch/](gen-modes-batch/README.md) 放了 20 張圖的語料、20 組參考、畫圖腳本與 `TestTheTwoNewerModesTwentyTimesEach` 的跑法。它同一天沒有跑，因為啟動 `apps/llm` 對真實閘道那一步在代理的權限被擋下——擋得對，那一步要人親自按。**跑之前，§6 的五條一條都不能刪。**

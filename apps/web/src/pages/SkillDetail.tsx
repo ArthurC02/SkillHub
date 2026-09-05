@@ -926,9 +926,18 @@ function GeneratedSourceBlock({ source }: { source: SkillSource }) {
           {references && references.length > 0 && (
             <>
               <p>參考的 Skill：</p>
+              {/* ADR-066 待決策 2, answered 2026-09-05: a link, and only a link.
+                  The detail page it lands on does its own scope, takedown and
+                  hold checks, so nothing is decided here about whether the
+                  reader may still see the reference — the name was already
+                  theirs to see the day they picked it. */}
               <ul>
                 {references.map((r) => (
-                  <li key={r.version_id}>{r.name}</li>
+                  <li key={r.version_id}>
+                    <Link to="/skills/$skillId" params={{ skillId: r.skill_id }}>
+                      {r.name}
+                    </Link>
+                  </li>
                 ))}
               </ul>
             </>

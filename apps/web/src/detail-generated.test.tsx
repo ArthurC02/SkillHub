@@ -16,8 +16,8 @@ import type { SkillDetail as SkillDetailModel, SkillSource } from "./api/types";
  * generation (`task_description` is `""`, not absent — Go always sends the
  * field), and one with `generation_inputs.references`.
  *
- * ADR-066 待決策 2 is open: a generated Skill's provenance must show the
- * recorded reference names as plain text and never link to `/skills/<id>`.
+ * ADR-066 待決策 2 (answered 2026-09-05): each recorded reference is a link to
+ * its own detail page, which makes its own access decision.
  */
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
@@ -145,7 +145,7 @@ test("GEN-005: task_description 為空、只有流程圖時顯示流程圖句，
   expect(body).toContain("abc123");
 });
 
-test("GEN-006: 參考的 Skill 名稱以純文字顯示，且沒有連到 /skills/<id> 的連結", async () => {
+test("GEN-006: 參考的 Skill 名稱各是一個連到 /skills/<id> 的連結", async () => {
   stubVisitor(
     generatedDetail({
       task_description: "把 PDF 轉成摘要",
@@ -162,7 +162,6 @@ test("GEN-006: 參考的 Skill 名稱以純文字顯示，且沒有連到 /skill
   const body = text();
   expect(body).toContain("參考 Skill 甲");
   expect(body).toContain("參考 Skill 乙");
-  // ADR-066 待決策 2 is open: no link to either reference's own detail page.
-  expect(container.querySelector('a[href="/skills/ref-1"]')).toBeNull();
-  expect(container.querySelector('a[href="/skills/ref-2"]')).toBeNull();
+  expect(container.querySelector('a[href="/skills/ref-1"]')?.textContent).toBe("參考 Skill 甲");
+  expect(container.querySelector('a[href="/skills/ref-2"]')?.textContent).toBe("參考 Skill 乙");
 });
