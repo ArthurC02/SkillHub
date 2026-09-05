@@ -2327,6 +2327,72 @@ func (s *GenerationFailures) Validate() error {
 	return nil
 }
 
+func (s *GenerationInputs) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if value, ok := s.Diagram.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "diagram",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s *GenerationInputsDiagram) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.MediaType.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "media_type",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s GenerationInputsDiagramMediaType) Validate() error {
+	switch s {
+	case "image/png":
+		return nil
+	case "image/jpeg":
+		return nil
+	case "image/webp":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s *GetDispatchStatusOK) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -3757,6 +3823,15 @@ func (s PublicSearchSkillsCategory) Validate() error {
 	case "writing":
 		return nil
 	case "data":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s PublicSearchSkillsPurpose) Validate() error {
+	switch s {
+	case "reference":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
@@ -5732,6 +5807,24 @@ func (s *SkillSource) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "type",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if value, ok := s.GenerationInputs.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "generation_inputs",
 			Error: err,
 		})
 	}

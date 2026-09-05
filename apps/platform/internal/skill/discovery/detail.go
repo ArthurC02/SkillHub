@@ -88,10 +88,18 @@ type sourceInfo struct {
 	// present in full for a generated one: 02:GEN-002 requires the detail page to
 	// be able to expand into the task description, the time, the prompt revision
 	// and the model, and forbids reporting the source as unknown.
-	TaskDescription        string   `json:"task_description,omitempty"`
-	GeneratorModel         string   `json:"generator_model,omitempty"`
-	GeneratorPromptVersion string   `json:"generator_prompt_version,omitempty"`
-	Trust                  labelled `json:"trust"`
+	TaskDescription        string `json:"task_description,omitempty"`
+	GeneratorModel         string `json:"generator_model,omitempty"`
+	GeneratorPromptVersion string `json:"generator_prompt_version,omitempty"`
+	// GenerationInputs is public.yaml's GenerationInputs, passed through as the
+	// bytes ingest wrote to skill_sources.generation_inputs (ADR-066, 04 丙-159):
+	// the diagram's digest/media type/size and the references' ids and names.
+	// Absent for a text-only generation and for every other source type. A NULL
+	// column scans as nil and omitempty drops it; it must never reach the wire as
+	// a literal `null`, which would be a value position rendered as a guess
+	// (DISC-004).
+	GenerationInputs json.RawMessage `json:"generation_inputs,omitempty"`
+	Trust            labelled        `json:"trust"`
 }
 
 // licenseInfo carries the ADR-021 two-axis answer: which license the package
@@ -976,6 +984,9 @@ func sourceFrom(s SourceFacts) *sourceInfo {
 	}
 	if s.GeneratorPromptVersion != nil {
 		out.GeneratorPromptVersion = *s.GeneratorPromptVersion
+	}
+	if len(s.GenerationInputs) > 0 && string(s.GenerationInputs) != "null" {
+		out.GenerationInputs = json.RawMessage(s.GenerationInputs)
 	}
 	trust := SourceTrustUnknown
 	switch {

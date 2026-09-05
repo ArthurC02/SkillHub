@@ -804,6 +804,20 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string, enum: [reference] }
+          description: |
+            Why this search is being made, when it is not the user looking for
+            a Skill to use. `reference` is GEN-006's reference picker: the
+            caller is choosing worked examples for a generation, not
+            expressing an intent the funnel measures. The server then writes
+            no `search_performed` event (01 §11.2 segment 1 counts intents,
+            and this is not one) and makes no match-reason model call (the
+            reason a hit matched is DISC-002's answer to "should I use this",
+            which the picker does not ask). Retrieval itself is unchanged.
+            Absent = an ordinary search.
         - name: script
           in: query
           required: false
@@ -5215,6 +5229,16 @@ components:
             Generator prompt revision, e.g. `generate-skill/v1`. Present only for
             `generated`. Together with task_description and generator_model this
             is what lets someone re-derive the package (ADR-047 決策 1).
+        generation_inputs:
+          allOf:
+            - $ref: "#/components/schemas/GenerationInputs"
+          description: |
+            What besides the task description was behind a generated package
+            (ADR-066, GEN-005/GEN-006). Present only for `generated`, and only
+            when a diagram or reference Skills were given; a text-only
+            generation has no such record and the field is absent. Absent is
+            "nothing else was used", not "unknown" — the platform wrote every
+            generated row and knows.
         source_version:
           type: string
           description: Commit SHA, tag, or branch, when the fetch resolved one.
@@ -5248,6 +5272,50 @@ components:
             rung above `unknown` on the same ladder — it says the origin is
             recorded and is not a URL, and it makes no claim at all about
             quality or safety.
+    GenerationInputs:
+      description: |
+        The non-text inputs of one generation, exactly as
+        `skill_sources.generation_inputs` stores them (ADR-066 決策 4): a
+        diagram is a digest, a media type and a byte count — the image bytes
+        were never kept, so nothing here lets anyone download or re-derive the
+        picture; a reference is the identifier of the Skill and the version the
+        model was shown, never its content. Both keys are optional, and at least
+        one is present whenever this object is.
+      type: object
+      properties:
+        diagram:
+          type: object
+          required: [media_type, sha256, bytes]
+          properties:
+            media_type:
+              type: string
+              enum: [image/png, image/jpeg, image/webp]
+            sha256:
+              type: string
+              description: Hex digest of the decoded image bytes.
+            bytes:
+              type: integer
+              description: Decoded size of the image.
+        references:
+          type: array
+          description: |
+            In the order they were given. A reference may since have been taken
+            down, deleted, or belong to a workspace the reader cannot open; the
+            page shows the name recorded at generation time and must not treat
+            a failed follow-up read as "never existed".
+          items:
+            type: object
+            required: [skill_id, version_id, name]
+            properties:
+              skill_id:
+                type: string
+                format: uuid
+              version_id:
+                type: string
+                format: uuid
+              name:
+                type: string
+                description: The Skill's name at generation time.
     SkillLicense:
       description: |
         ADR-021 two axes. The expression alone cannot distinguish "the author

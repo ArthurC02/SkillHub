@@ -32,6 +32,11 @@ type Source struct {
 	TaskDescription        *string
 	GeneratorModel         *string
 	GeneratorPromptVersion *string
+	// GenerationInputs is 0055's `generation_inputs` jsonb as stored (ADR-066):
+	// nil for every source that had no diagram and no reference skills. Bytes,
+	// not a struct — the shape is declared once, by the writer in generate.go,
+	// and the read side hands it on without re-declaring it (04 丙-159).
+	GenerationInputs []byte
 }
 
 // ReadSource keeps the generated skill_sources row inside its owner.
@@ -51,6 +56,7 @@ func (s *Service) ReadSource(ctx context.Context, workspaceID, sourceID pgtype.U
 		LastCheckedAt: row.LastCheckedAt, UnavailableSince: row.UnavailableSince,
 		TaskDescription: row.TaskDescription, GeneratorModel: row.GeneratorModel,
 		GeneratorPromptVersion: row.GeneratorPromptVersion,
+		GenerationInputs:       row.GenerationInputs,
 	}, true, nil
 }
 

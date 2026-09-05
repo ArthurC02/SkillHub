@@ -1,6 +1,8 @@
 package catalog
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -254,5 +256,42 @@ func TestAGeneratedSourceIsNotAnUnknownSource(t *testing.T) {
 	upload := sourceFrom(SourceFacts{SourceType: "upload", ContentHash: "sha256:abc"})
 	if upload.Trust.Value != string(SourceTrustUnknown) || upload.TaskDescription != "" {
 		t.Errorf("upload picked up the generation record: %+v", upload)
+	}
+}
+
+// 04 丙-159, the READ side of ADR-066: generation_inputs has to survive from
+// ingest's bytes to the wire verbatim, and a NULL column — which scans as nil,
+// or as the literal `null` apps/llm-shaped columns sometimes carry — must never
+// reach the wire as a `generation_inputs` key at all (DISC-004: a value
+// position must not be a guess).
+func TestGeneratedSourceCarriesGenerationInputsVerbatim(t *testing.T) {
+	raw := []byte(`{"diagram":{"media_type":"image/png","sha256":"abc123","bytes":456}}`)
+
+	got := sourceFrom(SourceFacts{SourceType: "generated", ContentHash: "sha256:abc", GenerationInputs: raw})
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoded), `"generation_inputs":{"diagram":{"media_type":"image/png","sha256":"abc123","bytes":456}}`) {
+		t.Errorf("generation_inputs did not survive marshalling verbatim: %s", encoded)
+	}
+
+	for _, tc := range []struct {
+		name  string
+		bytes []byte
+	}{
+		{"nil", nil},
+		{"literal null", []byte("null")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := sourceFrom(SourceFacts{SourceType: "generated", GenerationInputs: tc.bytes})
+			encoded, err := json.Marshal(out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(string(encoded), "generation_inputs") {
+				t.Errorf("%s GenerationInputs produced a generation_inputs key: %s", tc.name, encoded)
+			}
+		})
 	}
 }

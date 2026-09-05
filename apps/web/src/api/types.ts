@@ -383,11 +383,36 @@ export interface SkillSource {
   generator_model?: string;
   generator_prompt_version?: string;
   /**
+   * ADR-066: the non-text inputs a generation was given, alongside
+   * `task_description`. Present only for `type: "generated"`, and only the
+   * halves that were actually supplied — a diagram-only generation carries
+   * `diagram` and no `references`, and vice versa.
+   */
+  generation_inputs?: GenerationInputs;
+  /**
    * unknown | traceable | manually_confirmed | generated. `generated` is not a
    * rung above `unknown` on the same ladder: there is nothing upstream to trace
    * to, and it claims nothing about quality or safety.
    */
   trust: Labelled;
+}
+
+/**
+ * ADR-066. Hand-mirrored against
+ * `packages/api-client-ts/src/generated/models/GenerationInputs.ts`
+ * (`contract.test.ts` compares the depth-0 field sets).
+ *
+ * `references` is names only, deliberately: ADR-066 待決策 2 is still open on
+ * whether a generated Skill's provenance may link to the Skills it was built
+ * from, so this side renders plain text and never a `Link`.
+ */
+export interface GenerationInputs {
+  diagram?: {
+    media_type: "image/png" | "image/jpeg" | "image/webp";
+    sha256: string;
+    bytes: number;
+  };
+  references?: { skill_id: string; version_id: string; name: string }[];
 }
 
 /**

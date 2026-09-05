@@ -296,6 +296,7 @@ func NewApp(cfg Config) (*App, error) {
 				LastCheckedAt: source.LastCheckedAt, UnavailableSince: source.UnavailableSince,
 				TaskDescription: source.TaskDescription, GeneratorModel: source.GeneratorModel,
 				GeneratorPromptVersion: source.GeneratorPromptVersion,
+				GenerationInputs:       source.GenerationInputs,
 			}, found, err
 		},
 	}

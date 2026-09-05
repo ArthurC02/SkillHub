@@ -4109,6 +4109,13 @@ type PublicSearchSkillsParams struct {
 	// Natural language task description.
 	Q     string
 	Limit OptInt `json:",omitempty,omitzero"`
+	// Why this search is being made, when it is not the user looking for a Skill to use. `reference` is
+	// GEN-006's reference picker: the caller is choosing worked examples for a generation, not expressing
+	// an intent the funnel measures. The server then writes no `search_performed` event (01 §11.2 segment
+	// 1 counts intents, and this is not one) and makes no match-reason model call (the reason a hit
+	// matched is DISC-002's answer to "should I use this", which the picker does not ask). Retrieval
+	// itself is unchanged. Absent = an ordinary search.
+	Purpose OptPublicSearchSkillsPurpose `json:",omitempty,omitzero"`
 	// DISC-003 filter on whether the package carries runnable code, as recorded by the import scan: a
 	// script file in the tree, or code embedded in SKILL.md itself (SKILL-003). Absent = not filtered.
 	//
@@ -4167,6 +4174,15 @@ func unpackPublicSearchSkillsParams(packed middleware.Parameters) (params Public
 		}
 		if v, ok := packed[key]; ok {
 			params.Limit = v.(OptInt)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "purpose",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Purpose = v.(OptPublicSearchSkillsPurpose)
 		}
 	}
 	{
@@ -4342,6 +4358,62 @@ func decodePublicSearchSkillsParams(args [0]string, argsEscaped bool, r *http.Re
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "limit",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: purpose.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "purpose",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotPurposeVal PublicSearchSkillsPurpose
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotPurposeVal = PublicSearchSkillsPurpose(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Purpose.SetTo(paramsDotPurposeVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Purpose.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "purpose",
 			In:   "query",
 			Err:  err,
 		}

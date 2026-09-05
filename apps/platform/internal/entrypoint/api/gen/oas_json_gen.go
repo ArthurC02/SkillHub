@@ -12679,6 +12679,397 @@ func (s *GenerationFailures) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
+func (s *GenerationInputs) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *GenerationInputs) encodeFields(e *jx.Encoder) {
+	{
+		if s.Diagram.Set {
+			e.FieldStart("diagram")
+			s.Diagram.Encode(e)
+		}
+	}
+	{
+		if s.References != nil {
+			e.FieldStart("references")
+			e.ArrStart()
+			for _, elem := range s.References {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+}
+
+var jsonFieldsNameOfGenerationInputs = [2]string{
+	0: "diagram",
+	1: "references",
+}
+
+// Decode decodes GenerationInputs from json.
+func (s *GenerationInputs) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GenerationInputs to nil")
+	}
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "diagram":
+			if err := func() error {
+				s.Diagram.Reset()
+				if err := s.Diagram.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"diagram\"")
+			}
+		case "references":
+			if err := func() error {
+				s.References = make([]GenerationInputsReferencesItem, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem GenerationInputsReferencesItem
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.References = append(s.References, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"references\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode GenerationInputs")
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GenerationInputs) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GenerationInputs) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *GenerationInputsDiagram) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *GenerationInputsDiagram) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("media_type")
+		s.MediaType.Encode(e)
+	}
+	{
+		e.FieldStart("sha256")
+		e.Str(s.SHA256)
+	}
+	{
+		e.FieldStart("bytes")
+		e.Int(s.Bytes)
+	}
+}
+
+var jsonFieldsNameOfGenerationInputsDiagram = [3]string{
+	0: "media_type",
+	1: "sha256",
+	2: "bytes",
+}
+
+// Decode decodes GenerationInputsDiagram from json.
+func (s *GenerationInputsDiagram) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GenerationInputsDiagram to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "media_type":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.MediaType.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"media_type\"")
+			}
+		case "sha256":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.SHA256 = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"sha256\"")
+			}
+		case "bytes":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Int()
+				s.Bytes = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"bytes\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode GenerationInputsDiagram")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfGenerationInputsDiagram) {
+					name = jsonFieldsNameOfGenerationInputsDiagram[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GenerationInputsDiagram) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GenerationInputsDiagram) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GenerationInputsDiagramMediaType as json.
+func (s GenerationInputsDiagramMediaType) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes GenerationInputsDiagramMediaType from json.
+func (s *GenerationInputsDiagramMediaType) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GenerationInputsDiagramMediaType to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch GenerationInputsDiagramMediaType(v) {
+	case GenerationInputsDiagramMediaTypeImagePNG:
+		*s = GenerationInputsDiagramMediaTypeImagePNG
+	case GenerationInputsDiagramMediaTypeImageJpeg:
+		*s = GenerationInputsDiagramMediaTypeImageJpeg
+	case GenerationInputsDiagramMediaTypeImageWEBP:
+		*s = GenerationInputsDiagramMediaTypeImageWEBP
+	default:
+		*s = GenerationInputsDiagramMediaType(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s GenerationInputsDiagramMediaType) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GenerationInputsDiagramMediaType) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *GenerationInputsReferencesItem) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *GenerationInputsReferencesItem) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("skill_id")
+		json.EncodeUUID(e, s.SkillID)
+	}
+	{
+		e.FieldStart("version_id")
+		json.EncodeUUID(e, s.VersionID)
+	}
+	{
+		e.FieldStart("name")
+		e.Str(s.Name)
+	}
+}
+
+var jsonFieldsNameOfGenerationInputsReferencesItem = [3]string{
+	0: "skill_id",
+	1: "version_id",
+	2: "name",
+}
+
+// Decode decodes GenerationInputsReferencesItem from json.
+func (s *GenerationInputsReferencesItem) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GenerationInputsReferencesItem to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "skill_id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.SkillID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"skill_id\"")
+			}
+		case "version_id":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.VersionID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version_id\"")
+			}
+		case "name":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Name = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode GenerationInputsReferencesItem")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfGenerationInputsReferencesItem) {
+					name = jsonFieldsNameOfGenerationInputsReferencesItem[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GenerationInputsReferencesItem) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GenerationInputsReferencesItem) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *GetDispatchStatusOK) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -18805,6 +19196,72 @@ func (s OptGenerateDiagram) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptGenerateDiagram) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GenerationInputs as json.
+func (o OptGenerationInputs) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes GenerationInputs from json.
+func (o *OptGenerationInputs) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptGenerationInputs to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptGenerationInputs) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptGenerationInputs) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GenerationInputsDiagram as json.
+func (o OptGenerationInputsDiagram) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes GenerationInputsDiagram from json.
+func (o *OptGenerationInputsDiagram) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptGenerationInputsDiagram to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptGenerationInputsDiagram) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptGenerationInputsDiagram) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -32660,6 +33117,12 @@ func (s *SkillSource) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.GenerationInputs.Set {
+			e.FieldStart("generation_inputs")
+			s.GenerationInputs.Encode(e)
+		}
+	}
+	{
 		if s.SourceVersion.Set {
 			e.FieldStart("source_version")
 			s.SourceVersion.Encode(e)
@@ -32695,18 +33158,19 @@ func (s *SkillSource) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfSkillSource = [11]string{
+var jsonFieldsNameOfSkillSource = [12]string{
 	0:  "type",
 	1:  "url",
 	2:  "task_description",
 	3:  "generator_model",
 	4:  "generator_prompt_version",
-	5:  "source_version",
-	6:  "fetched_at",
-	7:  "content_hash",
-	8:  "last_checked_at",
-	9:  "unavailable_since",
-	10: "trust",
+	5:  "generation_inputs",
+	6:  "source_version",
+	7:  "fetched_at",
+	8:  "content_hash",
+	9:  "last_checked_at",
+	10: "unavailable_since",
+	11: "trust",
 }
 
 // Decode decodes SkillSource from json.
@@ -32768,6 +33232,16 @@ func (s *SkillSource) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"generator_prompt_version\"")
 			}
+		case "generation_inputs":
+			if err := func() error {
+				s.GenerationInputs.Reset()
+				if err := s.GenerationInputs.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"generation_inputs\"")
+			}
 		case "source_version":
 			if err := func() error {
 				s.SourceVersion.Reset()
@@ -32819,7 +33293,7 @@ func (s *SkillSource) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"unavailable_since\"")
 			}
 		case "trust":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				if err := s.Trust.Decode(d); err != nil {
 					return err
@@ -32839,7 +33313,7 @@ func (s *SkillSource) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b00000001,
-		0b00000100,
+		0b00001000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

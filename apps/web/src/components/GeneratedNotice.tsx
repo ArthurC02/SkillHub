@@ -20,7 +20,7 @@ export function GeneratedNotice({ skillId }: { skillId?: string }) {
     <>
       <p className="badge badge-unverified">沒有經過任何人工檢視，沒有任何試跑證據</p>
       <p className="note">
-        這份內容是平台依任務描述生成的。它通過的只有格式與靜態檢查，
+        這份內容是平台生成的。它通過的只有格式與靜態檢查，
         <strong>那不是品質、可用性或安全的結論</strong>。
         {skillId ? (
           <>

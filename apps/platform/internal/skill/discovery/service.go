@@ -100,6 +100,9 @@ type SourceFacts struct {
 	TaskDescription        *string
 	GeneratorModel         *string
 	GeneratorPromptVersion *string
+	// GenerationInputs crosses as the bytes ingest wrote (ADR-066, 04 丙-159),
+	// the way SkillRisks does: neither side re-declares the shape.
+	GenerationInputs []byte
 }
 
 // searchOutcome is what one retrieval run produced, with the two facts about
@@ -134,7 +137,13 @@ type searchOutcome struct {
 //
 // Scope is fixed to catalog workspaces inside the SQL (CORE-006) — an anonymous
 // caller has no session to derive a scope from and must never supply one.
-func (s *Service) Search(ctx context.Context, query string, limit int32, filters searchFilters) (searchOutcome, error) {
+//
+// silent is ADR-066's `purpose=reference`: GEN-006's reference picker is still
+// retrieval, at the same recall, but it is not the DISC-001 funnel and it must
+// not spend a model call on an explanation nobody reads on that screen. It
+// skips exactly two things — the match-reason call and the search_performed
+// event — and nothing about ranking, filtering or the page shape.
+func (s *Service) Search(ctx context.Context, query string, limit int32, filters searchFilters, silent bool) (searchOutcome, error) {
 	queries := gen.New(s.Pool)
 
 	// Hybrid retrieval is the intended path. Degrading to FTS-only is an
@@ -228,8 +237,11 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 	}
 
 	// DISC-002: one batched call for the whole result page, never one per hit.
+	// Skipped when silent (ADR-066): the reference picker still gets the
+	// template fallback reason for free out of applyMatchReasons below, just not
+	// the model-written one.
 	var reasons []llmclient.MatchReason
-	if len(out.Hits) > 0 && s.LLM != nil {
+	if len(out.Hits) > 0 && s.LLM != nil && !silent {
 		reasons = s.matchReasons(ctx, query, out.Hits)
 	}
 	applyMatchReasons(out.Hits, query, reasons)
@@ -243,7 +255,13 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 	// That is the honest shape rather than a gap: the first funnel segment
 	// routinely happens before anyone signs in, and session_id is what stitches
 	// it to the later ones.
-	s.Analytics.SearchPerformed(ctx, query, len(out.Hits), filters.active())
+	//
+	// Not written when silent: a reference lookup is not an intent submission,
+	// and counting it would inflate 01 §11.2's denominator with a search nobody
+	// typed into the search box (ADR-066).
+	if !silent {
+		s.Analytics.SearchPerformed(ctx, query, len(out.Hits), filters.active())
+	}
 	return out, nil
 }
 

@@ -17,6 +17,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -112,6 +113,16 @@ const generateMaxReferences = 3 // one-number: generateMaxReferences
 // way improvement/suggest.go's firstChars caps a target file: cut, not
 // dropped, so the model still sees the start of a document that ran long.
 const generateMaxReferenceChars = 20000 // one-number: generateMaxReferenceChars
+
+// referenceTruncationMarker is appended to a reference's SKILL.md when it is
+// cut for generateMaxReferenceChars. Named as a const rather than an inline
+// literal because it has to be subtracted from the cap BEFORE cutting: cutting
+// to the full cap and then appending twelve more runes put a truncated
+// reference over the cap apps/llm's own `skill_md` schema enforces
+// (max_length=20000), and apps/llm answered 422 to a request Go itself built
+// oversized — reaching the user as the generic 502 「模型服務這一次沒有給出可用
+// 的結果」, indistinguishable from an actual gateway failure.
+const referenceTruncationMarker = "…[truncated]"
 
 // classifyTaskDescription is 02:GEN-001/005's whole bound-checking rule for
 // the task description, pulled out of GenerateSkill so it can be tested
@@ -280,8 +291,11 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 	//
 	// GEN-005 loosened the floor without removing it: a description is either
 	// absent (fine, as long as a diagram carries the task) or held to the same
-	// eight-rune minimum it always was — a three-character caption next to a
-	// diagram is still not a task description, it is a label.
+	// eight-rune minimum it always was. The floor exists to stop a bare box, not
+	// to force a caption up to eight runes when a diagram is doing the actual
+	// work — so beside a diagram any non-blank caption is passed through as
+	// context and the diagram carries the task; alone, eight runes is still the
+	// minimum (see classifyTaskDescription, TestAShortCaptionWithADiagramIsNotBlank).
 	if err := classifyTaskDescription(task, in.Diagram != nil); err != nil {
 		return GenerateResult{}, err
 	}
@@ -588,9 +602,13 @@ func (s *Service) resolveReference(
 		return llmclient.GenerateReference{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
 	}
 
-	content, truncated := cutRunes(strings.ToValidUTF8(string(md), ""), generateMaxReferenceChars)
+	// The marker's own length is subtracted from the cap before cutting, so
+	// content+marker together never exceed generateMaxReferenceChars — see
+	// referenceTruncationMarker.
+	content, truncated := cutRunes(strings.ToValidUTF8(string(md), ""),
+		generateMaxReferenceChars-utf8.RuneCountInString(referenceTruncationMarker))
 	if truncated {
-		content += "…[truncated]"
+		content += referenceTruncationMarker
 	}
 	return llmclient.GenerateReference{Name: skill.Name, SkillMD: content},
 		referenceProvenance{SkillID: skill.ID, VersionID: version.ID, Name: skill.Name}, nil

@@ -579,9 +579,9 @@ class MatchReasonsResponse(BaseModel):
 
 
 class GenerateSkillRequest(BaseModel):
-    task_description: Optional[constr(min_length=8, max_length=4000)] = Field(
+    task_description: Optional[constr(min_length=1, max_length=4000)] = Field(
         None,
-        description='What the user wants done, in their own words. Not a Skill name and\nnot a query - the whole point of GEN-001 is that the user does not\nhave to know what a Skill is (01 §2.1 學習者).\n\nGo refuses blank and unintelligible input before this call, so the\nlength floor here is a backstop and not the product rule\n(02:GEN-001, same discipline as DISC-001). Absent when the diagram\nis the whole input (GEN-005).\n',
+        description='What the user wants done, in their own words. Not a Skill name and\nnot a query - the whole point of GEN-001 is that the user does not\nhave to know what a Skill is (01 §2.1 學習者).\n\nGo owns the length floor (02:GEN-001: eight runes when the text is\nthe whole input; a shorter caption is allowed beside a diagram,\nGEN-005) and refuses blank and unintelligible input before this\ncall. This side only refuses an empty or whitespace-only string —\na backstop, not the product rule (iron rule 6). It used to say\n`minLength: 8`, which was stricter than the rule it backed: a\nfour-character caption next to a flowchart passed Go and was\nrefused here as a 422 that reached the user as 「generation\nfailed」. Absent when the diagram is the whole input.\n',
     )
     diagram: Optional[GenerateDiagram] = None
     references: Optional[List[GenerateReference]] = Field(

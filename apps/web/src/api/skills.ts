@@ -36,7 +36,18 @@ import type {
  * asked (資訊架構 §5 IA-6).
  */
 
-export function searchSkills(query: string, filters: SearchFilters = {}, limit = 20) {
+/**
+ * `purpose: "reference"` marks a call as GEN-006's reference picker rather
+ * than a page view: the server writes no `search_performed` funnel event and
+ * makes no match-reason model call for it (retrieval is unchanged). Home's own
+ * search must never pass this.
+ */
+export function searchSkills(
+  query: string,
+  filters: SearchFilters = {},
+  limit = 20,
+  purpose?: "reference",
+) {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
   // An unset dimension is omitted rather than sent empty: the server reads a
   // present-but-empty value as "not filtered" too, but omitting it keeps the
@@ -46,6 +57,7 @@ export function searchSkills(query: string, filters: SearchFilters = {}, limit =
   if (filters.agent) params.set("agent", filters.agent);
   if (filters.tier) params.set("tier", filters.tier);
   if (filters.category) params.set("category", filters.category);
+  if (purpose) params.set("purpose", purpose);
   return apiFetch<PublicSearchResponse>(`/api/skills/search?${params.toString()}`);
 }
 
@@ -59,7 +71,12 @@ export function searchSkills(query: string, filters: SearchFilters = {}, limit =
  * to the same question, and serving the previous filter's results while the new
  * ones load would show a list that contradicts the controls above it.
  */
-export function useSkillSearch(query: string, filters: SearchFilters, enabled: boolean) {
+export function useSkillSearch(
+  query: string,
+  filters: SearchFilters,
+  enabled: boolean,
+  purpose?: "reference",
+) {
   return useQuery({
     queryKey: [
       "skills",
@@ -70,8 +87,13 @@ export function useSkillSearch(query: string, filters: SearchFilters, enabled: b
       filters.agent ?? "",
       filters.tier ?? "",
       filters.category ?? "",
+      // A reference-picker answer and a page-view answer must never share a
+      // cache entry: only one of the two skips the funnel event and the
+      // match-reason model call, so serving one for the other would be wrong
+      // either way it happened.
+      purpose ?? "",
     ],
-    queryFn: () => searchSkills(query, filters),
+    queryFn: () => searchSkills(query, filters, 20, purpose),
     enabled,
     retry: false,
   });

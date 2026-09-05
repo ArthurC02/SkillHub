@@ -5721,6 +5721,163 @@ func (s *GenerationFailures) SetFailures(val []GenerationFailure) {
 
 func (*GenerationFailures) listGenerationFailuresRes() {}
 
+// The non-text inputs of one generation, exactly as `skill_sources.generation_inputs` stores them
+// (ADR-066 決策 4): a diagram is a digest, a media type and a byte count — the image bytes were
+// never kept, so nothing here lets anyone download or re-derive the picture; a reference is the
+// identifier of the Skill and the version the model was shown, never its content. Both keys are
+// optional, and at least one is present whenever this object is.
+// Ref: #/components/schemas/GenerationInputs
+type GenerationInputs struct {
+	Diagram OptGenerationInputsDiagram `json:"diagram"`
+	// In the order they were given. A reference may since have been taken down, deleted, or belong to a
+	// workspace the reader cannot open; the page shows the name recorded at generation time and must not
+	// treat a failed follow-up read as "never existed".
+	References []GenerationInputsReferencesItem `json:"references"`
+}
+
+// GetDiagram returns the value of Diagram.
+func (s *GenerationInputs) GetDiagram() OptGenerationInputsDiagram {
+	return s.Diagram
+}
+
+// GetReferences returns the value of References.
+func (s *GenerationInputs) GetReferences() []GenerationInputsReferencesItem {
+	return s.References
+}
+
+// SetDiagram sets the value of Diagram.
+func (s *GenerationInputs) SetDiagram(val OptGenerationInputsDiagram) {
+	s.Diagram = val
+}
+
+// SetReferences sets the value of References.
+func (s *GenerationInputs) SetReferences(val []GenerationInputsReferencesItem) {
+	s.References = val
+}
+
+type GenerationInputsDiagram struct {
+	MediaType GenerationInputsDiagramMediaType `json:"media_type"`
+	// Hex digest of the decoded image bytes.
+	SHA256 string `json:"sha256"`
+	// Decoded size of the image.
+	Bytes int `json:"bytes"`
+}
+
+// GetMediaType returns the value of MediaType.
+func (s *GenerationInputsDiagram) GetMediaType() GenerationInputsDiagramMediaType {
+	return s.MediaType
+}
+
+// GetSHA256 returns the value of SHA256.
+func (s *GenerationInputsDiagram) GetSHA256() string {
+	return s.SHA256
+}
+
+// GetBytes returns the value of Bytes.
+func (s *GenerationInputsDiagram) GetBytes() int {
+	return s.Bytes
+}
+
+// SetMediaType sets the value of MediaType.
+func (s *GenerationInputsDiagram) SetMediaType(val GenerationInputsDiagramMediaType) {
+	s.MediaType = val
+}
+
+// SetSHA256 sets the value of SHA256.
+func (s *GenerationInputsDiagram) SetSHA256(val string) {
+	s.SHA256 = val
+}
+
+// SetBytes sets the value of Bytes.
+func (s *GenerationInputsDiagram) SetBytes(val int) {
+	s.Bytes = val
+}
+
+type GenerationInputsDiagramMediaType string
+
+const (
+	GenerationInputsDiagramMediaTypeImagePNG  GenerationInputsDiagramMediaType = "image/png"
+	GenerationInputsDiagramMediaTypeImageJpeg GenerationInputsDiagramMediaType = "image/jpeg"
+	GenerationInputsDiagramMediaTypeImageWEBP GenerationInputsDiagramMediaType = "image/webp"
+)
+
+// AllValues returns all GenerationInputsDiagramMediaType values.
+func (GenerationInputsDiagramMediaType) AllValues() []GenerationInputsDiagramMediaType {
+	return []GenerationInputsDiagramMediaType{
+		GenerationInputsDiagramMediaTypeImagePNG,
+		GenerationInputsDiagramMediaTypeImageJpeg,
+		GenerationInputsDiagramMediaTypeImageWEBP,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s GenerationInputsDiagramMediaType) MarshalText() ([]byte, error) {
+	switch s {
+	case GenerationInputsDiagramMediaTypeImagePNG:
+		return []byte(s), nil
+	case GenerationInputsDiagramMediaTypeImageJpeg:
+		return []byte(s), nil
+	case GenerationInputsDiagramMediaTypeImageWEBP:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *GenerationInputsDiagramMediaType) UnmarshalText(data []byte) error {
+	switch GenerationInputsDiagramMediaType(data) {
+	case GenerationInputsDiagramMediaTypeImagePNG:
+		*s = GenerationInputsDiagramMediaTypeImagePNG
+		return nil
+	case GenerationInputsDiagramMediaTypeImageJpeg:
+		*s = GenerationInputsDiagramMediaTypeImageJpeg
+		return nil
+	case GenerationInputsDiagramMediaTypeImageWEBP:
+		*s = GenerationInputsDiagramMediaTypeImageWEBP
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type GenerationInputsReferencesItem struct {
+	SkillID   uuid.UUID `json:"skill_id"`
+	VersionID uuid.UUID `json:"version_id"`
+	// The Skill's name at generation time.
+	Name string `json:"name"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *GenerationInputsReferencesItem) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *GenerationInputsReferencesItem) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetName returns the value of Name.
+func (s *GenerationInputsReferencesItem) GetName() string {
+	return s.Name
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *GenerationInputsReferencesItem) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *GenerationInputsReferencesItem) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetName sets the value of Name.
+func (s *GenerationInputsReferencesItem) SetName(val string) {
+	s.Name = val
+}
+
 type GetDispatchStatusOK struct {
 	// False when nothing can be dispatched at all — the pool is halted, or every configured provider is
 	// drained one at a time, which is the same operational fact.
@@ -8167,6 +8324,98 @@ func (o OptGenerateDiagram) Or(d GenerateDiagram) GenerateDiagram {
 	return d
 }
 
+// NewOptGenerationInputs returns new OptGenerationInputs with value set to v.
+func NewOptGenerationInputs(v GenerationInputs) OptGenerationInputs {
+	return OptGenerationInputs{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGenerationInputs is optional GenerationInputs.
+type OptGenerationInputs struct {
+	Value GenerationInputs
+	Set   bool
+}
+
+// IsSet returns true if OptGenerationInputs was set.
+func (o OptGenerationInputs) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGenerationInputs) Reset() {
+	var v GenerationInputs
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGenerationInputs) SetTo(v GenerationInputs) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGenerationInputs) Get() (v GenerationInputs, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGenerationInputs) Or(d GenerationInputs) GenerationInputs {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGenerationInputsDiagram returns new OptGenerationInputsDiagram with value set to v.
+func NewOptGenerationInputsDiagram(v GenerationInputsDiagram) OptGenerationInputsDiagram {
+	return OptGenerationInputsDiagram{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGenerationInputsDiagram is optional GenerationInputsDiagram.
+type OptGenerationInputsDiagram struct {
+	Value GenerationInputsDiagram
+	Set   bool
+}
+
+// IsSet returns true if OptGenerationInputsDiagram was set.
+func (o OptGenerationInputsDiagram) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGenerationInputsDiagram) Reset() {
+	var v GenerationInputsDiagram
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGenerationInputsDiagram) SetTo(v GenerationInputsDiagram) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGenerationInputsDiagram) Get() (v GenerationInputsDiagram, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGenerationInputsDiagram) Or(d GenerationInputsDiagram) GenerationInputsDiagram {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptGetRunTraceMode returns new OptGetRunTraceMode with value set to v.
 func NewOptGetRunTraceMode(v GetRunTraceMode) OptGetRunTraceMode {
 	return OptGetRunTraceMode{
@@ -9007,6 +9256,52 @@ func (o OptPublicSearchSkillsCategory) Get() (v PublicSearchSkillsCategory, ok b
 
 // Or returns value if set, or given parameter if does not.
 func (o OptPublicSearchSkillsCategory) Or(d PublicSearchSkillsCategory) PublicSearchSkillsCategory {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPublicSearchSkillsPurpose returns new OptPublicSearchSkillsPurpose with value set to v.
+func NewOptPublicSearchSkillsPurpose(v PublicSearchSkillsPurpose) OptPublicSearchSkillsPurpose {
+	return OptPublicSearchSkillsPurpose{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPublicSearchSkillsPurpose is optional PublicSearchSkillsPurpose.
+type OptPublicSearchSkillsPurpose struct {
+	Value PublicSearchSkillsPurpose
+	Set   bool
+}
+
+// IsSet returns true if OptPublicSearchSkillsPurpose was set.
+func (o OptPublicSearchSkillsPurpose) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPublicSearchSkillsPurpose) Reset() {
+	var v PublicSearchSkillsPurpose
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPublicSearchSkillsPurpose) SetTo(v PublicSearchSkillsPurpose) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPublicSearchSkillsPurpose) Get() (v PublicSearchSkillsPurpose, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPublicSearchSkillsPurpose) Or(d PublicSearchSkillsPurpose) PublicSearchSkillsPurpose {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -11708,6 +12003,40 @@ func (s *PublicSearchSkillsCategory) UnmarshalText(data []byte) error {
 		return nil
 	case PublicSearchSkillsCategoryData:
 		*s = PublicSearchSkillsCategoryData
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PublicSearchSkillsPurpose string
+
+const (
+	PublicSearchSkillsPurposeReference PublicSearchSkillsPurpose = "reference"
+)
+
+// AllValues returns all PublicSearchSkillsPurpose values.
+func (PublicSearchSkillsPurpose) AllValues() []PublicSearchSkillsPurpose {
+	return []PublicSearchSkillsPurpose{
+		PublicSearchSkillsPurposeReference,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PublicSearchSkillsPurpose) MarshalText() ([]byte, error) {
+	switch s {
+	case PublicSearchSkillsPurposeReference:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PublicSearchSkillsPurpose) UnmarshalText(data []byte) error {
+	switch PublicSearchSkillsPurpose(data) {
+	case PublicSearchSkillsPurposeReference:
+		*s = PublicSearchSkillsPurposeReference
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -16859,6 +17188,11 @@ type SkillSource struct {
 	// task_description and generator_model this is what lets someone re-derive the package (ADR-047 決策
 	// 1).
 	GeneratorPromptVersion OptString `json:"generator_prompt_version"`
+	// What besides the task description was behind a generated package (ADR-066, GEN-005/GEN-006). Present
+	// only for `generated`, and only when a diagram or reference Skills were given; a text-only generation
+	// has no such record and the field is absent. Absent is "nothing else was used", not "unknown" — the
+	// platform wrote every generated row and knows.
+	GenerationInputs OptGenerationInputs `json:"generation_inputs"`
 	// Commit SHA, tag, or branch, when the fetch resolved one.
 	SourceVersion OptString   `json:"source_version"`
 	FetchedAt     OptDateTime `json:"fetched_at"`
@@ -16901,6 +17235,11 @@ func (s *SkillSource) GetGeneratorModel() OptString {
 // GetGeneratorPromptVersion returns the value of GeneratorPromptVersion.
 func (s *SkillSource) GetGeneratorPromptVersion() OptString {
 	return s.GeneratorPromptVersion
+}
+
+// GetGenerationInputs returns the value of GenerationInputs.
+func (s *SkillSource) GetGenerationInputs() OptGenerationInputs {
+	return s.GenerationInputs
 }
 
 // GetSourceVersion returns the value of SourceVersion.
@@ -16956,6 +17295,11 @@ func (s *SkillSource) SetGeneratorModel(val OptString) {
 // SetGeneratorPromptVersion sets the value of GeneratorPromptVersion.
 func (s *SkillSource) SetGeneratorPromptVersion(val OptString) {
 	s.GeneratorPromptVersion = val
+}
+
+// SetGenerationInputs sets the value of GenerationInputs.
+func (s *SkillSource) SetGenerationInputs(val OptGenerationInputs) {
+	s.GenerationInputs = val
 }
 
 // SetSourceVersion sets the value of SourceVersion.

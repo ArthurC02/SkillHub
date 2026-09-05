@@ -477,6 +477,7 @@ export interface PreviewPackagingRequest {
 export interface PublicSearchSkillsRequest {
     q: string;
     limit?: number;
+    purpose?: PublicSearchSkillsPurposeEnum;
     script?: PublicSearchSkillsScriptEnum;
     validation?: PublicSearchSkillsValidationEnum;
     agent?: PublicSearchSkillsAgentEnum;
@@ -1487,6 +1488,7 @@ export interface DefaultApiInterface {
      * @summary Public intent search for skills (DISC-001, DISC-002)
      * @param {string} q Natural language task description.
      * @param {number} [limit] 
+     * @param {'reference'} [purpose] Why this search is being made, when it is not the user looking for a Skill to use. &#x60;reference&#x60; is GEN-006\&#39;s reference picker: the caller is choosing worked examples for a generation, not expressing an intent the funnel measures. The server then writes no &#x60;search_performed&#x60; event (01 §11.2 segment 1 counts intents, and this is not one) and makes no match-reason model call (the reason a hit matched is DISC-002\&#39;s answer to \&quot;should I use this\&quot;, which the picker does not ask). Retrieval itself is unchanged. Absent &#x3D; an ordinary search. 
      * @param {'yes' | 'no'} [script] DISC-003 filter on whether the package carries runnable code, as recorded by the import scan: a script file in the tree, or code embedded in SKILL.md itself (SKILL-003). Absent &#x3D; not filtered.  A row the projection holds no scan for matches neither value. It is not known to have a script and it is not known to be free of one, and answering &#x60;no&#x60; for it would be the 不得自行推定為通過 that DISC-004 forbids. Such rows leave a filtered page and return when the filter is cleared. 
      * @param {'passed' | 'unverified'} [validation] DISC-003 filter on the spec-validation axis of &#x60;compatibility&#x60;. &#x60;passed&#x60; is a skill with a saved version — static validation blocks the import on any error-level finding, so a stored version is the evidence. &#x60;unverified&#x60; is a skill with no saved content, which is never reported as failed. Absent &#x3D; not filtered. 
      * @param {'native' | 'transpiled' | 'failed' | 'unverified'} [agent] DISC-002\&#39;s Agent dimension, live since migration 0022. It filters the &#x60;runtime&#x60; axis of &#x60;compatibility&#x60; and only that axis, matching the measured verdict **exactly** rather than as a boolean: &#x60;unverified&#x60; is a value a caller can ask for, and a \&quot;not native\&quot; filter would silently mean transpiled-or-failed-or-never-measured, which are three different things to someone choosing a skill. Absent &#x3D; not filtered.  The &#x60;capability&#x60; axis is shown but not filterable. Every measured skill in the catalogue came back &#x60;activated&#x60; (45/45 in the M2 baseline), so a control on it separates nothing; it becomes a filter when a &#x60;not_activated&#x60; row exists and not before. 
@@ -4131,6 +4133,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             queryParameters['limit'] = requestParameters['limit'];
         }
 
+        if (requestParameters['purpose'] != null) {
+            queryParameters['purpose'] = requestParameters['purpose'];
+        }
+
         if (requestParameters['script'] != null) {
             queryParameters['script'] = requestParameters['script'];
         }
@@ -4976,6 +4982,13 @@ export const GetSkillDetailViewEnum = {
     Embedded: 'embedded'
 } as const;
 export type GetSkillDetailViewEnum = typeof GetSkillDetailViewEnum[keyof typeof GetSkillDetailViewEnum];
+/**
+ * @export
+ */
+export const PublicSearchSkillsPurposeEnum = {
+    Reference: 'reference'
+} as const;
+export type PublicSearchSkillsPurposeEnum = typeof PublicSearchSkillsPurposeEnum[keyof typeof PublicSearchSkillsPurposeEnum];
 /**
  * @export
  */

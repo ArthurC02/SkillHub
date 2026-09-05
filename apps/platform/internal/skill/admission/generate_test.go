@@ -716,3 +716,67 @@ func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
 		t.Errorf("generation_inputs.references = %+v, want one entry naming the resolved skill/version", got.References)
 	}
 }
+
+// A reference SKILL.md longer than generateMaxReferenceChars used to be cut TO
+// the cap and then have the twelve-rune marker appended, landing over
+// apps/llm's own `skill_md` schema limit (max_length=20000) — a 422 from
+// apps/llm that reached the user as the generic 502
+// 「模型服務這一次沒有給出可用的結果」, indistinguishable from an actual gateway
+// failure. The marker's length must be reserved before cutting.
+func TestALongReferenceIsCutToLeaveRoomForTheMarker(t *testing.T) {
+	ws := identity.Workspace{ID: mustUUIDForTest(t, "10000000-0000-0000-0000-000000000011")}
+	skillID := mustUUIDForTest(t, "20000000-0000-0000-0000-000000000012")
+	versionID := mustUUIDForTest(t, "30000000-0000-0000-0000-000000000013")
+	const objectKey = "packages/long-reference.zip"
+
+	longBody := strings.Repeat("台", 30000)
+	skillMD := "---\nname: reference-skill\ndescription: A worked example.\n---\n\n" + longBody + "\n"
+	store := fakeObjectStore{objectKey: zipBytes(t, map[string]string{"SKILL.md": skillMD})}
+	svc := &Service{
+		Store: store,
+		References: fakeReferenceReader{
+			workspace: map[string]registry.Skill{
+				pgconv.UUIDString(skillID): {ID: skillID, WorkspaceID: ws.ID, Name: "reference-skill", Redistribution: "self_supplied"},
+			},
+			versions: map[string]registry.Version{
+				pgconv.UUIDString(skillID): {ID: versionID, SkillID: skillID, WorkspaceID: ws.ID, PackageObjectKey: objectKey},
+			},
+		},
+	}
+
+	ref, _, err := svc.resolveReference(context.Background(), ws, skillID)
+	if err != nil {
+		t.Fatalf("resolveReference: %v", err)
+	}
+	if n := len([]rune(ref.SkillMD)); n > generateMaxReferenceChars {
+		t.Errorf("resolved reference is %d runes, want at most %d (the cap apps/llm enforces)", n, generateMaxReferenceChars)
+	}
+	if !strings.HasSuffix(ref.SkillMD, referenceTruncationMarker) {
+		t.Errorf("a cut reference does not end with the truncation marker: %q", ref.SkillMD[max(0, len(ref.SkillMD)-40):])
+	}
+}
+
+// 02:GEN-005: SVG is deliberately not one of the three accepted diagram media
+// types (it is text that can carry scripts, iron rule 1) — refused before the
+// gateway is ever asked, the same discipline every other GenerateInput bound
+// already follows.
+func TestADisallowedDiagramMediaTypeIsRefused(t *testing.T) {
+	svc := &Service{LLM: &llmclient.Client{}} // empty BaseURL: a reached gateway fails loudly and differently
+	in := GenerateInput{Diagram: &GenerateDiagram{MediaType: "image/svg+xml", Data: []byte("<svg/>")}}
+	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrDiagramInvalid) {
+		t.Errorf("err = %v, want ErrDiagramInvalid", err)
+	}
+}
+
+// 02:GEN-005/006: reference ids alone, with neither a task description nor a
+// diagram, are refused by the same rule a wholly blank request is — before the
+// references are ever resolved, so a caller who forgot both text and a diagram
+// does not pay for a reader call either.
+func TestReferencesAloneWithNoDescriptionOrDiagramIsRefused(t *testing.T) {
+	svc := &Service{LLM: &llmclient.Client{}} // References nil: a touch would panic, proving it was never reached
+	someID := mustUUIDForTest(t, "40000000-0000-0000-0000-000000000001")
+	in := GenerateInput{ReferenceSkillIDs: []pgtype.UUID{someID}}
+	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrGenerateNoInput) {
+		t.Errorf("err = %v, want ErrGenerateNoInput", err)
+	}
+}

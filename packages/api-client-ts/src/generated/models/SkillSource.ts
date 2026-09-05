@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { GenerationInputs } from './GenerationInputs';
+import {
+    GenerationInputsFromJSON,
+    GenerationInputsFromJSONTyped,
+    GenerationInputsToJSON,
+    GenerationInputsToJSONTyped,
+} from './GenerationInputs';
 import type { Labelled } from './Labelled';
 import {
     LabelledFromJSON,
@@ -67,6 +74,18 @@ export interface SkillSource {
      * @memberof SkillSource
      */
     generatorPromptVersion?: string;
+    /**
+     * What besides the task description was behind a generated package
+     * (ADR-066, GEN-005/GEN-006). Present only for `generated`, and only
+     * when a diagram or reference Skills were given; a text-only
+     * generation has no such record and the field is absent. Absent is
+     * "nothing else was used", not "unknown" — the platform wrote every
+     * generated row and knows.
+     * 
+     * @type {GenerationInputs}
+     * @memberof SkillSource
+     */
+    generationInputs?: GenerationInputs;
     /**
      * Commit SHA, tag, or branch, when the fetch resolved one.
      * @type {string}
@@ -153,6 +172,7 @@ export function SkillSourceFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'taskDescription': json['task_description'] == null ? undefined : json['task_description'],
         'generatorModel': json['generator_model'] == null ? undefined : json['generator_model'],
         'generatorPromptVersion': json['generator_prompt_version'] == null ? undefined : json['generator_prompt_version'],
+        'generationInputs': json['generation_inputs'] == null ? undefined : GenerationInputsFromJSON(json['generation_inputs']),
         'sourceVersion': json['source_version'] == null ? undefined : json['source_version'],
         'fetchedAt': json['fetched_at'] == null ? undefined : (new Date(json['fetched_at'])),
         'contentHash': json['content_hash'] == null ? undefined : json['content_hash'],
@@ -178,6 +198,7 @@ export function SkillSourceToJSONTyped(value?: SkillSource | null, ignoreDiscrim
         'task_description': value['taskDescription'],
         'generator_model': value['generatorModel'],
         'generator_prompt_version': value['generatorPromptVersion'],
+        'generation_inputs': GenerationInputsToJSON(value['generationInputs']),
         'source_version': value['sourceVersion'],
         'fetched_at': value['fetchedAt'] == null ? value['fetchedAt'] : value['fetchedAt'].toISOString(),
         'content_hash': value['contentHash'],

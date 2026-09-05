@@ -1362,17 +1362,22 @@ components:
       properties:
         task_description:
           type: string
-          minLength: 8
+          minLength: 1
           maxLength: 4000  # one-number: generateMaxTaskRunes
           description: |
             What the user wants done, in their own words. Not a Skill name and
             not a query - the whole point of GEN-001 is that the user does not
             have to know what a Skill is (01 §2.1 學習者).
 
-            Go refuses blank and unintelligible input before this call, so the
-            length floor here is a backstop and not the product rule
-            (02:GEN-001, same discipline as DISC-001). Absent when the diagram
-            is the whole input (GEN-005).
+            Go owns the length floor (02:GEN-001: eight runes when the text is
+            the whole input; a shorter caption is allowed beside a diagram,
+            GEN-005) and refuses blank and unintelligible input before this
+            call. This side only refuses an empty or whitespace-only string —
+            a backstop, not the product rule (iron rule 6). It used to say
+            `minLength: 8`, which was stricter than the rule it backed: a
+            four-character caption next to a flowchart passed Go and was
+            refused here as a 422 that reached the user as 「generation
+            failed」. Absent when the diagram is the whole input.
         diagram:
           $ref: "#/components/schemas/GenerateDiagram"
         references:

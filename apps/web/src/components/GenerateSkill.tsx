@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
@@ -96,6 +96,8 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
   const [diagram, setDiagram] = useState<GenerateDiagram>();
   const [diagramName, setDiagramName] = useState("");
   const [diagramError, setDiagramError] = useState("");
+  const [reading, setReading] = useState(false);
+  const diagramFileRef = useRef<HTMLInputElement>(null);
   const [references, setReferences] = useState<{ id: string; name: string }[]>([]);
   const [rejected, setRejected] = useState<GenerateRejected>();
   const queryClient = useQueryClient();
@@ -123,7 +125,13 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         data: result.slice(result.indexOf(",") + 1),
       });
       setDiagramName(file.name);
+      setReading(false);
     };
+    reader.onerror = () => {
+      setDiagramError("讀取圖片失敗，請重新選擇。");
+      setReading(false);
+    };
+    setReading(true);
     reader.readAsDataURL(file);
   }
 
@@ -131,6 +139,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
     setDiagram(undefined);
     setDiagramName("");
     setDiagramError("");
+    if (diagramFileRef.current) diagramFileRef.current.value = "";
   }
 
   function toggleReference(id: string, name: string) {
@@ -205,6 +214,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
       <label htmlFor="generate-diagram-file">流程圖或架構圖（選填）</label>
       <input
         id="generate-diagram-file"
+        ref={diagramFileRef}
         type="file"
         accept="image/png,image/jpeg,image/webp"
         disabled={mutation.isPending}
@@ -248,6 +258,8 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
             US$0.0062、最大 US$0.0110，mini 級模型，皆為單次嘗試）。上緣按最多{" "}
             {GENERATE_MAX_ATTEMPTS} 次嘗試放寬並上取整，因為 10 次不是一個界。
             <strong>平台沒有為單次生成設定費用上限</strong>，所以這是估計不是保證。
+            帶流程圖與帶參考各實測一次（US$0.0039、US$0.0040，2026-09-05），
+            都落在區間內，但一次不是分布。
           </span>
         </dd>
       </dl>
@@ -255,7 +267,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
       <button
         type="button"
         onClick={submit}
-        disabled={mutation.isPending || (task.trim() === "" && !diagram)}
+        disabled={mutation.isPending || reading || (task.trim() === "" && !diagram)}
       >
         {mutation.isPending ? "生成中…" : "生成一個 Skill"}
       </button>
@@ -307,7 +319,7 @@ function ReferencePicker({
   }, [query]);
 
   const searching = debounced.length > 0;
-  const search = useSkillSearch(debounced, {}, searching);
+  const search = useSkillSearch(debounced, {}, searching, "reference");
   const ownSkills = useOwnSkills();
   const ownMatches = searching
     ? (ownSkills.data?.skills ?? []).filter(
@@ -333,7 +345,8 @@ function ReferencePicker({
       />
       <p className="note">
         模型會把最多 {GENERATE_MAX_REFERENCES} 個你選的 Skill 的 SKILL.md
-        當範例讀，產出仍是你工作區裡一個全新的 Skill。
+        當範例讀，產出仍是你工作區裡一個全新的 Skill。 有授權暫扣或禁止再散布的目錄 Skill
+        無法被選為參考。
       </p>
 
       {references.length > 0 && (
@@ -489,6 +502,9 @@ function GenerateInFlight() {
     <div role="status" className="notice">
       <p>正在請模型寫這個 Skill，然後用與匯入完全相同的那道驗證檢查它。</p>
       <p>這一步會自己結束，通常十幾秒到一分鐘。</p>
+      <p className="note">
+        這一段沒有進度可以報——生成是一次呼叫，它要嘛回一個套件要嘛失敗， 沒有中間的量可以顯示。
+      </p>
       <p>
         <strong>請不要關掉這個分頁</strong>
         ——這一次生成沒有背景工作可以接手，關掉就等於取消，而且不會留下任何半成品版本。

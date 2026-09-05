@@ -10845,6 +10845,10 @@ func (s *Server) handlePublicSearchSkillsRequest(args [0]string, argsEscaped boo
 					In:   "query",
 				}: params.Limit,
 				{
+					Name: "purpose",
+					In:   "query",
+				}: params.Purpose,
+				{
 					Name: "script",
 					In:   "query",
 				}: params.Script,

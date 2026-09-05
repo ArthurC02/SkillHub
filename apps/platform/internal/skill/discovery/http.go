@@ -529,6 +529,19 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ADR-066's GEN-006 reference picker calls this same endpoint with
+	// purpose=reference: retrieval is unchanged, but the caller is not
+	// submitting a search intent, so it must write no search_performed funnel
+	// event and pay for no match-reason model call (Service.Search's silent
+	// parameter). Any other value is rejected rather than ignored, the same
+	// discipline parseFilters already applies to an unrecognised filter.
+	purpose := r.URL.Query().Get("purpose")
+	if purpose != "" && purpose != "reference" {
+		httpx.WriteError(w, http.StatusBadRequest, `query parameter purpose must be "reference"`)
+		return
+	}
+	silent := purpose == "reference"
+
 	// DISC-003 filters are parsed before the query is even looked at: a request
 	// asking for a filter this build cannot honour is rejected whatever the
 	// query says, rather than being answered with an unfiltered page.
@@ -556,8 +569,11 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		// systematically high (M5 audit, 2026-08-25).
 		//
 		// result_count 0 / has_results false is the truth: nothing was retrieved.
-		// No new attribute — the whitelist is the same five.
-		h.Svc.Analytics.SearchPerformed(r.Context(), q, 0, filters.active())
+		// No new attribute — the whitelist is the same five. Not written for the
+		// reference picker (silent, ADR-066): see Service.Search's own comment.
+		if !silent {
+			h.Svc.Analytics.SearchPerformed(r.Context(), q, 0, filters.active())
+		}
 		httpx.WriteJSON(w, http.StatusOK, searchResponse{
 			Query:           q,
 			Results:         []searchResult{},
@@ -571,7 +587,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.Svc.Search(r.Context(), q, limit, filters)
+	out, err := h.Svc.Search(r.Context(), q, limit, filters, silent)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "搜尋失敗，這不是你的輸入造成的，稍後再試一次")
 		return

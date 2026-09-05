@@ -943,6 +943,35 @@ func TestADiagramOnlyGenerationIsCreated(t *testing.T) {
 	if strings.Contains(string(generationInputs), base64.StdEncoding.EncodeToString(diagram)) {
 		t.Error("the image bytes themselves leaked into generation_inputs")
 	}
+
+	// 04 丙-159, the READ side: the same record has to come back through
+	// GET /api/skills/{id}, not only through a direct SQL read (ADR-066).
+	skillID, _ := resp["skill_id"].(string)
+	var viaAPI struct {
+		Source *struct {
+			GenerationInputs json.RawMessage `json:"generation_inputs"`
+		} `json:"source"`
+	}
+	if code := getJSON(t, c.Client, c.base+"/api/skills/"+skillID, &viaAPI); code != http.StatusOK {
+		t.Fatalf("GET /api/skills/%s: %d", skillID, code)
+	}
+	if viaAPI.Source == nil || len(viaAPI.Source.GenerationInputs) == 0 {
+		t.Fatalf("source.generation_inputs is absent from the detail response: %+v", viaAPI)
+	}
+	var gotViaAPI struct {
+		Diagram struct {
+			MediaType string `json:"media_type"`
+			SHA256    string `json:"sha256"`
+			Bytes     int    `json:"bytes"`
+		} `json:"diagram"`
+	}
+	if err := json.Unmarshal(viaAPI.Source.GenerationInputs, &gotViaAPI); err != nil {
+		t.Fatalf("the detail response's generation_inputs did not decode: %v", err)
+	}
+	if gotViaAPI.Diagram.MediaType != "image/png" || gotViaAPI.Diagram.Bytes != len(diagram) ||
+		gotViaAPI.Diagram.SHA256 != hex.EncodeToString(sum[:]) {
+		t.Errorf("detail response generation_inputs.diagram = %+v, want the sent image's digest", gotViaAPI.Diagram)
+	}
 }
 
 // A reference from the caller's own workspace: 201, and its SKILL.md reached
@@ -986,6 +1015,36 @@ func TestAReferenceFromTheCallersOwnWorkspaceIsUsed(t *testing.T) {
 	if len(got.References) != 1 || got.References[0].SkillID != refSkillID ||
 		got.References[0].VersionID != refVersionID || got.References[0].Name != "reference-source" {
 		t.Errorf("generation_inputs.references = %+v, want one entry naming %s/%s", got.References, refSkillID, refVersionID)
+	}
+
+	// 04 丙-159, the READ side: the same record read back through
+	// GET /api/skills/{id}, the route a reader actually opens (ADR-066).
+	skillID, _ := resp["skill_id"].(string)
+	var viaAPI struct {
+		Source *struct {
+			GenerationInputs json.RawMessage `json:"generation_inputs"`
+		} `json:"source"`
+	}
+	if code := getJSON(t, c.Client, c.base+"/api/skills/"+skillID, &viaAPI); code != http.StatusOK {
+		t.Fatalf("GET /api/skills/%s: %d", skillID, code)
+	}
+	if viaAPI.Source == nil || len(viaAPI.Source.GenerationInputs) == 0 {
+		t.Fatalf("source.generation_inputs is absent from the detail response: %+v", viaAPI)
+	}
+	var gotViaAPI struct {
+		References []struct {
+			SkillID   string `json:"skill_id"`
+			VersionID string `json:"version_id"`
+			Name      string `json:"name"`
+		} `json:"references"`
+	}
+	if err := json.Unmarshal(viaAPI.Source.GenerationInputs, &gotViaAPI); err != nil {
+		t.Fatalf("the detail response's generation_inputs did not decode: %v", err)
+	}
+	if len(gotViaAPI.References) != 1 || gotViaAPI.References[0].SkillID != refSkillID ||
+		gotViaAPI.References[0].VersionID != refVersionID || gotViaAPI.References[0].Name != "reference-source" {
+		t.Errorf("detail response generation_inputs.references = %+v, want one entry naming %s/%s",
+			gotViaAPI.References, refSkillID, refVersionID)
 	}
 }
 
@@ -1046,6 +1105,74 @@ func TestABlockedRedistributionCatalogueSkillIs422(t *testing.T) {
 	}
 }
 
+// A taken-down catalogue skill is refused as a reference (422), the same
+// three words 02:GEN-006 names alongside access-restricted and
+// redistribution-blocked.
+func TestATakenDownCatalogueSkillIs422(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t) // no answers queued: a gateway call fails the test
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	curator := a.login(t, "gen-ref-curator-takedown")
+	markCatalog(t, pool, curator.workspaceID)
+	takenDownSkillID, _ := importFiles(t, a, pool, curator, map[string]string{
+		"SKILL.md": "---\nname: taken-down-catalogue-skill\ndescription: Withdrawn from the catalogue.\n---\n\nContent.\n",
+	})
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE skills SET takedown_at = now(), takedown_reason = 'test takedown' WHERE id = $1",
+		mustUUID(t, takenDownSkillID),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	caller := a.login(t, "gen-ref-caller-takedown")
+	body := `{"task_description":"照目錄裡的 Skill 做一個。","reference_skill_ids":["` + takenDownSkillID + `"]}`
+	code, resp := postJSON(t, caller, "/skills/generate", body)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("got %d %v, want 422", code, resp)
+	}
+	// NFR-002/iron rule 3: never names which reference failed or why.
+	msg, _ := resp["error"].(string)
+	if strings.Contains(msg, takenDownSkillID) || strings.Contains(msg, "taken-down-catalogue-skill") {
+		t.Errorf("the refusal named the skill: %q", msg)
+	}
+	if stub.calls != 0 {
+		t.Errorf("a taken-down reference still paid for %d gateway call(s)", stub.calls)
+	}
+}
+
+// A catalogue skill under a licensing hold is refused as a reference (422),
+// the same three words 02:GEN-006 names alongside taken-down and
+// redistribution-blocked.
+func TestAnAccessRestrictedCatalogueSkillIs422(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t) // no answers queued: a gateway call fails the test
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	curator := a.login(t, "gen-ref-curator-restricted")
+	markCatalog(t, pool, curator.workspaceID)
+	restrictedSkillID, _ := importFiles(t, a, pool, curator, map[string]string{
+		"SKILL.md": "---\nname: restricted-catalogue-skill\ndescription: Under a licensing hold.\n---\n\nContent.\n",
+	})
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE skills SET access_restriction = 'license-review' WHERE id = $1", mustUUID(t, restrictedSkillID),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	caller := a.login(t, "gen-ref-caller-restricted")
+	body := `{"task_description":"照目錄裡的 Skill 做一個。","reference_skill_ids":["` + restrictedSkillID + `"]}`
+	code, resp := postJSON(t, caller, "/skills/generate", body)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("got %d %v, want 422", code, resp)
+	}
+	msg, _ := resp["error"].(string)
+	if strings.Contains(msg, restrictedSkillID) || strings.Contains(msg, "restricted-catalogue-skill") {
+		t.Errorf("the refusal named the skill: %q", msg)
+	}
+	if stub.calls != 0 {
+		t.Errorf("an access-restricted reference still paid for %d gateway call(s)", stub.calls)
+	}
+}
+
 // Bad base64 in `diagram.data` is a 400, before anything is called
 // (02:GEN-005's contract: "not base64, over the byte cap, or a media type
 // outside the three accepted").
@@ -1062,6 +1189,26 @@ func TestBadBase64DiagramDataIs400(t *testing.T) {
 	}
 	if stub.calls != 0 {
 		t.Errorf("bad base64 still paid for %d gateway call(s)", stub.calls)
+	}
+}
+
+// SVG is deliberately not one of the three accepted diagram media types
+// (02:GEN-005): it is text that can carry scripts, and the diagram path must
+// not become a second import path (iron rule 1).
+func TestADisallowedDiagramMediaTypeIs400(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t) // no answers queued: a gateway call fails the test
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	c := a.login(t, "gen-svg-diagram")
+
+	body := `{"diagram":{"media_type":"image/svg+xml","data":"` +
+		base64.StdEncoding.EncodeToString([]byte("<svg/>")) + `"}}`
+	code, resp := postJSON(t, c, "/skills/generate", body)
+	if code != http.StatusBadRequest {
+		t.Fatalf("got %d %v, want 400", code, resp)
+	}
+	if stub.calls != 0 {
+		t.Errorf("a disallowed media type still paid for %d gateway call(s)", stub.calls)
 	}
 }
 

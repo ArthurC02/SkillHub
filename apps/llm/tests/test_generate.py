@@ -340,7 +340,82 @@ def test_four_references_is_422(capture):
     assert calls == []
 
 
-def test_prompt_version_reported_is_v3(capture):
+def test_prompt_version_reported_is_v4(capture):
     capture(json.dumps(GOOD_SKILL))
     body = client.post("/v1/generate-skill", json={"task_description": TASK}).json()
-    assert body["prompt_version"] == "generate-skill/v3"
+    assert body["prompt_version"] == "generate-skill/v4"
+
+
+def test_a_short_caption_beside_a_diagram_is_accepted(capture):
+    """Go admits a 1-7 rune caption next to a diagram (GEN-005); the floor here
+    must not be stricter than Go's, or a legal Go request becomes a 502 here.
+    """
+    calls = capture(json.dumps(GOOD_SKILL))
+    r = client.post(
+        "/v1/generate-skill",
+        json={
+            "task_description": "整理報帳",
+            "diagram": {"media_type": "image/png", "data": DIAGRAM_DATA},
+        },
+    )
+    assert r.status_code == 200, r.text
+
+    user = calls[0]["messages"][1]["content"]
+    text_part = next(p for p in user if p["type"] == "text")
+    assert f"<{generate.DATA_TAG}>\n整理報帳\n</{generate.DATA_TAG}>" in text_part["text"]
+
+
+def test_a_reference_at_exactly_the_cap_is_accepted(capture):
+    """Go guarantees content+marker <= 20,000 characters, so this is the
+    largest reference request the endpoint is ever asked to serve.
+    """
+    calls = capture(json.dumps(GOOD_SKILL))
+    r = client.post(
+        "/v1/generate-skill",
+        json={
+            "task_description": TASK,
+            "references": [{"name": "invoice-ocr", "skill_md": "x" * 20_000}],
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert len(calls) == 1
+
+
+def test_a_reference_over_the_cap_is_422(capture):
+    calls = capture(json.dumps(GOOD_SKILL))
+    r = client.post(
+        "/v1/generate-skill",
+        json={
+            "task_description": TASK,
+            "references": [{"name": "invoice-ocr", "skill_md": "x" * 20_001}],
+        },
+    )
+    assert r.status_code == 422
+    assert calls == []
+
+
+def test_the_diagram_labels_language_clause_is_in_the_system_prompt(capture):
+    calls = capture(json.dumps(GOOD_SKILL))
+    client.post(
+        "/v1/generate-skill",
+        json={"diagram": {"media_type": "image/png", "data": DIAGRAM_DATA}},
+    )
+    system = calls[0]["messages"][0]["content"]
+    assert "diagram's own labels" in system
+
+
+def test_with_a_reference_the_task_fence_comes_before_the_reference_block(capture):
+    calls = capture(json.dumps(GOOD_SKILL))
+    r = client.post(
+        "/v1/generate-skill",
+        json={
+            "task_description": TASK,
+            "references": [{"name": "invoice-ocr", "skill_md": "# invoice-ocr\n\nread receipts"}],
+        },
+    )
+    assert r.status_code == 200, r.text
+
+    user = calls[0]["messages"][1]["content"]
+    tag = generate.DATA_TAG
+    assert user.index(f"<{tag}>") < user.index("Reference:")
+    assert f"Write the Skill for the task described in the <{tag}> block." in user

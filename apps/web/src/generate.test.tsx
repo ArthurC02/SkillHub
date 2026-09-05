@@ -106,7 +106,7 @@ function stubSession(
       );
     }
     if (path.startsWith("/api/skills/search")) {
-      searchGets.push(path);
+      searchGets.push(path + url.search);
       const q = url.searchParams.get("q") ?? "";
       if (referenceSearch && q === referenceSearch.query) {
         return Promise.resolve(
@@ -556,6 +556,230 @@ test("GEN-006: a fourth reference selection is not possible", async () => {
   });
   expect(fourth.checked).toBe(false);
   expect(container.textContent).toContain("已經選滿 3 個");
+});
+
+// A FileReader failure (corrupt file, browser refusal) must not leave the
+// button clickable while nothing was decoded, and must say so rather than
+// silently doing nothing.
+test("GEN-005: a FileReader error is shown as an alert and nothing is posted while reading", async () => {
+  const { posted } = stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  let capturedReader: FakeFileReader | undefined;
+  class FakeFileReader {
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    result: string | ArrayBuffer | null = null;
+    readAsDataURL() {
+      capturedReader = this;
+    }
+  }
+  vi.stubGlobal("FileReader", FakeFileReader as unknown as typeof FileReader);
+
+  const fileInput = container.querySelector<HTMLInputElement>("#generate-diagram-file")!;
+  const file = new File([new Uint8Array([137, 80, 78, 71])], "flow.png", { type: "image/png" });
+  await act(async () => {
+    Object.defineProperty(fileInput, "files", { value: [file], configurable: true });
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  const submitBtn = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "生成一個 Skill",
+  )!;
+  // Still reading: a click here must not race the decode.
+  expect(submitBtn.disabled).toBe(true);
+
+  await act(async () => {
+    capturedReader!.onerror?.();
+  });
+
+  const alert = container.querySelector('[role="alert"]');
+  expect(alert?.textContent).toContain("讀取圖片失敗，請重新選擇。");
+  expect(posted.some((p) => p.path === "/skills/generate")).toBe(false);
+});
+
+// removeDiagram must reset the file input's own value, or re-selecting the
+// same File fires no `change` event and 已選擇 never reappears.
+test("GEN-005: removing a diagram then re-selecting the same file shows it again", async () => {
+  stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const fileInput = container.querySelector<HTMLInputElement>("#generate-diagram-file")!;
+  const file = new File([new Uint8Array([137, 80, 78, 71])], "flow.png", { type: "image/png" });
+  await act(async () => {
+    Object.defineProperty(fileInput, "files", { value: [file], configurable: true });
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("已選擇 flow.png"));
+
+  await act(async () => {
+    Array.from(container.querySelectorAll("button"))
+      .find((b) => b.textContent === "移除")!
+      .click();
+  });
+  expect(container.textContent).not.toContain("已選擇 flow.png");
+  expect(fileInput.value).toBe("");
+
+  await act(async () => {
+    Object.defineProperty(fileInput, "files", { value: [file], configurable: true });
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("已選擇 flow.png"));
+  expect(container.textContent).toContain("已選擇 flow.png");
+});
+
+// 02:GEN-006's fourth silent refusal (an unusable reference) surfaces as an
+// uncategorised 422 — the same path as a blank-input or quota refusal — and
+// must render verbatim without naming which reference failed (iron rule 3),
+// while the selection the user made stays visible so they can swap one out.
+test("GEN-006: a reference-unusable 422 renders verbatim and keeps the selected chips", async () => {
+  stubSession(
+    { generate_skill: true },
+    [],
+    undefined,
+    { error: "其中一個參考的 Skill 無法使用，請換一個再試一次。" },
+    {
+      query: "分析報表",
+      result: {
+        query: "分析報表",
+        results: [REFERENCE_HIT(1)],
+        limit: 20,
+        truncated: false,
+        degraded: false,
+        partial_index: false,
+        filtered_out: false,
+        no_results: false,
+      },
+    },
+  );
+
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const refInput = container.querySelector<HTMLInputElement>("#generate-reference-query")!;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(refInput, "分析報表");
+    refInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("參考 Skill 1"));
+
+  await act(async () => {
+    Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'))
+      .find((c) => c.closest("li")?.textContent?.includes("參考 Skill 1"))!
+      .click();
+  });
+
+  const submitBtn = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "生成一個 Skill",
+  )!;
+  await act(async () => {
+    submitBtn.click();
+  });
+  await waitFor(() => container.querySelector('[role="alert"]') !== null);
+
+  const alert = container.querySelector('[role="alert"]');
+  expect(alert?.textContent).toContain("其中一個參考的 Skill 無法使用，請換一個再試一次。");
+  expect(container.textContent).toContain("參考 Skill 1 ✕");
+});
+
+// 02:GEN-006 search must never share the funnel with a page view: the picker
+// carries `purpose=reference` and Home's own search box does not.
+test("GEN-006: the reference picker's search carries purpose=reference, Home's does not", async () => {
+  const { searchGets } = stubSession({ generate_skill: true }, [], undefined, undefined, {
+    query: "分析報表",
+    result: {
+      query: "分析報表",
+      results: [REFERENCE_HIT(1)],
+      limit: 20,
+      truncated: false,
+      degraded: false,
+      partial_index: false,
+      filtered_out: false,
+      no_results: false,
+    },
+  });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const homeSearchUrl = searchGets.find((u) => !u.includes("purpose="));
+  expect(homeSearchUrl).toBeDefined();
+
+  const refInput = container.querySelector<HTMLInputElement>("#generate-reference-query")!;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(refInput, "分析報表");
+    refInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("參考 Skill 1"));
+
+  const refSearchUrl = searchGets.find((u) => u.includes("purpose=reference"));
+  expect(refSearchUrl).toBeDefined();
+});
+
+// Ticking a reference alone (empty description, no diagram) must not enable
+// submit: GEN-006 reads references as worked examples, it is not itself a
+// third form of task input.
+test("GEN-006: a reference tick with no text and no diagram keeps submit disabled", async () => {
+  stubSession({ generate_skill: true }, [], undefined, undefined, {
+    query: "分析報表",
+    result: {
+      query: "分析報表",
+      results: [REFERENCE_HIT(1)],
+      limit: 20,
+      truncated: false,
+      degraded: false,
+      partial_index: false,
+      filtered_out: false,
+      no_results: false,
+    },
+  });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  // Start from a genuinely empty task box — submitSearch seeds it (GEN-008).
+  await act(async () => {
+    const textarea = container.querySelector("#generate-task")!;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    setter.call(textarea, "");
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  const refInput = container.querySelector<HTMLInputElement>("#generate-reference-query")!;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(refInput, "分析報表");
+    refInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("參考 Skill 1"));
+
+  await act(async () => {
+    Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'))
+      .find((c) => c.closest("li")?.textContent?.includes("參考 Skill 1"))!
+      .click();
+  });
+
+  const submitBtn = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "生成一個 Skill",
+  )!;
+  expect(submitBtn.disabled).toBe(true);
+});
+
+// The cost block's basis line must carry the two real measurements alongside
+// the ten-generation distribution, or the range quietly drifts back to
+// reading like a promise about diagram/reference generations specifically.
+test("GEN-008: the cost basis names the diagram and reference measurements", async () => {
+  stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("帶流程圖與帶參考各實測一次");
+  expect(text).toContain("US$0.0039");
+  expect(text).toContain("US$0.0040");
+  expect(text).toContain("一次不是分布");
 });
 
 // IA-5's exit has to be true for the visitor too: DISC-001 serves this page

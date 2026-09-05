@@ -71,7 +71,13 @@ GENERATE_SKILL_MODEL = os.getenv("GENERATE_SKILL_MODEL", "gpt-5.4-mini")
 # v3 (02:GEN-005/GEN-006): the schema is unchanged, but the model can now be
 # shown an image part and fenced reference blocks, and the system prompt
 # gained the two paragraphs telling it what each one means.
-GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v3"
+# v4: two sentences changed to match GEN-005/GEN-006 being real inputs now -
+# the language instruction covers a diagram-only request (no task description
+# to take the language from), and the closing instruction names the
+# <untrusted_task_description> tag instead of saying "the block above", which
+# stopped being true once a reference block can sit between the task fence
+# and the closing line.
+GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v4"
 
 # This endpoint's own ceiling, not the judge's. It borrowed evaluate's `_client`
 # and with it evaluate's 120s, a number sized for ~120k characters of judge
@@ -213,7 +219,7 @@ class GenerateReference(BaseModel):
 class GenerateSkillRequest(BaseModel):
     task_description: str | None = Field(
         None,
-        min_length=8,
+        min_length=1,
         max_length=4000,  # one-number: generateMaxTaskRunes
     )
     diagram: GenerateDiagram | None = None
@@ -291,7 +297,8 @@ front matter yourself; do not write `---` delimiters; do not include a licence.
 - `files`: only when a script genuinely does the work better than instructions.
   Prefer instructions.
 
-Write in the language of the task description.
+Write in the language of the task description, or of the diagram's own labels
+when there is no task description.
 
 If the task is not something a Skill can do - it needs live network access, a
 purchase, a physical action, or a login you were not given - say so plainly in
@@ -340,16 +347,19 @@ def _user_text(req: GenerateSkillRequest) -> str:
     """The text part of the user message: the fenced task (if any), then each
     fenced reference, then the closing instruction.
 
-    When there is no diagram and no reference, this is byte-for-byte the
-    string generate.py sent before GEN-005/006 existed - the existing fence
-    test depends on that.
+    No longer byte-for-byte the pre-GEN-005 string: the closing sentence now
+    names the tag rather than saying "the block above", which stops being
+    true once a reference block sits between the task fence and the closing
+    line. `test_the_task_description_is_fenced_like_the_other_five_calls`
+    depends only on the fence and scrub behaviour (tag placement and count),
+    not on this exact sentence.
     """
     parts: list[str] = []
     if req.task_description is not None:
         parts.append(fence(DATA_TAG, scrub(DATA_TAG, req.task_description)))
     parts.extend(_reference_block(ref) for ref in req.references)
     if req.task_description is not None:
-        parts.append("Write the Skill for the task described in the block above.")
+        parts.append(f"Write the Skill for the task described in the <{DATA_TAG}> block.")
     else:
         parts.append("Write the Skill for the task shown in the image.")
     return "\n\n".join(parts)
