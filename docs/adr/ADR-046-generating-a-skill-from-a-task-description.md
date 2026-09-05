@@ -4,6 +4,8 @@
 - 日期：2026-08-23
 - 相關：[ADR-013](./ADR-013-intent-search-architecture.md)（檢索與無結果）、[ADR-016](./ADR-016-language-and-framework-selection.md)（Go／Python 分工）、[ADR-017](./ADR-017-model-gateway-and-llm-observability.md)（唯一模型閘道）、[ADR-021](./ADR-021-skill-license-provenance.md)（License 溯源）、[ADR-027](./ADR-027-download-artifact-shape-reproducibility-and-integrity.md)（四道鎖）、[ADR-028](./ADR-028-beta-admission-and-quota-enforcement-points.md)（配額強制點）、[ADR-044](./ADR-044-agent-skills-specification-conformance.md)（規格釘選）、[ADR-045](./ADR-045-self-supplied-content-is-not-redistribution.md)（同一把尺的第一個案例）、`01` §2.1／§7.3／§10／§12、`02` §4.9（`GEN-001`～`004`）、`03` §19、`04` 乙-21、丙-38
 
+> **2026-09-05 補充導引：** 本 ADR 的單次生成與「不引入 agent framework」只描述當時已落地的舊路徑。互動創作另見 [ADR-067](./ADR-067-interactive-skill-creation-with-langgraph.md)；不改本 ADR 對私有生成物、驗證與公開散布邊界的歷史決策。
+
 ## 背景：一個 persona 走到一半就沒有路了
 
 `01` §2.1 把三種成熟度都列為主要 persona，第一種逐字是「**學習者：有明確任務意圖，但不了解 Skill 規格與建立方式**」，產品原則 1 也承諾「使用者不需要先理解 Skill 規格才能開始」。
@@ -91,6 +93,7 @@ ADR-045 決策 4 的判準逐字是「**平台有沒有多加一個散布環節*
 **首頁不放一個對等的「生成」按鈕。** 那會把一個十分鐘旅程的第一步變成二選一，而其中一條是要花錢、沒有任何證據、且使用者還沒有任何判斷依據的那條。先搜尋、搜不到再生成，這個順序本身就是產品意見。
 
 ## 影響
+
 
 ### 正面
 

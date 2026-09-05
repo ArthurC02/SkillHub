@@ -6,6 +6,8 @@
 - 依據：[m5/report-generate-spike.md](../plans/mvp/m5/report-generate-spike.md)（20 段任務描述、`gpt-5.6-sol`、閘道實付 $2.3684）
 - 相關：[ADR-028](./ADR-028-beta-admission-and-quota-enforcement-points.md)（配額強制點）、[ADR-043](./ADR-043-evidence-citation-is-verified-by-content-not-by-its-claimed-source.md)（一個事實只能有一份定義）、[ADR-045](./ADR-045-self-supplied-content-is-not-redistribution.md)（決策 3 的 Fork 繼承）、`02` §4.9、`03` §19
 
+> **2026-09-05 補充導引：** 決策 1 的同 prompt 單次重試只適用既有單次生成。[ADR-067](./ADR-067-interactive-skill-creation-with-langgraph.md) 的草稿修訂以確認回饋驅動；其會話預算與既有生成次數額度、Run 額度分開，實際上限待上線前裁定。
+
 ## 為什麼是現在，而不是等 M5 開工
 
 ADR-046 留了五個待決策，其中兩個在同日的 spike 之後**變成可決的**：一個有了失敗分布，一個有了成本數字。剩下三個不需要新資料——它們卡的是「沒人裁」而不是「不知道」，而那正是 `04` 乙-21 花了四天才被發現的那個病。
@@ -79,6 +81,7 @@ spike 的每段描述**只跑一次**，所以「3／19 是隨機還是系統性
 **`GEN-009` 改為每段描述至少跑兩次**，並逐段記錄兩次的結果是否一致。若同一段描述穩定地失敗，決策 1 的前提就不成立，那時要重開的是這一條，不是重試次數。
 
 ## 影響
+
 
 ### 正面
 

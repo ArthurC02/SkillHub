@@ -5,6 +5,8 @@
 - 決策者：產品負責人、架構規劃
 - 相關：[ADR-046](./ADR-046-generating-a-skill-from-a-task-description.md)（生成物是工作區私有，不是目錄的第四層——本 ADR 縮限它的決策 3 與決策 5，見決策 5）、[ADR-047](./ADR-047-generation-path-rulings-retry-truncation-and-quota.md)（生成路徑的五個裁定——本 ADR 不動它們）、[ADR-045](./ADR-045-self-supplied-content-is-not-redistribution.md)（`redistribution` 判準的同一把尺）、[`02:GEN-005`／`GEN-006`](../plans/02-specifications-and-acceptance-criteria.md)、[`05` R-41](../plans/05-pending-rulings.md)（本 ADR 是它的裁定）
 
+> **2026-09-05 補充導引：** 本 ADR 對舊單次路徑「不保存原流程圖位元組」的決策不變。[ADR-067](./ADR-067-interactive-skill-creation-with-langgraph.md) 的互動會話額外保存已確認的結構化解析與指紋，以支援跨輪恢復；它不聲稱可回放原圖。
+
 ## 背景
 
 [`05` R-41](../plans/05-pending-rulings.md) 問的是「參考既有 Skill 生成」要不要做，2026-09-03 的建議是 (a)：不做，理由是 [ADR-046](./ADR-046-generating-a-skill-from-a-task-description.md) 決策 3 逐字寫著「生成**不以任何既有 Skill 版本為輸入**」，而 `generated` 的定義（決策 5）是「沒有上游」——帶參考的生成物有上游，落在五個 `redistribution` 值之外；R-41 同時記著這條路要動四層：兩份契約、Go 的 scope／takedown／hold 檢查、Python 的 `untrusted.py` 威脅模型升級（別人寫的文字進 prompt）、以及 `GenerateSkill.tsx` 印的成本區間會失效。
@@ -46,6 +48,7 @@ ADR-045 決策 4 與 ADR-046 決策 4 的判準是同一個問題的同一個答
 `01` §10 的三條 ⛔ 邊界（放行不含曝光、M5 不計入 MVP 完成度、閘門與封測不可並行）與 `03` §19 的「⛔ 放行沒有授權曝光」逐字適用於三種輸入模式：`diagram`／`reference_skill_ids` 與既有的 `task_description` 一樣，只掛在 `GENERATE_SKILL_EXPOSED` 之後、`GenerateSkill` 元件既有的兩個掛載點上——首頁不新增入口，不新增路由，不新增 `useGenerateEntryPoint` 呼叫端。**這是一次凍結例外，不是解除邊界**：凍結例外放行的是「可以動這段程式」，不是「可以讓封測使用者看到它」，兩件事分開判定，同 `01` §10 第三、四批放行的既有慣例。
 
 ## 後果
+
 
 ### 正面
 

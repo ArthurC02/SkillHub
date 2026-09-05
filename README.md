@@ -1,8 +1,10 @@
 # Skill Hub
 
-A search engine and testing lab for Agent Skills: find a candidate Skill, try it
-in an isolated sandbox with your own prompts and data, and download a portable
-package.
+Skill Hub 的產品核心是 Catalog、輕鬆創建與私人訂製／公開散布。互動式創作已依 [ADR-067](docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md) 接上 Python LangGraph、Go 會話與 Web 三種入口；[設定與驗證](docs/development/interactive-creation.md) 列出免費證據及待量測項目。功能預設關閉，尚未解封 M5 曝光或付費實測。
+
+An Agent Skill platform for discovery, creation, private customization and public
+distribution. Existing search, sandbox trials and portable packages support this
+journey; conversational creation is accepted planning, not an implemented feature.
 
 ## Layout
 

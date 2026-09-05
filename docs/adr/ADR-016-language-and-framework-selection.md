@@ -4,6 +4,8 @@
 - 日期：2026-08-13
 - 決策者：產品負責人、架構規劃
 
+> **2026-09-05 補充導引：** LangGraph 已由 [ADR-067](./ADR-067-interactive-skill-creation-with-langgraph.md) 同意作為「尚未實作」的互動創作編排規劃；它不改本 ADR 的 Go 持有持久化狀態、Python 不消費佇列與 LiteLLM 邊界。原文的跨 Job checkpoint 禁令仍適用；新方案以 Go 快照重建，不採用 Python checkpoint。
+
 ## 背景
 
 MVP 進入實作前需選定語言與框架。決策驅動因素：
@@ -82,6 +84,7 @@ MVP 進入實作前需選定語言與框架。決策驅動因素：
 5. **Sandbox 內的 Agent Runtime 不在此範圍**：Skill 試跑時在 Sandbox 內執行的 Agent（如 Claude Agent SDK）屬工作負載，語言由 Runtime Image 決定（ADR-005），與平台語言選型無關。
 
 ## 影響
+
 
 ### 正面
 

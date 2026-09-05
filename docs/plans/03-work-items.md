@@ -376,7 +376,9 @@
 - [ ] RELEASE-009 完成封閉測試成功門檻並處理阻斷問題。（**不勾**：封測未開始。**PDM-009 未追認前本項結構上不可判定**——三條門檻（B1／B2／B3）與否決條款是它定的（[`04` 乙-15](04-backlog-and-handoffs.md)）。「處理阻斷問題」另需 `BETA-004` 的紀錄，而那需要漏斗事件與阻斷回報能用同一個 session 串起來）<br>**2026-08-28 重核：「結構上不可判定」這句今天已經不對——判定尺已經存在了。** 產品面於 2026-08-22 追認 12 人／14 天／三條門檻（B1 ≥ 8-12、B2 漏斗前六段無一段低於 50%、B3 否決條款）與不通過的決策樹（[`04` 乙-15](04-backlog-and-handoffs.md)）；`PDM-009` 工作項仍不勾，剩的是報酬預算與受測者簽署（[`05` R-2](05-pending-rulings.md)）。**本項今天的阻擋是三個具體的**：①封測一次都沒發生（`BETA-001`～`004` 全未勾、回報零筆）；②報酬與簽署未定，招募不能啟動；③「處理阻斷問題」要的判定查詢（漏斗事件 × 阻斷回報同一個 session，P-11）**仍不存在**——而查證發現那不只是缺查詢：`feedback_reports`（`0029`）**沒有 `session_id` 欄位**，所以 session 粒度的串接缺的是 schema，而 `learning/analytics.go` 的註解宣稱兩者共用同一個 session 識別，**那句話目前是錯的**。
 - [ ] RELEASE-010 發佈決策、已知限制與下一階段範圍完成記錄。（**不勾**：純負責人動作，且前置是 `BETA-005` 的範圍複審。**「已知限制」的素材已經齊備且不必等封測**——[m4/audit.md](mvp/m4/audit.md) 的不勾清單、[`04`](04-backlog-and-handoffs.md) 的三類殘項、各 ADR 的「待決策」章節三者合起來就是它；缺的是把它們收斂成一份對外的限制清單，以及發佈與否的那個決定）
 
-## 19. 從任務描述生成 Skill（M5，**2026-08-23 起可開工**）
+## 19. Skill 生成與互動創作（M5）
+
+**目前範圍：單次生成基礎已完成，互動創作規劃已同意、尚未實作。** 完成數見 §19.1；下列帶日期的舊狀態只描述當時的單次生成範圍。實作放行與曝光邊界只依 `01` §10。
 
 > **2026-08-23 新增。** 依據 [ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md)，允收準則見 [`02` §4.9](02-specifications-and-acceptance-criteria.md)（`GEN-001`～`004`）。本節**不在 MVP 的完成度計算內**——與 §12「Local Runner Beta（後 MVP）」同一種收納方式。<br>~~**狀態（2026-08-24 更新）**：`GEN-001`～`011` 共 11 項，**9 項已勾、2 項 ◐**（`GEN-008` 缺生成前的預估成本金額 ⇒ `04` 丙-53；`GEN-009` ③④ 要 Sandbox ＋評估管線＋人）。~~<br>**狀態（2026-08-25 更新）**：`GEN-001`～`011` 共 11 項，**10 項已勾、1 項 ◐**——`GEN-008` 於 08-25 改判勾選（那個金額填上了，見該項），~~**`GEN-009` 仍 ◐**~~ **（2026-08-28：`GEN-009` 的 ③④ 補完，改判勾選 ⇒ `GEN-001`～`011` 共 11 項已勾、0 項 ◐。③ 是 20 段一路走到判定的實跑，④ 是負責人逐份看過的保留率 15／19；**四個數字的有效範圍逐條在 [報告 §10.3](mvp/m5/report-generate-baseline.md)**，其中「這不是盲測」那一條會影響任何想拿這批數字外推的人。）**`GEN-003` 於 08-24 隨失敗紀錄讀取面落地重新勾選（`04` 丙-55 結案）。**原文「全部未勾」是立節當下的狀態，同日即不再成立；08-23 的「8 勾 3 ◐」亦已過時。**<br>**本節另有兩個非 M5 的工作項**（`PACK-011`、`EVAL-014`，夾在 `GEN-007` 與 `GEN-008` 之間），它們是 M5 開節時順手補的跨里程碑項目，**不計入上面那個 11**。<br>**狀態（2026-09-05 更新，[ADR-066](../adr/ADR-066-generation-takes-a-diagram-or-reference-skills-as-input.md)）**：新增 `GEN-012`～`014` 三項（流程圖與參考 Skill 兩種新輸入模式，`02:GEN-005`／`GEN-006`），~~三項皆 `- [ ]`——`GEN-001`～`014` 共 14 項，**11 項已勾、3 項 ◐**（新增的三項要等主線的端到端付費呼叫回報才勾，見各項行內；不重數前十一項既有的勾選）。~~ **同日稍晚：端到端付費呼叫回報了**——三種模式各對真實閘道跑一次、三次都一次通過並建版（US$0.016，[report-generate-modes.md](mvp/m5/report-generate-modes.md)），三項改判勾選 ⇒ ~~**`GEN-001`～`014` 共 14 項已勾、0 項 ◐**~~。<br>**狀態（2026-09-05 深化批）**：負責人要求「把建立 Skill 的部份更深化」——先以工作流對三種模式做四線稽核（Go／Python／Web／provenance 讀取面，每條發現都經反駁），十五條通過反駁的發現同日修完並新增 `GEN-015` ⇒ **`GEN-001`～`015` 共 15 項已勾、0 項 ◐**。
 >
@@ -409,6 +411,21 @@
 - [x] GEN-013 Go：`GenerateInput` 收三種可選欄位（至少一個 `task_description`／`diagram`）、`diagram` 的 base64／媒體類型／解碼大小驗證（400）、參考 Skill 的 scope／takedown／`access_restriction`／`redistribution=blocked` 拒絕規則（單一錯誤形狀 422，~~逐一指名不合格的 id~~ **不指名 id 也不說原因**——`02:GEN-006` 同日訂正，理由在那裡）、`generation_inputs` 的 provenance 寫入（僅 diagram 或 references 有使用時才寫，圖片位元組本身不落地，只記 sha256／media_type／bytes 與參考的 skill_id／version_id／name）。（允收：`02:GEN-005`、`GEN-006`；依據 [ADR-066](../adr/ADR-066-generation-takes-a-diagram-or-reference-skills-as-input.md) 決策 2～4）測試：至少一個輸入的 422、超過 3 個參考的 422、參考不可讀／已下架／受限／`blocked` 各自的拒絕與訊息、`generation_inputs` 只在使用時非 NULL、圖片位元組不進任何資料庫欄位或物件儲存的反證測試。
 - [x] GEN-014（**2026-09-05 稍晚勾選**：三種模式各對真實閘道跑一次，`TestARealGatewayGeneratesFromADiagramAndFromAReference` ＋既有的 `TestARealGatewayGenerationRecordsWhatItActuallyCost`，證據 [report-generate-modes.md](mvp/m5/report-generate-modes.md)）apps/llm 多模態訊息與參考 fence、prompt 版本 `generate-skill/v3`；Web 的流程圖上傳與參考 Skill 選擇器接進 `GenerateSkill.tsx` 既有的兩個掛載點（不新增路由、不新增 `useGenerateEntryPoint` 呼叫端）。（允收：`02:GEN-005`、`GEN-006`；⛔ 曝光邊界見 `01` §10、`03` §19 開頭）測試：`apps/llm` 對三種輸入組合各一支請求／回應形狀測試、參考文字以不可信資料 fence（`untrusted.py` 邊界涵蓋新欄位）、超過 20000 runes 的參考截斷並標記；前端上傳與選擇器的元件測試（僅在 `generate_skill` 旗標開啟時可見、不出現在首頁或任何新路由）、`ia.test.ts` 對 `useGenerateEntryPoint` 呼叫端數量的既有上限（≤3）維持通過。
 - [x] GEN-015（**2026-09-05 深化批**）三種模式的稽核修補與 provenance 讀取面：①`GET /skills/{id}` 的 `source.generation_inputs`（`SkillSource` 契約新增，`GenerationInputs`；Go 以位元組穿透 `ingest.Source` → `catalog.SourceFacts` → `sourceInfo`，不重宣告形狀）與詳情頁 `GeneratedSourceBlock` 的來源句分流（有描述照 `GEN-002` 原句、只有圖改說流程圖）＋「這一次生成用到的輸入」摺疊區（`04` 丙-159 結案）；②參考截斷改為內容＋標記 ≤ `generateMaxReferenceChars`（丙-161）；③`apps/llm` 的描述下限 8 → 1，圖旁短標題不再 422（丙-162）；④公開搜尋新增 `purpose=reference`，選擇器的搜尋不寫漏斗事件、不叫模型解釋命中（丙-163）；⑤前端 `FileReader` 失敗有 alert、讀取中不能送出、移除後可重選同一檔（丙-164）；⑥prompt `generate-skill/v4`（沒有描述時用圖上標籤的語言；結尾句點名任務的 tag 而不是「上面那一塊」）。（允收：`02:GEN-002`／`005`／`006` 的 2026-09-05 補充各條）測試：Go `TestADisallowedDiagramMediaTypeIsRefused`、`TestReferencesAloneWithNoDescriptionOrDiagramIsRefused`、下架與 `access_restriction` 兩支 422、參考 30,000 runes 仍 ≤ 上限、`sourceFrom` 的 JSON 有／無 `generation_inputs` 鍵、兩支整合測試各補一次 `GET /skills/{id}` 讀回、`purpose=reference` 零漏斗列；Python 短標題＋圖 200、參考剛好 20,000 字 200、tag 命名句與順序、v4；Web `generate.test.tsx` 六支（onerror、重選、拒絕句與 chip 留存、`purpose` 參數、只勾參考按鈕仍停用、成本基礎句）與新檔 `detail-generated.test.tsx` 三種來源句。突變由 `parallel-page-edit` 逐 brief 做一次。
+
+### 19.1 互動式創作規劃（尚未實作）
+
+依賴順序：GEN-016 先定 public／internal 契約與 Go 資料 owner，並在建立任何新 package 前完成 ADR-032 登記；GEN-017～020 依此接會話與 UI，GEN-021～022 接驗證及精確保存，GEN-023 收齊跨流程測量。預算／刪除機制須與各 producer 同批落地，不能等串接完成後才補。規劃 ID 不是已存在的程式符號。
+
+- [ ] GEN-016 設計會話契約與 Go／Postgres 版本化快照、事件、CAS、outbox、idempotency。（對應 `02:GEN-007`、`GEN-011`；ADR-067）
+- [ ] GEN-017 實作 LangGraph 固定 workflow 與有界 ReAct 編排，從 Go 快照重建每個 Job。（對應 `02:GEN-007`、`GEN-011`）
+- [ ] GEN-018 實作澄清、已確認 brief／驗收條件與草稿 revision 流程。（對應 `02:GEN-007`、`GEN-009`）
+- [ ] GEN-019 實作流程圖理解確認、結構化結果與指紋保存／重新上傳語意。（對應 `02:GEN-008`）
+- [ ] GEN-020 實作 scoped Catalog 參考檢索、缺席呈現、明確確認與 Web 會話 UI。（對應 `02:GEN-008`、`GEN-011`；依 GEN-016／019）
+- [ ] GEN-021 串接 Go 驗證與經授權的私有候選試跑，回傳可修訂回饋。（對應 `02:GEN-009`、`GEN-012`）
+- [ ] GEN-022 實作 revision／雜湊綁定的最終保存、取消恢復與重送冪等。（對應 `02:GEN-010`、`GEN-011`）
+- [ ] GEN-023 完成會話預算、費用揭露、工具提權確認、帳號刪除／共享 write fence 的跨流程驗收與上線前量測（各強制點隨 GEN-016～022 的 producer 同批實作）。（對應 `02:GEN-011`、`GEN-012`；依 GEN-016～022）
+
+**目前狀態：15 項已勾、8 項 ◐。** 本批已依 `01` §10 的實作授權接上 Python LangGraph、Go 會話／Worker／候選保存與 Web 三入口；免費證據見 [開發手冊](../development/interactive-creation.md)。上述八項仍待完整允收證據，M5 曝光與付費實測另行核准。各項完成需同時提交對應 `02` Given／When／Then 的成功與拒絕證據；GEN-016／022／023 必須驗證重啟、過期確認、重複工具結果、預算耗盡與刪除競態，GEN-018～021 須覆蓋三種輸入的使用者更正與草稿比較；mock、真實模型及人類採用結果分開列示。
 
 ## 20. 受限環境下的可攜執行（M6，**已收束：完成 10 項、撤回 2 項、剩 0 項**）
 
