@@ -79,6 +79,10 @@ func TestDiagramInterpretationRequiresAllSectionsBeforeSaving(t *testing.T) {
 		if validDiagramInterpretation(value) || confirmed(p) {
 			t.Errorf("invalid interpretation accepted: %s", value)
 		}
+		p.DiagramFingerprint = ""
+		if confirmed(p) {
+			t.Errorf("interpretation without an uploaded image bypassed confirmation: %s", value)
+		}
 	}
 	if !validDiagramInterpretation(valid) {
 		t.Fatal("complete sections rejected")

@@ -149,7 +149,7 @@ func confirmed(p Snapshot) bool {
 	if !p.BriefConfirmed || strings.TrimSpace(p.Brief) == "" {
 		return false
 	}
-	if p.DiagramFingerprint != "" && (!p.DiagramConfirmed || !validDiagramInterpretation(p.DiagramUnderstanding)) {
+	if (p.DiagramFingerprint != "" || p.DiagramUnderstanding != "") && (!p.DiagramConfirmed || !validDiagramInterpretation(p.DiagramUnderstanding)) {
 		return false
 	}
 	for _, r := range p.References {
