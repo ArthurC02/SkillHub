@@ -5,6 +5,7 @@ import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { CreationSession } from "./components/CreationSession";
 import { CreateHub } from "./components/CreateHub";
 import type { CreationSession as Session } from "./api/creation";
+import { useCreationEntryPoint } from "./api/creation";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
@@ -328,6 +329,30 @@ test("network retry reuses the command ID and payload", async () => {
   await click("送出素材");
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toEqual(posts[0]);
+});
+function EntryPointProbe() {
+  return <>{String(useCreationEntryPoint())}</>;
+}
+function stubMe(features: Record<string, boolean>) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => response({ features })),
+  );
+}
+test("⛔ useCreationEntryPoint is false unless /me says creation_skill is exactly true — generate_skill alone", async () => {
+  stubMe({ generate_skill: true });
+  await render(<EntryPointProbe />);
+  expect(box.textContent).toBe("false");
+});
+test("⛔ useCreationEntryPoint is false unless /me says creation_skill is exactly true — no features", async () => {
+  stubMe({});
+  await render(<EntryPointProbe />);
+  expect(box.textContent).toBe("false");
+});
+test("⛔ useCreationEntryPoint is false unless /me says creation_skill is exactly true — both on", async () => {
+  stubMe({ generate_skill: true, creation_skill: true });
+  await render(<EntryPointProbe />);
+  expect(box.textContent).toBe("true");
 });
 test("flag off never mounts creation or fetches its private sessions", async () => {
   const fetch = vi.fn(() => response([]));

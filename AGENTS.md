@@ -2,7 +2,7 @@
 
 ## 這是什麼專案
 
-Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私人訂製／公開散布；搜尋、隔離試跑、評估與可攜套件支援這段旅程。互動創作採用 LangGraph 的規劃見 [ADR-067](docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md)，目前尚未實作。
+Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私人訂製／公開散布；搜尋、隔離試跑、評估與可攜套件支援這段旅程。互動創作的設計見 [ADR-067](docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md)，實作狀態以 [`01` §10](docs/plans/01-goals-and-plan.md) 為準。
 
 ## 系統怎麼跑
 

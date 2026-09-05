@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { useMe } from "./me";
 export type CreationState =
   | "queued"
   | "working"
@@ -101,3 +102,18 @@ export const actOnCreationSession = (id: string, body: CreationAction) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+/**
+ * Whether this deployment shows the interactive creation entry point.
+ *
+ * Same /me-flag shape as `useGenerateEntryPoint` (ADR-052): a named hook
+ * rather than an inline read so `ia.test.ts`'s roster scan can see the mount.
+ * Go sends `creation_skill` only when `generate_skill` is also on
+ * (apps/platform/internal/entrypoint/api/apiserver/app.go
+ * `entryPointFeatures`), and the web still nests it inside `generateExposed`
+ * in CreateHub — this hook never widens exposure.
+ */
+export function useCreationEntryPoint(): boolean {
+  const me = useMe();
+  return me.data?.features?.creation_skill === true;
+}

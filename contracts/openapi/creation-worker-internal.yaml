@@ -5,6 +5,12 @@
     "version": "0.1.0",
     "description": "Original diagrams travel only in HTTP memory; no queue or object persistence."
   },
+  "servers": [
+    {
+      "url": "http://platform-worker",
+      "description": "The Go Worker's internal listener (CREATION_WORKER_INTERNAL_ADDR), reached by the API at CREATION_WORKER_INTERNAL_URL. Only cmd/api calls it; the repo fixes no port (docs/development/interactive-creation.md)."
+    }
+  ],
   "security": [
     {
       "serviceBearer": []

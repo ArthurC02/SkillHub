@@ -11,7 +11,7 @@ import { deleteSkill } from "../api/skills";
 import { useOwnSkills } from "../api/testcases";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { useGenerateEntryPoint } from "../api/generate";
-import { useMe } from "../api/me";
+import { useCreationEntryPoint } from "../api/creation";
 import { CreateHub } from "../components/CreateHub";
 import { GeneratedNotice } from "../components/GeneratedNotice";
 import { RiskSummary } from "../components/RiskIndicator";
@@ -73,7 +73,7 @@ export function WorkspaceSkills() {
   const client = useQueryClient();
   const [message, setMessage] = useState("");
   const generateExposed = useGenerateEntryPoint();
-  const creationExposed = useMe().data?.features?.creation_skill === true;
+  const creationExposed = useCreationEntryPoint();
 
   const remove = useMutation({
     mutationFn: deleteSkill,
