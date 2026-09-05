@@ -1,0 +1,99 @@
+import { apiFetch } from "./client";
+export type CreationState =
+  | "queued"
+  | "working"
+  | "waiting_input"
+  | "waiting_confirmation"
+  | "draft_ready"
+  | "candidate_ready"
+  | "saved"
+  | "cancelled"
+  | "failed"
+  | "needs_reupload";
+export interface CreationSkill {
+  name: string;
+  description: string;
+  compatibility: string;
+  allowed_tools: string;
+  body: string;
+  files: { path: string; content: string }[];
+}
+export interface CreationSnapshot {
+  messages: { role: "user" | "assistant" | "tool"; content: string }[];
+  brief: string;
+  brief_confirmed: boolean;
+  diagram_understanding: string;
+  diagram_confirmed: boolean;
+  references: {
+    skill_id: string;
+    version_id: string;
+    name: string;
+    confirmed: boolean;
+    available: boolean;
+  }[];
+  pending_action: string;
+  budget_usd: number;
+  reserved_usd: number;
+  spent_usd?: number;
+  usage_unknown: boolean;
+  steps: number;
+  tool_calls: number;
+  draft?: {
+    revision: number;
+    content_hash: string;
+    skill: CreationSkill;
+    validation: string;
+    blocked: boolean;
+  };
+  previous_draft?: CreationSnapshot["draft"];
+  candidate?: { skill_id: string; version_id: string; run_id?: string };
+  diagram_fingerprint?: string;
+  diagram_media_type?: string;
+  diagram_bytes?: number;
+  model?: string;
+  prompt_version?: string;
+}
+export interface CreationSession {
+  id: string;
+  revision: number;
+  state: CreationState;
+  snapshot: CreationSnapshot;
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
+}
+export interface CreationAction {
+  command_id: string;
+  expected_revision: number;
+  kind:
+    | "message"
+    | "confirm_brief"
+    | "confirm_diagram"
+    | "select_references"
+    | "confirm_references"
+    | "materialize"
+    | "finalize"
+    | "cancel"
+    | "diagram"
+    | "attach_run";
+  message?: string;
+  reference_skill_ids?: string[];
+  content_hash?: string;
+  diagram?: { media_type: string; data: string };
+  run_id?: string;
+}
+export const listCreationSessions = () => apiFetch<CreationSession[]>("/creation-sessions");
+export const getCreationSession = (id: string) =>
+  apiFetch<CreationSession>("/creation-sessions/" + id);
+export const createCreationSession = (body: { id: string; message: string; budget_usd: number }) =>
+  apiFetch<CreationSession>("/creation-sessions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+export const actOnCreationSession = (id: string, body: CreationAction) =>
+  apiFetch<CreationSession>("/creation-sessions/" + id + "/actions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });

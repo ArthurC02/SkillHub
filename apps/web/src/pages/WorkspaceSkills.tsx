@@ -11,6 +11,7 @@ import { deleteSkill } from "../api/skills";
 import { useOwnSkills } from "../api/testcases";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { useGenerateEntryPoint } from "../api/generate";
+import { useMe } from "../api/me";
 import { CreateHub } from "../components/CreateHub";
 import { GeneratedNotice } from "../components/GeneratedNotice";
 import { RiskSummary } from "../components/RiskIndicator";
@@ -72,6 +73,7 @@ export function WorkspaceSkills() {
   const client = useQueryClient();
   const [message, setMessage] = useState("");
   const generateExposed = useGenerateEntryPoint();
+  const creationExposed = useMe().data?.features?.creation_skill === true;
 
   const remove = useMutation({
     mutationFn: deleteSkill,
@@ -108,7 +110,7 @@ export function WorkspaceSkills() {
         roster may only get shorter — so the read stays where the roster and its
         flag-off test can find it.
       */}
-      <CreateHub generateExposed={generateExposed} />
+      <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />
 
       {skills.isPending && <Loading what="你的 Skill 清單" />}
       <ReadFailure error={skills.error} what="你的 Skill 清單" />

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { GenerateSkill } from "./GenerateSkill";
+import { CreationSession } from "./CreationSession";
 
 /**
  * 「建立一個 Skill」 — the three ways in, in one place, at the top of
@@ -29,7 +30,13 @@ import { GenerateSkill } from "./GenerateSkill";
  * the mount off the roster and put a fourth name on a list that cannot grow —
  * so the page keeps the read, and the boundary keeps the test that guards it.
  */
-export function CreateHub({ generateExposed }: { generateExposed: boolean }) {
+export function CreateHub({
+  generateExposed,
+  creationExposed = false,
+}: {
+  generateExposed: boolean;
+  creationExposed?: boolean;
+}) {
   return (
     /* `id="create"` is a link target, not decoration: the home page's hero
        points at `/workspace/skills#create`. */
@@ -101,7 +108,7 @@ export function CreateHub({ generateExposed }: { generateExposed: boolean }) {
         */}
         {generateExposed && (
           <li className="download-item">
-            <GenerateSkill />
+            {creationExposed ? <CreationSession /> : <GenerateSkill />}
           </li>
         )}
       </ul>

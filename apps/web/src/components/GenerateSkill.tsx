@@ -302,7 +302,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
  * this picker has no shareable result page, only a selection that feeds one
  * submit.
  */
-function ReferencePicker({
+export function ReferencePicker({
   references,
   onToggle,
   disabled,
