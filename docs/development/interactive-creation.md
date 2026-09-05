@@ -12,6 +12,18 @@ Go 擁有 `creation_sessions`、不可更新的 `creation_session_events` 與 `c
 
 使用者確認後，Go 使用既有 admission 靜態驗證與物件寫入 fence 建立私人不可變候選。建立候選與會話 CAS 同交易；最終保存已存在候選時只選定同一版本，不再生成。未試跑亦可明確保存；試跑沿原本權限／成本 preflight。附加 Run 時驗證 Workspace 與候選版本，再帶實際執行／評估狀態進修訂；新草稿顯示前一份內容供比較。
 
+## LangGraph 階段與實際回饋
+
+「prepare → observe」根據確認狀態與草稿驗證結果選擇 understand、compose、revise 或 review，再回傳確認、工具意圖或草稿。新內容一律先交 Go 靜態驗證；下一個工作攜帶同一草稿的 draft_validation（content hash、blocked、finding report），讓修訂階段針對問題修改。只有與 Go 驗證通過內容完全相同的草稿，Python 才回傳完成提案。Go 仍獨立驗證、綁定確認與控制狀態，模型不能自行越過。
+
+工具邊界結束本次 graph invocation；Go 持久化結果、保留前一草稿並核准下一次工作，再進入 observe。這個循環每次只有一次模型呼叫，費用與取消仍受 receipt 控制；沒有另建 Python checkpointer 或讓 Python 接管平台狀態。
+
+附加 Run 後的回饋包含實際執行狀態、failure class，以及 evaluation owner 提供的驗收條件、判定原因、已驗證且重新檢查可用性的證據摘錄。沒有評估時明示 evaluation_available:false。評估投影最多 16,000 字元，摘要最多 2,000 字元；刪減時保留判定並附截斷及省略數量，不能把不完整證據當成成功。原始 Trace、完整產物和評估留言不送入創作模型。
+
+流程圖上限為 4,000,000 bytes。diagram_understanding 是 JSON 編碼字串，必須恰含 nodes、conditions、branches、uncertainties 四個字串陣列；節點不能為空，其餘無內容時仍傳空陣列。Python 與 Go 都檢查結構，前端逐節呈現後要求確認。舊版純文字仍可閱讀，但必須重新整理並確認，才能繼續保存。
+
+Catalog 參考畫面列出選定不可變版本的描述、相容性與工具需求，不從最新版 API 補資料。選擇或搜尋新參考會取消需求確認；模型比較做法、限制、採用與捨棄部分後，重新提出需求供人確認。
+
 ## 設定與預設
 
 所有設定由程序入口注入，沒有核准數字的預設值。以下設定寫完不代表已獲准曝光。
@@ -43,6 +55,12 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 2026-09-05 本機驗證紀錄：Python 全套 206 通過、4 跳過；Web 全套 456 通過，型別檢查、格式檢查及正式建置成功。Go 全套曾完成 1,279 通過、9 跳過；最後新增復原／預算／金鑰歸屬測試後，重跑受影響的五個套件，582 通過、5 跳過。Go 靜態檢查顯示 `0 issues`，契約生成一致性與 automation contract 均成功。這些是本機證據，不代表 CI 或付費模型驗收。
 
 兩次突變驗證均有紅／綠證據：釋放未知費用的預留額度，或讓 `creation_skill` 繞過 `generate_skill` 曝光限制，對應測試都失敗；恢復原始檔案後通過，並確認位元組一致。正式建置仍有 bundle 超過 500 kB 的警告；完整 `git diff --check` 會指出 TypeScript 契約產生器的註解尾端空白，排除生成目錄後成功。生成檔維持產生器原樣，未手改。
+
+新增的 creation_python_integration_test.go 需設定絕對路徑 SKILLHUB_CREATION_PYTHON，指向已安裝 repo 依賴的 Python，配合上述可拋棄資料庫。它啟動真正 FastAPI／LangGraph，僅 LiteLLM 相容模型端點使用本機替身；未設定 Python 路徑會明確跳過。測試覆蓋錯誤草稿、Go finding、Python 修訂、相同內容複查與保存候選，不能取代真實模型品質驗收。
+
+2026-09-05 第二輪審視後的本機證據：Python 全套 220 通過、4 跳過；Web 全套 458 通過，型別與格式檢查成功。受影響的六個 Go 套件 569 通過、6 跳過（既有 corpus／真實服務測試未具備條件），兩條新增跨程序／真實評估回饋測試均實際執行。Go lint 為 0 issues，契約生成一致性、automation contract 與非生成檔案的 diff whitespace 檢查成功。
+
+跨程序測試發現 Go GeneratedSkill 省略空欄位會讓 Python 拒絕下一輪請求；傳輸現在保留契約要求的空字串與檔案陣列。兩次新增突變驗證分別重加 allowed_tools 的 omitempty、移除 draft_validation：同一條真實 Go／Python 測試都因行為斷言失敗，恢復修正後通過，檔案位元組與突變前一致。這些證據證明回饋循環確實接通，仍不代表付費模型品質或 CI 已通過。
 
 ## 尚待量測與核准
 

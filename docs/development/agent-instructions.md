@@ -17,7 +17,7 @@
 | Sandbox | gVisor `systrap`，獨立 VM 池，nftables default-deny ＋固定 DNS，不部署 L7 Proxy | ADR-015、005、022 |
 | Runtime Image | 自建映像發佈至 GHCR，SBOM 與掃描以 attestation 隨 digest 保存 | ADR-022 |
 | LLM 觀測 | Langfuse Cloud（工程調優用，非事實來源；**MVP 未實作**，見 [`05` R-24](../plans/05-pending-rulings.md)） | ADR-017 |
-| 互動創作（規劃） | LangGraph 編排、Go／Postgres 會話快照與事件；**尚未實作或安裝** | ADR-067 |
+| 互動創作 | Python LangGraph 分階段編排、Go／Postgres 會話快照與事件；已接線，曝光與品質驗收仍待核准，見[開發與驗證](interactive-creation.md) | ADR-067 |
 | 契約 | OpenAPI-first；Go 側 models-only，handler 手寫並逐條對齊 | ADR-016、030 |
 
 **Local Runner 與遠端 MCP 已移出 MVP 首發**（決策保留於 ADR-006）。
