@@ -7,6 +7,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"encoding/json"
@@ -89,5 +90,25 @@ func wireCreationWrites(s *creation.Service, versions *ingest.Service, runs *run
 		}
 		b, err := json.Marshal(map[string]any{"run_id": runID, "skill_version_id": candidate.VersionID, "execution_status": r.Status, "failure_class": r.FailureClass, "evaluation": feedback})
 		return string(b), err
+	}
+}
+
+// wireCreationTestCases wires the confirmed acceptance criteria into a real
+// Test Case (05 R-46 (b)). Separate from wireCreationWrites rather than an
+// added parameter there: wireCreationWrites' call site in app.go already
+// exists with four arguments, and this keeps that line untouched — see
+// app.go's call to wireCreationWrites for where the one line calling this
+// function belongs.
+func wireCreationTestCases(s *creation.Service, lab *testlab.Service) {
+	s.CreateAcceptanceTestCase = func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error) {
+		id, err := creation.ParseID(skillID)
+		if err != nil {
+			return "", err
+		}
+		tc, err := lab.CreateTestCaseWithCriteria(ctx, tx, ws, id, name, prompt, criteria)
+		if err != nil {
+			return "", err
+		}
+		return creation.UUID(tc.ID), nil
 	}
 }

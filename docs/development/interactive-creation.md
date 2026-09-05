@@ -38,7 +38,7 @@ Catalog 參考畫面列出選定不可變版本的描述、相容性與工具需
 | `LLM_SERVICE_URL`、`LLM_SERVICE_TOKEN` | Worker 呼叫 Python 的既有設定 |
 | `SKILLHUB_MODEL_GATEWAY_URL`、`SKILLHUB_MODEL_GATEWAY_KEY` | Worker 既有 LiteLLM 管理接線；管理金鑰不傳 Python |
 
-`CREATION_LIMITS_JSON` 的必要鍵為 `max_cost_usd`、`max_call_cost_usd`、`max_steps`、`max_tool_calls`、`call_timeout_seconds`、`session_timeout_seconds`、`retention_seconds`、`max_output_tokens`。值須為有效正數；單次預算不得超過總上限、單次時間不得超過 Python 的 120 秒、保存期限不得短於會話時間。實際數字依 R-45 核准後填寫，測試 fixture 的數字不是部署核准值。
+`CREATION_LIMITS_JSON` 的必要鍵為 `max_cost_usd`、`max_call_cost_usd`、`max_steps`、`max_tool_calls`、`call_timeout_seconds`、`session_timeout_seconds`、`retention_seconds`、`max_output_tokens`。值須為有效正數；單次預算不得超過總上限、單次時間不得超過 Python 的 120 秒、保存期限不得短於會話時間。**2026-09-06 已定值**（[`05` R-45](../plans/05-pending-rulings.md) 裁定表，負責人授權代理定值）：`max_cost_usd` 1.0、`max_call_cost_usd` 0.1、`max_steps` 24、`max_tool_calls` 8、`call_timeout_seconds` 90、`session_timeout_seconds` 259200、`retention_seconds` 2592000、`max_output_tokens` 16000；`.env.example` 帶著同一行 JSON。測試 fixture 的數字仍不是部署值。
 
 每次模型工作先以 receipt 預留單次費用，再簽發限定 `gpt-5.4-mini`、單次金額與 TTL 的 Virtual Key。Python 只從 `X-Creation-Gateway-Key` header 取得短效 key；沒有 key 不回退共用金鑰。回應缺少真實 cost 時保留預留額並標示未知。取消、程序重啟及遲到結果不得重複計費或復活創作；Worker 的周期工作處理中斷與到期清除。帳號刪除會刪除會話、事件與 receipts，資料庫 write fence 拒絕刪除開始後的私人資料寫入。
 
@@ -76,6 +76,13 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 - **畫面**：預算區間、已用步數／工具次數、可以離開、上次更新、兩個時鐘、共用 `Findings`、Run 結果、TypeError 中文。
 
 本機證據（2026-09-05 深夜）：Go 全套 27 個套件 ok（含 DB）；Python 224 通過、4 跳過；Web 464 通過，型別、lint、格式檢查成功；golangci-lint 0 issues；契約生成一致、automation contract 成功。新增測試：Go 15、Python 4、Web 3；六份簡報各有一次突變紅／綠證據。這些仍是免費替身上的證據，不代表付費模型品質或真人採用。
+
+## 2026-09-06 R-45／R-46 落地
+
+- **驗收條件成為資料**：模型在提 brief 的同一個決策回 `acceptance_criteria`；Go 與 brief 一起綁定（換了就退回確認）；`materialize` 在同一交易以 `CreateTestCaseWithCriteria` 建立候選的 Test Case（source user、`confirmed_at` 為確認時刻），`Candidate.test_case_id` 回到畫面、試跑連結預填。
+- **`raise_budget`**：額度被拒的會話可提高預算後從 `waiting_input` 繼續；區間由 `/creation-sessions/limits` 公布，超出回 422 並寫出區間。
+- **`reason` 碼**：Python 護欄只回碼，Go 出句子；`creation.py` 不再有中文。
+- 值與門檻見 `05` R-45；同意書 §3 新增互動創作一列（法務尚未看過，功能封測期間不曝光）。
 
 ## 尚待量測與核准
 

@@ -16,6 +16,7 @@ type CreationStepRequest struct {
 	Revision             int64                    `json:"revision"`
 	Messages             []CreationMessage        `json:"messages"`
 	Brief                string                   `json:"brief"`
+	AcceptanceCriteria   []string                 `json:"acceptance_criteria"`
 	BriefConfirmed       bool                     `json:"brief_confirmed"`
 	DiagramUnderstanding string                   `json:"diagram_understanding"`
 	DiagramConfirmed     bool                     `json:"diagram_confirmed"`
@@ -42,15 +43,19 @@ type CreationToolIntent struct {
 	Query string `json:"query"`
 }
 type CreationStepResponse struct {
-	Outcome              string              `json:"outcome"`
-	Message              string              `json:"message"`
-	Brief                string              `json:"brief"`
-	DiagramUnderstanding string              `json:"diagram_understanding"`
-	ToolIntent           *CreationToolIntent `json:"tool_intent,omitempty"`
-	Draft                *GeneratedSkill     `json:"draft,omitempty"`
-	Model                string              `json:"model"`
-	PromptVersion        string              `json:"prompt_version"`
-	Usage                *GatewayUsage       `json:"usage,omitempty"`
+	Outcome              string   `json:"outcome"`
+	Message              string   `json:"message"`
+	Brief                string   `json:"brief"`
+	AcceptanceCriteria   []string `json:"acceptance_criteria"`
+	DiagramUnderstanding string   `json:"diagram_understanding"`
+	// Reason is set by Python's own guard rails (never by the model); Go owns
+	// the sentence shown for each code (05 R-46 (c)).
+	Reason        string              `json:"reason,omitempty"`
+	ToolIntent    *CreationToolIntent `json:"tool_intent,omitempty"`
+	Draft         *GeneratedSkill     `json:"draft,omitempty"`
+	Model         string              `json:"model"`
+	PromptVersion string              `json:"prompt_version"`
+	Usage         *GatewayUsage       `json:"usage,omitempty"`
 }
 
 // CreationStep uses both the service bearer and the single-session gateway key.
@@ -69,6 +74,9 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 	}
 	if in.AllowedTools == nil {
 		in.AllowedTools = []string{}
+	}
+	if in.AcceptanceCriteria == nil {
+		in.AcceptanceCriteria = []string{}
 	}
 	if in.Draft != nil {
 		draft := *in.Draft

@@ -178,6 +178,8 @@ export function CreationSession() {
     [file, setFile] = useState<File>(),
     [refs, setRefs] = useState<{ id: string; name: string }[]>([]),
     [runID, setRunID] = useState(""),
+    [raiseBudget, setRaiseBudget] = useState(""),
+    [raiseError, setRaiseError] = useState(""),
     [error, setError] = useState<unknown>(),
     [busy, setBusy] = useState(false);
   const pending = useRef<{ key: string; body: CreationAction } | undefined>(undefined);
@@ -254,6 +256,18 @@ export function CreationSession() {
     } finally {
       setBusy(false);
     }
+  };
+  const submitRaiseBudget = async () => {
+    if (!p || !limits.data) return;
+    const amount = Number(raiseBudget);
+    if (!Number.isFinite(amount) || amount <= p.budget_usd || amount > limits.data.max_budget_usd) {
+      setRaiseError(
+        `請填寫高於目前上限 $${p.budget_usd} 且不超過 $${limits.data.max_budget_usd} 的金額。`,
+      );
+      return;
+    }
+    setRaiseError("");
+    await perform("raise_budget", { budget_usd: amount });
   };
   const submit = async () => {
     setBusy(true);
@@ -367,6 +381,27 @@ export function CreationSession() {
               {limits.data.max_tool_calls} 次
             </p>
           )}
+          {limits.data &&
+            (session?.state === "failed" ||
+              p.budget_usd - (p.spent_usd ?? 0) - p.reserved_usd <
+                2 * limits.data.min_budget_usd) && (
+              <div>
+                <label>
+                  提高這次預算上限（美元）
+                  <input
+                    aria-label="提高這次預算上限（美元）"
+                    inputMode="decimal"
+                    disabled={busy}
+                    value={raiseBudget}
+                    onChange={(e) => setRaiseBudget(e.target.value)}
+                  />
+                </label>
+                <button type="button" disabled={busy} onClick={() => void submitRaiseBudget()}>
+                  提高預算後繼續
+                </button>
+                {!!raiseError && <p role="alert">{raiseError}</p>}
+              </div>
+            )}
         </>
       ) : (
         <label>
@@ -478,10 +513,20 @@ export function CreationSession() {
             <section>
               <h4>需求摘要</h4>
               <p>{p.brief}</p>
-              <p>{p.brief_confirmed ? "已確認" : "尚未確認"}</p>
+              <h5>驗收條件</h5>
+              {p.acceptance_criteria.length > 0 ? (
+                <ol>
+                  {p.acceptance_criteria.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ol>
+              ) : (
+                <p>模型尚未提出驗收條件</p>
+              )}
+              <p>{p.brief_confirmed ? "需求摘要與驗收條件皆已確認" : "尚未確認"}</p>
               {p.pending_action === "confirm_brief" && (
                 <button disabled={locked} onClick={() => void perform("confirm_brief")}>
-                  確認需求摘要
+                  確認需求摘要與驗收條件
                 </button>
               )}
             </section>
@@ -591,12 +636,13 @@ export function CreationSession() {
                       search={{
                         skill: p.candidate.skill_id,
                         version: p.candidate.version_id,
-                        test_case: undefined,
+                        test_case: p.candidate.test_case_id,
                       }}
                     >
                       檢查權限與費用後試跑此版本
                     </Link>
                   </p>
+                  {p.candidate.test_case_id && <p>已依確認的驗收條件建立 Test Case</p>}
                   {p.candidate.run_id ? (
                     <>
                       <Link to="/runs/$runId" params={{ runId: p.candidate.run_id }}>

@@ -33,6 +33,7 @@ export interface CreationSnapshot {
   messages: { role: "user" | "assistant" | "tool"; content: string }[];
   brief: string;
   brief_confirmed: boolean;
+  acceptance_criteria: string[];
   diagram_understanding: string;
   diagram_confirmed: boolean;
   references: CreationReference[];
@@ -51,7 +52,7 @@ export interface CreationSnapshot {
     blocked: boolean;
   };
   previous_draft?: CreationSnapshot["draft"];
-  candidate?: { skill_id: string; version_id: string; run_id?: string };
+  candidate?: { skill_id: string; version_id: string; run_id?: string; test_case_id?: string };
   diagram_fingerprint?: string;
   diagram_media_type?: string;
   diagram_bytes?: number;
@@ -90,12 +91,14 @@ export interface CreationAction {
     | "finalize"
     | "cancel"
     | "diagram"
-    | "attach_run";
+    | "attach_run"
+    | "raise_budget";
   message?: string;
   reference_skill_ids?: string[];
   content_hash?: string;
   diagram?: { media_type: string; data: string };
   run_id?: string;
+  budget_usd?: number;
 }
 export const listCreationSessions = () => apiFetch<CreationSession[]>("/creation-sessions");
 export const getCreationLimits = () => apiFetch<CreationLimits>("/creation-sessions/limits");

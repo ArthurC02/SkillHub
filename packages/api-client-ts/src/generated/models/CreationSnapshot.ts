@@ -61,6 +61,12 @@ export interface CreationSnapshot {
      */
     brief: string;
     /**
+     * Observable acceptance sentences proposed with the brief and confirmed by the same confirm_brief; materialize turns them into the candidate's Test Case (05 R-46).
+     * @type {Array<string>}
+     * @memberof CreationSnapshot
+     */
+    acceptanceCriteria: Array<string>;
+    /**
      * 
      * @type {boolean}
      * @memberof CreationSnapshot
@@ -182,6 +188,7 @@ export interface CreationSnapshot {
 export function instanceOfCreationSnapshot(value: object): value is CreationSnapshot {
     if (!('messages' in value) || value['messages'] === undefined) return false;
     if (!('brief' in value) || value['brief'] === undefined) return false;
+    if (!('acceptanceCriteria' in value) || value['acceptanceCriteria'] === undefined) return false;
     if (!('briefConfirmed' in value) || value['briefConfirmed'] === undefined) return false;
     if (!('diagramUnderstanding' in value) || value['diagramUnderstanding'] === undefined) return false;
     if (!('diagramConfirmed' in value) || value['diagramConfirmed'] === undefined) return false;
@@ -207,6 +214,7 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         
         'messages': ((json['messages'] as Array<any>).map(CreationMessageFromJSON)),
         'brief': json['brief'],
+        'acceptanceCriteria': json['acceptance_criteria'],
         'briefConfirmed': json['brief_confirmed'],
         'diagramUnderstanding': json['diagram_understanding'],
         'diagramConfirmed': json['diagram_confirmed'],
@@ -242,6 +250,7 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         
         'messages': ((value['messages'] as Array<any>).map(CreationMessageToJSON)),
         'brief': value['brief'],
+        'acceptance_criteria': value['acceptanceCriteria'],
         'brief_confirmed': value['briefConfirmed'],
         'diagram_understanding': value['diagramUnderstanding'],
         'diagram_confirmed': value['diagramConfirmed'],

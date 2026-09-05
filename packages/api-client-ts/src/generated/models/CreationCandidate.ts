@@ -37,6 +37,12 @@ export interface CreationCandidate {
      * @memberof CreationCandidate
      */
     runId?: string;
+    /**
+     * The Test Case Go created from the confirmed acceptance criteria when this candidate was materialized.
+     * @type {string}
+     * @memberof CreationCandidate
+     */
+    testCaseId?: string;
 }
 
 /**
@@ -61,6 +67,7 @@ export function CreationCandidateFromJSONTyped(json: any, ignoreDiscriminator: b
         'skillId': json['skill_id'],
         'versionId': json['version_id'],
         'runId': json['run_id'] == null ? undefined : json['run_id'],
+        'testCaseId': json['test_case_id'] == null ? undefined : json['test_case_id'],
     };
 }
 
@@ -78,6 +85,7 @@ export function CreationCandidateToJSONTyped(value?: CreationCandidate | null, i
         'skill_id': value['skillId'],
         'version_id': value['versionId'],
         'run_id': value['runId'],
+        'test_case_id': value['testCaseId'],
     };
 }
 

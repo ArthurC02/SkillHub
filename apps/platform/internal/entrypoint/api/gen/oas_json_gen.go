@@ -5388,6 +5388,12 @@ func (s *CreationAction) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.BudgetUsd.Set {
+			e.FieldStart("budget_usd")
+			s.BudgetUsd.Encode(e)
+		}
+	}
+	{
 		if s.ReferenceSkillIds != nil {
 			e.FieldStart("reference_skill_ids")
 			e.ArrStart()
@@ -5417,15 +5423,16 @@ func (s *CreationAction) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationAction = [8]string{
+var jsonFieldsNameOfCreationAction = [9]string{
 	0: "command_id",
 	1: "expected_revision",
 	2: "kind",
 	3: "message",
-	4: "reference_skill_ids",
-	5: "content_hash",
-	6: "diagram",
-	7: "run_id",
+	4: "budget_usd",
+	5: "reference_skill_ids",
+	6: "content_hash",
+	7: "diagram",
+	8: "run_id",
 }
 
 // Decode decodes CreationAction from json.
@@ -5433,7 +5440,7 @@ func (s *CreationAction) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode CreationAction to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -5480,6 +5487,16 @@ func (s *CreationAction) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"message\"")
+			}
+		case "budget_usd":
+			if err := func() error {
+				s.BudgetUsd.Reset()
+				if err := s.BudgetUsd.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"budget_usd\"")
 			}
 		case "reference_skill_ids":
 			if err := func() error {
@@ -5539,8 +5556,9 @@ func (s *CreationAction) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b00000111,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -5622,6 +5640,8 @@ func (s *CreationActionKind) Decode(d *jx.Decoder) error {
 		*s = CreationActionKindDiagram
 	case CreationActionKindAttachRun:
 		*s = CreationActionKindAttachRun
+	case CreationActionKindRaiseBudget:
+		*s = CreationActionKindRaiseBudget
 	default:
 		*s = CreationActionKind(v)
 	}
@@ -5665,12 +5685,19 @@ func (s *CreationCandidate) encodeFields(e *jx.Encoder) {
 			s.RunID.Encode(e)
 		}
 	}
+	{
+		if s.TestCaseID.Set {
+			e.FieldStart("test_case_id")
+			s.TestCaseID.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfCreationCandidate = [3]string{
+var jsonFieldsNameOfCreationCandidate = [4]string{
 	0: "skill_id",
 	1: "version_id",
 	2: "run_id",
+	3: "test_case_id",
 }
 
 // Decode decodes CreationCandidate from json.
@@ -5715,6 +5742,16 @@ func (s *CreationCandidate) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"run_id\"")
+			}
+		case "test_case_id":
+			if err := func() error {
+				s.TestCaseID.Reset()
+				if err := s.TestCaseID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"test_case_id\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
@@ -7093,6 +7130,14 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		e.Str(s.Brief)
 	}
 	{
+		e.FieldStart("acceptance_criteria")
+		e.ArrStart()
+		for _, elem := range s.AcceptanceCriteria {
+			e.Str(elem)
+		}
+		e.ArrEnd()
+	}
+	{
 		e.FieldStart("brief_confirmed")
 		e.Bool(s.BriefConfirmed)
 	}
@@ -7192,28 +7237,29 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [21]string{
+var jsonFieldsNameOfCreationSnapshot = [22]string{
 	0:  "messages",
 	1:  "brief",
-	2:  "brief_confirmed",
-	3:  "diagram_understanding",
-	4:  "diagram_confirmed",
-	5:  "diagram_fingerprint",
-	6:  "references",
-	7:  "draft",
-	8:  "candidate",
-	9:  "pending_action",
-	10: "budget_usd",
-	11: "reserved_usd",
-	12: "spent_usd",
-	13: "usage_unknown",
-	14: "steps",
-	15: "tool_calls",
-	16: "model",
-	17: "prompt_version",
-	18: "diagram_media_type",
-	19: "diagram_bytes",
-	20: "previous_draft",
+	2:  "acceptance_criteria",
+	3:  "brief_confirmed",
+	4:  "diagram_understanding",
+	5:  "diagram_confirmed",
+	6:  "diagram_fingerprint",
+	7:  "references",
+	8:  "draft",
+	9:  "candidate",
+	10: "pending_action",
+	11: "budget_usd",
+	12: "reserved_usd",
+	13: "spent_usd",
+	14: "usage_unknown",
+	15: "steps",
+	16: "tool_calls",
+	17: "model",
+	18: "prompt_version",
+	19: "diagram_media_type",
+	20: "diagram_bytes",
+	21: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -7255,8 +7301,28 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"brief\"")
 			}
-		case "brief_confirmed":
+		case "acceptance_criteria":
 			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				s.AcceptanceCriteria = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.AcceptanceCriteria = append(s.AcceptanceCriteria, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"acceptance_criteria\"")
+			}
+		case "brief_confirmed":
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := d.Bool()
 				s.BriefConfirmed = bool(v)
@@ -7268,7 +7334,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"brief_confirmed\"")
 			}
 		case "diagram_understanding":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				v, err := d.Str()
 				s.DiagramUnderstanding = string(v)
@@ -7280,7 +7346,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"diagram_understanding\"")
 			}
 		case "diagram_confirmed":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := d.Bool()
 				s.DiagramConfirmed = bool(v)
@@ -7302,7 +7368,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"diagram_fingerprint\"")
 			}
 		case "references":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				s.References = make([]CreationReference, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -7340,7 +7406,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"candidate\"")
 			}
 		case "pending_action":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Str()
 				s.PendingAction = string(v)
@@ -7352,7 +7418,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"pending_action\"")
 			}
 		case "budget_usd":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				v, err := d.Float64()
 				s.BudgetUsd = float64(v)
@@ -7364,7 +7430,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"budget_usd\"")
 			}
 		case "reserved_usd":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				v, err := d.Float64()
 				s.ReservedUsd = float64(v)
@@ -7386,7 +7452,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"spent_usd\"")
 			}
 		case "usage_unknown":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				v, err := d.Bool()
 				s.UsageUnknown = bool(v)
@@ -7398,7 +7464,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usage_unknown\"")
 			}
 		case "steps":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				v, err := d.Int()
 				s.Steps = int(v)
@@ -7410,7 +7476,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"steps\"")
 			}
 		case "tool_calls":
-			requiredBitSet[1] |= 1 << 7
+			requiredBitSet[2] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int()
 				s.ToolCalls = int(v)
@@ -7481,9 +7547,9 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [3]uint8{
-		0b01011111,
-		0b11101110,
-		0b00000000,
+		0b10111111,
+		0b11011100,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

@@ -2025,15 +2025,20 @@ type CreateTestCaseUnauthorized Error
 
 func (*CreateTestCaseUnauthorized) createTestCaseRes() {}
 
-// Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, and
-// run_id for attach_run. expected_revision binds the exact displayed snapshot including draft revision
-// and candidate identity. These conditional requirements are enforced by the domain service.
+// Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id
+// for attach_run, and budget_usd for raise_budget. expected_revision binds the exact displayed
+// snapshot including draft revision and candidate identity. These conditional requirements are
+// enforced by the domain service.
 // Ref: #/components/schemas/CreationAction
 type CreationAction struct {
-	CommandID         uuid.UUID          `json:"command_id"`
-	ExpectedRevision  int                `json:"expected_revision"`
-	Kind              CreationActionKind `json:"kind"`
-	Message           OptString          `json:"message"`
+	CommandID        uuid.UUID          `json:"command_id"`
+	ExpectedRevision int                `json:"expected_revision"`
+	Kind             CreationActionKind `json:"kind"`
+	Message          OptString          `json:"message"`
+	// Raise_budget only: the new session ceiling. Must exceed the current one and stay within
+	// max_budget_usd from GET /creation-sessions/limits; a session refused for its limit becomes
+	// waiting_input again.
+	BudgetUsd         OptFloat64         `json:"budget_usd"`
 	ReferenceSkillIds []uuid.UUID        `json:"reference_skill_ids"`
 	ContentHash       OptString          `json:"content_hash"`
 	Diagram           OptGenerateDiagram `json:"diagram"`
@@ -2058,6 +2063,11 @@ func (s *CreationAction) GetKind() CreationActionKind {
 // GetMessage returns the value of Message.
 func (s *CreationAction) GetMessage() OptString {
 	return s.Message
+}
+
+// GetBudgetUsd returns the value of BudgetUsd.
+func (s *CreationAction) GetBudgetUsd() OptFloat64 {
+	return s.BudgetUsd
 }
 
 // GetReferenceSkillIds returns the value of ReferenceSkillIds.
@@ -2100,6 +2110,11 @@ func (s *CreationAction) SetMessage(val OptString) {
 	s.Message = val
 }
 
+// SetBudgetUsd sets the value of BudgetUsd.
+func (s *CreationAction) SetBudgetUsd(val OptFloat64) {
+	s.BudgetUsd = val
+}
+
 // SetReferenceSkillIds sets the value of ReferenceSkillIds.
 func (s *CreationAction) SetReferenceSkillIds(val []uuid.UUID) {
 	s.ReferenceSkillIds = val
@@ -2133,6 +2148,7 @@ const (
 	CreationActionKindCancel            CreationActionKind = "cancel"
 	CreationActionKindDiagram           CreationActionKind = "diagram"
 	CreationActionKindAttachRun         CreationActionKind = "attach_run"
+	CreationActionKindRaiseBudget       CreationActionKind = "raise_budget"
 )
 
 // AllValues returns all CreationActionKind values.
@@ -2148,6 +2164,7 @@ func (CreationActionKind) AllValues() []CreationActionKind {
 		CreationActionKindCancel,
 		CreationActionKindDiagram,
 		CreationActionKindAttachRun,
+		CreationActionKindRaiseBudget,
 	}
 }
 
@@ -2173,6 +2190,8 @@ func (s CreationActionKind) MarshalText() ([]byte, error) {
 	case CreationActionKindDiagram:
 		return []byte(s), nil
 	case CreationActionKindAttachRun:
+		return []byte(s), nil
+	case CreationActionKindRaiseBudget:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -2212,6 +2231,9 @@ func (s *CreationActionKind) UnmarshalText(data []byte) error {
 	case CreationActionKindAttachRun:
 		*s = CreationActionKindAttachRun
 		return nil
+	case CreationActionKindRaiseBudget:
+		*s = CreationActionKindRaiseBudget
+		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
@@ -2222,6 +2244,9 @@ type CreationCandidate struct {
 	SkillID   uuid.UUID `json:"skill_id"`
 	VersionID uuid.UUID `json:"version_id"`
 	RunID     OptUUID   `json:"run_id"`
+	// The Test Case Go created from the confirmed acceptance criteria when this candidate was
+	// materialized.
+	TestCaseID OptUUID `json:"test_case_id"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -2239,6 +2264,11 @@ func (s *CreationCandidate) GetRunID() OptUUID {
 	return s.RunID
 }
 
+// GetTestCaseID returns the value of TestCaseID.
+func (s *CreationCandidate) GetTestCaseID() OptUUID {
+	return s.TestCaseID
+}
+
 // SetSkillID sets the value of SkillID.
 func (s *CreationCandidate) SetSkillID(val uuid.UUID) {
 	s.SkillID = val
@@ -2252,6 +2282,11 @@ func (s *CreationCandidate) SetVersionID(val uuid.UUID) {
 // SetRunID sets the value of RunID.
 func (s *CreationCandidate) SetRunID(val OptUUID) {
 	s.RunID = val
+}
+
+// SetTestCaseID sets the value of TestCaseID.
+func (s *CreationCandidate) SetTestCaseID(val OptUUID) {
+	s.TestCaseID = val
 }
 
 // Ref: #/components/schemas/CreationDraft
@@ -2859,8 +2894,11 @@ func (s *CreationSkillFilesItem) SetContent(val string) {
 
 // Ref: #/components/schemas/CreationSnapshot
 type CreationSnapshot struct {
-	Messages             []CreationMessage    `json:"messages"`
-	Brief                string               `json:"brief"`
+	Messages []CreationMessage `json:"messages"`
+	Brief    string            `json:"brief"`
+	// Observable acceptance sentences proposed with the brief and confirmed by the same confirm_brief;
+	// materialize turns them into the candidate's Test Case (05 R-46).
+	AcceptanceCriteria   []string             `json:"acceptance_criteria"`
 	BriefConfirmed       bool                 `json:"brief_confirmed"`
 	DiagramUnderstanding string               `json:"diagram_understanding"`
 	DiagramConfirmed     bool                 `json:"diagram_confirmed"`
@@ -2890,6 +2928,11 @@ func (s *CreationSnapshot) GetMessages() []CreationMessage {
 // GetBrief returns the value of Brief.
 func (s *CreationSnapshot) GetBrief() string {
 	return s.Brief
+}
+
+// GetAcceptanceCriteria returns the value of AcceptanceCriteria.
+func (s *CreationSnapshot) GetAcceptanceCriteria() []string {
+	return s.AcceptanceCriteria
 }
 
 // GetBriefConfirmed returns the value of BriefConfirmed.
@@ -2995,6 +3038,11 @@ func (s *CreationSnapshot) SetMessages(val []CreationMessage) {
 // SetBrief sets the value of Brief.
 func (s *CreationSnapshot) SetBrief(val string) {
 	s.Brief = val
+}
+
+// SetAcceptanceCriteria sets the value of AcceptanceCriteria.
+func (s *CreationSnapshot) SetAcceptanceCriteria(val []string) {
+	s.AcceptanceCriteria = val
 }
 
 // SetBriefConfirmed sets the value of BriefConfirmed.

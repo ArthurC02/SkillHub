@@ -1548,6 +1548,23 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 
 實作可先完成契約與可設定的強制點；啟用前須記錄裁定者、日期、各值與量測依據，未設定不得啟用。採用規劃不代表已核准模型支出，也不解除 M5 曝光限制。
 
+**2026-09-06 裁定（負責人授權代理定值；裁定者：產品負責人，值由代理依下列依據擬定並記錄）。** 值寫在 `.env.example` 的 `CREATION_LIMITS_JSON`，程式以 `Limits.Valid()` 拒絕缺鍵或不合理的組合；`GET /creation-sessions/limits` 把它公布給畫面。
+
+| 鍵 | 值 | 依據 |
+| --- | --- | --- |
+| `max_call_cost_usd`（單次預留，亦是最低開場預算） | **0.10** | m5 基線 mini 單次生成中位 $0.0062（[報告 §8.2](mvp/m5/report-generate-baseline.md)）；創作一步多帶最多三份參考 SKILL.md（各 ≤ `generateMaxReferenceChars`）與一份草稿，輸出上限 16,000 token，估 ≤ $0.05，留一倍餘裕 |
+| `max_cost_usd`（會話總額） | **1.00** | 約 20～40 次模型呼叫；與 Run 金鑰每次 $0.50 的既有級距同量級；封測十二人各開數場仍在個位數美元 |
+| `max_steps` | **24** | 一輪對話約 1～3 次呼叫（提 brief、草稿、驗證修訂），24 步約 8～12 輪 |
+| `max_tool_calls` | **8** | `validate_draft` 與 `search_catalog` 合計；`allowed_tools` 依剩餘次數計算，用盡後模型只能出草稿或澄清 |
+| `call_timeout_seconds` | **90** | Python 自身上限 120；mini 產 16k token 實測數十秒；Go 另加 5 s 餘裕並以剩餘秒數傳給 Python |
+| `session_timeout_seconds` | **259,200（72 h）** | `02:GEN-007` 要能離開再回來；三天之後仍未完成的會話多半已被放棄，到期後除 cancel 外一律拒絕並明說是時間 |
+| `retention_seconds` | **2,592,000（30 天）** | 與 Download Artifact 的 30 天同級距、短於 Dataset／Trace 的 90 天：未完成會話裡有私人草稿與對話，不該比產物活得久；同意書 §3 新增一列 |
+| `max_output_tokens` | **16,000** | 同單次生成（`generateMaxOutputTokens`）與 Python cap |
+
+**量測門檻（`02:GEN-012` 證據條）**：三種入口各 5 個任務＝15 場多輪會話，同 15 個任務以單次生成對照；格式通過（`skillpkg.Validate` 不阻擋）≥ 14／15；任務達成（附加 Run 的評估 `met`）≥ 9／15；真人願意採用 ≥ 12／15（單次基線是 15／19，多輪不得更差）；每場成本中位 ≤ $0.50；每次模型呼叫等待 p50 ≤ 60 s、p95 ≤ 90 s。**沒有跑**：真閘道與真人那兩半仍待負責人親自起（代理權限不允許啟動付費服務），門檻先定、樣本後補。
+
+**未解除的事**：本裁定不解除 `01` §10 的 M5 曝光邊界；`CREATION_EXPOSED` 仍為空。`04` 乙-33 結案。
+
 ## R-46｜互動創作的三個產品裁定（`04` 乙-34、丙-166）
 
 **2026-09-05 深化批新增，待產品負責人具名裁定。** 三件都是六線稽核量出來、反駁者維持、而且**刻意沒有順手做掉**的：每一件都改契約或會話狀態的形狀，做錯比不做貴。
@@ -1557,3 +1574,11 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 - **拒絕類文案誰寫。** `creation.py` 五處、`job.go` 七處各自寫死中文句子，同一類「為什麼不能做」有兩位作者；同日的文案稽核沒有找到成立的規則違反（`message` 在契約裡是必填自由文字，ADR-067 把圖內決策放 Python），所以這是歸屬不是缺陷。選項：Python 回 reason code、Go 統一對表；或維持現狀並在 `apps/llm/AGENTS.md` 明寫 Python 可以出使用者句子。建議前者，但排在 (a)／(b) 之後。
 
 裁定後各自落到 `03` §19.1 的對應項；未裁定前不動契約。
+
+**2026-09-06 裁定（負責人授權代理裁定）。** 三件照建議：
+
+1. **驗收條件走 (b)，但抽取者是模型、綁定者是 Go**：模型在提 brief 的同一個決策裡回 `acceptance_criteria`（3～8 句可由一次試跑證實或推翻的句子，契約上限 12 句、每句 500 字），`confirm_brief` 一次確認兩者；Go 把它存進快照、與 brief 同樣以確認綁定（模型換了任一個都退回確認）；`materialize` 時 Go 在同一交易用它建立候選 Skill 的 Test Case（`test_cases.acceptance_criteria`，source＝user、`confirmed_at`＝確認時刻），`Candidate.test_case_id` 帶回畫面，試跑連結預填它。沒有條件時不建 Test Case、不阻擋保存——這是 R-45 量測的前置，不是保存的閘門。
+2. **加值走 `raise_budget` 命令**：新額度必須大於現額且 ≤ `max_cost_usd`，否則 422 並寫出區間；因額度被拒而 `failed` 的會話回到 `waiting_input`，已確認的 brief／圖解／草稿全部保留。步數上限不可加值（那是節奏不是錢）。ADR-067 的「超限才重新要求阻斷確認」以此落地，同日 ADR-067 補記。
+3. **拒絕類文案由 Go 出句子**：`llm-internal` 的回應多一個 `reason` 枚舉（六個碼，只由 Python 的護欄設、模型設不到），Go 在 `proposal()` 以自己的對照表換句子；Python 的 `message` 退成語言中性的備援。`creation.py` 不再有中文句子。
+
+`04` 乙-34 結案；落地與證據見同日 commit 與 [開發手冊](../development/interactive-creation.md)。

@@ -8221,6 +8221,10 @@ components:
         run_id:
           type: "string"
           format: "uuid"
+        test_case_id:
+          type: "string"
+          format: "uuid"
+          description: "The Test Case Go created from the confirmed acceptance criteria when this candidate was materialized."
 
     CreationSnapshot:
       type: "object"
@@ -8228,6 +8232,7 @@ components:
       required:
         - "messages"
         - "brief"
+        - "acceptance_criteria"
         - "brief_confirmed"
         - "diagram_understanding"
         - "diagram_confirmed"
@@ -8245,6 +8250,11 @@ components:
             $ref: "#/components/schemas/CreationMessage"
         brief:
           type: "string"
+        acceptance_criteria:
+          type: "array"
+          items:
+            type: "string"
+          description: "Observable acceptance sentences proposed with the brief and confirmed by the same confirm_brief; materialize turns them into the candidate's Test Case (05 R-46)."
         brief_confirmed:
           type: "boolean"
         diagram_understanding:
@@ -8409,9 +8419,13 @@ components:
             - "cancel"
             - "diagram"
             - "attach_run"
+            - "raise_budget"
         message:
           type: "string"
           maxLength: 4000
+        budget_usd:
+          type: "number"
+          description: "raise_budget only: the new session ceiling. Must exceed the current one and stay within max_budget_usd from GET /creation-sessions/limits; a session refused for its limit becomes waiting_input again."
         reference_skill_ids:
           type: "array"
           maxItems: 3
@@ -8425,4 +8439,4 @@ components:
         run_id:
           type: "string"
           format: "uuid"
-      description: "Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, and run_id for attach_run. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service."
+      description: "Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_usd for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service."

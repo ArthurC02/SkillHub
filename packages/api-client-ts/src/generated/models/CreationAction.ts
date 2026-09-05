@@ -22,7 +22,7 @@ import {
 } from './GenerateDiagram';
 
 /**
- * Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, and run_id for attach_run. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service.
+ * Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_usd for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service.
  * @export
  * @interface CreationAction
  */
@@ -51,6 +51,12 @@ export interface CreationAction {
      * @memberof CreationAction
      */
     message?: string;
+    /**
+     * raise_budget only: the new session ceiling. Must exceed the current one and stay within max_budget_usd from GET /creation-sessions/limits; a session refused for its limit becomes waiting_input again.
+     * @type {number}
+     * @memberof CreationAction
+     */
+    budgetUsd?: number;
     /**
      * 
      * @type {Array<string>}
@@ -91,7 +97,8 @@ export const CreationActionKindEnum = {
     Finalize: 'finalize',
     Cancel: 'cancel',
     Diagram: 'diagram',
-    AttachRun: 'attach_run'
+    AttachRun: 'attach_run',
+    RaiseBudget: 'raise_budget'
 } as const;
 export type CreationActionKindEnum = typeof CreationActionKindEnum[keyof typeof CreationActionKindEnum];
 
@@ -120,6 +127,7 @@ export function CreationActionFromJSONTyped(json: any, ignoreDiscriminator: bool
         'expectedRevision': json['expected_revision'],
         'kind': json['kind'],
         'message': json['message'] == null ? undefined : json['message'],
+        'budgetUsd': json['budget_usd'] == null ? undefined : json['budget_usd'],
         'referenceSkillIds': json['reference_skill_ids'] == null ? undefined : json['reference_skill_ids'],
         'contentHash': json['content_hash'] == null ? undefined : json['content_hash'],
         'diagram': json['diagram'] == null ? undefined : GenerateDiagramFromJSON(json['diagram']),
@@ -142,6 +150,7 @@ export function CreationActionToJSONTyped(value?: CreationAction | null, ignoreD
         'expected_revision': value['expectedRevision'],
         'kind': value['kind'],
         'message': value['message'],
+        'budget_usd': value['budgetUsd'],
         'reference_skill_ids': value['referenceSkillIds'],
         'content_hash': value['contentHash'],
         'diagram': GenerateDiagramToJSON(value['diagram']),

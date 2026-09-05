@@ -52,6 +52,12 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 			out.Brief = in.Brief
 			out.Draft = &llmclient.GeneratedSkill{Name: "creation-summary", Description: "Summarize user input in the requested format.", Body: "# Task\nRead the user input and summarize the important points.\nAsk for the desired output format when missing.\n", Files: []llmclient.GeneratedFile{}}
 		}
+		// 05 R-46 (b): the brief proposal carries its acceptance criteria; later
+		// turns echo the confirmed list back, as the prompt tells the real model to.
+		out.AcceptanceCriteria = in.AcceptanceCriteria
+		if out.Outcome == "confirm_brief" && len(out.AcceptanceCriteria) == 0 {
+			out.AcceptanceCriteria = []string{"輸出摘要含所有輸入重點"}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(out)
 	}))

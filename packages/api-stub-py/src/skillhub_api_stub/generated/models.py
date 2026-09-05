@@ -12,6 +12,7 @@ from pydantic import (
     ConfigDict,
     Field,
     PositiveFloat,
+    RootModel,
     confloat,
     conint,
     constr,
@@ -539,6 +540,10 @@ class CreationToolIntent(BaseModel):
     query: constr(max_length=4000)
 
 
+class AcceptanceCriterion(RootModel[constr(max_length=500)]):
+    root: constr(max_length=500)
+
+
 class AllowedTool(Enum):
     search_catalog = 'search_catalog'
     validate_draft = 'validate_draft'
@@ -550,6 +555,15 @@ class Outcome(Enum):
     confirm_diagram = 'confirm_diagram'
     tool_intent = 'tool_intent'
     draft = 'draft'
+
+
+class Reason(Enum):
+    tool_unavailable = 'tool_unavailable'
+    confirm_diagram_first = 'confirm_diagram_first'
+    confirm_brief_first = 'confirm_brief_first'
+    validation_unavailable = 'validation_unavailable'
+    diagram_incomplete = 'diagram_incomplete'
+    search_query_missing = 'search_query_missing'
 
 
 class CreationDraftValidation(BaseModel):
@@ -697,6 +711,11 @@ class CreationStepRequest(BaseModel):
     revision: conint(ge=0)
     messages: List[CreationMessage] = Field(..., max_length=100)
     brief: constr(max_length=20000)
+    acceptance_criteria: List[AcceptanceCriterion] = Field(
+        ...,
+        description='Observable acceptance sentences confirmed together with the brief; empty until the model proposes them. Go turns the confirmed list into a Test Case at materialize (05 R-46).',
+        max_length=12,
+    )
     brief_confirmed: bool
     diagram_understanding: constr(max_length=20000) = Field(
         ...,
@@ -724,7 +743,16 @@ class CreationStepResponse(BaseModel):
     )
     outcome: Outcome
     message: constr(max_length=20000)
+    reason: Optional[Reason] = Field(
+        None,
+        description="Set only by the service's own guard rails, never by the model. When present, Go replaces message with its own sentence for the code; message is then a language-neutral fallback (05 R-46 (c)).",
+    )
     brief: constr(max_length=20000)
+    acceptance_criteria: List[AcceptanceCriterion] = Field(
+        ...,
+        description='The criteria that accompany the brief in this proposal; empty means unchanged.',
+        max_length=12,
+    )
     diagram_understanding: constr(max_length=20000) = Field(
         ...,
         description='Empty or a JSON-encoded object with exactly nodes, conditions, branches and uncertainties string arrays; nodes must be nonempty.',

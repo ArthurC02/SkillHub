@@ -51,6 +51,16 @@ func (w *ExpiryWorker) Work(ctx context.Context, _ *river.Job[ExpiryArgs]) error
 	_, purgeErr := PurgeExpired(ctx, w.Svc.Pool, w.Svc.Limits.Retention)
 	return errors.Join(recoverErr, purgeErr)
 }
+
+// limitSentence names the way forward for a session that just tripped a
+// ceiling: steps cannot be raised (a new creation is the only option), but a
+// budget ceiling can be lifted with raise_budget (05 R-46 (raise)).
+func limitSentence(p Snapshot, l Limits) string {
+	if p.Steps >= l.MaxSteps {
+		return "已達這次核准的步數上限，請開始新的創作。"
+	}
+	return "已達這次核准的預算或步數上限；可以提高預算後繼續，或開始新的創作。"
+}
 func canSpend(p Snapshot, l Limits) bool {
 	spent := 0.0
 	if p.SpentUSD != nil {
@@ -131,8 +141,11 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 	if diagram != nil && !diagramMatches(e.Snapshot, diagram) {
 		return ErrInvalidCommand
 	}
-	if !canSpend(e.Snapshot, e.Limits) || !e.Deadline.After(time.Now()) {
+	if !e.Deadline.After(time.Now()) {
 		return s.failQueued(ctx, tx, row, e, a, "創作已達這次核准的限制，請開始新的創作。")
+	}
+	if !canSpend(e.Snapshot, e.Limits) {
+		return s.failQueued(ctx, tx, row, e, a, limitSentence(e.Snapshot, e.Limits))
 	}
 	if diagram == nil && e.Snapshot.DiagramFingerprint != "" && e.Snapshot.DiagramUnderstanding == "" {
 		return s.failQueued(ctx, tx, row, e, a, "流程圖需要重新上傳。")
@@ -174,7 +187,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 		}
 	}()
 	ws := identity.Workspace{ID: a.WorkspaceID}
-	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls), MaxOutputTokens: e.Limits.MaxOutputTokens}
+	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, AcceptanceCriteria: e.Snapshot.AcceptanceCriteria, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls), MaxOutputTokens: e.Limits.MaxOutputTokens}
 	draft := e.Snapshot.Draft
 	// A correction after a validated draft falls back to PreviousDraft: send it
 	// as the working draft, but never its (now stale) validation result, or
@@ -330,7 +343,7 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 			}
 		} else {
 			state = "waiting_input"
-			e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: "已達這次核准的創作限制。"})
+			e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: limitSentence(e.Snapshot, e.Limits)})
 		}
 	}
 	_, err = advance(ctx, tx, row, state, "attempt_settled", e)
@@ -344,13 +357,70 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 	}
 	return tx.Commit(ctx)
 }
+
+// reasonSentences names the Go-owned sentence for each of Python's guard-rail
+// reason codes (05 R-46 (c)); Python sends the code, never the wording.
+var reasonSentences = map[string]string{
+	"tool_unavailable":       "目前無法使用這項工具，請補充需求或選擇可用的參考。",
+	"confirm_diagram_first":  "請先確認流程圖的理解；確認後再依它建立草稿。",
+	"confirm_brief_first":    "請先確認這份需求與驗收條件，再建立草稿。",
+	"validation_unavailable": "目前無法驗證草稿，請補充需求或稍後再試。",
+	"diagram_incomplete":     "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
+	"search_query_missing":   "請告訴我要在目錄中搜尋什麼關鍵字。",
+}
+
+// reasonSentence looks up the sentence for a guard-rail reason code; an
+// unknown code is refused rather than shown to the user verbatim.
+func reasonSentence(code string) (string, error) {
+	s, ok := reasonSentences[code]
+	if !ok {
+		return "", ErrInvalidCommand
+	}
+	return s, nil
+}
+
+// validateCriteria enforces the same bounds as llm-internal.yaml's
+// acceptance_criteria array (MaxAcceptanceCriteria items, each non-blank and
+// at most MaxCriterionRunes runes).
+func validateCriteria(criteria []string) error {
+	if len(criteria) > MaxAcceptanceCriteria {
+		return ErrInvalidCommand
+	}
+	for _, c := range criteria {
+		if strings.TrimSpace(c) == "" || utf8.RuneCountInString(c) > MaxCriterionRunes {
+			return ErrInvalidCommand
+		}
+	}
+	return nil
+}
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
 func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *llmclient.CreationStepResponse) (string, bool, error) {
 	p := &e.Snapshot
+	if r.Reason != "" {
+		sentence, err := reasonSentence(r.Reason)
+		if err != nil {
+			return "", false, err
+		}
+		r.Message = sentence
+	}
 	if r.DiagramUnderstanding != "" && !validDiagramInterpretation(r.DiagramUnderstanding) {
 		return "", false, ErrInvalidCommand
 	}
 	if r.Message == "" || utf8.RuneCountInString(r.Message) > MaxTextRunes || utf8.RuneCountInString(r.Brief) > MaxTextRunes || utf8.RuneCountInString(r.DiagramUnderstanding) > MaxTextRunes || len(p.Messages) >= MaxMessages {
 		return "", false, ErrInvalidCommand
+	}
+	if err := validateCriteria(r.AcceptanceCriteria); err != nil {
+		return "", false, err
 	}
 	p.Model = r.Model
 	p.PromptVersion = r.PromptVersion
@@ -364,8 +434,15 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		p.PendingAction = "confirm_diagram"
 		return "waiting_confirmation", false, nil
 	}
-	if r.Brief != "" && r.Brief != p.Brief {
-		p.Brief = r.Brief
+	briefChanged := r.Brief != "" && r.Brief != p.Brief
+	criteriaChanged := len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)
+	if briefChanged || criteriaChanged {
+		if briefChanged {
+			p.Brief = r.Brief
+		}
+		if criteriaChanged {
+			p.AcceptanceCriteria = r.AcceptanceCriteria
+		}
 		p.BriefConfirmed = false
 		invalidate(p)
 		p.PendingAction = "confirm_brief"
@@ -390,7 +467,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		p.PendingAction = "confirm_diagram"
 		return "waiting_confirmation", false, nil
 	case "draft":
-		if !confirmed(*p) || r.Brief != p.Brief || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
+		if !confirmed(*p) || r.Brief != p.Brief || (len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
 			return "", false, ErrInvalidCommand
 		}
 		hash, report, blocked, err := s.ValidateDraft(ctx, *r.Draft)
@@ -438,7 +515,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			p.PendingAction = "confirm_references"
 			return "waiting_confirmation", false, nil
 		case "validate_draft":
-			if !confirmed(*p) || r.Brief != p.Brief || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
+			if !confirmed(*p) || r.Brief != p.Brief || (len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
 				return "", false, ErrInvalidCommand
 			}
 			hash, report, blocked, err := s.ValidateDraft(ctx, *r.Draft)

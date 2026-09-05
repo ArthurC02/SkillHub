@@ -941,6 +941,24 @@ func (s *CreationAction) Validate() error {
 		})
 	}
 	if err := func() error {
+		if value, ok := s.BudgetUsd.Get(); ok {
+			if err := func() error {
+				if err := (validate.Float{}).Validate(float64(value)); err != nil {
+					return errors.Wrap(err, "float")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "budget_usd",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if s.ReferenceSkillIds == nil {
 			return nil // optional
 		}
@@ -1004,6 +1022,8 @@ func (s CreationActionKind) Validate() error {
 	case "diagram":
 		return nil
 	case "attach_run":
+		return nil
+	case "raise_budget":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
@@ -1218,6 +1238,17 @@ func (s *CreationSnapshot) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "messages",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if s.AcceptanceCriteria == nil {
+			return errors.New("nil is invalid value")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "acceptance_criteria",
 			Error: err,
 		})
 	}

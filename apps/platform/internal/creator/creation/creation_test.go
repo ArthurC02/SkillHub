@@ -175,3 +175,35 @@ func TestCallTimeoutSecondsFailsClosedWhenDeadlineNearlyPassed(t *testing.T) {
 		t.Fatal("expected an error when too little time remains for headroom plus a call")
 	}
 }
+
+// TestReasonSentenceReplacesMessage: Go, not Python, owns the wording for a
+// guard-rail reason code (05 R-46 (c)); an unrecognized code is refused
+// rather than surfaced verbatim.
+func TestReasonSentenceReplacesMessage(t *testing.T) {
+	sentence, err := reasonSentence("confirm_brief_first")
+	if err != nil || sentence != reasonSentences["confirm_brief_first"] {
+		t.Fatalf("known reason not resolved: %q %v", sentence, err)
+	}
+	if _, err := reasonSentence("not_a_real_reason"); err == nil {
+		t.Fatal("unknown reason code accepted")
+	}
+}
+
+func TestCriteriaValidationRejectsTooManyOrTooLong(t *testing.T) {
+	if err := validateCriteria(nil); err != nil {
+		t.Fatalf("nil criteria should be valid: %v", err)
+	}
+	tooMany := make([]string, MaxAcceptanceCriteria+1)
+	for i := range tooMany {
+		tooMany[i] = "输出含 invoice_id 欄"
+	}
+	if err := validateCriteria(tooMany); err == nil {
+		t.Fatal("13 criteria accepted")
+	}
+	if err := validateCriteria([]string{strings.Repeat("x", MaxCriterionRunes+1)}); err == nil {
+		t.Fatal("501-rune criterion accepted")
+	}
+	if err := validateCriteria([]string{"  "}); err == nil {
+		t.Fatal("blank criterion accepted")
+	}
+}

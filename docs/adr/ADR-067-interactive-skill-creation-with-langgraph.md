@@ -30,4 +30,6 @@ Python 不直接執行不可信 Skill 或 Script、不直連核心 DB、不消�
 
 本次只更新產品規劃，不解除 `01` §10 的功能凍結與 M5 曝光限制。允收由 [`02` GEN-007～012](../plans/02-specifications-and-acceptance-criteria.md) 持有；實作由 [`03` GEN-016～023](../plans/03-work-items.md) 承接，全部尚未完成；[`04` 丙-166](../plans/04-backlog-and-handoffs.md) 追蹤交付。對話、讀圖與參考三種入口均須以多輪修正、恢復、授權試跑與精確保存證據驗收，mock 測試不能取代真人與實際模型證據。
 
+**2026-09-06 補記（不改寫上文）**：決策段第一段的「LangGraph 尚未安裝」自 2026-09-05 `d8132c4` 起不成立——`langgraph` 已是 `apps/llm` 的釘選依賴，圖在 `creation.py` 內每個 Job 重建、仍不用原生 checkpointer，與本 ADR 的邊界一致；狀態句「規劃已同意，尚未實作」以 `01` §10 與 `04` 丙-166 為準。第六段「超限、提權或新試跑才重新要求阻斷確認」以 `raise_budget` 命令落地（`05` R-46）；R-45 的數值於同日由負責人授權代理定值。
+
 框架概念參照官方 [workflows and agents](https://docs.langchain.com/oss/python/langgraph/workflows-agents) 與 [interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts)；本案刻意不採用後者的跨程序持久化模式，以維持 Go 唯一持久化邊界。

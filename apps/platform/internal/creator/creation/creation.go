@@ -27,6 +27,8 @@ type Command struct {
 	ContentHash       string                     `json:"content_hash,omitempty"`
 	Diagram           *llmclient.GenerateDiagram `json:"diagram,omitempty"`
 	RunID             string                     `json:"run_id,omitempty"`
+	// BudgetUSD is the new ceiling for kind "raise_budget" (05 R-46 (raise)).
+	BudgetUSD float64 `json:"budget_usd,omitempty"`
 }
 
 func newID() pgtype.UUID {
@@ -322,6 +324,16 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: observation})
 		state = "candidate_ready"
 		queueStep = true
+	case "raise_budget":
+		if !finite(c.BudgetUSD) || c.BudgetUSD <= p.BudgetUSD || c.BudgetUSD > e.Limits.MaxCostUSD {
+			return View{}, nil, ErrBudgetOutOfBand
+		}
+		p.BudgetUSD = c.BudgetUSD
+		if row.State == "failed" {
+			state = "waiting_input"
+		} else {
+			state = row.State
+		}
 	case "materialize", "finalize":
 		if p.Draft == nil || p.Draft.Blocked || p.Draft.ContentHash == "" || p.Draft.ContentHash != c.ContentHash || !confirmed(*p) {
 			return View{}, nil, ErrInvalidCommand
@@ -419,6 +431,13 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 		}
 		if _, found, err := replay(ctx, tx, ws.ID, row.ID, c); found || err != nil {
 			return ErrConflict
+		}
+		if s.CreateAcceptanceTestCase != nil && len(current.Snapshot.AcceptanceCriteria) > 0 {
+			id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, "創作驗收條件", current.Snapshot.Brief, current.Snapshot.AcceptanceCriteria)
+			if err != nil {
+				return err
+			}
+			candidate.TestCaseID = id
 		}
 		current.Snapshot.Candidate = &candidate
 		current.ExistingSkillID = candidate.SkillID

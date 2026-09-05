@@ -45,6 +45,10 @@ const (
 	// MaxDiagramBytes is the decoded size cap for an uploaded flow diagram,
 	// enforced at the command and again when the bytes reach the worker.
 	MaxDiagramBytes = 4_000_000 // one-number: creationMaxDiagramBytes
+	// MaxAcceptanceCriteria mirrors llm-internal.yaml's maxItems on
+	// acceptance_criteria; each item is capped at MaxCriterionRunes there too.
+	MaxAcceptanceCriteria = 12
+	MaxCriterionRunes     = 500
 )
 
 type Limits struct {
@@ -110,29 +114,37 @@ type Candidate struct {
 	SkillID   string `json:"skill_id"`
 	VersionID string `json:"version_id"`
 	RunID     string `json:"run_id,omitempty"`
+	// TestCaseID is the Test Case Go created from the confirmed acceptance
+	// criteria when the candidate was materialized (05 R-46 (b)); the trial run
+	// that feeds the review phase is expected to use it.
+	TestCaseID string `json:"test_case_id,omitempty"`
 }
 type Snapshot struct {
-	Messages             []llmclient.CreationMessage `json:"messages"`
-	Brief                string                      `json:"brief"`
-	BriefConfirmed       bool                        `json:"brief_confirmed"`
-	DiagramUnderstanding string                      `json:"diagram_understanding"`
-	DiagramConfirmed     bool                        `json:"diagram_confirmed"`
-	References           []Reference                 `json:"references"`
-	PendingAction        string                      `json:"pending_action"`
-	BudgetUSD            float64                     `json:"budget_usd"`
-	ReservedUSD          float64                     `json:"reserved_usd"`
-	SpentUSD             *float64                    `json:"spent_usd,omitempty"`
-	UsageUnknown         bool                        `json:"usage_unknown"`
-	Steps                int                         `json:"steps"`
-	ToolCalls            int                         `json:"tool_calls"`
-	Draft                *Draft                      `json:"draft,omitempty"`
-	PreviousDraft        *Draft                      `json:"previous_draft,omitempty"`
-	Candidate            *Candidate                  `json:"candidate,omitempty"`
-	DiagramFingerprint   string                      `json:"diagram_fingerprint,omitempty"`
-	DiagramMediaType     string                      `json:"diagram_media_type,omitempty"`
-	DiagramBytes         int                         `json:"diagram_bytes,omitempty"`
-	Model                string                      `json:"model,omitempty"`
-	PromptVersion        string                      `json:"prompt_version,omitempty"`
+	Messages []llmclient.CreationMessage `json:"messages"`
+	Brief    string                      `json:"brief"`
+	// AcceptanceCriteria are proposed by the model together with the brief and
+	// confirmed with it (confirm_brief binds both). Observable sentences, not
+	// prose inside the brief: at materialize they become a Test Case.
+	AcceptanceCriteria   []string    `json:"acceptance_criteria"`
+	BriefConfirmed       bool        `json:"brief_confirmed"`
+	DiagramUnderstanding string      `json:"diagram_understanding"`
+	DiagramConfirmed     bool        `json:"diagram_confirmed"`
+	References           []Reference `json:"references"`
+	PendingAction        string      `json:"pending_action"`
+	BudgetUSD            float64     `json:"budget_usd"`
+	ReservedUSD          float64     `json:"reserved_usd"`
+	SpentUSD             *float64    `json:"spent_usd,omitempty"`
+	UsageUnknown         bool        `json:"usage_unknown"`
+	Steps                int         `json:"steps"`
+	ToolCalls            int         `json:"tool_calls"`
+	Draft                *Draft      `json:"draft,omitempty"`
+	PreviousDraft        *Draft      `json:"previous_draft,omitempty"`
+	Candidate            *Candidate  `json:"candidate,omitempty"`
+	DiagramFingerprint   string      `json:"diagram_fingerprint,omitempty"`
+	DiagramMediaType     string      `json:"diagram_media_type,omitempty"`
+	DiagramBytes         int         `json:"diagram_bytes,omitempty"`
+	Model                string      `json:"model,omitempty"`
+	PromptVersion        string      `json:"prompt_version,omitempty"`
 }
 type envelope struct {
 	Snapshot        Snapshot    `json:"snapshot"`
@@ -172,8 +184,11 @@ type Service struct {
 	ValidateDraft    func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
 	Materialize      func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
 	ReadRun          func(context.Context, identity.Workspace, string, Candidate) (string, error)
-	IssueKey         func(context.Context, string, string, float64, time.Duration) (string, error)
-	RevokeKey        func(context.Context, string) error
+	// CreateAcceptanceTestCase writes the confirmed acceptance criteria as a Test Case of
+	// the candidate skill, inside the materialize transaction; returns its id.
+	CreateAcceptanceTestCase func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error)
+	IssueKey                 func(context.Context, string, string, float64, time.Duration) (string, error)
+	RevokeKey                func(context.Context, string) error
 }
 
 func digest(v any) string {

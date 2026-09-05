@@ -46,6 +46,13 @@ const (
 	MaxPromptBytes    = 32 << 10 // 32 KiB
 	MaxCriterionBytes = 2000
 	MaxCriteria       = 50
+	// maxConfirmedCreationCriteria mirrors creation.MaxAcceptanceCriteria
+	// (llm-internal.yaml's acceptance_criteria maxItems, 05 R-46 (b)). Not
+	// imported from that package: testlab has no import of creation (ADR-032),
+	// and this is the smaller of the two ceilings anyway (MaxCriteria above
+	// bounds a draft edited by hand over time; this one bounds one confirmed
+	// creation-flow proposal).
+	maxConfirmedCreationCriteria = 12
 )
 
 var (
@@ -291,6 +298,53 @@ func (s *Service) CreateTestCase(ctx context.Context, ws identity.Workspace, ski
 		Name:               name,
 		UserPrompt:         prompt,
 		AcceptanceCriteria: []byte("[]"),
+	})
+}
+
+// CreateTestCaseWithCriteria records a new test case together with acceptance
+// criteria the user already confirmed elsewhere (05 R-46 (b): the creation
+// flow confirms brief + criteria together, and materialize turns the
+// confirmed words into this Test Case in the same transaction). Unlike
+// CreateTestCase, it runs on the caller's transaction rather than opening its
+// own, and every criterion is minted as SourceUser, ConfirmedAt now — the
+// words were confirmed by the person, not proposed by TEST-002's suggester.
+func (s *Service) CreateTestCaseWithCriteria(
+	ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID pgtype.UUID, name, prompt string, criteria []string,
+) (gen.TestCase, error) {
+	name, prompt, err := validateDraft(name, prompt)
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	if len(criteria) > maxConfirmedCreationCriteria {
+		return gen.TestCase{}, fmt.Errorf("%w: 一個 Test Case 最多 %d 條驗收條件", ErrLimitExceeded, maxConfirmedCreationCriteria)
+	}
+	list := make([]Criterion, len(criteria))
+	now := time.Now().UTC()
+	for i, text := range criteria {
+		text, err = validateCriterion(text)
+		if err != nil {
+			return gen.TestCase{}, err
+		}
+		list[i] = Criterion{ID: newCriterionID(), Text: text, Source: SourceUser, ConfirmedAt: &now}
+	}
+	// No ReadSkill re-read here, on purpose: the skill row was written by the
+	// caller inside THIS transaction (admission's materialize, under ws), so a
+	// pool read cannot see it yet, and the id was minted by the server two
+	// frames up rather than arriving from a client — iron rule 3's re-read
+	// guards client-supplied ids, which this is not. The foreign key still
+	// refuses an id that does not exist at all.
+	// ponytail: a same-tx scoped read needs a testlab-owned query on skills;
+	// add one if a second caller ever hands this function a client id.
+	encoded, err := json.Marshal(list)
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	return gen.New(tx).CreateTestCase(ctx, gen.CreateTestCaseParams{
+		WorkspaceID:        ws.ID,
+		SkillID:            skillID,
+		Name:               name,
+		UserPrompt:         prompt,
+		AcceptanceCriteria: encoded,
 	})
 }
 

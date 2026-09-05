@@ -182,6 +182,18 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 			Fix: "不要在 01 §11.2 第一段漏斗量到讀數之前設成 on——這是 M5 對封測使用者的曝光邊界（01 §10），" +
 				"不是一個等著被打開的功能",
 		},
+		{
+			ID:   "interactive_creation",
+			Name: "互動創作會話（ADR-067）",
+			// Same boundary as generation_entry, one scope further in: the
+			// creation routes exist only under BOTH flags, and the limits are
+			// ruled values (05 R-45), not a default the process invents.
+			Needs: []string{"CREATION_EXPOSED", "CREATION_LIMITS_JSON", "CREATION_WORKER_INTERNAL_ADDR", "CREATION_WORKER_INTERNAL_URL", "CREATION_WORKER_INTERNAL_TOKEN"},
+			Without: "刻意的狀態：/creation-sessions* 不掛載、GET /me 不列 creation_skill；LIMITS 缺任何一鍵時 API 拒絕開始會話（Limits.Valid），" +
+				"Worker 的內部 listener 不啟動、流程圖沒有地方送",
+			Fix: "值照 05 R-45 的裁定表（.env.example 帶著同一行 JSON）；CREATION_EXPOSED 與 GENERATE_SKILL_EXPOSED 一樣，" +
+				"在 01 §10 的 M5 邊界解除前不要設成 on",
+		},
 	}
 	if servesWeb {
 		caps = append(caps, envx.Capability{

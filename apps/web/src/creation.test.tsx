@@ -7,7 +7,19 @@ import { CreateHub } from "./components/CreateHub";
 import type { CreationSession as Session } from "./api/creation";
 import { useCreationEntryPoint } from "./api/creation";
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
+  Link: ({
+    children,
+    to,
+    search,
+  }: {
+    children: ReactNode;
+    to: string;
+    search?: Record<string, unknown>;
+  }) => (
+    <a href={to} data-search={search ? JSON.stringify(search) : undefined}>
+      {children}
+    </a>
+  ),
 }));
 vi.mock("./components/GenerateSkill", () => ({
   GenerateSkill: () => <div>舊生成入口</div>,
@@ -24,6 +36,7 @@ const sample = (patch: Partial<Session> = {}): Session => ({
     messages: [],
     brief: "摘要任務",
     brief_confirmed: false,
+    acceptance_criteria: [],
     diagram_understanding: "",
     diagram_confirmed: false,
     references: [],
@@ -420,6 +433,78 @@ test("a failed or unevaluated run warns before saving instead of claiming no run
   await resume();
   expect(box.textContent).toContain("試跑未通過或未評估");
   expect(box.textContent).not.toContain("這份草稿尚未試跑");
+});
+test("acceptance criteria render under the brief and the confirm button names both", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.pending_action = "confirm_brief";
+  v.snapshot.acceptance_criteria = ["輸入摘要後輸出重點條列", "字數不超過 200 字"];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  expect(box.textContent).toContain("驗收條件");
+  expect(box.textContent).toContain("輸入摘要後輸出重點條列");
+  expect(box.textContent).toContain("字數不超過 200 字");
+  expect(box.textContent).toContain("確認需求摘要與驗收條件");
+});
+test("a failed session shows the raise form, refuses an out-of-band amount locally, and posts a valid one", async () => {
+  const posts: Record<string, unknown>[] = [];
+  const v = sample({ state: "failed" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(v);
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  await waitFor(() => !!box.querySelector('[aria-label="提高這次預算上限（美元）"]'));
+  await input("提高這次預算上限（美元）", "50");
+  await click("提高預算後繼續");
+  await waitFor(() => !!box.querySelector('[role="alert"]'));
+  expect(box.textContent).toContain("不超過 $5");
+  expect(posts).toHaveLength(0);
+  await input("提高這次預算上限（美元）", "2");
+  await click("提高預算後繼續");
+  await waitFor(() => posts.length === 1);
+  expect(posts[0]).toMatchObject({ kind: "raise_budget", budget_usd: 2 });
+});
+test("a candidate with a test_case_id renders the Test Case sentence and the run link carries it", async () => {
+  const v = sample({ state: "candidate_ready" });
+  v.snapshot.draft = {
+    revision: 1,
+    content_hash: "a".repeat(64),
+    skill: {
+      name: "摘要",
+      description: "",
+      compatibility: "",
+      allowed_tools: "",
+      body: "",
+      files: [],
+    },
+    validation: JSON.stringify({ findings: [], blocked: false }),
+    blocked: false,
+  };
+  v.snapshot.candidate = { skill_id: "sk-1", version_id: "v1", test_case_id: "tc-1" };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  expect(box.textContent).toContain("已依確認的驗收條件建立 Test Case");
+  const link = [...box.querySelectorAll("a")].find(
+    (a) => a.textContent === "檢查權限與費用後試跑此版本",
+  );
+  expect(JSON.parse(link?.getAttribute("data-search") ?? "{}")).toMatchObject({
+    test_case: "tc-1",
+  });
 });
 function EntryPointProbe() {
   return <>{String(useCreationEntryPoint())}</>;

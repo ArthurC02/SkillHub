@@ -6,7 +6,7 @@ import asyncio
 import json
 import os
 import re
-from typing import Literal, TypedDict
+from typing import Annotated, Literal, TypedDict
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from langgraph.graph import END, START, StateGraph
@@ -29,6 +29,14 @@ MODEL = "gpt-5.4-mini"
 PROMPT_VERSION = "creation-step/v2"
 DATA_TAG = "untrusted_creation_snapshot"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
+Reason = Literal[
+    "tool_unavailable",
+    "confirm_diagram_first",
+    "confirm_brief_first",
+    "validation_unavailable",
+    "diagram_incomplete",
+    "search_query_missing",
+]
 
 
 class CreationMessage(BaseModel):
@@ -82,6 +90,7 @@ class CreationStepRequest(BaseModel):
     revision: int = Field(..., ge=0)
     messages: list[CreationMessage] = Field(..., max_length=100)
     brief: str = Field(..., max_length=20000)
+    acceptance_criteria: list[Annotated[str, Field(max_length=500)]] = Field(..., max_length=12)
     brief_confirmed: bool
     diagram_understanding: str = Field(..., max_length=20000)
     diagram_confirmed: bool
@@ -101,6 +110,7 @@ class CreationDecision(BaseModel):
     outcome: Outcome
     message: str
     brief: str | None
+    acceptance_criteria: list[str] | None
     diagram_understanding: str | None
     tool_intent: CreationToolIntent | None
     draft: GeneratedSkill | None
@@ -110,7 +120,9 @@ class CreationStepResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     outcome: Outcome
     message: str
+    reason: Reason | None = None
     brief: str
+    acceptance_criteria: list[str]
     diagram_understanding: str
     tool_intent: CreationToolIntent | None = None
     draft: GeneratedSkill | None = None
@@ -125,6 +137,7 @@ class _State(TypedDict, total=False):
     usage: GatewayUsage | None
     prompt: str
     phase: str
+    reason: str | None
     response: CreationStepResponse
 
 
@@ -191,8 +204,12 @@ def _reason_node(gateway_key: str, phase: str):
             "Help a person create a portable Agent Skill through dialogue. Choose ONE next step. "
             "Ask a short, answerable clarification when task, inputs, tools or desired outputs "
             "are missing. Never invent available tools or pretend a trial succeeded. "
-            "Propose a brief containing task, inputs, outputs, tool requirements, limitations "
-            "and observable acceptance criteria, then ask the user to confirm it. "
+            "Propose a brief containing task, inputs, outputs, tool requirements and limitations, "
+            "then ask the user to confirm it. "
+            "Propose the brief and 3-8 acceptance_criteria together: each an observable sentence "
+            "a single trial run can confirm or refute (what output, in what shape, under what "
+            "input). confirm_brief covers both; once brief_confirmed, keep brief and "
+            "acceptance_criteria unchanged or propose a new confirmation. "
             "Read diagrams into named nodes, conditions, branches and explicit uncertainties; "
             "diagram_understanding must be a JSON-encoded object with exactly nodes, conditions, "
             "branches, uncertainties: each is an array of concrete strings; "
@@ -264,11 +281,22 @@ def _reason_node(gateway_key: str, phase: str):
                 raise HTTPException(status_code=502, detail="creation model output was truncated")
             decision = CreationDecision.model_validate_json(choice.message.content or "")
             if decision.diagram_understanding:
-                decision.diagram_understanding = _diagram_text(decision.diagram_understanding)
+                # An interpretation the model could not shape into the four sections is
+                # not a broken step: _render turns it into a clarification carrying
+                # reason diagram_incomplete, and the raw text never reaches Go.
+                try:
+                    decision.diagram_understanding = _diagram_text(decision.diagram_understanding)
+                except HTTPException:
+                    pass
             if any(
                 len(v or "") > 20000
                 for v in [decision.message, decision.brief, decision.diagram_understanding]
             ) or (decision.tool_intent and len(decision.tool_intent.query) > 4000):
+                raise ValueError("over cap")
+            if decision.acceptance_criteria is not None and (
+                len(decision.acceptance_criteria) > 12
+                or any(len(c) > 500 for c in decision.acceptance_criteria)
+            ):
                 raise ValueError("over cap")
             return {"decision": decision, "usage": _usage(completion, raw.headers)}
         except (OpenAIError, ValidationError, IndexError, AttributeError, TypeError, ValueError):
@@ -307,9 +335,10 @@ def _tool(state: _State) -> dict:
                     "outcome": "clarification",
                     "draft": None,
                     "tool_intent": None,
-                    "message": "目前無法使用這項工具，請補充需求或選擇可用的參考。",
+                    "message": "tool unavailable",
                 }
-            )
+            ),
+            "reason": "tool_unavailable",
         }
     if d.tool_intent.kind == "search_catalog" and not d.tool_intent.query.strip():
         return {
@@ -318,21 +347,21 @@ def _tool(state: _State) -> dict:
                     "outcome": "clarification",
                     "draft": None,
                     "tool_intent": None,
-                    "message": "請告訴我要在目錄中搜尋什麼關鍵字。",
+                    "message": "search query missing",
                 }
-            )
+            ),
+            "reason": "search_query_missing",
         }
     if d.tool_intent.kind == "validate_draft":
         # A model may propose a revised draft and ask Go to validate that exact
         # proposal.  Keep it on the intent; falling back to the prior immutable
         # request draft preserves validation after a user revision.
         draft = d.draft or req.draft
-        checked = _draft({"request": req, "decision": d.model_copy(update={"draft": draft})})[
-            "decision"
-        ]
+        result = _draft({"request": req, "decision": d.model_copy(update={"draft": draft})})
+        checked = result["decision"]
         if checked.outcome == "tool_intent":
             checked = checked.model_copy(update={"tool_intent": d.tool_intent})
-        return {"decision": checked}
+        return {"decision": checked, "reason": result.get("reason")}
     return {"decision": d.model_copy(update={"draft": None})}
 
 
@@ -354,9 +383,10 @@ def _draft(state: _State) -> dict:
                     "outcome": "confirm_diagram",
                     "draft": None,
                     "tool_intent": None,
-                    "message": "請先確認流程圖的理解；確認後再依它建立草稿。",
+                    "message": "confirm diagram first",
                 }
-            )
+            ),
+            "reason": "confirm_diagram_first",
         }
     if not req.brief_confirmed or not req.brief.strip() or brief_changed:
         return {
@@ -365,9 +395,10 @@ def _draft(state: _State) -> dict:
                     "outcome": "confirm_brief",
                     "draft": None,
                     "tool_intent": None,
-                    "message": "請先確認這份需求與驗收條件，再建立草稿。",
+                    "message": "confirm brief first",
                 }
-            )
+            ),
+            "reason": "confirm_brief_first",
         }
     if d.draft is None or not d.draft.body.strip() or _over_cap(d.draft):
         raise HTTPException(status_code=502, detail="creation returned an unusable draft")
@@ -387,9 +418,10 @@ def _draft(state: _State) -> dict:
                         "outcome": "clarification",
                         "draft": None,
                         "tool_intent": None,
-                        "message": "目前無法驗證草稿，請補充需求或稍後再試。",
+                        "message": "validation unavailable",
                     }
-                )
+                ),
+                "reason": "validation_unavailable",
             }
         return {
             "decision": d.model_copy(
@@ -407,9 +439,12 @@ def _render(state: _State) -> dict:
     # Only confirmation proposals may change confirmed input. Go must invalidate
     # its confirmation bit when accepting such a proposal.
     brief = d.brief or req.brief
+    acceptance_criteria = d.acceptance_criteria or req.acceptance_criteria
     diagram = d.diagram_understanding or req.diagram_understanding
+    reason = state.get("reason")
     if req.brief_confirmed and d.outcome != "confirm_brief":
         brief = req.brief
+        acceptance_criteria = req.acceptance_criteria
     if req.diagram_confirmed and d.outcome != "confirm_diagram":
         diagram = req.diagram_understanding
     if diagram:
@@ -417,19 +452,22 @@ def _render(state: _State) -> dict:
             diagram = _diagram_text(diagram)
         except HTTPException:
             diagram = ""
+            reason = "diagram_incomplete"
             d = d.model_copy(
                 update={
                     "outcome": "clarification",
                     "draft": None,
                     "tool_intent": None,
-                    "message": "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
+                    "message": "diagram incomplete",
                 }
             )
     return {
         "response": CreationStepResponse(
             outcome=d.outcome,
             message=d.message,
+            reason=reason,
             brief=brief,
+            acceptance_criteria=acceptance_criteria,
             diagram_understanding=diagram,
             tool_intent=d.tool_intent,
             draft=d.draft,

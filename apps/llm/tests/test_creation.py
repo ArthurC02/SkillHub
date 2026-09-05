@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -34,6 +35,7 @@ def request(**changes):
         "revision": 1,
         "messages": [{"role": "user", "content": "Help me check invoices"}],
         "brief": "",
+        "acceptance_criteria": [],
         "brief_confirmed": False,
         "diagram_understanding": "",
         "diagram_confirmed": False,
@@ -50,6 +52,7 @@ def decision(**changes):
         "outcome": "clarification",
         "message": "What output do you need?",
         "brief": None,
+        "acceptance_criteria": None,
         "diagram_understanding": None,
         "tool_intent": None,
         "draft": None,
@@ -237,6 +240,91 @@ def test_validate_intent_cannot_bypass_confirmation(changes, outcome):
 def test_nonconfirmation_cannot_replace_confirmed_input():
     response, _ = invoke(request(brief="agreed", brief_confirmed=True), decision(brief="changed"))
     assert response.json()["brief"] == "agreed"
+
+
+def test_acceptance_criteria_proposed_with_confirm_brief_come_back():
+    response, _ = invoke(
+        request(),
+        decision(
+            outcome="confirm_brief",
+            brief="Report missing invoice totals as CSV.",
+            acceptance_criteria=["Given a sample invoice CSV, output lists every missing total."],
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "confirm_brief"
+    assert response.json()["acceptance_criteria"] == [
+        "Given a sample invoice CSV, output lists every missing total."
+    ]
+
+
+def test_acceptance_criteria_locked_once_brief_confirmed():
+    req = request(
+        brief="agreed",
+        brief_confirmed=True,
+        acceptance_criteria=["Original criterion."],
+    )
+    response, _ = invoke(req, decision(acceptance_criteria=["Different criterion."]))
+    assert response.status_code == 200
+    assert response.json()["acceptance_criteria"] == ["Original criterion."]
+
+
+@pytest.mark.parametrize(
+    "req_changes,decision_changes,reason",
+    [
+        (
+            {},
+            {"outcome": "tool_intent", "tool_intent": {"kind": "search_catalog", "query": "x"}},
+            "tool_unavailable",
+        ),
+        (
+            {"allowed_tools": ["search_catalog"]},
+            {
+                "outcome": "tool_intent",
+                "tool_intent": {"kind": "search_catalog", "query": "   "},
+            },
+            "search_query_missing",
+        ),
+        (
+            {"diagram_understanding": diagram_text(), "diagram_confirmed": False},
+            {"outcome": "draft", "draft": SKILL},
+            "confirm_diagram_first",
+        ),
+        (
+            {},
+            {"outcome": "draft", "draft": SKILL},
+            "confirm_brief_first",
+        ),
+        (
+            {"brief": "agreed", "brief_confirmed": True},
+            {"outcome": "draft", "draft": SKILL},
+            "validation_unavailable",
+        ),
+        (
+            {},
+            {"outcome": "confirm_diagram", "diagram_understanding": "A -> B"},
+            "diagram_incomplete",
+        ),
+    ],
+)
+def test_guard_rails_set_reason_and_english_message(req_changes, decision_changes, reason):
+    response, _ = invoke(request(**req_changes), decision(**decision_changes))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["reason"] == reason
+    assert not re.search(r"[一-鿿]", body["message"])
+
+
+def test_thirteen_acceptance_criteria_is_refused():
+    response, _ = invoke(
+        request(brief="agreed", brief_confirmed=True),
+        decision(
+            outcome="confirm_brief",
+            brief="agreed",
+            acceptance_criteria=[f"criterion {i}" for i in range(13)],
+        ),
+    )
+    assert response.status_code == 502
 
 
 def test_image_is_only_multimodal_and_requires_confirmation():
@@ -470,10 +558,16 @@ def test_invalid_hash_cannot_complete_a_draft(content_hash):
     ],
 )
 def test_diagram_confirmation_requires_all_four_sections(interpretation):
+    # A model that cannot shape the four sections is asked to try again, with a
+    # reason code Go turns into the sentence; the malformed text never reaches Go.
     response, _ = invoke(
         request(), decision(outcome="confirm_diagram", diagram_understanding=interpretation)
     )
-    assert response.status_code == 502
+    assert response.status_code == 200
+    body = response.json()
+    assert body["outcome"] == "clarification"
+    assert body["reason"] == "diagram_incomplete"
+    assert body["diagram_understanding"] == ""
 
 
 def test_field_rules_are_in_compose_but_not_understand_phase():
