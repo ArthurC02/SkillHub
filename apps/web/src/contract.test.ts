@@ -133,7 +133,9 @@ test("鐵律 12: every hand-written interface with a generated twin has the same
     readFileSync(join(src, "api", "packaging.ts"), "utf8"),
   ].join("\n");
   const names = [...types.matchAll(/^export interface (\w+)/gm)].map((m) => m[1]);
-  expect(names.length, "api/types.ts parsed no interfaces — the scan broke").toBeGreaterThan(20);
+  expect(names.length, "the api/*.ts scan parsed no interfaces — the scan broke").toBeGreaterThan(
+    20,
+  );
 
   const models = readdirSync(MODELS).filter((f) => f.endsWith(".ts"));
   expect(models.length, "no generated models — is packages/api-client-ts built?").toBeGreaterThan(
@@ -164,7 +166,9 @@ test("鐵律 12: every hand-written interface with a generated twin has the same
     }
     for (const field of there.keys()) {
       if (![...here.keys()].some((f) => camel(f) === field)) {
-        problems.push(`${name}.${field} is in the contract and missing from api/types.ts`);
+        problems.push(
+          `${name}.${field} is in the contract and missing from the hand-written api/*.ts`,
+        );
       }
     }
   }
