@@ -45,6 +45,7 @@ export interface CreationSnapshot {
   usage_unknown: boolean;
   steps: number;
   tool_calls: number;
+  draft_retries?: number;
   draft?: {
     revision: number;
     content_hash: string;

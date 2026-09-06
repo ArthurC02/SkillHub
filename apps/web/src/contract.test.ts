@@ -128,6 +128,9 @@ test("鐵律 12: every hand-written interface with a generated twin has the same
   const types = [
     readFileSync(join(src, "api", "types.ts"), "utf8"),
     readFileSync(join(src, "api", "import.ts"), "utf8"),
+    readFileSync(join(src, "api", "creation.ts"), "utf8"),
+    readFileSync(join(src, "api", "lab.ts"), "utf8"),
+    readFileSync(join(src, "api", "packaging.ts"), "utf8"),
   ].join("\n");
   const names = [...types.matchAll(/^export interface (\w+)/gm)].map((m) => m[1]);
   expect(names.length, "api/types.ts parsed no interfaces — the scan broke").toBeGreaterThan(20);

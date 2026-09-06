@@ -1278,16 +1278,9 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
                     label="刪除這個檔案"
                     confirmLabel="確認刪除這個檔案"
                   />
-                  {/* TEST-002 的保存政策，落到這一個檔案上。不編一個到期日出來；
-                      設計 §2.9 的表列詞是「未測量」（伺服器沒回報）。 */}
+                  {/* TEST-002 的保存政策，落到這一個檔案上；契約要求 expires_at 必回。 */}
                   <p className="note">
-                    {d.expires_at ? (
-                      <>
-                        保存到 <Timestamp at={d.expires_at} /> 自動刪除
-                      </>
-                    ) : (
-                      "到期日未測量"
-                    )}
+                    保存到 <Timestamp at={d.expires_at} /> 自動刪除
                   </p>
                 </li>
               ))}

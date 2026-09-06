@@ -907,6 +907,7 @@ export function platformResponse(input: string): { body: unknown; status: number
           file_name: "rows.csv",
           content_type: "text/csv",
           size_bytes: 1024,
+          content_hash: "sha256:d0",
           expires_at: "2026-11-15T00:00:00Z",
         },
       ],
