@@ -273,38 +273,38 @@ func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, t
 // t.Fatal's on a run/eval problem — one session's sandbox trouble must not
 // cost the other rows their spend — recording the reason on row.MetNote
 // instead.
-func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *creation.Service, trial *trialRun, v creation.View, row sessionRow) sessionRow {
+func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *creation.Service, trial *trialRun, v creation.View, row sessionRow) (sessionRow, creation.View) {
 	t.Helper()
 	candidate := v.Snapshot.Candidate
 	if candidate == nil {
 		row.MetNote = "no candidate to run"
-		return row
+		return row, v
 	}
 	if candidate.TestCaseID == "" {
 		row.MetNote = "candidate has no test_case_id"
-		return row
+		return row, v
 	}
 	var key string
 	if err := trial.pool.QueryRow(ctx, "SELECT package_object_key FROM skill_versions WHERE id = $1",
 		mustUUID(t, candidate.VersionID)).Scan(&key); err != nil {
 		row.MetNote = "package_object_key lookup: " + err.Error()
-		return row
+		return row, v
 	}
 	pkg, ok := a.packages[key]
 	if !ok {
 		row.MetNote = "the candidate package is not in the API's store under " + key
-		return row
+		return row, v
 	}
 	if err := trial.store.Put(ctx, key, pkg); err != nil {
 		row.MetNote = "put package: " + err.Error()
-		return row
+		return row, v
 	}
 
 	f := fixture{client: c, skillID: candidate.SkillID, versionID: candidate.VersionID, testCaseID: candidate.TestCaseID}
 	code, rv := f.startNoFatal(t)
 	if code != http.StatusCreated && code != http.StatusOK {
 		row.MetNote = fmt.Sprintf("POST run: %d %s", code, rv.Error)
-		return row
+		return row, v
 	}
 	final := waitForTerminalSoft(t, c, rv.RunID, 8*time.Minute)
 	row.RunStatus = final.Status
@@ -331,7 +331,7 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 	}
 	revised := beforeHash != afterHash
 	row.RevisedAfterRun = &revised
-	return row
+	return row, v
 }
 
 func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
@@ -575,7 +575,10 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 			row.FinalState = v.State
 			row = finishSession(t, v, row, outDir)
 			if trial != nil {
-				row = attachTrialRun(t, a, ctx, c, s, trial, v, row)
+				// v is reassigned so the deferred transcript dump sees the run
+				// observation and the review step (run e's transcripts stopped
+				// before attach_run and could not explain revised_after_run).
+				row, v = attachTrialRun(t, a, ctx, c, s, trial, v, row)
 			}
 			return row
 		default:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 from typing import Annotated, Literal, TypedDict
@@ -24,9 +25,11 @@ from skillhub_llm.generate import (
 )
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
+logger = logging.getLogger("skillhub_llm.creation")
+
 router = APIRouter()
 MODEL = "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v3"
+PROMPT_VERSION = "creation-step/v5"
 DATA_TAG = "untrusted_creation_snapshot"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
 Reason = Literal[
@@ -187,7 +190,11 @@ PHASE_INSTRUCTIONS = {
         "unless the newest message is a user message that changes the requirements. "
         "Either way the draft object must be present and complete (name, description, "
         "compatibility, allowed_tools, the full SKILL.md body, files); outcome draft with "
-        "draft null is a wasted turn."
+        "draft null is a wasted turn. The body must make the agent act on the input it is "
+        "handed in one pass: perform every acceptance criterion directly, choose sensible "
+        "defaults and state them in the output instead of asking the user, and refuse or ask "
+        "only when the input itself is missing. A Skill whose run ends in a question has "
+        "failed every criterion."
     ),
     "revise": (
         "Inspect draft_validation.report and tool observations. Repair the specific "
@@ -199,8 +206,11 @@ PHASE_INSTRUCTIONS = {
     "review": (
         "Inspect the Go validation and any Run criterion results, reasons and cited "
         "evidence in tool observations. Static validity does not prove task success. "
-        "Revise unmet requirements, or return the exact validated draft if it meets the "
-        "confirmed brief. Missing evaluation is not success."
+        "When an evaluation is present and any criterion is failed or undetermined, return "
+        "outcome draft with a revised body that removes the exact cause the judge named "
+        "(the agent asked instead of acting, skipped a required output, produced the wrong "
+        "shape) and say what changed; return the unchanged draft only when every criterion "
+        "passed. Missing evaluation is not success."
     ),
 }
 
@@ -217,9 +227,15 @@ def _reason_node(gateway_key: str, phase: str):
             "then ask the user to confirm it. "
             "Propose the brief and 3-8 acceptance_criteria together: each an observable sentence "
             "a single trial run can confirm or refute (what output, in what shape, under what "
-            "input). Propose sample_input with them: one realistic, complete example of what "
-            "a user would hand this Skill (the actual content, not a description of it), so a "
-            "single trial run can exercise every criterion. confirm_brief covers all three; once "
+            "input). Propose sample_input with them: the complete message a user would send for "
+            "one trial run — one sentence stating the request, then the literal material it "
+            "applies to (the rows, the text, the code), never a description of a file and never "
+            "a request that needs data the trial cannot reach. "
+            "Every criterion must be decidable from that one sample in one run: no branch the "
+            "sample does not take, no quantity the sample does not contain, no clause about "
+            "invalid or missing input unless the sample is that input. If a situation matters, "
+            "put it into the sample instead of writing a criterion about it. "
+            "confirm_brief covers all three; once "
             "brief_confirmed, keep brief, acceptance_criteria and sample_input unchanged or "
             "propose a new confirmation. "
             "Read diagrams into named nodes, conditions, branches and explicit uncertainties; "
@@ -305,17 +321,34 @@ def _reason_node(gateway_key: str, phase: str):
                 len(v or "") > 20000
                 for v in [decision.message, decision.brief, decision.diagram_understanding]
             ) or (decision.tool_intent and len(decision.tool_intent.query) > 4000):
-                raise ValueError("over cap")
+                raise ValueError("over cap: message, brief, diagram or tool query")
             if decision.acceptance_criteria is not None and (
                 len(decision.acceptance_criteria) > 12
                 or any(len(c) > 500 for c in decision.acceptance_criteria)
             ):
-                raise ValueError("over cap")
+                raise ValueError("over cap: acceptance_criteria")
             if len(decision.sample_input or "") > 4000:
-                raise ValueError("over cap")
+                raise ValueError("over cap: sample_input")
             return {"decision": decision, "usage": _usage(completion, raw.headers)}
-        except (OpenAIError, ValidationError, IndexError, AttributeError, TypeError, ValueError):
+        except (
+            OpenAIError,
+            ValidationError,
+            IndexError,
+            AttributeError,
+            TypeError,
+            ValueError,
+        ) as exc:
             # Never include model output, credentials or upstream exception text in diagnostics.
+            # The one line logged is the exception class plus, only for our own cap
+            # checks above (plain ValueError; pydantic's ValidationError subclasses it
+            # and carries the model's text), the fixed sentence they raise. Run g
+            # (2026-09-06) lost a session to this 502 with nothing to read afterwards.
+            label = type(exc).__name__
+            if type(exc) is ValueError:
+                label += ": " + str(exc)
+            logger.warning(
+                "creation step refused the model output (%s) session=%s", label, req.session_id
+            )
             raise HTTPException(
                 status_code=502, detail="creation model returned unusable output"
             ) from None

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import re
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -422,6 +423,19 @@ def test_search_intent_and_returned_observations_use_separate_jobs():
 def test_malformed_truncated_or_oversized_output_is_refused(result, finish):
     response, _ = invoke(request(brief="agreed", brief_confirmed=True), result, finish)
     assert response.status_code == 502
+
+
+def test_a_refused_output_logs_the_cap_it_hit_and_nothing_of_the_output(caplog):
+    # Run g (2026-09-06) lost a session to a bare 502 with nothing to read afterwards.
+    with caplog.at_level(logging.WARNING, logger="skillhub_llm.creation"):
+        response, _ = invoke(
+            request(brief="agreed", brief_confirmed=True),
+            decision(outcome="confirm_brief", brief="b", sample_input="y" * 4001),
+        )
+    assert response.status_code == 502
+    refusals = [r.message for r in caplog.records if "refused" in r.message]
+    assert refusals and "over cap: sample_input" in refusals[0], caplog.text
+    assert "yyyy" not in caplog.text
 
 
 def test_missing_usage_is_unknown():

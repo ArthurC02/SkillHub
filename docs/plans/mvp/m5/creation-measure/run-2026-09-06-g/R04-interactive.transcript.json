@@ -1,0 +1,65 @@
+{
+  "acceptance_criteria": [
+    "針對提供的 issue 內容，輸出三個嚴重度級別。",
+    "每個嚴重度級別都附上一句處理建議。",
+    "輸出內容明確對應到輸入中的 issue 描述。",
+    "不使用外部資料或假設未提供的背景。",
+    "結果以可直接閱讀的文字呈現。"
+  ],
+  "brief": "任務：將 GitHub issue 依嚴重度分成三級，並對每一級各寫一句處理建議。\n輸入：使用者提供的 issue 清單或單一 issue 內容。\n輸出：一份依嚴重度分級的結果，包含三級名稱與各自一句建議。\n工具需求：不需要外部工具。\n限制：只根據提供的 issue 內容判斷，不補充未提供的資訊。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我把 GitHub issue 依嚴重度分成三級並各寫一句處理建議。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的需求草案，請你回覆是否同意：\n\n**brief**\n- 任務：將 GitHub issue 依嚴重度分成三級，並對每一級各寫一句處理建議。\n- 輸入：使用者提供的 issue 清單或單一 issue 內容。\n- 輸出：一份依嚴重度分級的結果，包含三級名稱與各自一句建議。\n- 工具需求：不需要外部工具。\n- 限制：只根據提供的 issue 內容判斷，不補充未提供的資訊。\n\n**acceptance_criteria**\n1. 針對提供的 issue 內容，輸出三個嚴重度級別。\n2. 每個嚴重度級別都附上一句處理建議。\n3. 輸出內容明確對應到輸入中的 issue 描述。\n4. 不使用外部資料或假設未提供的背景。\n5. 結果以可直接閱讀的文字呈現。\n\n**sample_input**\n請將以下 GitHub issue 依嚴重度分成三級並各寫一句處理建議。\n- Issue A：登入後頁面偶爾空白，重新整理可恢復。\n- Issue B：付款按鈕點擊後沒有反應，使用者無法完成結帳。\n- Issue C：說明文件中的拼字錯誤。\n\n如果這個 brief、5 個 acceptance_criteria 和 sample_input 都正確，請回覆同意；若要調整，也請直接指出要改哪一部分。"
+    },
+    {
+      "role": "assistant",
+      "content": "模型這一步沒有交出草稿，已自動再試一次。"
+    },
+    {
+      "role": "assistant",
+      "content": "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。"
+    },
+    {
+      "role": "user",
+      "content": "請依合理假設補上缺的資訊，然後繼續。"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是依已確認需求直接完成的 Skill 草稿；我先用合理假設補上缺失：三級嚴重度採「高／中／低」，判定以對使用者影響、是否阻斷核心流程與是否有立即替代方案為準。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "請先確認流程圖的理解；確認後再依它建立草稿。"
+    },
+    {
+      "role": "assistant",
+      "content": "已依確認內容完成草稿，並納入目前已確認的三級嚴重度判準與限制。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "已依既有確認內容整理成可交付草稿；靜態驗證僅指出授權未宣告的警告，未阻擋輸出。"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"960df025-c468-413b-9a05-7281bcd38138\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"回覆完成高、中、低三級分類，逐一對應三個輸入 issue，且每級都有可讀的處理建議。不過針對 Issue A 的建議推測了前端渲染或 API 不穩定等未提供的技術背景，因此未完全符合不假設背景的要求。\",\"criterion_results\":[{\"criterion_id\":\"f53cf786-d917-47dd-ba43-d7460398e02d\",\"text\":\"不使用外部資料或假設未提供的背景。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":145,\"end\":193},\"excerpt\":\"**處理建議：** 盡快追查前端渲染或 API 非穩定問題，並加上監控與錯誤回報以降低偶發影響。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"中嚴重度的處理建議假設可能是前端渲染或 API 不穩定問題，但輸入僅描述登入後偶爾空白，未提供該技術背景。\"},{\"criterion_id\":\"d2a85a52-d76a-4407-b463-0736dfa8e955\",\"text\":\"針對提供的 issue 內容，輸出三個嚴重度級別。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":10,\"end\":267},\"excerpt\":\"### 高嚴重度\\n- **Issue B：付款按鈕點擊後沒有反應，使用者無法完成結帳。**  \\n  **處理建議：** 優先修復並立即回歸測試，因為這會直接阻斷核心交易流程。\\n\\n### 中嚴重度\\n- **Issue A：登入後頁面偶爾空白，重新整理可恢復。**  \\n  **處理建議：** 盡快追查前端渲染或 API 非穩定問題，並加上監控與錯誤回報以降低偶發影響。\\n\\n### 低嚴重度\\n- **Issue C：說明文件中的拼字錯誤。**  \\n  **處理建議：** 排入文件修正清單，和其他內容更新一起處理即可。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"最終回覆明確列出高、中、低三個嚴重度級別。\"},{\"criterion_id\":\"df38c156-f5ba-495a-9463-00b0b8165206\",\"text\":\"每個嚴重度級別都附上一句處理建議。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":60,\"end\":97},\"excerpt\":\"**處理建議：** 優先修復並立即回歸測試，因為這會直接阻斷核心交易流程。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":145,\"end\":193},\"excerpt\":\"**處理建議：** 盡快追查前端渲染或 API 非穩定問題，並加上監控與錯誤回報以降低偶發影響。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":234,\"end\":267},\"excerpt\":\"**處理建議：** 排入文件修正清單，和其他內容更新一起處理即可。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"高、中、低三個級別各自均附有一句以「處理建議」標示的建議。\"},{\"criterion_id\":\"ed404e76-4a36-4f7b-9e9a-fe4f67ddaa45\",\"text\":\"輸出內容明確對應到輸入中的 issue 描述。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":19,\"end\":55},\"excerpt\":\"- **Issue B：付款按鈕點擊後沒有反應，使用者無法完成結帳。**\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":108,\"end\":140},\"excerpt\":\"- **Issue A：登入後頁面偶爾空白，重新整理可恢復。**\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":204,\"end\":229},\"excerpt\":\"- **Issue C：說明文件中的拼字錯誤。**\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"回覆逐一引用並分類 Issue A 的登入後偶發空白、Issue B 的付款無法結帳與 Issue C 的文件拼字錯誤。\"},{\"criterion_id\":\"4b41534f-bb18-4d94-b608-59cd684bdcc4\",\"text\":\"結果以可直接閱讀的文字呈現。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":97},\"excerpt\":\"可分為三級如下：\\n\\n### 高嚴重度\\n- **Issue B：付款按鈕點擊後沒有反應，使用者無法完成結帳。**  \\n  **處理建議：** 優先修復並立即回歸測試，因為這會直接阻斷核心交易流程。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"結果以中文標題、條列 issue 與處理建議呈現，可直接閱讀。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"warning\",\"message\":\"no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict (ADR-025)\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 16575 input and 260 output tokens on gpt-5.4-mini; reported cost $0.0140 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend (ADR-017)\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"f64ae436-1b70-4d97-aca0-12fd5887e579\",\"skill_version_id\":\"d09eef32-240f-49d7-8b35-51fc1147b411\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "我已修正草稿，移除會推測未提供技術背景的內容，改成只根據 issue 描述與影響程度下判斷。變更重點：把中嚴重度的建議從『追查前端渲染或 API 非穩定問題』改為不假設原因的通用處置建議，並保留三級分類與各級一句建議。"
+    }
+  ],
+  "state": "draft_ready"
+}

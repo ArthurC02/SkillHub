@@ -1,0 +1,50 @@
+{
+  "acceptance_criteria": [
+    "輸出會使用 Google 風格 docstring 的結構與小節。",
+    "輸出會補上參數說明，當 sample 中的函式有參數時。",
+    "輸出會補上回傳值說明，當 sample 中的函式有回傳值時。",
+    "輸出不會加入 sample 中沒有依據的功能描述。",
+    "輸出會保留與原函式一致的語意。",
+    "輸出會以可直接貼回 Python 程式碼的格式呈現，當 sample 要求回傳完整函式時."
+  ],
+  "brief": "任務：審查並補全 Python 函式的 docstring，輸出為 Google 風格。\n- 輸入：使用者貼上的 Python 函式原始碼；函式可能已有不完整 docstring，也可能沒有 docstring。\n- 輸出：補齊後的 docstring；若使用者要求，也可回傳包含修正版 docstring 的完整函式內容。\n- 工具需求：目前不需要額外工具；若之後要檢查格式，可再使用 `validate_draft`。\n- 限制：只能根據提供的函式內容補寫，不臆測未提供的參數意義、回傳值或副作用。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我審 Python 函式的 docstring，缺的補上，格式用 Google 風格。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的 brief：\n\n**brief**\n- 任務：審查 Python 函式的 docstring，補齊缺少的內容，並輸出為 Google 風格。\n- 輸入：一段 Python 函式原始碼，內含或缺少 docstring。\n- 輸出：一份依 Google 風格補全後的 docstring 或帶有修正版 docstring 的函式內容。\n- 工具需求：目前先不需要額外工具；若之後要驗證格式，再考慮 `validate_draft`。\n- 限制：只根據提供的函式內容補寫，不臆測未提供的行為、參數意義或回傳值。\n\n**acceptance_criteria**\n1. 輸出會以 Google 風格 docstring 的段落與小節呈現。\n2. 輸出會補上缺少的參數說明，若樣本函式有參數。\n3. 輸出會補上回傳值說明，若樣本函式有回傳值。\n4. 輸出不會加入樣本中沒有依據的功能描述。\n5. 輸出會保留與原函式內容一致的語意。\n\n**sample_input**\n請幫我把下面 Python 函式的 docstring 補成 Google 風格：\n```python\ndef add(a, b):\n    return a + b\n```\n\n如果這個 brief、acceptance_criteria 和 sample_input 都符合你的需求，請回覆確認；如果你希望輸出是「只改 docstring」還是「連同整個函式一起回傳」，我也可以再調整。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先把目前可確認的內容整理成一個更精準的 brief，請你確認：\n\n**brief**\n- 任務：審查並補全 Python 函式的 docstring，輸出為 Google 風格。\n- 輸入：使用者貼上的 Python 函式原始碼；函式可能已有不完整 docstring，也可能沒有 docstring。\n- 輸出：補齊後的 docstring；若使用者要求，也可回傳包含修正版 docstring 的完整函式內容。\n- 工具需求：目前不需要額外工具；若之後要檢查格式，可再使用 `validate_draft`。\n- 限制：只能根據提供的函式內容補寫，不臆測未提供的參數意義、回傳值或副作用。\n\n**acceptance_criteria**\n1. 輸出會使用 Google 風格 docstring 的結構與小節。\n2. 輸出會補上參數說明，當 sample 中的函式有參數時。\n3. 輸出會補上回傳值說明，當 sample 中的函式有回傳值時。\n4. 輸出不會加入 sample 中沒有依據的功能描述。\n5. 輸出會保留與原函式一致的語意。\n6. 輸出會以可直接貼回 Python 程式碼的格式呈現，當 sample 要求回傳完整函式時。\n\n**sample_input**\n請幫我把下面 Python 函式的 docstring 補成 Google 風格，並回傳完整函式：\n```python\ndef add(a, b):\n    return a + b\n``` \n\n如果你要的是「只輸出 docstring」而不是「回傳完整函式」，我可以再把 brief 改成那個版本。"
+    },
+    {
+      "role": "assistant",
+      "content": "請先確認流程圖的理解；確認後再依它建立草稿。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先用 Go 驗證草稿是否符合已確認需求，再進入定稿。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "我已根據驗證結果修正草稿，這次主要只做了授權欄位的調整：把 compatibility 保持為空字串，並補上可明確避免未知授權的說明，不再暗示有額外授權；其餘內容維持已確認的 brief 與 sample 範圍。"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"94da4ece-6622-42a8-a277-ea7c8279f3bd\",\"status\":\"completed\",\"overall\":\"met\",\"summary\":\"輸出提供完整且可直接貼回的 Python 函式，使用 Google 風格的 Args 與 Returns 小節，涵蓋所有參數與回傳值，且未改變原有相加語意。\",\"criterion_results\":[{\"criterion_id\":\"72680e3b-70e6-4531-98cc-501c62a3505d\",\"text\":\"輸出會使用 Google 風格 docstring 的結構與小節。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":29,\"end\":182},\"excerpt\":\"\\\"\\\"\\\"Add two values together.\\n\\n    Args:\\n        a: The first value.\\n        b: The second value.\\n\\n    Returns:\\n        The sum of ``a`` and ``b``.\\n    \\\"\\\"\\\"\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出包含 Google 風格的摘要、Args 與 Returns 小節。\"},{\"criterion_id\":\"71e5664a-30df-447d-abf2-8196292e18eb\",\"text\":\"輸出會補上參數說明，當 sample 中的函式有參數時。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":62,\"end\":124},\"excerpt\":\"Args:\\n        a: The first value.\\n        b: The second value.\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"函式參數 a 與 b 均有說明。\"},{\"criterion_id\":\"34495485-c539-4522-af1a-767a8be713a4\",\"text\":\"輸出會補上回傳值說明，當 sample 中的函式有回傳值時。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":130,\"end\":174},\"excerpt\":\"Returns:\\n        The sum of ``a`` and ``b``.\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出提供了回傳值的說明。\"},{\"criterion_id\":\"cdfe47ec-8a00-454a-903e-82dcc1b1eb4e\",\"text\":\"輸出不會加入 sample 中沒有依據的功能描述。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":29,\"end\":56},\"excerpt\":\"\\\"\\\"\\\"Add two values together.\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":187,\"end\":199},\"excerpt\":\"return a + b\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"描述僅說明將兩個值相加並回傳其和，與原始程式碼相符，未加入額外功能。\"},{\"criterion_id\":\"32865629-c995-472f-8d5e-3b5458264486\",\"text\":\"輸出會保留與原函式一致的語意。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":10,\"end\":24},\"excerpt\":\"def add(a, b):\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":187,\"end\":199},\"excerpt\":\"return a + b\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"函式簽名及回傳運算仍為 a + b，保留原函式語意。\"},{\"criterion_id\":\"03c14799-eb40-4811-b512-59a2ba5792cd\",\"text\":\"輸出會以可直接貼回 Python 程式碼的格式呈現，當 sample 要求回傳完整函式時.\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":203},\"excerpt\":\"```python\\ndef add(a, b):\\n    \\\"\\\"\\\"Add two values together.\\n\\n    Args:\\n        a: The first value.\\n        b: The second value.\\n\\n    Returns:\\n        The sum of ``a`` and ``b``.\\n    \\\"\\\"\\\"\\n    return a + b\\n```\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出以 Python Markdown 程式碼區塊提供完整可貼回的函式。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"warning\",\"message\":\"no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict (ADR-025)\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 16539 input and 138 output tokens on gpt-5.4-mini; reported cost $0.0027 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend (ADR-017)\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"8cab346c-c87f-4b4f-be3d-e64ac280ae02\",\"skill_version_id\":\"1200cc56-f075-4375-8495-0ddef46484fc\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "已根據驗證結果保留現有草稿；本次評估已通過所有 criterion，僅有未知授權警告未影響通過。"
+    }
+  ],
+  "state": "draft_ready"
+}

@@ -1,0 +1,40 @@
+{
+  "acceptance_criteria": [
+    "產出內容包含「收到訂單 → 轉成 CSV → 檢查缺漏欄位 → 匯入 Shopify → 回覆客戶」這條完整主流程。",
+    "內容明確標示哪些欄位或對應規則需要使用者補充確認。",
+    "不自行新增流程圖未出現的分支或例外流程。",
+    "輸出可直接用於執行此流程的操作步驟，而不是只寫概念描述。"
+  ],
+  "brief": "任務：把客戶提供的 Excel 訂單轉成 CSV，檢查缺漏欄位，並匯入 Shopify 後台，最後回覆客戶已入單。\n- 輸入：一份客戶 Excel 訂單內容，以及需要轉出的 CSV 欄位規格／Shopify 匯入需求（若有）。\n- 輸出：可匯入 Shopify 的 CSV、缺漏欄位檢查結果、以及可直接發給客戶的完成回覆。\n- 工具需求：目前未指定，先以純文字流程說明為主；若需要驗證格式或產出檔案，可再補充可用工具。\n- 限制：不要自行補齊流程圖未提供的分支或例外處理；若欄位對應規則未提供，只能標示為待確認。",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "我先把你提供的流程圖整理成可確認的結構，請你確認是否正確：\n\n```json\n{\n  \"nodes\": [\n    \"收到客戶 Excel 訂單\",\n    \"轉成 CSV 格式\",\n    \"檢查缺漏欄位\",\n    \"匯入 Shopify 後台\",\n    \"回覆客戶已入單\"\n  ],\n  \"conditions\": [],\n  \"branches\": [],\n  \"uncertainties\": [\n    \"流程圖中未顯示檢查缺漏欄位之後是否有分支處理\",\n    \"流程圖中未顯示缺漏欄位時的例外流程\",\n    \"流程圖中未顯示轉 CSV 與匯入 Shopify 的具體欄位對應規則\"\n  ]\n}\n``` \n\n請回覆「確認」或告訴我要修正哪個節點/不確定項。"
+    },
+    {
+      "role": "assistant",
+      "content": "我已整理目前可用的需求，但還缺少要做成什麼樣的 Skill 內容。請你先確認下面這個草案，或直接補充要改的地方：\n\n**Brief**\n- 任務：把客戶提供的 Excel 訂單轉成 CSV，檢查缺漏欄位，並匯入 Shopify 後台，最後回覆客戶已入單。\n- 輸入：一份客戶 Excel 訂單內容，以及需要轉出的 CSV 欄位規格／Shopify 匯入需求（若有）。\n- 輸出：可匯入 Shopify 的 CSV、缺漏欄位檢查結果、以及可直接發給客戶的完成回覆。\n- 工具需求：目前未指定，先以純文字流程說明為主；若需要驗證格式或產出檔案，可再補充可用工具。\n- 限制：不要自行補齊流程圖未提供的分支或例外處理；若欄位對應規則未提供，只能標示為待確認。\n\n**Acceptance criteria**\n1. 產出內容包含「收到訂單 → 轉成 CSV → 檢查缺漏欄位 → 匯入 Shopify → 回覆客戶」這條完整主流程。\n2. 內容明確標示哪些欄位或對應規則需要使用者補充確認。\n3. 不自行新增流程圖未出現的分支或例外流程。\n4. 輸出可直接用於執行此流程的操作步驟，而不是只寫概念描述。\n\n**Sample input**\n```text\n客戶 Excel 訂單內容：\n訂單編號, 客戶姓名, Email, 商品 SKU, 數量, 收件地址\n10021, 王小明, ming@example.com, SKU-RED-01, 2, 台北市信義區信義路五段7號\n10022, 陳雅婷, yating@example.com, SKU-BLUE-02, 1, 新北市板橋區文化路一段188號\n\nCSV 輸出需求：\n- 欄位順序：order_number, customer_name, email, sku, quantity, shipping_address\n- 缺漏欄位：若 Email 或 收件地址 空白，標示為缺漏\n- Shopify 匯入：使用 CSV 匯入功能\n```\n\n如果你同意，我下一步就會根據這份 brief 繼續往下整理成可交付的 Skill。"
+    },
+    {
+      "role": "assistant",
+      "content": "我會先產出可交付的 Skill 草稿，再交由 Go 驗證。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "已保留草稿不變。Go 驗證只回報了授權未知的 warning，沒有阻擋；本輪沒有新的失敗或需要修正的 criterion，因此維持目前 draft。"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"6b8dadd1-52d8-4c3b-840e-fb911b8780a8\",\"status\":\"completed\",\"overall\":\"not_met\",\"summary\":\"此回覆正確整理了指定欄位順序的 CSV，並提及 Email 與收件地址的缺漏標示。然而，未呈現完整的訂單處理、Shopify 匯入及客戶回覆流程，也未標示需確認的對應規則或提供可執行的完整操作步驟。\",\"criterion_results\":[{\"criterion_id\":\"046caad0-aeac-4c43-8e16-398943f9362a\",\"text\":\"產出內容包含「收到訂單 → 轉成 CSV → 檢查缺漏欄位 → 匯入 Shopify → 回覆客戶」這條完整主流程。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":42},\"excerpt\":\"以下是依照你指定欄位順序整理好的 CSV，可直接用於 Shopify CSV 匯入：\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":232,\"end\":271},\"excerpt\":\"如果之後有 `Email` 或 `收件地址` 空白，我會依需求填成 `缺漏`。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出僅提供 CSV 與缺漏值的處理說明，未包含收到訂單、實際匯入 Shopify 及回覆客戶等完整主流程。\"},{\"criterion_id\":\"9c15a36d-d9e1-4364-96b7-66a8eb550b4e\",\"text\":\"內容明確標示哪些欄位或對應規則需要使用者補充確認。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":232,\"end\":271},\"excerpt\":\"如果之後有 `Email` 或 `收件地址` 空白，我會依需求填成 `缺漏`。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出未明確列出任何需要使用者補充或確認的欄位或欄位對應規則；僅說明未來空白值會填為「缺漏」。\"},{\"criterion_id\":\"0e09dd41-a715-4dd7-923c-b991e452245f\",\"text\":\"不自行新增流程圖未出現的分支或例外流程。\",\"result\":\"undetermined\",\"source\":\"model\",\"evidence\":[],\"reason\":\"證據未提供所稱流程圖的內容，無法判定輸出是否自行新增了流程圖中未出現的分支或例外流程。\"},{\"criterion_id\":\"14d65ea8-2a1e-42f4-acf0-0e45cd83bc69\",\"text\":\"輸出可直接用於執行此流程的操作步驟，而不是只寫概念描述。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":42},\"excerpt\":\"以下是依照你指定欄位順序整理好的 CSV，可直接用於 Shopify CSV 匯入：\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出雖提供 CSV 資料，但沒有提供執行完整流程所需的操作步驟，例如 Shopify 匯入操作與完成後回覆客戶的步驟。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"warning\",\"message\":\"no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict (ADR-025)\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 16658 input and 291 output tokens on gpt-5.4-mini; reported cost $0.0143 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend (ADR-017)\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"ff8909c0-a767-4050-9dc2-dbb7a3396bad\",\"skill_version_id\":\"07812ee7-ee30-47df-a353-febeaaa2ec6b\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "已根據評測回饋修正草稿：補上完整主流程、明確要求列出待確認的欄位對應規則，並把輸出改成可直接執行的操作步驟，而不只是概念描述。"
+    }
+  ],
+  "state": "draft_ready"
+}

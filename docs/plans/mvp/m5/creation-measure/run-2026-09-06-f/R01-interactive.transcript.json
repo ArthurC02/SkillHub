@@ -1,0 +1,46 @@
+{
+  "acceptance_criteria": [
+    "針對提供的逐字稿，輸出一份待辦清單。",
+    "每一條待辦都包含負責人欄位。",
+    "每一條待辦都包含期限欄位。",
+    "輸出以清單或表格形式呈現，且每列對應一項待辦。",
+    "不會把逐字稿中沒有明講的負責人寫成確定人名。",
+    "不會把逐字稿中沒有明講的期限寫成確定日期。"
+  ],
+  "brief": "- 任務：把客戶提供的會議錄音逐字稿整理成待辦清單。\n- 輸入：一份會議逐字稿文字。\n- 輸出：結構化待辦清單，每條包含待辦事項、負責人、期限。\n- 工具需求：不需要額外工具；僅根據使用者提供的逐字稿整理。\n- 限制：不自行補寫逐字稿沒有提到的負責人或期限；若原文未明確提供，需保留為未指明或提示缺漏。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "把客戶寄來的會議錄音逐字稿整理成待辦清單，每一條要有負責人與期限。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成一版可確認的技能簡述，請你確認是否符合：\n\n**brief**\n- 任務：把客戶提供的會議錄音逐字稿整理成待辦清單。\n- 輸入：一份會議逐字稿文字。\n- 輸出：結構化待辦清單，每條包含待辦事項、負責人、期限。\n- 工具需求：不需要額外工具；僅根據使用者提供的逐字稿整理。\n- 限制：不自行補寫逐字稿沒有提到的負責人或期限；若原文未明確提供，需保留為未指明或提示缺漏。\n\n**acceptance_criteria**\n1. 針對提供的逐字稿，輸出一份待辦清單。\n2. 每一條待辦都包含負責人欄位。\n3. 每一條待辦都包含期限欄位。\n4. 輸出以清單或表格形式呈現，且每列對應一項待辦。\n5. 不會把逐字稿中沒有明講的負責人寫成確定人名。\n6. 不會把逐字稿中沒有明講的期限寫成確定日期。\n\n**sample_input**\n```text\n會議逐字稿：\n\nA：今天要確認三件事。第一，李佳明下週五前把提案初稿寄給我。第二，行銷部在本週三前整理上月活動成效。第三，王小姐負責聯絡供應商，期限是 10 月 18 日。\nB：如果有問題，請直接在群組回覆。\n```\n\n請回覆確認、修改，或指出需要調整的地方。"
+    },
+    {
+      "role": "assistant",
+      "content": "模型這一步沒有交出草稿，已自動再試一次。"
+    },
+    {
+      "role": "assistant",
+      "content": "我將先依已確認需求起草技能，接著請 Go 驗證草稿是否符合格式與內容要求。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "已根據已確認的簡述整理出可用草稿。為回應驗證結果，這版維持不宣告授權；其餘內容不變，因為目前唯一發現是授權未知的警告，未阻擋交付。"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"2806792b-d2a4-46f1-85f8-51f3671d863a\",\"status\":\"completed\",\"overall\":\"met\",\"summary\":\"輸出正確整理出三項待辦，以清單逐項呈現負責人與期限。負責人及期限皆忠實保留逐字稿資訊，未補寫未明示的確定人名或日期。\",\"criterion_results\":[{\"criterion_id\":\"06db4b48-eba3-4ec4-b966-046d23dcd5ab\",\"text\":\"針對提供的逐字稿，輸出一份待辦清單。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":125},\"excerpt\":\"整理成會議待辦如下：\\n\\n1. **李佳明**：在**下週五前**把**提案初稿**寄給 A。  \\n2. **行銷部**：在**本週三前**整理**上月活動成效**。  \\n3. **王小姐**：負責**聯絡供應商**，期限是**10 月 18 日**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出明確提供三項會議待辦。\"},{\"criterion_id\":\"027b99e0-df9a-44ec-8bd0-4aa8e95d6281\",\"text\":\"每一條待辦都包含負責人欄位。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":12,\"end\":125},\"excerpt\":\"1. **李佳明**：在**下週五前**把**提案初稿**寄給 A。  \\n2. **行銷部**：在**本週三前**整理**上月活動成效**。  \\n3. **王小姐**：負責**聯絡供應商**，期限是**10 月 18 日**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"三條待辦分別標示李佳明、行銷部與王小姐為負責人。\"},{\"criterion_id\":\"815255b4-e8ce-4c90-b68f-f8fb9e1eb847\",\"text\":\"每一條待辦都包含期限欄位。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":12,\"end\":125},\"excerpt\":\"1. **李佳明**：在**下週五前**把**提案初稿**寄給 A。  \\n2. **行銷部**：在**本週三前**整理**上月活動成效**。  \\n3. **王小姐**：負責**聯絡供應商**，期限是**10 月 18 日**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"三條待辦均列有期限：下週五前、本週三前及10月18日。\"},{\"criterion_id\":\"0f8a39a4-f397-421d-adfc-1b3b65db9c98\",\"text\":\"輸出以清單或表格形式呈現，且每列對應一項待辦。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":12,\"end\":125},\"excerpt\":\"1. **李佳明**：在**下週五前**把**提案初稿**寄給 A。  \\n2. **行銷部**：在**本週三前**整理**上月活動成效**。  \\n3. **王小姐**：負責**聯絡供應商**，期限是**10 月 18 日**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"內容以編號清單呈現，三列分別對應三項待辦。\"},{\"criterion_id\":\"36f8f3a0-61f3-4197-ab73-dd26a489da8d\",\"text\":\"不會把逐字稿中沒有明講的負責人寫成確定人名。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":12,\"end\":125},\"excerpt\":\"1. **李佳明**：在**下週五前**把**提案初稿**寄給 A。  \\n2. **行銷部**：在**本週三前**整理**上月活動成效**。  \\n3. **王小姐**：負責**聯絡供應商**，期限是**10 月 18 日**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"待辦中的負責人均與逐字稿明示的李佳明、行銷部及王小姐一致，沒有額外確定未明示的人名。\"},{\"criterion_id\":\"c378c09a-a579-4cb0-9557-322dc4748179\",\"text\":\"不會把逐字稿中沒有明講的期限寫成確定日期。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":12,\"end\":125},\"excerpt\":\"1. **李佳明**：在**下週五前**把**提案初稿**寄給 A。  \\n2. **行銷部**：在**本週三前**整理**上月活動成效**。  \\n3. **王小姐**：負責**聯絡供應商**，期限是**10 月 18 日**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"待辦期限保留逐字稿所述的相對期限與10月18日，未將相對期限自行換算成確定日期。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"warning\",\"message\":\"no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict (ADR-025)\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 16584 input and 453 output tokens on gpt-5.4-mini; reported cost $0.0149 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend (ADR-017)\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"76e4d657-4d8c-46ae-b3ea-0d7f4285e711\",\"skill_version_id\":\"42405133-7eb9-4be1-aaea-e1b09747af1d\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "已保留通過驗證的草稿，並不修改內容；驗證只指出授權未知的警告，未要求改動正文。"
+    }
+  ],
+  "state": "draft_ready"
+}
