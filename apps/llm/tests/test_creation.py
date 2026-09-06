@@ -622,6 +622,154 @@ def test_an_invented_diagram_in_a_text_session_is_dropped_at_the_source():
     assert body["diagram_understanding"] == ""
 
 
+def stub_seq(results, calls):
+    """Like stub, but each call gets the next result — the review phase makes two."""
+    remaining = list(results)
+
+    async def create(**kwargs):
+        calls.append(kwargs)
+        result = remaining.pop(0)
+        content = result if isinstance(result, str) else json.dumps(result)
+        response = SimpleNamespace(
+            choices=[
+                SimpleNamespace(message=SimpleNamespace(content=content), finish_reason="stop")
+            ],
+            usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5),
+        )
+        return SimpleNamespace(parse=lambda: response, headers={"x-litellm-response-cost": "0.001"})
+
+    value = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
+    value.with_options = lambda **_: value
+    return value
+
+
+UNMET_EVALUATION = json.dumps(
+    {
+        "evaluation": {
+            "evaluation_available": True,
+            "status": "completed",
+            "overall": "partially_met",
+            "criterion_results": [
+                {"criterion_id": "c1", "text": "Output is a checkbox list", "result": "failed"},
+                {"criterion_id": "c2", "text": "Three items", "result": "passed"},
+            ],
+        }
+    }
+)
+
+
+def test_review_after_an_unmet_trial_names_the_edits_before_rewriting():
+    # Runs k/l (2026-09-06): asked to say and do in one answer, mini said and did
+    # not. The review phase now asks for the edit list first, has the body
+    # rewritten as plain text, and replaces whatever body the decision call
+    # returns with that text; the person's bill is all three calls.
+    req = request(
+        brief="b",
+        brief_confirmed=True,
+        draft=SKILL,
+        draft_validation={"content_hash": "c" * 64, "report": "{}", "blocked": False},
+        messages=request()["messages"] + [{"role": "tool", "content": UNMET_EVALUATION}],
+        allowed_tools=["validate_draft"],
+    )
+    revised = SKILL | {"body": "Output a Markdown checkbox list with three items."}
+    calls = []
+    # One stub for both calls: client() is invoked per call, so a factory that
+    # built a new stub each time would hand both calls the first result.
+    seq = stub_seq(
+        [
+            {
+                "edits": [
+                    {
+                        "criterion": "checkbox list",
+                        "cause": "table",
+                        "target": "body",
+                        "edit": "say checkbox",
+                    }
+                ]
+            },
+            revised["body"],
+            # The decision call hands back the OLD body while claiming a change:
+            # the rewritten text wins.
+            decision(outcome="draft", message="改了", draft=SKILL),
+        ],
+        calls,
+    )
+    with patch.object(creation, "client", lambda _: seq):
+        response = client.post("/v1/creation/step", headers=HEADERS, json=req)
+    assert response.status_code == 200
+    assert len(calls) == 3
+    assert calls[0]["response_format"]["json_schema"]["name"] == "review_diagnosis"
+    assert "response_format" not in calls[1]
+    assert "say checkbox" in calls[1]["messages"][1]["content"]
+    assert "already been rewritten" in calls[2]["messages"][0]["content"]
+    assert response.json()["draft"]["body"] == revised["body"]
+    assert response.json()["usage"]["cost_usd"] == 0.003
+
+
+def test_review_whose_fix_is_in_the_criteria_reproposes_the_brief():
+    # Run m (2026-09-06): a criterion about a branch the sample never takes is
+    # undetermined every round; no body edit fixes it. The diagnosis says so and
+    # the rewrite comes back as confirm_brief with the criteria changed.
+    req = request(
+        brief="b",
+        brief_confirmed=True,
+        acceptance_criteria=["old criterion"],
+        sample_input="real material",
+        draft=SKILL,
+        draft_validation={"content_hash": "c" * 64, "report": "{}", "blocked": False},
+        messages=request()["messages"] + [{"role": "tool", "content": UNMET_EVALUATION}],
+        allowed_tools=["validate_draft"],
+    )
+    calls = []
+    seq = stub_seq(
+        [
+            {
+                "edits": [
+                    {
+                        "criterion": "old criterion",
+                        "cause": "branch not in sample",
+                        "target": "criteria",
+                        "edit": "decidable criterion",
+                    }
+                ]
+            },
+            decision(
+                outcome="confirm_brief",
+                message="這條條件這份樣本驗不到，改成…",
+                brief="b",
+                acceptance_criteria=["decidable criterion"],
+                sample_input="real material",
+            ),
+        ],
+        calls,
+    )
+    with patch.object(creation, "client", lambda _: seq):
+        response = client.post("/v1/creation/step", headers=HEADERS, json=req)
+    assert response.status_code == 200
+    assert "outcome confirm_brief" in calls[1]["messages"][0]["content"]
+    body = response.json()
+    assert body["outcome"] == "confirm_brief"
+    assert body["acceptance_criteria"] == ["decidable criterion"]
+    assert body["draft"] is None
+
+
+def test_review_with_every_criterion_passed_is_one_call():
+    passed = UNMET_EVALUATION.replace('"result": "failed"', '"result": "passed"')
+    req = request(
+        brief="b",
+        brief_confirmed=True,
+        draft=SKILL,
+        draft_validation={"content_hash": "c" * 64, "report": "{}", "blocked": False},
+        messages=request()["messages"] + [{"role": "tool", "content": passed}],
+    )
+    _, calls = invoke(req, decision(outcome="draft", draft=SKILL))
+    assert len(calls) == 1
+
+
 def test_field_rules_are_in_compose_but_not_understand_phase():
     response, calls = invoke(request(), decision())
     assert response.status_code == 200

@@ -1,0 +1,38 @@
+{
+  "acceptance_criteria": [
+    "輸出是繁體中文。",
+    "輸出包含整份手冊的完整內容，不是摘要。",
+    "專有名詞第一次出現時以「中文（原文）」呈現。",
+    "同一專有名詞後續出現時維持一致譯法。",
+    "不新增原文沒有的說明性內容。",
+    "譯文以可直接閱讀的手冊格式呈現。"
+  ],
+  "brief": "task: 把一份英文使用手冊翻成繁體中文，並在專有名詞第一次出現時附上原文。\ninputs: 你提供的英文使用手冊全文；若有術語表、品牌名或既定譯名偏好也可一併提供。\noutputs: 完整的繁體中文譯文；專有名詞首次出現時採「中文（原文）」格式。\ntool requirements: 目前不需要外部工具；若你之後指定要做術語一致性檢查，再另行確認。\nlimitations: 只根據原文翻譯，不自行補充；遇到歧義時保留可辨識譯法並標示需確認處。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "把一份 30 頁的英文使用手冊翻成繁體中文，專有名詞第一次出現時附原文。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成一個可確認的 brief，請你回覆是否同意：\n\n**task**：將一份 30 頁的英文使用手冊翻成繁體中文，且專有名詞第一次出現時保留原文。\n\n**inputs**：\n- 英文使用手冊全文\n- 若有既定術語表、品牌名或譯名偏好，也可一併提供\n\n**outputs**：\n- 完整的繁體中文譯文\n- 專有名詞首次出現時的「中文（原文）」格式\n\n**tool requirements**：\n- 不需要外部工具也可完成\n- 如需，我可先協助檢查用語一致性；目前未指定必須使用任何工具\n\n**limitations**：\n- 只根據你提供的原文翻譯，不自行補充原文沒有的內容\n- 若原文有歧義，會保留可辨識的翻譯並標示需要確認之處\n\n**acceptance criteria**：\n1. 輸出內容是繁體中文。\n2. 輸出涵蓋使用手冊的完整內容，不只摘要。\n3. 專有名詞第一次出現時以「中文（原文）」形式呈現。\n4. 同一專有名詞後續出現時維持一致譯法。\n5. 不新增原文沒有的說明性內容。\n6. 譯文以可直接閱讀的手冊格式呈現。\n\n**sample_input**：\n請將以下英文使用手冊翻成繁體中文，專有名詞第一次出現時附原文。\n\n1. Power Adapter\nThis adapter converts AC power to DC power for the device.\n2. Reset Button\nPress and hold for 5 seconds to restore factory settings.\n3. Warranty\nThis product includes a one-year limited warranty.\n\n如果你同意這個 brief，我就進一步往下處理。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先把需求整理成可確認的 brief。請你確認是否同意以下內容：\n\n**brief**\n- **task**：把一份英文使用手冊翻成繁體中文，並在專有名詞第一次出現時附上原文。\n- **inputs**：你提供的英文使用手冊全文；若有術語表、品牌名或既定譯名偏好也可一併提供。\n- **outputs**：完整的繁體中文譯文；專有名詞首次出現時採「中文（原文）」格式。\n- **tool requirements**：目前不需要外部工具；若你之後指定要做術語一致性檢查，再另行確認。\n- **limitations**：只根據原文翻譯，不自行補充；遇到歧義時保留可辨識譯法並標示需確認處。\n\n**acceptance_criteria**\n1. 輸出是繁體中文。\n2. 輸出包含整份手冊的完整內容，不是摘要。\n3. 專有名詞第一次出現時以「中文（原文）」呈現。\n4. 同一專有名詞後續出現時維持一致譯法。\n5. 不新增原文沒有的說明性內容。\n6. 譯文以可直接閱讀的手冊格式呈現。\n\n**sample_input**\n請將以下英文使用手冊翻成繁體中文，專有名詞第一次出現時附原文。\n\n1. Power Adapter\nThis adapter converts AC power to DC power for the device.\n2. Reset Button\nPress and hold for 5 seconds to restore factory settings.\n3. Warranty\nThis product includes a one-year limited warranty.\n\n如果你同意，我下一步就依這個 brief 繼續。"
+    },
+    {
+      "role": "assistant",
+      "content": "我會先驗證目前草稿需求是否可直接成為技能，避免把已確認內容改壞。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "驗證通過，沒有出現失敗項；目前只有 license-unknown 警告，依規則不需要修改。以下保留已驗證草稿，供你接受或再提出要改的地方。"
+    }
+  ],
+  "state": "candidate_ready"
+}

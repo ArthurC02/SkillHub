@@ -14,10 +14,13 @@ import {
   type CreationState,
 } from "../api/creation";
 import type { CategorizedFindings, ImportFinding } from "../api/import";
+import { useRuns } from "../api/runs";
+import { TERMINAL_RUN_STATUSES } from "../api/trace";
 import { ReadFailure } from "./LoginRequired";
 import { ReferencePicker } from "./GenerateSkill";
 import { Findings } from "./Findings";
 import { Timestamp } from "./Timestamp";
+import { runStatusLabel } from "../pages/RunEvaluation";
 const labels: Record<CreationState, string> = {
   queued: "等待處理",
   working: "正在創作",
@@ -177,7 +180,6 @@ export function CreationSession() {
     [budget, setBudget] = useState(""),
     [file, setFile] = useState<File>(),
     [refs, setRefs] = useState<{ id: string; name: string }[]>([]),
-    [runID, setRunID] = useState(""),
     [raiseBudget, setRaiseBudget] = useState(""),
     [raiseError, setRaiseError] = useState(""),
     [error, setError] = useState<unknown>(),
@@ -206,6 +208,8 @@ export function CreationSession() {
   });
   const session = current.data,
     p = session?.snapshot;
+  const runs = useRuns(p?.candidate?.test_case_id, Boolean(p?.candidate?.test_case_id));
+  const latest = runs.data?.pages[0]?.runs.find((r) => TERMINAL_RUN_STATUSES.has(r.status));
   const run = p?.candidate?.run_id ? findRunObservation(p.messages, p.candidate.run_id) : undefined;
   const runNotPassing =
     !!run && (run.execution_status !== "succeeded" || run.evaluation?.overall !== "met");
@@ -664,24 +668,27 @@ export function CreationSession() {
                   ) : (
                     <p>目前尚未連結試跑結果。</p>
                   )}
-                  {!terminal && (
-                    <>
-                      <label>
-                        用來改善的 Run ID
-                        <input
-                          aria-label="用來改善的 Run ID"
-                          value={runID}
-                          onChange={(e) => setRunID(e.target.value)}
-                        />
-                      </label>
-                      <button
-                        disabled={locked || !runID.trim()}
-                        onClick={() => void perform("attach_run", { run_id: runID.trim() })}
-                      >
-                        參考這次 Run 繼續改善
-                      </button>
-                    </>
-                  )}
+                  {!terminal &&
+                    (latest ? (
+                      latest.run_id === p.candidate.run_id ? (
+                        <p>最新試跑結果已帶回會話；模型的建議在對話裡。</p>
+                      ) : (
+                        <>
+                          <p>
+                            最新試跑：{runStatusLabel(latest.status)}；評估：
+                            {latest.evaluation.label}
+                          </p>
+                          <button
+                            disabled={locked}
+                            onClick={() => void perform("attach_run", { run_id: latest.run_id })}
+                          >
+                            把最新試跑結果帶回來改善
+                          </button>
+                        </>
+                      )
+                    ) : (
+                      <p>試跑完成後，這裡會出現「把最新試跑結果帶回來改善」。</p>
+                    ))}
                 </>
               )}
               {!terminal && (

@@ -1,0 +1,28 @@
+{
+  "acceptance_criteria": [
+    "給定一個缺少 `Args:` 與 `Returns:` 的 Python 函式，輸出會補出這兩段 Google 風格區塊。",
+    "輸出的 docstring 會保留原本函式名稱對應的內容語意，不改寫成不同功能。",
+    "若原始 docstring 已有 `Args:` 區塊，輸出不會刪除它，並只補缺少的部分。",
+    "輸出的格式會使用 Google 風格的小節標題，例如 `Args:`、`Returns:`。"
+  ],
+  "brief": "將使用者提供的 Python 函式原始碼中的 docstring 補齊成 Google 風格；只依據現有程式碼與既有 docstring 內容補寫，不自行發明函式行為、參數意義或回傳值。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我審 Python 函式的 docstring，缺的補上，格式用 Google 風格。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成一個可確認的草案，請你確認是否符合：\n\n**任務**：檢查 Python 函式的 docstring，補上缺少的內容，並輸出符合 Google 風格的 docstring。\n\n**輸入**：一段或多段 Python 函式原始碼。\n\n**輸出**：每個函式對應的 Google 風格 docstring 修正版文字。\n\n**工具需求**：不需要外部工具；若之後要加入自動檢查或格式驗證，再另行確認。\n\n**限制**：只根據提供的程式碼與既有 docstring 內容補寫，不自行發明函式行為、參數意義或回傳值。\n\n**可驗收條件**：\n1. 給定一個缺少 `Args:` 與 `Returns:` 的 Python 函式，輸出會補出這兩段 Google 風格區塊。\n2. 輸出的 docstring 會保留原本函式名稱對應的內容語意，不改寫成不同功能。\n3. 若原始 docstring 已有 `Args:` 區塊，輸出不會刪除它，並只補缺少的部分。\n4. 輸出的格式會使用 Google 風格的小節標題，例如 `Args:`、`Returns:`。\n\n**示範輸入**：\n請幫我補成 Google 風格 docstring：\n```python\ndef add(a, b):\n    \"\"\"Add two numbers.\n    \"\"\"\n    return a + b\n```"
+    },
+    {
+      "role": "assistant",
+      "content": "我先把目前可確認的草案整理如下，請你回覆「確認」或指出要改的地方：\n\n**brief**\n將使用者提供的 Python 函式原始碼中的 docstring 補齊成 Google 風格；只依據現有程式碼與既有 docstring 內容補寫，不自行發明函式行為、參數意義或回傳值。\n\n**acceptance_criteria**\n1. 給定一個缺少 `Args:` 與 `Returns:` 的 Python 函式，輸出會補出這兩段 Google 風格區塊。\n2. 輸出的 docstring 會保留原本函式名稱對應的內容語意，不改寫成不同功能。\n3. 若原始 docstring 已有 `Args:` 區塊，輸出不會刪除它，並只補缺少的部分。\n4. 輸出的格式會使用 Google 風格的小節標題，例如 `Args:`、`Returns:`。\n\n**sample_input**\n請幫我補成 Google 風格 docstring：\n```python\ndef add(a, b):\n    \"\"\"Add two numbers.\n    \"\"\"\n    return a + b\n```\n\n如果你要我先改成「只補 docstring、不要改其他註解或程式碼」之類的更精確版本，也可以直接告訴我。"
+    },
+    {
+      "role": "assistant",
+      "content": "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
+    }
+  ],
+  "state": "failed"
+}

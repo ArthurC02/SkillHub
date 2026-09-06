@@ -35,6 +35,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -110,6 +111,12 @@ type sessionRow struct {
 	RevisedOverall string `json:"revised_overall,omitempty"`
 	RevisedMet     *bool  `json:"revised_met,omitempty"`
 	RevisedNote    string `json:"revised_note,omitempty"`
+	// Rounds is how many trials ran (1 = the candidate only); MetRound is the
+	// first round whose trial was "met", 0 when none was. The owner's product
+	// shape (2026-09-06): every round runs a trial and brings suggestions back
+	// until the person accepts; `met` stands in for "acceptable" here.
+	Rounds   int `json:"rounds,omitempty"`
+	MetRound int `json:"met_round,omitempty"`
 	// KeptByOwner is left null for the owner to fill in after a person has
 	// read the SKILL.md — 05 R-45's other half this harness cannot produce on
 	// its own. MetByOwner stays for a person to overrule the automatic Met.
@@ -335,54 +342,84 @@ func trialCandidate(t *testing.T, a *api, ctx context.Context, c *client, trial 
 }
 
 // attachTrialRun runs the candidate, feeds the observation back, lets the
-// model revise, and — when it did revise — materializes the revision as a new
-// candidate and runs that too (05 R-45, 2026-09-06: `met` counts within one
-// revision round; the first trial is reported beside it).
+// model revise, materializes the revision as a new candidate and runs that
+// too — up to CREATION_MEASURE_ROUNDS trials (default 3), stopping at the
+// first "met" (05 R-45, 2026-09-06: `met` counts within the revision rounds;
+// the first trial is reported beside it).
 func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *creation.Service, trial *trialRun, v creation.View, row sessionRow, outDir string) (sessionRow, creation.View) {
 	t.Helper()
-	first := trialCandidate(t, a, ctx, c, trial, v.Snapshot.Candidate)
-	row.RunStatus, row.EvalStatus, row.Overall, row.Met, row.MetNote = first.runStatus, first.evalStatus, first.overall, first.met, first.note
-	if first.runID == "" {
+	rounds := 3
+	if n, err := strconv.Atoi(os.Getenv("CREATION_MEASURE_ROUNDS")); err == nil && n > 0 {
+		rounds = n
+	}
+	last := trialCandidate(t, a, ctx, c, trial, v.Snapshot.Candidate)
+	row.RunStatus, row.EvalStatus, row.Overall, row.Met, row.MetNote = last.runStatus, last.evalStatus, last.overall, last.met, last.note
+	if last.runID == "" {
 		return row, v
 	}
-
-	beforeHash := ""
-	if v.Snapshot.Draft != nil {
-		beforeHash = v.Snapshot.Draft.ContentHash
+	row.Rounds = 1
+	if last.met != nil && *last.met {
+		row.MetRound = 1
 	}
-	v = creationAttachRun(t, c, v, first.runID)
-	// A nudge (unchanged draft, missing diagram node) re-queues the step, and
-	// a revision is followed by its validation step; the loop is bounded by
-	// MaxNudges plus a few settling steps (run j left every session queued
-	// at the third step).
-	for i := 0; i < creation.MaxNudges+4; i++ {
-		v = creationStep(t, s, v)
-		row.ModelCalls++
-		if v.State != "queued" {
+	for round := 2; round <= rounds && row.MetRound == 0; round++ {
+		beforeHash := ""
+		if v.Snapshot.Draft != nil {
+			beforeHash = v.Snapshot.Draft.ContentHash
+		}
+		v = creationAttachRun(t, c, v, last.runID)
+		// A nudge (unchanged draft, missing diagram node) re-queues the step,
+		// a revision is followed by its validation step, and a review that
+		// moves the fix into the criteria or the sample comes back as a
+		// confirmation (prompt v11) which this harness grants as the person
+		// would. Bounded by MaxNudges plus a few settling steps (run j left
+		// every session queued at the third step).
+		for i := 0; i < creation.MaxNudges+6; i++ {
+			switch v.State {
+			case "queued":
+				v = creationStep(t, s, v)
+				row.ModelCalls++
+				continue
+			case "waiting_confirmation":
+				if v.Snapshot.PendingAction == "" {
+					break
+				}
+				v = creationAct(t, c, v, v.Snapshot.PendingAction)
+				row.AutoConfirms++
+				continue
+			}
 			break
 		}
+		afterHash := ""
+		if v.Snapshot.Draft != nil {
+			afterHash = v.Snapshot.Draft.ContentHash
+		}
+		revised := beforeHash != afterHash
+		if round == 2 {
+			row.RevisedAfterRun = &revised
+		}
+		if !revised {
+			break
+		}
+		if v.State != "draft_ready" {
+			row.RevisedNote = "revised draft did not settle: " + v.State
+			break
+		}
+		// A new hash cleared the candidate; materialize builds a new version of
+		// the same Skill (ADR-003: a revision is a new version).
+		v = creationAct(t, c, v, "materialize")
+		if v.Snapshot.Draft != nil {
+			dumpDraftMD(t, outDir, row.ID, fmt.Sprintf("interactive-r%d", round), v.Snapshot.Draft.Skill.Name, v.Snapshot.Draft.Skill.Description, v.Snapshot.Draft.Skill.Body)
+		}
+		last = trialCandidate(t, a, ctx, c, trial, v.Snapshot.Candidate)
+		row.RevisedOverall, row.RevisedMet, row.RevisedNote = last.overall, last.met, last.note
+		if last.runID == "" {
+			break
+		}
+		row.Rounds = round
+		if last.met != nil && *last.met {
+			row.MetRound = round
+		}
 	}
-	afterHash := ""
-	if v.Snapshot.Draft != nil {
-		afterHash = v.Snapshot.Draft.ContentHash
-	}
-	revised := beforeHash != afterHash
-	row.RevisedAfterRun = &revised
-	if !revised {
-		return row, v
-	}
-	if v.State != "draft_ready" {
-		row.RevisedNote = "revised draft did not settle: " + v.State
-		return row, v
-	}
-	// A new hash cleared the candidate; materialize builds a new version of
-	// the same Skill (ADR-003: a revision is a new version).
-	v = creationAct(t, c, v, "materialize")
-	if v.Snapshot.Draft != nil {
-		dumpDraftMD(t, outDir, row.ID, "interactive-revised", v.Snapshot.Draft.Skill.Name, v.Snapshot.Draft.Skill.Description, v.Snapshot.Draft.Skill.Body)
-	}
-	second := trialCandidate(t, a, ctx, c, trial, v.Snapshot.Candidate)
-	row.RevisedOverall, row.RevisedMet, row.RevisedNote = second.overall, second.met, second.note
 	return row, v
 }
 
@@ -393,7 +430,7 @@ func revisedMetLabel(row sessionRow) string {
 		}
 		return "n/a"
 	}
-	return fmt.Sprintf("%v (%s)", *row.RevisedMet, row.RevisedOverall)
+	return fmt.Sprintf("%v (%s, rounds=%d, met_round=%d)", *row.RevisedMet, row.RevisedOverall, row.Rounds, row.MetRound)
 }
 
 func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
@@ -513,7 +550,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 			results.Summary.FormatPass++
 		}
 		if row.Met != nil {
-			within := *row.Met || (row.RevisedMet != nil && *row.RevisedMet)
+			within := row.MetRound > 0
 			if row.Kind == "diagram" {
 				results.Summary.DiagramMetDenominator++
 				if within {

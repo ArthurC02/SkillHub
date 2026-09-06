@@ -431,3 +431,21 @@ func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
 		t.Fatalf("the model was not told: %+v", last)
 	}
 }
+
+// A draft that arrives without a message is stored as a draft (run n,
+// 2026-09-06: two sessions failed on the empty sentence, not on the draft).
+func TestProposalAcceptsADraftWithAnEmptyMessage(t *testing.T) {
+	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
+		return "h-" + d.Body, "{}", false, nil
+	}}
+	zero := 0.0
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &llmclient.CreationStepResponse{Outcome: "draft", Message: "", Brief: "b", Draft: &llmclient.GeneratedSkill{Name: "x", Body: "body"}}
+	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || state != "draft_ready" || e.Snapshot.Draft == nil {
+		t.Fatalf("an empty message beside a draft must not fail the step: state=%q err=%v", state, err)
+	}
+	if r.Message == "" {
+		t.Fatal("the person still needs a sentence")
+	}
+}

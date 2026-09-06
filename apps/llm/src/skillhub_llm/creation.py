@@ -31,7 +31,7 @@ router = APIRouter()
 # The measurement (05 R-45) may point this at another tier; the product key Go
 # issues per step is still pinned to gpt-5.4-mini (worker/creation_wiring.go).
 MODEL = os.getenv("CREATION_MODEL", "gpt-5.4-mini")
-PROMPT_VERSION = "creation-step/v9"
+PROMPT_VERSION = "creation-step/v12"
 DATA_TAG = "untrusted_creation_snapshot"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
 Reason = Literal[
@@ -178,6 +178,80 @@ def _observe(state: _State) -> dict:
     return {"phase": phase}
 
 
+class ReviewEdit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    criterion: str
+    cause: str
+    # Where the fix lives. Run m (2026-09-06): 11/14 sessions revised the body
+    # and 1 of them passed, because the judge's reasons were a placeholder
+    # sample, a criterion about a branch the sample never takes, or data the
+    # trial cannot reach — none of which a body edit repairs.
+    target: Literal["body", "criteria", "sample_input"]
+    edit: str
+
+
+class ReviewDiagnosis(BaseModel):
+    """The first of the review phase's two calls: what to change, before changing it.
+
+    Runs k and l (2026-09-06): asked to say what changed and change it in one
+    answer, the mini model described an edit and returned the byte-identical
+    body in 10 of 14 sessions. Naming the edits first, then rewriting with
+    them in the prompt, separates the two.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    edits: list[ReviewEdit] = Field(..., max_length=12)
+
+
+REWRITE_INSTRUCTIONS = (
+    "You are revising the SKILL.md body of an Agent Skill. Apply every edit listed below to "
+    "the current body and output the complete revised body as plain Markdown text: no JSON, "
+    "no code fence around the whole body, no commentary before or after. Keep everything "
+    "the edits do not touch."
+)
+
+DIAGNOSIS_INSTRUCTIONS = (
+    "A trial run of the draft Skill was judged against its acceptance criteria; the "
+    "evaluation is the newest tool observation. For every criterion marked failed or "
+    "undetermined, write one concrete edit and say where it lives: target body when the "
+    "Skill's instructions caused it (which sentence(s) to add or replace, where, the exact "
+    "wording); target criteria when the criterion cannot be decided from this sample in one "
+    "run (a branch the sample does not take, a quantity it does not contain) — rewrite the "
+    "criterion so this sample decides it, or drop it; target sample_input when the sample "
+    "itself is the cause (placeholder text instead of real material, a request that needs "
+    "data the trial cannot reach) — write the replacement sample. Edits only; no draft, no "
+    "prose."
+)
+
+
+def _unmet_evaluation(messages) -> bool:
+    """True when the newest tool observation is an evaluation with a criterion not passed."""
+    for m in reversed(messages):
+        if m.role != "tool":
+            continue
+        if not m.content.startswith('{"evaluation"'):
+            return False
+        try:
+            results = json.loads(m.content)["evaluation"].get("criterion_results") or []
+        except (ValueError, KeyError, AttributeError, TypeError):
+            return False
+        return any(r.get("result") in ("failed", "undetermined") for r in results)
+    return False
+
+
+def _add_usage(a: GatewayUsage | None, b: GatewayUsage | None) -> GatewayUsage | None:
+    if a is None or b is None:
+        return None
+    cost = None if a.cost_usd is None or b.cost_usd is None else a.cost_usd + b.cost_usd
+    return GatewayUsage(
+        prompt_tokens=a.prompt_tokens + b.prompt_tokens,
+        completion_tokens=a.completion_tokens + b.completion_tokens,
+        cost_usd=cost,
+    )
+
+
 PHASE_INSTRUCTIONS = {
     "understand": (
         "Resolve missing requirements and propose concrete confirmations. Do not draft "
@@ -199,7 +273,12 @@ PHASE_INSTRUCTIONS = {
         "failed every criterion. When a confirmed diagram_understanding exists, the body "
         "walks its nodes as steps, in order, each named as the diagram names it, and adds "
         "no step, condition, role or tool the diagram does not show; where the diagram is "
-        "silent, say so instead of inventing. Go refuses a draft whose body skips a node."
+        "silent, say so instead of inventing. Go refuses a draft whose body skips a node. "
+        "Two rules go into the body verbatim as instructions to the agent: use only what "
+        "the input contains — never add a date, name, assumption, step or branch the input "
+        "does not give, and write 'not given' where it is silent; and deliver the finished "
+        "artifact itself in the output — never a description of the rules, a plan, or a "
+        "request for access."
     ),
     "revise": (
         "Inspect draft_validation.report and tool observations. Repair the specific "
@@ -214,8 +293,10 @@ PHASE_INSTRUCTIONS = {
         "When an evaluation is present and any criterion is failed or undetermined, return "
         "outcome draft with a revised body that removes the exact cause the judge named "
         "(the agent asked instead of acting, skipped a required output, produced the wrong "
-        "shape) and say what changed; return the unchanged draft only when every criterion "
-        "passed. Missing evaluation is not success, but you cannot start a trial and must not "
+        "shape). The message is for the person: list which criteria failed and why, what you "
+        "changed in the body, and that they can accept this draft or say what to change "
+        "instead. Return the unchanged draft only when every criterion passed. Missing "
+        "evaluation is not success, but you cannot start a trial and must not "
         "ask for one or re-validate an unchanged draft: when validation passed and no "
         "evaluation exists yet, return outcome draft with the validated draft — the person "
         "starts the trial from it and a later step brings the evaluation back to you."
@@ -237,8 +318,9 @@ def _reason_node(gateway_key: str, phase: str):
             "a single trial run can confirm or refute (what output, in what shape, under what "
             "input). Propose sample_input with them: the complete message a user would send for "
             "one trial run — one sentence stating the request, then the literal material it "
-            "applies to (the rows, the text, the code), never a description of a file and never "
-            "a request that needs data the trial cannot reach. "
+            "applies to (the rows, the text, the code), never a description of a file, never a "
+            "placeholder standing in for material (write the material itself, invented if it "
+            "must be), and never a request that needs data the trial cannot reach. "
             "Every criterion must be decidable from that one sample in one run: no branch the "
             "sample does not take, no quantity the sample does not contain, no clause about "
             "invalid or missing input unless the sample is that input. If a situation matters, "
@@ -295,6 +377,124 @@ def _reason_node(gateway_key: str, phase: str):
                     },
                 },
             ]
+        diagnosis_usage: GatewayUsage | None = None
+        rewritten_body = ""
+        if phase == "review" and _unmet_evaluation(req.messages):
+            # Call one: name the edits. A failure here is not a broken step; the
+            # rewrite call below still runs, just without the list.
+            try:
+                raw = (
+                    await client(req.timeout_seconds)
+                    .with_options(api_key=gateway_key)
+                    .chat.completions.with_raw_response.create(
+                        model=MODEL,
+                        messages=[
+                            {"role": "system", "content": DIAGNOSIS_INSTRUCTIONS + "\n\n" + system},
+                            {"role": "user", "content": content},
+                        ],
+                        max_tokens=min(req.max_output_tokens, 4000),
+                        response_format={
+                            "type": "json_schema",
+                            "json_schema": {
+                                "name": "review_diagnosis",
+                                "strict": True,
+                                "schema": ReviewDiagnosis.model_json_schema(),
+                            },
+                        },
+                        extra_body=_metadata(
+                            operation="creation-review-diagnosis", session_id=req.session_id
+                        ),
+                    )
+                )
+                completion = raw.parse()
+                diagnosis = ReviewDiagnosis.model_validate_json(
+                    completion.choices[0].message.content or ""
+                )
+                diagnosis_usage = _usage(completion, raw.headers)
+                if diagnosis.edits:
+                    body_edits = [e for e in diagnosis.edits if e.target == "body"]
+                    other = [e for e in diagnosis.edits if e.target != "body"]
+                    if other:
+                        # The fix is in what the person confirmed: propose the
+                        # confirmation again with the corrected fields (Go asks
+                        # the person; a changed brief clears draft and candidate).
+                        system += (
+                            "\n\nEdits you decided on for this revision. Some are not in the "
+                            "body: return outcome confirm_brief with the brief unchanged and "
+                            "acceptance_criteria and sample_input rewritten as listed (every "
+                            "criterion decidable from that sample in one run; the sample is real "
+                            "material, never a placeholder), and a message telling the person "
+                            "which criteria failed, what you changed and why, and that they "
+                            "confirm to run again or say what to change instead:\n"
+                            + "\n".join(
+                                f"- [{e.target}] [{e.criterion}] {e.cause} -> {e.edit}"
+                                for e in diagnosis.edits
+                            )
+                        )
+                    else:
+                        # Call two: rewrite the body as plain text. Run n
+                        # (2026-09-06): with the edit list in the prompt the mini
+                        # model still returned the byte-identical draft object in
+                        # 4 of 14 sessions while describing the change. A body-only
+                        # text answer is the task it can do; the decision call
+                        # below then only writes the message, and the body it
+                        # returns is replaced by this one.
+                        edits_text = "\n".join(
+                            f"- [{e.criterion}] {e.cause} -> {e.edit}" for e in body_edits
+                        )
+                        rewrite_raw = (
+                            await client(req.timeout_seconds)
+                            .with_options(api_key=gateway_key)
+                            .chat.completions.with_raw_response.create(
+                                model=MODEL,
+                                messages=[
+                                    {"role": "system", "content": REWRITE_INSTRUCTIONS},
+                                    {
+                                        "role": "user",
+                                        "content": "Current body:\n\n"
+                                        + (req.draft.body if req.draft else "")
+                                        + "\n\nEdits:\n"
+                                        + edits_text,
+                                    },
+                                ],
+                                max_tokens=req.max_output_tokens,
+                                extra_body=_metadata(
+                                    operation="creation-review-rewrite", session_id=req.session_id
+                                ),
+                            )
+                        )
+                        rewrite = rewrite_raw.parse()
+                        diagnosis_usage = _add_usage(
+                            diagnosis_usage, _usage(rewrite, rewrite_raw.headers)
+                        )
+                        candidate = (rewrite.choices[0].message.content or "").strip()
+                        if candidate and req.draft and candidate != req.draft.body.strip():
+                            rewritten_body = candidate
+                        system += (
+                            "\n\nEdits you decided on for this revision — apply every one; the "
+                            "returned body must differ from the current draft:\n" + edits_text
+                        )
+                        if rewritten_body:
+                            system += (
+                                "\n\nThe body has already been rewritten with these edits; return "
+                                "outcome draft with the manifest fields of the current draft and a "
+                                "message for the person (which criteria failed, what changed, that "
+                                "they can accept or say what to change). The body you return is "
+                                "replaced by the rewritten one."
+                            )
+            except (
+                OpenAIError,
+                ValidationError,
+                IndexError,
+                AttributeError,
+                TypeError,
+                ValueError,
+            ) as exc:
+                logger.warning(
+                    "creation review diagnosis skipped (%s) session=%s",
+                    type(exc).__name__,
+                    req.session_id,
+                )
         try:
             raw = (
                 await client(req.timeout_seconds)
@@ -348,7 +548,12 @@ def _reason_node(gateway_key: str, phase: str):
                 raise ValueError("over cap: acceptance_criteria")
             if len(decision.sample_input or "") > 4000:
                 raise ValueError("over cap: sample_input")
-            return {"decision": decision, "usage": _usage(completion, raw.headers)}
+            if rewritten_body and decision.outcome == "draft" and decision.draft is not None:
+                decision.draft = decision.draft.model_copy(update={"body": rewritten_body})
+            usage = _usage(completion, raw.headers)
+            if diagnosis_usage is not None:
+                usage = _add_usage(usage, diagnosis_usage)
+            return {"decision": decision, "usage": usage}
         except (
             OpenAIError,
             ValidationError,

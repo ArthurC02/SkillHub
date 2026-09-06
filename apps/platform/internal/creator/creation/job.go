@@ -322,7 +322,13 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 				state = "needs_reupload"
 			}
 			e.Snapshot.PendingAction = ""
-			e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"})
+			failed := "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
+			if errors.Is(err, ErrInvalidCommand) {
+				// Say which side broke: the person reads this, and so does the
+				// next measurement (run n: two 「未完成」 with nothing to read).
+				failed = "這一步未完成：模型的回覆不符合會話規則，已保留進度與實際可取得的費用。請檢查後再繼續。"
+			}
+			e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: failed})
 			if errors.Is(callErr, ErrNotFound) {
 				state = "waiting_confirmation"
 				e.Snapshot.PendingAction = "confirm_references"
@@ -430,6 +436,13 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	// steps in the body. The fingerprint is the fact; the text is dropped.
 	if p.DiagramFingerprint == "" {
 		r.DiagramUnderstanding = ""
+	}
+	// A draft with no sentence beside it is a draft, not an invalid step. Run n
+	// (2026-09-06): two reference sessions died right after confirm_brief with
+	// nothing to read; an empty message is the one rule below the model can
+	// break while doing its job.
+	if r.Message == "" && r.Draft != nil {
+		r.Message = "草稿已更新，請看驗證結果。"
 	}
 	if r.DiagramUnderstanding != "" && !validDiagramInterpretation(r.DiagramUnderstanding) {
 		return "", false, ErrInvalidCommand
