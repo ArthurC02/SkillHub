@@ -1,0 +1,75 @@
+{
+  "checks": [],
+  "limitations": [
+    "必須明確提供要合併的檔案清單。",
+    "來源檔案的表頭必須一致；若不一致，需先統一表頭再合併，流程也會詢問是否強制合併並將缺少的欄位留空。",
+    "執行前必須備份所有來源檔案；若輸出檔案出錯，需從備份恢復。",
+    "執行範例需要 Python，以及 pandas、openpyxl 與 lxml。",
+    "小型檔案實作寫入活頁簿的作用中工作表；大型檔案的 XML 實作選取主要工作表，來源路徑使用 sheet1.xml。",
+    "總檔案大小低於 10MB 時使用 pandas；高於 10MB 時使用 XML 附加方案。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 將多個結構相同的 Excel 活頁簿合併成一個 XLSX 檔案，先核對欄位標題，再逐行附加資料，且表頭只保留一次。使用者必須提供檔案清單；輸出檔名可省略，預設為「合併結果.xlsx」。小型檔案以 pandas 與 openpyxl 處理，大型檔案則以 XML 附加資料列，輸出格式、樣式與欄寬沿用第一個檔案。",
+  "tags": {
+    "dependencies": [
+      "excel-safe-workflow",
+      "python",
+      "pandas",
+      "openpyxl",
+      "lxml"
+    ],
+    "inputs": [
+      "xlsx spreadsheets"
+    ],
+    "outputs": [
+      "xlsx merged spreadsheet"
+    ],
+    "tools": [
+      "excel",
+      "xml"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Merge these three Excel workbooks (XLSX files) into one merged.xlsx.",
+      "zh_hant": "請把這三個 Excel 活頁簿（XLSX 檔案）合併成一個 merged.xlsx。"
+    },
+    {
+      "en": "Combine all same-structure .xlsx spreadsheets in this folder and use the default output filename.",
+      "zh_hant": "合併這個資料夾內所有結構相同的 .xlsx 試算表，輸出檔名使用預設值。"
+    },
+    {
+      "en": "Append these datasets together and keep the first-row headers only once.",
+      "zh_hant": "把這幾份資料接在一起，第一列的欄位標題只保留一次。"
+    },
+    {
+      "en": "Check whether the headers in these files match, then merge all their data rows.",
+      "zh_hant": "請先檢查這些檔案的表頭是否一致，再合併所有資料列。"
+    },
+    {
+      "en": "I have several monthly datasets with the same columns and need to deliver one consolidated table.",
+      "zh_hant": "我手上有多份欄位相同的月度資料，現在必須交付一份合併後的總表。"
+    },
+    {
+      "en": "Append the rows from these large Excel files into one XLSX while inheriting the formatting from the first file.",
+      "zh_hant": "將這些大型 Excel 檔案逐列追加到單一 XLSX，並沿用第一個檔案的格式。"
+    },
+    {
+      "en": "Combine everything into one file and save the result as “annual-summary.xlsx”.",
+      "zh_hant": "把所有內容合在一起，並將結果存成「年度彙總.xlsx」。"
+    },
+    {
+      "en": "Merge these spreadsheets containing formulas and adjust formula row references for appended rows.",
+      "zh_hant": "合併這些含有公式的試算表，追加資料列時調整公式中的列號參照。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1212,
+    "cost_source": "gateway",
+    "cost_usd": 0.039947,
+    "prompt_tokens": 4338
+  }
+}

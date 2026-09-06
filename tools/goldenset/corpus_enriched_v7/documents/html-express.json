@@ -1,0 +1,80 @@
+{
+  "checks": [],
+  "limitations": [
+    "不處理 PDF、履歷、PPT、落地頁或白皮書交付；文件指定改用 kami。",
+    "不處理影片、動畫、字幕或轉場；文件指定改用 hyperframes。",
+    "不包含上線部署。",
+    "套件檔案未提供，但組裝流程引用 assets/skeleton.html、assets/tokens.css 與 assets/components/。",
+    "視覺規格綁定智见AI（繁中：智見AI）DESIGN.md；元件須引用 token 變數，不可寫死顏色或字級。",
+    "字型僅使用 fallback，不嵌入字型檔案。",
+    "不得保留占位符或編造資料；缺漏資料須標為「[数据待补：说明]（繁中：[資料待補：說明]）」。",
+    "不使用漸層、玻璃擬態、霓虹或強陰影。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 將資訊密集的內容整理成單一、自包含且可雙擊開啟的 HTML 網頁，例如調研報告、比較矩陣、清單、資料看板、時間線與決策頁。使用者需提供要呈現的內容或資料；流程會依資訊形態選用指標卡、表格、時間線、清單、程式碼區塊、摺疊區塊等元件。若資料缺漏，頁面會以「[数据待补：说明]（繁中：[資料待補：說明]）」標示，而不會編造資料。",
+  "tags": {
+    "dependencies": [
+      "assets/skeleton.html",
+      "assets/tokens.css",
+      "assets/components",
+      "design.md brand system"
+    ],
+    "inputs": [
+      "research report content",
+      "comparison data",
+      "structured data",
+      "checklist content",
+      "metrics",
+      "timeline data",
+      "decision content",
+      "code and configuration"
+    ],
+    "outputs": [
+      "html — self-contained webpage"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Turn this research report into a single self-contained HTML report that I can open by double-clicking.",
+      "zh_hant": "請把這份調研報告整理成單一、自包含的 HTML 報告，讓我能直接雙擊開啟。"
+    },
+    {
+      "en": "Create a webpage comparison matrix for these options and use status badges to show their differences.",
+      "zh_hant": "將這幾個方案做成網頁比較矩陣，並用狀態標籤呈現差異。"
+    },
+    {
+      "en": "Organize these key metrics into a data dashboard with two to four highlights shown side by side.",
+      "zh_hant": "把這些關鍵指標整理成資料看板，將二至四個重點並排呈現。"
+    },
+    {
+      "en": "Arrange these milestones by date to present the project timeline and roadmap.",
+      "zh_hant": "請依日期排列這些里程碑，呈現專案的時間線與路線圖。"
+    },
+    {
+      "en": "Organize this SOP into a step-by-step checklist, marking missing data for completion instead of filling it in.",
+      "zh_hant": "把這套 SOP 整理成逐項檢查的清單；缺少的資料請標示待補，不要自行填寫。"
+    },
+    {
+      "en": "I have multiple viewpoints, quotations, and pros and cons, and I need to deliver a one-page decision page for team discussion tomorrow.",
+      "zh_hant": "我手上有多方觀點、原話與優缺點，明天必須交付一頁決策頁供團隊討論。"
+    },
+    {
+      "en": "Place this code, commands, and configuration in scannable blocks, with the longer explanations in collapsible sections.",
+      "zh_hant": "請把這批程式碼、指令和設定內容放進適合掃讀的區塊，並將較長的說明設為可摺疊。"
+    },
+    {
+      "en": "Turn this structured data into a self-contained .html webpage table without converting it into a comparison matrix.",
+      "zh_hant": "將這些結構化資料製作成一個自包含的 .html 網頁表格，不要改成比較矩陣。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2447,
+    "cost_source": "gateway",
+    "cost_usd": 0.055967,
+    "prompt_tokens": 2602
+  }
+}

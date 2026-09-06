@@ -175,7 +175,7 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 	} else if vec, err := s.embedQuery(ctx, query); err != nil {
 		slog.Warn("query embedding failed, falling back to FTS", "error", err)
 		out.DegradedReason = "embedding unavailable; lexical search only"
-	} else if hybridHits, total, err := s.hybridSearch(ctx, queries, query, vec, limit+1, filters); err != nil {
+	} else if hybridHits, total, err := s.hybridSearch(ctx, queries, query, vec, limit+1, filters, MaxCosineDistance); err != nil {
 		slog.Warn("hybrid search failed, falling back to FTS", "error", err)
 		out.DegradedReason = "hybrid search unavailable; lexical search only"
 	} else {
@@ -225,7 +225,7 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 		// matched without the filters, and reporting that as this page's total
 		// would tell the reader their filtered page holds rows it does not.
 		if embedding != nil {
-			unfiltered, _, err = s.hybridSearch(ctx, queries, query, embedding, limit, searchFilters{})
+			unfiltered, _, err = s.hybridSearch(ctx, queries, query, embedding, limit, searchFilters{}, MaxCosineDistance)
 		} else {
 			unfiltered, _, err = s.ftsOnlySearch(ctx, queries, query, limit, searchFilters{})
 		}
@@ -326,12 +326,12 @@ func (s *Service) embedQuery(ctx context.Context, query string) (*pgvector.Vecto
 // anonymous caller has no session to derive a scope from and must never supply
 // one. The filters are the only caller-supplied predicates, and they can only
 // ever narrow that scope.
-func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query string, embedding *pgvector.Vector, limit int32, filters searchFilters) ([]searchResult, int64, error) {
+func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query string, embedding *pgvector.Vector, limit int32, filters searchFilters, maxDistance float64) ([]searchResult, int64, error) {
 	rows, err := queries.PublicHybridSearchSkills(ctx, gen.PublicHybridSearchSkillsParams{
 		Query:          query,
 		BigramQuery:    lexicalQuery(query, "&"),
 		QueryEmbedding: embedding,
-		MaxDistance:    MaxCosineDistance,
+		MaxDistance:    maxDistance,
 		ResultLimit:    limit,
 		HasScript:      filters.HasScript,
 		SpecValidated:  filters.SpecValidated,

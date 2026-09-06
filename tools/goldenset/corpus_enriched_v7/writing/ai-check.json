@@ -1,0 +1,82 @@
+{
+  "checks": [],
+  "limitations": [
+    "少於 100 字的文字可用訊號較少，信心最高只能標為 Medium。",
+    "非英文文字若沒有已知的語言相符校準，不會給予 High 信心。",
+    "學術或法律文字可能合理使用避險措辭與分號，因此需調整 Signal C 與 Signal G。",
+    "技術寫作中的領域術語可能壓低 Signal A，不會因使用正確的領域詞彙而扣分。",
+    "若文字可能出自基礎模型或最低程度微調的改寫器，即使表面訊號乾淨，信心也以 Medium 為上限。",
+    "若來源模型可能是 Claude，低分判定需額外謹慎。",
+    "若使用者表示文字經過改寫或多次轉述，所有訊號都會降低權重。",
+    "風格訊號依語料而異，不能只依單一訊號判斷，需由多個類別相互佐證。",
+    "修改建議只會在總分高於 6 時出現。",
+    "輸出採固定的 AI-CHECK REPORT 結構。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 接收一段文字，依九類語言與結構訊號分析它是否呈現 AI 生成或編修特徵。它會產生固定格式的 AI-CHECK REPORT，包含判定、信心、0–27 分總分、各類訊號分數、引用證據，以及 AI 編修比例估計。總分高於 6 時，報告另會針對三個主要訊號提出修改建議。",
+  "tags": {
+    "dependencies": [],
+    "inputs": [
+      "plain text — 待分析文字",
+      "draft — 待發布草稿",
+      "slack message — 非同步訊息",
+      "email — 電子郵件",
+      "article — 文章"
+    ],
+    "outputs": [
+      "plain text — ai-check report"
+    ],
+    "tools": [
+      "ai-check",
+      "gptzero",
+      "binoculars",
+      "pangram 3.0",
+      "editlens",
+      "ghostbuster",
+      "dependencyai"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Run ai-check on this text to see whether it sounds AI-written and produce an AI-CHECK REPORT.",
+      "zh_hant": "請用 ai-check 檢查這段文字是否像 AI 寫的，並產生 AI-CHECK REPORT。"
+    },
+    {
+      "en": "Before I publish this draft, check which words, sentence patterns, and structures give away AI involvement.",
+      "zh_hant": "請在我發布這篇草稿前，檢查其中有哪些會暴露 AI 痕跡的用詞、句型與結構。"
+    },
+    {
+      "en": "This reads overly uniform and generic; analyze which specific features create that impression.",
+      "zh_hant": "這段內容讀起來太工整、太泛泛了，請分析究竟是哪些特徵造成這種感覺。"
+    },
+    {
+      "en": "I have an AI draft that was edited by a person, and I need to estimate how much of it still appears AI-written or AI-edited.",
+      "zh_hant": "我手上有一篇經過人工修改的 AI 草稿，現在必須估計其中有多少比例仍像是 AI 撰寫或編修。"
+    },
+    {
+      "en": "Score this article from 0–3 in each of the nine signal categories, quote the triggering text, and calculate the total out of 27.",
+      "zh_hant": "請按九類訊號為這篇文章各打 0–3 分，引用觸發訊號的原文，並計算 27 分制總分。"
+    },
+    {
+      "en": "This Slack message uses “lmk” and approximate numbers but reads like a formal status report; check it for AI-style register collapse.",
+      "zh_hant": "這則 Slack 訊息雖然用了 lmk 和約數，卻像正式狀態報告；請檢查是否有語域崩塌的 AI 特徵。"
+    },
+    {
+      "en": "Check this email’s hedging, transitions, punctuation, and templated closing, and explain which parts sound AI-generated.",
+      "zh_hant": "請檢查這封電子郵件的避險措辭、轉折語、標點與制式結尾，說明哪些地方像 AI。"
+    },
+    {
+      "en": "I’m unsure whether a person wrote this; give it a Human, Likely Human, Uncertain, Likely AI, or AI verdict with a confidence level.",
+      "zh_hant": "我不確定這是不是人寫的；請給出 Human、Likely Human、Uncertain、Likely AI 或 AI 的判定與信心水準。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1522,
+    "cost_source": "gateway",
+    "cost_usd": 0.061807,
+    "prompt_tokens": 7470
+  }
+}

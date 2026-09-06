@@ -1,0 +1,92 @@
+{
+  "checks": [
+    {
+      "field": "summary",
+      "rule": "unsupported_appraisal",
+      "severity": "warning",
+      "token": "accurate"
+    }
+  ],
+  "limitations": [
+    "工作流程要求先讀取 `reference/ECONOMIST-SIGNATURE.md`；深入檢查或特定問題需讀取相應的參考檔案。",
+    "只有在使用者明確要求檢查方言，或文件內部存在不一致時，才讀取詳細的方言慣例。",
+    "保留直接引文的原始措辭。",
+    "不修改程式碼範例，但可檢查其中的註解與文件文字。",
+    "不替換沒有日常用語替代方案的技術術語。",
+    "不修改專有名詞與品牌名稱。",
+    "不強加另一種方言或拼法，而是配合文件既有慣例。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 依照《The Economist》風格指南編輯 Markdown、HTML、文件、程式碼說明、技術寫作及其他書面內容。它會檢查清晰度、精確性、簡潔性、結構、語氣、標點、數字格式與用字問題，並辨識被動語態、模糊措辭、贅詞、術語及陳腔濫調。使用者需提供待檢查的文字；回饋會按類別列出問題、標示行或段落、對照原文與建議替換文字，並簡述理由。",
+  "tags": {
+    "dependencies": [
+      "reference/ECONOMIST-SIGNATURE.md",
+      "reference/CLARITY.md",
+      "reference/PRECISION.md",
+      "reference/DIALECT-CONVENTIONS.md",
+      "reference/COMMON-ERRORS.md",
+      "reference/PUNCTUATION.md",
+      "reference/NUMBERS.md",
+      "reference/STRUCTURE.md",
+      "reference/TONE.md",
+      "reference/ABBREVIATIONS.md",
+      "reference/CAPITALIZATION.md",
+      "reference/SPECIAL-CONTEXTS.md",
+      "reference/WORDS.md"
+    ],
+    "inputs": [
+      "markdown written content",
+      "html written content",
+      "plain text written content"
+    ],
+    "outputs": [
+      "plain text editorial feedback"
+    ],
+    "tools": [
+      "the economist style guide"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Edit this Markdown document using The Economist style guide, and list each issue by category with the original text, suggested replacement and reason.",
+      "zh_hant": "請依照《The Economist》風格指南編輯這份 Markdown 文件，並按類別列出問題、原文、建議修改及理由。"
+    },
+    {
+      "en": "Check this HTML article for passive voice, vague quantifiers, fillers, jargon and clichés.",
+      "zh_hant": "請檢查這篇 HTML 文章是否有被動語態、模糊量詞、贅詞、術語或陳腔濫調。"
+    },
+    {
+      "en": "Cut unnecessary words, use shorter everyday language and preserve the original meaning.",
+      "zh_hant": "幫我刪去不必要的字詞，改用較短的日常用語，並保留原本意思。"
+    },
+    {
+      "en": "Move the main point to the opening, check each paragraph’s purpose and topic sentence, and improve the document’s logical flow.",
+      "zh_hant": "請把主旨移到開頭，檢查每段的用途與主題句，並改善全文的邏輯順序。"
+    },
+    {
+      "en": "My draft mixes British and American spelling, and its quotation marks and date formats are inconsistent; I need those inconsistencies identified before delivery.",
+      "zh_hant": "我的稿件混用了英式與美式拼法，而且引號和日期格式不一致；交稿前需要找出這些不一致之處。"
+    },
+    {
+      "en": "Review the number, percentage, percentage-point, date and currency formatting in this technical writing.",
+      "zh_hant": "請檢查這份技術寫作中的數字、百分比、百分點、日期和貨幣格式。"
+    },
+    {
+      "en": "Assess the article’s tone and identify passages that are arrogant, preachy, too chatty or overloaded with adjectives and intensifiers.",
+      "zh_hant": "請評估這篇文章的語氣，找出傲慢、說教、過度聊天或過度使用形容詞與強調詞的地方。"
+    },
+    {
+      "en": "Review the comments and documentation in this code document, but do not alter the code examples themselves.",
+      "zh_hant": "請檢查這份程式碼文件中的註解與說明文字，但不要改動程式碼範例本身。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1582,
+    "cost_source": "gateway",
+    "cost_usd": 0.039347,
+    "prompt_tokens": 2738
+  }
+}

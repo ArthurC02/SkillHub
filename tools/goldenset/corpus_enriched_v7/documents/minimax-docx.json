@@ -1,0 +1,85 @@
+{
+  "checks": [],
+  "limitations": [
+    "首次使用須執行 Bash 的 scripts/setup.sh，或在 Windows 執行 PowerShell 的 scripts/setup.ps1；--minimal 可略過選用相依套件。",
+    "每個工作階段第一次操作前須執行 scripts/env_check.sh；若結果為 NOT READY，不得繼續。",
+    "使用直接 C# 路徑前，須先閱讀相關的 Samples/*.cs 範例。",
+    "自訂樣式、複雜表格、多章節版面、頁首頁尾、目錄及圖片等結構性操作須使用 C#，而非僅依賴 CLI。",
+    "範本套用流程必須執行完整驗證及 XSD hard gate-check，通過後才能交付；建立與編輯流程建議驗證，只有極簡單操作可略過。",
+    "DOC 格式須先透過 scripts/doc_to_docx.sh 轉換為 DOCX。",
+    "CLI 建立文件的 --type 列出的類型為 report、letter、memo 與 academic。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 使用 OpenXML SDK（.NET）的命令列工具或 C# 指令碼建立、編輯及格式化 DOCX 文件。它可替換文字、填入預留位置與表格、調整章節及頁首頁尾，也可將來源 DOCX 套用另一份 DOCX 範本，並提供預覽、結構分析、差異比較及 XSD／業務規則驗證。從零建立時需要文件內容，簡單內容可由 JSON 設定提供；編輯需要現有 DOCX，套用範本則需要來源與範本 DOCX，另可先將 DOC 轉成 DOCX。",
+  "tags": {
+    "dependencies": [
+      ".net",
+      "documentformat.openxml 3.2.0",
+      "bash or powershell"
+    ],
+    "inputs": [
+      "docx source document",
+      "docx template",
+      "doc document",
+      "plain text content",
+      "json content configuration",
+      "json placeholder data",
+      "json table data",
+      "xsd schema"
+    ],
+    "outputs": [
+      "docx document"
+    ],
+    "tools": [
+      "minimaxaidocx.cli",
+      "openxml sdk",
+      "dotnet cli",
+      "bash scripts",
+      "powershell scripts",
+      "c# scripts"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create an A4 DOCX report from this content and include page numbers and a table of contents.",
+      "zh_hant": "請用這些內容建立一份 A4 DOCX 報告，並加入頁碼與目錄。"
+    },
+    {
+      "en": "Replace every occurrence of “Old Company Name” with “New Company Name” in this Word document.",
+      "zh_hant": "請把這份 Word 文件中的「舊公司名稱」全部替換成「新公司名稱」。"
+    },
+    {
+      "en": "Fill all placeholders with the name, date, and address I provided.",
+      "zh_hant": "請用我提供的姓名、日期和地址填入所有預留位置。"
+    },
+    {
+      "en": "Fill the table in the document with this data.",
+      "zh_hant": "請將這批資料填入文件中的表格。"
+    },
+    {
+      "en": "Insert a new appendix section before the conclusion.",
+      "zh_hant": "請在結論前插入一個新的附錄章節。"
+    },
+    {
+      "en": "I have a source Word document and a DOCX template, and the deliverable must use the template’s formatting.",
+      "zh_hant": "我手上有一份來源 Word 文件和一份 DOCX 範本，交付版本必須套用該範本的格式。"
+    },
+    {
+      "en": "Convert this legacy DOC file to DOCX.",
+      "zh_hant": "請將這個舊版 DOC 文件轉成 DOCX。"
+    },
+    {
+      "en": "Validate this DOCX document against the XSD structure and business rules.",
+      "zh_hant": "請使用 XSD 結構與業務規則驗證這份 DOCX 文件。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2633,
+    "cost_source": "gateway",
+    "cost_usd": 0.073012,
+    "prompt_tokens": 5267
+  }
+}

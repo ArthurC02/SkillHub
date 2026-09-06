@@ -99,8 +99,11 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 	c := a.login(t, "creation-reuse-dup")
 	existing := seedExistingSkill(t, a, s, a.login(t, "creation-reuse-dup-owner"))
 	// The draft's description is what the guard embeds; the first message is not
-	// close to anything.
-	a.app.CreationSvc.CatalogCheck = func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
+	// close to anything (the first-message check is a separate, looser search).
+	a.app.CreationSvc.CatalogCheck = func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
+		return nil, 0, nil
+	}
+	a.app.CreationSvc.DuplicateCheck = func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
 		if strings.Contains(query, "Summarize user input") {
 			return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: "creation-summary", Available: true}}, 0.00002, nil
 		}

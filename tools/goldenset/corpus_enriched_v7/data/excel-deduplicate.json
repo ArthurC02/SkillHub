@@ -1,0 +1,78 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要目標 .xlsx 檔案及 pandas 讀取後的關鍵欄名稱。保留方式未另行設定時預設為 first，也可設為 last。",
+    "需要 Python，以及 pandas、lxml 與 openpyxl；文件提供 `pip install lxml` 作為 lxml 的安裝方式。",
+    "腳本也使用 sys、os、time、zipfile、shutil 與 re 等 Python 標準函式庫模組。",
+    "操作前必須備份；文件指定遵循 excel-safe-workflow，在操作前自動建立時間戳備份、成功後保留最新三份，失誤時刪除損壞檔案並從備份恢復。",
+    "範例中的 #REF! 健康檢查僅巡查前 49 列與前 9 欄。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 依指定關鍵欄為 Excel .xlsx 試算表去重：先唯讀找出重複列並確認，再直接移除 XML 列；預設保留首次出現的資料，也可設定保留末次。它需要目標 .xlsx 檔案與關鍵欄名稱，並會在操作前備份檔案。完成後會重新讀取檔案以檢查殘留重複，並抽樣檢查 #REF!；關鍵欄中的多個空值只保留第一個。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "lxml",
+      "openpyxl",
+      "python standard library"
+    ],
+    "inputs": [
+      "xlsx spreadsheet",
+      "key column name"
+    ],
+    "outputs": [
+      "deduplicated xlsx spreadsheet",
+      "backup xlsx spreadsheet"
+    ],
+    "tools": [
+      "excel-find-duplicates",
+      "excel-delete",
+      "excel-safe-workflow",
+      "office open xml"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Deduplicate this .xlsx Excel spreadsheet by the customer_id column and keep the first occurrence of each value.",
+      "zh_hant": "請依 customer_id 欄替這份 .xlsx Excel 試算表去重，保留每個值第一次出現的列。"
+    },
+    {
+      "en": "Remove duplicates from this Excel workbook by order number, keeping the last occurrence instead.",
+      "zh_hant": "把這個 Excel 活頁簿按訂單編號移除重複資料，改為保留最後一次出現的列。"
+    },
+    {
+      "en": "Clean up duplicate entries by the email field and keep the first one.",
+      "zh_hant": "依電子郵件欄清除重複資料，保留第一筆。"
+    },
+    {
+      "en": "Keep only the last entry for each repeated inventory code.",
+      "zh_hant": "將重複的庫存代碼只保留最後一筆。"
+    },
+    {
+      "en": "I have an .xlsx spreadsheet with duplicate customer IDs and must deliver it after deleting later duplicate rows while preserving its existing formatting.",
+      "zh_hant": "我手上有一份含重複客戶編號的 .xlsx 試算表，交付前必須刪除後續重複列並保留原有格式。"
+    },
+    {
+      "en": "First scan for duplicate row numbers in read-only mode, then delete those rows through XML after confirmation.",
+      "zh_hant": "先唯讀掃描重複列號，讓我確認後再透過 XML 刪除這些列。"
+    },
+    {
+      "en": "Back up the Excel file, deduplicate it by product code, and then check for remaining duplicates or #REF! errors.",
+      "zh_hant": "請先備份 Excel 檔，再按產品代碼去重，最後確認沒有殘留重複或 #REF!。"
+    },
+    {
+      "en": "The key column contains multiple empty values; apply the default rule and keep only the first empty-value row.",
+      "zh_hant": "關鍵欄有多個空值，請按預設規則只保留第一個空值列。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2182,
+    "cost_source": "gateway",
+    "cost_usd": 0.05437700000000001,
+    "prompt_tokens": 3344
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "checks": [],
+  "limitations": [
+    "範例與工作流程需要 Python 執行環境及其所匯入的套件。",
+    "Datawrapper 建立、更新與發布圖表需要存取權杖；權杖可由 DATAWRAPPER_ACCESS_TOKEN 環境變數提供，或從檔案讀取後傳入。",
+    "Datawrapper 地圖需要帳號，且只能使用其支援的邊界檔，不能直接帶入任意幾何資料。",
+    "Google Maps Geocoder 需要已啟用 Geocoding API 的 API 金鑰與計費帳戶，免費額度後每 1,000 次請求收費 5 美元。",
+    "美國人口普查地理編碼器僅適用於美國地址，每批最多 10,000 個地址；批次端點不回傳州、郡、普查區或街區 FIPS 代碼。",
+    "GeoPandas 的 .explore() 需要安裝 folium；使用 scheme 需要 mapclassify，使用 cmap 需要 matplotlib，且超過 100,000 個圖徵時會變慢。",
+    "lonboard 需要另外安裝，文件將其用於 Jupyter notebooks 中的大型地理資料視覺化。",
+    "使用 Census、Google Maps、World Bank 或 Datawrapper API 的流程需要連線至相應服務。",
+    "文件要求在發布前以 pandas、SQL 或 R 重新計算大型語言模型產生的數字、造訪並核對引用來源，以及依實際資料結構檢查欄位。",
+    "若分析使用 AI，方法說明需揭露工具與版本、已驗證和未驗證的內容；AI 產生分析程式碼時也需保存提示、模型名稱及版本。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "這項 Skill 提供資料新聞的工作流程，涵蓋資料取得、清理與驗證、統計分析、圖表與地圖製作，以及資料故事和方法說明的安排。使用者需提供要分析的資料集及相關欄位、資料來源、時間範圍或報導問題；地理工作可使用地址、座標或 GeoJSON、Shapefile、GeoParquet 等空間資料。它也示範使用 Python、pandas、Plotly、Datawrapper、GeoPandas、人口普查地理編碼器及 Google Maps Geocoder 處理相關工作。",
+  "tags": {
+    "dependencies": [
+      "numpy",
+      "rapidfuzz",
+      "cpi",
+      "wbdata",
+      "plotly",
+      "datawrapper",
+      "censusgeocode",
+      "googlemaps",
+      "geopandas",
+      "shapely",
+      "lonboard",
+      "folium",
+      "mapclassify",
+      "matplotlib"
+    ],
+    "inputs": [
+      "csv dataset",
+      "geojson geospatial data",
+      "shapefile geospatial data",
+      "geoparquet geospatial data",
+      "parquet geospatial data",
+      "address data",
+      "latitude-longitude data",
+      "pandas dataframe"
+    ],
+    "outputs": [
+      "pandas dataframe",
+      "plotly chart",
+      "datawrapper chart",
+      "datawrapper map",
+      "png chart image",
+      "geojson geospatial data",
+      "geoparquet geospatial data",
+      "markdown methodology documentation",
+      "iframe embed code",
+      "chart url"
+    ],
+    "tools": [
+      "python",
+      "pandas",
+      "plotly express",
+      "datawrapper",
+      "u.s. census geocoder",
+      "google maps geocoder",
+      "geopandas",
+      "lonboard",
+      "jupyter notebooks",
+      "data.gov",
+      "census bureau",
+      "bls",
+      "bea",
+      "fred",
+      "sec edgar",
+      "openstreetmap"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Clean this spreadsheet data (CSV) by standardizing names and dates, correcting data types, and flagging outliers, missing values, and similar names.",
+      "zh_hant": "請清理這份試算表資料（CSV），統一姓名與日期格式、修正資料型別，並標記離群值、缺漏和相似姓名。"
+    },
+    {
+      "en": "Calculate the median, mean, percentiles, skewness, and period-to-period changes.",
+      "zh_hant": "計算中位數、平均數、百分位數、偏態，以及逐期增減幅度。"
+    },
+    {
+      "en": "Calculate rates per 100,000 people and adjust amounts from different years to the same year's value.",
+      "zh_hant": "依人口換算每十萬人比率，並把不同年份的金額調整到同一年幣值。"
+    },
+    {
+      "en": "Create a bar chart from these categories and include a title, axis labels, and the data source.",
+      "zh_hant": "根據這組分類資料製作長條圖，加入標題、軸標籤與資料來源。"
+    },
+    {
+      "en": "I have unemployment rates by state and need to deliver a Datawrapper choropleth map that can be embedded in an article.",
+      "zh_hant": "我手上有各州失業率，必須交付一張可嵌入文章的 Datawrapper 分級設色地圖。"
+    },
+    {
+      "en": "Use the U.S. Census Geocoder on this address table (CSV), return coordinates and match status, then look up FIPS geography codes for matched addresses.",
+      "zh_hant": "請用美國人口普查地理編碼器處理這份地址表（CSV），回傳經緯度與配對狀態，再為已配對地址查詢 FIPS 地理代碼。"
+    },
+    {
+      "en": "Read this geospatial data (GeoJSON, Shapefile, or GeoParquet), set its coordinate reference system, and perform a spatial join.",
+      "zh_hant": "讀取這份地理資料（GeoJSON、Shapefile 或 GeoParquet），設定座標參考系統，並進行空間連接。"
+    },
+    {
+      "en": "Organize the data-story structure and methodology note for this analysis, including sources, time period, definitions, analysis steps, exclusions, verification, and limitations.",
+      "zh_hant": "替這項分析整理資料故事架構與方法說明，包括來源、時間範圍、定義、分析步驟、排除項目、驗證方式和限制。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2330,
+    "cost_source": "gateway",
+    "cost_usd": 0.09686700000000001,
+    "prompt_tokens": 11250
+  }
+}

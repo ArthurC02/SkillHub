@@ -1,0 +1,67 @@
+{
+  "checks": [],
+  "limitations": [
+    "撰寫時需要從 `examples/` 目錄載入對應的 Markdown 指南檔。",
+    "若溝通類型不符合任何現有指南，需請使用者釐清需求，或補充期望格式的背景。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "這項 Skill 用於撰寫 3P 更新、公司電子報、FAQ 回覆、狀態報告、主管更新、專案更新及事件報告等內部溝通內容。它會依請求辨識溝通類型，並套用 `examples/` 目錄中對應的 Markdown 指南來處理格式、語氣與內容蒐集。使用者需提供溝通需求；若類型不符合現有指南，還需釐清期望格式或補充背景。",
+  "tags": {
+    "dependencies": [
+      "examples directory"
+    ],
+    "inputs": [
+      "communication request",
+      "markdown guideline files"
+    ],
+    "outputs": [
+      "3p update",
+      "company newsletter",
+      "faq response",
+      "status report",
+      "leadership update",
+      "project update",
+      "incident report"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Write a team 3P update covering Progress, Plans, and Problems.",
+      "zh_hant": "請撰寫一份團隊 3P 更新（Progress、Plans、Problems），說明目前進度、後續計畫與遇到的問題。"
+    },
+    {
+      "en": "Share this month's important news and updates with the whole company.",
+      "zh_hant": "請向全公司說明本月的重要消息與近況。"
+    },
+    {
+      "en": "Turn these common questions into FAQ responses for employees.",
+      "zh_hant": "請把這些常見問題整理成 FAQ 回覆，逐一回答員工的疑問。"
+    },
+    {
+      "en": "Write this week's internal status report so the team can understand the latest situation.",
+      "zh_hant": "幫我寫一份本週狀態報告，供內部團隊掌握最新情況。"
+    },
+    {
+      "en": "Prepare a leadership update describing the current work progress and problems.",
+      "zh_hant": "請準備一份給主管的更新，說明目前工作的進展與問題。"
+    },
+    {
+      "en": "Let the team know where the project currently stands and what has changed.",
+      "zh_hant": "讓團隊知道這個專案目前進行到哪裡，以及有哪些最新變化。"
+    },
+    {
+      "en": "The system went down yesterday, I have the incident timeline, and now I need to deliver an internal incident report.",
+      "zh_hant": "系統昨天發生中斷，我手上已有事件經過，現在必須交付一份內部事件報告。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1430,
+    "cost_source": "gateway",
+    "cost_usd": 0.030902000000000006,
+    "prompt_tokens": 1657
+  }
+}

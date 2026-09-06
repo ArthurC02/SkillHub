@@ -1,0 +1,86 @@
+{
+  "checks": [
+    {
+      "field": "summary",
+      "rule": "unsupported_appraisal",
+      "severity": "warning",
+      "token": "accurate"
+    }
+  ],
+  "limitations": [
+    "規則式掃描需要 Python、pandas、phonenumbers 與 python-stdnum。",
+    "文字欄位的 ML 偵測為選用功能，啟用前須詢問使用者；此功能使用 presidio-analyzer 或本機 NER 模型，文件也列出 presidio-anonymizer 作為選用安裝套件。",
+    "若資料集含有健康資料、政府證件號碼或信用卡等特殊類別或高風險 PII，任何後續發布步驟都需要使用者明確確認。",
+    "不會反向解碼 Base64、URL 編碼或雜湊的 PII，只會標示為「possibly encoded」。",
+    "部分規則運算式僅支援 ASCII；非英文文字以 Unicode 執行偵測，電話號碼偵測使用地區提示。",
+    "短數字字串、測試資料與示範電子郵件可能是假陽性；這些結果會標為可能無害，不會自動補救。",
+    "`pii_report.jsonl` 本身含有敏感資訊，不應公開分享；預設寫在資料集旁，並加入 `.gitignore`。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 掃描資料集中的個人可識別資訊（PII），涵蓋姓名、電子郵件、電話、地址、政府證件號碼、信用卡、IP 位址、出生日期、精確地理座標，以及醫療識別碼或健康資料。它會在欄位與儲存格層級標示偵測結果，產生預設遮罩敏感值的 `pii_report.jsonl`，並提供各欄摘要與補救建議。文字欄位可選擇使用 `presidio-analyzer` 或本機 NER 模型進行額外偵測；啟用前會詢問使用者。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "phonenumbers",
+      "python-stdnum",
+      "presidio-analyzer",
+      "presidio-anonymizer",
+      "local ner model"
+    ],
+    "inputs": [
+      "dataset"
+    ],
+    "outputs": [
+      "jsonl pii report"
+    ],
+    "tools": [
+      "hugging face",
+      "hf-dataset-push",
+      "synthetic-data-overlay"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Scan this dataset for names, email addresses, phone numbers, and other personal data.",
+      "zh_hant": "掃描這個資料集，找出姓名、電子郵件、電話號碼或其他個人資料。"
+    },
+    {
+      "en": "Check which columns and cells contain PII and provide a confidence score for each detection.",
+      "zh_hant": "請檢查哪些欄位和儲存格含有 PII，並為每個偵測結果提供信心分數。"
+    },
+    {
+      "en": "Produce the cell-level JSONL data file `pii_report.jsonl` and mask sensitive values in the report by default.",
+      "zh_hant": "請產生逐儲存格的 JSONL 資料檔 `pii_report.jsonl`，並預設遮罩報告中的敏感值。"
+    },
+    {
+      "en": "I am preparing to publish a dataset to Hugging Face, but first I need to check it for government IDs, credit card data, or health data.",
+      "zh_hant": "我準備把資料集發布到 Hugging Face，但必須先確認其中是否有政府證件號碼、信用卡資料或健康資料。"
+    },
+    {
+      "en": "Summarize the detected personal-data categories, counts, and worst-case sample count for each column.",
+      "zh_hant": "彙整每個欄位偵測到的個資類別、數量與最壞情況樣本數。"
+    },
+    {
+      "en": "For each column containing personal data, recommend whether to drop, hash, tokenize, generalize, replace with synthetic data, or keep it.",
+      "zh_hant": "針對含有個人資料的各欄，建議應刪除、雜湊、代碼化、泛化、改用合成資料或保留。"
+    },
+    {
+      "en": "Also check free text for personal data, and ask whether I want to enable `presidio-analyzer` or a local NER model.",
+      "zh_hant": "也請檢查自由文字中的個資，並詢問我是否要啟用 `presidio-analyzer` 或本機 NER 模型。"
+    },
+    {
+      "en": "Check whether column names themselves contain PII, and flag suspected Base64-, URL-encoded, or hashed content as “possibly encoded.”",
+      "zh_hant": "檢查欄名本身是否含有個資，並將疑似 Base64、URL 編碼或雜湊的內容標示為「possibly encoded」。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1736,
+    "cost_source": "gateway",
+    "cost_usd": 0.040222,
+    "prompt_tokens": 2297
+  }
+}

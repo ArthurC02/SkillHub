@@ -1,0 +1,75 @@
+{
+  "checks": [],
+  "limitations": [
+    "不會產生 .pptx 附件；若使用者明確需要 .pptx，需改用 pptx 工具。",
+    "不適用於長篇文件；文件指定改用 report-publisher。",
+    "不適用於潤飾既有簡報；文件指定改用 report-designer。",
+    "需要判斷簡報是由使用者現場講述，還是預先傳送供他人自行瀏覽；若情境不明，會先詢問。",
+    "製作流程需要遵循根目錄 SKILL.md 所述的共用流程。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 將使用者提供的內容轉成網頁原生投影片，先展示逐頁大綱，再依核准流程製作、檢查並透過 ReportRoom 發布至即時網址。使用者可說明簡報是由本人現場講述，還是預先傳送給他人自行瀏覽；若未說明，Skill 會詢問。成品支援鍵盤與捲動瀏覽，預先傳送的簡報會附帶瀏覽分析，但不會產生 .pptx 附件。",
+  "tags": {
+    "dependencies": [
+      "root skill.md shared flow"
+    ],
+    "inputs": [
+      "source content",
+      "tables",
+      "numeric data"
+    ],
+    "outputs": [
+      "slide outline",
+      "web-native slide deck",
+      "live url",
+      "charts",
+      "view analytics"
+    ],
+    "tools": [
+      "reportroom"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Turn this content into a web-native slide deck with keyboard or scroll navigation, and publish it to a live URL through ReportRoom.",
+      "zh_hant": "把這份內容做成可用鍵盤或捲動瀏覽的網頁原生投影片，並透過 ReportRoom 發布到即時網址。"
+    },
+    {
+      "en": "Create an online presentation from the following material that opens at a URL, rather than giving me a .pptx attachment.",
+      "zh_hant": "根據以下資料製作一份可從 URL 開啟的線上簡報，不要給我 .pptx 附件。"
+    },
+    {
+      "en": "I have to pitch this to management tomorrow and only have this content; make sure the audience can follow the full argument just from the slide headlines.",
+      "zh_hant": "我明天要向主管提案，手上只有這份內容；請讓聽眾只看各頁標題也能掌握完整論點。"
+    },
+    {
+      "en": "This material will be sent to a client to click through alone, so make each slide stand on its own without a presenter.",
+      "zh_hant": "這份資料要先寄給客戶自行閱讀，請讓每一頁在沒有講者時也能獨立表達意思。"
+    },
+    {
+      "en": "Turn this proposal into slides for a live presentation, putting the ask or conclusion first and limiting each slide to one point.",
+      "zh_hant": "將這份提案整理成現場使用的投影片，第一頁先提出訴求或結論，而且每頁只表達一個重點。"
+    },
+    {
+      "en": "Convert tables with more than a few cells into charts where the design system supports them, and move material that cannot be cut to appendix slides.",
+      "zh_hant": "把資料中超過幾個儲存格的表格改成設計系統支援的圖表，過多的內容移到附錄投影片。"
+    },
+    {
+      "en": "First turn the source content into a slide-by-slide outline for my review, using a full-sentence headline to state each slide’s point.",
+      "zh_hant": "先把來源內容轉成逐頁大綱給我確認，每一頁都用完整句子的標題說明該頁論點。"
+    },
+    {
+      "en": "Use these numbers to create a send-ahead web deck, preserve the exact figures, and provide the URL and view analytics after publishing.",
+      "zh_hant": "用這些數字製作一份預先傳送的網頁簡報，保留精確數值，發布後提供網址與瀏覽分析。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1905,
+    "cost_source": "gateway",
+    "cost_usd": 0.041272,
+    "prompt_tokens": 1831
+  }
+}

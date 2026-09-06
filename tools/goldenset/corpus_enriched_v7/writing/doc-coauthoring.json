@@ -1,0 +1,97 @@
+{
+  "checks": [],
+  "limitations": [
+    "若要從共享文件連結、團隊頻道或討論串直接取得內容，必須有對應的整合、connector 或 MCP server；若無法存取，使用者需啟用 connector 或直接貼上相關內容。",
+    "搜尋尚不了解的實體或專案前，需要使用者確認可搜尋已連接的工具。",
+    "只有在可存取 artifacts 時才會用 create_file 建立 artifact；否則會在工作目錄建立 Markdown 檔案。",
+    "直接進行無既有對話情境的讀者測試需要 sub-agent 存取權；若沒有 sub-agent，使用者需在 Claude.ai 開啟全新對話並手動執行測試。",
+    "若既有共享文件中的圖片缺少 alt-text，產生描述性 alt-text 前需要使用者將每張圖片貼到聊天中。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 透過情境蒐集、分段起草與修訂、讀者測試三個階段，協助共同撰寫文件、提案、技術規格、決策文件、PRD、設計文件或 RFC。使用者需提供文件類型、目標讀者、預期影響、範本或格式、限制及相關背景，也可提供既有文件、共享連結、團隊討論或直接貼上內容。它可建立文件 artifact 或 Markdown 骨架、逐節更新內容，並透過全新 Claude 執行個別讀者問題及歧義、假設與矛盾檢查；若沒有 sub-agent，則提供在 Claude.ai 手動測試的步驟。",
+  "tags": {
+    "dependencies": [
+      "working directory",
+      "artifact access",
+      "integration access",
+      "connector access",
+      "sub-agent access"
+    ],
+    "inputs": [
+      "documentation content",
+      "proposal document",
+      "technical specification",
+      "decision document",
+      "prd",
+      "design document",
+      "rfc",
+      "document template",
+      "shared document",
+      "team discussion",
+      "image without alt-text"
+    ],
+    "outputs": [
+      "markdown documentation",
+      "document artifact",
+      "image alt-text",
+      "reader-testing report"
+    ],
+    "tools": [
+      "create_file",
+      "str_replace",
+      "claude.ai",
+      "claude app",
+      "claude code",
+      "slack",
+      "teams",
+      "google drive",
+      "sharepoint",
+      "mcp servers",
+      "connectors",
+      "sub-agents"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Using the background, audience, and constraints I provide, create a Markdown technical specification named technical-spec.md and draft it with me section by section.",
+      "zh_hant": "請根據我提供的背景、讀者和限制，建立 technical-spec.md 這份 Markdown 技術規格，並逐節和我一起起草。"
+    },
+    {
+      "en": "I have a shared proposal in Google Drive; read its current content and guide me through revising each section.",
+      "zh_hant": "我有一份 Google Drive 上的共享提案，請讀取目前內容並引導我修訂各個段落。"
+    },
+    {
+      "en": "Help me plan three to five sections for this RFC and create an initial document scaffold with placeholder text.",
+      "zh_hant": "幫我為這份 RFC 規劃三到五個章節，先建立含預留文字的文件骨架。"
+    },
+    {
+      "en": "I have lots of scattered project background and trade-offs in mind; help me identify missing information before we start writing.",
+      "zh_hant": "我腦中有很多零散的專案背景和取捨，請先幫我釐清缺少的資訊，再開始寫。"
+    },
+    {
+      "en": "For each section, ask questions and suggest possible points so I can choose what to keep, remove, or combine.",
+      "zh_hant": "請逐段提出問題和可納入的重點，讓我選擇保留、刪除或合併哪些內容。"
+    },
+    {
+      "en": "The team has made a decision, but the reasoning is scattered across discussion threads, and I now need to deliver a decision document that others can understand.",
+      "zh_hant": "團隊已經作出決定，但來龍去脈散落在討論串裡；我現在必須交付一份讓其他人能理解的決策文件。"
+    },
+    {
+      "en": "This existing shared document contains images without alt-text; I’ll paste each image into the chat so you can generate descriptive alt-text for it.",
+      "zh_hant": "這份既有共享文件含有沒有 alt-text 的圖片；我會把圖片貼到聊天中，請為每張圖產生描述性 alt-text。"
+    },
+    {
+      "en": "Test this document with a fresh Claude, check each predicted reader question, and identify ambiguity, unstated assumptions, or internal contradictions.",
+      "zh_hant": "請用全新的 Claude 測試這份文件，逐題檢查讀者能否回答預測問題，並找出歧義、未明說的假設或內部矛盾。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2047,
+    "cost_source": "gateway",
+    "cost_usd": 0.057912000000000005,
+    "prompt_tokens": 4591
+  }
+}

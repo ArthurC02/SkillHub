@@ -1,0 +1,106 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要 Python 執行環境、pandas 與 python-dateutil。pytz 是舊版時區資料庫的選用依賴；Python 3.9+ 原生包含 zoneinfo。",
+    "若有多個可能的日期或時間欄位，需要先列出樣本並由使用者確認。",
+    "混合來源格式不會被默默分派處理；需要列出格式並確認各格式的處理方式。",
+    "對於 `01/02/2024` 這類日期順序不明的值，不會猜測，必須詢問使用者或查閱資料字典。",
+    "無時區日期時間必須由使用者指定假設的來源時區。",
+    "移除時區屬於有損轉換，需要警告並取得使用者確認。",
+    "地區顯示格式只供人類閱讀，不應用於儲存。",
+    "會計年度轉換必須確認起始月份，不會預設為一月。",
+    "日光節約時間造成不存在或重複的時間時，預設回報錯誤與列索引，並由使用者選擇跳過、第一個、第二個或位移等政策。",
+    "1970 年以前的 Unix epoch 為負值，需要確認目標系統能接受。",
+    "疑似 Excel 1900 年起算的數值日期會先詢問，不會直接視為 Unix epoch。",
+    "若來源精度高於毫秒而目標由 JavaScript `Date` 使用，會提出微秒精度遺失警告。",
+    "pandas `datetime64[ns]` 在 `2262-04-11` 之後會溢位；此範圍外需使用 `datetime64[us]` 或字串儲存。",
+    "預設保留原欄並新增欄位；只有明確要求時才覆寫，而且寫入前須依 `CONVENTIONS.md` 確認或建立備份。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 轉換資料集中的日期與時間欄位，包括 ISO 8601、Unix 時間戳、時區、日期與時間拆合、地區顯示格式、會計年度、ISO 週日期及儒略日等表示法。使用者需指出來源欄位與目標格式；若日期順序、來源時區或會計年度起始月份不明，還需提供或確認這些資訊。轉換結果預設寫入新欄位並保留原始資料，也會以樣本往返轉換進行驗證及更新資料字典。",
+  "tags": {
+    "dependencies": [
+      "python runtime",
+      "python-dateutil",
+      "pytz (optional)",
+      "zoneinfo (python 3.9+)",
+      "conventions.md backup policy"
+    ],
+    "inputs": [
+      "dataset with date/time columns",
+      "parseable date/datetime",
+      "naive datetime",
+      "timezone-aware datetime",
+      "split date and time columns",
+      "single datetime"
+    ],
+    "outputs": [
+      "iso 8601 datetime",
+      "epoch seconds",
+      "epoch milliseconds",
+      "epoch microseconds",
+      "epoch nanoseconds",
+      "timezone-aware datetime",
+      "utc datetime",
+      "naive datetime",
+      "split date and time columns",
+      "single datetime",
+      "locale display date",
+      "fiscal year",
+      "fiscal quarter",
+      "iso week date",
+      "julian day",
+      "day-of-year",
+      "temporal derived columns",
+      "updated data dictionary"
+    ],
+    "tools": [
+      "pandas",
+      "pandas.to_datetime",
+      "data-enrichment skill"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Normalize the date column in my dataset to ISO 8601 datetime.",
+      "zh_hant": "把資料集中的日期欄位正規化為 ISO 8601 日期時間。"
+    },
+    {
+      "en": "Convert the event times to Unix timestamp integers in epoch milliseconds.",
+      "zh_hant": "將事件時間轉成 Unix 時間戳的 epoch 毫秒整數。"
+    },
+    {
+      "en": "These datetimes have no timezone; assume the source is Europe/London and make them timezone-aware.",
+      "zh_hant": "這些日期時間沒有時區；請假設來源是 Europe/London，並加入時區。"
+    },
+    {
+      "en": "Convert the timezone-aware times to UTC and keep the offset.",
+      "zh_hant": "把有時區的時間轉成 UTC，並保留偏移量。"
+    },
+    {
+      "en": "I must deliver a datetime column without timezone information, but the data I have is timezone-aware; strip the timezone.",
+      "zh_hant": "我必須交付不含時區的日期時間欄位，但手上的資料都有時區；請移除時區。"
+    },
+    {
+      "en": "Combine the separate date and time columns into one column.",
+      "zh_hant": "把分開的日期欄與時間欄合併成一個欄位。"
+    },
+    {
+      "en": "Split the single datetime column into separate date and time columns.",
+      "zh_hant": "把單一日期時間欄拆成日期欄和時間欄。"
+    },
+    {
+      "en": "Add fiscal year and quarter representations using an April fiscal-year start.",
+      "zh_hant": "依照四月開始的會計年度，新增會計年度與季度表示。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2132,
+    "cost_source": "gateway",
+    "cost_usd": 0.049052000000000005,
+    "prompt_tokens": 2479
+  }
+}

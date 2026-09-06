@@ -753,7 +753,24 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 				row.CatalogOffers = len(v.Snapshot.References)
 				kind = "decline_references"
 			}
-			v = creationAct(t, c, v, kind)
+			// A confirmation Go refuses (run u, 2026-09-07: D04's model asked
+			// for confirm_brief with no brief, and the 422 took the other
+			// eleven sessions with it) is this session's failure, not the
+			// run's.
+			code, body := creationPostStatus(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": kind, "content_hash": func() string {
+				if v.Snapshot.Draft == nil {
+					return ""
+				}
+				return v.Snapshot.Draft.ContentHash
+			}()})
+			if code != 200 {
+				row.FinalState = v.State
+				row.Error = fmt.Sprintf("%s refused: %d %s", kind, code, body)
+				return finishSession(t, v, row, outDir)
+			}
+			if err := json.Unmarshal([]byte(body), &v); err != nil {
+				t.Fatal(err)
+			}
 			row.AutoConfirms++
 		case "waiting_input":
 			if clarifications >= 2 {

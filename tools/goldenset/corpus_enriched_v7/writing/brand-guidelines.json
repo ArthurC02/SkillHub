@@ -1,0 +1,73 @@
+{
+  "checks": [],
+  "limitations": [
+    "色彩透過 python-pptx 的 RGBColor 類別套用。",
+    "Poppins 與 Lora 不必安裝；若環境中沒有這些字體，標題會改用 Arial，內文會改用 Georgia。",
+    "若要取得文件所述的最佳結果，環境中應預先安裝 Poppins 與 Lora。",
+    "Poppins 的標題樣式適用於 24pt 以上的標題。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此技能將 Anthropic 官方品牌色彩與字體套用至需要品牌視覺風格的成果物。使用者需提供要調整的成果物；技能會處理標題、內文、背景相關文字配色，以及非文字形狀的強調色。標題使用 Poppins、內文使用 Lora；缺少這些字體時，分別改用 Arial 與 Georgia。",
+  "tags": {
+    "dependencies": [
+      "python-pptx library",
+      "poppins font (optional)",
+      "lora font (optional)",
+      "arial font fallback",
+      "georgia font fallback"
+    ],
+    "inputs": [
+      "artifact requiring brand styling"
+    ],
+    "outputs": [
+      "anthropic-styled artifact"
+    ],
+    "tools": [
+      "python-pptx",
+      "rgbcolor"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Apply Anthropic’s official brand colors and typography to this artifact.",
+      "zh_hant": "請把 Anthropic 的官方品牌色彩與字體套用到這個成果物。"
+    },
+    {
+      "en": "Adjust the overall visual formatting to follow Anthropic’s company design standards.",
+      "zh_hant": "請依照 Anthropic 的公司設計標準調整整體視覺格式。"
+    },
+    {
+      "en": "Set headings of 24pt or larger in Poppins and body text in Lora.",
+      "zh_hant": "把 24pt 以上的標題設為 Poppins，並將內文設為 Lora。"
+    },
+    {
+      "en": "Choose brand-guideline text colors based on the background while preserving the existing text hierarchy and formatting.",
+      "zh_hant": "請根據背景為文字選擇品牌規範中的配色，同時保留原有的文字層級與格式。"
+    },
+    {
+      "en": "Cycle the orange, blue, and green brand accent colors across non-text shapes.",
+      "zh_hant": "請讓非文字形狀依序使用橘色、藍色與綠色的品牌強調色。"
+    },
+    {
+      "en": "I have an artifact to deliver, but it does not yet follow Anthropic’s visual identity; apply the brand styling.",
+      "zh_hant": "我手上有一個需要交付的成果物，但目前不符合 Anthropic 的視覺識別；請套用其品牌樣式。"
+    },
+    {
+      "en": "Use the Python PowerPoint library python-pptx and RGBColor to apply Anthropic’s brand colors to this artifact.",
+      "zh_hant": "請使用 Python 的 PowerPoint 函式庫 python-pptx 與 RGBColor，為這個成果物套用 Anthropic 品牌色。"
+    },
+    {
+      "en": "In the artifact handled with python-pptx, apply the specified Anthropic RGB colors to primary text, backgrounds, secondary elements, and accents.",
+      "zh_hant": "在 python-pptx 處理的成果物中，將主要文字、背景、次要元素與強調元素改用指定的 Anthropic RGB 色彩。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1618,
+    "cost_source": "gateway",
+    "cost_usd": 0.035647,
+    "prompt_tokens": 1854
+  }
+}

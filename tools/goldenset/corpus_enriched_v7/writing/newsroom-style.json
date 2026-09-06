@@ -1,0 +1,73 @@
+{
+  "checks": [],
+  "limitations": [
+    "不同刊物的 house style 可能優先於 AP Style；為新刊物撰稿前必須先詢問其 house style。",
+    "規則更新與邊緣案例需查閱目前版本的 Associated Press Stylebook 或 apstylebook.com。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 依 AP Style 與新聞編輯慣例撰寫新聞報導、短訊、標題、新聞稿、媒體通知及新聞社群貼文，也能編輯既有內容。它可將訪談筆記轉成可刊登稿件，並處理數字、姓名與職稱、引述歸屬、日期時間、導言、段落及標點格式。編輯與轉寫任務分別需要現有草稿或訪談筆記；若為新刊物撰稿，還需先確認該刊物的 house style。",
+  "tags": {
+    "dependencies": [],
+    "inputs": [
+      "news drafts",
+      "interview notes",
+      "informal notes"
+    ],
+    "outputs": [
+      "news articles",
+      "news briefs",
+      "headlines",
+      "publishable copy",
+      "press releases",
+      "media advisories",
+      "social media posts"
+    ],
+    "tools": [
+      "associated press stylebook",
+      "apstylebook.com"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Write a news article from these event details using AP Style.",
+      "zh_hant": "請根據這些事件資訊撰寫一篇符合 AP Style 的新聞報導。"
+    },
+    {
+      "en": "Summarize these details in a few sentences, putting the most important news first.",
+      "zh_hant": "請把這些資訊濃縮成幾句話，並將最重要的消息放在最前面。"
+    },
+    {
+      "en": "Write a sentence-case news headline about the council approving the budget, using present tense and no ending period.",
+      "zh_hant": "為市議會通過預算的消息撰寫一個句首大寫、使用現在式且不加句號的新聞標題。"
+    },
+    {
+      "en": "Revise this passage according to the rules for numbers, dates, titles and attribution.",
+      "zh_hant": "請依數字、日期、職稱與引述歸屬規則修訂這段內容。"
+    },
+    {
+      "en": "I only have interview notes in hand, and I need to deliver publishable copy today.",
+      "zh_hant": "我手上只有訪談筆記，今天必須交出可刊登的稿件。"
+    },
+    {
+      "en": "Write an AP-style press release for this new initiative.",
+      "zh_hant": "請為這項新計畫撰寫一份 AP Style 新聞稿。"
+    },
+    {
+      "en": "Create a media advisory using the event time, location and contact information.",
+      "zh_hant": "請根據活動時間、地點和聯絡資訊撰寫媒體通知。"
+    },
+    {
+      "en": "Turn this news content into a social media post.",
+      "zh_hant": "把這則新聞內容改寫成社群媒體貼文。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2487,
+    "cost_source": "gateway",
+    "cost_usd": 0.059357,
+    "prompt_tokens": 3120
+  }
+}

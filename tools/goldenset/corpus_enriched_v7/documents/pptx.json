@@ -1,0 +1,111 @@
+{
+  "checks": [],
+  "limitations": [
+    "相關腳本需要 Python、Node.js 或 shell 執行環境；套件列出的相依項目包括 `pptxgenjs`、`markitdown[pptx]`、Pillow、`defusedxml`、`lxml`、LibreOffice 與 Poppler。",
+    "`pptxgenjs` 已預先安裝；只有在 `require('pptxgenjs')` 失敗時才需要使用 npm 安裝。",
+    "圖示處理流程需要 `react-icons`、React、`react-dom` 與 `sharp`；這些套件已預先安裝，只有在載入失敗時才需要安裝。",
+    "縮圖腳本只接受 `.pptx`；若要處理 `.potx` 的視覺縮圖，必須先複製並改用 `.pptx` 檔名。",
+    "舊式 `.ppt` 檔必須先透過 LibreOffice 轉換成 `.pptx`。",
+    "由範本衍生的簡報在驗證時必須傳入 `--original`；從零建立的簡報則使用一般驗證命令。",
+    "視覺檢查需要先以 LibreOffice 轉成 PDF，再使用 Poppler 的 `pdftoppm` 產生 JPG 圖片。",
+    "`pptxgenjs` 不支援漸層填色；文件指定改用漸層圖片作為背景。",
+    "`python-pptx` 無法複製投影片，以 `text_frame.text` 指派文字不會保留原有格式，且無法讀取範本常用的 SVG 或 EMF 圖稿。",
+    "講者備註僅以純文字加入，每張投影片一次。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此技能可建立、讀取、擷取、編輯、合併或拆分 PowerPoint 簡報，並處理範本、版面配置、講者備註與註解。輸入可以是簡報內容、`.pptx` 檔、`.potx` 範本，或先轉換的舊式 `.ppt` 檔；輸出可保留為 `.pptx` 或 `.potx`。它也提供內容、檔案結構與視覺檢查流程，並可將投影片轉成 PDF 與 JPG 圖片供檢視。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "node.js",
+      "shell",
+      "pptxgenjs",
+      "markitdown[pptx]",
+      "pillow",
+      "defusedxml",
+      "lxml",
+      "libreoffice",
+      "poppler",
+      "react-icons",
+      "react",
+      "react-dom",
+      "sharp"
+    ],
+    "inputs": [
+      "pptx presentations",
+      "potx presentation templates",
+      "ppt presentations",
+      "xml slide content",
+      "plain text presentation content"
+    ],
+    "outputs": [
+      "pptx presentations",
+      "potx presentation templates",
+      "pdf presentations",
+      "jpg slide images",
+      "png rasterized icons",
+      "svg icon markup",
+      "plain text slide content",
+      "xml slide content"
+    ],
+    "tools": [
+      "pptxgenjs",
+      "markitdown",
+      "thumbnail.py",
+      "add_slide.py",
+      "clean.py",
+      "validate.py",
+      "soffice.py",
+      "libreoffice",
+      "pdftoppm",
+      "poppler",
+      "python-pptx",
+      "microsoft powerpoint",
+      "zip",
+      "grep"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Turn these key points into content that can be presented page by page.",
+      "zh_hant": "請把這些要點做成可逐頁展示的內容。"
+    },
+    {
+      "en": "Extract the text from each page so I can use it in a separate summary.",
+      "zh_hant": "請擷取每一頁的文字，供我另作摘要。"
+    },
+    {
+      "en": "Update this PowerPoint presentation (`.pptx`) by changing the text and layouts on the existing slides.",
+      "zh_hant": "請更新這份 PowerPoint 簡報（`.pptx`），修改現有投影片的文字與版面。"
+    },
+    {
+      "en": "Combine these two slide presentations into one `.pptx` file.",
+      "zh_hant": "請把這兩份投影片簡報合併成一個 `.pptx` 檔。"
+    },
+    {
+      "en": "Split this presentation into two separate slide files.",
+      "zh_hant": "請將這份簡報拆成兩個獨立的投影片檔案。"
+    },
+    {
+      "en": "Use this PowerPoint template (`.potx`) to build a presentation while retaining its layouts.",
+      "zh_hant": "請使用這個 PowerPoint 範本（`.potx`）製作簡報，並保留範本的版面配置。"
+    },
+    {
+      "en": "Add plain-text speaker notes to each slide.",
+      "zh_hant": "請為每張投影片加入純文字講者備註。"
+    },
+    {
+      "en": "I only have an old PowerPoint `.ppt` file, but I need to deliver a `.pptx` presentation.",
+      "zh_hant": "我手上只有一份舊式 PowerPoint `.ppt`，但必須交付可使用的 `.pptx` 簡報。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2569,
+    "cost_source": "gateway",
+    "cost_usd": 0.078672,
+    "prompt_tokens": 6655
+  }
+}

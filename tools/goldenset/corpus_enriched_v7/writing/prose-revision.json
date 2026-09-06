@@ -1,0 +1,72 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要目標文稿及足以理解局部論述的上下文。",
+    "逐行校對錯字與輕微文法不屬於主要範圍，除非它們實質影響行文流動或可理解性。",
+    "預設不增刪觀點，也不改變主張強度；只有在某個單元確實無法成立時才會介入，且會明確說明。",
+    "若使用者要求套用修改，必須編輯原始檔，而不是另行產生副本。",
+    "約三頁以上的文件預設提供結構化修訂報告，除非使用者要求直接編輯。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 修訂尚未定稿的散文，先檢查段落、章節與整體觀點次序，再調整句子邊界、重點、銜接和措辭，同時保留作者的主張強度、聲音與語域。使用者需提供目標文稿及足以理解論述的上下文；若未說明受眾、目的或語氣，Skill 會從文字推斷，只有在關鍵歧義無法由上下文解決時才會詢問。短篇請求通常會得到診斷與一至三個修訂版本；約三頁以上的文件預設得到分層修訂報告，除非使用者要求直接編輯原始檔。",
+  "tags": {
+    "dependencies": [],
+    "inputs": [
+      "draft prose",
+      "target prose",
+      "surrounding context",
+      "source file",
+      "academic prose",
+      "technical prose"
+    ],
+    "outputs": [
+      "revision diagnosis",
+      "revised prose",
+      "structured revision report"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Please revise this draft prose by reordering the ideas while preserving the original strength of its claims.",
+      "zh_hant": "請修訂這段散文草稿，重新安排觀點順序並保留原本的主張強度。"
+    },
+    {
+      "en": "Diagnose which idea-order problems, overloaded sentences, or missing connections are disrupting the flow.",
+      "zh_hant": "請診斷哪些觀點順序、句子負荷或缺少的銜接正在妨礙行文流動。"
+    },
+    {
+      "en": "Provide Light, Moderate, and Full revision versions so I can compare different degrees of restructuring.",
+      "zh_hant": "請提供 Light、Moderate 和 Full 三種修訂版本，讓我比較不同程度的結構調整。"
+    },
+    {
+      "en": "I have a document longer than three pages that is due next week; first provide a structured revision report that prioritizes paragraph- and section-level issues.",
+      "zh_hant": "我手上有一份超過三頁的文件，下週要交稿；請先提供結構化修訂報告，按優先順序指出段落與章節問題。"
+    },
+    {
+      "en": "Apply the revisions directly to the source file while preserving citations, labels, author notes, and technical claims.",
+      "zh_hant": "請把修改直接套用到原始檔，並保留引文、標籤、作者註記與技術主張。"
+    },
+    {
+      "en": "Without adding or removing ideas, move the main claim earlier and place qualifications after the claims they qualify.",
+      "zh_hant": "在不增刪觀點的前提下，把主要主張提前，並把限定語移到它所限定的主張之後。"
+    },
+    {
+      "en": "Restructure this academic prose without changing precise terminology, hedging, or claim strength.",
+      "zh_hant": "請重整這段學術文字，但不要改動精確術語、避險措辭或論斷力度。"
+    },
+    {
+      "en": "If the current arrangement already works, do not make major changes merely for the sake of editing; identify only the necessary small adjustments.",
+      "zh_hant": "如果目前的安排已經有效，請不要為了顯得有修改而大改，只指出必要的小幅調整。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1647,
+    "cost_source": "gateway",
+    "cost_usd": 0.040732000000000004,
+    "prompt_tokens": 2755
+  }
+}

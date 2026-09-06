@@ -1,0 +1,89 @@
+{
+  "checks": [],
+  "limitations": [
+    "Python 範例需要 Python，以及各任務所匯入的函式庫。",
+    "文字擷取與圖片擷取的命令列範例需要 poppler-utils 中的 pdftotext 或 pdfimages。",
+    "掃描 PDF 的 OCR 範例需要 pytesseract 與 pdf2image，並須先把 PDF 轉成圖片。",
+    "qpdf 範例需要安裝 qpdf；pdftk 指令僅在 pdftk 可用時使用。",
+    "填寫 PDF 表單需參閱並遵循 FORMS.md；進階功能、pypdfium2、pdf-lib 與疑難排解需參閱 REFERENCE.md。",
+    "ReportLab 內建字型不包含 Unicode 上標與下標字元；Paragraph 物件須改用 <sub> 與 <super> 標記。使用 canvas 繪製文字時，須手動調整字型大小與位置。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 處理 PDF 文件，可讀取或擷取文字、表格、中繼資料與圖片，也可合併、分割、旋轉、加浮水印、加密、解密及填寫表單。它也能建立單頁或多頁 PDF，並對掃描 PDF 執行 OCR。依任務提供一份或多份 PDF、掃描 PDF、浮水印 PDF，或要寫入新 PDF 的內容。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pypdf",
+      "pdfplumber",
+      "pandas",
+      "reportlab",
+      "pytesseract",
+      "pdf2image",
+      "pypdfium2",
+      "pdf-lib"
+    ],
+    "inputs": [
+      "pdf documents",
+      "pdf forms",
+      "scanned pdf documents",
+      "pdf watermark"
+    ],
+    "outputs": [
+      "pdf documents",
+      "txt extracted text",
+      "xlsx extracted tables",
+      "jpg extracted images",
+      "plain text ocr output"
+    ],
+    "tools": [
+      "pdftotext",
+      "qpdf",
+      "pdftk",
+      "pdfimages",
+      "poppler-utils"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Extract the text from this PDF document while preserving its layout.",
+      "zh_hant": "請從這份 PDF 文件擷取文字，並保留原本的版面配置。"
+    },
+    {
+      "en": "Export the tables in this PDF to an Excel spreadsheet (XLSX).",
+      "zh_hant": "把這份 PDF 裡的表格匯出成 Excel 試算表（XLSX）。"
+    },
+    {
+      "en": "Merge these three documents into a single file.",
+      "zh_hant": "把這三份文件合併成一份。"
+    },
+    {
+      "en": "Split this report into a separate file for each page.",
+      "zh_hant": "將這份報告逐頁拆成個別檔案。"
+    },
+    {
+      "en": "Rotate the first page 90 degrees clockwise.",
+      "zh_hant": "把第一頁順時針旋轉 90 度。"
+    },
+    {
+      "en": "I only have a scanned contract and need to deliver a searchable version.",
+      "zh_hant": "我手上只有掃描版合約，現在需要交付一份可搜尋的版本。"
+    },
+    {
+      "en": "Create a multi-page PDF report using these headings and body text.",
+      "zh_hant": "請用這些標題與內文建立一份多頁 PDF 報告。"
+    },
+    {
+      "en": "Use the first page of watermark.pdf as a watermark on every page of document.pdf.",
+      "zh_hant": "請把 watermark.pdf 的第一頁當作浮水印，加到 document.pdf 的每一頁。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1773,
+    "cost_source": "gateway",
+    "cost_usd": 0.04655700000000001,
+    "prompt_tokens": 3416
+  }
+}

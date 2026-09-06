@@ -13,11 +13,12 @@ import (
 	"github.com/pgvector/pgvector-go"
 )
 
-// The creation tool's hybrid retrieval, on the real tables: the vector leg
-// within CreationMaxDistance in rank order, then one lexical admission that
-// carries every token of the query (creation-measure/search-f1, 2026-09-06),
-// and the lexical-only answer when no embedding service is wired.
-func TestCreationHybridRetrievalAdmitsACoveredLexicalHitAfterTheVectorLeg(t *testing.T) {
+// The creation tool's hybrid retrieval, on the real tables: the public rule
+// (covered bigram hits first, then the vector hits within the cut-off, the
+// exact name pinned) with the rows never measured against the query dropped
+// (report §15, 2026-09-07), and the lexical-only answer when no embedding
+// service is wired.
+func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	ctx := context.Background()
@@ -59,22 +60,28 @@ func TestCreationHybridRetrievalAdmitsACoveredLexicalHitAfterTheVectorLeg(t *tes
 	t.Cleanup(embed.Close)
 	svc := &catalog.Service{Pool: pool, LLM: &llmclient.Client{BaseURL: embed.URL}}
 
-	ids, cost, degraded, err := svc.CreationKnowledgeIDs(ctx, "pii-flag 標記個資")
+	ids, cost, degraded, err := svc.CreationKnowledgeIDs(ctx, "pii-flag 標記個資", catalog.CreationMaxDistance)
 	if err != nil || degraded || cost != 0.00001 {
 		t.Fatalf("ids=%v cost=%v degraded=%v err=%v", ids, cost, degraded, err)
 	}
-	if len(ids) != 2 || ids[0] != near.skillID || ids[1] != far.skillID {
-		t.Fatalf("vector hit first, then the covered lexical hit: got %v want [%s %s]", ids, near.skillID, far.skillID)
+	if len(ids) != 2 || ids[0] != far.skillID || ids[1] != near.skillID {
+		t.Fatalf("the covered lexical hit first, then the vector hit: got %v want [%s %s]", ids, far.skillID, near.skillID)
 	}
 	// A query the far document does not fully cover is not admitted by the
 	// lexical leg: the vector leg's answer stands alone.
-	ids, _, _, err = svc.CreationKnowledgeIDs(ctx, "pii-flag 不存在的詞")
+	ids, _, _, err = svc.CreationKnowledgeIDs(ctx, "pii-flag 不存在的詞", catalog.CreationMaxDistance)
 	if err != nil || len(ids) != 1 || ids[0] != near.skillID {
 		t.Fatalf("partial coverage must not admit: %v err=%v", ids, err)
 	}
+	// The duplicate guard's cut-off: the far document (distance 1) is not a
+	// duplicate of anything, whatever it covers is beside the point.
+	ids, _, _, err = svc.CreationKnowledgeIDs(ctx, "remove duplicate rows", catalog.CreationDuplicateDistance)
+	if err != nil || len(ids) != 1 || ids[0] != near.skillID {
+		t.Fatalf("duplicate cut-off: %v err=%v", ids, err)
+	}
 	// No embedding service: the lexical leg alone, flagged degraded.
 	lexOnly := &catalog.Service{Pool: pool}
-	ids, cost, degraded, err = lexOnly.CreationKnowledgeIDs(ctx, "pii-flag")
+	ids, cost, degraded, err = lexOnly.CreationKnowledgeIDs(ctx, "pii-flag", catalog.CreationMaxDistance)
 	if err != nil || !degraded || cost != 0 || len(ids) != 1 || ids[0] != far.skillID {
 		t.Fatalf("degraded answer: ids=%v cost=%v degraded=%v err=%v", ids, cost, degraded, err)
 	}

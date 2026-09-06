@@ -484,12 +484,12 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			if s.Materialize == nil {
 				return View{}, nil, ErrUnavailable
 			}
-			if !p.DuplicateAcknowledged && s.CatalogCheck != nil {
+			if !p.DuplicateAcknowledged && s.DuplicateCheck != nil {
 				// 05 R-50: the last place a duplicate can be stopped. One
 				// embedding of the draft's name and description; a hit within
 				// the creation tool's distance is shown before anything is
 				// stored, and the person adopts it or confirms the draft.
-				dups, cost, err := s.CatalogCheck(ctx, ws, duplicateQuery(p.Draft.Skill))
+				dups, cost, err := s.DuplicateCheck(ctx, ws, duplicateQuery(p.Draft.Skill))
 				if err != nil {
 					slog.Warn("creation: duplicate check failed, materializing without it", "error", err)
 				}

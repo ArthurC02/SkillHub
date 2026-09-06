@@ -1,0 +1,77 @@
+{
+  "checks": [],
+  "limitations": [
+    "所有文件均以 8.5 × 11 英吋 Letter 紙張為目標。",
+    "品牌設定檔的預期位置是專案根目錄中的 `.claude/pdf-playground.local.md`；若檔案不存在，會使用預設值或詢問使用者的品牌色彩。",
+    "建立文件時需要從 `${CLAUDE_PLUGIN_ROOT}/templates/` 載入範本。",
+    "PDF 匯出流程需要 Chrome，並須選擇「Save as PDF」、將邊界設為「None」及啟用背景圖形。",
+    "Playwright 瀏覽器工具僅用於可選的預覽。",
+    "指定的 Playfair Display 與 Source Sans 3 字型透過 Google Fonts URL 載入；CSS 同時指定 Arial 與 Georgia 作為後備字型。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 依照使用者提供的內容與需求，建立提案、報告、單頁文件、電子報、簡報及活動材料等可列印 HTML 文件，並可透過 Chrome 匯出為 PDF。它會檢查專案根目錄中的品牌設定檔，套用品牌色彩與字型；若沒有設定檔，則使用預設值或詢問使用者的品牌色彩。文件以 8.5 × 11 英吋 Letter 紙張為目標，並可選擇使用 Playwright 瀏覽器工具預覽。",
+  "tags": {
+    "dependencies": [
+      "google fonts",
+      "css patterns",
+      "claude plugin templates"
+    ],
+    "inputs": [
+      "markdown brand configuration",
+      "yaml brand settings",
+      "plain text document requirements",
+      "html templates"
+    ],
+    "outputs": [
+      "html document",
+      "pdf document"
+    ],
+    "tools": [
+      "chrome",
+      "playwright browser tools"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a print-ready proposal HTML from this copy and budget information so I can save it as a PDF.",
+      "zh_hant": "請根據這些文案與預算資料，製作一份可列印的提案 HTML，之後我要存成 PDF。"
+    },
+    {
+      "en": "Design this report using the brand colors and fonts in `.claude/pdf-playground.local.md`.",
+      "zh_hant": "使用 `.claude/pdf-playground.local.md` 裡的品牌色彩與字型設計這份報告。"
+    },
+    {
+      "en": "Turn this content into a one-page overview with a title, key information, and contact details.",
+      "zh_hant": "幫我把這些內容做成一份單頁介紹，包含標題、重點資訊與聯絡方式。"
+    },
+    {
+      "en": "Create a newsletter issue using these articles, dates, and organization details.",
+      "zh_hant": "請用這些文章、日期和組織資訊製作一期電子報。"
+    },
+    {
+      "en": "Design this content as printable presentation slides and apply our brand settings.",
+      "zh_hant": "把這份內容設計成可列印的簡報投影片，並套用我們的品牌設定。"
+    },
+    {
+      "en": "Create event materials for this event, including a flyer layout.",
+      "zh_hant": "請為這場活動製作活動材料，包括一張傳單版面。"
+    },
+    {
+      "en": "I have event copy and brand color codes and must deliver a letter-size PDF; first create an HTML document that I can print from Chrome.",
+      "zh_hant": "我手上有活動文案和品牌色碼，必須交付一份 Letter 尺寸的 PDF；請先建立可在 Chrome 列印的 HTML 文件。"
+    },
+    {
+      "en": "Create a report layout that keeps the body content from touching the footer and offer a preview with Playwright browser tools.",
+      "zh_hant": "請建立一份報告版面，避免正文碰到頁尾，並提供 Playwright 瀏覽器預覽。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1774,
+    "cost_source": "gateway",
+    "cost_usd": 0.044886999999999996,
+    "prompt_tokens": 3078
+  }
+}

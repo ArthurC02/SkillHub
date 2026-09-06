@@ -1,0 +1,103 @@
+{
+  "checks": [],
+  "limitations": [
+    "引用工作流程中的 Python 程式碼範例需要 Python 執行環境。",
+    "投稿前須確認資助機構最新的開放取用政策，因可接受途徑與 APC 上限可能變動。",
+    "若不確定，張貼預印本前須確認目標期刊的現行政策；預印本不等同滿足 OSTP Nelson Memo 對同儕審查版本的公開取用要求。",
+    "Hybrid 開放取用不符合 Plan S，亦不符合許多資助機構的開放取用要求。",
+    "投稿前須查閱目標期刊與資助機構現行的 AI／LLM 政策，並依期刊指定措辭調整揭露聲明。",
+    "稿件中的每項引文、DOI、作者名單、頁碼、引文內容、數值、日期與具名事實都須核實；LLM 不得列為共同作者。",
+    "AI 文字偵測結果不應單獨作為研究不當行為的判定依據。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 協助規劃研究問題、文獻搜尋、論文結構與學術寫作，也涵蓋引文管理、同儕審查回覆、研究補助提案及投稿流程。它亦提供開放取用、預印本、持久識別碼、研究倫理、預註冊、作者貢獻與 LLM 使用揭露方面的工作流程。使用者需依任務提供研究主題、研究資料、稿件內容、審稿意見，或期刊與資助機構的要求。",
+  "tags": {
+    "dependencies": [
+      "python"
+    ],
+    "inputs": [
+      "research topic",
+      "research question",
+      "study details",
+      "manuscript draft",
+      "reviewer comments",
+      "citation metadata",
+      "journal requirements",
+      "funder requirements",
+      "contributor details",
+      "llm use details"
+    ],
+    "outputs": [
+      "research question",
+      "literature search strategy",
+      "academic paper",
+      "literature review",
+      "bibtex citation entry",
+      "reviewer response letter",
+      "grant proposal",
+      "budget justification",
+      "journal cover letter",
+      "open access route assessment",
+      "llm disclosure statement",
+      "research ethics checklist"
+    ],
+    "tools": [
+      "zotero",
+      "web of science",
+      "scopus",
+      "google scholar",
+      "pubmed",
+      "orcid",
+      "doi",
+      "ror",
+      "osf",
+      "aspredicted",
+      "arxiv",
+      "zenodo",
+      "github"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Help me narrow “How does social media affect politics?” into a feasible, specific, and testable research question.",
+      "zh_hant": "幫我把「社群媒體如何影響政治」縮小成可執行、具體且可檢驗的研究問題。"
+    },
+    {
+      "en": "Break my research topic into key concepts and synonyms, build Boolean search combinations, and list inclusion and exclusion criteria.",
+      "zh_hant": "請把我的研究題目拆成關鍵概念與同義詞，建立布林搜尋組合，並列出納入與排除條件。"
+    },
+    {
+      "en": "Using my research objective, methods, and results, plan what each section of an IMRaD research paper should contain.",
+      "zh_hant": "根據我的研究目的、方法與結果，規劃一篇 IMRaD 研究論文各部分應包含的內容。"
+    },
+    {
+      "en": "Create a BibTeX journal article citation record from the author, title, journal, year, volume, issue, pages, and DOI.",
+      "zh_hant": "請依作者、標題、期刊、年份、卷期、頁碼與 DOI，建立一筆 BibTeX 期刊論文引文紀錄。"
+    },
+    {
+      "en": "I have just received comments from two reviewers, and the journal requires point-by-point replies with page and line numbers; I need to submit a reviewer response letter.",
+      "zh_hant": "我剛收到兩位審稿人的意見，期刊要求逐點答覆並標示修改頁碼與行號；我需要提交一封審稿回覆信。"
+    },
+    {
+      "en": "Draft the Specific Aims page of an NSF/NIH grant proposal from the research problem, knowledge gap, central hypothesis, and expected impact.",
+      "zh_hant": "根據研究問題、知識缺口、中央假設與預期影響，起草 NSF／NIH 研究補助提案的 Specific Aims 頁面。"
+    },
+    {
+      "en": "Compare Gold, Green, Diamond, Hybrid, and Bronze open-access routes under Plan S and the 2026 OSTP Nelson Memo requirements.",
+      "zh_hant": "請依 Plan S 與 2026 年 OSTP Nelson Memo 的要求，比較 Gold、Green、Diamond、Hybrid 與 Bronze 開放取用途徑。"
+    },
+    {
+      "en": "Write an LLM-use disclosure statement for my manuscript that identifies the ChatGPT version, its use, and the authors’ review and responsibility for the content.",
+      "zh_hant": "請為稿件撰寫一段 LLM 使用揭露聲明，註明使用的 ChatGPT 版本、用途，以及作者已審閱並承擔內容責任。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2858,
+    "cost_source": "gateway",
+    "cost_usd": 0.090002,
+    "prompt_tokens": 7765
+  }
+}

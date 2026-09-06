@@ -23,25 +23,33 @@ func (s *Service) CreationReferenceIDs(ctx context.Context, query string) ([]str
 	return ids, nil
 }
 
-// CreationMaxDistance is the creation tool's own cutoff, tighter than the
-// public search's MaxCosineDistance. Measured on the 60-query golden set
-// replayed through the product's SQL (creation-measure/search-f1, 2026-09-06):
-// the lexical leg scores F1@3 0.02 (one top-1 hit in 48 task queries); the
-// vector leg at 0.75 scores 0.61 with precision 0.47; at 0.55 it scores 0.77
-// at one result and 0.75 at two, precision 0.92 / 0.74, and every distractor
-// query is still rejected. The owner's rule: retrieval is judged by F1, not
-// by the technology swap.
-const CreationMaxDistance = 0.55
+// CreationDuplicateDistance is the duplicate guard's cut-off (05 R-50): "is
+// there already a Skill that IS this draft" is a stricter question than "is
+// there a Skill worth looking at", so it keeps the 0.55 the creation tool was
+// measured at when precision at one result was the goal (creation-measure/
+// search-f1, 2026-09-06: at 0.55 the vector leg answers with precision 0.92
+// and rejects every distractor).
+const CreationDuplicateDistance = 0.55
 
-// CreationKnowledgeIDs is the creation tool's hybrid retrieval (05 R-47,
-// creation-measure/search-f1): the vector leg within CreationMaxDistance in
-// rank order, then the lexical leg's best hit admitted only when every token
-// of the query is in the document (lexical.go) — what a person types when they
-// know the name or one distinctive term, which the vector cutoff misses. The
-// embedding's cost is returned so the session pays for it. Without an
-// embedding service, or when the call fails, the lexical leg alone answers,
-// flagged degraded: every-token matches first, then any-token matches.
-func (s *Service) CreationKnowledgeIDs(ctx context.Context, query string) (ids []string, costUSD float64, degraded bool, err error) {
+// CreationMaxDistance is the cut-off for the creation tool's catalogue search
+// and the first-message offer (05 R-49). It is the public search's own
+// MaxCosineDistance since the F1 loop of 2026-09-07 (report §15): with the v7
+// enrichment the two rules were swept on golden + name + term queries under
+// F1 at k = |relevant| — 0.941 at 0.55, 0.948 at 0.60, 0.955 at 0.75, with
+// every distractor still rejected at every cut-off — so the creation tool
+// simply runs the public rule, and there is one rule to measure.
+const CreationMaxDistance = MaxCosineDistance
+
+// CreationKnowledgeIDs is the creation tool's hybrid retrieval (05 R-47／
+// R-48, creation-measure/search-f1): the public rule — covered bigram hits
+// first (in their own distance order), then the vector hits within
+// maxDistance, the exact name pinned — minus the rows that were never
+// measured against the query (no embedding yet): an offer to a person is a
+// semantic answer or nothing. The embedding's cost is returned so the session
+// pays for it. Without an embedding service, or when the call fails, the
+// lexical leg alone answers, flagged degraded: every-token matches first, then
+// any-token matches.
+func (s *Service) CreationKnowledgeIDs(ctx context.Context, query string, maxDistance float64) (ids []string, costUSD float64, degraded bool, err error) {
 	queries := gen.New(s.Pool)
 	lexical := func(op string, limit int32) ([]string, error) {
 		q := lexicalQuery(query, op)
@@ -89,29 +97,17 @@ func (s *Service) CreationKnowledgeIDs(ctx context.Context, query string) (ids [
 		costUSD = *embedResp.Usage.CostUSD
 	}
 	embedding := pgvector.NewVector(embedResp.Embeddings[0])
-	rows, _, err := s.hybridSearch(ctx, queries, query, &embedding, 10, searchFilters{})
+	rows, _, err := s.hybridSearch(ctx, queries, query, &embedding, 10, searchFilters{}, maxDistance)
 	if err != nil {
 		return nil, costUSD, false, err
 	}
 	for _, r := range rows {
-		// rank is 1 - distance; an unranked row came through the lexical leg
-		// with no embedding and was never measured against the query.
-		if r.Rank == nil || 1-*r.Rank > CreationMaxDistance {
+		// The SQL already keeps covered rows past the cut-off and orders the
+		// page; only the rows never measured against the query are dropped.
+		if r.unranked {
 			continue
 		}
 		ids = append(ids, r.SkillID)
-	}
-	// The lexical admission: one document that carries every token of the
-	// query, after the vector hits (measured: F1 0.877 over golden + name +
-	// term queries, golden's own 0.774 and 12/12 distractor rejections kept).
-	covered, err := lexical("&", 1)
-	if err != nil {
-		return nil, costUSD, false, err
-	}
-	for _, id := range covered {
-		if !containsID(ids, id) {
-			ids = append(ids, id)
-		}
 	}
 	return ids, costUSD, false, nil
 }

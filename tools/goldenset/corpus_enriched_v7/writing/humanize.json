@@ -1,0 +1,82 @@
+{
+  "checks": [],
+  "limitations": [
+    "不保證商業 AI 偵測器會給出 0% 的 AI 分數。",
+    "不會為了增加具體性而加入虛假資訊，只會使用合理的情境框架。",
+    "改寫只調整表達方式，不改變輸入的事實內容。",
+    "不會對所有領域套用相同轉換，會依技術、敘事、創意、商務或 Slack 等語域調整。",
+    "寫作樣本為選填；若未提供樣本且輸入沒有數字、名稱、日期或具體例子，仍會改寫，但會在輸出後附上缺乏事實依據的說明。",
+    "偵測器評分的最佳候選流程為高風險情境下的選用步驟，使用時需要 GPTZero、Pangram、Binoculars 等實際偵測器，或禁用詞計數與困惑度探針。",
+    "反覆釋義與自我改寫距離檢查屬選用流程，使用時需要另一個 LLM。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 接收待改寫的文字，調整用字、句子節奏、結構、標點、具體細節與語氣，使內容更接近人類寫作的風格，同時保留原有事實。它也能依主題、受眾、篇幅與文體要求從零撰寫內容，並針對技術、敘事、創意、商務及 Slack 訊息調整語域。使用者可選擇提供既有寫作樣本供其比對語氣；輸出原則上只有改寫後的文字，特定情況下會附加內容缺乏具體依據或篇幅大幅縮短的說明。",
+  "tags": {
+    "dependencies": [
+      "optional second llm",
+      "optional ai detector",
+      "optional perplexity probe"
+    ],
+    "inputs": [
+      "plain text draft",
+      "plain text writing samples",
+      "topic and audience brief"
+    ],
+    "outputs": [
+      "plain text rewrite",
+      "plain text original content",
+      "plain text meta-note"
+    ],
+    "tools": [
+      "slack",
+      "gptzero",
+      "pangram",
+      "binoculars",
+      "grammarly",
+      "ai-check"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Rewrite this so it sounds like a person wrote it, keep the original meaning, and do not include an edit summary.",
+      "zh_hant": "把這段話改得像真人寫的，保留原意，不要附上修改說明。"
+    },
+    {
+      "en": "These sentences sound robotic and formulaic. Please rewrite them.",
+      "zh_hant": "這幾句讀起來很機械又像制式回答，請重寫。"
+    },
+    {
+      "en": "Rewrite this Slack team update in the register an engineer would normally use, keeping the existing numbers and tool names.",
+      "zh_hant": "把這份 Slack 團隊更新改成工程師平常會貼的訊息，保留現有數字和工具名稱。"
+    },
+    {
+      "en": "Write a business email from scratch based on these points, with the request stated in the first two sentences.",
+      "zh_hant": "根據以下重點，從零寫一封商務電子郵件，並在前兩句提出要求。"
+    },
+    {
+      "en": "Use my attached writing samples to identify my sentence length, word choice, and transition habits, then rewrite this article in the same voice.",
+      "zh_hant": "請參考我附上的寫作樣本，先比對我的句長、用字和轉折習慣，再用相同語氣重寫這篇文章。"
+    },
+    {
+      "en": "Rewrite this fiction passage while preserving its plot and facts, but remove formulaic symmetry, excessive em dashes, and negation pivots.",
+      "zh_hant": "重寫這段小說文字，保留情節與事實，但移除制式對稱句、過多破折號和否定式轉折。"
+    },
+    {
+      "en": "I have an AI-generated board memo that must be delivered tomorrow morning. Its facts cannot change, but the register needs to fit a board document.",
+      "zh_hant": "我手上有一份 AI 產生的董事會備忘錄，明早必須交付；內容事實不能變，但語氣需要符合董事會文件。"
+    },
+    {
+      "en": "If GPTZero is available, generate three to five variants, compare their detector scores, and deliver the lowest-scoring version.",
+      "zh_hant": "在可使用 GPTZero 的情況下，請產生三到五個版本並以偵測分數比較，交付分數最低的版本。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2557,
+    "cost_source": "gateway",
+    "cost_usd": 0.094962,
+    "prompt_tokens": 9961
+  }
+}

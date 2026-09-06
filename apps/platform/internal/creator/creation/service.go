@@ -251,6 +251,9 @@ type Service struct {
 	// degraded (lexical-only) answer — a keyword floor over a whole sentence
 	// is noise, not a match.
 	CatalogCheck func(context.Context, identity.Workspace, string) ([]Reference, float64, error)
+	// DuplicateCheck is the same search at the duplicate guard's stricter
+	// cut-off (05 R-50): a Skill that IS this draft, not one worth reading.
+	DuplicateCheck func(context.Context, identity.Workspace, string) ([]Reference, float64, error)
 	// Adopt forks an existing Skill into the workspace as the session's
 	// candidate (adopt_reference): reuse instead of composition.
 	Adopt         func(context.Context, identity.Workspace, string) (Candidate, error)

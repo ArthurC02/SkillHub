@@ -1,0 +1,83 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要確認來源與目標檔案路徑及轉換方向。",
+    "CSV 分隔符號或其他方言資訊有歧義時，需要詢問使用者；標題列預設存在，若第一列看似資料則需要確認。",
+    "CSV 轉 JSON 時預設將值保留為字串；整數、浮點數、布林值與 null 的型別推斷是可選功能，需要先詢問使用者。",
+    "空字串、NA、null 與 NaN 可轉成 JSON null，但需要與使用者確認空值標記清單。",
+    "巢狀 JSON 預設以點號鍵扁平化並需要確認；也可將巢狀欄位編碼為 JSON 字串，或拒絕轉換並指向 json-restructure。",
+    "超過 1 GB 的輸入會提出警告，並建議使用 JSONL 而非 JSON 陣列。",
+    "混合型別欄位可能被 pandas 強制轉型；數值預期欄位若成為 object 欄位會被回報。",
+    "CSV 中含換行的欄位必須加上引號。JSON 沒有原生日期時間型別，因此日期時間會輸出為 ISO 8601 字串。",
+    "流程使用 Python 的 csv 與 json 標準函式庫；pandas 可透過 pip 安裝，並用於型別推斷及大型檔案處理。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 在 CSV、JSON 陣列與 JSONL 之間轉換表格或物件資料，需要確認來源與目標檔案路徑及轉換方向。它會處理 CSV 方言與編碼、欄名對應、空值，以及 JSON 巢狀結構；CSV 轉換時預設保留字串，也可選擇推斷型別。它可使用串流方式處理大型檔案，並重新載入輸出以比對轉換前後的資料筆數。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas"
+    ],
+    "inputs": [
+      "csv tabular data",
+      "json object arrays",
+      "jsonl line-delimited objects"
+    ],
+    "outputs": [
+      "csv tabular data",
+      "json object arrays",
+      "jsonl line-delimited objects"
+    ],
+    "tools": [
+      "pandas",
+      "python csv module",
+      "python json module",
+      "csv.Sniffer",
+      "pip",
+      "json-restructure"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Convert this CSV table file into a JSON data file containing an array of objects.",
+      "zh_hant": "把這個 CSV 表格檔轉成包含物件陣列的 JSON 資料檔。"
+    },
+    {
+      "en": "Convert the CSV spreadsheet to a JSONL data file with one JSON object per line.",
+      "zh_hant": "將 CSV 試算表轉成 JSONL 資料檔，每行放一個 JSON 物件。"
+    },
+    {
+      "en": "Convert this JSON array of objects into a CSV table with a header row.",
+      "zh_hant": "把這個 JSON 物件陣列轉成有標題列的 CSV 表格。"
+    },
+    {
+      "en": "Convert this JSONL data file line by line into a CSV spreadsheet.",
+      "zh_hant": "將這份 JSONL 資料檔逐行轉成 CSV 試算表。"
+    },
+    {
+      "en": "Turn each row into an object, place all objects in one array, and preserve every value as a string.",
+      "zh_hant": "把每一列資料變成一個物件，所有物件放進同一個陣列，值先全部保留為字串。"
+    },
+    {
+      "en": "Arrange data containing one object per line into rows and named columns, then compare the record counts before and after conversion.",
+      "zh_hant": "把每行一個物件的資料整理成有欄名的列與欄，並核對轉換前後的筆數。"
+    },
+    {
+      "en": "I have a CSV table larger than 1 GB and must deliver one object per line; convert it to JSONL using streaming and report the record count.",
+      "zh_hant": "我手上有一個超過 1 GB 的 CSV 表格，必須交付逐行物件資料；請用串流方式轉成 JSONL 並回報筆數。"
+    },
+    {
+      "en": "Convert this nested JSON array to CSV and flatten object and array fields using dotted keys.",
+      "zh_hant": "將這個巢狀 JSON 陣列轉成 CSV，並用點號鍵扁平化物件與陣列欄位。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2545,
+    "cost_source": "gateway",
+    "cost_usd": 0.055022,
+    "prompt_tokens": 2021
+  }
+}

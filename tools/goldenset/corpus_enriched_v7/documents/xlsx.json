@@ -1,0 +1,90 @@
+{
+  "checks": [],
+  "limitations": [
+    "交付成果必須是試算表檔案，不適用於以 Word 文件、HTML 報告、獨立 Python 指令碼、資料庫管線或 Google Sheets API 整合為主要成果的工作。",
+    "執行文件中的指令碼需要 Python，並需要 openpyxl、pandas、markitdown 與 LibreOffice；前三者只有在匯入失敗或指令缺失時才需透過 pip 安裝。",
+    "只要檔案含有公式，就必須使用 recalc.py 與 LibreOffice 重新計算，並修正其回報的公式錯誤。",
+    "公式不可使用 XLOOKUP、XMATCH、SORT、FILTER、UNIQUE 或 SEQUENCE；指定的六個較新函數必須加上 _xlfn. 前綴。",
+    "使用 openpyxl 儲存 XLSM 時必須設定 keep_vba=True，否則巨集會遺失。",
+    "使用 openpyxl 重新儲存後再計算可能使活頁簿失去外部檔案連結；recalc.py 在此狀態下會拒絕執行，除非使用 --force 接受連結遺失。",
+    "markitdown 的快速檢視不提供儲存格座標，因此不能用它規劃儲存格編輯。",
+    "以 data_only=True 載入的活頁簿不可儲存，否則公式會被常值永久取代。",
+    "編輯現有檔案時必須遵循其既有慣例，只寫入指定的輸入儲存格，並保留所有既有公式。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 可開啟、讀取、編輯及修正 XLSX、XLSM、XLTX、CSV 與 TSV 試算表，也能建立新試算表及轉換表格檔案格式。它可加入公式、格式與圖表，並整理標題錯位、無效資料或列結構異常的表格資料；含公式的活頁簿會透過 LibreOffice 重新計算。使用者需提供現有試算表或建立新試算表所需的資料與規格，交付成果必須是試算表檔案。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "openpyxl",
+      "pandas",
+      "markitdown",
+      "libreoffice"
+    ],
+    "inputs": [
+      "xlsx spreadsheet",
+      "xlsm macro-enabled spreadsheet",
+      "xltx spreadsheet template",
+      "csv table",
+      "tsv table"
+    ],
+    "outputs": [
+      "xlsx spreadsheet",
+      "xlsm macro-enabled spreadsheet",
+      "xltx spreadsheet template",
+      "csv table",
+      "tsv table"
+    ],
+    "tools": [
+      "openpyxl",
+      "pandas",
+      "markitdown",
+      "libreoffice",
+      "soffice",
+      "recalc.py"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Read this XLSM macro-enabled workbook, inspect its formulas and values, and deliver a spreadsheet file.",
+      "zh_hant": "請讀取這個 XLSM 巨集活頁簿，檢視其中的公式和值，並交付試算表檔案。"
+    },
+    {
+      "en": "Edit the XLSX Excel workbook in my downloads, add a column, and calculate it using my specified formula.",
+      "zh_hant": "請編輯 downloads 裡的 XLSX Excel 活頁簿，新增一欄並依照我指定的公式計算。"
+    },
+    {
+      "en": "Fix the formula errors in this spreadsheet without changing the other existing formulas.",
+      "zh_hant": "修正這份試算表裡出錯的公式，但不要改動其他既有公式。"
+    },
+    {
+      "en": "I need an annual budget sheet for colleagues to fill in; identify the cells they should edit and include one example row.",
+      "zh_hant": "我需要一份可供同事填寫的年度預算表，請標示要編輯的儲存格並放入一列範例資料。"
+    },
+    {
+      "en": "Convert this CSV table file into an XLSX Excel spreadsheet.",
+      "zh_hant": "把這個 CSV 表格檔轉成 XLSX Excel 試算表。"
+    },
+    {
+      "en": "The sales data I have contains misplaced headers, malformed rows, and junk content, and I must deliver it as a spreadsheet.",
+      "zh_hant": "我手上的銷售資料有錯位的標題、破損的資料列和多餘內容，必須整理成可交付的試算表。"
+    },
+    {
+      "en": "Format the fonts, numbers, colors, and cells according to the conventions already used in the workbook.",
+      "zh_hant": "請依照現有活頁簿的慣例設定字型、數字格式、色彩與儲存格樣式。"
+    },
+    {
+      "en": "Add a chart to this TSV tab-delimited table and deliver it as a spreadsheet file.",
+      "zh_hant": "請在這份 TSV 定位點分隔表格中加入圖表，並以試算表檔案交付。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2088,
+    "cost_source": "gateway",
+    "cost_usd": 0.05314200000000001,
+    "prompt_tokens": 3473
+  }
+}

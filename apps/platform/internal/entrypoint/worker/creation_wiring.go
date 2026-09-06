@@ -18,7 +18,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 		var rankings [][]string
 		var cost float64
 		for _, query := range queries {
-			ids, c, _, err := search.CreationKnowledgeIDs(ctx, query)
+			ids, c, _, err := search.CreationKnowledgeIDs(ctx, query, catalog.CreationMaxDistance)
 			cost += c
 			if err != nil {
 				return nil, cost, err

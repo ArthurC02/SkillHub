@@ -1,0 +1,78 @@
+{
+  "checks": [],
+  "limitations": [
+    "文件中的流程與程式碼以 Python 執行，並需要 pandas、openpyxl 與 lxml。",
+    "文件示範的目標檔案為 .xlsx。",
+    "若工作表有多列表頭，需調整 pandas 的 HEADER_ROW 設定。",
+    "XML 刪除後行號不連續，Excel 開啟時會顯示空白行；完成刪除後必須詢問使用者是否壓實行號。",
+    "使用者確認壓實行號後，需使用 excel-delete 的壓實步驟重新編排行號並同步更新公式引用。",
+    "Excel 日期欄若為 datetime 類型，需使用 pd.Timestamp 進行比較。",
+    "isna() 只匹配 None 或 NaN，不匹配空字串；匹配空字串需使用等於空字串的條件。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 依指定條件篩選 Excel 的 XLSX 試算表資料列，可保留符合條件的列，或刪除符合條件的列；未指定模式時預設為保留。使用者需提供檔案、篩選欄位與條件，例如等於、包含、日期比較、範圍、空值或多條件組合。它先以 pandas 找出目標列，再直接修改 XML 以刪除資料列，並建立備份及驗證結果；刪除後會詢問是否壓實不連續的行號。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "excel-safe-workflow",
+      "excel-delete"
+    ],
+    "inputs": [
+      "xlsx spreadsheet"
+    ],
+    "outputs": [
+      "xlsx filtered spreadsheet",
+      "xlsx backup"
+    ],
+    "tools": [
+      "excel",
+      "pandas",
+      "openpyxl",
+      "xml",
+      "lxml"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Keep only the rows dated after 2020 in this Excel spreadsheet.",
+      "zh_hant": "請在這份 Excel 試算表中只保留申請日為 2020 年以後的資料列。"
+    },
+    {
+      "en": "Delete rows with a null applicant field from this XLSX file.",
+      "zh_hant": "從 XLSX 檔案刪除申請人欄位為空值的資料列。"
+    },
+    {
+      "en": "Keep only records whose title contains “graphene.”",
+      "zh_hant": "只留下標題包含「石墨烯」的記錄。"
+    },
+    {
+      "en": "Remove data whose legal status equals invalid.",
+      "zh_hant": "去掉法律狀態等於無效的資料。"
+    },
+    {
+      "en": "I have a patent table, and the version I must deliver can contain only records filed between 2020 and 2023.",
+      "zh_hant": "我手上有一份專利表格，交付版本只能包含 2020 年至 2023 年間提出申請的記錄。"
+    },
+    {
+      "en": "Filter this .xlsx workbook to keep rows where the applicant contains the specified company and the current legal status is granted.",
+      "zh_hant": "篩選這份 .xlsx 活頁簿，保留申請人包含指定公司且目前法律狀態為已授權的列。"
+    },
+    {
+      "en": "Delete rows where the key field is not blank, leaving the null entries.",
+      "zh_hant": "刪除關鍵欄位不是空白的資料列，保留空值資料。"
+    },
+    {
+      "en": "Keep only data whose value is greater than or equal to the specified threshold.",
+      "zh_hant": "只保留數值大於或等於指定門檻的資料。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1227,
+    "cost_source": "gateway",
+    "cost_usd": 0.04259700000000001,
+    "prompt_tokens": 4808
+  }
+}

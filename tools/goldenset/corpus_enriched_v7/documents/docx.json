@@ -1,0 +1,94 @@
+{
+  "checks": [],
+  "limitations": [
+    "不適用於以 PDF、試算表或 Google Docs 為主要文件的任務，也不適用於與文件產生無關的一般程式設計工作。",
+    "舊版 .doc 文件必須先透過 LibreOffice soffice 轉換成 .docx。",
+    "建立新文件需要 Node.js 與 docx npm 套件；套件已預先安裝，只有 require('docx') 失敗時才需執行安裝。",
+    "讀取 .docx 內容需要 pandoc。",
+    "docx-js 無法開啟現有文件；編輯既有 .docx 需使用 unzip 與 zip，並修改 word/document.xml。",
+    "輸出驗證流程需要 Python、LibreOffice soffice，以及 Poppler 的 pdftoppm。",
+    "註解建立後，仍須在 word/document.xml 放置註解範圍與參照標記，否則註解不會顯示。",
+    "檢查追蹤修訂是否完整需要原始文件，並以作者名稱執行驗證。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此技能可建立、讀取、編輯及處理 Word 文件（.docx）與 Word 範本（.dotx），包括擷取或重整內容、尋找與取代文字，以及插入或更換圖片。它也可處理追蹤修訂、註解及接受全部修訂後的副本；讀取內容時會轉為 Markdown。依任務提供要建立的內容，或提供現有的 .docx、.dotx；舊版 .doc 必須先轉換成 .docx。",
+  "tags": {
+    "dependencies": [
+      "node.js runtime",
+      "python runtime",
+      "docx npm package",
+      "pandoc",
+      "libreoffice",
+      "poppler"
+    ],
+    "inputs": [
+      "docx word document",
+      "dotx word template",
+      "doc legacy word document",
+      "png image",
+      "jpg image"
+    ],
+    "outputs": [
+      "docx word document",
+      "dotx word template",
+      "markdown document content",
+      "pdf verification render",
+      "jpg page image"
+    ],
+    "tools": [
+      "docx-js",
+      "pandoc",
+      "libreoffice soffice",
+      "pdftoppm",
+      "unzip",
+      "zip",
+      "merge_runs.py",
+      "validate.py",
+      "accept_changes.py",
+      "comment.py"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a Word document (.docx) from this content with a table of contents, headings, page numbers, and a letterhead.",
+      "zh_hant": "請把這些內容製作成 Word 文件（.docx），並加入目錄、標題、頁碼和信頭。"
+    },
+    {
+      "en": "Read the contents of this .docx Word document and convert them to Markdown.",
+      "zh_hant": "讀取這個 .docx Word 文件的內容，並轉成 Markdown。"
+    },
+    {
+      "en": "Extract the specified sections from this Word template (.dotx).",
+      "zh_hant": "請從這份 Word 範本（.dotx）擷取指定章節的內容。"
+    },
+    {
+      "en": "Replace every occurrence of the old company name in the contract with the new company name.",
+      "zh_hant": "把合約裡所有「舊公司名」取代為「新公司名」。"
+    },
+    {
+      "en": "I have a .docx file and a new PNG logo, and I need to deliver the Word document with the logo replaced.",
+      "zh_hant": "我手上有一份 .docx 和新的 PNG 標誌圖片，必須交付換好標誌的 Word 文件。"
+    },
+    {
+      "en": "Mark these revisions under my name and retain all insertions and deletions as tracked changes.",
+      "zh_hant": "請以我的名字標記這些修訂，保留所有插入與刪除。"
+    },
+    {
+      "en": "Add the comment “This cap is too low” to the paragraph about the fee cap.",
+      "zh_hant": "在費用上限那段文字加入註解「這個上限太低」。"
+    },
+    {
+      "en": "All revisions have been approved, and I now need to deliver a copy with every tracked change accepted.",
+      "zh_hant": "所有修訂都已確認，我現在要交付一份接受全部變更的副本。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2806,
+    "cost_source": "gateway",
+    "cost_usd": 0.071602,
+    "prompt_tokens": 3097
+  }
+}

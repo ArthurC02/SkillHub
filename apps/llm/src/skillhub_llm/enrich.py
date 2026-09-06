@@ -37,6 +37,12 @@ ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
 # scripts are written for a stated requirement, after the CONTENT-007/008
 # baseline found 11 of 33 Python-dependent Skills naming the dependency in
 # `tags` but not in `limitations` - the reader sees the limitations block.
+# v7 (2026-09-06, F1 ≥ 0.95 goal): the task examples are the retrieval bridge
+# and 3-5 of them left the golden set's misses uncovered - every miss was a
+# phrasing the examples never used (a scanned file for a PDF Skill, a TSV for a
+# stats Skill, "our signups dropped" for an analytics Skill). 6-8 examples with
+# a required spread: format-naming ones (with the everyday synonyms), format-free
+# ones, one situational, one per distinct operation; tags name concrete formats.
 # v6 forbids composing two separately stated facts into one, after `docx` failed
 # CONTENT-005 twice under v5 for joining "extracts .dotx template content" and
 # "converts .docx to markdown with pandoc" into a single .dotx-to-markdown
@@ -54,7 +60,7 @@ ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
 # typeface name inside an English example). It is not in v6 because v6 landed in
 # a parallel batch and its text is already generated and reviewed - editing v6
 # now would make the version string stop identifying which prompt wrote what.
-PROMPT_VERSION = "enrich-skill/v6"
+PROMPT_VERSION = "enrich-skill/v7"
 
 # The ceiling on a single gateway call, and the only one there is. Go's deadline
 # (75s, ingest/enrich.go) is client-side: abandoning the HTTP request does not
@@ -102,10 +108,22 @@ Produce:
 - summary: 2-4 plain sentences a non-technical reader understands, covering what the \
 Skill does and what input it needs. Cover the body of the document, not just its \
 frontmatter. Write it in {language}.
-- task_examples: 3-5 realistic sentences a user might type when they need this Skill, \
-each given in both Traditional Chinese (zh_hant) and English (en).
+- task_examples: 6-8 realistic sentences a user might type when they need this Skill, \
+each given in both Traditional Chinese (zh_hant) and English (en). They are how a search \
+finds this Skill, so spread them over the ways the same need gets phrased. The set must \
+include: (a) at least two that name the input or output the content states - the file \
+type, document kind or tool - using the everyday words a person uses for it as well as \
+the exact one (a scanned document is a PDF or an image; a TSV or CSV is a table or a \
+spreadsheet; a deck is a presentation or slides; a JSONL file is a data file); (b) at \
+least two that name no format or tool at all and say the goal in plain words; (c) at \
+least one written as the situation the person is in - what happened, what they have in \
+hand, what they must deliver - rather than as a command; (d) where the content documents \
+several distinct operations, one sentence per operation. Every sentence must still be a \
+task the content states this Skill does: rules 3 and 4 above apply to examples too.
 - tags: short lowercase noun phrases for the inputs, outputs, tools and dependencies \
-the content mentions. Use an empty list where it says nothing.
+the content mentions. For inputs and outputs, name the concrete formats the content \
+states, one per entry (pdf, xlsx, csv, tsv, jsonl, docx, pptx, markdown, html, png, \
+plain text, ...) alongside what the file holds. Use an empty list where it says nothing.
 - limitations: short sentences, in {language}, restating what the content itself says \
 the Skill does NOT do, or what it requires in order to work - unsupported formats, \
 stated scope limits, required accounts, credentials, network access or installed \

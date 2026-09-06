@@ -1,0 +1,86 @@
+{
+  "checks": [],
+  "limitations": [
+    "執行環境列為 Linux、Darwin 或 Win32，並需要 python3 或 python。",
+    "程式碼使用 pandas 與 openpyxl；日期與文字處理片段也使用 Python 的 datetime 與 re 模組。",
+    "大型檔案串流函式使用 pandas.read_csv 讀取並以 CSV 寫出，且需要提供接收 DataFrame、回傳 DataFrame 或 None 的 transform_fn。",
+    "standardize_xlsx 的 output_path 是選填；未提供時不儲存檔案，只回傳標準化後的 DataFrame。",
+    "日期標準化只嘗試文件列出的日期格式與 Excel 日期序號；無法解析的值會保留原值。",
+    "資料列驗證規則涵蓋 int、float、email 與 date；空值會略過，date 規則檢查 YYYY-MM-DD 格式。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此技能處理 CSV、TSV、XLSX、JSON 與 JSON Lines 資料，涵蓋 XLSX 標準化、數字與日期清理、篩選、聚合、檔案連接及大型 CSV 串流處理。它也能檢查資料品質、依欄位型別驗證資料，並提供分析流程、分析需求範本與報告結構。使用時需提供一個或多個支援格式的資料檔案，以及操作所需的條件、欄位、連接鍵、驗證結構或分析問題；XLSX 標準化的輸出路徑可省略，省略時只回傳 DataFrame 而不儲存檔案。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "openpyxl",
+      "python re module",
+      "python datetime module"
+    ],
+    "inputs": [
+      "csv tabular data",
+      "tsv tabular data",
+      "xlsx spreadsheet data",
+      "json data",
+      "jsonl data",
+      "filter expression",
+      "validation schema",
+      "analysis request"
+    ],
+    "outputs": [
+      "pandas dataframe",
+      "csv tabular data",
+      "xlsx spreadsheet data",
+      "validation errors",
+      "markdown report"
+    ],
+    "tools": [
+      "scripts/data_ops.py",
+      "python cli"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Standardize this messy Excel spreadsheet (XLSX), handling merged cells, multi-level headers, currency-formatted numbers, and dates, then save it as clean_data.csv.",
+      "zh_hant": "請把這份格式混亂的 Excel 試算表（XLSX）標準化，處理合併儲存格、多層表頭、貨幣數字和日期，並輸出成 clean_data.csv。"
+    },
+    {
+      "en": "Filter data.csv using the condition amount > 1000 and write the result to filtered.csv.",
+      "zh_hant": "請依照 amount > 1000 的條件篩選 data.csv，並將結果寫入 filtered.csv。"
+    },
+    {
+      "en": "Group the data by category and calculate the sum of amount.",
+      "zh_hant": "請按照 category 分組，計算 amount 的總和。"
+    },
+    {
+      "en": "Join the orders table and customers table on customer_id using a left join.",
+      "zh_hant": "請用 customer_id 連接訂單表和客戶表，採用 left join。"
+    },
+    {
+      "en": "This large CSV table cannot fit into memory at once; I need to process it in chunks, keep rows where amount is over 100, add an amount_usd column, and deliver another CSV.",
+      "zh_hant": "這份大型 CSV 表格無法一次載入記憶體，我需要分批篩選 amount 大於 100 的資料、加入 amount_usd 欄位，並交付另一份 CSV。"
+    },
+    {
+      "en": "Check the row and column counts, duplicate data, missing values, data types, and statistics for numeric columns.",
+      "zh_hant": "幫我檢查總行列數、重複資料、空值、資料型別，以及數值欄位的統計資料。"
+    },
+    {
+      "en": "Validate the amount, email, and date fields against the specified rules, returning valid data separately from row-level errors.",
+      "zh_hant": "請依規則驗證金額、電子郵件與日期欄位，分開回傳有效資料和各列錯誤。"
+    },
+    {
+      "en": "Organize my supplied analysis content using the standard report structure, including a summary, key metrics, findings, recommendations, and methodology.",
+      "zh_hant": "請依標準報告結構整理我提供的分析內容，包括摘要、關鍵指標、發現、建議與方法。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2707,
+    "cost_source": "gateway",
+    "cost_usd": 0.07748700000000001,
+    "prompt_tokens": 5866
+  }
+}

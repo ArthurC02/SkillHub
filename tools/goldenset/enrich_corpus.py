@@ -13,11 +13,16 @@ Usage
   # start the LLM service first (see golden-query-set.md section 10)
   python enrich_corpus.py                       # enrich whatever is missing
   python enrich_corpus.py --url http://host:port
+  python enrich_corpus.py --url ... --out corpus_enriched_v7   # a new prompt version:
+        # never into ./corpus_enriched (M1's frozen evidence) - a sibling directory,
+        # scored by creation-measure/search-f1/search_f1_score.py --docs <dir>
+  LLM_SERVICE_TOKEN=... python enrich_corpus.py ...            # a service that gates callers
 """
 
 from __future__ import annotations
 
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -36,20 +41,21 @@ def enrich_one(base_url: str, skill_id: str, skill_md: str) -> dict:
     body = json.dumps(
         {"skill_name": skill_id, "skill_md": skill_md, "file_tree": [], "language": "zh-Hant"}
     ).encode()
-    req = urllib.request.Request(
-        f"{base_url}/v1/enrich-skill", data=body, headers={"Content-Type": "application/json"}
-    )
+    headers = {"Content-Type": "application/json"}
+    if os.environ.get("LLM_SERVICE_TOKEN"):
+        headers["Authorization"] = "Bearer " + os.environ["LLM_SERVICE_TOKEN"]
+    req = urllib.request.Request(f"{base_url}/v1/enrich-skill", data=body, headers=headers)
     with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
         return json.load(resp)
 
 
-def main(base_url: str) -> None:
+def main(base_url: str, out_dir: Path = OUT_DIR) -> None:
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
     entries = manifest["documents"]
     done = failed = skipped = 0
 
     for i, entry in enumerate(entries, 1):
-        out_path = OUT_DIR / entry["category"] / f"{entry['id']}.json"
+        out_path = out_dir / entry["category"] / f"{entry['id']}.json"
         if out_path.exists():
             skipped += 1
             continue
@@ -78,4 +84,7 @@ if __name__ == "__main__":
     url = DEFAULT_URL
     if "--url" in sys.argv:
         url = sys.argv[sys.argv.index("--url") + 1]
-    main(url.rstrip("/"))
+    out = OUT_DIR
+    if "--out" in sys.argv:
+        out = ROOT / sys.argv[sys.argv.index("--out") + 1]
+    main(url.rstrip("/"), out)

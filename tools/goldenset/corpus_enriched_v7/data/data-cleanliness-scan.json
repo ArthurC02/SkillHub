@@ -1,0 +1,82 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要一個或多個 CSV、Parquet、JSON、JSONL 或 Excel 檔案，並確認其格式與目標。",
+    "執行需要安裝 pandas、pyarrow、openpyxl、chardet 與 python-dateutil。",
+    "對非常大的檔案會策略性抽取開頭、結尾及隨機列，並透過串流進行全檔彙總；報告會註明樣本數。",
+    "對高度巢狀的 JSON，主要檢查各筆記錄的結構描述一致性；深入分析前會建議使用 `json-restructure` 將資料扁平化。",
+    "離群值只會列為觀察結果，不會被視為缺陷或建議移除。",
+    "只會建議依序使用修正技能，不會自動執行修正。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此技能掃描一個或多個 CSV、Parquet、JSON、JSONL 或 Excel 平面資料檔，並確認檔案格式及目標。它檢查欄位型別、空值、日期、編碼、分隔符號、重複鍵、值域，以及跨欄位邏輯等可能阻礙 SQL 匯入或造成分析錯誤的問題。結果依嚴重程度寫入 Markdown 報告 `cleanliness_report.md`，並可選擇另外產生 JSON 報告 `cleanliness_report.json`；報告會列出受影響列數、遮蔽個人識別資訊的範例值及修正建議。",
+  "tags": {
+    "dependencies": [
+      "pandas",
+      "pyarrow",
+      "openpyxl",
+      "chardet",
+      "python-dateutil"
+    ],
+    "inputs": [
+      "csv table",
+      "parquet data",
+      "json data",
+      "jsonl data",
+      "excel spreadsheet"
+    ],
+    "outputs": [
+      "markdown cleanliness report",
+      "json cleanliness report"
+    ],
+    "tools": [
+      "pandas",
+      "chardet",
+      "dateutil",
+      "postgres"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Scan these CSV tables for type errors, delimiter drift, and inconsistent column counts that could prevent SQL ingestion.",
+      "zh_hant": "請掃描這批 CSV 表格，找出可能讓資料無法匯入 SQL 的型別錯誤、分隔符號漂移和欄數不一致。"
+    },
+    {
+      "en": "Check this Excel spreadsheet for disguised nulls, mixed date formats, surrounding whitespace, and inconsistent letter case.",
+      "zh_hant": "檢查這個 Excel 試算表中的偽裝空值、混合日期格式、前後空白與大小寫不一致。"
+    },
+    {
+      "en": "Audit these Parquet data files and produce a severity-ranked `cleanliness_report.md` with blocker, high, medium, and low findings.",
+      "zh_hant": "稽核這些 Parquet 資料檔，並產生 `cleanliness_report.md`，依 blocker、high、medium 和 low 排列問題。"
+    },
+    {
+      "en": "I just received a JSONL data file from an external vendor and need to determine whether it is suitable for loading into Postgres, then deliver an issue report.",
+      "zh_hant": "我剛收到外部供應商的 JSONL 資料檔，必須確認它是否適合載入 Postgres，並交付一份問題報告。"
+    },
+    {
+      "en": "Find duplicate candidate keys, nulls in columns that should be non-null, and values outside expected ranges.",
+      "zh_hant": "找出資料中的重複候選鍵、不可為空欄位中的空值，以及超出合理範圍的數值。"
+    },
+    {
+      "en": "Check whether start and end dates contradict each other and whether totals equal the sum of their components.",
+      "zh_hant": "檢查開始與結束日期是否互相矛盾，以及總計是否等於各組成項目的加總。"
+    },
+    {
+      "en": "This dataset is very large; sample it strategically, record the sample size, and use streaming for full-file aggregations.",
+      "zh_hant": "這份資料很大，請策略性抽樣並註明樣本數，同時以串流方式進行全檔彙總。"
+    },
+    {
+      "en": "Check this nested JSON data file for structural and schema consistency across records.",
+      "zh_hant": "檢查這個巢狀 JSON 資料檔各筆記錄的結構與結構描述是否一致。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1386,
+    "cost_source": "gateway",
+    "cost_usd": 0.033742,
+    "prompt_tokens": 2401
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要 Python 3 執行文件所列的指令碼。",
+    "沒有資料時不得虛構分析結果；此時須說明所需資料、指標、期間、驗證設計、替代方案、限制與受影響群體。",
+    "逐列資料在描述計算、模型擬合或決策比較前，必須保留原始來源並通過資料品質閘門。",
+    "XLSX、Parquet、資料庫或多表輸入須雜湊原始資料並建立可追溯的表格擷取資料，同時保留轉換收據、資料表關係、聯結檢查及雜湊。",
+    "缺少預定用途或資料粒度時，流程須停在 needs_user_confirmation；閘門為 blocked 時不得繼續。",
+    "刪除列、移除欄、插補、離群值處理、合併類別、單位或時區轉換、修正目標及變更粒度，均須取得對應動作 ID 的核准。",
+    "來源雜湊、已審查動作定義、核准 ID 或原始與處理後路徑綁定發生變化時，準備流程須停止。",
+    "若決策依賴介入效果，須有實驗、準實驗或其他可辯護的因果證據；預測準確度本身不構成介入有效的證據。",
+    "開始模擬前，須明確指定決策負責人與替代方案，並為受治理參數提供可追溯來源及核准鏈。",
+    "可分享的分析須至少使用 10,000 次抽樣；較少次數只能用於快速草稿，且須加以標示。",
+    "只有在真實決策層被要求且有依據時，才會另行產生 Decision Intelligence Brief；它不得取代主要的 Evidence Intelligence Report。",
+    "若所有替代方案都違反硬性限制，或證據限制使排名具誤導性，須以「沒有可供決策的建議」作結。",
+    "當 evidence.decision_use 為 illustrative 時，只能使用「示意性偏好」，不能稱為「建議」。",
+    "投入營運部署前需要領域審查。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此技能可依描述性、診斷性、預測性或處方性問題，建立或審查以來源證據為基礎的分析，並將資料品質、推論界線、不確定性與決策建議分開呈現。輸入可以是研究問題、逐列資料、資料契約或決策案例；只有問題而沒有資料時，會產生分析藍圖而不虛構結果。它也能檢查與準備資料、驗證預測、分析證據、比較受限制的資源配置方案，以及產生 Markdown、JSON、CSV 與 SVG 成果。",
+  "tags": {
+    "dependencies": [
+      "python 3"
+    ],
+    "inputs": [
+      "plain text research question",
+      "csv row-level data",
+      "xlsx spreadsheet data",
+      "parquet tabular data",
+      "database tables",
+      "multi-table data",
+      "json data contract",
+      "json decision case"
+    ],
+    "outputs": [
+      "markdown analysis blueprint",
+      "json analysis blueprint",
+      "svg analytics lifecycle figure",
+      "markdown data-quality report",
+      "json data-quality report",
+      "json data contract",
+      "json cleaning plan",
+      "csv prepared analysis data",
+      "json transformation log",
+      "markdown evidence intelligence report",
+      "json analytical results",
+      "svg analytical figures",
+      "json chart map",
+      "json decision results",
+      "markdown decision intelligence brief"
+    ],
+    "tools": [
+      "route_question.py",
+      "init_case.py",
+      "profile_dataset.py",
+      "prepare_dataset.py",
+      "evidence_analysis.py",
+      "prediction_validation.py",
+      "allocation_optimizer.py",
+      "migrate_case_v12_to_v13.py",
+      "validate_case.py",
+      "run_case.py",
+      "sha-256 hashing",
+      "github"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "I only have the question “How should we allocate limited capacity next month?” Create an analysis blueprint and output analysis-blueprint.md, analysis-blueprint.json, and an SVG of the analytical path.",
+      "zh_hant": "我只有「下個月該如何分配有限容量？」這個問題，請建立分析藍圖，並輸出 analysis-blueprint.md、analysis-blueprint.json 和分析流程 SVG。"
+    },
+    {
+      "en": "Run the data-quality gate on this row-level CSV table and check its schema, completeness, uniqueness, temporal reliability, privacy, and leakage rules.",
+      "zh_hant": "請對這份逐列 CSV 表格執行資料品質閘門，檢查欄位結構、完整性、唯一性、時間可靠性、隱私與資料洩漏規則。"
+    },
+    {
+      "en": "I have an XLSX spreadsheet, but before analysis I must deliver a data-readiness report, machine-readable findings, and a dry-run cleaning plan.",
+      "zh_hant": "我手上有一份 XLSX 試算表，但在開始分析前必須交付資料就緒報告、機器可讀的檢查結果和暫不執行的清理計畫。"
+    },
+    {
+      "en": "Prepare a data copy using the cleaning action IDs I approved, leave the source unchanged, and produce processed/analysis.csv, a transformation log, and post-cleaning quality checks.",
+      "zh_hant": "依照我核准的清理動作 ID 準備資料副本，保留原始資料不變，並產生 processed/analysis.csv、轉換紀錄和清理後品質檢查結果。"
+    },
+    {
+      "en": "Validate this predictive model on held-out data, including calibration, subgroup errors, leakage risk, drift, and uncertainty.",
+      "zh_hant": "驗證這個預測模型在保留資料上的表現，包含校準、子群誤差、資料洩漏風險、漂移與不確定性。"
+    },
+    {
+      "en": "Investigate which factors may contribute to the current trend, list competing explanations and testable hypotheses, and do not present associations as causes.",
+      "zh_hant": "調查哪些因素可能促成目前的趨勢，列出競爭性解釋與可檢驗假設，但不要把相關性寫成因果關係。"
+    },
+    {
+      "en": "Compare feasible allocations of limited resources while accounting for linear constraints, scenarios, shared shocks, tail risk, sensitivity, and group impacts.",
+      "zh_hant": "比較有限資源下的可行配置方案，納入線性限制、情境、共同衝擊、尾端風險、敏感度與群體影響。"
+    },
+    {
+      "en": "Validate and run this case.json decision case with at least 10,000 samples, producing results.json, an Evidence Intelligence Report, and GitHub-renderable SVG figures.",
+      "zh_hant": "請驗證並執行這份 case.json 決策案例，以至少 10,000 次抽樣產生 results.json、Evidence Intelligence Report 和 GitHub 可顯示的 SVG 圖表。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2036,
+    "cost_source": "gateway",
+    "cost_usd": 0.06256700000000001,
+    "prompt_tokens": 5566
+  }
+}

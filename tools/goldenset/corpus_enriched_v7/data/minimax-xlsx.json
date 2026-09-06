@@ -1,0 +1,84 @@
+{
+  "checks": [],
+  "limitations": [
+    "工具腳本與範例使用 Python 3；自訂資料分析使用 pandas。",
+    "動態公式重算僅在 LibreOffice 可用時透過 libreoffice_recalc.py 執行；formula_check.py 執行的是靜態驗證。",
+    "讀取與分析工作不得修改來源檔案。",
+    "編輯現有活頁簿必須使用 XML 解包、編輯及重新封裝流程，不得以 openpyxl 往返處理，也不得建立新的 Workbook。",
+    "編輯輸出必須保留輸入檔的工作表名稱與原有資料，且只能修改工作要求指定的儲存格。",
+    "建立活頁簿時，所有衍生數值都必須使用 Excel 公式，不得寫成硬編碼數值。",
+    "編輯完成後必須用 xlsx_reader.py 或 pandas 驗證原有工作表名稱及部分原始資料仍然存在。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 可開啟、讀取、分析、編輯及驗證 .xlsx、.xlsm、.csv 與 .tsv 試算表，並可從零建立 .xlsx 活頁簿。它能新增欄列、填入 Excel 公式、修復損壞的公式、檢查公式，以及套用財務模型的字色與框線規則；編輯現有活頁簿時只變更指定儲存格並保留原有工作表與資料。輸入可以是現有試算表，或是新活頁簿所需的資料、公式及格式要求。",
+  "tags": {
+    "dependencies": [
+      "python 3",
+      "pandas",
+      "libreoffice"
+    ],
+    "inputs": [
+      "xlsx spreadsheet",
+      "xlsm macro-enabled spreadsheet",
+      "csv tabular data",
+      "tsv tabular data"
+    ],
+    "outputs": [
+      "xlsx spreadsheet",
+      "json formula validation results"
+    ],
+    "tools": [
+      "xlsx_reader.py",
+      "formula_check.py",
+      "xlsx_unpack.py",
+      "xlsx_pack.py",
+      "xlsx_add_column.py",
+      "xlsx_insert_row.py",
+      "xlsx_shift_rows.py",
+      "libreoffice_recalc.py"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Read this Excel spreadsheet (.xlsx), calculate the sum, mean, and count of the Revenue column, and display every number with two decimal places.",
+      "zh_hant": "請讀取這份 Excel 試算表（.xlsx），計算 Revenue 欄的總和、平均值與筆數，所有數字顯示兩位小數。"
+    },
+    {
+      "en": "Create an .xlsx financial model from scratch, use Excel formulas for every derived value, and apply the specified font colors for inputs, calculated results, and cross-sheet references.",
+      "zh_hant": "請從零建立一份 .xlsx 財務模型，讓所有衍生數值使用 Excel 公式，並依輸入、計算結果及跨工作表參照套用指定字色。"
+    },
+    {
+      "en": "Add a percentage-formula column to this existing macro-enabled Excel workbook (.xlsm) without changing its other sheets or data.",
+      "zh_hant": "請在現有的巨集啟用 Excel 活頁簿（.xlsm）新增一欄百分比公式，但不要變更其他工作表或資料。"
+    },
+    {
+      "en": "I have a CSV table and need to deliver the record count and average sales amount for each region.",
+      "zh_hant": "我手上有一份 CSV 表格，需要交付各區域的筆數與平均銷售額統計。"
+    },
+    {
+      "en": "Insert Utilities after the item labeled Office Rent, fill in the period values, and update the related SUM formulas.",
+      "zh_hant": "請在標示為 Office Rent 的項目後插入 Utilities，填入各期數值，並更新相關的 SUM 公式。"
+    },
+    {
+      "en": "Find and repair the broken formulas in the existing table while preserving its original sheets and data.",
+      "zh_hant": "找出並修復現有表格中損壞的公式，同時保留原有工作表與資料。"
+    },
+    {
+      "en": "Check all formulas for static errors and show the validation results as JSON.",
+      "zh_hant": "檢查所有公式是否有靜態錯誤，並以 JSON 顯示驗證結果。"
+    },
+    {
+      "en": "Apply an accounting-style top border to every cell in the TOTAL row, not only to newly added cells.",
+      "zh_hant": "請為 TOTAL 列的所有儲存格加上會計式上框線，而不只是新加入的儲存格。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2956,
+    "cost_source": "gateway",
+    "cost_usd": 0.070607,
+    "prompt_tokens": 3494
+  }
+}

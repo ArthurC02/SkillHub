@@ -22,23 +22,27 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 	// The first-message catalogue check and the duplicate guard (05 R-49／
 	// R-50): the creation tool's hybrid retrieval, semantic answers only — a
 	// degraded lexical answer over a whole sentence is not a match.
-	s.CatalogCheck = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, float64, error) {
-		ids, cost, degraded, err := search.CreationKnowledgeIDs(ctx, query)
-		if err != nil || degraded {
-			return nil, cost, err
-		}
-		refs := []creation.Reference{}
-		for _, id := range ids {
-			r, _, err := s.ResolveReference(ctx, ws, id, "")
-			if err == nil {
-				refs = append(refs, r)
+	semantic := func(maxDistance float64) func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
+		return func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, float64, error) {
+			ids, cost, degraded, err := search.CreationKnowledgeIDs(ctx, query, maxDistance)
+			if err != nil || degraded {
+				return nil, cost, err
 			}
-			if len(refs) == 3 {
-				break
+			refs := []creation.Reference{}
+			for _, id := range ids {
+				r, _, err := s.ResolveReference(ctx, ws, id, "")
+				if err == nil {
+					refs = append(refs, r)
+				}
+				if len(refs) == 3 {
+					break
+				}
 			}
+			return refs, cost, nil
 		}
-		return refs, cost, nil
 	}
+	s.CatalogCheck = semantic(catalog.CreationMaxDistance)
+	s.DuplicateCheck = semantic(catalog.CreationDuplicateDistance)
 	s.ResolveReference = func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, llmclient.GenerateReference, error) {
 		sid, err := creation.ParseID(skillID)
 		if err != nil {

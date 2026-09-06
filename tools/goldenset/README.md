@@ -79,3 +79,7 @@ PYTHONIOENCODING=utf-8 python evaluate.py --lookup > results_lookup_YYYY-MM-DD.t
 **結果檔**：[`results_lookup_2026-09-06.txt`](results_lookup_2026-09-06.txt)——`--index-mode enriched`
 語料、真 OpenAI embedding（部分向量原本就在 `embeddings_cache.json`，其餘現場付費補齊），六條紅線全數
 PASS；tokens 在公開規則下是 25/25（見上段，方法論差異，非迴歸）。
+
+## v7 增強語料（2026-09-07，不是 M1 的凍結證據）
+
+[`corpus_enriched_v7/`](corpus_enriched_v7/) 是同一批 31 份語料用 `enrich-skill/v7` 重做的增強（`python enrich_corpus.py --url http://127.0.0.1:8001 --out corpus_enriched_v7`，服務要帶 `LLM_SERVICE_TOKEN`）。它**不取代** `corpus_enriched/`：M1 閘門的 recall 數字綁的是 v2，那份不動。v7 的分數由 [`creation-measure/search-f1/search_f1_score.py --docs corpus_enriched_v7`](../../docs/plans/mvp/m5/creation-measure/search-f1/search_f1_score.py) 產生（F1 定義寫在檔頭），結果在 [report §15](../../docs/plans/mvp/m5/creation-measure/report.md)：公開規則 all F1 0.927→0.955。`evaluate.py` 仍讀 `corpus_enriched/`。

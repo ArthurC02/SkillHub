@@ -1,0 +1,39 @@
+== public rule (vector <= 0.75, covered first, name pinned)
+  golden n= 60 F1=0.914  (F1@1=0.853)
+  name   n= 31 F1=1.000  (F1@1=1.000)
+  token  n= 25 F1=1.000  (F1@1=1.000)
+  all    n=116 F1=0.955  (F1@1=0.924)
+  misses:
+  [golden] D02 幫我從掃描的檔案裡抽出表格資料，再把好幾份合併成一份: want ['pdf'] got ['excel-merge'] F1=0.00
+  [golden] D06 把這篇長文變成可以直接傳連結給人看的線上投影片: want ['deck-publisher', 'report-designer'] got ['deck-publisher', 'pptx'] F1=0.50
+  [golden] D14 programmatically produce formatted .docx reports from a .NET: want ['docx', 'minimax-docx'] got ['minimax-docx', 'pptx'] F1=0.50
+  [golden] D15 make this write-up into something I can actually present: want ['deck-publisher', 'pitchcraft', 'pptx'] got ['deck-publisher', 'html-express', 'pptx'] F1=0.67
+  [golden] D18 structure an investor pitch with a hook, evidence and a clea: want ['pitchcraft', 'pptx'] got ['pitchcraft', 'deck-publisher'] F1=0.50
+  [golden] W04 這段文字太囉嗦，幫我刪掉贅字、模糊詞和被動語態: want ['economist-style', 'prose-revision'] got ['economist-style', 'ai-check'] F1=0.50
+  [golden] W16 revise my essay for logical movement between paragraphs, not: want ['economist-style', 'prose-revision'] got ['prose-revision', 'humanize'] F1=0.50
+  [golden] A08 把這三個 CSV 合併、清掉重複列，輸出一份異常值報告: want ['data-analyst', 'data-cleanliness-scan', 'excel-merge'] got ['data-analyst', 'data-cleanliness-scan', 'excel-deduplicate'] F1=0.67
+  [golden] A13 drop repeated rows in a spreadsheet while preserving the cel: want ['excel-deduplicate', 'excel-filter'] got ['excel-deduplicate', 'minimax-xlsx'] F1=0.50
+  [golden] A17 profile a jsonl file and summarise the numeric columns: want ['data-analyst', 'data-cleanliness-scan'] got ['csv-to-json', 'data-cleanliness-scan'] F1=0.50
+
+== creation rule (vector <= 0.55, then one covered)
+  golden n= 60 F1=0.886  (F1@1=0.836)
+  name   n= 31 F1=0.935  (F1@1=0.935)
+  token  n= 25 F1=1.000  (F1@1=1.000)
+  all    n=116 F1=0.924  (F1@1=0.898)
+  misses:
+  [golden] D02 幫我從掃描的檔案裡抽出表格資料，再把好幾份合併成一份: want ['pdf'] got ['excel-merge'] F1=0.00
+  [golden] D06 把這篇長文變成可以直接傳連結給人看的線上投影片: want ['deck-publisher', 'report-designer'] got ['deck-publisher', 'pptx'] F1=0.50
+  [golden] D14 programmatically produce formatted .docx reports from a .NET: want ['docx', 'minimax-docx'] got ['minimax-docx'] F1=0.67
+  [golden] D15 make this write-up into something I can actually present: want ['deck-publisher', 'pitchcraft', 'pptx'] got ['deck-publisher', 'html-express', 'pptx'] F1=0.67
+  [golden] D18 structure an investor pitch with a hook, evidence and a clea: want ['pitchcraft', 'pptx'] got ['pitchcraft'] F1=0.67
+  [golden] W04 這段文字太囉嗦，幫我刪掉贅字、模糊詞和被動語態: want ['economist-style', 'prose-revision'] got ['economist-style', 'ai-check'] F1=0.50
+  [golden] W13 rewrite this so it stops sounding robotic and reads like a p: want ['ai-check', 'humanize'] got ['humanize'] F1=0.67
+  [golden] W14 score this draft for AI tells before I publish it: want ['ai-check', 'humanize'] got ['ai-check'] F1=0.67
+  [golden] W16 revise my essay for logical movement between paragraphs, not: want ['economist-style', 'prose-revision'] got ['prose-revision'] F1=0.67
+  [golden] A08 把這三個 CSV 合併、清掉重複列，輸出一份異常值報告: want ['data-analyst', 'data-cleanliness-scan', 'excel-merge'] got ['data-analyst', 'data-cleanliness-scan', 'excel-deduplicate'] F1=0.67
+  [golden] A13 drop repeated rows in a spreadsheet while preserving the cel: want ['excel-deduplicate', 'excel-filter'] got ['excel-deduplicate', 'minimax-xlsx'] F1=0.50
+  [golden] A17 profile a jsonl file and summarise the numeric columns: want ['data-analyst', 'data-cleanliness-scan'] got ['csv-to-json'] F1=0.00
+  [golden] A18 our signups dropped last month and I need a defensible read : want ['high-stakes-analytics'] got [] F1=0.00
+  [name]  data-analyst: want ['data-analyst'] got ['data-journalism'] F1=0.00
+  [name]  docx: want ['docx'] got ['minimax-docx'] F1=0.00
+
