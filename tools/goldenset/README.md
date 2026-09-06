@@ -30,3 +30,52 @@
 `goldenset-mirror` 檢查把兩邊的函式本體（去註解後）各釘一個 digest：**任一邊改動就會紅**，
 訊息要求先讀過兩邊、確認仍然產生同一個字串，再重釘。它擋不住「改對了」與「改壞了」的分別，
 擋得住的是**改了而沒有人知道**——而那正是唯一發生過的失效。
+
+## 名稱與特定詞查詢集（2026-09-06）
+
+60 題 golden set 量的是「一句任務描述」；它量不到另一種真人：記得 Skill 名字、或只記得一個關鍵詞
+就來查的人。05 R-48（公開搜尋）與 R-49／R-50（創作工具查目錄、建立前查重）都要扛這種查詢，兩條規則
+過去只在 `docs/plans/mvp/m5/creation-measure/search-f1/`（真 Postgres＋真 `apps/llm`，一次性腳本）量過；
+這裡把兩組查詢集併進 `evaluate.py`，讓它們可以用同一顆 embedding cache 反覆重跑，不必每次都起容器。
+
+**兩組查詢**（`lookup_sets(docs)`，演算法抄自 `search_f1_public.py`，讀 `--index-mode enriched` 的語料）：
+
+- **names**：每份語料 frontmatter 的 `name` 當查詢，正解＝該份語料。31 題。
+- **tokens**：每份語料的 enriched 索引文本分詞後，取「全語料只出現一次、長得像識別字
+  （`[a-z][a-z0-9+.#_-]{3,}`）」的 token 裡排序後第一個，當作「只記得一個關鍵詞」的查詢；正解＝
+  該份語料。每份語料最多貢獻一題，全體再取前 25 題（依 `data`／`documents`／`writing`、類別內按
+  id 排序，與 `search_f1_public.py` 的語料走訪順序一致，否則 25 題的截斷點會兩邊對不上）。
+
+**兩條規則**（`--lookup`，用 `embed()` 拿向量，不連 Postgres——「覆蓋」在這裡就是查詢的每個 token
+都在該份語料 tokenize 後的 enriched 索引文本集合裡，是 pg_bigm 真實查詢的近似值，不是它本身，兩者
+的 tokens 分數不會、也不需要對上 `results-public-rule-2026-09-06.txt` 那份用真 Postgres 量出的數字）：
+
+- **公開規則**（05 R-48）：覆蓋全部 token 的文件排最前面，其次是向量距離 <= 0.75 的候選（依距離），
+  名稱完全命中的文件置頂。
+- **創作規則**（05 R-49／R-50）：向量距離 <= 0.55 的候選（依距離），再補收一筆覆蓋全部 token、
+  尚未在候選裡的文件。
+
+**怎麼跑**：
+
+```bash
+cd tools/goldenset
+PYTHONIOENCODING=utf-8 python evaluate.py --lookup > results_lookup_YYYY-MM-DD.txt
+```
+
+沒有可用的 embedding 金鑰、且 cache 裡沒有需要的向量時，`--lookup` 不會硬掛：它印出兩組查詢集
+（連同各自的正解）與抓不到金鑰的確切錯誤訊息，不算分數、也不假造數字。
+
+**紅線**（印在輸出結尾，人讀，不擋 CI）：
+
+| 規則 | 指標 | 門檻 |
+| --- | --- | --- |
+| 公開 | names Top-1 | >= 90% |
+| 公開 | tokens Top-1 | >= 80% |
+| 公開 | golden Top-3 | >= 90% |
+| 公開 | 干擾拒答@5 | >= 75% |
+| 創作 | golden Top-1 | >= 85% |
+| 創作 | names Top-1 | >= 90% |
+
+**結果檔**：[`results_lookup_2026-09-06.txt`](results_lookup_2026-09-06.txt)——`--index-mode enriched`
+語料、真 OpenAI embedding（部分向量原本就在 `embeddings_cache.json`，其餘現場付費補齊），六條紅線全數
+PASS；tokens 在公開規則下是 25/25（見上段，方法論差異，非迴歸）。

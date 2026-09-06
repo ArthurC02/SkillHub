@@ -194,6 +194,36 @@ export interface CreationSnapshot {
      */
     searchRounds?: number;
     /**
+     * Go searched the catalogue with the first message before any model call (05 R-49). When it found something the session waits at confirm_references with the hits in `references`; the person confirms them as references, adopts one (adopt_reference) or declines them all (decline_references).
+     * @type {boolean}
+     * @memberof CreationSnapshot
+     */
+    catalogChecked?: boolean;
+    /**
+     * Catalogue Skills within the creation tool's distance of the draft, found by Go when materialize／finalize was requested (05 R-50). The session waits at confirm_duplicate: the person adopts one (adopt_reference) or confirms the draft anyway (confirm_duplicate, same content_hash).
+     * @type {Array<CreationReference>}
+     * @memberof CreationSnapshot
+     */
+    duplicates?: Array<CreationReference>;
+    /**
+     * materialize or finalize: the command held back by the duplicate check, replayed by confirm_duplicate.
+     * @type {string}
+     * @memberof CreationSnapshot
+     */
+    pendingMaterialize?: string;
+    /**
+     * The duplicate check ran for this draft revision (found nothing, or the person confirmed anyway); cleared when the draft changes.
+     * @type {boolean}
+     * @memberof CreationSnapshot
+     */
+    duplicateAcknowledged?: boolean;
+    /**
+     * The candidate is a fork of an existing catalogue Skill chosen through adopt_reference, not a generated one; nothing was composed.
+     * @type {boolean}
+     * @memberof CreationSnapshot
+     */
+    adopted?: boolean;
+    /**
      * The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until the person confirms (05 R-47).
      * @type {string}
      * @memberof CreationSnapshot
@@ -290,6 +320,11 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'nudges': json['nudges'] == null ? undefined : json['nudges'],
         'blockedRepeats': json['blocked_repeats'] == null ? undefined : json['blocked_repeats'],
         'searchRounds': json['search_rounds'] == null ? undefined : json['search_rounds'],
+        'catalogChecked': json['catalog_checked'] == null ? undefined : json['catalog_checked'],
+        'duplicates': json['duplicates'] == null ? undefined : ((json['duplicates'] as Array<any>).map(CreationReferenceFromJSON)),
+        'pendingMaterialize': json['pending_materialize'] == null ? undefined : json['pending_materialize'],
+        'duplicateAcknowledged': json['duplicate_acknowledged'] == null ? undefined : json['duplicate_acknowledged'],
+        'adopted': json['adopted'] == null ? undefined : json['adopted'],
         'pendingFetchUrl': json['pending_fetch_url'] == null ? undefined : json['pending_fetch_url'],
         'fetches': json['fetches'] == null ? undefined : ((json['fetches'] as Array<any>).map(CreationFetchFromJSON)),
         'model': json['model'] == null ? undefined : json['model'],
@@ -334,6 +369,11 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'nudges': value['nudges'],
         'blocked_repeats': value['blockedRepeats'],
         'search_rounds': value['searchRounds'],
+        'catalog_checked': value['catalogChecked'],
+        'duplicates': value['duplicates'] == null ? undefined : ((value['duplicates'] as Array<any>).map(CreationReferenceToJSON)),
+        'pending_materialize': value['pendingMaterialize'],
+        'duplicate_acknowledged': value['duplicateAcknowledged'],
+        'adopted': value['adopted'],
         'pending_fetch_url': value['pendingFetchUrl'],
         'fetches': value['fetches'] == null ? undefined : ((value['fetches'] as Array<any>).map(CreationFetchToJSON)),
         'model': value['model'],

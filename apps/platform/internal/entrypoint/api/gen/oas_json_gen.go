@@ -5646,6 +5646,12 @@ func (s *CreationActionKind) Decode(d *jx.Decoder) error {
 		*s = CreationActionKindConfirmFetch
 	case CreationActionKindDeclineFetch:
 		*s = CreationActionKindDeclineFetch
+	case CreationActionKindAdoptReference:
+		*s = CreationActionKindAdoptReference
+	case CreationActionKindDeclineReferences:
+		*s = CreationActionKindDeclineReferences
+	case CreationActionKindConfirmDuplicate:
+		*s = CreationActionKindConfirmDuplicate
 	default:
 		*s = CreationActionKind(v)
 	}
@@ -7393,6 +7399,40 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.CatalogChecked.Set {
+			e.FieldStart("catalog_checked")
+			s.CatalogChecked.Encode(e)
+		}
+	}
+	{
+		if s.Duplicates != nil {
+			e.FieldStart("duplicates")
+			e.ArrStart()
+			for _, elem := range s.Duplicates {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
+		if s.PendingMaterialize.Set {
+			e.FieldStart("pending_materialize")
+			s.PendingMaterialize.Encode(e)
+		}
+	}
+	{
+		if s.DuplicateAcknowledged.Set {
+			e.FieldStart("duplicate_acknowledged")
+			s.DuplicateAcknowledged.Encode(e)
+		}
+	}
+	{
+		if s.Adopted.Set {
+			e.FieldStart("adopted")
+			s.Adopted.Encode(e)
+		}
+	}
+	{
 		if s.PendingFetchURL.Set {
 			e.FieldStart("pending_fetch_url")
 			s.PendingFetchURL.Encode(e)
@@ -7440,7 +7480,7 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [30]string{
+var jsonFieldsNameOfCreationSnapshot = [35]string{
 	0:  "messages",
 	1:  "brief",
 	2:  "acceptance_criteria",
@@ -7464,13 +7504,18 @@ var jsonFieldsNameOfCreationSnapshot = [30]string{
 	20: "nudges",
 	21: "blocked_repeats",
 	22: "search_rounds",
-	23: "pending_fetch_url",
-	24: "fetches",
-	25: "model",
-	26: "prompt_version",
-	27: "diagram_media_type",
-	28: "diagram_bytes",
-	29: "previous_draft",
+	23: "catalog_checked",
+	24: "duplicates",
+	25: "pending_materialize",
+	26: "duplicate_acknowledged",
+	27: "adopted",
+	28: "pending_fetch_url",
+	29: "fetches",
+	30: "model",
+	31: "prompt_version",
+	32: "diagram_media_type",
+	33: "diagram_bytes",
+	34: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -7478,7 +7523,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode CreationSnapshot to nil")
 	}
-	var requiredBitSet [4]uint8
+	var requiredBitSet [5]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -7758,6 +7803,63 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"search_rounds\"")
 			}
+		case "catalog_checked":
+			if err := func() error {
+				s.CatalogChecked.Reset()
+				if err := s.CatalogChecked.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"catalog_checked\"")
+			}
+		case "duplicates":
+			if err := func() error {
+				s.Duplicates = make([]CreationReference, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem CreationReference
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Duplicates = append(s.Duplicates, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"duplicates\"")
+			}
+		case "pending_materialize":
+			if err := func() error {
+				s.PendingMaterialize.Reset()
+				if err := s.PendingMaterialize.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"pending_materialize\"")
+			}
+		case "duplicate_acknowledged":
+			if err := func() error {
+				s.DuplicateAcknowledged.Reset()
+				if err := s.DuplicateAcknowledged.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"duplicate_acknowledged\"")
+			}
+		case "adopted":
+			if err := func() error {
+				s.Adopted.Reset()
+				if err := s.Adopted.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"adopted\"")
+			}
 		case "pending_fetch_url":
 			if err := func() error {
 				s.PendingFetchURL.Reset()
@@ -7844,10 +7946,11 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [4]uint8{
+	for i, mask := range [5]uint8{
 		0b01110111,
 		0b10111001,
 		0b00000011,
+		0b00000000,
 		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {

@@ -2038,7 +2038,10 @@ type CreationAction struct {
 	// Raise_budget only: the new session ceiling. Must exceed the current one and stay within
 	// max_budget_usd from GET /creation-sessions/limits; a session refused for its limit becomes
 	// waiting_input again.
-	BudgetUsd         OptFloat64         `json:"budget_usd"`
+	BudgetUsd OptFloat64 `json:"budget_usd"`
+	// Select_references: up to three catalogue Skills to read as references. adopt_reference: exactly one
+	// id from `references` or `duplicates` — Go forks it into the workspace and the session ends `saved`
+	// with that fork as the candidate (05 R-49／R-50: reuse before creation).
 	ReferenceSkillIds []uuid.UUID        `json:"reference_skill_ids"`
 	ContentHash       OptString          `json:"content_hash"`
 	Diagram           OptGenerateDiagram `json:"diagram"`
@@ -2151,6 +2154,9 @@ const (
 	CreationActionKindRaiseBudget       CreationActionKind = "raise_budget"
 	CreationActionKindConfirmFetch      CreationActionKind = "confirm_fetch"
 	CreationActionKindDeclineFetch      CreationActionKind = "decline_fetch"
+	CreationActionKindAdoptReference    CreationActionKind = "adopt_reference"
+	CreationActionKindDeclineReferences CreationActionKind = "decline_references"
+	CreationActionKindConfirmDuplicate  CreationActionKind = "confirm_duplicate"
 )
 
 // AllValues returns all CreationActionKind values.
@@ -2169,6 +2175,9 @@ func (CreationActionKind) AllValues() []CreationActionKind {
 		CreationActionKindRaiseBudget,
 		CreationActionKindConfirmFetch,
 		CreationActionKindDeclineFetch,
+		CreationActionKindAdoptReference,
+		CreationActionKindDeclineReferences,
+		CreationActionKindConfirmDuplicate,
 	}
 }
 
@@ -2200,6 +2209,12 @@ func (s CreationActionKind) MarshalText() ([]byte, error) {
 	case CreationActionKindConfirmFetch:
 		return []byte(s), nil
 	case CreationActionKindDeclineFetch:
+		return []byte(s), nil
+	case CreationActionKindAdoptReference:
+		return []byte(s), nil
+	case CreationActionKindDeclineReferences:
+		return []byte(s), nil
+	case CreationActionKindConfirmDuplicate:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -2247,6 +2262,15 @@ func (s *CreationActionKind) UnmarshalText(data []byte) error {
 		return nil
 	case CreationActionKindDeclineFetch:
 		*s = CreationActionKindDeclineFetch
+		return nil
+	case CreationActionKindAdoptReference:
+		*s = CreationActionKindAdoptReference
+		return nil
+	case CreationActionKindDeclineReferences:
+		*s = CreationActionKindDeclineReferences
+		return nil
+	case CreationActionKindConfirmDuplicate:
+		*s = CreationActionKindConfirmDuplicate
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -2994,6 +3018,23 @@ type CreationSnapshot struct {
 	// Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts
 	// without a reference (04 丙-177).
 	SearchRounds OptInt `json:"search_rounds"`
+	// Go searched the catalogue with the first message before any model call (05 R-49). When it found
+	// something the session waits at confirm_references with the hits in `references`; the person confirms
+	// them as references, adopts one (adopt_reference) or declines them all (decline_references).
+	CatalogChecked OptBool `json:"catalog_checked"`
+	// Catalogue Skills within the creation tool's distance of the draft, found by Go when
+	// materialize／finalize was requested (05 R-50). The session waits at confirm_duplicate: the person
+	// adopts one (adopt_reference) or confirms the draft anyway (confirm_duplicate, same content_hash).
+	Duplicates []CreationReference `json:"duplicates"`
+	// Materialize or finalize: the command held back by the duplicate check, replayed by
+	// confirm_duplicate.
+	PendingMaterialize OptString `json:"pending_materialize"`
+	// The duplicate check ran for this draft revision (found nothing, or the person confirmed anyway);
+	// cleared when the draft changes.
+	DuplicateAcknowledged OptBool `json:"duplicate_acknowledged"`
+	// The candidate is a fork of an existing catalogue Skill chosen through adopt_reference, not a
+	// generated one; nothing was composed.
+	Adopted OptBool `json:"adopted"`
 	// The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until
 	// the person confirms (05 R-47).
 	PendingFetchURL OptString `json:"pending_fetch_url"`
@@ -3120,6 +3161,31 @@ func (s *CreationSnapshot) GetBlockedRepeats() OptInt {
 // GetSearchRounds returns the value of SearchRounds.
 func (s *CreationSnapshot) GetSearchRounds() OptInt {
 	return s.SearchRounds
+}
+
+// GetCatalogChecked returns the value of CatalogChecked.
+func (s *CreationSnapshot) GetCatalogChecked() OptBool {
+	return s.CatalogChecked
+}
+
+// GetDuplicates returns the value of Duplicates.
+func (s *CreationSnapshot) GetDuplicates() []CreationReference {
+	return s.Duplicates
+}
+
+// GetPendingMaterialize returns the value of PendingMaterialize.
+func (s *CreationSnapshot) GetPendingMaterialize() OptString {
+	return s.PendingMaterialize
+}
+
+// GetDuplicateAcknowledged returns the value of DuplicateAcknowledged.
+func (s *CreationSnapshot) GetDuplicateAcknowledged() OptBool {
+	return s.DuplicateAcknowledged
+}
+
+// GetAdopted returns the value of Adopted.
+func (s *CreationSnapshot) GetAdopted() OptBool {
+	return s.Adopted
 }
 
 // GetPendingFetchURL returns the value of PendingFetchURL.
@@ -3270,6 +3336,31 @@ func (s *CreationSnapshot) SetBlockedRepeats(val OptInt) {
 // SetSearchRounds sets the value of SearchRounds.
 func (s *CreationSnapshot) SetSearchRounds(val OptInt) {
 	s.SearchRounds = val
+}
+
+// SetCatalogChecked sets the value of CatalogChecked.
+func (s *CreationSnapshot) SetCatalogChecked(val OptBool) {
+	s.CatalogChecked = val
+}
+
+// SetDuplicates sets the value of Duplicates.
+func (s *CreationSnapshot) SetDuplicates(val []CreationReference) {
+	s.Duplicates = val
+}
+
+// SetPendingMaterialize sets the value of PendingMaterialize.
+func (s *CreationSnapshot) SetPendingMaterialize(val OptString) {
+	s.PendingMaterialize = val
+}
+
+// SetDuplicateAcknowledged sets the value of DuplicateAcknowledged.
+func (s *CreationSnapshot) SetDuplicateAcknowledged(val OptBool) {
+	s.DuplicateAcknowledged = val
+}
+
+// SetAdopted sets the value of Adopted.
+func (s *CreationSnapshot) SetAdopted(val OptBool) {
+	s.Adopted = val
 }
 
 // SetPendingFetchURL sets the value of PendingFetchURL.

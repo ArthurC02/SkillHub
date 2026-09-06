@@ -32,6 +32,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
@@ -173,6 +174,18 @@ func importFiles(
 	t *testing.T, a *api, pool *pgxpool.Pool, owner *client, files map[string]string,
 ) (skillID, versionID string) {
 	t.Helper()
+	return importFilesEnriched(t, a, pool, owner, files, nil)
+}
+
+// importFilesEnriched is importFiles with index-time enrichment: with an llm
+// the document gets its enriched text and embedding at upload, the way a real
+// import does, so a semantic search can find it. The measurement harness needs
+// that (run s, 2026-09-06: every imported reference stayed `pending`, and no
+// catalogue search could return it); the fixtures above do not.
+func importFilesEnriched(
+	t *testing.T, a *api, pool *pgxpool.Pool, owner *client, files map[string]string, llm *llmclient.Client,
+) (skillID, versionID string) {
+	t.Helper()
 	ctx := context.Background()
 	ws, err := gen.New(pool).GetWorkspace(ctx, gen.GetWorkspaceParams{
 		ID: mustUUID(t, owner.workspaceID), OwnerUserID: mustUUID(t, owner.userID),
@@ -180,7 +193,7 @@ func importFiles(
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := (&ingest.Service{Pool: pool, Store: a.packages, IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
+	svc := &ingest.Service{Pool: pool, Store: a.packages, IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
 		return catalog.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
 			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
 			EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
@@ -188,7 +201,11 @@ func importFiles(
 			EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
 			EnrichmentPromptVersion: p.EnrichmentPromptVersion,
 		})
-	}}).UploadZip(ctx, publishedWorkspace(ws), zipOf(t, files))
+	}}
+	if llm != nil {
+		svc.LLM = llm
+	}
+	res, err := svc.UploadZip(ctx, publishedWorkspace(ws), zipOf(t, files))
 	if err != nil {
 		t.Fatal(err)
 	}

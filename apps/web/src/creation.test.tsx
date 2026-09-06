@@ -264,7 +264,7 @@ test("catalog references can start a session and require confirmation", async ()
   await click("開始互動創作");
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toMatchObject({ kind: "select_references", reference_skill_ids: ["ref-1"] });
-  await waitFor(() => box.textContent!.includes("確認參考 Skill"));
+  await waitFor(() => box.textContent!.includes("以這些為參考"));
   expect(box.textContent).toContain("整理輸入並輸出摘要");
   expect(box.textContent).toContain("需要文字輸入");
   expect(box.textContent).toContain("Bash");
@@ -275,9 +275,100 @@ test("catalog references can start a session and require confirmation", async ()
     ([url]) => url,
   );
   expect(urls.some((url) => /latest|detail|files/.test(url))).toBe(false);
-  await click("確認參考 Skill");
+  await click("以這些為參考");
   await waitFor(() => posts.length === 3);
   expect(posts[2]).toMatchObject({ kind: "confirm_references", expected_revision: 7 });
+});
+test("catalog hit on the first message offers adopt, confirm, or decline", async () => {
+  const posts: Record<string, unknown>[] = [];
+  const v = sample();
+  v.snapshot.catalog_checked = true;
+  v.snapshot.pending_action = "confirm_references";
+  v.snapshot.references = [
+    {
+      skill_id: "ref-1",
+      version_id: "v1",
+      name: "摘要 Skill",
+      available: true,
+      confirmed: false,
+      description: "整理輸入並輸出摘要",
+      compatibility: "需要文字輸入",
+      allowed_tools: "Bash",
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(v);
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  expect(box.textContent).toContain("目錄裡已有相近的 Skill");
+  await click("直接採用");
+  await waitFor(() => posts.length === 1);
+  expect(posts[0]).toMatchObject({
+    kind: "adopt_reference",
+    reference_skill_ids: ["ref-1"],
+  });
+  await click("都不是，從頭寫");
+  await waitFor(() => posts.length === 2);
+  expect(posts[1]).toMatchObject({ kind: "decline_references" });
+});
+test("materialize-time duplicates offer adopt or confirm and hide the private-candidate button", async () => {
+  const posts: Record<string, unknown>[] = [];
+  const v = sample({ state: "draft_ready" });
+  v.snapshot.pending_action = "confirm_duplicate";
+  v.snapshot.pending_materialize = "materialize";
+  v.snapshot.draft = {
+    revision: 1,
+    content_hash: "b".repeat(64),
+    skill: {
+      name: "摘要",
+      description: "",
+      compatibility: "",
+      allowed_tools: "",
+      body: "",
+      files: [],
+    },
+    validation: JSON.stringify({ findings: [], blocked: false }),
+    blocked: false,
+  };
+  v.snapshot.duplicates = [
+    {
+      skill_id: "dup-1",
+      version_id: "v1",
+      name: "既有摘要 Skill",
+      available: true,
+      confirmed: false,
+      description: "整理輸入並輸出摘要",
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(v);
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  expect(box.textContent).toContain("目錄已有相近的 Skill");
+  expect(box.textContent).toContain("既有摘要 Skill");
+  expect(() => button("建立私人候選版本")).toThrow();
+  await click("仍然建立");
+  await waitFor(() => posts.length === 1);
+  expect(posts[0]).toMatchObject({
+    kind: "confirm_duplicate",
+    content_hash: "b".repeat(64),
+  });
 });
 test("resume shows unknown costs and confirms the displayed diagram revision", async () => {
   const v = sample({ state: "waiting_confirmation" });

@@ -672,6 +672,9 @@ export function CreationSession() {
           {(p.references.length > 0 || p.pending_action === "confirm_references") && (
             <section>
               <h4>參考 Skill</h4>
+              {p.pending_action === "confirm_references" && p.catalog_checked && (
+                <p>目錄裡已有相近的 Skill；你可以直接採用其中一個、以它們為參考，或從頭寫。</p>
+              )}
               <table>
                 <thead>
                   <tr>
@@ -696,19 +699,91 @@ export function CreationSession() {
                           {r.version_id}
                         </details>
                       </td>
-                      <td>{!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}</td>
+                      <td>
+                        {!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}
+                        {p.pending_action === "confirm_references" && (
+                          <button
+                            disabled={locked || !r.available}
+                            onClick={() =>
+                              void perform("adopt_reference", { reference_skill_ids: [r.skill_id] })
+                            }
+                          >
+                            直接採用
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {p.pending_action === "confirm_references" && (
-                <button
-                  disabled={locked || p.references.some((r) => !r.available)}
-                  onClick={() => void perform("confirm_references")}
-                >
-                  確認參考 Skill
-                </button>
+                <>
+                  <button
+                    disabled={locked || p.references.some((r) => !r.available)}
+                    onClick={() => void perform("confirm_references")}
+                  >
+                    以這些為參考
+                  </button>
+                  <button disabled={locked} onClick={() => void perform("decline_references")}>
+                    都不是，從頭寫
+                  </button>
+                </>
               )}
+            </section>
+          )}
+          {p.pending_action === "confirm_duplicate" && p.duplicates && p.duplicates.length > 0 && (
+            <section>
+              <h4>目錄已有相近的 Skill</h4>
+              <p>
+                保存前 Go
+                查了一次目錄：下面這些和你的草稿很接近。你可以直接採用其中一個，或仍然建立自己的版本。
+              </p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Skill</th>
+                    <th>摘要</th>
+                    <th>相容</th>
+                    <th>工具</th>
+                    <th>版本</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {p.duplicates.map((r) => (
+                    <tr key={r.skill_id}>
+                      <th scope="row">{r.name}</th>
+                      <td>{declaredReferenceField(r.description)}</td>
+                      <td>{declaredReferenceField(r.compatibility)}</td>
+                      <td>{declaredReferenceField(r.allowed_tools)}</td>
+                      <td>
+                        <details>
+                          <summary>固定版本</summary>
+                          {r.version_id}
+                        </details>
+                      </td>
+                      <td>
+                        <button
+                          disabled={locked || !r.available}
+                          onClick={() =>
+                            void perform("adopt_reference", { reference_skill_ids: [r.skill_id] })
+                          }
+                        >
+                          直接採用
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <button
+                disabled={locked || !p.draft?.content_hash}
+                onClick={() =>
+                  void perform("confirm_duplicate", { content_hash: p.draft!.content_hash })
+                }
+              >
+                仍然建立
+              </button>
             </section>
           )}
           {p.draft && (
@@ -741,7 +816,7 @@ export function CreationSession() {
                   ? "靜態檢查阻擋保存，請補充需求後修訂。"
                   : "已完成靜態檢查；這不代表試跑成功。"}
               </p>
-              {!p.candidate && (
+              {!p.candidate && p.pending_action !== "confirm_duplicate" && (
                 <button
                   disabled={locked || p.draft.blocked || !p.draft.content_hash}
                   onClick={() =>
@@ -753,6 +828,9 @@ export function CreationSession() {
               )}
               {p.candidate && (
                 <>
+                  {p.adopted && (
+                    <p>已直接採用現有 Skill；這個候選版本是它的複本，沒有生成任何內容。</p>
+                  )}
                   <p>
                     <Link
                       to="/lab/run"

@@ -1,0 +1,18 @@
+== before: vector <= 0.75 only
+  golden n=48 top1=44 top3=48 recall@5=48 rej@5=12/12
+  name   n=31 top1=30 top3=31 recall@5=31
+  token  n=25 top1= 7 top3=10 recall@5=11
+== after A: vector hits, then covered bigram hits kept past the cut-off, exact name pinned
+  golden n=48 top1=44 top3=48 recall@5=48 rej@5=12/12
+  name   n=31 top1=31 top3=31 recall@5=31
+  token  n=25 top1=14 top3=19 recall@5=21
+== after B: covered bigram hits first, then vector hits, exact name pinned
+  golden n=48 top1=44 top3=48 recall@5=48 rej@5=12/12
+  name   n=31 top1=31 top3=31 recall@5=31
+  token  n=25 top1=23 top3=25 recall@5=25
+
+name/token queries not Top-1 under A: application., address., applicant, adjust, analyze, analyzer, analytics, branded, assets, add_slide.py, applying
+golden queries not Top-1 under A: 幫我從掃描的檔案裡抽出表格資料，再把好幾份合併成一份, 我有一份 TSV，想跑基本的敘述統計跟欄位分佈, profile a jsonl file and summarise the numeric columns, our signups dropped last month and I need a defensible read on why
+
+name/token queries not Top-1 under B: application., analytics
+golden queries not Top-1 under B: 幫我從掃描的檔案裡抽出表格資料，再把好幾份合併成一份, 我有一份 TSV，想跑基本的敘述統計跟欄位分佈, profile a jsonl file and summarise the numeric columns, our signups dropped last month and I need a defensible read on why

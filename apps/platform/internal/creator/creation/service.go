@@ -178,8 +178,23 @@ type Snapshot struct {
 	SearchRounds int `json:"search_rounds,omitempty"`
 	// PendingFetchURL is the page the model asked to read, held until the
 	// person confirms or declines; Fetches is what was read (05 R-47).
-	PendingFetchURL    string     `json:"pending_fetch_url,omitempty"`
-	Fetches            []Fetch    `json:"fetches,omitempty"`
+	PendingFetchURL string  `json:"pending_fetch_url,omitempty"`
+	Fetches         []Fetch `json:"fetches,omitempty"`
+	// CatalogChecked: Go searched the catalogue with the first message before
+	// any model call (05 R-49). Hits wait in References at confirm_references
+	// for the person to adopt, keep as references, or decline.
+	CatalogChecked bool `json:"catalog_checked,omitempty"`
+	// Duplicates are the catalogue Skills within the creation tool's distance
+	// of the draft, found when materialize was requested (05 R-50); the session
+	// waits at confirm_duplicate and PendingMaterialize is the held command.
+	// DuplicateAcknowledged says the check ran for this draft (found nothing,
+	// or the person confirmed anyway) and is cleared with the draft.
+	Duplicates            []Reference `json:"duplicates,omitempty"`
+	PendingMaterialize    string      `json:"pending_materialize,omitempty"`
+	DuplicateAcknowledged bool        `json:"duplicate_acknowledged,omitempty"`
+	// Adopted: the candidate is a fork of an existing Skill chosen through
+	// adopt_reference; nothing was composed.
+	Adopted            bool       `json:"adopted,omitempty"`
 	Draft              *Draft     `json:"draft,omitempty"`
 	PreviousDraft      *Draft     `json:"previous_draft,omitempty"`
 	Candidate          *Candidate `json:"candidate,omitempty"`
@@ -230,9 +245,18 @@ type Service struct {
 	// SearchKnowledge is the semantic catalog search (embedding + hybrid rank);
 	// nil hides the search_knowledge tool from the model.
 	SearchKnowledge func(context.Context, identity.Workspace, []string) ([]Reference, float64, error)
-	ValidateDraft   func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
-	Materialize     func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
-	ReadRun         func(context.Context, identity.Workspace, string, Candidate) (string, error)
+	// CatalogCheck is the semantic catalogue search behind the first-message
+	// check and the duplicate guard (05 R-49／R-50): one embedding, the hits
+	// within the creation tool's distance. nil skips both, and so does a
+	// degraded (lexical-only) answer — a keyword floor over a whole sentence
+	// is noise, not a match.
+	CatalogCheck func(context.Context, identity.Workspace, string) ([]Reference, float64, error)
+	// Adopt forks an existing Skill into the workspace as the session's
+	// candidate (adopt_reference): reuse instead of composition.
+	Adopt         func(context.Context, identity.Workspace, string) (Candidate, error)
+	ValidateDraft func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
+	Materialize   func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
+	ReadRun       func(context.Context, identity.Workspace, string, Candidate) (string, error)
 	// CreateAcceptanceTestCase writes the confirmed acceptance criteria as a Test Case of
 	// the candidate skill, inside the materialize transaction; returns its id.
 	CreateAcceptanceTestCase func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error)

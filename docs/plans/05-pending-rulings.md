@@ -1607,8 +1607,48 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 
 **未裁之前**：公開搜尋不動；創作工具照 §13 走。
 
+**2026-09-06 深夜裁定（負責人授權代理依最佳實務裁定）：接。** 形狀照代理建議，並多定三件：
+
+- **覆蓋腿是第三條候選腿，不是取代向量腿**：`search_documents.bigram`（0058）以查詢全部 token AND 查詢；一列若覆蓋查詢的全部 token，**不受 0.75 距離截斷**、且排在所有向量命中之前；覆蓋列之間仍按向量距離排序（覆蓋只決定「進不進候選、排不排在向量前」，不改覆蓋列彼此的名次——所以「排序權在向量」沒有被推翻，向量仍決定覆蓋列內部與非覆蓋列的順序）。名稱完全命中另外置頂於覆蓋腿之上。降級路徑（embedding 服務不可用時）同樣加 bigram OR english，不因降級而失去中文命中。
+- **為什麼不是 RRF**：網路最佳實務查到的結論一致——識別字／名稱類查詢要用**詞彙腿加權**而非把兩腿分數平均（RRF 對「查詢完整覆蓋」這種強訊號會被向量腿的雜訊稀釋），bigram 本身是 CJK 無分詞器情境下的正規做法（如 `pg_bigm`）。覆蓋規則是「加權」的具體實作：完整覆蓋＝直接免截斷＋排前，不是加一個分數再平均。
+- **數字（golden set 重放，`search-f1/results-public-rule-2026-09-06.txt`）**：golden 48 題 Top-1 44／Top-3 48／recall@5 48、干擾 12／12 拒答——**三者接上覆蓋腿前後完全不變**；名稱 31 題 Top-1 30→31；特定詞 25 題 Top-1 7→23、Top-3 10→25、recall@5 11→25。
+- **M1 凍結證據不動**：`gate-test §3.2` 要求數字變動需分開統計，但 golden 與干擾的三個數字前後不變（提升集中在名稱與特定詞兩組），**不構成需要分開統計的變動**——這一句本身就是分開統計的結論,不是省略統計。
+- **既有列由 `cmd/reindex` 的 `BackfillBigram` 回填**，不寫 migration 資料遷移（bigram 由 Go 分詞，SQL 做不到中文，同創作工具 0058 落地時的理由）。
+
+`04` 丙-178 承接落地與剩餘量測。
+
 ## R-49｜會話的第一則訊息要不要先查目錄（`04` 丙-177）
 
 **要裁什麼**：檢索流程（意圖→≤3 改寫→hybrid→RRF 重排→回合 2）已落地且離線 F1 0.877，但 run r 的四場參考組 mini 一步都沒提搜尋意圖（[報告 §13.4](mvp/m5/creation-measure/report.md)）——流程在會話裡沒被觸發。建議形狀：**會話收到第一則訊息時 Go 先用 hybrid 查一次目錄**（一次 embedding，記在會話帳；零模型費），有相近的 Skill 就停在 `confirm_references` 讓人選（負責人要的「意圖階段 HITL」），沒有就直接進模型。代價：每場多一次確認（只在有命中時）、第一步慢約 0.3 秒。量法已備好（harness `CREATION_MEASURE_SEARCH=1` 的 `search_hit`）。
 
 **未裁之前**：搜尋仍由模型提意圖；R07 那類「空 brief」已改成自動再試一次。
+
+**2026-09-06 深夜裁定（負責人授權代理依最佳實務裁定）：接，形狀照建議。** 落地：會話收到第一則訊息時，Go 在呼叫模型之前先用創作工具的 hybrid 查一次目錄（一次 embedding，費用記在會話 `spent_usd`；**只採語意答案，降級路徑的純詞彙答案不算命中**——詞彙腿在無 embedding 時精準度不夠，不足以支撐停下來問人）。有命中即快照 `catalog_checked=true`、`references`＝命中列表（`confirmed=false`）、`pending_action=confirm_references`、`state=waiting_confirmation`，不消耗模型呼叫。人面對**三選一**：**直接採用**（`adopt_reference`，`reference_skill_ids` 恰一個，Go fork 該 Skill 進工作區，會話以 `state=saved` 收尾、`snapshot.adopted=true`、candidate 即該 fork，**不算一次生成**）、**以它為參考**（`confirm_references`，帶著這些參考照舊進模型）、**從頭寫**（`decline_references`，清空參考、附一則 tool 訊息說明使用者選擇不採用、進模型）。沒有命中則直接進模型，不多一步確認——代價（每場多一次確認、第一步慢約 0.3 秒）只在有命中時才發生。量測 harness 已改：**參考題在開會話前先匯入該參考 Skill 並標成目錄工作區**（否則查無此 Skill、測不到這條路），文字／流程圖題若第一步被目錄命中扣住則由 harness 選 `decline_references` 並記 `catalog_offers`，讓命中率與採用行為可統計而不干擾其餘量測。**量測待 run s**：`catalog_offers` 命中率、三選一的分布、adopt 是否真的縮短到 `met`。
+
+`04` 丙-178 承接落地與剩餘量測。
+
+## R-50｜materialize 前查重（Re-Use 的出口關卡）（`04` 丙-178）
+
+**要裁什麼**：R-49 管的是**入口**——會話一開始就可能撞見既有 Skill；但一場會話就算入口沒撞見，寫到一半也可能寫出一個與目錄裡某個 Skill 高度相似的東西，而**保存（`materialize`／`finalize`）之前完全沒有人查過這件事**。要不要在保存前也查一次目錄，讓「這其實已經有人做過」在建立新版本之前被看見，而不是建立之後才被使用者自己發現。
+
+**已查到的事實**：目錄查詢（hybrid，向量 ≤0.55 命中）今天只在會話開場（R-49）與模型的 `search_catalog` 工具意圖裡發生，兩者都可能被跳過——開場沒命中、模型也可能整場不主動搜尋（`04` 丙-177 記過 run r 四場參考組 mini 一步都沒提搜尋意圖）。`ADR-003` 的改善建議＝新版本、不原地覆寫，代表**每一次 materialize 都在建立一個之後無法回頭合併的新版本**，查重的最後機會就是保存前那一刻。
+
+**2026-09-06 深夜裁定（負責人授權代理依最佳實務裁定）：要查，形狀如下。**
+
+- **時機**：`materialize`／`finalize` 執行前，Go 用**當下草稿的 name＋description**（一次 embedding）再查一次目錄，向量距離 ≤0.55 命中即視為近似（沿用 R-47／§13 對創作工具定案的截斷值，不另立新數字）。
+- **命中時**：不執行原本的命令，落 `snapshot.duplicates`（`CreationReference[]`，命中的既有 Skill 列表）、`pending_materialize`（記住原本要跑的是 `"materialize"` 還是 `"finalize"`）、`pending_action=confirm_duplicate`、`state=waiting_confirmation`。
+- **人的動作**：**採用既有的**（`adopt_reference`，同 R-49 的動作與語意——fork 進工作區、`state=saved`、不算生成）；或**仍然建立**（`confirm_duplicate`，帶同一個 `content_hash` 讓 Go 執行原本被扣住的 `pending_materialize` 命令，`duplicate_acknowledged=true`，寫入快照留痕——之後若有人問「這個為什麼跟目錄裡的那個很像」，答案在快照裡而不是要重新調查）。
+- **草稿換新即清掉**：確認過的草稿只要再被編輯（name／description 任一改變），`duplicates`／`pending_materialize`／`duplicate_acknowledged` 全部清空，下一次 materialize 重新查——沿用 R-46 對 brief／acceptance_criteria「模型換了任一個都退回確認」的同一條規則,查重的結論不能綁在一份已經不存在的草稿上。
+
+**為什麼是向量門檻而不是人工複審**：網路最佳實務對「建立前查重」的做法是向量相似度門檻＋讓人決定，而不是自動阻擋或自動合併——相似不等於重複，決定權留給看得到兩者內容的人。
+
+`public.yaml` 已加 `CreationAction.kind=confirm_duplicate` 與 `CreationSnapshot` 的 `duplicates`／`pending_materialize`／`duplicate_acknowledged` 三個欄位。`04` 丙-178 承接落地；量測待 run s。
+
+## R-51｜LLM 供應鏈與消耗的兩個決策（`02` SEC-013、`04` 丙-179）
+
+**要裁什麼**：OWASP 對照（[m0/owasp-llm-top10-mapping.md](mvp/m0/owasp-llm-top10-mapping.md)）盤出兩個缺口不是程式能自己補的：
+
+1. **模型釘版本（LLM03）**：閘道的模型別名（`gpt-5.4-mini`、Judge 用的 `gpt-5.6-terra`）指到供應商當下的權重；供應商換權重時，m3 的 Judge 回歸與 m5 的 `met` 數字會安靜失效，沒有觸發器。代理建議：別名改指**帶日期的模型 ID**並登記在 LiteLLM 設定，換 ID 一律重跑 Judge 回歸（m3）與 creation-measure 一輪，寫成 ADR-023 的追記（與 runtime image 的釘 digest＋行為重驗同一套精神）。
+2. **平台級模型預算煞車（LLM10）**：TM-MDL-02 的殘餘——每 Run／每會話都有上限，平台總量沒有。代理建議：閘道層設每日總預算與告警（LiteLLM 的 team／org budget），超過即 SEC-012 那類「停止派送新 Run 與新會話」的自動第一動作，值由負責人定。
+
+**未裁之前**：`03` SEC-013 不勾；其餘允收（攻擊集、圍欄、投毒題、遮罩、反證測試）不受本條阻擋，先做。

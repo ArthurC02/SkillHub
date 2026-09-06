@@ -39,6 +39,11 @@ export interface CreationSnapshot {
   diagram_understanding: string;
   diagram_confirmed: boolean;
   references: CreationReference[];
+  catalog_checked?: boolean;
+  duplicates?: CreationReference[];
+  pending_materialize?: string;
+  duplicate_acknowledged?: boolean;
+  adopted?: boolean;
   pending_action: string;
   budget_usd: number;
   reserved_usd: number;
@@ -103,7 +108,10 @@ export interface CreationAction {
     | "attach_run"
     | "raise_budget"
     | "confirm_fetch"
-    | "decline_fetch";
+    | "decline_fetch"
+    | "adopt_reference"
+    | "decline_references"
+    | "confirm_duplicate";
   message?: string;
   reference_skill_ids?: string[];
   content_hash?: string;

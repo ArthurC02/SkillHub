@@ -1029,6 +1029,12 @@ func (s CreationActionKind) Validate() error {
 		return nil
 	case "decline_fetch":
 		return nil
+	case "adopt_reference":
+		return nil
+	case "decline_references":
+		return nil
+	case "confirm_duplicate":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}

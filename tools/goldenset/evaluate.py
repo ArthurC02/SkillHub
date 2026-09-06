@@ -12,6 +12,7 @@ Usage
   python evaluate.py --selfcheck   # retrieval + threshold logic, no network
   python evaluate.py               # embeds anything not in the cache, then reports
   python evaluate.py --no-api      # cache only; fails loudly if a text is missing
+  python evaluate.py --lookup      # 05 R-48/R-49 name+token query sets, both rules (needs enriched corpus)
 
 The embedding key is read from the environment or the gitignored repo-root .env.
 It is never written to the cache, the output, or this file.
@@ -374,6 +375,126 @@ def check_repo_share(docs: list[dict], queries: list[dict]) -> list[str]:
     return lines
 
 
+def lookup_sets(docs: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Two 05 R-48 query sets, same algorithm as search_f1_public.py.
+
+    names: each corpus skill's frontmatter name, gold = that skill.
+    tokens: for each skill (in the reference script's data/documents/writing,
+    per-category-sorted-by-id order — the order the 25-cap is taken from), the
+    lowest-sorting token of its enriched index text that (a) occurs in exactly
+    one skill corpus-wide and (b) looks like an identifier
+    ([a-z][a-z0-9+.#_-]{3,}), capped at 25 skills.
+    """
+    cat_order = {"data": 0, "documents": 1, "writing": 2}
+    ordered = sorted(docs, key=lambda d: (cat_order.get(d["category"], 99), d["id"]))
+    names = [{"query": d["name"], "rel": {d["id"]}} for d in ordered]
+    doc_tokens = {d["id"]: set(tokenize(d["enriched"])) for d in ordered}
+    count: Counter = Counter(t for toks in doc_tokens.values() for t in toks)
+    tokens = []
+    for d in ordered:
+        cands = sorted(
+            t
+            for t in doc_tokens[d["id"]]
+            if count[t] == 1 and re.fullmatch(r"[a-z][a-z0-9+.#_-]{3,}", t)
+        )
+        if cands:
+            tokens.append({"query": cands[0], "rel": {d["id"]}})
+    return names, tokens[:25]
+
+
+def lookup_main(allow_api: bool) -> None:
+    """05 R-48 (public) and R-49/R-50 (creation) list-ranking rules, scored on
+    the golden set plus the names/tokens sets above — the "does someone who
+    only remembers a name or a keyword find it" question the golden set's task
+    phrasing can't measure.
+    """
+    docs, _ = load_corpus(require_enriched=True)
+    queries = json.loads((ROOT / "queries.json").read_text(encoding="utf-8"))["queries"]
+    golden = [{"query": q["query"], "rel": set(q["gold_primary"]) | set(q["gold_acceptable"])} for q in queries]
+    names, tokens = lookup_sets(docs)
+
+    print(
+        f"query sets: golden n={len(golden)} "
+        f"(task={sum(1 for g in golden if g['rel'])}, distractor={sum(1 for g in golden if not g['rel'])}), "
+        f"names n={len(names)}, tokens n={len(tokens)}\n"
+    )
+
+    doc_texts = [d["enriched"] for d in docs]
+    query_texts = [x["query"] for group in (golden, names, tokens) for x in group]
+    all_texts = sorted(set(doc_texts) | set(query_texts))
+    try:
+        vectors = embed(all_texts, allow_api=allow_api)
+    except SystemExit as exc:
+        print(f"無法取得向量，只列出查詢集：{exc}\n")
+        for label, items in (("names", names), ("tokens", tokens)):
+            print(f"{label} (n={len(items)}):")
+            for it in items:
+                print(f"  {it['query']!r} -> {sorted(it['rel'])}")
+            print()
+        return
+
+    doc_ids = [d["id"] for d in docs]
+    doc_tokens = {d["id"]: set(tokenize(d["enriched"])) for d in docs}
+    name_of = {d["id"]: d["name"].strip().lower() for d in docs}
+    doc_vecs = [vectors[d["enriched"]] for d in docs]
+
+    def ranked(qq: str) -> list[tuple[str, float]]:
+        sims = [cosine(vectors[qq], dv) for dv in doc_vecs]
+        order = sorted(range(len(doc_ids)), key=lambda i: (-sims[i], doc_ids[i]))
+        return [(doc_ids[i], 1 - sims[i]) for i in order]
+
+    dist_rank = {qq: ranked(qq) for qq in set(query_texts)}
+
+    def public_rule(qq: str) -> list[str]:
+        r = dist_rank[qq]
+        kept = [i for i, dist in r if dist <= 0.75]
+        q_tokens = set(tokenize(qq))
+        covered = [i for i, _ in r if q_tokens and q_tokens <= doc_tokens[i]]
+        page = covered + [i for i in kept if i not in covered]
+        nm = qq.strip().lower()
+        pinned = [i for i in page if name_of[i] == nm]
+        return pinned + [i for i in page if i not in pinned]
+
+    def creation_rule(qq: str) -> list[str]:
+        r = dist_rank[qq]
+        kept = [i for i, dist in r if dist <= 0.55]
+        q_tokens = set(tokenize(qq))
+        covered = [i for i, _ in r if q_tokens and q_tokens <= doc_tokens[i] and i not in kept]
+        return kept + covered[:1]
+
+    def score(label: str, fn) -> dict:
+        print(f"== {label}")
+        summary = {}
+        for name, items in (("golden", golden), ("names", names), ("tokens", tokens)):
+            tasks = [x for x in items if x["rel"]]
+            dis = [x for x in items if not x["rel"]]
+            top1 = sum(1 for x in tasks if fn(x["query"])[:1] and fn(x["query"])[0] in x["rel"])
+            top3 = sum(1 for x in tasks if any(i in x["rel"] for i in fn(x["query"])[:3]))
+            r5 = sum(1 for x in tasks if any(i in x["rel"] for i in fn(x["query"])[:5]))
+            rej = sum(1 for x in dis if not fn(x["query"])[:5])
+            summary[name] = {"top1": top1, "top3": top3, "r5": r5, "n": len(tasks), "rej": rej, "n_dis": len(dis)}
+            extra = f" 干擾拒答@5={pct(rej, len(dis))}" if dis else ""
+            print(f"  {name:6s} n={len(tasks):2d} top1={pct(top1, len(tasks))} top3={pct(top3, len(tasks))} recall@5={pct(r5, len(tasks))}{extra}")
+        print()
+        return summary
+
+    public = score("公開搜尋規則（05 R-48）：覆蓋全部 token 前置 + 向量 <= 0.75 + 名稱完全命中置頂", public_rule)
+    creation = score("創作工具規則（05 R-49/R-50）：向量 <= 0.55 + 補一筆覆蓋全部 token", creation_rule)
+
+    def ok(label: str, part: int, total: int, need: float) -> str:
+        rate = part / total if total else 0.0
+        verdict = "PASS" if rate >= need else "FAIL"
+        return f"  [{verdict}] {label}: {pct(part, total)} (紅線 >= {need:.0%})"
+
+    print("紅線（不擋 CI，只供人判讀）")
+    print(ok("公開規則 names Top-1", public["names"]["top1"], public["names"]["n"], 0.90))
+    print(ok("公開規則 tokens Top-1", public["tokens"]["top1"], public["tokens"]["n"], 0.80))
+    print(ok("公開規則 golden Top-3", public["golden"]["top3"], public["golden"]["n"], 0.90))
+    print(ok("公開規則 干擾拒答@5", public["golden"]["rej"], public["golden"]["n_dis"], 0.75))
+    print(ok("創作規則 golden Top-1", creation["golden"]["top1"], creation["golden"]["n"], 0.85))
+    print(ok("創作規則 names Top-1", creation["names"]["top1"], creation["names"]["n"], 0.90))
+
+
 def _selfcheck() -> None:
     docs = [
         {"id": "a", "name": "pdf", "description": "merge and split pdf files",
@@ -569,6 +690,8 @@ def main(allow_api: bool, index_mode: str) -> None:
 if __name__ == "__main__":
     if "--selfcheck" in sys.argv:
         _selfcheck()
+    elif "--lookup" in sys.argv:
+        lookup_main(allow_api="--no-api" not in sys.argv)
     else:
         mode = "frontmatter"
         if "--index-mode" in sys.argv:

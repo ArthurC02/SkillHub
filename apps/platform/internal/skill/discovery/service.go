@@ -316,7 +316,11 @@ func (s *Service) embedQuery(ctx context.Context, query string) (*pgvector.Vecto
 
 // hybridSearch runs the ADR-013 hybrid retrieval SQL: vector distance ranks,
 // FTS widens candidates, anything past MaxCosineDistance is dropped rather than
-// shown, and the DISC-003 filters narrow what survives.
+// shown, and the DISC-003 filters narrow what survives. Since 05 R-48 the
+// bigram leg (lexical.go, the creation tool's tokeniser) is the third
+// candidate source, and a document that carries every token of the query is
+// kept past the cut-off — that is the name or the distinctive term a person
+// typed on purpose, and the whole point of Re-Use is that they find it.
 //
 // Scope is fixed to catalog workspaces inside the query itself (CORE-006) — an
 // anonymous caller has no session to derive a scope from and must never supply
@@ -325,6 +329,7 @@ func (s *Service) embedQuery(ctx context.Context, query string) (*pgvector.Vecto
 func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query string, embedding *pgvector.Vector, limit int32, filters searchFilters) ([]searchResult, int64, error) {
 	rows, err := queries.PublicHybridSearchSkills(ctx, gen.PublicHybridSearchSkillsParams{
 		Query:          query,
+		BigramQuery:    lexicalQuery(query, "&"),
 		QueryEmbedding: embedding,
 		MaxDistance:    MaxCosineDistance,
 		ResultLimit:    limit,
@@ -434,6 +439,7 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query string, limit int32, filters searchFilters) ([]searchResult, int64, error) {
 	rows, err := queries.PublicSearchSkills(ctx, gen.PublicSearchSkillsParams{
 		Query:         query,
+		BigramQuery:   lexicalQuery(query, "&"),
 		ResultLimit:   limit,
 		HasScript:     filters.HasScript,
 		SpecValidated: filters.SpecValidated,

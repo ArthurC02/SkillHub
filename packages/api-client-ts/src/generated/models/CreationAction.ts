@@ -58,7 +58,7 @@ export interface CreationAction {
      */
     budgetUsd?: number;
     /**
-     * 
+     * select_references: up to three catalogue Skills to read as references. adopt_reference: exactly one id from `references` or `duplicates` — Go forks it into the workspace and the session ends `saved` with that fork as the candidate (05 R-49／R-50: reuse before creation).
      * @type {Array<string>}
      * @memberof CreationAction
      */
@@ -100,7 +100,10 @@ export const CreationActionKindEnum = {
     AttachRun: 'attach_run',
     RaiseBudget: 'raise_budget',
     ConfirmFetch: 'confirm_fetch',
-    DeclineFetch: 'decline_fetch'
+    DeclineFetch: 'decline_fetch',
+    AdoptReference: 'adopt_reference',
+    DeclineReferences: 'decline_references',
+    ConfirmDuplicate: 'confirm_duplicate'
 } as const;
 export type CreationActionKindEnum = typeof CreationActionKindEnum[keyof typeof CreationActionKindEnum];
 

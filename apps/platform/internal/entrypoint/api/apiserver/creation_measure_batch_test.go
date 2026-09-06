@@ -114,8 +114,16 @@ type sessionRow struct {
 	// SearchHit (CREATION_MEASURE_SEARCH=1, reference sessions): the model
 	// searched instead of being handed the reference, and the session's own
 	// imported reference was among the candidates it brought back.
-	SearchHit  *bool  `json:"search_hit,omitempty"`
-	SearchNote string `json:"search_note,omitempty"`
+	SearchHit *bool `json:"search_hit,omitempty"`
+	// CatalogOffers: how many catalogue Skills Go's first-message check put in
+	// front of a text or diagram session (declined here; 05 R-49).
+	CatalogOffers int `json:"catalog_offers,omitempty"`
+	// DuplicateOffers: how many catalogue Skills the duplicate guard held the
+	// save for (05 R-50); this harness confirms the draft anyway, because it
+	// measures composition (run t, 2026-09-06: R08 and R10 ended at
+	// confirm_duplicate with nothing to run because nobody answered it).
+	DuplicateOffers int    `json:"duplicate_offers,omitempty"`
+	SearchNote      string `json:"search_note,omitempty"`
 	// Rounds is how many trials ran (1 = the candidate only); MetRound is the
 	// first round whose trial was "met", 0 when none was. The owner's product
 	// shape (2026-09-06): every round runs a trial and brings suggestions back
@@ -422,7 +430,7 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 		}
 		// A new hash cleared the candidate; materialize builds a new version of
 		// the same Skill (ADR-003: a revision is a new version).
-		v = creationAct(t, c, v, "materialize")
+		v = materializeThrough(t, c, v, &row)
 		if v.Snapshot.Draft != nil {
 			dumpDraftMD(t, outDir, row.ID, fmt.Sprintf("interactive-r%d", round), v.Snapshot.Draft.Skill.Name, v.Snapshot.Draft.Skill.Description, v.Snapshot.Draft.Skill.Body)
 		}
@@ -558,7 +566,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	}
 
 	for _, task := range tasks {
-		row := runInteractiveSession(t, a, set.Creation, ctx, task, limits, outDir, trial)
+		row := runInteractiveSession(t, a, set.Creation, ctx, task, limits, outDir, trial, llm)
 		results.Interactive = append(results.Interactive, row)
 		flush()
 		t.Logf("interactive %s (%s): state=%s draft=%v cost=%s met=%s revised_met=%s search_hit=%s calls=%d", task.ID, task.Kind, row.FinalState, row.Draft, costLabel(row.CostUSD), metLabel(row), revisedMetLabel(row), searchLabel(row), row.ModelCalls)
@@ -628,7 +636,7 @@ func dumpDraftMD(t *testing.T, outDir, id, suffix, name, description, body strin
 // runInteractiveSession drives one multi-turn session to a terminal state (or
 // until the loop/message budget runs out), materializing a draft if one is
 // reached, and dumps the resulting draft.
-func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx context.Context, task measureTask, limits creation.Limits, outDir string, trial *trialRun) sessionRow {
+func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx context.Context, task measureTask, limits creation.Limits, outDir string, trial *trialRun, llm *llmclient.Client) sessionRow {
 	t.Helper()
 	row := sessionRow{ID: task.ID, Kind: task.Kind}
 	c := a.login(t, "creation-measure-"+strings.ToLower(task.ID))
@@ -640,6 +648,17 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 	initialMessage := task.Description
 	if task.Kind == "diagram" {
 		initialMessage = ""
+	}
+	// The reference is imported and put in the catalogue BEFORE the session
+	// starts, so that Go's first-message check (05 R-49) can find it: run r
+	// imported it afterwards, into a workspace that was not a catalogue one,
+	// which no catalogue search could ever have returned.
+	var refID string
+	if task.Kind == "reference" {
+		// Enriched at upload (embedding included): a `pending` document has no
+		// vector, and the first-message check takes only semantic answers.
+		refID, _ = importFilesEnriched(t, a, testPool, c, map[string]string{"SKILL.md": task.ReferenceMD}, llm)
+		markCatalog(t, testPool, c.workspaceID)
 	}
 	v := creationPost(t, c, "/creation-sessions", map[string]any{
 		"id": creationID(t), "message": initialMessage, "budget_usd": limits.MaxCostUSD,
@@ -662,7 +681,6 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 		row.ModelCalls++ // the diagram action is one synchronous model call, outside the queued loop below
 	}
 	if task.Kind == "reference" {
-		refID, _ := importFiles(t, a, testPool, c, map[string]string{"SKILL.md": task.ReferenceMD})
 		// The first step may be a catalog search that re-queues (run j R10,
 		// 2026-09-06: the flagship searched first and select_references hit
 		// 409 on a queued session). Step until the session waits.
@@ -671,9 +689,10 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 			row.ModelCalls++
 		}
 		if os.Getenv("CREATION_MEASURE_SEARCH") == "1" {
-			// The retrieval measurement: did the model's own search (intent,
-			// rewrites, fused hybrid ranking) bring back the imported reference?
-			searched := false
+			// The retrieval measurement: did Go's first-message check, or the
+			// model's own search (intent, rewrites, fused hybrid ranking),
+			// bring back the imported reference?
+			searched := v.Snapshot.CatalogChecked
 			for _, m := range v.Snapshot.Messages {
 				if m.Role == "tool" && strings.Contains(m.Content, "目錄") {
 					searched = true
@@ -727,6 +746,13 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 				row.Error = "waiting_confirmation with no pending action"
 				return finishSession(t, v, row, outDir)
 			}
+			if kind == "confirm_references" && task.Kind != "reference" {
+				// Go's first-message check offered catalogue Skills (05 R-49).
+				// This harness measures composition against single-shot, so
+				// it declines them; a person might adopt one.
+				row.CatalogOffers = len(v.Snapshot.References)
+				kind = "decline_references"
+			}
 			v = creationAct(t, c, v, kind)
 			row.AutoConfirms++
 		case "waiting_input":
@@ -738,7 +764,7 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 			row.Clarifications++
 			v = creationMessage(t, c, v, "請依合理假設補上缺的資訊，然後繼續。")
 		case "draft_ready":
-			v = creationAct(t, c, v, "materialize")
+			v = materializeThrough(t, c, v, &row)
 			row.FinalState = v.State
 			row = finishSession(t, v, row, outDir)
 			if trial != nil {
@@ -758,6 +784,20 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 	row.FinalState = v.State
 	row.Error = "loop budget exhausted"
 	return finishSession(t, v, row, outDir)
+}
+
+// materializeThrough is materialize with the duplicate guard answered: when
+// Go holds the save because the catalogue has a near-duplicate (05 R-50), the
+// person here confirms the draft anyway — the comparison against single-shot
+// needs the composed Skill — and the offer is counted.
+func materializeThrough(t *testing.T, c *client, v creation.View, row *sessionRow) creation.View {
+	t.Helper()
+	v = creationAct(t, c, v, "materialize")
+	if v.State == "waiting_confirmation" && v.Snapshot.PendingAction == "confirm_duplicate" {
+		row.DuplicateOffers += len(v.Snapshot.Duplicates)
+		v = creationAct(t, c, v, "confirm_duplicate")
+	}
+	return v
 }
 
 // finishSession fills in the draft-derived fields from the session's final

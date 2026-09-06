@@ -344,6 +344,52 @@ func (q *Queries) ListPendingEnrichment(ctx context.Context, limit int32) ([]Lis
 	return items, nil
 }
 
+const listSearchDocumentsMissingBigram = `-- name: ListSearchDocumentsMissingBigram :many
+SELECT skill_id, name, summary, enriched_summary, task_examples, tags
+FROM search_documents
+WHERE bigram IS NULL
+ORDER BY skill_id
+LIMIT $1::int
+`
+
+type ListSearchDocumentsMissingBigramRow struct {
+	SkillID         pgtype.UUID
+	Name            string
+	Summary         string
+	EnrichedSummary string
+	TaskExamples    string
+	Tags            []byte
+}
+
+// Rows indexed before 0058 (or by ReindexAll, which cannot tokenise CJK in
+// SQL): the text Go's LexicalIndexText needs to fill the bigram column.
+func (q *Queries) ListSearchDocumentsMissingBigram(ctx context.Context, resultLimit int32) ([]ListSearchDocumentsMissingBigramRow, error) {
+	rows, err := q.db.Query(ctx, listSearchDocumentsMissingBigram, resultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSearchDocumentsMissingBigramRow
+	for rows.Next() {
+		var i ListSearchDocumentsMissingBigramRow
+		if err := rows.Scan(
+			&i.SkillID,
+			&i.Name,
+			&i.Summary,
+			&i.EnrichedSummary,
+			&i.TaskExamples,
+			&i.Tags,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSkillScans = `-- name: ListSkillScans :many
 SELECT skill_id, scan
 FROM search_documents
@@ -412,25 +458,40 @@ func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context) (int64, error
 
 const publicHybridSearchSkills = `-- name: PublicHybridSearchSkills :many
 WITH vec AS (
-    SELECT s.skill_id, s.embedding <=> $8::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $9::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.embedding IS NOT NULL
-    ORDER BY s.embedding <=> $8::vector ASC
+    ORDER BY s.embedding <=> $9::vector ASC
     LIMIT 50
 ),
 fts AS (
-    SELECT s.skill_id, s.embedding <=> $8::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $9::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.tsv @@ websearch_to_tsquery('english', $9::text)
-    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $9::text)) DESC
+    WHERE s.tsv @@ websearch_to_tsquery('english', $7::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $7::text)) DESC
     LIMIT 50
 ),
+lex AS (
+    SELECT s.skill_id, s.embedding <=> $9::vector AS distance
+    FROM search_documents s
+    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
+    WHERE $10::text <> ''
+      AND s.bigram @@ to_tsquery('simple', $10::text)
+    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $10::text)) DESC
+    LIMIT 5
+),
 candidates AS (
-    SELECT skill_id, distance FROM vec
-    UNION
-    SELECT skill_id, distance FROM fts
+    SELECT skill_id, min(distance) AS distance, bool_or(covered) AS covered
+    FROM (
+        SELECT skill_id, distance, false AS covered FROM vec
+        UNION ALL
+        SELECT skill_id, distance, false AS covered FROM fts
+        UNION ALL
+        SELECT skill_id, distance, true AS covered FROM lex
+    ) legs
+    GROUP BY skill_id
 )
 SELECT c.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
@@ -450,6 +511,7 @@ SELECT c.skill_id, s.name,
        cur.category,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked,
+       c.covered AS lexical_covered,
        -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
        -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
        -- reader cannot tell 21 from 2100 -- because there was no count to say.
@@ -507,7 +569,7 @@ LEFT JOIN LATERAL (
     FROM skills sk
     WHERE sk.id = c.skill_id
 ) cur ON true
-WHERE (c.distance IS NULL OR c.distance <= $1::float8)
+WHERE (c.covered OR c.distance IS NULL OR c.distance <= $1::float8)
   -- DISC-003 filters, applied after candidate generation.
   --
   -- ponytail: the two legs still take their own 50 rows before this runs, so a
@@ -536,8 +598,10 @@ WHERE (c.distance IS NULL OR c.distance <= $1::float8)
     $6::text IS NULL
     OR cur.category = $6::text
   )
-ORDER BY c.distance ASC NULLS LAST
-LIMIT $7
+ORDER BY (lower(s.name) = lower(btrim($7::text))) DESC,
+         c.covered DESC,
+         c.distance ASC NULLS LAST
+LIMIT $8
 `
 
 type PublicHybridSearchSkillsParams struct {
@@ -547,9 +611,10 @@ type PublicHybridSearchSkillsParams struct {
 	AgentRuntime   *string
 	CurationTier   *string
 	Category       *string
+	Query          string
 	ResultLimit    int32
 	QueryEmbedding *pgvector.Vector
-	Query          string
+	BigramQuery    string
 }
 
 type PublicHybridSearchSkillsRow struct {
@@ -568,6 +633,7 @@ type PublicHybridSearchSkillsRow struct {
 	Category          *string
 	Rank              float64
 	Unranked          bool
+	LexicalCovered    bool
 	TotalMatches      int64
 }
 
@@ -601,6 +667,25 @@ type PublicHybridSearchSkillsRow struct {
 // The legs carry only the id and the distance: everything displayed is read
 // back from search_documents in the final SELECT, so the DISC-002 result
 // columns are written out once instead of three times.
+//
+// The third leg (05 R-48, 2026-09-06) is the bigram column of 0058 queried
+// with every token of the query AND-ed — the document carries the whole query,
+// which is what a person types when they know a name or one distinctive term.
+// The creation tool measured that admission at F1 0.88 over golden + name +
+// term queries against 0.59 for the vector leg alone, with the golden set's
+// own numbers unchanged (creation-measure/search-f1). Its rows are `covered`
+// and are the one thing the distance cut-off does not judge: a covered hit
+// sits past 0.75 exactly when the embedding did not see the term (7/25
+// distinctive terms survived the cut-off on their own), and dropping it there
+// is the case the leg exists to fix. Covered rows come BEFORE the vector hits
+// (search-f1/results-public-rule-2026-09-06: after the vector hits, the 25
+// distinctive terms reach Top-1 14 times; before them, 23 — with the golden
+// set's 44/48 and its 12/12 rejections unchanged either way). This is not the
+// lexical rank ADR-013 定案調整 4 keeps out of the ordering: among covered rows
+// the order is still their vector distance, and the covered set itself is a
+// precise signal (every token present), not a score. The exact-name match is
+// pinned first of all, because a person who typed the name must see it
+// (Re-Use before creation).
 // max_distance is the DISC-005 cut-off; see catalog.MaxCosineDistance for the
 // value's derivation and its expiry conditions.
 //
@@ -622,9 +707,10 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 		arg.AgentRuntime,
 		arg.CurationTier,
 		arg.Category,
+		arg.Query,
 		arg.ResultLimit,
 		arg.QueryEmbedding,
-		arg.Query,
+		arg.BigramQuery,
 	)
 	if err != nil {
 		return nil, err
@@ -649,6 +735,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 			&i.Category,
 			&i.Rank,
 			&i.Unranked,
+			&i.LexicalCovered,
 			&i.TotalMatches,
 		); err != nil {
 			return nil, err
@@ -737,35 +824,42 @@ LEFT JOIN LATERAL (
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
-WHERE s.tsv @@ websearch_to_tsquery('english', $1::text)
-  AND (
-    $2::bool IS NULL
-    OR (s.scan IS NOT NULL
-        AND (s.scan->'codes' @> '["script-file"]'::jsonb
-             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $2::bool)
-  )
+WHERE (s.tsv @@ websearch_to_tsquery('english', $1::text)
+       OR ($2::text <> ''
+           AND s.bigram @@ to_tsquery('simple', $2::text)))
   AND (
     $3::bool IS NULL
-    OR (ver.created_at IS NOT NULL) = $3::bool
+    OR (s.scan IS NOT NULL
+        AND (s.scan->'codes' @> '["script-file"]'::jsonb
+             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $3::bool)
   )
   AND (
-    $4::text IS NULL
-    OR COALESCE(cmp.runtime, 'unverified') = $4::text
+    $4::bool IS NULL
+    OR (ver.created_at IS NOT NULL) = $4::bool
   )
   AND (
     $5::text IS NULL
-    OR COALESCE(cur.tier, 'indexed') = $5::text
+    OR COALESCE(cmp.runtime, 'unverified') = $5::text
   )
   AND (
     $6::text IS NULL
-    OR cur.category = $6::text
+    OR COALESCE(cur.tier, 'indexed') = $6::text
   )
-ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $1::text)) DESC
-LIMIT $7
+  AND (
+    $7::text IS NULL
+    OR cur.category = $7::text
+  )
+ORDER BY GREATEST(
+    ts_rank_cd(s.tsv, websearch_to_tsquery('english', $1::text)),
+    CASE WHEN $2::text <> ''
+         THEN ts_rank_cd(s.bigram, to_tsquery('simple', $2::text))
+         ELSE 0 END) DESC
+LIMIT $8
 `
 
 type PublicSearchSkillsParams struct {
 	Query         string
+	BigramQuery   string
 	HasScript     *bool
 	SpecValidated *bool
 	AgentRuntime  *string
@@ -840,6 +934,13 @@ type PublicSearchSkillsRow struct {
 // FTS-only public search — the degradation path when the embedding service is
 // unavailable (ADR-013 fallback).
 //
+// Two lexical legs since 05 R-48: the english tsvector, and the bigram column
+// (0058) for the query Go rendered from LexicalTokens — every token AND-ed, so
+// a Traditional Chinese query the english config tokenises to nothing still
+// has a floor. bigram_query is ” when the query carries no token, and the
+// CASE keeps to_tsquery off an empty string (it would only log a notice, but
+// a notice per empty search is noise).
+//
 // The DISC-003 filters apply here too. A degraded answer is already lower
 // recall; letting it also ignore the user's filters would make the page lie
 // about what it contains, and the filter dimensions are projection columns that
@@ -853,6 +954,7 @@ type PublicSearchSkillsRow struct {
 func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkillsParams) ([]PublicSearchSkillsRow, error) {
 	rows, err := q.db.Query(ctx, publicSearchSkills,
 		arg.Query,
+		arg.BigramQuery,
 		arg.HasScript,
 		arg.SpecValidated,
 		arg.AgentRuntime,
@@ -989,6 +1091,22 @@ func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]S
 		return nil, err
 	}
 	return items, nil
+}
+
+const setSearchDocumentBigram = `-- name: SetSearchDocumentBigram :exec
+UPDATE search_documents
+SET bigram = to_tsvector('simple', $2::text)
+WHERE skill_id = $1
+`
+
+type SetSearchDocumentBigramParams struct {
+	SkillID    pgtype.UUID
+	BigramText string
+}
+
+func (q *Queries) SetSearchDocumentBigram(ctx context.Context, arg SetSearchDocumentBigramParams) error {
+	_, err := q.db.Exec(ctx, setSearchDocumentBigram, arg.SkillID, arg.BigramText)
+	return err
 }
 
 const upsertSearchDocument = `-- name: UpsertSearchDocument :exec

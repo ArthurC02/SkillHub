@@ -571,6 +571,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		}
 		repeated := blocked && p.Draft != nil && p.Draft.Blocked && p.Draft.Validation == report
 		p.Draft = &Draft{revision, hash, *r.Draft, report, blocked}
+		clearDuplicateCheck(p)
 		p.PendingAction = ""
 		if repeated {
 			p.BlockedRepeats++
@@ -689,6 +690,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			}
 			p.PreviousDraft = e.PreviousDraft
 			p.Draft = &Draft{revision, hash, *r.Draft, report, blocked}
+			clearDuplicateCheck(p)
 			p.PendingAction = ""
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("Go 靜態驗證完成，blocked=%t；完整 finding 隨 draft_validation 提供，不代表試跑成功。", blocked)})
 			return "queued", true, nil

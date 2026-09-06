@@ -331,6 +331,7 @@ func NewApp(cfg Config) (*App, error) {
 	wireCreationReads(creationSvc, versions, catalogSvc)
 	wireCreationWrites(creationSvc, versions, runSvc, evalSvc)
 	wireCreationTestCases(creationSvc, testlabSvc)
+	wireCreationAdopt(creationSvc, registrySvc)
 	return &App{
 		Deps: Deps{
 			Auth:            auth,

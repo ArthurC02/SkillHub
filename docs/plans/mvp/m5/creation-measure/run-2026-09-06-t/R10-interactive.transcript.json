@@ -1,0 +1,33 @@
+{
+  "acceptance_criteria": [
+    "輸出為一份清單，每一列對應一則未回覆的問題。",
+    "每一列都包含問題內容與可點擊的連結。",
+    "結果只包含來自三個指定頻道的項目。",
+    "結果以「每週」為單次處理範圍。",
+    "當輸入提供三個頻道名稱與 Slack 訊息內容時，輸出只列出未回覆的問題。"
+  ],
+  "brief": "建立一個 Skill，用來每週從 Slack 的三個指定頻道找出未回覆的問題，輸出成清單並附上每則問題的連結。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "每週從 Slack 三個頻道找出未回覆的問題，列成清單附連結。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的草案：\n\n**brief**\n建立一個 Skill，用來每週從 Slack 的三個指定頻道找出未回覆的問題，輸出成清單並附上每則問題的連結。\n\n**acceptance_criteria**\n1. 輸出為一份清單，每一列對應一則未回覆的問題。\n2. 每一列都包含問題內容與可點擊的連結。\n3. 結果只包含來自三個指定頻道的項目。\n4. 結果以「每週」為單次處理範圍。\n5. 當輸入提供三個頻道名稱與 Slack 訊息內容時，輸出只列出未回覆的問題。\n\n**sample_input**\n每週從 Slack 三個頻道找出未回覆的問題，列成清單附連結。以下是三個頻道的訊息：\n#general：A：我想確認明天的發佈時間？\n#general：B：已收到，稍後回覆。\n#help：C：有人知道報表何時完成嗎？\n#help：D：這個我來處理。\n#random：E：請問文件放在哪裡？\n#random：F：收到。\n\n請確認這個 brief、驗收條件與 sample_input。若你要，我也可以再補上工具需求限制（例如是否需要 Slack API、是否只處理公開頻道、連結格式）。"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是可交付的 Skill 草案。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "驗證已通過，且目前沒有新的 evaluation 需要修正；我保留可交付的草案不變。你可以直接接受這個 draft，或告訴我要改哪一部分。"
+    }
+  ],
+  "state": "waiting_confirmation"
+}

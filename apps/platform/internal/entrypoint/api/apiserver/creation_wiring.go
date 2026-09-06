@@ -7,6 +7,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -18,6 +19,26 @@ import (
 
 func wireCreationReads(s *creation.Service, versions *ingest.Service, search *catalog.Service) {
 	s.ValidateDraft = versions.ValidateCreationDraft
+	// The first-message catalogue check and the duplicate guard (05 R-49／
+	// R-50): the creation tool's hybrid retrieval, semantic answers only — a
+	// degraded lexical answer over a whole sentence is not a match.
+	s.CatalogCheck = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, float64, error) {
+		ids, cost, degraded, err := search.CreationKnowledgeIDs(ctx, query)
+		if err != nil || degraded {
+			return nil, cost, err
+		}
+		refs := []creation.Reference{}
+		for _, id := range ids {
+			r, _, err := s.ResolveReference(ctx, ws, id, "")
+			if err == nil {
+				refs = append(refs, r)
+			}
+			if len(refs) == 3 {
+				break
+			}
+		}
+		return refs, cost, nil
+	}
 	s.ResolveReference = func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, llmclient.GenerateReference, error) {
 		sid, err := creation.ParseID(skillID)
 		if err != nil {
@@ -90,6 +111,24 @@ func wireCreationWrites(s *creation.Service, versions *ingest.Service, runs *run
 		}
 		b, err := json.Marshal(map[string]any{"run_id": runID, "skill_version_id": candidate.VersionID, "execution_status": r.Status, "failure_class": r.FailureClass, "evaluation": feedback})
 		return string(b), err
+	}
+}
+
+// wireCreationAdopt is adopt_reference (05 R-49／R-50): the person takes an
+// existing Skill instead of composing one, and the fork is the candidate.
+// Forking is registry's write, reached through injection like every other
+// owner API here (ADR-067).
+func wireCreationAdopt(s *creation.Service, forks *registry.Service) {
+	s.Adopt = func(ctx context.Context, ws identity.Workspace, skillID string) (creation.Candidate, error) {
+		id, err := creation.ParseID(skillID)
+		if err != nil {
+			return creation.Candidate{}, err
+		}
+		sk, ver, err := forks.Fork(ctx, ws, id)
+		if err != nil {
+			return creation.Candidate{}, err
+		}
+		return creation.Candidate{SkillID: creation.UUID(sk.ID), VersionID: creation.UUID(ver.ID)}, nil
 	}
 }
 

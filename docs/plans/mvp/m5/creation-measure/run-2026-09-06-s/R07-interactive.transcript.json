@@ -1,0 +1,33 @@
+{
+  "acceptance_criteria": [
+    "在給定一個含有不完整 docstring 的 Python 函式時，輸出保留原函式碼結構，只更新 docstring。",
+    "輸出的 docstring 使用 Google 風格的段落與欄位格式。",
+    "若原 docstring 缺少 `Args:`，輸出中會補上對應參數說明。",
+    "若原 docstring 缺少 `Returns:`，輸出中會補上回傳值說明。",
+    "若原 docstring 已有部分內容，輸出會保留可用資訊，不刪除與函式相符的既有說明。"
+  ],
+  "brief": "任務：審查使用者提供的 Python 函式 docstring，補上缺少的內容，並輸出成 Google 風格 docstring。\n- 輸入：一段 Python 函式原始碼（包含現有 docstring，若有）。\n- 輸出：修正版函式程式碼，只調整 docstring 內容與格式，不改變函式行為。\n- 工具需求：不需要外部工具；僅根據使用者提供的程式碼完成。\n- 限制：不臆測函式未提供的行為、參數型別或回傳值；若資訊不足，只能在 docstring 中保守表述或標示不確定。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我審 Python 函式的 docstring，缺的補上，格式用 Google 風格。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成一個可確認的需求草案：\n\n**Brief**\n- 任務：審查使用者提供的 Python 函式 docstring，補上缺少的內容，並輸出成 Google 風格 docstring。\n- 輸入：一段 Python 函式原始碼（包含現有 docstring，若有）。\n- 輸出：修正版函式程式碼，只調整 docstring 內容與格式，不改變函式行為。\n- 工具需求：不需要外部工具；僅根據使用者提供的程式碼完成。\n- 限制：不臆測函式未提供的行為、參數型別或回傳值；若資訊不足，只能在 docstring 中保守表述或標示不確定。\n\n**Acceptance criteria**\n1. 在給定一個含有不完整 docstring 的 Python 函式時，輸出保留原函式碼結構，只更新 docstring。\n2. 輸出的 docstring 使用 Google 風格的段落與欄位格式。\n3. 若原 docstring 缺少 `Args:`，輸出中會補上對應參數說明。\n4. 若原 docstring 缺少 `Returns:`，輸出中會補上回傳值說明。\n5. 若原 docstring 已有部分內容，輸出會保留可用資訊，不刪除與函式相符的既有說明。\n\n**Sample input**\n請幫我把這個 Python 函式的 docstring 補成 Google 風格，並只回傳修正版程式碼。\n```python\ndef add(a, b):\n    \"\"\"add two numbers\"\"\"\n    return a + b\n```"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是依已確認需求整理出的技能草稿，待 Go 驗證："
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "驗證已通過，且目前沒有新的評估結果需要修正；我保留已驗證草稿供你開始試跑。這個草稿已符合你確認的需求：審查 Python 函式 docstring、補齊缺漏、輸出 Google 風格、且只回傳修正版程式碼。你可以直接接受這個草稿，或告訴我還要改哪一部分。"
+    }
+  ],
+  "state": "candidate_ready"
+}

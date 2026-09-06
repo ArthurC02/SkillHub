@@ -14,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"log/slog"
 	"strings"
 	"time"
 	"unicode"
@@ -95,6 +96,33 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 		e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "user", Content: message})
 		state = "queued"
 	}
+	if state == "queued" && s.CatalogCheck != nil {
+		// 05 R-49: before any model call, Go asks the catalogue whether this
+		// task already has a Skill (run r, 2026-09-06: left to the model, no
+		// reference session ever searched). Hits wait for the person — adopt
+		// one, keep them as references, or decline; a failed search never
+		// blocks the session, it only skips the question.
+		refs, cost, err := s.CatalogCheck(ctx, ws, message)
+		if err != nil {
+			slog.Warn("creation: catalogue check failed, continuing without it", "error", err)
+		}
+		e.Snapshot.CatalogChecked = err == nil
+		if cost > 0 {
+			spent := *e.Snapshot.SpentUSD + cost
+			e.Snapshot.SpentUSD = &spent
+		}
+		if len(refs) > 0 {
+			if len(refs) > 3 {
+				refs = refs[:3]
+			}
+			for i := range refs {
+				refs[i].Confirmed = false
+			}
+			e.Snapshot.References = refs
+			e.Snapshot.PendingAction = "confirm_references"
+			state = "waiting_confirmation"
+		}
+	}
 	b, _ := json.Marshal(e)
 	q := gen.New(tx)
 	row, err := q.CreateCreationSession(ctx, gen.CreateCreationSessionParams{ID: id, WorkspaceID: ws.ID, State: state, Snapshot: b, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(s.Limits.Retention), Valid: true}})
@@ -169,7 +197,43 @@ func confirmed(p Snapshot) bool {
 	}
 	return true
 }
-func invalidate(p *Snapshot) { p.Draft = nil; p.Candidate = nil; p.PendingAction = "" }
+func invalidate(p *Snapshot) {
+	p.Draft = nil
+	p.Candidate = nil
+	p.PendingAction = ""
+	clearDuplicateCheck(p)
+}
+
+// clearDuplicateCheck forgets the duplicate guard's answer: it described a
+// draft that no longer exists.
+func clearDuplicateCheck(p *Snapshot) {
+	p.Duplicates = nil
+	p.PendingMaterialize = ""
+	p.DuplicateAcknowledged = false
+}
+
+// listedReference says whether the person may adopt this id: it must be one
+// Go itself put in front of them, from the catalogue check or the duplicate
+// guard, never an arbitrary id.
+func listedReference(p *Snapshot, id string) bool {
+	for _, r := range p.References {
+		if r.SkillID == id {
+			return true
+		}
+	}
+	for _, r := range p.Duplicates {
+		if r.SkillID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// duplicateQuery is the text the duplicate guard embeds: the draft's own name
+// and description, which is what the index's enriched summary describes.
+func duplicateQuery(skill llmclient.GeneratedSkill) string {
+	return strings.TrimSpace(skill.Name + "\n" + skill.Description)
+}
 func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID, c Command) (View, *JobArgs, error) {
 	if !c.ID.Valid || c.ExpectedRevision < 1 {
 		return View{}, nil, ErrInvalidCommand
@@ -281,6 +345,31 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		p.BriefConfirmed = false
 		p.PendingAction = "confirm_references"
 		state = "waiting_confirmation"
+	case "adopt_reference":
+		// Reuse before creation (05 R-49／R-50): the person takes an existing
+		// Skill instead of composing one. Go forks it; the session ends with
+		// the fork as its candidate and nothing generated.
+		if s.Adopt == nil || len(c.ReferenceSkillIDs) != 1 || (p.PendingAction != "confirm_references" && p.PendingAction != "confirm_duplicate") || !listedReference(p, c.ReferenceSkillIDs[0]) {
+			return View{}, nil, ErrInvalidCommand
+		}
+		candidate, err := s.Adopt(ctx, ws, c.ReferenceSkillIDs[0])
+		if err != nil {
+			return View{}, nil, ErrNotFound
+		}
+		p.Candidate = &candidate
+		p.Adopted = true
+		p.PendingAction = ""
+		p.PendingMaterialize = ""
+		e.ExistingSkillID = candidate.SkillID
+		state = "saved"
+	case "decline_references":
+		if p.PendingAction != "confirm_references" || len(p.Messages) >= MaxMessages {
+			return View{}, nil, ErrInvalidCommand
+		}
+		p.References = []Reference{}
+		p.PendingAction = ""
+		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "使用者不採用目錄裡的 Skill；請依需求撰寫。"})
+		queueStep = true
 	case "confirm_references":
 		if p.PendingAction != "confirm_references" || s.ResolveReference == nil {
 			return View{}, nil, ErrInvalidCommand
@@ -367,7 +456,19 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		} else {
 			state = row.State
 		}
-	case "materialize", "finalize":
+	case "materialize", "finalize", "confirm_duplicate":
+		// confirm_duplicate replays the command the duplicate guard held
+		// (05 R-50): same draft hash, the person has seen the near-duplicates.
+		kind := c.Kind
+		if c.Kind == "confirm_duplicate" {
+			if p.PendingAction != "confirm_duplicate" || p.PendingMaterialize == "" {
+				return View{}, nil, ErrInvalidCommand
+			}
+			kind = p.PendingMaterialize
+			p.DuplicateAcknowledged = true
+			p.PendingAction = ""
+			p.PendingMaterialize = ""
+		}
 		if p.Draft == nil || p.Draft.Blocked || p.Draft.ContentHash == "" || p.Draft.ContentHash != c.ContentHash || !confirmed(*p) {
 			return View{}, nil, ErrInvalidCommand
 		}
@@ -383,11 +484,39 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			if s.Materialize == nil {
 				return View{}, nil, ErrUnavailable
 			}
+			if !p.DuplicateAcknowledged && s.CatalogCheck != nil {
+				// 05 R-50: the last place a duplicate can be stopped. One
+				// embedding of the draft's name and description; a hit within
+				// the creation tool's distance is shown before anything is
+				// stored, and the person adopts it or confirms the draft.
+				dups, cost, err := s.CatalogCheck(ctx, ws, duplicateQuery(p.Draft.Skill))
+				if err != nil {
+					slog.Warn("creation: duplicate check failed, materializing without it", "error", err)
+				}
+				if cost > 0 && p.SpentUSD != nil {
+					spent := *p.SpentUSD + cost
+					p.SpentUSD = &spent
+				}
+				if len(dups) > 0 {
+					if len(dups) > 3 {
+						dups = dups[:3]
+					}
+					for i := range dups {
+						dups[i].Confirmed = false
+					}
+					p.Duplicates = dups
+					p.PendingMaterialize = kind
+					p.PendingAction = "confirm_duplicate"
+					state = "waiting_confirmation"
+					break
+				}
+				p.DuplicateAcknowledged = err == nil
+			}
 			_ = tx.Rollback(ctx)
-			return s.materialize(ctx, ws, row, c, e)
+			return s.materialize(ctx, ws, row, c, kind, e)
 		}
 		state = "candidate_ready"
-		if c.Kind == "finalize" {
+		if kind == "finalize" {
 			state = "saved"
 		}
 	default:
@@ -434,7 +563,9 @@ type materializedReference struct {
 	Name      string `json:"name"`
 }
 
-func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, e envelope) (View, *JobArgs, error) {
+// kind is materialize or finalize — c.Kind itself may be confirm_duplicate,
+// and the receipt must keep the command the client actually sent.
+func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, kind string, e envelope) (View, *JobArgs, error) {
 	p := e.Snapshot
 	refs := make([]materializedReference, len(p.References))
 	for i, r := range p.References {
@@ -484,9 +615,16 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 			candidate.TestCaseID = id
 		}
 		current.Snapshot.Candidate = &candidate
+		// The duplicate guard's answer and its embedding cost were decided on
+		// the snapshot Act read; the revision check above proved it is this one.
+		current.Snapshot.SpentUSD = p.SpentUSD
+		current.Snapshot.Duplicates = p.Duplicates
+		current.Snapshot.DuplicateAcknowledged = p.DuplicateAcknowledged
+		current.Snapshot.PendingAction = ""
+		current.Snapshot.PendingMaterialize = ""
 		current.ExistingSkillID = candidate.SkillID
 		state := "candidate_ready"
-		if c.Kind == "finalize" {
+		if kind == "finalize" {
 			state = "saved"
 		}
 		row, err = advance(ctx, tx, row, state, c.Kind, current)

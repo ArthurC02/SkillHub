@@ -79,3 +79,46 @@ func TestCreationHybridRetrievalAdmitsACoveredLexicalHitAfterTheVectorLeg(t *tes
 		t.Fatalf("degraded answer: ids=%v cost=%v degraded=%v err=%v", ids, cost, degraded, err)
 	}
 }
+
+// 05 R-48 (2026-09-06): the public search's third candidate leg is the bigram
+// column. A document that carries every token of the query is kept past the
+// distance cut-off and ranked before the vector hits — the name or the
+// distinctive term a person typed on purpose (search-f1/results-public-rule:
+// distinctive terms Top-1 7 → 23 of 25, golden set unchanged) — and the exact
+// name is pinned first; a query the document covers only in part is not
+// admitted by that leg.
+func TestPublicSearchKeepsACoveredLexicalHitPastTheCutoffAndPinsTheExactName(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	curator := newAPI(t, pool).login(t, "curator-bigram")
+	markCatalog(t, pool, curator.workspaceID)
+	near := seedSkill(t, pool, curator.workspaceID, "quorble ledger reconciler")
+	far := seedSkill(t, pool, curator.workspaceID, "pii-flagger")
+	seedEmbedding(t, pool, near, 733)
+	// Orthogonal to every query the stub embeds: distance 1, past MaxCosineDistance.
+	seedEmbedding(t, pool, far, 1234)
+	q := gen.New(pool)
+	for id, text := range map[string]string{near: "quorble ledger reconciler", far: "pii-flagger 遮罩帳號尾碼"} {
+		if err := q.SetSearchDocumentBigram(ctx, gen.SetSearchDocumentBigramParams{SkillID: mustUUID(t, id), BigramText: catalog.LexicalIndexText(text)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	a := newAPIWithLLM(t, pool, stubLLM(t, 733, "because it fits"))
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	// The exact name: covered, past the cut-off, pinned before the vector hit.
+	body := anon.search(t, "/api/skills/search?q=pii-flagger")
+	if ids := body.ids(); body.Degraded || body.NoResults || len(ids) != 2 || ids[0] != far || ids[1] != near {
+		t.Fatalf("exact name must be first and kept past the cut-off: %v degraded=%v no_results=%v", ids, body.Degraded, body.NoResults)
+	}
+	// One distinctive Chinese term (帳號尾碼): covered, ranked before the vector hit.
+	body = anon.search(t, "/api/skills/search?q=%E5%B8%B3%E8%99%9F%E5%B0%BE%E7%A2%BC")
+	if ids := body.ids(); len(ids) != 2 || ids[0] != far || ids[1] != near {
+		t.Fatalf("a covered term is admitted ahead of the vector hit: %v", ids)
+	}
+	// Partial coverage (pii-flagger 不存在): the bigram leg does not admit it.
+	body = anon.search(t, "/api/skills/search?q=pii-flagger+%E4%B8%8D%E5%AD%98%E5%9C%A8")
+	if ids := body.ids(); len(ids) != 1 || ids[0] != near {
+		t.Fatalf("partial coverage must not bypass the cut-off: %v", ids)
+	}
+}

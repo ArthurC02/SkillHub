@@ -1,0 +1,33 @@
+{
+  "acceptance_criteria": [
+    "輸入一段包含多個 GitHub issue 的文字時，輸出會把每個 issue 分到三級嚴重度之一。",
+    "輸出會明確使用三級分類名稱，且同時出現三個層級。",
+    "每個嚴重度層級都會附上一句處理建議。",
+    "輸出會保留 issue 的原始內容，不會只給抽象規則。",
+    "輸出格式能讓人清楚看出「issue → 嚴重度 → 建議」的對應關係。"
+  ],
+  "brief": "建立一個 Skill：將使用者提供的 GitHub issue 依嚴重度分成三級，並且對每一級各寫一句處理建議。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我把 GitHub issue 依嚴重度分成三級並各寫一句處理建議。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的需求草案：\n\n**brief**\n建立一個 Skill：將使用者提供的 GitHub issue 依嚴重度分成三級，並且對每一級各寫一句處理建議。\n\n**acceptance_criteria**\n1. 輸入一段包含多個 GitHub issue 的文字時，輸出會把每個 issue 分到三級嚴重度之一。\n2. 輸出會明確使用三級分類名稱，且同時出現三個層級。\n3. 每個嚴重度層級都會附上一句處理建議。\n4. 輸出會保留 issue 的原始內容，不會只給抽象規則。\n5. 輸出格式能讓人清楚看出「issue → 嚴重度 → 建議」的對應關係。\n\n**sample_input**\n請幫我把下面的 GitHub issue 依嚴重度分成三級並各寫一句處理建議：\n1. App 在登入後偶爾閃退，發生率約 30%。\n2. README 的範例指令少了一個參數說明。\n3. 付款頁面在 Safari 會顯示空白畫面，所有使用者都無法結帳。\n\n如果這個方向正確，請回覆確認；如果你希望三級名稱、判斷標準或輸出格式有固定樣式，也可以直接告訴我。"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是依已確認需求整理的 Skill 草案，供 Go 驗證。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "已通過靜態驗證，且目前沒有需要修正的評估失敗項目；我保留原草案並回傳可直接進入試跑的版本。"
+    }
+  ],
+  "state": "candidate_ready"
+}

@@ -114,6 +114,33 @@ func IndexSkillEnriched(ctx context.Context, tx pgx.Tx, projection EnrichedSkill
 	})
 }
 
+// BackfillBigram fills the bigram column (0058) for documents indexed before
+// it existed, or rebuilt by ReindexAll, which cannot tokenise CJK in SQL: the
+// same text the enriched upsert writes, in batches until none is left. Safe
+// to re-run; a filled row leaves the worklist.
+func BackfillBigram(ctx context.Context, db gen.DBTX, batch int32) (int, error) {
+	q := gen.New(db)
+	done := 0
+	for {
+		rows, err := q.ListSearchDocumentsMissingBigram(ctx, batch)
+		if err != nil {
+			return done, err
+		}
+		if len(rows) == 0 {
+			return done, nil
+		}
+		for _, r := range rows {
+			if err := q.SetSearchDocumentBigram(ctx, gen.SetSearchDocumentBigramParams{
+				SkillID:    r.SkillID,
+				BigramText: LexicalIndexText(r.Name, r.Summary, r.EnrichedSummary, r.TaskExamples, jsonStrings(r.Tags)),
+			}); err != nil {
+				return done, err
+			}
+			done++
+		}
+	}
+}
+
 // RemoveSkillFromIndex drops a skill's document. Called for both soft delete
 // and takedown: in either case the content must stop being discoverable now,
 // while the version snapshots it owns stay frozen (iron rule 4).

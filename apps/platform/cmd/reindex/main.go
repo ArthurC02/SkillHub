@@ -60,6 +60,14 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("search projection rebuilt", "documents", n, "pruned", pruned)
+	// 0058's bigram column is written by Go at index time; rows from before it,
+	// and the ones ReindexAll just inserted, are filled here (05 R-48).
+	filled, err := catalog.BackfillBigram(ctx, pool, 500)
+	if err != nil {
+		slog.Error("bigram backfill", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("bigram column filled", "documents", filled)
 
 	llmURL := os.Getenv("LLM_SERVICE_URL")
 	if llmURL == "" {

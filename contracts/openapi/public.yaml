@@ -8316,6 +8316,23 @@ components:
         search_rounds:
           type: "integer"
           description: "Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts without a reference (04 丙-177)."
+        catalog_checked:
+          type: "boolean"
+          description: "Go searched the catalogue with the first message before any model call (05 R-49). When it found something the session waits at confirm_references with the hits in `references`; the person confirms them as references, adopts one (adopt_reference) or declines them all (decline_references)."
+        duplicates:
+          type: "array"
+          description: "Catalogue Skills within the creation tool's distance of the draft, found by Go when materialize／finalize was requested (05 R-50). The session waits at confirm_duplicate: the person adopts one (adopt_reference) or confirms the draft anyway (confirm_duplicate, same content_hash)."
+          items:
+            $ref: "#/components/schemas/CreationReference"
+        pending_materialize:
+          type: "string"
+          description: "materialize or finalize: the command held back by the duplicate check, replayed by confirm_duplicate."
+        duplicate_acknowledged:
+          type: "boolean"
+          description: "The duplicate check ran for this draft revision (found nothing, or the person confirmed anyway); cleared when the draft changes."
+        adopted:
+          type: "boolean"
+          description: "The candidate is a fork of an existing catalogue Skill chosen through adopt_reference, not a generated one; nothing was composed."
         pending_fetch_url:
           type: "string"
           description: "The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until the person confirms (05 R-47)."
@@ -8461,6 +8478,9 @@ components:
             - "raise_budget"
             - "confirm_fetch"
             - "decline_fetch"
+            - "adopt_reference"
+            - "decline_references"
+            - "confirm_duplicate"
         message:
           type: "string"
           maxLength: 4000
@@ -8473,6 +8493,7 @@ components:
           items:
             type: "string"
             format: "uuid"
+          description: "select_references: up to three catalogue Skills to read as references. adopt_reference: exactly one id from `references` or `duplicates` — Go forks it into the workspace and the session ends `saved` with that fork as the candidate (05 R-49／R-50: reuse before creation)."
         content_hash:
           type: "string"
         diagram:
