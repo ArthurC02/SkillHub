@@ -72,11 +72,14 @@ func canSpend(p Snapshot, l Limits) bool {
 // allowedTools hides the tool-call intents from the model once the session
 // has already spent its tool-call budget. Python turns a disallowed tool
 // intent into a clarification, so this cannot fail proposal() with ErrLimit.
-func allowedTools(toolCalls, maxToolCalls int, fetch bool) []string {
+func allowedTools(toolCalls, maxToolCalls int, fetch, knowledge bool) []string {
 	if toolCalls >= maxToolCalls {
 		return []string{}
 	}
 	tools := []string{"search_catalog", "validate_draft"}
+	if knowledge {
+		tools = append(tools, "search_knowledge")
+	}
 	if fetch {
 		tools = append(tools, "fetch_url")
 	}
@@ -199,7 +202,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 		}
 	}()
 	ws := identity.Workspace{ID: a.WorkspaceID}
-	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, AcceptanceCriteria: e.Snapshot.AcceptanceCriteria, SampleInput: e.Snapshot.SampleInput, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls, s.Fetch != nil), MaxOutputTokens: e.Limits.MaxOutputTokens}
+	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, AcceptanceCriteria: e.Snapshot.AcceptanceCriteria, SampleInput: e.Snapshot.SampleInput, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls, s.Fetch != nil, s.SearchKnowledge != nil), MaxOutputTokens: e.Limits.MaxOutputTokens}
 	draft := e.Snapshot.Draft
 	// A correction after a validated draft falls back to PreviousDraft: send it
 	// as the working draft, but never its (now stale) validation result, or
@@ -583,15 +586,19 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		}
 		p.ToolCalls++
 		switch r.ToolIntent.Kind {
-		case "search_catalog":
-			if s.SearchReferences == nil {
+		case "search_catalog", "search_knowledge":
+			search := s.SearchReferences
+			if r.ToolIntent.Kind == "search_knowledge" {
+				search = s.SearchKnowledge
+			}
+			if search == nil {
 				return "", false, ErrUnavailable
 			}
 			if strings.TrimSpace(r.ToolIntent.Query) == "" {
 				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄搜尋需要關鍵字；這次沒有搜尋。"})
 				return "queued", true, nil
 			}
-			refs, err := s.SearchReferences(ctx, ws, r.ToolIntent.Query)
+			refs, err := search(ctx, ws, r.ToolIntent.Query)
 			if err != nil {
 				return "", false, err
 			}

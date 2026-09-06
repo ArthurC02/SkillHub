@@ -1,0 +1,36 @@
+{
+  "_about": "Five text tasks that name a public page, for measuring the consented fetch path (05 R-47): the model proposes fetch_url, the person is asked, the Worker fetches, a refused or blocked site is reported once. Same shape as gen-modes-batch/corpus.json's reference entries; the harness runs them as text tasks when the corpus has no diagram group (CREATION_MEASURE_CORPUS=this file). F03 points at a page that answers 403 on purpose.",
+  "diagram": [],
+  "reference": [
+    {
+      "id": "F01",
+      "description": "依 https://www.rfc-editor.org/rfc/rfc2119.txt 裡 MUST、SHOULD、MAY 這些關鍵詞的定義，把我貼的需求句逐句標出等級，列成表。",
+      "description_keys": ["RFC 2119", "MUST", "SHOULD"],
+      "reference": { "name": "", "markers": [], "skill_md": "" }
+    },
+    {
+      "id": "F02",
+      "description": "依 https://example.com/ 這個頁面實際的文字，寫一份檢查清單，讓人比對頁面內容有沒有被改過。",
+      "description_keys": ["頁面", "檢查清單", "改過"],
+      "reference": { "name": "", "markers": [], "skill_md": "" }
+    },
+    {
+      "id": "F03",
+      "description": "依 https://httpbin.org/status/403 這個頁面的內容整理重點；如果讀不到，就照實說讀不到並列出我還能提供什麼。",
+      "description_keys": ["頁面", "重點", "讀不到"],
+      "reference": { "name": "", "markers": [], "skill_md": "" }
+    },
+    {
+      "id": "F04",
+      "description": "依 https://www.iana.org/assignments/media-types/media-types.xhtml 的登記，把我列的副檔名對應到正式的媒體類型，列成表。",
+      "description_keys": ["IANA", "媒體類型", "副檔名"],
+      "reference": { "name": "", "markers": [], "skill_md": "" }
+    },
+    {
+      "id": "F05",
+      "description": "依 https://www.w3.org/TR/WCAG22/ 的四大原則名稱與編號，把我列的網頁問題逐條歸到原則底下。",
+      "description_keys": ["WCAG", "原則", "歸類"],
+      "reference": { "name": "", "markers": [], "skill_md": "" }
+    }
+  ]
+}

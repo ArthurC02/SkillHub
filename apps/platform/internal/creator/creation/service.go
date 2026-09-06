@@ -219,10 +219,13 @@ type Service struct {
 	SearchReferences func(context.Context, identity.Workspace, string) ([]Reference, error)
 	// Fetch reads one page after the person's consent (05 R-47). Wired in the
 	// Worker only; nil in the API, whose steps never fetch.
-	Fetch         func(context.Context, string) (Fetch, string)
-	ValidateDraft func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
-	Materialize   func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
-	ReadRun       func(context.Context, identity.Workspace, string, Candidate) (string, error)
+	Fetch func(context.Context, string) (Fetch, string)
+	// SearchKnowledge is the semantic catalog search (embedding + hybrid rank);
+	// nil hides the search_knowledge tool from the model.
+	SearchKnowledge func(context.Context, identity.Workspace, string) ([]Reference, error)
+	ValidateDraft   func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
+	Materialize     func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
+	ReadRun         func(context.Context, identity.Workspace, string, Candidate) (string, error)
 	// CreateAcceptanceTestCase writes the confirmed acceptance criteria as a Test Case of
 	// the candidate skill, inside the materialize transaction; returns its id.
 	CreateAcceptanceTestCase func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error)

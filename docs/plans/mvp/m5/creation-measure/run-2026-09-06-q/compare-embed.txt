@@ -1,0 +1,11 @@
+R01 | lexical: — | semantic: line-edit (0.520), shorten (0.558), handoff (0.590) | overlap=0
+R02 | lexical: — | semantic: excel-deduplicate (0.351), excel-find-duplicates (0.410), excel-regex-clean (0.466) | overlap=0
+R03 | lexical: — | semantic: shorten (0.572), internal-comms (0.574), line-edit (0.589) | overlap=0
+R04 | lexical: — | semantic: line-edit (0.573), cringe-check (0.579), handoff (0.598) | overlap=0
+R05 | lexical: — | semantic: xlsx (0.612), data-analyst (0.615), text-to-numeric (0.628) | overlap=0
+R06 | lexical: — | semantic: document-format-skills (0.595), humanizer (0.596), shorten (0.598) | overlap=0
+R07 | lexical: — | semantic: document-format-skills (0.602), excel-format (0.605), excel-date-to-text (0.627) | overlap=0
+R08 | lexical: — | semantic: line-edit (0.619), shorten (0.666), cringe-check (0.671) | overlap=0
+R09 | lexical: — | semantic: shorten (0.437), full-review (0.477), cringe-check (0.489) | overlap=0
+R10 | lexical: — | semantic: internal-comms (0.594), line-edit (0.603), excel-validate (0.624) | overlap=0
+tasks=10 lexical_hits=0 semantic_hits=10 overlap_total=0 embed_cost_usd=0.00001

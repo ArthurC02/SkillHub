@@ -82,7 +82,11 @@ function DraftFindings({ raw }: { raw: string }) {
 }
 type RunObservation = {
   execution_status: string;
-  evaluation?: { evaluation_available: boolean; overall?: string };
+  evaluation?: {
+    evaluation_available: boolean;
+    overall?: string;
+    criterion_results?: { result?: string }[];
+  };
 };
 /** The newest `tool` message reporting on this run (creation.go's `attach_run`
  * appends one such message per confirmation; a later confirmation can attach
@@ -180,6 +184,68 @@ const FETCH_STATUS_LABEL: Record<string, string> = {
   network_error: "網路錯誤（重試一次仍失敗）",
   declined: "使用者不同意",
 };
+const ROUND_OVERALL_LABEL: Record<string, string> = {
+  met: "達成",
+  partially_met: "部分達成",
+  not_met: "未達成",
+};
+function truncateForTimeline(s: string, n = 120): string {
+  return s.length > n ? s.slice(0, n) + "…" : s;
+}
+type TimelineItem = { key: string; text: string };
+/** 每輪的 Run、評估、建議、回饋串成時間線 — everything it needs is already in
+ * `p.messages` (creation.go appends one `tool` message per attach_run, one
+ * `tool` message per fetch, and the model's own assistant turns); this just
+ * walks that array once and keeps the events a person would call "a round". */
+function buildRoundTimeline(messages: CreationSnapshot["messages"]): TimelineItem[] {
+  const items: TimelineItem[] = [];
+  let round = 0;
+  let afterQuestion = false;
+  let afterTrialAnchor = false;
+  messages.forEach((m, i) => {
+    let setQuestion = false;
+    let setTrialAnchor = false;
+    if (m.role === "tool" && m.content.startsWith('{"evaluation"')) {
+      try {
+        const parsed = JSON.parse(m.content) as RunObservation;
+        if (parsed.evaluation) {
+          round += 1;
+          const overall = parsed.evaluation.overall ?? "";
+          const results = parsed.evaluation.criterion_results ?? [];
+          const count = (r: string) => results.filter((x) => x.result === r).length;
+          items.push({
+            key: `t-${i}`,
+            text: `第 ${round} 次試跑：${ROUND_OVERALL_LABEL[overall] ?? overall}（通過 ${count("passed")}／不通過 ${count("failed")}／無法判定 ${count("undetermined")}）`,
+          });
+          setTrialAnchor = true;
+        }
+      } catch {
+        // Not a parseable evaluation observation; skip it.
+      }
+    } else if (m.role === "tool" && m.content.startsWith('{"fetch"')) {
+      try {
+        const parsed = JSON.parse(m.content) as { fetch: { url: string; status: string } };
+        items.push({
+          key: `t-${i}`,
+          text: `讀取網頁：${parsed.fetch.url}（${FETCH_STATUS_LABEL[parsed.fetch.status] ?? parsed.fetch.status}）`,
+        });
+      } catch {
+        // Not a parseable fetch observation; skip it.
+      }
+    } else if (m.role === "assistant" && m.content.startsWith("這次試跑有條件沒過")) {
+      items.push({ key: `t-${i}`, text: `系統問你：${m.content.split("\n")[0]}` });
+      setQuestion = true;
+    } else if (m.role === "user" && afterQuestion) {
+      items.push({ key: `t-${i}`, text: `你回答：${truncateForTimeline(m.content)}` });
+      setTrialAnchor = true;
+    } else if (m.role === "assistant" && afterTrialAnchor) {
+      items.push({ key: `t-${i}`, text: `模型建議：${m.content.slice(0, 120)}` });
+    }
+    afterQuestion = setQuestion;
+    afterTrialAnchor = setTrialAnchor;
+  });
+  return items;
+}
 export function CreationSession() {
   const client = useQueryClient();
   const [id, setID] = useState(""),
@@ -219,6 +285,7 @@ export function CreationSession() {
   const runs = useRuns(p?.candidate?.test_case_id, Boolean(p?.candidate?.test_case_id));
   const latest = runs.data?.pages[0]?.runs.find((r) => TERMINAL_RUN_STATUSES.has(r.status));
   const run = p?.candidate?.run_id ? findRunObservation(p.messages, p.candidate.run_id) : undefined;
+  const roundTimeline = p ? buildRoundTimeline(p.messages) : [];
   const runNotPassing =
     !!run && (run.execution_status !== "succeeded" || run.evaluation?.overall !== "met");
   const terminal = !!session && ["saved", "cancelled"].includes(session.state);
@@ -521,6 +588,16 @@ export function CreationSession() {
               </li>
             ))}
           </ol>
+          {roundTimeline.length > 0 && (
+            <section>
+              <h4>回合時間線</h4>
+              <ol>
+                {roundTimeline.map((item) => (
+                  <li key={item.key}>{item.text}</li>
+                ))}
+              </ol>
+            </section>
+          )}
           {p.brief && (
             <section>
               <h4>需求摘要</h4>

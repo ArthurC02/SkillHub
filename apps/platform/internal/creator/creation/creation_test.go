@@ -145,10 +145,10 @@ func TestDraftValidationReportTruncatedWithinLimit(t *testing.T) {
 }
 
 func TestAllowedToolsEmptyAtToolCallCeiling(t *testing.T) {
-	if got := allowedTools(3, 3, false); len(got) != 0 {
+	if got := allowedTools(3, 3, false, false); len(got) != 0 {
 		t.Fatalf("expected no tools once the budget is spent, got %v", got)
 	}
-	if got := allowedTools(2, 3, false); len(got) != 2 {
+	if got := allowedTools(2, 3, false, false); len(got) != 2 {
 		t.Fatalf("expected both tools while budget remains, got %v", got)
 	}
 }
@@ -489,5 +489,34 @@ func TestTrialQuestionsNameTheFailedCriteria(t *testing.T) {
 	}
 	if trialQuestions(strings.Replace(obs, `"result":"failed"`, `"result":"passed"`, 1)) != "" && trialQuestions(`{"evaluation":{"evaluation_available":false}}`) != "" {
 		t.Fatal("nothing to ask must be empty")
+	}
+}
+
+// search_knowledge takes the same road as search_catalog (references to
+// confirm), only the ranking differs; it is offered only when wired.
+func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
+	semantic := 0
+	s := &Service{
+		SearchReferences: func(context.Context, identity.Workspace, string) ([]Reference, error) {
+			t.Fatal("lexical search must not run")
+			return nil, nil
+		},
+		SearchKnowledge: func(_ context.Context, _ identity.Workspace, q string) ([]Reference, error) {
+			semantic++
+			return []Reference{{SkillID: "s1", VersionID: "v1", Name: "found", Available: true}}, nil
+		},
+	}
+	zero := 0.0
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "找相近的", ToolIntent: &llmclient.CreationToolIntent{Kind: "search_knowledge", Query: "把會議逐字稿整理成待辦"}}
+	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || state != "waiting_confirmation" || e.Snapshot.PendingAction != "confirm_references" || semantic != 1 || len(e.Snapshot.References) != 1 {
+		t.Fatalf("state=%q pending=%q semantic=%d refs=%d err=%v", state, e.Snapshot.PendingAction, semantic, len(e.Snapshot.References), err)
+	}
+	if got := allowedTools(0, 8, false, true); len(got) != 3 || got[2] != "search_knowledge" {
+		t.Fatalf("search_knowledge is offered only when wired: %v", got)
+	}
+	if got := allowedTools(0, 8, false, false); len(got) != 2 {
+		t.Fatalf("not wired, not offered: %v", got)
 	}
 }

@@ -14,6 +14,23 @@ import (
 )
 
 func wireCreationReads(s *creation.Service, versions *ingest.Service, search *catalog.Service) {
+	s.SearchKnowledge = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, error) {
+		ids, _, err := search.CreationKnowledgeIDs(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		refs := []creation.Reference{}
+		for _, id := range ids {
+			r, _, err := s.ResolveReference(ctx, ws, id, "")
+			if err == nil {
+				refs = append(refs, r)
+			}
+			if len(refs) == 3 {
+				break
+			}
+		}
+		return refs, nil
+	}
 	s.ValidateDraft = versions.ValidateCreationDraft
 	s.ResolveReference = func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, llmclient.GenerateReference, error) {
 		sid, err := creation.ParseID(skillID)

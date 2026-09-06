@@ -1801,11 +1801,11 @@ components:
       properties:
         kind:
           type: string
-          enum: [search_catalog, validate_draft, fetch_url]
+          enum: [search_catalog, search_knowledge, validate_draft, fetch_url]
         query:
           type: string
           maxLength: 4000
-          description: For search_catalog the keywords; for fetch_url one http(s) URL. Go asks the person before connecting and returns the page text as a tool observation; a refused or blocked site is reported, not retried (05 R-47).
+          description: For search_catalog the keywords, for search_knowledge a sentence describing the task (semantic, cross-language; Go embeds it); for fetch_url one http(s) URL. Go asks the person before connecting and returns the page text as a tool observation; a refused or blocked site is reported, not retried (05 R-47).
     CreationStepRequest:
       type: object
       additionalProperties: false
@@ -1860,7 +1860,7 @@ components:
           type: array
           items:
             type: string
-            enum: [search_catalog, validate_draft, fetch_url]
+            enum: [search_catalog, search_knowledge, validate_draft, fetch_url]
         timeout_seconds:
           type: integer
           minimum: 1

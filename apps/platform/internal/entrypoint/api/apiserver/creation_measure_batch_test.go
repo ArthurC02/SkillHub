@@ -461,8 +461,12 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	if err := json.Unmarshal(raw, &corpus); err != nil {
 		t.Fatal(err)
 	}
-	if len(corpus.Diagram) < 5 || len(corpus.Reference) < 10 {
-		t.Fatal("corpus does not have enough items for 5 diagram + 5 text + 5 reference tasks")
+	// The 15-task shape needs 5 diagrams and 10 references; a corpus with
+	// neither (creation-measure/corpus-fetch.json) runs every reference entry
+	// as a text task — the fetch path has no diagram or reference half.
+	textOnly := len(corpus.Diagram) < 5 || len(corpus.Reference) < 10
+	if textOnly && len(corpus.Reference) == 0 {
+		t.Fatal("corpus has no tasks")
 	}
 	pool := requireDB(t)
 
@@ -507,11 +511,16 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	// diagram[0..4], reference = reference[5..9] (description + its own
 	// reference skill).
 	var tasks []measureTask
-	for i := 0; i < 5; i++ {
+	if textOnly {
+		for _, r := range corpus.Reference {
+			tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description})
+		}
+	}
+	for i := 0; i < 5 && !textOnly; i++ {
 		r := corpus.Reference[i]
 		tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description})
 	}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 5 && !textOnly; i++ {
 		d := corpus.Diagram[i]
 		ext, mediaType := d.Media, "image/png"
 		if ext == "jpg" {
@@ -523,7 +532,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 		}
 		tasks = append(tasks, measureTask{ID: d.ID, Kind: "diagram", Diagram: &ingest.GenerateDiagram{MediaType: mediaType, Data: img}})
 	}
-	for i := 5; i < 10; i++ {
+	for i := 5; i < 10 && !textOnly; i++ {
 		r := corpus.Reference[i]
 		tasks = append(tasks, measureTask{ID: r.ID, Kind: "reference", Description: r.Description, ReferenceMD: r.Reference.SkillMD})
 	}
@@ -595,8 +604,8 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	results.Summary.P95Seconds = percentile(allSeconds, 95)
 	flush()
 
-	if len(results.Interactive) != 15 || len(results.SingleShot) != 15 {
-		t.Fatalf("expected 15+15 rows, got %d+%d", len(results.Interactive), len(results.SingleShot))
+	if len(results.Interactive) != len(tasks) || len(results.SingleShot) != len(tasks) {
+		t.Fatalf("expected %d+%d rows, got %d+%d", len(tasks), len(tasks), len(results.Interactive), len(results.SingleShot))
 	}
 }
 

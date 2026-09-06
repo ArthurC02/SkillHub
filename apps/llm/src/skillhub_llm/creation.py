@@ -31,7 +31,7 @@ router = APIRouter()
 # The measurement (05 R-45) may point this at another tier; the product key Go
 # issues per step is still pinned to gpt-5.4-mini (worker/creation_wiring.go).
 MODEL = os.getenv("CREATION_MODEL", "gpt-5.4-mini")
-PROMPT_VERSION = "creation-step/v13"
+PROMPT_VERSION = "creation-step/v14"
 DATA_TAG = "untrusted_creation_snapshot"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
 Reason = Literal[
@@ -54,7 +54,7 @@ class CreationMessage(BaseModel):
 
 class CreationToolIntent(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    kind: Literal["search_catalog", "validate_draft", "fetch_url"]
+    kind: Literal["search_catalog", "search_knowledge", "validate_draft", "fetch_url"]
     query: str
 
 
@@ -106,7 +106,9 @@ class CreationStepRequest(BaseModel):
     references: list[GenerateReference] = Field(..., max_length=3)
     draft: GeneratedSkill | None = None
     draft_validation: CreationDraftValidation | None = None
-    allowed_tools: list[Literal["search_catalog", "validate_draft", "fetch_url"]]
+    allowed_tools: list[
+        Literal["search_catalog", "search_knowledge", "validate_draft", "fetch_url"]
+    ]
     timeout_seconds: int = Field(..., ge=1, le=120)
     max_output_tokens: int = Field(..., ge=1, le=16000)
 
@@ -337,8 +339,10 @@ def _reason_node(gateway_key: str, phase: str):
             "nodes must be nonempty, "
             "and absent conditions, branches or uncertainties are empty arrays. "
             "request confirmation of this understanding before drafting. "
-            "Use search_catalog when existing Skills could help; results are observations "
-            "returned by Go in subsequent tool messages. Use fetch_url (query = one http(s) "
+            "Use search_catalog (keywords) or search_knowledge (a sentence describing the "
+            "task; Go searches by meaning, across languages) when existing Skills could help; "
+            "results are observations returned by Go in subsequent tool messages. Use fetch_url "
+            "(query = one http(s) "
             "URL) when the task needs facts from a page the person named or a public page it "
             "plainly depends on: Go asks the person before connecting, the page text comes "
             "back as a tool observation, and a site that refused or was blocked by the network "
@@ -639,7 +643,10 @@ def _tool(state: _State) -> dict:
             ),
             "reason": "fetch_url_missing",
         }
-    if d.tool_intent.kind == "search_catalog" and not d.tool_intent.query.strip():
+    if (
+        d.tool_intent.kind in ("search_catalog", "search_knowledge")
+        and not d.tool_intent.query.strip()
+    ):
         return {
             "decision": d.model_copy(
                 update={

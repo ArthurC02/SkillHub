@@ -244,3 +244,36 @@ harness 的「使用者」仍是一個對每個提案說好的假人，所以這
 
 門檻在 o 過過一次（7／10）、p 沒過（5／9）——兩次差在流程改動帶來的 harness 失誤與一場模型 502，不是品質倒退；`met` 這條的量測已經穩定到可以交給真人：`kept` ≥ 12／15 要人讀 30 份、問人那一輪要真人答。丙-177 剩下 `search_knowledge`（語意檢索要裁 embedding 成本）與時間線。
 
+## 11. 連網那條路真的走了一次；embedding 花了一分錢就有答案（run q、目錄檢索對照）
+
+負責人：「執行全部待辦，Embedding 直接花錢測試」。三件：
+
+- **連網語料**：[`corpus-fetch.json`](corpus-fetch.json) 五題都點名一個公開網頁（RFC 2119 純文字、example.com、故意回 403 的 httpbin、IANA 媒體類型登記、WCAG 2.2），harness 遇到沒有流程圖組的語料就全跑成文字組。
+- **`search_knowledge`**：模型多一種工具意圖，Go 用現成的 embedding＋hybrid 檢索（`CreationKnowledgeIDs`，一次查詢一次 embedding、走 apps/llm 的 `/embed`）排名，結果照 `search_catalog` 同一條路（列成參考、要人確認）。只在 Worker 接線（catalog service 拿到 LLM client）。
+- **回合時間線**（Web）：會話頁把試跑觀察、讀網結果、系統提問、人的回答、模型建議按序列成一段「回合時間線」，全部從既有訊息推出來，不加 API。
+
+### 11.1 run q：五題連網任務（mini／mini、三輪）
+
+| | 第一次試跑 | 三輪內 | `fetch_url` | 結果 |
+| --- | --- | --- | --- | --- |
+| F01 RFC 2119 純文字 | —（loop 預算用盡停在 `draft_ready`） | — | 提了→問人→同意→**`network_error`**（重試一次） | 模型改寫成「可用時依該頁判讀」的草稿 |
+| F02 example.com | `met` | `met` | 提了→問人→同意→**`network_error`** | 沒有頁面也達標 |
+| F03 httpbin 403 | `met` | `met` | 沒提（照題目說「讀不到就照實說」） | 達標 |
+| F04 IANA 媒體類型 | `partially_met` | **`met`（第二輪）** | 沒提 | 問人→修訂→達標 |
+| F05 WCAG 2.2 | `partially_met` | `partially_met` | 沒提 | 三輪未達 |
+
+每場中位 $0.018；單次對照 5／5、$0.005。**連網那條路走了兩次**：問人（harness 代答同意）、Worker 抓、兩次都是 `network_error`——量測容器（`--network container:skillhub-postgres-1`）沒有對外網路，DNS 就失敗，照規則重試一次後回報；模型拿到觀察後沒有再要求、改用手上的資料繼續，F02 仍 `met`。**「被網站或網路環境擋住 → 回報一次、不重試」的路徑，在本機就是這個樣子**；真正的 403／451 路徑（F03 那個網址）這次沒被模型選到。三題沒提 `fetch_url` 是 mini 的判斷：題目本身給的資料夠它動手。harness 的最後一道斷言原本寫死 15＋15，改成依任務數。
+
+
+### 11.2 目錄檢索：詞彙 vs 語意（dev 目錄 90 份文件、45 份有向量）
+
+對主語料前 10 個任務描述各查一次（[compare_embed.py 的輸出](run-2026-09-06-q/compare-embed.txt)）：
+
+| | 詞彙（`search_catalog`，`websearch_to_tsquery('english')`） | 語意（`search_knowledge`，cosine ≤ 0.75） |
+| --- | --- | --- |
+| 10 題有結果 | **0／10** | **10／10** |
+| 例：R02「去重＋補電話」 | — | excel-deduplicate（0.35）、excel-find-duplicates、excel-regex-clean |
+| 例：R09「履歷改寫」 | — | shorten（0.44）、full-review、cringe-check |
+| 10 次 embedding 費用 | — | **US$0.00001** |
+
+**結論**：對繁體中文的任務描述，詞彙搜尋（英文 tsquery）一個都找不到——`search_catalog` 在中文會話裡等於沒有這個工具；語意檢索每題都有像樣的候選，費用可以忽略。建議 `search_catalog` 在 Worker 接線時直接改走語意排名（找不到再退回詞彙），不必讓模型二選一——記在 `04` 丙-177 待做。

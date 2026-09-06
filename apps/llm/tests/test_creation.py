@@ -757,6 +757,27 @@ def test_review_whose_fix_is_in_the_criteria_reproposes_the_brief():
     assert body["draft"] is None
 
 
+def test_search_knowledge_intent_passes_through_and_needs_a_query():
+    req = request(allowed_tools=["search_knowledge"])
+    response, _ = invoke(
+        req,
+        decision(
+            outcome="tool_intent",
+            tool_intent={"kind": "search_knowledge", "query": "整理逐字稿成待辦"},
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["tool_intent"] == {
+        "kind": "search_knowledge",
+        "query": "整理逐字稿成待辦",
+    }
+    response, _ = invoke(
+        req,
+        decision(outcome="tool_intent", tool_intent={"kind": "search_knowledge", "query": "  "}),
+    )
+    assert response.json()["reason"] == "search_query_missing"
+
+
 def test_fetch_url_intent_passes_through_with_a_url_and_is_refused_without_one():
     # 05 R-47: the model may ask to read a page; Go asks the person. Python only
     # checks that there is a URL to ask about.
