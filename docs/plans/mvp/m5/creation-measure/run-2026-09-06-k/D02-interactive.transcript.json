@@ -1,0 +1,15 @@
+{
+  "acceptance_criteria": null,
+  "brief": "",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "我先把這張流程圖整理成可確認的圖理解，請你核對是否正確：\n\n```json\n{\n  \"nodes\": [\n    \"收到客戶 Excel 訂單\",\n    \"轉成 CSV 格式\",\n    \"檢查缺漏欄位\",\n    \"匯入 Shopify 後台\",\n    \"回覆客戶已入單\"\n  ],\n  \"conditions\": [],\n  \"branches\": [],\n  \"uncertainties\": []\n}\n```\n\n請回覆確認，或指出需要更正的節點名稱。"
+    },
+    {
+      "role": "assistant",
+      "content": "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
+    }
+  ],
+  "state": "failed"
+}

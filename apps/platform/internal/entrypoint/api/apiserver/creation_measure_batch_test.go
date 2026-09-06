@@ -104,6 +104,12 @@ type sessionRow struct {
 	// RevisedAfterRun is set after the post-attach_run step: true when the
 	// draft's content hash changed, false when the model kept the same draft.
 	RevisedAfterRun *bool `json:"revised_after_run,omitempty"`
+	// The revised draft's own trial (05 R-45, 2026-09-06 ruling: `met` counts
+	// within one revision round). Filled only when the model revised, the
+	// revision materialized as a new candidate and that candidate ran.
+	RevisedOverall string `json:"revised_overall,omitempty"`
+	RevisedMet     *bool  `json:"revised_met,omitempty"`
+	RevisedNote    string `json:"revised_note,omitempty"`
 	// KeptByOwner is left null for the owner to fill in after a person has
 	// read the SKILL.md — 05 R-45's other half this harness cannot produce on
 	// its own. MetByOwner stays for a person to overrule the automatic Met.
@@ -135,11 +141,17 @@ type creationMeasureSummary struct {
 	CostMedian float64 `json:"cost_median"`
 	P50Seconds float64 `json:"p50_seconds"`
 	P95Seconds float64 `json:"p95_seconds"`
-	// MetCount/MetDenominator are the run stage's automatic tally: how many
-	// sessions reached a verdict (denominator) and how many of those were
-	// "met" (count). Both stay 0 when the run stage is not configured.
-	MetCount       int `json:"met_count"`
-	MetDenominator int `json:"met_denominator"`
+	// The run stage's automatic tally over the text and reference sessions
+	// (05 R-45, 2026-09-06 ruling): MetDenominator is how many reached a
+	// verdict, MetFirstCount how many were "met" on the first trial, MetCount
+	// how many were "met" on the first trial or on the revised draft's trial
+	// (within one revision round). Diagram sessions are experimental and
+	// tallied apart. All stay 0 when the run stage is not configured.
+	MetFirstCount         int `json:"met_first_count"`
+	MetCount              int `json:"met_count"`
+	MetDenominator        int `json:"met_denominator"`
+	DiagramMetCount       int `json:"diagram_met_count"`
+	DiagramMetDenominator int `json:"diagram_met_denominator"`
 }
 type creationMeasureResults struct {
 	Interactive []sessionRow              `json:"interactive"`
@@ -273,60 +285,77 @@ func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, t
 // t.Fatal's on a run/eval problem — one session's sandbox trouble must not
 // cost the other rows their spend — recording the reason on row.MetNote
 // instead.
-func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *creation.Service, trial *trialRun, v creation.View, row sessionRow) (sessionRow, creation.View) {
+// trialOutcome is one Run of a candidate against its own Test Case: the run's
+// terminal status, the evaluation's status and overall, the run id, and a note
+// saying why there is no verdict when there is none.
+type trialOutcome struct {
+	runID, runStatus, evalStatus, overall, note string
+	met                                         *bool
+}
+
+func trialCandidate(t *testing.T, a *api, ctx context.Context, c *client, trial *trialRun, candidate *creation.Candidate) trialOutcome {
 	t.Helper()
-	candidate := v.Snapshot.Candidate
 	if candidate == nil {
-		row.MetNote = "no candidate to run"
-		return row, v
+		return trialOutcome{note: "no candidate to run"}
 	}
 	if candidate.TestCaseID == "" {
-		row.MetNote = "candidate has no test_case_id"
-		return row, v
+		return trialOutcome{note: "candidate has no test_case_id"}
 	}
 	var key string
 	if err := trial.pool.QueryRow(ctx, "SELECT package_object_key FROM skill_versions WHERE id = $1",
 		mustUUID(t, candidate.VersionID)).Scan(&key); err != nil {
-		row.MetNote = "package_object_key lookup: " + err.Error()
-		return row, v
+		return trialOutcome{note: "package_object_key lookup: " + err.Error()}
 	}
 	pkg, ok := a.packages[key]
 	if !ok {
-		row.MetNote = "the candidate package is not in the API's store under " + key
-		return row, v
+		return trialOutcome{note: "the candidate package is not in the API's store under " + key}
 	}
 	if err := trial.store.Put(ctx, key, pkg); err != nil {
-		row.MetNote = "put package: " + err.Error()
-		return row, v
+		return trialOutcome{note: "put package: " + err.Error()}
 	}
-
 	f := fixture{client: c, skillID: candidate.SkillID, versionID: candidate.VersionID, testCaseID: candidate.TestCaseID}
 	code, rv := f.startNoFatal(t)
 	if code != http.StatusCreated && code != http.StatusOK {
-		row.MetNote = fmt.Sprintf("POST run: %d %s", code, rv.Error)
-		return row, v
+		return trialOutcome{note: fmt.Sprintf("POST run: %d %s", code, rv.Error)}
 	}
+	out := trialOutcome{runID: rv.RunID}
 	final := waitForTerminalSoft(t, c, rv.RunID, 8*time.Minute)
-	row.RunStatus = final.Status
+	out.runStatus = final.Status
 	ev := waitForEvaluation(t, c, rv.RunID, 4*time.Minute)
-	row.EvalStatus = ev.Status
-	row.Overall = ev.Overall
+	out.evalStatus = ev.Status
+	out.overall = ev.Overall
 	switch ev.Status {
 	case "completed", "failed":
 		met := ev.Overall == "met"
-		row.Met = &met
+		out.met = &met
 	default:
-		row.MetNote = "evaluation did not finish: " + ev.Status
+		out.note = "evaluation did not finish: " + ev.Status
+	}
+	return out
+}
+
+// attachTrialRun runs the candidate, feeds the observation back, lets the
+// model revise, and — when it did revise — materializes the revision as a new
+// candidate and runs that too (05 R-45, 2026-09-06: `met` counts within one
+// revision round; the first trial is reported beside it).
+func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *creation.Service, trial *trialRun, v creation.View, row sessionRow, outDir string) (sessionRow, creation.View) {
+	t.Helper()
+	first := trialCandidate(t, a, ctx, c, trial, v.Snapshot.Candidate)
+	row.RunStatus, row.EvalStatus, row.Overall, row.Met, row.MetNote = first.runStatus, first.evalStatus, first.overall, first.met, first.note
+	if first.runID == "" {
+		return row, v
 	}
 
 	beforeHash := ""
 	if v.Snapshot.Draft != nil {
 		beforeHash = v.Snapshot.Draft.ContentHash
 	}
-	v = creationAttachRun(t, c, v, rv.RunID)
-	// A nudge (unchanged draft, missing diagram node) re-queues the step; the
-	// loop is bounded by MaxNudges plus the settling step.
-	for i := 0; i <= creation.MaxNudges; i++ {
+	v = creationAttachRun(t, c, v, first.runID)
+	// A nudge (unchanged draft, missing diagram node) re-queues the step, and
+	// a revision is followed by its validation step; the loop is bounded by
+	// MaxNudges plus a few settling steps (run j left every session queued
+	// at the third step).
+	for i := 0; i < creation.MaxNudges+4; i++ {
 		v = creationStep(t, s, v)
 		row.ModelCalls++
 		if v.State != "queued" {
@@ -339,7 +368,32 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 	}
 	revised := beforeHash != afterHash
 	row.RevisedAfterRun = &revised
+	if !revised {
+		return row, v
+	}
+	if v.State != "draft_ready" {
+		row.RevisedNote = "revised draft did not settle: " + v.State
+		return row, v
+	}
+	// A new hash cleared the candidate; materialize builds a new version of
+	// the same Skill (ADR-003: a revision is a new version).
+	v = creationAct(t, c, v, "materialize")
+	if v.Snapshot.Draft != nil {
+		dumpDraftMD(t, outDir, row.ID, "interactive-revised", v.Snapshot.Draft.Skill.Name, v.Snapshot.Draft.Skill.Description, v.Snapshot.Draft.Skill.Body)
+	}
+	second := trialCandidate(t, a, ctx, c, trial, v.Snapshot.Candidate)
+	row.RevisedOverall, row.RevisedMet, row.RevisedNote = second.overall, second.met, second.note
 	return row, v
+}
+
+func revisedMetLabel(row sessionRow) string {
+	if row.RevisedMet == nil {
+		if row.RevisedNote != "" {
+			return "n/a (" + row.RevisedNote + ")"
+		}
+		return "n/a"
+	}
+	return fmt.Sprintf("%v (%s)", *row.RevisedMet, row.RevisedOverall)
 }
 
 func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
@@ -428,7 +482,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 
 	var results creationMeasureResults
 	results.Thresholds = creationMeasureThresholds{
-		FormatPassMin: 14, MetMin: 9, KeptMin: 12,
+		FormatPassMin: 14, MetMin: 6, KeptMin: 12,
 		CostMedianMax: 0.5, P50SecondsMax: 60, P95SecondsMax: 90,
 	}
 	flush := func() {
@@ -445,7 +499,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 		row := runInteractiveSession(t, a, set.Creation, ctx, task, limits, outDir, trial)
 		results.Interactive = append(results.Interactive, row)
 		flush()
-		t.Logf("interactive %s (%s): state=%s draft=%v cost=%s met=%s calls=%d", task.ID, task.Kind, row.FinalState, row.Draft, costLabel(row.CostUSD), metLabel(row), row.ModelCalls)
+		t.Logf("interactive %s (%s): state=%s draft=%v cost=%s met=%s revised_met=%s calls=%d", task.ID, task.Kind, row.FinalState, row.Draft, costLabel(row.CostUSD), metLabel(row), revisedMetLabel(row), row.ModelCalls)
 	}
 	for _, task := range tasks {
 		row := runSingleShot(t, a, ctx, task, outDir)
@@ -459,8 +513,19 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 			results.Summary.FormatPass++
 		}
 		if row.Met != nil {
+			within := *row.Met || (row.RevisedMet != nil && *row.RevisedMet)
+			if row.Kind == "diagram" {
+				results.Summary.DiagramMetDenominator++
+				if within {
+					results.Summary.DiagramMetCount++
+				}
+				continue
+			}
 			results.Summary.MetDenominator++
 			if *row.Met {
+				results.Summary.MetFirstCount++
+			}
+			if within {
 				results.Summary.MetCount++
 			}
 		}
@@ -591,7 +656,7 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 				// v is reassigned so the deferred transcript dump sees the run
 				// observation and the review step (run e's transcripts stopped
 				// before attach_run and could not explain revised_after_run).
-				row, v = attachTrialRun(t, a, ctx, c, s, trial, v, row)
+				row, v = attachTrialRun(t, a, ctx, c, s, trial, v, row, outDir)
 			}
 			return row
 		default:

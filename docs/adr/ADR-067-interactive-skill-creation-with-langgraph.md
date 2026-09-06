@@ -35,3 +35,5 @@ Python 不直接執行不可信 Skill 或 Script、不直連核心 DB、不消�
 框架概念參照官方 [workflows and agents](https://docs.langchain.com/oss/python/langgraph/workflows-agents) 與 [interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts)；本案刻意不採用後者的跨程序持久化模式，以維持 Go 唯一持久化邊界。
 
 **2026-09-06 深夜補記（不改寫上文）**：`05` R-46 (b) 的「驗收條件成為 Test Case」在接上真 Run 之後量出少了一半——Test Case 還需要一份輸入。會話狀態多了 `sample_input`（模型提、人與 brief 一起確認、Go 綁定），是 Test Case 的 prompt；契約 `llm-internal` 與 `public` 同批。這不改本 ADR 的邊界（Go 仍是唯一持久化與確認的擁有者，Python 仍只回結構化提案），只是把「一次試跑能證實或推翻」這句話所需要的第三樣東西補進來。量測結果與未過的門檻見 [`04` 丙-175](../plans/04-backlog-and-handoffs.md)。
+
+**2026-09-06 深夜補記（不改寫上文，負責人裁定）**：十次量測（[報告](../plans/mvp/m5/creation-measure/report.md)）之後三件事定了。一、「任務達成」算一輪修訂之內——評估回到會話、模型改稿、改稿 materialize 成新版本再試跑；第一次試跑並列。二、跑 Skill 的模型等級先量「mini 寫、旗艦跑」再裁，量出來之前產品金鑰維持 mini。三、**流程圖入口是實驗性功能，走與文字／參考不同的流程**：先描述圖上有什麼、人確認之後才拆解，不確定處一律問人才能起草——決策段「流程圖先呈現結構化理解供確認」在這條裁定下拆成兩段確認，且不確定處成為起草的閘門（`04` 丙-176、`05` R-45 補記）。資源優先給白話與參考兩個入口。
