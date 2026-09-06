@@ -168,7 +168,11 @@ type Snapshot struct {
 	// BlockedRepeats counts consecutive blocked validations with the same
 	// report. At MaxBlockedRepeats the turn goes to the person: run h
 	// (2026-09-06) spent eight steps on one unchanged structural verdict.
-	BlockedRepeats     int        `json:"blocked_repeats,omitempty"`
+	BlockedRepeats int `json:"blocked_repeats,omitempty"`
+	// PendingFetchURL is the page the model asked to read, held until the
+	// person confirms or declines; Fetches is what was read (05 R-47).
+	PendingFetchURL    string     `json:"pending_fetch_url,omitempty"`
+	Fetches            []Fetch    `json:"fetches,omitempty"`
 	Draft              *Draft     `json:"draft,omitempty"`
 	PreviousDraft      *Draft     `json:"previous_draft,omitempty"`
 	Candidate          *Candidate `json:"candidate,omitempty"`
@@ -213,9 +217,12 @@ type Service struct {
 	Insert           func(context.Context, pgx.Tx, JobArgs) error
 	ResolveReference func(context.Context, identity.Workspace, string, string) (Reference, llmclient.GenerateReference, error)
 	SearchReferences func(context.Context, identity.Workspace, string) ([]Reference, error)
-	ValidateDraft    func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
-	Materialize      func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
-	ReadRun          func(context.Context, identity.Workspace, string, Candidate) (string, error)
+	// Fetch reads one page after the person's consent (05 R-47). Wired in the
+	// Worker only; nil in the API, whose steps never fetch.
+	Fetch         func(context.Context, string) (Fetch, string)
+	ValidateDraft func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
+	Materialize   func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
+	ReadRun       func(context.Context, identity.Workspace, string, Candidate) (string, error)
 	// CreateAcceptanceTestCase writes the confirmed acceptance criteria as a Test Case of
 	// the candidate skill, inside the materialize transaction; returns its id.
 	CreateAcceptanceTestCase func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error)

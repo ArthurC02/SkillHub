@@ -98,7 +98,9 @@ export const CreationActionKindEnum = {
     Cancel: 'cancel',
     Diagram: 'diagram',
     AttachRun: 'attach_run',
-    RaiseBudget: 'raise_budget'
+    RaiseBudget: 'raise_budget',
+    ConfirmFetch: 'confirm_fetch',
+    DeclineFetch: 'decline_fetch'
 } as const;
 export type CreationActionKindEnum = typeof CreationActionKindEnum[keyof typeof CreationActionKindEnum];
 

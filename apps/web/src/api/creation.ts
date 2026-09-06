@@ -29,6 +29,7 @@ export interface CreationReference {
   compatibility?: string;
   allowed_tools?: string;
 }
+export type CreationFetch = { url: string; sha256?: string; bytes?: number; status: string };
 export interface CreationSnapshot {
   messages: { role: "user" | "assistant" | "tool"; content: string }[];
   brief: string;
@@ -49,6 +50,8 @@ export interface CreationSnapshot {
   run_unmet?: boolean;
   nudges?: number;
   blocked_repeats?: number;
+  pending_fetch_url?: string;
+  fetches?: CreationFetch[];
   draft?: {
     revision: number;
     content_hash: string;
@@ -97,7 +100,9 @@ export interface CreationAction {
     | "cancel"
     | "diagram"
     | "attach_run"
-    | "raise_budget";
+    | "raise_budget"
+    | "confirm_fetch"
+    | "decline_fetch";
   message?: string;
   reference_skill_ids?: string[];
   content_hash?: string;

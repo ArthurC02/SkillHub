@@ -72,11 +72,15 @@ func canSpend(p Snapshot, l Limits) bool {
 // allowedTools hides the tool-call intents from the model once the session
 // has already spent its tool-call budget. Python turns a disallowed tool
 // intent into a clarification, so this cannot fail proposal() with ErrLimit.
-func allowedTools(toolCalls, maxToolCalls int) []string {
-	if toolCalls < maxToolCalls {
-		return []string{"search_catalog", "validate_draft"}
+func allowedTools(toolCalls, maxToolCalls int, fetch bool) []string {
+	if toolCalls >= maxToolCalls {
+		return []string{}
 	}
-	return []string{}
+	tools := []string{"search_catalog", "validate_draft"}
+	if fetch {
+		tools = append(tools, "fetch_url")
+	}
+	return tools
 }
 
 // callTimeoutSeconds converts a call's absolute deadline into the seconds Python
@@ -154,6 +158,14 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 	if err != nil {
 		return err
 	}
+	if url := e.Snapshot.PendingFetchURL; url != "" && s.Fetch != nil {
+		// The person said yes (confirm_fetch); the Worker reads the page now,
+		// before the model call, and the observation is what the model sees.
+		rec, text := s.Fetch(ctx, url)
+		e.Snapshot.PendingFetchURL = ""
+		e.Snapshot.Fetches = append(e.Snapshot.Fetches, rec)
+		e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "tool", Content: fetchObservation(rec, text)})
+	}
 	e.Snapshot.Steps++
 	e.Snapshot.ReservedUSD += e.Limits.MaxCallCostUSD
 	e.ActiveDeadline = time.Now().Add(e.Limits.CallTimeout + 10*time.Second)
@@ -187,7 +199,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 		}
 	}()
 	ws := identity.Workspace{ID: a.WorkspaceID}
-	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, AcceptanceCriteria: e.Snapshot.AcceptanceCriteria, SampleInput: e.Snapshot.SampleInput, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls), MaxOutputTokens: e.Limits.MaxOutputTokens}
+	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, AcceptanceCriteria: e.Snapshot.AcceptanceCriteria, SampleInput: e.Snapshot.SampleInput, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls, s.Fetch != nil), MaxOutputTokens: e.Limits.MaxOutputTokens}
 	draft := e.Snapshot.Draft
 	// A correction after a validated draft falls back to PreviousDraft: send it
 	// as the working draft, but never its (now stale) validation result, or
@@ -373,6 +385,7 @@ var reasonSentences = map[string]string{
 	"validation_unavailable": "目前無法驗證草稿，請補充需求或稍後再試。",
 	"diagram_incomplete":     "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
 	"search_query_missing":   "請告訴我要在目錄中搜尋什麼關鍵字。",
+	"fetch_url_missing":      "模型想連網取得資料，但沒有給出網址；請告訴它要看哪個網頁。",
 	"draft_missing":          "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。",
 }
 
@@ -596,6 +609,20 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			invalidate(p)
 			p.BriefConfirmed = false
 			p.PendingAction = "confirm_references"
+			return "waiting_confirmation", false, nil
+		case "fetch_url":
+			if s.Fetch == nil {
+				return "", false, ErrUnavailable
+			}
+			// Nothing is fetched here. The person sees the URL and says yes or
+			// no (05 R-47: ask before connecting); the Worker fetches on yes.
+			clean, err := validateFetchURL(r.ToolIntent.Query)
+			if err != nil {
+				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "這個網址不符合規則（只接受公開的 http／https 網址，不含帳號密碼）；這次沒有連網。"})
+				return "queued", true, nil
+			}
+			p.PendingFetchURL = clean
+			p.PendingAction = "confirm_fetch"
 			return "waiting_confirmation", false, nil
 		case "validate_draft":
 			if !confirmed(*p) || r.Brief != p.Brief || (len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) || (r.SampleInput != "" && r.SampleInput != p.SampleInput) || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {

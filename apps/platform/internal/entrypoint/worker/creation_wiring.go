@@ -49,6 +49,12 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 	}
 }
 
+// wireCreationFetch gives the Worker's steps the consented page reader (05
+// R-47). The API never fetches: its steps are not run there.
+func wireCreationFetch(s *creation.Service) {
+	s.Fetch = creation.NewFetcher(false).Fetch
+}
+
 func wireCreationGateway(s *creation.Service, gateway *run.Gateway) {
 	if gateway == nil {
 		return

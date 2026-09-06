@@ -530,6 +530,7 @@ class CreationMessage(BaseModel):
 class Kind1(Enum):
     search_catalog = 'search_catalog'
     validate_draft = 'validate_draft'
+    fetch_url = 'fetch_url'
 
 
 class CreationToolIntent(BaseModel):
@@ -537,7 +538,10 @@ class CreationToolIntent(BaseModel):
         extra='forbid',
     )
     kind: Kind1
-    query: constr(max_length=4000)
+    query: constr(max_length=4000) = Field(
+        ...,
+        description='For search_catalog the keywords; for fetch_url one http(s) URL. Go asks the person before connecting and returns the page text as a tool observation; a refused or blocked site is reported, not retried (05 R-47).',
+    )
 
 
 class AcceptanceCriterion(RootModel[constr(max_length=500)]):
@@ -547,6 +551,7 @@ class AcceptanceCriterion(RootModel[constr(max_length=500)]):
 class AllowedTool(Enum):
     search_catalog = 'search_catalog'
     validate_draft = 'validate_draft'
+    fetch_url = 'fetch_url'
 
 
 class Outcome(Enum):

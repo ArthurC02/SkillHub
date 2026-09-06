@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -330,6 +331,32 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: observation})
 		state = "candidate_ready"
 		queueStep = true
+		// An unmet trial is the person's turn first (owner, 2026-09-06: "跑完之後
+		// 和使用者的互動，獲取回饋"): the failed criteria and the judge's reasons
+		// become questions, and the answer steers the model's revision.
+		if questions := trialQuestions(observation); p.RunUnmet && questions != "" {
+			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: questions})
+			p.PendingAction = ""
+			state = "waiting_input"
+			queueStep = false
+		}
+	case "confirm_fetch":
+		if p.PendingAction != "confirm_fetch" || p.PendingFetchURL == "" {
+			return View{}, nil, ErrInvalidCommand
+		}
+		// The URL stays on the snapshot; the Worker's step job fetches it.
+		p.PendingAction = ""
+		queueStep = true
+	case "decline_fetch":
+		if p.PendingAction != "confirm_fetch" || p.PendingFetchURL == "" {
+			return View{}, nil, ErrInvalidCommand
+		}
+		rec := Fetch{URL: p.PendingFetchURL, Status: "declined"}
+		p.Fetches = append(p.Fetches, rec)
+		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fetchObservation(rec, "")})
+		p.PendingFetchURL = ""
+		p.PendingAction = ""
+		queueStep = true
 	case "raise_budget":
 		if !finite(c.BudgetUSD) || c.BudgetUSD <= p.BudgetUSD || c.BudgetUSD > e.Limits.MaxCostUSD {
 			return View{}, nil, ErrBudgetOutOfBand
@@ -473,6 +500,46 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 		return record(ctx, tx, ws.ID, row.ID, c, result)
 	})
 	return result, nil, err
+}
+
+// trialQuestions turns an attach_run observation into the questions the person
+// answers before the model revises: one line per criterion the judge did not
+// pass, with the judge's reason, then what to decide. Empty when there is
+// nothing to ask (no evaluation, or every criterion passed).
+func trialQuestions(observation string) string {
+	var o struct {
+		Evaluation struct {
+			Available bool   `json:"evaluation_available"`
+			Status    string `json:"status"`
+			Results   []struct {
+				Text   string `json:"text"`
+				Result string `json:"result"`
+				Reason string `json:"reason"`
+			} `json:"criterion_results"`
+		} `json:"evaluation"`
+	}
+	if json.Unmarshal([]byte(observation), &o) != nil || !o.Evaluation.Available || o.Evaluation.Status != "completed" {
+		return ""
+	}
+	var lines []string
+	for _, r := range o.Evaluation.Results {
+		if r.Result != "failed" && r.Result != "undetermined" {
+			continue
+		}
+		label := "沒過"
+		if r.Result == "undetermined" {
+			label = "這份樣本驗不到"
+		}
+		line := fmt.Sprintf("- 「%s」：%s", truncateRunes(r.Text, 200), label)
+		if r.Reason != "" {
+			line += "——" + truncateRunes(r.Reason, 300)
+		}
+		lines = append(lines, line)
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	return "這次試跑有條件沒過：\n" + strings.Join(lines, "\n") + "\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。"
 }
 
 // runUnmet reads the one field of an attach_run observation Go acts on: an

@@ -5642,6 +5642,10 @@ func (s *CreationActionKind) Decode(d *jx.Decoder) error {
 		*s = CreationActionKindAttachRun
 	case CreationActionKindRaiseBudget:
 		*s = CreationActionKindRaiseBudget
+	case CreationActionKindConfirmFetch:
+		*s = CreationActionKindConfirmFetch
+	case CreationActionKindDeclineFetch:
+		*s = CreationActionKindDeclineFetch
 	default:
 		*s = CreationActionKind(v)
 	}
@@ -5967,6 +5971,153 @@ func (s *CreationDraft) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *CreationDraft) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *CreationFetch) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *CreationFetch) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("url")
+		e.Str(s.URL)
+	}
+	{
+		if s.SHA256.Set {
+			e.FieldStart("sha256")
+			s.SHA256.Encode(e)
+		}
+	}
+	{
+		if s.Bytes.Set {
+			e.FieldStart("bytes")
+			s.Bytes.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("status")
+		e.Str(s.Status)
+	}
+}
+
+var jsonFieldsNameOfCreationFetch = [4]string{
+	0: "url",
+	1: "sha256",
+	2: "bytes",
+	3: "status",
+}
+
+// Decode decodes CreationFetch from json.
+func (s *CreationFetch) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreationFetch to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "url":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.URL = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"url\"")
+			}
+		case "sha256":
+			if err := func() error {
+				s.SHA256.Reset()
+				if err := s.SHA256.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"sha256\"")
+			}
+		case "bytes":
+			if err := func() error {
+				s.Bytes.Reset()
+				if err := s.Bytes.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"bytes\"")
+			}
+		case "status":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Str()
+				s.Status = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"status\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode CreationFetch")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001001,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfCreationFetch) {
+					name = jsonFieldsNameOfCreationFetch[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreationFetch) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreationFetch) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -7236,6 +7387,22 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.PendingFetchURL.Set {
+			e.FieldStart("pending_fetch_url")
+			s.PendingFetchURL.Encode(e)
+		}
+	}
+	{
+		if s.Fetches != nil {
+			e.FieldStart("fetches")
+			e.ArrStart()
+			for _, elem := range s.Fetches {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
 		if s.Model.Set {
 			e.FieldStart("model")
 			s.Model.Encode(e)
@@ -7267,7 +7434,7 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [27]string{
+var jsonFieldsNameOfCreationSnapshot = [29]string{
 	0:  "messages",
 	1:  "brief",
 	2:  "acceptance_criteria",
@@ -7290,11 +7457,13 @@ var jsonFieldsNameOfCreationSnapshot = [27]string{
 	19: "run_unmet",
 	20: "nudges",
 	21: "blocked_repeats",
-	22: "model",
-	23: "prompt_version",
-	24: "diagram_media_type",
-	25: "diagram_bytes",
-	26: "previous_draft",
+	22: "pending_fetch_url",
+	23: "fetches",
+	24: "model",
+	25: "prompt_version",
+	26: "diagram_media_type",
+	27: "diagram_bytes",
+	28: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -7571,6 +7740,33 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"blocked_repeats\"")
+			}
+		case "pending_fetch_url":
+			if err := func() error {
+				s.PendingFetchURL.Reset()
+				if err := s.PendingFetchURL.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"pending_fetch_url\"")
+			}
+		case "fetches":
+			if err := func() error {
+				s.Fetches = make([]CreationFetch, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem CreationFetch
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Fetches = append(s.Fetches, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"fetches\"")
 			}
 		case "model":
 			if err := func() error {

@@ -1598,3 +1598,5 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 3. **抓來的內容算不算創作材料、要不要記在 provenance**——建議記網址與 sha256，不記內文（與 ADR-066 對流程圖的做法一致）。
 
 **未裁之前**：`search_knowledge` 與定向問人可先做；`fetch_url` 不進契約。曝光邊界不動。
+
+**2026-09-06 晚間裁定（負責人）**：「連網前需要詢問使用者，並且留意有可能在使用者同意的網站會被金融環境阻擋，那就直接回報使用者，不需要重試（除非是網路問題）」。落地：(2) 允許清單＝**每一次連網都問人**（會話停在 `confirm_fetch`，Web 顯示網址、同意／不連網），固定封鎖私有、loopback、link-local 位址（含 redirect 與 DNS 解析後）；**被網站或網路環境拒絕（4xx、連線被拒）只回報一次、不重試**，DNS／逾時／5xx 視為網路問題重試一次。(1) 代理建議的 (b) 照做：抓取在 **Worker** 的 step job 內、呼叫模型之前；API 行程不接 `Fetch`。(3) 照建議：快照只記網址、sha256、大小與結局（`fetches`），內文只在模型看到的 tool 觀察裡。契約：`llm-internal` tool kind `fetch_url`、`public` 動作 `confirm_fetch`／`decline_fetch`、快照 `pending_fetch_url`／`fetches`。同批落地「試跑後先問人」（Go 把沒過的條件與理由列成問題、會話等人）。**未做**：`search_knowledge`（現有目錄搜尋是純詞彙、刻意不花 embedding；語意檢索要另裁成本）。量測見[報告 §10](mvp/m5/creation-measure/report.md)。

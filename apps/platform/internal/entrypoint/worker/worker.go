@@ -197,6 +197,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	creationSearch := &catalog.Service{Pool: pool}
 	wireCreationReads(set.Creation, creationVersions, creationSearch)
 	wireCreationGateway(set.Creation, deps.Gateway)
+	wireCreationFetch(set.Creation)
 	workers := river.NewWorkers()
 	addWorker(set, workers, &creation.Worker{Svc: set.Creation})
 	addWorker(set, workers, &creation.ExpiryWorker{Svc: set.Creation})

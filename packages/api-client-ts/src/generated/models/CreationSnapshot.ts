@@ -34,6 +34,13 @@ import {
     CreationDraftToJSON,
     CreationDraftToJSONTyped,
 } from './CreationDraft';
+import type { CreationFetch } from './CreationFetch';
+import {
+    CreationFetchFromJSON,
+    CreationFetchFromJSONTyped,
+    CreationFetchToJSON,
+    CreationFetchToJSONTyped,
+} from './CreationFetch';
 import type { CreationCandidate } from './CreationCandidate';
 import {
     CreationCandidateFromJSON,
@@ -181,6 +188,18 @@ export interface CreationSnapshot {
      */
     blockedRepeats?: number;
     /**
+     * The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until the person confirms (05 R-47).
+     * @type {string}
+     * @memberof CreationSnapshot
+     */
+    pendingFetchUrl?: string;
+    /**
+     * Pages Go fetched for this session after the person's consent: URL, sha256 and size of the text kept, and how it ended. Content is not stored here.
+     * @type {Array<CreationFetch>}
+     * @memberof CreationSnapshot
+     */
+    fetches?: Array<CreationFetch>;
+    /**
      * 
      * @type {string}
      * @memberof CreationSnapshot
@@ -264,6 +283,8 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'runUnmet': json['run_unmet'] == null ? undefined : json['run_unmet'],
         'nudges': json['nudges'] == null ? undefined : json['nudges'],
         'blockedRepeats': json['blocked_repeats'] == null ? undefined : json['blocked_repeats'],
+        'pendingFetchUrl': json['pending_fetch_url'] == null ? undefined : json['pending_fetch_url'],
+        'fetches': json['fetches'] == null ? undefined : ((json['fetches'] as Array<any>).map(CreationFetchFromJSON)),
         'model': json['model'] == null ? undefined : json['model'],
         'promptVersion': json['prompt_version'] == null ? undefined : json['prompt_version'],
         'diagramMediaType': json['diagram_media_type'] == null ? undefined : json['diagram_media_type'],
@@ -305,6 +326,8 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'run_unmet': value['runUnmet'],
         'nudges': value['nudges'],
         'blocked_repeats': value['blockedRepeats'],
+        'pending_fetch_url': value['pendingFetchUrl'],
+        'fetches': value['fetches'] == null ? undefined : ((value['fetches'] as Array<any>).map(CreationFetchToJSON)),
         'model': value['model'],
         'prompt_version': value['promptVersion'],
         'diagram_media_type': value['diagramMediaType'],

@@ -31,7 +31,7 @@ router = APIRouter()
 # The measurement (05 R-45) may point this at another tier; the product key Go
 # issues per step is still pinned to gpt-5.4-mini (worker/creation_wiring.go).
 MODEL = os.getenv("CREATION_MODEL", "gpt-5.4-mini")
-PROMPT_VERSION = "creation-step/v12"
+PROMPT_VERSION = "creation-step/v13"
 DATA_TAG = "untrusted_creation_snapshot"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
 Reason = Literal[
@@ -42,6 +42,7 @@ Reason = Literal[
     "validation_unavailable",
     "diagram_incomplete",
     "search_query_missing",
+    "fetch_url_missing",
 ]
 
 
@@ -53,7 +54,7 @@ class CreationMessage(BaseModel):
 
 class CreationToolIntent(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    kind: Literal["search_catalog", "validate_draft"]
+    kind: Literal["search_catalog", "validate_draft", "fetch_url"]
     query: str
 
 
@@ -105,7 +106,7 @@ class CreationStepRequest(BaseModel):
     references: list[GenerateReference] = Field(..., max_length=3)
     draft: GeneratedSkill | None = None
     draft_validation: CreationDraftValidation | None = None
-    allowed_tools: list[Literal["search_catalog", "validate_draft"]]
+    allowed_tools: list[Literal["search_catalog", "validate_draft", "fetch_url"]]
     timeout_seconds: int = Field(..., ge=1, le=120)
     max_output_tokens: int = Field(..., ge=1, le=16000)
 
@@ -337,7 +338,12 @@ def _reason_node(gateway_key: str, phase: str):
             "and absent conditions, branches or uncertainties are empty arrays. "
             "request confirmation of this understanding before drafting. "
             "Use search_catalog when existing Skills could help; results are observations "
-            "returned by Go in subsequent tool messages. References supplied separately have "
+            "returned by Go in subsequent tool messages. Use fetch_url (query = one http(s) "
+            "URL) when the task needs facts from a page the person named or a public page it "
+            "plainly depends on: Go asks the person before connecting, the page text comes "
+            "back as a tool observation, and a site that refused or was blocked by the network "
+            "is reported once and never retried — use what you have or ask the person instead. "
+            "References supplied separately have "
             "already been selected and confirmed. "
             "Before composing from references, propose a brief comparing their approaches, "
             "limitations and tool requirements, explaining which parts to adopt and which to omit. "
@@ -520,6 +526,10 @@ def _reason_node(gateway_key: str, phase: str):
             completion = raw.parse()
             choice = completion.choices[0]
             if getattr(choice, "finish_reason", None) == "length":
+                # Run p R09 (2026-09-06): two 502s at step one with nothing to read.
+                logger.warning(
+                    "creation step refused a truncated output session=%s", req.session_id
+                )
                 raise HTTPException(status_code=502, detail="creation model output was truncated")
             decision = CreationDecision.model_validate_json(choice.message.content or "")
             if req.diagram is None and not req.diagram_understanding:
@@ -587,6 +597,9 @@ def _route(state: _State) -> str:
 def _confirmation(state: _State) -> dict:
     d = state["decision"]
     if d.outcome == "confirm_brief" and not (d.brief or state["request"].brief).strip():
+        logger.warning(
+            "creation step refused an empty brief session=%s", state["request"].session_id
+        )
         raise HTTPException(status_code=502, detail="creation returned an empty brief")
     if (
         d.outcome == "confirm_diagram"
@@ -611,6 +624,20 @@ def _tool(state: _State) -> dict:
                 }
             ),
             "reason": "tool_unavailable",
+        }
+    if d.tool_intent.kind == "fetch_url" and not d.tool_intent.query.strip().lower().startswith(
+        ("http://", "https://")
+    ):
+        return {
+            "decision": d.model_copy(
+                update={
+                    "outcome": "clarification",
+                    "draft": None,
+                    "tool_intent": None,
+                    "message": "fetch url missing",
+                }
+            ),
+            "reason": "fetch_url_missing",
         }
     if d.tool_intent.kind == "search_catalog" and not d.tool_intent.query.strip():
         return {

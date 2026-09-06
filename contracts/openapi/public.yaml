@@ -8226,6 +8226,19 @@ components:
           format: "uuid"
           description: "The Test Case Go created from the confirmed acceptance criteria when this candidate was materialized."
 
+    CreationFetch:
+      type: "object"
+      required: ["url", "status"]
+      properties:
+        url:
+          type: "string"
+        sha256:
+          type: "string"
+        bytes:
+          type: "integer"
+        status:
+          type: "string"
+          description: "ok, blocked (the site or the network environment refused; not retried), not_found, unsupported (not text), network_error (retried once), or declined."
     CreationSnapshot:
       type: "object"
       additionalProperties: false
@@ -8300,6 +8313,14 @@ components:
         blocked_repeats:
           type: "integer"
           description: "Consecutive blocked validations with the same report; at two the session waits for the person instead of a further model call."
+        pending_fetch_url:
+          type: "string"
+          description: "The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until the person confirms (05 R-47)."
+        fetches:
+          type: "array"
+          description: "Pages Go fetched for this session after the person's consent: URL, sha256 and size of the text kept, and how it ended. Content is not stored here."
+          items:
+            $ref: "#/components/schemas/CreationFetch"
         model:
           type: "string"
         prompt_version:
@@ -8435,6 +8456,8 @@ components:
             - "diagram"
             - "attach_run"
             - "raise_budget"
+            - "confirm_fetch"
+            - "decline_fetch"
         message:
           type: "string"
           maxLength: 4000

@@ -757,6 +757,37 @@ def test_review_whose_fix_is_in_the_criteria_reproposes_the_brief():
     assert body["draft"] is None
 
 
+def test_fetch_url_intent_passes_through_with_a_url_and_is_refused_without_one():
+    # 05 R-47: the model may ask to read a page; Go asks the person. Python only
+    # checks that there is a URL to ask about.
+    req = request(allowed_tools=["fetch_url"])
+    response, _ = invoke(
+        req,
+        decision(
+            outcome="tool_intent", tool_intent={"kind": "fetch_url", "query": "https://x.test/a"}
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "tool_intent"
+    assert response.json()["tool_intent"] == {"kind": "fetch_url", "query": "https://x.test/a"}
+    response, _ = invoke(
+        req,
+        decision(
+            outcome="tool_intent", tool_intent={"kind": "fetch_url", "query": "the docs page"}
+        ),
+    )
+    assert response.json()["outcome"] == "clarification"
+    assert response.json()["reason"] == "fetch_url_missing"
+    # Not offered by Go (the API's steps never fetch): not a tool.
+    response, _ = invoke(
+        request(),
+        decision(
+            outcome="tool_intent", tool_intent={"kind": "fetch_url", "query": "https://x.test/a"}
+        ),
+    )
+    assert response.json()["reason"] == "tool_unavailable"
+
+
 def test_review_with_every_criterion_passed_is_one_call():
     passed = UNMET_EVALUATION.replace('"result": "failed"', '"result": "passed"')
     req = request(

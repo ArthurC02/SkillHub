@@ -1,0 +1,32 @@
+{
+  "acceptance_criteria": [
+    "針對一則包含多個 issue 條目的輸入，輸出會分成 3 個嚴重度級別。",
+    "每個嚴重度級別都會有一句中文處理建議。",
+    "輸出會明確對應到輸入中的 issue 條目，不會漏掉已提供的條目。",
+    "嚴重度分類結果與建議會以清楚的結構呈現，方便直接使用。"
+  ],
+  "brief": "建立一個可攜帶的 Agent Skill，用來把使用者提供的 GitHub issue 依嚴重度分成三級，並且每一級各寫一句處理建議。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我把 GitHub issue 依嚴重度分成三級並各寫一句處理建議。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的需求草案，請你回覆「確認」或直接修改：\n\n**brief**\n建立一個可攜帶的 Agent Skill，用來把使用者提供的 GitHub issue 依嚴重度分成三級，並且每一級各寫一句處理建議。\n\n**acceptance_criteria**\n1. 針對一則包含多個 issue 條目的輸入，輸出會分成 3 個嚴重度級別。\n2. 每個嚴重度級別都會有一句中文處理建議。\n3. 輸出會明確對應到輸入中的 issue 條目，不會漏掉已提供的條目。\n4. 嚴重度分類結果與建議會以清楚的結構呈現，方便直接使用。\n\n**sample_input**\n請把下面的 GitHub issue 依嚴重度分成三級並各寫一句處理建議：\n\n1. Login 按鈕點擊後沒有反應，所有使用者都無法登入。\n2. 匯出報表時偶爾失敗，但重新嘗試通常可以成功。\n3. 頁面上某個標題文字拼字錯誤。\n\n請確認這個需求草案。"
+    },
+    {
+      "role": "assistant",
+      "content": "已根據確認需求整理成可直接送交 Go 驗證的技能草案。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是可直接送交驗證的草案；我已依目前可見的 Go 驗證結果保留內容不變，因為唯一提示是 license-unknown，這不需要修改。\n\n若你要，我也可以再幫你把輸出格式改得更像客服/工單分類表。"
+    }
+  ],
+  "state": "candidate_ready"
+}

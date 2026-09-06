@@ -145,10 +145,10 @@ func TestDraftValidationReportTruncatedWithinLimit(t *testing.T) {
 }
 
 func TestAllowedToolsEmptyAtToolCallCeiling(t *testing.T) {
-	if got := allowedTools(3, 3); len(got) != 0 {
+	if got := allowedTools(3, 3, false); len(got) != 0 {
 		t.Fatalf("expected no tools once the budget is spent, got %v", got)
 	}
-	if got := allowedTools(2, 3); len(got) != 2 {
+	if got := allowedTools(2, 3, false); len(got) != 2 {
 		t.Fatalf("expected both tools while budget remains, got %v", got)
 	}
 }
@@ -447,5 +447,47 @@ func TestProposalAcceptsADraftWithAnEmptyMessage(t *testing.T) {
 	}
 	if r.Message == "" {
 		t.Fatal("the person still needs a sentence")
+	}
+}
+
+// A fetch_url intent asks the person before anything connects (05 R-47).
+func TestProposalHoldsAFetchUntilThePersonConfirms(t *testing.T) {
+	s := &Service{Fetch: func(context.Context, string) (Fetch, string) {
+		t.Fatal("nothing may be fetched at proposal time")
+		return Fetch{}, ""
+	}}
+	zero := 0.0
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "查一下", ToolIntent: &llmclient.CreationToolIntent{Kind: "fetch_url", Query: " https://example.com/docs#top "}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.PendingAction != "confirm_fetch" || e.Snapshot.PendingFetchURL != "https://example.com/docs" {
+		t.Fatalf("state=%q next=%v pending=%q url=%q err=%v", state, next, e.Snapshot.PendingAction, e.Snapshot.PendingFetchURL, err)
+	}
+	// A private address never reaches the person as a question.
+	r.ToolIntent.Query = "http://10.0.0.1/admin"
+	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	if err != nil || !next || state != "queued" {
+		t.Fatalf("a refused URL must go back to the model: state=%q next=%v err=%v", state, next, err)
+	}
+	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "tool" || !strings.Contains(last.Content, "不符合規則") {
+		t.Fatalf("the model was not told: %+v", last)
+	}
+}
+
+// The questions after an unmet trial name each criterion the judge did not
+// pass and the judge's reason; a passed trial asks nothing.
+func TestTrialQuestionsNameTheFailedCriteria(t *testing.T) {
+	obs := `{"evaluation":{"evaluation_available":true,"status":"completed","overall":"partially_met","criterion_results":[{"text":"輸出是核取方塊清單","result":"failed","reason":"輸出是表格"},{"text":"三條待辦","result":"passed"},{"text":"超過七天的分支","result":"undetermined","reason":"樣本沒有這個情境"}]}}`
+	q := trialQuestions(obs)
+	for _, want := range []string{"「輸出是核取方塊清單」：沒過——輸出是表格", "「超過七天的分支」：這份樣本驗不到——樣本沒有這個情境", "改草稿、還是改條件或範例輸入"} {
+		if !strings.Contains(q, want) {
+			t.Fatalf("missing %q in:\n%s", want, q)
+		}
+	}
+	if strings.Contains(q, "三條待辦") {
+		t.Fatalf("a passed criterion is not a question:\n%s", q)
+	}
+	if trialQuestions(strings.Replace(obs, `"result":"failed"`, `"result":"passed"`, 1)) != "" && trialQuestions(`{"evaluation":{"evaluation_available":false}}`) != "" {
+		t.Fatal("nothing to ask must be empty")
 	}
 }

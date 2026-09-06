@@ -2149,6 +2149,8 @@ const (
 	CreationActionKindDiagram           CreationActionKind = "diagram"
 	CreationActionKindAttachRun         CreationActionKind = "attach_run"
 	CreationActionKindRaiseBudget       CreationActionKind = "raise_budget"
+	CreationActionKindConfirmFetch      CreationActionKind = "confirm_fetch"
+	CreationActionKindDeclineFetch      CreationActionKind = "decline_fetch"
 )
 
 // AllValues returns all CreationActionKind values.
@@ -2165,6 +2167,8 @@ func (CreationActionKind) AllValues() []CreationActionKind {
 		CreationActionKindDiagram,
 		CreationActionKindAttachRun,
 		CreationActionKindRaiseBudget,
+		CreationActionKindConfirmFetch,
+		CreationActionKindDeclineFetch,
 	}
 }
 
@@ -2192,6 +2196,10 @@ func (s CreationActionKind) MarshalText() ([]byte, error) {
 	case CreationActionKindAttachRun:
 		return []byte(s), nil
 	case CreationActionKindRaiseBudget:
+		return []byte(s), nil
+	case CreationActionKindConfirmFetch:
+		return []byte(s), nil
+	case CreationActionKindDeclineFetch:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -2233,6 +2241,12 @@ func (s *CreationActionKind) UnmarshalText(data []byte) error {
 		return nil
 	case CreationActionKindRaiseBudget:
 		*s = CreationActionKindRaiseBudget
+		return nil
+	case CreationActionKindConfirmFetch:
+		*s = CreationActionKindConfirmFetch
+		return nil
+	case CreationActionKindDeclineFetch:
+		*s = CreationActionKindDeclineFetch
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -2346,6 +2360,56 @@ func (s *CreationDraft) SetValidation(val string) {
 // SetBlocked sets the value of Blocked.
 func (s *CreationDraft) SetBlocked(val bool) {
 	s.Blocked = val
+}
+
+// Ref: #/components/schemas/CreationFetch
+type CreationFetch struct {
+	URL    string    `json:"url"`
+	SHA256 OptString `json:"sha256"`
+	Bytes  OptInt    `json:"bytes"`
+	// Ok, blocked (the site or the network environment refused; not retried), not_found, unsupported (not
+	// text), network_error (retried once), or declined.
+	Status string `json:"status"`
+}
+
+// GetURL returns the value of URL.
+func (s *CreationFetch) GetURL() string {
+	return s.URL
+}
+
+// GetSHA256 returns the value of SHA256.
+func (s *CreationFetch) GetSHA256() OptString {
+	return s.SHA256
+}
+
+// GetBytes returns the value of Bytes.
+func (s *CreationFetch) GetBytes() OptInt {
+	return s.Bytes
+}
+
+// GetStatus returns the value of Status.
+func (s *CreationFetch) GetStatus() string {
+	return s.Status
+}
+
+// SetURL sets the value of URL.
+func (s *CreationFetch) SetURL(val string) {
+	s.URL = val
+}
+
+// SetSHA256 sets the value of SHA256.
+func (s *CreationFetch) SetSHA256(val OptString) {
+	s.SHA256 = val
+}
+
+// SetBytes sets the value of Bytes.
+func (s *CreationFetch) SetBytes(val OptInt) {
+	s.Bytes = val
+}
+
+// SetStatus sets the value of Status.
+func (s *CreationFetch) SetStatus(val string) {
+	s.Status = val
 }
 
 // The ceilings this deployment enforces on one interactive creation session (CREATION_LIMITS_JSON,
@@ -2926,7 +2990,13 @@ type CreationSnapshot struct {
 	Nudges OptInt `json:"nudges"`
 	// Consecutive blocked validations with the same report; at two the session waits for the person
 	// instead of a further model call.
-	BlockedRepeats   OptInt           `json:"blocked_repeats"`
+	BlockedRepeats OptInt `json:"blocked_repeats"`
+	// The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until
+	// the person confirms (05 R-47).
+	PendingFetchURL OptString `json:"pending_fetch_url"`
+	// Pages Go fetched for this session after the person's consent: URL, sha256 and size of the text kept,
+	// and how it ended. Content is not stored here.
+	Fetches          []CreationFetch  `json:"fetches"`
 	Model            OptString        `json:"model"`
 	PromptVersion    OptString        `json:"prompt_version"`
 	DiagramMediaType OptString        `json:"diagram_media_type"`
@@ -3042,6 +3112,16 @@ func (s *CreationSnapshot) GetNudges() OptInt {
 // GetBlockedRepeats returns the value of BlockedRepeats.
 func (s *CreationSnapshot) GetBlockedRepeats() OptInt {
 	return s.BlockedRepeats
+}
+
+// GetPendingFetchURL returns the value of PendingFetchURL.
+func (s *CreationSnapshot) GetPendingFetchURL() OptString {
+	return s.PendingFetchURL
+}
+
+// GetFetches returns the value of Fetches.
+func (s *CreationSnapshot) GetFetches() []CreationFetch {
+	return s.Fetches
 }
 
 // GetModel returns the value of Model.
@@ -3177,6 +3257,16 @@ func (s *CreationSnapshot) SetNudges(val OptInt) {
 // SetBlockedRepeats sets the value of BlockedRepeats.
 func (s *CreationSnapshot) SetBlockedRepeats(val OptInt) {
 	s.BlockedRepeats = val
+}
+
+// SetPendingFetchURL sets the value of PendingFetchURL.
+func (s *CreationSnapshot) SetPendingFetchURL(val OptString) {
+	s.PendingFetchURL = val
+}
+
+// SetFetches sets the value of Fetches.
+func (s *CreationSnapshot) SetFetches(val []CreationFetch) {
+	s.Fetches = val
 }
 
 // SetModel sets the value of Model.

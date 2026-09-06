@@ -172,6 +172,14 @@ function DiagramUnderstandingView({ raw }: { raw: string }) {
 function declaredReferenceField(value?: string) {
   return value?.trim() ? value : "未宣告";
 }
+const FETCH_STATUS_LABEL: Record<string, string> = {
+  ok: "已讀取",
+  blocked: "被拒絕或被網路環境擋住（不重試）",
+  not_found: "頁面不存在",
+  unsupported: "不是文字頁面",
+  network_error: "網路錯誤（重試一次仍失敗）",
+  declined: "使用者不同意",
+};
 export function CreationSession() {
   const client = useQueryClient();
   const [id, setID] = useState(""),
@@ -554,6 +562,34 @@ export function CreationSession() {
                   確認流程圖理解
                 </button>
               )}
+            </section>
+          )}
+          {p.pending_action === "confirm_fetch" && p.pending_fetch_url && (
+            <section>
+              <h4>連網讀取確認</h4>
+              <p>
+                模型想連到 <code>{p.pending_fetch_url}</code>{" "}
+                讀取內容來補資料。你的網路環境可能擋住這個網站；被擋住時會直接回報，不會重試。
+              </p>
+              <button disabled={locked} onClick={() => void perform("confirm_fetch")}>
+                同意連網
+              </button>
+              <button disabled={locked} onClick={() => void perform("decline_fetch")}>
+                不連網
+              </button>
+            </section>
+          )}
+          {!!p.fetches?.length && (
+            <section>
+              <h4>已讀取的網頁</h4>
+              <ul>
+                {p.fetches.map((f, i) => (
+                  <li key={i}>
+                    {f.url}：{FETCH_STATUS_LABEL[f.status] ?? f.status}
+                    {f.bytes !== undefined && `（${f.bytes} 位元組）`}
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
           {(p.references.length > 0 || p.pending_action === "confirm_references") && (

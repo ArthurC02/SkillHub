@@ -367,13 +367,14 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 			beforeHash = v.Snapshot.Draft.ContentHash
 		}
 		v = creationAttachRun(t, c, v, last.runID)
+		answered := 0
 		// A nudge (unchanged draft, missing diagram node) re-queues the step,
 		// a revision is followed by its validation step, and a review that
 		// moves the fix into the criteria or the sample comes back as a
 		// confirmation (prompt v11) which this harness grants as the person
 		// would. Bounded by MaxNudges plus a few settling steps (run j left
 		// every session queued at the third step).
-		for i := 0; i < creation.MaxNudges+6; i++ {
+		for i := 0; i < creation.MaxNudges+10; i++ {
 			switch v.State {
 			case "queued":
 				v = creationStep(t, s, v)
@@ -385,6 +386,16 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 				}
 				v = creationAct(t, c, v, v.Snapshot.PendingAction)
 				row.AutoConfirms++
+				continue
+			case "waiting_input":
+				// The questions after an unmet trial (05 R-47's owner note):
+				// this harness answers as a person who wants the criteria met.
+				if answered >= 2 {
+					break
+				}
+				answered++
+				row.Clarifications++
+				v = creationMessage(t, c, v, "照沒過的條件改草稿；條件或範例輸入驗不到的，就改條件或範例輸入。")
 				continue
 			}
 			break

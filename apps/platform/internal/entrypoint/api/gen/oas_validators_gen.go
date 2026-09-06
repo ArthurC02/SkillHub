@@ -1025,6 +1025,10 @@ func (s CreationActionKind) Validate() error {
 		return nil
 	case "raise_budget":
 		return nil
+	case "confirm_fetch":
+		return nil
+	case "decline_fetch":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}
