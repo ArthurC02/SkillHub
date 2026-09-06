@@ -42,6 +42,9 @@ func TestDocLinkProblems(t *testing.T) {
 	// Generated trees and the frozen golden-set corpus are not walked.
 	write("packages/api-client-ts/README.md", "[gen](docs/DefaultApi.md)\n")
 	write("tools/goldenset/corpus/data/x.md", "[ref](references/nope.md)\n")
+	// A model-written Skill body dumped as measurement evidence (run i R10,
+	// 2026-09-06: a Slack template line `[訊息摘要](連結)`).
+	write("docs/plans/mvp/m5/creation-measure/run-2026-09-06-i/R10-single.SKILL.md", "- [訊息摘要](連結) — 發言者\n")
 
 	problems := docLinkProblems(root)
 	if len(problems) != 1 {

@@ -8291,6 +8291,15 @@ components:
         draft_retries:
           type: "integer"
           description: "Automatic re-queues after the model answered outcome=draft with no draft (at most one per session)."
+        run_unmet:
+          type: "boolean"
+          description: "The attached Run's evaluation finished and was not met; a draft identical to the one that ran is then handed back to the model instead of stored. Cleared by a draft with new content."
+        nudges:
+          type: "integer"
+          description: "Automatic re-queues in which Go declined a draft and told the model why (identical after an unmet run, diagram nodes missing); at most two per session."
+        blocked_repeats:
+          type: "integer"
+          description: "Consecutive blocked validations with the same report; at two the session waits for the person instead of a further model call."
         model:
           type: "string"
         prompt_version:

@@ -28,8 +28,10 @@ from skillhub_llm.untrusted import data_block_rules, fence, scrub
 logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
-MODEL = "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v5"
+# The measurement (05 R-45) may point this at another tier; the product key Go
+# issues per step is still pinned to gpt-5.4-mini (worker/creation_wiring.go).
+MODEL = os.getenv("CREATION_MODEL", "gpt-5.4-mini")
+PROMPT_VERSION = "creation-step/v9"
 DATA_TAG = "untrusted_creation_snapshot"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
 Reason = Literal[
@@ -194,7 +196,10 @@ PHASE_INSTRUCTIONS = {
         "handed in one pass: perform every acceptance criterion directly, choose sensible "
         "defaults and state them in the output instead of asking the user, and refuse or ask "
         "only when the input itself is missing. A Skill whose run ends in a question has "
-        "failed every criterion."
+        "failed every criterion. When a confirmed diagram_understanding exists, the body "
+        "walks its nodes as steps, in order, each named as the diagram names it, and adds "
+        "no step, condition, role or tool the diagram does not show; where the diagram is "
+        "silent, say so instead of inventing. Go refuses a draft whose body skips a node."
     ),
     "revise": (
         "Inspect draft_validation.report and tool observations. Repair the specific "
@@ -210,7 +215,10 @@ PHASE_INSTRUCTIONS = {
         "outcome draft with a revised body that removes the exact cause the judge named "
         "(the agent asked instead of acting, skipped a required output, produced the wrong "
         "shape) and say what changed; return the unchanged draft only when every criterion "
-        "passed. Missing evaluation is not success."
+        "passed. Missing evaluation is not success, but you cannot start a trial and must not "
+        "ask for one or re-validate an unchanged draft: when validation passed and no "
+        "evaluation exists yet, return outcome draft with the validated draft — the person "
+        "starts the trial from it and a later step brings the evaluation back to you."
     ),
 }
 
@@ -239,6 +247,8 @@ def _reason_node(gateway_key: str, phase: str):
             "brief_confirmed, keep brief, acceptance_criteria and sample_input unchanged or "
             "propose a new confirmation. "
             "Read diagrams into named nodes, conditions, branches and explicit uncertainties; "
+            "diagram_understanding is only for an uploaded diagram (the diagram field); a "
+            "reference Skill or the user's text is never a diagram and gets no interpretation. "
             "diagram_understanding must be a JSON-encoded object with exactly nodes, conditions, "
             "branches, uncertainties: each is an array of concrete strings; "
             "nodes must be nonempty, "
@@ -257,6 +267,9 @@ def _reason_node(gateway_key: str, phase: str):
             "tool messages to revise the current draft, explaining the changes. "
             "Tools are intentions executed only by Go; only choose allowed_tools. "
             "A draft needs all manifest fields, substantive Markdown body and optional files. "
+            "Go writes SKILL.md and its frontmatter from name, description, compatibility, "
+            "allowed_tools and body: never put a SKILL.md or a frontmatter block in files or "
+            "body, and there is no license field; the license-unknown warning needs no change. "
             "Use lowercase hyphenated names; do not invent licenses or secrets. "
             "Reply in the user's language. Never mark a session saved or confirm for the user. "
             "The fields brief, brief_confirmed, diagram_understanding, diagram_confirmed, "
@@ -309,6 +322,12 @@ def _reason_node(gateway_key: str, phase: str):
             if getattr(choice, "finish_reason", None) == "length":
                 raise HTTPException(status_code=502, detail="creation model output was truncated")
             decision = CreationDecision.model_validate_json(choice.message.content or "")
+            if req.diagram is None and not req.diagram_understanding:
+                # No diagram was uploaded: an interpretation is the model's invention
+                # (run i R05, 2026-09-06: a text session ended in "請補充流程圖").
+                decision.diagram_understanding = None
+                if decision.outcome == "confirm_diagram":
+                    decision.outcome = "clarification"
             if decision.diagram_understanding:
                 # An interpretation the model could not shape into the four sections is
                 # not a broken step: _render turns it into a clarification carrying

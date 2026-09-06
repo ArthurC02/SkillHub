@@ -2917,7 +2917,16 @@ type CreationSnapshot struct {
 	Steps                int                  `json:"steps"`
 	ToolCalls            int                  `json:"tool_calls"`
 	// Automatic re-queues after the model answered outcome=draft with no draft (at most one per session).
-	DraftRetries     OptInt           `json:"draft_retries"`
+	DraftRetries OptInt `json:"draft_retries"`
+	// The attached Run's evaluation finished and was not met; a draft identical to the one that ran is
+	// then handed back to the model instead of stored. Cleared by a draft with new content.
+	RunUnmet OptBool `json:"run_unmet"`
+	// Automatic re-queues in which Go declined a draft and told the model why (identical after an unmet
+	// run, diagram nodes missing); at most two per session.
+	Nudges OptInt `json:"nudges"`
+	// Consecutive blocked validations with the same report; at two the session waits for the person
+	// instead of a further model call.
+	BlockedRepeats   OptInt           `json:"blocked_repeats"`
 	Model            OptString        `json:"model"`
 	PromptVersion    OptString        `json:"prompt_version"`
 	DiagramMediaType OptString        `json:"diagram_media_type"`
@@ -3018,6 +3027,21 @@ func (s *CreationSnapshot) GetToolCalls() int {
 // GetDraftRetries returns the value of DraftRetries.
 func (s *CreationSnapshot) GetDraftRetries() OptInt {
 	return s.DraftRetries
+}
+
+// GetRunUnmet returns the value of RunUnmet.
+func (s *CreationSnapshot) GetRunUnmet() OptBool {
+	return s.RunUnmet
+}
+
+// GetNudges returns the value of Nudges.
+func (s *CreationSnapshot) GetNudges() OptInt {
+	return s.Nudges
+}
+
+// GetBlockedRepeats returns the value of BlockedRepeats.
+func (s *CreationSnapshot) GetBlockedRepeats() OptInt {
+	return s.BlockedRepeats
 }
 
 // GetModel returns the value of Model.
@@ -3138,6 +3162,21 @@ func (s *CreationSnapshot) SetToolCalls(val int) {
 // SetDraftRetries sets the value of DraftRetries.
 func (s *CreationSnapshot) SetDraftRetries(val OptInt) {
 	s.DraftRetries = val
+}
+
+// SetRunUnmet sets the value of RunUnmet.
+func (s *CreationSnapshot) SetRunUnmet(val OptBool) {
+	s.RunUnmet = val
+}
+
+// SetNudges sets the value of Nudges.
+func (s *CreationSnapshot) SetNudges(val OptInt) {
+	s.Nudges = val
+}
+
+// SetBlockedRepeats sets the value of BlockedRepeats.
+func (s *CreationSnapshot) SetBlockedRepeats(val OptInt) {
+	s.BlockedRepeats = val
 }
 
 // SetModel sets the value of Model.

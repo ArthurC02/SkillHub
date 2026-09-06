@@ -780,3 +780,17 @@ func TestReferencesAloneWithNoDescriptionOrDiagramIsRefused(t *testing.T) {
 		t.Errorf("err = %v, want ErrGenerateNoInput", err)
 	}
 }
+
+// A draft the package builder refuses gets a report that names the cause;
+// run h (2026-09-06) looped eight paid steps on a bare 「套件結構無法通過驗證。」.
+func TestValidateCreationDraftReportsWhyThePackageCouldNotBeBuilt(t *testing.T) {
+	g := goodGeneratedSkill()
+	g.Files = []llmclient.GeneratedFile{{Path: "SKILL.md", Content: "---\nlicense: MIT\n---\n"}}
+	hash, report, blocked, err := (&Service{}).ValidateCreationDraft(context.Background(), g)
+	if err != nil || !blocked || hash != "" {
+		t.Fatalf("a second SKILL.md must block without error: hash=%q blocked=%v err=%v", hash, blocked, err)
+	}
+	if !strings.Contains(report, "a second SKILL.md") || !strings.Contains(report, "license") {
+		t.Fatalf("the report does not say what to change: %s", report)
+	}
+}

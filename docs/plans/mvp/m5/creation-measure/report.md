@@ -97,3 +97,43 @@ harness 的「使用者」仍是一個對每個提案說好的假人，所以這
 ### 6.2 現在站在哪
 
 `met` 5／13、門檻 9／15。七次跑下來，harness 的洞（brief 當 prompt、純材料當 prompt、條件寫成分支、502 無聲）都補了，剩下的差距是三種：**流程圖組**（D02～D05 全是 `partially_met`／`not_met`——多步驟流程的 Skill 只做了前半）、**review 相不改稿**、**mini 模型本身**。前兩個是產品工作，第三個是 R-45 沒裁的一件事（量測用哪一級模型）。都在丙-175，沒有一個是再改一句提示就能過的。
+
+## 7. 補迴圈兩次、換模型一次：run h、i、j（負責人「按照你的建議進行」）
+
+順序是我建議、負責人核可的：先把 run g 之後看得到的迴圈補掉（h、i，仍是 mini），再把寫 Skill 的模型換成旗艦一級跑一次（j），看 `met` 的差距有多少是模型的。三次都是 `creation-step` 提示往上加一版、Go 加一道護欄，契約只多了三個快照欄位（`run_unmet`、`nudges`、`blocked_repeats`）。**跑 Skill 與判定的模型三次都是 mini**——j 只換了寫 Skill 的那一個（`CREATION_MODEL=gpt-5.6-sol`）。
+
+| | run g（v5，mini） | run h（v7，mini） | run i（v8，mini） | **run j（v9，旗艦寫）** | R-45 門檻 |
+| --- | --- | --- | --- | --- | --- |
+| 有通過驗證的草稿 | 14／15 | 13／15 | 15／15 | **14／14**（R10 是 harness 的洞，見 7.1 ⑤） | ≥ 14／15 |
+| 候選＋Test Case＋Run 到終態 | 13／15 | 12／15 | 14／15 | **14／14** | — |
+| `met`／`partially_met`／`not_met` | 5／7／1 | 2／7／3 | 4／8／2 | **0／12／2** | `met` ≥ 9／15 |
+| 逐條 通過／不通過／無法判定 | 45／20／1（66） | 24／29／7（60） | 37／25／5（67） | **35／47／3（85）** | — |
+| 每場驗收條件數（平均） | 5.1 | 5.0 | 4.8 | **6.1** | 3～8 |
+| attach_run 後草稿真的變了 | 3／13 | 6／12 | 3／14 | **14／14** | — |
+| Go nudge 次數／兩次都沒改而交還給人 | — | 19／4 | 16／7 | **14／0** | ≤ 2／場 |
+| 每場會話成本中位／最大 | $0.030／$0.050 | $0.026／$0.069 | $0.022／$0.049 | **$0.141／$0.244** | 中位 ≤ $0.50 |
+| 15 場會話合計（不含 Judge） | $0.45 | $0.54 | $0.37 | **$2.15**（Judge 另 $0.35） | — |
+| 每次模型呼叫 p50／p95 | 3.7 s／5.1 s | 3.4 s／5.0 s | 3.7 s／5.4 s | **18.9 s／50.2 s** | ≤ 60 s／≤ 90 s |
+
+輸出在 `run-2026-09-06-h/`、`-i/`、`-j/`；j 沒有單次對照那一半（harness 在 R10 停掉，單次對照用的是 mini、與前七次相同，沒有再跑）。h 的數字被 7.1 ②污染（三場停在編出來的流程圖上），i 才是乾淨的 mini 基線：**`met` 4／14**。
+
+### 7.1 五個迴圈（h、i 各兩個，j 一個）——每個都是一次會話裡付費步數被同一件事吃掉
+
+1. **授權警告 → 往 `files` 塞 SKILL.md → 「套件結構無法通過驗證。」**（h，R04 八步）。模型把 license-unknown 警告當成要修的錯，加了一個 `SKILL.md` 檔，Go 的報告只有一句話，模型看不到原因就一直重試。修法三刀：admission 的報告帶上 builder 的錯誤與「frontmatter 與 SKILL.md 由 Go 產生、沒有 license 欄位」（`TestValidateCreationDraftReportsWhyThePackageCouldNotBeBuilt`）；同一份阻擋報告連續第三次就交還給人（`MaxBlockedRepeats`，`TestProposalStopsARepeatedBlockedValidation`）；提示 v7 明說。i 之後沒再出現。
+2. **文字／參考會話裡模型編一份流程圖理解**（h，R07、D01 與兩場參考組）。Go 照收、要人確認一張沒上傳過的圖，節點檢查再要求 body 寫進編出來的步驟。修法：`DiagramFingerprint` 為空時 Go 直接丟掉 `diagram_understanding`（`TestProposalIgnoresADiagramInterpretationWhenNoDiagramWasUploaded`）＋提示 v8。**i 的 R05 還是停在「請補充流程圖」**——這次是 Python 那一側：模型仍然編了一份、`_draft` 把它當成待確認、`_render` 判它格式不全、回 `diagram_incomplete`，Go 把這個碼翻成要人補圖。現在 Python 在請求沒有流程圖時就把它丟掉、`confirm_diagram` 降為一般澄清（`test_an_invented_diagram_in_a_text_session_is_dropped_at_the_source`）；這一刀在 j 之後才落地，還沒量。
+3. **attach_run 之後模型說「已修改」、交回逐位元相同的草稿**（f、g 就看到，h 量到規模）。Go 現在在 `RunUnmet` 且 hash 不變時用 tool 訊息說「你交回的與試跑的那一份逐位元相同」再排一次，最多兩次（`MaxNudges`，`TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun`）；流程圖節點在 body 裡找不到也走同一條（`TestProposalNudgesADraftThatSkipsDiagramNodes`）。**i：16 次 nudge、7 場兩次都沒改、交還給人**——mini 被明講兩次仍交回同一份；**j：14 次、0 場用盡**——旗艦第一次也交回同一份（訊息寫「保留已驗證草稿供下一步試跑」），被講一次就真的改了 body。這是 ③「review 相不改稿」的答案：**是模型等級**，不是 Go 退回。
+4. **驗證過的草稿沒有評估 → 模型反覆要試跑、重驗同一份**（j 第一次起跑，R01 連驗六次）。v4 的「missing evaluation is not success」被旗艦讀成「那我要一份評估」，而它起不了試跑。修法：同一份已通過、未阻擋的草稿再驗一次直接回 `draft_ready`（`TestProposalDoesNotRevalidateTheSameAcceptedDraft`）＋提示 v9「你不能起試跑、不要要求、不要重驗沒改過的草稿」。
+5. **harness**（j，R10）：參考組會話的第一步假設會停在等待狀態，旗艦第一步先搜目錄（`search_catalog`）、會話仍是 `queued`，harness 接著送 `select_references` 吃到 409。harness 現在步進到會話等待為止。
+
+### 7.2 換模型量到什麼
+
+- **`met` 0／14，但不是旗艦寫的 Skill 比較差**。它寫的驗收條件多（每場 6.1 條 vs 4.8）也精確得多：「核取方塊清單、三條、依期限排序」「欄位要叫『電話狀態』」「明細表要有星期欄」「類別名照『日用品』寫」「依序四個區段」。跑 Skill 的還是 mini，Judge 的摘要一場一場點名的就是這些細節。**考題變難、作答者沒換**——85 條裡不通過 47 條，比 i 的 25 條多一倍。
+- **review 相在旗艦上是生效的**（7.1 ③）：14／14 改稿，且改的是 body（hash 變、訊息說得出改了哪一段）。mini 的 3／14 與 7 場用盡，是同一段提示、同一道護欄下的對照。
+- **成本與延遲仍在門檻內**：每場中位 $0.14（門檻 $0.50），每次呼叫 p50 19 s、p95 50 s（門檻 60／90）——是 mini 的五倍與十倍。
+- **沒量到的**：改過的草稿第二次試跑會不會 `met`。harness 只起一次 Run；attach_run 之後最多三步，j 的 14 場都在第三步（改稿→驗證→再交）時還是 `queued` 就被收掉。**這正是 R-45 那句「`met` ≥ 9／15」沒說清楚的事：算第一次試跑，還是算一輪修訂之內。**
+- **流程圖組換了模型還是 0／5**（j 的兩個 `not_met` 都在 D 組：D04 少了 Jira 與通知兩個區段、D05 沒照八步走）。多步驟流程的 Skill 在單次試跑裡做不完，跨兩個模型等級都一樣——這是產品工作，不是模型。
+- 旁證一件：Judge（mini）有一場摘要寫成簡體（i 的 R05、j 的 R05 都是同一題）。不影響判定，記在 ADR-026 的待決策旁邊。
+
+### 7.3 現在站在哪
+
+十次跑完，harness 的洞與五個迴圈都補了，數字分成三塊：**mini 寫、mini 跑＝`met` 4～5／14**；**旗艦寫、mini 跑＝0／14 但 review 相生效**；**流程圖組不論等級都 0／5**。門檻 9／15 不是再改提示能到的；要動的是 R-45 的定義（`met` 算哪一次試跑）、跑 Skill 的模型等級（產品金鑰釘在 mini，`worker/creation_wiring.go`），與流程圖組的產品設計。三件都在 `05` R-45 補記，等負責人裁。

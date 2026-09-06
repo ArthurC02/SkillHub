@@ -284,3 +284,150 @@ func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
 		t.Fatalf("an empty sample_input must mean unchanged: state=%q confirmed=%v err=%v", state, e.Snapshot.BriefConfirmed, err)
 	}
 }
+
+// After a run that was not met, a draft with the same hash as the one that
+// ran is handed back to the model with a reason, at most MaxNudges times;
+// then it is stored and the person is told (run g, 2026-09-06).
+func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
+	s := &Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+		return "same-hash", "{}", false, nil
+	}}
+	zero := 0.0
+	ran := &Draft{Revision: 3, ContentHash: "same-hash"}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: ran, RunUnmet: true}}
+	r := &llmclient.CreationStepResponse{Outcome: "draft", Message: "我已修正草稿。", Brief: "b", Draft: &llmclient.GeneratedSkill{Name: "x", Body: "same"}}
+	for i := 1; i <= MaxNudges; i++ {
+		state, next, err := s.proposal(context.Background(), identity.Workspace{}, int64(3+i), &e, r)
+		if err != nil || !next || state != "queued" || e.Snapshot.Nudges != i || e.Snapshot.Draft != ran {
+			t.Fatalf("nudge %d: state=%q next=%v nudges=%d err=%v", i, state, next, e.Snapshot.Nudges, err)
+		}
+		if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "tool" || !strings.Contains(last.Content, "逐位元相同") {
+			t.Fatalf("nudge %d did not tell the model why: %+v", i, last)
+		}
+	}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
+	if err != nil || next || state != "draft_ready" || e.Snapshot.Nudges != MaxNudges {
+		t.Fatalf("after MaxNudges the draft must be stored: state=%q next=%v nudges=%d err=%v", state, next, e.Snapshot.Nudges, err)
+	}
+	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "assistant" || !strings.Contains(last.Content, "兩次都交回") {
+		t.Fatalf("the person was not told: %+v", last)
+	}
+	// A draft with new content ends the nudging and clears the run flag.
+	s.ValidateDraft = func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+		return "new-hash", "{}", false, nil
+	}
+	e.Snapshot.Nudges = 0
+	state, _, err = s.proposal(context.Background(), identity.Workspace{}, 10, &e, r)
+	if err != nil || state != "draft_ready" || e.Snapshot.RunUnmet || e.Snapshot.Nudges != 0 {
+		t.Fatalf("a changed draft is progress: state=%q unmet=%v nudges=%d err=%v", state, e.Snapshot.RunUnmet, e.Snapshot.Nudges, err)
+	}
+}
+
+// A draft whose body does not walk every confirmed diagram node is handed
+// back with the missing names; one that does is stored.
+func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
+	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
+		return "h-" + d.Body, "{}", false, nil
+	}}
+	zero := 0.0
+	understanding := `{"nodes":["收到報帳申請","送經理簽核","寄出付款通知"],"conditions":[],"branches":[],"uncertainties":[]}`
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, DiagramUnderstanding: understanding, DiagramConfirmed: true, DiagramFingerprint: "fp", BudgetUSD: 1, SpentUSD: &zero}}
+	half := &llmclient.CreationStepResponse{Outcome: "draft", Message: "草稿", Brief: "b", DiagramUnderstanding: understanding, Draft: &llmclient.GeneratedSkill{Name: "x", Body: "1. 收到報帳申請\n2. 送經理簽核"}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, half)
+	if err != nil || !next || state != "queued" || e.Snapshot.Draft != nil {
+		t.Fatalf("half a flow was accepted: state=%q next=%v err=%v", state, next, err)
+	}
+	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "tool" || !strings.Contains(last.Content, "寄出付款通知") || strings.Contains(last.Content, "收到報帳申請") {
+		t.Fatalf("the missing node was not named, or a present one was: %+v", last)
+	}
+	full := &llmclient.CreationStepResponse{Outcome: "draft", Message: "草稿", Brief: "b", DiagramUnderstanding: understanding, Draft: &llmclient.GeneratedSkill{Name: "x", Body: "1. 收到報帳申請。\n2. 送經理簽核。\n3. 寄出「付款通知」。"}}
+	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, full)
+	if err != nil || next || state != "draft_ready" || e.Snapshot.Draft == nil {
+		t.Fatalf("a full walk was refused: state=%q next=%v err=%v", state, next, err)
+	}
+}
+
+func TestRunUnmetReadsOnlyAFinishedEvaluation(t *testing.T) {
+	cases := map[string]bool{
+		`{"evaluation":{"evaluation_available":true,"status":"completed","overall":"partially_met"}}`: true,
+		`{"evaluation":{"evaluation_available":true,"status":"completed","overall":"not_met"}}`:       true,
+		`{"evaluation":{"evaluation_available":true,"status":"completed","overall":"met"}}`:           false,
+		`{"evaluation":{"evaluation_available":true,"status":"failed","overall":"undetermined"}}`:     false,
+		`{"evaluation":{"evaluation_available":false}}`:                                               false,
+		`not json`: false,
+	}
+	for in, want := range cases {
+		if got := runUnmet(in); got != want {
+			t.Fatalf("runUnmet(%s) = %v, want %v", in, got, want)
+		}
+	}
+}
+
+// The same blocking validation report three times in a row hands the turn to
+// the person instead of a fourth paid attempt (run h, 2026-09-06).
+func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
+	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
+		return "h-" + d.Body, "套件結構無法通過驗證：a second SKILL.md", true, nil
+	}}
+	zero := 0.0
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	for i, body := range []string{"one", "two"} {
+		r := &llmclient.CreationStepResponse{Outcome: "draft", Message: "fixed", Brief: "b", Draft: &llmclient.GeneratedSkill{Name: "x", Body: body}}
+		state, _, err := s.proposal(context.Background(), identity.Workspace{}, int64(2+i), &e, r)
+		if err != nil || state != "draft_ready" || e.Snapshot.BlockedRepeats != i {
+			t.Fatalf("attempt %d: state=%q repeats=%d err=%v", i+1, state, e.Snapshot.BlockedRepeats, err)
+		}
+	}
+	r := &llmclient.CreationStepResponse{Outcome: "draft", Message: "fixed again", Brief: "b", Draft: &llmclient.GeneratedSkill{Name: "x", Body: "three"}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+	if err != nil || next || state != "waiting_input" || e.Snapshot.BlockedRepeats != MaxBlockedRepeats || e.Snapshot.Draft == nil || !e.Snapshot.Draft.Blocked {
+		t.Fatalf("third identical verdict must hand the turn back with the draft kept: state=%q next=%v repeats=%d err=%v", state, next, e.Snapshot.BlockedRepeats, err)
+	}
+	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "assistant" || !strings.Contains(last.Content, "連續三次") {
+		t.Fatalf("the person was not told: %+v", last)
+	}
+	// A different report resets the count.
+	s.ValidateDraft = func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
+		return "h-" + d.Body, "another", true, nil
+	}
+	state, _, err = s.proposal(context.Background(), identity.Workspace{}, 5, &e, r)
+	if err != nil || state != "draft_ready" || e.Snapshot.BlockedRepeats != 0 {
+		t.Fatalf("a new report is a new problem: state=%q repeats=%d err=%v", state, e.Snapshot.BlockedRepeats, err)
+	}
+}
+
+// Without an uploaded diagram there is nothing to confirm: an interpretation
+// the model volunteers for a text or reference session is dropped, not turned
+// into a confirmation the person must click through (run h, 2026-09-06).
+func TestProposalIgnoresADiagramInterpretationWhenNoDiagramWasUploaded(t *testing.T) {
+	s := &Service{}
+	zero := 0.0
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &llmclient.CreationStepResponse{Outcome: "clarification", Message: "請先確認流程圖的理解。", Brief: "b", DiagramUnderstanding: `{"nodes":["invented"],"conditions":[],"branches":[],"uncertainties":[]}`}
+	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || state != "waiting_input" || e.Snapshot.DiagramUnderstanding != "" || e.Snapshot.PendingAction == "confirm_diagram" {
+		t.Fatalf("an invented diagram became a confirmation: state=%q snap=%+v err=%v", state, e.Snapshot, err)
+	}
+}
+
+// Re-validating the already validated, unblocked, unchanged draft ends the
+// turn as draft_ready instead of another paid model call (run j, 2026-09-06).
+func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
+	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
+		return "h-" + d.Body, "{}", false, nil
+	}}
+	zero := 0.0
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "validate", Brief: "b", ToolIntent: &llmclient.CreationToolIntent{Kind: "validate_draft"}, Draft: &llmclient.GeneratedSkill{Name: "x", Body: "same"}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || !next || state != "queued" {
+		t.Fatalf("first validation must queue the model: state=%q next=%v err=%v", state, next, err)
+	}
+	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	if err != nil || next || state != "draft_ready" || e.Snapshot.ToolCalls != 2 {
+		t.Fatalf("second validation of the same draft must hand back draft_ready: state=%q next=%v tools=%d err=%v", state, next, e.Snapshot.ToolCalls, err)
+	}
+	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "tool" || !strings.Contains(last.Content, "草稿就緒") {
+		t.Fatalf("the model was not told: %+v", last)
+	}
+}

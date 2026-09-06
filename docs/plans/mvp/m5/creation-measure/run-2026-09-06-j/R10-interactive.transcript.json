@@ -1,0 +1,19 @@
+{
+  "acceptance_criteria": null,
+  "brief": "",
+  "messages": [
+    {
+      "role": "user",
+      "content": "每週從 Slack 三個頻道找出未回覆的問題，列成清單附連結。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先搜尋是否有可參考的 Slack 訊息搜尋／未回覆問題整理 Skill，再據此確認所需權限與輸出格式。"
+    },
+    {
+      "role": "tool",
+      "content": "目錄文字搜尋沒有符合的可用參考；未呼叫額外模型。"
+    }
+  ],
+  "state": "queued"
+}

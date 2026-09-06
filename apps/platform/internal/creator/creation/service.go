@@ -50,7 +50,15 @@ const (
 	MaxAcceptanceCriteria = 12
 	// MaxSampleInputRunes mirrors llm-internal.yaml's maxLength on sample_input.
 	MaxSampleInputRunes = 4000
-	MaxCriterionRunes   = 500
+	// MaxNudges bounds the automatic re-queues in which Go hands a draft back
+	// to the model instead of accepting it (unchanged after an unmet run,
+	// diagram nodes missing). Two per session: run g (2026-09-06) showed the
+	// model narrating edits it did not make, and a third try is the person's.
+	MaxNudges = 2
+	// MaxBlockedRepeats is how many times in a row the same blocking validation
+	// report may come back before the person gets the turn.
+	MaxBlockedRepeats = 2
+	MaxCriterionRunes = 500
 )
 
 type Limits struct {
@@ -147,7 +155,20 @@ type Snapshot struct {
 	ToolCalls            int         `json:"tool_calls"`
 	// DraftRetries counts the automatic re-queues after the model answered
 	// outcome=draft with no draft (reason draft_missing); at most one per session.
-	DraftRetries       int        `json:"draft_retries,omitempty"`
+	DraftRetries int `json:"draft_retries,omitempty"`
+	// RunUnmet is set by attach_run when the attached Run's evaluation is
+	// anything but met, and cleared when a draft with new content arrives. A
+	// draft byte-identical to the one that ran is then not progress (run g,
+	// 2026-09-06: 10 of 12 review steps returned the same hash while the
+	// message claimed a revision).
+	RunUnmet bool `json:"run_unmet,omitempty"`
+	// Nudges counts the automatic re-queues where Go declined a draft and told
+	// the model why (MaxNudges per session).
+	Nudges int `json:"nudges,omitempty"`
+	// BlockedRepeats counts consecutive blocked validations with the same
+	// report. At MaxBlockedRepeats the turn goes to the person: run h
+	// (2026-09-06) spent eight steps on one unchanged structural verdict.
+	BlockedRepeats     int        `json:"blocked_repeats,omitempty"`
 	Draft              *Draft     `json:"draft,omitempty"`
 	PreviousDraft      *Draft     `json:"previous_draft,omitempty"`
 	Candidate          *Candidate `json:"candidate,omitempty"`

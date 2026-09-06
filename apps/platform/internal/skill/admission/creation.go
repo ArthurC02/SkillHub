@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"strings"
 	"unicode/utf8"
@@ -150,7 +151,12 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 func (s *Service) ValidateCreationDraft(ctx context.Context, draft llmclient.GeneratedSkill) (string, string, bool, error) {
 	data, err := buildGeneratedPackage(draft)
 	if err != nil {
-		return "", "套件結構無法通過驗證。", true, nil
+		// The reason travels with the verdict. Run h (2026-09-06): the model
+		// answered a license-unknown warning by adding a SKILL.md entry to files,
+		// read "套件結構無法通過驗證。" eight times and asked Go for details it
+		// was never given. The error text is Go's own sentence plus the path the
+		// model wrote, nothing else.
+		return "", fmt.Sprintf("套件結構無法通過驗證：%v。frontmatter 與 SKILL.md 由 Go 從 name、description、compatibility、allowed_tools 與 body 產生；files 不得包含 SKILL.md，也沒有 license 欄位可填。", err), true, nil
 	}
 	prepared, err := s.prepare(ctx, data)
 	if err != nil {

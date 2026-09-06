@@ -324,7 +324,7 @@ def test_acceptance_criteria_locked_once_brief_confirmed():
             "validation_unavailable",
         ),
         (
-            {},
+            {"diagram_understanding": diagram_text()},
             {"outcome": "confirm_diagram", "diagram_understanding": "A -> B"},
             "diagram_incomplete",
         ),
@@ -598,12 +598,27 @@ def test_diagram_confirmation_requires_all_four_sections(interpretation):
     # A model that cannot shape the four sections is asked to try again, with a
     # reason code Go turns into the sentence; the malformed text never reaches Go.
     response, _ = invoke(
-        request(), decision(outcome="confirm_diagram", diagram_understanding=interpretation)
+        request(diagram_understanding=diagram_text()),
+        decision(outcome="confirm_diagram", diagram_understanding=interpretation),
     )
     assert response.status_code == 200
     body = response.json()
     assert body["outcome"] == "clarification"
     assert body["reason"] == "diagram_incomplete"
+    assert body["diagram_understanding"] == ""
+
+
+def test_an_invented_diagram_in_a_text_session_is_dropped_at_the_source():
+    # Run i R05 (2026-09-06): no diagram anywhere in the request, the model still
+    # returned an interpretation, and the person was asked to upload a diagram.
+    response, _ = invoke(
+        request(brief="b", brief_confirmed=True),
+        decision(outcome="confirm_diagram", message="請確認流程理解", diagram_understanding="x"),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["outcome"] == "clarification"
+    assert body["reason"] is None
     assert body["diagram_understanding"] == ""
 
 

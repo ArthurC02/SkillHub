@@ -324,7 +324,15 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 		beforeHash = v.Snapshot.Draft.ContentHash
 	}
 	v = creationAttachRun(t, c, v, rv.RunID)
-	v = creationStep(t, s, v)
+	// A nudge (unchanged draft, missing diagram node) re-queues the step; the
+	// loop is bounded by MaxNudges plus the settling step.
+	for i := 0; i <= creation.MaxNudges; i++ {
+		v = creationStep(t, s, v)
+		row.ModelCalls++
+		if v.State != "queued" {
+			break
+		}
+	}
 	afterHash := ""
 	if v.Snapshot.Draft != nil {
 		afterHash = v.Snapshot.Draft.ContentHash
@@ -528,8 +536,13 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 	}
 	if task.Kind == "reference" {
 		refID, _ := importFiles(t, a, testPool, c, map[string]string{"SKILL.md": task.ReferenceMD})
-		v = creationStep(t, s, v)
-		row.ModelCalls++
+		// The first step may be a catalog search that re-queues (run j R10,
+		// 2026-09-06: the flagship searched first and select_references hit
+		// 409 on a queued session). Step until the session waits.
+		for v.State == "queued" {
+			v = creationStep(t, s, v)
+			row.ModelCalls++
+		}
 		v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
 			"command_id": creationID(t), "expected_revision": v.Revision, "kind": "select_references",
 			"reference_skill_ids": []string{refID},

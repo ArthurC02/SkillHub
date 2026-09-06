@@ -36,6 +36,7 @@ Catalog 參考畫面列出選定不可變版本的描述、相容性與工具需
 | `CREATION_WORKER_INTERNAL_URL` | API 可到達的 Worker 內部 URL，無結尾斜線 |
 | `CREATION_WORKER_INTERNAL_TOKEN` | API／Worker 的相同服務憑證，不放前端 |
 | `LLM_SERVICE_URL`、`LLM_SERVICE_TOKEN` | Worker 呼叫 Python 的既有設定 |
+| `CREATION_MODEL`（Python，預設 `gpt-5.4-mini`） | 互動創作每一步用的模型別名；只給 `05` R-45 的量測換一級用（2026-09-06 深夜加）。Go 簽給每一步的 Virtual Key 仍只限 `gpt-5.4-mini`，所以在產品裡改這個值不會生效——要換產品的模型，Go 的簽發那一行要一起改 |
 | `SKILLHUB_MODEL_GATEWAY_URL`、`SKILLHUB_MODEL_GATEWAY_KEY` | Worker 既有 LiteLLM 管理接線；管理金鑰不傳 Python |
 
 `CREATION_LIMITS_JSON` 的必要鍵為 `max_cost_usd`、`max_call_cost_usd`、`max_steps`、`max_tool_calls`、`call_timeout_seconds`、`session_timeout_seconds`、`retention_seconds`、`max_output_tokens`。值須為有效正數；單次預算不得超過總上限、單次時間不得超過 Python 的 120 秒、保存期限不得短於會話時間。**2026-09-06 已定值**（[`05` R-45](../plans/05-pending-rulings.md) 裁定表，負責人授權代理定值）：`max_cost_usd` 1.0、`max_call_cost_usd` 0.1、`max_steps` 24、`max_tool_calls` 8、`call_timeout_seconds` 90、`session_timeout_seconds` 259200、`retention_seconds` 2592000、`max_output_tokens` 16000；`.env.example` 帶著同一行 JSON。測試 fixture 的數字仍不是部署值。
@@ -88,6 +89,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 - **`met` 那一欄（同日稍晚）**：harness 多了可選的 Run 階段——設 `SKILLHUB_E2E_SANDBOX_URL`（＋ `SKILLHUB_E2E_SANDBOX_TOKEN`、`OBJSTORE_*`、`SKILLHUB_E2E_PUBLIC_HOST`）時，每個候選會用它的 Test Case 起一次 Run、等評估、把 `overall=="met"` 填進 `met`，再 `attach_run` 回會話跑一步看模型改不改稿。**跑了（同日深夜）**：負責人加了一條 `docker run -d --name skillhub-sandboxd*` 的權限規則，代理起 sandboxd（runc、`2026.08-8`）、把 harness 二進位放進 `--network container:skillhub-postgres-1` 跑，run d／e 各 15 場都走完 Run 與 Judge（配方與五個坑在 [creation-measure/README](../plans/mvp/m5/creation-measure/README.md)）。結果與解讀在 [報告 §5](../plans/mvp/m5/creation-measure/report.md)：run d 的 `met` 是假數字（prompt 是 brief），run e 的 **`met` 2／14** 是真數字而且沒過 R-45——`04` 丙-175。
 - **`sample_input`（run d 之後）**：模型在提 brief 的同一個決策裡多回一份真實、完整、可直接交給 Skill 的範例輸入（≤ 4000 字，`MaxSampleInputRunes`），與 brief、`acceptance_criteria` 同一個 `confirm_brief` 綁定、換了就退回確認（`TestProposalTreatsAChangedSampleInputAsAChangedBrief`）；`materialize` 用它當 Test Case 的 prompt，沒有時退回 brief（`TestCreationMaterializeCreatesTheAcceptanceTestCase` 斷言 prompt 不是 brief）。Web 在驗收條件下方以 `<pre>` 顯示它；`creation-step/v3`。
 - **同夜 `v4`／`v5`（run f／g）**：compose 相要 Skill 對拿到的輸入一次做完、不反問；review 相看到任何 failed／undetermined 就回修改過的 draft；條件必須在這份樣本上一次試跑可判；`sample_input` 是「一句請求＋材料」的完整使用者訊息（v4 的「純材料」讓 Agent 只會反問）。`met` 2／14→5／13，門檻 9／15 仍未過（`04` 丙-175）。Python 護欄拒絕模型輸出時現在記一行原因類別（不含輸出）。harness：`attachTrialRun` 回傳 view，逐場對話含 Run 觀察與 review 步。
+- **同夜 `v7`～`v9`（run h／i／j）**：Go 多三道護欄，快照多 `run_unmet`、`nudges`、`blocked_repeats`——試跑未達成而草稿 hash 不變、或流程圖節點在 body 找不到時，Go 用 tool 訊息說明再排一次（`MaxNudges`＝2，用盡交還給人）；同一份阻擋報告連續第三次交還給人（`MaxBlockedRepeats`＝2）；沒有 `DiagramFingerprint` 就不收 `diagram_understanding`；已通過、沒改的草稿再驗一次直接 `draft_ready`。admission 的「套件結構無法通過驗證」帶 builder 的原因。Python 在請求沒有流程圖時丟掉模型編的理解、`confirm_diagram` 降為澄清。提示：v7 不塞 SKILL.md、license-unknown 不用改；v8 理解只給上傳的圖；v9 不能起試跑、不重驗沒改的草稿。量到：乾淨 mini 基線 `met` 4／14；`CREATION_MODEL` 換旗艦 0／14 但 review 相 14／14 改稿（mini 3／14）——條件變精確、跑的仍是 mini。三件待裁在 `05` R-45 補記（[報告 §7](../plans/mvp/m5/creation-measure/report.md)）。
 
 ## 尚待量測與核准
 

@@ -423,6 +423,14 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			return "queued", true, nil
 		}
 	}
+	// A session with no diagram has nothing to interpret. Run h (2026-09-06):
+	// in two reference sessions the model wrote an "interpretation" of the
+	// reference Skill's steps, Go asked the person to confirm a diagram that
+	// was never uploaded, and the node check then demanded those invented
+	// steps in the body. The fingerprint is the fact; the text is dropped.
+	if p.DiagramFingerprint == "" {
+		r.DiagramUnderstanding = ""
+	}
 	if r.DiagramUnderstanding != "" && !validDiagramInterpretation(r.DiagramUnderstanding) {
 		return "", false, ErrInvalidCommand
 	}
@@ -499,12 +507,49 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		if err != nil {
 			return "", false, err
 		}
+		// Two things a draft can be that are not progress. Go says why in a tool
+		// message and asks once more (MaxNudges per session); after that the
+		// draft is stored as it is and the person is told, because a third
+		// identical answer is theirs to react to, not another model call.
+		unchanged := p.RunUnmet && p.Draft != nil && p.Draft.ContentHash == hash
+		var missing []string
+		if p.DiagramFingerprint != "" && p.DiagramConfirmed && p.DiagramUnderstanding != "" {
+			missing = missingDiagramNodes(p.DiagramUnderstanding, r.Draft.Body)
+		}
+		if (unchanged || len(missing) > 0) && p.Nudges < MaxNudges && canSpend(*p, e.Limits) {
+			p.Nudges++
+			why := "評估指出未達成的條件沒有被處理：你交回的草稿與試跑的那一份逐位元相同。修改 body 之後再交回，不要只在訊息裡描述修改。"
+			if len(missing) > 0 {
+				why = fmt.Sprintf("流程圖有 %d 個節點在草稿的 body 裡找不到：%s。每個節點都要是 body 裡的一個步驟，照圖上的名稱寫。", len(missing), strings.Join(missing, "、"))
+			}
+			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: why})
+			p.PendingAction = ""
+			return "queued", true, nil
+		}
+		if unchanged {
+			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "模型兩次都交回與試跑相同的草稿，沒有處理評估指出的問題；請告訴它要改哪裡。"})
+		} else if len(missing) > 0 {
+			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: fmt.Sprintf("草稿仍缺流程圖的 %d 個節點（%s）；模型兩次都沒補上，請決定要不要接受。", len(missing), strings.Join(missing, "、"))})
+		}
 		p.PreviousDraft = e.PreviousDraft
 		if p.Draft == nil || p.Draft.ContentHash != hash {
 			p.Candidate = nil
+			p.RunUnmet = false
 		}
+		repeated := blocked && p.Draft != nil && p.Draft.Blocked && p.Draft.Validation == report
 		p.Draft = &Draft{revision, hash, *r.Draft, report, blocked}
 		p.PendingAction = ""
+		if repeated {
+			p.BlockedRepeats++
+		} else {
+			p.BlockedRepeats = 0
+		}
+		if p.BlockedRepeats >= MaxBlockedRepeats {
+			// The same structural verdict three times is not a draft in progress;
+			// the person sees the report and says what to change.
+			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "同一個結構問題連續三次沒有修好；請看驗證報告，告訴模型要改哪裡。"})
+			return "waiting_input", false, nil
+		}
 		return "draft_ready", false, nil
 	case "tool_intent":
 		if r.ToolIntent == nil || p.ToolCalls >= e.Limits.MaxToolCalls {
@@ -552,6 +597,15 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			}
 			if p.Draft == nil || p.Draft.ContentHash != hash {
 				p.Candidate = nil
+			}
+			// Validating the draft Go already validated, unchanged and not
+			// blocked, is not a step: the model is waiting for a trial it cannot
+			// start (run j, 2026-09-06: the flagship re-validated the same draft
+			// six times asking for a run). The draft is ready; the person runs it.
+			if p.Draft != nil && p.Draft.ContentHash == hash && !p.Draft.Blocked && !blocked {
+				p.PendingAction = ""
+				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "這份草稿已通過同一次驗證；試跑由人從候選啟動，模型不能自己跑。草稿就緒。"})
+				return "draft_ready", false, nil
 			}
 			p.PreviousDraft = e.PreviousDraft
 			p.Draft = &Draft{revision, hash, *r.Draft, report, blocked}

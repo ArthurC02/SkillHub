@@ -163,6 +163,24 @@ export interface CreationSnapshot {
      */
     draftRetries?: number;
     /**
+     * The attached Run's evaluation finished and was not met; a draft identical to the one that ran is then handed back to the model instead of stored. Cleared by a draft with new content.
+     * @type {boolean}
+     * @memberof CreationSnapshot
+     */
+    runUnmet?: boolean;
+    /**
+     * Automatic re-queues in which Go declined a draft and told the model why (identical after an unmet run, diagram nodes missing); at most two per session.
+     * @type {number}
+     * @memberof CreationSnapshot
+     */
+    nudges?: number;
+    /**
+     * Consecutive blocked validations with the same report; at two the session waits for the person instead of a further model call.
+     * @type {number}
+     * @memberof CreationSnapshot
+     */
+    blockedRepeats?: number;
+    /**
      * 
      * @type {string}
      * @memberof CreationSnapshot
@@ -243,6 +261,9 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'steps': json['steps'],
         'toolCalls': json['tool_calls'],
         'draftRetries': json['draft_retries'] == null ? undefined : json['draft_retries'],
+        'runUnmet': json['run_unmet'] == null ? undefined : json['run_unmet'],
+        'nudges': json['nudges'] == null ? undefined : json['nudges'],
+        'blockedRepeats': json['blocked_repeats'] == null ? undefined : json['blocked_repeats'],
         'model': json['model'] == null ? undefined : json['model'],
         'promptVersion': json['prompt_version'] == null ? undefined : json['prompt_version'],
         'diagramMediaType': json['diagram_media_type'] == null ? undefined : json['diagram_media_type'],
@@ -281,6 +302,9 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'steps': value['steps'],
         'tool_calls': value['toolCalls'],
         'draft_retries': value['draftRetries'],
+        'run_unmet': value['runUnmet'],
+        'nudges': value['nudges'],
+        'blocked_repeats': value['blockedRepeats'],
         'model': value['model'],
         'prompt_version': value['promptVersion'],
         'diagram_media_type': value['diagramMediaType'],

@@ -1,0 +1,40 @@
+{
+  "acceptance_criteria": [
+    "回覆中明確出現三個嚴重度等級的分類。",
+    "每個嚴重度等級都各有一句處理建議。",
+    "分類結果能對應到使用者提供的 issue 內容。",
+    "輸出是可直接閱讀的文字結果。"
+  ],
+  "brief": "任務：把 GitHub issue 依嚴重度分成三級，並為每一級各寫一句處理建議。\n- 輸入：一段 GitHub issue 內容或一組 issue 條目。\n- 輸出：三個嚴重度等級的分類結果，以及每級一句處理建議。\n- 工具需求：不需要額外工具。\n- 限制：只根據使用者提供的 issue 內容判斷，不補充未提供的資訊。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我把 GitHub issue 依嚴重度分成三級並各寫一句處理建議。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的草案，請你核對：\n\n**brief**\n- 任務：把 GitHub issue 依嚴重度分成三級，並為每一級各寫一句處理建議。\n- 輸入：一段 GitHub issue 內容或一組 issue 條目。\n- 輸出：三個嚴重度等級的分類結果，以及每級一句處理建議。\n- 工具需求：不需要額外工具。\n- 限制：只根據使用者提供的 issue 內容判斷，不補充未提供的資訊。\n\n**acceptance_criteria**\n1. 回覆中明確出現三個嚴重度等級的分類。\n2. 每個嚴重度等級都各有一句處理建議。\n3. 分類結果能對應到使用者提供的 issue 內容。\n4. 輸出是可直接閱讀的文字結果。\n\n**sample_input**\n請將以下 GitHub issue 依嚴重度分成三級並各寫一句處理建議：\n「登入頁面在 Safari 上偶爾無法送出表單，但重新整理後通常可恢復；錯字：設定頁面的按鈕文案拼錯；付款完成後有時沒有顯示成功頁，導致使用者不確定是否付款成功。」\n\n如果這份 brief 可以，請回覆「確認」。如果你想改成別的輸出格式或想指定嚴重度名稱，我也可以再調整。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先做草案驗證：這份技能將把 GitHub issue 依嚴重度分成三級，並為每級各寫一句處理建議；目前需要先確認草案是否符合平台要求後再定稿。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "已保留現有草案；本輪驗證只顯示 license-unknown 警告，沒有阻擋問題。沒有需要修正的評價失敗點，因此不改動內容。"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"165576ab-72f2-4a73-98af-0c55a7151583\",\"status\":\"completed\",\"overall\":\"met\",\"summary\":\"回覆清楚將三項 issue 分為高、中、低三級，且每級均有對應的一句處理建議。內容完整對應原始 issue，並以可直接閱讀的表格呈現。\",\"criterion_results\":[{\"criterion_id\":\"1d4388f3-3127-4ee4-8a75-6ea7ea103273\",\"text\":\"回覆中明確出現三個嚴重度等級的分類。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":50,\"end\":278},\"excerpt\":\"| 高 | 付款完成後有時沒有顯示成功頁，導致使用者不確定是否付款成功 | 請優先修正付款回傳與成功頁流程，並補上明確的狀態提示與重試機制，避免影響交易信任。 |\\n| 中 | 登入頁面在 Safari 上偶爾無法送出表單，但重新整理後通常可恢復 | 建議先重現 Safari 情境並檢查表單提交與瀏覽器相容性，同時加上失敗提示與降級處理。 |\\n| 低 | 設定頁面的按鈕文案拼錯 | 直接修正文案並補上基本校對流程即可，屬於不影響功能但影響品質的問題。 |\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"回覆以表格明確列出高、中、低三個嚴重度等級。\"},{\"criterion_id\":\"3661740e-c24d-49b8-8559-ee741166781a\",\"text\":\"每個嚴重度等級都各有一句處理建議。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":50,\"end\":278},\"excerpt\":\"| 高 | 付款完成後有時沒有顯示成功頁，導致使用者不確定是否付款成功 | 請優先修正付款回傳與成功頁流程，並補上明確的狀態提示與重試機制，避免影響交易信任。 |\\n| 中 | 登入頁面在 Safari 上偶爾無法送出表單，但重新整理後通常可恢復 | 建議先重現 Safari 情境並檢查表單提交與瀏覽器相容性，同時加上失敗提示與降級處理。 |\\n| 低 | 設定頁面的按鈕文案拼錯 | 直接修正文案並補上基本校對流程即可，屬於不影響功能但影響品質的問題。 |\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"高、中、低各等級的表格列中均包含一項完整的處理建議。\"},{\"criterion_id\":\"7888e307-0f39-47a5-98c8-3292f2e5ef21\",\"text\":\"分類結果能對應到使用者提供的 issue 內容。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":50,\"end\":278},\"excerpt\":\"| 高 | 付款完成後有時沒有顯示成功頁，導致使用者不確定是否付款成功 | 請優先修正付款回傳與成功頁流程，並補上明確的狀態提示與重試機制，避免影響交易信任。 |\\n| 中 | 登入頁面在 Safari 上偶爾無法送出表單，但重新整理後通常可恢復 | 建議先重現 Safari 情境並檢查表單提交與瀏覽器相容性，同時加上失敗提示與降級處理。 |\\n| 低 | 設定頁面的按鈕文案拼錯 | 直接修正文案並補上基本校對流程即可，屬於不影響功能但影響品質的問題。 |\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"分類逐一對應付款成功頁未顯示、Safari 登入表單無法送出及設定頁按鈕文案拼錯三項 issue。\"},{\"criterion_id\":\"b1c2b193-18e1-4b7a-aba1-cec302afe72a\",\"text\":\"輸出是可直接閱讀的文字結果。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":13,\"end\":131},\"excerpt\":\"| 嚴重度 | Issue | 處理建議 |\\n|---|---|---|\\n| 高 | 付款完成後有時沒有顯示成功頁，導致使用者不確定是否付款成功 | 請優先修正付款回傳與成功頁流程，並補上明確的狀態提示與重試機制，避免影響交易信任。 |\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"回覆採用中文表格呈現，包含嚴重度、issue 與處理建議欄位，可直接閱讀。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"warning\",\"message\":\"no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict (ADR-025)\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 16580 input and 575 output tokens on gpt-5.4-mini; reported cost $0.0048 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend (ADR-017)\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"d98b8430-db28-4ffa-9752-c65d37be096d\",\"skill_version_id\":\"cd5b4540-a106-4f97-9776-784c12ba6147\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "我保留現有草案；這次評價已完成且四個標準都通過，沒有需要修正的失敗點。"
+    }
+  ],
+  "state": "draft_ready"
+}

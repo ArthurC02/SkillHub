@@ -61,6 +61,14 @@ var docLinkSkippedDirs = map[string]string{
 // merely unnecessary.
 const docLinkFrozenCorpus = "tools/goldenset/corpus"
 
+// A file named `<id>.SKILL.md` or `<id>-<arm>.SKILL.md` under docs/plans/mvp is
+// a Skill body a model wrote, dumped verbatim as measurement evidence
+// (gen-modes-batch/run-*, creation-measure/run-*). Its links are the model's
+// — `[訊息摘要](連結)` is a template line in a generated Skill, not a path in
+// this repository — and the same argument as the goldenset corpus applies:
+// editing the dump would change what the run is judged on.
+const docLinkModelDumpSuffix = ".SKILL.md"
+
 func docLinkProblems(root string) []string {
 	var problems []string
 	_ = filepath.WalkDir(root, func(p string, entry fs.DirEntry, err error) error {
@@ -77,7 +85,7 @@ func docLinkProblems(root string) []string {
 			}
 			return nil
 		}
-		if !strings.HasSuffix(entry.Name(), ".md") {
+		if !strings.HasSuffix(entry.Name(), ".md") || strings.HasSuffix(entry.Name(), docLinkModelDumpSuffix) {
 			return nil
 		}
 		body, readErr := os.ReadFile(p)

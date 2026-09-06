@@ -7218,6 +7218,24 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.RunUnmet.Set {
+			e.FieldStart("run_unmet")
+			s.RunUnmet.Encode(e)
+		}
+	}
+	{
+		if s.Nudges.Set {
+			e.FieldStart("nudges")
+			s.Nudges.Encode(e)
+		}
+	}
+	{
+		if s.BlockedRepeats.Set {
+			e.FieldStart("blocked_repeats")
+			s.BlockedRepeats.Encode(e)
+		}
+	}
+	{
 		if s.Model.Set {
 			e.FieldStart("model")
 			s.Model.Encode(e)
@@ -7249,7 +7267,7 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [24]string{
+var jsonFieldsNameOfCreationSnapshot = [27]string{
 	0:  "messages",
 	1:  "brief",
 	2:  "acceptance_criteria",
@@ -7269,11 +7287,14 @@ var jsonFieldsNameOfCreationSnapshot = [24]string{
 	16: "steps",
 	17: "tool_calls",
 	18: "draft_retries",
-	19: "model",
-	20: "prompt_version",
-	21: "diagram_media_type",
-	22: "diagram_bytes",
-	23: "previous_draft",
+	19: "run_unmet",
+	20: "nudges",
+	21: "blocked_repeats",
+	22: "model",
+	23: "prompt_version",
+	24: "diagram_media_type",
+	25: "diagram_bytes",
+	26: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -7281,7 +7302,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode CreationSnapshot to nil")
 	}
-	var requiredBitSet [3]uint8
+	var requiredBitSet [4]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -7521,6 +7542,36 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"draft_retries\"")
 			}
+		case "run_unmet":
+			if err := func() error {
+				s.RunUnmet.Reset()
+				if err := s.RunUnmet.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"run_unmet\"")
+			}
+		case "nudges":
+			if err := func() error {
+				s.Nudges.Reset()
+				if err := s.Nudges.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"nudges\"")
+			}
+		case "blocked_repeats":
+			if err := func() error {
+				s.BlockedRepeats.Reset()
+				if err := s.BlockedRepeats.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"blocked_repeats\"")
+			}
 		case "model":
 			if err := func() error {
 				s.Model.Reset()
@@ -7580,10 +7631,11 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [3]uint8{
+	for i, mask := range [4]uint8{
 		0b01110111,
 		0b10111001,
 		0b00000011,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

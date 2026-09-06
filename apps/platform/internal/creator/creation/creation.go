@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -325,6 +326,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			return View{}, nil, ErrNotFound
 		}
 		p.Candidate.RunID = c.RunID
+		p.RunUnmet = runUnmet(observation)
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: observation})
 		state = "candidate_ready"
 		queueStep = true
@@ -471,4 +473,52 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 		return record(ctx, tx, ws.ID, row.ID, c, result)
 	})
 	return result, nil, err
+}
+
+// runUnmet reads the one field of an attach_run observation Go acts on: an
+// evaluation that finished and did not come back met. No evaluation, or an
+// unreadable observation, is not "unmet" — that would nudge the model over a
+// draft nobody has judged.
+func runUnmet(observation string) bool {
+	var o struct {
+		Evaluation struct {
+			Available bool   `json:"evaluation_available"`
+			Status    string `json:"status"`
+			Overall   string `json:"overall"`
+		} `json:"evaluation"`
+	}
+	if json.Unmarshal([]byte(observation), &o) != nil || !o.Evaluation.Available {
+		return false
+	}
+	return o.Evaluation.Status == "completed" && o.Evaluation.Overall != "" && o.Evaluation.Overall != "met"
+}
+
+// missingDiagramNodes lists the confirmed diagram's nodes that do not appear
+// in the draft body (whitespace and punctuation ignored, case-folded). A
+// diagram session whose Skill walks half the flow was every diagram row of
+// runs e–g (2026-09-06); the judge said so each time, after the money was
+// spent. Not a validator finding: the draft is refused before it is stored.
+func missingDiagramNodes(understanding, body string) []string {
+	var sections map[string][]string
+	if json.Unmarshal([]byte(understanding), &sections) != nil {
+		return nil
+	}
+	haystack := foldForMatch(body)
+	var missing []string
+	for _, node := range sections["nodes"] {
+		if needle := foldForMatch(node); needle != "" && !strings.Contains(haystack, needle) {
+			missing = append(missing, node)
+		}
+	}
+	return missing
+}
+
+func foldForMatch(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }

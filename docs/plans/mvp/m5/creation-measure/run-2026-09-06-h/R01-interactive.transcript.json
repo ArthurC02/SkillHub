@@ -1,0 +1,41 @@
+{
+  "acceptance_criteria": [
+    "輸入一段會議逐字稿時，輸出是一份待辦清單。",
+    "每一條待辦都包含「負責人」。",
+    "每一條待辦都包含「期限」。",
+    "輸出內容以條列或表格形式呈現，且能清楚對應每條待辦。",
+    "輸出只根據逐字稿內容整理，不額外編造待辦事項。"
+  ],
+  "brief": "建立一個可把客戶提供的會議錄音逐字稿整理成待辦清單的 Agent Skill；每條待辦都要包含負責人與期限，並輸出為結構化清單。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "把客戶寄來的會議錄音逐字稿整理成待辦清單，每一條要有負責人與期限。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成一個可確認的 Brief。請確認是否符合你的需求：\n\n**brief**\n建立一個可把客戶提供的會議錄音逐字稿整理成待辦清單的 Agent Skill；每條待辦都要包含負責人與期限，並輸出為結構化清單。\n\n**acceptance_criteria**\n1. 輸入一段會議逐字稿時，輸出是一份待辦清單。\n2. 每一條待辦都包含「負責人」。\n3. 每一條待辦都包含「期限」。\n4. 輸出內容以條列或表格形式呈現，且能清楚對應每條待辦。\n5. 輸出只根據逐字稿內容整理，不額外編造待辦事項。\n\n**sample_input**\n請把下面這段會議逐字稿整理成待辦清單，且每條都要寫負責人與期限：\n\n會議逐字稿：\n「這週請 Mary 整理新版提案，週五前給我；John 負責聯絡客戶確認需求，下週二前完成；我會再補上預算數字。」\n\n請確認這個 Brief 是否要用來繼續下一步。"
+    },
+    {
+      "role": "assistant",
+      "content": "我已完成摘要草稿，下一步請先驗證這份 Skill 草稿是否符合已確認需求。"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。"
+    },
+    {
+      "role": "assistant",
+      "content": "已通過靜態驗證，未出現會阻擋的問題；我保留原草稿不變。變更說明：僅注意到授權未宣告的警告，但這不影響目前技能內容與驗證通過狀態。"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"3e0e4c17-8b2e-4038-8a07-66971202eda2\",\"status\":\"completed\",\"overall\":\"met\",\"summary\":\"回覆以清楚的編號待辦清單整理逐字稿內容。每一條均提供負責人與期限欄位，且第三項如實註明原始逐字稿沒有期限。\",\"criterion_results\":[{\"criterion_id\":\"c5dfbb4e-1254-4701-b54e-bfc9549753ef\",\"text\":\"輸入一段會議逐字稿時，輸出是一份待辦清單。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":25},\"excerpt\":\"整理成待辦清單如下：\\n\\n1. **整理新版提案**\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出明確整理為編號待辦清單。\"},{\"criterion_id\":\"f91ab74d-7374-4434-ba53-cd388c0d581f\",\"text\":\"每一條待辦都包含「負責人」。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":31,\"end\":41},\"excerpt\":\"- 負責人：Mary\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":80,\"end\":90},\"excerpt\":\"- 負責人：John\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":128,\"end\":142},\"excerpt\":\"- 負責人：我（會議發言人）\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"三條待辦皆標示負責人。\"},{\"criterion_id\":\"a6eeec43-69af-43fa-a42f-4676cbc1a4cd\",\"text\":\"每一條待辦都包含「期限」。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":47,\"end\":55},\"excerpt\":\"- 期限：週五前\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":96,\"end\":105},\"excerpt\":\"- 期限：下週二前\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":148,\"end\":169},\"excerpt\":\"- 期限：原逐字稿未提及，建議補上明確期限\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"三條待辦皆包含期限欄位；第三條如實標示逐字稿未提及期限。\"},{\"criterion_id\":\"929ad129-4e90-49be-80b9-0edfe7c843d7\",\"text\":\"輸出內容以條列或表格形式呈現，且能清楚對應每條待辦。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":12,\"end\":55},\"excerpt\":\"1. **整理新版提案**  \\n   - 負責人：Mary  \\n   - 期限：週五前\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":59,\"end\":105},\"excerpt\":\"2. **聯絡客戶確認需求**  \\n   - 負責人：John  \\n   - 期限：下週二前\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"內容以編號條列呈現，每條待辦下方對應列出負責人與期限。\"},{\"criterion_id\":\"3a114d01-78fe-46fa-94c5-297546193ddc\",\"text\":\"輸出只根據逐字稿內容整理，不額外編造待辦事項。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":12,\"end\":25},\"excerpt\":\"1. **整理新版提案**\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":59,\"end\":74},\"excerpt\":\"2. **聯絡客戶確認需求**\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":109,\"end\":122},\"excerpt\":\"3. **補上預算數字**\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"待辦事項均對應逐字稿中的提案整理、客戶需求確認與補上預算數字；未新增其他待辦。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"warning\",\"message\":\"no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict (ADR-025)\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 16573 input and 474 output tokens on gpt-5.4-mini; reported cost $0.0150 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend (ADR-017)\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"abe05212-331f-4492-b149-850dfbfe56f9\",\"skill_version_id\":\"ba21134e-e899-41fc-9821-3a1ad58094c8\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "根據評估結果，所有準則都已通過；我保留草稿不變。變更說明：未修改內容，因為回覆已正確輸出待辦清單、每條含負責人與期限，且未額外編造事項。"
+    }
+  ],
+  "state": "draft_ready"
+}
