@@ -498,20 +498,24 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 	semantic := 0
 	s := &Service{
 		SearchReferences: func(context.Context, identity.Workspace, string) ([]Reference, error) {
-			t.Fatal("lexical search must not run")
+			t.Fatal("lexical search must not run while the semantic one is wired")
 			return nil, nil
 		},
-		SearchKnowledge: func(_ context.Context, _ identity.Workspace, q string) ([]Reference, error) {
+		SearchKnowledge: func(_ context.Context, _ identity.Workspace, q string) ([]Reference, float64, error) {
 			semantic++
-			return []Reference{{SkillID: "s1", VersionID: "v1", Name: "found", Available: true}}, nil
+			return []Reference{{SkillID: "s1", VersionID: "v1", Name: "found", Available: true}}, 0.00002, nil
 		},
 	}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "找相近的", ToolIntent: &llmclient.CreationToolIntent{Kind: "search_knowledge", Query: "把會議逐字稿整理成待辦"}}
+	// search_catalog goes semantic too: the model never picks the weaker leg.
+	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "找相近的", ToolIntent: &llmclient.CreationToolIntent{Kind: "search_catalog", Query: "把會議逐字稿整理成待辦"}}
 	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || state != "waiting_confirmation" || e.Snapshot.PendingAction != "confirm_references" || semantic != 1 || len(e.Snapshot.References) != 1 {
 		t.Fatalf("state=%q pending=%q semantic=%d refs=%d err=%v", state, e.Snapshot.PendingAction, semantic, len(e.Snapshot.References), err)
+	}
+	if e.Snapshot.SpentUSD == nil || *e.Snapshot.SpentUSD != 0.00002 {
+		t.Fatalf("the embedding is the session's spend: %v", e.Snapshot.SpentUSD)
 	}
 	if got := allowedTools(0, 8, false, true); len(got) != 3 || got[2] != "search_knowledge" {
 		t.Fatalf("search_knowledge is offered only when wired: %v", got)

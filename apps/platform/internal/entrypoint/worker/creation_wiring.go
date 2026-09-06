@@ -14,10 +14,10 @@ import (
 )
 
 func wireCreationReads(s *creation.Service, versions *ingest.Service, search *catalog.Service) {
-	s.SearchKnowledge = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, error) {
-		ids, _, err := search.CreationKnowledgeIDs(ctx, query)
+	s.SearchKnowledge = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, float64, error) {
+		ids, cost, _, err := search.CreationKnowledgeIDs(ctx, query)
 		if err != nil {
-			return nil, err
+			return nil, cost, err
 		}
 		refs := []creation.Reference{}
 		for _, id := range ids {
@@ -29,7 +29,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 				break
 			}
 		}
-		return refs, nil
+		return refs, cost, nil
 	}
 	s.ValidateDraft = versions.ValidateCreationDraft
 	s.ResolveReference = func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, llmclient.GenerateReference, error) {

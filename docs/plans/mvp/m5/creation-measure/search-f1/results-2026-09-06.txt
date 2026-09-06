@@ -1,0 +1,34 @@
+docs=31 queries=60 k=3 max_distance=0.75
+lexical (search_catalog today): tasks=48 top1=1/48 P@3=0.021 R@3=0.021 F1@3=0.021 microF1=0.028 distractors_rejected=12/12
+vector only: tasks=48 top1=44/48 P@3=0.465 R@3=0.969 F1@3=0.608 microF1=0.623 distractors_rejected=12/12
+hybrid (product SQL): tasks=48 top1=44/48 P@3=0.465 R@3=0.969 F1@3=0.608 microF1=0.623 distractors_rejected=12/12
+  zh (30 task queries) lexical: F1@3=0.000
+  zh (30 task queries) vector: F1@3=0.579
+  zh (30 task queries) hybrid: F1@3=0.579
+  en (18 task queries) lexical: F1@3=0.056
+  en (18 task queries) vector: F1@3=0.657
+  en (18 task queries) hybrid: F1@3=0.657
+
+sweep (vector leg, task queries): k x max_distance -> F1@k / P / R / distractors rejected
+  k=1 cut=0.45: F1=0.410 P=0.479 R=0.378 rejected=12/12
+  k=1 cut=0.50: F1=0.663 P=0.792 R=0.604 rejected=12/12
+  k=1 cut=0.55: F1=0.774 P=0.917 R=0.708 rejected=12/12
+  k=1 cut=0.60: F1=0.774 P=0.917 R=0.708 rejected=12/12
+  k=1 cut=0.65: F1=0.774 P=0.917 R=0.708 rejected=12/12
+  k=1 cut=0.70: F1=0.774 P=0.917 R=0.708 rejected=12/12
+  k=1 cut=0.75: F1=0.774 P=0.917 R=0.708 rejected=12/12
+  k=2 cut=0.45: F1=0.395 P=0.417 R=0.417 rejected=12/12
+  k=2 cut=0.50: F1=0.651 P=0.667 R=0.701 rejected=12/12
+  k=2 cut=0.55: F1=0.750 P=0.740 R=0.837 rejected=12/12
+  k=2 cut=0.60: F1=0.719 P=0.656 R=0.868 rejected=12/12
+  k=2 cut=0.65: F1=0.726 P=0.656 R=0.878 rejected=12/12
+  k=2 cut=0.70: F1=0.705 P=0.625 R=0.878 rejected=12/12
+  k=2 cut=0.75: F1=0.719 P=0.635 R=0.899 rejected=12/12
+  k=3 cut=0.45: F1=0.392 P=0.413 R=0.417 rejected=12/12
+  k=3 cut=0.50: F1=0.631 P=0.635 R=0.722 rejected=12/12
+  k=3 cut=0.55: F1=0.697 P=0.653 R=0.875 rejected=12/12
+  k=3 cut=0.60: F1=0.636 P=0.528 R=0.917 rejected=12/12
+  k=3 cut=0.65: F1=0.623 P=0.497 R=0.938 rejected=12/12
+  k=3 cut=0.70: F1=0.598 P=0.458 R=0.948 rejected=12/12
+  k=3 cut=0.75: F1=0.608 P=0.465 R=0.969 rejected=12/12
+best: F1=0.774 at k=1 cut=0.55 (P=0.917 R=0.708 rejected=12/12)

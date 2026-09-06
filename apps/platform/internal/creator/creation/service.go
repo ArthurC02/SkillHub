@@ -222,7 +222,7 @@ type Service struct {
 	Fetch func(context.Context, string) (Fetch, string)
 	// SearchKnowledge is the semantic catalog search (embedding + hybrid rank);
 	// nil hides the search_knowledge tool from the model.
-	SearchKnowledge func(context.Context, identity.Workspace, string) ([]Reference, error)
+	SearchKnowledge func(context.Context, identity.Workspace, string) ([]Reference, float64, error)
 	ValidateDraft   func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
 	Materialize     func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
 	ReadRun         func(context.Context, identity.Workspace, string, Candidate) (string, error)

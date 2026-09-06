@@ -587,18 +587,30 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		p.ToolCalls++
 		switch r.ToolIntent.Kind {
 		case "search_catalog", "search_knowledge":
-			search := s.SearchReferences
-			if r.ToolIntent.Kind == "search_knowledge" {
-				search = s.SearchKnowledge
-			}
-			if search == nil {
+			// Semantic first wherever it is wired, for both kinds: on the golden
+			// set the lexical leg scores F1@3 0.02 against 0.75 for the vector
+			// leg at CreationMaxDistance (discovery/creation.go). The model does
+			// not get to choose the weaker one; lexical is the fallback.
+			if s.SearchKnowledge == nil && s.SearchReferences == nil {
 				return "", false, ErrUnavailable
 			}
 			if strings.TrimSpace(r.ToolIntent.Query) == "" {
 				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄搜尋需要關鍵字；這次沒有搜尋。"})
 				return "queued", true, nil
 			}
-			refs, err := search(ctx, ws, r.ToolIntent.Query)
+			var refs []Reference
+			var err error
+			if s.SearchKnowledge != nil {
+				var cost float64
+				refs, cost, err = s.SearchKnowledge(ctx, ws, r.ToolIntent.Query)
+				if err == nil && cost > 0 && p.SpentUSD != nil {
+					// The embedding is the session's spend, not the platform's.
+					spent := *p.SpentUSD + cost
+					p.SpentUSD = &spent
+				}
+			} else {
+				refs, err = s.SearchReferences(ctx, ws, r.ToolIntent.Query)
+			}
 			if err != nil {
 				return "", false, err
 			}

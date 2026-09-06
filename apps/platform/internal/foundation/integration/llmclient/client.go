@@ -125,6 +125,9 @@ type EmbedResponse struct {
 	Embeddings [][]float32 `json:"embeddings"`
 	Model      string      `json:"model"`
 	Dimensions int         `json:"dimensions"`
+	// Usage is what the gateway charged for the call, when apps/llm reports
+	// it; a creation session's search pays for its own embedding.
+	Usage *GatewayUsage `json:"usage,omitempty"`
 }
 
 // Embed calls the LLM service to generate embeddings for the given texts, on the
