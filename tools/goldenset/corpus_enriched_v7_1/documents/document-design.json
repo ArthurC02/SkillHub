@@ -1,0 +1,79 @@
+{
+  "checks": [],
+  "limitations": [
+    "所有文件均以 8.5 × 11 英吋 Letter 紙張尺寸為目標。",
+    "品牌設定檔必須位於專案根目錄的 `.claude/pdf-playground.local.md`；若不存在，會使用預設品牌值或詢問使用者的品牌色彩。",
+    "文件建立流程會從 `${CLAUDE_PLUGIN_ROOT}/templates/` 載入 HTML 範本。",
+    "字型載入使用 Google Fonts，預設標題字型為 Playfair Display，內文字型為 Source Sans 3。",
+    "PDF 匯出需要在 Chrome 開啟 HTML，選擇「Save as PDF」、將邊界設為「None」，並啟用背景圖形。",
+    "若要提供瀏覽器預覽，需使用 Playwright 瀏覽器工具。",
+    "交付前必須在渲染後截圖，並以目視檢查頁面底部。",
+    "內容溢出時必須減少內容，不可縮小頁尾間距。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 依照使用者提供的內容與需求，建立適合列印的 8.5 × 11 英吋 Letter 尺寸 HTML 文件，例如提案、報告、一頁式文件、電子報、投影片、活動資料與傳單。它可從專案根目錄的 `.claude/pdf-playground.local.md` 讀取品牌名稱、色彩、字型與標題大小寫設定；若沒有該檔案，則使用預設值或詢問品牌色彩。完成的 HTML 會儲存在目前工作目錄，也可透過 Playwright 預覽，並依指定的 Chrome 列印設定匯出成 PDF。",
+  "tags": {
+    "dependencies": [
+      "google fonts",
+      "playfair display",
+      "source sans 3",
+      "plugin html templates"
+    ],
+    "inputs": [
+      "markdown brand configuration",
+      "yaml brand settings",
+      "document content requirements"
+    ],
+    "outputs": [
+      "html print document",
+      "pdf print document"
+    ],
+    "tools": [
+      "chrome",
+      "playwright browser tools"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a print-ready proposal web file (HTML) from my content, using our brand colors and fonts.",
+      "zh_hant": "請根據我提供的內容，建立一份套用品牌色彩與字型、適合列印的提案網頁檔（HTML）。"
+    },
+    {
+      "en": "Design a report in HTML using the brand settings in `.claude/pdf-playground.local.md`.",
+      "zh_hant": "請使用 `.claude/pdf-playground.local.md` 裡的品牌設定設計一份報告 HTML。"
+    },
+    {
+      "en": "Make a one-page company overview, using the default styling if no brand configuration is available.",
+      "zh_hant": "幫我做一張一頁式公司介紹，沒有品牌設定時就使用預設樣式。"
+    },
+    {
+      "en": "I need a branded newsletter created from the content I provide.",
+      "zh_hant": "我需要一份依照所提供內容製作的品牌電子報。"
+    },
+    {
+      "en": "I have the event date, location, and description, and I need to deliver event materials that can be printed as a PDF document.",
+      "zh_hant": "我手上有活動日期、地點和說明，必須交付一份可列印成 PDF 文件的活動資料。"
+    },
+    {
+      "en": "Lay out my presentation content as a slide deck using the configured brand heading style.",
+      "zh_hant": "把我提供的簡報內容排成一套投影片，並使用指定的品牌標題樣式。"
+    },
+    {
+      "en": "Create a flyer in HTML that I can save as a PDF in Chrome with no margins and background graphics enabled.",
+      "zh_hant": "請建立一份可在 Chrome 中以無邊界和背景圖形設定儲存為 PDF 的傳單 HTML。"
+    },
+    {
+      "en": "After creating the document, offer a preview using the Playwright browser tools.",
+      "zh_hant": "文件建立完成後，請使用 Playwright 瀏覽器工具提供預覽。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2419,
+    "cost_source": "gateway",
+    "cost_usd": 0.057825400000000006,
+    "prompt_tokens": 3174
+  }
+}

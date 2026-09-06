@@ -1,0 +1,76 @@
+{
+  "checks": [],
+  "limitations": [
+    "色彩透過 python-pptx 的 RGBColor 類別套用。",
+    "Poppins 僅套用於 24pt 以上的標題，Lora 用於內文。",
+    "不需要安裝字體；若 Poppins 或 Lora 無法使用，標題會自動改用 Arial，內文會自動改用 Georgia。",
+    "若要取得文件所述的最佳結果，環境應預先安裝 Poppins 與 Lora。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 將 Anthropic 的官方品牌色彩與字體套用到需要品牌外觀、視覺格式或公司設計標準的成品。它會依背景選擇文字色彩，為 24pt 以上的標題與內文設定指定字體，並將橙、藍、綠三種強調色輪流用於非文字圖形。輸入需要是待調整樣式的成品；字體未安裝時，標題會改用 Arial，內文會改用 Georgia。",
+  "tags": {
+    "dependencies": [
+      "system fonts",
+      "poppins",
+      "lora",
+      "arial",
+      "georgia"
+    ],
+    "inputs": [
+      "visual artifacts",
+      "headings",
+      "body text",
+      "non-text shapes"
+    ],
+    "outputs": [
+      "anthropic-styled artifacts"
+    ],
+    "tools": [
+      "python-pptx",
+      "rgbcolor"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Apply Anthropic’s official brand colors and typography to this visual artifact.",
+      "zh_hant": "請把這份視覺成品（artifact）套用 Anthropic 的官方品牌色彩與字體。"
+    },
+    {
+      "en": "Set headings of 24pt or larger in Poppins and body text in Lora.",
+      "zh_hant": "請將 24pt 以上的標題設為 Poppins，並將內文設為 Lora。"
+    },
+    {
+      "en": "Choose dark or light brand text colors based on the background.",
+      "zh_hant": "請依照背景替文字選擇深色或淺色品牌色彩。"
+    },
+    {
+      "en": "Cycle the orange, blue, and green accent colors across non-text shapes.",
+      "zh_hant": "請讓非文字圖形輪流使用橙色、藍色與綠色強調色。"
+    },
+    {
+      "en": "I already have a visual artifact and now need it to follow Anthropic’s company design standards.",
+      "zh_hant": "我手上已有一份視覺成品，現在必須讓它符合 Anthropic 的公司設計標準。"
+    },
+    {
+      "en": "Preserve the existing text hierarchy and formatting while applying the brand fonts and colors.",
+      "zh_hant": "請保留原有的文字層級與格式，同時套用品牌字體和色彩。"
+    },
+    {
+      "en": "In my Python project using python-pptx, apply Anthropic’s RGB brand color values through RGBColor.",
+      "zh_hant": "請在使用 python-pptx 的 Python 專案中，透過 RGBColor 套用 Anthropic 的 RGB 品牌色彩值。"
+    },
+    {
+      "en": "My environment does not have Poppins or Lora; use Arial for headings and Georgia for body text instead.",
+      "zh_hant": "我的環境沒有 Poppins 和 Lora；請讓標題改用 Arial、內文改用 Georgia。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1736,
+    "cost_source": "gateway",
+    "cost_usd": 0.0380454,
+    "prompt_tokens": 1950
+  }
+}

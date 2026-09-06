@@ -1,0 +1,80 @@
+{
+  "checks": [],
+  "limitations": [
+    "不會輸出 .pptx 附件；若使用者明確需要 .pptx，需改用 pptx 工具。",
+    "不適用於長篇文件；文件指定改用 report-publisher。",
+    "不適用於潤飾現有簡報；文件指定改用 report-designer。",
+    "發布即時網址需使用 ReportRoom。",
+    "將表格轉成圖表僅限設計系統有提供相應圖表的情況。",
+    "若不清楚簡報是現場講解或供收件者自行瀏覽，需先確認使用情境。",
+    "製作、檢查與核准需遵循根目錄 SKILL.md 所述的共用流程。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 將來源內容轉成適合現場簡報或自行瀏覽的響應式網頁投影片，並透過 ReportRoom 發布至即時網址。它會先建立並展示逐頁大綱，再依一頁一個重點的原則製作投影片；較大的表格可在設計系統支援時改為圖表，無法刪減的內容則移至附錄。若簡報使用情境不明，需先確認是由使用者現場講解，還是要讓收件者自行閱讀。",
+  "tags": {
+    "dependencies": [
+      "reportroom",
+      "root skill.md shared flow"
+    ],
+    "inputs": [
+      "source content",
+      "table data",
+      "numerical data"
+    ],
+    "outputs": [
+      "web-native slide deck",
+      "live url",
+      "slide outline",
+      "charts",
+      "appendix slides",
+      "view analytics"
+    ],
+    "tools": [
+      "reportroom",
+      "design system"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Turn this content into a slide presentation that opens in a browser and publish it at a live URL.",
+      "zh_hant": "把這些內容做成可在瀏覽器開啟的投影片簡報，並發布到即時網址。"
+    },
+    {
+      "en": "Create a ReportRoom web deck that can be navigated by keyboard or scrolling.",
+      "zh_hant": "請用 ReportRoom 製作一套可用鍵盤或捲動操作的網頁簡報。"
+    },
+    {
+      "en": "Organize this proposal into a presentation I can deliver live in a meeting.",
+      "zh_hant": "把這份提案整理成我能在會議上現場講解的簡報。"
+    },
+    {
+      "en": "I need to send the content to attendees in advance, so make it a deck they can click through without a presenter and attach view analytics.",
+      "zh_hant": "我要把內容預先寄給與會者，請做成不需要講者說明也能自行瀏覽的簡報，並附上檢視分析。"
+    },
+    {
+      "en": "I have a fundraising proposal and must deliver a pitch next week, with the ask or conclusion stated on the first slide.",
+      "zh_hant": "我手上有一份募資提案，下週要進行 pitch，得交付一套第一張就說明訴求或結論的投影片。"
+    },
+    {
+      "en": "Turn this table data into charts where the design system supports them, and keep the exact figures on the same slide or in the appendix.",
+      "zh_hant": "把這些表格資料在設計系統支援時改成圖表，並讓精確數字留在同一張投影片或附錄。"
+    },
+    {
+      "en": "Make a set of slides with one point per slide, full-sentence headlines that carry the argument, and any content that cannot be cut placed in an appendix.",
+      "zh_hant": "請做成一頁一個重點、以完整句標題串起論點，並將無法刪減的內容放入附錄的投影片組。"
+    },
+    {
+      "en": "First turn the source content into a slide-by-slide outline for review, then author and publish it as a web deck.",
+      "zh_hant": "先把來源內容轉成逐頁投影片大綱給我確認，再製作並發布成網頁簡報。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2269,
+    "cost_source": "gateway",
+    "cost_usd": 0.048590400000000006,
+    "prompt_tokens": 1927
+  }
+}

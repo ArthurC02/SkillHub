@@ -1,0 +1,106 @@
+{
+  "checks": [],
+  "limitations": [
+    "文件中的自動化引文工作流程以 Python 程式碼呈現，因此需要 Python 執行環境。",
+    "投稿前必須查閱目標期刊目前的投稿、預印本及 AI／LLM 政策；相關政策可能頻繁更新。",
+    "涉及資助者規定時，必須核對資助者最新政策；開放取用途徑與 APC 上限可能變動。",
+    "每一筆引文、DOI、作者名單、頁碼與引文內容都必須對照原始來源人工驗證。",
+    "LLM 不得列為共同作者，也不得用來捏造引文、資料、結果或圖像。",
+    "超出拼字或文法協助的實質 LLM 使用通常需要揭露，且揭露文字應配合目標期刊的指定措辭。",
+    "預印本是自願選擇，不能單獨滿足 OSTP Nelson Memo 對同儕審查版本立即公開取用的要求。",
+    "編列間接成本前，必須向所屬機構的研究贊助計畫辦公室確認目前適用的 F&A 費率。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此技能協助規劃研究問題、文獻檢索與研究設計，並支援學術論文、文獻回顧、研究計畫及投稿文件的撰寫與修訂。使用者可提供研究主題、研究問題、稿件內容、審稿意見、資助申請資料或目標期刊與資助者政策。它也涵蓋引文管理、同儕審查回覆、開放取用與預印本選擇、持久識別碼、研究倫理、預註冊、CRediT 貢獻角色，以及學術出版中的 LLM 使用揭露。",
+  "tags": {
+    "dependencies": [
+      "python"
+    ],
+    "inputs": [
+      "research question",
+      "research topic",
+      "manuscript draft",
+      "literature search criteria",
+      "reviewer comments",
+      "grant proposal details",
+      "budget details",
+      "journal policy",
+      "funder policy",
+      "citation metadata"
+    ],
+    "outputs": [
+      "research question",
+      "literature search strategy",
+      "academic paper",
+      "literature review",
+      "grant proposal",
+      "budget justification",
+      "response letter",
+      "cover letter",
+      "llm disclosure statement",
+      "bibtex — citation record"
+    ],
+    "tools": [
+      "zotero",
+      "web of science",
+      "scopus",
+      "google scholar",
+      "pubmed",
+      "jstor",
+      "proquest",
+      "ssrn",
+      "orcid",
+      "doi",
+      "ror",
+      "osf",
+      "aspredicted",
+      "arxiv",
+      "zenodo",
+      "github",
+      "overleaf"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Help me narrow “How does social media affect politics?” into a researchable question using the FINER criteria.",
+      "zh_hant": "請依 FINER 準則幫我把「社群媒體如何影響政治」縮小成可研究的問題。"
+    },
+    {
+      "en": "I need a systematic literature search strategy with key concepts, synonyms, Boolean operators, and inclusion and exclusion criteria.",
+      "zh_hant": "我需要一套系統性文獻檢索策略，包含關鍵概念、同義詞、布林運算式及納入與排除條件。"
+    },
+    {
+      "en": "Organize my scientific paper draft into an IMRaD structure with an abstract, introduction, methods, results, and discussion.",
+      "zh_hant": "請把我的科學論文草稿依 IMRaD 架構安排成摘要、引言、方法、結果與討論等章節。"
+    },
+    {
+      "en": "I received point-by-point comments from two reviewers and now need to deliver a revised manuscript and a response letter addressing each comment.",
+      "zh_hant": "我收到兩位審稿人的逐點意見，現在必須交回修訂稿和一封逐項回覆的 response letter。"
+    },
+    {
+      "en": "Draft an NSF/NIH-style grant proposal and budget justification from my aims, central hypothesis, methods, and budget information.",
+      "zh_hant": "請根據我的研究目標、核心假設、方法和預算資料，起草 NSF／NIH 式研究計畫與預算說明。"
+    },
+    {
+      "en": "Compare Gold, Green, Diamond, Hybrid, and Bronze open-access routes and check submission options against Plan S and the 2026 OSTP Nelson Memo.",
+      "zh_hant": "幫我比較 Gold、Green、Diamond、Hybrid 與 Bronze 開放取用途徑，並依 Plan S 和 2026 年 OSTP Nelson Memo 檢查投稿選項。"
+    },
+    {
+      "en": "Prepare a journal cover letter with sections for the summary, significance, journal fit, declarations, and suggested reviewers.",
+      "zh_hant": "請為我的投稿準備一份有摘要、重要性、期刊契合度、聲明及建議審稿人等段落的投稿附函。"
+    },
+    {
+      "en": "Set up APA 7, MLA 9, Chicago, Harvard, IEEE, and Vancouver citation styles in a Python script and create a BibTeX journal-article entry template.",
+      "zh_hant": "請在 Python 腳本中設定 APA 7、MLA 9、Chicago、Harvard、IEEE 與 Vancouver 引用格式，並建立 BibTeX 期刊文章項目範本。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1659,
+    "cost_source": "gateway",
+    "cost_usd": 0.0660604,
+    "prompt_tokens": 7861
+  }
+}

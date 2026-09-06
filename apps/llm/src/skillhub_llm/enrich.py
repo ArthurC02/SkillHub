@@ -43,6 +43,10 @@ ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
 # stats Skill, "our signups dropped" for an analytics Skill). 6-8 examples with
 # a required spread: format-naming ones (with the everyday synonyms), format-free
 # ones, one situational, one per distinct operation; tags name concrete formats.
+# v7.1 (two more required sentences: the runtime named as its users would, the
+# output's shape asked for without the Skill's name) measured WORSE - all F1
+# 0.955 -> 0.937 - and was reverted; the extra sentences pull near-synonym
+# documents onto each other's queries (report §15.6).
 # v6 forbids composing two separately stated facts into one, after `docx` failed
 # CONTENT-005 twice under v5 for joining "extracts .dotx template content" and
 # "converts .docx to markdown with pandoc" into a single .dotx-to-markdown

@@ -1,0 +1,83 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要 .NET 執行環境及 DocumentFormat.OpenXml 3.2.0。",
+    "首次使用需執行 Bash 的 setup.sh，或在 Windows 執行 PowerShell 的 setup.ps1；使用 --minimal 時會略過選用相依套件。",
+    "每個工作階段的第一次操作需執行 env_check.sh；若結果為 NOT READY，不可繼續。",
+    "處理 DOC 輸入前需先將其轉換為 DOCX。",
+    "撰寫 C# 前必須先閱讀相關的 Samples/*.cs 範例檔。",
+    "自訂樣式、複雜表格、多節版面、頁首頁尾、目錄及圖片等結構性操作需直接使用 C#。",
+    "套用範本後必須執行完整驗證流程及 XSD gate-check，通過前不可交付。",
+    "建立或編輯文件後建議執行驗證流程；只有操作非常簡單時才可略過。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 可從頭建立 DOCX 文件，也可替換文字、填入預留位置或表格資料，以及新增、移除或重整既有文件的內容。它能把來源 DOCX 套用另一份 DOCX 範本的樣式與結構，並處理目錄、圖片、複雜表格、多節版面及頁首頁尾。使用者需提供要寫入的內容，或提供既有 DOCX；套用範本時還需提供範本 DOCX。它也提供 DOC 轉 DOCX、文件預覽、結構分析、差異比較，以及 XSD 和業務規則驗證流程。",
+  "tags": {
+    "dependencies": [
+      ".net runtime",
+      "documentformat.openxml 3.2.0"
+    ],
+    "inputs": [
+      "docx source document",
+      "docx template document",
+      "doc word document",
+      "json content data",
+      "json placeholder data",
+      "json table data",
+      "xsd validation schema"
+    ],
+    "outputs": [
+      "docx word document"
+    ],
+    "tools": [
+      "openxml sdk",
+      ".net cli",
+      "c#",
+      "bash",
+      "powershell"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a Word report from this content with a title, author, and page numbers, and output it as a DOCX file.",
+      "zh_hant": "請根據這份內容建立一份包含標題、作者與頁碼的 Word 報告，輸出為 DOCX。"
+    },
+    {
+      "en": "Replace every occurrence of “Old Company Name” with “New Company Name” in this existing DOCX.",
+      "zh_hant": "請把現有 DOCX 裡的「舊公司名稱」全部替換成「新公司名稱」。"
+    },
+    {
+      "en": "Fill the name, date, and address placeholders in the form with the data I provide.",
+      "zh_hant": "請把表單中的姓名、日期和地址預留位置填入我提供的資料。"
+    },
+    {
+      "en": "Fill the table in the document with this data.",
+      "zh_hant": "請將這批資料填進文件中的表格。"
+    },
+    {
+      "en": "I have a source Word document and a company template, and I need to deliver a version using that template’s layout, headers, footers, and styles.",
+      "zh_hant": "我手上有一份來源 Word 文件和一份公司範本，必須交付套用該範本版式、頁首頁尾與樣式的版本。"
+    },
+    {
+      "en": "Create a document with a cover page, table of contents, multiple sections, images, complex tables, headers, and footers.",
+      "zh_hant": "請做成一份包含封面、目錄、多個章節、圖片、複雜表格及頁首頁尾的文件。"
+    },
+    {
+      "en": "Use C# and the OpenXML SDK in a .NET project to create a Word document with custom styles and a multi-section layout.",
+      "zh_hant": "請在 .NET 專案中用 C# 和 OpenXML SDK 建立含自訂樣式與多節版面的 Word 文件。"
+    },
+    {
+      "en": "Convert this legacy Word DOC file to DOCX for subsequent document processing.",
+      "zh_hant": "請先把這個舊版 Word DOC 檔轉成 DOCX，供後續文件處理使用。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2473,
+    "cost_source": "gateway",
+    "cost_usd": 0.0698504,
+    "prompt_tokens": 5363
+  }
+}

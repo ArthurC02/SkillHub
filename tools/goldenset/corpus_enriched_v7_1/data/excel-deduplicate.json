@@ -1,0 +1,79 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要提供 XLSX 檔案及用於去重的關鍵欄位名稱。",
+    "保留模式可選；未指定時預設保留第一次出現的資料列，也可設為保留最後一次出現的資料列。",
+    "刪除階段在確認後執行，且操作前需要建立備份。",
+    "執行腳本需要 Python、pandas、lxml 與 openpyxl；文件另指出可用 `pip install lxml` 安裝 lxml。",
+    "關鍵欄位有多個空值時只保留第一個。",
+    "公式健康檢查僅檢查前 49 列與前 9 欄中的 `#REF!`。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此技能依指定關鍵欄位為 Excel 活頁簿去除重複資料，預設保留第一次出現的資料列並刪除後續重複列，也可改為保留最後一次出現的資料列。它需要一個 XLSX 檔案與關鍵欄位名稱，先唯讀掃描重複列號，確認後備份檔案並直接修改 XML 來刪除資料列。完成後會再次檢查殘留重複值，並在指定範圍內檢查公式是否含有 `#REF!`；文件聲稱只移除資料列，保留其餘格式與保留列內容。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "lxml",
+      "openpyxl"
+    ],
+    "inputs": [
+      "xlsx excel workbook"
+    ],
+    "outputs": [
+      "xlsx deduplicated excel workbook",
+      "xlsx backup workbook"
+    ],
+    "tools": [
+      "excel-find-duplicates",
+      "excel-delete",
+      "pandas",
+      "lxml",
+      "openpyxl",
+      "xml row deletion"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Deduplicate this XLSX Excel workbook by the Customer ID column and keep the first occurrence.",
+      "zh_hant": "請依「客戶編號」欄替這個 XLSX Excel 活頁簿去重，保留第一次出現的資料列。"
+    },
+    {
+      "en": "Remove duplicates from the Email column in this Excel spreadsheet, keeping the last occurrence of each value.",
+      "zh_hant": "移除這份 Excel 試算表中電子郵件欄的重複資料，但保留每個值最後出現的那一列。"
+    },
+    {
+      "en": "Delete later records with duplicate order numbers, leaving only the earliest occurrence.",
+      "zh_hant": "刪除訂單編號重複的後續紀錄，只留下最早出現的一筆。"
+    },
+    {
+      "en": "Keep only the last record for each employee code and remove the earlier duplicate rows.",
+      "zh_hant": "每個員工代碼只保留最後一筆資料，移除先前重複的資料列。"
+    },
+    {
+      "en": "I have a customer list where customer IDs appear multiple times; before delivery, I need the later duplicate rows removed without changing the retained rows.",
+      "zh_hant": "我手上有一份客戶清單，客戶編號出現多次；交付前必須刪除後續重複列，同時不變更保留下來的列。"
+    },
+    {
+      "en": "Use a Python script to scan for duplicates with pandas, then delete the duplicate rows by modifying the worksheet XML directly with lxml.",
+      "zh_hant": "請用 Python 腳本透過 pandas 掃描重複值，再以 lxml 直接修改工作表 XML 來刪除重複列。"
+    },
+    {
+      "en": "Produce an Excel workbook deduplicated by Member ID, retaining the complete first row for each ID.",
+      "zh_hant": "產生一份已按「會員編號」去重的 Excel 活頁簿，並保留每個編號第一次出現的完整資料列。"
+    },
+    {
+      "en": "Deduplicate by product code, then verify that no duplicates remain and check formulas for `#REF!` errors.",
+      "zh_hant": "請按產品代碼去重，完成後驗證沒有殘留重複值，並檢查公式中是否出現 `#REF!`。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1509,
+    "cost_source": "gateway",
+    "cost_usd": 0.0409554,
+    "prompt_tokens": 3440
+  }
+}

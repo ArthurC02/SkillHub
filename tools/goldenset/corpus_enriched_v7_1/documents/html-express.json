@@ -1,0 +1,83 @@
+{
+  "checks": [],
+  "limitations": [
+    "不交付 PDF、履歷、PPT、落地頁或白皮書。",
+    "不製作影片、動畫、字幕或轉場。",
+    "不包含上線部署。",
+    "一句話即可說明的結論應直接使用 Markdown，而非此 Skill。",
+    "輸出必須是單一、自包含的 .html 檔案。",
+    "組裝流程使用 assets/skeleton.html，並須將 assets/tokens.css 的完整內容貼入頁面頂部的 <style>，取代 @import。",
+    "元件須引用 token 變數，不可寫死顏色或字級值。",
+    "字型僅使用 fallback，不嵌入字型檔案。",
+    "不可保留占位符或編造資料與統計；缺少資料時須標示「[資料待補：說明]」。",
+    "不使用漸層、玻璃擬態、霓虹或強陰影，也不製作行銷落地頁。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 將資訊密集的內容整理成單一、自包含的 HTML 網頁，適用於調研報告、比較矩陣、清單、資料看板、時間線與決策頁。使用者需提供要呈現的內容、資料或方案；若資料缺漏，輸出會以「[資料待補：說明]」標示。產出的 .html 檔案可直接雙擊開啟，並可使用指標卡、表格、時間線、清單、引言卡、程式碼區塊與折疊內容等元件。",
+  "tags": {
+    "dependencies": [
+      "assets/skeleton.html",
+      "assets/tokens.css",
+      "assets/components",
+      "assets/demo-all.html"
+    ],
+    "inputs": [
+      "information-dense content",
+      "research content",
+      "comparison options",
+      "metrics",
+      "structured data",
+      "timelines",
+      "checklists",
+      "quotes",
+      "code and configuration"
+    ],
+    "outputs": [
+      "html — self-contained web report"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Turn this information-dense research content into a single self-contained HTML report (.html file).",
+      "zh_hant": "把這份資訊密集的調研內容做成單一、自包含的 HTML 報告（.html 檔案）。"
+    },
+    {
+      "en": "Create a web-based comparison matrix for these options and output it as an HTML file that opens with a double-click.",
+      "zh_hant": "請把這幾個方案做成網頁比較矩陣，輸出為可雙擊開啟的 HTML 檔案。"
+    },
+    {
+      "en": "I have a set of key metrics and need to deliver a one-page dashboard that displays the figures side by side.",
+      "zh_hant": "我手上有一組關鍵指標，必須交付一頁資料看板來並列呈現這些數字。"
+    },
+    {
+      "en": "Arrange these dates, milestones, and future plans as a timeline.",
+      "zh_hant": "把這些日期、里程碑與後續規劃排成時間線。"
+    },
+    {
+      "en": "Organize this SOP into a checklist containing its steps and inspection items.",
+      "zh_hant": "將這套 SOP 整理成包含步驟與檢查項目的清單。"
+    },
+    {
+      "en": "Present these judgments, interview quotes, and key statements as quote cards.",
+      "zh_hant": "把這些判斷、訪談原話和重點句子呈現為引言卡片。"
+    },
+    {
+      "en": "Present this code, commands, and configuration in code blocks within a self-contained HTML page.",
+      "zh_hant": "在自包含的 HTML 網頁中，用程式碼區塊呈現這些程式碼、命令和設定。"
+    },
+    {
+      "en": "List this structured data in a data table and mark missing values as “[data pending: explanation].”",
+      "zh_hant": "把這批結構化資料列成資料表，缺少的數值請標示為「[資料待補：說明]」。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2307,
+    "cost_source": "gateway",
+    "cost_usd": 0.0532054,
+    "prompt_tokens": 2698
+  }
+}

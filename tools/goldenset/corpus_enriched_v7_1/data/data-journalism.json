@@ -1,0 +1,119 @@
+{
+  "checks": [],
+  "limitations": [
+    "文件中的分析、清理、視覺化與地理處理範例需要 Python，以及各範例所匯入的函式庫。",
+    "Datawrapper 流程需要 Datawrapper 帳戶與存取權杖；權杖可由 DATAWRAPPER_ACCESS_TOKEN 環境變數提供，或從檔案讀取後傳入。",
+    "Datawrapper 地圖只支援其內建邊界檔，不能直接傳入任意幾何圖形；資料需使用 FIPS、ISO 等標準位置代碼配對。",
+    "Google Maps 地理編碼需要已啟用 Geocoding API 的 API 金鑰與計費帳戶，免費額度後每 1,000 次請求收費 5 美元。",
+    "美國人口普查地理編碼器僅適用於美國地址，批次上限為 10,000 筆；文件中的函式以分批方式處理更大的資料集。",
+    "美國人口普查批次端點不會回傳州、郡、普查區或街區 FIPS，這些欄位需再逐筆呼叫地址 API。",
+    "GeoPandas 的 .explore() 需要 folium；使用 scheme 參數需要 mapclassify，使用 cmap 需要 matplotlib。文件指出 .explore() 在超過 100,000 個圖徵的大型資料集上會變慢。",
+    "lonboard 需要另外安裝，並以 Jupyter notebooks 作為文件所述的大型資料互動視覺化環境。",
+    "LLM 產生的數字需在 pandas、SQL 或 R 中重新計算，引用需逐一查證，資料欄位需與實際綱要核對，分析主張需另行驗證。",
+    "擷取第三方材料時，文件要求驗證初始 URL 與所有重新導向、限制內容大小與後續請求，並在寫入、上傳、使用憑證、執行命令或發布前取得使用者明確確認。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此技能協助記者、新聞編輯室與研究人員取得、清理、驗證及分析資料，並計算描述統計、變化率、人均率與通膨調整數值。它也涵蓋圖表選擇、互動式圖表、發布用圖表與地圖、地址地理編碼、空間資料處理，以及資料新聞的故事架構與方法說明。使用時需提供資料集或地址資料，以及要調查的問題、欄位、比較方式或預期呈現形式；部分地圖與發布流程另需 API 金鑰、帳戶或位置代碼。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "numpy",
+      "rapidfuzz",
+      "cpi",
+      "wbdata",
+      "plotly",
+      "datawrapper python library",
+      "censusgeocode",
+      "googlemaps",
+      "geopandas",
+      "shapely",
+      "folium",
+      "mapclassify",
+      "matplotlib",
+      "lonboard"
+    ],
+    "inputs": [
+      "csv tabular data",
+      "sql dump database data",
+      "geojson geospatial data",
+      "shapefile geospatial data",
+      "parquet geospatial data",
+      "dataframe tabular data",
+      "address data",
+      "latitude and longitude data",
+      "location codes",
+      "public datasets"
+    ],
+    "outputs": [
+      "markdown methodology documentation",
+      "dataframe cleaned or analyzed table",
+      "plotly figure interactive chart",
+      "datawrapper chart or map",
+      "iframe code embedded chart or map",
+      "png chart image",
+      "geojson geospatial data",
+      "parquet geospatial data",
+      "geocoded coordinates",
+      "fips geography codes"
+    ],
+    "tools": [
+      "data.gov",
+      "u.s. census geocoder",
+      "google maps geocoding api",
+      "datawrapper",
+      "plotly express",
+      "geopandas",
+      "lonboard",
+      "jupyter notebooks",
+      "openstreetmap",
+      "sec edgar",
+      "cdc wonder",
+      "courtlistener",
+      "pacer"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Use Python to clean this CSV spreadsheet by standardizing names and dates, correcting data types, and handling missing values and duplicate rows according to the documented thresholds.",
+      "zh_hant": "請用 Python 清理這份 CSV 試算表：統一姓名與日期格式、修正資料型別，並依文件中的門檻處理缺值和重複列。"
+    },
+    {
+      "en": "Analyze the median, mean, percentiles, and skewness of this salary data, and describe its distribution.",
+      "zh_hant": "分析這批薪資資料的中位數、平均數、百分位數與偏態，並說明分布情況。"
+    },
+    {
+      "en": "I have incident counts and population figures for several cities, and I need per-100,000 rates for a fair comparison before deadline.",
+      "zh_hant": "我手上有各城市的案件數與人口，截稿前必須交出可公平比較的每十萬人發生率。"
+    },
+    {
+      "en": "When comparing amounts across years, calculate absolute and percentage changes and adjust the amounts to the same year's value.",
+      "zh_hant": "比較不同年份的金額時，請計算絕對變化、百分比變化，並把金額調整到同一年的幣值。"
+    },
+    {
+      "en": "Create a bar chart from these categories with a title, axis labels, and a source-credit footer.",
+      "zh_hant": "根據這些分類資料製作一張含標題、座標標籤與資料來源註記的長條圖。"
+    },
+    {
+      "en": "Geocode this address table with the U.S. Census Geocoder, then look up state, county, tract, and block FIPS for matched addresses.",
+      "zh_hant": "把這份地址表用美國人口普查地理編碼器轉成經緯度，並為配對成功的地址查詢州、郡、普查區與街區 FIPS。"
+    },
+    {
+      "en": "Convert this GeoJSON geospatial file into a GeoDataFrame, transform its coordinate reference system, perform a point-in-polygon spatial join, and export GeoParquet.",
+      "zh_hant": "將 GeoJSON 地理資料轉成 GeoDataFrame、變更座標參考系統、進行點落在多邊形內的空間連接，並匯出 GeoParquet。"
+    },
+    {
+      "en": "Organize the investigation into a data story covering the key finding, evidence, historical or geographic context, human examples, implications, and a methodology section with sources and limitations.",
+      "zh_hant": "請把調查結果整理成包含核心發現、證據、歷史或區域脈絡、人物案例、影響，以及資料來源與限制的方法說明。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2251,
+    "cost_source": "gateway",
+    "cost_usd": 0.0953254,
+    "prompt_tokens": 11346
+  }
+}

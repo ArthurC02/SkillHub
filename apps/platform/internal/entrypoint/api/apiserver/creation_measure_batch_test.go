@@ -636,10 +636,16 @@ func dumpDraftMD(t *testing.T, outDir, id, suffix, name, description, body strin
 // runInteractiveSession drives one multi-turn session to a terminal state (or
 // until the loop/message budget runs out), materializing a draft if one is
 // reached, and dumps the resulting draft.
+// measureRunNonce tells one run's workspaces from the last run's.
+var measureRunNonce = time.Now().UTC().Format("0102-150405")
+
 func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx context.Context, task measureTask, limits creation.Limits, outDir string, trial *trialRun, llm *llmclient.Client) sessionRow {
 	t.Helper()
 	row := sessionRow{ID: task.ID, Kind: task.Kind}
-	c := a.login(t, "creation-measure-"+strings.ToLower(task.ID))
+	// A fresh workspace per run: the same user across runs collides on the draft
+	// name at materialize (run v, 2026-09-07: R08 hit 同名 from run t) and drags
+	// earlier runs' candidates into the catalogue the reference tasks mark.
+	c := a.login(t, "creation-measure-"+measureRunNonce+"-"+strings.ToLower(task.ID))
 
 	// A session created with a message is already queued, and Act refuses every
 	// command but cancel while a step is queued (409). The diagram session starts
@@ -809,10 +815,26 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 // needs the composed Skill — and the offer is counted.
 func materializeThrough(t *testing.T, c *client, v creation.View, row *sessionRow) creation.View {
 	t.Helper()
-	v = creationAct(t, c, v, "materialize")
+	// A refused save is this session's failure, not the run's (run w,
+	// 2026-09-07: R09's draft took its own reference's name, and Go's 同名
+	// 422 — correct — took the last six sessions with it).
+	act := func(kind string) bool {
+		code, body := creationPostStatus(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": kind, "content_hash": v.Snapshot.Draft.ContentHash})
+		if code != 200 {
+			row.Error = fmt.Sprintf("%s refused: %d %s", kind, code, body)
+			return false
+		}
+		if err := json.Unmarshal([]byte(body), &v); err != nil {
+			t.Fatal(err)
+		}
+		return true
+	}
+	if !act("materialize") {
+		return v
+	}
 	if v.State == "waiting_confirmation" && v.Snapshot.PendingAction == "confirm_duplicate" {
 		row.DuplicateOffers += len(v.Snapshot.Duplicates)
-		v = creationAct(t, c, v, "confirm_duplicate")
+		act("confirm_duplicate")
 	}
 	return v
 }
@@ -838,7 +860,7 @@ func finishSession(t *testing.T, v creation.View, row sessionRow, outDir string)
 func runSingleShot(t *testing.T, a *api, ctx context.Context, task measureTask, outDir string) singleShotRow {
 	t.Helper()
 	row := singleShotRow{ID: task.ID, Kind: task.Kind}
-	c := a.login(t, "creation-measure-single-"+strings.ToLower(task.ID))
+	c := a.login(t, "creation-measure-single-"+measureRunNonce+"-"+strings.ToLower(task.ID))
 	ws := workspaceOf(t, testPool, c)
 
 	in := ingest.GenerateInput{TaskDescription: task.Description}

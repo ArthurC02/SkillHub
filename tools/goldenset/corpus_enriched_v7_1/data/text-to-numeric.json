@@ -1,0 +1,83 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要安裝 Python、pip 與 pandas。",
+    "使用者必須在套用轉換前確認偵測到的格式，尤其是小數點、千位分隔符及百分比處理方式。",
+    "babel.numbers.parse_decimal 僅為地區設定感知解析的選用依賴。",
+    "同一欄含多種貨幣時不會進行匯率換算。",
+    "範圍值需要使用者決定拆成最小值與最大值、取中點或保留為文字。",
+    "若資料集資料夾中沒有資料字典，需透過 add-data-dictionary Skill 建立。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 將資料集中含貨幣符號、千位分隔符、百分比、縮寫倍率或會計負號的文字數值轉成數值欄位，並把原始格式記錄至資料字典。使用者可指定目標欄位；若未指定，Skill 會列出物件型別中超過 80% 的值在移除符號後看似數字的欄位。套用前會請使用者確認偵測到的格式，無法解析的值會在數值欄位中保留為空值並連同行索引列出。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pip",
+      "pandas",
+      "babel"
+    ],
+    "inputs": [
+      "dataset columns",
+      "formatted numeric strings",
+      "currency-formatted values",
+      "percentage-formatted values",
+      "scaled numeric values"
+    ],
+    "outputs": [
+      "numeric columns",
+      "data dictionary metadata",
+      "currency column",
+      "qualifier column",
+      "unparseable row report"
+    ],
+    "tools": [
+      "pandas",
+      "babel.numbers.parse_decimal",
+      "add-data-dictionary"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Convert values such as “$4.27,” “1,234.56,” and “€1.2M” in my dataset’s price column into a numeric column.",
+      "zh_hant": "把資料集價格欄中的「$4.27」、「1,234.56」和「€1.2M」轉成數值欄位。"
+    },
+    {
+      "en": "Find the table columns that are object-typed even though most of their values look numeric.",
+      "zh_hant": "找出表格中大多數內容看似數字、但目前是物件型別的欄位。"
+    },
+    {
+      "en": "Turn accounting negatives, Unicode minus signs, and K, M, B, and T suffixes into values I can calculate with.",
+      "zh_hant": "將括號表示的負數、Unicode 減號和 K、M、B、T 倍率轉成可計算的數值。"
+    },
+    {
+      "en": "Detect the decimal marker, thousands separator, and percentage convention, and ask me before applying anything ambiguous.",
+      "zh_hant": "先判斷小數點、千位分隔符和百分比的處理方式，有歧義時請詢問我再套用。"
+    },
+    {
+      "en": "I received sales data whose amounts are stored as text, and I must deliver numeric columns with the currency, scale, and original formatting recorded in the data dictionary.",
+      "zh_hant": "我拿到一批金額都存成文字的銷售資料，現在必須交付數值欄位，並在資料字典中記下貨幣、倍率和原始格式。"
+    },
+    {
+      "en": "In a Python pandas workflow, parse formatted numbers, leave failed rows as null, and list their original values and row indices.",
+      "zh_hant": "在 Python 的 pandas 工作流程中解析格式化數值；保留無法解析的列為空值，並列出原值與行索引。"
+    },
+    {
+      "en": "This column mixes dollars, euros, and pounds; remove the symbols, convert the amounts to numbers, and store each row’s currency in a separate currency column without FX conversion.",
+      "zh_hant": "這一欄混有美元、歐元和英鎊；請移除符號並轉成數值，另以 currency 欄逐列保存貨幣，但不要做匯率換算。"
+    },
+    {
+      "en": "Handle approximations such as “~500,” “<100,” and “>1M” by storing the qualifier in a qualifier column and converting the numeric portion.",
+      "zh_hant": "處理「~500」、「<100」和「>1M」這類近似值：將限定符放入 qualifier 欄，並轉換其中的數字部分。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1484,
+    "cost_source": "gateway",
+    "cost_usd": 0.034670400000000004,
+    "prompt_tokens": 2283
+  }
+}

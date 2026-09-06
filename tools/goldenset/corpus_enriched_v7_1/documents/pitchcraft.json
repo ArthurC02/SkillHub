@@ -1,0 +1,89 @@
+{
+  "checks": [],
+  "limitations": [
+    "此技能的範圍是說服型簡報內容，不是活動紀錄或一般報告寫作。",
+    "工作流程會先確認情境與受眾角色、層級、既有認知及主要關注事項。",
+    "若情境所需材料不足，技能會要求使用者補充；若使用者要求直接撰寫，則會依可用記憶與先前脈絡處理，並註明可能缺少的資訊。",
+    "數字需附來源與定義；風險項目需包含根本原因、因應措施與狀態。",
+    "在 Claude Code 中使用時需要 Claude Code 外掛；內容也說明可透過 Cursor、Codex 或聊天提示使用。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此技能依「引子、情境、提案、證據、請求」五部分框架，撰寫專案啟動、進度更新、收尾或年度回顧、投資人簡報及解決方案銷售內容。使用者需選擇情境，並提供受眾角色、既有認知、關注事項及該情境所需的專案、指標、市場、風險或資源資料；缺少資料時，技能會提出問題補齊。它也會套用各情境的範本與寫作規則、執行提交前檢查，並請使用者確認要調整的內容。",
+  "tags": {
+    "dependencies": [],
+    "inputs": [
+      "audience context",
+      "project background",
+      "market analysis",
+      "competitive landscape",
+      "team capabilities",
+      "goals and kpis",
+      "resources and budget",
+      "timeline",
+      "progress metrics",
+      "risk list",
+      "market data",
+      "financial forecast",
+      "customer pain points",
+      "case metrics",
+      "pricing model"
+    ],
+    "outputs": [
+      "project kickoff briefing",
+      "status update",
+      "project wrap-up",
+      "annual review",
+      "investor pitch",
+      "solution proposal"
+    ],
+    "tools": [
+      "claude code",
+      "cursor",
+      "codex",
+      "chat prompts"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a project kickoff briefing from our market opportunity, team capabilities, goals, budget, and timeline, including scope, milestones, resources, and risks.",
+      "zh_hant": "請根據市場機會、團隊能力、目標、預算和時程，替我寫一份專案啟動簡報（project kickoff briefing），並列出範圍、里程碑、資源與風險。"
+    },
+    {
+      "en": "Turn this period’s completed work, key metrics, risks, and next-phase plan into a status update that identifies the decisions needed from leadership.",
+      "zh_hant": "把本期完成事項、關鍵指標、風險與下一階段計畫整理成進度更新（status update），並標出需要主管決策的項目。"
+    },
+    {
+      "en": "The year is ending, and I have the original goals, actual results, reasons for misses, and handoff arrangements; I need to explain delivered value and next steps to a VP.",
+      "zh_hant": "年度即將結束，我手上有原始目標、實際成果、失敗原因和交接安排，必須向 VP 說明交付價值與後續方向。"
+    },
+    {
+      "en": "Create an investor pitch using our market size, product stage, competition, growth metrics, team, funding request, and use of funds.",
+      "zh_hant": "請用市場規模、產品階段、競爭情況、成長數據、團隊與募資用途，製作一份投資人簡報（investor pitch）。"
+    },
+    {
+      "en": "I need customer executives to understand the current gaps, our approach, and how we would work together; organize the content around their pain points, case metrics, and implementation timeline.",
+      "zh_hant": "我要讓客戶高層理解現況缺口、我們的做法與合作方式；請依客戶痛點、案例數據及導入時程組織內容。"
+    },
+    {
+      "en": "I only have ten minutes with leadership; start with why this deserves investment now, then cover the situation, plan, evidence, and the people and budget I need approved.",
+      "zh_hant": "主管只給我十分鐘；請先說明為什麼現在值得投入，再交代現況、執行方案、成功依據，以及需要他核准的人力和預算。"
+    },
+    {
+      "en": "In my Cursor project, use prompts to draft a briefing with the five-part framework and ask for missing audience context and materials.",
+      "zh_hant": "請在 Cursor 專案中用提示詞，依五部分框架草擬簡報，並在資料不足時詢問受眾背景與缺少的材料。"
+    },
+    {
+      "en": "Convert the existing kickoff content into an investor pitch by reframing business pain as market opportunity and shifting the evidence emphasis from technical moat to traction.",
+      "zh_hant": "把現有的專案啟動內容改成投資提案：將商業痛點轉為市場機會，並以市場牽引力取代技術護城河作為主要證據。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2136,
+    "cost_source": "gateway",
+    "cost_usd": 0.05521040000000001,
+    "prompt_tokens": 3783
+  }
+}

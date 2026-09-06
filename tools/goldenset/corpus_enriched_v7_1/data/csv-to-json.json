@@ -1,0 +1,77 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要提供來源與目標檔案路徑，以及 CSV、JSON 或 JSONL 之間的轉換方向。",
+    "此流程使用 Python；相依套件清單列出 pandas，而許多情況可只使用 Python 標準函式庫 csv 與 json。",
+    "CSV 欄位若含換行，必須使用引號包住。",
+    "JSON 沒有原生日期時間型別；日期與時間會輸出為 ISO 8601 字串。",
+    "輸入超過 1 GB 時會提出警告，並建議以 JSONL 取代 JSON 陣列。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 可在 CSV、JSON 物件陣列與 JSONL 之間雙向轉換，並處理欄名對應、CSV 方言與編碼、巢狀結構攤平，以及選用的型別推斷。使用者需提供來源與目標檔案路徑及轉換方向；若分隔符號、標題列、空值標記或巢狀欄位處理方式不明確，則需進一步確認。輸出會重新載入驗證，並比對來源與輸出的資料筆數。",
+  "tags": {
+    "dependencies": [
+      "pandas",
+      "python csv library",
+      "python json library"
+    ],
+    "inputs": [
+      "csv tabular data",
+      "json object array",
+      "jsonl object records"
+    ],
+    "outputs": [
+      "csv tabular data",
+      "json object array",
+      "jsonl object records"
+    ],
+    "tools": [
+      "python",
+      "pip",
+      "csv.sniffer"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Convert this CSV comma-separated table into a single JSON array file, preserving all fields as strings.",
+      "zh_hant": "把這個 CSV 逗號分隔表格轉成單一 JSON 物件陣列檔，所有欄位先保留為字串。"
+    },
+    {
+      "en": "Convert the CSV table to a JSONL data file with one JSON object per line for streaming processing.",
+      "zh_hant": "請將 CSV 表格轉成 JSONL 資料檔，每行放一個 JSON 物件，以便逐行處理。"
+    },
+    {
+      "en": "Convert this JSON array of objects into CSV spreadsheet data and flatten nested objects using dotted keys.",
+      "zh_hant": "把這個 JSON 物件陣列轉成 CSV 試算表資料，並以點號鍵名攤平巢狀物件。"
+    },
+    {
+      "en": "Convert the line-delimited JSONL object data to CSV with a header row and report whether the output count matches the source.",
+      "zh_hant": "將 JSONL 逐行物件資料轉成有標題列的 CSV，並回報輸出筆數是否與來源相符。"
+    },
+    {
+      "en": "Turn this row-based table into an array of objects, mapping the column names to object fields.",
+      "zh_hant": "把這份逐列的表格資料改成物件陣列，讓欄名對應到每個物件的欄位。"
+    },
+    {
+      "en": "I have object records stored one per line, and I now need to deliver a table with a header row.",
+      "zh_hant": "我手上有一批每行一筆的物件記錄，現在必須交付一份含標題列的表格。"
+    },
+    {
+      "en": "In Python, convert the semicolon-delimited CSV to JSONL with one object per line and detect the file encoding.",
+      "zh_hant": "請在 Python 中把分號分隔的 CSV 轉成每行一個物件的 JSONL，並偵測檔案編碼。"
+    },
+    {
+      "en": "Create a single data file from this table with headers, containing an array of objects built from its rows.",
+      "zh_hant": "請從這份有標題列的表格產生一個單一資料檔，內容是由每列資料組成的物件陣列。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1884,
+    "cost_source": "gateway",
+    "cost_usd": 0.04184040000000001,
+    "prompt_tokens": 2117
+  }
+}

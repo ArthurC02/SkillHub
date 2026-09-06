@@ -1,0 +1,89 @@
+{
+  "checks": [],
+  "limitations": [
+    "執行所列腳本需要 Python 3；自訂資料分析使用 pandas。",
+    "動態公式重新計算僅在 LibreOffice 可用時透過 libreoffice_recalc.py 執行。",
+    "讀取與分析既有資料時不得修改來源檔案。",
+    "從頭建立 .xlsx 時必須使用 XML 範本，且所有衍生值必須寫成 Excel 公式，不能硬編碼為數字。",
+    "編輯既有活頁簿時必須透過 XML 解包、編輯及重新封裝；不得以 openpyxl 往返處理既有檔案。",
+    "編輯輸出必須保留輸入檔的工作表名稱與資料，且只能修改要求指定的儲存格。",
+    "修復公式屬於編輯工作，必須保留原有工作表與資料。",
+    "交付前必須使用 formula_check.py 驗證公式；文件以結束碼 0 表示通過。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 可讀取與分析 .xlsx、.xlsm、.csv 和 .tsv 試算表資料，也可從頭建立 .xlsx 檔案。它可直接編輯既有活頁簿、加入欄或列、套用財務格式、修復損壞的公式，並進行公式驗證與重新計算。處理既有資料時以試算表檔案為輸入；建立新檔時則依使用者指定的資料、公式與格式產生檔案。",
+  "tags": {
+    "dependencies": [
+      "python 3",
+      "pandas",
+      "libreoffice",
+      "office open xml"
+    ],
+    "inputs": [
+      "xlsx spreadsheet",
+      "xlsm macro-enabled spreadsheet",
+      "csv table",
+      "tsv table"
+    ],
+    "outputs": [
+      "xlsx spreadsheet",
+      "xlsm macro-enabled spreadsheet",
+      "csv table",
+      "tsv table",
+      "json formula report"
+    ],
+    "tools": [
+      "xlsx_reader.py",
+      "formula_check.py",
+      "xlsx_unpack.py",
+      "xlsx_pack.py",
+      "xlsx_add_column.py",
+      "xlsx_insert_row.py",
+      "xlsx_shift_rows.py",
+      "libreoffice_recalc.py"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Read this Excel .xlsx workbook and analyze revenue totals, averages, and counts across its worksheets and pivot tables.",
+      "zh_hant": "讀取這個 Excel .xlsx 活頁簿，分析各工作表與樞紐分析表中的收入總和、平均值和筆數。"
+    },
+    {
+      "en": "Create an .xlsx financial model from scratch, using Excel formulas for every calculated value and the specified font colors for inputs, formulas, and cross-sheet references.",
+      "zh_hant": "從頭建立一份 .xlsx 財務模型，讓所有計算值使用 Excel 公式，並依輸入、公式及跨工作表參照套用指定字色。"
+    },
+    {
+      "en": "Add a percentage-formula column to this macro-enabled Excel .xlsm workbook while preserving its existing sheets, data, and other content.",
+      "zh_hant": "在這個啟用巨集的 Excel .xlsm 活頁簿中新增一欄百分比公式，並保留原有工作表、資料和其他內容。"
+    },
+    {
+      "en": "Analyze the specified columns in this CSV table and TSV spreadsheet, calculating sums, means, and counts directly.",
+      "zh_hant": "分析這份 CSV 表格和這份 TSV 試算表中的指定欄位，直接計算總和、平均值與筆數。"
+    },
+    {
+      "en": "Repair the broken formulas in my existing file without changing the other data.",
+      "zh_hant": "幫我修復現有檔案中損壞的公式，其他資料都不要更動。"
+    },
+    {
+      "en": "Use the Python 3 formula-checking script to check every formula and output a validation report.",
+      "zh_hant": "請用 Python 3 的公式檢查腳本檢查所有公式，並輸出驗證報告。"
+    },
+    {
+      "en": "Create a spreadsheet containing a formula column, a total row, percentage formatting, and a top border on the total row.",
+      "zh_hant": "建立一份包含公式欄、總計列、百分比格式和總計列上框線的試算表。"
+    },
+    {
+      "en": "I have a budget workbook and need to deliver a revised copy with a new expense row while retaining the original sheet names and all other data.",
+      "zh_hant": "我手上有一份預算活頁簿，需要交付加入新費用列的修訂版，但原本的工作表名稱和其他資料必須保留。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2528,
+    "cost_source": "gateway",
+    "cost_usd": 0.06208540000000001,
+    "prompt_tokens": 3590
+  }
+}

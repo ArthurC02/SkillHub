@@ -1,0 +1,93 @@
+{
+  "checks": [
+    {
+      "field": "summary",
+      "rule": "unsupported_appraisal",
+      "severity": "warning",
+      "token": "accurate"
+    }
+  ],
+  "limitations": [
+    "流程要求在提出建議前先辨識文件現有的拼寫方言、日期格式及標點慣例，並沿用這些慣例。",
+    "流程要求先讀取 reference/ECONOMIST-SIGNATURE.md，但套件檔案未提供。深入或特定檢查亦按情況需要相應的 reference Markdown 檔案。",
+    "不改寫直接引文。",
+    "不套用於程式碼範例，但程式碼註解及文件除外。",
+    "不替換沒有日常用語替代方案的技術術語，也不更改專有名詞及品牌名稱。",
+    "既有的方言及拼寫模式應予保留；只有使用者明確要求方言檢查，或文件內部出現不一致時，才讀取方言慣例參考資料。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 依 The Economist style guide 審閱及編輯 Markdown、HTML、文件、技術寫作與其他書面內容，檢查清晰度、精確度、簡潔度、結構、語氣、標點、數字格式及用字等問題。它需要使用者提供待審閱的文字，並先辨識及沿用文件原有的英式、美式或其他拼寫與標點慣例。回饋會按問題類別列出段落或行號、原文、建議替換文字及簡短理由。",
+  "tags": {
+    "dependencies": [
+      "reference/economist-signature.md",
+      "reference/clarity.md",
+      "reference/precision.md",
+      "reference/dialect-conventions.md",
+      "reference/common-errors.md",
+      "reference/punctuation.md",
+      "reference/numbers.md",
+      "reference/structure.md",
+      "reference/tone.md",
+      "reference/abbreviations.md",
+      "reference/capitalization.md",
+      "reference/special-contexts.md",
+      "reference/words.md"
+    ],
+    "inputs": [
+      "markdown written content",
+      "html written content",
+      "documentation",
+      "plain text written content",
+      "technical writing",
+      "code documentation"
+    ],
+    "outputs": [
+      "categorized editing feedback",
+      "suggested replacement text"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Review this Markdown document for clarity, flagging passive voice, jargon, complex wording and hedging.",
+      "zh_hant": "請審閱這份 Markdown 文件的清晰度，標出被動語態、術語、複雜用字及削弱語氣的詞。"
+    },
+    {
+      "en": "Check the writing on this HTML page for vague quantifiers, weasel words, clichés and redundant phrases.",
+      "zh_hant": "請檢查這個 HTML 頁面的文字是否有模糊量詞、空泛修飾語、陳腔濫調或冗詞。"
+    },
+    {
+      "en": "Move the article’s main point to the beginning and check that each paragraph has a defined purpose and follows a logical order.",
+      "zh_hant": "把文章的主旨移到前面，並檢查每段是否有明確用途及合理的論述順序。"
+    },
+    {
+      "en": "Check whether the British and American spellings, date formats and quotation marks are consistent, without changing the document’s established dialect.",
+      "zh_hant": "檢查本文的英式與美式拼寫、日期格式及引號是否一致，但不要改變原有方言慣例。"
+    },
+    {
+      "en": "I have a technical document that must be delivered, and its commas, semicolons, dashes, hyphens and quotation marks need checking first.",
+      "zh_hant": "我手上有一份技術文件，交稿前需要檢查逗號、分號、破折號、連字號及引號的用法。"
+    },
+    {
+      "en": "Check the formatting of numbers, percentages, percentage points, dates and currencies against this style guide.",
+      "zh_hant": "請檢查數字、百分比、百分點、日期及貨幣的格式是否符合這份風格指南。"
+    },
+    {
+      "en": "Assess the article’s tone and identify arrogant, preachy or overly chatty passages, as well as excessive adjectives and intensifiers.",
+      "zh_hant": "請評估這篇文章的語氣，找出傲慢、說教、過度聊天或過度使用形容詞與強調語的地方。"
+    },
+    {
+      "en": "Provide editing feedback grouped by clarity, precision and dialect consistency, with a paragraph or line reference, the original wording, a suggested replacement and a brief reason for each issue.",
+      "zh_hant": "請提供按清晰度、精確度及方言一致性分類的編輯回饋；每項列出段落或行號、原文、建議替換文字及簡短理由。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2566,
+    "cost_source": "gateway",
+    "cost_usd": 0.059065400000000004,
+    "prompt_tokens": 2834
+  }
+}

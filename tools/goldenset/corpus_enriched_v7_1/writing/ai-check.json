@@ -1,0 +1,69 @@
+{
+  "checks": [],
+  "limitations": [
+    "必須提供要分析的文字或草稿。",
+    "少於 100 字的文字可觀察到的訊號較少，信心最高只能標為 Medium。",
+    "技術寫作中的領域術語可能壓低用詞可預測性訊號，不應因此懲罰正確的領域用語。",
+    "學術或法律文字可能合理使用避險語及分號，相關訊號必須依文體調整。",
+    "非英文文字若沒有相符語言的校準，不得給予 High 信心。",
+    "若文字可能來自基礎模型或最低限度微調的改寫器，即使表面訊號不明顯，信心也最高只能標為 Medium。",
+    "若使用者說明文字曾由一個或多個大型語言模型反覆改寫，所有訊號都必須降低權重。",
+    "若來源模型可能是 Claude，低分結果需額外審慎看待。",
+    "修改建議只在總分高於 6 時提供。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 接收一段文字或草稿，檢查其中是否出現 AI 生成或 AI 編修的語言訊號。它會為九類訊號各給 0–3 分，產生包含判定、信心、總分、AI 編修比例、逐項證據與主要跡象的 AI-CHECK REPORT。總分高於 6 時，報告另列出針對前三大訊號的修改建議，並依文字長度、語言、文體及可能的改寫情況調整信心或權重。",
+  "tags": {
+    "dependencies": [],
+    "inputs": [
+      "plain text — text or draft for ai-generation analysis"
+    ],
+    "outputs": [
+      "plain text — ai-check report"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Run ai-check on this text and determine whether it sounds AI-written.",
+      "zh_hant": "請對這段文字執行 ai-check，判斷它是否像 AI 寫的。"
+    },
+    {
+      "en": "Analyze this draft into an AI-CHECK REPORT with a verdict, confidence, overall score, and evidence log.",
+      "zh_hant": "請把這份草稿分析成一份 AI-CHECK REPORT，列出判定、信心、總分與證據紀錄。"
+    },
+    {
+      "en": "Does this sound AI-generated, and what parts give it away?",
+      "zh_hant": "這聽起來像是人工智慧生成的嗎？哪些地方露出了痕跡？"
+    },
+    {
+      "en": "Find signs of machine generation in the wording, sentence patterns, transitions, punctuation, and voice.",
+      "zh_hant": "找出用詞、句型、轉折、標點與語氣中可能顯示機器生成的跡象。"
+    },
+    {
+      "en": "I have an article ready to publish, but it reads overly uniform and formulaic; I need to know which paragraphs are most suspicious.",
+      "zh_hant": "我手上有一篇準備發布的文章，但它讀起來過度工整又制式；我需要知道哪些段落最可疑。"
+    },
+    {
+      "en": "Estimate how much of this content is human-written versus AI-edited and place it in the documented fraction bucket.",
+      "zh_hant": "估算這段內容有多少是人寫的、多少可能經過 AI 編修，並歸入文件指定的比例區間。"
+    },
+    {
+      "en": "Score each of the nine signal categories from 0 to 3, then classify the total as Human, Likely Human, Uncertain, Likely AI, or AI.",
+      "zh_hant": "請按九類訊號各給 0 到 3 分，再依總分判定為 Human、Likely Human、Uncertain、Likely AI 或 AI。"
+    },
+    {
+      "en": "Check this manuscript for AI tells before publication; if the score is above 6, give concrete rewrites for the top three issues.",
+      "zh_hant": "發布前幫我檢查這份文稿的 AI 痕跡；如果分數高於 6，請列出前三大問題的具體改寫方式。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1638,
+    "cost_source": "gateway",
+    "cost_usd": 0.06416540000000001,
+    "prompt_tokens": 7566
+  }
+}

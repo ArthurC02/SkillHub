@@ -134,7 +134,9 @@ def public_rule(qq, cut=0.75):
     return pinned + [i for i in page if i not in pinned]
 
 
-def creation_rule(qq, cut=0.55):
+def creation_rule_2026_09_06(qq, cut=0.55):
+    """The creation tool's rule before report §15.4 (vector within 0.55, then one
+    covered hit) - kept so the older results files can be re-read."""
     got = [i for i, d in V[qq] if d <= cut]
     return got + [i for i in B[qq][:1] if i not in got]
 
@@ -213,7 +215,7 @@ if SWEEP:
     sys.exit(0)
 
 report = ""
-for label, fn, cut in (("public rule (vector <= 0.75, covered first, name pinned)", public_rule, 0.75), ("creation rule (vector <= 0.55, then one covered)", creation_rule, 0.55)):
+for label, fn, cut in (("public rule = creation search (vector <= 0.75, covered first, name pinned)", public_rule, 0.75), ("duplicate guard (the same shape at 0.55; not a search, no 0.95 target)", public_rule, 0.55), ("creation rule before 2026-09-07 (vector <= 0.55, then one covered)", creation_rule_2026_09_06, 0.55)):
     text, _ = score(label, fn, cut)
     report += text + "\n"
     report += "  misses:\n" + "\n".join(misses(fn, cut)) + "\n\n"

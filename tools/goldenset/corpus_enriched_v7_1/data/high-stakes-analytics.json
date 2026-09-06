@@ -1,0 +1,96 @@
+{
+  "checks": [],
+  "limitations": [
+    "文件中的指令流程需要 Python 3 與套件內附的指令碼。",
+    "使用者提供逐列資料時，必須保留原始來源不變，並在描述計算、模型擬合或決策比較之前通過資料品質關卡。",
+    "若推定的資料契約缺少預定用途或資料粒度，流程必須停在 needs_user_confirmation。",
+    "資料品質狀態為 blocked 時不得繼續；needs_user_confirmation 的問題或清理選擇尚未解決時也不得繼續。",
+    "刪除列、移除欄、插補、離群值處理、合併類別、單位或時區轉換、修正目標及改變資料粒度，均須依動作 ID 取得核准。",
+    "若決策依賴介入效果，必須有實驗、準實驗或其他可辯護的因果證據；預測準確度本身不視為介入有效的證據。",
+    "替代方案或決策負責人仍不明確時，不得開始模擬。",
+    "可分享的分析至少使用 10,000 次抽樣；較少抽樣只能用於快速草稿，且須加以標示。",
+    "不得在缺少所需資料或決策輸入時虛構描述結果、預測準確度或建議，也不得以合成案例取代實證專案。",
+    "投入營運部署前需要領域審查。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 將研究問題或有來源依據的實際資料，分流為描述、診斷、預測或處方分析，並依所選路線建立或審查分析。輸入可以只有研究問題，也可以是逐列資料、資料契約或決策案例 JSON；逐列資料會先經過品質檢查，特定資料處理動作須取得核准。輸出依路線包括分析藍圖、資料就緒報告、驗證結果、情境與風險比較、Evidence Intelligence Report，以及在有正當決策層時產生的 Decision Intelligence Brief。",
+  "tags": {
+    "dependencies": [
+      "python 3"
+    ],
+    "inputs": [
+      "plain text research question",
+      "csv row-level data",
+      "xlsx tabular data",
+      "parquet tabular data",
+      "database tables",
+      "json data contract",
+      "json decision case"
+    ],
+    "outputs": [
+      "markdown analysis blueprint",
+      "json analysis blueprint",
+      "svg lifecycle figure",
+      "markdown data quality report",
+      "json data quality report",
+      "json cleaning plan",
+      "csv prepared analysis data",
+      "json transformation log",
+      "markdown evidence intelligence report",
+      "json analytical results",
+      "svg analytical figures",
+      "markdown decision intelligence brief",
+      "json decision results"
+    ],
+    "tools": [
+      "python",
+      "github",
+      "data quality gate",
+      "case validation scripts",
+      "uncertainty simulation engine"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "I only have the research question “How should we allocate limited capacity?” Generate an analysis blueprint and a question-to-decision path diagram.",
+      "zh_hant": "我目前只有「該如何分配有限容量？」這個研究問題，請產生分析藍圖及問題到決策路徑圖。"
+    },
+    {
+      "en": "Check the quality of this row-level CSV table first and produce a readiness report, data contract, and dry-run cleaning plan without cleaning the data.",
+      "zh_hant": "請先檢查這份逐列 CSV 表格的資料品質，產生就緒報告、資料契約與試行清理計畫，不要直接清理資料。"
+    },
+    {
+      "en": "Apply my approved clean-003 action to this dataset according to the cleaning plan, then output processed/analysis.csv, the transformation log, and the post-cleaning quality results.",
+      "zh_hant": "依照清理計畫，對這份資料執行我已核准的 clean-003 動作，並輸出 processed/analysis.csv、轉換紀錄及清理後品質檢查結果。"
+    },
+    {
+      "en": "Establish a baseline of what is happening, including trends, segments, denominators, missingness, and data limitations.",
+      "zh_hant": "建立目前狀況的基準，呈現趨勢、族群區隔、分母、缺失情形與資料限制。"
+    },
+    {
+      "en": "Investigate which factors may contribute to this outcome, listing competing explanations and testable hypotheses without presenting correlation as causation.",
+      "zh_hant": "調查哪些因素可能促成這個結果，列出競爭解釋與可檢驗假設，但不要把相關性寫成因果關係。"
+    },
+    {
+      "en": "In Python, validate the held-out prediction scores and examine calibration, subgroup errors, drift, and uncertainty.",
+      "zh_hant": "請在 Python 中驗證保留樣本的預測分數，檢查校準、子群誤差、漂移與不確定性。"
+    },
+    {
+      "en": "Validate and run this decision-case JSON, comparing feasible alternatives under dependent uncertainty, tail risk, constraints, and weight sensitivity.",
+      "zh_hant": "驗證並執行這個決策案例 JSON，比較可行方案在相依不確定性、尾端風險、限制條件與權重敏感度下的結果。"
+    },
+    {
+      "en": "I have real data that has passed the quality gate, and I now need to deliver a sectioned analytical report with methods, validation, figures, adjacent interpretation, uncertainty, limitations, and reproducibility information, plus machine-readable results.",
+      "zh_hant": "我手上已有通過資料品質關卡的真實資料，現在必須交付一份含方法、驗證、圖表、相鄰解讀、不確定性、限制與可重現資訊的分節分析報告，以及機器可讀結果。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2377,
+    "cost_source": "gateway",
+    "cost_usd": 0.0694254,
+    "prompt_tokens": 5662
+  }
+}

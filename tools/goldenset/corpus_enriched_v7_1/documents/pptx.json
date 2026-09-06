@@ -1,0 +1,99 @@
+{
+  "checks": [],
+  "limitations": [
+    "舊版 .ppt 必須先轉換成 .pptx。",
+    "縮圖工具只接受 .pptx；若要處理 .potx，必須先複製成使用 .pptx 副檔名的檔案。",
+    "流程需要 Python、Node.js 或 shell 執行環境，並依工作使用 pptxgenjs、markitdown[pptx]、Pillow、defusedxml、lxml、LibreOffice 與 Poppler 的 pdftoppm。",
+    "pptxgenjs 已預先安裝；只有在 require('pptxgenjs') 失敗時才需安裝。react-icons、react、react-dom 與 sharp 亦為預先安裝，只有 require 失敗時才需安裝。",
+    "使用範本建立簡報時，檔案驗證必須傳入 --original 原始範本。",
+    "python-pptx 無法複製投影片；以 text_frame.text 指派文字不會保留格式，也無法讀取範本常用的 SVG 或 EMF 圖像。",
+    "pptxgenjs 不支援漸層填色；文件指定改用漸層圖片作為背景。",
+    "投影片建立或修改後必須執行內容、檔案及視覺 QA；視覺 QA 需要 LibreOffice 轉換 PDF，再由 pdftoppm 產生投影片圖片。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 可建立、讀取、擷取、編輯、合併或拆分 PowerPoint 簡報，處理 .pptx 與 .potx 範本，也涵蓋版面配置、講者備註及註解。使用者可提供簡報或範本檔，也可提供要製作成投影片的內容；舊版 .ppt 必須先轉成 .pptx。它使用 XML 編輯、pptxgenjs、文字擷取、檔案驗證及投影片圖片檢查等流程來處理簡報。",
+  "tags": {
+    "dependencies": [
+      "node.js",
+      "python",
+      "shell",
+      "pptxgenjs",
+      "markitdown[pptx]",
+      "pillow",
+      "defusedxml",
+      "lxml",
+      "libreoffice",
+      "poppler",
+      "react-icons",
+      "react",
+      "react-dom",
+      "sharp"
+    ],
+    "inputs": [
+      "pptx presentation",
+      "potx presentation template",
+      "ppt presentation",
+      "xml slide content",
+      "plain text presentation content"
+    ],
+    "outputs": [
+      "pptx presentation",
+      "potx presentation template",
+      "pdf presentation",
+      "jpg slide images",
+      "plain text slide content"
+    ],
+    "tools": [
+      "powerpoint",
+      "pptxgenjs",
+      "markitdown",
+      "libreoffice",
+      "pdftoppm",
+      "poppler",
+      "python-pptx"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a PowerPoint presentation (.pptx) from this product information, including native charts and speaker notes.",
+      "zh_hant": "請用這些產品資料建立一份 PowerPoint 簡報（.pptx），包含原生圖表與講者備註。"
+    },
+    {
+      "en": "Read this .pptx slide deck and extract the text from each slide.",
+      "zh_hant": "請讀取這份 .pptx 投影片並擷取每一頁的文字。"
+    },
+    {
+      "en": "Update the content, layouts, and comments in this existing presentation.",
+      "zh_hant": "請更新現有簡報的內容、版面配置和註解。"
+    },
+    {
+      "en": "I have a company .potx PowerPoint template and content for three sections, and I need to deliver a presentation based on that template.",
+      "zh_hant": "我手上有公司 .potx PowerPoint 範本和三個章節的內容，必須交付一份沿用該範本的簡報。"
+    },
+    {
+      "en": "Combine these slide files into one presentation.",
+      "zh_hant": "請把這幾份投影片合併成一份簡報。"
+    },
+    {
+      "en": "Split this presentation into several separate slide files.",
+      "zh_hant": "請把這份簡報拆成數個獨立的投影片檔案。"
+    },
+    {
+      "en": "Use pptxgenjs in a Node.js project to generate a slide deck with a title slide, content slides, and a conclusion slide.",
+      "zh_hant": "請在 Node.js 專案中使用 pptxgenjs 產生一份含標題頁、內容頁和結論頁的投影片組。"
+    },
+    {
+      "en": "Reorder the slides, delete the unneeded ones, and duplicate one of the layouts.",
+      "zh_hant": "請重新排列頁面、刪除不需要的頁面，並複製其中一個版面。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1354,
+    "cost_source": "gateway",
+    "cost_usd": 0.0544104,
+    "prompt_tokens": 6751
+  }
+}

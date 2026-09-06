@@ -1,0 +1,82 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要 .xlsx Excel 檔案，以及要篩選的欄位與條件；模式可省略，省略時預設為 keep。",
+    "需要 Python 執行環境，以及 pandas、openpyxl 與 lxml。",
+    "若不是以第一列作為單一表頭，必須調整 pandas 的表頭列索引。",
+    "XML 刪除後行號不連續，Excel 開啟時會顯示空白行；壓實前必須先取得使用者確認，並使用 excel-delete 的壓實步驟。",
+    "isna() 只匹配 None 或 NaN，不匹配空字串；空字串需以等於空字串的條件處理。",
+    "Excel 日期欄若為 datetime 類型，需要使用 pd.Timestamp 進行比較。",
+    "範例中的公式健康檢查僅檢查前 50 列與前 10 欄是否含有 #REF!。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 依指定條件篩選 Excel（.xlsx）資料列，可保留符合條件的列，或刪除符合條件的列；若未指定模式，預設採用保留模式。它需要 Excel 檔案、篩選欄位與條件，並支援等值、包含、大小比較、日期、範圍、空值及多條件篩選。流程會先檢查工作表與表頭，以 pandas 找出目標列，再透過 XML 移除資料列以保留格式，並建立備份及驗證結果。刪除後若行號不連續，會詢問是否壓實空白行。",
+  "tags": {
+    "dependencies": [
+      "python runtime",
+      "pandas",
+      "openpyxl",
+      "lxml",
+      "python standard library",
+      "excel-safe-workflow",
+      "excel-delete"
+    ],
+    "inputs": [
+      "xlsx spreadsheet"
+    ],
+    "outputs": [
+      "xlsx filtered spreadsheet",
+      "xlsx backup"
+    ],
+    "tools": [
+      "python",
+      "pandas",
+      "openpyxl",
+      "lxml",
+      "office open xml"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "In this Excel spreadsheet (.xlsx), keep only the rows where the legal status equals “granted.”",
+      "zh_hant": "請在這個 Excel 試算表（.xlsx）中，只保留法律狀態等於「已授權」的資料列。"
+    },
+    {
+      "en": "Delete rows whose titles contain “graphene” from this XLSX workbook, and keep the other rows.",
+      "zh_hant": "從這份 XLSX 活頁簿刪除標題包含「石墨烯」的資料列，其他內容保留。"
+    },
+    {
+      "en": "Keep only records with application dates between 2020 and 2023.",
+      "zh_hant": "只留下申請日在 2020 年到 2023 年之間的記錄。"
+    },
+    {
+      "en": "Remove records where the applicant field is null, without deleting the other rows.",
+      "zh_hant": "刪掉申請人欄位為空值的資料，其餘資料列不要刪除。"
+    },
+    {
+      "en": "I have a batch of patent data and must deliver a table containing only applications filed after 2022.",
+      "zh_hant": "我手上有一批專利資料，現在必須交付一份只含 2022 年之後申請案件的表格。"
+    },
+    {
+      "en": "In a Python script, use pandas to identify rows where the applicant contains Company A and the legal status is granted, then remove the other rows from the Excel file.",
+      "zh_hant": "請在 Python 指令碼中使用 pandas 找出申請人包含公司甲且法律狀態為已授權的列，再從 Excel 檔案移除其他列。"
+    },
+    {
+      "en": "Keep all rows where the applicant name contains either Company A or Company B.",
+      "zh_hant": "保留申請人名稱包含公司甲或公司乙的所有資料列。"
+    },
+    {
+      "en": "Turn the data into a table containing only rows with nonblank key fields; after filtering, tell me how many rows were deleted and ask whether to compact the blank rows.",
+      "zh_hant": "把資料整理成只含非空白關鍵欄位的表格；篩選完成後告訴我刪除了幾列，並詢問是否要壓實空白行。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2788,
+    "cost_source": "gateway",
+    "cost_usd": 0.0738554,
+    "prompt_tokens": 4904
+  }
+}

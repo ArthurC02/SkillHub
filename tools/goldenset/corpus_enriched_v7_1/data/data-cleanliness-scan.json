@@ -1,0 +1,83 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要確認一個或多個輸入檔案的格式與目標。",
+    "需要 Python，以及 pandas、pyarrow、openpyxl、chardet 和 python-dateutil 套件。",
+    "對非常大的檔案會策略性抽樣首段、末段與隨機列，並透過串流執行全檔彙總；報告會註明樣本大小。",
+    "對高度巢狀的 JSON，主要檢查記錄之間的結構與結構描述一致性，並建議先使用 json-restructure 攤平再進行深入分析。",
+    "真正屬於異質結構的欄位會以不同方式處理，而不直接標記為混合型別。",
+    "離群值只會被報告為觀察結果，不會被當成缺陷或建議移除。",
+    "修復技能只會依建議順序提供選項，不會自動執行。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此技能掃描一個或多個 CSV、Parquet、JSON、JSONL 或 Excel 平面資料檔，並需確認檔案格式與匯入目標。它檢查欄位型別、日期、空值、重複鍵、編碼、範圍、檔案結構及跨欄位一致性等問題，評估哪些問題可能阻礙 SQL 匯入或造成分析錯誤。它會產生依嚴重程度排序的 Markdown 報告與修復建議，也可選擇產生 JSON 版本；修復技能只會被建議，不會自動執行。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "pyarrow",
+      "openpyxl",
+      "chardet",
+      "python-dateutil"
+    ],
+    "inputs": [
+      "csv tabular data",
+      "parquet flat data",
+      "json flat data",
+      "jsonl flat data",
+      "excel spreadsheet data"
+    ],
+    "outputs": [
+      "markdown cleanliness report",
+      "json cleanliness report"
+    ],
+    "tools": [
+      "pandas",
+      "chardet",
+      "python-dateutil"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Scan this CSV table for inconsistent column types, delimiter drift, ragged rows, and duplicate primary keys.",
+      "zh_hant": "掃描這份 CSV 表格，找出欄位型別不一致、分隔符號混用、欄數不齊與重複主鍵。"
+    },
+    {
+      "en": "Check this Excel spreadsheet for disguised nulls, mixed date formats, surrounding whitespace, and inconsistent letter case.",
+      "zh_hant": "檢查這份 Excel 試算表中的偽裝空值、混合日期格式、前後空白及大小寫不一致。"
+    },
+    {
+      "en": "Tell me whether this data is clean and identify the issues that would block SQL ingestion.",
+      "zh_hant": "幫我看看這批資料乾不乾淨，並指出哪些問題會阻礙 SQL 匯入。"
+    },
+    {
+      "en": "Find outliers, out-of-range values, and cross-column logical inconsistencies that could cause analytical errors.",
+      "zh_hant": "找出可能造成分析錯誤的異常值、超出範圍值與跨欄位邏輯矛盾。"
+    },
+    {
+      "en": "I just received a new data dump from an external source and must deliver an issue report ranked as blocker, high, medium, and low before loading it into Postgres.",
+      "zh_hant": "我剛收到外部來源的新資料傾印，必須在載入 Postgres 前交付一份按阻斷、高、中、低嚴重程度排列的問題報告。"
+    },
+    {
+      "en": "Use Python, pandas, chardet, and python-dateutil to check these flat data files for type, encoding, and date-parsing issues.",
+      "zh_hant": "使用 Python、pandas、chardet 與 python-dateutil 檢查這些平面資料檔的型別、編碼及日期解析問題。"
+    },
+    {
+      "en": "Check whether records in this JSONL data file have consistent structures; if it is heavily nested, focus on structural cleanliness.",
+      "zh_hant": "檢查這個 JSONL 資料檔中各筆記錄的結構是否一致；如果內容高度巢狀，請以結構整潔度為主要檢查項目。"
+    },
+    {
+      "en": "Produce a Markdown report with an executive summary, file names, row counts, issue counts, and per-file findings, plus a JSON version for programmatic use.",
+      "zh_hant": "產生一份 Markdown 報告，包含執行摘要、檔名、列數、問題數量及各檔案的發現，並另外提供可供程式使用的 JSON 版本。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1880,
+    "cost_source": "gateway",
+    "cost_usd": 0.04366040000000001,
+    "prompt_tokens": 2497
+  }
+}

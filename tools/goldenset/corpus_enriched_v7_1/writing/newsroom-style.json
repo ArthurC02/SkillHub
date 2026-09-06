@@ -1,0 +1,73 @@
+{
+  "checks": [],
+  "limitations": [
+    "為新刊物寫作前，必須先詢問其 house style；刊物自訂規範可凌駕 AP Style。",
+    "最新規則與邊緣案例需查閱目前的 AP Stylebook（apstylebook.com）。",
+    "發布前需核實姓名拼法與職稱，並確認消息來源可信且具名。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "這項 Skill 依照 AP Style 與新聞編採慣例撰寫或編輯新聞文章、短訊、標題、新聞稿、媒體通知及新聞社群貼文。它也能把訪談筆記轉成可發布文稿，並處理導語、引述歸屬、數字、日期、時間、名稱、職稱、縮寫及段落格式。使用者可提供草稿、訪談筆記或事件資料，並說明需要的新聞內容類型與刊物自訂風格。",
+  "tags": {
+    "dependencies": [],
+    "inputs": [
+      "journalism drafts",
+      "interview notes",
+      "event details"
+    ],
+    "outputs": [
+      "news articles",
+      "news briefs",
+      "headlines",
+      "press releases",
+      "media advisories",
+      "news social media posts"
+    ],
+    "tools": [
+      "ap stylebook",
+      "apstylebook.com"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Write a news article from these event details using the inverted-pyramid structure, short paragraphs and a lede of no more than 35 words.",
+      "zh_hant": "請根據這些事件資料寫一篇採倒金字塔結構的新聞文章，使用短段落，並把導語控制在 35 個英文單字以內。"
+    },
+    {
+      "en": "Edit this news draft according to AP Style, adjusting numbers, dates, times, titles and attribution.",
+      "zh_hant": "請依 AP Style 編輯這份新聞草稿，調整數字、日期、時間、職稱和引述歸屬。"
+    },
+    {
+      "en": "Turn these interview notes into a publishable news brief that presents the most important facts first.",
+      "zh_hant": "把這些訪談筆記轉成可發布的新聞短訊，先交代最重要的事實。"
+    },
+    {
+      "en": "Write a sentence-case, present-tense headline with no ending period for the news that the city council approved the budget.",
+      "zh_hant": "為市議會通過預算的消息寫一個句首大寫、現在式且句尾沒有句號的標題。"
+    },
+    {
+      "en": "Shorten this opening to one sentence that focuses on what happened rather than leading with background.",
+      "zh_hant": "請把這段開頭縮短成一句話，聚焦發生了什麼事，不要先寫背景。"
+    },
+    {
+      "en": "Write a press release from these event details and format the dates, times, money and names according to newsroom conventions.",
+      "zh_hant": "根據這些活動詳情撰寫新聞稿，並依新聞編採慣例格式化日期、時間、金額與名稱。"
+    },
+    {
+      "en": "Create a media advisory for this news conference that states who, what, when and where.",
+      "zh_hant": "為這場記者會製作媒體通知，列出誰、什麼事、何時及何地。"
+    },
+    {
+      "en": "My deadline is approaching and I only have the mayor’s quote and project figures; write a social media post for the news, attribute the quote with “said,” and avoid editorializing.",
+      "zh_hant": "截稿時間快到了，我手上只有市長的引述和計畫數據；請替我寫一則新聞社群貼文，使用「said」歸屬引述，並避免評論。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1550,
+    "cost_source": "gateway",
+    "cost_usd": 0.04065540000000001,
+    "prompt_tokens": 3216
+  }
+}

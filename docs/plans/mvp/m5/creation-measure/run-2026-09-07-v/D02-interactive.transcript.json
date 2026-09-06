@@ -1,0 +1,11 @@
+{
+  "acceptance_criteria": null,
+  "brief": "",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "這一步未完成：模型的回覆不符合會話規則，已保留進度與實際可取得的費用。請檢查後再繼續。"
+    }
+  ],
+  "state": "needs_reupload"
+}

@@ -1,0 +1,78 @@
+{
+  "checks": [],
+  "limitations": [
+    "需安裝 Python、pandas、phonenumbers 與 python-stdnum。",
+    "自由文字的機器學習檢測是選用功能，啟用前需詢問使用者，並需安裝 presidio-analyzer、presidio-anonymizer 或使用本機 NER 模型。",
+    "若資料含健康資料、政府證件號碼或信用卡等特殊類別或高風險個資，後續公開發布前需取得使用者明確確認。",
+    "不會嘗試反向解碼 base64、URL 編碼或雜湊內容，只會將其標示為「可能經過編碼」。",
+    "短數字字串、測試資料及虛擬電子郵件可能造成誤判；這些項目會被報告並標示為可能無害，但不會自動修復。",
+    "非英文文字需以 Unicode 執行檢測；部分正規表示式僅支援 ASCII，電話號碼檢測需使用地區提示。",
+    "pii_report.jsonl 本身含敏感資訊，不應公開分享；預設會寫在資料集旁並加入 .gitignore。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 需要一個資料集，會在欄位與儲存格層級偵測姓名、電子郵件、電話、地址、政府證件號碼、信用卡、IP 位址、出生日期、地理座標及健康資料等個人識別資訊。它會產生預設遮蔽值的逐儲存格 JSONL 報告、欄位層級摘要、信心分數及各欄位的處置建議。規則式檢測涵蓋結構化欄位與文字欄位；使用者同意後，也可選擇以 Presidio 或本機 NER 模型檢查自由文字。若發現健康資料、政府證件號碼或信用卡等高風險資料，會要求使用者明確確認後才可進行後續公開發布步驟。",
+  "tags": {
+    "dependencies": [
+      "python"
+    ],
+    "inputs": [
+      "dataset"
+    ],
+    "outputs": [
+      "jsonl pii report",
+      "column-level pii summary",
+      "remediation recommendations"
+    ],
+    "tools": [
+      "pandas",
+      "phonenumbers",
+      "python-stdnum",
+      "presidio-analyzer",
+      "presidio-anonymizer",
+      "local ner model"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Scan this dataset for names, email addresses, phone numbers, addresses, and other personally identifiable information.",
+      "zh_hant": "掃描這個資料集，找出姓名、電子郵件、電話、地址及其他個人識別資訊。"
+    },
+    {
+      "en": "I am preparing to share my data publicly and first need to know which cells contain personal data and whether it includes health data or government IDs.",
+      "zh_hant": "我準備公開分享手上的資料，需要先知道哪些儲存格含有個資，以及是否有健康資料或政府證件號碼。"
+    },
+    {
+      "en": "Create a pii_report.jsonl report file with one line per detected cell, including its location, category, masked value, and confidence score.",
+      "zh_hant": "請產生 pii_report.jsonl 報告檔，每個偵測到的儲存格一行，包含位置、類別、遮蔽值與信心分數。"
+    },
+    {
+      "en": "I need a cell-level personal-data report as a JSONL data file, without displaying full PII in the report.",
+      "zh_hant": "我要一份 JSONL 資料檔形式的逐儲存格個資報告，報告中不要顯示完整個資。"
+    },
+    {
+      "en": "Summarize the detected PII categories, counts, and worst-case sample count for each column.",
+      "zh_hant": "請按欄位彙總偵測到的個資類別、數量及最壞情況樣本數。"
+    },
+    {
+      "en": "For each column containing PII, recommend whether to drop it, hash or tokenize it, generalize it, replace it with synthetic data, or keep it with a recorded rationale.",
+      "zh_hant": "針對含有個資的每個欄位，建議應刪除、雜湊或代碼化、一般化、改用合成資料，還是保留並記錄理由。"
+    },
+    {
+      "en": "In a Python workflow, use pandas, phonenumbers, and python-stdnum to run rule-based PII detection on the data.",
+      "zh_hant": "在 Python 工作流程中，使用 pandas、phonenumbers 與 python-stdnum 對資料進行規則式個資檢測。"
+    },
+    {
+      "en": "Enable the optional Presidio or local NER detection to find PII inside free-text columns.",
+      "zh_hant": "請啟用選用的 Presidio 或本機 NER 檢測，找出自由文字欄位內的個資。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2054,
+    "cost_source": "gateway",
+    "cost_usd": 0.046620400000000006,
+    "prompt_tokens": 2393
+  }
+}

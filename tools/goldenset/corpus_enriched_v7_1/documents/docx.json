@@ -1,0 +1,96 @@
+{
+  "checks": [],
+  "limitations": [
+    "不適用於 PDF、試算表、Google Docs，或與文件產生無關的一般程式設計工作。",
+    "建立新文件需使用 Node.js 與 docx npm 套件；該套件為預先安裝，只有在 require('docx') 失敗時才需安裝。",
+    "docx-js 無法開啟既有文件；編輯既有 .docx 需先解壓縮、修改 word/document.xml，再重新壓縮。",
+    "讀取 .docx 內容需使用 Pandoc。",
+    "執行套件所附的 .py 工具需有 Python；輸出檢視流程另需 LibreOffice 與 Poppler 的 pdftoppm。",
+    "舊式 .doc 文件必須先透過 LibreOffice soffice 轉換成 .docx。",
+    "註解建立後仍需把註解範圍與參照標記加入 word/document.xml，否則註解不會顯示。",
+    "accept_changes.py 在已刪除段落後接著空白間隔段落時，不一定能正確合併段落；Pandoc 的接受修訂模式不會合併這類段落。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此技能可依文字內容與版面要求建立 .docx Word 文件，也可處理 .dotx Word 範本。對既有文件，它可讀取或重新整理內容、尋找及取代文字、插入或替換圖片，以及處理修訂追蹤與註解；舊式 .doc 文件需先轉成 .docx。它涵蓋目錄、標題、頁碼、信頭、表格與清單等版面，並可將 .docx 內容讀成 Markdown。",
+  "tags": {
+    "dependencies": [
+      "node.js",
+      "python",
+      "docx npm package",
+      "pandoc",
+      "libreoffice",
+      "poppler"
+    ],
+    "inputs": [
+      "docx word documents",
+      "dotx word templates",
+      "doc legacy word documents",
+      "png images",
+      "jpg images",
+      "xml wordprocessingml files"
+    ],
+    "outputs": [
+      "docx word documents",
+      "dotx word templates",
+      "markdown document content",
+      "pdf rendered documents",
+      "jpeg page images",
+      "xml comment files"
+    ],
+    "tools": [
+      "docx npm package",
+      "pandoc",
+      "libreoffice soffice",
+      "pdftoppm",
+      "unzip",
+      "zip",
+      "merge_runs.py",
+      "validate.py",
+      "accept_changes.py",
+      "comment.py"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a report from the following content with a table of contents, section headings, and page numbers.",
+      "zh_hant": "請把以下內容製作成一份包含目錄、分段標題與頁碼的報告。"
+    },
+    {
+      "en": "Read the content of this Word document (.docx) into Markdown.",
+      "zh_hant": "請將這份 Word 文件（.docx）的內容讀成 Markdown。"
+    },
+    {
+      "en": "Reorganize the sections in this .docx document.",
+      "zh_hant": "請重新整理這份 .docx 文件中的章節順序。"
+    },
+    {
+      "en": "Replace every occurrence of “Old Company Name” with “New Company Name” in the existing Word file.",
+      "zh_hant": "把現有 Word 檔中的「舊公司名稱」全部取代成「新公司名稱」。"
+    },
+    {
+      "en": "Replace the old logo image in this .dotx Word template with the new PNG image.",
+      "zh_hant": "請把這份 .dotx Word 範本中的舊標誌圖片替換成新的 PNG 圖片。"
+    },
+    {
+      "en": "Accept all tracked changes and produce a copy that does not show the revisions.",
+      "zh_hant": "請接受所有修訂，產生一份不顯示追蹤變更的副本。"
+    },
+    {
+      "en": "I have a contract that I must return with comments; add “The expense cap is too low” beside the specified text and reply “Agreed.”",
+      "zh_hant": "我手上有一份合約，必須交回帶註解的版本；請在指定文字旁加入「費用上限太低」，並回覆「同意」。"
+    },
+    {
+      "en": "I need to use the docx npm package in a Node project to generate a Word letter with a letterhead.",
+      "zh_hant": "我需要在 Node 專案中用 docx npm 套件產生一封含信頭的 Word 信件。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 3379,
+    "cost_source": "gateway",
+    "cost_usd": 0.083542,
+    "prompt_tokens": 3193
+  }
+}

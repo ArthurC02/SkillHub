@@ -1,0 +1,98 @@
+{
+  "checks": [],
+  "limitations": [
+    "執行需要 Python、pandas 與 python-dateutil。",
+    "pytz 是舊式時區資料庫的可選依賴；Python 3.9 以上原生包含 zoneinfo。",
+    "沒有時區的日期時間需要使用者指定假設的來源時區。",
+    "遇到 01/02/2024 這類日期順序歧義時不會猜測，需由使用者確認或查閱資料字典。",
+    "移除時區屬於有損轉換，需要先警告並取得使用者確認。",
+    "地區顯示格式只供人員閱讀，不用於儲存。",
+    "會計年度轉換需要使用者確認起始月份。",
+    "覆寫原欄位前需要依 CONVENTIONS.md 確認已有備份或先建立備份。",
+    "日光節約時間造成不存在或重複的時間時，預設會列出資料列索引並引發錯誤，後續處理政策由使用者選擇。",
+    "pandas datetime64[ns] 在 2262-04-11 之後會溢位；文件指定改用 datetime64[us] 或字串儲存。",
+    "JavaScript Date 會遺失微秒精度；來源含毫秒以下精度且目標由 JavaScript 使用時需提出警告。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 會轉換資料集中的日期與時間欄位，包括 ISO 8601、Unix epoch、時區、地區顯示格式、會計年度、ISO 週日期及 Julian 日期等表示法。使用者需指出來源欄位與目標格式；若日期順序、來源時區或會計年度起始月份不明，還需提供相應資訊。轉換結果預設寫入新的描述性欄位並保留原欄位，也會抽樣回轉驗證，並在資料字典記錄格式、時區假設及有損轉換。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "python-dateutil",
+      "pytz",
+      "zoneinfo"
+    ],
+    "inputs": [
+      "dataset with date/time columns",
+      "date column",
+      "time column",
+      "datetime column",
+      "data dictionary"
+    ],
+    "outputs": [
+      "dataset with transformed date/time columns",
+      "iso 8601 datetime",
+      "unix epoch seconds",
+      "unix epoch milliseconds",
+      "epoch microseconds",
+      "epoch nanoseconds",
+      "timezone-aware datetime",
+      "utc datetime",
+      "naive datetime",
+      "locale date display",
+      "fiscal year and quarter",
+      "iso week date",
+      "julian day",
+      "day-of-year",
+      "data dictionary"
+    ],
+    "tools": [
+      "pandas",
+      "data-enrichment skill"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Normalize the created_at date column in this dataset to ISO 8601 and write it to a new created_at_iso8601 column.",
+      "zh_hant": "請把這個資料集的 created_at 日期欄正規化為 ISO 8601，並寫入新的 created_at_iso8601 欄位。"
+    },
+    {
+      "en": "In my Python pandas data-processing script, convert the timestamp column to Unix epoch milliseconds.",
+      "zh_hant": "在我的 Python pandas 資料處理程式中，把 timestamp 欄轉成 Unix epoch 毫秒。"
+    },
+    {
+      "en": "These naive datetimes are based on Europe/London; add that timezone to them.",
+      "zh_hant": "這批沒有時區的日期時間是以 Europe/London 為準，請為它們加上時區。"
+    },
+    {
+      "en": "Convert the timezone-aware datetimes to UTC and keep the offset.",
+      "zh_hant": "把有時區的日期時間轉成 UTC，並保留偏移量。"
+    },
+    {
+      "en": "Combine the separate date and time columns into one datetime column.",
+      "zh_hant": "把分開的日期欄和時間欄合成一個日期時間欄。"
+    },
+    {
+      "en": "Split one datetime column into separate date and time columns.",
+      "zh_hant": "請把一個日期時間欄拆成日期欄與時間欄。"
+    },
+    {
+      "en": "Our fiscal year starts in April; derive the fiscal year and quarter from the dates.",
+      "zh_hant": "我們的會計年度從四月開始，請從日期產生會計年度與季度。"
+    },
+    {
+      "en": "I have daily date data, but the weekly report must use ISO week dates in YYYY-Www-D form.",
+      "zh_hant": "我手上有每日日期資料，但每週報表必須使用 YYYY-Www-D 形式的 ISO 週日期。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2179,
+    "cost_source": "gateway",
+    "cost_usd": 0.05003040000000001,
+    "prompt_tokens": 2575
+  }
+}

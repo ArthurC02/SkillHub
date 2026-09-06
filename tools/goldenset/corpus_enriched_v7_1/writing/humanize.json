@@ -1,0 +1,78 @@
+{
+  "checks": [],
+  "limitations": [
+    "不保證商業 AI 偵測器會給出 0% 的 AI 分數。",
+    "不會為增加具體性而加入虛假資訊，只會使用不捏造事實的情境框架。",
+    "不改變輸入的事實內容，只調整表達方式。",
+    "不會對所有領域套用相同轉換，會依語域調整。",
+    "若要比對個人文風，使用者需提供既有寫作樣本；此步驟為選用。",
+    "若輸入沒有數字、名稱、日期或具體例子，且未提供寫作樣本，仍會先改寫，再附加缺乏事實錨點的說明。",
+    "若輸出少於輸入篇幅的一半，會附加篇幅縮短的說明，而不會用填充文字補長。",
+    "輸出不含前言或修改清單；只有文件規定的兩種情況可在改寫內容後附加說明。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 可改寫 AI 生成或語氣平板的文字，減少機械、制式、過度修飾及常見 AI 寫作痕跡，並依技術、商務、敘事、創意或 Slack 等情境調整語域。使用者需提供要改寫的文字，或在從零撰寫時提供主題與所需語域；也可選擇提供既有寫作樣本以比對個人風格。輸出原則上只有改寫後的純文字，特定情況下會附加關於缺乏具體事實或篇幅大幅縮短的說明。",
+  "tags": {
+    "dependencies": [],
+    "inputs": [
+      "plain text draft",
+      "writing samples",
+      "topic prompt"
+    ],
+    "outputs": [
+      "plain text rewrite",
+      "plain text original content"
+    ],
+    "tools": [
+      "slack",
+      "gptzero",
+      "pangram",
+      "binoculars",
+      "grammarly",
+      "ai-check"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Rewrite this plain text so it sounds more like a person wrote it while preserving the factual content.",
+      "zh_hant": "請把這段純文字改得更像真人寫的，保留原本的事實內容。"
+    },
+    {
+      "en": "This AI-generated draft feels formulaic. Rewrite it with fewer common AI writing tells.",
+      "zh_hant": "這份 AI 生成的草稿讀起來很制式，請重寫並減少常見的 AI 寫作痕跡。"
+    },
+    {
+      "en": "Help me identify why this passage sounds robotic, generic, and machine-generated.",
+      "zh_hant": "幫我看看這段話為什麼顯得機械、空泛又像機器生成的。"
+    },
+    {
+      "en": "Rewrite the new draft using my attached writing samples as a guide for word choice, sentence length, and transitions.",
+      "zh_hant": "請依照我附上的幾篇舊作來改寫新稿，讓用字、句長和轉折方式貼近我的寫作習慣。"
+    },
+    {
+      "en": "I only have a flat first draft and need to deliver it to the board tomorrow. The facts and numbers cannot change, but the wording needs to sound more human.",
+      "zh_hant": "我手上只有一份語氣很平的初稿，明天要交給董事會，內容和數字不能改，但表達方式需要更像真人撰寫。"
+    },
+    {
+      "en": "Rewrite this Slack team update in an async-team voice while keeping the existing progress, blockers, and timing details.",
+      "zh_hant": "把這則 Slack 團隊更新改成適合非同步溝通的口吻，保留原有進度、阻礙和時間資訊。"
+    },
+    {
+      "en": "Write a new piece on this topic with a human voice, without a tutorial-style opening or closing summary.",
+      "zh_hant": "請根據這個主題從零撰寫一段較有人味的內容，不要使用教學式開場或結尾摘要。"
+    },
+    {
+      "en": "Return only the rewritten copy, with no preamble, explanation, or changelog.",
+      "zh_hant": "請只交付改寫後的內文，不要加前言、修改說明或變更清單。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1454,
+    "cost_source": "gateway",
+    "cost_usd": 0.0729404,
+    "prompt_tokens": 10057
+  }
+}

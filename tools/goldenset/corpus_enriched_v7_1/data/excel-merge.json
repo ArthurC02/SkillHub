@@ -1,0 +1,75 @@
+{
+  "checks": [],
+  "limitations": [
+    "必須明確提供要合併的來源檔案清單。",
+    "來源檔案的表頭必須一致；偵測到不一致時，流程會先詢問是否強制合併並將缺失欄位留空。",
+    "操作前必須備份所有來源檔案，以便輸出出錯時從備份恢復。",
+    "需要 Python 執行環境；小檔案流程需要 pandas 與 openpyxl，大檔案 XML 流程需要 lxml。",
+    "小檔案方案寫入活頁簿的作用中工作表；大檔案方案以第一個找到的主工作表為基礎，其他來源讀取 `sheet1.xml`。",
+    "輸出的樣式與欄寬取自第一個來源檔案。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 將多個同結構的 Excel `.xlsx` 檔案合併成一個活頁簿，先檢查表頭是否一致，再逐行追加資料並只保留一次表頭。輸出會繼承第一個檔案的樣式與欄寬；小於 10MB 時使用 pandas 與 openpyxl，較大的檔案則使用 XML 追加。使用者必須明確提供來源檔案清單；輸出檔名可省略，預設為 `合并结果.xlsx`（繁中：`合併結果.xlsx`）。",
+  "tags": {
+    "dependencies": [
+      "pandas",
+      "openpyxl",
+      "lxml",
+      "excel-safe-workflow"
+    ],
+    "inputs": [
+      "xlsx spreadsheets"
+    ],
+    "outputs": [
+      "xlsx merged spreadsheet"
+    ],
+    "tools": [
+      "python",
+      "xml",
+      "zipfile"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Merge all same-structure Excel workbooks (.xlsx) in this folder into one file.",
+      "zh_hant": "把這個資料夾內所有同結構的 Excel 活頁簿（.xlsx）合併成一個檔案。"
+    },
+    {
+      "en": "Combine these three spreadsheets into `merged.xlsx`, keeping the first-row header only once.",
+      "zh_hant": "請將這三份試算表合併到 `merged.xlsx`，第一列表頭只保留一次。"
+    },
+    {
+      "en": "Append these datasets with matching columns and keep only one set of column names.",
+      "zh_hant": "把這幾份欄位相同的資料接在一起，只保留一組欄位名稱。"
+    },
+    {
+      "en": "I have three monthly datasets with the same structure and now need to deliver one consolidated result.",
+      "zh_hant": "我手上有三份結構相同的月度資料，現在必須交付一份合併後的結果。"
+    },
+    {
+      "en": "Compare the headers in this batch first and list any missing or extra columns.",
+      "zh_hant": "先比對這批檔案的表頭；如果有缺少或多出的欄位，請列出差異。"
+    },
+    {
+      "en": "Use pandas and openpyxl in Python to merge this batch of smaller Excel files.",
+      "zh_hant": "在 Python 中用 pandas 和 openpyxl 合併這批較小的 Excel 檔案。"
+    },
+    {
+      "en": "This batch of `.xlsx` files is over 10MB; append the rows through XML and shift formula row references in the appended data.",
+      "zh_hant": "這批 `.xlsx` 超過 10MB，請用 XML 逐行追加，並調整追加資料中的公式列號引用。"
+    },
+    {
+      "en": "Produce one consolidated spreadsheet whose formatting, styles, and column widths come from the first source file.",
+      "zh_hant": "產生一份合併後的試算表，格式、樣式與欄寬沿用第一個來源檔案。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2372,
+    "cost_source": "gateway",
+    "cost_usd": 0.0631854,
+    "prompt_tokens": 4434
+  }
+}

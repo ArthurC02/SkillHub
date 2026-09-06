@@ -1,0 +1,81 @@
+{
+  "checks": [],
+  "limitations": [
+    "執行環境需提供 python3 或 python；文件列出的作業系統為 linux、darwin 與 win32。",
+    "文件中的資料處理程式使用 pandas，XLSX 檢查與標準化另需 openpyxl。",
+    "大型檔案的流式處理實作使用 pandas.read_csv 讀取 CSV，並以 CSV 形式寫出結果。",
+    "資料驗證只列出 int、float、email 與 date 四種規則；空值或空字串會略過驗證。",
+    "日期標準化只嘗試文件列出的日期格式；無法匹配時會保留原值。",
+    "XLSX 標準化的輸出路徑可省略；省略時不會儲存檔案，只回傳 pandas DataFrame。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此技能處理 CSV、TSV、XLSX、JSON 與 JSONL 資料，可讀取、儲存、篩選、彙總、連接、清理、驗證及進行統計分析。它也能檢查與標準化含多層表頭、合併儲存格、格式化數字或混合日期格式的 XLSX，並以分塊方式處理大型 CSV。使用者需提供資料檔案；也可提供分析問題、背景及預期成果，以產生包含摘要、指標、發現、建議與方法的分析報告。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "openpyxl"
+    ],
+    "inputs": [
+      "csv table data",
+      "tsv table data",
+      "xlsx spreadsheet data",
+      "json data",
+      "jsonl data"
+    ],
+    "outputs": [
+      "csv table data",
+      "xlsx spreadsheet data",
+      "pandas dataframe",
+      "validation error list",
+      "markdown analysis report"
+    ],
+    "tools": [
+      "python cli",
+      "scripts/data_ops.py"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Inspect this XLSX spreadsheet for its worksheets, first ten rows, and merged cells.",
+      "zh_hant": "檢查這份 XLSX 試算表有哪些工作表、前十列內容及合併儲存格。"
+    },
+    {
+      "en": "I have an Excel workbook with a two-row header, introductory text, and merged cells, and I need to deliver a standardized CSV table.",
+      "zh_hant": "我手上有一份表頭占兩列、前面帶說明文字且包含合併儲存格的 Excel 活頁簿，必須交付標準化後的 CSV 表格。"
+    },
+    {
+      "en": "In a Python script, filter the rows where amount is greater than 1000 and save the result.",
+      "zh_hant": "請在 Python 指令碼中篩選 amount 大於 1000 的資料列，並儲存結果。"
+    },
+    {
+      "en": "Aggregate the amounts by category, calculate each category's total, and produce a summary table.",
+      "zh_hant": "依類別彙總金額並計算各類別的總和，產出摘要表。"
+    },
+    {
+      "en": "Join orders.csv and customers.csv on customer_id and write the result to merged.csv.",
+      "zh_hant": "用 customer_id 連接 orders.csv 與 customers.csv，將結果寫入 merged.csv。"
+    },
+    {
+      "en": "This large CSV cannot fit into memory at once, so process it in chunks and write the transformed results to another CSV file.",
+      "zh_hant": "這個大型 CSV 無法一次載入記憶體，請分塊處理並把轉換結果寫到另一個 CSV 檔案。"
+    },
+    {
+      "en": "Validate each row against integer, number, email, and date field rules, returning the valid data and an error list separately.",
+      "zh_hant": "依照欄位規則逐列驗證整數、數字、電子郵件與日期，分開回傳有效資料及錯誤清單。"
+    },
+    {
+      "en": "Using my analysis question and data, create a report with executive summary, key metrics, findings, recommendations, and methodology sections.",
+      "zh_hant": "根據我的分析問題與資料，製作一份含執行摘要、關鍵指標、研究發現、建議及方法章節的報告。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2461,
+    "cost_source": "gateway",
+    "cost_usd": 0.051615600000000005,
+    "prompt_tokens": 5962
+  }
+}

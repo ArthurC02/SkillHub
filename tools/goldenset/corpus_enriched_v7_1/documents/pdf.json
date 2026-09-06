@@ -1,0 +1,88 @@
+{
+  "checks": [],
+  "limitations": [
+    "Python 範例需要 Python，以及各操作所匯入的 pypdf、pdfplumber、pandas、reportlab、pytesseract 或 pdf2image。",
+    "命令列操作需要相應的 poppler-utils、qpdf 或 pdftk；文件將 pdftk 標示為僅在可用時使用。",
+    "掃描 PDF 的 OCR 需要安裝 pytesseract 與 pdf2image，並先將 PDF 轉成圖片。",
+    "使用 qpdf 移除 PDF 密碼時，需要提供密碼。",
+    "ReportLab 內建字型不含 Unicode 上標與下標字元；Paragraph 必須改用 <super> 與 <sub> 標記，canvas 文字則需手動調整字型大小與位置。",
+    "填寫 PDF 表單需要依照 FORMS.md 的指示；進階功能、pypdfium2 與 JavaScript 的 pdf-lib 用法需參閱 REFERENCE.md。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此技能可讀取 PDF 的文字、表格與中繼資料，也能合併、分割、旋轉頁面、加入浮水印、填寫表單、擷取圖片，以及加密或解密 PDF。它也可建立單頁或多頁 PDF，並對掃描 PDF 執行 OCR，使內容可搜尋。輸入視操作而定，可能包括一份或多份 PDF、掃描 PDF、浮水印 PDF、密碼或要寫入新 PDF 的內容；表格可輸出為 XLSX，圖片可輸出為 JPG。",
+  "tags": {
+    "dependencies": [
+      "pypdf",
+      "pdfplumber",
+      "pandas",
+      "reportlab",
+      "pytesseract",
+      "pdf2image",
+      "poppler-utils",
+      "pdf-lib",
+      "pypdfium2"
+    ],
+    "inputs": [
+      "pdf documents",
+      "scanned pdf documents",
+      "watermark pdf documents"
+    ],
+    "outputs": [
+      "pdf documents",
+      "xlsx tables",
+      "plain text",
+      "jpg images"
+    ],
+    "tools": [
+      "python",
+      "javascript",
+      "pdftotext",
+      "qpdf",
+      "pdftk",
+      "pdfimages"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Extract the text from this PDF document (.pdf) and output a plain-text file that preserves the layout.",
+      "zh_hant": "從這份 PDF 文件（.pdf）擷取文字，並輸出成保留版面配置的純文字檔。"
+    },
+    {
+      "en": "Extract the tables from the report PDF into an Excel spreadsheet (.xlsx).",
+      "zh_hant": "把報告 PDF 裡的表格擷取到 Excel 試算表（.xlsx）。"
+    },
+    {
+      "en": "Merge these three .pdf documents into one PDF.",
+      "zh_hant": "將這三份 .pdf 文件合併成一份 PDF。"
+    },
+    {
+      "en": "Split this document so that each page is saved as a separate file.",
+      "zh_hant": "把這份文件逐頁拆開，每頁各存成一個檔案。"
+    },
+    {
+      "en": "I only have a scanned document and must deliver a version with searchable text, so run OCR on it.",
+      "zh_hant": "我手上只有一份掃描文件，現在必須交付可搜尋文字內容的版本，請對它執行 OCR。"
+    },
+    {
+      "en": "Rotate the first page 90 degrees clockwise.",
+      "zh_hant": "把第一頁順時針旋轉 90 度。"
+    },
+    {
+      "en": "Add this watermark to every page.",
+      "zh_hant": "替每一頁加上這個浮水印。"
+    },
+    {
+      "en": "Use ReportLab in a Python script to create a multi-page PDF report with a title, body text, and page breaks.",
+      "zh_hant": "在 Python 指令碼中使用 ReportLab，建立一份含標題、正文與分頁的多頁 PDF 報告。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2360,
+    "cost_source": "gateway",
+    "cost_usd": 0.05833540000000001,
+    "prompt_tokens": 3512
+  }
+}

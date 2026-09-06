@@ -1,0 +1,68 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要目標文字及足以理解局部論述的上下文。",
+    "此 Skill 處理文字修訂而非校對；除非錯字或小型文法問題實質影響行文或清晰度，否則不處理逐行校對。",
+    "預設不新增或刪除觀點，也不改變論斷強度；只有在某個單元為了成立而明確需要時才會介入，並會明示該項介入。",
+    "超過約三頁的文件預設提供結構化修訂報告，除非使用者要求直接編輯。",
+    "若要求套用修改，需編輯來源檔案，而不是另行產生副本。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 修訂尚未定稿的文字，先調整段落、句子與觀點的順序、重點和銜接，再改善措辭，同時保留作者的實質主張、語氣、聲音與論斷強度。使用者需提供目標文字及足以理解論述的上下文；若受眾、目的或語調未說明，通常會從原文推斷，只有在關鍵歧義無法由上下文判斷時才會詢問。短篇請求通常會得到簡短診斷及一至三個修訂版本；超過約三頁的文件預設提供依優先順序整理的修訂報告，除非使用者要求直接編輯。",
+  "tags": {
+    "dependencies": [],
+    "inputs": [
+      "draft prose",
+      "surrounding context",
+      "source file"
+    ],
+    "outputs": [
+      "revised prose",
+      "revision report"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Revise this draft prose by addressing the order of ideas before improving the transitions between sentences.",
+      "zh_hant": "請修訂這段草稿文字，先處理觀點順序，再改善句子之間的銜接。"
+    },
+    {
+      "en": "Apply the revisions directly to the source file while preserving citations, labels, author notes, and technical claims.",
+      "zh_hant": "請直接在來源檔案中套用修訂，並保留引文、標籤、作者註記和技術主張。"
+    },
+    {
+      "en": "Move the main claim to a position that can organize what follows, and rearrange the qualifications.",
+      "zh_hant": "把主要論點移到更能統領後文的位置，並重新安排各個限定條件。"
+    },
+    {
+      "en": "Identify sentences that are doing too many logical jobs, and split or combine them as needed.",
+      "zh_hant": "找出哪些句子同時承擔太多邏輯功能，視需要拆分或合併。"
+    },
+    {
+      "en": "I have an article longer than three pages whose paragraphs feel out of order, and I need to deliver a section-by-section revision report with prioritized changes.",
+      "zh_hant": "我手上有一篇超過三頁、段落順序不太順的文章，必須交付一份按優先順序列出修改建議的分段修訂報告。"
+    },
+    {
+      "en": "First diagnose why the argument does not flow, then provide Light, Moderate, and Full versions with different degrees of restructuring.",
+      "zh_hant": "請先診斷整體論述為何不流暢，再提供 Light、Moderate 與 Full 三種不同重整程度的版本。"
+    },
+    {
+      "en": "Revise this academic passage without changing its precise terminology, technical claims, hedges, or claim strength.",
+      "zh_hant": "修訂這段學術論述，但不要改變精確術語、技術主張、保留語或論斷強度。"
+    },
+    {
+      "en": "The main claim in this draft is buried at the end of the paragraph and preceded by too many qualifications; rearrange the existing ideas and explain the structural problem.",
+      "zh_hant": "這份草稿的主要主張被埋在段落末尾，而且前面的限定語太多；請重新安排現有觀點，並說明結構問題。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1411,
+    "cost_source": "gateway",
+    "cost_usd": 0.0360504,
+    "prompt_tokens": 2851
+  }
+}

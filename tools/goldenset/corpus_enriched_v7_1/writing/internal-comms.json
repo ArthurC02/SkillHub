@@ -1,0 +1,70 @@
+{
+  "checks": [],
+  "limitations": [
+    "需從 `examples/` 目錄載入與溝通類型對應的 Markdown 指引檔案。",
+    "若溝通類型不符合現有指引，需向使用者詢問期望格式或更多背景。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此技能用於撰寫公司內部溝通內容，包括 3P 更新、公司電子報、FAQ 回覆、狀態報告、領導層更新、專案更新及事件報告。它會根據溝通類型載入對應的 Markdown 指引，並遵循其中的格式、語氣及內容蒐集要求。使用者需提供要撰寫的溝通類型及相關內容；若類型不符合現有指引，技能會詢問期望格式或更多背景。",
+  "tags": {
+    "dependencies": [
+      "examples/3p-updates.md",
+      "examples/company-newsletter.md",
+      "examples/faq-answers.md",
+      "examples/general-comms.md"
+    ],
+    "inputs": [
+      "internal communication request",
+      "markdown guideline files"
+    ],
+    "outputs": [
+      "3p updates",
+      "company newsletters",
+      "faq responses",
+      "status reports",
+      "leadership updates",
+      "project updates",
+      "incident reports"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Organize what we completed this week, what we plan to do next, and the problems we are facing for the team.",
+      "zh_hant": "把本週已完成事項、接下來的計畫和目前遇到的問題整理給團隊。"
+    },
+    {
+      "en": "Write a company newsletter covering this month's company news.",
+      "zh_hant": "請撰寫一份介紹本月公司消息的公司電子報。"
+    },
+    {
+      "en": "Write FAQ responses for these frequently asked questions.",
+      "zh_hant": "請根據這些常見問題撰寫 FAQ 回覆。"
+    },
+    {
+      "en": "Turn the current work progress into a status report.",
+      "zh_hant": "請將目前的工作進展寫成一份狀態報告。"
+    },
+    {
+      "en": "Leadership needs to understand the current results, important changes, and outstanding items, and I already have the relevant background information.",
+      "zh_hant": "高層需要了解目前成果、重要變化和待處理事項，我手上已有相關背景資料。"
+    },
+    {
+      "en": "Write an update for the team covering this project's latest progress, next steps, and current issues.",
+      "zh_hant": "請為團隊撰寫這個專案的最新進度、下一步及目前問題。"
+    },
+    {
+      "en": "The service had an outage yesterday, and I need to submit an incident report internally.",
+      "zh_hant": "服務昨天發生中斷，我必須向公司內部提交一份事件報告。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1095,
+    "cost_source": "gateway",
+    "cost_usd": 0.024240400000000002,
+    "prompt_tokens": 1753
+  }
+}

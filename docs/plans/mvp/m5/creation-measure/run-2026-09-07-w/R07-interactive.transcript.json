@@ -1,0 +1,25 @@
+{
+  "acceptance_criteria": [
+    "當輸入一個只有簡短說明、缺少 Args/Returns 區塊的 Python 函式時，輸出包含補齊後的 Google 風格 docstring。",
+    "當函式有參數時，輸出中的 Args 區塊會列出所有參數名稱。",
+    "當函式有回傳值時，輸出中的 Returns 區塊會出現且說明回傳內容。",
+    "當原 docstring 已有部分內容時，輸出會保留可用資訊並補上缺失部分。",
+    "輸出格式符合 Google 風格 docstring 的分段與標題寫法。"
+  ],
+  "brief": "建立一個 Skill，用來審查使用者貼上的 Python 函式 docstring，補齊缺少的內容，並輸出成 Google 風格 docstring。\n\n**要點**\n- **task**：讀入 Python 函式與現有 docstring，找出缺少的說明並補上。\n- **inputs**：使用者貼上的 Python 函式原文，以及其中的 docstring（可能不完整）。\n- **outputs**：回傳修正後、完整的 Google 風格 docstring；若需要，也可保留原函式內容不變，只改 docstring。\n- **tool requirements**：不需要外部工具；若之後要驗證格式，可用 validate_draft。\n- **limitations**：只處理使用者提供的函式文字，不推測未提供的行為或參數用途；不做程式重寫，只補 docstring。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我審 Python 函式的 docstring，缺的補上，格式用 Google 風格。"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的技能需求：\n\n**brief**\n建立一個 Skill，用來審查使用者貼上的 Python 函式 docstring，補齊缺少的內容，並輸出成 Google 風格 docstring。\n\n**要點**\n- **task**：讀入 Python 函式與現有 docstring，找出缺少的說明並補上。\n- **inputs**：使用者貼上的 Python 函式原文，以及其中的 docstring（可能不完整）。\n- **outputs**：回傳修正後、完整的 Google 風格 docstring；若需要，也可保留原函式內容不變，只改 docstring。\n- **tool requirements**：不需要外部工具；若之後要驗證格式，可用 validate_draft。\n- **limitations**：只處理使用者提供的函式文字，不推測未提供的行為或參數用途；不做程式重寫，只補 docstring。\n\n**acceptance_criteria**\n1. 當輸入一個只有簡短說明、缺少 Args/Returns 區塊的 Python 函式時，輸出包含補齊後的 Google 風格 docstring。\n2. 當函式有參數時，輸出中的 Args 區塊會列出所有參數名稱。\n3. 當函式有回傳值時，輸出中的 Returns 區塊會出現且說明回傳內容。\n4. 當原 docstring 已有部分內容時，輸出會保留可用資訊並補上缺失部分。\n5. 輸出格式符合 Google 風格 docstring 的分段與標題寫法。\n\n**sample_input**\n請幫我補齊這個 Python 函式的 docstring，並改成 Google 風格：\n```python\ndef add_user(name, age):\n    \"\"\"Add a user.\"\"\"\n    return {\"name\": name, \"age\": age}\n```\n\n請確認這個 brief、acceptance_criteria 和 sample_input 是否正確。"
+    },
+    {
+      "role": "assistant",
+      "content": "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
+    }
+  ],
+  "state": "failed"
+}

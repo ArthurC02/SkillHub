@@ -1,0 +1,91 @@
+{
+  "checks": [],
+  "limitations": [
+    "讀取共享文件、團隊頻道或討論內容需要可用的適當整合；若無法存取，使用者需啟用 Claude 連接器或直接貼上相關內容。",
+    "搜尋未知的實體或專案前，需要先取得使用者確認。",
+    "若文件中的圖片沒有替代文字，Claude 無法看見圖片內容；如要產生描述性替代文字，使用者需將每張圖片貼到對話中。",
+    "若無法使用 artifacts，文件會改為在工作目錄中建立 Markdown 檔案。",
+    "若無法使用子代理，讀者測試需由使用者在全新的 Claude.ai 對話中手動進行。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 以三階段流程協助共同撰寫文件：蒐集背景、逐節建構與修訂，以及用全新 Claude 對話或子代理進行讀者測試。使用者需提供文件類型、目標讀者、預期影響、範本或格式限制，以及專案背景等內容；也可提供現有文件、共享連結或相關討論。流程可用於提案、技術規格、決策文件、PRD、RFC 等結構化內容，並可在使用者不採用流程時改以自由方式協作。",
+  "tags": {
+    "dependencies": [
+      "document integrations",
+      "claude connectors",
+      "artifact access",
+      "sub-agents"
+    ],
+    "inputs": [
+      "document context",
+      "document template",
+      "shared document",
+      "document link",
+      "team discussion",
+      "image"
+    ],
+    "outputs": [
+      "markdown document",
+      "document scaffold",
+      "drafted document sections",
+      "alt text",
+      "reader testing findings"
+    ],
+    "tools": [
+      "claude",
+      "claude.ai",
+      "claude app",
+      "claude code",
+      "slack",
+      "teams",
+      "google drive",
+      "sharepoint",
+      "mcp servers",
+      "create_file",
+      "str_replace"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Guide me through co-authoring a proposal, starting with questions about the audience, intended impact, and necessary background.",
+      "zh_hant": "請引導我共同撰寫一份提案，先詢問目標讀者、預期影響和必要背景。"
+    },
+    {
+      "en": "Create a Markdown file for my technical specification with section headings and placeholder text.",
+      "zh_hant": "請為我的技術規格建立一個 Markdown 文件，先放入各節標題與待填寫的預留文字。"
+    },
+    {
+      "en": "I have the project background and trade-offs ready, and now need to brainstorm, curate, and draft the document section by section.",
+      "zh_hant": "我已經整理好專案背景和各方案的取捨，現在需要逐節腦力激盪、篩選內容並完成草稿。"
+    },
+    {
+      "en": "I have an existing shared document that must become a deliverable decision document; read its current contents first and identify missing context.",
+      "zh_hant": "我手上有一份現有的共享文件，必須把它修訂成可交付的決策文件；請先讀取目前內容並找出還缺哪些背景。"
+    },
+    {
+      "en": "Review the whole document for cross-section inconsistencies, repetition, contradictions, or generic filler.",
+      "zh_hant": "請針對這份文件做整體複查，找出跨章節的不一致、重複、矛盾或通用填充內容。"
+    },
+    {
+      "en": "In Claude Code, test this document with fresh sub-agents for reader questions, ambiguity, false assumptions, and internal contradictions.",
+      "zh_hant": "請在 Claude Code 中用全新的子代理測試這份文件，檢查讀者問題、模糊處、錯誤假設與內部矛盾。"
+    },
+    {
+      "en": "This shared document has images without alt text; I will paste them into the chat one at a time so you can generate descriptive alt text.",
+      "zh_hant": "這份共享文件有幾張沒有替代文字的圖片；我會逐張貼到對話中，請為它們產生描述性替代文字。"
+    },
+    {
+      "en": "Create a document scaffold with three to five sections and placeholder content, then let me choose which section to start with.",
+      "zh_hant": "請先建立一份包含三到五個章節及預留內容的文件骨架，再讓我選擇從哪一節開始。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1975,
+    "cost_source": "gateway",
+    "cost_usd": 0.0565104,
+    "prompt_tokens": 4687
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "checks": [],
+  "limitations": [
+    "只處理既有內容，不從零建立內容。",
+    "設計調整不得改變文字、數字或論述順序；內容問題須另行提出。",
+    "大型換版前須先列出預計變更及原因，並取得同意。",
+    "設計流程以根目錄 SKILL.md 與 get_design_system 為準，不能以自訂覆寫對抗設計系統；無法表達時須簡化元素。",
+    "重新發布前須執行 lint_document，並在核准後才以 publish 取代原網址內容。",
+    "ReportRoom 發布時加入的「Published with ReportRoom」頁尾不得隱藏、重新設計或覆寫。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7.1",
+  "seed": 20260829,
+  "summary": "此 Skill 對既有報告、簡報、文件草稿、已發布的 ReportRoom 頁面或貼上的 HTML 進行設計調整，不從零撰寫內容，也不更動文字、數字或論述順序。它檢查視覺層級、字體與間距、資料呈現、色彩與強調、深色模式與響應式顯示，以及分享連結預覽。套用調整後會執行文件檢查並提供前後摘要，經核准後可在原網址重新發布。",
+  "tags": {
+    "dependencies": [
+      "reportroom design system",
+      "root skill.md"
+    ],
+    "inputs": [
+      "html — pasted page",
+      "report — existing document",
+      "deck — existing presentation",
+      "document draft",
+      "reportroom page — published page"
+    ],
+    "outputs": [
+      "reportroom page — republished at same url",
+      "before-and-after summary"
+    ],
+    "tools": [
+      "reportroom",
+      "get_design_system",
+      "list_documents",
+      "lint_document",
+      "publish",
+      "slack",
+      "linkedin",
+      "imessage"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Polish this existing report by adjusting its visual hierarchy, typography, and spacing without changing the content.",
+      "zh_hant": "美化這份既有報告，調整視覺層級、字體與留白，但不要改動內容。"
+    },
+    {
+      "en": "The content of this presentation deck is final; please fix its layout and use of color emphasis.",
+      "zh_hant": "這份簡報 deck 的內容已經定稿，請修正版面與色彩強調方式。"
+    },
+    {
+      "en": "Restyle the pasted HTML page and check its dark mode and responsive rendering.",
+      "zh_hant": "請為我貼上的 HTML 頁面調整排版，並檢查深色模式與響應式顯示。"
+    },
+    {
+      "en": "The content has already been approved; make design changes only, without altering any words, numbers, or argument order.",
+      "zh_hant": "內容已經核准了；現在只調整設計，不要改任何文字、數字或論述順序。"
+    },
+    {
+      "en": "Make the most important conclusion visually dominant and let the section headings convey the overall story on their own.",
+      "zh_hant": "讓最重要的結論在視覺上最突出，並使各節標題能單獨呈現整體脈絡。"
+    },
+    {
+      "en": "I have a previously published ReportRoom page that now needs suitable title, description, and OG image presentation when shared on Slack, LinkedIn, and iMessage.",
+      "zh_hant": "我手上有一個先前發布的 ReportRoom 頁面，現在必須讓它分享到 Slack、LinkedIn 和 iMessage 時呈現合適的標題、說明與 OG 圖片。"
+    },
+    {
+      "en": "Present comparable numbers as charts, align the table columns and headers, and label each chart so it can stand on its own.",
+      "zh_hant": "把可比較的數字改用圖表呈現，對齊表格欄位與標題，並讓每張圖表都有可獨立理解的標示。"
+    },
+    {
+      "en": "Turn this existing content into a page ready for republication; list the design changes first, then lint and publish at the same URL after approval.",
+      "zh_hant": "把這份既有內容整理成可重新發布的頁面；先列出設計變更，核准後執行檢查並在同一網址發布。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2566,
+    "cost_source": "gateway",
+    "cost_usd": 0.0550254,
+    "prompt_tokens": 2026
+  }
+}
