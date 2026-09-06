@@ -1,0 +1,78 @@
+V vector cut0.55                             k=1: F1=0.774 P=0.917 R=0.708 zh=0.822 en=0.694 top1=44/48 rejected=12/12
+V vector cut0.75                             k=1: F1=0.774 P=0.917 R=0.708 zh=0.822 en=0.694 top1=44/48 rejected=12/12
+boost V<=0.55 beta=0.05                      k=1: F1=0.774 P=0.917 R=0.708 zh=0.822 en=0.694 top1=44/48 rejected=12/12
+boost V<=0.6 beta=0.05                       k=1: F1=0.774 P=0.917 R=0.708 zh=0.822 en=0.694 top1=44/48 rejected=12/12
+boost V<=0.65 beta=0.05                      k=1: F1=0.774 P=0.917 R=0.708 zh=0.822 en=0.694 top1=44/48 rejected=12/12
+union V<=0.55 + topB within +0.05            k=1: F1=0.774 P=0.917 R=0.708 zh=0.822 en=0.694 top1=44/48 rejected=12/12
+union V<=0.55 + topB within +0.1             k=1: F1=0.774 P=0.917 R=0.708 zh=0.822 en=0.694 top1=44/48 rejected=12/12
+union V<=0.55 + topB within +0.15            k=1: F1=0.774 P=0.917 R=0.708 zh=0.822 en=0.694 top1=44/48 rejected=12/12
+fallback V<=0.55 else topB                   k=1: F1=0.774 P=0.917 R=0.708 zh=0.822 en=0.694 top1=44/48 rejected=2/12
+fallback V<=0.55 else topB                   k=2: F1=0.764 P=0.750 R=0.858 zh=0.742 en=0.800 top1=44/48 rejected=2/12
+boost V<=0.55 beta=0.1                       k=1: F1=0.753 P=0.896 R=0.688 zh=0.789 en=0.694 top1=43/48 rejected=12/12
+boost V<=0.55 beta=0.2                       k=1: F1=0.753 P=0.896 R=0.688 zh=0.789 en=0.694 top1=43/48 rejected=12/12
+boost V<=0.55 beta=0.3                       k=1: F1=0.753 P=0.896 R=0.688 zh=0.789 en=0.694 top1=43/48 rejected=12/12
+V vector cut0.55                             k=2: F1=0.750 P=0.740 R=0.837 zh=0.742 en=0.763 top1=44/48 rejected=12/12
+boost V<=0.55 beta=0.05                      k=2: F1=0.750 P=0.740 R=0.837 zh=0.742 en=0.763 top1=44/48 rejected=12/12
+boost V<=0.55 beta=0.1                       k=2: F1=0.740 P=0.729 R=0.826 zh=0.726 en=0.763 top1=43/48 rejected=12/12
+union V<=0.55 + topB within +0.05            k=2: F1=0.740 P=0.719 R=0.837 zh=0.742 en=0.735 top1=44/48 rejected=12/12
+boost V<=0.6 beta=0.1                        k=1: F1=0.740 P=0.875 R=0.677 zh=0.789 en=0.657 top1=42/48 rejected=12/12
+boost V<=0.6 beta=0.2                        k=1: F1=0.740 P=0.875 R=0.677 zh=0.789 en=0.657 top1=42/48 rejected=12/12
+boost V<=0.6 beta=0.3                        k=1: F1=0.740 P=0.875 R=0.677 zh=0.789 en=0.657 top1=42/48 rejected=12/12
+boost V<=0.65 beta=0.1                       k=1: F1=0.740 P=0.875 R=0.677 zh=0.789 en=0.657 top1=42/48 rejected=12/12
+boost V<=0.65 beta=0.2                       k=1: F1=0.740 P=0.875 R=0.677 zh=0.789 en=0.657 top1=42/48 rejected=12/12
+boost V<=0.65 beta=0.3                       k=1: F1=0.740 P=0.875 R=0.677 zh=0.789 en=0.657 top1=42/48 rejected=12/12
+rrf V<=0.55 + B                              k=1: F1=0.733 P=0.875 R=0.667 zh=0.756 en=0.694 top1=42/48 rejected=2/12
+boost V<=0.55 beta=0.2                       k=2: F1=0.731 P=0.719 R=0.819 zh=0.712 en=0.763 top1=43/48 rejected=12/12
+union V<=0.55 + topB within +0.1             k=2: F1=0.729 P=0.698 R=0.837 zh=0.742 en=0.707 top1=44/48 rejected=12/12
+name>=0.5 first, then V<=0.55                k=2: F1=0.726 P=0.708 R=0.826 zh=0.742 en=0.698 top1=40/48 rejected=12/12
+boost V<=0.65 beta=0.05                      k=2: F1=0.726 P=0.656 R=0.878 zh=0.709 en=0.754 top1=44/48 rejected=12/12
+union V<=0.55 + topB within +0.15            k=2: F1=0.722 P=0.688 R=0.837 zh=0.731 en=0.707 top1=44/48 rejected=12/12
+boost V<=0.55 beta=0.3                       k=2: F1=0.721 P=0.708 R=0.809 zh=0.696 en=0.763 top1=43/48 rejected=12/12
+V vector cut0.75                             k=2: F1=0.719 P=0.635 R=0.899 zh=0.698 en=0.754 top1=44/48 rejected=12/12
+boost V<=0.6 beta=0.05                       k=2: F1=0.719 P=0.656 R=0.868 zh=0.709 en=0.735 top1=44/48 rejected=12/12
+rrf V<=0.65 + B                              k=1: F1=0.719 P=0.854 R=0.656 zh=0.756 en=0.657 top1=41/48 rejected=2/12
+rrf V<=0.75 + B                              k=1: F1=0.719 P=0.854 R=0.656 zh=0.722 en=0.713 top1=41/48 rejected=2/12
+boost V<=0.6 beta=0.1                        k=2: F1=0.708 P=0.646 R=0.858 zh=0.692 en=0.735 top1=42/48 rejected=12/12
+fallback V<=0.55 else topB                   k=3: F1=0.707 P=0.660 R=0.896 zh=0.666 en=0.776 top1=44/48 rejected=2/12
+boost V<=0.65 beta=0.1                       k=2: F1=0.705 P=0.635 R=0.858 zh=0.692 en=0.726 top1=42/48 rejected=12/12
+boost V<=0.6 beta=0.2                        k=2: F1=0.700 P=0.635 R=0.851 zh=0.679 en=0.735 top1=42/48 rejected=12/12
+name>=0.5 first, then V<=0.55                k=1: F1=0.698 P=0.833 R=0.635 zh=0.789 en=0.546 top1=40/48 rejected=12/12
+boost V<=0.65 beta=0.2                       k=2: F1=0.697 P=0.625 R=0.851 zh=0.679 en=0.726 top1=42/48 rejected=12/12
+V vector cut0.55                             k=3: F1=0.697 P=0.653 R=0.875 zh=0.666 en=0.748 top1=44/48 rejected=12/12
+boost V<=0.55 beta=0.05                      k=3: F1=0.697 P=0.653 R=0.875 zh=0.666 en=0.748 top1=44/48 rejected=12/12
+boost V<=0.6 beta=0.3                        k=2: F1=0.690 P=0.625 R=0.840 zh=0.662 en=0.735 top1=42/48 rejected=12/12
+boost V<=0.55 beta=0.1                       k=3: F1=0.688 P=0.646 R=0.865 zh=0.652 en=0.748 top1=43/48 rejected=12/12
+boost V<=0.55 beta=0.2                       k=3: F1=0.688 P=0.646 R=0.865 zh=0.652 en=0.748 top1=43/48 rejected=12/12
+boost V<=0.55 beta=0.3                       k=3: F1=0.688 P=0.646 R=0.865 zh=0.652 en=0.748 top1=43/48 rejected=12/12
+boost V<=0.65 beta=0.3                       k=2: F1=0.686 P=0.615 R=0.840 zh=0.662 en=0.726 top1=42/48 rejected=12/12
+union V<=0.55 + topB within +0.05            k=3: F1=0.686 P=0.632 R=0.875 zh=0.666 en=0.720 top1=44/48 rejected=12/12
+name>=0.5 first, then V<=0.55                k=3: F1=0.678 P=0.625 R=0.875 zh=0.666 en=0.700 top1=40/48 rejected=12/12
+union V<=0.55 + topB within +0.1             k=3: F1=0.676 P=0.611 R=0.875 zh=0.666 en=0.693 top1=44/48 rejected=12/12
+union V<=0.55 + topB within +0.15            k=3: F1=0.665 P=0.597 R=0.875 zh=0.649 en=0.693 top1=44/48 rejected=12/12
+rrf V<=0.75 + B                              k=2: F1=0.655 P=0.573 R=0.830 zh=0.629 en=0.698 top1=41/48 rejected=2/12
+rrf V<=0.65 + B                              k=2: F1=0.655 P=0.573 R=0.830 zh=0.629 en=0.698 top1=41/48 rejected=2/12
+rrf V<=0.55 + B                              k=2: F1=0.644 P=0.562 R=0.819 zh=0.629 en=0.670 top1=42/48 rejected=2/12
+boost V<=0.6 beta=0.05                       k=3: F1=0.636 P=0.528 R=0.917 zh=0.607 en=0.685 top1=44/48 rejected=12/12
+boost V<=0.6 beta=0.1                        k=3: F1=0.628 P=0.521 R=0.906 zh=0.593 en=0.685 top1=42/48 rejected=12/12
+boost V<=0.65 beta=0.05                      k=3: F1=0.623 P=0.497 R=0.938 zh=0.596 en=0.669 top1=44/48 rejected=12/12
+B bigram rank>=0.0                           k=1: F1=0.618 P=0.729 R=0.566 zh=0.683 en=0.509 top1=35/48 rejected=2/12
+B bigram rank>=0.05                          k=1: F1=0.618 P=0.729 R=0.566 zh=0.683 en=0.509 top1=35/48 rejected=2/12
+B bigram rank>=0.1                           k=1: F1=0.618 P=0.729 R=0.566 zh=0.683 en=0.509 top1=35/48 rejected=2/12
+boost V<=0.6 beta=0.2                        k=3: F1=0.617 P=0.514 R=0.885 zh=0.577 en=0.685 top1=42/48 rejected=12/12
+boost V<=0.6 beta=0.3                        k=3: F1=0.609 P=0.507 R=0.875 zh=0.577 en=0.663 top1=42/48 rejected=12/12
+V vector cut0.75                             k=3: F1=0.608 P=0.465 R=0.969 zh=0.579 en=0.657 top1=44/48 rejected=12/12
+boost V<=0.65 beta=0.1                       k=3: F1=0.606 P=0.483 R=0.917 zh=0.582 en=0.646 top1=42/48 rejected=12/12
+B bigram rank>=0.0                           k=2: F1=0.596 P=0.521 R=0.757 zh=0.584 en=0.615 top1=35/48 rejected=2/12
+B bigram rank>=0.05                          k=2: F1=0.596 P=0.521 R=0.757 zh=0.584 en=0.615 top1=35/48 rejected=2/12
+B bigram rank>=0.1                           k=2: F1=0.596 P=0.521 R=0.757 zh=0.584 en=0.615 top1=35/48 rejected=2/12
+boost V<=0.65 beta=0.2                       k=3: F1=0.588 P=0.469 R=0.885 zh=0.552 en=0.646 top1=42/48 rejected=12/12
+boost V<=0.65 beta=0.3                       k=3: F1=0.579 P=0.462 R=0.875 zh=0.552 en=0.624 top1=42/48 rejected=12/12
+rrf V<=0.55 + B                              k=3: F1=0.542 P=0.410 R=0.885 zh=0.552 en=0.524 top1=42/48 rejected=2/12
+rrf V<=0.65 + B                              k=3: F1=0.540 P=0.410 R=0.875 zh=0.522 en=0.569 top1=41/48 rejected=2/12
+rrf V<=0.75 + B                              k=3: F1=0.540 P=0.410 R=0.875 zh=0.522 en=0.569 top1=41/48 rejected=2/12
+B bigram rank>=0.0                           k=3: F1=0.485 P=0.368 R=0.792 zh=0.489 en=0.480 top1=35/48 rejected=2/12
+B bigram rank>=0.05                          k=3: F1=0.485 P=0.368 R=0.792 zh=0.489 en=0.480 top1=35/48 rejected=2/12
+B bigram rank>=0.1                           k=3: F1=0.485 P=0.368 R=0.792 zh=0.489 en=0.480 top1=35/48 rejected=2/12
+N name>=0.5                                  k=1: F1=0.049 P=0.062 R=0.042 zh=0.033 en=0.074 top1=3/48 rejected=12/12
+N name>=0.5                                  k=2: F1=0.049 P=0.062 R=0.042 zh=0.033 en=0.074 top1=3/48 rejected=12/12
+N name>=0.5                                  k=3: F1=0.049 P=0.062 R=0.042 zh=0.033 en=0.074 top1=3/48 rejected=12/12

@@ -1797,7 +1797,7 @@ components:
     CreationToolIntent:
       type: object
       additionalProperties: false
-      required: [kind, query]
+      required: [kind, query, queries]
       properties:
         kind:
           type: string
@@ -1806,6 +1806,13 @@ components:
           type: string
           maxLength: 4000
           description: For search_catalog the keywords, for search_knowledge a sentence describing the task (semantic, cross-language; Go embeds it); for fetch_url one http(s) URL. Go asks the person before connecting and returns the page text as a tool observation; a refused or blocked site is reported, not retried (05 R-47).
+        queries:
+          type: [array, "null"]
+          maxItems: 3
+          items:
+            type: string
+            maxLength: 200
+          description: For the two search kinds, up to three rewrites of the intent (a synonym, the other language, one distinctive term). Go runs the hybrid retrieval for the query and every rewrite and fuses the rankings (reciprocal rank) before the person sees the candidates; at most two empty rounds per session, then the model drafts without a reference (04 丙-177).
     CreationStepRequest:
       type: object
       additionalProperties: false

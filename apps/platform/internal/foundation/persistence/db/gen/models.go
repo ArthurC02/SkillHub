@@ -482,6 +482,7 @@ type SearchDocument struct {
 	Limitations             string
 	Scan                    []byte
 	EnrichmentAttemptedAt   pgtype.Timestamptz
+	Bigram                  interface{}
 }
 
 type Session struct {

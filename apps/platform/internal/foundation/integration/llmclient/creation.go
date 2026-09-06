@@ -42,6 +42,9 @@ type CreationMessage struct {
 type CreationToolIntent struct {
 	Kind  string `json:"kind"`
 	Query string `json:"query"`
+	// Queries are up to three rewrites of the intent for the search kinds
+	// (04 丙-177: intent -> rewrites -> one fused ranking).
+	Queries []string `json:"queries,omitempty"`
 }
 type CreationStepResponse struct {
 	Outcome              string   `json:"outcome"`

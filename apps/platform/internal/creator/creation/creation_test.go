@@ -145,10 +145,10 @@ func TestDraftValidationReportTruncatedWithinLimit(t *testing.T) {
 }
 
 func TestAllowedToolsEmptyAtToolCallCeiling(t *testing.T) {
-	if got := allowedTools(3, 3, false, false); len(got) != 0 {
+	if got := allowedTools(3, 3, false, false, true); len(got) != 0 {
 		t.Fatalf("expected no tools once the budget is spent, got %v", got)
 	}
-	if got := allowedTools(2, 3, false, false); len(got) != 2 {
+	if got := allowedTools(2, 3, false, false, true); len(got) != 2 {
 		t.Fatalf("expected both tools while budget remains, got %v", got)
 	}
 }
@@ -501,15 +501,18 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 			t.Fatal("lexical search must not run while the semantic one is wired")
 			return nil, nil
 		},
-		SearchKnowledge: func(_ context.Context, _ identity.Workspace, q string) ([]Reference, float64, error) {
+		SearchKnowledge: func(_ context.Context, _ identity.Workspace, qs []string) ([]Reference, float64, error) {
 			semantic++
+			if len(qs) != 3 || qs[0] != "把會議逐字稿整理成待辦" || qs[2] != "action items" {
+				t.Fatalf("the intent and its rewrites, deduplicated: %v", qs)
+			}
 			return []Reference{{SkillID: "s1", VersionID: "v1", Name: "found", Available: true}}, 0.00002, nil
 		},
 	}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
 	// search_catalog goes semantic too: the model never picks the weaker leg.
-	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "找相近的", ToolIntent: &llmclient.CreationToolIntent{Kind: "search_catalog", Query: "把會議逐字稿整理成待辦"}}
+	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "找相近的", ToolIntent: &llmclient.CreationToolIntent{Kind: "search_catalog", Query: "把會議逐字稿整理成待辦", Queries: []string{"逐字稿 待辦", "把會議逐字稿整理成待辦", "action items"}}}
 	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || state != "waiting_confirmation" || e.Snapshot.PendingAction != "confirm_references" || semantic != 1 || len(e.Snapshot.References) != 1 {
 		t.Fatalf("state=%q pending=%q semantic=%d refs=%d err=%v", state, e.Snapshot.PendingAction, semantic, len(e.Snapshot.References), err)
@@ -517,10 +520,52 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 	if e.Snapshot.SpentUSD == nil || *e.Snapshot.SpentUSD != 0.00002 {
 		t.Fatalf("the embedding is the session's spend: %v", e.Snapshot.SpentUSD)
 	}
-	if got := allowedTools(0, 8, false, true); len(got) != 3 || got[2] != "search_knowledge" {
+	if got := allowedTools(0, 8, false, true, true); len(got) != 3 || got[2] != "search_knowledge" {
 		t.Fatalf("search_knowledge is offered only when wired: %v", got)
 	}
-	if got := allowedTools(0, 8, false, false); len(got) != 2 {
+	if got := allowedTools(0, 8, false, false, true); len(got) != 2 {
 		t.Fatalf("not wired, not offered: %v", got)
+	}
+	if got := allowedTools(0, 8, false, true, false); len(got) != 1 || got[0] != "validate_draft" {
+		t.Fatalf("after two empty rounds the search tools are withdrawn: %v", got)
+	}
+}
+
+// Two empty searches and the session says "not found" and drafts without a
+// reference (owner, 2026-09-06: 兩回合都查不到，就直接回應找不到).
+func TestProposalStopsSearchingAfterTwoEmptyRounds(t *testing.T) {
+	s := &Service{SearchKnowledge: func(context.Context, identity.Workspace, []string) ([]Reference, float64, error) { return nil, 0, nil }}
+	zero := 0.0
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "找", ToolIntent: &llmclient.CreationToolIntent{Kind: "search_knowledge", Query: "沒有這種東西"}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 1 || !strings.Contains(e.Snapshot.Messages[len(e.Snapshot.Messages)-1].Content, "第 1／2 回") {
+		t.Fatalf("first empty round: state=%q rounds=%d err=%v last=%+v", state, e.Snapshot.SearchRounds, err, e.Snapshot.Messages[len(e.Snapshot.Messages)-1])
+	}
+	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 2 || !strings.Contains(e.Snapshot.Messages[len(e.Snapshot.Messages)-1].Content, "兩回") {
+		t.Fatalf("second empty round must say not found: state=%q rounds=%d err=%v", state, e.Snapshot.SearchRounds, err)
+	}
+	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 2 || e.Snapshot.ToolCalls != 3 {
+		t.Fatalf("a third search is answered without searching: state=%q rounds=%d tools=%d err=%v", state, e.Snapshot.SearchRounds, e.Snapshot.ToolCalls, err)
+	}
+}
+
+// An empty brief at the first step is retried once, like a missing draft
+// (runs n and r, 2026-09-06: the same task died three times on it).
+func TestProposalRetriesOnceWhenTheModelSentNoBrief(t *testing.T) {
+	s := &Service{}
+	zero := 0.0
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &llmclient.CreationStepResponse{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || !next || state != "queued" || e.Snapshot.DraftRetries != 1 {
+		t.Fatalf("first empty brief must be retried: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
+	}
+	r = &llmclient.CreationStepResponse{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
+	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	if err != nil || next || state != "waiting_input" {
+		t.Fatalf("the second empty brief goes to the person: state=%q next=%v err=%v", state, next, err)
 	}
 }

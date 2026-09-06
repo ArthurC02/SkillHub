@@ -188,6 +188,12 @@ export interface CreationSnapshot {
      */
     blockedRepeats?: number;
     /**
+     * Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts without a reference (04 丙-177).
+     * @type {number}
+     * @memberof CreationSnapshot
+     */
+    searchRounds?: number;
+    /**
      * The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until the person confirms (05 R-47).
      * @type {string}
      * @memberof CreationSnapshot
@@ -283,6 +289,7 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'runUnmet': json['run_unmet'] == null ? undefined : json['run_unmet'],
         'nudges': json['nudges'] == null ? undefined : json['nudges'],
         'blockedRepeats': json['blocked_repeats'] == null ? undefined : json['blocked_repeats'],
+        'searchRounds': json['search_rounds'] == null ? undefined : json['search_rounds'],
         'pendingFetchUrl': json['pending_fetch_url'] == null ? undefined : json['pending_fetch_url'],
         'fetches': json['fetches'] == null ? undefined : ((json['fetches'] as Array<any>).map(CreationFetchFromJSON)),
         'model': json['model'] == null ? undefined : json['model'],
@@ -326,6 +333,7 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'run_unmet': value['runUnmet'],
         'nudges': value['nudges'],
         'blocked_repeats': value['blockedRepeats'],
+        'search_rounds': value['searchRounds'],
         'pending_fetch_url': value['pendingFetchUrl'],
         'fetches': value['fetches'] == null ? undefined : ((value['fetches'] as Array<any>).map(CreationFetchToJSON)),
         'model': value['model'],

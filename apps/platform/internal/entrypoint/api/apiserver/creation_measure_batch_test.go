@@ -111,6 +111,11 @@ type sessionRow struct {
 	RevisedOverall string `json:"revised_overall,omitempty"`
 	RevisedMet     *bool  `json:"revised_met,omitempty"`
 	RevisedNote    string `json:"revised_note,omitempty"`
+	// SearchHit (CREATION_MEASURE_SEARCH=1, reference sessions): the model
+	// searched instead of being handed the reference, and the session's own
+	// imported reference was among the candidates it brought back.
+	SearchHit  *bool  `json:"search_hit,omitempty"`
+	SearchNote string `json:"search_note,omitempty"`
 	// Rounds is how many trials ran (1 = the candidate only); MetRound is the
 	// first round whose trial was "met", 0 when none was. The owner's product
 	// shape (2026-09-06): every round runs a trial and brings suggestions back
@@ -556,7 +561,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 		row := runInteractiveSession(t, a, set.Creation, ctx, task, limits, outDir, trial)
 		results.Interactive = append(results.Interactive, row)
 		flush()
-		t.Logf("interactive %s (%s): state=%s draft=%v cost=%s met=%s revised_met=%s calls=%d", task.ID, task.Kind, row.FinalState, row.Draft, costLabel(row.CostUSD), metLabel(row), revisedMetLabel(row), row.ModelCalls)
+		t.Logf("interactive %s (%s): state=%s draft=%v cost=%s met=%s revised_met=%s search_hit=%s calls=%d", task.ID, task.Kind, row.FinalState, row.Draft, costLabel(row.CostUSD), metLabel(row), revisedMetLabel(row), searchLabel(row), row.ModelCalls)
 	}
 	for _, task := range tasks {
 		row := runSingleShot(t, a, ctx, task, outDir)
@@ -665,11 +670,38 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 			v = creationStep(t, s, v)
 			row.ModelCalls++
 		}
-		v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
-			"command_id": creationID(t), "expected_revision": v.Revision, "kind": "select_references",
-			"reference_skill_ids": []string{refID},
-		}, 200)
-		v = creationAct(t, c, v, "confirm_references")
+		if os.Getenv("CREATION_MEASURE_SEARCH") == "1" {
+			// The retrieval measurement: did the model's own search (intent,
+			// rewrites, fused hybrid ranking) bring back the imported reference?
+			searched := false
+			for _, m := range v.Snapshot.Messages {
+				if m.Role == "tool" && strings.Contains(m.Content, "目錄") {
+					searched = true
+				}
+			}
+			if v.State == "waiting_confirmation" && v.Snapshot.PendingAction == "confirm_references" {
+				searched = true
+			}
+			if !searched {
+				row.SearchNote = "model did not search"
+			} else {
+				hit := false
+				if v.State == "waiting_confirmation" && v.Snapshot.PendingAction == "confirm_references" {
+					for _, ref := range v.Snapshot.References {
+						if ref.SkillID == refID {
+							hit = true
+						}
+					}
+				}
+				row.SearchHit = &hit
+			}
+		} else {
+			v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
+				"command_id": creationID(t), "expected_revision": v.Revision, "kind": "select_references",
+				"reference_skill_ids": []string{refID},
+			}, 200)
+			v = creationAct(t, c, v, "confirm_references")
+		}
 	}
 
 	clarifications := 0
@@ -811,4 +843,18 @@ func metLabel(row sessionRow) string {
 		return "null: " + row.MetNote
 	}
 	return "null"
+}
+
+func boolLabel(b *bool) string {
+	if b == nil {
+		return "n/a"
+	}
+	return fmt.Sprintf("%v", *b)
+}
+
+func searchLabel(row sessionRow) string {
+	if row.SearchNote != "" {
+		return "n/a (" + row.SearchNote + ")"
+	}
+	return boolLabel(row.SearchHit)
 }

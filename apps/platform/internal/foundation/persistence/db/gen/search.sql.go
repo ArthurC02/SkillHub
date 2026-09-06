@@ -167,6 +167,49 @@ func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkil
 	return items, nil
 }
 
+const creationLexicalSearchSkills = `-- name: CreationLexicalSearchSkills :many
+SELECT s.skill_id, s.name
+FROM search_documents s
+JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
+WHERE s.bigram @@ to_tsquery('simple', $1::text)
+ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $1::text)) DESC
+LIMIT $2::int
+`
+
+type CreationLexicalSearchSkillsParams struct {
+	Query       string
+	ResultLimit int32
+}
+
+type CreationLexicalSearchSkillsRow struct {
+	SkillID pgtype.UUID
+	Name    string
+}
+
+// The lexical leg of the creation tool's hybrid retrieval (0058, 05 R-47):
+// catalogue documents whose bigram tsvector matches the query rendered by Go
+// (every token AND-ed for the coverage rule; OR-ed only as the degraded
+// fallback), best lexical rank first.
+func (q *Queries) CreationLexicalSearchSkills(ctx context.Context, arg CreationLexicalSearchSkillsParams) ([]CreationLexicalSearchSkillsRow, error) {
+	rows, err := q.db.Query(ctx, creationLexicalSearchSkills, arg.Query, arg.ResultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CreationLexicalSearchSkillsRow
+	for rows.Next() {
+		var i CreationLexicalSearchSkillsRow
+		if err := rows.Scan(&i.SkillID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteSearchDocument = `-- name: DeleteSearchDocument :exec
 DELETE FROM search_documents WHERE skill_id = $1 AND workspace_id = $2
 `
@@ -949,10 +992,10 @@ func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]S
 }
 
 const upsertSearchDocument = `-- name: UpsertSearchDocument :exec
-INSERT INTO search_documents (skill_id, workspace_id, name, summary, updated_at)
-VALUES ($1, $2, $3, $4, now())
+INSERT INTO search_documents (skill_id, workspace_id, name, summary, bigram, updated_at)
+VALUES ($1, $2, $3, $4, to_tsvector('simple', $5::text), now())
 ON CONFLICT (skill_id) DO UPDATE
-SET name = EXCLUDED.name, summary = EXCLUDED.summary, updated_at = now()
+SET name = EXCLUDED.name, summary = EXCLUDED.summary, bigram = EXCLUDED.bigram, updated_at = now()
 `
 
 type UpsertSearchDocumentParams struct {
@@ -960,14 +1003,18 @@ type UpsertSearchDocumentParams struct {
 	WorkspaceID pgtype.UUID
 	Name        string
 	Summary     string
+	BigramText  string
 }
 
+// bigram is Go's LexicalIndexText (latin words + CJK character bigrams), the
+// lexical leg of the creation tool's hybrid retrieval (0058).
 func (q *Queries) UpsertSearchDocument(ctx context.Context, arg UpsertSearchDocumentParams) error {
 	_, err := q.db.Exec(ctx, upsertSearchDocument,
 		arg.SkillID,
 		arg.WorkspaceID,
 		arg.Name,
 		arg.Summary,
+		arg.BigramText,
 	)
 	return err
 }
@@ -976,12 +1023,13 @@ const upsertSearchDocumentEnriched = `-- name: UpsertSearchDocumentEnriched :exe
 INSERT INTO search_documents (
     skill_id, workspace_id, name, summary,
     enriched_summary, task_examples, tags, limitations, scan, embedding,
-    enrichment_status, enrichment_model, enrichment_prompt_version, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
+    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', $14::text), now())
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id,
     name = EXCLUDED.name,
     summary = EXCLUDED.summary,
+    bigram = EXCLUDED.bigram,
     enriched_summary = EXCLUDED.enriched_summary,
     task_examples = EXCLUDED.task_examples,
     tags = EXCLUDED.tags,
@@ -1011,6 +1059,7 @@ type UpsertSearchDocumentEnrichedParams struct {
 	EnrichmentStatus        string
 	EnrichmentModel         *string
 	EnrichmentPromptVersion *string
+	BigramText              string
 }
 
 // Full upsert including the ADR-013 index-time enhancement fields and the
@@ -1035,6 +1084,7 @@ func (q *Queries) UpsertSearchDocumentEnriched(ctx context.Context, arg UpsertSe
 		arg.EnrichmentStatus,
 		arg.EnrichmentModel,
 		arg.EnrichmentPromptVersion,
+		arg.BigramText,
 	)
 	return err
 }

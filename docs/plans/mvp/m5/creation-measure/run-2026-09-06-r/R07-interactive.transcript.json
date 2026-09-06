@@ -1,0 +1,15 @@
+{
+  "acceptance_criteria": null,
+  "brief": "",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我審 Python 函式的 docstring，缺的補上，格式用 Google 風格。"
+    },
+    {
+      "role": "assistant",
+      "content": "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
+    }
+  ],
+  "state": "failed"
+}

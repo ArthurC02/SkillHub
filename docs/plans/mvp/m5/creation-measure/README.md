@@ -1,4 +1,4 @@
-# 互動創作 vs 單次生成的量測（harness 就位，2026-09-06；**2026-09-06 跑了十七次——a～c 不含 Run、d～o 含 Run 階段、j 換旗艦寫 Skill、k 起改稿再試跑、l 換旗艦跑 Skill、m～p 最多三輪（`CREATION_MEASURE_ROUNDS`）、p 起試跑沒過先問人、q 跑 `corpus-fetch.json` 的五題連網任務——見 [report.md](report.md)**）
+# 互動創作 vs 單次生成的量測（harness 就位，2026-09-06；**2026-09-06 跑了十八次——a～c 不含 Run、d～o 含 Run 階段、j 換旗艦寫 Skill、k 起改稿再試跑、l 換旗艦跑 Skill、m～p 最多三輪（`CREATION_MEASURE_ROUNDS`）、p 起試跑沒過先問人、q 跑 `corpus-fetch.json` 的五題連網任務、r 用 hybrid＋改寫讓模型自己搜參考（`CREATION_MEASURE_SEARCH=1`）——見 [report.md](report.md)**）
 
 02:GEN-012 的證據條與 05 R-45 的量測門檻要的是一份分布：同 15 個任務，一次跑互動創作（15 場多輪會話：文字、流程圖、參考各 5 場），一次跑單次生成，兩邊對比。這個目錄就是把它變成分布所需的一切，除了那筆錢——啟動 `apps/llm` 對真實閘道那一步要負責人親自起（代理權限擋下了，這裡也一樣擋）。
 

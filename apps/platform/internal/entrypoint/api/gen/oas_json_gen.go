@@ -7387,6 +7387,12 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.SearchRounds.Set {
+			e.FieldStart("search_rounds")
+			s.SearchRounds.Encode(e)
+		}
+	}
+	{
 		if s.PendingFetchURL.Set {
 			e.FieldStart("pending_fetch_url")
 			s.PendingFetchURL.Encode(e)
@@ -7434,7 +7440,7 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [29]string{
+var jsonFieldsNameOfCreationSnapshot = [30]string{
 	0:  "messages",
 	1:  "brief",
 	2:  "acceptance_criteria",
@@ -7457,13 +7463,14 @@ var jsonFieldsNameOfCreationSnapshot = [29]string{
 	19: "run_unmet",
 	20: "nudges",
 	21: "blocked_repeats",
-	22: "pending_fetch_url",
-	23: "fetches",
-	24: "model",
-	25: "prompt_version",
-	26: "diagram_media_type",
-	27: "diagram_bytes",
-	28: "previous_draft",
+	22: "search_rounds",
+	23: "pending_fetch_url",
+	24: "fetches",
+	25: "model",
+	26: "prompt_version",
+	27: "diagram_media_type",
+	28: "diagram_bytes",
+	29: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -7740,6 +7747,16 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"blocked_repeats\"")
+			}
+		case "search_rounds":
+			if err := func() error {
+				s.SearchRounds.Reset()
+				if err := s.SearchRounds.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"search_rounds\"")
 			}
 		case "pending_fetch_url":
 			if err := func() error {

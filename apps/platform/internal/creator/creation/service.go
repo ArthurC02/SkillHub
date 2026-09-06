@@ -58,6 +58,10 @@ const (
 	// MaxBlockedRepeats is how many times in a row the same blocking validation
 	// report may come back before the person gets the turn.
 	MaxBlockedRepeats = 2
+	// MaxSearchRounds is how many empty catalogue searches a session may run
+	// before the model drafts without a reference (owner, 2026-09-06: two
+	// rounds, then say not found).
+	MaxSearchRounds   = 2
 	MaxCriterionRunes = 500
 )
 
@@ -169,6 +173,9 @@ type Snapshot struct {
 	// report. At MaxBlockedRepeats the turn goes to the person: run h
 	// (2026-09-06) spent eight steps on one unchanged structural verdict.
 	BlockedRepeats int `json:"blocked_repeats,omitempty"`
+	// SearchRounds counts catalogue searches that found nothing; at
+	// MaxSearchRounds the search tools are withdrawn for the session.
+	SearchRounds int `json:"search_rounds,omitempty"`
 	// PendingFetchURL is the page the model asked to read, held until the
 	// person confirms or declines; Fetches is what was read (05 R-47).
 	PendingFetchURL    string     `json:"pending_fetch_url,omitempty"`
@@ -222,7 +229,7 @@ type Service struct {
 	Fetch func(context.Context, string) (Fetch, string)
 	// SearchKnowledge is the semantic catalog search (embedding + hybrid rank);
 	// nil hides the search_knowledge tool from the model.
-	SearchKnowledge func(context.Context, identity.Workspace, string) ([]Reference, float64, error)
+	SearchKnowledge func(context.Context, identity.Workspace, []string) ([]Reference, float64, error)
 	ValidateDraft   func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
 	Materialize     func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
 	ReadRun         func(context.Context, identity.Workspace, string, Candidate) (string, error)

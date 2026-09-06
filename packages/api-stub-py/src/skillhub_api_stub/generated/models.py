@@ -534,6 +534,10 @@ class Kind1(Enum):
     fetch_url = 'fetch_url'
 
 
+class Query(RootModel[constr(max_length=200)]):
+    root: constr(max_length=200)
+
+
 class CreationToolIntent(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -542,6 +546,11 @@ class CreationToolIntent(BaseModel):
     query: constr(max_length=4000) = Field(
         ...,
         description='For search_catalog the keywords, for search_knowledge a sentence describing the task (semantic, cross-language; Go embeds it); for fetch_url one http(s) URL. Go asks the person before connecting and returns the page text as a tool observation; a refused or blocked site is reported, not retried (05 R-47).',
+    )
+    queries: Optional[List[Query]] = Field(
+        ...,
+        description='For the two search kinds, up to three rewrites of the intent (a synonym, the other language, one distinctive term). Go runs the hybrid retrieval for the query and every rewrite and fuses the rankings (reciprocal rank) before the person sees the candidates; at most two empty rounds per session, then the model drafts without a reference (04 丙-177).',
+        max_length=3,
     )
 
 

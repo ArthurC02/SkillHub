@@ -31,7 +31,7 @@ router = APIRouter()
 # The measurement (05 R-45) may point this at another tier; the product key Go
 # issues per step is still pinned to gpt-5.4-mini (worker/creation_wiring.go).
 MODEL = os.getenv("CREATION_MODEL", "gpt-5.4-mini")
-PROMPT_VERSION = "creation-step/v14"
+PROMPT_VERSION = "creation-step/v15"
 DATA_TAG = "untrusted_creation_snapshot"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
 Reason = Literal[
@@ -43,6 +43,7 @@ Reason = Literal[
     "diagram_incomplete",
     "search_query_missing",
     "fetch_url_missing",
+    "brief_missing",
 ]
 
 
@@ -56,6 +57,9 @@ class CreationToolIntent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["search_catalog", "search_knowledge", "validate_draft", "fetch_url"]
     query: str
+    # The owner's retrieval shape (2026-09-06): intent -> rewrites -> one
+    # fused ranking. Up to three rewrites ride with the intent; Go fuses.
+    queries: list[str] | None
 
 
 class CreationDraftValidation(BaseModel):
@@ -340,8 +344,14 @@ def _reason_node(gateway_key: str, phase: str):
             "and absent conditions, branches or uncertainties are empty arrays. "
             "request confirmation of this understanding before drafting. "
             "Use search_catalog (keywords) or search_knowledge (a sentence describing the "
-            "task; Go searches by meaning, across languages) when existing Skills could help; "
-            "results are observations returned by Go in subsequent tool messages. Use fetch_url "
+            "task; Go searches by meaning, across languages) when existing Skills could help: "
+            "put the intent in query and up to three rewrites in queries (a synonym, the same "
+            "intent in the other language, one distinctive term such as a format or tool name); "
+            "Go fuses every ranking into one list the person confirms. When the intent itself is "
+            "unclear (which output, which input, which tool), ask the person before searching. "
+            "Go allows two empty search rounds per session; after that, draft from the "
+            "requirements without a reference. "
+            "Results are observations returned by Go in subsequent tool messages. Use fetch_url "
             "(query = one http(s) "
             "URL) when the task needs facts from a page the person named or a public page it "
             "plainly depends on: Go asks the person before connecting, the page text comes "
@@ -562,6 +572,15 @@ def _reason_node(gateway_key: str, phase: str):
                 raise ValueError("over cap: acceptance_criteria")
             if len(decision.sample_input or "") > 4000:
                 raise ValueError("over cap: sample_input")
+            if (
+                decision.tool_intent
+                and decision.tool_intent.queries is not None
+                and (
+                    len(decision.tool_intent.queries) > 3
+                    or any(len(x) > 200 for x in decision.tool_intent.queries)
+                )
+            ):
+                raise ValueError("over cap: tool_intent.queries")
             if rewritten_body and decision.outcome == "draft" and decision.draft is not None:
                 decision.draft = decision.draft.model_copy(update={"body": rewritten_body})
             usage = _usage(completion, raw.headers)
@@ -601,10 +620,22 @@ def _route(state: _State) -> str:
 def _confirmation(state: _State) -> dict:
     d = state["decision"]
     if d.outcome == "confirm_brief" and not (d.brief or state["request"].brief).strip():
+        # Runs n and r (2026-09-06): the same docstring task died at step one
+        # three times on this 502. Go retries once on the reason code instead.
         logger.warning(
             "creation step refused an empty brief session=%s", state["request"].session_id
         )
-        raise HTTPException(status_code=502, detail="creation returned an empty brief")
+        return {
+            "decision": d.model_copy(
+                update={
+                    "outcome": "clarification",
+                    "draft": None,
+                    "tool_intent": None,
+                    "message": "brief missing",
+                }
+            ),
+            "reason": "brief_missing",
+        }
     if (
         d.outcome == "confirm_diagram"
         and not (d.diagram_understanding or state["request"].diagram_understanding).strip()
@@ -747,7 +778,9 @@ def _draft(state: _State) -> dict:
             "decision": d.model_copy(
                 update={
                     "outcome": "tool_intent",
-                    "tool_intent": CreationToolIntent(kind="validate_draft", query=""),
+                    "tool_intent": CreationToolIntent(
+                        kind="validate_draft", query="", queries=None
+                    ),
                 }
             )
         }

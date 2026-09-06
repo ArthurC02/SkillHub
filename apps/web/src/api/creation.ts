@@ -50,6 +50,7 @@ export interface CreationSnapshot {
   run_unmet?: boolean;
   nudges?: number;
   blocked_repeats?: number;
+  search_rounds?: number;
   pending_fetch_url?: string;
   fetches?: CreationFetch[];
   draft?: {

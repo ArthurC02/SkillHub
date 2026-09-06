@@ -1,8 +1,10 @@
 -- name: UpsertSearchDocument :exec
-INSERT INTO search_documents (skill_id, workspace_id, name, summary, updated_at)
-VALUES ($1, $2, $3, $4, now())
+-- bigram is Go's LexicalIndexText (latin words + CJK character bigrams), the
+-- lexical leg of the creation tool's hybrid retrieval (0058).
+INSERT INTO search_documents (skill_id, workspace_id, name, summary, bigram, updated_at)
+VALUES ($1, $2, $3, $4, to_tsvector('simple', sqlc.arg(bigram_text)::text), now())
 ON CONFLICT (skill_id) DO UPDATE
-SET name = EXCLUDED.name, summary = EXCLUDED.summary, updated_at = now();
+SET name = EXCLUDED.name, summary = EXCLUDED.summary, bigram = EXCLUDED.bigram, updated_at = now();
 
 -- name: UpsertSearchDocumentEnriched :exec
 -- Full upsert including the ADR-013 index-time enhancement fields and the
@@ -15,12 +17,13 @@ SET name = EXCLUDED.name, summary = EXCLUDED.summary, updated_at = now();
 INSERT INTO search_documents (
     skill_id, workspace_id, name, summary,
     enriched_summary, task_examples, tags, limitations, scan, embedding,
-    enrichment_status, enrichment_model, enrichment_prompt_version, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
+    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', sqlc.arg(bigram_text)::text), now())
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id,
     name = EXCLUDED.name,
     summary = EXCLUDED.summary,
+    bigram = EXCLUDED.bigram,
     enriched_summary = EXCLUDED.enriched_summary,
     task_examples = EXCLUDED.task_examples,
     tags = EXCLUDED.tags,
@@ -594,3 +597,15 @@ SELECT sd.skill_id, sd.scan
 FROM search_documents sd
 JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
 WHERE sd.skill_id = ANY(sqlc.arg(skill_ids)::uuid[]);
+
+-- name: CreationLexicalSearchSkills :many
+-- The lexical leg of the creation tool's hybrid retrieval (0058, 05 R-47):
+-- catalogue documents whose bigram tsvector matches the query rendered by Go
+-- (every token AND-ed for the coverage rule; OR-ed only as the degraded
+-- fallback), best lexical rank first.
+SELECT s.skill_id, s.name
+FROM search_documents s
+JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
+WHERE s.bigram @@ to_tsquery('simple', sqlc.arg(query)::text)
+ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(query)::text)) DESC
+LIMIT sqlc.arg(result_limit)::int;

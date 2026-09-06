@@ -14,11 +14,18 @@ import (
 )
 
 func wireCreationReads(s *creation.Service, versions *ingest.Service, search *catalog.Service) {
-	s.SearchKnowledge = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, float64, error) {
-		ids, cost, _, err := search.CreationKnowledgeIDs(ctx, query)
-		if err != nil {
-			return nil, cost, err
+	s.SearchKnowledge = func(ctx context.Context, ws identity.Workspace, queries []string) ([]creation.Reference, float64, error) {
+		var rankings [][]string
+		var cost float64
+		for _, query := range queries {
+			ids, c, _, err := search.CreationKnowledgeIDs(ctx, query)
+			cost += c
+			if err != nil {
+				return nil, cost, err
+			}
+			rankings = append(rankings, ids)
 		}
+		ids := catalog.FuseRanked(rankings)
 		refs := []creation.Reference{}
 		for _, id := range ids {
 			r, _, err := s.ResolveReference(ctx, ws, id, "")

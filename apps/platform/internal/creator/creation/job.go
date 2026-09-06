@@ -72,13 +72,16 @@ func canSpend(p Snapshot, l Limits) bool {
 // allowedTools hides the tool-call intents from the model once the session
 // has already spent its tool-call budget. Python turns a disallowed tool
 // intent into a clarification, so this cannot fail proposal() with ErrLimit.
-func allowedTools(toolCalls, maxToolCalls int, fetch, knowledge bool) []string {
+func allowedTools(toolCalls, maxToolCalls int, fetch, knowledge, searchLeft bool) []string {
 	if toolCalls >= maxToolCalls {
 		return []string{}
 	}
-	tools := []string{"search_catalog", "validate_draft"}
-	if knowledge {
-		tools = append(tools, "search_knowledge")
+	tools := []string{"validate_draft"}
+	if searchLeft {
+		tools = append(tools, "search_catalog")
+		if knowledge {
+			tools = append(tools, "search_knowledge")
+		}
 	}
 	if fetch {
 		tools = append(tools, "fetch_url")
@@ -202,7 +205,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 		}
 	}()
 	ws := identity.Workspace{ID: a.WorkspaceID}
-	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, AcceptanceCriteria: e.Snapshot.AcceptanceCriteria, SampleInput: e.Snapshot.SampleInput, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls, s.Fetch != nil, s.SearchKnowledge != nil), MaxOutputTokens: e.Limits.MaxOutputTokens}
+	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: row.Revision, Messages: e.Snapshot.Messages, Brief: e.Snapshot.Brief, AcceptanceCriteria: e.Snapshot.AcceptanceCriteria, SampleInput: e.Snapshot.SampleInput, BriefConfirmed: e.Snapshot.BriefConfirmed, DiagramUnderstanding: e.Snapshot.DiagramUnderstanding, DiagramConfirmed: e.Snapshot.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(e.Snapshot.ToolCalls, e.Limits.MaxToolCalls, s.Fetch != nil, s.SearchKnowledge != nil, e.Snapshot.SearchRounds < MaxSearchRounds), MaxOutputTokens: e.Limits.MaxOutputTokens}
 	draft := e.Snapshot.Draft
 	// A correction after a validated draft falls back to PreviousDraft: send it
 	// as the working draft, but never its (now stale) validation result, or
@@ -389,6 +392,7 @@ var reasonSentences = map[string]string{
 	"diagram_incomplete":     "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
 	"search_query_missing":   "請告訴我要在目錄中搜尋什麼關鍵字。",
 	"fetch_url_missing":      "模型想連網取得資料，但沒有給出網址；請告訴它要看哪個網頁。",
+	"brief_missing":          "模型這一步沒有整理出需求；已自動再試一次。",
 	"draft_missing":          "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。",
 }
 
@@ -435,7 +439,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			return "", false, err
 		}
 		r.Message = sentence
-		if r.Reason == "draft_missing" && p.DraftRetries < 1 && canSpend(*p, e.Limits) {
+		if (r.Reason == "draft_missing" || r.Reason == "brief_missing") && p.DraftRetries < 1 && canSpend(*p, e.Limits) {
 			// run c (2026-09-06): the model sometimes answers outcome=draft with
 			// draft null and gets it right on the next call. One paid retry
 			// before asking the person costs one call and saves a whole turn.
@@ -598,18 +602,30 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄搜尋需要關鍵字；這次沒有搜尋。"})
 				return "queued", true, nil
 			}
+			if p.SearchRounds >= MaxSearchRounds {
+				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄已搜過兩回都沒有相近的 Skill；請直接依需求起草。"})
+				return "queued", true, nil
+			}
+			// The owner's retrieval shape (2026-09-06): the intent plus up to
+			// three rewrites, every ranking fused into one list.
+			queries := []string{strings.TrimSpace(r.ToolIntent.Query)}
+			for _, q := range r.ToolIntent.Queries {
+				if q = strings.TrimSpace(q); q != "" && !containsString(queries, q) && len(queries) < 4 {
+					queries = append(queries, q)
+				}
+			}
 			var refs []Reference
 			var err error
 			if s.SearchKnowledge != nil {
 				var cost float64
-				refs, cost, err = s.SearchKnowledge(ctx, ws, r.ToolIntent.Query)
+				refs, cost, err = s.SearchKnowledge(ctx, ws, queries)
 				if err == nil && cost > 0 && p.SpentUSD != nil {
 					// The embedding is the session's spend, not the platform's.
 					spent := *p.SpentUSD + cost
 					p.SpentUSD = &spent
 				}
 			} else {
-				refs, err = s.SearchReferences(ctx, ws, r.ToolIntent.Query)
+				refs, err = s.SearchReferences(ctx, ws, queries[0])
 			}
 			if err != nil {
 				return "", false, err
@@ -618,7 +634,12 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 				refs = refs[:3]
 			}
 			if len(refs) == 0 {
-				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄文字搜尋沒有符合的可用參考；未呼叫額外模型。"})
+				p.SearchRounds++
+				if p.SearchRounds >= MaxSearchRounds {
+					p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄搜了兩回都沒有相近的 Skill：沒有可參考的，請直接依需求起草。"})
+				} else {
+					p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("目錄裡沒有符合的 Skill（第 %d／%d 回）；換個說法、加一個關鍵詞或另一種語言再搜一次，或直接起草。", p.SearchRounds, MaxSearchRounds)})
+				}
 				return "queued", true, nil
 			}
 			for i := range refs {
@@ -674,4 +695,13 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		}
 	}
 	return "", false, ErrInvalidCommand
+}
+
+func containsString(xs []string, x string) bool {
+	for _, v := range xs {
+		if v == x {
+			return true
+		}
+	}
+	return false
 }

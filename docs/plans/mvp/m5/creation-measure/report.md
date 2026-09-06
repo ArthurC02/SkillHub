@@ -303,3 +303,51 @@ harness 的「使用者」仍是一個對每個提案說好的假人，所以這
 ### 12.1 連網在真網路上跑了一次
 
 量測容器沒有對外網路（§11），改在有外網的機器上跑 `TestFetcherAgainstTheLiveInternet`（`SKILLHUB_LIVE_FETCH=1` 才跑）：example.com → `ok`（559 B）、RFC 2119 純文字 → `ok`（4.7 KB，含 MUST）、httpbin 403 → **`blocked`（只報一次）**、不存在的頁 → `not_found`；四次合計 1.8 秒。負責人的三種結局都對得上。
+
+## 13. Hybrid 是必選項——但要用 F1 證明它比單腿好；再疊上「意圖→改寫→重排→回應」的流程
+
+負責人：「Hybrid Search 是你無可逃避的選擇」、「Question → 意圖判斷 → ReWrite 多個 Q → ReRank 所有 Q 的結果 → 回應；可設回合，兩回合查不到就直接回找不到；意圖階段可 HITL 或用工具取 metadata」。§12 的結論（向量單腿、截斷 0.55）只在 golden set 上成立；這一節先證明 hybrid 在哪裡贏、贏多少，再把流程落地。
+
+### 13.1 詞彙腿要能看見中文：bigram tsvector
+
+現行 `tsv` 用英文分詞，中文一個詞都切不出來。不裝擴充（zhparser／pg_jieba 都沒有；pg_trgm 有但 trigram 相似度在這裡 F1 只有 0.26，還會放過 4／12 題干擾），改用 golden set 評估器同一套分詞：拉丁字詞＋中文**字元 bigram**，存成 `to_tsvector('simple', …)`（migration 0058 的 `bigram` 欄、Go `LexicalIndexText` 在索引時寫）。單腿的 F1@3 從 0.02 變 **0.49**（召回 0.79）——真的看得見了，但仍遠低於向量。
+
+### 13.2 三個查詢集一起量，hybrid 才顯出價值
+
+golden set 60 題全是「描述任務」的句子；一個人如果**知道名字**或**記得一個特定詞**（格式、工具名），會直接打那個詞。補兩個查詢集：31 個 Skill 名稱、25 個只出現在一份文件裡的特定詞（[`probe_lexical.py`](search-f1/probe_lexical.py)）。向量單腿在這兩組崩掉：名稱只有 23／31 落在截斷內（`pii-flag` 距離 0.60、`humanize` 0.72），特定詞 **1／25**（`array`、`analyzer` 之類對向量沒有意義）；bigram 詞彙腿 29／31、23／25。
+
+融合方式全掃了一遍（[`results-hybrid-fusions`](search-f1/results-hybrid-fusions-2026-09-06.txt)、[`results-hybrid-rule`](search-f1/results-hybrid-rule-2026-09-06.txt)）：RRF 把向量的排名沖淡（golden F1 0.54）；加權 boost 持平；**「向量為主、詞彙只在完整覆蓋查詢時放進一筆」**是唯一三組都贏的形狀：
+
+| k=1 | golden F1 | 干擾拒絕 | 名稱 F1 | 特定詞 F1 | **三組合計 F1** |
+| --- | --- | --- | --- | --- | --- |
+| 向量單腿（0.55） | 0.774 | 12／12 | 0.742 | 0.040 | 0.588 |
+| 向量單腿（0.75） | 0.774 | 12／12 | 0.968 | 0.280 | 0.713 |
+| **hybrid：向量 ≤ 0.55，再收一筆覆蓋全部 token 的詞彙命中** | **0.774** | **12／12** | **0.968** | **0.960** | **0.877** |
+
+落地：`discovery.CreationKnowledgeIDs`＝向量（≤ `CreationMaxDistance` 0.55）依序，再加 `CreationLexicalSearchSkills`（所有 token AND）的第一筆；沒有 embedding 服務時詞彙腿獨答（AND 優先、OR 補位）並標記 degraded。DB 整合測試 `TestCreationHybridRetrievalAdmitsACoveredLexicalHitAfterTheVectorLeg` 在真表上驗這條規則（拿掉詞彙那一筆會紅）。
+
+### 13.3 意圖→改寫→重排→回應→回合
+
+- **意圖與改寫**：模型的搜尋意圖多帶 `queries`（≤ 3 個改寫：同義、另一種語言、一個特定詞；`llm-internal` 契約、提示 v15）；意圖不清楚時先問人（既有的澄清路徑）。
+- **重排**：Go 對意圖＋每個改寫各跑一次 hybrid，`FuseRanked`（reciprocal rank）合成一個排名，前三筆列成參考、人確認（metadata＝名稱、摘要、標籤已在參考清單裡）。
+- **回合**：`search_rounds` 記空手而回的次數；第 1／2 回空手時 tool 訊息要模型換說法、加關鍵詞或另一種語言；第 2 回空手就回「目錄裡沒有相近的 Skill，直接起草」，並從 `allowed_tools` 撤掉搜尋（`MaxSearchRounds`＝2，`TestProposalStopsSearchingAfterTwoEmptyRounds`）。
+- **量法**：harness `CREATION_MEASURE_SEARCH=1`——參考組不再把參考塞給會話，改讓模型自己搜，記 `search_hit`（模型帶回的候選有沒有這場匯入的那份參考）。
+
+### 13.4 run r：流程接上之後跑一次（mini／mini、三輪、`CREATION_MEASURE_SEARCH=1`）
+
+| | run p | **run r（hybrid＋改寫＋回合，參考組讓模型自己搜）** | 門檻 |
+| --- | --- | --- | --- |
+| 文字＋參考：第一次試跑 `met` | 4／9 | 4／9（R07 第一步空 brief 整場失敗） | （並列） |
+| **文字＋參考：三輪內 `met`** | 5／9 | **6／9** | ≥ 6／10 |
+| 流程圖組（另計）：第一次／三輪內 | 1／5 → 1／5 | 2／5 → 2／5 | — |
+| 改稿／改稿後再試跑 `met` | 6／14／1 | 7／14／2 | — |
+| 參考組：模型自己搜到匯入的參考 | — | **0／4，四場都沒有搜** | — |
+| 每場會話成本中位 | $0.018 | $0.017 | ≤ $0.50 |
+| Judge 合計 | $0.37（22 次） | $0.51（27 次） | — |
+
+輸出在 `run-2026-09-06-r/`。**流程本身在會話裡沒有被觸發**：四場參考組 mini 一步都沒提搜尋意圖，直接整理 brief——提示說「有現成 Skill 可能有幫助時搜」，它判斷不需要。所以「意圖→改寫→重排→回合」在這次只有單元測試與離線 F1 的證據，沒有會話層的數字。R07 又死在「空 brief」的 502：現在是 reason 碼 `brief_missing`、Go 自動再試一次（`TestProposalRetriesOnceWhenTheModelSentNoBrief`），下一次不會整場失敗。
+
+### 13.5 要真人裁的一件：第一則訊息就查目錄
+
+要讓檢索流程在會話裡真的跑，不能靠 mini 主動提意圖。可行的形狀：**會話收到第一則訊息時，Go 先用 hybrid 查一次目錄（一次 embedding、零模型費）**，有相近的 Skill 就列給人確認要不要參考（這正是負責人說的「意圖階段 HITL」），沒有就直接進模型。這改變每一場會話的第一步，是產品流程的裁定（`05` R-49）；量法已備好（`search_hit`）。
+

@@ -24,6 +24,7 @@ package catalog
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -92,6 +93,7 @@ func IndexSkill(ctx context.Context, tx pgx.Tx, projection SkillProjection) erro
 	return gen.New(tx).UpsertSearchDocument(ctx, gen.UpsertSearchDocumentParams{
 		SkillID: projection.SkillID, WorkspaceID: projection.WorkspaceID,
 		Name: projection.Name, Summary: projection.Summary,
+		BigramText: LexicalIndexText(projection.Name, projection.Summary),
 	})
 }
 
@@ -108,6 +110,7 @@ func IndexSkillEnriched(ctx context.Context, tx pgx.Tx, projection EnrichedSkill
 		Embedding: projection.Embedding, EnrichmentStatus: projection.EnrichmentStatus,
 		EnrichmentModel:         projection.EnrichmentModel,
 		EnrichmentPromptVersion: projection.EnrichmentPromptVersion,
+		BigramText:              LexicalIndexText(projection.Name, projection.Summary, projection.EnrichedSummary, projection.TaskExamples, jsonStrings(projection.Tags)),
 	})
 }
 
@@ -210,4 +213,32 @@ func fillScans[R any](
 		out[pgconv.UUIDString(id)] = blob
 	}
 	return out, nil
+}
+
+// jsonStrings flattens every string value in a JSON document (the task
+// examples and tag buckets the enrichment stored) into one text, for the
+// lexical index; malformed or empty input contributes nothing.
+func jsonStrings(raw []byte) string {
+	var v any
+	if len(raw) == 0 || json.Unmarshal(raw, &v) != nil {
+		return ""
+	}
+	var out []string
+	var walk func(any)
+	walk = func(x any) {
+		switch t := x.(type) {
+		case string:
+			out = append(out, t)
+		case []any:
+			for _, e := range t {
+				walk(e)
+			}
+		case map[string]any:
+			for _, e := range t {
+				walk(e)
+			}
+		}
+	}
+	walk(v)
+	return strings.Join(out, "\n")
 }

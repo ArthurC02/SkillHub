@@ -2991,6 +2991,9 @@ type CreationSnapshot struct {
 	// Consecutive blocked validations with the same report; at two the session waits for the person
 	// instead of a further model call.
 	BlockedRepeats OptInt `json:"blocked_repeats"`
+	// Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts
+	// without a reference (04 丙-177).
+	SearchRounds OptInt `json:"search_rounds"`
 	// The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until
 	// the person confirms (05 R-47).
 	PendingFetchURL OptString `json:"pending_fetch_url"`
@@ -3112,6 +3115,11 @@ func (s *CreationSnapshot) GetNudges() OptInt {
 // GetBlockedRepeats returns the value of BlockedRepeats.
 func (s *CreationSnapshot) GetBlockedRepeats() OptInt {
 	return s.BlockedRepeats
+}
+
+// GetSearchRounds returns the value of SearchRounds.
+func (s *CreationSnapshot) GetSearchRounds() OptInt {
+	return s.SearchRounds
 }
 
 // GetPendingFetchURL returns the value of PendingFetchURL.
@@ -3257,6 +3265,11 @@ func (s *CreationSnapshot) SetNudges(val OptInt) {
 // SetBlockedRepeats sets the value of BlockedRepeats.
 func (s *CreationSnapshot) SetBlockedRepeats(val OptInt) {
 	s.BlockedRepeats = val
+}
+
+// SetSearchRounds sets the value of SearchRounds.
+func (s *CreationSnapshot) SetSearchRounds(val OptInt) {
+	s.SearchRounds = val
 }
 
 // SetPendingFetchURL sets the value of PendingFetchURL.

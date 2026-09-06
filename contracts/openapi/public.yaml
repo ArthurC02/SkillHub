@@ -8313,6 +8313,9 @@ components:
         blocked_repeats:
           type: "integer"
           description: "Consecutive blocked validations with the same report; at two the session waits for the person instead of a further model call."
+        search_rounds:
+          type: "integer"
+          description: "Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts without a reference (04 丙-177)."
         pending_fetch_url:
           type: "string"
           description: "The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until the person confirms (05 R-47)."

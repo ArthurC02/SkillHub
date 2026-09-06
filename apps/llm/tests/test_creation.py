@@ -119,14 +119,19 @@ def test_multiround_confirmation_and_tool_observation_revision():
 
     response, _ = invoke(
         confirmed | {"draft": SKILL, "allowed_tools": ["validate_draft"]},
-        decision(outcome="tool_intent", tool_intent={"kind": "validate_draft", "query": ""}),
+        decision(
+            outcome="tool_intent",
+            tool_intent={"kind": "validate_draft", "query": "", "queries": None},
+        ),
     )
     assert response.json()["tool_intent"]["kind"] == "validate_draft"
 
     response, _ = invoke(
         confirmed | {"allowed_tools": ["validate_draft"]},
         decision(
-            outcome="tool_intent", tool_intent={"kind": "validate_draft", "query": ""}, draft=SKILL
+            outcome="tool_intent",
+            tool_intent={"kind": "validate_draft", "query": "", "queries": None},
+            draft=SKILL,
         ),
     )
     assert response.status_code == 200
@@ -229,7 +234,7 @@ def test_validate_intent_cannot_bypass_confirmation(changes, outcome):
         req,
         decision(
             outcome="tool_intent",
-            tool_intent={"kind": "validate_draft", "query": ""},
+            tool_intent={"kind": "validate_draft", "query": "", "queries": None},
             draft=SKILL,
             **changed,
         ),
@@ -297,14 +302,17 @@ def test_acceptance_criteria_locked_once_brief_confirmed():
     [
         (
             {},
-            {"outcome": "tool_intent", "tool_intent": {"kind": "search_catalog", "query": "x"}},
+            {
+                "outcome": "tool_intent",
+                "tool_intent": {"kind": "search_catalog", "query": "x", "queries": None},
+            },
             "tool_unavailable",
         ),
         (
             {"allowed_tools": ["search_catalog"]},
             {
                 "outcome": "tool_intent",
-                "tool_intent": {"kind": "search_catalog", "query": "   "},
+                "tool_intent": {"kind": "search_catalog", "query": "   ", "queries": None},
             },
             "search_query_missing",
         ),
@@ -376,7 +384,10 @@ def test_image_is_only_multimodal_and_requires_confirmation():
 def test_unauthorized_tool_never_escapes():
     response, _ = invoke(
         request(),
-        decision(outcome="tool_intent", tool_intent={"kind": "search_catalog", "query": "invoice"}),
+        decision(
+            outcome="tool_intent",
+            tool_intent={"kind": "search_catalog", "query": "invoice", "queries": None},
+        ),
     )
     assert response.json()["outcome"] == "clarification"
     assert response.json()["tool_intent"] is None
@@ -385,7 +396,10 @@ def test_unauthorized_tool_never_escapes():
 def test_search_intent_and_returned_observations_use_separate_jobs():
     response, _ = invoke(
         request(allowed_tools=["search_catalog"]),
-        decision(outcome="tool_intent", tool_intent={"kind": "search_catalog", "query": "invoice"}),
+        decision(
+            outcome="tool_intent",
+            tool_intent={"kind": "search_catalog", "query": "invoice", "queries": None},
+        ),
     )
     assert response.json()["tool_intent"]["query"] == "invoice"
     response, calls = invoke(
@@ -757,23 +771,63 @@ def test_review_whose_fix_is_in_the_criteria_reproposes_the_brief():
     assert body["draft"] is None
 
 
+def test_an_empty_brief_is_a_reason_code_go_retries():
+    response, _ = invoke(request(), decision(outcome="confirm_brief", brief="   "))
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "clarification"
+    assert response.json()["reason"] == "brief_missing"
+
+
+def test_search_intent_carries_up_to_three_rewrites():
+    req = request(allowed_tools=["search_knowledge"])
+    response, _ = invoke(
+        req,
+        decision(
+            outcome="tool_intent",
+            tool_intent={
+                "kind": "search_knowledge",
+                "query": "整理逐字稿成待辦",
+                "queries": ["meeting notes to action items", "待辦清單", "逐字稿"],
+            },
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["tool_intent"]["queries"] == [
+        "meeting notes to action items",
+        "待辦清單",
+        "逐字稿",
+    ]
+    response, _ = invoke(
+        req,
+        decision(
+            outcome="tool_intent",
+            tool_intent={"kind": "search_knowledge", "query": "x", "queries": ["a", "b", "c", "d"]},
+        ),
+    )
+    assert response.status_code == 502  # four rewrites is not the contract
+
+
 def test_search_knowledge_intent_passes_through_and_needs_a_query():
     req = request(allowed_tools=["search_knowledge"])
     response, _ = invoke(
         req,
         decision(
             outcome="tool_intent",
-            tool_intent={"kind": "search_knowledge", "query": "整理逐字稿成待辦"},
+            tool_intent={"kind": "search_knowledge", "query": "整理逐字稿成待辦", "queries": None},
         ),
     )
     assert response.status_code == 200
     assert response.json()["tool_intent"] == {
         "kind": "search_knowledge",
         "query": "整理逐字稿成待辦",
+        "queries": None,
     }
     response, _ = invoke(
         req,
-        decision(outcome="tool_intent", tool_intent={"kind": "search_knowledge", "query": "  "}),
+        decision(
+            outcome="tool_intent",
+            tool_intent={"kind": "search_knowledge", "query": "  ", "queries": None},
+        ),
     )
     assert response.json()["reason"] == "search_query_missing"
 
@@ -785,16 +839,22 @@ def test_fetch_url_intent_passes_through_with_a_url_and_is_refused_without_one()
     response, _ = invoke(
         req,
         decision(
-            outcome="tool_intent", tool_intent={"kind": "fetch_url", "query": "https://x.test/a"}
+            outcome="tool_intent",
+            tool_intent={"kind": "fetch_url", "query": "https://x.test/a", "queries": None},
         ),
     )
     assert response.status_code == 200
     assert response.json()["outcome"] == "tool_intent"
-    assert response.json()["tool_intent"] == {"kind": "fetch_url", "query": "https://x.test/a"}
+    assert response.json()["tool_intent"] == {
+        "kind": "fetch_url",
+        "query": "https://x.test/a",
+        "queries": None,
+    }
     response, _ = invoke(
         req,
         decision(
-            outcome="tool_intent", tool_intent={"kind": "fetch_url", "query": "the docs page"}
+            outcome="tool_intent",
+            tool_intent={"kind": "fetch_url", "query": "the docs page", "queries": None},
         ),
     )
     assert response.json()["outcome"] == "clarification"
@@ -803,7 +863,8 @@ def test_fetch_url_intent_passes_through_with_a_url_and_is_refused_without_one()
     response, _ = invoke(
         request(),
         decision(
-            outcome="tool_intent", tool_intent={"kind": "fetch_url", "query": "https://x.test/a"}
+            outcome="tool_intent",
+            tool_intent={"kind": "fetch_url", "query": "https://x.test/a", "queries": None},
         ),
     )
     assert response.json()["reason"] == "tool_unavailable"
@@ -850,7 +911,10 @@ def test_platform_facts_sentence_precedes_the_data_fence():
 def test_blank_search_query_becomes_a_clarification():
     response, _ = invoke(
         request(allowed_tools=["search_catalog"]),
-        decision(outcome="tool_intent", tool_intent={"kind": "search_catalog", "query": "   "}),
+        decision(
+            outcome="tool_intent",
+            tool_intent={"kind": "search_catalog", "query": "   ", "queries": None},
+        ),
     )
     assert response.status_code == 200
     assert response.json()["outcome"] == "clarification"
