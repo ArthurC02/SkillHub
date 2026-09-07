@@ -164,7 +164,7 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 
 > **補記（2026-09-03）：`/workspace/skills` 的「建立中心」。**
 >
-> `components/CreateHub.tsx` 是 `/workspace/skills` 的 `<h1>` 之下、清單之上的一個區塊（`#create`，首頁的 hero 指著 `/workspace/skills#create`），把三條建立路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從目錄挑一個來改** → `/`（Fork 需要封測邀請，卡片上直接說，§2.2 第三向的強制者是**平台**）、**依任務描述生成一個** → 沒有新的邊，那是 `GenerateSkill` 原本就在這一頁的那個掛載點被搬進卡片裡，**旗標與 §2.4 一個字都沒有改**。
+> `components/CreateHub.tsx` 是 `/workspace/skills` 上的一個區塊，位置**由清單空不空決定**（**2026-09-07 訂正**：本句原本寫「`<h1>` 之下、清單之上」，那在 2026-09-03 落地時為真，當天起就不再為真的是「清單之上」那一半——清單有東西的時候它排在清單**之後**。理由是 system.md §3 checklist 第 1 條，它的「不過的樣子」逐字是「一整排控制項排在答案前面」；清單是空的時候它仍然排在最前面，因為那時它就是這一頁的答案。兩個掛載點而不是 CSS `order`，因為 `order` 只改視覺順序不改 DOM 順序）（`#create`，首頁的 hero 指著 `/workspace/skills#create`），把三條建立路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從目錄挑一個來改** → `/`（Fork 需要封測邀請，卡片上直接說，§2.2 第三向的強制者是**平台**）、**依任務描述生成一個** → 沒有新的邊，那是 `GenerateSkill` 原本就在這一頁的那個掛載點被搬進卡片裡，**旗標與 §2.4 一個字都沒有改**。
 >
 > **三條邊裡有兩條是既有的**：`WorkspaceSkills ► /` 與 `WorkspaceSkills ► /workspace/import` 上面那一列本來就有（空狀態那句「或匯入自己的套件」，IA-9）。新的是**來源檔**——`CreateHub.tsx` 讓這兩個位址的 §2.3 入邊各從 2 變 3（`ia.test.ts` 以不同來源檔計數），而 §2.3 只對 0 與 1 那兩列斷言，所以那裡是輸出不是失敗。
 >

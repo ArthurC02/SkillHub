@@ -686,12 +686,88 @@ test("GEN-008 ⛔ with the flag off, /workspace/skills has no generation entry p
   expect(text()).not.toContain("讓平台依你的描述做一個");
 });
 
+/**
+ * 2026-09-07：生成那一格從「一整面表單」變成一扇門，按下才在原地展開。這兩支測試
+ * 因此多一次按壓——**它們守的東西一個字都沒有變**：旗標開著的時候這條路要走得到，
+ * 旗標關著的時候（上一支）連那扇門都不存在。
+ *
+ * 按壓不是為了讓測試通過而加的儀式，它就是新的第一步：門後那面表單在按下去之前
+ * **不在 DOM 裡**，而那正是這次改動要的——`01` §10 邊界 1 說生成入口不得變得更顯眼，
+ * 一句話加一顆按鈕比一面 1000px 的表單更不顯眼。
+ */
+async function openTheDescribeDoorway() {
+  await act(async () => button("開始描述")?.click());
+}
+
 test("GEN-008 with the flag on, /workspace/skills does show it", async () => {
   stubOwnSkillsWithFeatures({ generate_skill: true });
-  await render(<WorkspaceSkills />, () => container.querySelector("#generate-task") !== null);
+  await render(<WorkspaceSkills />, () => text().includes("開始描述"));
+
+  // 門在，表單還沒有——這一半是新的，而它是邊界那條規則的實際形狀。
+  expect(container.querySelector("#generate-task")).toBeNull();
+
+  await openTheDescribeDoorway();
 
   expect(container.querySelector("#generate-task")).not.toBeNull();
   expect(text()).toContain("CSV 清理");
+});
+
+// --- 逐列複述：設計 §2.13 第 1 條在這一份清單上 ---------------------------------
+
+/** 這一段話在整個畫面上出現幾次。`text()` 已經去過空白。 */
+function occurrences(needle: string) {
+  return text().split(needle).length - 1;
+}
+
+/**
+ * 這一支守的是 2026-09-07 那批的主張本身，而在它之前**沒有任何機器在看**：
+ * `a11y.test.tsx` 的 `§2.13 去重 1` 閘門確實掃這條路由，但它用的共用 fixture
+ * 只有一列，而「逐列複述」需要兩列才成立——所以那道閘門對這一頁從來沒有被觸發過，
+ * 既抓不到缺陷、也證明不了修法。
+ *
+ * 兩個分支同時在這一份清單上被斷言，而它們的答案相反：
+ *
+ *  - `verification` **搬得走**：每一列都戴著「掃描狀態：<label>」那顆徽章，而這份
+ *    fixture 裡 label 與 note 是一對一的，所以但書可以提到清單層級，各自帶著限定它
+ *    的那個詞。
+ *  - `risk` **搬不走**：它有兩種值，而 `scan_status: "unavailable"` 的那一列身上
+ *    一個標記都沒有。兩句一起提上去，讀者分不出哪一列是哪一句——那不是去重，是把
+ *    §2.9 的型別詞弄丟。**這一半才是承重的**：只斷言「搬走了」的測試，會把「什麼都
+ *    搬」也判成通過。
+ */
+test("設計 §2.13 一句逐列相同的但書只講一次，而分不出是哪一列的那一句不准搬", async () => {
+  const row = (id: string, name: string, facets: typeof SCANNED | typeof FORKED) => ({
+    skill_id: id,
+    name,
+    summary: "一份套件。",
+    redistribution: "self_supplied",
+    access_restriction: null,
+    ...facets,
+  });
+  vi.stubGlobal("fetch", () =>
+    json({
+      skills: [
+        row(SKILL, "掃過的甲", SCANNED),
+        row("00000000-0000-4000-8000-000000000002", "掃過的乙", SCANNED),
+        row("00000000-0000-4000-8000-000000000003", "Fork 來的", FORKED),
+      ],
+      limit: 100,
+      total: 3,
+      truncated: false,
+    }),
+  );
+  await render(<WorkspaceSkills />, () => text().includes("Fork 來的"));
+
+  // 搬得走的那一個：兩列共用同一句，但畫面上只有一次，而且帶著限定它的那個詞。
+  expect(occurrences(SCANNED.verification.note)).toBe(1);
+  expect(text()).toContain(`掃描狀態「${SCANNED.verification.label}」：`);
+  expect(occurrences(FORKED.verification.note)).toBe(1);
+  expect(text()).toContain(`掃描狀態「${FORKED.verification.label}」：`);
+
+  // 搬不走的那一個：兩列還是各印各的，因為 Fork 那一列沒有戴著任何對得回去的詞。
+  expect(occurrences(SCANNED.risk.note)).toBe(2);
+  expect(occurrences(FORKED.risk.note)).toBe(1);
+  expect(text()).not.toContain(`風險提示：${SCANNED.risk.note}`);
 });
 
 // --- 建立中心: the three ways in, gathered above the list ---------------------
@@ -766,7 +842,8 @@ test("建立中心 ⛔ with the flag off, the hub has no generation card and doe
 
 test("建立中心 with the flag on, the generation entry appears exactly once on the page", async () => {
   stubOwnSkillsWithFeatures({ generate_skill: true });
-  await render(<WorkspaceSkills />, () => container.querySelector("#generate-task") !== null);
+  await render(<WorkspaceSkills />, () => text().includes("開始描述"));
+  await openTheDescribeDoorway();
 
   // Inside the hub, not beside it: the old standalone mount has to be gone, not
   // merely joined by a second one. `#generate-task` is GenerateSkill's own

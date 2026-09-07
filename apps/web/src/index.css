@@ -1425,6 +1425,20 @@ summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
+  /* `align-items: start` 是 2026-09-07 補的，而它補的是一個量得出來的缺陷：格軌等高
+     是 grid 的預設，`align-content: start`（下面那條）管的是**格子裡的內容**，管不到
+     格子自己。第三張卡長成一整面表單（約 1000px）之後，前兩張卡各自帶著一個 880px
+     的空白描邊框。門卡化之後三張卡本來就差不多高，但這條規則讓「某一張卡長高就把
+     鄰居撐成空盒子」這件事不會再發生第二次。 */
+  align-items: start;
+}
+
+/* 展開的創作工作台佔滿整列，不擠在一個 `minmax(240px, 1fr)` 的欄裡。
+   `1 / -1` 而不是固定欄數：`auto-fit` 在 375px 是一欄、1280px 是三欄，兩邊都要對。
+   卡片樣式仍然是 `.download-item`——§4.3「修法一律是套用既有的卡片族」，這裡加的是
+   它在網格裡佔多寬，不是第五種卡片。 */
+.create-workspace {
+  grid-column: 1 / -1;
 }
 
 /* `align-content: start` so a short card does not stretch its own contents to

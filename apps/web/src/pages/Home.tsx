@@ -8,6 +8,14 @@ import { GenerateSkill } from "../components/GenerateSkill";
 import { Loading } from "../components/Loading";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { RiskSummary } from "../components/RiskIndicator";
+// 但書上提的規則與它的兩個分支住在這裡，不在這一頁：`/workspace/skills` 用同一份
+// （2026-09-07 搬出去，見該檔檔頭）。這一頁保留的只有它自己那張 facet 表。
+import {
+  FacetNotes as FacetNoteLines,
+  liftedNotes as liftedNotesOf,
+  type FacetNote,
+  type LiftedNotes,
+} from "../components/FacetNotes";
 import { SignInAction } from "../components/SignIn";
 import { Timestamp } from "../components/Timestamp";
 import { MAX_COMPARE } from "./Compare";
@@ -1247,19 +1255,7 @@ function ResultFacets({
  * ——與分類 chip 的計數同一條原則（`CategoryNav` 的註解，以及 `disc.test.tsx` 把
  * 數字釘在實際渲染的列上的那幾支）。
  */
-type FacetKey = "tier" | "category" | "compatibility" | "risk";
-
-const FACET_NOTES: Array<{
-  key: FacetKey;
-  label: string;
-  note: (hit: PublicSearchResult) => string | undefined;
-  /**
-   * The word every row already wears for the value this note belongs to, when
-   * there is one — see `facetNoteLines` for why that decides whether a note that
-   * VARIES down the list may be lifted at all.
-   */
-  by?: (hit: PublicSearchResult) => string;
-}> = [
+const FACET_NOTES: Array<FacetNote<PublicSearchResult>> = [
   { key: "tier", label: "來源層級", note: (hit) => hit.tier.note, by: (hit) => hit.tier.label },
   {
     key: "category",
@@ -1277,79 +1273,12 @@ const FACET_NOTES: Array<{
   { key: "risk", label: "風險提示", note: (hit) => hit.risk.note },
 ];
 
-/** 這一份清單上，哪幾個 facet 的 note 已經被提到清單層級講過了。 */
-export type LiftedNotes = Partial<Record<FacetKey, boolean>>;
-
-/**
- * 一份清單的 facet 但書，去重之後該印的那幾行。
- *
- * **一句話可以搬到清單層級，若且唯若讀者搬完之後仍然分得出它在講哪一列。** 兩種
- * 情況滿足它，而它們是這個函式的兩個分支：
- *
- * 1. **這一句在整份清單上逐位元相同**——那它從第 2 列起就不可能改變任何判斷，講一次
- *    就是全部。§2.13 去重 1 的字面。
- * 2. **這一句有幾種值，但每一列都戴著挑出自己那一行的那個詞**——`tier` 與 `category`
- *    的每一列都渲染 `LabelledBadge`，而 badge 上的 `label` 與 note 來自同一個
- *    `Labelled`，所以「來源層級「精選」：…」指得回它限定的那些列。同型前例就在同一
- *    個檔案裡：精選書架那段話一次講完兩個層級（「下面 N 個是『已索引』…」），也是靠
- *    列上的那個詞完成歸屬的。
- *
- * **沒有那個詞就不准搬，這條是承重的。** `risk.note` 有兩種值——「掃過了」與「尚無
- * 掃描紀錄」——而 `scan_status: "unavailable"` 配 `level: "none"` 的那一列身上**一個
- * 標記都沒有**。兩句一起提到上面，畫面會同時印出兩句而讀者分不出哪一列是哪一句：
- * 那不是去重，是把 §2.9 的型別詞弄丟（`disc.test.tsx` 的「a result row carries all
- * seven columns」在這個版本第一次寫錯時就是這樣紅的）。
- *
- * 一列的清單也不搬：那時候沒有複述可去，搬走只是把但書推離它限定的那顆徽章。
- * 任何一列的 note 是空的也不搬——那一列沒有東西被講到，剩下的列會被代表。
- */
-function facetNoteLines(hits: PublicSearchResult[]): Array<{ key: FacetKey; text: string }> {
-  if (hits.length < 2) return [];
-  const lines: Array<{ key: FacetKey; text: string }> = [];
-  for (const { key, label, note, by } of FACET_NOTES) {
-    // note → the row-visible words carrying it, in first-seen order.
-    const byNote = new Map<string, Set<string>>();
-    let complete = true;
-    for (const hit of hits) {
-      const text = note(hit);
-      if (!text) {
-        complete = false;
-        break;
-      }
-      const words = byNote.get(text) ?? new Set<string>();
-      if (by) words.add(by(hit));
-      byNote.set(text, words);
-    }
-    if (!complete) continue;
-    if (byNote.size === 1) {
-      lines.push({ key, text: `${label}：${[...byNote.keys()][0]}` });
-    } else if (by) {
-      for (const [text, words] of byNote) {
-        lines.push({ key, text: `${label}「${[...words].join("、")}」：${text}` });
-      }
-    }
-  }
-  return lines;
-}
-
 function liftedNotes(hits: PublicSearchResult[]): LiftedNotes {
-  const lifted: LiftedNotes = {};
-  for (const { key } of facetNoteLines(hits)) lifted[key] = true;
-  return lifted;
+  return liftedNotesOf(hits, FACET_NOTES);
 }
 
 function FacetNotes({ hits }: { hits: PublicSearchResult[] }) {
-  // 依 ResultFacets 的欄位順序，帶著 facet 名稱——與 `CompatibilityStatus` 逐軸註記
-  // 同一個寫法（`{label}：{note}`）。沒有新元件、沒有新 class、沒有新字級。
-  return (
-    <>
-      {facetNoteLines(hits).map(({ text }) => (
-        <p key={text} className="note">
-          {text}
-        </p>
-      ))}
-    </>
-  );
+  return <FacetNoteLines rows={hits} facets={FACET_NOTES} />;
 }
 
 function MarkerLegend() {
