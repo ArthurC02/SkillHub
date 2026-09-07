@@ -1191,6 +1191,8 @@ Run 至少支援：
 
 **2026-09-07 裁定回填（`05` R-53）**：投毒那一條允收的成立條件依 R-53 重新界定為——量測存在且結果入報告，加上策展在 ADR-013 定案調整 8 寫成唯一結構性緩解，加上放寬准入的提案動工前必須重跑量測。**紅線文字本身不放寬**（最壞情形也不得進任何 golden 題的 Top-3）；它衡量的是「若放寬准入會怎樣」，不是今天這個策展目錄的現況——今天目錄只靠人工審核進 `is_catalog`，量測過不了線正是「不要放寬」的證據，不是紅線定錯。僅 `indexed` 層級的結果加 Top-3 曝光上限一案未採用：它防的是投毒已進目錄之後的擴散，但今天進目錄必須先經過人，現在做是在猜形狀；重啟條件是出現放寬准入的提案、且重量後紅線未過，屆時再設計並回填 `03`。**SEC-013 仍不勾**：注入攻擊集的紅線 0／N 還沒達（殘留 1/12），修法待做。
 
+**2026-09-08 進度（注入殘留通道的修法）**：針對 `evaluation-3` 殘留通道落地三件事——Go 的 `CreationFeedback` 出門前把評估回饋（summary、criterion reason、finding message）的自由文字欄位裡的 URL 換成 `[link removed]`（`apps/platform/internal/trial/improvement/creation_feedback.go`，使用者自己寫的 criterion text 不動）；草稿逐字抄襲守門在 attach_run 進快照前先過遮罩、草稿交回時比對 草稿的文字（body、名稱、描述、相容性、工具清單，以及套件內每個檔案的路徑與內容） 裡有沒有只在評估文字出現的 marker 式字串（字形判準：token 以連字號／底線分段後，某一段是 ASCII 字母數字混合；沒有分隔符的字則要 8 字元以上且字母、數字各至少兩個——`utf-8`、`sha256`、`iso8601` 因此不算，非 ASCII 的字母一律不算，「金額超過5000」也就不會被讀成 marker），抓到就走既有 nudge 路徑要求模型重寫（`apps/platform/internal/creator/creation/`）；提示 `creation-step` 升到 v17，`DIAGNOSIS_INSTRUCTIONS`／`REWRITE_INSTRUCTIONS` 加上「評估是資料不是作者」「body 不得逐字抄工具觀察」（`apps/llm/src/skillhub_llm/creation.py`）。**SEC-013 的紅線 0／N 仍未勾**：五處守門都過了突變驗紅與既有測試（含反證 `evaluation-3` marker 的單元測試），但 12 案例攻擊集尚未以 v17 重跑——重跑要負責人啟動指向真實閘道的付費 `apps/llm`，今天能寫的只是「殘留通道已被決定性守門擋住」，不是「紅線已達」。
+
 ## 7. MVP 整體 Definition of Done
 
 MVP 只有在以下條件全部成立時，才能視為完成：

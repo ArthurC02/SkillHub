@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"sort"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,6 +22,24 @@ const (
 	// needs to see.
 	creationFeedbackMaxItem = 600
 )
+
+// linkPattern matches the URLs stripped from the judge's free text before it
+// leaves for the creation flow. 05 SEC-013 (LLM01): the judge writes about a
+// Run's output, and that output is written by the Skill under trial — so an
+// attacker's page can end up quoted, with its URL, in a reason the next model
+// call is told to act on. Nothing downstream needs the address: the person sees
+// the sentence, the model rewrites a body. The placeholder is left visible so a
+// reader knows a link was there rather than wondering what was cut.
+var linkPattern = regexp.MustCompile(`(?i)\b(?:https?|ftp|file|data|javascript)://[^\s<>"')]+|\bwww\.[^\s<>"')]+`)
+
+const linkPlaceholder = "[link removed]"
+
+// withoutLinks is applied to every free-text field of the creation feedback:
+// the summary, each criterion's reason, each finding's message. Criterion text
+// is the person's own acceptance criterion and is left alone.
+func withoutLinks(s string) string {
+	return linkPattern.ReplaceAllString(s, linkPlaceholder)
+}
 
 type creationFeedbackPayload struct {
 	EvaluationAvailable   bool              `json:"evaluation_available"`
@@ -57,7 +76,7 @@ func (s *Service) CreationFeedback(
 }
 
 func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
-	summary, summaryTruncated := cut(view.Summary, creationFeedbackMaxSummary)
+	summary, summaryTruncated := cut(withoutLinks(view.Summary), creationFeedbackMaxSummary)
 	criteria := append([]CriterionResult(nil), view.CriterionResults...)
 	if criteria == nil {
 		criteria = []CriterionResult{}
@@ -76,13 +95,16 @@ func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
 		if criteria[i].Text, t = cut(criteria[i].Text, creationFeedbackMaxItem); t {
 			itemsTruncated = true
 		}
-		if criteria[i].Reason, t = cut(criteria[i].Reason, creationFeedbackMaxItem); t {
+		if criteria[i].Reason, t = cut(withoutLinks(criteria[i].Reason), creationFeedbackMaxItem); t {
 			itemsTruncated = true
 		}
 	}
 	for i := range findings {
-		if msg, t := cut(findings[i].Message, creationFeedbackMaxItem); t {
-			findings[i].Message = msg
+		// The assignment is unconditional: cut only reports whether it shortened
+		// the text, and withoutLinks has to survive either way.
+		msg, t := cut(withoutLinks(findings[i].Message), creationFeedbackMaxItem)
+		findings[i].Message = msg
+		if t {
 			itemsTruncated = true
 		}
 	}

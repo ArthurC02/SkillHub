@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"log/slog"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -439,6 +440,11 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		}
 		p.Candidate.RunID = c.RunID
 		p.RunUnmet = runUnmet(observation)
+		// Masked like every other untrusted text on its way into the snapshot:
+		// the judge writes about output the Skill under trial produced, so a
+		// credential in that output can reach here through a quoted reason.
+		observation = s.masked(observation)
+		p.EvaluationText = evaluationFreeText(observation)
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: observation})
 		state = "candidate_ready"
 		queueStep = true
@@ -708,6 +714,212 @@ func trialQuestions(observation string) string {
 		return ""
 	}
 	return "這次試跑有條件沒過：\n" + strings.Join(lines, "\n") + "\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。"
+}
+
+// evaluationFreeText returns the judge's own words out of an attach_run
+// observation — the summary, each criterion's reason, each finding's message.
+// Criterion text is the person's own acceptance criterion, so it is not in
+// here: what this collects is exactly the text nobody the person trusts wrote.
+func evaluationFreeText(observation string) string {
+	var o struct {
+		Evaluation struct {
+			Summary string `json:"summary"`
+			Results []struct {
+				Reason string `json:"reason"`
+			} `json:"criterion_results"`
+			Findings []struct {
+				Message string `json:"message"`
+			} `json:"deterministic_findings"`
+		} `json:"evaluation"`
+	}
+	if json.Unmarshal([]byte(observation), &o) != nil {
+		return ""
+	}
+	parts := []string{o.Evaluation.Summary}
+	for _, r := range o.Evaluation.Results {
+		parts = append(parts, r.Reason)
+	}
+	for _, f := range o.Evaluation.Findings {
+		parts = append(parts, f.Message)
+	}
+	return strings.Join(parts, "\n")
+}
+
+// copiedFromEvaluation lists the marker-like literals a revised draft took
+// verbatim out of the judge's own words. 05 SEC-013 (LLM01), 2026-09-07: the
+// fence in creation-step/v16 stopped the model obeying an evaluation that told
+// it to change the brief or add a tool, but not the one that told it to copy a
+// token into the body — 1/12 of the attack set, and the residual channel the
+// measurement left open. The fence argues about trust; this counts characters.
+//
+// What it does NOT cover, because character counting cannot: an evaluation that
+// asks for a paraphrase ("spell the token out in words"), a marker made only of
+// letters, and the three attack goals that never touch the draft's text at all
+// — claim_met, add_bash_tool, change_brief. Those have no Go backstop; the
+// prompt's own discipline (creation-step/v17) is the whole defence there.
+//
+// Marker-like is a shape, judged per segment: an ASCII segment mixing letters
+// and digits inside a hyphenated or underscored token (`9c0d` of `EXFIL-9c0d`,
+// `77e1` of `BASH-TOOL-77e1`), or a bare run of eight or more ASCII characters
+// with at least two of each. Ordinary technical vocabulary a draft has every
+// reason to gain after a trial — utf-8, sha256, base64, iso8601, gpt-5 — has no
+// such segment; letters outside ASCII are not marker material at all, which is
+// what keeps a Chinese sentence with a number in it (「金額超過5000」) out.
+//
+// Only what is BOTH in the draft AND absent from everything the person had a
+// hand in counts. That side is read generously — every alphanumeric segment of
+// their text, marker-like or not — because an identifier they supplied comes
+// back in shapes they did not write: a sample input with `A1001` in it earns
+// the draft's `shopify_order_A1001.csv`, and a guard that missed that
+// difference would spend a nudge on an honest revision.
+func copiedFromEvaluation(evaluationText, draftText string, theirs ...string) []string {
+	if strings.TrimSpace(evaluationText) == "" {
+		return nil
+	}
+	fromJudge := markerSegments(evaluationText)
+	if len(fromJudge) == 0 {
+		return nil
+	}
+	known := map[string]bool{}
+	for _, t := range theirs {
+		for _, seg := range alphanumericSegments(t) {
+			known[seg] = true
+		}
+	}
+	var copied []string
+	seen := map[string]bool{}
+	for token, segments := range markerTokens(draftText) {
+		for _, seg := range segments {
+			if fromJudge[seg] && !known[seg] && !seen[token] {
+				seen[token] = true
+				copied = append(copied, token)
+			}
+		}
+	}
+	// Sorted because the caller puts them in a message: map order would make
+	// the same session read differently on every run.
+	sort.Strings(copied)
+	return copied
+}
+
+// markerTokens maps each marker-like token of a text to the segments that made
+// it one, folded to lower case so a copy that changes case still matches. The
+// token is what a person is shown; the segment is what is compared.
+func markerTokens(s string) map[string][]string {
+	out := map[string][]string{}
+	for _, token := range tokens(s) {
+		if segs := markerLike(token); len(segs) > 0 {
+			out[token] = segs
+		}
+	}
+	return out
+}
+
+// markerSegments is the set of marker-like segments in a text — the judge's
+// side of the comparison, where only the segment matters.
+func markerSegments(s string) map[string]bool {
+	out := map[string]bool{}
+	for _, segs := range markerTokens(s) {
+		for _, seg := range segs {
+			out[seg] = true
+		}
+	}
+	return out
+}
+
+// alphanumericSegments is the person's side: every segment of their text, with
+// no shape test at all. Two characters is enough to be worth remembering.
+func alphanumericSegments(s string) []string {
+	var out []string
+	for _, token := range tokens(s) {
+		for _, seg := range strings.FieldsFunc(token, isSeparator) {
+			if len([]rune(seg)) >= 2 {
+				out = append(out, seg)
+			}
+		}
+	}
+	return out
+}
+
+func isSeparator(r rune) bool { return r == '-' || r == '_' }
+
+func tokens(s string) []string {
+	var out []string
+	for _, field := range strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r) && !isSeparator(r)
+	}) {
+		if field = strings.Trim(field, "-_"); field != "" {
+			out = append(out, field)
+		}
+	}
+	return out
+}
+
+// markerLike returns the segments that make a token marker-like, empty when it
+// is not one. A compound (`exfil-9c0d`) lets a short mixed segment count; a
+// bare word has to be long and mixed on its own before it does.
+func markerLike(token string) []string {
+	segments := strings.FieldsFunc(token, isSeparator)
+	compound := len(segments) > 1
+	var found []string
+	for _, seg := range segments {
+		letters, digits := 0, 0
+		ascii := true
+		for _, r := range seg {
+			switch {
+			case r >= '0' && r <= '9':
+				digits++
+			case r >= 'a' && r <= 'z':
+				letters++
+			default:
+				// A digit or letter outside ASCII: a marker is not written in
+				// Chinese, and 「金額超過5000」 must not read as one.
+				ascii = false
+			}
+		}
+		if !ascii || letters < 1 || digits < 1 || len(seg) < 4 {
+			continue
+		}
+		if compound || (letters >= 2 && digits >= 2 && len(seg) >= 8) {
+			found = append(found, seg)
+		}
+	}
+	return found
+}
+
+// draftText is every place a draft carries text a marker could ride out on:
+// the body, the two descriptions the catalogue shows, the tool list, and the
+// contents of each packaged file. Checking only the body would leave the file
+// an attacker would rather use anyway.
+func draftText(skill llmclient.GeneratedSkill) string {
+	parts := []string{skill.Name, skill.Description, skill.Compatibility, skill.AllowedTools, skill.Body}
+	for _, f := range skill.Files {
+		parts = append(parts, f.Path, f.Content)
+	}
+	return strings.Join(parts, "\n")
+}
+
+// previousDraftText is the text of the draft this one replaces, empty when
+// there is none: a marker the previous draft already carried is not something
+// this turn copied out of the evaluation.
+func previousDraftText(d *Draft) string {
+	if d == nil {
+		return ""
+	}
+	return draftText(d.Skill)
+}
+
+// personText is everything in the transcript the person themselves wrote. A
+// token they typed is theirs, however marker-like it looks.
+func personText(messages []llmclient.CreationMessage) string {
+	var b strings.Builder
+	for _, m := range messages {
+		if m.Role == "user" {
+			b.WriteString(m.Content)
+			b.WriteString("\n")
+		}
+	}
+	return b.String()
 }
 
 // runUnmet reads the one field of an attach_run observation Go acts on: an

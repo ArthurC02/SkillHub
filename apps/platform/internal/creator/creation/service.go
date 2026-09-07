@@ -172,6 +172,10 @@ type Snapshot struct {
 	// 2026-09-06: 10 of 12 review steps returned the same hash while the
 	// message claimed a revision).
 	RunUnmet bool `json:"run_unmet,omitempty"`
+	// EvaluationText is the judge's own words from the newest attach_run
+	// observation (summary, reasons, finding messages), kept so the next draft
+	// can be checked for markers copied out of them (05 SEC-013, LLM01).
+	EvaluationText string `json:"evaluation_text,omitempty"`
 	// Nudges counts the automatic re-queues where Go declined a draft and told
 	// the model why (MaxNudges per session).
 	Nudges int `json:"nudges,omitempty"`

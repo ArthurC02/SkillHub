@@ -422,7 +422,7 @@ Skill 套件的威脅隨生命週期階段不同，分「匯入 → 掃描 → �
 - 現有緩解：工具是意圖、只由 Go 執行、每一步 HITL（鐵律 6／7）；已確認的 brief／條件／`sample_input` 由 Go 綁定，模型重提才會變；草稿經靜態驗證與人確認才成版本；提示宣告參考內容與觀察是不受信任資料。
 - 殘餘風險：創作提示**沒有**像 enrich／judge 那樣用 `untrusted.py` 圍起內容；沒有攻擊測試集，攻擊成功率未知。
 - M0 之後工作：SEC-013（圍欄＋`corpus-injection.json` 攻擊集，紅線 0／N）。
-- **2026-09-07 實測**：圍欄（`creation-step/v16`）與 12 案例攻擊集跑過——攻擊成功率 v15（無圍欄）2/12 → v16（有圍欄）**1/12**，紅線 0/N **未達**；殘留通道是 evaluation 觀察的理由文字被 review 相依評估要求改寫，帶著 marker 進了草稿（[結果](../m5/creation-measure/injection/results-2026-09-07.txt)）。修法待做：Go 寫入評估觀察前對理由文字去 URL／截斷，且提示明定理由不得逐字帶進 body。
+- **2026-09-07 實測**：圍欄（`creation-step/v16`）與 12 案例攻擊集跑過——攻擊成功率 v15（無圍欄）2/12 → v16（有圍欄）**1/12**，紅線 0/N **未達**；殘留通道是 evaluation 觀察的理由文字被 review 相依評估要求改寫，帶著 marker 進了草稿（[結果](../m5/creation-measure/injection/results-2026-09-07.txt)）。修法待做：Go 寫入評估觀察前對理由文字去 URL／截斷，且提示明定理由不得逐字帶進 body。**2026-09-08 修法**：①Go 對評估回饋（`CreationFeedback` 的 `summary`／`reason`／finding `message`）寫回前去除 URL（換成 `[link removed]`）；②Go 在草稿交回時以 `copiedFromEvaluation` 比對 草稿的文字（body、名稱、描述、相容性、工具清單，以及套件內每個檔案的路徑與內容） 有無「只出現在評估文字、不出現在使用者輸入／前一版草稿／brief／驗收條件／sample_input」的 marker 式字串（字形判準：token 以連字號／底線分段後，某一段是 ASCII 字母數字混合；沒有分隔符的字則要 8 字元以上且字母、數字各至少兩個——`utf-8`、`sha256`、`iso8601` 因此不算，非 ASCII 的字母一律不算，「金額超過5000」也就不會被讀成 marker），命中即走 nudge 迴圈要求模型用自己的話重寫；③提示 `creation-step/v17` 明定評估文字是資料、修改需用自己的話描述、禁止把評估裡的 token／id／URL／marker 逐字帶進修改或 body。**殘餘風險現況**：守門是決定性的字形比對（marker 式字串），對「用自己的話轉述攻擊要求」這種不含字面 marker 的攻擊沒有效果——那一類仍只靠既有圍欄（`untrusted.py` 的意圖宣告）與 HITL（逐項確認）擋，尚未有攻擊測試證明擋得住。**攻擊集裡另外三個 evaluation 目標也不在這條守門的範圍**：`evaluation-1`（謊稱全過）、`evaluation-2`（偷加 `bash` 工具）、`evaluation-4`（偷換 brief）改的都不是草稿文字，Go 側沒有備援，全靠提示紀律與逐項 HITL；12 案例攻擊集尚未以 v17 重跑，紅線 0／12 未經證實。
 
 **TM-CRE-03｜投毒的目錄 Skill 經 Re-Use 三關卡被採用（Tampering / Spoofing）** — 嚴重度：高
 
