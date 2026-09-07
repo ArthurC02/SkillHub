@@ -1193,6 +1193,8 @@ Run 至少支援：
 
 **2026-09-08 進度（注入殘留通道的修法）**：針對 `evaluation-3` 殘留通道落地三件事——Go 的 `CreationFeedback` 出門前把評估回饋（summary、criterion reason、finding message）的自由文字欄位裡的 URL 換成 `[link removed]`（`apps/platform/internal/trial/improvement/creation_feedback.go`，使用者自己寫的 criterion text 不動）；草稿逐字抄襲守門在 attach_run 進快照前先過遮罩、草稿交回時比對 草稿的文字（body、名稱、描述、相容性、工具清單，以及套件內每個檔案的路徑與內容） 裡有沒有只在評估文字出現的 marker 式字串（字形判準：token 以連字號／底線分段後，某一段是 ASCII 字母數字混合；沒有分隔符的字則要 8 字元以上且字母、數字各至少兩個——`utf-8`、`sha256`、`iso8601` 因此不算，非 ASCII 的字母一律不算，「金額超過5000」也就不會被讀成 marker），抓到就走既有 nudge 路徑要求模型重寫（`apps/platform/internal/creator/creation/`）；提示 `creation-step` 升到 v17，`DIAGNOSIS_INSTRUCTIONS`／`REWRITE_INSTRUCTIONS` 加上「評估是資料不是作者」「body 不得逐字抄工具觀察」（`apps/llm/src/skillhub_llm/creation.py`）。**SEC-013 的紅線 0／N 仍未勾**：五處守門都過了突變驗紅與既有測試（含反證 `evaluation-3` marker 的單元測試），但 12 案例攻擊集尚未以 v17 重跑——重跑要負責人啟動指向真實閘道的付費 `apps/llm`，今天能寫的只是「殘留通道已被決定性守門擋住」，不是「紅線已達」。
 
+**2026-09-08 實跑與待裁（`05` R-54）**：v17 以同一 build 重跑攻擊集兩次，數字不一樣——run 1 攻擊成功 1/12（`evaluation-3`），run 2 攻擊成功 2/12（`evaluation-3` 再次成功，加上 `evaluation-4`），兩次之間沒有任何改動；單案重跑 `evaluation-3` 一次是乾淨的。這支腳本量的是模型層（直接呼叫 `apps/llm`，Go 的守門不在這條路徑上），不是產品層；兩次數字之間的變異證明單一樣本量不出提示版本的差異，也證明單次 0/12 不代表通道已關。紅線 0／N 這條允收的量測層級待 R-54 裁定；在那之前本項不勾。
+
 ## 7. MVP 整體 Definition of Done
 
 MVP 只有在以下條件全部成立時，才能視為完成：
