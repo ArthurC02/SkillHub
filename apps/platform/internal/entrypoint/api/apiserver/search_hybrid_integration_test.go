@@ -186,9 +186,12 @@ func TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions(t *testing.
 	set(old, "enrich-skill/v2")
 	set(current, "enrich-skill/v7")
 	set(private.skillID, "enrich-skill/v2")
+	// The shared test database holds every other test's catalogue documents
+	// (enriched, no prompt version): they are older too and are reset as well,
+	// so the count is a floor, and the three rows above are the assertion.
 	n, err := q.ResetCatalogueEnrichmentBefore(ctx, "enrich-skill/v7")
-	if err != nil || n != 1 {
-		t.Fatalf("reset %d err=%v, want exactly the old catalogue document", n, err)
+	if err != nil || n < 1 {
+		t.Fatalf("reset %d err=%v, want at least the old catalogue document", n, err)
 	}
 	status := func(skill string) string {
 		var st string
