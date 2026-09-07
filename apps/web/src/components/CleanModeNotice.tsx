@@ -20,14 +20,39 @@ import { useCleanMode } from "../api/me";
  * child: system.md §3 checklist 第 1 條 wants the headline to be the first
  * thing in the first screen, and a banner living outside `<main>` would queue
  * ahead of it on every page.
+ *
+ * ── 2026-09-07：五句話從平鋪改成一個可點開的標籤 ────────────────────────────
+ *
+ * **搬動的是揭露的形狀，不是它的內容**，而形狀本身是 §0 明文允許讓步的那一半
+ * （「讓步的是形式」）。促成它的是一次外部審查：非技術讀者看到頁首六行關於沙箱、
+ * presigned URL 與併發語意的灰字，得到的不是知情，是「系統是不是壞了、我有沒有
+ * 權限用」——**一段沒有人讀的揭露，其實現度是零**，而它同時把 checklist 第 1 條
+ * 要的頭條推到第二屏（這個元件自己上一段就在講那條規則，然後違反了它）。
+ *
+ * 五句一個字都沒有改、一句都沒有刪，全部仍在 DOM 裡、仍由 `clean-mode.test.tsx`
+ * 逐句斷言。改的是預設是否展開。
+ *
+ * **為什麼這不是把 §2.10「永不折疊」偷偷繞過去**：那份封閉清單的第 9 項是
+ * 「平台的降級自述」，而它在文件裡的具名實例是 `IncompleteNotice`（system.md:68），
+ * 從來沒有一份文件把這個橫幅掛在那一項底下。真正管這個形狀的是
+ * [ADR-065](../../../docs/adr/ADR-065-hot-path-text-budget-and-the-fourth-disclosure-mechanism.md)
+ * §3 規則 3，而它**逐字拿「淨測試模式：5 項在這個模式下不成立」當合格錨點的範例**
+ * ——管這件事的那份決策，早就把這個橫幅想過一遍了。
+ *
+ * **錨點自己要成立**：`<summary>` 上的那一句話說出「有幾項」與「不成立」，所以
+ * 不點開的人也知道自己錯過了什麼，而不是看到一個沒有內容的「詳情」。
  */
 export function CleanModeNotice() {
   const cleanMode = useCleanMode();
   if (!cleanMode) return null;
 
   return (
-    <>
-      <p className="badge badge-unverified">淨測試模式：沒有隔離、不驗簽章、只有一條連線</p>
+    <details className="clean-mode-notice">
+      <summary>
+        <span className="badge badge-unverified">
+          淨測試模式：5 項在這個模式下不成立（沒有隔離、不驗簽章、只有一條連線）
+        </span>
+      </summary>
       <p className="note">
         沙箱沒有隔離——不是比較弱的隔離，是沒有邊界。這個模式只跑策展過的展示素材。
       </p>
@@ -57,6 +82,6 @@ export function CleanModeNotice() {
       <p className="note">
         試跑前那份「可連往哪裡」的清單，在這個模式下不被強制——沒有任何東西擋著沙箱連別的地方。
       </p>
-    </>
+    </details>
   );
 }

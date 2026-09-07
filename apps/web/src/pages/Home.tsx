@@ -182,26 +182,46 @@ export function Home() {
     // is a hero rather than a document title, and the only one whose form is the
     // page's primary control (see index.css `.home h1` / `.home form`).
     <section className="home">
-      <h1>用一句話描述你的任務</h1>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            if (queryError) setQueryError("");
-          }}
-          placeholder="例如：把這份 PDF 整理成摘要"
-          aria-label="任務描述"
-        />
-        {/* 04 丙-150／丙-155 ⑤：撞到伺服器的 2000 字上限時說一句，不送出。 */}
-        {queryError && <p role="alert">{queryError}</p>}
-        {/* 設計 §4.6.3：這一頁的工作就是「用一句話描述任務」然後搜尋，所以整頁
+      {/*
+        2026-09-07：標題與搜尋列收進一個容器。
+
+        在此之前 `h1`、輸入框與兩顆控制項是直接落在頁底色上的三個兄弟，左對齊、
+        與底下的分類列同一個縮排——外部審查說的「在白色背景上直接擺放左對齊的文字
+        與原生輸入框」就是這個形狀。容器沒有引進第五種樣式，用的是卡片同一份配方
+        （`--surface`＋`--border`＋圓角，設計 §4.3），差別只有更大的內距與圓角，
+        因為它裝的是這一頁唯一的主要控制項而不是清單裡的一則。
+
+        **沒有加陰影**：ADR-064 §4.6.1 把深度定義成三層平面而不是投影，理由是暗色
+        模式下投影沒有東西可以落。深度由 `--surface` 比 `--bg` 亮這件事承擔，兩個
+        主題都成立。
+      */}
+      <div className="hero">
+        <h1>用一句話描述你的任務</h1>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              if (queryError) setQueryError("");
+            }}
+            /*
+            設計 §4.3（2026-09-04 補）：縮小清單的控制項要說出它縮小的是**哪一份
+            清單**。原本的 placeholder 只有一個例句，於是這個框同時像搜尋引擎也像
+            對 AI 下指令的輸入框——外部審查逐字指出的那個困惑。加上「在目錄裡找」
+            之後，這個框回答的是哪一個問題就沒有第二種讀法了；例句一個字沒動。
+          */
+            placeholder="在目錄裡找一個 Skill，例如：把這份 PDF 整理成摘要"
+            aria-label="任務描述"
+          />
+          {/* 04 丙-150／丙-155 ⑤：撞到伺服器的 2000 字上限時說一句，不送出。 */}
+          {queryError && <p role="alert">{queryError}</p>}
+          {/* 設計 §4.6.3：這一頁的工作就是「用一句話描述任務」然後搜尋，所以整頁
             唯一的主要動作是這一顆。 */}
-        <button type="submit" className="action">
-          搜尋
-        </button>
-        {/*
+          <button type="submit" className="action">
+            搜尋
+          </button>
+          {/*
           設計 §4.6.3／§3 第 18 條: NOT an `.action`. This page has exactly one
           filled primary action and it is 搜尋 above; an outlined link beside it
           is the second thing a reader can do, not a second thing the page
@@ -218,10 +238,11 @@ export function Home() {
           creating live. The M5 generation entry stays behind its flag and stays
           in the no_results branch only.
         */}
-        <Link className="hero-create" to="/workspace/skills" hash="create">
-          自己做一個 Skill
-        </Link>
-      </form>
+          <Link className="hero-create" to="/workspace/skills" hash="create">
+            自己做一個 Skill
+          </Link>
+        </form>
+      </div>
 
       {/*
         02:DISC-006 / 設計 §1.2「快到第一個判斷」. Directly under the box and
@@ -544,11 +565,38 @@ function Catalog({
         nothing, and the two call for opposite actions.
       */}
       {results.length === 0 ? (
-        <p>
-          {narrowing
-            ? "沒有 Skill 符合目前的篩選條件；這不是讀取失敗。清掉篩選條件可查看完整目錄。"
-            : "目錄現在是空的——代表這個部署還沒有匯入任何 Skill；這不是讀取失敗。"}
-        </p>
+        narrowing ? (
+          <p>沒有 Skill 符合目前的篩選條件；這不是讀取失敗。清掉篩選條件可查看完整目錄。</p>
+        ) : (
+          /*
+            2026-09-07：空目錄從一句例外處理，改成一個看得懂下一步的區塊。
+
+            **保留的是那句話的工作，不是那句話的措辭**：§2.1 的強形式要求空狀態說出
+            這個「空」不是什麼，而原句是「這不是讀取失敗」——對寫這行的人是精確的，
+            對一個行政同仁是「所以呢」。新的第一句仍然把三種可能的誤讀逐一排掉
+            （讀取失敗、沒有權限、真的沒有東西），只是排完之後接著說做什麼。
+
+            **不是填色動作**：§4.6.3 全站一頁至多一個填色主要動作，這一頁是搜尋框旁邊
+            那顆「搜尋」。`rendered.spec.ts` 對全部路由守著這件事，所以這裡是一個描邊
+            的連結而不是第二顆按鈕——強度由容器與留白給，不是由填色搶。
+          */
+          <div className="empty-catalog">
+            <p className="empty-catalog-lede">目錄裡還沒有任何東西。</p>
+            <p>
+              這不是讀取失敗，也不是你沒有權限——是
+              <strong>這個部署還沒有匯入過任何 Skill</strong>。
+            </p>
+            <p>
+              <Link className="empty-catalog-cta" to="/workspace/import">
+                匯入第一個 Skill
+              </Link>
+            </p>
+            <p className="note" data-role="teaching">
+              匯入是貼一個 GitHub URL、或上傳一個 zip。平台會做規格驗證與靜態掃描，
+              匯入期間不執行套件裡的任何 Script。
+            </p>
+          </div>
+        )
       ) : (
         <>
           {/*
@@ -667,6 +715,19 @@ function CategoryNav({ filters, browsing }: { filters: SearchFilters; browsing: 
     useCatalogTotal({ ...base, category: "writing" }),
     useCatalogTotal({ ...base, category: "data" }),
   ];
+
+  /*
+    2026-09-07：目錄一筆都沒有的時候整列不畫。
+
+    外部審查（非技術讀者）指出的形狀是「全部（0）文件（0）寫作（0）資料（0）」——
+    四個控制項，每一個都保證按下去什麼都沒有。**那不是缺席的型別詞，是四次重複的
+    同一個 0**；§2.9 要的那句話由下方的空狀態負責講，而它講得比四個括號清楚。
+
+    只在 0 這一個值上不畫，不是「載入中就不畫」：`total === 0` 要求四個計數都已經
+    回來且第一個是 0。還沒回來（`undefined`）與量測失敗仍然照舊渲染，因為那兩個是
+    不同的狀態，而這一列本來就有話對它們說。
+  */
+  if (totals[0].data?.total === 0) return null;
 
   return (
     <>

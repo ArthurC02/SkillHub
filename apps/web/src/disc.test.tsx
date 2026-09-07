@@ -719,8 +719,13 @@ test("DISC-006: an empty catalog is distinct from a failed catalog read", async 
   await act(async () => {
     await router.navigate({ to: "/", search: {} });
   });
-  await waitFor(() => container.textContent?.includes("目錄現在是空的") ?? false);
+  // 2026-09-07：措辭換了，這支測試守的東西一個字都沒有換。空狀態的工作是**把三種
+  // 誤讀逐一排掉**——讀取失敗、沒有權限、真的沒有東西——而下面三條就是逐條斷言它們，
+  // 比原本只認一句話更難被繞過。
+  await waitFor(() => container.textContent?.includes("目錄裡還沒有任何東西") ?? false);
   expect(container.textContent).toContain("這不是讀取失敗");
+  expect(container.textContent).toContain("也不是你沒有權限");
+  expect(container.textContent).toContain("還沒有匯入過任何 Skill");
   expect(container.textContent).not.toContain("清掉篩選條件");
   await act(async () => root.unmount());
   queryClient.clear();
@@ -728,7 +733,7 @@ test("DISC-006: an empty catalog is distinct from a failed catalog read", async 
   stubCatalog({ results: [], limit: 20, total: 0, truncated: false }, 503);
   await render(<App />);
   await waitFor(() => container.textContent?.includes("無法讀取目錄") ?? false);
-  expect(container.textContent).not.toContain("目錄現在是空的");
+  expect(container.textContent).not.toContain("目錄裡還沒有任何東西");
 });
 
 test("DISC-006: an empty filtered catalog explains how to recover", async () => {
@@ -739,7 +744,7 @@ test("DISC-006: an empty filtered catalog explains how to recover", async () => 
   });
   await waitFor(() => container.textContent?.includes("沒有 Skill 符合目前的篩選條件") ?? false);
   expect(container.textContent).toContain("清掉篩選條件");
-  expect(container.textContent).not.toContain("部署還沒有匯入任何 Skill");
+  expect(container.textContent).not.toContain("還沒有匯入過任何 Skill");
 });
 
 test("returning to browse does not render a cached search beside the catalog", async () => {

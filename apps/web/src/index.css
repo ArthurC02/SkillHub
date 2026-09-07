@@ -1504,3 +1504,110 @@ summary {
   border: 1px solid var(--border-strong);
   border-radius: 6px;
 }
+
+/* ── 2026-09-07：非技術讀者那一批 ─────────────────────────────────────────────
+   觸發它的是一份外部審查：目標受眾包含一般行政、行銷、營運同仁，而這個 app 的每一
+   個畫面都預設讀者會自己判斷風險。下面四條處理的是**形狀**，不是內容——設計 §0 的
+   優先序裡，讓步的一律是形式。 */
+
+/* 首頁的標題與搜尋列從「直接落在底色上的三個兄弟」收進一個容器。配方與卡片同一份
+   （`--surface` + `--border` + 圓角），只有內距與圓角更大，因為它裝的是這一頁唯一
+   的主要控制項。**沒有陰影**：ADR-064 §4.6.1 把深度定義成三層平面，理由是暗色模式
+   下投影沒有東西可以落；深度由 `--surface` 比 `--bg` 亮承擔，兩個主題都成立。 */
+.hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  margin: 24px 0 32px;
+  @media (max-width: 640px) {
+    padding: 20px 16px;
+    border-radius: 12px;
+  }
+}
+
+/* 標題在容器裡不需要再自帶上緣留白，那是它落在底色上時的間距。 */
+.hero h1 {
+  margin-top: 0;
+}
+
+/* 淨測試模式的揭露：預設一個標籤，點開才是五句。五句一字未改、全部仍在 DOM 裡。
+   理由與它為什麼不違反 §2.10 寫在 `components/CleanModeNotice.tsx` 的檔頭。 */
+.clean-mode-notice {
+  margin: 12px 0 0;
+}
+
+.clean-mode-notice > summary {
+  /* 錨點自己就是那顆徽章，所以這一層不再另外畫東西。 */
+  display: inline-block;
+}
+
+/* 空目錄：一句例外處理換成一個看得懂下一步的區塊。 */
+.empty-catalog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 12px 0;
+}
+
+.empty-catalog-lede {
+  font-family: var(--heading);
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  color: var(--text-h);
+  margin: 0 0 8px;
+}
+
+/* 描邊不填色：§4.6.3 全站一頁至多一個填色主要動作，首頁那一個是「搜尋」。
+   與 `.hero-create` 同一份配方，因為它們是同一種東西——這一頁的第二個動作。 */
+.empty-catalog-cta {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 8px 16px;
+  text-decoration: none;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.empty-catalog-cta:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-border);
+}
+
+/* 原生的 ▶ 換成一個會轉的字元。用字元不用 `<svg>` 是刻意的：ADR-065 §4.7 的機器
+   把全 app 的 `<svg` 站點上限釘在 6，而 `StateIcon` 的四個形狀加 `Tip` 的一個已經
+   用掉 5——一個純裝飾的摺疊指示，不值得那最後一格。
+   這是全域唯一一條 summary 標記規則，所以全 app 約 35 個 `<details>` 一起改。 */
+summary {
+  list-style: none;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::before {
+  content: "›";
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--text);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+/* 頁尾收斂：字級降一階、顏色回到次要文字，不再與正文同重量。 */
+.app-footer {
+  font-size: 15px;
+  line-height: 20px;
+}
