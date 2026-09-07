@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { GenerateSkill } from "./GenerateSkill";
 import { CreationSession } from "./CreationSession";
 
 /**
- * 「建立一個 Skill」 — the three ways in, in one place, at the top of
- * `/workspace/skills`.
+ * 「建立一個 Skill」 — the three ways in, in one place, on `/workspace/skills`.
  *
  * WHY HERE AND NOT AT `/create` OR ON THE HOME PAGE. Three separate rules land
  * on the same address:
@@ -29,6 +29,27 @@ import { CreationSession } from "./CreationSession";
  * `pages/WorkspaceSkills.tsx` is one of them. Reading the flag here would move
  * the mount off the roster and put a fourth name on a list that cannot grow —
  * so the page keeps the read, and the boundary keeps the test that guards it.
+ *
+ * ── 2026-09-07：三張卡不是三個同重量的東西，而版面一直假裝它們是 ──────────────
+ *
+ * 前兩張是**門**：一個標題、一句話、一個連結，按下去換頁。第三張是**工作台**——
+ * `GenerateSkill` 592 行、`CreationSession` 945 行，各自帶著多輪狀態、費用、預算、
+ * 素材與時間線，而 2026-09-05 的 ADR-066 又給它加了流程圖與參考 Skill 兩種輸入。
+ *
+ * 把工作台放進門的網格，量出來的結果是：`.create-cards` 的格軌等高，第三格撐到約
+ * 1000px，於是前兩張卡各自帶著一個 **880px 的空白描邊框**；工作台自己被壓進約
+ * 320px 的欄寬，`<dl>` 的標籤跑到值的左右兩側，中文一行只剩約 14 個字（設計 §4.5
+ * 的 `40em` 量的是「一行 40 個中文字」，在 grid track 裡形同不存在）。
+ *
+ * 所以第三張卡收成一扇門，按下去**在原地展開成整列寬**（`grid-column: 1 / -1`）。
+ * 這不是把它藏起來：**它變得更不顯眼，而那正是 `01` §10 邊界 1 要的方向**——旗標
+ * 沒開時它整張不存在（不是 disabled、不是「即將推出」），旗標開了也只是一句話加一
+ * 顆不填色的按鈕，而不是一整面表單。
+ *
+ * **展開之後不收回，這是刻意的。** `GenerateSkill` 的成功／失敗回饋住在一個
+ * component-local 的 `useMutation` 裡（`api/generate.ts`），卸載就沒了——連同那個
+ * 帶著 `skill_id` 的成功通知與逐條的驗證失敗。一顆會把使用者剛剛拿到的結果吃掉的
+ * 收合鍵，不值得它省下的那幾百像素。
  */
 export function CreateHub({
   generateExposed,
@@ -37,6 +58,15 @@ export function CreateHub({
   generateExposed: boolean;
   creationExposed?: boolean;
 }) {
+  // 一路只從 false 走到 true，理由見檔頭最後一段。
+  const [describing, setDescribing] = useState(false);
+
+  // 門上與門後同一個名字（§3 第 14 條：同一件事一頁只有一個名字）。旗標決定門後
+  // 是哪一個工作台，所以門上的字也跟著它，而不是寫死成其中一個。
+  const doorway = creationExposed
+    ? "和 Agent 一起創作 Skill"
+    : "沒有夠接近的？讓平台依你的描述做一個";
+
   return (
     /* `id="create"` is a link target, not decoration: the home page's hero
        points at `/workspace/skills#create`. */
@@ -85,6 +115,10 @@ export function CreateHub({
               RequireInvited on the platform side (ADR-028 決策 1) — an
               uninvited user gets a 403, and finding that out by pressing the
               button is the shape 「強制但不顯示」 names as the second worst.
+
+              **它不會因為卡片變小而縮短。** 這一句是 §2.2 的揭露義務，不是卡片的
+              裝飾；`workspace.test.tsx` 逐字守著「Fork 需要封測邀請」與「由平台強制」
+              兩段出現在這張卡上。
             */}
             Fork 需要封測邀請，這道限制由平台強制；還沒有邀請的話，那一步會被擋下來。
           </p>
@@ -101,14 +135,34 @@ export function CreateHub({
           exist and says why; a beta participant who can see that this exists
           has already had the funnel's first segment changed for them, and that
           number has one chance and twelve people.
-
-          No `<h3>` of its own: `GenerateSkill` opens with 「沒有夠接近的？讓平台
-          依你的描述做一個」, and a card title above it would be §3 第 14 條 —
-          the same fact, on one screen, worded twice.
         */}
         {generateExposed && (
-          <li className="download-item">
-            {creationExposed ? <CreationSession /> : <GenerateSkill />}
+          <li className={describing ? "download-item create-workspace" : "download-item"}>
+            {describing ? (
+              /* 展開之後標題由工作台自己出（`GenerateSkill` 的 h2、`CreationSession`
+                 的 h3），所以門上的 h3 不再存在——同一個名字在同一個時刻只出現一次。 */
+              creationExposed ? (
+                <CreationSession />
+              ) : (
+                <GenerateSkill />
+              )
+            ) : (
+              <>
+                <h3>{doorway}</h3>
+                <p className="note" data-role="teaching">
+                  描述你要完成的事，平台產生一個只屬於你的工作區的 Skill。
+                </p>
+                <p>
+                  {/*
+                    不是 `.action`：這一頁的填色主要動作只有一個，是「匯入 Skill」
+                    （§4.6.3，`rendered.spec.ts` 全路由守著至多一個）。
+                  */}
+                  <button type="button" onClick={() => setDescribing(true)}>
+                    開始描述
+                  </button>
+                </p>
+              </>
+            )}
           </li>
         )}
       </ul>

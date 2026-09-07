@@ -195,15 +195,25 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         <strong>不會進入公開目錄，也不會出現在搜尋結果裡</strong>——包括你自己搜尋的時候。
       </p>
 
-      <label htmlFor="generate-task">任務描述</label>
-      <textarea
-        id="generate-task"
-        rows={4}
-        value={task}
-        onChange={(e) => setTask(e.target.value)}
-        placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
-        disabled={mutation.isPending}
-      />
+      {/*
+        `.field` 是這個 app 既有的堆疊配方（`index.css`：`flex-direction: column`、
+        `gap: 4px`、控制項 `width: 100%`），不是新樣式。2026-09-07 補上，因為在此之前
+        這裡是一個裸的 `<label>` 加一個裸的控制項——**兩者都是 inline-level**，於是
+        標籤與輸入框並排、後面那個標籤被擠到輸入框的右邊，中間的文字繞著框流。
+        窄容器讓它更明顯，但它在任何寬度下都是錯的：`VersionUpload` 與 `/lab/*` 的
+        表單一直都用 `.field`，只有這一頁沒有。
+      */}
+      <div className="field">
+        <label htmlFor="generate-task">任務描述</label>
+        <textarea
+          id="generate-task"
+          rows={4}
+          value={task}
+          onChange={(e) => setTask(e.target.value)}
+          placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
+          disabled={mutation.isPending}
+        />
+      </div>
 
       {/*
         02:GEN-005. `<input type="file">` shape copied from VersionUpload.tsx —
@@ -211,15 +221,17 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         reaches a request" pattern, just against an image type/size ceiling
         instead of a zip one.
       */}
-      <label htmlFor="generate-diagram-file">流程圖或架構圖（選填）</label>
-      <input
-        id="generate-diagram-file"
-        ref={diagramFileRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        disabled={mutation.isPending}
-        onChange={handleDiagramChange}
-      />
+      <div className="field">
+        <label htmlFor="generate-diagram-file">流程圖或架構圖（選填）</label>
+        <input
+          id="generate-diagram-file"
+          ref={diagramFileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          disabled={mutation.isPending}
+          onChange={handleDiagramChange}
+        />
+      </div>
       <p className="note">圖片會傳給模型參考，平台不會保留圖片本身，只留下它的雜湊。</p>
       {diagramError && <p role="alert">{diagramError}</p>}
       {diagram && (
@@ -334,15 +346,17 @@ export function ReferencePicker({
 
   return (
     <div>
-      <label htmlFor="generate-reference-query">搜尋要參考的 Skill</label>
-      <input
-        id="generate-reference-query"
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="輸入名稱或關鍵字"
-        disabled={disabled}
-      />
+      <div className="field">
+        <label htmlFor="generate-reference-query">搜尋要參考的 Skill</label>
+        <input
+          id="generate-reference-query"
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="輸入名稱或關鍵字"
+          disabled={disabled}
+        />
+      </div>
       <p className="note">
         模型會把最多 {GENERATE_MAX_REFERENCES} 個你選的 Skill 的 SKILL.md
         當範例讀，產出仍是你工作區裡一個全新的 Skill。 有授權暫扣或禁止再散布的目錄 Skill

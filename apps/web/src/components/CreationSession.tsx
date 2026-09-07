@@ -625,7 +625,7 @@ export function CreationSession() {
               {p.sample_input && (
                 <>
                   <h5>試跑用的範例輸入</h5>
-                  <pre>{p.sample_input}</pre>
+                  <pre className="skill-md">{p.sample_input}</pre>
                 </>
               )}
               <p>{p.brief_confirmed ? "需求摘要與驗收條件皆已確認" : "尚未確認"}</p>
@@ -685,58 +685,60 @@ export function CreationSession() {
               {p.pending_action === "confirm_references" && p.catalog_checked && (
                 <p>目錄裡已有相近的 Skill；你可以直接採用其中一個、以它們為參考，或從頭寫。</p>
               )}
-              <table>
-                <thead>
-                  <tr>
-                    <th>Skill</th>
-                    <th>摘要</th>
-                    <th>相容</th>
-                    <th>工具</th>
-                    <th>版本</th>
-                    <th>層級</th>
-                    <th>掃描</th>
-                    <th>狀態</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {p.references.map((r) => (
-                    <tr key={r.skill_id}>
-                      <th scope="row">{r.name}</th>
-                      <td>{declaredReferenceField(r.description)}</td>
-                      <td>{declaredReferenceField(r.compatibility)}</td>
-                      <td>{declaredReferenceField(r.allowed_tools)}</td>
-                      <td>
-                        <details>
-                          <summary>固定版本</summary>
-                          {r.version_id}
-                        </details>
-                      </td>
-                      <td>{referenceTierLabel(r.tier)}</td>
-                      <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
-                      <td>
-                        {!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}
-                        {p.pending_action === "confirm_references" && (
-                          <>
-                            <button
-                              disabled={locked || !r.available}
-                              onClick={() =>
-                                void perform("adopt_reference", {
-                                  reference_skill_ids: [r.skill_id],
-                                })
-                              }
-                            >
-                              直接採用
-                            </button>
-                            {r.scan_status !== "scanned" && (
-                              <span className="note">沒有掃描紀錄，不建議直接採用</span>
-                            )}
-                          </>
-                        )}
-                      </td>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Skill</th>
+                      <th>摘要</th>
+                      <th>相容</th>
+                      <th>工具</th>
+                      <th>版本</th>
+                      <th>層級</th>
+                      <th>掃描</th>
+                      <th>狀態</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {p.references.map((r) => (
+                      <tr key={r.skill_id}>
+                        <th scope="row">{r.name}</th>
+                        <td>{declaredReferenceField(r.description)}</td>
+                        <td>{declaredReferenceField(r.compatibility)}</td>
+                        <td>{declaredReferenceField(r.allowed_tools)}</td>
+                        <td>
+                          <details>
+                            <summary>固定版本</summary>
+                            {r.version_id}
+                          </details>
+                        </td>
+                        <td>{referenceTierLabel(r.tier)}</td>
+                        <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
+                        <td>
+                          {!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}
+                          {p.pending_action === "confirm_references" && (
+                            <>
+                              <button
+                                disabled={locked || !r.available}
+                                onClick={() =>
+                                  void perform("adopt_reference", {
+                                    reference_skill_ids: [r.skill_id],
+                                  })
+                                }
+                              >
+                                直接採用
+                              </button>
+                              {r.scan_status !== "scanned" && (
+                                <span className="note">沒有掃描紀錄，不建議直接採用</span>
+                              )}
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {p.pending_action === "confirm_references" && (
                 <>
                   <button
@@ -759,51 +761,53 @@ export function CreationSession() {
                 保存前 Go
                 查了一次目錄：下面這些和你的草稿很接近。你可以直接採用其中一個，或仍然建立自己的版本。
               </p>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Skill</th>
-                    <th>摘要</th>
-                    <th>相容</th>
-                    <th>工具</th>
-                    <th>版本</th>
-                    <th>層級</th>
-                    <th>掃描</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {p.duplicates.map((r) => (
-                    <tr key={r.skill_id}>
-                      <th scope="row">{r.name}</th>
-                      <td>{declaredReferenceField(r.description)}</td>
-                      <td>{declaredReferenceField(r.compatibility)}</td>
-                      <td>{declaredReferenceField(r.allowed_tools)}</td>
-                      <td>
-                        <details>
-                          <summary>固定版本</summary>
-                          {r.version_id}
-                        </details>
-                      </td>
-                      <td>{referenceTierLabel(r.tier)}</td>
-                      <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
-                      <td>
-                        <button
-                          disabled={locked || !r.available}
-                          onClick={() =>
-                            void perform("adopt_reference", { reference_skill_ids: [r.skill_id] })
-                          }
-                        >
-                          直接採用
-                        </button>
-                        {r.scan_status !== "scanned" && (
-                          <span className="note">沒有掃描紀錄，不建議直接採用</span>
-                        )}
-                      </td>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Skill</th>
+                      <th>摘要</th>
+                      <th>相容</th>
+                      <th>工具</th>
+                      <th>版本</th>
+                      <th>層級</th>
+                      <th>掃描</th>
+                      <th></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {p.duplicates.map((r) => (
+                      <tr key={r.skill_id}>
+                        <th scope="row">{r.name}</th>
+                        <td>{declaredReferenceField(r.description)}</td>
+                        <td>{declaredReferenceField(r.compatibility)}</td>
+                        <td>{declaredReferenceField(r.allowed_tools)}</td>
+                        <td>
+                          <details>
+                            <summary>固定版本</summary>
+                            {r.version_id}
+                          </details>
+                        </td>
+                        <td>{referenceTierLabel(r.tier)}</td>
+                        <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
+                        <td>
+                          <button
+                            disabled={locked || !r.available}
+                            onClick={() =>
+                              void perform("adopt_reference", { reference_skill_ids: [r.skill_id] })
+                            }
+                          >
+                            直接採用
+                          </button>
+                          {r.scan_status !== "scanned" && (
+                            <span className="note">沒有掃描紀錄，不建議直接採用</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               <button
                 disabled={locked || !p.draft?.content_hash}
                 onClick={() =>
@@ -825,17 +829,17 @@ export function CreationSession() {
               {p.previous_draft && (
                 <details>
                   <summary>比較上一份草稿（revision {p.previous_draft.revision}）</summary>
-                  <pre>{p.previous_draft.skill.body}</pre>
+                  <pre className="skill-md">{p.previous_draft.skill.body}</pre>
                   {p.previous_draft.skill.files.map((f) => (
                     <pre key={f.path}>{f.path + "\n" + f.content}</pre>
                   ))}
                 </details>
               )}
-              <pre>{p.draft.skill.body}</pre>
+              <pre className="skill-md">{p.draft.skill.body}</pre>
               {p.draft.skill.files.map((f) => (
                 <details key={f.path}>
                   <summary>{f.path}</summary>
-                  <pre>{f.content}</pre>
+                  <pre className="skill-md">{f.content}</pre>
                 </details>
               ))}
               <DraftFindings raw={p.draft.validation} />

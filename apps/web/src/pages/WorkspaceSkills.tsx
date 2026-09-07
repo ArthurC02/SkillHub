@@ -15,7 +15,40 @@ import { useCreationEntryPoint } from "../api/creation";
 import { CreateHub } from "../components/CreateHub";
 import { GeneratedNotice } from "../components/GeneratedNotice";
 import { RiskSummary } from "../components/RiskIndicator";
-import type { Redistribution } from "../api/types";
+import { FacetNotes, liftedNotes, type FacetNote } from "../components/FacetNotes";
+import type { OwnSkill, Redistribution } from "../api/types";
+
+/**
+ * 這份清單上，哪幾句但書可以只講一次。規則與它的兩個分支在 `components/FacetNotes`；
+ * 這裡只宣告這一頁有哪些 facet，以及每一列身上有沒有一個對得回那一句的詞。
+ *
+ * 為什麼這一頁需要它（2026-09-07，實測）：把 `GET /skills` 換成 8 列去渲染，整頁高
+ * 5045px，而**每一列都印了同樣兩句話**——
+ *
+ *   風險：「來自匯入時的靜態掃描，不執行套件內任何程式碼；開啟 Skill 可看逐項結果。」
+ *   驗證：「匯入這個版本時做過靜態掃描，不執行套件內任何程式碼；逐項結果在 Skill 頁面。」
+ *
+ * 三個宣稱相同、措辭不同，而且兩句各印 8 次。設計 §2.13 第 1 條：一句在整份清單上
+ * 逐字相同的話不是關於某一列的事實，是關於這份清單的事實。這一頁**已經對相容性那句
+ * 做過同樣的處置**（搬到清單層級印一次，見下方那段 `.note`），只是當時沒把這兩句
+ * 一起帶走。
+ *
+ * `risk` 沒有 `by`：`scan_status: "unavailable"` 的那一列身上一個標記都沒有（與
+ * `pages/Home.tsx` 同一個理由，逐字寫在 FacetNotes 的檔頭），所以它只有在整份清單
+ * 逐字相同時才搬。`verification` 有 `by`，因為每一列都戴著「掃描狀態：<label>」那顆
+ * 徽章——但那個 label 不是 note 的函數（兩列都可能是「已掃描（來源）」而句子裡嵌著
+ * 不同的來源 Skill 名稱），所以 FacetNotes 的「一個詞只能對應一句話」那道守衛就是
+ * 為這個呼叫端加的：撞到就整個不搬，句子留在列上。
+ */
+const OWN_SKILL_NOTES: Array<FacetNote<OwnSkill>> = [
+  { key: "risk", label: "風險提示", note: (s) => s.risk?.note },
+  {
+    key: "verification",
+    label: "掃描狀態",
+    note: (s) => s.verification?.note,
+    by: (s) => s.verification.label,
+  },
+];
 
 /**
  * One sentence per redistribution value, and never one sentence for two of them:
@@ -74,6 +107,9 @@ export function WorkspaceSkills() {
   const [message, setMessage] = useState("");
   const generateExposed = useGenerateEntryPoint();
   const creationExposed = useCreationEntryPoint();
+  const rows = skills.data?.skills ?? [];
+  const hasSkills = rows.length > 0;
+  const lifted = liftedNotes(rows, OWN_SKILL_NOTES);
 
   const remove = useMutation({
     mutationFn: deleteSkill,
@@ -110,7 +146,22 @@ export function WorkspaceSkills() {
         roster may only get shorter — so the read stays where the roster and its
         flag-off test can find it.
       */}
-      <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />
+      {/*
+        空的時候，「建立一個 Skill」**就是**這一頁的答案，所以它排在最前面——那也是
+        這個區塊 2026-09-03 落地時的位置，對空工作區從來沒有錯過。
+
+        有東西的時候它排在清單之後（見下方同一個元件的第二個掛載點）。理由是
+        §3 checklist 第 1 條「頭條在第一屏，而且是第一屏裡的第一個東西嗎」，它的
+        「不過的樣子」逐字寫著**「一整排控制項排在答案前面」**——而 2026-09-07 量到
+        的正是那個形狀：`h1` 叫「我的 Skill」，然後三張卡（含一張約 1000px 的表單），
+        清單在第 1500px 才開始。帶著 8 個 Skill 的人來這一頁不是為了再建一個。
+
+        兩個掛載點而不是一個帶 CSS `order` 的：`order` 只改視覺順序不改 DOM 順序，
+        鍵盤與朗讀會走到與眼睛不同的地方（§1.1 的「可判斷」對這兩者是同一件事）。
+      */}
+      {!hasSkills && (
+        <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />
+      )}
 
       {skills.isPending && <Loading what="你的 Skill 清單" />}
       <ReadFailure error={skills.error} what="你的 Skill 清單" />
@@ -143,12 +194,19 @@ export function WorkspaceSkills() {
         care how many times it is repeated, only that it is legible without
         opening anything.
       */}
-      {skills.data && skills.data.skills.length > 0 && (
+      {hasSkills && (
         <p className="note">
           相容性驗證（Agent 是否載入、Runtime 是否齊備）不在這份清單的資料裡，
           平台目前也不會為你自己的 Skill 量測它。要看某一個的逐項掃描結果，請開它的頁面。
         </p>
       )}
+      {/*
+        上面那一段的第二批。2026-09-03 把相容性那句搬到這裡時，理由是「一句在 100 列
+        上逐字相同的話是關於這份清單的事實」；同一個判準對風險與掃描那兩句同樣成立，
+        只是當時沒一起帶走。搬得動與搬不動由 `OWN_SKILL_NOTES` 與 FacetNotes 的兩個
+        分支決定，不由這裡決定——搬不動的那一句會留在它的那一列上。
+      */}
+      {hasSkills && <FacetNotes rows={rows} facets={OWN_SKILL_NOTES} />}
 
       {skills.data &&
         (skills.data.skills.length === 0 ? (
@@ -210,25 +268,13 @@ export function WorkspaceSkills() {
                   ) : (
                     <span className="badge">自己匯入</span>
                   )}
-                </p>
-                {/*
-                  §1.1: this is a list of code you own and will run, and until
-                  2026-08-22 it carried nothing to decide by (04 丙-31). The same
-                  component the public search row uses, on purpose — the two are
-                  the same fact about the same skill, and 02:NFR-007 第 3 條 does
-                  not let them be worded independently.
-                */}
-                <p className="badge-row">
-                  <RiskSummary risk={s.risk} />
-                </p>
-                {/*
-                  §2.9. The state, not a timestamp: a fork's newest version row
-                  was created the instant somebody pressed Fork, so the field
-                  that reads as 「剛剛掃過」 belongs to the one case where nothing
-                  was scanned. Label and note both come from the server (§4.4),
-                  which is why there is no enum→中文 map on this side.
-                */}
-                <p className="badge-row">
+                  {/*
+                    §2.9. The state, not a timestamp: a fork's newest version row
+                    was created the instant somebody pressed Fork, so the field
+                    that reads as 「剛剛掃過」 belongs to the one case where nothing
+                    was scanned. Label and note both come from the server (§4.4),
+                    which is why there is no enum→中文 map on this side.
+                  */}
                   <span
                     className={
                       s.verification.value === "scanned" ? "badge" : "badge badge-unverified"
@@ -241,8 +287,26 @@ export function WorkspaceSkills() {
                       </>
                     )}
                   </span>
+                  {/*
+                    §1.1: this is a list of code you own and will run, and until
+                    2026-08-22 it carried nothing to decide by (04 丙-31). The same
+                    component the public search row uses, on purpose — the two are
+                    the same fact about the same skill, and 02:NFR-007 第 3 條 does
+                    not let them be worded independently.
+                  */}
+                  <RiskSummary risk={s.risk} noteInRow={!lifted.risk} />
                 </p>
-                <p className="note">{s.verification.note}</p>
+                {/*
+                  2026-09-07：三條 `.badge-row` 併成一條。它們本來是三個 `<p>`，於是
+                  一列的可判斷事實佔了三行、中間各隔一次 `margin: 8px 0`——而 `.badge-row`
+                  本來就是 `flex-wrap: wrap`，一條就裝得下，窄螢幕自己折。
+
+                  §2.10 的十項一項都沒有被折疊：可散布性、授權保留、來源、掃描狀態、
+                  風險揭露全部還是平鋪的徽章，不互動就看得到。被搬走的是**每一列都相同
+                  的那句理由**，不是每一列不同的那個狀態（§2.13 的判準逐字是「會變的量
+                  永遠平鋪，不會變的理由才可以折」）。
+                */}
+                {!lifted.verification && <p className="note">{s.verification.note}</p>}
                 {/*
                   GEN-004: two named absences on the list as well as on the
                   detail page, because this list is a generated skill's only
@@ -346,6 +410,16 @@ export function WorkspaceSkills() {
         其餘三處指過去。連結本身一條都沒有少（`ia.test.ts` 的 §2.3 可達性表數的是
         連結,不是句子）,少掉的是四句各自複述一次「那一頁裝什麼」的說明。
       */}
+      {/*
+        第二個掛載點，理由與第一個是同一段（見上方 `!hasSkills` 那裡）：答案先出來，
+        動作在後面。**這也讓生成入口變得更不顯眼而不是更顯眼**——對已經有 Skill 的
+        人，它從第一屏移到清單之後，而 `01` §10 邊界 1 要的正是這個方向。旗標的讀取
+        仍然在這個檔案裡，`ia.test.ts` 的 FLAG_OFF_ASSERTED 名冊一個字都不用動。
+      */}
+      {hasSkills && (
+        <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />
+      )}
+
       <h2>這個工作區的其他清單</h2>
       <ul className="risk-list">
         <li>
