@@ -288,6 +288,50 @@ test("GEN-008: the bounds the server enforces are stated before the button, and 
   expect(container.querySelector<HTMLTextAreaElement>("#generate-task")!.maxLength).toBe(-1);
 });
 
+// 02:GEN-001 的長度上限，改用計數器說。**斷言的重點是單位，不是那個數字**：
+// 伺服器數 rune，`String.length` 數 UTF-16 code unit，而兩者只有在有 BMP 之外的字元
+// 時才分家。所以這支測試打的是一個 emoji——`.length` 會說 2，伺服器會說 1，只有
+// `[...s].length` 說得對。單位錯掉的計數器比沒有計數器更壞：它會在伺服器還收的時候
+// 說你超過了。
+test("GEN-001: the description counter counts what the server counts (runes, not UTF-16 units)", async () => {
+  stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  await act(async () => {
+    const textarea = container.querySelector("#generate-task")!;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    setter.call(textarea, "一二三🙂"); // 4 runes; "…".length is 5
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  const count = container.querySelector("#generate-task-count")!;
+  expect(count, "沒有計數器").not.toBeNull();
+  expect(count.textContent).toContain("4 / 4,000 字");
+  expect(
+    container
+      .querySelector<HTMLTextAreaElement>("#generate-task")!
+      .getAttribute("aria-describedby"),
+  ).toBe("generate-task-count");
+});
+
+// 設計 §2.2 第二向：這兩道限制一直都在強制（`handleDiagramChange` 逐項擋），而在
+// 2026-09-07 之前畫面上唯一說出它們的時機是「你已經選錯了之後」。`accept=` 不是顯示
+// ——它只是檔案對話框的預設篩選，可以被切掉，拖進來的檔案也不經過它。
+test("GEN-005: the diagram's accepted types and size ceiling are stated before the picker, not after a refusal", async () => {
+  stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const note = container.querySelector("#generate-diagram-note")!;
+  expect(note, "檔案選擇器旁邊沒有說出它會擋什麼").not.toBeNull();
+  expect(note.textContent).toContain("PNG、JPEG 或 WebP");
+  expect(note.textContent).toContain("4 MB 以內");
+  expect(container.querySelector("#generate-diagram-file")!.getAttribute("aria-describedby")).toBe(
+    "generate-diagram-note",
+  );
+});
+
 // The sentence table is keyed on the hand-written union; this asserts it
 // against the generated enum, so a value added to the contract and not to
 // types.ts fails here rather than rendering the "unreadable" fallback for a

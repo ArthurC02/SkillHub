@@ -154,6 +154,9 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
   // 讀者：按鈕的 `disabled`，以及 §2.4 要的那句原因——兩邊各寫一次條件，就會有一天
   // 按鈕停用而原因不出現。
   const nothingToSend = task.trim() === "" && !diagram;
+  // Code point ＝ Go 的 rune。`.length` 會把一個 emoji 數成 2，也就是伺服器不會用的
+  // 那個單位；理由與這個 textarea 沒有 `maxLength` 是同一個，見下方計數器的註解。
+  const taskRunes = [...task].length;
 
   const submit = () => {
     setRejected(undefined);
@@ -216,8 +219,23 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
           value={task}
           onChange={(e) => setTask(e.target.value)}
           placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
+          aria-describedby="generate-task-count"
           disabled={mutation.isPending}
         />
+        {/*
+          計數器數的是 code point，也就是 Go 的 rune——**與伺服器同一個單位**。
+
+          這一顆不是上面那個 `maxLength` 決定的反面。`maxLength` 被拒絕有兩個獨立
+          的理由，計數器兩個都不犯：它數的是 UTF-16 code unit（一個 emoji 算 2，
+          伺服器算 1，於是瀏覽器會擋下伺服器會收的輸入），而且它**用截斷來執行**。
+          `[...task].length` 是 code point，逐字等於 `len([]rune(s))`；而這裡只報數，
+          不擋任何東西——強制者仍然只有伺服器一個，超過了也照樣送得出去，422 會說
+          該剪掉什麼。所以超過時這一行說的是後果，不是禁令。
+        */}
+        <p className="note field-count" id="generate-task-count">
+          {taskRunes.toLocaleString("zh-TW")} / {GENERATE_MAX_TASK_RUNES.toLocaleString("zh-TW")} 字
+          {taskRunes > GENERATE_MAX_TASK_RUNES && "——超過了，送出會被伺服器擋下"}
+        </p>
       </div>
 
       {/*
@@ -249,14 +267,28 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
             ref={diagramFileRef}
             type="file"
             accept="image/png,image/jpeg,image/webp"
+            aria-describedby="generate-diagram-note"
             disabled={mutation.isPending}
             onChange={handleDiagramChange}
           />
         </div>
-        {/* 「雜湊」是這一句唯一的技術詞，而它在這裡不承載任何讀者能用的資訊——讀者要
-            知道的是「圖片本身不會被留下，留下的那個東西還原不回圖片」，那正是下面這
-            句話說的。事實一個字都沒有少，少掉的是一個要先懂才看得懂的詞。 */}
-        <p className="note">
+        {/*
+          第一句是 2026-09-07 補的，而它補的是 §2.2 的第二向：**格式與大小這兩道限制
+          一直都在強制，只是從來沒有顯示**。`handleDiagramChange` 逐項擋（型別不在
+          三種之內、位元組超過 `generateMaxDiagramBytes`），但畫面上唯一說出它們的
+          時機是「你已經選錯了之後」——「強制但不顯示」正是 §2.2 點名的第二壞的形狀。
+          `accept=` 不算數：它只是檔案對話框的預設篩選，桌面環境一律可以切成「所有
+          檔案」，而拖進來的檔案根本不經過它。
+
+          「4 MB」由常數除出來，不是抄的：常數改了這行跟著改，`automation-check` 的
+          `one-number: generateMaxDiagramBytes` 仍然盯著常數與伺服器那一行。
+
+          第二句的「雜湊」在 2026-09-07 換成了「無法還原成圖片的指紋」：它在這裡不承載
+          任何讀者能用的資訊——讀者要知道的是「圖片本身不會被留下，留下的那個東西還原
+          不回圖片」，而那正是這句話說的。事實一個字都沒有少。
+        */}
+        <p className="note" id="generate-diagram-note">
+          PNG、JPEG 或 WebP，{GENERATE_MAX_DIAGRAM_BYTES / 1_000_000} MB 以內。
           圖片會傳給模型參考，平台不會保留圖片本身，只留下一串無法還原成圖片的指紋。
         </p>
         {diagramError && <p role="alert">{diagramError}</p>}
@@ -288,10 +320,12 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         來的」自己成立（ADR-065 §3 規則 3）：它說出了裡面是什麼，而不是「詳情」。
       */}
       <dl>
+        {/* 描述長度的上限從這一行走了，因為它現在**逐字出現在輸入框底下、而且一邊打
+            一邊更新**——同一個事實在一頁上講兩次的那半條（§3 第 14 條）。剩下兩個沒
+            有辦法變成計數器：它們量的是模型的輸出與重試，那是送出之後才發生的事。 */}
         <dt>這一次最多會用到</dt>
         <dd>
-          描述 {GENERATE_MAX_TASK_RUNES.toLocaleString("zh-TW")} 字、模型推理加輸出合計{" "}
-          {GENERATE_MAX_OUTPUT_TOKENS.toLocaleString("zh-TW")} token、最多嘗試{" "}
+          模型推理加輸出合計 {GENERATE_MAX_OUTPUT_TOKENS.toLocaleString("zh-TW")} token、最多嘗試{" "}
           {GENERATE_MAX_ATTEMPTS} 次。
         </dd>
         <dt>預估成本</dt>

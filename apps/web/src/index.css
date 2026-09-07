@@ -809,6 +809,59 @@ main :is(p, li, dd, dt, summary) {
   width: 100%;
 }
 
+/* A character counter under its own control. `align-self` rather than
+   `text-align`: the `.field` column is `max-width: 480px` and the note is a
+   block, so `text-align: right` would push the text to the column's edge while
+   leaving an invisible full-width box behind it — the same shape §4.6.1's
+   「量到的空白描邊框」 note is about, one order of magnitude smaller. No new
+   size, colour or spacing value: it is a `.note` that sits at the other end. */
+.field-count {
+  align-self: flex-end;
+}
+
+/* `<input type="file">` gets the control recipe above, but the button INSIDE it
+   is browser chrome and inherited none of it — so a form whose every other
+   control was `--surface` on `--border-strong` carried one grey-on-grey slab
+   the UA had drawn, and an external review read it (with the app's own dashed
+   disabled edge on the submit button beside it) as evidence the whole form was
+   half-finished. This is the same secondary-button vocabulary as everywhere
+   else (§4.6.3: outline, not fill), not a new one.
+
+   The button's LABEL stays the browser's — 「Choose File」 in an English UA, and
+   there is no way to set it without replacing the control with a `<label>` and
+   a hidden input. That trade is not taken here: the visible Chinese label above
+   it and the 「已選擇 <name>」 line after a pick both come from this app, and a
+   hand-rolled file control is a new component to keep accessible for one word. */
+input[type="file"]::file-selector-button {
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-right: 8px;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+input[type="file"]:not(:disabled)::file-selector-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-border);
+  color: var(--link);
+}
+
+input[type="file"]:disabled::file-selector-button {
+  color: var(--text);
+  background: var(--code-bg);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
 /* The 02:DISC-002 columns on a result row. */
 /* 04 丙-135。實測 2026-09-03（chromium 1280x900，`e2e/rendered.spec.ts` 的同一台）：
    一張結果卡 438px，其中這份 <dl> 佔 255px，而 <dl> 裡的「風險提示」一列自己就是
