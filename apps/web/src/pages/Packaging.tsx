@@ -764,10 +764,13 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
  * nothing.
  */
 function Dependencies({ preview }: { preview: PackagingPreview }) {
+  // The contract says array, but Go serialises a nil slice as `null` (seen on a
+  // real preview 2026-09-06); reading `.length` off that crashed the whole page.
+  const dependencies = preview.dependencies ?? [];
   return (
     <>
       <h3>依賴需求</h3>
-      {preview.dependencies.length === 0 ? (
+      {dependencies.length === 0 ? (
         <p className="note">
           {preview.allowed
             ? "這個套件沒有宣告依賴檔，程式碼裡也沒有掃到第三方 import。這是靜態掃描的結果，不是作者的保證——掃描不執行套件裡的任何東西。"
@@ -776,7 +779,7 @@ function Dependencies({ preview }: { preview: PackagingPreview }) {
       ) : (
         <>
           <ul className="risk-list">
-            {preview.dependencies.map((d) => (
+            {dependencies.map((d) => (
               <li key={d}>{d}</li>
             ))}
           </ul>

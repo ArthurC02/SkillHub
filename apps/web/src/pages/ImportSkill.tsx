@@ -166,8 +166,10 @@ export function ImportSkill() {
           Same defect index.css records fixing for the Home search box, and the
           class already exists for exactly this (design §4.5, checklist 8).
         */}
+          {/* keys: without them React reuses one <input> node across the two
+              branches and warns controlled→uncontrolled on every mode switch. */}
           {source === "url" ? (
-            <p className="field">
+            <p className="field" key="url">
               <label htmlFor="skill-import-url">URL</label>
               <input
                 id="skill-import-url"
@@ -178,7 +180,7 @@ export function ImportSkill() {
               />
             </p>
           ) : (
-            <p className="field">
+            <p className="field" key="file">
               <label htmlFor="skill-import-file">Skill zip</label>
               <input
                 id="skill-import-file"

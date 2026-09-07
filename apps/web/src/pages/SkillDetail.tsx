@@ -583,10 +583,11 @@ function PackagingEntry({ skill, isLoggedIn }: { skill: SkillDetailModel; isLogg
 
   if (!isLoggedIn)
     return (
-      <p className="note">
+      // div, not p: SignInAction is a <form> when DEV_LOGIN is on.
+      <div className="note">
         打包與下載需要登入，而且只打包得了你自己工作區裡的版本——別人的 Skill 要先 Fork 一份。{" "}
         <SignInAction />
-      </p>
+      </div>
     );
   if (versions.isPending) return <Loading what="這個 Skill 在你工作區的版本" />;
   if (versions.error) return <ReadFailure error={versions.error} what="這個 Skill 的版本" />;
@@ -1013,9 +1014,9 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
     return (
       <section>
         <h3>試跑</h3>
-        <p>
+        <div>
           試跑屬於你的工作區。先登入並 Fork 一份，才會有屬於你的版本可以跑。 <SignInAction />
-        </p>
+        </div>
       </section>
     );
 
@@ -1113,9 +1114,9 @@ function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
     // login entry in the app on purpose (components/SignIn.tsx): on the machine
     // 02:PORT-005 describes, a hardcoded GitHub link leaves the product.
     return (
-      <p>
+      <div>
         登入後即可 Fork 這個 Skill 到你的工作區。 <SignInAction />
-      </p>
+      </div>
     );
   }
 

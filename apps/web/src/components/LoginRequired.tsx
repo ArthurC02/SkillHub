@@ -42,11 +42,13 @@ export function unauthenticated(error: unknown): boolean {
 
 /** 「這個東西要登入才拿得到」，外加登入動作本身。 */
 export function LoginRequired({ what }: { what: string }) {
+  // div, not p: with DEV_LOGIN on, SignInAction is a <form>, which HTML does
+  // not allow inside <p> (React logs a nesting error on every signed-out page).
   return (
-    <p role="status">
+    <div role="status">
       {what}需要登入。
       <SignInAction />
-    </p>
+    </div>
   );
 }
 

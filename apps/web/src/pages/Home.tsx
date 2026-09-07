@@ -405,7 +405,8 @@ export function Home() {
                 link would send the user to build what the catalogue already
                 has.
               */}
-              <p className="note">
+              {/* div, not p: SignInAction below is a <form> when DEV_LOGIN is on. */}
+              <div className="note">
                 {loggedIn ? (
                   <>
                     手上已經有一個 Skill 套件的話，也可以
@@ -426,7 +427,7 @@ export function Home() {
                     <SignInAction />
                   </>
                 )}
-              </p>
+              </div>
               {/*
                 GEN-004's entry point, and only here — never in the
                 `filtered_out` branch above (widening a filter and describing a

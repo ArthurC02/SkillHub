@@ -55,7 +55,9 @@ export function SkillVersionPicker({
   const id = `skill-version-${skillId}`;
 
   return (
-    <p>
+    // div, not p: Loading and LoginRequired inside render block elements,
+    // which <p> cannot contain (seen against the real API, 2026-09-06).
+    <div>
       <label htmlFor={id}>Skill Version</label>{" "}
       <select id={id} value={value} onChange={(e) => onPick(e.target.value)}>
         {value === "" && <option value="">請選擇版本…</option>}
@@ -79,7 +81,7 @@ export function SkillVersionPicker({
           之後才會有屬於你的版本。
         </span>
       )}
-    </p>
+    </div>
   );
 }
 
