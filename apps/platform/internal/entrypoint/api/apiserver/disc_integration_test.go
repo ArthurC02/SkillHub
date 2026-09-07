@@ -325,6 +325,14 @@ func importPackage(t *testing.T, pool *pgxpool.Pool, store packageStore, owner *
 	}
 	id, _ := res.Skill.ID.Value()
 	skillID, _ := id.(string)
+	// 05 R-52 (2026-09-07): a document is in the public library once its
+	// metadata landed. This helper imports without an LLM, so the enrichment
+	// never runs; mark it landed the way the backfill would, so the tests that
+	// search for what they imported keep measuring search and not the backlog.
+	// Tests of the hybrid path still seed their own embedding afterwards.
+	if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched' WHERE skill_id = $1", res.Skill.ID); err != nil {
+		t.Fatal(err)
+	}
 	return skillID
 }
 
@@ -883,9 +891,11 @@ func TestPartialIndexIsReportedSeparatelyFromDegradation(t *testing.T) {
 	markCatalog(t, pool, curator.workspaceID)
 	enriched := seedSkill(t, pool, curator.workspaceID, "mimsy ledger reconciler")
 	seedEmbedding(t, pool, enriched, 55)
-	// Left as seedSkill created it: enrichment_status 'pending', embedding NULL.
-	// It can only reach the page through the lexical leg.
+	// A document whose enrichment never landed: no metadata, no vector.
 	pending := seedSkill(t, pool, curator.workspaceID, "mimsy invoice matcher")
+	if _, err := pool.Exec(context.Background(), "UPDATE search_documents SET enrichment_status = 'pending' WHERE skill_id = $1", mustUUID(t, pending)); err != nil {
+		t.Fatal(err)
+	}
 
 	a := newAPIWithLLM(t, pool, stubLLM(t, 55, "because it fits"))
 	anon := &client{Client: http.DefaultClient, base: a.URL}
@@ -894,17 +904,21 @@ func TestPartialIndexIsReportedSeparatelyFromDegradation(t *testing.T) {
 	if body.Degraded {
 		t.Fatalf("index coverage was reported as an outage: %q", body.DegradedReason)
 	}
-	if !contains(body.ids(), pending) {
-		t.Fatalf("a pending document was hidden from search entirely: %v", body.ids())
+	// 05 R-52 (2026-09-07): a document without metadata is not in the library
+	// yet — it neither surfaces as an unranked hit nor flags the page. The
+	// version exists for its owner; the backfill brings it in.
+	if contains(body.ids(), pending) {
+		t.Fatalf("a document with no metadata reached the public page: %v", body.ids())
 	}
-	if !body.PartialIndex {
-		t.Fatal("a page containing a not-yet-enriched document did not report partial_index")
+	if body.PartialIndex {
+		t.Fatalf("a page with no unranked row reported partial_index: %v", body.ids())
 	}
 
-	// Control: the same query against a fully enriched page says so.
+	// Once it carries a vector it is in the library, ranked like the rest.
 	seedEmbedding(t, pool, pending, 55)
-	if body := anon.search(t, "/api/skills/search?q=mimsy"); body.PartialIndex {
-		t.Fatalf("fully ranked page reported partial_index: %v", body.ids())
+	body = anon.search(t, "/api/skills/search?q=mimsy")
+	if !contains(body.ids(), pending) || body.PartialIndex {
+		t.Fatalf("an embedded document must be on the page and ranked: %v partial=%v", body.ids(), body.PartialIndex)
 	}
 }
 

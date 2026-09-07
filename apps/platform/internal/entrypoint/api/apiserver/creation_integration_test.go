@@ -51,6 +51,17 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 			out.Message = "草稿已準備好。"
 			out.Brief = in.Brief
 			out.Draft = &llmclient.GeneratedSkill{Name: "creation-summary", Description: "Summarize user input in the requested format.", Body: "# Task\nRead the user input and summarize the important points.\nAsk for the desired output format when missing.\n", Files: []llmclient.GeneratedFile{}}
+			for _, m := range in.Messages {
+				// A model that writes outside the package (05 SEC-013, LLM05):
+				// asked for by a marker in the conversation, refused by Go.
+				if m.Role == "user" && strings.Contains(m.Content, "路徑穿越") {
+					out.Draft.Files = []llmclient.GeneratedFile{{Path: "../escape.txt", Content: "x"}}
+				}
+				// A model that keeps the duplicate's own name after "build anyway".
+				if m.Role == "tool" && strings.Contains(m.Content, "請只改名稱") {
+					out.Draft.Name = "creation-summary-renamed"
+				}
+			}
 		}
 		// 05 R-46 (b): the brief proposal carries its acceptance criteria; later
 		// turns echo the confirmed list back, as the prompt tells the real model to.

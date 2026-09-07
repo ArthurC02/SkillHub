@@ -1,0 +1,81 @@
+{
+  "checks": [],
+  "limitations": [
+    "需要貼上文字，並說明要執行哪一項所列任務。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 可撰寫全公司每週進度更新，並以逐步協作及反覆審閱方式起草技術規格或決策文件，也能為文件套用公司品牌色與字體。它可刪除贅字、模糊詞及被動語態，改寫帶有 AI 語感的文字、為 AI 痕跡評分並說明理由，以及調整段落順序。它也能把採訪筆記寫成附標題的新聞稿、套用 AP 風格、撰寫學術論文章節，並處理 Plan S 開放取用規則下的補助提案與預印本；使用者需貼上文字並指出所需任務。",
+  "tags": {
+    "dependencies": [],
+    "inputs": [
+      "plain text",
+      "documents",
+      "company progress information",
+      "technical specification drafts",
+      "decision document drafts",
+      "interview notes",
+      "article drafts",
+      "essay drafts",
+      "grant proposals",
+      "preprints"
+    ],
+    "outputs": [
+      "branded documents",
+      "weekly progress updates",
+      "status reports",
+      "technical specifications",
+      "decision documents",
+      "rewritten text",
+      "ai-tell scores",
+      "news articles",
+      "headlines",
+      "thesis chapters",
+      "grant proposals",
+      "preprints"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Apply our company’s official brand colors and fonts to this document.",
+      "zh_hant": "請把這份文件套用我們公司的官方品牌色與字體。"
+    },
+    {
+      "en": "Write this week’s company-wide progress update and status report.",
+      "zh_hant": "幫我撰寫本週要寄給全公司的進度更新與狀態報告。"
+    },
+    {
+      "en": "I need to deliver a technical specification document; walk me through drafting it with step-by-step collaboration and review rounds.",
+      "zh_hant": "我必須交付一份技術規格文件，請透過逐步協作和多輪審閱陪我完成草稿。"
+    },
+    {
+      "en": "Remove filler words, vague language, and passive voice from this passage.",
+      "zh_hant": "刪除這段文字裡的贅字、模糊詞和被動語態。"
+    },
+    {
+      "en": "Score this draft for signs of AI-generated writing and explain the score.",
+      "zh_hant": "請判斷這份草稿是否帶有 AI 痕跡，並提供分數和理由。"
+    },
+    {
+      "en": "Everything is included, but the paragraphs are out of order; rearrange them for logical movement without proofreading.",
+      "zh_hant": "內容都已經寫進去了，但段落順序很亂；請重新排列，讓論述依邏輯推進，不要做校對。"
+    },
+    {
+      "en": "Turn these interview notes into a newsroom-style article and give the news story a headline.",
+      "zh_hant": "把這些採訪筆記寫成符合新聞體例的文章，並替新聞稿下標題。"
+    },
+    {
+      "en": "Handle this grant proposal and preprint posting under Plan S open-access rules.",
+      "zh_hant": "請依 Plan S 開放取用規則處理這份補助提案與預印本發布內容。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1719,
+    "cost_source": "gateway",
+    "cost_usd": 0.03781700000000001,
+    "prompt_tokens": 1884
+  }
+}

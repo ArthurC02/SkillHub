@@ -2604,6 +2604,15 @@ type CreationReference struct {
 	Name      string    `json:"name"`
 	Confirmed bool      `json:"confirmed"`
 	Available bool      `json:"available"`
+	// The catalogue's curation tier for this exact version (CONTENT-001), shown wherever Go offers a Skill
+	// to adopt or reference (SEC-013, LLM04: an offer must carry the same trust facts as a search row).
+	// `unknown` when the Skill is not in the catalogue.
+	Tier OptCreationReferenceTier `json:"tier"`
+	// Whether the projection holds an import scan for this Skill (DISC-004: unavailable is never clean).
+	ScanStatus OptCreationReferenceScanStatus `json:"scan_status"`
+	// Warning-level findings from the import scan, 0 when scanned and clean; absent when scan_status is
+	// not scanned.
+	Warnings OptInt `json:"warnings"`
 	// Description read from this exact immutable reference version.
 	Description   OptString `json:"description"`
 	Compatibility OptString `json:"compatibility"`
@@ -2633,6 +2642,21 @@ func (s *CreationReference) GetConfirmed() bool {
 // GetAvailable returns the value of Available.
 func (s *CreationReference) GetAvailable() bool {
 	return s.Available
+}
+
+// GetTier returns the value of Tier.
+func (s *CreationReference) GetTier() OptCreationReferenceTier {
+	return s.Tier
+}
+
+// GetScanStatus returns the value of ScanStatus.
+func (s *CreationReference) GetScanStatus() OptCreationReferenceScanStatus {
+	return s.ScanStatus
+}
+
+// GetWarnings returns the value of Warnings.
+func (s *CreationReference) GetWarnings() OptInt {
+	return s.Warnings
 }
 
 // GetDescription returns the value of Description.
@@ -2675,6 +2699,21 @@ func (s *CreationReference) SetAvailable(val bool) {
 	s.Available = val
 }
 
+// SetTier sets the value of Tier.
+func (s *CreationReference) SetTier(val OptCreationReferenceTier) {
+	s.Tier = val
+}
+
+// SetScanStatus sets the value of ScanStatus.
+func (s *CreationReference) SetScanStatus(val OptCreationReferenceScanStatus) {
+	s.ScanStatus = val
+}
+
+// SetWarnings sets the value of Warnings.
+func (s *CreationReference) SetWarnings(val OptInt) {
+	s.Warnings = val
+}
+
 // SetDescription sets the value of Description.
 func (s *CreationReference) SetDescription(val OptString) {
 	s.Description = val
@@ -2688,6 +2727,106 @@ func (s *CreationReference) SetCompatibility(val OptString) {
 // SetAllowedTools sets the value of AllowedTools.
 func (s *CreationReference) SetAllowedTools(val OptString) {
 	s.AllowedTools = val
+}
+
+// Whether the projection holds an import scan for this Skill (DISC-004: unavailable is never clean).
+type CreationReferenceScanStatus string
+
+const (
+	CreationReferenceScanStatusScanned     CreationReferenceScanStatus = "scanned"
+	CreationReferenceScanStatusUnavailable CreationReferenceScanStatus = "unavailable"
+	CreationReferenceScanStatusUnknown     CreationReferenceScanStatus = "unknown"
+)
+
+// AllValues returns all CreationReferenceScanStatus values.
+func (CreationReferenceScanStatus) AllValues() []CreationReferenceScanStatus {
+	return []CreationReferenceScanStatus{
+		CreationReferenceScanStatusScanned,
+		CreationReferenceScanStatusUnavailable,
+		CreationReferenceScanStatusUnknown,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreationReferenceScanStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case CreationReferenceScanStatusScanned:
+		return []byte(s), nil
+	case CreationReferenceScanStatusUnavailable:
+		return []byte(s), nil
+	case CreationReferenceScanStatusUnknown:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreationReferenceScanStatus) UnmarshalText(data []byte) error {
+	switch CreationReferenceScanStatus(data) {
+	case CreationReferenceScanStatusScanned:
+		*s = CreationReferenceScanStatusScanned
+		return nil
+	case CreationReferenceScanStatusUnavailable:
+		*s = CreationReferenceScanStatusUnavailable
+		return nil
+	case CreationReferenceScanStatusUnknown:
+		*s = CreationReferenceScanStatusUnknown
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// The catalogue's curation tier for this exact version (CONTENT-001), shown wherever Go offers a Skill
+// to adopt or reference (SEC-013, LLM04: an offer must carry the same trust facts as a search row).
+// `unknown` when the Skill is not in the catalogue.
+type CreationReferenceTier string
+
+const (
+	CreationReferenceTierCurated CreationReferenceTier = "curated"
+	CreationReferenceTierIndexed CreationReferenceTier = "indexed"
+	CreationReferenceTierUnknown CreationReferenceTier = "unknown"
+)
+
+// AllValues returns all CreationReferenceTier values.
+func (CreationReferenceTier) AllValues() []CreationReferenceTier {
+	return []CreationReferenceTier{
+		CreationReferenceTierCurated,
+		CreationReferenceTierIndexed,
+		CreationReferenceTierUnknown,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreationReferenceTier) MarshalText() ([]byte, error) {
+	switch s {
+	case CreationReferenceTierCurated:
+		return []byte(s), nil
+	case CreationReferenceTierIndexed:
+		return []byte(s), nil
+	case CreationReferenceTierUnknown:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreationReferenceTier) UnmarshalText(data []byte) error {
+	switch CreationReferenceTier(data) {
+	case CreationReferenceTierCurated:
+		*s = CreationReferenceTierCurated
+		return nil
+	case CreationReferenceTierIndexed:
+		*s = CreationReferenceTierIndexed
+		return nil
+	case CreationReferenceTierUnknown:
+		*s = CreationReferenceTierUnknown
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Ref: #/components/schemas/CreationSession
@@ -9578,6 +9717,98 @@ func (o OptCreationDraft) Get() (v CreationDraft, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptCreationDraft) Or(d CreationDraft) CreationDraft {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptCreationReferenceScanStatus returns new OptCreationReferenceScanStatus with value set to v.
+func NewOptCreationReferenceScanStatus(v CreationReferenceScanStatus) OptCreationReferenceScanStatus {
+	return OptCreationReferenceScanStatus{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCreationReferenceScanStatus is optional CreationReferenceScanStatus.
+type OptCreationReferenceScanStatus struct {
+	Value CreationReferenceScanStatus
+	Set   bool
+}
+
+// IsSet returns true if OptCreationReferenceScanStatus was set.
+func (o OptCreationReferenceScanStatus) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCreationReferenceScanStatus) Reset() {
+	var v CreationReferenceScanStatus
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCreationReferenceScanStatus) SetTo(v CreationReferenceScanStatus) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCreationReferenceScanStatus) Get() (v CreationReferenceScanStatus, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCreationReferenceScanStatus) Or(d CreationReferenceScanStatus) CreationReferenceScanStatus {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptCreationReferenceTier returns new OptCreationReferenceTier with value set to v.
+func NewOptCreationReferenceTier(v CreationReferenceTier) OptCreationReferenceTier {
+	return OptCreationReferenceTier{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCreationReferenceTier is optional CreationReferenceTier.
+type OptCreationReferenceTier struct {
+	Value CreationReferenceTier
+	Set   bool
+}
+
+// IsSet returns true if OptCreationReferenceTier was set.
+func (o OptCreationReferenceTier) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCreationReferenceTier) Reset() {
+	var v CreationReferenceTier
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCreationReferenceTier) SetTo(v CreationReferenceTier) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCreationReferenceTier) Get() (v CreationReferenceTier, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCreationReferenceTier) Or(d CreationReferenceTier) CreationReferenceTier {
 	if v, ok := o.Get(); ok {
 		return v
 	}

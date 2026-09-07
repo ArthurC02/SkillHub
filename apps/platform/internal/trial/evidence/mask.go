@@ -219,6 +219,13 @@ func (m *Masker) redact(s string) string {
 	return urlUserInfo.ReplaceAllString(s, "${1}"+Placeholder+"@")
 }
 
+// MaskString is the pattern half of Mask for one string: what a creation
+// session stores of the person's own words and of a page it fetched (05
+// SEC-013, LLM02). Known values are honoured too when the Masker has them.
+func (m *Masker) MaskString(s string) string {
+	return m.redact(s)
+}
+
 // escapePointer applies RFC 6901: `~` becomes `~0` and `/` becomes `~1`, so a
 // key containing a slash does not read as two path segments.
 func escapePointer(key string) string {

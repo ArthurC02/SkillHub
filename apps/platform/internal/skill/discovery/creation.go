@@ -6,6 +6,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pgvector/pgvector-go"
 )
 
@@ -110,6 +111,31 @@ func (s *Service) CreationKnowledgeIDs(ctx context.Context, query string, maxDis
 		ids = append(ids, r.SkillID)
 	}
 	return ids, costUSD, false, nil
+}
+
+// CatalogReferenceFacts is what the creation tool shows beside a Skill it
+// offers to adopt or reference (05 SEC-013, LLM04: an offer carries the same
+// trust facts as a search row). Tier is curated only when the offered version
+// is the curated one; scan status and warnings come from the projected import
+// scan, never a guess (DISC-004). A Skill outside the catalogue answers unknown.
+func (s *Service) CatalogReferenceFacts(ctx context.Context, skillID, versionID string) (tier, scanStatus string, warnings int, err error) {
+	var sid, vid pgtype.UUID
+	if err := sid.Scan(skillID); err != nil {
+		return "unknown", "unknown", 0, err
+	}
+	if err := vid.Scan(versionID); err != nil {
+		return "unknown", "unknown", 0, err
+	}
+	row, err := gen.New(s.Pool).GetCatalogReferenceFacts(ctx, gen.GetCatalogReferenceFactsParams{SkillID: sid, VersionID: vid})
+	if err != nil {
+		return "unknown", "unknown", 0, err
+	}
+	tier = "indexed"
+	if row.Curated {
+		tier = "curated"
+	}
+	risk := riskHint(row.Scan)
+	return tier, risk.ScanStatus, risk.Warnings, nil
 }
 
 func containsID(ids []string, id string) bool {

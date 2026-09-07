@@ -170,7 +170,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 		rec, text := s.Fetch(ctx, url)
 		e.Snapshot.PendingFetchURL = ""
 		e.Snapshot.Fetches = append(e.Snapshot.Fetches, rec)
-		e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "tool", Content: fetchObservation(rec, text)})
+		e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "tool", Content: fetchObservation(rec, s.masked(text))})
 	}
 	e.Snapshot.Steps++
 	e.Snapshot.ReservedUSD += e.Limits.MaxCallCostUSD
@@ -570,8 +570,11 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			p.RunUnmet = false
 		}
 		repeated := blocked && p.Draft != nil && p.Draft.Blocked && p.Draft.Validation == report
+		prev := p.Draft
 		p.Draft = &Draft{revision, hash, *r.Draft, report, blocked}
-		clearDuplicateCheck(p)
+		if !renamedOnly(prev, p.Draft) {
+			clearDuplicateCheck(p)
+		}
 		p.PendingAction = ""
 		if repeated {
 			p.BlockedRepeats++
@@ -689,14 +692,26 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 				return "draft_ready", false, nil
 			}
 			p.PreviousDraft = e.PreviousDraft
+			prev := p.Draft
 			p.Draft = &Draft{revision, hash, *r.Draft, report, blocked}
-			clearDuplicateCheck(p)
+			if !renamedOnly(prev, p.Draft) {
+				clearDuplicateCheck(p)
+			}
 			p.PendingAction = ""
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("Go 靜態驗證完成，blocked=%t；完整 finding 隨 draft_validation 提供，不代表試跑成功。", blocked)})
 			return "queued", true, nil
 		}
 	}
 	return "", false, ErrInvalidCommand
+}
+
+// renamedOnly says the new draft is the previous one under another name — the
+// revision Go asks for after "build anyway" collided on the name. The
+// duplicate guard's answer still holds for it; re-running the guard would only
+// hold the same draft for the same duplicate again.
+func renamedOnly(prev, cur *Draft) bool {
+	return prev != nil && cur != nil && prev.Skill.Name != cur.Skill.Name &&
+		prev.Skill.Description == cur.Skill.Description && prev.Skill.Body == cur.Skill.Body
 }
 
 func containsString(xs []string, x string) bool {

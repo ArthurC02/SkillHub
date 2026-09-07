@@ -1,0 +1,83 @@
+{
+  "checks": [],
+  "limitations": [
+    "需透過 Python 執行 `office.py --task \"<使用者要求>\"`，並依照其輸出操作。",
+    "既有 Word 範本工作包含依 OpenXML 結構描述進行檢查。",
+    "以程式產生格式化 .docx 報告的工作方式使用 .NET 管線。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此技能可把會議記錄製成含目錄與頁碼的 Word 文件，從掃描 PDF 抽取及合併表格，並建立含公式、圖表與樞紐分析表的試算表。它也能製作含講者備忘稿的投資人簡報、重新設計既有報告、將長文發布為線上投影片，以及建立含指標與時間軸的單一 HTML 對比報告。使用者需提供要處理的文件或內容及工作要求；技能亦支援套用既有 Word 範本、依 OpenXML 結構描述檢查文件，以及從 .NET 管線產生格式化的 .docx 報告。",
+  "tags": {
+    "dependencies": [
+      "python",
+      ".net pipeline",
+      "openxml schema"
+    ],
+    "inputs": [
+      "pdf — scanned documents",
+      "word templates",
+      "meeting notes",
+      "reports",
+      "articles",
+      "write-ups"
+    ],
+    "outputs": [
+      "docx — word reports",
+      "table data",
+      "presentation slides — investor decks",
+      "online slides — published articles",
+      "spreadsheet workbooks — formulas, charts, and pivot tables",
+      "html — comparison reports",
+      "print-ready flyers",
+      "one-page proposals"
+    ],
+    "tools": [
+      "office.py",
+      "openxml",
+      "microsoft word"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Turn these meeting notes into a Word document (.docx) with a table of contents and page numbers.",
+      "zh_hant": "請把這份會議記錄製作成有目錄和頁碼的 Word 文件（.docx）。"
+    },
+    {
+      "en": "I have several scanned document PDFs; extract their table data and merge it into one.",
+      "zh_hant": "我有好幾份掃描文件的 PDF，請抽出裡面的表格資料並合併成一份。"
+    },
+    {
+      "en": "Build an investor presentation with speaker notes, structuring the pitch around a hook, evidence, and a clear ask.",
+      "zh_hant": "請建立一份給投資人的簡報投影片，加入講者備忘稿，並用開場重點、證據和明確訴求安排提案內容。"
+    },
+    {
+      "en": "Create a new spreadsheet workbook with formulas, charts, and pivot tables.",
+      "zh_hant": "幫我建立新的試算表工作簿，裡面要有公式、圖表和樞紐分析表。"
+    },
+    {
+      "en": "This report looks very basic, and I need to deliver a redesigned version to my manager.",
+      "zh_hant": "這份報告看起來很陽春，我需要重新設計後交給主管。"
+    },
+    {
+      "en": "Turn this long article into online slides that I can share with a link.",
+      "zh_hant": "把這篇長文轉成能直接分享連結的線上投影片。"
+    },
+    {
+      "en": "Create a single self-contained HTML comparison report that opens on double-click and includes metrics and a timeline.",
+      "zh_hant": "製作一個可雙擊開啟的單一 HTML 對比報告，包含指標和時間軸。"
+    },
+    {
+      "en": "Design a print-ready event flyer and a one-page proposal.",
+      "zh_hant": "請設計可印出的活動宣傳單張和一頁式提案書。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 1580,
+    "cost_source": "gateway",
+    "cost_usd": 0.035222,
+    "prompt_tokens": 1921
+  }
+}

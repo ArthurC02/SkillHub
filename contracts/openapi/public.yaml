@@ -8176,6 +8176,17 @@ components:
           type: "boolean"
         available:
           type: "boolean"
+        tier:
+          type: string
+          enum: [curated, indexed, unknown]
+          description: "The catalogue's curation tier for this exact version (CONTENT-001), shown wherever Go offers a Skill to adopt or reference (SEC-013, LLM04: an offer must carry the same trust facts as a search row). `unknown` when the Skill is not in the catalogue."
+        scan_status:
+          type: string
+          enum: [scanned, unavailable, unknown]
+          description: "Whether the projection holds an import scan for this Skill (DISC-004: unavailable is never clean)."
+        warnings:
+          type: integer
+          description: "Warning-level findings from the import scan, 0 when scanned and clean; absent when scan_status is not scanned."
         description:
           type: string
           description: Description read from this exact immutable reference version.

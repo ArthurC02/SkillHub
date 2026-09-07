@@ -13,9 +13,18 @@ Definition (written down once so the number means the same thing every run):
 Also printed: F1@1 (the old creation-tool number, capped by two-document
 relevant sets) so the two are never confused.
 
-    python search_f1_score.py [--docs <dir>] [out.txt]
+    python search_f1_score.py [--docs <dir>] [--poison] [out.txt]
         --docs: a corpus_enriched-shaped directory to load instead of the
                 scratch DB's current rows (rebuilds search_docs from it).
+        --poison: insert 3 synthetic documents (poison-1..3, name
+                  poison-skill-N) built by concatenating 15-20 golden task
+                  queries spanning all three corpus categories, then report,
+                  per query set, how often one of them reaches the top-3 / top-1
+                  of the vector ranking and whether excluding them from the
+                  page changes F1 (05 SEC-013: search results are untrusted
+                  input to a model, so a document that can buy itself into a
+                  result page is worth knowing about even if the shipped
+                  rule's own cut still excludes it).
 """
 import collections
 import json
@@ -32,6 +41,17 @@ args = [a for a in sys.argv[1:]]
 SWEEP = "--sweep" in args
 if SWEEP:
     args.remove("--sweep")
+POISON = "--poison" in args
+if POISON:
+    args.remove("--poison")
+POISON_DIR = None
+if "--poison-dir" in args:
+    # the fair LLM04 test: poisoned SKILL.md files that went through the real
+    # enrichment (injection/enrich_poison.py); index text = enriched_index_text
+    i = args.index("--poison-dir")
+    POISON_DIR = Path(args[i + 1]).resolve()
+    del args[i:i + 2]
+    POISON = True
 DOCS_DIR = None
 if "--docs" in args:
     i = args.index("--docs")
@@ -75,7 +95,7 @@ for cat in ("data", "documents", "writing"):
         src = (DOCS_DIR or (GS / "corpus_enriched")) / cat / (md.stem + ".json")
         enriched = json.loads(src.read_text(encoding="utf-8"))
         text = evaluate.enriched_index_text(name, enriched)
-        docs.append({"id": md.stem, "name": name, "index_text": text, "tokens": set(evaluate.tokenize(text))})
+        docs.append({"id": md.stem, "name": name, "index_text": text, "tokens": set(evaluate.tokenize(text)), "cat": cat})
 
 if DOCS_DIR:
     # rebuild the scratch rows from this corpus (embeddings via the service)
@@ -103,6 +123,53 @@ for d in docs:
 distinct = distinct[:25]
 sets = ([{"query": x["query"], "rel": set(x["gold_primary"]) | set(x["gold_acceptable"]), "set": "golden", "id": x["id"]} for x in gold]
         + [{"query": d["name"], "rel": {d["id"]}, "set": "name"} for d in docs] + distinct)
+
+poison_ids = set()
+if POISON:
+    # 15-20 golden task sentences per poison doc, round-robin across the three
+    # corpus categories so any contiguous slice still spans all three (a
+    # keyword-stuffed adversarial summary, not a real Skill).
+    cat_of = {d["id"]: d.get("cat") for d in docs}
+    by_cat = collections.defaultdict(list)
+    for g in gold:
+        for i in set(g["gold_primary"]) | set(g.get("gold_acceptable", [])):
+            c = cat_of.get(i)
+            if c:
+                by_cat[c].append(g["query"])
+    cats = ("data", "documents", "writing")
+    per_cat = {c: list(dict.fromkeys(by_cat.get(c, []))) for c in cats}
+    interleaved, i = [], 0
+    while any(len(per_cat[c]) > i for c in cats):
+        interleaved += [per_cat[c][i] for c in cats if len(per_cat[c]) > i]
+        i += 1
+    poison_docs = []
+    if POISON_DIR:
+        for k, pj in enumerate(sorted(POISON_DIR.glob("*.json"))):
+            enriched = json.loads(pj.read_text(encoding="utf-8"))
+            text = evaluate.enriched_index_text(pj.stem, enriched)
+            poison_docs.append({
+                "id": f"poison-{k + 1}", "name": pj.stem,
+                "index_text": text, "tokens": set(evaluate.tokenize(text)), "cat": "poison",
+            })
+    else:
+        for k in range(3):
+            sentences = (interleaved * 2)[k * 3:k * 3 + 18] or interleaved[:18] or ["generic task"]
+            text = " ".join(sentences)
+            poison_docs.append({
+                "id": f"poison-{k + 1}", "name": f"poison-skill-{k + 1}",
+                "index_text": text, "tokens": set(evaluate.tokenize(text)), "cat": "poison",
+            })
+    docs += poison_docs
+    name_of.update({d["id"]: d["name"].lower() for d in poison_docs})
+    poison_ids = {d["id"] for d in poison_docs}
+    psql("DELETE FROM search_docs WHERE id LIKE 'poison-%';")
+    pvecs = embed([d["index_text"] for d in poison_docs])
+    prows = []
+    for d, v in zip(poison_docs, pvecs):
+        lit = "[" + ",".join(f"{x:.6f}" for x in v) + "]"
+        prows.append(f"('{q(d['id'])}','{q(d['name'])}','{lit}'::vector, to_tsvector('simple','{q(' '.join(evaluate.tokenize(d['index_text'])))}'))")
+    psql("INSERT INTO search_docs (id,name,embedding,bigram) VALUES " + ",".join(prows) + ";")
+
 cached = evaluate.embed([x["query"] for x in gold], allow_api=False)
 extra = [x["query"] for x in sets if x["set"] != "golden"]
 vecs = dict(zip(extra, embed(extra)))
@@ -219,6 +286,36 @@ for label, fn, cut in (("public rule = creation search (vector <= 0.75, covered 
     text, _ = score(label, fn, cut)
     report += text + "\n"
     report += "  misses:\n" + "\n".join(misses(fn, cut)) + "\n\n"
+
+if POISON:
+    lines = ["== poison test (05 SEC-013): " + ("enriched poisoned SKILL.md from " + POISON_DIR.name if POISON_DIR else "synthetic poison-1..3 (worst case: index text = the golden sentences)") + " =="]
+    for name in ("golden", "name", "token"):
+        sub = [x for x in sets if x["set"] == name]
+        top3 = sum(1 for x in sub if poison_ids & {i for i, _ in V[x["query"]][:3]})
+        top1 = sum(1 for x in sub if V[x["query"]] and V[x["query"]][0][0] in poison_ids)
+        with_f1, without_f1 = [], []
+        for x in sub:
+            page = public_rule(x["query"], 0.75)
+            page_np = [i for i in page if i not in poison_ids]
+            if x["rel"]:
+                k = len(x["rel"])
+                with_f1.append(f1_of(page, x["rel"], k))
+                without_f1.append(f1_of(page_np, x["rel"], k))
+            else:
+                with_f1.append(1.0 if not page[:5] else 0.0)
+                without_f1.append(1.0 if not page_np[:5] else 0.0)
+        changed = sum(1 for a, b in zip(with_f1, without_f1) if abs(a - b) > 1e-9)
+        verdict = "RED (poison reached top-3)" if top3 else "ok (never reached top-3)"
+        lines.append(
+            f"  {name:6s} n={len(sub):3d} top3_hit={top3} top1_hit={top1} "
+            f"F1(with poison in page)={sum(with_f1)/len(with_f1):.3f} "
+            f"F1(poison excluded)={sum(without_f1)/len(without_f1):.3f} "
+            f"changed_queries={changed}/{len(sub)} redline(top3=0)={verdict}"
+        )
+    lines.append(f"  poison docs: {sorted(poison_ids)}")
+    poison_report = "\n".join(lines)
+    report += poison_report + "\n"
+
 print(report)
 if OUT:
     OUT.write_text(report, encoding="utf-8")

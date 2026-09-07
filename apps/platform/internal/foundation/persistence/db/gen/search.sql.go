@@ -52,7 +52,8 @@ LEFT JOIN LATERAL (
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
-WHERE (
+WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND (
     $1::bool IS NULL
     OR (s.scan IS NOT NULL
         AND (s.scan->'codes' @> '["script-file"]'::jsonb
@@ -171,7 +172,8 @@ const creationLexicalSearchSkills = `-- name: CreationLexicalSearchSkills :many
 SELECT s.skill_id, s.name
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-WHERE s.bigram @@ to_tsquery('simple', $1::text)
+WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND s.bigram @@ to_tsquery('simple', $1::text)
 ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $1::text)) DESC
 LIMIT $2::int
 `
@@ -230,6 +232,35 @@ func (q *Queries) DeleteSearchDocument(ctx context.Context, arg DeleteSearchDocu
 	return err
 }
 
+const getCatalogReferenceFacts = `-- name: GetCatalogReferenceFacts :one
+SELECT sd.scan,
+       (sk.curation_tier = 'curated' AND sk.curated_version_id = $2::uuid)::bool AS curated
+FROM search_documents sd
+JOIN skills sk ON sk.id = sd.skill_id
+JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
+WHERE sd.skill_id = $1
+`
+
+type GetCatalogReferenceFactsParams struct {
+	SkillID   pgtype.UUID
+	VersionID pgtype.UUID
+}
+
+type GetCatalogReferenceFactsRow struct {
+	Scan    []byte
+	Curated bool
+}
+
+// What the creation tool shows next to a Skill it offers (05 SEC-013, LLM04):
+// the projected scan (disclosures and warnings) and whether the offered
+// version is the curated one. Catalogue scope only, like every offer.
+func (q *Queries) GetCatalogReferenceFacts(ctx context.Context, arg GetCatalogReferenceFactsParams) (GetCatalogReferenceFactsRow, error) {
+	row := q.db.QueryRow(ctx, getCatalogReferenceFacts, arg.SkillID, arg.VersionID)
+	var i GetCatalogReferenceFactsRow
+	err := row.Scan(&i.Scan, &i.Curated)
+	return i, err
+}
+
 const listCatalogSkillScans = `-- name: ListCatalogSkillScans :many
 SELECT sd.skill_id, sd.scan
 FROM search_documents sd
@@ -277,7 +308,6 @@ WITH candidates AS (
 SELECT sd.skill_id, sv.package_object_key
 FROM search_documents sd
 JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
-    AND sk.redistribution <> 'generated'
 JOIN LATERAL (
     SELECT v.package_object_key
     FROM skill_versions v
@@ -312,13 +342,11 @@ type ListPendingEnrichmentRow struct {
 // (a fork created ahead of its content) has nothing to enrich from, so it drops
 // out of the worklist here rather than becoming a null the caller has to skip.
 //
-// `redistribution <> 'generated'` keeps generated packages off the worklist
-// (GEN-007). Their documents exist and must — the workspace's own list reads the
-// static-scan facts out of them, and 02:GEN-003 forbids showing a generated
-// package one warning fewer than an imported one. What they never get is the
-// enrichment, because enrichment exists to make a document findable and this one
-// is never searched. Without this predicate the backfill would re-enrich them
-// forever: import already skips the call, so they stay `pending` by design.
+// Generated packages used to be kept off this worklist (GEN-007: never
+// searched, so never enriched). Since 05 R-52 (2026-09-07) they are enriched
+// like everything else — "security check, then metadata, then the library" is
+// the owner's order for every new Skill — while GEN-007's read-side exclusion
+// (the SearchSkills join below) still keeps them out of every search.
 func (q *Queries) ListPendingEnrichment(ctx context.Context, limit int32) ([]ListPendingEnrichmentRow, error) {
 	rows, err := q.db.Query(ctx, listPendingEnrichment, limit)
 	if err != nil {
@@ -469,7 +497,8 @@ fts AS (
     SELECT s.skill_id, s.embedding <=> $9::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.tsv @@ websearch_to_tsquery('english', $7::text)
+    WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+      AND s.tsv @@ websearch_to_tsquery('english', $7::text)
     ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $7::text)) DESC
     LIMIT 50
 ),
@@ -477,7 +506,8 @@ lex AS (
     SELECT s.skill_id, s.embedding <=> $9::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE $10::text <> ''
+    WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+      AND $10::text <> ''
       AND s.bigram @@ to_tsquery('simple', $10::text)
     ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $10::text)) DESC
     LIMIT 5
@@ -827,6 +857,7 @@ LEFT JOIN LATERAL (
 WHERE (s.tsv @@ websearch_to_tsquery('english', $1::text)
        OR ($2::text <> ''
            AND s.bigram @@ to_tsquery('simple', $2::text)))
+  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
   AND (
     $3::bool IS NULL
     OR (s.scan IS NOT NULL
@@ -934,6 +965,14 @@ type PublicSearchSkillsRow struct {
 // FTS-only public search — the degradation path when the embedding service is
 // unavailable (ADR-013 fallback).
 //
+// 05 R-52 (2026-09-07): a document whose enrichment never landed — no
+// metadata, no vector — is not in the library yet. The three public queries
+// share the predicate below: enriched, or at least embedded (the tests' seeded
+// rows and a document whose enrichment text landed but whose vector did not).
+// The version exists and its owner sees it; the hourly backfill brings it into
+// the catalogue once the metadata exists. Before this the row surfaced through
+// the english tsvector as an "unranked" hit nobody could find by meaning.
+//
 // Two lexical legs since 05 R-48: the english tsvector, and the bigram column
 // (0058) for the query Go rendered from LexicalTokens — every token AND-ed, so
 // a Traditional Chinese query the english config tokenises to nothing still
@@ -1023,6 +1062,30 @@ SET workspace_id = EXCLUDED.workspace_id, name = EXCLUDED.name,
 // REINDEX_BATCH reaches the genuinely old pending rows first, with no hand step.
 func (q *Queries) ReindexAll(ctx context.Context) (int64, error) {
 	result, err := q.db.Exec(ctx, reindexAll)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetCatalogueEnrichmentBefore = `-- name: ResetCatalogueEnrichmentBefore :execrows
+UPDATE search_documents sd
+SET enrichment_status = 'pending', enrichment_attempted_at = NULL
+FROM workspaces w, skills sk
+WHERE w.id = sd.workspace_id AND w.is_catalog
+  AND sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
+  AND sd.enrichment_status = 'enriched'
+  AND COALESCE(sd.enrichment_prompt_version, '') <> $1::text
+`
+
+// cmd/reindex REINDEX_REENRICH: every catalogue document enriched under a
+// prompt version other than the current one goes back to `pending`, so the
+// backfill rewrites it under the current prompt (report §15: v7's examples are
+// what lifted F1; the live catalogue was still v2–v6). Generated and
+// taken-down rows are untouched — the former re-enrich on their own worklist
+// terms, the latter must not come back.
+func (q *Queries) ResetCatalogueEnrichmentBefore(ctx context.Context, promptVersion string) (int64, error) {
+	result, err := q.db.Exec(ctx, resetCatalogueEnrichmentBefore, promptVersion)
 	if err != nil {
 		return 0, err
 	}

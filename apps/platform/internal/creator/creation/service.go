@@ -116,6 +116,12 @@ type Reference struct {
 	Description   string `json:"description,omitempty"`
 	Compatibility string `json:"compatibility,omitempty"`
 	AllowedTools  string `json:"allowed_tools,omitempty"`
+	// Tier, ScanStatus and Warnings are the catalogue's trust facts for this
+	// exact version (05 SEC-013, LLM04): an offer to adopt carries what a
+	// search row carries. Empty when the Skill is not in the catalogue.
+	Tier       string `json:"tier,omitempty"`
+	ScanStatus string `json:"scan_status,omitempty"`
+	Warnings   *int   `json:"warnings,omitempty"`
 }
 type Draft struct {
 	Revision    int64                    `json:"revision"`
@@ -256,7 +262,11 @@ type Service struct {
 	DuplicateCheck func(context.Context, identity.Workspace, string) ([]Reference, float64, error)
 	// Adopt forks an existing Skill into the workspace as the session's
 	// candidate (adopt_reference): reuse instead of composition.
-	Adopt         func(context.Context, identity.Workspace, string) (Candidate, error)
+	Adopt func(context.Context, identity.Workspace, string) (Candidate, error)
+	// Mask redacts credential shapes from what the session stores of the
+	// person's own words and of fetched pages (05 SEC-013, LLM02; TRACE-005's
+	// masker, injected). nil stores text as it came.
+	Mask          func(string) string
 	ValidateDraft func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
 	Materialize   func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
 	ReadRun       func(context.Context, identity.Workspace, string, Candidate) (string, error)

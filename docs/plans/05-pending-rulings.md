@@ -1653,6 +1653,13 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 
 **未裁之前**：`03` SEC-013 不勾；其餘允收（攻擊集、圍欄、投毒題、遮罩、反證測試）不受本條阻擋，先做。
 
+**2026-09-07 裁定（負責人授權代理依最佳實務裁定）**：
+
+1. **模型釘版本**：供應商目前不提供帶日期的模型 ID，因此先做能做的一半——**記錄回應實際使用的 model id**。`enrichment_model`（`search_documents`）與會話的 model 欄位已在（見 `db/queries/search.sql` 的 upsert、`skills.sql.go`），這一步不新增欄位。**規則**：任何一次記到的 `enrichment_model`／會話 model 與上一次不同（供應商換了權重），視同觸發器，同一批要重跑 m3 Judge 回歸與 creation-measure 一輪，數字回寫 `04` 丙-179／丙-180 或它們的後續紀錄。**供應商日後若提供帶日期的模型 ID**，別名改指向它，並在 ADR-023 追記（與 runtime image 釘 digest 同一套精神）——這一步留給那時，不是今天的落地範圍。
+2. **平台級模型預算煞車**：`infra/compose/litellm-config.yaml` 的 `litellm_settings` 已加 `max_budget: 50`、`budget_duration: 1d`（開發環境預設值）；超過即由閘道拒絕新呼叫，形狀同 `SEC-012`。**生產環境的值由負責人另定**（今天的 50／1d 是開發預設，不是生產建議值），且生產應對這個上限的趨勢告警，不是只等它被打到。
+
+**`03` SEC-013 仍不勾**：本條的兩項裁定已落地，但 SEC-013 的允收還有兩處紅線未達——注入攻擊集殘留 1/12（`02:SEC-013` 進度段）、投毒題紅線未達且已轉列為結構性問題（見 R-53）——一併等它們。
+
 ## R-52｜「資安確認→LLM 抽 metadata→入庫」的兩個出入（`04` 丙-180）
 
 **要裁什麼**：負責人 2026-09-07 定的順序——新的或調整過的 Skill 先做資安確認、再用 LLM 抽 metadata、然後才入庫。對照現況（[報告 §15.5](mvp/m5/creation-measure/report.md)）：
@@ -1661,3 +1668,34 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 2. **創建出來的候選**：GEN-007 讓它完全不做增強（因為永不被搜尋）。要裁：materialize 時是否也抽 metadata（一次增強、約 US$0.01），只寫進索引、仍不進公開搜尋，讓查重與擁有者的工作區搜尋看得到它。代理建議：**是**，並把人確認過的 brief／驗收條件／`sample_input` 當增強的輸入，比模型從 body 猜更準。
 
 **未裁之前**：v7 增強對新匯入生效；既有目錄的重做（約 US$2）等這條一起。
+
+**2026-09-07 裁定（負責人授權代理依最佳實務裁定）：兩件都是——負責人那句「先資安確認、再抽 metadata、才入庫」逐字落地為「沒有 metadata 的文件不進公開目錄」。**
+
+1. **匯入與 GitHub／網址**：`PublicSearchSkills`／`BrowseCatalogSkills`／`PublicHybridSearchSkills` 的 fts 與 lex 兩條候選腿、以及 `CreationLexicalSearchSkills`，各自加上 `(enrichment_status = 'enriched' OR embedding IS NOT NULL)` 述詞（`db/queries/search.sql`）——**版本仍然建立、擁有者仍然看得到**，只是還沒有 metadata 的那一版不出現在別人查得到的目錄裡；每小時的 backfill（`ListPendingEnrichment`）照舊把它補進去。ADR-013「匯入不因增強失敗而失敗」沒有被推翻——失敗的仍然建版本，只是「建版本」與「進目錄」從今天起是兩件事。**`partial_index` 因此收斂成一種情形**：有 metadata、沒有向量（`embedding IS NULL` 但 `enrichment_status='enriched'`，例如 embedding 呼叫失敗但摘要／tags 已寫入）——「完全沒有 metadata」不再被回報為 `partial_index`，因為它已經不在目錄裡，沒有東西可以回報。測試 `TestPartialIndexIsReportedSeparatelyFromDegradation` 已改為預期這種文件被隱藏而非以 `partial_index` 列出；測試輔助 `seedSkill`／`importPackage`／`importFiles` 標示 metadata 已落地（跑過的測試預設帶 metadata，除非特別要求「未增強」）。
+2. **創建候選也做增強**：`admission.Service` 的 `sourceGenerated` 分支不再跳過 `enrichPackage`（`creation.go` 的 `persistVersion` 呼叫改吃 `s.enrichPackage(ctx, prepared)` 的結果，同匯入路徑）；`ListPendingEnrichment` 的 backfill 查詢不再排除 `source_type='generated'` 的列。**GEN-007「生成物不進搜尋」的保證不變**——排除仍然做在 `SearchSkills` 的讀取側（`workspace_id` 範圍與 `is_catalog` 判準），不靠「沒有 metadata」這件事來擋；候選增強只是讓查重（`CreationKnowledgeIDs`）與擁有者自己的工作區搜尋看得到它，不影響它對別人是否可見。**每次 materialize 因此多一次增強**（約 US$0.01，平台服務金鑰，不記進使用者的會話 `spent_usd`）。
+
+**留給負責人在部署環境執行的一步**：本機 dev DB（`skillhub`）schema 落後生產（缺 `0042 curation_tier`、`0058 bigram` 等 migration），代理**沒有**對它跑生產目錄的重做增強；那一步是 `REINDEX_REENRICH=enrich-skill/v7 REINDEX_BATCH=100 go run ./cmd/reindex`（約 45 份、US$2），在部署環境的正確 schema 上執行，見 `04` 丙-180 與 `cmd/reindex` 的 `REINDEX_REENRICH` 新環境變數（SQL `ResetCatalogueEnrichmentBefore`，DB 測試 `TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions`）。
+
+## R-53｜投毒（LLM04）的結構性緩解——量到什麼、要裁什麼（`04` 丙-179、`02` SEC-013）
+
+**2026-09-07 新增，由 SEC-013 的投毒題量測逐出來的。這一項不是「還沒做」，是「做了，但答案指向一個程式改不掉的東西」。**
+
+**要裁什麼**：`02:SEC-013` 要求 goldenset 加投毒文件、紅線「不得進任何 golden 題的 Top-3」。量了兩種情境，**兩種都沒有過線**，而且量出來的兩個決定式訊號都分不開投毒與合法內容。要不要把「目錄維持策展（人工審核才能進 `is_catalog` 工作區）」明文定為 LLM04 唯一夠格的緩解，並把投毒量測列為往後任何一次「開放目錄／放寬匯入」決定前的常設紅線？
+
+**已查到的事實**：
+
+- **最壞情形**（`search_f1_score.py --poison`、索引文本＝golden 句子本身，`search-f1/results-f1-poison-2026-09-07.txt`）：三份塞滿三大類任務關鍵字的 poison 文件把 golden 60 題的 Top-3 命中率從 60/60 打到 **32/60**，golden 60 題的 F1 從 0.914 掉到 0.525（116 題合計 0.955→0.754，名稱與特定詞兩組仍滿分把平均拉高）。
+- **公平情形**（三份投毒文件也經 `enrich-skill/v7` 正常增強後才入索引，`injection/poison-enriched/*.json`，`search-f1/results-f1-poison-enriched-2026-09-07.txt`）：golden Top-3 **37/60**、name Top-3 **13/31**、token Top-3 **9/25**，golden 60 題的 F1 從 0.914 掉到 0.786（116 題合計 0.955→0.889；排除投毒後的干淨題 F1 仍是 0.914，說明投毒不是拉低了正解的排名，是自己擠進了候選）。
+- **兩個試過的表面訊號都分不開真實內容與投毒**：①**tags 格式詞數**——poison 三份各是 4／3／0 個格式詞，而真實語料裡 `data-analyst` 這類合法橫跨多種格式的 Skill 最高到 6 個，區間重疊；②**任務例句彼此的語意離散度**（`injection/poison_dispersion.py`：對每份文件的任務例句兩兩算 cosine 距離取平均）——poison 三份是 0.748／0.730／0.689，真實 31 份的最大值是 0.758、p90 是 0.683（`injection/results-dispersion-2026-09-07.txt`），poison 完全落在真實分布內，不可分。
+- **代理試過但撤回的路**：在 `enrich_checks`（v7 增強的自檢規則）裡加一條「誇大／格式詞過多」的 overreach 規則，想從產出端而不是索引端擋——數字不成立（會誤傷合法的多格式 Skill，見上一條），撤回、沒有進碼庫。
+- **這與 TM-CRE-03（威脅模型 §2.10）是同一個殘餘風險，只是量出了數字**：目錄只含 `is_catalog` 工作區這件事，今天不是「眾多緩解之一」，是**唯一擋得住的那一層**——因為索引層面（tags、例句離散度）分不出來，且模型自檢無法可靠識別自己被要求誇大。
+
+**代理建議**：
+
+1. **目錄維持策展，明文定為 LLM04 的唯一結構性緩解**：任何「使用者匯入自動進公開目錄」「開放第三方 Skill 市集接入」一類的未來提案，在動工前必須重新量一次投毒 Top-3，而不是假設既有的揭露（精選層級、掃描狀態）能擋——本次量測已證明揭露本身不影響排名，排名是索引匹配決定的，跟畫面上寫什麼無關。
+2. **投毒量測成為常設紅線**：`search_f1_score.py --poison` 與 `--poison-dir` 兩個模式已寫好，往後每次改索引文本生成規則（增強提示版本）或改檢索規則（截斷值、覆蓋腿）時，連同 F1 一起重跑一次，紅線「投毒不得進 Top-3」與 F1 目標並列在同一份報告。
+3. **可選、留給負責人裁的一條**：對非 `curated` 層級（僅 `indexed`）的搜尋結果，在 Top-3 曝光位加一道人工可調的上限或延遲策展信號（例如新匯入滿一定時間或經過一次以上人工瀏覽才計入 Top-3 排名）——這是額外的縱深，不是本次量測證明必要的最低限，代理沒有把它算進「唯一緩解」那一條。
+
+**不決定的代價**：低而不會自己變糟——今天目錄仍是策展的（丙-179／丙-180 之前就是如此），R-52 的入庫順序裁定也沒有改變「誰能把東西放進 `is_catalog` 工作區」這件事。但**如果之後任何一項提案打算放寬「誰能進目錄」**，而沒有人回頭讀這一條，投毒的兩個決定式訊號會被誤以為「反正有揭露就夠了」——本項存在就是為了擋住那個誤讀。
+
+**決定之後**：①②兩條落地不需要新程式，只需要在 `docs/development/agent-instructions.md` 或後續的目錄放寬提案裡明寫這條前提（不在本次范圍內動那些文件）；③若選用，開新的工作項並回填 `03`。

@@ -176,6 +176,16 @@ function DiagramUnderstandingView({ raw }: { raw: string }) {
 function declaredReferenceField(value?: string) {
   return value?.trim() ? value : "未宣告";
 }
+const TIER_LABEL: Record<string, string> = { curated: "精選", indexed: "已索引" };
+function referenceTierLabel(tier?: string): string {
+  return TIER_LABEL[tier ?? ""] ?? "不在目錄";
+}
+function referenceScanLabel(scanStatus?: string, warnings?: number): string {
+  if (scanStatus === "scanned")
+    return (warnings ?? 0) > 0 ? `已掃描，${warnings} 個警告` : "已掃描，無警告";
+  if (scanStatus === "unavailable") return "沒有掃描紀錄";
+  return "未知";
+}
 const FETCH_STATUS_LABEL: Record<string, string> = {
   ok: "已讀取",
   blocked: "被拒絕或被網路環境擋住（不重試）",
@@ -683,6 +693,8 @@ export function CreationSession() {
                     <th>相容</th>
                     <th>工具</th>
                     <th>版本</th>
+                    <th>層級</th>
+                    <th>掃描</th>
                     <th>狀態</th>
                   </tr>
                 </thead>
@@ -699,17 +711,26 @@ export function CreationSession() {
                           {r.version_id}
                         </details>
                       </td>
+                      <td>{referenceTierLabel(r.tier)}</td>
+                      <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
                       <td>
                         {!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}
                         {p.pending_action === "confirm_references" && (
-                          <button
-                            disabled={locked || !r.available}
-                            onClick={() =>
-                              void perform("adopt_reference", { reference_skill_ids: [r.skill_id] })
-                            }
-                          >
-                            直接採用
-                          </button>
+                          <>
+                            <button
+                              disabled={locked || !r.available}
+                              onClick={() =>
+                                void perform("adopt_reference", {
+                                  reference_skill_ids: [r.skill_id],
+                                })
+                              }
+                            >
+                              直接採用
+                            </button>
+                            {r.scan_status !== "scanned" && (
+                              <span className="note">沒有掃描紀錄，不建議直接採用</span>
+                            )}
+                          </>
                         )}
                       </td>
                     </tr>
@@ -746,6 +767,8 @@ export function CreationSession() {
                     <th>相容</th>
                     <th>工具</th>
                     <th>版本</th>
+                    <th>層級</th>
+                    <th>掃描</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -762,6 +785,8 @@ export function CreationSession() {
                           {r.version_id}
                         </details>
                       </td>
+                      <td>{referenceTierLabel(r.tier)}</td>
+                      <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
                       <td>
                         <button
                           disabled={locked || !r.available}
@@ -771,6 +796,9 @@ export function CreationSession() {
                         >
                           直接採用
                         </button>
+                        {r.scan_status !== "scanned" && (
+                          <span className="note">沒有掃描紀錄，不建議直接採用</span>
+                        )}
                       </td>
                     </tr>
                   ))}

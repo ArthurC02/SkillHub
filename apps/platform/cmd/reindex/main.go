@@ -105,6 +105,19 @@ func main() {
 			return pendingEnrichments(ctx, catalogSvc, limit)
 		},
 	}
+	// REINDEX_REENRICH=<prompt version>: every catalogue document enriched
+	// under another prompt version goes back to pending first, so the backfill
+	// rewrites it under the current one (report §15: the v7 examples are what
+	// lifted F1, and the live catalogue was still v2–v6). Costs one enrichment
+	// per document; run it on purpose.
+	if keep := os.Getenv("REINDEX_REENRICH"); keep != "" {
+		reset, err := q.ResetCatalogueEnrichmentBefore(ctx, keep)
+		if err != nil {
+			slog.Error("re-enrichment reset", "error", err)
+			os.Exit(1)
+		}
+		slog.Info("catalogue documents queued for re-enrichment", "documents", reset, "keeping", keep)
+	}
 	done, failed, err := svc.ReindexPending(ctx, batchSize())
 	if err != nil {
 		slog.Error("enrichment backfill", "error", err)

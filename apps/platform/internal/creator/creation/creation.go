@@ -93,7 +93,7 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 	e := envelope{Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, References: []Reference{}, BudgetUSD: budget, SpentUSD: &zero}, Limits: s.Limits, StartHash: key, Deadline: time.Now().Add(s.Limits.SessionTimeout)}
 	state := "waiting_input"
 	if strings.TrimSpace(message) != "" {
-		e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "user", Content: message})
+		e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(message)})
 		state = "queued"
 	}
 	if state == "queued" && s.CatalogCheck != nil {
@@ -229,6 +229,28 @@ func listedReference(p *Snapshot, id string) bool {
 	return false
 }
 
+// masked is the session's one door for text the person wrote or a page
+// handed over: masked before it is stored, so the snapshot never holds a
+// credential the way a trace never does (iron rule 11).
+func (s *Service) masked(text string) string {
+	if s.Mask == nil {
+		return text
+	}
+	return s.Mask(text)
+}
+
+// nameCollides says whether the draft's name is one of the Skills the
+// duplicate guard listed: saving it would be refused as 同名 (GEN-010), so the
+// model is asked to rename before the person tries again.
+func nameCollides(name string, dups []Reference) (string, bool) {
+	for _, d := range dups {
+		if strings.EqualFold(strings.TrimSpace(name), strings.TrimSpace(d.Name)) {
+			return d.Name, true
+		}
+	}
+	return "", false
+}
+
 // duplicateQuery is the text the duplicate guard embeds: the draft's own name
 // and description, which is what the index's enriched summary describes.
 func duplicateQuery(skill llmclient.GeneratedSkill) string {
@@ -300,7 +322,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		if strings.TrimSpace(c.Message) == "" || utf8.RuneCountInString(c.Message) > 4000 || len(p.Messages) >= MaxMessages {
 			return View{}, nil, ErrInvalidCommand
 		}
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "user", Content: c.Message})
+		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(c.Message)})
 		// The confirmation is NOT cleared here (2026-09-06 run c: 「請繼續」 after
 		// a confirmed brief sent two sessions back through propose→confirm for
 		// nothing). GEN-007's 「更正已確認的需求→確認失效」 still holds: the model
@@ -468,6 +490,14 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			p.DuplicateAcknowledged = true
 			p.PendingAction = ""
 			p.PendingMaterialize = ""
+			// "Build anyway" with the duplicate's own name would only be refused
+			// as 同名 at the save (run x R09, 2026-09-07): Go says so now and the
+			// model renames; the person then saves the renamed draft.
+			if taken, collides := nameCollides(p.Draft.Skill.Name, p.Duplicates); collides && p.Draft != nil && p.Draft.ContentHash == c.ContentHash && len(p.Messages) < MaxMessages {
+				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("使用者仍要建立自己的版本，但草稿名稱「%s」與目錄裡那份相同，保存會被拒絕；請只改名稱（描述其差異），其餘內容不變，重新交出草稿。", taken)})
+				queueStep = true
+				break
+			}
 		}
 		if p.Draft == nil || p.Draft.Blocked || p.Draft.ContentHash == "" || p.Draft.ContentHash != c.ContentHash || !confirmed(*p) {
 			return View{}, nil, ErrInvalidCommand

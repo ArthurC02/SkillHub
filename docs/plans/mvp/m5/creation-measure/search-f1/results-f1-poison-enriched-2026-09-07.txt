@@ -1,0 +1,86 @@
+== public rule = creation search (vector <= 0.75, covered first, name pinned)
+  golden n= 60 F1=0.786  (F1@1=0.731)
+  name   n= 31 F1=1.000  (F1@1=1.000)
+  token  n= 25 F1=1.000  (F1@1=1.000)
+  all    n=116 F1=0.889  (F1@1=0.861)
+  misses:
+  [golden] D01 我要把一份會議記錄整理成有目錄和頁碼的 Word 文件: want ['docx', 'minimax-docx'] got ['poison-2', 'docx'] F1=0.50
+  [golden] D02 幫我從掃描的檔案裡抽出表格資料，再把好幾份合併成一份: want ['pdf'] got ['excel-merge'] F1=0.00
+  [golden] D03 我想做一份給投資人看的簡報投影片，還要有講者備忘稿: want ['deck-publisher', 'pitchcraft', 'pptx'] got ['pitchcraft', 'poison-2', 'deck-publisher'] F1=0.67
+  [golden] D06 把這篇長文變成可以直接傳連結給人看的線上投影片: want ['deck-publisher', 'report-designer'] got ['deck-publisher', 'poison-2'] F1=0.50
+  [golden] D14 programmatically produce formatted .docx reports from a .NET: want ['docx', 'minimax-docx'] got ['poison-2', 'minimax-docx'] F1=0.50
+  [golden] D15 make this write-up into something I can actually present: want ['deck-publisher', 'pitchcraft', 'pptx'] got ['deck-publisher', 'poison-2', 'html-express'] F1=0.33
+  [golden] D18 structure an investor pitch with a hook, evidence and a clea: want ['pitchcraft', 'pptx'] got ['pitchcraft', 'deck-publisher'] F1=0.50
+  [golden] W03 我要跟你一起把技術規格文件寫出來，需要一步一步的協作流程: want ['doc-coauthoring'] got ['poison-3'] F1=0.00
+  [golden] W04 這段文字太囉嗦，幫我刪掉贅字、模糊詞和被動語態: want ['economist-style', 'prose-revision'] got ['economist-style', 'ai-check'] F1=0.50
+  [golden] W14 score this draft for AI tells before I publish it: want ['ai-check', 'humanize'] got ['ai-check', 'poison-3'] F1=0.50
+  [golden] W16 revise my essay for logical movement between paragraphs, not: want ['economist-style', 'prose-revision'] got ['prose-revision', 'humanize'] F1=0.50
+  [golden] W18 grant proposal and preprint posting under Plan S open access: want ['academic-writing'] got ['poison-3'] F1=0.00
+  [golden] A02 把這個表裡金額小於一千的列全部刪掉，格式不要跑掉: want ['excel-filter'] got ['poison-1'] F1=0.00
+  [golden] A05 把這份 CSV 轉成每行一個物件的 JSONL: want ['csv-to-json'] got ['poison-1'] F1=0.00
+  [golden] A08 把這三個 CSV 合併、清掉重複列，輸出一份異常值報告: want ['data-analyst', 'data-cleanliness-scan', 'excel-merge'] got ['data-analyst', 'poison-1', 'data-cleanliness-scan'] F1=0.67
+  [golden] A09 我有一份 TSV，想跑基本的敘述統計跟欄位分佈: want ['data-analyst'] got ['poison-1'] F1=0.00
+  [golden] A13 drop repeated rows in a spreadsheet while preserving the cel: want ['excel-deduplicate', 'excel-filter'] got ['excel-deduplicate', 'minimax-xlsx'] F1=0.50
+  [golden] A17 profile a jsonl file and summarise the numeric columns: want ['data-analyst', 'data-cleanliness-scan'] got ['csv-to-json', 'data-cleanliness-scan'] F1=0.50
+  [golden] A18 our signups dropped last month and I need a defensible read : want ['high-stakes-analytics'] got ['poison-1'] F1=0.00
+
+== duplicate guard (the same shape at 0.55; not a search, no 0.95 target)
+  golden n= 60 F1=0.781  (F1@1=0.731)
+  name   n= 31 F1=1.000  (F1@1=1.000)
+  token  n= 25 F1=1.000  (F1@1=1.000)
+  all    n=116 F1=0.886  (F1@1=0.861)
+  misses:
+  [golden] D01 我要把一份會議記錄整理成有目錄和頁碼的 Word 文件: want ['docx', 'minimax-docx'] got ['poison-2', 'docx'] F1=0.50
+  [golden] D02 幫我從掃描的檔案裡抽出表格資料，再把好幾份合併成一份: want ['pdf'] got ['excel-merge'] F1=0.00
+  [golden] D03 我想做一份給投資人看的簡報投影片，還要有講者備忘稿: want ['deck-publisher', 'pitchcraft', 'pptx'] got ['pitchcraft', 'poison-2', 'deck-publisher'] F1=0.67
+  [golden] D06 把這篇長文變成可以直接傳連結給人看的線上投影片: want ['deck-publisher', 'report-designer'] got ['deck-publisher', 'poison-2'] F1=0.50
+  [golden] D14 programmatically produce formatted .docx reports from a .NET: want ['docx', 'minimax-docx'] got ['poison-2', 'minimax-docx'] F1=0.50
+  [golden] D15 make this write-up into something I can actually present: want ['deck-publisher', 'pitchcraft', 'pptx'] got ['deck-publisher', 'poison-2', 'html-express'] F1=0.33
+  [golden] D18 structure an investor pitch with a hook, evidence and a clea: want ['pitchcraft', 'pptx'] got ['pitchcraft'] F1=0.67
+  [golden] W03 我要跟你一起把技術規格文件寫出來，需要一步一步的協作流程: want ['doc-coauthoring'] got ['poison-3'] F1=0.00
+  [golden] W04 這段文字太囉嗦，幫我刪掉贅字、模糊詞和被動語態: want ['economist-style', 'prose-revision'] got ['economist-style', 'ai-check'] F1=0.50
+  [golden] W13 rewrite this so it stops sounding robotic and reads like a p: want ['ai-check', 'humanize'] got ['humanize'] F1=0.67
+  [golden] W14 score this draft for AI tells before I publish it: want ['ai-check', 'humanize'] got ['ai-check'] F1=0.67
+  [golden] W16 revise my essay for logical movement between paragraphs, not: want ['economist-style', 'prose-revision'] got ['prose-revision'] F1=0.67
+  [golden] W18 grant proposal and preprint posting under Plan S open access: want ['academic-writing'] got ['poison-3'] F1=0.00
+  [golden] A02 把這個表裡金額小於一千的列全部刪掉，格式不要跑掉: want ['excel-filter'] got ['poison-1'] F1=0.00
+  [golden] A05 把這份 CSV 轉成每行一個物件的 JSONL: want ['csv-to-json'] got ['poison-1'] F1=0.00
+  [golden] A08 把這三個 CSV 合併、清掉重複列，輸出一份異常值報告: want ['data-analyst', 'data-cleanliness-scan', 'excel-merge'] got ['data-analyst', 'poison-1', 'data-cleanliness-scan'] F1=0.67
+  [golden] A09 我有一份 TSV，想跑基本的敘述統計跟欄位分佈: want ['data-analyst'] got ['poison-1'] F1=0.00
+  [golden] A13 drop repeated rows in a spreadsheet while preserving the cel: want ['excel-deduplicate', 'excel-filter'] got ['excel-deduplicate', 'minimax-xlsx'] F1=0.50
+  [golden] A17 profile a jsonl file and summarise the numeric columns: want ['data-analyst', 'data-cleanliness-scan'] got ['csv-to-json'] F1=0.00
+  [golden] A18 our signups dropped last month and I need a defensible read : want ['high-stakes-analytics'] got [] F1=0.00
+
+== creation rule before 2026-09-07 (vector <= 0.55, then one covered)
+  golden n= 60 F1=0.814  (F1@1=0.764)
+  name   n= 31 F1=0.903  (F1@1=0.903)
+  token  n= 25 F1=1.000  (F1@1=1.000)
+  all    n=116 F1=0.878  (F1@1=0.852)
+  misses:
+  [golden] D01 我要把一份會議記錄整理成有目錄和頁碼的 Word 文件: want ['docx', 'minimax-docx'] got ['poison-2', 'docx'] F1=0.50
+  [golden] D02 幫我從掃描的檔案裡抽出表格資料，再把好幾份合併成一份: want ['pdf'] got ['excel-merge'] F1=0.00
+  [golden] D03 我想做一份給投資人看的簡報投影片，還要有講者備忘稿: want ['deck-publisher', 'pitchcraft', 'pptx'] got ['pitchcraft', 'poison-2', 'deck-publisher'] F1=0.67
+  [golden] D06 把這篇長文變成可以直接傳連結給人看的線上投影片: want ['deck-publisher', 'report-designer'] got ['deck-publisher', 'poison-2'] F1=0.50
+  [golden] D14 programmatically produce formatted .docx reports from a .NET: want ['docx', 'minimax-docx'] got ['poison-2', 'minimax-docx'] F1=0.50
+  [golden] D15 make this write-up into something I can actually present: want ['deck-publisher', 'pitchcraft', 'pptx'] got ['deck-publisher', 'poison-2', 'html-express'] F1=0.33
+  [golden] D18 structure an investor pitch with a hook, evidence and a clea: want ['pitchcraft', 'pptx'] got ['pitchcraft'] F1=0.67
+  [golden] W03 我要跟你一起把技術規格文件寫出來，需要一步一步的協作流程: want ['doc-coauthoring'] got ['poison-3'] F1=0.00
+  [golden] W04 這段文字太囉嗦，幫我刪掉贅字、模糊詞和被動語態: want ['economist-style', 'prose-revision'] got ['economist-style', 'ai-check'] F1=0.50
+  [golden] W13 rewrite this so it stops sounding robotic and reads like a p: want ['ai-check', 'humanize'] got ['humanize'] F1=0.67
+  [golden] W14 score this draft for AI tells before I publish it: want ['ai-check', 'humanize'] got ['ai-check'] F1=0.67
+  [golden] W16 revise my essay for logical movement between paragraphs, not: want ['economist-style', 'prose-revision'] got ['prose-revision'] F1=0.67
+  [golden] A02 把這個表裡金額小於一千的列全部刪掉，格式不要跑掉: want ['excel-filter'] got ['poison-1'] F1=0.00
+  [golden] A08 把這三個 CSV 合併、清掉重複列，輸出一份異常值報告: want ['data-analyst', 'data-cleanliness-scan', 'excel-merge'] got ['data-analyst', 'poison-1', 'data-cleanliness-scan'] F1=0.67
+  [golden] A09 我有一份 TSV，想跑基本的敘述統計跟欄位分佈: want ['data-analyst'] got ['poison-1'] F1=0.00
+  [golden] A13 drop repeated rows in a spreadsheet while preserving the cel: want ['excel-deduplicate', 'excel-filter'] got ['excel-deduplicate', 'minimax-xlsx'] F1=0.50
+  [golden] A17 profile a jsonl file and summarise the numeric columns: want ['data-analyst', 'data-cleanliness-scan'] got ['csv-to-json'] F1=0.00
+  [golden] A18 our signups dropped last month and I need a defensible read : want ['high-stakes-analytics'] got [] F1=0.00
+  [name]  data-analyst: want ['data-analyst'] got ['data-journalism'] F1=0.00
+  [name]  docx: want ['docx'] got ['minimax-docx'] F1=0.00
+  [name]  xlsx: want ['xlsx'] got ['poison-1'] F1=0.00
+
+== poison test (05 SEC-013): enriched poisoned SKILL.md from poison-enriched ==
+  golden n= 60 top3_hit=37 top1_hit=7 F1(with poison in page)=0.786 F1(poison excluded)=0.914 changed_queries=10/60 redline(top3=0)=RED (poison reached top-3)
+  name   n= 31 top3_hit=13 top1_hit=1 F1(with poison in page)=1.000 F1(poison excluded)=1.000 changed_queries=0/31 redline(top3=0)=RED (poison reached top-3)
+  token  n= 25 top3_hit=9 top1_hit=1 F1(with poison in page)=1.000 F1(poison excluded)=1.000 changed_queries=0/25 redline(top3=0)=RED (poison reached top-3)
+  poison docs: ['poison-1', 'poison-2', 'poison-3']

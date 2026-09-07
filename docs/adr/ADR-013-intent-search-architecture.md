@@ -162,3 +162,17 @@ Spike 沒有推翻選項 D，也沒有任何證據支持選項 A／B／C 更好�
 2. **資料**：`enrich-skill/v7` 把任務例句加到 6～8 句並規定分布（格式詞＋人的講法、無格式、處境句、逐操作）。三組合計 F1 0.927→0.955，golden 剩下的 miss 全是近義對的第二名。這是**定案 §1「索引時摘要是必要項」的續集**：例句就是索引文本裡「使用者會怎麼問」的那一半。
 3. **規則**：創作工具的目錄搜尋不再用自己的 0.55——在 v7 語料上掃截斷，0.75（＝`MaxCosineDistance`）最高且干擾拒答仍 12／12——改跑公開規則（覆蓋優先、名稱置頂、丟掉沒向量的列）。查重守門另有 `CreationDuplicateDistance`＝0.55，因為它問的是同一份而不是相近。
 4. **重開訊號**：增強提示或模型再換要重跑 `search_f1_score.py --docs`；生產目錄重做 v7 增強前，線上數字仍是 v6 的（`04` 丙-180）。
+
+## 定案調整 7（2026-09-07 追記）：目錄＝有 metadata 的文件
+
+**不改寫上方任何一段。** `05` R-52 裁定「先資安確認、再抽 metadata、才入庫」，落地方式是**目錄的述詞多一條**：`PublicSearchSkills`／`BrowseCatalogSkills`／`PublicHybridSearchSkills` 的 fts 與 lex 兩條候選腿、以及創作工具的 `CreationLexicalSearchSkills`，一律加上 `(enrichment_status = 'enriched' OR embedding IS NOT NULL)`（`db/queries/search.sql`）。**目錄從今天起的定義是「有 metadata 的文件」，不是「已建立的版本」。**
+
+**為什麼這是這份 ADR 的事而不只是一條 SQL 述詞**：本 ADR 決策 §1 把索引時增強定為必要項（定案調整 4 第 4 條：「索引時的 LLM 摘要與範例句是必要項，不是 nice-to-have」），而在此之前「必要」只約束了排序品質——一份沒有摘要、沒有例句的文件仍然會被回傳，只是排得比較後面或符合原因比較空洞。**這次調整把「必要」升級為「進場門檻」**：沒有 metadata 的文件不只是排得差，是根本不在候選集裡。
+
+**與 ADR-013 既有的「匯入不因增強失敗而失敗」不衝突**：那句話管的是**版本能不能建立**——`skillpkg.Validate` 通過就建版本，增強失敗只讓那個版本的 `enrichment_status` 停在 `pending`。**這次調整管的是建立之後、版本能不能被別人搜到**：兩者是管線的不同階段，`pending` 的版本現在既建立成功、也對擁有者以外的人不可見，直到每小時的 backfill（`ListPendingEnrichment`）把它補進 `enriched`。
+
+**`partial_index` 的語意因此收斂**：在此之前它涵蓋「完全沒有 metadata」與「有 metadata 但沒有向量」兩種殘缺；前者現在直接不進候選集，不會再以 `partial_index` 的身分被回報——這個旗標今天只剩後一種情形（`02:DISC-002` 已同批加一句補充）。
+
+**生成品也走同一道門**：`admission.Service` 的 `sourceGenerated` 分支不再跳過 `enrichPackage`，`ListPendingEnrichment` 的 backfill 也不再排除 `source_type='generated'` 的列——互動創作候選 materialize 之後同樣會被增強一次（約 US$0.01）。**這不改變 `GEN-007`「生成物不進公開搜尋」的保證**：排除仍然做在 `SearchSkills` 的讀取側（workspace／`is_catalog` 範圍判準），這次的增強只是讓查重（`CreationKnowledgeIDs`）與擁有者自己的工作區搜尋看得到它，不會讓生成物越過目錄的邊界。
+
+**生產目錄的重做走新工具，不是本 ADR 的自動生效**：`cmd/reindex` 新增 `REINDEX_REENRICH=<prompt version>` 環境變數（SQL `ResetCatalogueEnrichmentBefore`，把目錄裡不是這個版本的 `enriched` 列退回 `pending` 再交給既有 backfill 重跑）；現有 45 份策展內容仍是 v6 增強，要負責人在部署環境親自執行（約 US$2，見 `05` R-52、`04` 丙-180）。

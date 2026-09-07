@@ -81,3 +81,12 @@ general_settings:
 
 litellm_settings:
   drop_params: true
+  # 05 R-51 (2026-09-07): the platform-level brake TM-MDL-02 left open. Every
+  # Run and every creation session already has its own ceiling; this is the
+  # sum nobody was watching. A proxy-wide daily budget: once crossed, the
+  # gateway refuses new calls until the window rolls — the same shape as
+  # SEC-012's automatic first action (stop dispatch, keep the scene). The
+  # value is a development default; production sets its own and alerts on
+  # the spend trend, not on the refusal.
+  max_budget: 50
+  budget_duration: 1d

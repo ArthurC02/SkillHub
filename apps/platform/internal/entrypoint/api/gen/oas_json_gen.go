@@ -6509,6 +6509,24 @@ func (s *CreationReference) encodeFields(e *jx.Encoder) {
 		e.Bool(s.Available)
 	}
 	{
+		if s.Tier.Set {
+			e.FieldStart("tier")
+			s.Tier.Encode(e)
+		}
+	}
+	{
+		if s.ScanStatus.Set {
+			e.FieldStart("scan_status")
+			s.ScanStatus.Encode(e)
+		}
+	}
+	{
+		if s.Warnings.Set {
+			e.FieldStart("warnings")
+			s.Warnings.Encode(e)
+		}
+	}
+	{
 		if s.Description.Set {
 			e.FieldStart("description")
 			s.Description.Encode(e)
@@ -6528,15 +6546,18 @@ func (s *CreationReference) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationReference = [8]string{
-	0: "skill_id",
-	1: "version_id",
-	2: "name",
-	3: "confirmed",
-	4: "available",
-	5: "description",
-	6: "compatibility",
-	7: "allowed_tools",
+var jsonFieldsNameOfCreationReference = [11]string{
+	0:  "skill_id",
+	1:  "version_id",
+	2:  "name",
+	3:  "confirmed",
+	4:  "available",
+	5:  "tier",
+	6:  "scan_status",
+	7:  "warnings",
+	8:  "description",
+	9:  "compatibility",
+	10: "allowed_tools",
 }
 
 // Decode decodes CreationReference from json.
@@ -6544,7 +6565,7 @@ func (s *CreationReference) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode CreationReference to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -6608,6 +6629,36 @@ func (s *CreationReference) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"available\"")
 			}
+		case "tier":
+			if err := func() error {
+				s.Tier.Reset()
+				if err := s.Tier.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"tier\"")
+			}
+		case "scan_status":
+			if err := func() error {
+				s.ScanStatus.Reset()
+				if err := s.ScanStatus.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"scan_status\"")
+			}
+		case "warnings":
+			if err := func() error {
+				s.Warnings.Reset()
+				if err := s.Warnings.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"warnings\"")
+			}
 		case "description":
 			if err := func() error {
 				s.Description.Reset()
@@ -6647,8 +6698,9 @@ func (s *CreationReference) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b00011111,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -6690,6 +6742,90 @@ func (s *CreationReference) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *CreationReference) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreationReferenceScanStatus as json.
+func (s CreationReferenceScanStatus) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes CreationReferenceScanStatus from json.
+func (s *CreationReferenceScanStatus) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreationReferenceScanStatus to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch CreationReferenceScanStatus(v) {
+	case CreationReferenceScanStatusScanned:
+		*s = CreationReferenceScanStatusScanned
+	case CreationReferenceScanStatusUnavailable:
+		*s = CreationReferenceScanStatusUnavailable
+	case CreationReferenceScanStatusUnknown:
+		*s = CreationReferenceScanStatusUnknown
+	default:
+		*s = CreationReferenceScanStatus(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s CreationReferenceScanStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreationReferenceScanStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreationReferenceTier as json.
+func (s CreationReferenceTier) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes CreationReferenceTier from json.
+func (s *CreationReferenceTier) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreationReferenceTier to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch CreationReferenceTier(v) {
+	case CreationReferenceTierCurated:
+		*s = CreationReferenceTierCurated
+	case CreationReferenceTierIndexed:
+		*s = CreationReferenceTierIndexed
+	case CreationReferenceTierUnknown:
+		*s = CreationReferenceTierUnknown
+	default:
+		*s = CreationReferenceTier(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s CreationReferenceTier) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreationReferenceTier) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -22951,6 +23087,72 @@ func (s OptCreationDraft) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptCreationDraft) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreationReferenceScanStatus as json.
+func (o OptCreationReferenceScanStatus) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes CreationReferenceScanStatus from json.
+func (o *OptCreationReferenceScanStatus) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptCreationReferenceScanStatus to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptCreationReferenceScanStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptCreationReferenceScanStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreationReferenceTier as json.
+func (o OptCreationReferenceTier) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes CreationReferenceTier from json.
+func (o *OptCreationReferenceTier) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptCreationReferenceTier to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptCreationReferenceTier) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptCreationReferenceTier) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

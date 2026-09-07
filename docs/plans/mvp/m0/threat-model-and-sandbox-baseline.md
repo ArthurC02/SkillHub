@@ -422,6 +422,7 @@ Skill 套件的威脅隨生命週期階段不同，分「匯入 → 掃描 → �
 - 現有緩解：工具是意圖、只由 Go 執行、每一步 HITL（鐵律 6／7）；已確認的 brief／條件／`sample_input` 由 Go 綁定，模型重提才會變；草稿經靜態驗證與人確認才成版本；提示宣告參考內容與觀察是不受信任資料。
 - 殘餘風險：創作提示**沒有**像 enrich／judge 那樣用 `untrusted.py` 圍起內容；沒有攻擊測試集，攻擊成功率未知。
 - M0 之後工作：SEC-013（圍欄＋`corpus-injection.json` 攻擊集，紅線 0／N）。
+- **2026-09-07 實測**：圍欄（`creation-step/v16`）與 12 案例攻擊集跑過——攻擊成功率 v15（無圍欄）2/12 → v16（有圍欄）**1/12**，紅線 0/N **未達**；殘留通道是 evaluation 觀察的理由文字被 review 相依評估要求改寫，帶著 marker 進了草稿（[結果](../m5/creation-measure/injection/results-2026-09-07.txt)）。修法待做：Go 寫入評估觀察前對理由文字去 URL／截斷，且提示明定理由不得逐字帶進 body。
 
 **TM-CRE-03｜投毒的目錄 Skill 經 Re-Use 三關卡被採用（Tampering / Spoofing）** — 嚴重度：高
 
@@ -430,6 +431,7 @@ Skill 套件的威脅隨生命週期階段不同，分「匯入 → 掃描 → �
 - 現有緩解：目錄只含策展工作區；精選層級、下架、揭露不縮水；干擾題拒答 12／12；採用只能選 Go 端出的 id。
 - 殘餘風險：`confirm_references` 畫面不顯示精選層級與掃描揭露；goldenset 沒有投毒題。
 - M0 之後工作：SEC-013（畫面補層級與揭露；goldenset 加投毒文件與紅線）。
+- **2026-09-07 實測**：畫面已補層級與揭露；goldenset 投毒題量了兩種情境，**紅線「不得進 Top-3」均未達**——最壞情形（索引文本＝golden 句子）golden Top-3 32/60，公平情形（投毒文件也經正常增強）golden Top-3 37/60、name 13/31、token 9/25；試過的兩個判別訊號（tags 格式詞數、任務例句離散度）都分不開投毒與合法內容。**結論是結構性的，不是還沒調好參數**：緩解只能靠「目錄維持策展」這一層，已轉列 [`05` R-53](../../05-pending-rulings.md) 交負責人裁定，量測成為往後任何一次目錄放寬提案前的常設紅線。
 
 **TM-CRE-04｜會話快照裡的個資與金鑰（Information Disclosure / 隱私）** — 嚴重度：中
 
@@ -438,6 +440,7 @@ Skill 套件的威脅隨生命週期階段不同，分「匯入 → 掃描 → �
 - 現有緩解：保存期限與刪除清冊（R-45、GEN-012）；`model`／`prompt_version` 不進 Web；快照不存網頁內文（只有 sha256 與大小）——但工具觀察裡有。
 - 殘餘風險：會話訊息在寫入與顯示前沒有遮罩證據；同意書的互動創作列未經法務。
 - M0 之後工作：SEC-013（遮罩＋反證測試）；法務（真人）。
+- **2026-09-07 已落地**：`creation.Service.Mask` 注入 `TRACE-005` 的 `Masker.MaskString`，使用者訊息與抓回網頁寫入快照前遮罩，反證測試 `TestCreationMasksCredentialsInTheStoredConversation`（`sk-proj-…` → `[REDACTED]`）。同意書法務仍待真人。
 
 ## 3. 威脅模型維護規則
 

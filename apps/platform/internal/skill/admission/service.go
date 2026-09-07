@@ -352,12 +352,11 @@ func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace
 	// workspace's own list reads the static-scan facts out of it, and those come
 	// from the validation report rather than from the model (enrich.go's summary
 	// and scan are populated before the LLM is consulted at all).
-	var e enrichment
-	if src.Type == sourceGenerated {
-		e = skipEnrichment(p)
-	} else {
-		e = s.enrichPackage(ctx, p)
-	}
+	// 05 R-52 (2026-09-07): generated packages are enriched too. The owner's
+	// order for every new Skill is security check, then metadata, then the
+	// library; GEN-007's exclusion from search lives on the read side
+	// (SearchSkills' join), not in whether the metadata exists.
+	e := s.enrichPackage(ctx, p)
 
 	tx, release, err := s.beginPackageWrite(ctx, ws, p, data)
 	if err != nil {

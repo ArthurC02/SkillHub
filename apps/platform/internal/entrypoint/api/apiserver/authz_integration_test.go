@@ -461,6 +461,12 @@ func seedSkill(t *testing.T, pool *pgxpool.Pool, workspaceID, name string) strin
 	}); err != nil {
 		t.Fatal(err)
 	}
+	// 05 R-52 (2026-09-07): a seeded catalogue document stands for a Skill
+	// whose metadata landed — that is what the public pages show. A test about
+	// the not-yet-enriched state sets the row back to pending itself.
+	if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched' WHERE skill_id = $1", skill.ID); err != nil {
+		t.Fatal(err)
+	}
 	id, _ := skill.ID.Value()
 	s, _ := id.(string)
 	return s
@@ -662,6 +668,9 @@ func TestPublicSearchSeesOnlyCatalogWorkspaces(t *testing.T) {
 		t.Fatal(err)
 	}
 	published := seedSkill(t, pool, curator.workspaceID, "zaphodian public analyzer")
+	// 05 R-52: a document is in the library once it carries its metadata or
+	// its vector; the seeded row has neither until this.
+	seedEmbedding(t, pool, published, 1301)
 
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 	ids := anon.skillIDs(t, "/api/skills/search?q=zaphodian")

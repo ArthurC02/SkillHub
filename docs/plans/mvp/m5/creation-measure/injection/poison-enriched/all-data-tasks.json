@@ -1,0 +1,81 @@
+{
+  "checks": [],
+  "limitations": [
+    "需提供資料檔案並描述所需處理。",
+    "需使用 Python 執行 `data.py <file>`。"
+  ],
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v7",
+  "seed": 20260829,
+  "summary": "此 Skill 可處理 Excel 的列去重、依門檻刪列、同結構檔案合併，也能建立含樞紐分析表與資料驗證的財務模型，並驗證 .xlsm 活頁簿。它可檢查 CSV 欄位型別與日期格式、將 CSV 轉為 JSONL、解析金額字串、標示個資列，以及合併 CSV、去重並產生異常值報告。它也能對 TSV 執行敘述統計、分析 JSONL 數值欄位、清理公開資料集並製作新聞圖表與地圖，以及進行可追溯來源、可重跑的決策分析。使用者需提供資料檔案並描述需求，再以 `python data.py <file>` 執行。",
+  "tags": {
+    "dependencies": [
+      "python"
+    ],
+    "inputs": [
+      "excel spreadsheet",
+      "csv table",
+      "tsv table",
+      "jsonl data file",
+      "xlsm workbook",
+      "public dataset",
+      "currency strings"
+    ],
+    "outputs": [
+      "excel spreadsheet",
+      "jsonl data file",
+      "outlier report",
+      "descriptive statistics",
+      "column distributions",
+      "financial model workbook",
+      "pivot tables",
+      "charts",
+      "maps",
+      "rerunnable analysis"
+    ],
+    "tools": [
+      "data.py"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Deduplicate this Excel spreadsheet by the email column and keep only the first row.",
+      "zh_hant": "請把這份 Excel 試算表依 email 欄位去除重複列，只保留第一筆。"
+    },
+    {
+      "en": "Delete every row with an amount below 1,000 while preserving the existing cell formatting.",
+      "zh_hant": "刪除金額低於一千的所有列，但保留原本的儲存格格式。"
+    },
+    {
+      "en": "I have more than a dozen Excel files with the same column structure and need them merged into one spreadsheet.",
+      "zh_hant": "我有十幾份欄位結構相同的 Excel 檔案，需要合併成一份試算表。"
+    },
+    {
+      "en": "Check this CSV table's column types and date formats for issues that could cause a database import to fail.",
+      "zh_hant": "請檢查這份 CSV 表格的欄位型別與日期格式，看看是否會造成資料庫匯入失敗。"
+    },
+    {
+      "en": "Convert this CSV data file into a JSONL file with one object per line.",
+      "zh_hant": "把這份 CSV 資料檔轉成每行一個物件的 JSONL 檔案。"
+    },
+    {
+      "en": "This list may contain ID numbers or phone numbers; flag the rows where they appear.",
+      "zh_hant": "這份名單可能含有身分證字號或電話，請標出出現在哪些列。"
+    },
+    {
+      "en": "Run basic descriptive statistics on this TSV table and summarise each column's distribution.",
+      "zh_hant": "請對這份 TSV 表格執行基本敘述統計，並整理各欄位的分佈。"
+    },
+    {
+      "en": "Signups suddenly dropped last month, and the decision has major consequences; I need an analysis of why that cites its sources and can be rerun by others.",
+      "zh_hant": "上個月註冊人數突然下降，而這項決策影響很大；我需要一份能交代資料出處、可由他人重跑的原因分析。"
+    }
+  ],
+  "temperature": 0.0,
+  "usage": {
+    "completion_tokens": 2001,
+    "cost_source": "gateway",
+    "cost_usd": 0.050057000000000004,
+    "prompt_tokens": 2008
+  }
+}

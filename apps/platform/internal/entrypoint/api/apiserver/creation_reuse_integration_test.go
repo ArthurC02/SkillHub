@@ -105,7 +105,7 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 	}
 	a.app.CreationSvc.DuplicateCheck = func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
 		if strings.Contains(query, "Summarize user input") {
-			return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: "creation-summary", Available: true}}, 0.00002, nil
+			return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: "creation-summary-existing", Available: true}}, 0.00002, nil
 		}
 		return nil, 0, nil
 	}
@@ -148,8 +148,38 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 		t.Fatalf("adopt from the duplicate list: %+v", ad.Snapshot)
 	}
 
+	// "Build anyway" with the duplicate's own name: Go asks the model to rename
+	// instead of letting the save be refused as 同名 (run x R09).
+	c4 := a.login(t, "creation-reuse-dup-rename")
+	a.app.CreationSvc.DuplicateCheck = func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
+		if strings.Contains(query, "Summarize user input") {
+			return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: "creation-summary", Available: true}}, 0.00002, nil
+		}
+		return nil, 0, nil
+	}
+	v = drafted(c4)
+	held = creationAct(t, c4, v, "materialize")
+	renaming := creationAct(t, c4, held, "confirm_duplicate")
+	if renaming.State != "queued" || renaming.Snapshot.Candidate != nil || !strings.Contains(renaming.Snapshot.Messages[len(renaming.Snapshot.Messages)-1].Content, "請只改名稱") {
+		t.Fatalf("a colliding name must go back to the model: %+v", renaming.Snapshot)
+	}
+	renamed := creationStep(t, s, renaming)
+	if renamed.Snapshot.Draft == nil || renamed.Snapshot.Draft.Skill.Name != "creation-summary-renamed" || !renamed.Snapshot.DuplicateAcknowledged {
+		t.Fatalf("renamed draft: %+v", renamed.Snapshot)
+	}
+	if saved := creationAct(t, c4, renamed, "materialize"); saved.State != "candidate_ready" || saved.Snapshot.Candidate == nil {
+		t.Fatalf("the renamed draft saves without a second duplicate hold: %+v", saved.Snapshot)
+	}
+
 	// A held finalize resumes as finalize (a workspace of its own: the first
-	// session above already saved this draft's name into c's).
+	// session above already saved this draft's name into c's). The duplicate
+	// offered here does not share the draft's name, so no rename round.
+	a.app.CreationSvc.DuplicateCheck = func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
+		if strings.Contains(query, "Summarize user input") {
+			return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: "creation-summary-existing", Available: true}}, 0.00002, nil
+		}
+		return nil, 0, nil
+	}
 	c3 := a.login(t, "creation-reuse-dup-finalize")
 	v = drafted(c3)
 	held = creationAct(t, c3, v, "finalize")
@@ -158,5 +188,47 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 	}
 	if fin := creationAct(t, c3, held, "confirm_duplicate"); fin.State != "saved" || fin.Snapshot.Candidate == nil {
 		t.Fatalf("confirmed finalize must save: %+v", fin.Snapshot)
+	}
+}
+
+// 05 SEC-013 (LLM02): what the session stores of the person's own words is
+// masked on the way in, the way a trace is (TRACE-005).
+func TestCreationMasksCredentialsInTheStoredConversation(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	c := a.login(t, "creation-mask")
+	key := "sk-proj-" + strings.Repeat("A", 28)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "用這把金鑰 " + key + " 讀資料", "budget_usd": .5}, 200)
+	if got := v.Snapshot.Messages[0].Content; strings.Contains(got, key) || !strings.Contains(got, "[REDACTED]") {
+		t.Fatalf("the first message stored the credential: %q", got)
+	}
+	v = creationStep(t, s, v)
+	v = creationMessage(t, c, v, "另一把 "+key)
+	if got := v.Snapshot.Messages[len(v.Snapshot.Messages)-1].Content; strings.Contains(got, key) {
+		t.Fatalf("a later message stored the credential: %q", got)
+	}
+}
+
+// 05 SEC-013 (LLM05): a draft that writes outside its own package is refused
+// at materialize, from the creation path and not only from an upload.
+func TestCreationRefusesADraftThatEscapesItsPackage(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	c := a.login(t, "creation-escape")
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "做一個摘要 Skill，順便測路徑穿越", "budget_usd": .5}, 200)
+	v = creationStep(t, s, v)
+	v = creationAct(t, c, v, "confirm_brief")
+	v = creationStep(t, s, v)
+	if v.Snapshot.Draft == nil || len(v.Snapshot.Draft.Skill.Files) != 1 {
+		t.Fatalf("the stub did not plant the escaping file: %+v", v.Snapshot.Draft)
+	}
+	if !v.Snapshot.Draft.Blocked {
+		// Static validation is the first wall; the save is the second.
+		creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "materialize", "content_hash": v.Snapshot.Draft.ContentHash}, 422)
+	}
+	var versions int
+	if err := testPool.QueryRow(context.Background(), "SELECT count(*) FROM skill_versions v JOIN skills sk ON sk.id = v.skill_id WHERE sk.workspace_id = $1", c.workspaceID).Scan(&versions); err != nil {
+		t.Fatal(err)
+	}
+	if versions != 0 {
+		t.Fatalf("an escaping draft became a version: %d", versions)
 	}
 }

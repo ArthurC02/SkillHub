@@ -50,6 +50,24 @@ export interface CreationReference {
      */
     available: boolean;
     /**
+     * The catalogue's curation tier for this exact version (CONTENT-001), shown wherever Go offers a Skill to adopt or reference (SEC-013, LLM04: an offer must carry the same trust facts as a search row). `unknown` when the Skill is not in the catalogue.
+     * @type {string}
+     * @memberof CreationReference
+     */
+    tier?: CreationReferenceTierEnum;
+    /**
+     * Whether the projection holds an import scan for this Skill (DISC-004: unavailable is never clean).
+     * @type {string}
+     * @memberof CreationReference
+     */
+    scanStatus?: CreationReferenceScanStatusEnum;
+    /**
+     * Warning-level findings from the import scan, 0 when scanned and clean; absent when scan_status is not scanned.
+     * @type {number}
+     * @memberof CreationReference
+     */
+    warnings?: number;
+    /**
      * Description read from this exact immutable reference version.
      * @type {string}
      * @memberof CreationReference
@@ -68,6 +86,28 @@ export interface CreationReference {
      */
     allowedTools?: string;
 }
+
+
+/**
+ * @export
+ */
+export const CreationReferenceTierEnum = {
+    Curated: 'curated',
+    Indexed: 'indexed',
+    Unknown: 'unknown'
+} as const;
+export type CreationReferenceTierEnum = typeof CreationReferenceTierEnum[keyof typeof CreationReferenceTierEnum];
+
+/**
+ * @export
+ */
+export const CreationReferenceScanStatusEnum = {
+    Scanned: 'scanned',
+    Unavailable: 'unavailable',
+    Unknown: 'unknown'
+} as const;
+export type CreationReferenceScanStatusEnum = typeof CreationReferenceScanStatusEnum[keyof typeof CreationReferenceScanStatusEnum];
+
 
 /**
  * Check if a given object implements the CreationReference interface.
@@ -96,6 +136,9 @@ export function CreationReferenceFromJSONTyped(json: any, ignoreDiscriminator: b
         'name': json['name'],
         'confirmed': json['confirmed'],
         'available': json['available'],
+        'tier': json['tier'] == null ? undefined : json['tier'],
+        'scanStatus': json['scan_status'] == null ? undefined : json['scan_status'],
+        'warnings': json['warnings'] == null ? undefined : json['warnings'],
         'description': json['description'] == null ? undefined : json['description'],
         'compatibility': json['compatibility'] == null ? undefined : json['compatibility'],
         'allowedTools': json['allowed_tools'] == null ? undefined : json['allowed_tools'],
@@ -118,6 +161,9 @@ export function CreationReferenceToJSONTyped(value?: CreationReference | null, i
         'name': value['name'],
         'confirmed': value['confirmed'],
         'available': value['available'],
+        'tier': value['tier'],
+        'scan_status': value['scanStatus'],
+        'warnings': value['warnings'],
         'description': value['description'],
         'compatibility': value['compatibility'],
         'allowed_tools': value['allowedTools'],

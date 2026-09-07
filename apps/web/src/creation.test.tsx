@@ -243,6 +243,9 @@ test("catalog references can start a session and require confirmation", async ()
       description: "整理輸入並輸出摘要",
       compatibility: "需要文字輸入",
       allowed_tools: "Bash",
+      tier: "curated",
+      scan_status: "scanned",
+      warnings: 2,
     },
   ];
   v.snapshot.model = "secret-model";
@@ -269,6 +272,8 @@ test("catalog references can start a session and require confirmation", async ()
   expect(box.textContent).toContain("需要文字輸入");
   expect(box.textContent).toContain("Bash");
   expect(box.textContent).toContain("固定版本");
+  expect(box.textContent).toContain("精選");
+  expect(box.textContent).toContain("2 個警告");
   expect(box.textContent).not.toContain("secret-model");
   expect(box.textContent).not.toContain("secret-prompt");
   const urls = (fetch as unknown as { mock: { calls: [string, RequestInit?][] } }).mock.calls.map(
@@ -346,6 +351,7 @@ test("materialize-time duplicates offer adopt or confirm and hide the private-ca
       available: true,
       confirmed: false,
       description: "整理輸入並輸出摘要",
+      scan_status: "unavailable",
     },
   ];
   vi.stubGlobal(
@@ -362,6 +368,7 @@ test("materialize-time duplicates offer adopt or confirm and hide the private-ca
   await resume();
   expect(box.textContent).toContain("目錄已有相近的 Skill");
   expect(box.textContent).toContain("既有摘要 Skill");
+  expect(box.textContent).toContain("沒有掃描紀錄");
   expect(() => button("建立私人候選版本")).toThrow();
   await click("仍然建立");
   await waitFor(() => posts.length === 1);

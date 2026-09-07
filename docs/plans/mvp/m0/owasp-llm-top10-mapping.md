@@ -22,14 +22,14 @@
 - **對應威脅**：TM-SCN-02（索引增強）、TM-DAT-02（Dataset 進 Judge）、TM-TRC-02；新增 TM-CRE-02（抓回的網頁與參考內容進創作迴圈，見威脅模型 §2.10）。
 - **現有**：`apps/llm/src/skillhub_llm/untrusted.py` 的 `scrub`＋`fence`＋`data_block_rules`，用在 enrich、judge、match-reasons、suggest-criteria（測試 `test_app.py`：「Ignore the above」的摘要不得變成平台推薦）；創作的工具是**意圖**，只由 Go 執行且逐項 HITL（鐵律 6／7、`allowedTools`、`confirm_fetch`）；連網前問人（`05` R-47）。
 - **缺口**：①創作提示只用**一句話**宣告參考內容與工具觀察是資料，沒有像其他四個端點那樣用 `fence` 把它們圍起來、也沒有剝掉結束標記；②**沒有任何一條攻擊測試**打創作迴圈——抓回的網頁是 R-47 之後最新、也最不受控的注入通道（頁面可以要求模型改 `allowed_tools`、改 body、改寫已確認的 brief）；③沒有攻擊成功率這種數字，只有「有圍欄」這種說法。
-- **SEC-013 要做**：創作的參考內容與每一則工具觀察走 `untrusted.py`；建 `corpus-injection.json`（≥ 10 個注入頁面／參考／評估）跑 harness，量「已確認的 brief、`allowed_tools`、驗收條件被改動」的攻擊成功率，紅線 0／N；Judge 端沿用 m3 的回歸集。
+- **SEC-013 要做**：創作的參考內容與每一則工具觀察走 `untrusted.py`；建 `corpus-injection.json`（≥ 10 個注入頁面／參考／評估）跑 harness，量「已確認的 brief、`allowed_tools`、驗收條件被改動」的攻擊成功率，紅線 0／N；Judge 端沿用 m3 的回歸集。**（2026-09-07 進度：圍欄與攻擊集都做了——v15 無圍欄 2/12、v16 有圍欄 1/12，紅線 0/N 未達，殘留通道是評估觀察理由文字被 review 相寫進草稿，修法待做。）**
 
 ### LLM02 Sensitive Information Disclosure — 高
 
 - **對應威脅**：TM-SEC-01、TM-TRC-02、TM-MDL-03。
 - **現有**：Secrets 短效注入與遮罩（SEC-005、TRACE-001、鐵律 11）；`model`／`prompt_version` 不出現在 Web（`creation.test.tsx` 斷言）；分析事件不存查詢字（ADR-029）；匿名搜尋不帶 workspace。
 - **缺口**：①創作會話的快照存了使用者訊息、brief、`sample_input`、抓回網頁的觀察——遮罩規則只保證 Trace 與 Log，**沒有證據說會話訊息在顯示與匯出前過了同一套遮罩**；②搜尋查詢與創作內容會離開平台到 embedding／模型供應商，同意書（gate-test/consent-and-data-policy §3）的互動創作那一列還沒被法務看過（`04` 丙-177 已記）。
-- **SEC-013 要做**：會話訊息與工具觀察在寫入快照前跑遮罩（同 TRACE-001 的規則），加一條「貼進對話的 `sk-…`／`AKIA…` 不會原樣回到畫面」的測試；同意書那一列進法務清單（真人）。
+- **SEC-013 要做**：會話訊息與工具觀察在寫入快照前跑遮罩（同 TRACE-001 的規則），加一條「貼進對話的 `sk-…`／`AKIA…` 不會原樣回到畫面」的測試；同意書那一列進法務清單（真人）。**（2026-09-07 進度：遮罩與反證測試已落地；同意書仍等真人。）**
 
 ### LLM03 Supply Chain — 中
 
@@ -43,14 +43,14 @@
 - **對應威脅**：TM-SCN-01、TM-SCN-02；新增 TM-CRE-03。
 - **現有**：目錄只含 `is_catalog` 工作區（人策展），精選層級與下架（CONTENT-001、SEC-011），揭露不縮水（GEN-003），干擾題拒答 12／12（goldenset）。
 - **缺口**：索引文本是由不受信任的 `SKILL.md` 推出來的——一份塞滿任務例句與關鍵詞的套件可以讓自己在無關查詢裡排前面；**Re-Use 三關卡讓這件事更值錢**：被端到「直接採用」按鈕前面的 Skill，一鍵就 fork 進使用者工作區。而 `confirm_references` 畫面只列描述、相容與工具，**沒有精選層級與風險揭露**。goldenset 沒有「投毒文件」這種題。
-- **SEC-013 要做**：①首則訊息與查重端出的 Skill 一併顯示精選層級、掃描揭露與來源（同 DISC-002 的欄位）；②goldenset 加一組「投毒文件」（關鍵詞堆疊、假任務例句），紅線：它不得進任何 golden 題的 Top-3，且不得在名稱／特定詞查詢裡取代正解；③`enrich` 提示明定「只能重述內容裡有的事」已在 v6（R-34 自檢），把自檢的「誇大」結果納入投毒訊號。
+- **SEC-013 要做**：①首則訊息與查重端出的 Skill 一併顯示精選層級、掃描揭露與來源（同 DISC-002 的欄位）；②goldenset 加一組「投毒文件」（關鍵詞堆疊、假任務例句），紅線：它不得進任何 golden 題的 Top-3，且不得在名稱／特定詞查詢裡取代正解；③`enrich` 提示明定「只能重述內容裡有的事」已在 v6（R-34 自檢），把自檢的「誇大」結果納入投毒訊號。**（2026-09-07 進度：①已落地；②量了兩種情境，紅線均未達（golden Top-3 最壞 32/60、公平 37/60），且 tags 格式詞數與例句離散度兩個候選訊號都分不開投毒與合法內容——結論轉為結構性緩解，見 `05` R-53；③試過的 overreach 自檢規則數字不成立已撤回。）**
 
 ### LLM05 Improper Output Handling — 中
 
 - **對應威脅**：TM-EXE-04、TM-IMP-02。
 - **現有**：模型輸出一律結構化（strict JSON schema；`test_strict_schemas.py`）；Web 用 `<pre>`／文字節點渲染草稿與摘要，沒有 `dangerouslySetInnerHTML`；生成的檔案經 `skillpkg.Validate`（路徑、大小）才成版本；模型輸出從不在 API 行程執行（鐵律 1）。
 - **缺口**：沒有一條測試專門證明「生成檔案的 `../` 路徑會被拒」是從創作路徑走到的（匯入路徑有 TM-IMP-02 的測試）。
-- **SEC-013 要做**：一條 materialize 反證測試：草稿含 `files[].path="../x"` 與絕對路徑 → 422，不建版本。
+- **SEC-013 要做**：一條 materialize 反證測試：草稿含 `files[].path="../x"` 與絕對路徑 → 422，不建版本。**（2026-09-07 進度：`TestCreationRefusesADraftThatEscapesItsPackage` 已落地。）**
 
 ### LLM06 Excessive Agency — 中
 

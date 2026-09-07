@@ -68,6 +68,8 @@
 | Agent 相容 | ~~**M2（依 Sandbox 實測）**~~ → **已啟用（2026-08-16）** | ~~capability／runtime 兩軸在 M2 Sandbox 試跑前一律 `unverified`；提前提供篩選等於暗示有人做過判定~~ **啟用條件已達成**：45 個目錄 Skill 各一次 Sandbox 基準試跑的結果已入庫（migration `0022`，逐筆帶來源 `run_id`）。**篩選只開 runtime 一軸**——capability 45/45 皆為 `activated`，全目錄同值，與「來源層級」同一個理由不可篩。**2026-08-23 補記：那個 45/45 是在「Prompt 點名該 Skill」的條件下量的**（本文件 `CONTENT-007` 的要求，而該要求的理由正是 PDM-011 量到自主觸發基準率為 0）。所以 `activated` 說的是「被點名時載得起來」，不是「Agent 會自己想到要用它」——這個條件此前不在畫面上任何地方，而 `not_activated` 反而帶著完整的但書：**讓人放心的那個值，限定條件比讓人警覺的那個少**。已補上該值的 note。**值域為四態**：`native`／`transpiled`／`failed`／`unverified`；第三態 `transpiled`（腳本不會被執行、由模型轉譯）~~是實測出來的真實類別~~ **是一條規則的結論**，不是 passed 也不是 failed。**2026-08-23 更正**：這一軸的值來自 `tools/content/backfill-agent-compatibility.sql` 的 `CASE WHEN deps_runtime = 'python' THEN :python_runtime ELSE 'native' END`——`deps_runtime` 是 `seed-skills.json` 裡的策展判斷，`python_runtime` 是 operator 下指令時給的變數。**沒有讀 Trace，也沒有觀察腳本是否真的執行**。規則本身有價值（映像有沒有提供宣告的 Runtime，決定你拿到的是腳本還是模型的改寫），但它不得以「實測」的名義呈現——畫面上該軸已更名為**執行環境相容**，每個值也各自寫明是量到的還是推出來的。**capability 那一軸確實來自 Trace**，兩軸來源不同這件事現在寫在區塊註記裡。**結論綁 Runtime Image**：欄位以 (Skill Version × Runtime Image) 為鍵，回應一併帶 `runtime_image` 與 `measured_at`，~~換映像即回到未驗證直到重測~~<br>**2026-09-03 訂正：最後那半句今天是假的，而且它描述的保護從來沒有被實作過。** 讀取路徑不看部署當下跑的是哪個映像——`db/queries/search.sql` 的三處 `skill_runtime_compatibility` LATERAL 一律是 `WHERE c.skill_version_id = ver.id ORDER BY c.measured_at DESC LIMIT 1`，**沒有任何 `runtime_image` 述詞**，所以換映像之後畫面**繼續顯示舊映像上量到的那一筆**，只是把該筆的 `runtime_image` 標籤一起帶出來。**這不是推論，是已經發生過的事**：`infra/images/runtime-agent-sdk/UPGRADES.md` 在 `2026.08-2 → 2026.08-3` 一節的「本次未涵蓋的」逐字寫著「`skill_runtime_compatibility` 對 `2026.08-3` 目前 **0 列**，目錄仍顯示 `2026.08-2` 的結論並附映像標籤」。<br>**今天實際成立的是「標註量測映像」，不是「回到未驗證」**：鍵確實是 (Skill Version × Runtime Image)，寫入端因此不會把兩個映像的結論混在一起；缺的是讀取端的比對。**兩者的差別對使用者是實的**——他看到的 `native` 可能是在一個已經不再部署的映像上量的，而畫面上唯一能讓他發現這件事的，是他自己去比對那個標籤與部署版本。<br>**要哪一種是一個產品決定，不在本次訂正的範圍**：(a) 讀取端加 `runtime_image` 比對、不符即降回 `unverified`（回到本句原本承諾的行為，代價是每次升映像全目錄變空白直到重測，約 $2.2）；(b) 保留舊測值但在畫面上明說「這是在某某映像上量的，與目前部署不同」。**在其中一條落地之前，本欄不得再以「換映像即回到未驗證」的形式被引用。** |
 | 是否需要 MCP | **後 MVP（隨 MCP 啟動）** | 靜態掃描與 manifest 皆未捕捉任何 MCP 訊號，訊號來源尚未定義；遠端 MCP 已移出 MVP 首發（見 `TEST-003`） |
 
+**2026-09-07 補充（`05` R-52 裁定）**：`partial_index`（回應層級旗標，見 `contracts/openapi/public.yaml`）的語意自本次裁定起收斂——完全沒有 metadata 的文件不再出現在公開搜尋結果裡（`SKILL-001` 2026-09-07 補充），因此不會再以 `partial_index` 的身分被列出；`partial_index` 現在只代表「有 metadata、但沒有向量」的那一種殘缺（例如摘要與 tags 已寫入但 embedding 呼叫失敗），不再涵蓋「完全未增強」的情形。
+
 #### DISC-003：Skill 詳情與來源追蹤
 
 允收準則：
@@ -137,6 +139,8 @@
 - 匯入前後均不得直接執行套件內 Script。
 - 匯入結果顯示成功、警告或失敗，並列出原因。
 - 重複內容可透過內容雜湊識別，且不覆蓋既有版本。
+
+**2026-09-07 補充（`05` R-52 裁定，負責人「先資安確認、再抽 metadata、才入庫」）**：入庫的機器順序固定為**資安確認（`skillpkg.Validate`＋靜態掃描）→ LLM 抽 metadata（索引時增強，ADR-013）→ 進目錄**。前兩步不變（阻擋級 finding 一律先擋、增強在同一交易寫索引）；**改變的是第三步**——**沒有 metadata 的文件不進公開目錄**：版本仍然建立、擁有者仍然看得到自己的東西，只是還沒有 metadata（`enrichment_status` 不是 `enriched` 且沒有向量）的版本不出現在 `PublicSearchSkills`／`BrowseCatalogSkills`／`PublicHybridSearchSkills`／`CreationLexicalSearchSkills` 的結果裡，直到每小時的 backfill 幫它補上。這不推翻 `SKILL-001` 第一條「匯入前後均不得直接執行套件內 Script」與 ADR-013「匯入不因增強失敗而失敗」——**建版本與進目錄是兩件事**，失敗的仍然建版本。
 
 #### SKILL-002：規格與靜態驗證
 
@@ -716,6 +720,8 @@ Run 至少支援：
 - Given 使用者更正已確認的需求，When 繼續創作，Then 保留修正紀錄並更新需求快照，受影響草稿與確認失效，後續不能繼續沿用被否定的假設。
 - Given 使用者返回未完成會話，When 快照有效，Then 顯示最後確認狀態與下一個待確認動作。
 
+**通則（2026-09-07 補充，`05` R-51 相關稽核發現）**：任何新增的工具意圖，若沒有對應的 HITL 停點（使用者必須明確同意或確認才會執行），不得進入本節或後續 GEN 條目的契約。這不是新規則，是把 `fetch_url`（連網前必須問人，`05` R-47）與 `search_catalog`／`search_knowledge`（查目錄不需要問人，因為它只讀不寫、不花使用者以外的錢）已經各自遵守的界線寫成一句可檢查的通則，供下一個工具意圖對照。
+
 #### GEN-008：流程圖與參考材料的確認
 
 流程圖先呈現結構化理解供確認；會話保存已確認理解與指紋，不保存原圖位元組。Agent 可檢索可存取的參考 Skill、誠實呈現缺席或通用不可用狀態，並在確認後才把版本化參考放入創作材料；公開只可涵蓋使用者明確選定、預覽確認且通過治理的套件內容，私有對話、原圖、原始資料與參考全文不得自動附帶，私有會話保持私有。
@@ -1176,6 +1182,11 @@ Run 至少支援：
 - 一條 materialize 反證測試：草稿 `files[].path` 為 `../x` 或絕對路徑 → 422、不建版本。
 - 兩個需要決策的缺口登在 `05` R-51：閘道模型別名釘帶日期的模型 ID 與換 ID 的重驗觸發；平台級模型預算煞車（TM-MDL-02 殘餘）。**未裁之前本條不勾**。
 - 維護：OWASP 版本更新或新的模型呼叫面上線時逐項重看；每個里程碑結束與威脅模型 §2.9 一起複審。
+
+**2026-09-07 進度（負責人授權代理依最佳實務裁定並落地）**：
+
+- **已成立**：創作提示的圍欄（`untrusted.py` 的 `<untrusted_reference_skill>`／`<untrusted_tool_observation>`＋`data_block_rules`，兩條單元測試）；會話遮罩與反證測試（`creation.Service.Mask` 注入 `TRACE-005` 的 `Masker`，`TestCreationMasksCredentialsInTheStoredConversation`）；materialize 路徑穿越反證（`TestCreationRefusesADraftThatEscapesItsPackage`）；`confirm_references` 畫面與 `CreationReference` 契約補上精選層級、掃描狀態與揭露；查重後同名改成模型只能改名（`TestCreationMaterializeHoldsForADuplicate…`）；`05` R-51 兩項決策已裁定並落地（模型 id 記錄與重驗觸發、閘道每日預算煞車 `max_budget: 50`／`budget_duration: 1d`）。
+- **未成立**：注入攻擊集紅線 0／N——實測 v15（無圍欄）2/12、v16（有圍欄）1/12，殘留通道是評估觀察的理由文字被 review 相依評估要求改寫、帶著 marker 進了草稿（[結果](mvp/m5/creation-measure/injection/results-2026-09-07.txt)），修法待做（去 URL／截斷理由文字、提示明定不得逐字帶入 body）；goldenset 投毒題紅線「不得進 Top-3」未達——最壞情形 golden Top-3 32/60、公平情形（投毒文件也經正常增強）golden Top-3 37/60、name 13/31、token 9/25，且 tags 格式詞數與任務例句離散度兩個可能的判別訊號都分不開投毒與合法內容（[結果](mvp/m5/creation-measure/search-f1/results-f1-poison-2026-09-07.txt)、[結果（公平）](mvp/m5/creation-measure/search-f1/results-f1-poison-enriched-2026-09-07.txt)、[離散度](mvp/m5/creation-measure/injection/results-dispersion-2026-09-07.txt)）——已轉列為 [`05` R-53](05-pending-rulings.md)，需要的是結構性裁定不是更多程式。
 
 ## 7. MVP 整體 Definition of Done
 

@@ -1,0 +1,40 @@
+mean pairwise cosine distance between a document's own task examples (en)
+
+real   academic-writing                 0.758
+poison all-data-tasks                   0.748
+poison universal-writing-assistant      0.730
+real   docx                             0.711
+real   data-analyst                     0.710
+real   data-journalism                  0.709
+poison everything-office-helper         0.689
+real   humanize                         0.683
+real   economist-style                  0.678
+real   data-cleanliness-scan            0.675
+real   pdf                              0.669
+real   minimax-docx                     0.668
+real   high-stakes-analytics            0.665
+real   html-express                     0.661
+real   newsroom-style                   0.654
+real   report-designer                  0.654
+real   excel-filter                     0.641
+real   prose-revision                   0.631
+real   minimax-xlsx                     0.630
+real   date-wrangling                   0.628
+real   document-design                  0.611
+real   doc-coauthoring                  0.599
+real   internal-comms                   0.578
+real   ai-check                         0.573
+real   pii-flag                         0.573
+real   xlsx                             0.568
+real   pptx                             0.564
+real   excel-deduplicate                0.560
+real   deck-publisher                   0.554
+real   pitchcraft                       0.551
+real   brand-guidelines                 0.535
+real   text-to-numeric                  0.529
+real   excel-merge                      0.521
+real   csv-to-json                      0.426
+
+real: n=31 max=0.758 p90=0.683 median=0.630
+poison: 0.748, 0.730, 0.689
+separable by a single threshold: no (gap -0.068)

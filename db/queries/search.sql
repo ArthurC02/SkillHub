@@ -49,15 +49,12 @@ WITH candidates AS (
 SELECT sd.skill_id, sv.package_object_key
 FROM search_documents sd
 --
--- `redistribution <> 'generated'` keeps generated packages off the worklist
--- (GEN-007). Their documents exist and must — the workspace's own list reads the
--- static-scan facts out of them, and 02:GEN-003 forbids showing a generated
--- package one warning fewer than an imported one. What they never get is the
--- enrichment, because enrichment exists to make a document findable and this one
--- is never searched. Without this predicate the backfill would re-enrich them
--- forever: import already skips the call, so they stay `pending` by design.
+-- Generated packages used to be kept off this worklist (GEN-007: never
+-- searched, so never enriched). Since 05 R-52 (2026-09-07) they are enriched
+-- like everything else — "security check, then metadata, then the library" is
+-- the owner's order for every new Skill — while GEN-007's read-side exclusion
+-- (the SearchSkills join below) still keeps them out of every search.
 JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
-    AND sk.redistribution <> 'generated'
 JOIN LATERAL (
     SELECT v.package_object_key
     FROM skill_versions v
@@ -154,6 +151,14 @@ LIMIT $2;
 -- FTS-only public search — the degradation path when the embedding service is
 -- unavailable (ADR-013 fallback).
 --
+-- 05 R-52 (2026-09-07): a document whose enrichment never landed — no
+-- metadata, no vector — is not in the library yet. The three public queries
+-- share the predicate below: enriched, or at least embedded (the tests' seeded
+-- rows and a document whose enrichment text landed but whose vector did not).
+-- The version exists and its owner sees it; the hourly backfill brings it into
+-- the catalogue once the metadata exists. Before this the row surfaced through
+-- the english tsvector as an "unranked" hit nobody could find by meaning.
+--
 -- Two lexical legs since 05 R-48: the english tsvector, and the bigram column
 -- (0058) for the query Go rendered from LexicalTokens — every token AND-ed, so
 -- a Traditional Chinese query the english config tokenises to nothing still
@@ -247,6 +252,7 @@ LEFT JOIN LATERAL (
 WHERE (s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
        OR (sqlc.arg(bigram_query)::text <> ''
            AND s.bigram @@ to_tsquery('simple', sqlc.arg(bigram_query)::text)))
+  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
   AND (
     sqlc.narg(has_script)::bool IS NULL
     OR (s.scan IS NOT NULL
@@ -335,7 +341,8 @@ LEFT JOIN LATERAL (
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
-WHERE (
+WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND (
     sqlc.narg(has_script)::bool IS NULL
     OR (s.scan IS NOT NULL
         AND (s.scan->'codes' @> '["script-file"]'::jsonb
@@ -425,7 +432,8 @@ fts AS (
     SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
+    WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+      AND s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
     ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
     LIMIT 50
 ),
@@ -433,7 +441,8 @@ lex AS (
     SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE sqlc.arg(bigram_query)::text <> ''
+    WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+      AND sqlc.arg(bigram_query)::text <> ''
       AND s.bigram @@ to_tsquery('simple', sqlc.arg(bigram_query)::text)
     ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(bigram_query)::text)) DESC
     LIMIT 5
@@ -662,6 +671,32 @@ UPDATE search_documents
 SET bigram = to_tsvector('simple', sqlc.arg(bigram_text)::text)
 WHERE skill_id = $1;
 
+-- name: ResetCatalogueEnrichmentBefore :execrows
+-- cmd/reindex REINDEX_REENRICH: every catalogue document enriched under a
+-- prompt version other than the current one goes back to `pending`, so the
+-- backfill rewrites it under the current prompt (report §15: v7's examples are
+-- what lifted F1; the live catalogue was still v2–v6). Generated and
+-- taken-down rows are untouched — the former re-enrich on their own worklist
+-- terms, the latter must not come back.
+UPDATE search_documents sd
+SET enrichment_status = 'pending', enrichment_attempted_at = NULL
+FROM workspaces w, skills sk
+WHERE w.id = sd.workspace_id AND w.is_catalog
+  AND sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
+  AND sd.enrichment_status = 'enriched'
+  AND COALESCE(sd.enrichment_prompt_version, '') <> sqlc.arg(prompt_version)::text;
+
+-- name: GetCatalogReferenceFacts :one
+-- What the creation tool shows next to a Skill it offers (05 SEC-013, LLM04):
+-- the projected scan (disclosures and warnings) and whether the offered
+-- version is the curated one. Catalogue scope only, like every offer.
+SELECT sd.scan,
+       (sk.curation_tier = 'curated' AND sk.curated_version_id = sqlc.arg(version_id)::uuid)::bool AS curated
+FROM search_documents sd
+JOIN skills sk ON sk.id = sd.skill_id
+JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
+WHERE sd.skill_id = $1;
+
 -- name: CreationLexicalSearchSkills :many
 -- The lexical leg of the creation tool's hybrid retrieval (0058, 05 R-47):
 -- catalogue documents whose bigram tsvector matches the query rendered by Go
@@ -670,6 +705,7 @@ WHERE skill_id = $1;
 SELECT s.skill_id, s.name
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-WHERE s.bigram @@ to_tsquery('simple', sqlc.arg(query)::text)
+WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND s.bigram @@ to_tsquery('simple', sqlc.arg(query)::text)
 ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(query)::text)) DESC
 LIMIT sqlc.arg(result_limit)::int;

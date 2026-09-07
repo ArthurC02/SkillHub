@@ -129,3 +129,75 @@ func TestPublicSearchKeepsACoveredLexicalHitPastTheCutoffAndPinsTheExactName(t *
 		t.Fatalf("partial coverage must not bypass the cut-off: %v", ids)
 	}
 }
+
+// 05 SEC-013 (LLM04): the facts an offer carries — the tier of the exact
+// version, and the projected scan — read from the catalogue only.
+func TestCatalogReferenceFactsReadTheTierAndTheScan(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	curator := newAPI(t, pool).login(t, "curator-facts")
+	markCatalog(t, pool, curator.workspaceID)
+	skill := seedSkill(t, pool, curator.workspaceID, "facts-holder")
+	version := seedSkillVersion(t, pool, curator.workspaceID, skill)
+	if _, err := pool.Exec(ctx, `UPDATE search_documents SET scan = '{"warnings": 2, "codes": ["script-file"]}'::jsonb WHERE skill_id = $1`, mustUUID(t, skill)); err != nil {
+		t.Fatal(err)
+	}
+	svc := &catalog.Service{Pool: pool}
+	tier, scan, warnings, err := svc.CatalogReferenceFacts(ctx, skill, version)
+	if err != nil || tier != "indexed" || scan != "scanned" || warnings != 2 {
+		t.Fatalf("indexed: tier=%q scan=%q warnings=%d err=%v", tier, scan, warnings, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE skills SET curation_tier = 'curated', curated_version_id = $2 WHERE id = $1`, mustUUID(t, skill), mustUUID(t, version)); err != nil {
+		t.Fatal(err)
+	}
+	if tier, _, _, err = svc.CatalogReferenceFacts(ctx, skill, version); err != nil || tier != "curated" {
+		t.Fatalf("curated version: tier=%q err=%v", tier, err)
+	}
+	// Another version of the same Skill is not the curated one.
+	other := uuidText(creationID(t))
+	if tier, _, _, err = svc.CatalogReferenceFacts(ctx, skill, other); err != nil || tier != "indexed" {
+		t.Fatalf("other version: tier=%q err=%v", tier, err)
+	}
+	// Outside the catalogue: unknown, and an error the caller ignores.
+	private := newFixture(t, newAPI(t, pool), pool, uniqueWorklistLabel("facts-private"))
+	if tier, scan, _, err = svc.CatalogReferenceFacts(ctx, private.skillID, private.versionID); err == nil || tier != "unknown" || scan != "unknown" {
+		t.Fatalf("private skill: tier=%q scan=%q err=%v", tier, scan, err)
+	}
+}
+
+// cmd/reindex REINDEX_REENRICH (report §15.5): catalogue documents enriched under
+// an older prompt version go back to pending for the backfill; the current
+// version, generated candidates' rows outside the catalogue and taken-down
+// Skills stay as they are.
+func TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	curator := newAPI(t, pool).login(t, "curator-reenrich")
+	markCatalog(t, pool, curator.workspaceID)
+	old := seedSkill(t, pool, curator.workspaceID, "reenrich-old")
+	current := seedSkill(t, pool, curator.workspaceID, "reenrich-current")
+	private := newFixture(t, newAPI(t, pool), pool, uniqueWorklistLabel("reenrich-private"))
+	q := gen.New(pool)
+	set := func(skill, version string) {
+		if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched', enrichment_prompt_version = $2 WHERE skill_id = $1", mustUUID(t, skill), version); err != nil {
+			t.Fatal(err)
+		}
+	}
+	set(old, "enrich-skill/v2")
+	set(current, "enrich-skill/v7")
+	set(private.skillID, "enrich-skill/v2")
+	n, err := q.ResetCatalogueEnrichmentBefore(ctx, "enrich-skill/v7")
+	if err != nil || n != 1 {
+		t.Fatalf("reset %d err=%v, want exactly the old catalogue document", n, err)
+	}
+	status := func(skill string) string {
+		var st string
+		if err := pool.QueryRow(ctx, "SELECT enrichment_status FROM search_documents WHERE skill_id = $1", mustUUID(t, skill)).Scan(&st); err != nil {
+			t.Fatal(err)
+		}
+		return st
+	}
+	if status(old) != "pending" || status(current) != "enriched" || status(private.skillID) != "enriched" {
+		t.Fatalf("old=%s current=%s private=%s", status(old), status(current), status(private.skillID))
+	}
+}

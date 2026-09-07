@@ -212,6 +212,13 @@ func importFilesEnriched(
 	if res.Report.Blocked {
 		t.Fatalf("fixture package did not import: %+v", res.Report.Findings)
 	}
+	if llm == nil {
+		// 05 R-52: without an LLM the enrichment never runs; mark the metadata
+		// landed so the public pages show the fixture (see importPackage).
+		if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched' WHERE skill_id = $1", res.Skill.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
 	return uuidText(res.Skill.ID), uuidText(res.Version.ID)
 }
 

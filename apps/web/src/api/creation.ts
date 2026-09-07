@@ -28,6 +28,9 @@ export interface CreationReference {
   description?: string;
   compatibility?: string;
   allowed_tools?: string;
+  tier?: "curated" | "indexed" | "unknown";
+  scan_status?: "scanned" | "unavailable" | "unknown";
+  warnings?: number;
 }
 export type CreationFetch = { url: string; sha256?: string; bytes?: number; status: string };
 export interface CreationSnapshot {

@@ -7,6 +7,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -39,6 +40,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 		return refs, cost, nil
 	}
 	s.ValidateDraft = versions.ValidateCreationDraft
+	s.Mask = (&trace.Masker{}).MaskString
 	s.ResolveReference = func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, llmclient.GenerateReference, error) {
 		sid, err := creation.ParseID(skillID)
 		if err != nil {
@@ -52,7 +54,17 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 			}
 		}
 		fixed, content, err := versions.ReadCreationReference(ctx, ws, sid, vid)
-		return creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil, Description: fixed.Description, Compatibility: fixed.Compatibility, AllowedTools: fixed.AllowedTools}, content, err
+		ref := creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil, Description: fixed.Description, Compatibility: fixed.Compatibility, AllowedTools: fixed.AllowedTools}
+		// The catalogue's trust facts ride along (05 SEC-013): an offer without
+		// its tier and scan would show one warning fewer than a search row.
+		if tier, scan, warnings, ferr := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID); ferr == nil {
+			ref.Tier, ref.ScanStatus = tier, scan
+			if scan == "scanned" {
+				w := warnings
+				ref.Warnings = &w
+			}
+		}
+		return ref, content, err
 	}
 	s.SearchReferences = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, error) {
 		ids, err := search.CreationReferenceIDs(ctx, query)
