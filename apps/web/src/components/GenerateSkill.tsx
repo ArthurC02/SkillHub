@@ -150,6 +150,11 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
     });
   }
 
+  // 唯一的必填是「任務描述或一張圖，至少一個」。抽成具名的值，是因為它現在有兩個
+  // 讀者：按鈕的 `disabled`，以及 §2.4 要的那句原因——兩邊各寫一次條件，就會有一天
+  // 按鈕停用而原因不出現。
+  const nothingToSend = task.trim() === "" && !diagram;
+
   const submit = () => {
     setRejected(undefined);
     mutation.mutate(
@@ -216,70 +221,116 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
       </div>
 
       {/*
-        02:GEN-005. `<input type="file">` shape copied from VersionUpload.tsx —
-        this is the same "read a File, refuse it client-side before it ever
-        reaches a request" pattern, just against an image type/size ceiling
-        instead of a zip one.
+        2026-09-07：兩個選填輸入收進一層 `<details>`。
+
+        量出來的形狀：必填只有一個（任務描述），而兩個選填的欄位加上它們的但書佔掉
+        這張表單約一半的高度，於是「我到底要填什麼」這個問題的答案排在第三順位。
+        ADR-065 §3 規則 3 要的錨點自己成立——這一行說出了裡面是哪兩樣東西，也說了
+        它們是選填，所以不打開也知道自己沒有錯過必填的東西。
+
+        §2.10 的十項一項都不在裡面：這是兩個輸入控制項與它們各自的但書，不是風險、
+        判定、缺席型別或降級自述。第 6 項的措辭反而是這條的授權——「限額細節可折」。
+
+        **這也讓生成入口更不顯眼而不是更顯眼**（`01` §10 邊界 1 要的方向）。
       */}
-      <div className="field">
-        <label htmlFor="generate-diagram-file">流程圖或架構圖（選填）</label>
-        <input
-          id="generate-diagram-file"
-          ref={diagramFileRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          disabled={mutation.isPending}
-          onChange={handleDiagramChange}
-        />
-      </div>
-      <p className="note">圖片會傳給模型參考，平台不會保留圖片本身，只留下它的雜湊。</p>
-      {diagramError && <p role="alert">{diagramError}</p>}
-      {diagram && (
-        <p>
-          已選擇 {diagramName}{" "}
-          <button type="button" onClick={removeDiagram} disabled={mutation.isPending}>
-            移除
-          </button>
+      <details>
+        <summary>附一張流程圖，或指定要參考的 Skill（都是選填）</summary>
+
+        {/*
+          02:GEN-005. `<input type="file">` shape copied from VersionUpload.tsx —
+          this is the same "read a File, refuse it client-side before it ever
+          reaches a request" pattern, just against an image type/size ceiling
+          instead of a zip one.
+        */}
+        <div className="field">
+          <label htmlFor="generate-diagram-file">流程圖或架構圖（選填）</label>
+          <input
+            id="generate-diagram-file"
+            ref={diagramFileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={mutation.isPending}
+            onChange={handleDiagramChange}
+          />
+        </div>
+        {/* 「雜湊」是這一句唯一的技術詞，而它在這裡不承載任何讀者能用的資訊——讀者要
+            知道的是「圖片本身不會被留下，留下的那個東西還原不回圖片」，那正是下面這
+            句話說的。事實一個字都沒有少，少掉的是一個要先懂才看得懂的詞。 */}
+        <p className="note">
+          圖片會傳給模型參考，平台不會保留圖片本身，只留下一串無法還原成圖片的指紋。
         </p>
-      )}
+        {diagramError && <p role="alert">{diagramError}</p>}
+        {diagram && (
+          <p>
+            已選擇 {diagramName}{" "}
+            <button type="button" onClick={removeDiagram} disabled={mutation.isPending}>
+              移除
+            </button>
+          </p>
+        )}
 
-      <ReferencePicker
-        references={references}
-        onToggle={toggleReference}
-        disabled={mutation.isPending}
-      />
+        <ReferencePicker
+          references={references}
+          onToggle={toggleReference}
+          disabled={mutation.isPending}
+        />
+      </details>
 
+      {/*
+        數字留在外面，來歷收進去。
+
+        02:GEN-001 要的是「生成前顯示本次將消耗的額度」、PDM-005 §5.3 要的是一個標明
+        估計、帶來源的區間——**兩者要的都是那幾個數字看得見**，所以 `<dl>` 一個字都沒
+        有折。折的是它們的來歷：十次實付的最小／中位／最大、上緣為什麼放寬、兩次個別
+        實測。那是「為什麼可以相信這個數字」，第二次來的人不會再讀它。
+
+        §2.10 第 6 項逐字寫著「限額細節可折」；成本不在那十項裡。錨點「這些數字是哪裡
+        來的」自己成立（ADR-065 §3 規則 3）：它說出了裡面是什麼，而不是「詳情」。
+      */}
       <dl>
         <dt>這一次最多會用到</dt>
         <dd>
           描述 {GENERATE_MAX_TASK_RUNES.toLocaleString("zh-TW")} 字、模型推理加輸出合計{" "}
           {GENERATE_MAX_OUTPUT_TOKENS.toLocaleString("zh-TW")} token、最多嘗試{" "}
           {GENERATE_MAX_ATTEMPTS} 次。
-          <span className="note">
-            {" "}
-            這三個數字是伺服器實際擋你的上限，不是估計；超過第一個會被拒絕，超過第二個會直接停下、不重試。
-          </span>
         </dd>
         <dt>預估成本</dt>
         <dd>
           約 US${GENERATE_COST_LOW_USD.toFixed(3)}–${GENERATE_COST_HIGH_USD.toFixed(2)}
-          ，多數落在 US${GENERATE_COST_TYPICAL_USD.toFixed(3)} 上下
-          <span className="note">
-            {" "}
-            ——估計值，非報價。來源：2026-08-25 對真實閘道生成 10 次的實付分布（最小 US$0.0038、中位
-            US$0.0062、最大 US$0.0110，mini 級模型，皆為單次嘗試）。上緣按最多{" "}
-            {GENERATE_MAX_ATTEMPTS} 次嘗試放寬並上取整，因為 10 次不是一個界。
-            <strong>平台沒有為單次生成設定費用上限</strong>，所以這是估計不是保證。
-            帶流程圖與帶參考各實測一次（US$0.0039、US$0.0040，2026-09-05），
-            都落在區間內，但一次不是分布。
-          </span>
+          ，多數落在 US${GENERATE_COST_TYPICAL_USD.toFixed(3)} 上下——估計值，非報價。
         </dd>
       </dl>
+      <details>
+        <summary>這些數字是哪裡來的</summary>
+        <p className="note">
+          上限那三個數字是伺服器實際擋你的上限，不是估計；超過第一個會被拒絕，超過第二個會直接停下、不重試。
+        </p>
+        <p className="note">
+          成本來源：2026-08-25 對真實閘道生成 10 次的實付分布（最小 US$0.0038、中位 US$0.0062、最大
+          US$0.0110，mini 級模型，皆為單次嘗試）。上緣按最多 {GENERATE_MAX_ATTEMPTS}{" "}
+          次嘗試放寬並上取整，因為 10 次不是一個界。
+          <strong>平台沒有為單次生成設定費用上限</strong>，所以這是估計不是保證。
+          帶流程圖與帶參考各實測一次（US$0.0039、US$0.0040，2026-09-05），
+          都落在區間內，但一次不是分布。
+        </p>
+      </details>
 
+      {/*
+        §2.4／§2.10 第 5 項：停用的控制項要說原因，而且原因不得只活在 hover 裡。
+        2026-09-07 之前這顆按鈕在表單空著時是停用的，畫面上沒有任何一句話說為什麼——
+        `button:disabled` 的配方（`--code-bg` 底、虛線邊）於是被讀成「壞掉的按鈕」，
+        外部評閱逐字寫著「看起來像不可點擊的殘缺按鈕」。停用是對的，缺的是那句話。
+      */}
+      {nothingToSend && (
+        <p className="note" id="generate-why-disabled">
+          還不能送出：任務描述與流程圖至少要有一個。
+        </p>
+      )}
       <button
         type="button"
         onClick={submit}
-        disabled={mutation.isPending || reading || (task.trim() === "" && !diagram)}
+        aria-describedby={nothingToSend ? "generate-why-disabled" : undefined}
+        disabled={mutation.isPending || reading || nothingToSend}
       >
         {mutation.isPending ? "生成中…" : "生成一個 Skill"}
       </button>
@@ -357,10 +408,12 @@ export function ReferencePicker({
           disabled={disabled}
         />
       </div>
+      {/* 「A 的 B 的 C」三層領屬中文讀不動，而 SKILL.md 這個字留著是因為它承載一個
+          讀者用得上的限定：模型讀的是說明檔，不是整個套件（你選的 Skill 裡的 Script
+          不會被讀進去）。換掉的是句構，不是那個事實。 */}
       <p className="note">
-        模型會把最多 {GENERATE_MAX_REFERENCES} 個你選的 Skill 的 SKILL.md
-        當範例讀，產出仍是你工作區裡一個全新的 Skill。 有授權暫扣或禁止再散布的目錄 Skill
-        無法被選為參考。
+        模型會讀你選的 Skill 的說明檔（SKILL.md）當範例，最多 {GENERATE_MAX_REFERENCES} 個；
+        產出仍是你工作區裡一個全新的 Skill。 有授權暫扣或禁止再散布的目錄 Skill 無法被選為參考。
       </p>
 
       {references.length > 0 && (

@@ -145,9 +145,10 @@ SkillFiles ─────► /skills/$id
 ImportSkill ────► /skills/$id
 Packaging ──────► /skills/$id, /workspace/downloads
 Downloads ──────► /skills/$id
-WorkspaceSkills ► /, /skills/$id, /skills/$id/files, /skills/$id/package,
+WorkspaceSkills ► /skills/$id, /skills/$id/files, /skills/$id/package,
                   /lab/test-cases, /workspace/runs, /workspace/downloads,
-                  /workspace/account, /policy, /workspace/import
+                  /workspace/account, /policy      （2026-09-07 少了 / 與
+                  /workspace/import，見下方第二段補記）
 WorkspaceRuns ──► /runs/$id, /lab/test-cases
 TestCases ──────► /lab/test-cases/$id, /lab/datasets, /lab/run, /runs/$id, /skills/$id
 DatasetUpload ──► /lab/test-cases, /lab/test-cases/$id
@@ -167,6 +168,12 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 > `components/CreateHub.tsx` 是 `/workspace/skills` 上的一個區塊，位置**由清單空不空決定**（**2026-09-07 訂正**：本句原本寫「`<h1>` 之下、清單之上」，那在 2026-09-03 落地時為真，當天起就不再為真的是「清單之上」那一半——清單有東西的時候它排在清單**之後**。理由是 system.md §3 checklist 第 1 條，它的「不過的樣子」逐字是「一整排控制項排在答案前面」；清單是空的時候它仍然排在最前面，因為那時它就是這一頁的答案。兩個掛載點而不是 CSS `order`，因為 `order` 只改視覺順序不改 DOM 順序）（`#create`，首頁的 hero 指著 `/workspace/skills#create`），把三條建立路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從目錄挑一個來改** → `/`（Fork 需要封測邀請，卡片上直接說，§2.2 第三向的強制者是**平台**）、**依任務描述生成一個** → 沒有新的邊，那是 `GenerateSkill` 原本就在這一頁的那個掛載點被搬進卡片裡，**旗標與 §2.4 一個字都沒有改**。
 >
 > **三條邊裡有兩條是既有的**：`WorkspaceSkills ► /` 與 `WorkspaceSkills ► /workspace/import` 上面那一列本來就有（空狀態那句「或匯入自己的套件」，IA-9）。新的是**來源檔**——`CreateHub.tsx` 讓這兩個位址的 §2.3 入邊各從 2 變 3（`ia.test.ts` 以不同來源檔計數），而 §2.3 只對 0 與 1 那兩列斷言，所以那裡是輸出不是失敗。
+>
+> **續（2026-09-07）：那兩條既有的邊走了，因為它們變成了同一句話的第二份。**
+>
+> 上面那一段記的是 09-03 當天的狀態：`WorkspaceSkills` 的空狀態與 `CreateHub` 各講一次同樣的兩條路，兩個來源檔，§2.3 的入邊各 3。**它漏看了一件事**——空狀態那一句只在 `!hasSkills` 時渲染，而那正是 `CreateHub` 掛在它**正上方**的那個條件，所以讀者不是在兩個時刻各看到一次，是在同一屏裡連著看到兩次：先是兩張卡（「匯入 Skill」連 `/workspace/import`、「到目錄挑一個」連 `/`），緊接著一句用不同措辭再說一次同樣兩條路的散文。外部評閱把它讀成「我到底是在填表還是在看清單」。
+>
+> 空狀態現在只留 §2.9 的缺席型別詞（「這裡是空的代表你還沒有建立過，不是清單讀取失敗」），那一半 §2.10 第 10 項不准折疊，也就留在句子裡。兩個位址的頁內入邊各回到 **2 個來源檔**（`/workspace/import`：`Home.tsx` 的 `no_results` ＋ `CreateHub.tsx`；`/`：`Home.tsx`、`Compare.tsx` ＋ `CreateHub.tsx` 共 3），§2.3 只斷言 0 與 1 那兩列，**IA-9 要的「第二條頁內入邊」性質沒有變，換的是承載它的那一個檔案**。
 >
 > 旗標讀在 `pages/WorkspaceSkills.tsx`、以 prop 傳進來，不在 `CreateHub` 裡讀：`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊是**以呼叫 `useGenerateEntryPoint` 的檔案為鍵**且只能變短，把讀移進元件會同時讓名冊上的那一列腐爛、又要在一張不能長的清單上加第四個名字。
 
@@ -207,6 +214,8 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | 4 | `/lab/run`、`/runs/$runId`、`/workspace/downloads`、**`/`**、**`/workspace/skills`**（後兩者 2026-09-03 自上面的 3 移入） | ✅ |
 | 6 | `/lab/test-cases` | ✅ |
 | 12 | `/skills/$skillId` | ✅ 全 app 的匯流點（2026-09-03 重數：~~10~~ **12**，`SkillFiles.tsx` 與 `GenerateSkill.tsx` 也指過來） |
+
+> **2026-09-07 重數訂正（兩格，各降一）**：`/workspace/import` **3 → 2**（`Home.tsx`、`CreateHub.tsx`）、`/` **4 → 3**（`Compare.tsx`、`Home.tsx`、`CreateHub.tsx`）。兩者都是同一個修改——`pages/WorkspaceSkills.tsx` 的空狀態不再自己連這兩個位址，因為 `CreateHub` 在同一個條件下就掛在它正上方、逐字提供同樣的兩條路（見 §2.3 邊圖下方的 09-07 補記與 §5 IA-9）。**R3 兩格都仍然成立**（各 ≥2 條來源檔不同的頁內入邊），這一列與 3 那一列一樣是人手維護的，機器只雙向比對 0 與 1。
 
 **0 與 1 這兩列由測試雙向比對**：多一個孤兒會 FAIL，把孤兒修好了而沒改這張表也會 FAIL。其餘各列是同一次計算的輸出，改了程式就會在這裡看到差異。
 
@@ -381,6 +390,8 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 > **本項是 2026-08-25 補號的，不是新發現的。** 事實從 08-24 起就寫在 §2.3 的 1 入邊那一列（「❌ 不適用……第二條頁內入邊仍欠」）與 §5 IA-7 的結尾，但它沒有編號——於是本節的「只剩 IA-6」、§8 的表與 `04` 的殘項清單三處都數不到它。**一個記在散文裡而沒有編號的缺陷，等於沒有記。**
 
 **事實**（2026-08-25 複驗）：`/workspace/import` 的唯一一條頁內入邊是 `pages/Home.tsx` 的 `no_results` 那一格（08-24 由 IA-5 補上）。導覽列不計（§2.3 的計數規則：只從導覽列進得去的頁正是那張表要找的東西）。
+
+> **結案落點換檔（2026-09-07）：仍然結著，承載它的檔案變了。** 上面那個落點在 09-03 之後多了一份逐字同義的鄰居——`components/CreateHub.tsx` 的「匯入 Skill」卡，而它與空狀態那一句**在同一個條件下（`!hasSkills`）渲染、上下相鄰**，於是同一屏裡同樣的兩條路講了兩次。空狀態那一句已收成只講 §2.9 的缺席型別，連結留在卡片上。**IA-9 的性質不變**：`/workspace/import` 仍有兩條來源檔不同的頁內入邊（`Home.tsx` 的 `no_results`、`CreateHub.tsx`），R3 要的「不只有導覽列一條路」仍成立，`ia.test.ts` 以來源檔計數且只斷言 0 與 1 那兩列。詳見 §2.3 邊圖下方的 2026-09-07 補記。
 
 ### IA-10 ✅ 已解決（2026-09-01，入列即結案）：一個位址參數與一個選單，對「這個 Skill」的定義不一樣
 

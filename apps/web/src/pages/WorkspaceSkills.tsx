@@ -223,12 +223,24 @@ export function WorkspaceSkills() {
             this state is unreachable for anyone the link would 401. The nav's
             copy of the same link has no such guarantee — that is IA-6, and it
             is not this edge's to answer.
+
+            ── 2026-09-07：兩條路的連結走了，型別詞留下 ──────────────────────────
+            這一句是 2026-08-25 補的（IA-9），當時它是這一頁唯一講「下一步」的地方。
+            9/3 之後不是了：這個分支只在 `!hasSkills` 時渲染，而**同一個條件下
+            `CreateHub` 就掛在它正上方**，兩張卡逐字提供同樣的兩條路（「匯入 Skill」
+            連 /workspace/import、「到目錄挑一個」連 /）。於是這一段變成第二份導覽，
+            而且排在建立表單之後——外部評閱把它讀成「我到底是在填表還是在看清單」。
+
+            留下的是它現在唯一在做的事：§2.9 的缺席型別詞。「空」在這一頁有兩種可能的
+            意思（沒建立過／讀取失敗），而讀取失敗有自己的 `ReadFailure`，所以這一句
+            要說的是它**不是**那一種。§2.10 第 10 項不准折疊的正是這半句，它留在外面。
+
+            IA-9 的性質沒有變：`/workspace/import` 的頁內入邊仍是兩個來源檔
+            （`pages/Home.tsx` 的 `no_results`、`components/CreateHub.tsx`），
+            `ia.test.ts` 以來源檔計數且只斷言 0 與 1 那兩列。資訊架構 §5 IA-9 與
+            §2.3 的邊圖同批更新。
           */
-          <p>
-            還沒有任何 Skill。到<Link to="/">首頁</Link>搜尋一個再 Fork，或
-            <Link to="/workspace/import">匯入自己的套件</Link>
-            ——這裡是空的代表你還沒有建立過，不是清單讀取失敗。
-          </p>
+          <p>還沒有任何 Skill——這裡是空的代表你還沒有建立過，不是清單讀取失敗。</p>
         ) : (
           <ul className="search-results">
             {skills.data.skills.map((s) => (

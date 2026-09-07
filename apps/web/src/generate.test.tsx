@@ -765,6 +765,16 @@ test("GEN-006: a reference tick with no text and no diagram keeps submit disable
     (b) => b.textContent === "生成一個 Skill",
   )!;
   expect(submitBtn.disabled).toBe(true);
+
+  // 設計 §2.4／§2.10 第 5 項：停用要說原因，而且原因不得只活在 `title`／hover 裡。
+  // 在這一句存在之前，一顆按 `button:disabled` 配方畫出來的按鈕（`--code-bg` 底、
+  // 虛線邊）旁邊什麼都沒有，於是外部評閱把它讀成「壞掉的殘缺按鈕」——停用是對的，
+  // 缺的是那句話。三件事一起斷言：句子在、它連到按鈕、它不是折疊起來的。
+  const why = container.querySelector("#generate-why-disabled")!;
+  expect(why, "停用的生成按鈕旁邊沒有任何一句話說為什麼（§2.4）").not.toBeNull();
+  expect(why.textContent).toContain("任務描述與流程圖至少要有一個");
+  expect(submitBtn.getAttribute("aria-describedby")).toBe("generate-why-disabled");
+  expect(why.closest("details"), "§2.10 第 5 項：停用理由不得折疊").toBeNull();
 });
 
 // The cost block's basis line must carry the two real measurements alongside
