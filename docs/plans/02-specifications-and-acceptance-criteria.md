@@ -1189,6 +1189,8 @@ Run 至少支援：
 - **已成立**：創作提示的圍欄（`untrusted.py` 的 `<untrusted_reference_skill>`／`<untrusted_tool_observation>`＋`data_block_rules`，兩條單元測試）；會話遮罩與反證測試（`creation.Service.Mask` 注入 `TRACE-005` 的 `Masker`，`TestCreationMasksCredentialsInTheStoredConversation`）；materialize 路徑穿越反證（`TestCreationRefusesADraftThatEscapesItsPackage`）；`confirm_references` 畫面與 `CreationReference` 契約補上精選層級、掃描狀態與揭露；查重後同名改成模型只能改名（`TestCreationMaterializeHoldsForADuplicate…`）；`05` R-51 兩項決策已裁定並落地（模型 id 記錄與重驗觸發、閘道每日預算煞車 `max_budget: 50`／`budget_duration: 1d`）。
 - **未成立**：注入攻擊集紅線 0／N——實測 v15（無圍欄）2/12、v16（有圍欄）1/12，殘留通道是評估觀察的理由文字被 review 相依評估要求改寫、帶著 marker 進了草稿（[結果](mvp/m5/creation-measure/injection/results-2026-09-07.txt)），修法待做（去 URL／截斷理由文字、提示明定不得逐字帶入 body）；goldenset 投毒題紅線「不得進 Top-3」未達——最壞情形 golden Top-3 32/60、公平情形（投毒文件也經正常增強）golden Top-3 37/60、name 13/31、token 9/25，且 tags 格式詞數與任務例句離散度兩個可能的判別訊號都分不開投毒與合法內容（[結果](mvp/m5/creation-measure/search-f1/results-f1-poison-2026-09-07.txt)、[結果（公平）](mvp/m5/creation-measure/search-f1/results-f1-poison-enriched-2026-09-07.txt)、[離散度](mvp/m5/creation-measure/injection/results-dispersion-2026-09-07.txt)）——已轉列為 [`05` R-53](05-pending-rulings.md)，需要的是結構性裁定不是更多程式。
 
+**2026-09-07 裁定回填（`05` R-53）**：投毒那一條允收的成立條件依 R-53 重新界定為——量測存在且結果入報告，加上策展在 ADR-013 定案調整 8 寫成唯一結構性緩解，加上放寬准入的提案動工前必須重跑量測。**紅線文字本身不放寬**（最壞情形也不得進任何 golden 題的 Top-3）；它衡量的是「若放寬准入會怎樣」，不是今天這個策展目錄的現況——今天目錄只靠人工審核進 `is_catalog`，量測過不了線正是「不要放寬」的證據，不是紅線定錯。僅 `indexed` 層級的結果加 Top-3 曝光上限一案未採用：它防的是投毒已進目錄之後的擴散，但今天進目錄必須先經過人，現在做是在猜形狀；重啟條件是出現放寬准入的提案、且重量後紅線未過，屆時再設計並回填 `03`。**SEC-013 仍不勾**：注入攻擊集的紅線 0／N 還沒達（殘留 1/12），修法待做。
+
 ## 7. MVP 整體 Definition of Done
 
 MVP 只有在以下條件全部成立時，才能視為完成：

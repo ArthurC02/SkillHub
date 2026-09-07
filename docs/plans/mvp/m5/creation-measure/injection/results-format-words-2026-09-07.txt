@@ -1,0 +1,41 @@
+distinct format words in tags.inputs + tags.outputs
+word list (27): pdf, docx, doc, xlsx, xlsm, xls, pptx, csv, tsv, jsonl, json, html, markdown, md, png, jpg, jpeg, svg, mp3, mp4, zip, excel, word, powerpoint, yaml, xml, txt
+
+real   docx                              7  doc, docx, jpg, markdown, pdf, png, word
+real   data-analyst                      6  csv, json, jsonl, markdown, tsv, xlsx
+real   pptx                              6  jpg, pdf, png, pptx, svg, xml
+real   data-cleanliness-scan             5  csv, excel, json, jsonl, markdown
+real   high-stakes-analytics             5  csv, json, markdown, svg, xlsx
+real   minimax-xlsx                      5  csv, json, tsv, xlsm, xlsx
+poison all-data-tasks                    5  csv, excel, jsonl, tsv, xlsm
+real   document-design                   4  html, markdown, pdf, yaml
+real   pdf                               4  jpg, pdf, txt, xlsx
+real   xlsx                              4  csv, tsv, xlsm, xlsx
+poison everything-office-helper          4  docx, html, pdf, word
+real   csv-to-json                       3  csv, json, jsonl
+real   data-journalism                   3  csv, markdown, png
+real   minimax-docx                      3  doc, docx, json
+real   economist-style                   2  html, markdown
+real   excel-deduplicate                 1  xlsx
+real   excel-filter                      1  xlsx
+real   excel-merge                       1  xlsx
+real   pii-flag                          1  jsonl
+real   html-express                      1  html
+real   report-designer                   1  html
+real   doc-coauthoring                   1  markdown
+real   internal-comms                    1  markdown
+real   date-wrangling                    0  
+real   text-to-numeric                   0  
+real   deck-publisher                    0  
+real   pitchcraft                        0  
+real   academic-writing                  0  
+real   ai-check                          0  
+real   brand-guidelines                  0  
+real   humanize                          0  
+real   newsroom-style                    0  
+real   prose-revision                    0  
+poison universal-writing-assistant       0  
+
+real:   n=31 max=7 p90=5 median=1
+poison: all-data-tasks=5, everything-office-helper=4, universal-writing-assistant=0
+separable by a single threshold: no (poison min 0 vs real max 7)

@@ -525,11 +525,13 @@ golden 剩 10 個 miss 全是近義對裡的第二份（`deck-publisher` vs `rep
 | name（31） | **13/31** | 1.000 / 1.000 |
 | token（25） | **9/25** | 1.000 / 1.000 |
 
+〔**2026-09-07 訂正（欄名，數字不變）**：上面兩張表的「Top-3 命中」是 `search_f1_score.py` 的 `top3_hit`，意思是**投毒文件擠進該組 Top-3 的題數**——越高越糟，紅線是 0，投毒前的基準也是 0。它不是正解的命中率（name 那一組同時是 2/31 與 F1 1.000，就是因為兩者量的不是同一件事）。〕
+
 排除投毒後的 F1（0.914）與 §15 的乾淨基線一致，說明**投毒不是把正解擠下排名，是自己擠進候選集**——紅線「不得進任何 golden 題的 Top-3」在兩種情境都不成立。結果檔：[search-f1/results-f1-poison-2026-09-07.txt](search-f1/results-f1-poison-2026-09-07.txt)、[search-f1/results-f1-poison-enriched-2026-09-07.txt](search-f1/results-f1-poison-enriched-2026-09-07.txt)。
 
 **兩個決定式訊號都試過，都分不開**：
 
-1. **tags 格式詞數**：poison 三份各是 4／3／0 個格式詞；真實語料裡合法橫跨多種格式的 `data-analyst` 最高到 6 個，區間重疊，不可分。
+1. **tags 格式詞數**：poison 三份各是 4／3／0 個格式詞；真實語料裡合法橫跨多種格式的 `data-analyst` 最高到 6 個，區間重疊，不可分。〔**2026-09-07 訂正**：原文這組數字是人工目測、沒有可查的輸出。補上程式化重數（[injection/poison_format_words.py](injection/poison_format_words.py)，詞表印在輸出檔首行）：poison **5／4／0**，真實 31 份最高 **7**（`docx`）、`data-analyst` **6**、p90 **5**、中位數 1，單一門檻不可分（[results-format-words-2026-09-07.txt](injection/results-format-words-2026-09-07.txt)）。**結論不變，且比原文更強**——投毒最高的那一份（5）低於三份真實文件（7、6、6），另有三份真實文件與它同分。〕
 2. **任務例句彼此的語意離散度**（`injection/poison_dispersion.py`：同一份文件的任務例句兩兩算 cosine 距離取平均——一個 Skill 把同一件事講八種說法離散度低，一個聲稱橫跨三大類任務的套件例句彼此講的是不同的事，離散度理應偏高）：
 
    | | 值 |

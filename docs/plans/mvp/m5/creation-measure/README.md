@@ -72,3 +72,16 @@ SKILLHUB_MODEL_GATEWAY_URL / SKILLHUB_MODEL_GATEWAY_KEY
 **尚未跑。**
 
 三個路徑都用**絕對路徑**：`go -C apps/platform` 會把相對路徑從套件目錄解析（第一次實跑就撞到 `open …corpus.json: cannot find`）。第二把金鑰要帶 `SKILLHUB_SERVICE_KEY_ALIAS=<不同名字>`，LiteLLM 拒絕重複的 key alias；預算用 `SKILLHUB_SERVICE_KEY_BUDGET_USD`（0～20）。
+
+## 常設紅線：改索引文本或檢索規則時要一起重跑的投毒量測（2026-09-07 `05` R-53）
+
+**何時要跑**：改 `enrich-skill` 的提示版本、或改檢索規則（截斷值、覆蓋腿、詞彙腿、排序）時。
+
+**跑什麼**：跟 F1 同一次跑，兩組數字寫進同一份報告，用 [`search-f1/search_f1_score.py`](search-f1/search_f1_score.py)（旗標與其他參數見它自己檔頭的用法說明，不要臆造）：
+
+- `--poison`：最壞情形，插入 3 份用 golden 任務句子直接拼成的合成投毒文件。
+- `--poison-dir <目錄>`：公平情形，投毒文件也先經正常增強（`enrich-skill`）再入索引。
+
+**紅線**：投毒不得進任何 golden 題的 Top-3——腳本印的 `top3_hit` 是**投毒文件擠進 Top-3 的題數**（越高越糟，綠燈是 0），不是正解命中率。**今天未達**——最壞情形（`results-f1-poison-2026-09-07.txt`）golden 60 題裡有 32 題被投毒擠進 Top-3，golden F1 0.914→0.525；公平情形（三份投毒文件也經 `enrich-skill/v7` 正常增強，`results-f1-poison-enriched-2026-09-07.txt`）37/60，golden F1 0.914→0.786，但排除投毒後的乾淨題 F1 仍是 0.914（投毒不是壓低正解排名，是自己擠進候選）。這條紅線的用途是「放寬目錄准入的提案動工前必須先過」，不是每次都要綠——今天過不了，正是「不要放寬准入」的證據，不是紅線定錯。
+
+**為什麼不能靠程式擋**：試過兩個訊號想把投毒跟合法內容分開，都分不開。① tags 格式詞數（`injection/poison_format_words.py`，詞表印在輸出檔首行，`injection/results-format-words-2026-09-07.txt`）：投毒三份是 **5／4／0**，真實 31 份最高是 `docx` 的 **7**（`data-analyst` **6**、p90 **5**、中位數 1），投毒最高的那一份（5）有三份真實文件比它高（7、6、6）、另有三份與它同分，區間重疊。② 任務例句的語意離散度（`injection/poison_dispersion.py`，`injection/results-dispersion-2026-09-07.txt`）：投毒三份 0.748／0.730／0.689，真實 31 份最大 0.758、p90 0.683，投毒完全落在真實分布內。緩解只剩策展這一層（只有人工審核才能把內容放進 `is_catalog`），決策見 ADR-013 定案調整 8、`05` R-53。
