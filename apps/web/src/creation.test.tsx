@@ -67,9 +67,16 @@ const LIMITS = {
   retention_seconds: 604800,
 };
 /** Every GET fires against one of three routes; `/limits` is checked first
- * since it also ends in neither of the other two suffixes. */
+ * since it also ends in neither of the other two suffixes.
+ *
+ * CRED-001's GET /me/credits also fires on every render (CreationSession
+ * calls useCredits unconditionally) and defaults to the real, current
+ * production answer — 404, the route is not mounted yet (see api/credits.ts)
+ * — so every existing test below is unaffected unless it opts into a credits
+ * response of its own. */
 function routeGet(url: string, list: unknown, single: unknown) {
   if (url.endsWith("/creation-sessions/limits")) return response(LIMITS);
+  if (url.endsWith("/me/credits")) return response({ error: "not found" }, 404);
   return response(url.endsWith("/creation-sessions") ? list : single);
 }
 beforeEach(() => {
@@ -150,6 +157,54 @@ test("natural language creates one budgeted session", async () => {
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({ message: "建立摘要 Skill", budget_usd: 0.5 });
   expect(posts[0].id).toBeTruthy();
+});
+// CRED-001 (ADR-068) gate ①: a new session may start only when the balance
+// meets the estimated threshold. These two are the DB-free half of the CRED
+// test coverage this task asked for; apiserver/credits_gate_test.go and
+// credits_route_test.go cover the Go side (pure gating logic and the
+// RequireSession/RequireOperator HTTP surface).
+const creditsResponse = (patch: Record<string, unknown> = {}) => ({
+  balance_credits: 100,
+  debt_floor_credits: -50,
+  estimated_session: { low_credits: 30, high_credits: 65, sample_size: 40, estimated: false },
+  can_start: true,
+  ...patch,
+});
+test("a balance at or above the threshold leaves the start button enabled and shows the estimate", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith("/me/credits")) return response(creditsResponse());
+      if (init?.method === "POST") return response(sample({ state: "queued" }));
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await waitFor(() => box.textContent!.includes("目前餘額"));
+  expect(box.textContent).toContain("目前餘額 100 點");
+  expect(box.textContent).toContain("30–65 點");
+  expect(button("開始互動創作").disabled).toBe(false);
+});
+test("a balance below the threshold disables the start button and names the deficit", async () => {
+  const reason =
+    "餘額不足以開始新的創作會話：目前 10 點，這一場大約要 65 點，還差 55 點。請聯絡 operator 授予點數，或等待下次充值。";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.endsWith("/me/credits")) {
+        return response(
+          creditsResponse({ balance_credits: 10, can_start: false, block_reason: reason }),
+        );
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await waitFor(() => box.textContent!.includes("還差"));
+  expect(box.textContent).toContain(reason);
+  const submit = button("開始互動創作");
+  expect(submit.disabled).toBe(true);
+  expect(submit.getAttribute("aria-describedby")).toBe("creation-credits-why-disabled");
 });
 test("diagram starts with an unbilled empty session then sends transient input", async () => {
   const posts: Record<string, unknown>[] = [];

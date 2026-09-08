@@ -188,6 +188,36 @@ type AuditEvent struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+type CostEvent struct {
+	ID               pgtype.UUID
+	Kind             string
+	Model            string
+	PromptVersion    *string
+	PromptTokens     int64
+	CompletionTokens int64
+	UsdMicros        int64
+	CostSource       string
+	WorkspaceID      pgtype.UUID
+	UserID           pgtype.UUID
+	RefType          *string
+	RefID            pgtype.UUID
+	IdempotencyKey   string
+	CreatedAt        pgtype.Timestamptz
+}
+
+type CostStatistic struct {
+	ID           pgtype.UUID
+	Kind         string
+	WindowStart  pgtype.Timestamptz
+	WindowEnd    pgtype.Timestamptz
+	SampleCount  int64
+	P50UsdMicros *int64
+	P90UsdMicros *int64
+	P95UsdMicros *int64
+	MaxUsdMicros *int64
+	CreatedAt    pgtype.Timestamptz
+}
+
 type CreationReceipt struct {
 	ID               pgtype.UUID
 	SessionID        pgtype.UUID
@@ -220,6 +250,29 @@ type CreationSessionEvent struct {
 	EventType   string
 	Snapshot    []byte
 	CreatedAt   pgtype.Timestamptz
+}
+
+type CreditAccount struct {
+	UserID         pgtype.UUID
+	BalanceCredits int64
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type CreditEntry struct {
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	Kind           string
+	DeltaCredits   int64
+	UsdMicros      *int64
+	MarkupBps      *int32
+	Model          *string
+	PromptVersion  *string
+	RefType        *string
+	RefID          pgtype.UUID
+	CostEventID    pgtype.UUID
+	Estimated      bool
+	IdempotencyKey string
+	CreatedAt      pgtype.Timestamptz
 }
 
 type Dataset struct {

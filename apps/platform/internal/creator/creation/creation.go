@@ -59,6 +59,17 @@ func (s *Service) enqueue(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 	return a, err
 }
 func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.UUID, message string, budget float64) (View, error) {
+	// ADR-068 gate ①, checked before anything else: a session below the
+	// started threshold must not touch the database at all.
+	if s.CreditCanStart != nil {
+		ok, err := s.CreditCanStart(ctx, ws.ID)
+		if err != nil {
+			return View{}, err
+		}
+		if !ok {
+			return View{}, ErrCreditThreshold
+		}
+	}
 	if !s.Limits.Valid() {
 		return View{}, ErrUnavailable
 	}

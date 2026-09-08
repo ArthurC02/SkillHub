@@ -34,6 +34,8 @@
 # 每個 db/queries/*.sql 的預設 owner。
 files:
   creation.sql: creation
+  credit.sql: credit
+  cost.sql: credit
   auth.sql: identity
   beta.sql:
   dispatch.sql: run
@@ -280,6 +282,8 @@ immutable:
   download_artifacts: ADR-027 產出的位元組與雙雜湊；重打包是新列
   download_records: ADR-027「誰在何時下載了什麼」，不是可編輯的狀態
   evaluation_model_usage: ADR-026 判定當下的模型用量；重評是 append 新列
+  cost_events: 05（2026-09-08）平台真實支出的一次付費呼叫紀錄；重算統計是新視窗，不改舊事件
+  credit_entries: 05（2026-09-08）使用者餘額異動的分錄；調整用新分錄，不原地改舊分錄（鏡射鐵律 4）
 
 # 不可變表的具名豁免。形狀比照 `allow:`：具名、有理由、有清除路徑。
 # **不得**為了讓檢查過關就把整張表移出 `immutable:`。
@@ -315,6 +319,20 @@ immutable_allow:
   # 整合測試當時是綠的，因為它的 fixture 只插了母列（見 governance_integration_test.go）。
   DeleteWorkspaceDownloadRecords: download_records
   DeleteWorkspaceDownloadArtifactDetails: download_artifacts
+  # Credit/cost retention sweep (05 2026-09-08「保存期限與刪除」), same shape
+  # and same `SET LOCAL skillhub.purge = 'on'` mechanism as the audit_events
+  # sweep above. credit_accounts.balance_credits is unaffected by either DELETE
+  # — it was already updated in the entry's own transaction, not derived from
+  # surviving rows at read time.
+  PurgeExpiredCreditEntries: credit_entries
+  PurgeExpiredCostEvents: cost_events
+  # Account deletion is a different question from retention and needs its own
+  # queries: the sweeps above are time-based and would leave a deleted account's
+  # spend on file until it aged out. Found by the adversarial review of the
+  # credit batch (2026-09-08), which caught the store interface claiming the
+  # retention queries covered this.
+  PurgeUserCreditEntries: credit_entries
+  PurgeUserCostEvents: cost_events
 
 # 裸 SQL 的具名豁免（ADR-033 2026-08-20 追加；DDD-058 2026-08-22 強化）
 #
