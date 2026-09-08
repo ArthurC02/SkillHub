@@ -283,6 +283,17 @@ test("GEN-008: the bounds the server enforces are stated before the button, and 
   expect(text).toContain("估計值，非報價");
   expect(text).toContain("2026-08-25 對真實閘道生成 10 次的實付分布");
   expect(text).toContain("平台沒有為單次生成設定費用上限");
+  // 2026-09-08：**位置也是斷言的一部分**，而在這之前它不是。`textContent` 讀得到
+  // 一個關著的 `<details>` 裡的字，所以上面那幾條在「折」與「不折」兩種形狀下都綠
+  // ——一支分不出這兩者的測試，守不住 02:GEN-001 的「生成前顯示」。
+  //
+  // 成本那一列必須在外面（GEN-001 的「生成前顯示預估成本」是靜止時顯示）；
+  // 上限那一列必須在裡面（同條的 16000 token 是「發生時告知」，而設計 §2.10 第 6 項
+  // 逐字寫著「限額細節可折」）。
+  const dd = (needle: string) =>
+    Array.from(container.querySelectorAll("dd")).find((n) => n.textContent?.includes(needle));
+  expect(dd("估計值，非報價")?.closest("details"), "預估成本被折進去了").toBeNull();
+  expect(dd("16,000 token")?.closest("details"), "上限那一列還攤在表單上").not.toBeNull();
   // And the textarea carries no maxLength: the browser's unit (UTF-16 code
   // units) is not the server's (runes), so one enforcer, and it is the server.
   expect(container.querySelector<HTMLTextAreaElement>("#generate-task")!.maxLength).toBe(-1);

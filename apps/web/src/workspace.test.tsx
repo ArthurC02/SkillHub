@@ -403,6 +403,12 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
     text().split("相容性驗證").length - 1,
     "the compatibility absence is printed once per row again",
   ).toBe(1);
+
+  // 這一句的另一半在上面那支空清單的測試裡（2026-09-08 起空狀態不渲染它）。兩半合起來
+  // 才守得住這件事：只有「空的時候不印」會讓整句被刪掉也照樣綠。
+  expect(text(), "清單有列的時候，那句『公開目錄的不在』才是它在做的事").toContain(
+    "公開目錄的不在",
+  );
 });
 
 test("WS-004 a forked row says the scan happened somewhere else, not that it passed", async () => {
@@ -544,6 +550,12 @@ test("IA-9 the empty own-skills list offers importing as a link, not as prose", 
   // 要說這句話的話。斷言跟著改成兩半，這樣任何一半掉了都會紅。
   expect(text()).toContain("空清單");
   expect(text()).toContain("不是讀取失敗");
+
+  // 2026-09-08：**空清單上不渲染那句清單簡介**。「Fork 與匯入的都在這裡；公開目錄的
+  // 不在」判斷的對象是清單裡的列——它解釋為什麼你在目錄看過的某一個不在這裡。一列
+  // 都沒有的時候那個困惑不存在，而 §2.13 D 類的判準是「會不會因為這一段而作出不同
+  // 判斷」。空狀態要的是型別詞與下一步，那兩件都還在（上面兩條）。
+  expect(text(), "空清單上仍然印著那句只對有列的清單成立的簡介").not.toContain("公開目錄的不在");
 });
 
 /**
