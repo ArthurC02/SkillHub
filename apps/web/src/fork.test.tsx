@@ -123,9 +123,7 @@ test("丙-153: Fork 按鈕之前有封測邀請的說明句（照 CreateHub 的�
   stubOwner(() => json({ error: "not authenticated" }, 401));
   await render(<SkillDetail />, settledAsOwner);
 
-  expect(text()).toContain(
-    "Fork 需要封測邀請，這道限制由平台強制；還沒有邀請的話，那一步會被擋下來。",
-  );
+  expect(text()).toContain("Fork 目前只開放給有封測邀請的帳號，這道限制由平台強制。");
 });
 
 // --- 04 丙-150/153: 按 status 選中文句，從不印 err.message ----------------------

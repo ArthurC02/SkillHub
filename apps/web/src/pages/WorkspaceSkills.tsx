@@ -490,29 +490,38 @@ export function WorkspaceSkills() {
         入邊仍是 `WorkspaceAccount.tsx` 與這裡兩個來源檔），少掉的是「那一頁裝什麼」的
         複述——§2.13 第 2 條，而 `/policy` 自己就是四份地圖裡寫得最全的那一份。
       */}
-      <h2>這個工作區的其他頁</h2>
-      <ul className="chip-row">
-        <li>
-          <Link className="action-secondary" to="/workspace/downloads">
-            下載紀錄
-          </Link>
-        </li>
-        <li>
-          <Link className="action-secondary" to="/workspace/runs">
-            Run 歷史
-          </Link>
-        </li>
-        <li>
-          <Link className="action-secondary" to="/workspace/account">
-            帳號
-          </Link>
-        </li>
-        <li>
-          <Link className="action-secondary" to="/policy">
-            資料保存政策
-          </Link>
-        </li>
-      </ul>
+      {/*
+        ── 2026-09-08：這四個控制項從畫布中央挪到頁尾側的一條帶子 ──────────────
+        外部審查說它們「突兀地橫在白色畫布中央，像表單做了一半」。成因是它們與上面
+        三張建立卡**同一個層級、同一組間距、同一階標題**——版面因此宣告它們是這一頁
+        的第二個主題，而它們其實是「離開這一頁」的路。一條頂線、一段留白，標題降到
+        控制項那一階：R3 要的是有一條路，不是那條路要有多響。
+      */}
+      <section className="workspace-index">
+        <h2>這個工作區的其他頁</h2>
+        <ul className="chip-row">
+          <li>
+            <Link className="action-secondary" to="/workspace/downloads">
+              下載紀錄
+            </Link>
+          </li>
+          <li>
+            <Link className="action-secondary" to="/workspace/runs">
+              Run 歷史
+            </Link>
+          </li>
+          <li>
+            <Link className="action-secondary" to="/workspace/account">
+              帳號
+            </Link>
+          </li>
+          <li>
+            <Link className="action-secondary" to="/policy">
+              資料保存政策
+            </Link>
+          </li>
+        </ul>
+      </section>
     </section>
   );
 }

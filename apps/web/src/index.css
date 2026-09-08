@@ -1551,6 +1551,23 @@ summary {
 /* 一列同框的控制項。`.risk-list` 的項目符號對「三條通往別的頁的路」是錯的語彙——
    那是一份清單的樣子，而這三個是控制項（工作區清單頁底部，2026-09-08）。兩個值都在
    §4.2 的 4px 網格上，沒有新的一階。 */
+/* 「這個工作區的其他頁」是離開這一頁的帶子，不是這一頁的第二個主題。它與上面的
+   建立卡本來共用同一階標題與同一組間距，於是版面說它們一樣重要——外部審查讀到的
+   「表單做了一半」就是那個宣告。一條頂線把它推到頁尾側，標題降到控制項那一階
+   （15px 是既有的一階，不是新的一階）。資訊架構 §0.1 R3 要的是這四條路存在，
+   不是它們要有多響。 */
+.workspace-index {
+  border-top: 1px solid var(--border);
+  margin-top: 32px;
+  padding-top: 16px;
+}
+
+.workspace-index h2 {
+  font-size: 15px;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
 .chip-row {
   list-style: none;
   padding: 0;

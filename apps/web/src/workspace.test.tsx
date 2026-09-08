@@ -842,7 +842,7 @@ test("建立中心 states the invite requirement on the from-catalogue card, in 
   );
   expect(card, "the from-catalogue card is missing").toBeTruthy();
   const copy = (card!.textContent ?? "").replace(/\s+/g, "");
-  expect(copy).toContain("Fork需要封測邀請");
+  expect(copy).toContain("Fork目前只開放給有封測邀請的帳號");
   expect(copy).toContain("由平台強制");
   // ...and it is a way through, not a dead end: the card links to the catalogue.
   expect(Array.from(card!.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toContain("/");

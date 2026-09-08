@@ -63,9 +63,7 @@ export function CreateHub({
 
   // 門上與門後同一個名字（§3 第 14 條：同一件事一頁只有一個名字）。旗標決定門後
   // 是哪一個工作台，所以門上的字也跟著它，而不是寫死成其中一個。
-  const doorway = creationExposed
-    ? "和 Agent 一起創作 Skill"
-    : "沒有夠接近的？讓平台依你的描述做一個";
+  const doorway = creationExposed ? "和 Agent 一起創作 Skill" : "讓平台依你的描述做一個";
 
   return (
     /* `id="create"` is a link target, not decoration: the home page's hero
@@ -124,10 +122,16 @@ export function CreateHub({
               button is the shape 「強制但不顯示」 names as the second worst.
 
               **它不會因為卡片變小而縮短。** 這一句是 §2.2 的揭露義務，不是卡片的
-              裝飾；`workspace.test.tsx` 逐字守著「Fork 需要封測邀請」與「由平台強制」
-              兩段出現在這張卡上。
+              裝飾；`workspace.test.tsx` 逐字守著限制與強制者兩段出現在這張卡上。
+
+              ── 2026-09-08：語氣換了，兩件該說的事一件都沒少 ──────────────────
+              原句尾巴是「還沒有邀請的話，那一步會被擋下來」。§2.2 第三向要的是
+              **限制是真的、撞上之前先說、說出誰強制**——那一句只是把後果再講一次，
+              而外部審查讀成「工程師在嗆使用者」。全 app 四處同型句同批改（這裡、
+              `SkillDetail` 的 Fork、`RunPreflight` 的開始 Run、`Packaging` 的建立
+              下載套件），因為同一個揭露有兩種語氣比語氣本身更糟。
             */}
-            Fork 需要封測邀請，這道限制由平台強制；還沒有邀請的話，那一步會被擋下來。
+            Fork 目前只開放給有封測邀請的帳號，這道限制由平台強制。
           </p>
           <p>
             {/*

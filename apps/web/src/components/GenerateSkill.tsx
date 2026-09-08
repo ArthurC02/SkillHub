@@ -197,7 +197,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
 
   return (
     <section>
-      <h2>沒有夠接近的？讓平台依你的描述做一個</h2>
+      <h2>讓平台依你的描述做一個</h2>
       <p className="note">
         平台會依你寫的任務描述產生一個 Skill 套件，放進你自己的工作區。 它
         <strong>不會進入公開目錄，也不會出現在搜尋結果裡</strong>——包括你自己搜尋的時候。
