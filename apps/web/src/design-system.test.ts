@@ -635,3 +635,29 @@ test("§4.6.3: a door-shaped link wears the same box as the button beside it", (
     expect(rule, `.action-secondary 沒有跟著 button 拿到 :${state}——按下去不會有回饋`).toBeTruthy();
   }
 });
+
+/**
+ * 導覽列的工作是回答「我現在在哪一項」，而它一度五項都是 `--link`——當前頁只多一條
+ * 底線。五個一樣響的字沒有回答那個問題，而 `.app-nav a` 沒有自己的 `color` 正是成因：
+ * 全 app 的 `a` 都被那條元素選擇器染成 accent。
+ *
+ * 兩件事一起守，因為只守其中一件都會讓另一件靜靜地回來：非當前頁**明確**是 `--text`
+ * （不是繼承來的 `--link`），當前頁**同時**換色與加底線（`aria-current` 由 router 給，
+ * 那是第三個訊號，NFR-007）。
+ */
+test("§NFR-007: the nav says which item is current with more than one channel", () => {
+  const rules = css.split("}");
+  const base = rules.find((r) => r.includes(".app-nav a {"));
+  expect(base, "找不到 `.app-nav a`").toBeTruthy();
+  expect(
+    base,
+    "`.app-nav a` 沒有自己的 color：它會繼承全 app 連結的 --link，整列變成紫字",
+  ).toContain("color: var(--text)");
+
+  const active = rules.find((r) => r.includes('.app-nav a[data-status="active"]'));
+  expect(active, "找不到當前頁那條規則").toBeTruthy();
+  expect(active, "當前頁沒有換色——與非當前頁只差一條底線").toContain("color: var(--text-h)");
+  expect(active, "當前頁沒有底線——顏色單獨承載了意義（NFR-007）").toContain(
+    "text-decoration: underline",
+  );
+});
