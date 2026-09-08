@@ -16,7 +16,7 @@ import { RiskIndicator } from "../components/RiskIndicator";
 import { SignInAction } from "../components/SignIn";
 import { VersionUpload } from "../components/VersionUpload";
 import { PACKAGING_BLOCKED_LABEL, packagingGate } from "./Packaging";
-import { SetSkillCategoryRequestCategoryEnum } from "@skillhub/api-client-ts";
+import type { SetSkillCategoryRequest } from "@skillhub/api-client-ts";
 import type {
   Labelled,
   SkillDetail as SkillDetailModel,
@@ -492,9 +492,9 @@ function VersionHistory({ skillId }: { skillId: string }) {
  *
  * **手寫 `apiFetch` 而不是產生器 client 的 `setSkillCategory`**——理由與
  * `api/skills.ts` 檔頭相同（產生的 client 是 camelCase 加一層 runtime 轉換，改用它
- * 是一次遷移而不是順手整理）。**`<select>` 的四個值借用產生器的 enum**
- * （`SetSkillCategoryRequestCategoryEnum`）：契約加第五個值時這裡編譯期就知道少了
- * 一個 `<option>`，而不是安靜漏送一個手寫字串常數。
+ * 是一次遷移而不是順手整理）。**`<select>` 的四個值由契約的型別把關**（見下方
+ * `CATEGORY_CHOICES` 的註解：型別借契約的，值寫在這裡，因為匯入產生器的 enum 會
+ * 把它的 runtime 一起打包進來）。
  *
  * 送出後只 invalidate `["skills", skillId]` 這個前綴（與 `useSaveSkillVersion` 同
  * 一個理由：同時涵蓋詳情與版本清單）——PUT 回的是契約的 `Skill`，那個 schema 沒有
@@ -502,11 +502,23 @@ function VersionHistory({ skillId }: { skillId: string }) {
  * 與它的 note（策展判定／擁有者標示）要靠重讀 GET 才拿得到，不是從這次 PUT 的回應
  * 拼出來的。
  */
+// 四個書架寫成值，型別由契約的請求型別把關：契約加第五個值時，這個常數會少一個成員
+// 而在編譯期變紅。**匯入的是型別不是值**——產生器的 enum 是執行期物件，匯入它會把整個
+// client 的 runtime（含 `BASE_PATH = "http://localhost:8080"`）拉進 bundle，而
+// `scripts/check-bundle-origins.mjs` 正是為此存在：那個預設位址會讓每一個請求離開這個
+// 部署，而畫面看起來一切正常（CI 在 2026-09-08 擋下了它）。
+const CATEGORY_CHOICES: { value: SetSkillCategoryRequest["category"]; label: string }[] = [
+  { value: "documents", label: "文件" },
+  { value: "writing", label: "寫作" },
+  { value: "data", label: "資料" },
+  { value: "unassigned", label: "尚未定值" },
+];
+
 function CategoryEditor({ skillId, category }: { skillId: string; category: Labelled }) {
   const versions = useSkillVersions(skillId);
   const client = useQueryClient();
-  const [choice, setChoice] = useState<SetSkillCategoryRequestCategoryEnum>(
-    category.value as SetSkillCategoryRequestCategoryEnum,
+  const [choice, setChoice] = useState<SetSkillCategoryRequest["category"]>(
+    category.value as SetSkillCategoryRequest["category"],
   );
 
   const save = useMutation({
@@ -532,12 +544,13 @@ function CategoryEditor({ skillId, category }: { skillId: string; category: Labe
         <select
           id="skill-category"
           value={choice}
-          onChange={(e) => setChoice(e.target.value as SetSkillCategoryRequestCategoryEnum)}
+          onChange={(e) => setChoice(e.target.value as SetSkillCategoryRequest["category"])}
         >
-          <option value={SetSkillCategoryRequestCategoryEnum.Documents}>文件</option>
-          <option value={SetSkillCategoryRequestCategoryEnum.Writing}>寫作</option>
-          <option value={SetSkillCategoryRequestCategoryEnum.Data}>資料</option>
-          <option value={SetSkillCategoryRequestCategoryEnum.Unassigned}>尚未定值</option>
+          {CATEGORY_CHOICES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
         </select>
       </p>
       <button type="button" onClick={() => save.mutate()} disabled={save.isPending}>
