@@ -268,6 +268,18 @@ export function CreationSession() {
     [raiseError, setRaiseError] = useState(""),
     [error, setError] = useState<unknown>(),
     [busy, setBusy] = useState(false);
+  /**
+   * `<input type="file">` is uncontrolled: `setFile(undefined)` empties React's
+   * copy and leaves the DOM's `value` holding the same path, so choosing THE
+   * SAME file again fires no `change` and the pick silently does nothing. Every
+   * place that drops the attachment has to clear both. `GenerateSkill.tsx` has
+   * had this pair since it shipped; this screen was missing it.
+   */
+  const fileInput = useRef<HTMLInputElement>(null);
+  const clearFile = () => {
+    setFile(undefined);
+    if (fileInput.current) fileInput.current.value = "";
+  };
   const pending = useRef<{ key: string; body: CreationAction } | undefined>(undefined);
   const startPending = useRef<
     { key: string; body: { id: string; message: string; budget_usd: number } } | undefined
@@ -372,22 +384,25 @@ export function CreationSession() {
     try {
       /*
        * 素材種類由輸入區的內容推出來，不再由一組 radio 先選（2026-09-08）。
-       * **一次只送一種**：平台的 action 一次帶一個 kind，而送完一輪會話就進
-       * working，下一個 action 要等新的 revision——所以兩種素材同時在的時候這裡
-       * 擋下來並說出順序，而不是連送兩次然後第二次撞 409。
+       *
+       * ── 稍晚同日：文字不再算「另一種素材」 ──────────────────────────────
+       * 這裡本來擋下「圖＋文字」並叫人分兩次送。那不是版面選擇，是後端當時的形狀：
+       * `diagram` 與 `select_references` 兩個 action 不收 `message`。**現在收了**
+       * （creation.go 的 `attachNote`），所以圖或參考可以帶著那句話一起送——而那正
+       * 是人本來就會做的事：「這是我的流程，我想把它變成一個 Skill」。
+       *
+       * 還擋著的只剩「圖＋參考」：那真的是兩個 kind，一次呼叫帶不了兩個，而送完一輪
+       * 就進 working、下一個 action 要等新的 revision。所以這裡擋下來並說出順序，而
+       * 不是連送兩次然後第二次撞 409。
        */
-      const kinds = [
-        file && "diagram",
-        refs.length > 0 && "references",
-        message.trim() && "message",
-      ]
-        .filter(Boolean)
-        .join("");
+      const note = message.trim();
       const mode = file ? "diagram" : refs.length > 0 ? "references" : "message";
-      if (kinds === "")
+      if (!file && refs.length === 0 && !note)
         throw new Error("請描述想完成的任務，或附一張流程圖，或挑一個要參考的 Skill。");
-      if (kinds !== "diagram" && kinds !== "references" && kinds !== "message")
-        throw new Error("一次只能送一種素材。先送流程圖或參考 Skill，Agent 讀完之後再補文字說明。");
+      if (file && refs.length > 0)
+        throw new Error(
+          "流程圖和參考 Skill 一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。",
+        );
       const diagram = mode === "diagram" ? (file ? await readImage(file) : undefined) : undefined;
       if (mode === "diagram" && !diagram) throw new Error("請先選擇流程圖。");
       let value = session;
@@ -421,12 +436,22 @@ export function CreationSession() {
         await send(value, "message", { message });
         setMessage("");
       }
+      // 送出成功之後，這一輪放進輸入區的東西全部清掉——三種素材都是。
+      // 參考 Skill 本來沒有清：留下來的 chip 會被下一次的守門讀成「你又挑了參考」，
+      // 於是你想補一句話卻被擋，而錯誤訊息叫你去做你剛剛做完的事。
       if (mode === "diagram") {
-        await send(value, "diagram", { diagram });
-        setFile(undefined);
+        await send(value, "diagram", { diagram, ...(note ? { message: note } : {}) });
+        clearFile();
+        setMessage("");
       }
-      if (mode === "references")
-        await send(value, "select_references", { reference_skill_ids: refs.map((r) => r.id) });
+      if (mode === "references") {
+        await send(value, "select_references", {
+          reference_skill_ids: refs.map((r) => r.id),
+          ...(note ? { message: note } : {}),
+        });
+        setRefs([]);
+        setMessage("");
+      }
     } catch (err) {
       setError(err);
     } finally {
@@ -450,7 +475,7 @@ export function CreationSession() {
             onChange={(e) => {
               setID(e.target.value);
               setMessage("");
-              setFile(undefined);
+              clearFile();
               setRefs([]);
               pending.current = undefined;
               setError(undefined);
@@ -638,6 +663,19 @@ export function CreationSession() {
                 </button>
               )}
             </section>
+          )}
+          {/* 平台收到圖了沒有——在 Agent 讀出內容之前，畫面上唯一能回答這件事的東西。
+              快照一直帶著這三個欄位（`diagram_fingerprint`／`media_type`／`bytes`），
+              但沒有人畫它們：送出之後對話裡不會多一句話，於是「我到底傳上去了嗎」
+              只能靠等。`needs_reupload` 是圖收到了但那一步中斷、理解沒生出來，
+              重新上傳的入口就在下面的輸入區。 */}
+          {p.diagram_fingerprint && (
+            <p>
+              已附上流程圖（{p.diagram_media_type || "未知格式"}
+              {p.diagram_bytes !== undefined && `，${p.diagram_bytes} 位元組`}）。
+              {session?.state === "needs_reupload" &&
+                "這一步中斷了，Agent 沒能讀出內容；請在下面重新上傳同一張圖。"}
+            </p>
           )}
           {p.diagram_understanding && (
             <section>
@@ -977,13 +1015,25 @@ export function CreationSession() {
               placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
             />
           </label>
+          {/* 兩個上限說在控制項**之前**，而不是等 4xx 才說（設計 §2.2 第二向）。
+              位置從送出鍵之後搬上來：一句「你只能附這麼大的圖」出現在你按下送出
+              之後，就不是在講上限，是在解釋失敗。`aria-describedby` 把它綁在兩個
+              控制項上，`GenerateSkill.tsx` 對同一種素材本來就是這個配方。 */}
+          <p className="note" id="composer-limits">
+            流程圖限 PNG、JPEG 或 WebP，最多 4,000,000 位元組（約 3.8 MB）；參考 Skill 最多三個。
+            文字說明可以跟著流程圖或參考一起送。
+          </p>
           <div className="composer-tools">
+            {/* 沒有 `aria-label`：`<label>` 包著這個輸入，可及名稱就是看得見的那五個
+                字。原本掛的 `aria-label="流程圖"` 會蓋掉它，於是語音操作念畫面上的
+                「附一張流程圖」點不到這個控制項（WCAG 2.5.3）。 */}
             <label className="composer-attach">
               附一張流程圖
               <input
-                aria-label="流程圖"
+                ref={fileInput}
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
+                aria-describedby="composer-limits"
                 disabled={locked}
                 onChange={(e) => setFile(e.target.files?.[0])}
               />
@@ -991,6 +1041,8 @@ export function CreationSession() {
             <button
               type="button"
               aria-expanded={picking}
+              aria-controls="composer-references"
+              aria-describedby="composer-limits"
               disabled={locked}
               onClick={() => setPicking((v) => !v)}
             >
@@ -1006,12 +1058,15 @@ export function CreationSession() {
               {busy ? "送出中…" : session ? "送出" : "開始互動創作"}
             </button>
           </div>
+          {/* 每一顆 chip 說的是按下去會發生什麼事（「移除」），不是它代表什麼東西。
+              原本是「流程圖：flow.png ✕」——一個名詞加一個符號，螢幕閱讀器念出來
+              是一份檔名，不是一個動作。 */}
           {(file || refs.length > 0) && (
             <ul className="chip-row">
               {file && (
                 <li>
-                  <button type="button" disabled={locked} onClick={() => setFile(undefined)}>
-                    流程圖：{file.name} ✕
+                  <button type="button" disabled={locked} onClick={clearFile}>
+                    移除流程圖：{file.name}
                   </button>
                 </li>
               )}
@@ -1022,31 +1077,29 @@ export function CreationSession() {
                     disabled={locked}
                     onClick={() => setRefs((old) => old.filter((x) => x.id !== r.id))}
                   >
-                    參考：{r.name} ✕
+                    移除參考：{r.name}
                   </button>
                 </li>
               ))}
             </ul>
           )}
           {picking && (
-            <ReferencePicker
-              disabled={locked}
-              references={refs}
-              onToggle={(skillID, name) =>
-                setRefs((old) =>
-                  old.some((r) => r.id === skillID)
-                    ? old.filter((r) => r.id !== skillID)
-                    : old.length < 3
-                      ? [...old, { id: skillID, name }]
-                      : old,
-                )
-              }
-            />
+            <div id="composer-references">
+              <ReferencePicker
+                disabled={locked}
+                references={refs}
+                onToggle={(skillID, name) =>
+                  setRefs((old) =>
+                    old.some((r) => r.id === skillID)
+                      ? old.filter((r) => r.id !== skillID)
+                      : old.length < 3
+                        ? [...old, { id: skillID, name }]
+                        : old,
+                  )
+                }
+              />
+            </div>
           )}
-          {/* 流程圖的兩個上限說在附加動作旁邊，而不是等 4xx 才說（設計 §2.2 第二向）。 */}
-          <p className="note">
-            流程圖限 PNG、JPEG 或 WebP，最多 4,000,000 位元組（約 3.8 MB）；參考 Skill 最多三個。
-          </p>
           {working && <p className="note">正在處理目前素材；完成後即可補充或確認。</p>}
         </div>
       )}

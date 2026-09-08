@@ -46,7 +46,7 @@ export interface CreationAction {
      */
     kind: CreationActionKindEnum;
     /**
-     * 
+     * message: the turn itself, and required. diagram and select_references: optional, the sentence that came with the material - appended as the same user message before the material is applied, so the picture and what it is for are one turn. Ignored by every other kind.
      * @type {string}
      * @memberof CreationAction
      */

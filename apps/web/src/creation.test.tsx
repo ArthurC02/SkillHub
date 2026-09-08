@@ -209,13 +209,29 @@ test("a balance below the threshold disables the start button and names the defi
   expect(submit.disabled).toBe(true);
   expect(submit.getAttribute("aria-describedby")).toBe("creation-credits-why-disabled");
 });
+/** 把一張圖放進輸入區。回傳那個 `<input>`，因為有一支測試要看它的 `value`。 */
+async function attachDiagram(name = "flow.png", body = "diagram") {
+  const el = box.querySelector('input[type="file"]') as HTMLInputElement;
+  await act(async () => {
+    Object.defineProperty(el, "files", {
+      configurable: true,
+      value: [new File([body], name, { type: "image/png" })],
+    });
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  return el;
+}
 /**
  * 2026-09-08：三個素材入口收成一個輸入區之後，「一次只送一種」變成程式的責任而不是
  * 使用者的。平台的 action 一次帶一個 kind，送完一輪會話就進 working、下一個 action
  * 要等新的 revision——所以兩種素材同時在的時候要**先擋下來並說出順序**，不是連送兩次
  * 讓第二次撞 409。這支測試守的是「一個 POST 都沒有發出去」，不只是那句話有出現。
+ *
+ * ── 稍晚同日：這裡只剩「圖＋參考」──────────────────────────────────────
+ * 文字曾經也算一種素材，因為 `diagram` 與 `select_references` 兩個 action 不收
+ * `message`。現在收了（creation.go 的 `attachNote`），所以擋的只剩真正的兩個 kind。
  */
-test("two kinds of material at once are refused before anything is sent", async () => {
+test("a diagram and reference Skills at once are refused before anything is sent", async () => {
   const posts: Record<string, unknown>[] = [];
   vi.stubGlobal(
     "fetch",
@@ -229,18 +245,136 @@ test("two kinds of material at once are refused before anything is sent", async 
   );
   await render();
   await input("這次預算上限（美元）", ".5");
-  await input("想完成的任務", "把逐字稿整理成待辦");
-  const file = box.querySelector('input[type="file"]') as HTMLInputElement;
-  await act(async () => {
-    Object.defineProperty(file, "files", {
-      value: [new File(["diagram"], "flow.png", { type: "image/png" })],
-    });
-    file.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  await openReferencePicker();
+  await click("選擇摘要參考");
+  await attachDiagram();
   await click("開始互動創作");
-  await waitFor(() => box.textContent!.includes("一次只能送一種素材"));
-  expect(box.textContent).toContain("Agent 讀完之後再補文字說明");
+  await waitFor(() => box.textContent!.includes("一次只能送一種"));
+  expect(box.textContent).toContain("文字說明可以跟著任一種一起送");
   expect(posts, "擋下來之前就已經送出去了").toHaveLength(0);
+});
+/**
+ * 圖和「這張圖是要做什麼」是同一句話的兩半。後端收下之後（creation.go 的
+ * `attachNote`），這裡守的是前端真的把它們放進**同一個** action，而不是擋下來叫人
+ * 分兩次送。
+ */
+test("a diagram carries the sentence that came with it, in one action", async () => {
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(sample({ revision: posts.length }));
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await input("這次預算上限（美元）", ".5");
+  await input("想完成的任務", "這是我的流程，我想把它變成待辦清單 Skill。");
+  await attachDiagram();
+  await click("開始互動創作");
+  await waitFor(() => posts.length === 2);
+  expect(posts[0].message, "會話本身不帶那句話，它跟著素材走").toBe("");
+  expect(posts[1]).toMatchObject({
+    kind: "diagram",
+    message: "這是我的流程，我想把它變成待辦清單 Skill。",
+    diagram: { media_type: "image/png", data: btoa("diagram") },
+  });
+});
+/**
+ * 送出成功之後，輸入區裡的東西要清乾淨——**參考 Skill 一直沒有清**。留下來的 chip
+ * 會被下一次的守門讀成「你又挑了參考」：你想補一句話，卻被擋，而錯誤訊息叫你去做你
+ * 剛剛做完的事。這支測試不看 chip，看的是下一次送出真的是一則 `message`。
+ */
+test("references are cleared once they have been sent, so the next turn can be words", async () => {
+  const posts: Record<string, unknown>[] = [];
+  const v = sample({ revision: 2 });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(sample({ revision: posts.length + 1 }));
+      }
+      return routeGet(url, [], v);
+    }),
+  );
+  await render();
+  await input("這次預算上限（美元）", ".5");
+  await openReferencePicker();
+  await click("選擇摘要參考");
+  await click("開始互動創作");
+  await waitFor(() => posts.length === 2);
+  expect(posts[1]).toMatchObject({ kind: "select_references", reference_skill_ids: ["ref-1"] });
+  await waitFor(() => !box.textContent!.includes("移除參考"));
+  await input("想完成的任務", "請照這個風格，但輸出成表格。");
+  await click("送出");
+  await waitFor(() => posts.length === 3);
+  expect(posts[2]).toMatchObject({ kind: "message", message: "請照這個風格，但輸出成表格。" });
+});
+/**
+ * 附加素材的兩個控制項，四件都要對：
+ *
+ * 1. 檔案輸入**沒有** `aria-label`。它原本掛著「流程圖」，蓋掉可見的「附一張流程圖」，
+ *    於是語音操作念畫面上的字點不到它（WCAG 2.5.3）。
+ * 2. 兩個上限那句話有 `id`，而且兩個控制項都 `aria-describedby` 指著它。
+ * 3. 那句話在控制項**之前**——它原本在送出鍵之後，那時候它已經不是在講上限，是在
+ *    解釋失敗。
+ * 4. 展開鈕的 `aria-controls` 指的元素，展開之後真的在。
+ */
+test("the two attachment controls name themselves and carry their limits", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [], sample())),
+  );
+  await render();
+  const fileEl = box.querySelector('input[type="file"]') as HTMLInputElement;
+  expect(fileEl.getAttribute("aria-label"), "它會蓋掉看得見的那五個字").toBe(null);
+  expect(fileEl.closest("label")!.textContent).toContain("附一張流程圖");
+  expect(fileEl.getAttribute("aria-describedby")).toBe("composer-limits");
+  const picker = button("參考目錄裡的 Skill");
+  expect(picker.getAttribute("aria-controls")).toBe("composer-references");
+  expect(picker.getAttribute("aria-describedby")).toBe("composer-limits");
+  const limits = box.querySelector("#composer-limits")!;
+  expect(limits.textContent).toContain("4,000,000");
+  expect(
+    limits.compareDocumentPosition(button("開始互動創作")) & Node.DOCUMENT_POSITION_FOLLOWING,
+    "上限說在送出鍵之後就不是在講上限，是在解釋失敗",
+  ).toBeTruthy();
+  expect(box.querySelector("#composer-references")).toBe(null);
+  await openReferencePicker();
+  expect(box.querySelector("#composer-references"), "aria-controls 指著一個不存在的 id").not.toBe(
+    null,
+  );
+});
+/**
+ * `<input type="file">` 是非受控的：`setFile(undefined)` 只清掉 React 那一份，DOM
+ * 的 `value` 還握著同一個路徑，於是**再選同一張圖不會觸發 `change`**——移除之後那張
+ * 圖就再也選不回來了。
+ *
+ * jsdom 不模擬檔案輸入的 `value`（設不進去也讀不出來），所以這裡直接看元件有沒有把
+ * 它清成空字串：那正是瀏覽器要的那一個動作，也正是 `GenerateSkill.tsx` 一直在做的。
+ */
+test("removing the diagram clears the file input, not just React's copy", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [], sample())),
+  );
+  await render();
+  const el = await attachDiagram();
+  let cleared = 0;
+  Object.defineProperty(el, "value", {
+    configurable: true,
+    get: () => "",
+    set: (next: string) => {
+      if (next === "") cleared += 1;
+    },
+  });
+  await waitFor(() => box.textContent!.includes("移除流程圖：flow.png"));
+  await click("移除流程圖：flow.png");
+  expect(cleared, "只清了 React 那一份，同一張圖再也選不回來").toBeGreaterThan(0);
 });
 test("diagram starts with an unbilled empty session then sends transient input", async () => {
   const posts: Record<string, unknown>[] = [];

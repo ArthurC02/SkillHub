@@ -2034,7 +2034,10 @@ type CreationAction struct {
 	CommandID        uuid.UUID          `json:"command_id"`
 	ExpectedRevision int                `json:"expected_revision"`
 	Kind             CreationActionKind `json:"kind"`
-	Message          OptString          `json:"message"`
+	// Message: the turn itself, and required. diagram and select_references: optional, the sentence that
+	// came with the material - appended as the same user message before the material is applied, so the
+	// picture and what it is for are one turn. Ignored by every other kind.
+	Message OptString `json:"message"`
 	// Raise_budget only: the new session ceiling. Must exceed the current one and stay within
 	// max_budget_usd from GET /creation-sessions/limits; a session refused for its limit becomes
 	// waiting_input again.

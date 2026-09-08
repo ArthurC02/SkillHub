@@ -204,3 +204,67 @@ func TestCreationBatchForeignSessionIDIsNotAnOracle(t *testing.T) {
 		t.Fatalf("want 200, got %d", reused)
 	}
 }
+
+// TestCreationBatchAMaterialCarriesItsSentence: 2026-09-08. Until this, the
+// `diagram` and `select_references` actions took no text, so 「這是我的流程，我想
+// 把它變成一個 Skill」 could not be said in the same turn as the picture — the web
+// composer's 「一次只能送一種素材」 was that gap surfacing, and the person paid for
+// it with an extra round in which the model read a picture with no question
+// attached. Both actions now append the sentence as the same user message the
+// `message` action appends, before the material is applied.
+//
+// Driven over HTTP, not through the Service: the point includes that the route
+// and its generated request type carry `message` alongside a diagram.
+func TestCreationBatchAMaterialCarriesItsSentence(t *testing.T) {
+	a, _, _ := creationFixture(t)
+	c := a.login(t, "creation-batch-note")
+
+	// A diagram and its sentence, one turn. The session is created unbilled
+	// (empty message) exactly as the composer creates it when the first thing
+	// the person sends is a picture.
+	const withDiagram = "這是我的流程，我想把它變成待辦清單 Skill。"
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": .5}, 200)
+	if len(v.Snapshot.Messages) != 0 {
+		t.Fatalf("an unbilled session started with messages: %+v", v.Snapshot.Messages)
+	}
+	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
+		"command_id": creationID(t), "expected_revision": v.Revision, "kind": "diagram",
+		"message": withDiagram,
+		"diagram": map[string]any{"media_type": "image/png", "data": "cG5n"},
+	}, 200)
+	if v.Snapshot.DiagramFingerprint == "" {
+		t.Fatalf("the diagram itself was not accepted: %+v", v.Snapshot)
+	}
+	// The diagram step is transient - the API handler runs it inline - so the
+	// model's own reply is already here too. What this asserts is that the
+	// person's sentence is the FIRST thing in the history: the model read the
+	// picture with the question attached, not after it.
+	if len(v.Snapshot.Messages) == 0 || v.Snapshot.Messages[0].Role != "user" || v.Snapshot.Messages[0].Content != withDiagram {
+		t.Fatalf("the sentence that came with the diagram is not in the history: %+v", v.Snapshot.Messages)
+	}
+
+	// The same for a reference selection. A fresh session, because the diagram
+	// above left that one queued.
+	const withRefs = "我想要和這個很像，但是輸出成表格。"
+	v = creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": .5}, 200)
+	a.app.CreationSvc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
+		return creation.Reference{SkillID: "33333333-3333-3333-3333-333333333333", VersionID: "44444444-4444-4444-4444-444444444444", Name: "Ref", Available: true}, llmclient.GenerateReference{}, nil
+	}
+	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
+		"command_id": creationID(t), "expected_revision": v.Revision, "kind": "select_references",
+		"message":             withRefs,
+		"reference_skill_ids": []string{"33333333-3333-3333-3333-333333333333"},
+	}, 200)
+	if len(v.Snapshot.References) != 1 {
+		t.Fatalf("the references themselves were not accepted: %+v", v.Snapshot)
+	}
+	if len(v.Snapshot.Messages) == 0 || v.Snapshot.Messages[0].Role != "user" || v.Snapshot.Messages[0].Content != withRefs {
+		t.Fatalf("the sentence that came with the references is not in the history: %+v", v.Snapshot.Messages)
+	}
+	// Not asserted here: the 4000-rune ceiling. `CreationAction.message` already
+	// carries `maxLength: 4000`, so over HTTP the contract refuses it first and a
+	// test through this door would go green with `attachNote`'s own check
+	// deleted. The check stays because the domain does not get to assume its only
+	// caller is the generated server (iron rule 12 makes the contract the shape,
+	// not the enforcement).
+}

@@ -251,6 +251,29 @@ func (s *Service) masked(text string) string {
 	return s.Mask(text)
 }
 
+// attachNote appends the sentence that came with a material (2026-09-08).
+//
+// Before this, `diagram` and `select_references` carried no text at all, so
+// 「這是我的流程，我想把它變成一個 Skill」 could not be said in the same turn as
+// the picture: the person sent the file, waited a round, and only then got to
+// explain it — and the model read the picture with no question attached to it.
+// The web composer's 「一次只能送一種素材」 was that limit surfacing, not a
+// layout choice.
+//
+// It is the same user message `case "message"` appends and is held to the same
+// limits; what differs is that it does not stand on its own, so an empty one is
+// not an error here — there is a material to carry the turn.
+func (s *Service) attachNote(p *Snapshot, note string) error {
+	if strings.TrimSpace(note) == "" {
+		return nil
+	}
+	if utf8.RuneCountInString(note) > 4000 || len(p.Messages) >= MaxMessages {
+		return ErrInvalidCommand
+	}
+	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(note)})
+	return nil
+}
+
 // nameCollides says whether the draft's name is one of the Skills the
 // duplicate guard listed: saving it would be refused as 同名 (GEN-010), so the
 // model is asked to rename before the person tries again.
@@ -361,6 +384,11 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		if len(c.ReferenceSkillIDs) > 3 || s.ResolveReference == nil {
 			return View{}, nil, ErrInvalidCommand
 		}
+		// The note goes in first: what the person wants these references FOR is
+		// context for the references, not a reply to them.
+		if err := s.attachNote(p, c.Message); err != nil {
+			return View{}, nil, err
+		}
 		refs := []Reference{}
 		seen := map[string]bool{}
 		for _, sid := range c.ReferenceSkillIDs {
@@ -431,6 +459,11 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		case "image/png", "image/jpeg", "image/webp":
 		default:
 			return View{}, nil, ErrInvalidCommand
+		}
+		// After the picture has been accepted, never before: a refused image must
+		// not leave its sentence behind in the history as if it had been sent.
+		if err := s.attachNote(p, c.Message); err != nil {
+			return View{}, nil, err
 		}
 		h := sha256.Sum256(b)
 		p.DiagramFingerprint = hex.EncodeToString(h[:])
