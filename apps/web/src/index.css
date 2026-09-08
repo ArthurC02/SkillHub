@@ -1158,6 +1158,16 @@ main h3 {
   border-radius: 8px;
   margin-top: 32px;
   padding: 12px 16px;
+  /* ── 2026-09-08（第三次）：它不是一張卡，是一條列 ───────────────────
+     量出來的毛病：面板 1078px 寬，四顆 chip 只吃掉約 420px，而那一行標題又自己
+     佔一列——於是它在畫面上是一個五分之三都是空白的大白框，外部審查連續兩輪
+     讀成「因為要放東西就隨手丟一個容器」。它本來就不是四個並列的物件，是一句
+     標題加四個連結，所以標題跟連結同一列，面板矮一列。`wrap` 而不是斷點：
+     375px 時它自己折，不需要第二個斷點。 */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
 }
 
 /* A character counter under its own control. `align-self` rather than
@@ -1842,7 +1852,8 @@ summary {
 .workspace-index h2 {
   font-size: 15px;
   color: var(--text);
-  margin: 0 0 8px;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .chip-row {
@@ -2104,9 +2115,15 @@ summary::-webkit-details-marker {
    一行文字的最左邊看起來就是一個獨立的字，也就是 shell 的提示字元。
 
    字級降到 ui 階、顏色降到 `--border-strong`（它是記號不是字）、間距收到 4px，
-   它才變回一個附在標題上的標記。字形沒有換，換的是它有多響。 */
+   它才變回一個附在標題上的標記。
+
+   ── 同日第二次：字形也得換 ────────────────────────────────────────────────
+   降響度之後再截一次圖，第三輪審查仍然把頁尾那兩列讀成 shell 提示字元——而截圖
+   上確實還是那樣。`›` 這個字形本身就是提示字元的形狀，怎麼調它多小多淡都還是。
+   `▸` 是實心三角，它在每一個作業系統上都只有一個意思：**這裡可以展開**。
+   旋轉那條規則不動，尺寸顏色不動，換的是那一個字。 */
 summary::before {
-  content: "›";
+  content: "▸";
   display: inline-block;
   margin-right: 4px;
   font-size: 15px;

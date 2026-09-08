@@ -500,7 +500,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 #### 4.6.6 字體、記號與不做的事
 
 - **不引入 webfont**：外部請求要進同意書的第三方清單、字型載入會跳版、ADR-039 否決的是依賴面。槓桿是**字重**：`h1`／`h2` 600、`.app-title` 700（今天全部 500／600），GOV.UK 與 USWDS 的視覺品質就是這樣來的。
-- favicon 以 inline SVG data URI 寫在 `index.html`（不開 `public/`）；`.app-title` 前一個 `--accent` 方塊記號（`::before`，全 app 第一個 pseudo-element，~~只此一處~~）。<br>**2026-09-08 訂正：「只此一處」自 2026-09-03 起不成立**，而它在文件裡當了五天的現行事實。今天 `index.css` 有**三個** pseudo-element 站點：`.app-title::before`（方塊記號）、`summary::before`（`›`，展開時 `rotate(90deg)`）、`details[open] > summary::before`。**規則的意思沒有變，變的是它的數字**——pseudo-element 是被配給的，不是自由的：2026-09-08 外部審查提議在每一顆次要按鈕後面加一個 `›`，那會是第四個站點，而且會讓同一個字形在這個 app 裡同時表示「這裡可以展開」與「這裡會換頁」。不採用。
+- favicon 以 inline SVG data URI 寫在 `index.html`（不開 `public/`）；`.app-title` 前一個 `--accent` 方塊記號（`::before`，全 app 第一個 pseudo-element，~~只此一處~~）。<br>**2026-09-08 訂正：「只此一處」自 2026-09-03 起不成立**，而它在文件裡當了五天的現行事實。今天 `index.css` 有**三個** pseudo-element 站點：`.app-title::before`（方塊記號）、`summary::before`（展開記號，展開時 `rotate(90deg)`；字形 2026-09-08 由 `›` 換成 `▸`，理由在 `index.css` 該條註解）、`details[open] > summary::before`。**規則的意思沒有變，變的是它的數字**——pseudo-element 是被配給的，不是自由的：2026-09-08 外部審查提議在每一顆次要按鈕後面加一個 `›`，那會是第四個站點，而且會讓同一個字形在這個 app 裡同時表示「這裡可以展開」與「這裡會換頁」。不採用。
 - **不做**：漸層、主題切換按鈕（`prefers-color-scheme` 就是偏好；IA R4、凍結）、~~圖示集（等第一個「沒有它會誤讀」的實例）~~〔2026-09-03 由 [ADR-065](../adr/ADR-065-hot-path-text-budget-and-the-fourth-disclosure-mechanism.md) 決策 5 回答：允許至多六個形狀的 inline SVG、一列一個、永遠伴隨文字，規則在 §4.7；「不做圖示**集**」仍成立〕、成功綠、任何「Verified」填色、視覺回歸截圖基準線（§6 已證偽兩次）。
 
 #### 4.6.7 凍結下的分類與時間窗

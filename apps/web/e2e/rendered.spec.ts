@@ -253,6 +253,31 @@ test.describe("QA-008 real layout", () => {
   });
 
   /**
+   * 「這個工作區的其他頁」不是第四張卡，是一條列。2026-09-08 之前它是一個 1078px
+   * 寬的白框，裡面只有約 405px 的連結，而標題自己還佔掉一整列——外部審查連續兩輪
+   * 讀成「因為要放東西就隨手丟一個容器」。守的是**標題與連結同一列**（不是高度上限，
+   * 那會隨字級與斷點漂）：兩個盒子在垂直方向重疊，就代表沒有人被推到下一列去。
+   */
+  test("工作區導覽是一條列，標題與連結同高（設計 §4.3）", async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/workspace/skills");
+    await expect(page.locator(".workspace-index")).toBeVisible();
+
+    const rows = await page.evaluate(() => {
+      const box = (s: string) => {
+        const r = document.querySelector(s)!.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom };
+      };
+      return { label: box(".workspace-index h2"), links: box(".workspace-index .chip-row") };
+    });
+
+    const overlap =
+      Math.min(rows.label.bottom, rows.links.bottom) - Math.max(rows.label.top, rows.links.top);
+    expect(overlap, "標題被推到連結上面一列去了").toBeGreaterThan(0);
+  });
+
+  /**
    * ...and the overflow a comparison table does have goes where it was meant
    * to. `table-layout: fixed` plus `width: 100%` does not overflow on a phone,
    * it squeezes, so before `.table-scroll` a 4-column table became shreds of

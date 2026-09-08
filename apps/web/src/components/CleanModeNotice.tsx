@@ -49,7 +49,7 @@ export function CleanModeNotice() {
   return (
     <details className="clean-mode-notice">
       {/* 徽章的 class 在 `<summary>` 自己身上，不在裡面的 `<span>` 上。2026-09-08
-          之前它在 `<span>` 上，而 `summary::before` 的那個 `›` 是 summary 的第一個
+          之前它在 `<span>` 上，而 `summary::before` 的那個記號是 summary 的第一個
           行內盒——**於是箭頭落在藥丸外面**，畫面上看起來像一個孤零零的大於符號旁邊
           擺著一顆徽章。第一次真的看畫面才看到（前面幾輪都在量數字）。 */}
       <summary className="badge badge-unverified">
