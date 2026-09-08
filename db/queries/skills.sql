@@ -17,10 +17,16 @@
 -- category travels too (0053): it says what the bytes are for, and a fork is
 -- the same bytes. Import passes NULL — the platform has not decided how a
 -- user-imported skill gets one (05 R-19) — and NULL renders as 尚未定值.
+--
+-- category_source travels alongside it (0061), for a reason that is not
+-- optional: the pairing CHECK requires category and category_source to be
+-- both NULL or both set, so a fork that copied one without the other would
+-- fail that constraint the moment it forked anything the curation backfill or
+-- an owner had classified. Import passes NULL for both, same as before.
 INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id,
-                    access_restriction, redistribution, category)
+                    access_restriction, redistribution, category, category_source)
 VALUES ($1, $2, $3, $4, $5, $6, coalesce(sqlc.narg('redistribution')::text, 'unknown'),
-        sqlc.narg('category')::text)
+        sqlc.narg('category')::text, sqlc.narg('category_source')::text)
 RETURNING *;
 
 -- name: GetSkill :one
@@ -52,6 +58,23 @@ RETURNING *;
 -- query file is a cross-tenant write waiting for its second caller.
 UPDATE skills SET summary = $3, updated_at = now()
 WHERE id = $1 AND workspace_id = $2;
+
+-- name: SetSkillCategory :one
+-- 05 R-19: the owner says what their own skill is for. `unassigned` is passed
+-- by the caller as two NULLs (both sqlc.narg args unset) rather than as a
+-- fourth CHECK value — see 0061 — so this single UPDATE both assigns a shelf
+-- and clears one back to 尚未定值.
+--
+-- Workspace scoped like every write in this file, and the caller's *own*
+-- workspace: reading somebody else's skill is allowed (WS-001 fork), saying
+-- what it is for is not (ADR-011). A skill outside the caller's workspace, or
+-- already soft-deleted, matches no row and this returns pgx.ErrNoRows, which
+-- the caller maps to the same 404 a missing skill gets — the contract does not
+-- distinguish "not yours" from "does not exist" here (ADR-011's usual answer).
+UPDATE skills
+SET category = $3, category_source = $4, updated_at = now()
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+RETURNING *;
 
 -- name: ListSkills :many
 -- The owner's own skills, newest first, with the one measurement fact the list

@@ -1226,7 +1226,9 @@ func setCategory(t *testing.T, pool *pgxpool.Pool, skillID, category string) {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(context.Background(),
-		"UPDATE skills SET category = $2 WHERE id = $1", id, category,
+		// 0061's pairing CHECK: a category always names where it came from.
+		// This fixture stands in for the curation backfill, which is 'curated'.
+		"UPDATE skills SET category = $2, category_source = 'curated' WHERE id = $1", id, category,
 	); err != nil {
 		t.Fatal(err)
 	}

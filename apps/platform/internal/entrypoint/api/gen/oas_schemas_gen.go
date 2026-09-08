@@ -17398,6 +17398,91 @@ type SetEvaluationFeedbackUnauthorized Error
 
 func (*SetEvaluationFeedbackUnauthorized) setEvaluationFeedbackRes() {}
 
+type SetSkillCategoryBadRequest Error
+
+func (*SetSkillCategoryBadRequest) setSkillCategoryRes() {}
+
+type SetSkillCategoryNotFound Error
+
+func (*SetSkillCategoryNotFound) setSkillCategoryRes() {}
+
+type SetSkillCategoryReq struct {
+	// One of the three PDM-001 shelves, or `unassigned` to take the skill back off every shelf — an
+	// owner who is unsure has to be able to say so, and 尚未定值 is a real answer, not a gap.
+	Category SetSkillCategoryReqCategory `json:"category"`
+}
+
+// GetCategory returns the value of Category.
+func (s *SetSkillCategoryReq) GetCategory() SetSkillCategoryReqCategory {
+	return s.Category
+}
+
+// SetCategory sets the value of Category.
+func (s *SetSkillCategoryReq) SetCategory(val SetSkillCategoryReqCategory) {
+	s.Category = val
+}
+
+// One of the three PDM-001 shelves, or `unassigned` to take the skill back off every shelf — an
+// owner who is unsure has to be able to say so, and 尚未定值 is a real answer, not a gap.
+type SetSkillCategoryReqCategory string
+
+const (
+	SetSkillCategoryReqCategoryDocuments  SetSkillCategoryReqCategory = "documents"
+	SetSkillCategoryReqCategoryWriting    SetSkillCategoryReqCategory = "writing"
+	SetSkillCategoryReqCategoryData       SetSkillCategoryReqCategory = "data"
+	SetSkillCategoryReqCategoryUnassigned SetSkillCategoryReqCategory = "unassigned"
+)
+
+// AllValues returns all SetSkillCategoryReqCategory values.
+func (SetSkillCategoryReqCategory) AllValues() []SetSkillCategoryReqCategory {
+	return []SetSkillCategoryReqCategory{
+		SetSkillCategoryReqCategoryDocuments,
+		SetSkillCategoryReqCategoryWriting,
+		SetSkillCategoryReqCategoryData,
+		SetSkillCategoryReqCategoryUnassigned,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SetSkillCategoryReqCategory) MarshalText() ([]byte, error) {
+	switch s {
+	case SetSkillCategoryReqCategoryDocuments:
+		return []byte(s), nil
+	case SetSkillCategoryReqCategoryWriting:
+		return []byte(s), nil
+	case SetSkillCategoryReqCategoryData:
+		return []byte(s), nil
+	case SetSkillCategoryReqCategoryUnassigned:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetSkillCategoryReqCategory) UnmarshalText(data []byte) error {
+	switch SetSkillCategoryReqCategory(data) {
+	case SetSkillCategoryReqCategoryDocuments:
+		*s = SetSkillCategoryReqCategoryDocuments
+		return nil
+	case SetSkillCategoryReqCategoryWriting:
+		*s = SetSkillCategoryReqCategoryWriting
+		return nil
+	case SetSkillCategoryReqCategoryData:
+		*s = SetSkillCategoryReqCategoryData
+		return nil
+	case SetSkillCategoryReqCategoryUnassigned:
+		*s = SetSkillCategoryReqCategoryUnassigned
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SetSkillCategoryUnauthorized Error
+
+func (*SetSkillCategoryUnauthorized) setSkillCategoryRes() {}
+
 type SetSkillRedistributionBadRequest Error
 
 func (*SetSkillRedistributionBadRequest) setSkillRedistributionRes() {}
@@ -17894,6 +17979,101 @@ func (s *SetSkillRestrictionReq) SetReason(val string) {
 func (s *SetSkillRestrictionReq) SetNote(val string) {
 	s.Note = val
 }
+
+// Ref: #/components/schemas/Skill
+type Skill struct {
+	SkillID uuid.UUID `json:"skill_id"`
+	Name    string    `json:"name"`
+	Summary string    `json:"summary"`
+	// Whether a Download Artifact may be produced from this skill. Three of its five values release and
+	// two refuse (`blocked` and `unknown` are the two that refuse), so on the owner's own list this is the
+	// difference between a skill they can take away and one they cannot. It was already on the row and
+	// dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a limit which will
+	// block you has to be visible before you hit it.
+	//
+	// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
+	// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
+	// licensing question nobody could resolve (ADR-045).
+	Redistribution SkillRedistribution `json:"redistribution"`
+	// Reason code for a licensing hold on the package materials, null when there is none. Also copied onto
+	// forks at fork time, which is why it belongs on a list of skills the caller owns rather than only on
+	// the detail view.
+	AccessRestriction   OptNilString `json:"access_restriction"`
+	ForkedFromSkillID   OptUUID      `json:"forked_from_skill_id"`
+	ForkedFromVersionID OptUUID      `json:"forked_from_version_id"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *Skill) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetName returns the value of Name.
+func (s *Skill) GetName() string {
+	return s.Name
+}
+
+// GetSummary returns the value of Summary.
+func (s *Skill) GetSummary() string {
+	return s.Summary
+}
+
+// GetRedistribution returns the value of Redistribution.
+func (s *Skill) GetRedistribution() SkillRedistribution {
+	return s.Redistribution
+}
+
+// GetAccessRestriction returns the value of AccessRestriction.
+func (s *Skill) GetAccessRestriction() OptNilString {
+	return s.AccessRestriction
+}
+
+// GetForkedFromSkillID returns the value of ForkedFromSkillID.
+func (s *Skill) GetForkedFromSkillID() OptUUID {
+	return s.ForkedFromSkillID
+}
+
+// GetForkedFromVersionID returns the value of ForkedFromVersionID.
+func (s *Skill) GetForkedFromVersionID() OptUUID {
+	return s.ForkedFromVersionID
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *Skill) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetName sets the value of Name.
+func (s *Skill) SetName(val string) {
+	s.Name = val
+}
+
+// SetSummary sets the value of Summary.
+func (s *Skill) SetSummary(val string) {
+	s.Summary = val
+}
+
+// SetRedistribution sets the value of Redistribution.
+func (s *Skill) SetRedistribution(val SkillRedistribution) {
+	s.Redistribution = val
+}
+
+// SetAccessRestriction sets the value of AccessRestriction.
+func (s *Skill) SetAccessRestriction(val OptNilString) {
+	s.AccessRestriction = val
+}
+
+// SetForkedFromSkillID sets the value of ForkedFromSkillID.
+func (s *Skill) SetForkedFromSkillID(val OptUUID) {
+	s.ForkedFromSkillID = val
+}
+
+// SetForkedFromVersionID sets the value of ForkedFromVersionID.
+func (s *Skill) SetForkedFromVersionID(val OptUUID) {
+	s.ForkedFromVersionID = val
+}
+
+func (*Skill) setSkillCategoryRes() {}
 
 // The 0023 licensing hold on a skill, rendered so a reader is told what is withheld and why rather
 // than shown a gap.
@@ -18952,6 +19132,77 @@ func (s *SkillLimitationSource) UnmarshalText(data []byte) error {
 		return nil
 	case SkillLimitationSourceScan:
 		*s = SkillLimitationSourceScan
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Whether a Download Artifact may be produced from this skill. Three of its five values release and
+// two refuse (`blocked` and `unknown` are the two that refuse), so on the owner's own list this is the
+// difference between a skill they can take away and one they cannot. It was already on the row and
+// dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a limit which will
+// block you has to be visible before you hit it.
+//
+// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
+// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
+// licensing question nobody could resolve (ADR-045).
+type SkillRedistribution string
+
+const (
+	SkillRedistributionAllowed      SkillRedistribution = "allowed"
+	SkillRedistributionBlocked      SkillRedistribution = "blocked"
+	SkillRedistributionUnknown      SkillRedistribution = "unknown"
+	SkillRedistributionSelfSupplied SkillRedistribution = "self_supplied"
+	SkillRedistributionGenerated    SkillRedistribution = "generated"
+)
+
+// AllValues returns all SkillRedistribution values.
+func (SkillRedistribution) AllValues() []SkillRedistribution {
+	return []SkillRedistribution{
+		SkillRedistributionAllowed,
+		SkillRedistributionBlocked,
+		SkillRedistributionUnknown,
+		SkillRedistributionSelfSupplied,
+		SkillRedistributionGenerated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SkillRedistribution) MarshalText() ([]byte, error) {
+	switch s {
+	case SkillRedistributionAllowed:
+		return []byte(s), nil
+	case SkillRedistributionBlocked:
+		return []byte(s), nil
+	case SkillRedistributionUnknown:
+		return []byte(s), nil
+	case SkillRedistributionSelfSupplied:
+		return []byte(s), nil
+	case SkillRedistributionGenerated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SkillRedistribution) UnmarshalText(data []byte) error {
+	switch SkillRedistribution(data) {
+	case SkillRedistributionAllowed:
+		*s = SkillRedistributionAllowed
+		return nil
+	case SkillRedistributionBlocked:
+		*s = SkillRedistributionBlocked
+		return nil
+	case SkillRedistributionUnknown:
+		*s = SkillRedistributionUnknown
+		return nil
+	case SkillRedistributionSelfSupplied:
+		*s = SkillRedistributionSelfSupplied
+		return nil
+	case SkillRedistributionGenerated:
+		*s = SkillRedistributionGenerated
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

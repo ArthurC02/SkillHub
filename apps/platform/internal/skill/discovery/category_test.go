@@ -15,7 +15,7 @@ func TestCategoryDisplayDistinctPerCategory(t *testing.T) {
 	cats := []Category{CategoryDocuments, CategoryWriting, CategoryData, CategoryUnassigned}
 	seen := map[string]Category{}
 	for _, c := range cats {
-		d := c.Display()
+		d := c.Display(nil)
 		if d.Label == "" || d.Note == "" {
 			t.Fatalf("%s: empty display %+v", c, d)
 		}
@@ -26,8 +26,43 @@ func TestCategoryDisplayDistinctPerCategory(t *testing.T) {
 	}
 	// The one word 設計 §2.9 names for 「平台自己還沒決定」. Spelled out rather than
 	// compared against a constant, because the constant is the thing under test.
-	if got := CategoryUnassigned.Display().Label; got != "尚未定值" {
+	if got := CategoryUnassigned.Display(nil).Label; got != "尚未定值" {
 		t.Fatalf("the unassigned label is %q, want 尚未定值 (設計 §2.9 的固定表)", got)
+	}
+}
+
+// 0061 / 05 R-19 item 4: the shelf is the same three words either way, but the
+// note has to say whose judgement it is — a curated seed row and a skill an
+// owner just classified are not the same claim, and a reader who cannot tell
+// them apart would read one as the other.
+func TestCategoryNoteNamesWhoAssignedIt(t *testing.T) {
+	curated := "curated"
+	owner := "owner"
+
+	for _, c := range []Category{CategoryDocuments, CategoryWriting, CategoryData} {
+		curatedNote := c.Display(&curated).Note
+		ownerNote := c.Display(&owner).Note
+		if curatedNote == ownerNote {
+			t.Errorf("%s: curated and owner notes are identical: %q", c, curatedNote)
+		}
+		if !strings.Contains(curatedNote, "由平台策展時分類") {
+			t.Errorf("%s: curated note does not say so: %q", c, curatedNote)
+		}
+		if !strings.Contains(ownerNote, "由擁有者標示") {
+			t.Errorf("%s: owner note does not say so: %q", c, ownerNote)
+		}
+		// A pre-0061 caller (nil source, e.g. a row from before the migration's
+		// backfill ran) reads exactly like curated — the only writer that ever
+		// ran before this column existed.
+		if nilNote := c.Display(nil).Note; nilNote != curatedNote {
+			t.Errorf("%s: nil source note (%q) diverged from curated (%q)", c, nilNote, curatedNote)
+		}
+	}
+
+	// Unassigned has no assigner (0061's pairing CHECK keeps category_source
+	// NULL exactly when category is), so source must not change its note.
+	if CategoryUnassigned.Display(&owner).Note != CategoryUnassigned.Display(nil).Note {
+		t.Error("unassigned's note must not vary by source; there is no source to have")
 	}
 }
 
@@ -35,7 +70,7 @@ func TestCategoryDisplayDistinctPerCategory(t *testing.T) {
 // the other, so the copy must not reach for the safety vocabulary at all.
 func TestCategoryNotesMakeNoSafetyClaim(t *testing.T) {
 	for _, c := range []Category{CategoryDocuments, CategoryWriting, CategoryData, CategoryUnassigned} {
-		note := c.Display().Note
+		note := c.Display(nil).Note
 		for _, forbidden := range []string{"安全保證", "已審查", "通過檢查", "背書"} {
 			if strings.Contains(note, forbidden) {
 				t.Errorf("%s note claims %q: a category says what a Skill is for, nothing else — %q", c, forbidden, note)
@@ -48,7 +83,7 @@ func TestCategoryNotesMakeNoSafetyClaim(t *testing.T) {
 // render blank. A shelf with no word on it reads as a row with nothing to say,
 // which is the reading NFR-001 exists to prevent.
 func TestCategoryDisplayUnknownValueShowsTheValueRatherThanNothing(t *testing.T) {
-	d := Category("not-a-real-category").Display()
+	d := Category("not-a-real-category").Display(nil)
 	if d.Label != "not-a-real-category" || d.Note == "" {
 		t.Fatalf("an undefined category must still render something and keep its raw value: %+v", d)
 	}
@@ -66,7 +101,7 @@ func TestCategoryLabelWordsTheAbsence(t *testing.T) {
 		"NULL":         nil,
 		"empty string": &empty,
 	} {
-		got := categoryLabel(stored)
+		got := categoryLabel(stored, nil)
 		if got.Value != string(CategoryUnassigned) {
 			t.Errorf("%s: value = %q, want unassigned", name, got.Value)
 		}
@@ -78,13 +113,13 @@ func TestCategoryLabelWordsTheAbsence(t *testing.T) {
 		}
 	}
 
-	if got := categoryLabel(&data); got.Value != "data" || got.Label != "資料" {
+	if got := categoryLabel(&data, nil); got.Value != "data" || got.Label != "資料" {
 		t.Errorf("a stored shelf did not survive the read: %+v", got)
 	}
 	// Passed through rather than normalised to unassigned: a value nobody
 	// planned for is a fact about the row, and hiding it behind 尚未定值 would
 	// tell the reader the platform had not decided when in fact it had.
-	if got := categoryLabel(&unknown); got.Value != "cephalopods" || got.Label != "cephalopods" {
+	if got := categoryLabel(&unknown, nil); got.Value != "cephalopods" || got.Label != "cephalopods" {
 		t.Errorf("an unrecognised stored value was rewritten instead of shown: %+v", got)
 	}
 }
@@ -129,5 +164,23 @@ func TestOnlyMCPIsStillAnUnavailableDimension(t *testing.T) {
 	}
 	if _, err := parseFilters(httptest.NewRequest(http.MethodGet, "/?q=x&mcp=no", nil)); err == nil {
 		t.Error("mcp=no accepted; the dimension has no source data and must be refused, not ignored")
+	}
+}
+
+// Display knows how to name a source; the question this test asks is whether
+// the read side hands it one. The first version of the note test called
+// Display directly, so replacing categoryLabel's argument with nil left it
+// green — a placebo the mutation audit caught (05 R-19, 2026-09-08).
+func TestTheReadSidePassesTheStoredSourceThrough(t *testing.T) {
+	documents, owner, curated := "documents", "owner", "curated"
+
+	if note := categoryLabel(&documents, &owner).Note; !strings.Contains(note, "由擁有者標示") {
+		t.Errorf("an owner-assigned shelf reads as curated: %q", note)
+	}
+	if note := categoryLabel(&documents, &curated).Note; !strings.Contains(note, "由平台策展時分類") {
+		t.Errorf("a curated shelf lost its provenance: %q", note)
+	}
+	if a, b := categoryLabel(&documents, &owner).Note, categoryLabel(&documents, &curated).Note; a == b {
+		t.Error("the two sources render identically, so the column buys nothing")
 	}
 }

@@ -39,32 +39,54 @@ type CategoryDisplay struct {
 	Note  string
 }
 
-var categoryDisplays = map[Category]CategoryDisplay{
-	CategoryDocuments: {
-		Label: "文件",
-		Note:  "策展時依用途歸入的分類:建立或格式化文件。分類只說它做什麼,不說它安不安全。",
-	},
-	CategoryWriting: {
-		Label: "寫作",
-		Note:  "策展時依用途歸入的分類:起草或修潤文章。分類只說它做什麼,不說它安不安全。",
-	},
-	CategoryData: {
-		Label: "資料",
-		Note:  "策展時依用途歸入的分類:整理、篩選、去重、合併、拆分或取代資料。分類只說它做什麼,不說它安不安全。",
-	},
-	CategoryUnassigned: {
-		Label: "尚未定值",
-		Note:  "平台還沒決定使用者自己匯入的 Skill 怎麼取得分類(05 R-19),所以這一格是尚未定值,不是沒有用途。",
-	},
+// categorySourceClause is the one sentence 0061 added a column to be able to
+// say: who put a real shelf's value there. `owner` is PUT /skills/{id}/category
+// (05 R-19); anything else — including the pre-0061 rows this backfilled to
+// `curated` and any value this platform version does not recognise — is worded
+// as the curation judgement it always was, because that is the only other
+// writer that has ever existed (0061's own comment explains why 'model' is not
+// a third option yet). Either way the sentence names a source, never a
+// verdict: NFR-001 forbids reading provenance as a safety claim.
+func categorySourceClause(source *string) string {
+	if source != nil && *source == "owner" {
+		return "由擁有者標示"
+	}
+	return "由平台策展時分類"
 }
 
-// Display returns the label/note copy for c. An unrecognised value keeps its raw
-// value as the label, for the reason Tier.Display and axis() both spell out: a
-// blank shelf reads as 「this has nothing to say about it」, and the one thing
-// worse than a word the reader has to look up is no word at all.
-func (c Category) Display() CategoryDisplay {
-	if d, ok := categoryDisplays[c]; ok {
-		return d
+var categoryLabels = map[Category]string{
+	CategoryDocuments: "文件",
+	CategoryWriting:   "寫作",
+	CategoryData:      "資料",
+}
+
+var categoryWhatFor = map[Category]string{
+	CategoryDocuments: "建立或格式化文件",
+	CategoryWriting:   "起草或修潤文章",
+	CategoryData:      "整理、篩選、去重、合併、拆分或取代資料",
+}
+
+// Display returns the label/note copy for c given who assigned it. source is
+// ignored for every value except the three real shelves — CategoryUnassigned
+// has no assigner (0061's pairing CHECK keeps category_source NULL exactly
+// when category is) and an unrecognised value has nothing on record either.
+//
+// An unrecognised Category keeps its raw value as the label, for the reason
+// Tier.Display and axis() both spell out: a blank shelf reads as 「this has
+// nothing to say about it」, and the one thing worse than a word the reader has
+// to look up is no word at all.
+func (c Category) Display(source *string) CategoryDisplay {
+	if c == CategoryUnassigned {
+		return CategoryDisplay{
+			Label: "尚未定值",
+			Note:  "平台還沒決定使用者自己匯入的 Skill 怎麼取得分類(05 R-19),所以這一格是尚未定值,不是沒有用途。",
+		}
+	}
+	if what, ok := categoryWhatFor[c]; ok {
+		return CategoryDisplay{
+			Label: categoryLabels[c],
+			Note:  categorySourceClause(source) + "的分類:" + what + "。分類只說它做什麼,不說它安不安全。",
+		}
 	}
 	return CategoryDisplay{
 		Label: string(c),
@@ -72,14 +94,16 @@ func (c Category) Display() CategoryDisplay {
 	}
 }
 
-// categoryLabel renders the stored column. NULL — and an empty string, which is
-// what a COALESCE or a hand-written row could produce — is CategoryUnassigned:
-// 尚未定值, never blank and never a guessed shelf (0053's own comment, 05 R-19).
-func categoryLabel(stored *string) labelled {
+// categoryLabel renders the stored columns. NULL — and an empty string, which
+// is what a COALESCE or a hand-written row could produce — is
+// CategoryUnassigned: 尚未定值, never blank and never a guessed shelf (0053's
+// own comment, 05 R-19). source is 0061's category_source, read alongside it so
+// the note can say who assigned a real shelf (R-19 item 4).
+func categoryLabel(stored, source *string) labelled {
 	value := CategoryUnassigned
 	if stored != nil && *stored != "" {
 		value = Category(*stored)
 	}
-	d := value.Display()
+	d := value.Display(source)
 	return labelled{Value: string(value), Label: d.Label, Note: d.Note}
 }

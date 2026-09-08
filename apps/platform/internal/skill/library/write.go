@@ -104,8 +104,14 @@ func CreateSkillFromPackage(ctx context.Context, tx pgx.Tx, workspaceID pgtype.U
 	// Skill gets a PDM-001 shelf. NULL is read back as 尚未定值 — the platform has
 	// not decided — and any default named here would be a guessed classification
 	// wearing the same clothes as a curator's judgement (02:DISC-004, 設計 §2.9).
-	// If R-19 lands on (b), model-classified at index time, the value arrives on
-	// the enrichment path and not from this function.
+	// R-19's chosen path is the owner naming it themselves after import, through
+	// PUT /skills/{id}/category (registry.Service.SetCategory), not this function.
+	//
+	// `category_source` is left unset for the same reason and has to be: an
+	// import that named a category with no writer behind it would be exactly the
+	// unattributed value 0061 exists to forbid. category and category_source stay
+	// paired (both NULL here) the same way CreateSkill's other callers keep them
+	// paired when they do set one.
 	row, err := gen.New(tx).CreateSkill(ctx, gen.CreateSkillParams{
 		WorkspaceID:    workspaceID,
 		Name:           manifest.Name,

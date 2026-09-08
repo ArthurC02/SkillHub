@@ -264,6 +264,8 @@ function stubPlatform(
       label: string;
       note: string;
     }[];
+    /** `GET /api/skills/{id}` 要回什麼。預設是本檔頂層那份乾淨 fixture。 */
+    skill?: typeof skill;
   } = {},
 ) {
   // 23 and never 30. 30 is what a deployment actually configures, so a mock
@@ -322,7 +324,7 @@ function stubPlatform(
     if (url.includes("/packaging") && init?.method === "POST") {
       return json({ ...artifact, duplicate: options.duplicate === true }, 201);
     }
-    if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
+    if (url.includes(`/api/skills/${SKILL}`)) return json(options.skill ?? skill);
     return json({ error: "not found" }, 404);
   });
   return calls;
@@ -518,6 +520,102 @@ test("DESIGN-012 the three compatibility axes are on the packaging page and stay
   expect(text()).not.toContain("實測相容");
   // And the page refuses to let one axis be read as another.
   expect(text()).toContain("「規格驗證通過」不等於「裝得起來」");
+});
+
+// --- 04 R-42(c)③：判定行留在外面，細項折進 <details> --------------------------
+
+/** 每一個文字節點的容器，供「這句話在不在 `<details>` 裡」的提問使用（同 detail.test.tsx）。 */
+function elementSaying(needle: string): Element {
+  const found = Array.from(container.querySelectorAll("h1,h2,h3,p,li,span,code,strong,a")).find(
+    (el) => (el.textContent ?? "").includes(needle) && el.children.length < 4,
+  );
+  expect(found, `找不到「${needle}」——這一句在頁面上消失了，不只是被折起來`).toBeDefined();
+  return found!;
+}
+
+const SKILL_WITH_DETAILS = {
+  ...skill,
+  license: {
+    ...skill.license,
+    expression: "MIT",
+    source: "repo-license-file",
+    source_note: "來自 repo 根目錄的 LICENSE。",
+  },
+  risk: {
+    scan_status: "scanned",
+    counts: { errors: 1, warnings: 2, infos: 5 },
+    highlights: [
+      { severity: "error", code: "embedded-script", message: "SKILL.md 內含可執行程式碼區塊。" },
+    ],
+    info_counts: { "external-url": 5 },
+    disclosures: [{ code: "script-file", label: "含可執行 Script 檔案", note: "細項備註。" }],
+    note: "以上為靜態掃描結果。",
+  },
+  compatibility: {
+    spec_validation: { value: "passed", label: "通過", note: "" },
+    capability: { value: "activated", label: "已啟用", note: "" },
+    runtime: {
+      value: "transpiled",
+      label: "腳本未執行,由模型轉譯",
+      note: "套件宣告的 Runtime 這個映像沒有,而觀察到的結果來自模型重寫程式碼、不是執行它。",
+    },
+    runtime_image: "ghcr.io/skillhub/runtime:2026.08-3",
+    measured_at: "2026-08-10T00:00:00Z",
+    note: "以上為單次沙箱實測。",
+  },
+} as unknown as typeof skill;
+
+test("04 R-42(c)③ 風險與 License：判定行與最高嚴重度留在外面，逐項細節折進 <details>", async () => {
+  stubPlatform({ skill: SKILL_WITH_DETAILS });
+  await render(<Packaging />, () => text().includes("打包與下載"));
+
+  // 判定行（§2.10 第 1／3 項）：不得在 <details> 裡。
+  for (const verdict of ["有 8 項風險，最高為錯誤。", "可再散布", "已宣告"]) {
+    expect(
+      elementSaying(verdict).closest("details"),
+      `「${verdict}」是判定行，不准折進 <details>`,
+    ).toBeNull();
+  }
+
+  // 細項：折進去了，`textContent` 讀得到（同 detail.test.tsx 的說法），但要用
+  // `closest("details")` 才問得出「不用互動看不看得到」這件事。
+  for (const detail of [
+    "SKILL.md 內含可執行程式碼區塊。",
+    "含可執行 Script 檔案",
+    "來自 repo 根目錄的 LICENSE。",
+  ]) {
+    expect(
+      elementSaying(detail).closest("details"),
+      `「${detail}」是細項，應該折進 <details> 裡`,
+    ).not.toBeNull();
+  }
+});
+
+test("04 R-42(c)③ 相容性：三軸的驗證狀態留在外面，逐軸備註與實測環境折進 <details>", async () => {
+  stubPlatform({ skill: SKILL_WITH_DETAILS });
+  await render(<Packaging />, () => text().includes("這個版本的相容性"));
+
+  for (const verdict of [
+    "規格驗證：通過",
+    "能力相容：已啟用",
+    "執行環境相容：腳本未執行,由模型轉譯",
+  ]) {
+    expect(
+      elementSaying(verdict).closest("details"),
+      `「${verdict}」是驗證狀態，不准折進 <details>`,
+    ).toBeNull();
+  }
+
+  for (const detail of [
+    "套件宣告的 Runtime 這個映像沒有",
+    "ghcr.io/skillhub/runtime:2026.08-3",
+    "以上為單次沙箱實測。",
+  ]) {
+    expect(
+      elementSaying(detail).closest("details"),
+      `「${detail}」是相容性細項，應該折進 <details> 裡`,
+    ).not.toBeNull();
+  }
 });
 
 test("PACK-002 環境變數需求 is on the target, and 「不需要」 is stated rather than left blank", async () => {
