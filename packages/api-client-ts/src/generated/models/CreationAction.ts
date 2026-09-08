@@ -22,7 +22,7 @@ import {
 } from './GenerateDiagram';
 
 /**
- * Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_usd for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service.
+ * stop_step ends the step in flight, not the session: permitted only while the session is queued or working, it releases the attempt so the Worker refuses to start it (or its in-flight call is cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid for and the session says so. Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_usd for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service.
  * @export
  * @interface CreationAction
  */
@@ -103,7 +103,8 @@ export const CreationActionKindEnum = {
     DeclineFetch: 'decline_fetch',
     AdoptReference: 'adopt_reference',
     DeclineReferences: 'decline_references',
-    ConfirmDuplicate: 'confirm_duplicate'
+    ConfirmDuplicate: 'confirm_duplicate',
+    StopStep: 'stop_step'
 } as const;
 export type CreationActionKindEnum = typeof CreationActionKindEnum[keyof typeof CreationActionKindEnum];
 

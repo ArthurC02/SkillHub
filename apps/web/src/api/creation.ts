@@ -140,7 +140,8 @@ export interface CreationAction {
     | "decline_fetch"
     | "adopt_reference"
     | "decline_references"
-    | "confirm_duplicate";
+    | "confirm_duplicate"
+    | "stop_step";
   message?: string;
   reference_skill_ids?: string[];
   content_hash?: string;

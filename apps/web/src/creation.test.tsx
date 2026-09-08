@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { CreationSession } from "./components/CreationSession";
 import { CreateHub } from "./components/CreateHub";
-import type { CreationSession as Session } from "./api/creation";
+import type { CreationSession as Session, CreationSnapshot } from "./api/creation";
 import { useCreationEntryPoint } from "./api/creation";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -366,6 +366,78 @@ test("a dropped image attaches, and a dropped PDF says why it cannot", async () 
   expect(box.textContent, "被拒絕的檔案還是掛上去了").not.toContain("移除流程圖");
   await dropFiles("drop", [png("flow.png")], composer);
   await waitFor(() => box.textContent!.includes("移除流程圖：flow.png"));
+});
+/** 一份最小的草稿，只為了讓 `stepDescription` 走到「已經有草稿了」那幾條。 */
+const DRAFT = {
+  revision: 1,
+  content_hash: "h",
+  validation: "{}",
+  blocked: false,
+  skill: {
+    name: "x",
+    description: "d",
+    compatibility: "",
+    allowed_tools: "",
+    body: "b",
+    files: [],
+  },
+};
+/**
+ * 停止這一步，而不是整場。**這顆按鈕只在 `working` 出現，所以它不能吃 `locked`**
+ * ——`locked` 把 working 也算進停用條件，而 working 正是它存在的理由。
+ */
+test("a step in flight can be stopped without ending the session", async () => {
+  const posts: Record<string, unknown>[] = [];
+  const v = sample({ state: "working" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(sample({ revision: 8 }));
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  const stop = button("停止這一步");
+  expect(stop.disabled, "只在 working 出現的按鈕卻被 working 停用").toBe(false);
+  await click("停止這一步");
+  await waitFor(() => posts.length > 0);
+  expect(posts[0]).toMatchObject({ kind: "stop_step", expected_revision: 7 });
+  // 取消整場仍然是另一顆，兩者不可以混為一談。
+  expect(box.textContent).toContain("取消這次創作");
+});
+/**
+ * 等待中要說出**這一步**在做什麼，而不是五種步驟共用「正在創作」四個字。全部由快照
+ * 推出來，零後端改動；順序照 Go 的順序（連網在模型呼叫之前，新圖會清掉需求確認）。
+ */
+test("waiting says which step is running, derived from the snapshot alone", async () => {
+  const cases: [Partial<CreationSnapshot>, string][] = [
+    [{ pending_fetch_url: "https://example.com/a" }, "正在讀你同意的那個網頁"],
+    [{ diagram_fingerprint: "abc" }, "正在讀你附上的流程圖"],
+    [{ brief_confirmed: false }, "正在整理需求與驗收條件"],
+    [{ brief_confirmed: true }, "正在寫第一份草稿"],
+    [{ brief_confirmed: true, draft: DRAFT, run_unmet: true }, "正在依試跑結果修訂草稿"],
+    [{ brief_confirmed: true, draft: DRAFT }, "正在修訂草稿"],
+  ];
+  for (const [patch, expected] of cases) {
+    const v = sample({ state: "working" });
+    Object.assign(v.snapshot, patch);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => routeGet(url, [v], v)),
+    );
+    await render();
+    await resume();
+    expect(box.querySelector('[role="status"]')!.textContent, JSON.stringify(patch)).toContain(
+      expected,
+    );
+    await act(async () => root.unmount());
+    box.innerHTML = "";
+    q.clear();
+  }
 });
 /**
  * 模型的訊息本來就有換行——它一問一行、寫編號清單，工具結果還是 JSON。在此之前

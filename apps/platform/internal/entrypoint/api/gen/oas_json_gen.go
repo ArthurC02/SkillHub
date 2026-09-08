@@ -5652,6 +5652,8 @@ func (s *CreationActionKind) Decode(d *jx.Decoder) error {
 		*s = CreationActionKindDeclineReferences
 	case CreationActionKindConfirmDuplicate:
 		*s = CreationActionKindConfirmDuplicate
+	case CreationActionKindStopStep:
+		*s = CreationActionKindStopStep
 	default:
 		*s = CreationActionKind(v)
 	}

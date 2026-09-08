@@ -330,3 +330,79 @@ func TestCreationBatchEveryPictureKeepsItsPlaceInTheConversation(t *testing.T) {
 		t.Fatalf("the newest-picture fields did not follow the newest picture: %+v", v.Snapshot)
 	}
 }
+
+// TestCreationBatchStopEndsTheStepNotTheSession: 2026-09-09, 04 丙-203. Until
+// this, the only brake on a step in flight was `cancel`, which ends the whole
+// session. `stop_step` releases the attempt instead.
+//
+// The two paths differ in exactly one thing that matters — whether the money
+// was already spent — and the session says which one happened. Before the call
+// the receipt is finished as cancelled, which is also what makes the Worker
+// refuse to start it. After the call has gone out the receipt is left alone, so
+// finish() still settles the real cost; it simply no longer adopts the reply,
+// because ActiveReceipt no longer points at it.
+func TestCreationBatchStopEndsTheStepNotTheSession(t *testing.T) {
+	a, _, _ := creationFixture(t)
+	c := a.login(t, "creation-batch-stop")
+
+	receiptOf := func(sessionID string) (string, string) {
+		t.Helper()
+		var id, status string
+		// kind='attempt' matters: every command writes a receipt of its own, so
+		// the newest row is the stop_step command, not the model attempt.
+		err := testPool.QueryRow(context.Background(),
+			"SELECT id::text, status FROM creation_receipts WHERE session_id=$1 AND kind='attempt' ORDER BY created_at DESC LIMIT 1",
+			sessionID).Scan(&id, &status)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id, status
+	}
+
+	// Before the call: nothing has been paid for, and the session says so.
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立摘要 Skill。", "budget_usd": .5}, 200)
+	if v.State != "queued" {
+		t.Fatalf("a new session with a message should be queued: %+v", v.State)
+	}
+	if _, status := receiptOf(v.ID); status != "queued" {
+		t.Fatalf("attempt is not queued: %s", status)
+	}
+	v = creationAct(t, c, v, "stop_step")
+	if v.State != "waiting_input" {
+		t.Fatalf("stop_step did not hand the turn back: %+v", v.State)
+	}
+	last := v.Snapshot.Messages[len(v.Snapshot.Messages)-1]
+	if last.Role != "assistant" || !strings.Contains(last.Content, "沒有花到錢") {
+		t.Fatalf("a stop before the call must say it cost nothing: %+v", last)
+	}
+	if _, status := receiptOf(v.ID); status != "cancelled" {
+		t.Fatalf("the attempt was left for the Worker to pick up: %s", status)
+	}
+
+	// After the call has gone out: the receipt is NOT closed here, because the
+	// Worker still has to record what it cost. Forced to `running` directly,
+	// which is the state the Worker's own ClaimCreationReceipt puts it in.
+	v = creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "另一個摘要 Skill。", "budget_usd": .5}, 200)
+	receiptID, _ := receiptOf(v.ID)
+	if _, err := testPool.Exec(context.Background(),
+		"UPDATE creation_receipts SET status='running' WHERE id=$1", receiptID); err != nil {
+		t.Fatal(err)
+	}
+	v = creationAct(t, c, v, "stop_step")
+	if v.State != "waiting_input" {
+		t.Fatalf("stop_step did not hand the turn back: %+v", v.State)
+	}
+	last = v.Snapshot.Messages[len(v.Snapshot.Messages)-1]
+	if !strings.Contains(last.Content, "費用照計") {
+		t.Fatalf("a stop after the call went out must not claim it was free: %+v", last)
+	}
+	if _, status := receiptOf(v.ID); status != "running" {
+		t.Fatalf("closing a running receipt here would lose the spend: %s", status)
+	}
+
+	// And a stop with nothing in flight is not a command.
+	code := creationStatus(t, c, map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "stop_step"})
+	if code == 200 {
+		t.Fatal("stop_step was accepted with no attempt in flight")
+	}
+}

@@ -1035,6 +1035,8 @@ func (s CreationActionKind) Validate() error {
 		return nil
 	case "confirm_duplicate":
 		return nil
+	case "stop_step":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}

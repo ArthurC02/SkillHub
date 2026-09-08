@@ -324,7 +324,10 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		return View{}, nil, ErrDeadline
 	}
 	if row.State == "working" || row.State == "queued" {
-		if c.Kind != "cancel" {
+		// Two commands may reach a session that is mid-step: end it, or stop
+		// this one step (2026-09-09, 04 丙-203). Everything else has to wait for
+		// the revision the step will produce.
+		if c.Kind != "cancel" && c.Kind != "stop_step" {
 			return View{}, nil, ErrConflict
 		}
 	}
@@ -353,6 +356,44 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			}
 		}
 		e.ActiveReceipt = pgtype.UUID{}
+	case "stop_step":
+		// Stop THIS step, not the session. Nothing new had to be built for it
+		// (04 丙-203): three mechanisms were already in place and this command
+		// just makes all three of their conditions false at once.
+		//
+		//  1. The Worker refuses to start a receipt that is no longer `queued`,
+		//     so a step stopped before the call never makes it.
+		//  2. During the call a goroutine reads this row every 250ms and cancels
+		//     the in-flight HTTP request as soon as the state leaves `working`.
+		//  3. finish() adopts the model's reply only while ActiveReceipt still
+		//     points at its own receipt; otherwise it falls through to settleCost,
+		//     which records what was actually spent and proposes nothing.
+		//
+		// So the money is right on both paths without a word of new accounting:
+		// before the call there is nothing to pay for, and after it the cost is
+		// settled exactly as any other interrupted attempt.
+		if !e.ActiveReceipt.Valid || len(p.Messages) >= MaxMessages {
+			return View{}, nil, ErrInvalidCommand
+		}
+		q := gen.New(tx)
+		a, getErr := q.GetCreationReceipt(ctx, gen.GetCreationReceiptParams{ID: e.ActiveReceipt, SessionID: id, WorkspaceID: ws.ID})
+		if getErr != nil {
+			return View{}, nil, getErr
+		}
+		// Two different truths, so two different sentences. Telling someone
+		// their money is safe when the call already went out would be the one
+		// lie this feature could tell.
+		said := "你在這一步完成前喊停。模型呼叫已經發出，費用照計；它交回來的內容沒有採用。"
+		if a.Status == "queued" {
+			if _, err = q.FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ID, SessionID: id, WorkspaceID: ws.ID, Status: "cancelled", Result: []byte("{}"), Usage: []byte("{}")}); err != nil {
+				return View{}, nil, err
+			}
+			said = "你在模型呼叫發出前喊停，這一步沒有花到錢。"
+		}
+		e.ActiveReceipt = pgtype.UUID{}
+		p.PendingAction = ""
+		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: said})
+		state = "waiting_input"
 	case "message":
 		if strings.TrimSpace(c.Message) == "" || utf8.RuneCountInString(c.Message) > 4000 || len(p.Messages) >= MaxMessages {
 			return View{}, nil, ErrInvalidCommand

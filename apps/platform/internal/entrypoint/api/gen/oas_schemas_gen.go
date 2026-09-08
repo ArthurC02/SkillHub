@@ -2025,10 +2025,13 @@ type CreateTestCaseUnauthorized Error
 
 func (*CreateTestCaseUnauthorized) createTestCaseRes() {}
 
-// Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id
-// for attach_run, and budget_usd for raise_budget. expected_revision binds the exact displayed
-// snapshot including draft revision and candidate identity. These conditional requirements are
-// enforced by the domain service.
+// Stop_step ends the step in flight, not the session: permitted only while the session is queued or
+// working, it releases the attempt so the Worker refuses to start it (or its in-flight call is
+// cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid
+// for and the session says so. Go requires a nonempty matching content_hash for materialize/finalize,
+// a diagram for diagram, run_id for attach_run, and budget_usd for raise_budget. expected_revision
+// binds the exact displayed snapshot including draft revision and candidate identity. These
+// conditional requirements are enforced by the domain service.
 // Ref: #/components/schemas/CreationAction
 type CreationAction struct {
 	CommandID        uuid.UUID          `json:"command_id"`
@@ -2160,6 +2163,7 @@ const (
 	CreationActionKindAdoptReference    CreationActionKind = "adopt_reference"
 	CreationActionKindDeclineReferences CreationActionKind = "decline_references"
 	CreationActionKindConfirmDuplicate  CreationActionKind = "confirm_duplicate"
+	CreationActionKindStopStep          CreationActionKind = "stop_step"
 )
 
 // AllValues returns all CreationActionKind values.
@@ -2181,6 +2185,7 @@ func (CreationActionKind) AllValues() []CreationActionKind {
 		CreationActionKindAdoptReference,
 		CreationActionKindDeclineReferences,
 		CreationActionKindConfirmDuplicate,
+		CreationActionKindStopStep,
 	}
 }
 
@@ -2218,6 +2223,8 @@ func (s CreationActionKind) MarshalText() ([]byte, error) {
 	case CreationActionKindDeclineReferences:
 		return []byte(s), nil
 	case CreationActionKindConfirmDuplicate:
+		return []byte(s), nil
+	case CreationActionKindStopStep:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -2274,6 +2281,9 @@ func (s *CreationActionKind) UnmarshalText(data []byte) error {
 		return nil
 	case CreationActionKindConfirmDuplicate:
 		*s = CreationActionKindConfirmDuplicate
+		return nil
+	case CreationActionKindStopStep:
+		*s = CreationActionKindStopStep
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

@@ -226,6 +226,25 @@ function Attachments({
     </ul>
   );
 }
+/**
+ * 這一步在做什麼（`04` 丙-205）。
+ *
+ * 在此之前等待中的畫面只說「正在創作」四個字，而那四個字要涵蓋五種完全不同的步驟。
+ * **這不需要任何後端改動**：每一種步驟要做什麼，都是它進 `working` 之前那份快照
+ * 已經決定好的事——所以這裡是推出來的，不是回報回來的。
+ *
+ * 順序就是 Go 的順序：連網在模型呼叫之前（`confirm_fetch` 把網址留在快照上，由
+ * Worker 在呼叫前抓）；一張新圖會把 `diagram_understanding` 與 `brief_confirmed`
+ * 一起清掉，所以圖那一條要排在需求之前。
+ */
+function stepDescription(p: CreationSnapshot): string {
+  if (p.pending_fetch_url) return "正在讀你同意的那個網頁，讀完再繼續。";
+  if (p.diagram_fingerprint && !p.diagram_understanding) return "正在讀你附上的流程圖。";
+  if (!p.brief_confirmed) return "正在整理需求與驗收條件。";
+  if (!p.draft) return "正在寫第一份草稿。";
+  if (p.run_unmet) return "正在依試跑結果修訂草稿。";
+  return "正在修訂草稿。";
+}
 function declaredReferenceField(value?: string) {
   return value?.trim() ? value : "未宣告";
 }
@@ -622,7 +641,15 @@ export function CreationSession() {
           </select>
         </label>
       )}
-      {session && <p role="status">創作狀態：{labels[session.state]}</p>}
+      {/* 這一行本來就是 `role="status"`——一個即時區域，狀態一變就會被念出來。
+          等待中多說一句「這一步在做什麼」，念出來的因此是有內容的一句話，而不是
+          「正在創作」四個字對五種步驟講同一遍。不新增元素，也就不多一個即時區域。 */}
+      {session && (
+        <p role="status">
+          創作狀態：{labels[session.state]}
+          {working && p && `——${stepDescription(p)}`}
+        </p>
+      )}
       {session && !terminal && (
         <p>
           這次創作可進行到 <Timestamp at={session.deadline} />
@@ -637,6 +664,14 @@ export function CreationSession() {
               `relative` Timestamp — see InFlight.tsx. */}
           <Timestamp at={session.updated_at} relative />
         </p>
+      )}
+      {/* 停止這一步，而不是整場（`04` 丙-203）。`disabled={busy}` 而不是 `locked`：
+          `locked` 把 working 也算進去，而這顆按鈕存在的理由就是 working。
+          刻意不是 `.action`——停止不是這一頁要人做的那件事。 */}
+      {working && (
+        <button type="button" disabled={busy} onClick={() => void perform("stop_step")}>
+          停止這一步
+        </button>
       )}
       {p ? (
         <>
