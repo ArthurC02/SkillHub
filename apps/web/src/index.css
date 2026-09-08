@@ -1001,7 +1001,6 @@ label:has(> input[type="checkbox"]) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
   font-size: 15px;
 }
 
@@ -1152,22 +1151,29 @@ main h3 {
 /* 同一個修正的另一半：那一列快速導航回到 `--surface`，也就是這個 app 已經有的
    容器配方（§4.3「修法一律是套用既有的卡片族」）。它與上面三張卡的差別由字級與
    內距承擔，不由第四種底色承擔。 */
+/* ── 2026-09-08（第三次與第四次）：它不是一張卡，也不是四顆按鈕 ─────────────
+   **第三次**（同日稍早）把它從兩列收成一列：面板 1078px 寬而四顆連結只吃 405px，
+   標題還獨佔一列，外部審查讀成「因為要放東西就隨手丟一個容器」。
+
+   **第四次拿掉的是容器本身與按鈕的外框，而理由是語意不是版面**：這四個東西會換頁，
+   不會做事。§4.6.3 把填色配給動作、描邊配給主張，而**換頁兩者都不是**——它是連結，
+   而這個 app 早就有連結的樣子（`--link` ＋ 底線）。它們會長成按鈕是 09-08 早些時候
+   `.action-secondary` 落地時的連坐：那一批要讓三張建立卡的三個入口同框，而這一列
+   剛好也戴著同一個 class。
+
+   **命中區不是靠那個框撐起來的**。這是上一輪「四條快速導航降成淡色文字」被我擋掉的
+   理由（文字行高 23px），而那個理由只對「純文字」成立：`min-height` 40px 就是這個
+   app 既有的控制項一階，加在連結上一樣是 40px 的熱區，只是那 40px 現在看不見。
+
+   **這四條不能刪**（審查 09-08 早些時候提過，資訊架構 §0.1 R3 擋下）：`/workspace/runs`
+   與 `/workspace/account`、`/policy` 各只有兩條頁內入邊，其中一條就是這裡，導覽列不算
+   一條路——整塊刪會讓三個位址一次生出三條現行違規。 */
 .workspace-index {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
   margin-top: 32px;
-  padding: 12px 16px;
-  /* ── 2026-09-08（第三次）：它不是一張卡，是一條列 ───────────────────
-     量出來的毛病：面板 1078px 寬，四顆 chip 只吃掉約 420px，而那一行標題又自己
-     佔一列——於是它在畫面上是一個五分之三都是空白的大白框，外部審查連續兩輪
-     讀成「因為要放東西就隨手丟一個容器」。它本來就不是四個並列的物件，是一句
-     標題加四個連結，所以標題跟連結同一列，面板矮一列。`wrap` 而不是斷點：
-     375px 時它自己折，不需要第二個斷點。 */
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
+  gap: 0 16px;
 }
 
 /* A character counter under its own control. `align-self` rather than
@@ -1854,6 +1860,19 @@ summary {
   color: var(--text);
   margin: 0;
   white-space: nowrap;
+}
+
+/* 15px 是控制項那一階（§4.1 ui），不是新的一階：整條列連同標題都待在同一階，
+   所以它不與內文爭重量。40px 的最小高度就是那個看不見的命中區。 */
+.workspace-index .chip-row {
+  gap: 0 24px;
+}
+
+.workspace-index a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  font-size: 15px;
 }
 
 .chip-row {

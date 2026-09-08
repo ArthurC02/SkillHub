@@ -275,6 +275,26 @@ test.describe("QA-008 real layout", () => {
     const overlap =
       Math.min(rows.label.bottom, rows.links.bottom) - Math.max(rows.label.top, rows.links.top);
     expect(overlap, "標題被推到連結上面一列去了").toBeGreaterThan(0);
+
+    /* 這四個會換頁，所以它們是連結不是按鈕（§4.6.3 把填色配給動作、描邊配給主張，
+       換頁兩者都不是）。**命中區不靠那個框**：`min-height` 撐出的 40px 看不見但量得到，
+       而「純文字連結只有 23px」正是 09-08 早些時候我用來擋掉這個修法的理由。 */
+    const links = await page.evaluate(() =>
+      [...document.querySelectorAll(".workspace-index a")].map((a) => {
+        const cs = getComputedStyle(a);
+        return {
+          text: a.textContent ?? "",
+          height: Math.round(a.getBoundingClientRect().height),
+          framed: cs.borderStyle !== "none" || cs.backgroundColor !== "rgba(0, 0, 0, 0)",
+        };
+      }),
+    );
+
+    expect(links.length, "一條連結都沒有量到").toBeGreaterThan(0);
+    for (const l of links) {
+      expect(l.framed, `「${l.text}」被畫成按鈕了`).toBe(false);
+      expect(l.height, `「${l.text}」的命中區只有 ${l.height}px`).toBeGreaterThanOrEqual(40);
+    }
   });
 
   /**

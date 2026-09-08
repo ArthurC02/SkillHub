@@ -514,24 +514,16 @@ export function WorkspaceSkills() {
         <h2>這個工作區的其他頁</h2>
         <ul className="chip-row">
           <li>
-            <Link className="action-secondary" to="/workspace/downloads">
-              下載紀錄
-            </Link>
+            <Link to="/workspace/downloads">下載紀錄</Link>
           </li>
           <li>
-            <Link className="action-secondary" to="/workspace/runs">
-              Run 歷史
-            </Link>
+            <Link to="/workspace/runs">Run 歷史</Link>
           </li>
           <li>
-            <Link className="action-secondary" to="/workspace/account">
-              帳號
-            </Link>
+            <Link to="/workspace/account">帳號</Link>
           </li>
           <li>
-            <Link className="action-secondary" to="/policy">
-              資料保存政策
-            </Link>
+            <Link to="/policy">資料保存政策</Link>
           </li>
         </ul>
       </section>
