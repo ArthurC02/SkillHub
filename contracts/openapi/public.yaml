@@ -8154,6 +8154,28 @@ components:
               content:
                 type: "string"
 
+    CreationModelChange:
+      type: "object"
+      description: >-
+        What a model step changed about inputs the person had already confirmed,
+        kept so the confirmation screen can show the difference instead of only
+        the new text (05 R-54). Go writes it when it clears brief_confirmed and
+        drops it when the person confirms again. An evaluation observation that
+        tells the model to rewrite the brief is a recorded prompt-injection
+        channel, and a confirmation with nothing to compare against is where it
+        lands.
+      properties:
+        brief:
+          type: "string"
+          description: "The brief as the person last confirmed it, before this change."
+        acceptance_criteria:
+          type: "array"
+          items:
+            type: "string"
+          description: "The criteria as the person last confirmed them."
+        sample_input:
+          type: "string"
+          description: "The sample input as the person last confirmed it."
     CreationReference:
       type: "object"
       additionalProperties: false
@@ -8284,6 +8306,8 @@ components:
           description: "The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt of the candidate's Test Case. Empty until proposed."
         brief_confirmed:
           type: "boolean"
+        model_changed:
+          $ref: "#/components/schemas/CreationModelChange"
         diagram_understanding:
           type: "string"
         diagram_confirmed:

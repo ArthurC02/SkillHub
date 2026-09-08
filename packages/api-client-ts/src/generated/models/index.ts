@@ -26,6 +26,7 @@ export * from './CreationDraft';
 export * from './CreationFetch';
 export * from './CreationLimits';
 export * from './CreationMessage';
+export * from './CreationModelChange';
 export * from './CreationReference';
 export * from './CreationSession';
 export * from './CreationSkill';

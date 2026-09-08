@@ -142,6 +142,24 @@ func TestPurgeDeletedSkillsRefusesWithoutAGracePeriod(t *testing.T) {
 // them, on a number PDM-006 has not ratified, so an unset variable has to stop it
 // before any statement runs. A nil pool proves it did — reaching the database
 // would panic.
+// R-25: the purge role is opt-in, not a requirement to start this process.
+// SKILLHUB_PURGE_DATABASE_URL wins when set; an unset one must fall back to
+// DATABASE_URL rather than leaving every subcommand with no connection string
+// at all -- a deployment that has not run docs/runbooks/purge-role-cutover.md
+// yet still has to be able to purge.
+func TestPurgeDatabaseURLFallsBackToTheAPIRole(t *testing.T) {
+	t.Setenv("SKILLHUB_PURGE_DATABASE_URL", "")
+	t.Setenv("DATABASE_URL", "postgres://api-role@db/skillhub")
+	if got := purgeDatabaseURL(); got != "postgres://api-role@db/skillhub" {
+		t.Errorf("purgeDatabaseURL() = %q, want DATABASE_URL's value", got)
+	}
+
+	t.Setenv("SKILLHUB_PURGE_DATABASE_URL", "postgres://skillhub_purge@db/skillhub")
+	if got := purgeDatabaseURL(); got != "postgres://skillhub_purge@db/skillhub" {
+		t.Errorf("purgeDatabaseURL() = %q, want SKILLHUB_PURGE_DATABASE_URL's value", got)
+	}
+}
+
 func TestPurgeFeedbackRefusesWithoutARetentionWindow(t *testing.T) {
 	for _, unusable := range []string{"", "180", "0s", "-4320h", "six months"} {
 		t.Setenv("FEEDBACK_RETENTION", unusable)

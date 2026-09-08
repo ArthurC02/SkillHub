@@ -547,6 +547,35 @@ test("acceptance criteria render under the brief and the confirm button names bo
   expect(box.textContent).toContain("字數不超過 200 字");
   expect(box.textContent).toContain("確認需求摘要與驗收條件");
 });
+test("a model-overwritten brief shows both the new and the confirmed-away text (05 R-54 #4)", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.pending_action = "confirm_brief";
+  v.snapshot.brief = "整理輸入並輸出十行摘要";
+  v.snapshot.model_changed = { brief: "整理輸入並輸出三行摘要" };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  expect(box.textContent).toContain("整理輸入並輸出十行摘要");
+  expect(box.textContent).toContain("原本是");
+  expect(box.textContent).toContain("整理輸入並輸出三行摘要");
+  expect(box.textContent).toContain("我看過差異，確認新的需求摘要");
+});
+test("a confirm_brief screen with no model_changed never says 原本是", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.pending_action = "confirm_brief";
+  v.snapshot.brief = "整理輸入並輸出摘要";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  expect(box.textContent).not.toContain("原本是");
+  expect(box.textContent).toContain("確認需求摘要與驗收條件");
+});
 test("a failed session shows the raise form, refuses an out-of-band amount locally, and posts a valid one", async () => {
   const posts: Record<string, unknown>[] = [];
   const v = sample({ state: "failed" });

@@ -345,6 +345,8 @@ PDM-001／002／003／003×011／004／005／008（兩列）：**值都已經在
 
 **不決定的代價**：低。**但它與 R-21 是同一種**：一個沒有人想過的可能，和一個想過並拒絕的可能，在文件上長得一模一樣。
 
+**2026-09-08 裁定（同上授權）：分角色，但分兩步。** 重新查證後改判 (a)：與 PostgreSQL 最小權限實務一致——清除工作應該是一個只有它需要的權限的獨立角色，應用角色不該對每張表都有 DELETE。落地已完成第一步：migration `0059_skillhub_purge_role.sql` 建立 `skillhub_purge`（NOLOGIN，供部署 GRANT 給實際登入帳號），授權範圍逐一核對七個 purge 子命令的呼叫鏈；`cmd/maintenance` 改讀 `SKILLHUB_PURGE_DATABASE_URL`，未設定時退回既有 `DATABASE_URL` 並記日誌，避免現有部署一升級就壞。**API 角色的 revoke 不在這一批做**（原因照 R-25 原表格「淨測試模式要一個明文例外」的同一個顧慮，具體是 D 簡報）：這個 revoke 若跟著 migration 一起跑，會在還沒有任何登入帳號被授予 `skillhub_purge`、`cmd/maintenance` 也還沒指到新連線字串的那一刻，就把每一個部署的刪除端點（使用者刪自己的 Dataset、刪 Skill、登出清 session）一起打斷——把一次最小權限收斂變成一次上線就斷線的意外。revoke 因此是部署那一步的操作者動作，前置條件與步驟見 `docs/runbooks/purge-role-cutover.md`：先確認所有會跑清除子命令的部署都已切到 `skillhub_purge` 並跑過一輪成功，再對 API 角色執行 revoke。
+
 ---
 
 ## R-26｜策展的範例 Dataset 事實上永遠到不了下載者手上（`02:PACK-001` 第 5 條、`CONTENT-007`）
@@ -1738,3 +1740,10 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 **不決定的代價**：SEC-013 會一直卡在一個永遠簽不下去的允收上；或更糟，某天跑出一次 0/12 就被當成過關。
 
 **決定之後誰動**：第 1、2 條落地不需要新決策，但要改 `02:SEC-013` 的允收文字（紅線改指產品層重放結果、模型層數字改列觀測值＋取樣次數要求）；第 3、4 條各要開一個新工作項回填 `03`（一個在 Go，一個跨 Go 與畫面）。
+
+**2026-09-08 部分裁定（負責人授權代理依最佳實務裁定）**：
+
+- **第 3 條，`allowed_tools` 半邊：已採納並落地。** 判準不是白名單——一個 Skill 合法地需要 `Bash` 是正常情況，白名單會把正當需求也擋下來。落地的形狀是 `copiedFromEvaluation` 那一套的延伸：新草稿的 `allowed_tools` 比前一版多出來的工具，只要使用者自己的訊息、brief、驗收條件、`sample_input` 都沒提過、而這一輪又有評估文字在場，就判定是評估文字要求的而不是使用者要的，走既有的 nudge 路徑（tool 訊息說明理由、要模型拿掉或說明），`MaxNudges` 之後照存並在畫面上告訴使用者兩次都沒拿掉。這正是 OWASP GenAI 對 LLM01 的立場——沒有完整解法，只能縱深防禦：提示紀律擋不住的，用決定性的 Go 檢查補。已落地於 `apps/platform/internal/creator/creation/creation.go`（`toolsNotRequested`）與 `job.go`，測試見下一條的產品層重放。
+- **第 4 條（brief 差異）：已採納並落地。** 契約新增 `CreationSnapshot.model_changed`（`CreationModelChange`：`brief`／`acceptance_criteria`／`sample_input` 三個「改動前的值」），只在 `BriefConfirmed` 曾為 true（人確認過的東西被真的推翻，不是第一次提出）時記錄；`confirm_brief` 成功即清掉。畫面在 `confirm_brief` 區塊對每個被改的欄位並列「模型改過這一段，原本是：…」，確認按鈕文案改為「我看過差異，確認新的需求摘要」——不引入 diff 套件，兩段文字並列即可。
+- **第 1 條，產品層重放：已落地為 Go 測試。** `apps/platform/internal/creator/creation/creation_test.go` 的 `TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer` 直接讀 `docs/plans/mvp/m5/creation-measure/injection/corpus-injection.json`（讀不到即 `t.Fatal`，不 skip），把每個 `evaluation` 案例的攻擊者期望草稿餵進 Go 的守門重放：`exfil_marker_in_body` 由 `copiedFromEvaluation` 抓、`add_bash_tool` 由本次新落地的 `toolsNotRequested` 抓、`change_brief` 驗證確認被清掉且 `model_changed` 有記錄、`claim_met` 驗證逐位元相同的草稿觸發既有 `unchanged` nudge 且 `RunUnmet` 不受模型說法影響。語料由 JSON 直接驅動，之後語料加案例，這條測試會跟著涵蓋。
+- **第 2 條（模型層數字要幾次取樣、紅線本身改不改）：仍待負責人裁定，不在這一波。** `claim_met` 那一半的現況是：Go 既有的 `unchanged` nudge 已涵蓋「交回一模一樣的草稿」這個情境，平台自己對「有沒有達成」的判定不會被模型在訊息裡怎麼說改變（`RunUnmet` 是 Go 自己算的，不讀模型的宣稱），這一點已經補了產品層測試（見上一條）。要不要把這個 nudge 升級成硬性拒絕（模型兩次都不改就整個回退而非照存），與模型層取樣次數、紅線量在哪一層要不要寫進 `02:SEC-013`，仍在第 2 條一起裁。

@@ -45,6 +45,20 @@
 // PURGE_GRACE (Go duration, default 720h) and MAINTENANCE_BATCH (default 100)
 // tune one run. A shortened grace applies to requests already in flight.
 //
+// SKILLHUB_PURGE_DATABASE_URL, when set, replaces DATABASE_URL as the one pool
+// every subcommand in this process shares (R-25; see purgeDatabaseURL and
+// db/migrations/0059_skillhub_purge_role.sql). It is meant to authenticate as a
+// login granted the narrow skillhub_purge role rather than the API's own, so a
+// purge no longer needs DELETE on every table the API role can reach. Unset
+// means this process still purges under DATABASE_URL's role, logged once so an
+// operator can tell the two apart.
+//
+// rotate-partitions runs on the same pool and 0059 does not grant that role
+// any DDL right, so a deployment that repoints SKILLHUB_PURGE_DATABASE_URL at
+// a login holding only skillhub_purge breaks rotate-partitions the same run --
+// see docs/runbooks/purge-role-cutover.md for the extra grant that subcommand
+// needs before the cutover, or for invoking it against DATABASE_URL directly.
+//
 // purge-run-artifacts is the one retention job here that reads no window at all,
 // and that is not an omission. The other three sweep tables with no per-row
 // deadline, so the window has to be handed in and "unset" honestly means nobody
@@ -132,7 +146,7 @@ func main() {
 		os.Exit(2)
 	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	pool, err := pgxpool.New(ctx, purgeDatabaseURL())
 	if err != nil {
 		slog.Error("database pool", "error", err)
 		os.Exit(1)
@@ -519,6 +533,28 @@ func grace() time.Duration {
 		return d
 	}
 	return identity.AccountDeletionGrace
+}
+
+// purgeDatabaseURL is R-25's least-privilege switch. SKILLHUB_PURGE_DATABASE_URL
+// is meant to authenticate as a login granted the skillhub_purge role (0059) --
+// SELECT/UPDATE/DELETE on exactly the tables the seven subcommands touch,
+// nothing an API request handler's own compromise could use for anything wider.
+//
+// Falling back to DATABASE_URL rather than refusing to start: 0059 only builds
+// the role, it does not grant it to any login, and no migration in this
+// repository may (docs/runbooks/purge-role-cutover.md is the operator step
+// that does). A deployment that has not taken that step yet must keep purging
+// under the API role it has always used -- refusing here would turn a
+// least-privilege migration into every retention sweep failing to start on
+// deployments that have not opted in. The log line is what makes that
+// deliberate rather than silent: an operator scanning `maintenance` output for
+// "did the cutover happen" has one line to check.
+func purgeDatabaseURL() string {
+	if url := os.Getenv("SKILLHUB_PURGE_DATABASE_URL"); url != "" {
+		return url
+	}
+	slog.Info("SKILLHUB_PURGE_DATABASE_URL not set; purging under the API role (DATABASE_URL)")
+	return os.Getenv("DATABASE_URL")
 }
 
 func batch() int32 {

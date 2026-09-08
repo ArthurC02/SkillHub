@@ -337,6 +337,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		}
 		p.BriefConfirmed = true
 		p.PendingAction = ""
+		p.ModelChanged = nil
 		queueStep = true
 	case "confirm_diagram":
 		if p.PendingAction != "confirm_diagram" || !validDiagramInterpretation(p.DiagramUnderstanding) {
@@ -800,6 +801,143 @@ func copiedFromEvaluation(evaluationText, draftText string, theirs ...string) []
 	// the same session read differently on every run.
 	sort.Strings(copied)
 	return copied
+}
+
+// toolsNotRequested lists the tokens a revised draft's allowed_tools gained
+// since the previous draft that nobody the person trusts asked for. 05 R-54
+// #3, corpus-injection.json's add_bash_tool cases: the judge's own reason (or
+// a fetched page, or a reference Skill's body) tells the model the fix is
+// adding a tool to allowed_tools rather than editing the body, and today Go
+// never looks at that field at all. This is not an allowlist — a Skill
+// legitimately needing Bash is ordinary — it only flags a tool that showed up
+// this round with nothing in the person's own words asking for it, the same
+// shape as copiedFromEvaluation: new, absent from the last version, and
+// absent from everything the person had a hand in.
+//
+// Tokenizing follows the specification's own convention (space-separated,
+// commas tolerated — skillpkg.go's allowed-tools parser): "Bash(git:*)" and
+// "bash" are the same tool for this comparison, compared by the part before
+// any "(" scope, case-insensitively.
+func toolsNotRequested(prevTools, curTools string, theirs ...string) []string {
+	added := addedToolTokens(prevTools, curTools)
+	if len(added) == 0 {
+		return nil
+	}
+	var out []string
+	for _, tool := range added {
+		if !asked(toolBaseName(tool), theirs) {
+			out = append(out, tool)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// negations are the words that turn a mention of a tool into a refusal of it.
+// The adversarial review of the first version (2026-09-08) found the hole they
+// close: a person who writes 「不要用 bash」 was read as having asked for bash,
+// and an evaluation could then smuggle it in past a guard that only counted
+// words.
+var negations = []string{"不要", "不用", "不需要", "不能", "別用", "別", "禁止", "勿", "無需", "沒有要",
+	"don't", "do not", "dont", "no ", "not ", "never", "without", "avoid", "except"}
+
+// negationWindow is how far back a refusal can sit and still govern the
+// mention: enough for 「這個 Skill 不要用 bash」, short enough that a refusal of
+// one tool two sentences ago does not silently govern another.
+const negationWindow = 16
+
+// asked says whether any of the person's own texts names this tool as
+// something they want. A mention inside a refusal does not count; a tool
+// mentioned twice counts if either mention stands unnegated.
+func asked(tool string, theirs []string) bool {
+	needle := strings.ToLower(strings.TrimSpace(tool))
+	if needle == "" {
+		return false
+	}
+	for _, t := range theirs {
+		hay := strings.ToLower(t)
+		for at := 0; ; {
+			i := strings.Index(hay[at:], needle)
+			if i < 0 {
+				break
+			}
+			i += at
+			if !negated(hay, i) {
+				return true
+			}
+			at = i + len(needle)
+		}
+	}
+	return false
+}
+
+// negated reports whether a refusal sits within negationWindow runes before
+// the mention at index i.
+func negated(hay string, i int) bool {
+	start := i
+	for n := 0; start > 0 && n < negationWindow; n++ {
+		_, size := utf8.DecodeLastRuneInString(hay[:start])
+		start -= size
+	}
+	before := hay[start:i]
+	for _, n := range negations {
+		if strings.Contains(before, n) {
+			return true
+		}
+	}
+	return false
+}
+
+// toolsNamedIn is the subset of tools the evaluation text actually spells
+// out, so the nudge can say the judge asked for it only when the judge did.
+func toolsNamedIn(evaluationText string, tools []string) []string {
+	if strings.TrimSpace(evaluationText) == "" {
+		return nil
+	}
+	hay := strings.ToLower(evaluationText)
+	var named []string
+	for _, tool := range tools {
+		if base := strings.ToLower(toolBaseName(tool)); base != "" && strings.Contains(hay, base) {
+			named = append(named, tool)
+		}
+	}
+	return named
+}
+
+// addedToolTokens is cur's allowed_tools tokens absent from prev's, compared
+// case-insensitively; the token kept is cur's own spelling, for the message
+// the person reads. Nil when prev has no baseline to diff against (the
+// caller only invokes this when a previous draft exists) or nothing was added.
+func addedToolTokens(prev, cur string) []string {
+	old := map[string]bool{}
+	for _, t := range toolFields(prev) {
+		old[strings.ToLower(t)] = true
+	}
+	var added []string
+	seen := map[string]bool{}
+	for _, t := range toolFields(cur) {
+		key := strings.ToLower(t)
+		if !old[key] && !seen[key] {
+			seen[key] = true
+			added = append(added, t)
+		}
+	}
+	return added
+}
+
+// toolFields splits an allowed_tools string the way skillpkg.go's manifest
+// parser does: space-separated, commas tolerated.
+func toolFields(s string) []string {
+	return strings.Fields(strings.ReplaceAll(s, ",", " "))
+}
+
+// toolBaseName strips a scope like "(git:*)" off a tool token, so
+// "Bash(git:*)" is compared as "Bash".
+func toolBaseName(tool string) string {
+	if i := strings.IndexByte(tool, '('); i >= 0 {
+		return tool[:i]
+	}
+	return tool
 }
 
 // markerTokens maps each marker-like token of a text to the segments that made

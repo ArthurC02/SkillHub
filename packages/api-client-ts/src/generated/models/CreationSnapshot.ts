@@ -27,6 +27,13 @@ import {
     CreationMessageToJSON,
     CreationMessageToJSONTyped,
 } from './CreationMessage';
+import type { CreationModelChange } from './CreationModelChange';
+import {
+    CreationModelChangeFromJSON,
+    CreationModelChangeFromJSONTyped,
+    CreationModelChangeToJSON,
+    CreationModelChangeToJSONTyped,
+} from './CreationModelChange';
 import type { CreationDraft } from './CreationDraft';
 import {
     CreationDraftFromJSON,
@@ -85,6 +92,12 @@ export interface CreationSnapshot {
      * @memberof CreationSnapshot
      */
     briefConfirmed: boolean;
+    /**
+     * 
+     * @type {CreationModelChange}
+     * @memberof CreationSnapshot
+     */
+    modelChanged?: CreationModelChange;
     /**
      * 
      * @type {string}
@@ -302,6 +315,7 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'acceptanceCriteria': json['acceptance_criteria'],
         'sampleInput': json['sample_input'] == null ? undefined : json['sample_input'],
         'briefConfirmed': json['brief_confirmed'],
+        'modelChanged': json['model_changed'] == null ? undefined : CreationModelChangeFromJSON(json['model_changed']),
         'diagramUnderstanding': json['diagram_understanding'],
         'diagramConfirmed': json['diagram_confirmed'],
         'diagramFingerprint': json['diagram_fingerprint'] == null ? undefined : json['diagram_fingerprint'],
@@ -351,6 +365,7 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'acceptance_criteria': value['acceptanceCriteria'],
         'sample_input': value['sampleInput'],
         'brief_confirmed': value['briefConfirmed'],
+        'model_changed': CreationModelChangeToJSON(value['modelChanged']),
         'diagram_understanding': value['diagramUnderstanding'],
         'diagram_confirmed': value['diagramConfirmed'],
         'diagram_fingerprint': value['diagramFingerprint'],

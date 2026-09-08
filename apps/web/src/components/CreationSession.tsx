@@ -612,6 +612,9 @@ export function CreationSession() {
             <section>
               <h4>需求摘要</h4>
               <p>{p.brief}</p>
+              {p.model_changed?.brief !== undefined && (
+                <p className="note">模型改過這一段（需求摘要），原本是：{p.model_changed.brief}</p>
+              )}
               <h5>驗收條件</h5>
               {p.acceptance_criteria.length > 0 ? (
                 <ol>
@@ -622,16 +625,32 @@ export function CreationSession() {
               ) : (
                 <p>模型尚未提出驗收條件</p>
               )}
+              {p.model_changed?.acceptance_criteria !== undefined && (
+                <>
+                  <p className="note">模型改過這一段（驗收條件），原本是：</p>
+                  <ol className="note">
+                    {p.model_changed.acceptance_criteria.map((c, i) => (
+                      <li key={i}>{c}</li>
+                    ))}
+                  </ol>
+                </>
+              )}
               {p.sample_input && (
                 <>
                   <h5>試跑用的範例輸入</h5>
                   <pre className="skill-md">{p.sample_input}</pre>
                 </>
               )}
+              {p.model_changed?.sample_input !== undefined && (
+                <>
+                  <p className="note">模型改過這一段（範例輸入），原本是：</p>
+                  <pre className="skill-md">{p.model_changed.sample_input}</pre>
+                </>
+              )}
               <p>{p.brief_confirmed ? "需求摘要與驗收條件皆已確認" : "尚未確認"}</p>
               {p.pending_action === "confirm_brief" && (
                 <button disabled={locked} onClick={() => void perform("confirm_brief")}>
-                  確認需求摘要與驗收條件
+                  {p.model_changed ? "我看過差異，確認新的需求摘要" : "確認需求摘要與驗收條件"}
                 </button>
               )}
             </section>

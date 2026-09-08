@@ -33,12 +33,21 @@ export interface CreationReference {
   warnings?: number;
 }
 export type CreationFetch = { url: string; sha256?: string; bytes?: number; status: string };
+/** What the person last confirmed, before a model step overwrote it (05 R-54
+ * #4) — present only when that overwrite actually overturned a confirmed
+ * value, so the confirm screen has something to compare the new text to. */
+export interface CreationModelChange {
+  brief?: string;
+  acceptance_criteria?: string[];
+  sample_input?: string;
+}
 export interface CreationSnapshot {
   messages: { role: "user" | "assistant" | "tool"; content: string }[];
   brief: string;
   brief_confirmed: boolean;
   acceptance_criteria: string[];
   sample_input?: string;
+  model_changed?: CreationModelChange;
   diagram_understanding: string;
   diagram_confirmed: boolean;
   references: CreationReference[];

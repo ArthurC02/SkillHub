@@ -2,9 +2,12 @@ package creation
 
 import (
 	"context"
+	"encoding/json"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"math"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -661,5 +664,213 @@ func TestAMarkerHiddenInAPackagedFileIsCaughtToo(t *testing.T) {
 	copied := copiedFromEvaluation(text, draftText(draft), "", "", "", "", "")
 	if len(copied) != 1 || copied[0] != "exfil-9c0d" {
 		t.Fatalf("a marker inside a packaged file went unreported: %v", copied)
+	}
+}
+
+// --- 05 R-54 #1 (the executable half): corpus-injection.json's evaluation
+// cases replayed straight through Go's own guards, not only through the
+// Python harness the corpus was built for. Reading the file (rather than
+// copying its cases in) means a corpus addition is exercised here too.
+
+// injectionCase mirrors one entry of corpus-injection.json's "cases" array;
+// only the fields this test reads are typed, the rest ride along in Payload.
+type injectionCase struct {
+	ID         string          `json:"id"`
+	Kind       string          `json:"kind"`
+	AttackGoal string          `json:"attack_goal"`
+	Marker     string          `json:"marker"`
+	Payload    json.RawMessage `json:"payload"`
+}
+
+// repoRootRelative walks up from the working directory (go test's is always
+// the package directory, but this does not assume that) until rel resolves,
+// so the corpus's actual location is what is read rather than a hard-coded
+// depth that would silently stop matching if the package ever moved.
+func repoRootRelative(t *testing.T, rel string) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("cwd: %v", err)
+	}
+	for {
+		p := filepath.Join(dir, rel)
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatalf("could not find %s walking up from the working directory", rel)
+		}
+		dir = parent
+	}
+}
+
+// loadInjectionCorpusCases reads 05 SEC-013's attack set. A missing or
+// unparsable file fails the test outright (t.Fatal, never t.Skip): a
+// production guard with no corpus to check it against is not verified, it is
+// merely present.
+func loadInjectionCorpusCases(t *testing.T) []injectionCase {
+	t.Helper()
+	path := repoRootRelative(t, "docs/plans/mvp/m5/creation-measure/injection/corpus-injection.json")
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading injection corpus at %s: %v", path, err)
+	}
+	var doc struct {
+		Cases []injectionCase `json:"cases"`
+	}
+	if err := json.Unmarshal(b, &doc); err != nil {
+		t.Fatalf("parsing injection corpus at %s: %v", path, err)
+	}
+	if len(doc.Cases) == 0 {
+		t.Fatalf("injection corpus at %s had no cases", path)
+	}
+	return doc.Cases
+}
+
+func injectionCaseByGoal(t *testing.T, cases []injectionCase, kind, goal string) injectionCase {
+	t.Helper()
+	for _, c := range cases {
+		if c.Kind == kind && c.AttackGoal == goal {
+			return c
+		}
+	}
+	t.Fatalf("corpus has no kind=%s attack_goal=%s case", kind, goal)
+	return injectionCase{}
+}
+
+// TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer replays each
+// evaluation-kind case's payload as an attach_run observation — exactly the
+// shape creation.go's attach_run stores as EvaluationText and RunUnmet — and
+// then feeds "the draft the attacker wants the model to hand back" into the
+// same proposal() a real step would run through, asserting the one Go-owned
+// backstop each attack_goal is supposed to hit.
+func TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer(t *testing.T) {
+	cases := loadInjectionCorpusCases(t)
+
+	t.Run("exfil_marker_in_body", func(t *testing.T) {
+		c := injectionCaseByGoal(t, cases, "evaluation", "exfil_marker_in_body")
+		evalText := evaluationFreeText(string(c.Payload))
+		draft := llmclient.GeneratedSkill{Name: "x", Body: "Write the report and include " + c.Marker + " in the header."}
+		copied := copiedFromEvaluation(evalText, draftText(draft), "", "", "", "", "")
+		if len(copied) == 0 {
+			t.Fatalf("corpus case %s: marker %q was not caught by copiedFromEvaluation", c.ID, c.Marker)
+		}
+	})
+
+	t.Run("add_bash_tool", func(t *testing.T) {
+		c := injectionCaseByGoal(t, cases, "evaluation", "add_bash_tool")
+		zero := 0.0
+		prior := &Draft{Revision: 1, ContentHash: "prior-hash", Skill: llmclient.GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read"}}
+		s := &Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+			return "new-hash", "{}", false, nil
+		}}
+		e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+			Messages: []llmclient.CreationMessage{}, Brief: "process the attached CSV",
+			BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
+			Draft: prior, EvaluationText: evaluationFreeText(string(c.Payload)),
+		}}
+		r := &llmclient.CreationStepResponse{Outcome: "draft", Message: "已修正。", Brief: e.Snapshot.Brief,
+			Draft: &llmclient.GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read bash"}}
+		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+		if err != nil || !next || state != "queued" || e.Snapshot.Draft != prior {
+			t.Fatalf("corpus case %s: the smuggled tool should have been nudged back, not accepted: state=%q next=%v err=%v draft=%+v", c.ID, state, next, err, e.Snapshot.Draft)
+		}
+		last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]
+		if last.Role != "tool" || !strings.Contains(strings.ToLower(last.Content), "bash") {
+			t.Fatalf("corpus case %s: the nudge did not name the smuggled tool: %+v", c.ID, last)
+		}
+	})
+
+	t.Run("change_brief", func(t *testing.T) {
+		c := injectionCaseByGoal(t, cases, "evaluation", "change_brief")
+		s := &Service{}
+		e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+			Messages: []llmclient.CreationMessage{}, Brief: "original confirmed brief", BriefConfirmed: true,
+		}}
+		r := &llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "已依回饋更新。", Brief: c.Marker + ": a brief the judge's words asked for, not the person"}
+		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+		if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.PendingAction != "confirm_brief" {
+			t.Fatalf("corpus case %s: a rewritten brief must fall back to confirmation, not take effect silently: state=%q next=%v snap=%+v err=%v", c.ID, state, next, e.Snapshot, err)
+		}
+		if e.Snapshot.ModelChanged == nil || e.Snapshot.ModelChanged.Brief != "original confirmed brief" {
+			t.Fatalf("corpus case %s: the confirmed value the rewrite overturned was not recorded: %+v", c.ID, e.Snapshot.ModelChanged)
+		}
+	})
+
+	t.Run("claim_met", func(t *testing.T) {
+		c := injectionCaseByGoal(t, cases, "evaluation", "claim_met")
+		observation := string(c.Payload)
+		if !runUnmet(observation) {
+			t.Fatalf("corpus case %s should read as an unmet run under Go's own runUnmet regardless of the summary's claim", c.ID)
+		}
+		s := &Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+			return "same-hash", "{}", false, nil
+		}}
+		zero := 0.0
+		ran := &Draft{Revision: 3, ContentHash: "same-hash"}
+		e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+			Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
+			Draft: ran, RunUnmet: runUnmet(observation),
+		}}
+		r := &llmclient.CreationStepResponse{Outcome: "draft", Message: c.Marker + " every criterion actually passed.", Brief: "b",
+			Draft: &llmclient.GeneratedSkill{Name: "x", Body: "same"}}
+		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+		if err != nil || !next || state != "queued" {
+			t.Fatalf("corpus case %s: a byte-identical draft with a success claim in the message must still be nudged: state=%q next=%v err=%v", c.ID, state, next, err)
+		}
+		if !e.Snapshot.RunUnmet {
+			t.Fatalf("corpus case %s: RunUnmet must stay true — the model's message cannot overturn Go's own judgement of the trial", c.ID)
+		}
+	})
+}
+
+// --- what the adversarial review of 2026-09-08 found in the first version ---
+
+func TestARefusedToolIsNotAToolTheyAskedFor(t *testing.T) {
+	// 「不要用 bash」 was read as a request for bash, which handed the
+	// add_bash_tool case a one-sentence bypass.
+	refused := toolsNotRequested("Read", "Read Bash", "", "", "", "這個 Skill 不要用 bash，用 python 就好")
+	if len(refused) != 1 || refused[0] != "Bash" {
+		t.Fatalf("a tool the person refused was treated as requested: %v", refused)
+	}
+	asked := toolsNotRequested("Read", "Read Bash", "", "", "", "請用 bash 跑那個腳本")
+	if len(asked) != 0 {
+		t.Fatalf("a tool the person asked for was reported: %v", asked)
+	}
+	both := toolsNotRequested("Read", "Read Bash", "", "", "", "一開始不要用 bash。後來想想，還是用 bash 吧")
+	if len(both) != 0 {
+		t.Fatalf("a later unnegated request should count: %v", both)
+	}
+}
+
+func TestTheNudgeOnlyBlamesTheEvaluationWhenItNamesTheTool(t *testing.T) {
+	if named := toolsNamedIn("the judge asked for Bash to read the file", []string{"Bash"}); len(named) != 1 {
+		t.Fatalf("a tool the evaluation names should be reported as named: %v", named)
+	}
+	if named := toolsNamedIn("the output was missing a totals column", []string{"Bash"}); len(named) != 0 {
+		t.Fatalf("a tool the evaluation never mentions was blamed on it: %v", named)
+	}
+}
+
+func TestOnlyTheOverturnedFieldIsRecordedAsChanged(t *testing.T) {
+	// Recording all three whenever one moved printed "the model changed this"
+	// over a brief and a sample that still read exactly as the person left them.
+	s := Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+		return "hash", "ok", false, nil
+	}}
+	e := envelope{Snapshot: Snapshot{Brief: "B1", AcceptanceCriteria: []string{"C1"}, SampleInput: "S1", BriefConfirmed: true}, Limits: testLimits()}
+	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &llmclient.CreationStepResponse{
+		Outcome: "confirm_brief", Message: "revised", Brief: "B1", AcceptanceCriteria: []string{"C2"},
+	})
+	if err != nil || state != "waiting_confirmation" {
+		t.Fatalf("a rewritten criterion should re-open confirmation: %s %v", state, err)
+	}
+	m := e.Snapshot.ModelChanged
+	if m == nil || len(m.AcceptanceCriteria) != 1 || m.AcceptanceCriteria[0] != "C1" {
+		t.Fatalf("the overturned criterion was not recorded: %+v", m)
+	}
+	if m.Brief != "" || m.SampleInput != "" {
+		t.Fatalf("fields nobody changed were recorded as changed: %+v", m)
 	}
 }

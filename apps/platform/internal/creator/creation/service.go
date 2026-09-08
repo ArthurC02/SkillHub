@@ -130,6 +130,17 @@ type Draft struct {
 	Validation  string                   `json:"validation"`
 	Blocked     bool                     `json:"blocked"`
 }
+
+// ModelChange is the person's last-confirmed brief/criteria/sample_input,
+// kept only long enough to show what a disputed model rewrite overwrote (05
+// R-54 #4): the confirm screen showed the new text with nothing to compare it
+// against, so a rewritten brief (an observed injection channel — corpus-
+// injection.json's change_brief cases) looked exactly like an honest one.
+type ModelChange struct {
+	Brief              string   `json:"brief,omitempty"`
+	AcceptanceCriteria []string `json:"acceptance_criteria,omitempty"`
+	SampleInput        string   `json:"sample_input,omitempty"`
+}
 type Candidate struct {
 	SkillID   string `json:"skill_id"`
 	VersionID string `json:"version_id"`
@@ -213,6 +224,11 @@ type Snapshot struct {
 	DiagramBytes       int        `json:"diagram_bytes,omitempty"`
 	Model              string     `json:"model,omitempty"`
 	PromptVersion      string     `json:"prompt_version,omitempty"`
+	// ModelChanged holds the confirmed values a model step just overturned,
+	// recorded only when BriefConfirmed was true before this step (a
+	// confirmed input was actually overturned, not merely proposed for the
+	// first time), and cleared when confirm_brief succeeds.
+	ModelChanged *ModelChange `json:"model_changed,omitempty"`
 }
 type envelope struct {
 	Snapshot        Snapshot    `json:"snapshot"`

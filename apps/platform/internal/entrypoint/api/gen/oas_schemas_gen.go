@@ -2597,6 +2597,51 @@ func (s *CreationMessageRole) UnmarshalText(data []byte) error {
 	}
 }
 
+// What a model step changed about inputs the person had already confirmed, kept so the confirmation
+// screen can show the difference instead of only the new text (05 R-54). Go writes it when it clears
+// brief_confirmed and drops it when the person confirms again. An evaluation observation that tells
+// the model to rewrite the brief is a recorded prompt-injection channel, and a confirmation with
+// nothing to compare against is where it lands.
+// Ref: #/components/schemas/CreationModelChange
+type CreationModelChange struct {
+	// The brief as the person last confirmed it, before this change.
+	Brief OptString `json:"brief"`
+	// The criteria as the person last confirmed them.
+	AcceptanceCriteria []string `json:"acceptance_criteria"`
+	// The sample input as the person last confirmed it.
+	SampleInput OptString `json:"sample_input"`
+}
+
+// GetBrief returns the value of Brief.
+func (s *CreationModelChange) GetBrief() OptString {
+	return s.Brief
+}
+
+// GetAcceptanceCriteria returns the value of AcceptanceCriteria.
+func (s *CreationModelChange) GetAcceptanceCriteria() []string {
+	return s.AcceptanceCriteria
+}
+
+// GetSampleInput returns the value of SampleInput.
+func (s *CreationModelChange) GetSampleInput() OptString {
+	return s.SampleInput
+}
+
+// SetBrief sets the value of Brief.
+func (s *CreationModelChange) SetBrief(val OptString) {
+	s.Brief = val
+}
+
+// SetAcceptanceCriteria sets the value of AcceptanceCriteria.
+func (s *CreationModelChange) SetAcceptanceCriteria(val []string) {
+	s.AcceptanceCriteria = val
+}
+
+// SetSampleInput sets the value of SampleInput.
+func (s *CreationModelChange) SetSampleInput(val OptString) {
+	s.SampleInput = val
+}
+
 // Ref: #/components/schemas/CreationReference
 type CreationReference struct {
 	SkillID   uuid.UUID `json:"skill_id"`
@@ -3128,21 +3173,22 @@ type CreationSnapshot struct {
 	AcceptanceCriteria []string `json:"acceptance_criteria"`
 	// The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt
 	// of the candidate's Test Case. Empty until proposed.
-	SampleInput          OptString            `json:"sample_input"`
-	BriefConfirmed       bool                 `json:"brief_confirmed"`
-	DiagramUnderstanding string               `json:"diagram_understanding"`
-	DiagramConfirmed     bool                 `json:"diagram_confirmed"`
-	DiagramFingerprint   OptString            `json:"diagram_fingerprint"`
-	References           []CreationReference  `json:"references"`
-	Draft                OptCreationDraft     `json:"draft"`
-	Candidate            OptCreationCandidate `json:"candidate"`
-	PendingAction        string               `json:"pending_action"`
-	BudgetUsd            float64              `json:"budget_usd"`
-	ReservedUsd          float64              `json:"reserved_usd"`
-	SpentUsd             OptFloat64           `json:"spent_usd"`
-	UsageUnknown         bool                 `json:"usage_unknown"`
-	Steps                int                  `json:"steps"`
-	ToolCalls            int                  `json:"tool_calls"`
+	SampleInput          OptString              `json:"sample_input"`
+	BriefConfirmed       bool                   `json:"brief_confirmed"`
+	ModelChanged         OptCreationModelChange `json:"model_changed"`
+	DiagramUnderstanding string                 `json:"diagram_understanding"`
+	DiagramConfirmed     bool                   `json:"diagram_confirmed"`
+	DiagramFingerprint   OptString              `json:"diagram_fingerprint"`
+	References           []CreationReference    `json:"references"`
+	Draft                OptCreationDraft       `json:"draft"`
+	Candidate            OptCreationCandidate   `json:"candidate"`
+	PendingAction        string                 `json:"pending_action"`
+	BudgetUsd            float64                `json:"budget_usd"`
+	ReservedUsd          float64                `json:"reserved_usd"`
+	SpentUsd             OptFloat64             `json:"spent_usd"`
+	UsageUnknown         bool                   `json:"usage_unknown"`
+	Steps                int                    `json:"steps"`
+	ToolCalls            int                    `json:"tool_calls"`
 	// Automatic re-queues after the model answered outcome=draft with no draft (at most one per session).
 	DraftRetries OptInt `json:"draft_retries"`
 	// The attached Run's evaluation finished and was not met; a draft identical to the one that ran is
@@ -3210,6 +3256,11 @@ func (s *CreationSnapshot) GetSampleInput() OptString {
 // GetBriefConfirmed returns the value of BriefConfirmed.
 func (s *CreationSnapshot) GetBriefConfirmed() bool {
 	return s.BriefConfirmed
+}
+
+// GetModelChanged returns the value of ModelChanged.
+func (s *CreationSnapshot) GetModelChanged() OptCreationModelChange {
+	return s.ModelChanged
 }
 
 // GetDiagramUnderstanding returns the value of DiagramUnderstanding.
@@ -3385,6 +3436,11 @@ func (s *CreationSnapshot) SetSampleInput(val OptString) {
 // SetBriefConfirmed sets the value of BriefConfirmed.
 func (s *CreationSnapshot) SetBriefConfirmed(val bool) {
 	s.BriefConfirmed = val
+}
+
+// SetModelChanged sets the value of ModelChanged.
+func (s *CreationSnapshot) SetModelChanged(val OptCreationModelChange) {
+	s.ModelChanged = val
 }
 
 // SetDiagramUnderstanding sets the value of DiagramUnderstanding.
@@ -9717,6 +9773,52 @@ func (o OptCreationDraft) Get() (v CreationDraft, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptCreationDraft) Or(d CreationDraft) CreationDraft {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptCreationModelChange returns new OptCreationModelChange with value set to v.
+func NewOptCreationModelChange(v CreationModelChange) OptCreationModelChange {
+	return OptCreationModelChange{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCreationModelChange is optional CreationModelChange.
+type OptCreationModelChange struct {
+	Value CreationModelChange
+	Set   bool
+}
+
+// IsSet returns true if OptCreationModelChange was set.
+func (o OptCreationModelChange) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCreationModelChange) Reset() {
+	var v CreationModelChange
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCreationModelChange) SetTo(v CreationModelChange) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCreationModelChange) Get() (v CreationModelChange, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCreationModelChange) Or(d CreationModelChange) CreationModelChange {
 	if v, ok := o.Get(); ok {
 		return v
 	}
