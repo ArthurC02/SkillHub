@@ -103,6 +103,15 @@ var disclosureCatalogue = []disclosure{
 		Note:  "這是掃描讀出來的依賴名稱清單,不是安裝指令,平台沒有解析版本也沒有驗證它們存在。",
 	},
 	{
+		// 05 R-21/R-27: the package may carry an archive of its own, and this
+		// platform neither opens it nor refuses it. Disclosed rather than
+		// blocked, because refusing by extension also rejects a Skill that
+		// legitimately ships a zip as sample data.
+		Code:  skillpkg.CodeNestedArchive,
+		Label: "內含壓縮檔",
+		Note:  "套件裡有一個或多個壓縮檔，平台沒有打開它們——靜態掃描看得到的是這個套件本身的內容，壓縮檔裡面的東西不在其中。要解壓縮它們的是你的機器，不是平台。",
+	},
+	{
 		// Last, and info level, but it is the one entry that qualifies every other:
 		// what it says is that part of the package was not read at all.
 		Code:  skillpkg.CodeFileNotScanned,

@@ -26,13 +26,20 @@
       "pattern": "^1\\.[0-9]+$",
       "description": "Manifest contract version, MAJOR.MINOR. Minor bumps are additive only and an older manifest stays a valid instance of the newer minor; a breaking change bumps the major and gets a new $id. A producer that writes only 1.0 fields keeps declaring 1.0. Same rule as contracts/events.",
       "examples": [
-        "1.0"
+        "1.0",
+        "1.2"
       ]
     },
     "packaged_at": {
       "type": "string",
       "format": "date-time",
-      "description": "Deterministic package timestamp: the immutable source Skill Version's creation time, RFC 3339 with offset. This field adds no wall-clock variance; complete builds are reusable when all inputs produce the same content hash."
+      "deprecated": true,
+      "description": "DEPRECATED since 1.2 (05 R-30, 2026-09-08), still written and still required: read `source_version_created_at` instead. The name says when packaging happened and the value is something else - the immutable source Skill Version's creation time, RFC 3339 with offset. Renaming a required field is a breaking change and every existing consumer reads this one, so 1.2 adds the correctly named field beside it and both carry the same value. The value was never wrong; only the name was. This field adds no wall-clock variance; complete builds are reusable when all inputs produce the same content hash."
+    },
+    "source_version_created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the source Skill Version was created, RFC 3339 with offset - the value `packaged_at` has always carried under a name that promised something else (05 R-30). Optional in 1.2 so a 1.1 manifest stays a valid 1.2 instance; every 1.2 producer writes it. Consumers that want the packaging moment do not have it in this manifest at all: packaging is deterministic and records no wall clock, by design (ADR-012)."
     },
     "packager_version": {
       "type": "string",
@@ -649,6 +656,7 @@
     {
       "schema_version": "1.0",
       "packaged_at": "2026-08-17T09:00:00Z",
+      "source_version_created_at": "2026-08-17T09:00:00Z",
       "packager_version": "0.1.0",
       "profile_id": "standard",
       "profile_version": "1.0.0",
@@ -701,6 +709,7 @@
     {
       "schema_version": "1.0",
       "packaged_at": "2026-08-17T09:30:00Z",
+      "source_version_created_at": "2026-08-17T09:30:00Z",
       "packager_version": "0.1.0",
       "profile_id": "claude-code",
       "profile_version": "1.0.0",

@@ -492,3 +492,71 @@ func TestTheImportCeilingsAreTheRatifiedOnes(t *testing.T) {
 			HumanMB(MaxZipBytes))
 	}
 }
+
+// --- 05 R-21/R-27: a ratio ceiling instead of an extension ban -------------
+
+// A megabyte of one repeated byte compresses to almost nothing: the six size
+// caps all pass it, and only the ratio says what it is.
+func TestPackageFSRefusesAnEntryThatExpandsTooFar(t *testing.T) {
+	data := zipBytes(t, map[string]string{"SKILL.md": archiveSkillMD, "bomb.txt": strings.Repeat("A", 2<<20)})
+	_, err := PackageFS(data)
+	if !errors.Is(err, ErrBadArchive) || !strings.Contains(err.Error(), "more than the 100:1") {
+		t.Fatalf("want a ratio refusal, got %v", err)
+	}
+}
+
+// Ordinary content compresses two to twenty times; nothing here may be refused
+// for it. Random-ish bytes stand in for a real asset.
+func TestPackageFSKeepsOrdinaryCompression(t *testing.T) {
+	var b strings.Builder
+	for i := 0; i < 2<<20; i++ {
+		b.WriteByte(byte(i*2654435761>>13) ^ byte(i))
+	}
+	data := zipBytes(t, map[string]string{"SKILL.md": archiveSkillMD, "asset.bin": b.String()})
+	if _, err := PackageFS(data); err != nil {
+		t.Fatalf("ordinary content was refused: %v", err)
+	}
+}
+
+// PDM-005 §5.1b forbids an archive inside an archive; refusing by extension
+// would also reject a Skill that ships a zip as sample data. The platform never
+// opens it, so what it owes the person extracting the package is a sentence.
+func TestPackageFSDisclosesANestedArchiveInsteadOfRefusingIt(t *testing.T) {
+	data := zipBytes(t, map[string]string{
+		"SKILL.md":           archiveSkillMD,
+		"samples/orders.zip": "not a real archive, just named like one",
+	})
+	pkg, err := PackageFS(data)
+	if err != nil {
+		t.Fatalf("a nested archive must not be refused: %v", err)
+	}
+	found, ok := pkg.(interface{ ArchiveFindings() []Finding })
+	if !ok {
+		t.Fatal("the package view stopped carrying archive findings")
+	}
+	var disclosed *Finding
+	for i, f := range found.ArchiveFindings() {
+		if f.Code == CodeNestedArchive {
+			disclosed = &found.ArchiveFindings()[i]
+		}
+	}
+	if disclosed == nil {
+		t.Fatalf("the nested archive was not disclosed: %+v", found.ArchiveFindings())
+	}
+	if disclosed.Severity != SeverityInfo || disclosed.Path != "samples/orders.zip" {
+		t.Fatalf("disclosure has the wrong shape: %+v", *disclosed)
+	}
+}
+
+func TestLooksLikeArchiveReadsTheNameOnly(t *testing.T) {
+	for _, name := range []string{"a.zip", "b.TAR", "c.tar.gz", "d.7z", "e.rar", "f.tgz"} {
+		if !LooksLikeArchive(name) {
+			t.Errorf("%s should look like an archive", name)
+		}
+	}
+	for _, name := range []string{"SKILL.md", "notes.txt", "zipper.py", "scripts/gzip_helper.py"} {
+		if LooksLikeArchive(name) {
+			t.Errorf("%s is not an archive", name)
+		}
+	}
+}

@@ -80,6 +80,19 @@ var (
 	maxEntryBytes = uint64(10 << 20)
 	// 目錄巢狀深度 ≤ 10.
 	maxEntryDepth = 10
+	// Compression ratio, the signal the six size caps cannot give. A bomb is
+	// small on the wire and enormous once expanded; ordinary mixed content
+	// compresses 2:1 to 10:1 and text up to about 20:1, so 100:1 on a single
+	// entry and 1000:1 across the archive are the thresholds the field settled
+	// on. Both are checked cumulatively, not per child, because that is the
+	// way around per-entry limits (05 R-21/R-27, 2026-09-08).
+	maxEntryRatio   = uint64(100)
+	maxArchiveRatio = uint64(1000)
+	// Below these, a ratio says nothing: a 30-byte file that compresses to
+	// nothing is not an attack, and dividing by a few bytes of zip overhead
+	// produces noise, not evidence.
+	ratioFloorEntryBytes   = uint64(1 << 20)
+	ratioFloorArchiveBytes = uint64(4096)
 )
 
 // §5.1b's two remaining clauses are deliberately not here.
@@ -120,7 +133,7 @@ func PackageFS(data []byte) (fs.FS, error) {
 		return nil, fmt.Errorf("%w: archive holds %d entries, more than the %d allowed",
 			ErrBadArchive, len(zr.File), maxArchiveEntries)
 	}
-	var unpacked uint64
+	var unpacked, compressed uint64
 	var findings []Finding
 	seen := make(map[string]bool, len(zr.File)) // portable name -> directory
 	requiredDirs := make(map[string]struct{}, len(zr.File))
@@ -182,9 +195,21 @@ func PackageFS(data []byte) (fs.FS, error) {
 			return nil, fmt.Errorf("%w: %s nests %d directories deep, more than the %d allowed",
 				ErrBadArchive, f.Name, depth, maxEntryDepth)
 		}
+		if f.UncompressedSize64 >= ratioFloorEntryBytes && ratioExceeds(f.UncompressedSize64, f.CompressedSize64, maxEntryRatio) {
+			return nil, fmt.Errorf("%w: %s expands %d bytes from %d, more than the %d:1 allowed for one file",
+				ErrBadArchive, f.Name, f.UncompressedSize64, f.CompressedSize64, maxEntryRatio)
+		}
 		unpacked += f.UncompressedSize64
+		compressed += f.CompressedSize64
 		if unpacked > maxUnpackedBytes {
 			return nil, fmt.Errorf("%w: uncompressed content exceeds %d bytes", ErrBadArchive, maxUnpackedBytes)
+		}
+		// An archive inside the archive: disclosed, never refused. The caps
+		// above bound what this platform unpacks; they say nothing about what
+		// the person who extracts the package will unpack next.
+		if !nameIsDir && LooksLikeArchive(f.Name) {
+			findings = append(findings, Finding{Severity: SeverityInfo, Code: CodeNestedArchive, Path: f.Name,
+				Message: "這個套件裡有一個壓縮檔，平台沒有打開它——上面的解壓上限管的是平台自己解開的內容，不涵蓋它。解壓縮這個套件的人要自己決定要不要打開。"})
 		}
 		// The raw name, read here because this is the last place it exists: the
 		// fs view below rewrites `../../evil.sh` to `evil.sh` (04 丙-15 D-1/D-2).
@@ -203,6 +228,10 @@ func PackageFS(data []byte) (fs.FS, error) {
 			}
 		}
 	}
+	if compressed >= ratioFloorArchiveBytes && ratioExceeds(unpacked, compressed, maxArchiveRatio) {
+		return nil, fmt.Errorf("%w: the archive expands %d bytes from %d, more than the %d:1 allowed in total",
+			ErrBadArchive, unpacked, compressed, maxArchiveRatio)
+	}
 	var tree fs.FS = zr // no root to strip: let Validate report skill-md-missing
 	if root := PackageRoot(zr); root != "" {
 		if sub, err := fs.Sub(zr, strings.TrimSuffix(root, "/")); err == nil {
@@ -210,6 +239,16 @@ func PackageFS(data []byte) (fs.FS, error) {
 		}
 	}
 	return packageFS{FS: tree, findings: findings}, nil
+}
+
+// ratioExceeds reports whether `out` expands from `in` by more than `limit`
+// times. Zero compressed bytes with content to show for it is not a ratio this
+// can express and is always over the limit.
+func ratioExceeds(out, in, limit uint64) bool {
+	if in == 0 {
+		return out > 0
+	}
+	return out/in > limit
 }
 
 func validateZipEnvelope(data []byte) error {

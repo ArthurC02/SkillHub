@@ -707,11 +707,12 @@ func (s *Service) buildManifest(
 	}
 
 	m := Manifest{
-		SchemaVersion:   ManifestSchemaVersion,
-		PackagedAt:      p.Version.CreatedAt.Time.UTC().Format(time.RFC3339),
-		PackagerVersion: PackagerVersion,
-		ProfileID:       p.Profile.ID,
-		ProfileVersion:  p.Profile.Version,
+		SchemaVersion:          ManifestSchemaVersion,
+		PackagedAt:             p.Version.CreatedAt.Time.UTC().Format(time.RFC3339),
+		SourceVersionCreatedAt: p.Version.CreatedAt.Time.UTC().Format(time.RFC3339),
+		PackagerVersion:        PackagerVersion,
+		ProfileID:              p.Profile.ID,
+		ProfileVersion:         p.Profile.Version,
 		Source: ManifestSource{
 			SkillID:        pgconv.UUIDString(p.Skill.ID),
 			SkillVersionID: pgconv.UUIDString(p.Version.ID),

@@ -355,7 +355,7 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{
 					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
-	}, digest, false)
+	}, digest, evidenceCuts{})
 
 	if results[0].Result != ResultUndetermined {
 		t.Errorf("an item requiring evidence cannot be passed on a quote nothing verified: %+v", results[0])
@@ -410,7 +410,7 @@ func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testin
 					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
 				}},
 		},
-	}, digest, false)
+	}, digest, evidenceCuts{})
 
 	if len(results) != 2 {
 		t.Fatalf("expected one entry per snapshot criterion, got %d", len(results))
@@ -466,7 +466,7 @@ func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *
 					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
 				}},
 		},
-	}, digest, false)
+	}, digest, evidenceCuts{})
 
 	if results[0].Result != ResultUndetermined {
 		t.Errorf("a verdict half of whose citations were invented was stored as %q", results[0].Result)
@@ -496,7 +496,7 @@ func TestACriterionTheJudgeDidNotAnswerIsUndeterminedAndStillListed(t *testing.T
 			// c2 is missing entirely, and an id nobody asked about is thrown in.
 			{CriterionID: "c99", Result: ResultPassed, Reason: "invented"},
 		},
-	}, digest, false)
+	}, digest, evidenceCuts{})
 
 	if len(results) != 2 {
 		t.Fatalf("the report has one entry per snapshot criterion, got %d", len(results))
@@ -524,7 +524,7 @@ func TestVerdictWithoutVerifiedEvidenceIsUndetermined(t *testing.T) {
 			{CriterionID: "c1", Result: ResultPassed, Reason: "trust me"},
 			{CriterionID: "c2", Result: ResultFailed, Reason: "also trust me"},
 		},
-	}, digest, false)
+	}, digest, evidenceCuts{})
 
 	for _, result := range results {
 		if result.Result != ResultUndetermined {
@@ -548,7 +548,7 @@ func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
 	s := &Service{}
 
 	incomplete, digest := fixtureMaterial(false)
-	got := s.merge(incomplete, pass, digest, false)
+	got := s.merge(incomplete, pass, digest, evidenceCuts{})
 	if got[0].Result != ResultUndetermined {
 		t.Errorf("a trace with holes cannot support a pass (丙-1), got %q", got[0].Result)
 	}
@@ -557,12 +557,12 @@ func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
 	}
 
 	complete, digest := fixtureMaterial(true)
-	got = s.merge(complete, pass, digest, true) // truncated input
+	got = s.merge(complete, pass, digest, evidenceCuts{batch: true}) // a hole that reaches every criterion
 	if got[0].Result != ResultUndetermined {
 		t.Errorf("judging on truncated input cannot support a pass (§6.3), got %q", got[0].Result)
 	}
 
-	got = s.merge(complete, pass, digest, false)
+	got = s.merge(complete, pass, digest, evidenceCuts{})
 	if got[0].Result != ResultPassed {
 		t.Error("with complete, untruncated evidence a pass is a pass")
 	}
@@ -587,7 +587,7 @@ func TestTheRubricIsSentOnlyForTheCriteriaTheRequestCarries(t *testing.T) {
 	}
 	s := &Service{}
 
-	req, _, _, dropped := s.buildRequest(m, gen.Evaluation{})
+	req, _, _, dropped, _ := s.buildRequest(m, gen.Evaluation{})
 	if req.Rubric == nil {
 		t.Fatal("the snapshot's rubric has to reach the judge")
 	}
@@ -608,7 +608,7 @@ func TestTheRubricIsSentOnlyForTheCriteriaTheRequestCarries(t *testing.T) {
 func TestARunWithNoRubricSendsNoneAndRecordsNoVersion(t *testing.T) {
 	m, _ := fixtureMaterial(true)
 	s := &Service{}
-	req, _, _, dropped := s.buildRequest(m, gen.Evaluation{})
+	req, _, _, dropped, _ := s.buildRequest(m, gen.Evaluation{})
 	if req.Rubric != nil {
 		t.Errorf("no rubric means no rubric field, got %+v", req.Rubric)
 	}
@@ -632,7 +632,7 @@ func TestARubricWithNothingLeftToSendIsNotRecordedAsInForce(t *testing.T) {
 		Items:   []testlab.RubricItem{{ID: "nobody", Text: "x"}},
 	}
 	s := &Service{}
-	req, _, _, dropped := s.buildRequest(m, gen.Evaluation{})
+	req, _, _, dropped, _ := s.buildRequest(m, gen.Evaluation{})
 	if req.Rubric != nil {
 		t.Errorf("nothing was left to send, got %+v", req.Rubric)
 	}
@@ -941,7 +941,7 @@ func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	m.artifacts, m.absent = nil, ArtifactAbsence{Deleted: 1}
 
-	req, _, truncation, _ := s.buildRequest(m, gen.Evaluation{})
+	req, _, truncation, _, _ := s.buildRequest(m, gen.Evaluation{})
 	if !strings.Contains(strings.Join(req.Truncation, " "), "artifacts.unreadable") {
 		t.Fatalf("the judge got an empty artifact list with nothing said about it: %v", req.Truncation)
 	}
@@ -952,8 +952,48 @@ func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
 				{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 			}},
 	}}
-	got := s.merge(m, pass, digest, len(truncation) > 0)
+	got := s.merge(m, pass, digest, evidenceCuts{batch: batchWideCut(truncation)})
 	if got[0].Result != ResultUndetermined {
 		t.Errorf("a pass judged with the run's outputs unreadable was stored as a pass: %+v", got[0])
+	}
+}
+
+// --- 05 R-18: a trimmed tail silences the criterion that rests on it, not the
+// whole report. Measured: 20 runs, 4 through the rule, 3 of them left with every
+// criterion undetermined including ones the platform had verified by exact match.
+
+func TestATrimmedExcerptOnlySilencesTheCriterionThatCitesIt(t *testing.T) {
+	verdict := llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			// c1 rests on the event whose payload lost its tail.
+			{CriterionID: "c1", Result: ResultPassed, Reason: "the tool call shows it",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`}}},
+			// c2 rests on the artifact manifest, which nothing trimmed.
+			{CriterionID: "c2", Result: ResultPassed, Reason: "the file is there",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
+		},
+	}
+	m, digest := fixtureMaterial(true)
+	got := (&Service{}).merge(m, verdict, digest, evidenceCuts{trimmedEvents: map[string]bool{eventID: true}})
+
+	if got[0].Result != ResultUndetermined {
+		t.Errorf("a verdict resting on a trimmed excerpt cannot be a pass, got %q", got[0].Result)
+	}
+	if got[1].Result != ResultPassed {
+		t.Errorf("a verdict resting on something nothing trimmed keeps its pass, got %q: %s", got[1].Result, got[1].Reason)
+	}
+}
+
+func TestOnlyAnExcerptCutIsNarrow(t *testing.T) {
+	if batchWideCut([]string{"trace_digest.entries[].excerpt"}) {
+		t.Error("a trimmed excerpt is the one cut merge can attribute to a criterion")
+	}
+	for _, name := range []string{"final_output", "criteria", "artifacts", "artifacts.unreadable", "trace_events", "trace_digest.entries"} {
+		if !batchWideCut([]string{name}) {
+			t.Errorf("%s hides something no citation can account for; it must stay batch-wide", name)
+		}
+	}
+	if !batchWideCut([]string{"trace_digest.entries[].excerpt", "final_output"}) {
+		t.Error("one batch-wide cut among narrow ones is still batch-wide")
 	}
 }

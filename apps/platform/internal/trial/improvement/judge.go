@@ -80,7 +80,7 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 		return verdict{}, fmt.Errorf("no judge service is configured for this deployment")
 	}
 
-	req, digest, truncation, dropped := s.buildRequest(m, ev)
+	req, digest, truncation, dropped, trimmedEvents := s.buildRequest(m, ev)
 
 	// The internal call carries the caller's deadline and cancellation (iron rule
 	// 7). llmclient has no timeout of its own, so this is the only one.
@@ -96,7 +96,10 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 		resp.Usage.CostUSD = nil
 		resp.Usage.CostSource = ""
 	}
-	results := s.merge(m, resp.Verdict, digest, len(truncation) > 0)
+	results := s.merge(m, resp.Verdict, digest, evidenceCuts{
+		batch:         batchWideCut(truncation),
+		trimmedEvents: trimmedEvents,
+	})
 	v := verdict{
 		overall:          overallFrom(results),
 		summary:          resp.Verdict.Summary,
@@ -156,7 +159,7 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 // sends, which the caller turns into a warning.
 func (s *Service) buildRequest(
 	m material, ev gen.Evaluation,
-) (llmclient.JudgeRunRequest, map[string]trace.EventView, []string, []string) {
+) (llmclient.JudgeRunRequest, map[string]trace.EventView, []string, []string, map[string]bool) {
 	truncation := []string{}
 
 	final, cutOutput := cut(m.summary.FinalOutput, maxFinalOutput)
@@ -237,7 +240,7 @@ func (s *Service) buildRequest(
 	}
 	rubric, dropped := rubricFor(m.rubric, criteria)
 	req.Rubric = rubric
-	return req, digest, truncation, dropped
+	return req, digest, truncation, dropped, cuts.TrimmedEvents
 }
 
 // rubricFor turns the snapshot's frozen rubric into the request's, keeping only
@@ -301,6 +304,11 @@ type digestCuts struct {
 	// (maxDigestEntry). Mostly `tool_call.arguments` - a Write call carrying the
 	// document the run produced, which is exactly what a content rubric is about.
 	TrimmedExcerpts bool
+	// TrimmedEvents is which events lost their tail. 05 R-18 (2026-09-08) turns
+	// the truncation rule from a batch verdict into a per-criterion one, and the
+	// only way to ask "does THIS criterion rest on something that was cut" is to
+	// know which events were cut.
+	TrimmedEvents map[string]bool
 }
 
 func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[string]trace.EventView, digestCuts) {
@@ -330,6 +338,10 @@ func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[str
 		})
 		if cutExcerpt {
 			cuts.TrimmedExcerpts = true
+			if cuts.TrimmedEvents == nil {
+				cuts.TrimmedEvents = map[string]bool{}
+			}
+			cuts.TrimmedEvents[e.EventID] = true
 		}
 		digest[e.EventID] = e
 	}
@@ -342,8 +354,51 @@ func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[str
 // answered it: a criterion the judge skipped is `undetermined` and says so, rather
 // than disappearing from the report. Every entry is `source: model` — the response
 // has no field through which the model could claim otherwise.
+// evidenceCuts is what was missing from the material this verdict was formed
+// on, split by how far the hole reaches. 05 R-18: 20 measured runs put 4 through
+// the truncation rule and 3 of those came back with every criterion
+// `undetermined` - including criteria whose evidence the platform itself had
+// found by exact match, in sources nothing had trimmed. A rule that silences the
+// long runs silences the interesting ones, and 「保守」 is not free when the
+// result is an evaluation nobody can act on.
+type evidenceCuts struct {
+	// batch is a hole no criterion can be cleared of: a cut final output, a
+	// dropped criterion or artifact row, an unreadable manifest, or whole trace
+	// events that never reached the judge. Any of these can hide the
+	// contradiction to any verdict, so the old batch-wide conservatism stands.
+	batch bool
+	// trimmedEvents is the narrow hole: the event is present and its payload
+	// stops mid-way. Only a criterion that cites one of these rests on it.
+	trimmedEvents map[string]bool
+}
+
+// restsOnATrimmedSource says whether this verdict's own citations point at an
+// event whose payload lost its tail.
+func (c evidenceCuts) restsOnATrimmedSource(refs []EvidenceRef) bool {
+	for _, r := range refs {
+		if r.TraceEventID != "" && c.trimmedEvents[r.TraceEventID] {
+			return true
+		}
+	}
+	return false
+}
+
+// batchWideCut reads the truncation list the request declared and answers
+// whether any of it is the kind that reaches every criterion. The one name that
+// is not is `trace_digest.entries[].excerpt`, which merge now handles per
+// criterion; every other name means something is missing that no citation can
+// prove the absence of.
+func batchWideCut(truncation []string) bool {
+	for _, name := range truncation {
+		if name != "trace_digest.entries[].excerpt" {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Service) merge(
-	m material, v llmclient.JudgeVerdict, digest map[string]trace.EventView, truncated bool,
+	m material, v llmclient.JudgeVerdict, digest map[string]trace.EventView, cuts evidenceCuts,
 ) []CriterionResult {
 	// Which criteria the frozen rubric demands quoted evidence for. Read off the
 	// snapshot's rubric, like everything else about what this run was measured
@@ -427,7 +482,7 @@ func (s *Service) merge(
 		// support a pass. It can still support a failure — a criterion contradicted
 		// by what *is* there does not become uncertain because something else is
 		// absent.
-		if result.Result == ResultPassed && (!m.advanced.Complete || truncated) {
+		if result.Result == ResultPassed && (!m.advanced.Complete || cuts.batch || cuts.restsOnATrimmedSource(result.Evidence)) {
 			result.Result = ResultUndetermined
 			result.Reason = "judged on incomplete evidence (the trace has gaps or the input " +
 				"was truncated), so a pass cannot be recorded. The judge's own reasoning was: " + cv.Reason

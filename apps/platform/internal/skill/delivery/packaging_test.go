@@ -800,3 +800,31 @@ func TestShippedProfilesSpeakTheInterfaceLanguageAndKeepTheReviewedOriginal(t *t
 		}
 	}
 }
+
+// --- 05 R-30: the honest name arrives beside the misleading one ------------
+
+// packaged_at never carried the packaging moment; it carries the source
+// version's creation time, and every consumer reads it. Renaming a required
+// field breaks all of them at once, so 1.2 adds source_version_created_at with
+// the same value and keeps writing both. The test that matters is that they
+// agree: two names for one fact is only safe while it stays one fact.
+func TestManifestWritesTheSourceVersionTimeUnderBothNames(t *testing.T) {
+	if ManifestSchemaVersion != "1.2" {
+		t.Fatalf("the additive field landed in 1.2; version says %s", ManifestSchemaVersion)
+	}
+	m := Manifest{PackagedAt: "2026-08-17T09:00:00Z", SourceVersionCreatedAt: "2026-08-17T09:00:00Z"}
+	blob, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back map[string]any
+	if err := json.Unmarshal(blob, &back); err != nil {
+		t.Fatal(err)
+	}
+	if back["packaged_at"] != back["source_version_created_at"] {
+		t.Fatalf("the two names disagree about one fact: %v vs %v", back["packaged_at"], back["source_version_created_at"])
+	}
+	if _, ok := back["packaged_at"]; !ok {
+		t.Fatal("the deprecated field is still required; dropping it is a major version")
+	}
+}

@@ -237,6 +237,14 @@ const (
 	// CodeFileNotScanned: a file over maxScanBytes, of which only the first
 	// megabyte was read. The secret scan therefore did not see the rest.
 	CodeFileNotScanned = "file-not-scanned"
+	// CodeNestedArchive: an archive inside the package. PDM-005 §5.1b forbids
+	// one as a way around the unpacking caps, and this platform refuses it by
+	// neither name nor content — refusing by extension would also reject a
+	// Skill that legitimately ships a zip as sample data (05 R-21/R-27).
+	// What the platform can honestly say is that it did not look inside: its
+	// own caps bound what IT unpacks, and this entry is not covered by them.
+	// The person who extracts the package is, and they get told.
+	CodeNestedArchive = "nested-archive"
 )
 
 // DisclosureCodes is every content-disclosure code, so a renderer can assert it
@@ -247,7 +255,24 @@ var DisclosureCodes = []string{
 	CodeEntryPathEscape, CodePossibleSecret, CodeScriptFile, CodeEmbeddedScript,
 	CodeUnlabelledCodeBlock, CodeExternalURL, CodeBinaryFile, CodeDependencyFile,
 	CodePackageDependencies, CodeUndeclaredDependency, CodeSymlinkEntry, CodeUnsupportedEntryType,
-	CodeFileNotScanned,
+	CodeFileNotScanned, CodeNestedArchive,
+}
+
+// archiveSuffixes are the names that mean "there is another archive in here".
+// Name-based on purpose: this decides what to DISCLOSE, never what to refuse,
+// so a false positive costs a sentence and a false negative costs nothing the
+// caps do not already bound.
+var archiveSuffixes = []string{".zip", ".tar", ".gz", ".tgz", ".bz2", ".xz", ".7z", ".rar"}
+
+// LooksLikeArchive reports whether an entry name says it is an archive.
+func LooksLikeArchive(name string) bool {
+	lower := strings.ToLower(name)
+	for _, suffix := range archiveSuffixes {
+		if strings.HasSuffix(lower, suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 // ArchiveEntryFinding checks one raw archive entry name — the name as the

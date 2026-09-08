@@ -32,7 +32,13 @@ import (
 // not the version of the fields it happens to use this time. Widening an enum is
 // additive, so README §5 makes this a minor bump and every 1.0 manifest is still
 // a valid 1.1 instance.
-const ManifestSchemaVersion = "1.1"
+//
+// 1.2 since 2026-09-08 (05 R-30): `source_version_created_at` joins the
+// misleadingly named `packaged_at` and carries the same value. Renaming a
+// required field breaks every consumer at once; adding the honest name beside
+// it breaks none, and the old one keeps being written until a major version
+// retires it. Additive, so a 1.1 manifest is still a valid 1.2 instance.
+const ManifestSchemaVersion = "1.2"
 
 // unavailable is what a deleted lineage hop records. Omitting it is not an
 // option: a gap reads as "there was no upstream", which is a different and false
@@ -46,17 +52,21 @@ const unavailable = "unavailable"
 const maxLineageHops = 32
 
 type Manifest struct {
-	SchemaVersion     string             `json:"schema_version"`
-	PackagedAt        string             `json:"packaged_at"`
-	PackagerVersion   string             `json:"packager_version"`
-	ProfileID         string             `json:"profile_id"`
-	ProfileVersion    string             `json:"profile_version"`
-	Source            ManifestSource     `json:"source"`
-	License           ManifestLicense    `json:"license"`
-	Validation        ManifestValidation `json:"validation"`
-	Compatibility     Compatibility      `json:"compatibility"`
-	IncludedTestCases []IncludedTestCase `json:"included_test_cases"`
-	ExcludedTestCases []ExcludedTestCase `json:"excluded_test_cases"`
+	SchemaVersion string `json:"schema_version"`
+	// PackagedAt is deprecated in 1.2 and still written: it carries the source
+	// version's creation time, which is what SourceVersionCreatedAt says on the
+	// tin (05 R-30). Both fields, one value, until a major version drops this.
+	PackagedAt             string             `json:"packaged_at"`
+	SourceVersionCreatedAt string             `json:"source_version_created_at,omitempty"`
+	PackagerVersion        string             `json:"packager_version"`
+	ProfileID              string             `json:"profile_id"`
+	ProfileVersion         string             `json:"profile_version"`
+	Source                 ManifestSource     `json:"source"`
+	License                ManifestLicense    `json:"license"`
+	Validation             ManifestValidation `json:"validation"`
+	Compatibility          Compatibility      `json:"compatibility"`
+	IncludedTestCases      []IncludedTestCase `json:"included_test_cases"`
+	ExcludedTestCases      []ExcludedTestCase `json:"excluded_test_cases"`
 	// ExcludedFiles is what the exporter removed from the author's own tree.
 	// Never omitempty: an absent list and an empty one would say the same thing
 	// on the page, and only one of them is "nothing was removed".
