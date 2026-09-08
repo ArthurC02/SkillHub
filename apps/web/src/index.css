@@ -971,6 +971,195 @@ main :is(p, li, dd, dt, summary) {
   width: 100%;
 }
 
+/* --- 從來沒有被樣式化的那些元素（2026-09-08，第一階段）---------------------
+   這一批不是風格選擇，是**補漏**。數過：`<fieldset>` 3 處、`<legend>` 3 處、
+   `<input type=radio|checkbox>` 14 處、`<dl>` 8 處、`<ul>/<ol>` 大量——在這之前
+   `index.css` 對它們的規則數是 **0**。畫面上因此有一個瀏覽器預設的缺口方框、兩個
+   與標籤黏在一起的圓鈕、40px 的預設定義清單縮排，以及與內文同字重的表頭。
+
+   外部審查連續三輪說「像線框圖」，而查證的結果是：**畫面上七成的元素真的就是未經
+   樣式化的 HTML**。有配方的只有卡片、按鈕、輸入框、徽章與 notice。
+
+   下面每一條都只用既有的 token、既有的字級階（§4.1）與 4px 間距網格（§4.2），
+   一個新值都沒有。 */
+
+/* 欄位標籤與勾選列是兩種東西，過去共用同一條「什麼都沒有」。
+   `label[for]`／`.field label` 是**欄位的名字**（控制項在它下面）；包住 radio 或
+   checkbox 的 `<label>` 是**一整列可點的選項**。 */
+label[for],
+.field label:not(.note) {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+/* 命中區是整列而不是那顆 16px 的圓鈕（WCAG 2.2 2.5.8），標記與文字之間有間距——
+   在這之前它們是 `◉GitHub 或允許的 URL` 這樣黏著的。 */
+label:has(> input[type="radio"]),
+label:has(> input[type="checkbox"]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  font-size: 15px;
+}
+
+/* 基礎控制項規則刻意排除這兩種（它們的方框本身就是可及性提示，加內距與邊框只會更
+   糟），但「排除」被讀成了「不管」：它們連尺寸與選取色都沒有。`accent-color` 是
+   唯一一個不重畫控制項就能讓它屬於這個產品的宣告。 */
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--cta);
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+/* UA 的 `fieldset` 是一個有缺口的凹框，那是 1996 年的樣子，而且它與這個 app 的
+   任何一種容器都不像。分群由留白承擔，legend 降成一個欄位標籤。 */
+fieldset {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  display: block;
+  padding: 0;
+  margin-bottom: 4px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+fieldset label + label {
+  margin-left: 16px;
+}
+
+/* 定義清單：UA 給 `<dd>` 40px 的縮排，於是每一組都長得像一份沒排版的字典。
+   標籤與值改成兩欄——標籤 `--text`、值 `--text-h`，那正是這個 app 對「但書」與
+   「事實」既有的分工（§4.6.1）。窄螢幕回到上下堆疊。 */
+dl {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: 4px 16px;
+  margin: 12px 0;
+}
+
+dt {
+  font-size: 15px;
+  color: var(--text);
+}
+
+dd {
+  margin: 0;
+  color: var(--text-h);
+}
+
+@media (max-width: 640px) {
+  dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  dt {
+    margin-top: 8px;
+  }
+}
+
+/* 表格：表頭與內文過去同字重、同底色，於是政策頁那張表讀起來是一片文字。
+   表頭進第三層平面（`--code-bg`，同 `<code>`），儲存格內距上網格。
+   元素選擇器，所以 `.compare-table` 自己那幾條照舊蓋過它。 */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+:is(th, td) {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  background: var(--code-bg);
+}
+
+/* 內文清單：UA 的 40px 縮排與純黑圓點。標記降到 `--border-strong`（它是記號不是
+   字，同 `summary::before` 那條的理由），縮排收到 20px，列距上 4px 網格。
+   **只挑沒有 class 的清單與 `.note` 清單**：`.chip-row`／`.create-cards`／
+   `.search-results` 那些是版面容器，它們自己說了 `list-style: none`。 */
+main :is(ul, ol):not([class]),
+main :is(ul, ol).note {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+main :is(ul, ol):not([class]) > li,
+main :is(ul, ol).note > li {
+  margin: 4px 0;
+}
+
+main :is(ul, ol):not([class]) > li::marker,
+main :is(ul, ol).note > li::marker {
+  color: var(--border-strong);
+}
+
+/* --- 版面節奏（2026-09-08，第二階段）---------------------------------------
+   第一階段補的是「元素有沒有樣式」，這一段補的是「元素之間的距離由誰決定」。
+   在這之前答案是：**瀏覽器的 UA 樣式表**。`h1` 上下各 0.67em、`h2` 各 0.83em、
+   `p` 各 1em——於是同一頁上有五種不同的間距，沒有一種是這份設計選的，而它們全部
+   隨字級變動（一個 40px 的 `h1` 自帶 27px 的下緣，一個 24px 的 `h2` 自帶 20px）。
+
+   三階，全部在 §4.2 的 4px 網格上：**區塊之間 32、群組之間 12、群組內 8**。 */
+
+/* 標題與它底下那一句是一個單位，不是兩個各自帶著預設 margin 的區塊。 */
+main :is(h1, h2, h3) {
+  margin-bottom: 8px;
+}
+
+main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
+  margin-top: 0;
+}
+
+/* `h2` 開一個新區塊，`h3` 開一個群組——距離說出層級，這是不載 webfont 的第三個
+   頻道（前兩個是字級與字重，§4.6.6）。 */
+main h2 {
+  margin-top: 32px;
+}
+
+main h3 {
+  margin-top: 24px;
+}
+
+/* 表格是一個資料表面，所以它坐在 `--surface` 上。
+   **這一條同時修掉一個量出來的錯**：表頭原本要用 `--code-bg` 當凹面，而
+   `--code-bg`（#f1f3f7）在**頁面底色** `--bg`（#eef1f6）上量起來是 1.01:1——
+   看不見。三層平面的「凹」是相對於 `--surface` 成立的，不是相對於地。政策頁那張
+   表因此完全沒有反應，而 2026-09-08 早些時候把「這個工作區的其他頁」改成
+   `--code-bg` 面板也踩了同一個坑（外部審查讀成「沒做完的灰板」，那是對的）。 */
+.table-scroll {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* 同一個修正的另一半：那一列快速導航回到 `--surface`，也就是這個 app 已經有的
+   容器配方（§4.3「修法一律是套用既有的卡片族」）。它與上面三張卡的差別由字級與
+   內距承擔，不由第四種底色承擔。 */
+.workspace-index {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 32px;
+  padding: 12px 16px;
+}
+
 /* A character counter under its own control. `align-self` rather than
    `text-align`: the `.field` column is `max-width: 480px` and the note is a
    block, so `text-align: right` would push the text to the column's edge while
@@ -1649,12 +1838,6 @@ summary {
    它本來就是「比頁面再退一層」的那個值，所以這裡沒有新顏色也沒有第五種卡片：
    卡片是 `--surface`（比地亮），這一列是 `--code-bg`（比地暗一階的凹面），
    兩者在同一個三層模型裡各站一格。 */
-.workspace-index {
-  background: var(--code-bg);
-  border-radius: 8px;
-  margin-top: 32px;
-  padding: 12px 16px;
-}
 
 .workspace-index h2 {
   font-size: 15px;
