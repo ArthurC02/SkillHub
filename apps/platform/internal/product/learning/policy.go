@@ -99,21 +99,21 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 		"events": []map[string]any{
 			{
 				"name":         EventSearchPerformed,
-				"when":         "a search is submitted",
+				"when":         "送出一次搜尋時",
 				"attributes":   []string{"query_length", "query_language", "result_count", "has_results", "filters_applied"},
-				"not_recorded": "not one word of the query itself; query_language is a writing-system bucket (han/latin/mixed/other), not a locale",
+				"not_recorded": "查詢內容一個字都沒有記；query_language 是書寫系統的分桶（han／latin／mixed／other），不是語系設定",
 			},
 			{
 				"name":         EventSkillDetailViewed,
-				"when":         "a skill detail page is opened",
+				"when":         "開啟一個 Skill 的頁面時",
 				"attributes":   []string{"skill_id"},
-				"not_recorded": "how the page was reached — whether from a search result or a direct link, and the position it held in that result list. Both were columns until 0040 dropped them (04 丙-59); nothing records them now",
+				"not_recorded": "你是怎麼到這一頁的——從搜尋結果來還是直接開連結，以及它在那份結果裡排第幾。這兩欄在 migration 0040 之前存在、之後刪除（04 丙-59），現在沒有任何地方記它們",
 			},
 			{
 				"name":         EventSessionStarted,
-				"when":         "a visit begins",
+				"when":         "一次造訪開始時",
 				"attributes":   []string{},
-				"not_recorded": "nothing beyond the columns every row carries: the visit is the whole of the event. session_id is an unrelated random cookie value — not the login session token, not a hash of it, and it cannot be resolved back to one",
+				"not_recorded": "除了每一列都帶的那五個欄位以外什麼都沒有：這次造訪本身就是這個事件的全部。session_id 是一個不相干的隨機 cookie 值——不是登入用的 session token，也不是它的雜湊，而且反推不回去",
 			},
 			// No target attribute: the only caller passes an empty one
 			// (feedback.go's route wrapper deliberately does not re-read the
@@ -123,24 +123,23 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 			// ADR-029 決策 5 holds to a higher standard than any other.
 			{
 				"name":         EventDownloadStarted,
-				"when":         "a download is requested",
+				"when":         "要求下載時",
 				"attributes":   []string{"artifact_id"},
-				"not_recorded": "whether the bytes actually went out; that is download_records, a domain fact, and the split is why this event exists",
+				"not_recorded": "檔案實際上有沒有送出去；那件事記在 download_records，那是領域事實，而兩者分開正是這個事件存在的理由",
 			},
 		},
-		"note": "these four events are the whole of the analytics data class \u2014 " +
-			"the `feedback` block above is the other class this deployment collects. " +
-			"Every row also " +
-			"carries the five columns ADR-029 決策 2 fixes for all of them — event_id, " +
-			"event_name, occurred_at, session_id and workspace_id — on top of the " +
-			"attributes listed above. session_id is the sh_analytics cookie value: it " +
-			"is what links one visitor's searches and detail views into a single " +
-			"journey, and it is kept for the retention period above. workspace_id is " +
-			"null until that visitor signs in, and the two are never joined backwards. " +
-			"There is no free-text column anywhere in the table — not masked free " +
-			"text, none — " +
-			"so an attribute the schema does not declare is dropped by the writer " +
-			"rather than stored. Nothing is collected at all, cookie included, " +
-			"until a deployment sets a retention period.",
+		// 2026-09-08：這一段與上面每一個 `when`／`not_recorded` 原本是英文，而它們
+		// 逐字印在 /policy 上給中文使用者看。那一頁的存在理由是揭露義務
+		// （02:O11Y-004），也就是「被讀懂」本身就是它的允收準則——一份目標讀者讀不懂
+		// 的揭露沒有滿足它。事實一件未改；欄位名與 cookie 名維持原樣（它們是識別字，
+		// policy_test.go 也逐一比對它們）。
+		"note": "這四個事件就是分析資料類別的全部——上面的 `feedback` 區塊是這個部署收集的另一個類別。" +
+			"每一列另外都帶著 ADR-029 決策 2 為四個事件共同固定的五個欄位：event_id、" +
+			"event_name、occurred_at、session_id 與 workspace_id，加在上面列出的屬性之外。" +
+			"session_id 就是 sh_analytics 這個 cookie 的值：它把同一個訪客的搜尋與頁面瀏覽" +
+			"串成一趟旅程，保存期限同上。workspace_id 在那個訪客登入之前是 null，而且兩者" +
+			"永遠不會反向對接。這張表裡沒有任何自由文字欄位——不是「遮罩過的自由文字」，" +
+			"是一個都沒有——所以 schema 沒有宣告的屬性由寫入端丟棄，不會被儲存。" +
+			"在部署設定保存期限之前，包括 cookie 在內什麼都不會收集。",
 	})
 }
