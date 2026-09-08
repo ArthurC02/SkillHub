@@ -854,8 +854,14 @@ test("建立中心 states the invite requirement on the from-catalogue card, in 
   );
   expect(card, "the from-catalogue card is missing").toBeTruthy();
   const copy = (card!.textContent ?? "").replace(/\s+/g, "");
-  expect(copy).toContain("Fork目前只開放給有封測邀請的帳號");
-  expect(copy).toContain("由平台強制");
+  // 2026-09-08：兩個子句併成一句，兩件該說的事一件都沒少。第三向要的是**強制者具名**，
+  // 而具名的最強形式是讓它當主詞——「平台目前只讓…」比「…，這道限制由平台強制」少了
+  // 十個字，而說的是同一件事。第二條斷言因此不再找「由平台強制」那四個字，改為確認
+  // 這一句是以強制者開頭的（否則刪掉主詞、只留「目前只讓有封測邀請的帳號 Fork」也會綠）。
+  expect(copy).toContain("平台目前只讓有封測邀請的帳號Fork。");
+  expect(copy.indexOf("平台"), "這一句沒有以強制者開頭").toBe(
+    copy.indexOf("平台目前只讓有封測邀請的帳號Fork。"),
+  );
   // ...and it is a way through, not a dead end: the card links to the catalogue.
   expect(Array.from(card!.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toContain("/");
 });

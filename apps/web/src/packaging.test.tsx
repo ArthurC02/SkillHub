@@ -1106,7 +1106,7 @@ test("丙-153 建立套件的按鈕前先說邀請限制，403 印中文並指�
 
   // Stated before the button is pressed, same shape as CreateHub.tsx:76-82 and
   // RunPreflight.tsx.
-  expect(text()).toContain("建立下載套件目前只開放給有封測邀請的帳號，這道限制由平台強制。");
+  expect(text()).toContain("平台目前只讓有封測邀請的帳號建立下載套件。");
 
   await act(async () => button("建立下載套件")?.click());
   await waitFor(() => text().includes("這個帳號還沒有封測邀請"));

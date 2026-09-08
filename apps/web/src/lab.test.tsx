@@ -575,7 +575,7 @@ test("04 丙-144 the invite requirement is stated before the confirm button", as
   await renderLab();
 
   await waitFor(() => confirmButton() !== undefined);
-  expect(text()).toContain("開始 Run 目前只開放給有封測邀請的帳號，這道限制由平台強制");
+  expect(text()).toContain("平台目前只讓有封測邀請的帳號開始 Run。");
 });
 
 test("04 丙-144 a 403 on run-start says no invite, not the raw server message", async () => {

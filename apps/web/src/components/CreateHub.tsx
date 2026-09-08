@@ -131,7 +131,7 @@ export function CreateHub({
               `SkillDetail` 的 Fork、`RunPreflight` 的開始 Run、`Packaging` 的建立
               下載套件），因為同一個揭露有兩種語氣比語氣本身更糟。
             */}
-            Fork 目前只開放給有封測邀請的帳號，這道限制由平台強制。
+            平台目前只讓有封測邀請的帳號 Fork。
           </p>
           <p>
             {/*

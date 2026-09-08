@@ -1216,7 +1216,7 @@ function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
         （Fork 需要封測邀請，由平台強制），但這一頁的 Fork 按鈕在此之前沒有這句
         話——按下去才知道要有邀請。§2.2 第三向：擋住人的限制要在撞上之前說。
       */}
-      <p className="note">Fork 目前只開放給有封測邀請的帳號，這道限制由平台強制。</p>
+      <p className="note">平台目前只讓有封測邀請的帳號 Fork。</p>
       {/*
         r4 B2：按鈕上的字從「Fork 這個 Skill」改成「以這個 Skill 為起點建立我自己的」。
         動詞沒有變、端點沒有變、繼承的東西沒有變（`redistribution` 與

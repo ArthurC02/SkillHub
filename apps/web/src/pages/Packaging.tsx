@@ -466,7 +466,7 @@ export function Packaging() {
           <p className="note">
             {/* 設計 §2.2 第三向：限制要在撞到之前說，CreateHub.tsx:76-82／
                 RunPreflight.tsx 的邀請句同一形狀。 */}
-            建立下載套件目前只開放給有封測邀請的帳號，這道限制由平台強制。
+            平台目前只讓有封測邀請的帳號建立下載套件。
           </p>
           <ReadFailure error={build.error} what="套件建立">
             {build.error instanceof ApiError && build.error.status === 403 ? (

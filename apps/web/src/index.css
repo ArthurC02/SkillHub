@@ -1873,6 +1873,15 @@ summary {
   align-items: center;
   min-height: 40px;
   font-size: 15px;
+  /* 它是頁尾側的索引，不是這一頁要人做的事：顏色降到內文那一階，底線留著。
+     **底線就是「這是連結」的那個非顏色通道**（WCAG 1.4.1），所以降色不會讓它變回
+     一段看不出來能點的文字；hover 才回到 `--link`。`.app-footer .note a` 早就是
+     這個配方，這裡只是套用它。 */
+  color: var(--text);
+}
+
+.workspace-index a:hover {
+  color: var(--link);
 }
 
 .chip-row {
@@ -2071,9 +2080,11 @@ summary {
   margin: 12px 0 0;
 }
 
+/* 錨點自己就是那個橫幅，所以這一層不再另外畫東西。2026-09-08 稍晚由 `.badge`
+   改為 `.notice`：藥丸是給兩到四個字用的形狀，這裡是一句 30 個字的話。
+   `display` 回到塊級——`.notice` 的左側導軌要貫穿整條，不是包住一段文字。 */
 .clean-mode-notice > summary {
-  /* 錨點自己就是那顆徽章，所以這一層不再另外畫東西。 */
-  display: inline-block;
+  display: block;
 }
 
 /* 空目錄：一句例外處理換成一個看得懂下一步的區塊。 */

@@ -48,11 +48,19 @@ export function CleanModeNotice() {
 
   return (
     <details className="clean-mode-notice">
-      {/* 徽章的 class 在 `<summary>` 自己身上，不在裡面的 `<span>` 上。2026-09-08
+      {/* class 掛在 `<summary>` 自己身上，不在裡面的 `<span>` 上。2026-09-08
           之前它在 `<span>` 上，而 `summary::before` 的那個記號是 summary 的第一個
-          行內盒——**於是箭頭落在藥丸外面**，畫面上看起來像一個孤零零的大於符號旁邊
-          擺著一顆徽章。第一次真的看畫面才看到（前面幾輪都在量數字）。 */}
-      <summary className="badge badge-unverified">
+          行內盒——**於是箭頭落在框外面**，畫面上看起來像一個孤零零的大於符號旁邊
+          擺著一顆徽章。第一次真的看畫面才看到（前面幾輪都在量數字）。
+
+          **2026-09-08 稍晚：它不再是徽章，是 `.notice`。** 徽章是 999px 圓角的藥丸，
+          而藥丸這個形狀是給兩到四個字的狀態標記用的；這裡塞的是一句 30 個字的話，
+          在寬視窗上被外部審查讀成「一條空洞的跑道」。`.notice` 是這個 app 早就有的
+          「平台對這一頁講的話」那一族（左側 `--accent` 導軌 ＋ `--accent-bg` 底），
+          這個橫幅本來就是那一族的成員——**這裡沒有新樣式，是改用對的既有族**（§4.3）。
+          `--accent` 的色相與 `.badge-unverified` 的 `--accent-border` 同一支，
+          §4.4「未知／未驗證」那個第二訊號沒有掉。 */}
+      <summary className="notice">
         淨測試模式：5 項在這個模式下不成立（沒有隔離、不驗簽章、只有一條連線）
       </summary>
       <p className="note">
