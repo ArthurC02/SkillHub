@@ -1593,12 +1593,14 @@ summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
-  /* `align-items: start` 是 2026-09-07 補的，而它補的是一個量得出來的缺陷：格軌等高
-     是 grid 的預設，`align-content: start`（下面那條）管的是**格子裡的內容**，管不到
-     格子自己。第三張卡長成一整面表單（約 1000px）之後，前兩張卡各自帶著一個 880px
-     的空白描邊框。門卡化之後三張卡本來就差不多高，但這條規則讓「某一張卡長高就把
-     鄰居撐成空盒子」這件事不會再發生第二次。 */
-  align-items: start;
+  /* ── 2026-09-08：`align-items: start` 撤掉，格軌回到預設的等高 ────────────────
+     它 2026-09-07 補上時擋的是一個真的缺陷：第三張卡展開成約 1000px 的表單，前兩
+     張卡各自被撐出一個 880px 的空白描邊框。**那個危險現在由別的東西擋著**——
+     `.create-workspace` 的 `grid-column: 1 / -1` 讓展開的工作台自己佔一整列，
+     結構上不可能與兩扇門同軌，而那條規則同一批就在下面。
+
+     撤掉它換到的是：三張卡等高，於是三顆按鈕落在同一條基線上（下面那條把最後一段推到底的 auto）。留著它換到的是同一個危險擋兩次，代價是三張卡三個高度、
+     三顆按鈕三個位置——外部審查連續讀成「網格沒有秩序」，而那是對的。 */
 }
 
 /* 展開的創作工作台佔滿整列，不擠在一個 `minmax(240px, 1fr)` 的欄裡。
@@ -1609,13 +1611,18 @@ summary {
   grid-column: 1 / -1;
 }
 
-/* `align-content: start` so a short card does not stretch its own contents to
-   match the tall one beside it — the grid track is equal height, the text
-   inside it should not be. */
+/* 卡片自己是欄，內容照寫的順序疊，**最後那一段（動作）被推到底**。三張卡的說明
+   文字是兩行、四行、兩行，格軌等高之後如果內容也照樣頂著上緣長，三顆按鈕就停在
+   三個高度上。把上緣留白設成 `auto` 是 flex 對這件事的既有寫法，不必新增任何 class：
+   每一張卡的動作本來就是它的最後一個 `<p>`。 */
 .create-cards > li {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-content: start;
+}
+
+.create-cards > li > p:last-child {
+  margin-top: auto;
 }
 
 /* The file had three breakpoints before this and all three were 1024px, i.e.
@@ -1630,6 +1637,34 @@ summary {
   /* 220px of a 351px viewport is not a row header, it is the whole table. */
   .compare-table th[scope="row"] {
     width: 140px;
+  }
+
+  /* ── 2026-09-08：手機頁首從三列收成兩列，而且一項都沒有藏起來 ────────────────
+     375×900 實測（設計 §1.2 指定的手機視窗）：頁首 155px＝標題一列、導覽兩列、
+     身分一列。標題與身分各自只佔半列寬，卻各佔一整列，因為頁首的 flex 讓導覽用一個
+     `auto` 的右緣留白把它們推到兩端。讓那兩個共用第一列、導覽自己整列
+     （`flex-basis: 100%`），實測 **155 → 123px**。
+
+     **導覽在 375 仍然是兩列，這裡不假裝它不是。** 五項的文字總寬量出來 316.6px，
+     375 扣掉左右內距只剩 351，四個 16px 的間距就超了 29.6px。間距收到 12 讓
+     **390 以上（iPhone 12 起的預設寬）變成一列**（364.6 ≤ 366），375 仍然兩列——
+     要它在 375 也是一列，只能把導覽從 §4.1 的 ui 階（15px）降到 meta 階，而那張
+     表逐字把 `.app-nav` 指給 ui。§0 的順位裡版面（4）確實壓過尺度（5），但這裡
+     買到的是 27px，不值得為它動一條全站的字級指派。
+
+     **為什麼不做漢堡選單**：資訊架構 §5 IA-6 的第 4 條裁定逐字寫著「把導覽列藏
+     起來，等於拿掉訪客得知這個產品有 Test Lab 與打包的唯一管道」，而 §2.10 引的
+     NN/g 結論是折疊內容無法被掃視。一個抽屜要付這兩筆帳，換到的是這裡不折疊就
+     已經拿到的那 32px 再加 27px。 */
+  .app-title {
+    margin-right: auto;
+  }
+
+  .app-header > .app-nav {
+    order: 1;
+    flex-basis: 100%;
+    margin-right: 0;
+    gap: 4px 12px;
   }
 }
 

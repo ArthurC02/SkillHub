@@ -146,6 +146,74 @@ test.describe("QA-008 real layout", () => {
   }
 
   /**
+   * 設計 §4.5「手機頁首」，量在真的排版過的頁首上。
+   *
+   * jsdom 決定不了這件事：沒有行盒與 flex 換行，頁首在那一層永遠是「三個兄弟」，
+   * 不管它們實際落在一列還是三列上。2026-09-08 外部審查第一次帶手機實測進來，量到
+   * 的是 375×900 下 155px：標題、導覽兩列、身分各一列，而標題與身分**各自只佔半列
+   * 寬**。修法是讓那兩個共用第一列，155 → 123px，一個導覽項都沒有折疊起來。
+   *
+   * 兩個斷言各守一半，因為只守高度會被「把字改小」滿足，只守共列會被「導覽長到
+   * 四列」滿足：頁首總高有上限，**而且**標題與身分的框在垂直方向重疊（＝同一列）。
+   * 130 是量到的 123 加上一階字級的餘裕，不是一個目標值。
+   */
+  test("手機頁首收在兩列以內，標題與身分同一列（設計 §4.5）", async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.goto("/workspace/skills");
+    await expect(page.locator(".app-nav a").first()).toBeVisible();
+
+    const header = await page.evaluate(() => {
+      const el = document.querySelector(".app-header")!;
+      const box = (node: Element) => {
+        const r = node.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom };
+      };
+      return {
+        height: Math.round(el.getBoundingClientRect().height),
+        title: box(el.querySelector(".app-title")!),
+        // AuthControls 的 `<span>`（`/me` 有答案時）或它的登入分支，都是頁首的
+        // 最後一個孩子；用位置抓而不是用 class，因為那兩個分支長得不一樣。
+        auth: box(el.lastElementChild!),
+      };
+    });
+
+    expect(header.height, `375px 下頁首高 ${header.height}px：它又長回三列了`).toBeLessThanOrEqual(
+      130,
+    );
+    expect(
+      header.title.bottom > header.auth.top && header.auth.bottom > header.title.top,
+      "標題與身分沒有在同一列上——頁首的第一列又被一個 auto 留白推開了",
+    ).toBe(true);
+  });
+
+  /**
+   * 「建立一個 Skill」的三張卡：格軌等高，動作落在同一條基線上。
+   *
+   * 這一條也只有真引擎答得出來——卡片的高度是 grid 算出來的，動作被推到卡底是
+   * `auto` 上緣留白算出來的，jsdom 兩件都不算。2026-09-08 之前 `.create-cards` 帶著
+   * `align-items: start`，於是說明文字兩行的卡與四行的卡各是各的高度，三顆按鈕停在
+   * 三個位置上（外部審查連續兩輪讀成「網格沒有秩序」）。
+   *
+   * 量在 ≥1024 的寬度上，因為 375 只有一欄——一欄時每張卡自己一列，這條規則不表態。
+   */
+  test("建立卡的動作落在同一條基線上（設計 §4.3）", async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/workspace/skills");
+    await expect(page.locator(".create-cards > li").first()).toBeVisible();
+
+    const tops = await page.evaluate(() =>
+      [...document.querySelectorAll(".create-cards > li > p:last-child")].map((el) =>
+        Math.round(el.getBoundingClientRect().top),
+      ),
+    );
+
+    expect(tops.length, "一張卡都沒有量到").toBeGreaterThan(1);
+    expect(new Set(tops).size, `三顆動作落在 ${tops.join("／")} 三個高度上`).toBe(1);
+  });
+
+  /**
    * ...and the overflow a comparison table does have goes where it was meant
    * to. `table-layout: fixed` plus `width: 100%` does not overflow on a phone,
    * it squeezes, so before `.table-scroll` a 4-column table became shreds of
