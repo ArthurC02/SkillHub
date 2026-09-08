@@ -36,15 +36,30 @@ const labels: Record<CreationState, string> = {
   needs_reupload: "請重新上傳流程圖",
 };
 type Extra = Omit<CreationAction, "command_id" | "expected_revision" | "kind">;
+/**
+ * 這個限制在契約上是 `CreationAction.message` 的 `maxLength: 4000`，Go 再以 rune
+ * 數檢一次。**這裡數的是 code point，也就是 Go 的 rune**——`.length` 會把一個 emoji
+ * 數成 2，那是伺服器不會用的單位。
+ */
+const MAX_MESSAGE_RUNES = 4000;
+/**
+ * 一張圖能不能收，問這裡。
+ *
+ * 三個入口——挑檔案、貼上、拖進來——問的必須是同一個問題，而只有第一個能靠
+ * `accept=""` 過濾：剪貼簿與拖放繞過它，所以一個 PDF 會安安靜靜地掛上去，等到送出
+ * 才被拒絕。回傳的是那句話本身，因為三個入口都要當場說出來，而不是等 4xx。
+ */
+function diagramProblem(file: File): string | undefined {
+  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))
+    return "流程圖只收 PNG、JPEG 或 WebP。";
+  const maxBytes = 4_000_000; // one-number: creationMaxDiagramBytes
+  if (file.size === 0 || file.size > maxBytes)
+    return "請選擇最多 4,000,000 位元組（約 3.8 MB）以內的流程圖。";
+  return undefined;
+}
 function readImage(file: File): Promise<{ media_type: string; data: string }> {
-  if (
-    !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
-    file.size === 0 ||
-    file.size > 4_000_000 // one-number: creationMaxDiagramBytes
-  )
-    return Promise.reject(
-      new Error("請選擇最多 4,000,000 位元組（約 3.8 MB）以內的 PNG、JPEG 或 WebP 流程圖。"),
-    );
+  const problem = diagramProblem(file);
+  if (problem) return Promise.reject(new Error(problem));
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("流程圖無法讀取，請重新選擇。"));
@@ -298,6 +313,7 @@ export function CreationSession() {
   const client = useQueryClient();
   const [id, setID] = useState(""),
     [picking, setPicking] = useState(false),
+    [dragging, setDragging] = useState(false),
     [message, setMessage] = useState(""),
     [budget, setBudget] = useState(""),
     [file, setFile] = useState<File>(),
@@ -328,6 +344,22 @@ export function CreationSession() {
    * The digest is the key because the server hands it back on the attachment it
    * just recorded, which is how the two halves find each other.
    */
+  /**
+   * 挑檔案、貼上、拖進來，三個入口都走這裡：當場檢查、當場說出不能收的理由，而不是
+   * 讓一個 PDF 掛在輸入區上等到送出才被拒絕。被拒絕的那一次連 DOM 的 value 一起清，
+   * 否則下一次選同一個檔案不會觸發 `change`（與 `clearFile` 同一個理由）。
+   */
+  const chooseFile = (picked?: File) => {
+    if (!picked) return;
+    const problem = diagramProblem(picked);
+    if (problem) {
+      clearFile();
+      setError(new Error(problem));
+      return;
+    }
+    setError(undefined);
+    setFile(picked);
+  };
   const thumbs = useRef(new Map<string, string>());
   useEffect(() => {
     const held = thumbs.current;
@@ -441,6 +473,31 @@ export function CreationSession() {
     setRaiseError("");
     await perform("raise_budget", { budget_usd: amount });
   };
+  /**
+   * 讓最新的一則留在視線裡——**但只在你本來就在底下的時候**。
+   *
+   * 這是聊天介面的通則（見 2026-09-09 那批的來源）：捲上去看前面幾輪的人，不該被
+   * 新到的訊息拉回底部。所以捲動時記下「現在算不算在底下」，而只有那個答案是「算」
+   * 的時候，訊息數變多才把錨點捲進來。200px 是那個「算在底下」的寬容值。
+   *
+   * `scrollIntoView?.()` 的問號不是防衛式寫法：jsdom 沒有實作它，而這個元件在
+   * jsdom 裡被測。
+   */
+  const bottom = useRef<HTMLDivElement>(null);
+  const atBottom = useRef(true);
+  useEffect(() => {
+    const onScroll = () => {
+      atBottom.current =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 200;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  const messageCount = p?.messages.length ?? 0;
+  useEffect(() => {
+    if (messageCount > 0 && atBottom.current)
+      bottom.current?.scrollIntoView?.({ block: "nearest" });
+  }, [messageCount]);
   const submit = async () => {
     setBusy(true);
     setError(undefined);
@@ -462,6 +519,12 @@ export function CreationSession() {
       const mode = file ? "diagram" : refs.length > 0 ? "references" : "message";
       if (!file && refs.length === 0 && !note)
         throw new Error("請描述想完成的任務，或附一張流程圖，或挑一個要參考的 Skill。");
+      // 說出超過多少，而不是讓契約的 maxLength 回一句泛用的 400。**擋在這裡不等於
+      // 這裡是強制者**：Go 與契約各檢一次，這一句只是把同一個上限講成人話。
+      if ([...note].length > MAX_MESSAGE_RUNES)
+        throw new Error(
+          `文字說明最多 ${MAX_MESSAGE_RUNES} 字，目前 ${[...note].length} 字，請先剪短。`,
+        );
       if (file && refs.length > 0)
         throw new Error(
           "流程圖和參考 Skill 一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。",
@@ -672,42 +735,51 @@ export function CreationSession() {
               下面，沒打字就自成一塊，位置由 `message_index` 決定而不是由這裡猜。
               第二次上傳不再蓋掉第一次：`attachments` 是清單，`diagram_*` 三個
               欄位仍然是「最新那一張」給模型與 materialize 用。 */}
-          <ol className="creation-log">
-            {p.messages.map((m, i) => {
-              const here = (p.attachments ?? []).filter((a) => a.message_index === i);
-              return (
-                <Fragment key={i}>
-                  {/* 沒有文字的上傳落在「下一則訊息」的索引上，所以那一則不是你的
+          {/* `role="log"` 是聊天視窗的那個角色：它隱含 `aria-live="polite"`，所以
+              新到的一則會被念出來、而且是排隊念不是打斷。**掛在外面的 `<div>` 而不是
+              `<ol>` 上**：角色會取代元素本來的語意，掛在清單上會讓底下的 `<li>` 變成
+              沒有清單的清單項。名字是必要的——有名字的即時區域，螢幕閱讀器會先說出
+              它是哪一區。 */}
+          <div role="log" aria-label="與 Agent 的對話">
+            <ol className="creation-log">
+              {p.messages.map((m, i) => {
+                const here = (p.attachments ?? []).filter((a) => a.message_index === i);
+                return (
+                  <Fragment key={i}>
+                    {/* 沒有文字的上傳落在「下一則訊息」的索引上，所以那一則不是你的
                       話時，圖自己是一塊——它確實發生在這兩輪之間。 */}
-                  {m.role !== "user" && here.length > 0 && (
-                    <li data-role="user">
-                      <span className="creation-who">你</span>
-                      <Attachments list={here} thumbs={thumbs.current} />
-                    </li>
-                  )}
-                  <li data-role={m.role}>
-                    <span className="creation-who">
-                      {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
-                    </span>
-                    {m.content}
-                    {m.role === "user" && here.length > 0 && (
-                      <Attachments list={here} thumbs={thumbs.current} />
+                    {m.role !== "user" && here.length > 0 && (
+                      <li data-role="user">
+                        <span className="creation-who">你</span>
+                        <Attachments list={here} thumbs={thumbs.current} />
+                      </li>
                     )}
-                  </li>
-                </Fragment>
-              );
-            })}
-            {/* 剛送出、模型還沒回話的那一張。 */}
-            {(p.attachments ?? []).some((a) => a.message_index >= p.messages.length) && (
-              <li data-role="user">
-                <span className="creation-who">你</span>
-                <Attachments
-                  list={(p.attachments ?? []).filter((a) => a.message_index >= p.messages.length)}
-                  thumbs={thumbs.current}
-                />
-              </li>
-            )}
-          </ol>
+                    <li data-role={m.role}>
+                      <span className="creation-who">
+                        {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
+                      </span>
+                      {m.content}
+                      {m.role === "user" && here.length > 0 && (
+                        <Attachments list={here} thumbs={thumbs.current} />
+                      )}
+                    </li>
+                  </Fragment>
+                );
+              })}
+              {/* 剛送出、模型還沒回話的那一張。 */}
+              {(p.attachments ?? []).some((a) => a.message_index >= p.messages.length) && (
+                <li data-role="user">
+                  <span className="creation-who">你</span>
+                  <Attachments
+                    list={(p.attachments ?? []).filter((a) => a.message_index >= p.messages.length)}
+                    thumbs={thumbs.current}
+                  />
+                </li>
+              )}
+            </ol>
+            {/* 捲動的錨點：新的一則到了，如果你本來就在底下，就把這裡捲進視線。 */}
+            <div ref={bottom} />
+          </div>
           {roundTimeline.length > 0 && (
             <section>
               <h4>回合時間線</h4>
@@ -1096,24 +1168,67 @@ export function CreationSession() {
          * 一輪會話就進 working、下一個 action 要等新的 revision。所以同時放了兩種
          * 素材時這裡擋下來並說清楚順序，而不是假裝送得出去然後失敗。
          */
-        <div className="composer">
+        /*
+         * ── 2026-09-09：鍵盤、剪貼簿、拖放 ─────────────────────────────────
+         * 三件都是聊天介面的通則，這裡在此之前一件都沒有：送出只能用滑鼠點按鈕，
+         * 圖只能經由檔案對話框。**貼上尤其重要**——流程圖多半是一張截圖。
+         */
+        <div
+          className="composer"
+          data-dragging={dragging || undefined}
+          onDragOver={(e) => {
+            if (locked) return;
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            if (!locked) chooseFile(e.dataTransfer.files[0]);
+          }}
+        >
           <label>
             <span className="creation-who">想完成的任務</span>
+            {/* 沒有 `maxLength`，而且是刻意的：瀏覽器數的是 UTF-16 code unit，
+                伺服器數的是 rune，於是同一段字兩邊的界線不同——而 `maxLength`
+                的執行方式是**無聲截斷**，把人寫的字剪掉卻不說。改成報數（下面
+                那一行）＋送出前一句明話。`GenerateSkill.tsx` 的任務描述早就是
+                這個配方，只有這裡不是。 */}
             <textarea
               aria-label="想完成的任務"
-              maxLength={4000}
+              aria-describedby="composer-count"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                // `isComposing`：注音／倉頡選字時按 Enter 是「確定這個字」，不是
+                // 「送出」。少了這一條，中文使用者每打一個字就送出一次。
+                if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+                e.preventDefault();
+                if (!locked && !creditsBlocked) void submit();
+              }}
+              onPaste={(e) => {
+                const picked = [...e.clipboardData.files].find((f) => f.type.startsWith("image/"));
+                if (!picked || locked) return;
+                e.preventDefault();
+                chooseFile(picked);
+              }}
               disabled={busy}
               placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
             />
           </label>
+          <p className="note field-count" id="composer-count">
+            {[...message].length.toLocaleString("zh-TW")} /{" "}
+            {MAX_MESSAGE_RUNES.toLocaleString("zh-TW")} 字
+            {[...message].length > MAX_MESSAGE_RUNES && "——超過了，送出會被擋下"}
+          </p>
           {/* 兩個上限說在控制項**之前**，而不是等 4xx 才說（設計 §2.2 第二向）。
               位置從送出鍵之後搬上來：一句「你只能附這麼大的圖」出現在你按下送出
               之後，就不是在講上限，是在解釋失敗。`aria-describedby` 把它綁在兩個
               控制項上，`GenerateSkill.tsx` 對同一種素材本來就是這個配方。 */}
           <p className="note" id="composer-limits">
-            流程圖限 PNG、JPEG 或 WebP，最多 4,000,000 位元組（約 3.8 MB）；參考 Skill 最多三個。
+            Enter 送出，Shift＋Enter 換行；圖可以直接貼上或拖進來。 流程圖限 PNG、JPEG 或 WebP，最多
+            4,000,000 位元組（約 3.8 MB）；參考 Skill 最多三個。
             文字說明可以跟著流程圖或參考一起送。
           </p>
           <div className="composer-tools">
@@ -1128,7 +1243,7 @@ export function CreationSession() {
                 accept="image/png,image/jpeg,image/webp"
                 aria-describedby="composer-limits"
                 disabled={locked}
-                onChange={(e) => setFile(e.target.files?.[0])}
+                onChange={(e) => chooseFile(e.target.files?.[0])}
               />
             </label>
             <button

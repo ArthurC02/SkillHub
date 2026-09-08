@@ -288,6 +288,153 @@ test("a diagram carries the sentence that came with it, in one action", async ()
     diagram: { media_type: "image/png", data: btoa("diagram") },
   });
 });
+/** 在文字框上按一個鍵。`isComposing` 是注音／倉頡選字中的那個狀態。 */
+async function pressKey(key: string, init: KeyboardEventInit = {}) {
+  const el = box.querySelector("textarea")!;
+  await act(async () => {
+    el.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, ...init }));
+  });
+}
+/** 一個帶著檔案的 `paste`／`drop`。jsdom 造不出真的 `clipboardData`／`dataTransfer`，
+ * 所以掛上去——React 的合成事件讀的就是原生事件上的這兩個屬性。 */
+async function dropFiles(type: "paste" | "drop", files: File[], onto?: Element) {
+  const target = onto ?? box.querySelector("textarea")!;
+  await act(async () => {
+    const ev = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(ev, type === "paste" ? "clipboardData" : "dataTransfer", {
+      value: { files },
+    });
+    target.dispatchEvent(ev);
+  });
+}
+const png = (name = "shot.png") => new File(["diagram"], name, { type: "image/png" });
+/**
+ * 鍵盤。Enter 送出、Shift＋Enter 換行是聊天介面的通則，而**選字中的 Enter 不是送出**
+ * ——注音打「你好」的過程中會按好幾次 Enter，少了 `isComposing` 這一條，中文使用者
+ * 每確定一個字就送出一次。送出鍵留著，因為快捷鍵不會自己被發現。
+ */
+test("Enter sends, Shift+Enter does not, and neither does Enter while choosing characters", async () => {
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(sample({ revision: posts.length }));
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await input("這次預算上限（美元）", ".5");
+  await input("想完成的任務", "建立摘要 Skill");
+  await pressKey("Enter", { shiftKey: true });
+  await pressKey("Enter", { isComposing: true });
+  expect(posts, "換行或選字被當成送出").toHaveLength(0);
+  await pressKey("Enter");
+  await waitFor(() => posts.length > 0);
+  expect(posts[0]).toMatchObject({ message: "建立摘要 Skill" });
+});
+/**
+ * 貼上。流程圖多半是一張截圖，而截圖在剪貼簿裡——這是三個入口中最短的一條，
+ * 在此之前完全不存在。
+ */
+test("an image pasted into the composer becomes the attachment", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [], sample())),
+  );
+  await render();
+  await dropFiles("paste", [png()]);
+  await waitFor(() => box.textContent!.includes("移除流程圖：shot.png"));
+});
+/**
+ * 拖放，以及它的反面：`accept=""` 只管得到檔案對話框，剪貼簿與拖放繞過它，所以一份
+ * PDF 會安安靜靜地掛上去、等到送出才被拒絕。三個入口問的是同一個問題，而且當場說。
+ */
+test("a dropped image attaches, and a dropped PDF says why it cannot", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [], sample())),
+  );
+  await render();
+  const composer = box.querySelector(".composer")!;
+  await dropFiles("drop", [new File(["x"], "spec.pdf", { type: "application/pdf" })], composer);
+  await waitFor(() => box.textContent!.includes("流程圖只收 PNG、JPEG 或 WebP"));
+  expect(box.textContent, "被拒絕的檔案還是掛上去了").not.toContain("移除流程圖");
+  await dropFiles("drop", [png("flow.png")], composer);
+  await waitFor(() => box.textContent!.includes("移除流程圖：flow.png"));
+});
+/**
+ * 對話是一個有名字的 `role="log"` 即時區域：新到的一則會被念出來，而且排隊念、不打斷。
+ * 角色掛在外面的 `<div>`，不是 `<ol>` 上——掛在清單上會讓底下的 `<li>` 變成沒有清單的
+ * 清單項。
+ */
+test("the transcript is a named live region and the list keeps its own semantics", async () => {
+  const v = sample();
+  v.snapshot.messages = [{ role: "assistant", content: "請確認任務與成功條件。" }];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const log = box.querySelector('[role="log"]')!;
+  expect(log, "對話不是即時區域，新訊息不會被念出來").not.toBe(null);
+  expect(log.getAttribute("aria-label")).toBeTruthy();
+  expect(log.querySelector("ol.creation-log"), "角色蓋掉了清單語意").not.toBe(null);
+});
+/**
+ * 新的一則到了要留在視線裡，**但捲上去看前面幾輪的人不該被拉回底部**——這是聊天
+ * 介面那條規則的兩半，只有一半是好做的那一半。
+ *
+ * jsdom 沒有版面，所以這裡量的是規則本身：把 `scrollIntoView` 換成一個計數器，
+ * 再用一次 `scroll` 事件把「我在很上面」這件事說出來。
+ */
+test("a new message is scrolled into view, unless the person has scrolled away", async () => {
+  const one = sample({ revision: 2 });
+  one.snapshot.messages = [{ role: "assistant", content: "第一句。" }];
+  const two = sample({ revision: 3 });
+  two.snapshot.messages = [...one.snapshot.messages, { role: "assistant", content: "第二句。" }];
+  let latest = one;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [latest], latest)),
+  );
+  let scrolled = 0;
+  Element.prototype.scrollIntoView = vi.fn(() => {
+    scrolled += 1;
+  });
+  await render();
+  await resume();
+  await waitFor(() => box.textContent!.includes("第一句。"));
+  const before = scrolled;
+  // 捲到很上面：文件比視窗高得多，而我們在頂端。
+  Object.defineProperty(document.documentElement, "scrollHeight", {
+    configurable: true,
+    value: 100000,
+  });
+  await act(async () => window.dispatchEvent(new Event("scroll")));
+  latest = two;
+  await act(async () => q.invalidateQueries({ queryKey: ["creation-session", "s1"] }));
+  await waitFor(() => box.textContent!.includes("第二句。"));
+  expect(scrolled, "捲上去看舊訊息的人被新訊息拉回底部了").toBe(before);
+});
+/**
+ * 計數器數的是 code point，也就是 Go 的 rune；而 `maxLength` **不在**，因為瀏覽器數
+ * 的是 UTF-16 code unit，而且它的執行方式是無聲截斷——把人寫的字剪掉卻不說。
+ */
+test("the counter counts what the server counts, and nothing truncates silently", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [], sample())),
+  );
+  await render();
+  const textarea = box.querySelector("textarea")!;
+  expect(textarea.getAttribute("maxlength"), "瀏覽器會在錯的單位上無聲截斷").toBe(null);
+  await input("想完成的任務", "🙂🙂ab");
+  expect(box.querySelector("#composer-count")!.textContent).toContain("4 / 4,000");
+});
 /**
  * 「同一批的對話傳送」的另一半：圖不只要和文字**一起送出去**，還要和文字**一起
  * 出現在對話裡**。在這之前它送得出去但看不到——對話裡只有你的文字，圖變成畫面

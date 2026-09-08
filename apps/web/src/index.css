@@ -2199,6 +2199,14 @@ summary {
   background: var(--surface);
 }
 
+/* 拖著一張圖經過輸入區時，它要看得出來接得住。用的是既有的那組強調色，沒有新值；
+   `data-dragging` 而不是一個 class，理由與 `aria-expanded` 那條相同——狀態只有一個
+   來源。 */
+.composer[data-dragging] {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
 /* 輸入區裡的標籤不吃 480px 的欄寬——這一塊自己就是那個欄。 */
 .composer > label {
   margin: 0;
