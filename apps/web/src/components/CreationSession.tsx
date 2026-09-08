@@ -758,7 +758,14 @@ export function CreationSession() {
                       <span className="creation-who">
                         {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
                       </span>
-                      {m.content}
+                      {/* 訊息裡的換行是內容的一部分。在此之前這裡是一個裸的文字
+                          節點，`white-space` 是預設的 `normal`——於是模型寫的一問
+                          一行、編號清單、以及工具結果的 JSON，全部被壓成一整段。
+                          `buildRoundTimeline` 對「這次試跑有條件沒過」那種訊息做
+                          `split("\n")[0]`，那就是這些訊息確實有換行的證據。
+                          這不是 Markdown（見 `04` 丙-206）：只是不要把已經在那裡的
+                          換行丟掉。 */}
+                      <span className="creation-text">{m.content}</span>
                       {m.role === "user" && here.length > 0 && (
                         <Attachments list={here} thumbs={thumbs.current} />
                       )}

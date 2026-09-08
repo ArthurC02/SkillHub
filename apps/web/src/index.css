@@ -2180,6 +2180,13 @@ summary {
   border-radius: 8px;
 }
 
+/* 訊息本文。`pre-wrap` 而不是 `pre`：換行照留，但長句仍然照容器寬度折——
+   `.skill-md` 對草稿內容用的是同一個宣告，這裡只是不帶它的等寬字與凹面底。 */
+.creation-text {
+  display: block;
+  white-space: pre-wrap;
+}
+
 .creation-who {
   display: block;
   margin-bottom: 4px;

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -364,6 +366,34 @@ test("a dropped image attaches, and a dropped PDF says why it cannot", async () 
   expect(box.textContent, "被拒絕的檔案還是掛上去了").not.toContain("移除流程圖");
   await dropFiles("drop", [png("flow.png")], composer);
   await waitFor(() => box.textContent!.includes("移除流程圖：flow.png"));
+});
+/**
+ * 模型的訊息本來就有換行——它一問一行、寫編號清單，工具結果還是 JSON。在此之前
+ * 那些換行被 CSS 的預設值吃掉，整段擠成一坨。這不是 Markdown，只是不要把已經在
+ * 那裡的換行丟掉。
+ */
+test("the line breaks the model wrote survive into the conversation", async () => {
+  const v = sample();
+  v.snapshot.messages = [
+    { role: "assistant", content: "這次試跑有條件沒過：\n1. 輸出沒有標題\n2. 少了日期欄" },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const text = box.querySelector(".creation-text")!;
+  expect(text, "訊息本文沒有自己的元素，就沒有地方掛 white-space").not.toBe(null);
+  expect(text.textContent).toContain("1. 輸出沒有標題");
+  // vitest 的 jsdom 不載入 `index.css`，所以 `getComputedStyle` 在這裡永遠是空的
+  // ——那樣的斷言會恆綠。改成直接讀那條規則，和 `design-system.test.ts` 解析設計
+  // 文件是同一個做法：兩邊少一邊都紅。
+  const css = readFileSync(join(import.meta.dirname, "index.css"), "utf8");
+  expect(
+    /\.creation-text\s*\{[^}]*white-space:\s*pre-wrap/.test(css),
+    "`.creation-text` 沒有 pre-wrap，換行還是會被壓掉",
+  ).toBe(true);
 });
 /**
  * 對話是一個有名字的 `role="log"` 即時區域：新到的一則會被念出來，而且排隊念、不打斷。
