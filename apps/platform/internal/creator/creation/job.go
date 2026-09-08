@@ -111,6 +111,17 @@ func settleCost(p *Snapshot, reserved float64, usage *llmclient.GatewayUsage) {
 	}
 	*p.SpentUSD += *usage.CostUSD
 }
+
+// usdMicros converts a USD amount to whole micro-dollars, rounding to the
+// nearest one. Feeds credit's own gate and Charge conversions (which apply
+// ADR-068's ceiling rule themselves); this rounding is only how a float64
+// USD amount already in hand becomes the int64 micros credit's API takes.
+func usdMicros(usd float64) int64 {
+	if !finite(usd) || usd <= 0 {
+		return 0
+	}
+	return int64(math.Round(usd * 1_000_000))
+}
 func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.GenerateDiagram) error {
 	if s.LLM == nil || s.IssueKey == nil || s.RevokeKey == nil {
 		return ErrUnavailable
@@ -244,6 +255,16 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 		}
 		req.References = append(req.References, content)
 	}
+	if callErr == nil && s.CreditReserve != nil {
+		// ADR-068 gate ②: the step's reserved cost against the -50 floor,
+		// checked right before the paid call it would pay for.
+		ok, err := s.CreditReserve(callCtx, a.WorkspaceID, usdMicros(e.Limits.MaxCallCostUSD))
+		if err != nil {
+			callErr = err
+		} else if !ok {
+			callErr = ErrCreditFloor
+		}
+	}
 	if callErr == nil {
 		req.GatewayKey, callErr = s.IssueKey(callCtx, UUID(a.SessionID), UUID(a.ReceiptID), e.Limits.MaxCallCostUSD, e.Limits.CallTimeout+10*time.Second)
 		if callErr == nil {
@@ -318,9 +339,41 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 		if _, err := q.FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: "finished", Result: []byte("{}"), Usage: u}); err != nil {
 			return err
 		}
+		// The call happened and the platform paid for it, whatever recovery
+		// decided about the session. Skipping the charge here was the one path
+		// the adversarial review of this batch found where real spend reaches no
+		// ledger at all — not charged as zero, absent — which is the failure
+		// ADR-068 decision 5 exists to prevent. Same key as the normal path, so
+		// a later settle for this revision cannot double-charge.
+		if s.CreditSettle != nil {
+			var costUSDMicros *int64
+			if usage != nil && usage.CostUSD != nil && finite(*usage.CostUSD) && *usage.CostUSD >= 0 {
+				v := usdMicros(*usage.CostUSD)
+				costUSDMicros = &v
+			}
+			if err := s.CreditSettle(ctx, tx, a.WorkspaceID, a.SessionID, a.Revision, costUSDMicros, usdMicros(e.Limits.MaxCallCostUSD)); err != nil {
+				return err
+			}
+		}
 		return tx.Commit(ctx)
 	}
 	settleCost(&e.Snapshot, e.Limits.MaxCallCostUSD, usage)
+	if s.CreditSettle != nil {
+		// ADR-068 decision 5: charge in the same transaction as the snapshot
+		// advance below, idempotent on (session, revision). usage.CostUSD nil
+		// (settleCost's own UsageUnknown branch) means the actual cost is
+		// unknown; a *known* zero (usage.CostUSD == &0, the pre-call default
+		// when nothing was ever attempted) is passed through as a real zero,
+		// not as unknown — settleCost draws exactly the same distinction.
+		var costUSDMicros *int64
+		if usage != nil && usage.CostUSD != nil && finite(*usage.CostUSD) && *usage.CostUSD >= 0 {
+			v := usdMicros(*usage.CostUSD)
+			costUSDMicros = &v
+		}
+		if err := s.CreditSettle(ctx, tx, a.WorkspaceID, a.SessionID, a.Revision, costUSDMicros, usdMicros(e.Limits.MaxCallCostUSD)); err != nil {
+			return err
+		}
+	}
 	state := row.State
 	next := false
 	if state == "working" && e.ActiveReceipt == a.ReceiptID && receipt.Status == "running" {
@@ -355,6 +408,11 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 					e.Snapshot.References[i].Confirmed = false
 				}
 				e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: "參考內容目前不可用，請換選後再確認。"})
+			}
+			if errors.Is(callErr, ErrCreditFloor) {
+				state = "waiting_input"
+				e.Snapshot.PendingAction = ""
+				e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。"})
 			}
 			next = false
 		}

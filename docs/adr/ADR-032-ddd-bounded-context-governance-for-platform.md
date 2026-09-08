@@ -36,6 +36,7 @@ ADR-002 的領域模組正式對映為 Bounded Context。每個 Go package dir �
 | 執行證據／Run Trace | Supporting | trace | trial/evidence | TRACE |
 | 創作者使用權益與資料生命週期／Policy & Usage | Supporting | policy | product/entitlements | PDM、NFR |
 | 創作者旅程學習／Product Analytics | Supporting | analytics | product/learning | O11Y、PDM |
+| 創作者 Credit 帳務／Credit Ledger | Supporting | credit | creator/credit | CRED |
 | — | Shared Kernel | skillpkg | shared/skillpkg | — |
 | — | Generic | audit | foundation/observability/audit | — |
 | — | Generic | outbox | foundation/messaging/outbox | — |
@@ -182,6 +183,10 @@ Generic 列的套件**不得包含領域規則**：`foundation/observability/aud
 | `ingest` → `registry`（匯入路徑寫入 skills／skill_versions） | Customer–Supplier，同步寫入，合法——驗證管線在 ingest，資料表的寫入回到 owner | 保留 |
 | `catalog` → `registry`（下架旗標寫入 skills.access_restriction） | Customer–Supplier，同步寫入，合法——理由碼、可顯示句、operator 路由與 audit 都在 catalog，欄位寫入回到 owner | 保留 |
 | 各 context → `identity`（SessionUser／Workspace scope） | 鐵律 3 的入口，合法 | 保留 |
+| `creation` → `credit`（每步結算前查餘額與門檻、結算後寫成本事件與扣點分錄） | Customer–Supplier，合法——ADR-068 決策 5、7；與 `run` → `policy` 同一種「強制點在問問題的 context，規則在被問的 context」 | 保留 |
+| `ingest` → `credit`（單次生成前查門檻、生成後寫成本事件與扣點分錄） | Customer–Supplier，合法——同上，形狀對齊既有的 `ingest` → `policy`（GEN-004 額度前置） | 保留 |
+| `eval` → `credit`（評審／建議寫成本事件與扣點分錄） | Customer–Supplier，合法——同上 | 保留 |
+| `catalog` → `credit`（搜尋 embedding、索引增強寫成本事件；MVP 不對這兩者扣點，見 ADR-068 待決策） | Customer–Supplier，合法——只寫入不查詢門檻，因為 MVP 期間搜尋不受閘擋 | 保留 |
 
 2026-08-20：DDD-006 完成——三個 context 對 `ingest` 的依賴隨純函式移入 `skillpkg` 而消滅並移入 deny；`eval` → `ingest` 合法化如上。
 
@@ -196,3 +201,5 @@ Generic 列的套件**不得包含領域規則**：`foundation/observability/aud
 2026-08-23（[ADR-056](./ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md)）：`ingest` → `policy` 自 deny 移入白名單（上表新增一列）。M5 的生成路徑要在呼叫模型之前問額度（`02:GEN-001`「不得先花錢再說」），而額度規則屬 Policy & Usage；方向與既有的 `run` → `policy`、`packaging` → `policy` 完全相同——**policy 只決策不動作，強制點留在問問題的那個 context**。**沒有動 `db/query-owners.yaml`**：計數查的是 `skill_sources`，那本來就是 `ingest` 自己的表，`CountGeneratedSkills` 落在 `skill_import.sql` 的既有 owner 之下。
 
 2026-09-05（ADR-067 實作）：新增 creation，擁有版本化創作會話、事件與命令／模型嘗試收據；引用、接納與試跑經 composition root 的窄介面反轉，creation 不 import 這些 context。各 context 對 creation 的直接依賴禁止，API／worker composition root 與帳號清除 callback 接線例外。
+
+2026-09-08（[ADR-068](./ADR-068-credit-is-the-only-unit-of-account.md) 登記）：新增 credit，擁有 `cost_events`（平台真實支出）、`credit_entries`（使用者餘額異動）與 `cost_statistics`（滾動窗統計）三張表，以及三道消費配額閘的判斷邏輯。**先登記、後建目錄**（AGENTS.md 第 11 條）：`apps/platform/internal/creator/credit` 尚未建立，`apps/platform/.golangci.yml` 尚未加對應 depguard 規則，兩者都是後續實作批次的工作，在那之前 `devctl automation-check` 的 `context-map` 檢查會就此兩點回報 FAIL，這是登記先於建置的既有工作流程預期中的過渡態。credit 需要讀 workspace／identity 的事實（例如帳號是否已被清除）判斷是否允許授予或扣點，做法比照既有的 `SkillFacts`／`VersionFacts`（`entrypoint/api/apiserver.NewApp` 與 `entrypoint/worker` 兩個 composition root 各自注入一個回傳 `credit.WorkspaceFacts` 的函式），**credit 本身不 import identity**——composition root 對 identity 的存取已由「各 context → identity」既有一列涵蓋，不必另開一列。creation、ingest、eval、catalog 四個既有 context 反過來需要同步呼叫 credit（查詢餘額、寫入成本事件與扣點分錄），見附錄 A 同批新增的四列。

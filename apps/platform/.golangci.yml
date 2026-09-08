@@ -57,11 +57,50 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "creation uses injected owner APIs (ADR-067)"
 
+        credit:
+          files:
+            - "**/internal/creator/credit/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
         identity:
           files:
             - "**/internal/creator/workspace/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -96,6 +135,8 @@ linters:
             - "**/internal/product/learning/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
@@ -229,6 +270,8 @@ linters:
             - "**/internal/skill/delivery/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -261,6 +304,8 @@ linters:
             - "**/internal/product/entitlements/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
@@ -295,6 +340,8 @@ linters:
             - "**/internal/skill/library/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -330,6 +377,8 @@ linters:
             - "**/internal/trial/execution/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -356,6 +405,8 @@ linters:
             - "**/internal/trial/design/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -388,6 +439,8 @@ linters:
             - "**/internal/trial/evidence/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -420,6 +473,8 @@ linters:
             - "**/internal/foundation/storage/objreconcile/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
@@ -460,6 +515,8 @@ linters:
             - "**/internal/shared/skillpkg/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
@@ -509,6 +566,8 @@ linters:
             - "**/internal/foundation/runtime/httpx/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace

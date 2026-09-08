@@ -31,6 +31,12 @@ var (
 	// ErrBudgetOutOfBand: Create was asked for a budget outside
 	// [MaxCallCostUSD, MaxCostUSD]; the API names the band in its reply.
 	ErrBudgetOutOfBand = errors.New("creation: budget outside the permitted band")
+	// ErrCreditThreshold: ADR-068 gate ① refused to start a new session —
+	// the workspace's balance is below the started threshold.
+	ErrCreditThreshold = errors.New("creation: credit balance below the started threshold")
+	// ErrCreditFloor: ADR-068 gate ② refused to make this step's paid call —
+	// charging it would push the workspace's balance past the -50 floor.
+	ErrCreditFloor = errors.New("creation: credit balance at the debt floor")
 )
 
 const (
@@ -295,6 +301,30 @@ type Service struct {
 	CreateAcceptanceTestCase func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error)
 	IssueKey                 func(context.Context, string, string, float64, time.Duration) (string, error)
 	RevokeKey                func(context.Context, string) error
+	// CreditCanStart is ADR-068 gate ①, checked before a session may begin
+	// at all. nil skips the check (credit not wired). ok=false without an
+	// error means the balance is below the started threshold, not a
+	// failure — Create then returns ErrCreditThreshold.
+	//
+	// Deliberately a plain function of primitive types, not a credit.Service
+	// method: creation does not import credit (ADR-068, "用注入的介面,不要讓
+	// creation 直接 import credit 的內部") — the composition root closes over
+	// its own credit.Service instance when it assigns this field.
+	CreditCanStart func(ctx context.Context, workspaceID pgtype.UUID) (ok bool, err error)
+	// CreditReserve is gate ②: called with the step's reserved cost right
+	// before the paid model call. ok=false means charging this step would
+	// put the balance past the -50 floor; the call is not made and Step
+	// fails this attempt with ErrCreditFloor. nil skips the check.
+	CreditReserve func(ctx context.Context, workspaceID pgtype.UUID, reservedUSDMicros int64) (ok bool, err error)
+	// CreditSettle charges for one step's actual (or, when unknown, reserved)
+	// cost, in the same transaction as the snapshot's AdvanceCreationSession
+	// (ADR-068 decision 5). usdMicros nil means settleCost's UsageUnknown
+	// branch fired: the injected function is expected to charge the reserved
+	// amount and mark the entry estimated, never to charge zero. Idempotent
+	// on (workspaceID, sessionID, revision) — a re-settle of an
+	// already-charged revision must debit once, not twice. nil skips
+	// charging (credit not wired).
+	CreditSettle func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error
 }
 
 func digest(v any) string {

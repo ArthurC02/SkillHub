@@ -64,7 +64,7 @@ ADR 是決策歷史，不原地改寫；凍結的里程碑產出也不回溯修�
 
 - 文件：繁體中文（Run、Workspace、Provider 等術語不硬翻）。程式碼、識別字、commit message：英文。
 - **每次回覆的最後一段，是給沒讀過程式碼的人看的白話摘要**：一段連貫敘述講「做了什麼、發現了什麼、還缺什麼」，不條列、不堆檔名。理由：看不懂的綠燈與看不懂的紅燈一樣沒有用。
-- 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／GEN／PORT／NFR／PDM／SEC，見 `02`、`03`（各自編號）。
+- 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／GEN／PORT／NFR／PDM／SEC／CRED，見 `02`、`03`（各自編號）。
 
 ## 開發自動化（Agent 開工先讀）
 

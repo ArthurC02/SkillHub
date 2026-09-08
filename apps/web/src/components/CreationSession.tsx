@@ -13,6 +13,7 @@ import {
   type CreationSnapshot,
   type CreationState,
 } from "../api/creation";
+import { useCredits } from "../api/credits";
 import type { CategorizedFindings, ImportFinding } from "../api/import";
 import { useRuns } from "../api/runs";
 import { TERMINAL_RUN_STATUSES } from "../api/trace";
@@ -292,6 +293,14 @@ export function CreationSession() {
   });
   const session = current.data,
     p = session?.snapshot;
+  // CRED-001 (ADR-068)'s gate ① applies only to STARTING a new session — an
+  // already-running one already reserved its budget, so `!session` gates it
+  // the same way the budget input a few lines below is only asked once.
+  // `credits.data` is undefined while loading and on every deployment today
+  // (the route is not mounted yet, see api/credits.ts), which must read as
+  // "nothing to show", never as blocked (04 乙-2's rule, applied here too).
+  const credits = useCredits();
+  const creditsBlocked = !session && !!credits.data && !credits.data.can_start;
   const runs = useRuns(p?.candidate?.test_case_id, Boolean(p?.candidate?.test_case_id));
   const latest = runs.data?.pages[0]?.runs.find((r) => TERMINAL_RUN_STATUSES.has(r.status));
   const run = p?.candidate?.run_id ? findRunObservation(p.messages, p.candidate.run_id) : undefined;
@@ -493,20 +502,41 @@ export function CreationSession() {
             )}
         </>
       ) : (
-        <label>
-          這次預算上限（美元）
-          {limits.data && (
-            <span className="note">
-              （介於 $ {limits.data.min_budget_usd} 與 $ {limits.data.max_budget_usd} 之間）
-            </span>
-          )}
-          <input
-            aria-label="這次預算上限（美元）"
-            inputMode="decimal"
-            value={budget}
-            onChange={(e) => setBudget(e.target.value)}
-          />
-        </label>
+        <>
+          {/*
+            CRED-001. `credits.data` is undefined on every deployment today
+            (route not mounted yet — see api/credits.ts), so this whole block
+            renders nothing until that lands: no ceiling is shown before one
+            is enforced (04 乙-2).
+          */}
+          {credits.data &&
+            (creditsBlocked ? (
+              <p className="note" id="creation-credits-why-disabled">
+                {credits.data.block_reason}
+              </p>
+            ) : (
+              <p className="note">
+                目前餘額 {credits.data.balance_credits} 點；這一場大約要{" "}
+                {credits.data.estimated_session.low_credits}–
+                {credits.data.estimated_session.high_credits} 點
+                {credits.data.estimated_session.estimated && "（樣本不足，此為估計值）"}。
+              </p>
+            ))}
+          <label>
+            這次預算上限（美元）
+            {limits.data && (
+              <span className="note">
+                （介於 $ {limits.data.min_budget_usd} 與 $ {limits.data.max_budget_usd} 之間）
+              </span>
+            )}
+            <input
+              aria-label="這次預算上限（美元）"
+              inputMode="decimal"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+            />
+          </label>
+        </>
       )}
       {!terminal && (
         <>
@@ -569,7 +599,12 @@ export function CreationSession() {
               }
             />
           )}
-          <button type="button" disabled={locked} onClick={() => void submit()}>
+          <button
+            type="button"
+            disabled={locked || creditsBlocked}
+            aria-describedby={creditsBlocked ? "creation-credits-why-disabled" : undefined}
+            onClick={() => void submit()}
+          >
             {busy ? "送出中…" : session ? "送出素材" : "開始互動創作"}
           </button>
           {working && <p className="note">正在處理目前素材；完成後即可補充或確認。</p>}
