@@ -994,6 +994,33 @@ label[for],
   color: var(--text-h);
 }
 
+/* ── 2026-09-08：包住自己控制項的 `<label>`，過去一條規則都沒有 ────────────────
+   上面那條只認得 `label[for]`（標籤與控制項是兄弟）與 `.field label`（有包裝 div）。
+   但這個 app 有第三種寫法——`<label>想完成的任務<textarea/></label>`，標籤把控制項
+   包在自己裡面，而它兩條都不符合。結果是標籤與輸入框並排在同一行文字流裡：互動創作
+   那一頁的「想完成的任務」「這次預算上限」「恢復創作」全長成那樣，實測像沒寫完的表單。
+
+   **這裡沒有新值**：四個宣告逐字抄自上面的 `.field`（欄向、4px、12px 上下、480px），
+   因為這種 `<label>` 就是一個沒有包裝 div 的 `.field`。 */
+label:has(> textarea),
+label:has(> select),
+label:has(> input:not([type="checkbox"], [type="radio"])) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0;
+  max-width: 480px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+/* 控制項自己不繼承標籤的字重，並填滿那 480px。 */
+label > :is(textarea, select, input:not([type="checkbox"], [type="radio"])) {
+  width: 100%;
+  font-weight: 400;
+}
+
 /* 命中區是整列而不是那顆 16px 的圓鈕（WCAG 2.2 2.5.8），標記與文字之間有間距——
    在這之前它們是 `◉GitHub 或允許的 URL` 這樣黏著的。 */
 label:has(> input[type="radio"]),
@@ -2085,6 +2112,111 @@ summary {
    `display` 回到塊級——`.notice` 的左側導軌要貫穿整條，不是包住一段文字。 */
 .clean-mode-notice > summary {
   display: block;
+}
+
+/* ── 互動創作的對話（ADR-067，2026-09-08 第一次被畫）────────────────────────
+   在這之前 `CreationSession.tsx` 有 945 行、零條 CSS：對話紀錄是一個編號 `<ol>`，
+   每一列前面掛「你：」「Agent：」。多輪的流程都在，**對話這個介面從來沒有被畫過**，
+   而負責人記得的是一個 Chat UI。
+
+   這裡沒有新 token、沒有新字級、沒有陰影：三層平面（ADR-064 §4.6.2）第一次真的
+   在做事——訊息坐在卡片的 `--surface` 上，**你說的話用 `--code-bg` 這一層凹面**
+   （凹面只相對於 `--surface` 成立，而這一段正好整個都在卡片裡）。你的訊息靠右是
+   對話介面通行的那個慣例，它不花任何顏色。 */
+.creation-log {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.creation-log > li {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.creation-log > li[data-role="user"] {
+  align-self: flex-end;
+  background: var(--code-bg);
+}
+
+/* 工具結果是機器講的話，不是對話的一方：一條左緣導軌把它與兩個說話的人分開
+   （同 `.notice` 的做法，那一族的意思就是「這不是人講的」）。 */
+.creation-log > li[data-role="tool"] {
+  background: var(--code-bg);
+  border-left: 3px solid var(--border-strong);
+  font-size: 15px;
+}
+
+.creation-who {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* 輸入區：文字框永遠在，底下一列是附加動作與送出（2026-09-08）。
+   `--border-strong` 的框而不是 `--border`：這一整塊是一個控制項，不是一張卡。
+   沒有新 token、沒有新字級，88px 在 4px 網格上。 */
+.composer {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+/* 輸入區裡的標籤不吃 480px 的欄寬——這一塊自己就是那個欄。 */
+.composer > label {
+  margin: 0;
+  max-width: none;
+}
+
+.composer textarea {
+  min-height: 88px;
+}
+
+.composer-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 挑選器開著時那顆按鈕要看得出是按下去的狀態。**掛在 `aria-expanded` 上而不是一個
+   class**：那個屬性本來就必須是對的（螢幕閱讀器讀它），讓外觀跟著它走，兩者就不會
+   各說各話。底色用既有的 `:active` 那一階，沒有新值。 */
+.composer-tools > button[aria-expanded="true"] {
+  background: var(--surface-active);
+  border-color: var(--accent-border);
+}
+
+/* 送出永遠在最右邊，附加動作在左邊——不管中間有幾顆。
+   **它刻意不是 `.action`**：§4.6.3 的表把 `/workspace/skills` 放在「零個填色主要
+   動作」那一列，而這張卡展開時仍然是那一頁。 */
+.composer-send {
+  margin-left: auto;
+}
+
+/* 這一個 `<label>` 包著檔案輸入，所以上面那條會把它變成一欄；在工具列裡它要橫著。
+   選擇器多帶一層 `.composer`：`label:has(> input:not(…))` 的 `:has()` 取的是它參數
+   裡最重的那一個（屬性選擇器），所以那條是 0-1-1，單一個 class 壓不過它。 */
+.composer .composer-attach {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  max-width: none;
+}
+
+.composer .composer-attach > input {
+  width: auto;
 }
 
 /* 空目錄：一句例外處理換成一個看得懂下一步的區塊。 */

@@ -124,10 +124,13 @@ async function input(label: string, value: string) {
     el.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
-async function mode(index: number) {
-  await act(async () => {
-    (box.querySelectorAll('input[type="radio"]')[index] as HTMLInputElement).click();
-  });
+/**
+ * 2026-09-08：素材種類不再由一組 radio 先選，而是由輸入區裡放了什麼推出來
+ * （`CreationSession` 的 `submit`）。文字框與「附一張流程圖」永遠在，所以只剩
+ * 「參考目錄裡的 Skill」還需要先按開它的挑選器。
+ */
+async function openReferencePicker() {
+  await click("參考目錄裡的 Skill");
 }
 async function resume() {
   await waitFor(() => !!box.querySelector("select"));
@@ -206,6 +209,39 @@ test("a balance below the threshold disables the start button and names the defi
   expect(submit.disabled).toBe(true);
   expect(submit.getAttribute("aria-describedby")).toBe("creation-credits-why-disabled");
 });
+/**
+ * 2026-09-08：三個素材入口收成一個輸入區之後，「一次只送一種」變成程式的責任而不是
+ * 使用者的。平台的 action 一次帶一個 kind，送完一輪會話就進 working、下一個 action
+ * 要等新的 revision——所以兩種素材同時在的時候要**先擋下來並說出順序**，不是連送兩次
+ * 讓第二次撞 409。這支測試守的是「一個 POST 都沒有發出去」，不只是那句話有出現。
+ */
+test("two kinds of material at once are refused before anything is sent", async () => {
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(sample({ revision: posts.length }));
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await input("這次預算上限（美元）", ".5");
+  await input("想完成的任務", "把逐字稿整理成待辦");
+  const file = box.querySelector('input[type="file"]') as HTMLInputElement;
+  await act(async () => {
+    Object.defineProperty(file, "files", {
+      value: [new File(["diagram"], "flow.png", { type: "image/png" })],
+    });
+    file.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await click("開始互動創作");
+  await waitFor(() => box.textContent!.includes("一次只能送一種素材"));
+  expect(box.textContent).toContain("Agent 讀完之後再補文字說明");
+  expect(posts, "擋下來之前就已經送出去了").toHaveLength(0);
+});
 test("diagram starts with an unbilled empty session then sends transient input", async () => {
   const posts: Record<string, unknown>[] = [];
   vi.stubGlobal(
@@ -220,7 +256,6 @@ test("diagram starts with an unbilled empty session then sends transient input",
   );
   await render();
   await input("這次預算上限（美元）", ".5");
-  await mode(1);
   const file = box.querySelector('input[type="file"]') as HTMLInputElement;
   await act(async () => {
     Object.defineProperty(file, "files", {
@@ -317,7 +352,7 @@ test("catalog references can start a session and require confirmation", async ()
   );
   await render();
   await input("這次預算上限（美元）", ".5");
-  await mode(2);
+  await openReferencePicker();
   await click("選擇摘要參考");
   await click("開始互動創作");
   await waitFor(() => posts.length === 2);
@@ -479,11 +514,11 @@ test("409 preserves input and needs an explicit action with the refreshed revisi
   await render();
   await resume();
   await input("想完成的任務", "保留這個修訂");
-  await click("送出素材");
+  await click("送出");
   await waitFor(() => box.textContent!.includes("輸入仍保留"));
   expect((box.querySelector("textarea") as HTMLTextAreaElement).value).toBe("保留這個修訂");
   expect(posts).toHaveLength(1);
-  await click("送出素材");
+  await click("送出");
   await waitFor(() => posts.length === 2);
   expect(posts[1].expected_revision).toBe(8);
   expect(posts[1].command_id).not.toBe(posts[0].command_id);
@@ -506,10 +541,10 @@ test("network retry reuses the command ID and payload", async () => {
   await render();
   await resume();
   await input("想完成的任務", "重試同一個修改");
-  await click("送出素材");
+  await click("送出");
   await waitFor(() => !!box.querySelector('[role="alert"]'));
   expect(box.textContent).toContain("網路連線失敗");
-  await click("送出素材");
+  await click("送出");
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toEqual(posts[0]);
 });

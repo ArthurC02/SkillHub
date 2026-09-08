@@ -35,7 +35,6 @@ const labels: Record<CreationState, string> = {
   needs_reupload: "請重新上傳流程圖",
 };
 type Extra = Omit<CreationAction, "command_id" | "expected_revision" | "kind">;
-type Mode = "message" | "diagram" | "references";
 function readImage(file: File): Promise<{ media_type: string; data: string }> {
   if (
     !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
@@ -260,7 +259,7 @@ function buildRoundTimeline(messages: CreationSnapshot["messages"]): TimelineIte
 export function CreationSession() {
   const client = useQueryClient();
   const [id, setID] = useState(""),
-    [mode, setMode] = useState<Mode>("message"),
+    [picking, setPicking] = useState(false),
     [message, setMessage] = useState(""),
     [budget, setBudget] = useState(""),
     [file, setFile] = useState<File>(),
@@ -371,10 +370,26 @@ export function CreationSession() {
     setBusy(true);
     setError(undefined);
     try {
+      /*
+       * 素材種類由輸入區的內容推出來，不再由一組 radio 先選（2026-09-08）。
+       * **一次只送一種**：平台的 action 一次帶一個 kind，而送完一輪會話就進
+       * working，下一個 action 要等新的 revision——所以兩種素材同時在的時候這裡
+       * 擋下來並說出順序，而不是連送兩次然後第二次撞 409。
+       */
+      const kinds = [
+        file && "diagram",
+        refs.length > 0 && "references",
+        message.trim() && "message",
+      ]
+        .filter(Boolean)
+        .join("");
+      const mode = file ? "diagram" : refs.length > 0 ? "references" : "message";
+      if (kinds === "")
+        throw new Error("請描述想完成的任務，或附一張流程圖，或挑一個要參考的 Skill。");
+      if (kinds !== "diagram" && kinds !== "references" && kinds !== "message")
+        throw new Error("一次只能送一種素材。先送流程圖或參考 Skill，Agent 讀完之後再補文字說明。");
       const diagram = mode === "diagram" ? (file ? await readImage(file) : undefined) : undefined;
       if (mode === "diagram" && !diagram) throw new Error("請先選擇流程圖。");
-      if (mode === "references" && refs.length === 0) throw new Error("請先選擇一個參考 Skill。");
-      if (mode === "message" && !message.trim()) throw new Error("請描述想完成的任務。");
       let value = session;
       if (!value) {
         const amount = Number(budget);
@@ -538,78 +553,6 @@ export function CreationSession() {
           </label>
         </>
       )}
-      {!terminal && (
-        <>
-          <fieldset disabled={locked}>
-            <legend>提供創作素材</legend>
-            {(
-              [
-                ["message", "自然語言"],
-                ["diagram", "流程圖"],
-                ["references", "目錄參考"],
-              ] as const
-            ).map(([key, label]) => (
-              <label key={key}>
-                <input
-                  type="radio"
-                  name="creation-mode"
-                  checked={mode === key}
-                  onChange={() => setMode(key)}
-                />
-                {label}
-              </label>
-            ))}
-          </fieldset>
-          {mode === "message" && (
-            <label>
-              想完成的任務
-              <textarea
-                aria-label="想完成的任務"
-                maxLength={4000}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                disabled={busy}
-              />
-            </label>
-          )}
-          {mode === "diagram" && (
-            <label>
-              流程圖（PNG、JPEG、WebP；最多 4,000,000 位元組，約 3.8 MB）
-              <input
-                aria-label="流程圖"
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                disabled={locked}
-                onChange={(e) => setFile(e.target.files?.[0])}
-              />
-            </label>
-          )}
-          {mode === "references" && (
-            <ReferencePicker
-              disabled={locked}
-              references={refs}
-              onToggle={(skillID, name) =>
-                setRefs((old) =>
-                  old.some((r) => r.id === skillID)
-                    ? old.filter((r) => r.id !== skillID)
-                    : old.length < 3
-                      ? [...old, { id: skillID, name }]
-                      : old,
-                )
-              }
-            />
-          )}
-          <button
-            type="button"
-            disabled={locked || creditsBlocked}
-            aria-describedby={creditsBlocked ? "creation-credits-why-disabled" : undefined}
-            onClick={() => void submit()}
-          >
-            {busy ? "送出中…" : session ? "送出素材" : "開始互動創作"}
-          </button>
-          {working && <p className="note">正在處理目前素材；完成後即可補充或確認。</p>}
-        </>
-      )}
       {!!error && (
         <ReadFailure error={error} what="互動創作">
           <p role="alert">
@@ -625,10 +568,16 @@ export function CreationSession() {
       )}
       {p && (
         <>
-          <ol>
+          {/* 2026-09-08：這裡本來是一個編號 `<ol>`，每一列前面掛「你：」。多輪的
+              流程一直都在，但**對話這個介面從來沒有被畫過**。角色從行內粗體變成
+              訊息上方的標籤，列變成訊息塊，樣式全在 `index.css` 的 `.creation-log`
+              （沒有新 token、沒有新字級）。編號拿掉了：對話不是編號清單。 */}
+          <ol className="creation-log">
             {p.messages.map((m, i) => (
-              <li key={i}>
-                <strong>{{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}：</strong>
+              <li key={i} data-role={m.role}>
+                <span className="creation-who">
+                  {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
+                </span>
                 {m.content}
               </li>
             ))}
@@ -997,6 +946,109 @@ export function CreationSession() {
             </button>
           )}
         </>
+      )}
+      {/* ── 2026-09-08：輸入區在對話下面 ────────────────────────────────────
+          在這之前它在對話紀錄**上面**：你得先打字，捲下去才看得到剛才講了什麼。
+          對話介面的順序是「先看說了什麼，再說下一句」。 */}
+      {!terminal && (
+        /*
+         * ── 2026-09-08：三個入口收成一個輸入區 ──────────────────────────────
+         * 在這之前這裡是一組 radio（自然語言／流程圖／目錄參考）＋ 三個互斥的欄位：
+         * 要附流程圖得先切換模式，切過去文字框就不見了。負責人的話：「不應該是拆開
+         * 來多個 UI 項目」——對，這三個不是三種模式，是同一件事的三種素材。
+         *
+         * 現在文字框永遠在，底下一列是附加動作；**素材種類由你放了什麼推出來**，
+         * 不再由你先選。`mode` 這個 state 因此消失。
+         *
+         * **一次只送一種，這一條不是版面選擇**：平台的 action 是 `message`／
+         * `diagram`／`select_references` 三個不同的 kind，一次呼叫只帶一個，而送完
+         * 一輪會話就進 working、下一個 action 要等新的 revision。所以同時放了兩種
+         * 素材時這裡擋下來並說清楚順序，而不是假裝送得出去然後失敗。
+         */
+        <div className="composer">
+          <label>
+            <span className="creation-who">想完成的任務</span>
+            <textarea
+              aria-label="想完成的任務"
+              maxLength={4000}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              disabled={busy}
+              placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
+            />
+          </label>
+          <div className="composer-tools">
+            <label className="composer-attach">
+              附一張流程圖
+              <input
+                aria-label="流程圖"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={locked}
+                onChange={(e) => setFile(e.target.files?.[0])}
+              />
+            </label>
+            <button
+              type="button"
+              aria-expanded={picking}
+              disabled={locked}
+              onClick={() => setPicking((v) => !v)}
+            >
+              參考目錄裡的 Skill{refs.length > 0 && `（${refs.length}）`}
+            </button>
+            <button
+              type="button"
+              className="composer-send"
+              disabled={locked || creditsBlocked}
+              aria-describedby={creditsBlocked ? "creation-credits-why-disabled" : undefined}
+              onClick={() => void submit()}
+            >
+              {busy ? "送出中…" : session ? "送出" : "開始互動創作"}
+            </button>
+          </div>
+          {(file || refs.length > 0) && (
+            <ul className="chip-row">
+              {file && (
+                <li>
+                  <button type="button" disabled={locked} onClick={() => setFile(undefined)}>
+                    流程圖：{file.name} ✕
+                  </button>
+                </li>
+              )}
+              {refs.map((r) => (
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    disabled={locked}
+                    onClick={() => setRefs((old) => old.filter((x) => x.id !== r.id))}
+                  >
+                    參考：{r.name} ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {picking && (
+            <ReferencePicker
+              disabled={locked}
+              references={refs}
+              onToggle={(skillID, name) =>
+                setRefs((old) =>
+                  old.some((r) => r.id === skillID)
+                    ? old.filter((r) => r.id !== skillID)
+                    : old.length < 3
+                      ? [...old, { id: skillID, name }]
+                      : old,
+                )
+              }
+            />
+          )}
+          {/* 流程圖的兩個上限說在附加動作旁邊，而不是等 4xx 才說（設計 §2.2 第二向）。 */}
+          <p className="note">
+            流程圖限 PNG、JPEG 或 WebP，最多 4,000,000 位元組（約 3.8 MB）；參考 Skill 最多三個。
+          </p>
+          {working && <p className="note">正在處理目前素材；完成後即可補充或確認。</p>}
+        </div>
       )}
     </div>
   );
