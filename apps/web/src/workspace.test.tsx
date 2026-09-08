@@ -538,9 +538,12 @@ test("IA-9 the empty own-skills list offers importing as a link, not as prose", 
     (a) => a.getAttribute("href") ?? "",
   );
   expect(hrefs).toContain("/workspace/import");
-  // 設計 §2.1's strong form survives the link: the empty state still says what
-  // this empty is NOT.
-  expect(text()).toContain("不是清單讀取失敗");
+  // 設計 §2.1 的強形式在改寫之後仍然成立：空狀態還是說出了它**不是**哪一種空。
+  // 2026-09-08 措辭改了（「這裡是空的代表你還沒有建立過，不是清單讀取失敗」→
+  // 「這是一份空清單，不是讀取失敗」），型別詞一個字沒少，走的是那句解釋自己為什麼
+  // 要說這句話的話。斷言跟著改成兩半，這樣任何一半掉了都會紅。
+  expect(text()).toContain("空清單");
+  expect(text()).toContain("不是讀取失敗");
 });
 
 /**
@@ -556,7 +559,7 @@ test("空清單先說它是哪一種空，三張建立卡才是它的動作（§
   await render(<WorkspaceSkills />, () => text().includes("還沒有任何 Skill"));
 
   const absence = Array.from(container.querySelectorAll("p")).find((p) =>
-    p.textContent?.includes("不是清單讀取失敗"),
+    p.textContent?.includes("不是讀取失敗"),
   );
   const hub = container.querySelector("#create");
   expect(absence, "空狀態那一句不見了").toBeTruthy();
@@ -800,7 +803,7 @@ test("設計 §2.13 一句逐列相同的但書只講一次，而分不出是哪
 const hub = () => container.querySelector<HTMLElement>(".create-hub");
 const hubText = () => (hub()?.textContent ?? "").replace(/\s+/g, "");
 
-test("建立中心 carries the page's one primary action, and it is 匯入", async () => {
+test("建立中心 的三扇門同框，而且這一頁一個填色動作都沒有", async () => {
   stubOwnSkillsWithFeatures();
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
@@ -809,13 +812,18 @@ test("建立中心 carries the page's one primary action, and it is 匯入", asy
   expect(hub()).not.toBeNull();
   expect(hub()!.id).toBe("create");
 
-  // 設計 §4.6.3: this page had zero filled actions, so the hub adds the first
-  // one — not a second competing with an existing primary action. Counted over
-  // the WHOLE page, because the rule is per page and not per section.
+  // 設計 §4.6.3，2026-09-08 改判：這一頁回到「零個填色」那一列。判準是「完成這一頁的
+  // 工作的那一個」，而這一頁的工作是看自己的清單，不是匯入——三張卡是三扇並列的門，
+  // 其中一扇填色只是在說「平台希望你走這扇」。整頁計數，因為規則是每頁不是每區塊。
   const actions = container.querySelectorAll("a.action, button.action");
-  expect(Array.from(actions).map((a) => a.getAttribute("href") ?? a.textContent)).toEqual([
-    "/workspace/import",
-  ]);
+  expect(Array.from(actions).map((a) => a.getAttribute("href") ?? a.textContent)).toEqual([]);
+
+  // 而「零個填色」不等於「回到純文字連結」：三扇門現在戴著同一套次要按鈕語彙，
+  // 一個 `<a class="action-secondary">`、一個原生 `<button>`，兩者同框（`index.css` 的
+  // 基礎控制項規則，由 `design-system.test.ts` 守）。外部審查連續四輪讀成「瀏覽器預設
+  // 樣式」的，正是這三個控制項本來的三種外觀。
+  const doors = hub()!.querySelectorAll("a.action-secondary, button");
+  expect(doors.length, "三扇門沒有全部拿到次要按鈕語彙").toBeGreaterThanOrEqual(2);
 
   // §4.3: the universal card family, not a fifth style invented for this hub.
   expect(hub()!.querySelectorAll("ul.create-cards > li.download-item").length).toBeGreaterThan(0);

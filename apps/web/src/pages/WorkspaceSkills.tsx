@@ -204,7 +204,17 @@ export function WorkspaceSkills() {
 
         `isEmpty` 而不是 `!hasSkills`：理由在宣告處。
       */}
-      {isEmpty && <p>還沒有任何 Skill——這裡是空的代表你還沒有建立過，不是清單讀取失敗。</p>}
+      {/*
+        2026-09-08 措辭：型別詞一個字都沒有少，防衛的語氣走了。原句是
+        「還沒有任何 Skill——這裡是空的代表你還沒有建立過，不是清單讀取失敗。」
+        §2.9 要的是「說出這是哪一種沒有」，而「這裡是空的代表你還沒有建立過」是在
+        **解釋自己為什麼要說這句話**，不是那個型別詞本身。留下的兩件事：這是空清單
+        （型別），以及它不是讀取失敗（排掉另一種）。後面補一句下一步——三張卡就在
+        它下面，而空工作區的下一步本來就是它們。
+      */}
+      {isEmpty && (
+        <p>你還沒有任何 Skill——這是一份空清單，不是讀取失敗。從下面挑一種方式，建立第一個。</p>
+      )}
       {!hasSkills && (
         <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />
       )}
@@ -469,22 +479,40 @@ export function WorkspaceSkills() {
 
         標題跟著改：剩下的三個裡「帳號」不是清單。
       */}
+      {/*
+        ── 2026-09-08：三條純文字連結變成三個同框的控制項 ────────────────────────
+        R3 要求它們留著（見上一段），但 R3 只管**有沒有一條路**，不管那條路長什麼樣。
+        三條堆在項目符號上的紫色底線連結，被外部審查讀成「未完工的網站目錄」——而它們
+        現在戴的是與三張建立卡同一套次要按鈕語彙（`.action-secondary`），排成一列。
+        `.chip-row` 只有 flex 與一個 8px 的 gap，兩個值都在 §4.2 的網格上。
+
+        `/policy` 那一句從一段教學縮成一個同排的控制項。連結沒有少（`/policy` 的頁內
+        入邊仍是 `WorkspaceAccount.tsx` 與這裡兩個來源檔），少掉的是「那一頁裝什麼」的
+        複述——§2.13 第 2 條，而 `/policy` 自己就是四份地圖裡寫得最全的那一份。
+      */}
       <h2>這個工作區的其他頁</h2>
-      <ul className="risk-list">
+      <ul className="chip-row">
         <li>
-          <Link to="/workspace/downloads">下載紀錄</Link>
+          <Link className="action-secondary" to="/workspace/downloads">
+            下載紀錄
+          </Link>
         </li>
         <li>
-          <Link to="/workspace/runs">Run 歷史</Link>
+          <Link className="action-secondary" to="/workspace/runs">
+            Run 歷史
+          </Link>
         </li>
         <li>
-          <Link to="/workspace/account">帳號</Link>
+          <Link className="action-secondary" to="/workspace/account">
+            帳號
+          </Link>
+        </li>
+        <li>
+          <Link className="action-secondary" to="/policy">
+            資料保存政策
+          </Link>
         </li>
       </ul>
-      <p className="note" data-role="teaching">
-        要刪掉哪一樣東西、以及刪掉之後什麼會留下，一份寫在
-        <Link to="/policy">資料保存政策</Link>。
-      </p>
     </section>
   );
 }

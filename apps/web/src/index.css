@@ -1488,6 +1488,18 @@ summary {
 }
 
 /* --- Workspace: the create hub -------------------------------------------- */
+/* 一列同框的控制項。`.risk-list` 的項目符號對「三條通往別的頁的路」是錯的語彙——
+   那是一份清單的樣子，而這三個是控制項（工作區清單頁底部，2026-09-08）。兩個值都在
+   §4.2 的 4px 網格上，沒有新的一階。 */
+.chip-row {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .create-hub {
   margin: 16px 0 24px;
 }

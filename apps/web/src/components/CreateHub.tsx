@@ -92,12 +92,19 @@ export function CreateHub({
             貼一個 GitHub URL，或上傳一個 zip。平台會做規格驗證與靜態掃描。
           </p>
           {/*
-            The one filled action on this page (§4.6.3 一頁至多一個). It was zero
-            before, so this adds a row to that table rather than competing with
-            an existing primary action.
+            ── 2026-09-08：這一顆從填色降成描邊，而 §4.6.3 的表跟著改 ────────────────
+            它 2026-09-03 落地時是這一頁唯一的填色動作，當時的理由是「這一頁本來零個」。
+            §4.6.3 的判準不是「有沒有空位」，是**「完成這一頁的工作的那一個」**——而這
+            一頁的工作是看自己的清單，不是匯入。這三張卡是三扇並列的門，三個同重量的
+            導流，其中一個填色只是說「平台希望你走這扇」，那不是這條規則要表達的事。
+
+            §4.6.3 的表本來就有「零個」那一列，逐字寫著「沒有『完成這一頁的工作』的
+            動作時，零個是合法的」（`/compare`、`/runs/$id`、`/policy` 三頁在那一列）。
+            `/workspace/skills` 同批移過去。`rendered.spec.ts` 守的是「至多一個」與
+            「全站至少一個」，兩者都還成立。
           */}
           <p>
-            <Link className="action" to="/workspace/import">
+            <Link className="action-secondary" to="/workspace/import">
               匯入 Skill
             </Link>
           </p>
@@ -127,8 +134,8 @@ export function CreateHub({
               §4.6.3 的次要按鈕配方，這次連結也拿得到（`index.css` 的
               `.action-secondary`）。這三張卡本來是三種外觀——填色的 `.action`、一條
               純文字底線連結、一顆原生按鈕——而外部審查連續四輪把那個節奏讀成「瀏覽器
-              預設樣式」。**填色仍然只有一個**（匯入，§4.6.3 一頁至多一個），變的是另外
-              兩個入口從此同框。
+              預設樣式」。三個現在同框，而且**一個填色都沒有**：理由在上一張卡的註解裡
+              （§4.6.3 的判準是「完成這一頁的工作的那一個」，這一頁的工作是看清單）。
             */}
             <Link className="action-secondary" to="/" search={{}}>
               到目錄挑一個
@@ -161,8 +168,8 @@ export function CreateHub({
                 </p>
                 <p>
                   {/*
-                    不是 `.action`：這一頁的填色主要動作只有一個，是「匯入 Skill」
-                    （§4.6.3，`rendered.spec.ts` 全路由守著至多一個）。
+                    原生 `<button>` 就已經是 §4.6.3 的次要按鈕配方，所以這裡不加 class：
+                    三張卡現在是三個同框的描邊控制項，沒有一個填色的。
                   */}
                   <button type="button" onClick={() => setDescribing(true)}>
                     開始描述
