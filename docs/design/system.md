@@ -418,7 +418,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 
 ### 4.5 版面
 
-- `#root`：`width: 1126px`、`max-width: 100%`、置中、左右各一條 `--border`。
+- ~~`#root`：`width: 1126px`、`max-width: 100%`、置中、左右各一條 `--border`。~~ **2026-09-08：欄寬換了承載者。** `#root` 現在是**滿版**，1126px 這個欄寬住在 `--measure` 這個 token 裡，由 `main` 與 `.app-footer` 讀（兩者 `margin-inline: auto` ＋ `box-sizing: border-box`）。左右那兩條 `--border` 在 2026-09-03 已隨 ADR-064 決策 3 拿掉，上面那句是它們還在時寫的。<br>**為什麼搬**：頁首住在 `#root` 裡，所以在任何比 1126 寬的視窗上**頁首也只有 1126px**——1280 實測兩端各差 77px 碰不到螢幕邊。它有 `--surface` 的底、有 `--border` 的底線（兩者 2026-09-03 就在了），缺的只是橫貫；外部審查連兩輪讀成「導覽列漂浮在畫布上、沒有結構錨定」，**現象在、成因不在**。頁首自己用 `padding: 16px max(24px, calc((100% - var(--measure)) / 2 + 24px))` 把文字對回 `main` 的左緣——1440／1280／1126／900／375 五個寬度實測，`.app-title` 與 `h1` 同一個 x。機器：`e2e/rendered.spec.ts` 兩條（底橫貫視窗、標題對齊 `h1`），突變已做。
 - `main`：`padding: 0 24px`。
 - 斷點兩個：**1024px**（字級降階）與 **640px**。640px 的區塊有**三條**規則〔2026-09-08 由兩條增為三條〕：`main`／`.app-header`／`.app-footer` 的 `padding-inline` 改 12px、比較表列首欄由 220px 縮為 140px，**以及頁首在窄螢幕收成兩列**。640px 是後補的——註解寫「The file had three breakpoints before this and all three were 1024px, i.e. **the app had no phone layout at all**」。
 - **手機頁首（2026-09-08，外部審查觸發，實測 375×900）。** 改之前是**三列**共 155px：標題一列、導覽兩列、身分一列——標題與身分各自只佔半列寬卻各佔一整列，因為 `.app-header > .app-nav` 的 `margin-right: auto` 把它們推到兩端。≤640 讓標題與身分共用第一列（`auto` 移到 `.app-title` 上）、導覽 `flex-basis: 100%` 自成一列，**155 → 123px**。<br>**導覽在 375 仍是兩列，這是量出來的極限不是疏漏**：五項文字總寬 316.6px，375 扣掉左右內距只剩 351，四個 16px 間距超出 29.6px；間距收到 12 讓 **390 以上一列**（364.6 ≤ 366），375 仍兩列。要 375 也是一列只能把 `.app-nav` 從 §4.1 的 ui 階降到 meta 階，而那張表逐字把它指給 ui——買到 27px 不值得動一條全站的字級指派（§0 的順位 4 確實壓過 5，但那要換到的東西夠大）。<br>**折疊選單（漢堡）明確不採用**：資訊架構 §5 IA-6 第 4 條逐字裁定「把導覽列藏起來，等於拿掉訪客得知這個產品有 Test Lab 與打包的唯一管道」，§2.10 引的 NN/g 結論是折疊內容無法被掃視。導覽不在 §2.10 的十項上，所以這不是禁令；它是一筆划不來的交易。
@@ -492,7 +492,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 #### 4.6.6 字體、記號與不做的事
 
 - **不引入 webfont**：外部請求要進同意書的第三方清單、字型載入會跳版、ADR-039 否決的是依賴面。槓桿是**字重**：`h1`／`h2` 600、`.app-title` 700（今天全部 500／600），GOV.UK 與 USWDS 的視覺品質就是這樣來的。
-- favicon 以 inline SVG data URI 寫在 `index.html`（不開 `public/`）；`.app-title` 前一個 `--accent` 方塊記號（`::before`，全 app 第一個 pseudo-element，只此一處）。
+- favicon 以 inline SVG data URI 寫在 `index.html`（不開 `public/`）；`.app-title` 前一個 `--accent` 方塊記號（`::before`，全 app 第一個 pseudo-element，~~只此一處~~）。<br>**2026-09-08 訂正：「只此一處」自 2026-09-03 起不成立**，而它在文件裡當了五天的現行事實。今天 `index.css` 有**三個** pseudo-element 站點：`.app-title::before`（方塊記號）、`summary::before`（`›`，展開時 `rotate(90deg)`）、`details[open] > summary::before`。**規則的意思沒有變，變的是它的數字**——pseudo-element 是被配給的，不是自由的：2026-09-08 外部審查提議在每一顆次要按鈕後面加一個 `›`，那會是第四個站點，而且會讓同一個字形在這個 app 裡同時表示「這裡可以展開」與「這裡會換頁」。不採用。
 - **不做**：漸層、主題切換按鈕（`prefers-color-scheme` 就是偏好；IA R4、凍結）、~~圖示集（等第一個「沒有它會誤讀」的實例）~~〔2026-09-03 由 [ADR-065](../adr/ADR-065-hot-path-text-budget-and-the-fourth-disclosure-mechanism.md) 決策 5 回答：允許至多六個形狀的 inline SVG、一列一個、永遠伴隨文字，規則在 §4.7；「不做圖示**集**」仍成立〕、成功綠、任何「Verified」填色、視覺回歸截圖基準線（§6 已證偽兩次）。
 
 #### 4.6.7 凍結下的分類與時間窗

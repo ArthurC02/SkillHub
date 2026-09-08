@@ -188,6 +188,45 @@ test.describe("QA-008 real layout", () => {
   });
 
   /**
+   * 設計 §4.5「頁首是橫貫的屋簷」，量在比欄寬更寬的視窗上。
+   *
+   * 這一條 jsdom 一樣答不出來：`#root` 從 2026-09-08 起是滿版、欄寬移到 `main` 與
+   * `.app-footer` 身上，而頁首靠一條 `max()` 的內距把文字對回同一條左緣——沒有版面
+   * 就沒有「同一條左緣」這回事。改之前 `#root` 是 1126px 而頁首住在裡面，所以 1280
+   * 的視窗上頁首兩端各差 77px 碰不到螢幕邊，外部審查連兩輪讀成「導覽列漂浮著」。
+   *
+   * 兩個斷言各守一半：底要橫貫（寬度＝視窗寬），字要對齊（`.app-title` 與 `h1` 同
+   * 一個左緣）。只守前者會被「頁首滿版但文字貼著螢幕邊」滿足。
+   */
+  for (const width of [1440, 1280]) {
+    test(`頁首橫貫視窗，標題與 h1 同一條左緣：${width}px（設計 §4.5）`, async ({ page }) => {
+      await stubPlatform(page);
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/workspace/skills");
+      await expect(page.locator(".app-title")).toBeVisible();
+
+      const m = await page.evaluate(() => {
+        const x = (sel: string) =>
+          Math.round(document.querySelector(sel)!.getBoundingClientRect().x);
+        return {
+          headerWidth: Math.round(
+            document.querySelector(".app-header")!.getBoundingClientRect().width,
+          ),
+          viewport: document.documentElement.clientWidth,
+          title: x(".app-title"),
+          h1: x("main h1"),
+        };
+      });
+
+      expect(
+        m.headerWidth,
+        `頁首只有 ${m.headerWidth}px 而視窗是 ${m.viewport}px：它又縮回欄寬裡了`,
+      ).toBe(m.viewport);
+      expect(m.title, `標題左緣 ${m.title} 對不上 h1 的 ${m.h1}`).toBe(m.h1);
+    });
+  }
+
+  /**
    * 「建立一個 Skill」的三張卡：格軌等高，動作落在同一條基線上。
    *
    * 這一條也只有真引擎答得出來——卡片的高度是 grid 算出來的，動作被推到卡底是

@@ -56,6 +56,10 @@
      channel; the words stay the first one (§2.3). Not for degradation — that is
      --accent-bg and stays --accent-bg. */
   --danger-bg: #fdf1f0;
+
+  /* 版面尺寸，不是顏色：`main`／`.app-footer` 的欄寬，以及頁首把自己的內距對回
+     那條左緣時要減掉的那一段。設計 §4.5 記的 1126px 從 2026-09-08 起住在這裡。 */
+  --measure: 1126px;
   --code-bg: #f1f3f7;
   --accent: #6d4aeb;
   --accent-bg: rgba(109, 74, 235, 0.09);
@@ -139,10 +143,20 @@
 /* The two 1px rules down either side are gone (ADR-064 決策 3): the page frame
    is now the ground/surface difference — the header and every card sit on
    --surface against --bg — and a hairline on top of that is a second frame
-   saying the same thing. */
+   saying the same thing.
+
+   ── 2026-09-08：1126px 這個欄從 `#root` 搬到 `main` 與 `.app-footer` ────────────
+   搬的理由是量出來的，不是品味：`#root` 是 1126px 而頁首住在它裡面，所以在任何比
+   1126 寬的視窗上，**頁首也是 1126px**——它有白底、有一條 `--border` 底線，但兩端
+   各差 77px（1280 實測）碰不到螢幕邊。外部審查連兩輪讀成「導覽列漂浮在畫布上、
+   沒有結構錨定」，而查證的結果是**它說的現象在，說的成因不在**：底色與底線都已經
+   在了（`--surface` 對 `--bg` 1.13:1，底線 `--border`），缺的是它沒有橫貫。
+
+   `#root` 因此變成滿版，欄寬移到 `main` 與 `.app-footer` 身上；頁首自己用一條
+   `max()` 的內距把文字對回同一條左緣（1126 − 24×2 ＝ 1078 的內容寬一格未變），
+   所以這不是新的版面尺寸，是同一個尺寸換一個東西承載。 */
 #root {
-  width: 1126px;
-  max-width: 100%;
+  width: 100%;
   margin: 0 auto;
   text-align: center;
   min-height: 100svh;
@@ -153,6 +167,18 @@
 
 body {
   margin: 0;
+}
+
+/* 欄寬的新家，而它現在是一個 token 而不是散在兩處的字面值——`--measure` 同時被
+   這裡的 `width` 與頁首那條 `max()` 內距讀，兩邊不可能各改各的。`box-sizing` 是
+   必須的而不是保險：`main` 自帶左右各 24px 的內距，內容盒下欄寬加上那兩份會在
+   1126px 寬的視窗上生出橫向捲動，而 `rendered.spec.ts` 有一條測試就是在守那件事。 */
+main,
+.app-footer {
+  width: var(--measure);
+  max-width: 100%;
+  margin-inline: auto;
+  box-sizing: border-box;
 }
 
 h1,
@@ -525,7 +551,11 @@ a {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-  padding: 16px 24px;
+  /* 滿版的底，對齊 `main` 的左緣。`max()` 的兩半各管一段視窗：比 `--measure` 窄時
+     退回 `main` 的那一份 24px，寬時把多出來的均分到兩側再加回那 24px，於是
+     「Skill Hub」在任何視窗上都與底下的 `h1` 同一條左緣（1440／1280／1126／900／375
+     五個寬度實測皆同）。 */
+  padding: 16px max(24px, calc((100% - var(--measure)) / 2 + 24px));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   text-align: left;
@@ -1556,10 +1586,18 @@ summary {
    「表單做了一半」就是那個宣告。一條頂線把它推到頁尾側，標題降到控制項那一階
    （15px 是既有的一階，不是新的一階）。資訊架構 §0.1 R3 要的是這四條路存在，
    不是它們要有多響。 */
+/* ── 2026-09-08：一條頂線換成第三層平面 ───────────────────────────────────────
+   09-08 早些時候這一列先用「一條 `--border` 頂線 ＋ 32px 上緣留白」與上面三張卡
+   分開，而外部審查下一輪仍然讀成「四顆掉在地上的小石子」——線把它們與上面切開了，
+   但沒有把四個**收在一起**。`--code-bg` 是 ADR-064 §4.6.2 定義的第三層（凹面），
+   它本來就是「比頁面再退一層」的那個值，所以這裡沒有新顏色也沒有第五種卡片：
+   卡片是 `--surface`（比地亮），這一列是 `--code-bg`（比地暗一階的凹面），
+   兩者在同一個三層模型裡各站一格。 */
 .workspace-index {
-  border-top: 1px solid var(--border);
+  background: var(--code-bg);
+  border-radius: 8px;
   margin-top: 32px;
-  padding-top: 16px;
+  padding: 12px 16px;
 }
 
 .workspace-index h2 {
