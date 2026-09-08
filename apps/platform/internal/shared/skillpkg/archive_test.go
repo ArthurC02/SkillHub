@@ -495,26 +495,27 @@ func TestTheImportCeilingsAreTheRatifiedOnes(t *testing.T) {
 
 // --- 05 R-21/R-27: a ratio ceiling instead of an extension ban -------------
 
-// A megabyte of one repeated byte compresses to almost nothing: the six size
-// caps all pass it, and only the ratio says what it is.
-func TestPackageFSRefusesAnEntryThatExpandsTooFar(t *testing.T) {
-	data := zipBytes(t, map[string]string{"SKILL.md": archiveSkillMD, "bomb.txt": strings.Repeat("A", 2<<20)})
-	_, err := PackageFS(data)
-	if !errors.Is(err, ErrBadArchive) || !strings.Contains(err.Error(), "more than the 100:1") {
-		t.Fatalf("want a ratio refusal, got %v", err)
+// Highly compressible content is not by itself a refusal, and the ratio ceiling
+// that briefly said otherwise is why this test exists: the declared-total cap is
+// what bounds expansion here, so a megabyte of one repeated byte — a shape every
+// generated corpus and log sample has — has to get through. The corpus fixture
+// `oversize-file` is the real-world version at 338:1.
+func TestPackageFSAcceptsHighlyCompressibleContent(t *testing.T) {
+	data := zipBytes(t, map[string]string{"SKILL.md": archiveSkillMD, "corpus.txt": strings.Repeat("A", 2<<20)})
+	if _, err := PackageFS(data); err != nil {
+		t.Fatalf("repetitive but small-enough content was refused: %v", err)
 	}
 }
 
-// Ordinary content compresses two to twenty times; nothing here may be refused
-// for it. Random-ish bytes stand in for a real asset.
-func TestPackageFSKeepsOrdinaryCompression(t *testing.T) {
-	var b strings.Builder
-	for i := 0; i < 2<<20; i++ {
-		b.WriteByte(byte(i*2654435761>>13) ^ byte(i))
-	}
-	data := zipBytes(t, map[string]string{"SKILL.md": archiveSkillMD, "asset.bin": b.String()})
-	if _, err := PackageFS(data); err != nil {
-		t.Fatalf("ordinary content was refused: %v", err)
+// And what does bound it: the declared total, whatever the ratio.
+func TestPackageFSStillRefusesTooMuchDeclaredContent(t *testing.T) {
+	old := maxUnpackedBytes
+	maxUnpackedBytes = 1 << 20
+	defer func() { maxUnpackedBytes = old }()
+
+	data := zipBytes(t, map[string]string{"SKILL.md": archiveSkillMD, "corpus.txt": strings.Repeat("A", 2<<20)})
+	if _, err := PackageFS(data); !errors.Is(err, ErrBadArchive) || !strings.Contains(err.Error(), "uncompressed content exceeds") {
+		t.Fatalf("the declared-total cap is what bounds expansion, got %v", err)
 	}
 }
 

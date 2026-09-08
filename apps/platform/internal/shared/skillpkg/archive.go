@@ -80,20 +80,29 @@ var (
 	maxEntryBytes = uint64(10 << 20)
 	// 目錄巢狀深度 ≤ 10.
 	maxEntryDepth = 10
-	// Compression ratio, the signal the six size caps cannot give. A bomb is
-	// small on the wire and enormous once expanded; ordinary mixed content
-	// compresses 2:1 to 10:1 and text up to about 20:1, so 100:1 on a single
-	// entry and 1000:1 across the archive are the thresholds the field settled
-	// on. Both are checked cumulatively, not per child, because that is the
-	// way around per-entry limits (05 R-21/R-27, 2026-09-08).
-	maxEntryRatio   = uint64(100)
-	maxArchiveRatio = uint64(1000)
-	// Below these, a ratio says nothing: a 30-byte file that compresses to
-	// nothing is not an attack, and dividing by a few bytes of zip overhead
-	// produces noise, not evidence.
-	ratioFloorEntryBytes   = uint64(1 << 20)
-	ratioFloorArchiveBytes = uint64(4096)
 )
+
+// A compression-ratio ceiling was added here on 2026-09-08 (05 R-21/R-27) and
+// removed the same day, before it shipped. Recorded rather than deleted,
+// because "add a ratio check" is the standard advice and the reason it does not
+// apply here is not obvious:
+//
+//   - The blast radius is already bounded by the caps above. This reader accepts
+//     only Store and Deflate, refuses zip64, caps the archive at 10 MB, one entry
+//     at 10 MB and the declared total at 100 MB. Worst-case expansion is that
+//     100 MB, whatever the ratio says.
+//   - DEFLATE cannot exceed about 1032:1, so an aggregate ceiling anywhere near
+//     the classic 1000:1 advice is a rule that cannot fire on anything this
+//     reader accepts. The famous nested bombs get their numbers from recursion,
+//     and this platform never opens an archive inside the package.
+//   - The per-entry 100:1 the field recommends DOES fire, on legitimate content:
+//     tools/qa/skillpkg-corpus's own `oversize-file` fixture is 1.1 MB of
+//     repetitive text that compresses 338:1, and CI caught it the first time this
+//     ran. Generated corpora, logs and columnar CSV all live up there.
+//
+// What was worth keeping from that batch is the disclosure below: an archive
+// inside the package is something the platform did not look at, and the person
+// who extracts it should be told.
 
 // §5.1b's two remaining clauses are deliberately not here.
 //
@@ -133,7 +142,7 @@ func PackageFS(data []byte) (fs.FS, error) {
 		return nil, fmt.Errorf("%w: archive holds %d entries, more than the %d allowed",
 			ErrBadArchive, len(zr.File), maxArchiveEntries)
 	}
-	var unpacked, compressed uint64
+	var unpacked uint64
 	var findings []Finding
 	seen := make(map[string]bool, len(zr.File)) // portable name -> directory
 	requiredDirs := make(map[string]struct{}, len(zr.File))
@@ -195,12 +204,7 @@ func PackageFS(data []byte) (fs.FS, error) {
 			return nil, fmt.Errorf("%w: %s nests %d directories deep, more than the %d allowed",
 				ErrBadArchive, f.Name, depth, maxEntryDepth)
 		}
-		if f.UncompressedSize64 >= ratioFloorEntryBytes && ratioExceeds(f.UncompressedSize64, f.CompressedSize64, maxEntryRatio) {
-			return nil, fmt.Errorf("%w: %s expands %d bytes from %d, more than the %d:1 allowed for one file",
-				ErrBadArchive, f.Name, f.UncompressedSize64, f.CompressedSize64, maxEntryRatio)
-		}
 		unpacked += f.UncompressedSize64
-		compressed += f.CompressedSize64
 		if unpacked > maxUnpackedBytes {
 			return nil, fmt.Errorf("%w: uncompressed content exceeds %d bytes", ErrBadArchive, maxUnpackedBytes)
 		}
@@ -228,10 +232,6 @@ func PackageFS(data []byte) (fs.FS, error) {
 			}
 		}
 	}
-	if compressed >= ratioFloorArchiveBytes && ratioExceeds(unpacked, compressed, maxArchiveRatio) {
-		return nil, fmt.Errorf("%w: the archive expands %d bytes from %d, more than the %d:1 allowed in total",
-			ErrBadArchive, unpacked, compressed, maxArchiveRatio)
-	}
 	var tree fs.FS = zr // no root to strip: let Validate report skill-md-missing
 	if root := PackageRoot(zr); root != "" {
 		if sub, err := fs.Sub(zr, strings.TrimSuffix(root, "/")); err == nil {
@@ -239,16 +239,6 @@ func PackageFS(data []byte) (fs.FS, error) {
 		}
 	}
 	return packageFS{FS: tree, findings: findings}, nil
-}
-
-// ratioExceeds reports whether `out` expands from `in` by more than `limit`
-// times. Zero compressed bytes with content to show for it is not a ratio this
-// can express and is always over the limit.
-func ratioExceeds(out, in, limit uint64) bool {
-	if in == 0 {
-		return out > 0
-	}
-	return out/in > limit
 }
 
 func validateZipEnvelope(data []byte) error {
