@@ -270,6 +270,7 @@ code {
 
    min-height 32px is WCAG 2.2 2.5.8 (24px floor) with room to spare. */
 button,
+.action-secondary,
 select,
 textarea,
 input:not([type="checkbox"], [type="radio"]) {
@@ -372,6 +373,29 @@ button {
   border-color: var(--text-h);
 }
 
+/* --- A link that is a DOOR, not the page's one action ----------------------
+   §4.6.3 已經定義了次要按鈕的配方（`--surface` 底、`--border-strong` 邊、hover 換
+   `--surface-hover`、`:active` 換 `--surface-active`），但那套配方**只有 `<button>`
+   拿得到**——它掛在上面那條 `button, select, textarea, input` 的基礎控制項規則上。
+   於是「建立一個 Skill」那三張卡長成三種樣子：填色的 `.action`（匯入）、一條純文字
+   底線連結（到目錄挑一個）、一顆原生按鈕（開始描述）。三個同重量的入口、三種外觀，
+   而外部審查連續四輪把它讀成「瀏覽器預設樣式」。
+
+   這裡**沒有第五種樣式，也沒有一個新數值**：`.action-secondary` 只是被加進那條基礎
+   控制項規則與它的 hover／active 選擇器，所以一個戴著它的 `<a>` 與旁邊的 `<button>`
+   逐位元組同框——同一組內距、同一個最小高度、同一個圓角，因為那就是同一條規則。
+   本區塊自己只補連結缺的三件事：inline-flex 對齊、去底線、手指游標。
+
+   **它不碰 §4.6.3 的「一頁至多一個填色動作」**：填色仍然只有 `.action`，
+   `rendered.spec.ts` 數的是底色不是框。也不碰 ⛔ 邊界 1——生成那一卡本來就已經是一顆
+   按鈕，這次是**旁邊那張卡升上來跟它齊平**，生成入口沒有變得更顯眼。 */
+.action-secondary {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 /* The two controls the layer above excludes still need their selected state to
    be visible: left to the UA, dark mode renders a checked box in a grey that
    sits a hair off the unchecked one. --accent is 4.39:1 on --bg — under AA for
@@ -385,7 +409,8 @@ input[type="radio"] {
    re-stated afterwards: `button:hover:not(:disabled)` outranks a bare
    `.action:hover`, so without the exclusion the primary action would lose its
    own hover to this rule. --link on --surface-hover is 4.82:1, still AA. */
-button:hover:not(:disabled, .action, .destructive) {
+button:hover:not(:disabled, .action, .destructive),
+.action-secondary:hover {
   background: var(--surface-hover);
   border-color: var(--accent-border);
   color: var(--link);
@@ -393,7 +418,8 @@ button:hover:not(:disabled, .action, .destructive) {
 
 /* The app had no pressed state at all, on any of its 44 buttons: a click gave
    back nothing until the request answered. */
-button:active:not(:disabled, .action, .destructive) {
+button:active:not(:disabled, .action, .destructive),
+.action-secondary:active {
   background: var(--surface-active);
 }
 

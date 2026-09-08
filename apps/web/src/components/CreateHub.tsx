@@ -123,7 +123,14 @@ export function CreateHub({
             Fork 需要封測邀請，這道限制由平台強制；還沒有邀請的話，那一步會被擋下來。
           </p>
           <p>
-            <Link to="/" search={{}}>
+            {/*
+              §4.6.3 的次要按鈕配方，這次連結也拿得到（`index.css` 的
+              `.action-secondary`）。這三張卡本來是三種外觀——填色的 `.action`、一條
+              純文字底線連結、一顆原生按鈕——而外部審查連續四輪把那個節奏讀成「瀏覽器
+              預設樣式」。**填色仍然只有一個**（匯入，§4.6.3 一頁至多一個），變的是另外
+              兩個入口從此同框。
+            */}
+            <Link className="action-secondary" to="/" search={{}}>
               到目錄挑一個
             </Link>
           </p>

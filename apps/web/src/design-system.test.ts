@@ -605,3 +605,33 @@ test("ADR-065 §4.7: at most six icon shapes, every one inline and aria-hidden",
     "an icon directory — §4.7: 不加資產目錄、不加字型、不加套件",
   ).toEqual([]);
 });
+
+/**
+ * §4.6.3 定義了次要按鈕的配方——`--surface` 底、`--border-strong` 邊、hover 換
+ * `--surface-hover`、`:active` 換 `--surface-active`——但那套配方在 2026-09-08 之前
+ * **只有 `<button>` 拿得到**：它掛在 `button, select, textarea, input` 那條基礎控制項
+ * 規則上，而一個 `<a>` 無論多像一扇門都拿不到。後果量得出來：「建立一個 Skill」三張
+ * 卡的三個同重量入口長成三種外觀（填色 `.action`／純文字底線連結／原生按鈕），外部
+ * 審查連續四輪把那個節奏讀成「瀏覽器預設樣式」。
+ *
+ * 修法沒有第五種樣式也沒有新數值，就是把 `.action-secondary` 加進那三條既有選擇器。
+ * **而這條測試守的正是「加進去」本身**：把 class 從基礎規則拿掉，`padding`、
+ * `min-height`、`border-radius` 三個值就會與旁邊的 `<button>` 分家，而 jsdom 不解析
+ * `index.css`、`rendered.spec.ts` 只量填色，兩者都看不到那次分家。
+ */
+test("§4.6.3: a door-shaped link wears the same box as the button beside it", () => {
+  const rules = css.split("}");
+  const base = rules.find((r) => /(^|\n)button,/.test(r) && /min-height:\s*32px/.test(r));
+  expect(base, "找不到那條基礎控制項規則（`button, select, textarea, input`）").toBeTruthy();
+  expect(
+    base,
+    ".action-secondary 不在基礎控制項規則裡：戴著它的連結與旁邊的按鈕不再同框",
+  ).toContain(".action-secondary");
+
+  for (const state of ["hover", "active"]) {
+    const rule = rules.find(
+      (r) => r.includes(`button:${state}:not(`) && r.includes(".action-secondary"),
+    );
+    expect(rule, `.action-secondary 沒有跟著 button 拿到 :${state}——按下去不會有回饋`).toBeTruthy();
+  }
+});
