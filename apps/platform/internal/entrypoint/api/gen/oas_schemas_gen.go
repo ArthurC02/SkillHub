@@ -2280,6 +2280,107 @@ func (s *CreationActionKind) UnmarshalText(data []byte) error {
 	}
 }
 
+// Ref: #/components/schemas/CreationAttachment
+type CreationAttachment struct {
+	// Where this picture sits among `messages`. When the person typed something with it, this is the index
+	// of their own message and the picture belongs inside that turn; when they typed nothing, it is the
+	// index the model's reply takes, so the picture still renders between the turns it happened between.
+	MessageIndex int                         `json:"message_index"`
+	MediaType    CreationAttachmentMediaType `json:"media_type"`
+	Bytes        int                         `json:"bytes"`
+	// The digest of the bytes that were sent. It is what the platform keeps INSTEAD of them; it is not a
+	// URL and nothing serves the picture back.
+	SHA256 string `json:"sha256"`
+}
+
+// GetMessageIndex returns the value of MessageIndex.
+func (s *CreationAttachment) GetMessageIndex() int {
+	return s.MessageIndex
+}
+
+// GetMediaType returns the value of MediaType.
+func (s *CreationAttachment) GetMediaType() CreationAttachmentMediaType {
+	return s.MediaType
+}
+
+// GetBytes returns the value of Bytes.
+func (s *CreationAttachment) GetBytes() int {
+	return s.Bytes
+}
+
+// GetSHA256 returns the value of SHA256.
+func (s *CreationAttachment) GetSHA256() string {
+	return s.SHA256
+}
+
+// SetMessageIndex sets the value of MessageIndex.
+func (s *CreationAttachment) SetMessageIndex(val int) {
+	s.MessageIndex = val
+}
+
+// SetMediaType sets the value of MediaType.
+func (s *CreationAttachment) SetMediaType(val CreationAttachmentMediaType) {
+	s.MediaType = val
+}
+
+// SetBytes sets the value of Bytes.
+func (s *CreationAttachment) SetBytes(val int) {
+	s.Bytes = val
+}
+
+// SetSHA256 sets the value of SHA256.
+func (s *CreationAttachment) SetSHA256(val string) {
+	s.SHA256 = val
+}
+
+type CreationAttachmentMediaType string
+
+const (
+	CreationAttachmentMediaTypeImagePNG  CreationAttachmentMediaType = "image/png"
+	CreationAttachmentMediaTypeImageJpeg CreationAttachmentMediaType = "image/jpeg"
+	CreationAttachmentMediaTypeImageWEBP CreationAttachmentMediaType = "image/webp"
+)
+
+// AllValues returns all CreationAttachmentMediaType values.
+func (CreationAttachmentMediaType) AllValues() []CreationAttachmentMediaType {
+	return []CreationAttachmentMediaType{
+		CreationAttachmentMediaTypeImagePNG,
+		CreationAttachmentMediaTypeImageJpeg,
+		CreationAttachmentMediaTypeImageWEBP,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreationAttachmentMediaType) MarshalText() ([]byte, error) {
+	switch s {
+	case CreationAttachmentMediaTypeImagePNG:
+		return []byte(s), nil
+	case CreationAttachmentMediaTypeImageJpeg:
+		return []byte(s), nil
+	case CreationAttachmentMediaTypeImageWEBP:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreationAttachmentMediaType) UnmarshalText(data []byte) error {
+	switch CreationAttachmentMediaType(data) {
+	case CreationAttachmentMediaTypeImagePNG:
+		*s = CreationAttachmentMediaTypeImagePNG
+		return nil
+	case CreationAttachmentMediaTypeImageJpeg:
+		*s = CreationAttachmentMediaTypeImageJpeg
+		return nil
+	case CreationAttachmentMediaTypeImageWEBP:
+		*s = CreationAttachmentMediaTypeImageWEBP
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/CreationCandidate
 type CreationCandidate struct {
 	SkillID   uuid.UUID `json:"skill_id"`
@@ -3181,17 +3282,23 @@ type CreationSnapshot struct {
 	ModelChanged         OptCreationModelChange `json:"model_changed"`
 	DiagramUnderstanding string                 `json:"diagram_understanding"`
 	DiagramConfirmed     bool                   `json:"diagram_confirmed"`
-	DiagramFingerprint   OptString              `json:"diagram_fingerprint"`
-	References           []CreationReference    `json:"references"`
-	Draft                OptCreationDraft       `json:"draft"`
-	Candidate            OptCreationCandidate   `json:"candidate"`
-	PendingAction        string                 `json:"pending_action"`
-	BudgetUsd            float64                `json:"budget_usd"`
-	ReservedUsd          float64                `json:"reserved_usd"`
-	SpentUsd             OptFloat64             `json:"spent_usd"`
-	UsageUnknown         bool                   `json:"usage_unknown"`
-	Steps                int                    `json:"steps"`
-	ToolCalls            int                    `json:"tool_calls"`
+	// The NEWEST picture's digest - the one the model reads and materialize records. `attachments` is the
+	// conversation's own history; a second upload overwrites this field but adds to that list.
+	DiagramFingerprint OptString `json:"diagram_fingerprint"`
+	// Every picture the person put into this conversation, in order, each tied to the turn it arrived
+	// with. Metadata only: the platform keeps the digest and refuses the bytes (ADR-066 決策 4), so a
+	// client that did not itself send the picture has its description and not the picture.
+	Attachments   []CreationAttachment `json:"attachments"`
+	References    []CreationReference  `json:"references"`
+	Draft         OptCreationDraft     `json:"draft"`
+	Candidate     OptCreationCandidate `json:"candidate"`
+	PendingAction string               `json:"pending_action"`
+	BudgetUsd     float64              `json:"budget_usd"`
+	ReservedUsd   float64              `json:"reserved_usd"`
+	SpentUsd      OptFloat64           `json:"spent_usd"`
+	UsageUnknown  bool                 `json:"usage_unknown"`
+	Steps         int                  `json:"steps"`
+	ToolCalls     int                  `json:"tool_calls"`
 	// Automatic re-queues after the model answered outcome=draft with no draft (at most one per session).
 	DraftRetries OptInt `json:"draft_retries"`
 	// The attached Run's evaluation finished and was not met; a draft identical to the one that ran is
@@ -3279,6 +3386,11 @@ func (s *CreationSnapshot) GetDiagramConfirmed() bool {
 // GetDiagramFingerprint returns the value of DiagramFingerprint.
 func (s *CreationSnapshot) GetDiagramFingerprint() OptString {
 	return s.DiagramFingerprint
+}
+
+// GetAttachments returns the value of Attachments.
+func (s *CreationSnapshot) GetAttachments() []CreationAttachment {
+	return s.Attachments
 }
 
 // GetReferences returns the value of References.
@@ -3459,6 +3571,11 @@ func (s *CreationSnapshot) SetDiagramConfirmed(val bool) {
 // SetDiagramFingerprint sets the value of DiagramFingerprint.
 func (s *CreationSnapshot) SetDiagramFingerprint(val OptString) {
 	s.DiagramFingerprint = val
+}
+
+// SetAttachments sets the value of Attachments.
+func (s *CreationSnapshot) SetAttachments(val []CreationAttachment) {
+	s.Attachments = val
 }
 
 // SetReferences sets the value of References.

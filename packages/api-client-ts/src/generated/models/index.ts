@@ -21,6 +21,7 @@ export * from './CreateSkillVersionFromSuggestions422Response';
 export * from './CreateSkillVersionFromSuggestionsRequest';
 export * from './CreateTestCaseRequest';
 export * from './CreationAction';
+export * from './CreationAttachment';
 export * from './CreationCandidate';
 export * from './CreationDraft';
 export * from './CreationFetch';

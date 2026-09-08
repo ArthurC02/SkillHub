@@ -268,3 +268,65 @@ func TestCreationBatchAMaterialCarriesItsSentence(t *testing.T) {
 	// caller is the generated server (iron rule 12 makes the contract the shape,
 	// not the enforcement).
 }
+
+// TestCreationBatchEveryPictureKeepsItsPlaceInTheConversation: 2026-09-08.
+// `diagram_fingerprint`/`media_type`/`bytes` are a latest-value — right for the
+// model and for generation_inputs, wrong for a conversation, because a second
+// upload erased the first one from the history entirely. `attachments` is that
+// history, and each entry says which turn it belongs to so the web log can put
+// the picture where it happened rather than guess.
+//
+// Metadata only. ADR-066 決策 4 keeps the digest and refuses the bytes, and its
+// 2026-09-05 closing note answered 「維持不保存」; nothing here stores an image.
+func TestCreationBatchEveryPictureKeepsItsPlaceInTheConversation(t *testing.T) {
+	a, _, _ := creationFixture(t)
+	c := a.login(t, "creation-batch-pictures")
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": .5}, 200)
+
+	// With words: the picture belongs inside the person's own message.
+	const said = "這是我的流程。"
+	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
+		"command_id": creationID(t), "expected_revision": v.Revision, "kind": "diagram",
+		"message": said,
+		"diagram": map[string]any{"media_type": "image/png", "data": "cG5n"},
+	}, 200)
+	if len(v.Snapshot.Attachments) != 1 {
+		t.Fatalf("the first picture was not recorded: %+v", v.Snapshot.Attachments)
+	}
+	first := v.Snapshot.Attachments[0]
+	if first.MediaType != "image/png" || first.Bytes != 3 || first.SHA256 != v.Snapshot.DiagramFingerprint {
+		t.Fatalf("attachment does not describe what was sent: %+v", first)
+	}
+	if first.MessageIndex < 0 || first.MessageIndex >= len(v.Snapshot.Messages) {
+		t.Fatalf("attachment points outside the history: %+v of %d", first, len(v.Snapshot.Messages))
+	}
+	if m := v.Snapshot.Messages[first.MessageIndex]; m.Role != "user" || m.Content != said {
+		t.Fatalf("the picture is not on the turn it was sent with: %+v", m)
+	}
+
+	// Without words: it takes the index the model's own reply will take, so it
+	// still sits between the two turns it happened between.
+	before := len(v.Snapshot.Messages)
+	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
+		"command_id": creationID(t), "expected_revision": v.Revision, "kind": "diagram",
+		"diagram": map[string]any{"media_type": "image/webp", "data": "d2VicA=="},
+	}, 200)
+	if len(v.Snapshot.Attachments) != 2 {
+		t.Fatalf("the second picture erased the first instead of following it: %+v", v.Snapshot.Attachments)
+	}
+	if v.Snapshot.Attachments[0] != first {
+		t.Fatalf("the first picture changed: %+v", v.Snapshot.Attachments[0])
+	}
+	second := v.Snapshot.Attachments[1]
+	if second.MessageIndex != before {
+		t.Fatalf("a wordless picture did not take the next index: %+v (history was %d)", second, before)
+	}
+	if second.MediaType != "image/webp" || second.SHA256 == first.SHA256 {
+		t.Fatalf("the second attachment describes the first picture: %+v", second)
+	}
+	// And the latest-value fields still describe the newest picture: that is what
+	// the model reads and what materialize records.
+	if v.Snapshot.DiagramFingerprint != second.SHA256 || v.Snapshot.DiagramMediaType != "image/webp" {
+		t.Fatalf("the newest-picture fields did not follow the newest picture: %+v", v.Snapshot)
+	}
+}

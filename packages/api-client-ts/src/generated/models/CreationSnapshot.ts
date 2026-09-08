@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { CreationAttachment } from './CreationAttachment';
+import {
+    CreationAttachmentFromJSON,
+    CreationAttachmentFromJSONTyped,
+    CreationAttachmentToJSON,
+    CreationAttachmentToJSONTyped,
+} from './CreationAttachment';
 import type { CreationReference } from './CreationReference';
 import {
     CreationReferenceFromJSON,
@@ -111,11 +118,17 @@ export interface CreationSnapshot {
      */
     diagramConfirmed: boolean;
     /**
-     * 
+     * The NEWEST picture's digest - the one the model reads and materialize records. `attachments` is the conversation's own history; a second upload overwrites this field but adds to that list.
      * @type {string}
      * @memberof CreationSnapshot
      */
     diagramFingerprint?: string;
+    /**
+     * Every picture the person put into this conversation, in order, each tied to the turn it arrived with. Metadata only: the platform keeps the digest and refuses the bytes (ADR-066 決策 4), so a client that did not itself send the picture has its description and not the picture.
+     * @type {Array<CreationAttachment>}
+     * @memberof CreationSnapshot
+     */
+    attachments?: Array<CreationAttachment>;
     /**
      * 
      * @type {Array<CreationReference>}
@@ -319,6 +332,7 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'diagramUnderstanding': json['diagram_understanding'],
         'diagramConfirmed': json['diagram_confirmed'],
         'diagramFingerprint': json['diagram_fingerprint'] == null ? undefined : json['diagram_fingerprint'],
+        'attachments': json['attachments'] == null ? undefined : ((json['attachments'] as Array<any>).map(CreationAttachmentFromJSON)),
         'references': ((json['references'] as Array<any>).map(CreationReferenceFromJSON)),
         'draft': json['draft'] == null ? undefined : CreationDraftFromJSON(json['draft']),
         'candidate': json['candidate'] == null ? undefined : CreationCandidateFromJSON(json['candidate']),
@@ -369,6 +383,7 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'diagram_understanding': value['diagramUnderstanding'],
         'diagram_confirmed': value['diagramConfirmed'],
         'diagram_fingerprint': value['diagramFingerprint'],
+        'attachments': value['attachments'] == null ? undefined : ((value['attachments'] as Array<any>).map(CreationAttachmentToJSON)),
         'references': ((value['references'] as Array<any>).map(CreationReferenceToJSON)),
         'draft': CreationDraftToJSON(value['draft']),
         'candidate': CreationCandidateToJSON(value['candidate']),

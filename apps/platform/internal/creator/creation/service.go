@@ -156,6 +156,23 @@ type Candidate struct {
 	// that feeds the review phase is expected to use it.
 	TestCaseID string `json:"test_case_id,omitempty"`
 }
+
+// Attachment is one picture in the conversation: which turn it belongs to, and
+// enough to say what it was. Never the bytes (ADR-066 決策 4).
+type Attachment struct {
+	// MessageIndex is where this picture sits among Messages. When the person
+	// typed something with it, that is the index of their own message, and the
+	// picture belongs inside that turn. When they typed nothing, it is the index
+	// the NEXT message will take - the model's reply to the picture - so the
+	// picture still renders between the two turns it actually happened between.
+	// Nothing can steal that index in between: the session is queued while the
+	// step runs, and a queued session refuses every command but cancel.
+	MessageIndex int    `json:"message_index"`
+	MediaType    string `json:"media_type"`
+	Bytes        int    `json:"bytes"`
+	SHA256       string `json:"sha256"`
+}
+
 type Snapshot struct {
 	Messages []llmclient.CreationMessage `json:"messages"`
 	Brief    string                      `json:"brief"`
@@ -221,15 +238,31 @@ type Snapshot struct {
 	DuplicateAcknowledged bool        `json:"duplicate_acknowledged,omitempty"`
 	// Adopted: the candidate is a fork of an existing Skill chosen through
 	// adopt_reference; nothing was composed.
-	Adopted            bool       `json:"adopted,omitempty"`
-	Draft              *Draft     `json:"draft,omitempty"`
-	PreviousDraft      *Draft     `json:"previous_draft,omitempty"`
-	Candidate          *Candidate `json:"candidate,omitempty"`
-	DiagramFingerprint string     `json:"diagram_fingerprint,omitempty"`
-	DiagramMediaType   string     `json:"diagram_media_type,omitempty"`
-	DiagramBytes       int        `json:"diagram_bytes,omitempty"`
-	Model              string     `json:"model,omitempty"`
-	PromptVersion      string     `json:"prompt_version,omitempty"`
+	Adopted       bool       `json:"adopted,omitempty"`
+	Draft         *Draft     `json:"draft,omitempty"`
+	PreviousDraft *Draft     `json:"previous_draft,omitempty"`
+	Candidate     *Candidate `json:"candidate,omitempty"`
+	// These three describe the NEWEST picture: the one the model reads and the
+	// one materialize records in generation_inputs. A second upload overwrites
+	// them, which is right for that job and wrong for a conversation - see
+	// Attachments.
+	DiagramFingerprint string `json:"diagram_fingerprint,omitempty"`
+	DiagramMediaType   string `json:"diagram_media_type,omitempty"`
+	DiagramBytes       int    `json:"diagram_bytes,omitempty"`
+	// Attachments is every picture the person put into this conversation, in
+	// order, each tied to the turn it arrived with. It exists because the three
+	// fields above are a latest-value, and a conversation may not lose its own
+	// turns: upload a second diagram and the first one disappeared from the
+	// history entirely.
+	//
+	// Metadata only, and deliberately: ADR-066 決策 4 keeps the fingerprint and
+	// refuses the bytes, and its 2026-09-05 closing note answered 「維持不保存」
+	// to the question of storing the original. Nothing here reopens that - the
+	// web thumbnail is the File still held by the browser that sent it, and
+	// after a reload the turn shows this description instead of a picture.
+	Attachments   []Attachment `json:"attachments,omitempty"`
+	Model         string       `json:"model,omitempty"`
+	PromptVersion string       `json:"prompt_version,omitempty"`
 	// ModelChanged holds the confirmed values a model step just overturned,
 	// recorded only when BriefConfirmed was true before this step (a
 	// confirmed input was actually overturned, not merely proposed for the

@@ -460,6 +460,9 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		default:
 			return View{}, nil, ErrInvalidCommand
 		}
+		// Read before the note is appended, so it is the index the note takes
+		// (and, with no note, the index the model's reply will take).
+		at := len(p.Messages)
 		// After the picture has been accepted, never before: a refused image must
 		// not leave its sentence behind in the history as if it had been sent.
 		if err := s.attachNote(p, c.Message); err != nil {
@@ -469,6 +472,13 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		p.DiagramFingerprint = hex.EncodeToString(h[:])
 		p.DiagramMediaType = c.Diagram.MediaType
 		p.DiagramBytes = len(b)
+		// The three fields above are the newest picture; this is the history.
+		p.Attachments = append(p.Attachments, Attachment{
+			MessageIndex: at,
+			MediaType:    p.DiagramMediaType,
+			Bytes:        p.DiagramBytes,
+			SHA256:       p.DiagramFingerprint,
+		})
 		p.DiagramUnderstanding = ""
 		p.DiagramConfirmed = false
 		p.BriefConfirmed = false

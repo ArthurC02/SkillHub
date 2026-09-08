@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
@@ -9,6 +9,7 @@ import {
   getCreationSession,
   listCreationSessions,
   type CreationAction,
+  type CreationAttachment,
   type CreationSession as Session,
   type CreationSnapshot,
   type CreationState,
@@ -173,6 +174,43 @@ function DiagramUnderstandingView({ raw }: { raw: string }) {
     </div>
   );
 }
+/**
+ * The pictures that belong to one turn.
+ *
+ * `thumbs` is the only place a picture can come from: the platform keeps the
+ * digest and refuses the bytes (ADR-066 決策 4), so nothing serves it back and
+ * `thumbs` holds only what THIS browser sent, for as long as this page lives.
+ * After a reload — or on any other device — the turn says what was attached
+ * instead of showing it. That sentence is not an error, so it is not an alert;
+ * it is the same 「這裡沒有東西可以給你看，原因是這個」 the app says elsewhere.
+ */
+function Attachments({
+  list,
+  thumbs,
+}: {
+  list: CreationAttachment[];
+  thumbs: Map<string, string>;
+}) {
+  return (
+    <ul className="creation-attachments">
+      {list.map((a) => {
+        const url = thumbs.get(a.sha256);
+        return (
+          <li key={a.sha256} className="creation-attachment">
+            {url ? (
+              <img src={url} alt={"你在這一輪附上的流程圖（" + a.media_type + "）"} />
+            ) : (
+              <p className="note">平台不保存原圖，所以重新整理之後這裡只剩它的說明。</p>
+            )}
+            <span className="note">
+              流程圖 · {a.media_type} · {a.bytes} 位元組
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 function declaredReferenceField(value?: string) {
   return value?.trim() ? value : "未宣告";
 }
@@ -280,6 +318,31 @@ export function CreationSession() {
     setFile(undefined);
     if (fileInput.current) fileInput.current.value = "";
   };
+  /**
+   * The pictures this page has in its hands, by digest.
+   *
+   * A sent picture is never served back (ADR-066 決策 4 keeps the digest and
+   * refuses the bytes), so the only way a conversation can show one is for the
+   * browser that sent it to keep holding the `File`. That is what this is: an
+   * object URL per digest, alive for this page and revoked when it unmounts.
+   * The digest is the key because the server hands it back on the attachment it
+   * just recorded, which is how the two halves find each other.
+   */
+  const thumbs = useRef(new Map<string, string>());
+  useEffect(() => {
+    const held = thumbs.current;
+    return () => held.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+  // The picture that is in the composer but not sent yet. ChatGPT shows it, and
+  // the reason is not decoration: it is the only confirmation that the file the
+  // person picked is the file they meant.
+  const preview = useMemo(() => (file ? URL.createObjectURL(file) : undefined), [file]);
+  useEffect(
+    () => () => {
+      if (preview) URL.revokeObjectURL(preview);
+    },
+    [preview],
+  );
   const pending = useRef<{ key: string; body: CreationAction } | undefined>(undefined);
   const startPending = useRef<
     { key: string; body: { id: string; message: string; budget_usd: number } } | undefined
@@ -440,7 +503,13 @@ export function CreationSession() {
       // 參考 Skill 本來沒有清：留下來的 chip 會被下一次的守門讀成「你又挑了參考」，
       // 於是你想補一句話卻被擋，而錯誤訊息叫你去做你剛剛做完的事。
       if (mode === "diagram") {
-        await send(value, "diagram", { diagram, ...(note ? { message: note } : {}) });
+        const next = await send(value, "diagram", { diagram, ...(note ? { message: note } : {}) });
+        // Hold on to the picture we just sent, keyed by the digest the server
+        // recorded for it: that is the join between the turn in the history and
+        // the only copy of the image that exists on this side.
+        const recorded = next.snapshot.attachments ?? [];
+        const mine = recorded[recorded.length - 1];
+        if (mine && file) thumbs.current.set(mine.sha256, URL.createObjectURL(file));
         clearFile();
         setMessage("");
       }
@@ -597,15 +666,47 @@ export function CreationSession() {
               流程一直都在，但**對話這個介面從來沒有被畫過**。角色從行內粗體變成
               訊息上方的標籤，列變成訊息塊，樣式全在 `index.css` 的 `.creation-log`
               （沒有新 token、沒有新字級）。編號拿掉了：對話不是編號清單。 */}
+          {/* ── 2026-09-09：圖片進入對話 ────────────────────────────────
+              在這之前圖片只在畫面別處留下一句「已附上流程圖」：**你送出去的東西，
+              對話裡看不到**。現在它坐在它所屬的那一輪裡——打了字就在你那則訊息
+              下面，沒打字就自成一塊，位置由 `message_index` 決定而不是由這裡猜。
+              第二次上傳不再蓋掉第一次：`attachments` 是清單，`diagram_*` 三個
+              欄位仍然是「最新那一張」給模型與 materialize 用。 */}
           <ol className="creation-log">
-            {p.messages.map((m, i) => (
-              <li key={i} data-role={m.role}>
-                <span className="creation-who">
-                  {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
-                </span>
-                {m.content}
+            {p.messages.map((m, i) => {
+              const here = (p.attachments ?? []).filter((a) => a.message_index === i);
+              return (
+                <Fragment key={i}>
+                  {/* 沒有文字的上傳落在「下一則訊息」的索引上，所以那一則不是你的
+                      話時，圖自己是一塊——它確實發生在這兩輪之間。 */}
+                  {m.role !== "user" && here.length > 0 && (
+                    <li data-role="user">
+                      <span className="creation-who">你</span>
+                      <Attachments list={here} thumbs={thumbs.current} />
+                    </li>
+                  )}
+                  <li data-role={m.role}>
+                    <span className="creation-who">
+                      {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
+                    </span>
+                    {m.content}
+                    {m.role === "user" && here.length > 0 && (
+                      <Attachments list={here} thumbs={thumbs.current} />
+                    )}
+                  </li>
+                </Fragment>
+              );
+            })}
+            {/* 剛送出、模型還沒回話的那一張。 */}
+            {(p.attachments ?? []).some((a) => a.message_index >= p.messages.length) && (
+              <li data-role="user">
+                <span className="creation-who">你</span>
+                <Attachments
+                  list={(p.attachments ?? []).filter((a) => a.message_index >= p.messages.length)}
+                  thumbs={thumbs.current}
+                />
               </li>
-            ))}
+            )}
           </ol>
           {roundTimeline.length > 0 && (
             <section>
@@ -664,18 +765,10 @@ export function CreationSession() {
               )}
             </section>
           )}
-          {/* 平台收到圖了沒有——在 Agent 讀出內容之前，畫面上唯一能回答這件事的東西。
-              快照一直帶著這三個欄位（`diagram_fingerprint`／`media_type`／`bytes`），
-              但沒有人畫它們：送出之後對話裡不會多一句話，於是「我到底傳上去了嗎」
-              只能靠等。`needs_reupload` 是圖收到了但那一步中斷、理解沒生出來，
-              重新上傳的入口就在下面的輸入區。 */}
-          {p.diagram_fingerprint && (
-            <p>
-              已附上流程圖（{p.diagram_media_type || "未知格式"}
-              {p.diagram_bytes !== undefined && `，${p.diagram_bytes} 位元組`}）。
-              {session?.state === "needs_reupload" &&
-                "這一步中斷了，Agent 沒能讀出內容；請在下面重新上傳同一張圖。"}
-            </p>
+          {/* 「收到了沒有」現在由對話自己回答（圖坐在它所屬的那一輪裡），所以這裡
+              只剩對話說不出口的那一件：圖收到了、但那一步中斷、理解沒生出來。 */}
+          {session?.state === "needs_reupload" && (
+            <p>這一步中斷了，Agent 沒能讀出那張圖；請在下面重新上傳同一張。</p>
           )}
           {p.diagram_understanding && (
             <section>
@@ -1066,6 +1159,9 @@ export function CreationSession() {
               {file && (
                 <li>
                   <button type="button" disabled={locked} onClick={clearFile}>
+                    {/* 縮圖是唯一能回答「我選到的是不是我要的那張」的東西；
+                        `alt=""` 因為右邊那句話已經說出它是什麼了。 */}
+                    {preview && <img className="chip-thumb" src={preview} alt="" />}
                     移除流程圖：{file.name}
                   </button>
                 </li>

@@ -5673,6 +5673,193 @@ func (s *CreationActionKind) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
+func (s *CreationAttachment) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *CreationAttachment) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("message_index")
+		e.Int(s.MessageIndex)
+	}
+	{
+		e.FieldStart("media_type")
+		s.MediaType.Encode(e)
+	}
+	{
+		e.FieldStart("bytes")
+		e.Int(s.Bytes)
+	}
+	{
+		e.FieldStart("sha256")
+		e.Str(s.SHA256)
+	}
+}
+
+var jsonFieldsNameOfCreationAttachment = [4]string{
+	0: "message_index",
+	1: "media_type",
+	2: "bytes",
+	3: "sha256",
+}
+
+// Decode decodes CreationAttachment from json.
+func (s *CreationAttachment) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreationAttachment to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "message_index":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Int()
+				s.MessageIndex = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"message_index\"")
+			}
+		case "media_type":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.MediaType.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"media_type\"")
+			}
+		case "bytes":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Int()
+				s.Bytes = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"bytes\"")
+			}
+		case "sha256":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Str()
+				s.SHA256 = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"sha256\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode CreationAttachment")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfCreationAttachment) {
+					name = jsonFieldsNameOfCreationAttachment[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreationAttachment) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreationAttachment) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreationAttachmentMediaType as json.
+func (s CreationAttachmentMediaType) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes CreationAttachmentMediaType from json.
+func (s *CreationAttachmentMediaType) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreationAttachmentMediaType to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch CreationAttachmentMediaType(v) {
+	case CreationAttachmentMediaTypeImagePNG:
+		*s = CreationAttachmentMediaTypeImagePNG
+	case CreationAttachmentMediaTypeImageJpeg:
+		*s = CreationAttachmentMediaTypeImageJpeg
+	case CreationAttachmentMediaTypeImageWEBP:
+		*s = CreationAttachmentMediaTypeImageWEBP
+	default:
+		*s = CreationAttachmentMediaType(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s CreationAttachmentMediaType) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreationAttachmentMediaType) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *CreationCandidate) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -7571,6 +7758,16 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.Attachments != nil {
+			e.FieldStart("attachments")
+			e.ArrStart()
+			for _, elem := range s.Attachments {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
 		e.FieldStart("references")
 		e.ArrStart()
 		for _, elem := range s.References {
@@ -7732,7 +7929,7 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [36]string{
+var jsonFieldsNameOfCreationSnapshot = [37]string{
 	0:  "messages",
 	1:  "brief",
 	2:  "acceptance_criteria",
@@ -7742,33 +7939,34 @@ var jsonFieldsNameOfCreationSnapshot = [36]string{
 	6:  "diagram_understanding",
 	7:  "diagram_confirmed",
 	8:  "diagram_fingerprint",
-	9:  "references",
-	10: "draft",
-	11: "candidate",
-	12: "pending_action",
-	13: "budget_usd",
-	14: "reserved_usd",
-	15: "spent_usd",
-	16: "usage_unknown",
-	17: "steps",
-	18: "tool_calls",
-	19: "draft_retries",
-	20: "run_unmet",
-	21: "nudges",
-	22: "blocked_repeats",
-	23: "search_rounds",
-	24: "catalog_checked",
-	25: "duplicates",
-	26: "pending_materialize",
-	27: "duplicate_acknowledged",
-	28: "adopted",
-	29: "pending_fetch_url",
-	30: "fetches",
-	31: "model",
-	32: "prompt_version",
-	33: "diagram_media_type",
-	34: "diagram_bytes",
-	35: "previous_draft",
+	9:  "attachments",
+	10: "references",
+	11: "draft",
+	12: "candidate",
+	13: "pending_action",
+	14: "budget_usd",
+	15: "reserved_usd",
+	16: "spent_usd",
+	17: "usage_unknown",
+	18: "steps",
+	19: "tool_calls",
+	20: "draft_retries",
+	21: "run_unmet",
+	22: "nudges",
+	23: "blocked_repeats",
+	24: "search_rounds",
+	25: "catalog_checked",
+	26: "duplicates",
+	27: "pending_materialize",
+	28: "duplicate_acknowledged",
+	29: "adopted",
+	30: "pending_fetch_url",
+	31: "fetches",
+	32: "model",
+	33: "prompt_version",
+	34: "diagram_media_type",
+	35: "diagram_bytes",
+	36: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -7896,8 +8094,25 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"diagram_fingerprint\"")
 			}
+		case "attachments":
+			if err := func() error {
+				s.Attachments = make([]CreationAttachment, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem CreationAttachment
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Attachments = append(s.Attachments, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"attachments\"")
+			}
 		case "references":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				s.References = make([]CreationReference, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -7935,7 +8150,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"candidate\"")
 			}
 		case "pending_action":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				v, err := d.Str()
 				s.PendingAction = string(v)
@@ -7947,7 +8162,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"pending_action\"")
 			}
 		case "budget_usd":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				v, err := d.Float64()
 				s.BudgetUsd = float64(v)
@@ -7959,7 +8174,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"budget_usd\"")
 			}
 		case "reserved_usd":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				v, err := d.Float64()
 				s.ReservedUsd = float64(v)
@@ -7981,7 +8196,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"spent_usd\"")
 			}
 		case "usage_unknown":
-			requiredBitSet[2] |= 1 << 0
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				v, err := d.Bool()
 				s.UsageUnknown = bool(v)
@@ -7993,7 +8208,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usage_unknown\"")
 			}
 		case "steps":
-			requiredBitSet[2] |= 1 << 1
+			requiredBitSet[2] |= 1 << 2
 			if err := func() error {
 				v, err := d.Int()
 				s.Steps = int(v)
@@ -8005,7 +8220,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"steps\"")
 			}
 		case "tool_calls":
-			requiredBitSet[2] |= 1 << 2
+			requiredBitSet[2] |= 1 << 3
 			if err := func() error {
 				v, err := d.Int()
 				s.ToolCalls = int(v)
@@ -8211,8 +8426,8 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [5]uint8{
 		0b11010111,
-		0b01110010,
-		0b00000111,
+		0b11100100,
+		0b00001110,
 		0b00000000,
 		0b00000000,
 	} {

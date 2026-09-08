@@ -82,6 +82,11 @@ function routeGet(url: string, list: unknown, single: unknown) {
 beforeEach(() => {
   box = document.createElement("div");
   document.body.appendChild(box);
+  // jsdom has no object URLs. The component holds the sent `File` behind one
+  // because the platform keeps the digest and refuses the bytes, so a test that
+  // wants to see a thumbnail has to supply the browser half.
+  URL.createObjectURL = vi.fn((blob: Blob) => "blob:" + String((blob as File).name));
+  URL.revokeObjectURL = vi.fn();
   q = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -282,6 +287,101 @@ test("a diagram carries the sentence that came with it, in one action", async ()
     message: "這是我的流程，我想把它變成待辦清單 Skill。",
     diagram: { media_type: "image/png", data: btoa("diagram") },
   });
+});
+/**
+ * 「同一批的對話傳送」的另一半：圖不只要和文字**一起送出去**，還要和文字**一起
+ * 出現在對話裡**。在這之前它送得出去但看不到——對話裡只有你的文字，圖變成畫面
+ * 別處的一句「已附上流程圖」。
+ *
+ * 縮圖只可能來自這個瀏覽器自己手上那份 `File`：平台留指紋、不留位元組（ADR-066
+ * 決策 4），沒有任何端點會把圖送回來。所以這支測試走完整條路——真的送出去、拿回
+ * 帶著 `attachments` 的快照、再看那一則訊息裡有沒有圖。
+ */
+test("a picture and the words it came with are one turn in the conversation", async () => {
+  const sent = sample({ revision: 2 });
+  sent.snapshot.messages = [{ role: "user", content: "這是我的流程，幫我做成 Skill。" }];
+  sent.snapshot.attachments = [
+    { message_index: 0, media_type: "image/png", bytes: 7, sha256: "digest-1" },
+  ];
+  let posts = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts += 1;
+        return response(posts === 1 ? sample({ revision: 1 }) : sent);
+      }
+      return routeGet(url, [], sent);
+    }),
+  );
+  await render();
+  await input("這次預算上限（美元）", ".5");
+  await input("想完成的任務", "這是我的流程，幫我做成 Skill。");
+  // 送出前就看得到縮圖：那是唯一能回答「我選到的是不是我要的那張」的東西。
+  await attachDiagram();
+  expect(box.querySelector("img.chip-thumb"), "輸入區裡沒有預覽").not.toBe(null);
+  await click("開始互動創作");
+  // 注意不能等文字：textarea 自己就帶著它。等對話本身出現。
+  await waitFor(() => !!box.querySelector(".creation-log"));
+  const mine = [...box.querySelectorAll('.creation-log > li[data-role="user"]')];
+  expect(mine).toHaveLength(1);
+  expect(mine[0].textContent).toContain("這是我的流程，幫我做成 Skill。");
+  expect(mine[0].querySelector("img"), "圖沒有和它的文字在同一則訊息裡").not.toBe(null);
+});
+/**
+ * 兩件事一起守：①沒打字的上傳自己是一塊，位置在模型回話之前——它確實發生在那兩輪
+ * 之間；②**第二次上傳不會把第一次從歷史裡抹掉**。第二點是 `attachments` 這個清單
+ * 存在的理由：`diagram_fingerprint` 那三個欄位是「最新那一張」，一個對話不能弄丟
+ * 自己的回合。
+ */
+test("a second picture does not erase the first, and a wordless one is its own turn", async () => {
+  const v = sample({ revision: 3 });
+  v.snapshot.messages = [
+    { role: "assistant", content: "我看到一張流程圖。" },
+    { role: "user", content: "再看看這一張。" },
+    { role: "assistant", content: "兩張都讀到了。" },
+  ];
+  v.snapshot.attachments = [
+    { message_index: 0, media_type: "image/png", bytes: 7, sha256: "digest-1" },
+    { message_index: 1, media_type: "image/webp", bytes: 9, sha256: "digest-2" },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const blocks = [...box.querySelectorAll(".creation-attachments")];
+  expect(blocks, "第二張把第一張蓋掉了").toHaveLength(2);
+  const rows = [...box.querySelectorAll(".creation-log > li")];
+  // 沒打字的那一張排在模型那句話**之前**，而帶文字的那一張在你自己的訊息**裡**。
+  expect(rows[0].getAttribute("data-role")).toBe("user");
+  expect(rows[0].querySelector(".creation-attachments")).not.toBe(null);
+  expect(rows[0].textContent).not.toContain("我看到一張流程圖");
+  expect(rows[1].textContent).toContain("我看到一張流程圖");
+  const second = rows.find((r) => r.textContent!.includes("再看看這一張。"))!;
+  expect(second.querySelector(".creation-attachments")).not.toBe(null);
+});
+/**
+ * 換一台裝置、或只是重新整理，那張圖就不在了——平台不保存原圖。這時候那一輪不能
+ * 變成空白，也不能假裝有圖：它說出附了什麼，以及為什麼看不到。
+ */
+test("a conversation without the browser that sent the picture describes it instead", async () => {
+  const v = sample({ revision: 2 });
+  v.snapshot.messages = [{ role: "user", content: "這是我的流程。" }];
+  v.snapshot.attachments = [
+    { message_index: 0, media_type: "image/png", bytes: 1234, sha256: "digest-elsewhere" },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  expect(box.querySelector(".creation-attachment img"), "沒有人手上有這張圖").toBe(null);
+  expect(box.textContent).toContain("image/png");
+  expect(box.textContent).toContain("1234 位元組");
+  expect(box.textContent).toContain("平台不保存原圖");
 });
 /**
  * 送出成功之後，輸入區裡的東西要清乾淨——**參考 Skill 一直沒有清**。留下來的 chip

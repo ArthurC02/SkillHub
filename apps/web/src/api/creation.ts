@@ -33,6 +33,22 @@ export interface CreationReference {
   warnings?: number;
 }
 export type CreationFetch = { url: string; sha256?: string; bytes?: number; status: string };
+/**
+ * One picture in the conversation. `message_index` is the turn it belongs to:
+ * the person's own message when they typed something with it, otherwise the
+ * index the model's reply takes.
+ *
+ * There is no URL here and there will not be one — the platform keeps the
+ * digest and refuses the bytes (ADR-066 決策 4). The thumbnail this screen shows
+ * is the `File` the browser still holds from the send that created it, so a
+ * reload leaves the turn describing a picture it can no longer show.
+ */
+export interface CreationAttachment {
+  message_index: number;
+  media_type: string;
+  bytes: number;
+  sha256: string;
+}
 /** What the person last confirmed, before a model step overwrote it (05 R-54
  * #4) — present only when that overwrite actually overturned a confirmed
  * value, so the confirm screen has something to compare the new text to. */
@@ -50,6 +66,7 @@ export interface CreationSnapshot {
   model_changed?: CreationModelChange;
   diagram_understanding: string;
   diagram_confirmed: boolean;
+  attachments?: CreationAttachment[];
   references: CreationReference[];
   catalog_checked?: boolean;
   duplicates?: CreationReference[];
