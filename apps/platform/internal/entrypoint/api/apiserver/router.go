@@ -187,6 +187,10 @@ func NewRouter(d Deps) http.Handler {
 	// INGEST-010: manual takedown of content in the caller's own workspace,
 	// which for curated catalog entries is the operator's workspace.
 	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(d.Registry.Takedown))
+	// 05 R-19: the owner says what their own skill is for. RequireSession, not
+	// RequireOperator — this is the ordinary workspace scope every route above
+	// it uses, unlike the operator-only holds below.
+	mux.HandleFunc("PUT /skills/{id}/category", auth.RequireSession(d.Registry.SetCategory))
 
 	// 02:SEC-011 operator surface: the licensing hold of 0023, set and lifted.
 	// Its own prefix and its own middleware — RequireOperator answers 404 to

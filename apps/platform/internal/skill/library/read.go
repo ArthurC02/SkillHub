@@ -31,6 +31,10 @@ type Skill struct {
 	// user-imported skill gets one, so "no category" is a state the read path has
 	// to be able to word (尚未定值) and must not be able to confuse with a shelf.
 	Category *string
+	// CategorySource is 0061's provenance column: curated | owner, NULL exactly
+	// when Category is NULL (the migration's pairing CHECK). It travels onto
+	// forks alongside Category, for the same reason Category does — see Fork.
+	CategorySource *string
 }
 
 // Version is Registry's immutable version fact.
@@ -238,7 +242,7 @@ func skillDTO(row gen.Skill) Skill {
 		TakedownAt: row.TakedownAt, AccessRestriction: row.AccessRestriction,
 		Redistribution: row.Redistribution,
 		CurationTier:   row.CurationTier, CuratedVersionID: row.CuratedVersionID,
-		Category: row.Category,
+		Category: row.Category, CategorySource: row.CategorySource,
 	}
 }
 

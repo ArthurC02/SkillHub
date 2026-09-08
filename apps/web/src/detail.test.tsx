@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { SkillDetail } from "./pages/SkillDetail";
-import { SKILL_VERSIONS, skillDetail } from "./fixtures/platform";
+import { CATEGORIES, SKILL_VERSIONS, skillDetail } from "./fixtures/platform";
 
 /**
  * r2「產品資訊展示太多細節」在 `/skills/$skillId` 上的那一半，量測日期 2026-09-03：
@@ -79,11 +79,25 @@ function detailBody() {
 /** 擁有者：`/skills/{id}/versions` 是 workspace-scoped，非空＝這一份是你的（ADR-011）。 */
 function stubOwner() {
   const calls: Array<{ url: string; method: string }> = [];
+  // 05 R-19：`PUT /skills/{id}/category` 之後，重讀 `GET /api/skills/{id}` 要拿到
+  // 新的類別——這裡用一個可變的 fixture 值模擬「畫面重讀了資料庫」，而不是模擬
+  // PUT 回應本身（契約的 `Skill` 沒有 `category` 欄位，見 `CategoryEditor` 檔頭）。
+  let category = CATEGORIES.documents;
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     calls.push({ url, method: init?.method ?? "GET" });
     const path = url.split("?")[0];
     if (path === "/me") return json({ user_id: "u-1", workspace_id: "ws-1" });
+    if (path.endsWith("/category") && init?.method === "PUT") {
+      const body = JSON.parse(String(init.body)) as { category: keyof typeof CATEGORIES };
+      category = CATEGORIES[body.category] ?? category;
+      return json({
+        skill_id: SKILL,
+        name: "PDF Summariser",
+        summary: "",
+        redistribution: "allowed",
+      });
+    }
     if (path.endsWith("/versions") && init?.method === "POST")
       return json(
         {
@@ -97,7 +111,7 @@ function stubOwner() {
         201,
       );
     if (path.endsWith("/versions")) return json(SKILL_VERSIONS);
-    if (path.startsWith("/api/skills/")) return json(detailBody());
+    if (path.startsWith("/api/skills/")) return json({ ...detailBody(), category });
     return json({ error: "not found" }, 404);
   });
   return calls;
@@ -383,4 +397,44 @@ test("r4 B1: 上傳新版本的表單只給擁有者，而且打在契約寫的�
   expect(calls).toContainEqual({ url: `/skills/${SKILL}/versions`, method: "POST" });
   // 成功那一句要說出是哪一版，而不是「已上傳」。
   expect(container.querySelector('[role="status"]')?.textContent).toBe("已存成 v3。");
+});
+
+// --- 05 R-19：擁有者自己標類別，平台不猜 -------------------------------------
+
+function selectValue(select: HTMLSelectElement, value: string) {
+  select.value = value;
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+test("05 R-19: 擁有者看得到類別選單，四個選項齊全，送出後畫面更新", async () => {
+  const calls = stubOwner();
+  await render(<SkillDetail />, settledAsOwner);
+
+  const select = container.querySelector<HTMLSelectElement>("#skill-category");
+  expect(select, "擁有者看不到類別選單").not.toBeNull();
+  // 四個選項：三個書架 ＋ 尚未定值，一個都不能少也不能多出一個手寫的字串。
+  expect(
+    Array.from(select!.querySelectorAll("option"))
+      .map((o) => o.value)
+      .sort(),
+  ).toEqual(["data", "documents", "unassigned", "writing"].sort());
+  expect(select!.value).toBe("documents");
+
+  await act(async () => selectValue(select!, "writing"));
+  await act(async () =>
+    Array.from(container.querySelectorAll("button"))
+      .find((b) => (b.textContent ?? "").includes("儲存"))!
+      .click(),
+  );
+  await waitFor(() => text().includes("類別已更新。"));
+
+  expect(calls).toContainEqual({ url: `/skills/${SKILL}/category`, method: "PUT" });
+  // 送出後畫面更新：重讀 GET 拿到新的類別，標頭徽章換成「寫作」而不是停在舊值。
+  await waitFor(() => container.querySelector("header .badge-row")!.textContent!.includes("寫作"));
+});
+
+test("05 R-19: 非擁有者看不到類別選單", async () => {
+  stubVisitor();
+  await render(<SkillDetail />, settledAsVisitor);
+  expect(container.querySelector("#skill-category")).toBeNull();
 });

@@ -568,6 +568,8 @@ type Skill struct {
 	CuratedVersionID pgtype.UUID
 	// PDM-001 category: documents | writing | data, or NULL when the platform has not assigned one (05 R-19). Copied onto forks. See 0053.
 	Category *string
+	// Who assigned skills.category: curated (PDM-001 backfill) | owner (PUT /skills/{id}/category, 05 R-19). NULL iff category is NULL. See 0061.
+	CategorySource *string
 }
 
 type SkillRuntimeCompatibility struct {

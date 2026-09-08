@@ -508,6 +508,7 @@ func catalogSkillFacts(skill registry.Skill) catalog.SkillFacts {
 		TakedownAt: skill.TakedownAt, AccessRestriction: skill.AccessRestriction,
 		Redistribution: skill.Redistribution, CurationTier: skill.CurationTier,
 		CuratedVersionID: skill.CuratedVersionID, Category: skill.Category,
+		CategorySource: skill.CategorySource,
 	}
 }
 

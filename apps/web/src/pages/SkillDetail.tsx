@@ -4,7 +4,8 @@ import { ReadFailure } from "../components/LoginRequired";
 import { Timestamp } from "../components/Timestamp";
 import { VersionDiff } from "./RunCompare";
 import { Link, useParams } from "@tanstack/react-router";
-import { ApiError } from "../api/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError, apiFetch } from "../api/client";
 import { useForkSkill, useSkillDetail, useSkillVersions, skillDiffUrl } from "../api/skills";
 import { useMe } from "../api/me";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
@@ -15,7 +16,9 @@ import { RiskIndicator } from "../components/RiskIndicator";
 import { SignInAction } from "../components/SignIn";
 import { VersionUpload } from "../components/VersionUpload";
 import { PACKAGING_BLOCKED_LABEL, packagingGate } from "./Packaging";
+import { SetSkillCategoryRequestCategoryEnum } from "@skillhub/api-client-ts";
 import type {
+  Labelled,
   SkillDetail as SkillDetailModel,
   SkillEnrichment,
   SkillLimitation,
@@ -350,6 +353,8 @@ export function SkillDetail() {
           )}
 
           <VersionUpload skillId={skillId} />
+
+          <CategoryEditor skillId={skillId} category={skill.category} />
         </aside>
       </div>
     </article>
@@ -473,6 +478,77 @@ function VersionHistory({ skillId }: { skillId: string }) {
             </details>
           </>
         ))}
+    </section>
+  );
+}
+
+/**
+ * 05 R-19 的畫面：擁有者自己標類別，平台不猜（`PUT /skills/{id}/category`,
+ * contract operationId `setSkillCategory`）。
+ *
+ * 只給擁有者看，訊號與這一頁其他三個元件同一個（`TrialEntry`／`PackagingEntry`／
+ * `ForkAction` 的檔頭）：`GET /skills/{id}/versions` 是 workspace-scoped，別人的
+ * Skill 回空清單（ADR-011）。React Query 同 key 去重，這不是第五個請求。
+ *
+ * **手寫 `apiFetch` 而不是產生器 client 的 `setSkillCategory`**——理由與
+ * `api/skills.ts` 檔頭相同（產生的 client 是 camelCase 加一層 runtime 轉換，改用它
+ * 是一次遷移而不是順手整理）。**`<select>` 的四個值借用產生器的 enum**
+ * （`SetSkillCategoryRequestCategoryEnum`）：契約加第五個值時這裡編譯期就知道少了
+ * 一個 `<option>`，而不是安靜漏送一個手寫字串常數。
+ *
+ * 送出後只 invalidate `["skills", skillId]` 這個前綴（與 `useSaveSkillVersion` 同
+ * 一個理由：同時涵蓋詳情與版本清單）——PUT 回的是契約的 `Skill`，那個 schema 沒有
+ * `category` 欄位（`category` 是 `SkillDetail` 才有的 `Labelled`），畫面上新的類別
+ * 與它的 note（策展判定／擁有者標示）要靠重讀 GET 才拿得到，不是從這次 PUT 的回應
+ * 拼出來的。
+ */
+function CategoryEditor({ skillId, category }: { skillId: string; category: Labelled }) {
+  const versions = useSkillVersions(skillId);
+  const client = useQueryClient();
+  const [choice, setChoice] = useState<SetSkillCategoryRequestCategoryEnum>(
+    category.value as SetSkillCategoryRequestCategoryEnum,
+  );
+
+  const save = useMutation({
+    mutationFn: () =>
+      apiFetch(`/skills/${skillId}/category`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: choice }),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["skills", skillId] }),
+  });
+
+  // 不在你的工作區：不畫表單。理由已經由旁邊的 Fork／上傳新版本／試跑講過同一句
+  // （「這個 Skill 不在你的工作區，要先 Fork 一份」），§3 第 14 條要的是同一個事實
+  // 在一頁上只講一次。
+  if ((versions.data?.versions.length ?? 0) === 0) return null;
+
+  return (
+    <section>
+      <h3>類別</h3>
+      <p className="field">
+        <label htmlFor="skill-category">這個 Skill 是做什麼用的</label>
+        <select
+          id="skill-category"
+          value={choice}
+          onChange={(e) => setChoice(e.target.value as SetSkillCategoryRequestCategoryEnum)}
+        >
+          <option value={SetSkillCategoryRequestCategoryEnum.Documents}>文件</option>
+          <option value={SetSkillCategoryRequestCategoryEnum.Writing}>寫作</option>
+          <option value={SetSkillCategoryRequestCategoryEnum.Data}>資料</option>
+          <option value={SetSkillCategoryRequestCategoryEnum.Unassigned}>尚未定值</option>
+        </select>
+      </p>
+      <button type="button" onClick={() => save.mutate()} disabled={save.isPending}>
+        {save.isPending ? "儲存中…" : "儲存"}
+      </button>
+      {save.isError && (
+        <ReadFailure error={save.error} what="設定類別">
+          <p role="alert">類別沒有設定成功，可以再按一次。</p>
+        </ReadFailure>
+      )}
+      {save.isSuccess && <p role="status">類別已更新。</p>}
     </section>
   );
 }

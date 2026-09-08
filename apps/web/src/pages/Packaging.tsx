@@ -23,7 +23,15 @@ import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
 import { RiskIndicator } from "../components/RiskIndicator";
 import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
-import type { Finding, Redistribution, SkillDetail } from "../api/types";
+import type {
+  Finding,
+  FindingSeverity,
+  Redistribution,
+  SeverityCounts,
+  SkillCompatibility,
+  SkillDetail,
+  SkillRisk,
+} from "../api/types";
 
 /**
  * 02:PACK-001 / PACK-002 — pick a target, see what packaging would produce,
@@ -132,6 +140,60 @@ export function packagingGate(skill: SkillDetail): PackagingBlockedReason | null
 }
 
 const DEAD_REASON_ID = "packaging-build-disabled-reason";
+
+const SEVERITY_LABEL: Record<FindingSeverity, string> = {
+  error: "錯誤",
+  warning: "警告",
+  info: "提示",
+};
+
+/** errors > warnings > infos；三者皆零時沒有「最高」可言。 */
+function highestSeverity(counts: SeverityCounts): FindingSeverity | null {
+  if (counts.errors > 0) return "error";
+  if (counts.warnings > 0) return "warning";
+  if (counts.infos > 0) return "info";
+  return null;
+}
+
+/**
+ * 04 R-42(c)③——這一頁的風險／License／相容性三塊，在此之前是詳情頁同三塊的逐字
+ * 複本（381 字，兩頁講的是同一次掃描，讀者三十秒前才在詳情頁看過一次）。決定是
+ * 「留判定行與最高嚴重度、細項折疊」，與 §2.10 第 1 項本來就有的「細項可折，
+ * 『有 3 項風險，最高為 error』不可折」同構——**不是新規則，是套用既有那一條**。
+ *
+ * `RiskIndicator`（詳情頁用的那個，逐項揭露全部平鋪）是「細項」，跟在這一句後面
+ * 收進緊接著的 `<details>`；這裡沒有另外維護一份風險判定邏輯，只是把它算成一句話。
+ */
+function RiskVerdict({ risk }: { risk: SkillRisk }) {
+  if (risk.scan_status === "unavailable") {
+    return <p className="badge badge-risk">風險掃描結果未知：無法讀取已保存的套件內容。</p>;
+  }
+  const total = risk.counts.errors + risk.counts.warnings + risk.counts.infos;
+  const highest = highestSeverity(risk.counts);
+  return (
+    <p className="risk-counts">
+      {highest
+        ? `有 ${total} 項風險，最高為${SEVERITY_LABEL[highest]}。`
+        : "靜態掃描未發現錯誤、警告或提示。"}
+    </p>
+  );
+}
+
+/**
+ * 同一批（04 R-42(c)③）：§2.10 第 2 項「驗證狀態」的三個詞留在外面，`CompatibilityStatus`
+ * 的逐軸備註、實測環境與時間是細項，收進緊接著的 `<details>`。三個詞取自伺服器自己的
+ * `Labelled.label`，與 `CompatibilityStatus` 讀的是同一個欄位——不是這裡另外判斷一次。
+ */
+function CompatibilityVerdict({ compatibility }: { compatibility: SkillCompatibility }) {
+  const axes: Array<[string, string]> = [
+    ["規格驗證", compatibility.spec_validation.label],
+    ["能力相容", compatibility.capability.label],
+    ["執行環境相容", compatibility.runtime.label],
+  ];
+  return (
+    <p className="compat-list">{axes.map(([label, value]) => `${label}：${value}`).join("／")}</p>
+  );
+}
 
 /**
  * Why 建立下載套件 cannot be pressed, in visible text (system.md §2.4 / §3 item
@@ -260,8 +322,17 @@ export function Packaging() {
         <LabelledBadge kind="redistribution" value={skill.data.redistribution} />
         <LicenseBadge license={skill.data.license} />
       </p>
-      <LicenseNotes license={skill.data.license} />
-      <RiskIndicator risk={skill.data.risk} />
+      {/*
+        04 R-42(c)③：判定行與最高嚴重度留在外面（§2.10 第 1／3 項不可折的那半），
+        逐項細節——License 出處那句 `LicenseNotes`、風險的逐項揭露——收進 `<details>`。
+        這一頁是讀者三十秒前才在詳情頁看過一次的複本；詳情頁自己一個字都沒有動。
+      */}
+      <RiskVerdict risk={skill.data.risk} />
+      <details>
+        <summary>風險與 License 的逐項細節（與詳情頁同一次掃描結果）</summary>
+        <LicenseNotes license={skill.data.license} />
+        <RiskIndicator risk={skill.data.risk} />
+      </details>
       {versionId === "" ? (
         /* 設計 §2.9 的「無權檢視」，與 SkillDetail 的同一句話同一個理由。 */
         <p role="alert">
@@ -310,7 +381,13 @@ export function Packaging() {
           {gate && <BlockedNotice reason={gate} />}
 
           <h2>這個版本的相容性</h2>
-          <CompatibilityStatus compatibility={skill.data.compatibility} />
+          {/* 04 R-42(c)③：三軸的驗證狀態（§2.10 第 2 項）留在外面；逐軸備註、實測
+              環境與時間是細項，收進緊接著的 `<details>`。 */}
+          <CompatibilityVerdict compatibility={skill.data.compatibility} />
+          <details>
+            <summary>相容性細項（每一軸的備註與實測環境）</summary>
+            <CompatibilityStatus compatibility={skill.data.compatibility} />
+          </details>
           {/*
             This sentence said 「能力相容與實測相容是沙箱裡量到的」, and one of the
             two is not — the runtime axis is a rule about whether the image

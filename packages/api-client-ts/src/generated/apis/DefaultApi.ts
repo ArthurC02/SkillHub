@@ -83,10 +83,12 @@ import type {
   SandboxTraceEvent,
   SearchSkills200Response,
   SetEvaluationFeedbackRequest,
+  SetSkillCategoryRequest,
   SetSkillRedistribution200Response,
   SetSkillRedistributionRequest,
   SetSkillRestriction200Response,
   SetSkillRestrictionRequest,
+  Skill,
   SkillDetail,
   SkillFiles,
   StartRunRequest,
@@ -239,6 +241,8 @@ import {
     SearchSkills200ResponseToJSON,
     SetEvaluationFeedbackRequestFromJSON,
     SetEvaluationFeedbackRequestToJSON,
+    SetSkillCategoryRequestFromJSON,
+    SetSkillCategoryRequestToJSON,
     SetSkillRedistribution200ResponseFromJSON,
     SetSkillRedistribution200ResponseToJSON,
     SetSkillRedistributionRequestFromJSON,
@@ -247,6 +251,8 @@ import {
     SetSkillRestriction200ResponseToJSON,
     SetSkillRestrictionRequestFromJSON,
     SetSkillRestrictionRequestToJSON,
+    SkillFromJSON,
+    SkillToJSON,
     SkillDetailFromJSON,
     SkillDetailToJSON,
     SkillFilesFromJSON,
@@ -523,6 +529,11 @@ export interface SearchSkillsRequest {
 export interface SetEvaluationFeedbackOperationRequest {
     id: string;
     setEvaluationFeedbackRequest: SetEvaluationFeedbackRequest;
+}
+
+export interface SetSkillCategoryOperationRequest {
+    id: string;
+    setSkillCategoryRequest: SetSkillCategoryRequest;
 }
 
 export interface SetSkillRedistributionOperationRequest {
@@ -1671,6 +1682,23 @@ export interface DefaultApiInterface {
      * Say whether the judgement was helpful (EVAL-001)
      */
     setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation>;
+
+    /**
+     * A user-imported skill has no category until somebody assigns one, and until 2026-09-08 nobody could: the value was written by the curation backfill and by nothing else, so `?category=` matched no imported skill and the taxonomy existed only for the 45 seeded rows (migration 0053).  The platform does not guess it. A model could be asked, and that was the recorded upgrade path, but a guessed shelf is exactly what DISC-004 and 設計 §2.9 refuse, and the enrichment prompt that would carry the question is pinned to the F1 and poisoning measurements (05 R-53) — changing it costs a paid re-measurement, not a line of prompt. So the answer is the person who owns the bytes: this endpoint, on their own skill, in their own workspace.  The stored provenance separates the two sources: `curated` for the seeded rows a person classified during curation, `owner` for a value set here. Both render as a shelf; only the note differs. 
+     * @summary The owner says what their own skill is for (DISC-002 類別, 05 R-19)
+     * @param {string} id 
+     * @param {SetSkillCategoryRequest} setSkillCategoryRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setSkillCategoryRaw(requestParameters: SetSkillCategoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Skill>>;
+
+    /**
+     * A user-imported skill has no category until somebody assigns one, and until 2026-09-08 nobody could: the value was written by the curation backfill and by nothing else, so `?category=` matched no imported skill and the taxonomy existed only for the 45 seeded rows (migration 0053).  The platform does not guess it. A model could be asked, and that was the recorded upgrade path, but a guessed shelf is exactly what DISC-004 and 設計 §2.9 refuse, and the enrichment prompt that would carry the question is pinned to the F1 and poisoning measurements (05 R-53) — changing it costs a paid re-measurement, not a line of prompt. So the answer is the person who owns the bytes: this endpoint, on their own skill, in their own workspace.  The stored provenance separates the two sources: `curated` for the seeded rows a person classified during curation, `owner` for a value set here. Both render as a shelf; only the note differs. 
+     * The owner says what their own skill is for (DISC-002 類別, 05 R-19)
+     */
+    setSkillCategory(requestParameters: SetSkillCategoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Skill>;
 
     /**
      * Operator only. Sets the redistribution verdict on one skill and records who changed it and why.  This gate and the `restriction` above block the same download, and until 2026-08-23 this was the one of the two with no route, no operator check and no audit event (`05` R-3c). It then spent a further two days with a route and no contract, which is the same gap one layer up: an operator tool generated from this file could set a hold and not release content.  Idempotent, for the same reason as `restriction`: writing the value a skill already has is a second audit event and no change to the row.  The column write and the audit event share one transaction (iron rule 9). This gate decides whether content leaves the platform, so \"released, and no record of who released it\" is the one outcome that must be impossible.  Cross-workspace like `restriction`, and for the same reason: the verdict is about a *source*, so it has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data.  Operator-only is now a ruling rather than a holding position (2026-08-27, `05` R-3a, ADR-057). The route was written narrow while the question was open, on the grounds that widening later adds callers where narrowing later takes something away; the ruling kept it there, because ADR-021 §5.3\'s false positive was made by people who audit licences for a living.  Releasing a skill also has to carry evidence now — see `license_expression` and `license_source` (`05` R-3b). 
@@ -4636,6 +4664,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation> {
         const response = await this.setEvaluationFeedbackRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * A user-imported skill has no category until somebody assigns one, and until 2026-09-08 nobody could: the value was written by the curation backfill and by nothing else, so `?category=` matched no imported skill and the taxonomy existed only for the 45 seeded rows (migration 0053).  The platform does not guess it. A model could be asked, and that was the recorded upgrade path, but a guessed shelf is exactly what DISC-004 and 設計 §2.9 refuse, and the enrichment prompt that would carry the question is pinned to the F1 and poisoning measurements (05 R-53) — changing it costs a paid re-measurement, not a line of prompt. So the answer is the person who owns the bytes: this endpoint, on their own skill, in their own workspace.  The stored provenance separates the two sources: `curated` for the seeded rows a person classified during curation, `owner` for a value set here. Both render as a shelf; only the note differs. 
+     * The owner says what their own skill is for (DISC-002 類別, 05 R-19)
+     */
+    async setSkillCategoryRaw(requestParameters: SetSkillCategoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Skill>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setSkillCategory().'
+            );
+        }
+
+        if (requestParameters['setSkillCategoryRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setSkillCategoryRequest',
+                'Required parameter "setSkillCategoryRequest" was null or undefined when calling setSkillCategory().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/skills/{id}/category`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetSkillCategoryRequestToJSON(requestParameters['setSkillCategoryRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SkillFromJSON(jsonValue));
+    }
+
+    /**
+     * A user-imported skill has no category until somebody assigns one, and until 2026-09-08 nobody could: the value was written by the curation backfill and by nothing else, so `?category=` matched no imported skill and the taxonomy existed only for the 45 seeded rows (migration 0053).  The platform does not guess it. A model could be asked, and that was the recorded upgrade path, but a guessed shelf is exactly what DISC-004 and 設計 §2.9 refuse, and the enrichment prompt that would carry the question is pinned to the F1 and poisoning measurements (05 R-53) — changing it costs a paid re-measurement, not a line of prompt. So the answer is the person who owns the bytes: this endpoint, on their own skill, in their own workspace.  The stored provenance separates the two sources: `curated` for the seeded rows a person classified during curation, `owner` for a value set here. Both render as a shelf; only the note differs. 
+     * The owner says what their own skill is for (DISC-002 類別, 05 R-19)
+     */
+    async setSkillCategory(requestParameters: SetSkillCategoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Skill> {
+        const response = await this.setSkillCategoryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -199,10 +199,12 @@ const (
 // image with a different set of interpreters.
 // category arrives as the raw nullable column, not resolved: NULL is a state
 // with its own word (尚未定值) and the SQL deliberately does not COALESCE it into
-// a shelf nobody chose.
-func resultFacets(r *searchResult, tier string, category *string, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz, compat compatibility) {
+// a shelf nobody chose. categorySource is 0061's provenance column (curated |
+// owner | NULL), which categoryLabel needs to word the note correctly (05
+// R-19 item 4).
+func resultFacets(r *searchResult, tier string, category, categorySource *string, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz, compat compatibility) {
 	r.Tier = tierLabel(Tier(tier))
-	r.Category = categoryLabel(category)
+	r.Category = categoryLabel(category, categorySource)
 	r.Dependencies = dependencyTags(tagsJSON)
 	r.Risk = riskHint(scanJSON)
 	r.VerifiedAt = timeString(verifiedAt)

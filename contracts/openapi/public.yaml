@@ -1388,6 +1388,71 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /skills/{id}/category:
+    put:
+      operationId: setSkillCategory
+      summary: The owner says what their own skill is for (DISC-002 類別, 05 R-19)
+      description: |
+        A user-imported skill has no category until somebody assigns one, and
+        until 2026-09-08 nobody could: the value was written by the curation
+        backfill and by nothing else, so `?category=` matched no imported skill
+        and the taxonomy existed only for the 45 seeded rows (migration 0053).
+
+        The platform does not guess it. A model could be asked, and that was the
+        recorded upgrade path, but a guessed shelf is exactly what DISC-004 and
+        設計 §2.9 refuse, and the enrichment prompt that would carry the question
+        is pinned to the F1 and poisoning measurements (05 R-53) — changing it
+        costs a paid re-measurement, not a line of prompt. So the answer is the
+        person who owns the bytes: this endpoint, on their own skill, in their
+        own workspace.
+
+        The stored provenance separates the two sources: `curated` for the
+        seeded rows a person classified during curation, `owner` for a value set
+        here. Both render as a shelf; only the note differs.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category]
+              additionalProperties: false
+              properties:
+                category:
+                  type: string
+                  enum: ["documents", "writing", "data", "unassigned"]
+                  description: |
+                    One of the three PDM-001 shelves, or `unassigned` to take the
+                    skill back off every shelf — an owner who is unsure has to be
+                    able to say so, and 尚未定值 is a real answer, not a gap.
+      responses:
+        "200":
+          description: Category stored.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Skill" }
+        "400":
+          description: The body is not one of the four accepted values.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            The skill is not in the caller's workspace. Reading somebody else's
+            skill is allowed; saying what it is for is not (ADR-011).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/versions:
     get:
       operationId: listSkillVersions

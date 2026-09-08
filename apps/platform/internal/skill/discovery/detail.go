@@ -428,7 +428,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 		Tier: tierLabel(TierIndexed),
 		// Not deferred like Tier: the shelf is about the skill, not about which
 		// version is newest, so there is nothing to resolve first.
-		Category:    categoryLabel(skill.Category),
+		Category:    categoryLabel(skill.Category, skill.CategorySource),
 		Limitations: []limitation{},
 		Derivation:  derivation(skill),
 		License:     licenseInfo{Status: statusLabel(LicenseStatusUnknown)},

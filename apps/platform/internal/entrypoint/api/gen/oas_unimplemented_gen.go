@@ -1028,6 +1028,26 @@ func (UnimplementedHandler) SetEvaluationFeedback(ctx context.Context, req *SetE
 	return r, ht.ErrNotImplemented
 }
 
+// SetSkillCategory implements setSkillCategory operation.
+//
+// A user-imported skill has no category until somebody assigns one, and until 2026-09-08 nobody could:
+// the value was written by the curation backfill and by nothing else, so `?category=` matched no
+// imported skill and the taxonomy existed only for the 45 seeded rows (migration 0053).
+//
+// The platform does not guess it. A model could be asked, and that was the recorded upgrade path, but
+// a guessed shelf is exactly what DISC-004 and 設計 §2.9 refuse, and the enrichment prompt that
+// would carry the question is pinned to the F1 and poisoning measurements (05 R-53) — changing it
+// costs a paid re-measurement, not a line of prompt. So the answer is the person who owns the bytes:
+// this endpoint, on their own skill, in their own workspace.
+//
+// The stored provenance separates the two sources: `curated` for the seeded rows a person classified
+// during curation, `owner` for a value set here. Both render as a shelf; only the note differs.
+//
+// PUT /skills/{id}/category
+func (UnimplementedHandler) SetSkillCategory(ctx context.Context, req *SetSkillCategoryReq, params SetSkillCategoryParams) (r SetSkillCategoryRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // SetSkillRedistribution implements setSkillRedistribution operation.
 //
 // Operator only. Sets the redistribution verdict on one skill and records who changed it and why.

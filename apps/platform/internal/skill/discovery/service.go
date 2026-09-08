@@ -65,6 +65,9 @@ type SkillFacts struct {
 	CurationTier        string
 	CuratedVersionID    pgtype.UUID
 	Category            *string
+	// CategorySource says who wrote Category: curated | owner (0061, 05 R-19
+	// item 4). NULL exactly when Category is, per the migration's pairing CHECK.
+	CategorySource *string
 }
 
 // VersionFacts is the immutable Registry version state consumed by Catalog views.
@@ -368,7 +371,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		} else {
 			hit.RankNote = rankNotePendingItem
 		}
-		resultFacets(&hit, row.CurationTier, row.Category, row.Tags, row.Scan, row.VerifiedAt,
+		resultFacets(&hit, row.CurationTier, row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}
@@ -422,7 +425,7 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 			// question」 — not 「the similarity is low」.
 			RankNote: rankNoteCatalog,
 		}
-		resultFacets(&hit, row.CurationTier, row.Category, row.Tags, row.Scan, row.VerifiedAt,
+		resultFacets(&hit, row.CurationTier, row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}
@@ -466,7 +469,7 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 			SummarySource: row.SummarySource,
 			RankNote:      rankNoteDegraded,
 		}
-		resultFacets(&hit, row.CurationTier, row.Category, row.Tags, row.Scan, row.VerifiedAt,
+		resultFacets(&hit, row.CurationTier, row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}

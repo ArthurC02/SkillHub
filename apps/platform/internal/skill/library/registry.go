@@ -161,7 +161,12 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 		// The PDM-001 category travels too (0053): it says what the bytes are
 		// for, and a fork is the same bytes in another workspace. Unlike the
 		// curation verdict, which is about who read them and stays behind.
-		Category: src.Category,
+		//
+		// CategorySource travels with it and must (0061): the pairing CHECK
+		// requires category and category_source to be both NULL or both set, so
+		// copying one without the other would fail the fork of any skill an
+		// owner or the curation backfill had already classified.
+		Category: src.Category, CategorySource: src.CategorySource,
 	})
 	if isUniqueViolation(err) {
 		return gen.Skill{}, gen.SkillVersion{}, ErrNameTaken

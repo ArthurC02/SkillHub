@@ -26,10 +26,10 @@ func (q *Queries) CountSkillVersions(ctx context.Context, skillID pgtype.UUID) (
 const createSkill = `-- name: CreateSkill :one
 
 INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id,
-                    access_restriction, redistribution, category)
+                    access_restriction, redistribution, category, category_source)
 VALUES ($1, $2, $3, $4, $5, $6, coalesce($7::text, 'unknown'),
-        $8::text)
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category
+        $8::text, $9::text)
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source
 `
 
 type CreateSkillParams struct {
@@ -41,6 +41,7 @@ type CreateSkillParams struct {
 	AccessRestriction   *string
 	Redistribution      *string
 	Category            *string
+	CategorySource      *string
 }
 
 // Every read here is workspace scoped (iron rule 3). The caller resolves workspace_id
@@ -60,6 +61,12 @@ type CreateSkillParams struct {
 // category travels too (0053): it says what the bytes are for, and a fork is
 // the same bytes. Import passes NULL — the platform has not decided how a
 // user-imported skill gets one (05 R-19) — and NULL renders as 尚未定值.
+//
+// category_source travels alongside it (0061), for a reason that is not
+// optional: the pairing CHECK requires category and category_source to be
+// both NULL or both set, so a fork that copied one without the other would
+// fail that constraint the moment it forked anything the curation backfill or
+// an owner had classified. Import passes NULL for both, same as before.
 func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill, error) {
 	row := q.db.QueryRow(ctx, createSkill,
 		arg.WorkspaceID,
@@ -70,6 +77,7 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 		arg.AccessRestriction,
 		arg.Redistribution,
 		arg.Category,
+		arg.CategorySource,
 	)
 	var i Skill
 	err := row.Scan(
@@ -89,12 +97,13 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 		&i.CurationTier,
 		&i.CuratedVersionID,
 		&i.Category,
+		&i.CategorySource,
 	)
 	return i, err
 }
 
 const getCatalogSkill = `-- name: GetCatalogSkill :one
-SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, sk.curation_tier, sk.curated_version_id, sk.category FROM skills sk
+SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, sk.curation_tier, sk.curated_version_id, sk.category, sk.category_source FROM skills sk
 JOIN workspaces w ON w.id = sk.workspace_id AND w.is_catalog
 WHERE sk.id = $1 AND sk.deleted_at IS NULL
 `
@@ -124,12 +133,13 @@ func (q *Queries) GetCatalogSkill(ctx context.Context, id pgtype.UUID) (Skill, e
 		&i.CurationTier,
 		&i.CuratedVersionID,
 		&i.Category,
+		&i.CategorySource,
 	)
 	return i, err
 }
 
 const getSkill = `-- name: GetSkill :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 `
 
@@ -158,6 +168,7 @@ func (q *Queries) GetSkill(ctx context.Context, arg GetSkillParams) (Skill, erro
 		&i.CurationTier,
 		&i.CuratedVersionID,
 		&i.Category,
+		&i.CategorySource,
 	)
 	return i, err
 }
@@ -244,7 +255,7 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 }
 
 const listSkills = `-- name: ListSkills :many
-SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, sk.curation_tier, sk.curated_version_id, sk.category, ver.created_at AS verified_at, ver.source_id AS verified_source_id,
+SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, sk.curation_tier, sk.curated_version_id, sk.category, sk.category_source, ver.created_at AS verified_at, ver.source_id AS verified_source_id,
        inh.skill_id AS inherited_from_skill_id,
        -- COALESCEd for the reason search.sql spells out: sqlc reads the table's
        -- NOT NULL and cannot see that an outer-joined column is nullable, so the
@@ -367,6 +378,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 			&i.Skill.CurationTier,
 			&i.Skill.CuratedVersionID,
 			&i.Skill.Category,
+			&i.Skill.CategorySource,
 			&i.VerifiedAt,
 			&i.VerifiedSourceID,
 			&i.InheritedFromSkillID,
@@ -384,10 +396,65 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 	return items, nil
 }
 
+const setSkillCategory = `-- name: SetSkillCategory :one
+UPDATE skills
+SET category = $3, category_source = $4, updated_at = now()
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source
+`
+
+type SetSkillCategoryParams struct {
+	ID             pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	Category       *string
+	CategorySource *string
+}
+
+// 05 R-19: the owner says what their own skill is for. `unassigned` is passed
+// by the caller as two NULLs (both sqlc.narg args unset) rather than as a
+// fourth CHECK value — see 0061 — so this single UPDATE both assigns a shelf
+// and clears one back to 尚未定值.
+//
+// Workspace scoped like every write in this file, and the caller's *own*
+// workspace: reading somebody else's skill is allowed (WS-001 fork), saying
+// what it is for is not (ADR-011). A skill outside the caller's workspace, or
+// already soft-deleted, matches no row and this returns pgx.ErrNoRows, which
+// the caller maps to the same 404 a missing skill gets — the contract does not
+// distinguish "not yours" from "does not exist" here (ADR-011's usual answer).
+func (q *Queries) SetSkillCategory(ctx context.Context, arg SetSkillCategoryParams) (Skill, error) {
+	row := q.db.QueryRow(ctx, setSkillCategory,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.Category,
+		arg.CategorySource,
+	)
+	var i Skill
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Summary,
+		&i.ForkedFromSkillID,
+		&i.ForkedFromVersionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.TakedownAt,
+		&i.TakedownReason,
+		&i.AccessRestriction,
+		&i.Redistribution,
+		&i.CurationTier,
+		&i.CuratedVersionID,
+		&i.Category,
+		&i.CategorySource,
+	)
+	return i, err
+}
+
 const softDeleteSkill = `-- name: SoftDeleteSkill :one
 UPDATE skills SET deleted_at = now(), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source
 `
 
 type SoftDeleteSkillParams struct {
@@ -418,6 +485,7 @@ func (q *Queries) SoftDeleteSkill(ctx context.Context, arg SoftDeleteSkillParams
 		&i.CurationTier,
 		&i.CuratedVersionID,
 		&i.Category,
+		&i.CategorySource,
 	)
 	return i, err
 }

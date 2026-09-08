@@ -205,6 +205,59 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// categoryValues are the four accepted request bodies for PUT
+// /skills/{id}/category (05 R-19): the three PDM-001 shelves, or `unassigned`
+// to take the skill back off every shelf. Checked here rather than left to the
+// column's CHECK so a bad value answers 400 with a reason the caller can act
+// on, instead of a 500 from a constraint violation deep in the write.
+var categoryValues = map[string]bool{
+	"documents": true, "writing": true, "data": true, "unassigned": true,
+}
+
+// SetCategory handles PUT /skills/{id}/category (05 R-19): the owner says what
+// their own skill is for, on their own skill, in their own workspace. See
+// Service.SetCategory for the write and why there is no operator equivalent.
+func (h *Handler) SetCategory(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	var skillID pgtype.UUID
+	if err := skillID.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return
+	}
+	var body struct {
+		Category string `json:"category"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a category")
+		return
+	}
+	if !categoryValues[body.Category] {
+		httpx.WriteError(w, http.StatusBadRequest,
+			`category must be "documents", "writing", "data" or "unassigned"`)
+		return
+	}
+	// `unassigned` is the request-body spelling of "clear the shelf"; the
+	// column itself has no fourth value (0053, 0061) — nil is 尚未定值.
+	var category *string
+	if body.Category != "unassigned" {
+		category = &body.Category
+	}
+
+	skill, err := h.Svc.SetCategory(r.Context(), ws, skillID, category)
+	if errors.Is(err, ErrNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "set category failed")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, toSkillResponse(skill))
+}
+
 // skillVersionResponse mirrors the inline `version` object the skill detail
 // serves, so the version history and the detail view name one version the same
 // way.

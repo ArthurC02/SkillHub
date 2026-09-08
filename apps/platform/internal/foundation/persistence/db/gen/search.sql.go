@@ -24,6 +24,10 @@ SELECT s.skill_id, s.name,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
        cur.category,
+       -- Who assigned it (0061, 05 R-19 item 4): the read side words a curated
+       -- shelf and an owner-set shelf differently, and this is the only way it
+       -- can tell them apart -- both travel through the same ` + "`" + `cur.category` + "`" + `.
+       cur.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
@@ -48,7 +52,7 @@ LEFT JOIN LATERAL (
     END AS tier,
     -- PDM-001 category (0053). NULL is a typed absence the handler words as
     -- 尚未定值, never a guessed shelf (05 R-19).
-    sk.category
+    sk.category, sk.category_source
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
@@ -104,6 +108,7 @@ type BrowseCatalogSkillsRow struct {
 	AgentMeasuredAt   pgtype.Timestamptz
 	CurationTier      string
 	Category          *string
+	CategorySource    *string
 	TotalMatches      int64
 }
 
@@ -156,6 +161,7 @@ func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkil
 			&i.AgentMeasuredAt,
 			&i.CurationTier,
 			&i.Category,
+			&i.CategorySource,
 			&i.TotalMatches,
 		); err != nil {
 			return nil, err
@@ -539,6 +545,10 @@ SELECT c.skill_id, s.name,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
        cur.category,
+       -- Who assigned it (0061, 05 R-19 item 4): the read side words a curated
+       -- shelf and an owner-set shelf differently, and this is the only way it
+       -- can tell them apart -- both travel through the same ` + "`" + `cur.category` + "`" + `.
+       cur.category_source,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked,
        c.covered AS lexical_covered,
@@ -595,7 +605,7 @@ LEFT JOIN LATERAL (
     END AS tier,
     -- PDM-001 category (0053). NULL is a typed absence the handler words as
     -- 尚未定值, never a guessed shelf (05 R-19).
-    sk.category
+    sk.category, sk.category_source
     FROM skills sk
     WHERE sk.id = c.skill_id
 ) cur ON true
@@ -661,6 +671,7 @@ type PublicHybridSearchSkillsRow struct {
 	AgentMeasuredAt   pgtype.Timestamptz
 	CurationTier      string
 	Category          *string
+	CategorySource    *string
 	Rank              float64
 	Unranked          bool
 	LexicalCovered    bool
@@ -763,6 +774,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 			&i.AgentMeasuredAt,
 			&i.CurationTier,
 			&i.Category,
+			&i.CategorySource,
 			&i.Rank,
 			&i.Unranked,
 			&i.LexicalCovered,
@@ -802,6 +814,10 @@ SELECT s.skill_id, s.name,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
        cur.category,
+       -- Who assigned it (0061, 05 R-19 item 4): the read side words a curated
+       -- shelf and an owner-set shelf differently, and this is the only way it
+       -- can tell them apart -- both travel through the same ` + "`" + `cur.category` + "`" + `.
+       cur.category_source,
        -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
        -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
        -- reader cannot tell 21 from 2100 -- because there was no count to say.
@@ -850,7 +866,7 @@ LEFT JOIN LATERAL (
     END AS tier,
     -- PDM-001 category (0053). NULL is a typed absence the handler words as
     -- 尚未定值, never a guessed shelf (05 R-19).
-    sk.category
+    sk.category, sk.category_source
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
@@ -913,6 +929,7 @@ type PublicSearchSkillsRow struct {
 	AgentMeasuredAt   pgtype.Timestamptz
 	CurationTier      string
 	Category          *string
+	CategorySource    *string
 	TotalMatches      int64
 }
 
@@ -1022,6 +1039,7 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 			&i.AgentMeasuredAt,
 			&i.CurationTier,
 			&i.Category,
+			&i.CategorySource,
 			&i.TotalMatches,
 		); err != nil {
 			return nil, err

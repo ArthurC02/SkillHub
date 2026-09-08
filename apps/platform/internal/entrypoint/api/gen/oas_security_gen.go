@@ -99,6 +99,7 @@ var operationRolesSessionCookie = map[string][]string{
 	SaveSkillVersionOperation:                  []string{},
 	SearchSkillsOperation:                      []string{},
 	SetEvaluationFeedbackOperation:             []string{},
+	SetSkillCategoryOperation:                  []string{},
 	SetSkillRedistributionOperation:            []string{},
 	SetSkillRestrictionOperation:               []string{},
 	StartRunOperation:                          []string{},
