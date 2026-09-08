@@ -543,6 +543,30 @@ test("IA-9 the empty own-skills list offers importing as a link, not as prose", 
   expect(text()).toContain("不是清單讀取失敗");
 });
 
+/**
+ * 順序，不是存在。設計 §3 checklist 第 1 條的「不過的樣子」逐字是「一整排控制項排在
+ * 答案前面」——而空工作區在 2026-09-08 之前正是那個形狀：三張建立卡先出來，「還沒有
+ * 任何 Skill」那一句排在它們後面、清單原本的位置上（它渲染在 `skills.data` 那個三元式
+ * 的空分支裡）。外部評閱讀到的「孤零零浮在卡片與清單中間」就是這個。
+ *
+ * 這條測的是 DOM 順序而不是 CSS `order`：鍵盤與朗讀走的是前者。
+ */
+test("空清單先說它是哪一種空，三張建立卡才是它的動作（§3 checklist 第 1 條）", async () => {
+  vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
+  await render(<WorkspaceSkills />, () => text().includes("還沒有任何 Skill"));
+
+  const absence = Array.from(container.querySelectorAll("p")).find((p) =>
+    p.textContent?.includes("不是清單讀取失敗"),
+  );
+  const hub = container.querySelector("#create");
+  expect(absence, "空狀態那一句不見了").toBeTruthy();
+  expect(hub, "建立中心不見了").toBeTruthy();
+  expect(
+    Boolean(absence!.compareDocumentPosition(hub!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    "「還沒有任何 Skill」必須排在「建立一個 Skill」之前：答案先出來，動作在後面",
+  ).toBe(true);
+});
+
 // --- WS-001 第 4 條: version history and the diff between any two ------------
 
 /**

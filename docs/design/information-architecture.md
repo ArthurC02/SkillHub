@@ -209,13 +209,17 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | **0** | （無） | ✅ 2026-08-24 起清空：workspace/import 從搜尋無結果那一格獲得第一條頁內入邊（IA-5 的旗標關閉半邊），移入下一列 |
 | **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare` | ✅ 三項都是 R3 的「具名」那一支（2026-08-24 裁定，IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7。<br>**2026-08-25：這一格此前還有第四個位址。** 匯入頁不適用「具名」那一支（它是導覽列項目、脈絡不唯一），所以它待在這裡是一條 R3 的**現行違規**而不是一項豁免——而它在 §5、§8 與 `04` 三處都沒有編號，於是機器讀得到這一列、算得出這個 1，**沒有任何東西出聲**。補編為 IA-9 之後同日結案，見下一列 |
 | 3 | ~~`/`~~、~~`/workspace/skills`~~、`/workspace/import` | 2026-09-03 各多一條頁內入邊，來源都是「建立一個 Skill」那一批：首頁 hero 的「自己做一個 Skill」→ `/workspace/skills`；`components/CreateHub.tsx` → `/workspace/import` 與 `/`（目錄）。這三個位址從下一列搬上來；機器只比對 0 與 1 兩列，所以這一列與下一列是人手維護的 |<br>**2026-09-03 稍晚重數訂正**：這一列寫成時把三個位址都放在 3，而依本節自己宣告的計數規則（`pages/`＋`components/` 的 `to="…"`，**以不同來源檔計數、不排除自我連結**，見 `ia.test.ts` 的 `inboundByRoute()`），`/` 是 **4**（`Compare.tsx`、`Home.tsx`、`WorkspaceSkills.tsx`、`CreateHub.tsx`）、`/workspace/skills` 也是 **4**（`DataPolicy.tsx`、`Downloads.tsx`、`Home.tsx`、`WorkspaceAccount.tsx`），兩者都已移到下面的 4 那一列；只有 `/workspace/import` 留在 3。**這一列不會變紅**：測試只雙向比對 0 與 1 兩列，其餘各列沒有機器。 |
-| 2 | ~~`/`~~、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/lab/test-cases/$testCaseId`、`/workspace/account`、~~`/workspace/skills`~~、~~`/workspace/import`~~ | ✅ 匯入頁於 2026-08-25 取得第二條入邊（IA-9）：`/workspace/skills` 空狀態裡那句「或匯入自己的套件」本來就在講它，只是沒有連結——**那一頁說出了下一步，然後叫你自己去導覽列找**。文案一字未改，詞組變成連結 |
-| 3 | `/workspace/runs` | ✅ |
-| 4 | `/lab/run`、`/runs/$runId`、`/workspace/downloads`、**`/`**、**`/workspace/skills`**（後兩者 2026-09-03 自上面的 3 移入） | ✅ |
+| 2 | ~~`/`~~、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/lab/test-cases/$testCaseId`、`/workspace/account`、**`/workspace/runs`**（2026-09-08 重數自下面的 3 移入）、~~`/workspace/skills`~~、~~`/workspace/import`~~ | ✅ 匯入頁於 2026-08-25 取得第二條入邊（IA-9）：`/workspace/skills` 空狀態裡那句「或匯入自己的套件」本來就在講它，只是沒有連結——**那一頁說出了下一步，然後叫你自己去導覽列找**。文案一字未改，詞組變成連結 |
+| 3 | ~~`/workspace/runs`~~、**`/workspace/downloads`** | 2026-09-08 重數：`/workspace/runs` 是 **2**（`DataPolicy.tsx`、`WorkspaceSkills.tsx`），移到上一列；`/workspace/downloads` 是 **3**（`DataPolicy.tsx`、`Packaging.tsx`、`WorkspaceSkills.tsx`），自下面的 4 移入 |
+| 4 | `/lab/run`、`/runs/$runId`、~~`/workspace/downloads`~~（2026-09-08 重數為 **3**，已移入 2 那一列）、**`/`**、**`/workspace/skills`**（後兩者 2026-09-03 自上面的 3 移入） | ✅ |
 | 6 | `/lab/test-cases` | ✅ |
 | 12 | `/skills/$skillId` | ✅ 全 app 的匯流點（2026-09-03 重數：~~10~~ **12**，`SkillFiles.tsx` 與 `GenerateSkill.tsx` 也指過來） |
 
 > **2026-09-07 重數訂正（兩格，各降一）**：`/workspace/import` **3 → 2**（`Home.tsx`、`CreateHub.tsx`）、`/` **4 → 3**（`Compare.tsx`、`Home.tsx`、`CreateHub.tsx`）。兩者都是同一個修改——`pages/WorkspaceSkills.tsx` 的空狀態不再自己連這兩個位址，因為 `CreateHub` 在同一個條件下就掛在它正上方、逐字提供同樣的兩條路（見 §2.3 邊圖下方的 09-07 補記與 §5 IA-9）。**R3 兩格都仍然成立**（各 ≥2 條來源檔不同的頁內入邊），這一列與 3 那一列一樣是人手維護的，機器只雙向比對 0 與 1。
+
+> **2026-09-08：一次「整塊刪掉」的要求被這一節擋下來，一格都沒有動。** 外部審查要求刪掉 `pages/WorkspaceSkills.tsx` 頁尾的「這個工作區的其他清單」，理由是那四條連結與導覽列 100% 重複——**那是事實**（`router.tsx` 的導覽列有 Test Case、下載紀錄、Run 歷史，頁尾有帳號與刪除、資料保存政策）。擋下它的是**本節第一句的計數規則**：導覽列不算一條入邊，所以整塊刪掉會讓 `/workspace/runs`、`/workspace/account`、`/policy` 各從 2 掉到 1 條頁內入邊，一次生出三條 §0.1 R3 現行違規——而它們三個都不適用 R3 的「具名」那一支（脈絡不唯一，與 IA-9 對匯入頁的判定同一個理由）。**實際只走掉一條連結，而且沒有一格數字變**：`/lab/test-cases` 的那一條——同一個檔案裡每一列都有一條帶 `search={{ skill }}` 的同位址連結（帶篩選，比全清單那條有用），`ia.test.ts` 以**來源檔**計數，所以 `/lab/test-cases` 仍是 6。`/workspace/downloads` 也曾在要走的名單上（拿掉會是 3 → 2，仍不進 0／1 那兩列），**是 `workspace.test.tsx` WS-004 的既有斷言擋下的**，不是本節。留下的標題改成「這個工作區的其他頁」。
+>
+> **同日重數訂正（兩格，各降一，與上面那次改動無關）**：重數五個位址時發現這張表有兩格早就過期了——`/workspace/downloads` **4 → 3**（`DataPolicy.tsx`、`Packaging.tsx`、`WorkspaceSkills.tsx`）、`/workspace/runs` **3 → 2**（`DataPolicy.tsx`、`WorkspaceSkills.tsx`）。兩格都不是今天造成的（今天只動 `/lab/test-cases` 的那一條，而它以來源檔計數仍是 6），是先前某次改動沒有帶著這張表走。**這正是 §6 記過的那件事**：機器只雙向比對 0 與 1，其餘各列會無聲過期。兩格 R3 都仍然成立（各 ≥2 條來源檔不同的頁內入邊）。
 
 **0 與 1 這兩列由測試雙向比對**：多一個孤兒會 FAIL，把孤兒修好了而沒改這張表也會 FAIL。其餘各列是同一次計算的輸出，改了程式就會在這裡看到差異。
 

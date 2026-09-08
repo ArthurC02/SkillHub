@@ -109,6 +109,9 @@ export function WorkspaceSkills() {
   const creationExposed = useCreationEntryPoint();
   const rows = skills.data?.skills ?? [];
   const hasSkills = rows.length > 0;
+  // 「讀完了而且是空的」，不是 `!hasSkills`——後者在讀取中與讀取失敗時同樣成立，而
+  // 那兩種空各自已經有自己的句子（`Loading`、`ReadFailure`）。
+  const isEmpty = Boolean(skills.data) && !hasSkills;
   const lifted = liftedNotes(rows, OWN_SKILL_NOTES);
 
   const remove = useMutation({
@@ -159,6 +162,49 @@ export function WorkspaceSkills() {
         兩個掛載點而不是一個帶 CSS `order` 的：`order` 只改視覺順序不改 DOM 順序，
         鍵盤與朗讀會走到與眼睛不同的地方（§1.1 的「可判斷」對這兩者是同一件事）。
       */}
+      {/*
+        IA-9 / 資訊架構 §0.1 R3: the second in-page inbound edge for
+        /workspace/import. The sentence already named importing and only
+        prose carried it — the page said what to do next and then made you
+        go find the nav to do it, which is the shape R3 calls one way in.
+        Here rather than anywhere else on this page because an empty
+        personal list IS the moment: nothing to Fork from, nothing to run.
+
+        No visitor branch, unlike Home.tsx's no_results exit: GET /skills is
+        RequireSession, so `skills.data` cannot exist without a session and
+        this state is unreachable for anyone the link would 401. The nav's
+        copy of the same link has no such guarantee — that is IA-6, and it
+        is not this edge's to answer.
+
+        ── 2026-09-07：兩條路的連結走了，型別詞留下 ──────────────────────────
+        這一句是 2026-08-25 補的（IA-9），當時它是這一頁唯一講「下一步」的地方。
+        9/3 之後不是了：這個分支只在 `!hasSkills` 時渲染，而**同一個條件下
+        `CreateHub` 就掛在它正上方**，兩張卡逐字提供同樣的兩條路（「匯入 Skill」
+        連 /workspace/import、「到目錄挑一個」連 /）。於是這一段變成第二份導覽，
+        而且排在建立表單之後——外部評閱把它讀成「我到底是在填表還是在看清單」。
+
+        留下的是它現在唯一在做的事：§2.9 的缺席型別詞。「空」在這一頁有兩種可能的
+        意思（沒建立過／讀取失敗），而讀取失敗有自己的 `ReadFailure`，所以這一句
+        要說的是它**不是**那一種。§2.10 第 10 項不准折疊的正是這半句，它留在外面。
+
+        IA-9 的性質沒有變：`/workspace/import` 的頁內入邊仍是兩個來源檔
+        （`pages/Home.tsx` 的 `no_results`、`components/CreateHub.tsx`），
+        `ia.test.ts` 以來源檔計數且只斷言 0 與 1 那兩列。資訊架構 §5 IA-9 與
+        §2.3 的邊圖同批更新。
+
+        ── 2026-09-08：這一句從三張卡的**後面**搬到前面 ────────────────────────────
+        位置換了，字一個都沒換。它原本渲染在 `skills.data` 那個三元式的空分支裡，
+        也就是排在 `CreateHub` 之後、清單的位置上——於是空工作區看到的順序是「三張
+        建立卡，然後一句『還沒有任何 Skill』」。外部評閱把那一句讀成「孤零零浮在卡片
+        與清單中間」，而它是對的：那個順序把答案排在動作後面。
+
+        現在的順序是 §3 checklist 第 1 條要的形狀：先說清單是空的（而且說清楚是哪一種
+        空），三張卡緊接著就是這個空狀態的動作。§2.9 的缺席型別詞沒有被折疊也沒有被
+        改寫，§2.10 第 10 項照樣成立。
+
+        `isEmpty` 而不是 `!hasSkills`：理由在宣告處。
+      */}
+      {isEmpty && <p>還沒有任何 Skill——這裡是空的代表你還沒有建立過，不是清單讀取失敗。</p>}
       {!hasSkills && (
         <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />
       )}
@@ -208,50 +254,17 @@ export function WorkspaceSkills() {
       */}
       {hasSkills && <FacetNotes rows={rows} facets={OWN_SKILL_NOTES} />}
 
-      {skills.data &&
-        (skills.data.skills.length === 0 ? (
-          /*
-            IA-9 / 資訊架構 §0.1 R3: the second in-page inbound edge for
-            /workspace/import. The sentence already named importing and only
-            prose carried it — the page said what to do next and then made you
-            go find the nav to do it, which is the shape R3 calls one way in.
-            Here rather than anywhere else on this page because an empty
-            personal list IS the moment: nothing to Fork from, nothing to run.
-
-            No visitor branch, unlike Home.tsx's no_results exit: GET /skills is
-            RequireSession, so `skills.data` cannot exist without a session and
-            this state is unreachable for anyone the link would 401. The nav's
-            copy of the same link has no such guarantee — that is IA-6, and it
-            is not this edge's to answer.
-
-            ── 2026-09-07：兩條路的連結走了，型別詞留下 ──────────────────────────
-            這一句是 2026-08-25 補的（IA-9），當時它是這一頁唯一講「下一步」的地方。
-            9/3 之後不是了：這個分支只在 `!hasSkills` 時渲染，而**同一個條件下
-            `CreateHub` 就掛在它正上方**，兩張卡逐字提供同樣的兩條路（「匯入 Skill」
-            連 /workspace/import、「到目錄挑一個」連 /）。於是這一段變成第二份導覽，
-            而且排在建立表單之後——外部評閱把它讀成「我到底是在填表還是在看清單」。
-
-            留下的是它現在唯一在做的事：§2.9 的缺席型別詞。「空」在這一頁有兩種可能的
-            意思（沒建立過／讀取失敗），而讀取失敗有自己的 `ReadFailure`，所以這一句
-            要說的是它**不是**那一種。§2.10 第 10 項不准折疊的正是這半句，它留在外面。
-
-            IA-9 的性質沒有變：`/workspace/import` 的頁內入邊仍是兩個來源檔
-            （`pages/Home.tsx` 的 `no_results`、`components/CreateHub.tsx`），
-            `ia.test.ts` 以來源檔計數且只斷言 0 與 1 那兩列。資訊架構 §5 IA-9 與
-            §2.3 的邊圖同批更新。
-          */
-          <p>還沒有任何 Skill——這裡是空的代表你還沒有建立過，不是清單讀取失敗。</p>
-        ) : (
-          <ul className="search-results">
-            {skills.data.skills.map((s) => (
-              <li key={s.skill_id} className="search-result">
-                <p>
-                  <Link to="/skills/$skillId" params={{ skillId: s.skill_id }}>
-                    <strong>{s.name}</strong>
-                  </Link>
-                </p>
-                <p>{s.summary}</p>
-                {/*
+      {hasSkills && (
+        <ul className="search-results">
+          {rows.map((s) => (
+            <li key={s.skill_id} className="search-result">
+              <p>
+                <Link to="/skills/$skillId" params={{ skillId: s.skill_id }}>
+                  <strong>{s.name}</strong>
+                </Link>
+              </p>
+              <p>{s.summary}</p>
+              {/*
                   §2.2 in its second direction: two of the four locks that refuse
                   a download live on this row and were being dropped in
                   serialisation (04 丙-31). `unknown` is what a user's own import
@@ -259,56 +272,56 @@ export function WorkspaceSkills() {
                   away looked exactly like the one you can, right up to the
                   packaging screen.
                 */}
-                <p className="badge-row">
-                  <RedistributionBadge value={s.redistribution} />
-                  {s.access_restriction && (
-                    <span className="badge badge-danger">授權保留：{s.access_restriction}</span>
-                  )}
-                  {/*
+              <p className="badge-row">
+                <RedistributionBadge value={s.redistribution} />
+                {s.access_restriction && (
+                  <span className="badge badge-danger">授權保留：{s.access_restriction}</span>
+                )}
+                {/*
                     Linked, not just stated: when the scan below is the source's
                     (ADR-042 決策 6) the attribution is only useful if the reader
                     can go and look at what it was attributed from. The id has
                     been on the row since 丙-31; it was rendering as a sentence.
                   */}
-                  {s.forked_from_skill_id ? (
-                    <span className="badge">
-                      Fork 自
-                      <Link to="/skills/$skillId" params={{ skillId: s.forked_from_skill_id }}>
-                        來源 Skill
-                      </Link>
-                    </span>
-                  ) : (
-                    <span className="badge">自己匯入</span>
-                  )}
-                  {/*
+                {s.forked_from_skill_id ? (
+                  <span className="badge">
+                    Fork 自
+                    <Link to="/skills/$skillId" params={{ skillId: s.forked_from_skill_id }}>
+                      來源 Skill
+                    </Link>
+                  </span>
+                ) : (
+                  <span className="badge">自己匯入</span>
+                )}
+                {/*
                     §2.9. The state, not a timestamp: a fork's newest version row
                     was created the instant somebody pressed Fork, so the field
                     that reads as 「剛剛掃過」 belongs to the one case where nothing
                     was scanned. Label and note both come from the server (§4.4),
                     which is why there is no enum→中文 map on this side.
                   */}
-                  <span
-                    className={
-                      s.verification.value === "scanned" ? "badge" : "badge badge-unverified"
-                    }
-                  >
-                    掃描狀態：{s.verification.label}
-                    {s.verification.scanned_at && (
-                      <>
-                        （<Timestamp at={s.verification.scanned_at} />）
-                      </>
-                    )}
-                  </span>
-                  {/*
+                <span
+                  className={
+                    s.verification.value === "scanned" ? "badge" : "badge badge-unverified"
+                  }
+                >
+                  掃描狀態：{s.verification.label}
+                  {s.verification.scanned_at && (
+                    <>
+                      （<Timestamp at={s.verification.scanned_at} />）
+                    </>
+                  )}
+                </span>
+                {/*
                     §1.1: this is a list of code you own and will run, and until
                     2026-08-22 it carried nothing to decide by (04 丙-31). The same
                     component the public search row uses, on purpose — the two are
                     the same fact about the same skill, and 02:NFR-007 第 3 條 does
                     not let them be worded independently.
                   */}
-                  <RiskSummary risk={s.risk} noteInRow={!lifted.risk} />
-                </p>
-                {/*
+                <RiskSummary risk={s.risk} noteInRow={!lifted.risk} />
+              </p>
+              {/*
                   2026-09-07：三條 `.badge-row` 併成一條。它們本來是三個 `<p>`，於是
                   一列的可判斷事實佔了三行、中間各隔一次 `margin: 8px 0`——而 `.badge-row`
                   本來就是 `flex-wrap: wrap`，一條就裝得下，窄螢幕自己折。
@@ -318,8 +331,8 @@ export function WorkspaceSkills() {
                   的那句理由**，不是每一列不同的那個狀態（§2.13 的判準逐字是「會變的量
                   永遠平鋪，不會變的理由才可以折」）。
                 */}
-                {!lifted.verification && <p className="note">{s.verification.note}</p>}
-                {/*
+              {!lifted.verification && <p className="note">{s.verification.note}</p>}
+              {/*
                   GEN-004: two named absences on the list as well as on the
                   detail page, because this list is a generated skill's only
                   entry point — it is not in the catalogue and not in search,
@@ -327,37 +340,38 @@ export function WorkspaceSkills() {
                   on the detail page, the one screen it can be met on would not
                   say it.
                 */}
-                {s.redistribution === "generated" && <GeneratedNotice skillId={s.skill_id} />}
-                <p className="note">
-                  <Link to="/skills/$skillId/files" params={{ skillId: s.skill_id }}>
-                    檔案
-                  </Link>
-                  {" ｜ "}
-                  {/*
+              {s.redistribution === "generated" && <GeneratedNotice skillId={s.skill_id} />}
+              <p className="note">
+                <Link to="/skills/$skillId/files" params={{ skillId: s.skill_id }}>
+                  檔案
+                </Link>
+                {" ｜ "}
+                {/*
                     No version to pass: this list is one row per skill. The
                     packaging page resolves the skill's latest version itself,
                     which is what `version` being optional is for.
                   */}
-                  <Link
-                    to="/skills/$skillId/package"
-                    params={{ skillId: s.skill_id }}
-                    search={{ version: undefined }}
-                  >
-                    打包與下載
-                  </Link>
-                  {" ｜ "}
-                  {/*
+                <Link
+                  to="/skills/$skillId/package"
+                  params={{ skillId: s.skill_id }}
+                  search={{ version: undefined }}
+                >
+                  打包與下載
+                </Link>
+                {" ｜ "}
+                {/*
                     核心第 3 點的另一半。這一列以前只有「散布」，沒有「先試一次」：
                     要試跑自己的 Skill，得先點進 /skills/$id，再從那裡的「試跑」區走。
-                    頁尾的「這個工作區的其他清單」確實有一條 /lab/test-cases，但那是
-                    **未篩選的全清單**，不帶這一列的 Skill。同一條連結 SkillDetail
-                    已經有了（`TrialEntry`），這裡複製它而不是發明第二種形狀。
+                    頁尾那一區曾經也有一條 /lab/test-cases，但那是**未篩選的全清單**，
+                    不帶這一列的 Skill——2026-09-08 刪掉的正是它，留下的是這一條。同一條
+                    連結 SkillDetail 已經有了（`TrialEntry`），這裡複製它而不是發明第二
+                    種形狀。
                   */}
-                  <Link to="/lab/test-cases" search={{ skill: s.skill_id }}>
-                    Test Case
-                  </Link>
-                </p>
-                {/*
+                <Link to="/lab/test-cases" search={{ skill: s.skill_id }}>
+                  Test Case
+                </Link>
+              </p>
+              {/*
                   checklist 8: 刪除 used to sit in the same inline run as the two
                   navigation links, separated by a ｜ glyph — and in the
                   confirming state that one `<p>` also grew two buttons and a
@@ -365,20 +379,20 @@ export function WorkspaceSkills() {
                   undifferentiated run of prose and controls. A destruction is
                   not a third link, so it gets its own row; no label is removed.
                 */}
-                <p>
-                  <ConfirmDelete
-                    scopeId={`skill-delete-scope-${s.skill_id}`}
-                    pending={remove.isPending}
-                    onAsk={() => {
-                      setMessage("");
-                      remove.reset();
-                    }}
-                    onConfirm={() => remove.mutate(s.skill_id)}
-                    scope={
-                      <>
-                        刪除的是這個 Skill
-                        在你工作區裡的存在：它會離開這份清單與搜尋結果，也不能再拿來試跑或打包。
-                        {/*
+              <p>
+                <ConfirmDelete
+                  scopeId={`skill-delete-scope-${s.skill_id}`}
+                  pending={remove.isPending}
+                  onAsk={() => {
+                    setMessage("");
+                    remove.reset();
+                  }}
+                  onConfirm={() => remove.mutate(s.skill_id)}
+                  scope={
+                    <>
+                      刪除的是這個 Skill
+                      在你工作區裡的存在：它會離開這份清單與搜尋結果，也不能再拿來試跑或打包。
+                      {/*
                           §2.2: the numeral was 30 天 here, and PDM-006 — the
                           only thing that would ratify it — is unratified. The
                           same figure was removed from /policy and
@@ -388,17 +402,17 @@ export function WorkspaceSkills() {
                           is where a grace period gets stated by something that
                           enforces it.
                         */}
-                        版本快照會凍結保留，不隨這次刪除消失，所以誤刪還有救； 別人 Fork
-                        過的版本與歷史 Run 引用的內容不受影響——那是他們的溯源鏈，不是你的。
-                        已經打包好的下載檔案要另外刪，在下載紀錄那一頁。
-                      </>
-                    }
-                  />
-                </p>
-              </li>
-            ))}
-          </ul>
-        ))}
+                      版本快照會凍結保留，不隨這次刪除消失，所以誤刪還有救； 別人 Fork
+                      過的版本與歷史 Run 引用的內容不受影響——那是他們的溯源鏈，不是你的。
+                      已經打包好的下載檔案要另外刪，在下載紀錄那一頁。
+                    </>
+                  }
+                />
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/*
         §2.2: the cap has always been there — the handler asked for 100 rows and
@@ -432,11 +446,31 @@ export function WorkspaceSkills() {
         <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />
       )}
 
-      <h2>這個工作區的其他清單</h2>
+      {/*
+        ── 2026-09-08：四條剩兩條 ────────────────────────────────────────────────
+        外部評閱說這一區「與導覽列 100% 重複」。四條連結確實全都在導覽列或頁尾上
+        （`router.tsx`：我的 Skill／Run 歷史／匯入 Skill／Test Case／下載紀錄，頁尾另有
+        帳號與刪除、資料保存政策），所以**評閱說的是事實**。但「整塊刪掉」做不得，理由
+        是資訊架構 §0.1 R3 與 §2.3 的計數規則：**導覽列不算一條入邊**（逐字：「一個
+        **只**從導覽列進得去的頁正是這張表要找的東西，把導覽算成一條邊就會把它抹掉」），
+        而 `ia.test.ts` 對 0 與 1 那兩列雙向斷言。整塊刪掉會讓三個位址掉到 1 條頁內入邊
+        （`/workspace/runs`、`/workspace/account`、`/policy` 各只剩 `DataPolicy.tsx` 或
+        `WorkspaceAccount.tsx` 一個來源檔），也就是一次生出三條 R3 現行違規——IA-9 就是
+        這個形狀，補號到結案花了兩週。
+
+        所以只走得掉一條：`/lab/test-cases`。它是四條裡唯一**這一頁自己另有一條同位址
+        連結**的（每一列都有一個 `search={{ skill }}` 的 Test Case 連結，帶篩選，比這裡
+        這條全清單的有用），刪掉之後 `ia.test.ts` 的來源檔計數一格都沒有變。
+
+        `/workspace/downloads` 一度也在要走的名單上（它在 `Packaging.tsx` 與
+        `DataPolicy.tsx` 各有一條，計數仍是 2），**是 `workspace.test.tsx` 的 WS-004 把它
+        擋下來的**：那條斷言連同理由寫著「這是讀者為了『我的東西』而來的那一頁，所以其他
+        工作區清單要從這裡進得去，而不是只有頁首」。那是一條既有裁定，不由這次改版推翻。
+
+        標題跟著改：剩下的三個裡「帳號」不是清單。
+      */}
+      <h2>這個工作區的其他頁</h2>
       <ul className="risk-list">
-        <li>
-          <Link to="/lab/test-cases">Test Case</Link>
-        </li>
         <li>
           <Link to="/workspace/downloads">下載紀錄</Link>
         </li>
