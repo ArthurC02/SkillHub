@@ -226,6 +226,102 @@ function Attachments({
     </ul>
   );
 }
+const CRITERION_RESULT_LABEL: Record<string, string> = {
+  passed: "通過",
+  failed: "不通過",
+  undetermined: "無法判定",
+};
+type FetchObservation = {
+  fetch: { url: string; status: string; bytes?: number; text?: string };
+};
+type RunToolObservation = {
+  run_id: string;
+  execution_status: string;
+  evaluation?: {
+    overall?: string;
+    summary?: string;
+    criterion_results?: { text?: string; result?: string; reason?: string }[];
+  };
+};
+function parseObservation(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+/**
+ * 工具結果那一則訊息（`04` 丙-208）。
+ *
+ * 這些訊息有兩種：Go 寫給模型看的中文句子（「目錄搜尋需要關鍵字」之類），以及
+ * **兩包 JSON**。JSON 那兩包在此之前是原樣倒進對話的——`attach_run` 的整包評估，
+ * 還有 `fetch` 那一包**連同整個網頁的文字**。一個對話介面裡出現一整頁的 JSON，
+ * 沒有人會讀它，而它把真正要讀的東西擠到看不見。
+ *
+ * 認得的就講成一句話，證據收進 `<details>`；認不得的原樣顯示——那些本來就是句子。
+ *
+ * **這裡只改呈現，不改信任**：`summary`、`reason` 是判定模型寫的字，而它寫的是受測
+ * Skill 產生的輸出（`EvaluationText` 那條 LLM01 通道的同一批文字），`fetch.text` 是
+ * 抓回來的網頁。三者都是不受信任的文字，所以它們**只能是文字**——React 會轉義，這裡
+ * 沒有任何一處把它們當成標記（`04` 丙-206 要裁的正是那件事）。
+ */
+function ToolObservation({ raw }: { raw: string }) {
+  const parsed = parseObservation(raw);
+  if (parsed && typeof parsed === "object") {
+    const asFetch = parsed as Partial<FetchObservation>;
+    if (asFetch.fetch && typeof asFetch.fetch.url === "string") {
+      const f = asFetch.fetch;
+      return (
+        <>
+          <span className="creation-text">
+            讀取網頁 {f.url}：{FETCH_STATUS_LABEL[f.status] ?? f.status}
+            {f.bytes !== undefined && `（${f.bytes} 位元組）`}
+          </span>
+          {!!f.text && (
+            <details>
+              <summary>讀到的網頁內容（{[...f.text].length} 字）</summary>
+              <pre className="skill-md">{f.text}</pre>
+            </details>
+          )}
+        </>
+      );
+    }
+    const asRun = parsed as Partial<RunToolObservation>;
+    if (typeof asRun.run_id === "string" && typeof asRun.execution_status === "string") {
+      const results = asRun.evaluation?.criterion_results ?? [];
+      const count = (r: string) => results.filter((x) => x.result === r).length;
+      const overall = asRun.evaluation?.overall ?? "";
+      return (
+        <>
+          <span className="creation-text">
+            試跑結果：{runStatusLabel(asRun.execution_status)}；評估：
+            {ROUND_OVERALL_LABEL[overall] ?? "無評估"}
+            {results.length > 0 &&
+              `（通過 ${count("passed")}／不通過 ${count("failed")}／無法判定 ${count("undetermined")}）`}
+          </span>
+          {!!asRun.evaluation?.summary && (
+            <span className="creation-text">{asRun.evaluation.summary}</span>
+          )}
+          {/* 逐條判定**不收進 `<details>`**：設計 §2.10 第 7 項把「任務判定」列在
+              永不折疊的封閉清單裡，而每一條驗收條件的 passed／failed／undetermined
+              就是判定。這裡也不需要折——這則訊息原本的問題是一整包 JSON 和一整頁
+              網頁文字，不是這幾行；一次試跑的條件是個位數。 */}
+          {results.length > 0 && (
+            <ul>
+              {results.map((c, i) => (
+                <li key={i}>
+                  {CRITERION_RESULT_LABEL[c.result ?? ""] ?? c.result ?? "無結果"}：{c.text}
+                  {!!c.reason && `——${c.reason}`}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      );
+    }
+  }
+  return <span className="creation-text">{raw}</span>;
+}
 /**
  * 這一步在做什麼（`04` 丙-205）。
  *
@@ -800,7 +896,11 @@ export function CreationSession() {
                           `split("\n")[0]`，那就是這些訊息確實有換行的證據。
                           這不是 Markdown（見 `04` 丙-206）：只是不要把已經在那裡的
                           換行丟掉。 */}
-                      <span className="creation-text">{m.content}</span>
+                      {m.role === "tool" ? (
+                        <ToolObservation raw={m.content} />
+                      ) : (
+                        <span className="creation-text">{m.content}</span>
+                      )}
                       {m.role === "user" && here.length > 0 && (
                         <Attachments list={here} thumbs={thumbs.current} />
                       )}

@@ -383,6 +383,96 @@ const DRAFT = {
   },
 };
 /**
+ * 工具結果有兩種：Go 寫的中文句子，以及兩包 JSON。JSON 那兩包在此之前是**原樣**倒進
+ * 對話的——`fetch` 那一包還連同整個網頁的文字。一個對話裡出現一整頁 JSON，沒有人會
+ * 讀它，而它把真正要讀的東西擠到看不見。
+ */
+test("a fetch observation reads as a sentence, and the page text is not the default view", async () => {
+  const v = sample();
+  const page = "這是抓回來的整頁文字，".repeat(40);
+  v.snapshot.messages = [
+    {
+      role: "tool",
+      content: JSON.stringify({
+        fetch: {
+          url: "https://example.com/spec",
+          status: "ok",
+          bytes: 2048,
+          note: "已讀取。",
+          text: page,
+        },
+      }),
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const bubble = box.querySelector('.creation-log > li[data-role="tool"]')!;
+  expect(bubble.textContent).toContain("讀取網頁 https://example.com/spec");
+  expect(bubble.textContent).toContain("已讀取");
+  expect(bubble.textContent).toContain("2048 位元組");
+  expect(bubble.textContent, "整包 JSON 還是原樣倒出來").not.toContain('{"fetch"');
+  const details = bubble.querySelector("details")!;
+  expect(details, "網頁全文沒有被收起來").not.toBe(null);
+  expect(details.open, "網頁全文預設就攤開，把該讀的擠掉了").toBe(false);
+  expect(details.textContent).toContain("這是抓回來的整頁文字");
+});
+test("a run observation reads as a verdict, with the per-criterion detail behind it", async () => {
+  const v = sample();
+  v.snapshot.messages = [
+    {
+      role: "tool",
+      content: JSON.stringify({
+        run_id: "r1",
+        skill_version_id: "v1",
+        execution_status: "succeeded",
+        evaluation: {
+          evaluation_available: true,
+          overall: "partially_met",
+          summary: "輸出有內容，但缺了日期欄。",
+          criterion_results: [
+            { text: "輸出包含標題", result: "passed", reason: "第一行是標題" },
+            { text: "輸出包含日期", result: "failed", reason: "整份輸出沒有日期" },
+          ],
+        },
+      }),
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const bubble = box.querySelector('.creation-log > li[data-role="tool"]')!;
+  expect(bubble.textContent).toContain("部分達成");
+  expect(bubble.textContent).toContain("通過 1／不通過 1／無法判定 0");
+  expect(bubble.textContent).toContain("輸出有內容，但缺了日期欄。");
+  expect(bubble.textContent, "整包 JSON 還是原樣倒出來").not.toContain('"criterion_results"');
+  // 逐條判定不收進 `<details>`：設計 §2.10 第 7 項把「任務判定」列在永不折疊的
+  // 封閉清單裡，而每一條的 passed／failed／undetermined 就是判定。
+  expect(bubble.querySelector("details"), "把逐條判定折起來了").toBe(null);
+  expect(bubble.textContent).toContain("不通過：輸出包含日期");
+  expect(bubble.textContent).toContain("整份輸出沒有日期");
+});
+/** Go 有一半的工具訊息本來就是寫好的中文句子，那些一個字都不該被動到。 */
+test("a tool message that is already a sentence is left alone", async () => {
+  const v = sample();
+  v.snapshot.messages = [{ role: "tool", content: "目錄搜尋需要關鍵字；這次沒有搜尋。" }];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const bubble = box.querySelector('.creation-log > li[data-role="tool"]')!;
+  expect(bubble.textContent).toContain("目錄搜尋需要關鍵字；這次沒有搜尋。");
+  expect(bubble.querySelector("details")).toBe(null);
+});
+/**
  * 停止這一步，而不是整場。**這顆按鈕只在 `working` 出現，所以它不能吃 `locked`**
  * ——`locked` 把 working 也算進停用條件，而 working 正是它存在的理由。
  */
