@@ -621,7 +621,10 @@ test("ADR-065 §4.7: at most six icon shapes, every one inline and aria-hidden",
  */
 test("§4.6.3: a door-shaped link wears the same box as the button beside it", () => {
   const rules = css.split("}");
-  const base = rules.find((r) => /(^|\n)button,/.test(r) && /min-height:\s*32px/.test(r));
+  // `min-height` 只是用來認出那條規則的錨，不是這支測試在守的東西（它守的是
+  // `.action-secondary` 在不在裡面）。2026-09-08 控制項的一階從 32px 走到 40px，
+  // 所以錨跟著走——**這一行改了不代表斷言鬆了**，下面兩條一個字沒動。
+  const base = rules.find((r) => /(^|\n)button,/.test(r) && /min-height:\s*40px/.test(r));
   expect(base, "找不到那條基礎控制項規則（`button, select, textarea, input`）").toBeTruthy();
   expect(
     base,

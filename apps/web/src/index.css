@@ -190,6 +190,20 @@ h4 {
   color: var(--text-h);
 }
 
+/* ── 2026-09-08：§4.6.6 那條槓桿，寫好五天沒有人實作 ──────────────────────────
+   §4.6.6 逐字寫著「不引入 webfont…**槓桿是字重**：`h1`／`h2` 600、`.app-title` 700
+   （今天全部 500／600），GOV.UK 與 USWDS 的視覺品質就是這樣來的」。`.app-title` 的
+   700 落地了，`h1`／`h2` 的 600 沒有——**一條已經裁定的決策躺在文件裡當現況描述**。
+
+   為什麼它重要而不是品味：這個 app 不載入 webfont，所以能拉開層級的只有字級與字重
+   兩個頻道，而字級已經用滿（§4.1 八階）。字重全部停在 500 的結果是**四十級字級落在
+   同一個重量上**，標題與內文只差大小不差份量——第一次真的看畫面時，那正是「像未經
+   排版的文字草稿」的來源之一。 */
+h1,
+h2 {
+  font-weight: 600;
+}
+
 /* 40px is a page title. 56px was a landing hero applied to every route, so
    「資料保存政策」 — a document heading above a table of prose — was set at the
    same size as the search page's one-line invitation. Those are two different
@@ -246,10 +260,9 @@ h1 {
    內距 32 的容器正中央，同一組尺寸讀成的是密集後台表單的一列——外部審查說的
    「擠壓、手作感」。三個一起長高，所以它們仍然是同一條線上、同一組東西；只有這一
    頁的主要控制項換尺寸，別的地方一個像素都沒動。 */
-.home form :is(input, button, .hero-create) {
-  min-height: 40px;
-  padding: 8px 16px;
-}
+/* 這條規則在 2026-09-08 早些時候把首頁三個控制項從 32px 抬到 40px，當時是特例。
+   同日稍晚 40px 成為全站控制項的一階，所以這裡只剩「它們要一樣寬鬆」這件事，而那
+   已經由基礎控制項層說了——留一個空規則沒有意義，整條走。 */
 h2 {
   font-weight: 600;
   font-size: 24px;
@@ -345,8 +358,18 @@ input:not([type="checkbox"], [type="radio"]) {
      so it takes --border-strong and WCAG 1.4.11's 3:1 (see the token). */
   border: 1px solid var(--border-strong);
   border-radius: 6px;
-  padding: 5px 10px;
-  min-height: 32px;
+  /* ── 2026-09-08：控制項從 32px 走到 40px，而這是第一次真的看畫面之後改的 ──────
+     32px＋`5px 10px` 是「比瀏覽器預設好，但仍然是最小可用」的尺寸，它 2026-08 落地
+     時解決的問題是「按鈕看起來像壞掉的 chrome」。截圖來看，它現在製造的問題是**按鈕
+     是整個畫面上最弱的元素**——比它上面那段說明文字還小、還淡，而那段文字只是說明，
+     按鈕才是這張卡要人做的事。
+     40px 是 `.home` 的 hero 2026-09-08 早些時候已經量過一次的那一階（當時只在首頁
+     開了特例）；把它變成全站的一階，那個特例就不必存在。內距同批回到 4px 網格
+     （`8px 16px`），字重 500 讓標籤與內文分家——這個 app 不載 webfont，字重是僅有的
+     兩個層級頻道之一（§4.6.6）。 */
+  padding: 8px 16px;
+  min-height: 40px;
+  font-weight: 500;
   box-sizing: border-box;
   transition:
     background-color var(--dur-fast) var(--ease),
@@ -457,6 +480,12 @@ button {
   cursor: pointer;
 }
 
+/* 一頁至多一個（§4.6.3），所以它可以是整頁最重的東西——而在 2026-09-08 之前它與
+   旁邊的次要按鈕除了底色以外一模一樣。 */
+.action {
+  font-weight: 600;
+}
+
 /* The two controls the layer above excludes still need their selected state to
    be visible: left to the UA, dark mode renders a checked box in a grey that
    sits a hair off the unchecked one. --accent is 4.84:1 on --bg, well over the
@@ -527,8 +556,25 @@ textarea {
 /* The default UA blue/purple fights the accent hue and, worse, :visited turns
    half the links a different colour for no reason the page ever states.
    `.app-title` keeps --text-h: its class beats this element selector. */
+/* ── 2026-09-08：連結不再是預設的「緊貼底線」 ─────────────────────────────────
+   底線留著（NFR-007：意義不得只由顏色承載，而正文裡的連結正是那條規則的主場），
+   換掉的是它的位置與粗細——瀏覽器預設的底線壓在字的基線上、與文字同粗，那是 1996
+   年的連結長相，不是一條規則要求的東西。 */
 a {
   color: var(--link);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+/* 頁尾那一列是**純連結**（「資料保存政策 ｜ 帳號與刪除」），不是夾在句子裡的連結，
+   所以 1.4.1 的「不得只靠顏色」在這裡沒有可混淆的對象：整行就只有連結。底線改成
+   hover 才出現，那一列因此從「兩條紫色底線」變回一列文字。 */
+.app-footer .note a {
+  text-decoration: none;
+}
+
+.app-footer .note a:hover {
+  text-decoration: underline;
 }
 
 /* :focus-visible, never :focus — a mouse click on a button should not leave a
@@ -1432,8 +1478,18 @@ summary {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 6px;
-  padding: 5px 10px;
-  min-height: 32px;
+  /* ── 2026-09-08：控制項從 32px 走到 40px，而這是第一次真的看畫面之後改的 ──────
+     32px＋`5px 10px` 是「比瀏覽器預設好，但仍然是最小可用」的尺寸，它 2026-08 落地
+     時解決的問題是「按鈕看起來像壞掉的 chrome」。截圖來看，它現在製造的問題是**按鈕
+     是整個畫面上最弱的元素**——比它上面那段說明文字還小、還淡，而那段文字只是說明，
+     按鈕才是這張卡要人做的事。
+     40px 是 `.home` 的 hero 2026-09-08 早些時候已經量過一次的那一階（當時只在首頁
+     開了特例）；把它變成全站的一階，那個特例就不必存在。內距同批回到 4px 網格
+     （`8px 16px`），字重 500 讓標籤與內文分家——這個 app 不載 webfont，字重是僅有的
+     兩個層級頻道之一（§4.6.6）。 */
+  padding: 8px 16px;
+  min-height: 40px;
+  font-weight: 500;
   box-sizing: border-box;
   text-decoration: none;
   white-space: nowrap;
@@ -1653,10 +1709,26 @@ summary {
    文字是兩行、四行、兩行，格軌等高之後如果內容也照樣頂著上緣長，三顆按鈕就停在
    三個高度上。把上緣留白設成 `auto` 是 flex 對這件事的既有寫法，不必新增任何 class：
    每一張卡的動作本來就是它的最後一個 `<p>`。 */
+/* ── 2026-09-08：卡片的內部留白第一次是設計出來的 ─────────────────────────────
+   在這之前 `.download-item` 給的是 `padding: 10px 12px`，而畫面上看到的那一圈寬留白
+   **不是它**——是 `h3` 的瀏覽器預設 `margin`。也就是說這三張卡的內部節奏一直由 UA
+   樣式表決定：標題上緣一個 em、下緣一個 em、段落各自再一份，於是同一張卡裡有三種
+   不同的間距，而沒有一種是這份設計選的。那正是「像未經排版的文件」最直接的來源。
+   卡自己出 20px 的內距，標題與段落的預設 margin 歸零，剩下的間距由 `gap` 一個值管。 */
 .create-cards > li {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  padding: 20px;
+}
+
+.create-cards > li > :is(h3, p) {
+  margin: 0;
+}
+
+/* 卡片標題是這張卡的入口，字重與內文分家（§4.6.6 的字重槓桿，同一條）。 */
+.create-cards > li > h3 {
+  font-weight: 600;
 }
 
 .create-cards > li > p:last-child {
@@ -1694,6 +1766,14 @@ summary {
      起來，等於拿掉訪客得知這個產品有 Test Lab 與打包的唯一管道」，而 §2.10 引的
      NN/g 結論是折疊內容無法被掃視。一個抽屜要付這兩筆帳，換到的是這裡不折疊就
      已經拿到的那 32px 再加 27px。 */
+  /* 控制項在 2026-09-08 稍晚從 32px 走到 40px，於是頁首的第一列跟著長高 8px，
+     實測 123 → 131，而這一頁的棘輪上限是 130——**那條測試抓到了它，不是我**。
+     把上下內距從 16 收到 12 換回那 8px：手機上的頁首本來就不需要桌機那一份呼吸，
+     而按鈕變大這件事要留著（它才是這次視覺修正的主體）。 */
+  .app-header {
+    padding-block: 12px;
+  }
+
   .app-title {
     margin-right: auto;
   }
@@ -1835,11 +1915,19 @@ summary::-webkit-details-marker {
   display: none;
 }
 
+/* ── 2026-09-08：這個記號一直被外部審查讀成終端機提示字元，而他們是對的 ────────
+   我連兩輪回答「它已經是 `›` 不是 `>`，2026-09-03 就換掉了」——**實作對，畫面錯**。
+   第一次真的截圖來看：它在 18px 的內文字級、`--text` 的顏色、離字 8px，於是它在
+   一行文字的最左邊看起來就是一個獨立的字，也就是 shell 的提示字元。
+
+   字級降到 ui 階、顏色降到 `--border-strong`（它是記號不是字）、間距收到 4px，
+   它才變回一個附在標題上的標記。字形沒有換，換的是它有多響。 */
 summary::before {
   content: "›";
   display: inline-block;
-  margin-right: 8px;
-  color: var(--text);
+  margin-right: 4px;
+  font-size: 15px;
+  color: var(--border-strong);
   transition: transform var(--dur-fast) var(--ease);
 }
 

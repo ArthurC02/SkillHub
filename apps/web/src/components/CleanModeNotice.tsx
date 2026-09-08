@@ -48,10 +48,12 @@ export function CleanModeNotice() {
 
   return (
     <details className="clean-mode-notice">
-      <summary>
-        <span className="badge badge-unverified">
-          淨測試模式：5 項在這個模式下不成立（沒有隔離、不驗簽章、只有一條連線）
-        </span>
+      {/* 徽章的 class 在 `<summary>` 自己身上，不在裡面的 `<span>` 上。2026-09-08
+          之前它在 `<span>` 上，而 `summary::before` 的那個 `›` 是 summary 的第一個
+          行內盒——**於是箭頭落在藥丸外面**，畫面上看起來像一個孤零零的大於符號旁邊
+          擺著一顆徽章。第一次真的看畫面才看到（前面幾輪都在量數字）。 */}
+      <summary className="badge badge-unverified">
+        淨測試模式：5 項在這個模式下不成立（沒有隔離、不驗簽章、只有一條連線）
       </summary>
       <p className="note">
         沙箱沒有隔離——不是比較弱的隔離，是沒有邊界。這個模式只跑策展過的展示素材。
