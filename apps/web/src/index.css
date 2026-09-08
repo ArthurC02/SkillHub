@@ -1,54 +1,68 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
+  --text: #565f6e;
+  --text-h: #101623;
   /* ADR-064 §4.6.1/§4.6.2: depth is three flat surfaces, not shadow — ground
      (--bg), surface (--surface), recess (--code-bg). The surface is lighter than
      the ground in BOTH themes, which is the only direction that works in dark
      mode, where a shadow has nothing to fall on. The three greys are tinted
-     toward --accent rather than neutral; that is the cheapest thing five
-     external systems all do, and it reverts by editing one line each.
-     Measured 2026-09-03, and every one of these is stated because a number in a
+     near-neutral with a slight cool bias, NOT tinted toward the accent.
+
+     ── 2026-09-08：三階灰從藕紫改成中性冷灰，accent 從螢光洋紅改成深紫 ──────────
+     2026-09-03 這三階是「朝 --accent 染色」的（#f7f6fa／#f1eef6／#6b6375 都帶紫），
+     配上 #aa3bff 那個螢光洋紅。負責人第三次回報同一件事：「這個顏色就是最大的問題，
+     整個看起來超級復古風」。飽和洋紅加藕紫灰是 2000 年代的配方，而**這件事沒有任何
+     規則擋**——`contrast.test.ts` 量的是達不達標不是釘住色相，`design-system.test.ts`
+     解析的是字級與間距，ADR-064 定的是三層平面的**結構**不是色相，§2.7 禁的是散落的
+     色彩字面值不是改 token 的值。擋住它的一直只是沒有人去算那 50 個數字。
+
+     Measured 2026-09-08, and every one of these is stated because a number in a
      comment is the thing that rots: --text/--text-h/--danger/--link clear 4.5:1
      on all five fills (ground, surface, recess, hover, active) in both themes —
-     the tightest light pair is --link on --surface-active at 4.62. */
-  --bg: #f7f6fa;
+     the tightest light pair is --text on --surface-active at 5.25 (it was 4.62
+     before this retune, so the floor went up while the hue calmed down). */
+  --bg: #f6f7f9;
   --surface: #ffffff;
-  --surface-hover: #f3f0f8;
-  --surface-active: #efebf5;
-  --border: #e3dfea;
+  --surface-hover: #eff1f5;
+  --surface-active: #e5e8ee;
+  --border: #e1e4ea;
   /* WCAG 1.4.11 wants 3:1 for a control's boundary and --border never met it:
-     1.27:1 on the old white --bg. This is 3.42:1 light / 3.26:1 dark on
+     1.27:1 on the old white --bg. This is 3.58:1 light / 4.32:1 dark on
      --surface, and it is for control edges only — a card keeps --border,
      because a card's edge carries no information (NFR-007 keeps that in
      words). */
-  --border-strong: #8f87a0;
+  --border-strong: #7e8899;
   /* §4.6.3: fill belongs to ACTIONS, outline to CLAIMS. One filled action per
      page — the one that finishes the page's work — so a badge never gets this
-     and a second button never gets it. --on-cta on --cta is 5.43:1 light /
-     7.49:1 dark. --cta is --link's value in both themes on purpose: the app
+     and a second button never gets it. --on-cta on --cta is 7.32:1 light /
+     8.52:1 dark. --cta is --link's value in both themes on purpose: the app
      already decided what its own purple is, and a second one would be a hue to
      keep in sync. */
-  --cta: #9b2ae6;
+  --cta: #5b3bc4;
   --on-cta: #ffffff;
   /* §5.3 缺口 ①: blocking messages and non-blocking degradation notices shared
      one surface, so 「不能打包」 looked like an explanation. This is the second
      channel; the words stay the first one (§2.3). Not for degradation — that is
      --accent-bg and stays --accent-bg. */
-  --danger-bg: #fdecec;
-  --code-bg: #f1eef6;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
+  --danger-bg: #fdf1f0;
+  --code-bg: #f1f3f7;
+  --accent: #6d4aeb;
+  --accent-bg: rgba(109, 74, 235, 0.09);
+  --accent-border: rgba(109, 74, 235, 0.45);
   /* QA-009: the old literal #d33 was 4.11:1 on --code-bg in light mode and
      3.55:1 in dark, i.e. below AA in both — one hardcoded red cannot serve two
-     backgrounds. This one is 5.82:1 light / 5.86:1 dark on the badge fill. */
-  --danger: #b91c1c;
-  /* QA-009, same reasoning as --danger: --accent (#aa3bff) is 4.39:1 on --bg,
-     under the 4.5:1 AA floor, so it can outline a .notice but must not be link
-     text. This is the same hue pushed over the line — 5.43:1 on --bg, 4.88:1 on
-     --code-bg. In dark mode --accent already clears it (6.77:1) and the two
-     values coincide. */
-  --link: #9b2ae6;
+     backgrounds. This one is 5.92:1 light / 5.72:1 dark on the badge fill. */
+  --danger: #b42318;
+  /* --link and --accent are two values of one hue, and **the reason they are
+     two changed on 2026-09-08 — so the reason is restated rather than left as a
+     sentence that used to be true.** Before the retune --accent was 4.39:1 on
+     --bg, i.e. under AA, and --link existed because the accent literally could
+     not be link text. Today --accent clears AA too (5.12:1 light / 6.94:1 dark),
+     so the split is no longer forced by arithmetic: it is kept because the two
+     jobs want different chroma — a focus ring and a .notice edge are read at a
+     glance and take the brighter value, running link text is read for minutes
+     and takes the calmer one. --link is 6.83:1 on --bg, 6.59:1 on --code-bg.
+     Both are still in contrast.test.ts's PAIRS, so neither can drift. */
+  --link: #5b3bc4;
 
   /* §4.6.4: two durations and one curve (Material 3 standard easing), and the
      reduce block below zeroes both in one place rather than per rule. Only
@@ -80,23 +94,23 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #121218;
-    --surface: #1b1c24;
-    --surface-hover: #23242e;
-    --surface-active: #2a2b36;
-    --border: #31303d;
-    --border-strong: #6e6a80;
-    --cta: #c084fc;
-    --on-cta: #0d0812;
-    --danger-bg: #3b1a1a;
-    --code-bg: #24252f;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --danger: #f87171;
-    --link: #c084fc;
+    --text: #9aa4b4;
+    --text-h: #f1f3f7;
+    --bg: #0f1116;
+    --surface: #171a21;
+    --surface-hover: #20242d;
+    --surface-active: #272c36;
+    --border: #2b303a;
+    --border-strong: #767f90;
+    --cta: #b3a0ff;
+    --on-cta: #120c22;
+    --danger-bg: #3a1a19;
+    --code-bg: #1e222a;
+    --accent: #a78bfa;
+    --accent-bg: rgba(167, 139, 250, 0.15);
+    --accent-border: rgba(167, 139, 250, 0.45);
+    --danger: #f97066;
+    --link: #b3a0ff;
   }
 }
 
@@ -367,7 +381,7 @@ button {
 
 /* The fill cannot change on hover without either dropping --on-cta under 4.5:1
    or inventing a second CTA tone, so the edge moves instead: --text-h against
-   the ground is 18.7:1 light / 17.0:1 dark, which is the loudest outline the
+   the ground is 16.9:1 light / 17.0:1 dark, which is the loudest outline the
    palette already owns. */
 .action:hover {
   border-color: var(--text-h);
@@ -398,8 +412,8 @@ button {
 
 /* The two controls the layer above excludes still need their selected state to
    be visible: left to the UA, dark mode renders a checked box in a grey that
-   sits a hair off the unchecked one. --accent is 4.39:1 on --bg — under AA for
-   text, over the 3:1 WCAG 1.4.11 floor for a control, which is what this is. */
+   sits a hair off the unchecked one. --accent is 5.12:1 on --bg, well over the
+   3:1 WCAG 1.4.11 floor for a control, which is what this is. */
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--accent);
@@ -408,7 +422,7 @@ input[type="radio"] {
 /* Secondary buttons. `.action` and `.destructive` are excluded rather than
    re-stated afterwards: `button:hover:not(:disabled)` outranks a bare
    `.action:hover`, so without the exclusion the primary action would lose its
-   own hover to this rule. --link on --surface-hover is 4.82:1, still AA. */
+   own hover to this rule. --link on --surface-hover is 6.48:1, still AA. */
 button:hover:not(:disabled, .action, .destructive),
 .action-secondary:hover {
   background: var(--surface-hover);
@@ -425,7 +439,7 @@ button:active:not(:disabled, .action, .destructive),
 
 /* §4.6.3 / §2.8: destructive is deliberately NOT the primary action. Outline in
    --danger on the ordinary surface, and the danger tint only appears once the
-   pointer is on it — 5.66:1 for the label there. ConfirmDelete's two-step
+   pointer is on it — 5.95:1 for the label there. ConfirmDelete's two-step
    disclosure depends on this button being quiet. */
 .destructive {
   color: var(--danger);
@@ -440,7 +454,7 @@ button:active:not(:disabled, .action, .destructive),
 /* QA-009 again: the obvious way to say "disabled" is `opacity: .5`, and that is
    exactly the move this file removed twice already — a multiplier lands
    wherever it lands and no colour token can catch it. --text on --code-bg is
-   5.15:1 and stays AA; the dashed edge is a second, non-colour channel so the
+   5.80:1 and stays AA; the dashed edge is a second, non-colour channel so the
    state does not depend on noticing a grey (NFR-007).
 
    The border colour is now stated rather than inherited: a disabled control sits
@@ -475,7 +489,7 @@ a {
    painted over, so this has to be re-stated rather than inherited. outline
    rather than box-shadow for the same reason: an outline is drawn outside the
    border box and cannot be clipped by the element's own background.
-   --accent is 4.39:1 light / 6.77:1 dark, both clear of the 3:1 that WCAG 2.1
+   --accent is 5.12:1 light / 6.94:1 dark, both clear of the 3:1 that WCAG 2.1
    1.4.11 asks of a non-text indicator. */
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -1007,7 +1021,7 @@ input[type="file"]:disabled::file-selector-button {
    replaced put --text at 3.03:1–3.71:1 on white, under the 4.5:1 AA floor, and
    opacity is the one way to break contrast that no colour token can catch —
    whatever value --text holds, a multiplier lands somewhere else. --text is
-   5.73:1 on --bg and 5.15:1 on --code-bg; keep the greys in the tokens. */
+   6.01:1 on --bg and 5.80:1 on --code-bg; keep the greys in the tokens. */
 .note,
 .rank,
 .risk-counts,
