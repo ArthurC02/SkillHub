@@ -15,16 +15,28 @@
      解析的是字級與間距，ADR-064 定的是三層平面的**結構**不是色相，§2.7 禁的是散落的
      色彩字面值不是改 token 的值。擋住它的一直只是沒有人去算那 50 個數字。
 
+     ── 同日第二輪：三層平面在亮色模式下量不出來 ──────────────────────────────
+     結構是對的（ground／surface／recess 三階，surface 比 ground 亮，兩個主題同向），
+     但亮色那一階的**幅度**一直是 1.07:1，而卡片邊 `--border` 對白色只有 1.27:1。
+     兩個通道都在，兩個都低於看得見的門檻，於是外部審查讀到的是「純白畫布上的白色
+     線框」——那個描述在色碼上不成立，在眼睛裡成立。ground 走到 1.13:1、`--border`
+     走到 1.46:1。**暗色量出來有同一個毛病**：地與面只差 1.085:1，是新加的那條棘輪
+     測試自己抓到的，不是眼睛——地走到 `#0a0c10`（1.12:1），`--border` 從 1.32:1 走到
+     1.50:1，兩個主題等強。
+     `--border` 不在 `contrast.test.ts` 的 PAIRS 裡，因為卡片的邊不承載資訊
+     （NFR-007 把那件事留給文字）；ground 在裡面，25 對重算過，最緊的一對仍是
+     `--text` 在 `--surface-active` 上的 5.25:1，沒有被這次挪動碰到。
+
      Measured 2026-09-08, and every one of these is stated because a number in a
      comment is the thing that rots: --text/--text-h/--danger/--link clear 4.5:1
      on all five fills (ground, surface, recess, hover, active) in both themes —
      the tightest light pair is --text on --surface-active at 5.25 (it was 4.62
      before this retune, so the floor went up while the hue calmed down). */
-  --bg: #f6f7f9;
+  --bg: #eef1f6;
   --surface: #ffffff;
   --surface-hover: #eff1f5;
   --surface-active: #e5e8ee;
-  --border: #e1e4ea;
+  --border: #d0d6e0;
   /* WCAG 1.4.11 wants 3:1 for a control's boundary and --border never met it:
      1.27:1 on the old white --bg. This is 3.58:1 light / 4.32:1 dark on
      --surface, and it is for control edges only — a card keeps --border,
@@ -56,11 +68,11 @@
      two changed on 2026-09-08 — so the reason is restated rather than left as a
      sentence that used to be true.** Before the retune --accent was 4.39:1 on
      --bg, i.e. under AA, and --link existed because the accent literally could
-     not be link text. Today --accent clears AA too (5.12:1 light / 6.94:1 dark),
+     not be link text. Today --accent clears AA too (4.84:1 light / 7.19:1 dark),
      so the split is no longer forced by arithmetic: it is kept because the two
      jobs want different chroma — a focus ring and a .notice edge are read at a
      glance and take the brighter value, running link text is read for minutes
-     and takes the calmer one. --link is 6.83:1 on --bg, 6.59:1 on --code-bg.
+     and takes the calmer one. --link is 6.47:1 on --bg, 6.59:1 on --code-bg.
      Both are still in contrast.test.ts's PAIRS, so neither can drift. */
   --link: #5b3bc4;
 
@@ -96,11 +108,11 @@
   :root {
     --text: #9aa4b4;
     --text-h: #f1f3f7;
-    --bg: #0f1116;
+    --bg: #0a0c10;
     --surface: #171a21;
     --surface-hover: #20242d;
     --surface-active: #272c36;
-    --border: #2b303a;
+    --border: #333945;
     --border-strong: #767f90;
     --cta: #b3a0ff;
     --on-cta: #120c22;
@@ -202,6 +214,15 @@ h1 {
 
 .home form button {
   flex-shrink: 0;
+}
+
+/* 這三個是全 app 的控制項尺寸，而那個尺寸是為「清單裡一則的操作」定的。放在一個
+   內距 32 的容器正中央，同一組尺寸讀成的是密集後台表單的一列——外部審查說的
+   「擠壓、手作感」。三個一起長高，所以它們仍然是同一條線上、同一組東西；只有這一
+   頁的主要控制項換尺寸，別的地方一個像素都沒動。 */
+.home form :is(input, button, .hero-create) {
+  min-height: 40px;
+  padding: 8px 16px;
 }
 h2 {
   font-weight: 600;
@@ -412,7 +433,7 @@ button {
 
 /* The two controls the layer above excludes still need their selected state to
    be visible: left to the UA, dark mode renders a checked box in a grey that
-   sits a hair off the unchecked one. --accent is 5.12:1 on --bg, well over the
+   sits a hair off the unchecked one. --accent is 4.84:1 on --bg, well over the
    3:1 WCAG 1.4.11 floor for a control, which is what this is. */
 input[type="checkbox"],
 input[type="radio"] {
@@ -489,7 +510,7 @@ a {
    painted over, so this has to be re-stated rather than inherited. outline
    rather than box-shadow for the same reason: an outline is drawn outside the
    border box and cannot be clipped by the element's own background.
-   --accent is 5.12:1 light / 6.94:1 dark, both clear of the 3:1 that WCAG 2.1
+   --accent is 4.84:1 light / 7.19:1 dark, both clear of the 3:1 that WCAG 2.1
    1.4.11 asks of a non-text indicator. */
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -508,6 +529,18 @@ a {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   text-align: left;
+}
+
+/* 離線登入（`components/SignIn`，只在 DEV_LOGIN 開著時）在頁首是一個 `<form>`，
+   而頁首自己是 flex，所以標籤、輸入框與按鈕過去是三個各自落在列上的兄弟，中間只有
+   頁首那組較寬的間距。外部審查讀成「工程師為了本機測試硬插在版面上的除錯工具」。
+   收成一組，三件東西同一條基線、同一個間距。文案一個字沒改：那句括號說的是這台
+   機器為什麼沒有 GitHub 登入，而它在全 app 只有這一份。 */
+.app-header form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 /* margin-right on the nav, not margin-left on the last child: AuthControls
@@ -1021,7 +1054,7 @@ input[type="file"]:disabled::file-selector-button {
    replaced put --text at 3.03:1–3.71:1 on white, under the 4.5:1 AA floor, and
    opacity is the one way to break contrast that no colour token can catch —
    whatever value --text holds, a multiplier lands somewhere else. --text is
-   6.01:1 on --bg and 5.80:1 on --code-bg; keep the greys in the tokens. */
+   5.69:1 on --bg and 5.80:1 on --code-bg; keep the greys in the tokens. */
 .note,
 .rank,
 .risk-counts,

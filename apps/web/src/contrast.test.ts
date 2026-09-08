@@ -196,3 +196,40 @@ for (const [themeName, theme] of Object.entries(THEMES)) {
     });
   }
 }
+
+/**
+ * ADR-064 §4.6.2 的第二半：三層平面**要量得出來**。
+ *
+ * 結構寫進文件之後，這件事被讀成「地與面是兩個不同的 token」——而兩個不同的 token
+ * 可以差 1.07:1，那是一個色碼上成立、眼睛裡不成立的層級。2026-09-08 之前它就是
+ * 1.07:1，卡片邊 `--border` 對面 1.27:1，於是外部審查連續讀到「純白畫布上的白色
+ * 線框」。PAIRS 抓不到這件事：那 25 對量的是**字讀不讀得到**，而這裡量的是**面看不
+ * 看得出來**，兩者的門檻與理由都不同（面之間沒有 WCAG 門檻，1.4.11 管的是控制項與
+ * 資訊性圖形的邊，那條邊是 `--border-strong`，在 PAIRS 裡）。
+ *
+ * 兩個門檻都低於現值一階，所以它是棘輪不是天花板：把地調回 `#f6f7f9`（1.07）或把
+ * `--border` 調回 `#e1e4ea`（1.27）就會紅。
+ */
+const luminanceOrder = (hex: string) => contrast(hex, "#000000");
+
+for (const [themeName, theme] of Object.entries(THEMES)) {
+  test(`§4.6.2 (${themeName}): 面比地亮，而且亮得看得出來`, () => {
+    expect(
+      luminanceOrder(theme.surface),
+      `--surface ${theme.surface} 必須比 --bg ${theme.bg} 亮（暗色模式唯一成立的方向）`,
+    ).toBeGreaterThan(luminanceOrder(theme.bg));
+    const step = contrast(theme.surface, theme.bg);
+    expect(
+      Number(step.toFixed(3)),
+      `--surface 對 --bg 只有 ${step.toFixed(3)}:1；兩個不同的 token 不等於看得出來的一階`,
+    ).toBeGreaterThanOrEqual(1.1);
+  });
+
+  test(`§4.6.2 (${themeName}): 卡片的邊在面上看得見`, () => {
+    const edge = contrast(theme.border, theme.surface);
+    expect(
+      Number(edge.toFixed(3)),
+      `--border 對 --surface 只有 ${edge.toFixed(3)}:1；卡片的邊不必達 3:1（那是 --border-strong 的工作），但必須看得見`,
+    ).toBeGreaterThanOrEqual(1.4);
+  });
+}
