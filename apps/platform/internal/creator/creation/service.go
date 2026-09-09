@@ -434,3 +434,48 @@ func advance(ctx context.Context, tx pgx.Tx, row gen.CreationSession, state, eve
 func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, ws pgtype.UUID) error {
 	return gen.New(tx).PurgeCreationWorkspace(ctx, ws)
 }
+
+// StreamCursor is what a reconnecting client says it already has: a session
+// revision. ADR-069 決策 3.
+//
+// There is no separate sequence and no relay store, and that is the point of
+// streaming state rather than tokens. `revision` is already monotonic per
+// session — AdvanceCreationSession bumps it inside the same transaction that
+// writes the snapshot and the append-only event — so 「what has this client
+// missed」 is one comparison against a row that has to be read anyway. The
+// industry reaches for Redis at this spot because streamed tokens belong to no
+// table; these do.
+//
+// Nothing intermediate is replayed, and nothing needs to be: a snapshot is
+// cumulative (messages append, they are never rewritten), so the document at
+// revision N contains everything revisions 1..N-1 would have said. A client
+// that misses three revisions and reconnects is one document behind, not three.
+type StreamCursor int64
+
+// Changed returns the session as of now when it has moved past the cursor, and
+// ok=false when it has not. ErrNotFound once the session is gone or expired —
+// the same answer Get gives, so a stream cannot outlive the thing it watches.
+func (s *Service) Changed(ctx context.Context, ws identity.Workspace, id pgtype.UUID, at StreamCursor) (View, bool, error) {
+	row, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: id, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !live(row)) {
+		return View{}, false, ErrNotFound
+	}
+	if err != nil {
+		return View{}, false, err
+	}
+	if row.Revision <= int64(at) {
+		return View{}, false, nil
+	}
+	v, err := view(row)
+	return v, err == nil, err
+}
+
+// StreamDone reports whether a stream watching this view should close: the
+// session has reached a state no further command can leave, or its own clock
+// has run out. Both are already the conditions under which the screen stops
+// asking (terminal states, and the deadline every command except cancel is
+// refused after), so the stream ends exactly when the page would have stopped
+// polling.
+func StreamDone(v View) bool {
+	return terminal(v.State) || v.State == "failed" || !v.Deadline.After(time.Now())
+}

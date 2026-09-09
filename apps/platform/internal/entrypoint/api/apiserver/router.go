@@ -143,6 +143,13 @@ func NewRouter(d Deps) http.Handler {
 		mux.HandleFunc("GET /creation-sessions", auth.RequireSession(auth.RequireInvited(d.Creation.List)))
 		mux.HandleFunc("POST /creation-sessions", limited(d, metrics.RouteGenerate, auth.RequireSession(auth.RequireInvited(d.Creation.Create))))
 		mux.HandleFunc("GET /creation-sessions/{session_id}", auth.RequireSession(auth.RequireInvited(d.Creation.Get)))
+		// ADR-069 / 05 R-71. Same flag, same session and same invitation as the
+		// GET beside it, because it is the same read: a stream of the document
+		// that route returns. Deliberately NOT limited() — a rate limiter counts
+		// requests, and this route's whole purpose is to replace many requests
+		// with one long-lived read; the bound that matters here is the session's
+		// own deadline, which the handler closes on.
+		mux.HandleFunc("GET /creation-sessions/{session_id}/events", auth.RequireSession(auth.RequireInvited(d.Creation.Stream)))
 		mux.HandleFunc("POST /creation-sessions/{session_id}/actions", limited(d, metrics.RouteGenerate, auth.RequireSession(auth.RequireInvited(d.Creation.Act))))
 		mux.HandleFunc("GET /creation-sessions/limits", auth.RequireSession(auth.RequireInvited(d.Creation.Limits)))
 	}

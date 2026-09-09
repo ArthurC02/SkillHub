@@ -1138,3 +1138,54 @@ func TestNginxServesTheSamePolicyAsCleanMode(t *testing.T) {
 		t.Errorf("nginx.conf's policy is not marked `always`, so error responses go out without it: %s", strings.TrimSpace(line))
 	}
 }
+
+// The buffering setting in front of the one streaming route (ADR-069 / 05
+// R-71), which is the kind of thing nothing else would ever catch.
+//
+// nginx buffers a proxied response by default. With buffering on, the SSE
+// endpoint still works, still returns 200, still delivers every event — all at
+// once, when the stream ends. Nothing errors. The page simply feels exactly as
+// slow as the polling it was built to replace, and the only symptom is a
+// number nobody is watching. That is why this assertion exists here rather
+// than in a runbook.
+func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("no source path for this test file")
+	}
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..")
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "infra", "images", "web", "nginx.conf"))
+	if err != nil {
+		t.Fatalf("read nginx.conf: %v", err)
+	}
+
+	// The location block for the stream, from its opening line to the next
+	// closing brace at that indentation.
+	conf := string(raw)
+	at := strings.Index(conf, "location ~ ^/creation-sessions/")
+	if at < 0 {
+		t.Fatal("nginx.conf has no location for the creation event stream; the deployed product buffers it")
+	}
+	end := strings.Index(conf[at:], "\n    }")
+	if end < 0 {
+		t.Fatal("could not find the end of the stream location block")
+	}
+	block := conf[at : at+end]
+
+	for _, want := range []string{
+		"proxy_buffering off",
+		// Without it nginx talks HTTP/1.0 upstream and closes per response,
+		// which is a different way to lose the stream.
+		"proxy_http_version 1.1",
+		"proxy_pass",
+	} {
+		if !strings.Contains(block, want) {
+			t.Errorf("the stream location is missing %q:\n%s", want, block)
+		}
+	}
+	// A read timeout shorter than two keep-alives would drop a session that is
+	// merely thinking. The handler sends one every 20s.
+	if !strings.Contains(block, "proxy_read_timeout") {
+		t.Errorf("the stream location sets no proxy_read_timeout, so nginx's 60s default cuts a quiet stream:\n%s", block)
+	}
+}

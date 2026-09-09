@@ -56,6 +56,7 @@ var anonymousRoutes = []anonCase{
 	{pattern: "GET /creation-sessions", want: http.StatusNotFound, conditional: "creationEnabled"},
 	{pattern: "POST /creation-sessions", want: http.StatusNotFound, conditional: "creationEnabled"},
 	{pattern: "GET /creation-sessions/{session_id}", want: http.StatusNotFound, conditional: "creationEnabled"},
+	{pattern: "GET /creation-sessions/{session_id}/events", want: http.StatusNotFound, conditional: "creationEnabled"},
 	{pattern: "POST /creation-sessions/{session_id}/actions", want: http.StatusNotFound, conditional: "creationEnabled"},
 	{pattern: "GET /creation-sessions/limits", want: http.StatusNotFound, conditional: "creationEnabled"},
 	// --- identity.Handler.Mount (ADR-020) ---------------------------------------

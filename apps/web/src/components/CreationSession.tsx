@@ -8,6 +8,7 @@ import {
   getCreationLimits,
   getCreationSession,
   listCreationSessions,
+  streamCreationSession,
   type CreationAction,
   type CreationAttachment,
   type CreationSession as Session,
@@ -508,14 +509,33 @@ export function CreationSession() {
     queryFn: getCreationLimits,
     retry: false,
   });
+  // ADR-069 / `05` R-71: the step stream stands the poll down, and only while
+  // it is actually delivering. `streaming` is set by the connection itself
+  // (open/error), never assumed — every way an SSE connection fails is silent,
+  // so the poll below is the floor and the stream is the improvement on top.
+  const [streaming, setStreaming] = useState(false);
   const current = useQuery({
     queryKey: ["creation-session", id],
     queryFn: () => getCreationSession(id),
     enabled: !!id,
     retry: false,
     refetchInterval: (q) =>
-      ["queued", "working"].includes(q.state.data?.state ?? "") ? 1000 : false,
+      !streaming && ["queued", "working"].includes(q.state.data?.state ?? "") ? 1000 : false,
   });
+  useEffect(() => {
+    if (!id) return;
+    // Deliberately not gated on the current state: a session that is
+    // `waiting_input` when this mounts becomes `queued` the moment the person
+    // sends something, and a stream opened only for the busy states would miss
+    // exactly the transition it exists to deliver. The server closes the
+    // connection itself once the session is terminal (creation_stream.go), so
+    // the ending is its decision, not a guess made here.
+    return streamCreationSession(
+      id,
+      (s) => client.setQueryData(["creation-session", id], s),
+      setStreaming,
+    );
+  }, [id, client]);
   const session = current.data,
     p = session?.snapshot;
   // CRED-001 (ADR-068)'s gate ① applies only to STARTING a new session — an

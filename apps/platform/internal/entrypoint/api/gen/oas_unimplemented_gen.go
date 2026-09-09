@@ -1133,6 +1133,34 @@ func (UnimplementedHandler) StartRun(ctx context.Context, req *StartRunReq, para
 	return r, ht.ErrNotImplemented
 }
 
+// StreamCreationSession implements streamCreationSession operation.
+//
+// The step events of one creation session, as they are written (ADR-069).
+//
+// THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the honest description rather than an
+// omission. The body is an SSE stream (`text/event-stream`): a sequence of events whose `id:` is the
+// session revision and whose `data:` is one CreationSession — the same document GET
+// /creation-sessions/{session_id} returns — plus a comment line at least every 20 seconds so an idle
+// proxy does not close the connection. OpenAPI can describe a document; it cannot describe a stream of
+// them, and naming CreationSession as the body schema would assert that the body IS one of those,
+// which is false. What pins the payload instead is a test: apiserver's stream test unmarshals what the
+// handler writes into the very type this contract's CreationSession is generated from, so the two
+// cannot drift without going red (05 R-71 signature 2).
+//
+// What this stream does NOT carry is model tokens. A model reply is a proposal until Go accepts it —
+// it can be rejected whole, or thrown away and asked for again — so what streams here is state Go
+// has already committed, never text a model is still writing. ADR-069 決策 1 and 6 carry the
+// reasoning and the conditions under which that could change.
+//
+// The stream ends when the session reaches a terminal state or its deadline passes. A client that
+// cannot hold a stream keeps polling GET /creation-sessions/{session_id}; this endpoint adds nothing
+// that polling cannot get, only sooner and with far less traffic.
+//
+// GET /creation-sessions/{session_id}/events
+func (UnimplementedHandler) StreamCreationSession(ctx context.Context, params StreamCreationSessionParams) (r StreamCreationSessionRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // SubmitFeedback implements submitFeedback operation.
 //
 // One endpoint for the three entry points the closed beta needs, split by `kind` rather than by URL:

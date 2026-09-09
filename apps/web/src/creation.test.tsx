@@ -1550,3 +1550,138 @@ test("the joiners that spell emoji and Indic scripts are not flagged", async () 
   await resume();
   expect(box.querySelectorAll("mark.hidden-char").length, "ZWJ 被當成走私標了出來").toBe(0);
 });
+
+/**
+ * ADR-069 / `05` R-71：等待畫面靠一條 SSE 串流，而串的是**已經被 Go 採納的狀態**，
+ * 不是模型正在打的字。
+ *
+ * jsdom 沒有 EventSource，所以這裡自己給一個——那也正好讓「連線失敗時會怎樣」
+ * 變成可以測的東西，而那是這條路上每一種失敗的共同形狀：它們都不出聲。
+ */
+class FakeEventSource {
+  static open: FakeEventSource[] = [];
+  onopen: (() => void) | null = null;
+  onmessage: ((e: { data: string }) => void) | null = null;
+  onerror: (() => void) | null = null;
+  closed = false;
+  // Fields declared and assigned rather than parameter properties: this repo
+  // compiles with `erasableSyntaxOnly`, and a parameter property is the one
+  // piece of TypeScript that has to emit code.
+  url: string;
+  init?: { withCredentials?: boolean };
+  constructor(url: string, init?: { withCredentials?: boolean }) {
+    this.url = url;
+    this.init = init;
+    FakeEventSource.open.push(this);
+  }
+  close() {
+    this.closed = true;
+  }
+}
+function stubEventSource() {
+  FakeEventSource.open = [];
+  vi.stubGlobal("EventSource", FakeEventSource);
+  return FakeEventSource;
+}
+
+test("a step arrives on the stream and reaches the screen", async () => {
+  const es = stubEventSource();
+  const v = sample({ state: "working" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+
+  expect(es.open.length, "沒有開串流").toBe(1);
+  const source = es.open[0];
+  expect(source.url, "串流沒有指向這場會話自己的事件端點").toContain(
+    "/creation-sessions/s1/events",
+  );
+  // 這條路只認 session cookie，和 apiFetch 的 credentials: "include" 同一個理由。
+  expect(source.init?.withCredentials).toBe(true);
+
+  // 伺服器推一份新的文件下來：和 GET 回的是同一種文件（契約上那條端點沒有 body
+  // schema，釘住它的是 Go 那支測試）。
+  const next = sample({ state: "waiting_input", revision: 8 });
+  next.snapshot.messages = [{ role: "assistant", content: "我先讀一下規格。" }];
+  await act(async () => {
+    source.onopen?.();
+    source.onmessage?.({ data: JSON.stringify(next) });
+  });
+  await waitFor(() => box.textContent!.includes("我先讀一下規格。"));
+  expect(box.textContent, "串流推來的狀態沒有更新畫面").toContain("我先讀一下規格。");
+});
+
+test("leaving the page closes the stream", async () => {
+  const es = stubEventSource();
+  const v = sample({ state: "working" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const source = es.open[0];
+  expect(source.closed).toBe(false);
+  await act(async () => root.unmount());
+  expect(source.closed, "離開頁面沒有關掉連線，這是一條會累積的長連線").toBe(true);
+});
+
+/**
+ * 沒有 EventSource 的環境（舊瀏覽器、內嵌 WebView、以及這個測試檔本來的 jsdom）
+ * 必須照常運作。串流是加上去的那一層，不是這一頁的地基——所有失敗都不出聲，所以
+ * 輪詢永遠是地板。
+ */
+test("no EventSource in this browser is not a broken page", async () => {
+  vi.stubGlobal("EventSource", undefined);
+  const v = sample({ state: "working" });
+  v.snapshot.messages = [{ role: "assistant", content: "輪詢還在。" }];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  expect(box.textContent).toContain("輪詢還在。");
+});
+
+/**
+ * 串流活著的時候輪詢停手，斷了就接回去——而這一條是**「省下來的流量」那一半的
+ * 全部證據**。
+ *
+ * 用真的時間等，不用假時鐘：要量的是 react-query 的 `refetchInterval` 在
+ * `streaming` 兩種值下的實際行為，而把時鐘換掉就等於把受測的那個機制換掉。
+ * 代價是這支測試會真的花三秒。
+ */
+test("the poll stands down while the stream delivers, and comes back when it drops", async () => {
+  const es = stubEventSource();
+  const v = sample({ state: "working" });
+  const fetched = () => calls.filter((u) => u.includes("/creation-sessions/s1")).length;
+  const calls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      calls.push(String(url));
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  const source = es.open[0];
+
+  await act(async () => source.onopen?.());
+  const whileStreaming = fetched();
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 1300));
+  });
+  expect(fetched(), "串流已經在送了，輪詢還在打").toBe(whileStreaming);
+
+  // 每一種 SSE 的失敗都不出聲，所以地板必須自己回來。
+  await act(async () => source.onerror?.());
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 1300));
+  });
+  expect(fetched(), "串流斷了，輪詢沒有接回去——畫面會就這樣停住").toBeGreaterThan(whileStreaming);
+});

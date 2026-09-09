@@ -78,6 +78,7 @@ const (
 	SetSkillRestrictionOperation               OperationName = "SetSkillRestriction"
 	StartGithubLoginOperation                  OperationName = "StartGithubLogin"
 	StartRunOperation                          OperationName = "StartRun"
+	StreamCreationSessionOperation             OperationName = "StreamCreationSession"
 	SubmitFeedbackOperation                    OperationName = "SubmitFeedback"
 	SuggestAcceptanceCriteriaOperation         OperationName = "SuggestAcceptanceCriteria"
 	TakedownSkillOperation                     OperationName = "TakedownSkill"

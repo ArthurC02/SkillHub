@@ -5360,6 +5360,125 @@ func decodeStartRunParams(args [1]string, argsEscaped bool, r *http.Request) (pa
 	return params, nil
 }
 
+// StreamCreationSessionParams is parameters of streamCreationSession operation.
+type StreamCreationSessionParams struct {
+	SessionID uuid.UUID
+	// The revision of the last event this client already has; the server replays from the next one, so a
+	// reconnect loses nothing and repeats nothing. Absent means 「everything this session has」. Named
+	// as the SSE specification names it — HTTP header names are case-insensitive, and a browser's own
+	// reconnect sends exactly this.
+	LastEventID OptInt64 `json:",omitempty,omitzero"`
+}
+
+func unpackStreamCreationSessionParams(packed middleware.Parameters) (params StreamCreationSessionParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "session_id",
+			In:   "path",
+		}
+		params.SessionID = packed[key].(uuid.UUID)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "Last-Event-ID",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.LastEventID = v.(OptInt64)
+		}
+	}
+	return params
+}
+
+func decodeStreamCreationSessionParams(args [1]string, argsEscaped bool, r *http.Request) (params StreamCreationSessionParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: session_id.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "session_id",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToUUID(val)
+				if err != nil {
+					return err
+				}
+
+				params.SessionID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "session_id",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode header: Last-Event-ID.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "Last-Event-ID",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotLastEventIDVal int64
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToInt64(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotLastEventIDVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.LastEventID.SetTo(paramsDotLastEventIDVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "Last-Event-ID",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // SuggestAcceptanceCriteriaParams is parameters of suggestAcceptanceCriteria operation.
 type SuggestAcceptanceCriteriaParams struct {
 	ID uuid.UUID

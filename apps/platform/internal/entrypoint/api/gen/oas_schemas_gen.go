@@ -19841,6 +19841,31 @@ type StartRunUnprocessableEntity Error
 
 func (*StartRunUnprocessableEntity) startRunRes() {}
 
+type StreamCreationSessionBadRequest Error
+
+func (*StreamCreationSessionBadRequest) streamCreationSessionRes() {}
+
+type StreamCreationSessionForbidden Error
+
+func (*StreamCreationSessionForbidden) streamCreationSessionRes() {}
+
+type StreamCreationSessionNotFound Error
+
+func (*StreamCreationSessionNotFound) streamCreationSessionRes() {}
+
+// StreamCreationSessionOK is response for StreamCreationSession operation.
+type StreamCreationSessionOK struct{}
+
+func (*StreamCreationSessionOK) streamCreationSessionRes() {}
+
+type StreamCreationSessionServiceUnavailable Error
+
+func (*StreamCreationSessionServiceUnavailable) streamCreationSessionRes() {}
+
+type StreamCreationSessionUnauthorized Error
+
+func (*StreamCreationSessionUnauthorized) streamCreationSessionRes() {}
+
 type SubmitFeedbackBadRequest Error
 
 func (*SubmitFeedbackBadRequest) submitFeedbackRes() {}

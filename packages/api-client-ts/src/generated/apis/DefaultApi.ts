@@ -551,6 +551,11 @@ export interface StartRunOperationRequest {
     startRunRequest: StartRunRequest;
 }
 
+export interface StreamCreationSessionRequest {
+    sessionId: string;
+    lastEventID?: number;
+}
+
 export interface SubmitFeedbackOperationRequest {
     submitFeedbackRequest: SubmitFeedbackRequest;
 }
@@ -1764,6 +1769,23 @@ export interface DefaultApiInterface {
      * Start a run of one skill version against one test case (RUN-001)
      */
     startRun(requestParameters: StartRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Run>;
+
+    /**
+     * The step events of one creation session, as they are written (ADR-069).  THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the honest description rather than an omission. The body is an SSE stream (`text/event-stream`): a sequence of events whose `id:` is the session revision and whose `data:` is one CreationSession — the same document GET /creation-sessions/{session_id} returns — plus a comment line at least every 20 seconds so an idle proxy does not close the connection. OpenAPI can describe a document; it cannot describe a stream of them, and naming CreationSession as the *body* schema would assert that the body IS one of those, which is false. What pins the payload instead is a test: apiserver\'s stream test unmarshals what the handler writes into the very type this contract\'s CreationSession is generated from, so the two cannot drift without going red (05 R-71 signature 2).  What this stream does NOT carry is model tokens. A model reply is a proposal until Go accepts it — it can be rejected whole, or thrown away and asked for again — so what streams here is state Go has already committed, never text a model is still writing. ADR-069 決策 1 and 6 carry the reasoning and the conditions under which that could change.  The stream ends when the session reaches a terminal state or its deadline passes. A client that cannot hold a stream keeps polling GET /creation-sessions/{session_id}; this endpoint adds nothing that polling cannot get, only sooner and with far less traffic. 
+     * @summary streamCreationSession
+     * @param {string} sessionId 
+     * @param {number} [lastEventID] The revision of the last event this client already has; the server replays from the next one, so a reconnect loses nothing and repeats nothing. Absent means 「everything this session has」. Named as the SSE specification names it — HTTP header names are case-insensitive, and a browser\&#39;s own reconnect sends exactly this.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    streamCreationSessionRaw(requestParameters: StreamCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * The step events of one creation session, as they are written (ADR-069).  THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the honest description rather than an omission. The body is an SSE stream (`text/event-stream`): a sequence of events whose `id:` is the session revision and whose `data:` is one CreationSession — the same document GET /creation-sessions/{session_id} returns — plus a comment line at least every 20 seconds so an idle proxy does not close the connection. OpenAPI can describe a document; it cannot describe a stream of them, and naming CreationSession as the *body* schema would assert that the body IS one of those, which is false. What pins the payload instead is a test: apiserver\'s stream test unmarshals what the handler writes into the very type this contract\'s CreationSession is generated from, so the two cannot drift without going red (05 R-71 signature 2).  What this stream does NOT carry is model tokens. A model reply is a proposal until Go accepts it — it can be rejected whole, or thrown away and asked for again — so what streams here is state Go has already committed, never text a model is still writing. ADR-069 決策 1 and 6 carry the reasoning and the conditions under which that could change.  The stream ends when the session reaches a terminal state or its deadline passes. A client that cannot hold a stream keeps polling GET /creation-sessions/{session_id}; this endpoint adds nothing that polling cannot get, only sooner and with far less traffic. 
+     * streamCreationSession
+     */
+    streamCreationSession(requestParameters: StreamCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * One endpoint for the three entry points the closed beta needs, split by `kind` rather than by URL: the person who is not on the invite list, the person whose allowance ran out, and the person who is stuck somewhere in the journey. The first two are the same question (\"what did you want that you could not have\") and were designed to share one form (PDM-010 §8.1); the third is a different question and says so in `kind`.  Not the same channel as PUT /runs/{id}/evaluation/feedback, which answers \"was this judgement useful\" about one evaluation. Merging them would produce one bucket that answers neither.  `page_path`, `run_id` and `build_id` are what the client already knows about where the report came from. Nothing is captured beyond them — no screenshot, no console, no automatic context grab (beta-design §5): the message is the user\'s own words and everything else is a field they can see. `build_id` (2026-09-04, 資訊架構 IA-11) is the identifier the page prints in its own footer; it names the software, not the person, and it is what makes a report reproducible against a rolling deployment. 
@@ -4889,6 +4911,48 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     async startRun(requestParameters: StartRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Run> {
         const response = await this.startRunRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * The step events of one creation session, as they are written (ADR-069).  THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the honest description rather than an omission. The body is an SSE stream (`text/event-stream`): a sequence of events whose `id:` is the session revision and whose `data:` is one CreationSession — the same document GET /creation-sessions/{session_id} returns — plus a comment line at least every 20 seconds so an idle proxy does not close the connection. OpenAPI can describe a document; it cannot describe a stream of them, and naming CreationSession as the *body* schema would assert that the body IS one of those, which is false. What pins the payload instead is a test: apiserver\'s stream test unmarshals what the handler writes into the very type this contract\'s CreationSession is generated from, so the two cannot drift without going red (05 R-71 signature 2).  What this stream does NOT carry is model tokens. A model reply is a proposal until Go accepts it — it can be rejected whole, or thrown away and asked for again — so what streams here is state Go has already committed, never text a model is still writing. ADR-069 決策 1 and 6 carry the reasoning and the conditions under which that could change.  The stream ends when the session reaches a terminal state or its deadline passes. A client that cannot hold a stream keeps polling GET /creation-sessions/{session_id}; this endpoint adds nothing that polling cannot get, only sooner and with far less traffic. 
+     * streamCreationSession
+     */
+    async streamCreationSessionRaw(requestParameters: StreamCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['sessionId'] == null) {
+            throw new runtime.RequiredError(
+                'sessionId',
+                'Required parameter "sessionId" was null or undefined when calling streamCreationSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (requestParameters['lastEventID'] != null) {
+            headerParameters['Last-Event-ID'] = String(requestParameters['lastEventID']);
+        }
+
+
+        let urlPath = `/creation-sessions/{session_id}/events`;
+        urlPath = urlPath.replace(`{${"session_id"}}`, encodeURIComponent(String(requestParameters['sessionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The step events of one creation session, as they are written (ADR-069).  THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the honest description rather than an omission. The body is an SSE stream (`text/event-stream`): a sequence of events whose `id:` is the session revision and whose `data:` is one CreationSession — the same document GET /creation-sessions/{session_id} returns — plus a comment line at least every 20 seconds so an idle proxy does not close the connection. OpenAPI can describe a document; it cannot describe a stream of them, and naming CreationSession as the *body* schema would assert that the body IS one of those, which is false. What pins the payload instead is a test: apiserver\'s stream test unmarshals what the handler writes into the very type this contract\'s CreationSession is generated from, so the two cannot drift without going red (05 R-71 signature 2).  What this stream does NOT carry is model tokens. A model reply is a proposal until Go accepts it — it can be rejected whole, or thrown away and asked for again — so what streams here is state Go has already committed, never text a model is still writing. ADR-069 決策 1 and 6 carry the reasoning and the conditions under which that could change.  The stream ends when the session reaches a terminal state or its deadline passes. A client that cannot hold a stream keeps polling GET /creation-sessions/{session_id}; this endpoint adds nothing that polling cannot get, only sooner and with far less traffic. 
+     * streamCreationSession
+     */
+    async streamCreationSession(requestParameters: StreamCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.streamCreationSessionRaw(requestParameters, initOverrides);
     }
 
     /**

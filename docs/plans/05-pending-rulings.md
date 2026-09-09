@@ -1749,21 +1749,19 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 
 **落地位置**（本次只落地本檔的裁定段落，以下留給對應的寫入代理）：ADR-013 定案調整 8、`02`／`03`／`04` 丙-179 的追記、威脅模型 TM-CRE-03（§2.10）與 OWASP 對照表 LLM04 的追記、量測 README 的常設紅線操作說明。
 
-## R-71｜互動創作要不要串流，以及串什麼（[ADR-069](../adr/ADR-069-the-creation-conversation-streams-steps-not-tokens.md) 草案）
+## R-71｜互動創作要不要串流，以及串什麼（已裁，2026-09-09）（[ADR-069](../adr/ADR-069-the-creation-conversation-streams-steps-not-tokens.md)）
 
-**要裁什麼**：`04` 丙-205 把「真串流」移出待辦時說它是一份還沒寫的 ADR。[ADR-069](../adr/ADR-069-the-creation-conversation-streams-steps-not-tokens.md) 已起草，狀態 **Proposed**，要三個簽名。
+**負責人裁定（2026-09-09，逐字）**：「三者都簽署通過，立即執行」——三個簽名全過，當日落地。
 
-**草案的結論**：**不串 token，串步驟事件**。三個查證出來的理由——①模型輸出在 Go 接受之前只是提案：`proposal()` 會整份退回，也會用 nudge 把它丟掉再問一次（每場最多兩次），串 token 等於把平台可能不採用的東西畫在畫面上；②一次 review 有三次模型呼叫，而**第三次回來的 body 會被第二次取代**，所以「串正在寫的東西」沒有唯一解；③回應是結構化物件不是文字，串它要 partial JSON 那一整套失敗模式。改串 Go 已經寫進 Postgres 的 append-only 狀態事件，傳輸用 SSE，續傳靠事件序號——**因此不需要 Redis**（業界要它是因為 token 沒有家，我們串的東西已經有家）。
+**簽名 1（要不要做）＝做**。ADR-069 因此從 Proposed 轉 Accepted，決策 5「先量再決定」的順序同時倒過來：量測從閘門變成基準線，排在落地之後與新路徑一起量，同一次付費跑拿到前後兩個數字。
 
-**要簽的三件**：
+**簽名 2（SSE 端點怎麼進契約）＝進，但 200 不宣告 body schema**。這一條在實作時逼出了它真正的形狀：先試 `content: text/event-stream` ＋ `$ref: CreationSession`，ogen 走進 SSE 路徑、生出屬於被停用 `paths/client` 的型別，generated package 編不起來；而那個 schema 本來就在說謊——body 不是一份 `CreationSession`，是一串。最後端點、參數、`Last-Event-ID`、四個錯誤回應全部進契約（鐵律 12 的「先寫 schema」成立），200 只留 description 並說明為什麼沒有 schema，**payload 改由一支測試釘住**（把 handler 寫出來的 `data:` 反解成 `GET` 回的同一型別逐位元比對）。假 schema 會通過 lint 而永遠不被執行；這支測試不會。
 
-1. **要不要做**。草案的決策 5 說**先量 TTFT 再決定**：目前一步從送出到畫面更新要多久沒有人量過，如果是兩秒，那 1 秒輪詢已接近極限、整份 ADR 的收益是零點幾秒。**不做的代價是零**——現況（1 秒輪詢＋由快照推導的步驟句）今天並沒有壞掉。
-2. **SSE 端點怎麼進 `contracts/openapi/public.yaml`**。它會是第一個非 JSON 回應的端點，而鐵律 12 要求先寫 schema；OpenAPI 描述事件流的表達力有限，這需要一個形狀上的決定。
-3. **TTFT 量測的付費授權**（要起 `task dev:model`）。
+**簽名 3（TTFT 量測的付費授權）＝准**。見上：順序改到落地之後。
 
-**不決定的代價**：等待畫面繼續由前端從快照推導步驟，而不是後端說出來。不擋任何人。
+**當日落地**：契約一個端點；`creation.Changed`／`StreamDone`；`apiserver` 的 SSE handler（250 ms 輪同一列——`job.go` 既有的跨程序取消監看用的同一個節拍與同一列，不是新機制）；router 一條與旁邊 GET 同樣的 `RequireSession`＋`RequireInvited`；`nginx.conf` 一個關掉 buffering 的 location ＋守它的機器檢查；`apps/web` 的 SSE 客戶端與「串流活著就停輪詢、斷了就接回去」。**九次突變全部驗紅**（Go 四、Web 五）。**沒有做 `LISTEN`／`NOTIFY`，也沒有引入 Redis**——ADR-069 落地補記一寫了為什麼連事件表都不必讀。
 
-**決定之後誰動**：`contracts/`（主 Agent 序列化）、`apps/platform` API 行程與事件讀取面、`apps/web` 的 SSE 客戶端（瀏覽器內建的那個）、`infra/images/web/nginx.conf` 那條路由要關 buffering（且要有機器檢查——那是關掉之後沒有人會發現的東西）。
+**不決定的代價**：無——已裁。
 
 ## R-70｜模型訊息可以帶多少標記（已裁，2026-09-09）（`04` 丙-206、`02` SEC-013）
 

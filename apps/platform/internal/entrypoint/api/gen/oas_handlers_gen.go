@@ -13602,6 +13602,216 @@ func (s *Server) handleStartRunRequest(args [1]string, argsEscaped bool, w http.
 	}
 }
 
+// handleStreamCreationSessionRequest handles streamCreationSession operation.
+//
+// The step events of one creation session, as they are written (ADR-069).
+//
+// THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the honest description rather than an
+// omission. The body is an SSE stream (`text/event-stream`): a sequence of events whose `id:` is the
+// session revision and whose `data:` is one CreationSession — the same document GET
+// /creation-sessions/{session_id} returns — plus a comment line at least every 20 seconds so an idle
+// proxy does not close the connection. OpenAPI can describe a document; it cannot describe a stream of
+// them, and naming CreationSession as the body schema would assert that the body IS one of those,
+// which is false. What pins the payload instead is a test: apiserver's stream test unmarshals what the
+// handler writes into the very type this contract's CreationSession is generated from, so the two
+// cannot drift without going red (05 R-71 signature 2).
+//
+// What this stream does NOT carry is model tokens. A model reply is a proposal until Go accepts it —
+// it can be rejected whole, or thrown away and asked for again — so what streams here is state Go
+// has already committed, never text a model is still writing. ADR-069 決策 1 and 6 carry the
+// reasoning and the conditions under which that could change.
+//
+// The stream ends when the session reaches a terminal state or its deadline passes. A client that
+// cannot hold a stream keeps polling GET /creation-sessions/{session_id}; this endpoint adds nothing
+// that polling cannot get, only sooner and with far less traffic.
+//
+// GET /creation-sessions/{session_id}/events
+func (s *Server) handleStreamCreationSessionRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("streamCreationSession"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/creation-sessions/{session_id}/events"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), StreamCreationSessionOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: StreamCreationSessionOperation,
+			ID:   "streamCreationSession",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securitySessionCookie(ctx, StreamCreationSessionOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "SessionCookie",
+					Err:              err,
+				}
+				defer recordError("Security:SessionCookie", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+	params, err := decodeStreamCreationSessionParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+
+	var response StreamCreationSessionRes
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    StreamCreationSessionOperation,
+			OperationSummary: "streamCreationSession",
+			OperationID:      "streamCreationSession",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "session_id",
+					In:   "path",
+				}: params.SessionID,
+				{
+					Name: "Last-Event-ID",
+					In:   "header",
+				}: params.LastEventID,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = StreamCreationSessionParams
+			Response = StreamCreationSessionRes
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackStreamCreationSessionParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.StreamCreationSession(ctx, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.StreamCreationSession(ctx, params)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeStreamCreationSessionResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleSubmitFeedbackRequest handles submitFeedback operation.
 //
 // One endpoint for the three entry points the closed beta needs, split by `kind` rather than by URL:

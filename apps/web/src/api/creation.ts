@@ -1,4 +1,4 @@
-import { apiFetch } from "./client";
+import { API_BASE_URL, apiFetch } from "./client";
 import { useMe } from "./me";
 export type CreationState =
   | "queued"
@@ -179,4 +179,57 @@ export const actOnCreationSession = (id: string, body: CreationAction) =>
 export function useCreationEntryPoint(): boolean {
   const me = useMe();
   return me.data?.features?.creation_skill === true;
+}
+
+/**
+ * The step stream (ADR-069, `05` R-71). Opens an SSE connection and hands each
+ * document to `onSession`; returns a closer.
+ *
+ * # Why this exists beside the 1-second poll rather than instead of it
+ *
+ * A stream can fail in ways a fetch cannot — a proxy that buffers, a browser
+ * without `EventSource`, a network that drops it repeatedly — and every one of
+ * those failures is silent. So the caller keeps polling as its floor and only
+ * stands the poll down while `onOpen` says a stream is actually delivering.
+ * The screen therefore has no state in which it stops asking; the stream only
+ * makes it ask less and hear sooner.
+ *
+ * What arrives here is the same document `getCreationSession` returns — Go
+ * commits it before it streams it. There are no model tokens on this channel
+ * and there is no client-side assembly: a model reply is a proposal until Go
+ * accepts it, and this connection carries only what was accepted.
+ */
+export function streamCreationSession(
+  id: string,
+  onSession: (s: CreationSession) => void,
+  onOpen: (live: boolean) => void,
+): () => void {
+  if (typeof EventSource === "undefined") {
+    onOpen(false);
+    return () => {};
+  }
+  // `withCredentials` for the same reason apiFetch sends `credentials:
+  // "include"`: the session cookie is the only identity this route accepts.
+  const source = new EventSource(API_BASE_URL + "/creation-sessions/" + id + "/events", {
+    withCredentials: true,
+  });
+  source.onopen = () => onOpen(true);
+  source.onmessage = (e) => {
+    try {
+      onSession(JSON.parse(e.data) as CreationSession);
+    } catch {
+      // A half-written frame is not worth a thrown render. The poll underneath
+      // is still running and will carry the same state a moment later.
+    }
+  };
+  source.onerror = () => {
+    // The browser reconnects on its own, carrying Last-Event-ID, so this is not
+    // a place to retry by hand. It IS the place to put the poll back in charge
+    // until an open event says the stream is delivering again.
+    onOpen(false);
+  };
+  return () => {
+    onOpen(false);
+    source.close();
+  };
 }

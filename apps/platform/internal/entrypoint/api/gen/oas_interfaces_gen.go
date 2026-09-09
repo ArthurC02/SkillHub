@@ -269,6 +269,10 @@ type StartRunRes interface {
 	startRunRes()
 }
 
+type StreamCreationSessionRes interface {
+	streamCreationSessionRes()
+}
+
 type SubmitFeedbackRes interface {
 	submitFeedbackRes()
 }

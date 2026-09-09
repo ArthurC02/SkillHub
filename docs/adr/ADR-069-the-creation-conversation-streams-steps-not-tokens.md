@@ -1,6 +1,6 @@
 # ADR-069：互動創作串流的是「步驟」，不是 token
 
-- 狀態：**Proposed**（草案，等負責人裁定；`04` 丙-205 把「真串流」移出待辦時說它是「一份還沒寫的 ADR」，這份就是）
+- 狀態：**Accepted**（2026-09-09 負責人裁定「三者都簽署通過，立即執行」；`04` 丙-205 把「真串流」移出待辦時說它是「一份還沒寫的 ADR」，這份就是）
 - 日期：2026-09-09
 - 相關：ADR-067（互動創作的編排與事實來源）、ADR-016（Python 是能力提供者）、ADR-008（狀態機與 outbox）、ADR-068（Credit 計價）、`02` SEC-013、`04` 丙-205、`05` R-70
 
@@ -89,3 +89,21 @@ Worker 照舊只寫事件表（同交易，ADR-008）。API 行程的 SSE handle
 3. **TTFT 量測的付費授權**。
 
 落地時的驗證入口：契約 `gen:check`、API 行程的端點測試（含 `Last-Event-ID` 續傳與 keepalive）、`e2e` 一條「重新整理之後事件不重不漏」的路徑，以及 nginx 那條路由的 buffering 設定要有機器檢查——它是那種關掉之後沒有人會發現的東西。
+
+## 落地補記（2026-09-09，同日實作）
+
+草案的決策沒有被推翻，但**兩處的形狀在實作時比草案更小**，記在這裡而不是改寫上面。
+
+**一｜決策 3 說「續傳是一次 `WHERE session_id = $1 AND seq > $2` 的查詢」，實際上連那張表都不必讀。** 查證 `creation_session_events` 的 schema 之後發現：它的主鍵是 `(session_id, workspace_id, revision)`，而 `revision` 就是 `creation_sessions` 那一列的版本號，由 `AdvanceCreationSession` 在同一個交易裡遞增。也就是說**序號本來就在會話自己那一列上**。而事件列缺一個 `state` 欄位，所以拿它重建一份 `View` 反而重建不出來。
+
+於是落地成：SSE handler 監看會話列的 `revision`，超過客戶端的 `Last-Event-ID` 就送出當下那份文件。**這比草案更省，而且不漏**——快照是累積的（訊息只追加不改寫），所以第 N 版的文件包含第 1..N-1 版會說的一切；漏掉三個版本再接回來的客戶端是落後一份文件，不是三份。曾經加過的 `ListCreationEventsAfter` query 在確認這件事之後收回了，沒有留下沒人用的程式碼。
+
+**二｜決策 3 的「SSE 端點進不進契約」（`05` R-71 簽名 2）落在一個 OpenAPI 表達不了的地方，答案是「進，但 200 不宣告 body schema」。** 先試過 `content: text/event-stream` 加 `$ref: CreationSession`——ogen 因此走進它的 SSE 路徑，生出 `initSSEStream(sseConnectFunc, sseClientConfig)`，而那兩個型別屬於被停用的 `paths/client`，整個 generated package 編不起來。曾短暫加過 `ignore_not_implemented: ["sse server response encoding"]` 讓它跳過，但那條路也不對——**因為那個 schema 本來就在說謊**：body 不是一份 `CreationSession`，是一串。
+
+最後的形狀是：端點、參數、`Last-Event-ID`、四個錯誤回應全部寫進契約（鐵律 12 要的「先寫 schema」成立），200 只有 description，並在其中明說為什麼沒有 schema；**payload 由一支測試釘住**（`creation_stream_integration_test.go` 把 handler 寫出來的 `data:` 反解成 `GET` 回的同一個型別，逐位元比對兩份文件）。那比一個假的 schema 強：假 schema 會通過 lint 而永遠不會被執行。
+
+**三｜決策 4 的退化路徑就是實際採用的路徑。** 沒有做 `LISTEN`／`NOTIFY`；handler 以 250 ms 輪詢會話列，那正是 `job.go` 既有的跨程序取消監看用的節拍與同一列。所以這不是新機制，是同一列多一個讀者。上限誠實且小：每條連線每個 tick 一次主鍵讀。
+
+**四｜nginx 那條路由的 buffering 有機器檢查了**（`cmd/api/main_test.go` 的 `TestNginxDoesNotBufferTheEventStream`）。理由寫在測試裡：buffering 開著時這個端點仍然回 200、仍然送出每一個事件——全部在串流結束時一次到齊。沒有任何東西會報錯，畫面只是「和被它取代的輪詢一樣慢」，而那是一個沒有人在看的數字。
+
+**五｜決策 5（先量 TTFT）的順序在簽署後倒過來了。** 那條原本是「決定之前先量」，而負責人已經決定；量測因此從「閘門」變成「基準線」，排在落地之後、與新路徑一起量，這樣同一次付費跑就同時得到前後兩個數字。

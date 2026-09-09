@@ -103,6 +103,7 @@ var operationRolesSessionCookie = map[string][]string{
 	SetSkillRedistributionOperation:            []string{},
 	SetSkillRestrictionOperation:               []string{},
 	StartRunOperation:                          []string{},
+	StreamCreationSessionOperation:             []string{},
 	SubmitFeedbackOperation:                    []string{},
 	SuggestAcceptanceCriteriaOperation:         []string{},
 	TakedownSkillOperation:                     []string{},
