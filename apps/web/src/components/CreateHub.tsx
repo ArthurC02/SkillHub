@@ -1,7 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { GenerateSkill } from "./GenerateSkill";
-import { CreationSession } from "./CreationSession";
 
 /**
  * 「建立一個 Skill」 — the three ways in, in one place, on `/workspace/skills`.
@@ -38,18 +35,23 @@ import { CreationSession } from "./CreationSession";
  *
  * 把工作台放進門的網格，量出來的結果是：`.create-cards` 的格軌等高，第三格撐到約
  * 1000px，於是前兩張卡各自帶著一個 **880px 的空白描邊框**；工作台自己被壓進約
- * 320px 的欄寬，`<dl>` 的標籤跑到值的左右兩側，中文一行只剩約 14 個字（設計 §4.5
- * 的 `40em` 量的是「一行 40 個中文字」，在 grid track 裡形同不存在）。
+ * 320px 的欄寬，`<dl>` 的標籤跑到值的左右兩側，中文一行只剩約 14 個字。
  *
- * 所以第三張卡收成一扇門，按下去**在原地展開成整列寬**（`grid-column: 1 / -1`）。
- * 這不是把它藏起來：**它變得更不顯眼，而那正是 `01` §10 邊界 1 要的方向**——旗標
- * 沒開時它整張不存在（不是 disabled、不是「即將推出」），旗標開了也只是一句話加一
- * 顆不填色的按鈕，而不是一整面表單。
+ * 當時的處置是：第三張卡收成一扇門，按下去**在原地展開成整列寬**。
  *
- * **展開之後不收回，這是刻意的。** `GenerateSkill` 的成功／失敗回饋住在一個
- * component-local 的 `useMutation` 裡（`api/generate.ts`），卸載就沒了——連同那個
- * 帶著 `skill_id` 的成功通知與逐條的驗證失敗。一顆會把使用者剛剛拿到的結果吃掉的
- * 收合鍵，不值得它省下的那幾百像素。
+ * ── 2026-09-09：那扇門真的換頁了（負責人指示）───────────────────────────────
+ *
+ * 「最右邊的卡片應該要像另外兩張一樣，有著獨立的頁面，直接呈現 Chat UI」。工作台
+ * 搬到 `/workspace/creations`（`pages/CreateSkill.tsx`，位址為什麼是這一個寫在那裡），
+ * 這一張卡自此與左邊兩張**逐位元組同一種外觀**：一個標題、一句話、一個 `.action-secondary`
+ * 連結。`describing` 這個 state 沒有了，就地展開的那一段規則也沒有了。
+ *
+ * **上一段那兩個理由沒有被推翻，是被換頁一起解決了**：欄寬的問題消失（那一頁有整個
+ * `main` 的寬度），而「展開後不收回，否則會吃掉剛拿到的結果」也不再需要——離開再回來
+ * 時，會話是由 `/creation-sessions` 重新讀出來的，不是由某個元件的 `useMutation` 記著。
+ *
+ * ⛔ `01` §10 邊界 1 不變：旗標關著時這張卡整張不存在（不是 disabled、不是「即將
+ * 推出」），而三扇門同一種外觀之後，生成入口**沒有變得更顯眼**——變的是它通往哪裡。
  */
 export function CreateHub({
   generateExposed,
@@ -58,9 +60,6 @@ export function CreateHub({
   generateExposed: boolean;
   creationExposed?: boolean;
 }) {
-  // 一路只從 false 走到 true，理由見檔頭最後一段。
-  const [describing, setDescribing] = useState(false);
-
   // 門上與門後同一個名字（§3 第 14 條：同一件事一頁只有一個名字）。旗標決定門後
   // 是哪一個工作台，所以門上的字也跟著它，而不是寫死成其中一個。
   const doorway = creationExposed ? "和 Agent 一起創作 Skill" : "讓平台依你的描述做一個";
@@ -155,32 +154,31 @@ export function CreateHub({
           number has one chance and twelve people.
         */}
         {generateExposed && (
-          <li className={describing ? "download-item create-workspace" : "download-item"}>
-            {describing ? (
-              /* 展開之後標題由工作台自己出（`GenerateSkill` 的 h2、`CreationSession`
-                 的 h3），所以門上的 h3 不再存在——同一個名字在同一個時刻只出現一次。 */
-              creationExposed ? (
-                <CreationSession />
-              ) : (
-                <GenerateSkill />
-              )
-            ) : (
-              <>
-                <h3>{doorway}</h3>
-                <p className="note" data-role="teaching">
-                  描述你要完成的事，平台產生一個只屬於你的工作區的 Skill。
-                </p>
-                <p>
-                  {/*
-                    原生 `<button>` 就已經是 §4.6.3 的次要按鈕配方，所以這裡不加 class：
-                    三張卡現在是三個同框的描邊控制項，沒有一個填色的。
-                  */}
-                  <button type="button" onClick={() => setDescribing(true)}>
-                    開始描述
-                  </button>
-                </p>
-              </>
-            )}
+          <li className="download-item">
+            <h3>{doorway}</h3>
+            <p className="note" data-role="teaching">
+              描述你要完成的事，平台產生一個只屬於你的工作區的 Skill。
+            </p>
+            <p>
+              {/*
+                ── 2026-09-09：它終於是一扇門，和左邊兩張一樣 ────────────────────
+                在這之前這一顆按鈕把工作台**就地展開**在卡片裡（`grid-column: 1 / -1`，
+                展開後不收回，因為收回會吃掉剛拿到的結果）。負責人的話：「最右邊的卡片
+                應該要像另外兩張一樣，有著獨立的頁面，直接呈現 Chat UI」。
+
+                那一整套理由跟著搬走了，不是被推翻：工作台在 320px 的欄寬裡站不住是
+                真的，收回會吃掉結果也是真的——**換頁把兩件事一起解決**，因為那一頁
+                本來就有整個 `main` 的寬度，而且離開再回來時會話由 `/creation-sessions`
+                重新讀出來，不是由某個元件的 `useMutation` 記著。
+
+                ⛔ `01` §10 邊界 1 不變，而且方向是對的：這扇門與另外兩扇**逐位元組同
+                一種外觀**，旗標關著時整張卡仍然不存在。生成入口沒有變得更顯眼，變的
+                是它按下去之後去哪裡。
+              */}
+              <Link className="action-secondary" to="/workspace/creations">
+                開始描述
+              </Link>
+            </p>
           </li>
         )}
       </ul>

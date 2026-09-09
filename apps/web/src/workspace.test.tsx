@@ -726,29 +726,29 @@ test("GEN-008 ⛔ with the flag off, /workspace/skills has no generation entry p
 });
 
 /**
- * 2026-09-07：生成那一格從「一整面表單」變成一扇門，按下才在原地展開。這兩支測試
- * 因此多一次按壓——**它們守的東西一個字都沒有變**：旗標開著的時候這條路要走得到，
- * 旗標關著的時候（上一支）連那扇門都不存在。
+ * 2026-09-07：生成那一格從「一整面表單」變成一扇門，按下才在原地展開。
+ * **2026-09-09：那扇門真的換頁了**（負責人指示），工作台搬到 `/workspace/creations`，
+ * 所以這裡不再有「按下去展開」這一步，測試也不再需要那個按壓的輔助函式。
  *
- * 按壓不是為了讓測試通過而加的儀式，它就是新的第一步：門後那面表單在按下去之前
- * **不在 DOM 裡**，而那正是這次改動要的——`01` §10 邊界 1 說生成入口不得變得更顯眼，
- * 一句話加一顆按鈕比一面 1000px 的表單更不顯眼。
+ * 底下兩支守的東西一個字都沒有變：旗標開著的時候這條路要走得到，旗標關著的時候
+ * （上一支）連那扇門都不存在。變的是「走得到」現在長什麼樣——一條 `href`，
+ * 而不是一個會在原地長出表單的按鈕。
  */
-async function openTheDescribeDoorway() {
-  await act(async () => button("開始描述")?.click());
-}
 
-test("GEN-008 with the flag on, /workspace/skills does show it", async () => {
+test("GEN-008 with the flag on, /workspace/skills shows the door and not the workbench", async () => {
   stubOwnSkillsWithFeatures({ generate_skill: true });
   await render(<WorkspaceSkills />, () => text().includes("開始描述"));
 
-  // 門在，表單還沒有——這一半是新的，而它是邊界那條規則的實際形狀。
-  expect(container.querySelector("#generate-task")).toBeNull();
+  // 2026-09-09：工作台搬到 `/workspace/creations` 之後，這一頁**永遠**只有門。
+  // 在這之前這一支按下門才斷言表單出現；現在斷言的是表單在這一頁上根本不存在，
+  // 而門是一條指向那個位址的連結——三張卡因此是三扇同型的門（`pages/CreateSkill.tsx`）。
+  expect(container.querySelector("#generate-task"), "工作台又長回這一頁上了").toBeNull();
 
-  await openTheDescribeDoorway();
-
-  expect(container.querySelector("#generate-task")).not.toBeNull();
-  expect(text()).toContain("CSV 清理");
+  const door = Array.from(container.querySelectorAll("a")).find((a) =>
+    (a.textContent ?? "").includes("開始描述"),
+  );
+  expect(door, "第三張卡不是一扇門").toBeTruthy();
+  expect(door!.getAttribute("href")).toBe("/workspace/creations");
 });
 
 // --- 逐列複述：設計 §2.13 第 1 條在這一份清單上 ---------------------------------
@@ -893,19 +893,18 @@ test("建立中心 ⛔ with the flag off, the hub has no generation card and doe
 test("建立中心 with the flag on, the generation entry appears exactly once on the page", async () => {
   stubOwnSkillsWithFeatures({ generate_skill: true });
   await render(<WorkspaceSkills />, () => text().includes("開始描述"));
-  await openTheDescribeDoorway();
 
-  // Inside the hub, not beside it: the old standalone mount has to be gone, not
-  // merely joined by a second one. `#generate-task` is GenerateSkill's own
-  // textarea id — two mounts would also be two elements sharing one id, which is
-  // why counting the id is the check and not `querySelector`.
-  expect(container.querySelectorAll("#generate-task").length).toBe(1);
-  expect(hub()!.querySelectorAll("#generate-task").length).toBe(1);
+  // 「恰好一次」這件事沒有變，變的是要數什麼：2026-09-09 之前這一頁上有兩個可能的
+  // 掛載點（獨立的表單與建立中心裡的那一個），所以數的是 `#generate-task` 的個數；
+  // 工作台搬走之後這一頁一個都不該有，而**門**要恰好一扇——兩扇門與兩個表單一樣，
+  // 都是同一件事講兩次（設計 §3 第 14 條）。
+  expect(container.querySelectorAll("#generate-task").length).toBe(0);
 
-  const headings = Array.from(container.querySelectorAll("h2")).filter((h) =>
-    (h.textContent ?? "").includes("讓平台依你的描述做一個"),
+  const doors = Array.from(container.querySelectorAll("a")).filter(
+    (a) => a.getAttribute("href") === "/workspace/creations",
   );
-  expect(headings.length).toBe(1);
+  expect(doors.length).toBe(1);
+  expect(hub()!.querySelectorAll('a[href="/workspace/creations"]').length).toBe(1);
 });
 
 // --- deleting a skill (WS-005, 04 丙-22 ①) ----------------------------------

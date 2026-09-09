@@ -23,6 +23,9 @@ export const ROUTES: [name: string, url: string][] = [
   ["run-compare", `/runs/${RUN}/compare?against=${OTHER_RUN}`],
   ["workspace-account", "/workspace/account"],
   ["workspace-downloads", "/workspace/downloads"],
+  // 旗標關著時的那一面（共用 fixture 的 `/me` 不帶 `generate_skill`）：一句
+  // 「這一頁現在不存在」加兩條出路。⛔ `01` §10 邊界 1 底下這是絕大多數人看到的。
+  ["workspace-creations", "/workspace/creations"],
   ["workspace-import", "/workspace/import"],
   ["workspace-runs", "/workspace/runs"],
   ["workspace-skills", "/workspace/skills"],

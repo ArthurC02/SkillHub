@@ -461,6 +461,7 @@ const SCANNED_ROUTES = [
   "/runs/$runId",
   "/runs/$runId/compare",
   "/workspace/account",
+  "/workspace/creations",
   "/workspace/downloads",
   "/workspace/import",
   "/workspace/runs",
@@ -475,6 +476,22 @@ test("QA-009: Skill import", async () => {
   });
   await waitFor(() => container.querySelector("form") !== null);
   await scan("/workspace/import");
+}, 30000);
+
+/**
+ * `/workspace/creations`（2026-09-09 新增）。**掃的是旗標關著的那一面**，而那不是
+ * 偷懶：共用 fixture 的 `/me` 不帶 `generate_skill`，所以這一頁在這裡回的是那句
+ * 「這一頁現在不存在」加兩條出路——而那正是⛔ `01` §10 邊界 1 底下絕大多數人會看到
+ * 的狀態。旗標開著的那一面由 `create-skill.test.tsx` 與 `creation.test.tsx` 守。
+ */
+test("QA-009: 創作（旗標關著）", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/workspace/creations" });
+  });
+  await waitFor(has("這一頁現在不存在"));
+  await scan("/workspace/creations");
 }, 30000);
 
 test("QA-009: 每一條路由都有一個掃描案例", () => {

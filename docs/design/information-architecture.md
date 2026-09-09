@@ -95,6 +95,7 @@
 | `/skills/$skillId/package` | `Packaging` | 02:PACK-001／002 | Skill 生命週期／**Skill 交付與安裝** |
 | `/workspace/import` | `ImportSkill` | SKILL、SEC | Skill 生命週期／**Skill 接納與信任** |
 | `/workspace/skills` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | 創作者空間／創作者帳戶與工作區 |
+| `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[ADR-067](../adr/ADR-067-interactive-skill-creation-with-langgraph.md)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔2026-09-09 新增，負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |
 | `/workspace/runs` | `WorkspaceRuns` | 02:WS-002 第 1 條／WS-004 | 試跑與改善／Skill 試跑執行 |
 | `/workspace/downloads` | `Downloads` | 02:WS-002／WS-004 | Skill 生命週期／Skill 交付與安裝 |
 | `/workspace/account` | `WorkspaceAccount` | CORE-007／02:SEC-006 | 創作者空間／創作者帳戶與工作區 |
@@ -207,7 +208,7 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | 入邊 | 位址 | R3 |
 | ---: | --- | --- |
 | **0** | （無） | ✅ 2026-08-24 起清空：workspace/import 從搜尋無結果那一格獲得第一條頁內入邊（IA-5 的旗標關閉半邊），移入下一列 |
-| **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare` | ✅ 三項都是 R3 的「具名」那一支（2026-08-24 裁定，IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7。<br>**2026-08-25：這一格此前還有第四個位址。** 匯入頁不適用「具名」那一支（它是導覽列項目、脈絡不唯一），所以它待在這裡是一條 R3 的**現行違規**而不是一項豁免——而它在 §5、§8 與 `04` 三處都沒有編號，於是機器讀得到這一列、算得出這個 1，**沒有任何東西出聲**。補編為 IA-9 之後同日結案，見下一列 |
+| **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare`、**`/workspace/creations`** | ✅ ~~三項~~**四項**都是 R3 的「具名」那一支（2026-08-24 裁定，IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7。<br>**2026-08-25：這一格此前還有第四個位址。** 匯入頁不適用「具名」那一支（它是導覽列項目、脈絡不唯一），所以它待在這裡是一條 R3 的**現行違規**而不是一項豁免——而它在 §5、§8 與 `04` 三處都沒有編號，於是機器讀得到這一列、算得出這個 1，**沒有任何東西出聲**。補編為 IA-9 之後同日結案，見下一列。<br>**2026-09-09：第四個位址進來，而它是「具名」那一支裡最硬的一個**——`/workspace/creations`（IA-12）。它的第二條入邊不是「還沒畫」，是**畫了就違反一條更高順位的規則**：⛔ `01` §10 邊界 1 逐字要求 M5 的生成入口「不得對封測使用者出現，也不得變得更顯眼」，而第二條頁內入邊的定義就是讓它更顯眼。R3 的出處是 system.md §1.2「一條入邊的頁面，使用者按上一頁之後就回不去了」——**那個危險在這一頁不成立**：它唯一的入邊是 `components/CreateHub.tsx` 的第三張卡，而那張卡就在「我的 Skill」那一頁上，也就是使用者按上一頁會回到的地方。**邊界解除之後這一列要重看**：屆時第二條入邊（例如生成出來的 Skill 頁指回這一場創作）才是該畫的，而現在畫它等於用版面繞過一條凍結中的裁定。 |
 | 3 | ~~`/`~~、~~`/workspace/skills`~~、`/workspace/import` | 2026-09-03 各多一條頁內入邊，來源都是「建立一個 Skill」那一批：首頁 hero 的「自己做一個 Skill」→ `/workspace/skills`；`components/CreateHub.tsx` → `/workspace/import` 與 `/`（目錄）。這三個位址從下一列搬上來；機器只比對 0 與 1 兩列，所以這一列與下一列是人手維護的 |<br>**2026-09-03 稍晚重數訂正**：這一列寫成時把三個位址都放在 3，而依本節自己宣告的計數規則（`pages/`＋`components/` 的 `to="…"`，**以不同來源檔計數、不排除自我連結**，見 `ia.test.ts` 的 `inboundByRoute()`），`/` 是 **4**（`Compare.tsx`、`Home.tsx`、`WorkspaceSkills.tsx`、`CreateHub.tsx`）、`/workspace/skills` 也是 **4**（`DataPolicy.tsx`、`Downloads.tsx`、`Home.tsx`、`WorkspaceAccount.tsx`），兩者都已移到下面的 4 那一列；只有 `/workspace/import` 留在 3。**這一列不會變紅**：測試只雙向比對 0 與 1 兩列，其餘各列沒有機器。 |
 | 2 | ~~`/`~~、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/lab/test-cases/$testCaseId`、`/workspace/account`、**`/workspace/runs`**（2026-09-08 重數自下面的 3 移入）、~~`/workspace/skills`~~、~~`/workspace/import`~~ | ✅ 匯入頁於 2026-08-25 取得第二條入邊（IA-9）：`/workspace/skills` 空狀態裡那句「或匯入自己的套件」本來就在講它，只是沒有連結——**那一頁說出了下一步，然後叫你自己去導覽列找**。文案一字未改，詞組變成連結 |
 | 3 | ~~`/workspace/runs`~~、**`/workspace/downloads`** | 2026-09-08 重數：`/workspace/runs` 是 **2**（`DataPolicy.tsx`、`WorkspaceSkills.tsx`），移到上一列；`/workspace/downloads` 是 **3**（`DataPolicy.tsx`、`Packaging.tsx`、`WorkspaceSkills.tsx`），自下面的 4 移入 |
@@ -259,7 +260,7 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | `/runs/$id/compare` | `against` | EVAL-003：對照的另一次 Run 在網址裡，比較才能被連結 |
 | `/runs/$id` | `evaluation`、`events` | ~~**無**~~ **（2026-08-29 訂正：這一格從來沒有更新過。）** 一般／進階模式確實不在網址上（IA-4 的裁定，R4），但那不代表這一條路由沒有 search param——它有兩個，而且兩個都是 R4 的另一半「你在看哪一份東西」：`evaluation` 指名這次 Run 的某一份不可變判定（ADR-003／026；沒有它，被取代的舊判定連不出去，而重新評估過的 Run 的「目前判定」是另一個判定），`events` 是進階 Trace 的游標堆疊，讓事件流的第 7 頁貼得出去也撐得過重新整理。<br>**這一格是本節在 2026-08-29 補上機器的直接原因**：文件說「無」，程式說「兩個」，而在那之前沒有任何東西會 FAIL |
 
-**其餘九條路由沒有 `validateSearch`**〔2026-09-03 重數：17 − 8 = 9；原寫十條〕（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
+**其餘~~九~~**十**條路由沒有 `validateSearch`**〔2026-09-03 重數：17 − 8 = 9；原寫十條。**2026-09-09 再重數：18 − 8 = 10**，`/workspace/creations` 新增且不帶參數〕（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 
@@ -416,6 +417,26 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 **方向**：R3 是 §0 的規則，規則走在程式前面——**要改的是程式，不是這條規則**。並且確實是程式改了：規則一個字沒動。
 
 **誰能決定**：不需要產品負責人，是技術題。
+
+### IA-12 ✅ 已裁定（2026-09-09，負責人直接指示）：創作工作台有了自己的位址，而它只會有一條入邊
+
+**指示**：「最右邊的卡片應該要像另外兩張一樣，有著獨立的頁面，直接呈現 Chat UI」。
+
+**落地**：`/workspace/creations`（`pages/CreateSkill.tsx`）。「建立一個 Skill」第三張卡不再就地展開工作台，而是與左邊兩張同型的一扇門。
+
+**位址的形狀是查出來的不是選出來的**：§0.1 R2 要清單位址掛在提問者的位置、而且是名詞的複數。`/workspace/creations` 兩條都合——它就是「我的創作會話」那份清單（元件自己的「恢復創作」下拉就是那份清單），所以 `ia.test.ts` 的 R2 檢查判它合規，**§0.2 那份只能縮短的偏離帳一列都沒有多**。`components/CreateHub.tsx` 的檔案註解曾經寫著「新增 `/create` 會是清單位置上的一個動詞」——**那句話是對的，而它擋的是另一個位址**：動詞當清單位址正是 §0.2 裡 `/lab/run` 那一列記著「待修」的同一個毛病。換成名詞之後那個理由不成立。
+
+**為什麼它只有一條入邊，而這一次不是欠**：R3 的兩支是「補第二條」與「具名」。這一頁走第二支，理由比前三個（IA-7 的那三頁）更硬——**第二條入邊不是還沒畫，是畫了就違反一條更高順位的規則**：⛔ [`01` §10](../plans/01-goals-and-plan.md) 邊界 1 逐字要求 M5 的生成入口「不得對封測使用者出現，也不得變得更顯眼」，而多一條頁內入邊的定義就是讓它更顯眼。
+
+而 R3 要防的那個危險在這一頁不成立：出處是 system.md §1.2「一條入邊的頁面，使用者按上一頁之後就回不去了」，而它唯一的入邊是第三張卡，那張卡就在使用者按上一頁會回到的那一頁上。
+
+**這一列到期就要重看**：邊界 1 解除之後，第二條入邊（例如生成出來的 Skill 頁指回產生它的那一場創作）才是該畫的。現在畫它等於用版面繞過一條凍結中的裁定。
+
+**同一批動了第二道只能縮短的棘輪**：`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊上限 3 → 4。這一頁是名冊上唯一**整頁**都是那個能力的掛載點——另外三個都是某一頁上的一塊，旗標關著時不渲染就結束了——而且它有一個任何人都猜得到的網址，所以旗標判斷必須在頁面自己身上；留在別處等於用「沒有人連過來」當守衛，那不是守衛。**名冊自己要求的順序沒有被繞過**：旗標關閉的斷言（`create-skill.test.tsx`）先寫，才把名字加進去。
+
+**誰能決定**：位址形狀是本檔的事；曝光邊界是產品負責人的，而這一批沒有動它——旗標關著時卡片整張不存在，直接輸入網址的人看到的是一句「這一頁現在不存在」加兩條出路。
+
+---
 
 ### IA-11 ✅ 已解決（2026-09-04，入列當日負責人指示「著手調整」）：畫面上沒有任何地方說出這是哪一個 build
 

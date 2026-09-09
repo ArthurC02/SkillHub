@@ -275,6 +275,11 @@ const FLAG_OFF_ASSERTED: Record<string, string> = {
     "workspace.test.tsx — 「⛔ with the flag off, /workspace/skills has no generation entry point」",
   "components/CleanModeNotice.tsx":
     "clean-mode.test.tsx — 「without the flag, the notice renders nothing」",
+  // 2026-09-09，第四個，而它是名冊上唯一一個**整頁**都是那個能力的：
+  // `/workspace/creations` 有一個任何人都猜得到的網址，所以「沒有人連過來」不足以
+  // 當守衛，那一頁自己要判斷（`pages/CreateSkill.tsx` 的檔頭）。
+  "pages/CreateSkill.tsx":
+    "create-skill.test.tsx — 「⛔ with the flag off, /workspace/creations is not a workbench and says so」",
 };
 
 /** The hooks in `api/` that answer a `GET /me` feature flag, by name. */
@@ -330,10 +335,22 @@ test("IA §2.4 / ADR-052: every flagged mount is on the roster of ones tested wi
   ).toEqual([]);
 
   // Shrink-only, like §0.2's ledger above.
+  //
+  // ── 2026-09-09：3 → 4，一次，而這一行本來宣告它只會往下走 ──────────────────
+  //
+  // 提高它是一個要被看見的決定，所以理由留在這裡而不是 commit 訊息裡。負責人的指示
+  // 是「最右邊的卡片應該要像另外兩張一樣，有著獨立的頁面」，而那一頁**必須自己讀
+  // 旗標**：另外三個掛載點都是某一頁上的一塊，旗標關著時不渲染就結束了；這一頁本身
+  // 就是那個能力，而且它有一個猜得到的網址。把旗標判斷留在別處，等於用「沒有人連
+  // 過來」當守衛——那不是守衛，是運氣。
+  //
+  // 三條沒有被繞過去：`create-skill.test.tsx` 的旗標關閉斷言**先寫**再加名字（名冊
+  // 自己要求的順序）；`pages/WorkspaceSkills.tsx` 仍然是掛載點，沒有靠搬走它來湊
+  // 數字；⛔ `01` §10 邊界 1 沒有被放寬——那張卡在旗標關著時整張仍然不存在。
   expect(
     Object.keys(FLAG_OFF_ASSERTED).length,
     "the roster may only get shorter",
-  ).toBeLessThanOrEqual(3);
+  ).toBeLessThanOrEqual(4);
 });
 
 // --- 7. the 375px sweep, and whether it still covers what it claims ----------

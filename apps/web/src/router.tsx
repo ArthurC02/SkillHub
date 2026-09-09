@@ -15,6 +15,7 @@ import { DatasetUpload } from "./pages/DatasetUpload";
 import { Downloads } from "./pages/Downloads";
 import { Home } from "./pages/Home";
 import { ImportSkill } from "./pages/ImportSkill";
+import { CreateSkill } from "./pages/CreateSkill";
 import { Packaging } from "./pages/Packaging";
 import { RunCompare } from "./pages/RunCompare";
 import { RunPreflight } from "./pages/RunPreflight";
@@ -253,6 +254,18 @@ const importSkillRoute = createRoute({
 });
 
 /**
+ * 資訊架構 §0.1 R2：名詞的複數、掛在提問者的位置，所以它是清單位址而不是動詞。
+ * 旗標的判斷在頁面自己身上（⛔ `01` §10 邊界 1），理由逐字在 `pages/CreateSkill.tsx`
+ * 的檔頭；路由本身不做任何守衛——一條沒有人連過來的路由不是一個曝光，而猜到網址的
+ * 人該看到的東西由那一頁決定。
+ */
+const createSkillRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workspace/creations",
+  component: CreateSkill,
+});
+
+/**
  * CORE-007 / 02:SEC-006: the account and its deletion, the second of the two
  * deletion planes. Under /workspace because the account and its personal
  * workspace are the same thing here (ADR-020) — a settings section separate from
@@ -417,6 +430,7 @@ const routeTree = rootRoute.addChildren([
   downloadsRoute,
   workspaceSkillsRoute,
   importSkillRoute,
+  createSkillRoute,
   workspaceRunsRoute,
   workspaceAccountRoute,
   dataPolicyRoute,
