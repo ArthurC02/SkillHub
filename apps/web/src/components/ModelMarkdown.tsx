@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { Reveal } from "./Reveal";
 
 /**
  * The Markdown a model message is allowed to carry — [`05`
@@ -142,7 +143,7 @@ export function ModelMarkdown({ text }: { text: string }) {
         if (b.kind === "code") {
           return (
             <pre className="skill-md" key={i}>
-              {b.lines.join("\n")}
+              <Reveal text={b.lines.join("\n")} />
             </pre>
           );
         }

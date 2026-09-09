@@ -8,6 +8,7 @@ import { useRunComparison, useVersionDiff } from "../api/evaluation";
 import type { ComparisonSide, RunComparison } from "../api/evaluation";
 import { useRun, useRuns } from "../api/runs";
 import { RunVerdict } from "../components/RunVerdict";
+import { Reveal } from "../components/Reveal";
 import { CRITERION_LABEL, OVERALL_LABEL, runStatusLabel } from "./RunEvaluation";
 
 /**
@@ -493,7 +494,9 @@ export function VersionDiff({ url }: { url: string }) {
         <li key={f.path}>
           <code>{f.path}</code> · {f.status}
           {f.diff ? (
-            <pre className="diff">{f.diff}</pre>
+            <pre className="diff">
+              <Reveal text={f.diff} />
+            </pre>
           ) : (
             <p className="note">（二進位或過大，不顯示差異）</p>
           )}

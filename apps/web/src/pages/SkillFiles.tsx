@@ -4,6 +4,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import { useSkillFiles } from "../api/skills";
 import type { SkillFileEntry } from "../api/types";
+import { Reveal } from "../components/Reveal";
 
 /**
  * DISC-007 advanced view: the full SKILL.md of the latest version plus the
@@ -129,7 +130,9 @@ export function SkillFiles() {
                   : `共 ${skillMdBytes} bytes，這裡只顯示前 1 MiB，因為這個端點的單次上限是 1 MiB。`}
               </p>
             )}
-            <pre className="skill-md">{data.skill_md}</pre>
+            <pre className="skill-md">
+              <Reveal text={data.skill_md} />
+            </pre>
           </section>
 
           <section>

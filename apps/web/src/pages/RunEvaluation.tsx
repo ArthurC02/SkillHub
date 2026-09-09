@@ -19,6 +19,7 @@ import {
 } from "../api/evaluation";
 import { useRun } from "../api/runs";
 import type { RunStatus } from "../api/trace";
+import { Reveal } from "../components/Reveal";
 import type {
   CriterionResult,
   DeterministicFinding,
@@ -1122,7 +1123,9 @@ function SuggestionDiffView({ suggestionId }: { suggestionId: string }) {
         </p>
       )}
       {diff.data.unified_diff ? (
-        <pre className="diff">{diff.data.unified_diff}</pre>
+        <pre className="diff">
+          <Reveal text={diff.data.unified_diff} />
+        </pre>
       ) : (
         <p>沒有可顯示的差異。</p>
       )}
