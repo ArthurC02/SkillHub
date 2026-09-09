@@ -1864,6 +1864,17 @@ summary {
    label do not become the one full-width control on the page. */
 .version-upload {
   display: grid;
+  /* `minmax(0, 1fr)` and not the default `auto`, because of `04` 丙-219: an
+     auto track is at least as wide as its content's min-content width, and one
+     of these items is a native `<input type="file">` whose min-content width is
+     the widget the browser draws — `Choose File` plus `No file chosen` in the
+     platform's own UI font. Measured 330px here, ~359px on GitHub's
+     `ubuntu-latest`, and 384px is what the 375px viewport assertion kept
+     reporting. `max-width: 100%` (on the base control rule) cannot help: a
+     percentage against a container that is itself being sized by this content
+     does not participate in intrinsic sizing. With the track floored at 0 the
+     input stretches to the column instead of setting it. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   max-width: 480px;
 }

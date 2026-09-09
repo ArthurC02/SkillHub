@@ -171,6 +171,41 @@ test.describe("QA-008 real layout", () => {
   }
 
   /**
+   * `04` 丙-219，量的是那條斷言上面**沒有**的那件事：餘裕。
+   *
+   * 上面那支在這台機器上綠、在 GitHub 的 runner 上紅，而兩邊跑的是同一份 bundle。
+   * 差別在 `<input type="file">` 的固有寬度——那是瀏覽器自己畫的元件（`Choose
+   * File`／`No file chosen`，用平台自己的 UI 字型），本機量到 330px、runner 上
+   * 約 359px，而 375 的視窗只裝得下 350。它不是偶發，是**餘裕只有 20px**。
+   *
+   * 所以這裡把字型放大來模擬另一個系統的元件，斷言頁面仍然不橫捲：修法是讓那一欄
+   * 可以縮（`minmax(0, 1fr)`），元件跟著容器走，固有寬度多少都不再進入版面。
+   * 這件事 jsdom 決定不了——它畫不出原生檔案輸入，也沒有固有寬度。
+   */
+  test("a wider native file widget does not push the page sideways: skill-detail", async ({
+    page,
+  }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto(`/skills/${SKILL}`);
+    await page.waitForSelector('.version-upload input[type="file"]');
+    await page.addStyleTag({
+      content: '.version-upload input[type="file"] { font-size: 20px }',
+    });
+    const doc = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+      file: Math.round(
+        document.querySelector('.version-upload input[type="file"]')!.getBoundingClientRect().width,
+      ),
+    }));
+    expect(
+      doc.scrollWidth,
+      `a wider file widget (${doc.file}px) pushed the page to ${doc.scrollWidth}px`,
+    ).toBeLessThanOrEqual(doc.clientWidth);
+  });
+
+  /**
    * 設計 §4.5「手機頁首」，量在真的排版過的頁首上。
    *
    * jsdom 決定不了這件事：沒有行盒與 flex 換行，頁首在那一層永遠是「三個兄弟」，
