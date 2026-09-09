@@ -96,11 +96,6 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 		}
 		return view(r)
 	}
-	tx, err := s.Pool.Begin(ctx)
-	if err != nil {
-		return View{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
 	zero := 0.0
 	e := envelope{Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, References: []Reference{}, BudgetUSD: budget, SpentUSD: &zero}, Limits: s.Limits, StartHash: key, Deadline: time.Now().Add(s.Limits.SessionTimeout)}
 	state := "waiting_input"
@@ -108,6 +103,19 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 		e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(message)})
 		state = "queued"
 	}
+	// ── 2026-09-09：這一段必須在 Begin 之前，而那不是排版偏好 ──────────────────
+	//
+	// 它原本在交易裡，而 `CatalogCheck` 自己要用連線池：`CreationKnowledgeIDs` 是
+	// 一次 pgvector 檢索，`ResolveReference` 每命中一筆再讀一次版本。**交易握著一條
+	// 連線，裡面的查詢再去要第二條**——連線數大的部署看不出來，而淨測試模式
+	// （ADR-060 決策 6）把 `pgxpool` 釘在 `MaxConns=1`，於是它是一個必然的自我死鎖：
+	// POST /creation-sessions 永遠不回應，River 的選舉與取件同時餓死在同一條連線上，
+	// 只有在瀏覽器放棄、request context 被取消時才鬆開。2026-09-09 實測復現。
+	//
+	// 這裡沒有任何東西需要那個交易：整段只讀公開目錄、只寫記憶體裡的 `e`。
+	//
+	// 冪等沒有變壞：上面那次 `GetCreationSession` 仍然在最前面，所以重送同一個 id
+	// 會在這之前就回舊的那一份，不會再付一次檢索的錢。
 	if state == "queued" && s.CatalogCheck != nil {
 		// 05 R-49: before any model call, Go asks the catalogue whether this
 		// task already has a Skill (run r, 2026-09-06: left to the model, no
@@ -136,6 +144,12 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 		}
 	}
 	b, _ := json.Marshal(e)
+
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return View{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 	row, err := q.CreateCreationSession(ctx, gen.CreateCreationSessionParams{ID: id, WorkspaceID: ws.ID, State: state, Snapshot: b, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(s.Limits.Retention), Valid: true}})
 	if err != nil {

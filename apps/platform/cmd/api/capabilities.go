@@ -53,6 +53,41 @@ import (
 // web_app row is added only then, because a capability this process cannot
 // serve is not one it should report on — Unavailable and Broken are both
 // wrong answers to "somebody else serves it".
+// creationCapability is the ADR-067 row, and it is built rather than written out
+// because clean mode needs three fewer variables than every other deployment.
+//
+// ── 2026-09-09：這一列本來會印一句當下為假的話 ───────────────────────────────
+//
+// 它宣告需要五個變數，其中三個是 Worker 的內部 listener。**淨測試模式不用那三個**：
+// `main.go` 的 `if clean` 把 `CreationTransient` 直接接到同一個行程裡的 worker set
+// （ADR-060 決策 6），HTTP 那條路一次都不會走。於是在淨模式打開創作之後，開機報告會
+// 印「✗ 缺前提 … /creation-sessions* 不掛載、GET /me 不列 creation_skill」——而實測
+// 兩者都掛著、`/me` 也列了。一份會說謊的能力表比沒有能力表更貴，因為下一個人會照著
+// 它去查錯的地方（2026-09-09 我自己就先照它查了一輪）。
+//
+// `servesWeb` 在呼叫端就是 `clean`（`capabilityTable(pool, len(profiles), clean)`），
+// 所以這裡不讀第二次環境變數——一個選擇點，與 cleanModeFromEnv 的承諾同一條。
+func creationCapability(clean bool) envx.Capability {
+	// Same boundary as generation_entry, one scope further in: the creation
+	// routes exist only under BOTH flags, and the limits are ruled values
+	// (05 R-45), not a default the process invents.
+	needs := []string{"CREATION_EXPOSED", "CREATION_LIMITS_JSON"}
+	without := "刻意的狀態：/creation-sessions* 不掛載、GET /me 不列 creation_skill；LIMITS 缺任何一鍵時 API 拒絕開始會話（Limits.Valid）"
+	if !clean {
+		needs = append(needs, "CREATION_WORKER_INTERNAL_ADDR", "CREATION_WORKER_INTERNAL_URL", "CREATION_WORKER_INTERNAL_TOKEN")
+		without += "，Worker 的內部 listener 不啟動、流程圖沒有地方送"
+	}
+	return envx.Capability{
+		ID:      "interactive_creation",
+		Name:    "互動創作會話（ADR-067）",
+		Needs:   needs,
+		Without: without,
+		Fix: "值照 05 R-45 的裁定表（.env.example 帶著同一行 JSON）；CREATION_EXPOSED 與 GENERATE_SKILL_EXPOSED 一樣，" +
+			"在 01 §10 的 M5 邊界解除前不要設成 on。淨測試模式不需要那三個 Worker 內部變數：" +
+			"創作 worker 就跑在同一個行程裡（ADR-060 決策 6）",
+	}
+}
+
 func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *envx.Registry {
 	client := &http.Client{Timeout: 2 * time.Second}
 	caps := []envx.Capability{
@@ -182,18 +217,7 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 			Fix: "不要在 01 §11.2 第一段漏斗量到讀數之前設成 on——這是 M5 對封測使用者的曝光邊界（01 §10），" +
 				"不是一個等著被打開的功能",
 		},
-		{
-			ID:   "interactive_creation",
-			Name: "互動創作會話（ADR-067）",
-			// Same boundary as generation_entry, one scope further in: the
-			// creation routes exist only under BOTH flags, and the limits are
-			// ruled values (05 R-45), not a default the process invents.
-			Needs: []string{"CREATION_EXPOSED", "CREATION_LIMITS_JSON", "CREATION_WORKER_INTERNAL_ADDR", "CREATION_WORKER_INTERNAL_URL", "CREATION_WORKER_INTERNAL_TOKEN"},
-			Without: "刻意的狀態：/creation-sessions* 不掛載、GET /me 不列 creation_skill；LIMITS 缺任何一鍵時 API 拒絕開始會話（Limits.Valid），" +
-				"Worker 的內部 listener 不啟動、流程圖沒有地方送",
-			Fix: "值照 05 R-45 的裁定表（.env.example 帶著同一行 JSON）；CREATION_EXPOSED 與 GENERATE_SKILL_EXPOSED 一樣，" +
-				"在 01 §10 的 M5 邊界解除前不要設成 on",
-		},
+		creationCapability(servesWeb),
 	}
 	if servesWeb {
 		caps = append(caps, envx.Capability{

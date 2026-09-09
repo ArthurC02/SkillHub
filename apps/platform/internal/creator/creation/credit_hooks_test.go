@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // TestCreditCanStartBlocksBeforeAnyDatabaseWork proves ADR-068 gate ① runs
@@ -62,5 +64,49 @@ func TestUSDMicrosRounding(t *testing.T) {
 		if got := usdMicros(c.usd); got != c.want {
 			t.Errorf("usdMicros(%v) = %d, want %d", c.usd, got, c.want)
 		}
+	}
+}
+
+// TestCatalogCheckRunsBeforeTheTransaction proves the fix for a self-deadlock
+// that had no symptom other than 「按下送出後，沒有任何反應」.
+//
+// CatalogCheck is a POOL USER: `CreationKnowledgeIDs` is a pgvector retrieval
+// and `ResolveReference` reads a version per hit (apiserver/creation_wiring.go).
+// It used to be called with a transaction already open, so the request held one
+// connection and then asked for a second. On a deployment with a large pool that
+// is invisible. Clean mode pins pgxpool to MaxConns=1 (ADR-060 決策 6, because
+// the PGlite carrier serves one client at a time), and there it is a certain
+// deadlock: POST /creation-sessions never answers, River's elector and producer
+// starve on the same connection, and the only thing that ever unblocks it is the
+// browser giving up and cancelling the request context. Reproduced 2026-09-09.
+//
+// The pool here is unreachable on purpose, and that is the whole fixture: Begin
+// cannot succeed, so Create must fail — the question this test asks is whether
+// the catalogue check already ran by then. Before the fix it never did, because
+// Begin came first and returned the error.
+func TestCatalogCheckRunsBeforeTheTransaction(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	defer pool.Close()
+
+	checked := false
+	s := &Service{
+		Pool:   pool,
+		Limits: Limits{MaxCostUSD: 1, MaxCallCostUSD: 0.1, MaxSteps: 24, MaxToolCalls: 8, CallTimeout: time.Second, SessionTimeout: time.Hour, Retention: time.Hour, MaxOutputTokens: 16000},
+		CatalogCheck: func(context.Context, identity.Workspace, string) ([]Reference, float64, error) {
+			checked = true
+			return nil, 0, errors.New("catalogue unreachable in this test")
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := s.Create(ctx, identity.Workspace{}, pgtype.UUID{Bytes: [16]byte{2}, Valid: true}, "摘出文件中所有數字", 0.2); err == nil {
+		t.Fatal("Create() succeeded against an unreachable pool")
+	}
+	if !checked {
+		t.Fatal("the catalogue check never ran: it is still inside the transaction, and with MaxConns=1 that is a deadlock")
 	}
 }

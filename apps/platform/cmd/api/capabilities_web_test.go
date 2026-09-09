@@ -129,10 +129,46 @@ func TestWebAppRowCarriesAProbe(t *testing.T) {
 // The declared table the R-36 checker reads must stay free of variables this
 // row does not have: web_app is gated by an artifact, not by configuration, and
 // a Needs entry here would send the checker looking for it in .env.example.
+//
+// ── 2026-09-09：這一支本來比較的是整張表，而那是一個會過期的代理 ──────────────
+//
+// 原本的寫法是「servesWeb 前後 DeclaredVars() 的長度必須相同」，用整張表的大小當
+// 「web_app 沒有宣告變數」的代理。同一個旗標在 09-09 起也決定 interactive_creation
+// 要不要宣告那三個 Worker 內部變數（淨模式的創作 worker 就在同一個行程裡，
+// ADR-060 決策 6，那條 HTTP 路一次都不會走），於是這個代理開始對一件為真的事說謊。
+// 現在直接問這一列自己：`web_app` 的 Needs 是不是空的。
 func TestWebAppDeclaresNoDeploymentVariables(t *testing.T) {
-	before := capabilityTable(nil, 0, false).DeclaredVars()
-	after := capabilityTable(nil, 0, true).DeclaredVars()
-	if len(before) != len(after) {
-		t.Fatalf("web_app changed the declared variable set: %v -> %v", before, after)
+	for _, c := range capabilityTable(nil, 0, true).Capabilities() {
+		if c.ID != "web_app" {
+			continue
+		}
+		if len(c.Needs) != 0 {
+			t.Fatalf("web_app declares %v; the R-36 checker would then look for them in .env.example", c.Needs)
+		}
+		return
+	}
+	t.Fatal("web_app is not in the table")
+}
+
+// 同一個旗標的另一半，而它守的是相反方向：淨模式少宣告的**只有**那三個 Worker 內部
+// 變數。多縮一個，R-36 的檢查器就會漏掉一個真的必要的設定。
+func TestCleanModeDropsOnlyTheWorkerInternalVars(t *testing.T) {
+	full := creationCapability(false).Needs
+	clean := creationCapability(true).Needs
+	dropped := map[string]bool{}
+	for _, v := range full {
+		dropped[v] = true
+	}
+	for _, v := range clean {
+		delete(dropped, v)
+	}
+	want := map[string]bool{"CREATION_WORKER_INTERNAL_ADDR": true, "CREATION_WORKER_INTERNAL_URL": true, "CREATION_WORKER_INTERNAL_TOKEN": true}
+	if len(dropped) != len(want) {
+		t.Fatalf("clean mode dropped %v, want exactly the three Worker internals", dropped)
+	}
+	for v := range want {
+		if !dropped[v] {
+			t.Fatalf("clean mode kept %s; it is unreachable in that mode (ADR-060 決策 6)", v)
+		}
 	}
 }
