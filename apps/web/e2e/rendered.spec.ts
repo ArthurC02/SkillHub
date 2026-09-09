@@ -134,13 +134,38 @@ test.describe("QA-008 real layout", () => {
       await page.goto(url);
       await expect(page.locator(".app-nav a").first()).toBeVisible();
 
-      const doc = await page.evaluate(() => ({
-        scrollWidth: document.documentElement.scrollWidth,
-        clientWidth: document.documentElement.clientWidth,
-      }));
+      // A red used to say only "384px inside 375px", which is not enough to fix
+      // anything — and the trace upload was pointed at a directory the `github`
+      // reporter never writes (see playwright.config.ts), so four red runs on
+      // the Linux runner left no DOM behind to look at. The message therefore
+      // carries the answer itself: the deepest elements reaching past the
+      // viewport edge, which is the one fact the next red has to hand over.
+      const doc = await page.evaluate(() => {
+        const limit = document.documentElement.clientWidth;
+        const over = Array.from(document.querySelectorAll("*")).filter(
+          (el) =>
+            el.getBoundingClientRect().right > limit + 0.5 || el.scrollWidth > el.clientWidth + 0.5,
+        );
+        return {
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: limit,
+          // Deepest only: every ancestor of an offender is one too, and a list
+          // led by `html` and `body` names nothing.
+          culprits: over
+            .filter((el) => !over.some((other) => other !== el && el.contains(other)))
+            .slice(0, 5)
+            .map((el) => {
+              const box = el.getBoundingClientRect();
+              const cls = typeof el.className === "string" ? el.className.trim() : "";
+              const at = `${el.tagName.toLowerCase()}${cls ? "." + cls.split(/\s+/).join(".") : ""}`;
+              return `${at} w=${Math.round(box.width)} right=${Math.round(box.right)} scrollWidth=${el.scrollWidth}`;
+            }),
+        };
+      });
       expect(
         doc.scrollWidth,
-        `the page scrolls horizontally: ${doc.scrollWidth}px inside ${doc.clientWidth}px`,
+        `the page scrolls horizontally: ${doc.scrollWidth}px inside ${doc.clientWidth}px` +
+          ` — past the edge: ${doc.culprits.join(" | ") || "(no element found)"}`,
       ).toBeLessThanOrEqual(doc.clientWidth);
     });
   }
