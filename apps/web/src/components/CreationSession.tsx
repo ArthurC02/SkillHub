@@ -1285,7 +1285,13 @@ export function CreationSession() {
                     保存將採用目前顯示的草稿與版本。{!p.candidate?.run_id && "這份草稿尚未試跑。"}
                     {runNotPassing && "試跑未通過或未評估；保存前請確認。"}
                   </p>
+                  {/* 這一頁唯一的填色主要動作（設計 §4.6.3，2026-09-09 入表）。
+                      判準是「完成這一頁的工作的那一個」，而這一頁的工作是把一個
+                      Skill 做出來並收進工作區——保存就是那一下。在這之前它與同畫面
+                      的十顆按鈕同框，於是「送出」「取消」「停止這一步」和「保存」
+                      看起來一樣重。填色只有這一顆，`rendered.spec.ts` 數的就是它。 */}
                   <button
+                    className="action"
                     disabled={locked || p.draft.blocked || !p.draft.content_hash}
                     onClick={() =>
                       void perform("finalize", { content_hash: p.draft!.content_hash })
