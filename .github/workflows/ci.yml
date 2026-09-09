@@ -76,6 +76,15 @@ jobs:
               - 'apps/platform/**'
               - 'db/**'
               - 'contracts/**'
+              # The creation loop's Go-to-Python test starts the real service and
+              # scripts the gateway, so the shape it writes has to match the
+              # pydantic model in apps/llm -- and that model is not in contracts/,
+              # because it describes what the *model* returns, not what the two
+              # processes exchange. When `CreationDecision` gained two required
+              # properties the fixture was left behind, and this filter is why
+              # nothing ran: a change under apps/llm alone never started this job.
+              # Same disjoint-filters bug as the sandbox/egress pair below.
+              - 'apps/llm/**'
               - '.github/workflows/ci.yml'
             llm:
               - 'apps/llm/**'
@@ -265,6 +274,14 @@ jobs:
       # identity in infra/compose/seaweedfs-s3.json, which the test defaults to.
       SKILLHUB_TEST_OBJSTORE_ENDPOINT: 127.0.0.1:8333
       SKILLHUB_REQUIRE_OBJSTORE: "1"
+      # The third of the same pair. This one points at an interpreter rather than
+      # a service, and it is what makes the only Go-to-Python creation test run
+      # at all -- it starts uvicorn itself and scripts the gateway, so no model
+      # provider and no key are involved. It skipped itself in every run until
+      # 2026-09-10, which is how its fixture drifted two required properties
+      # behind the pydantic model and every scripted reply became a 502.
+      SKILLHUB_CREATION_PYTHON: ${{ github.workspace }}/apps/llm/.venv/bin/python
+      SKILLHUB_REQUIRE_CREATION_PYTHON: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # Not a `services:` entry: service containers start before checkout, and
@@ -291,6 +308,15 @@ jobs:
         with:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
+      # The interpreter SKILLHUB_CREATION_PYTHON points at. Same action and same
+      # lockfile as the llm job -- `--frozen`, so this job can never resolve a
+      # different dependency set than the one that job tested.
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+      - name: Sync the creation service's interpreter (Go-to-Python test)
+        working-directory: apps/llm
+        run: uv sync --frozen
       # golangci-lint-action installs a prebuilt binary, and a prebuilt binary
       # refuses to load a config whose module targets a newer Go than the one it
       # was itself built with:
