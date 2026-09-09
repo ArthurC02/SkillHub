@@ -26,7 +26,7 @@
 
 ### 網路上的實務怎麼說
 
-- **傳輸選 SSE 不選 WebSocket。** LLM 回應本質上是單向的；WebSocket 帶來雙向的複雜度而沒有對應的好處。SSE 的 `EventSource` 自動重連並帶 `Last-Event-ID`，伺服器可以從那個 id 之後續傳；WebSocket 的重連要自己寫序號追蹤與補送，「多數團隊乾脆跳過，直接重跑一次生成，浪費 token 和錢」。HTTP/2 之下 SSE 與其他請求多工在同一條 TCP 連線上；反向代理只需要關掉該路由的 buffering，不需要協定升級。要記得每 15–30 秒送一個 keepalive 註解行，否則中間的 proxy 會把閒置連線斷掉。
+- **傳輸選 SSE 不選 WebSocket。** LLM 回應本質上是單向的；WebSocket 帶來雙向的複雜度而沒有對應的好處。SSE 在瀏覽器內建的客戶端會自動重連並帶 `Last-Event-ID`，伺服器可以從那個 id 之後續傳；WebSocket 的重連要自己寫序號追蹤與補送，「多數團隊乾脆跳過，直接重跑一次生成，浪費 token 和錢」。HTTP/2 之下 SSE 與其他請求多工在同一條 TCP 連線上；反向代理只需要關掉該路由的 buffering，不需要協定升級。要記得每 15–30 秒送一個 keepalive 註解行，否則中間的 proxy 會把閒置連線斷掉。
 - **要能續傳就需要一個中繼儲存。** 業界的做法是把 chunk 寫進 Redis Stream（以 `chat_id` + `message_id` 為鍵），relay 訂閱後轉成 SSE，consumer group 保證不重不漏；沒有它，使用者一重新整理就是重跑一次生成。
 - **串流的結構化輸出要 partial JSON**（見上）。
 - **agent 框架串的通常不是 token。** LangGraph 有三種 `stream_mode`：`updates`（狀態變更，「哪個節點在跑」）、`custom`（應用自己的進度事件）、`messages`（token）。官方建議**不要每個 token 發一個 custom 事件**，那是 `messages` 的工作；`custom` 的自然頻率是「每個大動作一到兩個」。

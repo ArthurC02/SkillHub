@@ -1763,7 +1763,7 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 
 **不決定的代價**：等待畫面繼續由前端從快照推導步驟，而不是後端說出來。不擋任何人。
 
-**決定之後誰動**：`contracts/`（主 Agent 序列化）、`apps/platform` API 行程與事件讀取面、`apps/web` 的 `EventSource`、`infra/images/web/nginx.conf` 那條路由要關 buffering（且要有機器檢查——那是關掉之後沒有人會發現的東西）。
+**決定之後誰動**：`contracts/`（主 Agent 序列化）、`apps/platform` API 行程與事件讀取面、`apps/web` 的 SSE 客戶端（瀏覽器內建的那個）、`infra/images/web/nginx.conf` 那條路由要關 buffering（且要有機器檢查——那是關掉之後沒有人會發現的東西）。
 
 ## R-70｜模型訊息可以帶多少標記（已裁，2026-09-09）（`04` 丙-206、`02` SEC-013）
 
