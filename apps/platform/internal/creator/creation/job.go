@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
+	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -286,6 +287,29 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 	_ = s.RevokeKey(cleanupCtx, UUID(a.ReceiptID))
 	return s.finish(cleanupCtx, a, response, usage, callErr, diagram != nil)
 }
+
+// stepFailureMessage names the side that broke.
+//
+// Three cases, and the person can act on exactly one of them:
+//   - the model answered but broke the session rules — nothing the person did;
+//   - the platform never got an answer (the gateway key, the timeout, the LLM
+//     service) — also nothing the person did, but a different thing to check,
+//     and saying so stops it reading as "my text was rejected";
+//   - everything else (the session stopped, the deadline passed) — the
+//     original sentence, which is true for those.
+//
+// ErrNotFound and ErrCreditFloor keep the plain sentence on purpose: the caller
+// appends a second message for each, and that one says the actual thing.
+func stepFailureMessage(err, callErr error) string {
+	switch {
+	case errors.Is(err, ErrInvalidCommand):
+		return "這一步未完成：模型的回覆不符合會話規則，已保留進度與實際可取得的費用。請檢查後再繼續。"
+	case callErr != nil && !errors.Is(callErr, ErrNotFound) && !errors.Is(callErr, ErrCreditFloor):
+		return "這一步未完成：平台這一側沒能完成這次模型呼叫，不是你寫的內容的問題。已保留進度與實際可取得的費用。請檢查後再繼續。"
+	}
+	return "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
+}
+
 func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs, message string) error {
 	state := "failed"
 	if e.Snapshot.DiagramFingerprint != "" && e.Snapshot.DiagramUnderstanding == "" {
@@ -393,12 +417,25 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 				state = "needs_reupload"
 			}
 			e.Snapshot.PendingAction = ""
-			failed := "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
-			if errors.Is(err, ErrInvalidCommand) {
-				// Say which side broke: the person reads this, and so does the
-				// next measurement (run n: two 「未完成」 with nothing to read).
-				failed = "這一步未完成：模型的回覆不符合會話規則，已保留進度與實際可取得的費用。請檢查後再繼續。"
+			// 2026-09-09: the call error was written down NOWHERE. The screen
+			// said 「這一步未完成」 and the log said nothing at all, so a failed
+			// session carried no readable cause on either side — the same shape
+			// as the boot line that claimed the creation routes were unmounted
+			// while they were mounted. Two failed sessions on this machine had
+			// to be traced by reading `usage_unknown: false` and reasoning
+			// backwards to "it died before the model call, so it died issuing
+			// the gateway key".
+			// Masked because the gateway's own error string carries its address
+			// and sometimes a key (鐵律 11); `s.Mask` is the masker this session
+			// already uses for what it stores of a person's message.
+			if callErr != nil {
+				reason := callErr.Error()
+				if s.Mask != nil {
+					reason = s.Mask(reason)
+				}
+				slog.Warn("creation: step failed", "session", UUID(a.SessionID), "revision", a.Revision, "error", reason)
 			}
+			failed := stepFailureMessage(err, callErr)
 			e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: failed})
 			if errors.Is(callErr, ErrNotFound) {
 				state = "waiting_confirmation"
