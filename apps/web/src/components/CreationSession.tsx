@@ -21,6 +21,7 @@ import { TERMINAL_RUN_STATUSES } from "../api/trace";
 import { ReadFailure } from "./LoginRequired";
 import { ReferencePicker } from "./GenerateSkill";
 import { Findings } from "./Findings";
+import { ModelMarkdown } from "./ModelMarkdown";
 import { Timestamp } from "./Timestamp";
 import { runStatusLabel } from "../pages/RunEvaluation";
 const labels: Record<CreationState, string> = {
@@ -889,15 +890,18 @@ export function CreationSession() {
                       <span className="creation-who">
                         {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
                       </span>
-                      {/* 訊息裡的換行是內容的一部分。在此之前這裡是一個裸的文字
-                          節點，`white-space` 是預設的 `normal`——於是模型寫的一問
-                          一行、編號清單、以及工具結果的 JSON，全部被壓成一整段。
-                          `buildRoundTimeline` 對「這次試跑有條件沒過」那種訊息做
-                          `split("\n")[0]`，那就是這些訊息確實有換行的證據。
-                          這不是 Markdown（見 `04` 丙-206）：只是不要把已經在那裡的
-                          換行丟掉。 */}
+                      {/* 三種角色三種算繪，而分界是信任而不是外觀（`05` R-70，
+                          2026-09-09 簽署）。`assistant` 得到白名單裡的標記；
+                          `user` 是自己打的字，維持純文字；`tool` 走
+                          ToolObservation，**而且它裡面的字一律是文字**——`fetch`
+                          那種訊息裝的是抓回來的整頁網頁，是攻擊者直接寫的，不必
+                          先騙過模型，所以它是這三種裡最不可信的一種。
+                          換行仍然是內容的一部分（`04` 丙-207）：兩條路徑都靠
+                          `white-space: pre-wrap` 留住它。 */}
                       {m.role === "tool" ? (
                         <ToolObservation raw={m.content} />
+                      ) : m.role === "assistant" ? (
+                        <ModelMarkdown text={m.content} />
                       ) : (
                         <span className="creation-text">{m.content}</span>
                       )}
