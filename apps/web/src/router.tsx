@@ -42,7 +42,10 @@ function RootLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <div className="app-shell">
+    /* `data-chat` 只掛在互動創作那一條路由上：那一頁是一個固定高度的視窗（一條
+       捲軸在對話上），而其餘十七條路由仍然是文件捲動。掛在這裡而不是那一頁裡面，
+       因為要鎖的是**外層**——頁首、`main` 與頁尾都是這個殼的一部分。 */
+    <div className="app-shell" data-chat={pathname === "/workspace/creations" || undefined}>
       <header className="app-header">
         <Link to="/" className="app-title">
           Skill Hub

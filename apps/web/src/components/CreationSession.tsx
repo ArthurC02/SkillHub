@@ -550,6 +550,8 @@ export function CreationSession() {
   const latest = runs.data?.pages[0]?.runs.find((r) => TERMINAL_RUN_STATUSES.has(r.status));
   const run = p?.candidate?.run_id ? findRunObservation(p.messages, p.candidate.run_id) : undefined;
   const roundTimeline = p ? buildRoundTimeline(p.messages) : [];
+  // 「再送一次上一句」要送的那一句：對話裡最後一則由人說的話。
+  const lastSaid = [...(p?.messages ?? [])].reverse().find((m) => m.role === "user")?.content ?? "";
   const runNotPassing =
     !!run && (run.execution_status !== "succeeded" || run.evaluation?.overall !== "met");
   const terminal = !!session && ["saved", "cancelled"].includes(session.state);
@@ -624,29 +626,6 @@ export function CreationSession() {
    */
   const bottom = useRef<HTMLDivElement>(null);
   const stream = useRef<HTMLDivElement>(null);
-  /**
-   * 這個視窗從它自己開始的地方算到視窗底部。
-   *
-   * CSS 算不出「我從哪裡開始」——`100dvh` 減一個寫死的常數，就等於假設上面那一段
-   * （頁首、淨測試模式的橫幅、回上一頁那一列）永遠一樣高，而它們不是。所以量一次，
-   * 寫進一個 custom property，由 CSS 去減。
-   *
-   * 沒有相依陣列是刻意的：每次算繪都重量一次，所以上面多一條橫幅、或錯誤訊息出現
-   * 又消失，這個值都會自己跟上。改的是 `style` 不是 state，不會再觸發一次算繪。
-   */
-  const shell = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = shell.current;
-    if (!el) return;
-    const fit = () =>
-      el.style.setProperty(
-        "--shell-top",
-        Math.round(el.getBoundingClientRect().top + window.scrollY) + "px",
-      );
-    fit();
-    window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
-  });
   const atBottom = useRef(true);
   useEffect(() => {
     // 2026-09-09：捲的是對話那一格，不再是整份文件（`.creation-shell`）。
@@ -772,197 +751,202 @@ export function CreationSession() {
        產出的東西自己捲**（`.creation-stream`），輸入區永遠在最下面看得到。
        這是全 app 第一個、也刻意只有這一個滿高度的畫面——其餘十七條路由仍然是文件
        捲動，理由見 `system.md` §4.5 的那一列。 */
-    <div className="creation-shell" ref={shell}>
-      <h3>和 Agent 一起創作 Skill</h3>
-      {/* 這一句是教學（§2.13 的 D 類），而教學要回答的是「這一頁是什麼」——那是
-          開始之前的問題。一場對話開始之後它每一輪都還在，佔掉的是對話的高度。 */}
-      {!session && (
-        <p className="note">
-          逐步確認需求與草稿，保存到私人工作區。模型處理與改善會使用這次核准的預算。
-        </p>
-      )}
-      <ReadFailure error={sessions.error ?? current.error} what="創作紀錄" />
-      {sessions.data && sessions.data.length > 0 && (
-        <label className="creation-picker">
-          恢復創作
-          <select
-            aria-label="恢復創作"
-            value={id}
-            disabled={busy}
-            onChange={(e) => {
-              setID(e.target.value);
-              setMessage("");
-              clearFile();
-              setRefs([]);
-              pending.current = undefined;
-              setError(undefined);
-            }}
-          >
-            <option value="">開始新的創作</option>
-            {sessions.data.slice(0, 50).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.snapshot.brief.slice(0, 40) || "尚未確認需求"} · {labels[s.state]}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {/* 這一行是 `role="status"`——一個即時區域，狀態一變就會被念出來。
-          **這一步在做什麼，2026-09-09 從這裡搬到對話的最後一則**（見下面那則
-          `data-pending` 的 `<li>`）。搬的理由是位置：草稿長出來之後，這一行離對話
-          底端 1,000px 以上，而人在等的時候看的是對話底端。這裡不能兩邊都寫——
-          §2.13「同一句話一頁講一次」。
-          **搬過去仍然會被念出來**：對話那一層是 `role="log"`，也是即時區域，
-          `aria-relevant` 的預設值 `additions text` 同時涵蓋「多一則」與「那一則的字
-          變了」。兩個即時區域不巢狀（那一則在 log 裡，不再自己掛 status），一個念
-          狀態、一個念步驟，不重複。 */}
-      {/* 會話的事實一列講完（2026-09-09）。在這之前是四段各自成行的句子，疊在對話
-          上面約 100px——而這一頁的主體是對話。**一個字都沒有折起來**：§2.10 的
-          2026-09-08 附註把成本留在靜止時可見那一邊，所以預算、已知費用、仍占用與
-          用量未知那句話全部還在畫面上，只是排成一列。字級是 §4.1 的 meta 階。
-          狀態仍然是它自己的即時區域（`role="status"` 掛在那個 `<span>` 上），只是
-          不再自己佔一行。 */}
-      {(session || p) && (
-        <p className="creation-meta">
-          {session && <span role="status">創作狀態：{labels[session.state]} · </span>}
-          {p && (
-            <>
-              預算上限 $ {p.budget_usd} · 已知費用{" "}
-              {p.spent_usd === undefined ? "未知" : "$ " + p.spent_usd} · 仍占用預算 ${" "}
-              {p.reserved_usd}
-              {limits.data && (
+    <div className="creation-shell">
+      {/* ── 頂部工具列：固定高度，不參與捲動 ─────────────────────────────────
+          這一列裝的是「這場創作是什麼」與「它花了多少」，一列講完。**費用與步數
+          不折**（§2.10 與 §2.12 第 4 條：會擋住人的上限要在人撞上之前看得到），
+          期限、工具次數、仍占用的預算與「提高預算上限」那個表單折進右邊那顆
+          `<details>`——那些是低頻設定與推導，不是判斷依據。
+          出口（← 回到我的 Skill）從 `pages/CreateSkill.tsx` 搬進這一列，因為它
+          屬於這一列；旗標關著的那一半仍然由那一頁自己出一條。 */}
+      <div className="creation-bar">
+        <nav aria-label="離開這一頁">
+          <Link to="/workspace/skills">← 回到我的 Skill</Link>
+        </nav>
+        <h3>和 Agent 一起創作 Skill</h3>
+        {sessions.data && sessions.data.length > 0 && (
+          <label className="creation-picker">
+            恢復創作
+            <select
+              aria-label="恢復創作"
+              value={id}
+              disabled={busy}
+              onChange={(e) => {
+                setID(e.target.value);
+                setMessage("");
+                clearFile();
+                setRefs([]);
+                pending.current = undefined;
+                setError(undefined);
+              }}
+            >
+              <option value="">開始新的創作</option>
+              {sessions.data.slice(0, 50).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.snapshot.brief.slice(0, 40) || "尚未確認需求"} · {labels[s.state]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {session && (
+          <span className="creation-state" role="status">
+            {labels[session.state]}
+          </span>
+        )}
+        {p && limits.data && (
+          <span className="creation-fact">
+            {p.steps}／{limits.data.max_steps} 步
+          </span>
+        )}
+        {p && (
+          <span className="creation-fact">
+            費用 {p.spent_usd === undefined || p.usage_unknown ? "未知" : "$ " + p.spent_usd} / ${" "}
+            {p.budget_usd}
+          </span>
+        )}
+        {p?.usage_unknown && (
+          <span className="creation-fact">部分用量未能取得，費用仍是未知，不能當作零。</span>
+        )}
+        {(p || (session && !terminal)) && (
+          <details className="creation-details">
+            <summary>預算與詳情</summary>
+            <div>
+              {p && (
+                <p className="note">
+                  仍占用預算 $ {p.reserved_usd}
+                  {limits.data && (
+                    <>
+                      {" "}
+                      · 工具 {p.tool_calls}／{limits.data.max_tool_calls} 次
+                    </>
+                  )}
+                </p>
+              )}
+              {session && !terminal && (
+                <p className="note">
+                  可進行到 <Timestamp at={session.deadline} /> · 紀錄保留到{" "}
+                  <Timestamp at={session.expires_at} />
+                </p>
+              )}
+              {p && limits.data && (
                 <>
-                  {" "}
-                  · 已用 {p.steps}／{limits.data.max_steps} 步 · 工具 {p.tool_calls}／
-                  {limits.data.max_tool_calls} 次
+                  <label>
+                    提高這次預算上限（美元）
+                    <input
+                      aria-label="提高這次預算上限（美元）"
+                      inputMode="decimal"
+                      disabled={busy}
+                      value={raiseBudget}
+                      onChange={(e) => setRaiseBudget(e.target.value)}
+                    />
+                  </label>
+                  <button type="button" disabled={busy} onClick={() => void submitRaiseBudget()}>
+                    提高預算後繼續
+                  </button>
+                  {!!raiseError && <p role="alert">{raiseError}</p>}
                 </>
               )}
-              {p.usage_unknown && " · 部分用量未能取得，費用仍是未知，不能當作零。"}
-            </>
-          )}
-          {session && !terminal && (
-            <>
-              {p && " · "}
-              可進行到 <Timestamp at={session.deadline} /> · 紀錄保留到{" "}
-              <Timestamp at={session.expires_at} />
-            </>
-          )}
-        </p>
-      )}
-      {p ? (
-        <>
-          {limits.data &&
-            (session?.state === "failed" ||
-              p.budget_usd - (p.spent_usd ?? 0) - p.reserved_usd <
-                2 * limits.data.min_budget_usd) && (
-              <div>
-                <label>
-                  提高這次預算上限（美元）
-                  <input
-                    aria-label="提高這次預算上限（美元）"
-                    inputMode="decimal"
-                    disabled={busy}
-                    value={raiseBudget}
-                    onChange={(e) => setRaiseBudget(e.target.value)}
-                  />
-                </label>
-                <button type="button" disabled={busy} onClick={() => void submitRaiseBudget()}>
-                  提高預算後繼續
-                </button>
-                {!!raiseError && <p role="alert">{raiseError}</p>}
-              </div>
-            )}
-        </>
-      ) : (
-        <>
-          {/*
-            CRED-001. `credits.data` is undefined on every deployment today
-            (route not mounted yet — see api/credits.ts), so this whole block
-            renders nothing until that lands: no ceiling is shown before one
-            is enforced (04 乙-2).
-          */}
-          {credits.data &&
-            (creditsBlocked ? (
-              <p className="note" id="creation-credits-why-disabled">
-                {credits.data.block_reason}
-              </p>
-            ) : (
-              <p className="note">
-                目前餘額 {credits.data.balance_credits} 點；這一場大約要{" "}
-                {credits.data.estimated_session.low_credits}–
-                {credits.data.estimated_session.high_credits} 點
-                {credits.data.estimated_session.estimated && "（樣本不足，此為估計值）"}。
-              </p>
-            ))}
-          <label>
-            這次預算上限（美元）
-            {limits.data && (
-              <span className="note">
-                （介於 $ {limits.data.min_budget_usd} 與 $ {limits.data.max_budget_usd} 之間）
-              </span>
-            )}
-            <input
-              aria-label="這次預算上限（美元）"
-              inputMode="decimal"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-            />
-          </label>
-        </>
-      )}
-      {!!error && (
-        <ReadFailure error={error} what="互動創作">
-          <p role="alert">
-            {error instanceof ApiError && error.status === 409
-              ? "進度已更新，輸入仍保留。請檢查最新內容後再送出。"
-              : error instanceof TypeError
-                ? "網路連線失敗，請重試。"
-                : error instanceof Error
-                  ? error.message
-                  : "這一步未完成，請重試。"}
-          </p>
-        </ReadFailure>
-      )}
-      {/* 對話與它產出的東西自己捲，輸入區留在下面（`.creation-shell` 的中間那一格）。
+            </div>
+          </details>
+        )}
+      </div>
+      {/* ── 中央：唯一一條捲軸 ───────────────────────────────────────────────
+          對話與它產出的東西都在這裡面，寬度 768px 置中（`.creation-feed`）。
           `ref` 是捲動判斷的來源：「新的一則到了要不要把你拉到底」問的是這一格的
           `scrollTop`，不再是整份文件的 `scrollY`。 */}
       <div className="creation-stream" ref={stream}>
-        {p && (
-          <>
-            {/* 2026-09-08：這裡本來是一個編號 `<ol>`，每一列前面掛「你：」。多輪的
+        <div className="creation-feed">
+          <ReadFailure error={sessions.error ?? current.error} what="創作紀錄" />
+          {!p && (
+            <div className="creation-kickoff">
+              <h4>還沒有開始</h4>
+              {/* 這一句是教學（§2.13 的 D 類）：它回答「這一頁是什麼」，而那是
+                  開始之前的問題，所以只在開始之前出現。 */}
+              <p className="note">
+                逐步確認需求與草稿，保存到私人工作區。模型處理與改善會使用這次核准的預算。
+              </p>
+              {credits.data &&
+                (creditsBlocked ? (
+                  <p className="note" id="creation-credits-why-disabled">
+                    {credits.data.block_reason}
+                  </p>
+                ) : (
+                  <p className="note">
+                    目前餘額 {credits.data.balance_credits} 點；這一場大約要{" "}
+                    {credits.data.estimated_session.low_credits}–
+                    {credits.data.estimated_session.high_credits} 點
+                    {credits.data.estimated_session.estimated && "（樣本不足，此為估計值）"}。
+                  </p>
+                ))}
+              {/* 這是一次授權，不是一個設定：§2.2 逐字寫著「授權是一次阻斷式的決定，
+                  不是被動通知」，所以它不預填、也不折。 */}
+              <label>
+                這次預算上限（美元）
+                {limits.data && (
+                  <span className="note">
+                    （介於 $ {limits.data.min_budget_usd} 與 $ {limits.data.max_budget_usd} 之間）
+                  </span>
+                )}
+                <input
+                  aria-label="這次預算上限（美元）"
+                  inputMode="decimal"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                />
+              </label>
+            </div>
+          )}
+          {!!error && (
+            <ReadFailure error={error} what="互動創作">
+              <p role="alert">
+                {error instanceof ApiError && error.status === 409
+                  ? "進度已更新，輸入仍保留。請檢查最新內容後再送出。"
+                  : error instanceof TypeError
+                    ? "網路連線失敗，請重試。"
+                    : error instanceof Error
+                      ? error.message
+                      : "這一步未完成，請重試。"}
+              </p>
+            </ReadFailure>
+          )}
+
+          {p && (
+            <>
+              {/* 2026-09-08：這裡本來是一個編號 `<ol>`，每一列前面掛「你：」。多輪的
                 流程一直都在，但**對話這個介面從來沒有被畫過**。角色從行內粗體變成
                 訊息上方的標籤，列變成訊息塊，樣式全在 `index.css` 的 `.creation-log`
                 （沒有新 token、沒有新字級）。編號拿掉了：對話不是編號清單。 */}
-            {/* ── 2026-09-09：圖片進入對話 ────────────────────────────────
+              {/* ── 2026-09-09：圖片進入對話 ────────────────────────────────
                 在這之前圖片只在畫面別處留下一句「已附上流程圖」：**你送出去的東西，
                 對話裡看不到**。現在它坐在它所屬的那一輪裡——打了字就在你那則訊息
                 下面，沒打字就自成一塊，位置由 `message_index` 決定而不是由這裡猜。
                 第二次上傳不再蓋掉第一次：`attachments` 是清單，`diagram_*` 三個
                 欄位仍然是「最新那一張」給模型與 materialize 用。 */}
-            {/* `role="log"` 是聊天視窗的那個角色：它隱含 `aria-live="polite"`，所以
+              {/* `role="log"` 是聊天視窗的那個角色：它隱含 `aria-live="polite"`，所以
                 新到的一則會被念出來、而且是排隊念不是打斷。**掛在外面的 `<div>` 而不是
                 `<ol>` 上**：角色會取代元素本來的語意，掛在清單上會讓底下的 `<li>` 變成
                 沒有清單的清單項。名字是必要的——有名字的即時區域，螢幕閱讀器會先說出
                 它是哪一區。 */}
-            <div role="log" aria-label="與 Agent 的對話">
-              <ol className="creation-log">
-                {p.messages.map((m, i) => {
-                  const here = (p.attachments ?? []).filter((a) => a.message_index === i);
-                  return (
-                    <Fragment key={i}>
-                      {/* 沒有文字的上傳落在「下一則訊息」的索引上，所以那一則不是你的
+              <div role="log" aria-label="與 Agent 的對話">
+                <ol className="creation-log">
+                  {p.messages.map((m, i) => {
+                    const here = (p.attachments ?? []).filter((a) => a.message_index === i);
+                    return (
+                      <Fragment key={i}>
+                        {/* 沒有文字的上傳落在「下一則訊息」的索引上，所以那一則不是你的
                         話時，圖自己是一塊——它確實發生在這兩輪之間。 */}
-                      {m.role !== "user" && here.length > 0 && (
-                        <li data-role="user">
-                          <span className="creation-who">你</span>
-                          <Attachments list={here} thumbs={thumbs.current} />
-                        </li>
-                      )}
-                      <li data-role={m.role}>
-                        <span className="creation-who">
-                          {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
-                        </span>
-                        {/* 三種角色三種算繪，而分界是信任而不是外觀（`05` R-70，
+                        {m.role !== "user" && here.length > 0 && (
+                          <li data-role="user">
+                            <span className="creation-who">你</span>
+                            <Attachments list={here} thumbs={thumbs.current} />
+                          </li>
+                        )}
+                        <li data-role={m.role}>
+                          <span className="creation-who">
+                            {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
+                          </span>
+                          {/* 三種角色三種算繪，而分界是信任而不是外觀（`05` R-70，
                             2026-09-09 簽署）。`assistant` 得到白名單裡的標記；
                             `user` 是自己打的字，維持純文字；`tool` 走
                             ToolObservation，**而且它裡面的字一律是文字**——`fetch`
@@ -970,33 +954,60 @@ export function CreationSession() {
                             先騙過模型，所以它是這三種裡最不可信的一種。
                             換行仍然是內容的一部分（`04` 丙-207）：兩條路徑都靠
                             `white-space: pre-wrap` 留住它。 */}
-                        {m.role === "tool" ? (
-                          <ToolObservation raw={m.content} />
-                        ) : m.role === "assistant" ? (
-                          <ModelMarkdown text={m.content} />
-                        ) : (
-                          <span className="creation-text">{m.content}</span>
+                          {m.role === "tool" ? (
+                            <ToolObservation raw={m.content} />
+                          ) : m.role === "assistant" ? (
+                            <ModelMarkdown text={m.content} />
+                          ) : (
+                            <span className="creation-text">{m.content}</span>
+                          )}
+                          {m.role === "user" && here.length > 0 && (
+                            <Attachments list={here} thumbs={thumbs.current} />
+                          )}
+                          {/* 這一輪壞掉時，能做的事就長在這一輪上（2026-09-09）。
+                              在這之前「取消這次創作」孤零零掛在對話外面，而失敗那則
+                              訊息本身沒有任何出路——讀完那句話的人不知道下一步。
+                              「再送一次上一句」說的是它真的做的事：平台沒有 retry
+                              這個 action，而停在 `failed` 的會話仍然收 `message`，
+                              所以按鈕的字不是會讓人以為系統自己重跑的「重試」。 */}
+                          {session?.state === "failed" &&
+                            m.role === "assistant" &&
+                            i === p.messages.length - 1 && (
+                              <div className="turn-actions">
+                                <button
+                                  type="button"
+                                  disabled={busy || !lastSaid}
+                                  onClick={() => void perform("message", { message: lastSaid })}
+                                >
+                                  再送一次上一句
+                                </button>
+                                <button
+                                  type="button"
+                                  className="destructive"
+                                  disabled={busy}
+                                  onClick={() => void perform("cancel")}
+                                >
+                                  取消這次創作
+                                </button>
+                              </div>
+                            )}
+                        </li>
+                      </Fragment>
+                    );
+                  })}
+                  {/* 剛送出、模型還沒回話的那一張。 */}
+                  {(p.attachments ?? []).some((a) => a.message_index >= p.messages.length) && (
+                    <li data-role="user">
+                      <span className="creation-who">你</span>
+                      <Attachments
+                        list={(p.attachments ?? []).filter(
+                          (a) => a.message_index >= p.messages.length,
                         )}
-                        {m.role === "user" && here.length > 0 && (
-                          <Attachments list={here} thumbs={thumbs.current} />
-                        )}
-                      </li>
-                    </Fragment>
-                  );
-                })}
-                {/* 剛送出、模型還沒回話的那一張。 */}
-                {(p.attachments ?? []).some((a) => a.message_index >= p.messages.length) && (
-                  <li data-role="user">
-                    <span className="creation-who">你</span>
-                    <Attachments
-                      list={(p.attachments ?? []).filter(
-                        (a) => a.message_index >= p.messages.length,
-                      )}
-                      thumbs={thumbs.current}
-                    />
-                  </li>
-                )}
-                {/* ── 2026-09-09：等待中的那一則坐在對話的最後 ────────────────
+                        thumbs={thumbs.current}
+                      />
+                    </li>
+                  )}
+                  {/* ── 2026-09-09：等待中的那一則坐在對話的最後 ────────────────
                     在這之前，等待中的四件事散在畫面上四個地方：狀態那一行（在哪一
                     步）、一句 `note`（可以關掉這一頁、上次更新多久前）、一顆「停止
                     這一步」，以及輸入區底下那一句。四處都在頁面上半部或最底下，而
@@ -1008,224 +1019,150 @@ export function CreationSession() {
                     就是這一則講的這一步。
                     `data-role="assistant"` 因為說話的是 Agent 那一側；沒有新的樣式，
                     它就是一則 Agent 訊息的樣子，而內容自己說得出它還沒說完。 */}
-                {working && p && (
-                  <li data-role="assistant" data-pending="">
-                    <span className="creation-who">Agent</span>
-                    <span className="creation-text">{stepDescription(p)}</span>
-                    <p className="note">
-                      這一步會自己結束。可以關掉這一頁，回來時從「恢復創作」繼續；上次更新{" "}
-                      {/* `current` polls every 1s while queued/working (refetchInterval
+                  {working && p && (
+                    <li data-role="assistant" data-pending="">
+                      <span className="creation-who">Agent</span>
+                      <span className="creation-text">{stepDescription(p)}</span>
+                      <p className="note">
+                        這一步會自己結束。可以關掉這一頁，回來時從「恢復創作」繼續；上次更新{" "}
+                        {/* `current` polls every 1s while queued/working (refetchInterval
                           above), the same cadence InFlight.tsx uses to justify its own
                           `relative` Timestamp — see InFlight.tsx. */}
-                      <Timestamp at={session.updated_at} relative />
-                    </p>
-                    {/* 停止這一步，而不是整場（`04` 丙-203）。`disabled={busy}` 而不是
+                        <Timestamp at={session.updated_at} relative />
+                      </p>
+                      {/* 停止這一步，而不是整場（`04` 丙-203）。`disabled={busy}` 而不是
                         `locked`：`locked` 把 working 也算進去，而這顆按鈕存在的理由就是
                         working。刻意不是 `.action`——停止不是這一頁要人做的那件事。 */}
-                    <button type="button" disabled={busy} onClick={() => void perform("stop_step")}>
-                      停止這一步
-                    </button>
-                  </li>
-                )}
-              </ol>
-              {/* 捲動的錨點：新的一則到了，如果你本來就在底下，就把這裡捲進視線。 */}
-              <div ref={bottom} />
-            </div>
-            {roundTimeline.length > 0 && (
-              <section>
-                <h4>回合時間線</h4>
-                <ol>
-                  {roundTimeline.map((item) => (
-                    <li key={item.key}>{item.text}</li>
-                  ))}
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void perform("stop_step")}
+                      >
+                        停止這一步
+                      </button>
+                    </li>
+                  )}
                 </ol>
-              </section>
-            )}
-            {p.brief && (
-              <section>
-                <h4>需求摘要</h4>
-                <p>{p.brief}</p>
-                {p.model_changed?.brief !== undefined && (
-                  <p className="note">
-                    模型改過這一段（需求摘要），原本是：{p.model_changed.brief}
-                  </p>
-                )}
-                <h5>驗收條件</h5>
-                {p.acceptance_criteria.length > 0 ? (
+                {/* 捲動的錨點：新的一則到了，如果你本來就在底下，就把這裡捲進視線。 */}
+                <div ref={bottom} />
+              </div>
+              {roundTimeline.length > 0 && (
+                <section>
+                  <h4>回合時間線</h4>
                   <ol>
-                    {p.acceptance_criteria.map((c, i) => (
-                      <li key={i}>{c}</li>
+                    {roundTimeline.map((item) => (
+                      <li key={item.key}>{item.text}</li>
                     ))}
                   </ol>
-                ) : (
-                  <p>模型尚未提出驗收條件</p>
-                )}
-                {p.model_changed?.acceptance_criteria !== undefined && (
-                  <>
-                    <p className="note">模型改過這一段（驗收條件），原本是：</p>
-                    <ol className="note">
-                      {p.model_changed.acceptance_criteria.map((c, i) => (
+                </section>
+              )}
+              {p.brief && (
+                <section>
+                  <h4>需求摘要</h4>
+                  <p>{p.brief}</p>
+                  {p.model_changed?.brief !== undefined && (
+                    <p className="note">
+                      模型改過這一段（需求摘要），原本是：{p.model_changed.brief}
+                    </p>
+                  )}
+                  <h5>驗收條件</h5>
+                  {p.acceptance_criteria.length > 0 ? (
+                    <ol>
+                      {p.acceptance_criteria.map((c, i) => (
                         <li key={i}>{c}</li>
                       ))}
                     </ol>
-                  </>
-                )}
-                {p.sample_input && (
-                  <>
-                    <h5>試跑用的範例輸入</h5>
-                    <pre className="skill-md">
-                      <Reveal text={p.sample_input} />
-                    </pre>
-                  </>
-                )}
-                {p.model_changed?.sample_input !== undefined && (
-                  <>
-                    <p className="note">模型改過這一段（範例輸入），原本是：</p>
-                    <pre className="skill-md">
-                      <Reveal text={p.model_changed.sample_input} />
-                    </pre>
-                  </>
-                )}
-                <p>{p.brief_confirmed ? "需求摘要與驗收條件皆已確認" : "尚未確認"}</p>
-                {p.pending_action === "confirm_brief" && (
-                  <button disabled={locked} onClick={() => void perform("confirm_brief")}>
-                    {p.model_changed ? "我看過差異，確認新的需求摘要" : "確認需求摘要與驗收條件"}
-                  </button>
-                )}
-              </section>
-            )}
-            {/* 「收到了沒有」現在由對話自己回答（圖坐在它所屬的那一輪裡），所以這裡
+                  ) : (
+                    <p>模型尚未提出驗收條件</p>
+                  )}
+                  {p.model_changed?.acceptance_criteria !== undefined && (
+                    <>
+                      <p className="note">模型改過這一段（驗收條件），原本是：</p>
+                      <ol className="note">
+                        {p.model_changed.acceptance_criteria.map((c, i) => (
+                          <li key={i}>{c}</li>
+                        ))}
+                      </ol>
+                    </>
+                  )}
+                  {p.sample_input && (
+                    <>
+                      <h5>試跑用的範例輸入</h5>
+                      <pre className="skill-md">
+                        <Reveal text={p.sample_input} />
+                      </pre>
+                    </>
+                  )}
+                  {p.model_changed?.sample_input !== undefined && (
+                    <>
+                      <p className="note">模型改過這一段（範例輸入），原本是：</p>
+                      <pre className="skill-md">
+                        <Reveal text={p.model_changed.sample_input} />
+                      </pre>
+                    </>
+                  )}
+                  <p>{p.brief_confirmed ? "需求摘要與驗收條件皆已確認" : "尚未確認"}</p>
+                  {p.pending_action === "confirm_brief" && (
+                    <button disabled={locked} onClick={() => void perform("confirm_brief")}>
+                      {p.model_changed ? "我看過差異，確認新的需求摘要" : "確認需求摘要與驗收條件"}
+                    </button>
+                  )}
+                </section>
+              )}
+              {/* 「收到了沒有」現在由對話自己回答（圖坐在它所屬的那一輪裡），所以這裡
                 只剩對話說不出口的那一件：圖收到了、但那一步中斷、理解沒生出來。 */}
-            {session?.state === "needs_reupload" && (
-              <p>這一步中斷了，Agent 沒能讀出那張圖；請在下面重新上傳同一張。</p>
-            )}
-            {p.diagram_understanding && (
-              <section>
-                <h4>流程圖理解</h4>
-                <DiagramUnderstandingView raw={p.diagram_understanding} />
-                <p>{p.diagram_confirmed ? "已確認" : "尚未確認"}</p>
-                {p.pending_action === "confirm_diagram" && (
-                  <button
-                    disabled={locked || !parseDiagramUnderstanding(p.diagram_understanding)}
-                    onClick={() => void perform("confirm_diagram")}
-                  >
-                    確認流程圖理解
-                  </button>
-                )}
-              </section>
-            )}
-            {p.pending_action === "confirm_fetch" && p.pending_fetch_url && (
-              <section>
-                <h4>連網讀取確認</h4>
-                <p>
-                  模型想連到 <code>{p.pending_fetch_url}</code>{" "}
-                  讀取內容來補資料。你的網路環境可能擋住這個網站；被擋住時會直接回報，不會重試。
-                </p>
-                <button disabled={locked} onClick={() => void perform("confirm_fetch")}>
-                  同意連網
-                </button>
-                <button disabled={locked} onClick={() => void perform("decline_fetch")}>
-                  不連網
-                </button>
-              </section>
-            )}
-            {!!p.fetches?.length && (
-              <section>
-                <h4>已讀取的網頁</h4>
-                <ul>
-                  {p.fetches.map((f, i) => (
-                    <li key={i}>
-                      {f.url}：{FETCH_STATUS_LABEL[f.status] ?? f.status}
-                      {f.bytes !== undefined && `（${f.bytes} 位元組）`}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {(p.references.length > 0 || p.pending_action === "confirm_references") && (
-              <section>
-                <h4>參考 Skill</h4>
-                {p.pending_action === "confirm_references" && p.catalog_checked && (
-                  <p>目錄裡已有相近的 Skill；你可以直接採用其中一個、以它們為參考，或從頭寫。</p>
-                )}
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Skill</th>
-                        <th>摘要</th>
-                        <th>相容</th>
-                        <th>工具</th>
-                        <th>版本</th>
-                        <th>層級</th>
-                        <th>掃描</th>
-                        <th>狀態</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {p.references.map((r) => (
-                        <tr key={r.skill_id}>
-                          <th scope="row">{r.name}</th>
-                          <td>{declaredReferenceField(r.description)}</td>
-                          <td>{declaredReferenceField(r.compatibility)}</td>
-                          <td>{declaredReferenceField(r.allowed_tools)}</td>
-                          <td>
-                            <details>
-                              <summary>固定版本</summary>
-                              {r.version_id}
-                            </details>
-                          </td>
-                          <td>{referenceTierLabel(r.tier)}</td>
-                          <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
-                          <td>
-                            {!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}
-                            {p.pending_action === "confirm_references" && (
-                              <>
-                                <button
-                                  disabled={locked || !r.available}
-                                  onClick={() =>
-                                    void perform("adopt_reference", {
-                                      reference_skill_ids: [r.skill_id],
-                                    })
-                                  }
-                                >
-                                  直接採用
-                                </button>
-                                {r.scan_status !== "scanned" && (
-                                  <span className="note">沒有掃描紀錄，不建議直接採用</span>
-                                )}
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {p.pending_action === "confirm_references" && (
-                  <>
-                    <button
-                      disabled={locked || p.references.some((r) => !r.available)}
-                      onClick={() => void perform("confirm_references")}
-                    >
-                      以這些為參考
-                    </button>
-                    <button disabled={locked} onClick={() => void perform("decline_references")}>
-                      都不是，從頭寫
-                    </button>
-                  </>
-                )}
-              </section>
-            )}
-            {p.pending_action === "confirm_duplicate" &&
-              p.duplicates &&
-              p.duplicates.length > 0 && (
+              {session?.state === "needs_reupload" && (
+                <p>這一步中斷了，Agent 沒能讀出那張圖；請在下面重新上傳同一張。</p>
+              )}
+              {p.diagram_understanding && (
                 <section>
-                  <h4>目錄已有相近的 Skill</h4>
+                  <h4>流程圖理解</h4>
+                  <DiagramUnderstandingView raw={p.diagram_understanding} />
+                  <p>{p.diagram_confirmed ? "已確認" : "尚未確認"}</p>
+                  {p.pending_action === "confirm_diagram" && (
+                    <button
+                      disabled={locked || !parseDiagramUnderstanding(p.diagram_understanding)}
+                      onClick={() => void perform("confirm_diagram")}
+                    >
+                      確認流程圖理解
+                    </button>
+                  )}
+                </section>
+              )}
+              {p.pending_action === "confirm_fetch" && p.pending_fetch_url && (
+                <section>
+                  <h4>連網讀取確認</h4>
                   <p>
-                    保存前 Go
-                    查了一次目錄：下面這些和你的草稿很接近。你可以直接採用其中一個，或仍然建立自己的版本。
+                    模型想連到 <code>{p.pending_fetch_url}</code>{" "}
+                    讀取內容來補資料。你的網路環境可能擋住這個網站；被擋住時會直接回報，不會重試。
                   </p>
+                  <button disabled={locked} onClick={() => void perform("confirm_fetch")}>
+                    同意連網
+                  </button>
+                  <button disabled={locked} onClick={() => void perform("decline_fetch")}>
+                    不連網
+                  </button>
+                </section>
+              )}
+              {!!p.fetches?.length && (
+                <section>
+                  <h4>已讀取的網頁</h4>
+                  <ul>
+                    {p.fetches.map((f, i) => (
+                      <li key={i}>
+                        {f.url}：{FETCH_STATUS_LABEL[f.status] ?? f.status}
+                        {f.bytes !== undefined && `（${f.bytes} 位元組）`}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {(p.references.length > 0 || p.pending_action === "confirm_references") && (
+                <section>
+                  <h4>參考 Skill</h4>
+                  {p.pending_action === "confirm_references" && p.catalog_checked && (
+                    <p>目錄裡已有相近的 Skill；你可以直接採用其中一個、以它們為參考，或從頭寫。</p>
+                  )}
                   <div className="table-scroll">
                     <table>
                       <thead>
@@ -1237,11 +1174,11 @@ export function CreationSession() {
                           <th>版本</th>
                           <th>層級</th>
                           <th>掃描</th>
-                          <th></th>
+                          <th>狀態</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {p.duplicates.map((r) => (
+                        {p.references.map((r) => (
                           <tr key={r.skill_id}>
                             <th scope="row">{r.name}</th>
                             <td>{declaredReferenceField(r.description)}</td>
@@ -1256,18 +1193,23 @@ export function CreationSession() {
                             <td>{referenceTierLabel(r.tier)}</td>
                             <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
                             <td>
-                              <button
-                                disabled={locked || !r.available}
-                                onClick={() =>
-                                  void perform("adopt_reference", {
-                                    reference_skill_ids: [r.skill_id],
-                                  })
-                                }
-                              >
-                                直接採用
-                              </button>
-                              {r.scan_status !== "scanned" && (
-                                <span className="note">沒有掃描紀錄，不建議直接採用</span>
+                              {!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}
+                              {p.pending_action === "confirm_references" && (
+                                <>
+                                  <button
+                                    disabled={locked || !r.available}
+                                    onClick={() =>
+                                      void perform("adopt_reference", {
+                                        reference_skill_ids: [r.skill_id],
+                                      })
+                                    }
+                                  >
+                                    直接採用
+                                  </button>
+                                  {r.scan_status !== "scanned" && (
+                                    <span className="note">沒有掃描紀錄，不建議直接採用</span>
+                                  )}
+                                </>
                               )}
                             </td>
                           </tr>
@@ -1275,154 +1217,233 @@ export function CreationSession() {
                       </tbody>
                     </table>
                   </div>
-                  <button
-                    disabled={locked || !p.draft?.content_hash}
-                    onClick={() =>
-                      void perform("confirm_duplicate", { content_hash: p.draft!.content_hash })
-                    }
-                  >
-                    仍然建立
-                  </button>
+                  {p.pending_action === "confirm_references" && (
+                    <>
+                      <button
+                        disabled={locked || p.references.some((r) => !r.available)}
+                        onClick={() => void perform("confirm_references")}
+                      >
+                        以這些為參考
+                      </button>
+                      <button disabled={locked} onClick={() => void perform("decline_references")}>
+                        都不是，從頭寫
+                      </button>
+                    </>
+                  )}
                 </section>
               )}
-            {p.draft && (
-              <section>
-                <h4>Skill 草稿：{p.draft.skill.name}</h4>
-                <p>{p.draft.skill.description}</p>
-                <p>
-                  允許工具：{p.draft.skill.allowed_tools || "未宣告"}。相容條件：
-                  {p.draft.skill.compatibility || "未宣告"}。
-                </p>
-                {p.previous_draft && (
-                  <details>
-                    <summary>比較上一份草稿（revision {p.previous_draft.revision}）</summary>
-                    <pre className="skill-md">
-                      <Reveal text={p.previous_draft.skill.body} />
-                    </pre>
-                    {p.previous_draft.skill.files.map((f) => (
-                      <pre key={f.path}>{f.path + "\n" + f.content}</pre>
-                    ))}
-                  </details>
-                )}
-                <pre className="skill-md">
-                  <Reveal text={p.draft.skill.body} />
-                </pre>
-                {p.draft.skill.files.map((f) => (
-                  <details key={f.path}>
-                    <summary>{f.path}</summary>
-                    <pre className="skill-md">
-                      <Reveal text={f.content} />
-                    </pre>
-                  </details>
-                ))}
-                <DraftFindings raw={p.draft.validation} />
-                <p>
-                  {p.draft.blocked
-                    ? "靜態檢查阻擋保存，請補充需求後修訂。"
-                    : "已完成靜態檢查；這不代表試跑成功。"}
-                </p>
-                {!p.candidate && p.pending_action !== "confirm_duplicate" && (
-                  <button
-                    disabled={locked || p.draft.blocked || !p.draft.content_hash}
-                    onClick={() =>
-                      void perform("materialize", { content_hash: p.draft!.content_hash })
-                    }
-                  >
-                    建立私人候選版本
-                  </button>
-                )}
-                {p.candidate && (
-                  <>
-                    {p.adopted && (
-                      <p>已直接採用現有 Skill；這個候選版本是它的複本，沒有生成任何內容。</p>
-                    )}
+              {p.pending_action === "confirm_duplicate" &&
+                p.duplicates &&
+                p.duplicates.length > 0 && (
+                  <section>
+                    <h4>目錄已有相近的 Skill</h4>
                     <p>
-                      <Link
-                        to="/lab/run"
-                        search={{
-                          skill: p.candidate.skill_id,
-                          version: p.candidate.version_id,
-                          test_case: p.candidate.test_case_id,
-                        }}
-                      >
-                        檢查權限與費用後試跑此版本
-                      </Link>
+                      保存前 Go
+                      查了一次目錄：下面這些和你的草稿很接近。你可以直接採用其中一個，或仍然建立自己的版本。
                     </p>
-                    {p.candidate.test_case_id && <p>已依確認的驗收條件建立 Test Case</p>}
-                    {p.candidate.run_id ? (
-                      <>
-                        <Link to="/runs/$runId" params={{ runId: p.candidate.run_id }}>
-                          查看這次 Run 結果
-                        </Link>
-                        {run && (
-                          <p>
-                            試跑結果：{run.execution_status}；評估：
-                            {run.evaluation?.overall ?? "無評估"}
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <p>目前尚未連結試跑結果。</p>
-                    )}
-                    {!terminal &&
-                      (latest ? (
-                        latest.run_id === p.candidate.run_id ? (
-                          <p>最新試跑結果已帶回會話；模型的建議在對話裡。</p>
-                        ) : (
-                          <>
-                            <p>
-                              最新試跑：{runStatusLabel(latest.status)}；評估：
-                              {latest.evaluation.label}
-                            </p>
-                            <button
-                              disabled={locked}
-                              onClick={() => void perform("attach_run", { run_id: latest.run_id })}
-                            >
-                              把最新試跑結果帶回來改善
-                            </button>
-                          </>
-                        )
-                      ) : (
-                        <p>試跑完成後，這裡會出現「把最新試跑結果帶回來改善」。</p>
+                    <div className="table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Skill</th>
+                            <th>摘要</th>
+                            <th>相容</th>
+                            <th>工具</th>
+                            <th>版本</th>
+                            <th>層級</th>
+                            <th>掃描</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {p.duplicates.map((r) => (
+                            <tr key={r.skill_id}>
+                              <th scope="row">{r.name}</th>
+                              <td>{declaredReferenceField(r.description)}</td>
+                              <td>{declaredReferenceField(r.compatibility)}</td>
+                              <td>{declaredReferenceField(r.allowed_tools)}</td>
+                              <td>
+                                <details>
+                                  <summary>固定版本</summary>
+                                  {r.version_id}
+                                </details>
+                              </td>
+                              <td>{referenceTierLabel(r.tier)}</td>
+                              <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
+                              <td>
+                                <button
+                                  disabled={locked || !r.available}
+                                  onClick={() =>
+                                    void perform("adopt_reference", {
+                                      reference_skill_ids: [r.skill_id],
+                                    })
+                                  }
+                                >
+                                  直接採用
+                                </button>
+                                {r.scan_status !== "scanned" && (
+                                  <span className="note">沒有掃描紀錄，不建議直接採用</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <button
+                      disabled={locked || !p.draft?.content_hash}
+                      onClick={() =>
+                        void perform("confirm_duplicate", { content_hash: p.draft!.content_hash })
+                      }
+                    >
+                      仍然建立
+                    </button>
+                  </section>
+                )}
+              {p.draft && (
+                <section>
+                  <h4>Skill 草稿：{p.draft.skill.name}</h4>
+                  <p>{p.draft.skill.description}</p>
+                  <p>
+                    允許工具：{p.draft.skill.allowed_tools || "未宣告"}。相容條件：
+                    {p.draft.skill.compatibility || "未宣告"}。
+                  </p>
+                  {p.previous_draft && (
+                    <details>
+                      <summary>比較上一份草稿（revision {p.previous_draft.revision}）</summary>
+                      <pre className="skill-md">
+                        <Reveal text={p.previous_draft.skill.body} />
+                      </pre>
+                      {p.previous_draft.skill.files.map((f) => (
+                        <pre key={f.path}>{f.path + "\n" + f.content}</pre>
                       ))}
-                  </>
-                )}
-                {!terminal && (
-                  <>
-                    <p>
-                      保存將採用目前顯示的草稿與版本。{!p.candidate?.run_id && "這份草稿尚未試跑。"}
-                      {runNotPassing && "試跑未通過或未評估；保存前請確認。"}
-                    </p>
-                    {/* 這一頁唯一的填色主要動作（設計 §4.6.3，2026-09-09 入表）。
+                    </details>
+                  )}
+                  <pre className="skill-md">
+                    <Reveal text={p.draft.skill.body} />
+                  </pre>
+                  {p.draft.skill.files.map((f) => (
+                    <details key={f.path}>
+                      <summary>{f.path}</summary>
+                      <pre className="skill-md">
+                        <Reveal text={f.content} />
+                      </pre>
+                    </details>
+                  ))}
+                  <DraftFindings raw={p.draft.validation} />
+                  <p>
+                    {p.draft.blocked
+                      ? "靜態檢查阻擋保存，請補充需求後修訂。"
+                      : "已完成靜態檢查；這不代表試跑成功。"}
+                  </p>
+                  {!p.candidate && p.pending_action !== "confirm_duplicate" && (
+                    <button
+                      disabled={locked || p.draft.blocked || !p.draft.content_hash}
+                      onClick={() =>
+                        void perform("materialize", { content_hash: p.draft!.content_hash })
+                      }
+                    >
+                      建立私人候選版本
+                    </button>
+                  )}
+                  {p.candidate && (
+                    <>
+                      {p.adopted && (
+                        <p>已直接採用現有 Skill；這個候選版本是它的複本，沒有生成任何內容。</p>
+                      )}
+                      <p>
+                        <Link
+                          to="/lab/run"
+                          search={{
+                            skill: p.candidate.skill_id,
+                            version: p.candidate.version_id,
+                            test_case: p.candidate.test_case_id,
+                          }}
+                        >
+                          檢查權限與費用後試跑此版本
+                        </Link>
+                      </p>
+                      {p.candidate.test_case_id && <p>已依確認的驗收條件建立 Test Case</p>}
+                      {p.candidate.run_id ? (
+                        <>
+                          <Link to="/runs/$runId" params={{ runId: p.candidate.run_id }}>
+                            查看這次 Run 結果
+                          </Link>
+                          {run && (
+                            <p>
+                              試跑結果：{run.execution_status}；評估：
+                              {run.evaluation?.overall ?? "無評估"}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p>目前尚未連結試跑結果。</p>
+                      )}
+                      {!terminal &&
+                        (latest ? (
+                          latest.run_id === p.candidate.run_id ? (
+                            <p>最新試跑結果已帶回會話；模型的建議在對話裡。</p>
+                          ) : (
+                            <>
+                              <p>
+                                最新試跑：{runStatusLabel(latest.status)}；評估：
+                                {latest.evaluation.label}
+                              </p>
+                              <button
+                                disabled={locked}
+                                onClick={() =>
+                                  void perform("attach_run", { run_id: latest.run_id })
+                                }
+                              >
+                                把最新試跑結果帶回來改善
+                              </button>
+                            </>
+                          )
+                        ) : (
+                          <p>試跑完成後，這裡會出現「把最新試跑結果帶回來改善」。</p>
+                        ))}
+                    </>
+                  )}
+                  {!terminal && (
+                    <>
+                      <p>
+                        保存將採用目前顯示的草稿與版本。
+                        {!p.candidate?.run_id && "這份草稿尚未試跑。"}
+                        {runNotPassing && "試跑未通過或未評估；保存前請確認。"}
+                      </p>
+                      {/* 這一頁唯一的填色主要動作（設計 §4.6.3，2026-09-09 入表）。
                         判準是「完成這一頁的工作的那一個」，而這一頁的工作是把一個
                         Skill 做出來並收進工作區——保存就是那一下。在這之前它與同畫面
                         的十顆按鈕同框，於是「送出」「取消」「停止這一步」和「保存」
                         看起來一樣重。填色只有這一顆，`rendered.spec.ts` 數的就是它。 */}
-                    <button
-                      className="action"
-                      disabled={locked || p.draft.blocked || !p.draft.content_hash}
-                      onClick={() =>
-                        void perform("finalize", { content_hash: p.draft!.content_hash })
-                      }
-                    >
-                      確認保存到私人工作區
-                    </button>
-                  </>
-                )}
-                {session?.state === "saved" && p.candidate && (
-                  <Link to="/skills/$skillId" params={{ skillId: p.candidate.skill_id }}>
-                    開啟已保存的 Skill
-                  </Link>
-                )}
-              </section>
-            )}
-            {!terminal && (
-              <button disabled={busy} onClick={() => void perform("cancel")}>
-                取消這次創作
-              </button>
-            )}
-          </>
-        )}
+                      <button
+                        className="action"
+                        disabled={locked || p.draft.blocked || !p.draft.content_hash}
+                        onClick={() =>
+                          void perform("finalize", { content_hash: p.draft!.content_hash })
+                        }
+                      >
+                        確認保存到私人工作區
+                      </button>
+                    </>
+                  )}
+                  {session?.state === "saved" && p.candidate && (
+                    <Link to="/skills/$skillId" params={{ skillId: p.candidate.skill_id }}>
+                      開啟已保存的 Skill
+                    </Link>
+                  )}
+                </section>
+              )}
+              {/* 失敗那一輪自己帶著「取消這次創作」（上面的 `turn-actions`），
+                  所以這裡不再出第二顆——§2.13：同一句話一頁講一次。 */}
+              {!terminal && session?.state !== "failed" && (
+                <button disabled={busy} onClick={() => void perform("cancel")}>
+                  取消這次創作
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
       {/* ── 2026-09-08：輸入區在對話下面 ────────────────────────────────────
           在這之前它在對話紀錄**上面**：你得先打字，捲下去才看得到剛才講了什麼。
@@ -1447,153 +1468,156 @@ export function CreationSession() {
          * 三件都是聊天介面的通則，這裡在此之前一件都沒有：送出只能用滑鼠點按鈕，
          * 圖只能經由檔案對話框。**貼上尤其重要**——流程圖多半是一張截圖。
          */
-        <div
-          className="composer"
-          data-dragging={dragging || undefined}
-          onDragOver={(e) => {
-            if (locked) return;
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            if (!locked) chooseFile(e.dataTransfer.files[0]);
-          }}
-        >
-          {/* 2026-09-09：看得見的那個標籤拿掉了。它寫的字與 `aria-label` 逐字相同，
+        <div className="composer-dock">
+          <div
+            className="composer"
+            data-dragging={dragging || undefined}
+            onDragOver={(e) => {
+              if (locked) return;
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              if (!locked) chooseFile(e.dataTransfer.files[0]);
+            }}
+          >
+            {/* 2026-09-09：看得見的那個標籤拿掉了。它寫的字與 `aria-label` 逐字相同，
               而 placeholder 已經說出要寫什麼——ChatGPT 的輸入框也是這樣。可及名稱
               一個字都沒有少（`aria-label` 還在，`input("想完成的任務", …)` 那批測試
               走的就是它）；少掉的是 28px，而這一格現在要跟對話搶高度。 */}
-          <label>
-            {/* 沒有 `maxLength`，而且是刻意的：瀏覽器數的是 UTF-16 code unit，
+            <label>
+              {/* 沒有 `maxLength`，而且是刻意的：瀏覽器數的是 UTF-16 code unit，
                 伺服器數的是 rune，於是同一段字兩邊的界線不同——而 `maxLength`
                 的執行方式是**無聲截斷**，把人寫的字剪掉卻不說。改成報數（下面
                 那一行）＋送出前一句明話。`GenerateSkill.tsx` 的任務描述早就是
                 這個配方，只有這裡不是。 */}
-            <textarea
-              aria-label="想完成的任務"
-              aria-describedby="composer-count"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => {
-                // `isComposing`：注音／倉頡選字時按 Enter 是「確定這個字」，不是
-                // 「送出」。少了這一條，中文使用者每打一個字就送出一次。
-                if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
-                e.preventDefault();
-                if (!locked && !creditsBlocked) void submit();
-              }}
-              onPaste={(e) => {
-                const picked = [...e.clipboardData.files].find((f) => f.type.startsWith("image/"));
-                if (!picked || locked) return;
-                e.preventDefault();
-                chooseFile(picked);
-              }}
-              disabled={busy}
-              placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
-            />
-          </label>
-          {/* 兩個上限說在控制項**之前**，而不是等 4xx 才說（設計 §2.2 第二向）。
+              <textarea
+                aria-label="想完成的任務"
+                aria-describedby="composer-count composer-limits"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  // `isComposing`：注音／倉頡選字時按 Enter 是「確定這個字」，不是
+                  // 「送出」。少了這一條，中文使用者每打一個字就送出一次。
+                  if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+                  e.preventDefault();
+                  if (!locked && !creditsBlocked) void submit();
+                }}
+                onPaste={(e) => {
+                  const picked = [...e.clipboardData.files].find((f) =>
+                    f.type.startsWith("image/"),
+                  );
+                  if (!picked || locked) return;
+                  e.preventDefault();
+                  chooseFile(picked);
+                }}
+                disabled={busy}
+                placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
+              />
+            </label>
+            {/* 兩個上限說在控制項**之前**，而不是等 4xx 才說（設計 §2.2 第二向）。
               位置從送出鍵之後搬上來：一句「你只能附這麼大的圖」出現在你按下送出
               之後，就不是在講上限，是在解釋失敗。`aria-describedby` 把它綁在兩個
               控制項上，`GenerateSkill.tsx` 對同一種素材本來就是這個配方。 */}
-          {/* 上限那一句：字級降到 §4.1 的 meta 階、不吃 40em 的行長，所以它在 1280
-              下是一行而不是三行。**一個數字都沒有拿掉**——§2.2 第二向要它在人撞上
-              之前就在畫面上，而它還在畫面上。 */}
-          <p className="note composer-limits" id="composer-limits">
-            Enter 送出，Shift＋Enter 換行；圖可以直接貼上或拖進來。 流程圖限 PNG、JPEG 或 WebP，最多
-            4,000,000 位元組（約 3.8 MB）；參考 Skill 最多三個。
-            文字說明可以跟著流程圖或參考一起送。
-          </p>
-          <div className="composer-tools">
-            {/* 沒有 `aria-label`：`<label>` 包著這個輸入，可及名稱就是看得見的那五個
+            <div className="composer-tools">
+              {/* 沒有 `aria-label`：`<label>` 包著這個輸入，可及名稱就是看得見的那五個
                 字。原本掛的 `aria-label="流程圖"` 會蓋掉它，於是語音操作念畫面上的
                 「附一張流程圖」點不到這個控制項（WCAG 2.5.3）。 */}
-            <label className="composer-attach">
-              附一張流程圖
-              <input
-                ref={fileInput}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
+              <label className="composer-attach">
+                附一張流程圖
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-describedby="composer-limits"
+                  disabled={locked}
+                  onChange={(e) => chooseFile(e.target.files?.[0])}
+                />
+              </label>
+              <button
+                type="button"
+                aria-expanded={picking}
+                aria-controls="composer-references"
                 aria-describedby="composer-limits"
                 disabled={locked}
-                onChange={(e) => chooseFile(e.target.files?.[0])}
-              />
-            </label>
-            <button
-              type="button"
-              aria-expanded={picking}
-              aria-controls="composer-references"
-              aria-describedby="composer-limits"
-              disabled={locked}
-              onClick={() => setPicking((v) => !v)}
-            >
-              參考目錄裡的 Skill{refs.length > 0 && `（${refs.length}）`}
-            </button>
-            {/* 字數從輸入框底下搬進這一列（2026-09-09）：它本來自己佔一行，而一行
+                onClick={() => setPicking((v) => !v)}
+              >
+                參考目錄裡的 Skill{refs.length > 0 && `（${refs.length}）`}
+              </button>
+              {/* 字數從輸入框底下搬進這一列（2026-09-09）：它本來自己佔一行，而一行
                 在這一格是 24px。`id` 沒有變，`aria-describedby` 仍然指著它。 */}
-            <span className="note field-count" id="composer-count">
-              {[...message].length.toLocaleString("zh-TW")} /{" "}
-              {MAX_MESSAGE_RUNES.toLocaleString("zh-TW")} 字
-              {[...message].length > MAX_MESSAGE_RUNES && "——超過了，送出會被擋下"}
-            </span>
-            <button
-              type="button"
-              className="composer-send"
-              disabled={locked || creditsBlocked}
-              aria-describedby={creditsBlocked ? "creation-credits-why-disabled" : undefined}
-              onClick={() => void submit()}
-            >
-              {busy ? "送出中…" : session ? "送出" : "開始互動創作"}
-            </button>
-          </div>
-          {/* 每一顆 chip 說的是按下去會發生什麼事（「移除」），不是它代表什麼東西。
+              <span className="note field-count" id="composer-count">
+                {[...message].length.toLocaleString("zh-TW")} /{" "}
+                {MAX_MESSAGE_RUNES.toLocaleString("zh-TW")} 字
+                {[...message].length > MAX_MESSAGE_RUNES && "——超過了，送出會被擋下"}
+              </span>
+              <button
+                type="button"
+                className="composer-send"
+                disabled={locked || creditsBlocked}
+                aria-describedby={creditsBlocked ? "creation-credits-why-disabled" : undefined}
+                onClick={() => void submit()}
+              >
+                {busy ? "送出中…" : session ? "送出" : "開始互動創作"}
+              </button>
+            </div>
+            {/* 每一顆 chip 說的是按下去會發生什麼事（「移除」），不是它代表什麼東西。
               原本是「流程圖：flow.png ✕」——一個名詞加一個符號，螢幕閱讀器念出來
               是一份檔名，不是一個動作。 */}
-          {(file || refs.length > 0) && (
-            <ul className="chip-row">
-              {file && (
-                <li>
-                  <button type="button" disabled={locked} onClick={clearFile}>
-                    {/* 縮圖是唯一能回答「我選到的是不是我要的那張」的東西；
+            {(file || refs.length > 0) && (
+              <ul className="chip-row">
+                {file && (
+                  <li>
+                    <button type="button" disabled={locked} onClick={clearFile}>
+                      {/* 縮圖是唯一能回答「我選到的是不是我要的那張」的東西；
                         `alt=""` 因為右邊那句話已經說出它是什麼了。 */}
-                    {preview && <img className="chip-thumb" src={preview} alt="" />}
-                    移除流程圖：{file.name}
-                  </button>
-                </li>
-              )}
-              {refs.map((r) => (
-                <li key={r.id}>
-                  <button
-                    type="button"
-                    disabled={locked}
-                    onClick={() => setRefs((old) => old.filter((x) => x.id !== r.id))}
-                  >
-                    移除參考：{r.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {picking && (
-            <div id="composer-references">
-              <ReferencePicker
-                disabled={locked}
-                references={refs}
-                onToggle={(skillID, name) =>
-                  setRefs((old) =>
-                    old.some((r) => r.id === skillID)
-                      ? old.filter((r) => r.id !== skillID)
-                      : old.length < 3
-                        ? [...old, { id: skillID, name }]
-                        : old,
-                  )
-                }
-              />
-            </div>
-          )}
-          {working && <p className="note">正在處理目前素材；完成後即可補充或確認。</p>}
+                      {preview && <img className="chip-thumb" src={preview} alt="" />}
+                      移除流程圖：{file.name}
+                    </button>
+                  </li>
+                )}
+                {refs.map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      disabled={locked}
+                      onClick={() => setRefs((old) => old.filter((x) => x.id !== r.id))}
+                    >
+                      移除參考：{r.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {picking && (
+              <div id="composer-references">
+                <ReferencePicker
+                  disabled={locked}
+                  references={refs}
+                  onToggle={(skillID, name) =>
+                    setRefs((old) =>
+                      old.some((r) => r.id === skillID)
+                        ? old.filter((r) => r.id !== skillID)
+                        : old.length < 3
+                          ? [...old, { id: skillID, name }]
+                          : old,
+                    )
+                  }
+                />
+              </div>
+            )}
+            {working && <p className="note">正在處理目前素材；完成後即可補充或確認。</p>}
+          </div>
+          {/* 上限與快捷鍵在輸入艙**外面**、下面一行，字級 §4.1 的 micro 之上一階。
+            **一個數字都沒有拿掉**——§2.2 第二向要它在人撞上之前就在畫面上，而它
+            還在畫面上；搬出去的是它的框，不是它的內容。 */}
+          <p className="note composer-limits" id="composer-limits">
+            Enter 送出，Shift＋Enter 換行；圖可以直接貼上或拖進來。流程圖限 PNG、JPEG 或 WebP，最多
+            4,000,000 位元組（約 3.8 MB）；參考 Skill 最多三個。文字說明可以跟著流程圖或參考一起送。
+          </p>
         </div>
       )}
     </div>

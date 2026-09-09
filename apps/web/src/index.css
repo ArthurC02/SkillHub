@@ -2136,14 +2136,19 @@ summary {
 }
 
 .creation-log > li {
+  max-width: 75%;
   padding: 12px 16px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--surface);
 }
 
+/* 你說的那一則：靠右、凹面底、**沒有框**。框讓它讀起來像一個欄位而不是一句話，
+   而它與 Agent 那一則的分界已經由位置與底色講了兩次（§2.3 的形狀：不只靠一個
+   通道）。 */
 .creation-log > li[data-role="user"] {
   align-self: flex-end;
+  border: 0;
   background: var(--code-bg);
 }
 
@@ -2198,82 +2203,188 @@ summary {
   color: var(--text);
 }
 
-/* ── 這一頁是一個對話視窗，不是一份會長高的文件（2026-09-09） ───────────────
-   負責人第四次講同一件事：「不論是否有開費用，我都應該看到的像是 ChatGPT 的
-   Chatbot UI」。前三輪修的都是這一頁**裡面**的東西——氣泡、輸入區、等待中的那一
-   則——而形狀一直是文件：整頁一起捲，輸入區在文件最底下，對話越長要打字就要先捲
-   越遠。這一條改的是形狀。
-   一欄三格：會話那幾行在上面不動，對話自己捲，輸入區永遠在最下面看得到。
-   **`dvh` 不是 `vh`**：手機瀏覽器的網址列會吃掉 `vh` 算進去的那一段，而被吃掉的
-   正好是最下面那一格。
-   112px 是量出來的：頁首 64px ＋ 這一頁自己的「回到我的 Skill」那一列與標題之前
-   的空間。淨測試模式多一條橫幅，所以那個模式下整份文件仍會捲掉幾十像素——那是
-   那條橫幅的高度，不是這裡算錯。
-   `min-height` 是地板：視窗很矮時它不塌成一條縫。
-   **全 app 只有這一個滿高度的畫面**，其餘十七條路由仍然是文件捲動（§4.5）。 */
-/* **只有 640px 以上**。手機上這個做法會輸給它要取代的東西：375×812 實測，光是
-   輸入區就 297px、會話那幾行 93px，對話只剩 16px——一個捲不動的縫。窄螢幕維持
-   文件捲動，也就是這一條之前的行為，而那在手機上本來就是對的（輸入區在文件底端，
-   系統鍵盤自己會把它推上來）。 */
+/* ══ 互動創作：一個固定高度的視窗應用程式，不是一份長文件（2026-09-09 第二輪） ══
+   負責人第五次講同一件事，並附了一份規格：「不論是否有開費用，我都應該看到的像是
+   ChatGPT 的 Chatbot UI」，而診斷是對的——上一輪把對話放進一個會捲的格子，結果是
+   **兩條垂直捲軸並排**：外層文件一條、對話一條。真正的做法是把外層鎖死。
+
+   `data-chat` 由 router 掛在 `.app-shell` 上，只在 `/workspace/creations` 這一條
+   路由。三層：頁首（既有）、`main`（彈性）、頁尾（收成一列）。整個外層 `overflow:
+   hidden`，**全畫面只有一條捲軸**，在對話上。
+   `dvh` 不是 `vh`：手機網址列吃掉的正好是最下面那一格。 */
+/* **鎖死只在 640px 以上。** 375×812 實測，鎖起來之後對話只剩 60px——頁首、工具列
+   與輸入艙在窄螢幕各自換行，把中間那一格擠光。窄螢幕維持文件捲動（系統鍵盤本來就
+   會把文件底端的輸入區推上來），版面上的其他改動（工具列、氣泡、輸入艙）照樣套用。 */
 @media (min-width: 640px) {
-  .creation-shell {
+  .app-shell[data-chat] {
     display: flex;
     flex-direction: column;
-    max-height: calc(100dvh - var(--shell-top, 112px) - 16px);
-    min-height: 480px;
+    height: 100dvh;
+    overflow: hidden;
   }
 
-  /* 「恢復創作」在這個版面裡是一列，不是一欄：標籤與選單並排省下 30px，而那 30px
-     回到對話。窄螢幕不套這一條，那裡它仍然是上下兩行。 */
-  .creation-shell > .creation-picker {
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    max-width: none;
-    /* 沒有它，「恢復創作」四個字會被旁邊那個吃掉整列的選單擠成兩行。 */
-    white-space: nowrap;
+  .app-shell[data-chat] > main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
-}
 
-/* `min-height: 0` 不是可有可無的一行：flex 子項的預設是 `min-height: auto`，於是
-   這一格會被它裡面的對話撐開、`overflow` 永遠不生效，而輸入區被推出視窗——正是這
-   整條規則要修的那個毛病。 */
-@media (min-width: 640px) {
+  .creation-shell {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
   .creation-stream {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    /* 這條線是給眼睛的：一格會捲的區域，上緣會把一則訊息切一半，而沒有邊界的半則
-       訊息讀起來像算繪壞掉。`--border` 是分隔線那一階，不是控制項那一階。 */
-    border-top: 1px solid var(--border);
-    padding-top: 8px;
   }
 }
 
-/* 上限那一句不吃 40em 的行長：在 1280 下它因此是一行而不是三行，而在這個版面裡
-   一行等於 24px 的對話高度。字級是 §4.1 的 meta 階。 */
-.composer-limits {
-  max-width: none;
-  font-size: 14px;
+/* 頁尾在這一條路由上收成一列。**不是拿掉**：資料保存政策（02:O11Y-004）與 Build
+   識別碼（IA-11）是每一頁都要有的揭露，藏掉它們是拿一條規則換版面。 */
+.app-shell[data-chat] > .app-footer {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 16px;
+  padding: 8px 24px;
+  margin: 0;
 }
 
-/* 會話的事實一列講完，字級是 §4.1 的 meta 階。一個字都沒有折起來（§2.10）。 */
-.creation-meta {
+.app-shell[data-chat] > .app-footer > * {
+  margin: 0;
+}
+
+/* ── 頂部工具列：固定高度，不參與捲動 ─────────────────────────────────────── */
+.creation-bar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.creation-bar h3 {
+  margin: 0;
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+.creation-bar > nav {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.creation-bar .creation-picker {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  max-width: none;
+  white-space: nowrap;
+}
+
+.creation-bar .creation-picker > select {
+  width: auto;
+  max-width: 200px;
+}
+
+/* 狀態是一個詞，所以它戴徽章的殼——描邊、凹面底，§4.6.3：主張永遠是描邊。 */
+.creation-state {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--code-bg);
+  font-size: 14px;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+.creation-fact {
   font-size: 14px;
   color: var(--text);
+}
+
+/* 期限、工具次數、仍占用的預算與「提高預算上限」那個表單折在這裡。**費用與步數
+   不在這裡面**——那兩個在列上，因為 §2.10 與 §2.12 第 4 條要它們不必互動就看得到。 */
+.creation-details {
+  white-space: nowrap;
+}
+
+.creation-details > div {
+  padding: 8px 0;
+}
+
+/* ── 中央：全畫面唯一一條捲軸 ─────────────────────────────────────────────── */
+.creation-feed {
+  max-width: 768px;
+  margin-inline: auto;
+  padding: 24px 0;
+}
+
+/* 還沒有開始的那一屏：一張卡，而不是散在畫面上的三段話與一個裸露的輸入框。 */
+.creation-kickoff {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.creation-kickoff h4 {
+  margin-top: 0;
+}
+
+/* 這一輪壞掉時能做的事，長在那一輪上。 */
+.turn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ── 底部輸入艙：釘在下面，不隨捲動消失 ───────────────────────────────────── */
+.composer-dock {
+  flex: none;
+  padding: 12px 0 8px;
+}
+
+.composer-dock > .composer,
+.composer-limits {
+  max-width: 768px;
+  margin-inline: auto;
+}
+
+/* 上限與快捷鍵在艙外、下面一行。 */
+.composer-limits {
+  padding: 4px 0 0;
+  font-size: 14px;
 }
 
 /* 輸入區：文字框永遠在，底下一列是附加動作與送出（2026-09-08）。
    `--border-strong` 的框而不是 `--border`：這一整塊是一個控制項，不是一張卡。
    沒有新 token、沒有新字級，88px 在 4px 網格上。 */
+/* 輸入艙：一個圓角容器，裡面是一個沒有框的文字框加一列工具。文字框自己的框拿掉
+   了——一個框裡再畫一個框是那張「古早留言板」的來源。焦點環因此掛在艙上，而不是
+   消失：`:has()` 讓它跟著文字框的 `:focus-visible` 走（WCAG 1.4.11 的 3:1 由
+   `--accent` 提供，與全站的 `:focus-visible` 同一個值）。 */
 .composer {
-  /* 三格裡最下面那一格：不跟著對話一起被壓扁。 */
   flex: none;
-  margin-top: 16px;
-  padding: 12px;
+  padding: 8px 12px;
   border: 1px solid var(--border-strong);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--surface);
+}
+
+.composer:has(textarea:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* 拖著一張圖經過輸入區時，它要看得出來接得住。用的是既有的那組強調色，沒有新值；
@@ -2294,11 +2405,20 @@ summary {
    ——不引入 JS，也不是動畫（§4.6.4 禁的是進場動畫與 spinner，這是重排）。還沒實作
    它的引擎維持 88px，也就是這一行之前的行為。 */
 .composer textarea {
-  /* 88px（約三行）→ 56px（約兩行）：它會跟著打的字長高（下面那條 `field-sizing`），
-     所以起手的高度只要夠寫一句話。省下的 32px 回到對話那一格。 */
+  /* 88px（約三行）→ 56px（約兩行）：它會跟著打的字長高（`field-sizing`），所以起
+     手的高度只要夠寫一句話。 */
   min-height: 56px;
   max-height: 240px;
   field-sizing: content;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 0;
+  resize: none;
+}
+
+.composer textarea:focus-visible {
+  outline: 0;
 }
 
 .composer-tools {

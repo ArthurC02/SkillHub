@@ -210,8 +210,6 @@ const UNSTYLED: Record<string, string> = {
     "deliberately does not take --accent-border's 未知／未驗證 tint. Plain .badge is the visual.",
 
   // Test hooks. Each is selected by a test named beside it.
-  "app-shell":
-    "test hook: disc.test.tsx and generate.test.tsx select .app-shell to tell 已掛載 apart from 還沒",
   "feedback-entry":
     "test hook: a11y.test.tsx selects .feedback-entry form and .feedback-entry [role=alert] (BETA-004)",
   "risk-infos":

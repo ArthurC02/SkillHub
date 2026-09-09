@@ -146,7 +146,9 @@ async function resume() {
     select.value = "s1";
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await waitFor(() => box.textContent!.includes("創作狀態"));
+  // 2026-09-09：狀態不再寫成「創作狀態：X」那一句，它是頂部工具列上的一顆
+  // `role="status"` 徽章。等的是那顆徽章出現，也就是「這個會話讀進來了」。
+  await waitFor(() => !!box.querySelector('.creation-bar [role="status"]'));
 }
 test("natural language creates one budgeted session", async () => {
   const posts: Record<string, unknown>[] = [];
@@ -795,10 +797,14 @@ test("the two attachment controls name themselves and carry their limits", async
   expect(picker.getAttribute("aria-describedby")).toBe("composer-limits");
   const limits = box.querySelector("#composer-limits")!;
   expect(limits.textContent).toContain("4,000,000");
-  expect(
-    limits.compareDocumentPosition(button("開始互動創作")) & Node.DOCUMENT_POSITION_FOLLOWING,
-    "上限說在送出鍵之後就不是在講上限，是在解釋失敗",
-  ).toBeTruthy();
+  // 2026-09-09：這一句從輸入艙**裡面**搬到艙**外面下方**（負責人第五次指示所附的
+  // 規格逐字畫著那個位置）。原本的斷言查的是「它排在送出鍵之前」，而排序在新的版面
+  // 上不再成立——它現在跟在整個輸入艙後面。**要守的東西沒有變，只是換了通道**：
+  // 這一句不必互動就在畫面上（§2.2 第二向），而且兩個受它約束的控制項都以
+  // `aria-describedby` 指著它（上面兩條斷言），所以螢幕閱讀器在讀到那兩個控制項的
+  // 當下就會念到它——那比 DOM 順序更接近「在你撞上之前告訴你」。
+  expect(limits.closest("details"), "上限被折起來了（§2.2 第二向）").toBe(null);
+  expect(limits.textContent, "上限那一句不見了").toContain("約 3.8 MB");
   expect(box.querySelector("#composer-references")).toBe(null);
   await openReferencePicker();
   expect(box.querySelector("#composer-references"), "aria-controls 指著一個不存在的 id").not.toBe(
@@ -1079,7 +1085,7 @@ test("resume shows unknown costs and confirms the displayed diagram revision", a
   );
   await render();
   await resume();
-  expect(box.textContent).toContain("已知費用 未知");
+  expect(box.textContent, "費用未知時工具列要說「未知」，不能顯示成 0").toContain("費用 未知");
   expect(box.textContent).toContain("不能當作零");
   await click("確認流程圖理解");
   expect(posts[0]).toMatchObject({ kind: "confirm_diagram", expected_revision: 7 });
@@ -1528,13 +1534,17 @@ test("the transcript scrolls in its own pane and the composer sits outside it", 
   await resume();
 
   const shell = box.querySelector(".creation-shell")!;
+  const bar = shell.querySelector(":scope > .creation-bar")!;
   const stream = shell.querySelector(":scope > .creation-stream")!;
-  const composer = shell.querySelector(":scope > .composer")!;
+  const dock = shell.querySelector(":scope > .composer-dock")!;
+  expect(bar, "頂部工具列不是這一格的直系子項").not.toBe(null);
   expect(stream, "對話那一格不見了").not.toBe(null);
-  expect(composer, "輸入區不是這一格的直系子項").not.toBe(null);
+  expect(dock, "輸入艙不是這一格的直系子項").not.toBe(null);
   expect(stream.querySelector(".creation-log"), "對話不在會捲的那一格裡").not.toBe(null);
-  expect(stream.contains(composer), "輸入區被放進會捲的那一格，會跟著對話一起捲走").toBe(false);
-  expect(shell.lastElementChild, "輸入區不是最後一格").toBe(composer);
+  expect(dock.querySelector(".composer"), "輸入艙裡沒有輸入區").not.toBe(null);
+  expect(stream.contains(dock), "輸入艙被放進會捲的那一格，會跟著對話一起捲走").toBe(false);
+  expect(shell.firstElementChild, "工具列不是第一格").toBe(bar);
+  expect(shell.lastElementChild, "輸入艙不是最後一格").toBe(dock);
 });
 
 test("invisible characters are revealed, not removed, where a person approves the text", async () => {

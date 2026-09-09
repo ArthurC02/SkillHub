@@ -76,10 +76,19 @@ export function CreateSkill() {
         自己那顆按鈕在做），而離開這一頁不該把進行中的創作丟掉——會話住在伺服器上，
         回來時由 `/creation-sessions` 讀出來。
       */}
-      <nav>
-        <Link to="/workspace/skills">← 回到我的 Skill</Link>
-      </nav>
-      {creationExposed ? <CreationSession /> : <GenerateSkill />}
+      {/* 2026-09-09：出口搬進工作台自己的頂部工具列，因為那一列就是「這一頁是什麼、
+          怎麼離開」那一列。**兩個旗標狀態各仍然只有一條出口**：對話那一半由
+          `CreationSession` 出，生成表單那一半由這裡出。 */}
+      {creationExposed ? (
+        <CreationSession />
+      ) : (
+        <>
+          <nav>
+            <Link to="/workspace/skills">← 回到我的 Skill</Link>
+          </nav>
+          <GenerateSkill />
+        </>
+      )}
     </>
   );
 }
