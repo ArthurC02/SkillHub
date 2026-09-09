@@ -212,11 +212,20 @@ jobs:
       - run: npm run test:e2e -- ${{ matrix.projects }}
       # The report is only worth keeping when something failed; on a green run
       # it is a few hundred kilobytes saying so.
+      # Two paths, because they hold different halves of the evidence and one of
+      # them was empty for as long as this step has existed: `playwright-report/`
+      # is written by the `html` reporter (playwright.config.ts only added it on
+      # 2026-09-09 — before that CI ran the `github` reporter alone, so this step
+      # uploaded an empty directory and every red run arrived with nothing to
+      # look at), while `test-results/` is where `trace: "on-first-retry"` puts
+      # the trace, the screenshot and the DOM snapshot of the failing moment.
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: playwright-report-${{ matrix.os }}
-          path: apps/web/playwright-report/
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
           retention-days: 7
 
   platform:

@@ -22,7 +22,16 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  // The `github` reporter writes annotations and nothing else — no
+  // `playwright-report/` directory. So ci.yml's `if: failure()` upload of that
+  // path has been collecting an empty folder, and a red layout assertion on the
+  // Linux runner arrived with no DOM, no screenshot and no trace to look at.
+  // Measured 2026-09-09: the failed run's artifact list is `total_count: 0`.
+  //
+  // Both reporters, then: `github` keeps the inline annotations, `html` writes
+  // the directory the upload step is already pointing at. `open: "never"`
+  // because a reporter that tries to launch a browser on a runner hangs it.
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",
