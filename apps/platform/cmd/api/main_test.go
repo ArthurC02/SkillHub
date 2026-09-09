@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -982,4 +985,156 @@ func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
 
 	alive("after one query error")
 	alive("after one query error, second call")
+}
+
+// The page's Content-Security-Policy, and specifically the directive that is
+// not about XSS.
+//
+// This app has no HTML from any model — 04 丙-208 renders every model and tool
+// string as text, React escapes, there is no dangerouslySetInnerHTML and no
+// inline style anywhere in apps/web/src. What the policy closes is the other
+// channel, the one that needs no script at all: a prompt-injected model
+// (SEC-013/LLM01 — the fetch tool hands it whole attacker-written pages) emits
+// an image whose URL carries what it just read, and the browser fetches it on
+// render with nobody clicking. AgentFlayer, EchoLeak and the Copilot Chat and
+// Gemini markdown fixes are all that one shape.
+//
+// So the assertion is about reachable origins, not about a header being
+// present: `data:` is index.html's inline favicon, `blob:` is the diagram
+// thumbnail this tab holds (ADR-066 決策 4 stores no bytes), and there is no
+// third source an image can come from.
+func TestWebStaticHandlerUnderSendsAPolicyNoRemoteImageCanCross(t *testing.T) {
+	dir := writeCleanModeFixture(t, "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head><body></body></html>")
+
+	handler, err := webStaticHandlerUnder(dir, false)
+	if err != nil {
+		t.Fatalf("webStaticHandlerUnder: %v", err)
+	}
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	policy := rec.Header().Get("Content-Security-Policy")
+	if policy == "" {
+		t.Fatal("the document went out with no Content-Security-Policy")
+	}
+	for _, directive := range contentSecurityPolicyBase {
+		if !strings.Contains(policy, directive) {
+			t.Errorf("policy is missing %q; policy = %q", directive, policy)
+		}
+	}
+	// The directive this whole test is named for, spelled out so that widening
+	// it has to be deliberate.
+	if !strings.Contains(policy, "img-src 'self' data: blob:;") {
+		t.Errorf("img-src does not read exactly 'self' data: blob:; policy = %q", policy)
+	}
+	if strings.Contains(policy, "img-src") && strings.Contains(policy, "https:") {
+		t.Errorf("some directive admits a remote scheme; policy = %q", policy)
+	}
+	if strings.Contains(policy, "*") {
+		t.Errorf("policy carries a wildcard source; policy = %q", policy)
+	}
+}
+
+// The half of the policy that can break the product rather than protect it.
+//
+// Clean mode injects its two flags as INLINE scripts, so a bare `script-src
+// 'self'` would block them and 02:PORT-003's disclosure would silently stop
+// reaching a signed-out visitor — the exact failure the placeholder mechanism
+// exists to prevent, reintroduced by the fix for a different problem.
+//
+// The hashes are recomputed here from the bytes actually served, not from the
+// constants, because that is what a browser does: it hashes what is between
+// the tags in the document it received and looks for that value in the
+// policy. A change to either side alone fails here.
+func TestWebStaticHandlerUnderHashesEveryScriptItInjected(t *testing.T) {
+	const page = "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head><body></body></html>"
+	inline := regexp.MustCompile(`(?s)<script>(.*?)</script>`)
+
+	for _, tc := range []struct {
+		name      string
+		devLogin  bool
+		wantCount int
+	}{
+		{"DEV_LOGIN off", false, 1},
+		{"DEV_LOGIN on", true, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, err := webStaticHandlerUnder(writeCleanModeFixture(t, page), tc.devLogin)
+			if err != nil {
+				t.Fatalf("webStaticHandlerUnder: %v", err)
+			}
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+			policy := rec.Header().Get("Content-Security-Policy")
+
+			bodies := inline.FindAllStringSubmatch(rec.Body.String(), -1)
+			if len(bodies) != tc.wantCount {
+				t.Fatalf("served %d inline scripts, want %d; this test is not measuring what it names", len(bodies), tc.wantCount)
+			}
+			for _, m := range bodies {
+				sum := sha256.Sum256([]byte(m[1]))
+				want := "'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
+				if !strings.Contains(policy, want) {
+					t.Errorf("the policy would block the injected script %q (no %s in %q)", m[1], want, policy)
+				}
+			}
+			// 'unsafe-inline' would make every assertion above pass for the
+			// wrong reason, and would also hand the same permission to any
+			// script that arrives later by another route.
+			if strings.Contains(policy, "unsafe-inline") || strings.Contains(policy, "unsafe-eval") {
+				t.Errorf("the policy waves inline script through instead of naming it; policy = %q", policy)
+			}
+			// A build that did not inject the sign-in flag must not name it
+			// either: the policy is a description of this document.
+			sum := sha256.Sum256([]byte(devLoginFlagJS))
+			named := strings.Contains(policy, base64.StdEncoding.EncodeToString(sum[:]))
+			if named != tc.devLogin {
+				t.Errorf("dev-login hash present = %v, want %v; policy = %q", named, tc.devLogin, policy)
+			}
+		})
+	}
+}
+
+// Two processes serve this SPA — this one (clean mode, 02:PORT-005) and the
+// nginx image in front of every other deployment — and a policy written twice
+// is a policy that will be updated once. There is no shared file the two can
+// read, so the drift is caught here instead.
+func TestNginxServesTheSamePolicyAsCleanMode(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("no source path for this test file")
+	}
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..")
+	confPath := filepath.Join(repoRoot, "infra", "images", "web", "nginx.conf")
+	raw, err := os.ReadFile(confPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", confPath, err)
+	}
+	conf := string(raw)
+
+	line := ""
+	for _, l := range strings.Split(conf, "\n") {
+		if strings.Contains(l, "add_header Content-Security-Policy") {
+			line = l
+		}
+	}
+	if line == "" {
+		t.Fatal("infra/images/web/nginx.conf sends no Content-Security-Policy; the deployed product has none")
+	}
+	for _, directive := range contentSecurityPolicyBase {
+		if !strings.Contains(line, directive) {
+			t.Errorf("nginx.conf is missing %q; its policy line is %s", directive, strings.TrimSpace(line))
+		}
+	}
+	// nginx serves the built index.html, which carries no inline script — the
+	// placeholder is still an HTML comment there. So this path needs no hash,
+	// and must not carry an escape hatch instead.
+	if !strings.Contains(line, "script-src 'self'") || strings.Contains(line, "unsafe-inline") {
+		t.Errorf("nginx.conf's script-src is not a plain 'self'; its policy line is %s", strings.TrimSpace(line))
+	}
+	// `always` or the header is dropped on exactly the responses that matter
+	// least to get right and most to notice: 4xx and 5xx.
+	if !strings.Contains(line, "always") {
+		t.Errorf("nginx.conf's policy is not marked `always`, so error responses go out without it: %s", strings.TrimSpace(line))
+	}
 }

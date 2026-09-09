@@ -14,6 +14,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
@@ -73,7 +75,15 @@ var cleanModeFlagPlaceholder = []byte("<!--SKILLHUB_CLEAN_MODE_FLAG-->")
 // read as "checked and clean" to useCleanMode's fallback onto GET /me and
 // quiet a disclosure GET /me would otherwise still show once a session
 // exists (⛔ boundary: the flag may only turn the notice on).
-var cleanModeFlagScript = []byte(`<script>window.__SKILLHUB_CLEAN_MODE__=true;</script>`)
+//
+// The body is a separate constant from the tag because the Content-Security-
+// Policy this handler sends hashes it (contentSecurityPolicy below): a policy
+// with `script-src 'self'` and nothing else would block this very script, and
+// the disclosure would silently stop reaching a signed-out visitor — the one
+// failure this whole mechanism exists to prevent.
+const cleanModeFlagJS = `window.__SKILLHUB_CLEAN_MODE__=true;`
+
+var cleanModeFlagScript = []byte(`<script>` + cleanModeFlagJS + `</script>`)
 
 // devLoginFlagScript is the same mechanism for a different question, and the
 // difference matters: clean_mode is a DISCLOSURE (public.yaml says outright that
@@ -97,7 +107,75 @@ var cleanModeFlagScript = []byte(`<script>window.__SKILLHUB_CLEAN_MODE__=true;</
 // Same ⛔ boundary as the flag above and for a stricter reason: it is written
 // only when the route is really mounted, never as `false`. A screen offering a
 // sign-in that 404s is worse than one offering none.
-var devLoginFlagScript = []byte(`<script>window.__SKILLHUB_DEV_LOGIN__=true;</script>`)
+//
+// Split into body and tag for the same reason as cleanModeFlagJS above.
+const devLoginFlagJS = `window.__SKILLHUB_DEV_LOGIN__=true;`
+
+var devLoginFlagScript = []byte(`<script>` + devLoginFlagJS + `</script>`)
+
+// contentSecurityPolicyBase is the half of the page's policy that does not
+// depend on which build serves it, so the two serving paths can declare the
+// same thing: this handler (clean mode, 02:PORT-005) and
+// infra/images/web/nginx.conf (every other deployment). main_test.go reads
+// that file and fails if the two drift — two paths with one policy written
+// twice is exactly the shape that rots silently.
+//
+// # What this is actually defending against
+//
+// Not XSS. React escapes, this app has no inline styles, no
+// dangerouslySetInnerHTML and no HTML from any model — 04 丙-208 keeps every
+// model and tool string as text. The channel this closes is DATA
+// EXFILTRATION, and it does not need script at all: a model that has been
+// prompt-injected (SEC-013/LLM01 — apps/llm's fetch tool hands it whole
+// attacker-written web pages) only has to emit one image whose URL carries
+// what it just read, and the browser fetches it on render with nobody
+// clicking anything. That is the vulnerability class behind AgentFlayer
+// (ChatGPT connectors), EchoLeak (M365 Copilot) and the Copilot Chat and
+// Gemini markdown-injection fixes; the ones that held blocked the render, and
+// the one that tried to allow-list URLs (OpenAI's url_safe) was bypassed
+// through an open redirect on an allow-listed domain.
+//
+// `img-src 'self' data: blob:` is that block, one layer below any rendering
+// decision: `data:` is index.html's inline favicon and `blob:` is the diagram
+// thumbnail CreationSession holds for the current tab (ADR-066 決策 4 keeps no
+// bytes, so the preview is a local object URL and never an address). No
+// remote origin can be reached by an image, whatever a future renderer
+// decides to draw. 04 丙-206 / 05 R-70 is the separate question of what markup
+// a model message may carry; this holds whichever way that is signed.
+//
+// `connect-src 'self'` is the same argument for fetch(), and is free: nginx
+// reverse-proxies the API onto this origin and clean mode serves both from
+// this process. Only Vite's dev server is cross-origin, and it sends none of
+// this.
+var contentSecurityPolicyBase = []string{
+	"default-src 'self'",
+	"img-src 'self' data: blob:",
+	"style-src 'self'",
+	"font-src 'self'",
+	"connect-src 'self'",
+	"object-src 'none'",
+	"base-uri 'self'",
+	"form-action 'self'",
+	"frame-ancestors 'none'",
+}
+
+// contentSecurityPolicy appends the script-src the caller's own document
+// needs. Every inline script body passed here is hashed rather than waved
+// through with 'unsafe-inline': the bodies are compile-time constants, so the
+// exact-value form costs nothing and keeps the directive honest. A nonce
+// would be the other option and is worse here — this handler renders the
+// document once at startup, so any nonce it minted would be constant for the
+// life of the process, which is a nonce in name only.
+func contentSecurityPolicy(inlineScripts ...string) string {
+	sources := []string{"'self'"}
+	for _, js := range inlineScripts {
+		sum := sha256.Sum256([]byte(js))
+		sources = append(sources, "'sha256-"+base64.StdEncoding.EncodeToString(sum[:])+"'")
+	}
+	return strings.Join(
+		append(append([]string{}, contentSecurityPolicyBase...), "script-src "+strings.Join(sources, " ")),
+		"; ")
+}
 
 // applyCleanModePool is clean mode's first consequence: a single database
 // connection, because the PGlite socket behind it serves one client at a time
@@ -275,9 +353,15 @@ func webStaticHandlerUnder(distDir string, devLogin bool) (http.Handler, error) 
 			indexPath, err)
 	}
 	flags := cleanModeFlagScript
+	inlineScripts := []string{cleanModeFlagJS}
 	if devLogin {
 		flags = append(append([]byte{}, flags...), devLoginFlagScript...)
+		inlineScripts = append(inlineScripts, devLoginFlagJS)
 	}
+	// Computed here, with the document, so the policy can only ever name the
+	// scripts this build actually injected: the dev-login hash is absent from
+	// a build that did not inject it.
+	csp := contentSecurityPolicy(inlineScripts...)
 	injected := bytes.Replace(raw, cleanModeFlagPlaceholder, flags, 1)
 	if bytes.Equal(injected, raw) {
 		return nil, fmt.Errorf(
@@ -289,6 +373,10 @@ func webStaticHandlerUnder(distDir string, devLogin bool) (http.Handler, error) 
 	// Vite's default build output; distDir/assets/<hashed file>.
 	mux.Handle("GET /assets/", http.FileServer(http.Dir(distDir)))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
+		// Only the document carries it: a policy on /assets/'s JavaScript or
+		// on the API's JSON governs nothing — CSP is enforced per document,
+		// and this handler serves exactly one.
+		w.Header().Set("Content-Security-Policy", csp)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(injected)
 	})
