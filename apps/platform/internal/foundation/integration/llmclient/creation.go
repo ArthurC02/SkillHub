@@ -94,6 +94,11 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 	if err != nil {
 		return nil, fmt.Errorf("llmclient: marshal creation step: %w", err)
 	}
+	// This endpoint marshals here instead of through post() because of the
+	// extra header, so it needs its own call (hidden.go). This is the request
+	// that most needs it: the fetch tool puts whole attacker-written pages
+	// into Messages.
+	body = withoutHidden(body)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/v1/creation/step", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("llmclient: create creation step request: %w", err)

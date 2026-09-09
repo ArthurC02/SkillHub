@@ -2381,3 +2381,17 @@ details[open] > summary::before {
 .creation-md > :last-child {
   margin-bottom: 0;
 }
+
+/* 04 丙-210：畫面不算繪、模型讀得到的字元，在人要判斷的地方標出來。
+   `<mark>` 因為這正是它的語意（在原文裡點出一段相關的字），而不是新造一個記號。
+   刻意用邊框而不是只用底色：這個標記出現在 `.skill-md` 的凹面裡，而那個面本身
+   已經是一個底色。色票用既有的 danger 組，不新增 token。 */
+.hidden-char {
+  background: var(--danger-bg);
+  color: var(--text-h);
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-family: var(--mono);
+  font-size: 14px;
+}

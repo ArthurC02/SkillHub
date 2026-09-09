@@ -54,6 +54,11 @@ func post[Req, Resp any](ctx context.Context, c *Client, path string, reqBody Re
 	if err != nil {
 		return nil, fmt.Errorf("llmclient: marshal %s request: %w", path, err)
 	}
+	// Every request that leaves for a model goes through here or through
+	// CreationStep's own marshal; both strip the characters a person cannot
+	// see (hidden.go). Doing it at the two marshal points rather than at the
+	// call sites is what makes it true for endpoints nobody has written yet.
+	body = withoutHidden(body)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+path, bytes.NewReader(body))
 	if err != nil {

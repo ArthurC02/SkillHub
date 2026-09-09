@@ -22,6 +22,7 @@ import { ReadFailure } from "./LoginRequired";
 import { ReferencePicker } from "./GenerateSkill";
 import { Findings } from "./Findings";
 import { ModelMarkdown } from "./ModelMarkdown";
+import { Reveal } from "./Reveal";
 import { Timestamp } from "./Timestamp";
 import { runStatusLabel } from "../pages/RunEvaluation";
 const labels: Record<CreationState, string> = {
@@ -281,7 +282,9 @@ function ToolObservation({ raw }: { raw: string }) {
           {!!f.text && (
             <details>
               <summary>讀到的網頁內容（{[...f.text].length} 字）</summary>
-              <pre className="skill-md">{f.text}</pre>
+              <pre className="skill-md">
+                <Reveal text={f.text} />
+              </pre>
             </details>
           )}
         </>
@@ -966,13 +969,17 @@ export function CreationSession() {
               {p.sample_input && (
                 <>
                   <h5>試跑用的範例輸入</h5>
-                  <pre className="skill-md">{p.sample_input}</pre>
+                  <pre className="skill-md">
+                    <Reveal text={p.sample_input} />
+                  </pre>
                 </>
               )}
               {p.model_changed?.sample_input !== undefined && (
                 <>
                   <p className="note">模型改過這一段（範例輸入），原本是：</p>
-                  <pre className="skill-md">{p.model_changed.sample_input}</pre>
+                  <pre className="skill-md">
+                    <Reveal text={p.model_changed.sample_input} />
+                  </pre>
                 </>
               )}
               <p>{p.brief_confirmed ? "需求摘要與驗收條件皆已確認" : "尚未確認"}</p>
@@ -1181,17 +1188,23 @@ export function CreationSession() {
               {p.previous_draft && (
                 <details>
                   <summary>比較上一份草稿（revision {p.previous_draft.revision}）</summary>
-                  <pre className="skill-md">{p.previous_draft.skill.body}</pre>
+                  <pre className="skill-md">
+                    <Reveal text={p.previous_draft.skill.body} />
+                  </pre>
                   {p.previous_draft.skill.files.map((f) => (
                     <pre key={f.path}>{f.path + "\n" + f.content}</pre>
                   ))}
                 </details>
               )}
-              <pre className="skill-md">{p.draft.skill.body}</pre>
+              <pre className="skill-md">
+                <Reveal text={p.draft.skill.body} />
+              </pre>
               {p.draft.skill.files.map((f) => (
                 <details key={f.path}>
                   <summary>{f.path}</summary>
-                  <pre className="skill-md">{f.content}</pre>
+                  <pre className="skill-md">
+                    <Reveal text={f.content} />
+                  </pre>
                 </details>
               ))}
               <DraftFindings raw={p.draft.validation} />
