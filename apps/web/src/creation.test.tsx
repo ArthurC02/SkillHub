@@ -598,7 +598,8 @@ test("the transcript is a named live region and the list keeps its own semantics
  * 介面那條規則的兩半，只有一半是好做的那一半。
  *
  * jsdom 沒有版面，所以這裡量的是規則本身：把 `scrollIntoView` 換成一個計數器，
- * 再用一次 `scroll` 事件把「我在很上面」這件事說出來。
+ * 再用一次 `scroll` 事件把「我在很上面」這件事說出來——2026-09-09 起那個事件發在
+ * `.creation-stream` 上，因為捲的是那一格。
  */
 test("a new message is scrolled into view, unless the person has scrolled away", async () => {
   const one = sample({ revision: 2 });
@@ -618,12 +619,11 @@ test("a new message is scrolled into view, unless the person has scrolled away",
   await resume();
   await waitFor(() => box.textContent!.includes("第一句。"));
   const before = scrolled;
-  // 捲到很上面：文件比視窗高得多，而我們在頂端。
-  Object.defineProperty(document.documentElement, "scrollHeight", {
-    configurable: true,
-    value: 100000,
-  });
-  await act(async () => window.dispatchEvent(new Event("scroll")));
+  // 2026-09-09：捲的是對話那一格，不再是整份文件（`.creation-shell`）。所以「我在
+  // 很上面」這件事要對那一格說：它自己比它的可視高度高得多，而 `scrollTop` 是 0。
+  const streamBox = box.querySelector(".creation-stream")!;
+  Object.defineProperty(streamBox, "scrollHeight", { configurable: true, value: 100000 });
+  await act(async () => streamBox.dispatchEvent(new Event("scroll")));
   latest = two;
   await act(async () => q.invalidateQueries({ queryKey: ["creation-session", "s1"] }));
   await waitFor(() => box.textContent!.includes("第二句。"));
@@ -1509,6 +1509,32 @@ test("the page's one filled primary action is 保存, not 送出", async () => {
   expect(filled, "§4.6.3：這一頁的填色主要動作不是「確認保存到私人工作區」").toEqual([
     "確認保存到私人工作區",
   ]);
+});
+
+/**
+ * 這一頁的形狀（`04` 丙-217）：一欄三格，而**輸入區在會捲的那一格外面**。
+ *
+ * CSS 守不到自己——`.creation-stream { overflow-y: auto }` 只有在對話真的在那一格
+ * 裡面、而輸入區真的在它外面時才是對的。把輸入區搬進去，畫面在 jsdom 裡看不出差別，
+ * 在瀏覽器裡卻退回改動之前那個樣子：輸入區跟著對話一起被捲走。所以這裡守的是結構。
+ */
+test("the transcript scrolls in its own pane and the composer sits outside it", async () => {
+  const v = sample({ state: "waiting_input" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+
+  const shell = box.querySelector(".creation-shell")!;
+  const stream = shell.querySelector(":scope > .creation-stream")!;
+  const composer = shell.querySelector(":scope > .composer")!;
+  expect(stream, "對話那一格不見了").not.toBe(null);
+  expect(composer, "輸入區不是這一格的直系子項").not.toBe(null);
+  expect(stream.querySelector(".creation-log"), "對話不在會捲的那一格裡").not.toBe(null);
+  expect(stream.contains(composer), "輸入區被放進會捲的那一格，會跟著對話一起捲走").toBe(false);
+  expect(shell.lastElementChild, "輸入區不是最後一格").toBe(composer);
 });
 
 test("invisible characters are revealed, not removed, where a person approves the text", async () => {

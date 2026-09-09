@@ -2198,10 +2198,77 @@ summary {
   color: var(--text);
 }
 
+/* ── 這一頁是一個對話視窗，不是一份會長高的文件（2026-09-09） ───────────────
+   負責人第四次講同一件事：「不論是否有開費用，我都應該看到的像是 ChatGPT 的
+   Chatbot UI」。前三輪修的都是這一頁**裡面**的東西——氣泡、輸入區、等待中的那一
+   則——而形狀一直是文件：整頁一起捲，輸入區在文件最底下，對話越長要打字就要先捲
+   越遠。這一條改的是形狀。
+   一欄三格：會話那幾行在上面不動，對話自己捲，輸入區永遠在最下面看得到。
+   **`dvh` 不是 `vh`**：手機瀏覽器的網址列會吃掉 `vh` 算進去的那一段，而被吃掉的
+   正好是最下面那一格。
+   112px 是量出來的：頁首 64px ＋ 這一頁自己的「回到我的 Skill」那一列與標題之前
+   的空間。淨測試模式多一條橫幅，所以那個模式下整份文件仍會捲掉幾十像素——那是
+   那條橫幅的高度，不是這裡算錯。
+   `min-height` 是地板：視窗很矮時它不塌成一條縫。
+   **全 app 只有這一個滿高度的畫面**，其餘十七條路由仍然是文件捲動（§4.5）。 */
+/* **只有 640px 以上**。手機上這個做法會輸給它要取代的東西：375×812 實測，光是
+   輸入區就 297px、會話那幾行 93px，對話只剩 16px——一個捲不動的縫。窄螢幕維持
+   文件捲動，也就是這一條之前的行為，而那在手機上本來就是對的（輸入區在文件底端，
+   系統鍵盤自己會把它推上來）。 */
+@media (min-width: 640px) {
+  .creation-shell {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - var(--shell-top, 112px) - 16px);
+    min-height: 480px;
+  }
+
+  /* 「恢復創作」在這個版面裡是一列，不是一欄：標籤與選單並排省下 30px，而那 30px
+     回到對話。窄螢幕不套這一條，那裡它仍然是上下兩行。 */
+  .creation-shell > .creation-picker {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    max-width: none;
+    /* 沒有它，「恢復創作」四個字會被旁邊那個吃掉整列的選單擠成兩行。 */
+    white-space: nowrap;
+  }
+}
+
+/* `min-height: 0` 不是可有可無的一行：flex 子項的預設是 `min-height: auto`，於是
+   這一格會被它裡面的對話撐開、`overflow` 永遠不生效，而輸入區被推出視窗——正是這
+   整條規則要修的那個毛病。 */
+@media (min-width: 640px) {
+  .creation-stream {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    /* 這條線是給眼睛的：一格會捲的區域，上緣會把一則訊息切一半，而沒有邊界的半則
+       訊息讀起來像算繪壞掉。`--border` 是分隔線那一階，不是控制項那一階。 */
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+}
+
+/* 上限那一句不吃 40em 的行長：在 1280 下它因此是一行而不是三行，而在這個版面裡
+   一行等於 24px 的對話高度。字級是 §4.1 的 meta 階。 */
+.composer-limits {
+  max-width: none;
+  font-size: 14px;
+}
+
+/* 會話的事實一列講完，字級是 §4.1 的 meta 階。一個字都沒有折起來（§2.10）。 */
+.creation-meta {
+  font-size: 14px;
+  color: var(--text);
+}
+
 /* 輸入區：文字框永遠在，底下一列是附加動作與送出（2026-09-08）。
    `--border-strong` 的框而不是 `--border`：這一整塊是一個控制項，不是一張卡。
    沒有新 token、沒有新字級，88px 在 4px 網格上。 */
 .composer {
+  /* 三格裡最下面那一格：不跟著對話一起被壓扁。 */
+  flex: none;
   margin-top: 16px;
   padding: 12px;
   border: 1px solid var(--border-strong);
@@ -2227,7 +2294,9 @@ summary {
    ——不引入 JS，也不是動畫（§4.6.4 禁的是進場動畫與 spinner，這是重排）。還沒實作
    它的引擎維持 88px，也就是這一行之前的行為。 */
 .composer textarea {
-  min-height: 88px;
+  /* 88px（約三行）→ 56px（約兩行）：它會跟著打的字長高（下面那條 `field-sizing`），
+     所以起手的高度只要夠寫一句話。省下的 32px 回到對話那一格。 */
+  min-height: 56px;
   max-height: 240px;
   field-sizing: content;
 }
