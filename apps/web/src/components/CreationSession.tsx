@@ -1025,8 +1025,13 @@ export function CreationSession() {
                       <span className="creation-text">{stepDescription(p)}</span>
                       <p className="note">
                         這一步會自己結束。可以關掉這一頁，回來時從「恢復創作」繼續；上次更新{" "}
-                        {/* `current` polls every 1s while queued/working (refetchInterval
-                          above), the same cadence InFlight.tsx uses to justify its own
+                        {/* This clock is only as truthful as the freshest state
+                          this page has, and since ADR-069 that arrives two ways:
+                          the SSE stream pushes each revision as Go commits it,
+                          and the 1s poll (refetchInterval above) is the floor
+                          underneath it for every browser and proxy the stream
+                          does not survive. Either way the cadence is at least as
+                          fast as the one InFlight.tsx uses to justify its own
                           `relative` Timestamp — see InFlight.tsx. */}
                         <Timestamp at={session.updated_at} relative />
                       </p>

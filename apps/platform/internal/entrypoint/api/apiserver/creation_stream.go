@@ -36,6 +36,16 @@ import (
 // so this adds a second reader of a row that is already being read that way,
 // not a new mechanism. The ceiling is honest and small: one indexed primary-key
 // read per connection per tick.
+//
+// The deployment where that ceiling is worth stating out loud is clean mode,
+// which pins the pool to MaxConns=1 (applyCleanModePool, ADR-060 決策 6). This
+// loop is NOT the shape that self-deadlocks there — it acquires a connection,
+// runs one read and releases it, never holding one while asking for a second,
+// which is what Create used to do before 2026-09-09. It does take that single
+// connection four times a second for as long as a stream is open, so a step in
+// flight and a stream watching it take turns; each turn is one primary-key read
+// or one already-open transaction, so the waiting is bounded by work that had
+// to happen anyway.
 const (
 	streamTick      = 250 * time.Millisecond
 	streamKeepAlive = 20 * time.Second
