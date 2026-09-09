@@ -521,9 +521,16 @@ test("waiting says which step is running, derived from the snapshot alone", asyn
     );
     await render();
     await resume();
-    expect(box.querySelector('[role="status"]')!.textContent, JSON.stringify(patch)).toContain(
-      expected,
-    );
+    // 2026-09-09：這一句從 `role="status"` 搬到對話的最後一則（`04` 丙-215）。
+    // 斷言跟著搬**而且變嚴了**：它現在要求那句話出現在對話裡的那一則上，所以把它
+    // 寫回頁面上任何別的地方都不算通過。
+    const pendingTurn = box.querySelector(".creation-log > li[data-pending]")!;
+    expect(pendingTurn, JSON.stringify(patch)).not.toBe(null);
+    expect(pendingTurn.textContent, JSON.stringify(patch)).toContain(expected);
+    expect(
+      box.querySelector('[role="status"]')!.textContent,
+      "步驟又被寫回狀態那一行了（§2.13：同一句話一頁講一次）",
+    ).not.toContain(expected);
     await act(async () => root.unmount());
     box.innerHTML = "";
     q.clear();

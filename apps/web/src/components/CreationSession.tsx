@@ -761,37 +761,21 @@ export function CreationSession() {
           </select>
         </label>
       )}
-      {/* 這一行本來就是 `role="status"`——一個即時區域，狀態一變就會被念出來。
-          等待中多說一句「這一步在做什麼」，念出來的因此是有內容的一句話，而不是
-          「正在創作」四個字對五種步驟講同一遍。不新增元素，也就不多一個即時區域。 */}
-      {session && (
-        <p role="status">
-          創作狀態：{labels[session.state]}
-          {working && p && `——${stepDescription(p)}`}
-        </p>
-      )}
+      {/* 這一行是 `role="status"`——一個即時區域，狀態一變就會被念出來。
+          **這一步在做什麼，2026-09-09 從這裡搬到對話的最後一則**（見下面那則
+          `data-pending` 的 `<li>`）。搬的理由是位置：草稿長出來之後，這一行離對話
+          底端 1,000px 以上，而人在等的時候看的是對話底端。這裡不能兩邊都寫——
+          §2.13「同一句話一頁講一次」。
+          **搬過去仍然會被念出來**：對話那一層是 `role="log"`，也是即時區域，
+          `aria-relevant` 的預設值 `additions text` 同時涵蓋「多一則」與「那一則的字
+          變了」。兩個即時區域不巢狀（那一則在 log 裡，不再自己掛 status），一個念
+          狀態、一個念步驟，不重複。 */}
+      {session && <p role="status">創作狀態：{labels[session.state]}</p>}
       {session && !terminal && (
         <p>
           這次創作可進行到 <Timestamp at={session.deadline} />
           ；紀錄保留到 <Timestamp at={session.expires_at} />。
         </p>
-      )}
-      {working && (
-        <p className="note">
-          可以關掉這一頁；回來時從「恢復創作」繼續。上次更新{" "}
-          {/* `current` polls every 1s while queued/working (refetchInterval
-              above), the same cadence InFlight.tsx uses to justify its own
-              `relative` Timestamp — see InFlight.tsx. */}
-          <Timestamp at={session.updated_at} relative />
-        </p>
-      )}
-      {/* 停止這一步，而不是整場（`04` 丙-203）。`disabled={busy}` 而不是 `locked`：
-          `locked` 把 working 也算進去，而這顆按鈕存在的理由就是 working。
-          刻意不是 `.action`——停止不是這一頁要人做的那件事。 */}
-      {working && (
-        <button type="button" disabled={busy} onClick={() => void perform("stop_step")}>
-          停止這一步
-        </button>
       )}
       {p ? (
         <>
@@ -943,6 +927,37 @@ export function CreationSession() {
                     list={(p.attachments ?? []).filter((a) => a.message_index >= p.messages.length)}
                     thumbs={thumbs.current}
                   />
+                </li>
+              )}
+              {/* ── 2026-09-09：等待中的那一則坐在對話的最後 ────────────────
+                  在這之前，等待中的四件事散在畫面上四個地方：狀態那一行（在哪一
+                  步）、一句 `note`（可以關掉這一頁、上次更新多久前）、一顆「停止
+                  這一步」，以及輸入區底下那一句。四處都在頁面上半部或最底下，而
+                  人在等的時候看的是**對話的最後一則**，而狀態那一行在對話**上面**：
+                  1280 下實測，只有兩輪對話時它就已經在 335px 以外，而對話只會變長。
+                  這一則把 §2.12 第 2、3 條要的東西收在同一個地方：**在哪一步**、
+                  **會不會自己結束**、**能不能離開**，加上一個會變的量（上次更新
+                  多久前，`current` 每秒重抓一次）。停止也在這裡——那顆按鈕要停的
+                  就是這一則講的這一步。
+                  `data-role="assistant"` 因為說話的是 Agent 那一側；沒有新的樣式，
+                  它就是一則 Agent 訊息的樣子，而內容自己說得出它還沒說完。 */}
+              {working && p && (
+                <li data-role="assistant" data-pending="">
+                  <span className="creation-who">Agent</span>
+                  <span className="creation-text">{stepDescription(p)}</span>
+                  <p className="note">
+                    這一步會自己結束。可以關掉這一頁，回來時從「恢復創作」繼續；上次更新{" "}
+                    {/* `current` polls every 1s while queued/working (refetchInterval
+                        above), the same cadence InFlight.tsx uses to justify its own
+                        `relative` Timestamp — see InFlight.tsx. */}
+                    <Timestamp at={session.updated_at} relative />
+                  </p>
+                  {/* 停止這一步，而不是整場（`04` 丙-203）。`disabled={busy}` 而不是
+                      `locked`：`locked` 把 working 也算進去，而這顆按鈕存在的理由就是
+                      working。刻意不是 `.action`——停止不是這一頁要人做的那件事。 */}
+                  <button type="button" disabled={busy} onClick={() => void perform("stop_step")}>
+                    停止這一步
+                  </button>
                 </li>
               )}
             </ol>
