@@ -96,6 +96,33 @@ test("with generate_skill on, the page is the generation workbench", async () =>
 });
 
 /**
+ * 2026-09-09，負責人回報：「並沒有取消回到上一頁的按鈕」。
+ *
+ * 工作台在卡片裡就地展開時不需要出口——它周圍就是那一頁。搬成一個位址之後周圍什麼
+ * 都沒有了，而**這一頁不在導覽列上**（§0.1 R7），所以連導覽列那條退路也沒有。這正是
+ * §0.1 R3 的出處在講的危險，而 IA-12 說「唯一的入邊就在使用者按上一頁會回到的那一頁
+ * 上」——那句話只對瀏覽器的上一頁成立，對從書籤或別人給的連結進來的人不成立。
+ *
+ * 兩個旗標狀態都斷言：工作台開著的時候最容易忘，關著的時候那句話本來就帶著出口。
+ */
+test.each([
+  ["旗標開著", { generate_skill: true }],
+  ["旗標關著", undefined],
+] as const)("%s 時這一頁都有一條回得去的路", async (_label, features) => {
+  stubMe(features);
+  await visit();
+
+  // 排除頁首的導覽列：`ia.test.ts` 的入邊計數也不算它（§2.3 第一句），而這一支問的
+  // 是同一件事——這一頁自己有沒有給出路，不是瀏覽器的家具有沒有。
+  const back = Array.from(container.querySelectorAll("main a")).filter(
+    (a) => a.getAttribute("href") === "/workspace/skills",
+  );
+  expect(back.length, "這一頁沒有出口").toBeGreaterThan(0);
+  // 同一件事一頁只出現一次（設計 §3 第 14 條）。
+  expect(back.length, "回去的路出現了兩次").toBe(1);
+});
+
+/**
  * `creation_skill` 只在 `generate_skill` 也開著時由 Go 送出
  * （`apiserver/app.go` 的 `entryPointFeatures`），所以這一支同時開兩個——
  * 只開 `creation_skill` 是一個伺服器產不出來的狀態。

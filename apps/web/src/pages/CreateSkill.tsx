@@ -54,5 +54,32 @@ export function CreateSkill() {
     );
   }
 
-  return creationExposed ? <CreationSession /> : <GenerateSkill />;
+  return (
+    <>
+      {/*
+        ── 2026-09-09：這一頁沒有出口，而那是搬家搬出來的缺陷 ─────────────────────
+        負責人：「並沒有取消回到上一頁的按鈕」。工作台在卡片裡就地展開的時候不需要
+        出口——它周圍就是「我的 Skill」那一頁；搬成一個位址之後，周圍什麼都沒有了，
+        而**這一頁不在導覽列上**（資訊架構 §0.1 R7：產品能力不進導覽列），所以連
+        「按導覽列回去」這條路都沒有。
+
+        這正是 §0.1 R3 的出處逐字講的那個危險（system.md §1.2：一條入邊的頁面，
+        使用者按上一頁之後就回不去了）。IA-12 主張那個危險在這一頁不成立，理由是
+        「唯一的入邊就在使用者按上一頁會回到的那一頁上」——**那句話只對瀏覽器的上一頁
+        成立，對畫面不成立**：從書籤或別人給的連結進來的人沒有上一頁可按。同一個
+        判斷 `RunTrace` 的檔頭 2026 年就寫過了。
+
+        配方是既有的：`SkillFiles`／`RunCompare`／`TestCases` 的 `<nav>` ＋
+        「← 回到…」，不是第四種寫法。
+
+        **它不是「取消」**：取消這次創作是另一件事（會把會話收掉，`CreationSession`
+        自己那顆按鈕在做），而離開這一頁不該把進行中的創作丟掉——會話住在伺服器上，
+        回來時由 `/creation-sessions` 讀出來。
+      */}
+      <nav>
+        <Link to="/workspace/skills">← 回到我的 Skill</Link>
+      </nav>
+      {creationExposed ? <CreationSession /> : <GenerateSkill />}
+    </>
+  );
 }
