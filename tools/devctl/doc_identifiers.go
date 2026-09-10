@@ -9,27 +9,6 @@ import (
 	"strings"
 )
 
-// Identifiers a live document names must exist in the tree.
-//
-// The drift this catches is the one adversarial review kept finding by hand: a
-// document asserting something about `GenerateQuotaFor` after the function was
-// deleted, citing a test that was merged away, or arguing from a type name
-// (`PublicSearchHit`, `ApplyPreview`) that never existed in any file. Prose
-// cannot be checked, but the identifiers inside it can, and a stale identifier
-// is usually a stale claim wearing it.
-//
-// SCOPE IS LIVE DOCUMENTS ONLY, and that limit is the whole design. The same
-// check over paths in ADRs and frozen milestone reports produced 18 hits and
-// every one of them was correct-when-written history — a DDD move, a deleted
-// spike — which AGENTS.md explicitly says not to "helpfully fix". A check that
-// asks people to break a stated rule is worse than no check: they learn to
-// ignore it. So ADRs, mvp/mX/ reports and runbooks are out of scope, and stay
-// out.
-//
-// Measured when written: 410 references, 6 flagged, 3 real. The false ones are
-// prose artifacts (an elided list of test names sharing a prefix, ADR status
-// vocabulary), which is what allowedDocWords is for — it is a drift ledger like
-// db/query-owners.yaml's, not an extension point.
 var docIdentifierScope = []string{
 	"AGENTS.md",
 	"docs/plans/01-goals-and-plan.md",
@@ -42,20 +21,23 @@ var docIdentifierScope = []string{
 	"docs/plans/mvp/m5/README.md",
 }
 
-// Backticked tokens that look like a declared name: an exported-style word, a
-// Go test, or a Python test. Deliberately narrow — a lowercase English word in
-// backticks is prose, and treating it as an identifier is how this becomes a
-// check nobody believes.
 var docIdentifierPattern = regexp.MustCompile("`(Test[A-Za-z0-9_]{3,}|test_[a-z0-9_]{3,}|[A-Z][A-Za-z0-9]{4,})`")
 
-// Words the pattern matches that are not identifiers. Each needs a reason; the
-// list may shrink without ceremony and should not grow without one.
 var allowedDocWords = map[string]string{
-	"Superseded":     "ADR status vocabulary (AGENTS.md), not a symbol",
-	"Proposed":       "ADR status vocabulary",
-	"Accepted":       "ADR status vocabulary",
-	"FileCountLimit": "tail of an elided list: TestDatasetUploadEnforcesPerFileSizeLimit／FileCountLimit／TotalSizeLimit",
-	"TotalSizeLimit": "tail of the same elided list",
+	"Superseded":               "ADR status vocabulary (AGENTS.md), not a symbol",
+	"Proposed":                 "ADR status vocabulary",
+	"Accepted":                 "ADR status vocabulary",
+	"FileCountLimit":           "tail of an elided list: TestDatasetUploadEnforcesPerFileSizeLimit／FileCountLimit／TotalSizeLimit",
+	"TotalSizeLimit":           "tail of the same elided list",
+	"Deallocate":               "pgx / Postgres protocol message, not a SkillHub symbol",
+	"MaxConnLifetime":          "pgxpool.Config field, not a SkillHub symbol",
+	"QueryExecModeExec":        "pgx query exec mode, not a SkillHub symbol",
+	"ReadyForQuery":            "Postgres wire-protocol message",
+	"NOTIFY":                   "Postgres command",
+	"ModuleNotFoundError":      "Python builtin exception",
+	"test_cases_skill_id_fkey": "constraint name Postgres generates for the test_cases foreign key",
+	"Querier":                  "sqlc interface that db/sqlc.yaml deliberately does not emit",
+	"MARKER":                   "shell variable in tools/sec009 (.sh is outside codeExtensions)",
 }
 
 var codeExtensions = map[string]bool{
@@ -80,10 +62,7 @@ func docIdentifierProblems(root string) []string {
 		if !codeExtensions[strings.ToLower(filepath.Ext(path))] {
 			return nil
 		}
-		// Not this file. Its rationale comment names the very identifiers it
-		// exists to catch (GenerateQuotaFor, PublicSearchHit, ApplyPreview), and
-		// a scan that counts any word in any code file would read those as
-		// declarations and permanently whitelist its own examples.
+
 		if filepath.Base(path) == "doc_identifiers.go" {
 			return nil
 		}
@@ -101,7 +80,7 @@ func docIdentifierProblems(root string) []string {
 	for _, rel := range docIdentifierScope {
 		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
 		if err != nil {
-			continue // a document that moved is the doc map's problem, not this check's
+			continue
 		}
 		for _, m := range docIdentifierPattern.FindAllStringSubmatch(string(body), -1) {
 			name := m[1]

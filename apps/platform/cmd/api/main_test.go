@@ -24,21 +24,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-// This process reads its whole deployment from the environment, and until now
-// nothing executed a line of it: every test that cares about an allowance, a
-// limiter or the exposure flag sets the assembled field directly, which
-// exercises the enforcement and never the configuration. The functions below
-// are where "unset" acquires its meaning, and the meanings disagree on purpose
-// — an allowance left unconfigured is enforced, an entry point left
-// unconfigured is hidden, a retention left unconfigured collects nothing — so
-// each one is pinned here rather than inferred from its neighbours.
-//
-// No database and no network: everything under test is a string and a switch.
-
-// setenv is t.Setenv with an "unset" case. t.Setenv restores the previous state
-// (including having had none) on cleanup either way, so unsetting through it is
-// safe and is the only way to test the shipped default on a machine that
-// happens to export the variable.
 func setenv(t *testing.T, key, value string, unset bool) {
 	t.Helper()
 	t.Setenv(key, value)
@@ -49,18 +34,6 @@ func setenv(t *testing.T, key, value string, unset bool) {
 	}
 }
 
-// --- 1. ADR-052's exposure flag ----------------------------------------------
-
-// The whole truth table of GENERATE_SKILL_EXPOSED, because only one reading of
-// it is safe and every other plausible one opens the M5 generation entry point
-// on a deployment that never asked for it (⛔ boundary 1, 01 §10). The mutation
-// this exists for is the tidy-up that harmonises this with RATE_LIMIT and
-// RUN_QUOTA — `!EqualFold(raw, "off")` — which is correct for an allowance and
-// backwards for an entry point.
-//
-// Only the returned bool is asserted. The warning next to it is deliberately not
-// matched on: a message somebody rewords is not a regression, and a test that
-// says otherwise gets edited out the first time it lies.
 func TestGenerateExposedFromEnv(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -72,18 +45,16 @@ func TestGenerateExposedFromEnv(t *testing.T) {
 		{name: "empty", value: ""},
 		{name: "off", value: "off"},
 		{name: "OFF", value: "OFF"},
-		// The four values somebody reaches for when they mean "on" and that this
-		// flag does not accept. They stay hidden — noisily, but hidden.
+
 		{name: "false", value: "false"},
 		{name: "0", value: "0"},
 		{name: "true", value: "true"},
 		{name: "1", value: "1"},
-		// The one accepted spelling, in any case.
+
 		{name: "on", value: "on", want: true},
 		{name: "ON", value: "ON", want: true},
 		{name: "oN", value: "oN", want: true},
-		// Not trimmed, and that is the conservative direction: a padded value is
-		// a value nobody typed on purpose.
+
 		{name: "padded on", value: " on "},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -96,11 +67,6 @@ func TestGenerateExposedFromEnv(t *testing.T) {
 	}
 }
 
-// --- 2. the ceilings ---------------------------------------------------------
-
-// NFR-001 clause 5's limiter. Unset is enforced, `off` is the escape hatch, and
-// anything else is enforced too — a protection left unconfigured must not
-// silently be absent, and a typo in the off switch is exactly "unconfigured".
 func TestRateLimitsFromEnv(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -125,9 +91,6 @@ func TestRateLimitsFromEnv(t *testing.T) {
 	}
 }
 
-// PDM-010's free run allowance (ADR-028 決策 2) — the platform's only cost
-// ceiling, so unset means enforced with the package defaults and only the
-// written-down `off` turns it off.
 func TestQuotaFromEnv(t *testing.T) {
 	enforced := policy.DefaultQuotaLimits()
 	if enforced == (policy.QuotaLimits{}) {
@@ -154,9 +117,6 @@ func TestQuotaFromEnv(t *testing.T) {
 	}
 }
 
-// GEN-004's generation allowance (ADR-047 決策 5). A second variable and not a
-// shared one, which is the half of ADR-055's lesson a test can hold: turning off
-// one allowance must not turn off the other.
 func TestGenerateQuotaFromEnv(t *testing.T) {
 	enforced := policy.DefaultGenerateQuotaLimits()
 	if enforced == (policy.QuotaLimits{}) {
@@ -183,10 +143,6 @@ func TestGenerateQuotaFromEnv(t *testing.T) {
 	}
 }
 
-// RUN_QUOTA=off must not take the generation allowance with it, and the reverse.
-// The two are counted separately on purpose (ADR-047 決策 5 ruled against a
-// shared pool), and one switch that moved both would be that shared pool in
-// different clothes.
 func TestTheTwoAllowancesHaveSeparateSwitches(t *testing.T) {
 	setenv(t, "RUN_QUOTA", "off", false)
 	setenv(t, "GENERATE_QUOTA", "", true)
@@ -207,9 +163,6 @@ func TestTheTwoAllowancesHaveSeparateSwitches(t *testing.T) {
 	}
 }
 
-// The URL-import fetcher. AllowInsecure gets its own assertion because it is the
-// one setting here whose wrong default reaches the network: plain http to an
-// attacker-positioned host, on a deployment that configured nothing.
 func TestImportFetcherAllowsInsecureOnlyWhenAskedTo(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -234,9 +187,6 @@ func TestImportFetcherAllowsInsecureOnlyWhenAskedTo(t *testing.T) {
 	}
 }
 
-// The host allow list: the defaults are always there, extras are added rather
-// than replacing them, and the parsing is the same trim-and-drop-empties the
-// operator roster uses.
 func TestImportFetcherHostsFromEnv(t *testing.T) {
 	setenv(t, "IMPORT_ALLOW_INSECURE", "", true)
 	setenv(t, "IMPORT_EXTRA_HOSTS", " Files.Example.Com , ,gitlab.example.com ", false)
@@ -256,15 +206,6 @@ func TestImportFetcherHostsFromEnv(t *testing.T) {
 	}
 }
 
-// --- X. SKILLHUB_CLEAN_MODE (ADR-060 決策 6) ----------------------------------
-//
-// One flag, one branch, one choice point — so what needs pinning is exactly
-// two things: the flag reads as expected, and the flag *off* reproduces
-// today's behaviour bit for bit. That second half is 02:PORT-005's literal
-// acceptance test; the mutation this whole section exists for is someone
-// widening the branch's condition (e.g. defaulting to clean) or hard-coding
-// its consequence instead of gating it on `clean`.
-
 func TestCleanModeFromEnv(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -275,7 +216,7 @@ func TestCleanModeFromEnv(t *testing.T) {
 		{name: "unset (the shipped default)", unset: true},
 		{name: "empty", value: ""},
 		{name: "0", value: "0"},
-		{name: "true", value: "true"}, // not accepted; only the literal "1" is
+		{name: "true", value: "true"},
 		{name: "TRUE", value: "TRUE"},
 		{name: "1", value: "1", want: true},
 	} {
@@ -288,10 +229,6 @@ func TestCleanModeFromEnv(t *testing.T) {
 	}
 }
 
-// The literal 02:PORT-005 acceptance test: flag unset must leave the pool
-// config exactly where pgxpool.ParseConfig itself put it — not pinned to a
-// particular number (that number is pgx's default and not this file's to
-// own), just untouched by this file.
 func TestApplyCleanModePoolLeavesProductionAlone(t *testing.T) {
 	cfg, err := pgxpool.ParseConfig("postgres://skillhub@127.0.0.1:1/skillhub")
 	if err != nil {
@@ -310,12 +247,6 @@ func TestApplyCleanModePoolLeavesProductionAlone(t *testing.T) {
 	}
 }
 
-// The other half of the literal acceptance test: flag unset takes the
-// objstore.FromEnv path, not objstore.NewInProcess. The two *objstore.Client
-// values have no exported field a test can compare, so this checks the one
-// externally visible difference between the two paths instead: NewInProcess
-// starts a server and hands back a non-nil stop func to shut it down again,
-// FromEnv touches no network and has nothing to stop.
 func TestNewStoreTakesFromEnvPathWhenNotClean(t *testing.T) {
 	store, stopFn, err := newStore(false)
 	if err != nil {
@@ -343,21 +274,6 @@ func TestNewStoreTakesInProcessPathWhenClean(t *testing.T) {
 	stopFn()
 }
 
-// --- X.5 the web build overlay (02:PORT-003 anonymous disclosure) -----------
-//
-// `GET /me`'s features.clean_mode never reached a signed-out visitor —
-// RequireSession answers 401 before the flag is ever read, and `/` and
-// `/skills/$id` are both reachable signed out. webStaticHandlerUnder and
-// cleanModeHandler are what let cmd/api serve the flag on the response
-// itself, so what needs pinning mirrors the section above: the injection
-// happens and is reachable, the missing-build and missing-placeholder cases
-// name what is wrong (02:PORT-005), and — the acceptance test for this whole
-// axis — clean=false leaves the API's own handler completely untouched.
-
-// writeCleanModeFixture lays out a directory shaped like apps/web/dist: an
-// index.html carrying the placeholder plus caller-supplied padding (to prove
-// the replacement only touches the placeholder bytes, nothing around them),
-// and one static asset under assets/.
 func writeCleanModeFixture(t *testing.T, indexBody string) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -374,9 +290,6 @@ func writeCleanModeFixture(t *testing.T, indexBody string) string {
 	return dir
 }
 
-// The literal injection: the placeholder is gone, the script (and nothing
-// but the script) is there in its place, and the surrounding bytes this test
-// put around the placeholder on purpose are untouched.
 func TestWebStaticHandlerUnderInjectsTheFlag(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><title>t</title>\n<!--SKILLHUB_CLEAN_MODE_FLAG-->\n</head><body></body></html>")
 
@@ -402,18 +315,6 @@ func TestWebStaticHandlerUnderInjectsTheFlag(t *testing.T) {
 	}
 }
 
-// The offline sign-in flag rides the same placeholder, and it is the answer to a
-// different question than the disclosure beside it: clean_mode says 「this
-// deployment swapped its sandbox」, this one says 「a sign-in route exists here」.
-//
-// It matters because the app's only sign-in affordance has always been a link to
-// GitHub, and on the machine 02:PORT-005 is about that link leaves the product
-// entirely — so everything behind a session was unreachable from the browser
-// even though POST /auth/dev/login was mounted and working the whole time.
-//
-// Both directions are asserted, because only one of them is a security property:
-// the flag must be ABSENT when the route is not mounted. A screen offering a
-// sign-in that answers 404 is worse than one offering none.
 func TestWebStaticHandlerUnderInjectsTheOfflineSignInFlagOnlyWhenTheRouteExists(t *testing.T) {
 	const page = "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head><body></body></html>"
 
@@ -437,13 +338,11 @@ func TestWebStaticHandlerUnderInjectsTheOfflineSignInFlagOnlyWhenTheRouteExists(
 			if got := strings.Contains(body, "window.__SKILLHUB_DEV_LOGIN__=true"); got != tc.want {
 				t.Errorf("offline sign-in flag present = %v, want %v; body = %q", got, tc.want, body)
 			}
-			// Never as `false`: the same boundary the disclosure flag carries. An
-			// injected `false` is a value a reader can mistake for a measurement.
+
 			if strings.Contains(body, "__SKILLHUB_DEV_LOGIN__=false") {
 				t.Error("the flag was written as false; it may only ever be written as true")
 			}
-			// The disclosure is unaffected either way — the two share a placeholder,
-			// not a meaning.
+
 			if !strings.Contains(body, "window.__SKILLHUB_CLEAN_MODE__=true") {
 				t.Errorf("the clean-mode disclosure went missing; body = %q", body)
 			}
@@ -451,7 +350,6 @@ func TestWebStaticHandlerUnderInjectsTheOfflineSignInFlagOnlyWhenTheRouteExists(
 	}
 }
 
-// The one route this handler adds beyond "/": Vite's build output directory.
 func TestWebStaticHandlerUnderServesAssets(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head></html>")
 
@@ -470,9 +368,6 @@ func TestWebStaticHandlerUnderServesAssets(t *testing.T) {
 	}
 }
 
-// 02:PORT-005: a missing build must name the path it looked for, not just say
-// "failed" — this is the case a deployment hits when nobody ran the web build
-// before setting SKILLHUB_CLEAN_MODE=1.
 func TestWebStaticHandlerUnderNamesTheMissingBuild(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "does-not-exist")
 
@@ -486,9 +381,6 @@ func TestWebStaticHandlerUnderNamesTheMissingBuild(t *testing.T) {
 	}
 }
 
-// A build with no placeholder is the case a stale or hand-edited index.html
-// produces: the response would be served with no way to ever carry the flag,
-// silently failing the exact thing this handler exists for.
 func TestWebStaticHandlerUnderRequiresThePlaceholder(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><title>no placeholder here</title></head></html>")
 
@@ -501,10 +393,6 @@ func TestWebStaticHandlerUnderRequiresThePlaceholder(t *testing.T) {
 	}
 }
 
-// The 02:PORT-005 acceptance test for this axis: clean=false must return api
-// completely untouched, not merely "behaving the same" — a same-origin
-// pointer comparison is what a mutation that wraps unconditionally cannot
-// pass, the way TestApplyCleanModePoolLeavesProductionAlone pins the pool.
 func TestCleanModeHandlerLeavesProductionAlone(t *testing.T) {
 	api := http.NewServeMux()
 	static := http.NewServeMux()
@@ -515,21 +403,6 @@ func TestCleanModeHandlerLeavesProductionAlone(t *testing.T) {
 	}
 }
 
-// clean=true must route the two static paths to static and everything else to
-// the API first.
-//
-// "Everything else" used to mean "and it stays there", including a browser
-// pasting /skills/{id} — this test pinned that, and the comment beside it
-// conceded a deep link therefore answered with JSON. It no longer does: an
-// unrouted GET that asked for text/html now falls back to index.html
-// (spaFallback, and TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets
-// below, which is where that case moved to).
-//
-// What this test still pins is the routing, which is unchanged and is the half
-// the fallback must not disturb: the fake API answers 200 to everything, so
-// nothing here is unrouted, and no request below asks for HTML. Both are the
-// point — the fallback triggers on a 404 AND on Accept, so a test that varies
-// neither is testing the table.
 func TestCleanModeHandlerRoutesStaticOnlyWhenClean(t *testing.T) {
 	var apiHit, staticHit []string
 	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -556,20 +429,8 @@ func TestCleanModeHandlerRoutesStaticOnlyWhenClean(t *testing.T) {
 	}
 }
 
-// --- 4. the background loops -------------------------------------------------
-
-// 03:SEC-012's automatic first action: the reconciler-stall watchdog, which is
-// the one P1 criterion of 02:SEC-010 nothing inside the worker can report (a
-// dead worker takes every watchdog running inside it along with it). Its
-// detection logic has a test of its own; what had none was the fact that this
-// process starts it at all.
-//
-// Asserted by name rather than by behaviour, because there is no honest way to
-// assert a running ticker without a clock: what can go wrong here is the loop
-// disappearing from the roster, not the loop being wrong.
 func TestBackgroundLoopsWatchTheReconciler(t *testing.T) {
-	// A parseable DSN nothing listens on; pgxpool connects lazily and NewApp's
-	// only I/O is a queue client that does not dial (see apiserver/app_test.go).
+
 	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")
 	if err != nil {
 		t.Fatalf("pgxpool.New: %v", err)
@@ -590,19 +451,10 @@ func TestBackgroundLoopsWatchTheReconciler(t *testing.T) {
 	}
 }
 
-// loopName is the qualified name of the function a method value wraps, which is
-// the same for every receiver — so the expectation above is written as a method
-// expression the compiler checks, not as a string somebody keeps in step.
 func loopName(f func(context.Context)) string {
 	return runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 }
 
-// --- 5. the refusals and the roster ------------------------------------------
-
-// DEV_LOGIN=1 mounts POST /auth/dev/login, where any name is a signed-in account
-// with no credential. Three comments in this repository say "never in
-// production" and none of them was executable; this is the one machine-decidable
-// contradiction, and it costs an if.
 func TestDevLoginRefusal(t *testing.T) {
 	for _, tc := range []struct {
 		name            string
@@ -626,12 +478,6 @@ func TestDevLoginRefusal(t *testing.T) {
 	}
 }
 
-// The same treatment backgroundLoops got, for the same reason and after the same
-// near-miss: app.AuditRosters(ctx) was one line in main that nothing watched.
-// Deleting it leaves the whole suite green while 02:SEC-011's roster record stops
-// being written — and because AuditRosters fails the operator list closed when it
-// cannot record it, the deletion turns a fail-closed guarantee into a fail-open
-// one silently.
 func TestStartupTasksAuditTheRosters(t *testing.T) {
 	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")
 	if err != nil {
@@ -653,56 +499,36 @@ func TestStartupTasksAuditTheRosters(t *testing.T) {
 	}
 }
 
-// --- 6. the SPA fallback ------------------------------------------------------
-
-// This test used to pin the opposite: /skills/abc-123 had to reach the API, and
-// the comment beside it conceded that a pasted deep link therefore answered a
-// browser with JSON, calling it out of scope. In clean mode it is not out of
-// scope — the portable bundle IS the deployment, there is no proxy underneath to
-// push it to, and handing somebody a link is how a portable bundle gets opened.
-// Worse, the JSON page carries no window.__SKILLHUB_CLEAN_MODE__, so 02:PORT-003's
-// disclosure never loads either.
-//
-// So the expectation is flipped for exactly one case: a GET that asked for HTML
-// and that the API has no route for. Every other case is unchanged, and the rows
-// below say which is which.
 func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
-	// The four answers the real router actually gives, because the version of
-	// this stand-in that only ever said 404 is why two of them went unnoticed
-	// for as long as they did: a fake API that cannot produce an answer cannot
-	// fail a test about it (04 丙-111).
+
 	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/me":
-			// A route the SPA's own fetch calls.
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"api":true}`))
 		case r.URL.Path == "/auth/github/callback":
-			// The real one redirects on success (workspace/http.go finishLogin).
-			// Location and status without http.Redirect's courtesy HTML body,
-			// so the row below can assert on who answered rather than on a
-			// Content-Type that says "html" for a reason unrelated to the SPA.
+
 			w.Header().Set("Location", "/")
 			w.WriteHeader(http.StatusFound)
 		case r.URL.Path == "/auth/github/callback/fail":
-			// ...and answers JSON on failure, which must stay readable.
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			_, _ = w.Write([]byte(`{"error":"oauth state mismatch"}`))
 		case r.URL.Path == "/runs/real-id":
-			// A real GET route whose address is ALSO a page in the SPA.
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"run":"real-id"}`))
 		case r.URL.Path == "/downloads/pkg":
-			// Bytes a browser navigation is supposed to receive.
+
 			w.Header().Set("Content-Type", "application/zip")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("PK\x03\x04zipbytes"))
 		case r.URL.Path == "/skills/abc-123" && r.Method == http.MethodGet:
-			// What ServeMux does when DELETE /skills/{id} exists and GET does
-			// not: the path matches, the method does not.
+
 			w.Header().Set("Allow", "DELETE")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			_, _ = w.Write([]byte("Method Not Allowed\n"))
@@ -724,51 +550,37 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 		wantHTML                   bool
 	}{
 		{
-			// The motivating example, and — until 2026-08-31 — the one case
-			// that did not work. It is not an unrouted path: DELETE
-			// /skills/{id} makes the mux match and refuse the method, so the
-			// 404 the fallback was watching for never came, and a refreshed or
-			// pasted skill detail link answered `405 method not allowed` in
-			// plain text.
+
 			name: "a pasted deep link loads the app", method: http.MethodGet,
 			path: "/skills/abc-123", accept: "text/html,application/xhtml+xml",
 			wantCode: http.StatusOK, wantHTML: true,
 		},
 		{
-			// The worse half of the same defect, because it succeeded. The run
-			// detail page and the run's API resource are the same URL, so
-			// refreshing the Trace screen printed the run's JSON into the
-			// browser with a 200.
+
 			name: "refreshing a page whose address is also an API resource", method: http.MethodGet,
 			path: "/runs/real-id", accept: "text/html,application/xhtml+xml",
 			wantCode: http.StatusOK, wantHTML: true,
 		},
 		{
-			// The half the flip must not break: a route the API DOES have is
-			// still the API's, and this one is a browser navigation the API has
-			// to handle itself or login stops working.
+
 			name: "the OAuth callback still reaches the API", method: http.MethodGet,
 			path: "/auth/github/callback", accept: "text/html",
 			wantCode: http.StatusFound,
 		},
 		{
-			// A failure has to stay readable. Swallowing it would turn a broken
-			// login into a page that loads and quietly does nothing.
+
 			name: "a failed OAuth callback still says why", method: http.MethodGet,
 			path: "/auth/github/callback/fail", accept: "text/html",
 			wantCode: http.StatusUnauthorized,
 		},
 		{
-			// Content-Type is what separates a page from bytes. A browser
-			// navigating to a download sends exactly the same Accept header as
-			// one navigating to a page.
+
 			name: "a download's bytes still reach the browser", method: http.MethodGet,
 			path: "/downloads/pkg", accept: "text/html,application/xhtml+xml",
 			wantCode: http.StatusOK,
 		},
 		{
-			// fetch() sends */* or application/json. A 404 must stay a 404 for
-			// it, or a client cannot tell "no such run" from a page.
+
 			name: "a fetch for a missing resource still gets 404", method: http.MethodGet,
 			path: "/skills/no-such-skill", accept: "application/json",
 			wantCode: http.StatusNotFound,
@@ -799,8 +611,7 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 					tc.method, tc.path, rec.Header().Get("Content-Type"), tc.wantHTML)
 			}
 			if tc.wantHTML && !strings.Contains(rec.Body.String(), "index for /") {
-				// The index, not the deep link's own path: the SPA routes it
-				// client-side, and serving a file per path is a different thing.
+
 				t.Errorf("the fallback served %q, want index.html", rec.Body.String())
 			}
 			if !tc.wantHTML && strings.Contains(rec.Body.String(), "<html>") {
@@ -810,22 +621,12 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 	}
 }
 
-// 04 丙-102 ③. The two ways a deployment has no packaging targets look identical
-// on every screen and are opposite jobs for an operator.
-//
-// This is the shape 丙-91 was: a fault described as a policy. The start-up line
-// said "no packaging profiles configured", the operator read it as a choice this
-// deployment had made, and the real cause was a relative default resolving from
-// a working directory that is not the repository root — measured on a clean-mode
-// launch on 2026-08-30, where packaging answered 503 for the whole session.
 func TestTheTwoWaysPackagingHasNoTargetsAreToldApart(t *testing.T) {
 	missing := profileDirReason(filepath.Join(t.TempDir(), "no-such-dir"))
 	if !strings.Contains(missing, "does not exist") {
 		t.Errorf("a missing directory must say so, got %q", missing)
 	}
-	// The sentence has to carry the thing that actually bit, not just the fact:
-	// the path was relative and the working directory was not what its author
-	// assumed.
+
 	if !strings.Contains(missing, "working directory") {
 		t.Errorf("the missing-directory reason no longer explains how a relative path resolves, got %q", missing)
 	}
@@ -839,20 +640,6 @@ func TestTheTwoWaysPackagingHasNoTargetsAreToldApart(t *testing.T) {
 	}
 }
 
-// TestCleanModeEmptiesTheSessionItInheritsOnConnect is the half of
-// applyCleanModePool that MaxConns cannot express.
-//
-// The carrier clean mode runs on puts every new TCP connection into the same
-// Postgres session, so a pool that retires a connection and opens another one
-// arrives in a session that still holds the retired connection's prepared
-// statements. pgx's cache is per-connection and now empty, so it prepares those
-// names again, gets 42P05, and the recovery it attempts desyncs the protocol
-// for good. pgxpool retires connections after an hour by default; clean mode
-// was measured dying at exactly that mark on 2026-08-31.
-//
-// Asserting AfterConnect is non-nil would pass for a hook that does nothing, so
-// this dirties a real session the way a retired connection leaves it and checks
-// the hook actually empties it.
 func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
 	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -885,13 +672,6 @@ func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
 	}
 	defer conn.Release()
 
-	// Simple protocol on purpose. DEALLOCATE ALL empties the server's session
-	// but cannot reach pgx's per-connection cache, so a counting query that
-	// went through that cache would be measuring with an instrument the thing
-	// under test has just invalidated (it fails 26000 on the second call).
-	// That is only a hazard for this test, which calls the hook mid-life:
-	// pgxpool runs AfterConnect on a connection whose cache is still empty,
-	// which is the only place DEALLOCATE ALL is safe to issue.
 	count := func(where string) int {
 		var n int
 		row := conn.QueryRow(ctx, "SELECT count(*)::int FROM pg_prepared_statements", pgx.QueryExecModeSimpleProtocol)
@@ -901,7 +681,6 @@ func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
 		return n
 	}
 
-	// Exactly what a retired connection leaves behind for the next one.
 	if _, err := conn.Exec(ctx, "PREPARE skillhub_reconnect_probe AS SELECT 1"); err != nil {
 		t.Fatalf("dirty the session: %v", err)
 	}
@@ -909,7 +688,6 @@ func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
 		t.Fatal("the probe left no prepared statement behind, so this test is not measuring what it claims to")
 	}
 
-	// What the next connection runs on arrival.
 	if err := cfg.AfterConnect(ctx, conn.Conn()); err != nil {
 		t.Fatalf("AfterConnect on an inherited session: %v", err)
 	}
@@ -918,18 +696,6 @@ func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
 	}
 }
 
-// 04 丙-112, the amplification rather than the input.
-//
-// Any error on a cached statement makes pgx invalidate the entry and clear it
-// with a pipelined Deallocate, which this carrier answers with an unexpected
-// ReadyForQuery -- and from there it answers nobody. So an ordinary, recoverable
-// query error is not recoverable here: it costs the deployment.
-//
-// SQLSTATE 22021 is the one that actually happened, from a `q` on the anonymous
-// search endpoint that was not valid UTF-8. The boundary now refuses that input
-// (discovery.isComprehensible), but the amplification is the part that must not
-// depend on having enumerated every bad input, so this asserts the property
-// directly: an error, then the pool still works.
 func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
 	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -950,21 +716,14 @@ func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
 	alive := func(when string) {
 		t.Helper()
 		var n int
-		// Arguments present, so this is the path that uses a cached statement
-		// when one is in use at all -- the path the failure runs through.
+
 		if err := pool.QueryRow(ctx, "SELECT $1::int", 7).Scan(&n); err != nil {
 			t.Fatalf("%s: the deployment is gone, not just this query: %v", when, err)
 		}
 		if n != 7 {
 			t.Fatalf("%s: SELECT 7 returned %d", when, n)
 		}
-		// A jsonb parameter, because changing how pgx executes must not change
-		// what it sends. The first version of this fix used QueryExecModeExec,
-		// which assumes parameter types from the Go type instead of asking the
-		// server, so every jsonb argument went out as text: the operator roster
-		// and the feature-flag audit both failed with SQLSTATE 22P02 three
-		// seconds into a real boot. This test passed anyway, because an int is
-		// the one type that guess gets right.
+
 		var out string
 		if err := pool.QueryRow(ctx, "SELECT ($1::jsonb)->>'k'", []byte(`{"k":"v"}`)).Scan(&out); err != nil {
 			t.Fatalf("%s: a jsonb parameter did not survive the query mode: %v", when, err)
@@ -976,8 +735,6 @@ func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
 
 	alive("before the error")
 
-	// Exactly what the anonymous endpoint handed PostgreSQL: bytes that are not
-	// valid UTF-8. A query error, and nothing more than that.
 	var s string
 	if err := pool.QueryRow(ctx, "SELECT $1::text", string([]byte{0xa7, 'A'})).Scan(&s); err == nil {
 		t.Fatal("PostgreSQL accepted invalid UTF-8; this test is not producing the error it is named for")
@@ -987,22 +744,6 @@ func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
 	alive("after one query error, second call")
 }
 
-// The page's Content-Security-Policy, and specifically the directive that is
-// not about XSS.
-//
-// This app has no HTML from any model — 04 丙-208 renders every model and tool
-// string as text, React escapes, there is no dangerouslySetInnerHTML and no
-// inline style anywhere in apps/web/src. What the policy closes is the other
-// channel, the one that needs no script at all: a prompt-injected model
-// (SEC-013/LLM01 — the fetch tool hands it whole attacker-written pages) emits
-// an image whose URL carries what it just read, and the browser fetches it on
-// render with nobody clicking. AgentFlayer, EchoLeak and the Copilot Chat and
-// Gemini markdown fixes are all that one shape.
-//
-// So the assertion is about reachable origins, not about a header being
-// present: `data:` is index.html's inline favicon, `blob:` is the diagram
-// thumbnail this tab holds (ADR-066 決策 4 stores no bytes), and there is no
-// third source an image can come from.
 func TestWebStaticHandlerUnderSendsAPolicyNoRemoteImageCanCross(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head><body></body></html>")
 
@@ -1022,8 +763,7 @@ func TestWebStaticHandlerUnderSendsAPolicyNoRemoteImageCanCross(t *testing.T) {
 			t.Errorf("policy is missing %q; policy = %q", directive, policy)
 		}
 	}
-	// The directive this whole test is named for, spelled out so that widening
-	// it has to be deliberate.
+
 	if !strings.Contains(policy, "img-src 'self' data: blob:;") {
 		t.Errorf("img-src does not read exactly 'self' data: blob:; policy = %q", policy)
 	}
@@ -1035,17 +775,6 @@ func TestWebStaticHandlerUnderSendsAPolicyNoRemoteImageCanCross(t *testing.T) {
 	}
 }
 
-// The half of the policy that can break the product rather than protect it.
-//
-// Clean mode injects its two flags as INLINE scripts, so a bare `script-src
-// 'self'` would block them and 02:PORT-003's disclosure would silently stop
-// reaching a signed-out visitor — the exact failure the placeholder mechanism
-// exists to prevent, reintroduced by the fix for a different problem.
-//
-// The hashes are recomputed here from the bytes actually served, not from the
-// constants, because that is what a browser does: it hashes what is between
-// the tags in the document it received and looks for that value in the
-// policy. A change to either side alone fails here.
 func TestWebStaticHandlerUnderHashesEveryScriptItInjected(t *testing.T) {
 	const page = "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head><body></body></html>"
 	inline := regexp.MustCompile(`(?s)<script>(.*?)</script>`)
@@ -1078,14 +807,11 @@ func TestWebStaticHandlerUnderHashesEveryScriptItInjected(t *testing.T) {
 					t.Errorf("the policy would block the injected script %q (no %s in %q)", m[1], want, policy)
 				}
 			}
-			// 'unsafe-inline' would make every assertion above pass for the
-			// wrong reason, and would also hand the same permission to any
-			// script that arrives later by another route.
+
 			if strings.Contains(policy, "unsafe-inline") || strings.Contains(policy, "unsafe-eval") {
 				t.Errorf("the policy waves inline script through instead of naming it; policy = %q", policy)
 			}
-			// A build that did not inject the sign-in flag must not name it
-			// either: the policy is a description of this document.
+
 			sum := sha256.Sum256([]byte(devLoginFlagJS))
 			named := strings.Contains(policy, base64.StdEncoding.EncodeToString(sum[:]))
 			if named != tc.devLogin {
@@ -1095,10 +821,6 @@ func TestWebStaticHandlerUnderHashesEveryScriptItInjected(t *testing.T) {
 	}
 }
 
-// Two processes serve this SPA — this one (clean mode, 02:PORT-005) and the
-// nginx image in front of every other deployment — and a policy written twice
-// is a policy that will be updated once. There is no shared file the two can
-// read, so the drift is caught here instead.
 func TestNginxServesTheSamePolicyAsCleanMode(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -1126,28 +848,16 @@ func TestNginxServesTheSamePolicyAsCleanMode(t *testing.T) {
 			t.Errorf("nginx.conf is missing %q; its policy line is %s", directive, strings.TrimSpace(line))
 		}
 	}
-	// nginx serves the built index.html, which carries no inline script — the
-	// placeholder is still an HTML comment there. So this path needs no hash,
-	// and must not carry an escape hatch instead.
+
 	if !strings.Contains(line, "script-src 'self'") || strings.Contains(line, "unsafe-inline") {
 		t.Errorf("nginx.conf's script-src is not a plain 'self'; its policy line is %s", strings.TrimSpace(line))
 	}
-	// `always` or the header is dropped on exactly the responses that matter
-	// least to get right and most to notice: 4xx and 5xx.
+
 	if !strings.Contains(line, "always") {
 		t.Errorf("nginx.conf's policy is not marked `always`, so error responses go out without it: %s", strings.TrimSpace(line))
 	}
 }
 
-// The buffering setting in front of the one streaming route (ADR-069 / 05
-// R-71), which is the kind of thing nothing else would ever catch.
-//
-// nginx buffers a proxied response by default. With buffering on, the SSE
-// endpoint still works, still returns 200, still delivers every event — all at
-// once, when the stream ends. Nothing errors. The page simply feels exactly as
-// slow as the polling it was built to replace, and the only symptom is a
-// number nobody is watching. That is why this assertion exists here rather
-// than in a runbook.
 func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -1159,8 +869,6 @@ func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
 		t.Fatalf("read nginx.conf: %v", err)
 	}
 
-	// The location block for the stream, from its opening line to the next
-	// closing brace at that indentation.
 	conf := string(raw)
 	at := strings.Index(conf, "location ~ ^/creation-sessions/")
 	if at < 0 {
@@ -1174,8 +882,7 @@ func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
 
 	for _, want := range []string{
 		"proxy_buffering off",
-		// Without it nginx talks HTTP/1.0 upstream and closes per response,
-		// which is a different way to lose the stream.
+
 		"proxy_http_version 1.1",
 		"proxy_pass",
 	} {
@@ -1183,8 +890,7 @@ func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
 			t.Errorf("the stream location is missing %q:\n%s", want, block)
 		}
 	}
-	// A read timeout shorter than two keep-alives would drop a session that is
-	// merely thinking. The handler sends one every 20s.
+
 	if !strings.Contains(block, "proxy_read_timeout") {
 		t.Errorf("the stream location sets no proxy_read_timeout, so nginx's 60s default cuts a quiet stream:\n%s", block)
 	}

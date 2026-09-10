@@ -6,10 +6,6 @@ import (
 	"time"
 )
 
-// Pointed at the tree. RED while the two sides spell the budget differently —
-// the Go markers say `LLM_TIMEOUT_SECONDS`, apps/llm says
-// `evaluate.LLM_TIMEOUT_SECONDS`, and two Python modules define that constant,
-// so the qualified name is the correct one and the Go side is the half to fix.
 func TestTheRealTimeoutBudgetsPair(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -20,8 +16,6 @@ func TestTheRealTimeoutBudgetsPair(t *testing.T) {
 	}
 }
 
-// A check that found no markers at all would report success. The tree carries
-// them, so their absence is a broken scan.
 func TestTheTimeoutMarkerScanStillFindsMarkers(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -67,8 +61,7 @@ func TestTimeoutBudgetRefusesTheThreeWaysThePairFails(t *testing.T) {
 	for _, tc := range []struct {
 		name, goBody, pyBody, want string
 	}{{
-		// Exactly at the ceiling: Go and the gateway race, and the loser is the
-		// user (Go records a timeout for a call that succeeded and was billed).
+
 		name:   "Go equals Python, which is not a margin",
 		goBody: "package improvement\n\nconst judgeTimeout = 120 * time.Second // budget-over: B\n",
 		pyBody: "# budget-ceiling: B\nT = 120.0\n",
@@ -94,8 +87,6 @@ func TestTimeoutBudgetRefusesTheThreeWaysThePairFails(t *testing.T) {
 	}
 }
 
-// A marker with no partner is the failure this pairing exists for: it looks
-// exactly like one that is doing its job.
 func TestTimeoutBudgetRefusesAOneSidedMarker(t *testing.T) {
 	t.Parallel()
 	t.Run("Go alone", func(t *testing.T) {
@@ -130,8 +121,6 @@ func TestTimeoutBudgetRefusesAOneSidedMarker(t *testing.T) {
 	})
 }
 
-// A marker on a line with no readable duration must be loud, not skipped —
-// silently dropping a pair is how a one-sided marker becomes invisible.
 func TestTimeoutBudgetRefusesAMarkerWithNoNumberNearIt(t *testing.T) {
 	t.Parallel()
 	root := writeBudgetFixture(t,
@@ -143,8 +132,6 @@ func TestTimeoutBudgetRefusesAMarkerWithNoNumberNearIt(t *testing.T) {
 	}
 }
 
-// Both value parsers, including the shapes that must be refused rather than
-// guessed at.
 func TestTimeoutValueParsers(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -155,7 +142,7 @@ func TestTimeoutValueParsers(t *testing.T) {
 		{"\tjudgeTimeout = 135 * time.Second // budget-over: B", 135 * time.Second, true},
 		{"\tgrantFetchTimeout = 2 * time.Minute", 2 * time.Minute, true},
 		{"\tt = 500 * time.Millisecond", 500 * time.Millisecond, true},
-		// A duration built at runtime is not a constant this check can compare.
+
 		{"\tt = time.Duration(envInt(\"X\", 30)) * time.Second", 0, false},
 		{"\tt = someOther(30)", 0, false},
 	} {

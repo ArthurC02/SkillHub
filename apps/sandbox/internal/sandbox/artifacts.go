@@ -1,22 +1,5 @@
 package sandbox
 
-// SBX-008 / ADR-004 collectArtifacts: what the workload wrote, and where it went.
-//
-// The driver hands over one tar stream and never opens it. This file opens it,
-// because the size ceilings of PDM-005 5.2 are the platform's to enforce and a
-// workload cannot be asked to enforce a limit against itself: a run that writes
-// a 4 GB file must be cut here, not trusted to have not written it.
-//
-// One archive, one object key. Pre-signing is per-object and the platform cannot
-// know the file names before the workload produces them, so a single write grant
-// can only authorize a single key (see grantsFor). The manifest is what names the
-// individual files; their bytes are inside the archive at the grant's key.
-//
-// ponytail: one archive per attempt rather than one object per file. Reading a
-// single artifact means fetching the archive. The upgrade path is a pre-signed
-// POST policy scoped to a key prefix, which would let this upload each file to
-// its own key - worth doing when the UI offers per-file download (PACK-001).
-
 import (
 	"archive/tar"
 	"bytes"
@@ -34,34 +17,13 @@ import (
 )
 
 const (
-	// uploadTimeout bounds one artifact upload. A stuck upload must not hold the
-	// attempt open past its wall clock.
 	uploadTimeout = 2 * time.Minute
-	// artifactCollectTimeout bounds the whole read-filter-upload pass.
+
 	artifactCollectTimeout = 5 * time.Minute
-	// artifactMaxEntries bounds how many files one manifest can name. The byte
-	// ceilings do not bound this at all - an empty file costs no bytes and still
-	// costs a manifest entry, so a workload that touches 40k empty files makes a
-	// RunResult the platform cannot read back (its provider response is cut at
-	// 4 MiB) and loses its own run. 1000 entries is ~160 KB of manifest JSON,
-	// two orders of magnitude inside that cap, and more files than a test run of
-	// one skill has any reason to produce; the run's own bytes are still bounded
-	// by ArtifactTotalBytes.
+
 	artifactMaxEntries = 1000
 )
 
-// collect runs the collection handshake for one sandbox and reports whether it
-// is finished with it.
-//
-// It is driven from the trace collector's tick because that is the only loop
-// that runs while the workload is still alive, and being alive is the whole
-// requirement: /out is a tmpfs and its contents are gone the moment the
-// workload's process exits. When the workload says it has finished, this drains
-// the last of the trace, collects the artifacts, and releases it.
-//
-// A workload that never says so - a crash, a kill, the wall clock - is never
-// released and never waited for: this returns false, the loop keeps ticking, and
-// Wait ends it. What was already drained is what survives.
 func (m *Manager) collect(parent context.Context, id, traceURL string) bool {
 	ctx, cancel := context.WithTimeout(parent, artifactCollectTimeout)
 	defer cancel()
@@ -74,23 +36,18 @@ func (m *Manager) collect(parent context.Context, id, traceURL string) bool {
 	e := m.runs[id]
 	m.mu.Unlock()
 	if e == nil {
-		return true // destroyed under us
+		return true
 	}
 
 	artifacts, truncated := m.collectArtifacts(ctx, id, e)
 	m.mu.Lock()
-	// A later retry can fail after an earlier pass already uploaded and recorded
-	// a valid archive (for example, ReleaseWorkload failed). Do not turn that
-	// durable success into an empty manifest merely because the second read was
-	// transiently unavailable.
+
 	if len(artifacts) > 0 || len(e.artifacts) == 0 {
 		e.artifacts = artifacts
 	}
 	e.artifactsTruncated = e.artifactsTruncated || truncated
 	m.mu.Unlock()
 
-	// The last drain happens after the artifacts, so an artifact failure is in
-	// the trace before the workload is let go.
 	if !m.flushTrace(ctx, id, traceURL) {
 		return false
 	}
@@ -102,17 +59,9 @@ func (m *Manager) collect(parent context.Context, id, traceURL string) bool {
 	return true
 }
 
-// collectArtifacts reads the workload's output out of the sandbox, enforces the
-// per-run ceilings, uploads what survives and returns the manifest.
-//
-// Failure to collect is not failure of the run. The workload's own outcome is
-// already decided by the time this runs, and losing the output of a run that
-// otherwise succeeded is a smaller lie than reporting the run as failed - so the
-// error is logged and the manifest comes back empty (ADR-004 keeps the run
-// outcome and its side outcomes apart).
 func (m *Manager) collectArtifacts(ctx context.Context, id string, e *entry) ([]Artifact, bool) {
 	if e.artifactGrant == nil || e.artifactGrant.URL == "" {
-		return nil, false // no write grant: nothing was authorized, so nothing is collected
+		return nil, false
 	}
 	raw, err := m.drv.ReadArtifacts(ctx, id)
 	if err != nil {
@@ -132,7 +81,7 @@ func (m *Manager) collectArtifacts(ctx context.Context, id string, e *entry) ([]
 		return nil, truncated
 	}
 	if err := upload(ctx, e.artifactGrant.URL, archive); err != nil {
-		// The grant is the authorization and never reaches a log (iron rule 11).
+
 		m.log.Error("artifact upload failed", "provider_run_id", id,
 			"object_key", e.artifactGrant.ObjectKey, "err", err)
 		return nil, truncated
@@ -141,18 +90,6 @@ func (m *Manager) collectArtifacts(ctx context.Context, id string, e *entry) ([]
 	return manifest, truncated
 }
 
-// filterArchive turns the raw tar into a manifest plus the archive that is
-// actually uploaded. Regular files only, each within the per-file ceiling, and
-// the whole set within the per-run one; a file that breaks either is dropped
-// from both, because an entry in the manifest whose bytes were not uploaded
-// would be a manifest that lies.
-//
-// The count of entries is bounded as well as their bytes: the manifest is a
-// JSON document the platform has to read back, and it is the one dimension a
-// workload can inflate for free.
-//
-// `truncated` marks a run whose output was cut, so the UI never presents a
-// partial collection as complete.
 func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, bool, error) {
 	perFile := limits.ArtifactFileBytes
 	if perFile <= 0 {
@@ -177,16 +114,15 @@ func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, bool,
 			break
 		}
 		if err != nil {
-			// A truncated stream still carries whole entries before the cut. Keep
-			// them and mark the collection as truncated rather than losing the lot.
+
 			dropped = true
 			break
 		}
 		if header.Typeflag != tar.TypeReg {
-			continue // directories, links and devices carry no artifact bytes
+			continue
 		}
 		if len(manifest) >= artifactMaxEntries {
-			// Everything after this is dropped, and `truncated` is what says so.
+
 			dropped = true
 			break
 		}
@@ -202,11 +138,10 @@ func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, bool,
 		}
 		if header.Size > perFile || used+header.Size > total {
 			dropped = true
-			// Skip the body without buffering it: the reader advances on Next().
+
 			continue
 		}
-		// A rejected file must not reserve the portable name and hide a later,
-		// valid file that differs only by case.
+
 		seen[key] = struct{}{}
 		body, err := io.ReadAll(io.LimitReader(reader, header.Size))
 		if err != nil {
@@ -241,9 +176,9 @@ func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, bool,
 	return manifest, out.Bytes(), dropped, nil
 }
 
-// artifactName reduces a tar entry to a name that cannot address anything
-// outside the collection. The archive is untrusted output, so `../` and absolute
-// paths are refused rather than cleaned into some other file's name.
+// artifactName rejects any name that would traverse outside the collection,
+// contain control characters, or collide with a Windows-reserved device name
+// (con, prn, aux, nul, com1-9, lpt1-9) once case and trailing dots are folded.
 func artifactName(raw string) string {
 	name := strings.TrimPrefix(strings.ReplaceAll(raw, "\\", "/"), "artifacts/")
 	name = strings.TrimPrefix(name, "./")
@@ -271,8 +206,6 @@ func artifactName(raw string) string {
 	return name
 }
 
-// upload writes the archive to the object the write grant names. PUT is what a
-// pre-signed upload URL authorizes: one object, one direction, until it expires.
 func upload(ctx context.Context, url string, body []byte) error {
 	ctx, cancel := context.WithTimeout(ctx, uploadTimeout)
 	defer cancel()
@@ -296,23 +229,8 @@ func upload(ctx context.Context, url string, body []byte) error {
 
 func successfulUploadStatus(code int) bool { return code >= 200 && code < 300 }
 
-// GrantHTTPClient is the one client every object-storage call on a node goes
-// through: the two drivers' grant downloads and the artifact upload below.
-//
-// It refuses redirects. Grant URLs are pre-signed by the control plane and name
-// exactly one object, so a 3xx from the storage endpoint is never something to
-// follow — and Go's default client follows up to ten of them. sandboxd runs on
-// the node with the node's own network reach (ADR-022 §127 puts the node layer
-// outside the sandbox's N-01..N-07 rules), so a compromised or misconfigured
-// storage endpoint answering `302 http://169.254.169.254/...` would be asking
-// this process to fetch that on its behalf. Narrow, but the cost of closing it
-// is one field.
-//
-// http.ErrUseLastResponse rather than an error: the redirect response comes
-// back as-is, so the caller's own status check reports "object storage answered
-// 302" instead of a transport error that says nothing about what happened.
-// Having its own client also keeps this connection pool separate from whatever
-// else in the process uses http.DefaultClient.
+// GrantHTTPClient reports a redirect response as-is instead of following it,
+// since a pre-signed grant URL names exactly one object.
 var GrantHTTPClient = &http.Client{
 	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 }

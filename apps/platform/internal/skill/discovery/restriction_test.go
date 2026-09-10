@@ -9,7 +9,7 @@ import (
 )
 
 func TestRestrictionServiceRejectsInvalidInputBeforeDatabase(t *testing.T) {
-	svc := &Service{} // nil Pool proves validation happens before database access.
+	svc := &Service{}
 	zeroUUID := pgtype.UUID{}
 	tests := []struct {
 		name string

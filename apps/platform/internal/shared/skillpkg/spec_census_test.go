@@ -10,24 +10,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-// The measurement ADR-044 decision 4 made the unlock condition for escalating
-// frontmatter-unknown-field from warning to error.
-//
-// The decision was taken without it: escalating retroactively blocks catalogue
-// content, and how much content was not knowable offline. This counts it — how
-// many of the 45 pinned-commit seed packages carry a field outside the six the
-// specification defines, and which fields.
-//
-// Env-gated like the QA-002 corpus, and for the same reason: the packages come
-// from pinned repo archives that have to be downloaded.
-//
-//	python tools/content/import_seed.py --pack-only <dir>
-//	SEED_CORPUS=<dir> go test ./internal/shared/skillpkg -run Census -v
-//
-// It asserts nothing about the distribution. A census that failed the build
-// when the number moved would be a policy, and the policy is ADR-044's to make.
-// The one thing it does assert is that every package parsed: a census over a
-// corpus that silently failed to load is a zero that means nothing.
 func TestSpecFrontmatterCensus(t *testing.T) {
 	dir := os.Getenv("SEED_CORPUS")
 	if dir == "" {
@@ -54,9 +36,7 @@ func TestSpecFrontmatterCensus(t *testing.T) {
 		if report.Manifest == nil {
 			t.Fatalf("%s: no frontmatter parsed; this package cannot be counted", name)
 		}
-		// Extra is not the same set as "unknown": metadata is a specification
-		// field with no typed home, so it is parked there too. The six are what
-		// escalation would keep accepting, so the six come out.
+
 		unknown := false
 		for k := range report.Manifest.Extra {
 			if slices.Contains(skillpkg.SpecFields, k) {

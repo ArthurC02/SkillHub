@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// writeDocScope lays out one live document plus the code files the scan reads
-// declarations out of.
 func writeDocScope(t *testing.T, doc string, code map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -49,35 +47,31 @@ func TestDocIdentifierRejectsAClaimWearingADeletedName(t *testing.T) {
 		code map[string]string
 		want string
 	}{{
-		// The drift adversarial review kept finding by hand: the document still
-		// argues from a function that was deleted.
+
 		name: "a function the document names is gone",
 		doc:  "配額由 `GenerateQuotaFor` 決定。\n",
 		code: map[string]string{"apps/platform/internal/policy/quota.go": "package policy\n"},
 		want: "GenerateQuotaFor is named in AGENTS.md but declared in no file",
 	}, {
-		// A test cited after it was merged away.
+
 		name: "a test the document cites is gone",
 		doc:  "`TestPackageDownloadHashes` 證明雙雜湊。\n",
 		code: map[string]string{"apps/platform/internal/packaging/pack.go": "package packaging\n"},
 		want: "TestPackageDownloadHashes is named in AGENTS.md",
 	}, {
-		// A type name that never existed in any file, argued from as if it did.
+
 		name: "a type nobody ever declared",
 		doc:  "搜尋回傳 `PublicSearchHit`。\n",
 		code: map[string]string{"apps/platform/internal/catalog/search.go": "package catalog\n\ntype SearchHit struct{}\n"},
 		want: "PublicSearchHit is named in AGENTS.md",
 	}, {
-		// Prose in backticks is not an identifier, and treating it as one is how
-		// this becomes a check nobody believes: lower-case words are out, and the
-		// ADR status vocabulary is on the named ledger.
+
 		name: "prose and ledgered words are not identifiers",
 		doc:  "ADR 標 `Superseded` 後不再引用；`run` 與 `eval` 是 context 名。\n",
 		code: map[string]string{"apps/platform/internal/run/run.go": "package run\n"},
 		want: "",
 	}, {
-		// The scan reads declarations from code files only. A name that lives
-		// only in another document is not declared.
+
 		name: "a name that exists only in prose elsewhere",
 		doc:  "見 `ApplyPreview` 的行為。\n",
 		code: map[string]string{"docs/plans/03-work-items.md": "`ApplyPreview` 的行為如下。\n"},
@@ -102,9 +96,6 @@ func TestDocIdentifierRejectsAClaimWearingADeletedName(t *testing.T) {
 	}
 }
 
-// This file's own rationale comment names the identifiers it exists to catch, so
-// a scan that counted any word in any code file would permanently whitelist its
-// own examples. The exclusion is load-bearing and nothing else asserted it.
 func TestDocIdentifierDoesNotDeclareItsOwnExamples(t *testing.T) {
 	t.Parallel()
 	root := writeDocScope(t, "見 `GenerateQuotaFor`。\n", nil)
@@ -127,9 +118,6 @@ func TestDocIdentifierDoesNotDeclareItsOwnExamples(t *testing.T) {
 	}
 }
 
-// The allowedDocWords ledger is a drift list, not an extension point: every
-// entry carries the reason it is prose. An empty reason is an entry nobody has
-// to justify, which is how a ledger turns into a place to make failures go away.
 func TestAllowedDocWordsEachCarryAReason(t *testing.T) {
 	t.Parallel()
 	for word, reason := range allowedDocWords {

@@ -1,28 +1,8 @@
 #!/usr/bin/env python3
-"""CONTENT-005 automated review of the plain-language summaries (45 seed skills).
+"""Automated review of the plain-language summaries against fixed KPIs,
+judged by a model that is not the one that wrote the text.
 
-Verification tool, not production code. It replaces the manual review pass that
-`02` section 4.7 CONTENT-005 originally called for, under the owner's decision of
-2026-08-16: a scripted review against fixed KPIs, judged by a model that is not
-the one that wrote the text.
-
-What it audits: **the online catalogue**, not `summaries.json`. `02` CONTENT-005
-non-determinism ceiling says a review verdict only binds the text actually in the
-index, so every KPI reads `GET /api/skills/{id}` on the running stack. The
-`summaries.json` row is used for one thing only - KPI 6, which measures how far
-the online text drifted from the reviewed record.
-
-Reviewer independence (`02`: the reviewer must not be the producer):
-  * generation: `gpt-5.6-sol` via apps/llm `POST /v1/enrich-skill`
-  * this review: `gpt-5.6-terra` (PDM-003 judge tier), prompts written here and
-    deliberately NOT imported from `apps/llm` - nothing in this file reads
-    `enrich.py`, so a bug in the generation prompt cannot excuse itself.
-
-Key handling: `OPENAI_API_KEY` is read from the repo-root `.env` into this
-process's environment only. No key is written to disk and none appears in the
-output. Like the other offline content tools this calls the provider directly
-rather than through the LiteLLM gateway (see `content-summaries.md` section 2.3);
-that exception is for offline tooling, product code must not copy it.
+Audits the online catalogue (`GET /api/skills/{id}`), not `summaries.json`.
 
 Usage
   python review_summaries.py                     # full 45-row review
@@ -55,56 +35,23 @@ SUMMARIES = HERE / "summaries.json"
 OUT = HERE / "review-results.json"
 DEFAULT_API = os.environ.get("SKILLHUB_API", "http://localhost:8080")
 
-JUDGE_MODEL = "gpt-5.6-terra"  # PDM-003 judge tier; separate from gpt-5.6-sol
-EMBED_MODEL = "text-embedding-3-small"  # ADR-013 / PDM-003 embedding model
+JUDGE_MODEL = "gpt-5.6-terra"
+EMBED_MODEL = "text-embedding-3-small"
 PROVIDER_URL = "https://api.openai.com/v1"
 REVIEWER_ID = "automated-review v1"
-# Public list price per 1M tokens, 2026-08 (pdm-proposals.md section 9 model table).
 PRICE = {"in": 2.00, "out": 12.00, "embed": 0.02}
 
-# --- thresholds (a priori, fixed before the run; rationale is the point) ------
-#
-# KPI 1 faithfulness: >=1 unsupported claim vetoes. Not a ratio: `02` veto (a) is
-# "claims a capability the package does not document", and one hallucinated
-# capability is enough to mislead a reader. No tolerance band to tune.
 FAITHFULNESS_MAX_UNSUPPORTED = 0
-# KPI 2 comprehensibility: all three reader questions must be answerable from the
-# summary text alone. `02` names one primary criterion ("what can it do for me,
-# what do I give it"); the third question (what do I need to prepare) is that
-# criterion's second half made checkable, so partial credit would not satisfy it.
 COMPREHENSION_REQUIRED = 3
-# KPI 2b term density: recorded, never scored. There is no defensible a priori
-# cutoff for "too many technical nouns" - a pandas skill legitimately says pandas.
-# It is here so a later reviewer can correlate it with question failures.
-# KPI 6 online drift: cosine below this is flagged for inspection. Derived, not
-# guessed - see `_derive_drift_threshold`: same-skill v2 reruns are paraphrases of
-# one another (section 2.5 measured 8/8 semantically identical with wording drift)
-# and sit near 1.0, while the nearest *different* skill in this corpus (the
-# excel-* family, deliberately near-synonymous) is the confusability floor. 0.90
-# sits above that floor with margin; the run reports the measured separation so
-# the number can be re-derived rather than trusted.
 DRIFT_MIN_COSINE = 0.90
 
-# --- mechanical scanners -----------------------------------------------------
-#
-# ponytail: character-set scan, not a full OpenCC round-trip. Simplified-only
-# characters, so a hit is proof and a miss is not proof of absence. Ambiguous
-# characters valid in both scripts (里 面 干 后 台 只 云 制 系 余 内 斗 種 范 涂
-# 筑 谷 郁 灾 强 户 携 概 勝) are excluded on purpose: a false positive here costs
-# a needless regeneration round, a false negative is caught by the judge reading
-# the same text.
+# Simplified-only characters: a hit is proof, a miss is not proof of absence.
+# Characters valid in both scripts are excluded on purpose to avoid false positives.
 SIMPLIFIED_ONLY = (
     "们为这说时对来过发现长问门电车东马鸟龙书学实应关处务动员图场论语谁请讲认识让议试记设计该详谈调课读谢变边达运还进远连迟适选递邮银错钟钱铁链锁键镜闭间闻阅队阶际陆陈险随隐难顶项顺须预领颜题风飞饭饮馆驱驶验单双义习乡买卖乱争亚产亲仅从仓优传伤价众体侠债倾偿储儿党军农冲决况冻净减凤凭击划刘则刚创别剧劝办势勋医华协卫厂厅历压厌县参号吗吨听启呜响哑唤喷团园围圆圣坏块坚坛坝垒垫垦壮声壳备复够头夹夺奋奖妆娱婴孙宁宝宠审宪层属岁岗峡崭巅币帅师帐帘带帮广庆废库庙庐开异弃张弹归当录彻怀态怜总恋恳恶悬惊惧惨惯愤愿战戏扑执扩扫扬扰抚抛护报担拟拢择挂挚挡挤挥捞损换据掷摄摆摊敌数斋斩断无旧显晓暂术机杀杂权条杨极构枢枪枫柜标栈栋树样桥档桨梦检楼榄槛欢欧歼残殇殓殡毕毙气汉汇汤沟沤沥沦沧沪泞泪泼泽洁洒浅浆浇浊测济浏浑浓涛涝涟涣涨渊渐渔渗湾湿溃溅灭灯灵炉点烁烂烦烧烫热焕营爱爷牵牺犊状独狭狮狱猎猪献玛环现珑琼电画畅疗疟痉痒疮皱盏监盘卢眦睁瞒矫矶矾码砖砚硕确碍礼祸祷离积称秽稳穷窃窍窜窝窥竖竞笋笔笼筛筹签简箩篮类粪紧红纪纤约级纯纲纳纵纷纸纹线练组细织终绍经结绕绘给络绝统继绩绪续维绰绳绿缆缓编缘缠缩缴罗罚罢翘联聪肃肠肤肿胀胁胶脏脑脸腊腻舰舱艰艺节芜苍苏苹茎荐荡药莱莲获萝萤萧萨蒋蓝蔷藓虏虑虾蚀蚁蛮蜡蝇衅补衬袄装见观规觅视觉誉贞负贡财责贤败货质贩贪贫购贮贯贱贴贵贷贸费贺赁赂资赋赌赎赏赐赔赖赛赞赠赢赵赶趋跃践踌踪躏轧轨轩转轮软轰轻较辄辅辆辈辉辐辑辞辩迁违迹逊逻遗遥邓邹郑酝酱释钉针钓钞钢钥钦钩钮钱钳钻铃铅铜铝铡铭铸铺销锄锅锋锐锚锡锣锤锯镀镇镶闪闯闲闷闹阀阁阐阴阵阳陇陕陨雏雾韦韩顷顽顾顿颁颂颇颈颊颐频颓颖颗额颠飘饥饰饱饲饶饼馅驰驳驴驻驼骂骄骆骇骑骗骤鲁鲜鲨鲸鳄鸡鸣鸦鸭鸽鹅鹏鹤鹰麦齐齿龄龟"
 )
 
-# Simplified-locale proper nouns and CN-only jargon, written as they appear after
-# the model has converted the surrounding text to Traditional characters - which
-# is exactly why the character scan above cannot catch them. Hitting one is a
-# `02` veto (b) "not localised to the document language convention".
 LOCALE_TERMS = {
-    # Typeface names. A font name is a fact about what the package writes into the
-    # file, so the remedy is the v3 gloss - annotate, never substitute: swapping
-    # 微软雅黑 for 微軟正黑體 would name a different font than the Skill applies.
     "微軟雅黑": "以「原文（繁中：對應）」加註，不可替換（微軟正黑體是另一套字型）",
     "微软雅黑": "以「原文（繁中：對應）」加註，不可替換",
     "新宋體": "以「原文（繁中：對應）」加註，不可替換",
@@ -113,11 +60,8 @@ LOCALE_TERMS = {
     "幼圓": "以「原文（繁中：對應）」加註，不可替換",
     "華文黑體": "以「原文（繁中：對應）」加註，不可替換",
     "方正黑體": "以「原文（繁中：對應）」加註，不可替換",
-    # CN-locale software / service names used generically
     "釘釘": "Teams 類的企業通訊軟體",
     "企業微信": "企業通訊軟體",
-    # CN-only IT jargon (terms also idiomatic in zh-Hant are deliberately absent:
-    # 保存、程序、質量、數據、用戶 all have legitimate Traditional readings)
     "軟件": "軟體",
     "硬件": "硬體",
     "網絡": "網路",
@@ -138,22 +82,14 @@ LOCALE_TERMS = {
     "回車": "Enter 鍵",
 }
 
-# Platform vocabulary that AGENTS.md keeps in English. Hard-translating it is an
-# inconsistency, not a veto - recorded so a human can see the house style drift.
 RESERVED_TERM_TRANSLATIONS = {"工作區": "Workspace", "沙盒": "Sandbox", "沙箱": "Sandbox"}
 
-# Trust / risk / safety / quality vocabulary. ADR-013 keeps all four out of model
-# output. A hit is not automatically a violation: the source document may say it
-# about its own data (`pii-flag` restating "high-risk categories"), so the judge
-# decides restatement vs judgement and only judgement vetoes (`02` veto (c)).
 EVALUATIVE_WORDS = [
     "安全", "不安全", "風險", "高風險", "低風險", "可信", "可信度", "信任", "值得信賴",
     "品質", "高品質", "優質", "可靠", "不可靠", "推薦", "官方推薦", "最佳", "優秀",
     "保證", "無風險", "權威",
 ]
 
-# Technical vocabulary for the density indicator. Latin-script tokens plus the
-# handful of Chinese terms a non-technical reader would not know.
 TECH_TOKENS = re.compile(
     r"\b(openpyxl|pandas|numpy|regex|json|csv|tsv|jsonl|xlsx|parquet|api|utf-?8|"
     r"unicode|iso ?3166|markdown|frontmatter|yaml|cli|llm|sql|dataframe|schema|"
@@ -163,11 +99,8 @@ TECH_TOKENS = re.compile(
 TECH_CJK = ["正規表達式", "雜湊", "序列化", "編碼", "欄位型別", "轉義", "位元組"]
 
 
-# The `enrich-skill/v3` locale gloss: the source's own proper noun, kept as the
-# fact, followed by its Traditional reading. Both halves are supposed to be there
-# - the original may legitimately be in Simplified characters and the gloss may
-# legitimately repeat a Simplified-locale font name - so the span is exempt from
-# the two language scans and reported separately instead.
+# Matches a source term followed by its own "（繁中：...）" gloss, so a glossed
+# span is exempt from the language scans instead of being flagged as a miss.
 ANNOTATION = re.compile(r"[^\s（(，。、]{1,24}（繁中：[^）]{1,40}）")
 
 
@@ -176,12 +109,11 @@ def strip_annotations(text: str) -> tuple[str, list[str]]:
     return ANNOTATION.sub(" ", text), found
 
 
-# A task example is stored as a flat list alternating zh_hant and en. Split by
-# script mix, not by "contains CJK": the v3/v4 gloss can put a Chinese proper noun
-# inside the English sentence too.
 CJK = re.compile(r"[一-鿿]")
 
 
+# Classified by script mix, not "contains CJK": a Chinese proper noun can sit
+# inside an otherwise-English sentence.
 def _is_zh(s: str) -> bool:
     return len(CJK.findall(s)) > sum(1 for c in s if c.isascii() and c.isalpha())
 
@@ -232,8 +164,6 @@ def term_density(summary: str) -> float:
     hits += sum(summary.count(t) for t in TECH_CJK)
     return round(hits * 100 / max(len(summary), 1), 2)
 
-
-# --- provider calls ----------------------------------------------------------
 
 
 def load_key() -> str:
@@ -306,8 +236,6 @@ def cosine(a: list[float], b: list[float]) -> float:
     nb = math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
 
-
-# --- judge prompts (written here, never imported from apps/llm) ----------
 
 DATA_TAG = "untrusted_skill_document"
 
@@ -428,7 +356,7 @@ READER_SCHEMA = {
     },
 }
 
-SKILL_MD_LIMIT = 40_000  # judge context guard; longest seed SKILL.md is well under
+SKILL_MD_LIMIT = 40_000
 
 
 def _wrap(label: str, text: str) -> str:
@@ -455,8 +383,6 @@ def reader_user_message(enr: dict) -> str:
     return _wrap("catalogue text", body)
 
 
-# --- online catalogue --------------------------------------------------------
-
 
 def fetch_online(api: str) -> dict[str, dict]:
     """name -> {skill_id, enrichment, limitations, skill_md} straight from the API."""
@@ -475,19 +401,12 @@ def fetch_online(api: str) -> dict[str, dict]:
         out[row["name"]] = {
             "skill_id": sid,
             "enrichment": detail.get("enrichment") or {},
-            # Only model-authored limitations are under review. The detail page
-            # also carries scan-derived ones (`source: "scan"`, e.g. "the package
-            # contains external links"); those are platform facts written by Go,
-            # not model output, so ADR-013's whitelist does not govern them and
-            # auditing them would fail the catalogue for the platform's own text.
             "limitations": [x["text"] for x in lims if x.get("source") == "model"],
             "scan_limitations": [x["text"] for x in lims if x.get("source") != "model"],
             "skill_md": json.loads(f).get("skill_md", ""),
         }
     return out
 
-
-# --- per-skill review --------------------------------------------------------
 
 
 def review_one(row: dict, online: dict, key: str, mechanical_only: bool) -> dict:
@@ -503,12 +422,6 @@ def review_one(row: dict, online: dict, key: str, mechanical_only: bool) -> dict
     text = "\n".join([enr["summary"], *enr["task_examples"], *online["limitations"]])
     tag_text = " ".join(v for vals in enr["tags"].values() for v in vals)
 
-    # KPI3 asks whether the zh-Hant presentation layer follows zh-Hant convention,
-    # so it scans the zh-Hant fields: summary, the zh_hant half of each task
-    # example, and limitations. The `en` halves exist for cross-lingual retrieval
-    # and their language convention is English - a Simplified proper noun quoted
-    # inside an English sentence is a transliteration choice, not a failure to
-    # localise Traditional Chinese. Those are recorded below, never scored.
     zh_text = "\n".join([enr["summary"], *_zh(enr["task_examples"]), *online["limitations"]])
     scanned, glossed = strip_annotations(zh_text + tag_text)
     en_cjk, _ = strip_annotations("\n".join(_en(enr["task_examples"])))
@@ -516,7 +429,7 @@ def review_one(row: dict, online: dict, key: str, mechanical_only: bool) -> dict
         "simplified_chars": scan_simplified(scanned),
         "locale_hits": scan_locale(scanned),
         "reserved_translated": scan_reserved(text),
-        "locale_glosses": glossed,  # v3/v4 annotations, recorded not scored
+        "locale_glosses": glossed,
         "cjk_in_en_examples": sorted(
             {t["term"] for t in scan_locale(en_cjk)} | set(scan_simplified(en_cjk))
         ),
@@ -575,8 +488,6 @@ def review_one(row: dict, online: dict, key: str, mechanical_only: bool) -> dict
             for a in reader["answers"]
             if not a["answerable"]
         ]
-    # 02 CONTENT-005 / DISC-003: the displayed limitations block must carry a
-    # value; a row with nothing there cannot be passed.
     if not (online["limitations"] or online.get("scan_limitations")):
         reasons.append("DISC-003：一般模式「限制」欄位無值")
     if kpi3["simplified_chars"]:
@@ -628,10 +539,6 @@ def run(args) -> int:
 
     results = []
     if args.kpi6_only:
-        # Judgements already exist; only the drift measurement is refreshed. Rows
-        # re-reviewed one at a time cannot compute the cross-skill confusability
-        # floor - it needs the whole corpus - so this pass restores it and puts
-        # every row's cosine on the same, current online text. No judge calls.
         results = json.loads(OUT.read_text(encoding="utf-8"))["results"]
         rows = data["summaries"]
     else:
@@ -644,7 +551,7 @@ def run(args) -> int:
                 r = futs[fut]
                 try:
                     res = fut.result()
-                except Exception as e:  # a failed review is a result, not a crash
+                except Exception as e:
                     res = {
                         "id": r["id"],
                         "skill": r["skill"],
@@ -686,7 +593,6 @@ def run(args) -> int:
         prev = {r["id"]: r for r in prior["results"]}
         prev.update({r["id"]: r for r in results})
         results = sorted(prev.values(), key=lambda r: order.get(r["id"], 999))
-        # Cost accrues across the remediation rounds; the file reports the total.
         for k, v in prior.get("usage", {}).items():
             if k in USAGE:
                 USAGE[k] += v
@@ -725,24 +631,19 @@ def run(args) -> int:
     return 0
 
 
-# --- checks ------------------------------------------------------------------
-
 
 def selftest() -> int:
     assert scan_simplified("這是繁體") == []
     assert set(scan_simplified("这是简体")) == {"这", "简", "体"}
     assert set(scan_simplified("请设计")) == {"请", "设", "计"}
-    # exclusions must not fire on legitimate Traditional text
     assert scan_simplified("裡面干淨的台灣只有云端") == []
 
     assert [h["term"] for h in scan_locale("字型改成微軟雅黑 12 號")] == ["微軟雅黑"]
-    # the en half of an example stays English even when it quotes a CJK proper noun
     ex = [
         "請將整張工作表改成 微软雅黑（繁中：微軟雅黑）11pt。",
         "Change the entire worksheet to 微软雅黑 11 pt.",
     ]
     assert _zh(ex) == [ex[0]] and _en(ex) == [ex[1]]
-    # the v3 gloss is the sanctioned form, so neither scan may fire inside it
     glossed, found = strip_annotations("整張工作表改成 微软雅黑（繁中：微軟雅黑）11pt")
     assert found == ["微软雅黑（繁中：微軟雅黑）"], found
     assert scan_simplified(glossed) == [] and scan_locale(glossed) == []
@@ -765,7 +666,6 @@ def selftest() -> int:
 
     rows = json.loads(SUMMARIES.read_text(encoding="utf-8"))["summaries"]
     assert len(rows) == 45, len(rows)
-    # the judge must not be the generator (02: reviewer != producer)
     assert JUDGE_MODEL != rows[0]["model"], "judge model must differ from the generating model"
     print("selftest ok")
     return 0

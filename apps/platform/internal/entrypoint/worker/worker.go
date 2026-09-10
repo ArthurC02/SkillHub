@@ -1,12 +1,3 @@
-// Package worker is cmd/worker's composition root (ADR-032 §5 實作註記):
-// BuildWorkers wires the process's object graph — run.Service, eval.Service and
-// the rest of the River worker set — not apiserver.NewApp, which wires the
-// API's graph instead; the two deployment units share no object. BuildWorkers
-// does no I/O, which is what lets worker_test.go check the wiring without a
-// database — the check that was missing when this file forgot to set
-// run.Service.Queue and every run finished un-cleaned. cmd/worker's main()
-// keeps what is genuinely the process: reading the environment, starting the
-// queue client and shutting it down.
 package worker
 
 import (
@@ -37,34 +28,20 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
-// Deps is everything the environment supplies to this process's wiring.
-// Deployment inputs only, in the same spirit as apiserver.Config: reading them is
-// main's job, and building a domain Service out of them is BuildWorkers'.
 type Deps struct {
 	CreationLimits creation.Limits
 	Providers      *run.Registry
 	Store          *objstore.Client
 	Gateway        *run.Gateway
-	// TraceSigner and TraceIngestBaseURL are one setting in two halves: either
-	// both are configured or no trace is collected.
+
 	TraceSigner        *trace.Signer
 	TraceIngestBaseURL string
-	// LLM is the internal Python service. Nil is a working deployment with no
-	// judge and no suggester.
+
 	LLM *llmclient.Client
-	// PollOnly starts the River client without issuing LISTEN, so it never asks
-	// the pool for a second connection just to notify. The zero value (false)
-	// is cmd/worker's own behaviour and must stay that way — cmd/worker never
-	// sets this field, so its LISTEN-based low-latency dispatch is unchanged.
-	// The one caller that sets it true is cmd/api's clean test mode, where a
-	// single pool_max_conns=1 connection is all there is and a second LISTEN
-	// connection is not available to ask for (ADR-060 決策 6).
+
 	PollOnly bool
 }
 
-// Set is the wired graph this process runs. Exposed field by field rather
-// than returned as a started client, because "which dependency reached which
-// service" is exactly what the wiring test has to be able to look at.
 type Set struct {
 	Creation    *creation.Service
 	Runs        *run.Service
@@ -74,13 +51,7 @@ type Set struct {
 	Events      *outbox.Dispatcher
 	Objects     *objreconcile.Service
 	Queue       *river.Client[pgx.Tx]
-	// WorkerKinds is every job kind that has a worker registered, and Scheduled
-	// maps every kind this process enqueues on a timer to its RunOnStart — the
-	// value, not merely the presence, because RunOnStart is the whole difference
-	// between recovering at a restart and recovering an interval later.
-	// Recorded while wiring because River's registry cannot be read back: a
-	// periodic job whose worker was dropped fails only when the insert is
-	// attempted, one interval into a deployment, and only in the log.
+
 	WorkerKinds map[string]bool
 	Scheduled   map[string]bool
 }
@@ -113,10 +84,6 @@ func datasetCandidates(list func(context.Context, int32) ([]testlab.ReconcileCan
 	}
 }
 
-// BuildWorkers wires this process's object graph: no environment reads, no
-// database round trips, no goroutines. Everything here is a struct literal, a
-// registration or a back-assignment, so the failure it exists to prevent — a
-// dependency nobody noticed was never set — is reachable from a test.
 func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	set := &Set{WorkerKinds: map[string]bool{}, Scheduled: map[string]bool{}}
 	downloads := &packaging.Service{Pool: pool}
@@ -141,18 +108,12 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 				PackageObjectKey: version.PackageObjectKey,
 			}, found, err
 		},
-		// 02:PORT-010's content gate (04 丙-85). This root is the one that
-		// matters: dispatch happens here, not in the API. Without it the gate
-		// reads nil and clean mode refuses every dispatch — fail-closed, but
-		// unusable.
+
 		ReadContentSource: readContentSource(registrySvc),
 	}
 	traceSvc := newTraceService(pool, deps.TraceSigner, set.Runs)
 	set.Runs.Trace = traceSvc
 
-	// The Trace context, injected rather than built inside eval's own methods
-	// (ADR-032 §5). Same signer as the dispatcher above, so the process has one
-	// Trace configuration and not two.
 	set.Evaluations = &eval.Service{
 		Pool: pool, Store: deps.Store,
 		Trace: traceSvc, TestLab: testlabSvc,
@@ -161,24 +122,12 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	wireEvaluationRegistryReaders(set.Evaluations, registrySvc)
 	if deps.LLM != nil {
 		set.Evaluations.Judge = deps.LLM
-		// EVAL-002's proposal leg, same service and same gateway. Without it a run
-		// still gets a verdict; it simply gets no advice, which is a complete
-		// evaluation and not a failed one.
+
 		set.Evaluations.Suggester = deps.LLM
 	}
 
-	// DDD-005: the only trigger for an evaluation. A terminal run transition
-	// announces `run.succeeded` / `run.failed` in its own transaction and the
-	// outbox hands that event to this consumer, so internal/run does not have to
-	// know evaluation exists. Insert is filled in below, once the client the whole
-	// worker set is registered with exists.
 	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
 
-	// Who listens to what, as data rather than as one callback (DDD review P2).
-	// Every event type in the catalogue is either claimed by a consumer here or
-	// declared uninteresting to this process with a reason, and Validate refuses
-	// the wiring if one is neither — a dropped consumer stops the process at boot
-	// instead of turning into a week of runs that were published to nobody.
 	set.Events = outbox.NewDispatcher().
 		On("evaluation", set.RunEvents.Deliver, outbox.RunSucceeded, outbox.RunFailed).
 		Ignore("progress announcements: a run that is still moving is read from its own row by the UI, and no worker-side reaction is owed",
@@ -199,10 +148,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	wireCreationReads(set.Creation, creationVersions, creationSearch)
 	wireCreationGateway(set.Creation, deps.Gateway)
 	wireCreationFetch(set.Creation)
-	// ADR-068's spending half. Every paid model call happens in this process,
-	// so gate ② and the settlement after it are reached only through here — an
-	// unwired hook is nil, and a nil gate is indistinguishable from one that
-	// allowed.
+
 	creditSvc, err := newCreditService(pool)
 	if err != nil {
 		return nil, fmt.Errorf("credit wiring: %w", err)
@@ -215,9 +161,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	workers := river.NewWorkers()
 	addWorker(set, workers, &creation.Worker{Svc: set.Creation})
 	addWorker(set, workers, &creation.ExpiryWorker{Svc: set.Creation})
-	// Every job kind the platform knows about is registered here. A kind with no
-	// worker is not a silent no-op — River fails the job — which is the behaviour
-	// we want if a deploy ever drops one.
+
 	addWorker(set, workers, &run.Worker{Svc: set.Runs})
 	addWorker(set, workers, &run.CleanupWorker{Svc: set.Runs})
 	addWorker(set, workers, &run.OrphanScanWorker{Svc: set.Runs})
@@ -225,15 +169,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	addWorker(set, workers, &eval.Worker{Svc: set.Evaluations})
 	addWorker(set, workers, &eval.RecoveryWorker{Svc: set.Evaluations})
 	addWorker(set, workers, outboxWorker)
-	// SEC-006 retention and 04 丙-9's object-existence check, one sweep: expired
-	// download packages lose their bytes, and rows whose object has gone missing
-	// stop claiming it is there.
-	//
-	// The sweep finds the discrepancies; the two row corrections are the owners'
-	// own writes and are injected here (ADR-033 clearance path 4). objreconcile is
-	// a generic scanner and must not import packaging or testlab, so this
-	// composition root is the only place the three meet. Sweep fails closed if
-	// either is left unset — see worker_test.go.
+
 	set.Objects = &objreconcile.Service{
 		Pool: pool, Store: deps.Store,
 		ListExpiredArtifacts:       packagingCandidates(downloads.ExpiredReconcileCandidates),
@@ -246,19 +182,12 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		GuardArtifactRemoval:       downloads.GuardArtifactRemoval,
 	}
 	addWorker(set, workers, &objreconcile.Worker{Svc: set.Objects})
-	// The two platform-maintenance jobs (periodic.go): making next month’s
-	// partitions, and catching up the enrichment an import left pending. Neither
-	// deletes anything, which is what lets their schedule live in code at all.
+
 	addWorker(set, workers, &PartitionCreateWorker{Pool: pool})
 	addWorker(set, workers, &EnrichmentBackfillWorker{Svc: backfillSvc})
-	// ADR-068 decision 9's fixed-time trigger. The thresholds gate ① blocks on
-	// are derived from these windows, so a kind whose statistics stop being
-	// recomputed does not fail — it quietly keeps using an old p95.
+
 	addWorker(set, workers, &credit.RecomputeWorker{Svc: creditSvc})
 
-	// Periodic jobs run on the elected leader only, so several worker processes
-	// do not each sweep. RunOnStart is what makes the supervisor the restart
-	// recovery path (RUN-008) and not merely a watchdog.
 	var periodic []*river.PeriodicJob
 	schedule := func(args river.JobArgs, every time.Duration, runOnStart bool) {
 		set.Scheduled[args.Kind()] = runOnStart
@@ -275,30 +204,17 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		schedule(creation.ExpiryArgs{}, time.Minute, true)
 	}
 	schedule(run.OrphanScanArgs{}, run.OrphanScanInterval, true)
-	// RunOnStart because an evaluation now waits on this drain: a restart that
-	// left events in the backlog should not cost the user a full interval before
-	// their finished run gets a verdict.
+
 	schedule(outbox.PublishArgs{}, outboxWorker.Interval(), true)
-	// No RunOnStart, unlike the four above: this one is not recovering from a
-	// restart, and a deploy loop would otherwise re-probe every stored object on
-	// every rollout. An hour late is on time here.
+
 	schedule(objreconcile.Args{}, objreconcile.Interval, false)
-	// One daily recompute per cost-event kind (decision 9). They share a job
-	// kind and differ by args, so `schedule` records one entry in Scheduled and
-	// appends six periodic jobs — the list they come from is creditStatKinds,
-	// which is where a new kind has to be added or it is never recomputed.
-	// No RunOnStart: a redeploy loop should not re-aggregate six windows every
-	// rollout, and a day-old p95 is what the previous day's job already left.
+
 	for _, kind := range creditStatKinds {
 		schedule(credit.RecomputeArgs{StatKind: kind, WindowSeconds: int64(creditStatWindow / time.Second)}, 24*time.Hour, false)
 	}
-	// RunOnStart, and that is the point rather than a nicety: a deployment brought
-	// up in the last days of a month must have next month’s partitions before the
-	// month turns, not one interval later. Idempotent, and one catalog query when
-	// there is nothing to do, so a deploy loop costs nothing.
+
 	schedule(PartitionCreateArgs{}, PartitionCreateInterval, true)
-	// No RunOnStart: the backlog is not caused by the restart and each document
-	// costs a model call, so a rollout must not turn into a burst of them.
+
 	schedule(EnrichmentBackfillArgs{}, EnrichmentBackfillInterval, false)
 
 	client, err := queue.New(pool, riverConfig(workers, periodic, deps.PollOnly))
@@ -311,11 +227,6 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		return err
 	}
 
-	// The worker enqueues jobs as well as working them: a terminal transition owes
-	// a cleanup, and the supervisor's backlog sweep re-enqueues the ones that were
-	// missed (RUN-007). Both are guarded by `s.Queue != nil`, so leaving this unset
-	// meant every run finished un-cleaned — its sandbox and its Virtual Key
-	// surviving the run — with nothing in the log to say so.
 	set.Runs.Queue = client
 	set.RunEvents.Insert = client.Insert
 	return set, nil
@@ -372,16 +283,6 @@ func wireEvaluationRunReaders(service *eval.Service, runs *run.Service) {
 	}
 }
 
-// readContentSource is the twin of apiserver's function of the same name, and
-// the two must stay identical. Duplicated rather than shared because both are
-// composition roots and neither may import the other (ADR-032 §5) — the same
-// reason ReadSkill, ReadVersion and wireEvaluationRegistryReaders each exist
-// twice. The API's copy answers the pre-run summary; this one gates dispatch.
-//
-// Three reads and not one query: `curation_tier` and `is_catalog` sit in two
-// tables owned by two contexts, and a composition root may not JOIN past either
-// owner (ADR-033). CatalogSkill is Registry's existing catalogue-scoped read;
-// `found` there is exactly `workspaces.is_catalog`.
 func readContentSource(registryService *registry.Service) func(context.Context, pgtype.UUID, pgtype.UUID) (run.ContentSource, bool, error) {
 	return func(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.ContentSource, bool, error) {
 		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
@@ -436,17 +337,11 @@ func evalRunFacts(facts run.EvaluationRun) eval.RunFacts {
 	}
 }
 
-// riverConfig is queue.New's argument, split out from BuildWorkers so the
-// PollOnly wiring is something a test can read back (river.Client keeps no
-// exported accessor for the *river.Config it was built with, so this is the
-// only point after which the value stops being observable).
 func riverConfig(workers *river.Workers, periodic []*river.PeriodicJob, pollOnly bool) *river.Config {
 	return &river.Config{
 		Workers: workers,
 		Queues: map[string]river.QueueConfig{
-			// One queue until there is a measured reason for more. Concurrency is
-			// bounded well below the per-workspace limit of 2 concurrent runs
-			// (PDM-005 §5.2); real capacity planning lands with the first load test.
+
 			river.QueueDefault: {MaxWorkers: min(runtime.NumCPU(), 4)},
 		},
 		PeriodicJobs: periodic,
@@ -454,8 +349,6 @@ func riverConfig(workers *river.Workers, periodic []*river.PeriodicJob, pollOnly
 	}
 }
 
-// addWorker registers one worker and remembers the kind it claims, which is the
-// only way to get that list back out: River's registry is unexported.
 func addWorker[T river.JobArgs](set *Set, workers *river.Workers, worker river.Worker[T]) {
 	var args T
 	set.WorkerKinds[args.Kind()] = true

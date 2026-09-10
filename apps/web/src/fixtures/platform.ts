@@ -1,34 +1,3 @@
-/**
- * The platform's answers, as one set of fixtures for both test tiers.
- *
- * These lived inside `a11y.test.tsx` and were reachable only by vitest, so the
- * browser tier (ADR-036) could render 2 of the 17 routes the jsdom tier already
- * covered — and the 15 it could not reach were the 15 nobody had ever looked at.
- * Hand-writing a second set was tried and abandoned twice: `SkillDetail` alone
- * has forty-odd fields, and the copy rots faster than the assertions it holds up.
- *
- * So the data is here and the transport is not. vitest stubs `fetch`, Playwright
- * uses `page.route`, and both ask `platformResponse` the same question.
- */
-
-/**
- * `satisfies`, not `:`.
- *
- * This file had no type annotation of any kind (`grep -n "satisfies\|import
- * type"` was empty) and had already fallen two required fields behind the
- * contract: `SEARCH` had no `total` — the field 設計 §4.3 spent a whole
- * paragraph adding so a truncated list could say 「共 N 筆」 instead of a lower
- * bound — and `/me` had no `deletion_scope`, the sentence 資訊架構 records as
- * having to survive a reload. Both drifts were invisible: every assertion that
- * reads them reads `container.textContent`.
- *
- * `satisfies` rather than `const X: T = …` so the literal keeps its narrow type
- * — the tests index into these objects and a widened `string` would take the
- * exactness with it. Applied to the five whose shape `api/types.ts` names; the
- * rest answer endpoints whose types live in `api/packaging.ts`,
- * `api/evaluation.ts` and `api/lab.ts`, and pulling those in here is a separate
- * pass. `contract.test.ts` is what keeps `api/types.ts` itself honest.
- */
 import type {
   Me,
   PublicSearchResponse,
@@ -40,7 +9,6 @@ import type {
 
 export const SKILL = "11111111-1111-1111-1111-111111111111";
 export const SKILL_B = "aaaaaaaa-2222-2222-2222-222222222222";
-/** The catalogue's third row — the one that is neither 文件 nor 已索引. */
 export const SKILL_C = "bbbbbbbb-3333-3333-3333-333333333333";
 export const VERSION = "22222222-2222-2222-2222-222222222222";
 export const TEST_CASE = "33333333-3333-3333-3333-333333333333";
@@ -48,19 +16,6 @@ export const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
 export const OTHER_RUN = "5c2e8a10-4b6d-4c31-9f77-2ab3d4e5f608";
 export const ARTIFACT = "44444444-4444-4444-4444-444444444444";
 
-// --- fixtures ---------------------------------------------------------------
-//
-// Deliberately the busy states rather than the empty ones: an empty page has no
-// badges, no disclosures, no tables and no form controls, so scanning it would
-// prove nothing about the markup a real reader meets.
-
-/**
- * The three PDM-001 shelves, as the server sends them (`Labelled`), plus the
- * typed absence a user-imported skill carries. Named so the rows below can pick
- * one each: a fixture where every row sat on the same shelf would let a
- * category filter, a chip count and a badge all be wrong together and still
- * agree with each other.
- */
 export const CATEGORIES = {
   documents: {
     value: "documents",
@@ -100,34 +55,11 @@ export const HIT_FACETS = {
     note: "尚未試跑。",
   },
   verified_at: "2026-08-01T10:00:00Z",
-  // The facets every hit carries, checked against the one row type — and the
-  // reason `scan_status`/`level` stay narrow rather than widening to `string`:
-  // `satisfies` types the literals contextually, which `const X: T =` and a
-  // bare object literal both fail to do here.
 } satisfies Pick<
   PublicSearchResult,
   "tier" | "category" | "risk" | "dependencies" | "compatibility" | "verified_at"
 >;
 
-/**
- * 02:DISC-006 —— 目錄的一頁，也就是首頁在還沒有人搜尋時渲染的東西。
- *
- * The first two rows are the search fixture's, and that is the point rather
- * than laziness: one card renders both states of that screen, so a fixture that
- * gave the catalogue its own rows would let the two drift in a suite whose whole
- * job is to notice drift. What differs is what the contract says differs —
- * `rank` is null on every row and `rank_note` says why, there is no
- * `match_reason` because nothing was matched, and the envelope carries the four
- * fields a browse has instead of search's ten.
- *
- * **A third row, and only here.** The catalogue is the only state that groups:
- * curated first (the `ORDER BY` in `BrowseCatalogSkills`, rendered as the 精選
- * shelf) and one shelf per PDM-001 category. A fixture whose rows all carried
- * one tier and one category would let a shelf, a chip count and a badge be
- * wrong together and still agree with each other. So the three rows span both
- * tiers and all three categories, in the order the server sends them — curated
- * first.
- */
 export const CATALOG = {
   results: [
     {
@@ -201,11 +133,6 @@ export const SEARCH = {
   partial_index: true,
   limit: 20,
   truncated: false,
-  // Required by the contract since 設計 §4.3's 「共 N 筆」 landed, and absent
-  // here until `satisfies` was put on this object. `truncated: false`, so it
-  // must equal `results.length` — that equality is the assertion pinning the
-  // field against drift, and this fixture was silently violating it by having
-  // no field at all.
   total: 2,
   no_results: false,
   filtered_out: false,
@@ -363,15 +290,6 @@ export const PREVIEW = {
   excluded_test_cases: [
     { test_case_id: "tc-2", name: "我上傳的資料", reason: "user-uploaded dataset" },
   ],
-  /**
-   * Contract-required, and this fixture did not have it — which is why the
-   * whole 打包器拿掉的檔案 block had zero renders and zero tests until the day
-   * the page started drawing it. Non-empty on purpose: 「almost every package」
-   * is empty (`api/packaging.ts`), and a fixture that only ever renders the
-   * empty branch is how the row that matters stays unseen. This is the case
-   * that matters — a Skill that vendored its dependencies, whose author hands
-   * the zip to a colleague who cannot install it.
-   */
   excluded_files: [
     {
       path: "node_modules/",
@@ -411,8 +329,6 @@ export const DOWNLOADS = {
     {
       ...ARTIFACT_ROW,
       artifact_id: "expired-1",
-      // The server decides this now, not the row's date (04 丙-29 ⑤) — so an
-      // expired fixture has to say so, exactly as the API would.
       servable: false,
       serve_state: {
         value: "expired",
@@ -439,8 +355,6 @@ export const RUNS = {
         label: "清理失敗",
         note: "沙箱沒有被成功拆除,平台會重試。這不代表這次 Run 失敗。",
       },
-      // 04 丙-32: the second axis. Required and never null — 未評估 is a value, not an
-      // omission, because an empty verdict beside 「執行完成」 reads as a pass.
       evaluation: {
         value: "met",
         label: "符合",
@@ -449,8 +363,6 @@ export const RUNS = {
       created_at: "2026-08-17T00:00:00Z",
       finished_at: "2026-08-17T00:04:00Z",
     },
-    // 同一個 Test Case 的第二次 Run。存在的理由是比較頁的候選清單:只有一列時,
-    // 「候選裡沒有自己」與「候選清單根本沒渲染」看起來一模一樣。
     {
       run_id: OTHER_RUN,
       status: "failed",
@@ -511,8 +423,6 @@ export const TEST_CASE_DRAFT = {
 export const PREFLIGHT = {
   summary_hash: "hash-one",
   estimated_cost: {
-    // $0.01 / $0.06 / $0.30 converted at the shipped rate (ADR-068: 1.3x
-    // markup, US$0.001 per credit, rounding up).
     low_credits: 13,
     typical_credits: 78,
     high_credits: 390,
@@ -547,14 +457,8 @@ export const PREFLIGHT = {
     provider: { name: "self-hosted", isolation_level: "gvisor", rootless: true },
     resource_limits: {
       vcpu: 2,
-      // NOT `4 << 30` / `8 << 30`. Those were transcribed from
-      // DefaultResourceLimits() in Go, where an untyped constant is
-      // arbitrary-precision; JS `<<` is 32-bit, so both evaluate to 0 and the
-      // pre-run screen asked the user to confirm 記憶體 0 B、磁碟 0 B — a
-      // ceiling that passed every rule in the design system and was still
-      // wrong (設計 §2.2).
-      memory_bytes: 4 * 1024 ** 3, // 4 GiB
-      disk_bytes: 8 * 1024 ** 3, // 8 GiB
+      memory_bytes: 4 * 1024 ** 3,
+      disk_bytes: 8 * 1024 ** 3,
       max_pids: 256,
       max_open_files: 1024,
       wall_clock_soft_seconds: 600,
@@ -571,7 +475,6 @@ export const LIMITS = {
   max_test_case_bytes: 100 << 20,
   max_files_per_test_case: 20,
   retention_days: 90,
-  // 04 丙-143 的規矩：fixture 抄 Go 真的回的句子（trial/design/http.go Limits）。
   allowed_kinds: [
     "文字檔（.txt .md .csv .tsv .json .jsonl .xml .yaml .yml）",
     "文件（.pdf .docx .xlsx .pptx）",
@@ -579,13 +482,9 @@ export const LIMITS = {
   note: "檔案類型看內容判斷，不看副檔名；上傳的檔案只有這個 Test Case 的 Run 讀得到，到保存期限或你刪除時就會刪掉。",
 };
 
-// Collecting, so the policy page renders the table rather than the 不收集 note;
-// the other branch is covered in policy.test.tsx.
 export const RETENTION_POLICY = {
   collecting: true,
   retention_days: 180,
-  // 04 丙-154 ②: the server's own sentences (product/learning/policy.go), not a
-  // paraphrase — a fixture that says what we wish it said hides drift (丙-143).
   feedback: {
     what: "由已登入的參與者在 POST /feedback 送出的回報（BETA-003/004/005）",
     collected: ["kind", "message", "page_path", "run_id", "build_id", "workspace_id", "user_id"],
@@ -633,9 +532,6 @@ export const TRACE_GENERAL = {
   final_output: "Removed 17 duplicate rows.",
   usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_credits: null },
   steps: [
-    // One of each kind the field carries, which is what the server now
-    // produces: the platform's own sentence, in the interface language, and
-    // one relayed verbatim from the provider, which nothing translates.
     { status: "queued", reason: "已收到這次 Run 的請求" },
     { status: "failed", reason: "the provider could not carry the attempt" },
   ],
@@ -727,7 +623,6 @@ export const EVALUATION = {
   superseded_at: null,
 };
 
-// Two revisions, which is what puts the 評估版本 <select> on screen.
 export const REVISIONS = {
   revisions: [
     {
@@ -804,15 +699,6 @@ export const COMPARISON = {
   version_diff_url: `/skills/${SKILL}/versions/diff?from=v1&to=v2`,
 };
 
-/**
- * WS-001: the version history `SkillDetail` renders, newest first.
- *
- * Two entries and not one, deliberately — the busy state again: one row can
- * compare with the one below it and one cannot, so the fixture covers both the
- * 「與上一版比較」 control and the 「這是最早的版本」 sentence that replaces it.
- * The newer id is `VERSION`, which is the version every other fixture here
- * names.
- */
 export const SKILL_VERSIONS = {
   versions: [
     {
@@ -841,27 +727,11 @@ function ok(body: unknown, status = 200) {
   return { body, status };
 }
 
-/**
- * One URL in, one response out. Takes the whole URL rather than the path
- * because the trace read distinguishes its two modes by query string.
- *
- * Moved here verbatim from the `vi.stubGlobal("fetch", …)` it used to live in;
- * only the helper's name changed, so the routing table below is the same one
- * the accessibility suite has been asserting against all along.
- */
 export function platformResponse(input: string): { body: unknown; status: number } {
   const url = String(input).replace(/^https?:\/\/[^/]+/, "");
   const path = url.split("?")[0];
 
   if (path.startsWith("/api/skills/search")) return ok(SEARCH);
-  // 02:DISC-006. Matched before the `/api/skills/` prefix below, which would
-  // otherwise read 「catalog」 as a skill id and answer with a detail body.
-  //
-  // `category` is the one filter this stub actually applies, because the home
-  // page reads a **number** back out of it: each category chip asks for
-  // `?category=…&limit=1` and prints the `total`. A stub that answered the
-  // whole catalogue to every one of those would let all four chips show the
-  // same count and a broken filter would still look right.
   if (path.startsWith("/api/skills/catalog")) {
     const category = new URLSearchParams(url.split("?")[1] ?? "").get("category");
     if (!category) return ok(CATALOG);
@@ -872,8 +742,6 @@ export function platformResponse(input: string): { body: unknown; status: number
   if (path.startsWith("/api/skills/"))
     return ok(skillDetail(path.slice("/api/skills/".length), "PDF Summariser"));
 
-  // The busy state here too: an account with a deletion already pending is the
-  // one that renders the badge, the date and the way out of it.
   if (path === "/me")
     return ok({
       user_id: "u-1",
@@ -882,11 +750,6 @@ export function platformResponse(input: string): { body: unknown; status: number
       workspace_id: "ws-1",
       deletion_requested_at: "2026-08-17T00:00:00Z",
       purge_after: "2026-09-16T00:00:00Z",
-      // Required by the contract and missing here until this file was typed.
-      // It is the sentence 資訊架構 §5 records as having to survive a reload —
-      // 「刪除範圍句現在活得過一次重新整理」 — and this shared platform was
-      // answering `/me` without it, which is the one shape the account screen
-      // cannot render.
       deletion_scope:
         "purging the account destroys its skills, versions, runs, traces, evaluations and packaged downloads; audit records of the deletion itself are retained",
     } satisfies Me);
@@ -914,8 +777,6 @@ export function platformResponse(input: string): { body: unknown; status: number
       ],
       total_bytes: 1024,
     });
-  // The list row carries the aggregates the list renders; the detail read
-  // does not, which is why they are added here rather than to the fixture.
   if (path === "/test-cases")
     return ok({
       test_cases: [
@@ -936,13 +797,8 @@ export function platformResponse(input: string): { body: unknown; status: number
           skill_id: SKILL,
           name: "PDF Summariser",
           summary: "摘要",
-          // `unknown` is what a user's own import carries by default (0027), so
-          // this is the common case for a workspace list rather than an edge.
           redistribution: "unknown",
           access_restriction: null,
-          // 04 丙-31: the two facets that make this list decidable rather than
-          // merely enumerable. An import, so both are present — the fork case,
-          // where neither is, has its own test in workspace.test.tsx.
           risk: {
             scan_status: "scanned",
             level: "disclosed",
@@ -968,10 +824,6 @@ export function platformResponse(input: string): { body: unknown; status: number
       truncated: false,
     });
   if (path.includes("/versions/diff")) return ok(VERSION_DIFF);
-  // WS-001 第 4 條's own endpoint, `GET /skills/{id}/diff?from=&to=`, as
-  // distinct from the `version_diff_url` the run comparison hands over above.
-  // Same response shape (`files[]` of FileDiff), which is why one component
-  // renders both.
   if (path.endsWith("/diff")) return ok(VERSION_DIFF);
   if (path.endsWith("/versions")) return ok(SKILL_VERSIONS);
   if (path.endsWith("/runs/preflight")) return ok(PREFLIGHT);

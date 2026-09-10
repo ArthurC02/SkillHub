@@ -23,11 +23,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
-// GEN-003. Every case here guards something that fails without a symptom: a
-// package that validates but says the wrong thing about its licence, a retry
-// that quietly re-runs a prompt it must not, a hash that changes for the same
-// answer.
-
 func goodGeneratedSkill() llmclient.GeneratedSkill {
 	return llmclient.GeneratedSkill{
 		Name:          "scanned-invoice-table",
@@ -51,8 +46,6 @@ func validateGenerated(t *testing.T, g llmclient.GeneratedSkill) skillpkg.Report
 	return skillpkg.Validate(fsys)
 }
 
-// The packaged answer has to survive the same validator an upload does — that
-// reuse is the whole reason generation lives in this package.
 func TestAGeneratedAnswerPassesTheImportValidator(t *testing.T) {
 	r := validateGenerated(t, goodGeneratedSkill())
 	if r.Blocked {
@@ -66,10 +59,6 @@ func TestAGeneratedAnswerPassesTheImportValidator(t *testing.T) {
 	}
 }
 
-// ADR-046 決策 5. The endpoint's schema has no licence property, so this is the
-// second half of the same rule: even if one arrived by some other route, the
-// frontmatter Go writes has nowhere to put it. A generated package whose licence
-// read "MIT" would occupy the 已宣告 state, which means a person said so.
 func TestGeneratedFrontmatterHasNoLicence(t *testing.T) {
 	data, err := buildGeneratedPackage(goodGeneratedSkill())
 	if err != nil {
@@ -84,14 +73,6 @@ func TestGeneratedFrontmatterHasNoLicence(t *testing.T) {
 	}
 }
 
-// content_hash is what INGEST-005 dedupes on, so the same answer has to produce
-// the same archive every time.
-//
-// It used to guard a sort: the frontmatter carried a `metadata` map, Go map
-// order is randomised, and without sorting the keys this passed about one run in
-// two with nothing ever reporting why. The map is gone (a strict `json_schema`
-// cannot express an open-ended one, and no prompt ever asked the model to fill
-// it), so what is left to protect is the zip: entry order and headers.
 func TestTheSameAnswerAlwaysProducesTheSameBytes(t *testing.T) {
 	first, err := buildGeneratedPackage(goodGeneratedSkill())
 	if err != nil {
@@ -108,10 +89,6 @@ func TestTheSameAnswerAlwaysProducesTheSameBytes(t *testing.T) {
 	}
 }
 
-// 02:GEN-003: no warning removed and no risk downgraded because the platform
-// wrote it. buildGeneratedPackage deliberately does not filter the path — it
-// writes the entry and lets the archive-level check report it, which is the same
-// treatment an uploaded package gets.
 func TestAnEscapingFilePathIsBlockedNotFiltered(t *testing.T) {
 	g := goodGeneratedSkill()
 	g.Files = []llmclient.GeneratedFile{{Path: "../../evil.sh", Content: "echo hi\n"}}
@@ -124,8 +101,6 @@ func TestAnEscapingFilePathIsBlockedNotFiltered(t *testing.T) {
 	}
 }
 
-// Two entries claiming one name, and which one a reader resolves to is not this
-// package's decision to make silently.
 func TestASecondSkillMDIsRefused(t *testing.T) {
 	g := goodGeneratedSkill()
 	g.Files = []llmclient.GeneratedFile{{Path: "SKILL.md", Content: "---\nname: other\n---\n"}}
@@ -134,9 +109,6 @@ func TestASecondSkillMDIsRefused(t *testing.T) {
 	}
 }
 
-// ADR-048. Delete the exception and this still passes every other test in the
-// file: the only visible effect is a second paid call that reproduces the same
-// credential-shaped line, which nothing anywhere reports.
 func TestPossibleSecretIsNotRetried(t *testing.T) {
 	secret := skillpkg.Report{Findings: []skillpkg.Finding{
 		{Severity: skillpkg.SeverityError, Code: skillpkg.CodePossibleSecret, Path: "setup.sh"},
@@ -160,14 +132,6 @@ func TestPossibleSecretIsNotRetried(t *testing.T) {
 	}
 }
 
-// 02:GEN-001/005: a box that is blank AND carries no diagram must not reach
-// the gateway. The service has no pool here, so anything that got past the
-// check would panic rather than return — which is what makes this a test of
-// the ordering and not only of the message.
-//
-// ErrGenerateNoInput, not ErrGenerateBlank: nothing at all was given, which is
-// a different refusal from "you gave a description, but it is too short" —
-// see TestATooShortOrTooLongDescriptionNeverReachesTheGateway for that one.
 func TestBlankTaskDescriptionNeverReachesTheGateway(t *testing.T) {
 	svc := &Service{LLM: &llmclient.Client{}}
 	for _, in := range []string{"", "   ", "\n\t \n"} {
@@ -177,10 +141,6 @@ func TestBlankTaskDescriptionNeverReachesTheGateway(t *testing.T) {
 	}
 }
 
-// The generated source row must not be able to take self_supplied by looking
-// like an upload — the conflation ADR-047 決策 4 rules against, and one with no
-// symptom: both values release a download, so the only thing that changes is
-// which question a future publishing path stops to ask.
 func TestGeneratedTakesItsOwnRedistributionValue(t *testing.T) {
 	ws := identity.Workspace{}
 	if got := redistributionFor(ws, sourceMeta{Type: sourceGenerated}); got != "generated" {
@@ -203,11 +163,6 @@ func containsCode(r skillpkg.Report, code string) bool {
 	return false
 }
 
-// The zip reader runs path.Clean over entry names, so these three resolve to
-// SKILL.md while looking nothing like it. Missing one does not produce a
-// collision anybody is told about: it produces `skill-md-missing` on a package
-// that visibly contains SKILL.md, and then a second paid attempt at the same
-// thing.
 func TestTheSecondSkillMDIsCaughtUnderItsRealName(t *testing.T) {
 	for _, p := range []string{"SKILL.md/", ".//SKILL.md", "././SKILL.md", "skill.MD", `.\SKILL.md`} {
 		g := goodGeneratedSkill()
@@ -218,12 +173,6 @@ func TestTheSecondSkillMDIsCaughtUnderItsRealName(t *testing.T) {
 	}
 }
 
-// An entry naming the archive root is not an escape, so ArchiveEntryFinding
-// passes it — and then it sits inside content_hash and inside the stored archive
-// while every disclosure surface skips it: scanTree never opens it, so
-// `possible-secret` and the script disclosure never see it, and delivery's
-// exporter neither ships it nor lists it as dropped. Model-authored bytes that
-// no warning covers is what 02:GEN-003 forbids.
 func TestAnEntryThatNamesNoFileIsRefused(t *testing.T) {
 	for _, p := range []string{".", "./", "/", "././"} {
 		g := goodGeneratedSkill()
@@ -234,12 +183,6 @@ func TestAnEntryThatNamesNoFileIsRefused(t *testing.T) {
 	}
 }
 
-// The length rule is a PRODUCT rule and therefore Go's (iron rule 6). It used to
-// live only in apps/llm, so a three-character description travelled to the
-// gateway, came back a Pydantic 422, and reached the user as
-// 502 「generation failed」 — the platform reporting itself broken when the fix
-// was "write a bit more". The service has no pool here, so anything that got
-// past the check would panic rather than return.
 func TestATooShortOrTooLongDescriptionNeverReachesTheGateway(t *testing.T) {
 	svc := &Service{LLM: &llmclient.Client{}}
 	ctx, ws := context.Background(), identity.Workspace{}
@@ -249,8 +192,7 @@ func TestATooShortOrTooLongDescriptionNeverReachesTheGateway(t *testing.T) {
 			t.Errorf("GenerateSkill(%q) err = %v, want ErrGenerateBlank", in, err)
 		}
 	}
-	// Runes, not bytes: 「整理發票單據」 is six characters and eighteen bytes, and
-	// a byte count would have let it through while the floor exists to stop it.
+
 	if _, err := svc.GenerateSkill(ctx, ws, GenerateInput{TaskDescription: "整理發票單據"}); !errors.Is(err, ErrGenerateBlank) {
 		t.Errorf("a six-character description was measured in bytes: %v", err)
 	}
@@ -260,10 +202,6 @@ func TestATooShortOrTooLongDescriptionNeverReachesTheGateway(t *testing.T) {
 	}
 }
 
-// The only brake on how MANY generations one session can start, with the
-// allowance off. Without it a loop of requests holds an unbounded number of paid
-// calls open, all drawing on the shared gateway key — and exhausting that key
-// stops index-time enrichment and every LLM judge with it.
 func TestOneGenerationPerWorkspaceAtATime(t *testing.T) {
 	svc := &Service{LLM: &llmclient.Client{}}
 	ws := identity.Workspace{ID: mustUUIDForTest(t, "11111111-1111-1111-1111-111111111111")}
@@ -275,8 +213,7 @@ func TestOneGenerationPerWorkspaceAtATime(t *testing.T) {
 	if _, err := svc.GenerateSkill(context.Background(), ws, GenerateInput{TaskDescription: "把掃描的單據整理成表格。"}); !errors.Is(err, ErrGenerateInFlight) {
 		t.Fatalf("err = %v, want ErrGenerateInFlight", err)
 	}
-	// Per workspace, not global: one busy workspace must not stop another. This
-	// one gets past the slot and dies at the quota read, which needs a pool.
+
 	if svc.holdGenerateSlot(other.ID) != true {
 		t.Error("a second workspace was blocked by the first workspace's slot")
 	}
@@ -297,10 +234,6 @@ func mustUUIDForTest(t *testing.T, s string) pgtype.UUID {
 	return id
 }
 
-// The upload direction of the name guard, at the HTTP layer. It used to fall
-// into respond()'s generic 500 "import failed" — the user's own naming clash
-// reported as the platform being broken, with no next step. The service-level
-// refusal is covered by the apiserver integration test; this pins the mapping.
 func TestAnUploadCollidingWithAGeneratedSkillIsRefusedNotBroken(t *testing.T) {
 	rec := httptest.NewRecorder()
 	(&Handler{}).respond(rec, Result{}, fmt.Errorf("upload: %w", ErrGeneratedNameCollision))
@@ -313,9 +246,6 @@ func TestAnUploadCollidingWithAGeneratedSkillIsRefusedNotBroken(t *testing.T) {
 	}
 }
 
-// --- what one generation cost (04 丙-53 / 05 R-10) -------------------------------
-
-// gatewayReturning serves one generate-skill response verbatim.
 func gatewayReturning(t *testing.T, body string) *Service {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -326,14 +256,6 @@ func gatewayReturning(t *testing.T, body string) *Service {
 	return &Service{LLM: &llmclient.Client{BaseURL: srv.URL}}
 }
 
-// The cost recorded for a generation is the cost the gateway reported, and an
-// unreported cost stays unreported.
-//
-// 05 R-10 says the estimate GEN-001 owes the user is waiting on a batch of
-// generations that each recorded their own cost — round B kept only an average,
-// and 02:PDM-005 §2.2 forbids printing an average as an estimate. A zero written
-// where the gateway said nothing would be the same defect wearing a number: it
-// would enter the distribution as an observation that a generation was free.
 func TestAGenerationRecordsTheCostTheGatewayReported(t *testing.T) {
 	const skill = `"skill":{"name":"a","description":"b","body":"c"},` +
 		`"model":"m","prompt_version":"v"`
@@ -350,20 +272,15 @@ func TestAGenerationRecordsTheCostTheGatewayReported(t *testing.T) {
 		wantCost:   cents(0.0123),
 		wantPrompt: 1200,
 	}, {
-		// Nothing reported at all. The generation still happened and still cost
-		// something; what the platform knows about it is nothing, and nothing is
-		// what it must record.
+
 		name: "no usage reported",
 	}, {
-		// Tokens but no price: the deployment's gateway does not price calls. The
-		// tokens are still a real observation and are kept.
+
 		name:       "tokens without a price",
 		usage:      `,"usage":{"prompt_tokens":1200,"completion_tokens":800,"cost_usd":null,"cost_source":""}`,
 		wantPrompt: 1200,
 	}, {
-		// A number the gateway did not produce is dropped, the same rule eval's
-		// suggest leg applies before it stores a usage row — otherwise the two
-		// legs' costs mean different things in the same distribution.
+
 		name:       "priced by something other than the gateway",
 		usage:      `,"usage":{"prompt_tokens":1200,"completion_tokens":800,"cost_usd":0.0123,"cost_source":"estimated"}`,
 		wantPrompt: 1200,
@@ -390,9 +307,6 @@ func TestAGenerationRecordsTheCostTheGatewayReported(t *testing.T) {
 				t.Errorf("prompt_tokens = %d, want %d", out.PromptTokens, tc.wantPrompt)
 			}
 
-			// And what reaches the durable row says the same thing. A key that is
-			// absent is the only way an audit reader can tell "free" from
-			// "unknown", so an unpriced call must not leave a cost_usd behind.
 			meta := map[string]any{}
 			usageMeta(meta, out.CostUSD, out.PromptTokens, out.CompletionTokens)
 			got, present := meta["cost_usd"]
@@ -406,9 +320,6 @@ func TestAGenerationRecordsTheCostTheGatewayReported(t *testing.T) {
 	}
 }
 
-// A generation is up to two gateway calls, and what it cost is what both cost.
-// The retry is the difference ADR-047 決策 1 bought at a price, and a total that
-// counted only the last attempt would hide exactly that price.
 func TestARetriedGenerationCostsWhatBothAttemptsCost(t *testing.T) {
 	first := 0.01
 	second := 0.02
@@ -425,9 +336,6 @@ func TestARetriedGenerationCostsWhatBothAttemptsCost(t *testing.T) {
 		t.Errorf("tokens = %d/%d, want 200/100", out.PromptTokens, out.CompletionTokens)
 	}
 
-	// An attempt the gateway priced plus one it did not is still worth what the
-	// priced one cost. Dropping the total because one leg is unknown would throw
-	// away a real observation; adding a zero for it would invent one.
 	out.addUsage(&llmclient.GatewayUsage{PromptTokens: 100, CompletionTokens: 50})
 	if out.CostUSD == nil || *out.CostUSD != first+second {
 		t.Errorf("an unpriced attempt changed the total: %v", out.CostUSD)
@@ -437,11 +345,6 @@ func TestARetriedGenerationCostsWhatBothAttemptsCost(t *testing.T) {
 	}
 }
 
-// --- 02:GEN-005 (diagram) and 02:GEN-006 (reference skills) ------------------
-
-// requestCapturingStub serves one generate-skill response and records the
-// request body it received, so a test can assert on what actually crossed the
-// wire rather than only on the Go-side error.
 func requestCapturingStub(t *testing.T, body string) (*Service, *[]byte) {
 	t.Helper()
 	var captured []byte
@@ -458,9 +361,6 @@ func requestCapturingStub(t *testing.T, body string) (*Service, *[]byte) {
 	return &Service{LLM: &llmclient.Client{BaseURL: srv.URL}}, &captured
 }
 
-// A diagram with no task description still reaches the gateway (02:GEN-005),
-// carrying `task_description` empty (`omitempty` drops it from the wire
-// entirely — a JSON body must not be able to say "described" and "" at once).
 func TestDiagramOnlyReachesTheGatewayWithAnEmptyTaskDescription(t *testing.T) {
 	const skillResp = `{"skill":{"name":"a","description":"b","body":"c"},"model":"m","prompt_version":"v"}`
 	svc, captured := requestCapturingStub(t, skillResp)
@@ -489,9 +389,6 @@ func TestDiagramOnlyReachesTheGatewayWithAnEmptyTaskDescription(t *testing.T) {
 	}
 }
 
-// generation_inputs (0055, ADR-066) records a digest and a size, never the
-// bytes — the exact shape the diagram-only 201 integration test reads back
-// out of the database.
 func TestGenerationInputsRecordsTheDiagramDigestNotTheBytes(t *testing.T) {
 	diagram := &GenerateDiagram{MediaType: "image/webp", Data: []byte("some diagram bytes")}
 	raw, err := marshalGenerationInputs(diagram, nil)
@@ -523,12 +420,6 @@ func TestGenerationInputsRecordsTheDiagramDigestNotTheBytes(t *testing.T) {
 	}
 }
 
-// A caption under the eight-rune floor is not a blank refusal once a diagram
-// is attached (02:GEN-005): the floor exists to stop a bare box, not to force
-// a caption up to eight runes when the diagram carries the task. Exercised at
-// the pure function rather than through GenerateSkill: past this check the
-// service reaches the allowance/audit path, which needs a Pool this file does
-// not have.
 func TestAShortCaptionWithADiagramIsNotBlank(t *testing.T) {
 	if err := classifyTaskDescription("abc", true); err != nil {
 		t.Errorf("classifyTaskDescription(short, withDiagram) = %v, want nil", err)
@@ -541,8 +432,6 @@ func TestAShortCaptionWithADiagramIsNotBlank(t *testing.T) {
 	}
 }
 
-// Neither text nor a diagram: refused before the model is asked, so a box
-// left empty on both sides costs nothing (02:GEN-005).
 func TestNoTextAndNoDiagramNeverReachesTheGateway(t *testing.T) {
 	svc := &Service{LLM: &llmclient.Client{}}
 	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, GenerateInput{}); !errors.Is(err, ErrGenerateNoInput) {
@@ -550,11 +439,8 @@ func TestNoTextAndNoDiagramNeverReachesTheGateway(t *testing.T) {
 	}
 }
 
-// A diagram over generateMaxDiagramBytes once decoded is refused before the
-// gateway is ever asked — the platform does not resize an oversized image, it
-// refuses it (ADR-047 決策 1's "no editing of inputs", one door earlier).
 func TestAnOversizedDiagramIsRefusedBeforeTheGateway(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}} // empty BaseURL: any call would fail loudly and differently
+	svc := &Service{LLM: &llmclient.Client{}}
 	in := GenerateInput{Diagram: &GenerateDiagram{
 		MediaType: "image/png",
 		Data:      make([]byte, generateMaxDiagramBytes+1),
@@ -564,9 +450,6 @@ func TestAnOversizedDiagramIsRefusedBeforeTheGateway(t *testing.T) {
 	}
 }
 
-// More than generateMaxReferences ids is refused before the gateway
-// (02:GEN-006) — the same "refuse before you spend" discipline the task
-// description floor already follows.
 func TestFourReferencesIsRefusedBeforeTheGateway(t *testing.T) {
 	svc := &Service{LLM: &llmclient.Client{}}
 	var ids []pgtype.UUID
@@ -579,12 +462,10 @@ func TestFourReferencesIsRefusedBeforeTheGateway(t *testing.T) {
 	}
 }
 
-// fakeReferenceReader is admission.ReferenceReader without a database: three
-// maps, keyed by the id string, standing in for *registry.Service.
 type fakeReferenceReader struct {
 	workspace map[string]registry.Skill
 	catalog   map[string]registry.Skill
-	versions  map[string]registry.Version // keyed by skill id string
+	versions  map[string]registry.Version
 }
 
 func (f fakeReferenceReader) WorkspaceSkill(_ context.Context, _, skillID pgtype.UUID) (registry.Skill, bool, error) {
@@ -602,7 +483,6 @@ func (f fakeReferenceReader) LatestVersion(_ context.Context, _, skillID pgtype.
 	return v, ok, nil
 }
 
-// fakeObjectStore is admission.ObjectStore without object storage: a map.
 type fakeObjectStore map[string][]byte
 
 func (f fakeObjectStore) Put(_ context.Context, key string, data []byte) error {
@@ -618,10 +498,6 @@ func (f fakeObjectStore) Get(_ context.Context, key string) ([]byte, error) {
 	return data, nil
 }
 
-// A reference id the reader cannot find in either scope — not in the caller's
-// workspace, not in the catalogue — is refused before the gateway
-// (02:GEN-006), the same shape a taken-down, access-restricted or
-// redistribution-blocked reference gets (see resolveReference).
 func TestAnUnresolvableReferenceIsRefusedBeforeTheGateway(t *testing.T) {
 	svc := &Service{
 		LLM:        &llmclient.Client{},
@@ -634,11 +510,6 @@ func TestAnUnresolvableReferenceIsRefusedBeforeTheGateway(t *testing.T) {
 	}
 }
 
-// A readable reference's SKILL.md is what actually crosses the wire inside
-// references[0].skill_md, and what resolveReference hands back for the
-// provenance row is identifiers only — its skill id, version id and name, the
-// same restraint referenceProvenance's own comment states (02:GEN-006,
-// ADR-066).
 func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
 	const skillMDContent = "---\nname: reference-skill\ndescription: A worked example.\n---\n\nDo the thing.\n"
 	ws := identity.Workspace{ID: mustUUIDForTest(t, "10000000-0000-0000-0000-000000000001")}
@@ -670,8 +541,6 @@ func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
 		t.Errorf("provenance = %+v, want skill/version ids and the name", prov)
 	}
 
-	// And it is genuinely what reaches the gateway, not only what this function
-	// returns: the same path GenerateSkill takes, one level down.
 	const skillResp = `{"skill":{"name":"a","description":"b","body":"c"},"model":"m","prompt_version":"v"}`
 	fakeSvc, captured := requestCapturingStub(t, skillResp)
 	if _, err := fakeSvc.generateOnce(context.Background(), pgtype.UUID{}, "抽出重點。", nil,
@@ -691,7 +560,6 @@ func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
 		t.Errorf("references[0].skill_md = %+v, want the reference's SKILL.md verbatim", sent.References)
 	}
 
-	// The provenance row generated from it: identifiers only.
 	raw, err := marshalGenerationInputs(nil, []referenceProvenance{prov})
 	if err != nil {
 		t.Fatal(err)
@@ -717,12 +585,6 @@ func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
 	}
 }
 
-// A reference SKILL.md longer than generateMaxReferenceChars used to be cut TO
-// the cap and then have the twelve-rune marker appended, landing over
-// apps/llm's own `skill_md` schema limit (max_length=20000) — a 422 from
-// apps/llm that reached the user as the generic 502
-// 「模型服務這一次沒有給出可用的結果」, indistinguishable from an actual gateway
-// failure. The marker's length must be reserved before cutting.
 func TestALongReferenceIsCutToLeaveRoomForTheMarker(t *testing.T) {
 	ws := identity.Workspace{ID: mustUUIDForTest(t, "10000000-0000-0000-0000-000000000011")}
 	skillID := mustUUIDForTest(t, "20000000-0000-0000-0000-000000000012")
@@ -756,24 +618,16 @@ func TestALongReferenceIsCutToLeaveRoomForTheMarker(t *testing.T) {
 	}
 }
 
-// 02:GEN-005: SVG is deliberately not one of the three accepted diagram media
-// types (it is text that can carry scripts, iron rule 1) — refused before the
-// gateway is ever asked, the same discipline every other GenerateInput bound
-// already follows.
 func TestADisallowedDiagramMediaTypeIsRefused(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}} // empty BaseURL: a reached gateway fails loudly and differently
+	svc := &Service{LLM: &llmclient.Client{}}
 	in := GenerateInput{Diagram: &GenerateDiagram{MediaType: "image/svg+xml", Data: []byte("<svg/>")}}
 	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrDiagramInvalid) {
 		t.Errorf("err = %v, want ErrDiagramInvalid", err)
 	}
 }
 
-// 02:GEN-005/006: reference ids alone, with neither a task description nor a
-// diagram, are refused by the same rule a wholly blank request is — before the
-// references are ever resolved, so a caller who forgot both text and a diagram
-// does not pay for a reader call either.
 func TestReferencesAloneWithNoDescriptionOrDiagramIsRefused(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}} // References nil: a touch would panic, proving it was never reached
+	svc := &Service{LLM: &llmclient.Client{}}
 	someID := mustUUIDForTest(t, "40000000-0000-0000-0000-000000000001")
 	in := GenerateInput{ReferenceSkillIDs: []pgtype.UUID{someID}}
 	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrGenerateNoInput) {
@@ -781,8 +635,6 @@ func TestReferencesAloneWithNoDescriptionOrDiagramIsRefused(t *testing.T) {
 	}
 }
 
-// A draft the package builder refuses gets a report that names the cause;
-// run h (2026-09-06) looped eight paid steps on a bare 「套件結構無法通過驗證。」.
 func TestValidateCreationDraftReportsWhyThePackageCouldNotBeBuilt(t *testing.T) {
 	g := goodGeneratedSkill()
 	g.Files = []llmclient.GeneratedFile{{Path: "SKILL.md", Content: "---\nlicense: MIT\n---\n"}}

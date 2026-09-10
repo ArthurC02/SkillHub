@@ -1,19 +1,5 @@
 package eval
 
-// The improvement-suggestion surface of contracts/openapi/public.yaml (EVAL-002):
-//
-//	GET  /runs/{id}/suggestions                  what the current evaluation proposed
-//	PUT  /suggestions/{id}/decision              accept or reject one, applying nothing
-//	GET  /suggestions/{id}/diff                  what applying it would change
-//	POST /skills/{id}/versions/from-suggestions  the accepted ones as ONE new version
-//
-// All four are workspace scoped from the session (iron rule 3) and answer 404 to
-// anyone the material does not belong to — existence is itself private (WS-006).
-//
-// Deciding and applying are separate endpoints on purpose: accepting five
-// suggestions has to produce one new version, not five intermediate ones nobody
-// ever ran (evaluation-design §5.3).
-
 import (
 	"context"
 	"encoding/json"
@@ -30,14 +16,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
 
-// AppliedSuggestion is the eval-owned provenance view packaging may publish.
 type AppliedSuggestion struct {
 	EvaluationID pgtype.UUID
 	Category     string
 	TargetPath   string
 }
 
-// AppliedSuggestions keeps the generated evaluation row and database handle inside its owner.
 func (s *Service) AppliedSuggestions(ctx context.Context, versionID, workspaceID pgtype.UUID) ([]AppliedSuggestion, error) {
 	rows, err := gen.New(s.Pool).ListSuggestionsAppliedToVersion(ctx, gen.ListSuggestionsAppliedToVersionParams{
 		AppliedSkillVersionID: versionID,
@@ -57,12 +41,6 @@ func (s *Service) AppliedSuggestions(ctx context.Context, versionID, workspaceID
 	return result, nil
 }
 
-// suggestionView is public.yaml's ImprovementSuggestion.
-//
-// `proposed_content` is deliberately not in it, as the contract has it: the way to
-// see a proposed change is GET /suggestions/{id}/diff, which shows it against what
-// is actually in the package. A raw replacement body on its own reads as though it
-// were already the file.
 type suggestionView struct {
 	SuggestionID          string        `json:"suggestion_id"`
 	Category              string        `json:"category"`
@@ -101,10 +79,6 @@ func toSuggestionView(row gen.EvaluationSuggestion) suggestionView {
 	return out
 }
 
-// Suggestions handles GET /runs/{id}/suggestions: the current evaluation's set.
-// A run with no evaluation is 404 for the same reason GET /runs/{id}/evaluation
-// is — 「未評估」 is a state of its own and an empty body is what a UI renders as
-// "nothing to improve".
 func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -137,15 +111,7 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 		out = append(out, v)
 		sets = append(sets, v.Evidence)
 	}
-	// The same read-time answer the evaluation report gets (ADR-026 decision 2,
-	// doc.go invariant 9). This list used to send `evaluation_suggestions.evidence`
-	// straight back out of the database, so every citation on it kept whatever
-	// `available` it was written with — and this is the page a user reads BEFORE
-	// adopting a suggestion, so a deleted output or an expired trace partition was
-	// invisible at exactly the moment it mattered.
-	//
-	// A failure here fails the request rather than degrading to the stored value:
-	// the stored value is the claim this is here to stop making.
+
 	live, err := h.Svc.resolveEvidence(r.Context(), ws.ID, runID, sets...)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "evidence availability lookup failed")
@@ -160,11 +126,6 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 	}{pgconv.UUIDString(ev.ID), out})
 }
 
-// Decide handles PUT /suggestions/{id}/decision (EVAL-002 clause 3).
-//
-// It changes no package. Repeatable: a later call replaces the decision — except
-// on a suggestion already built into a version, because that version is history
-// and the way back from it is another version (iron rule 4).
 func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -182,8 +143,7 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a `decision`")
 		return
 	}
-	// `pending` is the state a suggestion starts in; there is no request that means
-	// "un-decide", so it is not settable.
+
 	if body.Decision != DecisionAccepted && body.Decision != DecisionRejected {
 		httpx.WriteError(w, http.StatusBadRequest,
 			"`decision` must be \"accepted\" or \"rejected\"")
@@ -202,10 +162,7 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "suggestion lookup failed")
 		return
 	}
-	// 0024 refuses an applied suggestion that is not accepted, and it is right to:
-	// the version was built from this. 409 rather than a database error, because the
-	// request is well formed and the conflict is with something that already
-	// happened.
+
 	if current.AppliedSkillVersionID.Valid && body.Decision != DecisionAccepted {
 		httpx.WriteError(w, http.StatusConflict,
 			"this suggestion has already been built into a skill version, so its acceptance "+
@@ -227,10 +184,6 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, toSuggestionView(row))
 }
 
-// Diff handles GET /suggestions/{id}/diff (EVAL-002 clause 3): the change is
-// viewable before it is applied. Served rather than assembled in the client
-// because computing it needs the stored package bytes, and a client-side guess
-// could disagree with what applying actually does.
 func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -253,22 +206,12 @@ func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, diff)
 }
 
-// applyResponse is public.yaml's UploadResult plus the two fields the contract
-// adds to it (`allOf`). Embedded, so the version half is rendered by the same code
-// every other creation path uses.
 type applyResponse struct {
 	ingest.UploadResult
 	AppliedSuggestionIDs []string  `json:"applied_suggestion_ids"`
 	RejectedSuggestions  []Blocked `json:"rejected_suggestions"`
 }
 
-// ApplySuggestions handles POST /skills/{id}/versions/from-suggestions
-// (EVAL-002 clause 4): the accepted suggestions become exactly one new version,
-// and the version they were written against is not touched (iron rule 4).
-//
-// Creating a version is not permission to run it: the new content hashes
-// differently, so the preflight summary changes and TEST-009 requires a fresh
-// confirmation before anything runs.
 func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -312,19 +255,13 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "skill, evaluation or suggestion not found")
 		return
 	}
-	// Nothing is built from a suggestion nobody accepted, and the whole call is
-	// refused rather than partly honoured: a 201 listing fewer ids than were asked
-	// for reads as "these were applied and those were rejected", which is not what
-	// happened here (EVAL-002 clause 3 — the decision is the user's).
+
 	if errors.Is(err, ErrNotAccepted) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error()+
 			"; not accepted: "+join(res.NotAccepted))
 		return
 	}
-	// The half-success. "The new version could not be created" is the one sentence
-	// that must not be said here, because the version WAS created — a user told
-	// that would retry and get a duplicate-content answer for a version they
-	// already have, and would never learn that its provenance is missing.
+
 	if errors.Is(err, errProvenanceNotRecorded) {
 		httpx.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -339,9 +276,7 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 		rejected = []Blocked{}
 	}
 	if !res.Created {
-		// Nothing was applied, so no version exists. The body says why per
-		// suggestion; a 201 with an empty applied list would report a change that
-		// never happened.
+
 		const message = "not one of the suggestions could be applied, so no version was created"
 		httpx.WriteJSON(w, http.StatusUnprocessableEntity, struct {
 			Error               string    `json:"error"`

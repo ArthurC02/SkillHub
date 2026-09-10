@@ -8,10 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// Enforcement and display move together (ADR-028 決策 3): the router mounts
-// GET /me/quota and the pre-run summary carries a quota block only where this
-// returns true. A build that shows an allowance it does not apply is the mistake
-// 04 乙-2 records, and this predicate is the single place that cannot happen.
 func TestQuotaEnforcedOnlyWithARealCeiling(t *testing.T) {
 	cases := []struct {
 		name string
@@ -32,26 +28,17 @@ func TestQuotaEnforcedOnlyWithARealCeiling(t *testing.T) {
 	}
 }
 
-// The values, asserted so that changing one is a deliberate edit to a test as
-// well as to a constant. All four were ratified 2026-08-27 exactly as proposed
-// (m0/pdm-proposals.md §9.1, 05 R-1b), including the one PDM-010 refused to let
-// an implementation infer: the first window is min(20,30) = 20, not 20+30 = 50.
-// So the second assertion below is no longer guarding a gap in the proposal —
-// it is guarding a ruling, which is the stronger reason to keep it.
 func TestDefaultsAreThePDM010Proposal(t *testing.T) {
 	l := DefaultQuotaLimits()
 	if l.FirstWindow != 20 || l.Window != 30 || l.Daily != 5 || l.WindowDays != 30 {
 		t.Errorf("defaults drifted from PDM-010 §8.1: %+v", l)
 	}
-	// The alternative reading, ruled against on 2026-08-27 — the comment moved,
-	// the assertion and its message did not.
+
 	if l.FirstWindow == l.Window+20 {
 		t.Error("the first window is the 20+30 reading; the 2026-08-27 ruling took min(20,30) = 20")
 	}
 }
 
-// remaining never goes below zero: a workspace that somehow spent more than its
-// ceiling has none left, not a negative number on a screen.
 func TestRemainingIsClamped(t *testing.T) {
 	if got := remaining(5, 7); got != 0 {
 		t.Errorf("remaining(5, 7) = %d, want 0", got)
@@ -61,10 +48,6 @@ func TestRemainingIsClamped(t *testing.T) {
 	}
 }
 
-// An unenforced allowance refuses nothing and touches no database — which is why
-// EnforceQuota can be asked with a nil handle here. The paired half (a configured
-// allowance actually refusing a run) needs real rows and lives in
-// apiserver/beta_integration_test.go.
 func TestEnforceQuotaIsSilentWhenNotConfigured(t *testing.T) {
 	reason, err := EnforceQuota(context.Background(), UsageReader{}, QuotaLimits{}, pgtype.UUID{})
 	if reason != "" || err != nil {

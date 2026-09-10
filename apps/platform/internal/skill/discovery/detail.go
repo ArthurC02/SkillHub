@@ -1,25 +1,5 @@
 package catalog
 
-// Public skill detail and package-file views (DISC-006/007/008/010).
-//
-// One handler pair serves both scopes. The catalog read has its scope baked into
-// the SQL (GetCatalogSkill, catalog workspaces only) and needs no session; when
-// the id is not in the catalog and a session is present, the same assembly runs
-// against the caller's own workspace. Splitting this into a public and a private
-// endpoint would mean two places to forget a field, and the difference between
-// them is only which row the read is allowed to see. Scope never comes from the
-// request (iron rule 3).
-//
-// Risk, license provenance, and the file tree are recomputed from the stored
-// package on read rather than persisted: skillpkg.Validate is the single
-// definition of what the platform discloses, and a stored copy would be a second
-// one that drifts. Reading a package is pure static analysis — nothing inside is
-// executed (iron rule 1).
-//
-// ponytail: one object-store read plus a full re-scan per detail request. Cache
-// the Report by content hash (it is immutable, so the hash is the cache key) if
-// detail latency ever shows up against NFR-004.
-
 import (
 	"context"
 	"encoding/json"
@@ -40,26 +20,15 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-// ObjectStore is the slice of object storage the detail views need.
 type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 }
 
-// errSkillNotFound is the single answer for "no such skill" and "not visible to
-// you" (WS-006): the two must be indistinguishable or the 404 becomes an
-// existence oracle for other people's private content.
 var errSkillNotFound = errors.New("找不到這個 Skill")
 
 var errOwnerReadNotConfigured = errors.New("catalog: owner read is not configured")
 
-// maxSkillMDBytes caps the SKILL.md text returned to the browser. The unpacked
-// cap on import is 256 MiB, so "it came from a validated package" is not a bound
-// on any single file.
-// ponytail: flat cap, truncation is reported; paginate only if a real package
-// ever needs it.
-const maxSkillMDBytes = 1 << 20 // 1 MiB
-
-// --- response shapes -------------------------------------------------------
+const maxSkillMDBytes = 1 << 20
 
 type labelled struct {
 	Value string `json:"value"`
@@ -67,56 +36,32 @@ type labelled struct {
 	Note  string `json:"note"`
 }
 
-// sourceInfo is the DISC-003 provenance record: what was fetched, from where,
-// when, and the hash of what arrived. Fields absent from the record stay absent
-// rather than being filled with a plausible value (DISC-004 缺少資料顯示未知).
 type sourceInfo struct {
-	Type          string `json:"type"` // git | upload | generated
+	Type          string `json:"type"`
 	URL           string `json:"url,omitempty"`
-	SourceVersion string `json:"source_version,omitempty"` // commit sha, tag, or branch
+	SourceVersion string `json:"source_version,omitempty"`
 	FetchedAt     string `json:"fetched_at,omitempty"`
 	ContentHash   string `json:"content_hash,omitempty"`
-	// LastCheckedAt and UnavailableSince are the upstream-availability probe's
-	// two separate facts (0013_governance): when the source was last looked at,
-	// and since when it has been failing. They are reported apart because
-	// "checked a minute ago, still there" and "checked a minute ago, gone for two
-	// weeks" are different provenance stories (DISC-003/008). Absent means never
-	// probed / currently available — never rendered as a reassurance.
+
 	LastCheckedAt    string `json:"last_checked_at,omitempty"`
 	UnavailableSince string `json:"unavailable_since,omitempty"`
-	// The generation record (GEN-006). Absent for every other source type, and
-	// present in full for a generated one: 02:GEN-002 requires the detail page to
-	// be able to expand into the task description, the time, the prompt revision
-	// and the model, and forbids reporting the source as unknown.
+
 	TaskDescription        string `json:"task_description,omitempty"`
 	GeneratorModel         string `json:"generator_model,omitempty"`
 	GeneratorPromptVersion string `json:"generator_prompt_version,omitempty"`
-	// GenerationInputs is public.yaml's GenerationInputs, passed through as the
-	// bytes ingest wrote to skill_sources.generation_inputs (ADR-066, 04 丙-159):
-	// the diagram's digest/media type/size and the references' ids and names.
-	// Absent for a text-only generation and for every other source type. A NULL
-	// column scans as nil and omitempty drops it; it must never reach the wire as
-	// a literal `null`, which would be a value position rendered as a guess
-	// (DISC-004).
+
 	GenerationInputs json.RawMessage `json:"generation_inputs,omitempty"`
 	Trust            labelled        `json:"trust"`
 }
 
-// licenseInfo carries the ADR-021 two-axis answer: which license the package
-// evidences, and how strong that evidence is. The expression alone cannot tell
-// "the author declared MIT" from "the monorepo root had an MIT file", and
-// DISC-003 forbids presenting the second as the first.
 type licenseInfo struct {
-	Expression string `json:"expression,omitempty"` // absent = unknown
-	// Source is the ADR-021 provenance tier: manifest | package-license-file |
-	// repo-license-file. Absent for pre-ADR-021 versions, whose tier was never
-	// recorded and must not be invented.
+	Expression string `json:"expression,omitempty"`
+
 	Source     string   `json:"source,omitempty"`
 	SourceNote string   `json:"source_note,omitempty"`
-	Status     labelled `json:"status"` // unknown | declared (confirmed needs a reviewer)
+	Status     labelled `json:"status"`
 }
 
-// licenseSourceNotes says what each provenance tier does and does not claim.
 var licenseSourceNotes = map[string]string{
 	"manifest":                 "作者在 SKILL.md frontmatter 自行宣告。",
 	"manifest-referenced-file": "frontmatter 未直接宣告授權,而是指向套件內的檔案(如 `SEE LICENSE IN LICENSE.txt`);此結果讀自該檔案的文字。",
@@ -130,66 +75,27 @@ type severityCounts struct {
 	Infos    int `json:"infos"`
 }
 
-// riskSummary is the DISC-008 risk and disclosure block. There is deliberately
-// no single "safe" verdict (NFR-001): the counts, the individual findings, and
-// the flags below are shown side by side so a reader draws their own conclusion.
 type riskSummary struct {
-	// ScanStatus is scanned | unavailable. Unavailable means the stored package
-	// could not be read, which is reported as "unknown", never as "clean"
-	// (DISC-004 不得自行推定為通過).
 	ScanStatus string         `json:"scan_status"`
 	Counts     severityCounts `json:"counts"`
-	// Highlights are every error- and warning-level finding, verbatim. Info-level
-	// disclosures are counted by code instead: one seed package produced 321 URL
-	// findings, and a list nobody reads hides the ones that matter.
+
 	Highlights []skillpkg.Finding `json:"highlights"`
 	InfoCounts map[string]int     `json:"info_counts"`
 
-	// Disclosures is what the package declares about itself, worded here (04
-	// 丙-29 ④). It replaced five parallel booleans, and the reason is not tidiness:
-	// the search row carried a sixth (`dependency-file`) that this view did not,
-	// so the screen a reader meets first disclosed more than the screen they open
-	// next. Both sides now read one catalogue and that shape cannot come back.
 	Disclosures []disclosure `json:"disclosures"`
 
 	Note string `json:"note"`
 }
 
-// compatibility keeps the three DISC-008 axes apart. An axis with no answer says
-// "unverified" rather than being omitted: a missing field reads as "fine", an
-// explicit 未驗證 does not.
-//
-// Capability and Runtime come from a measurement (0022), and RuntimeImage says
-// which runtime image it was measured on. That pairing is not decoration: the
-// same package on the same version gets a different Runtime answer on an image
-// that provides python3 than on one that does not, so a verdict without its
-// image is a claim nobody made. Empty RuntimeImage means unverified — nothing
-// was measured, so there is no image to name.
-//
-// The three axes are labelled rather than bare enums (04 丙-29 ③). Two screens
-// had already worded the same axis differently, and one of them wrote
-// `passed ? 通過 : 未驗證` — which reports **failed as 未驗證**. That is the
-// reading a client-side table makes easy and a served label makes impossible.
-// `transpiled` is the other half of the reason: its caveat is not guessable from
-// any one word, so the axis needs a note and not just a label.
 type compatibility struct {
-	SpecValidation labelled `json:"spec_validation"` // passed | failed | unverified
-	Capability     labelled `json:"capability"`      // activated | not_activated | unverified
-	Runtime        labelled `json:"runtime"`         // native | transpiled | failed | unverified
+	SpecValidation labelled `json:"spec_validation"`
+	Capability     labelled `json:"capability"`
+	Runtime        labelled `json:"runtime"`
 	RuntimeImage   string   `json:"runtime_image,omitempty"`
 	MeasuredAt     string   `json:"measured_at,omitempty"`
 	Note           string   `json:"note"`
 }
 
-// axisWords is value → (label, note) for the three compatibility axes. One table
-// per axis so an unknown value cannot borrow another axis's wording.
-//
-// **An empty note is deliberate and load bearing.** The block-level
-// `compatibility.note` already says what static validation covers and that the
-// two sandbox axes need a real run, so repeating it three times would be the
-// same fact said four times on one screen (設計系統 checklist 第 14 條). A note
-// here is reserved for the states where the label alone would be *misread* —
-// `transpiled` above all, where a working run's work was not the Skill's code.
 type axisWords map[string][2]string
 
 var (
@@ -199,17 +105,7 @@ var (
 		"unverified": {"未驗證", ""},
 	}
 	capabilityWords = axisWords{
-		// The note is not decoration. This axis was measured with prompts that
-		// **name the skill**, because 02:CONTENT-007 requires it — and it requires
-		// it because PDM-011's spike measured the autonomous trigger rate at 0.
-		// So 「已啟用」 answers "does it load when asked for by name", and a reader
-		// meeting the badge takes it for "an agent will pick this up", which is a
-		// different question that this platform's own measurement answers with 0.
-		//
-		// It was empty until 2026-08-23, while `not_activated` right below carried
-		// a careful two-sentence caveat — the reassuring value qualified less than
-		// the alarming one, which is the wrong way round for a badge whose whole
-		// job is to be believed.
+
 		"activated": {"已啟用",
 			"該次試跑的 Prompt **點名了這個 Skill**(`02:CONTENT-007` 的要求),所以這一格說的是" +
 				"「被點名時載得起來」,不是「Agent 會自己想到要用它」。後者平台量過:自主觸發基準率是 0(PDM-011)。"},
@@ -219,10 +115,7 @@ var (
 		"unverified": {"未驗證", ""},
 	}
 	runtimeWords = axisWords{
-		// 「腳本可直接執行」 with an empty note said two things nobody checked: that
-		// there are scripts, and that they ran. 11 of the 45 measured packages
-		// have no dependencies at all and reached this value by falling through
-		// the CASE's ELSE branch.
+
 		"native": {"映像提供了它宣告的執行環境",
 			"套件腳本宣告的 Runtime 這個映像有,所以腳本可以是真正執行的那個東西。" +
 				"**這是一條規則的結論,不是一次觀察**——平台沒有查那次 Run 裡腳本有沒有真的跑、跑成功沒有。"},
@@ -235,13 +128,6 @@ var (
 	}
 )
 
-// axis wraps a raw axis value in its words.
-//
-// An unrecognised value keeps the raw value as its own label rather than
-// rendering blank. That is 丙-28's failure mode read from the other end: the
-// contract and the database disagreed on one spelling and the screen showed
-// nothing at all, which is the one outcome worse than showing a word the reader
-// has to look up.
 func axis(w axisWords, value string) labelled {
 	if v, ok := w[value]; ok {
 		return labelled{Value: value, Label: v[0], Note: v[1]}
@@ -253,8 +139,6 @@ func axis(w axisWords, value string) labelled {
 	}
 }
 
-// unverifiedCompat is the pre-measurement state of the two sandbox axes, and the
-// zero value every caller starts from.
 func unverifiedCompat() compatibility {
 	return compatibility{
 		SpecValidation: axis(specWords, "unverified"),
@@ -264,13 +148,8 @@ func unverifiedCompat() compatibility {
 	}
 }
 
-// enrichmentInfo labels the model-written fields as model-written (ADR-013).
-//
-// Tags keeps the buckets the enrichment produced. DISC-003 一般模式 asks for
-// 輸入、輸出、依賴 as separate answers and a flat list cannot say which token
-// was which — nothing recovers that once it has been joined.
 type enrichmentInfo struct {
-	Status        string               `json:"status"` // pending | enriched
+	Status        string               `json:"status"`
 	Summary       string               `json:"summary,omitempty"`
 	TaskExamples  []string             `json:"task_examples,omitempty"`
 	Tags          *llmclient.SkillTags `json:"tags,omitempty"`
@@ -279,14 +158,9 @@ type enrichmentInfo struct {
 	Note          string               `json:"note"`
 }
 
-// limitation is one entry of the DISC-003 一般模式「限制」 block, with where it
-// came from. The two sources answer different questions — what the author's own
-// document says the skill cannot do, and what the package's contents imply it
-// needs — so they are labelled rather than merged into one anonymous sentence
-// (ADR-013 also requires the model-written half to be marked as such).
 type limitation struct {
 	Text   string `json:"text"`
-	Source string `json:"source"` // model | scan
+	Source string `json:"source"`
 }
 
 const (
@@ -294,14 +168,6 @@ const (
 	limitSourceScan  = "scan"
 )
 
-// scanLimitations are the limitations derivable from the static scan: what the
-// package's own contents say it will need in order to work. Keyed by finding
-// code, so a code the scan stops emitting silently stops producing a line
-// rather than producing a stale one.
-//
-// Only findings that describe a *requirement* belong here. A warning about an
-// unknown license is a licensing fact, not a limitation on using the skill, and
-// it already has its own field.
 var scanLimitations = map[string]string{
 	"external-url":    "套件內含外部連結,執行時可能需要對外網路存取。",
 	"script-file":     "套件內含 Script,需可執行 Script 的環境,且應先自行檢視內容。",
@@ -325,53 +191,34 @@ type derivationInfo struct {
 	Note                string `json:"note"`
 }
 
-// accessRestriction is the 0023 licensing hold, rendered so a reader is told
-// what is missing and why rather than being shown a detail page that quietly has
-// no "view files" on it. Absent for everything not on hold, which is nearly
-// everything — hence the pointer.
 type accessRestriction struct {
-	Reason string `json:"reason"` // reason code, e.g. license-review
+	Reason string `json:"reason"`
 	Note   string `json:"note"`
 }
 
-// skillDetail is the GET /api/skills/{id} body (DISC-006/008).
 type skillDetail struct {
 	SkillID string `json:"skill_id"`
 	Name    string `json:"name"`
-	// Summary is the package's own frontmatter description. The model's
-	// plain-language rewrite lives under Enrichment and is labelled there, so a
-	// reader can always tell which text the author wrote.
+
 	Summary string `json:"summary"`
-	// Scope is catalog | private: which of the two reads answered.
+
 	Scope string   `json:"scope"`
 	Tier  labelled `json:"tier"`
-	// Category is the PDM-001 shelf (0053), and it is answered off the skill row
-	// rather than off the version: a category says what the bytes are for, and
-	// unlike Tier it does not lapse when the content moves on. NULL renders as
-	// 尚未定值 — 05 R-19 is open — never as a guessed shelf.
+
 	Category   labelled       `json:"category"`
 	Enrichment enrichmentInfo `json:"enrichment"`
-	// Limitations is DISC-003 一般模式「限制」, from both sources, each labelled.
-	// Always present, empty when neither source stated one — which is not a
-	// claim that the skill is unconstrained.
+
 	Limitations []limitation `json:"limitations"`
 	Version     *versionInfo `json:"version,omitempty"`
 	Source      *sourceInfo  `json:"source,omitempty"`
 	License     licenseInfo  `json:"license"`
-	// Redistribution is the ADR-027 決策 4 verdict on whether this content may be
-	// handed on at all, which is what decides whether a download package can be
-	// built from it. Always present, because every skill has an answer — a skill
-	// nobody classified is `unknown`, and an absent field would be a fourth state
-	// the packaging gate does not have. A separate axis from License and from
-	// Restriction below, and derived from neither.
+
 	Redistribution labelled       `json:"redistribution"`
 	Derivation     derivationInfo `json:"derivation"`
 	AllowedTools   []string       `json:"allowed_tools,omitempty"`
 	Risk           riskSummary    `json:"risk"`
 	Compat         compatibility  `json:"compatibility"`
-	// Restriction is present only while a licensing question about the package
-	// is open (0023). Everything above it still answers: the hold is on the
-	// materials, not on the platform's own description of them.
+
 	Restriction *accessRestriction `json:"access_restriction,omitempty"`
 }
 
@@ -381,7 +228,6 @@ type fileEntry struct {
 	IsScript bool   `json:"is_script"`
 }
 
-// skillFiles is the GET /api/skills/{id}/files body (DISC-007).
 type skillFiles struct {
 	SkillID        string      `json:"skill_id"`
 	VersionID      string      `json:"version_id"`
@@ -393,11 +239,6 @@ type skillFiles struct {
 	Note           string      `json:"note"`
 }
 
-// --- handlers --------------------------------------------------------------
-
-// SkillDetail handles GET /api/skills/{id} (DISC-006/008/010). Mount behind
-// OptionalSession: anonymous callers get the catalog, a signed-in caller
-// additionally gets their own workspace.
 func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	skill, scope, ok := h.resolveSkill(w, r)
 	if !ok {
@@ -408,33 +249,26 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "skill detail failed")
 		return
 	}
-	// Scope is the handler's answer, not the service's: it records which of the
-	// two reads resolveSkill was allowed to make (iron rule 3).
+
 	out.Scope = scope
 	h.recordDetailView(r, skill.ID)
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
-// SkillDetail assembles the DISC-006/008 body for an already-resolved skill.
-// Scope is left blank — the caller owns it.
 func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetail, error) {
 	q := gen.New(s.Pool)
 
 	out := skillDetail{
 		SkillID: pgconv.UUIDString(skill.ID),
 		Name:    skill.Name,
-		// Indexed until the version is resolved: the verdict is about a specific
-		// version, so it cannot be answered before we know which one this is.
+
 		Tier: tierLabel(TierIndexed),
-		// Not deferred like Tier: the shelf is about the skill, not about which
-		// version is newest, so there is nothing to resolve first.
+
 		Category:    categoryLabel(skill.Category, skill.CategorySource),
 		Limitations: []limitation{},
 		Derivation:  derivation(skill),
 		License:     licenseInfo{Status: statusLabel(LicenseStatusUnknown)},
-		// Read off the skill row, not off the license: 02:CONTENT-002 forbids
-		// deriving one from the other, and the packaging gate reads this same
-		// column.
+
 		Redistribution: redistributionLabel(skill.Redistribution),
 		Risk: riskSummary{
 			ScanStatus:  "unavailable",
@@ -467,8 +301,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 	}
 	ver, found, err := s.ReadLatestVersion(ctx, skill.WorkspaceID, skill.ID)
 	if !found && err == nil {
-		// A skill with no version yet (a fork created ahead of its content) is a
-		// real state, not an error. Everything version-derived stays absent.
+
 		return out, nil
 	}
 	if err != nil {
@@ -483,9 +316,6 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 	out.License = licenseFrom(ver)
 	out.Tier = tierLabel(curationTier(skill, ver.ID))
 
-	// DISC-002「Agent 相容」. Absent is the normal state for anything nobody has
-	// run yet, and it leaves the two axes on unverified rather than failing the
-	// request — a skill with no measurement is still a skill worth showing.
 	if s.ReadRuntimeCompatibility == nil {
 		return skillDetail{}, errOwnerReadNotConfigured
 	}
@@ -522,31 +352,11 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 	return out, nil
 }
 
-// recordDetailView is funnel segment 1's second half (02:O11Y-004): somebody who
-// submitted an intent actually opened a detail page.
-//
-// Called only where the page is really served, not after resolveSkill, because a
-// view that ended in a 500 is not a segment anybody completed.
-//
-// The workspace is the *viewer's*, resolved from the session, and not the skill
-// owner's — the catalogue's entries all belong to the operator's workspace, so
-// recording that would label every event with the same id and answer nothing. It
-// is absent for anonymous visitors, which is most of this segment (DISC-010), and
-// session_id is what stitches those to whatever they do after signing in.
 func (h *Handler) recordDetailView(r *http.Request, skillID pgtype.UUID) {
 	if !h.Svc.Analytics.Enabled() {
-		return // no lookup, and above all no extra query, when nothing is collected
+		return
 	}
-	// An embedded read is not a page view. This endpoint answers three surfaces:
-	// the detail page, 打包與下載, and 並排比較 — and the last two were each
-	// minting a skill_detail_viewed of their own. Compare's is the one that makes
-	// the number false rather than merely large: it writes one event per compared
-	// skill, from a table where no detail page was opened at all, and 01 §11.2's
-	// first segment is "opened at least one skill detail" (adversarial review,
-	// 2026-08-24).
-	//
-	// Declared by the caller rather than guessed from a Referer, because a header
-	// the browser may omit is not a fact to base a measurement on.
+
 	if r.URL.Query().Get("view") == "embedded" {
 		return
 	}
@@ -556,26 +366,16 @@ func (h *Handler) recordDetailView(r *http.Request, skillID pgtype.UUID) {
 			workspace = ws.ID
 		}
 	}
-	// No arrival dimension: `from`/`rank` were dropped with their columns in 0040
-	// (04 丙-59). The front end never sent them, and filling them would put the
-	// reader's result position into a copy-pasteable URL — a new public URL state,
-	// which 資訊架構 §0 has to rule on before, not after.
+
 	h.Svc.Analytics.SkillDetailViewed(r.Context(), workspace, skillID)
 }
 
-// SkillFiles handles GET /api/skills/{id}/files (DISC-007): the SKILL.md text
-// and the package file tree, with scripts marked. Same scope rules as
-// SkillDetail.
 func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
 	skill, _, ok := h.resolveSkill(w, r)
 	if !ok {
 		return
 	}
-	// 0023: this endpoint is the one that reproduces the package's own bytes —
-	// SKILL.md verbatim and the file tree — so it is the one a licensing hold
-	// closes. 403 and not 404: search still lists the skill and the detail page
-	// still describes it, so "no such thing" would be a lie the rest of the API
-	// immediately contradicts. The reason travels with the refusal.
+
 	if rest := restrictionOf(skill); rest != nil {
 		httpx.WriteError(w, http.StatusForbidden, rest.Note)
 		return
@@ -595,19 +395,11 @@ func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
-// errNoSavedVersion and errPackageUnreadable are the two non-500 failures of the
-// files view: nothing was ever stored for this skill, and something was stored
-// but cannot be read back. They stay apart because the second is an outage of
-// the object store and the first is a permanent property of the skill.
 var (
 	errNoSavedVersion    = errors.New("這個 Skill 還沒有保存的版本")
 	errPackageUnreadable = errors.New("儲存的套件目前讀不到，稍後再試一次")
 )
 
-// SkillFiles reads the DISC-007 view — SKILL.md text and the file tree — off the
-// skill's newest stored version. The 0023 licensing hold is checked by the
-// caller, before this runs: the hold is on reproducing the bytes, and this is
-// the only thing that reproduces them.
 func (s *Service) SkillFiles(ctx context.Context, skill SkillFacts) (skillFiles, error) {
 	if s.ReadLatestVersion == nil {
 		return skillFiles{}, errOwnerReadNotConfigured
@@ -640,12 +432,10 @@ func (s *Service) SkillFiles(ctx context.Context, skill SkillFacts) (skillFiles,
 		if len(md) > maxSkillMDBytes {
 			md, out.SkillMDTrunc = md[:maxSkillMDBytes], true
 		}
-		// Truncation can land mid-rune, and invalid UTF-8 does not survive JSON.
+
 		out.SkillMD = strings.ToValidUTF8(string(md), "")
 	}
-	// The file tree cannot show code that lives inside SKILL.md, which is exactly
-	// how 5 seed packages shipped ~180 lines of Python while reporting no scripts
-	// (SKILL-003). Carry the disclosure onto the view where that absence shows.
+
 	for _, f := range skillpkg.Validate(fsys).Findings {
 		if f.Code == "embedded-script" {
 			msg := f.Message
@@ -656,25 +446,18 @@ func (s *Service) SkillFiles(ctx context.Context, skill SkillFacts) (skillFiles,
 	return out, nil
 }
 
-// restrictionOf turns the stored reason code into the block the API returns.
-// One place, because the detail view, the files view and the run gate must not
-// be able to disagree about whether a skill is on hold.
 func restrictionOf(s SkillFacts) *accessRestriction {
 	if s.AccessRestriction == nil || strings.TrimSpace(*s.AccessRestriction) == "" {
 		return nil
 	}
 	note, ok := restrictionNotes[*s.AccessRestriction]
 	if !ok {
-		// An unknown code still restricts. Failing open on a reason nobody
-		// recognises would make a typo in a review the way to unlock content.
+
 		note = restrictionNoteDefault
 	}
 	return &accessRestriction{Reason: *s.AccessRestriction, Note: note}
 }
 
-// restrictionNotes is the user-facing text per reason code. Kept in Go rather
-// than in the row: the row records the decision, and the decision does not
-// change when the wording does.
 var restrictionNotes = map[string]string{
 	"license-review": "此 Skill 的來源授權正在審查中:在審查結論出來前,平台不提供 " +
 		"SKILL.md 全文與套件檔案樹,也不接受在平台上試跑。摘要、限制、依賴、來源與授權資訊照常顯示," +
@@ -689,23 +472,7 @@ const (
 		"通過掃描不等於安全或有效,請自行檢視。"
 	compatUnverifiedNote = "規格驗證只檢查套件格式。能力相容與執行環境相容要等這個版本在 Sandbox 跑過一次才有結果," +
 		"沒跑過一律標示為未驗證,不代表相容。"
-	// The measured note names the image because the verdict is only about that
-	// image. 「模型轉譯」 is spelled out rather than left as a value name: it is
-	// the case a reader will not guess, and it is the one that decides whether
-	// the Skill's own script is what actually ran.
-	//
-	// It said 「能力相容與實測相容為 Sandbox 實測結果」 until 2026-08-23, and one of
-	// those two is not. tools/content/backfill-agent-compatibility.sql derives the
-	// runtime axis from `CASE WHEN deps_runtime = 'python' THEN :python_runtime
-	// ELSE 'native' END` — a curation judgement listed in seed-skills.json about
-	// what the SKILL.md's worked examples are written for, plus a variable the
-	// operator sets on the command line. No trace is consulted and no script is
-	// observed running. The capability axis genuinely does come from the trace,
-	// so the two sat under one sentence that was true of one of them.
-	//
-	// The rule is still worth showing — "does this image provide what the package
-	// declares" decides whether you get your scripts or a model's rewrite of them.
-	// What it may not do is arrive wearing the word 實測 and a timestamp.
+
 	compatMeasuredNote = "這兩軸的來源不同:**能力相容**來自該次 Run 的 Trace,是觀察到的事件;" +
 		"**執行環境相容**來自一條規則——「這個映像有沒有提供套件腳本宣告的執行環境」——" +
 		"平台沒有觀察腳本是否真的執行成功。兩者都只對下方 runtime_image 成立,換一個執行映像要重新判定。" +
@@ -713,24 +480,12 @@ const (
 	filesNote = "tree 為套件內檔案清單與大小;目前僅回傳 SKILL.md 全文。" +
 		"其他單檔內容的讀取端點屬 DISC-007 後續工作項,尚未實作。"
 	enrichPendingNote = "尚未產生模型摘要;顯示的是套件自身的 frontmatter description。"
-	// The second sentence is the asymmetry nobody was told about. The platform's
-	// own rewrite is what a person reads on Skill Hub; the package's own
-	// `description` is what an agent reads when it decides whether to load the
-	// Skill, and packaging never writes the rewrite back (ADR-012/PDM-008 refuse
-	// to add frontmatter). So a Skill can read well here and be passed over
-	// where it counts, and improving this text changes nothing about that.
+
 	enrichedNote = "本區塊由模型產生(非套件作者撰寫),僅供理解用途。" +
 		"**你的 Agent 讀的不是這一段**——它讀的是套件自己的 `description`(上方「摘要」)," +
 		"而下載回去的套件裡也不會有這一段。這段寫得好不會讓 Agent 更願意用它。"
 )
 
-// --- scope resolution ------------------------------------------------------
-
-// resolveSkill reads the skill in the widest scope the caller actually has, and
-// writes the error response itself when there is none. Catalog first because it
-// is the only scope an anonymous caller has and the one both callers share; the
-// caller's own workspace is tried second and only with a session. Neither read
-// takes a scope from the request.
 func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFacts, string, bool) {
 	var id pgtype.UUID
 	if err := id.Scan(r.PathValue("id")); err != nil {
@@ -741,9 +496,7 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFac
 
 	skill, found, err := h.Svc.CatalogSkill(ctx, id)
 	if err == nil && found {
-		// INGEST-010: a taken-down skill was public and its URL is still in
-		// circulation, so it answers 410 rather than 404 — the content existed
-		// and was withdrawn, which is a different fact from never existing.
+
 		if skill.TakedownAt.Valid {
 			httpx.WriteError(w, http.StatusGone, "這個 Skill 已從目錄下架")
 			return SkillFacts{}, "", false
@@ -777,10 +530,6 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFac
 	return skill, "private", true
 }
 
-// CatalogSkill and WorkspaceSkill are the two reads resolveSkill picks between.
-// Neither takes a scope from the request: the first has catalog membership baked
-// into the SQL, the second takes the workspace the session resolved to (iron
-// rule 3).
 func (s *Service) CatalogSkill(ctx context.Context, id pgtype.UUID) (SkillFacts, bool, error) {
 	if s.ReadCatalogSkill == nil {
 		return SkillFacts{}, false, errOwnerReadNotConfigured
@@ -802,9 +551,6 @@ func (s *Service) storeGet(ctx context.Context, key string) ([]byte, error) {
 	return s.Store.Get(ctx, key)
 }
 
-// scanPackage re-validates the stored package. A package that cannot be read is
-// not a failed request: the detail view still answers, with the risk block
-// saying the scan is unavailable rather than implying a clean one.
 func (s *Service) scanPackage(ctx context.Context, key string) (skillpkg.Report, bool) {
 	data, err := s.storeGet(ctx, key)
 	if err != nil {
@@ -817,28 +563,11 @@ func (s *Service) scanPackage(ctx context.Context, key string) (skillpkg.Report,
 	return skillpkg.Validate(fsys), true
 }
 
-// --- assembly --------------------------------------------------------------
-
-// tierLabel renders one tier. It used to take no argument and return
-// TierIndexed for everything, because curation is a recorded human review and
-// nothing recorded it — the fifteen entries that passed PDM-002's nine checks
-// looked exactly like the thirty that never went through them. 0042 is that
-// record, and curationTier below is what reads it.
 func tierLabel(t Tier) labelled {
 	d := t.Display()
 	return labelled{Value: string(t), Label: d.Badge, Note: d.TrustIndicator}
 }
 
-// curationTier is the verdict as it applies to the version being shown.
-//
-// 精選 survives only while the reviewed version is still the newest one. Five of
-// PDM-002's nine checks are about specific bytes — script line count, no likely
-// secrets, a valid spec — so carrying the badge onto a version nobody read would
-// be exactly the endorsement PDM-002 warns against. A new version therefore
-// drops the skill back to 已索引 with no operator action and no job.
-//
-// Membership of a catalog workspace is still not a review, and neither is a
-// tier written in a seed file: the only thing this trusts is the column.
 func curationTier(skill SkillFacts, latestVersionID pgtype.UUID) Tier {
 	if skill.CurationTier != string(TierCurated) {
 		return TierIndexed
@@ -857,10 +586,6 @@ func statusLabel(s LicenseStatus) labelled {
 	return labelled{Value: string(s), Label: d.Label, Note: d.Note}
 }
 
-// redistributionLabel echoes the stored value and pairs it with the copy for it.
-// The value is passed through rather than normalised: a client's own gate keys
-// off it, and rewriting an unrecognised value to `unknown` would hide from the
-// reader that the row holds something nobody planned for.
 func redistributionLabel(v string) labelled {
 	d := Redistribution(v).Display()
 	return labelled{Value: v, Label: d.Label, Note: d.Note}
@@ -889,8 +614,7 @@ func enrichmentFrom(e gen.GetSkillEnrichmentRow) enrichmentInfo {
 	}
 	out.Summary = e.EnrichedSummary
 	out.TaskExamples = nonEmptyLines(e.TaskExamples)
-	// Unparseable or absent tags are reported as absent, not as empty buckets:
-	// "{}" would say the enrichment looked and found no inputs.
+
 	var tags llmclient.SkillTags
 	if len(e.Tags) > 0 && json.Unmarshal(e.Tags, &tags) == nil && tags.Inputs != nil {
 		out.Tags = &tags
@@ -904,8 +628,6 @@ func enrichmentFrom(e gen.GetSkillEnrichmentRow) enrichmentInfo {
 	return out
 }
 
-// modelLimitations is the enrichment's half of the 限制 block: what the
-// package's own documentation states about its limits, as the model read it.
 func modelLimitations(stored string) []limitation {
 	lines := nonEmptyLines(stored)
 	out := make([]limitation, 0, len(lines))
@@ -915,9 +637,6 @@ func modelLimitations(stored string) []limitation {
 	return out
 }
 
-// scanDerivedLimitations is the scan's half: requirements the package's own
-// contents imply, regardless of what the document claims. Order follows
-// scanLimitations' iteration over findings, so it is stable per package.
 func scanDerivedLimitations(r skillpkg.Report) []limitation {
 	var out []limitation
 	seen := make(map[string]bool)
@@ -942,15 +661,11 @@ func nonEmptyLines(s string) []string {
 	return out
 }
 
-// licenseFrom reads the license off the version row, not off a re-scan: the row
-// is what the import decided and what a fork carried forward, and the two axes
-// (expression, provenance tier) travel together (ADR-021).
 func licenseFrom(v VersionFacts) licenseInfo {
 	if v.LicenseExpression == nil || *v.LicenseExpression == "" {
 		return licenseInfo{Status: statusLabel(LicenseStatusUnknown)}
 	}
-	// Declared, never Confirmed: confirmation is a reviewer's act and no column
-	// records one. Even a repo-root MIT is only a declaration about the repo.
+
 	out := licenseInfo{Expression: *v.LicenseExpression, Status: statusLabel(LicenseStatusDeclared)}
 	if v.LicenseSource != nil {
 		out.Source = *v.LicenseSource
@@ -959,9 +674,6 @@ func licenseFrom(v VersionFacts) licenseInfo {
 	return out
 }
 
-// sourceFrom maps the import record to the DISC-003 provenance block. Trust is
-// Traceable only for a git import that actually recorded a URL; an upload has no
-// verifiable origin, and manual confirmation has no store yet.
 func sourceFrom(s SourceFacts) *sourceInfo {
 	out := &sourceInfo{
 		Type:             s.SourceType,
@@ -993,17 +705,13 @@ func sourceFrom(s SourceFacts) *sourceInfo {
 	case s.SourceType == "git" && out.URL != "":
 		trust = SourceTrustTraceable
 	case s.SourceType == "generated":
-		// Not a fallthrough to unknown: a generated package's origin is on file,
-		// and 02:GEN-002 forbids showing it as unknown (GEN-006).
+
 		trust = SourceTrustGenerated
 	}
 	out.Trust = trustLabel(trust)
 	return out
 }
 
-// summarizeRisk turns a validation report into the DISC-008 block: severity
-// counts, every error and warning verbatim, and info-level disclosures folded to
-// counts per code.
 func summarizeRisk(r skillpkg.Report) riskSummary {
 	out := riskSummary{
 		ScanStatus: "scanned",
@@ -1030,9 +738,6 @@ func summarizeRisk(r skillpkg.Report) riskSummary {
 	return out
 }
 
-// specValidation reports the spec axis only. A passing report means the package
-// parses and its references resolve — never that it is safe or effective
-// (SKILL-002 規格通過不得自動標示為執行安全).
 func specValidation(r skillpkg.Report) string {
 	if r.Blocked {
 		return "failed"
@@ -1040,9 +745,6 @@ func specValidation(r skillpkg.Report) string {
 	return "passed"
 }
 
-// fileTree lists the package's files with their sizes, marking scripts with the
-// same rule the scan used (DISC-003 Script 必須有明確標示). Directories are left
-// out: the paths carry the structure and an empty directory says nothing.
 func fileTree(fsys fs.FS) []fileEntry {
 	out := []fileEntry{}
 	_ = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {

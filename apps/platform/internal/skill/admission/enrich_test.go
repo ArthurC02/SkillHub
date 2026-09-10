@@ -21,10 +21,6 @@ const (
 	testLimitation      = "無法處理加密的 PDF。"
 )
 
-// stubEnricher stands in for the Python LLM service. enrichStatus/embedStatus
-// other than 200 make that endpoint fail, which is how the fallback chain is
-// exercised. The last text sent to /embed is captured so a test can assert what
-// actually got indexed.
 type stubEnricher struct {
 	enrichStatus int
 	embedStatus  int
@@ -90,8 +86,6 @@ func testPackage() preparedPackage {
 	}
 }
 
-// A successful enrichment fills the projection and marks the document usable by
-// the vector leg (ADR-013 §1).
 func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
 	s := &Service{LLM: stub.start(t)}
@@ -107,13 +101,11 @@ func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
 	if e.enrichedSummary != testEnrichedSummary {
 		t.Fatalf("enriched_summary = %q, want the model's summary", e.enrichedSummary)
 	}
-	// The frontmatter description is kept alongside, never replaced: it is the
-	// one field on the row that is not model-generated.
+
 	if e.summary != testDescription {
 		t.Fatalf("summary = %q, want the frontmatter description %q", e.summary, testDescription)
 	}
-	// Provenance is what lets a reader tell generated text from declared text
-	// and lets a prompt change find its stale rows (ADR-013).
+
 	if e.model == nil || *e.model != "gpt-5.6-sol" {
 		t.Fatalf("model provenance = %v, want gpt-5.6-sol", e.model)
 	}
@@ -126,9 +118,7 @@ func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
 	if e.limitations != testLimitation {
 		t.Fatalf("limitations = %q, want the model's line (DISC-003 限制)", e.limitations)
 	}
-	// The buckets have to survive storage: DISC-002 shows 依賴 on a result row
-	// and DISC-003 shows 輸入/輸出/依賴 apart, and a flattened list cannot say
-	// which token was which.
+
 	var tags llmclient.SkillTags
 	if err := json.Unmarshal(e.tags, &tags); err != nil {
 		t.Fatalf("tags are not valid json: %v (%q)", err, e.tags)
@@ -139,9 +129,6 @@ func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
 	}
 }
 
-// The scan facts are projected for every import, enriched or not: they come
-// from the package, not from the model, so an unreachable LLM service must not
-// cost a result row its risk hint (DISC-002 風險提示).
 func TestScanFactsProjectedWithoutLLM(t *testing.T) {
 	p := testPackage()
 	p.report.Findings = []skillpkg.Finding{
@@ -166,11 +153,6 @@ func TestScanFactsProjectedWithoutLLM(t *testing.T) {
 	}
 }
 
-// golden-query-set.md §3.5/§3.6: the vector is computed over the enriched
-// summary plus the task example sentences, not over the raw package. Both
-// remaining recall@5 misses in that measurement were traced to queries that
-// only the example sentences could have matched, so if the examples stop
-// reaching the embedding call the fix silently reverts.
 func TestEmbeddingCoversEnrichedSummaryAndTaskExamples(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
 	s := &Service{LLM: stub.start(t)}
@@ -186,15 +168,12 @@ func TestEmbeddingCoversEnrichedSummaryAndTaskExamples(t *testing.T) {
 			t.Errorf("embedded text is missing %q:\n%s", want, text)
 		}
 	}
-	// The package body is deliberately not in there: indexing full text measured
-	// 21 points worse at Top-1 than indexing the summary (§3.5).
+
 	if strings.Contains(text, "# PDF") {
 		t.Errorf("embedded text includes the package body:\n%s", text)
 	}
 }
 
-// A failed enrichment must not fail the import. The document falls back to the
-// frontmatter description and is marked pending for the backfill.
 func TestEnrichPackageFallsBackToPendingWhenEnrichFails(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusBadGateway, embedStatus: http.StatusOK}
 	s := &Service{LLM: stub.start(t)}
@@ -215,9 +194,6 @@ func TestEnrichPackageFallsBackToPendingWhenEnrichFails(t *testing.T) {
 	}
 }
 
-// Enrichment succeeded but the embedding did not. The generated text is worth
-// keeping, but with no vector the document cannot be ranked, so it stays
-// pending — one flag covers both halves of "needs a rebuild".
 func TestEnrichPackageStaysPendingWhenEmbedFails(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusBadGateway}
 	s := &Service{LLM: stub.start(t)}
@@ -235,7 +211,6 @@ func TestEnrichPackageStaysPendingWhenEmbedFails(t *testing.T) {
 	}
 }
 
-// No LLM service configured at all: import still works, document is pending.
 func TestEnrichPackageWithoutLLMIsPending(t *testing.T) {
 	s := &Service{}
 
@@ -249,8 +224,6 @@ func TestEnrichPackageWithoutLLMIsPending(t *testing.T) {
 	}
 }
 
-// readPackage feeds the enrichment call: without SKILL.md and the file tree the
-// model is describing nothing.
 func TestReadPackageCollectsEnrichmentInputs(t *testing.T) {
 	p, err := readPackage(zipBytes(t, map[string]string{
 		"SKILL.md":         skillMD,

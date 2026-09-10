@@ -15,62 +15,40 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-// Enrichment status values stored on the search document (0011).
 const (
-	// enrichmentPending: the projection has no usable vector for this skill, so
-	// it cannot be ranked by the vector leg. Cleared by a successful enrichment,
-	// which is either the next import or a manual `reindex` backfill. Retrying
-	// is a Go decision (iron rule 6) and this flag is the queue it reads; there
-	// is deliberately no automatic retry schedule in this batch.
 	enrichmentPending = "pending"
-	// enrichmentEnriched: model text and its embedding both landed.
+
 	enrichmentEnriched = "enriched"
 )
 
-// Timeouts for the two index-time calls. Go owns timeout policy, not Python
-// (iron rule 6); the enrich budget sits just above the LLM service's own 60s
-// ceiling so its error surfaces here instead of our deadline.
 const (
 	// budget-over: enrich.LLM_TIMEOUT_SECONDS
 	enrichTimeout = 75 * time.Second
-	// 25s, above app.EMBED_TIMEOUT_SECONDS (20s). Equal before, and equal is not
-	// good enough: the two deadlines start at different instants — Go's before the
-	// request is written, Python's after it is received — so an equal pair means
-	// Go's fires first every time, and the failure is then attributed to the
-	// caller instead of to the ceiling that actually stopped the work.
+
+	// Set above the embedding service's own ceiling: the two clocks start at
+	// different instants, so an equal value here would always expire first.
 	// budget-over: app.EMBED_TIMEOUT_SECONDS
 	embedTimeout = 25 * time.Second
 )
 
-// enrichment is what the search projection stores for one skill version.
-// Summary and scan are always populated (they come from the package itself);
-// everything model-written is empty on the pending path.
 type enrichment struct {
-	summary         string // frontmatter description — never model-generated
+	summary         string
 	enrichedSummary string
 	taskExamples    string
-	tags            []byte // SkillTags as jsonb; buckets kept apart (DISC-002/003)
+	tags            []byte
 	limitations     string
-	scan            []byte // scanFacts as jsonb
+	scan            []byte
 	embedding       *pgvector.Vector
 	status          string
 	model           *string
 	promptVersion   *string
 }
 
-// scanFacts is the static-scan summary the search projection carries so a
-// result row can show a risk hint without re-reading the package (DISC-002
-// 風險提示). The detail view re-scans instead and reports the findings verbatim;
-// this is deliberately the lossy version, sized for a list row.
-//
-// Errors are not counted: an error-level finding blocks the import, so nothing
-// carrying one reaches the projection.
 type scanFacts struct {
 	Warnings int      `json:"warnings"`
-	Codes    []string `json:"codes"` // distinct finding codes, warning and info alike
+	Codes    []string `json:"codes"`
 }
 
-// scanFactsFrom folds a validation report into the projected facts.
 func scanFactsFrom(r skillpkg.Report) []byte {
 	f := scanFacts{Codes: []string{}}
 	seen := make(map[string]bool, len(r.Findings))
@@ -85,24 +63,13 @@ func scanFactsFrom(r skillpkg.Report) []byte {
 	}
 	b, err := json.Marshal(f)
 	if err != nil {
-		// A struct of an int and a string slice does not fail to marshal. If it
-		// somehow does, a NULL scan is the honest answer: the reader reports
-		// the scan as unavailable rather than as clean.
+
 		slog.Warn("scan facts not serialisable; projecting no scan", "error", err)
 		return nil
 	}
 	return b
 }
 
-// enrichPackage runs the ADR-013 §1 index-time enhancement for one package and
-// returns what the projection should store. It never returns an error: every
-// failure degrades to a pending document built from the frontmatter description,
-// because a skill that imported successfully must be findable even when the
-// model is not reachable.
-//
-// Called outside the import transaction on purpose — these are two network
-// round-trips and holding a Postgres transaction open across them would pin a
-// connection for the length of an LLM call.
 func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspaceID pgtype.UUID) enrichment {
 	e := enrichment{
 		summary: p.report.Manifest.Description,
@@ -125,25 +92,14 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspac
 			"skill", p.report.Manifest.Name, "error", err)
 		return e
 	}
-	// Two paid calls, two rows (cost.go). ADR-068 decision 3 records every
-	// paid call, and the embedding below is a separate call to a separate
-	// model — folding them into one row would make the per-call statistics
-	// this table feeds describe a call nobody makes.
+
 	s.recordCost(ctx, credit.KindIndexEnrich, workspaceID, resp.Model, resp.PromptVersion, resp.Usage)
 	e.enrichedSummary = resp.Summary
 	e.taskExamples = joinTaskExamples(resp.TaskExamples)
 	e.tags = marshalTags(resp.Tags)
 	e.limitations = joinLines(resp.Limitations)
 	e.model, e.promptVersion = &resp.Model, &resp.PromptVersion
-	// 05 R-34: the enrichment service checked its own output against the
-	// document without spending a model call, and this is where that answer
-	// stops being a field nobody reads. It does not block the index - a
-	// restatement that overstates by one adjective is worth less than no
-	// enrichment at all - so the disposition is to say it, once per finding,
-	// with the rule and the field named.
-	//
-	// Nothing here quotes the model: rule, field and token all come from the
-	// checker's fixed vocabulary (TM-SCN-02).
+
 	for _, c := range resp.Checks {
 		slog.Warn("enrichment disagrees with its own source document",
 			"skill", p.report.Manifest.Name, "rule", c.Rule, "field", c.Field, "token", c.Token,
@@ -157,9 +113,7 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspac
 		s.recordCost(ctx, credit.KindIndexEnrich, workspaceID, emb.Model, "", emb.Usage)
 	}
 	if err != nil || len(emb.Embeddings) == 0 {
-		// The generated text is worth keeping — it is still the better display
-		// summary — but without a vector this document cannot be ranked, so it
-		// stays pending for the backfill.
+
 		slog.Warn("enrichment embedding failed; search document left pending",
 			"skill", p.report.Manifest.Name, "error", err)
 		return e
@@ -170,16 +124,6 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspac
 	return e
 }
 
-// embeddingText builds the string the vector leg indexes: the enriched summary
-// and the example task sentences, not the package body.
-//
-// golden-query-set.md §3.5 measured a summary-shaped index at 77% Top-1 against
-// 56% for full text over the same 31-document corpus — long bodies dilute the
-// vector. §3.6 then traced both remaining recall@5 misses to the absence of the
-// task example sentences specifically: a Traditional Chinese query about
-// extracting tables from scans could not reach an English `pdf` SKILL.md whose
-// frontmatter never says either thing. The examples are what closes that gap, so
-// they belong in the embedded text and not only in the stored row.
 func embeddingText(name string, e enrichment) string {
 	body := e.enrichedSummary
 	if body == "" {
@@ -195,11 +139,6 @@ func embeddingText(name string, e enrichment) string {
 	return strings.Join(parts, "\n")
 }
 
-// flatTags is every tag bucket as one space-separated line. Only the embedded
-// text wants them flat — it is a bag of words, and which bucket a term came
-// from carries no retrieval signal. Everything a reader sees keeps the buckets
-// (DISC-002 依賴, DISC-003 輸入/輸出/依賴), which is why the stored column is
-// jsonb and this collapses it rather than the other way round.
 func (e enrichment) flatTags() string {
 	var t llmclient.SkillTags
 	if len(e.tags) == 0 || json.Unmarshal(e.tags, &t) != nil {
@@ -212,9 +151,6 @@ func (e enrichment) flatTags() string {
 	return strings.Join(out, " ")
 }
 
-// joinTaskExamples flattens the bilingual examples one sentence per line. Both
-// languages are kept: the corpus is English-dominant and the queries are not,
-// so each side of the pair is the bridge for queries in the other language.
 func joinTaskExamples(examples []llmclient.TaskExample) string {
 	lines := make([]string, 0, len(examples)*2)
 	for _, ex := range examples {
@@ -223,7 +159,6 @@ func joinTaskExamples(examples []llmclient.TaskExample) string {
 	return joinLines(lines)
 }
 
-// joinLines is the projection's one-item-per-line convention, blanks dropped.
 func joinLines(items []string) string {
 	out := make([]string, 0, len(items))
 	for _, s := range items {
@@ -234,10 +169,6 @@ func joinLines(items []string) string {
 	return strings.Join(out, "\n")
 }
 
-// marshalTags stores the tag buckets as they came back. They used to be
-// space-joined into one string on the reasoning that nothing read them apart;
-// DISC-002 (依賴 on a result row) and DISC-003 (輸入/輸出/依賴 on the detail
-// view) both do, and no amount of parsing recovers which token was which.
 func marshalTags(t llmclient.SkillTags) []byte {
 	for _, bucket := range []*[]string{&t.Inputs, &t.Outputs, &t.Tools, &t.Dependencies} {
 		*bucket = trimAll(*bucket)
@@ -250,8 +181,6 @@ func marshalTags(t llmclient.SkillTags) []byte {
 	return b
 }
 
-// trimAll drops blank entries and returns a non-nil slice, so an empty bucket
-// serialises as [] rather than null.
 func trimAll(in []string) []string {
 	out := make([]string, 0, len(in))
 	for _, s := range in {
@@ -261,7 +190,3 @@ func trimAll(in []string) []string {
 	}
 	return out
 }
-
-// skipEnrichment is enrichPackage without the model calls: the two fields that
-// come from the package itself, and `pending` forever.
-//

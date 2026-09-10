@@ -1,117 +1,3 @@
-// Command maintenance runs the operator-invoked retention and content-health
-// jobs. Same shape as cmd/reindex: bounded, idempotent, re-runnable, and
-// scheduled by whatever the deployment already uses for cron. Deliberately not
-// a scheduler — iron rule 6 keeps the "when" decision outside the code, and a
-// second scheduler beside the queue is exactly the moving part nobody pages
-// themselves for.
-//
-//	maintenance purge-accounts     CORE-007: hard delete the private content of
-//	                               accounts past their 30-day grace period and
-//	                               de-identify what has to be retained. Needs
-//	                               DATABASE_URL and object storage.
-//	maintenance purge-audit        PDM-006 6: remove audit events older than
-//	                               AUDIT_RETENTION. Needs DATABASE_URL.
-//	maintenance purge-feedback     BETA-003/004/005: remove the free-text feedback
-//	                               reports older than FEEDBACK_RETENTION. Needs
-//	                               DATABASE_URL and FEEDBACK_RETENTION.
-//	maintenance purge-run-artifacts
-//	                               PDM-006 6 / SEC-006: remove the bytes behind
-//	                               Run outputs whose expires_at has passed and
-//	                               mark the rows purged. Needs DATABASE_URL and
-//	                               object storage.
-//	maintenance purge-credit       ADR-068 11: remove cost_events and
-//	                               credit_entries older than CREDIT_RETENTION.
-//	                               Needs DATABASE_URL and CREDIT_RETENTION.
-//	maintenance purge-datasets     PDM-006 6 / SEC-006: remove the bytes behind
-//	                               uploaded datasets whose expires_at has passed
-//	                               and mark the rows deleted. Needs DATABASE_URL
-//	                               and object storage.
-//	maintenance purge-deleted-skills
-//	                               WS-005 / PDM-006 6.1: hard delete the skills a
-//	                               user deleted themselves once they are past
-//	                               SKILL_DELETION_GRACE, their frozen versions
-//	                               included. Needs DATABASE_URL and
-//	                               SKILL_DELETION_GRACE.
-//	maintenance collect-objects    04 丙-73: remove the package objects whose last
-//	                               referencing skill_versions row is gone. Needs
-//	                               DATABASE_URL and object storage, and no
-//	                               retention window at all — see below.
-//	maintenance check-sources      INGEST-010: probe recorded import source URLs
-//	                               and mark the ones that no longer resolve.
-//	                               Needs DATABASE_URL and network egress.
-//	maintenance rotate-partitions  Keep trace_events and analytics_events'
-//	                               monthly partitions in step: pre-create the
-//	                               months about to be written to, drop the ones
-//	                               past retention. Needs DATABASE_URL,
-//	                               TRACE_RETENTION and ANALYTICS_RETENTION.
-//
-// PURGE_GRACE (Go duration, default 720h) and MAINTENANCE_BATCH (default 100)
-// tune one run. A shortened grace applies to requests already in flight.
-//
-// SKILLHUB_PURGE_DATABASE_URL, when set, replaces DATABASE_URL as the one pool
-// every subcommand in this process shares (R-25; see purgeDatabaseURL and
-// db/migrations/0059_skillhub_purge_role.sql). It is meant to authenticate as a
-// login granted the narrow skillhub_purge role rather than the API's own, so a
-// purge no longer needs DELETE on every table the API role can reach. Unset
-// means this process still purges under DATABASE_URL's role, logged once so an
-// operator can tell the two apart.
-//
-// rotate-partitions runs on the same pool and 0059 does not grant that role
-// any DDL right, so a deployment that repoints SKILLHUB_PURGE_DATABASE_URL at
-// a login holding only skillhub_purge breaks rotate-partitions the same run --
-// see docs/runbooks/purge-role-cutover.md for the extra grant that subcommand
-// needs before the cutover, or for invoking it against DATABASE_URL directly.
-//
-// purge-run-artifacts is the one retention job here that reads no window at all,
-// and that is not an omission. The other three sweep tables with no per-row
-// deadline, so the window has to be handed in and "unset" honestly means nobody
-// decided. A Run output carries its own `expires_at`, written when the run
-// settled and already read back by ListReadableRunArtifacts and
-// CountUnreadableRunArtifacts; a window from the environment would be a second
-// definition of the same date, and the first thing a mismatch does is delete
-// rows another statement still calls readable. Same shape as the download
-// package sweep: DOWNLOAD_ARTIFACT_RETENTION is read where the row is created,
-// never where it is swept.
-//
-// collect-objects reads no window either, and for a third reason again. The two
-// above are swept against a deadline written on the row; this one is swept
-// against no deadline at all. It removes package objects that no skill_versions
-// row references any more, which is a fact the database answers at sweep time,
-// not a policy anybody has to ratify — so there is no variable to fail closed
-// on and adding one would gate a job that deletes nothing anybody can reach.
-//
-// TRACE_RETENTION, ANALYTICS_RETENTION, AUDIT_RETENTION and FEEDBACK_RETENTION
-// have no defaults on purpose: all four are PDM-006 proposals that have not been
-// ratified, and a default would make this process enforce a retention nobody
-// agreed to, by deleting. Unset means the job refuses to start.
-//
-// FEEDBACK_RETENTION arrived on 2026-08-29 with purge-feedback, and it is the
-// same gap AUDIT_RETENTION closed, found a fourth time: 0029 built
-// feedback_reports for a participant's own 2000-character description of where
-// they got stuck, and nothing in this repository had ever deleted one. It was
-// also the only collected data class absent from GET /policy/data-retention,
-// whose text declares there is no free-text column anywhere — true of the table
-// it describes, and the reader has no way to know there is another.
-//
-// SKILL_DELETION_GRACE joined them on 2026-08-25 and it is the sharpest case of
-// the four: PDM-006 6.1's 30 days is unratified, and what this one deletes on
-// that unsigned deadline is a user's own content. So the deployment has to say
-// the number out loud, and a deployment that has not is refused.
-//
-// AUDIT_RETENTION arrived last, on 2026-08-25, and the gap it closed was the
-// other direction: 0013's column comment, its index name and the DELETE branch
-// of enforce_immutable were all written for a 400 day sweep, and the sweep did
-// not exist. The consent document told a participant the row goes after 400
-// days; nothing deleted it, on the one table whose trigger makes deleting it
-// afterwards deliberately hard.
-//
-// This process has one composition root per subcommand — the function that runs
-// it — and that is the shape, not an oversight: each job builds the single
-// Service it needs and reads only the configuration that service uses, so
-// check-sources runs on a deployment whose object storage is misconfigured and
-// purge-accounts refuses to start on one whose storage it cannot reach. A shared
-// root would make every job depend on every job's configuration. (ADR-032 §5:
-// apiserver.NewApp is the API's root, not the platform's.)
 package main
 
 import (
@@ -190,22 +76,6 @@ func main() {
 	}
 }
 
-// purgeDatasets is purgeRunArtifacts for the other file the user put there
-// themselves, and it reads no window either, for the same reason: the deadline
-// is on the row. `datasets.expires_at` is stamped at upload from
-// testlab.DatasetRetention, so a sweep taking its cutoff from an environment
-// variable would be a second definition of a date the upload screen has already
-// quoted to the person uploading.
-//
-// That symmetry is why there is no DATASET_RETENTION to fail closed on, and it
-// is worth saying plainly rather than leaving as an apparent omission: this job
-// deletes, and the thing that decides what it deletes is a column written months
-// earlier by a screen that told the user the number.
-//
-// 0004 built the index for this sweep and named it in a comment. Nothing ran it
-// until 2026-08-25, so the 90 days the upload screen and the consent form both
-// promise had never once been carried out (04 丙-64) -- the third row of the
-// same consent table to be caught the same way inside two days.
 func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 	store, err := objstore.FromEnv()
 	if err != nil {
@@ -238,22 +108,11 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 			return out, nil
 		},
 		svc.MarkDatasetCleanupIntentPurged, svc.GuardDatasetObjectRemoval, batch())
-	// Logged before the error is dealt with, like every other sweep here: a pass
-	// that failed part way still purged the rest, and the count is what tells an
-	// operator which case this was.
+
 	slog.Info("dataset purge complete", "datasets_purged", n, "upload_intents_purged", intentN)
 	return errors.Join(err, intentErr)
 }
 
-// rotatePartitions is this subcommand's composition root. Both partitioned
-// tables are rolled by one invocation because they need the same thing at the
-// same cadence and a deployment that wires up one cron entry and forgets the
-// other has a silent hole; the DDL for each still belongs to its owner, which is
-// why this function names two packages and no table.
-//
-// Both windows are read before any statement runs. Fail-closed is the whole
-// point: an unset window is not "use a sensible default", it is "this deployment
-// has not decided what to delete", and this job deletes.
 func rotatePartitions(ctx context.Context, pool *pgxpool.Pool) error {
 	traceRetention, err := positiveDuration("TRACE_RETENTION")
 	if err != nil {
@@ -263,37 +122,23 @@ func rotatePartitions(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
-	// One `now` for both, so a run that straddles midnight on the first of a
-	// month does not give the two tables different ideas of which month it is.
+
 	now := time.Now().UTC()
 
 	traceReport, traceErr := trace.MaintainPartitions(ctx, pool, now, traceRetention)
 	logRotation(trace.PartitionedTable, traceReport)
-	// analytics runs even when trace failed, for the reason purgeAccounts runs
-	// its second sweep: the two tables have nothing to do with each other, and
-	// returning early would make one table's stuck month quietly suspend the
-	// other table's retention.
+
 	analyticsReport, analyticsErr := analytics.MaintainPartitions(ctx, pool, now, analyticsRetention)
 	logRotation(analytics.PartitionedTable, analyticsReport)
 
 	return errors.Join(traceErr, analyticsErr)
 }
 
-// logRotation prints what actually happened, including the common case of
-// nothing: "created=[] dropped=[]" on a re-run is the evidence the job is
-// idempotent, and it is what an operator needs to see the month it stops being
-// idempotent.
 func logRotation(table string, report partition.Report) {
 	slog.Info("partitions rotated", "table", table,
 		"created", report.Created, "dropped", report.Dropped)
 }
 
-// purgeAudit is its own subcommand rather than a second sweep inside another
-// one, even though several here are "delete rows past a retention window". They
-// answer to different promises with different numbers (400 days against
-// feedback's, against the partition rotation's 365) and a deployment must be able
-// to run one while the other is unset -- which is precisely what fail-closed
-// means here, and what folding them together would take away.
 func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
 	retention, err := positiveDuration("AUDIT_RETENTION")
 	if err != nil {
@@ -306,23 +151,6 @@ func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
 	return err
 }
 
-// purgeRunArtifacts is SEC-006's retention half for Run outputs: the bytes of an
-// expired output go, the row stays and says it expired. PDM-006 §6 and the
-// consent document §3 both tell a beta participant 30 days; until this
-// subcommand existed the number lived only in a column nothing acted on — the
-// same shape of promise-without-a-sweeper that purge-audit closed on the audit
-// table, found the same way.
-//
-// This subcommand's composition root. The worklist and the row write are run's,
-// because `artifacts` has two owner contexts and neither may write the other's
-// rows (ADR-033); the object-then-row ordering is the generic sweep's, shared
-// with the download package half rather than written a second time here.
-//
-// Not folded into the hourly objreconcile sweep in cmd/worker, which already
-// does the download half: that Service is packaging's and testlab's by
-// construction, and a run-owned worklist bolted onto it would be a third
-// context's rows reached through their injection points. A cron subcommand is
-// also what the other three retention sweeps are.
 func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 	store, err := objstore.FromEnv()
 	if err != nil {
@@ -354,31 +182,11 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 			}
 			return out, nil
 		}, svc.MarkArtifactUploadIntentPurged, svc.GuardArtifactUploadIntentRemoval, batch())
-	// Logged before the error is dealt with, like purgeAccounts: a pass that
-	// failed part way still purged the rest, and the count is what tells an
-	// operator which case this was. Bounded by MAINTENANCE_BATCH, so a backlog
-	// drains over several runs — a sweep is not a migration.
+
 	slog.Info("run artifact purge complete", "artifacts_purged", n, "upload_intents_purged", intentN)
 	return errors.Join(err, intentErr)
 }
 
-// purgeDeletedSkills is the sweep behind WS-005's grace period. Until
-// 2026-08-25 the screen that confirmed a deletion told the user, verbatim, that
-// version snapshots were "retained for the 30-day grace period, then purged",
-// and nothing purged them: the only hard delete of a skill took a workspace id
-// and ran from account deletion alone (04 丙-63). The sentence went; this is
-// what lets a deployment mean it again.
-//
-// Fail-closed on SKILL_DELETION_GRACE, and the reason is stronger here than for
-// the other three windows: those delete the platform's records about a user,
-// this one deletes the user's own content, on a deadline (PDM-006 6.1's 30 days)
-// that is still unratified. Unset therefore refuses rather than picking 30 days
-// -- the number has to come from whoever signed it.
-//
-// This subcommand's composition root: one Service, one field. The purge opens
-// its own transaction, because `SET LOCAL skillhub.purge = 'on'` -- the 0005
-// trigger's one exemption -- lasts exactly as long as the transaction it runs
-// in; see registry.PurgeDeletedSkills.
 func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {
 	grace, err := positiveDuration("SKILL_DELETION_GRACE")
 	if err != nil {
@@ -386,68 +194,26 @@ func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	sweep, err := (&registry.Service{Pool: pool}).PurgeDeletedSkills(ctx, grace, batch())
 	if err == nil {
-		// All three numbers, not just the one that changed. A purge of 0 is the
-		// normal case and says nothing on its own: `waiting` shrinking is the
-		// backlog draining, `kept` standing still is the provenance rule holding
-		// rows forever, correctly, and an operator asking "did it work" is asking
-		// which of those two they are looking at.
+
 		slog.Info("deleted skill purge complete",
 			"skills_purged", sweep.Purged, "waiting", sweep.Waiting, "kept", sweep.Kept)
 	}
 	return err
 }
 
-// collectObjects is the other half of the grace purge above and of the account
-// purge: the bytes. Package objects are content-addressed and shared with every
-// fork, so no delete path may remove them at the moment it removes rows —
-// whether an object may go is only knowable after the rows are gone, and until
-// then a fork may still be reading it. `object_collection_queue` (0039) is what
-// carries the key across that gap and this is what drains it.
-//
-// This subcommand's composition root: one Service, one store, no window. The
-// missing variable is the point rather than an oversight — see the package
-// comment and registry.CollectOrphanObjects.
-//
-// It collects nothing today. The enqueue that fills the worklist has to run
-// inside each purge's own transaction and neither purge can name the skills it
-// is about to take, so the producer is still unwritten (04 丙-73); the sweep
-// lands first because everything it does — deciding what is unreferenced,
-// sparing a fork's bytes, surviving a re-run — is what has to be right before
-// anything is allowed to enqueue.
 func collectObjects(ctx context.Context, pool *pgxpool.Pool) error {
 	store, err := objstore.FromEnv()
 	if err != nil {
 		return err
 	}
 	c, err := (&registry.Service{Pool: pool}).CollectOrphanObjects(ctx, store, batch())
-	// Logged before the error is dealt with, like every other sweep here: a pass
-	// that failed part way still collected the rest. `depth` is the number that
-	// says whether to look — bounded by MAINTENANCE_BATCH, so a backlog draining
-	// over several runs is normal and a depth that never moves is not.
+
 	slog.Info("orphan object collection complete",
 		"objects_collected", c.Collected, "entries_dropped", c.Dropped, "queue_depth", c.Depth)
 	metrics.OrphanObjectQueueDepth.Set(float64(c.Depth))
 	return err
 }
 
-// purgeFeedback is the retention sweep for BETA-003/004/005's qualitative
-// reports, and it is the only place in this process that deletes something a
-// participant typed in their own words.
-//
-// Fail-closed on FEEDBACK_RETENTION, exactly like AUDIT_RETENTION and for the
-// stronger of the two reasons: no window has been ratified for this class at all,
-// so "unset" here does not mean "keep forever by default", it means nobody has
-// decided — and a default would have this process delete a beta tester's own
-// account of where the product failed them on a deadline nobody signed.
-//
-// Not folded into purge-audit despite both being "delete rows past a window", for
-// the reason purge-audit is not folded into anything either: two promises, two
-// numbers, and a deployment has to be able to run one while the other is unset.
-//
-// Deletion and not de-identification, and analytics owns both: account deletion
-// already de-identifies these rows in place (DetachWorkspaceFeedback), because
-// ADR-029 決策 5 rests a scope review on what people said. That answers a
-// different question from this one, which is how long the words themselves live.
 func purgeFeedback(ctx context.Context, pool *pgxpool.Pool) error {
 	retention, err := positiveDuration("FEEDBACK_RETENTION")
 	if err != nil {
@@ -460,24 +226,6 @@ func purgeFeedback(ctx context.Context, pool *pgxpool.Pool) error {
 	return err
 }
 
-// purgeCredit is ADR-068 decision 11's retention half: cost_events and
-// credit_entries past CREDIT_RETENTION go, whatever account they belong to.
-//
-// Deliberately separate from the per-user delete the account purge runs. That
-// one is keyed on a user and removes everything they ever spent; this one is
-// keyed on time and removes everything anybody spent long enough ago. The
-// store interface's own comment records that this distinction was got wrong
-// once already — it claimed the retention queries covered account deletion,
-// which would have left a deleted account's spend on file until it aged out.
-//
-// Fail-closed on CREDIT_RETENTION for AUDIT_RETENTION's reason: these two
-// tables are the platform's financial record, and a default window would be
-// this process deciding on its own how long a billing trail lives.
-//
-// Both deletes run in one transaction because both need the same
-// `SET LOCAL skillhub.purge = 'on'` the immutability triggers check, and a
-// half-swept ledger — entries gone, their cost events still there — is worse
-// than an unswept one: every surviving debit would point at nothing.
 func purgeCredit(ctx context.Context, pool *pgxpool.Pool) error {
 	retention, err := positiveDuration("CREDIT_RETENTION")
 	if err != nil {
@@ -507,17 +255,9 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	svc := purgeService(pool)
 	n, purgeErr := svc.PurgeExpiredAccounts(ctx, store, grace(), batch())
-	// Logged before the error is dealt with: a batch that failed on some accounts
-	// still purged the rest, and the count is what tells an operator which case
-	// this was.
+
 	slog.Info("account purge complete", "accounts_purged", n)
 
-	// Expired sessions are the other retention sweep this command owns; it is
-	// one statement and already idempotent (ADR-020). It runs even when accounts
-	// failed, because the two sweeps have nothing to do with each other and
-	// returning early here would make one account's failure silently skip the
-	// other sweep as well - the same shape of quiet omission as the swallowed
-	// error above.
 	sessions, sessionsErr := svc.CleanupExpiredSessions(ctx)
 	if sessionsErr == nil {
 		slog.Info("expired sessions removed", "sessions", sessions)
@@ -525,19 +265,9 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 	return errors.Join(purgeErr, sessionsErr)
 }
 
-// purgeService is this subcommand's slice of the composition root, split out of
-// purgeAccounts only so main_test.go can check it without a database or object
-// storage. This process, not the API, is what actually runs the purge, so this
-// is where the six owning contexts' steps have to be handed over: each context
-// decides what an account deletion means for its own rows, and identity owns
-// only the transaction they share (ADR-034). A step left out here is refused,
-// not skipped — see identity.requirePurgeSteps.
 func purgeService(pool *pgxpool.Pool) *identity.Service {
 	ids := &identity.Service{Pool: pool}
-	// credit's rows are keyed on the user; every other purge step is keyed on
-	// the workspace. The resolution happens on the purge's OWN transaction —
-	// that connection already holds this workspace's exclusive fence, so going
-	// back to the pool for it would wait on a lock the same purge is holding.
+
 	creditSvc := &credit.Service{Store: credit.NewPostgresStore(pool)}
 	purgeCredit := func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
 		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
@@ -579,9 +309,6 @@ func checkSources(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
-// positiveDuration reads a retention window that has no default. The error names
-// the variable rather than the job, because the operator's next action is to set
-// it and the job name is already on the failure line main prints.
 func positiveDuration(key string) (time.Duration, error) {
 	d, err := time.ParseDuration(os.Getenv(key))
 	if err != nil || d <= 0 {
@@ -597,20 +324,6 @@ func grace() time.Duration {
 	return identity.AccountDeletionGrace
 }
 
-// purgeDatabaseURL is R-25's least-privilege switch. SKILLHUB_PURGE_DATABASE_URL
-// is meant to authenticate as a login granted the skillhub_purge role (0059) --
-// SELECT/UPDATE/DELETE on exactly the tables the seven subcommands touch,
-// nothing an API request handler's own compromise could use for anything wider.
-//
-// Falling back to DATABASE_URL rather than refusing to start: 0059 only builds
-// the role, it does not grant it to any login, and no migration in this
-// repository may (docs/runbooks/purge-role-cutover.md is the operator step
-// that does). A deployment that has not taken that step yet must keep purging
-// under the API role it has always used -- refusing here would turn a
-// least-privilege migration into every retention sweep failing to start on
-// deployments that have not opted in. The log line is what makes that
-// deliberate rather than silent: an operator scanning `maintenance` output for
-// "did the cutover happen" has one line to check.
 func purgeDatabaseURL() string {
 	if url := os.Getenv("SKILLHUB_PURGE_DATABASE_URL"); url != "" {
 		return url

@@ -58,8 +58,6 @@ func runUUID(t *testing.T, s string) pgtype.UUID {
 	return u
 }
 
-// The token is the whole authorization story for ingestion, so each way of
-// forging one gets its own assertion.
 func TestIngestionTokenGrantsExactlyOneAttempt(t *testing.T) {
 	signer := &Signer{Secret: []byte("secret")}
 	runID := runUUID(t, "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20")
@@ -80,8 +78,6 @@ func TestIngestionTokenRejectsTampering(t *testing.T) {
 	now := time.Now()
 	token := signer.Mint(runID, 1, now)
 
-	// Editing the attempt is the interesting forgery: it would let one attempt
-	// write into another attempt's stream, where the seq numbers collide.
 	forged := strings.Replace(token, ".1.", ".2.", 1)
 	if _, err := signer.Verify(forged, now); err == nil {
 		t.Error("a token with an edited attempt was accepted")
@@ -97,9 +93,6 @@ func TestIngestionTokenRejectsTampering(t *testing.T) {
 	}
 }
 
-// A signer with no secret must mint nothing: that is what makes "trace
-// ingestion is not configured" mean "the endpoint accepts nothing", rather than
-// "the endpoint accepts everything".
 func TestDisabledSignerMintsAndVerifiesNothing(t *testing.T) {
 	signer := &Signer{}
 	if url := signer.IngestionURL("http://platform:8080", runUUID(t, "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20"), 1, time.Now()); url != "" {
@@ -110,16 +103,8 @@ func TestDisabledSignerMintsAndVerifiesNothing(t *testing.T) {
 	}
 }
 
-// vendorKey is a fake OpenAI project key, assembled at run time rather than
-// written as one literal. Repository hygiene, not obfuscation: the pre-push
-// secret scan greps for the vendor prefixes, and a test fixture that trips it on
-// every commit trains people to ignore the scan. What is under test is the
-// pattern in mask.go, and it sees the same string either way.
 var vendorKey = "sk-" + "proj-" + strings.Repeat("A", 28)
 
-// TRACE-005. Each case is a shape that has actually turned up in a trace
-// payload; the assertion is always the same two things - the secret is gone and
-// the pointer to where it was is recorded.
 func TestMaskerRedactsSecretsAndRecordsWhere(t *testing.T) {
 	masker := &Masker{Known: []string{"a-long-known-ingestion-token-value"}}
 	payload := `{
@@ -147,8 +132,7 @@ func TestMaskerRedactsSecretsAndRecordsWhere(t *testing.T) {
 	if !strings.Contains(masked, Placeholder) {
 		t.Errorf("nothing was redacted: %s", masked)
 	}
-	// Untouched values must stay untouched: a masker that eats the duration or
-	// the result summary has broken the trace to no purpose.
+
 	if !strings.Contains(masked, "wrote output.xlsx") || !strings.Contains(masked, "3412") {
 		t.Errorf("masker altered non-secret values: %s", masked)
 	}
@@ -159,8 +143,6 @@ func TestMaskerRedactsSecretsAndRecordsWhere(t *testing.T) {
 	}
 }
 
-// The placeholder must not preserve length or prefix: a partial mask leaks
-// entropy about the secret (contract README §6d).
 func TestMaskerReplacesWholeValueWithFixedPlaceholder(t *testing.T) {
 	masker := &Masker{}
 	short, err := masker.Mask(json.RawMessage(`{"m":"key sk-AAAAAAAAAAAAAAAAAAAAAAAA end"}`))
@@ -176,8 +158,6 @@ func TestMaskerReplacesWholeValueWithFixedPlaceholder(t *testing.T) {
 	}
 }
 
-// A "known" value short enough to occur in ordinary text must not be used as a
-// search term, or the masker would redact the trace into uselessness.
 func TestMaskerIgnoresShortKnownValues(t *testing.T) {
 	masker := &Masker{Known: []string{"the"}}
 	result, err := masker.Mask(json.RawMessage(`{"m":"the quick brown fox"}`))
@@ -192,15 +172,6 @@ func TestMaskerIgnoresShortKnownValues(t *testing.T) {
 	}
 }
 
-// The two unit tests that used to sit here (TestStreamHealthNamesTheMissingSequenceNumbers,
-// TestStreamHealthBoundsTheMissingSequenceSample) exercised a Go fold that the read
-// path stopped calling when TRACE-008 moved into GetTraceStreamHealth. Breaking that
-// SQL left both of them green, which is the failure mode AGENTS.md 開發自動化 §9 is
-// about. Their cases now live against the real query, in
-// apiserver/trace_fold_a4_integration_test.go.
-
-// Envelope validation is the trust boundary: a sandbox is untrusted input, and
-// each of these is a way it could poison the timeline.
 func TestValidateRejectsMalformedEnvelopes(t *testing.T) {
 	base := func() Event {
 		return Event{
@@ -238,8 +209,6 @@ func TestValidateRejectsMalformedEnvelopes(t *testing.T) {
 	}
 }
 
-// A minor version bump is additive by the contract's own rule, so an event from
-// a newer producer must still be stored rather than dropped.
 func TestValidateAcceptsAdditiveMinorVersions(t *testing.T) {
 	event := Event{
 		SchemaVersion: "1.7", EventID: "0f0a1e6c-1c9a-4f8e-9a2b-1d5a2c7b3e01",
@@ -252,34 +221,16 @@ func TestValidateAcceptsAdditiveMinorVersions(t *testing.T) {
 	}
 }
 
-// TestSummaryKeepsUnreportedCostNil used to sit here, over (*Summary).fold - the
-// same dead code as above, replaced by GetTraceGeneralFold's usage CASEs. Its case,
-// and the two branches it never covered (run_total vs last-usage), are in
-// apiserver/trace_fold_a4_integration_test.go.
-
-// The advanced view is ordered by the instant an event happened, and the
-// formatted timestamp is not a proxy for it.
-//
-// RFC3339Nano trims trailing zeros from the fraction, so the string order and
-// the chronological order disagree exactly when one fraction is a prefix of
-// another -- which is common, not exotic: it happens whenever an instant lands
-// on a round nanosecond. The integration test that first caught this
-// (TestAdvancedViewNamesMissingEventsAndRefusesToLookComplete) depends on the
-// real clock producing such a pair, so it fails perhaps half the time and had
-// never run on a developer machine at all -- it skips without a database. The
-// cases below are the disagreement itself, so they fail every time.
 func TestEventsSortByTheInstantAndNotItsFormattedString(t *testing.T) {
 	base := time.Date(2026, 8, 26, 12, 0, 45, 0, time.UTC)
-	// Each pair is (earlier, later) chronologically, and in each one the
-	// RFC3339Nano strings compare the other way round.
+
 	pairs := []struct {
 		name           string
 		earlier, later time.Time
 	}{
-		// ".123Z" vs ".1234Z": 'Z' (0x5A) beats '4' (0x34) at the 5th character.
+
 		{"a fraction that is a prefix of the other", base.Add(123 * time.Millisecond), base.Add(123400 * time.Microsecond)},
-		// "45Z" vs "45.5Z": the whole second has no fraction left to compare, so
-		// '.' (0x2E) beats 'Z' (0x5A) and the later event sorts first.
+
 		{"a whole second against a fraction of it", base, base.Add(500 * time.Millisecond)},
 	}
 	for _, p := range pairs {
@@ -287,9 +238,7 @@ func TestEventsSortByTheInstantAndNotItsFormattedString(t *testing.T) {
 			view := func(at time.Time, seq int64) EventView {
 				return EventView{Seq: seq, OccurredAt: at.Format(time.RFC3339Nano), occurredAt: at, EmittedBy: "sandbox"}
 			}
-			// Guard the fixture: if these strings ever stop disagreeing with the
-			// instants, this test is measuring nothing and should be deleted
-			// rather than left green.
+
 			if p.earlier.Format(time.RFC3339Nano) <= p.later.Format(time.RFC3339Nano) {
 				t.Fatalf("fixture no longer disagrees: %q vs %q",
 					p.earlier.Format(time.RFC3339Nano), p.later.Format(time.RFC3339Nano))

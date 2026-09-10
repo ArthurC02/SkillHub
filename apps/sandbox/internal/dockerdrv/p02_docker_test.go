@@ -17,28 +17,13 @@ import (
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/dockerdrv"
 )
 
-// TestProbeEgressAgainstARealListener is the half of ADR-022 T10 that had no
-// test at all: every case in sandbox/p02_test.go drives a fakeProber, so the
-// state machine was measured and the probe itself never was.
-//
-// That gap is not theoretical. The probe used to shell out to `nc -z`, and the
-// Runtime Image has no `nc` — the `&&` short-circuited, nothing was printed,
-// and "no REACHED lines" is exactly what a clean pass looks like. A probe that
-// cannot fail is not a probe, and the default test image (busybox) would have
-// hidden it, because busybox builds nc in. So this test insists on an image
-// that is actually the Runtime Image, opens a listener the probe must find,
-// and asks for a closed port in the same round that the probe must not claim.
 func TestProbeEgressAgainstARealListener(t *testing.T) {
 	cli := dockerClient(t)
 	img := probeImage(t, cli)
 
-	// The listener lives in its own container on the default bridge, not on
-	// the test process's host port: the whole measurement is "what can a
-	// sandbox reach from a sandbox's network position", and a host port is
-	// reachable by a different route on every platform this suite runs on.
 	ip, port := startListener(t, cli, img)
 	open := ip + ":" + port
-	closed := ip + ":1" // nothing binds port 1 in that container
+	closed := ip + ":1"
 
 	d, err := dockerdrv.New(dockerdrv.Config{
 		Image:       img,
@@ -66,10 +51,6 @@ func TestProbeEgressAgainstARealListener(t *testing.T) {
 	}
 }
 
-// probeImage insists on an image that carries the workload runtime. Skipping
-// loudly is the point: silently falling back to the default test image is how
-// the `nc` bug would have stayed green, since busybox has the tool the real
-// image does not.
 func probeImage(t *testing.T, cli *client.Client) string {
 	t.Helper()
 	const runtimeImage = "skillhub/runtime-agent-sdk:2026.08-8"
@@ -80,9 +61,7 @@ func probeImage(t *testing.T, cli *client.Client) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if _, err := cli.ImageInspect(ctx, img); err != nil {
-		// Not pulled: the Runtime Image is built by its own pipeline and is
-		// hundreds of megabytes, so this test uses what is already on the
-		// machine rather than fetching it.
+
 		skipOrFail(t, "the P-02 probe test needs the Runtime Image locally (%s, or set "+
 			"SKILLHUB_SANDBOX_TEST_IMAGE); this assertion is about what that image can dial, "+
 			"and the default busybox test image would pass it for the wrong reason: %v", img, err)
@@ -90,8 +69,6 @@ func probeImage(t *testing.T, cli *client.Client) string {
 	return img
 }
 
-// startListener runs one container that binds a port and announces it, and
-// returns the address a peer on the same network can dial.
 func startListener(t *testing.T, cli *client.Client, img string) (ip, port string) {
 	t.Helper()
 	const listenPort = "17777"
@@ -121,9 +98,6 @@ func startListener(t *testing.T, cli *client.Client, img string) (ip, port strin
 		t.Fatalf("start listener: %v", err)
 	}
 
-	// Wait for the socket to be bound rather than for the container to be
-	// running: a probe that arrives first would report a clean pass for a
-	// listener that simply was not up yet.
 	deadline := time.Now().Add(60 * time.Second)
 	for {
 		insp, err := cli.ContainerInspect(ctx, created.ID)
@@ -132,8 +106,7 @@ func startListener(t *testing.T, cli *client.Client, img string) (ip, port strin
 		}
 		logs := containerLogs(t, cli, created.ID)
 		if strings.Contains(logs, "LISTENING") {
-			// NetworkSettings.IPAddress is deprecated (gone in docker v29); the
-			// address lives on the default network entry.
+
 			addr := ""
 			for _, n := range insp.NetworkSettings.Networks {
 				if n.IPAddress != "" {
@@ -153,9 +126,6 @@ func startListener(t *testing.T, cli *client.Client, img string) (ip, port strin
 	}
 }
 
-// containerLogs reads a container's transcript, demultiplexing the daemon's
-// stdout/stderr framing. Best effort: an unreadable log means "not yet", which
-// the caller's deadline turns into a failure rather than a pass.
 func containerLogs(t *testing.T, cli *client.Client, id string) string {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

@@ -6,10 +6,6 @@ import { queryClient } from "./api/queryClient";
 import { WorkspaceSkills } from "./pages/WorkspaceSkills";
 import type { OwnSkill } from "./api/types";
 
-// 04 丙-150 — WorkspaceSkills' own writer/mutation-state coverage, split out
-// of workspace.test.tsx (which is another writer's this round). Scaffolding
-// copied from workspace.test.tsx.
-
 let container: HTMLDivElement;
 let root: Root;
 
@@ -89,8 +85,6 @@ const SKILL: OwnSkill = {
   verification: { value: "not_measured", label: "未測量", note: "" },
 };
 
-// The real Go string for DELETE /skills/{id}'s `note` (04 丙-149,
-// library/http.go:157) — copied verbatim per 04 丙-143's fixture rule.
 const DELETION_NOTE =
   "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；Fork 引用的共用套件物件不受影響";
 
@@ -143,7 +137,6 @@ test("04 丙-150(b): a 404 delete (skill already gone) gets the page's own sente
 
   const alert = container.querySelector('[role="alert"]');
   expect(alert?.textContent).toContain("這個 Skill 已經不在了。");
-  // success and failure never share one element (04 丙-150).
   const status = container.querySelector('[role="status"]');
   expect(status?.textContent ?? "").not.toContain("這個 Skill 已經不在了。");
 });

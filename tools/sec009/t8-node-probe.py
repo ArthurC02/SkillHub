@@ -1,75 +1,9 @@
 #!/usr/bin/env python3
-"""ADR-022 part three, T8 -- the node half: gate A's node admission probe.
-
-============================ WHAT THIS IS ==================================
-T8 is split across two suites. The *image* half (I-01..I-04, I-06) is a query
-against GHCR and lives in t8-image-audit.py. This is the other half: the five
-items that can only be answered by standing on the node -- C-01, P-01, P-03,
-P-04, P-05.
-
-ADR-022 calls this "閘門 A 節點准入探針" and gives it one job: run at node boot,
-emit `pass`/`fail` for every item it covers, and report. `unknown` counts as
-fail, so every message below says what could NOT be seen rather than implying
-nothing was wrong.
-
---------------------------- THE INPUT CONTRACT -----------------------------
-This probe does not infer what the node is. It reads facts that IaC/cloud-init
-wrote at build time, from a JSON file:
-
-    /etc/skillhub/node.json      (override: SKILLHUB_NODE_FACTS=<path>)
-
-    {
-      "node_id":         "sbx-01",              # who this is, for the report
-      "role":            "sandbox-exec",        # P-01: must be the dedicated
-                                                #       execution-pool role
-      "node_created_at": "2026-08-25T04:11:07Z", # P-03: ISO8601, written ONCE
-                                                #       by cloud-init at build
-      "iac_commit":      "c860c64",             # which IaC built it
-      "build_phase":     "serving"              # P-03: `provision` written by
-                                                #       cloud-init at build,
-                                                #       rewritten `serving` by
-                                                #       the boot script once
-                                                #       the node is in service
-    }
-
-All five fields are required (05 R-17c, 2026-09-10); `role` must be the
-literal `sandbox-exec`.
-
-Two properties of `node_created_at` are the whole point of it, and the
-deployment batch has to preserve both:
-
-  1. cloud-init writes it, at build. ADR-022 §1 is explicit that P-03 measures
-     "來自 cloud-init 寫入的建置時戳，非節點自報的當下時間" -- a node that
-     writes its own timestamp on every boot reports an age of zero forever and
-     the 7-day rebuild rule silently stops existing.
-  2. It survives reboots. It is the node's *build* time, not its boot time.
-
-`build_phase` is what proves property 1, and it replaced a 2-second clock
-window that could only guess at it (05 R-17c). A node whose facts say
-`serving` finished being built and is not stamping itself now; one that says
-`provision`, says something else, or says nothing is `unknown` -- and the
-last of those means the node's IaC predates this contract.
-
-File missing => every fact-dependent item is `unknown` => fail. That is the
-designed behaviour, not a gap: a node that cannot say what it is does not join
-the pool.
-
-============================ WHAT THIS IS NOT ==============================
-Not the SEC-009 acceptance, and not even all of C-01. Three honest limits:
-
-  - C-01's runtime half ("each Run gets its own scratch, Runs share no writable
-    path") is a statement about two concurrent Runs. A declarative snapshot of
-    an idle node cannot see it; SBX-005's integration tests can. Until
-    2026-09-10 this probe reported it as `unknown`, which under ADR-022's
-    fail-closed rule meant a perfectly configured node still exited 2. 05 R-17a
-    ruled the split: gate A judges C-01's declarative face, SBX-005 judges the
-    runtime one, and the row here is `ELSEWHERE` -- printed, named, and not
-    counted as this gate's answer.
-  - P-01's "not co-scheduled with Web/API/DB workloads" is graded from the
-    declared role plus what is actually running. A node can lie in its facts
-    file; only the IaC review catches that.
-  - P-05 greps for the *shape* of a core-database credential. It proves the
-    obvious ones are absent, never that none exists.
+"""Gate A's node admission probe: reads facts IaC/cloud-init wrote at build
+time from a JSON file (default /etc/skillhub/node.json, override
+SKILLHUB_NODE_FACTS) and grades the node-only admission items that a GHCR
+image query alone cannot answer. A missing facts file, or any required
+field missing, fails every fact-dependent item rather than guessing.
 
 Usage: python tools/sec009/t8-node-probe.py [--json] [--self-check]
        SKILLHUB_NODE_FACTS=<path>        where cloud-init wrote the facts
@@ -95,47 +29,22 @@ BASELINE_FILE = os.environ.get(
     "SKILLHUB_GVISOR_BASELINE", os.path.join(REPO_ROOT, "infra", "nodes", "gvisor-baseline.txt")
 )
 
-# P-01: the only role allowed to run untrusted Skills. Anything else is a node
-# that was pointed at the execution pool by accident.
 EXPECTED_ROLE = "sandbox-exec"
 
-# ADR-022 §1: 7-day rolling rebuild; >14 days is the on-call drain trigger.
 REBUILD_DAYS = 7
 DRAIN_DAYS = 14
 
-# 05 R-17c (2026-09-10) replaced the 2-second window with a field. The window
-# was a heuristic: it separated "cloud-init wrote this at build" from
-# "something wrote datetime.now() as the probe started", and it could not
-# separate either from a probe that genuinely ran 2s after cloud-init -- so on
-# a slow node it misjudged, and nobody would have known. The comment that used
-# to sit here said the answer was for cloud-init to record something rather
-# than for this window to widen; that is now the input contract.
-#
-# `build_phase` is written `provision` by cloud-init at build and rewritten
-# `serving` by the boot script once the node is in service. A node still in
-# `provision` has not finished being built, and one with no phase at all is
-# running an IaC older than this contract -- both are `unknown`, which is what
-# "we could not tell" is supposed to look like.
 BUILD_PHASE_PROVISION = "provision"
 BUILD_PHASE_SERVING = "serving"
 
-# apps/sandbox/internal/dockerdrv/docker.go: every Run container carries this.
 SANDBOX_LABEL = "skillhub.sandbox.managed"
-# ADR-022 §Q1: the node runs one compose file and one service.
 PLATFORM_CONTAINER_RE = re.compile(r"sandboxd", re.I)
 
-# P-05. Names first, then value shapes -- a variable called anything at all
-# holding a `postgres://` URL is the same finding.
 CRED_NAMES = ("SKILLHUB_DATABASE_URL", "DATABASE_URL", "PGPASSWORD", "SKILLHUB_SECRETS_TOKEN")
 CRED_VALUE_RE = re.compile(rb"postgres(?:ql)?://[^\s\"']+")
 CRED_PATHS = ("/etc/skillhub", "/etc/environment", "/etc/default", "/run/secrets", "/opt/skillhub")
 
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
-# 05 R-17a: a baseline item this gate is not the one that judges. It is not a
-# pass -- nothing here measured it -- and it must not be an `unknown`, because
-# ADR-022 §3 reads `unknown` as fail and a gate that is red on a correct node
-# gets switched off. The row still prints, and it names who does judge it, so
-# omitting the check is not what "covered" means here.
 ELSEWHERE = "ELSEWHERE"
 
 
@@ -160,16 +69,10 @@ class Report:
             print("  %-*s  %-7s %s -- %s" % (width, r["id"], r["status"], r["check"], r["detail"]))
 
 
-# --------------------------------------------------------------------------
-# helpers
-
 
 def sh(*cmd: str) -> tuple[int, str]:
-    """Run a command. Returns (-1, reason) when it is not installed at all.
-
-    Not installed and exited non-zero are different facts here: the first is
-    "we could not look" (unknown), the second is an answer.
-    """
+    """Run a command. Returns (-1, reason) when it is not installed, as
+    distinct from a real non-zero exit code (an answer, not "unknown")."""
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     except FileNotFoundError:
@@ -202,19 +105,13 @@ def load_facts(path: str) -> tuple[dict | None, str]:
         return None, "%s is unreadable or not JSON: %s" % (path, exc)
 
 
-# --------------------------------------------------------------------------
-# grading, pulled out so --self-check can drive it with no node
-
 
 GVISOR_RE = re.compile(r"(?:release-)?(\d{8})(?:\.(\d+))?")
 
 
 def parse_gvisor(text: str | None) -> tuple[int, int] | None:
-    """`runsc version release-20260817.0` -> (20260817, 0).
-
-    gVisor versions its releases by date, so ordering is a plain tuple compare.
-    Anything that does not carry an 8-digit date is not a version we can rank.
-    """
+    """`runsc version release-20260817.0` -> (20260817, 0), so gVisor's
+    date-based releases can be ordered by a plain tuple compare."""
     if not text:
         return None
     m = GVISOR_RE.search(text)
@@ -295,9 +192,6 @@ def grade_node_age(created_at: str | None, now: datetime,
     return PASS, detail
 
 
-# --------------------------------------------------------------------------
-# checks against the actual node
-
 
 def check_p01(rep: Report, facts: dict | None, facts_why: str) -> None:
     if facts is None:
@@ -359,12 +253,8 @@ def check_p04(rep: Report) -> None:
 
 
 def check_p05(rep: Report) -> None:
-    """P-05. Long-lived core-DB / secrets credentials must not exist on the node.
-
-    Never prints a matched value: rule 11 puts secrets out of logs and outputs,
-    and a probe that quotes what it found is itself the leak. Location and the
-    name of the pattern that hit are enough to go fix it.
-    """
+    """Long-lived core-DB / secrets credentials must not exist on the node.
+    Never prints a matched value — location and pattern name are enough."""
     hits: list[str] = []
     looked: list[str] = []
 
@@ -377,7 +267,7 @@ def check_p05(rep: Report) -> None:
                 with open("/proc/%s/environ" % pid, "rb") as fh:
                     blob = fh.read()
             except OSError:
-                continue  # kernel threads and other users' processes; expected
+                continue
             for entry in blob.split(b"\0"):
                 name, _, value = entry.partition(b"=")
                 key = name.decode("utf-8", "replace")
@@ -481,18 +371,10 @@ def check_c01(rep: Report) -> None:
             "still names its judge, so nothing here is omitted -- see ADR-022 §2 row 1")
 
 
-# --------------------------------------------------------------------------
-
 
 def self_check() -> int:
-    """Offline proof that the two graders can be red. No node, no docker.
-
-    Same reason the image audit carries one: both rules here are the kind that
-    only get exercised on the day they matter. P-04's comparison is invisible
-    until a node shows up below baseline; P-03's arithmetic is invisible until
-    a node is eight days old. Every run before then looks identical whether or
-    not the comparison is the right way round.
-    """
+    """Offline proof that the two graders can be red, since both rules are
+    the kind only exercised on the day they matter — no node, no docker."""
     bad = 0
 
     def want(label: str, got: tuple[str, str], expect: str, must_say: str = "") -> None:
@@ -519,7 +401,6 @@ def self_check() -> int:
         ("a pass alone passes", PASS, True),
         ("an unknown still fails (ADR-022 §3)", UNKNOWN, False),
         ("a fail still fails", FAIL, False),
-        # 05 R-17a. Before the ruling this was UNKNOWN and a correct node
         ("judged elsewhere does not fail this gate", ELSEWHERE, True),
     ]:
         rep = Report()
@@ -537,9 +418,6 @@ def self_check() -> int:
     def at(days: float) -> str:
         return (now - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    # Literal 6.9 / 7.1 / 15 on purpose, not REBUILD_DAYS +/- epsilon: ADR-022 §1
-    # is where 7 and 14 come from, so the self-check has to pin those numbers
-    # rather than re-derive them from the constant it is supposed to be guarding.
     want("one day old", grade_node_age(at(1), now, SERVING), PASS)
     want("6.9 days -- inside the cycle", grade_node_age(at(6.9), now, SERVING), PASS)
     want("7.1 days -- past the cycle", grade_node_age(at(7.1), now, SERVING), FAIL)
@@ -547,16 +425,8 @@ def self_check() -> int:
     want("no timestamp", grade_node_age(None, now), UNKNOWN)
     want("unparseable timestamp", grade_node_age("last tuesday", now, SERVING), UNKNOWN)
     want("timestamp in the future", grade_node_age(at(-1), now, SERVING), UNKNOWN)
-    # 05 R-17c: the phase, not a clock window. A node that stamps itself on
-    # every boot now fails to say `serving` from a build, and a probe that
-    # happens to run seconds after cloud-init is no longer misread as one.
-    # Same trap as the case below: every phase branch says "build_phase", so the
-    # assertion has to name the sentence only this branch writes.
     want("no build_phase at all", grade_node_age(at(1), now, None), UNKNOWN,
          "predates 05 R-17c")
-    # The phrase, not the word: "provision" also appears in the off-contract
-    # branch's message, so asserting on it let a mutation that deleted this
-    # branch entirely stay green. Caught on 2026-09-10 by making it red.
     want("still provisioning", grade_node_age(at(1), now, "provision"), UNKNOWN,
          "has not finished being built")
     want("phase off contract", grade_node_age(at(1), now, "ready"), UNKNOWN, "contract")

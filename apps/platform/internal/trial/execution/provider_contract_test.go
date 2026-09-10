@@ -1,21 +1,3 @@
-// RUN-009: the provider contract test suite.
-//
-// One suite, two targets. By default it runs against the in-repo fake
-// (internal/run/providertest), which is what makes it part of `go test ./...`.
-// Point SKILLHUB_PROVIDER_CONTRACT_URL at a real provider and the same assertions
-// run against that instead:
-//
-//	SKILLHUB_PROVIDER_CONTRACT_URL=http://localhost:9000 \
-//	SKILLHUB_PROVIDER_CONTRACT_TOKEN=... \
-//	go test ./internal/run -run TestProviderContract -v
-//
-// ADR-004 asks for exactly this: "使用 Fake Provider 通過完整生命週期契約測試" and
-// "SelfHostedProvider 與 LocalRunnerProvider 使用同一組核心測試". A provider that
-// passes here is one the orchestrator can drive; it says nothing about whether that
-// provider isolates anything (ADR-015, SEC-009).
-//
-// External test package on purpose: it may only use what a provider implementor
-// can use, which is the exported client and nothing else.
 package run_test
 
 import (
@@ -37,17 +19,11 @@ const (
 	contractTokenEnv = "SKILLHUB_PROVIDER_CONTRACT_TOKEN"
 )
 
-// target is the provider under test plus its base URL, which a couple of the
-// assertions need directly because the client deliberately cannot express them
-// (there is no way to ask for active=false through it, which is itself the point).
 type target struct {
 	provider *run.Provider
 	baseURL  string
 	token    string
-	// profile is the runtime this target actually declares. Negotiated rather than
-	// hardcoded: a provider refuses a version it does not have (422), so a suite
-	// that assumed one would only ever pass against the fake it was written next
-	// to. This is the same resolution the scheduler does (run.Match).
+
 	profile run.RuntimeProfile
 }
 
@@ -67,7 +43,6 @@ func newTarget(t *testing.T) target {
 	return tg
 }
 
-// negotiate reads the target's capability and picks a runtime it will accept.
 func negotiate(t *testing.T, p *run.Provider) run.RuntimeProfile {
 	t.Helper()
 	capability, err := p.Capability(context.Background())
@@ -88,9 +63,6 @@ func negotiate(t *testing.T, p *run.Provider) run.RuntimeProfile {
 	return profile
 }
 
-// request builds a minimal valid RunRequest for a fresh (run_id, attempt) pair.
-// The ids are random so the suite can be run repeatedly against a live provider
-// that remembers what it was told last time.
 func (tg target) request(prompt string) run.RunRequest {
 	runID, attemptID := randomUUID(), randomUUID()
 	return run.RunRequest{
@@ -110,8 +82,6 @@ func (tg target) request(prompt string) run.RunRequest {
 	}
 }
 
-// dispatch creates a run and registers its teardown, so a live provider is not
-// left holding sandboxes after the suite.
 func (tg target) dispatch(t *testing.T, req run.RunRequest) run.ProviderRun {
 	t.Helper()
 	pr, err := tg.provider.CreateRun(context.Background(), req)
@@ -126,8 +96,6 @@ func TestProviderContract(t *testing.T) {
 	tg := newTarget(t)
 	ctx := context.Background()
 
-	// GET /capability — read before dispatch, and answered in a shape the
-	// scheduler can match against.
 	t.Run("capability is readable and names its runtimes", func(t *testing.T) {
 		capability, err := tg.provider.Capability(ctx)
 		if err != nil {
@@ -144,7 +112,6 @@ func TestProviderContract(t *testing.T) {
 		}
 	})
 
-	// The idempotency guarantee dispatch retries are built on.
 	t.Run("re-sending one run_id and attempt returns the same run", func(t *testing.T) {
 		req := tg.request("idempotent dispatch")
 		first := tg.dispatch(t, req)
@@ -180,21 +147,18 @@ func TestProviderContract(t *testing.T) {
 		}
 	})
 
-	// A cancel that races the run finishing must not be an error the worker has to
-	// special-case: it polls on an interval, so that race is ordinary.
 	t.Run("cancel is accepted and stays accepted when the run is terminal", func(t *testing.T) {
 		pr := tg.dispatch(t, tg.request("cancel me"))
 		if _, err := tg.provider.Cancel(ctx, pr.ProviderRunID); err != nil {
 			t.Fatalf("first cancel: %v", err)
 		}
-		// Poll until it is actually down, then cancel again.
+
 		waitForTerminal(t, tg.provider, pr.ProviderRunID)
 		if _, err := tg.provider.Cancel(ctx, pr.ProviderRunID); err != nil {
 			t.Errorf("cancelling an already-terminal run: %v, want it accepted", err)
 		}
 	})
 
-	// The property the whole cleanup path rests on (iron rule 9).
 	t.Run("destroy is repeatable and never a 404", func(t *testing.T) {
 		pr := tg.dispatch(t, tg.request("destroy me"))
 		for i := range 3 {
@@ -202,7 +166,7 @@ func TestProviderContract(t *testing.T) {
 				t.Fatalf("destroy #%d: %v", i+1, err)
 			}
 		}
-		// A handle that never existed is already in the state the caller wants.
+
 		if err := tg.provider.Destroy(ctx, "handle-that-never-existed"); err != nil {
 			t.Errorf("destroying an unknown handle: %v, want it accepted", err)
 		}
@@ -224,8 +188,6 @@ func TestProviderContract(t *testing.T) {
 		}
 	})
 
-	// The orphan scan reads this, and an unbounded or wrongly-shaped answer would
-	// make it destroy the wrong things.
 	t.Run("active listing is served and dated", func(t *testing.T) {
 		pr := tg.dispatch(t, tg.request("stay listed"))
 		list, err := tg.provider.ListActive(ctx)
@@ -276,17 +238,8 @@ func TestProviderContract(t *testing.T) {
 	})
 }
 
-// The other half of "does this provider work with this platform": the endpoints
-// can be perfect and the scheduler still refuse to dispatch to it. This runs the
-// real capability answer through the real matcher with the platform's own default
-// policy, which is precisely the check that caught apps/sandbox declaring
-// `egress_modes: ["none"]` — every endpoint green, and not one run dispatchable.
 func TestSchedulerAcceptsTheTargetsRealCapability(t *testing.T) {
-	// The in-repo fake declares `container` — the honest name for what a developer
-	// machine runs — and the scheduler now accepts that only from a deployment that
-	// has declared itself an offline development one (ADR-020, ADR-015). This suite
-	// is that deployment. A real target pointed at by SKILLHUB_PROVIDER_CONTRACT_URL
-	// declares its own level and this changes nothing for it.
+
 	t.Setenv("DEV_LOGIN", "1")
 	tg := newTarget(t)
 	capability, err := tg.provider.Capability(context.Background())
@@ -302,9 +255,6 @@ func TestSchedulerAcceptsTheTargetsRealCapability(t *testing.T) {
 	}
 }
 
-// A 422 is the provider refusing the request itself, and the platform must be able
-// to tell it from a transient failure without reading message strings. Only the
-// fake can be made to produce one on demand.
 func TestProviderRefusalIsClassifiedAndNotRetried(t *testing.T) {
 	if os.Getenv(contractURLEnv) != "" {
 		t.Skip("a live provider cannot be told to refuse on demand")
@@ -326,8 +276,6 @@ func TestProviderRefusalIsClassifiedAndNotRetried(t *testing.T) {
 		t.Errorf("the provider created %d sandboxes while refusing the request", fake.Dispatches())
 	}
 }
-
-// --- helpers ------------------------------------------------------------------
 
 func (tg target) raw(t *testing.T, method, path string) *http.Response {
 	t.Helper()

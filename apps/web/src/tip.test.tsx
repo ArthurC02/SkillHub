@@ -3,16 +3,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { Tip } from "./components/Tip";
 
-/**
- * 設計 §2.13 Tip 六條入場條件裡機器能判的那幾條，在 jsdom 裡各一問（ADR-065 決策 3）。
- *
- * 這裡只證元件本身的形狀：內容從第一次渲染就在 DOM 裡、預設 `hidden`、按鈕帶
- * `aria-expanded`／`aria-controls`、點一下開、Esc 關而焦點不走。「開合不推動鄰居」
- * 是版面的事，jsdom 量不到，`e2e/rendered.spec.ts` 在真引擎裡量。
- * 「一頁至多三個」「圖示旁邊有字」「§2.10 不進 Tip」是每條路由的事，住在
- * `a11y.test.tsx` 的逐路由掃描與 `detail.test.tsx` 的封閉清單裡。
- */
-
 let container: HTMLDivElement;
 let root: Root;
 

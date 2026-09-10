@@ -1,19 +1,3 @@
-// Put one real Skill into the stack, so the browser pass has pages with content
-// on them. The rest of 04 丙-221.
-//
-// Why a zip is built here rather than committed. `POST /skills/import/upload`
-// takes an `application/zip` body, and the archive is the product's own trust
-// boundary: a committed binary fixture is a thing nobody reads again, and the
-// one property this seed needs (a SKILL.md at the top level with name and
-// description in its frontmatter) is exactly what a reader has to be able to
-// see. So the archive is written here, in fifty lines, stored not deflated —
-// the platform accepts Store, and a deflate implementation would be a
-// dependency to prove nothing.
-//
-// Deliberately minimal content. This is not a corpus: the routes under test
-// need a skill that exists, has a version and passes static validation. What a
-// realistic package looks like is tools/qa/skillpkg-corpus's job.
-
 const CRC_TABLE = (() => {
   const t = new Int32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -30,29 +14,31 @@ function crc32(buf) {
   return (c ^ -1) >>> 0;
 }
 
-/** A store-only zip of one file. Enough for the importer, and readable. */
+// Builds a minimal store-only (uncompressed) zip archive by hand: a local
+// file header, the file bytes, a central directory entry, then the
+// end-of-central-directory record.
 export function zipOneFile(name, text) {
   const nameBytes = Buffer.from(name, "utf8");
   const data = Buffer.from(text, "utf8");
   const sum = crc32(data);
 
   const local = Buffer.alloc(30);
-  local.writeUInt32LE(0x04034b50, 0); // local file header
-  local.writeUInt16LE(20, 4); // version needed
-  local.writeUInt16LE(0, 6); // flags
-  local.writeUInt16LE(0, 8); // method 0 = stored
-  local.writeUInt16LE(0, 10); // time
-  local.writeUInt16LE(0x21, 12); // date (1996-01-01; zip has no "unset")
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(20, 4);
+  local.writeUInt16LE(0, 6);
+  local.writeUInt16LE(0, 8);
+  local.writeUInt16LE(0, 10);
+  local.writeUInt16LE(0x21, 12);
   local.writeUInt32LE(sum, 14);
   local.writeUInt32LE(data.length, 18);
   local.writeUInt32LE(data.length, 22);
   local.writeUInt16LE(nameBytes.length, 26);
-  local.writeUInt16LE(0, 28); // extra length
+  local.writeUInt16LE(0, 28);
 
   const central = Buffer.alloc(46);
-  central.writeUInt32LE(0x02014b50, 0); // central directory header
-  central.writeUInt16LE(20, 4); // version made by
-  central.writeUInt16LE(20, 6); // version needed
+  central.writeUInt32LE(0x02014b50, 0);
+  central.writeUInt16LE(20, 4);
+  central.writeUInt16LE(20, 6);
   central.writeUInt16LE(0, 8);
   central.writeUInt16LE(0, 10);
   central.writeUInt16LE(0, 12);
@@ -61,13 +47,13 @@ export function zipOneFile(name, text) {
   central.writeUInt32LE(data.length, 20);
   central.writeUInt32LE(data.length, 24);
   central.writeUInt16LE(nameBytes.length, 28);
-  central.writeUInt32LE(0, 42); // offset of local header
+  central.writeUInt32LE(0, 42);
 
   const centralOffset = local.length + nameBytes.length + data.length;
   const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0); // end of central directory
-  end.writeUInt16LE(1, 8); // entries on this disk
-  end.writeUInt16LE(1, 10); // entries total
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(1, 8);
+  end.writeUInt16LE(1, 10);
   end.writeUInt32LE(central.length + nameBytes.length, 12);
   end.writeUInt32LE(centralOffset, 16);
 
@@ -91,18 +77,6 @@ Summarise the text the user provides, in the format they ask for.
 3. Answer in that format.
 `;
 
-/**
- * Puts the seed content in with the caller's session and returns the ids the
- * routes need. Throws with the server's own words on any other status: a seed
- * that quietly failed would turn every "not found" page green for the wrong
- * reason, which is worse than not seeding at all.
- *
- * A Test Case is seeded here and a Run is not, and the line between them is not
- * effort. POST /test-cases takes a skill id, a name and a prompt and calls
- * nothing; a Run has to reach a model (05 R-35: no model route, no dispatch),
- * so it costs money and waits on the cadence 05 R-72 rules. 04 丙-227 said both
- * were blocked on the same thing because they were noticed together.
- */
 export async function seedSkill(request, base) {
   const res = await request.post(base + "/skills/import/upload", {
     headers: { "content-type": "application/zip" },

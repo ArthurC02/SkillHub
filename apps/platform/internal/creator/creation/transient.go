@@ -20,8 +20,6 @@ import (
 	"unicode/utf8"
 )
 
-// Diagram interpretations have four explicit sections, even when a section is
-// empty. A paragraph cannot silently omit an uncertain branch before confirmation.
 func validDiagramInterpretation(value string) bool {
 	var sections map[string][]string
 	if json.Unmarshal([]byte(value), &sections) != nil || len(sections) != 4 || len(sections["nodes"]) == 0 {
@@ -61,7 +59,6 @@ func diagramMatches(p Snapshot, d *llmclient.GenerateDiagram) bool {
 	return hex.EncodeToString(h[:]) == p.DiagramFingerprint && d.MediaType == p.DiagramMediaType && len(b) == p.DiagramBytes
 }
 
-// TransientHandler exists only on the Go Worker's internal service listener.
 func (s *Service) TransientHandler(token string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		expected := sha256.Sum256([]byte("Bearer " + token))
@@ -102,7 +99,6 @@ func (s *Service) TransientHandler(token string) http.Handler {
 	})
 }
 
-// TransientClient sends image bytes only in the current HTTP exchange.
 func TransientClient(baseURL, token string, timeout time.Duration) func(context.Context, JobArgs, *llmclient.GenerateDiagram) error {
 	if baseURL == "" || token == "" || timeout <= 0 {
 		return nil
@@ -136,7 +132,6 @@ func TransientClient(baseURL, token string, timeout time.Duration) func(context.
 	}
 }
 
-// InterruptedTransient records the lost upload without replaying its bytes.
 func (s *Service) InterruptedTransient(ctx context.Context, a JobArgs) error {
 	return s.recoverAttempt(ctx, a, true)
 }
@@ -202,10 +197,8 @@ func (s *Service) Recover(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		// A queued row is a River job still healthy in the queue (a worker
-		// restart or a backlog, not a stalled attempt); only fail it once the
-		// session's own wall clock has actually passed. A working row keeps
-		// the existing call-timeout threshold.
+		// A queued row can just be a healthy backlog, not a stalled attempt;
+		// only fail it once its own deadline has passed.
 		if row.State == "queued" && e.Deadline.After(time.Now()) {
 			continue
 		}

@@ -1,16 +1,4 @@
 #!/usr/bin/env node
-// 02:PORT-001 acceptance checks, run against a fresh instance of this
-// harness. Each check is independently reported; the process exit code is
-// non-zero if any REQUIRED check fails.
-//
-// Usage: node verify.mjs [--mutate=multiplexer|missing-row]
-//   --mutate=multiplexer   turns judge criterion 1-2 into the disallowed
-//                          configuration (maxConnections=2) so the check
-//                          must go red. Iron rule 9 mutation #1.
-//   --mutate=missing-row   points the immutability check at a table that
-//                          has no matching row, so the check must complain
-//                          about missing data instead of passing quietly.
-//                          Iron rule 9 mutation #2.
 
 import pg from "pg";
 import { startHarness, DISALLOWED_MULTIPLEXER_MAX_CONNECTIONS } from "./lib/harness.mjs";
@@ -20,7 +8,6 @@ const { Client } = pg;
 const mutateArg = process.argv.find((a) => a.startsWith("--mutate="));
 const mutate = mutateArg ? mutateArg.split("=")[1] : null;
 
-/** @type {{name: string, required: boolean, pass: boolean, detail: string}[]} */
 const results = [];
 function report(name, required, pass, detail) {
   results.push({ name, required, pass, detail });
@@ -34,7 +21,6 @@ if (mutate === "multiplexer") {
 
 const harness = await startHarness({ maxConnections });
 
-// --- Check 0: all migrations applied -------------------------------------
 {
   const { applied, failed } = harness.migrationResult;
   if (failed) {
@@ -52,10 +38,6 @@ const harness = await startHarness({ maxConnections });
 const client = new Client({ connectionString: harness.connectionString });
 await client.connect();
 
-// --- Checks 1 & 2: immutability trigger (judge criterion 1) --------------
-// The seed intentionally exercises the real FK chain: users -> workspaces ->
-// skills -> skill_versions. Mutation "missing-row" points this at an empty
-// table by skipping the seed, so the check has nothing to update/delete.
 async function checkImmutability() {
   let targetId = null;
   if (mutate !== "missing-row") {
@@ -85,9 +67,8 @@ async function checkImmutability() {
     mutate === "missing-row" ? [] : [targetId],
   );
   const rowCount = countRes.rows[0].n;
-  // The row the mutation about to run must actually exist -- an UPDATE/DELETE
-  // against zero rows "succeeds" without the trigger ever firing (this repo
-  // has shipped that exact false pass twice; see report-inmemory-postgres.md).
+  // Confirms the target row exists: an UPDATE/DELETE against zero rows
+  // "succeeds" without the trigger ever firing, which would be a false pass.
   console.log(`    target row count for skill_versions immutability check = ${rowCount}`);
 
   for (const [label, sql] of [
@@ -109,7 +90,6 @@ async function checkImmutability() {
 }
 await checkImmutability();
 
-// --- Check 3: trace_events is a RANGE partitioned table -------------------
 {
   const res = await client.query(`
     SELECT c.relkind, p.partstrat
@@ -127,14 +107,12 @@ await checkImmutability();
   );
 }
 
-// --- Check 4: pgvector distance operator computes a value -----------------
 {
   const res = await client.query(`SELECT ('[1,0,0]'::vector <=> '[0,1,0]'::vector) AS d`);
   const d = res.rows[0]?.d;
   report("pgvector <=> operator computes a value", true, d !== undefined && d !== null, `d = ${d}`);
 }
 
-// --- Check 5: generated tsvector column is defined -------------------------
 {
   const res = await client.query(`
     SELECT attgenerated
@@ -142,7 +120,7 @@ await checkImmutability();
     WHERE attrelid = 'search_documents'::regclass AND attname = 'tsv'
   `);
   const row = res.rows[0];
-  const ok = row && row.attgenerated === "s"; // 's' = STORED generated column
+  const ok = row && row.attgenerated === "s";
   report(
     "search_documents.tsv is a generated tsvector column",
     true,
@@ -153,15 +131,9 @@ await checkImmutability();
 
 await client.end();
 
-// --- Judge criterion 1-2: two independent connections, one advisory lock --
-// This must open two real TCP connections against the socket server, not
-// read the maxConnections config value back. Under the mandated
-// maxConnections=1, Node's net.Server enforces the cap itself and simply
-// drops the second socket (see pglite-socket 0.1.6 dist/index.cjs:
-// `this.server.maxConnections = this.maxConnections`) -- so "B never got a
-// session" and "B got a session but not the lock" are both honest passes.
-// Only "B got a session AND the lock" is the failure this check exists to
-// catch (that is what maxConnections>1 produces, per the mutation below).
+// Under maxConnections=1, the socket server itself drops a second connection
+// attempt, so "the second client never got a session" is as valid a pass as
+// "it got a session but not the lock" — only holding both is the failure.
 async function checkAdvisoryLockExclusion() {
   const lockId = 424242;
   const a = new Client({ connectionString: harness.connectionString });

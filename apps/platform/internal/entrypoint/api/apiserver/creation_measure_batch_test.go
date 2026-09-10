@@ -1,28 +1,5 @@
 package apiserver_test
 
-// 02:GEN-012 / 05 R-45 — the paid measurement harness for the interactive
-// creation journey against the single-shot generate path. 15 multi-turn
-// sessions (5 text, 5 diagram, 5 reference), the same 15 tasks through
-// versions.GenerateSkill once each. See
-// docs/plans/mvp/m5/creation-measure/README.md for how to run this and what
-// the owner still has to do afterward (read the drafts for "kept" — this
-// harness cannot do that; "met" is filled automatically when the run stage
-// below is configured, subject to a person's override in met_by_owner).
-//
-// Usage (spends money — one command runs everything):
-//
-//	CREATION_MEASURE_CORPUS    docs/plans/mvp/m5/gen-modes-batch/corpus.json
-//	CREATION_MEASURE_DIAGRAMS  dir with D01.png... (pwsh .../draw.ps1 -Corpus ... -OutDir ...)
-//	CREATION_MEASURE_OUT       dir for results.json and *.SKILL.md
-//	SKILLHUB_E2E_LLM_URL       a running apps/llm pointed at a real gateway
-//	LITELLM_API_KEY            the creation gateway key (see with-service-key.mjs)
-//
-// Optional run stage (fills the "met" column, 02:GEN-012): set
-// SKILLHUB_E2E_SANDBOX_URL and the rest of gen009_baseline_test.go's paid-run
-// env (SKILLHUB_E2E_SANDBOX_TOKEN, OBJSTORE_ENDPOINT/ACCESS_KEY/SECRET_KEY,
-// SKILLHUB_E2E_PUBLIC_HOST, SKILLHUB_MODEL_GATEWAY_URL/_KEY). Unset, this
-// harness behaves exactly as it did before this stage existed.
-
 import (
 	"context"
 	"encoding/base64"
@@ -55,7 +32,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-// creationMeasureLimits is 05 R-45's ruled values (裁定 2026-09-06).
 func creationMeasureLimits() creation.Limits {
 	return creation.Limits{
 		MaxCostUSD: 1, MaxCallCostUSD: .1, MaxSteps: 24, MaxToolCalls: 8,
@@ -64,12 +40,8 @@ func creationMeasureLimits() creation.Limits {
 	}
 }
 
-// creationMeasureLoopBudget bounds one interactive session's driver loop: a
-// stuck session (a model that never confirms, never drafts) must stop rather
-// than spend the whole per-session ceiling in a tight loop.
 const creationMeasureLoopBudget = 12
 
-// sessionRow is one interactive session's outcome (results.json "interactive").
 type sessionRow struct {
 	ID             string    `json:"id"`
 	Kind           string    `json:"kind"`
@@ -89,55 +61,34 @@ type sessionRow struct {
 	CriteriaCount  int       `json:"criteria_count"`
 	TestCaseID     bool      `json:"test_case_id"`
 	Error          string    `json:"error,omitempty"`
-	// The optional run stage (SKILLHUB_E2E_SANDBOX_URL configured): a Run of
-	// the materialized candidate against its own Test Case, the attach_run
-	// observation fed back to the session, and one more step to see whether
-	// the model revised its draft. Left at their zero values when the stage is
-	// not configured, exactly as before this stage existed.
+
 	RunStatus  string `json:"run_status,omitempty"`
 	EvalStatus string `json:"eval_status,omitempty"`
 	Overall    string `json:"overall,omitempty"`
-	// Met is filled automatically from Overall once EvalStatus reaches a
-	// finished status ("completed" or "failed"); left null with MetNote saying
-	// why when the run stage is not configured or did not reach a verdict.
+
 	Met     *bool  `json:"met"`
 	MetNote string `json:"met_note,omitempty"`
-	// RevisedAfterRun is set after the post-attach_run step: true when the
-	// draft's content hash changed, false when the model kept the same draft.
+
 	RevisedAfterRun *bool `json:"revised_after_run,omitempty"`
-	// The revised draft's own trial (05 R-45, 2026-09-06 ruling: `met` counts
-	// within one revision round). Filled only when the model revised, the
-	// revision materialized as a new candidate and that candidate ran.
+
 	RevisedOverall string `json:"revised_overall,omitempty"`
 	RevisedMet     *bool  `json:"revised_met,omitempty"`
 	RevisedNote    string `json:"revised_note,omitempty"`
-	// SearchHit (CREATION_MEASURE_SEARCH=1, reference sessions): the model
-	// searched instead of being handed the reference, and the session's own
-	// imported reference was among the candidates it brought back.
+
 	SearchHit *bool `json:"search_hit,omitempty"`
-	// CatalogOffers: how many catalogue Skills Go's first-message check put in
-	// front of a text or diagram session (declined here; 05 R-49).
+
 	CatalogOffers int `json:"catalog_offers,omitempty"`
-	// DuplicateOffers: how many catalogue Skills the duplicate guard held the
-	// save for (05 R-50); this harness confirms the draft anyway, because it
-	// measures composition (run t, 2026-09-06: R08 and R10 ended at
-	// confirm_duplicate with nothing to run because nobody answered it).
+
 	DuplicateOffers int    `json:"duplicate_offers,omitempty"`
 	SearchNote      string `json:"search_note,omitempty"`
-	// Rounds is how many trials ran (1 = the candidate only); MetRound is the
-	// first round whose trial was "met", 0 when none was. The owner's product
-	// shape (2026-09-06): every round runs a trial and brings suggestions back
-	// until the person accepts; `met` stands in for "acceptable" here.
+
 	Rounds   int `json:"rounds,omitempty"`
 	MetRound int `json:"met_round,omitempty"`
-	// KeptByOwner is left null for the owner to fill in after a person has
-	// read the SKILL.md — 05 R-45's other half this harness cannot produce on
-	// its own. MetByOwner stays for a person to overrule the automatic Met.
+
 	MetByOwner  *bool `json:"met_by_owner"`
 	KeptByOwner *bool `json:"kept_by_owner"`
 }
 
-// singleShotRow is one single-shot generation's outcome ("single_shot").
 type singleShotRow struct {
 	ID        string   `json:"id"`
 	Kind      string   `json:"kind"`
@@ -161,12 +112,7 @@ type creationMeasureSummary struct {
 	CostMedian float64 `json:"cost_median"`
 	P50Seconds float64 `json:"p50_seconds"`
 	P95Seconds float64 `json:"p95_seconds"`
-	// The run stage's automatic tally over the text and reference sessions
-	// (05 R-45, 2026-09-06 ruling): MetDenominator is how many reached a
-	// verdict, MetFirstCount how many were "met" on the first trial, MetCount
-	// how many were "met" on the first trial or on the revised draft's trial
-	// (within one revision round). Diagram sessions are experimental and
-	// tallied apart. All stay 0 when the run stage is not configured.
+
 	MetFirstCount         int `json:"met_first_count"`
 	MetCount              int `json:"met_count"`
 	MetDenominator        int `json:"met_denominator"`
@@ -180,9 +126,6 @@ type creationMeasureResults struct {
 	Summary     creationMeasureSummary    `json:"summary"`
 }
 
-// percentile is the nearest-rank percentile over a sorted copy of xs; p in
-// [0,100]. Good enough at the sizes here (15 sessions, up to a few dozen
-// per-call seconds), not a statistics library.
 func percentile(xs []float64, p float64) float64 {
 	if len(xs) == 0 {
 		return 0
@@ -200,19 +143,15 @@ func percentile(xs []float64, p float64) float64 {
 }
 func median(xs []float64) float64 { return percentile(xs, 50) }
 
-// measureTask is one of the 15 tasks driven both ways.
 type measureTask struct {
 	ID          string
-	Kind        string // "text" | "diagram" | "reference"
+	Kind        string
 	Description string
 	Diagram     *ingest.GenerateDiagram
-	// ReferenceMD is the reference skill's SKILL.md, imported per-session so
-	// each session's reference resolves against its own workspace.
+
 	ReferenceMD string
 }
 
-// creationMessage posts a "message" command, unlike creationAct which never
-// carries a message body.
 func creationMessage(t *testing.T, c *client, v creation.View, message string) creation.View {
 	t.Helper()
 	return creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
@@ -220,8 +159,6 @@ func creationMessage(t *testing.T, c *client, v creation.View, message string) c
 	}, 200)
 }
 
-// creationAttachRun sends the "attach_run" command creationAct does not cover
-// (it carries a run_id, not a content_hash).
 func creationAttachRun(t *testing.T, c *client, v creation.View, runID string) creation.View {
 	t.Helper()
 	return creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
@@ -229,23 +166,11 @@ func creationAttachRun(t *testing.T, c *client, v creation.View, runID string) c
 	}, 200)
 }
 
-// trialRun carries what the optional paid run stage needs across sessions:
-// the real object store the sandbox reads packages from, and the pool for
-// the one query neither the creation nor the run API exposes (a version's
-// package_object_key).
 type trialRun struct {
 	store *objstore.Client
 	pool  *pgxpool.Pool
 }
 
-// withTrialRunning gates 05 R-45's optional "met" stage on
-// SKILLHUB_E2E_SANDBOX_URL, exactly as gen009_baseline_test.go gates its own
-// paid run. Unset, it returns nil and a is untouched — the harness measures
-// exactly as it did before this stage existed. Set, it wires a's run service
-// to a real object store and sandbox provider, opens a trace listener the
-// sandbox host can reach, and starts a worker running the real judge —
-// reusing gen009's own helpers (objstoreBucket, startWorkerWith,
-// waitForTerminalSoft, waitForEvaluation) rather than copying them.
 func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, traceSigner *trace.Signer) *trialRun {
 	t.Helper()
 	sandboxURL := os.Getenv("SKILLHUB_E2E_SANDBOX_URL")
@@ -274,8 +199,6 @@ func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, t
 	a.runs.MaxAttempts = 1
 	a.runs.TraceSigner = traceSigner
 
-	// The sandbox host pushes trace back, and httptest binds loopback. Same
-	// second listener gen009 and the e2e test use, for the same reason.
 	public := httptest.NewUnstartedServer(a.handler)
 	listener, err := net.Listen("tcp", "0.0.0.0:0")
 	if err != nil {
@@ -287,8 +210,6 @@ func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, t
 	a.runs.TraceIngestBaseURL = fmt.Sprintf("http://%s:%d",
 		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), listener.Addr().(*net.TCPAddr).Port)
 
-	// The judge is the worker's, not the API's, same reasoning as gen009: a
-	// read must never pay for a model call, so this is set on a copy.
 	judging := *a.evaluations
 	judging.Judge = &llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")}
 	startWorkerWith(t, a.runs, &judging)
@@ -296,18 +217,6 @@ func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, t
 	return &trialRun{store: store, pool: pool}
 }
 
-// attachTrialRun is the optional stage 05 R-45 needs for "met" (02:GEN-012):
-// it puts the materialized candidate's package into the real object store,
-// starts a Run against the candidate's own Test Case the way gen009 does
-// (fixture.startNoFatal, waitForTerminalSoft, waitForEvaluation), folds the
-// verdict into row, then feeds the run back into the session with attach_run
-// and runs one more step to see whether the model revised its draft. Never
-// t.Fatal's on a run/eval problem — one session's sandbox trouble must not
-// cost the other rows their spend — recording the reason on row.MetNote
-// instead.
-// trialOutcome is one Run of a candidate against its own Test Case: the run's
-// terminal status, the evaluation's status and overall, the run id, and a note
-// saying why there is no verdict when there is none.
 type trialOutcome struct {
 	runID, runStatus, evalStatus, overall, note string
 	met                                         *bool
@@ -354,11 +263,6 @@ func trialCandidate(t *testing.T, a *api, ctx context.Context, c *client, trial 
 	return out
 }
 
-// attachTrialRun runs the candidate, feeds the observation back, lets the
-// model revise, materializes the revision as a new candidate and runs that
-// too — up to CREATION_MEASURE_ROUNDS trials (default 3), stopping at the
-// first "met" (05 R-45, 2026-09-06: `met` counts within the revision rounds;
-// the first trial is reported beside it).
 func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *creation.Service, trial *trialRun, v creation.View, row sessionRow, outDir string) (sessionRow, creation.View) {
 	t.Helper()
 	rounds := 3
@@ -381,12 +285,7 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 		}
 		v = creationAttachRun(t, c, v, last.runID)
 		answered := 0
-		// A nudge (unchanged draft, missing diagram node) re-queues the step,
-		// a revision is followed by its validation step, and a review that
-		// moves the fix into the criteria or the sample comes back as a
-		// confirmation (prompt v11) which this harness grants as the person
-		// would. Bounded by MaxNudges plus a few settling steps (run j left
-		// every session queued at the third step).
+
 		for i := 0; i < creation.MaxNudges+10; i++ {
 			switch v.State {
 			case "queued":
@@ -401,8 +300,7 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 				row.AutoConfirms++
 				continue
 			case "waiting_input":
-				// The questions after an unmet trial (05 R-47's owner note):
-				// this harness answers as a person who wants the criteria met.
+
 				if answered >= 2 {
 					break
 				}
@@ -428,8 +326,7 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 			row.RevisedNote = "revised draft did not settle: " + v.State
 			break
 		}
-		// A new hash cleared the candidate; materialize builds a new version of
-		// the same Skill (ADR-003: a revision is a new version).
+
 		v = materializeThrough(t, c, v, &row)
 		if v.Snapshot.Draft != nil {
 			dumpDraftMD(t, outDir, row.ID, fmt.Sprintf("interactive-r%d", round), v.Snapshot.Draft.Skill.Name, v.Snapshot.Draft.Skill.Description, v.Snapshot.Draft.Skill.Body)
@@ -474,9 +371,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	if err := json.Unmarshal(raw, &corpus); err != nil {
 		t.Fatal(err)
 	}
-	// The 15-task shape needs 5 diagrams and 10 references; a corpus with
-	// neither (creation-measure/corpus-fetch.json) runs every reference entry
-	// as a text task — the fetch path has no diagram or reference half.
+
 	textOnly := len(corpus.Diagram) < 5 || len(corpus.Reference) < 10
 	if textOnly && len(corpus.Reference) == 0 {
 		t.Fatal("corpus has no tasks")
@@ -496,9 +391,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	transient := httptest.NewServer(set.Creation.TransientHandler("creation-measure"))
 	t.Cleanup(transient.Close)
 	packages := packageStore{}
-	// A fixed secret, same shape as authz_integration_test.go's default
-	// harness: unused unless withTrialRunning wires it onto the run service
-	// below, harmless otherwise.
+
 	traceSigner := &trace.Signer{Secret: []byte("creation-measure-trace-secret")}
 	app, err := apiserver.NewApp(apiserver.Config{
 		Pool: pool, Store: packages, LLM: llm, OAuth: &identity.GitHubOAuth{}, DevLogin: true,
@@ -520,9 +413,6 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	ctx := context.Background()
 	trial := withTrialRunning(t, a, pool, base, traceSigner)
 
-	// Build the 15 tasks: text = reference[0..4] (description only), diagram =
-	// diagram[0..4], reference = reference[5..9] (description + its own
-	// reference skill).
 	var tasks []measureTask
 	if textOnly {
 		for _, r := range corpus.Reference {
@@ -622,9 +512,6 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	}
 }
 
-// dumpDraftMD writes a generated skill's markdown (frontmatter + body) to
-// <outDir>/<id>-<suffix>.SKILL.md, for the person who has to read 30 of these
-// for "kept" (05 R-45).
 func dumpDraftMD(t *testing.T, outDir, id, suffix, name, description, body string) {
 	t.Helper()
 	md := "---\nname: " + name + "\ndescription: " + description + "\n---\n\n" + body
@@ -633,44 +520,29 @@ func dumpDraftMD(t *testing.T, outDir, id, suffix, name, description, body strin
 	}
 }
 
-// runInteractiveSession drives one multi-turn session to a terminal state (or
-// until the loop/message budget runs out), materializing a draft if one is
-// reached, and dumps the resulting draft.
-// measureRunNonce tells one run's workspaces from the last run's.
 var measureRunNonce = time.Now().UTC().Format("0102-150405")
 
 func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx context.Context, task measureTask, limits creation.Limits, outDir string, trial *trialRun, llm *llmclient.Client) sessionRow {
 	t.Helper()
 	row := sessionRow{ID: task.ID, Kind: task.Kind}
-	// A fresh workspace per run: the same user across runs collides on the draft
-	// name at materialize (run v, 2026-09-07: R08 hit 同名 from run t) and drags
-	// earlier runs' candidates into the catalogue the reference tasks mark.
+
 	c := a.login(t, "creation-measure-"+measureRunNonce+"-"+strings.ToLower(task.ID))
 
-	// A session created with a message is already queued, and Act refuses every
-	// command but cancel while a step is queued (409). The diagram session starts
-	// empty so the upload is its first input; the reference session runs its
-	// first step before the references are selected.
 	initialMessage := task.Description
 	if task.Kind == "diagram" {
 		initialMessage = ""
 	}
-	// The reference is imported and put in the catalogue BEFORE the session
-	// starts, so that Go's first-message check (05 R-49) can find it: run r
-	// imported it afterwards, into a workspace that was not a catalogue one,
-	// which no catalogue search could ever have returned.
+
 	var refID string
 	if task.Kind == "reference" {
-		// Enriched at upload (embedding included): a `pending` document has no
-		// vector, and the first-message check takes only semantic answers.
+
 		refID, _ = importFilesEnriched(t, a, testPool, c, map[string]string{"SKILL.md": task.ReferenceMD}, llm)
 		markCatalog(t, testPool, c.workspaceID)
 	}
 	v := creationPost(t, c, "/creation-sessions", map[string]any{
 		"id": creationID(t), "message": initialMessage, "budget_usd": limits.MaxCostUSD,
 	}, 200)
-	// The transcript is what explains a row that never reached a draft; the
-	// summary line cannot. Written on every exit path of this function.
+
 	defer func() {
 		data, err := json.MarshalIndent(map[string]any{"state": v.State, "brief": v.Snapshot.Brief, "acceptance_criteria": v.Snapshot.AcceptanceCriteria, "messages": v.Snapshot.Messages}, "", "  ")
 		if err == nil {
@@ -684,20 +556,16 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 			"command_id": creationID(t), "expected_revision": v.Revision, "kind": "diagram",
 			"diagram": map[string]string{"media_type": task.Diagram.MediaType, "data": encoded},
 		}, 200)
-		row.ModelCalls++ // the diagram action is one synchronous model call, outside the queued loop below
+		row.ModelCalls++
 	}
 	if task.Kind == "reference" {
-		// The first step may be a catalog search that re-queues (run j R10,
-		// 2026-09-06: the flagship searched first and select_references hit
-		// 409 on a queued session). Step until the session waits.
+
 		for v.State == "queued" {
 			v = creationStep(t, s, v)
 			row.ModelCalls++
 		}
 		if os.Getenv("CREATION_MEASURE_SEARCH") == "1" {
-			// The retrieval measurement: did Go's first-message check, or the
-			// model's own search (intent, rewrites, fused hybrid ranking),
-			// bring back the imported reference?
+
 			searched := v.Snapshot.CatalogChecked
 			for _, m := range v.Snapshot.Messages {
 				if m.Role == "tool" && strings.Contains(m.Content, "目錄") {
@@ -753,16 +621,11 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 				return finishSession(t, v, row, outDir)
 			}
 			if kind == "confirm_references" && task.Kind != "reference" {
-				// Go's first-message check offered catalogue Skills (05 R-49).
-				// This harness measures composition against single-shot, so
-				// it declines them; a person might adopt one.
+
 				row.CatalogOffers = len(v.Snapshot.References)
 				kind = "decline_references"
 			}
-			// A confirmation Go refuses (run u, 2026-09-07: D04's model asked
-			// for confirm_brief with no brief, and the 422 took the other
-			// eleven sessions with it) is this session's failure, not the
-			// run's.
+
 			code, body := creationPostStatus(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": kind, "content_hash": func() string {
 				if v.Snapshot.Draft == nil {
 					return ""
@@ -791,9 +654,7 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 			row.FinalState = v.State
 			row = finishSession(t, v, row, outDir)
 			if trial != nil {
-				// v is reassigned so the deferred transcript dump sees the run
-				// observation and the review step (run e's transcripts stopped
-				// before attach_run and could not explain revised_after_run).
+
 				row, v = attachTrialRun(t, a, ctx, c, s, trial, v, row, outDir)
 			}
 			return row
@@ -809,15 +670,9 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 	return finishSession(t, v, row, outDir)
 }
 
-// materializeThrough is materialize with the duplicate guard answered: when
-// Go holds the save because the catalogue has a near-duplicate (05 R-50), the
-// person here confirms the draft anyway — the comparison against single-shot
-// needs the composed Skill — and the offer is counted.
 func materializeThrough(t *testing.T, c *client, v creation.View, row *sessionRow) creation.View {
 	t.Helper()
-	// A refused save is this session's failure, not the run's (run w,
-	// 2026-09-07: R09's draft took its own reference's name, and Go's 同名
-	// 422 — correct — took the last six sessions with it).
+
 	act := func(kind string) bool {
 		code, body := creationPostStatus(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": kind, "content_hash": v.Snapshot.Draft.ContentHash})
 		if code != 200 {
@@ -839,8 +694,6 @@ func materializeThrough(t *testing.T, c *client, v creation.View, row *sessionRo
 	return v
 }
 
-// finishSession fills in the draft-derived fields from the session's final
-// snapshot and dumps the draft body, if any.
 func finishSession(t *testing.T, v creation.View, row sessionRow, outDir string) sessionRow {
 	t.Helper()
 	row.CriteriaCount = len(v.Snapshot.AcceptanceCriteria)
@@ -855,8 +708,6 @@ func finishSession(t *testing.T, v creation.View, row sessionRow, outDir string)
 	return row
 }
 
-// runSingleShot calls versions.GenerateSkill once for the same task, the
-// comparison arm (02:GEN-012).
 func runSingleShot(t *testing.T, a *api, ctx context.Context, task measureTask, outDir string) singleShotRow {
 	t.Helper()
 	row := singleShotRow{ID: task.ID, Kind: task.Kind}
@@ -904,9 +755,6 @@ func runSingleShot(t *testing.T, a *api, ctx context.Context, task measureTask, 
 	return row
 }
 
-// costLabel and metLabel keep the progress log readable: a nil pointer printed
-// with %v is an address, and the run stage's outcome or its reason is what
-// somebody watching a paid run wants to see per session.
 func costLabel(c *float64) string {
 	if c == nil {
 		return "unknown"

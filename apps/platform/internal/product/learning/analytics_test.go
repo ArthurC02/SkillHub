@@ -35,10 +35,6 @@ func TestVisitCookieNeverOutlivesTheAnalyticsSession(t *testing.T) {
 	}
 }
 
-// The one thing a search event records about the words themselves. A bucket, not
-// a locale and not the text: ADR-013's vector leg is meant to carry cross-script
-// intent, and this is the coarsest signal that can tell whether it is being asked
-// to (ADR-029 決策 2).
 func TestQueryScriptBuckets(t *testing.T) {
 	cases := map[string]string{
 		"summarise a csv": "latin",
@@ -56,8 +52,6 @@ func TestQueryScriptBuckets(t *testing.T) {
 	}
 }
 
-// Nothing is collected until a retention period exists (NFR-002, ADR-029 決策 5),
-// and a nil service is one of the ways a deployment says so.
 func TestCollectionIsOffWithoutARetentionPeriod(t *testing.T) {
 	var nilSvc *Service
 	if nilSvc.Enabled() {
@@ -68,25 +62,6 @@ func TestCollectionIsOffWithoutARetentionPeriod(t *testing.T) {
 	}
 }
 
-// 04 丙-57: a session id this request just minted is not this request's id.
-//
-// The platform does not serve the SPA's document, so a visitor's first API calls
-// arrive together and every one of them is cold. Each would mint an id, each
-// would set a cookie, the browser keeps exactly one, and the events written by
-// the rest are attached to ids no later request will ever carry. On a deep link
-// that strands a search_performed on an id that can never acquire a
-// skill_detail_viewed - 01 §11.2's first segment measured against a denominator
-// it cannot convert.
-//
-// The two exactly-once assertions added alongside the fix cannot cover this: an
-// integration test drives one sequential cookie jar and so cannot produce
-// concurrent cold requests at all. This is the test that actually holds the fix
-// down (adversarial review, 2026-08-24).
-//
-// The pool never connects and never needs to. Enabled() only checks that one
-// exists, and every write goes through emit(), which drops anything with no
-// session id before it reaches the database - which is precisely the behaviour
-// under test.
 func TestAFreshlyMintedSessionIdIsOfferedNotUsed(t *testing.T) {
 	pool, err := pgxpool.New(context.Background(),
 		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=1")
@@ -101,7 +76,6 @@ func TestAFreshlyMintedSessionIdIsOfferedNotUsed(t *testing.T) {
 		seen = SessionID(r.Context())
 	})
 
-	// Cold: no cookie on the way in.
 	cold := httptest.NewRecorder()
 	svc.Sessions(next).ServeHTTP(cold, httptest.NewRequest(http.MethodGet, "/api/skills/search?q=x", nil))
 
@@ -115,9 +89,7 @@ func TestAFreshlyMintedSessionIdIsOfferedNotUsed(t *testing.T) {
 		case sessionCookie:
 			minted = c.Value
 		case visitCookie:
-			// Setting it here would mark the day as started on behalf of a
-			// request whose session_started was never written, and the marker
-			// would then stop the next request from writing one either.
+
 			t.Error("a cold request marked the visit as started")
 		}
 	}
@@ -125,8 +97,6 @@ func TestAFreshlyMintedSessionIdIsOfferedNotUsed(t *testing.T) {
 		t.Fatalf("no session cookie was offered to the browser: %q", minted)
 	}
 
-	// Warm: the browser accepted it and sent it back. Now it is this request's
-	// id, and now the day's marker may be set.
 	warm := httptest.NewRequest(http.MethodGet, "/api/skills/search?q=x", nil)
 	warm.AddCookie(&http.Cookie{Name: sessionCookie, Value: minted})
 	rec := httptest.NewRecorder()

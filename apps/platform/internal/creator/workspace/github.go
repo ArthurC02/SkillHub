@@ -14,15 +14,13 @@ import (
 
 const maxGitHubResponseBytes = 1 << 20
 
-// GitHubOAuth drives the authorization-code flow with plain net/http.
-// ponytail: stdlib only; x/oauth2 buys nothing for a single fixed provider.
 type GitHubOAuth struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURL  string
-	// AuthBase and APIBase exist so tests can point at a stub server.
-	AuthBase string // default https://github.com/login/oauth
-	APIBase  string // default https://api.github.com
+
+	AuthBase string
+	APIBase  string
 	Client   *http.Client
 }
 
@@ -47,8 +45,6 @@ func (g *GitHubOAuth) client() *http.Client {
 	return &http.Client{Timeout: 15 * time.Second}
 }
 
-// AuthURL returns the GitHub authorization URL for the given one-shot state.
-// Scope user:email is needed to read the primary verified email (ADR-020).
 func (g *GitHubOAuth) AuthURL(state string) string {
 	q := url.Values{
 		"client_id":    {g.ClientID},
@@ -59,7 +55,6 @@ func (g *GitHubOAuth) AuthURL(state string) string {
 	return g.authBase() + "/authorize?" + q.Encode()
 }
 
-// Exchange trades the callback code for an access token.
 func (g *GitHubOAuth) Exchange(ctx context.Context, code string) (string, error) {
 	form := url.Values{
 		"client_id":     {g.ClientID},
@@ -88,8 +83,6 @@ func (g *GitHubOAuth) Exchange(ctx context.Context, code string) (string, error)
 	return body.AccessToken, nil
 }
 
-// GitHubUser is the subset of the GitHub user we persist. ID is the identity
-// key; email and name are display data only (ADR-020).
 type GitHubUser struct {
 	ID    int64
 	Login string
@@ -97,7 +90,6 @@ type GitHubUser struct {
 	Email string
 }
 
-// External converts the GitHub profile to the provider-neutral identity.
 func (u GitHubUser) External() ExternalIdentity {
 	return ExternalIdentity{
 		Provider:       providerGitHub,
@@ -108,8 +100,6 @@ func (u GitHubUser) External() ExternalIdentity {
 	}
 }
 
-// FetchUser loads the authenticated user, falling back to /user/emails when the
-// profile email is private.
 func (g *GitHubOAuth) FetchUser(ctx context.Context, token string) (GitHubUser, error) {
 	var u struct {
 		ID    int64  `json:"id"`

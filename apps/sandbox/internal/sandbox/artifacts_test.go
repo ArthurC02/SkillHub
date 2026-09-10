@@ -1,9 +1,5 @@
 package sandbox
 
-// The artifact collection is the one place this service opens bytes a workload
-// wrote, so the limits and the name handling are checked here rather than only
-// end to end.
-
 import (
 	"archive/tar"
 	"bytes"
@@ -41,15 +37,12 @@ func tarOf(t *testing.T, files map[string][]byte) []byte {
 }
 
 func TestFilterArchiveEnforcesTheRunCeilings(t *testing.T) {
-	// One subtest per half of the condition, and each fixture is refused by its
-	// own half alone: a per-file case that stays under the run total, and a run
-	// total case whose files are each within the per-file ceiling. A fixture
-	// that trips both halves leaves one of them untested.
+
 	t.Run("per-file ceiling", func(t *testing.T) {
 		limits := ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 1 << 20}
 		raw := tarOf(t, map[string][]byte{
 			"artifacts/small.txt": []byte("ok"),
-			"artifacts/big.txt":   bytes.Repeat([]byte("x"), 32), // over the per-file ceiling, far under the run total
+			"artifacts/big.txt":   bytes.Repeat([]byte("x"), 32),
 		})
 
 		manifest, archive, _, err := filterArchive(raw, limits)
@@ -59,16 +52,14 @@ func TestFilterArchiveEnforcesTheRunCeilings(t *testing.T) {
 		if len(manifest) != 1 || manifest[0].FileName != "small.txt" {
 			t.Fatalf("manifest = %#v, want only small.txt", manifest)
 		}
-		// A collection that lost something must say so, or the UI shows a partial
-		// result as complete.
+
 		if !manifest[0].Truncated {
 			t.Error("a dropped file did not mark the collection as truncated")
 		}
 		if manifest[0].SizeBytes != 2 || manifest[0].ContentHash == "" {
 			t.Errorf("manifest entry = %#v, want the real size and a hash", manifest[0])
 		}
-		// The uploaded archive must carry exactly the manifest: an entry whose bytes
-		// were never uploaded would be a manifest that lies.
+
 		names := map[string]bool{}
 		r := tar.NewReader(bytes.NewReader(archive))
 		for {
@@ -84,10 +75,7 @@ func TestFilterArchiveEnforcesTheRunCeilings(t *testing.T) {
 	})
 
 	t.Run("run total ceiling", func(t *testing.T) {
-		// The real shape of this attack is many small files, not one big one:
-		// both of these pass the per-file ceiling and only their sum breaks the
-		// run's. Symmetric on purpose - tar entry order is map order here, and
-		// whichever lands second is the one that must be dropped.
+
 		limits := ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 12}
 		raw := tarOf(t, map[string][]byte{
 			"artifacts/a.txt": bytes.Repeat([]byte("a"), 8),
@@ -118,10 +106,6 @@ func TestArtifactUploadAcceptsOnlyFinalSuccessStatuses(t *testing.T) {
 	}
 }
 
-// Bytes are not the only dimension a workload controls. Empty files cost
-// nothing against either byte ceiling and still take a manifest entry each, and
-// a manifest too large for the platform to read back loses the whole run
-// result - so the entry count is bounded too.
 func TestFilterArchiveBoundsTheNumberOfManifestEntries(t *testing.T) {
 	files := map[string][]byte{}
 	for i := range artifactMaxEntries + 5 {
@@ -143,13 +127,11 @@ func TestFilterArchiveRefusesNamesThatEscapeTheCollection(t *testing.T) {
 	raw := tarOf(t, map[string][]byte{
 		"artifacts/../../etc/passwd": []byte("no"),
 		"/absolute":                  []byte("no"),
-		// A name a downstream CLI would read as a flag rather than a file.
+
 		"artifacts/-rf": []byte("no"),
-		// Not path.Clean's own answer: a name that means one thing to the
-		// filter and another to whatever opens the archive later.
+
 		"artifacts/a//b.txt": []byte("no"),
-		// Backslashes are normalised to "/" before any of the checks run;
-		// without that, this escapes the collection as one long file name.
+
 		`artifacts\..\..\etc\passwd`: []byte("no"),
 		"artifacts/NUL":              []byte("no"),
 		"artifacts/bad?.txt":         []byte("no"),
@@ -194,10 +176,6 @@ func TestFilterArchiveDropsPortableNameCollisions(t *testing.T) {
 	}
 }
 
-// The handshake is what makes collection possible at all: /out is a tmpfs, so a
-// workload that is already gone has nothing left to take. This checks the order
-// - collect, then release - because releasing first would race the workload's
-// exit against the read.
 func TestCollectionHappensBeforeTheWorkloadIsReleased(t *testing.T) {
 	var uploaded []byte
 	store := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -294,8 +272,6 @@ func TestArtifactsAreCollectedWithoutTraceIngestion(t *testing.T) {
 	}
 }
 
-// collectDriver is the collection half of the Driver interface; the rest panics
-// because this test drives no lifecycle.
 type collectDriver struct {
 	Driver
 	artifacts        []byte
@@ -337,11 +313,7 @@ func (d *collectDriver) ReleaseWorkload(context.Context, string) error {
 	}
 	d.seq++
 	d.releasedAt = d.seq
-	// The test goroutine is parked in a select on d.released while the
-	// collector goroutine runs this, so the field must never be written after
-	// construction -- `d.released = nil` here was a data race the -race leg
-	// caught. The once-only close is guarded by a flag only this goroutine
-	// touches instead.
+
 	if d.released != nil && !d.releaseClosed {
 		d.releaseClosed = true
 		close(d.released)
@@ -429,8 +401,6 @@ func TestStoppingTheCollectorCancelsAnInFlightRead(t *testing.T) {
 	}
 }
 
-// An empty allow list must not be servable by a node that has an egress route
-// either way round: the ordering is what SBX-007 and the contract both state.
 func TestAcceptRefusesAnAllowListANodeCannotRoute(t *testing.T) {
 	cfg := Config{
 		Runtimes:     []RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"1"}}},
@@ -445,7 +415,7 @@ func TestAcceptRefusesAnAllowListANodeCannotRoute(t *testing.T) {
 	if re := cfg.accept(req); re == nil || re.Class != ClassCapabilityMismatch {
 		t.Fatalf("a node with no egress route accepted a destination: %v", re)
 	}
-	// The same node still carries a run that is allowed to reach nothing.
+
 	req.Egress.Allow = nil
 	if re := cfg.accept(req); re != nil {
 		t.Fatalf("a node with no egress route refused a run that needs none: %v", re)
@@ -512,10 +482,7 @@ func TestAcceptChecksEveryDeclaredResourceCeiling(t *testing.T) {
 				Runtime:        RuntimeProfile{Runtime: "claude_agent_sdk", RuntimeVersion: "1"},
 				ResourceLimits: DefaultLimits, Egress: EgressPolicy{Mode: "none"},
 			}
-			// The class alone cannot tell the two guards apart: the requested
-			// DefaultLimits also exceed a zeroed ceiling, so the per-field
-			// comparison would answer with the same class and this table would
-			// pass with the omitted-ceiling guard deleted.
+
 			got := cfg.accept(req)
 			if got == nil || got.Class != ClassCapabilityMismatch {
 				t.Fatalf("provider omitted %s but accepted a bounded run: %v", name, got)
@@ -527,10 +494,6 @@ func TestAcceptChecksEveryDeclaredResourceCeiling(t *testing.T) {
 	}
 }
 
-// TestUploadRefusesToFollowARedirect covers the third caller of
-// GrantHTTPClient — the artifact upload, the one direction that carries the
-// run's own output. A PUT that followed a 302 would replay the body at
-// whatever address the storage endpoint named.
 func TestUploadRefusesToFollowARedirect(t *testing.T) {
 	var elsewhereHits int
 	elsewhere := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

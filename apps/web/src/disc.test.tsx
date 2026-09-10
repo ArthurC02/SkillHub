@@ -18,10 +18,6 @@ import type {
   SkillRisk,
 } from "./api/types";
 
-// Renders against mocked fetch; no backend needed. The DOM plumbing below is
-// deliberately hand-rolled — @testing-library is not a dependency of this app
-// and these four assertions do not justify adding one.
-
 let container: HTMLDivElement;
 let root: Root;
 
@@ -43,11 +39,9 @@ async function render(node: React.ReactNode) {
     root = createRoot(container);
     root.render(<StrictMode>{node}</StrictMode>);
   });
-  // The router is a module singleton and only observes history while it is
-  // mounted, so a test that navigated leaves it pointing at that page even
-  // after beforeEach resets window.location — the address bar moves, the router
-  // does not. Send it home now that it is mounted again. Skipped when the tree
-  // under test is a bare component and no router is on screen.
+  // The router is a module singleton that keeps its last location across
+  // tests even after window.location resets, so send it home again once it
+  // is remounted.
   if (container.querySelector(".app-shell") && router.state.location.pathname !== "/") {
     await act(async () => {
       await router.navigate({ to: "/", search: {} });
@@ -55,7 +49,6 @@ async function render(node: React.ReactNode) {
   }
 }
 
-/** Answers only the search call; /me stays 401 so the page renders logged-out. */
 function stubSearch(body: PublicSearchResponse) {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
@@ -118,7 +111,6 @@ test("DISC-001 keeps the search draft in sync with URL navigation", async () => 
   );
 });
 
-/** Polls until the query has settled and React has flushed the result. */
 async function waitFor(done: () => boolean, timeoutMs = 2000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -130,22 +122,9 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
   throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
 }
 
-/**
- * The DISC-002 per-result columns every hit now carries. Spread into fixtures
- * so a test only spells out the field it is actually about.
- *
- * `summary_source` joined the list when 117ba44 made it required and updated the
- * two fixtures that assert the badge, leaving twelve that do not — which is what
- * a shared base is for. It sits here as `package`, the value that renders no
- * badge, so a test that says nothing about the summary's provenance keeps
- * asserting nothing about it.
- */
 const HIT_FACETS = {
   summary_source: "package",
   tier: { value: "indexed", label: "已收錄", note: "收錄不等於精選。" },
-  // DISC-002 類別. `documents` here for the same reason `summary_source` is
-  // `package`: it is the value that says nothing special, so a test that is not
-  // about the category keeps asserting nothing about it.
   category: { value: "documents", label: "文件", note: "由策展判定。" },
   risk: {
     scan_status: "scanned",
@@ -204,10 +183,6 @@ test("DISC-006: catalog serializes filters and explains one truncated result lis
   });
   await waitFor(() => container.textContent?.includes("Catalog One") ?? false);
 
-  // `limit=100`, the contract's maximum: at 20 against a 45-row catalogue the
-  // landing page told every visitor that more than half the product was out of
-  // reach and offered no page two. The number is asserted, not just the shape,
-  // because it is the whole change.
   expect(calls.some((url) => url.includes("/api/skills/catalog?limit=100&script=no"))).toBe(true);
   expect(container.textContent).toContain("目錄共 3 個 Skill，這裡列出 1 個");
   expect(container.textContent?.split(rankNote).length - 1).toBe(1);
@@ -226,24 +201,12 @@ const CATALOG_ROW = {
   match_reason_source: "template" as const,
 };
 
-/**
- * 「那你就把有的都給我看」這個手勢。
- *
- * `browsing` 的判準是 `q === undefined`，而**空字串是字串**：清空搜尋框再按搜尋，
- * 送出的是 `q=""`，`validateSearch` 原樣收下，伺服器對空查詢走 `no_results`，畫面
- * 回「沒有夠接近的 Skill。」——而目錄就在同一個位址上。這一頁的搜尋態全部只有三個
- * 連結，沒有一個回得去目錄，唯一的出口是頁首的產品標題。
- *
- * 押的是「目錄那一列出現了」，也就是 `browsing` 真的翻回來了。把 `|| undefined`
- * 拿掉就變紅。
- */
 test("DISC-006: 把搜尋框清空再按搜尋，回到目錄而不是「沒有夠接近的 Skill」", async () => {
   const calls = stubCatalog({ results: [CATALOG_ROW], limit: 20, total: 1, truncated: false });
   await render(<App />);
   await act(async () => {
     await router.navigate({ to: "/", search: { q: "沒有這種東西" } });
   });
-  // 搜尋在這個替身上回 401；重點不是它回什麼，是接下來那個手勢去了哪裡。
   await submitSearch("   ");
   await waitFor(() => container.textContent?.includes("Catalog One") ?? false);
 
@@ -251,12 +214,6 @@ test("DISC-006: 把搜尋框清空再按搜尋，回到目錄而不是「沒有�
   expect(container.textContent).not.toContain("沒有夠接近的 Skill");
 });
 
-/**
- * 設計 §2.4 第 3 項，而這一格是 2026-09-03 目錄批帶進來的迴歸：目錄與搜尋共用
- * `SearchResultRow`，那五顆來源徽章的但書卻只寫在搜尋那一半。於是**落地首頁的
- * 預設狀態**上，「作者原文」「AI 改寫」「來源未標示」的限定語退回成只有 `title=`
- * ——手機上不存在。§0 把這一族排在順位 1，它不能只在其中一種狀態下成立。
- */
 test("DISC-006: 目錄那一半也要有來源標記的但書，不只搜尋那一半", async () => {
   stubCatalog({ results: [CATALOG_ROW], limit: 20, total: 1, truncated: false });
   await render(<App />);
@@ -269,18 +226,6 @@ test("DISC-006: 目錄那一半也要有來源標記的但書，不只搜尋那�
   expect(container.textContent).toContain("「作者原文」是套件的 frontmatter description");
 });
 
-// ---- DISC-002 類別／r3 提案 A: the category shelf row and the curated shelf ----
-
-/**
- * A catalogue that actually answers `?category=`, which is what makes the chip
- * counts falsifiable.
- *
- * A stub that returned the whole catalogue to every request would let all four
- * chips print the same number and a broken filter would still look right — the
- * shape this suite keeps finding. Each count request is `limit=1` and only its
- * `total` is read (api/skills.ts `useCatalogTotal`), so the rows come back
- * whole here; what is under test is the number, and where it came from.
- */
 function stubCategoryCatalog(rows: PublicSearchResult[]) {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
@@ -305,7 +250,6 @@ function stubCategoryCatalog(rows: PublicSearchResult[]) {
 
 const CURATED = { value: "curated", label: "精選", note: "已完成人工檢視，不代表安全保證。" };
 
-/** Four rows over three shelves and two tiers — one curated, three not. */
 const SHELF_ROWS: PublicSearchResult[] = [
   {
     ...CATALOG_ROW,
@@ -334,14 +278,12 @@ const SHELF_ROWS: PublicSearchResult[] = [
   },
 ];
 
-/** The chips, as `文件（2）` strings, in DOM order. */
 function chips(): string[] {
   return [...container.querySelectorAll(".category-nav .chip")].map((a) =>
     (a.textContent ?? "").replace(/\s+/g, ""),
   );
 }
 
-/** The labels of the chips the router marks as the current one. */
 function currentChips(): string[] {
   return [...container.querySelectorAll(".category-nav .chip[aria-current]")].map((a) =>
     (a.textContent ?? "").replace(/（.*/s, "").trim(),
@@ -354,19 +296,9 @@ async function browseCatalogue() {
     await router.navigate({ to: "/", search: {} });
   });
   await waitFor(() => container.textContent?.includes("Doc Curated") ?? false);
-  // The four chip counts are four separate reads; wait until none of them is
-  // still showing the 「…」 placeholder, or this asserts a loading state.
   await waitFor(() => !chips().some((c) => c.includes("…")));
 }
 
-/**
- * **The number beside a chip is the server's, not this page's.**
- *
- * The stub above filters by category and returns `total: results.length`, so
- * each expected number below is derived from the fixture rather than typed
- * twice. Hard-coding 「文件（2）」 in Home.tsx passes a test that only looks for
- * digits; this one moves when the catalogue moves.
- */
 test("DISC-002 類別: each chip carries the count the server gives for that category", async () => {
   const counts = new Map<string, number>();
   for (const row of SHELF_ROWS) {
@@ -382,10 +314,7 @@ test("DISC-002 類別: each chip carries the count the server gives for that cat
     `寫作（${counts.get("寫作")}）`,
     `資料（${counts.get("資料")}）`,
   ]);
-  // The landing state is 全部, and it is the ONLY chip claiming to be current.
   expect(currentChips()).toEqual(["全部"]);
-  // 設計 §2.11(b): the number is how many rows are on a shelf. Nothing on this
-  // row is a popularity signal, and there is no place for one to appear.
   const nav = container.querySelector(".category-nav")!.textContent ?? "";
   expect(nav).not.toMatch(/下載|星|使用人數|熱門/);
 });
@@ -403,9 +332,6 @@ test("DISC-002 類別: a chip narrows the catalogue through the URL, and 全部 
   expect(new URLSearchParams(window.location.search).get("category")).toBe("writing");
   expect(calls.some((url) => /catalog\?limit=100[^"]*category=writing/.test(url))).toBe(true);
   expect(container.textContent).toContain("Write Plain");
-  // 設計 §2.3 / NFR-007: the active chip says so in the accessibility tree and
-  // not only in a colour — and exactly one of them does, or 「我在哪裡」 has two
-  // answers. The marker is the router's own (`RootLayout`'s nav uses the same).
   expect(writing.getAttribute("aria-current")).toBe("page");
   expect(currentChips()).toEqual(["寫作"]);
 
@@ -417,13 +343,6 @@ test("DISC-002 類別: a chip narrows the catalogue through the URL, and 全部 
   expect(new URLSearchParams(window.location.search).has("category")).toBe(false);
 });
 
-/**
- * One URL state, two controls.
- *
- * The chip row is a shortcut for the 類別 select in the filter bar. Two controls
- * that wrote two different params would be two filters wearing one name — and
- * the reader would have no way to tell which one the list obeyed.
- */
 test("DISC-002 類別: the chip row and the filter select write the same URL param", async () => {
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
@@ -432,18 +351,12 @@ test("DISC-002 類別: the chip row and the filter select write the same URL par
   await waitFor(() => container.textContent?.includes("Data Plain") ?? false);
   expect(new URLSearchParams(window.location.search).get("category")).toBe("data");
 
-  // …and the chip row reads that same state back.
   expect(currentChips()).toEqual(["資料"]);
 
   await chooseFilter("類別", "");
   expect(new URLSearchParams(window.location.search).has("category")).toBe(false);
 });
 
-/**
- * 04 丙-150／丙-155 ②：`useCatalogTotal` 失敗時以前沒有任何分支讀 `isError`，
- * 於是括號裡的「…」永遠停在那裡——一個量過但失敗的東西跟一個還沒開始量的東西
- * 印出同一個字。§2.9：檢查跑過且出錯，要說「測量失敗」。
- */
 test("DISC-002 類別: chip 數量的請求失敗時印「測量失敗」，不是停在「…」", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
@@ -474,14 +387,6 @@ test("DISC-002 類別: chip 數量的請求失敗時印「測量失敗」，不�
   expect(chips().some((c) => c.includes("…"))).toBe(false);
 });
 
-/**
- * 04 丙-150／丙-155 ⑤：伺服器現在對 `q` 拒收超過 2000 字（`discovery/http.go`
- * 「搜尋文字最多 2000 字」），事前沒有任何地方說過。上限先說出來、擋下送出，
- * 不是撞到伺服器才看見英文 400。
- *
- * 押的是「沒有打伺服器」：把送出前的檢查拿掉，這支測試會在 `calls` 裡看到一次
- * `/api/skills/search`。
- */
 test("DISC-001 搜尋文字超過 2000 字：送出前擋下並說明，不打伺服器", async () => {
   const calls = stubSearch(EMPTY);
   await render(<App />);
@@ -493,15 +398,6 @@ test("DISC-001 搜尋文字超過 2000 字：送出前擋下並說明，不打�
   expect(calls.some((url) => url.includes("/api/skills/search"))).toBe(false);
 });
 
-/**
- * r3 提案 A —— the curated shelf.
- *
- * `BrowseCatalogSkills` has put curated rows first since migration 0042 and the
- * screen never said so: the two tier badges are byte-identical, so an ordered
- * list read as an unordered one. Both numbers are COUNTED from the rows that
- * rendered — a shelf heading that stops matching its own list is the exact
- * failure this splits the list to prevent.
- */
 test("r3 提案 A: 精選 and 其餘目錄 count the cards under them, and together the whole catalogue", async () => {
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
@@ -517,46 +413,27 @@ test("r3 提案 A: 精選 and 其餘目錄 count the cards under them, and toget
     h.textContent?.startsWith("其餘目錄"),
   )!;
   expect(rest.textContent).toBe(`其餘目錄（${allCards - curatedCards}）`);
-  // 設計 §4.3: the two halves ARE the catalogue, not a sample of it.
   expect(allCards).toBe(SHELF_ROWS.length);
   expect(container.textContent).toContain(`目錄共 ${SHELF_ROWS.length} 個 Skill，全部列在下面`);
 });
 
-/**
- * 設計 §2.11(c) ＋ §2.4 第 3 項: the four clauses are VISIBLE text in the same
- * block as the highlight, not a `title`. A tooltip does not exist on a touch
- * device, which is where the qualifier is needed most.
- */
 test("r3 提案 A: 精選 書架 states what the review is not, in visible text", async () => {
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
 
   const shelf = container.querySelector(".curated-shelf")!;
   const note = shelf.querySelector(".note")!.textContent!.replace(/\s+/g, "");
-  // ① who read it and what was checked, ② not a safety claim and not a
-  // recommendation, ③ the verdict is bound to this version's bytes and falls
-  // off by itself, ④ the rest are 已索引, which is not 「never reviewed」.
   expect(note).toContain("由我們自己逐份讀過");
   expect(note).toContain("九項人工檢視");
   expect(note).toContain("這不是安全保證，也不是推薦");
   expect(note).toContain("審查綁在這一版的位元組上");
   expect(note).toContain("不是從沒被審過");
-  // 02:CONTENT-001 / NFR-001: no endorsement wording anywhere in the shelf.
   expect(shelf.textContent).not.toMatch(/官方推薦|已認證|Verified/);
-  // The clauses are not hiding in an attribute.
   for (const el of shelf.querySelectorAll("[title]")) {
     expect(el.getAttribute("title")).not.toContain("九項人工檢視");
   }
 });
 
-/**
- * 04 丙-132 / 義務 1.2, on the state a first visit actually lands on.
- *
- * The existing assertion for this is on the search state. The landing state is
- * the one the measurement was taken on — six controls and their paragraphs put
- * the first catalogue card 330px further down, on a screen whose whole job is
- * to show what is in the catalogue.
- */
 test("設計 §0: the catalogue lands with the filter bar shut, at every width", async () => {
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
@@ -566,37 +443,19 @@ test("設計 §0: the catalogue lands with the filter bar shut, at every width",
   ).toBe(false);
 });
 
-/** Every `.note` string on the page, whitespace-collapsed, in DOM order. */
 function noteTexts(): string[] {
   return [...container.querySelectorAll(".note")].map((n) => (n.textContent ?? "").trim());
 }
 
-/**
- * 設計 §2.13 去重 1（ADR-065）—— 四句逐列複述，一份清單講一次，**而且只有逐位元
- * 相同的那幾句可以搬**。
- *
- * `tier.note`／`category.note`／`compatibility.note`／`risk.note` 是伺服器的固定文案，
- * 每一列渲染一份；目錄那 45 列上 `risk.note` 一句就印了 45 次。一句在 45 列上完全
- * 相同的話，讀者從第 2 列起不可能因為它而作出不同判斷——它是那份清單的事實，不是那
- * 一列的。
- *
- * **這一支押的是兩個方向，而第二個方向才是難的那一半。** `SHELF_ROWS` 混著精選與
- * 已索引，所以 `tier.note` 在這份清單上有兩種值——那兩種值正在說「這一列跟那一列不
- * 一樣」，把它們一起提到清單層級會同時印出兩句而讀者分不出哪一列是哪一句，也就是把
- * 一個判斷依據弄丟。所以 tier 必須**留在每一列上**，另外三個（在這份清單上完全相同）
- * 才搬。把 `liftedNotes` 的 `distinct.size === 1` 拿掉，下半段就紅。
- */
 test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列的留在列上", async () => {
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
 
-  // 期望值從 fixture 數出來，不是抄的：哪幾個 facet 在這份清單上只有一種值。
   const distinct = (pick: (r: PublicSearchResult) => string | undefined) =>
     new Set(SHELF_ROWS.map((r) => pick(r) ?? ""));
   expect(distinct((r) => r.tier.note).size, "the fixture must span two tier notes").toBe(2);
   const rows = [...container.querySelectorAll(".search-result")];
   expect(rows).toHaveLength(SHELF_ROWS.length);
-  /** Every `.note` inside one row's facet list, as text. */
   const rowNotes = (row: Element) =>
     [...row.querySelectorAll(".result-facets .note")].map((n) => (n.textContent ?? "").trim());
 
@@ -612,22 +471,11 @@ test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列�
       noteTexts().filter((n) => n === line),
       `「${line}」 is not stated exactly once for the whole list`,
     ).toHaveLength(1);
-    // 提到清單層級**而且從列上拿掉**。Stating it in both places is not
-    // deduplication, it is one more copy — and it is what a half-applied version
-    // of this change looks like (the lists render `FacetNotes` and the rows keep
-    // their own copies), which is a state a 「once at the top」 assertion alone
-    // reads as correct.
     for (const row of rows) {
       expect(rowNotes(row), `「${sentence}」 is still repeated on a row`).not.toContain(sentence);
     }
   }
 
-  // 來源層級 has two values here, so it is NOT one line — it is one line per
-  // value, each keyed by the word the matching rows wear on their badge. That
-  // keying is what keeps the caveat attributable after it leaves the row, and it
-  // is the only reason a varying note may be lifted at all: 風險提示 has no such
-  // word (a `scan_status: "unavailable"` row can carry no mark), which is why
-  // 「a result row carries all seven columns」 keeps it per row.
   for (const tier of new Set(SHELF_ROWS.map((r) => r.tier.label))) {
     const note = SHELF_ROWS.find((r) => r.tier.label === tier)!.tier.note;
     const line = `來源層級「${tier}」：${note}`;
@@ -639,13 +487,9 @@ test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列�
   expect(new Set(SHELF_ROWS.map((r) => r.tier.label)).size).toBe(2);
 
   for (const [i, row] of rows.entries()) {
-    // The order the shelf renders is curated first, which is the fixture's order.
-    // The lifted sentence is gone from the row, and the WORD that picks its line
-    // out of the block above is still on it — that is the whole attribution.
     expect(rowNotes(row), "a lifted tier note is still repeated on a row").not.toContain(
       SHELF_ROWS[i].tier.note,
     );
-    // §2.10 第 1／2／3 項: the badges themselves never left any row.
     const tierBadge = row.querySelector(".result-facets [class*='badge-tier-']");
     expect(tierBadge?.textContent).toBe(SHELF_ROWS[i].tier.label);
     expect(row.querySelector(".result-facets [class*='badge-category-']")?.textContent).toBe(
@@ -654,19 +498,7 @@ test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列�
   }
 });
 
-/**
- * 那條 e2e 斷言的 jsdom 半邊，因為它會 FAIL-on-zero 而這一批正是在拿走 `.note`。
- *
- * `e2e/rendered.spec.ts` 的「a fact and its qualifier are not the same colour」掃
- * `.search-result .result-facets dd` 底下的 `.note` 比對顏色，**一個都找不到時它主動
- * 失敗**（`checked === 0`）——那是 §2.11(c) 的證據，不是可以順手改的東西。搬走清單層級
- * 那四句之後，剩下來撐住它的是**逐列不同**的那幾種：風險揭露逐則的 `note`、依賴的
- * 「未測量——」、時間戳那一格。這一支押的就是那個「還剩下的」不是空的。
- */
 test("設計 §2.11(c): 去重之後，每一列的 facet 仍然帶著逐列不同的但書", async () => {
-  // The shape the e2e fixture has: every row scanned, every row disclosing, so
-  // `risk.note` IS byte-identical and does get lifted — which is exactly the run
-  // in which the per-row qualifier could have gone to zero.
   const disclosed = {
     scan_status: "scanned" as const,
     level: "disclosed" as const,
@@ -708,7 +540,6 @@ test("設計 §2.11(c): 去重之後，每一列的 facet 仍然帶著逐列不�
     withNote.length,
     "no facet row carries a qualifier any more — e2e's `checked === 0` would fail",
   ).toBeGreaterThan(0);
-  // 而且留下來的那一句是**這一列的**，不是那句被搬走的清單事實。
   expect(withNote.map((dd) => dd.textContent ?? "").join("")).toContain("平台不曾執行它們。");
   expect(container.textContent).toContain("風險提示：來自匯入時的靜態掃描。");
 });
@@ -719,9 +550,6 @@ test("DISC-006: an empty catalog is distinct from a failed catalog read", async 
   await act(async () => {
     await router.navigate({ to: "/", search: {} });
   });
-  // 2026-09-07：措辭換了，這支測試守的東西一個字都沒有換。空狀態的工作是**把三種
-  // 誤讀逐一排掉**——讀取失敗、沒有權限、真的沒有東西——而下面三條就是逐條斷言它們，
-  // 比原本只認一句話更難被繞過。
   await waitFor(() => container.textContent?.includes("目錄裡還沒有任何東西") ?? false);
   expect(container.textContent).toContain("這不是讀取失敗");
   expect(container.textContent).toContain("也不是你沒有權限");
@@ -813,7 +641,6 @@ test("DISC-001: search hits the public endpoint, which needs no session", async 
   await submitSearch("pdf 摘要");
 
   expect(calls.some((url) => url.includes("/api/skills/search?q=pdf"))).toBe(true);
-  // The workspace-scoped route (which requires a session) must not be used.
   expect(calls.some((url) => /\/skills\/search\?/.test(url) && !url.includes("/api/"))).toBe(false);
 });
 
@@ -863,23 +690,12 @@ test("DISC-002: each candidate shows its match reason, labelled by provenance", 
   const text = container.textContent ?? "";
   expect(text).toContain("這個 Skill 直接處理 PDF 並輸出摘要。");
   expect(text).toContain("查詢與文件共同出現：pdf");
-  // ADR-013: model-written copy carries a visible marker; template copy does not
-  // borrow it. Scoped to .match-reason since the summary carries the same marker
-  // now — an unscoped count would let one badge stand in for the other, and the
-  // whole point is that they are two separate claims about two separate strings.
   expect(container.querySelectorAll(".match-reason .badge-source-model")).toHaveLength(1);
   expect(container.querySelectorAll(".match-reason .badge-source-template")).toHaveLength(1);
 
-  // ADR-013's other half, and the one that was missing. The summary is the
-  // sentence a reader decides on, and it is the model's rewrite for every
-  // enriched skill — 45/45 of the catalogue. The badge was on the match reason
-  // three lines below and not on this.
   expect(container.querySelectorAll(".badge-source-package")).toHaveLength(1);
   expect(text).toContain("AI 改寫");
   expect(text).toContain("作者原文");
-  // A server that did not answer must not be answered for: defaulting to
-  // 作者原文 would print the author's name over the model's sentence, which is
-  // the failure this badge exists to prevent, reintroduced as a fallback.
   expect(container.querySelectorAll(".badge-source-unknown")).toHaveLength(0);
 });
 
@@ -890,11 +706,6 @@ test("DISC-002: a summary with no stated source says so rather than crediting th
     results: [
       {
         ...HIT_FACETS,
-        // The one fixture that must NOT inherit the shared base's
-        // `summary_source`: this test is about a server that did not send the
-        // field. The view-model type says it always does and the wire is not
-        // bound by that, so the cast is where the disagreement is written down
-        // rather than assumed away.
         summary_source: undefined,
         skill_id: "33333333-3333-3333-3333-333333333333",
         name: "Mystery",
@@ -909,19 +720,10 @@ test("DISC-002: a summary with no stated source says so rather than crediting th
   await submitSearch("pdf");
 
   expect(container.querySelectorAll(".badge-source-unknown")).toHaveLength(1);
-  // On the BADGE, not on the page: 2026-08-29 added a 標記說明 line above the
-  // list that names all five markers once as visible text (設計 §2.4 第 3 項
-  // — they were `title=` only), so 「作者原文」 appears there legitimately. The
-  // fact under test is that this row is not badged with it.
   expect(container.querySelectorAll(".badge-source-package")).toHaveLength(0);
 });
 
 test("DISC-002: a truncated result page says so, and says how many it is showing", async () => {
-  // ADR-042 決策 3. The cap (20 by default) has always been here; result 21 did
-  // not exist as far as the page could tell, and a list that is quietly short
-  // reads as the whole answer. Deliberately worded apart from the two notices
-  // below: those say how well the search could look, this says how much of what
-  // it found is on the page.
   stubSearch({
     ...EMPTY,
     query: "pdf",
@@ -942,13 +744,8 @@ test("DISC-002: a truncated result page says so, and says how many it is showing
   await submitSearch("pdf");
 
   expect(container.textContent).toContain("只列出最接近的 1 個");
-  // 設計系統 §4.3 wants 「共 N 筆，這裡顯示 M 筆，因為 X」. The population, and not
-  // the page size a second time: until 2026-08-25 this notice read 「超過 20 個」,
-  // which is the cap talking about itself. A reader could not tell 21 from 2100.
   expect(container.textContent).toContain("共 47 個");
   expect(container.textContent).not.toContain("超過");
-  // Not the degraded copy: recall being lower and the page being cut are
-  // different facts with different fixes.
   expect(container.textContent).not.toContain("召回率明顯較低");
 });
 
@@ -962,9 +759,6 @@ test("DISC-005: degraded and partial_index are separate, non-blocking notices", 
         skill_id: "33333333-3333-3333-3333-333333333333",
         name: "Lexical Hit",
         summary: "只靠關鍵字命中",
-        // Null, not the lexical score: a real FTS-only answer returned 1.4,
-        // which is not the 0..1 cosine similarity the schema documents, so the
-        // server withholds it and says why instead.
         rank: null,
         rank_note: "此頁改用關鍵字比對排序，未計算語意相似度。",
       },
@@ -980,14 +774,9 @@ test("DISC-005: degraded and partial_index are separate, non-blocking notices", 
 
   const text = container.textContent ?? "";
   expect(container.querySelectorAll(".notice")).toHaveLength(2);
-  // 04 丙-117 ②: `degraded_reason` is an English server diagnostic and this is
-  // the product's first screen. The Chinese sentence above it already says the
-  // consequence, which is the part a reader can act on.
   expect(text).not.toContain("embedding unavailable; lexical search only");
   expect(text).toContain("目前只用關鍵字比對搜尋");
-  // Non-blocking: the result is still listed.
   expect(text).toContain("Lexical Hit");
-  // The out-of-range lexical score is never shown, nor called a similarity.
   expect(text).not.toMatch(/相似度\s*[\d.]/);
   expect(text).not.toContain("1.4");
   expect(text).toContain("此頁改用關鍵字比對排序，未計算語意相似度。");
@@ -1033,8 +822,8 @@ test("DISC-008: license shows both axes — expression and provenance tier", asy
 
   const text = container.textContent ?? "";
   expect(text).toContain("MIT");
-  expect(text).toContain("已宣告"); // status axis: declared, not confirmed
-  expect(text).toContain("repo 根目錄 LICENSE"); // provenance axis
+  expect(text).toContain("已宣告");
+  expect(text).toContain("repo 根目錄 LICENSE");
   expect(text).toContain("涵蓋整個 repo");
 });
 
@@ -1075,13 +864,10 @@ test("DISC-008: warnings are up front, info findings aggregate behind a disclosu
   await render(<RiskIndicator risk={RISK} />);
 
   const text = container.textContent ?? "";
-  // Errors/warnings verbatim and not hidden.
   expect(text).toContain("SKILL.md 內含可執行程式碼區塊。");
   expect(container.querySelector(".risk-list .badge-risk")).not.toBeNull();
-  // The embedded-script flag is its own visible marker (SKILL-003).
   expect(text).toContain("SKILL.md 內含可執行程式碼");
 
-  // 321 info findings collapse to per-code counts inside <details>.
   const details = container.querySelector("details.risk-infos")!;
   expect(details).not.toBeNull();
   expect((details as HTMLDetailsElement).open).toBe(false);
@@ -1089,8 +875,6 @@ test("DISC-008: warnings are up front, info findings aggregate behind a disclosu
   expect(details.textContent).toContain("320");
   expect(details.querySelectorAll("li")).toHaveLength(2);
 });
-
-// ---- DISC-004: the ranking rule is explained, and matches what the server does ----
 
 const TWO_HITS: PublicSearchResponse = {
   ...EMPTY,
@@ -1134,36 +918,19 @@ test("DISC-004: the ranking rule is explained on demand and matches the pipeline
 
   const explainer = container.querySelector<HTMLDetailsElement>("details.ranking-explainer")!;
   expect(explainer).not.toBeNull();
-  // Progressive disclosure: available, not shouted at every searcher.
   expect(explainer.open).toBe(false);
 
   const text = explainer.textContent ?? "";
-  // The four facts the implementation actually has: vector distance ranks,
-  // the lexical leg only widens candidates, the cut-off hides the rest, and
-  // popularity is not an input (02:DISC-002 排序不得只使用 Star).
   expect(text).toContain("語意相似度");
   expect(text).toContain("關鍵字命中只用來多找候選，不會改變名次");
   expect(text).toContain("低於 0.25");
   expect(text).toContain("不看 Star 數");
-  // Both exceptions are described even when neither is live right now...
   expect(text).toContain("只能用關鍵字比對時");
   expect(text).toContain("還沒建立語意索引");
-  // ...but nothing claims one of them is happening.
   expect(text).not.toContain("目前只用關鍵字比對搜尋");
   expect(text).not.toContain("部分 Skill 尚未建立語意索引");
 });
 
-/**
- * 設計 §2.10 第 9 項 ＋ §2.13 去重 2 —— 降級自述不住在關起來的 `<details>` 裡。
- *
- * 以前這一格押的是 `<details>` 裡那顆「目前這次搜尋就是這個狀態」徽章。**那顆徽章
- * 本身就是缺陷**：平台的降級自述是 §2.10 第 9 項，不得折疊，而它掛在一個預設關閉的
- * disclosure 的第六個 `<li>` 上。合格的那一份一直都在——結果清單之前的兩則 `.notice`
- * ，平鋪、不必互動。所以徽章刪掉，而這一支改押那兩則：**降級要說得出來，而且要說在
- * 外面。**
- *
- * 把 `data.degraded &&` 那一則 notice 拿掉，這支就紅。
- */
 test("DISC-004: 降級自述在 details 外面平鋪，不在裡面當徽章", async () => {
   stubSearch({ ...TWO_HITS, degraded: true, degraded_reason: "embedding unavailable" });
   await render(<App />);
@@ -1174,15 +941,12 @@ test("DISC-004: 降級自述在 details 外面平鋪，不在裡面當徽章", a
     notices.some((n) => n.includes("目前只用關鍵字比對搜尋")),
     "the degraded self-report is not stated in the flat, always-visible layer",
   ).toBe(true);
-  // …and not a second time inside the collapsed explainer.
   const explainer = container.querySelector<HTMLDetailsElement>("details.ranking-explainer")!;
   expect(explainer.open, "the explainer is the collapsed layer this fact may not live in").toBe(
     false,
   );
   expect(explainer.textContent ?? "").not.toContain("目前只用關鍵字比對搜尋");
 });
-
-// ---- DISC-009: selecting 2–3 candidates, then comparing them side by side ----
 
 function compareLink() {
   return container.querySelector<HTMLAnchorElement>(".compare-bar a");
@@ -1204,7 +968,7 @@ test("DISC-009: comparison needs two candidates and accepts at most three", asyn
   expect(container.textContent).toContain("勾選 2 至 3 個 Skill");
 
   await pick(0);
-  expect(compareLink()).toBeNull(); // one is not a comparison
+  expect(compareLink()).toBeNull();
 
   await pick(1);
   expect(compareLink()?.getAttribute("href")).toContain(
@@ -1213,25 +977,16 @@ test("DISC-009: comparison needs two candidates and accepts at most three", asyn
 
   await pick(2);
   expect(compareLink()?.textContent).toContain("3 個");
-  // The fourth box is refused rather than silently dropping an earlier pick.
   const boxes = container.querySelectorAll<HTMLInputElement>(".compare-pick input");
   expect(boxes[3].disabled).toBe(true);
   expect(boxes[0].disabled).toBe(false);
 
-  await pick(0); // deselecting frees the slot again
+  await pick(0);
   expect(container.querySelectorAll<HTMLInputElement>(".compare-pick input")[3].disabled).toBe(
     false,
   );
 });
 
-/**
- * 04 丙-136。`compareRoute` 的註解逐字寫著「the selection lives in the URL so a
- * comparison is linkable and survives a reload」——那個裁定在 `/compare` 上成立，
- * 在**產生**那份選擇的這一步上以前不成立：`useState` 撐不過一次導覽，於是
- * DISC-009 自己的工作流「比較 → 上一頁 → 換掉一筆 → 再比較」每走一次都要重新勾兩個。
- *
- * 押的是「網址說了算」：帶著 `compare=` 到站，兩個框就是勾的、比較連結就在。
- */
 test("DISC-009: 勾選住在網址上，所以它撐得過一次導覽", async () => {
   stubSearch(TWO_HITS);
   await render(<App />);
@@ -1254,12 +1009,6 @@ test("DISC-009: 勾選住在網址上，所以它撐得過一次導覽", async (
   );
 });
 
-/**
- * 選擇住到網址上之後，「換一個問題就把它丟掉」這件事換了負責人：以前是一個
- * `useEffect`，現在是 `submitSearch` 裡明寫的 `compare: undefined`——**因為那個函式
- * 淺層合併**，不明寫就會把舊的勾選帶過新的查詢，去比較兩個已經不在這一頁上的 Skill。
- * 下面那一支測的是整份 search 被替換的路徑；這一支測的是合併的那一條。
- */
 test("DISC-009: 用表單換一個問題，勾選要跟著走掉（合併路徑）", async () => {
   stubSearch(TWO_HITS);
   await render(<App />);
@@ -1325,15 +1074,6 @@ function detailFixture(overrides: Partial<SkillDetail>): SkillDetail {
   };
 }
 
-/** Answers the search call and GET /api/skills/{id} from fixtures. */
-/**
- * `owner` 開著，代表「這個 Skill 在你的工作區裡」：`/me` 給一個 session，
- * `GET /skills/{id}/versions` 給一份非空的清單。**兩者都是打包入口現在讀的訊號**
- * ——`SkillDetail` 的 `PackagingEntry` 不再用 `skill.version` 判擁有權，因為那個
- * 欄位來自 Skill 自己的工作區（`discovery/detail.go` 的 `LatestVersion(ctx,
- * skill.WorkspaceID, …)`），對每一個訪客都有值。要單獨測授權那道閘門，就得先把
- * 擁有權那道打開，否則測到的是兩道閘門的交集。
- */
 function stubSearchAndDetails(
   search: PublicSearchResponse,
   details: Record<string, SkillDetail>,
@@ -1379,8 +1119,6 @@ function stubSearchAndDetails(
         ),
       );
     }
-    // The id, whatever query string follows it: 並排比較 now reads with
-    // `?view=embedded` so the server does not count it as a page view.
     const id = url.match(/\/api\/skills\/([^/?]+)(?:\?|$)/)?.[1];
     if (id && details[id]) {
       return Promise.resolve(new Response(JSON.stringify(details[id]), { status: 200 }));
@@ -1431,8 +1169,6 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
     { "id-left": left, "id-right": right },
   );
 
-  // Driven the way a user gets there: search, pick two, follow the link. That
-  // also covers the router wiring of /compare?ids=…
   await render(<App />);
   await submitSearch("pdf");
   await pick(0);
@@ -1440,47 +1176,32 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
   await act(async () => compareLink()!.click());
   await waitFor(() => container.querySelector("table.compare-table") !== null);
 
-  // Both skills are columns of one table (DISC-004 至少兩個候選的靜態比較).
   expect(container.textContent).toContain("左邊的 Skill");
   expect(container.textContent).toContain("右邊的 Skill");
 
-  // Same value on both sides: no highlight, no noise.
   const tier = compareRow("來源層級");
   expect(tier.className).not.toContain("compare-differs");
   expect(tier.textContent).not.toContain("有差異");
 
-  // Different value: highlighted, and the reason is spelled out rather than
-  // being carried by colour alone.
   const license = compareRow("License");
   expect(license.className).toContain("compare-differs");
   expect(license.textContent).toContain("有差異");
   expect(license.textContent).toContain("MIT");
   expect(license.textContent).toContain("License 未知");
 
-  // A field neither skill declared reads 未知 on every column — never blank,
-  // never a pass (02:DISC-004 不得自行推定為通過).
-  // Declared on one side only: the value renders, the other side reads 未知,
-  // and an empty bucket is 未知 too rather than an implied "takes nothing".
   const inputs = compareRow("輸入");
   expect(inputs.textContent).toContain("PDF");
   expect(inputs.querySelectorAll(".compare-unknown")).toHaveLength(1);
   expect(compareRow("輸出").querySelectorAll(".compare-unknown")).toHaveLength(2);
   expect(compareRow("限制").querySelectorAll(".compare-unknown")).toHaveLength(2);
 
-  // Missing on one side only: still 未知 there, and the row counts as a difference.
   const version = compareRow("版本與時間");
   expect(version.className).toContain("compare-differs");
   expect(version.querySelectorAll(".compare-unknown")).toHaveLength(1);
   expect(version.textContent).toContain("v1");
 
-  // Evidence rows are present and honest about what was never verified.
   expect(compareRow("相容性（驗證證據）").textContent).toContain("未驗證");
 
-  // O11Y-004: comparing is not opening. Both reads are marked embedded, so the
-  // server records no skill_detail_viewed for them — 01 §11.2's first segment
-  // counts sessions that opened a skill detail, and this table opened none.
-  // Without the marker a three-way comparison minted three of those events
-  // (adversarial review, 2026-08-24).
   const detailReads = calls.filter((url) => /\/api\/skills\/id-(left|right)/.test(url));
   expect(detailReads.length).toBeGreaterThan(0);
   for (const url of detailReads) {
@@ -1502,11 +1223,6 @@ test("DISC-009: a repeated URL id is still only one comparison candidate", async
 });
 
 test("DISC-009: a failed read on /compare says so at once, not after seven seconds of 載入中", async () => {
-  // `useQueries` here was the one place in the app without `retry: false`. Three
-  // retries keep `fetchStatus` at "fetching" for the whole backoff, so the page
-  // kept promising 「載入中…（2 個裡讀到 0 個）」 about two reads that had already
-  // failed — 設計 §2.1: the screen may say 未知, it may not claim progress that is
-  // not happening.
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
     if (url.includes("/api/skills/search")) {
@@ -1545,22 +1261,10 @@ test("DISC-009: a failed read on /compare says so at once, not after seven secon
   await pick(1);
   await act(async () => compareLink()!.click());
 
-  // Well inside the first retry delay (1s), which is the window the reader used
-  // to spend looking at nothing.
   await waitFor(() => (container.textContent ?? "").includes("讀取失敗"), 300);
   expect(container.textContent).toContain("有 2 個 Skill 讀取失敗");
 });
 
-/**
- * `level: "unknown"` — the fourth value, and the only one that is not a finding.
- *
- * The other three answer 「掃過了，結果是什麼」. `unknown` answers 「沒掃」, and
- * without a word of its own it falls through to the shape a scanned-clean row
- * uses — which is the OpenSSF-empty-repo failure 設計 §2.11(a) is built around
- * and what 02:DISC-004「不得自行推定為通過」 forbids. 未掃描 takes
- * `--accent-border` (§4.4's 未知／未驗證／未檢查) and deliberately not `--danger`:
- * 沒掃 is not 不通過.
- */
 test("DISC-004: a risk level of unknown reads as 未掃描, not as a clean row", async () => {
   const { RiskSummary } = await import("./components/RiskIndicator");
   await act(async () => {
@@ -1580,14 +1284,9 @@ test("DISC-004: a risk level of unknown reads as 未掃描, not as a clean row",
 
   const text = container.textContent ?? "";
   expect(text).toContain("未掃描");
-  // §4.4 規則 1: 未執行 names the check that did not run. A bare 「未掃描」 is a
-  // state with no subject.
   expect(text).toContain("沒有靜態掃描結果可讀");
   expect(text).toContain("那不是「掃過了、沒發現」");
-  // The sentence the untinted clean-scan branch prints. It must not appear: a
-  // package nobody scanned did not fail to find warnings, it was never looked at.
   expect(text).not.toContain("靜態掃描未發現警告");
-  // Not green: the badge carries the 未知 tint, never the plain `.badge`.
   expect(container.querySelector(".badge-unverified")).not.toBeNull();
   expect(container.querySelector(".badge-risk")).toBeNull();
 });
@@ -1611,9 +1310,6 @@ test("DISC-004: an unreadable package is reported as unknown, never as a clean s
   expect(text).not.toContain("未發現錯誤或警告");
 });
 
-// --- DISC-003: structured filters -------------------------------------------
-
-/** Picks the <select> inside the filter-bar label whose text starts with `label`. */
 function filterSelect(label: string): HTMLSelectElement {
   const group = [...container.querySelectorAll(".filter-bar label")].find((l) =>
     l.textContent?.startsWith(label),
@@ -1659,28 +1355,19 @@ test("DISC-003: a chosen filter reaches the request and the shareable URL", asyn
   await chooseFilter("是否包含 Script", "yes");
   await chooseFilter("驗證狀態", "passed");
 
-  // The request carries both dimensions...
   const last = calls[calls.length - 1];
   expect(last).toContain("script=yes");
   expect(last).toContain("validation=passed");
-  // ...and so does the address bar, which is what makes the page shareable.
   const url = new URLSearchParams(window.location.search);
   expect(url.get("q")).toBe("pdf");
   expect(url.get("script")).toBe("yes");
   expect(url.get("validation")).toBe("passed");
 
-  // Clearing a dimension removes it rather than sending an empty value: an
-  // unset filter must be absent from a shared link, not present and blank.
   await chooseFilter("是否包含 Script", "");
   expect(new URLSearchParams(window.location.search).has("script")).toBe(false);
   expect(calls[calls.length - 1]).not.toContain("script=");
 });
 
-// DISC-002 lists Agent 相容 as an M2 dimension「依 Sandbox 實測」. It is the same
-// contract as the two above — reaches the request, reaches the URL, clears to
-// absent — and it is asserted separately because the value it carries is not a
-// yes/no: `transpiled` is a third answer, and a filter that folded it into "not
-// native" would quietly also return everything nobody has measured.
 test("DISC-003: the Agent 相容 filter reaches the request and the shareable URL", async () => {
   const calls = stubSearch({ ...EMPTY, query: "pdf", no_results: true });
   await render(<App />);
@@ -1700,39 +1387,18 @@ test("DISC-003: the filters the platform has no data for are disabled and say wh
   await render(<App />);
   await submitSearch("pdf");
 
-  // The four dimensions with per-row data are usable. Agent 相容 joined them
-  // with the M2 baseline measurements (0022) and 來源層級 with migration 0042;
-  // the assertions below are what would catch either silently reverting to a
-  // dead control.
   expect(filterSelect("是否包含 Script").disabled).toBe(false);
   expect(filterSelect("驗證狀態").disabled).toBe(false);
   expect(filterSelect("Agent 相容").disabled).toBe(false);
   expect(filterSelect("來源層級").disabled).toBe(false);
-  // 類別 joined them with migration 0053, eleven months after PDM-001 decided
-  // the three shelves and nothing stored them.
   expect(filterSelect("類別").disabled).toBe(false);
 
-  // The one without is present, disabled, and states its own reason — not
-  // hidden, and never offered as a control that accepts a value and narrows
-  // nothing.
   expect(filterSelect("需要 MCP").disabled).toBe(true);
   const text = container.querySelector(".filter-bar")!.textContent ?? "";
   expect(text).toContain("沒有記錄是否需要 MCP");
-  // 類別's old excuse must be gone from the bar, not merely outvoted by a live
-  // control sitting next to it — the same assertion 來源層級 got in 0042.
   expect(text).not.toContain("只存在於策展清單");
-  // 來源層級 is no longer one of them: its old excuse must be gone from the
-  // bar, not merely outvoted by a live control sitting next to it.
   expect(text).not.toContain("人工精選審查尚未開始");
 
-  // 設計 §2.10 第 5 項, and it is asserted on the CONTROL rather than on the
-  // page's text. A general paragraph at the bottom of the bar used to carry the
-  // 「不是因為所有 Skill 都不符合」 half; 設計 §2.13 去重 2 removed it as a
-  // restatement of the per-dimension reason two nodes up. That is only true
-  // while every dead control still points at its own visible reason, which the
-  // deleted paragraph could never have done — so this is what replaces it, and
-  // it is the assertion that would go red if a seventh dimension arrived dead
-  // and silent.
   const deadSelects = [
     ...container.querySelectorAll<HTMLSelectElement>(".filter-bar select"),
   ].filter((s) => s.disabled);
@@ -1740,30 +1406,15 @@ test("DISC-003: the filters the platform has no data for are disabled and say wh
   for (const select of deadSelects) {
     const id = select.getAttribute("aria-describedby");
     const reason = id ? container.querySelector(`#${id}`) : null;
-    // Visible text (`.note`), not a `title` — 設計 §2.4 第 3 項 — and a real
-    // sentence rather than a word: 「目前不提供」 is the shape §2.4 第 2 項 names
-    // as a failure, and it would pass a mere non-empty check.
     expect(reason?.className, "the reason is not visible text").toContain("note");
     expect(
       (reason?.textContent ?? "").replace(/\s+/g, "").length,
       `a disabled filter whose stated reason is too short to be one`,
     ).toBeGreaterThan(15);
-    // …and it says the platform has no such data, never that nothing matched.
     expect(reason?.textContent ?? "").toContain("平台");
   }
 });
 
-/**
- * 設計 §0 的裁定: 「數量留在外面，段落收進去」 — so the two numbers on the summary
- * have to be the two numbers in the bar.
- *
- * This is the assertion that stops the disclosure becoming a lie. The paragraph
- * saying WHY a dimension is dead is now one click away on a phone, and the only
- * thing left outside is a count; a count that stops describing the controls
- * beneath it is worse than no count, because the reader would have no reason to
- * open the bar and look. A seventh filter, or a dead one going live, changes
- * what is rendered — and this fails until the summary is changed with it.
- */
 test("設計 §0: the filter summary counts the filters that are actually there", async () => {
   stubSearch({ ...EMPTY, query: "pdf", no_results: true });
   await render(<App />);
@@ -1776,9 +1427,6 @@ test("設計 §0: the filter summary counts the filters that are actually there"
   expect(dead, "no dead filters found — 「N 項目前無法篩選」 would be a claim about nothing").toBe(
     1,
   );
-  // The other half of the same guard, and the one that would have caught 類別
-  // going live without the summary following: LIVE_FILTERS is read out in that
-  // summary, so it is pinned to the controls actually rendered.
   expect(live, "the summary's 「N 項可用」 has stopped counting the live controls").toBe(5);
 
   const summary = container
@@ -1788,18 +1436,6 @@ test("設計 §0: the filter summary counts the filters that are actually there"
   expect(summary).toContain(`${dead}項目前無法篩選`);
 });
 
-/**
- * 設計 §0 ＋ §2.2: the bar starts open when it is doing something, and shut when
- * it is not.
- *
- * Both halves are load-bearing and they fail in opposite directions, so both are
- * asserted. Shut-when-idle is 義務 1.2 — measured 2026-09-03, the six controls
- * and their six paragraphs put the first result at y958 in a 900px window with
- * the bar open, and y613 with it shut. Open-when-active is §2.2「會擋住人的東西
- * 必須在他撞上之前顯示」: a filter is removing rows from the answer, and a reader
- * who followed a shared ?tier=curated link would otherwise see a short result
- * list with nothing on screen saying why.
- */
 test("設計 §0: the filter bar starts shut when idle and open when it is narrowing", async () => {
   stubSearch({ ...EMPTY, query: "pdf", no_results: true });
   await render(<App />);
@@ -1819,8 +1455,6 @@ test("設計 §0: the filter bar starts shut when idle and open when it is narro
   ).toBe(true);
 });
 
-// DISC-002 來源層級, live since migration 0042 gave `skills.curation_tier` a
-// second value. Same contract as the three filters above.
 test("DISC-003: the 來源層級 filter reaches the request and the shareable URL", async () => {
   const calls = stubSearch({ ...EMPTY, query: "pdf", no_results: true });
   await render(<App />);
@@ -1840,14 +1474,9 @@ test("DISC-003: 來源層級 offers the two tiers a row can carry, and says what
   await render(<App />);
   await submitSearch("pdf");
 
-  // `external` means "never imported", so no row carries it and it must not be
-  // offered — a third option would promise a page that cannot exist.
   const options = Array.from(filterSelect("來源層級").options).map((o) => o.value);
   expect(options).toEqual(["", "curated", "indexed"]);
 
-  // 精選 survives only while the reviewed version is still the newest one, so a
-  // curated skill drops back to 已索引 on its next release. Copy calling 已索引
-  // "never reviewed" would be false for exactly those rows.
   const text = container.querySelector("#filter-why-tier")!.textContent ?? "";
   expect(text).toContain("沒有帶著人工審查結論");
   expect(text).not.toContain("未經人工審查");
@@ -1860,14 +1489,11 @@ test("DISC-002: the tier badge is the server's value, not a front-end guess", as
     results: [
       {
         ...HIT_FACETS,
-        // The only row on this page that is not the fixture's 已索引 default.
         tier: { value: "curated", label: "精選", note: "已完成人工檢視。" },
         skill_id: "11111111-1111-1111-1111-111111111111",
         name: "PDF Summariser",
         summary: "把 PDF 轉成摘要",
         rank: 0.82,
-        // Absent, not null: the contract marks both optional, and `null` is a
-        // third thing the type does not admit.
         match_reason: undefined,
         match_reason_source: undefined,
       },
@@ -1878,13 +1504,10 @@ test("DISC-002: the tier badge is the server's value, not a front-end guess", as
 
   const badge = container.querySelector(".search-result .result-facets")!.textContent ?? "";
   expect(badge).toContain("精選");
-  // The fixture default, which is what a hardcoded tierLabel() would still print.
   expect(badge).not.toContain("已收錄");
 });
 
 test("DISC-003: 清除所有篩選 clears every filter, not the two somebody remembered", async () => {
-  // Arrive with all three filters on the URL. The button's own copy is the
-  // claim under test: it says every filter, so every filter has to go.
   window.history.pushState({}, "", "/?q=pdf&script=none&validation=validated&agent=native");
   stubSearch({ ...EMPTY, query: "pdf", filtered_out: true });
   await render(<App />);
@@ -1896,27 +1519,20 @@ test("DISC-003: 清除所有篩選 clears every filter, not the two somebody rem
   await act(async () => clear.click());
   await waitFor(() => !container.textContent?.includes("搜尋中…"));
 
-  // Everything except the question, rather than a list of the filters that
-  // existed when this test was written — a list is what let `agent` survive the
-  // clear in the first place.
   const left = [...new URLSearchParams(window.location.search).keys()];
   expect(left).toEqual(["q"]);
   expect(new URLSearchParams(window.location.search).get("q")).toBe("pdf");
 });
 
 test("DISC-003: filtered-to-empty and the no-results refusal never share copy", async () => {
-  // The catalog had matches; the filters removed them. The fix is the filter.
   stubSearch({ ...EMPTY, query: "pdf", filtered_out: true });
   await render(<App />);
   await submitSearch("pdf");
 
   let text = container.textContent ?? "";
   expect(text).toContain("全部被目前的篩選條件排除");
-  // The DISC-005 refusal copy must not appear: telling someone to reword a
-  // query that did match is advice about the wrong thing.
   expect(text).not.toContain("沒有夠接近的 Skill");
 
-  // The other empty state, same page, entirely different copy.
   await act(async () => root.unmount());
   queryClient.clear();
   window.history.pushState({}, "", "/");
@@ -1964,10 +1580,6 @@ test("DISC-002: a result row carries all seven columns, and infers none of them"
         name: "Unscanned Skill",
         summary: "沒有掃描紀錄",
         rank: 0.3,
-        // The server's own sentence, verbatim (catalog.searchRiskUnknown). The row
-        // used to print a near-copy of it from the client as well, so an unscanned
-        // hit said the same thing twice in two spellings; the note is now the only
-        // place that sentence comes from.
         risk: {
           scan_status: "unavailable",
           level: "none",
@@ -1992,34 +1604,20 @@ test("DISC-002: a result row carries all seven columns, and infers none of them"
   expect(rows).toHaveLength(2);
 
   const scanned = rows[0].textContent ?? "";
-  expect(scanned).toContain("PDF Summariser"); // 名稱
-  expect(scanned).toContain("把 PDF 整理成摘要"); // 白話摘要
-  expect(scanned).toContain("已收錄"); // 來源層級 (server-owned copy)
-  expect(scanned).toContain("規格驗證：通過"); // 相容狀態
-  // 設計 §4.4: the search row and the detail view used to word this boolean
-  // differently — 「含 Script 檔案」 here, 「含可執行 Script 檔案」 one component over —
-  // and 可執行 is the word doing the work. One list now serves both.
-  expect(scanned).toContain("含可執行 Script 檔案"); // 風險提示
-  expect(scanned).toContain("pypdf"); // 依賴
-  // 最近驗證時間。斷言移到 `<time dateTime>` 上而不是渲染出來的文字：這一格原本
-  // 印的是伺服器 UTC 字串的前十碼（`.slice(0, 10)`），對 UTC+8 的讀者少報一天，
-  // 現在走 `<Timestamp>`，人看到的是自己的時鐘、機器看到的是原值。斷言那個原值
-  // 比斷言任何一種在地化字串都穩，而且它就是 §1.1 說「證據要查得動」的那一半。
+  expect(scanned).toContain("PDF Summariser");
+  expect(scanned).toContain("把 PDF 整理成摘要");
+  expect(scanned).toContain("已收錄");
+  expect(scanned).toContain("規格驗證：通過");
+  expect(scanned).toContain("含可執行 Script 檔案");
+  expect(scanned).toContain("pypdf");
   expect([...container.querySelectorAll("time")].map((t) => t.getAttribute("dateTime"))).toContain(
     "2026-08-01T10:00:00Z",
   );
-  // 沒有驗證證據的 Skill 必須明確標記「尚未試跑」.
   expect(scanned).toContain("尚未試跑");
 
-  // Nothing is inferred on the row that has no evidence: an unscanned package
-  // is unknown rather than clean, and an empty dependency list says it was not
-  // extracted rather than that there are none (02:DISC-004).
   const unscanned = rows[1].textContent ?? "";
   expect(unscanned).toContain("尚無掃描紀錄");
   expect(unscanned).not.toContain("未發現警告");
-  // 設計 §2.9 的表是封閉的六個詞。這一格以前寫「未擷取到依賴資訊」——意思對，
-  // 詞不在表上，而表的用處正是讓「0」與「沒量到」在同一張截圖上長得不一樣。
-  // 兩半都釘：表上的型別詞，以及「這不是零」那一句。
   expect(unscanned).toContain("未測量");
   expect(unscanned).toContain("不等於沒有依賴");
   expect(unscanned).toContain("規格驗證：未驗證");
@@ -2058,22 +1656,19 @@ test("DISC-006: the general detail view answers all nine required facts", async 
   await waitFor(() => (container.textContent ?? "").includes("PDF Summariser"));
 
   const text = container.textContent ?? "";
-  // 02:DISC-003 一般模式: 功能、限制、輸入、輸出、依賴、權限、來源、License、相容性.
-  expect(text).toContain("把 PDF 整理成摘要"); // 功能
-  expect(text).toContain("不處理掃描件的手寫字。"); // 限制 (model)
-  expect(text).toContain("套件內含可執行 Script。"); // 限制 (scan)
+  expect(text).toContain("把 PDF 整理成摘要");
+  expect(text).toContain("不處理掃描件的手寫字。");
+  expect(text).toContain("套件內含可執行 Script。");
   expect(text).toContain("輸入：");
   expect(text).toContain("pdf");
   expect(text).toContain("輸出：");
   expect(text).toContain("markdown");
   expect(text).toContain("依賴：");
   expect(text).toContain("pypdf");
-  expect(text).toContain("套件宣告可用的工具"); // 權限
-  expect(text).toContain("https://github.com/example/pdf"); // 來源
-  expect(text).toContain("License 未知"); // License
-  expect(text).toContain("規格驗證"); // 相容性
-  // ADR-013: the model half of 限制 is marked as model-written, the scan half is
-  // not allowed to borrow that label.
+  expect(text).toContain("套件宣告可用的工具");
+  expect(text).toContain("https://github.com/example/pdf");
+  expect(text).toContain("License 未知");
+  expect(text).toContain("規格驗證");
   expect(container.querySelectorAll(".badge-source-model").length).toBeGreaterThan(0);
 });
 
@@ -2081,9 +1676,6 @@ test("DISC-006: an unenriched skill reads as unknown, never as 'needs nothing'",
   const skill = detailFixture({
     skill_id: "dddddddd-0000-0000-0000-000000000002",
     name: "Bare Skill",
-    // Pending enrichment and an empty limitations list: the state a skill sits
-    // in between import and backfill, which is where an omitted row silently
-    // turns "not extracted" into "none".
   });
   stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill });
   await render(<App />);
@@ -2098,10 +1690,6 @@ test("DISC-006: an unenriched skill reads as unknown, never as 'needs nothing'",
   expect(text).toContain("不代表這個 Skill 沒有限制");
 });
 
-// 02:SEC-007 / ADR-027 決策 4: three states, and two of them refuse. `unknown`
-// is not a pending state that will resolve itself — it blocks exactly like
-// `blocked` — so the screen has to say so in its own words rather than leaving a
-// reader to assume the download is on its way.
 test("SEC-007: the redistribution verdict shows all three states and only `allowed` opens packaging", async () => {
   const cases = [
     { value: "allowed", label: "可再散布", opens: true },
@@ -2126,9 +1714,6 @@ test("SEC-007: the redistribution verdict shows all three states and only `allow
       await router.navigate({ to: "/skills/$skillId", params: { skillId: skill.skill_id } });
     });
     await waitFor(() => (container.textContent ?? "").includes(skill.name));
-    // 等打包入口自己安定下來，而不是等它上面的標題。`allowed` 這一格要等
-    // workspace-scoped 的版本清單答完（`PackagingEntry`），另外兩格的停用鈕由
-    // 授權閘門當場決定、不等任何請求。
     await waitFor(() =>
       c.opens
         ? Boolean(
@@ -2160,37 +1745,16 @@ test("SEC-007: the redistribution verdict shows all three states and only `allow
       expect(link).toBeUndefined();
       expect(refusal?.disabled).toBe(true);
     }
-    // Cleanup between iterations: this test renders the app three times.
     await act(async () => root?.unmount());
     container.innerHTML = "";
     queryClient.clear();
   }
 });
 
-/**
- * 丙-116 的另一半，而它躺了整整兩天。
- *
- * 那次修的是「試跑」：非擁有者按下去會走進一條三個畫面都各自正確、合起來卻沒有
- * 一句話說「這還不是你的」的走廊。**打包那一半沒有一起修。** 打包入口當時判斷
- * 擁有權用的是 `skill.version`，而同一個檔案在三十行外的註解逐字寫著
- * 「**`skill.version` is NOT the signal** … keying off it calls every visitor an
- * owner」——`GET /api/skills/{id}` 的 `version` 來自 `LatestVersion(ctx,
- * skill.WorkspaceID, …)`，那是 **Skill 自己的**工作區。
- *
- * 後果不是少一個連結，是多一條死路：`.action` 是全 app 唯一的強調樣式，2026-09-03
- * 的重排又把它移到整頁第二個區塊，所以**訪客在目錄頁上最顯眼的動作**是「打包並
- * 下載這個版本」，按下去落在 workspace-scoped 的 preview，回
- * `404 {"error":"skill version not found"}`，畫面印出一句英文，而且說的還不是
- * 真正的原因。
- *
- * 這支測試押的是**沒有那條連結、而且有那句話**。把 `PackagingEntry` 的擁有權判斷
- * 換回 `skill.version`，它就變紅。
- */
 test("SEC-007: 目錄裡別人的 Skill 不給打包 CTA，而是說要先 Fork", async () => {
   const skill = detailFixture({
     skill_id: "dddddddd-0000-0000-0000-000000000009",
     name: "別人的 Skill",
-    // 授權那道閘門是開的，所以擋下來的只可能是擁有權那道。
     redistribution: { value: "allowed", label: "可再散布", note: "可再散布。" },
     version: {
       version_id: "v1",
@@ -2199,8 +1763,6 @@ test("SEC-007: 目錄裡別人的 Skill 不給打包 CTA，而是說要先 Fork"
       created_at: "2026-08-01T00:00:00Z",
     },
   });
-  // `owner` 不開：`/me` 與 `/skills/{id}/versions` 都回 404，也就是一個沒登入的
-  // 訪客在目錄裡看別人的東西——首頁最常見的那條路。
   stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill });
   await render(<App />);
   await act(async () => {
@@ -2212,8 +1774,6 @@ test("SEC-007: 目錄裡別人的 Skill 不給打包 CTA，而是說要先 Fork"
     (a.getAttribute("href") ?? "").includes("/package"),
   );
   expect(packageLink, "訪客不該拿到一條終點是 404 的打包連結").toBeUndefined();
-  // 而且不是靜靜地消失：§2.4 要求被拿掉的控制項說出原因，§2.2 第三向要求那個原因
-  // 帶著下一步。下一步是 Fork，而 Fork 就在同一頁上。
   expect(container.textContent ?? "").toContain("打包與下載需要登入");
 });
 
@@ -2230,8 +1790,6 @@ test("DISC-007: advanced mode shows SKILL.md in full and marks every script", as
       { path: "scripts/run.py", size: 17, is_script: true },
       { path: "reference/notes.md", size: 9, is_script: false },
     ],
-    // SKILL-003: the tree is exactly what cannot show code living inside the
-    // document, so the disclosure travels beside it.
     embedded_script_note: "SKILL.md 內含可執行程式碼。",
     note: "tree 為套件內檔案清單與大小。",
   };
@@ -2249,28 +1807,17 @@ test("DISC-007: advanced mode shows SKILL.md in full and marks every script", as
   await waitFor(() => (container.textContent ?? "").includes("scripts/run.py"));
 
   const text = container.textContent ?? "";
-  expect(text).toContain("用法說明。"); // SKILL.md 全文
-  expect(text).toContain("SKILL.md 內含可執行程式碼。"); // SKILL-003 disclosure
+  expect(text).toContain("用法說明。");
+  expect(text).toContain("SKILL.md 內含可執行程式碼。");
 
-  // 「Script 必須有明確標示」: the marker sits on the script entry and only on it.
   const marked = [...container.querySelectorAll(".file-tree li")].filter((li) =>
     li.querySelector(".script-tag"),
   );
   expect(marked).toHaveLength(1);
   expect(marked[0].textContent).toContain("scripts/run.py");
-  // A way back to the general mode, so the two modes are navigable both ways.
   expect(text).toContain("一般模式");
 });
 
-/**
- * 04 丙-210：這一頁攤開的是**匯入套件**的 SKILL.md——別人寫的字，而讀的人正在
- * 決定要不要用它。第一版只把標記接在互動創作那六處，漏了這裡，而 Trojan Source
- * （CVE-2021-42574）的論證在這裡比在那裡更成立：一個雙向覆寫可以讓這段本文在
- * 畫面上讀起來是一回事、跑起來是另一回事。
- *
- * 標出來而不是剝掉，理由是鐵律 4：Skill Version 不可變，顯示時改位元組等於請人
- * 簽一份他沒看過的東西。
- */
 test("DISC-007: an invisible character in an imported SKILL.md is marked, not swallowed", async () => {
   const skillId = "eeeeeeee-0000-0000-0000-000000000002";
   const files: SkillFiles = {
@@ -2298,15 +1845,11 @@ test("DISC-007: an invisible character in an imported SKILL.md is marked, not sw
   const mark = container.querySelector("pre.skill-md mark.hidden-char");
   expect(mark, "匯入套件的 SKILL.md 裡的隱藏字元沒有被標出來").not.toBe(null);
   expect(mark!.textContent, "標記沒有說出它抓到的是哪個字元").toContain("U+202E");
-  // 剝掉會是錯的：本文必須原封不動，因為那是他要決定採不採用的東西。
   const body = container.querySelector("pre.skill-md")!;
   expect(body.textContent).toContain("先讀輸入。");
   expect(body.textContent).toContain("然後刪除來源檔");
 });
 
-// The owner's 方案 C decision (m2/anthropic-sa-license-memo.md) as the reader
-// meets it: the page still describes the skill, says why the materials are not
-// shown, and does not offer a link into the view that would refuse.
 test("a licensing hold explains itself and takes the advanced link with it", async () => {
   const held = detailFixture({
     skill_id: "dddddddd-0000-0000-0000-00000000beef",
@@ -2331,23 +1874,12 @@ test("a licensing hold explains itself and takes the advanced link with it", asy
   await waitFor(() => (container.textContent ?? "").includes("Docx Editor"));
 
   const text = container.textContent ?? "";
-  // The listing survives — that is the half of 方案 C that is not a removal.
   expect(text).toContain("編輯 Word 文件");
   expect(text).toContain("授權審查中");
   expect(text).toContain("來源授權正在審查中");
-  // …and the door that would 403 is not shown as a door.
   expect(text).not.toContain("查看 SKILL.md 與檔案樹");
 });
 
-// 02:GEN-004 names two screens — the detail view and the workspace list — and
-// they have to agree. The detail page used to key the disclosure on the
-// VERSION's source (`source.type === "generated"`), which is `upload` for any
-// version the user saved themselves. So the first time somebody added their own
-// version 2 to a generated skill, the two absences vanished from the detail page
-// while the list, which reads the skill row's `redistribution`, went on showing
-// them — and `redistribution` is what GEN-007's search exclusion keys on, so the
-// skill was still the unreviewed, never-run, unfindable thing the sentence is
-// about. Both fixtures below are that skill; both must say so.
 test("GEN-004: the generated disclosure keys on the skill row, not on the version's source", async () => {
   for (const source of [
     {
@@ -2355,7 +1887,6 @@ test("GEN-004: the generated disclosure keys on the skill row, not on the versio
       content_hash: "sha256:aa",
       trust: { value: "traceable", label: "來源可追溯", note: "已保存來源紀錄。" },
     },
-    // The version a user uploaded onto their own generated skill.
     {
       type: "upload" as const,
       content_hash: "sha256:bb",
@@ -2381,8 +1912,6 @@ test("GEN-004: the generated disclosure keys on the skill row, not on the versio
   }
 });
 
-// The other direction, so the criterion is not just "always true": an ordinary
-// uploaded skill must not be told it was written by a model.
 test("GEN-004: a self-supplied skill gets no generated disclosure", async () => {
   const skill = detailFixture({
     skill_id: "eeeeeeee-0000-0000-0000-000000000002",
@@ -2404,33 +1933,6 @@ test("GEN-004: a self-supplied skill gets no generated disclosure", async () => 
   expect(container.textContent ?? "").not.toContain("沒有經過任何人工檢視");
 });
 
-/**
- * 04 丙-29 ④ / 設計 §4.4: **all twelve disclosure codes reach the screen, and
- * the words are the server's.**
- *
- * `skillpkg.DisclosureCodes` (apps/platform/internal/shared/skillpkg/skillpkg.go)
- * is the whole set and it went 6 → 12: `symlink-entry`,
- * `undeclared-dependency`, `file-not-scanned`, `package-dependencies` and
- * `entry-path-escape` were all being found by the scanner and none of them had
- * a word. The Go side asserts its catalogue covers the list; this is the same
- * assertion on the renderer.
- *
- * WHAT IS BEING ASSERTED, and it is not what it would have been a month ago.
- * There is **no code→中文 map in `apps/web`** any more: `RiskIndicator` renders
- * `disclosure.label`, from one catalogue both endpoints read (设计 §4.4 records
- * the merge, and the two divergent client-side lists it replaced — one of which
- * silently dropped 「可執行」, a smaller claim rather than a shorter label). The
- * property that buys is that **a code this build has never seen still renders**,
- * which no `keyof` union can have — and that property had no test. This is it.
- *
- * So the failure this catches is a regression to a client-side subset: reinstate
- * a local map, filter on a known-codes list, drop `label` for `note`, and this
- * goes red with the codes that vanished named in the diff.
- *
- * The list is READ FROM THE GO SOURCE, not copied: a copy here would be the
- * thirteenth hand-written list in a finding whose whole history is hand-written
- * lists falling behind the scanner.
- */
 function disclosureCodes(): string[] {
   const go = readFileSync(
     join(
@@ -2445,10 +1947,6 @@ function disclosureCodes(): string[] {
     ),
     "utf8",
   );
-  // `Code<Name> = "kebab-case"` — the constants, which is what the exported
-  // `DisclosureCodes` slice is spelled in terms of. Taken from the slice's own
-  // body so a constant that exists but is deliberately NOT a disclosure (the
-  // spec and licence verdicts, which the Go header enumerates) stays out.
   const slice = /var DisclosureCodes = \[\]string\{([\s\S]*?)\n\}/.exec(go);
   expect(slice, "skillpkg.go has no DisclosureCodes slice — the parse broke").toBeTruthy();
   const names = [...slice![1].matchAll(/\b(Code\w+)\b/g)].map((m) => m[1]);
@@ -2461,8 +1959,6 @@ function disclosureCodes(): string[] {
 
 test("04 丙-29 ④: every disclosure code the scanner can emit reaches the screen", async () => {
   const codes = disclosureCodes();
-  // Sentinel tied to the finding: the set went 6 → 12, so a parse that returns
-  // fewer than twelve is a broken parse rather than a shrunken catalogue.
   expect(codes.length, "fewer than twelve disclosure codes parsed").toBeGreaterThanOrEqual(12);
 
   await act(async () => {
@@ -2474,10 +1970,6 @@ test("04 丙-29 ④: every disclosure code the scanner can emit reaches the scre
           counts: { errors: 0, warnings: 0, infos: 0 },
           highlights: [],
           info_counts: {},
-          // The server's wording, one entry per code. The labels below are this
-          // test's own strings on purpose: what is under test is that the
-          // renderer prints what it was given, for every code, not that it
-          // agrees with a second copy of the catalogue.
           disclosures: codes.map((code) => ({
             code,
             label: `標籤：${code}`,
@@ -2492,9 +1984,7 @@ test("04 丙-29 ④: every disclosure code the scanner can emit reaches the scre
   const text = container.textContent ?? "";
   for (const code of codes) {
     expect(text, `no label rendered for disclosure code ${code}`).toContain(`標籤：${code}`);
-    // 設計 §2.4 第 3 項: the qualifier is visible text here, not a tooltip.
     expect(text, `no visible note rendered for disclosure code ${code}`).toContain(`但書：${code}`);
   }
-  // And the clean-scan sentence is absent: twelve disclosures is not 「未發現」.
   expect(text).not.toContain("靜態掃描未發現錯誤或警告");
 });

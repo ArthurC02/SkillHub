@@ -1,25 +1,9 @@
-# ADR-044 open question 4, answered: drift detection runs on a schedule and
-# files an issue. It is deliberately NOT part of the merge gate.
-#
-# The gate decides whether our code is fit to merge. Whether somebody else's
-# repository changed a line this morning is not a fact about our code, and
-# wiring it into the gate hands a third party's main branch the power to block
-# our merges - including at 03:00, including for a typo fix in their prose.
-#
-# But invisible drift is worse than the coupling. Every conformance statement
-# this repository makes (skillpkg.SpecRevision, INSTALL.md's "What was checked",
-# ADR-044) names a revision that can go stale with nobody noticing, because the
-# specification has no version, no tag and no release to watch. So: a scheduled
-# job, an issue when it moves, and a failed run so the schedule's own history
-# shows it. Same shape and same reasoning as gvisor-baseline.yml.
 name: Agent Skills spec drift
 
 on:
   schedule:
     - cron: '41 5 * * 1'
   workflow_dispatch:
-  # A change to the pin itself is a change to our code, so that one file does
-  # gate: re-pinning without the bytes agreeing is a defect we introduced.
   pull_request:
     paths:
       - 'contracts/spec/SOURCE.json'
@@ -44,9 +28,6 @@ jobs:
           python tools/contracts/check_spec_drift.py | tee drift.txt
           echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
-      # Exit 3 is "the pin does not reproduce" and always fails, on a pull
-      # request too: it means SOURCE.json describes bytes upstream does not
-      # serve, which no schedule should be the first to notice.
       - name: File or update the issue
         if: ${{ github.event_name != 'pull_request' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '1' }}
         run: |

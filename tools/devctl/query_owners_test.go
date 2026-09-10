@@ -17,9 +17,6 @@ const queryOwnerADRFixture = `### 1. Context 對照表
 | Skill 收藏與版本歷史／Skill Registry & Versioning | Core | registry | registry | SKILL |
 `
 
-// writeQueryOwnerFixture lays out the three inputs the check reads: the
-// declaration, the .sql files it declares, and the Go callers. The caller files
-// carry the sqlc import because that is what marks a `.Name(` as a query call.
 func writeQueryOwnerFixture(t *testing.T, declaration string, sql map[string]string, callers map[string]string) string {
 	return writeQueryOwnerFixtureWithADR(t, queryOwnerADRFixture, declaration, sql, callers)
 }
@@ -36,8 +33,7 @@ func writeQueryOwnerFixtureWithADR(t *testing.T, adr, declaration string, sql ma
 			t.Fatal(err)
 		}
 	}
-	// The scan root always exists in the repo; a missing one is a real error,
-	// so the fixture creates it rather than teaching the check to shrug.
+
 	if err := os.MkdirAll(filepath.Join(root, "apps", "platform", "internal"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -53,9 +49,6 @@ func writeQueryOwnerFixtureWithADR(t *testing.T, adr, declaration string, sql ma
 	return root
 }
 
-// decl appends the two sections the ownership cases do not exercise. They are
-// required to exist, so a declaration that omits them fails to parse before the
-// case under test gets a chance to run.
 func decl(declaration string) string {
 	if !strings.Contains(declaration, "\nread_allow:") {
 		declaration += "read_allow:\n"
@@ -84,7 +77,7 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 		name        string
 		declaration string
 		callers     map[string]string
-		want        string // substring of the expected single problem; empty means clean
+		want        string
 	}{
 		{
 			name:        "owner writes its own query",
@@ -292,8 +285,7 @@ func TestQueryOwnerProblemsNestedCallerUsesBoundaryID(t *testing.T) {
 
 func TestQueryOwnerProblemsIgnoresTestsAndUnrelatedSelectors(t *testing.T) {
 	t.Parallel()
-	// A cross-context write in a _test.go file is not a production data-access
-	// path. A production selector whose name is not a sqlc query is irrelevant.
+
 	root := writeQueryOwnerFixture(t,
 		decl("files:\n  runs.sql: run\nqueries:\nallow:\n"),
 		map[string]string{"runs.sql": "-- name: CreateRun :one\nINSERT INTO runs (id) VALUES ($1);\n"},
@@ -315,8 +307,6 @@ func TestQueryOwnerProblemsIgnoresTestsAndUnrelatedSelectors(t *testing.T) {
 	}
 }
 
-// writeCommand drops a process root under apps/platform/cmd/<name>, importing
-// sqlc the way cmd/reindex does.
 func writeCommand(t *testing.T, root, name, body string) {
 	t.Helper()
 	path := filepath.Join(root, "apps", "platform", "cmd", name, "main.go")
@@ -329,10 +319,6 @@ func writeCommand(t *testing.T, root, name, body string) {
 	}
 }
 
-// FIX 4: ownership scanning stopped at apps/platform/internal, so a maintenance
-// command could call any context's query and no check would ever see it -
-// including rawSQLProblems, whose comment says "the ownership check would
-// complain first" about exactly this.
 func TestQueryOwnerProblemsScansCommands(t *testing.T) {
 	t.Parallel()
 	const sql = "-- name: ReindexAll :execrows\nUPDATE search_documents SET stale = false;\n"
@@ -371,10 +357,6 @@ func TestQueryOwnerProblemsScansCommands(t *testing.T) {
 	})
 }
 
-// FIX 5: "a new query without a declaration fails CI" was false. The file
-// default answered for every query in the file, so a query added to a mixed file
-// silently inherited an owner that is not its table's - and the ratchet then
-// pointed backwards, reporting the true owner as the intruder.
 func TestQueryOwnerProblemsRequireDeclarationWhereThereIsNoDefault(t *testing.T) {
 	t.Parallel()
 	const sql = "-- name: InsertAuditEvent :exec\nINSERT INTO audit_events (id) VALUES ($1);\n\n" +
@@ -430,10 +412,6 @@ func TestQueryOwnerProblemsRequireDeclarationWhereThereIsNoDefault(t *testing.T)
 func TestImmutableTableProblems(t *testing.T) {
 	t.Parallel()
 
-	// The migration half of the contract. `notes` is deliberately frozen only
-	// while draft, which is what the check must refuse to treat as a frozen
-	// table: a column-scoped or conditional trigger says "part of this row",
-	// not "this table is insert-only".
 	const migration = `
 CREATE TRIGGER skill_versions_immutable
     BEFORE UPDATE OR DELETE ON skill_versions
@@ -449,7 +427,7 @@ CREATE TRIGGER notes_immutable
 	tests := []struct {
 		name    string
 		queries string
-		suffix  string // the immutable / immutable_allow sections
+		suffix  string
 		want    string
 	}{
 		{
@@ -500,19 +478,14 @@ CREATE TRIGGER notes_immutable
 			want:    "immutable.skill_versions has no reason",
 		},
 		{
-			// The reverse direction. The declaration says the two sides are
-			// cross-checked and that weakening either alone fails CI; walking
-			// `declared` only ever checked one. Deleting the audit_events line
-			// while its 0013 trigger stayed put was green, and an `UPDATE
-			// audit_events` could then merge and fail as a staging 500.
+
 			name:    "a table the database freezes but nobody declared is reported",
 			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
 			suffix:  "immutable:\nimmutable_allow:\n",
 			want:    "db/migrations freezes skill_versions with an unconditional enforce_immutable() trigger but immutable: does not declare it",
 		},
 		{
-			// The same deletion at its cheapest: drop the whole section. The old
-			// early return read an empty declaration as "nothing to check".
+
 			name:    "deleting the whole immutable block does not skip the check",
 			queries: "-- name: TouchVersion :exec\nUPDATE skill_versions SET manifest = $2 WHERE id = $1;\n",
 			suffix:  "immutable:\nimmutable_allow:\n",
@@ -589,15 +562,12 @@ func TestIsWriteStatement(t *testing.T) {
 func TestRawSQLProblems(t *testing.T) {
 	t.Parallel()
 
-	// These flat internal/<boundary-id>/ paths are deliberate legacy-layout fixtures.
-	// They verify the parser continues to diagnose repositories before nested migration;
-	// do not rewrite them to the current product-address paths.
 	tests := []struct {
 		name  string
-		path  string // relative to apps/platform/
+		path  string
 		body  string
 		allow map[string]string
-		want  string // substring of the expected single problem; empty means clean
+		want  string
 	}{
 		{
 			name: "sqlc call is clean",

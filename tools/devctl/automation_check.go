@@ -20,14 +20,14 @@ func automationCheck(root string, out io.Writer) error {
 			"generated files 禁止手改",
 			"Go generated router 不擁有 AuthZ",
 			"docs/development/automation.md",
+			"comment-budget",
 		},
 		filepath.Join("docs", "development", "automation.md"): {
 			".devctl/**",
 			"task gen:check",
 			"SubAgent 預設唯讀",
 			"不切 branch",
-			// The marker mechanism is only usable by someone who knows to add a
-			// marker, so the section that explains it is part of the contract.
+
 			"one-number:",
 		},
 	}
@@ -92,16 +92,6 @@ func automationCheck(root string, out io.Writer) error {
 	return nil
 }
 
-// The checkers automationCheck runs, as a roster rather than as one `append`
-// line each.
-//
-// The lines this replaced were the only wiring those checkers had, and nothing
-// could see them: every test in this package called a checker directly, so
-// deleting `problems = append(problems, queryOwnerProblems(root)...)` left
-// `go test ./...` entirely green while ADR-033's cross-context write ratchet
-// stopped running. Same for all seven. A roster is a value a test can walk, and
-// TestAutomationCheckRunsEveryChecker walks it: each entry must both produce a
-// problem on a broken tree and have that problem reach the report.
 type namedChecker struct {
 	name  string
 	check func(root string) []string
@@ -122,17 +112,7 @@ func documentCheckers() []namedChecker {
 		{"retention-floor", retentionFloorProblems},
 		{"sdk-version", sdkVersionProblems},
 		{"single-data-layer", secondDataLayerProblems},
-		// The last two arrivals of the hole this roster exists to close. Both
-		// were wired by a bare `append` line below the loop, so
-		// TestAutomationCheckRunsEveryChecker walked past them: the audit of
-		// 2026-08-29 unwired BOTH and the whole package stayed green. They were
-		// the two highest-value checks on the list — 02:PORT-004's silence
-		// guard and the cross-language isolation set — and they sat outside the
-		// only assertion that watches for exactly this.
-		//
-		// requireDBGuardCheck returns an error rather than a list because it has
-		// one thing to say; two lines of adapter is cheaper than a signature
-		// change that would touch its own tests.
+
 		{"require-db-guard", func(root string) []string {
 			if err := requireDBGuardCheck(root); err != nil {
 				return []string{err.Error()}
@@ -148,23 +128,18 @@ func documentCheckers() []namedChecker {
 		{"image-version", imageVersionProblems},
 		{"embedding-dims", embeddingDimsProblems},
 		{"goldenset-mirror", goldensetMirrorProblems},
-		// 05 R-36: a deployment variable that does not say what it blocks.
+
 		{"capability-table", capabilityTableProblems},
-		// 2026-09-03: a markdown link that points at nothing. Sixteen of them
-		// were live that morning and every one of them read correctly.
+
 		{"doc-links", docLinkProblems},
-		// 2026-09-04: the agent harness keeps its own placement rules.
+
 		{"harness", harnessProblems},
+		{"comment-budget", commentBudgetProblems},
 	}
 }
 
-// ADR-032 appendix A is the human-readable cross-context import whitelist and
-// apps/platform/.golangci.yml holds its depguard equivalent. Tolerated drifts
-// are tagged `drift: DDD-00x` in both, so the two multisets of markers must
-// match exactly; a divergence means one side was edited alone.
-//
-// `\b` keeps the ADR's own placeholder text (`# drift: DDD-00x`) out of the
-// count — a marker always ends at a non-word character.
+// \b keeps this from matching inside a longer word, since a marker always
+// ends at a non-word character.
 var driftMarkerPattern = regexp.MustCompile(`drift: DDD-\d+\b`)
 
 func driftMarkerProblems(root string) []string {

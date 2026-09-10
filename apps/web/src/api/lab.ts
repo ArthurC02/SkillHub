@@ -1,15 +1,5 @@
 import { apiFetch } from "./client";
 
-/**
- * Test Lab: the pre-run permission gate (02:TEST-005, 03:TEST-008/009).
- *
- * Three calls, in this order and no other: read the summary, agree to the hash
- * that came with it, start the run quoting that hash. The server rebuilds the
- * summary on both of the last two, so a client that skips a step or replays an
- * old hash is refused with 422 — this module cannot grant permission by getting
- * the sequence wrong, it can only fail to ask.
- */
-
 export interface PreflightDataset {
   dataset_id: string;
   file_name: string;
@@ -24,13 +14,10 @@ export interface PreflightSummary {
   test_case_id: string;
   datasets: PreflightDataset[];
   dataset_total_bytes: number;
-  /** `unavailable` is not `none`: an unreadable package is never shown as clean. */
   scripts: { status: "none" | "present" | "unavailable"; findings: string[] };
   tools: string[];
-  /** Always empty in the MVP; rendered as an explicit 無, never hidden. */
   mcp_servers: string[];
   network: { mode: string; allow: string[] };
-  /** Names of injected secrets. The values never leave the gateway. */
   injected_secrets: string[];
   provider: {
     name: string;
@@ -49,11 +36,6 @@ export interface PreflightSummary {
     wall_clock_hard_seconds: number;
     artifact_total_bytes: number;
     artifact_file_bytes: number;
-    /**
-     * The server's sentence about what this ceiling depends on travels in
-     * `notes[]` (execution/preflight.go `permissionSummaryNotes`), not here;
-     * `RunPreflight`'s token cell states the dependency itself (02:RUN-003).
-     */
     token_budget: {
       max_input_tokens: number;
       max_output_tokens: number;
@@ -61,33 +43,16 @@ export interface PreflightSummary {
   };
 }
 
-/**
- * PDM-005 §5.3/§5.2a-6. A range, not a number: prompt caching makes a first run
- * and a repeat differ ~8x. Deliberately outside `summary`, so it is outside the
- * hash — recalibrating an estimate is not a permission change (see the Go type).
- */
 export interface CostEstimate {
-  /** In Credit — the only unit this platform shows (ADR-068 決策 1). */
   low_credits: number;
   typical_credits: number;
   high_credits: number;
   basis: string;
 }
 
-/**
- * PDM-010 / ADR-028 — the free-tier allowance as the account holder sees it.
- *
- * Served from the counters that POST /skills/{id}/runs enforces, never from a
- * stored balance, and **absent on a deployment that enforces no allowance**:
- * the same object arrives on GET /me/quota, whose route is not mounted at all in
- * those builds. Optional here for that reason, and rendered only when present —
- * a ceiling shown but not applied is exactly the PDM-005 mistake (04 乙-2), and
- * zeroes stood in for an absent block would be that mistake with a number on it.
- */
 export interface RunQuota {
   remaining_today: number;
   remaining_window: number;
-  /** When the rolling window's oldest counted run drops out. Rolling, not calendar. */
   window_resets_at: string;
   limits: { daily: number; window: number; window_days: number; concurrent: number };
 }
@@ -96,12 +61,10 @@ export interface PreflightResponse {
   summary: PreflightSummary;
   summary_hash: string;
   estimated_cost: CostEstimate;
-  /** Absent when this deployment enforces no allowance. Never rendered as zero. */
   quota?: RunQuota;
   notes: string[];
 }
 
-/** 02:TEST-002 — the upload rules, shown before an upload rather than on refusal. */
 export interface DatasetLimits {
   max_file_bytes: number;
   max_test_case_bytes: number;
@@ -120,16 +83,14 @@ export interface Dataset {
   file_name: string;
   content_type: string;
   size_bytes: number;
-  /** SHA-256 of the stored bytes; the run snapshot keeps it after the file is gone (ADR-003). */
   content_hash: string;
-  /** TEST-002's retention, per file: 90 days from upload. */
   expires_at: string;
 }
 
 export function uploadDataset(testCaseId: string, file: File) {
   const form = new FormData();
   form.append("file", file);
-  // No Content-Type header: the browser has to set the multipart boundary.
+  // No Content-Type header: the browser sets the multipart boundary itself.
   return apiFetch<Dataset>(`/test-cases/${testCaseId}/datasets`, { method: "POST", body: form });
 }
 

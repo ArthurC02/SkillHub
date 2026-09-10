@@ -5,10 +5,6 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { ImportSkill } from "./pages/ImportSkill";
 
-// 04 丙-150/152 — ImportSkill's own writer/mutation-state coverage, split out
-// of workspace.test.tsx (which is another writer's this round). Scaffolding
-// copied from workspace.test.tsx.
-
 let container: HTMLDivElement;
 let root: Root;
 
@@ -90,8 +86,6 @@ async function submitURL(url = "https://github.com/example/skill") {
   });
 }
 
-// --- (a) mutation.onError by status ----------------------------------------
-
 test("04 丙-150(a): a session that expired mid-import says 需要登入, not the raw server string", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);
@@ -118,14 +112,6 @@ test("04 丙-150(a): a 400 (bad zip / unreachable URL) gets the page's own sente
   await waitFor(() => text().includes("這個檔案不是可用的 zip 套件，或網址抓不到內容。"));
 });
 
-// --- (c) a non-empty findings array, rendered ------------------------------
-
-/**
- * 04 丙-152 — the first test in this repo to render a non-empty findings
- * array. Messages and codes are the real Go strings
- * (apps/platform/internal/shared/skillpkg/skillpkg.go:308,443), copied
- * verbatim per 04 丙-143's fixture rule.
- */
 test("04 丙-152: a categorised 422 renders both real Chinese finding messages and their codes", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);

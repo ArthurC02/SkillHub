@@ -15,9 +15,6 @@ const (
 	RecoveryStaleAfter = 10 * time.Minute
 )
 
-// RecoveryArgs closes stale pending evaluations without ever invoking Judge.
-// It is periodic so a recovery attempt that coincides with a database outage is
-// retried after the ordinary evaluation job has exhausted its delivery attempts.
 type RecoveryArgs struct{}
 
 func (RecoveryArgs) Kind() string { return "recover_pending_evaluations" }

@@ -1,69 +1,26 @@
-"""EVAL-013: replay the M2 baseline through the Judge and score it.
+"""Replay the M2 baseline Runs through the Judge and score it.
 
     python judge_regression.py            # the whole set, one gateway call per run
     python judge_regression.py --limit 3  # a cheap smoke pass
-    python judge_regression.py --dry-run  # live-read facts and build requests; call nothing
+    python judge_regression.py --dry-run  # read facts and build requests; call nothing
     python judge_regression.py --run-id <UUID> --run-id <UUID> --dry-run
     python judge_regression.py --rubric rubric-content-007-writing-v1.json
 
-Not product code, does not run in CI, and a non-dry run spends real money
-(same standing as tools/goldenset). The authoritative data is the platform's
-own: this reads runs, trace events, test case snapshots and artifact tars that
-are already there and writes nothing back to any of them. `--dry-run` still
-reads PostgreSQL and S3 to construct the exact requests, but makes no Judge or
-model call, costs $0, and appends no result rows.
+Not product code and does not run in CI; a non-dry run spends real money.
+Reads runs, trace events, test case snapshots and artifacts already in the
+platform and writes nothing back to any of them.
 
-WHAT IS BEING MEASURED, stated up front so a reader does not over-read the
-number that comes out. The regression set is the 45 M2 baseline Runs, and the
-expected answers are derived from the same platform facts the baseline report
-判定 was derived from - not from a per-criterion human labelling, which does not
-exist. Only two of the three acceptance criteria have a derivable expected
-answer; the third is carried through and reported, never scored. The full
-conversion rule, and what it does and does not license, is in
-docs/plans/mvp/m3/report-judge-regression.md.
+Scores the STORED verdict, not the model's raw answer: every evidence
+reference is re-resolved, a criterion whose reference does not resolve is
+downgraded to `undetermined`, and the truncation rule is applied — mirroring
+what a user would actually have seen.
 
-The verdict scored here is the STORED one, not the model's raw answer: this
-mirrors the Go side's defence 3 (every evidence reference re-resolved, a
-criterion whose references do not resolve downgraded to `undetermined`) and its
-truncation rule, because that is what a user would have seen. Downgrades are
-counted apart from wrong answers - a safe default is not an error.
-
-ADR-043 MIRRORED HERE 2026-08-25 (M3 audit follow-up). Until that date this
-file followed ADR-049 and missed ADR-043 entirely, so it scored the Judge under
-rules judge.go had stopped using. The four behaviours are now here, each next to
-the Go function it mirrors: content re-verification with reattribution (§1, §2,
-`verify` / `find_quote`), NFC plus whitespace folding with a twelve-rune floor
-(§4, `normalize_quote` / `locate`), the three match states `exact` /
-`normalized` / `not_checked` in place of accepted-or-not (§4, `verified_quote`),
-and an `artifact` citation refused as evidence for a rubric item marked
-`evidence_required` (§3, `store`).
-
-WHAT THAT DOES NOT DO IS RESTORE THE RECORDED NUMBERS.
-report-judge-regression.md §5.1's 90/90 was measured on the old ruler and is
-historical evidence: it is not a reading of the current harness and must not be
-compared against one. The next non-dry run is a re-measurement, and it lands as
-a new `regression_id` alongside the old segments like any other (§04 below).
-Nothing about the port changes what is already in results.jsonl.
-
-Known remaining divergence, stated rather than hidden: judge.go also downgrades
-a non-`undetermined` verdict that kept no verifiable evidence at all
-(`len(result.Evidence) == 0`). That rule is not ADR-043's and is not mirrored
-here - injection sample `inj-05` deliberately returns an empty `evidence_refs`
-and is scored `held`, so adopting it would silently rewrite §12.3's numbers on a
-question ADR-043 never asked.
-
---rubric adds CONTENT-007's rubric to the run (writing-rubrics.md §5.1). The file
-names, per Skill, the extra acceptance criteria to judge and the rubric that
-strengthens them; the set is narrowed to the Skills the file covers, the
-snapshot's own criteria are kept alongside, and `rubric_version` stops being
-null. A different rubric_version is a different regression, same rule as the
-judge model and prompt version.
-
-Output is one JSON object per Run appended to results.jsonl, stamped with
-judge_model / judge_prompt_version / rubric_version / the truncation budget.
-Append-only on purpose: change any one of those and it is a different
-regression, and both have to stay readable side by side (02:EVAL-013, ADR-026).
-"""
+--rubric adds a Skill-scoped rubric's extra acceptance criteria to the run
+alongside the snapshot's own; a different rubric, judge model, or prompt
+version is a different regression. Output is one JSON object per Run
+appended (never overwritten) to results.jsonl, stamped with judge_model /
+judge_prompt_version / rubric_version / the truncation budget so different
+regressions stay readable side by side."""
 
 from __future__ import annotations
 
@@ -82,15 +39,11 @@ import urllib.request
 import uuid
 from pathlib import Path
 
-# --- Where things live -------------------------------------------------------
-
 PG_CONTAINER = "skillhub-postgres-1"
 PG_USER = "skillhub"
 PG_DB = "skillhub"
 JUDGE_URL = "http://127.0.0.1:8000/judge-run"
 
-# Local dev placeholders, committed in infra/compose/seaweedfs-s3.json in the
-# same class as the postgres skillhub/skillhub pair. Production is a managed S3.
 S3_HOST = "127.0.0.1:8333"
 S3_BUCKET = "skillhub"
 S3_ACCESS_KEY = "skillhubdev"
@@ -98,8 +51,6 @@ S3_SECRET_KEY = "skillhubdevsecret"
 
 OUT = Path(__file__).with_name("results.jsonl")
 
-# evaluation-design §6.3, mirrored from apps/platform/internal/trial/improvement/judge.go
-# so the request this harness builds is the one the control plane would build.
 MAX_FINAL_OUTPUT = 40000  # one-number: maxFinalOutput
 MAX_CRITERIA = 20  # one-number: maxCriteria
 MAX_DIGEST_ENTRY = 8000  # one-number: maxDigestEntry - raised 2026-08-23, evaluation-design 6.3 / 04 丙-47
@@ -107,8 +58,6 @@ MAX_DIGEST_COUNT = 100  # one-number: maxDigestCount
 MAX_ARTIFACT_ROWS = 500  # one-number: maxArtifactRows
 EXCERPT_LIMIT = 1000  # one-number: excerptLimit
 
-# The event types Go lets into the digest, and therefore the only ids a verdict
-# may cite.
 CITABLE = (
     "skill_activation",
     "resource_read",
@@ -119,20 +68,14 @@ CITABLE = (
     "usage",
 )
 
-# Which of the three baseline criteria a row is, keyed off the snapshot text.
-# All 45 snapshots carry the same three, verbatim (§3 of the baseline report).
 CRITERION_KINDS = {
     "Run 的 trace 中出現對指定 Skill 的 skill_activation": "activation",
     "/out/artifacts/ 中至少產出一個檔案": "artifact",
     "最終回覆說明了產出的檔案": "final_reply",
 }
 
-# A single call costing more than this is not a budget overrun, it is a sign the
-# input budget is not doing its job - stop and look rather than spend 45 of them.
 COST_ALARM_USD = 0.10
 
-
-# --- Reading the platform's own facts ----------------------------------------
 
 
 def psql(sql: str):
@@ -214,12 +157,8 @@ def regression_set():
 
 def explicit_run_set(run_ids: list[uuid.UUID]):
     """Rows selected by caller-owned Run ids, independent of compatibility.
-
-    This is intentionally not a fallback to `skill_runtime_compatibility`: B
-    round Runs are new facts and may not have a compatibility measurement yet.
-    The left join preserves a fork's actual name for the request while using its
-    parent name only to select the parent-owned content rubric.
-    """
+    Preserves a fork's actual name for the request while using its parent
+    name only to select the parent-owned content rubric."""
     requested = ", ".join(f"'{run_id}'::uuid" for run_id in run_ids)
     rows = psql(f"""
         select s.name              as skill_name,
@@ -259,14 +198,8 @@ def trace_events(run_id: str):
 
 
 def artifact_manifest(run_id: str):
-    """Filenames and sizes read out of the run's archive - a manifest, not content.
-
-    Reading an archive's index is not executing it (evaluation-design §2.2):
-    nothing is unpacked, nothing is parsed by extension, and no bytes reach the
-    model. The `artifacts` table is empty for this whole batch - M2's pipeline
-    never wrote the rows - so the archive is the only surviving manifest, and it
-    is the same one the baseline report's Artifact column was read from.
-    """
+    """Filenames and sizes read out of the run's archive index — a manifest,
+    not content: nothing is unpacked and no bytes reach the model."""
     keys = psql(f"""
         select id::text from run_attempts
          where run_id = '{run_id}' order by attempt_number desc limit 1
@@ -287,8 +220,6 @@ def artifact_manifest(run_id: str):
         ]
 
 
-# --- Building the request Go would have built --------------------------------
-
 
 def clip(text: str, limit: int):
     return (text, False) if len(text) <= limit else (text[:limit], True)
@@ -296,14 +227,8 @@ def clip(text: str, limit: int):
 
 def load_rubrics(path: Path) -> dict:
     """Read a --rubric file: {rubric_version, skills: {name: {criteria, rubric}}}.
-
-    The criteria travel with the rubric because they are one thing: a rubric item
-    is addressed by the id of the criterion it strengthens, and /judge-run answers
-    one verdict per *criterion* - Go drops any id it did not send, so an item
-    whose id was never sent as a criterion produces nothing at all
-    (writing-rubrics.md §2.1). Sending one without the other would look like it
-    worked and quietly measure nothing.
-    """
+    Rejects a rubric item whose id was never sent alongside it as a
+    criterion, since such an item would otherwise measure nothing."""
     doc = json.loads(path.read_text(encoding="utf-8"))
     version, skills = doc["rubric_version"], doc["skills"]
     for name, entry in skills.items():
@@ -326,9 +251,6 @@ def build_request(row, events, artifacts, evaluation_id: str, rubric_entry=None)
     if cut_output:
         truncation.append("final_output")
 
-    # The snapshot's own criteria stay: they are what the run was asked to do, and
-    # they carry the only two answers this harness can score. The rubric's are
-    # additional (writing-rubrics.md §4 keeps the three baseline conditions).
     wanted = list(row["acceptance_criteria"])
     if rubric_entry:
         wanted += rubric_entry["criteria"]
@@ -344,8 +266,8 @@ def build_request(row, events, artifacts, evaluation_id: str, rubric_entry=None)
 
     citable = [e for e in events if e["event_type"] in CITABLE]
     if len(citable) > MAX_DIGEST_COUNT:
-        # Tail, not head: the final output, the errors and the usage roll-up are
-        # at the end, and a head-first cut hands the judge the warm-up.
+        # Keeps the tail, not the head, so the final output, errors and usage
+        # roll-up (all near the end) survive the cut.
         citable = citable[-MAX_DIGEST_COUNT:]
         truncation.append("trace_digest.entries")
 
@@ -353,11 +275,6 @@ def build_request(row, events, artifacts, evaluation_id: str, rubric_entry=None)
     trimmed = False
     for e in citable:
         excerpt, cut_excerpt = clip(json.dumps(e["payload"], ensure_ascii=False), MAX_DIGEST_ENTRY)
-        # Go reports this and the harness used to drop it on the floor, so a
-        # regression run understated truncation against what production would
-        # report: the B round had four events over the old 2000 and recorded
-        # `truncation: []`. Same two names Go uses since 04 丙-47 - the entry cap
-        # above, and this, which is the one that actually fires.
         trimmed = trimmed or cut_excerpt
         entries.append({
             "trace_event_id": e["event_id"],
@@ -381,9 +298,6 @@ def build_request(row, events, artifacts, evaluation_id: str, rubric_entry=None)
         "truncation": truncation,
     }
     if rubric_entry:
-        # Only `items`: llm-internal.yaml's Rubric is additionalProperties:false
-        # and carries no version. The version is what the *record* is stamped
-        # with, which is where a reader needs it.
         request["rubric"] = {"items": rubric_entry["rubric"]["items"]}
     return request, digest, final
 
@@ -399,21 +313,11 @@ def trace_complete(events) -> bool:
     )
 
 
-# --- Defence 3, mirrored from internal/trial/improvement/judge.go -----------
-
 
 def trace_search_text(payload) -> str:
-    """What a trace citation is checked against: ADR-049's rule, mirrored.
-
-    The payload as stored, plus every string value inside it decoded. The judge is
-    shown the raw JSON, so a quote copied character for character carries the
-    escape sequences and a quote read and re-typed carries real newlines - only
-    the first could ever be found before, and the B round lost five rubric
-    verdicts to exactly that.
-
-    Leaves joined with NUL, which a JSON string cannot contain, so no quote can
-    match by spanning two fields.
-    """
+    """What a trace citation is checked against: the payload as stored, plus
+    every string leaf decoded, joined with NUL so no quote can match by
+    spanning two fields."""
     raw = json.dumps(payload, ensure_ascii=False)
     leaves: list[str] = []
 
@@ -431,21 +335,10 @@ def trace_search_text(payload) -> str:
     return raw + "\0" + "\0".join(leaves) if leaves else raw
 
 
-# ADR-043 §4's normalisation, and its bound is part of the criterion rather than
-# an implementation detail: NFC, whitespace runs folded to one space, structural
-# punctuation trimmed at the ends only. Nothing else - no lowercasing, no fuzzy
-# matching. Mirrors normalizeQuote / structuralPunctuation in judge.go.
 STRUCTURAL_PUNCTUATION = "}]),;\"'`「」『』 "
 
-# ADR-043 §4's floor, in code points because judge.go counts runes: below this a
-# quote is accepted on an exact hit only. Widened matching plus a short string is
-# an accidental hit - `"ok"}` finds itself in almost any payload.
 MIN_NORMALIZED_QUOTE = 12
 
-# The three match states. `not_checked` says a quote was verified against
-# nothing, which is a weaker and different claim from "we looked and it was
-# absent" - only an artifact citation can wear it, because artifact bytes are
-# never sent (evaluation-design §2.2).
 MATCH_EXACT = "exact"
 MATCH_NORMALIZED = "normalized"
 MATCH_NOT_CHECKED = "not_checked"
@@ -484,15 +377,9 @@ def locate(text: str, quote: str):
 
 
 def verifiable_sources(digest, final_output):
-    """(kind, event_id, searchable text) for every place a quote may honestly be.
-
-    Final output first, then the trace entries in digest order - which is trace
-    order, because build_request inserts them that way and dicts keep it. The same
-    evaluation has to reattribute to the same event twice running.
-
-    Artifact bytes are deliberately not a third source, and neither is the test
-    case input snapshot (ADR-043 open question 2).
-    """
+    """(kind, event_id, searchable text) for every place a quote may honestly
+    be: the final output first, then the trace entries in digest (trace)
+    order."""
     out = []
     if final_output:
         out.append(("agent_output", None, final_output))
@@ -502,12 +389,9 @@ def verifiable_sources(digest, final_output):
 
 
 def find_quote(quote: str, sources):
-    """ADR-043 §2's content search: where is this quote, whatever it was filed as.
-
-    Two passes, exact across every source before normalized across any: an exact
-    hit in the last source is a stronger fact than a normalized hit in the first,
-    and the stronger fact is the one to record.
-    """
+    """Where is this quote, whatever it was filed as: exact across every
+    source before normalized across any, since an exact hit anywhere beats
+    a normalized one."""
     for kind, event_id, text in sources:
         if text.find(quote) >= 0:
             return kind, event_id, MATCH_EXACT
@@ -521,18 +405,9 @@ def find_quote(quote: str, sources):
 
 
 def verify(ref, digest, artifacts, final_output):
-    """(stored reference, why it did not resolve) - ADR-043's rule, mirrored.
-
-    One sentence, the same one judge.go implements: **a citation holds if and only
-    if its quote is findable in a verifiable source of this run.** `ref["kind"]` is
-    a hint from the model, not a credential; it is tried first because it is the
-    only path carrying a precise address, but when the named source cannot produce
-    the quote the platform looks in the others before concluding anything.
-
-    That one rule closes both halves of 04 乙-13 - G7 (an `artifact` citation waved
-    through with its quote compared to nothing) and G8 (a verbatim-correct quote
-    lost to a trailing `}],`) - which is why it is one rule and not two.
-    """
+    """(stored reference, why it did not resolve): a citation holds only if
+    its quote is findable in a verifiable source of this run. `ref["kind"]`
+    is tried first as a hint, then every other source before giving up."""
     kind = ref.get("kind")
     named_failure = ""
 
@@ -541,13 +416,9 @@ def verify(ref, digest, artifacts, final_output):
         event = digest.get(event_id)
         if event is None:
             if not ref.get("quote"):
-                # An id the digest does not carry, with no quote to look for, is a
-                # citation of nothing: there is no content to reattribute.
                 return None, f"cited trace event {event_id!r} was not in the digest"
             named_failure = f"cited trace event {event_id!r} was not in the digest"
         elif not ref.get("quote"):
-            # The citation is the event itself; the excerpt is the platform's own
-            # payload, so there is nothing in it a model could have invented.
             return {**ref, "match": MATCH_EXACT, "reattributed_from": None}, ""
         else:
             match, _ = locate(trace_search_text(event["payload"]), ref["quote"])
@@ -564,19 +435,11 @@ def verify(ref, digest, artifacts, final_output):
         named_failure = "the quote cited from the agent's final output is not in it"
 
     elif kind == "artifact":
-        # Nothing to try on the named source: no artifact bytes were sent, so an
-        # artifact citation goes straight to the content search and, failing that,
-        # proves existence and no more.
         named_failure = "an artifact citation's quote is verified against nothing"
 
     else:
         return None, f"reference kind {kind!r} is not one this platform can resolve"
 
-    # The named source did not produce the quote. Before calling it fabricated,
-    # look where the quote could actually be (ADR-043 §2) - the step that tells
-    # mis-filed from invented. Every quote sampled from the A round's 6 `passed`
-    # verdicts resting on `artifact` citations was present verbatim in that run's
-    # trace_events: the model had read the trace and written the wrong label on it.
     if ref.get("quote"):
         hit = find_quote(ref["quote"], verifiable_sources(digest, final_output))
         if hit:
@@ -591,31 +454,17 @@ def verify(ref, digest, artifacts, final_output):
     if kind == "artifact":
         path = ref.get("artifact_path") or ""
         if any(a["path"] == path for a in artifacts):
-            # Kept rather than thrown away: the path is what is checkable and the
-            # part a model cannot invent (§3). What it supports is "this file
-            # exists, this big", and `not_checked` says its quote, if it had one,
-            # was verified against nothing. store() is where that stops being
-            # enough for a rubric item that demands evidence.
             return {**ref, "match": MATCH_NOT_CHECKED, "reattributed_from": None}, ""
         return None, f"cited artifact {path!r} is not in this run's manifest"
     return None, named_failure + ", and it is in no other verifiable source of this run"
 
 
 def store(verdict, request, digest, artifacts, final_output):
-    """The stored criterion results: what the user would have been shown.
-
-    Three downgrades, all Go's and all deliberate. A criterion whose evidence does
-    not re-resolve is not a smaller verdict, it is an unverified one; a rubric item
-    that asked for a quote is not answered by a citation whose quote was compared
-    to nothing (ADR-043 §3); and a pass reached on cut or gapped material is not a
-    pass. None of the three is a wrong answer, which is why each is recorded as its
-    own reason.
-    """
+    """The stored criterion results: what the user would have been shown,
+    after downgrading unresolved evidence, quoteless artifact citations, and
+    passes reached on cut or gapped material, each to its own reason."""
     answers = {c["criterion_id"]: c for c in verdict["criterion_results"]}
     incomplete = not request["trace_digest"]["complete"] or bool(request["truncation"])
-    # ADR-043 §3's subjects. rubric-content-007-writing-v1.json sets this on
-    # eighteen of its twenty-two items, and before the port not one line here read
-    # it: every one of those items was scored under a rule production had dropped.
     evidence_required = {
         item["id"]: bool(item.get("evidence_required"))
         for item in (request.get("rubric") or {}).get("items", [])
@@ -634,11 +483,6 @@ def store(verdict, request, digest, artifacts, final_output):
 
         result = answer["result"] if answer["result"] in {"passed", "failed", "undetermined"} \
             else "undetermined"
-        # The refs are kept whole, rejection reason included: attributing a
-        # difference to "the judge was wrong" versus "the judge was right and its
-        # citation would not resolve" is the whole job of the report, and it
-        # cannot be done from a count. Go drops the rejected ones instead - it is
-        # storing a report, this is storing an audit trail.
         evidence = []
         unverifiable = []
         for ref in answer["evidence_refs"]:
@@ -654,10 +498,6 @@ def store(verdict, request, digest, artifacts, final_output):
             result, downgrade = "undetermined", "evidence_unverifiable"
         elif (evidence_required.get(c["id"]) and result != "undetermined"
               and not any(verified_quote(e["match"]) for e in evidence)):
-            # ADR-043 §3. An artifact citation proves the file exists, not what is
-            # in it, so it cannot stand in for a quote somebody asked to see. Same
-            # downgrade label as defence 3 because it is the same statement to the
-            # reader: the evidence could not be verified, the judge was not unsure.
             result, downgrade = "undetermined", "evidence_unverifiable"
         elif result == "passed" and incomplete:
             result, downgrade = "undetermined", "incomplete_evidence"
@@ -671,25 +511,12 @@ def store(verdict, request, digest, artifacts, final_output):
     return results
 
 
-# --- The expected answers, and where they come from --------------------------
-
 
 def expected(row, events, artifacts) -> dict:
-    """Per-criterion expected answers, derived from the platform's own facts.
-
-    The M2 baseline annotated one verdict per Run - 符合 / 未產出 / 失敗 - under a
-    fixed rule: terminal state `succeeded` AND a `skill_activation` in the trace
-    AND at least one file in the archive. Two of those three conditions ARE two
-    of the three acceptance criteria, so those two criteria have an expected
-    answer that is traceable to the annotation and re-derivable today.
-
-    The third condition is the Run's terminal state, which is not a criterion at
-    all (ADR-025: `runs.status` answers "what happened", not "was the task
-    done"). So the third criterion - did the final reply describe what it
-    produced - was never checked by the baseline, and inventing a label for it
-    here would be manufacturing ground truth rather than using it. It comes back
-    as None and is reported unscored.
-    """
+    """Per-criterion expected answers, derived from the platform's own facts:
+    activation from the trace, artifact presence from the archive. The third
+    criterion has no derivable ground truth and comes back as None,
+    reported unscored."""
     activated = {
         (e["payload"] or {}).get("skill_name")
         for e in events
@@ -697,41 +524,16 @@ def expected(row, events, artifacts) -> dict:
         and (e["payload"] or {}).get("decision") == "activated"
     }
     return {
-        # "對指定 Skill" - the named Skill's own activation, not just any.
-        #
-        # Compared against `rubric_skill_name`, not `skill_name`, because the two
-        # differ for a fork and only one of them is the name that reaches a
-        # sandbox. `skills.name` is a platform-side label (`<parent>-fork`); the
-        # activation event reports what the runtime read out of the package's own
-        # frozen SKILL.md frontmatter, and a fork copies those bytes verbatim - so
-        # it says `<parent>`. `rubric_skill_name` is coalesce(parent, self), which
-        # is the package's declared name in both cases.
-        #
-        # This never showed up on the M2 path: regression_set draws from
-        # skill_runtime_compatibility, whose runs are all catalogue skills where
-        # the two names are equal. The B round is the first caller with forks, and
-        # without this it scores all five `activation=failed` against a judge that
-        # correctly says passed - five fabricated mismatches.
         "activation": "passed" if row["rubric_skill_name"] in activated else "failed",
-        # An absence that is itself observable is a real `failed`, which is the
-        # rule the judge prompt states for exactly this case.
         "artifact": "passed" if artifacts else "failed",
         "final_reply": None,
     }
 
 
-# --- Running it --------------------------------------------------------------
-
 
 def judge(request: dict, url: str) -> dict:
-    """POST one judgement request.
-
-    The bearer token is the same one apps/llm checks and the Go worker sends
-    (`LLM_SERVICE_TOKEN`). It became required after the A round: the service used
-    to run without one locally, so this harness had no reason to carry it, and the
-    B round met a 401 on its first paid call. Read from the environment and never
-    defaulted - a token in a repo file is a token that leaks (iron rule 11).
-    """
+    """POST one judgement request, bearing the same LLM_SERVICE_TOKEN apps/llm
+    checks, read from the environment and never defaulted."""
     body = json.dumps(request, ensure_ascii=False).encode()
     headers = {"Content-Type": "application/json"}
     token = os.getenv("LLM_SERVICE_TOKEN", "")
@@ -776,9 +578,6 @@ def main() -> None:
             rows = [r for r in rows if r["rubric_skill_name"] in rubrics["skills"]]
         missing = set(rubrics["skills"]) - {r["rubric_skill_name"] for r in rows}
         if missing:
-            # Said out loud rather than skipped: a rubric whose Skill is not in
-            # the baseline set was not measured, and a smaller run would
-            # otherwise read as a complete one.
             print(f"! no baseline run for: {', '.join(sorted(missing))}")
     if args.limit:
         rows = rows[: args.limit]
@@ -828,8 +627,8 @@ def main() -> None:
               f"running total ${total_cost:.4f}")
 
     if lines:
-        # newline="\n" because the repo stores this file with LF (.gitattributes)
-        # and text mode on Windows would append CRLF rows into an LF file.
+        # newline="\n" keeps this file LF-only; text mode would append CRLF
+        # rows on Windows.
         with OUT.open("a", encoding="utf-8", newline="\n") as f:
             for line in lines:
                 f.write(json.dumps(line, ensure_ascii=False) + "\n")
@@ -843,10 +642,6 @@ def record(regression_id, started, note, run_selection, row, request, want, resu
     rubric_ids = {i["id"] for i in (request.get("rubric") or {}).get("items", [])}
     criteria = []
     for c in request["criteria"]:
-        # A rubric criterion is labelled as one and never scored: there is no
-        # per-criterion human labelling for it, and inventing an expected answer
-        # would be manufacturing ground truth rather than using it. What it is
-        # here to show is the *distribution* of its answers.
         kind = "rubric" if c["id"] in rubric_ids else CRITERION_KINDS.get(c["text"], "unknown")
         got = by_id[c["id"]]
         exp = want.get(kind)
@@ -864,8 +659,6 @@ def record(regression_id, started, note, run_selection, row, request, want, resu
         "regression_id": regression_id,
         "started_at": started,
         "note": note,
-        # Change any of these four and it is a different regression (02:EVAL-013
-        # clause 3). Stored per row so a mixed file is still readable.
         "judge_model": response["model"],
         "judge_prompt_version": response["prompt_version"],
         "rubric_version": rubric_version,
@@ -893,11 +686,6 @@ def record(regression_id, started, note, run_selection, row, request, want, resu
 def summarise(lines, total_cost, unreported) -> None:
     rubric = [c for line in lines for c in line["criteria"] if c["kind"] == "rubric"]
     if rubric:
-        # Not an accuracy figure. On the A run of writing-rubrics.md §5.1 the
-        # answer being looked for IS a high `undetermined` share: those runs were
-        # produced under a prompt that never asked for the text in the final
-        # reply, so the evidence a rubric item needs is structurally absent. A
-        # sheet of `passed` here would be the bad outcome.
         by_result: dict[str, int] = {}
         for c in rubric:
             by_result[c["result"]] = by_result.get(c["result"], 0) + 1

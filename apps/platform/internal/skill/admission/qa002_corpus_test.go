@@ -12,30 +12,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-// QA-002: the deliberately broken half of the spec-validation corpus.
-//
-// The 45 pinned-commit seed packages are the legal samples and prove only that
-// validation does not reject good input. This test drives the other half — one
-// mutated package per failure mode — through the same two calls the real import
-// path makes (skillpkg.PackageFS then skillpkg.Validate) and compares every finding
-// against a curated expectation file.
-//
-// Env-gated and skipped by default, the same shape as the cross-workspace tests
-// that need SKILLHUB_TEST_DATABASE_URL: the corpus is produced by a script that
-// downloads three pinned repo archives, so it cannot be built inside a CI job
-// that has no network budget for it.
-//
-//	python tools/qa/skillpkg-corpus/generate.py --out <dir>
-//	QA002_CORPUS=<dir> go test ./internal/skill/admission -run QA002 -v
-//
-// Expectations are asserted, not recorded: error and warning codes must match
-// exactly, and info codes are a subset check because disclosure noise (external
-// URLs, dependency lists) varies with each base package's content and is not
-// what a blocking decision is made of.
 type qa002Expectation struct {
 	Base string `json:"base"`
-	// ArchiveError is set when skillpkg.PackageFS is expected to refuse the archive
-	// outright, which happens before any finding can be produced.
+
 	ArchiveError bool     `json:"archive_error"`
 	Blocked      bool     `json:"blocked"`
 	Errors       []string `json:"errors"`
@@ -49,10 +28,6 @@ type qa002File struct {
 	Variants map[string]qa002Expectation `json:"variants"`
 }
 
-// Five levels: internal/skill/admission is one deeper than the internal/ingest
-// this path was written for, and the 2026-08-20 boundary reshuffle (ADR-038,
-// ADR-040) moved the package without moving the count. The test is env-gated,
-// so it read four levels up and found nothing without anyone noticing.
 const qa002ExpectedPath = "../../../../../tools/qa/skillpkg-corpus/expected-findings.json"
 
 func TestQA002BrokenPackageCorpus(t *testing.T) {
@@ -124,10 +99,6 @@ func checkQA002Variant(t *testing.T, path string, exp qa002Expectation) {
 	assertSubset(t, "info", got[skillpkg.SeverityInfo], exp.InfoIncludes)
 }
 
-// qa002CodesBySeverity collapses the report to distinct codes per severity. The
-// path and message are deliberately dropped: the same code fires once per file
-// in a real package, and pinning the count would make the corpus fail whenever a
-// base package upstream gains a file.
 func qa002CodesBySeverity(r skillpkg.Report) map[skillpkg.Severity][]string {
 	sets := map[skillpkg.Severity]map[string]bool{}
 	for _, f := range r.Findings {

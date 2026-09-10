@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// events is a trimmed `go test -json` stream: two passes, three skips across
-// two reasons at different files and lines, and one failure.
 const events = `
 {"Action":"run","Package":"p/a","Test":"TestOne"}
 {"Action":"output","Package":"p/a","Test":"TestOne","Output":"=== RUN   TestOne\n"}
@@ -31,13 +29,11 @@ func TestSummarizeCountsSkipsAndGroupsThemByReason(t *testing.T) {
 	if s.Passed != 2 || s.Failed != 1 {
 		t.Errorf("passed=%d failed=%d, want 2 and 1", s.Passed, s.Failed)
 	}
-	// The point of the whole command: a skipped test is counted, not invisible.
+
 	if s.Skipped != 3 {
 		t.Errorf("skipped=%d, want 3 (a package with no test files is not a skipped test)", s.Skipped)
 	}
-	// Two skips at different files and lines gave the same reason, so they must
-	// land in one row — otherwise 287 identical skips print as 287 rows and the
-	// report is as unreadable as the silence it replaces.
+
 	const dbReason = "SKILLHUB_TEST_DATABASE_URL not set; skipping"
 	if got := s.Reasons[dbReason]; got != 2 {
 		t.Errorf("reason %q counted %d times, want 2 (file:line must not split the group)", dbReason, got)
@@ -91,13 +87,12 @@ type io_Discard struct{}
 func (io_Discard) Write(p []byte) (int, error) { return len(p), nil }
 
 func TestPackagePatternDefaultsSoTheModuleRootIsNotTested(t *testing.T) {
-	// apps/platform's module root has no Go files; without ./... go test
-	// reports "setup failed" and the report says 0 passed, 0 skipped.
+
 	got := withPackagePattern([]string{"-count=1"})
 	if len(got) != 2 || got[1] != "./..." {
 		t.Errorf("got %v, want the pattern appended", got)
 	}
-	// An explicit package must win; appending would widen what the caller asked for.
+
 	if got := withPackagePattern([]string{"-count=1", "./internal/skill/..."}); len(got) != 2 {
 		t.Errorf("got %v, want the caller's packages untouched", got)
 	}

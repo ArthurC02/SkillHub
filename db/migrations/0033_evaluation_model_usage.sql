@@ -1,6 +1,3 @@
--- One evaluation may make two separately billable model calls. Keep their
--- gateway readings append-only and separate; suggestion spend must never be
--- folded into the verdict row's historical judge-only cost.
 ALTER TABLE evaluations
     ADD CONSTRAINT evaluations_id_workspace_key UNIQUE (id, workspace_id);
 

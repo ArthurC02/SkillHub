@@ -17,9 +17,6 @@ WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
   AND cleanup_status <> 'cleaned'
 `
 
-// O11Y-003: the cleanup backlog as a single number, for the gauge the supervisor
-// publishes each sweep. Same predicate as ListRunsNeedingCleanup without the one
-// minute floor: a backlog that has not aged yet is still a backlog.
 func (q *Queries) CountRunsNeedingCleanup(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, countRunsNeedingCleanup)
 	var count int64
@@ -47,58 +44,6 @@ type CountTraceMaskingInWindowRow struct {
 	MaskedFields  int64
 }
 
-// 03:SEC-012 detection: the `TraceMaskingStopped` P1 criterion of 02:SEC-010,
-// asked of the table rather than of Prometheus, so the platform can act on it
-// without waiting for a person to read an alert.
-//
-// Same evidence as infra/observability/alerts.yml's rule of that name — events were
-// stored AND not one field was redacted — because 0019 stores both halves: every row
-// is `masked` by CHECK, and masked_fields holds what the masker actually hit. An
-// empty array means "the masker ran and found nothing", which is why the test has to
-// be a sum over a window rather than a per-row emptiness check.
-//
-// Two counts and not one, because the rule is `[1h]` **plus** `for: 1h` and both
-// halves are its threshold. Firing on the expression alone would mean halting the
-// fleet on any quiet hour that happened to carry nothing worth redacting: the rule's
-// premise (「正常流量下 tool_call 的 arguments 與 script_log 的 message 幾乎必然有
-// 東西被遮」) is a statement about volume, and at low volume it is simply not true.
-// `for: 1h` on a `[1h]` window is satisfied exactly when the rolling window stayed
-// non-empty and redaction-free for an hour, which is what asking for traffic on both
-// sides of @recent says in one pass and without keeping state between sweeps.
-//
-// 0019 typed the column jsonb without constraining it to an array, and a producer
-// that redacted nothing stores JSON `null` there rather than `[]` (trace/service.go
-// marshals a nil slice). Both count as zero redactions, which is the only reading
-// available and also the conservative one: a row that cannot say what was redacted
-// is not evidence that anything was.
-//
-// occurred_at and not an ingestion timestamp, because the table has none. It is
-// producer time, so a producer whose clock is behind is counted into an earlier
-// window; NFR-004 wants the gap inside 3 seconds and the windows are hours, so this
-// costs nothing the rule was relying on.
-//
-// `source = 'sandbox'` and not every row, which is the difference between
-// measuring the masker and measuring the platform's own bookkeeping.
-//
-// The rule's premise is about workload traffic - tool_call arguments and
-// script_log messages - and those only ever come from a sandbox. Orchestrator
-// rows (run_lifecycle, evaluation_started, evaluation_completed) are written by
-// this platform out of its own state: there is nothing untrusted in them, so the
-// masker can never redact anything from one, and counting them as traffic makes
-// the expression true by construction whenever the platform is busy with
-// something other than runs.
-//
-// Measured, not theorised: on 2026-08-23 a batch of 137 re-evaluations emitted
-// 274 orchestrator events in two hours with zero redactions between them, and the
-// detector halted the whole fleet - correctly by its own arithmetic, and about
-// nothing. That is a *busy*-hour false positive, the opposite failure to the
-// quiet-hour one `for: 1h` was added to prevent, and `for` cannot see it because
-// the traffic is real.
-//
-// This makes the detector strictly sharper rather than more forgiving: a masker
-// that stopped is still caught by the same expression, and it can no longer be
-// diluted by rows that were never candidates for redaction. If nothing is running
-// at all, recent_events is zero and the rule stays silent, which it already did.
 func (q *Queries) CountTraceMaskingInWindow(ctx context.Context, arg CountTraceMaskingInWindowParams) (CountTraceMaskingInWindowRow, error) {
 	row := q.db.QueryRow(ctx, countTraceMaskingInWindow, arg.Recent, arg.Since)
 	var i CountTraceMaskingInWindowRow
@@ -117,15 +62,6 @@ type GetRunForTraceIngestRow struct {
 	FinishedAt  pgtype.Timestamptz
 }
 
-// Resolves the run a signed ingestion token names: the workspace to scope the write
-// to (iron rule 3 - the workspace is never taken from the wire), and enough state to
-// decide whether an arriving event is late (TRACE-008).
-//
-// The second statement in the repository with no workspace_id parameter, for the same
-// reason as GetRunAttemptForReconcile: the caller has no workspace to offer. The id
-// comes from an HMAC-signed token the platform minted for this one run, not from a
-// user, and nothing user-visible is returned - only the scope the write is then
-// confined to.
 func (q *Queries) GetRunForTraceIngest(ctx context.Context, id pgtype.UUID) (GetRunForTraceIngestRow, error) {
 	row := q.db.QueryRow(ctx, getRunForTraceIngest, id)
 	var i GetRunForTraceIngestRow
@@ -224,10 +160,6 @@ SELECT jsonb_build_object(
       'message', coalesce(payload->>'message', '')
   ) ORDER BY occurred_at, source, attempt, seq), '[]'::jsonb) FROM error_rows),
   'errors_total', (SELECT count(*) FROM events WHERE event_type = 'error'),
-  -- 設計系統 §2.12: a run in flight needs a fact saying how long since anything
-  -- moved, because a spinner that never stops looks the same whether the run is
-  -- working or wedged. Null while no event has arrived yet, which the caller
-  -- renders as a named state rather than as a blank or as "0 seconds ago".
   'last_event_at', (SELECT to_char(max(occurred_at) AT TIME ZONE 'UTC',
                                    'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM events),
   'final_output', coalesce((SELECT text FROM last_output), ''),
@@ -255,9 +187,7 @@ type GetTraceGeneralFoldParams struct {
 	FoldWorkspaceID pgtype.UUID
 }
 
-// Fold the general view in PostgreSQL so polling transfers one aggregate row,
-// not every raw payload. User-visible repeated lists are bounded and their exact
-// totals are returned so truncation is explicit rather than silent.
+// Folds the general view in the database so polling transfers one aggregate row.
 func (q *Queries) GetTraceGeneralFold(ctx context.Context, arg GetTraceGeneralFoldParams) ([]byte, error) {
 	row := q.db.QueryRow(ctx, getTraceGeneralFold, arg.FoldRunID, arg.FoldWorkspaceID)
 	var folded []byte
@@ -308,8 +238,8 @@ type GetTraceStreamHealthRow struct {
 	MissingSeq   []int64
 }
 
-// Exact stream health without materialising every event in the application.
-// Only the first 1,000 missing ordinals are returned; missing_count is exact.
+// Computes stream health in the database: at most the first 1,000 missing ordinals
+// come back, while missing_count stays exact.
 func (q *Queries) GetTraceStreamHealth(ctx context.Context, arg GetTraceStreamHealthParams) ([]GetTraceStreamHealthRow, error) {
 	rows, err := q.db.Query(ctx, getTraceStreamHealth, arg.RunID, arg.WorkspaceID)
 	if err != nil {
@@ -339,7 +269,6 @@ func (q *Queries) GetTraceStreamHealth(ctx context.Context, arg GetTraceStreamHe
 }
 
 const insertTraceEvent = `-- name: InsertTraceEvent :execrows
-
 INSERT INTO trace_events (
     event_id, workspace_id, run_id, attempt, seq, occurred_at,
     event_type, source, status, schema_version, masked, masked_fields, payload, late
@@ -364,15 +293,6 @@ type InsertTraceEventParams struct {
 	Late          bool
 }
 
-// Run Trace ingestion and reading (TRACE-002~008, contracts/events/trace-event.schema.json).
-//
-// workspace_id is never taken from the wire: the ingestion handler resolves it from
-// run_id under the platform's own authority (iron rule 3), and every read below is
-// workspace scoped.
-// The idempotent write (TRACE-008). Delivery is at-least-once, so the producer's
-// event_id is the dedupe key: a redelivery updates nothing and returns 0 rows, which
-// is how the caller counts duplicates without a second query. Never DO UPDATE - the
-// 0005 trigger makes trace_events append-only, and a redelivery is not a correction.
 func (q *Queries) InsertTraceEvent(ctx context.Context, arg InsertTraceEventParams) (int64, error) {
 	result, err := q.db.Exec(ctx, insertTraceEvent,
 		arg.EventID,
@@ -461,9 +381,7 @@ type ListEvaluationTraceEventsRow struct {
 	EvaluationTruncated bool
 }
 
-// The evaluator never needs the whole raw trace in memory. Keep a recent tail
-// plus bounded early activation/error evidence; large script-log payloads
-// outside this window are never transferred or decoded by the worker.
+// Returns a recent tail plus bounded early activation and error evidence, never the whole trace.
 func (q *Queries) ListEvaluationTraceEvents(ctx context.Context, arg ListEvaluationTraceEventsParams) ([]ListEvaluationTraceEventsRow, error) {
 	rows, err := q.db.Query(ctx, listEvaluationTraceEvents, arg.EvaluationRunID, arg.EvaluationWorkspaceID)
 	if err != nil {
@@ -504,7 +422,6 @@ func (q *Queries) ListEvaluationTraceEvents(ctx context.Context, arg ListEvaluat
 }
 
 const listTraceEventsAfter = `-- name: ListTraceEventsAfter :many
-
 SELECT id, workspace_id, run_id, seq, occurred_at, event_type, source, status, payload, payload_object_key, event_id, attempt, schema_version, masked, masked_fields, late, ingest_seq FROM trace_events
 WHERE run_id = $1 AND workspace_id = $2
   AND ingest_seq > $3
@@ -519,12 +436,6 @@ type ListTraceEventsAfterParams struct {
 	PageLimit      int32
 }
 
-// ListTraceEvents (the whole trace in one read) was removed on 2026-08-25: it
-// had no caller. Every reader takes ListTraceEventsAfter instead, which pages on
-// the database-assigned ingest_seq and is therefore stable when producer clocks
-// skew -- the property the removed one documented at length and did not have.
-// Incremental advanced-view read. ingest_seq is assigned by the database and is
-// therefore stable even when producer clocks skew or several streams reuse seq.
 func (q *Queries) ListTraceEventsAfter(ctx context.Context, arg ListTraceEventsAfterParams) ([]TraceEvent, error) {
 	rows, err := q.db.Query(ctx, listTraceEventsAfter,
 		arg.RunID,
@@ -574,8 +485,8 @@ SELECT pg_advisory_xact_lock(hashtextextended(
 ))
 `
 
-// Establish the global trace writer lock hierarchy before a control-plane
-// writer takes its per-stream lock. The insert trigger re-enters this lock.
+// Takes the global trace-writer lock before any per-stream lock; the insert trigger
+// re-enters it.
 func (q *Queries) LockTraceIngestRun(ctx context.Context, runID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, lockTraceIngestRun, runID)
 	return err
@@ -601,9 +512,8 @@ type NextTraceSeqParams struct {
 	Source  string
 }
 
-// The next gapless ordinal for one (run_id, attempt, source) stream. Called inside
-// the transaction that writes the event, so two concurrent writers on the same
-// stream serialize at the database rather than both observing the same maximum.
+// Runs inside the event-writing transaction, so concurrent writers on one stream
+// serialize here instead of reading the same maximum.
 func (q *Queries) NextTraceSeq(ctx context.Context, arg NextTraceSeqParams) (int64, error) {
 	row := q.db.QueryRow(ctx, nextTraceSeq, arg.RunID, arg.Attempt, arg.Source)
 	var column_1 int64

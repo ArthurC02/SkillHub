@@ -1,6 +1,3 @@
-# Local development stack (E1 deployment shape, cost-estimation §7.2).
-# Only Postgres runs today; the service images land with the first feature that
-# needs them (docs/plans/03-work-items.md CORE-001) together with infra/images/.
 name: skillhub
 
 services:
@@ -20,14 +17,8 @@ services:
       timeout: 5s
       retries: 10
 
-  # S3-compatible object storage for local dev (ADR-018: production uses a
-  # managed S3 service; SeaweedFS is the licensed-clean self-host option).
-  #
-  # Credentialed, not anonymous: SBX-008 moves every byte between the planes
-  # through a pre-signed URL, and pre-signing needs a key to sign with — an
-  # anonymous bucket cannot produce one, and would make the grant meaningless
-  # even if it could. An existing stack must recreate this container to pick the
-  # identity file up.
+  # Probes 127.0.0.1, not localhost: this container listens on IPv4 only, and
+  # localhost can resolve to ::1 first.
   seaweedfs:
     image: chrislusf/seaweedfs:3.80
     command: server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
@@ -36,119 +27,43 @@ services:
     volumes:
       - seaweedfs-data:/data
       - ./seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
-    # Probe 127.0.0.1, not `localhost`: SeaweedFS listens on IPv4 only, while
-    # `localhost` resolves to ::1 first inside the container, so the old probe
-    # got ECONNREFUSED forever and the service never went healthy. `/status` is
-    # the S3 gateway's own health endpoint (200, empty body) — the bucket root
-    # only answers while anonymous ListBuckets stays enabled.
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/status || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # The only model exit (ADR-017, iron rule 8). Provider API keys exist here and
-  # nowhere else; every other component holds a Virtual Key minted per Run.
-  #
-  # It sits on two networks on purpose. `default` is how the control plane
-  # reaches the management API and how the gateway reaches Postgres and the
-  # provider. `egress` is internal (no route off the host) and is the only
-  # network a sandbox is ever placed on, which makes the gateway the single
-  # reachable address from inside a sandbox — SBX-007's allow list of one, in the
-  # shape a developer machine can actually enforce. Production replaces this with
-  # the egress proxy (domain allow list, DNS pinning, destination logging).
   litellm:
     image: ghcr.io/berriai/litellm:main-stable
     profiles: ["model"]
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     environment:
-      # Both from the repo-root .env, which is gitignored. OPENAI_API_KEY must
-      # not appear in any other service's environment.
-      # Compose interpolates every service before profile selection, so these
-      # accept blank values here. `task dev:model` runs devctl's fail-closed
-      # profile check before enabling this service; core startup needs no keys.
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      # Its own database on the shared instance (ADR-018: one Postgres, several
-      # logical databases). The gateway's key store must not share a schema with
-      # the platform's — a migration on either side would then touch both.
       DATABASE_URL: postgresql://skillhub:skillhub@postgres:5432/litellm
       STORE_MODEL_IN_DB: "False"
     volumes:
       - ./litellm-config.yaml:/app/config.yaml:ro
     ports:
-      # Localhost only: the management API mints spending credentials.
       - "127.0.0.1:4000:4000"
     networks:
       - default
       - egress
 
-  # The thing that was missing under alerts.yml. Twenty rules, thresholds set by
-  # ADR-022, and nothing that evaluates them — so X-02～X-04 had no trigger path
-  # at all, on any machine. Profile-gated because it is a maintenance surface,
-  # not part of the ten-minute journey: `task dev:observability`.
-  #
-  # It scrapes the host, not other containers: cmd/api and cmd/worker run on the
-  # developer's machine (see the TODO below), so the targets are
-  # host.docker.internal. Production is not this file (04 甲類).
   prometheus:
     image: prom/prometheus:v3.6.0
     profiles: ["observability"]
     command:
       - --config.file=/etc/prometheus/prometheus.yml
-      # Rules are reloadable without a restart: `curl -XPOST localhost:9095/-/reload`
-      # after editing alerts.yml, which is the point of mounting the directory.
       - --web.enable-lifecycle
     volumes:
       - ../observability:/etc/prometheus:ro
     ports:
-      # 9095, not 9090: 9090 is what METRICS_ADDR usually binds on the host, and
-      # a collision there means the scraper eats its own target's port.
       - "127.0.0.1:9095:9090"
-    # No-op on Docker Desktop, required on Linux — without it host.docker.internal
-    # does not resolve and every target is down for a reason that looks like the
-    # services being down.
+    # Required on Linux for host.docker.internal to resolve; no-op elsewhere.
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  # TODO(CORE-001) resolved 2026-09-05 (04 丙-158): the four service images
-  # below exist now (infra/images/{platform,llm,web}/Dockerfile), behind
-  # `profiles: ["app"]` so `task dev` (no --profile) still starts only
-  # Postgres and SeaweedFS. What remains native is everything this profile
-  # does not start: `task dev:model` (litellm, still opt-in/paid) and the
-  # operator-invoked apps/platform commands (`maintenance`, `reindex`) —
-  # the platform image can run either via `docker compose --profile app run
-  # platform-api maintenance <subcommand>`, but neither runs as a standing
-  # service. SKILLHUB_CLEAN_MODE is deliberately never set on any service
-  # here: this profile is the multi-process shape ADR-060 決策 6 draws the
-  # line against — cmd/worker refuses to start under it (own comment,
-  # apps/platform/cmd/worker/main.go), and clean mode is a single-process
-  # bundle these four containers are not.
-  #
-  # Every URL/credential pair below that names a compose service by hostname
-  # (postgres, seaweedfs, llm, platform-api) is a literal — same convention
-  # as the litellm service above (DATABASE_URL there is not sourced from
-  # .env either): those hosts and the SeaweedFS dev identity
-  # (seaweedfs-s3.json, itself a committed non-secret placeholder) are fixed
-  # by this file's own topology, not a deployment choice. Everything else
-  # comes from the repo-root .env (task env:init), blank-default, exactly as
-  # apps/platform reads it running natively.
-  #
-  # LLM_SERVICE_TOKEN specifically was tried as a required
-  # `${LLM_SERVICE_TOKEN:?set in .env}` (both sides blank would mean the
-  # bearer check in apps/llm's require_service_token passes trivially —
-  # silent no-authentication, not "no token configured"). That broke `task
-  # dev` itself: Compose interpolates every service's environment for the
-  # whole file before profile filtering is applied, so `docker compose -f
-  # this-file.yml up -d postgres seaweedfs` — the zero-cost baseline
-  # automation.md's harness rule 2 requires to keep working with no secrets
-  # set at all — failed outright with this variable undefined, even though
-  # neither app-profile service was being started. Measured here 2026-09-05.
-  # A single-file compose setup has no profile-scoped interpolation, so this
-  # stays blank-default like every other credential in this file; the gap it
-  # reopens (an unset LLM_SERVICE_TOKEN silently disables the check on both
-  # sides) is recorded in infra/images/README.md's 服務映像 section instead
-  # of enforced here.
   platform-api:
     profiles: ["app"]
     build:
@@ -191,13 +106,8 @@ services:
       FEEDBACK_RETENTION: ${FEEDBACK_RETENTION:-}
       ANALYTICS_RETENTION: ${ANALYTICS_RETENTION:-}
     ports:
-      # Direct access for debugging; `web` below is the same-origin entry
-      # point an actual browser should use.
       - "127.0.0.1:8080:8080"
 
-  # River queue consumer (ADR-010 deployment unit 3 / iron rule 7). Same
-  # image as platform-api — only `command` differs, per the Dockerfile's own
-  # dispatch comment.
   platform-worker:
     profiles: ["app"]
     build:
@@ -222,8 +132,6 @@ services:
       SKILLHUB_TRACE_INGEST_SECRET: ${SKILLHUB_TRACE_INGEST_SECRET:-}
       METRICS_ADDR: ${METRICS_ADDR:-}
 
-  # Internal capability provider (ADR-016 rule 6/7): only platform-api and
-  # platform-worker call it, over internal HTTP, so it carries no host port.
   llm:
     profiles: ["app"]
     build:
@@ -231,18 +139,8 @@ services:
       dockerfile: ../../infra/images/llm/Dockerfile
     environment:
       LLM_SERVICE_TOKEN: ${LLM_SERVICE_TOKEN:-}
-      # LiteLLM is the `model` profile (task dev:model, paid) — deliberately
-      # not a `depends_on` here. Unset/unreachable means every /embed,
-      # /suggest-criteria etc. call fails at request time with a gateway
-      # error, not at container startup, matching how apps/llm already
-      # behaves when run natively without LiteLLM up.
       LITELLM_BASE_URL: ${LITELLM_BASE_URL:-}
-      # See .env.example's own warning before setting this: a VIRTUAL key,
-      # never LITELLM_MASTER_KEY.
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
-      # Read only so gateway() can refuse LITELLM_API_KEY if it equals this
-      # (see apps/llm/src/skillhub_llm/gateway.py) — apps/llm never uses it
-      # as a credential itself.
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-}
       ENRICH_MODEL: ${ENRICH_MODEL:-}
       JUDGE_MODEL: ${JUDGE_MODEL:-}
@@ -250,10 +148,6 @@ services:
       MATCH_REASON_MODEL: ${MATCH_REASON_MODEL:-}
       SUGGEST_CRITERIA_MODEL: ${SUGGEST_CRITERIA_MODEL:-}
 
-  # Same-origin entry point (nginx serving apps/web's build, reverse-proxying
-  # to platform-api — infra/images/web/nginx.conf carries the routing design
-  # and its known gaps). This is the address a browser should open, not
-  # platform-api's own port.
   web:
     profiles: ["app"]
     build:
@@ -266,10 +160,6 @@ services:
 
 networks:
   default:
-  # `internal: true` is the enforcement: containers on this network have no
-  # route off the host, so a sandbox placed here can reach the gateway and
-  # nothing beyond it. Object storage is deliberately absent — the execution
-  # node moves those bytes on the sandbox's behalf (SBX-008).
   egress:
     internal: true
 

@@ -14,13 +14,8 @@ import { CancelRunControl } from "./pages/RunTrace";
 import { SKILL_VERSIONS, VERSION_DIFF, skillDetail } from "./fixtures/platform";
 import { useForkSkill } from "./api/skills";
 
-// 02:WS-002 第 1 條 / WS-004 — the workspace's own lists, plus 第 3 條's delete
-// on what a run produced (02:SEC-006). Same hand-rolled DOM plumbing as the
-// other suites; @testing-library is not a dependency of this app.
-
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
-// The Go server's own wording for POST /runs/{id}/cancel's `note` (04 丙-143).
 const CANCEL_NOTE = "已送出取消要求；在工作負載真的停下來之前，這個 Run 會維持目前的狀態。";
 const ARTIFACT = "33333333-3333-3333-3333-333333333333";
 
@@ -40,9 +35,6 @@ afterEach(async () => {
 });
 
 vi.mock("@tanstack/react-router", () => ({
-  // `className` is forwarded because `.action` is an assertion here now: 設計
-  // §4.6.3 「一頁至多一個主要動作」 is a rule about a class, and a mock that drops
-  // the class would let this suite claim the page has none while it has three.
   Link: ({
     to,
     params,
@@ -63,8 +55,6 @@ vi.mock("@tanstack/react-router", () => ({
   ),
   useParams: () => ({ runId: RUN, skillId: SKILL }),
   useSearch: () => ({}),
-  // /runs/$runId carries `evaluation` and `events` now (資訊架構 §0.1 R4); this
-  // file renders that page for the artifact rows and never navigates.
   useNavigate: () => () => Promise.resolve(),
 }));
 
@@ -105,7 +95,6 @@ function button(text: string): HTMLButtonElement | undefined {
 
 const text = () => container.textContent ?? "";
 
-/** Opens the disclosure whose summary says `label`, the way a click would. */
 async function open(label: string) {
   const details = Array.from(container.querySelectorAll("details")).find((d) =>
     (d.querySelector("summary")?.textContent ?? "").includes(label),
@@ -116,8 +105,6 @@ async function open(label: string) {
   });
 }
 
-// --- the run history --------------------------------------------------------
-
 const RUN_ROW = {
   run_id: RUN,
   status: "succeeded",
@@ -126,8 +113,6 @@ const RUN_ROW = {
   skill_version_id: "22222222-2222-2222-2222-222222222222",
   provider: "self-hosted",
   cleanup_status: { value: "cleaned", label: "已清理", note: "沙箱與其資源已回收。" },
-  // 04 丙-32: the second axis. Required and never null — 未評估 is a value, not an
-  // omission, because an empty verdict beside 「執行完成」 reads as a pass.
   evaluation: {
     value: "met",
     label: "符合",
@@ -141,22 +126,13 @@ test("WS-004 a run history row words `succeeded` as execution, never as a pass",
   vi.stubGlobal("fetch", () => json({ runs: [RUN_ROW] }));
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 
-  // ADR-025: a list is where "the workload finished" is cheapest to misread as
-  // "the task was done", so the row says which one it means.
   expect(text()).toContain("執行狀態：執行完成");
-  // ADR-025 / 設計 §2.5: two axes, verdict first. This used to assert the
-  // apology — a footnote saying the one axis on screen was not the other one —
-  // because RunListItem had no verdict field until 04 丙-32. Now it asserts the
-  // second axis is really there and really ahead of the first.
   expect(text()).toContain("任務判定：符合");
   expect(text().indexOf("任務判定")).toBeLessThan(text().indexOf("執行狀態"));
   expect(text()).not.toContain("成功");
 });
 
 test("WS-004 an unevaluated run says 未評估, which is not a blank and not a pass", async () => {
-  // 04 丙-32 / §2.9. The whole reason `evaluation` is required rather than
-  // nullable: an empty verdict column beside 「執行完成」 reads as a pass, and this
-  // is the commonest row in any history — most runs are never evaluated.
   vi.stubGlobal("fetch", () =>
     json({
       runs: [
@@ -183,12 +159,7 @@ test("WS-004 an unevaluated run says 未評估, which is not a blank and not a p
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 
   expect(text()).toContain("任務判定：未評估");
-  // The note rides along for exactly the states whose label can be misread; the
-  // three real verdicts speak for themselves and would be fifty repetitions of
-  // one sentence on a full page (04 丙-29 裁定① rejected that shape for status).
   expect(text()).toContain("不是任務有沒有做到");
-  // 「評估失敗」 is the one most likely to be read as a task failure, so it says
-  // it is not — and it must not be tinted as a failure either.
   expect(text()).toContain("任務判定：評估失敗");
   expect(text()).toContain("這不代表任務失敗");
   expect(container.querySelectorAll(".badge-danger")).toHaveLength(0);
@@ -211,35 +182,17 @@ test("WS-004 a run whose sandbox was not cleaned up says so on the row", async (
 
   expect(text()).toContain("the provider could not carry the attempt");
   expect(text()).toContain("清理失敗");
-  // 設計 §2.13 第 2 條: the cleanup badge used to carry the server's note BOTH as
-  // a `title=` and as the visible `.note` beside it — the same sentence twice on
-  // one row. §2.4 forbids a reason that lives only in a tooltip; it does not ask
-  // for two copies, and the tooltip is the copy that does not exist on a touch
-  // device. The visible one stays and is asserted here so the pair cannot come
-  // back as "belt and braces".
   expect(text()).toContain("平台會重試。");
   expect(
     Array.from(container.querySelectorAll("[title]")).map((e) => e.getAttribute("title")),
     "a `title=` is back on this page, duplicating text that is already visible",
   ).toEqual([]);
-  // 設計系統 §2.1: 已清理 is a fact the owner wants — the sandbox was torn down —
-  // and rendering nothing for it made the majority case indistinguishable from a
-  // field that was never rendered at all.
   expect(text()).toContain("已清理");
-  // §4.4: --accent-border is 未知／未驗證 and --danger is 這件事不通過. 清理失敗 is
-  // the second, so it must not wear the class 尚未清理 and 清理中 wear.
   expect(container.querySelectorAll(".badge-unverified")).toHaveLength(0);
   expect(container.querySelectorAll(".badge-danger")).toHaveLength(1);
 });
 
 test("WS-004 a cleanup state the client does not recognise is still rendered as words", async () => {
-  // The union in api/runs.ts said `cleaning` where the database enum
-  // run_cleanup_status says `cleaning_up` (0004_test_lab_and_runs.sql:75), and
-  // trial/execution/http.go:291 puts the database value on the wire unmapped.
-  // So the one state this row exists to report — the sandbox is being torn down
-  // right now — arrived as a key no map had, and 設計系統 §2.9 is explicit that a
-  // blank is the one shape an absence may never take. Being total over the union
-  // could not catch it: the union was the thing that was wrong.
   vi.stubGlobal("fetch", () =>
     json({
       runs: [
@@ -250,8 +203,6 @@ test("WS-004 a cleanup state the client does not recognise is still rendered as 
         {
           ...RUN_ROW,
           run_id: "run-3",
-          // The server keeps the raw value as its own label when it has no words
-          // for it, so this build renders something rather than a blank.
           cleanup_status: {
             value: "a-state-from-a-newer-server",
             label: "a-state-from-a-newer-server",
@@ -264,8 +215,6 @@ test("WS-004 a cleanup state the client does not recognise is still rendered as 
   await render(<WorkspaceRuns />, () => text().includes("清理中"));
 
   expect(text()).toContain("清理狀態：清理中");
-  // Not a translation — the platform said something this build has no word for,
-  // and saying so is honest where a blank would read as "nothing to report".
   expect(text()).toContain("a-state-from-a-newer-server");
   for (const badge of container.querySelectorAll(".badge")) {
     expect(badge.textContent?.trim(), "a badge with no word (§2.3)").not.toBe("");
@@ -279,12 +228,6 @@ test("WS-002 an empty run history says nothing ran, not that records were cleare
   expect(text()).toContain("不是紀錄被清掉了");
 });
 
-// --- the own-skills list ----------------------------------------------------
-
-// The two facets every row of this list now carries (04 丙-31). Spread into the
-// fixtures below so a test about deletion does not have to restate them, and so
-// the fork shape stays written down in exactly one place: **a fork has neither**,
-// because it copies the bytes and not the measurement.
 const SCANNED = {
   risk: {
     scan_status: "scanned",
@@ -319,16 +262,6 @@ const FORKED = {
 } as const;
 
 test("WS-004 the own-skills row says whether this skill can be taken away", async () => {
-  // 04 丙-31 / 設計 §2.2 in its second direction. `redistribution` and
-  // `access_restriction` were on the row ListSkills selects and were dropped in
-  // serialisation, so a skill that packaging will refuse looked exactly like one
-  // it will not — right up to the packaging screen.
-  //
-  // ADR-045 changed which value is the common case: a user's own import carries
-  // `self_supplied` now and downloads, where it used to carry `unknown` and
-  // never could. Both are on this fixture, and they must not render as the same
-  // badge — 「可打包下載」 for a self-supplied skill would tell its owner somebody
-  // had checked the licence, which nobody did.
   vi.stubGlobal("fetch", () =>
     json({
       skills: [
@@ -371,53 +304,27 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
       total: 137,
     }),
   );
-  // Wait on the summary, not the name: 「自己匯入的」 also appears in this page's
-  // own intro sentence, so waiting on it resolves before any data arrives.
   await render(<WorkspaceSkills />, () => text().includes("一份自己傳上來的套件"));
 
   expect(text()).toContain("授權未知，不能打包");
   expect(text()).toContain("可打包下載");
   expect(text()).toContain("可下載（你自己帶進來的）");
-  // 0037: the value the server releases and this list refused. The row rendered
-  // a red 「授權未知，不能打包」 for a download the platform would have
-  // produced — a ternary chain that had never heard of the fifth value.
   expect(text()).toContain("可下載（平台為你生成的）");
-  // The contract carried forked_from_* the whole time; a narrower local type for
-  // the same endpoint was the app's entire view of it, so the page could not
-  // tell a fork from an import even though its own header promised to.
-  // 「Fork 自來源 Skill」 since the attribution became a link (ADR-042 決策 6):
-  // the id was already on the row and was rendering as an unreachable sentence.
   expect(text()).toContain("Fork 自");
   expect(text()).toContain("自己匯入");
-  // §2.2: the 100-row cap was enforced and invisible, so a workspace past it got
-  // a short list that read as the whole list.
   expect(text()).toContain("只列出前 100 個");
 
-  // 設計 §2.13 第 1 條. The 89-character absence notice — compatibility is not in
-  // this list's data and the platform does not measure it for your own skills —
-  // used to print byte-for-byte on EVERY row. It is a fact about the list, so it
-  // is printed once, above it: still flat text, still readable with nothing to
-  // open, which is all §2.9 asks of a typed absence. Four rows in this fixture,
-  // so a per-row copy scores 4 here.
   expect(
     text().split("相容性驗證").length - 1,
     "the compatibility absence is printed once per row again",
   ).toBe(1);
 
-  // 這一句的另一半在上面那支空清單的測試裡（2026-09-08 起空狀態不渲染它）。兩半合起來
-  // 才守得住這件事：只有「空的時候不印」會讓整句被刪掉也照樣綠。
   expect(text(), "清單有列的時候，那句『公開目錄的不在』才是它在做的事").toContain(
     "公開目錄的不在",
   );
 });
 
 test("WS-004 a forked row says the scan happened somewhere else, not that it passed", async () => {
-  // 04 丙-31 / 設計 §2.9. The obvious implementation serves `verified_at` as the
-  // newest version's created_at, which is what the search projection means by it
-  // — and a fork's newest version row is created the instant somebody presses
-  // Fork, with nothing scanned. That would print a timestamp reading as
-  // 「剛剛掃過」 on the one case where nothing was measured at all, so the state is
-  // named and the timestamp only exists in the state that has one.
   vi.stubGlobal("fetch", () =>
     json({
       skills: [
@@ -439,20 +346,11 @@ test("WS-004 a forked row says the scan happened somewhere else, not that it pas
 
   expect(text()).toContain("未測量");
   expect(text()).toContain("靜態掃描是在來源工作區做的");
-  // The two facets have to agree: an unscanned row must not also claim the scan
-  // found nothing, which is the sentence the scanned-and-clean branch prints.
   expect(text()).not.toContain("未發現警告");
-  // §2.9: never a blank, and never a date on a state that has none.
   expect(container.querySelector(".badge-row")?.textContent ?? "").not.toBe("");
 });
 
 test("WS-004 a fork of identical bytes shows the source's scan, attributed and dated to the source", async () => {
-  // ADR-042 決策 6. The measurement holds for the bytes, not for the location —
-  // in-toto binds an attestation to the subject's digest — so a copy whose hash
-  // still matches a public-catalogue ancestor carries the ancestor's scan. What
-  // is forbidden is doing it silently, so this asserts the three visible halves:
-  // the label is not the same as a local scan's, the note names the source, and
-  // the date is the source's import rather than the moment of the fork.
   vi.stubGlobal("fetch", () =>
     json({
       skills: [
@@ -480,18 +378,10 @@ test("WS-004 a fork of identical bytes shows the source's scan, attributed and d
 
   expect(text()).toContain("已掃描（來源）");
   expect(text()).toContain("PDF Summariser");
-  // The source's import time, older than the fork. An inherited scan showing the
-  // fork's own timestamp would read as 「剛剛掃過」, which is the failure the whole
-  // named-state design exists to prevent.
-  // 押在 `<time dateTime>` 上。這一格以前是伺服器 UTC 字串的 `.slice(0, 10)`，
-  // 讀者看到的是別人時區的日期、輔助科技拿到的只是散文；現在走 <Timestamp>，
-  // 人看到自己的時鐘、機器看到原值，而原值才是這條斷言真正在乎的東西。
   expect(
     Array.from(container.querySelectorAll("time")).map((t) => t.getAttribute("dateTime")),
   ).toContain("2026-07-01T09:00:00Z");
-  // The disclosures come across with it, because they are facts about the bytes.
   expect(text()).toContain("含可執行 Script 檔案");
-  // Attribution has to be reachable, not just stated.
   const hrefs = Array.from(container.querySelectorAll("a")).map(
     (a) => a.getAttribute("href") ?? "",
   );
@@ -523,20 +413,11 @@ test("WS-004 the own-skills list links each row on to its files and packaging", 
   expect(hrefs).toContain(`/skills/${SKILL}`);
   expect(hrefs).toContain(`/skills/${SKILL}/files`);
   expect(hrefs).toContain(`/skills/${SKILL}/package`);
-  // The other workspace lists are reachable from here rather than only from the
-  // header, because this is the page a reader lands on looking for "my stuff".
   expect(hrefs).toContain("/workspace/runs");
   expect(hrefs).toContain("/workspace/downloads");
 });
 
 test("IA-9 the empty own-skills list offers importing as a link, not as prose", async () => {
-  // 資訊架構 §0.1 R3 / §2.3: /workspace/import had exactly one in-page inbound
-  // edge (Home's no_results state) and this sentence had been naming importing
-  // in prose the whole time — a page that says what to do next and then makes
-  // you go find the nav to do it is what R3 counts as one way in.
-  //
-  // This state is only reachable with a session (GET /skills is RequireSession),
-  // which is why the link needs no visitor branch the way Home's exit does.
   vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
   await render(<WorkspaceSkills />, () => text().includes("還沒有任何 Skill"));
 
@@ -544,28 +425,12 @@ test("IA-9 the empty own-skills list offers importing as a link, not as prose", 
     (a) => a.getAttribute("href") ?? "",
   );
   expect(hrefs).toContain("/workspace/import");
-  // 設計 §2.1 的強形式在改寫之後仍然成立：空狀態還是說出了它**不是**哪一種空。
-  // 2026-09-08 措辭改了（「這裡是空的代表你還沒有建立過，不是清單讀取失敗」→
-  // 「這是一份空清單，不是讀取失敗」），型別詞一個字沒少，走的是那句解釋自己為什麼
-  // 要說這句話的話。斷言跟著改成兩半，這樣任何一半掉了都會紅。
   expect(text()).toContain("空清單");
   expect(text()).toContain("不是讀取失敗");
 
-  // 2026-09-08：**空清單上不渲染那句清單簡介**。「Fork 與匯入的都在這裡；公開目錄的
-  // 不在」判斷的對象是清單裡的列——它解釋為什麼你在目錄看過的某一個不在這裡。一列
-  // 都沒有的時候那個困惑不存在，而 §2.13 D 類的判準是「會不會因為這一段而作出不同
-  // 判斷」。空狀態要的是型別詞與下一步，那兩件都還在（上面兩條）。
   expect(text(), "空清單上仍然印著那句只對有列的清單成立的簡介").not.toContain("公開目錄的不在");
 });
 
-/**
- * 順序，不是存在。設計 §3 checklist 第 1 條的「不過的樣子」逐字是「一整排控制項排在
- * 答案前面」——而空工作區在 2026-09-08 之前正是那個形狀：三張建立卡先出來，「還沒有
- * 任何 Skill」那一句排在它們後面、清單原本的位置上（它渲染在 `skills.data` 那個三元式
- * 的空分支裡）。外部評閱讀到的「孤零零浮在卡片與清單中間」就是這個。
- *
- * 這條測的是 DOM 順序而不是 CSS `order`：鍵盤與朗讀走的是前者。
- */
 test("空清單先說它是哪一種空，三張建立卡才是它的動作（§3 checklist 第 1 條）", async () => {
   vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
   await render(<WorkspaceSkills />, () => text().includes("還沒有任何 Skill"));
@@ -582,17 +447,6 @@ test("空清單先說它是哪一種空，三張建立卡才是它的動作（§
   ).toBe(true);
 });
 
-// --- WS-001 第 4 條: version history and the diff between any two ------------
-
-/**
- * `SkillDetail` with the two session-scoped reads it now makes: the public
- * detail, the version list, and — once a row is expanded — the diff.
- *
- * `calls` is the point of the harness: 第 4 條's endpoint is
- * `GET /skills/{id}/diff?from=&to=`, and the two ids have to be the RIGHT two,
- * in the right direction. A diff that renders is not evidence it compared the
- * pair the reader asked for.
- */
 function stubSkillDetailPage(versions: unknown = SKILL_VERSIONS, versionsStatus = 200) {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
@@ -609,80 +463,43 @@ function stubSkillDetailPage(versions: unknown = SKILL_VERSIONS, versionsStatus 
 
 test("WS-001 the detail page lists the versions, newest first, with the oldest saying why it has no comparison", async () => {
   stubSkillDetailPage();
-  // 2026-09-03（r2 B3）：那個 h2 現在叫「版本」，而「版本歷史」只剩下失敗與載入
-  // 訊息的主詞（`what="版本歷史"`），所以等它等到的是**載入中**那一格。等這一支
-  // 真正要看的東西，等待條件與它下面那一行相同。
   await render(<SkillDetail />, () => text().includes("v1"));
   await waitFor(() => text().includes("v1"));
 
   expect(text()).toContain("v2");
   expect(text()).toContain("v1");
-  // ADR-003: the reason the history exists at all. 採用改善建議 makes a new
-  // version and never rewrites the old one.
   expect(text()).toContain("版本不可變");
-  // §2.4: the oldest row has no 「與上一版比較」 and says so rather than leaving
-  // a gap where every other row has a control.
   expect(text()).toContain("這是最早的版本，沒有上一版可以比較");
-  // The instant is machine-readable, not an ISO string glued into a sentence.
   expect(container.querySelector('time[datetime="2026-08-17T00:00:00Z"]')).not.toBeNull();
 });
 
 test("WS-001 第 4 條 比較 asks the contract's endpoint for the right two versions", async () => {
   const calls = stubSkillDetailPage();
-  // 2026-09-03（r2 B3）：那個 h2 現在叫「版本」，而「版本歷史」只剩下失敗與載入
-  // 訊息的主詞（`what="版本歷史"`），所以等它等到的是**載入中**那一格。等這一支
-  // 真正要看的東西，等待條件與它下面那一行相同。
   await render(<SkillDetail />, () => button("與上一版比較") !== undefined);
   await waitFor(() => button("與上一版比較") !== undefined);
 
   expect(calls.some((u) => u.includes("/diff"))).toBe(false);
   await act(async () => button("與上一版比較")?.click());
-  // Not on 「SKILL.md」: this page already says 查看 SKILL.md 與檔案樹, so that
-  // wait resolves before the diff arrives and the assertions below then run
-  // against a half-drawn page.
   await waitFor(() => text().includes("assets/logo.png"));
 
-  // from = the OLDER version, to = the row's own. Reversed, the diff renders
-  // just as happily and describes the opposite change.
   const diff = calls.find((u) => u.includes("/diff"));
   expect(diff).toBe(
     `/skills/${SKILL}/diff?from=22222222-2222-2222-2222-111111111111&to=22222222-2222-2222-2222-222222222222`,
   );
-  // The shared VersionDiff component's own output, so the two callers of
-  // `GET .../diff` cannot start rendering the same document differently —
-  // including 設計 §2.9's named absence for a file it cannot diff.
   expect(text()).toContain("assets/logo.png");
   expect(text()).toContain("（二進位或過大，不顯示差異）");
 });
 
 test("WS-001 a version list that fails to read says so, and 401 says to log in", async () => {
   stubSkillDetailPage({ error: "not authenticated" }, 401);
-  // 2026-09-03（r2 B3）：那個 h2 現在叫「版本」，而「版本歷史」只剩下失敗與載入
-  // 訊息的主詞（`what="版本歷史"`），所以等它等到的是**載入中**那一格。等這一支
-  // 真正要看的東西，等待條件與它下面那一行相同。
   await render(<SkillDetail />, () => text().includes("版本歷史需要登入"));
-  // 主詞要在等待條件裡。裸的「需要登入」現在同一頁上有兩個來源（版本歷史，以及
-  // 打包入口對未登入訪客說的那一句），於是這個等待會被錯的那一個滿足，然後在
-  // 版本歷史還在載入時就去斷言它。等「版本歷史需要登入」整句。
   await waitFor(() => text().includes("版本歷史需要登入"));
 
-  // ReadFailure's 401 branch, not a swallowed error and not an empty list:
-  // 「沒有版本」 and 「你沒登入」 are different answers (設計 §2.9).
   expect(text()).toContain("版本歷史需要登入");
   expect(text()).not.toContain("not authenticated");
   expect(text()).not.toContain("這是最早的版本");
 });
 
-// --- ⛔ the M5 exposure boundary, on this page's half of it -------------------
-
-/**
- * `/me` plus one skill row, so the page renders its list rather than an error.
- *
- * `features` is present only when asked for, exactly as generate.test.tsx's
- * `stubSession` does it: a deployment that has not turned ADR-052's flag on
- * answers `/me` with no `features` object at all, and that default is the state
- * every beta deployment is in.
- */
 function stubOwnSkillsWithFeatures(features?: Record<string, boolean>) {
   vi.stubGlobal("fetch", (input: string) => {
     const path = String(input)
@@ -708,40 +525,19 @@ function stubOwnSkillsWithFeatures(features?: Record<string, boolean>) {
   });
 }
 
-// The pair generate.test.tsx has for the search's no_results state, for the
-// OTHER mount. Both entry points are named in 資訊架構 §2.4, only one of them
-// was ever asserted, and `{generateExposed && …}` here could have been changed
-// to `{true && …}` with all 224 tests still green. The failure has no symptom:
-// the page looks right, and what breaks is the meaning of 01 §11.2's first
-// funnel segment — twelve people, one chance.
 test("GEN-008 ⛔ with the flag off, /workspace/skills has no generation entry point", async () => {
   stubOwnSkillsWithFeatures();
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
-  // The list itself is still drawn — otherwise this passes because the page
-  // failed rather than because the boundary held.
   expect(text()).toContain("CSV 清理");
   expect(container.querySelector("#generate-task")).toBeNull();
   expect(text()).not.toContain("讓平台依你的描述做一個");
 });
 
-/**
- * 2026-09-07：生成那一格從「一整面表單」變成一扇門，按下才在原地展開。
- * **2026-09-09：那扇門真的換頁了**（負責人指示），工作台搬到 `/workspace/creations`，
- * 所以這裡不再有「按下去展開」這一步，測試也不再需要那個按壓的輔助函式。
- *
- * 底下兩支守的東西一個字都沒有變：旗標開著的時候這條路要走得到，旗標關著的時候
- * （上一支）連那扇門都不存在。變的是「走得到」現在長什麼樣——一條 `href`，
- * 而不是一個會在原地長出表單的按鈕。
- */
-
 test("GEN-008 with the flag on, /workspace/skills shows the door and not the workbench", async () => {
   stubOwnSkillsWithFeatures({ generate_skill: true });
   await render(<WorkspaceSkills />, () => text().includes("開始描述"));
 
-  // 2026-09-09：工作台搬到 `/workspace/creations` 之後，這一頁**永遠**只有門。
-  // 在這之前這一支按下門才斷言表單出現；現在斷言的是表單在這一頁上根本不存在，
-  // 而門是一條指向那個位址的連結——三張卡因此是三扇同型的門（`pages/CreateSkill.tsx`）。
   expect(container.querySelector("#generate-task"), "工作台又長回這一頁上了").toBeNull();
 
   const door = Array.from(container.querySelectorAll("a")).find((a) =>
@@ -751,29 +547,10 @@ test("GEN-008 with the flag on, /workspace/skills shows the door and not the wor
   expect(door!.getAttribute("href")).toBe("/workspace/creations");
 });
 
-// --- 逐列複述：設計 §2.13 第 1 條在這一份清單上 ---------------------------------
-
-/** 這一段話在整個畫面上出現幾次。`text()` 已經去過空白。 */
 function occurrences(needle: string) {
   return text().split(needle).length - 1;
 }
 
-/**
- * 這一支守的是 2026-09-07 那批的主張本身，而在它之前**沒有任何機器在看**：
- * `a11y.test.tsx` 的 `§2.13 去重 1` 閘門確實掃這條路由，但它用的共用 fixture
- * 只有一列，而「逐列複述」需要兩列才成立——所以那道閘門對這一頁從來沒有被觸發過，
- * 既抓不到缺陷、也證明不了修法。
- *
- * 兩個分支同時在這一份清單上被斷言，而它們的答案相反：
- *
- *  - `verification` **搬得走**：每一列都戴著「掃描狀態：<label>」那顆徽章，而這份
- *    fixture 裡 label 與 note 是一對一的，所以但書可以提到清單層級，各自帶著限定它
- *    的那個詞。
- *  - `risk` **搬不走**：它有兩種值，而 `scan_status: "unavailable"` 的那一列身上
- *    一個標記都沒有。兩句一起提上去，讀者分不出哪一列是哪一句——那不是去重，是把
- *    §2.9 的型別詞弄丟。**這一半才是承重的**：只斷言「搬走了」的測試，會把「什麼都
- *    搬」也判成通過。
- */
 test("設計 §2.13 一句逐列相同的但書只講一次，而分不出是哪一列的那一句不准搬", async () => {
   const row = (id: string, name: string, facets: typeof SCANNED | typeof FORKED) => ({
     skill_id: id,
@@ -797,21 +574,16 @@ test("設計 §2.13 一句逐列相同的但書只講一次，而分不出是哪
   );
   await render(<WorkspaceSkills />, () => text().includes("Fork 來的"));
 
-  // 搬得走的那一個：兩列共用同一句，但畫面上只有一次，而且帶著限定它的那個詞。
   expect(occurrences(SCANNED.verification.note)).toBe(1);
   expect(text()).toContain(`掃描狀態「${SCANNED.verification.label}」：`);
   expect(occurrences(FORKED.verification.note)).toBe(1);
   expect(text()).toContain(`掃描狀態「${FORKED.verification.label}」：`);
 
-  // 搬不走的那一個：兩列還是各印各的，因為 Fork 那一列沒有戴著任何對得回去的詞。
   expect(occurrences(SCANNED.risk.note)).toBe(2);
   expect(occurrences(FORKED.risk.note)).toBe(1);
   expect(text()).not.toContain(`風險提示：${SCANNED.risk.note}`);
 });
 
-// --- 建立中心: the three ways in, gathered above the list ---------------------
-
-/** The hub section, which is where every assertion below is scoped. */
 const hub = () => container.querySelector<HTMLElement>(".create-hub");
 const hubText = () => (hub()?.textContent ?? "").replace(/\s+/g, "");
 
@@ -819,25 +591,15 @@ test("建立中心 的三扇門同框，而且這一頁一個填色動作都沒�
   stubOwnSkillsWithFeatures();
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
-  // The anchor Writer E's hero points at (`/workspace/skills#create`). A hub
-  // that renders and cannot be linked to is half the complaint unanswered.
   expect(hub()).not.toBeNull();
   expect(hub()!.id).toBe("create");
 
-  // 設計 §4.6.3，2026-09-08 改判：這一頁回到「零個填色」那一列。判準是「完成這一頁的
-  // 工作的那一個」，而這一頁的工作是看自己的清單，不是匯入——三張卡是三扇並列的門，
-  // 其中一扇填色只是在說「平台希望你走這扇」。整頁計數，因為規則是每頁不是每區塊。
   const actions = container.querySelectorAll("a.action, button.action");
   expect(Array.from(actions).map((a) => a.getAttribute("href") ?? a.textContent)).toEqual([]);
 
-  // 而「零個填色」不等於「回到純文字連結」：三扇門現在戴著同一套次要按鈕語彙，
-  // 一個 `<a class="action-secondary">`、一個原生 `<button>`，兩者同框（`index.css` 的
-  // 基礎控制項規則，由 `design-system.test.ts` 守）。外部審查連續四輪讀成「瀏覽器預設
-  // 樣式」的，正是這三個控制項本來的三種外觀。
   const doors = hub()!.querySelectorAll("a.action-secondary, button");
   expect(doors.length, "三扇門沒有全部拿到次要按鈕語彙").toBeGreaterThanOrEqual(2);
 
-  // §4.3: the universal card family, not a fifth style invented for this hub.
   expect(hub()!.querySelectorAll("ul.create-cards > li.download-item").length).toBeGreaterThan(0);
 });
 
@@ -845,43 +607,22 @@ test("建立中心 states the invite requirement on the from-catalogue card, in 
   stubOwnSkillsWithFeatures();
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
-  // 設計 §2.2 第二向 and 第三向 together: the restriction is stated before the
-  // user walks into the 403, and it names who enforces it. A card that said 「從
-  // 目錄挑一個來改」 and let an uninvited user find out by pressing the button is
-  // the 「強制但不顯示」 shape that section calls the second worst.
   const card = Array.from(hub()!.querySelectorAll("li")).find((li) =>
     (li.textContent ?? "").includes("從目錄挑一個來改"),
   );
   expect(card, "the from-catalogue card is missing").toBeTruthy();
   const copy = (card!.textContent ?? "").replace(/\s+/g, "");
-  // 2026-09-08：兩個子句併成一句，兩件該說的事一件都沒少。第三向要的是**強制者具名**，
-  // 而具名的最強形式是讓它當主詞——「平台目前只讓…」比「…，這道限制由平台強制」少了
-  // 十個字，而說的是同一件事。第二條斷言因此不再找「由平台強制」那四個字，改為確認
-  // 這一句是以強制者開頭的（否則刪掉主詞、只留「目前只讓有封測邀請的帳號 Fork」也會綠）。
   expect(copy).toContain("平台目前只讓有封測邀請的帳號Fork。");
   expect(copy.indexOf("平台"), "這一句沒有以強制者開頭").toBe(
     copy.indexOf("平台目前只讓有封測邀請的帳號Fork。"),
   );
-  // ...and it is a way through, not a dead end: the card links to the catalogue.
   expect(Array.from(card!.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toContain("/");
 });
 
-/**
- * ⛔ 01 §10 邊界 1 / ADR-052, restated against the hub rather than the page.
- *
- * The pair above proves `#generate-task` is absent with the flag off. This pair
- * proves the CARD is absent — that the hub does not advertise a capability it
- * then withholds. 設計 §2.4 covers a disabled control that exists and says why;
- * for this one the rule is different in kind, because 「即將推出」 is itself the
- * disclosure the boundary forbids: a beta participant who learns the platform
- * can write a Skill for them has already had 01 §11.2's first funnel segment
- * changed, whether or not the button worked.
- */
 test("建立中心 ⛔ with the flag off, the hub has no generation card and does not mention 生成", async () => {
   stubOwnSkillsWithFeatures();
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
-  // The hub itself is drawn — otherwise this passes because the page failed.
   expect(hubText()).toContain("匯入現成的套件");
   expect(hubText()).toContain("從目錄挑一個來改");
 
@@ -894,10 +635,6 @@ test("建立中心 with the flag on, the generation entry appears exactly once o
   stubOwnSkillsWithFeatures({ generate_skill: true });
   await render(<WorkspaceSkills />, () => text().includes("開始描述"));
 
-  // 「恰好一次」這件事沒有變，變的是要數什麼：2026-09-09 之前這一頁上有兩個可能的
-  // 掛載點（獨立的表單與建立中心裡的那一個），所以數的是 `#generate-task` 的個數；
-  // 工作台搬走之後這一頁一個都不該有，而**門**要恰好一扇——兩扇門與兩個表單一樣，
-  // 都是同一件事講兩次（設計 §3 第 14 條）。
   expect(container.querySelectorAll("#generate-task").length).toBe(0);
 
   const doors = Array.from(container.querySelectorAll("a")).filter(
@@ -907,8 +644,6 @@ test("建立中心 with the flag on, the generation entry appears exactly once o
   expect(hub()!.querySelectorAll('a[href="/workspace/creations"]').length).toBe(1);
 });
 
-// --- deleting a skill (WS-005, 04 丙-22 ①) ----------------------------------
-
 test("WS-005 deleting a skill says what survives it before anything is destroyed", async () => {
   const calls: [string, string | undefined][] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
@@ -917,9 +652,6 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
       return json({
         deleted: true,
         versions_retained: 2,
-        // Go's own wording (04 丙-149, skill/library/http.go:157, strings-go-
-        // skill.md) — the exact string another writer's page (WorkspaceSkills)
-        // reads and prints verbatim.
         note: "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；Fork 引用的共用套件物件不受影響",
       });
     }
@@ -930,15 +662,6 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
   await act(async () => button("刪除")?.click());
-  // 02:WS-002 第 3 條: the scope is on screen before the request, and it names
-  // what is kept and the forks it does not touch.
-  //
-  // It used to assert 「先凍結保留一段期間再清除」. That sentence was removed on
-  // 2026-08-25 because nothing clears them: the only hard delete of a skill in
-  // the repo runs from account deletion, so a skill deleted on its own keeps its
-  // rows forever. 02 §2.2 forbids showing a promise nothing enforces, and this
-  // page had already had the 30-day numeral struck for the same reason — the
-  // clause that outlived it was the one with no number in it.
   expect(text()).toContain("版本快照會凍結保留");
   expect(text()).not.toContain("再清除");
   expect(text()).toContain("別人 Fork 過的版本");
@@ -948,12 +671,8 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
   await waitFor(() => calls.some(([, method]) => method === "DELETE"));
   expect(calls.find(([, m]) => m === "DELETE")?.[0]).toContain(`/skills/${SKILL}`);
 
-  // After the fact the server's own note is what is shown — not a second copy of
-  // the scope written on this side.
   await waitFor(() => text().includes("維持凍結"));
 });
-
-// --- deleting the account (CORE-007, 04 丙-22 ②) -----------------------------
 
 const ME = {
   user_id: "u-1",
@@ -965,10 +684,6 @@ const ME = {
   deletion_scope: null,
 };
 
-// Go's own wording (04 丙-149, creator/workspace/http.go:540 `deletionScope`,
-// strings-149-152-154-go-workspace-learning.md). Served verbatim from both
-// DELETE /me's `scope` and GET /me's `deletion_scope` — same constant, both
-// endpoints (04 丙-30).
 const DELETION_SCOPE =
   "寬限期結束前，你的帳號照常可用。到期後，你上傳的資料集、Run 產出，以及沒有任何人 Fork 或執行過的 Skill 會連同檔案永久刪除。被其他使用者 Fork 過、或歷史 Run 使用過的 Skill 版本會保留（它們的內容是別人的來源鏈），但你的身分會從上面移除，顯示為已刪除的使用者所有。";
 
@@ -989,8 +704,6 @@ test("CORE-007 requesting account deletion starts a grace period and shows the s
   await render(<WorkspaceAccount />, () => text().includes("刪除我的帳號"));
 
   await act(async () => button("刪除我的帳號")?.click());
-  // The pre-scope is about this control, and its whole job is to say that
-  // nothing is destroyed yet — the account delete is a countdown, not an act.
   expect(text()).toContain("不會立刻刪掉任何東西");
   expect(calls.some(([, m]) => m === "DELETE")).toBe(false);
 
@@ -999,11 +712,6 @@ test("CORE-007 requesting account deletion starts a grace period and shows the s
   expect(calls.find(([, m]) => m === "DELETE")?.[0]).toContain("/me");
 });
 
-// 04 丙-150. `request`/`cancel`'s `onError` used to fall through to
-// `err instanceof Error ? err.message : "…失敗，請再試一次。"` — since
-// `ApiError extends Error`, that Chinese fallback never ran and the server's
-// raw body reached the screen. 409 is `ErrAccountPurging`: the one status this
-// pair can mean, a deletion already past the point of no return.
 test("丙-150 a failed deletion request says the fixed sentence, not the server's raw body, in role=alert", async () => {
   vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
     if (init?.method === "DELETE") {
@@ -1022,7 +730,6 @@ test("丙-150 a failed deletion request says the fixed sentence, not the server'
   );
   expect(alert, "the failure sentence is not in role=alert").toBeTruthy();
   expect(text()).not.toContain("exploding pants");
-  // Success and failure must not share one live region (04 丙-150).
   const status = container.querySelector('[role="status"]');
   expect(status?.textContent ?? "").not.toContain("這個要求沒有記錄成功");
 });
@@ -1030,8 +737,6 @@ test("丙-150 a failed deletion request says the fixed sentence, not the server'
 test("丙-150 a 409 on cancel (deletion already irreversible) says so, not the server's raw body", async () => {
   vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
     if (init?.method === "POST") {
-      // The server's own 409 body (creator/workspace/http.go, 04 丙-149) — the
-      // page must still say its own sentence, not this one.
       return json({ error: "刪除已經不可逆，無法再變更" }, 409);
     }
     return json({
@@ -1049,11 +754,6 @@ test("丙-150 a 409 on cancel (deletion already irreversible) says so, not the s
 });
 
 test("設計 §2.6 the workspace UUID is behind a disclosure, not flat beside the account name", async () => {
-  // §3 第 8 條. This page answers one question — 「要不要開始刪這個帳號」 — and a
-  // 36-character identifier answers none of it. It is still on the page for the
-  // reader who is reporting a problem; it is one click away rather than in the
-  // first line. Asserted from both ends because the id stays in `textContent`
-  // either way: it IS in the fold, and it is NOT in any paragraph.
   vi.stubGlobal("fetch", () => json(ME));
   await render(<WorkspaceAccount />, () => text().includes("刪除我的帳號"));
 
@@ -1066,7 +766,6 @@ test("設計 §2.6 the workspace UUID is behind a disclosure, not flat beside th
     .map((p) => p.textContent ?? "")
     .join("");
   expect(flat, "the workspace id is flat on the page again").not.toContain("ws-1");
-  // The name and the address are what this line is for, and they stay flat.
   expect(text()).toContain("tester@example.com");
 });
 
@@ -1077,8 +776,6 @@ test("CORE-007 a pending deletion is a state with a date and a way out, not a re
       posts.push(String(input));
       return json({ deletion_requested_at: null });
     }
-    // GET /me after the cancel still answers the pending row; what this test is
-    // about is the request going out, not the invalidation round trip.
     return json({
       ...ME,
       deletion_requested_at: "2026-08-18T00:00:00Z",
@@ -1088,23 +785,14 @@ test("CORE-007 a pending deletion is a state with a date and a way out, not a re
   });
   await render(<WorkspaceAccount />, () => text().includes("刪除申請中"));
 
-  // A user who closed the tab after asking has no other place to find either of
-  // these, which is what 02:SEC-006「刪除工作具可追蹤狀態」 is asking for.
   expect(container.querySelector('time[datetime="2026-09-17T00:00:00Z"]')).not.toBeNull();
   expect(text()).toContain("再按一次刪除不會提早");
-  // 04 丙-30. Nothing in this test ever calls DELETE /me: this is the reload
-  // case, and the scope sentence used to exist only in that one response, so it
-  // was gone by the time the user came back to look for it. 設計 §2.8 calls the
-  // scope sentence the entire disclosure and §2.10 forbids hiding it, and a
-  // disclosure that survives one render is not stated.
   expect(text()).toContain(DELETION_SCOPE);
 
   await act(async () => button("取消刪除申請")?.click());
   await waitFor(() => posts.length > 0);
   expect(posts[0]).toContain("/me/deletion/cancel");
 });
-
-// --- the per-download records ----------------------------------------------
 
 const ARTIFACT_ROW = {
   artifact_id: ARTIFACT,
@@ -1135,15 +823,8 @@ test("WS-004 a download row says which version it is and whether a newer one exi
   vi.stubGlobal("fetch", () => json({ downloads: [ARTIFACT_ROW] }));
   await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
 
-  // 04 丙-42: the row named its version only as a uuid, and said nothing at all
-  // about a newer one existing. 「我下載的是不是最新調整好的那一版」 is the
-  // question, and a uuid is not an answer to it however it is arranged.
   expect(text()).toContain("v2（這個 Skill 已經到 v5）");
-  // Immutability is the reason, and the reason is what makes the next step
-  // obvious: this row will never become v5, so re-package rather than wait.
   expect(text()).toContain("重新打包");
-  // Being superseded is not a serving state: these bytes are still on offer,
-  // and wanting exactly the version you packaged is legitimate.
   expect(text()).toContain("可下載");
   expect(container.querySelector('a[href*="/content"]')).not.toBeNull();
 });
@@ -1164,9 +845,6 @@ test("WS-004 the download history answers 誰 and 何時 per download, not just 
   });
   await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
 
-  // Not fetched until asked for: a history page holds every package this
-  // workspace ever built, and one request per row on load would make the
-  // cheapest question on the page the most expensive read in the API.
   expect(urls.some((u) => u.includes("/records"))).toBe(false);
 
   await open("誰下載過");
@@ -1174,14 +852,9 @@ test("WS-004 the download history answers 誰 and 何時 per download, not just 
 
   expect(urls.some((u) => u.includes(`/downloads/${ARTIFACT}/records`))).toBe(true);
   expect(container.querySelector('time[datetime="2026-08-17T09:00:00Z"]')).not.toBeNull();
-  // A purged account leaves the row de-identified rather than removing it:
-  // "somebody, at this time" is still true.
   expect(text()).toContain("deleted user");
-  // CORE-008: this is the product feature, the audit event is the other record.
   expect(text()).toContain("與稽核事件是兩份不同的紀錄");
 });
-
-// --- what a run produced, and deleting one of them --------------------------
 
 const RUN_ARTIFACT = {
   artifact_id: "aaaa1111-2222-3333-4444-555566667777",
@@ -1193,7 +866,6 @@ const RUN_ARTIFACT = {
   purged: false,
 };
 
-/** Everything the run page reads; the parts this test is not about answer 404. */
 function stubRunPage(artifacts: unknown[], onDelete?: (url: string) => void, truncated = false) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
@@ -1228,8 +900,6 @@ test("SEC-006 a run output can be deleted, and the scope says what survives it",
   stubRunPage([RUN_ARTIFACT], (url) => deletes.push(url));
   await render(<RunTrace />, () => text().includes("cleaned.csv"));
 
-  // The bytes are never offered: the archive is a sandbox's output and the
-  // control plane does not open it, so there is no link to invent.
   const hrefs = Array.from(container.querySelectorAll("a")).map(
     (a) => a.getAttribute("href") ?? "",
   );
@@ -1237,8 +907,6 @@ test("SEC-006 a run output can be deleted, and the scope says what survives it",
   expect(text()).toContain("控制平面不打開它");
 
   await act(async () => button("刪除")?.click());
-  // 02:WS-002 第 3 條: the scope is on screen before anything is destroyed, and
-  // what it promises is that the evaluation keeps its citation.
   expect(text()).toContain("引用過這個檔案的評估不會被改寫");
   expect(deletes).toHaveLength(0);
 
@@ -1252,8 +920,6 @@ test("SEC-006 a purged output keeps its row and says the bytes are gone", async 
   await render(<RunTrace />, () => text().includes("cleaned.csv"));
 
   expect(text()).toContain("檔案已不存在");
-  // "It expired" and "it never existed" are different answers; the row is the
-  // first one and the empty state is the second.
   expect(text()).toContain("曾經產生過這個檔案」仍然是事實");
 });
 
@@ -1281,17 +947,9 @@ test("WS-004 a package nobody downloaded says so instead of loading an empty lis
   expect(urls.some((u) => u.includes("/records"))).toBe(false);
 });
 
-// --- WS-005: fork writes to 我的 Skill ---------------------------------------
-
 test("WS-004 a fork invalidates the list it writes to, and does not touch the search key", async () => {
-  // The third writer to ["own-skills"] — import and generate are the other two
-  // and both invalidate it. Only refetch-on-mount was covering this one, and
-  // this app turns focus and reconnect refetch off (api/queryClient).
   vi.stubGlobal("fetch", () => json({ skill_id: "forked-1", version_id: "v1" }, 201));
 
-  // Two cached lists, so the assertion can tell them apart. ["skills"] as the key
-  // would reach the second one, and re-running that search makes the server write
-  // a second search_performed event (GenerateSkill.tsx records the same trap).
   queryClient.setQueryData(["own-skills"], { skills: [] });
   queryClient.setQueryData(["skills", "search", "pdf"], { results: [] });
 
@@ -1308,25 +966,6 @@ test("WS-004 a fork invalidates the list it writes to, and does not touch the se
   expect(queryClient.getQueryState(["own-skills"])?.isInvalidated).toBe(true);
   expect(queryClient.getQueryState(["skills", "search", "pdf"])?.isInvalidated).toBe(false);
 });
-
-// --- 04 丙: the invalidations nobody was asserting ---------------------------
-
-/**
- * 24 `invalidateQueries` sites, 4 of them with a direct assertion.
- *
- * The harness is the fork test's, above: seed the cache with the key the
- * mutation is supposed to reach AND a key it must not, run the mutation, read
- * `isInvalidated` on both. It is worth copying rather than abstracting because
- * the second half — the key that must NOT move — is different every time and is
- * where 事故 #1 lived: success used to invalidate `["skills"]`, which also
- * matches `["skills","search",…]`, so every write re-ran the search behind it
- * and made the server write a second `search_performed` event. That is 01
- * §11.2's first funnel segment: twelve people, one chance.
- *
- * The three below are the writes whose staleness a user actually meets — an
- * import that does not appear in 我的 Skill, a cancel whose page still says
- * 執行中, an account that still says 刪除申請中 after the request was withdrawn.
- */
 
 test("SKILL-002 an import invalidates 我的 Skill, and does not re-run the search", async () => {
   vi.stubGlobal("fetch", () =>
@@ -1359,10 +998,6 @@ test("SKILL-002 an import invalidates 我的 Skill, and does not re-run the sear
       .querySelector("form")!
       .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
   });
-  // Settles on something true of BOTH the working and the broken page — the
-  // import succeeded either way. Waiting on `isInvalidated` itself makes the
-  // red a `waitFor timed out`, which is the toothless shape 資訊架構 §5 IA-6
-  // records this repo shipping once already.
   await waitFor(() => text().includes("匯入完成"));
 
   expect(
@@ -1379,9 +1014,6 @@ test("RUN-005 cancelling a run invalidates its trace and its row, not every trac
   });
   queryClient.setQueryData(["trace", RUN, "general", 0], { status: "running" });
   queryClient.setQueryData(["run", RUN], { run_id: RUN });
-  // A different run's trace, which a broader key would sweep up: the advanced
-  // view has `gcTime: 0` and refetches on return anyway, so invalidating other
-  // runs buys nothing and costs a request per cached page.
   queryClient.setQueryData(["trace", "other-run", "general", 0], { status: "running" });
 
   await render(
@@ -1399,12 +1031,6 @@ test("RUN-005 cancelling a run invalidates its trace and its row, not every trac
   );
 });
 
-/**
- * 04 丙-143(c): `CancelRunControl` used to `setMessage(error.message)` — for a
- * 401 that put the server's raw English `not authenticated` on screen inside
- * a Chinese sentence. 401 now goes through `ReadFailure` like every other
- * read/write on this page.
- */
 test("04 丙-143(c): cancelling a run that needs login says so, not the raw server string", async () => {
   vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
     if (init?.method === "POST") return json({ error: "not authenticated" }, 401);
@@ -1424,8 +1050,6 @@ test("04 丙-143(c): cancelling a run that needs login says so, not the raw serv
   expect(text()).not.toContain("not authenticated");
 });
 
-/** 04 丙-143(c): a 409 means the run already ended — a different next step
- * from "try again", so it gets its own sentence rather than a generic one. */
 test("04 丙-143(c): cancelling a run that already ended says so (409)", async () => {
   vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
     if (init?.method === "POST") return json({ error: "already terminal" }, 409);
@@ -1444,17 +1068,6 @@ test("04 丙-143(c): cancelling a run that already ended says so (409)", async (
 });
 
 test("CORE-007 cancelling a deletion request invalidates /me, so the badge goes away", async () => {
-  // The one whose staleness is worst: the page would go on showing 刪除申請中
-  // with a purge date, for an account that is no longer being deleted.
-  //
-  // Asserted on the REFETCH, not on `isInvalidated`: an invalidated query with
-  // an observer refetches immediately and the flag is back to false by the time
-  // anything can read it. What the user meets is the second GET — and its
-  // absence is exactly the bug.
-  // Spied rather than read off `isInvalidated`: an invalidated query with a
-  // live observer refetches at once and the flag is false again by the time
-  // anything can look, and counting `/me` reads passes on a page that never
-  // refreshes (this test's first version did, with the line deleted).
   const invalidated = vi.spyOn(queryClient, "invalidateQueries");
   vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
     if (init?.method === "DELETE") return json({ cancelled: true });
@@ -1482,25 +1095,6 @@ test("CORE-007 cancelling a deletion request invalidates /me, so the badge goes 
   invalidated.mockRestore();
 });
 
-// --- 丙-116: 「試跑」 knew nothing about whose skill it was --------------------
-
-/**
- * The corridor this closes: `h2 試跑` rendered for anybody signed in — the
- * condition was `me &&` and nothing else — and linked to
- * `/lab/test-cases?skill=<id>`, a list whose filter banner cannot name a skill
- * it has no rows for, whose empty state reads as an invitation, and whose create
- * form is fed by `GET /skills`. Three screens, each individually right, none of
- * them able to say the one true thing: this skill is not yours yet.
- *
- * The deciding signal was already on the page and already worded correctly three
- * sections up: the version list is workspace-scoped and answers an empty array
- * for somebody else's skill (ADR-011). Measured 2026-09-01 against a live
- * catalogue skill in clean mode — 0 rows for a stranger, 1 for its owner.
- *
- * `/me` is stubbed here and deliberately NOT in `stubSkillDetailPage`: the three
- * tests above render this page signed out, which is why they never saw any of
- * this.
- */
 function stubDetailAsSignedIn(versions: unknown) {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
@@ -1512,12 +1106,6 @@ function stubDetailAsSignedIn(versions: unknown) {
   });
 }
 
-/**
- * True in BOTH the fixed and the broken shape, on purpose. Settling on the
- * sentence being tested would make a reverted fix time out instead of fail an
- * assertion, and a timeout is not evidence that anything was measured — that is
- * the exact way this repo's IA-6 tests were toothless on their first pass.
- */
 const trialSectionAnswered = () =>
   text().includes("此 Skill 的 Test Case") || text().includes("這個 Skill 不在你的工作區");
 
@@ -1533,40 +1121,24 @@ test("丙-116 試跑 on somebody else's skill says so BEFORE the corridor, not a
   stubDetailAsSignedIn({ versions: [] });
   await render(<SkillDetail />, trialSectionAnswered);
 
-  // Pinned whole for the same reason as the sibling assertion in
-  // testcases.test.tsx: JSX joins Prettier-wrapped lines with one space, so
-  // where the break lands decides whether a full-width comma grows a space
-  // after it. Every space in this string sits beside a Latin token.
+  // Pinned whole: Prettier wraps this JSX text and joins the wrapped lines
+  // with one space, so where the break lands decides whether a full-width
+  // comma grows an extra space after it.
   expect(text()).toContain(
     "這個 Skill 不在你的工作區。Test Case 屬於工作區，所以 Test Case 清單裡看不到它、建立表單的 Skill 選單也選不到它——要先 Fork 一份，才會有屬於你的版本可以試跑。下方的「Fork 到你的工作區」就是那一步。",
-  ); // Both consequences, because the second one is where the corridor actually
-  // ended: the create form's picker is GET /skills and could never have offered
-  // this skill, however long the reader looked for it.
+  );
   expect(text()).toContain("選單也選不到它");
-  // The entrance is gone. Leaving the link and adding a warning beside it would
-  // still spend the reader's next three screens.
   expect(text()).not.toContain("此 Skill 的 Test Case");
 });
 
 test("丙-116 the one action that does work is a named section, not a bare button", async () => {
-  // It was the only unnamed block on a twelve-h2 page, and for a non-owner it is
-  // the ONLY thing that moves them forward — so it was absent from the outline
-  // snapshot and from heading navigation. axe has nothing to say about this: a
-  // button without a heading is not a violation.
   stubDetailAsSignedIn({ versions: [] });
   await render(<SkillDetail />, trialSectionAnswered);
 
-  // `h2,h3`（2026-09-03，r2 的重排）：這一段搬進了右欄的 `detail-rail`，標題隨之
-  // 降成 h3——十二個兄弟 h2 收成七個是那次重排的目的之一（§3 第 9 條）。這一支要的
-  // 東西一點都沒有變：**它仍然有名字、仍然進得了標題導覽**，而不是一顆裸按鈕。
   const headings = Array.from(container.querySelectorAll("h2,h3")).map((h) => h.textContent);
   expect(headings).toContain("Fork 到你的工作區");
-  // And it is still the real control, not a heading over nothing.（按鈕上的字改成
-  // r4 B2 的「以這個 Skill 為起點建立我自己的」，端點與行為一字未改。）
   expect(button("以這個 Skill 為起點建立我自己的")).not.toBeUndefined();
 });
-
-// --- 設計 §2.12 第 6 條: a list with a running row is an in-flight screen -----
 
 test("§2.12 第 6 條 a run history with a run still going says how old it is and can be refreshed", async () => {
   const fetchSpy = vi.fn(() =>
@@ -1588,8 +1160,6 @@ test("§2.12 第 6 條 a run history with a run still going says how old it is a
 
   const refresh = button("重新整理");
   expect(refresh, "no visible refresh control on a list with a running row").toBeTruthy();
-  // 「多久沒動了」 is a <time>, not a sentence: the same element every other
-  // timestamp in the app uses, so it is machine-readable and relative.
   const freshness = refresh!.closest("p")!;
   expect(freshness.querySelector("time")).not.toBeNull();
 

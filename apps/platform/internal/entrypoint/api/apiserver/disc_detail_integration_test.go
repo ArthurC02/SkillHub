@@ -1,7 +1,3 @@
-// DISC-006/007/008/010 database-backed tests for the public detail and file
-// views. Shared harness (TestMain, migrate, requireDB, login, seedSkill) lives
-// in authz_integration_test.go; seedSkillVersion and markCatalog in
-// disc_integration_test.go.
 package apiserver_test
 
 import (
@@ -20,9 +16,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
-// packageStore is an in-memory object store. Missing keys return an error,
-// which is the same thing a real store does for a package that was never
-// written — the case the detail view must answer without claiming a clean scan.
 type packageStore map[string][]byte
 
 func (s packageStore) Get(_ context.Context, key string) ([]byte, error) {
@@ -33,11 +26,6 @@ func (s packageStore) Get(_ context.Context, key string) ([]byte, error) {
 	return data, nil
 }
 
-// PresignGet and PresignPut complete run.ObjectStore. They answer for any key,
-// including one that does not exist, because that is what S3 pre-signing does:
-// signing a URL is a local operation over a key and never a lookup. The
-// fail-closed case grantsFor actually guards is a deployment with no object
-// store at all (SBX-008).
 func (s packageStore) PresignGet(_ context.Context, key string, _ time.Duration) (string, error) {
 	return "https://objects.test/" + key + "?signature=test", nil
 }
@@ -46,8 +34,6 @@ func (s packageStore) PresignPut(_ context.Context, key string, _ time.Duration)
 	return "https://objects.test/" + key + "?signature=test&method=put", nil
 }
 
-// demoPackage builds a valid Agent Skills zip carrying a script file, so the
-// file tree has something to mark (DISC-003 Script 必須有明確標示).
 func demoPackage(t *testing.T) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -71,10 +57,6 @@ func demoPackage(t *testing.T) []byte {
 	return buf.Bytes()
 }
 
-// seedLicensedVersion is seedSkillVersion plus the ADR-021 license pair, so the
-// detail response has a provenance tier to show. Written at insert time, because
-// a version row is immutable once created (0005 trigger, iron rule 4) — the same
-// reason the license and its tier are import-time facts and not editable state.
 func seedLicensedVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, expression, source string, sourceID pgtype.UUID) {
 	t.Helper()
 	var ws, sk pgtype.UUID
@@ -98,7 +80,6 @@ func seedLicensedVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID,
 	}
 }
 
-// detail is the subset of GET /api/skills/{id} these tests assert on.
 type detail struct {
 	SkillID string `json:"skill_id"`
 	Name    string `json:"name"`
@@ -166,10 +147,6 @@ func getJSON(t *testing.T, c *http.Client, url string, out any) int {
 	return resp.StatusCode
 }
 
-// DISC-010: "公開搜尋與詳情不要求登入". The detail endpoint is the half that did
-// not exist, so the acceptance criterion could not be verified at all.
-// DISC-006/008 ride along: this asserts the response actually carries the source,
-// license-with-provenance, risk, and compatibility blocks.
 func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -190,7 +167,7 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 	a.packages["packages/"+skillID+".tar"] = demoPackage(t)
 
 	var got detail
-	// http.DefaultClient carries no cookie jar: this request has no session.
+
 	if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+skillID, &got); code != http.StatusOK {
 		t.Fatalf("anonymous GET /api/skills/{id}: want 200, got %d", code)
 	}
@@ -203,26 +180,22 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 	if got.Source == nil || got.Source.URL != url || got.Source.SourceVersion != ref {
 		t.Errorf("source = %+v, want workspace-scoped git provenance", got.Source)
 	}
-	// ADR-021: the tier the license was established at must survive to the view,
-	// and a repo-level file is still only 已宣告, never 已人工確認.
+
 	if got.License.Expression != "MIT" || got.License.Source != "repo-license-file" {
 		t.Errorf("license = %+v, want MIT/repo-license-file", got.License)
 	}
 	if got.License.Status.Value != "declared" {
 		t.Errorf("license status = %q, want declared", got.License.Status.Value)
 	}
-	// ADR-027 決策 4: every skill carries the verdict and it starts at `unknown`.
-	// A declared licence does not move it — the two axes are separate, and
-	// 02:CONTENT-002 rules out even a confirmed licence being the release
-	// condition. This is the reading the packaging gate makes, on the same column.
+
 	if got.Redistribution.Value != "unknown" {
 		t.Errorf("redistribution = %+v; a declared MIT must not release a skill on its own", got.Redistribution)
 	}
-	// DISC-008: the risk block comes from a real scan of the stored package.
+
 	if got.Risk.ScanStatus != "scanned" || !hasDisclosureCode(got.Risk.Disclosures, "script-file") {
 		t.Errorf("risk = %+v, want a scan that found scripts/run.py", got.Risk)
 	}
-	// DISC-008: three axes, and the two that need a sandbox say so.
+
 	if got.Compatibility.SpecValidation.Value != "passed" {
 		t.Errorf("spec_validation = %q, want passed", got.Compatibility.SpecValidation.Value)
 	}
@@ -232,10 +205,7 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 	if got.Tier.Value != "indexed" || got.Tier.Label == "" {
 		t.Errorf("tier = %+v, want the indexed badge (curation is not recorded anywhere yet)", got.Tier)
 	}
-	// DISC-003 一般模式「限制」: the package ships a script, which is a
-	// requirement on whoever runs it, so the scan half of the block must produce
-	// a line for it even with no enrichment on the row at all. Labelled `scan`,
-	// because the author's document never said this.
+
 	if len(got.Limitations) == 0 {
 		t.Error("DISC-003: no limitations for a package that ships a script")
 	}
@@ -249,12 +219,6 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 	}
 }
 
-// 02:SEC-007 / ADR-027 決策 4: the detail view is where the redistribution
-// verdict becomes visible, and it reads the column the packaging gate reads.
-// Three states, each arriving with the platform's own copy — a client mapping
-// the value to its own wording would be a second place the three can be
-// described differently (NFR-001), and the label is what tells `blocked` from
-// `unknown` in front of a reader.
 func TestSkillDetailReportsTheRedistributionVerdict(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -289,8 +253,6 @@ func TestSkillDetailReportsTheRedistributionVerdict(t *testing.T) {
 	}
 }
 
-// DISC-010 / WS-006: the public half of the endpoint is catalog-only. Another
-// user's private skill answers 404, identical to a skill that does not exist.
 func TestAnonymousCannotReadPrivateSkillDetail(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -308,9 +270,6 @@ func TestAnonymousCannotReadPrivateSkillDetail(t *testing.T) {
 	}
 }
 
-// DISC-010: "私有操作要求登入" — the owner sees the same information for their own
-// private skill through the same route, which is what makes the 404 above a
-// scope decision rather than a missing feature.
 func TestOwnerReadsOwnPrivateSkillDetail(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -328,14 +287,12 @@ func TestOwnerReadsOwnPrivateSkillDetail(t *testing.T) {
 		t.Errorf("scope = %q, want private", got.Scope)
 	}
 
-	// And a third party still cannot, session or not.
 	mallory := a.login(t, "mallory-detail")
 	if code := getJSON(t, mallory.Client, a.URL+"/api/skills/"+skillID, nil); code != http.StatusNotFound {
 		t.Fatalf("another user's GET of a private skill: want 404, got %d", code)
 	}
 }
 
-// DISC-007: SKILL.md full text plus the package file tree, scripts marked.
 func TestSkillFilesServesSkillMDAndMarksScripts(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -380,9 +337,6 @@ func TestSkillFilesServesSkillMDAndMarksScripts(t *testing.T) {
 	}
 }
 
-// A skill whose package never made it to the store still answers, with the scan
-// reported as unavailable. Reporting "no findings" here would present an
-// unreadable package as a clean one (DISC-004 不得自行推定為通過).
 func TestUnreadablePackageIsReportedAsUnknownNotClean(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -390,7 +344,7 @@ func TestUnreadablePackageIsReportedAsUnknownNotClean(t *testing.T) {
 	curator := a.login(t, "curator-noobject")
 	markCatalog(t, pool, curator.workspaceID)
 	skillID := seedSkill(t, pool, curator.workspaceID, "catalog-noobject-skill")
-	seedSkillVersion(t, pool, curator.workspaceID, skillID) // nothing seeded into a.packages
+	seedSkillVersion(t, pool, curator.workspaceID, skillID)
 
 	var got detail
 	if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+skillID, &got); code != http.StatusOK {

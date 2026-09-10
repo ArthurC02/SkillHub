@@ -1,8 +1,3 @@
-// Evaluation end to end through the real route table (EVAL-001, ADR-025,
-// ADR-026). The judge is an httptest server speaking llm-internal.yaml, because
-// what is under test is the platform's half: the append-only revision chain, the
-// two trace events, workspace scope, and the promise that a verdict never moves a
-// run.
 package apiserver_test
 
 import (
@@ -23,12 +18,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
-// --- fixtures ----------------------------------------------------------------
-
-// seedEvaluatableRun writes a finished run with two acceptance criteria in its
-// snapshot, one artifact, and a final agent output to quote from.
-// The optional rubric is the frozen CONTENT-007 one, as JSON; omitted means the
-// snapshot has none, which is what all 45 M2 baseline snapshots look like.
 func seedEvaluatableRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string, rubric ...string) (runID, versionID string) {
 	t.Helper()
 	ctx := context.Background()
@@ -74,8 +63,6 @@ func seedEvaluatableRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID s
 	return runID, versionID
 }
 
-// seedFinalOutput puts one agent_output event on the run, which is what an
-// agent_output evidence reference is verified against.
 func seedFinalOutput(t *testing.T, pool *pgxpool.Pool, workspaceID, runID, text string) {
 	t.Helper()
 	payload, err := json.Marshal(map[string]any{"kind": "final", "text": text, "truncated": false})
@@ -93,7 +80,6 @@ func seedFinalOutput(t *testing.T, pool *pgxpool.Pool, workspaceID, runID, text 
 	}
 }
 
-// judgeServer answers /judge-run with whatever the test hands it.
 func judgeServer(t *testing.T, verdict llmclient.JudgeVerdict, promptVersion string) *llmclient.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -252,8 +238,6 @@ func TestStalePendingEvaluationIsReconciledWithoutJudge(t *testing.T) {
 	}
 }
 
-// --- the happy path -----------------------------------------------------------
-
 func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -313,8 +297,6 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 		t.Errorf("the cost note has to name the authoritative source, got %q", body.Cost.Note)
 	}
 
-	// The six classes are separated (EVAL-001 clause 1) and the rule leg produced
-	// its own findings, apart from the criterion verdicts.
 	seen := map[string]bool{}
 	for _, f := range body.DeterministicFindings {
 		seen[f.Category] = true
@@ -325,14 +307,11 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 		}
 	}
 
-	// ADR-025: the run is untouched. Both the status and its reason.
 	_, runBody := c.getRun(t, runID)
 	if runBody.Status != "succeeded" || runBody.FailureClass.Value != "" {
 		t.Errorf("an evaluation must not write back to the run, got %+v", runBody)
 	}
 
-	// 丙-2: the timeline does not stop when the run ends, and the two events
-	// declare the revision that introduced them.
 	assertEvaluationTraceEvents(t, pool, runID, "ok")
 }
 
@@ -405,9 +384,6 @@ func TestEvaluationEventsUseTheLatestPersistedAttempt(t *testing.T) {
 	}
 }
 
-// --- CONTENT-007: the rubric on the product path ------------------------------
-
-// capturingJudgeServer is judgeServer plus a copy of what was actually sent.
 func capturingJudgeServer(t *testing.T, verdict llmclient.JudgeVerdict, capture *llmclient.JudgeRunRequest) *llmclient.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -440,9 +416,6 @@ func rubricVersionOfStartedEvent(t *testing.T, pool *pgxpool.Pool, runID string)
 	return v, present
 }
 
-// The whole of G2: the frozen rubric reaches the judge, its version is declared
-// on the started event and recorded on the row, and an item naming a criterion
-// this run does not have is dropped and said so rather than silently ignored.
 func TestTheFrozenRubricReachesTheJudgeAndItsVersionIsRecorded(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -506,8 +479,6 @@ func TestTheFrozenRubricReachesTheJudgeAndItsVersionIsRecorded(t *testing.T) {
 	}
 }
 
-// The 45 baseline snapshots have no rubric, and must keep saying so: absent is
-// "no rubric", never "the default rubric".
 func TestARunWithoutARubricRecordsNoneAtAll(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -541,20 +512,6 @@ func TestARunWithoutARubricRecordsNoneAtAll(t *testing.T) {
 	}
 }
 
-// --- the downgrade rule, end to end -------------------------------------------
-
-// ADR-026 decision 2: whether a citation still resolves is answered when the
-// report is read, never trusted from a flag written when the evidence was cited.
-// Retention on trace_events is a partition drop, so a stored `available: true`
-// goes on claiming the original is there long after the month it lived in was
-// dropped — and the reader is told the excerpt is all that is left rather than
-// having it blanked out (ADR-009).
-//
-// Nothing in this repository asserted `available` before DDD-033. It is now the
-// behavioural guard on trace's read face: the report calls trace.LiveEvents for
-// this answer, and a read face that returned nothing would label a live citation
-// stale, while one that ignored its run or workspace scope would leave this
-// citation claiming to resolve after its event is gone.
 func TestCitedTraceEvidenceStopsClaimingToResolveOnceItsEventIsGone(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -598,10 +555,8 @@ func TestCitedTraceEvidenceStopsClaimingToResolveOnceItsEventIsGone(t *testing.T
 		}
 	}
 
-	// TRUNCATE and not DELETE: 0005's trace_events_immutable trigger is BEFORE
-	// UPDATE OR DELETE FOR EACH ROW, which is the execution record being the
-	// execution record. Dropping the table's contents is the test harness standing
-	// in for the partition drop retention actually performs.
+	// TRUNCATE, not DELETE: the immutability trigger fires per row on
+	// UPDATE OR DELETE and never fires on TRUNCATE.
 	if _, err := pool.Exec(context.Background(), `TRUNCATE trace_events`); err != nil {
 		t.Fatal(err)
 	}
@@ -624,8 +579,7 @@ func TestCitedTraceEvidenceStopsClaimingToResolveOnceItsEventIsGone(t *testing.T
 			}
 		}
 	}
-	// The verdict itself is untouched: availability is a statement about the
-	// evidence, not a re-judgement (iron rule 4 — the evaluation is a record).
+
 	if after.Overall != body.Overall {
 		t.Errorf("overall changed from %q to %q when evidence expired", body.Overall, after.Overall)
 	}
@@ -646,7 +600,6 @@ func TestAVerdictOnEvidenceThePlatformCannotFindIsDowngraded(t *testing.T) {
 					{Kind: "trace_event", TraceEventID: strPtrTest("11111111-1111-4111-8111-111111111111"),
 						Quote: "everything worked"},
 				}},
-			// c2 is not answered at all: the Python side does not pad the list.
 		},
 		Overall: "met", Summary: "all good",
 	}, "judge-run@2026-08-17")
@@ -667,13 +620,11 @@ func TestAVerdictOnEvidenceThePlatformCannotFindIsDowngraded(t *testing.T) {
 	if body.CriterionResults[1].Result != "undetermined" {
 		t.Errorf("a criterion the judge skipped is undetermined, got %+v", body.CriterionResults[1])
 	}
-	// Go recomputes the overall after downgrading; the model said `met`.
+
 	if body.Overall != "undetermined" {
 		t.Errorf("the stored overall is recomputed after the downgrades, got %q", body.Overall)
 	}
 }
-
-// --- failure is a state, not an absence ---------------------------------------
 
 func TestAJudgeFailureIsRecordedAsAFailedEvaluation(t *testing.T) {
 	pool := requireDB(t)
@@ -706,23 +657,17 @@ func TestAJudgeFailureIsRecordedAsAFailedEvaluation(t *testing.T) {
 	if len(body.DeterministicFindings) == 0 {
 		t.Error("the rule findings came from the platform's own records and survive a judge failure")
 	}
-	// ADR-026 decision 1 on the path that needs it most. "Which judge could not
-	// answer" is the first question asked about a failure, and its only other home
-	// is the `evaluation_started` event below — which stops answering the month
-	// retention drops that partition.
+
 	if body.JudgeModel != "gpt-5.6-terra" {
 		t.Errorf("a failed evaluation must record the judge it was attempted with, got %q", body.JudgeModel)
 	}
 	assertEvaluationTraceEvents(t, pool, runID, "error")
 
-	// ADR-025 again: even a broken evaluation leaves the run alone.
 	_, runBody := c.getRun(t, runID)
 	if runBody.Status != "succeeded" {
 		t.Errorf("run status changed to %q", runBody.Status)
 	}
 }
-
-// --- re-evaluation is append-only (ADR-026 decision 1) ------------------------
 
 func TestReEvaluationSupersedesWithoutOverwriting(t *testing.T) {
 	pool := requireDB(t)
@@ -752,7 +697,6 @@ func TestReEvaluationSupersedesWithoutOverwriting(t *testing.T) {
 	}
 	_, first := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
 
-	// A stricter prompt, and a different answer.
 	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
 		CriterionResults: []llmclient.CriterionVerdict{
 			{CriterionID: "c1", Result: "failed", Reason: "second rubric is stricter", EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "Removed 17 duplicate rows"}}},
@@ -773,8 +717,6 @@ func TestReEvaluationSupersedesWithoutOverwriting(t *testing.T) {
 		t.Errorf("the current revision is the newest and is not superseded, got %+v", current)
 	}
 
-	// The quoted verdict is still readable, and reading it cannot be mistaken for
-	// reading the standing one.
 	status, old := c.getEvaluation(t, "/runs/"+runID+"/evaluation?revision="+first.EvaluationID)
 	if status != http.StatusOK {
 		t.Fatalf("the superseded revision must still be readable, got %d", status)
@@ -820,8 +762,6 @@ func TestReEvaluationSupersedesWithoutOverwriting(t *testing.T) {
 	}
 }
 
-// --- feedback (EVAL-001 clause 4) ---------------------------------------------
-
 func TestFeedbackIsRecordedAndCanBeChanged(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -848,8 +788,6 @@ func TestFeedbackIsRecordedAndCanBeChanged(t *testing.T) {
 		t.Errorf("feedback was not recorded: %+v", body.Feedback)
 	}
 
-	// A user is allowed to change their mind; the second answer replaces the first
-	// rather than being appended.
 	_, body = c.putJSON(t, "/runs/"+runID+"/evaluation/feedback", `{"helpful":true}`)
 	if body.Feedback == nil || !body.Feedback.Helpful || body.Feedback.Comment != "" {
 		t.Errorf("resending replaces the previous answer: %+v", body.Feedback)
@@ -878,8 +816,6 @@ func (c *client) putJSON(t *testing.T, path, body string) (int, evaluationBody) 
 	return resp.StatusCode, out
 }
 
-// --- scope and absence (iron rule 3, WS-006) ----------------------------------
-
 func TestEvaluationsAreInvisibleAcrossWorkspacesAndAbsenceIsA404(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -888,8 +824,6 @@ func TestEvaluationsAreInvisibleAcrossWorkspacesAndAbsenceIsA404(t *testing.T) {
 	skillID := seedSkill(t, pool, owner.workspaceID, "scoped")
 	runID, _ := seedEvaluatableRun(t, pool, owner.workspaceID, skillID)
 
-	// 「未評估」 is a state of its own, and a blank body is what a UI renders as a
-	// pass — so an unevaluated run is 404 rather than an empty evaluation.
 	for _, path := range []string{
 		"/runs/" + runID + "/evaluation",
 		"/runs/" + runID + "/evaluation/revisions",
@@ -926,7 +860,6 @@ func TestEvaluationsAreInvisibleAcrossWorkspacesAndAbsenceIsA404(t *testing.T) {
 		t.Errorf("a stranger cannot leave feedback on somebody else's verdict: got %d", status)
 	}
 
-	// Anonymous callers get 401, not data.
 	anon := &http.Client{}
 	resp, err := anon.Get(a.URL + "/runs/" + runID + "/evaluation") //nolint:noctx // test client
 	if err != nil {
@@ -938,14 +871,12 @@ func TestEvaluationsAreInvisibleAcrossWorkspacesAndAbsenceIsA404(t *testing.T) {
 	}
 }
 
-// --- a run with nothing asked of it -------------------------------------------
-
 func TestARunWithNoAcceptanceCriteriaIsUndeterminedAndNeverReachesTheJudge(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	c := a.login(t, "eval-no-criteria")
 	skillID := seedSkill(t, pool, c.workspaceID, "no-criteria")
-	// seedRun's snapshot carries an empty acceptance_criteria array.
+
 	runID := seedRun(t, pool, c.workspaceID, skillID)
 	for _, status := range []string{"provisioning", "preparing", "running", "evaluating", "succeeded"} {
 		if _, err := pool.Exec(context.Background(),
@@ -979,10 +910,7 @@ func TestARunWithNoAcceptanceCriteriaIsUndeterminedAndNeverReachesTheJudge(t *te
 	if len(body.CriterionResults) != 0 {
 		t.Errorf("no criteria, no criterion results, got %d", len(body.CriterionResults))
 	}
-	// The row completed without the judge ever being reached, and on a `completed`
-	// row these columns mean "what produced this verdict". Read from the columns
-	// rather than the body because the body cannot tell NULL from '': a model name
-	// here would be a finished report claiming a metered call that never happened.
+
 	var judgeModel, judgePromptVersion *string
 	if err := pool.QueryRow(context.Background(),
 		`SELECT judge_model, judge_prompt_version FROM evaluations WHERE run_id = $1`,
@@ -1002,30 +930,17 @@ func derefTest(s *string) string {
 	return *s
 }
 
-// --- statics -----------------------------------------------------------------
-
 func strPtrTest(s string) *string { return &s }
 
-// evalPackageInterfaceCheck keeps the read handler and the worker pointed at the
-// same service type; a split would let the API serve a shape the worker never
-// writes.
 var _ = eval.Service{}
 
-// 02:EVAL-001's clause of 2026-08-23: "this run recorded no output" and "this
-// run's output is gone" are two judgement inputs and may not share a sentence.
-//
-// This is the first of the two, end to end: the manifest is empty because
-// nothing was ever written. It pins the sentence that the other state must not
-// borrow, and the flag that separates them — nothing is missing here, so the
-// evidence is complete, which is exactly what a removed output is not.
 func TestARunThatRecordedNoOutputSaysThatAndNotThatSomethingIsMissing(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	c := a.login(t, "eval-no-output")
 	skillID := seedSkill(t, pool, c.workspaceID, "dedupe")
 	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
-	// The M2 shape (handoff 丙-5): succeeded, activated, complete trace, and the
-	// final reply is a question back to the user.
+
 	if _, err := pool.Exec(context.Background(),
 		`DELETE FROM artifacts WHERE run_id = $1`, mustUUID(t, runID)); err != nil {
 		t.Fatalf("clear manifest: %v", err)
@@ -1067,16 +982,6 @@ func TestARunThatRecordedNoOutputSaysThatAndNotThatSomethingIsMissing(t *testing
 	}
 }
 
-// The other half of 02:EVAL-001's 2026-08-23 clause, and the half a user can
-// reach today: they delete one of their own outputs (WS-002 / SEC-006) and then
-// re-evaluate, which ADR-026 lets them do as often as they like.
-//
-// This test exists because the unit tests for the three states feed the absence
-// counts in directly, so they stay green with the database wiring removed --
-// verified by mutation before writing this: zeroing the deleted count in
-// read.go left every one of them passing. The path from a deleted row to a
-// sentence on the report had no test at all, which is the shape AGENTS.md rule 9
-// names and this repo has shipped three times.
 func TestAnOutputTheUserDeletedIsAHoleInTheEvidenceAndNotAnEmptyRun(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -1085,8 +990,6 @@ func TestAnOutputTheUserDeletedIsAHoleInTheEvidenceAndNotAnEmptyRun(t *testing.T
 	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
 	seedFinalOutput(t, pool, c.workspaceID, runID, "done")
 
-	// Soft-deleted, which is what DELETE /runs/{id}/artifacts/{name} does: the row
-	// stays so the list can still show it, and the bytes are gone.
 	tag, err := pool.Exec(context.Background(),
 		`UPDATE artifacts SET deleted_at = now()
 		 WHERE run_id = $1 AND kind = 'run_output'`, mustUUID(t, runID))
@@ -1131,8 +1034,7 @@ func TestAnOutputTheUserDeletedIsAHoleInTheEvidenceAndNotAnEmptyRun(t *testing.T
 		t.Error("evidence_complete stayed true while an output the run recorded " +
 			"could not be read: that is the claim 02:EVAL-001 forbids")
 	}
-	// The judge said passed on everything. A verdict resting on evidence the
-	// platform could not produce is what the downgrade exists to stop.
+
 	for _, r := range body.CriterionResults {
 		if r.Result == "passed" {
 			t.Errorf("criterion %s passed on incomplete evidence", r.CriterionID)

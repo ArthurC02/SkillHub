@@ -1,13 +1,5 @@
-"""The four ADR-043 behaviours this harness mirrors, each with a test that bites.
-
-Not CI, same standing as the harness itself: no model call, no database, no money.
-`python tools/eval-regression/test_judge_regression.py` runs it with nothing
-installed; pytest collects it too.
-
-Each test is written against the behaviour ADR-043 names, not against the shape of
-the code, so removing the mirrored line is what turns it red - which is how it was
-checked (AGENTS.md rule 9).
-"""
+"""Tests for judge_regression.py's mirrored Judge behaviours. No model call,
+no database, no money — runnable directly or collected by pytest."""
 
 from __future__ import annotations
 
@@ -52,8 +44,6 @@ def verdict_of(criterion_id, result, refs):
     }]}
 
 
-# --- §4: normalisation, and the floor that bounds it -------------------------
-
 
 def test_a_quote_with_a_trailing_structural_fragment_still_resolves():
     """G8: the model's own serialisation leaked `}],` into a correct quote, and two
@@ -72,7 +62,6 @@ def test_whitespace_and_nfc_differences_do_not_lose_a_quote():
     stored, why = verify(ref, {}, [], "the quarterly figures\nwere restated in full")
     assert why == "", why
     assert stored["match"] == MATCH_NORMALIZED, stored
-    # And the exact hit is still reported as exact, not swallowed by the widening.
     exact, why = verify({"kind": "agent_output", "quote": "were restated in full"},
                         {}, [], "the quarterly figures\nwere restated in full")
     assert why == "" and exact["match"] == MATCH_EXACT, exact
@@ -91,8 +80,6 @@ def test_a_short_quote_is_accepted_only_on_an_exact_hit():
                          digest_of(payload), [], "")
     assert why == "" and stored["match"] == MATCH_EXACT, (stored, why)
 
-
-# --- §1, §2: the quote is re-verified by content, and reattributed ------------
 
 
 def test_a_citation_filed_under_the_wrong_source_is_reattributed_not_refused():
@@ -117,8 +104,6 @@ def test_a_quote_in_no_verifiable_source_is_still_refused():
     assert stored is None and why != "", (stored, why)
 
 
-# --- §4: the third state ------------------------------------------------------
-
 
 def test_an_artifact_citation_reports_that_its_quote_was_checked_against_nothing():
     """`not_checked` is a weaker claim than "we looked and it was absent", and the
@@ -128,8 +113,6 @@ def test_an_artifact_citation_reports_that_its_quote_was_checked_against_nothing
     assert why == "", why
     assert stored["match"] == MATCH_NOT_CHECKED, stored
 
-
-# --- §3: an artifact citation cannot satisfy `evidence_required` -------------
 
 
 def _stored_for(evidence_required: bool):

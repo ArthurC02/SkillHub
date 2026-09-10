@@ -1,14 +1,5 @@
 package eval
 
-// Unit coverage for the part of EVAL-001 that decides what gets stored: the
-// downgrade rules of ADR-026 defence 3, the digest that bounds both cost and the
-// citation set, and the wire call to apps/llm.
-//
-// The judge here is an httptest server speaking the llm-internal.yaml shapes, not
-// the real Python service: what is under test is the caller's half - deadline,
-// failure handling, and the fact that nothing a model returns is trusted without
-// being re-resolved first.
-
 import (
 	"context"
 	"encoding/json"
@@ -33,8 +24,6 @@ func TestRequireTestLabDoesNotInspectOwnerInternals(t *testing.T) {
 		t.Fatalf("injected Test Lab owner was rejected because of its private configuration: %v", err)
 	}
 }
-
-// --- fixtures ----------------------------------------------------------------
 
 const (
 	eventID     = "0f0a1e6c-1c9a-4f8e-9a2b-1d5a2c7b3e01"
@@ -103,8 +92,6 @@ func TestRunReadersFailClosedAndHideMissingRuns(t *testing.T) {
 	}
 }
 
-// --- the value domain (ADR-026 defence 1) ------------------------------------
-
 func TestResultOutsideTheValueDomainReadsAsUndetermined(t *testing.T) {
 	for _, in := range []string{"", "PASSED", "probably", "met", "true"} {
 		if got := normaliseResult(in); got != ResultUndetermined {
@@ -145,8 +132,6 @@ func TestOverallIsRecomputedFromTheStoredCriteria(t *testing.T) {
 		}
 	}
 }
-
-// --- evidence re-verification (ADR-026 defence 3) -----------------------------
 
 func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 	m, digest := fixtureMaterial(true)
@@ -246,10 +231,6 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 	}
 }
 
-// --- content-first citation (ADR-043) -----------------------------------------
-
-// The ordinary case, and the one the three-state field has to keep saying out
-// loud: nothing was widened to accept this.
 func TestAVerbatimQuoteIsRecordedAsAnExactMatch(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	got, why := verify(llmclient.JudgeEvidenceRef{
@@ -270,13 +251,10 @@ func TestAVerbatimQuoteIsRecordedAsAnExactMatch(t *testing.T) {
 	}
 }
 
-// G8, the failure that put 45 correct verdicts on the floor in the A round: the
-// quote is right and the model wrote its own JSON delimiters into the end of it.
-// It resolves now, and the report says it had to be normalised to get there.
 func TestAQuoteThatOnlyMatchesAfterNormalisationSaysSo(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	got, why := verify(llmclient.JudgeEvidenceRef{
-		// Two stray spaces in the middle and the `}],` G8 was lost to.
+
 		Kind: KindAgentOutput, Quote: "Removed 17  duplicate rows and saved}],",
 	}, m, digest)
 
@@ -295,9 +273,6 @@ func TestAQuoteThatOnlyMatchesAfterNormalisationSaysSo(t *testing.T) {
 	}
 }
 
-// The A round's real finding: the model had read the trace and written `artifact`
-// on it. Mis-filed and fabricated are different failures, and one string search
-// tells them apart.
 func TestAQuoteFiledUnderTheWrongSourceIsCorrectedInsteadOfRefused(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	got, why := verify(llmclient.JudgeEvidenceRef{
@@ -319,9 +294,6 @@ func TestAQuoteFiledUnderTheWrongSourceIsCorrectedInsteadOfRefused(t *testing.T)
 	}
 }
 
-// G7. The citation is kept — the file really is on the manifest — but it proves
-// existence and nothing else, so it cannot answer a rubric item that asked for a
-// quote. That is exactly the shape 6 of the A round's 9 `passed` rested on.
 func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	ref := llmclient.JudgeEvidenceRef{
@@ -333,10 +305,7 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 	if why != "" {
 		t.Fatalf("the manifest row is still checkable, so the citation is kept: %q", why)
 	}
-	// `not_checked`, not `not_found`: the platform never opened the archive, so
-	// it is in no position to say the quote is nowhere. Both fail the rubric item
-	// below; they differ in what the report accuses the judge of (ADR-044 batch,
-	// 04 丙-41).
+
 	if got.Match != MatchNotChecked {
 		t.Errorf("match = %q, want %q: nothing verified this quote, and nothing looked either",
 			got.Match, MatchNotChecked)
@@ -366,20 +335,15 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 	if len(results[0].Evidence) != 1 {
 		t.Error("the citation is still stored; the reader is shown what was offered and why it was not enough")
 	}
-	// The narrow half of ADR-043 §3: outside `evidence_required` an artifact
-	// citation still supports a verdict, because "the file is there" is a fact the
-	// platform checked against its own manifest.
+
 	if results[1].Result != ResultPassed {
 		t.Errorf("an item that never asked for a quote is not downgraded for lacking one: %+v", results[1])
 	}
 }
 
-// The floor of §4. This quote's normalised form *is* in the final output; the only
-// thing refusing it is its length, which is the whole point — normalisation widens
-// matching, and short strings in a widened comparison hit by accident.
 func TestAShortQuoteIsNotHandedTheLoosenedComparison(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	short := `"Removed 17"` // ten characters once the quote marks are trimmed
+	short := `"Removed 17"`
 
 	if _, why := verify(llmclient.JudgeEvidenceRef{
 		Kind: KindAgentOutput, Quote: short,
@@ -393,8 +357,6 @@ func TestAShortQuoteIsNotHandedTheLoosenedComparison(t *testing.T) {
 		t.Fatal("this fixture stopped testing the floor: the quote is no longer a normalised substring")
 	}
 }
-
-// --- merge: what actually gets stored -----------------------------------------
 
 func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testing.T) {
 	m, digest := fixtureMaterial(true)
@@ -434,17 +396,6 @@ func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testin
 	}
 }
 
-// ADR-043 defence 3, on the case it was actually written for: a verdict that
-// cites two things, one of which the platform can find and one of which it
-// cannot.
-//
-// Every existing fixture cited exactly one reference per criterion, so a
-// downgrade could equally be explained by "no evidence resolved at all" —
-// narrowing the rule to `len(result.Evidence) == 0 && len(unverifiable) > 0`
-// kept the whole suite green (M3 audit, 2026-08-24). Under that narrowing this
-// verdict stands as a pass on the strength of the half that checked out, and
-// the invented trace event id is never mentioned to the reader. Partial
-// grounding is the shape a plausible fabrication takes.
 func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	s := &Service{}
@@ -452,12 +403,9 @@ func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *
 		CriterionResults: []llmclient.CriterionVerdict{
 			{CriterionID: "c1", Result: ResultPassed, Reason: "both of these check out",
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{
-					// Real: this sentence is in the run's final output.
+
 					{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
-					// Invented: no such event, and the quote appears nowhere else
-					// either — otherwise ADR-043 §1 would reattribute it to the
-					// source that does contain it, which is the right answer to a
-					// different question.
+
 					{Kind: KindTraceEvent, TraceEventID: strp("33333333-3333-4333-8333-333333333333"),
 						Quote: "the deduplicator ran twice and agreed with itself"},
 				}},
@@ -474,16 +422,12 @@ func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *
 	if !strings.HasPrefix(results[0].Reason, "evidence_unverifiable:") {
 		t.Errorf("the downgrade has to name the reference it could not find: %q", results[0].Reason)
 	}
-	// The half that did resolve is kept. Dropping it would leave the reader an
-	// undetermined verdict with nothing to look at, and the quote was real.
+
 	if len(results[0].Evidence) != 1 {
 		t.Errorf("the verifiable citation should survive the downgrade, got %d", len(results[0].Evidence))
 	}
 }
 
-// A criterion the model skipped is a criterion with no verdict, not a criterion
-// that disappears from the report. The Python side deliberately does not pad the
-// list, so this is the Go side's job.
 func TestACriterionTheJudgeDidNotAnswerIsUndeterminedAndStillListed(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	s := &Service{}
@@ -493,7 +437,7 @@ func TestACriterionTheJudgeDidNotAnswerIsUndeterminedAndStillListed(t *testing.T
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{
 					{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 				}},
-			// c2 is missing entirely, and an id nobody asked about is thrown in.
+
 			{CriterionID: "c99", Result: ResultPassed, Reason: "invented"},
 		},
 	}, digest, evidenceCuts{})
@@ -557,7 +501,7 @@ func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
 	}
 
 	complete, digest := fixtureMaterial(true)
-	got = s.merge(complete, pass, digest, evidenceCuts{batch: true}) // a hole that reaches every criterion
+	got = s.merge(complete, pass, digest, evidenceCuts{batch: true})
 	if got[0].Result != ResultUndetermined {
 		t.Errorf("judging on truncated input cannot support a pass (§6.3), got %q", got[0].Result)
 	}
@@ -568,12 +512,6 @@ func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
 	}
 }
 
-// --- the rubric (CONTENT-007) -------------------------------------------------
-
-// The rubric reaches the judge, and only for criteria that were actually sent.
-// An item addressed to something else could never produce a stored verdict —
-// merge() drops any id it did not ask about — so sending it would put a standard
-// in the prompt that no line of the report is measured against.
 func TestTheRubricIsSentOnlyForTheCriteriaTheRequestCarries(t *testing.T) {
 	m, _ := fixtureMaterial(true)
 	weight := 3.0
@@ -623,8 +561,6 @@ func TestARunWithNoRubricSendsNoneAndRecordsNoVersion(t *testing.T) {
 	}
 }
 
-// Every item pointing at a criterion the run does not have is the same as having
-// no rubric in force, and the version must not be recorded as though one were.
 func TestARubricWithNothingLeftToSendIsNotRecordedAsInForce(t *testing.T) {
 	m, _ := fixtureMaterial(true)
 	m.rubric = &testlab.Rubric{
@@ -641,8 +577,6 @@ func TestARubricWithNothingLeftToSendIsNotRecordedAsInForce(t *testing.T) {
 	}
 }
 
-// --- the digest bounds both the cost and the citation set ---------------------
-
 func TestDigestKeepsTheTailAndSaysWhenItCut(t *testing.T) {
 	view := trace.AdvancedView{Complete: true}
 	for i := 0; i < maxDigestCount+5; i++ {
@@ -652,11 +586,11 @@ func TestDigestKeepsTheTailAndSaysWhenItCut(t *testing.T) {
 			Payload: json.RawMessage(`{"n":` + strings.Repeat("1", 1+i%3) + `}`),
 		})
 	}
-	// The last event is the one a verdict most often rests on; it must survive.
+
 	view.Events = append(view.Events, trace.EventView{
 		EventID: eventID, Type: trace.TypeAgentOutput, Payload: json.RawMessage(`{"kind":"final"}`),
 	})
-	// A type nobody may cite.
+
 	view.Events = append(view.Events, trace.EventView{
 		EventID: "lifecycle", Type: trace.TypeRunLifecycle, Payload: json.RawMessage(`{}`),
 	})
@@ -665,9 +599,7 @@ func TestDigestKeepsTheTailAndSaysWhenItCut(t *testing.T) {
 	if !cuts.DroppedEvents {
 		t.Error("a digest that dropped events has to report the cut")
 	}
-	// The two are reported apart (04 丙-47): dropping events past the cap says
-	// nothing about whether any surviving payload also lost its tail, and over
-	// 164 real runs it was always the other one that fired.
+
 	if cuts.TrimmedExcerpts {
 		t.Error("no payload here is over maxDigestEntry; that cut must not be claimed")
 	}
@@ -707,8 +639,7 @@ func TestDigestReportsAnExcerptCutAsTruncation(t *testing.T) {
 	if !cuts.TrimmedExcerpts {
 		t.Fatal("cutting one trace payload was not reported as truncation")
 	}
-	// One event, so nothing was dropped. Reporting `trace_digest.entries` here
-	// would send a reader looking for events that are all present.
+
 	if cuts.DroppedEvents {
 		t.Error("one event is not over maxDigestCount; no event was dropped")
 	}
@@ -717,9 +648,6 @@ func TestDigestReportsAnExcerptCutAsTruncation(t *testing.T) {
 	}
 }
 
-// --- the wire call ------------------------------------------------------------
-
-// fakeJudge is apps/llm as llm-internal.yaml describes it, without Python.
 func fakeJudge(t *testing.T, status int, body any, capture *llmclient.JudgeRunRequest) *llmclient.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -765,15 +693,12 @@ func TestJudgeRunSendsTheContractShapeAndReturnsTheVerdict(t *testing.T) {
 	if resp.Model != "gpt-5.6-terra" || resp.PromptVersion == "" {
 		t.Errorf("the caller stores what actually judged, got %+v", resp)
 	}
-	// The coordinator's point ①: Python reads a missing final_output / entries
-	// leniently, so the caller always sends them rather than relying on a 422.
+
 	if got.FinalOutput == "" || got.TraceDigest.Entries == nil || got.Truncation == nil {
 		t.Errorf("every field the contract lists is sent, got %+v", got)
 	}
 }
 
-// A gateway failure, and a value the service refuses outright, both arrive here as
-// errors - and an error is an evaluation failure, never a guessed pass.
 func TestAJudgeFailureIsAnErrorAndNotALenientVerdict(t *testing.T) {
 	client := fakeJudge(t, http.StatusBadGateway, map[string]string{
 		"error": "the model returned a result outside the value domain",
@@ -797,11 +722,8 @@ func TestNoJudgeConfiguredIsAFailureAndNotASilentPass(t *testing.T) {
 	}
 }
 
-// The internal call carries the caller's cancellation (iron rule 7).
 func TestJudgeCallHonoursTheCallersCancellation(t *testing.T) {
-	// The handler waits for the test to release it as well as for its own context:
-	// a client that goes away does not always make the server notice, and a
-	// handler nobody releases would hang Close and not prove anything.
+
 	release := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		select {
@@ -820,8 +742,6 @@ func TestJudgeCallHonoursTheCallersCancellation(t *testing.T) {
 	}
 }
 
-// --- the deterministic leg ----------------------------------------------------
-
 func TestActivationNeverClaimsTheModelChoseNotToUseTheSkill(t *testing.T) {
 	m, _ := fixtureMaterial(true)
 	m.run = RunFacts{Status: "succeeded"}
@@ -829,8 +749,7 @@ func TestActivationNeverClaimsTheModelChoseNotToUseTheSkill(t *testing.T) {
 	if len(findings) != 1 || findings[0].Category != CategoryActivation {
 		t.Fatalf("one activation finding expected, got %+v", findings)
 	}
-	// 丙-4: "available but not used" is not observable in the SDK message stream,
-	// so no wording here may imply it.
+
 	for _, forbidden := range []string{"chose", "declined", "ignored", "decided not"} {
 		if strings.Contains(strings.ToLower(findings[0].Message), forbidden) {
 			t.Errorf("the message claims something the trace cannot show (%q): %s",
@@ -848,7 +767,6 @@ func TestASuccessfulRunWithNoOutputFilesIsReported(t *testing.T) {
 		t.Fatalf("handoff 丙-5's case has to be visible, got %+v", findings)
 	}
 
-	// A run that never finished has an obvious reason to have written nothing.
 	m.run.Status = "failed"
 	if got := artifactFindings(m); len(got) != 0 {
 		t.Errorf("no finding for a run that did not finish, got %+v", got)
@@ -871,16 +789,6 @@ func TestCostIsReportedAsALowerBoundAndUnreportedIsNotZero(t *testing.T) {
 	}
 }
 
-// --- the empty manifest (02:EVAL-001, clause added 2026-08-23) ----------------
-
-// Three states, not two. An artifact list that comes back empty means either
-// that the run wrote nothing, or that what it wrote is gone — deleted by the
-// workspace (02:WS-002, SEC-006) or past the retention stamped on it (NFR-002a)
-// — and those are opposite facts to hand a judge. The clause forbids the two
-// sharing one sentence, and forbids doing neither.
-//
-// Nothing here waits 30 days: absence is an input to this function, so the
-// expired case is the deleted case with the count in the other field.
 func TestAnEmptyManifestNeverReadsAsAnEmptyRun(t *testing.T) {
 	said := func(mutate func(*material)) string {
 		m, _ := fixtureMaterial(true)
@@ -910,7 +818,6 @@ func TestAnEmptyManifestNeverReadsAsAnEmptyRun(t *testing.T) {
 		seen[sentence] = name
 	}
 
-	// Distinct is not enough; each has to say the true thing.
 	if strings.Contains(states["never recorded"], "cannot read") {
 		t.Errorf("a run that recorded nothing has nothing to have lost: %s", states["never recorded"])
 	}
@@ -933,9 +840,6 @@ func TestAnEmptyManifestNeverReadsAsAnEmptyRun(t *testing.T) {
 	}
 }
 
-// The report is one half. The other is that a re-evaluation must not judge on
-// the absence: what the judge is handed says the artifact list has a hole in it,
-// and a `passed` answered anyway is not recorded as one (ADR-026 defence 3).
 func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
 	s := &Service{}
 	m, digest := fixtureMaterial(true)
@@ -958,17 +862,13 @@ func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
 	}
 }
 
-// --- 05 R-18: a trimmed tail silences the criterion that rests on it, not the
-// whole report. Measured: 20 runs, 4 through the rule, 3 of them left with every
-// criterion undetermined including ones the platform had verified by exact match.
-
 func TestATrimmedExcerptOnlySilencesTheCriterionThatCitesIt(t *testing.T) {
 	verdict := llmclient.JudgeVerdict{
 		CriterionResults: []llmclient.CriterionVerdict{
-			// c1 rests on the event whose payload lost its tail.
+
 			{CriterionID: "c1", Result: ResultPassed, Reason: "the tool call shows it",
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`}}},
-			// c2 rests on the artifact manifest, which nothing trimmed.
+
 			{CriterionID: "c2", Result: ResultPassed, Reason: "the file is there",
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},

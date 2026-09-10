@@ -1,18 +1,6 @@
 import type { SkillLicense } from "../api/types";
 import { LabelledBadge } from "./LabelledBadge";
 
-/**
- * ADR-021 has two axes and both must be visible: *which* license the package
- * evidences (`expression`) and *how strong that evidence is* (`source` tier,
- * plus the `status` label separating 已宣告 from 已人工確認). The expression
- * alone cannot tell "the author declared MIT in frontmatter" from "the monorepo
- * root happened to have an MIT file", and DISC-003 forbids showing the second
- * as if it were the first.
- *
- * With no expression the badge says only what the server's status label says
- * (License 未知) — never a license name, never anything implying the skill is
- * free to modify or redistribute.
- */
 export const SOURCE_LABELS: Record<string, string> = {
   manifest: "來源：套件 frontmatter 宣告",
   "manifest-referenced-file": "來源：frontmatter 指向的套件內檔案",
@@ -20,13 +8,6 @@ export const SOURCE_LABELS: Record<string, string> = {
   "repo-license-file": "來源：repo 根目錄 LICENSE",
 };
 
-/*
- * `license-expression` and `badge-license-source` have no rule in index.css and
- * both look like dead classes. They are not: disc.test.tsx asserts on both
- * selectors that an unknown license shows neither a name nor a provenance tier
- * (DISC-008), and a class is the only handle on those two nodes. Test hooks,
- * kept.
- */
 export function LicenseBadge({ license }: { license: SkillLicense }) {
   return (
     <span className="license-badge">
@@ -41,13 +22,9 @@ export function LicenseBadge({ license }: { license: SkillLicense }) {
   );
 }
 
-/** The prose half of the two axes: what the tier does and does not claim. */
 export function LicenseNotes({ license }: { license: SkillLicense }) {
   return (
     <>
-      {/* `license.status.note` is not repeated here: `LabelledBadge` renders it
-          beside the badge itself since 2026-08-29, and this block used to be
-          the only place it appeared as text. */}
       {license.source_note && <p className="note">{license.source_note}</p>}
       {!license.source && license.expression && (
         <p className="note">此版本未記錄 License 的取得來源，無法判斷宣告的涵蓋範圍。</p>

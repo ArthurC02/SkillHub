@@ -1,12 +1,3 @@
-// The lock that makes a test case snapshot mean what TEST-010 says it means
-// (DDD-031, ADR-035 B 組). Shared harness lives in authz_integration_test.go
-// (TestMain, migrate, requireDB, newAPI, login, seedSkill); seedTestCase is in
-// run_integration_test.go.
-//
-// Here rather than in internal/testlab because that package has no database
-// harness, and adding a fourth package that drops and recreates schema "public"
-// buys nothing this file does not already have.
-
 package apiserver_test
 
 import (
@@ -19,16 +10,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
-// TestCreateSnapshotBlocksOnAConcurrentTestCaseEdit is the invariant
-// CreateSnapshot's doc comment promises: two runs that hash the same executed
-// the same input. That only holds if nothing can edit the test case between the
-// read it hashes and the commit.
-//
-// Until DDD-031 the lock was taken by internal/run, one statement before the
-// call, and this package could not have told you whether it had been taken at
-// all. Move it back out - swap the LockDraft inside CreateSnapshot for the
-// unlocked GetTestCase - and this test goes red twice over: the freeze does not
-// wait, and it hashes a prompt that was overwritten before it committed.
 func TestCreateSnapshotBlocksOnAConcurrentTestCaseEdit(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -39,8 +20,6 @@ func TestCreateSnapshotBlocksOnAConcurrentTestCaseEdit(t *testing.T) {
 	tc := mustUUID(t, testCaseID)
 	ctx := context.Background()
 
-	// Two connections, because the point is two transactions running at once and
-	// a pool is free to hand the same one to both otherwise.
 	editConn, err := pool.Acquire(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -99,10 +78,6 @@ func TestCreateSnapshotBlocksOnAConcurrentTestCaseEdit(t *testing.T) {
 	}
 }
 
-// TestLockDraftIsScopedToItsWorkspace pins the half of the owner-exported
-// lock that has nothing to do with concurrency: internal/run hands it a
-// workspace id from the session, and a test case outside it has to read as
-// missing rather than as a row somebody may lock (WS-006, iron rule 3).
 func TestLockDraftIsScopedToItsWorkspace(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -130,11 +105,10 @@ func TestLockDraftIsScopedToItsWorkspace(t *testing.T) {
 	}
 }
 
-// waitsOnLock reports whether pid is parked on a lock, which is how these tests
-// observe "the other transaction is being made to wait" without a sleep that
-// would be a guess in either direction.
 func waitsOnLock(t *testing.T, pool *pgxpool.Pool, pid uint32) bool {
 	t.Helper()
+	// Polls pg_stat_activity for the connection's wait_event_type to flip to
+	// Lock, instead of guessing how long a blocking wait would take.
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		var waiting bool

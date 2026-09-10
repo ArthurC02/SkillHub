@@ -1,18 +1,8 @@
 #!/usr/bin/env sh
-# Turn a grype JSON report into the in-toto vulns predicate that gets attested
-# to the published image digest (SBX-011, SEC-002 I-04).
-#
-# The reason this exists at all is one field: `scanned_at`. ADR-022 gave I-04 a
-# 30-day validity and said gate A must be able to judge it, but until now the
-# only record of when a scan ran was a date a human typed into
-# infra/images/README.md — not a thing a probe can read, and not a thing that is
-# wrong loudly when it is wrong.
-#
-# `fixable_critical_high` is carried alongside the raw findings on purpose: it is
-# the exact quantity the I-06 gate blocks on, and an admission probe should be
-# able to assert it is 0 without re-implementing grype's severity and fix-state
-# logic against the finding list.
-#
+# Turns a grype JSON report into the in-toto vulns predicate attested to the
+# image digest. `fixable_critical_high` is precomputed so a probe can assert
+# it is 0 without re-deriving severity/fix-state.
+
 # Usage: scan_predicate.sh <grype-json> <output-json>
 set -eu
 

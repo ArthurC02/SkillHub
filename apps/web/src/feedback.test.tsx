@@ -6,10 +6,6 @@ import { queryClient } from "./api/queryClient";
 import { FEEDBACK_MAX_MESSAGE, feedbackPagePath, feedbackRunID } from "./api/feedback";
 import { FeedbackEntry } from "./components/FeedbackEntry";
 
-// 03:BETA-003/004 — the POST /feedback entry point. Same hand-rolled DOM
-// plumbing as packaging.test.tsx: @testing-library is not a dependency and these
-// assertions do not justify adding one.
-
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
 
 let container: HTMLDivElement;
@@ -69,26 +65,13 @@ async function submit() {
 
 const text = () => container.textContent ?? "";
 
-// The Go server's own wording (04 丙-149, strings-149-152-154-go-workspace-
-// learning.md `apps/platform/internal/product/learning/feedback.go`). A
-// fixture that said something else would hide the same class of defect an
-// English fixture would (04 丙-143's rule).
 const FEEDBACK_400_BODY = "message 不能空白，且最多 2000 字";
 const FEEDBACK_500_BODY = "回報沒有記錄成功，可以再送一次";
-// `RequireSession`'s body — left English on purpose (149's "left untouched"
-// list): every page routes 401 through the shared `ReadFailure` component
-// rather than through this string.
 const NOT_AUTHENTICATED_BODY = "not authenticated";
 
-/** Records every call so a test can assert nothing was sent as well as what was. */
 function stubPlatform(status = 204) {
   const calls: Array<{ url: string; body: unknown }> = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
-    // The session read is not what this file measures. `FeedbackEntry` reads
-    // `/me` so it can say 「回報問題需要登入。」 before somebody writes a paragraph
-    // (資訊架構 §5 IA-6); `expect(calls).toHaveLength(0)` below means 「沒有送出
-    // 任何一份回報」, which is a claim about POST /feedback and not about every
-    // request the component makes.
     if (String(input).endsWith("/me")) {
       return Promise.resolve(
         new Response(
@@ -120,11 +103,7 @@ function stubPlatform(status = 204) {
   return calls;
 }
 
-// --- the two path helpers ---------------------------------------------------
-
 test("BETA-004 the page path travels without its query string, and a run id only when the address names one", () => {
-  // beta-design §4.2 界線 2: a search query can carry personal data, and this
-  // channel is not where it belongs.
   expect(feedbackPagePath("/?q=我的客戶名單")).toBe("/");
   expect(feedbackPagePath("/skills/abc#risk")).toBe("/skills/abc");
   expect(feedbackPagePath("/lab/run")).toBe("/lab/run");
@@ -132,18 +111,13 @@ test("BETA-004 the page path travels without its query string, and a run id only
   expect(feedbackRunID(`/runs/${RUN}`)).toBe(RUN);
   expect(feedbackRunID(`/runs/${RUN}/compare`)).toBe(RUN);
   expect(feedbackRunID("/workspace/downloads")).toBeUndefined();
-  // Not a uuid-shaped segment: dropped rather than sent as one.
   expect(feedbackRunID("/runs/latest")).toBeUndefined();
 });
-
-// --- the form ---------------------------------------------------------------
 
 test("BETA-003 a report carries only what the reporter can see on screen", async () => {
   const calls = stubPlatform();
   await render(<FeedbackEntry pathname={`/runs/${RUN}?tab=advanced`} />);
 
-  // The context is stated before anything is sent: the path without its query
-  // string, the run being looked at, and the promise that nothing else is taken.
   expect(text()).toContain(`/runs/${RUN}`);
   expect(text()).not.toContain("tab=advanced");
   expect(text()).toContain("沒有截圖");
@@ -158,14 +132,10 @@ test("BETA-003 a report carries only what the reporter can see on screen", async
     message: "按了建立下載套件之後畫面沒有任何反應。",
     page_path: `/runs/${RUN}`,
     run_id: RUN,
-    // 資訊架構 IA-11: the footer's own build identifier travels with the report,
-    // injected at build time — so it is a real string here too, never typed by
-    // anyone. Not asserted against a literal: the value is this checkout's SHA.
     build_id: import.meta.env.VITE_BUILD_ID,
   });
   expect(calls[0].body).toHaveProperty("build_id", expect.any(String));
   await waitFor(() => text().includes("已收到"));
-  // 204 carries no id, so the confirmation must not imply a ticket to look up.
   expect(text()).toContain("沒有回覆機制");
 });
 
@@ -173,8 +143,6 @@ test("NFR-007 a blank report is refused with a sentence, not with a dead button"
   const calls = stubPlatform();
   await render(<FeedbackEntry pathname="/" />);
 
-  // The submit button is never disabled for a validation reason: a disabled
-  // control with no stated cause reads as a bug (the DISC-003 filter-bar ruling).
   const send = container.querySelector("button[type=submit]") as HTMLButtonElement;
   expect(send.disabled).toBe(false);
 
@@ -184,7 +152,6 @@ test("NFR-007 a blank report is refused with a sentence, not with a dead button"
   expect(calls).toHaveLength(0);
   const alert = container.querySelector('[role="alert"]');
   expect(alert?.textContent).toContain("內容不能空白");
-  // What was typed is still there to fix rather than cleared under the reader.
   expect((container.querySelector("textarea") as HTMLTextAreaElement).value).toBe("   ");
 });
 
@@ -213,17 +180,11 @@ test("BETA-004 a failed submit keeps the words and says what to do next", async 
     "Fork 之後找不到我 Fork 出來的東西。",
   );
   expect(text()).toContain("可以稍後再按一次");
-  // 設計 §2.2 第三向: the copy used to say 「請直接寫信給我們」 and no address
-  // exists anywhere in the product — an out that does not exist is worse than
-  // saying there is none. 「沒有下一步」 is a legal answer; a fictional one is not.
   expect(text()).toContain("目前沒有第二條回報管道");
   expect(text()).not.toContain("寫信");
   expect(text()).not.toContain("已收到");
 });
 
-// 04 丙-150. The form is already hidden for a visitor who was logged out
-// before it rendered (`unauthenticated(me.error)`); this is the other case —
-// a session that expires between opening the form and pressing 送出回報.
 test("丙-150 a session that expires mid-typing shows 需要登入, not the server's raw body", async () => {
   stubPlatform(401);
   await render(<FeedbackEntry pathname="/" />);
@@ -251,17 +212,12 @@ test("BETA-005 the two kinds are the reporter's choice and the need signal is on
     kind: "need_signal",
     message: "想把套件直接推到 GitHub，不用自己下載再上傳。",
     page_path: "/workspace/downloads",
-    // No run in the address, so no run id — not an empty string.
     run_id: undefined,
     build_id: import.meta.env.VITE_BUILD_ID,
   });
 });
 
 test("BETA-003 the counter counts what the server counts, so an emoji report is not refused at half length", async () => {
-  // The server checks `len([]rune(message))`; `String.length` counts an emoji as
-  // two UTF-16 units. 1500 emoji is 1500 runes and 3000 units, so the old counter
-  // said 3000／2000 and the pre-check refused a report the server would have
-  // taken. GenerateSkill.tsx already refuses `maxLength` on this same reasoning.
   const calls = stubPlatform();
   await render(<FeedbackEntry pathname="/" />);
 

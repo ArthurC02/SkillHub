@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// Pointed at the tree. RED the day a skill cites a document, a role drops its
-// model, or the root AGENTS.md crosses the cap.
 func TestTheRealHarnessKeepsItsOwnRules(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -62,7 +60,7 @@ func TestHarnessRejectsARoleWithoutAModel(t *testing.T) {
 		"inherit": "---\nname: x\nmodel: inherit\n---\n\nBody.\n",
 		"fable":   "---\nname: x\nmodel: claude-fable-5-1\n---\n\nBody.\n",
 		"sol":     "---\nname: x\nmodel: sol\n---\n\nBody.\n",
-		// A `model:` in the body is prose, not frontmatter.
+
 		"in the body": "---\nname: x\n---\n\nmodel: opus\n",
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -122,7 +120,7 @@ func TestHarnessRejectsAWorkflowThatInheritsTheDispatcherModel(t *testing.T) {
 func TestHarnessIgnoresProseAboutAgentCalls(t *testing.T) {
 	t.Parallel()
 	root := writeHarnessFixture(t, cleanSkill, cleanAgent, "# 導覽\n")
-	// After meta, not before: meta must be the file's first statement.
+
 	writeAt(t, root, harnessWorkflowsDir+"/x.js", cleanWorkflow+"// a bare agent() would inherit\n")
 	if problems := harnessProblems(root); len(problems) != 0 {
 		t.Fatalf("a comment mentioning agent() was treated as a call: %v", problems)

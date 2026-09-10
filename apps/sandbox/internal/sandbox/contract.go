@@ -1,20 +1,7 @@
-// Package sandbox is the server side of contracts/openapi/sandbox-provider.yaml
-// (frozen at 37f1918). The types here are hand-written against that file: there
-// is no codegen wired for contracts/openapi yet, so this package is the drift
-// risk the CI job contracts-drift will eventually cover. Field names and JSON
-// tags follow the schema exactly; changing one means changing the contract
-// first (iron rule 12).
-//
-// The package holds the whole contract surface — types, run bookkeeping and
-// HTTP handlers — while container work sits behind the Driver interface, so a
-// handler test exercises the real idempotency and lifecycle rules without
-// Docker.
 package sandbox
 
 import "time"
 
-// RunState is ProviderRunState: the provider's own lifecycle, never a mirror of
-// the platform's run status machine (iron rule 5).
 type RunState string
 
 const (
@@ -25,13 +12,10 @@ const (
 	StateCancelled RunState = "cancelled"
 )
 
-// Terminal reports whether the state carries a result. The contract requires
-// `result` to be present exactly when the state is terminal.
 func (s RunState) Terminal() bool {
 	return s == StateCompleted || s == StateFailed || s == StateCancelled
 }
 
-// ResultStatus is RunResult.status: terminal outcomes only.
 type ResultStatus string
 
 const (
@@ -41,14 +25,8 @@ const (
 	ResultTimedOut  ResultStatus = "timed_out"
 )
 
-// exitTokenBudget is the exit code the runtime harness uses to say it stopped
-// itself at the run's token ceiling rather than failing at its own task. Kept in
-// step with EXIT_TOKEN_BUDGET in infra/images/runtime-agent-sdk/run.mjs; the two
-// are a pair, and the exit code is the only channel there is - RunError.class is
-// a frozen contract enum and the harness's result.json is never read.
 const exitTokenBudget = 9
 
-// Error classes (RunError.class).
 const (
 	ClassProvision          = "provision"
 	ClassExecution          = "execution"
@@ -58,7 +36,6 @@ const (
 	ClassTimeout            = "timeout"
 )
 
-// RunRequest is one execution attempt handed to this provider.
 type RunRequest struct {
 	RunID          string              `json:"run_id"`
 	RunAttemptID   string              `json:"run_attempt_id"`
@@ -103,8 +80,6 @@ type RuntimeProfile struct {
 	AgentIntegration string `json:"agent_integration,omitempty"`
 }
 
-// ResourceLimits mirrors PDM-005 5.2. Every field is required by the contract,
-// and a provider that cannot enforce one must not declare it as capability.
 type ResourceLimits struct {
 	VCPU                 float64      `json:"vcpu"`
 	MemoryBytes          int64        `json:"memory_bytes"`
@@ -118,24 +93,17 @@ type ResourceLimits struct {
 	TokenBudget          *TokenBudget `json:"token_budget,omitempty"`
 }
 
-// DefaultLimits are the schema defaults, which come from PDM-005 5.2. They are
-// this provider's declared ceiling as well: a request above any of them is
-// refused rather than run unbounded.
 var DefaultLimits = ResourceLimits{
 	VCPU:                 2,
-	MemoryBytes:          4 << 30, // 4 GiB
-	DiskBytes:            8 << 30, // 8 GiB, split /work 6 + /out 2
+	MemoryBytes:          4 << 30,
+	DiskBytes:            8 << 30,
 	MaxPIDs:              256,
 	MaxOpenFiles:         1024,
 	WallClockSoftSeconds: 600,
 	WallClockHardSeconds: 900,
 	ArtifactTotalBytes:   100 << 20,
 	ArtifactFileBytes:    25 << 20,
-	// Declared because it is enforced: the harness counts each model response's
-	// tokens and stops the turn at the ceiling. A provider that cannot do that
-	// must leave this nil rather than accept a limit it will not apply - which is
-	// what this provider itself did until the harness gained the counter, and is
-	// why a run could be shown a ceiling nothing would hold it to.
+
 	TokenBudget: &TokenBudget{MaxInputTokens: 300_000, MaxOutputTokens: 60_000},
 }
 
@@ -154,9 +122,6 @@ type EgressAllowEntry struct {
 	URL     string `json:"url"`
 }
 
-// ObjectGrant carries a pre-signed URL: secret material, never logged (iron
-// rule 11). This provider passes it into the sandbox and never reads the bytes
-// behind it.
 type ObjectGrant struct {
 	Purpose   string    `json:"purpose"`
 	ObjectKey string    `json:"object_key"`
@@ -165,8 +130,6 @@ type ObjectGrant struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
-// ModelGatewayGrant is the per-run LiteLLM Virtual Key (ADR-017). VirtualKey is
-// secret material.
 type ModelGatewayGrant struct {
 	BaseURL      string    `json:"base_url"`
 	VirtualKey   string    `json:"virtual_key,omitempty"`
@@ -180,7 +143,6 @@ type TracePolicy struct {
 	IngestionURL string `json:"ingestion_url,omitempty"`
 }
 
-// ProviderRun is one attempt as this provider currently sees it.
 type ProviderRun struct {
 	RunID             string     `json:"run_id"`
 	RunAttemptID      string     `json:"run_attempt_id"`
@@ -242,18 +204,11 @@ type RunError struct {
 
 func (e *RunError) Error() string { return e.Class + ": " + e.Message }
 
-// ProviderCapability is what this provider declares it can do (RUN-002).
 type ProviderCapability struct {
 	Provider     string              `json:"provider"`
 	Runtimes     []RuntimeCapability `json:"runtimes"`
 	MaxResources ResourceLimits      `json:"max_resources"`
-	// MaxResourcesUnenforced names the ceilings carried in MaxResources that
-	// the operating system does not actually hold this provider to. Empty is
-	// what a production provider must be able to say. It exists because
-	// ResourceLimits requires every ceiling to be present, which made the
-	// contract's own "a provider that cannot enforce one of these must not
-	// declare support for it" impossible to obey - the declaration could only
-	// ever claim enforcement.
+
 	MaxResourcesUnenforced []string            `json:"max_resources_unenforced,omitempty"`
 	Isolation              Isolation           `json:"isolation"`
 	Network                *NetworkCapability  `json:"network,omitempty"`
@@ -271,30 +226,16 @@ type RuntimeCapability struct {
 
 type Isolation struct {
 	Level string `json:"level"`
-	// Rootless: whether workloads actually run without administrative
-	// privilege on this node. A detection the Driver reports (Driver.Rootless),
-	// not a constant - it was a literal `true` for both drivers until
-	// 2026-08-29, which was a guarantee dockerdrv makes in New() and a claim
-	// nobody had checked on a host process. The dispatch gate refuses a
-	// provider that answers false, which is the point of the field.
+
 	Rootless                 bool `json:"rootless"`
 	DedicatedWorkspacePerRun bool `json:"dedicated_workspace_per_run"`
-	// ReapsDetachedDescendants: whether ending a run also ends a descendant
-	// that deliberately left the process group or job it started in. Separate
-	// from Level because one driver's two platforms differ on it: a Windows job
-	// object holds a descendant whether or not it wants to be held, a POSIX
-	// process group is something setsid() walks out of. Absent reads as no.
+
 	ReapsDetachedDescendants bool `json:"reaps_detached_descendants"`
 }
 
 type NetworkCapability struct {
 	EgressModes []string `json:"egress_modes,omitempty"`
-	// EgressUnenforced is true when the declared mode is a statement of intent
-	// rather than a boundary: the workload can reach whatever the host can.
-	// Same shape and same reason as MaxResourcesUnenforced above - `none` and
-	// `default_deny` are the only two modes, a host process is neither, and
-	// before this field a clean-mode node had to either claim an enforcement it
-	// did not have or refuse every run that named a destination (04 丙-98).
+
 	EgressUnenforced bool `json:"egress_unenforced,omitempty"`
 	PrivateNetwork   bool `json:"private_network,omitempty"`
 }
@@ -313,14 +254,6 @@ type Availability struct {
 	Healthy            bool `json:"healthy"`
 }
 
-// SecurityCapability is the one block in a capability response that reports a
-// measurement rather than a configuration claim.
-//
-// It lives on this response because the sandbox provider contract is one way:
-// every operation in sandbox-provider.yaml is the control plane calling the
-// node, and the node has no channel to push an alert back. Polling
-// GET /capability is the path that already exists, and RUN-005 already reads it
-// before every dispatch.
 type SecurityCapability struct {
 	P02Probe *P02Result `json:"p02_probe,omitempty"`
 }

@@ -1,36 +1,5 @@
 package main
 
-// The golden set measures the production retrieval path only while its Python
-// copy of `embeddingText` still says what the Go one says.
-//
-// tools/goldenset/evaluate.py builds the indexed string in
-// `enriched_index_text`, and its own docstring states the arrangement: 「
-// Transcribed from apps/platform/internal/skill/admission/enrich.go:
-// embeddingText … If this drifts from the Go side, the golden set stops
-// measuring the production retrieval path — which is the whole point of
-// --index-mode enriched, so keep the two in step.」
-//
-// `--selfcheck` has an assertion pinning the exact expected output, which proves
-// the Python side did not change WITHOUT NOTICING. It compares nothing against
-// Go. Editing `embeddingText` — reordering the tag buckets, dropping the English
-// half of a task example, changing the separator — turns nothing red, and the
-// recall@5 = 48/48 that gate-test/README.md §3.1 marks ✅ silently becomes a
-// number about a program nobody runs.
-//
-// WHAT THIS IS AND WHY IT IS A DIGEST. There is no shared artefact to compare:
-// one side is Go building a string from struct fields, the other is Python
-// building it from a dict, and any structural comparison would be a parser for
-// two languages guessing at equivalence. What both sides DO have is a body that
-// somebody has to read to keep them in step. So both bodies are pinned by
-// digest, comments and blank lines stripped, and changing either one turns this
-// red with an instruction: read both, confirm they still produce the same
-// string, then re-pin.
-//
-// That is a deliberately dumb check and it is honest about what it buys. It
-// cannot tell a fixing edit from a breaking one. What it buys is that the edit
-// cannot be silent, which is the whole failure — and re-pinning costs one line
-// and requires the person to have looked.
-
 import (
 	"crypto/sha256"
 	"encoding/hex"
@@ -46,12 +15,6 @@ const (
 	goldensetGo     = "apps/platform/internal/skill/admission/enrich.go"
 )
 
-// The two sides, as the smallest span of each file that decides the string.
-//
-// The Go side is three functions, not one: `embeddingText` joins the parts, and
-// `flatTags` and `joinTaskExamples` decide what two of those parts contain.
-// `enriched_index_text` does all three jobs, so all three have to be watched or
-// the bucket order could change under a green check.
 var goldensetSpans = []struct {
 	file, name, start, end string
 	digest                 string
@@ -69,10 +32,6 @@ var goldensetSpans = []struct {
 	digest: "",
 }}
 
-// The pinned digests. Filled by the test that first computed them; re-pin in the
-// same commit that changes either side, after confirming the two still agree.
-//
-// Set by: A8, 2026-08-29, from the tree at 331bd90.
 var goldensetPinned = map[string]string{
 	"embeddingText":       "af940c00a9126201aed3908e9fd97a55bc65cca965fe69df71aea80be80461de",
 	"flatTags":            "f4ecd7636059797e7eeb0067e57697ef742d7da27b4c471a0915ac641ef176cc",
@@ -114,9 +73,8 @@ func goldensetMirrorProblems(root string) []string {
 	return problems
 }
 
-// extractSpan returns the text from the first occurrence of start up to the next
-// occurrence of end after it. Zero matches is a loud failure: a span that has
-// moved is a span nothing is watching.
+// Returns the text from the first occurrence of start through the next
+// occurrence of end that follows it.
 func extractSpan(path, start, end string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -136,9 +94,6 @@ func extractSpan(path, start, end string) (string, error) {
 	return text[from : from+len(start)+to], nil
 }
 
-// goldensetDigest hashes the code lines only. Comments are stripped because both
-// bodies carry long explanations that are edited often and decide nothing, and a
-// check that goes red for a typo fix is a check someone deletes.
 func goldensetDigest(file, body string) string {
 	comment := goCommentLine
 	if strings.HasSuffix(file, ".py") {
@@ -148,8 +103,8 @@ func goldensetDigest(file, body string) string {
 	inDocstring := false
 	for _, line := range strings.Split(body, "\n") {
 		trimmed := strings.TrimSpace(line)
-		// Python docstrings are comments that are not `#` lines. The one here is
-		// the transcription note itself — prose, edited often, decides nothing.
+
+		// A line with exactly one `"""` opens or closes a docstring block.
 		if comment == pyCommentLine && strings.Count(line, `"""`) == 1 {
 			inDocstring = !inDocstring
 			continue

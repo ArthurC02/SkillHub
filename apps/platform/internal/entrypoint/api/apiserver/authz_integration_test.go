@@ -1,25 +1,3 @@
-// Package apiserver_test holds the database-backed tests that exercise the whole
-// wired HTTP surface — the object graph apiserver.NewApp builds and the route
-// table apiserver.NewRouter declares, not a copy of either. It is an external
-// test package so it can construct that graph without an import cycle, which is
-// also why the DISC-001/002 search and WS-001 fork tests live here (see
-// disc_integration_test.go) rather than beside the packages they exercise.
-//
-// They used to live in internal/creator/workspace for the same import-cycle reason, which
-// made twenty-three files about runs, packaging, evaluation and tracing look like
-// identity tests. They test the API; they live beside the API (DDD-011).
-//
-// This file covers CORE-005 (login, logout, workspace access control) and
-// CORE-006 (private content authorization), and carries the harness the rest of
-// the package shares.
-//
-// These tests need a throwaway PostgreSQL with the pgvector extension
-// available. Point SKILLHUB_TEST_DATABASE_URL at one and they run; leave it
-// unset and they skip, so a CI job without a database reports "skipped" rather
-// than a false failure.
-//
-// WARNING: TestMain drops and recreates schema "public" in that database.
-// Never point SKILLHUB_TEST_DATABASE_URL at a database you care about.
 package apiserver_test
 
 import (
@@ -60,15 +38,12 @@ var testPool *pgxpool.Pool
 func TestMain(m *testing.M) {
 	dsn := os.Getenv(dbURLEnv)
 	if dsn == "" {
-		// 02:PORT-004. Without this, an unset or misspelled URL is indistinguishable
-		// from a passing run: every database test removes itself and go test still
-		// prints ok. CI sets SKILLHUB_REQUIRE_DB=1 so the service failing to come up
-		// is a red build rather than a quiet one.
+
 		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
 			fmt.Fprintf(os.Stderr, "SKILLHUB_REQUIRE_DB=1 but %s is unset; this run would have skipped every database test and still reported success\n", dbURLEnv)
 			os.Exit(1)
 		}
-		os.Exit(m.Run()) // every test skips; see requireDB
+		os.Exit(m.Run())
 	}
 	if err := validateDestructiveTestDatabaseURL(dsn); err != nil {
 		panic(err)
@@ -162,8 +137,6 @@ func TestConcurrentFirstLoginCreatesOneAccount(t *testing.T) {
 	}
 }
 
-// migrate resets the schema and applies db/migrations in filename order, which
-// is also the proof that the migration set applies cleanly from empty.
 func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err := pool.Exec(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
 		return err
@@ -185,14 +158,12 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 		if err != nil {
 			return err
 		}
-		// Exec with no arguments uses the simple protocol, so a migration file
-		// with several statements applies as one batch.
+
 		if _, err := pool.Exec(ctx, string(body)); err != nil {
 			return err
 		}
 	}
-	// River owns its own tables and applies them itself (see the header of
-	// db/migrations/0016), so the schema is only complete once this has run too.
+
 	return queue.EnsureSchema(ctx, pool)
 }
 
@@ -204,46 +175,27 @@ func requireDB(t *testing.T) *pgxpool.Pool {
 	return testPool
 }
 
-// api is the object graph cmd/api serves — apiserver.NewApp, not a copy of it —
-// so a route that loses its RequireSession here loses it in production too, a
-// dependency left unwired here is unwired there, and every route in the table is
-// reachable from a test.
 type api struct {
 	*httptest.Server
 	auth *identity.Handler
-	// creditPool and startingCredits stand in for the operator grant; a test of
-	// the empty-balance refusal sets startingCredits to 0 before logging in.
+
 	creditPool      *pgxpool.Pool
 	startingCredits int64
-	// packages is the object store behind the detail and file views; a test
-	// seeds a real zip into it under the version's package_object_key.
+
 	packages packageStore
-	// runs is the API's run service, exposed so a test can point it at a fake
-	// sandbox provider (RUN-005 refuses incompatible work before queueing, and
-	// that refusal happens on this side).
+
 	runs *run.Service
-	// traceSigner mints ingestion tokens, so a trace test can post as the
-	// execution plane would (TRACE-002).
+
 	traceSigner *trace.Signer
-	// evaluations is the API's read-only evaluation service, exposed so an
-	// EVAL-001 test can produce a verdict with a fake judge (the API never does).
+
 	evaluations *eval.Service
-	// versions is the API's ingest service, exposed so a GEN-003 test can drive
-	// the generation pipeline against a stub LLM directly. The HTTP routes exist
-	// too, behind ADR-052's exposure flag (see newAPIExposingGenerate).
+
 	versions *ingest.Service
-	// app is the whole composition root, exposed so a test can call the
-	// start-up work cmd/api does after NewApp — today that is AuditRosters,
-	// which is where the feature-flag record is written (ADR-052).
+
 	app *apiserver.App
-	// packaging is the API's packaging service, exposed so a PACK-001 test can
-	// build twice without the idempotent endpoint answering the second call with
-	// the first call's artifact.
+
 	packaging *packaging.Service
-	// handler is the same route table the server above serves. Kept so a test
-	// that needs the API reachable from *another container* — the real end to
-	// end run, whose sandbox provider pushes trace events back — can serve it on
-	// an address that is not 127.0.0.1.
+
 	handler http.Handler
 }
 
@@ -252,59 +204,30 @@ func newAPI(t *testing.T, pool *pgxpool.Pool) *api {
 	return newAPIWithLLM(t, pool, "")
 }
 
-// newAPIWithLLM is newAPI with the internal LLM service pointed somewhere. An
-// empty base URL leaves the client nil, which is the "embedding service not
-// configured" branch of the DISC-001 degradation path.
 func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	t.Helper()
 	return newAPITuned(t, pool, llmBaseURL, nil)
 }
 
-// newAPITuned is newAPIWithLLM with one hook: tune runs on the assembled Deps
-// immediately before the route table is built. It exists because the closed-beta
-// features are configuration rather than code paths — the run allowance, the
-// invite list and the analytics retention are all deployment settings, and two of
-// them change which routes exist at all — so a test has to be able to set them
-// before the route table reads them, not after.
-//
-// The object graph itself is apiserver.NewApp's, not a copy of it (ADR-032 §5):
-// what used to be a hand-written transcription of cmd/api's wiring here is now
-// the same constructor cmd/api calls, so a dependency that goes missing in
-// production goes missing in these tests too. Only the deployment inputs below
-// differ from production's.
 func newAPITuned(
 	t *testing.T, pool *pgxpool.Pool, llmBaseURL string, tune func(*apiserver.Deps),
 ) *api {
 	t.Helper()
-	// The fake provider these tests dispatch to declares isolation "container"
-	// (providertest.DefaultCapability), which is a shared host kernel. Since
-	// 2026-08-25 the scheduler refuses that unless the deployment has said it is
-	// a development one, and DEV_LOGIN is the signal it reads -- the same variable
-	// this harness already sets on the Config below. Setting it here rather than
-	// weakening the rule is the point: production is what these tests must NOT
-	// look like, and a harness able to dispatch to a runc sandbox without saying
-	// so would be testing a deployment nobody is allowed to run.
+
 	t.Setenv("DEV_LOGIN", "1")
-	// packageStore is the per-test object store: empty unless a test seeds a
-	// package into it, which is also the "stored package unreadable" path the
-	// detail view has to survive without claiming a clean scan.
+
 	packages := packageStore{}
 	var llm *llmclient.Client
 	if llmBaseURL != "" {
-		// The token is empty for every stub in this package -- httptest servers
-		// check nothing -- and read from the environment for the one test that
-		// points at a real apps/llm, which refuses an unauthenticated caller with
-		// a 503 (app.py's LLM_SERVICE_TOKEN gate). Same variable cmd/api reads.
+
 		llm = &llmclient.Client{BaseURL: llmBaseURL, Token: os.Getenv("LLM_SERVICE_TOKEN")}
 	}
-	// The real profile files rather than fixtures: a copy would keep these tests
-	// green while a profile edit changed produced packages.
+
 	profiles, err := packaging.LoadProfiles(filepath.Join("..", "..", "..", "..", "..", "..", "contracts", "packaging", "profiles"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A fixed secret: the tests mint their own ingestion tokens against it, which
-	// is exactly what the worker does when it builds a RunRequest.
+
 	traceSigner := &trace.Signer{Secret: []byte("integration-test-trace-secret")}
 
 	app, err := apiserver.NewApp(apiserver.Config{
@@ -316,15 +239,11 @@ func newAPITuned(
 		TraceSigner:       traceSigner,
 		Profiles:          profiles,
 		DownloadRetention: 24 * time.Hour,
-		// Zero retention means this "deployment" collects no funnel events, which
-		// is the shipped state until PDM-006 ratifies a period (ADR-029 決策 5). A
-		// beta test turns it on through tune.
+
 		AnalyticsRetention: 0,
 
-		// Zero-value OAuth: no request in these tests reaches GitHub, but
-		// GET /auth/github/login builds an authorize URL from it.
 		OAuth:    &identity.GitHubOAuth{},
-		Secure:   false, // httptest speaks plain http
+		Secure:   false,
 		DevLogin: true,
 	})
 	if err != nil {
@@ -344,11 +263,8 @@ func newAPITuned(
 	}
 }
 
-// betaGrantCredits is a beta participant's grant: 20 Runs at the gateway
-// ceiling, 20 x $0.50 x 1.3 / $0.001.
 const betaGrantCredits = 13_000
 
-// client is one logged-in browser: its jar carries exactly one user's session.
 type client struct {
 	*http.Client
 	base        string
@@ -356,8 +272,6 @@ type client struct {
 	userID      string
 }
 
-// login signs in through the offline dev provider, which stands in for GitHub
-// OAuth without leaving the machine (ADR-020).
 func (a *api) login(t *testing.T, name string) *client {
 	t.Helper()
 	jar, err := cookiejar.New(nil)
@@ -395,10 +309,6 @@ func (a *api) login(t *testing.T, name string) *client {
 	return c
 }
 
-// me decodes GET /me. `any` rather than `string`: the response has stopped being
-// flat — `features` is an object — and a map[string]string here failed EVERY
-// login on a deployment that turned one on, which is a helper being wrong about
-// the API rather than the API being wrong.
 func (c *client) me(t *testing.T) map[string]any {
 	t.Helper()
 	resp, err := c.Get(c.base + "/me")
@@ -440,8 +350,7 @@ func (c *client) skillIDs(t *testing.T, path string) []string {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET %s: got %d", path, resp.StatusCode)
 	}
-	// "skills" is the registry list shape, "results" the search shape; a test
-	// only ever cares which ids came back.
+
 	var out struct {
 		Skills  []skillRef `json:"skills"`
 		Results []skillRef `json:"results"`
@@ -460,8 +369,6 @@ type skillRef struct {
 	SkillID string `json:"skill_id"`
 }
 
-// seedSkill inserts a skill straight into a workspace and indexes it, so a
-// test can own content in a workspace it never authenticates as.
 func seedSkill(t *testing.T, pool *pgxpool.Pool, workspaceID, name string) string {
 	t.Helper()
 	ctx := context.Background()
@@ -482,9 +389,7 @@ func seedSkill(t *testing.T, pool *pgxpool.Pool, workspaceID, name string) strin
 	}); err != nil {
 		t.Fatal(err)
 	}
-	// 05 R-52 (2026-09-07): a seeded catalogue document stands for a Skill
-	// whose metadata landed — that is what the public pages show. A test about
-	// the not-yet-enriched state sets the row back to pending itself.
+
 	if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched' WHERE skill_id = $1", skill.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -502,12 +407,6 @@ func contains(ids []string, want string) bool {
 	return false
 }
 
-// The anonymous authorization matrix that used to live here — a hand-picked ~30
-// of the table's 68 routes — is now the complete one in
-// authz_matrix_integration_test.go, held complete by a scan of the route table's
-// own source.
-
-// CORE-005: a session is what login hands out and logout takes away.
 func TestLoginLogoutSessionLifecycle(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -521,7 +420,6 @@ func TestLoginLogoutSessionLifecycle(t *testing.T) {
 		t.Fatal("GET /me returned a different workspace on the second call")
 	}
 
-	// The token must never be readable by page scripts (ADR-020).
 	var session *http.Cookie
 	for _, c := range alice.Jar.Cookies(mustURL(t, a.URL)) {
 		if c.Name == "sh_session" {
@@ -541,8 +439,6 @@ func TestLoginLogoutSessionLifecycle(t *testing.T) {
 		t.Fatalf("logout: got %d", resp.StatusCode)
 	}
 
-	// Revocation is server-side: replaying the old token must fail even though
-	// the client still holds it. This is the property JWTs would not give us.
 	req, _ := http.NewRequest(http.MethodGet, a.URL+"/me", nil)
 	req.AddCookie(session)
 	replay, err := http.DefaultClient.Do(req)
@@ -555,8 +451,6 @@ func TestLoginLogoutSessionLifecycle(t *testing.T) {
 	}
 }
 
-// CORE-005: an expired session is refused by the read path, not just by the
-// cleanup job, and the cleanup job then removes the row idempotently.
 func TestExpiredSessionRejectedThenCleaned(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -584,13 +478,12 @@ func TestExpiredSessionRejectedThenCleaned(t *testing.T) {
 	if n < 1 {
 		t.Fatalf("cleanup removed %d expired sessions, want at least 1", n)
 	}
-	// Idempotent: a second sweep is a no-op, never an error (ADR-008).
+
 	if _, err := (&identity.Service{Pool: pool}).CleanupExpiredSessions(ctx); err != nil {
 		t.Fatalf("second cleanup sweep: %v", err)
 	}
 }
 
-// CORE-006 / WS-002: holding another user's skill id is not access to it.
 func TestPrivateContentIsolatedAcrossWorkspaces(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -606,7 +499,6 @@ func TestPrivateContentIsolatedAcrossWorkspaces(t *testing.T) {
 		t.Fatal("another user's skill appears in the caller's list")
 	}
 
-	// 404 rather than 403 everywhere: existence itself is private (WS-006).
 	for _, tc := range []struct{ method, path string }{
 		{http.MethodDelete, "/skills/" + secret},
 		{http.MethodPost, "/skills/" + secret + "/fork"},
@@ -617,20 +509,16 @@ func TestPrivateContentIsolatedAcrossWorkspaces(t *testing.T) {
 		}
 	}
 
-	// Anonymous callers do not even reach the authorization check.
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 	if got := anon.status(t, http.MethodDelete, "/skills/"+secret); got != http.StatusUnauthorized {
 		t.Errorf("anonymous delete: want 401, got %d", got)
 	}
 
-	// Still there: nothing above was allowed to touch it.
 	if ids := alice.skillIDs(t, "/skills"); !contains(ids, secret) {
 		t.Fatal("a non-owner request modified the owner's skill")
 	}
 }
 
-// CORE-006 / iron rule 3: scope comes from the session, so a client-supplied
-// workspace_id — query string, header, or otherwise — changes nothing.
 func TestClientSuppliedWorkspaceIDIsIgnored(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -670,8 +558,6 @@ func TestClientSuppliedWorkspaceIDIsIgnored(t *testing.T) {
 	}
 }
 
-// CORE-006 / DISC-010: public search is open to anonymous callers, so it must
-// answer from the public catalog only — never from private workspaces.
 func TestPublicSearchSeesOnlyCatalogWorkspaces(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -689,8 +575,7 @@ func TestPublicSearchSeesOnlyCatalogWorkspaces(t *testing.T) {
 		t.Fatal(err)
 	}
 	published := seedSkill(t, pool, curator.workspaceID, "zaphodian public analyzer")
-	// 05 R-52: a document is in the library once it carries its metadata or
-	// its vector; the seeded row has neither until this.
+
 	seedEmbedding(t, pool, published, 1301)
 
 	anon := &client{Client: http.DefaultClient, base: a.URL}
@@ -712,18 +597,6 @@ func mustURL(t *testing.T, raw string) *url.URL {
 	return u
 }
 
-// lockTestSchema serialises the packages that reset this database.
-//
-// apiserver, eval and registry each drop and recreate schema "public" in
-// SKILLHUB_TEST_DATABASE_URL, and `go test ./...` runs packages concurrently:
-// one package's reset lands while another is mid-run, and the second one sees
-// "relation does not exist". Held on one connection for the whole package run
-// rather than only across the migration, because the hazard is a reset
-// colliding with somebody else's *tests*, not with their migration.
-//
-// Session-scoped, so a crashed run releases it along with its connection and a
-// stale lock cannot wedge CI. Every package that resets this database must take
-// it; one that forgets fails loudly with the panic above rather than silently.
 func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
 	conn, err := pool.Acquire(ctx)
 	if err != nil {

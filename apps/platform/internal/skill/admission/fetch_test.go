@@ -21,7 +21,7 @@ func TestFetchRejectsDisallowedHost(t *testing.T) {
 	for _, u := range []string{
 		"https://evil.example.com/pkg.zip",
 		"https://localhost:8080/internal.zip",
-		"http://github.com/o/r", // https required without AllowInsecure
+		"http://github.com/o/r",
 		"://bad",
 	} {
 		if _, _, err := f.Fetch(context.Background(), u); !errors.Is(err, ErrFetch) {
@@ -82,10 +82,7 @@ func TestFetchSizeCap(t *testing.T) {
 	if !errors.Is(err, ErrFetch) {
 		t.Fatalf("want ErrFetch for oversized package, got %v", err)
 	}
-	// 03:INGEST-016. The ceiling in the message, because this error reaches the
-	// creator verbatim (Handler.respond writes err.Error() for ErrFetch); and no
-	// actual size, because LimitReader abandoned the download one byte past the
-	// cap and nobody here knows how big the source was.
+
 	if !strings.Contains(err.Error(), skillpkg.HumanMB(skillpkg.MaxZipBytes)) {
 		t.Errorf("the refusal does not name the import ceiling: %v", err)
 	}
@@ -162,9 +159,6 @@ func TestGitHubURLNormalization(t *testing.T) {
 		t.Fatalf("tree URL candidate wrong: %+v", cands)
 	}
 
-	// INGEST-004 / import-report.md §6.1 bug 4: a 40-hex ref is a commit, and
-	// codeload serves the archive at a bare SHA. This is the only URL shape that
-	// pins an import to immutable content, so source_ref must record the SHA.
 	sha := "0123456789abcdef0123456789abcdef01234567"
 	for _, path := range []string{"tree", "commit"} {
 		cands, _ = f.candidates(parse("https://github.com/anthropics/skills/" + path + "/" + sha))
@@ -175,7 +169,6 @@ func TestGitHubURLNormalization(t *testing.T) {
 		}
 	}
 
-	// A short SHA is not a stable identifier and must not be treated as one.
 	cands, _ = f.candidates(parse("https://github.com/anthropics/skills/tree/0123456"))
 	if len(cands) != 1 || cands[0].url != "https://codeload.github.com/anthropics/skills/zip/refs/heads/0123456" {
 		t.Fatalf("abbreviated sha must stay on the branch path: %+v", cands)
@@ -187,32 +180,27 @@ func TestGitHubURLNormalization(t *testing.T) {
 	}
 }
 
-// INGEST-014 / SEC-003: the allow list decides which host names may be asked
-// for; this decides which addresses may be connected to. Both spellings of the
-// metadata address answer to the same rule — netip's Is* methods say false for
-// every v4-mapped address, so blockedAddr unmaps before it asks.
 func TestBlockedAddrByFamily(t *testing.T) {
 	for _, tc := range []struct {
 		addr        string
 		strict, dev bool
 	}{
-		// Blocked everywhere, development included.
-		{"169.254.169.254", true, true},        // cloud metadata service
-		{"::ffff:169.254.169.254", true, true}, // the same host, spelled v6
-		{"fe80::1", true, true},                // v6 link-local
-		{"224.0.0.1", true, true},              // v4 multicast
-		{"ff02::1", true, true},                // v6 link-local multicast
-		{"ff01::1", true, true},                // v6 interface-local multicast
-		{"100.64.0.1", true, true},             // CGNAT
-		{"::ffff:100.64.0.1", true, true},      // and its v6 spelling
-		{"0.0.0.0", true, true},                // unspecified / "this network"
-		{"::", true, true},                     // v6 unspecified
-		{"0.1.2.3", true, true},                // 0.0.0.0/8
+
+		{"169.254.169.254", true, true},
+		{"::ffff:169.254.169.254", true, true},
+		{"fe80::1", true, true},
+		{"224.0.0.1", true, true},
+		{"ff02::1", true, true},
+		{"ff01::1", true, true},
+		{"100.64.0.1", true, true},
+		{"::ffff:100.64.0.1", true, true},
+		{"0.0.0.0", true, true},
+		{"::", true, true},
+		{"0.1.2.3", true, true},
 		{"::ffff:0.1.2.3", true, true},
-		{"255.255.255.255", true, true}, // broadcast
+		{"255.255.255.255", true, true},
 		{"::ffff:255.255.255.255", true, true},
-		// Local network: refused in a real deployment, reachable for httptest and
-		// the compose stack when IMPORT_ALLOW_INSECURE is on.
+
 		{"127.0.0.1", true, false},
 		{"::1", true, false},
 		{"::ffff:127.0.0.1", true, false},
@@ -220,8 +208,8 @@ func TestBlockedAddrByFamily(t *testing.T) {
 		{"::ffff:10.0.0.5", true, false},
 		{"172.16.0.1", true, false},
 		{"192.168.1.1", true, false},
-		{"fd00::1", true, false}, // unique-local v6
-		// A normal external host is reachable in both modes.
+		{"fd00::1", true, false},
+
 		{"140.82.121.4", false, false},
 		{"2606:2800:220:1:248:1893:25c8:1946", false, false},
 	} {
@@ -238,25 +226,17 @@ func TestBlockedAddrByFamily(t *testing.T) {
 	}
 }
 
-// wantBlocked asserts the fetch was refused for the destination and that the
-// refusal says so without naming an address (SEC-003 錯誤訊息不洩漏內部資訊).
 func wantBlocked(t *testing.T, err error) {
 	t.Helper()
 	if !errors.Is(err, ErrFetch) {
 		t.Fatalf("want ErrFetch, got %v", err)
 	}
-	// 04 丙-138：sentinel 保留英文身分（`errors.Is` 比對的是它），訊息換成使用者讀得懂
-	// 的那一句。這一支釘的是**兩者都在**——前綴少了代表分類不見了，句子換了代表
-	// 使用者看到的東西變了。
+
 	if got, want := err.Error(), "fetch failed: 轉址之後落在不允許的位址，下載已停止。"; got != want {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
 
-// A host name that resolves to loopback is refused after resolution and before
-// connect. Port 9 is closed: without the dial guard this fails too, but with a
-// connection error, which is why the assertion is on the category and not just
-// on ErrFetch.
 func TestFetchRefusesHostResolvingToLoopback(t *testing.T) {
 	f := &URLFetcher{Allowed: map[string]bool{"localhost:9": true}}
 	_, _, err := f.Fetch(context.Background(), "https://localhost:9/pkg.zip")
@@ -268,8 +248,6 @@ func TestFetchRefusesHostResolvingToLoopback(t *testing.T) {
 	}
 }
 
-// The metadata address is refused as an IP literal in both spellings. Neither
-// reaches the network: the refusal happens in the dialler's Control hook.
 func TestFetchRefusesMetadataAddressBothSpellings(t *testing.T) {
 	for _, host := range []string{"169.254.169.254", "[::ffff:169.254.169.254]"} {
 		f := &URLFetcher{Allowed: map[string]bool{host: true}}
@@ -278,10 +256,6 @@ func TestFetchRefusesMetadataAddressBothSpellings(t *testing.T) {
 	}
 }
 
-// A redirect into a blocked address is refused even though the redirect target
-// is on the host allow list — checking the original URL alone would have
-// followed it. Development mode, so the loopback source server is reachable and
-// the link-local target is still not.
 func TestFetchRefusesRedirectIntoBlockedAddress(t *testing.T) {
 	src := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "http://169.254.169.254/latest/meta-data", http.StatusFound)
@@ -297,7 +271,6 @@ func TestFetchRefusesRedirectIntoBlockedAddress(t *testing.T) {
 	wantBlocked(t, err)
 }
 
-// Four hops offered, three followed (SEC-003 redirect 上限 3 跳).
 func TestFetchRedirectLimit(t *testing.T) {
 	var hops int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -317,12 +290,6 @@ func TestFetchRedirectLimit(t *testing.T) {
 	}
 }
 
-// SEC-003's model is that the allow list decides which names may be asked for.
-// candidates() rewrites github.com/owner/repo into a codeload.github.com archive
-// URL from a constant string, and download() used to send that without checking
-// it: only the URL the user typed ever met the list. DefaultAllowedHosts happens
-// to contain codeload, so a default deployment could not see the difference — a
-// deployment that narrowed the list could, and would still have made the request.
 func TestFetchRefusesAnArchiveHostTheAllowListDoesNotName(t *testing.T) {
 	f := &URLFetcher{Allowed: map[string]bool{"github.com": true}}
 	_, _, err := f.Fetch(context.Background(), "https://github.com/o/r")
@@ -332,8 +299,5 @@ func TestFetchRefusesAnArchiveHostTheAllowListDoesNotName(t *testing.T) {
 	if !strings.Contains(err.Error(), "codeload.github.com") {
 		t.Errorf("the refusal must name the host it refused, got %q", err)
 	}
-	// No positive half here on purpose: the default list does name codeload, so
-	// asserting it gets through means letting the request leave the machine, and
-	// a test that needs the internet is a test that goes red for the wrong reason.
-	// checkURL's accept path is covered by every other fetch test in this file.
+
 }

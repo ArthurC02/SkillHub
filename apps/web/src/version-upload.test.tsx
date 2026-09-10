@@ -6,11 +6,6 @@ import { queryClient } from "./api/queryClient";
 import { VersionUpload } from "./components/VersionUpload";
 import { SKILL_VERSIONS } from "./fixtures/platform";
 
-// 04 丙-151: VersionUpload gained the same 422-CategorizedFindings handling,
-// per-status Chinese sentences, and the rule sentence ImportSkill shows before
-// its file input. Same hand-rolled DOM plumbing as detail.test.tsx /
-// workspace.test.tsx; @testing-library is not a dependency of this app.
-
 const SKILL = "11111111-1111-1111-1111-111111111111";
 
 let container: HTMLDivElement;
@@ -84,14 +79,11 @@ async function submitUpload() {
   });
 }
 
-// --- 04 丙-151①: 422 CategorizedFindings 逐條渲染，不落回 statusText ------------
-
 test("丙-151: 422 兩條 finding 的中文訊息都渲染，且不出現 Unprocessable Entity", async () => {
   stubOwner(() =>
     json(
       {
         errors: [
-          // 04 丙-152 — apps/platform/internal/shared/skillpkg/skillpkg.go 真的回的字串。
           { severity: "error", code: "skill-md-missing", message: "套件根目錄找不到 SKILL.md" },
           { severity: "error", code: "name-missing", message: "frontmatter 欄位 name 為必填" },
         ],
@@ -110,8 +102,6 @@ test("丙-151: 422 兩條 finding 的中文訊息都渲染，且不出現 Unproc
   expect(text()).not.toContain("Unprocessable Entity");
 });
 
-// --- 04 丙-151③: 檔案框前的規則句 ------------------------------------------------
-
 test("丙-151: 檔案輸入框之前有匯入頁同樣的規則句", async () => {
   stubOwner(() => json({ error: "unused" }, 500));
   await render();
@@ -121,12 +111,9 @@ test("丙-151: 檔案輸入框之前有匯入頁同樣的規則句", async () =>
   expect(rule!.textContent).toContain("SKILL.md");
   expect(rule!.textContent).toContain("大小上限見拒絕訊息");
 
-  // 規則句要在檔案輸入框之前（§2.2 第三向：擋住人的限制在撞上之前看得見）。
   const input = container.querySelector("#skill-version-file")!;
   expect(rule!.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
-
-// --- 04 丙-151②: 其餘狀態換這一頁自己的中文句，不印 error.message --------------
 
 test("丙-151: 413 印「檔案超過上限，請縮小套件再上傳。」", async () => {
   stubOwner(() => json({ error: "file is larger than 25 MB" }, 413));

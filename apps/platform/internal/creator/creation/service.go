@@ -25,48 +25,31 @@ var (
 	ErrInvalidCommand = errors.New("creation: invalid command")
 	ErrLimit          = errors.New("creation: limit reached")
 	ErrUnavailable    = errors.New("creation: capability unavailable")
-	// ErrDeadline: the session's wall clock (Limits.SessionTimeout) ran out. Kept
-	// apart from ErrLimit so the API can say "time", not "budget".
+
 	ErrDeadline = errors.New("creation: session deadline passed")
-	// ErrBudgetOutOfBand: Create was asked for a budget outside
-	// [MaxCallCostUSD, MaxCostUSD]; the API names the band in its reply.
+
 	ErrBudgetOutOfBand = errors.New("creation: budget outside the permitted band")
-	// ErrCreditThreshold: ADR-068 gate ① refused to start a new session —
-	// the workspace's balance is below the started threshold.
+
 	ErrCreditThreshold = errors.New("creation: credit balance below the started threshold")
-	// ErrCreditFloor: ADR-068 gate ② refused to make this step's paid call —
-	// charging it would push the workspace's balance past the -50 floor.
+
 	ErrCreditFloor = errors.New("creation: credit balance at the debt floor")
 )
 
 const (
-	// MaxMessages is the transcript ceiling both the pre-call gate and the
-	// proposal check use. llm-internal.yaml caps messages at 100; a step may
-	// append two (assistant + tool), so the gate must leave room for both.
 	MaxMessages = 98
-	// MaxTextRunes mirrors llm-internal.yaml's maxLength on message, brief,
-	// diagram_understanding and draft_validation.report. A truncation marker
-	// must fit INSIDE it, not after it.
+
 	MaxTextRunes = 20000
-	// MaxDiagramBytes is the decoded size cap for an uploaded flow diagram,
-	// enforced at the command and again when the bytes reach the worker.
+
 	MaxDiagramBytes = 4_000_000 // one-number: creationMaxDiagramBytes
-	// MaxAcceptanceCriteria mirrors llm-internal.yaml's maxItems on
-	// acceptance_criteria; each item is capped at MaxCriterionRunes there too.
+
 	MaxAcceptanceCriteria = 12
-	// MaxSampleInputRunes mirrors llm-internal.yaml's maxLength on sample_input.
+
 	MaxSampleInputRunes = 4000
-	// MaxNudges bounds the automatic re-queues in which Go hands a draft back
-	// to the model instead of accepting it (unchanged after an unmet run,
-	// diagram nodes missing). Two per session: run g (2026-09-06) showed the
-	// model narrating edits it did not make, and a third try is the person's.
+
 	MaxNudges = 2
-	// MaxBlockedRepeats is how many times in a row the same blocking validation
-	// report may come back before the person gets the turn.
+
 	MaxBlockedRepeats = 2
-	// MaxSearchRounds is how many empty catalogue searches a session may run
-	// before the model drafts without a reference (owner, 2026-09-06: two
-	// rounds, then say not found).
+
 	MaxSearchRounds   = 2
 	MaxCriterionRunes = 500
 )
@@ -122,9 +105,7 @@ type Reference struct {
 	Description   string `json:"description,omitempty"`
 	Compatibility string `json:"compatibility,omitempty"`
 	AllowedTools  string `json:"allowed_tools,omitempty"`
-	// Tier, ScanStatus and Warnings are the catalogue's trust facts for this
-	// exact version (05 SEC-013, LLM04): an offer to adopt carries what a
-	// search row carries. Empty when the Skill is not in the catalogue.
+
 	Tier       string `json:"tier,omitempty"`
 	ScanStatus string `json:"scan_status,omitempty"`
 	Warnings   *int   `json:"warnings,omitempty"`
@@ -137,11 +118,6 @@ type Draft struct {
 	Blocked     bool                     `json:"blocked"`
 }
 
-// ModelChange is the person's last-confirmed brief/criteria/sample_input,
-// kept only long enough to show what a disputed model rewrite overwrote (05
-// R-54 #4): the confirm screen showed the new text with nothing to compare it
-// against, so a rewritten brief (an observed injection channel — corpus-
-// injection.json's change_brief cases) looked exactly like an honest one.
 type ModelChange struct {
 	Brief              string   `json:"brief,omitempty"`
 	AcceptanceCriteria []string `json:"acceptance_criteria,omitempty"`
@@ -151,22 +127,11 @@ type Candidate struct {
 	SkillID   string `json:"skill_id"`
 	VersionID string `json:"version_id"`
 	RunID     string `json:"run_id,omitempty"`
-	// TestCaseID is the Test Case Go created from the confirmed acceptance
-	// criteria when the candidate was materialized (05 R-46 (b)); the trial run
-	// that feeds the review phase is expected to use it.
+
 	TestCaseID string `json:"test_case_id,omitempty"`
 }
 
-// Attachment is one picture in the conversation: which turn it belongs to, and
-// enough to say what it was. Never the bytes (ADR-066 決策 4).
 type Attachment struct {
-	// MessageIndex is where this picture sits among Messages. When the person
-	// typed something with it, that is the index of their own message, and the
-	// picture belongs inside that turn. When they typed nothing, it is the index
-	// the NEXT message will take - the model's reply to the picture - so the
-	// picture still renders between the two turns it actually happened between.
-	// Nothing can steal that index in between: the session is queued while the
-	// step runs, and a queued session refuses every command but cancel.
 	MessageIndex int    `json:"message_index"`
 	MediaType    string `json:"media_type"`
 	Bytes        int    `json:"bytes"`
@@ -176,15 +141,9 @@ type Attachment struct {
 type Snapshot struct {
 	Messages []llmclient.CreationMessage `json:"messages"`
 	Brief    string                      `json:"brief"`
-	// AcceptanceCriteria are proposed by the model together with the brief and
-	// confirmed with it (confirm_brief binds both). Observable sentences, not
-	// prose inside the brief: at materialize they become a Test Case.
+
 	AcceptanceCriteria []string `json:"acceptance_criteria"`
-	// SampleInput is one complete example of what a user hands the Skill,
-	// proposed and confirmed with the brief; it is the prompt of the Test Case
-	// the criteria are judged against. Run d (2026-09-06) judged the brief
-	// itself: the agent asked for the material and every criterion came back
-	// undetermined.
+
 	SampleInput          string      `json:"sample_input"`
 	BriefConfirmed       bool        `json:"brief_confirmed"`
 	DiagramUnderstanding string      `json:"diagram_understanding"`
@@ -197,76 +156,41 @@ type Snapshot struct {
 	UsageUnknown         bool        `json:"usage_unknown"`
 	Steps                int         `json:"steps"`
 	ToolCalls            int         `json:"tool_calls"`
-	// DraftRetries counts the automatic re-queues after the model answered
-	// outcome=draft with no draft (reason draft_missing); at most one per session.
+
 	DraftRetries int `json:"draft_retries,omitempty"`
-	// RunUnmet is set by attach_run when the attached Run's evaluation is
-	// anything but met, and cleared when a draft with new content arrives. A
-	// draft byte-identical to the one that ran is then not progress (run g,
-	// 2026-09-06: 10 of 12 review steps returned the same hash while the
-	// message claimed a revision).
+
 	RunUnmet bool `json:"run_unmet,omitempty"`
-	// EvaluationText is the judge's own words from the newest attach_run
-	// observation (summary, reasons, finding messages), kept so the next draft
-	// can be checked for markers copied out of them (05 SEC-013, LLM01).
+
 	EvaluationText string `json:"evaluation_text,omitempty"`
-	// Nudges counts the automatic re-queues where Go declined a draft and told
-	// the model why (MaxNudges per session).
+
 	Nudges int `json:"nudges,omitempty"`
-	// BlockedRepeats counts consecutive blocked validations with the same
-	// report. At MaxBlockedRepeats the turn goes to the person: run h
-	// (2026-09-06) spent eight steps on one unchanged structural verdict.
+
 	BlockedRepeats int `json:"blocked_repeats,omitempty"`
-	// SearchRounds counts catalogue searches that found nothing; at
-	// MaxSearchRounds the search tools are withdrawn for the session.
+
 	SearchRounds int `json:"search_rounds,omitempty"`
-	// PendingFetchURL is the page the model asked to read, held until the
-	// person confirms or declines; Fetches is what was read (05 R-47).
+
 	PendingFetchURL string  `json:"pending_fetch_url,omitempty"`
 	Fetches         []Fetch `json:"fetches,omitempty"`
-	// CatalogChecked: Go searched the catalogue with the first message before
-	// any model call (05 R-49). Hits wait in References at confirm_references
-	// for the person to adopt, keep as references, or decline.
+
 	CatalogChecked bool `json:"catalog_checked,omitempty"`
-	// Duplicates are the catalogue Skills within the creation tool's distance
-	// of the draft, found when materialize was requested (05 R-50); the session
-	// waits at confirm_duplicate and PendingMaterialize is the held command.
-	// DuplicateAcknowledged says the check ran for this draft (found nothing,
-	// or the person confirmed anyway) and is cleared with the draft.
+
 	Duplicates            []Reference `json:"duplicates,omitempty"`
 	PendingMaterialize    string      `json:"pending_materialize,omitempty"`
 	DuplicateAcknowledged bool        `json:"duplicate_acknowledged,omitempty"`
-	// Adopted: the candidate is a fork of an existing Skill chosen through
-	// adopt_reference; nothing was composed.
+
 	Adopted       bool       `json:"adopted,omitempty"`
 	Draft         *Draft     `json:"draft,omitempty"`
 	PreviousDraft *Draft     `json:"previous_draft,omitempty"`
 	Candidate     *Candidate `json:"candidate,omitempty"`
-	// These three describe the NEWEST picture: the one the model reads and the
-	// one materialize records in generation_inputs. A second upload overwrites
-	// them, which is right for that job and wrong for a conversation - see
-	// Attachments.
+
 	DiagramFingerprint string `json:"diagram_fingerprint,omitempty"`
 	DiagramMediaType   string `json:"diagram_media_type,omitempty"`
 	DiagramBytes       int    `json:"diagram_bytes,omitempty"`
-	// Attachments is every picture the person put into this conversation, in
-	// order, each tied to the turn it arrived with. It exists because the three
-	// fields above are a latest-value, and a conversation may not lose its own
-	// turns: upload a second diagram and the first one disappeared from the
-	// history entirely.
-	//
-	// Metadata only, and deliberately: ADR-066 決策 4 keeps the fingerprint and
-	// refuses the bytes, and its 2026-09-05 closing note answered 「維持不保存」
-	// to the question of storing the original. Nothing here reopens that - the
-	// web thumbnail is the File still held by the browser that sent it, and
-	// after a reload the turn shows this description instead of a picture.
+
 	Attachments   []Attachment `json:"attachments,omitempty"`
 	Model         string       `json:"model,omitempty"`
 	PromptVersion string       `json:"prompt_version,omitempty"`
-	// ModelChanged holds the confirmed values a model step just overturned,
-	// recorded only when BriefConfirmed was true before this step (a
-	// confirmed input was actually overturned, not merely proposed for the
-	// first time), and cleared when confirm_brief succeeds.
+
 	ModelChanged *ModelChange `json:"model_changed,omitempty"`
 }
 type envelope struct {
@@ -287,8 +211,7 @@ type View struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	ExpiresAt time.Time `json:"expires_at"`
-	// Deadline is the session-timeout clock (distinct from ExpiresAt, the
-	// retention clock); after it every command except cancel is refused.
+
 	Deadline time.Time `json:"deadline"`
 }
 type Provenance struct {
@@ -304,59 +227,30 @@ type Service struct {
 	Insert           func(context.Context, pgx.Tx, JobArgs) error
 	ResolveReference func(context.Context, identity.Workspace, string, string) (Reference, llmclient.GenerateReference, error)
 	SearchReferences func(context.Context, identity.Workspace, string) ([]Reference, error)
-	// Fetch reads one page after the person's consent (05 R-47). Wired in the
-	// Worker only; nil in the API, whose steps never fetch.
+
 	Fetch func(context.Context, string) (Fetch, string)
-	// SearchKnowledge is the semantic catalog search (embedding + hybrid rank);
-	// nil hides the search_knowledge tool from the model.
+
 	SearchKnowledge func(context.Context, identity.Workspace, []string) ([]Reference, float64, error)
-	// CatalogCheck is the semantic catalogue search behind the first-message
-	// check and the duplicate guard (05 R-49／R-50): one embedding, the hits
-	// within the creation tool's distance. nil skips both, and so does a
-	// degraded (lexical-only) answer — a keyword floor over a whole sentence
-	// is noise, not a match.
+
 	CatalogCheck func(context.Context, identity.Workspace, string) ([]Reference, float64, error)
-	// DuplicateCheck is the same search at the duplicate guard's stricter
-	// cut-off (05 R-50): a Skill that IS this draft, not one worth reading.
+
 	DuplicateCheck func(context.Context, identity.Workspace, string) ([]Reference, float64, error)
-	// Adopt forks an existing Skill into the workspace as the session's
-	// candidate (adopt_reference): reuse instead of composition.
+
 	Adopt func(context.Context, identity.Workspace, string) (Candidate, error)
-	// Mask redacts credential shapes from what the session stores of the
-	// person's own words and of fetched pages (05 SEC-013, LLM02; TRACE-005's
-	// masker, injected). nil stores text as it came.
+
 	Mask          func(string) string
 	ValidateDraft func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
 	Materialize   func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
 	ReadRun       func(context.Context, identity.Workspace, string, Candidate) (string, error)
-	// CreateAcceptanceTestCase writes the confirmed acceptance criteria as a Test Case of
-	// the candidate skill, inside the materialize transaction; returns its id.
+
 	CreateAcceptanceTestCase func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error)
 	IssueKey                 func(context.Context, string, string, float64, time.Duration) (string, error)
 	RevokeKey                func(context.Context, string) error
-	// CreditCanStart is ADR-068 gate ①, checked before a session may begin
-	// at all. nil skips the check (credit not wired). ok=false without an
-	// error means the balance is below the started threshold, not a
-	// failure — Create then returns ErrCreditThreshold.
-	//
-	// Deliberately a plain function of primitive types, not a credit.Service
-	// method: creation does not import credit (ADR-068, "用注入的介面,不要讓
-	// creation 直接 import credit 的內部") — the composition root closes over
-	// its own credit.Service instance when it assigns this field.
+
 	CreditCanStart func(ctx context.Context, workspaceID pgtype.UUID) (ok bool, err error)
-	// CreditReserve is gate ②: called with the step's reserved cost right
-	// before the paid model call. ok=false means charging this step would
-	// put the balance past the -50 floor; the call is not made and Step
-	// fails this attempt with ErrCreditFloor. nil skips the check.
+
 	CreditReserve func(ctx context.Context, workspaceID pgtype.UUID, reservedUSDMicros int64) (ok bool, err error)
-	// CreditSettle charges for one step's actual (or, when unknown, reserved)
-	// cost, in the same transaction as the snapshot's AdvanceCreationSession
-	// (ADR-068 decision 5). usdMicros nil means settleCost's UsageUnknown
-	// branch fired: the injected function is expected to charge the reserved
-	// amount and mark the entry estimated, never to charge zero. Idempotent
-	// on (workspaceID, sessionID, revision) — a re-settle of an
-	// already-charged revision must debit once, not twice. nil skips
-	// charging (credit not wired).
+
 	CreditSettle func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error
 }
 
@@ -435,26 +329,8 @@ func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, ws pgtype.UUID) e
 	return gen.New(tx).PurgeCreationWorkspace(ctx, ws)
 }
 
-// StreamCursor is what a reconnecting client says it already has: a session
-// revision. ADR-069 決策 3.
-//
-// There is no separate sequence and no relay store, and that is the point of
-// streaming state rather than tokens. `revision` is already monotonic per
-// session — AdvanceCreationSession bumps it inside the same transaction that
-// writes the snapshot and the append-only event — so 「what has this client
-// missed」 is one comparison against a row that has to be read anyway. The
-// industry reaches for Redis at this spot because streamed tokens belong to no
-// table; these do.
-//
-// Nothing intermediate is replayed, and nothing needs to be: a snapshot is
-// cumulative (messages append, they are never rewritten), so the document at
-// revision N contains everything revisions 1..N-1 would have said. A client
-// that misses three revisions and reconnects is one document behind, not three.
 type StreamCursor int64
 
-// Changed returns the session as of now when it has moved past the cursor, and
-// ok=false when it has not. ErrNotFound once the session is gone or expired —
-// the same answer Get gives, so a stream cannot outlive the thing it watches.
 func (s *Service) Changed(ctx context.Context, ws identity.Workspace, id pgtype.UUID, at StreamCursor) (View, bool, error) {
 	row, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: id, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !live(row)) {
@@ -470,12 +346,6 @@ func (s *Service) Changed(ctx context.Context, ws identity.Workspace, id pgtype.
 	return v, err == nil, err
 }
 
-// StreamDone reports whether a stream watching this view should close: the
-// session has reached a state no further command can leave, or its own clock
-// has run out. Both are already the conditions under which the screen stops
-// asking (terminal states, and the deadline every command except cancel is
-// refused after), so the stream ends exactly when the page would have stopped
-// polling.
 func StreamDone(v View) bool {
 	return terminal(v.State) || v.State == "failed" || !v.Deadline.After(time.Now())
 }

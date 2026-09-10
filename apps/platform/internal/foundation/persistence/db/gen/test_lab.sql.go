@@ -72,8 +72,6 @@ type CreateDatasetCleanupIntentParams struct {
 	ObjectKey   string
 }
 
-// Written before object storage is touched. A successful dataset transaction
-// deletes it; every other exit leaves a durable key for purge-datasets.
 func (q *Queries) CreateDatasetCleanupIntent(ctx context.Context, arg CreateDatasetCleanupIntentParams) (DatasetObjectCleanupIntent, error) {
 	row := q.db.QueryRow(ctx, createDatasetCleanupIntent, arg.WorkspaceID, arg.ObjectKey)
 	var i DatasetObjectCleanupIntent
@@ -89,7 +87,6 @@ func (q *Queries) CreateDatasetCleanupIntent(ctx context.Context, arg CreateData
 }
 
 const createTestCase = `-- name: CreateTestCase :one
-
 INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt, acceptance_criteria)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric
@@ -103,9 +100,6 @@ type CreateTestCaseParams struct {
 	AcceptanceCriteria []byte
 }
 
-// Test Lab: test cases, their acceptance criteria, datasets and run snapshots
-// (TEST-001/003/004/010). Every statement is workspace scoped (iron rule 3); the
-// caller resolves workspace_id from the session, never from request input.
 func (q *Queries) CreateTestCase(ctx context.Context, arg CreateTestCaseParams) (TestCase, error) {
 	row := q.db.QueryRow(ctx, createTestCase,
 		arg.WorkspaceID,
@@ -147,7 +141,6 @@ type CreateTestCaseSnapshotParams struct {
 	Rubric             []byte
 }
 
-// TEST-010: the frozen copy a run executes. Immutable once written (0005 trigger).
 func (q *Queries) CreateTestCaseSnapshot(ctx context.Context, arg CreateTestCaseSnapshotParams) (TestCaseSnapshot, error) {
 	row := q.db.QueryRow(ctx, createTestCaseSnapshot,
 		arg.WorkspaceID,
@@ -394,19 +387,6 @@ type LockTestCaseParams struct {
 	WorkspaceID pgtype.UUID
 }
 
-// Same read as GetTestCase, but it serialises every change to one test case
-// against every other: dataset upload and delete, acceptance-criteria edits,
-// rubric writes, and the snapshot a run freezes before it executes. Without the
-// lock two parallel uploads both measure the usage before either has written its
-// row and both pass a limit their sum breaks (TEST-004), and a snapshot can hash
-// a prompt that is overwritten before it commits (TEST-010).
-//
-// 2026-08-21 (DDD-031, ADR-035 B 組): the snapshot freeze is in that list because
-// it takes this lock itself now instead of reading unlocked and trusting whoever
-// called it, and every remaining call site is inside internal/testlab. A caller
-// in another context that needs the critical section open before its own checks
-// asks testlab.LockDraft for it rather than issuing this statement, so the owner
-// of the invariant can see the lock it depends on.
 func (q *Queries) LockTestCase(ctx context.Context, arg LockTestCaseParams) (TestCase, error) {
 	row := q.db.QueryRow(ctx, lockTestCase, arg.ID, arg.WorkspaceID)
 	var i TestCase
@@ -436,10 +416,6 @@ type SoftDeleteDatasetParams struct {
 	WorkspaceID pgtype.UUID
 }
 
-// The row is marked deleted here; the object itself is removed by the caller
-// after the transaction commits (objstore.Remove is idempotent, iron rule 9).
-// purged_at stays null until that succeeds, making a failed removal durable
-// work for the retention sweep rather than an unreachable orphan.
 func (q *Queries) SoftDeleteDataset(ctx context.Context, arg SoftDeleteDatasetParams) (Dataset, error) {
 	row := q.db.QueryRow(ctx, softDeleteDataset, arg.ID, arg.WorkspaceID)
 	var i Dataset
@@ -473,8 +449,6 @@ type SoftDeleteDatasetsByTestCaseParams struct {
 	WorkspaceID pgtype.UUID
 }
 
-// Deleting a test case takes its files with it (WS-002 刪除範圍). Returns the
-// object keys so the caller can remove them after the commit.
 func (q *Queries) SoftDeleteDatasetsByTestCase(ctx context.Context, arg SoftDeleteDatasetsByTestCaseParams) ([]Dataset, error) {
 	rows, err := q.db.Query(ctx, softDeleteDatasetsByTestCase, arg.TestCaseID, arg.WorkspaceID)
 	if err != nil {
@@ -556,8 +530,6 @@ type SumDatasetUsageRow struct {
 	TotalBytes int64
 }
 
-// The live footprint of one test case, for the PDM-005 per-test-case caps
-// (≤ 20 files, ≤ 100 MB). Deleted rows do not count against the budget.
 func (q *Queries) SumDatasetUsage(ctx context.Context, arg SumDatasetUsageParams) (SumDatasetUsageRow, error) {
 	row := q.db.QueryRow(ctx, sumDatasetUsage, arg.TestCaseID, arg.WorkspaceID)
 	var i SumDatasetUsageRow
@@ -600,8 +572,6 @@ type UpdateTestCaseParams struct {
 	UserPrompt  string
 }
 
-// Drafts are editable; what a run actually used is frozen in test_case_snapshots
-// instead (ADR-003, iron rule 4), so editing here never rewrites history.
 func (q *Queries) UpdateTestCase(ctx context.Context, arg UpdateTestCaseParams) (TestCase, error) {
 	row := q.db.QueryRow(ctx, updateTestCase,
 		arg.ID,
@@ -667,10 +637,6 @@ type UpdateTestCaseRubricParams struct {
 	Rubric      []byte
 }
 
-// CONTENT-007's editable rubric. Its own statement rather than a field on
-// UpdateTestCase for the same reason UpdateTestCaseCriteria is: the three are
-// edited from different screens and a shared statement would make each of them
-// able to blank the others by omission.
 func (q *Queries) UpdateTestCaseRubric(ctx context.Context, arg UpdateTestCaseRubricParams) (TestCase, error) {
 	row := q.db.QueryRow(ctx, updateTestCaseRubric, arg.ID, arg.WorkspaceID, arg.Rubric)
 	var i TestCase

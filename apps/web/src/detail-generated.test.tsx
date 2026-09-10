@@ -7,19 +7,6 @@ import { SkillDetail } from "./pages/SkillDetail";
 import { skillDetail } from "./fixtures/platform";
 import type { SkillDetail as SkillDetailModel, SkillSource } from "./api/types";
 
-/**
- * GEN-002/GEN-005/GEN-006, provenance READ side (04 丙-159).
- *
- * `detail.test.tsx` is coordinator-owned; this file is its own, scaffolded the
- * same way (§ its header), covering three shapes of `source.type ===
- * "generated"` that the shared file's fixture never exercises: a diagram-only
- * generation (`task_description` is `""`, not absent — Go always sends the
- * field), and one with `generation_inputs.references`.
- *
- * ADR-066 待決策 2 (answered 2026-09-05): each recorded reference is a link to
- * its own detail page, which makes its own access decision.
- */
-
 const SKILL = "11111111-1111-1111-1111-111111111111";
 
 let container: HTMLDivElement;
@@ -67,7 +54,6 @@ function json(body: unknown, status = 200) {
   );
 }
 
-/** 訪客：SourceBlock renders regardless of session, and this needs none. */
 function stubVisitor(detail: SkillDetailModel) {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");

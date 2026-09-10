@@ -97,14 +97,10 @@ func TestClientAuthenticatesToTheInternalService(t *testing.T) {
 	}
 }
 
-// The client must impose no deadline of its own: the caller's ctx is the only
-// one. A second, shorter client-side timeout is invisible to the caller, fires
-// before the budget the caller set, and does not stop the upstream call - so
-// the work is billed and thrown away.
 func TestClientDeadlineIsTheCallersContext(t *testing.T) {
 	blocked := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		<-blocked // never answers; only ctx can end this call
+		<-blocked
 	}))
 	defer srv.Close()
 	defer close(blocked)
@@ -120,20 +116,12 @@ func TestClientDeadlineIsTheCallersContext(t *testing.T) {
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("error = %v, want context.DeadlineExceeded", err)
 	}
-	// Generous, but far below any fixed client timeout worth having: the point
-	// is that the caller's 100ms ended the call, not a hidden longer one.
+
 	if elapsed > 5*time.Second {
 		t.Errorf("call took %s; the caller's deadline did not end it", elapsed)
 	}
 }
 
-// The Go half of a string held across a language boundary. apps/llm's
-// test_the_truncation_sentence_is_the_one_go_matches_on holds the other.
-//
-// Both failures come back as 502, and the round-A truncation emitted an EMPTY
-// string after spending its whole budget reasoning - so without this the two are
-// indistinguishable and the generation path retries a call that cannot answer
-// differently (ADR-047 決策 2).
 func TestTruncationComesBackAsItsOwnError(t *testing.T) {
 	for _, tc := range []struct {
 		name, detail string
@@ -141,11 +129,9 @@ func TestTruncationComesBackAsItsOwnError(t *testing.T) {
 	}{
 		{"truncated", "generate model output was truncated at the token ceiling", true},
 		{"malformed", "generate model returned malformed output", false},
-		// The false positive the bare word "truncated" used to produce. This is
-		// the shape apps/llm's OTHER 502 has — the gateway exception verbatim —
-		// and the user was told to shorten a task that was never too long.
+
 		{"gateway error quoting the word", "generate gateway error: provider said the input was truncated upstream", false},
-		// And the same word arriving from the user's own text, echoed back.
+
 		{"user text quoting the word", "generate gateway error: 400 on prompt \"my logs are truncated\"", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -167,20 +153,11 @@ func TestTruncationComesBackAsItsOwnError(t *testing.T) {
 	}
 }
 
-// /v1/embed takes an optional timeout_seconds and clamps to
-// min(app.EMBED_TIMEOUT_SECONDS, it), so the platform can ask for less than the
-// service's 20s ceiling. Until this existed there was no way to send it, and a
-// Go-side context deadline is not a substitute: it abandons the HTTP call while
-// the gateway request behind it keeps running and keeps being billed.
-//
-// What the two cases pin is the asymmetry, which is the part a "tidy-up" would
-// flatten: search asks for less because somebody is watching, indexing does not
-// because nobody is.
 func TestEmbedSendsATimeoutOnlyWhenOneIsAskedFor(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		seconds float64
-		want    any // the decoded JSON value of timeout_seconds, or nil for absent
+		want    any
 	}{
 		{name: "search asks for ten", seconds: 10, want: float64(10)},
 		{name: "indexing keeps the service default", seconds: 0, want: nil},
@@ -220,16 +197,6 @@ func TestEmbedSendsATimeoutOnlyWhenOneIsAskedFor(t *testing.T) {
 	}
 }
 
-// A field the service sends and this client drops is the defect this repository
-// has now paid for three times: `agent_output` on a run result, `run_lifecycle`
-// and `llm_service` in the trace schema — each declared in a contract, each read
-// by nothing, each discovered by somebody wondering why the system had nothing
-// to say. `checks` is decoded, so this holds that it stays decoded.
-//
-// The findings are the enrichment service's own deterministic disagreements with
-// the document it was given (05 R-34): a runtime the source needs that the
-// limitations never mention, an appraisal the source never made, CJK inside an
-// English example sentence.
 func TestEnrichSkillDecodesTheServicesOwnFindings(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{
@@ -258,15 +225,12 @@ func TestEnrichSkillDecodesTheServicesOwnFindings(t *testing.T) {
 	if resp.Checks[0].Rule != "runtime_not_in_limitations" || resp.Checks[0].Token != "python" {
 		t.Errorf("first finding = %+v, want the runtime rule naming python", resp.Checks[0])
 	}
-	// Severity is optional on the wire; a finding without one is still a finding.
+
 	if resp.Checks[1].Field != "task_examples[0].en" {
 		t.Errorf("second finding = %+v, want the English-example rule with its field path", resp.Checks[1])
 	}
 }
 
-// An enrichment that passes every deterministic rule sends no findings, and that
-// must stay distinguishable from a build that never checked. Empty, not absent,
-// is what a passing check looks like.
 func TestEnrichSkillWithoutFindingsIsNotAnError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"summary":"s","task_examples":[],"tags":{"inputs":[],"outputs":[],"tools":[],"dependencies":[]},"limitations":[],"model":"m","prompt_version":"v"}`))

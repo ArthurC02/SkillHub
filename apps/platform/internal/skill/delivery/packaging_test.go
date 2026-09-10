@@ -1,13 +1,5 @@
 package packaging
 
-// The parts of the packager that need no database: what may travel, how the zip
-// is written, what the two hashes cover, and what a profile is allowed to say.
-//
-// The database-backed half — the four gates, idempotency, and the promise that a
-// produced package re-imports — is in
-// apps/platform/internal/creator/workspace/packaging_integration_test.go, because it
-// runs through the real route table.
-
 import (
 	"archive/zip"
 	"bytes"
@@ -58,10 +50,6 @@ func TestRequireOwnerReadsDoesNotInspectTestLabInternals(t *testing.T) {
 	}
 }
 
-// realProfilesDir is the shipped configuration, not a copy of it. Reading the
-// real files is what makes these tests notice a profile edit that would change
-// produced packages — a fixture copy would keep passing while the deployment
-// changed underneath it.
 const realProfilesDir = "../../../../../contracts/packaging/profiles"
 
 func loadRealProfiles(t *testing.T) Profiles {
@@ -76,9 +64,6 @@ func loadRealProfiles(t *testing.T) Profiles {
 	return p
 }
 
-// The shipped profile set is what the endpoint serves and what the builder
-// applies, so a profile that would make the packager break a rule it cannot see
-// has to fail here rather than in a produced package.
 func TestTheShippedProfilesLoadAndKeepTheStandardPackageUnmodified(t *testing.T) {
 	profiles := loadRealProfiles(t)
 	for _, id := range TargetIDs {
@@ -90,8 +75,7 @@ func TestTheShippedProfilesLoadAndKeepTheStandardPackageUnmodified(t *testing.T)
 	if !ok {
 		t.Fatal("no standard profile")
 	}
-	// PDM-008: the standard package is the checkable form of "Skill Hub is not
-	// bound to one Agent". Both of these would retire that claim silently.
+
 	if len(std.FrontmatterAdditions) != 0 {
 		t.Errorf("the standard package adds frontmatter: %v", std.FrontmatterAdditions)
 	}
@@ -127,9 +111,6 @@ func TestAMissingProfileDirectoryIsNoTargetsRatherThanDefaults(t *testing.T) {
 	}
 }
 
-// ADR-027 decision 2: within one packager version, the same content produces the
-// same bytes. Without this, content_hash answers "was this the same process
-// invocation" instead of "is this the file I had".
 func TestWritingTheSameFilesTwiceProducesTheSameBytes(t *testing.T) {
 	files := []exportFile{
 		{path: "SKILL.md", data: []byte("---\nname: a\ndescription: b\n---\nbody\n")},
@@ -140,10 +121,9 @@ func TestWritingTheSameFilesTwiceProducesTheSameBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Reversed input order: entry order is decided by path, not by the order the
-	// builder happened to collect them in.
+
 	reversed := []exportFile{files[2], files[1], files[0]}
-	time.Sleep(time.Millisecond) // any wall-clock leak would show here
+	time.Sleep(time.Millisecond)
 	second, err := writeZip(reversed, "")
 	if err != nil {
 		t.Fatal(err)
@@ -176,8 +156,6 @@ func TestWritingTheSameFilesTwiceProducesTheSameBytes(t *testing.T) {
 	}
 }
 
-// ADR-027 decision 1: manifest_hash answers "is the CONTENT the same", so it
-// covers no zip metadata and not the manifest itself.
 func TestTheManifestHashCoversEveryFileExceptTheManifest(t *testing.T) {
 	base := []exportFile{
 		{path: "SKILL.md", data: []byte("a")},
@@ -205,9 +183,6 @@ func TestTheManifestHashCoversEveryFileExceptTheManifest(t *testing.T) {
 	}
 }
 
-// The allow-list. Every case here is something a real source package can carry
-// and none of it is Skill content; .git in particular can hold a private remote
-// URL and a credential cache (PACK-004's "internal paths").
 func TestBuildAndVersionControlResidueNeverTravels(t *testing.T) {
 	src := fstest.MapFS{
 		"SKILL.md":                   &fstest.MapFile{Data: []byte("---\nname: a\ndescription: b\n---\n")},
@@ -237,8 +212,7 @@ func TestBuildAndVersionControlResidueNeverTravels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Every removal is now reported, not just performed (04 完整性 review): a
-	// package that lost a file and one that never had it used to look the same.
+
 	droppedPaths := map[string]string{}
 	for _, e := range dropped {
 		if e.Reason == "" {
@@ -270,17 +244,14 @@ func TestBuildAndVersionControlResidueNeverTravels(t *testing.T) {
 		".npmrc", ".aws/credentials", ".config/gcloud/application_default_credentials.json",
 		".ENV", ".NPMRC", ".git-credentials", ".config/gcloud/credentials.db", ".config/gh/hosts.yml",
 		"fixtures/home/.git-credentials", "examples/.config/gcloud/access_tokens.db", "examples/.config/gh/hosts.yml",
-		// A zip can carry a symlink and extraction tools disagree about what to
-		// do with one. That is not a decision a package makes on someone's disk.
+
 		"link",
 	} {
 		if got[banned] {
 			t.Errorf("%s travelled", banned)
 		}
 	}
-	// Every surviving path has to be safe to write to a disk the platform does
-	// not control. This check exists only on the export side, because the
-	// platform never unpacks to disk and the user always does.
+
 	for _, f := range files {
 		if !fs.ValidPath(f.path) || strings.Contains(f.path, "..") || strings.ContainsAny(f.path, `\`) {
 			t.Errorf("%q is not a path that can be safely extracted", f.path)
@@ -317,8 +288,6 @@ func TestAProfileAddsFrontmatterFieldsWithoutTouchingTheOnesThatAreThere(t *test
 	}
 }
 
-// manifest_hash only stays equal across two builds of unchanged content if the
-// slug does, so this is not cosmetic.
 func TestATestCaseSlugIsStableAndSafeAsADirectoryName(t *testing.T) {
 	const id = "11111111-2222-4333-8444-555555555555"
 	first := testCaseSlug("Monthly Report — from the ledger!", id)
@@ -336,16 +305,11 @@ func TestATestCaseSlugIsStableAndSafeAsADirectoryName(t *testing.T) {
 	}
 }
 
-// INSTALL.md is assembled from reviewed configuration, never model-written, and
-// PACK-008 puts the support status where it is read before any instruction.
 func TestInstallInstructionsStateTheSupportStatusAndAtLeastOneCheck(t *testing.T) {
 	profiles := loadRealProfiles(t)
 	for _, p := range profiles.Ordered() {
 		out := renderInstall(p, "demo-skill", []string{"requirements.txt: package declares external dependencies"})
-		// 02:PACK-002 第 2 條 is two clauses, and only the first was ever asserted:
-		// the status has to be shown AND it must not read as a promise that the
-		// package works. Both wordings carry a disclaimer, so both are named here
-		// — deleting either sentence used to leave this suite green.
+
 		switch p.SupportStatus {
 		case "unverified":
 			if !strings.Contains(out, "Support status: unverified") {
@@ -358,17 +322,14 @@ func TestInstallInstructionsStateTheSupportStatusAndAtLeastOneCheck(t *testing.T
 			if !strings.Contains(out, "Support status: verified") {
 				t.Errorf("%s: support status missing", p.ID)
 			}
-			// `verified` is the target, never the Skill. Without this the strongest
-			// word in the document would be the one with no boundary on it.
+
 			if !strings.Contains(out, "That is not a promise about this Skill") {
 				t.Errorf("%s: verified is stated without disclaiming what it covers:\n%s", p.ID, out)
 			}
 		default:
 			t.Errorf("%s: unknown support status %q", p.ID, p.SupportStatus)
 		}
-		// PACK-008's other half, and the one a reader's eye enforces: the status
-		// comes before any instruction. A document that says the same words at the
-		// bottom has told the installer after they installed it.
+
 		status := strings.Index(out, "**Support status:")
 		firstSection := strings.Index(out, "\n## ")
 		if status < 0 || firstSection < 0 || status > firstSection {
@@ -387,18 +348,13 @@ func TestInstallInstructionsStateTheSupportStatusAndAtLeastOneCheck(t *testing.T
 	}
 }
 
-// 02:PACK-002 第 1 條's dependency half, and the reason it is not just the
-// declared ones: a package that declares nothing while its scripts import pandas
-// is the first case where somebody follows the instructions and the Skill still
-// does not run. That finding existed; it reached the manifest and the preview and
-// never the document the installer reads (04 丙-18).
 func TestInstallInstructionsListWhatTheScriptsImportWithoutDeclaring(t *testing.T) {
 	report := skillpkg.Report{Findings: []skillpkg.Finding{
 		{Severity: skillpkg.SeverityInfo, Code: "package-dependencies", Path: "SKILL.md",
 			Message: "package evidences 1 third-party dependency: pandas", Details: []string{"pandas"}},
 		{Severity: skillpkg.SeverityWarning, Code: "undeclared-dependency", Path: "SKILL.md",
 			Message: "code imports 1 package the package never declares: pandas", Details: []string{"pandas"}},
-		// Not a dependency finding; it must not leak into the section.
+
 		{Severity: skillpkg.SeverityWarning, Code: "binary-file", Path: "bin/tool",
 			Message: "an executable file"},
 	}}
@@ -414,18 +370,12 @@ func TestInstallInstructionsListWhatTheScriptsImportWithoutDeclaring(t *testing.
 	if !strings.Contains(out, "never declares") {
 		t.Errorf("INSTALL.md does not carry the undeclared dependency:\n%s", out)
 	}
-	// The heading has to cover both halves. "Dependencies this package declares"
-	// would be wrong about the only line that is not obvious from the package.
+
 	if strings.Contains(out, "Dependencies this package declares") {
 		t.Error("the dependency heading still claims the list is only what was declared")
 	}
 }
 
-// The shipped profiles are the source of the env_vars the target list serves, and
-// 02:PACK-002 第 1 條 wants them on the page rather than only inside a package the
-// user has not built. Asserting the shape here rather than only over HTTP keeps
-// the rule with the data: iron rule 11 means an example is a placeholder, never a
-// key, and the schema refuses one — this is the floor under a hand-edited file.
 func TestTheProfilesDeclareEnvVarsWithoutCredentials(t *testing.T) {
 	for _, p := range loadRealProfiles(t).Ordered() {
 		for _, v := range p.EnvVars {
@@ -439,10 +389,8 @@ func TestTheProfilesDeclareEnvVarsWithoutCredentials(t *testing.T) {
 	}
 }
 
-// credentialShaped assembles the prefixes at run time rather than spelling them
-// out, the same discipline tools/qa/skillpkg-corpus/generate.py uses: this
-// repository's own pre-push scan greps for those literals, and a test that hard
-// codes them makes the scan cry wolf on every future run.
+// Built from parts so this literal itself does not look like a real key to a
+// secret scanner reading this file.
 func credentialShaped(s string) bool {
 	for _, half := range []string{"proj", "ant"} {
 		if strings.Contains(s, "sk-"+half+"-") {
@@ -459,11 +407,8 @@ func write(t *testing.T, path, body string) {
 	}
 }
 
-// slugRule is portable-test-case.schema.json's `slug` pattern, verbatim.
 var slugRule = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
-// A closed schema is only closed if the writer honours it, and the branch that
-// matters is `improvement`: the suggestion prose quotes a Run's private inputs.
 func TestTheImprovementOriginCarriesNoSuggestionProse(t *testing.T) {
 	body, err := json.Marshal(improvementOrigin{
 		Kind: "improvement", EvaluationID: "e", Suggestions: []suggestionRef{
@@ -487,9 +432,6 @@ func TestManifestOriginRefusesWithoutOwnerReaders(t *testing.T) {
 	}
 }
 
-// 04 丙-42. Two axes, and the whole point is that they do not collapse into one:
-// a superseded package is still servable, and an expired one is still whichever
-// version it was.
 func TestVersionStateIsSeparateFromServeState(t *testing.T) {
 	stale := Artifact{Status: "available", VersionNumber: 2, LatestVersionNumber: 5}.
 		withVersionState().withServeState(time.Now().Add(time.Hour), time.Time{})
@@ -499,8 +441,7 @@ func TestVersionStateIsSeparateFromServeState(t *testing.T) {
 	if !stale.Servable || stale.ServeState.Value != "available" {
 		t.Errorf("a superseded package is still downloadable: %+v", stale)
 	}
-	// The numbers are in the words, because 「已被取代」 without saying by what
-	// sends the reader to another page to find out how far behind they are.
+
 	if !strings.Contains(stale.VersionState.Label, "v2") ||
 		!strings.Contains(stale.VersionState.Label, "v5") {
 		t.Errorf("both numbers belong in the label, got %q", stale.VersionState.Label)
@@ -516,20 +457,9 @@ func TestVersionStateIsSeparateFromServeState(t *testing.T) {
 	}
 }
 
-// 04 丙-91. The two writers of `purged_at` are retention and the reconciler, and
-// the row has to keep saying which — including after the expiry that would
-// otherwise absorb the answer.
-//
-// Why this is worth a test rather than a comment: 「已過期」 on a lost package is
-// TRUE, so nothing downstream can catch it. The screen reads correctly, the
-// owner is told the retention policy did what it says, and the one person who
-// could report that the platform lost a file has just been given a reason not
-// to.
 func TestALostPackageIsNotDescribedAsExpired(t *testing.T) {
 	expiry := time.Now().Add(-24 * time.Hour)
 
-	// Purged a week before the deadline: only the reconciler writes that, and the
-	// deadline has since passed, which is exactly when this used to flip.
 	lost := Artifact{Status: "available"}.
 		withServeState(expiry, expiry.Add(-7*24*time.Hour))
 	if lost.ServeState.Value != "lost" {
@@ -538,31 +468,24 @@ func TestALostPackageIsNotDescribedAsExpired(t *testing.T) {
 	if lost.Servable {
 		t.Error("a lost package is not servable")
 	}
-	// The note has to say the two things the reader acts on: this was not the
-	// policy, and the content is still reachable by packaging again.
+
 	for _, want := range []string{"不是保存期到期", "重新打包", "回報"} {
 		if !strings.Contains(lost.ServeState.Note, want) {
 			t.Errorf("note %q is missing %q", lost.ServeState.Note, want)
 		}
 	}
 
-	// Purged at the deadline, which is the only time retention purges. Still
-	// 「已過期」, because it is.
 	retired := Artifact{Status: "available"}.withServeState(expiry, expiry.Add(time.Minute))
 	if retired.ServeState.Value != "expired" {
 		t.Errorf("serve_state = %q, want expired", retired.ServeState.Value)
 	}
 
-	// Lost and not yet expired: the sentence is the same one, which is the point
-	// of deriving it from the pair rather than from the absence of an expiry.
 	fresh := Artifact{Status: "available"}.
 		withServeState(time.Now().Add(24*time.Hour), time.Now())
 	if fresh.ServeState.Value != "lost" {
 		t.Errorf("serve_state = %q, want lost", fresh.ServeState.Value)
 	}
 
-	// A rejected package that is also missing keeps saying rejected: the bytes
-	// were never on offer, and losing them changes nothing the reader can act on.
 	rejected := Artifact{Status: "rejected"}.
 		withServeState(expiry, expiry.Add(-time.Hour))
 	if rejected.ServeState.Value != "rejected" {
@@ -570,20 +493,6 @@ func TestALostPackageIsNotDescribedAsExpired(t *testing.T) {
 	}
 }
 
-// The `lost` derivation above reads one column and depends on two statements it
-// cannot see, so this is the machine for the sentence in withServeState: the two
-// writers of `purged_at` are separated by the retention deadline, and stay
-// separated.
-//
-// Widen either predicate and the derivation goes quietly wrong in the direction
-// that hurts — a reconciler allowed to mark expired rows would stamp losses at
-// or after the deadline, and every one of them would read as 「已過期」 again,
-// which is the defect 丙-91 is. Nothing else would fail: the column is set, the
-// row is unservable, and the sentence is grammatical.
-//
-// Read as text and not as behaviour because behaviour needs a database. That is
-// weaker on purpose and stated rather than hidden: it proves the shipped
-// statements still say this, not that Postgres agrees.
 func TestTheTwoWritersOfPurgedAtStaySeparatedByTheDeadline(t *testing.T) {
 	sql, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "..", "db", "queries", "reconcile.sql"))
 	if err != nil {
@@ -609,8 +518,6 @@ func TestTheTwoWritersOfPurgedAtStaySeparatedByTheDeadline(t *testing.T) {
 	}
 }
 
-// namedQuery returns one sqlc statement's text, from its `-- name:` line to the
-// next one.
 func namedQuery(sql, name string) (string, bool) {
 	start := strings.Index(sql, "-- name: "+name+" ")
 	if start < 0 {
@@ -623,13 +530,6 @@ func namedQuery(sql, name string) (string, bool) {
 	return rest, true
 }
 
-// gateFlags must release for `generated`, and the way this breaks is the
-// reason it has a test: delete the case and it falls through to `default`,
-// which returns BlockedLicenseUnknown. The user is then told "nobody has
-// established whether this skill may be redistributed" about a package the
-// platform wrote for them thirty seconds ago, and nothing fails except them.
-//
-// That is exactly the defect ADR-045 was written about, one value later.
 func TestGeneratedReleasesThePackagingGate(t *testing.T) {
 	reason, message := gateFlags(nil, RedistributionGenerated)
 	if reason != "" || message != "" {
@@ -637,16 +537,6 @@ func TestGeneratedReleasesThePackagingGate(t *testing.T) {
 	}
 }
 
-// Every redistribution value, with and without a hold, against the one function
-// that decides whether bytes leave the platform.
-//
-// It replaces a test that compared two different string constants for equality —
-// an assertion the compiler settles, which can only go red if somebody edits one
-// constant to be the other. What was actually untested was three of gateFlags'
-// five branches: `self_supplied` releasing, `blocked` and the fail-closed
-// `default` refusing. Those were covered only by the integration tests, which
-// skip on a machine with no SKILLHUB_TEST_DATABASE_URL — so on such a machine
-// replacing the default branch with `return "", ""` turned nothing red at all.
 func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
 	hold := "license-review"
 	for _, tc := range []struct {
@@ -658,10 +548,7 @@ func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
 		{"self_supplied releases: retrieval, not redistribution", RedistributionSelfSupplied, ""},
 		{"generated releases: no upstream author for a licence to protect", RedistributionGenerated, ""},
 		{"blocked refuses", RedistributionBlocked, BlockedNotRedistributable},
-		// The two that share the fail-closed default. `unknown` is where every
-		// skill starts, so this branch is the commonest refusal in the product;
-		// the sixth value is a stand-in for whatever the column grows next, and
-		// it must land here rather than release.
+
 		{"unknown refuses", "unknown", BlockedLicenseUnknown},
 		{"a value nobody has written yet refuses", "value-added-next-year", BlockedLicenseUnknown},
 	} {
@@ -670,14 +557,12 @@ func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
 			if reason != tc.wantReason {
 				t.Errorf("gateFlags(nil, %q) reason = %q, want %q", tc.redistribution, reason, tc.wantReason)
 			}
-			// A refusal with no sentence is a screen that says 「不能下載」 and
-			// nothing else; a release with one is a message nobody will see.
+
 			if (message == "") != (tc.wantReason == "") {
 				t.Errorf("gateFlags(nil, %q) = (%q, %q): a reason needs a message and a release needs none",
 					tc.redistribution, reason, message)
 			}
-			// The hold outranks all five, which is the ordering ADR-041 states and
-			// the one a new case placed above the access-restriction check breaks.
+
 			if reason, _ := gateFlags(&hold, tc.redistribution); reason != BlockedLicenseHold {
 				t.Errorf("a hold over %q gave %q, want %q", tc.redistribution, reason, BlockedLicenseHold)
 			}
@@ -685,10 +570,6 @@ func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
 	}
 }
 
-// A hold outranks every redistribution value, generated included. Ordering is
-// the rule ADR-041 states and the one that is easy to get wrong when a value
-// is added: a new case placed before the access-restriction check would let a
-// held skill out.
 func TestAccessRestrictionStillOutranksGenerated(t *testing.T) {
 	hold := "license-review"
 	reason, _ := gateFlags(&hold, RedistributionGenerated)
@@ -697,11 +578,6 @@ func TestAccessRestrictionStillOutranksGenerated(t *testing.T) {
 	}
 }
 
-// The dataset names that cannot become a direct child of data/. They used to be
-// dropped from the package with nothing recording it — the only silent removal
-// left in a file whose every other branch exists to say what was left out. Now
-// the whole Test Case is excluded with a reason, so this predicate decides
-// whether a case travels, which is why it is worth its own test.
 func TestADatasetNameThatCannotBeWrittenExcludesTheCase(t *testing.T) {
 	for _, name := range []string{
 		"", "   ", ".", "..",
@@ -716,8 +592,7 @@ func TestADatasetNameThatCannotBeWrittenExcludesTheCase(t *testing.T) {
 			t.Errorf("%q is a perfectly good file name and must travel", name)
 		}
 	}
-	// One bad name in a set of good ones still stops the case: a case.json that
-	// lists fewer datasets than the case has is the quieter lie.
+
 	mixed := []testlab.Dataset{{FileName: "rows.csv"}, {FileName: "../escape.csv"}}
 	if !unsafeDatasetName(mixed) {
 		t.Error("a single unusable name must exclude the whole case")
@@ -727,10 +602,6 @@ func TestADatasetNameThatCannotBeWrittenExcludesTheCase(t *testing.T) {
 	}
 }
 
-// TestExcludedTestCaseServesLabelAndNoteForNotCurated is 04 丙-154 ①: until
-// 2026-09-04 excluded_test_cases[].reason was the only field and the page
-// printed the machine code raw ("not_curated"). label/note are the served
-// words, the same three-part shape excluded_files already has.
 func TestExcludedTestCaseServesLabelAndNoteForNotCurated(t *testing.T) {
 	tc := ExcludedTestCase{
 		TestCaseID: "id-1", Name: "My case", Reason: ExcludedNotCurated,
@@ -743,27 +614,6 @@ func TestExcludedTestCaseServesLabelAndNoteForNotCurated(t *testing.T) {
 	}
 }
 
-// The prose a reader has to comprehend is the product's, and this product's
-// interface language is Traditional Chinese — `apps/web/index.html` declares
-// `lang="zh-Hant"` and says in as many words that every string the app renders
-// is Traditional Chinese.
-//
-// That claim was false here (04 丙-115). These fields are served verbatim to the
-// packaging screen — the last screen of the whole journey — and copied verbatim
-// into the INSTALL.md inside every download, and all of them were English. No
-// test caught it because nothing in this repository read for language: the web
-// fixtures faithfully contained the English, so even the doubles were honest.
-//
-// Both halves are asserted, because either alone permits the wrong thing:
-// Chinese without the original silently discards a review of wording that was
-// reviewed (`verified` and `unverified` mean exactly what these paragraphs say
-// they mean, and nothing else), and the original without Chinese is where this
-// started.
-//
-// Machine-facing strings are deliberately NOT here: `verification_prompt` and
-// `snippet` are things a reader pastes into a tool rather than reads, the
-// snippet's comments document behaviour bound to one SDK version, and paths and
-// scopes are identifiers.
 func TestShippedProfilesSpeakTheInterfaceLanguageAndKeepTheReviewedOriginal(t *testing.T) {
 	const original = "（原文："
 
@@ -804,13 +654,6 @@ func TestShippedProfilesSpeakTheInterfaceLanguageAndKeepTheReviewedOriginal(t *t
 	}
 }
 
-// --- 05 R-30: the honest name arrives beside the misleading one ------------
-
-// packaged_at never carried the packaging moment; it carries the source
-// version's creation time, and every consumer reads it. Renaming a required
-// field breaks all of them at once, so 1.2 adds source_version_created_at with
-// the same value and keeps writing both. The test that matters is that they
-// agree: two names for one fact is only safe while it stays one fact.
 func TestManifestWritesTheSourceVersionTimeUnderBothNames(t *testing.T) {
 	if ManifestSchemaVersion != "1.2" {
 		t.Fatalf("the additive field landed in 1.2; version says %s", ManifestSchemaVersion)

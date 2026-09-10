@@ -5,12 +5,6 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
 import { queryClient } from "./api/queryClient";
 import { router } from "./router";
-/**
- * The fixtures live in `./fixtures/platform` so the browser tier can ask the
- * same questions of the same data (ADR-036). Only the seven ids and the one
- * body the tests below name directly are pulled in; the rest of the set is
- * reached through `platformResponse`.
- */
 import {
   OTHER_RUN,
   RUN,
@@ -21,42 +15,6 @@ import {
   VERSION,
   platformResponse,
 } from "./fixtures/platform";
-
-/**
- * 03:QA-009 / DESIGN-013 — the accessibility check, run as a test so it keeps
- * being true. The bar is 02:NFR-007: 主要操作可使用鍵盤完成、表單具有標籤與清楚的
- * 驗證訊息、風險與相容與評估狀態必須同時提供文字。
- *
- * Every route in router.tsx is rendered against mocked API data and scanned with
- * axe-core; any violation fails the build. The last two sections of this file are
- * the keyboard walkthrough and the validation messages (04 丙-21 ①②), which axe
- * answers nothing about.
- *
- * **Adding a route? It needs a case here.** The list below used to be enumerated
- * by hand, which meant a new route was simply never scanned and nothing said so —
- * the quietest kind of hole, because the suite stayed green. `SCANNED_ROUTES` and
- * the test right under it now compare this file against the router's own route
- * table, so forgetting fails instead of passing (04 丙-22).
- *
- * Three things this cannot see, recorded here rather than switched off:
- *
- * 1. **Colour contrast.** axe answers `incomplete` for `color-contrast` on every
- *    node here, and importing index.css with `css: true` does not change that —
- *    jsdom computes no layout, so axe cannot resolve what is behind a pixel. The
- *    rule stays enabled (it is simply never decided); the palette was measured by
- *    hand instead, which is what removed the `opacity` mutes and the literal
- *    `#d33` from index.css. **A contrast regression will not fail this test.**
- * 2. **Page-level rules** (`html-has-lang`, `document-title`, …) do not run
- *    against an element context. `index.html` carries them and no page can
- *    change them at runtime.
- * 3. **The browser's own key handling.** jsdom does not turn Enter on a focused
- *    button into a click, does not implement Tab, and does not open a `<details>`
- *    on Enter over its `<summary>`. So the walkthrough below asserts the half a
- *    test can own — that every step of a journey is a native control, in the
- *    tab sequence, focusable, and that activating it moves the journey on — and
- *    leaves the half the platform owns to the platform. **What it cannot prove is
- *    that a real browser's Tab order matches DOM order**; nothing here fakes that.
- */
 
 let container: HTMLDivElement;
 let root: Root;
@@ -80,10 +38,7 @@ function json(body: unknown, status = 200) {
   );
 }
 
-/** One fake platform for every route; ordered most specific first. */
 function stubPlatform() {
-  // The routing table moved to ./fixtures/platform; what stays here is the half
-  // that is specific to this runner — turning a body into a `fetch` Response.
   vi.stubGlobal("fetch", (input: string) => {
     const { body, status } = platformResponse(String(input));
     return json(body, status);
@@ -101,7 +56,6 @@ async function mount() {
   });
 }
 
-/** Polls until the query has settled and React has flushed the result. */
 async function waitFor(done: () => boolean, timeoutMs = 4000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -115,11 +69,6 @@ async function waitFor(done: () => boolean, timeoutMs = 4000) {
 
 const has = (needle: string) => () => (container.textContent ?? "").includes(needle);
 
-/**
- * Every rule axe knows, minus nothing: the WCAG 2.0/2.1/2.2 A and AA tags plus
- * the best-practice set. Lowering this list to make a page pass would be exactly
- * the move QA-009 exists to prevent.
- */
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 
 async function scan(where: string) {
@@ -135,9 +84,6 @@ async function scan(where: string) {
   );
   expect(report, `${where} has accessibility violations:\n  ${report.join("\n  ")}`).toEqual([]);
 
-  // Keyboard reach, asserted structurally because axe cannot press Tab: a
-  // <details> without a <summary> is a disclosure no keyboard can open, and a
-  // positive tabindex reorders focus away from reading order.
   const details = container.querySelectorAll("details");
   for (const node of details) {
     expect(
@@ -150,9 +96,6 @@ async function scan(where: string) {
     `${where}: positive tabindex breaks focus order`,
   ).toHaveLength(0);
 
-  // system.md §2.4, in the principle's own words: the reason may be *in* a
-  // tooltip, but never *only* there. A disabled control with no stated cause
-  // reads as a bug, and `title` is invisible to touch and to most readers.
   for (const el of container.querySelectorAll("[disabled][title]")) {
     expect(
       el.getAttribute("aria-describedby"),
@@ -160,25 +103,7 @@ async function scan(where: string) {
     ).not.toBeNull();
   }
 
-  // ...and the half the rule above structurally cannot see, found 2026-09-03 by
-  // walking every route: four disabled controls (建立, 新增, 儲存文字 ×2) whose
-  // reason WAS on the screen, in a `.note` beside them, and was attached to
-  // nothing. They carry no `title`, so the check above never looked at them.
-  //
-  // A sighted reader got the sentence; anyone who arrived at the dead control by
-  // Tab got a button and silence, and 02:NFR-007 has no sighted-only clause.
-  //
-  // The exemption list is the shape this repo already uses for `allow:` and
-  // KNOWN_DEVIATIONS: named, reasoned, **may only get shorter**. Everything on it
-  // states its cause in its own label — which is a legitimate way to satisfy
-  // §2.4 and the reason this cannot simply require the attribute everywhere.
-  const SELF_EXPLAINING = [
-    "送出中…", // ConfirmDelete, both buttons, while the request is in flight
-    "已送出，無法取消",
-    "打包中…", // Packaging
-    "載入中…", // 「載入更多」 while fetching
-    "重新整理中…", // RunTrace, while the Trace page is being refetched
-  ];
+  const SELF_EXPLAINING = ["送出中…", "已送出，無法取消", "打包中…", "載入中…", "重新整理中…"];
   for (const el of container.querySelectorAll("button[disabled], select[disabled]")) {
     const label = (el.textContent ?? "").trim();
     if (SELF_EXPLAINING.includes(label)) continue;
@@ -189,9 +114,6 @@ async function scan(where: string) {
     ).not.toBeNull();
   }
 
-  // system.md §2.3 / 02:NFR-007. Colour is the second channel and the border is
-  // the third; the word is the first. A badge with no text has skipped to the
-  // second and made the tint the fact.
   for (const badge of container.querySelectorAll(".badge")) {
     expect(
       badge.textContent?.trim(),
@@ -199,20 +121,11 @@ async function scan(where: string) {
     ).not.toBe("");
   }
 
-  // 設計 §2.13 Tip 六條入場條件（ADR-065 決策 3）— the ones a route scan can
-  // ask. Tip is the fourth disclosure mechanism (§1.3) and the first the app
-  // builds itself, so every existing gate that knew `<details>` was blind to
-  // it: the tab walkthrough, `closest("details")`, the `title` scan. The
-  // component's own shape is proven in `tip.test.tsx`; §2.10 against
-  // `[data-tip]` in `detail.test.tsx`; 「open does not move a neighbour」 in
-  // `e2e/rendered.spec.ts`. This is the per-page half.
   const tips = container.querySelectorAll("[data-tip]");
   expect(
     tips.length,
     `${where}: ${tips.length} Tips on one page — 一頁至多三個 (§2.13 第 5 條)：十個問號和沒有問號一樣沒有指向`,
   ).toBeLessThanOrEqual(3);
-  // §2.13 第 3 條's own counter-examples, verbatim. The rule is 「錨點必須自己成
-  // 立」 and a machine cannot judge that; it can refuse the words the rule names.
   const NOT_AN_ANCHOR = ["?", "？", "詳情", "說明", "更多", "為什麼", "說明？", "為什麼？"];
   for (const tip of tips) {
     const trigger = tip.querySelector(":scope > button.tip-trigger");
@@ -239,19 +152,12 @@ async function scan(where: string) {
       trigger!.getAttribute("aria-controls"),
       `${where}: the Tip button does not point at its content`,
     ).toBe(content!.id);
-    // §2.13 第 1 條: only D and F go in. A `.note` is this app's class for a
-    // qualifier (C) and a `.badge` is a claim (A); either inside a Tip is the
-    // content the rule forbids, wearing the class the other gates look for.
     expect(
       content!.querySelector(".note, .badge, [role=status], [role=alert]"),
       `${where}: a qualifier, a claim or live text inside a Tip — A／B／C／G never go in (§2.13 第 1 條)`,
     ).toBeNull();
   }
 
-  // 設計 §4.7: an icon is the THIRD signal and the word is always beside it.
-  // axe's button-name/link-name only catch 「no name at all」; an icon plus an
-  // aria-label and no visible word passes axe and fails §4.7, so this reads the
-  // visible text next to every decorative SVG.
   for (const svg of container.querySelectorAll("svg[aria-hidden='true']")) {
     const beside = (svg.parentElement?.textContent ?? "").replace(/\s+/g, "");
     expect(beside, `${where}: an icon with no visible word beside it (§4.7)`).not.toBe("");
@@ -261,15 +167,6 @@ async function scan(where: string) {
     `${where}: an <svg> that is not aria-hidden — §4.7 icons never carry meaning on their own`,
   ).toHaveLength(0);
 
-  // 04 丙-143: the server's English reached the screen by three routes (a
-  // hand-written success note, a mutation's `err.message`, the 503 fallback),
-  // and the fixtures hid all three by stubbing Chinese the Go side never sends.
-  // This reads every live region on the page: a sentence with no Chinese
-  // character in it is not something this product wrote for its reader — it is
-  // `err.message`, a Go constant, or a contract string printed raw. Digits,
-  // punctuation and symbols are stripped first, so 「US$0.02」 never trips it;
-  // an identifier on its own would, and a live region holding nothing but an
-  // identifier is a §2.6 failure anyway.
   for (const region of container.querySelectorAll("[role=alert], [role=status]")) {
     const text = (region.textContent ?? "").replace(/[\s\d\p{P}\p{S}]/gu, "");
     if (text === "") continue;
@@ -279,21 +176,6 @@ async function scan(where: string) {
     ).toBe(true);
   }
 
-  // system.md §3 第 14 條「同一個事實，這一頁講了幾次？講得一樣嗎？」 — listed in
-  // §6 as having no machine at all, which is how 04 丙-137 survived: the skill
-  // page rendered `LicenseBadge` twice, from the same component with the same
-  // props, so the server's qualifier appeared twice on one screen.
-  //
-  // **Scoped to `.note`, and the scope IS the rule.** A first draft counted every
-  // repeated text node and reported fourteen, nearly all of them legitimate:
-  // a comparison table repeats a verdict once per column, the nav names the page
-  // you are on, and a visitor's skill page carries three 使用 GitHub 登入 links
-  // because §2.2 第三向 requires every blocked action to carry its own next step.
-  // Those are one fact per subject, not one fact twice. What cannot legitimately
-  // repeat is a **qualifier**: `.note` is this app's class for 「what this badge
-  // does not cover」 (§2.11(c)), and one subject never needs the same caveat
-  // twice. Rows are excluded for the same reason — twenty cards each carrying
-  // 「未測量」 is twenty facts.
   const REPEATED_QUALIFIER: string[] = [];
   const qualifiers = new Map<string, number>();
   for (const note of container.querySelectorAll(".note")) {
@@ -310,57 +192,17 @@ async function scan(where: string) {
     `${where}: the same qualifier stated more than once on one screen (§3 第 14 條)`,
   ).toEqual([]);
 
-  // 設計 §2.13 去重 1（ADR-065）— the half the checker above is blind to, by
-  // construction. That one excludes `li/td/th` because twenty cards each
-  // carrying 「未測量」 is twenty facts, and that reasoning is right. But the
-  // exclusion also hides the defect §2.13 was written for: a sentence that is
-  // **byte-identical down a whole list** is not that row's fact, it is the
-  // list's. Counted on 2026-09-03, four of them were printed once per row on a
-  // 45-row home page — about 8,500 characters that could not change any
-  // reader's decision from the second row on, because they did not distinguish
-  // one row from another.
-  //
-  // Scoped to one list at a time, and the scope IS the rule. The same sentence
-  // on two different lists can be two subjects; the same sentence on two rows
-  // of ONE list cannot.
-  //
-  // WHAT IT CANNOT JUDGE, and why the exemption list exists: whether the
-  // sentence is liftable at all. W1 found this by mutation — 「已掃描」 and
-  // 「從未掃描」 share one field, and a never-scanned row wears no badge, so
-  // hoisting both sentences leaves the reader unable to tell which row is
-  // which, and a §2.9 typed absence is lost. A sentence may only leave the row
-  // when **every row still wears a word that maps back to it** (設計 §2.13).
-  // A repeat that fails that test belongs here, named, with the reason.
-  // Named, reasoned, shrink-only — the same shape as every other list here.
-  // **Known weakness**: these are exact strings, and two of them contain values
-  // that come from the fixture, so a fixture edit rots the entry silently. That
-  // is tolerable only because the list is this short; if it grows, it needs the
-  // "every entry was met" ratchet that TOOLTIP_ONLY got on the same day.
   const LIST_NOTE_REPEATS: string[] = [
-    // Belongs to the RISK FLAG, not to the row. Two rows print it because both
-    // happen to carry `script-file`; a row with a different disclosure prints a
-    // different sentence, and a row with none prints nothing. Hoisting it would
-    // state a flag's meaning for rows that do not have that flag. It is also
-    // the qualifier `e2e/rendered.spec.ts` proves is rendered per row and in its
-    // own colour (that assertion fails on zero, by design).
     "平台不曾執行它們——這是靜態掃描的結果,不是行為分析。",
-    // Not a qualifier at all: it is this artifact's version, identical only
-    // because two downloads came from the same one. A third from another
-    // version prints something else.
     "版本：v2（最新）",
   ];
   const listRepeats: string[] = [];
   for (const list of container.querySelectorAll("ul, ol")) {
     const perList = new Map<string, number>();
     for (const item of list.querySelectorAll(":scope > li")) {
-      // Per row, not per node: one row printing the same sentence twice is the
-      // checker above's business, not this one's.
       const inThisRow = new Set<string>();
       for (const note of item.querySelectorAll(".note")) {
-        if (note.closest("ul, ol") !== list) continue; // a nested list owns it
-        // A `<label>` is a control's NAME, never a qualifier. It is `.note` here
-        // only for the type step, and it repeats down a list of fields because
-        // each field needs its own — lifting it would leave the inputs unnamed.
+        if (note.closest("ul, ol") !== list) continue;
         if (note.tagName === "LABEL") continue;
         const text = (note.textContent ?? "").replace(/\s+/g, " ").trim();
         if (text.length < 8) continue;
@@ -374,9 +216,6 @@ async function scan(where: string) {
       }
     }
   }
-  // Joined into one string rather than compared as an array: an array of long
-  // Chinese sentences is elided in the runner's diff exactly when there is more
-  // than one of them, which is the case you most need to read.
   expect(
     listRepeats.sort().join("\n"),
     `${where}: one sentence repeated on every row of a list (§2.13 去重 1). ` +
@@ -384,34 +223,14 @@ async function scan(where: string) {
       `that maps back to it; otherwise add it to LIST_NOTE_REPEATS with the reason`,
   ).toBe("");
 
-  // system.md §3 item 6 / §6 — the one rule with a known defect and no gate.
-  // axe fails a *skipped* level, never a level that should have gone down and
-  // didn't, so eight wrong `h2` in RunTrace lived for weeks. This does not
-  // judge the outline; it publishes it, so the next wrong one arrives as a diff
-  // somebody has to approve. Same shape as KNOWN_DEVIATIONS and SCANNED_ROUTES:
-  // a checked-in list whose changes must be argued for.
   const outline = Array.from(container.querySelectorAll("h1,h2,h3,h4,h5,h6"))
     .map((h) => `${h.tagName.toLowerCase()} ${h.textContent?.trim().slice(0, 60)}`)
     .join("\n");
   await expect(outline).toMatchFileSnapshot(
-    // `|| "index"` because `/` sanitises to the empty string, and the snapshot
-    // for the home page was therefore checked in as `__outlines__/.txt` — a
-    // dotfile, which `git status` shows and most file listings do not, on the
-    // one route this suite scans twice.
     `./__outlines__/${where.replace(/[^\w一-鿿]+/g, "-").replace(/^-|-$/g, "") || "index"}.txt`,
   );
 }
 
-/**
- * The tab sequence as the platform would build it: native interactive elements
- * in DOM order, minus the ones a browser skips — disabled controls, anything
- * hidden from the accessibility tree, and the contents of a closed `<details>`
- * (its `<summary>` stays, which is how a keyboard opens it).
- *
- * Positive `tabindex` is asserted absent in scan(), so DOM order IS the sequence
- * here. That equivalence is the assumption this helper rests on, and it is the
- * one thing only a real browser can confirm (QA-008).
- */
 const FOCUSABLE =
   'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
@@ -423,12 +242,6 @@ function tabbables(): HTMLElement[] {
   });
 }
 
-/**
- * Reaches a control the way a keyboard user does — find it in the tab sequence,
- * put focus on it, activate it — and fails loudly when it is not in that
- * sequence at all. `click()` stands in for Enter/Space on a focused native
- * control, which is the browser behaviour jsdom does not implement.
- */
 async function keyboardActivate(label: string, match: (el: HTMLElement) => boolean) {
   const target = tabbables().find(match);
   expect(target, `${label} is not reachable by keyboard`).toBeDefined();
@@ -439,14 +252,6 @@ async function keyboardActivate(label: string, match: (el: HTMLElement) => boole
 
 const byText = (text: string) => (el: HTMLElement) => (el.textContent ?? "").includes(text);
 
-// --- one case per route in router.tsx ---------------------------------------
-
-/**
- * Every route this file scans below. Kept as data rather than as a comment so
- * the next test can hold it against the router itself: a route with no case here
- * is a page nobody checks, and the failure mode of the old hand-kept list was
- * that it looked exactly like a route with no problems.
- */
 const SCANNED_ROUTES = [
   "/",
   "/compare",
@@ -478,12 +283,6 @@ test("QA-009: Skill import", async () => {
   await scan("/workspace/import");
 }, 30000);
 
-/**
- * `/workspace/creations`（2026-09-09 新增）。**掃的是旗標關著的那一面**，而那不是
- * 偷懶：共用 fixture 的 `/me` 不帶 `generate_skill`，所以這一頁在這裡回的是那句
- * 「這一頁現在不存在」加兩條出路——而那正是⛔ `01` §10 邊界 1 底下絕大多數人會看到
- * 的狀態。旗標開著的那一面由 `create-skill.test.tsx` 與 `creation.test.tsx` 守。
- */
 test("QA-009: 創作（旗標關著）", async () => {
   stubPlatform();
   await mount();
@@ -496,8 +295,6 @@ test("QA-009: 創作（旗標關著）", async () => {
 
 test("QA-009: 每一條路由都有一個掃描案例", () => {
   const declared = Object.keys(router.routesById).filter((id) => id !== "__root__");
-  // Sorted rather than ordered: the router's order is its own business, and a
-  // reshuffle of routeTree is not a reason to fail an accessibility suite.
   expect([...declared].sort(), "a route in router.tsx has no axe case in this file").toEqual(
     [...SCANNED_ROUTES].sort(),
   );
@@ -514,11 +311,6 @@ test("QA-009: 首頁與搜尋結果", async () => {
 }, 30000);
 
 test("QA-009: 首頁的目錄狀態（02:DISC-006）", async () => {
-  // The route scan above navigates with `?q=`, so until this existed the only
-  // state of `/` anything looked at was the one AFTER a search — and 02:DISC-006
-  // made the catalogue the state every first visit lands on. A default state
-  // with no machine on it is the shape §6 keeps recording: 「每條路由只掃一個
-  // 狀態」, and this is the second one that matters on this route.
   stubPlatform();
   await mount();
   await act(async () => {
@@ -536,9 +328,6 @@ test("NFR-007: 搜尋結果的即時區是筆數，不是整份清單", async ()
   });
   await waitFor(has("PDF Summariser"));
 
-  // A live region wrapping the result cards makes a reader recite every card in
-  // full on each search — louder than announcing nothing, and the reason this
-  // assertion exists rather than just the count one below.
   const list = container.querySelector(".search-results")!;
   expect(list.getAttribute("aria-live")).toBe(null);
 
@@ -591,9 +380,6 @@ test("QA-009: 下載紀錄", async () => {
   await waitFor(has("pdf-summariser-v2.zip"));
   await scan("/workspace/downloads");
 
-  // 02:WS-002 第 3 條 is a two-step delete, and the second step only exists
-  // after the first: scan the confirming state too, and check that focus went
-  // with it rather than being dropped on <body>.
   const ask = [...container.querySelectorAll("button")].find((b) => b.textContent === "刪除")!;
   await act(async () => ask.click());
   const confirm = [...container.querySelectorAll("button")].find(
@@ -731,13 +517,6 @@ test("QA-009: 資料保存政策", async () => {
   await scan("/policy");
 }, 30000);
 
-// --- 02:NFR-007「主要操作可使用鍵盤完成」: the walkthrough (04 丙-21 ①) ---------
-//
-// Journeys rather than pages: the four handbacks this project has recorded all
-// happened between two steps, and a per-page check is exactly what cannot see a
-// seam. Each step asserts the same three things — in the tab sequence, takes
-// focus, activating it moves the journey on.
-
 test("NFR-007: 搜尋 → 詳情 → 打包，全程鍵盤可達", async () => {
   stubPlatform();
   await mount();
@@ -746,29 +525,14 @@ test("NFR-007: 搜尋 → 詳情 → 打包，全程鍵盤可達", async () => {
   });
   await waitFor(has("PDF Summariser"));
 
-  // The search field and its submit are both in the sequence before anything is
-  // typed: a form whose only route in is a mouse click on a suggestion is not
-  // keyboard-operable, however well labelled it is.
   expect(tabbables().some((el) => el.tagName === "INPUT")).toBe(true);
 
   await keyboardActivate("搜尋結果連結", byText("PDF Summariser"));
-  // 等的是那條連結本身，不是它上面的標題。打包入口現在跟 TrialEntry 一樣，要等
-  // workspace-scoped 的版本清單答完才知道這一份是不是你的（SkillDetail 的
-  // `PackagingEntry`），所以「標題到了」不再蘊含「連結到了」。等具體的那個東西，
-  // 而不是等它的鄰居——這比原本嚴格。
   await waitFor(has("打包並下載這個版本"));
 
   await keyboardActivate("打包入口", byText("打包並下載這個版本"));
-  await waitFor(has("標準 Agent Skill 套件")); // the heading renders before the targets do
+  await waitFor(has("標準 Agent Skill 套件"));
 
-  // On the packaging page: pick a target, choose whether test cases travel, and
-  // build. Radio and checkbox are native inputs, so the platform gives them
-  // arrow/space handling — what matters here is that they are reachable and that
-  // the button they gate is not offered while the preview refuses.
-  //
-  // Matched by name rather than by type: the site-wide feedback form also has
-  // radios, and an earlier version of this walkthrough passed by activating one
-  // of those instead of a packaging target.
   await keyboardActivate("打包目標選項", (el) => el.getAttribute("name") === "packaging-target");
   await keyboardActivate("Test Case 選項", (el) => el.getAttribute("type") === "checkbox");
   await waitFor(has("這些設定可以打包"));
@@ -787,8 +551,6 @@ test("NFR-007: 全站回報入口是一個 <details>，用鍵盤打得開也送�
   });
   await waitFor(has("pdf-summariser-v2.zip"));
 
-  // Closed: the summary is the only thing in the sequence, and the form inside
-  // is deliberately not — a control a browser skips must not count as reachable.
   const summary = tabbables().find(byText("回報問題"));
   expect(summary?.tagName).toBe("SUMMARY");
   expect(tabbables().some((el) => el.id === "feedback-message")).toBe(false);
@@ -798,12 +560,6 @@ test("NFR-007: 全站回報入口是一個 <details>，用鍵盤打得開也送�
   expect(opened.some((el) => el.id === "feedback-message")).toBe(true);
   expect(opened.some((el) => el.getAttribute("type") === "submit")).toBe(true);
 }, 30000);
-
-// --- 02:NFR-007「清楚的驗證訊息」 (04 丙-21 ②) --------------------------------
-//
-// axe covers the labels; it says nothing about what a form does when it refuses.
-// The rule these three share: a refusal names what to fix, and a control that
-// cannot be used yet says why rather than sitting there dead.
 
 test("NFR-007: 空白的回報被擋下來時說得出要補什麼", async () => {
   stubPlatform();
@@ -834,7 +590,6 @@ test("NFR-007: 不能建立的 Test Case 表單說得出還缺哪幾項", async 
   });
   await waitFor(has("建立新的 Test Case"));
 
-  // The disabled submit is not the message; the sentence beside it is.
   const submit = Array.from(container.querySelectorAll("button")).find(
     (b) => b.textContent === "建立",
   )!;
@@ -860,29 +615,7 @@ test("NFR-007: 沒選檔案就按上傳，說的是下一步而不是錯誤碼",
   expect(alert?.textContent).toContain("請先選擇一個檔案");
 }, 30000);
 
-// --- three states that are not 「有資料的成功態」 -------------------------------
-
-/**
- * Every scan above renders the busy, successful page — deliberately, and
- * `fixtures/platform.ts` says why: an empty page has no badges, no disclosures,
- * no tables and no form controls, so scanning it proves nothing about the
- * markup a real reader meets.
- *
- * That reasoning is right about the EMPTY page and wrong about the other three.
- * A read failure is not an absence of markup: it is a `role="alert"`, a
- * `role="status"`, a login link and a form that has been taken away — new
- * interactive markup, of exactly the kind where accessibility defects grow (a
- * live region with the wrong role, a focus that lands on `<body>`, an alert
- * with no accessible name). `Loading` has 24 call sites and `ReadFailure` /
- * `LoginRequired` appear in 13 files, and until now axe had never seen either.
- *
- * Three representatives rather than 17×4: a 401, a load, and an empty list. The
- * point is to cover the three SHAPES, and `system.md` §6's coverage cell now
- * says so rather than implying the sweep covers every screen.
- */
-
 test("QA-009: 我的 Skill（未登入）", async () => {
-  // `RequireSession`'s literal body, the way session.test.tsx sends it.
   vi.stubGlobal("fetch", () => json({ error: "not authenticated" }, 401));
   await mount();
   await act(async () => {
@@ -890,15 +623,11 @@ test("QA-009: 我的 Skill（未登入）", async () => {
   });
   await waitFor(has("需要登入"));
 
-  // The state under test is really there — otherwise this scans a blank page
-  // and passes for the wrong reason.
   expect(container.textContent).not.toContain("not authenticated");
   await scan("/workspace/skills 401");
 }, 30000);
 
 test("QA-009: 執行前權限確認（載入中）", async () => {
-  // A fetch that never settles, which is the state every `Loading` renders and
-  // the one no scan had ever been pointed at.
   vi.stubGlobal("fetch", () => new Promise(() => {}));
   await mount();
   await act(async () => {

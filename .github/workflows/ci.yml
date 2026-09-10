@@ -5,20 +5,8 @@ on:
     branches: [main]
   push:
     branches: [main]
-  # Manual re-run, added 2026-08-25 because the cancellation below has no other
-  # exit. Two pushes close together on main killed the first run's `sandbox` and
-  # `images` jobs -- the two slowest, and the two whose legs (gVisor, image
-  # publication) cannot be reproduced locally -- and with no dispatch trigger the
-  # only way to run them again was to manufacture a commit touching their paths.
-  # A CI gate that can only be re-run by faking a change is one people stop
-  # re-running.
   workflow_dispatch:
 
-# cancel-in-progress is right for a branch being pushed repeatedly: the older run
-# is testing code nobody will merge. On main it has a cost -- the superseding
-# push may not touch the paths the cancelled jobs covered, so those jobs neither
-# complete nor re-run, and the commit looks green because its own filters skipped
-# them. That is what workflow_dispatch above is for.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -27,20 +15,6 @@ permissions:
   contents: read
 
 jobs:
-  # Path filters are hand-written (ADR-019 accepted cost of option D).
-  # Adding a top-level directory means updating the filters below.
-  #
-  # Every filter used to carry a `!docs/**` rule, which does not mean what it
-  # reads like. Rules are OR-ed and a negated rule matches every file the glob
-  # does NOT match, so `!docs/**` matched any changed file outside docs/ and
-  # turned all four filters on. One touched AGENTS.md ran the whole matrix; the
-  # four filters were really one "is this push docs-only" question. Removed, and
-  # the one thing that genuinely must run everything is now stated positively.
-  #
-  # Not the cause, checked and ruled out before touching this: `fetch-depth: 1`.
-  # paths-filter fetches the push's before-commit itself (`git fetch --depth=1
-  # --no-tags origin <sha>`) when it is missing, and the run logs show it doing
-  # so and diffing correctly. Deepening the checkout here would fix nothing.
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -55,35 +29,16 @@ jobs:
       - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
         id: filter
         with:
-          # This file is repeated in every filter on purpose: a change to the
-          # filters cannot be scoped by the filters it is changing, so editing
-          # CI runs the whole matrix and the change is seen doing its job.
           filters: |
             web:
               - 'apps/web/**'
               - 'packages/api-client-ts/**'
-              # The two design rulers are POLICY, and the policy lives in these
-              # two documents: src/ia.test.ts and src/design-system.test.ts read
-              # them and hard-cap several of their tables (the deviation ledger,
-              # the type and space scales) as ratchets that may only shrink.
-              # Without this line a docs-only pull request skips the web job
-              # entirely -- so the one edit both test headers say somebody has to
-              # read, adding a fourth row to the deviation ledger or a twelfth
-              # type step, was the one edit CI did not run. Added 2026-08-25.
               - 'docs/design/**'
               - '.github/workflows/ci.yml'
             platform:
               - 'apps/platform/**'
               - 'db/**'
               - 'contracts/**'
-              # The creation loop's Go-to-Python test starts the real service and
-              # scripts the gateway, so the shape it writes has to match the
-              # pydantic model in apps/llm -- and that model is not in contracts/,
-              # because it describes what the *model* returns, not what the two
-              # processes exchange. When `CreationDecision` gained two required
-              # properties the fixture was left behind, and this filter is why
-              # nothing ran: a change under apps/llm alone never started this job.
-              # Same disjoint-filters bug as the sandbox/egress pair below.
               - 'apps/llm/**'
               - '.github/workflows/ci.yml'
             llm:
@@ -95,15 +50,7 @@ jobs:
               - 'apps/sandbox/**'
               - 'contracts/**'
               - 'infra/images/**'
-              # The Go reader of infra/egress/rendered/egress-allow.json lives in
-              # apps/sandbox and is the only code that reads it, so a change to
-              # the renderer's output format used to run the Python half
-              # (egress-allowlist.yml) and never the Go half -- the two filters
-              # were disjoint over exactly the file they share. Added 2026-08-29.
               - 'infra/egress/**'
-              # The SEC-009 suites and the gate-A probe. Its --self-check is
-              # what holds the probe's grading rules, and they are rules that
-              # only fire on the one day they are meant to stop something.
               - 'tools/sec009/**'
               - '.github/workflows/ci.yml'
             qa002:
@@ -116,16 +63,6 @@ jobs:
               - 'tools/cleanmode/**'
               - '.github/workflows/ci.yml'
 
-  # The Windows leg runs the 224 vitest tests and nothing else.
-  #
-  # web-browser below already has a windows-latest entry, but it only runs
-  # Playwright chromium -- so until now every unit test in this repository, in
-  # every language, ran only on Linux, while 01 §10 names a locked-down Windows
-  # host as M6's target machine. jsdom needs no browser download, so this costs
-  # about a minute.
-  #
-  # Lint, format and build stay on Linux only: they are platform-independent by
-  # construction and running them twice buys a second opinion about prettier.
   web:
     needs: changes
     if: needs.changes.outputs.web == 'true'
@@ -146,8 +83,6 @@ jobs:
           cache-dependency-path: |
             apps/web/package-lock.json
             packages/api-client-ts/package-lock.json
-      # The generated client is a workspace dependency of the tests, so both
-      # legs install and build it.
       - run: npm ci
         working-directory: packages/api-client-ts
       - if: runner.os == 'Linux'
@@ -166,29 +101,9 @@ jobs:
       - if: runner.os == 'Linux'
         run: npm run build
 
-  # ADR-036 / 03:QA-008. A separate job, not extra steps on `web`: this one
-  # downloads three browser engines and the tier above answers in under a
-  # minute, so folding them together would put the slow half in front of the
-  # fast half's feedback on every push.
-  #
-  # No browser cache yet. `actions/cache` is not among the SHAs this repo has
-  # pinned, and inventing one to save ninety seconds is the wrong trade against
-  # a supply-chain rule the rest of this file keeps.
   web-browser:
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    # ADR-036 §待決策 1, resolved in part. Two things about this app genuinely
-    # differ by operating system and both are what the layout assertion
-    # measures: `system-ui` resolves to Segoe UI here and to DejaVu/Cantarell on
-    # the Linux runner, so text wraps at different widths; and Chromium on
-    # Windows draws classic scrollbars that occupy 15-17px of layout, where
-    # macOS and Linux draw overlay scrollbars that occupy none. A page that does
-    # not scroll sideways on Linux can still do so on Windows.
-    #
-    # macOS is deliberately absent. Its runners bill at 10x against Windows's
-    # 2x, and the gap it would close — "real Safari" — it does not actually
-    # close, because Playwright ships its own WebKit build on macOS too. That
-    # one stays open in ADR-036.
     strategy:
       fail-fast: false
       matrix:
@@ -217,21 +132,11 @@ jobs:
       - run: npm run build
         working-directory: packages/api-client-ts
       - run: npm ci
-      # --with-deps installs OS packages and only means anything on Linux.
       - if: runner.os == 'Linux'
         run: npx playwright install --with-deps ${{ matrix.install }}
       - if: runner.os != 'Linux'
         run: npx playwright install ${{ matrix.install }}
       - run: npm run test:e2e -- ${{ matrix.projects }}
-      # The report is only worth keeping when something failed; on a green run
-      # it is a few hundred kilobytes saying so.
-      # Two paths, because they hold different halves of the evidence and one of
-      # them was empty for as long as this step has existed: `playwright-report/`
-      # is written by the `html` reporter (playwright.config.ts only added it on
-      # 2026-09-09 — before that CI ran the `github` reporter alone, so this step
-      # uploaded an empty directory and every red run arrived with nothing to
-      # look at), while `test-results/` is where `trace: "on-first-retry"` puts
-      # the trace, the screenshot and the DOM snapshot of the failing moment.
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -248,9 +153,6 @@ jobs:
     defaults:
       run:
         working-directory: apps/platform
-    # The cross-workspace authorization tests (CORE-006) skip themselves when
-    # SKILLHUB_TEST_DATABASE_URL is unset, so without this service they would
-    # pass by never running. A tenancy boundary nobody checks is not a boundary.
     services:
       postgres:
         image: docker.io/pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
@@ -266,41 +168,19 @@ jobs:
           --health-retries 10
     env:
       SKILLHUB_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/skillhub_test?sslmode=disable
-      # 02:PORT-004. The service above is what makes the tenancy tests run at
-      # all, and until now nothing checked that it came up: a typo in the URL
-      # or a dropped env block would skip 281 assertions and still print ok.
-      # With this set, an unset database URL fails the package instead.
       SKILLHUB_REQUIRE_DB: "1"
-      # 02:PORT-009, the same pair for the object store. The endpoint is what
-      # makes SBX-008's grant tests run against a store that verifies
-      # signatures; the switch is what makes a store that never came up a
-      # failure instead of a skip. Credentials are the committed local dev
-      # identity in infra/compose/seaweedfs-s3.json, which the test defaults to.
       SKILLHUB_TEST_OBJSTORE_ENDPOINT: 127.0.0.1:8333
       SKILLHUB_REQUIRE_OBJSTORE: "1"
-      # The third of the same pair. This one points at an interpreter rather than
-      # a service, and it is what makes the only Go-to-Python creation test run
-      # at all -- it starts uvicorn itself and scripts the gateway, so no model
-      # provider and no key are involved. It skipped itself in every run until
-      # 2026-09-10, which is how its fixture drifted two required properties
-      # behind the pydantic model and every scripted reply became a 502.
       SKILLHUB_CREATION_PYTHON: ${{ github.workspace }}/apps/llm/.venv/bin/python
       SKILLHUB_REQUIRE_CREATION_PYTHON: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      # Not a `services:` entry: service containers start before checkout, and
-      # this one must mount the S3 identity file. That mount is the whole point
-      # -- an anonymous bucket answers all three of the attacks below with 200,
-      # which is the exact false green 02:PORT-009 was reopened for.
       - name: Start SeaweedFS (credentialed S3, for the SBX-008 grant tests)
         run: |
           docker run -d --name seaweedfs --network host \
             -v "$GITHUB_WORKSPACE/infra/compose/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro" \
             docker.io/chrislusf/seaweedfs:3.80@sha256:1055999e08eed1789b0ae45d235126e4495e23d3fb9d6396293fd42539b1ae6a \
             server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
-          # /status is the S3 gateway's own health endpoint. Measured at 16s on
-          # the machine this was written on, so the ceiling is generous on
-          # purpose: a flaky wait here would look like a signature failure.
           for _ in $(seq 60); do
             if curl -fs -o /dev/null http://127.0.0.1:8333/status; then exit 0; fi
             sleep 1
@@ -312,101 +192,31 @@ jobs:
         with:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
-      # The interpreter SKILLHUB_CREATION_PYTHON points at. Same action and same
-      # lockfile as the llm job -- `--frozen`, so this job can never resolve a
-      # different dependency set than the one that job tested.
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
       - name: Sync the creation service's interpreter (Go-to-Python test)
         working-directory: apps/llm
         run: uv sync --frozen
-      # golangci-lint-action installs a prebuilt binary, and a prebuilt binary
-      # refuses to load a config whose module targets a newer Go than the one it
-      # was itself built with:
-      #
-      #   can't load config: the Go language version (go1.26) used to build
-      #   golangci-lint is lower than the targeted Go version (1.27.0)
-      #
-      # 9e4fb84 raised the floor to 1.27.0 on 2026-08-21, the day after v2.13.1
-      # shipped, so this step has failed on every push since. The cost was not
-      # the lint: the five `- run:` steps below live in the same job, so go vet,
-      # the immutability SQL, `go test ./...` and `go build ./...` were skipped
-      # rather than run, for four days and eight commits. Every "the suite is
-      # green" in that window meant "it was green on someone's laptop".
-      #
-      # Building the pinned version with this job's own Go removes the coupling:
-      # whatever toolchain compiles the tree compiles the linter. Still pinned
-      # to v2.13.1 and still checksum-verified (module proxy + sumdb), so an
-      # upstream release still cannot turn an untouched tree red.
+      # A prebuilt golangci-lint rejects a config targeting a newer Go than it was built with,
+      # so it is installed with the job's own toolchain.
       - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
       - run: golangci-lint run
       - run: golangci-lint fmt --diff
       - run: go vet ./...
       - name: Check database-only immutability constraints
         run: |
-          # The integration harness (TestMain runs the migrations) lives in
-          # internal/entrypoint/api/apiserver owns the API-wide tests.
           go test -count=1 ./internal/entrypoint/api/apiserver -run '^$'
           docker run --rm --network host -v "$GITHUB_WORKSPACE:/workspace:ro" \
             docker.io/pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f psql "$SKILLHUB_TEST_DATABASE_URL" \
             -v ON_ERROR_STOP=1 --single-transaction -f /workspace/db/tests/immutability_test.sql
-      # Test output goes to the step summary on failure. Job logs need admin
-      # rights on the repository, so a leg that only fails on a machine nobody
-      # has -- gVisor, a Linux runner, an empty database -- is otherwise a red
-      # square with no way to read it. The summary is returned by the check-runs
-      # API to anyone who can see the repository, which is the difference
-      # between "it failed" and "here is what failed".
-      # -count=1: the two steps above and below this one already carry it, and
-      # these results depend on the state of a PostgreSQL service container --
-      # an input Go's test cache cannot see, so a cached "ok" would be about a
-      # different database. Three `go test` invocations in one file with two of
-      # them pinned said the author knew; this is the largest one catching up.
       - name: Platform tests
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform tests' go test -count=1 ./...
-      # The race detector, over the trees that do not need the database.
-      #
-      # Eight test files here start goroutines, and what they assert is that the
-      # RESULT of two goroutines is right -- one account row, one artifact, one
-      # winner for the last quota slot. Every one of those stays green with a
-      # live data race under it, because the race is in the map or the counter
-      # and not in the row count. httpx.RateLimiter's per-IP bucket map is
-      # touched by every request and has no concurrent test at all.
-      #
-      # A LIST, not `./...`, and the list is the trees whose tests need no
-      # database (measured: they skip nothing when SKILLHUB_TEST_DATABASE_URL is
-      # unset, except the three partition tests, which are cheap). The reason is
-      # cost, not correctness: -race over the 267 apiserver integration tests
-      # would multiply the slowest job in this file. Adding a package outside
-      # these trees means adding it here -- or moving it under one of them.
-      #
-      # cgo is required by -race and is present on ubuntu-latest; it is NOT
-      # available on the machine this was written on, which is why this leg
-      # exists in CI rather than in Taskfile.yml.
       - name: Platform tests (race detector, database-free packages)
         run: |
           bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform race tests'             go test -race -count=1               ./cmd/...               ./internal/creator/...               ./internal/entrypoint/worker/...               ./internal/foundation/...               ./internal/product/...               ./internal/trial/evidence/...               ./internal/trial/execution/...
       - run: go build ./...
 
-  # apps/sandbox is its own Go module (ADR-019, iron rule 2), so it needs
-  # its own job: the platform job's working-directory would never see it.
-  #
-  # GitHub-hosted runners have a Docker daemon, so the dockerdrv integration
-  # tests run here for real rather than skipping. What they cannot cover is
-  # gVisor used to be written off here on the grounds that runsc needs nested
-  # virtualization (ADR-019 open question 3). **ADR-022 §0 overturned that**:
-  # the systrap platform intercepts with seccomp + SIGSYS and needs no /dev/kvm,
-  # so a GitHub-hosted ubuntu-latest is enough, and ADR-022 附錄 splits SEC-009
-  # into a Suite 1 that needs only Linux + Docker + runsc and a Suite 2 that can
-  # only run on the node about to join the pool. The comment outlived the
-  # correction by a milestone and kept Suite 1 filed as impossible.
-  #
-  # The step below is Suite 1's first cut: the same driver assertions, on runsc.
-  # It buys syscall-compatibility regression, which ADR-015 flags as recurring
-  # whenever a Runtime is added. It buys **none** of the escape, egress,
-  # credential-scope or cleanup testing — those measure the production node's own
-  # configuration, so a different machine is a different subject and SEC-009 /
-  # SBX-010 stay deployment-time acceptance (04 甲-1～甲-4).
   sandbox:
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'
@@ -415,23 +225,9 @@ jobs:
       run:
         working-directory: apps/sandbox
     env:
-      # 02:PORT-004's other half. dockerdrv's harness calls t.Skipf when it
-      # cannot reach a Docker client, ping the daemon or pull the image, and
-      # those eight tests are the whole of SEC-009 Suite 1. A broken socket or a
-      # rate-limited Docker Hub therefore prints `ok` over zero coverage --
-      # exactly the shape that removed 287 platform tests behind a green screen
-      # (6e8a253), still standing on this side because the lesson was only
-      # applied to the database. With this set the harness fails instead.
       SKILLHUB_REQUIRE_DOCKER: "1"
-      # The P-02 probe test (dockerdrv/p02_docker_test.go probeImage) measures
-      # what the Runtime Image can dial, so it refuses to run against busybox and,
-      # under SKILLHUB_REQUIRE_DOCKER=1, fails rather than skips when the image is
-      # absent -- which it always is on a fresh runner (2026-08-29, f3f8bb0 went
-      # red exactly there). Pull the published copy and give it the local name
-      # the test defaults to. Not SKILLHUB_SANDBOX_TEST_IMAGE: docker_test.go
-      # reads that too, and it would move every dockerdrv test off busybox. When
-      # a new IMAGE_VERSION has passed ADR-023's four measured tests, move the
-      # tag below and the test's constant together.
+      # docker_test.go also reads SKILLHUB_SANDBOX_TEST_IMAGE; setting only this variable
+      # keeps the other dockerdrv tests on busybox.
       RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-8
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -439,52 +235,21 @@ jobs:
         with:
           go-version-file: apps/sandbox/go.mod
           cache-dependency-path: apps/sandbox/go.sum
-      # Public package; no login needed. Pulled explicitly so a registry outage
-      # is its own red step with its own message, not a probe-test failure.
       - name: Pull the Runtime Image the P-02 probe dials from
         run: |
           docker pull "$RUNTIME_IMAGE_FOR_PROBE"
           docker tag "$RUNTIME_IMAGE_FOR_PROBE" skillhub/runtime-agent-sdk:2026.08-8
-      # BEFORE `go test ./...`, not after. localdrv's seven tests skip when node
-      # is not on PATH, and until now they ran against whatever Node the runner
-      # image happened to ship rather than the one this job installs -- so a
-      # runner image that dropped its preinstalled Node would have deleted seven
-      # tests silently. Node is also the clean-mode driver's only dependency, so
-      # this is the platform 02:PORT-010 is about.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      # Same build-it-here reason as the platform job above; apps/sandbox
-      # carries the same 1.27.0 floor, so it holds the same landmine. It has not
-      # gone off only because this job is path-filtered and no sandbox file has
-      # changed since the bump.
       - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
       - run: golangci-lint run
       - run: golangci-lint fmt --diff
       - run: go vet ./...
-      # Test output goes to the step summary on failure. Job logs need admin
-      # rights on the repository, so a leg that only fails on a machine nobody
-      # has -- gVisor, a Linux runner, an empty database -- is otherwise a red
-      # square with no way to read it. The summary is returned by the check-runs
-      # API to anyone who can see the repository, which is the difference
-      # between "it failed" and "here is what failed".
       - name: Sandbox tests
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox tests' go test -count=1 ./...
-      # internal/sandbox's Manager is a mutex, a goroutine, a wall-clock timer
-      # and a trace collector in one object, its 45 tests call t.Parallel() zero
-      # times, and the fakeDriver they run against is itself a mutex and a
-      # channel. Nothing here needs Docker, so the race detector is cheap.
       - name: Sandbox tests (race detector)
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox race tests' go test -race -count=1 ./internal/sandbox/... ./cmd/...
-      # The workload script the drivers spawn, tested here rather than in `web`:
-      # it belongs to the sandbox, and this job is already the one filtered on
-      # infra/images/**. Its zip extractor replaced unzip's refusal of absolute
-      # and ../ entries with its own (04 丙-82), so those refusals need a machine.
-      # Offline: no node, no docker, no runsc. It drives the version
-      # comparison, the node-age and build_phase grading, and which statuses
-      # let a gate pass -- including the one that says `unknown` is still a
-      # fail, which is the assertion that keeps 05 R-17a's ELSEWHERE from
-      # becoming a way to make any red row disappear.
       - name: Gate A node probe self-check (SEC-009 T8)
         working-directory: ${{ github.workspace }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Gate A node probe self-check' python3 tools/sec009/t8-node-probe.py --self-check
@@ -495,11 +260,6 @@ jobs:
       - name: Build the runtime image (SBX-002)
         run: docker build -t skillhub/runtime-agent-sdk:ci infra/images/runtime-agent-sdk
         working-directory: .
-      # SEC-009 Suite 1 (ADR-022 附錄), on the version infra/nodes/gvisor-baseline.txt
-      # names — the same one node admission will compare against — so CI and
-      # the pool cannot drift apart. Until 2026-09-05 this installed `latest`
-      # because the baseline was `unset`; an unset baseline now fails this step
-      # instead of quietly testing whatever upstream shipped that morning.
       - name: Install gVisor
         run: |
           set -euo pipefail
@@ -517,44 +277,11 @@ jobs:
           sudo runsc install
           sudo systemctl reload docker
         working-directory: .
-      # The driver tests again, on runsc this time. `Config.Runtime` has existed
-      # since SBX-001 and no test had ever taken its non-empty path, so the knob
-      # that implements ADR-015 was itself unexercised.
-      #
-      # TestRequestedRuntimeIsTheOneTheContainerGot fails rather than skips when
-      # a runtime was explicitly asked for, which is what stops this step from
-      # going green on a daemon that never heard of runsc — the same silent-zero
-      # shape as 04 丙-36.
-      # It went red the first time it ever executed (b255333) and the reading
-      # was neither of the two guesses: not a runsc syscall gap and not the
-      # runner, but a pids ceiling that the sentry's own host threads sit
-      # inside. TestPidsLimitStopsAForkBomb carries that story. Green since.
-      #
-      # This step is where SEC-009 Suite 1's T3 lives (ADR-022 附錄 Part 3 and
-      # §4: Suite 1 on every apps/sandbox change, CI's job). The three
-      # enforcement tests added for C-11, C-12 and C-14 ride it, and they are
-      # behavioural on purpose -- the declarative half was already here and it
-      # reads back the fields the driver asked for, which on runsc is exactly
-      # the reading that came apart above.
       - name: Sandbox driver tests on gVisor
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox driver tests on gVisor' go test ./internal/dockerdrv/... -count=1
         env:
           SKILLHUB_SANDBOX_TEST_RUNTIME: runsc
 
-  # M6's target machine, compiled for the first time.
-  #
-  # apps/sandbox has tree_windows.go, and 01 §10 says the trigger for M6 is a
-  # pitch on a locked-down Windows host that cannot install software. That file
-  # has never been through a compiler in CI: every Go job here is ubuntu, so the
-  # GOOS=windows half of the build tags was checked by nobody. 01 §10 also
-  # records what that costs -- the local driver's first mutation came back GREEN
-  # because Node on Windows reaps non-detached descendants itself, so the test
-  # was measuring Node's guarantee and not ours, and a person had to find that by
-  # hand on a Windows box.
-  #
-  # Deliberately narrow: build, vet, and localdrv only. The dockerdrv tests need
-  # a Linux Docker daemon and gVisor, so they stay where they are; this leg is
-  # about the platform, not about duplicating the suite.
   sandbox-windows:
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'
@@ -568,24 +295,11 @@ jobs:
         with:
           go-version-file: apps/sandbox/go.mod
           cache-dependency-path: apps/sandbox/go.sum
-      # localdrv spawns node, so it needs one on PATH here for the same reason
-      # the Linux job installs one before its tests rather than after.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - run: go build ./...
       - run: go vet ./...
-      # The other half of this job's own reason for existing. It was created
-      # because "every Go job here is ubuntu, so the GOOS=windows half of the
-      # build tags was checked by nobody" -- and it fixed that for the
-      # compiler, the vetter and localdrv's tests, but not for the linter,
-      # which is still only ever run on ubuntu in `platform` and `sandbox`.
-      # Installing it locally on 2026-09-10 found four unchecked
-      # windows.CloseHandle calls in tree_windows.go that had been there since
-      # the file was written. Same install line and same pinned version as the
-      # two ubuntu jobs; GOTOOLCHAIN is not needed here because setup-go
-      # already put the go.mod toolchain (1.27.0) on PATH, which is exactly
-      # what those jobs rely on too.
       - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
       - run: golangci-lint run
       - run: golangci-lint fmt --diff
@@ -608,8 +322,6 @@ jobs:
       - run: uv run ruff check .
       - run: uv run pytest
 
-  # Deliberately unfiltered: drift can also come from hand-editing generated
-  # output, and such a commit never touches contracts/ (ADR-019 §3).
   contracts-drift:
     runs-on: ubuntu-latest
     steps:
@@ -618,86 +330,29 @@ jobs:
         with:
           go-version-file: tools/devctl/go.mod
           cache: false
-      # devctl carries six test files and until now no job ran one of them.
-      # automation-check proves the checks execute; it cannot prove they still
-      # detect anything -- a checker rewritten to `return nil` prints the same
-      # green line. That is AGENTS.md rule 9 one level up, on the code that is
-      # supposed to be this repo's immune system, so it runs before the checks
-      # whose output the rest of this job trusts.
       - run: go -C tools/devctl vet ./...
-      # -race here first, and -count=1 with it. This package has 73 t.Parallel()
-      # calls -- several checkers walking one tree at once -- which makes it both
-      # the cheapest place in the repo to run the detector (pure CPU, no service,
-      # no Docker) and the one where a shared map would actually be found. It is
-      # also the code this job's own comment calls the repo's immune system.
       - run: go -C tools/devctl test -race -count=1 ./...
       - name: Agent automation contract
         run: go -C tools/devctl run . automation-check
       - name: Generate portable Agent artifacts from Claude sources
         run: go -C tools/devctl run . agent-sync
-      # devctl reads the pinned sqlc version from tools/toolchain.yaml, writes
-      # into same-filesystem scratch space, and compares every file including
-      # untracked additions. CI and local development therefore use one path.
       - name: Deterministic generated-output check
         run: go -C tools/devctl run . gen --check
 
-      # Iron rule 12's first half: the schema has to be valid before anything can
-      # be generated from it. Pinned like sqlc above: a floating linter turns an
-      # upstream release into a red build on an untouched tree.
-      #
-      # Errors fail, warnings do not. The tree carries 13 warnings on purpose:
-      # info-license on all three files (nothing is published under a license
-      # yet), no-server-example.com on public.yaml's localhost server, and the
-      # 2xx/4xx-response rules on the OAuth redirect and 204 routes, which have
-      # no other status to document. Promoting those to errors would mean
-      # inventing responses the implementation does not return.
       - name: redocly lint (contracts/openapi)
         run: npx --yes @redocly/cli@2.46.1 lint contracts/openapi/*.yaml
 
-      # Iron rule 12's other half: contracts/events is not OpenAPI, so redocly
-      # never saw it. The validator has existed since M2 and the contract README
-      # names it as the verification step, but no job ran it - a schema edit was
-      # gated only by whoever remembered. Pinned like the tools above.
       - name: Trace event contract (contracts/events)
         run: |
           pip install jsonschema==4.26.0
           python tools/contracts/validate_trace_events.py
 
-      # Same half of iron rule 12, third contract type: contracts/packaging holds
-      # file formats (the manifest inside a downloaded zip, a packaging profile, a
-      # portable test case), so neither redocly nor the trace validator sees them.
-      # One of the consumers is outside this repository - the user unzipping the
-      # package - which is exactly the consumer that cannot report drift.
-      # jsonschema is already installed by the step above and pinned there.
       - name: Packaging contracts (contracts/packaging)
         run: python tools/contracts/validate_packaging.py
 
-      # ADR-043's four behaviours, which had no machine.
-      #
-      # tools/eval-regression/README.md filed this under the same 「不進 CI」
-      # rule as judge_regression.py, and for that one the rule is right: it needs
-      # a database, an object store and real model spend. This file needs none of
-      # them -- it is twelve pure-function tests that run in under a second, and
-      # its own header records that each was reverted once and confirmed red
-      # (AGENTS.md rule 9). A cheap guard was tied to the cost of the expensive
-      # thing it guards. Added 2026-08-29; the README now says which half is in.
       - name: Judge evidence-citation regression (ADR-043)
         run: python tools/eval-regression/test_judge_regression.py
 
-  # 03:QA-002's negative half, which has never executed anywhere.
-  #
-  # 45 pinned packages prove skillpkg does not FALSELY block. Proving it BLOCKS
-  # needs samples that must be blocked, and the 21 breaking variants exist --
-  # tools/qa/skillpkg-corpus/ -- behind a t.Skip on QA002_CORPUS that no job has
-  # ever set. So the twelve blocking codes, which are the whole of the import
-  # trust boundary's refusal logic, are today guarded by zero automated runs
-  # while 03:QA-002 sits ticked.
-  #
-  # The stated reason for staying out was network budget for three pinned
-  # archives. That reason does not survive the same file: contracts-drift runs
-  # `npx --yes` and `pip install`, and the sandbox job downloads a gVisor release
-  # and builds a Debian image. Its own job so the cost lands on the two trees
-  # that can invalidate it, not on every push.
   qa002:
     needs: changes
     if: needs.changes.outputs.qa002 == 'true'
@@ -711,34 +366,16 @@ jobs:
       - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
         with:
           python-version: '3.12'
-      # Offline first: --selftest checks the mutators themselves (including that
-      # no complete credential string exists in the source, which is what lets
-      # this corpus be committed at all). If the mutators are broken, the corpus
-      # below would be 21 files that assert nothing, and the run would be green.
       - name: Corpus generator self-test (offline)
         run: python tools/qa/skillpkg-corpus/generate.py --selftest
       - name: Build the QA-002 breaking corpus
         run: python tools/qa/skillpkg-corpus/generate.py --out "$RUNNER_TEMP/qa002"
-      # -count=1 because the corpus is outside the tree Go hashes for its test
-      # cache: a cached pass would be about a corpus that no longer exists.
       - name: QA-002 corpus
         working-directory: apps/platform
         env:
           QA002_CORPUS: ${{ runner.temp }}/qa002
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'QA-002 corpus' go test -count=1 ./internal/skill/admission -run QA002 -v
 
-  # 02:PORT-001's acceptance checks, and the two mutations that give them teeth.
-  #
-  # tools/pglite/verify.mjs is a well-built harness that no job ran: none of the
-  # four path filters covered tools/pglite/** or tools/cleanmode/**, and `task
-  # test` does not aggregate it. Its own header offers two mutations for a human
-  # to run by hand, which is the same as not having them.
-  #
-  # The mutations are the point of this job rather than a bonus. Under the
-  # shipping maxConnections=1 the advisory-lock check ALWAYS takes the
-  # "B never got a session" branch and reports PASS, so its teeth live entirely
-  # in --mutate=multiplexer. Asserting that the mutated runs exit non-zero is
-  # what turns "this check passed" into "this check can fail".
   tools-pglite:
     needs: changes
     if: needs.changes.outputs.pglite == 'true'
@@ -753,10 +390,6 @@ jobs:
       - run: npm ci --prefix tools/pglite
       - name: PORT-001 acceptance checks
         run: node tools/pglite/verify.mjs
-      # AGENTS.md rule 9, as a step. Each mutation must make the harness exit
-      # non-zero; a mutation that still passes means the check it belongs to is
-      # not looking at anything. `if ... then exit 1` rather than `!` so the
-      # message says which mutation stayed green.
       - name: The acceptance checks must be able to fail
         run: |
           set -uo pipefail
@@ -768,15 +401,8 @@ jobs:
             echo "ok: --mutate=$mutation failed as it must"
           done
 
-  # ADR-019 job 5, wired 2026-09-05 (04 丙-158): the three service images are
-  # built on every run so a Dockerfile that no longer builds is a red PR, and
-  # pushed to GHCR (ADR-019 open question 1, closed in ADR-022) only from main.
-  # Tags are the commit SHA and never `latest`, so a deploy and a rollback both
-  # name an exact commit. The runtime image has its own workflow
-  # (runtime-image.yml) because it carries SBOM and scan attestations; these
-  # three are the platform's own code and get the ordinary build.
   images:
-    # Filtered-out upstream jobs are skipped, not failed, so gate on !failure().
+    # Jobs skipped by path filters count as success, so this blocks only on a real failure.
     if: ${{ !failure() && !cancelled() }}
     needs: [web, platform, llm, contracts-drift]
     runs-on: ubuntu-latest
@@ -790,18 +416,11 @@ jobs:
       - name: Build service images
         run: |
           set -euo pipefail
-          # platform and web build from the repo root (go.work, packages/);
-          # llm's context is apps/llm alone, the way its compose entry builds it.
+          # platform and web build from the repo root (go.work, packages/); llm builds from apps/llm.
           docker build -f infra/images/platform/Dockerfile -t "${REGISTRY}/skillhub-platform:${GITHUB_SHA}" .
           docker build -f infra/images/web/Dockerfile      -t "${REGISTRY}/skillhub-web:${GITHUB_SHA}" .
           docker build -f infra/images/llm/Dockerfile      -t "${REGISTRY}/skillhub-llm:${GITHUB_SHA}" apps/llm
           docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep skillhub-
-      # Until 2026-09-10 this job built three images, listed them and pushed
-      # them, and no container was ever started from any of them -- a broken
-      # entrypoint or an nginx.conf that does not parse reached GHCR green.
-      # Before the push, deliberately: an image that cannot serve is not a
-      # release candidate. tools/ci/stack-smoke.sh says what it does and does
-      # not cover.
       - name: Smoke the images before pushing them
         env:
           PLATFORM_IMAGE: ${{ env.REGISTRY }}/skillhub-platform:${{ github.sha }}

@@ -1,132 +1,29 @@
-# Skill Hub Runtime Image — Claude Agent SDK on Node.js 22 LTS (SBX-002).
-#
-# PDM-003 picked the SDK over the CLI and over a hand-written agent loop, and
-# ADR-015's decision record records Node.js 22 LTS with it. The image is
-# deliberately small and boring: a reviewer has to be able to read it and say
-# what runs inside a sandbox, because everything it executes afterwards is
-# untrusted (iron rule 1).
-#
-# Baseline notes (SEC-002 §4.5):
-#   I-01  Pre-built and versioned. The provider names the image; a RunRequest
-#         cannot choose one.
-#   I-02  Pin by digest. The FROM below carries both tag and digest: the tag is
-#         for a human reading the file, the digest is what actually resolves.
-#         SKILLHUB_SANDBOX_IMAGE should likewise be a digest reference, never a
-#         tag — a tag is a moving target and the run record would stop saying
-#         what actually ran. Digest update procedure: infra/images/README.md.
-#   I-03/I-04  SBOM and vulnerability scanning run in the `runtime-image` CI job
-#         (.github/workflows/runtime-image.yml), and are published as
-#         attestations on the GHCR digest so node admission can query them
-#         (SBX-011). Thresholds are settled in ADR-022 §2.
-#
-# Build:
-#   docker build -t skillhub/runtime-agent-sdk:2026.08-9 infra/images/runtime-agent-sdk
 FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
-# The SDK version is pinned, not floated: it is the runtime_version the
-# provider declares in ProviderCapability and the one recorded against every
-# historical Run (I-05). Bumping it is a new image tag, never an in-place edit.
 ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 
-# The human-readable version of this image. Contents change => new version, never
-# an in-place edit of an existing one (I-05, README "Digest 更新程序"). The
-# runtime-image workflow reads it straight out of this file so the tag it pushes
-# to GHCR and the tag written here cannot drift apart.
-# 2026.08-4 removed `unzip` and moved its refusals into run.mjs's own zip parser
-# (04 丙-82). 2026.08-5 bounds that parser: a declared-size ceiling per entry, a
-# declared-total ceiling, and an entry-count ceiling, so a decompression bomb is
-# refused rather than absorbed — which mattered the moment this workload started
-# running on a host process with no cgroup behind it. Both are behaviour
-# changes inside the image, so both are ADR-023 upgrades and both are written up
-# in UPGRADES.md.
 ARG IMAGE_VERSION=2026.08-9
 
-# Non-root from the image on up (C-02). The provider also passes --user, but an
-# image whose only account is root is one bad flag away from running as root.
+# Non-root from the image on up: the provider also passes --user, but an image
+# whose only account is root is one bad flag away from running as root.
 RUN groupadd --gid 65532 sandbox \
     && useradd --uid 65532 --gid 65532 --no-create-home --shell /usr/sbin/nologin sandbox
 
-# Skill packages are stored as zip archives (ingest writes packages/<hash>.zip),
-# and the sandbox is where they are unpacked — never the control plane, which
-# must not open untrusted bytes (iron rule 1).
-#
-# unzip used to be installed here for exactly that. It is not any more (2026-08-29,
-# 04 丙-82): run.mjs unpacks with node:zlib and its own parser, because the machine
-# M6 targets is Windows with no container and /bin/sleep and unzip are not there.
-# Dropping it is not tidying. This image runs untrusted content, and an extractor
-# nothing calls is still an extractor a workload can call — the refusal of
-# absolute and ../ entries that used to be unzip's now lives in extractPackage,
-# where a test can hold it to it.
-#
-# python3 is the second addition, and it is not a convenience: 33 of the 45
-# catalog skills declare their worked examples in Python, and the M2 baseline
-# runs recorded `python3: command not found` in the sandbox. What ran instead
-# was the model's re-implementation of the script, not the script — a different
-# product with no field in the catalog saying so
-# (docs/plans/mvp/m2/content-baseline-report.md §6.3).
+# unzip is intentionally absent: run.mjs unpacks packages itself with node:zlib
+# so the same parser (and its path-traversal refusals) runs on every platform
+# this image's workload must also run on.
 RUN apt-get update \
-    # 2026-09-10, I-06: grype 擋下 CVE-2026-86145（libpcre2-8-0，High，fixed in
-    # 10.42-1+deb12u1）。**修法不是換 base digest**——README〈Digest 更新程序〉
-    # 逐字寫著「不要為了讓掃描變綠而改 digest，除非確認新 digest 真的含修復」，
-    # 而這裡量過了：釘住的那個 digest 與今天的 `node:22-bookworm-slim` **都**還是
-    # 10.42-1（`dpkg -s libpcre2-8-0`），修復只在 bookworm-security 裡（`apt-cache
-    # policy` 的 candidate 是 10.42-1+deb12u1，來源 deb.debian.org/debian-security）。
-    # 所以指名升級那一個套件。
-    # **只升這一個、不做全域 `apt-get upgrade`**：這個檔案處處在釘版本（FROM 帶
-    # digest、constraints.txt、package-lock.json），一個會隨日期漂移的全域升級會把
-    # 那些工夫抵銷掉。下一個 CVE 出現時這裡再多一行——那一行看得見，漂移看不見。
+    # Upgrades this one package to pick up a fixed CVE without floating the
+    # pinned base digest or doing a drifting whole-image apt-get upgrade.
     && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 \
     && apt-get install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/* \
-    # Skills write `python foo.py` as often as `python3 foo.py`; Debian ships
-    # only the versioned name. One symlink, or a whole class of skills fails on
-    # the interpreter name rather than on anything real.
+    # Skills invoke `python`, but Debian ships only the versioned `python3` name.
     && ln -s /usr/bin/python3 /usr/local/bin/python
 
-# The sandbox has no network (SBX-007: the only reachable address is the model
-# gateway), so a dependency that is not baked in here cannot be installed at run
-# time — pre-installing is the only path that exists.
-#
-# The set is the union of `deps` declared by the 45 catalog skills in
-# tools/content/seed-skills.json, minus what cannot go in. "The catalog declared
-# it" is a rule that can be re-derived from data; "it seemed useful" is not, and
-# would grow this image forever.
-#
-# 2026.08-2 read that union off a `deps` field that had been transcribed from an
-# incomplete read of each SKILL.md: 13 of the 45 skills under-declared, and the
-# image inherited every gap. The field is now corrected against a static scan of
-# the pinned package trees, which added 8 installable packages to the union and
-# also — this is what forced the second half of the rule — a set of things that
-# must not be installed at all:
-#
-#   ADMISSION BAR: pure-Python wheel, no compiled extension, no system binary.
-#
-# A sandbox exists to parse untrusted data. Native parsers are the memory-unsafe
-# surface that isolation is compensating for, so pulling a rendering or OCR stack
-# in to satisfy a `deps` entry trades away the thing the sandbox is for. The bar
-# is a property of the package, not a judgement call per package, and every
-# rejection it produces is named with its reason in infra/images/README.md —
-# a rejected dependency is a disclosed limitation, never a silent one.
-#
-# Each direct dependency is pinned to the newest release the I-06 gate accepts:
-# the first pass pinned a conservative older set and grype found fixable High
-# findings in lxml, pypdf and pdfminer.six, which have no waiver path (ADR-022).
-#
-# Transitive dependencies used to be left to the resolver, on the argument that
-# the image digest and the SBOM published beside it (SBX-011) already make a
-# build auditable and a hand-maintained lock would be a second, drifting answer
-# to a question the SBOM already answers. That argument answers the wrong
-# question: the SBOM says what a build CONTAINED; it says nothing about what
-# the NEXT build will contain, because the resolver was free to pick a
-# different transitive version each time. constraints.txt (SUPPLY-RUNTIME-LOCK-001)
-# is the answer to that second question — every transitive package pinned to
-# what this exact base+install actually resolved to, so a `--no-cache` rebuild
-# gets the same dependency tree instead of whatever the resolver picks that
-# day. Generation method and a flagged finding (pypdfium2 is a required,
-# not optional, transitive of pdfplumber) are in the file's own header comment.
-#
-# pip goes the way npm went below — a package manager inside a sandbox that runs
-# untrusted code is a liability, and with no network it cannot even do its job.
+# The sandbox has no network, so dependencies must be baked in here, limited
+# to pure-Python wheels (no compiled extension, no system binary) since a
+# native parser is memory-unsafe surface isolation is meant to remove.
 COPY constraints.txt /tmp/constraints.txt
 RUN pip3 install --break-system-packages --no-cache-dir -c /tmp/constraints.txt \
       pandas==3.0.5 \
@@ -151,23 +48,9 @@ RUN pip3 install --break-system-packages --no-cache-dir -c /tmp/constraints.txt 
     && rm -rf /var/lib/apt/lists/* /root/.cache /tmp/constraints.txt
 
 WORKDIR /opt/skillhub
-# package.json pins the exact same version as ARG CLAUDE_AGENT_SDK_VERSION
-# above (SUPPLY-RUNTIME-LOCK-001); the ARG stays the single source of truth,
-# so this check fails the build the moment the two disagree instead of
-# silently installing whichever one npm ci picks up. package-lock.json pins
-# every transitive/peer package the SDK resolves to (generated the same way
-# as constraints.txt: `npm install` in a throwaway container on this exact
-# base digest, before npm is removed below).
-#
-# The four `@anthropic-ai/claude-agent-sdk-linux-*`/`-win32-*`/`-darwin-*`
-# optionalDependencies entries in package-lock.json each carry a hand-added
-# "libc" field (glibc/musl) that npm 10.9.8 does not itself write into
-# package-lock.json even though it reads it from the real package.json during
-# a live `npm install`. Without it, `npm ci` -- which trusts only the
-# lockfile, no live registry lookups -- cannot tell glibc and musl builds
-# apart and installs both onto this glibc image. Confirmed by inspecting the
-# published packages' own package.json (`"libc":["glibc"]` /
-# `"libc":["musl"]`) and by rebuilding with and without the field.
+# Fails the build if package.json's pin disagrees with ARG
+# CLAUDE_AGENT_SDK_VERSION, rather than silently installing whichever npm ci
+# picks up.
 COPY package.json package-lock.json /opt/skillhub/
 RUN node -e "const v=require('./package.json').dependencies['@anthropic-ai/claude-agent-sdk']; \
     if (v !== process.env.CLAUDE_AGENT_SDK_VERSION) { \
@@ -176,14 +59,9 @@ RUN node -e "const v=require('./package.json').dependencies['@anthropic-ai/claud
     } console.log('package.json matches ARG CLAUDE_AGENT_SDK_VERSION:', v);"
 RUN npm ci --omit=dev --no-audit --no-fund \
     && npm cache clean --force \
-    # npm and corepack are build-time only: the entrypoint is `node run.mjs` and
-    # the only address a sandbox can reach is the model gateway (SBX-007), so
-    # nothing here can install a package anyway.
-    # They are dropped because every fixable Critical/High the scan finds in this
-    # image comes from npm's own bundled node_modules (tar, brace-expansion,
-    # picomatch, sigstore) — packages nothing at run time loads. A package
-    # manager sitting inside a sandbox that runs untrusted code is a liability
-    # even when its dependencies happen to be clean.
+    # npm and corepack are build-time only and dropped afterward: a package
+    # manager inside a sandbox that runs untrusted code is a liability even
+    # when its own dependencies are clean.
     && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
        /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 COPY run.mjs /opt/skillhub/run.mjs

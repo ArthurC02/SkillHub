@@ -1,5 +1,3 @@
--- Durable worklists for object writes whose database manifest can be lost when
--- a process exits between object-store I/O and the publishing transaction.
 CREATE TABLE download_object_cleanup_intents (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id uuid NOT NULL REFERENCES workspaces(id),
@@ -13,8 +11,6 @@ CREATE INDEX download_object_cleanup_intents_due_idx
     ON download_object_cleanup_intents
     (attempted_at NULLS FIRST, not_before, id);
 
--- Cleanup guards recheck by object key while holding the writer's advisory
--- lock. Keep a batch from turning into one full-table scan per candidate.
 CREATE INDEX artifacts_live_object_key_idx ON artifacts (object_key)
     WHERE deleted_at IS NULL AND purged_at IS NULL;
 CREATE INDEX datasets_live_object_key_idx ON datasets (object_key)
@@ -38,9 +34,6 @@ CREATE INDEX run_artifact_upload_intents_due_idx
     ON run_artifact_upload_intents
     (attempted_at NULLS FIRST, not_before, id);
 
--- Cover attempts created or updated by an old worker between migrations 0050
--- and this trigger becoming active. Existing manifested archives are harmless:
--- the collector rechecks their live rows before removing anything.
 INSERT INTO run_artifact_upload_intents
     (run_attempt_id, workspace_id, object_key, not_before)
 SELECT id, workspace_id,

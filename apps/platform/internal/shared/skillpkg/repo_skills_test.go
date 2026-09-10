@@ -6,18 +6,6 @@ import (
 	"testing"
 )
 
-// The repository's own agent skills go through the product's own validator.
-//
-// Skill Hub exists to validate Agent Skills packages, and .claude/skills/ holds
-// five of them that the coding agents working on this repo load. On 2026-09-04
-// two of the five had no `name:` field — a Skill this validator rejects with
-// `name-missing` — and nothing noticed, because the only reader was Claude Code,
-// which derives the name from the directory. A repository that ships a Skill
-// validator and cannot pass it over its own Skills is the cheapest possible
-// dogfood to have skipped.
-//
-// Errors only. Warnings and infos (no licence, an external URL) are the normal
-// state of an in-repo Skill and are not what this test is about.
 func TestTheRepoOwnSkillsPassItsOwnValidator(t *testing.T) {
 	t.Parallel()
 	skills := filepath.Join(repoRoot(t), ".claude", "skills")
@@ -41,7 +29,6 @@ func TestTheRepoOwnSkillsPassItsOwnValidator(t *testing.T) {
 	}
 }
 
-// Walk up from the package directory until both AGENTS.md and .claude/ exist.
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()

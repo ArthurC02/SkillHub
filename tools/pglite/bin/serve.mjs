@@ -1,29 +1,7 @@
 #!/usr/bin/env node
-// Starts the 02:PORT-001 PGlite carrier and keeps it running until killed.
-//
-// Usage:
-//   node bin/serve.mjs [--port=5433] [--host=127.0.0.1]
-//
-// Prints a line starting with "PGLITE_READY " followed by the connection
-// string once all db/migrations/*.sql have applied, then blocks. Ctrl-C
-// (SIGINT) or SIGTERM closes the socket server and the database cleanly.
-//
-// maxConnections is deliberately not a CLI flag: ADR-060 decision 2 fixes it
-// at 1 for this carrier. Anything else belongs to the mutation test, not to
-// an operator's command line.
-//
-// KNOWN LIMITATION (matches report-inmemory-postgres.md's earlier finding):
-// an abruptly terminated client -- a TCP connection dropped mid-protocol
-// rather than closed with a normal wire-protocol Terminate message -- can
-// leave the socket server refusing every later connection (ECONNRESET on
-// the client side) even though this process is still alive. Reproduced
-// locally: destroying a raw socket mid-handshake left every subsequent
-// `pg` client connection failing. There is no recovery path from inside
-// this script for that state; restart the harness process. Because
-// maxConnections=1, a single misbehaving client is enough to take the
-// whole carrier down -- callers that spawn this as a test-session fixture
-// should treat any connection failure as "restart the process", not retry
-// in a loop against the same instance.
+// An abruptly dropped client connection (not a clean wire-protocol close) can
+// leave this socket server refusing every later connection; with
+// maxConnections=1 the whole carrier is then unusable and must be restarted.
 
 import { startHarness } from "../lib/harness.mjs";
 

@@ -1,7 +1,3 @@
-# golangci-lint v2. Default linter set (errcheck, govet, ineffassign,
-# staticcheck, unused) plus the exclusions v1 applied by default and v2 makes
-# opt-in: a deferred Close/Flush has no caller left to return an error to, so
-# flagging it only teaches people to write `_ =` noise.
 version: "2"
 
 linters:
@@ -13,16 +9,6 @@ linters:
       - std-error-handling
 
   settings:
-    # This depguard block is the machine-readable form of docs/adr/ADR-032
-    # appendix A (the cross-context import whitelist). Changing any
-    # cross-context dependency MUST edit both places in the same commit; the
-    # `drift:` markers below are compared against the ADR by
-    # `devctl automation-check`, so a divergence turns CI red.
-    #
-    # Rules are deny lists: "legal but unlisted = denied" from the appendix is
-    # already folded in, so every context denies every other context except the
-    # collaborations the appendix keeps. Test files are exempt (`!$test`) —
-    # integration tests' cross-context imports are handled by DDD-011.
     depguard:
       rules:
         creation:
@@ -164,14 +150,6 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
-        # catalog -> analytics is legal (projection facts).
-        # catalog -> registry is legal (Customer–Supplier): the licensing hold is
-        # catalog's decision — the reason codes, the rendered sentences, the
-        # operator routes and the audit event all live there — but the flag is a
-        # column of registry's `skills` table, so the write goes through
-        # registry.SetAccessRestriction inside catalog's own transaction instead
-        # of reaching past the owner into the query
-        # (ADR-033 clearance path 4, 2026-08-20).
         catalog:
           files:
             - "**/internal/skill/discovery/**"
@@ -200,11 +178,6 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
-        # eval -> testlab and eval -> trace are legal synchronous queries.
-        # eval -> ingest is legal (Customer–Supplier): 採納建議 writes the new
-        # version through ingest.SaveVersion, the one path that runs the full
-        # import validation pipeline. A second version-creation path here would
-        # be a second truth (M4 PACK-002 ruling, DDD-006 2026-08-20).
         eval:
           files:
             - "**/internal/trial/improvement/**"
@@ -231,11 +204,6 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
-        # ingest -> registry is legal (Customer–Supplier): ingest owns the only
-        # verified version-write path, registry owns skills/skill_versions, so
-        # the import calls registry's write API inside its own transaction
-        # instead of reaching past the owner into the queries
-        # (ADR-033 clearance path 2, 2026-08-20).
         ingest:
           files:
             - "**/internal/skill/admission/**"
@@ -264,7 +232,6 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
-        # packaging -> testlab is a legal synchronous query.
         packaging:
           files:
             - "**/internal/skill/delivery/**"
@@ -295,10 +262,6 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
-        # Policy & Usage (DDD-014). It answers "what may this workspace spend"
-        # and "how long is this kept", and it must be able to answer without
-        # knowing who is asking: every context is denied, including the two that
-        # call it. run and packaging import policy, never the other way round.
         policy:
           files:
             - "**/internal/product/entitlements/**"
@@ -369,9 +332,6 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
-        # run -> testlab and run -> trace are legal synchronous collaborations.
-        # run -> eval was DDD-005; the terminal transition now only announces
-        # run.succeeded/run.failed and eval's own consumer enqueues the evaluation.
         run:
           files:
             - "**/internal/trial/execution/**"
@@ -504,12 +464,6 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
 
-        # entrypoint/worker is cmd/worker's composition root (ADR-032 §5), the
-        # same architecture identity as apiserver (ADR-032 §1): it wires every
-        # context this process needs, so — like apiserver — it carries no deny
-        # list of its own.
-        # Shared Kernel (ADR-037): contexts may import it, but it may not import
-        # any bounded context.
         shared-kernel:
           files:
             - "**/internal/shared/skillpkg/**"
@@ -548,9 +502,6 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "shared kernel must not import a generic worker (ADR-037)"
 
-        # Generic subdomains (ADR-032 §1): mechanisms and technical base, no
-        # domain rules. They must not import any context or the presentation
-        # layer — dependencies point at them, never out of them.
         generic:
           files:
             - "**/internal/foundation/observability/audit/**"

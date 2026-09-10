@@ -1,22 +1,5 @@
 package eval
 
-// GET /runs/{id}/comparison?against= — EVAL-012, 02:EVAL-003 clause 2.
-//
-// A read and nothing else. Both runs are frozen snapshots, so putting them side
-// by side cannot rewrite either one (iron rule 4, 02:EVAL-003 clause 3); there is
-// no write path in this file for the same reason there is no re-run endpoint.
-//
-// Re-running is the ordinary POST /skills/{id}/runs with the new
-// `skill_version_id` and the same `test_case_id`, which keeps preflight and
-// `confirmed_summary_hash` on the path (design §5.4). A one-click re-run here
-// would be a second way to start a run, and the only thing it could skip is the
-// permission screen TEST-009 exists to force.
-//
-// Two facts are reported per side and never merged: `status` is what happened
-// while the run executed, `evaluation` is whether the task was achieved
-// (ADR-025). A side with no evaluation has the field absent — 「未評估」, which is
-// not a pass.
-
 import (
 	"context"
 	"encoding/json"
@@ -32,8 +15,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
-// runCostAuthority names where the settling figure lives, in the response rather
-// than in a UI's memory (ADR-017, handoff 丙-3).
 const runCostAuthority = "模型閘道對這個 Run 的 per-key 實付（ADR-017）"
 
 type comparisonView struct {
@@ -44,16 +25,12 @@ type comparisonView struct {
 
 type comparisonSide struct {
 	RunID string `json:"run_id"`
-	// SkillID and TestCaseID are what a re-run would be started from, per side
-	// because two runs of different skills may be compared. They are ids and not
-	// permission: re-running is still POST /skills/{id}/runs behind preflight, and
-	// InputsAvailable below is what says whether these inputs exist at all.
+
 	SkillID        string `json:"skill_id"`
 	SkillVersionID string `json:"skill_version_id"`
 	TestCaseID     string `json:"test_case_id,omitempty"`
 	Status         string `json:"status"`
-	// Evaluation is absent when this run was never evaluated. Absent and not a
-	// zero value: a rendered empty verdict is what a screen shows as a pass.
+
 	Evaluation      *comparisonVerdict   `json:"evaluation,omitempty"`
 	FinalOutput     string               `json:"final_output,omitempty"`
 	Errors          []trace.ErrorSummary `json:"errors"`
@@ -69,16 +46,7 @@ type comparisonVerdict struct {
 	Cost         costView `json:"cost"`
 }
 
-// runCostView is what the *run* spent. Kept beside the evaluation's own cost and
-// never added to it: one is the user's workload under the run's short-lived key,
-// the other is the platform's verdict under the platform's key (handoff 丙-3).
-//
-// IsLowerBound is constant true and is not a flag anybody sets. The figure is
-// summed from trace `usage` events and that sum is structurally incomplete — a
-// response still in flight when the stream ends is not in it, and a producer's
-// last flush can land after this was read.
 type runCostView struct {
-	// In Credit (ADR-068 decision 1). Nil is「未測量」and never 0.
 	Credits             *int64 `json:"credits"`
 	IsLowerBound        bool   `json:"is_lower_bound"`
 	AuthoritativeSource string `json:"authoritative_source"`
@@ -92,14 +60,11 @@ type criterionRow struct {
 
 type criterionOutcome struct {
 	RunID string `json:"run_id"`
-	// Result is null when this side has no verdict for the criterion: it was not
-	// evaluated, or the criterion is not in that snapshot at all. Different from
-	// `undetermined`, which is a verdict somebody reached.
+
 	Result *string `json:"result"`
 	Source string  `json:"source,omitempty"`
 }
 
-// Comparison handles GET /runs/{id}/comparison?against=.
 func (h *Handler) Comparison(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -127,8 +92,7 @@ func (h *Handler) Comparison(w http.ResponseWriter, r *http.Request) {
 
 	view, err := h.Svc.Comparison(r.Context(), ws.ID, runID, againstID)
 	if errors.Is(err, ErrNotFound) {
-		// Either run being someone else's is the same answer as it not existing
-		// (WS-006), and the caller cannot tell which of the two it was.
+
 		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
 		return
 	}
@@ -139,8 +103,6 @@ func (h *Handler) Comparison(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, view)
 }
 
-// sideDetail is what the matrix needs from a side and the side itself does not
-// carry: the criteria as the snapshot froze them, and the verdicts by id.
 type sideDetail struct {
 	runID    string
 	skillID  pgtype.UUID
@@ -148,8 +110,6 @@ type sideDetail struct {
 	results  map[string]CriterionResult
 }
 
-// Comparison reads both runs under one workspace (iron rule 3) and returns them
-// side by side. Nothing is written.
 func (s *Service) Comparison(
 	ctx context.Context, workspaceID, runID, againstID pgtype.UUID,
 ) (comparisonView, error) {
@@ -166,9 +126,7 @@ func (s *Service) Comparison(
 		Runs:            []comparisonSide{left, right},
 		CriterionMatrix: criterionMatrix(leftDetail, rightDetail),
 	}
-	// The existing version diff (WS-003), not a second implementation of one. It
-	// only exists between two versions of the same skill; comparing runs of
-	// different skills is allowed and simply has no diff to link.
+
 	if leftDetail.skillID == rightDetail.skillID && left.SkillVersionID != right.SkillVersionID {
 		view.VersionDiffURL = "/skills/" + pgconv.UUIDString(leftDetail.skillID) + "/diff" +
 			"?from=" + left.SkillVersionID + "&to=" + right.SkillVersionID
@@ -218,17 +176,13 @@ func (s *Service) comparisonSide(
 	if detail.criteria, err = testlab.DecodeCriteria(snapshot.AcceptanceCriteria); err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}
-	// ADR-003 刪除與可追溯性: the snapshot outlives its inputs, so whether the run
-	// could be repeated is a separate question from whether it can be read about.
+
 	if side.InputsAvailable, err = q.RunInputsStillAvailable(ctx, gen.RunInputsStillAvailableParams{
 		SnapshotID: snapshot.ID, WorkspaceID: workspaceID,
 	}); err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}
 
-	// Output, errors and the run's own cost come from trace.Service and from
-	// nowhere else (handoff 丙-1): no query in this package reads trace_events
-	// directly, so the completeness rules that view applies apply here too.
 	summary, err := s.Trace.General(ctx, workspaceID, runID)
 	if err != nil {
 		return comparisonSide{}, sideDetail{}, err
@@ -250,7 +204,7 @@ func (s *Service) comparisonSide(
 	ev, err := s.Current(ctx, workspaceID, runID)
 	switch {
 	case errors.Is(err, ErrNotFound):
-		// Never evaluated. The field stays absent (ADR-025 落地要求).
+
 		return side, detail, nil
 	case err != nil:
 		return comparisonSide{}, sideDetail{}, err
@@ -273,14 +227,6 @@ func (s *Service) comparisonSide(
 	return side, detail, nil
 }
 
-// criterionMatrix is one row per acceptance criterion with both verdicts, so a
-// regression shows up per criterion instead of only in the overall.
-//
-// Rows come from the snapshots and not from the verdicts: what was asked of a run
-// is a fact about the run whether or not anything ever judged it, and building the
-// matrix out of criterion_results would make an unevaluated side look like a run
-// with no acceptance criteria. Criteria are matched by id, which the two snapshots
-// share when the same test case was re-run.
 func criterionMatrix(left, right sideDetail) []criterionRow {
 	rows := make([]criterionRow, 0, len(left.criteria)+len(right.criteria))
 	seen := map[string]bool{}
@@ -300,9 +246,7 @@ func criterionMatrix(left, right sideDetail) []criterionRow {
 			})
 		}
 	}
-	// The run named in the path first, then whatever only the other side asked —
-	// dropping those would hide exactly the criteria that were added or removed
-	// between the two runs.
+
 	add(left.criteria)
 	add(right.criteria)
 	return rows

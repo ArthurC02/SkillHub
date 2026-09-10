@@ -1,10 +1,3 @@
-// Test Lab integration tests: TEST-001 (prompt), TEST-003 (acceptance criteria),
-// TEST-004 (dataset upload, limits, association, deletion) and TEST-010 (the
-// immutable snapshot a run executes).
-//
-// They live in this package for the reason authz_integration_test.go gives: the
-// wired HTTP surface is here, so these exercise apiserver.NewRouter's real table
-// rather than a copy. They need SKILLHUB_TEST_DATABASE_URL and skip without it.
 package apiserver_test
 
 import (
@@ -28,15 +21,10 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
-// Remove completes testlab.ObjectStore for the in-memory store. Deleting a key
-// that is not there succeeds, the same as the real object store, which is what
-// makes dataset deletion safe to re-run.
 func (s packageStore) Remove(_ context.Context, key string) error {
 	delete(s, key)
 	return nil
 }
-
-// --- helpers ---------------------------------------------------------------
 
 func (c *client) doJSON(t *testing.T, method, path, body string) (int, map[string]any) {
 	t.Helper()
@@ -61,7 +49,6 @@ func (c *client) doJSON(t *testing.T, method, path, body string) (int, map[strin
 	return resp.StatusCode, out
 }
 
-// upload posts one multipart file part, which is the whole TEST-004 request.
 func (c *client) upload(t *testing.T, path, fileName string, data []byte) (int, map[string]any) {
 	t.Helper()
 	var buf bytes.Buffer
@@ -86,7 +73,6 @@ func (c *client) upload(t *testing.T, path, fileName string, data []byte) (int, 
 	return resp.StatusCode, out
 }
 
-// newTestCase creates a skill and a draft against it, returning both ids.
 func newTestCase(t *testing.T, pool *pgxpool.Pool, a *api, c *client, name string) (skillID, testCaseID string) {
 	t.Helper()
 	skillID = seedSkill(t, pool, c.workspaceID, name+"-skill")
@@ -128,8 +114,6 @@ func csvBytes(n int) []byte {
 	return b.Bytes()[:n]
 }
 
-// --- TEST-001 --------------------------------------------------------------
-
 func TestTestCaseCRUDAndPromptValidation(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -144,7 +128,6 @@ func TestTestCaseCRUDAndPromptValidation(t *testing.T) {
 		t.Fatalf("draft is bound to the wrong skill: %v", body["skill_id"])
 	}
 
-	// TEST-001: a blank prompt is refused, on create and on edit alike.
 	for _, prompt := range []string{"", "   ", "\n\t "} {
 		code, _ := alice.doJSON(t, http.MethodPost, "/test-cases",
 			fmt.Sprintf(`{"skill_id":%q,"name":"blank","user_prompt":%q}`, skillID, prompt))
@@ -157,14 +140,13 @@ func TestTestCaseCRUDAndPromptValidation(t *testing.T) {
 			t.Errorf("patch with prompt %q: got %d, want 400", prompt, code)
 		}
 	}
-	// And so is one past the length cap.
+
 	code, _ = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
 		fmt.Sprintf(`{"user_prompt":%q}`, strings.Repeat("x", testlab.MaxPromptBytes+1)))
 	if code != http.StatusRequestEntityTooLarge && code != http.StatusBadRequest {
 		t.Errorf("patch with an over-long prompt: got %d, want 400", code)
 	}
 
-	// A partial edit leaves the untouched field alone.
 	code, body = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id, `{"user_prompt":"Extract the totals."}`)
 	if code != http.StatusOK {
 		t.Fatalf("PATCH /test-cases/{id}: got %d, body %v", code, body)
@@ -193,9 +175,6 @@ func TestTestCaseCRUDAndPromptValidation(t *testing.T) {
 	}
 }
 
-// A draft may only reference a skill in the caller's own workspace: skill_id
-// arrives from the client and the foreign key alone would accept anyone's
-// (iron rule 3).
 func TestTestCaseRejectsForeignSkill(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -210,8 +189,6 @@ func TestTestCaseRejectsForeignSkill(t *testing.T) {
 	}
 }
 
-// WS-006: every test-lab route answers 404 for a draft in another workspace —
-// the same answer as one that does not exist.
 func TestTestCaseScopeIsWorkspaceBound(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -237,18 +214,16 @@ func TestTestCaseScopeIsWorkspaceBound(t *testing.T) {
 			t.Errorf("%s %s as another user: got %d, want 404", tc.method, tc.path, code)
 		}
 	}
-	// Bob's list never contains Alice's draft either.
+
 	if _, body := bob.doJSON(t, http.MethodGet, "/test-cases", ""); len(body["test_cases"].([]any)) != 0 {
 		t.Errorf("another workspace's drafts leaked into the list: %v", body)
 	}
-	// And Alice's file is still there, unaffected by Bob's attempts.
+
 	if _, body := alice.doJSON(t, http.MethodGet, "/test-cases/"+id+"/datasets", ""); len(body["datasets"].([]any)) != 1 {
 		t.Errorf("owner lost the dataset: %v", body)
 	}
 }
 
-// Anonymous callers get 401 on every test-lab route, never a 404 that would
-// mean the route fell out of the table (CORE-006).
 func TestTestLabRoutesRejectAnonymousCallers(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -276,8 +251,6 @@ func TestTestLabRoutesRejectAnonymousCallers(t *testing.T) {
 	}
 }
 
-// --- TEST-003 --------------------------------------------------------------
-
 func TestAcceptanceCriteriaLifecycle(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -298,21 +271,16 @@ func TestAcceptanceCriteriaLifecycle(t *testing.T) {
 	}
 	cid, _ := list[0]["id"].(string)
 
-	// Blank text is refused, so an empty condition cannot be created.
 	if code, _ := alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria", `{"text":"   "}`); code != http.StatusBadRequest {
 		t.Errorf("blank criterion text: got %d, want 400", code)
 	}
 
-	// Confirm (TEST-003 確認).
 	_, body = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id+"/criteria/"+cid, `{"confirmed":true}`)
 	list = criteriaOf(t, body)
 	if list[0]["confirmed_at"] == nil {
 		t.Fatal("confirmation was not recorded")
 	}
 
-	// Editing the text withdraws the confirmation: the agreement was to the old
-	// wording, and carrying it over would let a criterion nobody agreed to reach
-	// a run wearing a confirmation.
 	_, body = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id+"/criteria/"+cid,
 		`{"text":"The summary names every column and its unit."}`)
 	list = criteriaOf(t, body)
@@ -323,7 +291,6 @@ func TestAcceptanceCriteriaLifecycle(t *testing.T) {
 		t.Fatalf("edit did not apply: %v", list[0])
 	}
 
-	// An unknown criterion is a 404, not a silent no-op.
 	if code, _ := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id+"/criteria/nope", `{"confirmed":true}`); code != http.StatusNotFound {
 		t.Errorf("confirming an unknown criterion: got %d, want 404", code)
 	}
@@ -334,12 +301,6 @@ func TestAcceptanceCriteriaLifecycle(t *testing.T) {
 	}
 }
 
-// --- CONTENT-007: the editable rubric ---------------------------------------
-
-// The rubric is edited through the draft, and an item's id is the criterion it
-// strengthens. That is not a naming convention: /judge-run answers one verdict
-// per criterion id and Go drops any id it did not send, so an item pointing
-// elsewhere could never produce a stored verdict (writing-rubrics.md §2.1).
 func TestRubricIsEditableAndBoundToTheCriteriaItStrengthens(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -353,15 +314,12 @@ func TestRubricIsEditableAndBoundToTheCriteriaItStrengthens(t *testing.T) {
 		t.Fatalf("a new test case has no rubric, got %v", body["rubric"])
 	}
 
-	// An item naming no criterion of this test case is refused at the boundary
-	// rather than accepted and quietly ignored later.
 	code, _ := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
 		`{"rubric":{"version":"content-007/writing/v1","items":[{"id":"not-a-criterion","text":"x","evidence_required":true}]}}`)
 	if code != http.StatusBadRequest {
 		t.Errorf("rubric item with an unknown criterion id: got %d, want 400", code)
 	}
-	// So is a rubric with no items: clearing one is done with null, which reads
-	// differently from "there are items and they all went missing".
+
 	code, _ = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
 		`{"rubric":{"version":"v1","items":[]}}`)
 	if code != http.StatusBadRequest {
@@ -395,22 +353,16 @@ func TestRubricIsEditableAndBoundToTheCriteriaItStrengthens(t *testing.T) {
 		t.Errorf("rubric item round-trip: %v", item)
 	}
 
-	// A rubric edit is an edit of the draft alone, so it does not touch the name
-	// or the prompt, and an omitted rubric on a later PATCH keeps it.
 	_, body = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id, `{"name":"rubric renamed"}`)
 	if body["rubric"] == nil {
 		t.Error("an omitted rubric field must keep the stored rubric")
 	}
 
-	// Deleting the criterion takes its rubric item with it: an item nothing will
-	// ever answer is not something the user can see or edit.
 	_, body = alice.doJSON(t, http.MethodDelete, "/test-cases/"+id+"/criteria/"+cid, "")
 	if body["rubric"] != nil {
 		t.Errorf("rubric outlived the only criterion it addressed: %v", body["rubric"])
 	}
 }
-
-// --- TEST-004 --------------------------------------------------------------
 
 func TestDatasetUploadStoresAndAssociates(t *testing.T) {
 	pool := requireDB(t)
@@ -430,8 +382,6 @@ func TestDatasetUploadStoresAndAssociates(t *testing.T) {
 		t.Error("upload did not put an object in storage")
 	}
 
-	// PDM-005 §5.1 / PDM-006 §6: 90 day retention, written at creation so the UI
-	// can show it before the run.
 	expires, err := time.Parse(time.RFC3339, body["expires_at"].(string))
 	if err != nil {
 		t.Fatal(err)
@@ -440,7 +390,6 @@ func TestDatasetUploadStoresAndAssociates(t *testing.T) {
 		t.Errorf("expires_at is %v away, want ~90 days", d)
 	}
 
-	// The file is associated with this test case and shows up under it.
 	_, body = alice.doJSON(t, http.MethodGet, "/test-cases/"+id+"/datasets", "")
 	if list, _ := body["datasets"].([]any); len(list) != 1 {
 		t.Fatalf("dataset list: %v", body)
@@ -449,7 +398,6 @@ func TestDatasetUploadStoresAndAssociates(t *testing.T) {
 		t.Errorf("total_bytes = %v, want 2048", body["total_bytes"])
 	}
 
-	// 02:TEST-002 wants the limits shown before an upload, not after a refusal.
 	code, limits := alice.doJSON(t, http.MethodGet, "/test-cases/limits", "")
 	if code != http.StatusOK {
 		t.Fatalf("GET /test-cases/limits: got %d", code)
@@ -461,14 +409,12 @@ func TestDatasetUploadStoresAndAssociates(t *testing.T) {
 	}
 }
 
-// Each PDM-005 §5.1 limit, one assertion at a time.
 func TestDatasetUploadEnforcesPerFileSizeLimit(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	alice := a.login(t, "alice-size-limit")
 	_, id := newTestCase(t, pool, a, alice, "size")
 
-	// Exactly at the cap is allowed; one byte past it is not.
 	if code, body := alice.upload(t, "/test-cases/"+id+"/datasets", "big.csv", csvBytes(testlab.MaxFileBytes)); code != http.StatusCreated {
 		t.Fatalf("a file exactly at the cap was refused: got %d, body %v", code, body)
 	}
@@ -498,8 +444,6 @@ func TestDatasetUploadEnforcesFileCountLimit(t *testing.T) {
 		t.Fatalf("file %d: got %d, body %v", testlab.MaxFilesPerTestCase+1, code, body)
 	}
 
-	// Deleting one frees a slot: the cap is on live files, not on files ever
-	// uploaded.
 	_, list := alice.doJSON(t, http.MethodGet, "/test-cases/"+id+"/datasets", "")
 	first := list["datasets"].([]any)[0].(map[string]any)["dataset_id"].(string)
 	if code, _ := alice.doJSON(t, http.MethodDelete, "/test-cases/"+id+"/datasets/"+first, ""); code != http.StatusOK {
@@ -525,8 +469,7 @@ func TestDatasetUploadEnforcesTotalSizeLimit(t *testing.T) {
 			t.Fatalf("chunk %d: got %d, body %v", i, code, body)
 		}
 	}
-	// The test case now holds exactly 100 MB in 4 files: under the file count
-	// cap, so only the byte budget can refuse the next one.
+
 	code, body := alice.upload(t, "/test-cases/"+id+"/datasets", "overflow.csv", csvBytes(1024))
 	if code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("upload past the total budget: got %d, body %v", code, body)
@@ -536,8 +479,6 @@ func TestDatasetUploadEnforcesTotalSizeLimit(t *testing.T) {
 	}
 }
 
-// The type is judged by content. A PE binary called rows.csv is refused, and a
-// PNG called notes.txt is accepted for what it is.
 func TestDatasetUploadJudgesTypeByContentNotExtension(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -558,7 +499,7 @@ func TestDatasetUploadJudgesTypeByContentNotExtension(t *testing.T) {
 		if code != http.StatusUnsupportedMediaType {
 			t.Errorf("upload of executable content named %q: got %d, body %v", tc.name, code, body)
 		}
-		// 02:TEST-002: understandable, and silent about the system behind it.
+
 		if msg, _ := body["error"].(string); msg != "不支援這種檔案類型" {
 			t.Errorf("refusal message for %q leaks detail or is unclear: %q", tc.name, msg)
 		}
@@ -573,7 +514,6 @@ func TestDatasetUploadJudgesTypeByContentNotExtension(t *testing.T) {
 		t.Errorf("recorded type %v, want the sniffed image/png rather than the name's", body["content_type"])
 	}
 
-	// A zip that escapes its own directory is refused whatever it is called.
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	w, err := zw.Create("../../etc/cron.d/evil")
@@ -591,8 +531,6 @@ func TestDatasetUploadJudgesTypeByContentNotExtension(t *testing.T) {
 	}
 }
 
-// TEST-004 deletion: the row goes, the object goes, and the test case's budget
-// is freed. Deleting a test case takes its files with it.
 func TestDatasetDeletionRemovesTheObject(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -613,12 +551,11 @@ func TestDatasetDeletionRemovesTheObject(t *testing.T) {
 	if _, list := alice.doJSON(t, http.MethodGet, "/test-cases/"+id+"/datasets", ""); len(list["datasets"].([]any)) != 0 {
 		t.Errorf("deleted dataset still listed: %v", list)
 	}
-	// Idempotent: a second delete is a 404, not a 500 or a double removal.
+
 	if code, _ := alice.doJSON(t, http.MethodDelete, "/test-cases/"+id+"/datasets/"+datasetID, ""); code != http.StatusNotFound {
 		t.Errorf("second delete: got %d, want 404", code)
 	}
 
-	// Deleting the test case removes the remaining files and says so.
 	_, _ = alice.upload(t, "/test-cases/"+id+"/datasets", "a.csv", csvBytes(64))
 	_, _ = alice.upload(t, "/test-cases/"+id+"/datasets", "b.csv", csvBytes(64))
 	keyCount = len(a.packages)
@@ -634,11 +571,6 @@ func TestDatasetDeletionRemovesTheObject(t *testing.T) {
 	}
 }
 
-// --- TEST-010 --------------------------------------------------------------
-
-// CreateSnapshot is called by the run domain inside the transaction that creates
-// the run. These assertions are about the snapshot itself: what it captures,
-// that the hash covers all of it, and that nothing can change it afterwards.
 func TestSnapshotFreezesTheTestCase(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -683,14 +615,11 @@ func TestSnapshotFreezesTheTestCase(t *testing.T) {
 		t.Fatal("snapshot has no content hash")
 	}
 
-	// Same input, same hash: two runs that hash alike executed the same thing.
 	again := takeSnapshot(t, pool, wsID, tcID)
 	if again.ContentHash != snap.ContentHash {
 		t.Fatalf("hash is not stable over identical input: %s vs %s", again.ContentHash, snap.ContentHash)
 	}
 
-	// Editing the draft changes the next snapshot and leaves the old ones alone
-	// (ADR-003, iron rule 4).
 	if code, _ := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id, `{"user_prompt":"Something else."}`); code != http.StatusOK {
 		t.Fatal("edit failed")
 	}
@@ -703,7 +632,6 @@ func TestSnapshotFreezesTheTestCase(t *testing.T) {
 		t.Fatal("editing the draft rewrote an existing snapshot")
 	}
 
-	// 0005's trigger, not application code, is what makes that true.
 	if _, err := pool.Exec(ctx,
 		"UPDATE test_case_snapshots SET user_prompt = 'tampered' WHERE id = $1", snap.ID); err == nil {
 		t.Fatal("a snapshot row accepted an UPDATE")
@@ -712,8 +640,6 @@ func TestSnapshotFreezesTheTestCase(t *testing.T) {
 		t.Fatal("a snapshot row accepted a DELETE")
 	}
 
-	// Deleting the file does not take the snapshot's record of it: the run is no
-	// longer reproducible but is still traceable (ADR-003 刪除與可追溯性).
 	if code, _ := alice.doJSON(t, http.MethodDelete, "/test-cases/"+id+"/datasets/"+datasetID, ""); code != http.StatusOK {
 		t.Fatal("dataset delete failed")
 	}
@@ -726,9 +652,6 @@ func TestSnapshotFreezesTheTestCase(t *testing.T) {
 	}
 }
 
-// The rubric is frozen with the criteria it strengthens (CONTENT-007, iron rule
-// 4). Editing it afterwards is a standard for the *next* run; the one that
-// already happened keeps the standard it was judged against.
 func TestSnapshotFreezesTheRubric(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -746,8 +669,6 @@ func TestSnapshotFreezesTheRubric(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Before any rubric exists the snapshot hash is what it always was: adding a
-	// nullable column must not make every rubric-less test case look different.
 	noRubric := takeSnapshot(t, pool, wsID, tcID)
 	if noRubric.Rubric != nil {
 		t.Fatalf("a test case with no rubric freezes none, got %s", noRubric.Rubric)
@@ -775,7 +696,6 @@ func TestSnapshotFreezesTheRubric(t *testing.T) {
 		t.Fatal("two runs judged against different rubrics did not execute the same input")
 	}
 
-	// Editing the rubric leaves the frozen copy alone.
 	if code, _ := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id, `{"rubric":null}`); code != http.StatusOK {
 		t.Fatal("clearing the rubric failed")
 	}
@@ -791,8 +711,6 @@ func TestSnapshotFreezesTheRubric(t *testing.T) {
 	}
 }
 
-// A snapshot cannot be taken for a test case in another workspace, so a run
-// cannot be started against one by guessing an id (iron rule 3).
 func TestSnapshotIsWorkspaceScoped(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -819,16 +737,11 @@ func TestSnapshotIsWorkspaceScoped(t *testing.T) {
 	}
 }
 
-// A deleted draft is not runnable. The guard is testlab's scoped read — the same
-// one every other test-lab route uses — rather than a check bolted onto the run
-// path, so it holds for any future caller of CreateSnapshot too.
 func TestRunCannotStartFromADeletedTestCase(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-deleted-testcase")
 
-	// A run started while the draft was live is unaffected by the deletion: it
-	// already holds its own frozen snapshot (ADR-003).
 	before := f.start(t)
 
 	if code, _ := f.doJSON(t, http.MethodDelete, "/test-cases/"+f.testCaseID, ""); code != http.StatusOK {
@@ -847,9 +760,6 @@ func TestRunCannotStartFromADeletedTestCase(t *testing.T) {
 	}
 }
 
-// takeSnapshot calls CreateSnapshot the way the run domain must: inside a
-// transaction, which here commits on its own because there is no run row to
-// commit with it.
 func takeSnapshot(t *testing.T, pool *pgxpool.Pool, wsID, tcID pgtype.UUID) testlab.Snapshot {
 	t.Helper()
 	ctx := context.Background()
@@ -878,9 +788,6 @@ func readSnapshot(t *testing.T, pool *pgxpool.Pool, id, wsID pgtype.UUID) gen.Te
 	return snap
 }
 
-// --- GET /test-cases: the skill filter and the list-row aggregates -----------
-
-// listTestCases reads the list, optionally narrowed to one skill.
 func (c *client) listTestCases(t *testing.T, skillID string) []map[string]any {
 	t.Helper()
 	path := "/test-cases"
@@ -906,17 +813,13 @@ func (c *client) listTestCases(t *testing.T, skillID string) []map[string]any {
 	return out
 }
 
-// "這個 Skill 我寫過哪些 Test Case" had no route before this: the query existed
-// (the packager used it) and the parameter did not, so the Skill detail page had
-// nothing to call.
 func TestTestCaseListFiltersBySkillAndCarriesItsAggregates(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	alice := a.login(t, "alice-testcase-filter")
 
 	skillA, first := newTestCase(t, pool, a, alice, "filter-a")
-	// A second draft on the same skill, and one on a different skill, so the
-	// filter has something to include and something to leave out.
+
 	code, body := alice.doJSON(t, http.MethodPost, "/test-cases", fmt.Sprintf(
 		`{"skill_id":%q,"name":"filter-a-second","user_prompt":"Another prompt."}`, skillA))
 	if code != http.StatusCreated {
@@ -935,12 +838,12 @@ func TestTestCaseListFiltersBySkillAndCarriesItsAggregates(t *testing.T) {
 		if row["skill_id"] != skillA {
 			t.Errorf("the skill filter returned a draft of another skill: %v", row)
 		}
-		// 免裸 UUID: the row names its skill so a list is readable as it stands.
+
 		if row["skill_name"] != "filter-a-skill" {
 			t.Errorf("skill_name = %v, want the seeded skill's name", row["skill_name"])
 		}
 	}
-	// Newest first, the same order the unfiltered list answers in.
+
 	if onA[0]["name"] != "filter-a-second" {
 		t.Errorf("filtered list is not newest first: %v", onA)
 	}
@@ -948,7 +851,6 @@ func TestTestCaseListFiltersBySkillAndCarriesItsAggregates(t *testing.T) {
 		t.Errorf("list for skill B = %d drafts, want 1", len(onB))
 	}
 
-	// The aggregates the browsing user reads before opening a draft.
 	row := onA[1]
 	if row["criteria_total"] != float64(0) || row["criteria_confirmed"] != float64(0) ||
 		row["has_rubric"] != false {
@@ -987,18 +889,12 @@ func TestTestCaseListFiltersBySkillAndCarriesItsAggregates(t *testing.T) {
 	}
 }
 
-// The third handler that swallowed an out-of-schema `limit`, after both search
-// endpoints were fixed. `{ minimum: 1, maximum: 101 }` with both bounds
-// inclusive, and anything else is a 400 rather than a quiet fall back to 51 — a
-// caller who asked for 500 and got 51 rows reads that as the size of their
-// library (ADR-042 決策 3, M5 audit 2026-08-25).
 func TestTestCaseListRefusesAnOutOfSchemaLimit(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	alice := a.login(t, "alice-testcase-limit")
 	skillID, _ := newTestCase(t, pool, a, alice, "limit")
-	// A second draft, so `limit=1` has something to leave out and the accepted
-	// value is asserted to be honoured rather than merely tolerated.
+
 	if code, body := alice.doJSON(t, http.MethodPost, "/test-cases", fmt.Sprintf(
 		`{"skill_id":%q,"name":"limit-second","user_prompt":"Another prompt."}`, skillID),
 	); code != http.StatusCreated {
@@ -1010,13 +906,13 @@ func TestTestCaseListRefusesAnOutOfSchemaLimit(t *testing.T) {
 			t.Errorf("GET /test-cases?limit=%q: got %d, want 400 (body %v)", raw, code, body)
 		}
 	}
-	// Both ends of the schema are accepted, and so is a request that names none.
+
 	for _, path := range []string{"?limit=1", "?limit=101", "", "?skill_id=" + skillID + "&limit=101"} {
 		if code, body := alice.doJSON(t, http.MethodGet, "/test-cases"+path, ""); code != http.StatusOK {
 			t.Errorf("GET /test-cases%s: got %d, want 200 (body %v)", path, code, body)
 		}
 	}
-	// And the limit is honoured rather than merely accepted.
+
 	if code, body := alice.doJSON(t, http.MethodGet, "/test-cases?limit=1", ""); code == http.StatusOK {
 		if rows, _ := body["test_cases"].([]any); len(rows) != 1 {
 			t.Errorf("limit=1 returned %d rows", len(rows))
@@ -1024,8 +920,6 @@ func TestTestCaseListRefusesAnOutOfSchemaLimit(t *testing.T) {
 	}
 }
 
-// testCasePage is GET /test-cases with an arbitrary query string, for the paging
-// assertions. listTestCases only knows how to pass `skill_id`.
 func (c *client) testCasePage(t *testing.T, query string) []any {
 	t.Helper()
 	code, body := c.doJSON(t, http.MethodGet, "/test-cases"+query, "")
@@ -1036,23 +930,12 @@ func (c *client) testCasePage(t *testing.T, query string) []any {
 	return rows
 }
 
-// The other half of the same handler. `limit` learned to refuse an out-of-schema
-// value; the `offset` beside it went on turning `abc`, `-1` and a present-but-
-// empty `offset=` into 0, so one handler gave two different answers to "this
-// violates the schema".
-//
-// public.yaml declares `{ type: integer, minimum: 0, default: 0 }`, so 0 is a
-// legal value and -1 is not. A negative offset is refused rather than floored:
-// it arrives from the same client-side page arithmetic a non-numeric one does,
-// and quietly serving page 1 to a caller who asked for offset -50 hands them
-// rows they did not ask for while looking like a correct answer.
 func TestTestCaseListRefusesAnOutOfSchemaOffset(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	alice := a.login(t, "alice-testcase-offset")
 	skillID, first := newTestCase(t, pool, a, alice, "offset")
-	// A second draft, so an offset has something to skip past: a handler that
-	// parsed the parameter and then dropped it would pass a one-row test.
+
 	code, body := alice.doJSON(t, http.MethodPost, "/test-cases", fmt.Sprintf(
 		`{"skill_id":%q,"name":"offset-second","user_prompt":"Another prompt."}`, skillID))
 	if code != http.StatusCreated {
@@ -1064,16 +947,13 @@ func TestTestCaseListRefusesAnOutOfSchemaOffset(t *testing.T) {
 			t.Errorf("GET /test-cases?offset=%q: got %d, want 400 (body %v)", raw, code, body)
 		}
 	}
-	// 0 is the schema's minimum and therefore legal, the int32 ceiling is the last
-	// accepted value, and a request naming no offset at all still works.
+
 	for _, query := range []string{"", "?offset=0", "?offset=2147483647", "?limit=101&offset=0"} {
 		if code, body := alice.doJSON(t, http.MethodGet, "/test-cases"+query, ""); code != http.StatusOK {
 			t.Errorf("GET /test-cases%s: got %d, want 200 (body %v)", query, code, body)
 		}
 	}
 
-	// And the offset is honoured rather than merely accepted: it skips a row, the
-	// row it skipped is the one offset=0 leads with, and past the end it empties.
 	page := alice.testCasePage(t, "?offset=0")
 	if len(page) != 2 {
 		t.Fatalf("offset=0 returned %d drafts, want 2", len(page))
@@ -1093,7 +973,6 @@ func TestTestCaseListRefusesAnOutOfSchemaOffset(t *testing.T) {
 	}
 }
 
-// idOf reads the test_case_id out of one decoded list row.
 func idOf(t *testing.T, row any) string {
 	t.Helper()
 	m, ok := row.(map[string]any)
@@ -1104,9 +983,6 @@ func idOf(t *testing.T, row any) string {
 	return id
 }
 
-// WS-006 / iron rule 3: the filter is a narrowing of the caller's own workspace,
-// never a way to read into someone else's. Bob naming Alice's skill gets the same
-// empty answer as Bob naming an id that does not exist.
 func TestTestCaseSkillFilterDoesNotReachAnotherWorkspace(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -1120,13 +996,11 @@ func TestTestCaseSkillFilterDoesNotReachAnotherWorkspace(t *testing.T) {
 	if rows := bob.listTestCases(t, "00000000-0000-0000-0000-000000000001"); len(rows) != 0 {
 		t.Errorf("an unknown skill_id returned rows: %v", rows)
 	}
-	// A filter the server cannot parse answers empty, not the whole list: failing
-	// open here would show a caller every draft they own when they asked for one
-	// skill's.
+
 	if rows := bob.listTestCases(t, "not-a-uuid"); len(rows) != 0 {
 		t.Errorf("an unparseable skill_id fell back to the unfiltered list: %v", rows)
 	}
-	// Alice still sees her own.
+
 	if rows := alice.listTestCases(t, aliceSkill); len(rows) != 1 {
 		t.Errorf("owner lost her filtered list: %v", rows)
 	}

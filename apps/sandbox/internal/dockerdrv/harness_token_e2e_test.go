@@ -1,30 +1,5 @@
 package dockerdrv_test
 
-// The runtime harness's two token duties, asked of a real container talking to a
-// real gateway: report the run's usage however the turn ends (TRACE-004), and
-// stop the run at the ceiling it was given (PDM-005 5.2a).
-//
-// Neither is testable without a model. A fake stream would only prove that the
-// code we wrote does what we wrote, and the bug this replaces was precisely an
-// assumption about what the SDK emits: usage was emitted only on the `result`
-// message, and a real turn that produced none (measured, add-iso3166) reported
-// no cost at all. So this test spends money, and is gated on the two variables
-// that say a gateway is there to spend it at:
-//
-//	SKILLHUB_E2E_GATEWAY_URL   the gateway address *as the container sees it*
-//	                           (on the dev egress network, http://litellm:4000)
-//	SKILLHUB_E2E_GATEWAY_KEY   a key that may call it
-//	SKILLHUB_E2E_EGRESS_NETWORK  the docker network both are on (skillhub_egress)
-//	SKILLHUB_E2E_RUNTIME_IMAGE   defaults to skillhub/runtime-agent-sdk:2026.08-2
-//
-// The image must be built from the working tree, not pulled: what is under test
-// is run.mjs, and a tag left over from an earlier build fails these assertions
-// while looking like a product bug.
-//
-//	docker build -t skillhub/runtime-agent-sdk:2026.08-2 infra/images/runtime-agent-sdk
-//
-// Two turns of a trivial prompt: a few cents at the mini tier.
-
 import (
 	"context"
 	"encoding/json"
@@ -46,13 +21,12 @@ type traceEvent struct {
 	Type          string `json:"type"`
 	Status        string `json:"status"`
 	Payload       struct {
-		// usage
 		InputTokens  int64    `json:"input_tokens"`
 		OutputTokens int64    `json:"output_tokens"`
 		CostUSD      *float64 `json:"cost_usd"`
 		CostSource   *string  `json:"cost_source"`
 		TokenSource  *string  `json:"token_source"`
-		// error
+
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"payload"`
@@ -85,13 +59,6 @@ func gatewayHarness(t *testing.T) (*sandbox.Manager, sandbox.RunRequest, *collec
 	}
 	t.Cleanup(func() { _ = d.Close() })
 
-	// The node has to render the destination it is about to be asked for, or
-	// accept() refuses the dispatch before any container starts (ADR-022 A1-e).
-	// Left out until 2026-08-30, which made both tests in this file unrunnable
-	// from the day A1-e landed — and invisibly so, because without the two
-	// gateway variables they skip and a skip looks like a pass. Derived from the
-	// URL under test rather than hard-coded, so a gateway addressed by IP is
-	// described by the same rule as one addressed by name.
 	gwURL, err := neturl.Parse(url)
 	if err != nil {
 		t.Fatalf("SKILLHUB_E2E_GATEWAY_URL %q does not parse: %v", url, err)
@@ -121,14 +88,11 @@ func gatewayHarness(t *testing.T) (*sandbox.Manager, sandbox.RunRequest, *collec
 		Slots:          1,
 	}, slog.New(slog.DiscardHandler)).WithTrace(&sandbox.HTTPTraceSink{}, nil)
 
-	// /out is a tmpfs and the container is gone soon after it exits, so the only
-	// way to see what the harness wrote is the same one production uses: the
-	// node drains the file while the sandbox lives and pushes it here.
 	sink := newCollector()
 	t.Cleanup(sink.Close)
 
 	req := testRequest("")
-	delete(req.Extensions, "dev_cmd") // run the image's own entrypoint, not a shell
+	delete(req.Extensions, "dev_cmd")
 	req.TestCase.UserPrompt = "Reply with the single word DONE and nothing else."
 	req.ResourceLimits.MemoryBytes = 2 << 30
 	req.ResourceLimits.DiskBytes = 2 << 30
@@ -148,9 +112,6 @@ func gatewayHarness(t *testing.T) (*sandbox.Manager, sandbox.RunRequest, *collec
 	return m, req, sink
 }
 
-// runToEnd drives one attempt to its terminal state and returns the result plus
-// every trace event that reached the collector, including the closing push the
-// node makes after the container exits.
 func runToEnd(t *testing.T, m *sandbox.Manager, req sandbox.RunRequest, sink *collector) (sandbox.ProviderRun, []traceEvent) {
 	t.Helper()
 	ctx := context.Background()
@@ -176,9 +137,6 @@ func runToEnd(t *testing.T, m *sandbox.Manager, req sandbox.RunRequest, sink *co
 		t.Fatal("the run never reached a terminal state")
 	}
 
-	// The usage event is the last thing the harness writes, so waiting for it is
-	// waiting for the closing push. Bounded: if it never arrives, that is the
-	// failure this test exists to catch, and the assertions say so.
 	settle := time.Now().Add(45 * time.Second)
 	var events []traceEvent
 	for {
@@ -214,8 +172,6 @@ func findEvent(events []traceEvent, typ string) *traceEvent {
 	return nil
 }
 
-// The ordinary path: a turn that reaches its result reports usage from the SDK's
-// own total, with cost from the gateway.
 func TestHarnessReportsUsageForACompletedTurn(t *testing.T) {
 	m, req, sink := gatewayHarness(t)
 
@@ -241,20 +197,13 @@ func TestHarnessReportsUsageForACompletedTurn(t *testing.T) {
 		deref(usage.Payload.TokenSource), derefF(usage.Payload.CostUSD), deref(usage.Payload.CostSource))
 }
 
-// The ceiling path, which is also the no-result path: the harness stops the turn
-// itself, so there is no `result` message, and usage still has to be reported -
-// from the running sum - or the run's cost vanishes exactly as it did for
-// add-iso3166.
 func TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage(t *testing.T) {
 	m, req, sink := gatewayHarness(t)
-	// One token: the first response crosses it, so the turn stops after the
-	// response that was already paid for and before any further call.
+
 	req.ResourceLimits.TokenBudget = &sandbox.TokenBudget{MaxInputTokens: 1, MaxOutputTokens: 1}
 
 	final, events := runToEnd(t, m, req, sink)
 
-	// Completed, not failed: the workload stopped itself cleanly, so the attempt
-	// is collectable and the platform classifies it as a run that ran.
 	if final.State != sandbox.StateCompleted {
 		t.Errorf("state = %s, want completed", final.State)
 	}
@@ -284,9 +233,6 @@ func TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage(t *testing.T) {
 	t.Logf("stopped at in=%d out=%d cost=%v", usage.Payload.InputTokens, usage.Payload.OutputTokens,
 		derefF(usage.Payload.CostUSD))
 
-	// Recorded for tools/contracts/validate_trace_events.py: real 1.1 output from
-	// the path that used to produce no usage event at all. See
-	// contracts/events/samples/README.md.
 	if out := os.Getenv("SKILLHUB_TRACE_SAMPLE_OUT"); out != "" {
 		sink.mu.Lock()
 		defer sink.mu.Unlock()

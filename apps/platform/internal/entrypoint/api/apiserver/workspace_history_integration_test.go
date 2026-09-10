@@ -1,12 +1,3 @@
-// WS-004 and CORE-007's read and delete surfaces through the real route table:
-// the Run history, one run's outputs, deleting one of them, the per-download
-// records, and whether a pending account deletion can be asked about after the
-// request was made.
-//
-// All five were the same gap in different places (04 丙-22, 丙-24): the backend
-// could do the thing and there was no way to ask it. 02:WS-002 第 1 條 and
-// 02:SEC-006 第 1 條 both have a user as their subject, and a capability with no
-// route is not something a user can reach at any layer.
 package apiserver_test
 
 import (
@@ -25,18 +16,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 )
 
-// O11Y-004's second half is the word "查詢", and the funnel query is a psql
-// script rather than an endpoint (ADR-029 決策 6). A script nothing runs rots
-// against the schema silently, so this executes the real file against the real
-// tables — the same reason the packaging tests read contracts/packaging/profiles
-// instead of a fixture copy.
-//
-// The psql meta-commands are interpreted here rather than stripped; psqlRender
-// says why that distinction cost us a bug.
 func TestTheFunnelQueryStillRunsAgainstTheSchema(t *testing.T) {
 	pool := requireDB(t)
-	// No -v at all: the all-time report, which is also the default branch of the
-	// file's own defaulting.
+
 	sql := psqlRender(t, readFunnel(t), nil)
 
 	rows, err := pool.Query(context.Background(), sql)
@@ -56,7 +38,7 @@ func TestTheFunnelQueryStillRunsAgainstTheSchema(t *testing.T) {
 		if numerator > denominator {
 			t.Errorf("segment %d reports %d of %d", segment, numerator, denominator)
 		}
-		// 02:O11Y-004's last clause: the precision limit travels with the number.
+
 		if note == "" {
 			t.Errorf("segment %d reports a percentage with no precision limit", segment)
 		}
@@ -69,11 +51,6 @@ func TestTheFunnelQueryStillRunsAgainstTheSchema(t *testing.T) {
 	}
 }
 
-// The range the operator passed has to survive the file. `\set` is assignment and
-// not defaulting, so the two unconditional `\set` lines this file opened with
-// until 2026-08-25 threw away every -v: BETA-002's "the two beta weeks" was
-// really "everything this database has ever held", M1–M4 integration residue
-// included, and no two reports were comparable because both were "so far".
 func TestTheFunnelKeepsTheRangeTheOperatorPassed(t *testing.T) {
 	raw := readFunnel(t)
 
@@ -89,8 +66,6 @@ func TestTheFunnelKeepsTheRangeTheOperatorPassed(t *testing.T) {
 		t.Error("the funnel overwrote the range it was given with an unbounded one")
 	}
 
-	// And with no -v it still runs, all-time, rather than failing on an unset
-	// variable — which is what makes the \if idiom the right one.
 	if unbounded := psqlRender(t, raw, nil); !strings.Contains(unbounded, "'-infinity'::timestamptz") {
 		t.Error("with no -v the funnel should fall back to an all-time range")
 	}
@@ -105,20 +80,6 @@ func readFunnel(t *testing.T) string {
 	return string(raw)
 }
 
-// psqlRender interprets the meta-commands funnel.sql actually uses — `\set` and
-// the `\if :{?var}` / `\else` / `\endif` defaulting idiom — with `vars` pre-set
-// the way `psql -v name=value` pre-sets them.
-//
-// Interpreting rather than deleting the `\` lines is the whole point. Stripping
-// them (what this helper did until 2026-08-25) meant the "we run the real file"
-// test ran a version of the file with no variable handling at all: the bug where
-// both bounds were unconditionally reassigned to ±infinity was 100% reproducible
-// and structurally invisible here.
-//
-// Not psql itself, which would be more faithful still: the tests below insert
-// their fixtures inside a transaction that is rolled back, and a psql in another
-// process cannot see uncommitted rows. Anything beyond these four commands fails
-// loudly rather than being skipped.
 func psqlRender(t *testing.T, raw string, vars map[string]string) string {
 	t.Helper()
 	set := map[string]string{}
@@ -165,10 +126,6 @@ func psqlRender(t *testing.T, raw string, vars map[string]string) string {
 	return strings.NewReplacer(replacements...).Replace(strings.Join(body, "\n"))
 }
 
-// psqlValue unwraps one level of psql quoting: the outer pair of single quotes
-// goes, and a doubled single quote inside becomes one. So the file's fallback for
-// :from is the eleven-character string -infinity WITH its quotes, which is what
-// makes the substituted :from a valid SQL literal.
 func psqlValue(s string) string {
 	if len(s) >= 2 && strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
 		return strings.ReplaceAll(s[1:len(s)-1], "''", "'")
@@ -181,15 +138,6 @@ func funnelQuery(t *testing.T, from, to string) string {
 	return psqlRender(t, readFunnel(t), map[string]string{"from": from, "to": to})
 }
 
-// 01 §11.2's seventh item is "再次回來試跑或重新驗證", so a return is a Run or an
-// evaluation on a second day — not a browser that reopened the catalogue for a
-// second, which is what the query counted until 2026-08-25. In a twelve-person
-// beta where seven people glance back and nobody runs anything again, the old
-// shape printed 58% and it would have been read as retention.
-//
-// The day is bucketed in UTC, and this proves the bucket is not the server's:
-// workspace A's two Runs are the same Los Angeles date on opposite sides of UTC
-// midnight, and the session below is deliberately in another zone.
 func TestTheFunnelCountsAReturnAsARunNotAVisit(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -208,8 +156,7 @@ func TestTheFunnelCountsAReturnAsARunNotAVisit(t *testing.T) {
 	seedRunAt(t, tx, workspaceA, "succeeded", "2040-08-19T23:30:00Z")
 	seedRunAt(t, tx, workspaceA, "succeeded", "2040-08-20T00:30:00Z")
 	seedRunAt(t, tx, workspaceB, "succeeded", "2040-08-21T12:00:00Z")
-	// B did come back with the browser, twice, and still has not run anything.
-	// That is precisely the visit the definition does not ask about.
+
 	for _, at := range []string{"2040-08-21T12:00:00Z", "2040-08-22T12:00:00Z"} {
 		if _, err := tx.Exec(ctx, `INSERT INTO analytics_events
             (event_name, session_id, workspace_id, occurred_at)
@@ -226,10 +173,6 @@ func TestTheFunnelCountsAReturnAsARunNotAVisit(t *testing.T) {
 	}
 }
 
-// 01 §11.2's sixth item is "完成試跑後打包下載". The denominator was every workspace
-// that *created* a Run in the window and the numerator was every workspace that
-// downloaded in it, from a different time column — so the numerator was not even
-// a subset, and two workspaces of C's shape with one of B's printed 200%.
 func TestSegmentSixIsCompletedRunsAndTheirOwnDownloads(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -243,13 +186,10 @@ func TestSegmentSixIsCompletedRunsAndTheirOwnDownloads(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// In the window and finished: the only workspace the definition asks about.
 	seedRunAt(t, tx, completed, "succeeded", "2040-09-03T10:00:00Z")
-	// In the window, never finished. Counted by `created_at` alone, which is what
-	// the denominator used to be.
+
 	seedRunAt(t, tx, started, "running", "2040-09-04T10:00:00Z")
-	// Ran and succeeded *before* the window, downloaded inside it. This is the
-	// row that used to reach the numerator without being in the denominator.
+
 	seedRunAt(t, tx, earlier, "succeeded", "2040-08-30T10:00:00Z")
 	seedDownloadAt(t, tx, earlier, "2040-09-02T10:00:00Z")
 
@@ -260,10 +200,6 @@ func TestSegmentSixIsCompletedRunsAndTheirOwnDownloads(t *testing.T) {
 	}
 }
 
-// 01 §11.2's first item is a detail view *after* an intent. A bare intersection
-// counts the session that opened a shared /skills/{id} link, searched fruitlessly
-// afterwards and left — and that number is the one the M5 exposure boundary is
-// waiting on, so it may not be flattering by accident.
 func TestSegmentOneNeedsTheSearchToComeFirst(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
@@ -279,10 +215,10 @@ func TestSegmentOneNeedsTheSearchToComeFirst(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// The deep link, then a fruitless search: not a conversion.
+
 	insert("skill_detail_viewed", "funnel-one-deeplink", "2040-10-01T11:00:00Z")
 	insert("search_performed", "funnel-one-deeplink", "2040-10-01T11:05:00Z")
-	// The journey the segment is about.
+
 	insert("search_performed", "funnel-one-searcher", "2040-10-01T11:00:00Z")
 	insert("skill_detail_viewed", "funnel-one-searcher", "2040-10-01T11:05:00Z")
 
@@ -293,10 +229,6 @@ func TestSegmentOneNeedsTheSearchToComeFirst(t *testing.T) {
 	}
 }
 
-// 01 §11.2's second item is a fork or a trial that followed the detail view, and
-// the query was a set intersection: a workspace that forked at 09:00 and opened a
-// detail page at 17:00 counted as a conversion. Both halves of the OR are checked
-// here, because a set intersection on either half is the same bug.
 func TestSegmentTwoNeedsTheDetailViewToComeFirst(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -329,12 +261,11 @@ func TestSegmentTwoNeedsTheDetailViewToComeFirst(t *testing.T) {
 		}
 	}
 
-	// The two journeys the segment is about.
 	view(ran, "2040-11-01T10:00:00Z")
 	seedRunAt(t, tx, ran, "succeeded", "2040-11-01T11:00:00Z")
 	view(forked, "2040-11-01T10:00:00Z")
 	fork(forked, "funnel-two-forked-copy", "2040-11-01T11:00:00Z")
-	// The same two facts in the other order: nothing followed the view.
+
 	seedRunAt(t, tx, ranFirst, "succeeded", "2040-11-01T10:00:00Z")
 	view(ranFirst, "2040-11-01T11:00:00Z")
 	fork(forkedFirst, "funnel-two-forked-first-copy", "2040-11-01T10:00:00Z")
@@ -347,9 +278,6 @@ func TestSegmentTwoNeedsTheDetailViewToComeFirst(t *testing.T) {
 	}
 }
 
-// 01 §11.2's sixth item is "完成試跑後打包下載", and the numerator only asked whether
-// the workspace downloaded somewhere in the window — so downloading in the
-// morning and succeeding in the afternoon read as a conversion.
 func TestSegmentSixNeedsTheDownloadToFollowTheRun(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -361,8 +289,6 @@ func TestSegmentSixNeedsTheDownloadToFollowTheRun(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// Both inside the window, wrong way round. seedRunAt leaves finished_at NULL,
-	// which is why the query compares against COALESCE(finished_at, created_at).
 	seedDownloadAt(t, tx, f, "2040-12-01T09:00:00Z")
 	seedRunAt(t, tx, f, "succeeded", "2040-12-01T15:00:00Z")
 
@@ -373,10 +299,6 @@ func TestSegmentSixNeedsTheDownloadToFollowTheRun(t *testing.T) {
 	}
 }
 
-// 01 §11.2's fourth item is "完成 Run 後認為結果有幫助". The denominator was the
-// evaluations that got an answer, which measures how the people who bothered to
-// reply felt — a different and much more flattering quantity than the one asked
-// for, and BETA-002 prints it as the funnel.
 func TestSegmentFourCountsCompletedRunsNotAnsweredQuestionnaires(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -390,8 +312,7 @@ func TestSegmentFourCountsCompletedRunsNotAnsweredQuestionnaires(t *testing.T) {
 
 	seedRunAt(t, tx, f, "succeeded", "2041-01-01T09:00:00Z")
 	seedRunAt(t, tx, f, "succeeded", "2041-01-01T10:00:00Z")
-	// Only the first run's owner ever answered. The second is silence, which the
-	// old denominator dropped instead of counting.
+
 	var runID string
 	if err := tx.QueryRow(ctx, `SELECT id::text FROM runs WHERE workspace_id = $1 AND created_at = $2`,
 		mustUUID(t, f.workspaceID), "2041-01-01T09:00:00Z").Scan(&runID); err != nil {
@@ -411,11 +332,6 @@ func TestSegmentFourCountsCompletedRunsNotAnsweredQuestionnaires(t *testing.T) {
 	}
 }
 
-// The sessions that reach 01 §12's risk — an intent the platform could not parse
-// — used to write no row at all, because the handler answers "no results" before
-// the service that records the event ever runs. They are not a random sample of
-// the denominator: they are the whole reason the M5 generation entry exists, so
-// dropping them made segment 1 read systematically high.
 func TestASearchTheProductCannotParseIsStillASearch(t *testing.T) {
 	pool := requireDB(t)
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 180*24*time.Hour)
@@ -425,8 +341,6 @@ func TestASearchTheProductCannotParseIsStillASearch(t *testing.T) {
 		t.Fatal("no analytics session cookie was issued")
 	}
 
-	// A single Han character (isComprehensible wants two runes) and a blank
-	// query: both are intents somebody submitted.
 	for _, q := range []string{"圖", ""} {
 		if code := f.status(t, http.MethodGet, "/api/skills/search?q="+url.QueryEscape(q)); code != http.StatusOK {
 			t.Fatalf("public search for %q: got %d", q, code)
@@ -442,9 +356,6 @@ func TestASearchTheProductCannotParseIsStillASearch(t *testing.T) {
 
 type funnelRow struct{ numerator, denominator int64 }
 
-// funnelSegment runs the whole report inside the caller's transaction and returns
-// one row. The whole report on purpose: a segment that stops parsing because
-// another segment's SQL broke is a failure this should show.
 func funnelSegment(t *testing.T, tx pgx.Tx, query string, want int) funnelRow {
 	t.Helper()
 	rows, err := tx.Query(context.Background(), query)
@@ -473,10 +384,6 @@ func funnelSegment(t *testing.T, tx pgx.Tx, query string, want int) funnelRow {
 	return *found
 }
 
-// seedRunAt writes one run at a chosen instant, with the snapshot it needs.
-// Straight into the tables rather than through the API, for seedBetaRun's reason:
-// what is under test is what the report counts, and driving a real run to a
-// terminal state would need a sandbox provider.
 func seedRunAt(t *testing.T, tx pgx.Tx, f fixture, status, at string) {
 	t.Helper()
 	ctx := context.Background()
@@ -498,8 +405,6 @@ func seedRunAt(t *testing.T, tx pgx.Tx, f fixture, status, at string) {
 	}
 }
 
-// seedDownloadAt writes the domain fact segment 6 counts: a package artifact, its
-// download_artifacts row and one download at a chosen instant.
 func seedDownloadAt(t *testing.T, tx pgx.Tx, f fixture, at string) {
 	t.Helper()
 	ctx := context.Background()
@@ -527,9 +432,6 @@ func seedDownloadAt(t *testing.T, tx pgx.Tx, f fixture, at string) {
 	}
 }
 
-// seedRunArtifact records one output against a run, the way the settle path does
-// when a provider reports its manifest, and puts bytes behind it so a delete has
-// something to remove.
 func seedRunArtifact(
 	t *testing.T, a *api, pool *pgxpool.Pool, workspaceID, runID, name string,
 ) string {
@@ -579,8 +481,6 @@ func (c *client) listRuns(t *testing.T) []runListView {
 	return out.Runs
 }
 
-// 02:WS-002 第 1 條's "Run 歷史". There was no endpoint at all before this, so
-// the clause had no surface at any layer — not a missing screen, a missing route.
 func TestTheRunHistoryListsTheWorkspacesOwnRunsAndNobodyElses(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -603,9 +503,7 @@ func TestTheRunHistoryListsTheWorkspacesOwnRunsAndNobodyElses(t *testing.T) {
 	if found == nil {
 		t.Fatalf("the run just created is not in the history: %+v", rows)
 	}
-	// A history row has to be readable without opening the run: which skill, and
-	// enough to start the same test again. Resolving the name client-side would be
-	// one lookup per row.
+
 	if found.SkillID != mine.skillID || found.SkillName == "" {
 		t.Errorf("history row names no skill: %+v", found)
 	}
@@ -617,9 +515,6 @@ func TestTheRunHistoryListsTheWorkspacesOwnRunsAndNobodyElses(t *testing.T) {
 	}
 }
 
-// 02:WS-002 第 3 條 and 02:SEC-006 第 1 條 both list Artifact among the things a
-// user may delete. Until this route existed the only way to remove a run's output
-// was to delete the entire account, which is not the same offer.
 func TestARunArtifactCanBeListedAndDeletedOnItsOwn(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -643,8 +538,7 @@ func TestARunArtifactCanBeListedAndDeletedOnItsOwn(t *testing.T) {
 	if len(before) != 1 || before[0]["file_name"] != "report.csv" {
 		t.Fatalf("the run's output is not listed: %v", before)
 	}
-	// The manifest row and nothing more: the archive is a sandbox's output and the
-	// control plane never opens it (iron rule 1).
+
 	if _, leaked := before[0]["object_key"]; leaked {
 		t.Error("the artifact list hands out the storage key")
 	}
@@ -656,24 +550,21 @@ func TestARunArtifactCanBeListedAndDeletedOnItsOwn(t *testing.T) {
 	if after := list(); len(after) != 0 {
 		t.Errorf("the deleted artifact is still listed: %v", after)
 	}
-	// 02:SEC-006's "完成後不再出現在一般存取介面" is the row; NFR-002's promise that
-	// deletion deletes is the bytes.
+
 	if _, still := a.packages[objectKey]; still {
 		t.Error("the artifact row is gone and its bytes are not")
 	}
-	// CORE-008: a delete is one of NFR-001 第 4 條's five audited actions.
+
 	if n := countRows(t, pool,
 		`SELECT count(*) FROM audit_events WHERE action = 'artifact.delete' AND resource_id = $1`,
 		mustUUID(t, artifactID)); n != 1 {
 		t.Errorf("%d audit events for one artifact delete, want 1", n)
 	}
 
-	// Idempotent, like the download package's delete: the caller asked for the file
-	// not to exist, and that is true on the second call too.
 	if code := f.status(t, http.MethodDelete, path); code != http.StatusNoContent {
 		t.Errorf("repeating the delete: got %d, want 204", code)
 	}
-	// And another workspace cannot delete it — nor learn that it was ever there.
+
 	stranger := a.login(t, "artifact-stranger")
 	if code := stranger.status(t, http.MethodDelete, path); code != http.StatusNoContent {
 		t.Errorf("a stranger's delete: got %d; the answer must not distinguish", code)
@@ -684,8 +575,6 @@ func TestARunArtifactCanBeListedAndDeletedOnItsOwn(t *testing.T) {
 	}
 }
 
-// WS-004 asks for "誰、何時" per download, which an aggregate count cannot answer.
-// The rows existed in download_records from 0027 and nothing served them.
 func TestTheDownloadRecordsAreListedOneRowPerDownload(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -725,17 +614,13 @@ func TestTheDownloadRecordsAreListedOneRowPerDownload(t *testing.T) {
 			t.Errorf("a record answers neither who nor when: %v", r)
 		}
 	}
-	// Existence is private (WS-006): a stranger gets the same answer an unknown id
-	// gets, not an empty list that would confirm the package exists.
+
 	stranger := a.login(t, "record-stranger")
 	if code, _ := records(stranger); code != http.StatusNotFound {
 		t.Errorf("a stranger reading another workspace's download records: got %d, want 404", code)
 	}
 }
 
-// 02:SEC-006 asks the deletion job to have a state the user can follow. Until now
-// it appeared once, in the response to DELETE /me, so a user who closed the tab
-// had no way to ask whether the request had been recorded or when it runs out.
 func TestAPendingAccountDeletionCanBeAskedAboutAfterTheRequest(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -760,9 +645,7 @@ func TestAPendingAccountDeletionCanBeAskedAboutAfterTheRequest(t *testing.T) {
 	if after["deletion_requested_at"] == nil {
 		t.Fatal("the deletion request is not visible on /me, so nothing can report its state")
 	}
-	// The date the grace period runs out is the one thing a user needs from this
-	// screen, and deriving it client-side would put the retention constant in two
-	// places.
+
 	if after["purge_after"] == nil {
 		t.Error("no purge_after; the user cannot tell how long they have to change their mind")
 	}
@@ -775,7 +658,6 @@ func TestAPendingAccountDeletionCanBeAskedAboutAfterTheRequest(t *testing.T) {
 	}
 }
 
-// listRunsForTestCase is listRuns narrowed to one test case.
 func (c *client) listRunsForTestCase(t *testing.T, testCaseID string) []runListView {
 	t.Helper()
 	var out struct {
@@ -788,9 +670,6 @@ func (c *client) listRunsForTestCase(t *testing.T, testCaseID string) []runListV
 	return out.Runs
 }
 
-// The return leg of the journey: 建立 → 試跑 → 回來看. Without this parameter a Test
-// Case detail page has no way to ask "what happened when I ran this", which is
-// also the support the M3 主路徑 (採納建議 → 新版本 → 同一個 Test Case 重跑) needs.
 func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -798,8 +677,6 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 	f := newFixture(t, a, pool, tag)
 	mine := f.start(t)
 
-	// A second draft on the same skill, run once. It is the row the filter has to
-	// leave out — a filter that returns everything passes a one-run test.
 	other := f
 	other.testCaseID = seedTestCase(t, pool, f.workspaceID, f.skillID)
 	theirs := other.start(t)
@@ -817,14 +694,11 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 	if rows[0].TestCaseID != f.testCaseID {
 		t.Errorf("test_case_id = %q, want %q", rows[0].TestCaseID, f.testCaseID)
 	}
-	// Both runs are still in the unfiltered history, so the filter narrowed rather
-	// than hid.
+
 	if len(f.listRuns(t)) != 2 {
 		t.Errorf("unfiltered history lost a run: %+v", f.listRuns(t))
 	}
 
-	// WS-006 / iron rule 3: another workspace's test case is not a way in, and
-	// neither is a filter the server cannot parse.
 	stranger := newFixture(t, a, pool, tag+"-stranger")
 	if rows := stranger.listRunsForTestCase(t, f.testCaseID); len(rows) != 0 {
 		t.Errorf("another workspace's runs leaked through test_case_id: %+v", rows)

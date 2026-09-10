@@ -1,24 +1,5 @@
 package main
 
-// The embedding width, stated in a migration and in Python, compared by nothing.
-//
-// `vector(1536)` in db/migrations/0007_search.sql is the column the search leg
-// ranks on. `1536` in apps/llm/src/skillhub_llm/app.py is what the embed
-// endpoint validates every returned vector against. They are one number, and the
-// failure when they part is the one discovery/http.go already writes down: a
-// vector of the wrong width does not raise, it makes the pgvector insert fail
-// per-document, and the search leg degrades quietly to the FTS half.
-//
-// This exists next to `one-number` rather than inside it because the SQL side
-// cannot carry a marker. Applied migrations are immutable (ADR-003's shape,
-// enforced socially and by db/tests): editing 0007 to add a comment is editing
-// history. So the Python side carries the ordinary `# one-number:
-// embeddingDimensions` markers and this check supplies the third site by reading
-// the migration.
-//
-// One direction, and the migration is the authority: the column width is a
-// deployed fact and the validator is an assertion about it.
-
 import (
 	"fmt"
 	"os"
@@ -30,13 +11,12 @@ import (
 
 const (
 	embeddingMigration = "db/migrations/0007_search.sql"
-	// The invariant name the Python sites must mark. It is also on
-	// sharedNumberRoster, so losing every marker is a failure there rather than
-	// a silence here.
+
 	embeddingInvariant = "embeddingDimensions"
 )
 
-// `embedding  vector(1536),` — the column definition, not a cast or a comment.
+// Matches "embedding  vector(1536)," — the column definition, not a cast
+// or a comment mentioning the type.
 var pgvectorColumn = regexp.MustCompile(`(?mi)^\s*\w+\s+vector\((\d+)\)`)
 
 func embeddingDimsProblems(root string) []string {
@@ -71,9 +51,6 @@ func embeddingDimsProblems(root string) []string {
 		width = w
 	}
 
-	// Only this invariant's scan problems. The one-number check reports the rest
-	// in its own words, and repeating them here would make two checkers argue
-	// about one file.
 	sites, scanned := sharedNumberScan(root)
 	var problems []string
 	for _, problem := range scanned {

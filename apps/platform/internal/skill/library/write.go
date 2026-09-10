@@ -12,29 +12,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-// Import-side writes. `skills` and `skill_versions` are registry's tables, but
-// the only path allowed to create rows in them is ingest's import pipeline
-// (AGENTS.md: "版本寫入的唯一驗證路徑"). Until now ingest reached past the owner
-// and called the queries itself — one of the tolerated drifts in
-// db/query-owners.yaml. These three functions close that hole the way ADR-033
-// clearance path 2 describes: validation stays in ingest, the write comes back
-// to the owner.
-//
-// They take the caller's transaction instead of opening their own on purpose.
-// One import commits the version row, the search projection (INGEST-009 requires
-// the same transaction) and the audit event together (iron rule 9); a registry
-// function that began its own transaction would split that single guarantee into
-// three that can each fail alone.
-//
-// Every one of them takes a skillpkg.Report rather than loose strings, so the
-// argument that decides what gets written is the validation result itself and
-// cannot be assembled by a caller that skipped validation. The Report must come
-// from a completed, passing skillpkg.Validate run — the guard below only catches
-// the obvious forgeries (blocked report, absent manifest), it cannot prove the
-// scan and license resolution actually ran.
-
-// ErrUnvalidatedPackage: the report handed in is not a passing validation
-// result, so there is nothing here that may become an immutable version.
 var ErrUnvalidatedPackage = errors.New("registry: package report is not a passing validation result")
 
 func validatedManifest(report skillpkg.Report) (*skillpkg.Manifest, error) {
@@ -44,52 +21,19 @@ func validatedManifest(report skillpkg.Report) (*skillpkg.Manifest, error) {
 	return report.Manifest, nil
 }
 
-// NewVersion is one validated package about to become the next immutable
-// version of SkillID. The version number is allocated by the query, never by
-// the caller.
 type NewVersion struct {
 	WorkspaceID      pgtype.UUID
 	SkillID          pgtype.UUID
-	SourceID         pgtype.UUID // NULL for content that has no skill_sources row
+	SourceID         pgtype.UUID
 	ContentHash      string
 	PackageObjectKey string
 	Report           skillpkg.Report
 }
 
-// RedistributionSelfSupplied is skills.redistribution's fourth value (0036):
-// this workspace supplied the bytes, so handing them back is retrieval and not
-// redistribution. It releases the packaging gate without asserting anything
-// about the licence, which is why it is a separate value from `allowed`.
-//
-// registry owns the writes to skills, so the constant lives here. delivery and
-// discovery each carry their own copy of this vocabulary already — the database
-// CHECK is what actually holds them together.
 const RedistributionSelfSupplied = "self_supplied"
 
-// RedistributionGenerated is the fifth value (0037): the platform wrote these
-// bytes for this workspace, at its request. It releases the packaging gate for
-// the same shape of reason as self_supplied — no upstream author exists for a
-// licence to protect — and is a separate value for a reason that only shows up
-// later: self_supplied asks whether the user had the right to redistribute
-// somebody else's bytes, generated asks who owns what a model wrote. One value
-// for two questions eventually releases one of them by answering the other
-// (ADR-047 決策 4).
-//
-// Copied onto forks like every other gate column, so a fork of a generated
-// skill stays generated rather than falling back to unknown and locking the
-// download the user already had.
 const RedistributionGenerated = "generated"
 
-// CreateSkillFromPackage inserts the skills row for a package being imported
-// under a name that does not exist in the workspace yet. Lineage columns stay
-// unset: an import carries none.
-//
-// `redistribution` is a parameter and not a default, since 0036. An import
-// carries no verdict about the licence — that part of the 0027 reasoning still
-// holds — but it does carry one fact the column has to be able to express: who
-// supplied the bytes. The caller knows it and this function does not, so it is
-// passed in rather than guessed. Empty means "say nothing", which lands on the
-// column's own conservative default.
 func CreateSkillFromPackage(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, report skillpkg.Report, redistribution string) (Skill, error) {
 	manifest, err := validatedManifest(report)
 	if err != nil {
@@ -99,19 +43,7 @@ func CreateSkillFromPackage(ctx context.Context, tx pgx.Tx, workspaceID pgtype.U
 	if redistribution != "" {
 		verdict = &redistribution
 	}
-	// `category` is deliberately not among these params: 0053 leaves the column
-	// NULL for an import, because 05 R-19 has not decided how a user-imported
-	// Skill gets a PDM-001 shelf. NULL is read back as 尚未定值 — the platform has
-	// not decided — and any default named here would be a guessed classification
-	// wearing the same clothes as a curator's judgement (02:DISC-004, 設計 §2.9).
-	// R-19's chosen path is the owner naming it themselves after import, through
-	// PUT /skills/{id}/category (registry.Service.SetCategory), not this function.
-	//
-	// `category_source` is left unset for the same reason and has to be: an
-	// import that named a category with no writer behind it would be exactly the
-	// unattributed value 0061 exists to forbid. category and category_source stay
-	// paired (both NULL here) the same way CreateSkill's other callers keep them
-	// paired when they do set one.
+
 	row, err := gen.New(tx).CreateSkill(ctx, gen.CreateSkillParams{
 		WorkspaceID:    workspaceID,
 		Name:           manifest.Name,
@@ -124,17 +56,12 @@ func CreateSkillFromPackage(ctx context.Context, tx pgx.Tx, workspaceID pgtype.U
 	return skillDTO(row), nil
 }
 
-// CreateVersionFromPackage writes the immutable version row. Existing versions
-// are never touched (iron rule 4); the caller is responsible for having already
-// established that this content is not a duplicate.
 func CreateVersionFromPackage(ctx context.Context, tx pgx.Tx, v NewVersion) (Version, error) {
 	manifest, err := validatedManifest(v.Report)
 	if err != nil {
 		return Version{}, err
 	}
-	// The manifest column is the snapshot's own truth: the skills row keeps its
-	// name (a fork's name differs from its manifest), the version keeps what the
-	// package actually declared.
+
 	encoded, err := json.Marshal(manifest)
 	if err != nil {
 		return Version{}, err
@@ -156,9 +83,6 @@ func CreateVersionFromPackage(ctx context.Context, tx pgx.Tx, v NewVersion) (Ver
 	return versionDTO(row), nil
 }
 
-// UpdateSummaryFromPackage refreshes the mutable summary on an existing skill
-// after a new version landed. Workspace scoped, so a skill id from another
-// tenant updates nothing rather than the wrong row.
 func UpdateSummaryFromPackage(ctx context.Context, tx pgx.Tx, skillID, workspaceID pgtype.UUID, report skillpkg.Report) error {
 	manifest, err := validatedManifest(report)
 	if err != nil {
@@ -169,12 +93,6 @@ func UpdateSummaryFromPackage(ctx context.Context, tx pgx.Tx, skillID, workspace
 	})
 }
 
-// versionLicense splits the resolved license into the two columns ADR-021 keeps
-// apart: "MIT" declared in frontmatter and "MIT" read off a repository-level
-// file are not the same claim, so the provenance tier travels with the
-// expression instead of being flattened into it. An unresolved license leaves
-// both columns NULL — DISC-003 has to be able to say "unknown", and a string
-// there would read like a declaration nobody made.
 func versionLicense(report skillpkg.Report) (expression, source *string) {
 	if report.LicenseExpression == "" {
 		return nil, nil

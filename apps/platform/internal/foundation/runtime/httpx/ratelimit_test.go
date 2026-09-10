@@ -11,12 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// The limiter is NFR-001 clause 5's protection, so what the tests pin is the
-// protective shape: a burst is allowed, the burst end is refused with a usable
-// Retry-After, time restores service, and one abuser does not starve a
-// neighbour. The clock is injected — a limiter test that sleeps is a flaky
-// test about scheduling, not a test about limiting.
-
 func testLimiter(perMinute, burst int) (*RateLimiter, *time.Time) {
 	l := NewRateLimiter(perMinute, burst)
 	now := time.Unix(1_700_000_000, 0)
@@ -41,7 +35,7 @@ func TestTheBurstIsAllowedAndTheBurstEndIsRefused(t *testing.T) {
 }
 
 func TestTimeRestoresService(t *testing.T) {
-	l, now := testLimiter(60, 1) // one token, one per second
+	l, now := testLimiter(60, 1)
 	if ok, _ := l.allow("k"); !ok {
 		t.Fatal("first request refused")
 	}
@@ -90,16 +84,6 @@ func TestTheRefusalCarriesRetryAfterAndASentence(t *testing.T) {
 	}
 }
 
-// clientKey is the bucket a request lands in, and until now it had no test at
-// all: three of the four tests above hand allow() a key they made up, and the
-// fourth proves only that SOME key was computed. Two mutations survived that,
-// and both switch the limiter off in production while the suite stays green --
-// `return remoteAddr` gives every TCP connection its own bucket, and dropping
-// the /64 mask hands anybody with an IPv6 allocation 2^64 buckets, which is the
-// package comment's own stated reason for the mask.
-//
-// No HTTP here on purpose. The keying rule is a pure function and the failure it
-// has to catch is a wrong string, so a table is the whole test.
 func TestClientKeyBucketsByAddressNotByConnection(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -136,9 +120,6 @@ func TestClientKeyBucketsByAddressNotByConnection(t *testing.T) {
 	}
 }
 
-// A remote address is not user input, but it is not this package's to trust
-// either: net.SplitHostPort fails on plenty of real strings (a bare address, a
-// unix socket path), and a panic here is a panic on every request.
 func TestClientKeySurvivesAMalformedRemoteAddress(t *testing.T) {
 	for _, raw := range []string{"", "1.2.3.4", "not an address", "[::1]", "/tmp/api.sock", ":::::"} {
 		if got := clientKey(raw); got == "" && raw != "" {
@@ -147,9 +128,6 @@ func TestClientKeySurvivesAMalformedRemoteAddress(t *testing.T) {
 	}
 }
 
-// The refusal has to be countable, because it is the only evidence that this
-// protection is running at all: with RUN_QUOTA and GENERATE_QUOTA both off
-// (ADR-055/056), a limiter that has been switched off and one that is refusing
 func TestARefusalIsCountedOnTheMetricsSurface(t *testing.T) {
 	const route = "test_route"
 
@@ -158,17 +136,16 @@ func TestARefusalIsCountedOnTheMetricsSurface(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/skills/search?q=x", nil)
 	req.RemoteAddr = "9.9.9.9:1234"
 
-	h(httptest.NewRecorder(), req) // allowed
+	h(httptest.NewRecorder(), req)
 	if got := scrape(t, route); got != "" {
 		t.Fatalf("an allowed request already published %q; only a 429 may count", got)
 	}
-	h(httptest.NewRecorder(), req) // refused
+	h(httptest.NewRecorder(), req)
 	if got := scrape(t, route); got != `skillhub_rate_limited_total{route="test_route"} 1` {
 		t.Errorf("after one 429 /metrics has %q, want the route's counter at 1", got)
 	}
 }
 
-// scrape returns the one skillhub_rate_limited_total line carrying route, or "".
 func scrape(t *testing.T, route string) string {
 	t.Helper()
 	rec := httptest.NewRecorder()

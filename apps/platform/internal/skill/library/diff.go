@@ -17,20 +17,15 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
-// FileDiff is one file's change between two versions (WS-003).
 type FileDiff struct {
 	Path   string `json:"path"`
-	Status string `json:"status"` // added | removed | modified
-	// Diff is a unified diff for text files; empty for binary or oversized
-	// files, where the status line is the whole story.
+	Status string `json:"status"`
+
 	Diff string `json:"diff,omitempty"`
 }
 
-// maxDiffFileBytes caps per-file text diffing.
-// ponytail: same flat-cap style as skillpkg's scan limit.
-const maxDiffFileBytes = 1 << 20 // 1 MiB
+const maxDiffFileBytes = 1 << 20
 
-// DiffVersions compares two versions of the same skill, both scoped to ws.
 func (s *Service) DiffVersions(ctx context.Context, ws identity.Workspace, skillID, fromID, toID pgtype.UUID) ([]FileDiff, error) {
 	q := gen.New(s.Pool)
 	load := func(versionID pgtype.UUID) (fs.FS, error) {
@@ -63,8 +58,6 @@ func (s *Service) DiffVersions(ctx context.Context, ws identity.Workspace, skill
 	return diffFS(fromFS, toFS)
 }
 
-// diffFS walks both trees and reports added, removed, and modified files,
-// with unified diffs for readable text.
 func diffFS(from, to fs.FS) ([]FileDiff, error) {
 	fromFiles, err := listFiles(from)
 	if err != nil {

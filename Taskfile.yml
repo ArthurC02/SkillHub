@@ -1,5 +1,3 @@
-# Thin command index only (ADR-019 §2). Every task wraps one native command.
-# Do not grow this into a dependency graph or a cache layer.
 version: "3"
 
 tasks:
@@ -14,20 +12,13 @@ tasks:
   dev:llm:
     desc: Start apps/llm on a Virtual Key minted for it; never hands it the gateway master key (ADR-017)
     dir: apps/llm
-    # The wrapper reads the repo's .env, mints a scoped key through the gateway's
-    # admin API when LITELLM_API_KEY is unset or is the master key, and starts
-    # uvicorn with only that key in its environment (04 丙-156).
     cmd: node ../../tools/cleanmode/with-service-key.mjs -- uv run uvicorn skillhub_llm.app:app
 
   dev:model:
     desc: Start core plus LiteLLM; requires model secrets and may enable paid calls
     cmds:
       - go -C tools/devctl run . profile-check model
-      # --env-file is load-bearing: with -f, compose resolves ${...} from the
-      # compose file's OWN directory (infra/compose/, which has no .env), not
-      # from the repo root. Without it the gateway comes up with an EMPTY
-      # master key and every caller gets 401 "token not found in db" — found
-      # 2026-08-24 on the first real-gateway generation (04 丙-56).
+      # With -f, compose resolves ${...} against the compose file's directory, hence --env-file.
       - docker compose --env-file .env --profile model -f infra/compose/docker-compose.yml up -d
 
   dev:observability:
@@ -91,14 +82,11 @@ tasks:
 
   test:cleanmode:
     desc: Run the clean-mode launcher's deployment-variable rules; no processes started, no ports bound
-    # Same explicit-file reason as test:runtime-script below.
     cmd: node --test tools/cleanmode/env.test.mjs tools/cleanmode/servicekey.test.mjs
 
   test:runtime-script:
     desc: Run the sandbox workload script's own tests, including its zip extractor's refusals
-    # An explicit file, not the directory: `node --test <dir>` walks with the CJS
-    # resolver and dies on Windows (measured on Node 25), which is exactly the
-    # platform 04 丙-82 exists for.
+    # An explicit file: node --test <dir> uses the CJS resolver and fails on Windows.
     cmd: node --test infra/images/runtime-agent-sdk/run.test.mjs
 
   test:judge-rubric:

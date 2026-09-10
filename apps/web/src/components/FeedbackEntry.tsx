@@ -11,53 +11,11 @@ import {
   type FeedbackKind,
 } from "../api/feedback";
 
-/**
- * 03:BETA-003/004 — the entry point for POST /feedback, in the layout so it is
- * reachable from every screen (beta-design §5「全站可及的入口」). Until this
- * existed the endpoint could only be reached with curl, which is not a channel a
- * beta tester has.
- *
- * The rules it exists to keep:
- *
- * 1. **Nothing is captured that the reporter cannot see.** The page path and the
- *    run id are rendered next to the message before it is sent — no screenshot,
- *    no console capture, no automatic context grab (beta-design §5). They are
- *    displayed as facts, not as fields to edit: they say where the report came
- *    from, and a reporter who could rewrite them would be filing about somewhere
- *    else.
- * 2. **A refused submit says what to fix.** 02:NFR-007 asks for clear validation
- *    messages, and a permanently disabled button with no stated cause reads as a
- *    bug — the same reasoning the DISC-003 filter bar already follows for its
- *    disabled controls.
- * 3. **The two kinds are the reporter's choice, never inferred.** 「我卡住了」and
- *    「這裡沒有我要的東西」 are different reports (BETA-004 vs BETA-005) and the
- *    platform cannot tell them apart from the outside.
- * 4. **It says a login is needed before somebody writes a paragraph.**
- *    `POST /feedback` is `RequireSession` (`apiserver/router.go`), and this form
- *    is in the layout — so it was on all 17 routes, including the two the
- *    product deliberately serves to visitors (`/` and `/policy`). A visitor
- *    could pick a kind, type a report and press 送出回報 to be told
- *    「送不出去：not authenticated」. That is rule 2 above failing in its own
- *    component, and the deferred-rejection shape 資訊架構 §5 IA-6 calls the worst
- *    in the audit — this one on more pages than the two the ruling enumerated.
- */
-
 export const KIND_LABEL: Record<FeedbackKind, string> = {
   blocking_issue: "有東西擋住我，做不下去",
   need_signal: "我想要的東西，這裡沒有",
 };
 
-/**
- * What the server counts. `String.length` is UTF-16 code units, `len([]rune(s))`
- * on the Go side is code points, and an emoji is two of the first and one of the
- * second — so the counter below used to tell a reporter they were over a limit
- * they were not near. The direction was safe; the sentence was not true.
- *
- * The `maxLength` attribute is gone for the same reason and not replaced: the
- * browser can only count the wrong unit, and GenerateSkill.tsx already refuses
- * it on this exact argument. The pre-check in `submit` is the one gate here,
- * and the server is the one that decides.
- */
 const runes = (s: string) => [...s].length;
 
 export const KIND_NOTE: Record<FeedbackKind, string> = {
@@ -97,9 +55,6 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
       setInvalid("請先寫下發生了什麼事。內容不能空白——只有這一段是你的話，其餘欄位都只是位置。");
       return;
     }
-    // Code points, not UTF-16 code units: the server checks `len([]rune(message))`
-    // and `String.length` counts an emoji as two. Same reasoning GenerateSkill.tsx
-    // states for refusing a `maxLength` — one problem, and now one answer.
     if (runes(trimmed) > FEEDBACK_MAX_MESSAGE) {
       setInvalid(
         `內容最多 ${FEEDBACK_MAX_MESSAGE} 字，目前 ${runes(trimmed)} 字。` +
@@ -190,15 +145,6 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
       )}
 
       {invalid && <p role="alert">{invalid}</p>}
-      {/*
-        04 丙-150. `send.error.message` used to reach the screen verbatim — for a
-        session that expired mid-typing that was the server's English
-        `not authenticated`, even though the form itself is already hidden for a
-        visitor who was logged out before it rendered (`unauthenticated(me.error)`
-        above). 401 goes through `ReadFailure` like every other read/write;
-        every other status keeps this page's own sentence, unchanged in fact
-        from what it said before.
-      */}
       {send.error && (
         <ReadFailure error={send.error} what="回報">
           <p role="alert">

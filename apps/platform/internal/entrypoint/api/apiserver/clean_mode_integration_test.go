@@ -1,26 +1,5 @@
 package apiserver_test
 
-// Clean mode (ADR-060 決策 6) end to end, on the one thing its five unit tests
-// cannot see: the crossing.
-//
-// cmd/api/main_test.go pins each of clean mode's consequences at a single
-// function boundary — the flag's truth table, the pool's MaxConns, which store
-// newStore returns, the static overlay's routing. Every one of them passes while
-// the mode is deadlocked, because the defect does not live in any of the four.
-// It lives where two of them meet: one connection, and a worker inside the same
-// process that wants a second one.
-//
-// m6/report-inmemory-postgres.md already measured that exact shape ("holding one
-// connection while asking a one-connection pool for a second" — 238 seconds of
-// deadlock) and the mode's whole design followed from it. The outbox publisher
-// reproduced it in the same process a few files over: it held the pool's only
-// connection for the length of a delivery, and the delivery's first act is to
-// ask the same pool for a connection.
-//
-// What makes this reachable rather than exotic: a run that finishes is the one
-// thing clean mode exists to demonstrate, and `run.succeeded` is one of the two
-// event types with a consumer (entrypoint/worker's dispatcher).
-
 import (
 	"context"
 	"net/http"
@@ -43,17 +22,13 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
-// cleanModePool is the pool cmd/api builds when SKILLHUB_CLEAN_MODE=1: the same
-// DSN every other test in this package uses, capped the way applyCleanModePool
-// caps it. Its own pool and not testPool's, because MaxConns is the variable
-// under test and the shared pool is what the rest of the file needs.
 func cleanModePool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	cfg, err := pgxpool.ParseConfig(os.Getenv(dbURLEnv))
 	if err != nil {
 		t.Fatalf("pgxpool.ParseConfig: %v", err)
 	}
-	cfg.MaxConns = 1 // cmd/api's applyCleanModePool, ADR-060 決策 6
+	cfg.MaxConns = 1
 	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("pgxpool.NewWithConfig: %v", err)
@@ -62,23 +37,11 @@ func cleanModePool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-// TestCleanModeDrainsTheOutboxOnOneConnection is the crossing test. It is the
-// whole of clean mode's process shape — one pool of one connection, the API's
-// object graph and the worker's on it together, the in-process object store —
-// and it asks the one question the five unit tests cannot: does a finished run
-// reach its evaluation?
-//
-// It fails by timing out rather than by asserting a wrong value, which is what a
-// deadlock looks like from outside. Ten seconds is far longer than the work
-// needs (the publisher's RunOnStart pass fires within a second of Start) and far
-// shorter than the River job timeout the deadlock would otherwise run into.
 func TestCleanModeDrainsTheOutboxOnOneConnection(t *testing.T) {
 	seed := requireDB(t)
 	pool := cleanModePool(t)
 	ctx := context.Background()
 
-	// A real workspace: outbox_events.workspace_id is a foreign key, and the
-	// event has to be the shape the producer actually writes.
 	auth := &identity.Service{Pool: seed}
 	user, err := auth.LoginOrSignup(ctx, identity.ExternalIdentity{
 		Provider: "github", ProviderUserID: "clean-mode-outbox",
@@ -111,8 +74,6 @@ func TestCleanModeDrainsTheOutboxOnOneConnection(t *testing.T) {
 	srv := httptest.NewServer(app.Handler())
 	t.Cleanup(srv.Close)
 
-	// PollOnly, exactly as cmd/api sets it: with one connection there is none
-	// spare for River to LISTEN on.
 	set, err := worker.BuildWorkers(pool, worker.Deps{Store: store, PollOnly: true})
 	if err != nil {
 		t.Fatalf("BuildWorkers: %v", err)
@@ -122,9 +83,6 @@ func TestCleanModeDrainsTheOutboxOnOneConnection(t *testing.T) {
 	}
 	t.Cleanup(func() { queue.Stop(set.Queue) })
 
-	// The event a terminal run announces (contracts/events/domain-events.md §3).
-	// Inserted directly rather than by running a run: what is under test is the
-	// drain, and a dispatched run would drag a sandbox provider into it.
 	runID := uuid.NewString()
 	if _, err := seed.Exec(ctx, `
 		INSERT INTO outbox_events (event_type, correlation_id, workspace_id, aggregate_type, aggregate_id, payload)
@@ -133,9 +91,6 @@ func TestCleanModeDrainsTheOutboxOnOneConnection(t *testing.T) {
 		t.Fatalf("seed outbox event: %v", err)
 	}
 
-	// The assertion: the consumer ran. It reacts by enqueuing one evaluation job
-	// for this run, and enqueuing is the second of the two things that ask the
-	// one-connection pool for a connection while the publisher is holding it.
 	deadline := time.Now().Add(10 * time.Second)
 	var enqueued int
 	for time.Now().Before(deadline) {
@@ -147,11 +102,7 @@ func TestCleanModeDrainsTheOutboxOnOneConnection(t *testing.T) {
 		if enqueued > 0 {
 			break
 		}
-		// The other half of the claim, checked while the publisher is mid-pass:
-		// a deadlocked publisher holds the process's only connection, and every
-		// route that needs one waits behind it. /healthz needs none, so it is
-		// the honest liveness question here — "is the HTTP server still
-		// answering", not "is the database reachable".
+
 		resp, err := srv.Client().Get(srv.URL + "/healthz")
 		if err != nil {
 			t.Fatalf("GET /healthz while the outbox drains: %v", err)
@@ -176,20 +127,6 @@ func TestCleanModeDrainsTheOutboxOnOneConnection(t *testing.T) {
 	}
 }
 
-// The other half of the crossing above, and the half that was never crossed.
-//
-// TestCleanModeDrainsTheOutboxOnOneConnection asks whether a FINISHED run
-// reaches its evaluation. Nothing asked whether a run can be STARTED at all,
-// and on 2026-08-30 the answer turned out to be no: POST /skills/{id}/runs
-// never returns in clean mode. It was invisible for two reasons that reinforced
-// each other. RUN-005 refused every clean-mode dispatch earlier in the chain
-// until 04 丙-98 was fixed, so nothing ever reached this code; and every other
-// test of this endpoint runs on the shared pool, where a second connection is
-// always available and the deadlock cannot form.
-//
-// A deadlock is what this fails as - a context deadline, not a wrong value - so
-// the assertion is the deadline itself. Ten seconds is far longer than one
-// insert needs and far shorter than any timeout inside the request path.
 func TestCleanModeCanStartARunOnOneConnection(t *testing.T) {
 	requireDB(t)
 	pool := cleanModePool(t)

@@ -20,10 +20,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
-// TestCreationLangGraphCarriesGoValidationIntoTheNextModelTurn crosses every
-// process boundary in the creation loop.  The Python service and its LangGraph
-// are real; only the local OpenAI-compatible gateway is scripted, so no model
-// provider access is involved.
 func TestCreationLangGraphCarriesGoValidationIntoTheNextModelTurn(t *testing.T) {
 	python := creationPythonExecutable(t)
 	var calls atomic.Int32
@@ -111,7 +107,7 @@ func TestCreationLangGraphCarriesGoValidationIntoTheNextModelTurn(t *testing.T) 
 	pythonURL := startCreationPython(t, python, gateway.URL)
 
 	a, service, _ := creationFixture(t)
-	// Allow local Python/OpenAI client initialization on slower test hosts.
+
 	a.app.CreationSvc.Limits.CallTimeout = 10 * time.Second
 	service.Limits.CallTimeout = 10 * time.Second
 	service.LLM = &llmclient.Client{BaseURL: pythonURL, Token: "test-service"}
@@ -165,14 +161,6 @@ func TestCreationLangGraphCarriesGoValidationIntoTheNextModelTurn(t *testing.T) 
 	}
 }
 
-// creationDecision writes what the model is required to return, which is not the
-// same as what it is required to fill in: `CreationDecision` is declared
-// `extra="forbid"` with nullable-but-required properties, so every key has to be
-// present even when its value is null. `acceptance_criteria` and `sample_input`
-// joined that model on 2026-09-06 and this fixture did not follow, which made
-// every scripted reply a `ValidationError` and every step a 502. Nothing caught
-// it because this test skips itself unless SKILLHUB_CREATION_PYTHON is set, and
-// nothing set it — a skipped cross-process test is a boundary nobody checks.
 func creationDecision(outcome, message string, brief *string, draft map[string]any) map[string]any {
 	return map[string]any{
 		"outcome": outcome, "message": message, "brief": brief,
@@ -195,11 +183,7 @@ func creationPythonExecutable(t *testing.T) string {
 	t.Helper()
 	path := os.Getenv("SKILLHUB_CREATION_PYTHON")
 	if path == "" {
-		// The same pair as SKILLHUB_REQUIRE_DB / _OBJSTORE, and for the same
-		// reason one level worse: this is the only test that crosses the Go to
-		// Python boundary of the creation loop, so when it removes itself the
-		// package still prints ok and the boundary is checked by nobody. It sat
-		// like that while `CreationDecision` grew two required properties.
+
 		if os.Getenv("SKILLHUB_REQUIRE_CREATION_PYTHON") == "1" {
 			t.Fatal("SKILLHUB_REQUIRE_CREATION_PYTHON=1 but SKILLHUB_CREATION_PYTHON is unset; " +
 				"this run would have skipped the only Go-to-Python creation test and still reported success")
@@ -233,10 +217,7 @@ func startCreationPython(t *testing.T, python, gatewayURL string) string {
 	cmd := exec.CommandContext(ctx, python, "-m", "uvicorn", "skillhub_llm.app:app", "--host", "127.0.0.1", "--port", port, "--log-level", "error", "--no-access-log")
 	cmd.Dir = root
 	cmd.Stdout = io.Discard
-	// Kept, not discarded: when the service answers 502 the only account of why
-	// is on its stderr, and a Go-side failure that says "creation step returned
-	// 502" and nothing else sends the next person to read the wrong process.
-	// Written on the pipe goroutine, read only after Wait has returned.
+
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	pythonPath := filepath.Join(root, "apps", "llm", "src") + string(os.PathListSeparator) + filepath.Join(root, "packages", "api-stub-py", "src")

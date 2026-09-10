@@ -7,10 +7,6 @@ import (
 	"testing"
 )
 
-// TestTheRealRepositoryHasNoIsolationDrift is the one that would have caught the
-// 2026-08-28 gap, and it runs against the tree rather than a fixture for the
-// same reason require_db_guard_test.go does: a checker that only ever sees its
-// own fixtures is a checker nobody has pointed at the subject.
 func TestTheRealRepositoryHasNoIsolationDrift(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -23,14 +19,11 @@ func TestTheRealRepositoryHasNoIsolationDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Guard the check's own reach: if the gate's constants were renamed out of
-	// the suffix this scans for, the comparison above would pass by finding
-	// nothing to compare.
+
 	if len(levels) < 3 {
 		t.Fatalf("found %d isolation constants (%v); the gate declares at least gvisor, container and clean, so this check is looking at the wrong thing", len(levels), levels)
 	}
-	// Both contracts, each actually read. Half the point of the file list is
-	// that a second contract can be added and silently never parsed.
+
 	if len(isolationContractFiles) < 2 {
 		t.Fatalf("the contract list is down to %d entries; public.yaml's isolation_level is the "+
 			"user-facing half and was the one that drifted", len(isolationContractFiles))
@@ -47,9 +40,6 @@ func TestTheRealRepositoryHasNoIsolationDrift(t *testing.T) {
 	}
 }
 
-// Each contract gets its own negative: a level the gate accepts and that one
-// contract does not admit. Without the per-file case, dropping an entry from
-// isolationContractFiles would stay green.
 func TestIsolationLevelProblemsNamesALevelEachContractDoesNotAdmit(t *testing.T) {
 	t.Parallel()
 	const gate = `package execution
@@ -90,7 +80,7 @@ const (
 			writeAt(t, root, isolationGoFile, gate)
 			for path, body := range full {
 				if path == contract.path {
-					// Only this one lags behind the gate.
+
 					body = strings.Replace(body, ", microvm]", "]", 1)
 				}
 				writeAt(t, root, path, body)
@@ -106,9 +96,6 @@ const (
 	}
 }
 
-// A free string with the levels listed in a description is what public.yaml
-// carried until 331bd90, and it is unreadable to any checker. It must fail, not
-// pass by finding no enum to disagree with.
 func TestIsolationLevelProblemsRefusesAProseListInsteadOfAnEnum(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -124,9 +111,6 @@ func TestIsolationLevelProblemsRefusesAProseListInsteadOfAnEnum(t *testing.T) {
 	}
 }
 
-// TestIsolationLevelProblemsReadsCodeNotComments is require_db_guard.go's
-// lesson applied here: the first version of that checker matched a string that
-// also appeared in its own comments, so removing the code left it green.
 func TestIsolationLevelProblemsReadsCodeNotComments(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

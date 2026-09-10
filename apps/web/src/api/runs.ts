@@ -2,49 +2,14 @@ import type { Labelled } from "./types";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 
-/**
- * GET /runs/{id} (contracts/openapi/public.yaml, RUN-002).
- *
- * Only the fields the run screens actually read. `status` is deliberately not
- * among them: the trace summary already carries it and the pages take it from
- * there, so this query stays a one-shot read of things that never change while
- * the page is open.
- *
- * `skill_id` is what the EVAL-002 apply call needs (POST
- * /skills/{id}/versions/from-suggestions); `test_case_id` is the editable draft a
- * re-run would be started from, never the frozen snapshot. Neither is permission:
- * starting a run is still preflight plus a confirmed summary hash (TEST-009).
- */
-
 export type Run = {
   run_id: string;
   skill_id: string;
   skill_version_id: string;
   test_case_snapshot_id: string;
-  /** Absent when the draft no longer resolves; a re-run needs it, so guard on it. */
   test_case_id?: string;
-  /**
-   * Why a failed run failed, in the server's own words — the same field, values
-   * and wording as `RunListItem.failure_class`.
-   *
-   * Declared in `public.yaml` on 2026-09-01, **having been served long before**;
-   * this hand-written type never grew it, so the run's OWN page showed strictly
-   * less than the list page did. A reader who saw 「失敗類別 能力不符」 plus a
-   * sentence on /workspace/runs and clicked through for detail got 「執行失敗
-   * (failed)」 and nothing else. The distinction is the whole next step:
-   * `workload_error` is the Skill failing at its own job, `capability_mismatch`
-   * is the platform refusing before anything ran.
-   */
   failure_class?: Labelled;
-  /**
-   * `{value, label, note}`, same field and same reason as
-   * `RunListItem.cleanup_status` — see there (04 丙-29 ②).
-   */
   cleanup_status: Labelled;
-  /**
-   * Run.attempts (contracts/openapi/public.yaml, RUN-003) — one entry per
-   * execution attempt. Served, not yet rendered on this page (04 丙-145).
-   */
   attempts?: Array<{
     run_attempt_id: string;
     attempt_number: number;
@@ -70,65 +35,23 @@ export function cancelRun(runId: string) {
   return apiFetch<Run & { note?: string }>(`/runs/${runId}/cancel`, { method: "POST" });
 }
 
-/**
- * GET /runs — the workspace's run history (WS-004).
- *
- * A narrower row than `Run` by contract: what happened, to which skill, when.
- * `status` carries the same warning it does everywhere else — `succeeded` says
- * the workload finished, not that the task was done (ADR-025) — so any surface
- * rendering it words it as execution.
- */
 export type RunListItem = {
   run_id: string;
   status: string;
-  /**
-   * The second axis (04 丙-32). Required and never null — a run with no
-   * evaluation carries `not_evaluated` / 未評估, because an empty verdict beside
-   * a column of 「執行完成」 reads as a pass, which is the misreading ADR-025
-   * separates the two axes to prevent. `value` folds the evaluation's own status
-   * in, so 「評估中」 and 「評估失敗」 are distinguishable from 「無法判斷」.
-   */
   evaluation: Labelled;
   status_reason?: string;
   skill_id: string;
-  /** Joined server-side: a history page is the one place N runs render at once. */
   skill_name: string;
   skill_version_id: string;
-  /** The editable draft a re-run would start from. Absent when it no longer resolves. */
   test_case_id?: string;
   provider: string;
-  /**
-   * `{value, label, note}` since 2026-09-01, and served rather than mapped here
-   * for the reason `cleanup_status` below records (04 丙-29 ②).
-   *
-   * It was a bare enum, and both screens that showed it interpolated the raw
-   * token into a Chinese sentence — 「失敗類別 capability_mismatch」 and
-   * 「（分類：capability_mismatch）」. `RUN_STATUS_LABEL` covers `status`; this
-   * field never had anything (04 丙-115 ②).
-   */
   failure_class?: Labelled;
-  /**
-   * `{value, label, note}`, not a bare enum (04 丙-29 ②).
-   *
-   * The value is still the database enum `run_cleanup_status`
-   * (db/migrations/0004_test_lab_and_runs.sql:75) — but the words now come from
-   * the server, because of how this field failed. The contract said `cleaning`
-   * where the database said `cleaning_up`, this union was compiled against the
-   * wrong half, and a run that was genuinely mid-teardown rendered its cleanup
-   * state as a **blank**. A client-side enum→中文 table can only fail that way;
-   * a served label cannot.
-   */
   cleanup_status: Labelled;
   created_at: string;
   started_at?: string;
   finished_at?: string;
 };
 
-/**
- * `testCaseId` narrows the history to one draft — the 執行歷史 that closes the
- * 建立 → 試跑 → 回來看 loop. Matched against the test case each run's snapshot
- * was frozen from, so a run stays listed after the draft has been edited.
- */
 export function useRuns(testCaseId?: string, enabled = true) {
   return useInfiniteQuery({
     queryKey: ["runs", testCaseId ?? ""],
@@ -147,13 +70,6 @@ export function useRuns(testCaseId?: string, enabled = true) {
   });
 }
 
-/**
- * GET /runs/{id}/artifacts — what a run produced, as a manifest (02:SEC-006).
- *
- * File names, sizes and hashes; never the bytes. The archive is a sandbox's
- * output and the control plane does not open it (iron rule 1), so there is no
- * link to serve and this list does not pretend there is one.
- */
 export type RunArtifact = {
   artifact_id: string;
   file_name: string;
@@ -162,11 +78,6 @@ export type RunArtifact = {
   content_hash: string;
   created_at: string;
   expires_at?: string;
-  /**
-   * The stored bytes are gone while the row remains — retention expiry, or a
-   * reconciler finding them missing. Distinct from the owner deleting it, which
-   * takes the row out of this list entirely.
-   */
   purged: boolean;
 };
 
@@ -181,7 +92,6 @@ export function useRunArtifacts(runId: string) {
   });
 }
 
-/** Idempotent by contract: 204 for an id that is not there, which is not a failure. */
 export function deleteRunArtifact(runId: string, artifactId: string) {
   return apiFetch<void>(`/runs/${runId}/artifacts/${artifactId}`, { method: "DELETE" });
 }

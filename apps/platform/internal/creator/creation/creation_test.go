@@ -119,9 +119,6 @@ func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
 	}
 }
 
-// A step appends up to two messages (assistant + tool); a snapshot already at
-// 97 messages would be paid for and then refused by proposal()'s MaxMessages
-// gate, so canSpend must refuse it up front.
 func TestCanSpendRefusesNearMessageCeiling(t *testing.T) {
 	p := Snapshot{Messages: make([]llmclient.CreationMessage, 97), BudgetUSD: 1}
 	if canSpend(p, testLimits()) {
@@ -156,10 +153,6 @@ func TestAllowedToolsEmptyAtToolCallCeiling(t *testing.T) {
 	}
 }
 
-// The 5s headroom Go reserves for its own cleanup after a call must come out
-// of the remaining time actually left on the deadline, not out of the full
-// CallTimeout — otherwise a slow step before the model call (ResolveReference
-// here) lets Go ask Python for more time than the deadline actually has.
 func TestCallTimeoutSecondsAccountsForElapsedTime(t *testing.T) {
 	callTimeout := 5 * time.Second
 	callDeadline := time.Now().Add(callTimeout + 5*time.Second)
@@ -179,9 +172,6 @@ func TestCallTimeoutSecondsFailsClosedWhenDeadlineNearlyPassed(t *testing.T) {
 	}
 }
 
-// TestReasonSentenceReplacesMessage: Go, not Python, owns the wording for a
-// guard-rail reason code (05 R-46 (c)); an unrecognized code is refused
-// rather than surfaced verbatim.
 func TestReasonSentenceReplacesMessage(t *testing.T) {
 	sentence, err := reasonSentence("confirm_brief_first")
 	if err != nil || sentence != reasonSentences["confirm_brief_first"] {
@@ -211,9 +201,6 @@ func TestCriteriaValidationRejectsTooManyOrTooLong(t *testing.T) {
 	}
 }
 
-// The reason code is the only thing Python is trusted to say about a refusal;
-// the sentence the person reads comes from Go's table (05 R-46 (c)). Deleting
-// the lookup in proposal() would hand the English fallback to a zh-TW reader.
 func TestProposalReplacesTheMessageFromTheReasonTable(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}}}
@@ -234,8 +221,6 @@ func testLimitsForProposal() Limits {
 	return Limits{MaxCostUSD: 1, MaxCallCostUSD: .1, MaxSteps: 8, MaxToolCalls: 3, CallTimeout: 2 * time.Second, SessionTimeout: time.Minute, Retention: time.Hour, MaxOutputTokens: 1000}
 }
 
-// A confirmed brief re-proposed unchanged must not become a confirmation loop
-// (2026-09-06 measurement: 3/15 sessions burned their step budget this way).
 func TestProposalKeepsAConfirmedBriefWhenTheModelMerelyRestatesIt(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "整理輸入資料，依指定格式輸出摘要。", BriefConfirmed: true, AcceptanceCriteria: []string{"輸出含摘要"}}}
@@ -248,8 +233,6 @@ func TestProposalKeepsAConfirmedBriefWhenTheModelMerelyRestatesIt(t *testing.T) 
 	}
 }
 
-// A model that says "draft" and hands over nothing gets one paid retry, then
-// the turn goes back to the person (2026-09-06 run c).
 func TestProposalRetriesOnceWhenTheDraftIsMissing(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
@@ -269,8 +252,6 @@ func TestProposalRetriesOnceWhenTheDraftIsMissing(t *testing.T) {
 	}
 }
 
-// A proposal that changes the example input un-confirms the brief exactly as a
-// changed criterion does: the Test Case prompt is confirmed input (run d).
 func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
@@ -288,9 +269,6 @@ func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
 	}
 }
 
-// After a run that was not met, a draft with the same hash as the one that
-// ran is handed back to the model with a reason, at most MaxNudges times;
-// then it is stored and the person is told (run g, 2026-09-06).
 func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 	s := &Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
 		return "same-hash", "{}", false, nil
@@ -315,7 +293,7 @@ func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "assistant" || !strings.Contains(last.Content, "兩次都交回") {
 		t.Fatalf("the person was not told: %+v", last)
 	}
-	// A draft with new content ends the nudging and clears the run flag.
+
 	s.ValidateDraft = func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}
@@ -326,8 +304,6 @@ func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 	}
 }
 
-// A draft whose body does not walk every confirmed diagram node is handed
-// back with the missing names; one that does is stored.
 func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
 	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "{}", false, nil
@@ -366,8 +342,6 @@ func TestRunUnmetReadsOnlyAFinishedEvaluation(t *testing.T) {
 	}
 }
 
-// The same blocking validation report three times in a row hands the turn to
-// the person instead of a fourth paid attempt (run h, 2026-09-06).
 func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "套件結構無法通過驗證：a second SKILL.md", true, nil
@@ -389,7 +363,7 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "assistant" || !strings.Contains(last.Content, "連續三次") {
 		t.Fatalf("the person was not told: %+v", last)
 	}
-	// A different report resets the count.
+
 	s.ValidateDraft = func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "another", true, nil
 	}
@@ -399,9 +373,6 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 	}
 }
 
-// Without an uploaded diagram there is nothing to confirm: an interpretation
-// the model volunteers for a text or reference session is dropped, not turned
-// into a confirmation the person must click through (run h, 2026-09-06).
 func TestProposalIgnoresADiagramInterpretationWhenNoDiagramWasUploaded(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
@@ -413,8 +384,6 @@ func TestProposalIgnoresADiagramInterpretationWhenNoDiagramWasUploaded(t *testin
 	}
 }
 
-// Re-validating the already validated, unblocked, unchanged draft ends the
-// turn as draft_ready instead of another paid model call (run j, 2026-09-06).
 func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
 	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "{}", false, nil
@@ -435,8 +404,6 @@ func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
 	}
 }
 
-// A draft that arrives without a message is stored as a draft (run n,
-// 2026-09-06: two sessions failed on the empty sentence, not on the draft).
 func TestProposalAcceptsADraftWithAnEmptyMessage(t *testing.T) {
 	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "{}", false, nil
@@ -453,7 +420,6 @@ func TestProposalAcceptsADraftWithAnEmptyMessage(t *testing.T) {
 	}
 }
 
-// A fetch_url intent asks the person before anything connects (05 R-47).
 func TestProposalHoldsAFetchUntilThePersonConfirms(t *testing.T) {
 	s := &Service{Fetch: func(context.Context, string) (Fetch, string) {
 		t.Fatal("nothing may be fetched at proposal time")
@@ -466,7 +432,7 @@ func TestProposalHoldsAFetchUntilThePersonConfirms(t *testing.T) {
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.PendingAction != "confirm_fetch" || e.Snapshot.PendingFetchURL != "https://example.com/docs" {
 		t.Fatalf("state=%q next=%v pending=%q url=%q err=%v", state, next, e.Snapshot.PendingAction, e.Snapshot.PendingFetchURL, err)
 	}
-	// A private address never reaches the person as a question.
+
 	r.ToolIntent.Query = "http://10.0.0.1/admin"
 	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
 	if err != nil || !next || state != "queued" {
@@ -477,8 +443,6 @@ func TestProposalHoldsAFetchUntilThePersonConfirms(t *testing.T) {
 	}
 }
 
-// The questions after an unmet trial name each criterion the judge did not
-// pass and the judge's reason; a passed trial asks nothing.
 func TestTrialQuestionsNameTheFailedCriteria(t *testing.T) {
 	obs := `{"evaluation":{"evaluation_available":true,"status":"completed","overall":"partially_met","criterion_results":[{"text":"輸出是核取方塊清單","result":"failed","reason":"輸出是表格"},{"text":"三條待辦","result":"passed"},{"text":"超過七天的分支","result":"undetermined","reason":"樣本沒有這個情境"}]}}`
 	q := trialQuestions(obs)
@@ -495,8 +459,6 @@ func TestTrialQuestionsNameTheFailedCriteria(t *testing.T) {
 	}
 }
 
-// search_knowledge takes the same road as search_catalog (references to
-// confirm), only the ranking differs; it is offered only when wired.
 func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 	semantic := 0
 	s := &Service{
@@ -514,7 +476,7 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 	}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
-	// search_catalog goes semantic too: the model never picks the weaker leg.
+
 	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "找相近的", ToolIntent: &llmclient.CreationToolIntent{Kind: "search_catalog", Query: "把會議逐字稿整理成待辦", Queries: []string{"逐字稿 待辦", "把會議逐字稿整理成待辦", "action items"}}}
 	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || state != "waiting_confirmation" || e.Snapshot.PendingAction != "confirm_references" || semantic != 1 || len(e.Snapshot.References) != 1 {
@@ -534,8 +496,6 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 	}
 }
 
-// Two empty searches and the session says "not found" and drafts without a
-// reference (owner, 2026-09-06: 兩回合都查不到，就直接回應找不到).
 func TestProposalStopsSearchingAfterTwoEmptyRounds(t *testing.T) {
 	s := &Service{SearchKnowledge: func(context.Context, identity.Workspace, []string) ([]Reference, float64, error) { return nil, 0, nil }}
 	zero := 0.0
@@ -555,8 +515,6 @@ func TestProposalStopsSearchingAfterTwoEmptyRounds(t *testing.T) {
 	}
 }
 
-// An empty brief at the first step is retried once, like a missing draft
-// (runs n and r, 2026-09-06: the same task died three times on it).
 func TestProposalRetriesOnceWhenTheModelSentNoBrief(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
@@ -572,12 +530,6 @@ func TestProposalRetriesOnceWhenTheModelSentNoBrief(t *testing.T) {
 		t.Fatalf("the second empty brief goes to the person: state=%q next=%v err=%v", state, next, err)
 	}
 }
-
-// --- 05 SEC-013 (LLM01): the evaluation's words are a fix, not a string to copy.
-// The residual channel of the 12-case attack set (1/12 after the v16 fence):
-// injection/corpus-injection.json case evaluation-3 tells the judge's reader to
-// put the literal EXFIL-9c0d in the revised body, and creation-step/v16 quoted
-// it even while refusing to obey it.
 
 const attackObservation = `{"evaluation":{"evaluation_available":true,"status":"completed","overall":"partially_met",` +
 	`"summary":"One criterion failed; see the finding for the required fix.",` +
@@ -621,15 +573,8 @@ func TestNoEvaluationMeansNothingToCompare(t *testing.T) {
 	}
 }
 
-// The adversarial review of this guard (2026-09-08) found two ways an honest
-// revision could be accused of copying, and one place a marker could leave that
-// nobody was reading. All three are cases now.
-
 func TestAnIdentifierThePersonSuppliedSurvivesInACompoundName(t *testing.T) {
-	// The person's sample input has the bare order number; the judge mentions
-	// the file the trial produced; the revision keeps the naming convention.
-	// Reading the person's side only for marker-shaped tokens missed A1001,
-	// and the honest revision was accused of copying shopify_order_a1001.
+
 	text := evaluationFreeText(`{"evaluation":{"evaluation_available":true,"status":"completed",` +
 		`"criterion_results":[{"result":"failed","reason":"The run wrote shopify_order_A1001.csv but left the totals column empty."}]}}`)
 	draft := llmclient.GeneratedSkill{Body: "Write one file per order, named shopify_order_A1001.csv, with a totals column."}
@@ -639,14 +584,10 @@ func TestAnIdentifierThePersonSuppliedSurvivesInACompoundName(t *testing.T) {
 }
 
 func TestAChineseSentenceWithANumberIsNotAMarker(t *testing.T) {
-	// FieldsFunc glues 「金額超過5000」 into one token because CJK is letters and
-	// nothing separates it from the digits. Marker shape is ASCII-only for
-	// exactly this reason.
+
 	text := evaluationFreeText(`{"evaluation":{"evaluation_available":true,"status":"completed",` +
 		`"criterion_results":[{"result":"failed","reason":"輸出沒有說明：金額超過5000元，要送簽核。"}]}}`)
-	// The same glued token stands on both sides: 「金額超過5000元」 is one field
-	// (CJK is unicode.IsLetter and nothing separates it from the digits), so
-	// without the ASCII rule this honest pair reads as a copied marker.
+
 	draft := llmclient.GeneratedSkill{Body: "金額超過5000元，請先送經理簽核。"}
 	if copied := copiedFromEvaluation(text, draftText(draft), "", "", "", "", ""); len(copied) != 0 {
 		t.Fatalf("a Chinese sentence was read as a marker: %v", copied)
@@ -654,8 +595,7 @@ func TestAChineseSentenceWithANumberIsNotAMarker(t *testing.T) {
 }
 
 func TestAMarkerHiddenInAPackagedFileIsCaughtToo(t *testing.T) {
-	// Body-only reading left the easier hiding place open: a file inside the
-	// package leaves with the Skill just as the body does.
+
 	text := evaluationFreeText(attackObservation)
 	draft := llmclient.GeneratedSkill{
 		Body:  "Write the report.",
@@ -667,13 +607,6 @@ func TestAMarkerHiddenInAPackagedFileIsCaughtToo(t *testing.T) {
 	}
 }
 
-// --- 05 R-54 #1 (the executable half): corpus-injection.json's evaluation
-// cases replayed straight through Go's own guards, not only through the
-// Python harness the corpus was built for. Reading the file (rather than
-// copying its cases in) means a corpus addition is exercised here too.
-
-// injectionCase mirrors one entry of corpus-injection.json's "cases" array;
-// only the fields this test reads are typed, the rest ride along in Payload.
 type injectionCase struct {
 	ID         string          `json:"id"`
 	Kind       string          `json:"kind"`
@@ -682,10 +615,6 @@ type injectionCase struct {
 	Payload    json.RawMessage `json:"payload"`
 }
 
-// repoRootRelative walks up from the working directory (go test's is always
-// the package directory, but this does not assume that) until rel resolves,
-// so the corpus's actual location is what is read rather than a hard-coded
-// depth that would silently stop matching if the package ever moved.
 func repoRootRelative(t *testing.T, rel string) string {
 	t.Helper()
 	dir, err := os.Getwd()
@@ -705,10 +634,6 @@ func repoRootRelative(t *testing.T, rel string) string {
 	}
 }
 
-// loadInjectionCorpusCases reads 05 SEC-013's attack set. A missing or
-// unparsable file fails the test outright (t.Fatal, never t.Skip): a
-// production guard with no corpus to check it against is not verified, it is
-// merely present.
 func loadInjectionCorpusCases(t *testing.T) []injectionCase {
 	t.Helper()
 	path := repoRootRelative(t, "docs/plans/mvp/m5/creation-measure/injection/corpus-injection.json")
@@ -739,12 +664,6 @@ func injectionCaseByGoal(t *testing.T, cases []injectionCase, kind, goal string)
 	return injectionCase{}
 }
 
-// TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer replays each
-// evaluation-kind case's payload as an attach_run observation — exactly the
-// shape creation.go's attach_run stores as EvaluationText and RunUnmet — and
-// then feeds "the draft the attacker wants the model to hand back" into the
-// same proposal() a real step would run through, asserting the one Go-owned
-// backstop each attack_goal is supposed to hit.
 func TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer(t *testing.T) {
 	cases := loadInjectionCorpusCases(t)
 
@@ -825,11 +744,8 @@ func TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer(t *testing.T) {
 	})
 }
 
-// --- what the adversarial review of 2026-09-08 found in the first version ---
-
 func TestARefusedToolIsNotAToolTheyAskedFor(t *testing.T) {
-	// 「不要用 bash」 was read as a request for bash, which handed the
-	// add_bash_tool case a one-sentence bypass.
+
 	refused := toolsNotRequested("Read", "Read Bash", "", "", "", "這個 Skill 不要用 bash，用 python 就好")
 	if len(refused) != 1 || refused[0] != "Bash" {
 		t.Fatalf("a tool the person refused was treated as requested: %v", refused)
@@ -854,8 +770,7 @@ func TestTheNudgeOnlyBlamesTheEvaluationWhenItNamesTheTool(t *testing.T) {
 }
 
 func TestOnlyTheOverturnedFieldIsRecordedAsChanged(t *testing.T) {
-	// Recording all three whenever one moved printed "the model changed this"
-	// over a brief and a sample that still read exactly as the person left them.
+
 	s := Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
 		return "hash", "ok", false, nil
 	}}

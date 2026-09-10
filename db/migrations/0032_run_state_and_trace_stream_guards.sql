@@ -1,6 +1,3 @@
--- Keep lifecycle invariants at the persistence boundary. Go still rejects bad
--- requests early; these guards cover maintenance SQL and concurrent producers.
-
 CREATE FUNCTION enforce_run_status_transition() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -23,7 +20,7 @@ END;
 $$;
 
 -- Name sorts after runs_terminal_immutable so terminal-row writes keep the
--- established restrict_violation contract instead of being reclassified.
+-- restrict_violation error instead of being reclassified.
 CREATE TRIGGER runs_validate_status_transition
 BEFORE UPDATE OF status ON runs
 FOR EACH ROW EXECUTE FUNCTION enforce_run_status_transition();
@@ -63,7 +60,7 @@ END;
 $$;
 
 -- Exact event-id redeliveries are consumed first by the alphabetically earlier
--- trace_events_dedupe_event_id trigger; this one reports conflicting event IDs.
+-- trace_events_dedupe_event_id trigger; this one reports conflicting event ids.
 CREATE TRIGGER trace_events_guard_stream_seq
 BEFORE INSERT ON trace_events
 FOR EACH ROW EXECUTE FUNCTION enforce_trace_stream_seq();

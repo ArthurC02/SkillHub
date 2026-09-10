@@ -8,46 +8,26 @@ import (
 	"testing"
 )
 
-// Every checker on the roster must actually reach the report.
-//
-// Until this existed, automationCheck had no test at all: each checker was
-// tested by calling it directly, and the seven `append` lines that ran them were
-// covered by nothing. Deleting the queryOwnerProblems line kept `go test ./...`
-// green while ADR-033's ratchet quietly stopped running, and the same was true
-// of every other line.
-//
-// The fixture is a repo broken in every direction on purpose, so each checker has
-// something to say. Two assertions, and the second is the one with teeth: the
-// checker must produce a problem here (otherwise the wiring assertion would be
-// vacuously true), and every problem it produces must appear in the output.
-// The roster itself, named. TestAutomationCheckRunsEveryChecker below walks
-// documentCheckers(), so deleting an entry would delete its subtest with it and
-// stay green — the same shape as the hole it was written to close. This is the
-// second author the list needs: removing a checker is now two edits, and one of
-// them is in a test file where "why is this line going away" has to be answered.
 func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 	t.Parallel()
 	want := []string{
 		"drift-marker", "depguard-deny", "service-construction", "one-number", "query-owner",
 		"context-map", "doc-identifier", "milestone-tally", "backlog-tally",
 		"baseline-tally", "retention-floor", "sdk-version", "single-data-layer",
-		// The two that were wired by a bare `append` below the loop until
-		// 2026-08-29, so this roster walked past them and unwiring BOTH left the
-		// package green. They were the highest-value pair on the list.
+
 		"require-db-guard",
-		// 02:PORT-009's twin of require-db-guard, and the only reason SBX-008's
-		// short-lived authorization is proven anywhere: it watches both the
-		// switch and the existence of the test file.
+
 		"require-objstore-guard",
 		"isolation-level",
 		"route-table", "requirement-refs", "purge-schedule", "timeout-budget",
 		"image-version", "embedding-dims", "goldenset-mirror",
-		// 05 R-36 第二段: every deployment variable says what it blocks.
+
 		"capability-table",
-		// 2026-09-03 巡視: every relative markdown link resolves to a file.
+
 		"doc-links",
-		// 2026-09-04: skills cite nothing local, roles name a model, root AGENTS.md under the Codex cap.
+
 		"harness",
+		"comment-budget",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {
@@ -72,25 +52,15 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// automationCheck returns early when the Taskfile cannot be read, before any
-	// checker runs; everything else is deliberately missing or wrong.
+
 	write("Taskfile.yml", "version: \"3\"\ntasks:\n")
-	// doc-identifier only speaks when a live document names something no file
-	// declares, so give it one.
-	// The link is doc-links' input, and it is the real defect in miniature: a
-	// filename that describes ADR-011 correctly and is not what the file is
-	// called. Reading it tells you nothing; resolving it tells you everything.
+
 	write("AGENTS.md", "AGENTS 導覽：`NoSuchSymbolAnywhere` 早就被刪掉了。\n"+
 		"見 [ADR-011](./docs/adr/ADR-011-workspace-scope-and-tenancy.md)。\n")
-	// drift-marker returns on the first unreadable file and reads its two sources
-	// out of a map, so with both missing its message depends on map order. Both
-	// present and disagreeing gives it one thing to say.
+
 	write("apps/platform/.golangci.yml", "# drift: DDD-005 (run -> eval)\n")
 	write("docs/adr/"+contextMapADR, "# ADR-032\n\n沒有 §1 表格，也沒有附錄 A。\n")
-	// single-data-layer needs something to compare against and something that
-	// looks like a replica of it. Three methods, name and signature both
-	// copied verbatim from the shape db/gen actually generates, is the
-	// smallest tree that gives the checker something to say.
+
 	write(genDirRelative+"/fake.sql.go", `package gen
 
 import "context"
@@ -131,16 +101,10 @@ func (m *memQueries) DeleteUser(ctx context.Context, id int64) error {
 }
 `)
 
-	// timeout-budget is the one checker with nothing to say about an absent
-	// tree: no markers means no pairs and no complaint. A one-sided marker is
-	// what it exists to catch, so that is what the fixture gives it.
 	write("apps/platform/budgets.go",
 		"package x\n\nconst t = 135 * time.Second // budget-over: nothing.PAIRS_WITH_THIS\n")
+	write("apps/platform/internal/fake/decided.go", "package fake\n\n// Decided in R-74.\nvar decided = true\n")
 
-	// require-db-guard needs a package that gates itself on the database URL and
-	// hands straight to m.Run(). Without one it has nothing to say, and the
-	// wiring assertion below would be vacuously true for the checker whose
-	// absence 02:PORT-004 was written about.
 	write("apps/platform/internal/fake/main_test.go", `package fake
 
 import (
@@ -156,10 +120,8 @@ func TestMain(m *testing.M) {
 }
 `)
 
-	// harness only speaks about files that exist: a skill bound to this repo
-	// is the smallest thing that gives it one.
 	write(".claude/skills/x/SKILL.md", "---\nname: x\ndescription: y\n---\n\n見 docs/plans/04。\n")
-	// ...and a workflow whose agent() would inherit the dispatcher's model.
+
 	write(".claude/workflows/x.js", "export const meta = { name: 'x', description: 'y' }\nawait agent('go')\n")
 
 	var out bytes.Buffer
@@ -187,8 +149,7 @@ func TestMain(m *testing.M) {
 
 func TestDriftMarkerProblems(t *testing.T) {
 	t.Parallel()
-	// The ADR fixture carries the `DDD-00x` placeholder from ADR-032 §3 on
-	// purpose: it is prose, not a marker, and must not be counted.
+
 	write := func(root, lint, adr string) {
 		lintPath := filepath.Join(root, "apps", "platform", ".golangci.yml")
 		adrPath := filepath.Join(root, "docs", "adr", "ADR-032-ddd-bounded-context-governance-for-platform.md")

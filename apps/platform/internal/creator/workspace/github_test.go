@@ -166,7 +166,6 @@ func TestGitHubJSONDrainsAndClosesOrdinaryErrorResponses(t *testing.T) {
 func TestCallbackRejectsStateMismatch(t *testing.T) {
 	h := &Handler{Service: &Service{OAuth: stubGitHub(t, "x@x.dev")}}
 
-	// No state cookie at all.
 	r := httptest.NewRequest(http.MethodGet, "/auth/github/callback?code=c&state=abc", nil)
 	w := httptest.NewRecorder()
 	h.finishLogin(w, r)
@@ -174,7 +173,6 @@ func TestCallbackRejectsStateMismatch(t *testing.T) {
 		t.Fatalf("missing cookie: want 401, got %d", w.Code)
 	}
 
-	// Cookie present but different value.
 	r = httptest.NewRequest(http.MethodGet, "/auth/github/callback?code=c&state=abc", nil)
 	r.AddCookie(&http.Cookie{Name: stateCookie, Value: "other"})
 	w = httptest.NewRecorder()
@@ -185,8 +183,7 @@ func TestCallbackRejectsStateMismatch(t *testing.T) {
 }
 
 func TestDevLoginNotMountedByDefault(t *testing.T) {
-	// The offline dev provider must not exist unless explicitly enabled;
-	// a mounted-by-accident dev login in production is an auth bypass.
+
 	h := &Handler{Service: &Service{}}
 	mux := http.NewServeMux()
 	h.Mount(mux)
@@ -200,10 +197,9 @@ func TestDevLoginNotMountedByDefault(t *testing.T) {
 	mux = http.NewServeMux()
 	h.Mount(mux)
 	w = httptest.NewRecorder()
-	// With no database wired the handler fails, but the route must exist —
-	// anything but 404 proves the gate opened.
+
 	func() {
-		defer func() { _ = recover() }() // nil pool panics; only routing matters here
+		defer func() { _ = recover() }()
 		mux.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/auth/dev/login", nil))
 	}()
 	if w.Code == http.StatusNotFound {
@@ -226,8 +222,7 @@ func TestRequireSessionWithoutCookie(t *testing.T) {
 }
 
 func TestOptionalSessionWithoutCookiePassesThrough(t *testing.T) {
-	// Public routes (search, skill detail) must stay reachable with no session
-	// at all — OptionalSession must never reject (ADR-020, DISC-010).
+
 	h := &Handler{Service: &Service{}}
 	called := false
 	var gotUser bool

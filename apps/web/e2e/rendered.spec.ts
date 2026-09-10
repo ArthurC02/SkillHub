@@ -4,63 +4,11 @@ import { RUN, SKILL, platformResponse } from "../src/fixtures/platform";
 import { PHONE_ROUTES, ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
 
-/**
- * 03:QA-008 / 04 丙-21③ — the three things `src/a11y.test.tsx` states in its own
- * header that it cannot prove, proven here and nowhere else.
- *
- * Nothing else belongs in this file. The jsdom tier already renders all 12
- * routes and scans them against 88 axe rules with none disabled; giving that
- * answer a second home would triple its cost across three engines and buy
- * nothing. What jsdom structurally cannot decide is:
- *
- *   1. **Composite pixels.** axe's `color-contrast` returns `incomplete` for
- *      every node under jsdom — with no layout there is no way to resolve what
- *      is behind one. `src/contrast.test.ts` measures static hex tokens instead
- *      and says plainly that alpha, `opacity` multipliers and pairs missing
- *      from its hand-written list are beyond it. A real engine composites, so
- *      the rule reaches a verdict.
- *   2. **Real layout.** `table-layout: fixed` does not overflow a phone, it
- *      squeezes, and jsdom computes neither.
- *   3. **The real Tab key.** jsdom does not implement it, so the other file
- *      asserts tab-ability rather than tab order.
- */
-
 test.describe("QA-008 composite pixels", () => {
-  /**
-   * The second assertion is the one that matters. Zero `color-contrast`
-   * violations proves nothing by itself — that is exactly what jsdom reports,
-   * by never deciding. So this asserts the rule left `incomplete` first, and
-   * only then that it found nothing. Without that check this tier quietly
-   * becomes the hole it was built to close.
-   */
-  /**
-   * Scanned on the two routes this tier can reach without inventing a fixture,
-   * which is 2 of 12 — and the honest reading of that number is narrower than
-   * it looks. 04 丙-21③ named four `rgba()` tokens as out of reach. Two of them,
-   * `--social-bg` and `--shadow`, turned out to be painted by no rule at all and
-   * have since been deleted. Of the two that remain:
-   *
-   *   - `--accent-border` is only ever a `border-color`. Borders are 1.4.11
-   *     non-text, which `color-contrast` does not judge in any engine.
-   *   - `--accent-bg` is the only one that lands behind text — `.notice` and
-   *     `.compare-differs`, both compositing it over `--bg`. The first is on
-   *     screen below.
-   *
-   * So the token that mattered is covered. What the other ten routes would add
-   * is their own text on the ordinary background, which the static tier already
-   * measures — worth having, not worth a forty-field fixture per route.
-   */
   for (const [route, where] of [
     ["/?q=pdf", "search results, both .notice bars"],
     ["/policy", "the retention table"],
   ] as const) {
-    /**
-     * The second assertion is the one that matters. Zero `color-contrast`
-     * violations proves nothing by itself — that is exactly what jsdom reports,
-     * by never deciding. So this asserts the rule left `incomplete` first, and
-     * only then that it found nothing. Without that check this tier quietly
-     * becomes the hole it was built to close.
-     */
     test(`color-contrast decides and passes: ${where}`, async ({ page }) => {
       await stubPlatform(page);
       await page.goto(route);
@@ -83,16 +31,6 @@ test.describe("QA-008 composite pixels", () => {
     });
   }
 
-  /**
-   * The ring drawn for :focus-visible has to survive compositing too.
-   *
-   * Tab is pressed until something inside the page takes focus rather than
-   * once: WebKit leaves links out of the tab sequence by default, matching
-   * Safari's "Keyboard navigation" setting being off, so the first press there
-   * lands on nothing while it reaches the masthead link in the other two. The
-   * question this test asks — does the ring paint — is the same either way, and
-   * hard-coding one press would have answered it only for Chromium and Firefox.
-   */
   test("the focus ring is actually painted", async ({ page }) => {
     await stubPlatform(page);
     await page.goto("/");
@@ -115,18 +53,6 @@ test.describe("QA-008 composite pixels", () => {
 });
 
 test.describe("QA-008 real layout", () => {
-  /**
-   * Every address the router declares, at phone width. This used to check one
-   * page, and one page was not enough: the Test Case detail screen carries
-   * `<textarea cols={60}>` and `<input size={50}>`, whose intrinsic sizing is
-   * wider than a 375px viewport, and it rendered 504px wide with controls
-   * bleeding past the edge for as long as nothing looked.
-   *
-   * The assertion is on the document, not on any element: whatever a page does
-   * internally, the page itself must not scroll sideways. A table that is too
-   * wide is expected to scroll inside `.table-scroll`, and the second
-   * assertion below keeps that distinction honest.
-   */
   for (const [name, url] of PHONE_ROUTES) {
     test(`the page does not scroll sideways at 375px: ${name}`, async ({ page }) => {
       await stubPlatform(page);
@@ -134,12 +60,6 @@ test.describe("QA-008 real layout", () => {
       await page.goto(url);
       await expect(page.locator(".app-nav a").first()).toBeVisible();
 
-      // A red used to say only "384px inside 375px", which is not enough to fix
-      // anything — and the trace upload was pointed at a directory the `github`
-      // reporter never writes (see playwright.config.ts), so four red runs on
-      // the Linux runner left no DOM behind to look at. The message therefore
-      // carries the answer itself: the deepest elements reaching past the
-      // viewport edge, which is the one fact the next red has to hand over.
       const doc = await page.evaluate(() => {
         const limit = document.documentElement.clientWidth;
         const over = Array.from(document.querySelectorAll("*")).filter(
@@ -149,8 +69,8 @@ test.describe("QA-008 real layout", () => {
         return {
           scrollWidth: document.documentElement.scrollWidth,
           clientWidth: limit,
-          // Deepest only: every ancestor of an offender is one too, and a list
-          // led by `html` and `body` names nothing.
+          // Deepest only: an ancestor of an overflowing element overflows too,
+          // and a list led by html/body would name nothing useful.
           culprits: over
             .filter((el) => !over.some((other) => other !== el && el.contains(other)))
             .slice(0, 5)
@@ -170,18 +90,6 @@ test.describe("QA-008 real layout", () => {
     });
   }
 
-  /**
-   * `04` 丙-219，量的是那條斷言上面**沒有**的那件事：餘裕。
-   *
-   * 上面那支在這台機器上綠、在 GitHub 的 runner 上紅，而兩邊跑的是同一份 bundle。
-   * 差別在 `<input type="file">` 的固有寬度——那是瀏覽器自己畫的元件（`Choose
-   * File`／`No file chosen`，用平台自己的 UI 字型），本機量到 330px、runner 上
-   * 約 359px，而 375 的視窗只裝得下 350。它不是偶發，是**餘裕只有 20px**。
-   *
-   * 所以這裡把字型放大來模擬另一個系統的元件，斷言頁面仍然不橫捲：修法是讓那一欄
-   * 可以縮（`minmax(0, 1fr)`），元件跟著容器走，固有寬度多少都不再進入版面。
-   * 這件事 jsdom 決定不了——它畫不出原生檔案輸入，也沒有固有寬度。
-   */
   test("a wider native file widget does not push the page sideways: skill-detail", async ({
     page,
   }) => {
@@ -205,18 +113,6 @@ test.describe("QA-008 real layout", () => {
     ).toBeLessThanOrEqual(doc.clientWidth);
   });
 
-  /**
-   * 設計 §4.5「手機頁首」，量在真的排版過的頁首上。
-   *
-   * jsdom 決定不了這件事：沒有行盒與 flex 換行，頁首在那一層永遠是「三個兄弟」，
-   * 不管它們實際落在一列還是三列上。2026-09-08 外部審查第一次帶手機實測進來，量到
-   * 的是 375×900 下 155px：標題、導覽兩列、身分各一列，而標題與身分**各自只佔半列
-   * 寬**。修法是讓那兩個共用第一列，155 → 123px，一個導覽項都沒有折疊起來。
-   *
-   * 兩個斷言各守一半，因為只守高度會被「把字改小」滿足，只守共列會被「導覽長到
-   * 四列」滿足：頁首總高有上限，**而且**標題與身分的框在垂直方向重疊（＝同一列）。
-   * 130 是量到的 123 加上一階字級的餘裕，不是一個目標值。
-   */
   test("手機頁首收在兩列以內，標題與身分同一列（設計 §4.5）", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 900 });
@@ -232,8 +128,6 @@ test.describe("QA-008 real layout", () => {
       return {
         height: Math.round(el.getBoundingClientRect().height),
         title: box(el.querySelector(".app-title")!),
-        // AuthControls 的 `<span>`（`/me` 有答案時）或它的登入分支，都是頁首的
-        // 最後一個孩子；用位置抓而不是用 class，因為那兩個分支長得不一樣。
         auth: box(el.lastElementChild!),
       };
     });
@@ -241,9 +135,6 @@ test.describe("QA-008 real layout", () => {
     expect(header.height, `375px 下頁首高 ${header.height}px：它又長回三列了`).toBeLessThanOrEqual(
       130,
     );
-    // The numbers are in the message because "they are not on the same row" is
-    // not something anyone can act on: which one moved, and by how much, is the
-    // whole diagnosis, and this assertion reads differently on each engine.
     expect(
       header.title.bottom > header.auth.top && header.auth.bottom > header.title.top,
       `標題與身分沒有在同一列上——頁首的第一列又被一個 auto 留白推開了：` +
@@ -252,17 +143,6 @@ test.describe("QA-008 real layout", () => {
     ).toBe(true);
   });
 
-  /**
-   * 設計 §4.5「頁首是橫貫的屋簷」，量在比欄寬更寬的視窗上。
-   *
-   * 這一條 jsdom 一樣答不出來：`#root` 從 2026-09-08 起是滿版、欄寬移到 `main` 與
-   * `.app-footer` 身上，而頁首靠一條 `max()` 的內距把文字對回同一條左緣——沒有版面
-   * 就沒有「同一條左緣」這回事。改之前 `#root` 是 1126px 而頁首住在裡面，所以 1280
-   * 的視窗上頁首兩端各差 77px 碰不到螢幕邊，外部審查連兩輪讀成「導覽列漂浮著」。
-   *
-   * 兩個斷言各守一半：底要橫貫（寬度＝視窗寬），字要對齊（`.app-title` 與 `h1` 同
-   * 一個左緣）。只守前者會被「頁首滿版但文字貼著螢幕邊」滿足。
-   */
   for (const width of [1440, 1280]) {
     test(`頁首橫貫視窗，標題與 h1 同一條左緣：${width}px（設計 §4.5）`, async ({ page }) => {
       await stubPlatform(page);
@@ -291,16 +171,6 @@ test.describe("QA-008 real layout", () => {
     });
   }
 
-  /**
-   * 「建立一個 Skill」的三張卡：格軌等高，動作落在同一條基線上。
-   *
-   * 這一條也只有真引擎答得出來——卡片的高度是 grid 算出來的，動作被推到卡底是
-   * `auto` 上緣留白算出來的，jsdom 兩件都不算。2026-09-08 之前 `.create-cards` 帶著
-   * `align-items: start`，於是說明文字兩行的卡與四行的卡各是各的高度，三顆按鈕停在
-   * 三個位置上（外部審查連續兩輪讀成「網格沒有秩序」）。
-   *
-   * 量在 ≥1024 的寬度上，因為 375 只有一欄——一欄時每張卡自己一列，這條規則不表態。
-   */
   test("建立卡的動作落在同一條基線上（設計 §4.3）", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -317,12 +187,6 @@ test.describe("QA-008 real layout", () => {
     expect(new Set(tops).size, `三顆動作落在 ${tops.join("／")} 三個高度上`).toBe(1);
   });
 
-  /**
-   * 「這個工作區的其他頁」不是第四張卡，是一條列。2026-09-08 之前它是一個 1078px
-   * 寬的白框，裡面只有約 405px 的連結，而標題自己還佔掉一整列——外部審查連續兩輪
-   * 讀成「因為要放東西就隨手丟一個容器」。守的是**標題與連結同一列**（不是高度上限，
-   * 那會隨字級與斷點漂）：兩個盒子在垂直方向重疊，就代表沒有人被推到下一列去。
-   */
   test("工作區導覽是一條列，標題與連結同高（設計 §4.3）", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -341,9 +205,6 @@ test.describe("QA-008 real layout", () => {
       Math.min(rows.label.bottom, rows.links.bottom) - Math.max(rows.label.top, rows.links.top);
     expect(overlap, "標題被推到連結上面一列去了").toBeGreaterThan(0);
 
-    /* 這四個會換頁，所以它們是連結不是按鈕（§4.6.3 把填色配給動作、描邊配給主張，
-       換頁兩者都不是）。**命中區不靠那個框**：`min-height` 撐出的 40px 看不見但量得到，
-       而「純文字連結只有 23px」正是 09-08 早些時候我用來擋掉這個修法的理由。 */
     const links = await page.evaluate(() =>
       [...document.querySelectorAll(".workspace-index a")].map((a) => {
         const cs = getComputedStyle(a);
@@ -362,12 +223,6 @@ test.describe("QA-008 real layout", () => {
     }
   });
 
-  /**
-   * ...and the overflow a comparison table does have goes where it was meant
-   * to. `table-layout: fixed` plus `width: 100%` does not overflow on a phone,
-   * it squeezes, so before `.table-scroll` a 4-column table became shreds of
-   * wrapped text rather than something a finger could push sideways.
-   */
   test("a wide table scrolls inside its own container", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 667 });
@@ -383,21 +238,6 @@ test.describe("QA-008 real layout", () => {
     );
   });
 
-  /**
-   * 設計 §4.5 的行長上限，量在真的排版過的段落上。
-   *
-   * jsdom cannot decide this at all: it has no line boxes, so a paragraph is as
-   * wide as the assertion imagines. Before the cap, #root's 1126px was every
-   * paragraph's width — measured 2026-09-03, the longest line on a page ran
-   * between 60 and 104 CJK characters against a comfortable 25–40, and eight of
-   * the 18 routes are 65–83% `.note` by character count. That is the shape
-   * behind 「整頁文字非常滿」.
-   *
-   * Asserted on the element's own font-size rather than on a pixel width, which
-   * is the rule itself: 40em is 40 CJK characters at any step of the §4.1 scale.
-   * Tables are skipped for the same reason they are out of the CSS selector —
-   * a cell's width belongs to its table.
-   */
   test("no paragraph is wider than the §4.5 measure", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -411,9 +251,6 @@ test.describe("QA-008 real layout", () => {
         const text = (el.textContent || "").replace(/\s+/g, "");
         if (text.length < 20) continue;
         const em = parseFloat(getComputedStyle(el).fontSize);
-        // The widest LINE, not the widest box: a card's padding and a pill's
-        // border are not line length, and measuring the box would report them
-        // as if they were.
         const range = document.createRange();
         range.selectNodeContents(el);
         const w = Math.max(...Array.from(range.getClientRects()).map((r) => r.width), 0);
@@ -424,17 +261,6 @@ test.describe("QA-008 real layout", () => {
     expect(over, `wider than 40em: ${over.join(" / ")}`).toEqual([]);
   });
 
-  /**
-   * The link that IS the page's action has a control's box, not a sentence's.
-   *
-   * `design-system.test.ts` proves the class has a CSS rule somewhere;
-   * only a real engine proves the rule reaches this element and produces a
-   * pressable target. Measured against the same floor as every other control —
-   * WCAG 2.2 2.5.8's 24px, which the app sets at 32 — because that floor is the
-   * whole reason to give a link a box: before this, 打包並下載這個版本 was a 20px
-   * line of text in a paragraph while 儲存 and 刪除, on the same screens, were
-   * boxes. Delete the rule and this drops to the line height.
-   */
   test("a primary action link is a control-sized target", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -458,20 +284,6 @@ test.describe("QA-008 real layout", () => {
     }
   });
 
-  /**
-   * A `.note` that follows a `.badge` is separated from the pill's border.
-   *
-   * The note in that position is always a §2.11(c) disclaimer — 「收錄不等於精
-   * 選。」, 「平台不曾執行它們——」 — whose entire job is to stop the badge being
-   * read as an endorsement. Measured 2026-09-03 at 0.0px on four routes at both
-   * widths, i.e. rendered as 「已收錄收錄不等於精選。」, which reads as part of the
-   * badge instead of as a limit on it.
-   *
-   * Only a real engine can see it: the pill is `inline-flex` with 12px of its
-   * own padding, so the glyphs are 12px apart while the border touches — the
-   * defect is between an element's box and a neighbour's text, and jsdom has
-   * neither.
-   */
   test("a disclaimer beside a badge is not fused to it", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -481,9 +293,6 @@ test.describe("QA-008 real layout", () => {
     const fused = await page.evaluate(() => {
       const bad: string[] = [];
       for (const pill of Array.from(document.querySelectorAll(".badge"))) {
-        // The next `.note`, not the next sibling: §4.7 lets a Tip trigger sit
-        // between a badge and its qualifier, and `nextElementSibling` would then
-        // find the button, skip the row, and pass without measuring anything.
         let note: Element | null = pill.nextElementSibling;
         while (note && !note.classList.contains("note")) {
           if (!note.classList.contains("tip")) break;
@@ -504,30 +313,6 @@ test.describe("QA-008 real layout", () => {
     expect(fused, `fused to the badge: ${fused.join(" / ")}`).toEqual([]);
   });
 
-  /**
-   * 04 丙-135 — a fact and its qualifier are two colours on a result card.
-   *
-   * Measured 2026-09-03 at 1280×900: two cards on `/?q=pdf` shared 86 of 200
-   * characters verbatim, and the shared half sat in the same visual channel as
-   * the half that discriminates — same 14px, same `--text`, 8px apart. What a
-   * reader saw on one row was 「已收錄收錄不等於精選。」, one run of text with no
-   * signal of where the fact ends and the caveat begins.
-   *
-   * The qualifier cannot be lifted out of the card to fix that. §2.11(c)
-   * requires every badge to state what it does not cover 「在同一個區塊」, and
-   * §4.3's whole argument for cards is 「每一則要能被單獨判斷」 — which makes the
-   * card the block — and it states outright that a card has to hold the risk
-   * summary, the verification state and the refusal reasons with none of them
-   * folded. So the shape gives way instead: the value takes `--text-h`, the
-   * token this app already uses for 「the thing the reader is looking for」
-   * (`.verdict`, `.compare-table th[scope=row]`, `.badge`), and the note keeps
-   * `--text`.
-   *
-   * Asserted here rather than in jsdom because it is the resolved cascade of a
-   * custom property that is being compared, and because the two colours have to
-   * differ **as painted** — the composite-contrast scan above already runs on
-   * this same route, so a promotion that broke AA would be caught next to it.
-   */
   test("a fact and its qualifier are not the same colour on a result card", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -547,47 +332,16 @@ test.describe("QA-008 real layout", () => {
         if (value === qualifier)
           bad.push(`「${(dd.textContent ?? "").trim().slice(0, 20)}」 both ${value}`);
       }
-      // A run that found nothing to compare proves nothing — the same failure
-      // shape the composite-contrast test above guards against.
       if (checked === 0) bad.push("no facet row on this page carried a qualifier");
       return bad;
     });
     expect(same, `fact and qualifier share a colour: ${same.join(" / ")}`).toEqual([]);
   });
 
-  /**
-   * 設計 §3 第 18 條 / §4.6.3（ADR-064 決策 4）— 一頁一個主要動作，數的是**畫出來的填色**。
-   *
-   * The rule has two halves and they are the same measurement: filling is the
-   * channel that belongs to actions, so (a) at most one thing per page may be
-   * filled with `--cta`, and (b) the thing that is filled must be the control
-   * that finishes the page's work — `<a class="action">` or
-   * `<button class="action">`, never a badge. A filled badge reads as an
-   * endorsement (§2.3、§2.11(c)), and the first thing that will want one is a
-   * paid-tier mark, which is precisely the reading the rule forbids.
-   *
-   * Only a real engine can count it. What is being compared is the *resolved
-   * cascade of a custom property* — the same reason the facet-colour test above
-   * lives here — and jsdom does not substitute `var()` in `getComputedStyle` at
-   * all, so under jsdom every element's background is the literal string and
-   * the count is undecidable rather than wrong. `design-system.test.ts` can
-   * prove `.action` has a rule; it cannot prove that exactly one element on a
-   * page ends up painted with it.
-   *
-   * `--cta` is resolved by painting it on a throwaway element and reading back
-   * whatever this engine serialises, then comparing that string to other
-   * strings from the same engine's serialiser. Nothing here depends on
-   * `rgb(…)` vs `rgba(…)` vs `color(…)` formatting, which differs between the
-   * three engines and would otherwise make this test a Chromium test.
-   *
-   * All 18 routes in one test rather than one test per route, because the
-   * sentinel is a statement about the set: a suite where every page has zero
-   * filled actions passes both assertions above while proving nothing.
-   */
   test("at most one filled primary action per page, and only on a.action/button.action", async ({
     page,
   }) => {
-    test.slow(); // 18 navigations in one test; the assertion is about the set.
+    test.slow();
     await stubPlatform(page);
     await page.setViewportSize({ width: 1280, height: 900 });
 
@@ -601,9 +355,6 @@ test.describe("QA-008 real layout", () => {
       const found = await page.evaluate(() => {
         const probe = document.createElement("div");
         document.body.appendChild(probe);
-        // Read the engine's own serialisation of "no background" first, so the
-        // guard below is an equality against this engine rather than a guess at
-        // how it spells transparent.
         const unpainted = getComputedStyle(probe).backgroundColor;
         probe.style.backgroundColor = "var(--cta)";
         const cta = getComputedStyle(probe).backgroundColor;
@@ -623,10 +374,6 @@ test.describe("QA-008 real layout", () => {
         return { cta, unpainted, filled };
       });
 
-      // An unresolvable --cta computes to the initial transparent — the same
-      // value every unpainted element on the page has — so the count would be
-      // the whole document rather than the one control. Nothing below was
-      // measured in that case; say that instead of reporting a number.
       if (!found.cta || found.cta === found.unpainted) {
         bad.push(
           `${name}: --cta resolved to 「${found.cta}」 — nothing was measured on this route`,
@@ -649,9 +396,6 @@ test.describe("QA-008 real layout", () => {
       }
     }
 
-    // The same hole the facet-colour test guards with `checked === 0`: zero
-    // filled actions everywhere satisfies 「至多一個」 and 「只能是 .action」
-    // vacuously, and would let the CSS rule be deleted under a green suite.
     if (routesWithOne === 0) {
       bad.push("no route had a filled primary action at all — this test proved nothing");
     }
@@ -661,33 +405,15 @@ test.describe("QA-008 real layout", () => {
 });
 
 test.describe("QA-008 the real Tab key", () => {
-  /**
-   * `a11y.test.tsx` states it cannot prove that a real browser's Tab order
-   * matches DOM order. This presses the key and checks.
-   *
-   * It asserts the sequence never goes backwards rather than asserting one
-   * exact list, because the three engines legitimately disagree about **which**
-   * elements are in the sequence: WebKit omits links unless Safari's "Keyboard
-   * navigation" is switched on, so an exact list would encode Chromium's answer
-   * and fail WebKit for being Safari. What must hold everywhere is the ordering
-   * itself — focus moving up the document, never jumping back — and that is the
-   * property jsdom cannot see.
-   */
   test("tab order never goes backwards through the document", async ({ page }) => {
     await stubPlatform(page);
     await page.goto("/");
     await expect(page.locator(".app-nav a").first()).toBeVisible();
 
-    // Mark every element in document order so a focused node can report where
-    // it sits without this side having to model focusability per engine.
     await page.evaluate(() => {
       document.querySelectorAll("*").forEach((el, i) => el.setAttribute("data-dom-index", `${i}`));
     });
 
-    // Collection stops at the wrap rather than after a fixed count. Tab cycles,
-    // and WebKit's sequence here is short — it leaves links out — so a fixed
-    // twelve presses would run past the end, come back to the top and look
-    // exactly like focus jumping backwards.
     const seen: number[] = [];
     for (let i = 0; i < 12; i++) {
       await page.keyboard.press("Tab");
@@ -709,31 +435,7 @@ test.describe("QA-008 the real Tab key", () => {
 });
 
 test.describe("ADR-065 the text budget and the fourth disclosure, in a real engine", () => {
-  /**
-   * 設計 §2.13 / ADR-065 決策 1. Class D (teaching) is the one class of visible
-   * text with a budget, and until 2026-09-04 the class existed only in people's
-   * heads — §6 said so. `data-role="teaching"` is the mark; this sums it per
-   * route in the state §2.13 calls default (logged in, loaded, one row, nothing
-   * expanded), counting runes the way `FeedbackEntry.tsx` does.
-   *
-   * Two assertions, of two kinds. Per block, the rule's own number: no flat D
-   * block over 100 runes. Per route, a RATCHET and not a threshold — ADR-065
-   * 待決策 1 says the value is set from the first measured distribution and may
-   * only move down, so the table is that distribution and an entry may only get
-   * smaller. A route absent from the table has no flat D at all. Text inside a
-   * closed Tip counts zero: it has no client rect, which is the whole point of
-   * having moved it.
-   *
-   * What it cannot see: A/B/C, so it cannot check 「D＋F ≤ A＋B＋C」 — nobody
-   * has marked those and §6 keeps saying so. What it will not do: judge whether
-   * a mark is on the right sentence. The audit that placed them is the
-   * argument; a mark on a caveat makes the caveat count, it does not hide it.
-   */
   const TEACHING_FLAT: Record<string, number> = {
-    // Measured 2026-09-04 (chromium, 1280×900, shared fixtures). The largest is
-    // the Test Case detail page — nine separate teaching notes — and it is the
-    // one route the audit found over 「D＋F ≤ A＋B＋C」; §2.13 第 6 條 says the
-    // way down from there is copy and dedup, not Tips.
     policy: 95,
     "skill-detail": 78,
     packaging: 61,
@@ -783,7 +485,6 @@ test.describe("ADR-065 the text budget and the fourth disclosure, in a real engi
         );
       }
     }
-    // The vacuous pass: every mark deleted, every route at zero, table satisfied.
     if (Object.values(measured).every((n) => n === 0)) {
       bad.push("no route has any data-role=teaching — the marks are gone or the scan broke");
     }
@@ -793,19 +494,6 @@ test.describe("ADR-065 the text budget and the fourth disclosure, in a real engi
     ).toEqual([]);
   });
 
-  /**
-   * 設計 §2.13 Tip 第 2 條 and §4.7: the half of the Tip contract only layout can
-   * decide. `tip.test.tsx` proves the DOM shape; this proves that opening one
-   * moves nothing else on the page (a folded thing that pushes its neighbours is
-   * a `<details>`, and would have been written as one), that the trigger is a
-   * real target (WCAG 2.5.8, the app's 32px floor), and that Escape closes it
-   * with focus still on the button.
-   *
-   * The run has to be in flight for `InFlight` — the Tip's first and so far only
-   * home — to render at all, and the shared fixture's run is finished. One route
-   * override, registered after the stub so it wins, turns the summary into a
-   * running one; everything else stays the shared body.
-   */
   test("a Tip opens without moving a neighbour, and Escape closes it", async ({ page }) => {
     await stubPlatform(page);
     await page.route(`**/runs/${RUN}/trace`, (route) => {
@@ -826,14 +514,12 @@ test.describe("ADR-065 the text budget and the fourth disclosure, in a real engi
       24,
     );
 
-    // Document coordinates, not viewport: the click scrolls the trigger into
-    // view, and every viewport-relative top shifts by that scroll. What must
-    // not move is where things sit on the page.
+    // Document coordinates (+ scrollY), not viewport-relative: opening the
+    // trigger scrolls it into view, which would shift every viewport-relative
+    // top. Skips <option>: Chromium reports it as zero-size until interacted with.
     const positions = () =>
       page.evaluate(() =>
         Array.from(document.querySelectorAll("main *"))
-          // An <option> has no box of its own: Chromium reports 0 for it until the
-          // page has been interacted with, then the select's box. Not layout.
           .filter((el) => !el.closest("[data-tip]") && el.tagName !== "OPTION")
           .map((el) => Math.round(el.getBoundingClientRect().top + window.scrollY)),
       );

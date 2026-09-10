@@ -39,19 +39,7 @@ const labels: Record<CreationState, string> = {
   needs_reupload: "請重新上傳流程圖",
 };
 type Extra = Omit<CreationAction, "command_id" | "expected_revision" | "kind">;
-/**
- * 這個限制在契約上是 `CreationAction.message` 的 `maxLength: 4000`，Go 再以 rune
- * 數檢一次。**這裡數的是 code point，也就是 Go 的 rune**——`.length` 會把一個 emoji
- * 數成 2，那是伺服器不會用的單位。
- */
 const MAX_MESSAGE_RUNES = 4000;
-/**
- * 一張圖能不能收，問這裡。
- *
- * 三個入口——挑檔案、貼上、拖進來——問的必須是同一個問題，而只有第一個能靠
- * `accept=""` 過濾：剪貼簿與拖放繞過它，所以一個 PDF 會安安靜靜地掛上去，等到送出
- * 才被拒絕。回傳的是那句話本身，因為三個入口都要當場說出來，而不是等 4xx。
- */
 function diagramProblem(file: File): string | undefined {
   if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))
     return "流程圖只收 PNG、JPEG 或 WebP。";
@@ -71,15 +59,6 @@ function readImage(file: File): Promise<{ media_type: string; data: string }> {
     reader.readAsDataURL(file);
   });
 }
-/**
- * apps/platform's `skillpkg.Report` (creator/creation's `ValidateCreationDraft`
- * marshals it verbatim) is `{findings: Finding[], blocked, ...}` — a flat
- * array, not import's pre-grouped `{errors,warnings,infos}`. `Finding` itself
- * is field-for-field `ImportFinding` (severity/code/path/message/details), so
- * group by severity and reuse the SAME renderer failed imports use
- * (Findings.tsx) instead of a second component that flattens every finding
- * into identical bullets.
- */
 function groupDraftFindings(raw: string): CategorizedFindings | undefined {
   try {
     const parsed = JSON.parse(raw) as { findings?: unknown };
@@ -107,9 +86,6 @@ type RunObservation = {
     criterion_results?: { result?: string }[];
   };
 };
-/** The newest `tool` message reporting on this run (creation.go's `attach_run`
- * appends one such message per confirmation; a later confirmation can attach
- * a newer run under the same candidate). */
 function findRunObservation(
   messages: CreationSnapshot["messages"],
   runID: string,
@@ -120,9 +96,7 @@ function findRunObservation(
     try {
       const parsed = JSON.parse(m.content) as RunObservation & { run_id?: string };
       if (parsed.run_id === runID) found = parsed;
-    } catch {
-      // Not every tool message is a run observation.
-    }
+    } catch {}
   }
   return found;
 }
@@ -192,16 +166,6 @@ function DiagramUnderstandingView({ raw }: { raw: string }) {
     </div>
   );
 }
-/**
- * The pictures that belong to one turn.
- *
- * `thumbs` is the only place a picture can come from: the platform keeps the
- * digest and refuses the bytes (ADR-066 決策 4), so nothing serves it back and
- * `thumbs` holds only what THIS browser sent, for as long as this page lives.
- * After a reload — or on any other device — the turn says what was attached
- * instead of showing it. That sentence is not an error, so it is not an alert;
- * it is the same 「這裡沒有東西可以給你看，原因是這個」 the app says elsewhere.
- */
 function Attachments({
   list,
   thumbs,
@@ -253,21 +217,6 @@ function parseObservation(raw: string): unknown {
     return undefined;
   }
 }
-/**
- * 工具結果那一則訊息（`04` 丙-208）。
- *
- * 這些訊息有兩種：Go 寫給模型看的中文句子（「目錄搜尋需要關鍵字」之類），以及
- * **兩包 JSON**。JSON 那兩包在此之前是原樣倒進對話的——`attach_run` 的整包評估，
- * 還有 `fetch` 那一包**連同整個網頁的文字**。一個對話介面裡出現一整頁的 JSON，
- * 沒有人會讀它，而它把真正要讀的東西擠到看不見。
- *
- * 認得的就講成一句話，證據收進 `<details>`；認不得的原樣顯示——那些本來就是句子。
- *
- * **這裡只改呈現，不改信任**：`summary`、`reason` 是判定模型寫的字，而它寫的是受測
- * Skill 產生的輸出（`EvaluationText` 那條 LLM01 通道的同一批文字），`fetch.text` 是
- * 抓回來的網頁。三者都是不受信任的文字，所以它們**只能是文字**——React 會轉義，這裡
- * 沒有任何一處把它們當成標記（`04` 丙-206 要裁的正是那件事）。
- */
 function ToolObservation({ raw }: { raw: string }) {
   const parsed = parseObservation(raw);
   if (parsed && typeof parsed === "object") {
@@ -307,10 +256,6 @@ function ToolObservation({ raw }: { raw: string }) {
           {!!asRun.evaluation?.summary && (
             <span className="creation-text">{asRun.evaluation.summary}</span>
           )}
-          {/* 逐條判定**不收進 `<details>`**：設計 §2.10 第 7 項把「任務判定」列在
-              永不折疊的封閉清單裡，而每一條驗收條件的 passed／failed／undetermined
-              就是判定。這裡也不需要折——這則訊息原本的問題是一整包 JSON 和一整頁
-              網頁文字，不是這幾行；一次試跑的條件是個位數。 */}
           {results.length > 0 && (
             <ul>
               {results.map((c, i) => (
@@ -327,17 +272,6 @@ function ToolObservation({ raw }: { raw: string }) {
   }
   return <span className="creation-text">{raw}</span>;
 }
-/**
- * 這一步在做什麼（`04` 丙-205）。
- *
- * 在此之前等待中的畫面只說「正在創作」四個字，而那四個字要涵蓋五種完全不同的步驟。
- * **這不需要任何後端改動**：每一種步驟要做什麼，都是它進 `working` 之前那份快照
- * 已經決定好的事——所以這裡是推出來的，不是回報回來的。
- *
- * 順序就是 Go 的順序：連網在模型呼叫之前（`confirm_fetch` 把網址留在快照上，由
- * Worker 在呼叫前抓）；一張新圖會把 `diagram_understanding` 與 `brief_confirmed`
- * 一起清掉，所以圖那一條要排在需求之前。
- */
 function stepDescription(p: CreationSnapshot): string {
   if (p.pending_fetch_url) return "正在讀你同意的那個網頁，讀完再繼續。";
   if (p.diagram_fingerprint && !p.diagram_understanding) return "正在讀你附上的流程圖。";
@@ -376,10 +310,6 @@ function truncateForTimeline(s: string, n = 120): string {
   return s.length > n ? s.slice(0, n) + "…" : s;
 }
 type TimelineItem = { key: string; text: string };
-/** 每輪的 Run、評估、建議、回饋串成時間線 — everything it needs is already in
- * `p.messages` (creation.go appends one `tool` message per attach_run, one
- * `tool` message per fetch, and the model's own assistant turns); this just
- * walks that array once and keeps the events a person would call "a round". */
 function buildRoundTimeline(messages: CreationSnapshot["messages"]): TimelineItem[] {
   const items: TimelineItem[] = [];
   let round = 0;
@@ -402,9 +332,7 @@ function buildRoundTimeline(messages: CreationSnapshot["messages"]): TimelineIte
           });
           setTrialAnchor = true;
         }
-      } catch {
-        // Not a parseable evaluation observation; skip it.
-      }
+      } catch {}
     } else if (m.role === "tool" && m.content.startsWith('{"fetch"')) {
       try {
         const parsed = JSON.parse(m.content) as { fetch: { url: string; status: string } };
@@ -412,9 +340,7 @@ function buildRoundTimeline(messages: CreationSnapshot["messages"]): TimelineIte
           key: `t-${i}`,
           text: `讀取網頁：${parsed.fetch.url}（${FETCH_STATUS_LABEL[parsed.fetch.status] ?? parsed.fetch.status}）`,
         });
-      } catch {
-        // Not a parseable fetch observation; skip it.
-      }
+      } catch {}
     } else if (m.role === "assistant" && m.content.startsWith("這次試跑有條件沒過")) {
       items.push({ key: `t-${i}`, text: `系統問你：${m.content.split("\n")[0]}` });
       setQuestion = true;
@@ -429,7 +355,6 @@ function buildRoundTimeline(messages: CreationSnapshot["messages"]): TimelineIte
   });
   return items;
 }
-/** 預算上限的選項：平台給的範圍兩端，加上落在範圍裡的幾個整數檔位。 */
 function budgetChoices(min: number, max: number) {
   return [...new Set([min, 0.2, 0.5, 1, 2, 5, max])]
     .filter((v) => v >= min && v <= max)
@@ -448,36 +373,13 @@ export function CreationSession() {
     [raiseBudget, setRaiseBudget] = useState(""),
     [error, setError] = useState<unknown>(),
     [busy, setBusy] = useState(false);
-  /**
-   * `<input type="file">` is uncontrolled: `setFile(undefined)` empties React's
-   * copy and leaves the DOM's `value` holding the same path, so choosing THE
-   * SAME file again fires no `change` and the pick silently does nothing. Every
-   * place that drops the attachment has to clear both. `GenerateSkill.tsx` has
-   * had this pair since it shipped; this screen was missing it.
-   */
   const fileInput = useRef<HTMLInputElement>(null);
-  // 輸入框一解凍就把游標放進去（2026-09-10）：選完預算，下一件事就是說話。
   const textarea = useRef<HTMLTextAreaElement>(null);
   useEffect(() => textarea.current?.focus(), [budget]);
   const clearFile = () => {
     setFile(undefined);
     if (fileInput.current) fileInput.current.value = "";
   };
-  /**
-   * The pictures this page has in its hands, by digest.
-   *
-   * A sent picture is never served back (ADR-066 決策 4 keeps the digest and
-   * refuses the bytes), so the only way a conversation can show one is for the
-   * browser that sent it to keep holding the `File`. That is what this is: an
-   * object URL per digest, alive for this page and revoked when it unmounts.
-   * The digest is the key because the server hands it back on the attachment it
-   * just recorded, which is how the two halves find each other.
-   */
-  /**
-   * 挑檔案、貼上、拖進來，三個入口都走這裡：當場檢查、當場說出不能收的理由，而不是
-   * 讓一個 PDF 掛在輸入區上等到送出才被拒絕。被拒絕的那一次連 DOM 的 value 一起清，
-   * 否則下一次選同一個檔案不會觸發 `change`（與 `clearFile` 同一個理由）。
-   */
   const chooseFile = (picked?: File) => {
     if (!picked) return;
     const problem = diagramProblem(picked);
@@ -494,9 +396,6 @@ export function CreationSession() {
     const held = thumbs.current;
     return () => held.forEach((url) => URL.revokeObjectURL(url));
   }, []);
-  // The picture that is in the composer but not sent yet. ChatGPT shows it, and
-  // the reason is not decoration: it is the only confirmation that the file the
-  // person picked is the file they meant.
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : undefined), [file]);
   useEffect(
     () => () => {
@@ -518,10 +417,6 @@ export function CreationSession() {
     queryFn: getCreationLimits,
     retry: false,
   });
-  // ADR-069 / `05` R-71: the step stream stands the poll down, and only while
-  // it is actually delivering. `streaming` is set by the connection itself
-  // (open/error), never assumed — every way an SSE connection fails is silent,
-  // so the poll below is the floor and the stream is the improvement on top.
   const [streaming, setStreaming] = useState(false);
   const current = useQuery({
     queryKey: ["creation-session", id],
@@ -533,12 +428,6 @@ export function CreationSession() {
   });
   useEffect(() => {
     if (!id) return;
-    // Deliberately not gated on the current state: a session that is
-    // `waiting_input` when this mounts becomes `queued` the moment the person
-    // sends something, and a stream opened only for the busy states would miss
-    // exactly the transition it exists to deliver. The server closes the
-    // connection itself once the session is terminal (creation_stream.go), so
-    // the ending is its decision, not a guess made here.
     return streamCreationSession(
       id,
       (s) => client.setQueryData(["creation-session", id], s),
@@ -547,19 +436,12 @@ export function CreationSession() {
   }, [id, client]);
   const session = current.data,
     p = session?.snapshot;
-  // CRED-001 (ADR-068)'s gate ① applies only to STARTING a new session — an
-  // already-running one already reserved its budget, so `!session` gates it
-  // the same way the budget choice in the top bar is only asked once.
-  // `credits.data` is undefined while loading and on every deployment today
-  // (the route is not mounted yet, see api/credits.ts), which must read as
-  // "nothing to show", never as blocked (04 乙-2's rule, applied here too).
   const credits = useCredits();
   const creditsBlocked = !session && !!credits.data && !credits.data.can_start;
   const runs = useRuns(p?.candidate?.test_case_id, Boolean(p?.candidate?.test_case_id));
   const latest = runs.data?.pages[0]?.runs.find((r) => TERMINAL_RUN_STATUSES.has(r.status));
   const run = p?.candidate?.run_id ? findRunObservation(p.messages, p.candidate.run_id) : undefined;
   const roundTimeline = p ? buildRoundTimeline(p.messages) : [];
-  // 「再送一次上一句」要送的那一句：對話裡最後一則由人說的話。
   const lastSaid = [...(p?.messages ?? [])].reverse().find((m) => m.role === "user")?.content ?? "";
   const runNotPassing =
     !!run && (run.execution_status !== "succeeded" || run.evaluation?.overall !== "met");
@@ -569,13 +451,6 @@ export function CreationSession() {
   const choices = limits.data
     ? budgetChoices(limits.data.min_budget_usd, limits.data.max_budget_usd)
     : [];
-  /*
-   * 2026-09-10（負責人）：「如果希望先有預算再進行對話，也是可以；你就先凍結 ChatUI
-   * 的對話輸入框和類 Submit 按鈕。」所以預算沒有預設值：右上角選一個檔位之前，
-   * 輸入框、附件與送出鍵都凍結，輸入框的 placeholder 說為什麼。§2.2「授權是一次
-   * 阻斷式的決定」照字面成立——選那一下就是那個決定；選項只有平台範圍裡的檔位，
-   * 不必猜數字，也不可能超出範圍。
-   */
   const budgetUSD = Number(budget) || undefined;
   const frozen = !session && (budgetUSD === undefined || creditsBlocked);
   const save = (value: Session) => {
@@ -636,23 +511,10 @@ export function CreationSession() {
     }
     await perform("raise_budget", { budget_usd: amount });
   };
-  /**
-   * 讓最新的一則留在視線裡——**但只在你本來就在底下的時候**。
-   *
-   * 這是聊天介面的通則（見 2026-09-09 那批的來源）：捲上去看前面幾輪的人，不該被
-   * 新到的訊息拉回底部。所以捲動時記下「現在算不算在底下」，而只有那個答案是「算」
-   * 的時候，訊息數變多才把錨點捲進來。200px 是那個「算在底下」的寬容值。
-   *
-   * `scrollIntoView?.()` 的問號不是防衛式寫法：jsdom 沒有實作它，而這個元件在
-   * jsdom 裡被測。
-   */
   const bottom = useRef<HTMLDivElement>(null);
   const stream = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   useEffect(() => {
-    // 2026-09-09：捲的是對話那一格，不再是整份文件（`.creation-shell`）。
-    // 兩件事因此要一起改：監聽掛在那一格上，而「算不算在底下」用它自己的
-    // `scrollTop`／`clientHeight`／`scrollHeight`。200px 的寬容值沒有動。
     const el = stream.current;
     if (!el) return;
     const onScroll = () => {
@@ -664,10 +526,9 @@ export function CreationSession() {
   const messageCount = p?.messages.length ?? 0;
   useEffect(() => {
     if (messageCount === 0 || !atBottom.current) return;
+    // scrollIntoView can land short on the render where the container's own
+    // height just changed; setting scrollTop directly is the reliable fallback.
     bottom.current?.scrollIntoView?.({ block: "nearest" });
-    // `scrollIntoView` 在對話那一格剛拿到高度的那一次算繪上不一定捲得到底（它算的
-    // 是當下的版面，而高度是同一批 effect 裡才定下來的）。直接指定 `scrollTop` 是
-    // 同一件事的下限，兩個都做，所以「打開就看到最新的那一則」不靠時序。
     const el = stream.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messageCount]);
@@ -675,21 +536,6 @@ export function CreationSession() {
     setBusy(true);
     setError(undefined);
     try {
-      /*
-       * 素材種類由輸入區的內容推出來，不再由一組 radio 先選（2026-09-08）。
-       *
-       * ── 稍晚同日：文字不再算「另一種素材」 ──────────────────────────────
-       * 這裡本來擋下「圖＋文字」並叫人分兩次送。那不是版面選擇，是後端當時的形狀：
-       * `diagram` 與 `select_references` 兩個 action 不收 `message`。**現在收了**
-       * （creation.go 的 `attachNote`），所以圖或參考可以帶著那句話一起送——而那正
-       * 是人本來就會做的事：「這是我的流程，我想把它變成一個 Skill」。
-       *
-       * 還擋著的只剩「圖＋參考」：那真的是兩個 kind，一次呼叫帶不了兩個，而送完一輪
-       * 就進 working、下一個 action 要等新的 revision。所以這裡擋下來並說出順序，而
-       * 不是連送兩次然後第二次撞 409。
-       */
-      // 做錯的動作由 toast 當場說（2026-09-10 負責人）：送出鍵不因為這三種情況停用，
-      // 按下去就得到一句話說清楚。擋在這裡不等於這裡是強制者——Go 與契約各檢一次。
       const note = message.trim();
       const mode = file ? "diagram" : refs.length > 0 ? "references" : "message";
       if (!file && refs.length === 0 && !note)
@@ -727,14 +573,8 @@ export function CreationSession() {
         await send(value, "message", { message });
         setMessage("");
       }
-      // 送出成功之後，這一輪放進輸入區的東西全部清掉——三種素材都是。
-      // 參考 Skill 本來沒有清：留下來的 chip 會被下一次的守門讀成「你又挑了參考」，
-      // 於是你想補一句話卻被擋，而錯誤訊息叫你去做你剛剛做完的事。
       if (mode === "diagram") {
         const next = await send(value, "diagram", { diagram, ...(note ? { message: note } : {}) });
-        // Hold on to the picture we just sent, keyed by the digest the server
-        // recorded for it: that is the join between the turn in the history and
-        // the only copy of the image that exists on this side.
         const recorded = next.snapshot.attachments ?? [];
         const mine = recorded[recorded.length - 1];
         if (mine && file) thumbs.current.set(mine.sha256, URL.createObjectURL(file));
@@ -755,13 +595,6 @@ export function CreationSession() {
       setBusy(false);
     }
   };
-  /*
-   * 錯誤與做錯動作的回應是一則 toast（2026-09-10 負責人：「這些內容可以使用 toastr
-   * 去顯示，不應該一開始就顯示在畫面上」）。它原本插在對話區頂端，而對話區自己捲、
-   * 會自動捲到底——長一點的對話裡那一句根本不在畫面上。toast 固定在視窗上，不隨
-   * 捲動消失；它停到你關掉或下一個動作開始為止，不自己計時消失（錯誤不該在人讀完
-   * 之前走掉）。
-   */
   const failure = !!error && (
     <ReadFailure error={error} what="互動創作">
       <p role="alert">
@@ -776,23 +609,7 @@ export function CreationSession() {
     </ReadFailure>
   );
   return (
-    /* ── 2026-09-09：這一頁從一份會長高的文件變成一個對話視窗 ──────────────
-       負責人第四次講同一件事：「不論是否有開費用，我都應該看到的像是 ChatGPT 的
-       Chatbot UI」。在這之前每一輪修的都是**這一頁裡的東西**（氣泡、輸入區、等待
-       中的那一則），而形狀始終是文件：整頁一起捲，輸入區在文件的最底下——對話越
-       長，要打字就要先捲越遠。
-       這裡改的是形狀：`.creation-shell` 是一欄，會話那幾行在上面不動，**對話與它
-       產出的東西自己捲**（`.creation-stream`），輸入區永遠在最下面看得到。
-       這是全 app 第一個、也刻意只有這一個滿高度的畫面——其餘十七條路由仍然是文件
-       捲動，理由見 `system.md` §4.5 的那一列。 */
     <div className="creation-shell">
-      {/* ── 頂部工具列：固定高度，不參與捲動 ─────────────────────────────────
-          這一列裝的是「這場創作是什麼」與「它花了多少」，一列講完。**費用與步數
-          不折**（§2.10 與 §2.12 第 4 條：會擋住人的上限要在人撞上之前看得到），
-          期限、工具次數、仍占用的預算與「提高預算上限」那個表單折進右邊那顆
-          `<details>`——那些是低頻設定與推導，不是判斷依據。
-          出口（← 回到我的 Skill）從 `pages/CreateSkill.tsx` 搬進這一列，因為它
-          屬於這一列；旗標關著的那一半仍然由那一頁自己出一條。 */}
       <div className="creation-bar">
         <nav aria-label="離開這一頁">
           <Link to="/workspace/skills">← 回到我的 Skill</Link>
@@ -880,10 +697,6 @@ export function CreationSession() {
             </div>
           </details>
         )}
-        {/* 右上角：預算上限（2026-09-10 負責人同意的位置）。會話開始之後這一格換成
-            「預算與詳情」，一樣在最右邊——`.creation-bar > :last-child` 把它推過去。
-            餘額與這一場的估計（CRED-001）是費用，§2.10 不折，所以跟著預算坐在同一格，
-            而不是一段說明。 */}
         {!session && choices.length > 0 && (
           <label className="creation-picker">
             預算上限
@@ -918,16 +731,9 @@ export function CreationSession() {
           </label>
         )}
       </div>
-      {/* ── 中央：唯一一條捲軸 ───────────────────────────────────────────────
-          對話與它產出的東西都在這裡面，寬度 768px 置中（`.creation-feed`）。
-          `ref` 是捲動判斷的來源：「新的一則到了要不要把你拉到底」問的是這一格的
-          `scrollTop`，不再是整份文件的 `scrollY`。 */}
       <div className="creation-stream" ref={stream}>
         <div className="creation-feed">
           <ReadFailure error={sessions.error ?? current.error} what="創作紀錄" />
-          {/* 2026-09-10：Agent 的第一句話，一句就好（負責人：「不需要這麼大量的警告標語
-              或是內容描述」）。**這一句是寫死的，不是模型說的**：它不在 `role="log"`
-              裡、不花錢，會話一開始就被真正的對話紀錄取代。 */}
           {!p && (
             <ol className="creation-log">
               <li data-role="assistant">
@@ -941,29 +747,12 @@ export function CreationSession() {
 
           {p && (
             <>
-              {/* 2026-09-08：這裡本來是一個編號 `<ol>`，每一列前面掛「你：」。多輪的
-                流程一直都在，但**對話這個介面從來沒有被畫過**。角色從行內粗體變成
-                訊息上方的標籤，列變成訊息塊，樣式全在 `index.css` 的 `.creation-log`
-                （沒有新 token、沒有新字級）。編號拿掉了：對話不是編號清單。 */}
-              {/* ── 2026-09-09：圖片進入對話 ────────────────────────────────
-                在這之前圖片只在畫面別處留下一句「已附上流程圖」：**你送出去的東西，
-                對話裡看不到**。現在它坐在它所屬的那一輪裡——打了字就在你那則訊息
-                下面，沒打字就自成一塊，位置由 `message_index` 決定而不是由這裡猜。
-                第二次上傳不再蓋掉第一次：`attachments` 是清單，`diagram_*` 三個
-                欄位仍然是「最新那一張」給模型與 materialize 用。 */}
-              {/* `role="log"` 是聊天視窗的那個角色：它隱含 `aria-live="polite"`，所以
-                新到的一則會被念出來、而且是排隊念不是打斷。**掛在外面的 `<div>` 而不是
-                `<ol>` 上**：角色會取代元素本來的語意，掛在清單上會讓底下的 `<li>` 變成
-                沒有清單的清單項。名字是必要的——有名字的即時區域，螢幕閱讀器會先說出
-                它是哪一區。 */}
               <div role="log" aria-label="與 Agent 的對話">
                 <ol className="creation-log">
                   {p.messages.map((m, i) => {
                     const here = (p.attachments ?? []).filter((a) => a.message_index === i);
                     return (
                       <Fragment key={i}>
-                        {/* 沒有文字的上傳落在「下一則訊息」的索引上，所以那一則不是你的
-                        話時，圖自己是一塊——它確實發生在這兩輪之間。 */}
                         {m.role !== "user" && here.length > 0 && (
                           <li data-role="user">
                             <span className="creation-who">你</span>
@@ -974,14 +763,6 @@ export function CreationSession() {
                           <span className="creation-who">
                             {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
                           </span>
-                          {/* 三種角色三種算繪，而分界是信任而不是外觀（`05` R-70，
-                            2026-09-09 簽署）。`assistant` 得到白名單裡的標記；
-                            `user` 是自己打的字，維持純文字；`tool` 走
-                            ToolObservation，**而且它裡面的字一律是文字**——`fetch`
-                            那種訊息裝的是抓回來的整頁網頁，是攻擊者直接寫的，不必
-                            先騙過模型，所以它是這三種裡最不可信的一種。
-                            換行仍然是內容的一部分（`04` 丙-207）：兩條路徑都靠
-                            `white-space: pre-wrap` 留住它。 */}
                           {m.role === "tool" ? (
                             <ToolObservation raw={m.content} />
                           ) : m.role === "assistant" ? (
@@ -992,12 +773,6 @@ export function CreationSession() {
                           {m.role === "user" && here.length > 0 && (
                             <Attachments list={here} thumbs={thumbs.current} />
                           )}
-                          {/* 這一輪壞掉時，能做的事就長在這一輪上（2026-09-09）。
-                              在這之前「取消這次創作」孤零零掛在對話外面，而失敗那則
-                              訊息本身沒有任何出路——讀完那句話的人不知道下一步。
-                              「再送一次上一句」說的是它真的做的事：平台沒有 retry
-                              這個 action，而停在 `failed` 的會話仍然收 `message`，
-                              所以按鈕的字不是會讓人以為系統自己重跑的「重試」。 */}
                           {session?.state === "failed" &&
                             m.role === "assistant" &&
                             i === p.messages.length - 1 && (
@@ -1023,7 +798,6 @@ export function CreationSession() {
                       </Fragment>
                     );
                   })}
-                  {/* 剛送出、模型還沒回話的那一張。 */}
                   {(p.attachments ?? []).some((a) => a.message_index >= p.messages.length) && (
                     <li data-role="user">
                       <span className="creation-who">你</span>
@@ -1035,37 +809,14 @@ export function CreationSession() {
                       />
                     </li>
                   )}
-                  {/* ── 2026-09-09：等待中的那一則坐在對話的最後 ────────────────
-                    在這之前，等待中的四件事散在畫面上四個地方：狀態那一行（在哪一
-                    步）、一句 `note`（可以關掉這一頁、上次更新多久前）、一顆「停止
-                    這一步」，以及輸入區底下那一句。四處都在頁面上半部或最底下，而
-                    人在等的時候看的是**對話的最後一則**，而狀態那一行在對話**上面**：
-                    1280 下實測，只有兩輪對話時它就已經在 335px 以外，而對話只會變長。
-                    這一則把 §2.12 第 2、3 條要的東西收在同一個地方：**在哪一步**、
-                    **會不會自己結束**、**能不能離開**，加上一個會變的量（上次更新
-                    多久前，`current` 每秒重抓一次）。停止也在這裡——那顆按鈕要停的
-                    就是這一則講的這一步。
-                    `data-role="assistant"` 因為說話的是 Agent 那一側；沒有新的樣式，
-                    它就是一則 Agent 訊息的樣子，而內容自己說得出它還沒說完。 */}
                   {working && p && (
                     <li data-role="assistant" data-pending="">
                       <span className="creation-who">Agent</span>
                       <span className="creation-text">{stepDescription(p)}</span>
                       <p className="note">
                         這一步會自己結束。可以關掉這一頁，回來時從「恢復創作」繼續；上次更新{" "}
-                        {/* This clock is only as truthful as the freshest state
-                          this page has, and since ADR-069 that arrives two ways:
-                          the SSE stream pushes each revision as Go commits it,
-                          and the 1s poll (refetchInterval above) is the floor
-                          underneath it for every browser and proxy the stream
-                          does not survive. Either way the cadence is at least as
-                          fast as the one InFlight.tsx uses to justify its own
-                          `relative` Timestamp — see InFlight.tsx. */}
                         <Timestamp at={session.updated_at} relative />
                       </p>
-                      {/* 停止這一步，而不是整場（`04` 丙-203）。`disabled={busy}` 而不是
-                        `locked`：`locked` 把 working 也算進去，而這顆按鈕存在的理由就是
-                        working。刻意不是 `.action`——停止不是這一頁要人做的那件事。 */}
                       <button
                         type="button"
                         disabled={busy}
@@ -1076,7 +827,6 @@ export function CreationSession() {
                     </li>
                   )}
                 </ol>
-                {/* 捲動的錨點：新的一則到了，如果你本來就在底下，就把這裡捲進視線。 */}
                 <div ref={bottom} />
               </div>
               {roundTimeline.length > 0 && (
@@ -1142,8 +892,6 @@ export function CreationSession() {
                   )}
                 </section>
               )}
-              {/* 「收到了沒有」現在由對話自己回答（圖坐在它所屬的那一輪裡），所以這裡
-                只剩對話說不出口的那一件：圖收到了、但那一步中斷、理解沒生出來。 */}
               {session?.state === "needs_reupload" && (
                 <p>這一步中斷了，Agent 沒能讀出那張圖；請在下面重新上傳同一張。</p>
               )}
@@ -1444,11 +1192,6 @@ export function CreationSession() {
                         {!p.candidate?.run_id && "這份草稿尚未試跑。"}
                         {runNotPassing && "試跑未通過或未評估；保存前請確認。"}
                       </p>
-                      {/* 這一頁唯一的填色主要動作（設計 §4.6.3，2026-09-09 入表）。
-                        判準是「完成這一頁的工作的那一個」，而這一頁的工作是把一個
-                        Skill 做出來並收進工作區——保存就是那一下。在這之前它與同畫面
-                        的十顆按鈕同框，於是「送出」「取消」「停止這一步」和「保存」
-                        看起來一樣重。填色只有這一顆，`rendered.spec.ts` 數的就是它。 */}
                       <button
                         className="action"
                         disabled={locked || p.draft.blocked || !p.draft.content_hash}
@@ -1467,8 +1210,6 @@ export function CreationSession() {
                   )}
                 </section>
               )}
-              {/* 失敗那一輪自己帶著「取消這次創作」（上面的 `turn-actions`），
-                  所以這裡不再出第二顆——§2.13：同一句話一頁講一次。 */}
               {!terminal && session?.state !== "failed" && (
                 <button disabled={busy} onClick={() => void perform("cancel")}>
                   取消這次創作
@@ -1478,29 +1219,7 @@ export function CreationSession() {
           )}
         </div>
       </div>
-      {/* ── 2026-09-08：輸入區在對話下面 ────────────────────────────────────
-          在這之前它在對話紀錄**上面**：你得先打字，捲下去才看得到剛才講了什麼。
-          對話介面的順序是「先看說了什麼，再說下一句」。 */}
       {!terminal && (
-        /*
-         * ── 2026-09-08：三個入口收成一個輸入區 ──────────────────────────────
-         * 在這之前這裡是一組 radio（自然語言／流程圖／目錄參考）＋ 三個互斥的欄位：
-         * 要附流程圖得先切換模式，切過去文字框就不見了。負責人的話：「不應該是拆開
-         * 來多個 UI 項目」——對，這三個不是三種模式，是同一件事的三種素材。
-         *
-         * 現在文字框永遠在，底下一列是附加動作；**素材種類由你放了什麼推出來**，
-         * 不再由你先選。`mode` 這個 state 因此消失。
-         *
-         * **一次只送一種，這一條不是版面選擇**：平台的 action 是 `message`／
-         * `diagram`／`select_references` 三個不同的 kind，一次呼叫只帶一個，而送完
-         * 一輪會話就進 working、下一個 action 要等新的 revision。所以同時放了兩種
-         * 素材時這裡擋下來並說清楚順序，而不是假裝送得出去然後失敗。
-         */
-        /*
-         * ── 2026-09-09：鍵盤、剪貼簿、拖放 ─────────────────────────────────
-         * 三件都是聊天介面的通則，這裡在此之前一件都沒有：送出只能用滑鼠點按鈕，
-         * 圖只能經由檔案對話框。**貼上尤其重要**——流程圖多半是一張截圖。
-         */
         <div className="composer-dock">
           <div
             className="composer"
@@ -1517,16 +1236,7 @@ export function CreationSession() {
               if (!locked) chooseFile(e.dataTransfer.files[0]);
             }}
           >
-            {/* 2026-09-09：看得見的那個標籤拿掉了。它寫的字與 `aria-label` 逐字相同，
-              而 placeholder 已經說出要寫什麼——ChatGPT 的輸入框也是這樣。可及名稱
-              一個字都沒有少（`aria-label` 還在，`input("想完成的任務", …)` 那批測試
-              走的就是它）；少掉的是 28px，而這一格現在要跟對話搶高度。 */}
             <label>
-              {/* 沒有 `maxLength`，而且是刻意的：瀏覽器數的是 UTF-16 code unit，
-                伺服器數的是 rune，於是同一段字兩邊的界線不同——而 `maxLength`
-                的執行方式是**無聲截斷**，把人寫的字剪掉卻不說。改成報數（下面
-                那一行）＋送出前一句明話。`GenerateSkill.tsx` 的任務描述早就是
-                這個配方，只有這裡不是。 */}
               <textarea
                 ref={textarea}
                 aria-label="想完成的任務"
@@ -1534,8 +1244,8 @@ export function CreationSession() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => {
-                  // `isComposing`：注音／倉頡選字時按 Enter 是「確定這個字」，不是
-                  // 「送出」。少了這一條，中文使用者每打一個字就送出一次。
+                  // isComposing: an IME's Enter confirms the selected character,
+                  // it doesn't mean submit.
                   if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
                   e.preventDefault();
                   if (!locked && !frozen) void submit();
@@ -1561,9 +1271,6 @@ export function CreationSession() {
               />
             </label>
             <div className="composer-tools">
-              {/* 沒有 `aria-label`：`<label>` 包著這個輸入，可及名稱就是看得見的那五個
-                字。原本掛的 `aria-label="流程圖"` 會蓋掉它，於是語音操作念畫面上的
-                「附一張流程圖」點不到這個控制項（WCAG 2.5.3）。 */}
               <label className="composer-attach">
                 附一張流程圖
                 <input
@@ -1585,8 +1292,6 @@ export function CreationSession() {
               >
                 參考目錄裡的 Skill{refs.length > 0 && `（${refs.length}）`}
               </button>
-              {/* 字數從輸入框底下搬進這一列（2026-09-09）：它本來自己佔一行，而一行
-                在這一格是 24px。`id` 沒有變，`aria-describedby` 仍然指著它。 */}
               <span className="note field-count" id="composer-count">
                 {[...message].length.toLocaleString("zh-TW")} /{" "}
                 {MAX_MESSAGE_RUNES.toLocaleString("zh-TW")} 字
@@ -1602,16 +1307,11 @@ export function CreationSession() {
                 {busy ? "送出中…" : session ? "送出" : "開始創作"}
               </button>
             </div>
-            {/* 每一顆 chip 說的是按下去會發生什麼事（「移除」），不是它代表什麼東西。
-              原本是「流程圖：flow.png ✕」——一個名詞加一個符號，螢幕閱讀器念出來
-              是一份檔名，不是一個動作。 */}
             {(file || refs.length > 0) && (
               <ul className="chip-row">
                 {file && (
                   <li>
                     <button type="button" disabled={locked} onClick={clearFile}>
-                      {/* 縮圖是唯一能回答「我選到的是不是我要的那張」的東西；
-                        `alt=""` 因為右邊那句話已經說出它是什麼了。 */}
                       {preview && <img className="chip-thumb" src={preview} alt="" />}
                       移除流程圖：{file.name}
                     </button>
@@ -1638,7 +1338,6 @@ export function CreationSession() {
                   onToggle={(skillID, name) => {
                     if (refs.some((r) => r.id === skillID))
                       setRefs(refs.filter((r) => r.id !== skillID));
-                    // 第四個原本是無聲地不收——強制了卻不說（§2.2）。
                     else if (refs.length >= 3)
                       setError(new Error("參考 Skill 最多三個；先移除一個再加。"));
                     else setRefs([...refs, { id: skillID, name }]);
@@ -1647,10 +1346,6 @@ export function CreationSession() {
               </div>
             )}
           </div>
-          {/* 上限只給螢幕閱讀器（2026-09-10 負責人：「不應該一開始就顯示在畫面上」）。
-            看得見的那一半改成撞上時的 toast——超過大小、格式不對、第四個參考各有一句；
-            這一句仍然被三個控制項 `aria-describedby` 指著，讀到它們的當下就會念出來。
-            **這是 §2.2 第二向的一個具名例外**，記在 system.md §2.2。 */}
           <span id="composer-limits">
             流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多 4,000,000 位元組（約 3.8 MB）；參考 Skill
             最多三個。

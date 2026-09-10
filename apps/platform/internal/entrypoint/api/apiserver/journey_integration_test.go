@@ -1,18 +1,3 @@
-// QA-001 / RELEASE-002: one test that walks 02 §7 DoD's first journey end to
-// end — intent search, detail, fork, test case, preflight, run, evaluation,
-// packaging, download — through the real route table.
-//
-// Every one of those nine steps already had its own integration test, and this
-// milestone still shipped four returns in a row (TEST-004 had no display, TEST-003
-// no operation, EVAL-011 no handoff, WS-004 no listing). All four were between two
-// steps. A test that exercises stages cannot see a seam by construction, which is
-// why this one is a single linear function with no table and no subtests: the
-// order IS the assertion.
-//
-// The sandbox provider is internal/run/providertest and the judge is an httptest
-// server speaking llm-internal.yaml. Neither isolates nor thinks; what is under
-// test is whether one stage hands the next what it needs. Real isolation is
-// SEC-009's, and it is a deployment-time check.
 package apiserver_test
 
 import (
@@ -31,10 +16,6 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 
-	// --- what the catalogue offers -------------------------------------------
-	// A real import rather than a seeded row: everything downstream reads package
-	// bytes, and a fabricated object key would make packaging answer "unreadable"
-	// and the journey would pass for the wrong reason.
 	curator := a.login(t, "journey-curator")
 	makeCatalog(t, pool, curator.workspaceID)
 	catalogSkill, _ := importFiles(t, a, pool, curator, map[string]string{
@@ -47,13 +28,11 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 
 	traveller := a.login(t, "journey-traveller")
 
-	// --- 1. intent search -----------------------------------------------------
 	results := traveller.search(t, "/api/skills/search?q=remove+duplicate+rows")
 	if !contains(results.ids(), catalogSkill) {
 		t.Fatalf("the catalogue skill is not findable by intent: %v", results.ids())
 	}
 
-	// --- 2. detail ------------------------------------------------------------
 	var detail struct {
 		SkillID string `json:"skill_id"`
 		Name    string `json:"name"`
@@ -69,9 +48,6 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 		t.Fatalf("the detail page is a different skill: %+v", detail)
 	}
 
-	// --- 3. fork --------------------------------------------------------------
-	// The seam the search and detail pages hand across is the skill id, and this is
-	// the first step that writes anything into the traveller's own workspace.
 	code, forked := postJSON(t, traveller, "/skills/"+catalogSkill+"/fork", `{}`)
 	if code != http.StatusCreated {
 		t.Fatalf("POST fork: got %d, body %v", code, forked)
@@ -82,7 +58,6 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 	}
 	forkVersionID := latestVersionID(t, pool, forkID)
 
-	// --- 4. a test case of one's own -----------------------------------------
 	code, testCase := postJSON(t, traveller, "/test-cases",
 		`{"skill_id":"`+forkID+`","name":"dedupe the ledger",`+
 			`"user_prompt":"remove the duplicate rows from the attached ledger"}`)
@@ -93,18 +68,13 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 	if testCaseID == "" {
 		t.Fatalf("the test case has no id: %v", testCase)
 	}
-	// An acceptance criterion, because a run with none is `undetermined` by
-	// construction and never reaches the judge (EVAL-001). The journey's evaluation
-	// step would then pass while proving nothing.
+
 	code, withCriterion := postJSON(t, traveller, "/test-cases/"+testCaseID+"/criteria",
 		`{"text":"the duplicate rows are gone"}`)
 	if code != http.StatusCreated {
 		t.Fatalf("POST criterion: got %d, body %v", code, withCriterion)
 	}
-	// The criterion id is the server's, not a literal: the snapshot the judge is
-	// asked about is frozen from this row, and a verdict naming an id that is not in
-	// it comes back `undetermined` — which is itself a seam, and one this test found
-	// the first time it ran.
+
 	criteria, _ := withCriterion["acceptance_criteria"].([]any)
 	if len(criteria) != 1 {
 		t.Fatalf("the test case has %d criteria: %v", len(criteria), withCriterion)
@@ -114,11 +84,6 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 		t.Fatalf("the criterion has no id: %v", criteria[0])
 	}
 
-	// --- 5. preflight, then the run ------------------------------------------
-	// The gate of 02:TEST-005: read what the run may touch, agree to it, and only
-	// then create the run. The confirmed hash is the seam — a run created without
-	// the hash the preflight actually produced is refused, and that refusal is what
-	// makes the screen more than decoration.
 	f := fixture{client: traveller, skillID: forkID, versionID: forkVersionID, testCaseID: testCaseID}
 
 	judge := judgeServer(t, llmclient.JudgeVerdict{
@@ -130,24 +95,18 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 		},
 		Overall: "met", Summary: "the duplicates were removed",
 	}, "judge-run@2026-08-18")
-	// Wired the way cmd/worker wires it, so the evaluation the run enqueues is the
-	// one that runs. Without the judge the worker records a failed evaluation, which
-	// is honest and is not a verdict.
+
 	evaluator := *a.evaluations
 	evaluator.Judge = judge
 	withProvider(t, a, pool, providertest.Plan{CreatingPolls: 1, RunningPolls: 1}, &evaluator)
 
 	created := f.start(t)
 	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
-	// ADR-025, and the reason this line is here rather than in the evaluation
-	// section: `succeeded` is execution, not a task verdict, and a journey test is
-	// exactly where somebody would be tempted to treat it as the finish line.
+
 	if final.CleanupStatus.Label == "" {
 		t.Error("the run reports no cleanup state")
 	}
 
-	// The seam only a journey sees: the run just created is in the workspace's
-	// history, addressed by the same platform run_id the create call returned.
 	var inHistory bool
 	for _, r := range traveller.listRuns(t) {
 		if r.RunID == created.RunID {
@@ -161,11 +120,6 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 		t.Errorf("run %s finished and is not in the workspace's history", created.RunID)
 	}
 
-	// --- 6. the evaluation ----------------------------------------------------
-	// The judge needs something to quote, and in a real run the harness emits it.
-	// Seeded here because the fake provider produces no trace: what this step is
-	// testing is that a finished run reaches a verdict through the queue, not what
-	// a sandbox writes.
 	seedFinalOutput(t, pool, traveller.workspaceID, created.RunID,
 		"Removed the duplicate rows and saved the result.")
 	if err := evaluator.Evaluate(t.Context(),
@@ -179,17 +133,12 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 	if evaluation.Status != "completed" || evaluation.Overall != "met" {
 		t.Fatalf("evaluation status=%q overall=%q", evaluation.Status, evaluation.Overall)
 	}
-	// ADR-025's separation, asserted where it is easiest to lose: two resources,
-	// two facts, and reading the verdict must not have moved the run.
+
 	if after := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded)); after.Status !=
 		final.Status {
 		t.Errorf("the evaluation moved the run from %q to %q", final.Status, after.Status)
 	}
 
-	// --- 7. packaging ---------------------------------------------------------
-	// The seam here is the licensing verdict: the fork carries the catalogue's
-	// `redistribution`, and without that this step would refuse with
-	// `license_unknown` (04 M4-2's own reasoning, exercised for real).
 	var preview struct {
 		Allowed       bool   `json:"allowed"`
 		BlockedReason string `json:"blocked_reason"`
@@ -208,13 +157,11 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 	}
 	artifactID, _ := built["artifact_id"].(string)
 
-	// --- 8. the download ------------------------------------------------------
 	resp, data := traveller.fetchContent(t, artifactID)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET download content: got %d", resp.StatusCode)
 	}
-	// The journey ends with bytes on the user's disk, so it ends with an assertion
-	// about those bytes rather than about the response code.
+
 	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
 		t.Fatalf("what the journey handed the user is not an openable package: %v", err)
@@ -230,16 +177,12 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 	if err := json.Unmarshal(readFromZip(t, data, "skillhub-manifest.json"), &manifest); err != nil {
 		t.Fatal(err)
 	}
-	// The last seam, and the one nothing else in this journey checks: the package
-	// traces back to the catalogue entry the traveller searched for, three steps and
-	// one fork ago (02:DISC-003 第 5 條).
+
 	origin := manifest["source"].(map[string]any)["origin"].(map[string]any)
 	if origin["kind"] != "fork" || origin["upstream_skill_id"] != catalogSkill {
 		t.Errorf("the downloaded package does not trace back to the catalogue entry: %v", origin)
 	}
 
-	// And the download is recorded where its owner reads it (WS-004), which is the
-	// step 02 §7 DoD's first sentence ends on.
 	var records struct {
 		Records []map[string]any `json:"records"`
 	}

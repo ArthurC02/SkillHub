@@ -1,28 +1,10 @@
 #!/usr/bin/env python3
-"""Seed the curated Test Cases (04 丙-12) into a Skill Hub deployment.
+"""Seed the curated Test Cases into a Skill Hub deployment.
 
-`CONTENT-007` promises every curated Skill an example Dataset, an example User
-Prompt and acceptance criteria, and the five `writing` ones a rubric on top.
-All of that existed only as documents and as a scratch workspace someone built
-by hand in M2 — the platform has never had a path that puts it into a fresh
-deployment. This is that path.
-
-Verification tool, not production code, same as its neighbours here: it drives
-the public HTTP API only (ADR-020 dev login, then the TEST-001..004 endpoints),
-never the database.
-
-**Run it as the catalog curator.** Test cases land in the session's workspace,
-and `internal/skill/delivery` decides "was this produced by platform curation" from
-`workspaces.is_catalog` (PACK-005) — a test case seeded into a personal
-workspace is excluded from every export with `not_curated`. There is no endpoint
-that flips that flag; it is set by SQL when the catalog is built, so the account
-to log in as is whoever owns that workspace.
-
-Nothing here is invented: the prompt template is m2/content-baseline-report.md
-§3, the task sentence is each Skill's own first `task_examples` entry from
-summaries.json, and the rubric is read verbatim from
-tools/eval-regression/rubric-content-007-writing-v1.json. Curated text lives in
-one place per fact; a second copy would drift.
+Every curated Skill gets an example Dataset, an example User Prompt and
+acceptance criteria, and the `writing` ones a rubric on top. Run it as the
+catalog curator: a test case seeded into a personal workspace is excluded
+from every export as `not_curated`.
 
 Usage:
     python seed_testcases.py --api http://localhost:8080 --user catalog-curator
@@ -50,13 +32,8 @@ DATASETS = HERE / "seed-testcases"
 RUBRICS = REPO / "tools" / "eval-regression" / "rubric-content-007-writing-v1.json"
 DEFAULT_API = os.environ.get("SKILLHUB_API", "http://localhost:8080")
 
-# The name a seeded test case carries. It is the idempotency key: this tool owns
-# every test case whose name starts with the prefix and nothing else.
 SLUG_PREFIX = "content-007/"
 
-# m2/content-baseline-report.md §3, verbatim. The two variables are the Skill's
-# name and its own first task-example sentence; nothing is tuned per Skill,
-# because a per-Skill prompt would make the 45 baseline runs incomparable.
 PROMPT_TEMPLATE = """請使用「{name}」這個 Skill 完成以下任務：{task}
 
 執行環境說明：
@@ -65,15 +42,10 @@ PROMPT_TEMPLATE = """請使用「{name}」這個 Skill 完成以下任務：{tas
 2. 所有產出檔案必須寫到 /out/artifacts/ 目錄；寫在其他地方的檔案不會被保存。
 3. 完成後用一行文字說明你產出了哪些檔案。"""
 
-# writing-rubrics.md §3: the fourth rule, added for the `writing` category only.
-# It is not decoration — §2.2 explains that without it the rubric's evidence has
-# no reliable place to appear, and the cost (telling the agent what the judge can
-# see) is accepted there rather than re-argued here.
 WRITING_PROMPT_RULE = """
 4. 最終回覆必須完整貼出這次產出的正文，不能只說明檔名。
    評估只讀得到你的最終回覆與檔案清單，讀不到檔案內容。"""
 
-# m2/content-baseline-report.md §3, the same three for all 45.
 BASELINE_CRITERIA = [
     "trace 中出現對指定 Skill 的 skill_activation 事件。",
     "/out/artifacts/ 至少產出一個檔案。",
@@ -90,8 +62,6 @@ def _load_import_seed():
     spec.loader.exec_module(mod)
     return mod
 
-
-# --- what to seed -----------------------------------------------------------
 
 
 def curated_plan() -> list[dict]:
@@ -124,15 +94,9 @@ def curated_plan() -> list[dict]:
         if name in rubrics["skills"]:
             spec = rubrics["skills"][name]
             entry["user_prompt"] += "\n" + WRITING_PROMPT_RULE.strip("\n")
-            # The rubric's own criteria are appended after the three baseline
-            # ones. writing-rubrics.md §4: the baseline three stay, they are not
-            # replaced — the first two are the rule leg's job and the third is
-            # absorbed by the prompt rule above.
             entry["criteria"] += [c["text"] for c in spec["criteria"]]
             entry["rubric"] = {
                 "version": rubrics["rubric_version"],
-                # Keyed by the curated id for now; resolve_rubric_ids swaps in
-                # the ids the server assigned once the criteria exist.
                 "items": [dict(i) for i in spec["rubric"]["items"]],
                 "_curated_criteria": spec["criteria"],
             }
@@ -143,11 +107,7 @@ def curated_plan() -> list[dict]:
 def resolve_rubric_ids(rubric: dict, created_criteria: list[dict]) -> dict:
     """Repoint rubric item ids at the criterion ids the server assigned.
 
-    A rubric item's `id` is the id of the criterion it strengthens, and criterion
-    ids are minted server-side (they are UUIDs, not the `humanizer-r1` labels the
-    curated file uses). Matching is by criterion *text*, which is exactly what
-    was posted, so a mismatch means the server stored something other than what
-    was sent and must fail loudly rather than seed a rubric that names nothing.
+    Matched by criterion text, since criterion ids are minted server-side.
     """
     by_text = {c["text"]: c["id"] for c in created_criteria}
     curated_by_id = {c["id"]: c["text"] for c in rubric["_curated_criteria"]}
@@ -163,8 +123,6 @@ def resolve_rubric_ids(rubric: dict, created_criteria: list[dict]) -> dict:
         items.append({k: v for k, v in item.items() if k != "id"} | {"id": server_id})
     return {"version": rubric["version"], "items": items}
 
-
-# --- HTTP -------------------------------------------------------------------
 
 
 def multipart(field: str, filename: str, data: bytes) -> tuple[bytes, str]:
@@ -209,8 +167,6 @@ class Client:
             raise SystemExit(f"{method} {path} -> {status}: {body[:300].decode('utf-8', 'replace')}")
         return json.loads(body) if body else {}
 
-
-# --- seeding ----------------------------------------------------------------
 
 
 def seed_one(client: Client, entry: dict, skill_id: str, files: dict[str, bytes]) -> dict:
@@ -259,9 +215,6 @@ def run(args) -> int:
         row = {"skill": name, "rubric_items": len(entry["rubric"]["items"]) if entry["rubric"] else 0}
         skill_id = skills.get(name)
         if skill_id is None:
-            # Deliberately not a fork from the catalog: a fork lands in a personal
-            # workspace, and PACK-005 excludes those from every export. The right
-            # fix is to import the catalog as this account first.
             row["status"] = "skill_absent"
             results.append(row)
             print(f"  {name:<28} skill_absent (run import_seed.py as this user first)")
@@ -270,13 +223,6 @@ def run(args) -> int:
 
         prior = existing.get((skill_id, entry["test_case_name"]))
         if prior and not args.replace:
-            # Idempotency: skip, do not update. Criterion ids are minted by the
-            # server and the rubric points at them, so an in-place update means
-            # reconciling a list whose identity keys this tool does not own — a
-            # second mechanism that can half-apply. --replace deletes and
-            # recreates, which reaches exactly the curated state in one shot.
-            # Skipping also means a curator's later edits are never overwritten
-            # by a re-run of the seeder.
             row["status"] = "exists_skipped"
             row["test_case_id"] = prior
             results.append(row)
@@ -311,8 +257,6 @@ def run(args) -> int:
     return 0 if all(r["status"] != "skill_absent" for r in results) else 1
 
 
-# --- offline checks ---------------------------------------------------------
-
 
 def selftest() -> int:
     plan = curated_plan()
@@ -334,8 +278,6 @@ def selftest() -> int:
         else:
             assert "最終回覆必須完整貼出" not in e["user_prompt"]
 
-    # Rubric ids must be repointed at server-assigned criterion ids, and every
-    # curated item must find its criterion.
     e = next(x for x in plan if x["skill_name"] == "humanizer")
     created = [{"id": f"srv-{i}", "text": t} for i, t in enumerate(e["criteria"])]
     resolved = resolve_rubric_ids(e["rubric"], created)
@@ -345,8 +287,6 @@ def selftest() -> int:
     assert resolved["items"][0]["evidence_required"] is True
     assert "_curated_criteria" not in resolved
 
-    # A criterion the server never stored must fail loudly, not seed a rubric
-    # whose items name nothing.
     try:
         resolve_rubric_ids(e["rubric"], created[:3])
     except SystemExit:
@@ -354,7 +294,6 @@ def selftest() -> int:
     else:
         raise AssertionError("a missing criterion must abort")
 
-    # The datasets must exist and carry no credentials (02:CONTENT-007 clause 4).
     files = {p.name: p.read_bytes() for p in sorted(DATASETS.iterdir()) if p.is_file()}
     assert set(files) == {"data.csv", "draft.md"}, sorted(files)
     for name, data in files.items():

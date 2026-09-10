@@ -20,23 +20,6 @@ import (
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
-// This file is the one place the two id spaces meet.
-//
-// credit keys accounts on the USER (migration 0060: "每個帳號" is the user).
-// Everything that spends carries a WORKSPACE id: creation's job args, the
-// operator grant route's path parameter, this table's handlers. ADR-011 gives
-// each account exactly one personal workspace today, which makes the mapping
-// total but does NOT make the two ids the same value — they are different
-// columns, and passing one where the other belongs would charge the wrong
-// account the day that stops being 1:1.
-//
-// So the resolution happens here, in the composition root, exactly once per
-// seam, through identity.WorkspaceOwner. Neither credit nor creation imports
-// the other, and neither learns about the other's id space (ADR-032 §1's
-// Facts convention, ADR-068's "credit 本身不 import identity").
-
-// creditLedger adapts credit.Service to this table's CreditLedger port,
-// translating workspace ids to the user ids the ledger is keyed on.
 type creditLedger struct {
 	svc   *credit.Service
 	owner func(ctx context.Context, workspaceID pgtype.UUID) (pgtype.UUID, error)
@@ -53,9 +36,6 @@ func (l *creditLedger) Balance(ctx context.Context, workspaceID pgtype.UUID) (in
 	return l.svc.Balance(ctx, userID)
 }
 
-// SessionEstimate reports the interactive-creation window. The threshold it
-// carries is the same one credit.Service.CanStart blocks against — one
-// number, one definition, so the screen and the gate cannot disagree.
 func (l *creditLedger) SessionEstimate(ctx context.Context) (CreditSessionEstimate, error) {
 	est, err := l.svc.Estimate(ctx, credit.KindCreationStep)
 	if err != nil {
@@ -70,17 +50,6 @@ func (l *creditLedger) SessionEstimate(ctx context.Context) (CreditSessionEstima
 	}, nil
 }
 
-// Grant runs the operator's top-up and its audit event in one transaction —
-// credit.Service.Grant writes both, so a granted balance with no audit trail
-// is not a state this can end in (02:SEC-011「誰做的」).
-//
-// The idempotency key is generated per request. That is a deliberate, named
-// limitation rather than an oversight: credit_entries is idempotent on this
-// key, but nothing in the HTTP request identifies a retry, so two identical
-// operator POSTs are two grants. It is the honest shape for MVP — an
-// operator grant is a deliberate act and each one lands in the audit log —
-// and the fix, when a client needs it, is an idempotency key on the request
-// rather than anything in this file.
 func (l *creditLedger) Grant(ctx context.Context, workspaceID pgtype.UUID, amountCredits int64, reason string, actorUserID pgtype.UUID) (int64, error) {
 	userID, err := l.owner(ctx, workspaceID)
 	if err != nil {
@@ -109,12 +78,6 @@ func (l *creditLedger) Grant(ctx context.Context, workspaceID pgtype.UUID, amoun
 	return balance, nil
 }
 
-// newCreditService builds the ledger this deployment charges against.
-//
-// Facts is wired, not left nil: credit.Service treats a nil Facts as "no
-// identity to ask" and skips the account check entirely, which is only
-// acceptable for a composition root that has no identity service. This one
-// has one.
 func newCreditService(pool *pgxpool.Pool, identitySvc *identity.Service) (*credit.Service, error) {
 	cfg, err := credit.ConfigFromEnv()
 	if err != nil {
@@ -133,13 +96,6 @@ func newCreditService(pool *pgxpool.Pool, identitySvc *identity.Service) (*credi
 	}, nil
 }
 
-// wireCreationCredit assigns creation's three gates. Each one resolves the
-// workspace it is handed to the account that pays for it, then asks credit.
-//
-// Left unwired, all three are nil and creation runs exactly as it did before
-// ADR-068 — which is why they must be assigned here rather than defaulted
-// anywhere: a gate that silently does not run is the failure mode 04 乙-2
-// names, one layer down.
 func wireCreationCredit(
 	target *creation.Service,
 	svc *credit.Service,
@@ -168,10 +124,7 @@ func wireCreationCredit(
 		if err != nil {
 			return err
 		}
-		// (session, revision) is the idempotency key ADR-068 decision 5 names:
-		// a Worker retry settling the same revision debits once. It is derived
-		// from the settlement's own identity rather than generated, which is
-		// exactly what the operator grant above cannot do.
+
 		key := fmt.Sprintf("creation:%s:%d", pgconv.UUIDString(sessionID), revision)
 		_, err = svc.Charge(ctx, tx, credit.ChargeInput{
 			Kind:              credit.KindCreationStep,
@@ -187,44 +140,22 @@ func wireCreationCredit(
 	}
 }
 
-// wireCostRecording hands the ledger to the contexts that make paid calls of
-// their own (CRED-005). None of them asks it a question — catalog and ingest
-// only write what a call cost — so this is assignment, not a gate, and a
-// deployment that skipped it degrades to a ledger with holes rather than to a
-// platform that refuses to search or import.
-//
-// The three services are the ones this process actually holds. eval's paid
-// calls all happen in the Worker, which wires its own (worker/credit_wiring.go).
 func wireCostRecording(svc *credit.Service, search *catalog.Service, versions *ingest.Service) {
 	search.Credit = svc
 	versions.Credit = svc
 }
 
-// wireCreditDisplay hands the USD→Credit conversion to the three contexts that
-// put a cost on a screen (丙-231, ADR-068 decision 1).
-//
-// A func rather than the service, and the same func in all three, because two
-// of them may not import credit at all: ADR-032 appendix A has no `run` →
-// `credit` and no `trace` → `credit` row, and depguard denies both. `eval` may
-// import it and still takes the func, so that the three surfaces cannot drift
-// into converting at three rates.
-//
-// One conversion point, not three copies of the arithmetic: this is the same
-// reason GET /me/quota never recomputes PDM-010's counters.
 func wireCreditDisplay(svc *credit.Service, runs *run.Service, traces *trace.Service, evaluations *eval.Service) {
 	runs.Credits = svc.CreditsForUSD
 	traces.Credits = svc.CreditsForUSD
 	evaluations.Credits = svc.CreditsForUSD
 }
 
-// wireRunCredit assigns both Run hooks in every root, so neither process can
-// end up with a nil gate it needed.
 func wireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool) {
 	ids := &identity.Service{Pool: pool}
 
 	target.CreditReserve = func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, reservedUSDMicros int64) (bool, error) {
-		// On the caller's tx: create() holds the workspace lock and may hold the
-		// pool's only connection.
+
 		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
 		if err != nil {
 			return false, err
@@ -238,7 +169,7 @@ func wireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool)
 		}
 		key := "run:" + pgconv.UUIDString(runID)
 		if usdMicros == nil {
-			// No reported spend: record the Run, charge nothing.
+
 			_, _, err := svc.RecordCost(ctx, tx, credit.CostEvent{
 				Kind:           credit.KindRun,
 				Estimated:      true,
@@ -258,7 +189,7 @@ func wireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool)
 			WorkspaceID:       workspaceID,
 			RefType:           credit.RefRun,
 			RefID:             runID,
-			// Cleanup re-runs until the run is `cleaned`; one key keeps it one debit.
+
 			IdempotencyKey: key,
 		})
 		return err

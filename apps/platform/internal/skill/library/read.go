@@ -10,7 +10,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
-// Skill is the Registry-owned shape exposed to bounded-context consumers.
 type Skill struct {
 	ID                  pgtype.UUID
 	WorkspaceID         pgtype.UUID
@@ -21,23 +20,15 @@ type Skill struct {
 	TakedownAt          pgtype.Timestamptz
 	AccessRestriction   *string
 	Redistribution      string
-	// CurationTier is the PDM-002 verdict and CuratedVersionID is the version it
-	// examined (0042). Both travel together on purpose: the verdict alone cannot
-	// say whether it is still about the bytes a reader is looking at.
+
 	CurationTier     string
 	CuratedVersionID pgtype.UUID
-	// Category is the PDM-001 shelf (0053), NULL until somebody classified the
-	// skill. The pointer is the point: 05 R-19 has not decided how a
-	// user-imported skill gets one, so "no category" is a state the read path has
-	// to be able to word (尚未定值) and must not be able to confuse with a shelf.
+
 	Category *string
-	// CategorySource is 0061's provenance column: curated | owner, NULL exactly
-	// when Category is NULL (the migration's pairing CHECK). It travels onto
-	// forks alongside Category, for the same reason Category does — see Fork.
+
 	CategorySource *string
 }
 
-// Version is Registry's immutable version fact.
 type Version struct {
 	ID                pgtype.UUID
 	WorkspaceID       pgtype.UUID
@@ -51,7 +42,6 @@ type Version struct {
 	LicenseSource     *string
 }
 
-// RuntimeCompatibility is the newest measured compatibility for one version.
 type RuntimeCompatibility struct {
 	Capability   string
 	Runtime      string
@@ -76,8 +66,6 @@ type OldestVersion struct {
 	SourceID pgtype.UUID
 }
 
-// SkillByName reads through the caller's transaction so a Skill created earlier
-// in the same import remains visible.
 func SkillByName(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, name string) (Skill, bool, error) {
 	row, err := gen.New(tx).GetSkillByName(ctx, gen.GetSkillByNameParams{
 		WorkspaceID: workspaceID, Name: name,
@@ -91,7 +79,6 @@ func SkillByName(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, name s
 	return skillDTO(row), true, nil
 }
 
-// SkillByID returns a workspace-scoped Skill through the caller's transaction.
 func SkillByID(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (Skill, bool, error) {
 	row, err := gen.New(tx).GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -103,13 +90,6 @@ func SkillByID(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID)
 	return skillDTO(row), true, nil
 }
 
-// VersionByContent returns an existing immutable version in the same
-// transaction used to create a replacement when no duplicate exists.
-//
-// workspaceID is taken even though skill_id already narrows the row to one
-// skill: the query file this reads from states that every read there is
-// workspace scoped, and a read that only happens to be safe because of who
-// calls it today is the cross-tenant read waiting for its second caller.
 func VersionByContent(
 	ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID, contentHash string,
 ) (Version, bool, error) {
@@ -125,7 +105,6 @@ func VersionByContent(
 	return versionDTO(row), true, nil
 }
 
-// CatalogSkill returns only rows whose workspace is public catalog scope.
 func (s *Service) CatalogSkill(ctx context.Context, skillID pgtype.UUID) (Skill, bool, error) {
 	row, err := gen.New(s.Pool).GetCatalogSkill(ctx, skillID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -137,7 +116,6 @@ func (s *Service) CatalogSkill(ctx context.Context, skillID pgtype.UUID) (Skill,
 	return skillDTO(row), true, nil
 }
 
-// WorkspaceSkill returns one live Skill from the caller's workspace.
 func (s *Service) WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtype.UUID) (Skill, bool, error) {
 	row, err := gen.New(s.Pool).GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -149,7 +127,6 @@ func (s *Service) WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtyp
 	return skillDTO(row), true, nil
 }
 
-// LatestVersion returns the newest immutable version under workspace scope.
 func (s *Service) LatestVersion(ctx context.Context, workspaceID, skillID pgtype.UUID) (Version, bool, error) {
 	row, err := gen.New(s.Pool).GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
 		SkillID: skillID, WorkspaceID: workspaceID,
@@ -163,7 +140,6 @@ func (s *Service) LatestVersion(ctx context.Context, workspaceID, skillID pgtype
 	return versionDTO(row), true, nil
 }
 
-// WorkspaceVersion returns one immutable version under workspace scope.
 func (s *Service) WorkspaceVersion(ctx context.Context, workspaceID, versionID pgtype.UUID) (Version, bool, error) {
 	row, err := gen.New(s.Pool).GetSkillVersion(ctx, gen.GetSkillVersionParams{
 		ID: versionID, WorkspaceID: workspaceID,
@@ -177,8 +153,6 @@ func (s *Service) WorkspaceVersion(ctx context.Context, workspaceID, versionID p
 	return versionDTO(row), true, nil
 }
 
-// RuntimeCompatibility returns the newest measurement for an already-scoped
-// version. Absence is the normal "unverified" state.
 func (s *Service) RuntimeCompatibility(ctx context.Context, versionID pgtype.UUID) (RuntimeCompatibility, bool, error) {
 	row, err := gen.New(s.Pool).GetSkillRuntimeCompatibility(ctx, versionID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -208,8 +182,6 @@ func (s *Service) PreviousVersion(
 	return PreviousVersion{ID: row.ID, SkillID: row.SkillID, VersionNumber: row.VersionNumber}, true, nil
 }
 
-// VersionLineage deliberately crosses workspace scope but exposes only lineage
-// identifiers; fork ancestry necessarily lives in another workspace.
 func (s *Service) VersionLineage(ctx context.Context, versionID pgtype.UUID) (LineageStep, bool, error) {
 	row, err := gen.New(s.Pool).GetVersionLineage(ctx, versionID)
 	if errors.Is(err, pgx.ErrNoRows) {

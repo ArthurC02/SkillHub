@@ -1,16 +1,3 @@
-// Runs a command — in practice apps/llm's uvicorn — with LITELLM_API_KEY set
-// to a Virtual Key this launch minted, and with the gateway's master key and
-// the platform's admin key removed from the child's environment.
-//
-//   node tools/cleanmode/with-service-key.mjs -- uv run uvicorn skillhub_llm.app:app
-//
-// Why a wrapper and not a line in start.mjs: apps/llm is not a child of the
-// clean-mode launcher (it is the external service LLM_SERVICE_URL points at),
-// so the place a key can be handed to it is the command that starts it. Every
-// recorded real run before 2026-09-05 started apps/llm with the master key in
-// LITELLM_API_KEY; apps/llm now refuses that (gateway.py, 503), so this is the
-// only way `task dev:llm` still works. The key never touches stdout, a file or
-// a log line — it goes from the gateway's reply into one child's env.
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -47,9 +34,6 @@ if (plan.action === "mint") {
   } catch {
     models = [];
   }
-  // One key, one number. A measurement batch (docs/plans/mvp/m5/creation-measure)
-  // needs more than the 1 USD a dev session gets; the override is explicit and
-  // still a ceiling the gateway enforces, never a fallback to the master key.
   const budgetUsd = Number(process.env.SKILLHUB_SERVICE_KEY_BUDGET_USD || "1.0");
   if (!Number.isFinite(budgetUsd) || budgetUsd <= 0 || budgetUsd > 20) {
     console.error("SKILLHUB_SERVICE_KEY_BUDGET_USD 必須是 0 到 20 之間的數字");
@@ -62,13 +46,9 @@ if (plan.action === "mint") {
       adminKey: deployment.SKILLHUB_MODEL_GATEWAY_KEY,
       models,
       budgetUsd,
-      // The gateway refuses a duplicate alias, so a second key for another
-      // process (a measurement batch beside the running service) names itself.
       alias: process.env.SKILLHUB_SERVICE_KEY_ALIAS || "skillhub-llm-service",
     });
   } catch (err) {
-    // Never fall back to the master key: that is the deployment defect this
-    // wrapper exists to end. No key at all is a 503 the operator can read.
     console.error(`${err.message}；apps/llm 不會拿 master key 啟動（${plan.reason}）`);
     process.exit(1);
   }

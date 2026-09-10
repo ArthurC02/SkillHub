@@ -1,9 +1,3 @@
-// Pre-run permission summary and its confirmation (02:TEST-005 / 03:TEST-008,009),
-// plus the acceptance-criteria suggestions of 03:TEST-002.
-//
-// They live in apiserver_test with the rest of the database-backed HTTP tests so
-// they serve apiserver.NewRouter's real table rather than a copy — see
-// authz_integration_test.go for the helpers (TestMain, migrate, login) they reuse.
 package apiserver_test
 
 import (
@@ -20,8 +14,6 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
-
-// --- helpers -----------------------------------------------------------------
 
 type preflightView struct {
 	Summary struct {
@@ -79,8 +71,6 @@ func (f fixture) confirm(t *testing.T, hash string) (int, map[string]any) {
 			f.versionID, f.testCaseID, hash))
 }
 
-// confirmPermissions is the happy path every run test goes through: read the
-// summary, agree to it, keep the hash for the run request.
 func (f fixture) confirmPermissions(t *testing.T) string {
 	t.Helper()
 	code, view := f.preflight(t)
@@ -100,14 +90,6 @@ func (f fixture) startWithHash(t *testing.T, hash string) (int, runView) {
 			`","confirmed_summary_hash":"`+hash+`"}`)
 }
 
-// The other half of the pairing above: with a gateway configured the summary
-// names both secrets, and names ONLY their names.
-//
-// Split from the test above rather than folded into it because the two cases
-// assert opposite things about the same field, and the deployment-shaped
-// difference between them (a gateway, therefore a grant) is the whole point.
-// Iron rule 11: a Virtual Key is minted per attempt at dispatch and has no
-// business in a screen the user reads before the run exists.
 func TestPreflightNamesTheInjectedSecretsAndNeverTheirValues(t *testing.T) {
 	pool := requireDB(t)
 	t.Setenv("SKILLHUB_MODEL_GATEWAY_URL", "http://gateway.invalid:4000")
@@ -136,17 +118,12 @@ func TestPreflightNamesTheInjectedSecretsAndNeverTheirValues(t *testing.T) {
 			t.Errorf("the summary carries a value for %s, not just its name", name)
 		}
 	}
-	// The master key this test set. If it ever reaches the summary the run's own
-	// key would too, and this is the screen a user reads before anything exists.
+
 	if strings.Contains(string(raw), "sk-not-a-real-key-for-this-test") {
 		t.Error("the deployment's gateway key reached the pre-run summary")
 	}
 }
 
-// --- TEST-008: the summary itself --------------------------------------------
-
-// Every item 02:TEST-005 requires to be shown before a run: Dataset, Script,
-// tools, MCP, network, Secrets, Provider and resource limits.
 func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -168,32 +145,21 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	if s.DatasetTotalBytes != 512 {
 		t.Errorf("dataset_total_bytes = %d, want 512", s.DatasetTotalBytes)
 	}
-	// newFixture seeds a clean package, so the scan ran and found nothing. The
-	// `unavailable` answer — scanned nothing, claimed nothing — has its own test
-	// below, together with the gate that refuses to run on it.
+
 	if s.Scripts.Status != "none" {
 		t.Errorf("script status for a clean package = %q, want none", s.Scripts.Status)
 	}
 	if len(s.Tools) == 0 {
 		t.Error("no tool disclosure at all")
 	}
-	// MVP has no MCP. The field is present and empty — shown honestly, not omitted
-	// so that the question looks unasked.
+
 	if s.MCPServers == nil || len(s.MCPServers) != 0 {
 		t.Errorf("mcp_servers = %v, want an empty list", s.MCPServers)
 	}
 	if s.Network.Mode != "default_deny" || len(s.Network.Allow) != 0 {
 		t.Errorf("network = %+v, want default_deny with an empty allow list", s.Network)
 	}
-	// This deployment has no model gateway — the empty allow list two lines up is
-	// the same fact — so nothing is injected, and the disclosure says so.
-	//
-	// This assertion used to be `len(s.InjectedSecrets) == 0 -> Fatal`, i.e. it
-	// REQUIRED the summary to name two secrets on a deployment it had just
-	// asserted has no egress at all. The list was a constant, and the test
-	// encoded the constant rather than the property (04 丙-104). The pairing is
-	// the property: secrets are named when, and only when, the grant that carries
-	// them exists.
+
 	if len(s.InjectedSecrets) != 0 {
 		t.Errorf("no gateway grant, so nothing is injected, but the summary names %v", s.InjectedSecrets)
 	}
@@ -207,8 +173,7 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	if s.Provider.Name != "unassigned" {
 		t.Errorf("provider on a fleet-less deployment = %q, want unassigned", s.Provider.Name)
 	}
-	// The resource values shown are the ones the scheduler will actually enforce
-	// (PDM-005 §5.2), not a second copy that can drift.
+
 	if s.ResourceLimits != run.DefaultResourceLimits() {
 		t.Errorf("resource limits shown = %+v, want DefaultResourceLimits", s.ResourceLimits)
 	}
@@ -218,11 +183,7 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	if view.Hash == "" {
 		t.Error("the summary has no hash to confirm")
 	}
-	// PDM-005 §5.3: the estimated cost, and §5.2a-6: as a range, because prompt
-	// caching makes a first run and a repeat differ by roughly 8x.
-	// 丙-231 / ADR-068 decision 1: the range is in Credit, and the screen shows
-	// no other unit. A zero low end would read as 「有些 Run 不用點」, which is
-	// not what the baseline says, so the floor is checked too.
+
 	if view.EstimatedCost.LowCredits <= 0 || view.EstimatedCost.HighCredits <= view.EstimatedCost.LowCredits {
 		t.Errorf("estimated cost = %+v, want a non-degenerate credit range", view.EstimatedCost)
 	}
@@ -234,14 +195,6 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	}
 }
 
-// The estimate is display material, not a permission. It sits beside the hash and
-// not inside it, so recalibrating it against a bigger sample cannot silently
-// revoke every confirmation a user has outstanding — the same rule that keeps the
-// user prompt out (02:TEST-005).
-//
-// Asserted over the wire rather than over the Go type: the thing that must not
-// change is the hash the client quotes back, and this reproduces it from the
-// bytes the client actually received.
 func TestCostEstimateIsOutsideTheConfirmedHash(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -270,17 +223,11 @@ func TestCostEstimateIsOutsideTheConfirmedHash(t *testing.T) {
 	}
 }
 
-// --- SEC-002 gate B: the static scan condition (02:SEC-003) -------------------
-
-// Fail-closed. A version whose package cannot be read has not been scanned, and
-// SEC-002 says a check that cannot be performed counts as not passed. The summary
-// says `unavailable` — never `none` (DISC-004 不得自行推定為通過) — and the run is
-// refused rather than dispatched to fail inside a sandbox.
 func TestRunIsRefusedWhenThePackageCannotBeScanned(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-gate-b-unscannable")
-	// The package disappears from storage after the version was created.
+
 	delete(a.packages, "packages/hash-alice-gate-b-unscannable.zip")
 
 	_, view := f.preflight(t)
@@ -303,15 +250,11 @@ func TestRunIsRefusedWhenThePackageCannotBeScanned(t *testing.T) {
 	}
 }
 
-// An error-level finding is blocking (SKILL-002's severity policy, applied at
-// gate B rather than only at import). The refusal names the finding codes so the
-// author can act on it, and nothing from inside the package — a message can quote
-// package content and this string reaches an HTTP response.
 func TestRunIsRefusedWhenTheStaticScanIsBlocking(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-gate-b-blocked")
-	// No SKILL.md at all: skillpkg's `skill-md-missing`, an error-level finding.
+
 	a.packages["packages/hash-alice-gate-b-blocked.zip"] = zipOf(t, map[string]string{
 		"notes.txt": "not a skill package\n",
 	})
@@ -329,12 +272,6 @@ func TestRunIsRefusedWhenTheStaticScanIsBlocking(t *testing.T) {
 	}
 }
 
-// --- SEC-002 gate B: the workspace concurrency ceiling (PDM-005 §5.2) ---------
-
-// Two in flight is the limit, and the third is refused before a row exists. The
-// runs stay queued because nothing works them here, which is the point: what the
-// limit bounds is what a workspace has outstanding, not what a provider is busy
-// with.
 func TestWorkspaceConcurrencyLimitBlocksTheThirdRun(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -358,16 +295,12 @@ func TestWorkspaceConcurrencyLimitBlocksTheThirdRun(t *testing.T) {
 		t.Errorf("refusal = %q, want it to say why and what to do", refused.Error)
 	}
 
-	// Iron rule 3: the ceiling is per workspace, so another user is unaffected by
-	// this one filling theirs.
 	other := newFixture(t, a, pool, "bob-gate-b-concurrency")
 	otherHash := other.confirmPermissions(t)
 	if code, view := other.startWithHash(t, otherHash); code != http.StatusCreated {
 		t.Fatalf("another workspace's run: got %d (%s), want 201", code, view.Error)
 	}
 
-	// Finishing one frees the slot. Retired straight through the state machine's
-	// terminal transition, which is what a real run does.
 	var id string
 	if err := pool.QueryRow(context.Background(), `
 		UPDATE runs SET status = 'failed', finished_at = now(), cleanup_status = 'cleaned'
@@ -381,12 +314,10 @@ func TestWorkspaceConcurrencyLimitBlocksTheThirdRun(t *testing.T) {
 	}
 }
 
-// A package that does carry a script says so, from a scan of the exact stored
-// bytes the run will execute.
 func TestPreflightSummaryReportsScriptsInThePackage(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
-	// The API's run service reads packages here for the same reason cmd/api does.
+
 	a.runs.Store = a.packages
 	f := newFixture(t, a, pool, "alice-preflight-script")
 	a.packages["packages/hash-alice-preflight-script.zip"] = demoPackage(t)
@@ -401,11 +332,6 @@ func TestPreflightSummaryReportsScriptsInThePackage(t *testing.T) {
 	}
 }
 
-// The summary is only worth confirming if it describes the policy the run is
-// actually held to. This reads back runs.policy_snapshot — the frozen copy the
-// scheduler matches providers against — and compares it with what the user was
-// shown, so a second definition of the default policy on either side fails here
-// rather than silently letting a stale screen keep passing the hash check.
 func TestPreflightShowsThePolicyTheRunIsActuallyHeldTo(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -445,8 +371,6 @@ func TestPreflightShowsThePolicyTheRunIsActuallyHeldTo(t *testing.T) {
 	}
 }
 
-// The same input hashes the same way, so a client can compare "what I confirmed"
-// against "what is true now" without re-reading the whole body.
 func TestPreflightHashIsStableOverIdenticalInput(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -459,9 +383,6 @@ func TestPreflightHashIsStableOverIdenticalInput(t *testing.T) {
 	}
 }
 
-// --- TEST-009: the gate -------------------------------------------------------
-
-// The whole flow: confirm what was shown, then the run starts.
 func TestRunStartsOnlyAfterThePermissionSummaryIsConfirmed(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -469,8 +390,6 @@ func TestRunStartsOnlyAfterThePermissionSummaryIsConfirmed(t *testing.T) {
 
 	_, view := f.preflight(t)
 
-	// Unconfirmed: the hash is right but nobody agreed to it. 422, and nothing is
-	// created (SEC-002 gate B).
 	code, run422 := f.startWithHash(t, view.Hash)
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("run before confirming: got %d, want 422", code)
@@ -482,7 +401,6 @@ func TestRunStartsOnlyAfterThePermissionSummaryIsConfirmed(t *testing.T) {
 		t.Error("a refused run still created a run row")
 	}
 
-	// An empty hash is refused too — omitting the field is not a way past the gate.
 	if code, _ := f.startWithHash(t, ""); code != http.StatusUnprocessableEntity {
 		t.Errorf("run with no confirmed hash: got %d, want 422", code)
 	}
@@ -495,8 +413,6 @@ func TestRunStartsOnlyAfterThePermissionSummaryIsConfirmed(t *testing.T) {
 	}
 }
 
-// A hash the client made up is not a confirmation, and neither is one for another
-// pairing: the platform rebuilds the summary and compares against that.
 func TestRunRefusesAHashThatIsNotTheCurrentSummary(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -507,15 +423,12 @@ func TestRunRefusesAHashThatIsNotTheCurrentSummary(t *testing.T) {
 	if code, _ := f.startWithHash(t, forged); code != http.StatusUnprocessableEntity {
 		t.Errorf("run with an invented hash: got %d, want 422", code)
 	}
-	// And it cannot be confirmed either, so there is no way to make the row exist.
+
 	if code, _ := f.confirm(t, forged); code != http.StatusUnprocessableEntity {
 		t.Errorf("confirming an invented hash: got %d, want 422", code)
 	}
 }
 
-// 02:TEST-005「權限有變更時必須重新確認,不得沿用不相符的舊確認」: adding a dataset
-// after the confirmation changes what the run may read, so the old agreement stops
-// working until the user has seen the new summary.
 func TestChangingTheDatasetInvalidatesAnEarlierConfirmation(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -535,8 +448,6 @@ func TestChangingTheDatasetInvalidatesAnEarlierConfirmation(t *testing.T) {
 		t.Errorf("refusal = %q, want it to say the summary needs confirming", refused.Error)
 	}
 
-	// The new summary is a different hash, and confirming that one lets the run
-	// through.
 	_, fresh := f.preflight(t)
 	if fresh.Hash == old {
 		t.Fatal("adding a dataset did not change the summary hash")
@@ -547,15 +458,12 @@ func TestChangingTheDatasetInvalidatesAnEarlierConfirmation(t *testing.T) {
 	if code, created := f.startWithHash(t, fresh.Hash); code != http.StatusCreated {
 		t.Fatalf("run after re-confirming: got %d (%s)", code, created.Error)
 	}
-	// The stale hash stays refused afterwards: re-confirming the new summary is
-	// not a blanket reset of the old agreement.
+
 	if code, _ := f.startWithHash(t, old); code != http.StatusUnprocessableEntity {
 		t.Errorf("stale hash after re-confirmation: got %d, want 422", code)
 	}
 }
 
-// Removing a dataset is a permission change too — a summary is a statement about
-// what the run touches, in both directions.
 func TestRemovingADatasetInvalidatesAnEarlierConfirmation(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -573,15 +481,12 @@ func TestRemovingADatasetInvalidatesAnEarlierConfirmation(t *testing.T) {
 	}
 }
 
-// WS-006 / iron rule 3: the summary is workspace scoped, so another user's ids
-// are not a way to read what their run would be allowed to do.
 func TestPreflightIsWorkspaceScoped(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	alice := newFixture(t, a, pool, "alice-preflight-scope")
 	bob := newFixture(t, a, pool, "bob-preflight-scope")
 
-	// Bob asks about Alice's skill, version and test case, through his own session.
 	stolen := fixture{client: bob.client, skillID: alice.skillID, versionID: alice.versionID, testCaseID: alice.testCaseID}
 	if code, _ := stolen.preflight(t); code != http.StatusNotFound {
 		t.Errorf("preflight on another workspace's run: got %d, want 404", code)
@@ -590,17 +495,12 @@ func TestPreflightIsWorkspaceScoped(t *testing.T) {
 		t.Errorf("confirming another workspace's summary: got %d, want 404", code)
 	}
 
-	// And Alice's own confirmation does not let Bob start her run.
 	hash := alice.confirmPermissions(t)
 	if code, _ := stolen.startWithHash(t, hash); code != http.StatusNotFound {
 		t.Errorf("running another workspace's skill with her hash: got %d, want 404", code)
 	}
 }
 
-// --- TEST-002: suggested acceptance criteria ---------------------------------
-
-// suggestStub is the internal LLM service, standing in for the real one. It
-// records the request body so the test can assert on what was sent.
 type suggestStub struct {
 	*httptest.Server
 	lastBody string
@@ -619,7 +519,6 @@ func newSuggestStub(t *testing.T, response string) *suggestStub {
 	return stub
 }
 
-// suggestionsOf reads the proposal texts out of a suggest response.
 func suggestionsOf(t *testing.T, body map[string]any) []string {
 	t.Helper()
 	raw, ok := body["suggestions"].([]any)
@@ -641,10 +540,6 @@ func suggestionsOf(t *testing.T, body map[string]any) []string {
 	return out
 }
 
-// 02:TEST-001 makes automatic suggestion 可選強化 and leaves the confirmation with
-// the user, so the route offers and stores nothing. Writing the model's proposals
-// into the draft and leaving the user to delete the unwanted ones is that rule
-// backwards, and it is what this used to do.
 func TestSuggestedCriteriaAreReturnedWithoutBeingStored(t *testing.T) {
 	pool := requireDB(t)
 	stub := newSuggestStub(t, `{"criteria":[{"text":"每個月都有一列總額"},{"text":"金額為數字"}]}`)
@@ -661,13 +556,10 @@ func TestSuggestedCriteriaAreReturnedWithoutBeingStored(t *testing.T) {
 		t.Fatalf("suggestions = %d, want 2: %v", len(proposals), proposals)
 	}
 
-	// The draft is exactly as it was. This is the whole point of the change.
 	if _, after := alice.doJSON(t, http.MethodGet, "/test-cases/"+id, ""); len(criteriaOf(t, after)) != 0 {
 		t.Fatalf("suggest wrote into the draft; it must store nothing: %v", after)
 	}
 
-	// Adopting one is the ordinary write — and it keeps the label EVAL-001 reads,
-	// because the user picked the wording rather than writing it.
 	code, body = alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria",
 		fmt.Sprintf(`{"text":%q,"source":"suggested"}`, proposals[0]))
 	if code != http.StatusCreated {
@@ -684,13 +576,11 @@ func TestSuggestedCriteriaAreReturnedWithoutBeingStored(t *testing.T) {
 		t.Errorf("an adopted suggestion arrived already confirmed: %v", list[0])
 	}
 
-	// Asking again does not re-offer what the draft already holds.
 	_, body = alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria/suggest", "")
 	if again := suggestionsOf(t, body); len(again) != 1 || again[0] != proposals[1] {
 		t.Errorf("second suggest = %v, want only the criterion not yet adopted", again)
 	}
 
-	// The user owns it from here: editing the text makes the wording theirs.
 	cid := list[0]["id"].(string)
 	_, body = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id+"/criteria/"+cid,
 		`{"text":"每個月都有一列總額,且含幣別"}`)
@@ -699,8 +589,6 @@ func TestSuggestedCriteriaAreReturnedWithoutBeingStored(t *testing.T) {
 	}
 }
 
-// Iron rule 11 / 02:TEST-002 資料使用範圍: the model is told the column names and
-// an inferred type, and nothing from inside the rows.
 func TestSuggestionRequestCarriesDatasetFieldsButNoRows(t *testing.T) {
 	pool := requireDB(t)
 	stub := newSuggestStub(t, `{"criteria":[{"text":"ok"}]}`)
@@ -730,10 +618,9 @@ func TestSuggestionRequestCarriesDatasetFieldsButNoRows(t *testing.T) {
 	}
 }
 
-// A deployment with no LLM service says so and leaves the manual path intact.
 func TestSuggestionIsUnavailableWithoutTheLLMService(t *testing.T) {
 	pool := requireDB(t)
-	a := newAPI(t, pool) // no LLM base URL
+	a := newAPI(t, pool)
 	alice := a.login(t, "alice-suggest-off")
 	_, id := newTestCase(t, pool, a, alice, "suggest-off")
 
@@ -741,14 +628,12 @@ func TestSuggestionIsUnavailableWithoutTheLLMService(t *testing.T) {
 	if code != http.StatusServiceUnavailable {
 		t.Fatalf("suggest with no LLM service: got %d, body %v", code, body)
 	}
-	// Manual creation still works, which is what makes the 503 tolerable.
+
 	if code, _ := alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria", `{"text":"written by hand"}`); code != http.StatusCreated {
 		t.Errorf("manual criterion after a failed suggestion: got %d", code)
 	}
 }
 
-// The LLM service answering 502 (its own provider failed) is not a 500 here: the
-// user is told the optional feature is unavailable, not that something broke.
 func TestSuggestionSurvivesAnLLMServiceFailure(t *testing.T) {
 	pool := requireDB(t)
 	down := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

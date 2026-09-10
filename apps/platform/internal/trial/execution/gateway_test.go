@@ -1,9 +1,5 @@
 package run
 
-// The Virtual Key path is a money path and a secret path, so the two rules that
-// matter are checked against a stand-in gateway: what goes out on the wire when
-// a key is minted, and that revoking a key that is not there is success.
-
 import (
 	"context"
 	"encoding/json"
@@ -37,15 +33,14 @@ func TestIssueSendsBothBrakesAndScopesTheKey(t *testing.T) {
 	if auth != "Bearer sk-master-test" {
 		t.Errorf("admin key was not used to authenticate: %q", auth)
 	}
-	// Both brakes, not one: max_budget alone cannot stop a run that spends faster
-	// than the gateway flushes (PDM-003 v5).
+
 	if got["max_budget"] != 0.5 {
 		t.Errorf("max_budget = %v, want the spend brake", got["max_budget"])
 	}
 	if got["tpm_limit"] != float64(1000) {
 		t.Errorf("tpm_limit = %v, want the rate brake", got["tpm_limit"])
 	}
-	// A key that can call anything is a budget that means nothing.
+
 	models, _ := got["models"].([]any)
 	if len(models) != 1 || models[0] != "gpt-5.4-mini" {
 		t.Errorf("models = %v, want the run's own tier only", got["models"])
@@ -56,7 +51,7 @@ func TestIssueSendsBothBrakesAndScopesTheKey(t *testing.T) {
 	if grant.VirtualKey != "sk-virtual-test" || grant.BaseURL != "http://gateway:4000" {
 		t.Errorf("grant = %#v, want the minted key and the sandbox-facing address", grant)
 	}
-	// The grant must expire on its own even if nothing ever revokes it.
+
 	if grant.ExpiresAt.IsZero() || grant.ExpiresAt.Before(time.Now()) {
 		t.Errorf("grant expiry = %v, want a future instant", grant.ExpiresAt)
 	}
@@ -122,8 +117,6 @@ func TestGatewayAcceptsOnlyFinalSuccessStatuses(t *testing.T) {
 	}
 }
 
-// A dispatch that cannot mint a key must fail rather than send a sandbox out
-// with a route to the gateway and nothing to authenticate with (fail-closed).
 func TestIssueFailsWhenTheGatewayAnswersNothing(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{}`))
@@ -135,7 +128,6 @@ func TestIssueFailsWhenTheGatewayAnswersNothing(t *testing.T) {
 	}
 }
 
-// Cleanup runs more than once (iron rule 9), and the second pass finds nothing.
 func TestRevokeIsIdempotent(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -148,8 +140,6 @@ func TestRevokeIsIdempotent(t *testing.T) {
 	}
 }
 
-// A gateway that is broken must not be read as "revoked": SEC-005 requires the
-// key to be gone after a run, and cleanup records the failure so it is retried.
 func TestRevokeReportsARealFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

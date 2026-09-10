@@ -1,20 +1,5 @@
 package registry
 
-// Skill Version aggregate invariants (ADR-003, iron rule 4; doc.go lists them).
-//
-// The pure ones are asserted with reflection, because the thing that must not
-// happen is a *field appearing*, and no value-level assertion can express that.
-// The rest need PostgreSQL: version numbering and duplicate rejection are an
-// inline subquery and two unique indexes, and a mock would only restate the Go
-// code that does not implement them.
-//
-// Point SKILLHUB_TEST_DATABASE_URL at a throwaway database and the database
-// tests run; leave it unset and they skip, so CI without a database reports
-// "skipped" rather than a false pass.
-//
-// WARNING: TestMain drops and recreates schema "public" in that database.
-// Never point SKILLHUB_TEST_DATABASE_URL at a database you care about.
-
 import (
 	"context"
 	"fmt"
@@ -34,11 +19,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-// TestVersionNumberIsNotCallerSupplied pins invariant 2. Adding a VersionNumber
-// field to either struct would compile, pass every other test, and quietly move
-// the allocation from the query to whoever calls it — at which point two
-// concurrent imports can agree on a number instead of one losing on
-// skill_versions_number_key and retrying.
 func TestVersionNumberIsNotCallerSupplied(t *testing.T) {
 	for _, subject := range []any{NewVersion{}, gen.CreateSkillVersionParams{}} {
 		typ := reflect.TypeOf(subject)
@@ -52,9 +32,6 @@ func TestVersionNumberIsNotCallerSupplied(t *testing.T) {
 	}
 }
 
-// TestNewVersionCarriesNoMutableState pins invariant 3 from the other side: the
-// snapshot columns come from the validated package, so the struct must not grow
-// a field that lets a caller hand-write one of them past validation.
 func TestNewVersionCarriesNoMutableState(t *testing.T) {
 	want := map[string]bool{
 		"WorkspaceID": true, "SkillID": true, "SourceID": true,
@@ -73,8 +50,6 @@ func TestNewVersionCarriesNoMutableState(t *testing.T) {
 	}
 }
 
-// --- database invariants -----------------------------------------------------
-
 const aggregateDBURLEnv = "SKILLHUB_TEST_DATABASE_URL"
 
 var aggregatePool *pgxpool.Pool
@@ -82,15 +57,12 @@ var aggregatePool *pgxpool.Pool
 func TestMain(m *testing.M) {
 	dsn := os.Getenv(aggregateDBURLEnv)
 	if dsn == "" {
-		// 02:PORT-004. Without this, an unset or misspelled URL is indistinguishable
-		// from a passing run: every database test removes itself and go test still
-		// prints ok. CI sets SKILLHUB_REQUIRE_DB=1 so the service failing to come up
-		// is a red build rather than a quiet one.
+
 		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
 			fmt.Fprintf(os.Stderr, "SKILLHUB_REQUIRE_DB=1 but %s is unset; this run would have skipped every database test and still reported success\n", aggregateDBURLEnv)
 			os.Exit(1)
 		}
-		os.Exit(m.Run()) // every database test skips; see requireRegistryDB
+		os.Exit(m.Run())
 	}
 	if err := validateDestructiveRegistryDatabaseURL(dsn); err != nil {
 		panic(err)
@@ -111,8 +83,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// validateDestructiveRegistryDatabaseURL refuses to point the schema drop below
-// at anything that is not an obviously disposable local database.
 func validateDestructiveRegistryDatabaseURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -164,8 +134,9 @@ func migrateRegistrySchema(ctx context.Context, pool *pgxpool.Pool) error {
 		if err != nil {
 			return err
 		}
-		// No arguments means the simple protocol, so a file with several
-		// statements applies as one batch.
+
+		// Exec with no arguments uses the simple protocol, which applies a
+		// multi-statement string as one batch.
 		if _, err := pool.Exec(ctx, string(body)); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
@@ -181,10 +152,6 @@ func requireRegistryDB(t *testing.T) *pgxpool.Pool {
 	return aggregatePool
 }
 
-// seedSkill writes the minimum chain a version hangs off. Raw SQL rather than
-// internal/creator/workspace's service: what is under test is this aggregate's rules, and
-// borrowing another context here would be a cross-context import bought for a
-// fixture (ADR-032 §1).
 func seedSkill(t *testing.T, pool *pgxpool.Pool, name string) (ws gen.Workspace, skillID pgtype.UUID) {
 	t.Helper()
 	ctx := context.Background()
@@ -212,8 +179,6 @@ func passingReport(name string) skillpkg.Report {
 	return skillpkg.Report{Manifest: &skillpkg.Manifest{Name: name, Description: "fixture"}}
 }
 
-// commitVersion runs the real write path, in its own transaction, the way ingest
-// does. Returns the error so callers can assert on rejection.
 func commitVersion(t *testing.T, pool *pgxpool.Pool, v NewVersion) (Version, error) {
 	t.Helper()
 	ctx := context.Background()
@@ -229,9 +194,6 @@ func commitVersion(t *testing.T, pool *pgxpool.Pool, v NewVersion) (Version, err
 	return version, tx.Commit(ctx)
 }
 
-// TestVersionNumberIsAllocatedByTheQuery is the half of invariant 2 that only a
-// database can answer: the number comes from max()+1 over the skill, and the
-// caller never sees the choice.
 func TestVersionNumberIsAllocatedByTheQuery(t *testing.T) {
 	pool := requireRegistryDB(t)
 	ws, skillID := seedSkill(t, pool, "numbering")
@@ -253,9 +215,6 @@ func TestVersionNumberIsAllocatedByTheQuery(t *testing.T) {
 	}
 }
 
-// TestIdenticalContentDoesNotBecomeASecondVersion pins SKILL-001/INGEST-005:
-// re-saving the same bytes is not a new snapshot, and the rejection is
-// skill_versions_content_key rather than a check the caller could forget.
 func TestIdenticalContentDoesNotBecomeASecondVersion(t *testing.T) {
 	pool := requireRegistryDB(t)
 	ws, skillID := seedSkill(t, pool, "duplicate")
@@ -274,10 +233,6 @@ func TestIdenticalContentDoesNotBecomeASecondVersion(t *testing.T) {
 	}
 }
 
-// TestWrittenVersionRowIsFrozen is the aggregate's first invariant, and the
-// point of asserting it here rather than trusting db/tests/immutability_test.sql
-// is the path: this is the trigger firing on a row the production write path
-// created, through the same pool the application uses.
 func TestWrittenVersionRowIsFrozen(t *testing.T) {
 	pool := requireRegistryDB(t)
 	ws, skillID := seedSkill(t, pool, "frozen")
@@ -304,14 +259,9 @@ func TestWrittenVersionRowIsFrozen(t *testing.T) {
 	}
 }
 
-// TestForkSharesThePackageObject pins invariant 5: a fork is rows, not bytes.
-// Copying the object would double storage and, worse, produce a second content
-// address for content the platform has already validated once.
 func TestForkSharesThePackageObject(t *testing.T) {
 	pool := requireRegistryDB(t)
-	// Forked inside its own workspace: cross-workspace forking additionally
-	// requires the source to be in the public catalog (WS-006), and that gate is
-	// registry.go's business, not the aggregate's.
+
 	ws, sourceSkill := seedSkill(t, pool, "fork-source")
 	origin, err := commitVersion(t, pool, NewVersion{
 		WorkspaceID:      ws.ID,
@@ -339,15 +289,14 @@ func TestForkSharesThePackageObject(t *testing.T) {
 	if forkVersion.ContentHash != origin.ContentHash {
 		t.Errorf("fork content hash = %q, want %q", forkVersion.ContentHash, origin.ContentHash)
 	}
-	// A fork starts its own numbering: it is a new skill, not a continuation.
+
 	if forkVersion.VersionNumber != 1 {
 		t.Errorf("fork version_number = %d, want 1", forkVersion.VersionNumber)
 	}
 	if fork.ForkedFromVersionID != origin.ID {
 		t.Errorf("fork lineage = %v, want the origin version %v", fork.ForkedFromVersionID, origin.ID)
 	}
-	// The origin is untouched: forking reads it, and a read that wrote would be
-	// the first crack in invariant 1.
+
 	var after gen.SkillVersion
 	if err := pool.QueryRow(ctx,
 		`SELECT content_hash, version_number FROM skill_versions WHERE id = $1`, origin.ID).
@@ -359,18 +308,9 @@ func TestForkSharesThePackageObject(t *testing.T) {
 	}
 }
 
-// lockTestSchema serialises the packages that reset this database.
-//
-// apiserver, eval and registry each drop and recreate schema "public" in
-// SKILLHUB_TEST_DATABASE_URL, and `go test ./...` runs packages concurrently:
-// one package's reset lands while another is mid-run, and the second one sees
-// "relation does not exist". Held on one connection for the whole package run
-// rather than only across the migration, because the hazard is a reset
-// colliding with somebody else's *tests*, not with their migration.
-//
-// Session-scoped, so a crashed run releases it along with its connection and a
-// stale lock cannot wedge CI. Every package that resets this database must take
-// it; one that forgets fails loudly with the panic above rather than silently.
+// lockTestSchema holds a session-scoped Postgres advisory lock on one
+// dedicated connection, so concurrent test binaries resetting this schema
+// serialize instead of racing.
 func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
 	conn, err := pool.Acquire(ctx)
 	if err != nil {

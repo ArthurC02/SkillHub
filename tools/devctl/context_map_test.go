@@ -121,11 +121,7 @@ func TestContextMapProblems(t *testing.T) {
 			want:     `declares internal path "run" twice (run and trace)`,
 		},
 		{
-			// FIX 7. The collector runs a regex over the whole file, so a rule
-			// commented out while debugging - or a path mentioned in the prose
-			// this file already carries about context relationships - used to
-			// register the path as guarded. `ingest` then looks covered by a rule
-			// depguard no longer applies.
+
 			name: "a commented-out rule does not count as coverage",
 			adr:  contextMapADRFixture,
 			lint: strings.Replace(contextMapLintFixture,
@@ -135,8 +131,7 @@ func TestContextMapProblems(t *testing.T) {
 			want:     `has no depguard rule covering internal/ingest`,
 		},
 		{
-			// The same regex reading prose. .golangci.yml's comments already
-			// discuss which contexts may reach which, so this is a matter of time.
+
 			name: "a path named only in a comment does not count as coverage",
 			adr:  contextMapADRFixture,
 			lint: strings.Replace(contextMapLintFixture,

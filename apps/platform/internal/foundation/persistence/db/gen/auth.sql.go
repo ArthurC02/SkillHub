@@ -80,8 +80,6 @@ WHERE s.token_hash = $1 AND s.expires_at > now()
   AND u.deleted_at IS NULL AND u.purge_started_at IS NULL
 `
 
-// Session resolution and expiry check in one query; the caller derives user_id
-// and workspace from this row, never from the client (iron rule 3, ADR-011).
 func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (User, error) {
 	row := q.db.QueryRow(ctx, getSessionUser, tokenHash)
 	var i User
@@ -110,11 +108,6 @@ type GetUserAccountStateRow struct {
 	Purging bool
 }
 
-// credit's AccountFacts (ADR-068 decision 11), reached through the injected
-// Facts func so credit never imports identity. Returns a row for a
-// soft-deleted or purging user rather than filtering it out: "no such user"
-// and "this user is being deleted" are different answers, credit refuses
-// both, and only one of them means something went wrong upstream.
 func (q *Queries) GetUserAccountState(ctx context.Context, id pgtype.UUID) (GetUserAccountStateRow, error) {
 	row := q.db.QueryRow(ctx, getUserAccountState, id)
 	var i GetUserAccountStateRow
@@ -154,13 +147,6 @@ const getWorkspaceOwner = `-- name: GetWorkspaceOwner :one
 SELECT w.owner_user_id FROM workspaces w WHERE w.id = $1::uuid
 `
 
-// The reverse of PersonalWorkspace, and until 2026-09-10 the whole codebase
-// had only the forward direction. credit keys accounts on the USER
-// (migration 0060: "每個帳號" is the user), while creation's job args and the
-// operator grant route both carry a WORKSPACE id -- so somebody has to do
-// this lookup, and doing it by assuming MVP's 1:1 user/workspace would be a
-// coincidence the schema does not promise (ADR-011 gives one personal
-// workspace per user, not one workspace per user forever).
 func (q *Queries) GetWorkspaceOwner(ctx context.Context, workspaceID pgtype.UUID) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, getWorkspaceOwner, workspaceID)
 	var owner_user_id pgtype.UUID
@@ -196,9 +182,6 @@ SELECT EXISTS (
 )
 `
 
-// Identity owns the account lifecycle gate. Object-producing contexts receive
-// this read through the composition root and evaluate it on their own locked
-// connection/transaction.
 func (q *Queries) WorkspaceAcceptsObjects(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
 	row := q.db.QueryRow(ctx, workspaceAcceptsObjects, workspaceID)
 	var exists bool

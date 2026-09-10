@@ -9,8 +9,6 @@ import (
 	"net/http"
 )
 
-// CreationStepRequest is the bounded proposal request. GatewayKey is a
-// short-lived credential and deliberately has no JSON representation.
 type CreationStepRequest struct {
 	SessionID            string                   `json:"session_id"`
 	Revision             int64                    `json:"revision"`
@@ -42,8 +40,7 @@ type CreationMessage struct {
 type CreationToolIntent struct {
 	Kind  string `json:"kind"`
 	Query string `json:"query"`
-	// Queries are up to three rewrites of the intent for the search kinds
-	// (04 丙-177: intent -> rewrites -> one fused ranking).
+
 	Queries []string `json:"queries,omitempty"`
 }
 type CreationStepResponse struct {
@@ -53,8 +50,7 @@ type CreationStepResponse struct {
 	AcceptanceCriteria   []string `json:"acceptance_criteria"`
 	SampleInput          string   `json:"sample_input"`
 	DiagramUnderstanding string   `json:"diagram_understanding"`
-	// Reason is set by Python's own guard rails (never by the model); Go owns
-	// the sentence shown for each code (05 R-46 (c)).
+
 	Reason        string              `json:"reason,omitempty"`
 	ToolIntent    *CreationToolIntent `json:"tool_intent,omitempty"`
 	Draft         *GeneratedSkill     `json:"draft,omitempty"`
@@ -63,14 +59,11 @@ type CreationStepResponse struct {
 	Usage         *GatewayUsage       `json:"usage,omitempty"`
 }
 
-// CreationStep uses both the service bearer and the single-session gateway key.
-// The latter is supplied only in this header and is never persisted or logged.
 func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*CreationStepResponse, error) {
 	if in.GatewayKey == "" {
 		return nil, fmt.Errorf("llmclient: creation gateway key is required")
 	}
-	// These fields are required arrays in the internal contract; nil would encode
-	// as null and is not a valid empty conversation or reference set.
+
 	if in.Messages == nil {
 		in.Messages = []CreationMessage{}
 	}
@@ -94,10 +87,7 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 	if err != nil {
 		return nil, fmt.Errorf("llmclient: marshal creation step: %w", err)
 	}
-	// This endpoint marshals here instead of through post() because of the
-	// extra header, so it needs its own call (hidden.go). This is the request
-	// that most needs it: the fetch tool puts whole attacker-written pages
-	// into Messages.
+
 	body = withoutHidden(body)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/v1/creation/step", bytes.NewReader(body))
 	if err != nil {

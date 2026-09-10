@@ -17,24 +17,6 @@ import { useSkillVersions } from "./api/skills";
 import { useTrace } from "./api/trace";
 import { RUN, SKILL, TEST_CASE, platformResponse } from "./fixtures/platform";
 
-/**
- * 資訊架構 §5 IA-6（2026-08-25 裁定）：**登出狀態不由 router 守衛，由 401 這個具名
- * 狀態自己說。**
- *
- * 這個檔守的是那條裁定，而它存在的直接理由寫在裁定的「刻意留在外面的」那一段：
- * **裁定所依據的兩句既有前例（`SkillDetail` 的 `ForkAction`、`WorkspaceAccount`
- * 的登出說明）此前一支測試都沒有**。一條沒有測試擋著的慣例，就是下一次被無聲刪掉
- * 的那一條。
- *
- * 三層，由小到大：
- *
- *  1. 共用元件本身——包含「非 401 不得被吞掉」，那是這個抽象最容易壞掉的地方。
- *  2. 逐路由的登出抵達，其中兩頁是「事前說」的那兩頁（`/workspace/import` 與
- *     `/runs/$runId/compare`），一頁是被修掉的誤導（`/lab/run`）。
- *  3. `not authenticated` 這個英文字串**不得抵達畫面**——`assertHonestArrival` 在
- *     每一個路由案例的結尾跑。這一條才是「有人把某個呼叫點改回去」時會變紅的那條。
- */
-
 let container: HTMLDivElement;
 let root: Root;
 
@@ -65,9 +47,6 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
   useParams: () => ({ skillId: SKILL, runId: RUN, testCaseId: TEST_CASE }),
-  // Empty on purpose: `/lab/run` with no `?skill=&test_case=` and
-  // `/runs/$runId/compare` with an empty `against` are exactly the two states
-  // the ruling calls out, and an empty search object is how a visitor arrives.
   useSearch: () => ({}),
   useNavigate: () => () => Promise.resolve(),
 }));
@@ -78,12 +57,6 @@ function json(body: unknown, status = 200) {
   );
 }
 
-/**
- * The platform as a logged-out visitor meets it: `RequireSession` answers
- * `401 {"error":"not authenticated"}` — the literal body from
- * `creator/workspace/http.go` — and the three public `/api/*` reads still work,
- * because DISC-001/010 serve the catalogue to anyone.
- */
 function loggedOutPlatform() {
   vi.stubGlobal("fetch", (input: string) => {
     const path = String(input)
@@ -109,18 +82,9 @@ async function render(node: ReactNode, settled: () => boolean) {
   await waitFor(settled);
 }
 
-/**
- * Pumps FIRST, then checks — the opposite order to the other suites here, and
- * deliberately.
- *
- * This app's tests never set `IS_REACT_ACT_ENVIRONMENT`, so a state update that
- * React Query delivered during the initial `act` is not flushed to the DOM until
- * another `act` runs. The other suites hide that because they wait on the very
- * text they are about to assert, so the loop keeps pumping until it appears.
- * `settled` below waits on something true of the fixed AND the broken page, so
- * it can be satisfied on the first check with a stale DOM — checking after the
- * pump is what keeps that from reading a page one render behind.
- */
+// Pumps an act() cycle before each check: without IS_REACT_ACT_ENVIRONMENT,
+// a state update delivered during the initial act is not flushed to the DOM
+// until another act runs.
 async function waitFor(done: () => boolean, timeoutMs = 2000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -134,29 +98,12 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
 
 const text = () => container.textContent ?? "";
 
-/**
- * Settled, WITHOUT asking whether the fix is in place.
- *
- * The first version of this file waited for 「需要登入」 — so reverting a call
- * site produced a `waitFor` timeout, which is a red test but not the red test:
- * it says 「the page never said the thing」 rather than 「the page said the wrong
- * thing」, and it would have gone on timing out for any reason at all. Waiting on
- * a condition true in BOTH the fixed and the broken page is what puts the
- * failure on the `expect` below (AGENTS.md 規則 9).
- */
 const settled = (also: () => boolean = () => true) =>
   queryClient.isFetching() === 0 &&
   !container.querySelector("[data-loading]") &&
   text().length > 0 &&
   also();
 
-/**
- * The assertion that goes red when somebody reverts a call site.
- *
- * Both halves matter: the English must be gone, AND a way in must be on screen.
- * Deleting the interpolation alone would satisfy the first and leave a visitor
- * with a page that refuses to say why it is empty.
- */
 function assertHonestArrival() {
   expect(text(), "the server's English 401 body reached a 繁體中文 screen").not.toContain(
     "not authenticated",
@@ -167,12 +114,8 @@ function assertHonestArrival() {
   expect(login.length, "nothing on screen says how to log in").toBeGreaterThan(0);
 }
 
-// --- 1. the shared component ------------------------------------------------
-
 test("IA-6 `unauthenticated` is true for a 401 and for nothing else", () => {
   expect(unauthenticated(new ApiError(401, "not authenticated"))).toBe(true);
-  // 403 is a different fact — you are logged in and this is not yours (ADR-011),
-  // and SkillFiles already words it separately. Logging in again fixes nothing.
   expect(unauthenticated(new ApiError(403, "forbidden"))).toBe(false);
   expect(unauthenticated(new ApiError(500, "boom"))).toBe(false);
   expect(unauthenticated(new Error("network"))).toBe(false);
@@ -183,22 +126,17 @@ test("IA-6 the 401 state says it in 繁體中文 and carries the login action", 
   await render(<LoginRequired what="你的 Skill 清單" />, () => text().includes("需要登入"));
   expect(text()).toContain("你的 Skill 清單需要登入。");
   assertHonestArrival();
-  // Expected state, not an error: `role="alert"` interrupts, and being logged
-  // out is not an interruption (the ruling's word is 具名狀態).
   expect(container.querySelector("[role=status]")).not.toBeNull();
   expect(container.querySelector("[role=alert]")).toBeNull();
 });
 
 test("IA-6 ReadFailure does NOT swallow a non-401 — a 500 still says what failed", async () => {
-  // Neutral settle again: waiting for 「無法讀取」 would turn a component that
-  // swallowed the 500 into a timeout rather than into this assertion.
   await render(
     <ReadFailure error={new ApiError(500, "資料庫連線中斷")} what="下載紀錄" />,
     () => text().length > 0,
   );
   expect(text()).toContain("無法讀取下載紀錄：資料庫連線中斷");
   expect(container.querySelector("[role=alert]")).not.toBeNull();
-  // And it must not offer a login for a failure a login cannot fix.
   expect(text()).not.toContain("需要登入");
 });
 
@@ -229,8 +167,6 @@ test("IA-6 a page's own non-401 wording survives; the 401 branch replaces it", a
   assertHonestArrival();
 });
 
-// --- 2. arriving logged out, route by route ---------------------------------
-
 test("IA-6 /workspace/skills — a nav destination stops printing the server's English", async () => {
   loggedOutPlatform();
   await render(<WorkspaceSkills />, () => settled());
@@ -241,7 +177,6 @@ test("IA-6 /workspace/skills — a nav destination stops printing the server's E
 test("IA-6 /lab/test-cases — both reads on the page answer, not just the first", async () => {
   loggedOutPlatform();
   await render(<TestCaseList />, () => settled());
-  // 兩處呼叫點：清單本身，以及「建立新的 Test Case」底下的 Skill 選單。
   expect(text()).toContain(" Test Case需要登入。");
   expect(text()).toContain("你的 Skill 清單需要登入。");
   assertHonestArrival();
@@ -253,9 +188,6 @@ test("IA-6 /workspace/import says it BEFORE the file picker, not after (設計 �
     settled(() => container.querySelector("form") !== null || text().includes("需要登入")),
   );
   expect(text()).toContain("匯入 Skill需要登入。");
-  // The whole point of this one: the form a visitor would have filled in is not
-  // there to be filled in. Refusing after the work is the shape the ruling
-  // called the worst in the audit.
   expect(container.querySelector("form")).toBeNull();
   expect(container.querySelector("input[type=file]")).toBeNull();
   assertHonestArrival();
@@ -268,7 +200,6 @@ test("IA-6 /runs/$runId/compare says it before an id is typed in", async () => {
   );
   expect(text()).toContain("Run 比較需要登入。");
   expect(container.querySelector("#against")).toBeNull();
-  // 「輸入另一個 Run 的 ID 後開始比較。」 is advice for somebody who could.
   expect(text()).not.toContain("輸入另一個 Run 的 ID 後開始比較");
   assertHonestArrival();
 });
@@ -279,9 +210,6 @@ test("IA-6 /lab/run stops sending a logged-out visitor to hunt for query paramet
     settled(() => text().includes("兩個 ID") || text().includes("需要登入")),
   );
   expect(text()).toContain("試跑與執行前權限確認需要登入。");
-  // The misdirection, verbatim from the audit: with no `?skill=&test_case=`
-  // this page used to answer the parameters question first, to a visitor for
-  // whom the parameters were never the problem.
   expect(text()).not.toContain("?skill=");
   expect(text()).not.toContain("兩個 ID");
   assertHonestArrival();
@@ -289,9 +217,6 @@ test("IA-6 /lab/run stops sending a logged-out visitor to hunt for query paramet
 
 test("IA-6 the site-wide feedback form says it before a paragraph is written", async () => {
   loggedOutPlatform();
-  // On `/policy` deliberately: that page is the one the product decided to keep
-  // outside the session, and this form is in the layout — so the deferred
-  // rejection was on all 17 routes, not on the two the ruling enumerated.
   await render(<FeedbackEntry pathname="/policy" />, () =>
     settled(() => container.querySelector("form") !== null || text().includes("需要登入")),
   );
@@ -301,18 +226,6 @@ test("IA-6 the site-wide feedback form says it before a paragraph is written", a
   assertHonestArrival();
 });
 
-// --- 3. the two precedents the ruling rests on, which had no test at all -----
-
-/**
- * 設計 §2.2「強制但不顯示」, and this page is the section's named instance.
- *
- * The platform enforces five things at this door — the one door third-party
- * code enters the platform through — and the screen carried not one of them.
- * The numbers still are not here (there is no `GET /skills/import/limits` in the
- * contract, and copying the Go constants would be a second source of truth for
- * a value nothing keeps in step), but their absence is now stated rather than
- * blank, which is the §2.9 half.
- */
 test("SEC/§2.2 the import screen states the rules it is enforced by, before the form", async () => {
   vi.stubGlobal("fetch", () => json({ user_id: "u-1", workspace_id: "ws-1" }));
   await render(<ImportSkill />, () => text().includes("匯入 Skill"));
@@ -320,10 +233,7 @@ test("SEC/§2.2 the import screen states the rules it is enforced by, before the
   expect(text()).toContain("來源限 GitHub");
   expect(text()).toContain("必須是 https");
   expect(text()).toContain("不得帶帳號密碼");
-  // §2.9: the size ceilings exist and are enforced; not knowing their values is
-  // said out loud rather than left as a gap the reader reads as 「沒有上限」.
   expect(text()).toContain("大小上限見拒絕訊息");
-  // And no invented number: a figure this page cannot source is worse than none.
   expect(text()).not.toContain("10 MB");
   expect(text()).not.toContain("100 MB");
 });
@@ -331,13 +241,7 @@ test("SEC/§2.2 the import screen states the rules it is enforced by, before the
 test("IA-6 precedent: ForkAction tells a visitor what logging in buys (SkillDetail)", async () => {
   loggedOutPlatform();
   await render(<SkillDetail />, () => text().includes("Fork"));
-  // The sentence itself. It is one of the three the ruling cites as this
-  // product having already answered 「由頁面自己說」, and nothing held it down.
   expect(text()).toContain("登入後即可 Fork 這個 Skill 到你的工作區。");
-  // And the control it replaces is genuinely absent, not merely disabled.
-  // 按鈕上的字 2026-09-03 改成「以這個 Skill 為起點建立我自己的」（r4 B2）。這一行
-  // 跟著改**不是**因為它壞了——它會照樣通過，因為舊字串現在哪裡都不存在了，而那
-  // 正是問題：一個永遠找不到東西的 `some()` 對「按鈕真的不在」什麼都證明不了。
   expect(
     Array.from(container.querySelectorAll("button")).some((b) =>
       (b.textContent ?? "").includes("以這個 Skill 為起點"),
@@ -350,21 +254,9 @@ test("IA-6 precedent: /workspace/account says a login is needed, and how", async
   loggedOutPlatform();
   await render(<WorkspaceAccount />, () => settled());
   expect(text()).toContain("帳號資料需要登入。");
-  // This page was the twelfth site, not one of the eleven: it already carried
-  // 「沒有登入的話，這一頁不會有東西可以看」 — the right state, printed after
-  // 「無法讀取帳號資料：not authenticated」 and with no way to act on it.
   assertHonestArrival();
 });
 
-// --- 4. the seven seconds of nothing ----------------------------------------
-
-/**
- * Both hooks that were missing `retry: false`, in one probe.
- *
- * Nothing but the query state: what is being measured is whether a refused read
- * is ALLOWED TO BE REFUSED, and any markup around it would only add ways for
- * this to pass for the wrong reason.
- */
 function RetryProbe() {
   const versions = useSkillVersions(SKILL);
   const trace = useTrace(RUN, "general");
@@ -384,8 +276,6 @@ test("IA-6 a 401 is the answer at once — no 「載入中」 sat on through thr
     return json({ error: "not authenticated" }, 401);
   });
 
-  // Settled on the request having HAPPENED, not on the state it produced: this
-  // has to be able to observe a query still sitting in pending.
   await render(<RetryProbe />, () => calls >= 2);
   for (let i = 0; i < 20; i++) {
     await act(async () => {
@@ -393,12 +283,6 @@ test("IA-6 a 401 is the answer at once — no 「載入中」 sat on through thr
     });
   }
 
-  // With React Query's default three retries the first 401 starts a 1s backoff
-  // and BOTH stay `isPending` — which is what put 「載入版本清單中…」 and
-  // 「載入執行紀錄中…」 on screen for about seven seconds with nothing behind
-  // them (設計 §2.1，資訊架構 §5 IA-6 的最後一段).
   expect(text()).toBe("versions:error trace:error");
-  // And exactly one request each: a refusal that is the same however often it
-  // is asked is not worth asking twice.
   expect(calls).toBe(2);
 });

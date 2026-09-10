@@ -1,8 +1,3 @@
-// Improvement suggestions end to end through the real route table (EVAL-002).
-// The LLM service is an httptest server speaking llm-internal.yaml, because what
-// is under test is the platform's half: what it agrees to store, what it refuses
-// to apply, and the promise that applying builds a new version and leaves the old
-// one exactly as it was (iron rule 4).
 package apiserver_test
 
 import (
@@ -22,17 +17,11 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-// --- fixtures ----------------------------------------------------------------
-
-// The SKILL.md that namedPackage writes, which is what a suggestion is written
-// against and what a proposed replacement has to be a change to.
 func packagedSkillMD(name string) string {
 	return "---\nname: " + name + "\ndescription: Reports on " + name +
 		".\nlicense: MIT\n---\n\nUse it like this.\n"
 }
 
-// llmServer answers both evaluation endpoints: a fixed verdict and a fixed set of
-// proposals. One server, because one evaluation calls both.
 func llmServer(
 	t *testing.T, verdict llmclient.JudgeVerdict, proposals []llmclient.ImprovementProposal,
 ) *llmclient.Client {
@@ -46,8 +35,7 @@ func llmServer(
 		})
 	})
 	mux.HandleFunc("POST /suggest-improvements", func(w http.ResponseWriter, r *http.Request) {
-		// The request has to carry a digest: a proposal about nothing is not a
-		// proposal, and the contract makes the field required with minLength 1.
+
 		var req llmclient.SuggestImprovementsRequest
 		if json.NewDecoder(r.Body).Decode(&req) != nil || req.EvaluationDigest == "" {
 			http.Error(w, `{"detail":"no digest"}`, http.StatusUnprocessableEntity)
@@ -65,16 +53,11 @@ func llmServer(
 	return &llmclient.Client{BaseURL: srv.URL}
 }
 
-// The run's final reply, and the quote the judge cites from it. Cited rather than
-// asserted, because a criterion verdict only keeps evidence Go could re-resolve —
-// and the suggestions built on that verdict inherit those verified references.
 const (
 	suggestionFinalOutput = "I could not tell which rows were duplicates, so I stopped."
 	suggestionQuote       = "could not tell which rows were duplicates"
 )
 
-// failedBoth is a verdict that leaves something to improve, which is the state
-// suggestions exist for.
 var failedBoth = llmclient.JudgeVerdict{
 	CriterionResults: []llmclient.CriterionVerdict{
 		{CriterionID: "c1", Result: "failed", Reason: "no deduplication happened",
@@ -86,10 +69,6 @@ var failedBoth = llmclient.JudgeVerdict{
 	Overall: "not_met", Summary: "neither condition was met",
 }
 
-// seedRunForVersion writes a finished run against a real, stored skill version.
-// Real, because everything in this file reads package bytes: a fabricated
-// package_object_key would make every check answer "unreadable" and the tests
-// would pass for the wrong reason.
 func seedRunForVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, versionID string) string {
 	t.Helper()
 	ctx := context.Background()
@@ -131,9 +110,6 @@ func latestVersionOf(t *testing.T, pool *pgxpool.Pool, skillID string) (id, hash
 	return id, hash, key, number
 }
 
-// evaluatedSkill is the shared arrangement: an imported package, a finished run
-// against it, and one completed evaluation with whatever suggestions the stubbed
-// service proposed.
 type evaluatedSkill struct {
 	skillID, runID, versionID, versionHash, versionKey string
 }
@@ -158,8 +134,6 @@ func evaluateWithSuggestions(
 	return evaluatedSkill{skillID: skillID, runID: runID, versionID: versionID,
 		versionHash: hash, versionKey: key}
 }
-
-// --- HTTP helpers -------------------------------------------------------------
 
 type suggestionBody struct {
 	SuggestionID          string `json:"suggestion_id"`
@@ -264,8 +238,6 @@ func (c *client) applySuggestions(t *testing.T, skillID, evaluationID string, id
 	return resp.StatusCode, out
 }
 
-// storedFile reads one file out of a stored package, which is how these tests
-// check that an old version really did keep its bytes.
 func storedFile(t *testing.T, a *api, key, path string) string {
 	t.Helper()
 	data, err := a.packages.Get(context.Background(), key)
@@ -283,8 +255,6 @@ func storedFile(t *testing.T, a *api, key, path string) string {
 	return string(body)
 }
 
-// --- the whole path: proposed, decided, previewed, applied ---------------------
-
 func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -298,8 +268,7 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 			Evidence: suggestionQuote, TargetPath: "SKILL.md",
 			ProposedContent: improved, ExpectedImpact: "the skill is activated for this task",
 		},
-		// Refused before storage: a path out of the package, and a class this
-		// platform never acts on. Neither reaches a user to decide about.
+
 		{
 			Category: "skill", Problem: "read the host's secrets", Evidence: "x",
 			TargetPath: "../../etc/passwd", ProposedContent: "root", ExpectedImpact: "none",
@@ -340,8 +309,6 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 		t.Errorf("a pending suggestion has no decision timestamp, got %q", s.DecidedAt)
 	}
 
-	// The preview is available before the decision, and shows the change against
-	// what is really in the package (clause 3).
 	code, diff := c.suggestionDiff(t, s.SuggestionID)
 	if code != http.StatusOK || !diff.Applicable {
 		t.Fatalf("diff: got %d %+v", code, diff)
@@ -350,7 +317,6 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 		t.Errorf("the diff does not show the proposed line: %q", diff.UnifiedDiff)
 	}
 
-	// Nothing is applied from a suggestion nobody accepted.
 	if code, body := c.applySuggestions(t, seed.skillID, evaluationID, s.SuggestionID); code != http.StatusBadRequest {
 		t.Fatalf("applying a pending suggestion: got %d (%s)", code, body.Error)
 	}
@@ -380,8 +346,6 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 		t.Errorf("nothing should have been rejected: %+v", applied.RejectedSuggestions)
 	}
 
-	// Iron rule 4: the version the suggestion was written against is untouched, in
-	// its row and in its bytes, and the new one carries the change.
 	if before := storedFile(t, a, seed.versionKey, "SKILL.md"); before != packagedSkillMD(name) {
 		t.Errorf("the evaluated version's package changed: %q", before)
 	}
@@ -399,28 +363,21 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 		t.Errorf("the new version does not carry the change: %q", after)
 	}
 
-	// Clause 4: the suggestion now points at the new version.
 	_, suggestions, _ = c.listSuggestions(t, seed.runID)
 	if suggestions[0].AppliedSkillVersionID != applied.VersionID {
 		t.Errorf("applied_skill_version_id = %q, want the new version %q",
 			suggestions[0].AppliedSkillVersionID, applied.VersionID)
 	}
 
-	// A version that was built is history: the acceptance behind it cannot be
-	// withdrawn, and the way back is another version.
 	if code, _ := c.decide(t, s.SuggestionID, "rejected"); code != http.StatusConflict {
 		t.Errorf("rejecting an applied suggestion: got %d, want 409", code)
 	}
 
-	// And the preview now says what a second apply would: the file it was written
-	// against is not what is in the package any more.
 	code, diff = c.suggestionDiff(t, s.SuggestionID)
 	if code != http.StatusOK || diff.Applicable || diff.BlockedReason != "target_changed" {
 		t.Errorf("after applying, the same suggestion is target_changed: got %d %+v", code, diff)
 	}
 }
-
-// --- two changes to one file, and the honest half-answer -----------------------
 
 func TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot(t *testing.T) {
 	pool := requireDB(t)
@@ -473,7 +430,7 @@ func TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot(t *testing.T
 			t.Errorf("reversing suggestion_ids changed response order: %v then %v", firstOrder, order)
 		}
 	}
-	// One version for the whole request, never one per suggestion.
+
 	var versions int
 	if err := pool.QueryRow(context.Background(),
 		`SELECT count(*) FROM skill_versions WHERE skill_id = $1`,
@@ -484,8 +441,6 @@ func TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot(t *testing.T
 		t.Errorf("competing replacements produced a new version; got %d versions", versions)
 	}
 }
-
-// --- a change that would break the package -------------------------------------
 
 func TestASuggestionThatFailsValidationIsRefusedAndNoVersionIsCreated(t *testing.T) {
 	pool := requireDB(t)
@@ -504,8 +459,6 @@ func TestASuggestionThatFailsValidationIsRefusedAndNoVersionIsCreated(t *testing
 	}
 	id := suggestions[0].SuggestionID
 
-	// The preview refuses it for the same reason the apply call will: one
-	// vocabulary, served from one place.
 	code, diff := c.suggestionDiff(t, id)
 	if code != http.StatusOK || diff.Applicable || diff.BlockedReason != "validation_blocked" {
 		t.Fatalf("diff: got %d %+v", code, diff)
@@ -536,8 +489,6 @@ func TestASuggestionThatFailsValidationIsRefusedAndNoVersionIsCreated(t *testing
 	}
 }
 
-// --- the licensing hold (0023, SEC-011) ----------------------------------------
-
 func TestAHeldSkillNeitherShowsADiffNorBuildsAVersion(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -555,15 +506,12 @@ func TestAHeldSkillNeitherShowsADiffNorBuildsAVersion(t *testing.T) {
 		t.Fatal("accept failed")
 	}
 
-	// The hold arrives after the suggestion was written, which is exactly the case
-	// a check at proposal time would miss.
 	if _, err := pool.Exec(context.Background(),
 		`UPDATE skills SET access_restriction = 'license_review' WHERE id = $1`,
 		mustUUID(t, seed.skillID)); err != nil {
 		t.Fatal(err)
 	}
 
-	// A diff is a reproduction of held material, so it is not served either.
 	code, diff := c.suggestionDiff(t, id)
 	if code != http.StatusOK || diff.Applicable || diff.BlockedReason != "access_restricted" {
 		t.Fatalf("diff of a held skill: got %d %+v", code, diff)
@@ -582,8 +530,6 @@ func TestAHeldSkillNeitherShowsADiffNorBuildsAVersion(t *testing.T) {
 	}
 }
 
-// --- scope and absence (iron rule 3, WS-006) -----------------------------------
-
 func TestSuggestionsAreInvisibleAcrossWorkspaces(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -591,8 +537,6 @@ func TestSuggestionsAreInvisibleAcrossWorkspaces(t *testing.T) {
 	stranger := a.login(t, "sugg-scope-stranger")
 	const name = "sugg-scoped-skill"
 
-	// A run nobody has evaluated has no suggestions to list, and that is 404 rather
-	// than an empty list: an empty list reads as "nothing to improve".
 	unevaluated := importPackage(t, pool, a.packages, owner, "sugg-unevaluated", false)
 	unevaluatedVersion, _, _, _ := latestVersionOf(t, pool, unevaluated)
 	unevaluatedRun := seedRunForVersion(t, pool, owner.workspaceID, unevaluated, unevaluatedVersion)
@@ -623,7 +567,7 @@ func TestSuggestionsAreInvisibleAcrossWorkspaces(t *testing.T) {
 	if code, _ := stranger.applySuggestions(t, seed.skillID, evaluationID, id); code != http.StatusNotFound {
 		t.Errorf("stranger applying: got %d, want 404", code)
 	}
-	// Nothing the stranger did changed anything.
+
 	_, after, _ := owner.listSuggestions(t, seed.runID)
 	if after[0].Decision != "pending" {
 		t.Errorf("a stranger's request changed the decision to %q", after[0].Decision)

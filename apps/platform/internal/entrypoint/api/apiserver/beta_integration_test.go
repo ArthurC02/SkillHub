@@ -1,11 +1,3 @@
-// Closed-beta integration tests: the PDM-010 run allowance (ADR-028 決策 2), the
-// BETA-001 admission list (ADR-028 決策 1), the O11Y-004 funnel events and the
-// BETA-003/004/005 feedback channel (ADR-029).
-//
-// They live in apiserver_test with the rest of the database-backed HTTP tests so
-// they serve the real route table from apiserver.NewRouter rather than a copy —
-// which matters more here than anywhere else, because two of the three features
-// are configuration that changes which routes exist at all.
 package apiserver_test
 
 import (
@@ -27,10 +19,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-// --- helpers -----------------------------------------------------------------
-
-// betaAPI is newAPI with the closed-beta knobs set before the route table is
-// built. Any of them may be zero, which is the shipped default for all three.
 func betaAPI(
 	t *testing.T, pool *pgxpool.Pool,
 	quota policy.QuotaLimits, invited []string, retention time.Duration,
@@ -48,16 +36,9 @@ func betaAPI(
 	})
 }
 
-// seedCountedRun writes a run that has already been through `preparing`, which is
-// what PDM-010 counts. Straight into the database rather than through the API: the
-// point of these tests is what the counter counts, and driving a real run to
-// `preparing` would need a sandbox provider.
-//
-// failureClass may be empty (the run has not failed) or any value 0018 allows.
 func seedCountedRun(t *testing.T, pool *pgxpool.Pool, f fixture, failureClass string, at time.Time) {
 	t.Helper()
-	// Terminal on purpose: a counted run must not also hold a concurrency slot, or
-	// these tests would be measuring the wrong ceiling.
+
 	status, class := "succeeded", any(nil)
 	if failureClass != "" {
 		status, class = "failed", any(failureClass)
@@ -65,8 +46,6 @@ func seedCountedRun(t *testing.T, pool *pgxpool.Pool, f fixture, failureClass st
 	seedBetaRun(t, pool, f, status, class, &at)
 }
 
-// seedBetaRun writes one run row directly, with an optional `preparing`
-// transition at a chosen time.
 func seedBetaRun(t *testing.T, pool *pgxpool.Pool, f fixture, status string, failureClass any, preparedAt *time.Time) string {
 	t.Helper()
 	ctx := context.Background()
@@ -125,9 +104,6 @@ func (c *client) quota(t *testing.T) (int, quotaView) {
 	return resp.StatusCode, out
 }
 
-// analyticsSession reads the funnel cookie this browser is carrying, so an
-// assertion can be scoped to one visitor rather than to a table every test in the
-// package shares.
 func (c *client) analyticsSession(t *testing.T) string {
 	t.Helper()
 	for _, cookie := range c.Jar.Cookies(mustURL(t, c.base)) {
@@ -147,10 +123,6 @@ func betaCount(t *testing.T, pool *pgxpool.Pool, query string, args ...any) int 
 	return n
 }
 
-// --- PDM-010: the allowance is enforced --------------------------------------
-
-// The refusal itself, and the shape 02 asks for: 422 (well formed, platform fine,
-// may not proceed), and no run left behind.
 func TestRunIsRefusedWhenTheDailyAllowanceIsSpent(t *testing.T) {
 	pool := requireDB(t)
 	limits := policy.QuotaLimits{Daily: 2, Window: 30, FirstWindow: 30, WindowDays: 30}
@@ -171,16 +143,11 @@ func TestRunIsRefusedWhenTheDailyAllowanceIsSpent(t *testing.T) {
 		t.Errorf("refusal does not say it is the allowance: %q", view.Error)
 	}
 
-	// The check runs inside the transaction that would have inserted the run, so a
-	// refusal rolls the whole thing back. This assertion is the "同一個交易" half of
-	// ADR-028 決策 2 — a check in the handler could refuse after a row existed.
 	if after := betaCount(t, pool, `SELECT count(*) FROM runs WHERE workspace_id = $1`, mustUUID(t, f.workspaceID)); after != before {
 		t.Errorf("a refused run left %d rows behind", after-before)
 	}
 }
 
-// The window ceiling, and the first-window value PDM-010 proposes. A brand new
-// workspace is inside its first window, so the lower of the two applies.
 func TestFirstWindowUsesTheLowerAllowance(t *testing.T) {
 	pool := requireDB(t)
 	limits := policy.QuotaLimits{Daily: 50, Window: 30, FirstWindow: 3, WindowDays: 30}
@@ -210,13 +177,6 @@ func TestFirstWindowUsesTheLowerAllowance(t *testing.T) {
 	}
 }
 
-// PDM-010's refund list, as the predicate it is (ADR-028 決策 2). Platform-side
-// terminations do not count; the skill failing at its own job, a user cancelling
-// and a run that used all its time do.
-//
-// Written as a table over the whole 0018 vocabulary rather than over the three
-// interesting values: a class added later and forgotten would silently start
-// costing users their allowance, and the compiler cannot catch that.
 func TestOnlyPlatformSideFailuresAreRefunded(t *testing.T) {
 	pool := requireDB(t)
 	limits := policy.QuotaLimits{Daily: 100, Window: 100, FirstWindow: 100, WindowDays: 30}
@@ -226,13 +186,13 @@ func TestOnlyPlatformSideFailuresAreRefunded(t *testing.T) {
 		failureClass string
 		counted      bool
 	}{
-		{"provider_error", false},      // the provider could not carry it
-		{"platform_error", false},      // our own fault
-		{"capability_mismatch", false}, // gate B's baseline refused it
-		{"workload_error", true},       // the skill failed at its own job
-		{"cancelled", true},            // the user asked
-		{"timeout", true},              // it had its full time and spent it
-		{"", true},                     // it succeeded
+		{"provider_error", false},
+		{"platform_error", false},
+		{"capability_mismatch", false},
+		{"workload_error", true},
+		{"cancelled", true},
+		{"timeout", true},
+		{"", true},
 	}
 	for _, tc := range cases {
 		t.Run("class="+tc.failureClass, func(t *testing.T) {
@@ -253,16 +213,12 @@ func TestOnlyPlatformSideFailuresAreRefunded(t *testing.T) {
 	}
 }
 
-// A run that never reached `preparing` never counted, so there is nothing to
-// refund (PDM-010's own inference from where counting starts).
 func TestRunsThatNeverReachedPreparingDoNotCount(t *testing.T) {
 	pool := requireDB(t)
 	limits := policy.QuotaLimits{Daily: 10, Window: 10, FirstWindow: 10, WindowDays: 30}
 	a := betaAPI(t, pool, limits, nil, 0)
 	f := newFixture(t, a, pool, "alice-quota-provisioning")
 
-	// A real run through the API: it is created `queued` and, with no provider
-	// configured, fails without ever preparing.
 	f.start(t)
 
 	_, q := f.quota(t)
@@ -271,22 +227,12 @@ func TestRunsThatNeverReachedPreparingDoNotCount(t *testing.T) {
 	}
 }
 
-// The advisory lock in the create transaction (gateb.go, and the allowance now
-// rides on it): two simultaneous creates on a workspace with one slot left must
-// produce one run, not two.
-//
-// This is the concurrency ceiling rather than the allowance, and deliberately so —
-// under PDM-010's counting rule a queued run is not counted yet, so the allowance
-// cannot be raced in the same way, and this is the bound that keeps that gap at
-// one run (see requireQuota's comment). Testing the lock that actually holds is
-// worth more than a test that asserts a bound nothing enforces.
 func TestTwoSimultaneousRunsCannotBothTakeTheLastSlot(t *testing.T) {
 	pool := requireDB(t)
 	limits := policy.QuotaLimits{Daily: 50, Window: 50, FirstWindow: 50, WindowDays: 30}
 	a := betaAPI(t, pool, limits, nil, 0)
 	f := newFixture(t, a, pool, "alice-concurrency-race")
 
-	// One slot of MaxConcurrentRunsPerWorkspace already taken by a non-terminal run.
 	seedBetaRun(t, pool, f, "running", nil, nil)
 
 	hash := f.confirmPermissions(t)
@@ -322,8 +268,6 @@ func TestTwoSimultaneousRunsCannotBothTakeTheLastSlot(t *testing.T) {
 	}
 }
 
-// Enforcement first, display second (ADR-028 決策 3, 04 乙-2). A deployment with no
-// allowance shows no allowance — not zeroes, not the route.
 func TestQuotaIsNotShownWhereItIsNotEnforced(t *testing.T) {
 	pool := requireDB(t)
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
@@ -342,8 +286,6 @@ func TestQuotaIsNotShownWhereItIsNotEnforced(t *testing.T) {
 	}
 }
 
-// And where it is enforced, the summary carries it — outside the hash, by the rule
-// TEST-011 set for estimated_cost: an allowance is a state, not a permission.
 func TestPreflightCarriesTheQuotaOutsideTheHash(t *testing.T) {
 	pool := requireDB(t)
 	limits := policy.QuotaLimits{Daily: 5, Window: 30, FirstWindow: 20, WindowDays: 30}
@@ -364,7 +306,6 @@ func TestPreflightCarriesTheQuotaOutsideTheHash(t *testing.T) {
 		t.Errorf("remaining_today on the summary is %v, want 5", quota["remaining_today"])
 	}
 
-	// Spending allowance must not invalidate a confirmation somebody is holding.
 	seedCountedRun(t, pool, f, "", time.Now().Add(-time.Hour))
 	code, after := f.preflight(t)
 	if code != http.StatusOK {
@@ -375,20 +316,13 @@ func TestPreflightCarriesTheQuotaOutsideTheHash(t *testing.T) {
 	}
 }
 
-// --- BETA-001: the admission list --------------------------------------------
-
-// ADR-028 決策 1's table, as a test: search and detail stay open to everybody, and
-// fork, run creation and download close.
 func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 	pool := requireDB(t)
-	// alice is invited; bob is not. Keyed by provider_user_id, which for the dev
-	// provider is the login name.
+
 	a := betaAPI(t, pool, policy.QuotaLimits{}, []string{"alice-invited"}, 0)
 	alice := newFixture(t, a, pool, "alice-invited")
 	bob := newFixture(t, a, pool, "bob-uninvited")
 
-	// Open to everybody, invited or not — this was already true (DISC-010) and the
-	// gate does not change it.
 	for _, path := range []string{
 		"/api/skills/search?q=summarise+a+csv",
 		"/api/skills/" + bob.skillID,
@@ -398,9 +332,6 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 		}
 	}
 
-	// Closed to the uninvited. 403 and not 404: the catalogue has just shown this
-	// person the content, so denying the feature exists would be contradicted by
-	// their next request (02:SEC-011's /files reasoning).
 	code, body := bob.doJSON(t, http.MethodPost, "/skills/"+bob.skillID+"/fork", `{}`)
 	if code != http.StatusForbidden {
 		t.Errorf("POST fork as an uninvited user: got %d, want 403", code)
@@ -413,17 +344,6 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 		t.Errorf("POST run as an uninvited user: got %d, want 403", code)
 	}
 
-	// The other two gated routes, which this test's name has always claimed and
-	// its body never touched: packaging a version and taking the bytes away. Both
-	// could lose their RequireInvited in router.go with the whole suite green —
-	// the only other test that reads /downloads/{id}/content runs on a deployment
-	// with no invite list, where RequireInvited is a pass-through and therefore
-	// proves nothing about the gate.
-	//
-	// The artifact id is deliberately one that does not exist. The gate runs
-	// before the handler, so what it refuses must not depend on there being bytes
-	// to refuse — and alice's 404 on the same URL below is the other half of the
-	// argument: the route does reach its handler, so bob's 403 came from the gate.
 	const noSuchArtifact = "/downloads/00000000-0000-4000-8000-0000000000fe/content"
 	for _, gated := range []struct{ name, method, path, body string }{
 		{"POST packaging", http.MethodPost, packagingPath(bob.skillID, bob.versionID), `{"target":"claude-code"}`},
@@ -433,36 +353,26 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 		if code != http.StatusForbidden {
 			t.Errorf("%s as an uninvited user: got %d, want 403", gated.name, code)
 		}
-		// The message and not just the status: 403 is also what several other
-		// refusals answer, and a test that accepts any of them would stay green
-		// on the day the admission gate is the one that stopped answering.
+
 		if msg, _ := body["error"].(string); !strings.Contains(msg, "closed beta") {
 			t.Errorf("%s refused an uninvited user for some other reason: %v", gated.name, body)
 		}
 	}
 
-	// And open to the invited: being on the list grants nothing extra, it only
-	// stops removing things.
 	if code, _ := alice.doJSON(t, http.MethodPost, "/skills/"+alice.skillID+"/fork", `{}`); code != http.StatusCreated {
 		t.Errorf("POST fork as an invited user: got %d, want 201", code)
 	}
-	// 404 and not 403: for somebody on the list the gate is not what answers, and
-	// the missing artifact is.
+
 	if code := alice.status(t, http.MethodGet, noSuchArtifact); code != http.StatusNotFound {
 		t.Errorf("GET download content as an invited user: got %d, want 404", code)
 	}
-	// Whatever the packaging plan decides about this version — it is a fixture
-	// whose redistribution has not been curated, so 422 — it must not be the
-	// admission gate that decides it.
+
 	if code, body := alice.doJSON(t, http.MethodPost,
 		packagingPath(alice.skillID, alice.versionID), `{"target":"claude-code"}`); code == http.StatusForbidden {
 		t.Errorf("POST packaging as an invited user: got 403 (%v); the gate refused somebody on the list", body)
 	}
 }
 
-// The shipped default. No BETA_ALLOWLIST means no closed beta is running, so every
-// signed-in user is admitted — which is what DEV_LOGIN deployments get, and why
-// the offline demo path needs no exemption of its own.
 func TestNoAdmissionListMeansNoGate(t *testing.T) {
 	pool := requireDB(t)
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
@@ -473,32 +383,22 @@ func TestNoAdmissionListMeansNoGate(t *testing.T) {
 	}
 }
 
-// --- O11Y-004: the four funnel events ----------------------------------------
-
-// All four, each from the action that produces it, and none of them carrying the
-// query text (ADR-029 決策 2).
 func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 	pool := requireDB(t)
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 180*24*time.Hour)
 	f := newFixture(t, a, pool, "alice-funnel")
 
-	// Everything below is scoped to this browser's analytics session, which is also
-	// the assertion ADR-029 決策 4 asks for: one identifier stitches an anonymous
-	// first segment to whatever the same person does after signing in.
 	session := f.analyticsSession(t)
 	if session == "" {
 		t.Fatal("no analytics session cookie was issued")
 	}
 
-	// session_started: minted with the cookie on the first request of a fresh
-	// browser, which the login above already was.
 	if n := betaCount(t, pool,
 		`SELECT count(*) FROM analytics_events WHERE event_name = 'session_started' AND session_id = $1`,
 		session); n != 1 {
 		t.Errorf("session_started events for this visitor: %d, want 1", n)
 	}
 
-	// search_performed: length, script, hit count and filter flag; never the words.
 	if code := f.status(t, http.MethodGet, "/api/skills/search?q=summarise+a+csv+file"); code != http.StatusOK {
 		t.Fatalf("public search: got %d", code)
 	}
@@ -518,21 +418,13 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 	if language != "latin" {
 		t.Errorf("query_language is %q, want latin", language)
 	}
-	// Exactly one. QueryRow above takes the first row and discards the rest, so
-	// without this a duplicated write is invisible here — and a duplicate is
-	// this event's whole failure mode: 01 §11.2's first segment is a ratio of
-	// sessions, so one search counted twice is a denominator that cannot
-	// convert (M4 audit, 2026-08-24).
+
 	if n := betaCount(t, pool,
 		`SELECT count(*) FROM analytics_events WHERE event_name = 'search_performed' AND session_id = $1`,
 		session); n != 1 {
 		t.Errorf("search_performed events for one search: %d, want 1", n)
 	}
 
-	// skill_detail_viewed, carrying the skill that was opened. The arrival
-	// attributes were dropped with their columns in 0040 (04 丙-59) — nothing ever
-	// sent them, so every row said `direct` with no rank. The skill id is what is
-	// left, and it is what 01 §11.2's first segment actually counts.
 	if code := f.status(t, http.MethodGet, "/api/skills/"+f.skillID); code != http.StatusOK {
 		t.Fatalf("skill detail: got %d", code)
 	}
@@ -546,18 +438,13 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 	if viewedSkill != f.skillID {
 		t.Errorf("skill_detail_viewed records skill %q, want %q", viewedSkill, f.skillID)
 	}
-	// Exactly one, for the same reason, on the other side of the same ratio.
+
 	if n := betaCount(t, pool,
 		`SELECT count(*) FROM analytics_events WHERE event_name = 'skill_detail_viewed' AND session_id = $1`,
 		session); n != 1 {
 		t.Errorf("skill_detail_viewed events for one detail read: %d, want 1", n)
 	}
 
-	// And a read that says it is not a page view leaves the count alone. Two
-	// other surfaces answer from this endpoint - packaging and side-by-side
-	// comparison - and Compare read one skill per column, so a three-way
-	// comparison used to mint three of these from a table where no detail page
-	// was opened at all (adversarial review, 2026-08-24).
 	if code := f.status(t, http.MethodGet, "/api/skills/"+f.skillID+"?view=embedded"); code != http.StatusOK {
 		t.Fatalf("embedded skill read: got %d", code)
 	}
@@ -567,10 +454,6 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 		t.Errorf("an embedded read was counted as opening a skill: %d events, want 1", n)
 	}
 
-	// download_started is the *attempt*, recorded before the handler decides
-	// anything — that is the whole reason it exists next to download_records, which
-	// only ever holds downloads that succeeded. An artifact that does not exist
-	// still produces the event and still 404s.
 	f.status(t, http.MethodGet, "/downloads/00000000-0000-4000-8000-0000000000ff/content")
 	if n := betaCount(t, pool,
 		`SELECT count(*) FROM analytics_events WHERE event_name = 'download_started' AND session_id = $1`,
@@ -578,9 +461,6 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 		t.Errorf("download_started events: %d, want 1", n)
 	}
 
-	// Whatever else is in the table, no column of it can hold the query text: the
-	// schema has no free-text column at all, so this asserts the shape rather than
-	// the contents (ADR-029 決策 2).
 	if n := betaCount(t, pool, `
 		SELECT count(*) FROM information_schema.columns
 		WHERE table_name = 'analytics_events' AND column_name IN ('query', 'query_text', 'message', 'payload')`,
@@ -589,13 +469,10 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 	}
 }
 
-// Nothing is collected until a retention period exists (NFR-002, ADR-029 決策 5).
-// Not a row, and not a cookie either.
 func TestNoFunnelEventsWithoutARetentionPeriod(t *testing.T) {
 	pool := requireDB(t)
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
-	// Counted as a delta: every test in this package shares one database, so the
-	// question is what this API collected, not what the table holds.
+
 	before := betaCount(t, pool, `SELECT count(*) FROM analytics_events`)
 	f := newFixture(t, a, pool, "alice-no-analytics")
 
@@ -615,9 +492,6 @@ func TestNoFunnelEventsWithoutARetentionPeriod(t *testing.T) {
 	}
 }
 
-// ADR-029 決策 4: the analytics session identifier is not the session token and not
-// derivable from it. Asserted against the cookies a real browser holds, because
-// that is where a reuse would show up.
 func TestAnalyticsSessionIsNotTheSessionToken(t *testing.T) {
 	pool := requireDB(t)
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 180*24*time.Hour)
@@ -649,7 +523,6 @@ func TestAnalyticsSessionIsNotTheSessionToken(t *testing.T) {
 	}
 }
 
-// Account deletion de-identifies rather than deletes (ADR-029 決策 5).
 func TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem(t *testing.T) {
 	pool := requireDB(t)
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 180*24*time.Hour)
@@ -687,8 +560,6 @@ func TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem(t *testing.T) {
 	}
 }
 
-// --- BETA-003/004/005: the feedback channel ----------------------------------
-
 func TestFeedbackIsRecordedWithWorkspaceScope(t *testing.T) {
 	pool := requireDB(t)
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
@@ -715,17 +586,14 @@ func TestFeedbackIsRecordedWithWorkspaceScope(t *testing.T) {
 	if kind != "blocking_issue" || path != "/runs/x" {
 		t.Errorf("stored kind=%q page_path=%q", kind, path)
 	}
-	// 資訊架構 IA-11: the build the page came from travels with the report, so
-	// 「這一頁怪怪的」 can be reproduced against the deployment that served it.
+
 	if buildID == nil || *buildID != "abc123def456" {
 		t.Errorf("build_id was not stored on the report: %v", buildID)
 	}
 	if workspace != alice.workspaceID {
 		t.Errorf("the report was filed against workspace %s, want the session's %s", workspace, alice.workspaceID)
 	}
-	// Somebody else's run is dropped, not refused: losing the report over a context
-	// field would be the worse outcome, and the 204 tells the caller nothing about
-	// whether that run exists (WS-006).
+
 	if runID != nil {
 		t.Errorf("a run from another workspace was stored on the report: %v", *runID)
 	}
@@ -781,8 +649,7 @@ func TestFeedbackRejectsWhatTheContractRejects(t *testing.T) {
 			t.Errorf("%s: got %d, want 400", name, code)
 		}
 	}
-	// A full URL where a route path belongs is dropped, not refused: the query
-	// string is what must not be stored (beta-design §4.2 界線 2).
+
 	if code, _ := f.doJSON(t, http.MethodPost, "/feedback",
 		`{"kind":"need_signal","message":"ok","page_path":"https://host/search?q=my+secret"}`); code != http.StatusNoContent {
 		t.Fatal("a report with an unusable page_path was refused instead of accepted without it")

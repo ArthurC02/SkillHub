@@ -13,30 +13,14 @@ import (
 const (
 	creationFeedbackMaxRunes   = 16000
 	creationFeedbackMaxSummary = 2000
-	// creationFeedbackMaxItem bounds each criterion's text/reason and each
-	// finding's message before the drop loops run. Without a per-item cut, the
-	// tail-drop loops below remove whole criteria/findings one at a time, and a
-	// single oversized free-text field (one 9,000-rune Reason) can force the
-	// FAILED criterion carrying it, and the judge's own trailing warning finding,
-	// to be the first things dropped for size — the two things a caller most
-	// needs to see.
+
 	creationFeedbackMaxItem = 600
 )
 
-// linkPattern matches the URLs stripped from the judge's free text before it
-// leaves for the creation flow. 05 SEC-013 (LLM01): the judge writes about a
-// Run's output, and that output is written by the Skill under trial — so an
-// attacker's page can end up quoted, with its URL, in a reason the next model
-// call is told to act on. Nothing downstream needs the address: the person sees
-// the sentence, the model rewrites a body. The placeholder is left visible so a
-// reader knows a link was there rather than wondering what was cut.
 var linkPattern = regexp.MustCompile(`(?i)\b(?:https?|ftp|file|data|javascript)://[^\s<>"')]+|\bwww\.[^\s<>"')]+`)
 
 const linkPlaceholder = "[link removed]"
 
-// withoutLinks is applied to every free-text field of the creation feedback:
-// the summary, each criterion's reason, each finding's message. Criterion text
-// is the person's own acceptance criterion and is left alone.
 func withoutLinks(s string) string {
 	return linkPattern.ReplaceAllString(s, linkPlaceholder)
 }
@@ -55,9 +39,6 @@ type creationFeedbackPayload struct {
 	OmittedFindings       int               `json:"omitted_findings"`
 }
 
-// CreationFeedback returns the small, durable report consumed by the creation
-// flow. Current and view keep workspace scoping and fresh evidence availability
-// in one place with the ordinary evaluation read surface.
 func (s *Service) CreationFeedback(
 	ctx context.Context, workspaceID, runID pgtype.UUID,
 ) (json.RawMessage, error) {
@@ -86,9 +67,6 @@ func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
 		findings = []Finding{}
 	}
 
-	// Per-item cut runs before anything is dropped whole, so a truncated Reason
-	// or Message survives even when the criterion or finding around it does not
-	// make the final cut.
 	itemsTruncated := false
 	for i := range criteria {
 		var t bool
@@ -100,8 +78,7 @@ func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
 		}
 	}
 	for i := range findings {
-		// The assignment is unconditional: cut only reports whether it shortened
-		// the text, and withoutLinks has to survive either way.
+
 		msg, t := cut(withoutLinks(findings[i].Message), creationFeedbackMaxItem)
 		findings[i].Message = msg
 		if t {
@@ -109,10 +86,6 @@ func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
 		}
 	}
 
-	// The tail-drop loops below remove whole items from the end, so what most
-	// needs to survive goes first: a criterion already passed/met is the cheapest
-	// thing to omit, and a finding below warning severity is not worth keeping
-	// over one that is (04 丙 six-lane audit).
 	sort.SliceStable(criteria, func(i, j int) bool {
 		return criterionDropFirst(criteria[i]) < criterionDropFirst(criteria[j])
 	})
@@ -149,12 +122,7 @@ func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
 
 	truncated = true
 	evidenceComplete = false
-	// Criteria first: a run typically has far more evaluated text sitting in
-	// CriterionResults than in DeterministicFindings, so criteria is where an
-	// oversized report is usually coming from. Emptying findings first — as this
-	// used to — could burn through the judge's only warning finding chasing size
-	// that criteria was responsible for the whole time, before criteria's own
-	// (now-sorted) passed/met entries were ever touched.
+
 	for len([]rune(string(blob))) > creationFeedbackMaxRunes && len(criteria) > 0 {
 		criteria = criteria[:len(criteria)-1]
 		omittedCriteria++
@@ -178,10 +146,6 @@ func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
 	return blob, err
 }
 
-// criterionDropFirst ranks a criterion for the tail-drop loop: 0 keeps it near
-// the front (dropped last), 1 puts it at the back (dropped first). A criterion
-// already passed/met is the cheapest thing to omit — the ones still failed or
-// undetermined are what a caller needs to see to fix anything.
 func criterionDropFirst(c CriterionResult) int {
 	if c.Result == ResultPassed {
 		return 1
@@ -189,8 +153,6 @@ func criterionDropFirst(c CriterionResult) int {
 	return 0
 }
 
-// findingDropFirst mirrors criterionDropFirst for findings: anything below
-// warning severity goes to the back, dropped before a warning or an error.
 func findingDropFirst(f Finding) int {
 	if f.Severity == SeverityWarning || f.Severity == SeverityError {
 		return 0

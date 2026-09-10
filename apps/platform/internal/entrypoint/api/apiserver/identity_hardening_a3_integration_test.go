@@ -1,9 +1,5 @@
 package apiserver_test
 
-// Three identity-layer facts that had no assertion: the operator refusal leaves
-// no trace, /me gates a disclosure on an entitlement, and PersonalWorkspace picks
-// a workspace when ADR-011's invariant has broken instead of saying so.
-
 import (
 	"context"
 	"encoding/json"
@@ -18,21 +14,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 )
 
-// RequireOperator answers 404 so that an operator endpoint's existence is not
-// disclosed (02:SEC-011), which means a probe leaves no trace on the outside —
-// and, until now, none on the inside either. "Has anybody been trying the
-// dispatch halt" had no answer at all.
-//
-// The asymmetry is the design: only the caller with a resolvable session writes
-// a row, because only they can be named. An unauthenticated 404 writes nothing,
-// or any path scanner becomes an amplifier against a 400-day table.
 func TestAnOperatorRefusalIsAudited(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
-	a := newAPI(t, pool) // no OPERATOR_USER_IDS: nobody is an operator
+	a := newAPI(t, pool)
 	client := a.login(t, "operator-refusal-probe")
 
-	// A real operator route, reached by a signed-in account that is not one.
 	resp, err := client.Get(a.URL + "/admin/dispatch")
 	if err != nil {
 		t.Fatalf("GET /admin/dispatch: %v", err)
@@ -53,8 +40,6 @@ func TestAnOperatorRefusalIsAudited(t *testing.T) {
 		t.Fatal("a signed-in account was refused an operator route and nothing recorded it")
 	}
 
-	// The metadata is the route pattern, never the URL: this row exists for
-	// probes, and a probe's path is attacker-chosen (iron rule 11).
 	var metadata []byte
 	if err := pool.QueryRow(ctx, `
 		SELECT metadata FROM audit_events WHERE action = $1 ORDER BY created_at DESC LIMIT 1`,
@@ -70,7 +55,6 @@ func TestAnOperatorRefusalIsAudited(t *testing.T) {
 	}
 }
 
-// An anonymous probe is refused identically and writes nothing.
 func TestAnAnonymousOperatorProbeIsNotAudited(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
@@ -99,16 +83,10 @@ func TestAnAnonymousOperatorProbeIsNotAudited(t *testing.T) {
 	}
 }
 
-// public.yaml, verbatim: "generate_skill (ADR-052) is an entry point: it says a
-// route exists. clean_mode (ADR-060) is not... A client that treats clean_mode as
-// something to unlock has read it backwards." The server was doing exactly that:
-// /me handed out the whole features map only past the BETA-001 invite check, so
-// an uninvited visitor on a clean-mode deployment was not told the environment
-// has no isolation and verifies no signature.
 func TestMeDisclosesCleanModeToAnUninvitedCallerAndStillGatesTheEntryPoint(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
-		// A closed beta this caller is not in.
+
 		d.Auth.Invited = map[string]bool{"somebody-else": true}
 		d.Auth.Features = map[string]bool{"generate_skill": true}
 		d.Auth.Disclosures = map[string]bool{"clean_mode": true}
@@ -134,17 +112,6 @@ func TestMeDisclosesCleanModeToAnUninvitedCallerAndStillGatesTheEntryPoint(t *te
 	}
 }
 
-// ADR-011 gives an account exactly one workspace, and PersonalWorkspace is where
-// every workspace scope in the platform comes from (iron rule 3): /me, feedback,
-// the download funnel. ListWorkspacesByOwner orders by created_at with no
-// tie-breaker, so if two rows ever existed for one owner the "first" would be
-// whichever Postgres returned — a request's scope, non-deterministic and silent.
-//
-// The 2026-08-29 audit filed this as "does a unique constraint exist? 未查證",
-// with severity resting on the answer. It does: 0002 creates
-// workspaces_owner_user_id_key, so the state is unreachable and this is the
-// assertion with teeth — the app-side len(ws)>1 refusal is defence behind it and
-// cannot be exercised while the index stands.
 func TestOneAccountCannotHaveTwoWorkspaces(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
@@ -165,7 +132,6 @@ func TestOneAccountCannotHaveTwoWorkspaces(t *testing.T) {
 		t.Fatalf("one workspace must still resolve: %v", err)
 	}
 
-	// The database is what holds ADR-011's 1:1, not signup's good behaviour.
 	var extra pgtype.UUID
 	err = pool.QueryRow(ctx, `
 		INSERT INTO workspaces (owner_user_id, name) VALUES ($1, $2) RETURNING id`,

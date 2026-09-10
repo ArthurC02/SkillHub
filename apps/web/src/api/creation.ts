@@ -33,25 +33,12 @@ export interface CreationReference {
   warnings?: number;
 }
 export type CreationFetch = { url: string; sha256?: string; bytes?: number; status: string };
-/**
- * One picture in the conversation. `message_index` is the turn it belongs to:
- * the person's own message when they typed something with it, otherwise the
- * index the model's reply takes.
- *
- * There is no URL here and there will not be one — the platform keeps the
- * digest and refuses the bytes (ADR-066 決策 4). The thumbnail this screen shows
- * is the `File` the browser still holds from the send that created it, so a
- * reload leaves the turn describing a picture it can no longer show.
- */
 export interface CreationAttachment {
   message_index: number;
   media_type: string;
   bytes: number;
   sha256: string;
 }
-/** What the person last confirmed, before a model step overwrote it (05 R-54
- * #4) — present only when that overwrite actually overturned a confirmed
- * value, so the confirm screen has something to compare the new text to. */
 export interface CreationModelChange {
   brief?: string;
   acceptance_criteria?: string[];
@@ -166,39 +153,11 @@ export const actOnCreationSession = (id: string, body: CreationAction) =>
     body: JSON.stringify(body),
   });
 
-/**
- * Whether this deployment shows the interactive creation entry point.
- *
- * Same /me-flag shape as `useGenerateEntryPoint` (ADR-052): a named hook
- * rather than an inline read so `ia.test.ts`'s roster scan can see the mount.
- * Go sends `creation_skill` only when `generate_skill` is also on
- * (apps/platform/internal/entrypoint/api/apiserver/app.go
- * `entryPointFeatures`), and the web still nests it inside `generateExposed`
- * in CreateHub — this hook never widens exposure.
- */
 export function useCreationEntryPoint(): boolean {
   const me = useMe();
   return me.data?.features?.creation_skill === true;
 }
 
-/**
- * The step stream (ADR-069, `05` R-71). Opens an SSE connection and hands each
- * document to `onSession`; returns a closer.
- *
- * # Why this exists beside the 1-second poll rather than instead of it
- *
- * A stream can fail in ways a fetch cannot — a proxy that buffers, a browser
- * without `EventSource`, a network that drops it repeatedly — and every one of
- * those failures is silent. So the caller keeps polling as its floor and only
- * stands the poll down while `onOpen` says a stream is actually delivering.
- * The screen therefore has no state in which it stops asking; the stream only
- * makes it ask less and hear sooner.
- *
- * What arrives here is the same document `getCreationSession` returns — Go
- * commits it before it streams it. There are no model tokens on this channel
- * and there is no client-side assembly: a model reply is a proposal until Go
- * accepts it, and this connection carries only what was accepted.
- */
 export function streamCreationSession(
   id: string,
   onSession: (s: CreationSession) => void,
@@ -208,8 +167,6 @@ export function streamCreationSession(
     onOpen(false);
     return () => {};
   }
-  // `withCredentials` for the same reason apiFetch sends `credentials:
-  // "include"`: the session cookie is the only identity this route accepts.
   const source = new EventSource(API_BASE_URL + "/creation-sessions/" + id + "/events", {
     withCredentials: true,
   });
@@ -218,14 +175,12 @@ export function streamCreationSession(
     try {
       onSession(JSON.parse(e.data) as CreationSession);
     } catch {
-      // A half-written frame is not worth a thrown render. The poll underneath
-      // is still running and will carry the same state a moment later.
+      // Ignore a half-written frame; the poll underneath will catch up.
     }
   };
   source.onerror = () => {
-    // The browser reconnects on its own, carrying Last-Event-ID, so this is not
-    // a place to retry by hand. It IS the place to put the poll back in charge
-    // until an open event says the stream is delivering again.
+    // The browser retries the connection on its own; this just hands control
+    // back to the poll until an open event says the stream is live again.
     onOpen(false);
   };
   return () => {

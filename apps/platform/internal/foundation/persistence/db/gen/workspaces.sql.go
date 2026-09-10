@@ -46,8 +46,6 @@ type GetWorkspaceParams struct {
 	OwnerUserID pgtype.UUID
 }
 
-// Ownership is checked in SQL: a workspace_id coming from the UI is never trusted
-// (iron rule 3, ADR-011).
 func (q *Queries) GetWorkspace(ctx context.Context, arg GetWorkspaceParams) (Workspace, error) {
 	row := q.db.QueryRow(ctx, getWorkspace, arg.ID, arg.OwnerUserID)
 	var i Workspace

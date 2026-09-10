@@ -7,15 +7,6 @@ import (
 	"testing"
 )
 
-// The invariant the whole table exists for: Ready is reachable only by
-// measurement.
-//
-// 04 丙-118 is what its absence looked like. The launcher decided a capability
-// was present with `!process.env[n]`, so a service restarted without its
-// credential — answering 503 on every capability endpoint — printed as a green
-// tick. Three greens in a row sat over it and the only honest signal arrived
-// last. "Configured" and "works" are different facts and this is the type that
-// keeps them apart.
 func TestConfiguredWithoutAProbeIsNeverReady(t *testing.T) {
 	reg := NewRegistry([]Capability{{
 		ID:    "no_probe",
@@ -31,9 +22,7 @@ func TestConfiguredWithoutAProbeIsNeverReady(t *testing.T) {
 	if rows[0].Detail == "" {
 		t.Error("Unmeasured with no detail is a state nobody can act on")
 	}
-	// And it must not satisfy the whole-deployment question either. A caller
-	// asking AllReady wants to know whether the deployment works; "nobody
-	// looked" is not an answer to that.
+
 	if AllReady(rows) {
 		t.Error("AllReady accepted a capability nothing measured")
 	}
@@ -66,10 +55,7 @@ func TestTheFourAnswersAreDistinguishable(t *testing.T) {
 		t.Errorf("a probe that failed is %q with detail %q; the reason has to survive",
 			got["b_broken"].Readiness, got["b_broken"].Detail)
 	}
-	// Unavailable and Broken are different facts. Collapsing them is how
-	// "misconfigured" gets reported as "you did not turn this on", and the probe
-	// must not even run when a precondition is absent — it would be dialling
-	// with half a configuration.
+
 	if got["c_unavailable"].Readiness != Unavailable {
 		t.Errorf("a missing precondition is %q, want %q", got["c_unavailable"].Readiness, Unavailable)
 	}
@@ -81,10 +67,6 @@ func TestTheFourAnswersAreDistinguishable(t *testing.T) {
 	}
 }
 
-// A variable that is present but blank is absent. Shells and .env files produce
-// `FOO=` constantly, and treating that as configured is how a capability
-// reports Unmeasured (or worse, probes with an empty credential) instead of
-// naming what is missing.
 func TestABlankVariableCountsAsMissing(t *testing.T) {
 	reg := NewRegistry([]Capability{{ID: "x", Needs: []string{"BLANK"}}})
 	for _, value := range []string{"", "   ", "\t"} {
@@ -95,9 +77,6 @@ func TestABlankVariableCountsAsMissing(t *testing.T) {
 	}
 }
 
-// The checker in tools/devctl reads this to compare the table against
-// .env.example, so a variable named twice must not be reported twice and the
-// order must not depend on map iteration.
 func TestDeclaredVarsIsDeduplicatedAndStable(t *testing.T) {
 	reg := NewRegistry([]Capability{
 		{ID: "b", Needs: []string{"TWO", "ONE"}},
@@ -111,8 +90,7 @@ func TestDeclaredVarsIsDeduplicatedAndStable(t *testing.T) {
 }
 
 func TestAnEmptyTableIsNotReady(t *testing.T) {
-	// A build that declares nothing has measured nothing. Answering "ready" here
-	// would be this whole file's defect reintroduced at its own boundary.
+
 	if AllReady(nil) {
 		t.Error("AllReady said an empty table was ready")
 	}

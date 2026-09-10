@@ -10,8 +10,6 @@ import (
 	"time"
 )
 
-// p02Driver is the lifecycle half of the Driver interface, embedded so the rest
-// panics: these tests drive dispatch and teardown and nothing else.
 type p02Driver struct {
 	Driver
 	mu                sync.Mutex
@@ -101,9 +99,6 @@ func (d *p02Driver) Remove(ctx context.Context, id string) error {
 }
 func (d *p02Driver) WorkloadDone(context.Context, string) (bool, error) { return false, nil }
 
-// Rootless: Capability() asks the driver, and these tests read Capability() for
-// its P-02 fields. Not part of the embedded panic, because a nil answer here
-// would be a panic about something the test is not measuring.
 func (d *p02Driver) Rootless() bool { return true }
 
 func (d *p02Driver) ReleaseWorkload(context.Context, string) error { return nil }
@@ -168,10 +163,6 @@ func (f *fakeProber) ProbeEgress(context.Context, []string) ([]string, error) {
 
 var probeAt = time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
 
-// The four states, and the two that are easy to collapse into each other are the
-// point. ADR-022 §3 counts unknown as fail for acceptance and this code does not
-// merge them anyway: `fail` is evidence of a hole, `unknown` is the absence of
-// evidence either way, and they earn different actions.
 func TestP02ProbeDistinguishesAHoleFromTheAbsenceOfEvidence(t *testing.T) {
 	targets := []string{"db.internal:5432", "api.internal:8080"}
 	for _, tc := range []struct {
@@ -200,15 +191,12 @@ func TestP02ProbeDistinguishesAHoleFromTheAbsenceOfEvidence(t *testing.T) {
 	}
 }
 
-// A probe that could not run must never report `pass`. This is the shape that
-// makes a resident check decorative: the healthy answer and the answer nobody
-// took are both "no destination was reached".
 func TestAProbeThatCouldNotRunIsNeverAPass(t *testing.T) {
 	p := NewP02Probe([]string{"db.internal:5432"}, 0, 0)
 	if got := p.Check(context.Background(), &fakeProber{err: errors.New("boom")}, probeAt); got.State == P02Pass {
 		t.Fatal("a probe that failed to run reported pass")
 	}
-	// And before any reading at all.
+
 	fresh := NewP02Probe([]string{"db.internal:5432"}, 0, 0)
 	if got := fresh.Result(); got.State != P02Unknown {
 		t.Fatalf("a node that has taken no reading reports %q, want unknown: starting at pass means a node "+
@@ -216,9 +204,6 @@ func TestAProbeThatCouldNotRunIsNeverAPass(t *testing.T) {
 	}
 }
 
-// checked_at is not decoration. A resident probe that stopped keeps answering
-// `pass` with a timestamp that stops moving, and from outside the node that is
-// the only way to see it.
 func TestEveryReadingCarriesWhenItWasTaken(t *testing.T) {
 	p := NewP02Probe([]string{"db.internal:5432"}, 0, 0)
 	first := p.Check(context.Background(), &fakeProber{}, probeAt)
@@ -231,9 +216,6 @@ func TestEveryReadingCarriesWhenItWasTaken(t *testing.T) {
 	}
 }
 
-// The node's own first action. The platform learns about this by polling, and
-// between two polls is exactly the window in which untrusted code is talking to
-// the core database.
 func TestABreachTerminatesEveryLiveRunAndRefusesNewOnes(t *testing.T) {
 	drv := newP02Driver()
 	m := p02Manager(drv)
@@ -255,7 +237,7 @@ func TestABreachTerminatesEveryLiveRunAndRefusesNewOnes(t *testing.T) {
 	if got := len(m.List().Runs); got != 0 {
 		t.Errorf("the node still holds %d runs after a P-02 breach", got)
 	}
-	// And it stops taking work, without waiting for the platform to notice.
+
 	req.RunAttemptID = "44444444-4444-4444-4444-444444444444"
 	req.Attempt = 2
 	_, _, err := m.Create(context.Background(), req)
@@ -320,9 +302,7 @@ func TestCreateRefusesABreachBetweenRegistrationAndStart(t *testing.T) {
 	log := slog.New(&p02FlipHandler{flip: func() {
 		probe.Check(context.Background(), &fakeProber{reached: []string{"db.internal:5432"}}, probeAt.Add(time.Second))
 	}})
-	// If Start is reached, make the later guard pass; this test then has teeth
-	// specifically for the registration-to-Start window rather than borrowing
-	// coverage from the post-Start guard.
+
 	drv.startHook = func() {
 		probe.Check(context.Background(), &fakeProber{}, probeAt.Add(2*time.Second))
 	}
@@ -599,8 +579,6 @@ func TestPostStartCancelStopHasABoundedContext(t *testing.T) {
 	}
 }
 
-// The capability response is the only channel this contract has, so what it says
-// is the whole reporting mechanism.
 func TestCapabilityReportsTheProbeAndTakesTheNodeOutOfRotation(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
@@ -630,9 +608,6 @@ func TestCapabilityReportsTheProbeAndTakesTheNodeOutOfRotation(t *testing.T) {
 	}
 }
 
-// A manager built without a probe reports no security block at all rather than
-// an empty one: "this build has no probe" and "this probe found nothing" must
-// not look the same on the wire.
 func TestAManagerWithNoProbeClaimsNothing(t *testing.T) {
 	m := p02Manager(newP02Driver())
 	if c := m.Capability(context.Background()); c.Security != nil {

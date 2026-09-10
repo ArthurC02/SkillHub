@@ -22,68 +22,24 @@ const (
 	stateCookie   = "sh_oauth_state"
 )
 
-// Handler exposes the auth endpoints declared in contracts/openapi/public.yaml.
 type Handler struct {
 	Service *Service
-	// Secure controls the cookie Secure flag; false only for plain-http local dev.
+
 	Secure bool
-	// AppURL is where the callback redirects after login (default "/").
+
 	AppURL string
-	// DevLogin mounts the offline dev provider (ADR-020). Local demo and E2E
-	// only; must never be set in production.
+
 	DevLogin bool
-	// Operators is the 02:SEC-011 platform operator allowlist, keyed by user id
-	// and filled from deployment configuration (OPERATOR_USER_IDS in cmd/api).
-	//
-	// A map and not a database role table because the team is one person: a role
-	// table needs its own grant endpoint, its own authorization for that endpoint
-	// and its own audit trail for grants, and all three would exist to let one
-	// account promote itself. Granting is editing the deployment's environment and
-	// restarting, which nobody who cannot already deploy can do.
-	//
-	// Empty is the correct default and the shipped one: nobody is an operator, and
-	// every operator route answers 404 to everybody. The upgrade path when a second
-	// person appears is a roles table read here instead, not a change to the
-	// routes or the handlers.
+
 	Operators map[string]bool
-	// Invited is the BETA-001 admission list (ADR-028 決策 1), keyed by
-	// user_identities.provider_user_id and filled from deployment configuration
-	// (BETA_ALLOWLIST in cmd/api).
-	//
-	// The same shape as Operators above and for the same three reasons SEC-011
-	// gave: a table of invitees would need a grant endpoint, authorization for that
-	// endpoint, and an audit trail for the grants, and all three would exist so one
-	// account could add itself. Inviting somebody is editing the deployment's
-	// environment and restarting.
-	//
-	// Empty is the shipped default and it means the gate is off — every signed-in
-	// user is admitted, which is what M0 through M3 have been. It is not a
-	// fail-open hole: the gate exists to bound the cost of a public deployment
-	// during a closed beta, and a deployment that has not named a beta cohort does
-	// not have one.
-	//
-	// It is not a role and it is not a wider scope. Being on it grants nothing
-	// beyond what an ordinary signed-in user already has; being off it removes
-	// Fork, run creation and download, and leaves search and skill detail exactly
-	// as they were (DISC-010 already serves those to nobody in particular).
+
 	Invited map[string]bool
-	// Features is deployment configuration this endpoint passes through without
-	// understanding it: the web has to know whether an entry point exists before
-	// it draws one, and a route that is simply not mounted cannot be discovered
-	// without asking for it and getting a 404 — which is a probe, not an answer.
-	//
-	// A generic map on purpose. identity has no business knowing what
-	// `generate_skill` means (ADR-032), and the alternative — one named boolean
-	// per feature — puts every future flag through this file.
+
 	Features map[string]bool
-	// Disclosures is the other half of the same wire key, and the reason the two
-	// are separate fields: what /me returns here is not gated on the invite list,
-	// because a fact about the deployment is not a permission. See the merge in
-	// the /me handler for what went wrong while they shared one map.
+
 	Disclosures map[string]bool
 }
 
-// Mount registers the auth routes on mux.
 func (h *Handler) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/github/login", h.startLogin)
 	mux.HandleFunc("GET /auth/github/callback", h.finishLogin)
@@ -96,13 +52,11 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 	}
 }
 
-// devLogin signs in as a named dev user without any external network — the
-// offline demo path (ADR-020). Reachable only when DevLogin is true.
 func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		User string `json:"user"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body) // empty body → default user
+	_ = json.NewDecoder(r.Body).Decode(&body)
 	name := body.User
 	if name == "" {
 		name = "dev"
@@ -145,7 +99,7 @@ func (h *Handler) startLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
-	// One-shot state check (ADR-020): cookie must exist and match the query.
+
 	sc, err := r.Cookie(stateCookie)
 	if err != nil || sc.Value == "" || r.URL.Query().Get("state") != sc.Value {
 		httpx.WriteError(w, http.StatusUnauthorized, "oauth state mismatch")
@@ -211,9 +165,6 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 
 type ctxKey struct{}
 
-// RequireSession resolves the session cookie to a user and stores it in the
-// request context; without a valid session the request ends with 401.
-// Public reads (DISC-010) simply do not use this wrapper.
 func (h *Handler) RequireSession(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(sessionCookie)
@@ -230,27 +181,14 @@ func (h *Handler) RequireSession(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// LogOperatorRoster records the operator list this process came up with
-// (02:SEC-011 「授予或撤銷 operator 角色本身也是 audit event」).
-//
-// Written on every start, not only when the list changes: comparing against the
-// previous event would mean reading the trail to decide whether to append to it,
-// and a roster that silently persisted across a restart nobody logged is the
-// state this row exists to make impossible. Duplicates are cheap; a gap is not.
-//
-// Its limits, stated rather than papered over: it records *what* the roster is,
-// never who granted it or when — that fact lives in whatever changed the
-// deployment's environment. A roster table with its own grant path is the
-// upgrade, and 02:SEC-011 describes it.
 func (h *Handler) LogOperatorRoster(ctx context.Context) error {
 	ids := make([]string, 0, len(h.Operators))
 	for id := range h.Operators {
 		ids = append(ids, id)
 	}
-	sort.Strings(ids) // stable across restarts, so two events are comparable
+	sort.Strings(ids)
 	return audit.Log(ctx, h.Service.Pool, audit.Event{
-		// No actor: nobody performed this through the platform (audit.Event's
-		// zero actor is "platform-initiated", which a start-up is).
+
 		Action:       audit.ActionOperatorRoster,
 		ResourceType: audit.ResourceOperatorRoster,
 		Metadata: map[string]any{
@@ -261,20 +199,6 @@ func (h *Handler) LogOperatorRoster(ctx context.Context) error {
 	})
 }
 
-// RequireOperator is RequireSession for the 02:SEC-011 operator routes, with one
-// difference that is the whole point of it: everybody who is not on the
-// deployment's operator list gets 404, not 401 and not 403.
-//
-// 401 would tell an anonymous caller the route exists and that logging in is the
-// next step; 403 would tell a signed-in member that there is a privilege they do
-// not have. SEC-011 asks for neither to be knowable ("不揭露資源與端點存在", the
-// same non-disclosure rule SEC-008 applies to other people's content), so the
-// answer here is the answer the mux gives for a path nobody ever wrote.
-//
-// Being on the list is *not* a widened workspace scope. Nothing downstream may
-// read workspace-private data on the strength of it (SEC-011 最小權力原則); the
-// session user goes into the context only so the handler can name an actor in
-// the audit event.
 func (h *Handler) RequireOperator(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(sessionCookie)
@@ -284,8 +208,7 @@ func (h *Handler) RequireOperator(next http.HandlerFunc) http.HandlerFunc {
 		}
 		user, err := h.Service.UserForToken(r.Context(), c.Value)
 		if err != nil {
-			// No attributable actor, so nothing is recorded: see
-			// audit.ActionOperatorRefused for why that asymmetry is deliberate.
+
 			httpx.WriteError(w, http.StatusNotFound, "not found")
 			return
 		}
@@ -298,18 +221,6 @@ func (h *Handler) RequireOperator(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// logOperatorRefusal records one authenticated account being turned away from an
-// operator route (02:SEC-011, audit.ActionOperatorRefused).
-//
-// Logged, never returned: the caller's answer is 404 either way, and an audit
-// write that could change the response would make the trail part of the
-// authorization decision. A failure to record is loud in the process log and
-// nowhere else.
-//
-// The metadata is the route's PATTERN and not the URL. A pattern is the closed
-// vocabulary of the route table; a path carries whatever identifiers the caller
-// typed, and this row exists for probes, which is precisely the traffic whose
-// path is attacker-chosen (iron rule 11).
 func (h *Handler) logOperatorRefusal(r *http.Request, user User) {
 	pattern := r.Pattern
 	if pattern == "" {
@@ -325,33 +236,11 @@ func (h *Handler) logOperatorRefusal(r *http.Request, user User) {
 	}
 }
 
-// betaNotInvited is what somebody outside the cohort is told. Deliberately an
-// explanation and an invitation to say what they wanted, not a wall: the catalogue
-// has just shown this person the content, so pretending the feature does not exist
-// would be contradicted by the next request they make (the same reasoning that put
-// 403 rather than 404 on /files in 02:SEC-011).
 const betaNotInvited = "Skill Hub is in closed beta: browsing and skill details are open to " +
 	"everyone, but forking, trial runs and downloads are limited to the invited testers. " +
 	"Tell us what you were trying to do at POST /feedback with kind=need_signal and it goes " +
 	"straight into the scope review."
 
-// RequireInvited is the BETA-001 admission gate (ADR-028 決策 1), layered on top
-// of RequireSession rather than replacing it: login is still GitHub OAuth and this
-// only decides what a logged-in account may reach.
-//
-// 403 and not 404, which is the opposite of RequireOperator two functions up, and
-// the difference is deliberate. An operator route's existence is itself meant to
-// be secret. A closed beta's is not — the product says so on its own front page,
-// and the visitor was just served the catalogue by the same API. Hiding the
-// endpoint would be a fiction their next request disproves.
-//
-// There is no exemption for the dev provider and no second code path for it.
-// DEV_LOGIN's offline demo (ADR-020) is untouched because a development
-// deployment sets no BETA_ALLOWLIST and the gate is therefore off — not because
-// this function knows about it. An exemption would be a way past the gate that
-// exists only in the build where the gate matters least, and the identity table
-// keys dev logins the same way it keys GitHub ones, so a dev deployment that does
-// want the gate simply lists the names it uses.
 func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if len(h.Invited) == 0 {
@@ -365,9 +254,7 @@ func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 		}
 		invited, err := h.invited(r.Context(), user)
 		if err != nil {
-			// Fail closed. The list is a cost ceiling on a publicly reachable
-			// deployment, and "we could not read who you are" is not "you are on
-			// the list" (the SEC-002 rule, applied to admission).
+
 			httpx.WriteError(w, http.StatusServiceUnavailable, "invite check unavailable")
 			return
 		}
@@ -379,15 +266,10 @@ func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// notInvitedHTML is the refusal as a document, for the one gated route a browser
-// navigates to directly: the download link is an <a href>, so no page is there
-// to catch a 403 and the JSON body was landing in the tab as-is (04 丙-149).
 const notInvitedHTML = `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>需要封測邀請</title>` +
 	`<p>Skill Hub 還在封測：瀏覽與 Skill 詳情對所有人開放，但 Fork、試跑與下載只開放給受邀的測試者。` +
 	`回到上一頁，用頁尾的「回報問題」告訴我們你想做什麼。</p>`
 
-// writeNotInvited answers the gate's refusal. An API caller gets the same JSON
-// body as every other refusal; a request that asks for HTML gets notInvitedHTML.
 func writeNotInvited(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.Header.Get("Accept"), "text/html") {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -398,13 +280,6 @@ func writeNotInvited(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteError(w, http.StatusForbidden, betaNotInvited)
 }
 
-// invited answers the beta-cohort question for one user. Extracted so that /me
-// can ask it too: a feature this caller may not use must not be advertised to
-// them (see the `features` block in me), and two copies of the lookup is how the
-// gate and the advertisement start disagreeing.
-//
-// An empty list means no closed beta is running, which admits everyone — the same
-// reading RequireInvited has always had.
 func (h *Handler) invited(ctx context.Context, user User) (bool, error) {
 	if len(h.Invited) == 0 {
 		return true, nil
@@ -421,20 +296,9 @@ func (h *Handler) invited(ctx context.Context, user User) (bool, error) {
 	return false, nil
 }
 
-// LogInviteRoster records the beta cohort this process came up with, in the same
-// form and for the same reason as LogOperatorRoster above (ADR-028 決策 1 sends it
-// to that precedent explicitly).
-//
-// It answers "who is on the list now" and deliberately not "who was added when" —
-// that fact lives in the deployment configuration's own change history, and
-// claiming otherwise would make this look like a grant audit it is not.
-//
-// Fail-closed, and here that word means something different from the operator
-// roster: a start-up that cannot record the cohort recognises nobody as invited,
-// which with a configured list closes the gate on everyone rather than opening it.
 func (h *Handler) LogInviteRoster(ctx context.Context) error {
 	if len(h.Invited) == 0 {
-		return nil // no cohort configured, no gate, nothing to record
+		return nil
 	}
 	ids := make([]string, 0, len(h.Invited))
 	for id := range h.Invited {
@@ -452,18 +316,11 @@ func (h *Handler) LogInviteRoster(ctx context.Context) error {
 	})
 }
 
-// SessionUser returns the user placed in the context by RequireSession or
-// OptionalSession.
 func SessionUser(ctx context.Context) (User, bool) {
 	u, ok := ctx.Value(ctxKey{}).(User)
 	return u, ok
 }
 
-// OptionalSession resolves the session cookie when present and valid, storing
-// the user in the request context, but never rejects the request — missing or
-// invalid sessions just mean SessionUser returns ok=false downstream. For
-// public reads (search, skill detail) that personalize when logged in
-// (DISC-010, ADR-020).
 func (h *Handler) OptionalSession(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(sessionCookie)
@@ -487,12 +344,7 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
-	// deletion_requested_at is 02:SEC-006's "刪除工作具可追蹤狀態". Until now the
-	// only place it appeared was the response to DELETE /me itself, so a user who
-	// closed the tab had no way to ask whether the request had been recorded, and
-	// no way to find the date the grace period runs out from. Both are null when no
-	// deletion is pending, which is the difference between "not requested" and
-	// "requested and I cannot tell".
+
 	out := map[string]any{
 		"user_id":               pgconv.UUIDString(user.ID),
 		"email":                 user.Email,
@@ -500,37 +352,10 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		"workspace_id":          pgconv.UUIDString(ws.ID),
 		"deletion_requested_at": nil,
 		"purge_after":           nil,
-		// The scope sentence used to exist only in the response to DELETE /me, so
-		// it survived exactly one render: reload the page and the disclosure
-		// 02:WS-002 第 3 條 asks for was gone, while the grace period it describes
-		// ran on. One constant, both endpoints — a second copy of this wording is
-		// a second thing to keep true.
+
 		"deletion_scope": nil,
 	}
-	// Absent, not empty, when this caller has none: an empty object invites the
-	// client to treat a missing key as false somewhere and a present-but-false key
-	// as something else somewhere.
-	//
-	// Two maps, one key, and the difference is what the key is FOR.
-	//
-	// Features are entry points, and they are per CALLER rather than per
-	// deployment. The flag is deployment-wide but the permission behind it is
-	// not: POST /skills/generate is RequireInvited, so a signed-in account
-	// outside the beta cohort was being shown the entry point, typing a
-	// description, waiting, and getting a 403 with an English paragraph on a
-	// Chinese page. An entry point drawn for someone who may not use it is the
-	// same failure ADR-052's flag exists to prevent, one scope down.
-	//
-	// Fail closed on a lookup error, like the gate itself: an unanswerable invite
-	// question is not a yes.
-	//
-	// Disclosures are not entry points and are never gated. public.yaml says it
-	// literally about the one there is: "clean_mode (ADR-060) is not [an entry
-	// point]... A client that treats clean_mode as something to unlock has read
-	// it backwards." Sending them through the invite check was doing precisely
-	// that — an uninvited visitor on a clean-mode deployment was not told the
-	// environment has no isolation and verifies no signature, which is the one
-	// thing they are owed whether or not they may run anything.
+
 	merged := map[string]bool{}
 	for name, on := range h.Disclosures {
 		merged[name] = on
@@ -554,9 +379,6 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
-// deletionScope is the WS-002/PDM-006 §6.1 requirement that the deletion scope
-// is stated up front, not discovered afterwards: the user has to know that
-// content other people built on keeps existing without their name on it.
 const deletionScope = "寬限期結束前，你的帳號照常可用。到期後，你上傳的資料集、Run 產出，" +
 	"以及沒有任何人 Fork 或執行過的 Skill 會連同檔案永久刪除。被其他使用者 Fork 過、" +
 	"或歷史 Run 使用過的 Skill 版本會保留（它們的內容是別人的來源鏈），" +

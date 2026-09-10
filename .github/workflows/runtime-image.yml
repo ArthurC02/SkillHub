@@ -1,34 +1,5 @@
-# Runtime Image review pipeline (SBX-002 / SEC-002 I-02~I-04).
-#
-# "經審核的 Runtime Image" is three gates, not a build: pinned by digest (I-02),
-# an SBOM kept alongside the image (I-03), and a vulnerability scan that actually
-# ran (I-04). This workflow is the automation of gate D §5.4 — it does not block a
-# Run, it blocks the image from being considered publishable.
-#
-# Own workflow rather than a job in ci.yml so the path filter is the trigger:
-# rebuilding a Debian base and pulling a fresh vulnerability database on every
-# commit to the repo would be minutes of runner time to re-learn nothing.
 name: Runtime Image
 
-# The filter is what decides whether an image is rebuilt and republished, so it
-# has to match "the image could have changed" and nothing wider. Two corrections
-# to the obvious version, both learned the expensive way:
-#
-#   * Markdown under infra/images/ is excluded. A build is not reproducible bit
-#     for bit, so every run that reaches the publish step mints a *new* digest and
-#     moves the version tag onto it, leaving the previous digest orphaned in the
-#     registry. Republishing over a README edit meant one orphan per docs commit —
-#     and an orphan is a digest that gate D can never accept, because the tag its
-#     attestations describe has moved on.
-#   * tools/ci/scan_predicate.sh is included. It produces the I-04 attestation; a
-#     change to it that nothing re-runs is a change nobody has tested.
-#   * This workflow file stays in its own filter, and that was re-examined when the
-#     helper moved: editing it republishes and therefore orphans a digest, even for
-#     a filter-only edit. Dropping it from the push filter would remove that cost,
-#     but ADR-019 leaves single-developer direct-to-main open and this repo uses it,
-#     so a change to the build or the gates would then be validated by nothing at
-#     all — the same hole the line above exists to close. One bounded orphan with a
-#     documented cleanup path (infra/images/README.md) is the cheaper side.
 on:
   pull_request:
     paths:
@@ -43,11 +14,6 @@ on:
       - '!infra/images/**/*.md'
       - '.github/workflows/runtime-image.yml'
       - 'tools/ci/scan_predicate.sh'
-  # I-04 requires the scan result of the *published* image to be in date, and
-  # 30 days is the value ADR-022 set. Nothing re-scans a digest that nobody
-  # rebuilds, so a published image would silently expire and, per gate D, stop
-  # being usable by new Runs. Weekly re-scan of what is actually in GHCR is the
-  # missing half; `rescan` below is the job.
   schedule:
     - cron: '17 4 * * 1'
   workflow_dispatch:
@@ -56,19 +22,13 @@ concurrency:
   group: runtime-image-${{ github.ref }}
   cancel-in-progress: true
 
-# Default for every job. Publish and rescan raise only the permissions they need.
 permissions:
   contents: read
 
 env:
   IMAGE: skillhub/runtime-agent-sdk:ci
-  # GHCR is the registry (ADR-022 補充決策, answering ADR-019 待決策 1). Lower
-  # case throughout: GHCR rejects a mixed-case path, and the owner is ArthurC02.
+  # GHCR rejects mixed-case registry paths.
   REGISTRY_IMAGE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk
-  # Pinned like sqlc and golangci-lint elsewhere: an unpinned scanner turns an
-  # upstream release into a red build on a tree nobody touched. The vulnerability
-  # database is deliberately NOT pinned — grype pulls the current one, which is
-  # the whole point of re-running the scan (I-04's "in date" requirement).
   SYFT: docker.io/anchore/syft:v1.51.0@sha256:678bfa565b60f747aac0f8e964fe5588a24445b8d0a480e91f6efd70020dfbb0
   GRYPE: docker.io/anchore/grype:v0.117.0@sha256:ddf9e9f204049f3a4a0955ef70873cabab6a31432125ad4f20a490b54950a253
 
@@ -102,14 +62,6 @@ jobs:
             | grep -Eq '^[+-]ARG IMAGE_VERSION=' \
             || { echo "::error file=infra/images/runtime-agent-sdk/Dockerfile::Runtime image content changed; bump ARG IMAGE_VERSION."; exit 1; }
 
-      # ADR-023 §4's other half. The step above forces the version to MOVE when
-      # the image content changes; nothing forced anyone to write down what
-      # moved, and the tree proved it -- IMAGE_VERSION reached 2026.08-4 while
-      # UPGRADES.md stopped at 2026.08-3. This image's failure mode is silent:
-      # an Agent SDK that stops emitting the tool events the trace depends on
-      # does not crash, it produces a run whose trace is thinner. A grep is
-      # enough here; devctl's image-version check does the same comparison on
-      # every push so it is not only enforced on an image build.
       - name: The new IMAGE_VERSION must have an UPGRADES.md section (ADR-023 §4)
         run: |
           set -euo pipefail
@@ -122,9 +74,6 @@ jobs:
             exit 1
           }
 
-      # I-02. Cheapest gate first: a FROM that resolves through a tag means the
-      # bytes this job scanned are not the bytes a later build would get, so
-      # everything below it would be describing an image that no longer exists.
       - name: Fail if the base image is not pinned by digest (I-02)
         run: |
           grep -qE '^FROM .+@sha256:[0-9a-f]{64}$' infra/images/runtime-agent-sdk/Dockerfile \
@@ -133,9 +82,6 @@ jobs:
       - name: Build
         run: docker build -t "$IMAGE" infra/images/runtime-agent-sdk
 
-      # I-03. SPDX JSON because it is the format an outside reviewer can read
-      # without Anchore tooling; the scan below consumes this same file, so the
-      # artifact people keep and the artifact the gate judged are one file.
       - name: SBOM (I-03)
         run: |
           mkdir -p scan
@@ -155,9 +101,6 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Upload before the gate, so a failing scan still leaves the evidence
-      # behind. A gate whose output is only visible when it passes is useless
-      # for the review it is supposed to support.
       - name: Keep the SBOM and the report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -166,27 +109,15 @@ jobs:
           path: scan/
           retention-days: 90
 
-      # I-06 threshold. Settled in ADR-022 §2 (2026-08-16), which adopted the
-      # proposal this job already implemented: fixable Critical/High block with no
-      # waiver path, unfixable ones go on the named exemption list in
-      # infra/images/README.md with a review date of first_exempted_at + 90 days.
-      #
-      # --only-fixed is the load-bearing flag: Debian marks most base-OS CVEs
-      # "won't fix", and a gate that blocks on those blocks forever with no action
-      # available to anyone. Those findings are not dropped — they are in the
-      # artifact above and in the README's reviewed exemption list.
+      # --only-fixed skips CVEs that Debian marks won't-fix.
       - name: Fail on fixable Critical/High (I-06, ADR-022)
         run: |
           docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             --only-fixed --fail-on high -o table
 
-      # Build the predicate before anything can be published. This runs on PRs
-      # too, so a broken evidence generator cannot merge behind a green review.
       - name: Build scan attestation predicate (I-04)
         run: bash tools/ci/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
 
-  # Pushes use a separate job because GitHub permissions are job-scoped. This
-  # repeats the gates deliberately: a write-capable token never enters PR code.
   publish:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -251,22 +182,7 @@ jobs:
           predicate-path: scan/scan-predicate.json
           push-to-registry: true
 
-  # I-04's other half: the published digest has to keep having an in-date scan,
-  # and nothing rebuilds an image that nobody touched. This re-scans what is
-  # actually in GHCR — not an image built fresh on the spot, which would be a
-  # different set of bytes answering a question about the deployed one — and
-  # re-attests `scanned_at` so the 30-day clock restarts on evidence.
-  #
-  # A red run here means the published image has acquired a fixable Critical/High
-  # since it was built. The action is the same as any other I-06 failure: rebuild
-  # with updated pins, which the push path above re-publishes and re-attests.
   rescan:
-    # `packages: write`, not `read`. This job re-attests the published digest with
-    # `push-to-registry: true`, which is a registry write, so `read` made
-    # `actions/attest` fail -- and it failed BEFORE the I-06 gate below, so both
-    # scheduled runs since this workflow was written died without ever checking the
-    # published image for new fixable Critical/High findings. I-04 treats a digest
-    # with no in-date scan as unscanned, and that is what it has been.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -314,10 +230,6 @@ jobs:
           path: scan/
           retention-days: 90
 
-      # Attested before the gate, deliberately: the fact "this digest was scanned
-      # at time T and here is what was found" is true whether or not the finding
-      # set is acceptable. Withholding it on a red scan would leave the digest
-      # looking un-scanned, which I-04 treats identically to expired.
       - name: Re-attest the scan result (I-04 scanned_at)
         run: bash tools/ci/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
       - uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2

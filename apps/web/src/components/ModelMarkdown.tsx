@@ -1,54 +1,8 @@
 import { Fragment, type ReactNode } from "react";
 import { Reveal } from "./Reveal";
 
-/**
- * The Markdown a model message is allowed to carry — [`05`
- * R-70](../../../../docs/plans/05-pending-rulings.md), signed 2026-09-09.
- *
- * # Why this is hand-written and not `react-markdown`
- *
- * The ruling's whole point is which node types can exist, and the safest way
- * to answer that is a renderer that cannot build the forbidden ones. This file
- * emits `<p>`, `<ul>`, `<ol>`, `<li>`, `<pre><code>`, `<code>`, `<strong>` and
- * `<em>`. There is no code path here that produces an `<a>` or an `<img>`,
- * with or without a bug, so "no links, no images" is a property of the
- * program rather than a filter it applies.
- *
- * That matters because the alternative failed in the field. The exfiltration
- * this excludes needs no script: a prompt-injected model emits an image whose
- * URL carries what it just read, and the browser fetches it on render with
- * nobody clicking (AgentFlayer, EchoLeak, the Copilot Chat and Gemini markdown
- * fixes). The one vendor that tried to allow-list URLs instead of refusing to
- * render — OpenAI's `url_safe` — was bypassed through an open redirect on an
- * allow-listed domain. `harden-react-markdown` is that same allow-list shape,
- * so it is not the answer here either; our answer is zero URLs.
- *
- * It is also the smaller dependency story: `apps/web` has no Markdown package
- * at all, and `react-markdown` arrives with unified/remark/rehype/micromark —
- * a tree whose one genuinely dangerous switch (`rehype-raw`) is a plugin
- * somebody can add later without reading this comment.
- *
- * # What is deliberately NOT handled
- *
- * - **Links, autolinks, images** — the ruling excludes them. A literal
- *   `[text](url)` or `![alt](url)` therefore stays visible as text, which is
- *   the honest outcome: the reader sees exactly what the model wrote.
- * - **Raw HTML** — never parsed, so `<b>x</b>` renders as those characters.
- *   React escapes it; nothing here un-escapes it.
- * - **Headings** — `## x` stays literal. The conversation lives inside a page
- *   whose `h3`/`h4`/`h5` are already spoken for.
- * - **`_underscore_` emphasis** — `*` only. This app's messages are full of
- *   `snake_case` identifiers, and treating those as emphasis would corrupt the
- *   thing the person is reading most carefully.
- *
- * # Scope
- *
- * Assistant messages only. The caller enforces that, and the ruling's reason
- * is that `tool` messages carry whole fetched web pages — text an attacker
- * writes directly, without having to get through a model first.
- */
-
-/** Inline runs, longest marker first so `**` never loses to `*`. */
+// Alternation order matters: `**bold**` must be tried before `*em*`, or the
+// regex engine matches the shorter `*` pattern first and never sees the bold run.
 const INLINE = /(`[^`\n]+`|\*\*[^*\n]+\*\*|\*[^*\n]+\*)/g;
 
 const FENCE = /^\s*```/;
@@ -76,12 +30,6 @@ type Block =
   | { kind: "list"; ordered: boolean; items: string[] }
   | { kind: "para"; lines: string[] };
 
-/**
- * Line-based on purpose: every block this ruling allows is decided by the
- * start of a line, so a line scanner is the whole grammar. Nothing recurses,
- * which is also why a fenced block inside a list item is not a case — it comes
- * out as its own code block, and the ruling asks for no more.
- */
 export function blocks(text: string): Block[] {
   const out: Block[] = [];
   let fenced: string[] | null = null;
@@ -103,8 +51,8 @@ export function blocks(text: string): Block[] {
 
     const last = out[out.length - 1];
     if (line.trim() === "") {
-      // A blank line ends whatever was open; it never starts a block of its
-      // own, so trailing newlines cannot grow an empty paragraph.
+      // An empty para only closes whatever block is open; it never starts one,
+      // so leading/trailing blank lines don't produce empty paragraphs.
       if (last) out.push({ kind: "para", lines: [] });
       continue;
     }
@@ -129,8 +77,8 @@ export function blocks(text: string): Block[] {
     }
   }
 
-  // An unterminated fence is still a code block: the model was cut off, and
-  // showing its code as prose would be the wrong half to guess.
+  // A fence never closed is still rendered as code: streamed text can end
+  // mid-block, and showing the partial code as prose would misread it worse.
   if (fenced !== null && fenced.length > 0) out.push({ kind: "code", lines: fenced });
 
   return out.filter((b) => b.kind !== "para" || b.lines.length > 0);
@@ -151,9 +99,6 @@ export function ModelMarkdown({ text }: { text: string }) {
           const items = b.items.map((item, j) => <li key={j}>{inline(item, i + "." + j)}</li>);
           return b.ordered ? <ol key={i}>{items}</ol> : <ul key={i}>{items}</ul>;
         }
-        // The newlines inside a paragraph are content (04 丙-207) and survive
-        // through `white-space: pre-wrap`, exactly as they did before this
-        // renderer existed.
         return <p key={i}>{inline(b.lines.join("\n"), String(i))}</p>;
       })}
     </div>

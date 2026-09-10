@@ -6,24 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../api/client";
 import { getDatasetLimits, uploadDataset, type Dataset } from "../api/lab";
 
-/**
- * 02:TEST-002 second criterion — "上傳前顯示大小限制、保存政策及資料使用範圍".
- *
- * The acceptance verb is *display*, and the display has to happen before the
- * upload, not as the text of a refusal. So the limits are fetched and rendered
- * first, unconditionally, and the file input sits underneath them: a user who
- * reads this page top to bottom has seen the rules before touching a file.
- *
- * The numbers are never written here. They come from GET /test-cases/limits,
- * which serves the same constants internal/testlab enforces — a second copy in
- * the UI is how a published limit and an enforced limit drift apart, and the
- * server-side test already asserts the two are the same.
- *
- * SCOPE: this is the upload step and nothing else. Creating a test case, editing
- * the prompt and the acceptance criteria, and listing or deleting files live on
- * the Test Case screens (TEST-012), which link here with the id filled in.
- */
-
 type UploadSearch = { test_case?: string };
 
 function bytes(n: number): string {
@@ -38,10 +20,7 @@ export function DatasetUpload() {
   const [message, setMessage] = useState("");
   const [uploadError, setUploadError] = useState<unknown>(null);
   const [uploaded, setUploaded] = useState<Dataset[]>([]);
-  // `test_case` is a search param on this same route, so changing it re-renders
-  // rather than remounting: 「已上傳 X」 and the last error survived into a
-  // different Test Case and claimed a file had been attached to it. Same effect
-  // RunPreflight and Packaging write for the same reason.
+  // `test_case` is a search param on this route, so it changes without remounting.
   useEffect(() => {
     setMessage("");
     setUploadError(null);
@@ -62,29 +41,14 @@ export function DatasetUpload() {
       setUploadError(null);
       if (fileInput.current) fileInput.current.value = "";
     },
-    // 04 丙-150(e): the error object, not its raw `.message` — 401 goes through
-    // `ReadFailure`, and only 400/413/415 (dataset.go / filetype.go, 丙-149
-    // already made these Chinese) print the server's own sentence, because those
-    // are the ones that carry a size or a type this page cannot know on its own.
     onError: (err) => setUploadError(err),
   });
 
   return (
     <section>
-      {/*
-        IA-8 (R5): the address is a plural noun — a place — and the heading
-        used to be a verb (「上傳 Dataset」), two mental models for one page.
-        The page lists what exists and accepts uploads; the noun covers both.
-      */}
       <h1>Dataset</h1>
 
       {limits.isPending && <Loading what="上傳規則" />}
-      {/*
-        Fail-closed in the UI too: without the rules on screen the "顯示" step has
-        not happened, so the file input is not offered. That holds for the 401 as
-        well — the login sentence replaces the rules, and `limits.data` is what
-        gates the input below (資訊架構 IA-6).
-      */}
       <ReadFailure error={limits.error} what="上傳規則">
         <p role="alert">無法讀取上傳規則,因此暫時不能上傳:{limits.error?.message}</p>
       </ReadFailure>
@@ -98,12 +62,6 @@ export function DatasetUpload() {
               單一檔案最大 {bytes(limits.data.max_file_bytes)};同一個 Test Case 合計最大{" "}
               {bytes(limits.data.max_test_case_bytes)}、最多 {limits.data.max_files_per_test_case}{" "}
               個檔案。
-              {/*
-                設計 §2.1 與義務 §1.1: 上限單獨站著,讀者無從知道自己離它多遠。
-                這一頁刻意不去讀檔案清單(它的整個工作是「上傳前先顯示規則」,
-                在還沒選檔案時就發一個列表請求會讓那句話變成兩件事),所以缺席
-                被寫成一句話,並指出它在哪裡看得到——而不是留白。
-              */}
               <p className="note">
                 這一頁不知道這個 Test Case 已經用掉多少：已上傳的檔案、每個檔案的大小與合計,在{" "}
                 {testCase === "" ? (
@@ -158,9 +116,6 @@ export function DatasetUpload() {
                   upload.mutate(file);
                 }}
               >
-                {/* 設計 §2.4：停用要說原因。這顆與 RunPreflight 的「開始 Run」是
-                    整個發動側唯二真的產生副作用的按鈕，兩顆以前都只是變灰不說話
-                    ——那正是 §2.4 開宗明義說的「會被讀成 bug」。 */}
                 {upload.isPending ? "上傳中…" : "上傳"}
               </button>
             </>

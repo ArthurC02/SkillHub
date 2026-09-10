@@ -6,15 +6,6 @@ import (
 	"testing"
 )
 
-// Get reads whole objects into memory and nine contexts call it on a request
-// path, one of them in a loop. "The write side already caps it" is a transitive
-// argument across several packages, and clean mode's in-process backend — a real
-// deployment's object store, reachable by any local process — is a live
-// counterexample to it. So the read side carries its own bound, the same move
-// llmclient made for the same reason ("internal is not trusted").
-//
-// The ceiling itself is 128 MiB, which is not a size worth allocating in a test;
-// what needs an assertion is the boundary behaviour, and that is this function.
 func TestReadCappedRefusesRatherThanTruncates(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -32,8 +23,7 @@ func TestReadCappedRefusesRatherThanTruncates(t *testing.T) {
 			got, err := readCapped(bytes.NewReader(want), tc.max)
 			if tc.wantErr {
 				if err == nil {
-					// The mutation this catches: io.ReadAll(io.LimitReader(r, max))
-					// with no length check, which returns a silently short object.
+
 					t.Fatalf("readCapped returned %d bytes and no error for an object over the ceiling", len(got))
 				}
 				if !strings.Contains(err.Error(), "ceiling") {

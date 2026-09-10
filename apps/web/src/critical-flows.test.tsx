@@ -73,13 +73,6 @@ test("anonymous visitors get a working GitHub login entry", async () => {
   );
   await render(<AuthControls />, () => container.querySelector("a") !== null);
 
-  // Same-origin, and this line is the pin for that: `API_BASE_URL` is baked in
-  // at build time, so its unset default is a decision, not a fallback. Reading
-  // an absolute host here again would mean a build served by cmd/api (clean
-  // test mode, production) sends every request somewhere else — the failure
-  // whose only symptom is `Failed to fetch`, with no red light before it.
-  // Vitest runs in mode=test, so apps/web/.env.development is not loaded and
-  // what this asserts is exactly what `vite build` bakes in.
   expect(container.querySelector("a")?.getAttribute("href")).toBe("/auth/github/login");
 });
 

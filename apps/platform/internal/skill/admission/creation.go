@@ -18,17 +18,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
-// GeneratedCandidateProvenance is the durable source fact for an interactive
-// candidate. ExistingSkillID is supplied only from the locked session snapshot.
 type GeneratedCandidateProvenance struct {
 	TaskDescription, Model, PromptVersion string
 	GenerationInputs                      []byte
 	ExistingSkillID                       *pgtype.UUID
 }
 
-// MaterializeGeneratedCandidate is the one creation-specific door into the
-// ordinary generated admission path. It owns the object-write fence and calls
-// after inside the exact transaction containing the source and version rows.
 func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity.Workspace, skill llmclient.GeneratedSkill, p GeneratedCandidateProvenance, after func(context.Context, pgx.Tx, Result) error) (Result, error) {
 	data, err := buildGeneratedPackage(skill)
 	if err != nil {
@@ -40,8 +35,6 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 		return s.importZipWithCommit(ctx, ws, data, src, after)
 	}
 
-	// Revisions may only extend the same session's generated skill. Do not let a
-	// caller turn an arbitrary workspace skill into a generated candidate.
 	prepared, err := s.prepare(ctx, data)
 	if err != nil || prepared.report.Blocked {
 		return Result{Report: prepared.report}, err
@@ -62,10 +55,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 	if err != nil {
 		return Result{}, err
 	}
-	// GEN-010: confirming the same candidate twice must be a no-op, not a 503.
-	// persistVersion already resolved `duplicate` to the existing version row
-	// (INGEST-005) rather than erroring, so there is nothing left to audit or
-	// write here — only to report the version the caller already has.
+
 	res := Result{Report: prepared.report, Skill: existing, Version: version, Duplicate: duplicate}
 	if !duplicate {
 		if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, map[string]any{"source_type": sourceGenerated}); err != nil {
@@ -89,8 +79,6 @@ type FixedCreationReference struct {
 	AllowedTools  string
 }
 
-// ReadCreationReference checks current availability before reading an immutable
-// version. An empty version selects once; subsequent turns supply its exact ID.
 func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID) (FixedCreationReference, llmclient.GenerateReference, error) {
 	if s.References == nil || s.Store == nil {
 		return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
@@ -146,16 +134,10 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 	return fixed, llmclient.GenerateReference{Name: skill.Name, SkillMD: text}, nil
 }
 
-// ValidateCreationDraft uses the exact admission validator and package hash.
-// It does not execute scripts, publish objects, or invoke a model.
 func (s *Service) ValidateCreationDraft(ctx context.Context, draft llmclient.GeneratedSkill) (string, string, bool, error) {
 	data, err := buildGeneratedPackage(draft)
 	if err != nil {
-		// The reason travels with the verdict. Run h (2026-09-06): the model
-		// answered a license-unknown warning by adding a SKILL.md entry to files,
-		// read "套件結構無法通過驗證。" eight times and asked Go for details it
-		// was never given. The error text is Go's own sentence plus the path the
-		// model wrote, nothing else.
+
 		return "", fmt.Sprintf("套件結構無法通過驗證：%v。frontmatter 與 SKILL.md 由 Go 從 name、description、compatibility、allowed_tools 與 body 產生；files 不得包含 SKILL.md，也沒有 license 欄位可填。", err), true, nil
 	}
 	prepared, err := s.prepare(ctx, data)

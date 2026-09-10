@@ -20,9 +20,7 @@ import (
 
 func wireCreationReads(s *creation.Service, versions *ingest.Service, search *catalog.Service) {
 	s.ValidateDraft = versions.ValidateCreationDraft
-	// The first-message catalogue check and the duplicate guard (05 R-49／
-	// R-50): the creation tool's hybrid retrieval, semantic answers only — a
-	// degraded lexical answer over a whole sentence is not a match.
+
 	semantic := func(maxDistance float64) func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
 		return func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, float64, error) {
 			ids, cost, degraded, err := search.CreationKnowledgeIDs(ctx, query, maxDistance)
@@ -59,8 +57,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 		}
 		fixed, content, err := versions.ReadCreationReference(ctx, ws, sid, vid)
 		ref := creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil, Description: fixed.Description, Compatibility: fixed.Compatibility, AllowedTools: fixed.AllowedTools}
-		// The catalogue's trust facts ride along (05 SEC-013): an offer without
-		// its tier and scan would show one warning fewer than a search row.
+
 		if tier, scan, warnings, ferr := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID); ferr == nil {
 			ref.Tier, ref.ScanStatus = tier, scan
 			if scan == "scanned" {
@@ -130,10 +127,6 @@ func wireCreationWrites(s *creation.Service, versions *ingest.Service, runs *run
 	}
 }
 
-// wireCreationAdopt is adopt_reference (05 R-49／R-50): the person takes an
-// existing Skill instead of composing one, and the fork is the candidate.
-// Forking is registry's write, reached through injection like every other
-// owner API here (ADR-067).
 func wireCreationAdopt(s *creation.Service, forks *registry.Service) {
 	s.Adopt = func(ctx context.Context, ws identity.Workspace, skillID string) (creation.Candidate, error) {
 		id, err := creation.ParseID(skillID)
@@ -148,12 +141,6 @@ func wireCreationAdopt(s *creation.Service, forks *registry.Service) {
 	}
 }
 
-// wireCreationTestCases wires the confirmed acceptance criteria into a real
-// Test Case (05 R-46 (b)). Separate from wireCreationWrites rather than an
-// added parameter there: wireCreationWrites' call site in app.go already
-// exists with four arguments, and this keeps that line untouched — see
-// app.go's call to wireCreationWrites for where the one line calling this
-// function belongs.
 func wireCreationTestCases(s *creation.Service, lab *testlab.Service) {
 	s.CreateAcceptanceTestCase = func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error) {
 		id, err := creation.ParseID(skillID)

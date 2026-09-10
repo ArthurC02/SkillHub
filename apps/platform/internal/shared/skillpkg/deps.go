@@ -8,69 +8,22 @@ import (
 	"strings"
 )
 
-// Dependency extraction: what a package's own code says it needs.
-//
-// The M2 baseline found the catalog's `deps` field short by 8 packages across
-// 13 of 45 skills, and the Runtime Image — which installs the union of that
-// field — inherited every gap (content-baseline-report.md §13.4). Nothing
-// caught it, because `deps` was a human transcription of each SKILL.md and the
-// only test of it was a Run failing at the ModuleNotFoundError, in a sandbox
-// where `pip` is deliberately absent and no fix is possible.
-//
-// So the scan states the answer mechanically. Two findings, because there are
-// two different questions:
-//
-//   package-dependencies (info) — the third-party packages this package
-//     evidences, from imports and from its own install lines. This is the value
-//     CONTENT-003 fills `deps` from, and the reason that criterion can say
-//     "verifiable by static scan" instead of "please read carefully".
-//
-//   undeclared-dependency (warning) — code imports something the package never
-//     declares anywhere: no requirements.txt, no package.json, no install line.
-//     A reader of such a package cannot find out what it needs without reading
-//     every script, and the curator transcribing `deps` had nothing to copy.
-//
-// Both are static: nothing here executes, imports, or resolves anything (iron
-// rule 1, CONTENT-006 "匯入與掃描階段不執行套件內任何 Script").
-//
-// ponytail: regex extraction, not a Python/JS parse. It reads import lines,
-// which is what the packages write; a package hiding a dependency behind
-// importlib.import_module(name) is not something a scanner should pretend to
-// see, and the finding is advisory rather than blocking for exactly that
-// reason. A real parser only if obfuscated imports ever become a real case.
-
 var (
-	// `import a.b, c` and `from a.b import c`, anchored to the start of a line
-	// so prose does not count. Submodules are cut to the top-level name, which
-	// is what actually gets installed.
-	//
-	// The `from` form insists on the `import` keyword after the module. Without
-	// it the pattern matches ordinary English — "from the model API" scored
-	// `the` as a dependency of two seed packages.
 	pyImportRe     = regexp.MustCompile(`(?m)^[ \t]*import[ \t]+([A-Za-z_][A-Za-z0-9_.]*(?:[ \t]*,[ \t]*[A-Za-z_][A-Za-z0-9_.]*)*)`)
 	pyFromImportRe = regexp.MustCompile(`(?m)^[ \t]*from[ \t]+([A-Za-z_][A-Za-z0-9_.]*)[ \t]+import[ \t]`)
-	// require("x") and ES `from "x"`, the two forms the seed's Node skills use.
+
 	jsImportRe = regexp.MustCompile(`(?:require\([ \t]*|from[ \t]+)["']([^"']+)["']`)
-	// Install lines in documentation. These are a declaration, not an
-	// instruction the platform will follow: the sandbox has no network and no
-	// package manager, so an install line is only ever evidence of a need.
-	//
-	// Anchored to the start of a line (a shell prompt aside), because the same
-	// verb appears mid-sentence: "do not run `npm install` first ... The model
-	// knows the API" scored `the`, `model`, `knows` and `api` as dependencies.
-	// A real install line stands alone; one quoted inside a paragraph is prose.
+
 	installRe = regexp.MustCompile(`(?m)^[ \t]*(?:[$>][ \t]+)?(?:pip3?|uv pip|npm|pnpm|yarn)[ \t]+(?:install|add)[ \t]+([^\n|;&` + "`" + `]+)`)
-	// A PyPI/npm distribution name, used to reject shell flags and prose that
-	// follow an install verb.
+
 	distNameRe = regexp.MustCompile(`^(?:@[A-Za-z0-9._-]+/)?[A-Za-z0-9][A-Za-z0-9._-]*$`)
 )
 
-// depScan accumulates dependency evidence across a package's files.
 type depScan struct {
-	imported map[string]bool // third-party modules the code imports
-	declared map[string]bool // packages the package names in a manifest or install line
-	local    map[string]bool // module names the package ships itself
-	manifest bool            // a dependency manifest is present
+	imported map[string]bool
+	declared map[string]bool
+	local    map[string]bool
+	manifest bool
 }
 
 func newDepScan() *depScan {
@@ -81,10 +34,6 @@ func newDepScan() *depScan {
 	}
 }
 
-// note records the module names a package file itself provides, so a script
-// importing its sibling is not reported as needing a third-party package. Called
-// for every file, including ones too large to scan: what a file is named is
-// known without reading it.
 func (d *depScan) note(p string) {
 	for _, seg := range strings.Split(path.Dir(p), "/") {
 		if seg != "" && seg != "." {
@@ -98,7 +47,6 @@ func (d *depScan) note(p string) {
 	d.local[base] = true
 }
 
-// observe extracts dependency evidence from one file's content.
 func (d *depScan) observe(p, content string) {
 	switch strings.ToLower(path.Ext(p)) {
 	case ".py":
@@ -106,9 +54,7 @@ func (d *depScan) observe(p, content string) {
 	case ".js", ".mjs", ".cjs", ".ts":
 		d.observeJS(content)
 	case ".md", ".markdown":
-		// SKILL.md is where the prompt-only skills declare everything they
-		// need: three of them named pycountry and chardet on an install line
-		// while the catalog recorded only pandas.
+
 		d.observeInstallLines(content)
 		forEachFence(content, func(lang, _, body string) {
 			switch lang {
@@ -132,11 +78,7 @@ func (d *depScan) observe(p, content string) {
 			}
 		}
 	case "package.json", "pyproject.toml", "gemfile", "cargo.toml", "go.mod", "pom.xml":
-		// Not parsed: the name-to-module mapping inside these is format
-		// specific, and their mere presence is what the check needs — a package
-		// carrying a manifest has somewhere to state its dependencies, so an
-		// import missing from it is the manifest's problem to fix, not an
-		// undisclosed need. scanTree already discloses the file itself.
+
 		d.manifest = true
 	}
 }
@@ -166,7 +108,7 @@ func (d *depScan) observeJS(content string) {
 			strings.HasPrefix(spec, "node:") || nodeBuiltin[spec] {
 			continue
 		}
-		// Scoped packages keep two segments (@scope/name), others keep one.
+
 		parts := strings.Split(spec, "/")
 		name := parts[0]
 		if strings.HasPrefix(spec, "@") && len(parts) > 1 {
@@ -192,8 +134,6 @@ func (d *depScan) observeInstallLines(content string) {
 	}
 }
 
-// report emits the two findings. Names are compared in their distribution form,
-// so a script importing `docx` is matched by a declaration of `python-docx`.
 func (d *depScan) report(r *Report) {
 	thirdParty := map[string]bool{}
 	for name := range d.imported {
@@ -206,9 +146,7 @@ func (d *depScan) report(r *Report) {
 	if len(all) == 0 {
 		return
 	}
-	// The names go in Details as a list, not only into the sentence: this is the
-	// value CONTENT-003 fills `deps` from, and a consumer should not have to
-	// parse a message to get it (same reason external-url carries its URLs).
+
 	r.Findings = append(r.Findings, Finding{
 		Severity: SeverityInfo, Code: CodePackageDependencies, Path: "SKILL.md",
 		Message: fmt.Sprintf(
@@ -237,9 +175,6 @@ func (d *depScan) report(r *Report) {
 	})
 }
 
-// normalizeDist maps an import name to the distribution name that installs it,
-// where the two differ. Only well-established pairs: guessing would make the
-// comparison claim a declaration covers an import when it does not.
 var importToDist = map[string]string{
 	"docx": "python-docx", "pptx": "python-pptx", "dateutil": "python-dateutil",
 	"PIL": "pillow", "fitz": "PyMuPDF", "yaml": "PyYAML", "bs4": "beautifulsoup4",
@@ -254,7 +189,7 @@ func normalizeDist(name string) string {
 	if d, ok := importToDist[name]; ok {
 		return d
 	}
-	// PyPI treats `_` and `-` as the same character in a distribution name.
+
 	return strings.ToLower(strings.ReplaceAll(name, "_", "-"))
 }
 
@@ -265,7 +200,6 @@ func cutComment(line string) string {
 	return line
 }
 
-// splitAny returns the prefix of s before the first byte in cutset.
 func splitAny(s, cutset string) string {
 	if i := strings.IndexAny(s, cutset); i >= 0 {
 		return s[:i]
@@ -299,8 +233,6 @@ func difference(a, b map[string]bool) []string {
 	return out
 }
 
-// nodeBuiltin covers the bare (un-prefixed) spellings of Node's builtins. The
-// `node:` prefixed form is handled by prefix and needs no list.
 var nodeBuiltin = map[string]bool{
 	"assert": true, "buffer": true, "child_process": true, "cluster": true,
 	"console": true, "constants": true, "crypto": true, "dgram": true,
@@ -314,10 +246,6 @@ var nodeBuiltin = map[string]bool{
 	"worker_threads": true, "zlib": true,
 }
 
-// pyStdlib is CPython 3.11's top-level module set — the interpreter version the
-// Runtime Image ships. A name missing here becomes a false "undeclared
-// dependency", which is why this is the published list rather than a sample of
-// the common ones.
 var pyStdlib = map[string]bool{
 	"abc": true, "aifc": true, "argparse": true, "array": true, "ast": true,
 	"asynchat": true, "asyncio": true, "asyncore": true, "atexit": true,

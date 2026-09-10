@@ -1,18 +1,5 @@
 package eval
 
-// The batch verdict read a run history needs (04 丙-32).
-//
-// It is here rather than in run for the reason ADR-033 exists: `evaluations` is
-// this context's table, and a JOIN to it from inside a run-owned query would
-// pass CI precisely because the ownership checker sees which context calls which
-// query and not which tables a query touches. That blind spot is what ADR-033
-// was written to close, so using it would be the one move the rule forbids in
-// spirit while allowing in letter.
-//
-// It crosses to run as bytes, like catalog's SkillRisks: run reads no field of
-// it and only forwards it, so a mirror struct on that side would be a second
-// place the wording can drift (02:NFR-007 第 3 條).
-
 import (
 	"context"
 	"encoding/json"
@@ -23,29 +10,18 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
-// labelled mirrors the contract's Labelled: an enum value with the copy shown
-// for it, so no screen keeps its own enum→中文 map (04 丙-29 裁定②).
 type labelled struct {
 	Value string `json:"value"`
 	Label string `json:"label"`
 	Note  string `json:"note"`
 }
 
-// notEvaluated is what a run with no evaluation row renders as. It is a value,
-// not an omission: 設計系統 §2.9 rates a blank verdict the worst available
-// rendering, because an empty column beside 「執行完成」 reads as a pass.
 var notEvaluated = labelled{
 	Value: "not_evaluated",
 	Label: "未評估",
 	Note:  "這個 Run 還沒有任務判定。執行狀態說的是工作負載跑完了沒有,不是任務有沒有做到(ADR-025)。",
 }
 
-// verdictOf folds the evaluation's own status together with its verdict, which
-// is the whole reason this read hands out finished copy instead of two enums:
-// `overall` alone lies. An evaluation is created carrying `undetermined` and
-// keeps it until the judge finishes, so a pending or failed evaluation reads as
-// 「無法判斷」 — and that is a verdict the judge *reached*, not a statement that no
-// judge ran. Only this context can tell those apart.
 func verdictOf(status, overall string) labelled {
 	switch status {
 	case "pending":
@@ -77,9 +53,6 @@ func verdictOf(status, overall string) labelled {
 	}
 }
 
-// RunVerdicts answers the standing verdict for a page of runs, keyed by run id
-// and already serialised. Every requested id gets an entry; a run with no
-// evaluation gets 未評估.
 func (s *Service) RunVerdicts(
 	ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID,
 ) (map[string]json.RawMessage, error) {

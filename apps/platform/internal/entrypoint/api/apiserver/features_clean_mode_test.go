@@ -2,16 +2,6 @@ package apiserver
 
 import "testing"
 
-// PORT-003: disclosureFeatures()'s clean_mode key must behave the same way generate_skill
-// already does — absent, not false, when the deployment has not declared
-// itself. A client (web's useCleanMode, or /me's own doc comment) that has to
-// tell "off" apart from "this build predates the flag" is a client that will
-// get one of them wrong.
-//
-// Set on the Config, not on the process environment. features() used to read
-// SKILLHUB_CLEAN_MODE itself, which is why this file used to need t.Setenv: the
-// one axis that decides whether a user sees the disclosure was the one axis a
-// test could not set the way it sets every other deployment input.
 func TestFeaturesCleanModeAbsentByDefault(t *testing.T) {
 	f := disclosureFeatures(Config{})
 	if _, ok := f["clean_mode"]; ok {
@@ -26,9 +16,6 @@ func TestFeaturesCleanModeOnWhenDeclared(t *testing.T) {
 	}
 }
 
-// The environment must no longer reach features(): a deployment that sets the
-// variable but does not wire the field is a deployment whose API half of PORT-003
-// is silent, and that is exactly the split the field exists to close.
 func TestFeaturesCleanModeIgnoresTheProcessEnvironment(t *testing.T) {
 	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 
@@ -38,11 +25,6 @@ func TestFeaturesCleanModeIgnoresTheProcessEnvironment(t *testing.T) {
 	}
 }
 
-// The other half of the split (ADR-060 / ADR-052): clean_mode is a disclosure and
-// generate_skill is an entry point, and they must not come out of one map. /me
-// gates entry points on the BETA-001 invite list, so a shared map meant an
-// uninvited visitor on a clean-mode deployment was told nothing about the
-// deployment they were standing in.
 func TestTheTwoFeatureMapsDoNotOverlap(t *testing.T) {
 	cfg := Config{CleanMode: true, GenerateExposed: true}
 	entry, disclosure := entryPointFeatures(cfg), disclosureFeatures(cfg)

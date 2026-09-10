@@ -13,15 +13,11 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 )
 
-// sseEvent is one `id:`/`data:` pair off the wire.
 type sseEvent struct {
 	ID   int64
 	View creation.View
 }
 
-// readSSE opens the stream and returns events as they arrive. The reader runs
-// in its own goroutine because the point of the endpoint is that the body does
-// not end when the first document does.
 func readSSE(t *testing.T, c *client, sessionID, lastEventID string) (<-chan sseEvent, func()) {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodGet, c.base+"/creation-sessions/"+sessionID+"/events", nil)
@@ -81,16 +77,6 @@ func waitEvent(t *testing.T, ch <-chan sseEvent, why string) sseEvent {
 	return sseEvent{}
 }
 
-// ADR-069 / 05 R-71. What the contract promises about this endpoint, asserted
-// against the wire: each event's `data:` is one CreationSession — the same
-// document GET returns — and its `id:` is the revision.
-//
-// This test IS the schema. public.yaml declares no body schema for this
-// operation, deliberately: OpenAPI can describe a document, not a stream of
-// them, and naming CreationSession as the body would assert that the body IS
-// one of those. So the payload is pinned here instead, by unmarshalling what
-// the handler writes into the same type GET's response is built from, and
-// comparing the two documents byte for byte.
 func TestCreationStreamCarriesTheSameDocumentAsGet(t *testing.T) {
 	a, _, _ := creationFixture(t)
 	c := a.login(t, "creation-stream-shape")
@@ -107,8 +93,6 @@ func TestCreationStreamCarriesTheSameDocumentAsGet(t *testing.T) {
 		t.Errorf("streamed a different session: %s want %s", first.View.ID, v.ID)
 	}
 
-	// The same read through the route the contract DOES describe. Compared as
-	// JSON because that is what a client actually compares.
 	res, err := c.Get(c.base + "/creation-sessions/" + v.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -125,8 +109,6 @@ func TestCreationStreamCarriesTheSameDocumentAsGet(t *testing.T) {
 	}
 }
 
-// A step the person did not cause still reaches the screen, and it reaches it
-// as a new revision rather than a repeat of the old one.
 func TestCreationStreamDeliversTheNextStepWithoutPolling(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-stream-step")
@@ -136,8 +118,6 @@ func TestCreationStreamDeliversTheNextStepWithoutPolling(t *testing.T) {
 	defer stop()
 	first := waitEvent(t, events, "the opening document")
 
-	// The worker settles the queued attempt. Nothing tells the handler; it is
-	// watching the row the same way job.go's cancellation watcher does.
 	after := creationStep(t, s, v)
 
 	var last sseEvent
@@ -161,17 +141,12 @@ func TestCreationStreamDeliversTheNextStepWithoutPolling(t *testing.T) {
 	}
 }
 
-// Last-Event-ID is the whole resume story: a reconnecting client says what it
-// has and is sent nothing it already saw. Without it the browser's own
-// reconnect would re-render the same state on every drop.
 func TestCreationStreamResumesFromLastEventID(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-stream-resume")
 	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
 	v = creationStep(t, s, v)
 
-	// Claim to already have the current revision: there is nothing new, so the
-	// stream must sit quiet rather than repeat itself.
 	events, stop := readSSE(t, c, v.ID, strconv.FormatInt(v.Revision, 10))
 	select {
 	case e, ok := <-events:
@@ -179,11 +154,10 @@ func TestCreationStreamResumesFromLastEventID(t *testing.T) {
 			t.Fatalf("resumed at revision %d and was sent %d anyway", v.Revision, e.View.Revision)
 		}
 	case <-time.After(1500 * time.Millisecond):
-		// Correct: silence.
+
 	}
 	stop()
 
-	// One revision behind: exactly the missed one arrives.
 	events, stop = readSSE(t, c, v.ID, strconv.FormatInt(v.Revision-1, 10))
 	defer stop()
 	e := waitEvent(t, events, "the one revision this client is missing")
@@ -192,9 +166,6 @@ func TestCreationStreamResumesFromLastEventID(t *testing.T) {
 	}
 }
 
-// The stream is not immortal: it ends when the session reaches a state no
-// command can leave. A page holding a socket open on a saved session is a leak
-// that only shows up in production.
 func TestCreationStreamEndsWhenTheSessionDoes(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-stream-ends")
@@ -207,12 +178,12 @@ func TestCreationStreamEndsWhenTheSessionDoes(t *testing.T) {
 
 	events, stop := readSSE(t, c, v.ID, "")
 	defer stop()
-	// It may send the terminal document first; what it must not do is stay open.
+
 	for {
 		select {
 		case _, ok := <-events:
 			if !ok {
-				return // closed, which is the assertion
+				return
 			}
 		case <-time.After(10 * time.Second):
 			t.Fatal("the stream stayed open on a cancelled session")
@@ -220,9 +191,6 @@ func TestCreationStreamEndsWhenTheSessionDoes(t *testing.T) {
 	}
 }
 
-// Another workspace's session is not readable through a stream either. The
-// route carries the same RequireSession/RequireInvited as the GET beside it;
-// this pins the workspace scope the handler itself applies (iron rule 3).
 func TestCreationStreamRefusesAnotherWorkspace(t *testing.T) {
 	a, _, _ := creationFixture(t)
 	mine := a.login(t, "creation-stream-owner")

@@ -1,14 +1,5 @@
 package run
 
-// PDM-005 5.2a-4: the Go worker is the token ceiling's only enforcement point.
-//
-// The counter that used to be the only one lives inside the workload it bounds
-// (infra/images/runtime-agent-sdk/run.mjs), holding that workload's own gateway
-// credential, so a skill that goes around the harness was bounded by nothing but
-// the Virtual Key's max_budget - about 2.4M input tokens at cached prices, eight
-// times what the user confirmed. These tests are about the ceiling that sits on
-// the other side of the credential.
-
 import (
 	"context"
 	"encoding/json"
@@ -25,13 +16,10 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
-// spendLogStub is a stand-in for the gateway's /spend/logs/v2, paginating a list
-// of per-call token counts the way LiteLLM does.
 type spendLogStub struct {
-	calls  [][2]int  // {prompt_tokens, completion_tokens} per model call
-	spends []float64 // per call when set; nil serves rows with no spend field
-	// gotAlias is what the platform asked about, which is the whole reason the
-	// answer belongs to one attempt and not to the fleet.
+	calls  [][2]int // [prompt_tokens, completion_tokens] per call
+	spends []float64
+
 	gotAlias string
 	requests int
 }
@@ -65,8 +53,7 @@ func (s *spendLogStub) start(t *testing.T) *Gateway {
 }
 
 func TestAttemptTokensSumsWhatTheGatewayBilledThisAttempt(t *testing.T) {
-	// Three model calls, the shape §5.2a-2 measured: a small auxiliary call and
-	// two full-prefix ones.
+
 	stub := &spendLogStub{calls: [][2]int{{420, 12}, {19_215, 300}, {19_415, 250}}}
 	g := stub.start(t)
 
@@ -80,14 +67,12 @@ func TestAttemptTokensSumsWhatTheGatewayBilledThisAttempt(t *testing.T) {
 	if used.OutputTokens != 562 {
 		t.Errorf("output tokens = %d, want 562 summed across the attempt's calls", used.OutputTokens)
 	}
-	// Scoped to one attempt by the same alias Revoke uses, so the answer needs
-	// nothing that was held in memory before a restart.
+
 	if stub.gotAlias != keyAlias("attempt-1") {
 		t.Errorf("key_alias = %q, want the attempt-derived alias", stub.gotAlias)
 	}
 }
 
-// A gateway that priced nothing must read as unreported, not as $0.
 func TestAttemptUsageSumsSpendAndSaysWhetherAnyWasReported(t *testing.T) {
 	priced := (&spendLogStub{calls: [][2]int{{420, 12}, {19_215, 300}}, spends: []float64{0.0012, 0.037}}).start(t)
 	used, err := priced.AttemptUsage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
@@ -108,8 +93,6 @@ func TestAttemptUsageSumsSpendAndSaysWhetherAnyWasReported(t *testing.T) {
 	}
 }
 
-// A workload that made more calls than one page holds is exactly the one the
-// ceiling is for, so the sum must not stop at the first page.
 func TestAttemptTokensFollowsThePagesTheGatewayReports(t *testing.T) {
 	calls := make([][2]int, usagePageSize+40)
 	for i := range calls {
@@ -131,9 +114,6 @@ func TestAttemptTokensFollowsThePagesTheGatewayReports(t *testing.T) {
 	}
 }
 
-// driverWithCeiling is a driver with nothing behind it but the gateway: the
-// breach decision reads the run's frozen snapshot and the gateway, and no
-// database at all.
 func driverWithCeiling(t *testing.T, g *Gateway, maxInput, maxOutput int) *driver {
 	t.Helper()
 	limits := DefaultResourceLimits()
@@ -156,8 +136,7 @@ func anAttempt(t *testing.T) gen.RunAttempt {
 }
 
 func TestARunPastItsTokenCeilingIsStoppedAndToldWhy(t *testing.T) {
-	// 300K of input across sixteen calls: inside the budget the key would allow,
-	// past the number the user confirmed. That gap is the defect.
+
 	calls := make([][2]int, 16)
 	for i := range calls {
 		calls[i] = [2]int{19_400, 500}
@@ -168,14 +147,12 @@ func TestARunPastItsTokenCeilingIsStoppedAndToldWhy(t *testing.T) {
 	if reason == "" {
 		t.Fatal("a run 310400 input tokens into a 300000 ceiling was allowed to continue")
 	}
-	// The user is told which limit stopped their run, not that something failed.
+
 	if !containsAll(reason, "token ceiling", "310400", "300000") {
 		t.Errorf("reason = %q, want it to name the token ceiling and both numbers", reason)
 	}
 }
 
-// The output half of the same ceiling (60K, PDM-005 5.2), which is where the
-// cost of a run actually sits once caching has made input nearly free (5.2a-6).
 func TestARunPastItsOutputCeilingIsStoppedToo(t *testing.T) {
 	d := driverWithCeiling(t, (&spendLogStub{calls: [][2]int{{1_000, 60_001}}}).start(t), 300_000, 60_000)
 	if reason := d.tokenCeilingBreach(context.Background(), anAttempt(t)); reason == "" {
@@ -184,18 +161,13 @@ func TestARunPastItsOutputCeilingIsStoppedToo(t *testing.T) {
 }
 
 func TestARunInsideItsTokenCeilingIsLeftAlone(t *testing.T) {
-	// Right up against it and not over: the boundary is the interesting case,
-	// because a ceiling that stops the last allowed run is a ceiling that lies to
-	// the permission summary in the other direction.
+
 	d := driverWithCeiling(t, (&spendLogStub{calls: [][2]int{{300_000, 60_000}}}).start(t), 300_000, 60_000)
 	if reason := d.tokenCeilingBreach(context.Background(), anAttempt(t)); reason != "" {
 		t.Fatalf("a run exactly at its ceiling was stopped: %q", reason)
 	}
 }
 
-// A gateway that cannot be read is not evidence that a run misbehaved, and the
-// wall clock still bounds it. The warning that goes with this is the part that
-// keeps the gap from being silent.
 func TestAnUnreadableGatewayDoesNotKillAHealthyRun(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -207,8 +179,6 @@ func TestAnUnreadableGatewayDoesNotKillAHealthyRun(t *testing.T) {
 	}
 }
 
-// A deployment with no gateway hands the sandbox no credential and no route out,
-// so there is nothing to count and nothing to ask.
 func TestNoGatewayMeansNoCeilingToEnforce(t *testing.T) {
 	d := driverWithCeiling(t, nil, 300_000, 60_000)
 	if reason := d.tokenCeilingBreach(context.Background(), anAttempt(t)); reason != "" {

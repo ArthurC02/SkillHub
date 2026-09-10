@@ -1,14 +1,5 @@
 package outbox
 
-// The vocabulary is declared in three places and enforced in two of them, which
-// is one more place than any of them can see. These tests are the seam: they fail
-// when Go, the DB CHECK and the catalogue stop agreeing, which is the only way a
-// "closed set" that lives in three files stays closed.
-//
-// No database. Reading the .sql text rather than querying pg_constraint is the
-// point: this must fail in `go test ./...` on a laptop with no Postgres, not only
-// in the integration lane, or the drift it exists to catch ships first.
-
 import (
 	"os"
 	"regexp"
@@ -32,10 +23,6 @@ func TestEventTypesMatchTheCatalogue(t *testing.T) {
 	assertSameSet(t, "contracts/events/domain-events.md §3", EventTypes, catalogueEventTypes(t))
 }
 
-// Every run status must produce an event, and every event it produces must be in
-// the set. Together with the two tests above, this is what makes adding a status
-// to the enum impossible to do quietly: the new status has no mapping, so this
-// fails; give it one, and the migration and the catalogue must gain it too.
 func TestEveryRunStatusMapsIntoTheClosedSet(t *testing.T) {
 	statuses := []gen.RunStatus{
 		gen.RunStatusQueued, gen.RunStatusProvisioning, gen.RunStatusPreparing,
@@ -64,14 +51,11 @@ func TestEveryRunStatusMapsIntoTheClosedSet(t *testing.T) {
 	}
 }
 
-// The refusal is the feature: an unmapped status must stop the transaction, not
-// invent an event type nobody catalogued.
 func TestUnmappedStatusesAreRefused(t *testing.T) {
 	if event, err := StatusEvent("teleporting"); err == nil {
 		t.Errorf("an unknown run status produced %q, want an error", event)
 	}
-	// The two cleanup statuses that are not outcomes. Announcing "cleanup is still
-	// running" as a completed fact is the bug this refusal prevents.
+
 	for _, status := range []gen.RunCleanupStatus{gen.RunCleanupStatusPending, gen.RunCleanupStatusCleaningUp} {
 		if event, err := CleanupEvent(string(status)); err == nil {
 			t.Errorf("cleanup status %q produced %q, want an error", status, event)
@@ -85,11 +69,6 @@ func TestInsertRefusesWithoutTransaction(t *testing.T) {
 	}
 }
 
-// --- reading the other two declarations --------------------------------------
-
-// migrationCheckValues reads the quoted values out of 0035's CHECK body. Scoped
-// to the constraint rather than the whole file so a comment that happens to
-// mention an event type cannot pass for an enforced value.
 func migrationCheckValues(t *testing.T) []string {
 	t.Helper()
 	sql := readFile(t, migrationPath)
@@ -110,9 +89,6 @@ func migrationCheckValues(t *testing.T) []string {
 	return values
 }
 
-// catalogueEventTypes reads §3's backtick-quoted tokens. Only whole tokens count:
-// the section also carries `run.<status>` and `run.succeeded|failed|timed_out` as
-// prose shorthand, and neither is an event type.
 func catalogueEventTypes(t *testing.T) []string {
 	t.Helper()
 	doc := readFile(t, cataloguePath)
@@ -144,9 +120,6 @@ func readFile(t *testing.T, path string) string {
 	return string(b)
 }
 
-// assertSameSet compares as sets, not sequences: the catalogue groups four event
-// types into one table cell and the migration lists them one per line, so
-// requiring the same order would only ever produce a false failure.
 func assertSameSet(t *testing.T, other string, ours, theirs []string) {
 	t.Helper()
 	a, b := slices.Sorted(slices.Values(ours)), slices.Sorted(slices.Values(theirs))

@@ -1,59 +1,3 @@
--- Backfill: the M2 baseline's Agent-compatibility measurements (0022).
---
--- Source of the numbers: docs/plans/mvp/m2/content-baseline-report.md §4, §8 and §12.
---
--- One invocation backfills one (image, run window) pair, because 0022 keys a
--- measurement by (skill version, runtime image) and a Run's image is not
--- recorded anywhere the control plane can read: the image is execution-plane
--- configuration (SKILLHUB_SANDBOX_IMAGE on the node), and the RunResult contract
--- does not carry it back. So the caller states which image was configured and
--- which Runs were made under it, and the window is what keeps the two batches
--- apart. Without it, re-running after the 2026.08-2 batch would relabel those
--- nine measurements as 2026.08-1 — the newest Run per version is now on the new
--- image — and quietly corrupt the 36 rows it was supposed to leave alone.
---
--- This is data, not schema, so it is not in the migration: a fresh database has
--- no skills, no runs and no traces, and a migration that inserts measurements
--- nobody made would be a fixture pretending to be a fact. It is re-runnable
--- (ON CONFLICT updates in place) and derives everything it can from the database
--- rather than restating it:
---
---   * capability comes from the trace. `activated` iff the Run this row cites
---     emitted a skill_activation event; anything else is `unverified`, never
---     `not_activated` — the SDK message stream cannot show "offered and not
---     used" (TRACE-002 限制註記), so silence is not evidence of refusal.
---   * runtime comes from the rule, applied to data: a package whose scripts are
---     written for a runtime the image does not provide could not execute them,
---     and the Run's result came from the model re-implementing them —
---     `transpiled`. When the image does provide it, the scripts are the thing
---     that ran — `native`. Which of the two a Python package gets is therefore a
---     property of the image, so it is the `python_runtime` variable rather than
---     a constant: 2026.08-1 had no python3 (`transpiled`), 2026.08-2 ships it
---     (`native`). `failed` is not used here: every Python skill measured so far
---     still produced a result.
---   * source_run_id and measured_at come from the newest Run per forked-from
---     version *within the window*, which is the Run the report's tables record.
---
--- The only literal data is the declared runtime per skill, mirroring
--- `deps_runtime` in tools/content/seed-skills.json. It is spelled out rather
--- than re-derived from the package because it is a curation judgement about what
--- the SKILL.md's worked examples are written for, and that judgement lives in
--- the seed list.
---
--- The two batches measured so far, each re-derivable on its own:
---
---   # 45 skills on 2026.08-1 (no python3), the original M2 baseline
---   psql -v ON_ERROR_STOP=1 --single-transaction \
---        -v until='2026-08-16 10:00:00+00' \
---        -f tools/content/backfill-agent-compatibility.sql
---
---   # the 9 re-run on 2026.08-2 (ships python3) after the budget fix
---   psql -v ON_ERROR_STOP=1 --single-transaction \
---        -v image=skillhub/runtime-agent-sdk:2026.08-2 \
---        -v python_runtime=native \
---        -v since='2026-08-16 10:00:00+00' \
---        -f tools/content/backfill-agent-compatibility.sql
-
 \if :{?image}
 \else
 \set image 'skillhub/runtime-agent-sdk:2026.08-1'
@@ -72,10 +16,6 @@
 \endif
 
 WITH image(ref) AS (
-    -- Not a digest: these images were built locally and never pushed, so they
-    -- have no registry digest to name. Rows written after SBX-011 publishes to
-    -- GHCR will carry `...@sha256:...`, which is the form 0022 documents as
-    -- preferred.
     VALUES (:'image')
 ),
 declared(name, deps_runtime) AS (
@@ -126,8 +66,8 @@ declared(name, deps_runtime) AS (
     ('unicode-consistency',            'python'),
     ('xlsx',                           'python')
 ),
--- One Run per catalog version: the newest, which is the one the report's table
--- records (a retried skill has an earlier aborted Run that the report discards).
+-- DISTINCT ON keeps one row per version; paired with ORDER BY ... created_at
+-- DESC below, that row is the newest Run.
 baseline AS (
     SELECT DISTINCT ON (fork.forked_from_version_id)
            fork.forked_from_version_id AS skill_version_id,
@@ -140,16 +80,8 @@ baseline AS (
     FROM runs r
     JOIN skill_versions fv ON fv.id = r.skill_version_id
     JOIN skills fork       ON fork.id = fv.skill_id
-    -- The baseline ran in a scratch personal workspace, never in the catalog one
-    -- (iron rule 4: the catalog rows were not touched).
     JOIN workspaces bw     ON bw.id = r.workspace_id AND NOT bw.is_catalog
     WHERE fork.forked_from_version_id IS NOT NULL
-      -- The window that says which image these Runs were made under. A version
-      -- with no Run in it produces no row, so the other batch's measurements are
-      -- left exactly as they are rather than rewritten with this image's label.
-      -- Both ends are open by default, which is the original single-image case;
-      -- once a second image has been measured, each batch needs its own closed
-      -- interval to stay independently re-derivable.
       AND r.created_at >= :'since'::timestamptz
       AND r.created_at <  :'until'::timestamptz
     ORDER BY fork.forked_from_version_id, r.created_at DESC

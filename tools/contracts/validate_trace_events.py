@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
-"""TRACE-001 contract check: every example in trace-event.schema.json validates,
-a deliberately broken event does not, and every recorded sample of real pipeline
-output still conforms.
-
-The samples are the part the examples cannot catch: they are written by the
-producer and by the storage layer themselves (contracts/events/samples/README.md
-says how each is generated), so a change to the harness or to the masker that
-stops matching the contract fails here rather than in a user's timeline.
-
-Run: python tools/contracts/validate_trace_events.py
-"""
+"""Validate trace-event.schema.json: every schema example validates, a
+deliberately broken event does not, and every recorded real-pipeline sample
+still conforms."""
 
 from __future__ import annotations
 
@@ -23,7 +15,6 @@ EVENTS_DIR = pathlib.Path(__file__).resolve().parents[2] / "contracts" / "events
 SCHEMA_PATH = EVENTS_DIR / "trace-event.schema.json"
 SAMPLES_DIR = EVENTS_DIR / "samples"
 
-# One counterexample per failure mode that actually matters. Each must be rejected.
 NEGATIVE_CASES: list[tuple[str, dict]] = [
     (
         "payload does not match the declared type",
@@ -37,7 +28,6 @@ NEGATIVE_CASES: list[tuple[str, dict]] = [
             "emitted_by": "sandbox",
             "type": "usage",
             "masked": True,
-            # script_log payload under type=usage: required model/input_tokens missing.
             "payload": {"stream": "stdout", "message": "hi", "truncated": False},
         },
     ),
@@ -84,8 +74,6 @@ NEGATIVE_CASES: list[tuple[str, dict]] = [
             "attempt": 1,
             "seq": 4,
             "occurred_at": "2026-08-16T09:12:03Z",
-            # Evaluation runs in the control plane after the sandbox is gone, so
-            # this is a forged verdict from untrusted input, not a late event.
             "emitted_by": "sandbox",
             "type": "evaluation_completed",
             "masked": True,

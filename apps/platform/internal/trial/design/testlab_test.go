@@ -1,13 +1,5 @@
 package testlab
 
-// TestCreateTestCaseWithCriteria (05 R-46 (b)): the creation flow confirms a
-// brief and its acceptance criteria together, and materialize is expected to
-// turn the confirmed words into a real Test Case in the same transaction.
-//
-// Needs PostgreSQL like the rest of this file's siblings; TestMain in
-// dataset_ownership_integration_test.go provides testLabPool and skips this
-// file's tests when SKILLHUB_TEST_DATABASE_URL is unset.
-
 import (
 	"context"
 	"errors"
@@ -46,9 +38,6 @@ func seedWorkspaceWithSkill(t *testing.T) (ws identity.Workspace, skillID pgtype
 	return ws, skillID
 }
 
-// testCaseServiceWithSkill wires ReadSkill to the given workspace/skill pair
-// only — any other (workspace, skill) reads as not found, the same as a real
-// Registry-backed ReadSkill would answer for a skill outside scope (WS-006).
 func testCaseServiceWithSkill(pool *pgxpool.Pool, ws identity.Workspace, skillID pgtype.UUID) *Service {
 	return &Service{
 		Pool: pool,

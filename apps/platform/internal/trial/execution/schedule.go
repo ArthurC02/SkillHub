@@ -1,9 +1,5 @@
 package run
 
-// RUN-005: scheduling. What a run needs, what a provider offers, and the decision
-// that puts the two together - refused before dispatch with a reason a user can
-// read when nothing matches (ADR-004, threat model gate B).
-
 import (
 	"context"
 	"encoding/json"
@@ -20,87 +16,25 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
-// PDM-004 (which runtimes and versions the SelfHostedProvider supports) is still
-// open, so the platform asks for a family and an integration mode and lets the
-// provider name the version. Pinning a version here would be inventing the answer
-// to a decision nobody has taken; resolving it from the capability answer is the
-// honest form of the same thing, and what got resolved is frozen into
-// runs.runtime_snapshot so a past run stays explainable.
 const (
 	defaultRuntime          = "claude_agent_sdk"
 	defaultAgentIntegration = "in_sandbox_sdk"
-	// Iron rule 1: untrusted skills never run in a plain process. gVisor is the
-	// production baseline (ADR-015); `container` is the dev provider's honest name
-	// for what a developer machine can do, and is accepted only where the
-	// deployment says it is one. `process` no longer needs a constant of its own:
-	// it is refused because it is not in the switch below, along with every other
-	// value nobody wrote down.
-	//
-	// productionIsolation is the only level a deployment accepts without opting
-	// in to something weaker. Adding a second one — a MicroVM baseline, say — is
-	// a deliberate edit here, which is the point: see the switch in Match.
+
 	productionIsolation = "gvisor"
-	// cleanIsolation is the clean test mode's honest name for having no boundary
-	// at all: a spawned process on the host, reaped by process group or job
-	// object. It is not a sandbox and must never carry untrusted content; what it
-	// carries is curated demo material (02:PORT-007) on a machine that cannot run
-	// a container. Gated by its own variable rather than by DEV_LOGIN, so an
-	// existing development machine does not silently acquire it.
+
 	cleanIsolation = "clean"
-	// weakIsolation is what a provider declares when it is running workloads under
-	// the host kernel — plain runc, because SKILLHUB_SANDBOX_RUNTIME was unset or
-	// misspelled on that node. The declaration is honest and the sandbox does not
-	// lie about it; the gap was on this side, where `container` was neither ""
-	// nor `process` and so simply passed. A node that lost the variable ran every
-	// untrusted skill on a shared kernel and said so in one startup log line.
+
 	weakIsolation = "container"
 )
 
-// devDeployment reports whether this deployment has declared itself an offline
-// development one, which is the only kind that may dispatch to weakIsolation.
-//
-// DEV_LOGIN is that declaration and it already exists (ADR-020; cmd/api calls it
-// "never in production"), so this reuses it rather than adding a second variable
-// an operator could set correctly while getting this one wrong. There is
-// deliberately no production escape hatch: opting in to a shared kernel means
-// opting in to the offline login provider too, which no production deployment
-// can quietly do by accident. Read per call, like RunModel and GatewayURL.
 func devDeployment() bool { return os.Getenv("DEV_LOGIN") == "1" }
 
-// cleanTestMode reports whether this deployment has declared itself the clean
-// test mode (02:PORT-001..009) — a machine that cannot install a container
-// runtime, running curated content for a demo.
-//
-// Deliberately not DEV_LOGIN. `clean` is weaker than `container`: it is no
-// boundary at all. Reusing the development opt-in would hand it to every
-// machine that already has DEV_LOGIN exported, which is most of them.
 func cleanTestMode() bool { return os.Getenv("SKILLHUB_CLEAN_MODE") == "1" }
 
-// curatedTier is the one value of skills.curation_tier (0042) that means a
-// human went through PDM-002 on this material. The other one is `indexed`,
-// which means nothing more than "it is in the database".
 const curatedTier = "curated"
 
-// ErrContentNotCurated is 02:PORT-010's fifth acceptance criterion, which until
-// now had no enforcement point anywhere: 「不得承載不受信任的內容。該模式只跑
-// PORT-007 允許的策展素材。」
-//
-// Three documents each named a different one of the others as the gate and none
-// of them was one (04 丙-85). The reason it could not be here in Match is worth
-// keeping: Match is a function of a *provider capability*, and content is a
-// property of the run. No amount of reading isolation.level can see a skill.
 var ErrContentNotCurated = errors.New("the clean test mode only runs curated material")
 
-// requireCuratedContent refuses to hand uncurated material to a driver that has
-// no isolation boundary at all (02:PORT-010, 02:PORT-007).
-//
-// Only in the clean test mode. Every other deployment runs untrusted skills for
-// a living behind gVisor (ADR-015), and applying this there would break the
-// product; the branch below is the whole of its effect on the normal path.
-//
-// Fail-closed on every unknown, unlike the ordinary registry reads: the cost of
-// a wrong "no" is a demo that will not start, and the cost of a wrong "yes" is
-// somebody else's code running on the operator's laptop as the operator.
 func (s *Service) requireCuratedContent(ctx context.Context, run gen.Run) error {
 	if !cleanTestMode() {
 		return nil
@@ -121,63 +55,22 @@ func (s *Service) requireCuratedContent(ctx context.Context, run gen.Run) error 
 	}
 	versionID := pgconv.UUIDString(run.SkillVersionID)
 	if reason, released := operatorReleased(versionID); released {
-		// The one thing this line buys that the curation branches do not: a person
-		// took an action naming these exact bytes and said why. It is not evidence
-		// the content is safe - nothing here can be - so it is logged every single
-		// time it is used, at Warn, next to what it disabled (ADR-061 決策 3).
+
 		slog.Warn("clean mode: an operator released this version to run with no isolation boundary",
 			"run_id", pgconv.UUIDString(run.ID),
 			"skill_version_id", versionID,
 			"reason", reason)
 		return nil
 	}
-	// What was refused, what would pass, and - since 05 R-37 - the one action that
-	// would let this exact version through, because the operator reading this is
-	// the person who has to decide. Identifiers and the tier only, never the
-	// skill's name or anything out of the package (iron rule 11).
+
 	return fmt.Errorf("%w: this one is %s. A skill in the public catalogue, or one whose "+
 		"curation_tier is %q on the exact version being run, may run here; anything else needs a "+
 		"deployment with a real sandbox — or %s",
 		ErrContentNotCurated, describeContentSource(source), curatedTier, howToRelease(versionID))
 }
 
-// cleanModeReleaseFile names the file an operator writes to release one Skill
-// Version to run in the clean test mode without being curated (05 R-37 (c),
-// ADR-061). Unset is the shipped default and it means nothing is released.
-//
-// A file and not an operator route, which is the part worth reading twice.
-// 02:SEC-011 already answered this exact question for the operator roster and
-// its answer is in workspace/http.go: a grant mechanism inside the product
-// "would exist to let one account promote itself", so 「granting is editing the
-// deployment's environment and restarting, which nobody who cannot already
-// deploy can do」. Here that argument is not merely available, it is forced:
-// clean mode runs with DEV_LOGIN=1, so **anybody who can reach the page can
-// sign in as anybody**, operator included (tools/cleanmode/start.mjs says so in
-// its own comment before it hands the roster to the demo importer). A button in
-// that UI reading 「run this without a sandbox」 would be pressable by the person
-// who just uploaded the skill — which is precisely the hand this gate exists to
-// stop. The keyboard the launcher was started from is the only authority that
-// mode still has, so that is where the switch lives.
 const cleanModeReleaseFile = "SKILLHUB_CLEAN_MODE_RELEASES"
 
-// operatorReleased reports whether the operator has released this exact Skill
-// Version, and the reason they wrote down.
-//
-// Per version, never per skill: 「curated at a different version than the one
-// being run」 is a case this gate already distinguishes, and a release that
-// carried over to the next push would be a release of bytes nobody looked at.
-//
-// A line is `<skill_version_id> <reason>`; blank lines and `#` comments are
-// skipped, and so is a line naming a version with no reason after it — **the
-// named reason is the whole of the control**, so a nameless line is not a
-// release, and saying nothing about it would look like the switch is broken.
-//
-// Every failure here lands on the refusing side (no file, no read, no match =
-// not released), so this cannot fail open and needs no fail-closed branch of
-// its own. Read per call, like RunModel and GatewayURL above it, because the
-// version being released does not exist until the user has uploaded it — a
-// value read once at start-up could only ever release content from the
-// previous launch.
 func operatorReleased(versionID string) (string, bool) {
 	path := os.Getenv(cleanModeReleaseFile)
 	if path == "" || versionID == "" {
@@ -185,41 +78,27 @@ func operatorReleased(versionID string) (string, bool) {
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		// Not fatal and not a refusal of its own: an unreadable list is an empty
-		// list, and the run is refused a few lines below with the reason the
-		// operator can act on. Logged because a typo'd path otherwise looks
-		// exactly like a switch that does not work.
+
 		if !errors.Is(err, fs.ErrNotExist) {
 			slog.Warn("clean mode: the operator release list could not be read",
 				"path", path, "error", err)
 		}
 		return "", false
 	}
-	// A BOM is not a typo, it is what Notepad writes when somebody creates this
-	// file themselves on the machine this whole mode exists for. Stripped here
-	// rather than per line: it can only ever be the first bytes of the file.
+
 	text := strings.TrimPrefix(string(raw), "\ufeff")
 	for i, line := range strings.Split(text, "\n") {
-		// A list marker is stripped before anything else because the refusal that
-		// sent the operator here is prose, and prose gets pasted into a file as a
-		// bullet. Same reason for the quoting characters in releaseToken.
+
 		line = strings.Trim(strings.TrimLeft(strings.TrimSpace(line), "-*• \t"), " \t\r")
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		// Fields and not Cut(line, " "): a person lining up two columns reaches
-		// for Tab, and Cut would have handed the whole line back as the id and
-		// then said nothing at all.
+
 		parts := strings.Fields(line)
 		id := releaseToken(parts[0])
-		// EqualFold because a UUID is case-insensitive by definition (RFC 4122),
-		// and this cannot widen anything: a fold still has to match this exact
-		// version's id.
+
 		if !strings.EqualFold(id, versionID) {
-			// The line names this version somewhere but not as its first token —
-			// so the operator is looking at a line that reads like a release while
-			// the run is being refused with a message telling them to add one.
-			// **Silence here is the whole defect this switch was built to avoid.**
+
 			if strings.Contains(strings.ToLower(line), strings.ToLower(versionID)) {
 				slog.Warn("clean mode: a line mentions this version but does not release it; "+
 					"a release is the version id first, then the reason",
@@ -238,19 +117,8 @@ func operatorReleased(versionID string) (string, bool) {
 	return "", false
 }
 
-// releaseToken strips what a copy-paste carries in around the id. The refusal
-// message renders the id inside backticks, so backticks are the first thing an
-// operator pastes; quotes and a trailing comma are the same accident in other
-// editors.
-//
-// Deliberately not a general-purpose forgiving parser: nothing here can make a
-// *different* version match, only the exact one the operator meant.
 func releaseToken(s string) string { return strings.Trim(s, "`'\"“”‘’,;:") }
 
-// howToRelease is the second half of a refusal that would otherwise end in a
-// dead end on the one machine where there is no other deployment to move to.
-// It names the version because the operator cannot look it up anywhere else in
-// that mode, and it is only ever reached inside the clean test mode.
 func howToRelease(versionID string) string {
 	path := os.Getenv(cleanModeReleaseFile)
 	if path == "" {
@@ -262,9 +130,6 @@ func howToRelease(versionID string) string {
 		"(05 R-37) — a line with no reason after the id is not a release", versionID, path)
 }
 
-// describeContentSource says which half of the test failed, in the fewest words
-// that still distinguish "never reviewed" from "reviewed, but not these bytes".
-// The second is the one that would otherwise look like a bug.
 func describeContentSource(source ContentSource) string {
 	if source.CurationTier == curatedTier {
 		return "curated at a different version than the one being run"
@@ -272,21 +137,15 @@ func describeContentSource(source ContentSource) string {
 	return fmt.Sprintf("outside the public catalogue with curation_tier %q", source.CurationTier)
 }
 
-// Requirements is what one run needs from a provider. Derived entirely from the
-// run's own frozen policy_snapshot, so scheduling matches against what the user
-// was shown before starting, not against today's defaults (ADR-003).
 type Requirements struct {
 	Runtime          string
 	AgentIntegration string
 	Limits           ResourceLimits
 	EgressMode       string
-	// EgressAllowed is how many destinations the run is permitted. It is part of
-	// the requirement, not decoration: a request that allows nothing can be met by
-	// a provider with no egress route at all, and one that allows something cannot.
+
 	EgressAllowed int
 }
 
-// requirementsFor reads the run's frozen policy back out.
 func requirementsFor(run gen.Run) (Requirements, policySnapshot, error) {
 	var policy policySnapshot
 	if err := json.Unmarshal(run.PolicySnapshot, &policy); err != nil {
@@ -295,10 +154,6 @@ func requirementsFor(run gen.Run) (Requirements, policySnapshot, error) {
 	return requirementsFromPolicy(policy), policy, nil
 }
 
-// DefaultRequirements is what a run created today asks of a provider. Exported so
-// the contract suite can put a real provider's capability through the real matcher
-// — a provider whose endpoints all pass and that the scheduler still refuses is
-// not usable, and that gap is invisible from either side alone.
 func DefaultRequirements() Requirements {
 	return requirementsFromPolicy(defaultPolicy())
 }
@@ -313,13 +168,6 @@ func requirementsFromPolicy(policy policySnapshot) Requirements {
 	}
 }
 
-// checkSchedulable refuses work no configured provider can run, before it is
-// queued and with a reason a user can read (ADR-004, RUN-005).
-//
-// An empty registry is not a refusal. A deployment with no sandbox at all is an
-// operator problem, not a malformed request: the run is accepted, and it fails
-// saying "no sandbox provider is configured" where the user can see it, which is
-// more useful than a 422 blaming them for asking.
 func (s *Service) checkSchedulable(ctx context.Context, policy policySnapshot) error {
 	registry := s.providers()
 	if len(registry.Providers) == 0 {
@@ -329,14 +177,10 @@ func (s *Service) checkSchedulable(ctx context.Context, policy policySnapshot) e
 	if errors.Is(err, ErrNoCompatibleProvider) {
 		return err
 	}
-	// A provider that is merely unreachable right now is not a reason to reject the
-	// request: queue it, and let the dispatch retry policy deal with the outage.
+
 	return nil
 }
 
-// Match reports whether a provider can run these requirements, and if so which
-// runtime version it resolved to. The error is the user-facing reason: it names
-// the provider and the one thing that did not fit, never a stack of internals.
 func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	name := c.Provider
 	if name == "" {
@@ -345,14 +189,7 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	if c.Availability.Healthy != nil && !*c.Availability.Healthy {
 		return RuntimeProfile{}, fmt.Errorf("%s reports itself unhealthy", name)
 	}
-	// An allow list, not a deny list. The deny list refused "", `process` and
-	// `container` and let everything else through, so a provider declaring
-	// `gvsior` was dispatched to exactly as if it had said gvisor. That never
-	// happened, because sandboxd derives the value from a two-way branch — but
-	// the shape is the one that already caused an incident here once, and the
-	// fix that time was to add one more value to the deny list rather than to
-	// invert it. A new level now has to be written down before it can run
-	// anything.
+
 	switch c.Isolation.Level {
 	case productionIsolation:
 	case weakIsolation:
@@ -371,29 +208,13 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	if !c.Isolation.Rootless {
 		return RuntimeProfile{}, fmt.Errorf("%s does not run workloads unprivileged", name)
 	}
-	// A ceiling the node names here is a number in max_resources with nothing
-	// holding it - unbounded, whatever the declaration says. 02:PORT-010 asks the
-	// declaration to reflect what was actually detected, and the point of asking
-	// was so a gate could refuse; a field only the node's own log reads is the
-	// defect ADR-059 decision 3 recorded, not the fix for it.
-	//
-	// Same shape as the isolation branches above: refused everywhere except the
-	// deployment that has opted into having no boundary at all, where "the CPU
-	// ceiling is not enforced either" is not news.
+
 	if len(c.MaxResourcesUnenforced) > 0 && !cleanTestMode() {
 		return RuntimeProfile{}, fmt.Errorf(
 			"%s declares resource ceilings it does not enforce (%s), which this deployment does not accept",
 			name, strings.Join(c.MaxResourcesUnenforced, ", "))
 	}
-	// The egress half of the branch above, and it has to be its own check rather
-	// than a clause in that one: a node can enforce every resource ceiling and
-	// still filter no traffic, and the two are read by different parts of the
-	// deployment's threat model. Same gate, same reason - accepted only where
-	// having no boundary at all was already accepted (04 丙-98, 05 R-32).
-	//
-	// Ordered before egressSatisfied on purpose. Both would refuse a clean node
-	// in production, and the error a person reads should name the reason that
-	// will still be true after they fix their allow list.
+
 	if c.Network.EgressUnenforced && !cleanTestMode() {
 		return RuntimeProfile{}, fmt.Errorf(
 			"%s declares egress modes it does not enforce, which this deployment does not accept", name)
@@ -409,7 +230,7 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	profile := RuntimeProfile{
 		Runtime:          req.Runtime,
 		AgentIntegration: req.AgentIntegration,
-		Model:            RunModel(), // empty: the gateway's default tier (PDM-003)
+		Model:            RunModel(),
 	}
 	var supported bool
 	for _, rt := range c.Runtimes {
@@ -419,8 +240,7 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 		if len(rt.AgentIntegration) > 0 && !contains(rt.AgentIntegration, req.AgentIntegration) {
 			return RuntimeProfile{}, fmt.Errorf("%s runs %s but not in %s mode", name, req.Runtime, req.AgentIntegration)
 		}
-		// Last declared version wins. Providers list oldest first, and a run should
-		// get the newest thing the provider is prepared to support.
+
 		profile.RuntimeVersion = rt.Versions[len(rt.Versions)-1]
 		supported = true
 		break
@@ -429,8 +249,6 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 		return RuntimeProfile{}, fmt.Errorf("%s does not support the %s runtime", name, req.Runtime)
 	}
 
-	// Every ceiling is required by the provider contract. Missing capability is
-	// not permission to dispatch an unbounded run.
 	for _, check := range []struct {
 		what            string
 		needed, offered float64
@@ -457,24 +275,10 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	return profile, nil
 }
 
-// Select picks the first compatible provider. First, not best: with one or two
-// configured providers a scoring function would be untestable ceremony, and
-// ADR-004 forbids silently re-routing to a different provider anyway.
-//
-// ponytail: first-fit selection, no load balancing across providers. Revisit when
-// more than one provider is configured in production and slots actually contend.
 func (r *Registry) Select(ctx context.Context, req Requirements) (*Provider, ProviderCapability, RuntimeProfile, error) {
 	return r.SelectExcluding(ctx, req, nil)
 }
 
-// SelectExcluding is Select with the drained nodes taken out (SEC-012 action ②,
-// ADR-022 X-04 ①「該節點停止接受新 Run（drain），其他節點不受影響」). `halted` is keyed
-// by provider name, which is the shape halt.go already holds the switch in.
-//
-// Draining shows up in the refusal reason like any other mismatch, so a run that
-// ends up with nowhere to go says which nodes were drained rather than reporting a
-// fleet that mysteriously supports nothing. The whole-pool case never reaches here
-// — the caller stops first and leaves the run queued.
 func (r *Registry) SelectExcluding(
 	ctx context.Context, req Requirements, halted map[string]gen.DispatchHalt,
 ) (*Provider, ProviderCapability, RuntimeProfile, error) {
@@ -506,8 +310,6 @@ func (r *Registry) SelectExcluding(
 		fmt.Errorf("%w: %s", ErrNoCompatibleProvider, strings.Join(reasons, "; "))
 }
 
-// runtimeSnapshot is what got matched, frozen onto the run (ADR-003). Enough to
-// explain a past scheduling decision after the provider's capability has moved on.
 type runtimeSnapshot struct {
 	Provider       string         `json:"provider"`
 	Runtime        RuntimeProfile `json:"runtime"`
@@ -516,11 +318,6 @@ type runtimeSnapshot struct {
 	SelectedAt     string         `json:"selected_at"`
 }
 
-// buildRunRequest assembles the provider-neutral RunRequest for one attempt.
-//
-// Every read is workspace scoped from the run's own workspace_id (iron rule 3),
-// and everything that travels is a reference or a hash: package bytes and dataset
-// bytes move through object storage, never through this body.
 func (s *Service) buildRunRequest(
 	ctx context.Context, run gen.Run, attempt gen.RunAttempt, profile RuntimeProfile, policy policySnapshot,
 ) (RunRequest, error) {
@@ -545,9 +342,7 @@ func (s *Service) buildRunRequest(
 	if err != nil {
 		return RunRequest{}, err
 	}
-	// SBX-008. The grants are minted first because both halves are fail-closed:
-	// a dispatch that cannot authorize its own inputs, or cannot mint the model
-	// credential the egress policy assumes, must not reach a sandbox at all.
+
 	ttl := time.Duration(policy.ResourceLimits.WallClockHardSeconds)*time.Second + grantSlack
 	grants, datasetKeys, err := s.grantsFor(ctx, run, attempt, version, refs, ttl)
 	if err != nil {
@@ -574,9 +369,7 @@ func (s *Service) buildRunRequest(
 		RunAttemptID: pgconv.UUIDString(attempt.ID),
 		Attempt:      int(attempt.AttemptNumber),
 		WorkspaceID:  pgconv.UUIDString(run.WorkspaceID),
-		// The attempt id *is* the idempotency key: one permanent platform id per
-		// dispatch, so a re-send after an uncertain first call cannot start a
-		// second sandbox (ADR-004 on failure and retry).
+
 		IdempotencyKey: pgconv.UUIDString(attempt.ID),
 		SkillVersion: PackageRef{
 			SkillVersionID: pgconv.UUIDString(version.ID),
@@ -594,14 +387,7 @@ func (s *Service) buildRunRequest(
 		Egress:         policy.Egress,
 		ObjectGrants:   grants,
 		ModelGateway:   gatewayGrant,
-		// TRACE-002: the collection destination, with a signed credential scoped
-		// to this one (run, attempt) embedded in the URL. A new attempt gets a new
-		// token, so a re-dispatched run cannot post events under the old one.
-		//
-		// `standard` is the only level in use. The contract's `verbose` adds the
-		// safety-processed raw events on top; the raw events are already what the
-		// advanced view (TRACE-007) shows, so nothing yet distinguishes the two and
-		// claiming otherwise would be a setting that does nothing.
+
 		Trace: TracePolicy{
 			Level: "standard",
 			IngestionURL: s.TraceSigner.IngestionURL(
@@ -610,27 +396,6 @@ func (s *Service) buildRunRequest(
 	}, nil
 }
 
-// pinProvider records the scheduling decision on the run before the first
-// dispatch — and only before the first one.
-//
-// dispatch() is re-enterable: execute() routes a `queued`/`provisioning` run with
-// no live attempt back here, which is where a job retried after
-// SetAttemptProviderRunID failed ends up. It used to call this every time, and
-// SetRunProvider overwrites runtime_snapshot in place, so a re-dispatch that
-// matched a different runtime version left attempt 1's unrecoverable. That column
-// exists precisely to freeze what was matched so a past run stays explicable after
-// provider capabilities change (RUN-005, ADR-003); overwriting it defeats the
-// column rather than serving it.
-//
-// The whole decision is skipped, not half of it: runs.provider and
-// runtime_snapshot are one statement about one scheduling decision, and a
-// provider name paired with another attempt's runtime would be worse than either.
-// Which provider each dispatch actually went to is on run_attempts.provider,
-// which is per attempt and is what cleanup and follow read.
-//
-// ponytail: the thorough answer is a runtime column on run_attempts, so attempt 2
-// records its own instead of inheriting silence. That is a migration; see the
-// report accompanying this change.
 func (s *Service) pinProvider(
 	ctx context.Context, run gen.Run, p *Provider, c ProviderCapability, profile RuntimeProfile,
 ) (gen.Run, error) {
@@ -651,43 +416,17 @@ func (s *Service) pinProvider(
 		ID: run.ID, WorkspaceID: run.WorkspaceID, Provider: p.Name, RuntimeSnapshot: snapshot,
 	})
 	if err != nil {
-		// The run went terminal while we were scheduling. The caller's next
-		// transition will hit the same wall and stop there.
+
 		return run, err
 	}
 	return updated, nil
 }
 
-// alreadyPinned reports whether this run's scheduling decision has been recorded.
-// CreateRun writes `{}` and the column is NOT NULL, so "empty object" is the
-// unpinned state; parsed rather than string-compared because `{}` is what the
-// platform writes, not the only jsonb Postgres can hand back.
 func alreadyPinned(run gen.Run) bool {
 	var snapshot map[string]json.RawMessage
 	return json.Unmarshal(run.RuntimeSnapshot, &snapshot) == nil && len(snapshot) > 0
 }
 
-// egressSatisfied reads the two egress modes as ordered rather than as
-// alternatives: `none` (no route out at all) is strictly stronger than
-// `default_deny` with an empty allow list.
-//
-// So a provider that offers only `none` — the dev DockerProvider on
-// `--network none`, and any node without an egress proxy — can carry a run that
-// is allowed to reach nothing, and cannot carry one that names a destination,
-// because it has no route to offer. The substitution only ever runs in this
-// direction: a weaker mode is never accepted for a stronger request, whatever
-// the request said.
-//
-// A provider that declares no egress modes at all has not answered the question,
-// which is treated the same way as an undeclared resource ceiling: a refusal.
-// That sentence was here before the code did it — the switch below opened with
-// `len(offered) == 0: return true`, so egress was the one capability that failed
-// OPEN while an undeclared ceiling three functions up is a hard error, and
-// nothing noticed because schedule_test only ever passed a non-empty list
-// (M2 audit, 2026-08-24). ADR-022: 做不到的地方一律走 fail-closed.
-//
-// A run that names no egress mode is a different thing from a provider that
-// names none, and only the first is a pass.
 func egressSatisfied(offered []string, req Requirements) bool {
 	switch {
 	case req.EgressMode == "":

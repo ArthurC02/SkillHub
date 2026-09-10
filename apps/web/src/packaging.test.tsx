@@ -9,10 +9,6 @@ import { PACKAGING_BLOCKED_LABEL, Packaging, packagingGate } from "./pages/Packa
 import type { DownloadArtifact, PackagingBlockedReason } from "./api/packaging";
 import type { SkillDetail } from "./api/types";
 
-// 02:PACK-001 / PACK-002 / WS-002 / WS-004. Same hand-rolled DOM plumbing as
-// eval.test.tsx: @testing-library is not a dependency and these assertions do
-// not justify adding one.
-
 let container: HTMLDivElement;
 let root: Root;
 
@@ -33,7 +29,6 @@ const VERSION = "22222222-2222-2222-2222-222222222222";
 const OLDER_VERSION = "44444444-4444-4444-4444-444444444444";
 const ARTIFACT = "33333333-3333-3333-3333-333333333333";
 
-// GET /skills/{id}/versions, newest first (04 丙-14).
 const VERSIONS = {
   versions: [
     {
@@ -51,13 +46,6 @@ const VERSIONS = {
   ],
 };
 
-/*
- * The address, standing in for the router. `?version=` is not a constant here
- * because 資訊架構 §0.1 R4 makes it the thing the picker writes to: with a fixed
- * `useSearch` and a swallowed `useNavigate`, a picker holding its choice in
- * component state — which used to WIN over the URL — would pass every
- * assertion. Components re-read through `useSyncExternalStore`.
- */
 const searchListeners = new Set<() => void>();
 let search: Record<string, string | undefined> = { version: VERSION };
 
@@ -126,11 +114,6 @@ const skill = {
     counts: { errors: 0, warnings: 0, infos: 0 },
     highlights: [],
     info_counts: {},
-    // Contract-required and missing until the packaging page started rendering
-    // the risk summary §2.10 第 1 項 puts on the never-fold list. Second fixture
-    // this week to be short a required field（`excluded_files` was the first），
-    // so the object below is pinned to the type with `satisfies` — an untyped
-    // fixture is a replica that can disagree with the contract in silence.
     disclosures: [],
     note: "",
   },
@@ -142,8 +125,6 @@ const skill = {
   },
 };
 
-// `env_vars` is required by the contract, so both of its answers are here: empty
-// (this target needs none) and populated.
 const targets = {
   targets: [
     {
@@ -152,7 +133,6 @@ const targets = {
       version: "1.0.0",
       display_name: "標準 Agent Skill 套件",
       support_status: "unverified",
-      // No prompt: this target names no agent to run one against.
       verification_steps: [
         "解壓縮套件。SKILL.md 必須位於壓縮檔的根層。（原文：Unzip the package. SKILL.md must be at the root of the archive.）",
       ],
@@ -190,8 +170,6 @@ const targets = {
           required: true,
           description:
             "SDK 從你自己的環境讀取這個金鑰。（原文：The SDK reads the key from your own environment.）",
-          // A placeholder, never a credential shape: the same string is rendered
-          // verbatim into INSTALL.md, which ships inside packages (iron rule 11).
           example: "<your own key>",
         },
       ],
@@ -201,8 +179,6 @@ const targets = {
 
 const emptyValidation = { blocked: false, errors: [], warnings: [], infos: [] };
 
-// 丙-154 ①：`label`／`note` 是 delivery/testcase.go 的 `excludedCaseWords` 真字串，
-// `reason` 是機器碼（`user_uploaded_dataset`），畫面不印它。
 const EXCLUDED_TEST_CASE = {
   test_case_id: "tc1",
   name: "我上傳的資料",
@@ -239,24 +215,17 @@ function json(body: unknown, status = 200) {
   );
 }
 
-/**
- * `blocked` drives the preview; `duplicate` drives what POST .../packaging
- * answers; `retentionDays` is 03:PACK-011's served period — a number, or
- * `"absent"` to send a preview without the field at all.
- */
 function stubPlatform(
   options: {
     blocked?: boolean;
     duplicate?: boolean;
     retentionDays?: number | "absent";
-    /** 打包器拿掉的檔案。預設空，因為幾乎每個套件都是空的——重點是非空那一個。 */
     excludedFiles?: {
       path: string;
       reason: string;
       label: string;
       note: string;
     }[];
-    /** 不會進包的 Test Case。預設是 user_uploaded_dataset 那一列，見下方常數。 */
     excludedTestCases?: {
       test_case_id: string;
       name: string;
@@ -264,15 +233,9 @@ function stubPlatform(
       label: string;
       note: string;
     }[];
-    /** `GET /api/skills/{id}` 要回什麼。預設是本檔頂層那份乾淨 fixture。 */
     skill?: typeof skill;
   } = {},
 ) {
-  // 23 and never 30. 30 is what a deployment actually configures, so a mock
-  // saying 30 would be satisfied by a component that hardcoded 30 — which is the
-  // exact regression the server half was built to prevent (it compares the days
-  // the preview reported against the `expires_at` the create call wrote, rather
-  // than against a constant). Nobody hardcodes 23.
   const retention = options.retentionDays === "absent" ? undefined : (options.retentionDays ?? 23);
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
@@ -289,8 +252,6 @@ function stubPlatform(
               blocked_reason: "license_unknown",
               blocked_message: "沒有人確認過這個 Skill 可不可以再散布，未確認的授權視同不允許",
               validation: emptyValidation,
-              // A gate closed before any bytes were read, so there is nothing to
-              // have dependencies — not a package that has none.
               dependencies: [],
               included_test_cases: [],
               excluded_test_cases: options.excludedTestCases ?? [EXCLUDED_TEST_CASE],
@@ -308,7 +269,6 @@ function stubPlatform(
                 ],
                 infos: [],
               },
-              // The lines the produced INSTALL.md carries, verbatim.
               dependencies: [
                 "SKILL.md: package evidences 2 third-party dependencies: pandas, openpyxl",
                 "pandas",
@@ -361,16 +321,9 @@ function button(text: string): HTMLButtonElement | undefined {
 
 const text = () => container.textContent ?? "";
 
-/**
- * 設計 §2.13 去重第 1 條要的是一個**次數**，不是「有沒有這句話」：一段跟著每一列
- * 逐位元相同印出來的文字，`toContain` 對它永遠是綠的——搬回列上也是綠的。所以這一支
- * 用數的。
- */
 function occurrences(needle: string): number {
   return text().split(needle).length - 1;
 }
-
-// --- the redistribution gate ------------------------------------------------
 
 test("ADR-027 only `allowed` opens the packaging entry, and unknown is refused like blocked", () => {
   const detail = (over: Partial<SkillDetail>) => ({
@@ -379,15 +332,9 @@ test("ADR-027 only `allowed` opens the packaging entry, and unknown is refused l
   });
 
   expect(packagingGate(detail({}))).toBeNull();
-  // ADR-045: the owner getting their own upload back. Releases, and is a
-  // separate value from `allowed` because it is not a licence verdict.
   expect(
     packagingGate(detail({ redistribution: { value: "self_supplied", label: "", note: "" } })),
   ).toBeNull();
-  // 0037 / ADR-047 決策 4: the platform's own output. It released on the server
-  // (gateFlags) from the day the value existed, and refused here — the switch
-  // this table replaced sent it to `default`. A generated skill the owner could
-  // not download was the visible half of that.
   expect(
     packagingGate(detail({ redistribution: { value: "generated", label: "", note: "" } })),
   ).toBeNull();
@@ -397,28 +344,16 @@ test("ADR-027 only `allowed` opens the packaging entry, and unknown is refused l
   expect(packagingGate(detail({ redistribution: { value: "unknown", label: "", note: "" } }))).toBe(
     "license_unknown",
   );
-  // Anything unrecognised fails closed rather than releasing.
   expect(packagingGate(detail({ redistribution: { value: "maybe", label: "", note: "" } }))).toBe(
     "license_unknown",
   );
-  // The two locks are independent: a hold closes it whatever the licence says.
   expect(
     packagingGate(detail({ access_restriction: { reason: "license-review", note: "" } })),
   ).toBe("license_hold");
-  // A response missing the field the contract requires is a platform that failed
-  // to answer, not a permission. It refuses, like every other non-`allowed` case.
   expect(packagingGate(detail({ redistribution: undefined }))).toBe("license_unknown");
 });
 
 test("every refusal the contract can send has a sentence on this page", () => {
-  // The label table's own comment says two copies of it would drift. One did:
-  // `file_removed_by_packager` was added to the contract and to the generated
-  // client, and this hand-written union kept four values — so a real refusal
-  // rendered 「不能打包：」 followed by nothing, which is the blank §2.1 forbids,
-  // in the one place a reader most needs a sentence.
-  //
-  // Asserted against the generated enum rather than a list written here, because
-  // a list written here is the same drift one file over.
   for (const value of Object.values(PackagingBlockedReasonEnum)) {
     const label = PACKAGING_BLOCKED_LABEL[value as PackagingBlockedReason];
     expect(label, `no sentence for blocked_reason ${value}`).toBeTruthy();
@@ -429,15 +364,11 @@ test("PACK-002 the post-install check is on the page, not only inside the packag
   stubPlatform();
   await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
 
-  // Both shapes: the standard package's steps, and the profile's prompt. The
-  // INSTALL.md sentence stays as a supplement rather than as the whole answer.
   expect(text()).toContain("SKILL.md must be at the root of the archive");
   expect(text()).toContain("List the skills you can use.");
   expect(text()).toContain("裝好之後怎麼確認");
   expect(text()).toContain("隨套件內的 INSTALL.md 一起下載");
 });
-
-// --- the packaging page -----------------------------------------------------
 
 test("PACK-002 an unverified target says so and does not promise the package installs", async () => {
   stubPlatform();
@@ -445,7 +376,6 @@ test("PACK-002 an unverified target says so and does not promise the package ins
 
   expect(text()).toContain("未驗證");
   expect(text()).toContain("沒有把套件裝進這個目標跑過");
-  // The measured one keeps its own word, so the two are not shown as one state.
   expect(text()).toContain("已驗證");
 });
 
@@ -453,18 +383,13 @@ test("PACK-001 a blocked preview names which lock closed and refuses to offer th
   stubPlatform({ blocked: true });
   await render(<Packaging />, () => text().includes("不能打包"));
 
-  // The reason code, the platform's own sentence, and what it means for the reader.
   expect(text()).toContain("license_unknown");
   expect(text()).toContain("沒有人確認過這個 Skill 可不可以再散布，未確認的授權視同不允許");
   expect(text()).toContain("授權未知一律當成不可散布處理");
   expect(button("建立下載套件")?.disabled).toBe(true);
-  // What will not travel is listed rather than silently missing.
   expect(text()).toContain("我上傳的資料");
 });
 
-// 丙-154 ①: excluded_test_cases[] 現在跟 excluded_files[] 一樣是四件式；`reason`
-// 是機器碼，`label`/`note` 才是畫面該印的字（delivery/testcase.go 的
-// `excludedCaseWords`）。
 test("丙-154① 不會進包的 Test Case 印 label/note，不印機器碼 reason", async () => {
   stubPlatform({
     blocked: true,
@@ -509,22 +434,13 @@ test("DESIGN-012 the three compatibility axes are on the packaging page and stay
   stubPlatform();
   await render(<Packaging />, () => text().includes("這個版本的相容性"));
 
-  // The same component the skill page uses, so the two surfaces cannot describe
-  // one measurement differently. An axis with no answer says 未驗證 rather than
-  // being hidden — a missing row reads as "fine" and 未驗證 does not.
   expect(text()).toContain("規格驗證：通過");
   expect(text()).toContain("能力相容：未驗證");
-  // 執行環境相容, not 實測相容: that axis is a rule about whether the image
-  // provides the declared runtime, and nothing observes a script running.
   expect(text()).toContain("執行環境相容：未驗證");
   expect(text()).not.toContain("實測相容");
-  // And the page refuses to let one axis be read as another.
   expect(text()).toContain("「規格驗證通過」不等於「裝得起來」");
 });
 
-// --- 04 R-42(c)③：判定行留在外面，細項折進 <details> --------------------------
-
-/** 每一個文字節點的容器，供「這句話在不在 `<details>` 裡」的提問使用（同 detail.test.tsx）。 */
 function elementSaying(needle: string): Element {
   const found = Array.from(container.querySelectorAll("h1,h2,h3,p,li,span,code,strong,a")).find(
     (el) => (el.textContent ?? "").includes(needle) && el.children.length < 4,
@@ -569,7 +485,6 @@ test("04 R-42(c)③ 風險與 License：判定行與最高嚴重度留在外面�
   stubPlatform({ skill: SKILL_WITH_DETAILS });
   await render(<Packaging />, () => text().includes("打包與下載"));
 
-  // 判定行（§2.10 第 1／3 項）：不得在 <details> 裡。
   for (const verdict of ["有 8 項風險，最高為錯誤。", "可再散布", "已宣告"]) {
     expect(
       elementSaying(verdict).closest("details"),
@@ -577,8 +492,6 @@ test("04 R-42(c)③ 風險與 License：判定行與最高嚴重度留在外面�
     ).toBeNull();
   }
 
-  // 細項：折進去了，`textContent` 讀得到（同 detail.test.tsx 的說法），但要用
-  // `closest("details")` 才問得出「不用互動看不看得到」這件事。
   for (const detail of [
     "SKILL.md 內含可執行程式碼區塊。",
     "含可執行 Script 檔案",
@@ -622,29 +535,12 @@ test("PACK-002 環境變數需求 is on the target, and 「不需要」 is state
   stubPlatform();
   await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
 
-  // Empty on two targets: they genuinely need none, and the page says so.
   expect(text()).toContain("這個目標不需要任何環境變數");
-  // Populated on the SDK target, with required/optional stated per variable.
   expect(text()).toContain("ANTHROPIC_API_KEY");
   expect(text()).toContain("（必要）");
   expect(text()).toContain("套件裡不會有任何金鑰");
 });
 
-/**
- * 設計 §3 第 4 條逐字寫的失效——「型別裡有、伺服器送了、頁面丟掉」。
- *
- * `excluded_files` 是 contract 的必填欄位，而在此之前全 `apps/web/src` 只有型別宣告
- * 與兩筆空陣列 fixture 碰過它：零渲染、零測試。`api/packaging.ts` 的註解甚至已經寫好
- * 它為什麼必須出現在**預覽**上——「the manifest is inside the thing the reader has
- * not decided to download yet」，答案只寫在還沒下載的那份 manifest 裡，就不是在回答
- * 這個決定。
- *
- * 具體的代價：一個 vendored 依賴的 Skill 打包後少了 `node_modules/`，作者把 zip 交給
- * 同事，同事裝不起來，而兩個人都以為那是完整的套件。唯一會浮出來的情況是 SKILL.md
- * 剛好指到被拿掉的檔（那走 `file_removed_by_packager`）；其餘每一種排除都靜音。
- *
- * 兩個答案都押：非空要逐列印出伺服器的字，空要說出「什麼都沒被拿掉」而不是消失。
- */
 test("PACK-002 打包器拿掉的檔案要說出來，空與非空是兩個答案", async () => {
   stubPlatform({
     excludedFiles: [
@@ -672,12 +568,6 @@ test("PACK-002 打包器拿掉的檔案要說出來，空與非空是兩個答�
   expect(text()).toContain("沒有檔案被排除，這一份帶走的就是版本裡的全部內容");
 });
 
-/**
- * 設計 §2.10 是一份**封閉清單**，第 3 項是 License 與可散布性判定、第 1 項是風險
- * 摘要。在此之前這一頁只在**拒絕**的時候談授權：`redistribution` 放行時 `gate` 是
- * null，整頁不再提它一個字——而 allowed／self_supplied／generated 三者放行的理由
- * 各不相同，畫面上長得完全一樣。這是全 app 唯一一個**內容會離開平台**的位址。
- */
 test("PACK-001 放行的時候也要說出授權判定，不是只在拒絕時才談", async () => {
   stubPlatform();
   await render(<Packaging />, () => text().includes("打包與下載"));
@@ -692,38 +582,25 @@ test("PACK-002 依賴需求 shows the same lines the package's INSTALL.md will c
 
   expect(text()).toContain("pandas");
   expect(text()).toContain("openpyxl");
-  // 丙-142：「同一份清單會寫進套件內的 INSTALL.md」搬掉了——每一個打包目標各自已經
-  // 說過同一件事，而那句話在這一頁上出現過的次數是「目標數 + 1」。強制者歸屬那一句
-  // （§2.2 第三向）留著，它不是說明。
   expect(text()).toContain("Skill Hub 不會替你安裝這些");
   expect(text()).toContain("隨套件內的 INSTALL.md 一起下載");
 });
 
 test("PACK-002 an empty dependency list means two different things and is never printed as one", async () => {
-  stubPlatform({ blocked: true }); // a gate closed before any bytes were read
+  stubPlatform({ blocked: true });
   await render(<Packaging />, () => text().includes("依賴需求"));
 
   expect(text()).toContain("還沒有讀到套件內容");
   expect(text()).not.toContain("沒有宣告依賴檔");
 });
 
-// --- 03:PACK-011: how long the package will be kept -------------------------
-
 test("PACK-011 保留期限 is the server's number and it arrives before the build button", async () => {
-  // The mock says 23 days for the reason spelled out on `stubPlatform`: a test
-  // that asserts 「30 天」 against a mock that also says 30 passes just as happily
-  // against a component with 30 typed into it, and a second definition of a
-  // deployment number that nothing compares against the one writing `expires_at`
-  // is 設計 §2.2 顯示與強制成對 broken in the direction nobody notices.
   stubPlatform({ retentionDays: 23 });
   await render(<Packaging />, () => text().includes("這些設定可以打包"));
 
   expect(text()).toContain("保留期限");
   expect(text()).toContain("23 天");
 
-  // 打包之前, not after (03:PACK-011 / 02:NFR-001 的「會影響你的上限要在撞到之前
-  // 看得見」): the question is 「我下週回來還在不在」, and an answer that arrives
-  // after the button is an answer to a decision already spent.
   const notice = Array.from(container.querySelectorAll("p")).find((p) =>
     (p.textContent ?? "").includes("保留期限"),
   )!;
@@ -732,18 +609,10 @@ test("PACK-011 保留期限 is the server's number and it arrives before the bui
     notice.compareDocumentPosition(button("建立下載套件")!) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy();
 
-  // 過期 ≠ 做白工. Deleting the link is not deleting the user's work, and only
-  // one of those two sentences is true.
   expect(text()).toContain("打包是冪等的");
 });
 
 test("PACK-011 a retention under one day says 不到 1 天 rather than 0 天", async () => {
-  // The server truncates instead of rounding (`retentionDays` in
-  // delivery/http.go) so that the error falls on the side of promising less, and
-  // anything under a day therefore arrives as 0. 「0 天」 reads as 「馬上就刪」 and
-  // an empty string reads as 「沒有期限」; both are wrong about the same number,
-  // and a deployment configured that short is already violating 02:NFR-002a — it
-  // should read as wrong, not be smoothed into a plausible-looking 1.
   stubPlatform({ retentionDays: 0 });
   await render(<Packaging />, () => text().includes("這些設定可以打包"));
 
@@ -752,10 +621,6 @@ test("PACK-011 a retention under one day says 不到 1 天 rather than 0 天", a
 });
 
 test("PACK-011 a preview with no retention_days admits it instead of writing 保留 undefined 天", async () => {
-  // Unreachable by contract — the server answers 503 for the whole preview when
-  // the deployment has no ratified DOWNLOAD_ARTIFACT_RETENTION, so no number and
-  // no build. Which is exactly why nothing else would catch this branch
-  // regressing into a rendered `undefined`.
   stubPlatform({ retentionDays: "absent" });
   await render(<Packaging />, () => text().includes("這些設定可以打包"));
 
@@ -764,8 +629,6 @@ test("PACK-011 a preview with no retention_days admits it instead of writing 保
   expect(text()).not.toContain("保留期限");
 });
 
-// --- the download history ---------------------------------------------------
-
 test("WS-004 an expired package stays in the list, says it expired, and offers no bytes", async () => {
   vi.stubGlobal("fetch", () =>
     json({
@@ -773,19 +636,12 @@ test("WS-004 an expired package stays in the list, says it expired, and offers n
         {
           ...artifact,
           artifact_id: "expired-1",
-          // Servability is the server's answer now (04 丙-29 ⑤) — it checks a
-          // purge this shape cannot see — so an expired fixture states it the
-          // way the API would rather than leaving the date to imply it.
           servable: false,
           serve_state: {
             value: "expired",
             label: "已過期,不再提供下載",
             note: "檔案已刪除,這筆紀錄保留。",
           },
-          // Deliberately in the future. Both the old client-side derivation and
-          // the server's word agreed while this date was in the past, so the
-          // fixture could not tell them apart — and the client-side one was the
-          // wrong predicate (M4 audit, 2026-08-24).
           expires_at: "2099-01-01T00:00:00Z",
         },
         artifact,
@@ -795,12 +651,8 @@ test("WS-004 an expired package stays in the list, says it expired, and offers n
   await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
 
   expect(text()).toContain("已過期");
-  // 這一列自己的那一半（A 類，§2.10）：到期的時刻、檔案已刪除、紀錄仍在。
   expect(text()).toContain("檔案已刪除，這筆紀錄保留");
-  // 「已過期」與「沒有這一筆」是兩個答案這件事，在這一頁上**只講一次**（丙-142）：
-  // 頁層開場白就是在講它，而每一列再講一次是同一句話印 N 遍。
   expect(occurrences("沒有這一筆")).toBe(1);
-  // One row is servable and one is not, so exactly one download link exists.
   const links = Array.from(container.querySelectorAll("a")).filter((a) =>
     (a.getAttribute("href") ?? "").includes("/content"),
   );
@@ -820,10 +672,6 @@ test("04 丙-91 a lost package is not told the retention story", async () => {
             label: "檔案遺失,不再提供下載",
             note: "這不是保存期到期——檔案在保存期內就不見了,是平台這一側的問題。同一版本重新打包一次可以拿回同樣的內容;如果再次發生,請回報。",
           },
-          // In the future, and that is the point: the bytes are already gone
-          // while the promise about them has not come due. This row rendered
-          // 「到期後檔案刪除」 — a future tense about a past event — because the
-          // component had one branch for expiry and none for loss.
           expires_at: "2099-01-01T00:00:00Z",
         },
       ],
@@ -833,17 +681,10 @@ test("04 丙-91 a lost package is not told the retention story", async () => {
 
   expect(text()).toContain("是平台這一側的問題");
   expect(text()).toContain("請回報");
-  // The two sentences that would describe this as normal, neither of which is
-  // true here.
-  //
-  // 丙-142：問的是**這一列**，不是整頁。保存期限的通則（「到期後檔案刪除，同一版本
-  // 隨時可以再打包一次」）現在印在清單層級一次，它對這份清單是真的；這一支要擋的是
-  // 它回到列上、變成對一個**在保存期內就不見了**的檔案說的話。
   const row = container.querySelector(".download-item")!;
   expect(row.textContent).not.toContain("到期後檔案刪除");
   expect(row.textContent).not.toContain("這筆紀錄保留");
   expect(row.textContent).not.toContain("到期時間");
-  // No link to bytes that are not there.
   expect(
     Array.from(container.querySelectorAll("a")).filter((a) =>
       (a.getAttribute("href") ?? "").includes("/content"),
@@ -851,16 +692,6 @@ test("04 丙-91 a lost package is not told the retention story", async () => {
   ).toHaveLength(0);
 });
 
-/**
- * 設計 §2.13 去重第 1 條（04 丙-142 第一批）。
- *
- * 四段文字以前跟著**每一列**渲染，逐位元相同：打包目標的說明（同一字串又掛在徽章的
- * `title` 上，去重第 2 條算兩次）、保存期限的通則、雜湊那一族的「不是簽章」、以及
- * 「這份紀錄與稽核事件不是同一份」。§2.10 保護的是**能區分這一列與那一列的事實**，
- * 而一句在每一列上完全相同的話，讀者從第 2 列起不可能因為它而作出不同判斷。
- *
- * 兩列，因為一列證明不了任何事：一列上「印一次」與「每列印一次」是同一個畫面。
- */
 test("丙-142 逐列複述提到清單層級：兩列，但那四句話各只印一次", async () => {
   vi.stubGlobal("fetch", () =>
     json({
@@ -875,19 +706,12 @@ test("丙-142 逐列複述提到清單層級：兩列，但那四句話各只印
   expect(occurrences("不是簽章")).toBe(1);
   expect(occurrences("與稽核事件是兩份不同的紀錄")).toBe(1);
 
-  // 搬走的只有與列無關的那一句。每一列自己的期限（§2.2）、狀態詞與雜湊還在，兩份。
   expect(occurrences("到期時間")).toBe(2);
   expect(occurrences("狀態：可下載")).toBe(2);
   expect(occurrences("sha256:bbbb")).toBe(2);
-  // 而且徽章的 `title` 沒有偷偷留著同一句話（§2.4 的補句：搬出去之後要拿掉）。
   expect(container.querySelector('[title*="INSTALL.md"]')).toBeNull();
 });
 
-/**
- * 設計 §2.4 第 2 型：控制項被**拿掉**而不是停用時，替代文字只說「目前不提供」不說
- * 為什麼——那正是這裡以前寫的八個字，而原因（`serve_state.label`）隔著幾行在另一段
- * 文字裡。這一支押的是那個位置說得出**哪一道**，不是說得出「不行」。
- */
 test("§2.4 不能下載的那一列，在連結原本的位置說出是哪一種不能", async () => {
   vi.stubGlobal("fetch", () =>
     json({
@@ -895,7 +719,6 @@ test("§2.4 不能下載的那一列，在連結原本的位置說出是哪一�
         {
           ...artifact,
           servable: false,
-          // 丙-155⑧: packaging.go withServeState 的真字串（半形逗號/括號一字未改）。
           serve_state: {
             value: "quarantined",
             label: "檢查中(尚未可下載)",
@@ -908,7 +731,6 @@ test("§2.4 不能下載的那一列，在連結原本的位置說出是哪一�
   await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
 
   expect(text()).not.toContain("目前不提供下載");
-  // 伺服器的措辭，不是這裡另外寫的一份（04 丙-29 ⑤：兩份措辭會漂移）。
   const row = container.querySelector(".download-item")!;
   const paragraphs = Array.from(row.children).filter((el) => el.tagName === "P");
   const actions = paragraphs[paragraphs.length - 1];
@@ -925,9 +747,6 @@ test("WS-002 an empty history says nothing was ever downloaded, not that records
   await render(<Downloads />, () => text().includes("還沒有打包過任何套件"));
 
   expect(text()).toContain("不是紀錄被清掉了");
-  // No row at all, and therefore nothing marked expired: the two answers do not
-  // stand in for one another. (The page's own intro sentence explains the
-  // distinction, so this asserts on the badge rather than on the word.)
   expect(container.querySelector(".badge-expired")).toBeNull();
 });
 
@@ -941,7 +760,6 @@ test("SEC-006 deleting states its scope first and then deletes", async () => {
   await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
 
   await act(async () => button("刪除")?.click());
-  // The scope is on screen before anything is destroyed (02:WS-002 第 3 條).
   expect(text()).toContain("刪除的是這個套件的檔案本身");
   expect(text()).toContain("紀錄會保留");
   expect(calls.some((c) => c.method === "DELETE")).toBe(false);
@@ -951,22 +769,15 @@ test("SEC-006 deleting states its scope first and then deletes", async () => {
   expect(calls.find((c) => c.method === "DELETE")?.url).toContain(`/downloads/${ARTIFACT}`);
 });
 
-// --- 04 丙-14: the version picker -------------------------------------------
-
 test("04 丙-14 the packaging page picks the version from a list, and ?version= is the default", async () => {
   const calls = stubPlatform();
   await render(<Packaging />, () => text().includes("這些設定可以打包"));
 
   const select = container.querySelector<HTMLSelectElement>("select")!;
-  // The URL named a version and that is what is selected — not the first row of
-  // the list, and not the skill's latest by accident: the page previously had
-  // no control here at all and only ever read the search param.
   expect(select.value).toBe(VERSION);
   expect(text()).toContain("v2（最新）");
   expect(text()).toContain("v1");
 
-  // Picking another version re-previews that version: PACK-001 packages one
-  // immutable version, so a preview belonging to a different one must not stand.
   const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!;
   await act(async () => {
     setValue.call(select, OLDER_VERSION);
@@ -976,25 +787,18 @@ test("04 丙-14 the packaging page picks the version from a list, and ?version= 
     calls.some((u) => u.includes(`/versions/${OLDER_VERSION}/packaging/preview`)),
   );
   expect(text()).toContain(OLDER_VERSION);
-  // And the "最新版本" label goes with it, rather than labelling an older version
-  // as the latest.
   expect(text()).not.toContain("最新版本）");
 });
 
 test("WS-004 taking the file re-reads the list, so the page stops saying nobody has downloaded it", async () => {
-  // The record is written by the server when it serves `/downloads/{id}/content`,
-  // and `download_count` is computed from that table. Nothing here unmounts on a
-  // click and refetchOnWindowFocus is off, so before the invalidate the count
-  // stayed 0 — and DownloadHistory's `enabled` guard reads that same 0, so the
-  // disclosure did not even ask.
   let served = false;
   const reads: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
     reads.push(String(input));
     return json({ downloads: [{ ...artifact, download_count: served ? 1 : 0 }] });
   });
-  // jsdom cannot navigate; only the anchor's default action is stopped, so
-  // React's own click handler still runs.
+  // jsdom cannot navigate; stopping only the anchor's default action leaves
+  // React's own click handler free to run.
   const stopNav = (e: Event) => e.preventDefault();
   document.addEventListener("click", stopNav, true);
 
@@ -1017,9 +821,6 @@ test("WS-004 taking the file re-reads the list, so the page stops saying nobody 
 });
 
 test("WS-004 the same link on the packaging page marks the download list stale too", async () => {
-  // The twin of the link above. Nothing on this page observes ["downloads"], so
-  // what is asserted is the stale mark rather than a refetch — that is exactly
-  // what makes 到下載紀錄 arrive with the count the server has.
   stubPlatform();
   const stopNav = (e: Event) => e.preventDefault();
   document.addEventListener("click", stopNav, true);
@@ -1028,8 +829,6 @@ test("WS-004 the same link on the packaging page marks the download list stale t
   await act(async () => button("建立下載套件")?.click());
   await waitFor(() => text().includes("套件已建立"));
 
-  // The build itself invalidates the list; re-seed so the click is the only
-  // thing this can be measuring.
   queryClient.setQueryData(["downloads"], { downloads: [] });
   expect(queryClient.getQueryState(["downloads"])?.isInvalidated).toBe(false);
 
@@ -1044,16 +843,6 @@ test("WS-004 the same link on the packaging page marks the download list stale t
   expect(queryClient.getQueryState(["downloads"])?.isInvalidated).toBe(true);
 });
 
-/*
- * 資訊架構 §0.1 R4 — 「你在看哪一份東西」進網址.
- *
- * The picker used to write to `useState` and that state WON over `?version=`
- * (`picked || version || …`). So: open …/package?version=A, pick B, copy the
- * address, send it — the recipient got A's preview, and so did the sender after
- * a reload. A lossy URL is bad; a URL that actively disagrees with the screen
- * is worse, and this is the screen whose whole subject is which immutable
- * version a set of bytes came from (ADR-003).
- */
 test("R4: picking a version changes the address, so the packaging preview can be linked", async () => {
   const calls = stubPlatform();
   await render(<Packaging />, () => text().includes("這些設定可以打包"));
@@ -1065,19 +854,13 @@ test("R4: picking a version changes the address, so the packaging preview can be
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
 
-  // The pick landed in the address. Held in component state it did not, and
-  // nothing else on the page could tell the difference.
   expect(search.version).toBe(OLDER_VERSION);
 
-  // And the address is what the page reads back: the preview it fetched belongs
-  // to the version the URL now names.
   await waitFor(() =>
     calls.some((u) => u.includes(`/versions/${OLDER_VERSION}/packaging/preview`)),
   );
   expect(select.value).toBe(OLDER_VERSION);
 });
-
-// --- 丙-153: the invite gate on the build button --------------------------
 
 test("丙-153 建立套件的按鈕前先說邀請限制，403 印中文並指向頁尾回報", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
@@ -1104,8 +887,6 @@ test("丙-153 建立套件的按鈕前先說邀請限制，403 印中文並指�
   });
   await render(<Packaging />, () => text().includes("這些設定可以打包"));
 
-  // Stated before the button is pressed, same shape as CreateHub.tsx:76-82 and
-  // RunPreflight.tsx.
   expect(text()).toContain("平台目前只讓有封測邀請的帳號建立下載套件。");
 
   await act(async () => button("建立下載套件")?.click());
@@ -1146,8 +927,6 @@ test("丙-150 建立套件失敗（非 403）說可以再按一次，不印 err.
   expect(text()).not.toContain("internal error");
 });
 
-// --- 丙-150 §2.9: the packaging preview's 404/503 each say their own thing --
-
 test("丙-150 打包預覽讀不到這個版本時，說回上一步重新挑一次版本", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
@@ -1181,8 +960,6 @@ test("丙-150 部署沒有設定打包目標時，503 說沒有預覽而不是�
   expect(text()).not.toContain("no packaging targets are configured");
 });
 
-// --- 丙-155 ⑦: serve_state=purged is a third non-status value ---------------
-
 test("丙-155⑦ purged 印 serve_state.note，不印到期時間或到期後檔案刪除", async () => {
   vi.stubGlobal("fetch", () =>
     json({
@@ -1191,14 +968,11 @@ test("丙-155⑦ purged 印 serve_state.note，不印到期時間或到期後檔
           ...artifact,
           artifact_id: "purged-1",
           servable: false,
-          // packaging.go withServeState's real strings for the `purged` branch.
           serve_state: {
             value: "purged",
             label: "檔案已不存在,紀錄保留",
             note: "儲存的位元組已經不在了,而這一列還在。同一版本可以再打包一次。",
           },
-          // Deliberately in the future, same reason as the `lost` fixture above:
-          // a purged row must not be told the retention story either.
           expires_at: "2099-01-01T00:00:00Z",
         },
       ],

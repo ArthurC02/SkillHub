@@ -33,103 +33,29 @@ import type {
   SkillRisk,
 } from "../api/types";
 
-/**
- * 02:PACK-001 / PACK-002 — pick a target, see what packaging would produce,
- * build it, take the bytes.
- *
- * The rules this screen exists to keep:
- *
- * 1. **The preview and the build answer from the same server-side plan.** The
- *    build button is offered only when the preview said `allowed`, and a build
- *    that is refused anyway re-reads the preview instead of arguing with it — a
- *    preview that says yes and a packaging that refuses must not both stand.
- * 2. **A refusal always names which of the four locks closed** (PACK-001 的
- *    「被阻擋時必須回可讀的理由，且理由要分得出是哪一道鎖」). Whether the user can do
- *    anything about it depends entirely on that.
- * 3. **`unverified` is stated, never softened.** Passing format validation is
- *    not permission to say a package installs (ADR-012, 02:PACK-002 第 2 條).
- * 4. **A dataset the user uploaded never travels and there is no checkbox for
- *    it** (02:PACK-001 第二層). The excluded list says so rather than the package
- *    quietly being smaller than expected.
- * 5. **The three compatibility axes are shown here too, and kept apart**
- *    (02:PACK-002 via DESIGN-012). They belong to the Skill version being
- *    packaged, not to the target: passing spec validation is not a statement
- *    about whether the agent picked it up, and neither is a statement about
- *    whether its scripts ran. Packaging changes none of the three, which is
- *    exactly why they must not be re-stated in the packager's own words.
- * 6. **How long the package will be kept is said before the build, and the
- *    number comes from the server** (03:PACK-011). See `RetentionNotice`.
- */
-
 type PackagingSearch = { version?: string };
 
-/**
- * One sentence per blocked reason, saying what it means for the reader — the
- * server's own `blocked_message` is displayed beside it and says what the
- * platform decided. Exported because the entry point on the skill page refuses
- * with the same words: two copies of this table would drift, and the drift would
- * be in the direction of whichever surface was edited last.
- */
 export const PACKAGING_BLOCKED_LABEL: Record<PackagingBlockedReason, string> = {
   license_hold:
     "這個 Skill 正在授權審查中（人工暫時保留）。審查期間平台不產出任何套件，標準套件也不例外。",
-  // 這兩條各自加了最後一句，而那句話的內容是「目前沒有下一步」——設計 §2.2 第三向
-  // 逐字允許這個答案（「或誠實說目前沒有下一步」），但不允許沉默。ADR-057 決策 1
-  // 已經裁定放行是 operator-only、使用者沒有自助路徑；在此之前畫面只說「不行」，
-  // 讀者不知道該去申訴、改 LICENSE 重新匯入、還是放棄。而 04 N-2 早就記著
-  // `license_unknown` 是使用者自己匯入的東西的**預設值**，也就是常態不是例外。
   not_redistributable:
     "這個 Skill 的授權不允許再散布，平台不會把它交出去。授權已人工確認，不等於可以再散布。沒有讓你自己解除這道鎖的路徑——它擋的是授權本身說的話。",
   license_unknown:
     "沒有人確認過這個 Skill 可不可以再散布。授權未知一律當成不可散布處理——這不是等待中的暫時狀態，是預設就擋。目前沒有讓你自己解除它的路徑：放行需要具名的授權來源證據，只有平台管理者改得動（ADR-057）。",
   validation_blocked:
     "用這些設定打出來的套件，過不了平台自己匯入時要過的驗證，因此不能標示為有效套件。下面的錯誤清單就是要修的東西。",
-  // The only entry on this table the reader can act on in a minute, and the only
-  // one where the platform is refusing something it broke itself: the file was in
-  // the version, the exporter took it out, and SKILL.md still points at it.
   file_removed_by_packager:
     "SKILL.md 指向的檔案被打包器排除了，所以這一份下載回去會缺少它自己說明要用的東西——平台不交出一個自己弄殘的套件。下面「平台的說法」會指名是哪個檔；把它移出被排除的目錄、或用實體檔案取代連結，就可以再打包一次。",
 };
 
-/**
- * What each redistribution value does to this gate — the client's copy of
- * delivery/packaging.go `gateFlags`.
- *
- * A `Record<Redistribution, ...>` and not a `switch`, because a switch's
- * `default` cannot tell "a value we decided refuses" from "a value nobody told
- * this file about". It could not, and did not: `generated` arrived in 0037, the
- * server released the gate for it, and this page went on refusing — so the
- * platform would build the package while the button that asks for it was
- * disabled with 「沒有人確認過這個 Skill 可不可以再散布」. Keyed by the union, the
- * next value stops this file compiling instead.
- */
 export const REDISTRIBUTION_GATE: Record<Redistribution, PackagingBlockedReason | null> = {
   allowed: null,
-  // The owner getting their own upload back. Not a licence verdict and not
-  // treated as one anywhere — it releases this gate and nothing else (0036).
   self_supplied: null,
-  // The platform wrote these bytes at this workspace's request. Releases for the
-  // same shape of reason — no upstream author for a licence to protect — and
-  // stays a separate value because the open question is a different one: who
-  // owns what a model wrote (0037, ADR-047 決策 4).
   generated: null,
   blocked: "not_redistributable",
   unknown: "license_unknown",
 };
 
-/**
- * The two independent locks (ADR-027 決策 4) as the skill detail reports them, so
- * the entry point and this page refuse for the same reason. Returns null when
- * neither is closed — which is not a promise that packaging succeeds: the server
- * checks again, and `validation_blocked` is not knowable from here at all.
- *
- * A value the table has no row for refuses, a field that did not arrive
- * included. The contract requires `redistribution` on every skill, so an absent
- * one is a platform that failed to answer and not a permission — and of the two
- * ways to be wrong, showing a refusal for content that turns out to be fine is
- * the recoverable one. The exhaustiveness above is about the copy we control;
- * this line is about not trusting the wire.
- */
 export function packagingGate(skill: SkillDetail): PackagingBlockedReason | null {
   if (skill.access_restriction) return "license_hold";
   const value = skill.redistribution?.value;
@@ -147,7 +73,6 @@ const SEVERITY_LABEL: Record<FindingSeverity, string> = {
   info: "提示",
 };
 
-/** errors > warnings > infos；三者皆零時沒有「最高」可言。 */
 function highestSeverity(counts: SeverityCounts): FindingSeverity | null {
   if (counts.errors > 0) return "error";
   if (counts.warnings > 0) return "warning";
@@ -155,15 +80,6 @@ function highestSeverity(counts: SeverityCounts): FindingSeverity | null {
   return null;
 }
 
-/**
- * 04 R-42(c)③——這一頁的風險／License／相容性三塊，在此之前是詳情頁同三塊的逐字
- * 複本（381 字，兩頁講的是同一次掃描，讀者三十秒前才在詳情頁看過一次）。決定是
- * 「留判定行與最高嚴重度、細項折疊」，與 §2.10 第 1 項本來就有的「細項可折，
- * 『有 3 項風險，最高為 error』不可折」同構——**不是新規則，是套用既有那一條**。
- *
- * `RiskIndicator`（詳情頁用的那個，逐項揭露全部平鋪）是「細項」，跟在這一句後面
- * 收進緊接著的 `<details>`；這裡沒有另外維護一份風險判定邏輯，只是把它算成一句話。
- */
 function RiskVerdict({ risk }: { risk: SkillRisk }) {
   if (risk.scan_status === "unavailable") {
     return <p className="badge badge-risk">風險掃描結果未知：無法讀取已保存的套件內容。</p>;
@@ -179,11 +95,6 @@ function RiskVerdict({ risk }: { risk: SkillRisk }) {
   );
 }
 
-/**
- * 同一批（04 R-42(c)③）：§2.10 第 2 項「驗證狀態」的三個詞留在外面，`CompatibilityStatus`
- * 的逐軸備註、實測環境與時間是細項，收進緊接著的 `<details>`。三個詞取自伺服器自己的
- * `Labelled.label`，與 `CompatibilityStatus` 讀的是同一個欄位——不是這裡另外判斷一次。
- */
 function CompatibilityVerdict({ compatibility }: { compatibility: SkillCompatibility }) {
   const axes: Array<[string, string]> = [
     ["規格驗證", compatibility.spec_validation.label],
@@ -195,18 +106,6 @@ function CompatibilityVerdict({ compatibility }: { compatibility: SkillCompatibi
   );
 }
 
-/**
- * Why 建立下載套件 cannot be pressed, in visible text (system.md §2.4 / §3 item
- * 4: 「a disabled control with no stated cause reads as a bug, and the cause is
- * the honest part of the feature」).
- *
- * The `allowed === false` path always had its sentence — `BlockedNotice` names
- * which of the four locks closed. The error paths had none: if the targets read
- * fails there is no target, the preview query never runs, and `preview.isPending
- * && target !== ""` is false, so nothing at all rendered between that error and
- * a dead button. Returns "" exactly where something else on the page already
- * says it, so the reason is stated once rather than twice.
- */
 function buildButtonReason({
   pending,
   target,
@@ -229,8 +128,6 @@ function buildButtonReason({
   }
   if (preview.isPending) return "打包預覽還在計算，算完才知道這些設定能不能打包。";
   if (!preview.data) return "還沒有打包預覽可以依據，所以按鈕還不能按。";
-  // allowed === false 已經由上面的 BlockedNotice（或缺原因代碼時的 alert）說明；
-  // allowed === true 時按鈕是開的，沒有原因要說。
   return "";
 }
 
@@ -238,8 +135,6 @@ export function Packaging() {
   const { skillId } = useParams({ from: "/skills/$skillId/package" });
   const { version } = useSearch({ strict: false }) as PackagingSearch;
   const client = useQueryClient();
-  // Embedded: this page needs the skill's facts, it is not somebody opening
-  // the skill (O11Y-004).
   const skill = useEmbeddedSkillDetail(skillId);
   const targets = usePackagingTargets();
 
@@ -251,14 +146,6 @@ export function Packaging() {
     setBuilt(null);
   }, [skillId, version]);
 
-  // The version being packaged: the one in the URL, else the skill's latest.
-  // Never invented — with neither, the page says so instead of guessing.
-  //
-  // 資訊架構 §0.1 R4:「你在看哪一份東西」進網址。The picker used to write to
-  // component state and that state WON over `?version=`, so opening
-  // …/package?version=A, picking B and copying the address handed the reader —
-  // and the sender, after a reload — A's preview. A lossy URL is bad; one that
-  // actively disagrees with the screen is worse.
   const versionId = version || skill.data?.version?.version_id || "";
   const target = chosen || (targets.data?.targets[0]?.id ?? "");
   const preview = usePackagingPreview(skillId, versionId, target, includeTestCases);
@@ -271,19 +158,11 @@ export function Packaging() {
       await client.invalidateQueries({ queryKey: ["downloads"] });
     },
     onError: async () => {
-      // The server re-checks the four gates and it is the one that decides. Read
-      // the preview again so the page stops offering what was just refused.
-      // The refusal itself is rendered from `build.error` below (rule 2: never
-      // interpolate `err.message` blindly, branch on `ApiError.status`).
       await preview.refetch();
     },
   });
 
   if (skill.isLoading) return <Loading what="這個 Skill" />;
-  // 資訊架構 §5 IA-6 判掉的就是這一句：一句罐頭話回答每一種狀態。使用者是從詳情頁
-  // 的「打包並下載這個版本」按過來的，而**那一頁對 410 說的是別的話**——同一個
-  // Skill，兩頁各說各的（設計 §3 第 14 條）。410 是「存在過、被下架了」，與「從來
-  // 沒有過」是兩個事實，contract 為此特地寫了一段 description。
   if (skill.error instanceof ApiError && skill.error.status === 410)
     return <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>;
   if (skill.error) return <ReadFailure error={skill.error} what="這個 Skill" />;
@@ -308,25 +187,10 @@ export function Packaging() {
           ? `（v${skill.data.version.version_number}，最新版本）`
           : ""}
       </p>
-      {/*
-        設計 §2.10 第 3 項（License 與可散布性判定）與第 1 項（風險摘要的存在與最高
-        嚴重度）——那是一份**封閉清單**，不是「這一頁要不要放」的判斷題。
-        在此之前，這一頁只在**拒絕**的時候談授權：`redistribution` 是 allowed／
-        self_supplied／generated 時 `gate` 為 null，整頁不再提它一個字，而三者放行的
-        理由各不相同（ADR-027 決策 4、ADR-045、ADR-047 決策 4「誰擁有模型寫的東西」
-        今天仍然是開的問題），畫面上長得完全一樣。
-        這是全 app 唯一一個**內容會離開平台**的位址，卻是唯一不說授權的位址。三個
-        欄位都已經在這個元件手上，沒有多讀任何東西。
-      */}
       <p className="badge-row">
         <LabelledBadge kind="redistribution" value={skill.data.redistribution} />
         <LicenseBadge license={skill.data.license} />
       </p>
-      {/*
-        04 R-42(c)③：判定行與最高嚴重度留在外面（§2.10 第 1／3 項不可折的那半），
-        逐項細節——License 出處那句 `LicenseNotes`、風險的逐項揭露——收進 `<details>`。
-        這一頁是讀者三十秒前才在詳情頁看過一次的複本；詳情頁自己一個字都沒有動。
-      */}
       <RiskVerdict risk={skill.data.risk} />
       <details>
         <summary>風險與 License 的逐項細節（與詳情頁同一次掃描結果）</summary>
@@ -334,36 +198,17 @@ export function Packaging() {
         <RiskIndicator risk={skill.data.risk} />
       </details>
       {versionId === "" ? (
-        /* 設計 §2.9 的「無權檢視」，與 SkillDetail 的同一句話同一個理由。 */
         <p role="alert">
           無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
           之後才會有屬於你的版本；這不代表它沒有版本。沒有版本內容就沒有東西可以打包。
         </p>
       ) : (
         <>
-          {/*
-            system.md §2.6 / §3 item 5. Two UUIDs used to open this page: the
-            picker's `<select>` renders the version id as its own option text,
-            and the sentence under it repeated the id — both above every plain
-            answer, with the page's own verdict (打包預覽) more than a viewport
-            down. The picker is a real control and it stays reachable, but a
-            reader who has not decided to change version does not need an
-            identifier before an answer.
-
-            It also removes a phone defect: at 375px the `<select>` cut
-            「（不在下面的清單裡）」 off screen, and that string is an absence
-            statement — the version about to be packaged is not in the list the
-            server returned. Inside the disclosure it has the page's full width.
-          */}
           <details>
             <summary>換一個版本打包，或看這個版本的識別碼</summary>
             <SkillVersionPicker
               skillId={skillId}
               value={versionId}
-              // The built artifact belongs to the version it was built from;
-              // leaving it on screen beside another version's preview would
-              // offer bytes nobody asked for. The effect above clears it, since
-              // the pick now arrives as a change to `?version=`.
               onPick={(id) =>
                 void navigate({
                   to: "/skills/$skillId/package",
@@ -381,29 +226,11 @@ export function Packaging() {
           {gate && <BlockedNotice reason={gate} />}
 
           <h2>這個版本的相容性</h2>
-          {/* 04 R-42(c)③：三軸的驗證狀態（§2.10 第 2 項）留在外面；逐軸備註、實測
-              環境與時間是細項，收進緊接著的 `<details>`。 */}
           <CompatibilityVerdict compatibility={skill.data.compatibility} />
           <details>
             <summary>相容性細項（每一軸的備註與實測環境）</summary>
             <CompatibilityStatus compatibility={skill.data.compatibility} />
           </details>
-          {/*
-            This sentence said 「能力相容與實測相容是沙箱裡量到的」, and one of the
-            two is not — the runtime axis is a rule about whether the image
-            provides the declared runtime, not an observation of anything
-            running. The block note the server sends with the axes now says
-            which is which, so this line stops restating their source and keeps
-            only the part that is this page's own: packaging changes none of
-            them and infers none of them from another.
-          */}
-          {/*
-            2026-09-03（丙-142）：前兩句刪了。「三軸分開看，來源各自不同（上面每一軸都
-            寫著自己是量到的還是推出來的）」是**複述**——它要讀者去看上面每一軸自己已經
-            印出來的那一句，而那一句就在同一個區塊裡；「打包不會改變其中任何一項，也不會
-            把其中一項推論成另一項」講的是同一件事的抽象版本。留下的是這一頁自己的但書
-            （C 類，§2.11(c)）：一個徽章不涵蓋什麼，用讀者會犯的那個錯來說。
-          */}
           <p className="note">
             <strong>「規格驗證通過」不等於「裝得起來」，更不等於「腳本跑得動」</strong>。
           </p>
@@ -463,11 +290,7 @@ export function Packaging() {
 
           {preview.data?.allowed && <RetentionNotice preview={preview.data} />}
 
-          <p className="note">
-            {/* 設計 §2.2 第三向：限制要在撞到之前說，CreateHub.tsx:76-82／
-                RunPreflight.tsx 的邀請句同一形狀。 */}
-            平台目前只讓有封測邀請的帳號建立下載套件。
-          </p>
+          <p className="note">平台目前只讓有封測邀請的帳號建立下載套件。</p>
           <ReadFailure error={build.error} what="套件建立">
             {build.error instanceof ApiError && build.error.status === 403 ? (
               <p role="alert">
@@ -479,9 +302,6 @@ export function Packaging() {
           </ReadFailure>
 
           <p>
-            {/* 設計 §4.6.3（ADR-064）：這一頁的工作是「做出那份套件」，而在此之前
-                這顆終點按鈕與同頁另外 8 顆按鈕是同一個灰框——ADR-064 背景那張表逐
-                字點名的三個缺陷之一。停用態不受影響（§4.4 的虛線仍然優先）。 */}
             <button
               type="button"
               className="action"
@@ -499,12 +319,6 @@ export function Packaging() {
           )}
 
           {built && (
-            // 設計 §4.3 的 notice 那一列，「不要用在」欄逐字寫著兩件事，這一塊
-            // 以前兩件都犯：「使用者自己動作的當下結果（那是 role="status" 的一句
-            // 話）」與「內含按鈕的確認對話」。實務後果是這一頁最重要的一次狀態變化
-            // ——bytes 終於可以拿了——對螢幕閱讀器完全無聲（失敗那條有 role="alert"，
-            // 成功這條什麼都沒有），而視覺上它與整頁另外四個 .notice 同一個表面，
-            // 看起來像又一則平台的持續狀態，不像「你剛才做的事成功了」。
             <div>
               <p role="status">
                 {built.duplicate
@@ -512,13 +326,6 @@ export function Packaging() {
                   : "套件已建立。"}
               </p>
               <DownloadArtifactFacts artifact={built} />
-              {/*
-                這句但書以前住在 `DownloadArtifactFacts` 的折疊區裡，也就是跟著下載紀錄
-                的每一列印一次（丙-142 把它提到清單層級）。這一頁只有一列，所以「印一次」
-                就是印在這裡——C 類（§2.11(c)：徽章與證據要說出自己不涵蓋什麼）一個字都
-                不能因為搬家而消失，而兩串 64 個十六進位字元正是最會被讀得比它主張更大的
-                東西（ADR-027 決策 3 逐字要求下載面不得暗示平台背書）。
-              */}
               <p className="note">
                 上面折起來的那兩串是雜湊，不是簽章。
                 <strong>MVP 的套件不帶數位簽章，平台也不驗簽</strong>
@@ -526,12 +333,6 @@ export function Packaging() {
                 證明不了「這份東西是誰做的」。
               </p>
               <p>
-                {/* Same reason as Downloads.tsx: the download record is written
-                    when the server serves the bytes, so the list this page just
-                    invalidated on build is stale again the moment this is clicked. */}
-                {/* 設計 §4.6.3：建立成功後這一段長在「建立下載套件」下面，兩者
-                    同時在畫面上，所以填色只能給其中一個。給的是建立——那是這一頁
-                    的工作；拿檔案是它的結果。文字與 href 一字未改。 */}
                 <a
                   href={downloadHref(built.artifact_id)}
                   onClick={() => void client.invalidateQueries({ queryKey: ["downloads"] })}
@@ -549,29 +350,6 @@ export function Packaging() {
   );
 }
 
-/**
- * 03:PACK-011 — 這包東西會保存多久，說在打包之前。
- *
- * Three things this had to get right:
- *
- * 1. **Before, not after.** `Downloads.tsx` marks an artifact expired once it is
- *    one; the answer a person needs while deciding whether to build is 「我下週回
- *    來還在不在」, and that has to arrive before the button. Same reasoning as
- *    02:NFR-001's 「會影響你的上限要在撞到之前看得見」, which is why the number rides
- *    on the preview rather than on the packaging response.
- * 2. **The number is the server's.** `DOWNLOAD_ARTIFACT_RETENTION` is deployment
- *    configuration; a `30` typed into this file would be a second definition that
- *    nothing compares against the one that writes `expires_at` — 設計 §2.2
- *    顯示與強制成對, and `04` 乙-2's 「顯示但不強制是兩者中最壞的一種」.
- * 3. **No ratified value ⇒ no number.** The server fails the whole preview closed
- *    when nobody has decided, so this branch should be unreachable in practice. It
- *    is still written, because the alternative on an unexpected wire is rendering
- *    「保留 undefined 天」, and a disclosure that quietly states a wrong period is
- *    worse than one that admits it has none.
- *
- * The idempotence sentence is not decoration: it is the difference between
- * 「你的東西會被刪掉」 and 「這份下載連結會過期」, and only the second one is true.
- */
 function RetentionNotice({ preview }: { preview: PackagingPreview }) {
   const days = preview.retention_days;
   if (typeof days !== "number" || !Number.isFinite(days) || days < 0) {
@@ -582,13 +360,6 @@ function RetentionNotice({ preview }: { preview: PackagingPreview }) {
       </p>
     );
   }
-  // 2026-09-03（丙-142）：中間那句「這個天數是這個部署設定的值，也是伺服器等一下
-  // 寫進這份套件到期日的同一個值」刪了。它是**這個數字怎麼來的**（F 類推導），而
-  // §2.2 要的是「指得出強制它的那一行」，那是這個元件的檔頭與伺服器在做的事，不是
-  // 讀者在這一格要作的判斷；天數本身（H 類）與自動刪除（A 類）一個字未動。
-  // 冪等那一句的後半也收短了：「回到這一頁用同一個版本、同一個目標再打一次」與建立
-  // 成功後那句「同一個版本、同一個目標、同一個 Test Case 選項先前就打過」是同一句話
-  // 在同一頁講兩次（§2.13 去重第 2 條）。
   return (
     <p className="note" role="status">
       <strong>保留期限</strong>：打包完成後，這份下載套件會保留{" "}
@@ -600,10 +371,6 @@ function RetentionNotice({ preview }: { preview: PackagingPreview }) {
   );
 }
 
-/**
- * A refusal in two voices, deliberately: the platform's own sentence (served, so
- * the preview and the 422 cannot disagree) and what it means for the reader.
- */
 export function BlockedNotice({
   reason,
   message,
@@ -612,10 +379,6 @@ export function BlockedNotice({
   message?: string;
 }) {
   return (
-    // 設計 §4.6.3／§5.3 缺口 ①（ADR-064）：這是**阻斷**，不是降級——它說的是
-    // 「這件事不會發生」，而不是「這件事會發生，只是少了一點」。在此之前它與同頁
-    // 的保留期限、預覽說明共用同一個表面，靠文字分辨（§2.3 允許，但那是唯一訊號）。
-    // `notice-danger` 是第二訊號，不取代文字。
     <div className="notice notice-danger" role="status">
       <p>
         <strong>不能打包</strong>：{PACKAGING_BLOCKED_LABEL[reason]}
@@ -645,7 +408,6 @@ function TargetOption({
         <span className="badge">
           {target.kind === "standard_package" ? "標準套件" : "安裝 Profile"}
         </span>{" "}
-        {/* ADR-012: 未驗證要寫未驗證。格式驗證通過不得暗示裝得起來。 */}
         <span className={`badge badge-${target.support_status}`}>
           {target.support_status === "verified" ? "已驗證" : "未驗證"}
         </span>
@@ -677,15 +439,6 @@ function TargetOption({
   );
 }
 
-/**
- * 02:PACK-002 第 1 條「環境變數需求」, on the page where the target is chosen and
- * not only inside the package's INSTALL.md — the same reason the verification
- * steps are here. A property of the target and never of the Skill: what the SDK
- * needs is what it needs, whichever Skill is inside.
- *
- * The contract requires the field, so an empty list is the target stating it
- * needs none — a fact, printed as one, rather than a row silently missing.
- */
 function EnvVars({ target }: { target: PackagingTarget }) {
   if (target.env_vars.length === 0) {
     return <p className="note">環境變數需求：這個目標不需要任何環境變數。</p>;
@@ -715,16 +468,6 @@ function EnvVars({ target }: { target: PackagingTarget }) {
   );
 }
 
-/**
- * 02:PACK-002 第 3 條 — 至少一個安裝後的驗證 Prompt 或檢查步驟，在這個頁面上。
- *
- * 這些步驟同樣會隨套件內的 INSTALL.md 一起下載，但那要先打包、先下載才讀得到；
- * 一個還在挑目標的人需要的是現在就知道等一下要怎麼確認它真的裝好了。兩邊是同一份
- * 伺服器提供的文字，不是這裡另外寫一份。
- *
- * 每個目標至少有兩者其一（由 Profile 的 schema 保證），所以「兩個都沒有」是設定
- * 壞掉，會照實說，不會靜靜地少一段。
- */
 function Verification({ target }: { target: PackagingTarget }) {
   const steps = target.verification_steps ?? [];
   const count = steps.length + (target.verification_prompt ? 1 : 0);
@@ -746,10 +489,6 @@ function Verification({ target }: { target: PackagingTarget }) {
           ))}
         </ol>
       )}
-      {/* 2026-09-03（丙-142，設計 §2.13 去重 1）：這一句以前印在每一個打包目標的
-          `<details>` 尾端，而它對每個目標一字不差——它講的是這份清單的事，不是這一個
-          目標的事。提到 `<h2>打包目標</h2>` 底下講一次；每個目標自己的步驟、環境變數與
-          「Skill Hub 沒有把套件裝進這個目標跑過」的但書一個字都沒動。 */}
     </details>
   );
 }
@@ -758,8 +497,6 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
   return (
     <>
       {preview.allowed ? (
-        // 後半句「以下是打包前重新跑一次規格驗證的結果」由下面那個 h3〈打包後的規格
-        // 驗證〉自己說（丙-142）。
         <p>這些設定可以打包。</p>
       ) : preview.blocked_reason ? (
         <BlockedNotice reason={preview.blocked_reason} message={preview.blocked_message} />
@@ -772,10 +509,6 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
 
       <h3>會一起打包的 Test Case</h3>
       {preview.included_test_cases.length === 0 ? (
-        /* 句尾「——下面那份清單說明哪些被排除、為什麼」刪了（丙-142）：它是**指路**，
-           而它指的那份清單（〈不會進包的 Test Case〉）就在同一頁下面兩個 h3 之後。
-           「這不代表這個 Skill 沒有 Test Case」留著——那是 §2.1 的強形式（空狀態要
-           說出這個空**不是**什麼），不是說明。 */
         <p className="note">沒有 Test Case 會進包。這不代表這個 Skill 沒有 Test Case。</p>
       ) : (
         <ul className="risk-list">
@@ -787,17 +520,6 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
         </ul>
       )}
 
-      {/*
-        設計 §3 第 4 條逐字寫的失效——「型別裡有、伺服器送了、頁面丟掉」。
-        `excluded_files` 是 contract 的必填欄位，`api/packaging.ts` 的註解甚至寫好了
-        它為什麼該出現在**預覽**上：「the manifest is inside the thing the reader
-        has not decided to download yet, so answering only there is not answering
-        the decision」——答案只寫在還沒下載的那份 manifest 裡，就不是在回答這個決定。
-        在此之前全 apps/web 只有型別宣告與兩筆空陣列 fixture 用到它，零渲染、零測試。
-        唯一會浮出來的是 `file_removed_by_packager`（SKILL.md 指到被拿掉的檔），
-        其餘每一種排除都靜音：一個 vendored 依賴的 Skill 打包後少了 node_modules/，
-        作者把 zip 交給同事，同事裝不起來，而兩個人都以為那是完整的套件。
-      */}
       <h3>打包器拿掉的檔案</h3>
       {preview.excluded_files.length === 0 ? (
         <p className="note">沒有檔案被排除，這一份帶走的就是版本裡的全部內容。</p>
@@ -829,20 +551,8 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
   );
 }
 
-/**
- * 02:PACK-002 第 1 條「依賴需求」. The lines come from the server, which takes them
- * from the same `skillpkg` findings it assembles INSTALL.md from — this page does
- * not derive its own list, because two derivations of one fact drift and the
- * drift would be between the page and the document inside the package.
- *
- * An empty list is two different answers, so it is never printed as one: with a
- * gate closed no bytes were read and there is nothing to have dependencies, while
- * an allowed preview with none is a package that really declares and imports
- * nothing.
- */
 function Dependencies({ preview }: { preview: PackagingPreview }) {
-  // The contract says array, but Go serialises a nil slice as `null` (seen on a
-  // real preview 2026-09-06); reading `.length` off that crashed the whole page.
+  // server may send null for an empty list (Go nil slice), not []
   const dependencies = preview.dependencies ?? [];
   return (
     <>
@@ -860,10 +570,6 @@ function Dependencies({ preview }: { preview: PackagingPreview }) {
               <li key={d}>{d}</li>
             ))}
           </ul>
-          {/* 2026-09-03（丙-142）：開頭「同一份清單會寫進套件內的 INSTALL.md。」刪了
-              ——每一個打包目標各自已經說過同一件事（`Verification` 的「同一份說明也隨
-              套件內的 INSTALL.md 一起下載。」）。留下的兩句都不是說明：平台不替你安裝
-              是強制者歸屬（§2.2 第三向），不執行任何程式碼是掃描的但書。 */}
           <p className="note">
             Skill Hub 不會替你安裝這些，
             打包與掃描階段也不執行套件內的任何程式碼——你的環境有沒有這些依賴，要你自己確認。
@@ -874,29 +580,6 @@ function Dependencies({ preview }: { preview: PackagingPreview }) {
   );
 }
 
-/**
- * 02:SKILL-002's three severities, kept apart. Warnings never block and are
- * still shown: hiding them would be the same mistake as hiding an import's.
- *
- * Two rules this had been failing:
- *
- * 1. **The zero is printed** (system.md §2.1 / §3 item 2). Only groups with
- *    items were rendered, so a package with one warning and no errors never told
- *    the reader there were zero blocking errors — the single most
- *    decision-relevant number on the page arrived as silence, and silence reads
- *    as 通過. The count line states all three every time, the same shape
- *    `RiskIndicator` already uses (`.risk-counts`).
- * 2. **The group labels are headings** (§3 item 6). They are real subsections of
- *    打包後的規格驗證 and were `<p>`, i.e. 18px body text. `h4` because `h3` is
- *    this block's own level: promoting one of them to `h3` would make a child of
- *    打包後的規格驗證 into its sibling, which is the same defect in the other
- *    direction. **`index.css` has no `h4` rule yet.**
- *
- * The row itself leads with the sentence and puts the machine code after it, as
- * `RunEvaluation` does with 執行完成（succeeded）: `.risk-code` is a 12px mono
- * identifier and it was standing in front of the 18px sentence that says what
- * happened.
- */
 function Findings({ validation }: { validation: PackageValidation }) {
   const groups: Array<{ key: string; label: string; items: Finding[] }> = [
     { key: "errors", label: "阻擋級錯誤", items: validation.errors },
@@ -913,12 +596,6 @@ function Findings({ validation }: { validation: PackageValidation }) {
         {validation.infos.length} 項
       </p>
       {total === 0 ? (
-        // 共用的 components/Findings.tsx 在同樣的零值上說得多很多，而它的註解寫了
-        // 理由：「a clean report is exactly when a reader is most likely to read
-        // 沒有發現 as 有人看過並認可」。**在這一頁那個誤讀更貴**——匯入頁誤讀的
-        // 下一步是自己用，這一頁誤讀的下一步是把套件交給別人。措辭抄過來（兩者的
-        // Finding 型別來源不同，所以抄句子不合併元件）。§2.1 的強形式：空狀態要
-        // 說出這個空**不是**什麼；§2.11(c)：徽章要說出自己不涵蓋什麼。
         <p className="note">
           這次重驗沒有產生任何發現。這是「掃過了，沒掃到」，不是「沒掃」——它讀套件內容、
           不執行其中的 Script，既不是人工審查，也不是簽章驗證。簽章這一項不是還沒驗，

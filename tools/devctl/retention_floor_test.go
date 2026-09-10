@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-// A tree in the shape the real one has: one sqlc query file, one .env template,
-// and the document that states the observation window.
 func writeRetention(t *testing.T, sql, env string) string {
 	t.Helper()
 	return writeRetentionFull(t, sql, env, defaultWindowDoc)
@@ -35,10 +33,6 @@ func writeRetentionFull(t *testing.T, sql, env, window string) string {
 	return root
 }
 
-// The real statement, trimmed: doc comments above it that talk about run_output
-// and an interval, then the INSERT. The comments are here on purpose — they are
-// the reason sqlStatements drops comment lines, and a version that did not would
-// pass this file's other tests while reading the prose as the value.
 func runArtifactSQL(name, expiry string) string {
 	return "-- name: ListRunArtifacts :many\n" +
 		"-- The manifest, whose rows carry the retention stamped below.\n" +
@@ -52,8 +46,6 @@ func runArtifactSQL(name, expiry string) string {
 		"WHERE NOT EXISTS (SELECT 1 FROM artifacts WHERE run_id = @run_id);\n"
 }
 
-// Every value at or above its floor, which is where the tree stands now that
-// R-11 raised the SQL literal to 90 days.
 const allFloorsMet = "METRICS_ADDR=\n" +
 	"# Trace event retention.\n" +
 	"TRACE_RETENTION=2160h\n" +
@@ -69,8 +61,6 @@ func TestRetentionFloorAcceptsATreeWhereAllThreeFloorsAreMet(t *testing.T) {
 	}
 }
 
-// Rule 2 is anchored to what the statement does, never to its name: the name has
-// already changed once under this check's feet.
 func TestRetentionFloorDoesNotDependOnTheQueryName(t *testing.T) {
 	t.Parallel()
 	for _, name := range []string{"InsertRunArtifact", "RecordRunArtifact", "SomethingElseEntirely"} {
@@ -81,27 +71,24 @@ func TestRetentionFloorDoesNotDependOnTheQueryName(t *testing.T) {
 	}
 }
 
-// One subtest per floor, each breaking only its own number. Before 2026-08-29
-// only the first of these could go red.
 func TestRetentionFloorSpeaksForEachOfTheThreeRules(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, sqlExpiry, env, window, want string
 	}{{
-		// The shortfall R-11 closed. It must fail again if anyone reopens it.
+
 		name:      "rule 2: run artifact below the re-evaluation window",
 		sqlExpiry: "now() + interval '30 days'",
 		env:       allFloorsMet,
 		want:      "rule 2 requires Run Artifact retention",
 	}, {
-		// The value that was actually set, and corrected the same day.
+
 		name:      "rule 1: download retention below the observation window",
 		sqlExpiry: "now() + interval '90 days'",
 		env:       strings.Replace(allFloorsMet, "DOWNLOAD_ARTIFACT_RETENTION=720h", "DOWNLOAD_ARTIFACT_RETENTION=168h", 1),
 		want:      "rule 1 requires download retention",
 	}, {
-		// A longer study with the same retention breaks the same rule from the
-		// other side, which is why the 14 is parsed and not copied.
+
 		name:      "rule 1: the study got longer and nothing else moved",
 		sqlExpiry: "now() + interval '90 days'",
 		env:       allFloorsMet,
@@ -128,9 +115,6 @@ func TestRetentionFloorSpeaksForEachOfTheThreeRules(t *testing.T) {
 	}
 }
 
-// Exactly at the floor is met, one hour under is not. Both, because 「三條都是
-// 下界」 and a `<=` here would let a package expire on the last morning of the
-// study.
 func TestRetentionFloorIsAFloorAndNotAThreshold(t *testing.T) {
 	t.Parallel()
 	at := strings.Replace(allFloorsMet, "DOWNLOAD_ARTIFACT_RETENTION=720h", "DOWNLOAD_ARTIFACT_RETENTION=336h", 1)
@@ -145,7 +129,6 @@ func TestRetentionFloorIsAFloorAndNotAThreshold(t *testing.T) {
 	}
 }
 
-// Every way this check passes while comparing nothing.
 func TestRetentionFloorSaysSoWhenItHasLostItsSubject(t *testing.T) {
 	t.Parallel()
 	ninety := "now() + interval '90 days'"
@@ -220,8 +203,6 @@ func TestRetentionFloorSaysSoWhenItHasLostItsSubject(t *testing.T) {
 	})
 }
 
-// runs.sql discusses run_output and intervals in three comment blocks. A version
-// that read comments would take one of them as the value.
 func TestRetentionFloorIgnoresComments(t *testing.T) {
 	t.Parallel()
 	sql := "-- name: InsertRunArtifact :execrows\n" +
@@ -234,7 +215,6 @@ func TestRetentionFloorIgnoresComments(t *testing.T) {
 	}
 }
 
-// Pointed at the tree: all three floors, against the real numbers.
 func TestTheRealRetentionFloorsAreMet(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -243,8 +223,7 @@ func TestTheRealRetentionFloorsAreMet(t *testing.T) {
 	if problems := retentionFloorProblems(root); len(problems) > 0 {
 		t.Fatalf("%s", strings.Join(problems, "\n"))
 	}
-	// Guard the reach of each half separately: the check above is satisfied by
-	// finding nothing on both sides of a comparison.
+
 	if _, artifact, where := runArtifactRetention(root); artifact <= 0 {
 		t.Errorf("run artifact retention read as %v from %q", artifact, where)
 	}

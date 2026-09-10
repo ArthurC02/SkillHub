@@ -1,21 +1,8 @@
-"""The two model-backed legs of the M3 evaluation pipeline.
+"""The two model-backed legs of the evaluation pipeline.
 
-    POST /judge-run             - judge one Run against its acceptance criteria (EVAL-001)
-    POST /suggest-improvements  - propose package changes from one evaluation (EVAL-002)
-
-A capability provider and nothing more (ADR-016 rule 6): structured request in,
-structured result out. No policy, no authorization, no state, and one attempt per
-request - the client is built with max_retries=0, so retry stays Go's. One
-gateway call per request, no tools, no LangGraph: "build the prompt, call,
-validate the schema" is a single call, and the endpoint that already has this
-shape is /v1/enrich-skill (evaluation-design §2.3).
-
-The judge is handed content that wants a good grade - the run's own output, the
-files it wrote, its trace. ADR-026 decision 3 gives four defences; two of them
-live here (strict `json_schema`, and untrusted content fenced off from the
-instructions), one is the absence of any capability at all, and the fourth is
-Go's: it re-verifies every evidence reference and downgrades what will not
-resolve. None of them is a guarantee on its own, which is why there are four.
+The judge is handed content that wants a good grade, so untrusted content
+stays fenced off from the instructions and every evidence reference is
+re-verified by the caller.
 """
 
 from __future__ import annotations
@@ -35,52 +22,16 @@ from skillhub_llm.untrusted import scrub
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.evaluate")
 
-# PDM-003 §3 judge tier, deliberately not the mini tier the sandbox workload runs
-# on: a judge sharing a model with what it judges has a thumb on the scale
-# (ADR-026 decision 4). Improvement generation runs on the same tier
-# (evaluation-design §6.1). Fixed by the service, never chosen by the caller -
-# which model judges is a platform decision.
 JUDGE_MODEL = os.getenv("JUDGE_MODEL", "gpt-5.6-terra")
 
-# Bump on every edit to the prompt text below. EVAL-013 attributes a regression
-# to a prompt revision, which it can only do if the revision that produced a
-# stored verdict is still identifiable - so an in-place edit under an unchanged
-# version is what breaks it, not a missing version.
-#
-# v2 separates a trace digest entry's header from its body and says which half a
-# quote may come from. Under v1 the two were one line, `id @ time type: payload`,
-# and the model copied the whole line - correctly, by the only reading the text
-# supported. Go verifies a trace_event quote against the payload alone, so all 45
-# runs of the first regression had a right answer thrown away by defence 3
-# (docs/plans/mvp/m3/report-judge-regression.md). Bumped rather than edited in
-# place: the two regressions have to stay comparable.
 JUDGE_PROMPT_VERSION = "judge-run/v2"
-# Bumped rather than edited in place: report-suggest-baseline.md's numbers were
-# measured under v2, and a prompt whose version did not move is a prompt whose
-# measurements silently stop describing it (the judge-run/v2 reason).
 SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v3"
 
-# The ceiling on a single gateway call, and the only one there is. Go's deadline
-# (judgeTimeout, trial/improvement/eval.go) is client-side: it stops Go waiting,
-# it does not reach the gateway and it does not stop the call or its bill. So
-# this number, times the client's attempt count, is what actually bounds the
-# work - which is why the client is built with max_retries=0. Higher than
-# /v1/enrich-skill's because a judge request carries ~120k characters of evidence.
 # budget-ceiling: evaluate.LLM_TIMEOUT_SECONDS
 LLM_TIMEOUT_SECONDS = 120.0
 
-# Delimiter isolating untrusted content from instructions (ADR-026 defence 4).
 DATA_TAG = "untrusted_evaluation_data"
 
-# Contract caps (llm-internal.yaml). They cannot be expressed in the schema the
-# model is given - strict `json_schema` rejects `maxLength` and `maxItems` - so
-# they are applied to the answer instead.
-#
-# Marked because they are copies. The 丙-50 sweep marked the REQUEST side and
-# stopped there, so these eleven and suggest.go's four sat unchecked: changing
-# either half made no noise anywhere, and the symptom of a drift is the quietest
-# kind - Python silently shortening something the contract allows in full
-# (M3 audit, 2026-08-24).
 MAX_CRITERION_RESULTS = 20  # one-number: judgeMaxCriterionResults
 MAX_EVIDENCE_REFS = 10  # one-number: judgeMaxEvidenceRefs
 MAX_QUOTE = 2000  # one-number: judgeMaxQuote
@@ -93,12 +44,6 @@ MAX_TARGET_PATH = 1024  # one-number: suggestMaxTargetPath
 MAX_PROPOSED_CONTENT = 60_000  # one-number: suggestMaxProposedContent
 MAX_EXPECTED_IMPACT = 1000  # one-number: suggestMaxExpectedImpact
 
-
-# --- Prompts -----------------------------------------------------------------
-#
-# Built at import time from constants only. Nothing from a request is formatted
-# into them, so the instruction half of the conversation cannot carry a sentence
-# the judged run wrote: that is a property of the code, not of a review.
 
 JUDGE_SYSTEM_PROMPT = f"""You evaluate one test run of an Agent Skill. You answer one \
 question and only that one: was each acceptance criterion met by this run.
@@ -152,10 +97,6 @@ undetermined. `summary` is a few sentences for the user.
 Answer only with the required JSON object. Every field is required; send null where a \
 field does not apply to the kind you chose."""
 
-# Appended when the request declares its own evidence incomplete. A constant, and
-# the flags that select it (`trace_digest.complete`, `truncation`) are Go's own
-# fields rather than model output, so this stays on the instruction side of the
-# fence while the field names it refers to sit in the data block.
 EVIDENCE_INCOMPLETE_NOTICE = """
 THE EVIDENCE IN THIS REQUEST IS INCOMPLETE. The trace has known gaps, or some content \
 was cut to fit a budget, or both; the data block names which. Evidence you cannot see \
@@ -206,16 +147,8 @@ answer, and it does not mean the run was fine.
 Answer only with the required JSON object. Every field is required."""
 
 
-# --- Shared plumbing ---------------------------------------------------------
-
-
 def _client() -> AsyncOpenAI:
-    """OpenAI-compatible client pointed at the LiteLLM gateway (Iron Rule 8).
-
-    Gateway and model failures surface as 502. A gateway this process was never
-    given an address for is not a failure of the gateway, and gateway() says so
-    with a 503 instead of aiming a placeholder key at a default address.
-    """
+    """OpenAI-compatible client pointed at the LiteLLM gateway."""
     return client(LLM_TIMEOUT_SECONDS)
 
 
@@ -228,16 +161,11 @@ def _clip(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[:limit]
 
 
-# --- /judge-run (EVAL-001 task-effect leg) -----------------------------------
-
-
 class JudgeCriterion(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
     text: str = Field(..., min_length=1, max_length=2000)
-    # Absent means Go found nothing specific to attach - not that nothing
-    # happened, and not grounds for `failed` on its own.
     evidence_excerpt: str | None = Field(None, max_length=4000)
 
 
@@ -247,9 +175,6 @@ class JudgeArtifact(BaseModel):
     path: str
     size_bytes: int = Field(..., ge=0)
     content_type: str = ""
-    # Present only where Go read the file as plain text. Archives and binaries
-    # arrive as a manifest row with no excerpt: nothing is unpacked and nothing
-    # is parsed by file extension (evaluation-design §2.2).
     text_excerpt: str | None = Field(None, max_length=8000)  # one-number: maxDigestEntry
 
 
@@ -257,8 +182,8 @@ class TraceDigestEntry(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     trace_event_id: str
-    # Part of the address, not decoration: trace_events is partitioned by time
-    # and its key is (id, occurred_at), so a citation without it is unresolvable.
+    # Part of the address, not decoration: a citation without occurred_at
+    # cannot be resolved back to the source event.
     occurred_at: datetime
     type: str
     excerpt: str = Field(..., max_length=8000)  # one-number: maxDigestEntry
@@ -317,18 +242,13 @@ class JudgeRunRequest(BaseModel):
 
 
 class JudgeEvidenceRef(BaseModel):
-    """A claim about where the answer came from, which Go checks.
-
-    This service cannot promise a reference resolves - it has nothing to check it
-    against - so it does not pretend to. Go re-resolves each one and downgrades
-    the criterion to `undetermined` where it fails (ADR-026 defence 3).
-    """
+    """A claim about where the answer came from, which the caller re-checks."""
 
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["trace_event", "artifact", "agent_output"]
-    # Strict `json_schema` requires every property to be required, so a field
-    # that does not apply to the chosen `kind` is sent as null, not omitted.
+    # Strict json_schema requires every property present, so a field that does
+    # not apply to this kind is sent as null rather than omitted.
     trace_event_id: str | None
     artifact_path: str | None
     quote: str
@@ -337,9 +257,7 @@ class JudgeEvidenceRef(BaseModel):
 class CriterionVerdict(BaseModel):
     """One criterion, one answer.
 
-    No `source` field: Go labels everything from here `source: model`
-    (02:EVAL-001 clause 5), and letting a model call its own output a rule check
-    is not a power worth handing out.
+    No `source` field: the caller labels everything from here as model-sourced.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -353,18 +271,13 @@ class CriterionVerdict(BaseModel):
 class JudgeVerdict(BaseModel):
     """The model-authored half, and the exact schema the model is given.
 
-    One class for both so the wire shape and the shape the prompt asks for cannot
-    drift apart (the rule MatchReasonsResponse and SuggestCriteriaResponse follow).
-    It carries no length or count constraints because strict `json_schema`
-    rejects those keywords; the contract's caps are applied to the answer.
+    One class for both so the wire shape and the prompt schema cannot drift
+    apart; strict `json_schema` rejects length or count constraints here.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     criterion_results: list[CriterionVerdict]
-    # A proposal, not the stored value: Go recomputes it after merging the
-    # deterministic findings and after downgrading unverifiable evidence, so this
-    # and `evaluations.overall` can legitimately differ.
     overall: Literal["met", "partially_met", "not_met", "undetermined"]
     summary: str
 
@@ -375,11 +288,6 @@ class JudgeRunResponse(BaseModel):
     verdict: JudgeVerdict
     model: str
     prompt_version: str
-    # What was asked of the sampler, reported for the same reason `model` and
-    # `prompt_version` are: without it two runs of one prompt version on one
-    # model can differ and nothing recorded says why (ADR-026 決策 1's fourth
-    # thing, which was never stored). `seed` is what was requested; the provider
-    # honours it best-effort, so it identifies the request, not the answer.
     temperature: float | None = None
     seed: int | None = None
     usage: GatewayUsage | None = None
@@ -416,17 +324,6 @@ def _judge_user_message(req: JudgeRunRequest) -> str:
         "# The agent's final reply\n" + (_scrub(req.final_output) or "(the run produced no reply)")
     )
 
-    # 02:EVAL-001 / 03:EVAL-014. An empty manifest has three states, not two, and
-    # this is the last segment that can still keep them apart. Go already did the
-    # telling apart - the readable list has filtered its own gap away, so
-    # `artifacts` arrives equally empty whether the run wrote nothing or wrote
-    # files since deleted or aged past their retention - and it names the third
-    # state on the wire as `artifacts.unreadable` (improvement/judge.go). Without
-    # reading it here the section below states outright that the run wrote no
-    # files, which is the reading NFR-002a forbids; with run outputs kept 30 days
-    # against a 90-day trace, every re-evaluation from day 31 on lands in exactly
-    # this branch (04 丙-13). Exact membership and not a prefix: a plain
-    # `artifacts` on that list is the row-budget cut, a different hole.
     unreadable = "artifacts.unreadable" in req.truncation
     if req.artifacts:
         rows = []
@@ -445,11 +342,6 @@ def _judge_user_message(req: JudgeRunRequest) -> str:
             "file being absent - one that needs a file is `undetermined`.)"
         )
     else:
-        # Meaningful, not empty: a run that reported success and wrote no file is
-        # the case EVAL-001 exists to catch (handoff 丙-5). Worded so it cannot
-        # be mistaken for a manifest row - the smoke run against the live gateway
-        # produced an evidence reference citing an earlier placeholder as though
-        # it were a path, which Go would then fail to resolve and downgrade.
         artifacts = "(empty: the run wrote no files, so there is no artifact path to cite)"
     sections.append(
         (
@@ -462,12 +354,6 @@ def _judge_user_message(req: JudgeRunRequest) -> str:
         + artifacts
     )
 
-    # Header and body on separate lines, never glued with a `type: ` prefix. Go
-    # verifies a trace_event quote by looking for it inside the event payload
-    # alone, so anything printed on the same line as the payload is something the
-    # model can copy verbatim and still fail verification - which is exactly what
-    # the first EVAL-013 regression measured, on all 45 runs, with the model's
-    # own answer correct every time (report-judge-regression.md).
     entries = "\n".join(
         f"- [{e.trace_event_id} @ {e.occurred_at.isoformat()}] {_scrub(e.type)}\n"
         f"      {_scrub(e.excerpt)}"
@@ -493,24 +379,13 @@ def _judge_user_message(req: JudgeRunRequest) -> str:
 
 @router.post("/judge-run", response_model=JudgeRunResponse)
 async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
-    """Judge one Run against its acceptance criteria - a verdict, never a decision.
-
-    Only the task-effect class reaches a model. Spec, activation, execution,
-    compatibility and cost are decided in Go from the platform's own facts, which
-    is what keeps both the cost and the untrustworthiness of this call bounded
-    (evaluation-design §2.5).
-
-    Nothing here moves a Run's status, and a failure here is an evaluation
-    failure rather than a guessed pass: `runs.status` answers "what happened" and
-    `evaluations.overall` answers "was the task done" (ADR-025).
-    """
+    """Judge one Run against its acceptance criteria - a verdict, never a decision."""
     system = JUDGE_SYSTEM_PROMPT
     if not req.trace_digest.complete or req.truncation:
         system += EVIDENCE_INCOMPLETE_NOTICE
 
     try:
-        # Raw response, because the cost of the call is in a header
-        # (`x-litellm-response-cost`) and never in the body.
+        # Raw response: the call's cost is in a response header, never in the body.
         raw = await _client().chat.completions.with_raw_response.create(
             model=JUDGE_MODEL,
             messages=[
@@ -539,10 +414,6 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
     try:
         verdict = JudgeVerdict.model_validate_json(completion.choices[0].message.content or "")
     except (ValidationError, IndexError, AttributeError) as e:
-        # Never echoed back: model output may carry injected content. A missing
-        # verdict must reach Go as a failure so the evaluation is recorded
-        # `failed` rather than silently judging nothing - including when the
-        # `result` value is outside the three-value domain.
         logger.warning("judge-run: model returned unusable output")
         raise HTTPException(status_code=502, detail="judge model returned malformed output") from e
 
@@ -562,9 +433,6 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
         seed=SEED,
         usage=_usage(completion, raw.headers),
     )
-
-
-# --- /suggest-improvements (EVAL-002) ----------------------------------------
 
 
 class TargetFile(BaseModel):
@@ -592,10 +460,8 @@ class SuggestImprovementsRequest(BaseModel):
 
 
 class ImprovementProposal(BaseModel):
-    """The five fields 02:EVAL-002 clause 1 requires, and nothing decision-shaped.
-
-    No `decision` and no `applied_skill_version_id`: whether a proposal is taken,
-    and what version it becomes, are the user's and Go's (Iron Rule 6).
+    """The proposal fields, and nothing decision-shaped: no `decision` and no
+    `applied_skill_version_id`.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -619,11 +485,6 @@ class ImprovementProposals(BaseModel):
 class SuggestImprovementsResponse(ImprovementProposals):
     model: str
     prompt_version: str
-    # What was asked of the sampler, reported for the same reason `model` and
-    # `prompt_version` are: without it two runs of one prompt version on one
-    # model can differ and nothing recorded says why (ADR-026 決策 1's fourth
-    # thing, which was never stored). `seed` is what was requested; the provider
-    # honours it best-effort, so it identifies the request, not the answer.
     temperature: float | None = None
     seed: int | None = None
     usage: GatewayUsage | None = None
@@ -650,14 +511,9 @@ def _improvements_user_message(req: SuggestImprovementsRequest) -> str:
 
 @router.post("/suggest-improvements", response_model=SuggestImprovementsResponse)
 async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprovementsResponse:
-    """Propose improvements from one evaluation (02:EVAL-002) - proposals only.
+    """Propose improvements from one evaluation - proposals only.
 
-    This service has no authorization, no writes and no idea how a Skill Version
-    is built. Go validates every proposal (path stays inside the package, target
-    file unchanged since the proposal was written, patched bytes still pass
-    `skillpkg.Validate`, Skill not access-restricted), the user accepts or
-    rejects each one, and accepted ones become one new Skill Version
-    (evaluation-design §5).
+    No authorization, no writes; the caller validates each proposal.
     """
     try:
         raw = await _client().chat.completions.with_raw_response.create(
@@ -697,21 +553,6 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
     kept: list[ImprovementProposal] = []
     for s in parsed.suggestions:
         problem = s.problem.strip()
-        # One unusable proposal drops itself, and the rest of the batch stands.
-        #
-        # It used to 502 the whole answer, after the gateway had been paid, and
-        # a suggest call costs about 2.5x a judgement. Go turns that 502 into
-        # "evaluation suggestions unavailable" and stores nothing, so one
-        # over-long `evidence` field reached the user as 「沒有提案」 —
-        # indistinguishable from the model having had nothing to say, which is
-        # the absence 02:EVAL-002 is measured on. And the caps it trips are not
-        # in the prompt, so the model has no way to comply except by luck.
-        #
-        # Dropping is not rewriting: the rule
-        # test_unapplicable_or_oversized_proposals_are_dropped_not_rewritten
-        # pins is that a bad proposal must not be clipped into a good one, and
-        # EVAL-002's criteria are per-proposal ("每項建議至少包含…"), so keeping
-        # the complete ones satisfies it better than discarding them.
         if (
             not problem
             or len(problem) > MAX_PROBLEM

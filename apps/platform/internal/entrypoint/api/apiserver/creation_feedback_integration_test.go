@@ -83,9 +83,7 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 	t.Cleanup(model.Close)
 	service.LLM = &llmclient.Client{BaseURL: model.URL}
 	v = creationPost(t, c, path, action(runID), 200)
-	// An unmet trial is the person's turn first (owner, 2026-09-06): the failed
-	// criterion and the judge's reason are the question, and the answer steers
-	// the model's revision.
+
 	if v.State != "waiting_input" || !strings.Contains(v.Snapshot.Messages[len(v.Snapshot.Messages)-1].Content, reason) {
 		t.Fatalf("an unmet trial must ask the person before the model revises: state=%q last=%+v", v.State, v.Snapshot.Messages[len(v.Snapshot.Messages)-1])
 	}

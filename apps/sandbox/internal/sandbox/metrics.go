@@ -1,15 +1,5 @@
 package sandbox
 
-// The execution node's own observability (O11Y-001/003, NFR-005). Separate from
-// the platform's registry because this is a separate process on a separate
-// machine, and separate from the Run Trace plane because nothing here is
-// user-visible or sandbox-authored.
-//
-// Deliberately small. The platform already measures the run funnel end to end;
-// what only this side can answer is what its own sandboxes and its own trace
-// collector are doing. Labels are the provider's own vocabulary - a workload
-// cannot create a series.
-
 import (
 	"net/http"
 
@@ -18,9 +8,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Metrics is the collector set for one provider process. It is a value rather
-// than package-level state so a test can build a Manager without touching a
-// global registry, and so two Managers in one test binary do not fight over one.
 type Metrics struct {
 	Dispatched  prometheus.Counter
 	Finished    *prometheus.CounterVec
@@ -29,8 +16,6 @@ type Metrics struct {
 	TraceEvents prometheus.Counter
 }
 
-// NewMetrics registers the set. A nil registry means "not observed", which is
-// what the manager tests want; every method below is nil-safe.
 func NewMetrics(reg prometheus.Registerer) *Metrics {
 	if reg == nil {
 		return nil
@@ -86,9 +71,6 @@ func (m *Metrics) tracePush(result string, events int) {
 	m.TraceEvents.Add(float64(events))
 }
 
-// MetricsHandler exposes the registry in Prometheus text format. It goes behind
-// the same provider token as every other route: sandboxd has no unauthenticated
-// path, and a scrape endpoint is not the place to start.
 func MetricsHandler(reg *prometheus.Registry) http.Handler {
 	return promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 }

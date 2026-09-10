@@ -8,56 +8,11 @@ import { ApiError } from "../api/client";
 import { useCancelAccountDeletion, useMe, useRequestAccountDeletion } from "../api/me";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 
-/**
- * 04 丙-150. Both mutations here used to fall through to
- * `err instanceof Error ? err.message : "…失敗，請再試一次。"` — since `ApiError
- * extends Error`, that Chinese fallback never ran, and a session that expired
- * mid-request showed the server's raw English body. 401 goes through
- * `ReadFailure` like every other read/write on this page; the remaining
- * statuses get this page's own sentence. 409 is the one status this endpoint's
- * pair (`ErrAccountPurging`) can actually mean: a deletion already past the
- * point of no return.
- */
 function deletionFailureSentence(error: unknown): string {
   if (error instanceof ApiError && error.status === 409) return "刪除已經不可逆，無法再變更。";
   return "這個要求沒有記錄成功，可以再按一次。";
 }
 
-/**
- * CORE-007 / 02:SEC-006 — the account, and the second of the two deletion planes
- * (04 丙-22). The first plane deletes one thing at a time: a package, a run's
- * output, a skill. This one ends the account, and the two are not versions of
- * each other — the per-item deletes take effect at once, this one starts a grace
- * period and takes effect at the end of it. How long that period lasts is not
- * written here: PDM-006 is unratified, so a numeral on this side would be a
- * promise nobody has ratified (design §2.2). The server's `purge_after` date is
- * the only figure this screen states.
- *
- * Three endpoints have existed since M1 with no screen on them, which is the same
- * 尺-1 shape the workspace lists were: 02:SEC-006 asks for 刪除工作具可追蹤狀態,
- * and a state nobody can look at is not one a user can follow.
- *
- * The scope copy is deliberately split in two, and which half comes from where is
- * the point:
- *
- *  - **Before**, this page says what pressing the button does — it starts a
- *    countdown, deletes nothing yet, and is cancellable throughout. That is a
- *    fact about *this control*, so it belongs to the control.
- *  - **After**, the server's own `scope` sentence is shown verbatim. What is
- *    destroyed and what is kept de-identified is a fact about the platform's
- *    deletion job, and the API owns that wording (WS-002/PDM-006 §6.1). A second
- *    copy on this side would be a second thing to keep true, and the copy that
- *    goes stale is always the one further from the job.
- *
- * That split used to come with a hole, and it is worth recording how it closed.
- * `scope` reached the screen only in the response to DELETE /me, so it lived in
- * component state: a reload lost the disclosure while the grace period it
- * described ran on, and the reader who goes looking for it is precisely the one
- * who came back later. The page was made to stop promising what it could not
- * keep, which was honest but not a fix. `Me.deletion_scope` (04 丙-30) is the
- * fix — one constant, both endpoints, so the sentence cannot go stale on one
- * side of the pair.
- */
 export function WorkspaceAccount() {
   const me = useMe();
   const client = useQueryClient();
@@ -73,19 +28,6 @@ export function WorkspaceAccount() {
       <h1>帳號</h1>
 
       {me.isPending && <Loading what="帳號資料" />}
-      {/*
-        資訊架構 §5 IA-6 listed eleven routes; this is the twelfth. The sentence
-        that used to sit here — 「沒有登入的話，這一頁不會有東西可以看——那不是讀取
-        失敗。」 — is cited in that ruling as one of the three precedents for
-        「由頁面自己說」, and it was right about the state. It was still printing
-        「無法讀取帳號資料：not authenticated」 in front of itself, and it named no
-        way to log in. The shared component says the same thing in the product's
-        own language and carries the action; the trailing clause is now the whole
-        message rather than a footnote to an English one.
-
-        A non-401 keeps 「無法讀取帳號資料：{message}」 and does NOT keep the login
-        clause: a 500 is not somebody being logged out.
-      */}
       <ReadFailure error={me.error} what="帳號資料" />
       {message && <p role="status">{message}</p>}
       {request.error && (
@@ -104,9 +46,6 @@ export function WorkspaceAccount() {
           <p className="note">
             {me.data.display_name}（{me.data.email}）
           </p>
-          {/* 設計 §2.6／§3 第 8 條 — 識別符折疊。工作區的 UUID 平鋪在帳號名旁邊,
-              而它回答不了這一頁的任何問題（這一頁的問題是「刪不刪」）;要它的人是去
-              回報問題或對帳的人,那是一次點開的成本。 */}
           <details>
             <summary>工作區識別碼</summary>
             <code>{me.data.workspace_id}</code>
@@ -156,11 +95,6 @@ export function WorkspaceAccount() {
             </p>
           )}
 
-          {/*
-            設計 §2.13 第 2 條 — 這是「東西要去哪裡刪」的第二份地圖,四份措辭全不同。
-            留 /policy 那一份:它是 02:O11Y-004 的揭露義務所在,也是四份裡唯一寫了
-            「刪不掉的東西會留下什麼」的。這裡指過去,而不是再寫一次逐項的落點。
-          */}
           <p className="note" data-role="teaching">
             只想刪掉某幾樣東西，不想刪帳號？哪一樣刪在哪裡、刪掉之後什麼會留下，見
             <Link to="/policy">資料保存政策</Link>。
@@ -171,11 +105,6 @@ export function WorkspaceAccount() {
   );
 }
 
-/**
- * The requested-but-not-yet-purged state. It is a state and not a receipt: the
- * date the grace period ends is on screen, and so is the way out of it, because
- * a user who closed the tab after asking has no other place to find either.
- */
 function PendingDeletion({
   requestedAt,
   purgeAfter,
@@ -202,12 +131,6 @@ function PendingDeletion({
           "未測量——伺服器沒有回報寬限期結束的日期，那不表示沒有期限，是這一頁問不到它。"
         )}
       </p>
-      {/*
-       * 設計 §2.8: the scope sentence is the whole disclosure, and §2.10 puts it
-       * on the never-collapse list. Verbatim from the server (WS-002/PDM-006
-       * §6.1 own the wording); a second copy here would be a second thing to
-       * keep true, and the stale one is always the copy further from the job.
-       */}
       {scope ? (
         <p>{scope}</p>
       ) : (

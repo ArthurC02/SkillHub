@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// A tree in the shape of the real one: the Dockerfile that pins, and the two
-// files that copy the pin.
 func writeSDKVersion(t *testing.T, dockerfile, mainGo, readme string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -28,11 +26,6 @@ func writeSDKVersion(t *testing.T, dockerfile, mainGo, readme string) string {
 	return root
 }
 
-// The real lines, trimmed, plus the two `${CLAUDE_AGENT_SDK_VERSION}`
-// interpolations further down the real Dockerfile. Those are here on purpose:
-// they are the reason sdkVersionARG is anchored to the ARG line rather than to
-// the name, and a version that was not would call this file three authors of
-// one value.
 func sdkDockerfile(version string) string {
 	return "FROM node:22-bookworm-slim@sha256:d649c27d\n" +
 		"# The SDK version is pinned, not floated (I-05).\n" +
@@ -64,8 +57,6 @@ func TestSDKVersionAcceptsCopiesThatAgree(t *testing.T) {
 	}
 }
 
-// The defect this exists for: the ARG is bumped and the Go default is not, so
-// every Run afterwards is stamped with a version that never ran.
 func TestSDKVersionCatchesAGoDefaultLeftBehind(t *testing.T) {
 	t.Parallel()
 	root := writeSDKVersion(t, sdkDockerfile("0.4.1"), sdkMainGo("0.3.233"), sdkReadme("0.4.1"))
@@ -73,7 +64,7 @@ func TestSDKVersionCatchesAGoDefaultLeftBehind(t *testing.T) {
 	if len(problems) != 1 {
 		t.Fatalf("expected exactly one problem, got %#v", problems)
 	}
-	// Both sites and both values, or the message cannot be acted on.
+
 	for _, needle := range []string{
 		sdkVersionDockerfile + ":3", "0.4.1",
 		"apps/sandbox/cmd/sandboxd/main.go:5", "0.3.233",
@@ -97,8 +88,6 @@ func TestSDKVersionCatchesADocLeftBehind(t *testing.T) {
 	}
 }
 
-// Losing a subject is a failure, not a pass. Each of these used to be the way
-// checks in this repository died quietly.
 func TestSDKVersionRefusesToCompareNothing(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -153,11 +142,9 @@ func TestSDKVersionRefusesToCompareNothing(t *testing.T) {
 	}
 }
 
-// The tree as it actually stands. Without this the fixtures above only prove
-// the patterns match strings written to match them.
 func TestSDKVersionAcceptsTheRealTree(t *testing.T) {
 	t.Parallel()
-	// ../.. is the repo root, the same anchor retention_floor_test.go uses.
+
 	if problems := sdkVersionProblems("../.."); len(problems) != 0 {
 		t.Fatalf("the repository's own copies of the Agent SDK version disagree: %v", problems)
 	}

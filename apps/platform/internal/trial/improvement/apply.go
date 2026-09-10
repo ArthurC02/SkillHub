@@ -1,19 +1,5 @@
 package eval
 
-// Turning an accepted suggestion into a package change (EVAL-002 clauses 3 and 4).
-//
-// Two callers, one set of checks: GET /suggestions/{id}/diff previews and
-// POST /skills/{id}/versions/from-suggestions applies, and both go through
-// check() so a preview can never promise something the apply call then refuses
-// (public.yaml SuggestionBlockedReason: "one vocabulary, served from one place").
-//
-// Nothing here executes any part of a package (iron rule 1): an archive is read
-// as bytes, patched as bytes, and handed to the same static validation an import
-// goes through. And nothing here edits a version — applying builds a NEW one
-// through ingest.SaveVersion, so the version the suggestion was written against
-// keeps every byte it had and the runs pointing at it still mean what they meant
-// (iron rule 4).
-
 import (
 	"archive/zip"
 	"bytes"
@@ -38,24 +24,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
 
-// errProvenanceNotRecorded is the honest half-success: the new version exists and
-// is usable, and the record of which suggestions produced it does not. Both facts
-// are in the sentence because a caller told only "it failed" would retry, and a
-// caller told only "it worked" would never look.
 var errProvenanceNotRecorded = errors.New(
 	"the new skill version was created, but the record of which improvement suggestions produced it was not written; " +
 		"the version is usable and its provenance is missing")
 
-// actionSuggestionProvenanceLost names the event above.
-//
-// ponytail: declared here rather than in audit.go's vocabulary because this is
-// the only writer. Move it there when a second one appears — that file is where
-// the audited vocabulary is meant to live.
 const actionSuggestionProvenanceLost = "evaluation.provenance_not_recorded"
 
-// The reasons a suggestion cannot be applied (public.yaml SuggestionBlockedReason).
-// Fixed vocabulary: the preview and the apply call answer from these and nothing
-// else, so the two can never disagree about what stops a change.
 const (
 	BlockedPathOutOfBounds  = "path_out_of_bounds"
 	BlockedTargetChanged    = "target_changed"
@@ -64,32 +38,18 @@ const (
 	BlockedDiffUnavailable  = "diff_unavailable"
 )
 
-// maxTargetFileBytes caps the file a suggestion may replace. Same ceiling
-// registry's diff uses, for the same reason: past it there is no readable diff to
-// approve, and EVAL-002 clause 3 does not allow applying a change nobody could see.
-// ponytail: flat cap, same style as the other package limits.
-const maxTargetFileBytes = 1 << 20 // 1 MiB
+const maxTargetFileBytes = 1 << 20
 
-// Blocked is one refused suggestion (public.yaml RejectedSuggestion).
 type Blocked struct {
 	SuggestionID string `json:"suggestion_id"`
 	Reason       string `json:"blocked_reason"`
 	Message      string `json:"message"`
 }
 
-// ErrNotAccepted is a request to apply a suggestion the user has not accepted.
-// A client mistake rather than a property of the package, so it refuses the whole
-// call and creates nothing — accepting is PUT /suggestions/{id}/decision.
 var ErrNotAccepted = errors.New("every suggestion must be accepted before it can be applied")
 
-// errNoStore is a deployment with no object store or no version writer wired in.
-// A configuration fault, not a refusal about the suggestion: it is a 500, never a
-// `blocked_reason`, because nothing was checked.
 var errNoStore = errors.New("no object store is configured, so package contents cannot be read")
 
-// suggestionCtx is the material one check needs: the suggestion, the version it
-// was written against, the version a new one would be built from, and the skill
-// carrying any licensing hold.
 type suggestionCtx struct {
 	suggestion gen.EvaluationSuggestion
 	skill      SkillFacts
@@ -100,9 +60,6 @@ type suggestionCtx struct {
 	latestFS   fs.FS
 }
 
-// loadSuggestion resolves one suggestion and everything around it, all under the
-// caller's workspace (iron rule 3). Anything not visible there is ErrNotFound,
-// whichever link in the chain it was (WS-006).
 func (s *Service) loadSuggestion(
 	ctx context.Context, workspaceID, id pgtype.UUID,
 ) (suggestionCtx, error) {
@@ -135,7 +92,6 @@ func (s *Service) loadSuggestion(
 	return s.loadVersions(ctx, workspaceID, ev, sc)
 }
 
-// loadVersions fills in the two versions and their archives.
 func (s *Service) loadVersions(
 	ctx context.Context, workspaceID pgtype.UUID, ev gen.Evaluation, sc suggestionCtx,
 ) (suggestionCtx, error) {
@@ -157,10 +113,7 @@ func (s *Service) loadVersions(
 	} else if err != nil {
 		return sc, err
 	}
-	// The new version is built from the newest one, not from the evaluated one:
-	// anything else would silently revert every file somebody changed in between.
-	// A target file that moved in the meantime is refused as `target_changed`
-	// rather than overwritten (check()).
+
 	if sc.latest, found, err = s.ReadLatestVersion(ctx, workspaceID, sc.skill.ID); !found && err == nil {
 		return sc, ErrNotFound
 	} else if err != nil {
@@ -171,8 +124,7 @@ func (s *Service) loadVersions(
 	if sc.originFS, originData, err = s.readPackage(ctx, sc.origin.PackageObjectKey); err != nil {
 		return sc, err
 	}
-	// Usually the same archive, and re-reading it would be a second network round
-	// trip to compare a file with itself.
+
 	if sc.origin.ID == sc.latest.ID {
 		sc.latestFS, sc.latestZip = sc.originFS, originData
 		return sc, nil
@@ -183,9 +135,6 @@ func (s *Service) loadVersions(
 
 func (s *Service) store() ObjectStore { return s.Store }
 
-// readPackage opens a stored archive for reading. Analysis only — the package
-// root is resolved by skillpkg.PackageFS so a reader here sees exactly the tree the
-// importer validated.
 func (s *Service) readPackage(ctx context.Context, key string) (fs.FS, []byte, error) {
 	if s.store() == nil {
 		return nil, nil, errNoStore
@@ -201,12 +150,6 @@ func (s *Service) readPackage(ctx context.Context, key string) (fs.FS, []byte, e
 	return fsys, data, nil
 }
 
-// check answers, for one suggestion, "what would this change and may it be
-// applied". A non-nil *Blocked means it may not, and the diff is then whatever
-// could still be shown (usually nothing).
-//
-// Order matters: the licensing hold is first because a held skill's contents must
-// not be reproduced at all (SEC-011), and a diff is a reproduction.
 func check(sc suggestionCtx) (string, *Blocked) {
 	sug := sc.suggestion
 	id := pgconv.UUIDString(sug.ID)
@@ -260,9 +203,6 @@ func check(sc suggestionCtx) (string, *Blocked) {
 	return diff, nil
 }
 
-// readTarget reads one package file as text. A missing file reads as empty: a
-// suggestion may add a file, and "absent in both versions" is a consistent state
-// rather than a change underneath it.
 func readTarget(fsys fs.FS, target string) (string, error) {
 	data, err := fs.ReadFile(fsys, target)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -280,10 +220,6 @@ func readTarget(fsys fs.FS, target string) (string, error) {
 	return string(data), nil
 }
 
-// cleanTargetPath normalises a package-relative path and reports whether it stays
-// inside the package. Refused rather than sanitised: a path that had to be
-// repaired is not a path the model meant, and 0024's CHECK is the floor under
-// this, not a replacement for it.
 func cleanTargetPath(p string) (string, bool) {
 	p = strings.TrimSpace(p)
 	if p == "" || strings.HasPrefix(p, "/") || strings.Contains(p, "\\") {
@@ -296,7 +232,6 @@ func cleanTargetPath(p string) (string, bool) {
 	return cleaned, true
 }
 
-// Diff is one preview (public.yaml SuggestionDiff).
 type Diff struct {
 	TargetPath    string `json:"target_path"`
 	UnifiedDiff   string `json:"unified_diff,omitempty"`
@@ -305,10 +240,6 @@ type Diff struct {
 	Message       string `json:"message,omitempty"`
 }
 
-// SuggestionDiff serves GET /suggestions/{id}/diff: what applying this would
-// change, or the reason there is nothing to show. It runs the checks the apply
-// call runs, including the static validation of the patched package, so
-// `applicable: false` here and a rejection there carry the same reason.
 func (s *Service) SuggestionDiff(ctx context.Context, workspaceID, id pgtype.UUID) (Diff, error) {
 	sc, err := s.loadSuggestion(ctx, workspaceID, id)
 	if errors.Is(err, ErrNotFound) {
@@ -325,8 +256,7 @@ func (s *Service) SuggestionDiff(ctx context.Context, workspaceID, id pgtype.UUI
 
 	diff, blocked := check(sc)
 	if blocked == nil {
-		// The same validation the apply call runs, run here so the preview cannot
-		// promise a change that import-grade validation would refuse.
+
 		blocked = validatePatched(sc, map[string]string{target: sc.suggestion.ProposedContent},
 			[]string{pgconv.UUIDString(sc.suggestion.ID)})
 	}
@@ -338,10 +268,6 @@ func (s *Service) SuggestionDiff(ctx context.Context, workspaceID, id pgtype.UUI
 	return out, nil
 }
 
-// validatePatched patches the newest archive and re-runs the same static
-// validation an import goes through (evaluation-design §5.2). A blocking finding
-// refuses every suggestion in the set: the patched package is one package, and
-// which of several changes broke it is not something this can attribute.
 func validatePatched(sc suggestionCtx, patches map[string]string, ids []string) *Blocked {
 	patched, err := patchArchive(sc.latestZip, patches)
 	if err != nil {
@@ -368,8 +294,7 @@ func validatePatched(sc suggestionCtx, patches map[string]string, ids []string) 
 		list = append(list, c)
 	}
 	sort.Strings(list)
-	// The codes, not the messages: a message can quote package content and this
-	// string reaches an HTTP response.
+
 	return &Blocked{SuggestionID: first(ids), Reason: BlockedValidation,
 		Message: "with this change applied the package no longer passes the validation an " +
 			"import has to pass (" + strings.Join(list, ", ") + ")"}
@@ -382,10 +307,6 @@ func first(ids []string) string {
 	return ids[0]
 }
 
-// patchArchive rewrites one zip with some files replaced, keeping every other
-// entry byte for byte. The package root is ingest's, not a second rule of its own:
-// a package that lives in a single top-level directory has to be patched inside
-// that directory, and getting that wrong writes the new file next to the package.
 func patchArchive(data []byte, patches map[string]string) ([]byte, error) {
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
@@ -423,8 +344,7 @@ func patchArchive(data []byte, patches map[string]string) ([]byte, error) {
 			return nil, err
 		}
 	}
-	// Files the package did not have yet, in path order so the archive is
-	// reproducible for identical input (INGEST-005 dedupes on the content hash).
+
 	added := make([]string, 0, len(patches))
 	for p := range patches {
 		if !written[p] {
@@ -447,8 +367,6 @@ func patchArchive(data []byte, patches map[string]string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// ApplyResult is the answer to POST /skills/{id}/versions/from-suggestions.
-// Created false means no version was built and nothing was written.
 type ApplyResult struct {
 	Created     bool
 	Version     ingest.UploadResult
@@ -457,14 +375,6 @@ type ApplyResult struct {
 	NotAccepted []string
 }
 
-// ApplySuggestions turns the accepted suggestions of one evaluation into exactly
-// one new Skill Version (EVAL-002 clause 4, iron rule 4).
-//
-// It writes through ingest.SaveVersion — the same path an upload takes — so the
-// patched bytes go through static validation, land in object storage, get their
-// version row, their license provenance, their search projection and their audit
-// entry. Nothing about a suggestion-built version is exempt from what an uploaded
-// one goes through, and there is no second writer to keep in step.
 func (s *Service) ApplySuggestions(
 	ctx context.Context, ws identity.Workspace, skillID, evaluationID pgtype.UUID, ids []pgtype.UUID,
 ) (ApplyResult, error) {
@@ -486,14 +396,11 @@ func (s *Service) ApplySuggestions(
 	if err != nil {
 		return out, err
 	}
-	// The evaluation has to be about this skill. Without this, an evaluation of one
-	// skill could seed a version of another one.
+
 	if base.skill.ID != skillID {
 		return out, ErrNotFound
 	}
 
-	// Everything is resolved before anything is checked, so a request naming one
-	// undecided suggestion is refused whole instead of half-applied.
 	suggestions := make([]gen.EvaluationSuggestion, 0, len(ids))
 	seenIDs := make(map[string]bool, len(ids))
 	for _, id := range ids {
@@ -506,8 +413,7 @@ func (s *Service) ApplySuggestions(
 			ID: id, WorkspaceID: ws.ID,
 		})
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && sug.EvaluationID != evaluationID) {
-			// A suggestion from another evaluation is not a rejection with a reason,
-			// it is a request about something that is not there (contract: 404).
+
 			return out, ErrNotFound
 		}
 		if err != nil {
@@ -519,8 +425,7 @@ func (s *Service) ApplySuggestions(
 		suggestions = append(suggestions, sug)
 	}
 	if len(out.NotAccepted) > 0 {
-		// Not a `blocked_reason`: nothing about the package stops these, the user
-		// simply has not said yes. Accepting is PUT /suggestions/{id}/decision.
+
 		return out, ErrNotAccepted
 	}
 	sort.Slice(suggestions, func(i, j int) bool {
@@ -567,12 +472,11 @@ func (s *Service) ApplySuggestions(
 		out.Applied = append(out.Applied, pgconv.UUIDString(sug.ID))
 	}
 	if len(patches) == 0 {
-		return out, nil // nothing to apply: no version is created (contract 422)
+		return out, nil
 	}
 
 	if blocked := validatePatched(base, patches, out.Applied); blocked != nil {
-		// One package, one verdict: every suggestion in the set comes back rejected
-		// with the same reason rather than one of them being blamed.
+
 		for _, id := range out.Applied {
 			out.Rejected = append(out.Rejected, Blocked{
 				SuggestionID: id, Reason: blocked.Reason, Message: blocked.Message,
@@ -591,8 +495,7 @@ func (s *Service) ApplySuggestions(
 		return out, err
 	}
 	if res.Report.Blocked {
-		// validatePatched already ran the same check, so reaching here means the two
-		// disagreed. Report it as the refusal it is rather than as a version.
+
 		for _, id := range out.Applied {
 			out.Rejected = append(out.Rejected, Blocked{SuggestionID: id, Reason: BlockedValidation,
 				Message: "with these changes applied the package no longer passes import validation"})
@@ -601,27 +504,6 @@ func (s *Service) ApplySuggestions(
 		return out, nil
 	}
 
-	// EVAL-002 clause 4: each applied suggestion points at the new version.
-	//
-	// This is a separate statement from SaveVersion's transaction, and that is a
-	// real gap, not a tidy one. The version is already committed when this runs, so
-	// a failure here leaves a version whose provenance is not recorded — and
-	// `packaging` reads exactly this table (ListSuggestionsAppliedToVersion) to
-	// write a download package's provenance, so the version would be packaged as
-	// one no improvement suggestion ever touched.
-	//
-	// The comment that used to sit here argued the gap away with "re-applying is
-	// safe because identical content returns the same version (INGEST-005)". True,
-	// and irrelevant: nothing re-applies. This is a synchronous HTTP path, the
-	// error goes straight back to the handler, the user sees a 500, and the version
-	// exists. So the failure is now said out loud in both directions a person can
-	// read — the caller gets an error naming what did and did not happen, and the
-	// audit trail gets a durable row, because "user content lost a property without
-	// the user asking" is what the trail is for.
-	//
-	// ponytail: this is the interim. The real fix is one transaction, which needs
-	// an ingest SaveVersion variant that accepts a pgx.Tx — ingest's context, not
-	// this one. Until that exists, an announced failure beats a silent one.
 	if _, err := s.queries().MarkSuggestionsApplied(ctx, gen.MarkSuggestionsAppliedParams{
 		SkillVersionID: res.Version.ID, Ids: applied, WorkspaceID: ws.ID,
 	}); err != nil {
@@ -638,7 +520,7 @@ func (s *Service) ApplySuggestions(
 				"version_exists": true,
 			},
 		}); auditErr != nil {
-			// Both writes failed. Say so rather than replacing one loss with another.
+
 			return out, fmt.Errorf("%w: the audit record of it also failed: %w", errProvenanceNotRecorded, auditErr)
 		}
 		return out, fmt.Errorf("%w: %w", errProvenanceNotRecorded, err)

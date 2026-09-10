@@ -1,26 +1,8 @@
 #!/usr/bin/env python3
-"""QA-002: generate the deliberately broken half of the spec-validation corpus.
-
-The 45 pinned-commit seed packages are the *legal* samples and already have a
-real run through `skillpkg` behind them (CONTENT-006). They only ever prove that
-validation does not reject good input. This script produces the other half: one
-mutated package per failure mode, each with an expected finding list in
-`expected-findings.json` that `TestQA002BrokenPackageCorpus` compares against.
-
-Verification tool, not production code: it is not imported by any service, it is
-not in CI, and it needs network once per base package (the pinned repo zips).
-
-Design notes
-------------
-* **Script, not 45 committed binaries.** Mutations are one function each, so a
-  reader can see exactly what makes a variant broken. Committed zips would be
-  opaque and would rot against `skillpkg` without anyone noticing.
-* **Bases are real seed packages, not synthetic ones** (`03` QA-002: "不重新蒐集
-  語料"). Repacking reuses `tools/content/import_seed.py` — the packer and the
-  scanner must agree about package shape, and two copies of that logic would
-  eventually disagree.
-* **Fake credentials are assembled at runtime**, never written as one literal.
-  A corpus that trips the repo's own secret scan is a corpus nobody can commit.
+"""Generate the deliberately broken half of the spec-validation corpus: one
+mutated package per failure mode, built from real seed packages, each with
+an expected finding list in expected-findings.json. Verification tool, not
+production code — needs network once per base package.
 
 Usage:
     python generate.py --out <dir>        # write base-*.zip and every variant
@@ -44,8 +26,6 @@ HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 EXPECTED = HERE / "expected-findings.json"
 
-# Fixed timestamp, same reason as import_seed.repack_skill: a wall-clock stamp
-# would make every regeneration produce different bytes for identical content.
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 
 
@@ -60,15 +40,6 @@ def _load_import_seed():
     return mod
 
 
-# --- bases ------------------------------------------------------------------
-
-# Three seed packages, chosen for three different shapes so a mutation lands on
-# a realistic neighbourhood rather than on an empty package:
-#   humanizer    prompt-only, no scripts, no dependency manifest
-#   csv-to-json  data skill, declares dependencies, no shipped script
-#   excel-freeze documents skill, embedded Python and reference files
-# All three are MIT (seed-skills.json sources), so the corpus carries no
-# source-available content.
 BASES = ["humanizer/humanizer", "wrangler/csv-to-json", "yuyy-excel/excel-freeze"]
 
 
@@ -90,8 +61,6 @@ def base_packages(cache: pathlib.Path) -> dict[str, bytes]:
     return out
 
 
-# --- zip helpers ------------------------------------------------------------
-
 
 def read_zip(data: bytes) -> list[tuple[str, bytes]]:
     with zipfile.ZipFile(io.BytesIO(data)) as z:
@@ -106,8 +75,8 @@ def write_zip(entries, *, symlinks=()) -> bytes:
             info = zipfile.ZipInfo(name, date_time=FIXED_TIME)
             info.compress_type = zipfile.ZIP_DEFLATED
             if name in symlinks:
-                # 0o120777 << 16: the Unix mode a zip carries for a symlink. The
-                # entry body is the link target, which is how a zip stores one.
+                # 0o120777 << 16 is the Unix symlink mode a zip's external_attr
+                # carries; the entry's body is the link target.
                 info.external_attr = (0o120777 << 16) | 0o20
                 info.create_system = 3
             z.writestr(info, data)
@@ -140,14 +109,8 @@ def split_frontmatter(md: str) -> tuple[str, str]:
 
 
 def strip_hr_lines(body: str) -> str:
-    """Drop every line that is exactly `---`.
-
-    Needed by the unterminated-frontmatter variant: `cutClosingDelimiter` closes
-    the header at the *first* bare `---` anywhere in the file, and a 29 KiB
-    SKILL.md has several as horizontal rules. Without this the variant tested
-    `frontmatter-invalid-yaml` while claiming to test the missing delimiter —
-    a corpus entry whose name and behaviour disagree is worse than no entry.
-    """
+    """Drop every line that is exactly `---`, so a body's own horizontal
+    rules don't get mistaken for the frontmatter's closing delimiter."""
     return "\n".join(line for line in body.split("\n") if line.strip() != "---")
 
 
@@ -167,13 +130,9 @@ def set_field(md: str, key: str, value: str | None) -> str:
     return "---\n" + "\n".join(kept) + "\n---\n" + rest
 
 
-# --- the fake credentials ---------------------------------------------------
-#
-# Assembled from parts so the source file itself contains no string that a
-# credential scanner (this repo's own `git grep` pre-push check included) would
-# flag. The value still matches skillpkg.secretPatterns once assembled, which is
-# the whole point of the variant.
-FAKE_AWS_KEY = "AKIA" + "EXAMPLE" + "0" * 5 + "NOTREAL"  # AKIA + 16 chars
+# Built from parts so this source file contains no string a credential
+# scanner would itself flag; assembled, it still matches the real pattern.
+FAKE_AWS_KEY = "AKIA" + "EXAMPLE" + "0" * 5 + "NOTREAL"
 FAKE_PEM = "-----BEGIN " + "RSA PRIVATE KEY" + "-----\nnot-a-real-key\n"
 
 EMBEDDED_PYTHON = "```python\n" + "".join(
@@ -183,14 +142,7 @@ EMBEDDED_PYTHON = "```python\n" + "".join(
 MEGABYTE_TEXT = ("the content scan stops above one mebibyte. " * 26_000).encode()
 
 
-# --- mutations --------------------------------------------------------------
-#
-# Each entry: (variant id, base skill name, what it breaks, mutator).
-# The mutator takes the base's [(name, bytes)] and returns either new entries or
-# a (entries, symlink-names) pair.
-
 MUTATIONS: list[tuple[str, str, str, object]] = [
-    # -- SKILL.md missing or structurally unreadable --------------------------
     ("skill-md-missing", "humanizer", "SKILL.md deleted from the package root",
      lambda e: drop(e, "SKILL.md")),
     ("frontmatter-missing", "humanizer", "SKILL.md starts with prose, no `---` header",
@@ -202,7 +154,6 @@ MUTATIONS: list[tuple[str, str, str, object]] = [
     ("frontmatter-invalid-yaml", "humanizer", "frontmatter is not parseable YAML",
      lambda e: edit(e, "SKILL.md", lambda md: set_field(md, "name", "[unclosed, list"))),
 
-    # -- required fields and the name rule ------------------------------------
     ("name-missing", "humanizer", "frontmatter has no `name`",
      lambda e: edit(e, "SKILL.md", lambda md: set_field(md, "name", None))),
     ("name-invalid", "humanizer", "`name` breaks the lowercase-hyphen rule",
@@ -216,7 +167,6 @@ MUTATIONS: list[tuple[str, str, str, object]] = [
     ("frontmatter-unknown-field", "csv-to-json", "an unrecognised frontmatter key",
      lambda e: edit(e, "SKILL.md", lambda md: set_field(md, "auto_run", "true"))),
 
-    # -- file references leaving the package -----------------------------------
     ("file-ref-escapes", "excel-freeze", "SKILL.md links to a path outside the package",
      lambda e: edit(e, "SKILL.md",
                     lambda md: md + "\n\nSee [the host config](../../../etc/passwd).\n")),
@@ -224,20 +174,17 @@ MUTATIONS: list[tuple[str, str, str, object]] = [
      lambda e: edit(e, "SKILL.md",
                     lambda md: md + "\n\nSee [the helper](reference/not-shipped.md).\n")),
 
-    # -- executable content ----------------------------------------------------
     ("embedded-script", "humanizer", "60 lines of Python written into SKILL.md itself",
      lambda e: edit(e, "SKILL.md", lambda md: md + "\n\n" + EMBEDDED_PYTHON)),
     ("binary-file", "csv-to-json", "a compiled object nobody can review as text",
      lambda e: add(e, "bin/helper.so", b"\x7fELF\x02\x01\x01\x00" + b"\x00" * 512)),
 
-    # -- credentials -----------------------------------------------------------
     ("secret-in-script", "csv-to-json", "an AWS access key id inside a shipped script",
      lambda e: add(e, "scripts/deploy.sh",
                    f"#!/bin/sh\nexport AWS_ACCESS_KEY_ID={FAKE_AWS_KEY}\n".encode())),
     ("secret-in-skill-md", "humanizer", "private key material pasted into SKILL.md",
      lambda e: edit(e, "SKILL.md", lambda md: md + "\n\n```\n" + FAKE_PEM + "```\n")),
 
-    # -- archive-level attacks -------------------------------------------------
     ("zip-path-traversal", "humanizer", "a zip entry whose name walks out of the package",
      lambda e: add(e, "../../evil.sh", b"#!/bin/sh\nrm -rf /\n")),
     ("zip-absolute-path", "humanizer", "a zip entry with an absolute path",
@@ -252,12 +199,8 @@ MUTATIONS: list[tuple[str, str, str, object]] = [
 
 
 def build_zip_bomb(entries) -> bytes:
-    """A real bomb: 260 MiB of zeros, which deflates to a few hundred KiB.
-
-    Not a doctored header. `ingest.PackageFS` reads the declared uncompressed
-    size out of the central directory, and a corpus that lies in the header
-    would stop testing the cap the day that reader changes how it measures.
-    """
+    """A real bomb (260 MiB of zeros deflating to a few hundred KiB), not a
+    doctored header, so it stays valid against any way of measuring size."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for name, data in entries:
@@ -282,8 +225,6 @@ def apply_mutation(mutator, entries) -> bytes:
         return write_zip(new_entries, symlinks=symlinks)
     return write_zip(result)
 
-
-# --- commands ---------------------------------------------------------------
 
 
 def cmd_generate(args) -> int:
@@ -335,7 +276,6 @@ def selftest() -> int:
         assert names, vid
         assert data != write_zip(base), f"{vid} did not change anything"
 
-    # The mutators that must produce a specific structural shape.
     assert "SKILL.md" not in zipfile.ZipFile(io.BytesIO(
         apply_mutation(dict((m[0], m[3]) for m in MUTATIONS)["skill-md-missing"], base)
     )).namelist()
@@ -349,19 +289,16 @@ def selftest() -> int:
     info = symlinked.getinfo("reference/host-passwd")
     assert (info.external_attr >> 16) & 0o170000 == 0o120000, oct(info.external_attr)
 
-    # Frontmatter editing must stay surgical.
     md = base[0][1].decode()
     assert "name:" not in set_field(md, "name", None)
     assert "name: renamed" in set_field(md, "name", "renamed")
     assert "auto_run: true" in set_field(md, "auto_run", "true")
     assert split_frontmatter(set_field(md, "name", "x"))[1] == "\nBody text.\n"
 
-    # The credential literals must be assembled, never present as one string.
     src = pathlib.Path(__file__).read_text(encoding="utf-8")
     assert FAKE_AWS_KEY not in src, "assembled key leaked into the source"
     assert FAKE_PEM.split("\n")[0] not in src, "assembled PEM header leaked into the source"
 
-    # Every variant must be described in the expectations file, and vice versa.
     if EXPECTED.exists():
         expected = json.loads(EXPECTED.read_text(encoding="utf-8"))["variants"]
         assert set(expected) == seen | {f"base-{b}" for b in BASES_SHORT}, (

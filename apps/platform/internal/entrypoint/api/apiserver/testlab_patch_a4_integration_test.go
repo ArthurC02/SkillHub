@@ -6,14 +6,6 @@ import (
 	"testing"
 )
 
-// PATCH /test-cases/{id} writes the name and prompt in one transaction and the
-// rubric in another, so a request carrying both used to commit the first before
-// discovering the second was invalid: 400 back to the user, name already changed,
-// and resending the same request unchanged does not put it back.
-//
-// Everything else in this file's neighbourhood is careful about exactly this —
-// SetRubric and mutateCriteria both take a row lock so their own writes are
-// atomic. Only the handler split the two.
 func TestARejectedRubricLeavesTheNameAlone(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -30,8 +22,6 @@ func TestARejectedRubricLeavesTheNameAlone(t *testing.T) {
 		t.Fatalf("created test case has no id: %v", body)
 	}
 
-	// One PATCH, two intents, and the second is invalid: a rubric item naming a
-	// criterion this test case does not have. validateRubric refuses it.
 	code, body = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
 		`{"name":"after","rubric":{"version":"v1","items":[
 		   {"id":"no-such-criterion","text":"quote the claim","evidence_required":true}]}}`)

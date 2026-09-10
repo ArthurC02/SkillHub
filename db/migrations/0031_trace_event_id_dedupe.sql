@@ -1,7 +1,6 @@
--- TRACE-008 requires event_id alone to be the idempotency key. PostgreSQL
--- cannot put that unique constraint on a time-partitioned table, so a trigger
--- serializes equal IDs and checks the indexed parent before each insert.
-
+-- PostgreSQL cannot put a unique constraint on a time-partitioned table without
+-- the partition key. A trigger serializes equal ids under an advisory lock and
+-- checks the indexed parent before each insert instead.
 LOCK TABLE trace_events IN SHARE ROW EXCLUSIVE MODE;
 
 DO $$

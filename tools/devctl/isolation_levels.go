@@ -1,22 +1,5 @@
 package main
 
-// The dispatch gate's allow list and the provider contract's isolation enum are
-// two statements of the same set, written in two languages, and nothing was
-// comparing them.
-//
-// That is not hypothetical. `clean` was added to the gate on 2026-08-28 and to
-// contracts/openapi/sandbox-provider.yaml only on 2026-08-29, and in between the
-// system emitted a capability value the contract did not admit. Nothing failed,
-// because this provider serves its capability from hand-written structs rather
-// than from generated types - so the usual drift check, which regenerates and
-// diffs, has nothing to look at here. A contract that only describes the code by
-// coincidence is the shape this repository keeps recording.
-//
-// What this checks is one direction, and deliberately so: every level the gate
-// can accept must be spelled in the contract. The reverse is allowed - the enum
-// may name a level (`vm`) that no deployment of ours accepts yet, because the
-// contract describes what a provider may say, not what we will take.
-
 import (
 	"fmt"
 	"go/ast"
@@ -32,44 +15,25 @@ import (
 
 const isolationGoFile = "apps/platform/internal/trial/execution/schedule.go"
 
-// EVERY contract that spells the set, not just the first one found.
-//
-// The first version of this check compared the gate against
-// sandbox-provider.yaml alone, and the audit of 2026-08-29 found the same drift
-// still open one file over: public.yaml's RunPermissionSummaryContent carried
-// `isolation_level` as a free string whose description listed four levels in
-// PROSE — no `clean`. That field is what TEST-008's preflight screen shows a
-// user before their run starts ("how strongly will this be isolated"), so the
-// contract that was wrong is the one facing outward, and a prose list is
-// something no checker can read. The enum landed in 331bd90; this is what keeps
-// it a set rather than a sentence.
-//
-// Each entry names the key the enum hangs under, because the two contracts spell
-// the same field differently: sandbox-provider has `isolation: { level: … }`,
-// public.yaml has a flat `isolation_level:`.
+// Each entry names the key the enum hangs under, since sandbox-provider
+// nests it under "isolation:" while public.yaml uses a flat
+// "isolation_level:".
 var isolationContractFiles = []struct{ path, marker string }{
 	{"contracts/openapi/sandbox-provider.yaml", "isolation:"},
 	{"contracts/openapi/public.yaml", "isolation_level:"},
 }
 
-// The key line, anchored so that a mention inside a description cannot be
-// mistaken for the schema key. Exactly one match is required per file: zero
-// means the field moved, more than one means this check would be picking a
-// winner between two schemas.
+// Anchored so a mention inside a description string can't be mistaken for
+// the schema key.
 func isolationMarkerPattern(marker string) *regexp.Regexp {
 	return regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(marker) + `\s*$`)
 }
 
-// isolationConstSuffix is what makes a constant part of the set rather than a
-// list this checker has to be told about: the gate names its levels
-// <something>Isolation, so a fourth one joins the comparison by being declared,
-// not by someone remembering to add it here.
+// Gate isolation constants are named <value>Isolation, so a new one joins
+// the comparison just by being declared.
 var isolationConstSuffix = "Isolation"
 
-// isolationEnumPattern reads the enum off the contract without a YAML parser:
-// the line is `enum: [gvisor, container, vm, process, clean]` under
-// isolation.level, and pulling it out by shape keeps this checker free of a
-// dependency whose absence is the only reason tools/devctl builds anywhere.
+// Reads "enum: [a, b, c]" directly rather than through a YAML parser.
 var isolationEnumPattern = regexp.MustCompile(`(?m)^\s*enum: \[([a-z, ]+)\]\s*$`)
 
 func isolationLevelProblems(root string) []string {
@@ -105,10 +69,8 @@ func isolationLevelProblems(root string) []string {
 	return problems
 }
 
-// gateIsolationLevels reads the constant values from the AST rather than from
-// the file's text, for the reason require_db_guard.go records: a checker that
-// greps finds its own subject matter in the comments around it and passes a
-// mutation that removed the code.
+// Reads constant values via the AST rather than grepping text, so a comment
+// mentioning a value can't be mistaken for its declaration.
 func gateIsolationLevels(path string) (map[string]string, error) {
 	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {

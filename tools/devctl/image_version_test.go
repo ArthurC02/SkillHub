@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// Pointed at the tree. RED until UPGRADES.md carries a section for whatever
-// IMAGE_VERSION currently is.
 func TestTheRealImageVersionHasAnUpgradeSection(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -39,8 +37,7 @@ func TestImageVersionAcceptsAVersionWithItsSection(t *testing.T) {
 
 func TestImageVersionNamesABumpNobodyWroteDown(t *testing.T) {
 	t.Parallel()
-	// Exactly the tree's own shape on 2026-08-29: the Dockerfile moved on, the
-	// record did not.
+
 	root := writeImageFixture(t, fixtureDockerfile,
 		"# 升級紀錄\n\n## `2026.08-2` → `2026.08-3`（2026-08-16）\n\n四項實測全跑。\n")
 	problems := imageVersionProblems(root)
@@ -49,8 +46,6 @@ func TestImageVersionNamesABumpNobodyWroteDown(t *testing.T) {
 	}
 }
 
-// The version string appearing in prose is not a section. A check satisfied by a
-// passing mention is satisfied by a mention that says the opposite.
 func TestImageVersionWantsAHeadingAndNotAMention(t *testing.T) {
 	t.Parallel()
 	root := writeImageFixture(t, fixtureDockerfile,

@@ -1,4 +1,3 @@
--- ADR-067: Go owns durable creation facts. Original diagrams are never stored.
 CREATE TABLE creation_sessions (
  id uuid PRIMARY KEY,
  workspace_id uuid NOT NULL REFERENCES workspaces(id),

@@ -1,21 +1,7 @@
 """Every schema handed to a model has to be legal under `strict: true`.
 
-The rules are the gateway's and they are not negotiable at call time: each
-object must list *every* property in `required` and set
-`additionalProperties: false`, and the keywords below are refused outright. A
-schema that breaks one of them does not degrade - the call returns 400 and the
-endpoint fails 100% of the time.
-
-That is not hypothetical. `GeneratedSkill` shipped with four defaults (each of
-which drops its property out of `required`), a `dict[str, str]` and six length
-constraints, so POST /v1/generate-skill answered 502 to everything it was ever
-asked. Nothing noticed, because every test of every one of these endpoints
-monkeypatches the client away - which is the right thing for those tests to do
-and the reason this file exists instead.
-
-Kept as a list of models rather than a scan of `response_format=` call sites so
-that adding an endpoint means adding a line here; a scan would pass silently on
-the schema it failed to find.
+Kept as a list of models rather than a scan of `response_format=` call sites,
+so that adding an endpoint means adding a line here.
 """
 
 from __future__ import annotations
@@ -58,12 +44,6 @@ REFUSED_KEYWORDS = {
     "uniqueItems",
 }
 
-# The model-facing halves only. `MatchReasonsResponse` and
-# `SuggestCriteriaResponse` are their WIRE subclasses and carry `usage`, which
-# is exactly what must not be in a schema the model answers - and which strict
-# would refuse anyway, GatewayUsage having defaults and a `minimum`. Listing the
-# subclass here would make this file report that the pair is illegal while the
-# real call is fine.
 MODEL_FACING = [
     MatchReasons,
     SuggestedCriteria,
@@ -82,9 +62,8 @@ def _refused_keywords(node: object) -> set[str]:
     if isinstance(node, dict):
         found |= REFUSED_KEYWORDS & set(node)
         for key, value in node.items():
-            # `properties` belongs to a nested object, which _objects() visits
-            # in its own right; descending here would report it twice under a
-            # confusing name.
+            # A nested object's own `properties` is visited when _objects()
+            # reaches that object; descending into it here would double-count it.
             if key == "properties":
                 continue
             found |= _refused_keywords(value)
@@ -118,21 +97,14 @@ def test_the_schema_is_legal_under_strict_json_schema(model: type[BaseModel]) ->
             f"{model.__name__}.{title}: strict requires every property in `required`; "
             f"missing {sorted(properties - set(obj.get('required', [])))}"
         )
-        # An open-ended map answers `{"type": "string"}` here and cannot be
-        # expressed at all under strict - the field has to go, not be relaxed.
         assert obj.get("additionalProperties") is False, (
             f"{model.__name__}.{title}: strict requires additionalProperties=false, "
             f"got {obj.get('additionalProperties')!r}"
         )
         for name, prop in obj.get("properties", {}).items():
-            # Recursive, not just the top level of the property dict. A nullable
-            # field renders as `anyOf: [{type: string, maxLength: N}, {type:
-            # null}]`, and a top-level scan reads only the anyOf key — so the
-            # refused keyword hides one level down. Nullable is not exotic here:
-            # strict REQUIRES an inapplicable field to be sent as null rather
-            # than omitted, which is why JudgeEvidenceRef has two of them. A
-            # guard against the M5 defect that could not see into anyOf was the
-            # M5 defect wearing a different hat (found by the M3 audit).
+            # Recursive, not just the top level: a nullable field renders as
+            # `anyOf: [{type, ...}, {type: null}]`, so a refused keyword can
+            # sit one level down inside a branch.
             refused = _refused_keywords(prop)
             assert not refused, (
                 f"{model.__name__}.{title}.{name}: strict refuses {sorted(refused)}; "

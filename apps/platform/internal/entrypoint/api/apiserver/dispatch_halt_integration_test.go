@@ -1,13 +1,3 @@
-// 03:SEC-012 (02:SEC-010 的 P1 自動第一動作) and ADR-022 X-04, which are one
-// switch. Shared harness lives in authz_integration_test.go (TestMain, migrate,
-// requireDB, newAPI, login), run_integration_test.go (fixture, runView,
-// clearRunBacklog) and preflight_integration_test.go (confirmPermissions).
-//
-// These tests deliberately do NOT start a River worker. Every dispatch, cleanup
-// and orphan scan is driven by hand, so "the scheduler did not dispatch" is an
-// assertion about a call that returned rather than about a timeout, and the two
-// entry points SEC-012 names (creation in the API process, dispatch in the worker
-// process) are exercised separately.
 package apiserver_test
 
 import (
@@ -24,7 +14,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 )
 
-// haltHarness is a fake provider wired into both planes, with no worker running.
 func haltHarness(t *testing.T, a *api, pool *pgxpool.Pool) (*providertest.Fake, *run.Service) {
 	t.Helper()
 	clearRunBacklog(t, pool)
@@ -53,21 +42,14 @@ func haltAuditCount(t *testing.T, pool *pgxpool.Pool, action string) int {
 	return countRow(t, pool, "SELECT count(*) FROM audit_events WHERE action = $1", action)
 }
 
-// runOrphanScan drives one reconciler round through the registered worker, the
-// same entry point cmd/worker's periodic job uses.
 func runOrphanScan(t *testing.T, svc *run.Service) {
 	t.Helper()
 	if err := (&run.OrphanScanWorker{Svc: svc}).Work(context.Background(), nil); err != nil {
-		// A destroy that fails is an expected part of these tests: the scan reports it
-		// and the sighting bookkeeping still happened, which is what the threshold
-		// reads. Nothing here is asserted on the error itself.
+
 		t.Logf("orphan scan reported: %v", err)
 	}
 }
 
-// 02:SEC-011's non-disclosure rule, applied to a switch that stops the whole
-// fleet: an endpoint that halts the platform is one whose existence is worth not
-// advertising, so it answers 404 to everyone off the roster — not 401, not 403.
 func TestDispatchHaltRoutesAreInvisibleWithoutTheOperatorRole(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -95,8 +77,6 @@ func TestDispatchHaltRoutesAreInvisibleWithoutTheOperatorRole(t *testing.T) {
 	}
 }
 
-// The whole of SEC-012 in one pass: the three automatic actions, the two entry
-// points, the audit trail, and the release that is not automatic.
 func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -108,9 +88,6 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	ctx := context.Background()
 	ws := mustUUID(t, f.workspaceID)
 
-	// A run that reached the end before anything was declared. It is the scene:
-	// its sandbox is still held, because with no queue client wired nothing has
-	// enqueued the cleanup yet.
 	finished := f.start(t)
 	if err := svc.Drive(ctx, ws, mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("driving the run before the halt: %v", err)
@@ -122,8 +99,6 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Fatalf("precondition: %d sandboxes held, want 1", fake.Live())
 	}
 
-	// A run that is queued and has not been dispatched. ADR-022 X-04 and 02:SEC-010
-	// agree on this one: it stays where it is.
 	hash := f.confirmPermissions(t)
 	code, queued := f.startWithHash(t, hash)
 	if code != http.StatusCreated {
@@ -132,7 +107,6 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 
 	haltsBefore := haltAuditCount(t, pool, "dispatch.halted")
 
-	// --- ① declare -----------------------------------------------------------
 	const note = "escape suspicion on the fake fleet; investigating"
 	if code, body := operatorCall(t, operator, http.MethodPut, "/admin/dispatch/halt",
 		`{"note":"`+note+`"}`); code != http.StatusOK {
@@ -144,16 +118,10 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Errorf("halt reported as %v; a P1 is never lifted automatically", halts[0])
 	}
 
-	// Entry point 1: creation. 503, because a P1 has no automatic release and a
-	// queue that may not move until an investigation ends is a worse answer than
-	// saying so now.
 	if code, view := f.startWithHash(t, hash); code != http.StatusServiceUnavailable {
 		t.Errorf("creating a run under a P1 halt: got %d (%s), want 503", code, view.Error)
 	}
 
-	// Entry point 2: dispatch. The queued run is left exactly where it is — not
-	// failed, because the halt is reversible and failing it would make the user
-	// start over.
 	if err := svc.Drive(ctx, ws, mustUUID(t, queued.RunID)); err != nil {
 		t.Fatalf("driving a run under a halt returned an error: %v", err)
 	}
@@ -164,7 +132,6 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Errorf("dispatches = %d; the halted fleet was handed more work", fake.Dispatches())
 	}
 
-	// --- ③ preserve the scene -------------------------------------------------
 	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
 		t.Fatalf("cleanup under a halt returned an error: %v", err)
 	}
@@ -176,9 +143,6 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Error("cleanup_status says cleaned while the sandbox is still standing")
 	}
 
-	// The orphan scan is the last thing that could destroy evidence, and it stands
-	// down too — while still recording what it saw, or the P1 would silently
-	// disable the X-04 count as well.
 	orphan := fake.Seed("00000000-0000-0000-0000-0000000000aa", "", time.Now().Add(-time.Hour))
 	runOrphanScan(t, svc)
 	if fake.Destroys() != 0 {
@@ -189,7 +153,6 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Errorf("the held scan recorded %d sightings, want 1: the X-04 count must keep running", n)
 	}
 
-	// --- the trail ------------------------------------------------------------
 	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
 		t.Errorf("dispatch.halted events = %d, want exactly 1", got)
 	}
@@ -205,9 +168,6 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 			actor, target, reason)
 	}
 
-	// --- the release, which is manual by construction --------------------------
-	// An X-04 style recovery cannot touch this halt: three clear reconciler rounds
-	// go by and it is still in force (03:SEC-012 「解除不得是自動的」).
 	for i := 0; i < 3; i++ {
 		svc.EvaluateOrphanThresholds(ctx)
 	}
@@ -227,7 +187,6 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Fatalf("after the resume: dispatching=%v, halts=%v", dispatching, halts)
 	}
 
-	// Everything the halt suspended resumes, and nothing it suspended was lost.
 	if err := svc.Drive(ctx, ws, mustUUID(t, queued.RunID)); err != nil {
 		t.Fatalf("driving the queued run after the resume: %v", err)
 	}
@@ -241,13 +200,11 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Errorf("cleanup_status = %+v after the resume, want cleaned", view.CleanupStatus)
 	}
 
-	// Idempotent in both directions, same rule as the SEC-011 operator routes.
 	if code, _ := operatorCall(t, operator, http.MethodDelete, "/admin/dispatch/halt",
 		`{"note":"double check"}`); code != http.StatusNoContent {
 		t.Error("a repeated resume is not a no-op")
 	}
-	// A note is required either way: an operator action nobody can explain later is
-	// not a decision (02:SEC-011 理由必填, applied to the same operator surface).
+
 	for _, body := range []string{`{}`, `{"note":"  "}`, `{"note":"n","provider":"no_such_node"}`} {
 		if code, _ := operatorCall(t, operator, http.MethodPut, "/admin/dispatch/halt", body); code != http.StatusBadRequest {
 			t.Errorf("PUT %s: got %d, want 400", body, code)
@@ -255,12 +212,6 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	}
 }
 
-// ADR-022 X-04 driving the same switch, and the SEC-012 behaviour following from
-// it — the bidirectional check that the two triggers really are one mechanism.
-//
-// Destroys are made to fail, because that is the only way a leak survives a scan
-// round: a sighting the next round cannot see is erased, which is what makes
-// `rounds` consecutive (0021).
 func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -272,9 +223,6 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 	ctx := context.Background()
 	ws := mustUUID(t, f.workspaceID)
 
-	// Two leaked sandboxes, older than the dispatch-in-flight grace. The fake
-	// declares 4 slots, so ADR-022 X-04's node threshold is 50% = 2 and its pool
-	// threshold is max(25% of 4, floor 2) = 2: this is exactly the breach.
 	fake.DestroyStatus = http.StatusInternalServerError
 	for _, id := range []string{
 		"00000000-0000-0000-0000-0000000000b1",
@@ -283,14 +231,11 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 		fake.Seed(id, "", time.Now().Add(-time.Hour))
 	}
 
-	// Round one sees them for the first time. X-03 counts consecutive rounds, so
-	// nothing is halted yet — and that restraint is the point of the threshold.
 	runOrphanScan(t, svc)
 	if dispatching, _ := dispatchStatus(t, operator); !dispatching {
 		t.Fatal("dispatch was halted on a single sighting; X-03 asks for two consecutive rounds")
 	}
 
-	// Round two crosses it.
 	runOrphanScan(t, svc)
 	dispatching, halts := dispatchStatus(t, operator)
 	if dispatching {
@@ -315,8 +260,6 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 		t.Error("the reconciler halted the fleet without an audit event")
 	}
 
-	// The SEC-012 side follows from the X-04 side, through the one switch: nothing
-	// is dispatched, and the run waits rather than failing.
 	created := f.start(t)
 	if created.Status != string(gen.RunStatusQueued) {
 		t.Fatalf("run status = %q; a capacity pause leaves runs queued (ADR-022 X-04)", created.Status)
@@ -332,23 +275,18 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 		t.Error("the reconciler's halt did not reach the scheduler: work was dispatched anyway")
 	}
 
-	// ...and unlike a P1, this one does not refuse creation. Two acceptance
-	// criteria, obeyed rather than averaged: X-04 says 「Run 停留 queued」 and its
-	// release is automatic, so queueing is a wait with an end.
 	hash := f.confirmPermissions(t)
 	if code, view := f.startWithHash(t, hash); code != http.StatusCreated {
 		t.Errorf("creating a run under an X-04 pause: got %d (%s), want 201", code, view.Error)
 	}
 
-	// Recovery: two consecutive clear rounds and no fewer (「不做單輪恢復，避免在清理
-	// 不穩定時來回抖動」).
 	fake.DestroyStatus = 0
-	runOrphanScan(t, svc) // still present at the start of this round; now destroyed
-	runOrphanScan(t, svc) // gone: first clear round
+	runOrphanScan(t, svc)
+	runOrphanScan(t, svc)
 	if dispatching, _ := dispatchStatus(t, operator); dispatching {
 		t.Fatal("dispatch resumed after a single clear round")
 	}
-	runOrphanScan(t, svc) // second clear round
+	runOrphanScan(t, svc)
 	if dispatching, halts := dispatchStatus(t, operator); !dispatching || len(halts) != 0 {
 		t.Fatalf("after two clear rounds: dispatching=%v, halts=%v", dispatching, halts)
 	}
@@ -363,10 +301,6 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 	}
 }
 
-// 02:SEC-010's escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 as the shared
-// switch has to implement it: a P1 takes over a capacity pause on the same target,
-// and nothing downgrades it back. Getting this wrong is not cosmetic — the
-// reconciler's very next round would hand a security halt an automatic release.
 func TestAnIncidentTakesOverACapacityPauseAndIsNeverDowngraded(t *testing.T) {
 	pool := requireDB(t)
 	svc := &run.Service{Pool: pool}
@@ -384,8 +318,6 @@ func TestAnIncidentTakesOverACapacityPauseAndIsNeverDowngraded(t *testing.T) {
 		t.Fatalf("halt after the P1 = %s/%q, want the incident to have taken over", halt.Source, halt.Reason)
 	}
 
-	// The reconciler's own release path cannot touch it, and its next threshold
-	// round cannot turn it back into a capacity pause.
 	if _, lifted, err := svc.LiftHalt(ctx, "", "clear", nil2uuid(),
 		[]string{run.HaltSourceOrphanThreshold}); err != nil || lifted {
 		t.Fatalf("the reconciler released a P1: lifted=%v err=%v", lifted, err)
@@ -404,12 +336,8 @@ func TestAnIncidentTakesOverACapacityPauseAndIsNeverDowngraded(t *testing.T) {
 	}
 }
 
-// nil2uuid is the zero UUID audit.Event reads as "platform-initiated", which is
-// what the reconciler passes.
 func nil2uuid() pgtype.UUID { return pgtype.UUID{} }
 
-// mustRun reads one run row back for the cleanup calls above, which take the row
-// rather than an id.
 func mustRun(t *testing.T, pool *pgxpool.Pool, workspaceID, runID string) gen.Run {
 	t.Helper()
 	row, err := gen.New(pool).GetRun(context.Background(), gen.GetRunParams{

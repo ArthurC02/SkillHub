@@ -1,40 +1,5 @@
 package main
 
-// `02:<ID>` means "the requirement with that heading in 02". Nothing checked
-// that the heading existed.
-//
-// doc_identifiers.go already asks "does this identifier exist in the code". The
-// gap it leaves is the other half of the same question: `03`, `04` and `05` cite
-// `02` roughly forty times, and a citation that resolves to nothing looks
-// exactly like one that resolves. Three of them do not resolve today, and each
-// is a different way of being wrong:
-//
-//	02:PDM-005    PDM-005 is a PROPOSAL number in mvp/m0/pdm-proposals.md. `02`
-//	              quotes it; `02` does not define it. The `02:` prefix says
-//	              otherwise, and a reader who goes looking finds nothing.
-//	02:SBX-008    the same shape with an `03` work-item id.
-//	02:736-759    a LINE RANGE written in requirement-id notation.
-//
-// None of the three is a lie about the substance; each is a lie about where to
-// look, which is the only thing the notation is for.
-//
-// The second half is uniqueness, because a reference is only unambiguous while
-// the target is. `02` has exactly one repeated id and it is a legitimate shape:
-// `### SEC-010：…` with `#### SEC-010 事件嚴重度分級與回應` nested under it. THE
-// RULE, decided here and stated so the next repeat has to argue with it: an id
-// may appear in more than one heading only when exactly one occurrence is the
-// shallowest and every other is strictly deeper — a sub-section of the section
-// that owns the id. Two `###` headings with the same id is two definitions, and
-// that fails.
-//
-// WHAT THIS DOES NOT COVER, deliberately. `02` also cites requirement ids in
-// prose without the `02:` prefix, and one of those is dangling too
-// (`DISC-005` at 02:616 — search's no-result state, which `02` never defines).
-// A rule broad enough to catch it flags four sentences that write `` `03` ``
-// followed by an `03` id, which is correct notation. Flagging what is not wrong
-// is how a check loses its readers, so that one is left to a human and recorded
-// here rather than half-enforced.
-
 import (
 	"fmt"
 	"os"
@@ -46,7 +11,6 @@ import (
 
 const requirementSpec = "docs/plans/02-specifications-and-acceptance-criteria.md"
 
-// The live documents that cite the spec.
 var requirementCiters = []string{
 	"docs/plans/03-work-items.md",
 	"docs/plans/04-backlog-and-handoffs.md",
@@ -54,16 +18,12 @@ var requirementCiters = []string{
 }
 
 var (
-	// A heading, with its depth. `~~PORT-002：…~~（撤回）` still declares the id:
-	// a withdrawn requirement is a place a citation may legitimately land, and
-	// the strikethrough is the narrative, not the definition.
 	requirementHeading = regexp.MustCompile(`^(#{2,6})\s+(.*)$`)
-	// A requirement id inside a heading. The prefix must start with a letter so
-	// that a section number cannot become an id.
+
 	requirementID = regexp.MustCompile(`\b[A-Z][A-Z0-9]{1,7}-\d{3}\b`)
-	// A citation. Deliberately looser than requirementID on both halves so that
-	// `02:736-759` is REPORTED rather than silently unmatched — a malformed
-	// citation and a missing target are the same defect to a reader.
+
+	// Looser than requirementID on purpose: a malformed citation must still
+	// match here so it gets reported, instead of silently matching nothing.
 	requirementCitation = regexp.MustCompile(`02:([A-Za-z0-9]+-[0-9]+)`)
 )
 
@@ -82,7 +42,6 @@ func requirementRefProblems(root string) []string {
 				"heading scan is broken rather than the spec emptied", requirementSpec, len(headings))}
 	}
 
-	// Uniqueness first: an ambiguous target makes every citation to it moot.
 	var ids []string
 	for id := range headings {
 		ids = append(ids, id)

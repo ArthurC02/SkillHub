@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// writeObjstoreTest plants one _test.go in the directory the check names, so
-// each case below is a whole tree the check can be pointed at.
 func writeObjstoreTest(t *testing.T, root, name, body string) {
 	t.Helper()
 	dir := filepath.Join(root, filepath.FromSlash(objstoreTestDir))
@@ -41,8 +39,6 @@ func TestRequireObjstoreGuardAcceptsAGuardedPackage(t *testing.T) {
 	}
 }
 
-// The first of the two deaths 02:PORT-009 names: the switch goes away, an
-// object store that never came up skips everything, and go test prints ok.
 func TestRequireObjstoreGuardCatchesADroppedSwitch(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -61,10 +57,6 @@ func TestMain(m *testing.M) { os.Exit(m.Run()) }`)
 	}
 }
 
-// A comment is not a guard. The sibling check shipped with exactly this hole —
-// it searched raw file text, so its own explanatory comment satisfied it — and
-// the fix (reprint from the AST, dropping comments) is shared code, which means
-// it can be un-shared. This is the assertion that would notice.
 func TestRequireObjstoreGuardIsNotSatisfiedByAComment(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -79,9 +71,6 @@ func TestMain(m *testing.M) { os.Exit(m.Run()) }`)
 	}
 }
 
-// The second death, and the one no switch-checking alone would see: the whole
-// file goes away. A tree with no gated package has nothing to complain about,
-// so the check has to name the directory it expects to find one in.
 func TestRequireObjstoreGuardCatchesTheTestBeingDeleted(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -97,7 +86,6 @@ func TestSomethingElse(t *testing.T) {}`)
 	}
 }
 
-// Pointed at the tree it exists for, not only at fixtures.
 func TestRequireObjstoreGuardPassesOnTheRealRepository(t *testing.T) {
 	t.Parallel()
 	root, err := findRepoRoot()

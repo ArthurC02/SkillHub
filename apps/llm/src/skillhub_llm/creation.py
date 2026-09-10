@@ -28,17 +28,9 @@ from skillhub_llm.untrusted import data_block_rules, fence, scrub
 logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
-# The measurement (05 R-45) may point this at another tier; the product key Go
-# issues per step is still pinned to gpt-5.4-mini (worker/creation_wiring.go).
 MODEL = os.getenv("CREATION_MODEL", "gpt-5.4-mini")
 PROMPT_VERSION = "creation-step/v17"
 DATA_TAG = "untrusted_creation_snapshot"
-# 05 SEC-013: a reference Skill's own SKILL.md and a tool observation (a fetched
-# page, a search result, a Run's evaluation) are content someone else wrote or a
-# provider returned, not Go's own fact. Each gets its own fenced block inside the
-# snapshot, same discipline as generate.py's REFERENCE_TAG - the snapshot fence
-# alone left the model to tell "platform fact" from "reference/tool text" apart
-# by field name inside one undifferentiated JSON blob.
 REFERENCE_TAG = "untrusted_reference_skill"
 TOOL_TAG = "untrusted_tool_observation"
 Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
@@ -65,8 +57,6 @@ class CreationToolIntent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["search_catalog", "search_knowledge", "validate_draft", "fetch_url"]
     query: str
-    # The owner's retrieval shape (2026-09-06): intent -> rewrites -> one
-    # fused ranking. Up to three rewrites ride with the intent; Go fuses.
     queries: list[str] | None
 
 
@@ -167,12 +157,8 @@ class _State(TypedDict, total=False):
 
 def _fenced_for_prompt(req: CreationStepRequest) -> CreationStepRequest:
     """A copy of req with each reference's skill_md and each tool observation
-    wrapped in its own untrusted block before the snapshot is serialised.
-
-    Only the copy used to build the prompt text; state["request"] keeps the
-    caller's original so downstream logic (_unmet_evaluation's JSON parse of
-    the newest tool message, _draft's d.draft == req.draft comparison) reads
-    the real values rather than a fenced string.
+    wrapped in its own untrusted block, for building prompt text only;
+    state["request"] keeps the caller's unfenced original for downstream logic.
     """
     return req.model_copy(
         update={
@@ -193,7 +179,6 @@ def _fenced_for_prompt(req: CreationStepRequest) -> CreationStepRequest:
 
 
 def _prepare(state: _State) -> dict:
-    # Original images never enter the persisted text transcript.
     req = state["request"]
     if req.diagram_understanding:
         try:
@@ -225,22 +210,12 @@ class ReviewEdit(BaseModel):
 
     criterion: str
     cause: str
-    # Where the fix lives. Run m (2026-09-06): 11/14 sessions revised the body
-    # and 1 of them passed, because the judge's reasons were a placeholder
-    # sample, a criterion about a branch the sample never takes, or data the
-    # trial cannot reach — none of which a body edit repairs.
     target: Literal["body", "criteria", "sample_input"]
     edit: str
 
 
 class ReviewDiagnosis(BaseModel):
-    """The first of the review phase's two calls: what to change, before changing it.
-
-    Runs k and l (2026-09-06): asked to say what changed and change it in one
-    answer, the mini model described an edit and returned the byte-identical
-    body in 10 of 14 sessions. Naming the edits first, then rewriting with
-    them in the prompt, separates the two.
-    """
+    """The first of the review phase's two calls: what to change, before changing it."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -452,8 +427,6 @@ def _reason_node(gateway_key: str, phase: str):
         diagnosis_usage: GatewayUsage | None = None
         rewritten_body = ""
         if phase == "review" and _unmet_evaluation(req.messages):
-            # Call one: name the edits. A failure here is not a broken step; the
-            # rewrite call below still runs, just without the list.
             try:
                 raw = (
                     await client(req.timeout_seconds)
@@ -487,9 +460,6 @@ def _reason_node(gateway_key: str, phase: str):
                     body_edits = [e for e in diagnosis.edits if e.target == "body"]
                     other = [e for e in diagnosis.edits if e.target != "body"]
                     if other:
-                        # The fix is in what the person confirmed: propose the
-                        # confirmation again with the corrected fields (Go asks
-                        # the person; a changed brief clears draft and candidate).
                         system += (
                             "\n\nEdits you decided on for this revision. Some are not in the "
                             "body: return outcome confirm_brief with the brief unchanged and "
@@ -504,13 +474,6 @@ def _reason_node(gateway_key: str, phase: str):
                             )
                         )
                     else:
-                        # Call two: rewrite the body as plain text. Run n
-                        # (2026-09-06): with the edit list in the prompt the mini
-                        # model still returned the byte-identical draft object in
-                        # 4 of 14 sessions while describing the change. A body-only
-                        # text answer is the task it can do; the decision call
-                        # below then only writes the message, and the body it
-                        # returns is replaced by this one.
                         edits_text = "\n".join(
                             f"- [{e.criterion}] {e.cause} -> {e.edit}" for e in body_edits
                         )
@@ -592,22 +555,16 @@ def _reason_node(gateway_key: str, phase: str):
             completion = raw.parse()
             choice = completion.choices[0]
             if getattr(choice, "finish_reason", None) == "length":
-                # Run p R09 (2026-09-06): two 502s at step one with nothing to read.
                 logger.warning(
                     "creation step refused a truncated output session=%s", req.session_id
                 )
                 raise HTTPException(status_code=502, detail="creation model output was truncated")
             decision = CreationDecision.model_validate_json(choice.message.content or "")
             if req.diagram is None and not req.diagram_understanding:
-                # No diagram was uploaded: an interpretation is the model's invention
-                # (run i R05, 2026-09-06: a text session ended in "請補充流程圖").
                 decision.diagram_understanding = None
                 if decision.outcome == "confirm_diagram":
                     decision.outcome = "clarification"
             if decision.diagram_understanding:
-                # An interpretation the model could not shape into the four sections is
-                # not a broken step: _render turns it into a clarification carrying
-                # reason diagram_incomplete, and the raw text never reaches Go.
                 try:
                     decision.diagram_understanding = _diagram_text(decision.diagram_understanding)
                 except HTTPException:
@@ -647,11 +604,8 @@ def _reason_node(gateway_key: str, phase: str):
             TypeError,
             ValueError,
         ) as exc:
-            # Never include model output, credentials or upstream exception text in diagnostics.
-            # The one line logged is the exception class plus, only for our own cap
-            # checks above (plain ValueError; pydantic's ValidationError subclasses it
-            # and carries the model's text), the fixed sentence they raise. Run g
-            # (2026-09-06) lost a session to this 502 with nothing to read afterwards.
+            # Only our own plain ValueError text is safe to log; ValidationError
+            # and others may carry model output or upstream response bodies.
             label = type(exc).__name__
             if type(exc) is ValueError:
                 label += ": " + str(exc)
@@ -672,8 +626,6 @@ def _route(state: _State) -> str:
 def _confirmation(state: _State) -> dict:
     d = state["decision"]
     if d.outcome == "confirm_brief" and not (d.brief or state["request"].brief).strip():
-        # Runs n and r (2026-09-06): the same docstring task died at step one
-        # three times on this 502. Go retries once on the reason code instead.
         logger.warning(
             "creation step refused an empty brief session=%s", state["request"].session_id
         )
@@ -742,9 +694,6 @@ def _tool(state: _State) -> dict:
             "reason": "search_query_missing",
         }
     if d.tool_intent.kind == "validate_draft":
-        # A model may propose a revised draft and ask Go to validate that exact
-        # proposal.  Keep it on the intent; falling back to the prior immutable
-        # request draft preserves validation after a user revision.
         draft = d.draft or req.draft
         result = _draft({"request": req, "decision": d.model_copy(update={"draft": draft})})
         checked = result["decision"]
@@ -790,8 +739,6 @@ def _draft(state: _State) -> dict:
             "reason": "confirm_brief_first",
         }
     if d.draft is None:
-        # 2026-09-06 measurement: 11/15 sessions died here — the model answered
-        # outcome=draft with draft null. That is a turn to hand back, not a 502.
         return {
             "decision": d.model_copy(
                 update={
@@ -841,8 +788,6 @@ def _draft(state: _State) -> dict:
 
 def _render(state: _State) -> dict:
     req, d = state["request"], state["decision"]
-    # Only confirmation proposals may change confirmed input. Go must invalidate
-    # its confirmation bit when accepting such a proposal.
     brief = d.brief or req.brief
     acceptance_criteria = d.acceptance_criteria or req.acceptance_criteria
     sample_input = d.sample_input or req.sample_input
@@ -907,8 +852,6 @@ def _graph(gateway_key: str):
     for node in ("confirmation", "tool", "draft"):
         graph.add_edge(node, "render")
     graph.add_edge("render", END)
-    # A tool boundary yields to Go. The next durable job re-enters observe with
-    # the actual tool result; no second model call can evade Go's receipt/budget.
     return graph.compile()
 
 
@@ -927,8 +870,8 @@ async def creation_step(
         while not await request.is_disconnected():
             await asyncio.sleep(0.1)
 
-    # LangGraph traces inputs by default when tracing environment variables are
-    # enabled. This request contains private text/images and must never do that.
+    # LangGraph traces node inputs by default when tracing env vars are set;
+    # this request carries private text and images, so tracing stays off.
     with tracing_context(enabled=False):
         work = asyncio.create_task(
             _graph(x_creation_gateway_key).ainvoke(

@@ -1,20 +1,11 @@
 package run
 
-// The arithmetic and the reading of the SEC-012 / ADR-022 X-04 switch, with no
-// database. The database-backed behaviour — both entry points, the preserved
-// scene, the audit trail and the automatic recovery — is
-// internal/identity/dispatch_halt_integration_test.go.
-
 import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
-// ADR-022 X-04 §6a, with the worked examples the ADR itself gives: 「單節點 2 slot
-// × 50% ＝ 1 筆」, 「套進早期成長：20 slot × 25% ＝ 5 筆」, and the floor of 2 on the
-// pool that exists because 「純 25% 在 4 slot 下等於 1 筆，一次洩漏就停掉整個平台
-// ——那不是保守，是把一個容量事件升級成全平台事故」.
 func TestNodeAndPoolThresholds(t *testing.T) {
 	for _, tc := range []struct {
 		what  string
@@ -25,13 +16,7 @@ func TestNodeAndPoolThresholds(t *testing.T) {
 		{"4 slots at 50%", 4, 2},
 		{"early growth node, 8 slots at 50%", 8, 4},
 		{"an undeclared or unreachable node falls back to the floor", 0, 1},
-		// The one row the ceiling division survives on. Every other row here is
-		// either an exact division or gets caught by the floor, so floor division
-		// answers all of them identically and the mutation lived. 3 slots at 50%
-		// is 1.5: ceiling 2, floor division 1, and the node floor of 1 cannot
-		// rescue it. Without this row, ADR-022 X-04's 「≥25%／≥50%」 could quietly
-		// become "one whole resource later" on every fleet size that does not
-		// divide evenly.
+
 		{"3 slots at 50% rounds up, and the floor of 1 cannot hide it", 3, 2},
 	} {
 		if got := haltThreshold(tc.slots, 1, 2, 1); got != tc.want {
@@ -43,8 +28,7 @@ func TestNodeAndPoolThresholds(t *testing.T) {
 		slots int
 		want  int64
 	}{
-		// 25% of 4 is 1, and the floor is what stops one leak from taking the
-		// platform down in the closed beta's own capacity.
+
 		{"closed beta pool, 4 slots at 25% under the floor", 4, 2},
 		{"early growth pool, 20 slots at 25%", 20, 5},
 		{"6 slots at 25% rounds up to a whole resource", 6, 2},
@@ -72,9 +56,6 @@ func threshold(provider string) gen.DispatchHalt {
 	return gen.DispatchHalt{Provider: provider, Source: HaltSourceOrphanThreshold}
 }
 
-// 02:SEC-010 action ③: a pool-wide P1 preserves every node's scene, a node-scoped
-// one preserves only its own, and a capacity pause preserves nothing — cleanup is
-// what clears the leaks that raised it.
 func TestIncidentHeldCoversTheRightNodes(t *testing.T) {
 	for _, tc := range []struct {
 		what     string
@@ -96,9 +77,6 @@ func TestIncidentHeldCoversTheRightNodes(t *testing.T) {
 	}
 }
 
-// "All the nodes are drained" and "the pool is paused" are the same operational
-// fact, and answering them differently is exactly the split view 03:SEC-012 is
-// about.
 func TestDispatchPaused(t *testing.T) {
 	two := &Registry{Providers: []*Provider{
 		NewProvider("node_a", "http://a", ""),
@@ -114,8 +92,7 @@ func TestDispatchPaused(t *testing.T) {
 		{"pool halt", haltsOf(threshold(haltPool)), two, true},
 		{"one node drained, one left", haltsOf(threshold("node_a")), two, false},
 		{"every node drained", haltsOf(threshold("node_a"), incident("node_b")), two, true},
-		// A deployment with no sandbox at all is an existing state with existing
-		// behaviour (the run is accepted and fails saying so). It is not this switch.
+
 		{"no providers configured", haltsOf(), &Registry{}, false},
 	} {
 		if got := tc.state.dispatchPaused(tc.registry); got != tc.want {

@@ -1,6 +1,3 @@
-// Tests for how clean mode mints apps/llm's LiteLLM Virtual Key.
-//
-// `node --test`, no framework, same shape as env.test.mjs.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 

@@ -1,11 +1,3 @@
-// Run scheduling and resilience, end to end against a fake sandbox provider
-// (RUN-005~008 plus the outbox publisher). Same file family as
-// run_integration_test.go, and the same rule: the real route table, the real
-// River worker, the real state machine, a throwaway database.
-//
-// The provider is a fake (internal/run/providertest) that implements the frozen
-// contract. It isolates nothing and runs nothing — these tests are about the
-// orchestrator, not about the sandbox (ADR-015, SEC-009 cover that).
 package apiserver_test
 
 import (
@@ -30,9 +22,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
-// withProvider starts a fake provider, points both the API and a worker at it,
-// and returns the fake plus the worker's service. Poll and retry settings are
-// squeezed so a test finishes in milliseconds rather than minutes.
 func withProvider(
 	t *testing.T, a *api, pool *pgxpool.Pool, plan providertest.Plan, evaluator ...*eval.Service,
 ) (*providertest.Fake, *run.Service) {
@@ -43,13 +32,9 @@ func withProvider(
 	t.Cleanup(fake.Close)
 
 	registry := run.NewRegistry(fake.Provider())
-	// The API refuses incompatible work before queueing, so it needs the registry
-	// too (RUN-005); it never dispatches.
+
 	a.runs.Providers = registry
 
-	// Store, as cmd/worker wires it: a dispatch mints the object grants a sandbox
-	// fetches its inputs with, and a worker without one refuses to dispatch at all
-	// (SBX-008 is fail-closed).
 	svc := *a.runs
 	svc.Providers = registry
 	svc.Store = a.packages
@@ -62,17 +47,6 @@ func withProvider(
 	return fake, &svc
 }
 
-// clearRunBacklog is fixture hygiene, not product behaviour.
-//
-// Several tests in this package deliberately create runs with nobody to work them
-// — that is what they are testing. They share one database and one River queue
-// with the tests below, so a worker started here would pick every one of those
-// jobs up and dispatch it to this test's fake provider: slow, and it moves
-// counters this test is about to assert on.
-//
-// The rows are retired with a direct UPDATE rather than through the state machine.
-// There is no "abandon" transition and inventing one so a test could tidy up would
-// be a worse trade than one honest UPDATE in a test helper.
 func clearRunBacklog(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
@@ -103,20 +77,6 @@ func waitForCleanup(t *testing.T, c *client, runID string) runView {
 	return last
 }
 
-// SBX-008's dataset half: a run whose test case carries an uploaded file has to
-// be dispatched with a read grant for that file's *current* object key.
-//
-// The key is not in the snapshot — a DatasetRef freezes the content hash, because
-// that is what outlives the file, while the key is a storage fact (ADR-003 刪除與
-// 可追溯性). So the dispatcher re-reads the row, through testlab.ReadDataset since
-// DDD-033. Nothing exercised that branch of grantsFor before: every other fixture
-// runs a test case with no files, so a dispatcher that could not resolve a dataset
-// at all still made every run in this file go green.
-//
-// The assertion is that the run finishes. Grant minting is fail-closed and runs
-// before anything reaches a sandbox, so a lookup that cannot find the dataset
-// fails the dispatch — "it succeeded" is exactly the statement that the file was
-// resolved.
 func TestARunWhoseTestCaseCarriesAFileIsDispatchedWithAGrantForIt(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -141,8 +101,6 @@ func TestARunWhoseTestCaseCarriesAFileIsDispatchedWithAGrantForIt(t *testing.T) 
 	}
 }
 
-// RUN-005 + RUN-007, the happy path: a provider is selected, the run walks the
-// whole state machine, and the sandbox is released afterwards.
 func TestRunWalksTheStateMachineAndIsCleanedUp(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -166,13 +124,7 @@ func TestRunWalksTheStateMachineAndIsCleanedUp(t *testing.T) {
 	if final.FailureClass.Value != "" {
 		t.Errorf("a successful run carries failure_class %q", final.FailureClass.Value)
 	}
-	// ADR-025: the terminal reason is execution language and nothing more. It used
-	// to promise an evaluator that would come back and decide `succeeded` versus
-	// `failed`; that TODO was overturned, and `succeeded` must not read as a task
-	// verdict on any surface.
-	// The clause moved language on 2026-09-01 (04 丙-115 ①); what it has to say
-	// did not. Both halves are named, because the sentence is only doing its job
-	// when it says the verdict is elsewhere AND says where.
+
 	if !strings.Contains(final.StatusReason, "另一個判斷") ||
 		!strings.Contains(final.StatusReason, "評估") {
 		t.Errorf("success reason = %q, want it to keep execution and task verdict apart "+
@@ -182,7 +134,6 @@ func TestRunWalksTheStateMachineAndIsCleanedUp(t *testing.T) {
 		t.Errorf("the overturned TODO's wording is still here: %q", final.StatusReason)
 	}
 
-	// RUN-005: the chosen provider is on the run, and the mapping is on the attempt.
 	if final.Provider != "fake_sandbox" {
 		t.Errorf("run provider = %q, want fake_sandbox", final.Provider)
 	}
@@ -196,18 +147,12 @@ func TestRunWalksTheStateMachineAndIsCleanedUp(t *testing.T) {
 		t.Errorf("the provider was dispatched to %d times for one run", fake.Dispatches())
 	}
 
-	// RUN-007: cleanup follows the terminal state without anyone asking.
 	waitForCleanup(t, f.client, created.RunID)
 	if fake.Live() != 0 {
 		t.Errorf("%d sandboxes are still held after cleanup", fake.Live())
 	}
 }
 
-// DDD-005 / contracts/events/domain-events.md §4 rule 5: nothing in internal/run
-// enqueues an evaluation any more. The whole chain has to work for a finished run
-// to get one — terminal transition writes `run.succeeded`, the publisher hands it
-// to eval's consumer, the consumer enqueues — and it has to produce exactly one,
-// however many times the at-least-once outbox delivers the event.
 func TestAFinishedRunIsEvaluatedThroughItsDomainEventExactlyOnce(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -217,8 +162,6 @@ func TestAFinishedRunIsEvaluatedThroughItsDomainEventExactlyOnce(t *testing.T) {
 	created := f.start(t)
 	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
 
-	// The consumer runs off the periodic publish startWorkerWith registers, so the
-	// evaluation appears on its own — no test calls Evaluate here.
 	deadline := time.Now().Add(20 * time.Second)
 	for evaluations(t, pool, created.RunID) == 0 && time.Now().Before(deadline) {
 		time.Sleep(50 * time.Millisecond)
@@ -227,13 +170,6 @@ func TestAFinishedRunIsEvaluatedThroughItsDomainEventExactlyOnce(t *testing.T) {
 		t.Fatalf("the run's domain event produced %d evaluations, want exactly 1", n)
 	}
 
-	// Redelivery: the run's own committed event, handed to the consumer a second
-	// time the way a publisher that died before marking it published would. A
-	// second evaluation here is a second paid judge call for one run.
-	//
-	// Delivered directly rather than by re-running the publisher: the backlog is
-	// shared with every other test in this package, and this assertion is about
-	// one run's event.
 	var event outbox.Event
 	if err := pool.QueryRow(context.Background(), `
 		SELECT event_id, event_type, event_version, occurred_at, correlation_id,
@@ -270,8 +206,6 @@ func evaluations(t *testing.T, pool *pgxpool.Pool, runID string) int {
 	return n
 }
 
-// RUN-006: cancelling a dispatched run reaches the provider, and the run only
-// reports `cancelled` once the workload is actually down.
 func TestCancelReachesTheProviderAndStopsTheRun(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -285,7 +219,7 @@ func TestCancelReachesTheProviderAndStopsTheRun(t *testing.T) {
 	if code != http.StatusAccepted {
 		t.Fatalf("cancel: got %d, want 202", code)
 	}
-	// Intent only, while the workload is still up.
+
 	if view.Status != string(gen.RunStatusRunning) {
 		t.Errorf("status right after cancel = %q, want running", view.Status)
 	}
@@ -300,14 +234,12 @@ func TestCancelReachesTheProviderAndStopsTheRun(t *testing.T) {
 	}
 }
 
-// RUN-006: a provider that cannot take the dispatch is retried, with a new attempt
-// row each time so the previous provider mapping is never overwritten (RUN-003).
 func TestDispatchFailuresAreRetriedWithNewAttempts(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-dispatch-retry")
 	fake, _ := withProvider(t, a, pool, providertest.Plan{})
-	// Two bad minutes, then the provider recovers.
+
 	fake.DispatchStatuses = []int{http.StatusServiceUnavailable, http.StatusTooManyRequests}
 
 	created := f.start(t)
@@ -329,8 +261,6 @@ func TestDispatchFailuresAreRetriedWithNewAttempts(t *testing.T) {
 	}
 }
 
-// ADR-004: no unbounded retries. A provider that never recovers ends the run after
-// the configured ceiling, classified as the provider's failure and not the skill's.
 func TestRetriesAreBoundedAndClassifiedAsProviderFailure(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -352,8 +282,6 @@ func TestRetriesAreBoundedAndClassifiedAsProviderFailure(t *testing.T) {
 	}
 }
 
-// RUN-006's other half: the workload ran and reported failure. That is the skill's
-// answer, not a transient fault, so it is recorded once and never retried.
 func TestWorkloadFailureIsRecordedOnceAndNotRetried(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -376,21 +304,11 @@ func TestWorkloadFailureIsRecordedOnceAndNotRetried(t *testing.T) {
 	waitForCleanup(t, f.client, created.RunID)
 }
 
-// PDM-005 5.2a-4: the token ceiling is the worker's to enforce, and it has to be
-// able to enforce it against a workload that does not cooperate.
-//
-// The sandbox harness counts tokens too and stops itself, but it runs inside the
-// process it bounds and holds that process's gateway credential, so a skill that
-// calls the gateway around it is counted by nobody. That is what this fake is: a
-// provider whose workload never stops, and a gateway whose spend log says the
-// tokens were spent anyway. Nothing but the worker can end this run before its
-// wall clock, and the wall clock is eight times too late.
 func TestARunPastItsTokenCeilingIsStoppedByTheWorker(t *testing.T) {
 	pool := requireDB(t)
 	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/spend/logs") {
-			// One model call, already past the 300K the user confirmed - and well
-			// inside what the key's $0.50 max_budget would have allowed.
+
 			_, _ = w.Write([]byte(`{"data":[{"prompt_tokens":420000,"completion_tokens":900}],"total_pages":1}`))
 			return
 		}
@@ -407,34 +325,25 @@ func TestARunPastItsTokenCeilingIsStoppedByTheWorker(t *testing.T) {
 
 	created := f.start(t)
 	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusFailed))
-	// The workload burned the budget it was given; retrying burns it again to
-	// reach the same answer, which is what workload_error means (0018).
+
 	if final.FailureClass.Value != "workload_error" {
 		t.Errorf("failure_class = %q, want workload_error", final.FailureClass.Value)
 	}
-	// Not a generic failure: the user is told which ceiling stopped their run.
+
 	if !strings.Contains(final.StatusReason, "token ceiling") {
 		t.Errorf("reason = %q, want it to name the token ceiling", final.StatusReason)
 	}
-	// PDM-005 §5.2's risk row, verbatim: 「Trace 中標為 `budget_exhausted` 而非泛用
-	// 失敗」. failure_class above is the coarse retry decision and workload_error is
-	// the right one there; error_class is the diagnostic, and reporting `execution`
-	// for it -- which this did until 2026-08-25 -- is precisely the generic failure
-	// that row forbids. NFR-003 wants an internal code per terminal state, not a
-	// sentence somebody has to grep.
+
 	if cls := attemptErrorClass(t, pool, created.RunID); cls != "budget_exhausted" {
 		t.Errorf("error_class = %q, want budget_exhausted", cls)
 	}
-	// Same ending as a wall-clock breach: the workload is asked to stop and the
-	// sandbox is released by the cleanup the terminal transition schedules.
+
 	waitForCleanup(t, f.client, created.RunID)
 	if fake.Live() != 0 {
 		t.Errorf("%d sandboxes survived a run stopped at its token ceiling", fake.Live())
 	}
 }
 
-// RUN-006 wall clock, RUN-008 watchdog: a run whose deadline passed while nothing
-// was driving it is timed out by the supervisor rather than left running forever.
 func TestSupervisorTimesOutARunThatOutlivedItsWallClock(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -442,8 +351,7 @@ func TestSupervisorTimesOutARunThatOutlivedItsWallClock(t *testing.T) {
 	created := f.start(t)
 
 	ctx := context.Background()
-	// Squeeze the run's own frozen wall clock, then push it into the past. Both
-	// writes are legal because the run is not terminal (0005).
+
 	if _, err := pool.Exec(ctx, `
 		UPDATE runs
 		SET policy_snapshot = jsonb_set(policy_snapshot,
@@ -465,33 +373,25 @@ func TestSupervisorTimesOutARunThatOutlivedItsWallClock(t *testing.T) {
 	if view.FailureClass.Value != "timeout" {
 		t.Errorf("failure_class = %q, want timeout", view.FailureClass.Value)
 	}
-	// 「超過硬性時間上限」 — the same claim as the English it replaced: this run was
-	// stopped by a clock, not by anything it did.
+
 	if !strings.Contains(view.StatusReason, "時間上限") {
 		t.Errorf("reason = %q, want it to name the wall clock limit", view.StatusReason)
 	}
 }
 
-// RUN-008 recovery: a run that has no job at all — the process died between the
-// run row and the queue, or the job was lost — is picked up again by the
-// supervisor and driven to completion.
 func TestSupervisorRecoversARunThatHasNoJob(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-recovery")
 	fake, _ := withProvider(t, a, pool, providertest.Plan{})
 
-	// A service with no queue creates the run and enqueues nothing, which is
-	// exactly the state a crash between the two would leave behind.
 	orphanedSvc := *a.runs
 	orphanedSvc.Providers = run.NewRegistry(fake.Provider())
 	orphanedSvc.Store = a.packages
 	orphanedSvc.Queue = nil
 	ws, actor := mustUUID(t, f.workspaceID), mustUUID(t, f.userID)
 	skill, version, testCase := mustUUID(t, f.skillID), mustUUID(t, f.versionID), mustUUID(t, f.testCaseID)
-	// Gate B applies to every caller of Create, this one included: confirm through
-	// the same service, because the summary names the provider it would dispatch to
-	// and this service has a different fleet from the API's.
+
 	summary, err := orphanedSvc.PermissionSummaryFor(context.Background(), ws, skill, version, testCase)
 	if err != nil {
 		t.Fatal(err)
@@ -514,24 +414,18 @@ func TestSupervisorRecoversARunThatHasNoJob(t *testing.T) {
 		t.Fatalf("the un-queued run is %q, want queued", view.Status)
 	}
 
-	// The worker's own service has a queue; one sweep gives the run a job.
 	if err := a.runs.Supervise(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	waitForStatus(t, f.client, runID, string(gen.RunStatusSucceeded))
 }
 
-// RUN-008 safe termination: a run past dispatch with no resumable attempt cannot
-// be rewound — the state machine has no backward edge — so it is failed honestly
-// rather than silently re-run as if it were the original attempt.
 func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-unresumable")
 	ctx := context.Background()
 
-	// No worker here: this test drives the job itself, so the run stays exactly
-	// where it is put.
 	created := f.start(t)
 	svc := &run.Service{Pool: pool}
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
@@ -552,9 +446,6 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// A restart lands here after attempt allocation but before request assembly.
-	// The handle-less attempt cannot be re-attached, and its fail-closed infinity
-	// grant sentinel must be closed when the run is terminalised.
 	if err := svc.Drive(ctx, ws, runID); err != nil {
 		t.Fatal(err)
 	}
@@ -603,8 +494,7 @@ func TestLegacyAttemptGrantStateRemainsFailClosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Simulate an attempt made by a pre-0050 worker. Infinity alone cannot prove
-	// whether that worker handed a URL to its provider.
+
 	if _, err := pool.Exec(ctx, `UPDATE run_attempts
 		SET object_grants_state = 'legacy_unknown', object_grants_expire_at = 'infinity'
 		WHERE id = $1`, attempt.ID); err != nil {
@@ -625,19 +515,6 @@ func TestLegacyAttemptGrantStateRemainsFailClosed(t *testing.T) {
 	}
 }
 
-// The other side of that branch, and the one it used to swallow: a run whose
-// provider reported success, interrupted between `evaluating` and `succeeded`.
-//
-// settle() finishes the attempt before it walks the happy path, and the walk is
-// one transaction per step. So a single database blip on the last step — or a
-// worker restart the supervisor then re-enqueues — comes back to a run that is
-// `evaluating`, non-terminal, with no *live* attempt to resume because
-// finished_at is already written. That is not a platform failure: the workload
-// ran, the artifacts are recorded, and rewriting it as failed/platform_error
-// would make runs.status answer a question ADR-025 gives to the evaluation.
-//
-// Both halves are here, because what separates them is the attempt's error class
-// and nothing else.
 func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -651,22 +528,17 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 	}{
 		{name: "alice-resume-evaluating", errorClass: nil,
 			wantStatus: gen.RunStatusSucceeded, wantFailure: ""},
-		// An attempt that ended badly never leaves the run in `evaluating` — settle
-		// takes those out through finish() — so this is the guard that keeps the
-		// resume from reviving something on evidence nobody produced.
+
 		{name: "alice-resume-refused", errorClass: strptr("execution_error"),
 			wantStatus: gen.RunStatusFailed, wantFailure: "platform_error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t, a, pool, tc.name)
-			// No worker and no provider: this test drives the job itself, so the run
-			// stays exactly where it is put.
+
 			svc := &run.Service{Pool: pool}
 			created := f.start(t)
 			ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 
-			// The attempt as settle() left it: dispatched, finished, and carrying the
-			// class classifyResult wrote for its outcome.
 			if _, err := pool.Exec(ctx, `
 				INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider,
 				                          provider_run_id, started_at, finished_at, error_class)
@@ -687,8 +559,6 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 				}
 			}
 
-			// The restart: the supervisor re-enqueues the run and the driver reads it
-			// back from `evaluating`.
 			if err := svc.Drive(ctx, ws, runID); err != nil {
 				t.Fatal(err)
 			}
@@ -706,23 +576,12 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 
 func strptr(s string) *string { return &s }
 
-// RUN-007: a teardown the provider refused is recorded as failed, and running
-// the whole thing again afterwards is safe.
-//
-// Both halves were unasserted. `cleanup_status = 'failed'` appears nowhere in
-// any test in this repository, so turning that write into `'cleaned'` was green
-// — and O11Y-003's alert rules exist precisely to tell the two apart: a
-// `destroyed` is a leak that was contained, a `failed` is a leak still burning a
-// slot and the only one that needs a human. The early return on an
-// already-cleaned run had no test either, so deleting it was green as well,
-// which is the one thing iron rule 9 asks of this path (M2 audit, 2026-08-24).
 func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-cleanup-retry")
 	fake, svc := withProvider(t, a, pool, providertest.Plan{})
 
-	// The provider will not let go of this sandbox.
 	fake.DestroyStatus = http.StatusInternalServerError
 
 	created := f.start(t)
@@ -733,7 +592,6 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 	}
 	before := fake.Destroys()
 
-	// The provider recovers. Cleanup runs again and this time succeeds.
 	fake.DestroyStatus = 0
 	runRow := readRun(t, pool, f.workspaceID, created.RunID)
 	if err := svc.Cleanup(context.Background(), runRow); err != nil {
@@ -746,10 +604,6 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 		t.Fatalf("the retry never reached the provider: %d destroys before, %d after", before, after)
 	}
 
-	// And a third cleanup job over an already-cleaned run does nothing at all.
-	// Driven through CleanupWorker rather than Cleanup, because that is where the
-	// early return lives: Cleanup itself is safe to repeat by contract (DELETE has
-	// no 404), and the worker is what stops a redelivered job from paying for it.
 	settled := fake.Destroys()
 	job := &river.Job[run.CleanupArgs]{
 		Args: run.CleanupArgs{RunID: created.RunID, WorkspaceID: f.workspaceID},
@@ -762,8 +616,6 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 	}
 }
 
-// readRun is the row Cleanup takes. Workspace-scoped like every other read of
-// it (iron rule 3), which is why the fixture's workspace comes along.
 func readRun(t *testing.T, pool *pgxpool.Pool, workspaceID, runID string) gen.Run {
 	t.Helper()
 	var id, ws pgtype.UUID
@@ -794,20 +646,15 @@ func runCleanupStatus(t *testing.T, pool *pgxpool.Pool, runID string) string {
 	return status
 }
 
-// RUN-007 orphan scanning: a sandbox the platform has no live attempt for is
-// destroyed, and a fresh one it does not recognise yet is left alone.
 func TestOrphanScanDestroysLeakedSandboxesButSparesFreshOnes(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-orphan-scan")
 	fake, svc := withProvider(t, a, pool, providertest.Plan{})
 
-	// A sandbox from a run this platform never knew about, old enough to be past
-	// the dispatch window.
 	leaked := fake.Seed("00000000-0000-4000-8000-000000000001",
 		"00000000-0000-4000-8000-000000000002", time.Now().Add(-time.Hour))
-	// And one created a moment ago: unrecognised, but possibly a dispatch still in
-	// flight, so it must survive.
+
 	fresh := fake.Seed("00000000-0000-4000-8000-000000000003",
 		"00000000-0000-4000-8000-000000000004", time.Now())
 
@@ -827,15 +674,6 @@ func TestOrphanScanDestroysLeakedSandboxesButSparesFreshOnes(t *testing.T) {
 	}
 }
 
-// RUN-005 / ADR-003: runtime_snapshot freezes what the scheduler matched, so a
-// re-dispatch must not rewrite it.
-//
-// dispatch() is re-enterable — execute() routes a `queued`/`provisioning` run with
-// no live attempt straight back into it, which is where a job retried after
-// SetAttemptProviderRunID failed arrives — and pinProvider used to run
-// unconditionally on the way through. SetRunProvider overwrites the column in
-// place, so the runtime attempt 1 actually matched was gone the moment attempt 2
-// was scheduled, which is the one thing the column exists to prevent.
 func TestARedispatchDoesNotRewriteTheRuntimeItAlreadyPinned(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -846,9 +684,6 @@ func TestARedispatchDoesNotRewriteTheRuntimeItAlreadyPinned(t *testing.T) {
 	created := f.start(t)
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 
-	// The run as the first dispatch left it: a provider pinned, and a runtime
-	// snapshot naming a version this fleet no longer offers. That is exactly the
-	// case ADR-003 keeps the column for.
 	const pinned = `{"provider":"fake_sandbox","runtime":{"image_digest":"sha256:the-one-attempt-1-matched"}}`
 	if _, err := pool.Exec(ctx,
 		`UPDATE runs SET provider = 'fake_sandbox', runtime_snapshot = $2 WHERE id = $1`,
@@ -856,7 +691,6 @@ func TestARedispatchDoesNotRewriteTheRuntimeItAlreadyPinned(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Re-enter dispatch: queued, no live attempt, exactly what a retried job finds.
 	if err := svc.Drive(ctx, ws, runID); err != nil {
 		t.Fatal(err)
 	}
@@ -871,9 +705,6 @@ func TestARedispatchDoesNotRewriteTheRuntimeItAlreadyPinned(t *testing.T) {
 	}
 }
 
-// idleProvider is withProvider without the worker: the test drives the service
-// itself, so a run stays exactly where it is put. Needed by anything that has to
-// observe a *non-terminal* run, which a running worker would not leave alone.
 func idleProvider(t *testing.T, a *api, pool *pgxpool.Pool) (*providertest.Fake, *run.Service) {
 	t.Helper()
 	clearRunBacklog(t, pool)
@@ -888,8 +719,6 @@ func idleProvider(t *testing.T, a *api, pool *pgxpool.Pool) (*providertest.Fake,
 	return fake, &svc
 }
 
-// handlelessAttempt is job.go's SetAttemptProviderRunID failure as it is left on
-// disk: the attempt was dispatched and its provider_run_id is NULL.
 func handlelessAttempt(t *testing.T, pool *pgxpool.Pool, runID, ws pgtype.UUID, number int) string {
 	t.Helper()
 	var id pgtype.UUID
@@ -902,15 +731,6 @@ func handlelessAttempt(t *testing.T, pool *pgxpool.Pool, runID, ws pgtype.UUID, 
 	return uuidText(id)
 }
 
-// RUN-007: a sandbox whose attempt exists but never recorded its handle is a
-// leak, and is reclaimed on age like any other.
-//
-// It used to stand until the *run* reached a terminal state, which is up to the
-// whole wall clock away: Cleanup skips a NULL provider_run_id as "never
-// dispatched", and isOrphan asked the run's status — non-terminal, because the
-// driver had already opened the next attempt and carried on. So the sandbox was
-// billed and holding a slot while the run it belonged to had moved on without it,
-// and nothing in this file noticed (M2/M5 audit, 2026-08-25).
 func TestOrphanScanReclaimsASandboxWhoseHandleWasNeverRecorded(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -918,17 +738,13 @@ func TestOrphanScanReclaimsASandboxWhoseHandleWasNeverRecorded(t *testing.T) {
 	fake, svc := idleProvider(t, a, pool)
 	ctx := context.Background()
 
-	created := f.start(t) // no worker here, so it stays queued
+	created := f.start(t)
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 	lost := handlelessAttempt(t, pool, runID, ws, 1)
 	inFlight := handlelessAttempt(t, pool, runID, ws, 2)
 
-	// The sandbox attempt 1's lost write was supposed to name, old enough that the
-	// one UPDATE between the provider's answer and the platform's record has had
-	// every chance to land...
 	leaked := fake.Seed(created.RunID, lost, time.Now().Add(-time.Hour))
-	// ...and one from a dispatch that genuinely is still in flight. Same missing
-	// handle, and it must survive: that is what orphanGrace is for.
+
 	fresh := fake.Seed(created.RunID, inFlight, time.Now())
 
 	if err := (&run.OrphanScanWorker{Svc: svc}).Work(ctx, nil); err != nil {
@@ -942,12 +758,6 @@ func TestOrphanScanReclaimsASandboxWhoseHandleWasNeverRecorded(t *testing.T) {
 	}
 }
 
-// SBX-012 / ADR-022 X-03: the in-flight orphan table, which is what makes
-// "同一筆連續 2 輪仍存在" a thing the platform can actually say.
-//
-// The distinction the old accumulating counter could not draw, and this can: two
-// different resources each failing once is not the same event as one resource
-// stuck for two rounds, and only the second is the alert.
 func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -955,7 +765,6 @@ func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
 	fake, svc := withProvider(t, a, pool, providertest.Plan{})
 	ctx := context.Background()
 
-	// A leak the provider refuses to destroy: it is still there next round.
 	fake.DestroyStatus = http.StatusInternalServerError
 	stuck := fake.Seed("00000000-0000-4000-8000-000000000011",
 		"00000000-0000-4000-8000-000000000012", time.Now().Add(-time.Hour))
@@ -974,8 +783,6 @@ func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
 		t.Fatalf("the fixture stopped holding the stuck sandbox: %v", err)
 	}
 
-	// A *different* handle failing once must not add to it: the threshold is about
-	// one resource surviving, not about how much failed in the window.
 	fake.Seed("00000000-0000-4000-8000-000000000013",
 		"00000000-0000-4000-8000-000000000014", time.Now().Add(-time.Hour))
 	scan()
@@ -983,8 +790,6 @@ func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
 		t.Errorf("a second, freshly-seen leak raised the count to %d, want 1", got)
 	}
 
-	// Once the provider can tear it down again, the next round destroys everything
-	// and the round after that finds nothing to carry — the count clears itself.
 	fake.DestroyStatus = 0
 	scan()
 	scan()
@@ -1007,8 +812,6 @@ func persistentOrphans(t *testing.T, pool *pgxpool.Pool, provider string) int {
 	return n
 }
 
-// ADR-008 / iron rule 9: events are handed on at least once, marking is idempotent,
-// and a delivery that fails leaves the backlog where it was.
 func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -1020,10 +823,6 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 		t.Fatal("creating a run published nothing to the outbox")
 	}
 
-	// A delivery that fails must not mark anything: at-least-once means the event
-	// is still there to be re-sent. It must also be *reported* — the pass returns
-	// the failure so River retries the publish job, instead of the backlog sitting
-	// there until the next tick with nobody the wiser.
 	backlog := unpublishedCount(t, pool)
 	failing := &outbox.Worker{Pool: pool, Deliver: func(context.Context, outbox.Event) error {
 		return context.DeadlineExceeded
@@ -1054,34 +853,15 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 	if after := unpublishedCount(t, pool); after != 0 {
 		t.Errorf("%d events are still unpublished after a successful pass", after)
 	}
-	// Draining again is a no-op rather than a re-delivery storm.
+
 	if n, err := publisher.Publish(ctx); err != nil || n != 0 {
 		t.Errorf("second pass published %d events (err %v), want 0", n, err)
 	}
 }
 
-// Two publishers running at once, and what the publisher lock does and does not
-// promise them.
-//
-// This test used to assert that a second publisher saw NOTHING while the first
-// was inside a delivery, because the first held the advisory lock — and the
-// connection under it — for the whole pass. That is the shape 2026-08-29 found
-// to be a deadlock in clean mode: one pool connection, held by the publisher,
-// while the consumer it just called asks the same pool for a second one
-// (m6/report-inmemory-postgres.md measured the identical shape at 238 seconds).
-// The publisher now releases the lock after it claims a batch and delivers on
-// the pool, so the old assertion is not merely obsolete — asserting it again
-// would be asserting the deadlock back.
-//
-// What is given up is stated in outbox.claim and it is inside the contract this
-// package opens with: delivery is at-least-once and every consumer dedupes on
-// event_id (ADR-008). So two publishers may hand the same event on twice.
-//
-// What must still hold, and is what this pins:
-//   - nothing is lost: the backlog ends fully published;
-//   - marking is idempotent: MarkOutboxEventsPublished's published_at IS NULL
-//     guard means the second publisher cannot un-publish or double-count;
-//   - neither publisher fails because the other was working.
+// The claim lock is held only while a batch is claimed, not during delivery,
+// so a second publisher can run concurrently and may redeliver an event the
+// first has already claimed but not yet marked.
 func TestConcurrentOutboxPublishersAreAtLeastOnceAndNeverLoseAnEvent(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -1111,9 +891,6 @@ func TestConcurrentOutboxPublishersAreAtLeastOnceAndNeverLoseAnEvent(t *testing.
 	}()
 	<-started
 
-	// The second publisher runs while the first is stuck inside a delivery. It
-	// must not error, and — the point of the change — it must not be blocked
-	// waiting for a connection the first one is sitting on.
 	var secondDeliveries int64
 	second := &outbox.Worker{Pool: pool, Deliver: func(context.Context, outbox.Event) error {
 		atomic.AddInt64(&secondDeliveries, 1)
@@ -1133,8 +910,7 @@ func TestConcurrentOutboxPublishersAreAtLeastOnceAndNeverLoseAnEvent(t *testing.
 	if after := unpublishedCount(t, pool); after != 0 {
 		t.Fatalf("%d of %d events are still unpublished after both publishers finished", after, backlog)
 	}
-	// Idempotent marking: a third pass finds nothing and delivers nothing, so
-	// neither publisher left a row half-marked.
+
 	var third int64
 	trailing := &outbox.Worker{Pool: pool, Deliver: func(context.Context, outbox.Event) error {
 		atomic.AddInt64(&third, 1)
@@ -1145,8 +921,6 @@ func TestConcurrentOutboxPublishersAreAtLeastOnceAndNeverLoseAnEvent(t *testing.
 	}
 }
 
-// RUN-005 / ADR-004: work no configured provider can carry is refused before it is
-// queued, with a reason the user can read — not queued and quietly failed later.
 func TestIncompatibleWorkIsRefusedBeforeItIsQueued(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -1155,7 +929,7 @@ func TestIncompatibleWorkIsRefusedBeforeItIsQueued(t *testing.T) {
 	fake := providertest.New("weak_sandbox", "test-token")
 	t.Cleanup(fake.Close)
 	weak := providertest.DefaultCapability("weak_sandbox")
-	weak.MaxResources.MemoryBytes = 1 << 28 // 256 MiB: nowhere near the run's 4 GiB
+	weak.MaxResources.MemoryBytes = 1 << 28
 	fake.Capability = &weak
 	a.runs.Providers = run.NewRegistry(fake.Provider())
 
@@ -1172,8 +946,6 @@ func TestIncompatibleWorkIsRefusedBeforeItIsQueued(t *testing.T) {
 	}
 }
 
-// runPage is GET /runs with an arbitrary query string, for the paging
-// assertions below. listRuns only knows how to ask for the whole history.
 func (c *client) runPage(t *testing.T, query string) []runListView {
 	t.Helper()
 	var out struct {
@@ -1186,34 +958,18 @@ func (c *client) runPage(t *testing.T, query string) []runListView {
 	return out.Runs
 }
 
-// The fourth and fifth members of the paging family, in one handler.
-//
-// GET /runs took `limit` and `offset` through one intParam that answered 0 for
-// anything it could not read, and Service.List then replaced the 0 with 50. So
-// `limit=abc`, `limit=-1`, `limit=0` and `limit=500` all produced the same
-// 50-row page: a caller who asked for 500 got 50 rows and read that as the size
-// of their run history — a ceiling they never asked for presenting itself as a
-// result count (ADR-042 決策 3). `offset` swallowed the same way, which meant a
-// client whose page arithmetic produced -50 silently got page 1.
-//
-// public.yaml declares limit `{ minimum: 1, maximum: 200, default: 50 }` and
-// offset `{ minimum: 0, default: 0 }`, both bounds inclusive.
 func TestRunHistoryRefusesOutOfSchemaPaging(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, uniqueWorklistLabel("alice-run-paging"))
-	// Two runs, so a limit and an offset each have something to leave out. A
-	// handler that parsed the parameter and then ignored it passes a one-run test.
-	// Two is also the workspace ceiling (MaxConcurrentRunsPerWorkspace).
+
 	f.start(t)
 	f.start(t)
 
 	for _, query := range []string{
 		"limit=0", "limit=201", "limit=abc", "limit=", "limit=-1", "limit=1.5",
 		"offset=-1", "offset=abc", "offset=", "offset=1.5", "offset=2147483648",
-		// Paging is judged ahead of the filter: an unreadable `test_case_id`
-		// answers an empty list, and that must not become the answer to a request
-		// whose page size was refused.
+
 		"test_case_id=not-a-uuid&limit=0",
 		"test_case_id=not-a-uuid&offset=-1",
 	} {
@@ -1221,7 +977,7 @@ func TestRunHistoryRefusesOutOfSchemaPaging(t *testing.T) {
 			t.Errorf("GET /runs?%s: got %d, want 400 (body %v)", query, code, body)
 		}
 	}
-	// Both ends of both schemas, and the request that names neither parameter.
+
 	for _, query := range []string{
 		"", "?limit=1", "?limit=200", "?offset=0", "?offset=2147483647",
 		"?limit=200&offset=0",
@@ -1231,8 +987,6 @@ func TestRunHistoryRefusesOutOfSchemaPaging(t *testing.T) {
 		}
 	}
 
-	// Accepted is not the same as honoured, and status codes alone cannot tell the
-	// difference: these assert the values actually reached the query.
 	if rows := f.runPage(t, ""); len(rows) != 2 {
 		t.Fatalf("unfiltered history = %d runs, want 2", len(rows))
 	}
@@ -1244,9 +998,7 @@ func TestRunHistoryRefusesOutOfSchemaPaging(t *testing.T) {
 	if len(skipped) != 1 {
 		t.Fatalf("offset=1 returned %d runs, want 1", len(skipped))
 	}
-	// Not compared against a remembered creation order: the list is ordered by
-	// created_at and two runs a millisecond apart are not a fact worth asserting.
-	// That the second page is a *different* run is the whole claim.
+
 	if skipped[0].RunID == capped[0].RunID {
 		t.Errorf("offset=1 led with the same run limit=1 did (%s), so it was ignored", capped[0].RunID)
 	}
@@ -1255,10 +1007,6 @@ func TestRunHistoryRefusesOutOfSchemaPaging(t *testing.T) {
 	}
 }
 
-// attemptErrorClass reads the diagnostic code off the run's newest attempt.
-// Straight from the table because that is where NFR-003's 內部診斷碼 lives: the
-// user-facing half is Run.status_reason, and a test that only read that would
-// pass on a run whose code said something else entirely.
 func attemptErrorClass(t *testing.T, pool *pgxpool.Pool, runID string) string {
 	t.Helper()
 	var class *string

@@ -28,7 +28,7 @@ func TestFetchRejectsOversizedChunkedObject(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		flusher := w.(http.Flusher)
 		_, _ = w.Write([]byte("first"))
-		flusher.Flush() // forces chunked transfer with ContentLength == -1
+		flusher.Flush()
 		_, _ = w.Write([]byte("-chunk-exceeds-limit"))
 	}))
 	defer srv.Close()
@@ -42,15 +42,6 @@ func TestFetchRejectsOversizedChunkedObject(t *testing.T) {
 	}
 }
 
-// TestFetchRefusesToFollowARedirect: a grant URL is pre-signed by the control
-// plane and names one object, so a 3xx is never a hop to take. Go's default
-// client would have taken up to ten of them, and sandboxd holds the node's own
-// network reach — enough to be asked to fetch a link-local metadata address on
-// the storage endpoint's behalf.
-//
-// The redirect target is a second httptest server that would answer 200 with a
-// body, so following it would succeed and this test would only go red on the
-// refusal actually being there.
 func TestFetchRefusesToFollowARedirect(t *testing.T) {
 	elsewhere := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("this must never be fetched"))

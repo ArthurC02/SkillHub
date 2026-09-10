@@ -15,10 +15,6 @@ func mustUUID(t *testing.T, s string) pgtype.UUID {
 	return u
 }
 
-// The detail view resolves the 0042 verdict in Go while search resolves the same
-// rule in SQL. Two implementations of one rule is the shape this repo keeps
-// getting caught by, so this is the Go one's own test: the SQL one is covered by
-// TestACuratedSkillSaysSoUntilANewVersionArrives in the apiserver suite.
 func TestCurationTierNeedsBothHalvesOfTheRecord(t *testing.T) {
 	reviewed := mustUUID(t, "11111111-1111-4111-8111-111111111111")
 	newer := mustUUID(t, "22222222-2222-4222-8222-222222222222")
@@ -35,9 +31,7 @@ func TestCurationTierNeedsBothHalvesOfTheRecord(t *testing.T) {
 			SkillFacts{CurationTier: "curated", CuratedVersionID: reviewed}, newer, TierIndexed},
 		{"no verdict recorded",
 			SkillFacts{CurationTier: "indexed"}, reviewed, TierIndexed},
-		// Reachable only through 0042's ON DELETE SET NULL, when the reviewed
-		// version was purged. Fail closed: the bytes somebody read can no longer
-		// be produced, so the badge cannot be about them.
+
 		{"verdict without the version it judged",
 			SkillFacts{CurationTier: "curated"}, reviewed, TierIndexed},
 		{"a skill with no version at all",

@@ -13,11 +13,6 @@ import (
 	"github.com/pgvector/pgvector-go"
 )
 
-// The creation tool's hybrid retrieval, on the real tables: the public rule
-// (covered bigram hits first, then the vector hits within the cut-off, the
-// exact name pinned) with the rows never measured against the query dropped
-// (report §15, 2026-09-07), and the lexical-only answer when no embedding
-// service is wired.
 func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -50,8 +45,7 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 			t.Fatal(err)
 		}
 	}
-	// The embedding service answers every query with axis 0: the near document
-	// is at distance 0, the far one at 1 — beyond CreationMaxDistance.
+
 	embed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cost := 0.00001
 		w.Header().Set("Content-Type", "application/json")
@@ -67,19 +61,17 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 	if len(ids) != 2 || ids[0] != far.skillID || ids[1] != near.skillID {
 		t.Fatalf("the covered lexical hit first, then the vector hit: got %v want [%s %s]", ids, far.skillID, near.skillID)
 	}
-	// A query the far document does not fully cover is not admitted by the
-	// lexical leg: the vector leg's answer stands alone.
+
 	ids, _, _, err = svc.CreationKnowledgeIDs(ctx, "pii-flag 不存在的詞", catalog.CreationMaxDistance)
 	if err != nil || len(ids) != 1 || ids[0] != near.skillID {
 		t.Fatalf("partial coverage must not admit: %v err=%v", ids, err)
 	}
-	// The duplicate guard's cut-off: the far document (distance 1) is not a
-	// duplicate of anything, whatever it covers is beside the point.
+
 	ids, _, _, err = svc.CreationKnowledgeIDs(ctx, "remove duplicate rows", catalog.CreationDuplicateDistance)
 	if err != nil || len(ids) != 1 || ids[0] != near.skillID {
 		t.Fatalf("duplicate cut-off: %v err=%v", ids, err)
 	}
-	// No embedding service: the lexical leg alone, flagged degraded.
+
 	lexOnly := &catalog.Service{Pool: pool}
 	ids, cost, degraded, err = lexOnly.CreationKnowledgeIDs(ctx, "pii-flag", catalog.CreationMaxDistance)
 	if err != nil || !degraded || cost != 0 || len(ids) != 1 || ids[0] != far.skillID {
@@ -87,13 +79,6 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 	}
 }
 
-// 05 R-48 (2026-09-06): the public search's third candidate leg is the bigram
-// column. A document that carries every token of the query is kept past the
-// distance cut-off and ranked before the vector hits — the name or the
-// distinctive term a person typed on purpose (search-f1/results-public-rule:
-// distinctive terms Top-1 7 → 23 of 25, golden set unchanged) — and the exact
-// name is pinned first; a query the document covers only in part is not
-// admitted by that leg.
 func TestPublicSearchKeepsACoveredLexicalHitPastTheCutoffAndPinsTheExactName(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
@@ -102,7 +87,7 @@ func TestPublicSearchKeepsACoveredLexicalHitPastTheCutoffAndPinsTheExactName(t *
 	near := seedSkill(t, pool, curator.workspaceID, "quorble ledger reconciler")
 	far := seedSkill(t, pool, curator.workspaceID, "pii-flagger")
 	seedEmbedding(t, pool, near, 733)
-	// Orthogonal to every query the stub embeds: distance 1, past MaxCosineDistance.
+
 	seedEmbedding(t, pool, far, 1234)
 	q := gen.New(pool)
 	for id, text := range map[string]string{near: "quorble ledger reconciler", far: "pii-flagger 遮罩帳號尾碼"} {
@@ -113,25 +98,22 @@ func TestPublicSearchKeepsACoveredLexicalHitPastTheCutoffAndPinsTheExactName(t *
 	a := newAPIWithLLM(t, pool, stubLLM(t, 733, "because it fits"))
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 
-	// The exact name: covered, past the cut-off, pinned before the vector hit.
 	body := anon.search(t, "/api/skills/search?q=pii-flagger")
 	if ids := body.ids(); body.Degraded || body.NoResults || len(ids) != 2 || ids[0] != far || ids[1] != near {
 		t.Fatalf("exact name must be first and kept past the cut-off: %v degraded=%v no_results=%v", ids, body.Degraded, body.NoResults)
 	}
-	// One distinctive Chinese term (帳號尾碼): covered, ranked before the vector hit.
+
 	body = anon.search(t, "/api/skills/search?q=%E5%B8%B3%E8%99%9F%E5%B0%BE%E7%A2%BC")
 	if ids := body.ids(); len(ids) != 2 || ids[0] != far || ids[1] != near {
 		t.Fatalf("a covered term is admitted ahead of the vector hit: %v", ids)
 	}
-	// Partial coverage (pii-flagger 不存在): the bigram leg does not admit it.
+
 	body = anon.search(t, "/api/skills/search?q=pii-flagger+%E4%B8%8D%E5%AD%98%E5%9C%A8")
 	if ids := body.ids(); len(ids) != 1 || ids[0] != near {
 		t.Fatalf("partial coverage must not bypass the cut-off: %v", ids)
 	}
 }
 
-// 05 SEC-013 (LLM04): the facts an offer carries — the tier of the exact
-// version, and the projected scan — read from the catalogue only.
 func TestCatalogReferenceFactsReadTheTierAndTheScan(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
@@ -153,22 +135,18 @@ func TestCatalogReferenceFactsReadTheTierAndTheScan(t *testing.T) {
 	if tier, _, _, err = svc.CatalogReferenceFacts(ctx, skill, version); err != nil || tier != "curated" {
 		t.Fatalf("curated version: tier=%q err=%v", tier, err)
 	}
-	// Another version of the same Skill is not the curated one.
+
 	other := uuidText(creationID(t))
 	if tier, _, _, err = svc.CatalogReferenceFacts(ctx, skill, other); err != nil || tier != "indexed" {
 		t.Fatalf("other version: tier=%q err=%v", tier, err)
 	}
-	// Outside the catalogue: unknown, and an error the caller ignores.
+
 	private := newFixture(t, newAPI(t, pool), pool, uniqueWorklistLabel("facts-private"))
 	if tier, scan, _, err = svc.CatalogReferenceFacts(ctx, private.skillID, private.versionID); err == nil || tier != "unknown" || scan != "unknown" {
 		t.Fatalf("private skill: tier=%q scan=%q err=%v", tier, scan, err)
 	}
 }
 
-// cmd/reindex REINDEX_REENRICH (report §15.5): catalogue documents enriched under
-// an older prompt version go back to pending for the backfill; the current
-// version, generated candidates' rows outside the catalogue and taken-down
-// Skills stay as they are.
 func TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
@@ -186,9 +164,7 @@ func TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions(t *testing.
 	set(old, "enrich-skill/v2")
 	set(current, "enrich-skill/v7")
 	set(private.skillID, "enrich-skill/v2")
-	// The shared test database holds every other test's catalogue documents
-	// (enriched, no prompt version): they are older too and are reset as well,
-	// so the count is a floor, and the three rows above are the assertion.
+
 	n, err := q.ResetCatalogueEnrichmentBefore(ctx, "enrich-skill/v7")
 	if err != nil || n < 1 {
 		t.Fatalf("reset %d err=%v, want at least the old catalogue document", n, err)

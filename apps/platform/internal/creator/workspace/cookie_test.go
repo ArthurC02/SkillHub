@@ -7,17 +7,6 @@ import (
 	"time"
 )
 
-// The session cookie's three attributes, pinned.
-//
-// SameSite=Lax is this platform's ONLY CSRF defence on sixty-odd mutating
-// routes — there is no token anywhere, deliberately — and until now no test
-// asserted its value. It is one word in one struct literal, and changing it to
-// None (which somebody will want the first time an embed is asked for) removes
-// that defence from every route at once with the entire suite still green.
-//
-// HttpOnly is what keeps the token out of reach of script; Secure is what keeps
-// it off the wire in plaintext, and it follows the handler's own flag so a
-// deployment on plain http (COOKIE_INSECURE=1, local dev) still works.
 func TestTheSessionCookiePinsItsSecurityAttributes(t *testing.T) {
 	for _, secure := range []bool{true, false} {
 		rec := httptest.NewRecorder()
@@ -42,9 +31,6 @@ func TestTheSessionCookiePinsItsSecurityAttributes(t *testing.T) {
 	}
 }
 
-// Logging out must clear the cookie with the same attributes it was set with: a
-// browser matches on name, path and the secure flag when deciding what a
-// Set-Cookie replaces, so a clear that disagrees leaves the original in place.
 func TestTheLogoutCookieClearsWithTheSameAttributes(t *testing.T) {
 	rec := httptest.NewRecorder()
 	(&Handler{Secure: true}).logout(rec, httptest.NewRequest(http.MethodPost, "/auth/logout", nil))

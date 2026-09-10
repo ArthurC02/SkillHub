@@ -15,33 +15,22 @@ import (
 	"unicode/utf8"
 )
 
-// Fetch is one page Go read for a session after the person said yes (05
-// R-47, 2026-09-06). The text itself lives only in the tool observation the
-// model saw; the snapshot keeps where it came from and what happened.
 type Fetch struct {
 	URL    string `json:"url"`
 	SHA256 string `json:"sha256,omitempty"`
 	Bytes  int    `json:"bytes,omitempty"`
-	// Status: ok, blocked (the site or the network environment refused — not
-	// retried), not_found, unsupported (not text), network_error (retried
-	// once), declined (the person said no).
+
 	Status string `json:"status"`
 }
 
 const (
-	// MaxFetchBytes caps what is read from a page; the rest is dropped and
-	// the observation says so.
 	MaxFetchBytes = 256 * 1024
-	// MaxFetchTextRunes caps the text handed to the model.
+
 	MaxFetchTextRunes = 8000
 	fetchTimeout      = 15 * time.Second
 	fetchRedirects    = 3
 )
 
-// validateFetchURL is the rule applied before the person is asked: an
-// absolute http(s) URL with a host name, no credentials, and not a literal
-// private, loopback, link-local or unspecified address. Names that resolve to
-// such addresses are refused at dial time by the Fetcher.
 func validateFetchURL(raw string) (string, error) {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil {
@@ -65,15 +54,10 @@ func publicIP(ip net.IP) bool {
 		!ip.IsMulticast() && !ip.IsUnspecified()
 }
 
-// Fetcher reads one page as text. It is the Worker's, never the API's (the
-// step job calls it before the model call), and it never follows a redirect
-// or dials an address the guard refuses.
 type Fetcher struct {
 	client *http.Client
 }
 
-// NewFetcher builds the guarded client. allowLoopback exists for tests
-// against httptest servers; production wiring passes false.
 func NewFetcher(allowLoopback bool) *Fetcher {
 	guard := func(ip net.IP) bool {
 		if allowLoopback && ip.IsLoopback() {
@@ -83,12 +67,17 @@ func NewFetcher(allowLoopback bool) *Fetcher {
 	}
 	dialer := &net.Dialer{Timeout: fetchTimeout}
 	transport := &http.Transport{
-		Proxy: nil, // the environment's proxy would bypass the dial guard
+		// No system proxy: one would route the connection around the
+		// resolve-then-check dial guard below.
+		Proxy: nil,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			host, port, err := net.SplitHostPort(addr)
 			if err != nil {
 				return nil, err
 			}
+			// Resolve and check every address before dialing, and dial the
+			// checked IP directly, to close a DNS-rebinding window between
+			// the check and the connection.
 			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
 			if err != nil {
 				return nil, err
@@ -122,10 +111,6 @@ func NewFetcher(allowLoopback bool) *Fetcher {
 
 var errFetchBlocked = errors.New("fetch blocked")
 
-// Fetch reads the page and returns the record plus the text for the model.
-// The owner's rule (05 R-47): a refusal by the site or by the network
-// environment is reported once, never retried; only a network-level error
-// (DNS, timeout, reset before any response) gets one more try.
 func (f *Fetcher) Fetch(ctx context.Context, rawURL string) (Fetch, string) {
 	rec := Fetch{URL: rawURL}
 	for attempt := 0; attempt < 2; attempt++ {
@@ -185,9 +170,6 @@ func (f *Fetcher) once(ctx context.Context, rawURL string) (status, text, sha st
 	return "ok", text, hex.EncodeToString(sum[:]), len(body), false
 }
 
-// htmlToText drops script and style blocks, then tags, and folds whitespace.
-// Not a parser: the model reads prose, and a page that is nothing but markup
-// comes back empty rather than as markup.
 func htmlToText(s string) string {
 	lower := strings.ToLower(s)
 	for _, tag := range []string{"script", "style", "noscript"} {
@@ -234,9 +216,6 @@ func truncateRunes(s string, n int) string {
 	return string(runes[:n]) + "…"
 }
 
-// fetchObservation is the tool message the model reads. Sentences are Go's;
-// the page text is untrusted and travels inside the JSON like a run
-// observation does.
 func fetchObservation(rec Fetch, text string) string {
 	var why string
 	switch rec.Status {

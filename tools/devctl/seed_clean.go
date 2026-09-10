@@ -1,37 +1,5 @@
 package main
 
-// seed_clean.go implements `devctl seed-clean`, the PORT-007 demo seeder for
-// the clean test mode: every skill it uploads must trace back to a real,
-// already-committed file — no manifest, no invented bytes.
-//
-// A 2026-08-29 inventory (docs/plans/03-work-items.md §20, PORT-007) found
-// only two source batches that are both offline-usable and byte-traceable:
-//
-//   - docs/plans/mvp/m5/gen009-round-d/skills/*.md — 20 generated SKILL.md
-//   - tools/goldenset/corpus/**/*.md               — 31 curated SKILL.md
-//
-// Of those 51, one is excluded from upload and named on every run — see
-// seedExclusions. After the uploads it asks the public catalog search whether
-// any of what it just sent can be found, because the first real run put fifty
-// packages into the database that the demo's own screen could not see
-// (04 丙-84); the flag that decides that is granted by tools/cleanmode/start.mjs
-// before the API starts, which is the only moment anything can write it.
-//
-// Two other candidates were ruled out and must not be added back here: a
-// report whose per-run data only ever lived in a developer's local database,
-// and a curated list whose bytes are deliberately not committed (4 of them
-// are not redistributable, and PORT-005 requires offline dependencies).
-//
-// This command sends bytes only, through the same public HTTP API
-// tools/content/import_seed.py uses (dev login, then one package upload per
-// skill) — so the clean mode never grows a second data path (PORT-008).
-//
-// Deliberately out of scope: corpus.json / results.json / human-verdicts.tsv
-// in the gen009 batch carry Run status and eval verdicts, but there is no API
-// that lets a seeder set Run state directly (ADR-008: the Postgres state
-// machine is the only source of truth for Run status), and a trace event must
-// come from an actual Run, never be planted (PORT-007). Skill bytes are the
-// only thing this command manufactures a request for.
 import (
 	"archive/zip"
 	"bytes"
@@ -50,10 +18,6 @@ import (
 	"time"
 )
 
-// Counts the 2026-08-29 inventory fixed (docs/plans/03-work-items.md §20). A
-// mismatch means a source file went missing or the batch grew without this
-// command being told about it — either way, a loud failure beats a quietly
-// shorter demo (02:PORT-007: "指不回去的即不得使用").
 const (
 	gen009SkillsRelDir  = "docs/plans/mvp/m5/gen009-round-d/skills"
 	gen009ExpectedCount = 20
@@ -61,41 +25,17 @@ const (
 	goldensetCorpusRelDir  = "tools/goldenset/corpus"
 	goldensetExpectedCount = 31
 
-	// seedDevLoginUser is also the account tools/cleanmode/start.mjs pre-creates
-	// with workspaces.is_catalog = true; the two must stay equal, and
-	// TestTheLauncherGrantsTheSeedImporterACatalogWorkspace fails if they drift.
-	seedDevLoginUser = "seed-importer" // same default as tools/content/import_seed.py
+	seedDevLoginUser = "seed-importer"
 )
 
-// seedExclusions names source files that live inside a PORT-007 batch and still
-// cannot be uploaded, with the reason, keyed by repo-relative path.
-//
-// The one entry is goldenset retrieval corpus first and a package second: its
-// frontmatter carries `triggers`, a key the Agent Skills spec does not define,
-// so the platform's own spec validator refuses the upload with 422. That
-// refusal is the validator doing its job (04 丙-84 ②), not a defect to route
-// around, and the file is deliberately left byte-for-byte alone: it is the
-// input to a measured retrieval batch, and editing it — or shipping a
-// "corrected" copy whose provenance points at bytes that are not the source —
-// would move those numbers.
-//
-// So the file is dropped, and the drop is loud. 02:PORT-007's 「指不回去的即不得
-// 使用」 cuts both ways: a demo that is quietly one entry shorter than the
-// inventory it cites is the same failure as one that invents an entry.
 var seedExclusions = map[string]string{
 	"tools/goldenset/corpus/documents/minimax-docx.md": "frontmatter declares `triggers`, which the Agent Skills spec does not define; the platform's spec validator rejects the package with 422 (04 丙-84 ②). Left unedited on purpose: it is goldenset retrieval corpus, and changing it would move that batch's measurements.",
 }
 
-// seedExpectedUploads is how many packages actually go over the wire: every
-// file the inventory recorded, minus the named exclusions.
 func seedExpectedUploads() int {
 	return gen009ExpectedCount + goldensetExpectedCount - len(seedExclusions)
 }
 
-// partitionSeedEntries splits the collected batches into what is uploaded and
-// what is excluded. An exclusion that matches nothing is an error, not a
-// no-op: a stale entry here would silently stop excluding the day the path
-// changes, and nothing else would notice.
 func partitionSeedEntries(all []seedEntry) (upload, excluded []seedEntry, err error) {
 	seen := map[string]bool{}
 	for _, e := range all {
@@ -119,8 +59,6 @@ func partitionSeedEntries(all []seedEntry) (upload, excluded []seedEntry, err er
 	return upload, excluded, nil
 }
 
-// writeSeedExclusions prints every dropped entry with its reason, on both the
-// dry run and the real one. Silence here is the thing 02:PORT-007 forbids.
 func writeSeedExclusions(out io.Writer, excluded []seedEntry) {
 	for _, e := range excluded {
 		fmt.Fprintf(out, "excluded: %s\n          %s\n", e.provenance, seedExclusions[e.provenance])
@@ -128,15 +66,11 @@ func writeSeedExclusions(out io.Writer, excluded []seedEntry) {
 }
 
 type seedEntry struct {
-	name       string // skill name, for logging only
-	provenance string // path relative to the repo root; must os.Stat-resolve
+	name       string
+	provenance string
 	skillMD    []byte
 }
 
-// collectSeedEntries walks both PORT-007 source batches under root and
-// returns one entry per SKILL.md found. It fails loudly — never skips — when
-// a batch's file count does not match what the 2026-08-29 inventory recorded,
-// or when a file does not look like a SKILL.md.
 func collectSeedEntries(root string) ([]seedEntry, error) {
 	gen009, err := collectMarkdownSkills(root, gen009SkillsRelDir, gen009ExpectedCount)
 	if err != nil {
@@ -186,9 +120,7 @@ func collectMarkdownSkills(root, relDir string, want int) ([]seedEntry, error) {
 		if err != nil {
 			return nil, err
 		}
-		// The provenance string is what PORT-007 requires every demo entry to
-		// point back to; confirm it actually resolves rather than trusting the
-		// string shape.
+
 		if _, err := os.Stat(filepath.Join(root, rel)); err != nil {
 			return nil, fmt.Errorf("seed-clean: provenance %s does not resolve: %w", rel, err)
 		}
@@ -209,8 +141,6 @@ func looksLikeSkillMD(data []byte) bool {
 	return bytes.HasPrefix(data, []byte("---"))
 }
 
-// packSkillZip re-roots one SKILL.md's bytes into a package zip, the same
-// shape import_seed.py's repack_skill produces: SKILL.md at the archive root.
 func packSkillZip(md []byte) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	w := zip.NewWriter(buf)
@@ -251,14 +181,6 @@ func seedCleanDevLogin(client *http.Client, api string) error {
 	return nil
 }
 
-// seedCleanUpload waits out the import rate limiter rather than counting its
-// refusals as failures. The limiter is not an obstacle to route around: it is
-// NFR-001's brake on the two import endpoints, and this command sends fifty-one
-// uploads back to back, which is exactly the shape it exists to slow down.
-//
-// This was found by running the seeder against a live deployment for the first
-// time: 30 of 51 landed and 21 came back 429. No unit test would have shown it,
-// because the httptest server the tests use has no limiter in front of it.
 func seedCleanUpload(client *http.Client, api string, zipBytes []byte) (status int, body string, err error) {
 	const maxAttempts = 6
 	for attempt := 1; ; attempt++ {
@@ -275,21 +197,14 @@ func seedCleanUpload(client *http.Client, api string, zipBytes []byte) (status i
 	}
 }
 
-// retryAfter honours the server's own number when it sends one; the fallback
-// grows so a deployment whose limiter says nothing still gets backed off rather
-// than hammered.
 func retryAfter(header string, attempt int) time.Duration {
 	if seconds, err := strconv.Atoi(strings.TrimSpace(header)); err == nil && seconds > 0 {
-		// One second past what was asked for: the limiter's window and this
-		// client's clock are not the same clock.
+
 		return time.Duration(seconds)*time.Second + time.Second
 	}
 	return time.Duration(attempt) * time.Second
 }
 
-// seedCatalogSearch asks the public catalog search one question and returns the
-// `total` it answers with. Anonymous by contract; the session cookie this
-// client already carries changes nothing about the scope.
 func seedCatalogSearch(client *http.Client, api, q string) (int, error) {
 	const maxAttempts = 4
 	target := api + "/api/skills/search?limit=1&q=" + url.QueryEscape(q)
@@ -317,33 +232,6 @@ func seedCatalogSearch(client *http.Client, api, q string) (int, error) {
 	}
 }
 
-// verifyEnrichmentReached is verifyCatalogVisible's sibling, one rung further
-// in: being findable is not the same as being indexed.
-//
-// 04 丙-108's unlanded half. A deployment whose API has no LLM_SERVICE_URL — or
-// has one pointing at nothing — imports every package happily and leaves each
-// search document `pending`: no summary, no task examples, no embedding. The
-// upload loop reports `imported=50 failed=0`, and that green number is entirely
-// compatible with a catalogue that cannot answer a single intent query. The
-// remedy (cmd/reindex) cannot reach clean mode's in-process object store, and
-// the carrier is in-memory, so there is no path from here to a working
-// catalogue except starting over with the LLM service up first.
-//
-// Called after the first upload rather than at the end, because the cost of
-// being wrong is the whole seed: ten minutes and a model bill.
-//
-// It asks the skill's own detail view, not the search page. The first version
-// of this check read `partial_index` off a search and could never have fired:
-// that flag is set from the hybrid leg only ("on the FTS-only path nothing was
-// ranked at all and Degraded already says so" — discovery.anyUnranked), and a
-// deployment with no working embedding call has no hybrid leg. So in the exact
-// situation this exists for, partial_index is false forever. It passed its test
-// because the stub returned a value the real platform cannot return there —
-// which is 04 丙-111's lesson, committed one commit after 丙-111.
-//
-// enrichment.status is the direct reading: 'pending' means this document has no
-// model summary, no task examples and no embedding, and it says so whatever the
-// query side is doing.
 func verifyEnrichmentReached(client *http.Client, api, name, skillID string, out io.Writer) error {
 	if skillID == "" {
 		return nil
@@ -382,21 +270,8 @@ func verifyEnrichmentReached(client *http.Client, api, name, skillID string, out
 		name)
 }
 
-// seedVerifyProbes is how many uploaded names are tried before the catalog is
-// declared invisible. More than one because a single name can miss for a
-// lexical reason (the vector leg is off in a deployment with no embedding
-// service, and `websearch_to_tsquery` is the whole of what is left); few
-// enough that this stays a check and not a search benchmark.
 const seedVerifyProbes = 5
 
-// verifyCatalogVisible is this command's answer to 04 丙-84 ①: uploading is not
-// the same as being findable. Fifty packages landed in the database on the
-// first real run and `GET /api/skills/search` — the screen the demo is about —
-// returned `total: 0`, because the importer's workspace was a private one and
-// the catalog search joins `workspaces.is_catalog`.
-//
-// It asks the real question rather than checking that some write happened: a
-// query goes to the public endpoint and something has to come back.
 func verifyCatalogVisible(client *http.Client, api string, uploaded []seedEntry, out io.Writer) error {
 	probes := uploaded
 	if len(probes) > seedVerifyProbes {
@@ -423,7 +298,6 @@ func verifyCatalogVisible(client *http.Client, api string, uploaded []seedEntry,
 		len(uploaded), strings.Join(tried, ", "), seedDevLoginUser, seedDevLoginUser)
 }
 
-// seedClean is the entry point for `devctl seed-clean [--dry-run]`.
 func seedClean(root string, args []string, out io.Writer) error {
 	dryRun, allowUnindexed := false, false
 	for _, a := range args {
@@ -431,10 +305,7 @@ func seedClean(root string, args []string, out io.Writer) error {
 		case "--dry-run":
 			dryRun = true
 		case "--allow-unindexed":
-			// Deliberately seeding a keyword-only catalogue. The launcher's
-			// capability table already treats "no LLM service" as a supported
-			// degraded mode, so refusing it outright would block a shape this
-			// repo says is allowed — but it has to be typed, not defaulted.
+
 			allowUnindexed = true
 		default:
 			return fmt.Errorf("seed-clean: unknown argument %q (only --dry-run and --allow-unindexed are accepted)", a)

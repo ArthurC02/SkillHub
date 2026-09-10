@@ -21,19 +21,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
-// UploadDataset stores one file against a test case (TEST-004). Every PDM-005
-// §5.1 limit is enforced here and only here:
-//
-//   - ≤ 25 MB per file             — checked against the received bytes
-//   - ≤ 100 MB per test case       — checked against the live total, under a lock
-//   - ≤ 20 files per test case     — same
-//   - allowed types by magic bytes — detectContentType, file name never consulted
-//   - 90 day retention             — expires_at written at creation
-//
-// A workspace advisory lock spans the intent, object write and row commit so an
-// account purge cannot take a key snapshot in the middle. Definite failures
-// compensate that uniquely keyed object; an ambiguous Commit result retains it
-// so a row that actually committed can never point at missing bytes.
 func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID, fileName string, data []byte) (gen.Dataset, error) {
 	name := sanitizeFileName(fileName)
 	if name == "" {
@@ -50,8 +37,6 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 		return gen.Dataset{}, err
 	}
 
-	// Reject a missing or cross-workspace parent before doing external I/O. This
-	// is advisory only: LockTestCase below is the authoritative recheck.
 	if _, err := s.GetTestCase(ctx, ws, testCaseID); err != nil {
 		return gen.Dataset{}, err
 	}
@@ -113,9 +98,7 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 	if err != nil {
 		return gen.Dataset{}, err
 	}
-	// The cleanup intent exists before object I/O. The transaction that publishes
-	// the dataset removes it atomically; a process crash, definite rollback, or
-	// failed compensation therefore still leaves a durable key for maintenance.
+
 	commitAttempted := false
 	defer func() {
 		if commitAttempted {
@@ -144,8 +127,6 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
-	// The lock is what makes the two aggregate limits below hold under
-	// concurrency; see LockTestCase in db/queries/test_lab.sql.
 	tc, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: testCaseID, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return gen.Dataset{}, ErrNotFound
@@ -168,10 +149,6 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 			ErrLimitExceeded, humanMB(MaxTestCaseBytes))
 	}
 
-	// Keyed by dataset id, not by content hash: two test cases uploading the same
-	// bytes must be able to delete their own copy independently (TEST-004 "檔案只
-	// 授權給指定 Run／Test Case"). The id is minted here so the object exists
-	// before the row does.
 	ds, err := q.CreateDataset(ctx, gen.CreateDatasetParams{
 		WorkspaceID: ws.ID,
 		TestCaseID:  tc.ID,
@@ -193,27 +170,19 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 	commitAttempted = true
 	commitErr := tx.Commit(ctx)
 	if shouldCompensateCommit(commitErr) {
-		// PostgreSQL definitively rolled this transaction back, so there cannot be
-		// a row referring to the object and compensation is safe. Other Commit
-		// errors are ambiguous and deliberately retain it.
+		// Commit definitely failed, so no row exists; let the deferred cleanup remove the object.
 		commitAttempted = false
 	}
 	return ds, commitErr
 }
 
+// shouldCompensateCommit reports whether tx.Commit definitely failed rather
+// than left the outcome ambiguous, since only a definite failure is safe to
+// clean up after.
 func shouldCompensateCommit(err error) bool {
 	return errors.Is(err, pgx.ErrTxCommitRollback)
 }
 
-// ReadDataset reads one live dataset row, workspace scoped.
-//
-// Exported for internal/run, which needs the current object key to mint the
-// per-run read grant (SBX-008). A snapshot's [DatasetRef] carries the content hash
-// and never the key, because the hash is what outlives the file and the key is a
-// storage fact - so the key has to be re-read at dispatch time, from here.
-//
-// A deleted row answers ErrNotFound, which is the answer that matters: it is what
-// makes a run whose input is gone fail saying so instead of running without it.
 type Dataset struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -247,17 +216,6 @@ func (s *Service) ReadDataset(ctx context.Context, workspaceID, datasetID pgtype
 	return datasetDTO(ds), nil
 }
 
-// CaseDatasets lists one test case's live files in created_at order, workspace
-// scoped, using Test Lab's own pool.
-//
-// The same rows [Service.ListDatasets] serves, and deliberately not the same
-// function: that one is for a session-scoped HTTP request and reads the parent
-// first, so a test case in another workspace answers "not found" rather than an
-// empty list. Its caller here - internal/packaging - has just listed the parent
-// through [Service.CasesForSkill] and would only be re-reading it.
-//
-// The ordering is the same guarantee [ReadDraft] states: anything hashed over
-// these rows does not depend on how they happened to come back.
 func (s *Service) CaseDatasets(ctx context.Context, workspaceID, testCaseID pgtype.UUID) ([]Dataset, error) {
 	if s == nil || s.Pool == nil {
 		return nil, errPersistenceNotConfigured
@@ -273,10 +231,8 @@ func (s *Service) CaseDatasets(ctx context.Context, workspaceID, testCaseID pgty
 	return out, nil
 }
 
-// ListDatasets returns one test case's live files.
 func (s *Service) ListDatasets(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID) ([]gen.Dataset, error) {
-	// Scoped read of the parent first, so a test case in another workspace
-	// answers "not found" rather than an empty list.
+
 	if _, err := s.GetTestCase(ctx, ws, testCaseID); err != nil {
 		return nil, err
 	}
@@ -285,10 +241,6 @@ func (s *Service) ListDatasets(ctx context.Context, ws identity.Workspace, testC
 	})
 }
 
-// DeleteDataset removes one file before or after a run (TEST-004 "使用者可在執行
-// 前移除檔案，並可在執行後主動刪除"). The row is soft-deleted and the object is
-// removed; snapshots that referenced the file keep its name and content hash, so
-// a past run stays traceable even though it is no longer reproducible (ADR-003).
 func (s *Service) DeleteDataset(ctx context.Context, ws identity.Workspace, testCaseID, datasetID pgtype.UUID) (gen.Dataset, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -304,11 +256,7 @@ func (s *Service) DeleteDataset(ctx context.Context, ws identity.Workspace, test
 	if err != nil {
 		return gen.Dataset{}, err
 	}
-	// The URL names the parent, so the parent has to be the one that owns this
-	// row. Without this, DELETE /test-cases/<A>/datasets/<a file of B> deleted
-	// B's file and answered 200 — same workspace, so never a tenant crossing, but
-	// the path asserted a relationship nobody checked. DeleteCriterion next door
-	// has always located its parent by {id}; this is the same answer.
+
 	if ds.TestCaseID != testCaseID {
 		return gen.Dataset{}, ErrNotFound
 	}
@@ -342,11 +290,6 @@ func (s *Service) DeleteDataset(ctx context.Context, ws identity.Workspace, test
 	return ds, nil
 }
 
-// removeDatasetObject completes the second half of a soft delete. The request
-// may be cancelled immediately after its database commit, so cleanup gets a
-// short independent context. purged_at is written only after idempotent object
-// removal succeeds; otherwise the retention worklist sees the soft-deleted row
-// and retries it durably.
 func (s *Service) removeDatasetObject(ctx context.Context, ds gen.Dataset) {
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
@@ -355,16 +298,11 @@ func (s *Service) removeDatasetObject(ctx context.Context, ds gen.Dataset) {
 		return
 	}
 	if err := gen.New(s.Pool).MarkDatasetPurged(cleanupCtx, ds.ID); err != nil {
-		// Remove is idempotent, so a later sweep can safely repeat it before
-		// recording completion.
+
 		slog.Warn("dataset object removed but cleanup state was not recorded; retention sweep will retry", "error", err)
 	}
 }
 
-// sanitizeFileName keeps a display name that cannot be read as a path. The name
-// is metadata only — the object key is derived from ids, never from this — but
-// it is shown in the UI, in the permission summary and inside snapshots, so a
-// traversal-shaped name has no business surviving.
 func sanitizeFileName(name string) string {
 	name = strings.TrimSpace(name)
 	name = strings.ReplaceAll(name, `\`, "/")
@@ -372,24 +310,20 @@ func sanitizeFileName(name string) string {
 	if name == "." || name == "/" || name == ".." {
 		return ""
 	}
-	// Control characters would corrupt any log or terminal that shows the name.
+
 	name = strings.Map(func(r rune) rune {
 		if r < 0x20 || r == 0x7f {
 			return -1
 		}
 		return r
 	}, name)
-	// ToValidUTF8 because the cut is by bytes and the name is not ASCII: a bare
-	// slice can halve a rune, and this string goes into a text column, the
-	// permission summary and a snapshot manifest.
+
 	if len(name) > MaxNameBytes {
 		name = strings.ToValidUTF8(name[:MaxNameBytes], "")
 	}
 	return name
 }
 
-// newUUID mints a v4 UUID. pgtype does the formatting, so this needs no new
-// dependency; crypto/rand.Read does not fail.
 func newUUID() pgtype.UUID {
 	var b [16]byte
 	_, _ = rand.Read(b[:])

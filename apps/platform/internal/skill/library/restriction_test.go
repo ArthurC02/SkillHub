@@ -10,10 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// A nil transaction is deliberate: every case here must be rejected before the
-// function reaches the database, and a nil pointer dereference is a louder
-// failure than a passing assertion would be. That is also the assertion that the
-// blank check runs before the row is locked - a lock needs a transaction.
 func TestSetAccessRestrictionRejectsABlankReason(t *testing.T) {
 	for name, reason := range map[string]string{
 		"empty":      "",
@@ -27,18 +23,6 @@ func TestSetAccessRestrictionRejectsABlankReason(t *testing.T) {
 	}
 }
 
-// TestSetAccessRestrictionSerializesConcurrentOperators is the reason DDD-031
-// moved the FOR UPDATE in here from internal/catalog (ADR-035 B 組).
-//
-// Two operators change the same hold at once. The before-state this function
-// returns is what the audit event records, so the second one must see the first
-// one's committed value and not the value that was there when it started. Delete
-// the LockSkillForRestriction call - or move it back out to a caller that this
-// function cannot see - and the second operator reads its own MVCC snapshot,
-// records "there was no hold", and writes an audit event that is false.
-//
-// It has to be a real database: the failure is Read Committed visibility, which
-// no fake can reproduce and no unit test can express.
 func TestSetAccessRestrictionSerializesConcurrentOperators(t *testing.T) {
 	pool := requireRegistryDB(t)
 	_, skillID := seedSkill(t, pool, "restriction-race")
@@ -72,8 +56,7 @@ func TestSetAccessRestrictionSerializesConcurrentOperators(t *testing.T) {
 	if firstBefore.AccessRestriction != nil {
 		t.Fatalf("before-state of the first change = %v, want nil on a fresh skill", *firstBefore.AccessRestriction)
 	}
-	// catalog's audit event scopes itself with this, so an empty one would make
-	// a cross-workspace operator action unreviewable in the workspace it hit.
+
 	if !firstBefore.WorkspaceID.Valid {
 		t.Error("before-state carries no workspace id")
 	}
@@ -99,8 +82,7 @@ func TestSetAccessRestrictionSerializesConcurrentOperators(t *testing.T) {
 	if second.err != nil {
 		t.Fatal(second.err)
 	}
-	// The assertion the lock exists for. Without FOR UPDATE this is nil: the
-	// second transaction's snapshot predates the first one's commit.
+
 	if second.before.AccessRestriction == nil || *second.before.AccessRestriction != first {
 		t.Errorf("second operator's before-state = %v, want %q - it recorded a hold that was already lifted or never seen",
 			second.before.AccessRestriction, first)
@@ -117,9 +99,6 @@ func TestSetAccessRestrictionSerializesConcurrentOperators(t *testing.T) {
 	}
 }
 
-// waitsOnLock reports whether pid is parked on a lock, which is how a test
-// observes "the other transaction is being made to wait" without a sleep that
-// would be a guess either way. Same probe as apiserver's concurrency tests.
 func waitsOnLock(t *testing.T, pool *pgxpool.Pool, pid uint32) bool {
 	t.Helper()
 	deadline := time.Now().Add(3 * time.Second)

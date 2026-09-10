@@ -2,29 +2,6 @@ package httpx
 
 import "net/http"
 
-// DevCORS allows exactly one extra origin to call this API with credentials.
-// It exists for one situation and is off unless an origin is configured.
-//
-// Why this and not a Vite dev proxy. In production (ADR-018 E1, single node)
-// the SPA and the API are served from the same origin, so there is no CORS
-// problem to solve there — this must stay a local-development affordance and
-// never become a deployment requirement. Locally the SPA is on :5173 and the
-// API on :8080, and the usual fix is to proxy a list of path prefixes through
-// the dev server. That does not work here: the API owns /skills/{id}/... while
-// the SPA's own router owns the page URL /skills/$skillId. A proxy rule for
-// /skills swallows the SPA's deep links, and one that does not proxy /skills
-// misses the API. Any prefix list is therefore either wrong for the browser or
-// wrong for fetch(), and would have to be re-derived every time a route is
-// added. Routes are not the frontend's business, so the boundary moves here.
-//
-// Cookies survive the split without SameSite changes: SameSite is a *site*
-// rule and ports are not part of a site, so localhost:5173 and localhost:8080
-// are same-site and the existing Lax session cookie is sent. Only the CORS
-// headers were missing.
-//
-// The allowed origin is echoed only on an exact match, never reflected from the
-// request, and Vary: Origin keeps a cache from serving one origin's response to
-// another.
 func DevCORS(next http.Handler, origin string) http.Handler {
 	if origin == "" {
 		return next
@@ -36,13 +13,7 @@ func DevCORS(next http.Handler, origin string) http.Handler {
 			h.Set("Access-Control-Allow-Credentials", "true")
 			h.Add("Vary", "Origin")
 			if r.Method == http.MethodOptions {
-				// Every method apiserver.NewRouter registers, or the browser
-				// refuses the real request and the handler never runs. PUT and
-				// PATCH were missing, which took out PATCH /test-cases/{id},
-				// PUT /suggestions/{id}/decision and the three PUT /admin
-				// routes. Kept as one literal: a per-route Allow-Methods would
-				// need the route table in here, and the list is the same six
-				// for every path anyway.
+
 				h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 				h.Set("Access-Control-Allow-Headers", "Content-Type")
 				h.Set("Access-Control-Max-Age", "600")

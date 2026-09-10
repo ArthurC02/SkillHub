@@ -14,27 +14,16 @@ import (
 	"strings"
 )
 
-// sqlc generates every query in db/queries/*.sql into one Go package, so the
-// depguard rules in apps/platform/.golangci.yml — which only see imports —
-// cannot tell `run` calling its own query from `run` writing eval's table.
-// db/query-owners.yaml names the owning context of each query and this check is
-// what makes that declaration binding. See ADR-033.
 const queryOwnersFile = "query-owners.yaml"
 
-// Only files that import the sqlc package can call a query, which is also what
-// keeps the generated packages themselves out of the scan: db/gen does not
-// import itself and api/gen never imports it.
 const genImportPath = "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 
-// 跨 context read 的具名豁免所在 section（ADR-035）。形狀與 `allow:` 完全一致：
-// key 是 query 名、value 是被容忍的呼叫端 context 清單，理由寫在上方的分組註解。
-// section 必須存在且保持空白；刪除或加入例外都會 FAIL。
 const readAllowSection = "read_allow"
 
 type sqlQuery struct {
-	file    string   // basename of the db/queries/*.sql file it lives in
-	write   bool     // INSERT / UPDATE / DELETE, including CTE writes
-	mutates []string // tables it UPDATEs or DELETEs FROM, lower-cased
+	file    string
+	write   bool
+	mutates []string
 }
 
 type callSite struct {
@@ -60,8 +49,7 @@ func queryOwnerProblems(root string) []string {
 	for _, section := range []string{"files", "queries"} {
 		for _, key := range sortedKeys(sections[section]) {
 			owner := sections[section][key]
-			// An empty `files:` value is the "no default" declaration, read
-			// below; an empty `queries:` value is just a missing owner.
+
 			if section == "files" && owner == "" {
 				continue
 			}
@@ -72,9 +60,6 @@ func queryOwnerProblems(root string) []string {
 		}
 	}
 
-	// A declaration that drifts from db/queries stops being a defence, so both
-	// directions are errors: an undeclared query and a declaration of a query
-	// that no longer exists.
 	declaredFiles := map[string]bool{}
 	for _, query := range queries {
 		declaredFiles[query.file] = true
@@ -94,21 +79,11 @@ func queryOwnerProblems(root string) []string {
 			problems = append(problems, fmt.Sprintf("db/%s: queries.%s is not a query in db/queries", queryOwnersFile, name))
 		}
 	}
-	// A file whose `files:` value is empty declares that it has NO default: every
-	// query in it must name its own owner.
-	//
-	// AGENTS.md rule 8 and this file's own header both promise "a new query
-	// without a declaration fails CI", and for a single-context file the default
-	// makes that true. For a mixed file it made the opposite true: a query added
-	// to governance.sql that touches only audit_events inherits `identity`, so
-	// `audit` calling its own query is reported as cross-context while `identity`
-	// calling somebody else's is legal — the ratchet pointing backwards, with
-	// nothing red anywhere. governance.sql needing 17 overrides for its 24
-	// queries is the measure of how little that default was worth.
+
 	for _, name := range sortedKeys(queries) {
 		file := queries[name].file
 		if _, hasFile := fileOwners[file]; !hasFile {
-			continue // already reported above as a file with no declaration at all
+			continue
 		}
 		if _, declaredOwner := queryOwners[name]; declaredOwner || fileOwners[file] != "" {
 			continue
@@ -135,25 +110,17 @@ func queryOwnerProblems(root string) []string {
 	}
 	ownerBoundary := func(name string) string { return owner(name) }
 
-	// ADR-035: read 與 write 走同一個棘輪，判定式只差在 query 是不是 write。
-	// ADR-032 §2 的四種關係裡沒有「直接呼叫別人的 query」這一項——取別人的事實
-	// 要 import 對方的公開 Service API，所以跨 context read 是 write 漂移的 read 版。
 	for _, side := range []struct {
 		write bool
-		// section 是本側的容忍清單，other 是另一側的——條目放錯段落時
-		// 訊息要直接指出該搬去哪裡，否則讀的人得自己推。
+
 		section, other  string
-		verb, otherVerb string // 訊息裡的動詞；`%ss` 補成 writes／reads
+		verb, otherVerb string
 	}{
 		{write: true, section: "allow", other: readAllowSection, verb: "write", otherVerb: "read"},
 		{write: false, section: readAllowSection, other: "allow", verb: "read", otherVerb: "write"},
 	} {
 		tolerated := sections[side.section]
-		// ADR-033/035's migration inventories are empty now. Keeping these
-		// sections parseable is useful because deleting either heading would make
-		// the policy ambiguous, but adding an entry must never grant a new
-		// cross-context query permission. A new collaboration goes through an
-		// owner Service API, not a self-approved YAML exception.
+
 		for _, name := range sortedKeys(tolerated) {
 			problems = append(problems, fmt.Sprintf(
 				"db/%s: %s.%s is forbidden; %s must stay empty after the DDD migration",
@@ -164,7 +131,7 @@ func queryOwnerProblems(root string) []string {
 				continue
 			}
 			if owner(name) == "" {
-				continue // reported above; "owned by nobody" is not a cross-context call
+				continue
 			}
 			allowed := map[string]bool{}
 			for _, id := range splitList(tolerated[name]) {
@@ -187,36 +154,19 @@ func queryOwnerProblems(root string) []string {
 	return append(problems, rawSQLProblems(root, sections[rawSQLAllowSection])...)
 }
 
-// Postgres already refuses these writes: db/migrations attaches
-// enforce_immutable() to every frozen table (0005, 0013, 0027, 0033) and
-// db/tests/immutability_test.sql proves it. This check exists because that
-// refusal arrives at runtime, in whatever environment ran the statement first —
-// a `UPDATE skill_versions SET ...` merged today surfaces as a 500 in staging,
-// not as a red build on the pull request that wrote it.
-//
-// The declaration lives in db/query-owners.yaml rather than being derived from
-// the triggers so that dropping a trigger cannot quietly retire the rule: the
-// two sides are cross-checked below, and weakening either alone fails CI.
 func immutableTableProblems(root string, sections map[string]map[string]string, queries map[string]sqlQuery) []string {
 	declared, allow := sections["immutable"], sections["immutable_allow"]
 	frozen, err := frozenTables(filepath.Join(root, "db", "migrations"))
 	if err != nil {
 		return []string{fmt.Sprintf("db/migrations: %v", err)}
 	}
-	// Only when there is nothing on either side. `len(declared) == 0` alone made
-	// deleting the whole `immutable:` block the way to skip the check, which is
-	// the opposite of what the block above promises.
+
 	if len(declared) == 0 && len(frozen) == 0 {
 		return nil
 	}
 
 	var problems []string
-	// The reverse direction. The paragraph above says the two sides are
-	// cross-checked and that weakening either alone fails CI; walking `declared`
-	// only ever checked one of the two. Deleting `audit_events:` from the
-	// declaration left the 0013 trigger in place and the check green, and a
-	// `UPDATE audit_events` could then merge on a green PR and fail as a staging
-	// 500 — the exact arrival time this check exists to move earlier.
+
 	for _, table := range sortedKeys(frozen) {
 		if _, ok := declared[table]; !ok {
 			problems = append(problems, fmt.Sprintf(
@@ -231,8 +181,7 @@ func immutableTableProblems(root string, sections map[string]map[string]string, 
 			problems = append(problems, fmt.Sprintf(
 				"db/%s: immutable.%s has no reason; name the invariant it carries", queryOwnersFile, table))
 		case !frozen[table]:
-			// Either a typo, or somebody dropped the trigger. Both mean this
-			// entry is promising an enforcement that no longer exists.
+
 			problems = append(problems, fmt.Sprintf(
 				"db/%s: immutable.%s has no unconditional enforce_immutable() trigger in db/migrations",
 				queryOwnersFile, table))
@@ -254,8 +203,6 @@ func immutableTableProblems(root string, sections map[string]map[string]string, 
 		}
 	}
 
-	// Same reasoning as the allow section above: an exemption whose statement
-	// is gone must go with it, or it silently covers the next one written.
 	for _, name := range sortedKeys(allow) {
 		query, ok := queries[name]
 		if !ok {
@@ -279,10 +226,6 @@ func immutableTableProblems(root string, sections map[string]map[string]string, 
 	return problems
 }
 
-// A trigger with a WHEN clause or mutable-column arguments freezes part of a
-// row, not the table (`runs` after it goes terminal, `evaluations` after it
-// completes). Only the argument-less, condition-less form means "insert-only",
-// which is the shape this check can reason about from SQL text alone.
 var immutableTriggerPattern = regexp.MustCompile(
 	`(?i)CREATE TRIGGER\s+\w+\s+BEFORE UPDATE OR DELETE ON\s+(\w+)\s+FOR EACH ROW\s+EXECUTE FUNCTION enforce_immutable\(\s*\)`)
 
@@ -323,10 +266,6 @@ func splitList(value string) []string {
 	return out
 }
 
-// parseOwnerDeclaration reads the two-level `section:` / `  key: value` subset
-// of YAML that db/query-owners.yaml is written in. devctl has no dependencies
-// at all and this shape does not justify the first one (ADR-033); anything
-// outside the subset is rejected rather than silently skipped.
 func parseOwnerDeclaration(path string) (map[string]map[string]string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -377,10 +316,7 @@ var (
 	queryNamePattern  = regexp.MustCompile(`(?m)^--\s*name:\s*(\w+)\s*:\w+`)
 	sqlCommentPattern = regexp.MustCompile(`--[^\n]*`)
 	sqlLiteralPattern = regexp.MustCompile(`'[^']*'`)
-	// UPDATE that names no table: a row lock, or the upsert branch of an
-	// INSERT. Removing them keeps `FOR UPDATE` out of isWriteStatement and
-	// `DO UPDATE SET` out of mutatedTables, which would otherwise read `SET`
-	// as the table being written.
+
 	sqlNonTargetPattern = regexp.MustCompile(`FOR (NO KEY )?UPDATE|FOR SHARE|DO UPDATE`)
 	sqlWritePattern     = regexp.MustCompile(`\b(INSERT|UPDATE|DELETE)\b`)
 	sqlMutatePattern    = regexp.MustCompile(`\b(?:UPDATE|DELETE\s+FROM)\s+(?:ONLY\s+)?([A-Z_][A-Z0-9_]*)`)
@@ -422,26 +358,18 @@ func loadSQLQueries(dir string) (map[string]sqlQuery, error) {
 	return queries, nil
 }
 
-// isWriteStatement looks for a write verb anywhere in the body rather than at
-// the start, because a `WITH ... DELETE FROM` body (governance.sql's purge)
-// opens on a SELECT. Comments, string literals and row locks come out first:
-// all three can carry the verb without the statement writing anything.
 func isWriteStatement(body string) bool {
 	return sqlWritePattern.MatchString(normalizeSQL(body))
 }
 
-// normalizeSQL strips everything that can carry a write verb without being one:
-// comments, string literals, row locks and upsert branches. Upper-cased so the
-// patterns above need no case folding of their own.
+// normalizeSQL strips comments, string literals and row-lock/upsert clauses
+// before verb matching, so none of them can be mistaken for a write keyword.
 func normalizeSQL(body string) string {
 	body = sqlCommentPattern.ReplaceAllString(body, " ")
 	body = sqlLiteralPattern.ReplaceAllString(body, " ")
 	return sqlNonTargetPattern.ReplaceAllString(strings.ToUpper(body), " ")
 }
 
-// mutatedTables names the tables a query UPDATEs or DELETEs FROM. INSERT is not
-// a mutation here: an append-only table is exactly one that accepts inserts and
-// nothing else.
 func mutatedTables(body string) []string {
 	var tables []string
 	for _, match := range sqlMutatePattern.FindAllStringSubmatch(normalizeSQL(body), -1) {
@@ -450,20 +378,8 @@ func mutatedTables(body string) []string {
 	return tables
 }
 
-// apps/platform/cmd/<name> is a process root, not a package under internal/, so
-// ADR-032 §1 — whose key is an internal path — has no row that can name its
-// context. It still calls queries: cmd/reindex opens the sqlc package and runs
-// ReindexAll and PruneDeletedSearchDocuments, and a maintenance command is
-// exactly where reaching into another context's table is most tempting.
-//
-// rawSQLProblems has walked both `internal` and `cmd` since it was written and
-// its comment says of an undeclared package that "the ownership check would
-// complain first". It never would have: ownership stopped at internal/. So each
-// command that touches sqlc declares whose data access it performs, and one that
-// does not is an error rather than an exemption.
 var commandContexts = map[string]string{
-	// Phase 1 rebuilds the search projection through catalog's own two queries
-	// (search.sql); phase 2 goes through ingest.Service and calls none.
+
 	"reindex": "catalog",
 }
 
@@ -472,7 +388,7 @@ func queryCallSites(platform string, names map[string]bool, identities map[strin
 	for _, tree := range []string{"internal", "cmd"} {
 		base := filepath.Join(platform, tree)
 		if _, err := os.Stat(base); err != nil {
-			continue // apps/platform/cmd does not exist in every fixture
+			continue
 		}
 		err := filepath.WalkDir(base, func(path string, entry os.DirEntry, err error) error {
 			if err != nil || entry.IsDir() {
@@ -499,9 +415,7 @@ func queryCallSites(platform string, names map[string]bool, identities map[strin
 					break
 				}
 			}
-			// Direct query selectors require the generated import. Query-shaped
-			// interface methods are reserved even without it: otherwise a consumer
-			// could inject *gen.Queries behind an interface and evade ownership.
+
 			seen := map[string]bool{}
 			interfaceQueries := map[string]bool{}
 			ast.Inspect(file, func(node ast.Node) bool {
@@ -539,8 +453,7 @@ func queryCallSites(platform string, names map[string]bool, identities map[strin
 				}
 				return fmt.Errorf("apps/platform/internal/%s calls sqlc but has no architecture identity in ADR-032 §1", directory)
 			}
-			// One entry per query per file: the report names the file, and a second
-			// call on the next line adds nothing to it.
+
 			for name := range seen {
 				siteBoundary, caller := boundary, boundary
 				if interfaceQueries[name] {
@@ -574,34 +487,14 @@ func callerBoundary(tree, directory string, identities map[string]packageIdentit
 	return identity.ID, known
 }
 
-// ── 裸 SQL tripwire ────────────────────────────────────────────────────────
-//
-// 上面兩道檢查（ownership 與 immutable）都只看 db/queries/*.sql。直接走 pgx
-// 的 read／write／DDL 都繞過 owner 宣告；這道檢查讓這種例外必須精確具名。
-//
-// 抓得到：literal、package const、function-local binding，以及 fmt.Sprintf
-// format 交給 pgx 入口的 SQL keyword（SELECT／DML／DDL／SET／WITH）。
-// **抓不到**（這是 tripwire，不是證明，不要當它完備）：
-//   - 跨函數傳遞或完整由 runtime data 組成的 SQL。
-//   - 走 database/sql、River migration、或 psql 之類 pgx 以外的路徑。
-//   - apps/platform 以外的程式。
-// 要真正封死只能走型別（把 Pool 收在只暴露 sqlc 的 wrapper 後面）；那是另一個
-// 決定，不是這道檢查。
-
-// pgx 會收 SQL 字面值的入口。SendBatch 收的是 *pgx.Batch 不是 SQL，
-// 真正帶 SQL 的是 Batch.Queue；CopyFrom 收的是識別字不是語句，故不列入。
 var rawSQLEntryPoints = map[string]bool{
 	"Exec": true, "Query": true, "QueryRow": true, "Queue": true,
 }
 
 var rawSQLKeywordPattern = regexp.MustCompile(`\b(?:SELECT|INSERT|UPDATE|DELETE|SET|CREATE|ALTER|DROP|TRUNCATE|WITH)\b`)
 
-// 具名豁免所在的 section：key 是 repo 相對路徑，value 是理由（不得留空）。
-// 形狀比照 allow:／immutable_allow:——具名、有理由、失效即 FAIL。
-// section 不存在＝零條豁免，是最嚴格的預設，所以不列入必要 section。
 const rawSQLAllowSection = "raw_sql_allow"
 
-// 生成碼自己就是 sqlc／ogen 的輸出，不受這道檢查約束。
 var rawSQLSkippedDirs = []string{
 	"apps/platform/internal/foundation/persistence/db/gen",
 	"apps/platform/internal/entrypoint/api/gen",
@@ -614,7 +507,7 @@ func rawSQLProblems(root string, allow map[string]string) []string {
 	for _, dir := range []string{"internal", "cmd"} {
 		base := filepath.Join(root, "apps", "platform", dir)
 		if _, err := os.Stat(base); err != nil {
-			continue // 測試 fixture 不一定兩個都有；真的缺了 ownership 檢查會先喊。
+			continue
 		}
 		err := filepath.WalkDir(base, func(path string, entry os.DirEntry, err error) error {
 			if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
@@ -651,7 +544,6 @@ func rawSQLProblems(root string, allow map[string]string) []string {
 		}
 	}
 
-	// 失效的豁免要清掉，否則它默默罩住下一個寫進同一個函數的裸 SQL。
 	for _, key := range sortedKeys(allow) {
 		switch {
 		case strings.TrimSpace(allow[key]) == "":
@@ -675,9 +567,6 @@ type rawSQLSite struct {
 	sql      string
 }
 
-// rawSQLCallSites resolves the small set of string shapes used by production:
-// direct literals, package constants, local bindings, and fmt.Sprintf formats.
-// It deliberately is not general dataflow; unknown expressions remain unknown.
 func rawSQLCallSites(path string) ([]rawSQLSite, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, nil, 0)
@@ -710,8 +599,7 @@ func rawSQLCallSites(path string) ([]rawSQLSite, error) {
 			if !ok || !rawSQLEntryPoints[selector.Sel.Name] {
 				return true
 			}
-			// SQL is the first resolvable string argument: ctx precedes it for pgx,
-			// while Batch.Queue takes it first. Later bind values are ignored.
+
 			for _, arg := range call.Args {
 				text, ok := stringValue(arg, stringsByName)
 				if !ok {
@@ -805,7 +693,6 @@ func stringValue(expr ast.Expr, values map[string]string) (string, bool) {
 	}
 }
 
-// sqlPrefix 把多行 SQL 壓成一行開頭，讓失敗訊息認得出是哪一段。
 func sqlPrefix(sql string) string {
 	flat := strings.Join(strings.Fields(sql), " ")
 	if len(flat) > 60 {
@@ -814,23 +701,6 @@ func sqlPrefix(sql string) string {
 	return flat
 }
 
-// ── ADR-032 §1 對照表的完整性 ──────────────────────────────────────────────
-//
-// AGENTS.md 第 11 條要求「新增套件必須先在 ADR-032 §1 對照表登記」，在此之前
-// 沒有任何東西強制它——漏登記的套件會安靜地活在 internal/ 底下，既不屬於任何
-// context，也不受 depguard 約束。這道檢查讓三份清單互相對帳：
-//
-//	apps/platform/internal/ 的套件目錄
-//	ADR-032 §1 表格「internal/ 套件」欄
-//	apps/platform/.golangci.yml 的 depguard 規則
-//
-// 三者任一方向缺漏都 FAIL，訊息指出是哪個套件、缺在哪一側。
-//
-// **depguard 覆蓋只對非 Generic 的列強制**。ADR-032 §1 的 Generic 列裡，
-// `apiserver` 是 composition root（它 import 每一個 context，一條 deny 什麼都不能寫）、
-// `api/gen` 是生成碼；兩者刻意沒有規則。其餘 Generic 套件（audit／outbox／
-// llmclient／skillpkg／platform）實際上被 `generic` 那條規則覆蓋，這道檢查不反對——
-// 它只要求「領域 context 一定要有人管」，不禁止 Generic 也被管。
 const contextMapADR = "ADR-032-ddd-bounded-context-governance-for-platform.md"
 
 type architectureKind string
@@ -850,19 +720,17 @@ type packageIdentity struct {
 }
 
 var (
-	// §1 的表格；下一個 `### ` 標題就是邊界。文件裡還有 §2、§5 與附錄 A 三張表，
-	// 抓錯一張會讓這道檢查對著關係列表比對套件名。
 	contextTableHeading = "### 1. Context 對照表"
 	contextTableHeader  = []string{"產品／Bounded Context", "類型", "Boundary ID", "現行 internal path", "需求 ID 前綴"}
 	boundaryIDPattern   = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 	contextPathPattern  = regexp.MustCompile(`^[a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*(?:/\*)?$`)
-	// depguard 規則的 files: 清單，例如 `- "**/internal/trial/execution/**"`。
+
 	depguardFilePattern     = regexp.MustCompile(`(?m)^\s*-\s*"\*\*/internal/([a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*)/\*\*"\s*$`)
 	depguardSelectorPattern = regexp.MustCompile(`^\*\*/internal/([a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*)/\*\*$`)
 )
 
 func contextMapProblems(root string) []string {
-	// 訊息裡的路徑一律用正斜線：它是給人看的 repo 相對路徑，不是要拿去開檔的。
+
 	const adrPath, lintPath = "docs/adr/" + contextMapADR, "apps/platform/.golangci.yml"
 
 	declared, problems := contextTablePackages(filepath.Join(root, filepath.FromSlash(adrPath)), adrPath)
@@ -875,9 +743,7 @@ func contextMapProblems(root string) []string {
 		return append(problems, fmt.Sprintf("%s: %v", lintPath, err))
 	}
 	guarded := map[string]bool{}
-	// Comments off first: the pattern runs over text, not over parsed YAML, so a
-	// path written in prose — or a rule commented out during debugging and never
-	// restored — would otherwise register as a guarded path.
+
 	for _, match := range depguardFilePattern.FindAllStringSubmatch(stripYAMLComments(string(lint)), -1) {
 		guarded[match[1]] = true
 	}
@@ -915,8 +781,6 @@ func contextMapProblems(root string) []string {
 	return problems
 }
 
-// contextTablePackages 讀 ADR-032 §1 唯一的 Context Map。Boundary ID 是 query
-// ownership 的穩定鍵；現行 internal path 則可隨資料夾遷移改成多段路徑。
 func contextTablePackages(path, relative string) (map[string]packageIdentity, []string) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -1004,14 +868,6 @@ func contextTablePackages(path, relative string) (map[string]packageIdentity, []
 	return declared, problems
 }
 
-// architectureNeedsDepguard exempts the composition roots and the generated
-// transport. A composition root has to import every bounded context by
-// definition, so a deny list for it can only be empty — and an empty rule is
-// worse than no rule: it reads as coverage while forbidding nothing, which is
-// the exact shape this repository keeps recording. The protection that does
-// apply to them runs the other way and is a real deny list: no context may
-// import a composition root (see the apiserver and entrypoint/worker entries
-// under every context's deny in .golangci.yml).
 func architectureNeedsDepguard(identity packageIdentity) bool {
 	if identity.Kind != architectureGeneric {
 		return true

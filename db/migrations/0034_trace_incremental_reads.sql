@@ -1,7 +1,3 @@
--- 0034_trace_incremental_reads: give readers a stable, server-owned watermark.
--- Producer sequence numbers are scoped per stream and producer timestamps can
--- arrive out of order, so neither is safe as an incremental HTTP cursor.
-
 CREATE SEQUENCE trace_events_ingest_seq;
 
 ALTER TABLE trace_events
@@ -9,19 +5,16 @@ ALTER TABLE trace_events
 
 ALTER SEQUENCE trace_events_ingest_seq OWNED BY trace_events.ingest_seq;
 
--- nextval alone is allocation ordered, not commit ordered: transaction A can
--- reserve 10, transaction B commit 11, a reader advance to 11, then A commit 10.
--- Readers cursor per run, so serialize assignment per run and assign only after
--- that transaction owns the lock. The lock lives until commit.
+-- nextval is allocation-ordered, not commit-ordered: a later transaction can commit
+-- a higher number first. Assignment is serialized per run under the advisory lock
+-- in the trigger below.
 ALTER TABLE trace_events ALTER COLUMN ingest_seq DROP DEFAULT;
 
 CREATE FUNCTION assign_trace_ingest_seq() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
-    -- The row lock orders this insert against a concurrent terminal transition.
-    -- It must be acquired before the advisory lock: run transitions already
-    -- update this row before recording their trace event, and reversing that
-    -- order would deadlock terminal transition against sandbox ingestion.
+    -- Take this row lock before the advisory lock below: run transitions update this
+    -- row before recording their trace event, so the reverse order would deadlock.
     SELECT status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
       INTO NEW.late
       FROM runs

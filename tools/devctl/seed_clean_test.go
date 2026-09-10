@@ -12,9 +12,6 @@ import (
 	"testing"
 )
 
-// The two real batches PORT-007 allows (docs/plans/03-work-items.md §20):
-// this test runs against the actual repo tree, not a fixture, because the
-// point of the check is that these specific files exist and are traceable.
 func TestCollectSeedEntriesReadsBothRealBatches(t *testing.T) {
 	t.Parallel()
 	root, err := findRepoRoot()
@@ -39,9 +36,7 @@ func TestCollectSeedEntriesReadsBothRealBatches(t *testing.T) {
 		if strings.HasPrefix(e.provenance, filepath.ToSlash(goldensetCorpusRelDir)) {
 			goldenset++
 		}
-		// The requirement (02:PORT-007) is that every provenance string
-		// actually resolves to a committed file — check the byte, not the
-		// shape of the string.
+
 		info, err := os.Stat(filepath.Join(root, filepath.FromSlash(e.provenance)))
 		if err != nil {
 			t.Fatalf("entry %q: provenance %q does not resolve: %v", e.name, e.provenance, err)
@@ -61,8 +56,6 @@ func TestCollectSeedEntriesReadsBothRealBatches(t *testing.T) {
 	}
 }
 
-// A missing source file must fail the whole command, never silently seed
-// fewer entries than the recorded batch size (02:PORT-007: "指不回去的即不得使用").
 func TestCollectMarkdownSkillsMissingFileFails(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -70,7 +63,7 @@ func TestCollectMarkdownSkillsMissingFileFails(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// One short of gen009ExpectedCount.
+
 	for i := 0; i < gen009ExpectedCount-1; i++ {
 		writeSkillMD(t, filepath.Join(dir, fmt.Sprintf("skill-%d.md", i)), fmt.Sprintf("skill-%d", i))
 	}
@@ -84,7 +77,6 @@ func TestCollectMarkdownSkillsMissingFileFails(t *testing.T) {
 	}
 }
 
-// A file that is not a SKILL.md (no frontmatter) must also fail loudly.
 func TestCollectMarkdownSkillsRejectsNonSkillFile(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -116,8 +108,6 @@ func writeSkillMD(t *testing.T, path, name string) {
 	}
 }
 
-// --dry-run is the only part of PORT-007's acceptance criteria a platform-less
-// checkout can verify — it must send zero requests.
 func TestSeedCleanDryRunSendsNoRequests(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -144,9 +134,7 @@ func TestSeedCleanDryRunSendsNoRequests(t *testing.T) {
 	if !strings.Contains(out.String(), want) {
 		t.Fatalf("dry-run output does not report the count: %q", out.String())
 	}
-	// Every planned upload must carry a provenance= marker so a reader can trace
-	// it back to its source file without running anything; the exclusions follow,
-	// two lines each (the path, then why it is not going).
+
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 	if len(lines) != 1+seedExpectedUploads()+2*len(seedExclusions) {
 		t.Fatalf("got %d output lines; want a header, one per entry and two per exclusion", len(lines))
@@ -182,8 +170,6 @@ func TestSeedCleanUploadsEveryEntry(t *testing.T) {
 	}
 }
 
-// seedStubHandler stands in for the platform: dev login, uploads, and the
-// public catalog search answering with searchTotal.
 func seedStubHandler(t *testing.T, logins, uploads *int32, searchTotal int) http.HandlerFunc {
 	t.Helper()
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -196,8 +182,7 @@ func seedStubHandler(t *testing.T, logins, uploads *int32, searchTotal int) http
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"skill_id":"stub"}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/stub":
-			// The enrichment check's detail view. Enriched, so these tests stay
-			// about what they were about.
+
 			_, _ = fmt.Fprint(w, `{"skill_id":"stub","enrichment":{"status":"enriched"}}`)
 		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/search":
 			if r.URL.Query().Get("q") == "" {
@@ -211,8 +196,6 @@ func seedStubHandler(t *testing.T, logins, uploads *int32, searchTotal int) http
 	}
 }
 
-// 04 丙-84 ①: fifty packages landed and the demo's own screen showed nothing.
-// A seed that cannot be found is a failed seed, not a quiet success.
 func TestSeedCleanFailsWhenTheCatalogSearchFindsNothing(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -237,8 +220,6 @@ func TestSeedCleanFailsWhenTheCatalogSearchFindsNothing(t *testing.T) {
 	}
 }
 
-// 04 丙-84 ②: the one file the platform's spec validator refuses. It must be
-// left alone, it must not be uploaded, and its absence must be said out loud.
 func TestSeedCleanExcludesTheUnvalidatablePackageAndSaysWhy(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -279,8 +260,6 @@ func TestSeedCleanExcludesTheUnvalidatablePackageAndSaysWhy(t *testing.T) {
 	}
 }
 
-// An exclusion that matches nothing has stopped excluding anything, and only a
-// failure says so.
 func TestPartitionSeedEntriesRejectsAStaleExclusion(t *testing.T) {
 	_, _, err := partitionSeedEntries([]seedEntry{{name: "x", provenance: "tools/goldenset/corpus/moved.md"}})
 	if err == nil {
@@ -291,10 +270,6 @@ func TestPartitionSeedEntriesRejectsAStaleExclusion(t *testing.T) {
 	}
 }
 
-// The flag this whole command depends on is granted by the clean-mode launcher,
-// in the one window where anything can write it (the carrier serves a single
-// client, ADR-060 決策 2). Nothing in Go can reach that code, so what is pinned
-// here is that it is still there and still talking about this account.
 func TestTheLauncherGrantsTheSeedImporterACatalogWorkspace(t *testing.T) {
 	t.Parallel()
 	root, err := findRepoRoot()
@@ -311,9 +286,7 @@ func TestTheLauncherGrantsTheSeedImporterACatalogWorkspace(t *testing.T) {
 			t.Fatalf("tools/cleanmode/start.mjs no longer mentions %q — without it seed-clean uploads land where the catalog search cannot see them (04 丙-84 ①)", needle)
 		}
 	}
-	// Defining the grant is not calling it, and calling it late is not calling
-	// it: once the API is spawned it holds the carrier's single connection, so
-	// the SQL has nowhere left to run.
+
 	grant := strings.Index(src, "await grantCatalogWorkspace(")
 	api := strings.Index(src, `start("api"`)
 	if grant < 0 {
@@ -353,31 +326,6 @@ func TestSeedCleanFailsOnUploadError(t *testing.T) {
 	}
 }
 
-// The launcher must refuse to start when the harness cannot import its own
-// runtime, and it must derive the fix from the Dockerfile rather than repeat it.
-//
-// 2026-08-30: clean test mode had never executed a workload and could not have.
-// run.mjs is COPY'd into the runtime image, where the Dockerfile npm-installs
-// the Agent SDK beside it; clean mode runs that same script from the repo, which
-// carries no node_modules there. Every Run reached `running` and then died with
-// `Cannot find package '@anthropic-ai/claude-agent-sdk'` — a fact the launcher
-// could have stated before printing its first line, and 02:PORT-005 asks exactly
-// that of every preflight failure. The four checks it did have were all about
-// getting the processes up.
-//
-// Pinned here rather than by running the launcher because the paths it checks
-// are derived from its own location: there is no repo root to point a test at.
-// What this can hold is that the three files still agree, which is the drift
-// that would silently un-cover the check.
-// 04 丙-102, and the reason it is a test rather than a comment: every one of
-// these settings was missing on 2026-08-30's measured launch, and the mode came
-// up looking healthy. A launcher that asks for a value it can derive is how the
-// value ends up unset, and a launcher that stays silent about the ones it cannot
-// derive is how the operator meets them one 503 at a time.
-//
-// Scoped to the functions that do the work, for the reason the test below is:
-// the words appear in this file's own comments, so a whole-file search would
-// pass with the code deleted.
 func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 	t.Parallel()
 	root, err := findRepoRoot()
@@ -402,8 +350,6 @@ func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 		return launcher[start : start+end]
 	}
 
-	// Category 1: derived here because this script owns both ends. Each of these
-	// was being asked for, and each was missing on the measured launch.
 	owned := body("function ownedSettings() {")
 	for name, cost := range map[string]string{
 		"SKILLHUB_TRACE_INGEST_SECRET": "a failed run says only `workload exited with code 1`",
@@ -414,35 +360,17 @@ func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 			t.Errorf("ownedSettings() no longer supplies %s; without it %s", name, cost)
 		}
 	}
-	// It fills gaps rather than overriding: an operator who set one keeps it.
-	//
-	// The needle is deployment(), not process.env, since 2026-09-02: the
-	// launcher now also reads the repository's .env (04 丙-129), and a value
-	// written there was supplied by somebody just as an export was. Reading
-	// only process.env would mint over it, and the launch would then run on a
-	// trace secret nobody chose. deployment() is the accessor that sees both.
+
 	applied := body("function applyOwnedSettings() {")
 	if !strings.Contains(applied, "if (!deployment(name))") {
 		t.Error("applyOwnedSettings() no longer leaves an operator's own value alone")
 	}
 
-	// Category 3 is reported, never filled in. A default for the retention would
-	// be this script deciding a promise on the owner's behalf
-	// (GOV-RETENTION-001), so it must appear in the report and NOT in the
-	// derived settings.
 	if strings.Contains(owned, "DOWNLOAD_ARTIFACT_RETENTION") {
 		t.Error("ownedSettings() invents a DOWNLOAD_ARTIFACT_RETENTION: that value is a retention promise quoted to " +
 			"users in the consent form, and GOV-RETENTION-001 leaves it unset on purpose")
 	}
-	// The capability table moved to the platform on 2026-09-01 (05 R-36 第二段),
-	// so this asserts the same property in its new home, plus the hard condition
-	// that made it move.
-	//
-	// The condition first, because a future edit is most likely to undo it by
-	// "just adding a quick check here": there must be no second list. The
-	// launcher's copy could never do better than read an environment variable —
-	// it owns no process it could ask — and that inference printed a green tick
-	// over a service that could do none of its four jobs (04 丙-118).
+
 	if strings.Contains(launcher, "const CAPABILITIES = [") {
 		t.Error("the launcher holds a capability list again. 05 R-36's hard condition is that it reads the " +
 			"platform's answer; two lists of the same preconditions is the drift this repo keeps finding")
@@ -450,14 +378,13 @@ func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 	if !strings.Contains(launcher, "/readyz") {
 		t.Error("the launcher no longer asks the platform what this deployment can do")
 	}
-	// Asking is not enough if it throws the answer away: every state has to reach
-	// the operator, and `unmeasured` is the one that used to be a tick.
+
 	for _, state := range []string{"unmeasured", "unavailable", "broken", "ready"} {
 		if !strings.Contains(launcher, state) {
 			t.Errorf("the launcher does not render the %q state, so it collapses back into the others", state)
 		}
 	}
-	// And the variables themselves, asserted against the table that owns them now.
+
 	table, err := os.ReadFile(filepath.Join(root, "apps", "platform", "cmd", "api", "capabilities.go"))
 	if err != nil {
 		t.Fatal(err)
@@ -471,8 +398,6 @@ func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 		}
 	}
 
-	// The one refusal. Everything else is a smaller deployment that says so;
-	// this one is incoherent, and it kills every run a minute after it starts.
 	preflight := body("async function preflight() {")
 	if !strings.Contains(preflight, "SKILLHUB_RUN_MODEL") ||
 		!strings.Contains(preflight, "SKILLHUB_MODEL_GATEWAY_URL") {
@@ -497,11 +422,6 @@ func TestTheLauncherRefusesToStartWithoutTheHarnessRuntime(t *testing.T) {
 	launcher := read("tools", "cleanmode", "start.mjs")
 	harness := read("infra", "images", "runtime-agent-sdk", "run.mjs")
 
-	// The assertions below are scoped to preflight()'s own body, not to the file.
-	// The first version of this test searched the whole file and stayed green
-	// when the entire check was deleted, because the package name still appeared
-	// in a helper's comment further down. A test that passes with the code
-	// removed is the defect it was written to prevent.
 	start := strings.Index(launcher, "async function preflight() {")
 	if start < 0 {
 		t.Fatal("tools/cleanmode/start.mjs no longer defines preflight(); this test cannot tell what it checks")
@@ -512,8 +432,6 @@ func TestTheLauncherRefusesToStartWithoutTheHarnessRuntime(t *testing.T) {
 	}
 	preflight := launcher[start : start+end]
 
-	// The package run.mjs actually imports. If it is renamed and the launcher is
-	// not, the check goes on passing while covering nothing.
 	pkg := regexp.MustCompile(`import\("(@[^"]+/[^"]+)"\)`).FindStringSubmatch(harness)
 	if pkg == nil {
 		t.Fatal("run.mjs no longer dynamically imports a scoped package; this test can no longer tell what the launcher must check for")
@@ -525,9 +443,6 @@ func TestTheLauncherRefusesToStartWithoutTheHarnessRuntime(t *testing.T) {
 		t.Fatal("preflight() no longer checks for an installed dependency tree beside run.mjs")
 	}
 
-	// ADR-023 決策 1: the Dockerfile's ARG is where that version is written down.
-	// A literal here would let clean mode rehearse a different runtime than the
-	// image, which is the one thing this mode exists to avoid.
 	if !strings.Contains(launcher, "CLAUDE_AGENT_SDK_VERSION") {
 		t.Fatal("tools/cleanmode/start.mjs no longer reads CLAUDE_AGENT_SDK_VERSION from the Dockerfile; a second copy of that version is how clean mode stops rehearsing the image (ADR-023 決策 1)")
 	}
@@ -544,17 +459,6 @@ func TestTheLauncherRefusesToStartWithoutTheHarnessRuntime(t *testing.T) {
 	}
 }
 
-// 04 丙-108's unlanded half. A deployment that imports without enriching answers
-// every upload with 201 and leaves each search document `pending`, so the loop
-// finishes with `imported=50 failed=0` over a catalogue that cannot answer a
-// single intent query — and nothing here can repair it afterwards, because
-// cmd/reindex reads the object store through OBJSTORE_* and clean mode's store
-// lives inside the API process.
-//
-// Two assertions, and the second is the point: it must refuse, and it must
-// refuse after ONE upload. Discovering this at the end costs the whole seed —
-// ten minutes and a model bill — for an answer available after the first
-// package.
 func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -574,17 +478,7 @@ func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/search":
 			_, _ = fmt.Fprintf(w, `{"query":%q,"results":[],"total":1}`, r.URL.Query().Get("q"))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/skills/"):
-			// The detail view of the package just uploaded, in the state an
-			// import-without-enrichment leaves it: no model summary, no task
-			// examples, no embedding.
-			//
-			// Deliberately NOT partial_index on a search. The first version of
-			// this stub returned that, and it was a value the real platform
-			// cannot return in this situation -- partial_index is set from the
-			// hybrid leg, and a deployment with no embedding call has no hybrid
-			// leg, so it reads false forever exactly here. The check passed its
-			// test and could never have fired in production (04 丙-111 again,
-			// one commit later).
+
 			_, _ = fmt.Fprint(w, `{"skill_id":"stub","enrichment":{"status":"pending"}}`)
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -599,7 +493,7 @@ func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 	if err == nil {
 		t.Fatal("seed-clean accepted a deployment that imported without enriching; the catalogue it just built cannot answer an intent query and cannot be repaired")
 	}
-	// 02:PORT-005: name what is missing and how to get it.
+
 	for _, want := range []string{"LLM_SERVICE_URL", "--allow-unindexed"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the refusal never mentions %q, so it does not say how to recover: %v", want, err)
@@ -609,8 +503,6 @@ func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 		t.Errorf("uploads = %d; want 1 — the verdict is available after the first package, and every one after it is spent for nothing", got)
 	}
 
-	// The same deployment with the escape hatch typed: a keyword-only catalogue
-	// is a shape the launcher's capability table already supports.
 	atomic.StoreInt32(&uploads, 0)
 	out.Reset()
 	if err := seedClean(root, []string{"--allow-unindexed"}, &out); err != nil {

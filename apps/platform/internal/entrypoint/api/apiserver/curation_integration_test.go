@@ -9,10 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// curate records the PDM-002 verdict the way tools/content/backfill-curation-tier.sql
-// does: on the skill, pointing at a named version. Taking the version as an
-// argument rather than always using the newest is the whole point — the tests
-// below need to say "reviewed, and then the content moved on".
 func curate(t *testing.T, pool *pgxpool.Pool, skillID, versionID string) {
 	t.Helper()
 	var sk, ver pgtype.UUID
@@ -47,16 +43,6 @@ func newestVersion(t *testing.T, pool *pgxpool.Pool, skillID string) string {
 	return s
 }
 
-// 02:CONTENT-001 / 01 §8. Until migration 0042 the catalogue had one tier: the
-// fifteen entries that passed PDM-002's nine checks were rendered exactly like
-// the thirty that never went through them, because curation is a recorded human
-// review and nothing recorded it.
-//
-// The second half of this test is the reason the record is a pair and not a
-// flag. Five of the nine checks are about specific bytes — script line count, no
-// likely secrets, a valid spec — so a verdict that outlived the bytes it judged
-// would be the endorsement PDM-002 warns against. A new version has to take the
-// badge back with nobody pressing anything.
 func TestACuratedSkillSaysSoUntilANewVersionArrives(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -78,8 +64,6 @@ func TestACuratedSkillSaysSoUntilANewVersionArrives(t *testing.T) {
 		t.Fatalf("tier = %+v, want curated with its copy", row.Tier)
 	}
 
-	// The content moves on. Nothing else changes: the verdict column still says
-	// curated, and it is still about `reviewed`.
 	seedSkillVersion(t, pool, curator.workspaceID, skillID)
 	if newestVersion(t, pool, skillID) == reviewed {
 		t.Fatal("the second version did not become the newest one; the rest of this test proves nothing")
@@ -91,9 +75,6 @@ func TestACuratedSkillSaysSoUntilANewVersionArrives(t *testing.T) {
 	}
 }
 
-// DISC-002 來源層級 as a filter. It returned 400 until 0042, with the honest
-// reason that the dimension had exactly one value — a control that cannot change
-// the page is the same lie as one that silently does nothing.
 func TestTheTierFilterSeparatesTheReviewedFromTheRest(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -118,8 +99,6 @@ func TestTheTierFilterSeparatesTheReviewedFromTheRest(t *testing.T) {
 		t.Fatalf("tier=indexed returned %d rows including the reviewed one: %v", len(rest), rest)
 	}
 
-	// 02 rejects an unusable filter rather than ignoring it, and `external` is
-	// not a row this table can hold — it is a state of the search.
 	resp, err := http.Get(a.URL + "/api/skills/search?q=tumtum&tier=external")
 	if err != nil {
 		t.Fatal(err)

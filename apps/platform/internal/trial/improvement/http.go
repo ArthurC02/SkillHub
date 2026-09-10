@@ -1,14 +1,5 @@
 package eval
 
-// The evaluation read surface of contracts/openapi/public.yaml. Three routes, all
-// workspace scoped from the session (iron rule 3), all answering 404 to anyone the
-// run does not belong to — existence is itself private (WS-006).
-//
-// A run with no evaluation is 404 and not an empty body: 「未評估」 is a state of
-// its own, and a blank body is exactly what a UI would render as a pass. An
-// evaluation that ran and broke is a third state again, and it does have a body:
-// `status: failed`.
-
 import (
 	"context"
 	"encoding/json"
@@ -25,8 +16,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
-// Handler exposes GET /runs/{id}/evaluation, its revision list, and the feedback
-// PUT.
 type Handler struct {
 	Svc      *Service
 	Identity *identity.Service
@@ -64,11 +53,7 @@ type evaluationView struct {
 	SupersededAt          *string           `json:"superseded_at"`
 }
 
-// costView is what the judgement itself cost, and nothing else. It is never added
-// to the run's cost: the two are spent by different workloads under different
-// keys, and one combined number would inherit the weaker guarantee silently.
 type costView struct {
-	// In Credit (ADR-068 decision 1). Nil is「未測量」and never 0.
 	EvaluationCredits *int64 `json:"evaluation_credits"`
 	Source            string `json:"source"`
 	Note              string `json:"note"`
@@ -89,7 +74,6 @@ type revisionView struct {
 	SupersededAt       *string `json:"superseded_at"`
 }
 
-// Get handles GET /runs/{id}/evaluation, optionally ?revision=.
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -104,8 +88,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	if revision := r.URL.Query().Get("revision"); revision != "" {
 		var revisionID pgtype.UUID
 		if revisionID.Scan(revision) != nil {
-			// A malformed id is 404 like a missing one: the client learns nothing
-			// about which revisions exist either way.
+
 			httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
 			return
 		}
@@ -128,7 +111,6 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, view)
 }
 
-// Revisions handles GET /runs/{id}/evaluation/revisions, newest first.
 func (h *Handler) Revisions(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -164,12 +146,6 @@ func (h *Handler) Revisions(w http.ResponseWriter, r *http.Request) {
 	}{out})
 }
 
-// SetFeedback handles PUT /runs/{id}/evaluation/feedback (EVAL-001 clause 4).
-//
-// PUT and not POST: a user is allowed to change their mind, so sending it again
-// replaces the previous answer instead of recording a second one. It attaches to
-// the current revision — carrying an opinion about one verdict onto a later
-// re-evaluation would be attributing something nobody said.
 func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -214,9 +190,6 @@ func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, view)
 }
 
-// --- service reads -----------------------------------------------------------
-
-// Current returns the standing verdict for one run.
 func (s *Service) Current(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.Evaluation, error) {
 	ev, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
 		RunID: runID, WorkspaceID: workspaceID,
@@ -227,7 +200,6 @@ func (s *Service) Current(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	return ev, err
 }
 
-// Revision returns one particular judgement of one run.
 func (s *Service) Revision(ctx context.Context, workspaceID, runID, id pgtype.UUID) (gen.Evaluation, error) {
 	ev, err := s.queries().GetEvaluationRevision(ctx, gen.GetEvaluationRevisionParams{
 		ID: id, RunID: runID, WorkspaceID: workspaceID,
@@ -238,8 +210,6 @@ func (s *Service) Revision(ctx context.Context, workspaceID, runID, id pgtype.UU
 	return ev, err
 }
 
-// Revisions returns every judgement recorded for one run, newest first. A run
-// that was never evaluated is ErrNotFound, for the same reason Current is.
 func (s *Service) Revisions(ctx context.Context, workspaceID, runID pgtype.UUID) ([]gen.Evaluation, error) {
 	rows, err := s.queries().ListEvaluationRevisions(ctx, gen.ListEvaluationRevisionsParams{
 		RunID: runID, WorkspaceID: workspaceID,
@@ -253,7 +223,6 @@ func (s *Service) Revisions(ctx context.Context, workspaceID, runID pgtype.UUID)
 	return rows, nil
 }
 
-// SetFeedback records the user's answer on the current revision.
 func (s *Service) SetFeedback(
 	ctx context.Context, workspaceID, runID pgtype.UUID, helpful bool, comment string,
 ) (gen.Evaluation, error) {
@@ -261,7 +230,7 @@ func (s *Service) SetFeedback(
 	if err != nil {
 		return gen.Evaluation{}, err
 	}
-	// An empty comment clears a previous one rather than storing "".
+
 	var commentPtr *string
 	if comment != "" {
 		commentPtr = &comment
@@ -272,13 +241,6 @@ func (s *Service) SetFeedback(
 	})
 }
 
-// view renders one stored evaluation, re-answering `available` on every evidence
-// reference as it goes.
-//
-// Availability is not read back from what was stored: trace_events is dropped by
-// partition, so a ref written as available would go on claiming the original is
-// still there long after retention removed it. One query per report answers it for
-// all of them (ADR-026 decision 2).
 func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Evaluation) (evaluationView, error) {
 	var results []CriterionResult
 	if len(ev.CriterionResults) > 0 {
@@ -327,44 +289,20 @@ func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Eval
 	if ev.FeedbackHelpful != nil {
 		view.Feedback = &feedbackView{
 			Helpful: *ev.FeedbackHelpful, Comment: derefString(ev.FeedbackComment),
-			// The row has no separate feedback timestamp; updated_at is what moves
-			// with the two feedback columns (0024's trigger keeps exactly those
-			// three writable together), so it is when the answer was given.
+
 			SubmittedAt: pgconv.RFC3339(ev.UpdatedAt),
 		}
 	}
 	return view, nil
 }
 
-// liveEvidence is the answer to 「can this citation still be followed」 for both
-// kinds of reference, gathered once per report rather than once per reference.
 type liveEvidence struct {
 	traceEvents map[string]bool
 	artifacts   map[string]bool
-	// finalOutput answers the third kind. An `agent_output` citation quotes
-	// m.summary.FinalOutput, which is itself folded out of trace events - so when
-	// the trace goes, the thing that citation points at goes with it, and it was
-	// the last of the three still shipping a frozen `true`.
+
 	finalOutput bool
 }
 
-// resolveEvidence re-answers availability for every reference in sets.
-//
-// ADR-026 decision 2 and doc.go's invariant 9 both say `available` is answered at
-// READ time, and the reason is that a reference outlives the evidence it points
-// at: trace_events is dropped by partition, and WS-002 clause 3 lets a user delete
-// a run output whenever they like. A value read back from the stored JSON is
-// therefore a claim about the past presented as a claim about now.
-//
-// All three kinds, because only one of them was ever answered. Artifact references
-// were written `Available: true` by deterministic.go and never revisited, so a
-// report went on citing a file the user had deleted as though it were still there;
-// `agent_output` references were written the same way by judge.go's outputRef.
-//
-// The artifact half asks execution's own injected read (ReadEvaluationInput,
-// backed by ListReadableRunArtifacts) rather than a query of its own: run outputs
-// are execution's rows, and eval reaching into them directly is what ADR-033 is
-// about.
 func (s *Service) resolveEvidence(
 	ctx context.Context, workspaceID, runID pgtype.UUID, sets ...[]EvidenceRef,
 ) (liveEvidence, error) {
@@ -402,13 +340,10 @@ func (s *Service) resolveEvidence(
 
 	if wantArtifacts {
 		if s.ReadEvaluationInput == nil {
-			// Refuse rather than fall back to the stored value. Both composition
-			// roots inject this, and the fallback is the exact claim this function
-			// exists to stop making.
+
 			return liveEvidence{}, errRunReaderNotConfigured
 		}
-		// found == false is a run that is gone, which makes every output gone with
-		// it; the empty set below is the right answer and not an error.
+
 		input, _, err := s.ReadEvaluationInput(ctx, workspaceID, runID)
 		if err != nil {
 			return liveEvidence{}, err
@@ -419,9 +354,7 @@ func (s *Service) resolveEvidence(
 	}
 
 	if wantOutput {
-		// The same read the evaluation itself used to quote from (gather's
-		// m.summary), asked again now. An empty final output means the events it
-		// was folded from are gone.
+
 		summary, err := s.Trace.General(ctx, workspaceID, runID)
 		if err != nil {
 			return liveEvidence{}, err
@@ -431,9 +364,6 @@ func (s *Service) resolveEvidence(
 	return live, nil
 }
 
-// markAvailability tells the reader whether each citation can still be followed.
-// A stale one keeps its excerpt and is labelled: never blanked out, and never
-// presented as though the original were still there (ADR-009).
 func markAvailability(refs []EvidenceRef, live liveEvidence) {
 	for i := range refs {
 		switch {
@@ -448,23 +378,12 @@ func markAvailability(refs []EvidenceRef, live liveEvidence) {
 }
 
 func costViewOf(ev gen.Evaluation, credits func(float64) (int64, bool)) costView {
-	// "unreported", not "estimated". eval.go's costSource() writes a source only
-	// when the gateway reported one, and judge.go says it in as many words: the
-	// internal contract has no estimated source, and an unrecognised label is
-	// unreported accounting rather than permission to relabel it as an estimate.
-	// The default used to be "estimated", so every evaluation without a gateway
-	// figure came out of here as {"evaluation_usd": null, "source": "estimated"}
-	// - a field claiming the platform estimated something next to a note saying
-	// it has no figure at all (NFR-001: the UI must not mislead).
+
 	v := costView{Source: "unreported"}
 	if ev.CostSource != nil {
 		v.Source = *ev.CostSource
 	}
-	// The stored figure is dollars — cost_events and evaluations both keep the
-	// platform's own book in the unit the gateway prices in (ADR-068 decision
-	// 3). It becomes Credit here, at the response boundary, and nowhere else: a
-	// converted number written back to a table would be a second copy of the
-	// rate, ageing separately from the one that charged the account.
+
 	if ev.CostUsd.Valid && credits != nil {
 		if f, err := ev.CostUsd.Float64Value(); err == nil && f.Valid {
 			if c, ok := credits(f.Float64); ok {
@@ -498,8 +417,6 @@ func pathUUID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
 	return id, true
 }
 
-// optionalTime keeps null meaningful: `superseded_at: null` is what says a
-// revision is the standing one, so it is a JSON null and never an absent field.
 func optionalTime(t pgtype.Timestamptz) *string {
 	if !t.Valid {
 		return nil

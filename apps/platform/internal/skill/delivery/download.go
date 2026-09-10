@@ -1,26 +1,5 @@
 package packaging
 
-// The download surface of contracts/openapi/public.yaml:
-//
-//	GET    /downloads                        the workspace's packages
-//	GET    /downloads/{artifactId}           one of them
-//	DELETE /downloads/{artifactId}           delete one of one's own
-//	GET    /downloads/{artifactId}/content   the bytes
-//
-// The platform streams the bytes; it does not hand out a pre-signed URL
-// (packaging-design §7.1). Three consequences, and all three are the reason:
-// workspace scope is the session middleware already in place rather than a
-// second authorization scheme; the URL is not secret material, so it can appear
-// in a log and in the audit event a download writes, which a pre-signed URL
-// never could; and the status, expiry and licensing checks happen in this
-// handler on every request rather than once at signing time, where a hold
-// applied inside the TTL would not have stopped anything. Bytes crossing the API
-// process is movement, not execution (iron rule 1).
-//
-// One successful download writes two rows in one transaction (iron rule 9): a
-// download record (WS-004, what the owner reads) and an audit event (CORE-008,
-// what compliance keeps). They are deliberately not one row — see internal/foundation/observability/audit.
-
 import (
 	"context"
 	"errors"
@@ -39,15 +18,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
-// ErrGone is every reason the bytes are not being served, folded into one:
-// not available, expired, purged, or held back since it was built. The endpoint
-// answers 404 for all of them and for "not yours" alike, because the existence
-// of one workspace's artifact is exactly what must not leak (WS-006). An owner
-// who wants to tell the cases apart reads GET /downloads/{id}, which still
-// describes the row.
 var ErrGone = errors.New("this package is no longer available for download")
 
-// ListDownloads is GET /downloads: the workspace's packages, newest first.
 func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]Artifact, error) {
 	rows, err := gen.New(s.Pool).ListDownloadArtifacts(ctx, ws.ID)
 	if err != nil {
@@ -69,17 +41,11 @@ func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]A
 	return out, nil
 }
 
-// DownloadRecord is one line of WS-004's "誰、何時": one download that happened.
 type DownloadRecord struct {
 	DownloadedAt string `json:"downloaded_at"`
 	Actor        string `json:"actor"`
 }
 
-// ListDownloadRecords is GET /downloads/{artifactId}/records.
-//
-// The artifact is read first, so an id belonging to another workspace answers 404
-// rather than an empty list — an empty list would say "this exists and has never
-// been downloaded" about somebody else's package.
 func (s *Service) ListDownloadRecords(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
 ) ([]DownloadRecord, error) {
@@ -93,8 +59,7 @@ func (s *Service) ListDownloadRecords(
 	}
 	out := make([]DownloadRecord, 0, len(rows))
 	for _, r := range rows {
-		// A purged account keeps its download records de-identified (PDM-006 §6.1),
-		// so the name can be gone while the row is still true.
+
 		actor := "deleted user"
 		if r.DisplayName != nil && *r.DisplayName != "" {
 			actor = *r.DisplayName
@@ -104,7 +69,6 @@ func (s *Service) ListDownloadRecords(
 	return out, nil
 }
 
-// GetDownload is GET /downloads/{artifactId}.
 func (s *Service) GetDownload(ctx context.Context, ws identity.Workspace, id pgtype.UUID) (Artifact, error) {
 	row, err := s.downloadRow(ctx, ws, id)
 	if err != nil {
@@ -119,9 +83,6 @@ func (s *Service) GetDownload(ctx context.Context, ws identity.Workspace, id pgt
 		DownloadCount: row.DownloadCount, IncludesTestCases: row.IncludesTestCases,
 		PackagerVersion: row.PackagerVersion, ProfileVersion: row.ProfileVersion,
 		VersionNumber: row.VersionNumber, LatestVersionNumber: row.LatestVersionNumber,
-		// The same three facts Download() enforces on, one function apart from it:
-		// this is the endpoint an owner reads to tell 404's reasons apart, so it
-		// must not be able to answer 可下載 about bytes the other one refuses.
 	}.withVersionState().withServeState(row.ExpiresAt.Time, row.PurgedAt.Time), nil
 }
 
@@ -137,15 +98,6 @@ func (s *Service) downloadRow(
 	return row, err
 }
 
-// Download is GET /downloads/{artifactId}/content: the servability checks, the
-// bytes, and the two rows one download owes.
-//
-// The checks are re-run here rather than trusted from build time. `available` is
-// the state ADR-003's quarantine releases into and this is the endpoint that
-// makes "only available is served" a condition a test can hold; expiry and
-// purge are facts about the object; and the two licensing locks are asked again
-// because a hold applied since the package was built must stop the copy that
-// already exists from going out.
 func (s *Service) Download(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
 ) (gen.GetDownloadArtifactRow, []byte, error) {
@@ -164,18 +116,9 @@ func (s *Service) Download(
 		return none, nil, ErrGone
 	}
 
-	// Read before recording. A download record is a claim that the user got the
-	// file, and writing one for bytes that were not there would make the history
-	// wrong in the direction nobody checks.
-	//
-	// ponytail: the whole package is materialised (32 MiB ceiling,
-	// skillpkg.MaxZipBytes). Give ObjectStore an io.ReadCloser variant if packages or
-	// concurrency grow past what that costs in memory.
 	data, err := s.Store.Get(ctx, row.ObjectKey)
 	if err != nil {
-		// The object is gone while the row still claims it is there. The
-		// reconciler is what corrects the row (04 丙-9); this request only has to
-		// avoid promising what it cannot deliver.
+
 		slog.Warn("download artifact object unreadable",
 			"artifact_id", pgconv.UUIDString(row.ArtifactID), "error", err)
 		return none, nil, ErrGone
@@ -193,9 +136,7 @@ func (s *Service) Download(
 	}); err != nil {
 		return none, nil, err
 	}
-	// Identifiers and outcome only, never content (iron rule 11). Which package
-	// and which target, because "who took a copy of what" is the question a
-	// review of the download trail asks.
+
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor: ws.OwnerUserID, Workspace: ws.ID,
 		Action: audit.ActionArtifactDownload, ResourceType: audit.ResourceArtifact,
@@ -214,17 +155,6 @@ func (s *Service) Download(
 	return row, data, nil
 }
 
-// DeleteDownload is DELETE /downloads/{artifactId}, and it is idempotent: an id
-// that is not there, is already deleted, or belongs to somebody else all reach
-// the same 204. The caller's intent — this artifact must not exist — holds in
-// every one of those cases, and answering 404 to a repeat of a delete that
-// worked reports success as failure.
-//
-// The row is soft-deleted rather than removed. download_records point at it and
-// outlive it by design (WS-004: "you downloaded this" stays true after the file
-// is gone), and download_artifacts carries 0027's immutability trigger. What
-// 02:SEC-006 asks for is that deleted content stops appearing in ordinary access
-// surfaces, and deleted_at is exactly that.
 func (s *Service) DeleteDownload(ctx context.Context, ws identity.Workspace, id pgtype.UUID) error {
 	lookup, err := gen.New(s.Pool).GetDownloadArtifactForDelete(ctx, gen.GetDownloadArtifactForDeleteParams{
 		ID: id, WorkspaceID: ws.ID,
@@ -246,6 +176,9 @@ func (s *Service) DeleteDownload(ctx context.Context, ws identity.Workspace, id 
 			conn.Release()
 			return
 		}
+		// A session lock that fails to release must not go back to the pool
+		// still held; hijacking and closing the connection instead forces the
+		// pool to open a fresh one.
 		unlockCtx, cancel := context.WithTimeout(context.Background(), objectCleanupTimeout)
 		defer cancel()
 		if _, err := gen.New(conn).UnlockDownloadObjectKeySession(unlockCtx, downloadObjectLockKey(lookup.ObjectKey)); err != nil {
@@ -288,11 +221,9 @@ func (s *Service) DeleteDownload(ctx context.Context, ws identity.Workspace, id 
 	}
 
 	if row.PurgedAt.Valid || s.Store == nil {
-		return nil // the bytes are already gone, or there is no store to ask
+		return nil
 	}
-	// The session lock spans both the committed soft delete and the store action.
-	// A concurrent persist for the same content cannot reuse the row and report
-	// success just before these bytes are removed.
+
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), objectCleanupTimeout)
 	defer cancel()
 	live, err := gen.New(conn).CountArtifactsSharingObject(cleanupCtx, row.ObjectKey)
@@ -309,9 +240,6 @@ func (s *Service) DeleteDownload(ctx context.Context, ws identity.Workspace, id 
 	return nil
 }
 
-// --- HTTP --------------------------------------------------------------------
-
-// Downloads handles GET /downloads.
 func (h *Handler) Downloads(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -327,7 +255,6 @@ func (h *Handler) Downloads(w http.ResponseWriter, r *http.Request) {
 	}{out})
 }
 
-// Download handles GET /downloads/{artifactId}.
 func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -349,7 +276,6 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, art)
 }
 
-// DownloadRecords handles GET /downloads/{artifactId}/records.
 func (h *Handler) DownloadRecords(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -373,7 +299,6 @@ func (h *Handler) DownloadRecords(w http.ResponseWriter, r *http.Request) {
 	}{out})
 }
 
-// DownloadContent handles GET /downloads/{artifactId}/content.
 func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -387,10 +312,7 @@ func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 	case errors.Is(err, ErrNotFound), errors.Is(err, ErrGone):
-		// One answer for every reason, deliberately. Unlike GET /api/skills/{id}
-		// /files, where the skill is public and search lists it anyway, here the
-		// artifact is private to one workspace and its existence is the thing that
-		// must not leak.
+
 		httpx.WriteError(w, http.StatusNotFound, "download not found")
 		return
 	case errors.Is(err, ErrNoStore):
@@ -401,21 +323,15 @@ func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// quoteFileName, not the raw name: it reaches a browser's save dialog, and a
-	// quote or a newline in it would let the file name rewrite the header.
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", "attachment; filename="+strconv.Quote(sanitizeHeaderValue(row.FileName)))
 	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	if _, err := w.Write(data); err != nil {
-		// The status line is long gone; there is nothing to tell the client. The
-		// download record stays, which is correct: the platform did hand the bytes
-		// over, and a truncated transfer is the network's account of it, not the
-		// platform's.
+
 		slog.Warn("download response truncated", "artifact_id", pgconv.UUIDString(row.ArtifactID), "error", err)
 	}
 }
 
-// DeleteDownload handles DELETE /downloads/{artifactId}.
 func (h *Handler) DeleteDownload(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -432,8 +348,6 @@ func (h *Handler) DeleteDownload(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// artifactID parses the path id. A malformed one answers 404 rather than 400 for
-// the reason every unknown id does: the caller learns nothing either way.
 func artifactID(w http.ResponseWriter, r *http.Request) (id pgtype.UUID, ok bool) {
 	if err := id.Scan(r.PathValue("artifactId")); err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "download not found")
@@ -442,10 +356,6 @@ func artifactID(w http.ResponseWriter, r *http.Request) (id pgtype.UUID, ok bool
 	return id, true
 }
 
-// sanitizeHeaderValue drops what has no business in a header. File names are
-// built by the packager from a skill name, so this is depth rather than the only
-// guard — but the value is echoed to a browser and the packager is not the only
-// thing that will ever write one.
 func sanitizeHeaderValue(s string) string {
 	out := make([]rune, 0, len(s))
 	for _, r := range s {

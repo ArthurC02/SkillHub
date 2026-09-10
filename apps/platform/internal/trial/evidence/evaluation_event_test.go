@@ -1,9 +1,5 @@
 package trace
 
-// The 1.2 half of contracts/events/trace-event.schema.json: two new types, one
-// producer, and a version declaration that follows the type rather than a single
-// global constant (contract README §9).
-
 import (
 	"encoding/json"
 	"testing"
@@ -33,9 +29,6 @@ func TestEvaluationEventsAreAcceptedFromTheOrchestrator(t *testing.T) {
 	}
 }
 
-// The schema pins both types to `orchestrator`. Evaluation happens in the control
-// plane after the sandbox is gone, so one arriving from the execution plane is a
-// forged verdict rather than a late event (README §4.1).
 func TestAnEvaluationEventFromTheSandboxIsRefused(t *testing.T) {
 	for _, source := range []string{SourceSandbox, SourceLLMService} {
 		for _, eventType := range []string{TypeEvaluationStarted, TypeEvaluationCompleted} {
@@ -46,8 +39,6 @@ func TestAnEvaluationEventFromTheSandboxIsRefused(t *testing.T) {
 	}
 }
 
-// A producer declares the contract revision it wrote to. The evaluation types do
-// not exist in 1.0, and `error` / `run_lifecycle` were never written against 1.2.
 func TestDeclaredVersionFollowsTheEventType(t *testing.T) {
 	cases := map[string]string{
 		TypeEvaluationStarted:   SchemaVersionEvaluation,

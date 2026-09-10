@@ -1,22 +1,7 @@
-"""M1 golden query set evaluation (ADR-013 / DISC-001).
-
-Runs the 60-query golden set against the pinned SKILL.md corpus in ./corpus and
-reports, per category and per language:
-
-  * Top-1 / Top-3 / recall@5 for the vector leg, the BM25 leg and RRF
-  * the similarity distribution of distractor queries (gold = "no result")
-    against the distribution of real queries' gold documents
-  * the cosine cut-off sweep those two distributions imply
-
-Usage
-  python evaluate.py --selfcheck   # retrieval + threshold logic, no network
-  python evaluate.py               # embeds anything not in the cache, then reports
-  python evaluate.py --no-api      # cache only; fails loudly if a text is missing
-  python evaluate.py --lookup      # 05 R-48/R-49 name+token query sets, both rules (needs enriched corpus)
-
-The embedding key is read from the environment or the gitignored repo-root .env.
-It is never written to the cache, the output, or this file.
-"""
+"""Run the golden query set against the pinned SKILL.md corpus in ./corpus
+and report, per category and language, Top-1/Top-3/recall@5 for the vector
+leg, the BM25 leg and RRF, plus the cosine cut-off the score distributions
+imply."""
 
 from __future__ import annotations
 
@@ -32,27 +17,24 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 CORPUS_DIR = ROOT / "corpus"
-ENRICHED_DIR = ROOT / "corpus_enriched"  # real /v1/enrich-skill output, one JSON per skill
-CACHE_PATH = ROOT / "embeddings_cache.json"  # gitignored: hashes + float arrays only
+ENRICHED_DIR = ROOT / "corpus_enriched"
+CACHE_PATH = ROOT / "embeddings_cache.json"
 ENV_PATH = ROOT.parents[1] / ".env"
 
-EMBED_MODEL = "text-embedding-3-small"  # PDM-003, 1536 dims
+EMBED_MODEL = "text-embedding-3-small"
 EMBED_URL = "https://api.openai.com/v1/embeddings"
 EMBED_CHAR_LIMIT = 20000  # model caps at 8191 tokens
 
 K1, B, RRF_K = 1.5, 0.75, 60
-FRONTMATTER_WEIGHT = 3  # BM25-side stand-in for ADR-013 index-time enrichment
+FRONTMATTER_WEIGHT = 3
 
-# Acceptance targets handed over from ADR-013 -> M1.
 TARGET_DISTRACTOR_REJECT = 0.75
 TARGET_RECALL_LOSS = 0.05
-MAX_REPO_SHARE = 0.20  # a source repo may own at most 20% of a category's queries
+MAX_REPO_SHARE = 0.20
 
 CJK_RE = re.compile(r"[一-鿿]+")
 WORD_RE = re.compile(r"[a-z0-9][a-z0-9+.#_-]*")
 
-
-# --------------------------------------------------------------------------- corpus
 
 
 def tokenize(text: str) -> list[str]:
@@ -79,7 +61,7 @@ def parse_skill(path: Path, doc_id: str) -> dict:
                 if not m:
                     continue
                 value = m.group(1).strip()
-                if value in ("|", "|-", ">", ">-", ""):  # block scalar
+                if value in ("|", "|-", ">", ">-", ""):
                     lines = []
                     for line in front[m.end() :].splitlines():
                         if line.strip() and not line.startswith((" ", "\t")):
@@ -103,16 +85,9 @@ def parse_skill(path: Path, doc_id: str) -> dict:
 
 
 def enriched_index_text(name: str, payload: dict) -> str:
-    """The exact string the platform embeds for an enriched document.
-
-    Transcribed from apps/platform/internal/skill/admission/enrich.go: embeddingText
-    joins "name: enriched_summary", the bilingual task examples one per line, and
-    the flattened tag buckets, with "\\n" between the three parts. Task examples
-    keep the zh_hant line before the en line; tags flatten inputs, outputs, tools
-    then dependencies into one space-separated string. If this drifts from the Go
-    side, the golden set stops measuring the production retrieval path — which is
-    the whole point of --index-mode enriched, so keep the two in step.
-    """
+    """The exact string the platform embeds for an enriched document: mirrors
+    apps/platform/internal/skill/admission/enrich.go's embeddingText, joining
+    "name: summary", bilingual task examples, and flattened tag buckets."""
     body = payload.get("summary", "")
     parts = [f"{name}: {body}"]
     lines = [
@@ -153,8 +128,6 @@ def load_corpus(require_enriched: bool = False) -> tuple[list[dict], dict]:
         docs.append(doc)
     return docs, manifest
 
-
-# --------------------------------------------------------------------------- embeddings
 
 
 def api_key() -> str:
@@ -199,8 +172,6 @@ def cosine(a: list[float], b: list[float]) -> float:
     nb = math.sqrt(sum(x * x for x in b)) or 1.0
     return sum(x * y for x, y in zip(a, b)) / (na * nb)
 
-
-# --------------------------------------------------------------------------- retrieval
 
 
 class Bm25:
@@ -249,8 +220,6 @@ def first_hit(ranking: list[str], relevant: set[str]) -> int | None:
     return None
 
 
-# --------------------------------------------------------------------------- evaluation
-
 
 def run(docs: list[dict], queries: list[dict], vectors: dict, grain: str) -> list[dict]:
     ids = [d["id"] for d in docs]
@@ -262,8 +231,8 @@ def run(docs: list[dict], queries: list[dict], vectors: dict, grain: str) -> lis
         bm_scores = bm25.score(q["query"])
         emb_rank = rank(sims, ids)
         bm_rank = rank(bm_scores, ids)
-        # A leg that scored nothing has no candidate set; fusing its alphabetical
-        # tie-break is a harness artifact, not what FTS + pgvector would do.
+        # A leg with no scoring candidates is excluded from fusion rather than
+        # contributing its alphabetical tie-break ranking.
         legs = [r for r, sc in ((bm_rank, bm_scores), (emb_rank, sims)) if any(s > 0 for s in sc)]
         relevant = set(q["gold_primary"]) | set(q["gold_acceptable"])
         sim_of = dict(zip(ids, sims))
@@ -278,8 +247,8 @@ def run(docs: list[dict], queries: list[dict], vectors: dict, grain: str) -> lis
                 "emb_top1_primary": bool(q["gold_primary"]) and emb_rank[0] in q["gold_primary"],
                 "top_sim": max(sims),
                 "top_id": emb_rank[0],
-                # similarity of the best relevant doc that survives into the top 5:
-                # the value a cut-off would have to stay under to keep the hit.
+                # Similarity of the best relevant doc in the top 5: the value a
+                # cut-off would need to stay under to keep this hit.
                 "gold_sim": max((sim_of[i] for i in emb_rank[:5] if i in relevant), default=None),
             }
         )
@@ -311,15 +280,10 @@ def table(title: str, rows: list[dict]) -> str:
     return "\n".join(out) + "\n"
 
 
-# --------------------------------------------------------------------------- thresholds
-
 
 def sweep(rows: list[dict]) -> list[dict]:
-    """Cosine cut-off sweep over the two similarity distributions.
-
-    A cut-off `t` drops every result scoring below it. For a distractor that is
-    the desired behaviour (empty result set); for a real query it is recall lost.
-    """
+    """Cosine cut-off sweep: at each `t`, the distractor rejection rate and
+    the real-query recall loss from dropping results scoring below it."""
     distractors = [r for r in rows if not r["relevant"]]
     hits = [r for r in rows if r["relevant"] and r["gold_sim"] is not None]
     cuts = sorted({round(x / 200, 3) for x in range(0, 200)})
@@ -354,8 +318,6 @@ def quantiles(values: list[float]) -> tuple[float, float, float, float, float]:
     return v[0], q(0.25), q(0.5), q(0.75), v[-1]
 
 
-# --------------------------------------------------------------------------- checks
-
 
 def check_repo_share(docs: list[dict], queries: list[dict]) -> list[str]:
     """ADR-013: one source repo may own at most 20% of a category's queries."""
@@ -376,15 +338,9 @@ def check_repo_share(docs: list[dict], queries: list[dict]) -> list[str]:
 
 
 def lookup_sets(docs: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Two 05 R-48 query sets, same algorithm as search_f1_public.py.
-
-    names: each corpus skill's frontmatter name, gold = that skill.
-    tokens: for each skill (in the reference script's data/documents/writing,
-    per-category-sorted-by-id order — the order the 25-cap is taken from), the
-    lowest-sorting token of its enriched index text that (a) occurs in exactly
-    one skill corpus-wide and (b) looks like an identifier
-    ([a-z][a-z0-9+.#_-]{3,}), capped at 25 skills.
-    """
+    """Two name/token query sets: names are each skill's frontmatter name;
+    tokens are, per skill, the lowest-sorting corpus-unique identifier-shaped
+    token in its enriched index text, capped at 25 skills."""
     cat_order = {"data": 0, "documents": 1, "writing": 2}
     ordered = sorted(docs, key=lambda d: (cat_order.get(d["category"], 99), d["id"]))
     names = [{"query": d["name"], "rel": {d["id"]}} for d in ordered]
@@ -403,11 +359,8 @@ def lookup_sets(docs: list[dict]) -> tuple[list[dict], list[dict]]:
 
 
 def lookup_main(allow_api: bool) -> None:
-    """05 R-48 (public) and R-49/R-50 (creation) list-ranking rules, scored on
-    the golden set plus the names/tokens sets above — the "does someone who
-    only remembers a name or a keyword find it" question the golden set's task
-    phrasing can't measure.
-    """
+    """Score list-ranking against the golden set plus the names/tokens sets:
+    does someone who only remembers a name or a keyword find it?"""
     docs, _ = load_corpus(require_enriched=True)
     queries = json.loads((ROOT / "queries.json").read_text(encoding="utf-8"))["queries"]
     golden = [{"query": q["query"], "rel": set(q["gold_primary"]) | set(q["gold_acceptable"])} for q in queries]
@@ -511,7 +464,6 @@ def _selfcheck() -> None:
     assert abs(cosine([1.0, 0.0], [0.0, 2.0])) < 1e-9
     assert first_hit(["x", "y", "a"], {"a"}) == 3 and first_hit(["x"], {"a"}) is None
 
-    # threshold maths: one distractor at 0.30, two gold hits at 0.50 / 0.55.
     fake = [
         {"relevant": set(), "top_sim": 0.30, "gold_sim": None},
         {"relevant": {"a"}, "top_sim": 0.50, "gold_sim": 0.50},
@@ -524,9 +476,6 @@ def _selfcheck() -> None:
     best = recommend(sweep(fake))
     assert best["reject"] == 1.0 and best["loss"] == 0.0
 
-    # enriched_index_text must reproduce ingest/enrich.go embeddingText exactly:
-    # name and summary joined by ": ", then examples zh before en one per line,
-    # then tags in bucket order space-separated, the three parts joined by "\n".
     sample = {
         "summary": "轉檔",
         "task_examples": [{"zh_hant": "把 CSV 轉成 JSONL", "en": "convert csv to jsonl"},
@@ -540,7 +489,6 @@ def _selfcheck() -> None:
     ), enriched_index_text("csv-to-json", sample)
     assert enriched_index_text("x", {"summary": "s", "task_examples": [], "tags": {}}) == "x: s"
 
-    # queries.json is internally consistent with the corpus manifest
     docs_real, _ = load_corpus()
     known = {d["id"] for d in docs_real}
     qs = json.loads((ROOT / "queries.json").read_text(encoding="utf-8"))["queries"]
@@ -560,8 +508,6 @@ def _selfcheck() -> None:
     assert not [l for l in check_repo_share(docs_real, qs) if "超標" in l]
     print("selfcheck ok")
 
-
-# --------------------------------------------------------------------------- main
 
 
 def main(allow_api: bool, index_mode: str) -> None:
@@ -674,9 +620,6 @@ def main(allow_api: bool, index_mode: str) -> None:
             )
 
     if enriched_mode:
-        # The two v1 misses are the stated prediction of ADR-013 section 1: task
-        # example sentences are what should close them. Report them by name so a
-        # rerun answers that question without re-reading the whole table.
         print("\n### v1 兩條 miss 在增強索引下的名次\n")
         by_id = {r["id"]: r for r in results["enriched"]}
         base = {r["id"]: r for r in results["summary"]}

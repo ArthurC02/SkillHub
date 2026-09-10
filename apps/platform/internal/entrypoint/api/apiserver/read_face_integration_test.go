@@ -1,26 +1,3 @@
-// The owner-side read functions DDD-033 added, so that eval, run, packaging and
-// identity could stop calling testlab's and trace's queries themselves
-// (ADR-035 C 組 and G 組).
-//
-// "The call site came back" is deliberately NOT tested here: `devctl
-// automation-check` fails the build on any non-owner call to those seven
-// queries, and a Go test asserting the same thing would be a second, weaker copy
-// of a check that already runs in CI. What automation-check cannot see is a
-// wrapper that compiles, is called from the right place, and answers the wrong
-// thing — which for a read face means, above everything else, losing the
-// workspace scope. A read that dropped it would hand one workspace another's
-// test data with every call site looking exactly as it does now (iron rule 3,
-// WS-006).
-//
-// These live in apiserver rather than in testlab and trace because neither of
-// those packages has a database test harness, and giving them one would make a
-// fourth and a fifth package resetting the shared `public` schema.
-//
-// Not here: trace.MaskingActivity. It is deployment-wide rather than workspace
-// scoped, and it already has a behavioural test that discriminates its arguments
-// — TestMaskingStoppedHaltsDispatchWithoutAnOperator drives all four branches of
-// the two-window rule, and swapping `recent` for `since` makes earlier_events
-// always zero, so the halt it asserts never happens.
 package apiserver_test
 
 import (
@@ -86,13 +63,6 @@ func TestRegistryTransactionalReadFaceKeepsScopeAndUncommittedVisibility(t *test
 	}
 }
 
-// TestTestLabReadFaceIsWorkspaceScoped covers the four functions internal/trial/improvement,
-// internal/run and internal/packaging now go through, plus the object-key lister
-// internal/creator/workspace's account purge is handed.
-//
-// Every case is the same shape twice: the owning workspace gets the row, and a
-// second real workspace gets "there is no such thing" — never someone else's
-// row, and never a different error that would let a caller tell the difference.
 func TestTestLabReadFaceIsWorkspaceScoped(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -128,8 +98,6 @@ func TestTestLabReadFaceIsWorkspaceScoped(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The owner's own write path, so the snapshot under test is the one a run
-	// would actually execute rather than a hand-built row.
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -186,8 +154,7 @@ func TestTestLabReadFaceIsWorkspaceScoped(t *testing.T) {
 		if _, err := testlabSvc.ReadDataset(ctx, foreign, datasetID); !errors.Is(err, testlab.ErrNotFound) {
 			t.Errorf("another workspace reading the dataset got %v, want ErrNotFound", err)
 		}
-		// A deleted file has to read as gone, or a run whose input the user
-		// removed would be dispatched with a grant for bytes that are not there.
+
 		if _, err := pool.Exec(ctx,
 			"UPDATE datasets SET deleted_at = now() WHERE id = $1", datasetID); err != nil {
 			t.Fatal(err)
@@ -211,8 +178,7 @@ func TestTestLabReadFaceIsWorkspaceScoped(t *testing.T) {
 		if len(rows) != 1 || rows[0].ID != testCaseID {
 			t.Fatalf("owner sees %d cases for its own skill, want exactly the seeded one", len(rows))
 		}
-		// Empty and not an error: packaging asks this about a skill it is already
-		// entitled to package, so "none of yours" is the answer, not a refusal.
+
 		other, err := testlabSvc.CasesForSkill(ctx, foreign, mustUUID(t, skillID))
 		if err != nil {
 			t.Fatal(err)
@@ -272,13 +238,6 @@ func TestTestLabReadFaceIsWorkspaceScoped(t *testing.T) {
 	})
 }
 
-// TestTraceLiveEventsIsScopedToOneRunInOneWorkspace covers what eval's report
-// asks of trace on every read: of the events this report cites, which still
-// exist (ADR-026 decision 2)?
-//
-// The scope is the whole answer. Widened to the workspace, one run's report would
-// keep claiming a citation resolves because a different run happens to have an
-// event with that id; widened past the workspace it would do so across accounts.
 func TestTraceLiveEventsIsScopedToOneRunInOneWorkspace(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -289,8 +248,7 @@ func TestTraceLiveEventsIsScopedToOneRunInOneWorkspace(t *testing.T) {
 	ws := mustUUID(t, owner.workspaceID)
 	skillID := seedSkill(t, pool, owner.workspaceID, "live-events")
 	runID, _ := seedEvaluatableRun(t, pool, owner.workspaceID, skillID)
-	// A second skill, because seedEvaluatableRun derives the version's content
-	// hash from the skill and two versions cannot share one.
+
 	otherRunID, _ := seedEvaluatableRun(t, pool, owner.workspaceID,
 		seedSkill(t, pool, owner.workspaceID, "live-events-other"))
 
@@ -330,9 +288,6 @@ func TestTraceLiveEventsIsScopedToOneRunInOneWorkspace(t *testing.T) {
 	}
 }
 
-// seedToolCallEvent writes one masked tool_call event straight to the table and
-// returns its id. Direct insert rather than the ingestion endpoint because these
-// tests are about who may read an event, not about how one arrives.
 func seedToolCallEvent(t *testing.T, pool *pgxpool.Pool, workspaceID, runID string, seq int, tool string) pgtype.UUID {
 	t.Helper()
 	var id pgtype.UUID

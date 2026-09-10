@@ -1,17 +1,3 @@
-// Package providertest is an in-repo sandbox provider that implements
-// contracts/openapi/sandbox-provider.yaml, for the contract test suite (RUN-009)
-// and for the run-orchestration integration tests.
-//
-// It is a fake, not a mock: it holds real state, and every semantic the contract
-// promises — idempotent dispatch on (run_id, attempt), 409 on a re-send with
-// different content, 202 from cancel even on a terminal run, a DELETE with no 404,
-// active-only listings with an observed_at — is implemented here rather than
-// asserted about. That is what lets one suite run against this and against a real
-// provider without changing a line (see SKILLHUB_PROVIDER_CONTRACT_URL).
-//
-// It runs no code and isolates nothing. It exists to exercise the *protocol*, and
-// nothing here says anything about whether a real provider is safe (ADR-015,
-// SEC-009).
 package providertest
 
 import (
@@ -27,54 +13,40 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-// Plan is how a dispatched run behaves as it is polled. Zero value: one poll
-// answers `running`, the next completes successfully.
 type Plan struct {
-	// CreatingPolls and RunningPolls are how many reads answer each state before
-	// the run moves on.
 	CreatingPolls int
 	RunningPolls  int
-	// StuckRunning keeps the run in `running` forever, for wall-clock tests.
+
 	StuckRunning bool
-	// FinalState and ResultStatus are the terminal answer. Zero values are
-	// `completed` and `succeeded`.
+
 	FinalState   run.ProviderRunState
 	ResultStatus string
 	ErrorClass   string
-	// OmitResult returns a terminal state with no result, which the contract
-	// forbids — the platform has to survive a provider that does it anyway.
+
 	OmitResult bool
 }
 
-// Fake is a running provider. Close it with Close (httptest.Server).
 type Fake struct {
 	*httptest.Server
 	Name  string
 	Token string
 
-	// instance keeps this fake's handles unique across fakes; see randomID.
 	instance string
 
 	mu         sync.Mutex
-	runs       map[string]*fakeRun // provider_run_id -> run
-	byKey      map[string]string   // "run_id/attempt" -> provider_run_id
-	bodies     map[string]string   // "run_id/attempt" -> canonical request
+	runs       map[string]*fakeRun
+	byKey      map[string]string
+	bodies     map[string]string
 	seq        int
 	dispatches int
 	destroys   int
 
-	// Capability overrides what GET /capability answers. Nil means
-	// DefaultCapability(Name).
 	Capability *run.ProviderCapability
-	// DispatchStatuses are answered by successive POST /runs calls before any run
-	// is created — one entry per call, and the list is consumed. Used to drive the
-	// bounded-retry path (503, 429) and the refusal path (422).
+
 	DispatchStatuses []int
-	// Plan governs every run this provider creates.
+
 	Plan Plan
-	// DestroyStatus, when >= 400, makes DELETE fail with that status and keep the
-	// sandbox. A provider that cannot tear one down is the only way to observe a
-	// leak that survives a scan round (SBX-012).
+
 	DestroyStatus int
 }
 
@@ -86,9 +58,6 @@ type fakeRun struct {
 	createdAt                       time.Time
 }
 
-// New starts a fake provider. token may be empty, in which case no Authorization
-// header is required — a real provider always requires one, so the contract suite
-// passes a token.
 func New(name, token string) *Fake {
 	f := &Fake{
 		Name:     name,
@@ -102,11 +71,6 @@ func New(name, token string) *Fake {
 	return f
 }
 
-// randomID keeps one fake's handles out of another's id space. run_attempts has a
-// unique index on (provider, provider_run_id), so two fakes of the same name that
-// both started counting at 1 would collide on the *second* test to run — which is
-// exactly what a real provider does when it recycles handles across a restart, and
-// exactly why handles are opaque.
 func randomID() string {
 	var b [4]byte
 	if _, err := rand.Read(b[:]); err != nil {
@@ -115,11 +79,8 @@ func randomID() string {
 	return hex.EncodeToString(b[:])
 }
 
-// Provider returns a client pointed at this fake.
 func (f *Fake) Provider() *run.Provider { return run.NewProvider(f.Name, f.URL, f.Token) }
 
-// DefaultCapability is a provider that can run everything the platform asks for
-// by default. Tests that need a mismatch narrow a copy of it.
 func DefaultCapability(name string) run.ProviderCapability {
 	healthy, reaps := true, true
 	c := run.ProviderCapability{
@@ -131,49 +92,31 @@ func DefaultCapability(name string) run.ProviderCapability {
 		}},
 		MaxResources: run.DefaultResourceLimits(),
 	}
-	c.Isolation.Level = "container" // honest name for a fake on a developer machine
+	c.Isolation.Level = "container"
 	c.Isolation.Rootless = true
 	c.Isolation.DedicatedWorkspacePerRun = true
-	// Declared explicitly, both of them, because the default this fake stands for
-	// is a provider that answers honestly: every ceiling it names it enforces, and
-	// it does end a descendant that left its process group. A test that wants the
-	// dishonest shape narrows a copy - which is the point of these two fields
-	// being here at all, since the platform side had no consumer for either until
-	// Match() and ProviderSummary grew one.
+
 	c.MaxResourcesUnenforced = nil
 	c.Isolation.ReapsDetachedDescendants = &reaps
 	c.Network.EgressModes = []string{"default_deny"}
-	// The third field in that same family, and explicit for the same reason:
-	// this fake stands for a node whose declaration is a boundary. A test that
-	// wants a node declaring an egress mode it does not enforce sets it on a
-	// copy.
+
 	c.Network.EgressUnenforced = false
 	c.Availability.ConcurrentRunSlots = 4
 	c.Availability.Healthy = &healthy
 	return c
 }
 
-// --- counters, for assertions -------------------------------------------------
-
-// Dispatches is how many POST /runs calls created a new run. A re-send of the same
-// (run_id, attempt) does not count: that is the point of the idempotency key.
 func (f *Fake) Dispatches() int { f.mu.Lock(); defer f.mu.Unlock(); return f.dispatches }
 
-// Destroys counts every DELETE, including the repeats that must stay safe.
 func (f *Fake) Destroys() int { f.mu.Lock(); defer f.mu.Unlock(); return f.destroys }
 
-// Live is how many sandboxes are still held.
 func (f *Fake) Live() int { f.mu.Lock(); defer f.mu.Unlock(); return len(f.runs) }
 
-// Seed plants a sandbox the platform never dispatched, with a chosen age. It is
-// how an orphan is created without a race.
 func (f *Fake) Seed(runID, attemptID string, createdAt time.Time) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.create(runID, attemptID, 1, createdAt).providerRunID
 }
-
-// --- routing -----------------------------------------------------------------
 
 func (f *Fake) routes() http.Handler {
 	mux := http.NewServeMux()
@@ -221,9 +164,6 @@ func (f *Fake) createRun(w http.ResponseWriter, r *http.Request) {
 	key := fmt.Sprintf("%s/%d", req.RunID, req.Attempt)
 	canonical, _ := json.Marshal(req)
 
-	// Idempotency comes first: a re-send of a pair that already exists is answered
-	// from state, never from the injected failure list. Otherwise a provider having
-	// a bad minute could lose a sandbox it already created.
 	if existing, ok := f.byKey[key]; ok {
 		if f.bodies[key] != string(canonical) {
 			writeJSON(w, http.StatusConflict, map[string]string{
@@ -257,7 +197,7 @@ func (f *Fake) createRun(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, f.view(created))
 }
 
-// create allocates a sandbox. Caller holds the lock.
+// create assumes the caller already holds f.mu.
 func (f *Fake) create(runID, attemptID string, attempt int, createdAt time.Time) *fakeRun {
 	f.seq++
 	fr := &fakeRun{
@@ -283,8 +223,7 @@ func (f *Fake) getRun(w http.ResponseWriter, r *http.Request) {
 
 func (f *Fake) listRuns(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("active") == "false" {
-		// Not an empty list: an empty list would read as "no finished runs" from an
-		// endpoint that never had any to give.
+
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "only active=true is served"})
 		return
 	}
@@ -293,7 +232,7 @@ func (f *Fake) listRuns(w http.ResponseWriter, r *http.Request) {
 	list := run.ProviderRunList{Provider: f.Name, Runs: []run.ProviderRun{}, ObservedAt: time.Now()}
 	for _, fr := range f.runs {
 		view := f.view(fr)
-		view.Result = nil // listings omit the result by contract
+		view.Result = nil
 		list.Runs = append(list.Runs, view)
 	}
 	writeJSON(w, http.StatusOK, list)
@@ -307,8 +246,7 @@ func (f *Fake) cancelRun(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no run with this handle"})
 		return
 	}
-	// 202 even when the run is already terminal: the caller polls on an interval
-	// and the run can finish between the read and the cancel.
+
 	fr.cancelled = true
 	writeJSON(w, http.StatusAccepted, f.view(fr))
 }
@@ -317,9 +255,7 @@ func (f *Fake) destroyRun(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.destroys++
-	// DestroyStatus lets a test hold a sandbox that will not die - the leak the
-	// reconciler's consecutive-round threshold exists for (ADR-022 X-03, SBX-012).
-	// The sandbox stays in f.runs, so the next scan sees the same handle again.
+
 	if f.DestroyStatus >= 400 {
 		w.WriteHeader(f.DestroyStatus)
 		return
@@ -330,12 +266,11 @@ func (f *Fake) destroyRun(w http.ResponseWriter, r *http.Request) {
 		delete(f.byKey, fmt.Sprintf("%s/%d", fr.runID, fr.attempt))
 		delete(f.bodies, fmt.Sprintf("%s/%d", fr.runID, fr.attempt))
 	}
-	// No 404: a handle nothing is held for is already in the state the caller asked
-	// for. This is what makes a crashed cleanup safe to repeat.
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// view renders one run at its current point in the plan. Caller holds the lock.
+// view assumes the caller already holds f.mu.
 func (f *Fake) view(fr *fakeRun) run.ProviderRun {
 	state, resultStatus := f.stateOf(fr)
 	created := fr.createdAt

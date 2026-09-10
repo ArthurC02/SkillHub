@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
-"""Import the CONTENT-003 seed skill list into a local dev Skill Hub.
+"""Import the seed skill list into a local dev Skill Hub.
 
-Verification tool, not production code. It drives the public HTTP API only:
-dev login (ADR-020), then one package upload per skill (INGEST-002).
-
-Why upload and not URL import (INGEST-001): a seed entry points at
-``<repo>/<dir>/SKILL.md`` inside a monorepo, while the URL importer only accepts
-a package whose SKILL.md sits at the archive root (ingest.packageFS). One repo
-zip therefore yields at most one importable skill. This tool downloads the
-pinned-commit repo zip once per source and re-packs each skill directory into
-its own archive with SKILL.md at the root.
+Drives the public HTTP API only: dev login, then one package upload per
+skill, re-packed so each skill's SKILL.md sits at the archive root.
 
 Usage:
     python import_seed.py                      # import all skills
     python import_seed.py --only excel-insert  # substring filter on skill id
-    python import_seed.py --probe-url          # INGEST-001 allow-list probes
+    python import_seed.py --probe-url          # allow-list probes
     python import_seed.py --selftest           # offline check of the repacker
     python import_seed.py --pack-only <dir>    # repack all 45 to disk, no API
 """
@@ -37,8 +30,6 @@ import zipfile
 SEED = pathlib.Path(__file__).with_name("seed-skills.json")
 DEFAULT_API = os.environ.get("SKILLHUB_API", "http://localhost:8080")
 
-
-# --- HTTP -------------------------------------------------------------------
 
 
 def make_opener() -> urllib.request.OpenerDirector:
@@ -70,8 +61,6 @@ def dev_login(opener, api: str, user: str = "seed-importer") -> None:
         raise SystemExit(f"dev login failed ({status}): {body[:200]!r} — is DEV_LOGIN=1 set?")
 
 
-# --- Packaging --------------------------------------------------------------
-
 
 def download_repo_zip(source: dict, cache: pathlib.Path) -> pathlib.Path:
     """Fetch the repo archive at the pinned commit (seed schema: sources.<id>.commit)."""
@@ -87,17 +76,13 @@ def download_repo_zip(source: dict, cache: pathlib.Path) -> pathlib.Path:
     return dest
 
 
-# Package-root license filenames, matched case-insensitively. Mirrors
-# skillpkg.licenseFileNames — the packer must agree with the scanner about what
-# counts as "this directory already states its own license", or it would carry a
-# repo license into a package that has one.
+# Matched case-insensitively; must stay in sync with the platform's own
+# license-file scanner, or a package could carry a repo license in on top of
+# one it already declares.
 LICENSE_NAMES = {
     "license", "license.txt", "license.md", "licence", "licence.txt", "licence.md",
     "copying", "copying.txt",
 }
-# The carried repo-root license lands under this fixed name (ADR-021 tier 3).
-# The name is the provenance signal: the scanner ranks it below a license file
-# the skill directory states for itself, and never treats it as the skill's own.
 CARRIED_LICENSE = "LICENSE.repo"
 CARRIED_PROVENANCE = "LICENSE.repo.provenance.json"
 
@@ -105,20 +90,9 @@ CARRIED_PROVENANCE = "LICENSE.repo.provenance.json"
 def repack_skill(repo_zip: pathlib.Path, skill_md_path: str, source: dict | None = None) -> bytes:
     """Re-root one skill directory of a repo archive into its own package zip.
 
-    The repo archive has a single ``<repo>-<sha>/`` top directory; entries under
-    the skill's directory are rewritten so SKILL.md lands at the package root.
-
-    Per-directory packing drops the repo-root LICENSE, which is where most seed
-    repos state their license (37 of 45 packages declared none in frontmatter,
-    import-report.md §4 Top-1). ADR-021: when — and only when — the skill
-    directory states no license of its own, the repo-root license file is
-    carried in verbatim as ``LICENSE.repo`` alongside a provenance note saying
-    where it came from. Verbatim because it is a legal document: annotating the
-    text itself would misrepresent it, so the note is a separate file.
-
-    Entry timestamps are pinned to a constant so the same commit always produces
-    the same bytes. INGEST-005 dedupes on the archive's sha256, so a wall-clock
-    timestamp would make every re-import a brand new version of every skill.
+    When the skill directory states no license of its own, the repo-root
+    LICENSE is carried in verbatim as ``LICENSE.repo``. Entry timestamps are
+    pinned to a constant so the same commit always produces the same bytes.
     """
     fixed_time = (1980, 1, 1, 0, 0, 0)
     with zipfile.ZipFile(repo_zip) as src:
@@ -175,15 +149,13 @@ def repack_skill(repo_zip: pathlib.Path, skill_md_path: str, source: dict | None
     return buf.getvalue()
 
 
-# --- Import -----------------------------------------------------------------
-
 
 def classify(status: int, payload) -> str:
     """Map an import response to a report bucket."""
     if status == 201:
         return "duplicate" if payload.get("duplicate") else "imported"
     if status == 422:
-        return "rejected_validation"  # INGEST-006: blocking findings
+        return "rejected_validation"
     return f"error_http_{status}"
 
 
@@ -224,7 +196,7 @@ def run(args) -> int:
             row["status"], payload = import_one(opener, args.api, zip_bytes)
             row["findings"] = findings_of(payload)
             row["skill_id"] = payload.get("skill_id")
-        except Exception as e:  # fetch/repack failure is a result, not a crash
+        except Exception as e:
             row["status"] = "error_fetch"
             row["findings"] = {"errors": [{"code": "fetch", "message": str(e)[:300]}]}
         print(f"[{i:>2}/{len(skills)}] {row['id']:<40} {row['status']}", flush=True)
@@ -241,7 +213,7 @@ def run(args) -> int:
 
 
 def probe_url(args) -> int:
-    """INGEST-001 reality check against the URL-import allow list."""
+    """Reality check against the URL-import allow list."""
     seed = json.loads(SEED.read_text(encoding="utf-8"))
     src = seed["sources"]["yuyy-excel"]
     owner, repo = src["url"].rstrip("/").split("/")[-2:]
@@ -288,8 +260,6 @@ def selftest() -> int:
     else:
         raise AssertionError("missing skill directory must raise")
 
-    # Determinism: the same input must repack to identical bytes, or INGEST-005
-    # dedupe never fires and every re-run duplicates the whole catalog.
     with zipfile.ZipFile(tmp, "w") as z:
         z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
     stamps = {
@@ -298,8 +268,6 @@ def selftest() -> int:
     }
     assert stamps == {(1980, 1, 1, 0, 0, 0)}, stamps
 
-    # ADR-021 tier 3: a skill directory with no license of its own gets the
-    # repo-root one carried in, with a provenance note naming where it came from.
     with zipfile.ZipFile(tmp, "w") as z:
         z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
         z.writestr("repo-abc123/LICENSE", "MIT License")
@@ -313,8 +281,6 @@ def selftest() -> int:
     prov = json.loads(packed.read(CARRIED_PROVENANCE))
     assert prov["carried_from"] == "LICENSE" and prov["commit"] == "abc123", prov
 
-    # Lowercase repo-root license file (seed repo `iamursky/sokrati`, curated-
-    # skill-list.md §5.1 row 8) must still be found.
     with zipfile.ZipFile(tmp, "w") as z:
         z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
         z.writestr("repo-abc123/license", "MIT License")
@@ -322,8 +288,6 @@ def selftest() -> int:
         repack_skill(tmp, "skills/demo/SKILL.md")
     )).namelist()
 
-    # A skill directory that states its own license keeps it and carries nothing:
-    # the repo license must never displace or accompany the package's own.
     with zipfile.ZipFile(tmp, "w") as z:
         z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
         z.writestr("repo-abc123/skills/demo/LICENSE.txt", "Apache License")
@@ -332,7 +296,6 @@ def selftest() -> int:
         repack_skill(tmp, "skills/demo/SKILL.md")
     )).namelist()) == {"SKILL.md", "LICENSE.txt"}
 
-    # No repo-root license: nothing invented.
     with zipfile.ZipFile(tmp, "w") as z:
         z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
         z.writestr("repo-abc123/README.md", "readme")
@@ -340,7 +303,6 @@ def selftest() -> int:
         repack_skill(tmp, "skills/demo/SKILL.md")
     )).namelist()) == {"SKILL.md"}
 
-    # Carrying must stay deterministic (INGEST-005 dedupe).
     with zipfile.ZipFile(tmp, "w") as z:
         z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
         z.writestr("repo-abc123/LICENSE", "MIT License")
@@ -353,14 +315,10 @@ def selftest() -> int:
 
 
 def every_skill(sources: dict, cache: pathlib.Path) -> list[dict]:
-    """Every SKILL.md in every pinned source repo, not only the 45 selected.
+    """Every SKILL.md in every pinned source repo, not only the curated selection.
 
-    The seed list is a curated selection, so a census over it answers "does this
-    break our own catalogue" and nothing else. ADR-044 decision 4's cost sentence
-    was about skills written for Claude Code that users bring — and the selection
-    contains none of them by construction. This walks the same pinned archives
-    for every skill they hold, which is the closest un-curated sample available
-    without downloading anything new.
+    Walks the same pinned archives for every skill they hold, which is the
+    closest un-curated sample available without downloading anything new.
     """
     found: list[dict] = []
     for sid, src in sources.items():
@@ -373,10 +331,9 @@ def every_skill(sources: dict, cache: pathlib.Path) -> list[dict]:
             for n in z.namelist():
                 if not n.endswith("/SKILL.md"):
                     continue
-                inner = n.split("/", 1)[1]  # drop the <repo>-<sha>/ top directory
+                inner = n.split("/", 1)[1]
                 found.append({
                     "id": f"{sid}/{inner}",
-                    # A SKILL.md at the repo root has no directory to name it.
                     "name": f"{sid}__" + (inner.rsplit("/", 2)[-2] if "/" in inner else "root"),
                     "source_id": sid,
                     "skill_md_path": inner,
@@ -384,20 +341,6 @@ def every_skill(sources: dict, cache: pathlib.Path) -> list[dict]:
     return found
 
 
-# The hashes of what a correct fetch produces, committed so any machine can
-# check it got the same bytes (tools/content/seed-packages.sha256).
-#
-# The packages themselves are NOT committed and must not be: 4 of the 45 are
-# LicenseRef-Anthropic-Source-Available with redistributable=false, and putting
-# them in git history would be redistribution the platform refuses to let its own
-# users perform (skills.redistribution, ADR-021 §5.3). Committing only the other
-# 41 would be worse than fetching: every report cites 45, and a corpus that is
-# quietly four short reads as complete.
-#
-# What can be committed is the answer. repack_skill pins entry timestamps, so a
-# pinned commit yields byte-identical zips everywhere — which means a mismatch is
-# a real event (upstream force-push, a rewritten tag, a corrupted cache) and not
-# noise. Without this file that event is silent.
 MANIFEST = pathlib.Path(__file__).with_name("seed-packages.sha256")
 
 
@@ -430,9 +373,8 @@ def write_manifest(digests: dict[str, str]) -> None:
 def pack_only(args) -> int:
     """Repack every seed skill to `<dir>/<name>.zip` without touching the API.
 
-    The same bytes `run()` would upload. Kept API-free on purpose: the census
-    that ADR-044 decision 4 asks for measures the packages, not a running Skill
-    Hub, and requiring a dev stack for it would make it a deployment task.
+    The same bytes `run()` would upload, kept API-free so this measures the
+    packages themselves rather than requiring a running Skill Hub deployment.
     """
     seed = json.loads(SEED.read_text(encoding="utf-8"))
     sources, skills = seed["sources"], seed["skills"]
@@ -450,7 +392,7 @@ def pack_only(args) -> int:
         try:
             repo_zip = download_repo_zip(src, cache)
             data = repack_skill(repo_zip, skill["skill_md_path"], src)
-        except Exception as e:  # one unreachable source must not lose the other 44
+        except Exception as e:
             print(f"[{i:>2}/{len(skills)}] {skill['id']:<40} FAILED {str(e)[:120]}")
             failed += 1
             continue
@@ -473,9 +415,6 @@ def pack_only(args) -> int:
         missing = sorted(set(expected) - set(digests))
         extra = sorted(set(digests) - set(expected))
         if mismatched or missing or extra:
-            # Not auto-rebaselined. A changed hash is upstream serving different
-            # bytes for a pinned commit, and the only correct response is a person
-            # reading the diff — the same rule the spec pin follows (ADR-044).
             print(
                 f"\nMANIFEST MISMATCH: {len(mismatched)} changed, {len(missing)} missing, "
                 f"{len(extra)} unexpected",

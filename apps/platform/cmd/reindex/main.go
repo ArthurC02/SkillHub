@@ -1,26 +1,3 @@
-// Command reindex rebuilds the search projection from skills (INGEST-009).
-// The projection is never a source of truth (ADR-010), so this is safe to run
-// at any time and is the recovery path if the projection drifts or is lost.
-//
-// Two phases:
-//
-//  1. SQL rebuild — every live skill gets a document, stale ones are pruned.
-//     Needs only DATABASE_URL.
-//  2. Enrichment backfill — documents left pending by a failed or skipped
-//     index-time enrichment are recomputed from their stored package
-//     (ADR-013 §1). Needs LLM_SERVICE_URL and object storage; skipped with a
-//     warning when LLM_SERVICE_URL is unset, so phase 1 still works alone.
-//
-// The backfill is manual on purpose: iron rule 6 puts retry decisions in Go,
-// and for now that decision is an operator running this command. Re-running is
-// harmless — enriched documents leave the worklist, failures stay pending.
-// REINDEX_BATCH caps one run (default 200).
-//
-// This process's composition root is main() itself, and it wires almost nothing:
-// phase 1 is two generated queries with no service behind them, and phase 2
-// builds the one ingest.Service the backfill needs, after the phase that does not
-// need it has already succeeded. That ordering is the reason it is not wired up
-// front (ADR-032 §5: apiserver.NewApp is the API's root, not the platform's).
 package main
 
 import (
@@ -61,8 +38,7 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("search projection rebuilt", "documents", n, "pruned", pruned)
-	// 0058's bigram column is written by Go at index time; rows from before it,
-	// and the ones ReindexAll just inserted, are filled here (05 R-48).
+
 	filled, err := catalog.BackfillBigram(ctx, pool, 500)
 	if err != nil {
 		slog.Error("bigram backfill", "error", err)
@@ -86,9 +62,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// The backfill rewrites catalog's documents, so it needs catalog's write
-	// injected exactly as the API's import path does (ADR-034); ReindexPending
-	// refuses to spend an enrichment call without it.
 	catalogSvc := &catalog.Service{Pool: pool}
 	svc := &ingest.Service{
 		Pool: pool, Store: store,
@@ -106,22 +79,14 @@ func main() {
 			return pendingEnrichments(ctx, catalogSvc, limit)
 		},
 	}
-	// This binary's whole job is to spend enrichment calls in bulk, so it is
-	// the last place that should be missing from the spend ledger (CRED-005).
-	// REINDEX_REENRICH below can re-enrich the entire catalogue in one run;
-	// unwired, that would be the largest single spend the platform ever makes
-	// and the one with no row anywhere.
+
 	creditCfg, err := credit.ConfigFromEnv()
 	if err != nil {
 		slog.Error("credit config", "error", err)
 		os.Exit(1)
 	}
 	svc.Credit = &credit.Service{Store: credit.NewPostgresStore(pool), Config: creditCfg}
-	// REINDEX_REENRICH=<prompt version>: every catalogue document enriched
-	// under another prompt version goes back to pending first, so the backfill
-	// rewrites it under the current one (report §15: the v7 examples are what
-	// lifted F1, and the live catalogue was still v2–v6). Costs one enrichment
-	// per document; run it on purpose.
+
 	if keep := os.Getenv("REINDEX_REENRICH"); keep != "" {
 		reset, err := q.ResetCatalogueEnrichmentBefore(ctx, keep)
 		if err != nil {

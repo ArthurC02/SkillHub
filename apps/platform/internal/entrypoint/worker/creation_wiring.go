@@ -55,8 +55,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 		}
 		fixed, content, err := versions.ReadCreationReference(ctx, ws, sid, vid)
 		ref := creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil, Description: fixed.Description, Compatibility: fixed.Compatibility, AllowedTools: fixed.AllowedTools}
-		// The catalogue's trust facts ride along (05 SEC-013): an offer without
-		// its tier and scan would show one warning fewer than a search row.
+
 		if tier, scan, warnings, ferr := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID); ferr == nil {
 			ref.Tier, ref.ScanStatus = tier, scan
 			if scan == "scanned" {
@@ -85,8 +84,6 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 	}
 }
 
-// wireCreationFetch gives the Worker's steps the consented page reader (05
-// R-47). The API never fetches: its steps are not run there.
 func wireCreationFetch(s *creation.Service) {
 	s.Fetch = creation.NewFetcher(false).Fetch
 }

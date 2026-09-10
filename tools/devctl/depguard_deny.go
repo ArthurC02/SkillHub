@@ -9,52 +9,17 @@ import (
 	"strings"
 )
 
-// What the depguard deny lists actually say, checked against ADR-032 appendix A.
-//
-// The lint config claims, at its own top, that the two sides are kept in step by
-// `devctl automation-check`. What was compared was the multiset of `drift: DDD-n`
-// markers — and both sides hold zero real markers, because the last tolerated
-// drift was cleared. So the comparison was 0 == 0 and stayed 0 == 0 no matter
-// what the rules underneath it said.
-//
-// That matters because of how permissions are granted here. The rules are DENY
-// lists with "legal but unlisted = denied" already folded in, so **adding a
-// cross-context permission is performed by deleting two lines**:
-//
-//   - pkg: github.com/.../internal/skill/discovery
-//     desc: "cross-context import forbidden by ADR-032; see ADR-032 appendix A"
-//
-// Delete that from the `identity` rule and `creator/workspace` may import
-// `skill/discovery` freely. No marker was added or removed, so drift-marker
-// passed. contextMapProblems passes too: it only asks "does a rule exist for
-// this path", never what the rule contains. And appendix A is untouched, so the
-// human whitelist still says the import is forbidden. Nothing anywhere was red.
-//
-// So this reads the deny contents. For every rule that guards one Core or
-// Supporting context, the deny set must equal
-//
-//	(all context boundaries + apiserver + objreconcile) - self - permitted
-//
-// where `permitted` is parsed out of appendix A's table. Both directions fail,
-// with one deliberate asymmetry described at wildcardGrantee below.
-//
-// The prose-governed `generic`, `shared-kernel` and `objreconcile` rules are
-// checked separately against the exact sets ADR-032/037 define.
 const denyPackagePrefix = "github.com/ArthurC02/skillhub/apps/platform/internal/"
 
-// The three non-context packages every context rule must also deny. They do not
-// come out of §1's Core/Supporting rows: `apiserver` and `worker` are process
-// composition roots, while `objreconcile` is a generic worker. Hard-coded rather than
-// inferred from the rules themselves, because inferring the universe from the
-// deny lists is how a check ends up agreeing with whatever the deny lists say.
 var alwaysDenied = []string{"apiserver", "worker", "objreconcile"}
 
 var (
 	appendixHeading = "## 附錄 A"
-	// A backticked lower-case identifier: the appendix writes every Boundary ID
-	// that way, and writes everything else (「全部 context」,「各 context」) plain.
+
+	// A backticked lowercase identifier; the appendix writes everything else
+	// (plain prose) unbacked.
 	appendixID = regexp.MustCompile("`([a-z][a-z0-9_]*)`")
-	// `        identity:` — a rule name under depguard's `rules:`.
+
 	depguardRuleName = regexp.MustCompile(`^ {8}([A-Za-z0-9_-]+):\s*$`)
 	depguardListKey  = regexp.MustCompile(`^ {10}(files|deny):\s*$`)
 	depguardDenyPkg  = regexp.MustCompile(`^ {12}- pkg:\s*(\S+)\s*$`)
@@ -83,8 +48,6 @@ func depguardDenyProblems(root string) []string {
 			"depguard-deny: %s %s has no `A → B` rows; this check has lost its subject", adrPath, appendixHeading))
 	}
 
-	// The universe a context rule chooses from, and which of its members are
-	// contexts at all.
 	universe := map[string]bool{}
 	for id, identity := range declared {
 		if identity.Kind == architectureCore || identity.Kind == architectureSupporting {
@@ -107,9 +70,7 @@ func depguardDenyProblems(root string) []string {
 	}
 	for _, rule := range sortedKeys(rules) {
 		files, deny := rules[rule]["files"], rules[rule]["deny"]
-		// Only single-selector rules that guard one Core/Supporting context: the
-		// multi-selector `generic` rule and the Shared Kernel / Generic ones are
-		// governed elsewhere (see the file comment).
+
 		self, ok := soleContextOfRule(files, declared)
 		if !ok || (declared[self].Kind != architectureCore && declared[self].Kind != architectureSupporting) {
 			continue
@@ -133,12 +94,6 @@ func depguardDenyProblems(root string) []string {
 			denied[id] = true
 		}
 
-		// The asymmetry: a rule may refuse a BLANKET grant (`各 context → identity`)
-		// and the `policy` rule does, on purpose — "it must be able to answer
-		// without knowing who is asking". Refusing a blanket grant is stricter
-		// than the appendix and cannot open a hole, so it is not reported.
-		// Refusing a NAMED pair is reported: that is a rule and an appendix row
-		// disagreeing about one specific collaboration.
 		for _, target := range sortedKeys(universe) {
 			switch {
 			case target == self:
@@ -166,14 +121,8 @@ func depguardDenyProblems(root string) []string {
 	return problems
 }
 
-// specialDepguardProblems covers the grouped Generic rule, Shared Kernel and
-// objreconcile. Appendix A does not enumerate their permissions, so their exact
-// deny sets come from ADR-032 §1/§5 and ADR-037: shared code cannot depend on a
-// bounded context; generic foundations cannot point into domain or composition
-// roots; objreconcile is itself a generic worker and may depend on foundations.
 func specialDepguardProblems(rules map[string]map[string][]string, declared map[string]packageIdentity, lintPath string) []string {
-	// Older unit fixtures predate the worker composition-root identity. The real
-	// context-map check requires it; its presence marks the complete rule set.
+
 	if _, ok := declared["worker"]; !ok {
 		return nil
 	}
@@ -228,8 +177,6 @@ func specialDepguardProblems(rules map[string]map[string][]string, declared map[
 	return problems
 }
 
-// depguardSelectorProblems prevents a package from being moved under a rule
-// with wider permissions while keeping the global set of covered paths intact.
 func depguardSelectorProblems(rules map[string]map[string][]string, declared map[string]packageIdentity, lintPath string) []string {
 	expected := map[string]map[string]bool{}
 	pathIDs := map[string]string{}
@@ -294,15 +241,6 @@ func copySet(source map[string]bool) map[string]bool {
 	return result
 }
 
-// appendixPermissions reads appendix A's table. A row is `| A → B、C | … | 保留 |`:
-// the left of the arrow names the importer, the right names what it may import,
-// and the last cell must still say 保留 — a dependency moved out of the whitelist
-// stops being a permission at that moment, which is what the appendix's own
-// "移出白名單的項目不得再加回" says.
-//
-// A row whose left side has no backticked id (`各 context → identity`) is the
-// blanket grant; a row whose right side has none (`apiserver` → 全部 context) is
-// about a package with no rule of its own and is skipped.
 func appendixPermissions(adr string, declared map[string]packageIdentity) (permitted map[string]map[string]bool, wildcard map[string]bool, rows int) {
 	permitted, wildcard = map[string]map[string]bool{}, map[string]bool{}
 	inAppendix := false
@@ -316,9 +254,10 @@ func appendixPermissions(adr string, declared map[string]packageIdentity) (permi
 			continue
 		}
 		cells := strings.Split(strings.Trim(trimmed, "|"), "|")
-		// 保留, possibly with a parenthetical (「保留（trace 改注入，DDD-004）」).
-		// A row that stopped saying 保留 stopped being a permission, which is what
-		// the appendix's own 「移出白名單的項目不得再加回」 means.
+
+		// A row is "| A → B、C | ... | 保留 |": left of the arrow is the
+		// importer, right is what it may import; a row no longer saying 保留
+		// is no longer a permission.
 		if len(cells) != 3 || !strings.HasPrefix(strings.TrimSpace(cells[2]), "保留") {
 			continue
 		}
@@ -341,7 +280,8 @@ func appendixPermissions(adr string, declared map[string]packageIdentity) (permi
 			continue
 		}
 		rows++
-		if len(sources) == 0 { // 各 context → `identity`
+		if len(sources) == 0 {
+			// A blank left side is a blanket grant to every context.
 			for _, target := range targets {
 				wildcard[target] = true
 			}
@@ -359,12 +299,7 @@ func appendixPermissions(adr string, declared map[string]packageIdentity) (permi
 	return permitted, wildcard, rows
 }
 
-// depguardRules reads the `files:` and `deny:` lists of every rule under
-// `linters.settings.depguard.rules`. Indentation-anchored rather than a real
-// YAML parser, for the reason parseOwnerDeclaration gives: devctl has no
-// dependencies and this shape does not justify the first one. Anything that does
-// not match the shape is not a rule and is ignored — which is why the comments
-// come off first (see stripYAMLComments).
+// Reads rule blocks by fixed indentation level rather than a full YAML parser.
 func depguardRules(lint string) map[string]map[string][]string {
 	rules := map[string]map[string][]string{}
 	rule, key := "", ""
@@ -398,12 +333,11 @@ func depguardRules(lint string) map[string]map[string][]string {
 	return rules
 }
 
-// soleContextOfRule maps a rule's `files:` list to the one context it guards.
-// `!$test` is depguard's own exclusion token, not a path; more than one real
-// selector means the rule covers a group (`generic`) and has no single self.
 func soleContextOfRule(files []string, declared map[string]packageIdentity) (string, bool) {
 	ids := map[string]bool{}
 	for _, selector := range files {
+		// "!$test" is depguard's own exclusion token, not a path, so it never
+		// matches here and is skipped rather than resolved.
 		m := depguardSelectorPattern.FindStringSubmatch(selector)
 		if m == nil {
 			continue
@@ -421,15 +355,7 @@ func soleContextOfRule(files []string, declared map[string]packageIdentity) (str
 	return "", false
 }
 
-// stripYAMLComments removes trailing `#` comments, honouring quotes.
-//
-// Without it, any `**/internal/x/y/**` written in prose votes: the collector in
-// contextMapProblems runs its regex over the whole file text, so commenting a
-// rule out while debugging leaves the path still "guarded" as far as the check
-// is concerned, and .golangci.yml already carries prose about which contexts may
-// reach which. The quote tracking is not decoration — a `desc:` value legitimately
-// contains `#` in a URL fragment or an issue number, and cutting there would
-// truncate a rule rather than a comment.
+// Tracks open quotes so a "#" inside a quoted value isn't cut as a comment.
 func stripYAMLComments(text string) string {
 	lines := strings.Split(text, "\n")
 	for i, line := range lines {

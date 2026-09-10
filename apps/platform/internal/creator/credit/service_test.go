@@ -12,8 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// fakeTx is the smallest possible DBTX: enough for Grant's audit.Log call
-// (which only ever Execs an insert) without a real database.
 type fakeTx struct{}
 
 func (fakeTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
@@ -24,17 +22,12 @@ func (fakeTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, err
 }
 func (fakeTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row { return nil }
 
-// fakeStore is an in-memory Store good enough to exercise every rule in
-// service.go without a database — the concrete Postgres adapter (a
-// follow-up batch, once `task gen:sql` has run for db/queries/credit.sql
-// and cost.sql) is expected to satisfy the exact same idempotency and
-// balance-update contract.
 type fakeStore struct {
 	balances map[string]int64
-	events   map[string]string // idempotency key -> event id
-	applied  map[string]bool   // idempotency key -> already applied
+	events   map[string]string
+	applied  map[string]bool
 	stats    map[string]Statistics
-	windows  map[string][]int64 // kind -> raw usd_micros samples, for RecomputeStatistics
+	windows  map[string][]int64
 	nextID   int
 }
 
@@ -88,12 +81,6 @@ func (f *fakeStore) RecentStatistics(ctx context.Context, kind string) (Statisti
 	return s, nil
 }
 
-// RecomputeStatistics is a simplified stand-in for
-// AggregateCostEventsWindow+InsertCostStatistics: real percentiles are
-// Postgres' job (see stats.go), so the fake only needs to prove Service
-// wires window bounds and the write-back through correctly, not recompute
-// percentile_cont itself. It reports the samples' count and max, which is
-// enough for TestRecomputeStatisticsWritesAndReturnsTheResult to check.
 func (f *fakeStore) RecomputeStatistics(ctx context.Context, kind string, windowStart, windowEnd time.Time) (Statistics, error) {
 	samples := f.windows[kind]
 	var max int64
@@ -128,7 +115,7 @@ func TestChargeIsIdempotentOnSessionRevision(t *testing.T) {
 	user := testUser(1)
 	store.balances[idKey(user)] = 100
 	s := &Service{Store: store, Config: testConfig()}
-	usd := int64(1_000_000) // $1
+	usd := int64(1_000_000)
 	in := ChargeInput{
 		Kind: KindCreationStep, UserID: user, RefType: RefCreationSession, RefID: testUser(1),
 		IdempotencyKey: "session-1:rev-3", UsdMicros: &usd, ReservedUsdMicros: usd,
@@ -140,8 +127,7 @@ func TestChargeIsIdempotentOnSessionRevision(t *testing.T) {
 	if r1.Existed {
 		t.Fatal("first charge must not report Existed")
 	}
-	// Same (session, revision) settled twice — a Worker retry of the same
-	// attempt (ADR-068 decision 5) — must debit only once.
+
 	r2, err := s.Charge(context.Background(), nil, in)
 	if err != nil {
 		t.Fatal(err)
@@ -210,8 +196,7 @@ func TestChargeRequiresAUser(t *testing.T) {
 func TestRecordCostWritesNoDebit(t *testing.T) {
 	store := newFakeStore()
 	s := &Service{Store: store, Config: testConfig()}
-	// catalog's shape: a real cost with no account to bill (ADR-032 §1
-	// appendix A, "MVP 不對這兩者扣點").
+
 	id, existed, err := s.RecordCost(context.Background(), nil, CostEvent{
 		Kind: KindSearchEmbedding, UsdMicros: 10, IdempotencyKey: "search-1",
 	})
@@ -232,18 +217,18 @@ func TestRecordCostWritesNoDebit(t *testing.T) {
 func TestCanAffordStepEnforcesDebtFloor(t *testing.T) {
 	store := newFakeStore()
 	s := &Service{Store: store, Config: testConfig()}
-	// reserved $0.01 -> billed 13000 micros at 1.3x -> 13 credits at $0.001/credit.
+
 	reserved := int64(10_000)
 
 	within := testUser(3)
-	store.balances[idKey(within)] = -30 // -30-13 = -43, still >= -50
+	store.balances[idKey(within)] = -30
 	ok, err := s.CanAffordStep(context.Background(), within, reserved)
 	if err != nil || !ok {
 		t.Fatalf("balance -30 minus 13 credits must stay within the -50 floor: ok=%v err=%v", ok, err)
 	}
 
 	beyond := testUser(4)
-	store.balances[idKey(beyond)] = -40 // -40-13 = -53, past -50
+	store.balances[idKey(beyond)] = -40
 	ok, err = s.CanAffordStep(context.Background(), beyond, reserved)
 	if err != nil || ok {
 		t.Fatalf("balance -40 minus 13 credits must trip the -50 floor: ok=%v err=%v", ok, err)
@@ -252,7 +237,7 @@ func TestCanAffordStepEnforcesDebtFloor(t *testing.T) {
 
 func TestCanStartUsesP95WithMarkupWhenEnoughSamples(t *testing.T) {
 	store := newFakeStore()
-	store.stats[KindGenerate] = Statistics{SampleCount: MinStatSamples, P95UsdMicros: 30_000_000} // $30
+	store.stats[KindGenerate] = Statistics{SampleCount: MinStatSamples, P95UsdMicros: 30_000_000}
 	s := &Service{Store: store, Config: testConfig()}
 	user := testUser(5)
 	store.balances[idKey(user)] = 1000

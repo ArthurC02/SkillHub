@@ -1,46 +1,18 @@
 #!/usr/bin/env bash
-# Start the service images this build just produced and check that they answer.
-#
-# Why this exists. `images` built three images, listed them and pushed them to
-# GHCR, and no container was ever started from any of them: a broken entrypoint,
-# a missing environment default or an nginx.conf that does not parse reached the
-# registry green. The 2026-09-09 CSP change is the case in point -- its only
-# check reads nginx.conf as text, so nginx was never asked whether the file is
-# valid. This runs before the push for that reason.
-#
-# What it does. Four HTTP assertions against the running stack, and then
-# tools/ci/stack-browser.mjs drives a real browser over every route the router
-# declares, signed in and signed out (04 丙-221).
-#
-# The catalogue assertion below runs BEFORE anything is seeded, and that order
-# is the assertion: Go's encoding/json writes a nil slice as `null`, a nil slice
-# is exactly what an empty result set produces, and `results` is `required` and
-# `type: array` in contracts/openapi/public.yaml. That `null` crashed the web
-# client on 2026-09-06. An empty catalogue is the state that exposes it, so it
-# is checked while the database is still empty; the browser pass seeds itself
-# afterwards.
-#
-# Usage:
-#   PLATFORM_IMAGE=... WEB_IMAGE=... LLM_IMAGE=... bash tools/ci/stack-smoke.sh
+# Starts the platform/web/llm images this build produced as real containers
+# and asserts they answer, then drives a real browser against them.
+# Usage: PLATFORM_IMAGE=... WEB_IMAGE=... LLM_IMAGE=... bash tools/ci/stack-smoke.sh
 set -euo pipefail
 
 : "${PLATFORM_IMAGE:?PLATFORM_IMAGE must name the built platform image}"
 : "${WEB_IMAGE:?WEB_IMAGE must name the built web image}"
 : "${LLM_IMAGE:?LLM_IMAGE must name the built llm image}"
 
-# Same pins as the platform job's service containers: this file must not be the
-# place where a second, drifting version of the data layer appears.
 PG_IMAGE="docker.io/pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f"
 S3_IMAGE="docker.io/chrislusf/seaweedfs:3.80@sha256:1055999e08eed1789b0ae45d235126e4495e23d3fb9d6396293fd42539b1ae6a"
-# Every HTTP check below runs from inside the network rather than through a
-# published port. Measured on the machine this was written on: Docker
-# Desktop's host-side proxy for `-p 127.0.0.1:...` took over a minute to start
-# forwarding, long after the API was answering, so a readiness wait on the
-# published port timed out against a healthy service. In-network also exercises
-# the DNS name infra/images/web/nginx.conf actually dials.
+# Runs every check from inside the docker network rather than through a
+# published host port, which also exercises the DNS name nginx.conf dials.
 CURL_IMAGE="docker.io/curlimages/curl@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69"
-# The version apps/web pins for @playwright/test, so the engine here is the one
-# the rest of the browser tier is written against.
 PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.62.1-noble"
 
 NET="skillhub-smoke"
@@ -70,8 +42,6 @@ dump() {
 cleanup() {
 	rc=$?
 	if [ "$rc" -ne 0 ]; then dump; fi
-	# SMOKE_KEEP=1 leaves the stack up to be poked at by hand. Never set in CI:
-	# the containers hold ports and a network the next run would collide with.
 	if [ "${SMOKE_KEEP:-}" = "1" ]; then
 		echo "stack-smoke: SMOKE_KEEP=1, leaving ${names[*]} and network $NET up" >&2
 		return "$rc"
@@ -110,8 +80,8 @@ docker run -d --name smoke-pg --network "$NET" \
 wait_for "Postgres" 60 docker exec -e PGPASSWORD=skillhub smoke-pg psql -h 127.0.0.1 -U skillhub -d skillhub -tAc "select 1"
 
 echo "--- Schema (db/migrations, in order)"
-# The repository has no migration runner: the Go tests apply the files as one
-# batch each, and so does this. `-1` is required -- 0031 takes a LOCK TABLE.
+# `-1` runs each file as one batch/transaction; at least one migration takes a
+# table lock that requires it.
 for f in "$REPO_ROOT"/db/migrations/*.sql; do
 	docker exec -i smoke-pg psql -q -1 -v ON_ERROR_STOP=1 -U skillhub -d skillhub <"$f" >/dev/null
 done
@@ -122,9 +92,8 @@ docker run -d --name smoke-s3 --network "$NET" \
 	"$S3_IMAGE" server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data >/dev/null
 wait_for "SeaweedFS" 90 docker exec smoke-s3 wget -q -O /dev/null http://127.0.0.1:8333/status
 
-# `platform-api` is the name, not a label: infra/images/web/nginx.conf resolves
-# `http://platform-api:8080` through Docker's embedded DNS, so the alias is part
-# of what this test is checking.
+# `platform-api` is a network alias, not just a container name: nginx.conf
+# resolves that exact hostname, so it is part of what this test checks.
 api_env=(
 	-e "DATABASE_URL=postgresql://skillhub:skillhub@smoke-pg:5432/skillhub"
 	-e OBJSTORE_ENDPOINT=smoke-s3:8333
@@ -132,18 +101,12 @@ api_env=(
 	-e OBJSTORE_SECRET_KEY=skillhubdevsecret
 	-e OBJSTORE_BUCKET=skillhub
 	-e OBJSTORE_SSL=0
-	# ADR-020's offline provider, so the browser pass can look at the pages
-	# behind a session. The API refuses to start with DEV_LOGIN=1 and a secure
-	# cookie, so the two go together. This stack is thrown away at the end of
-	# the run and is never reachable from outside the runner.
+	# Enables the offline login provider for the browser pass; the API requires
+	# COOKIE_INSECURE=1 alongside it.
 	-e COOKIE_INSECURE=1
 	-e DEV_LOGIN=1
-	# Without it, building a download answers 503 by design -- the value has no
-	# default because it is a retention promise made to users, not a parameter
-	# (GOV-RETENTION-001), and PDM-006's proposed 90 days is not ratified. `1h`
-	# is chosen to be obviously throwaway: this stack is deleted at the end of
-	# the run, and no one should be able to read a policy proposal out of it.
-	# Set only so the packaging route is exercised rather than short-circuited.
+	# Required (no code default) so the packaging route is exercised rather
+	# than short-circuited by a 503; set to an obviously-throwaway value.
 	-e DOWNLOAD_ARTIFACT_RETENTION=1h
 )
 
@@ -156,16 +119,13 @@ echo "--- platform-worker"
 docker run -d --name smoke-worker --network "$NET" "${api_env[@]}" "$PLATFORM_IMAGE" worker >/dev/null
 
 echo "--- web"
-# `Accept: text/html` is not decoration. nginx.conf maps that header to
-# $spa_fallback, so a request without it is treated as a fetch() and falls
-# through to the API, which answers 404 -- the file says so at the HEALTHCHECK
-# comment. Sending it is what makes these three checks browser-shaped.
+# nginx.conf routes on the Accept header: without text/html a request is
+# treated as a fetch() and falls through to the API instead of the SPA shell.
 docker run -d --name smoke-web --network "$NET" "$WEB_IMAGE" >/dev/null
 wait_for "web" 60 hget -fs -o /dev/null -H "Accept: text/html" http://smoke-web/
 
-# The third pushed image. It is started alone and on purpose: the compose file
-# says a missing gateway is a request-time error and not a startup one, so a
-# container that will not boot without LiteLLM is a regression in that promise.
+# Started with no gateway on purpose: a missing LiteLLM must be a request-time
+# error, never a startup failure.
 echo "--- llm"
 docker run -d --name smoke-llm --network "$NET" "$LLM_IMAGE" >/dev/null
 wait_for "llm" 60 docker exec smoke-llm python -c \
@@ -187,8 +147,8 @@ echo "--- assertions"
 body="$(hget -fsS -H "Accept: text/html" http://smoke-web/)"
 case "$body" in *'id="root"'*) check "web serves the SPA shell" 0 ;; *) check "web serves the SPA shell" 1 ;; esac
 
-# 2. The header nginx.conf's own test can only read as text. `-I` would take the
-#    `= /healthz` branch, so this asks for the document the browser gets.
+# 2. `-I` would take nginx.conf's `= /healthz` branch, so this asks for the
+#    actual document a browser gets instead.
 headers="$(hget -fsS -D - -o /dev/null -H "Accept: text/html" http://smoke-web/)"
 case "$headers" in
 *[Cc]ontent-[Ss]ecurity-[Pp]olicy*) check "web sends Content-Security-Policy" 0 ;;
@@ -215,18 +175,13 @@ if (typeof j.total !== "number" || typeof j.truncated !== "boolean") {
 ' "$catalog" && rc=0 || rc=1
 check "catalogue answers through nginx with a contract-shaped body" "$rc"
 
-# 4. A worker that exits is a worker that consumed nothing, and the API in front
-#    of it stays green either way -- which is what makes this worth asserting.
 sleep 5
 running="$(docker inspect -f '{{.State.Running}}' smoke-worker)"
 [ "$running" = "true" ] && rc=0 || rc=1
 check "platform-worker is still running" "$rc"
 
-# 5. A real browser against the real backend (04 丙-221). In its own container
-#    on the same network: the browsers are already in the Playwright image, and
-#    running it here rather than through a published port keeps this working the
-#    same way on a laptop and on a runner. `npm i` fetches only the JS package
-#    -- the image supplies the browser binaries.
+# 5. `npm i` fetches only the JS package; the Playwright image already
+#    supplies the browser binaries.
 echo "--- browser"
 docker run --rm --network "$NET" \
 	-v "$HOST_ROOT:/work:ro" -w /work \

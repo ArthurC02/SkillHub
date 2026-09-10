@@ -1,15 +1,5 @@
 package run
 
-// 02:TEST-005 / 03:TEST-008,009: what a Run is allowed to touch, shown before it
-// starts, agreed to by the user, and re-agreed to whenever it changes.
-//
-// The summary is built here rather than in internal/testlab because half of what
-// it discloses is run policy — provider, egress, resource ceilings, injected
-// secrets — and internal/run already owns those. The other half is the test case
-// and its files, which this reads through testlab.ReadDraft: that package owns
-// them, and a second reader of test_cases and datasets is a second definition of
-// what a draft is (ADR-032).
-
 import (
 	"context"
 	"crypto/sha256"
@@ -33,57 +23,19 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
-// ErrPermissionsNotConfirmed is SEC-002 gate B: the run request carries no
-// agreement to the permission summary, or carries one for a summary that has
-// since changed. Both block, and both are answered the same way — the fix in
-// either case is to read the current summary and confirm it.
 var ErrPermissionsNotConfirmed = errors.New(
 	"the pre-run permission summary must be confirmed before the run can start")
 
-// ObjectStore is the slice of object storage the summary needs: the stored
-// package, so "does this skill carry a script" is answered by scanning the exact
-// bytes that will be executed rather than by a projected flag. Nothing here
-// executes any of it (iron rule 1).
-//
-// The two Presign methods are SBX-008's other half: the short-lived, per-path
-// authorizations a dispatch hands the execution plane. They are here rather than
-// in a second interface because one deployment credential backs both, and a
-// deployment that can read a package can always sign a URL for it.
 type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 	PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error)
 	PresignPut(ctx context.Context, key string, ttl time.Duration) (string, error)
-	// Remove is what makes the owner's delete of a Run output actually delete
-	// (02:SEC-006 1). Without it the row would stop being visible while the file
-	// stayed, which is the half of "deleted" that matters least.
+
 	Remove(ctx context.Context, key string) error
 }
 
-// Secrets the platform injects into a sandbox that has a model gateway grant
-// (SBX-008, PDM-003). Names only: the value is a per-run Virtual Key minted at
-// dispatch and never leaves the gateway boundary, and iron rule 11 keeps it out
-// of anything a user can read.
 var injectedSecretNames = []string{"ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"}
 
-// injectedSecretsFor names what this run will ACTUALLY receive, which is not a
-// constant (04 丙-104).
-//
-// The driver injects those two only when a grant exists, and a deployment with
-// no gateway is legal - GatewayFromEnv returns nil for it deliberately. The list
-// was written as a constant anyway, so on such a deployment the one screen
-// SEC-002 exists for told every reader that two secrets would be injected while
-// none were: a disclosure false in the direction that makes the run look more
-// capable than it is. Measured 2026-08-30 on a clean-mode launch with no
-// gateway configured.
-//
-// Derived from the same policy snapshot the egress allow list comes from, never
-// from a second read of the environment. defaultPolicy's own comment says why:
-// every reader goes through it, because a second copy is how the screen a user
-// confirms drifts away from what the run is held to.
-//
-// Empty comes back as an empty list and not nil, for the reason MCPServers does:
-// a row shown as empty is the honest disclosure, and an omitted row lets a
-// reader assume the question was never asked.
 func injectedSecretsFor(snap policySnapshot) []string {
 	for _, a := range snap.Egress.Allow {
 		if a.Purpose == "model_gateway" {
@@ -93,19 +45,6 @@ func injectedSecretsFor(snap policySnapshot) []string {
 	return []string{}
 }
 
-// PermissionSummaryContent is the hashed body. A struct, not a map, so field
-// order — and therefore the hash — is fixed by the type and not by the encoder
-// (same reason as snapshotContent in internal/testlab).
-//
-// What is deliberately *not* in here: the user prompt and the acceptance
-// criteria. Editing either changes what the run is asked to do, not what it is
-// allowed to touch, and invalidating a permission confirmation over a typo fix
-// would train users to click through the one screen that must not be reflexive.
-// Datasets is testlab's own type and not a local copy: the files a run may read
-// are the draft's files, and two structs describing them is how the two sides
-// end up disagreeing about which fields the user was shown. The JSON is
-// unchanged by that move, which matters — every outstanding confirmation is a
-// hash over these bytes.
 type PermissionSummaryContent struct {
 	SkillVersionID    string                `json:"skill_version_id"`
 	SkillContentHash  string                `json:"skill_content_hash"`
@@ -121,31 +60,16 @@ type PermissionSummaryContent struct {
 	ResourceLimits    ResourceLimits        `json:"resource_limits"`
 }
 
-// ScriptSummary answers "does the package carry runnable code" from the stored
-// package itself. Status is one of:
-//
-//	none        — scanned, no script file and no embedded code
-//	present     — scanned, and Findings names what was found
-//	unavailable — the package could not be read, so nothing is claimed either way
-//
-// `unavailable` is never rendered as `none`: an unreadable package is not a clean
-// one (DISC-004 不得自行推定為通過).
 type ScriptSummary struct {
 	Status   string   `json:"status"`
 	Findings []string `json:"findings"`
 }
 
-// NetworkSummary is the egress policy the sandbox will be held to. Allow is one
-// "purpose: url" line per permitted destination (see egressAllowLines).
 type NetworkSummary struct {
 	Mode  string   `json:"mode"`
 	Allow []string `json:"allow"`
 }
 
-// egressAllowLines renders the allow list as text a user can read, and that the
-// hash can depend on. `%v` on the struct was the earlier version: invisible while
-// the list is empty, and the moment SBX-005/006 mints a grant it would have put
-// `{model_gateway http://...}` on the screen and into the confirmed hash.
 func egressAllowLines(allow []egressAllow) []string {
 	lines := make([]string, 0, len(allow))
 	for _, a := range allow {
@@ -154,117 +78,45 @@ func egressAllowLines(allow []egressAllow) []string {
 	return lines
 }
 
-// ProviderSummary is who will run the workload and how strongly it is isolated.
 type ProviderSummary struct {
 	Name           string `json:"name"`
 	IsolationLevel string `json:"isolation_level,omitempty"`
 	Rootless       bool   `json:"rootless"`
 	Runtime        string `json:"runtime,omitempty"`
 	RuntimeVersion string `json:"runtime_version,omitempty"`
-	// DetachedDescendantsSurvive is TEST-008's disclosure of the one honesty
-	// signal the dispatch gate deliberately does not refuse on: a node that
-	// cannot end a descendant which deliberately left its process group. Match()
-	// accepts such a node (the two platforms of one driver differ on it), so the
-	// fact has to arrive somewhere a user can read it, which 02:PORT-003 requires
-	// of anything of the form "the sandbox does not hold this".
-	//
-	// True only when the provider explicitly said false. An absent field is "did
-	// not say", and rendering that as "descendants survive" would be a claim the
-	// platform has not got.
+
 	DetachedDescendantsSurvive bool `json:"detached_descendants_survive,omitempty"`
 }
 
-// PermissionSummary is the whole answer: the hashed body, its hash, and the
-// display-only material that explains it. Notes and the cost estimate are outside
-// the hash on purpose — rewording a sentence, or recalibrating an estimate against
-// a newer sample, must not invalidate every outstanding confirmation.
 type PermissionSummary struct {
 	Content       PermissionSummaryContent `json:"summary"`
 	Hash          string                   `json:"summary_hash"`
 	EstimatedCost CostEstimate             `json:"estimated_cost"`
-	// Quota is what the account has left (PDM-010), on the screen where a user
-	// decides to start a run — the same kind of fact estimated_cost is, and outside
-	// the hash for the same reason (TEST-011): the hash covers what the run may
-	// touch, and an allowance is a state, not a permission. Another run finishing
-	// elsewhere in the workspace must not invalidate a confirmation in flight.
-	//
-	// Absent when this deployment enforces no allowance. Absent and not zeroed: a
-	// number here is a claim that the platform applies it, and putting up one it
-	// does not apply is exactly 04 乙-2.
+
 	Quota *policy.QuotaView `json:"quota,omitempty"`
 	Notes []string          `json:"notes"`
 }
 
-// CostEstimate is PDM-005 §5.3's "預估成本區間", and §5.2a-6 is why it is a range
-// and not a number: prompt caching makes a first run and a repeat run of the same
-// skill differ by roughly 8x, so a single figure would be wrong for one of them
-// every time.
-//
-// It is NOT part of the hashed content, by the same rule that keeps the user
-// prompt out: the hash covers what the run is *allowed to touch*, and this is a
-// prediction about what it will cost. Recalibrating it against a larger sample
-// must not silently revoke every confirmation a user has outstanding, and a
-// prediction changing is not a permission changing.
 type CostEstimate struct {
-	// In Credit, the platform's only unit of account (ADR-068 decision 1).
-	//
-	// This field used to be a dollar amount beside a `Currency` fixed at USD,
-	// whose comment said a converted number would be 「an exchange rate the
-	// platform does not own」. That argument holds for a foreign currency and
-	// not for Credit: US$0.001 per credit and the markup are the platform's own
-	// constants, published in ADR-068 and recorded on every entry. The rate
-	// belongs to the platform; the euro does not.
 	LowCredits     int64 `json:"low_credits"`
 	TypicalCredits int64 `json:"typical_credits"`
 	HighCredits    int64 `json:"high_credits"`
-	// Basis says where the numbers came from, so nobody reads them as a quote.
+
 	Basis string `json:"basis"`
 }
 
-// Measured, not modelled: the M2 baseline ran all 45 catalogue skills once each
-// through this exact path (mini tier, real sandbox, real gateway) and the gateway's
-// own per-key spend gave the distribution — median $0.0566, mean $0.0702, max
-// $0.2367 (docs/plans/mvp/m2/content-baseline-report.md §5.2).
-//
-// The published range is deliberately wider than that sample on both ends. The low
-// end is where a cache-warm repeat of a small skill lands; the high end is rounded
-// up from the observed maximum, because a sample of 45 is not a bound. What it is
-// not is the per-Run budget ceiling: that is ResourceLimits' territory and the
-// gateway's max_budget, and quoting the ceiling as the estimate would tell every
-// user their run costs half a dollar when the median is six cents.
-//
-// ponytail: three constants, not a query over historical runs. A live percentile
-// per skill is a real improvement and needs EVAL-012's cost comparison to exist
-// first; until then a stated, sourced, honestly-labelled estimate beats a
-// statistic computed from too little data and presented as if it were more.
 const (
 	estimatedCostLowUSD     = 0.01
 	estimatedCostTypicalUSD = 0.06
 	estimatedCostHighUSD    = 0.30
 )
 
-// The three baseline figures the 「來源」 sentence quotes, kept in the unit they
-// were measured in and converted at the same moment as the range itself. They
-// are prose in the response, but they are the same three numbers — a basis that
-// quoted dollars under a range in credits would be inviting the reader to work
-// out the rate, which is exactly the arithmetic decision 1 removes from the
-// screen.
 const (
 	baselineMedianUSD = 0.0566
 	baselineMeanUSD   = 0.0702
 	baselineMaxUSD    = 0.2367
 )
 
-// defaultCostEstimate converts the measured dollar baseline into what this
-// deployment would charge for it. credits is [credit.Service.CreditsForUSD],
-// injected because this context may not import credit (ADR-032 appendix A has
-// no `run` → `credit` row, and the depguard rule says so).
-//
-// ok=false from the converter is treated as a build failure rather than a zero:
-// the three constants are inside the billable range by construction, so a
-// refusal means the deployment's own rate is misconfigured, and quoting 「0
-// 點」 for a run that costs money is the one output this whole change exists to
-// prevent.
 func defaultCostEstimate(credits func(float64) (int64, bool)) (CostEstimate, error) {
 	conv := func(usd float64) (int64, error) {
 		c, ok := credits(usd)
@@ -312,10 +164,6 @@ func defaultCostEstimate(credits func(float64) (int64, bool)) (CostEstimate, err
 
 func (s *Service) store() ObjectStore { return s.Store }
 
-// PermissionSummaryFor builds the pre-run summary for one (version, test case)
-// pair. Every read is workspace scoped from the session's workspace (iron rule 3);
-// a version or draft outside it is ErrNotFound, the same answer as one that does
-// not exist.
 func (s *Service) PermissionSummaryFor(
 	ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID,
 ) (PermissionSummary, error) {
@@ -328,22 +176,9 @@ func (s *Service) PermissionSummaryFor(
 	return s.permissionSummaryFor(ctx, workspaceID, skillID, versionID, testCaseID, nil)
 }
 
-// heldInputs are the rows a caller that is already inside a transaction has read
-// on its own connection, handed in so this function does not read them again.
-//
-// It is not an optimisation. Create holds a transaction while it calls this, and
-// every read here goes to the pool rather than to that transaction - so on a
-// deployment whose pool has one connection, the request waits for a connection
-// its own transaction is holding and never returns. Clean test mode is exactly
-// that deployment (ADR-060 決策 2, pool_max_conns=1), and POST /skills/{id}/runs
-// hung there from the day the mode existed: nothing reached this code, because
-// RUN-005 refused every clean-mode dispatch earlier in the chain until 04 丙-98
-// was fixed, and every test of this endpoint runs on a pool with room to spare
-// (04 丙-99).
-//
-// The draft half of this already existed for the other reason - Create locks the
-// draft and must summarise the row it locked, not a fresh read of it. The
-// version half is the same shape and was missing.
+// heldInputs carries rows a caller already read on its own transaction, so this
+// function can skip taking a second pool connection while that transaction
+// still holds one.
 type heldInputs struct {
 	draft   testlab.Draft
 	version VersionFacts
@@ -362,23 +197,18 @@ func (s *Service) permissionSummaryFor(
 		)
 		version, found, err = s.ReadVersion(ctx, workspaceID, versionID)
 		if !found && err == nil {
-			// No run exists yet at this point (03:TEST-008) — the version itself is
-			// missing, not "run not found" (04 丙-148 ④).
+
 			return PermissionSummary{}, ErrPreflightTargetNotFound
 		}
 		if err != nil {
 			return PermissionSummary{}, err
 		}
 	}
-	// Same guard as Create: the version must belong to the skill in the URL, or a
-	// summary could be produced for a pairing the run itself would refuse.
+
 	if skillID.Valid && version.SkillID != skillID {
 		return PermissionSummary{}, ErrNotFound
 	}
-	// Reads the draft rather than a snapshot: the summary describes the run the
-	// user is about to start, and the snapshot only exists once it has started.
-	// The dataset order — and therefore the hash over it — is testlab's guarantee,
-	// stated once at ReadDraft rather than restated here.
+
 	var draft testlab.Draft
 	if held != nil {
 		draft = held.draft
@@ -386,8 +216,7 @@ func (s *Service) permissionSummaryFor(
 		var err error
 		draft, err = s.TestLab.ReadDraft(ctx, workspaceID, testCaseID)
 		if errors.Is(err, testlab.ErrNotFound) {
-			// Same reason as the version branch above: the Test Case draft is
-			// missing, no run exists yet (04 丙-148 ④).
+
 			return PermissionSummary{}, ErrPreflightTargetNotFound
 		}
 		if err != nil {
@@ -398,13 +227,6 @@ func (s *Service) permissionSummaryFor(
 		return PermissionSummary{}, ErrNotFound
 	}
 
-	// The same policy Create freezes onto the run and the scheduler matches
-	// against, read from its one definition. Rebuilding the literal here is what
-	// would let a user confirm a summary of yesterday's policy and still pass the
-	// hash check, which is the one failure this whole screen exists to prevent.
-	// Named snap, not policy: internal/policy is the Policy & Usage context and
-	// this is a run policy snapshot — two different things that used to want the
-	// same identifier.
 	snap := defaultPolicy()
 
 	content := PermissionSummaryContent{
@@ -414,13 +236,9 @@ func (s *Service) permissionSummaryFor(
 		Datasets:          draft.Datasets,
 		DatasetTotalBytes: draft.DatasetTotalBytes,
 		Scripts:           s.scriptSummary(ctx, version.PackageObjectKey),
-		// The agent's own file and shell tools, inside the sandbox and nowhere
-		// else. There is no per-tool grant to show because there is no per-tool
-		// grant to make: the isolation boundary is the container, not a tool list.
+
 		Tools: []string{"sandbox filesystem (/work, /out)", "sandbox shell"},
-		// MVP has no MCP at all (AGENTS.md 範圍注意, 02:TEST-003 後 MVP). An empty
-		// list shown as empty is the honest disclosure; omitting the row would let
-		// a user assume the question was never asked.
+
 		MCPServers:      []string{},
 		Network:         NetworkSummary{Mode: snap.Egress.Mode, Allow: egressAllowLines(snap.Egress.Allow)},
 		InjectedSecrets: injectedSecretsFor(snap),
@@ -434,17 +252,10 @@ func (s *Service) permissionSummaryFor(
 	}
 	sum := sha256.Sum256(body)
 
-	// Read after the hash is taken, so it is structurally impossible for the
-	// allowance to reach the hashed body (TEST-011's rule for estimated_cost). A
-	// failure here does not fail the screen: the summary's job is to say what the
-	// run may touch, and that answer does not depend on how many runs are left.
-	//
-	// Skipped entirely for a caller inside a transaction. It is another pool read
-	// (see heldInputs), it sits outside the hash, and Create looks at nothing but
-	// the hash - so on a one-connection pool this was the second place the same
-	// request could deadlock, immediately after the first was fixed.
 	var quota *policy.QuotaView
 	if held != nil {
+		// Skipped here: a second pool read would deadlock a caller already
+		// inside a transaction on a single-connection pool.
 		quota = nil
 	} else if state, enforced, err := s.QuotaFor(ctx, workspaceID); err != nil {
 		slog.Warn("quota unavailable for the pre-run summary", "error", err)
@@ -454,9 +265,7 @@ func (s *Service) permissionSummaryFor(
 	}
 
 	if s.Credits == nil {
-		// Fail closed, the way requireCuratedContent does. The alternative is a
-		// pre-run screen that quotes a cost of zero, and 「免費」 is the one
-		// wrong answer this screen must never give (設計 §2.9).
+
 		return PermissionSummary{}, errors.New("run: no credit conversion wired; the pre-run screen cannot state a cost")
 	}
 	estimate, err := defaultCostEstimate(s.Credits)
@@ -472,26 +281,9 @@ func (s *Service) permissionSummaryFor(
 	}, nil
 }
 
-// permissionSummaryNotes is the display-only half of the pre-run summary. Outside
-// summary_hash, all of it: rewording a sentence, or recalibrating a measurement,
-// must not silently revoke every confirmation a user has outstanding.
-//
-// A package-level value rather than a literal inside the builder so that the one
-// note carrying an acceptance criterion with a number in it — the token rounds
-// conversion, 02:276-284 — can be asserted without a database.
 var permissionSummaryNotes = []string{
 	"預估成本是區間估計值,不是報價;實際費用以模型閘道記錄的實付金額為準。",
-	// 02:276-284 (PDM-005 §5.2a-2): 「Token 上限必須連同輪數換算表一起呈現,
-	// 不得只寫「300K」」, and the permission summary is the first of the three
-	// places that rule names. The numbers are the measured ones - ~19.4K
-	// input tokens of fixed harness overhead per API call, resent in full on
-	// every tool result - so the same 300K is 15 rounds or 5 depending on
-	// what the run does.
-	//
-	// Outside summary_hash, same reason as the cost estimate: recalibrating a
-	// measurement must not revoke every confirmation in flight, and this is a
-	// statement about what the ceiling means rather than about what the run
-	// may touch.
+
 	"Token 上限可跑的輪數取決於每輪的工具呼叫次數(每次工具結果都會重送整個前綴):純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪。",
 	"MVP 不支援 MCP Server,因此工具清單只有 Sandbox 內建的檔案與 Shell 存取。",
 	"Secrets 只顯示注入項目的名稱;實際值是每個 Run 專屬的短效憑證,不會出現在任何畫面、Log 或 Trace。",
@@ -499,9 +291,6 @@ var permissionSummaryNotes = []string{
 	"以上任何一項變更(例如換一份 Dataset)都會產生新的摘要,必須重新確認才能開始 Run。",
 }
 
-// scriptSummary re-scans the stored package. A package that cannot be read does
-// not fail the request: the summary says the scan is unavailable, which is a
-// different statement from "no scripts" and must stay one.
 func (s *Service) scriptSummary(ctx context.Context, objectKey string) ScriptSummary {
 	report, ok := s.packageReport(ctx, objectKey)
 	if !ok {
@@ -513,8 +302,7 @@ func (s *Service) scriptSummary(ctx context.Context, objectKey string) ScriptSum
 			findings = append(findings, f.Code+": "+f.Path)
 		}
 	}
-	// Findings arrive in walk order, which is stable for a given package, but
-	// sorting costs nothing and removes the question entirely.
+
 	sort.Strings(findings)
 	if len(findings) == 0 {
 		return ScriptSummary{Status: "none", Findings: findings}
@@ -522,16 +310,6 @@ func (s *Service) scriptSummary(ctx context.Context, objectKey string) ScriptSum
 	return ScriptSummary{Status: "present", Findings: findings}
 }
 
-// providerSummary names the provider this run would go to. Best effort: an empty
-// fleet, or one that is unreachable right now, reports `unassigned` rather than
-// failing the summary — refusing incompatible work is checkSchedulable's job, on
-// the run request itself.
-//
-// ponytail: the provider identity is inside the hash, so a provider flapping in
-// and out of reachability between the summary and the run costs the user one
-// re-confirmation. That is the safe direction (who runs your code is a permission
-// fact) and rare with a single-provider fleet; revisit if multi-provider fleets
-// make it noisy.
 func (s *Service) providerSummary(ctx context.Context, policy policySnapshot) ProviderSummary {
 	registry := s.providers()
 	if len(registry.Providers) == 0 {
@@ -551,17 +329,10 @@ func (s *Service) providerSummary(ctx context.Context, policy policySnapshot) Pr
 	}
 }
 
-// detachedDescendantsSurvive answers the disclosure from a three-state field.
-// Only an explicit `false` is a disclosure: an absent reaps_detached_descendants
-// is "did not say", and turning that into "descendants survive" would put a claim
-// on the confirmation screen that no provider made.
 func detachedDescendantsSurvive(c ProviderCapability) bool {
 	return c.Isolation.ReapsDetachedDescendants != nil && !*c.Isolation.ReapsDetachedDescendants
 }
 
-// ConfirmPermissions records the user's agreement to the summary they were shown.
-// The hash they send is checked against a freshly built summary, so a client
-// cannot confirm a hash it invented or one that has already gone stale.
 func (s *Service) ConfirmPermissions(
 	ctx context.Context, workspaceID, actor, skillID, versionID, testCaseID pgtype.UUID, hash string,
 ) (gen.RunPermissionConfirmation, error) {
@@ -597,13 +368,6 @@ func (s *Service) ConfirmPermissions(
 	return row, tx.Commit(ctx)
 }
 
-// requirePermissionConfirmation is SEC-002 gate B, called from Create before a run
-// row exists. It rebuilds the summary from what is true *now* and requires both
-// that the caller echoed that exact hash and that an agreement to it is on record.
-//
-// Rebuilding rather than trusting the request is the whole mechanism: a dataset
-// added after the confirmation changes the hash here, the old agreement no longer
-// matches, and the run is refused until the user has seen the new summary.
 func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams, draft testlab.Draft, version VersionFacts) error {
 	summary, err := s.permissionSummaryFor(ctx, p.WorkspaceID, p.SkillID, p.VersionID, p.TestCaseID,
 		&heldInputs{draft: draft, version: version})
@@ -623,10 +387,6 @@ func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Quer
 	return err
 }
 
-// --- HTTP ------------------------------------------------------------------
-
-// Preflight handles GET /skills/{id}/runs/preflight?version_id=&test_case_id=
-// (03:TEST-008).
 func (h *Handler) Preflight(w http.ResponseWriter, r *http.Request) {
 	ws, _, ok := h.workspace(w, r)
 	if !ok {
@@ -648,9 +408,6 @@ func (h *Handler) Preflight(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, summary)
 }
 
-// ConfirmPreflight handles POST /skills/{id}/runs/preflight/confirm (03:TEST-009).
-// A user who declines simply does not call it, and without a record here the run
-// cannot start.
 func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 	ws, user, ok := h.workspace(w, r)
 	if !ok {
@@ -675,8 +432,7 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound):
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
 		return
-	// 422 rather than 409: the request is well formed, but it agrees to a summary
-	// that is not the current one, so the client has to re-read and re-confirm.
+
 	case errors.Is(err, ErrPermissionsNotConfirmed):
 		httpx.WriteError(w, http.StatusUnprocessableEntity,
 			"summary_hash does not match the current permission summary; read it again and confirm that")
@@ -692,8 +448,6 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// preflightIDs parses the three ids these two routes share. A malformed id is
-// answered like one that belongs to someone else (WS-006).
 func preflightIDs(w http.ResponseWriter, r *http.Request, version, testCase string) (skillID, versionID, testCaseID pgtype.UUID, ok bool) {
 	if err := skillID.Scan(r.PathValue("id")); err != nil {
 		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())

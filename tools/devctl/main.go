@@ -25,6 +25,7 @@ Usage:
 	devctl gen [--check] [--scope=sql|openapi|all]  regenerate or check committed output
 	devctl agent-sync [--check]  regenerate or check portable Agent artifacts from .claude
 	devctl automation-check  verify Task, Agent docs and generated ownership markers
+	devctl comment-lint [path-prefix...]  list comments that break AGENTS.md's comment rule
 	devctl test-report dir [go test args]  run the suite and report what skipped and why
 	devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
 `
@@ -76,6 +77,10 @@ func main() {
 		}
 	case "automation-check":
 		if err := automationCheck(root, os.Stdout); err != nil {
+			fatal(err)
+		}
+	case "comment-lint":
+		if err := commentLint(root, os.Args[2:], os.Stdout); err != nil {
 			fatal(err)
 		}
 	case "test-report":
@@ -238,18 +243,9 @@ func checkEnv(root string) checkResult {
 	return checkResult{name: ".env", status: "WARN", detail: "missing; run task env:init", required: false}
 }
 
-// checkPgliteInstall reconciles 02:PORT-001's clean test mode database
-// carrier (tools/pglite) against its pins in tools/toolchain.yaml. It reads
-// the version actually installed under tools/pglite/node_modules, not just
-// what package.json declares as a range -- a version mismatch is a real
-// environment drift and must FAIL, not be silently skipped because the
-// package happens to be present.
-//
-// pgvector is intentionally not checked here: at the pinned pglite version
-// it ships bundled inside the @electric-sql/pglite package itself (subpath
-// "@electric-sql/pglite/vector"), not as a separately installed npm
-// package, so there is nothing under node_modules to reconcile against
-// beyond the pglite version already checked.
+// Reads the version actually installed under node_modules rather than the
+// range in package.json. pgvector isn't checked separately: at this pinned
+// version it ships bundled inside the pglite package itself.
 func checkPgliteInstall(root string, toolchain map[string]string) []checkResult {
 	packages := []struct {
 		checkName    string
@@ -500,8 +496,6 @@ func fileExists(path string) bool {
 	return err == nil && !info.IsDir()
 }
 
-// Sorted keys make future diagnostic output deterministic when tool-specific
-// checks are added from the manifest.
 func sortedKeys[V any](values map[string]V) []string {
 	keys := make([]string, 0, len(values))
 	for key := range values {

@@ -1,60 +1,11 @@
 #!/usr/bin/env python3
-"""Backfill the `artifacts` manifest rows M2's pipeline never wrote (04 丙-13).
+"""Backfill `artifacts` manifest rows for runs whose pipeline never wrote them.
 
-M2 executed 159 runs and wrote **zero** rows into `artifacts`; the archives
-themselves survived in object storage at
-`run-artifacts/<run_id>/<attempt_id>/artifacts.tar`. M3's `recordArtifacts`
-writes the rows from then on, so this is a one-off data repair, not a code fix.
+Reads each run's archive from a local tar directory (fetch it first, e.g. via
+`aws s3 sync s3://skillhub/run-artifacts/ <dir>`) and hashes member bodies
+with sha256 to recover the same content_hash the sandbox originally produced.
 
-Why it matters, in the order the damage happens:
-
-  1. `buildRequest` sends `artifacts[]` to the judge. With no rows it sends an
-     empty array, so the judge decides every criterion under "this run produced
-     no output files" - and evaluations are append-only, so a wrong verdict
-     stays in the revision list forever. That already happened once: the
-     2026-08-23 suggest baseline evaluated 53 of these runs by hand and all 84
-     evaluations carry the empty-manifest finding
-     (docs/plans/mvp/m3/report-suggest-baseline.md §9).
-  2. `artifactFindings()` then reports "the run reported success and no output
-     files were recorded for it", which is literally true and reads as an
-     accusation.
-
-**The order is hard: backfill first, evaluate second.**
-
-Reading a tar's index is not executing it (evaluation-design §2.2): nothing is
-unpacked to disk, nothing is parsed by extension, and no bytes reach a model.
-The member bodies are read for one purpose only - sha256 - which is how the
-sandbox produced `content_hash` in the first place
-(apps/sandbox/internal/sandbox/artifacts.go), so this recovers the original
-value rather than inventing a plausible one.
-
-Two values are deliberately NOT taken from the live write path:
-
-  * `expires_at`. `InsertRunArtifact` hardcodes `now() + interval '30 days'`.
-    Applying that to a run from last month invents a retention window that
-    never existed - those bytes have been sitting there since the run, and
-    whatever should have expired should have expired on its own clock. Derived
-    from `runs.created_at` here.
-  * `content_type`. The live path defaults to `application/octet-stream`
-    because the provider never populates the field at all (`Artifact` in
-    apps/sandbox/internal/sandbox/artifacts.go sets FileName, SizeBytes and
-    ContentHash and nothing else). So this is not a compromise: it is exactly
-    what the row would have said. Sniffing the bytes here would make the
-    backfilled rows *better* than the real ones, which is its own kind of lie.
-
-Fetch the archives first. Kept out of this script so it also runs against a
-dump, and because the credentials belong in the caller's shell, not here:
-
-    docker run --rm --network host -v "C:/tmp/b13tars:/out" -e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS_KEY=... -e AWS_DEFAULT_REGION=us-east-1 amazon/aws-cli --endpoint-url http://127.0.0.1:8333 s3 sync s3://skillhub/run-artifacts/ /out/
-
-(Git Bash rewrites the container-side `/out/`; prefix the command with
-`MSYS_NO_PATHCONV=1` there or the files land inside the container and the sync
-reports success having downloaded nothing you can see.)
-
-Then:
-
-    python tools/content/backfill_artifacts.py --tar-dir C:/tmp/b13tars
-    python tools/content/backfill_artifacts.py --tar-dir C:/tmp/b13tars --apply
+    python tools/content/backfill_artifacts.py --tar-dir <dir> [--apply]
 """
 
 import argparse
@@ -82,9 +33,7 @@ def psql(sql):
 
 
 def quote(s):
-    """Single-quoted SQL literal. Only file names reach this and they come out of
-    a tar header rather than a user form - but they are still untrusted strings,
-    and a manifest is not the place to learn that the hard way."""
+    """Single-quoted SQL literal; tar-header file names are still untrusted."""
     return "'" + s.replace("'", "''") + "'"
 
 
@@ -107,9 +56,8 @@ def manifest(path):
 def statement(run_id, workspace_id, created_at, key, name, size, digest):
     """One idempotent INSERT, the same shape as InsertRunArtifact's.
 
-    `WHERE NOT EXISTS` rather than `ON CONFLICT` for the same reason the live
-    query gives: there is no unique key to conflict on, and running this twice
-    must not double the manifest.
+    `WHERE NOT EXISTS` rather than `ON CONFLICT`: there is no unique key to
+    conflict on.
     """
     return (
         "INSERT INTO artifacts (workspace_id, run_id, kind, file_name, "
@@ -133,9 +81,6 @@ def main():
                     help="execute the SQL instead of only printing it")
     args = ap.parse_args()
 
-    # Every run, with its own artifact count. Counted rather than filtered out in
-    # SQL so "already backfilled" is a number on the summary: a backfill that
-    # quietly does nothing looks identical to one that quietly did everything.
     runs = {r["id"]: r for r in psql("""
         select r.id::text, r.workspace_id::text as workspace_id,
                r.created_at::text as created_at,
@@ -152,9 +97,6 @@ def main():
         run_id = os.path.basename(os.path.dirname(root))
         run = runs.get(run_id)
         if run is None:
-            # An archive whose run is gone. Reported, never guessed at: the
-            # workspace_id is not recoverable from the object key, and a row in
-            # the wrong workspace is worse than a missing one (iron rule 3).
             orphan_archives.append(run_id)
             continue
         if int(run["existing"]) > 0:
@@ -187,9 +129,8 @@ def main():
     if not stmts:
         say("nothing to apply")
         return 0
-    # One transaction: a half-written manifest is worse than none, because the
-    # judge would then be told about some of the files and reason from a list it
-    # has no way to know is partial.
+    # `-1` runs every statement in one transaction: a half-written manifest is
+    # worse than none, since a partial one looks complete to anything reading it.
     proc = subprocess.run(
         ["docker", "exec", "-i", PG_CONTAINER, "psql", "-U", PG_USER, "-d", PG_DB,
          "-q", "-v", "ON_ERROR_STOP=1", "-1"],

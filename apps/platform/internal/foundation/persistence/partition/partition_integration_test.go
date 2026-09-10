@@ -1,19 +1,5 @@
 package partition
 
-// Integration test against a real PostgreSQL. Set SKILLHUB_TEST_DATABASE_URL and
-// the tests below run; leave it unset and they skip, so CI without a database
-// reports "skipped" rather than a false pass.
-//
-// WARNING: TestMain drops and recreates schema "public" in that database.
-// Never point SKILLHUB_TEST_DATABASE_URL at a database you care about.
-//
-// It resets rather than working with whatever is there because the subject is a
-// set of partitions: a leftover month from another package's fixtures would make
-// "which partitions exist" a different question on every run. The reset runs
-// under the same session advisory lock apiserver, eval and registry take, since
-// `go test ./...` runs packages concurrently and one package's DROP SCHEMA
-// landing mid-test in another is exactly what that lock exists to prevent.
-
 import (
 	"context"
 	"fmt"
@@ -31,12 +17,6 @@ import (
 
 const partitionDBURLEnv = "SKILLHUB_TEST_DATABASE_URL"
 
-// The two partitioned tables the owning contexts declare
-// (trace.PartitionedTable, analytics.PartitionedTable). Spelled out rather than
-// imported: this is the generic package, and importing a bounded context here —
-// even from a test — would be a cycle, since both owners import this one.
-// cmd/maintenance's TestEveryPartitionedTableIsRotated is what keeps these two
-// names in step with the migrations and with the owners' constants.
 const (
 	analyticsTable = "analytics_events"
 	traceTable     = "trace_events"
@@ -47,15 +27,12 @@ var partitionPool *pgxpool.Pool
 func TestMain(m *testing.M) {
 	dsn := os.Getenv(partitionDBURLEnv)
 	if dsn == "" {
-		// 02:PORT-004. Without this, an unset or misspelled URL is indistinguishable
-		// from a passing run: every database test removes itself and go test still
-		// prints ok. CI sets SKILLHUB_REQUIRE_DB=1 so the service failing to come up
-		// is a red build rather than a quiet one.
+
 		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
 			fmt.Fprintf(os.Stderr, "SKILLHUB_REQUIRE_DB=1 but %s is unset; this run would have skipped every database test and still reported success\n", partitionDBURLEnv)
 			os.Exit(1)
 		}
-		os.Exit(m.Run()) // the database tests skip; see requirePartitionDB
+		os.Exit(m.Run())
 	}
 	if err := validateDestructivePartitionDatabaseURL(dsn); err != nil {
 		panic(err)
@@ -76,23 +53,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// The whole job in one sequence, because the interesting properties are about
-// what one run leaves behind for the next: months created ahead, months dropped
-// once every row they can hold is out of window, and the rows themselves gone
-// with them.
-//
-// analytics_events rather than trace_events for the row half: both have the same
-// partition shape, but trace_events' rows need a workspace, a skill, a version
-// and a run to hang off, and a fixture chain that long is four more ways for
-// this test to fail for reasons that are not partitioning. trace_events' own
-// rotation is covered below, where no rows are needed.
 func TestMonthlyPartitionsRollForwardAndExpireWithTheirRows(t *testing.T) {
 	pool := requirePartitionDB(t)
 	ctx := context.Background()
 	const forever = 3650 * 24 * time.Hour
 
-	// The migrations ship August 2026 and the default. A run dated 2026-09-01
-	// adds September through November.
 	report, err := MaintainMonthly(ctx, pool, analyticsTable, date(2026, time.September, 1), forever)
 	if err != nil {
 		t.Fatal(err)
@@ -101,14 +66,9 @@ func TestMonthlyPartitionsRollForwardAndExpireWithTheirRows(t *testing.T) {
 		"analytics_events_2026_09", "analytics_events_2026_10", "analytics_events_2026_11")
 	assertNames(t, "dropped", report.Dropped)
 
-	// One row in a month that will expire, one in a month that will not. Both
-	// land in a real monthly partition, which the assertions below confirm by
-	// dropping one of the partitions and looking for the row through the parent.
 	insertAnalyticsEvent(t, pool, "expired-row", date(2026, time.August, 10))
 	insertAnalyticsEvent(t, pool, "in-window-row", date(2026, time.October, 20))
 
-	// 2026-11-15 with a 30 day window: the cutoff is 2026-10-16, so August and
-	// September are wholly out of window and October is not.
 	report, err = MaintainMonthly(ctx, pool, analyticsTable, date(2026, time.November, 15), 30*24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
@@ -125,14 +85,10 @@ func TestMonthlyPartitionsRollForwardAndExpireWithTheirRows(t *testing.T) {
 		t.Error("a row inside the retention window was removed")
 	}
 
-	// The default partition is never a candidate. Without it, the first write
-	// into a month nobody created would fail and the event would be lost.
 	if !contains(childPartitionNames(t, pool, analyticsTable), "analytics_events_default") {
 		t.Fatal("the default partition was dropped")
 	}
 
-	// Re-running the identical call is a no-op, which is what makes this safe to
-	// put on a cron that may fire twice.
 	report, err = MaintainMonthly(ctx, pool, analyticsTable, date(2026, time.November, 15), 30*24*time.Hour)
 	if err != nil {
 		t.Fatalf("second run failed: %v", err)
@@ -141,15 +97,11 @@ func TestMonthlyPartitionsRollForwardAndExpireWithTheirRows(t *testing.T) {
 	assertNames(t, "dropped", report.Dropped)
 }
 
-// The failure direction. A default partition holding rows in the month being
-// attached makes the CREATE impossible, and that has to surface: it is the only
-// signal an operator gets that db/migrations/0019's one-off drain has come due.
 func TestAttachingAMonthTheDefaultAlreadyHoldsFailsWithTheDrainInstructions(t *testing.T) {
 	pool := requirePartitionDB(t)
 	ctx := context.Background()
 	const forever = 3650 * 24 * time.Hour
 
-	// No partition covers May 2027, so this row goes to the default.
 	insertAnalyticsEvent(t, pool, "stranded-in-default", date(2027, time.May, 5))
 
 	report, err := MaintainMonthly(ctx, pool, analyticsTable, date(2027, time.May, 10), forever)
@@ -163,16 +115,11 @@ func TestAttachingAMonthTheDefaultAlreadyHoldsFailsWithTheDrainInstructions(t *t
 	}
 	assertNames(t, "created", report.Created)
 
-	// The row is still there: a refused CREATE must not have moved or lost it.
 	if countAnalyticsEvents(t, pool, "stranded-in-default") != 1 {
 		t.Error("the row in the default partition did not survive the failed attach")
 	}
 }
 
-// The other owner's table, rotated by the same mechanism. No rows, so no fixture
-// chain: what this proves is that the create path works against trace_events as
-// it is actually declared in db/migrations/0004 and 0019, default partition and
-// all.
 func TestTraceEventsRollsForwardToo(t *testing.T) {
 	pool := requirePartitionDB(t)
 	ctx := context.Background()
@@ -188,8 +135,6 @@ func TestTraceEventsRollsForwardToo(t *testing.T) {
 	}
 }
 
-// ── helpers ────────────────────────────────────────────────────────────────
-
 func requirePartitionDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	if partitionPool == nil {
@@ -198,10 +143,6 @@ func requirePartitionDB(t *testing.T) *pgxpool.Pool {
 	return partitionPool
 }
 
-// insertAnalyticsEvent writes one funnel row at a chosen instant. Raw SQL rather
-// than internal/analytics' constructors: this package is generic and must not
-// import a bounded context, and what is under test is the partitioning, not the
-// event vocabulary.
 func insertAnalyticsEvent(t *testing.T, pool *pgxpool.Pool, session string, at time.Time) {
 	t.Helper()
 	if _, err := pool.Exec(context.Background(),
@@ -211,9 +152,6 @@ func insertAnalyticsEvent(t *testing.T, pool *pgxpool.Pool, session string, at t
 	}
 }
 
-// countAnalyticsEvents reads through the parent table, so a row that went away
-// with its partition is indistinguishable from one that was deleted — which is
-// the point: retention has to be observable from where the data is read.
 func countAnalyticsEvents(t *testing.T, pool *pgxpool.Pool, session string) int {
 	t.Helper()
 	var n int
@@ -254,8 +192,6 @@ func contains(names []string, want string) bool {
 	return false
 }
 
-// validateDestructivePartitionDatabaseURL refuses to point the schema drop below
-// at anything that is not an obviously disposable local database.
 func validateDestructivePartitionDatabaseURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -307,8 +243,7 @@ func migratePartitionSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		if err != nil {
 			return err
 		}
-		// No arguments means the simple protocol, so a file with several
-		// statements applies as one batch.
+
 		if _, err := pool.Exec(ctx, string(body)); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
@@ -316,10 +251,6 @@ func migratePartitionSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
-// lockTestSchema serialises the packages that reset this database — the same
-// session advisory lock apiserver, eval and registry take, held on one
-// connection for the whole package run. A package that resets without it sees,
-// or causes, "relation does not exist" halfway through somebody else's tests.
 func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
 	conn, err := pool.Acquire(ctx)
 	if err != nil {

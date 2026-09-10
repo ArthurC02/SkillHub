@@ -10,16 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ADR-028's beta gate is a cost ceiling on a publicly reachable deployment, so
-// its unreadable case has to refuse. Nothing covered that: the integration tests
-// reach the empty-list path and the not-on-the-list path, and the whole err
-// branch could be deleted — or invited() could `return true, nil` outright —
-// with every test still green (M4 audit, 2026-08-24).
-//
-// The unreachable pool is the entire fixture. pgxpool.New does not dial, so the
-// lookup fails with a connection error rather than pgx.ErrNoRows, which is
-// exactly the shape the branch is about: "we could not read who you are" is not
-// "you are on the list".
 func TestAnUnreadableInviteListRefusesRatherThanAdmitting(t *testing.T) {
 	pool, err := pgxpool.New(context.Background(),
 		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=1")
@@ -52,20 +42,6 @@ func TestAnUnreadableInviteListRefusesRatherThanAdmitting(t *testing.T) {
 	}
 }
 
-// The contract both callers depend on: an unreadable list is an error, never a
-// yes.
-//
-// RequireInvited turns that into a 503 (above). /me turns it into "do not
-// advertise this feature", which is the same failure ADR-052's flag exists to
-// prevent one scope down: an entry point drawn for somebody who types a task
-// description, waits, and is refused.
-//
-// What this does NOT cover, said plainly rather than implied: the `err == nil &&`
-// at the /me call site itself. Reaching it needs /me to survive a dead database,
-// and /me reads the caller's workspace first, so it cannot. Injecting a failure
-// into just the invite lookup would be machinery built for one display branch
-// whose worst outcome is a button that then refuses - the gate behind it is the
-// tested one.
 func TestAnUnreadableInviteListIsAnErrorAndNotAnAdmission(t *testing.T) {
 	pool, err := pgxpool.New(context.Background(),
 		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=1")

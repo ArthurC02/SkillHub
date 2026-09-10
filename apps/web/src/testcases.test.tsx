@@ -6,12 +6,6 @@ import { queryClient } from "./api/queryClient";
 import { TestCaseDetail, TestCaseList } from "./pages/TestCases";
 import type { TestCase } from "./api/testcases";
 
-// 03:TEST-012, whose bar is 02:TEST-001 第 3 條: 「使用者可新增、編輯、刪除及
-// 確認驗收條件」. The four verbs have a user as their subject, so the test drives
-// the buttons and asserts the requests that come out — an assertion about fields
-// being present on screen would not have caught the state TEST-003 was handed
-// back for.
-
 let container: HTMLDivElement;
 let root: Root;
 
@@ -32,7 +26,6 @@ const TEST_CASE = "33333333-3333-3333-3333-333333333333";
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const VERSION = "22222222-2222-2222-2222-222222222222";
 
-/** The list route's `?skill=`, controlled per test. */
 let listSearch: { skill?: string } = {};
 
 vi.mock("@tanstack/react-router", () => ({
@@ -68,8 +61,6 @@ const RUN = {
   test_case_id: TEST_CASE,
   provider: "self-hosted",
   cleanup_status: "cleaned",
-  // 04 丙-32: the second axis. Required and never null — 未評估 is a value, not an
-  // omission, because an empty verdict beside 「執行完成」 reads as a pass.
   evaluation: {
     value: "met",
     label: "符合",
@@ -80,15 +71,12 @@ const RUN = {
 };
 
 type Overrides = {
-  /** POST .../criteria/suggest — proposals, or an ApiError status to fail with. */
   suggest?: { suggestions: { text: string }[] } | { status: number; error: string };
   suggestResponse?: Promise<Response>;
   runs?: unknown[];
   datasets?: unknown[];
   testCases?: unknown[];
-  /** The single test case GET /test-cases/{id} answers with. Defaults to `draft`. */
   testCase?: TestCase;
-  /** POST /test-cases — an ApiError status to fail with, instead of 201. */
   create?: { status: number; error: string };
 };
 
@@ -124,7 +112,6 @@ function stubPlatform(over: Overrides = {}) {
       return json({
         deleted: true,
         datasets_deleted: 2,
-        // 04 丙-143 的規矩：抄 trial/design/http.go Delete 真的回的句子。
         note: "Test Case 與它上傳的檔案已移除，檔案本身也刪了；過去 Run 的快照仍保留 Prompt、驗收條件，以及每個檔案的檔名與內容雜湊。",
       });
     return json(over.testCase ?? draft);
@@ -213,16 +200,10 @@ test("02:TEST-001 第 3 條 a user can add, delete and withdraw the confirmation
   const added = calls.find((c) => c.method === "POST" && c.url.endsWith("/criteria"));
   expect(added?.body).toContain("不得改動其他欄位");
 
-  // The stored criterion is confirmed, so the control on offer is the one that
-  // withdraws it — confirming twice is not a thing a user can ask for.
   await act(async () => button("取消確認").click());
   const withdrawn = calls.find((c) => c.method === "PATCH" && c.url.includes("/criteria/c1"));
   expect(withdrawn?.body).toContain('"confirmed":false');
 
-  // 設計系統 §2.8: deleting a criterion destroys text the user wrote, so it goes
-  // through the same two-step control as every other destructive action — and
-  // the first click must send nothing, because the scope sentence is the whole
-  // disclosure and it is only on screen between the two clicks.
   await act(async () => button("刪除這一條").click());
   expect(calls.some((c) => c.method === "DELETE")).toBe(false);
   await act(async () => button("確認刪除這一條").click());
@@ -233,9 +214,6 @@ test("CONTENT-007 a rubric line is written against a criterion and saved with it
   const calls = stubPlatform();
   await render();
 
-  // The editor offers one box per acceptance criterion, so the item's id is the
-  // criterion's by construction — the id correspondence is not something the
-  // user can get wrong.
   const box = container.querySelector<HTMLTextAreaElement>("#rubric-c1");
   expect(box).not.toBeNull();
   await act(async () => setValue(box as HTMLTextAreaElement, "引出顯示列數變少的那一句。"));
@@ -255,8 +233,6 @@ test("CONTENT-007 clearing every line removes the rubric rather than storing an 
   const calls = stubPlatform();
   await render();
 
-  // Nothing was typed, so there is no rubric — and "no rubric" is null, not an
-  // empty item list, because the two are different statements to a reader.
   expect(container.textContent).toContain("儲存等於移除這個 Test Case 的 rubric");
   await act(async () => button("儲存 Rubric").click());
   const saved = calls.find((c) => c.method === "PATCH" && c.body?.includes("rubric"));
@@ -267,20 +243,14 @@ test("iron rule 4 the screen says a run freezes a snapshot and that editing clea
   stubPlatform();
   await render();
 
-  // The snapshot rule is on screen rather than assumed: editing a draft must not
-  // read as rewriting what a past run executed.
   expect(container.textContent).toContain("凍結成快照");
 
   const edit = container.querySelector<HTMLInputElement>("#criterion-c1");
   expect(edit).not.toBeNull();
   await act(async () => setValue(edit as HTMLInputElement, "輸出的列數必須少於輸入"));
 
-  // Confirmation applied to the old words, so the page warns before the save
-  // rather than letting the cleared state look like a bug.
   expect(container.textContent).toContain("會清除這一條的確認");
 });
-
-// --- TEST-001 可選強化: 建議是預覽，採納才落庫 ------------------------------
 
 test("TEST-002 asking for suggestions writes nothing; each one is adopted or ignored by the user", async () => {
   const calls = stubPlatform({
@@ -291,26 +261,20 @@ test("TEST-002 asking for suggestions writes nothing; each one is adopted or ign
   await act(async () => button("請系統建議（選用）").click());
   await waitFor(() => (container.textContent ?? "").includes("尚未加入"));
 
-  // The proposals are on screen and the draft is untouched: asking is not
-  // writing, which is the whole point of the change (TEST-001 確認權在使用者).
   expect(container.textContent).toContain("保留欄位標題列");
   expect(container.textContent).toContain("輸出仍是 CSV");
   expect(container.textContent).toContain("尚未加入");
   expect(calls.some((c) => c.method === "POST" && c.url.endsWith("/criteria"))).toBe(false);
 
-  // Adopting one goes through the ordinary add route, labelled as the model's
-  // wording and therefore unconfirmed.
   await act(async () => button("採納").click());
   await waitFor(() => calls.some((c) => c.method === "POST" && c.url.endsWith("/criteria")));
   const adopted = calls.find((c) => c.method === "POST" && c.url.endsWith("/criteria"));
   expect(adopted?.body).toContain("保留欄位標題列");
   expect(adopted?.body).toContain('"source":"suggested"');
 
-  // The adopted one leaves the proposal list; the other is still on offer.
   await waitFor(() => !(container.textContent ?? "").includes("保留欄位標題列"));
   expect(container.textContent).toContain("輸出仍是 CSV");
 
-  // Ignoring writes nothing at all.
   const before = calls.length;
   await act(async () => button("忽略").click());
   expect(container.textContent).not.toContain("輸出仍是 CSV");
@@ -318,8 +282,6 @@ test("TEST-002 asking for suggestions writes nothing; each one is adopted or ign
 });
 
 test("TEST-002 an adopted suggestion is listed as 系統建議，尚未確認", async () => {
-  // The draft the server answers with after the adoption: the label on the row
-  // is what tells a reader these words are a model's, not their own.
   const withSuggested: TestCase = {
     ...draft,
     acceptance_criteria: [
@@ -344,15 +306,6 @@ test("TEST-002 an adopted suggestion is listed as 系統建議，尚未確認", 
   expect(container.textContent).toContain("系統建議，尚未確認");
 });
 
-/**
- * 04 丙-150(b): the old copy interpolated `err.message` into the sentence
- * (「目前無法自動建議（${err.message}）」), which put whatever the server wrote —
- * in English before 丙-149, in Chinese after — into the middle of a Chinese
- * sentence. The fixed sentence now stands alone regardless of the server's
- * wording, so the fixture below is deliberately a DIFFERENT string from what
- * the page prints: if the page were still interpolating, this test would show
- * the fixture's words on screen and it does not.
- */
 test("TEST-002 a 503 is worded as unavailable and names the manual path, without the server's own words", async () => {
   stubPlatform({ suggest: { status: 503, error: "目前無法自動建議驗收條件，請自己手動輸入" } });
   await render();
@@ -360,12 +313,8 @@ test("TEST-002 a 503 is worded as unavailable and names the manual path, without
   await act(async () => button("請系統建議（選用）").click());
   await waitFor(() => (container.textContent ?? "").includes("目前無法自動建議"));
   expect(container.textContent).toContain("驗收條件可以自己手動輸入");
-  // The server's own sentence (different wording, per the fixture above) must
-  // not be on screen — the page's own fixed sentence stands alone.
   expect(container.textContent).not.toContain("目前無法自動建議驗收條件，請自己手動輸入");
 });
-
-// --- 04 丙-150/155: 寫入路徑的 401、bytes 上限與伺服器句子 -------------------
 
 test("丙-150 建立失敗於 401 走 ReadFailure，印登入而不是 not authenticated", async () => {
   const calls = stubPlatform({ create: { status: 401, error: "not authenticated" } });
@@ -385,11 +334,6 @@ test("丙-150 建立失敗於 401 走 ReadFailure，印登入而不是 not authe
   expect(calls.some((c) => c.method === "POST" && c.url === "/test-cases")).toBe(true);
 });
 
-/**
- * 04 丙-155③: testlab.go 用 bytes 算長度，不是字元數。這裡用 ASCII 湊出剛好超過
- * 200 bytes 的名稱（1 字元＝1 byte），檢查在送出前就擋下來——沒有任何一次 POST
- * /test-cases 被送出。
- */
 test("丙-155③ 名稱超過 200 bytes 送出前先擋下，不送出請求", async () => {
   const calls = stubPlatform();
   await renderList();
@@ -431,24 +375,16 @@ test("a pending suggestion says why its button is disabled", async () => {
   );
 });
 
-// --- 步驟 6: 回程 ------------------------------------------------------------
-
 test("執行歷史 lists this test case's runs and links to each one", async () => {
   const calls = stubPlatform({ runs: [RUN] });
   await render();
   await waitFor(() => (container.textContent ?? "").includes("執行歷史"));
 
-  // Filtered server-side, not by reading the whole workspace and sieving here.
   expect(
     calls.some((c) => c.url.includes(`/runs?`) && c.url.includes(`test_case_id=${TEST_CASE}`)),
   ).toBe(true);
   expect(container.querySelector('time[datetime="2026-08-18T00:00:00Z"]')).not.toBeNull();
   expect(container.textContent).toContain(VERSION);
-  // 設計 §2.6／§3 第 8 條 — the id is still on the page and is no longer flat: a
-  // 36-character UUID on every row was the longest thing in this list and the
-  // one thing nobody chooses a run by. `toContain(VERSION)` above passes either
-  // way (a `<details>`'s content is in the DOM), so the teeth are here: it is
-  // behind a disclosure, and it is NOT in any of the row's paragraphs.
   const fold = Array.from(container.querySelectorAll("details")).find((d) =>
     (d.querySelector("summary")?.textContent ?? "").includes("Skill Version"),
   );
@@ -458,10 +394,7 @@ test("執行歷史 lists this test case's runs and links to each one", async () 
     .map((p) => p.textContent ?? "")
     .join("");
   expect(flat, "the version id is flat on the row again").not.toContain(VERSION);
-  // ADR-025: worded as execution, never as a pass.
   expect(container.textContent).toContain("執行完成");
-  // Two axes with the verdict first (ADR-025, 04 丙-32). The old assertion was
-  // for the footnote that stood in for the missing axis.
   expect(container.textContent).toContain("任務判定：符合");
   const t = container.textContent ?? "";
   expect(t.indexOf("任務判定")).toBeLessThan(t.indexOf("執行狀態"));
@@ -474,17 +407,13 @@ test("執行歷史 with no runs says 尚無執行 rather than rendering a zero",
 
   expect(container.textContent).toContain("尚無執行");
   expect(container.textContent).toContain("要跑哪一個 Skill Version 在那個頁面上選");
-  // The copy the picker made obsolete must be gone (丙-14).
   expect(container.textContent).not.toContain("還需要填入");
 });
-
-// --- WS-002: 刪除 -----------------------------------------------------------
 
 test("02:WS-002 deleting states its scope before it runs and its actual reach after", async () => {
   const calls = stubPlatform({ runs: [] });
   await render();
 
-  // Before: what goes and what survives, on screen, with nothing sent yet.
   await act(async () => button("刪除整個 Test Case").click());
   expect(container.textContent).toContain("已經跑過的 Run 及其快照不受影響");
   expect(calls.some((c) => c.method === "DELETE")).toBe(false);
@@ -494,13 +423,10 @@ test("02:WS-002 deleting states its scope before it runs and its actual reach af
   const sent = calls.find((c) => c.method === "DELETE");
   expect(sent?.url).toContain(`/test-cases/${TEST_CASE}`);
 
-  // After: the server's own count, not a guess, plus what it did not touch.
   expect(container.textContent).toContain("2 個上傳檔案");
   expect(container.textContent).toContain("快照與歷史 Run 不受影響");
   expect(container.textContent).toContain("回到 Test Case 列表");
 });
-
-// --- 步驟 1: 列表彙總與篩選 --------------------------------------------------
 
 const LIST_ROW = {
   ...draft,
@@ -517,7 +443,6 @@ test("列表 shows the skill's name, the confirmed count and whether a rubric ex
   expect(container.textContent).toContain("去重複工具");
   expect(container.textContent).toContain("已確認 1/3 條");
   expect(container.textContent).toContain("Rubric 有");
-  // The bare UUID it replaces must not be back on the row.
   expect(container.textContent).not.toContain(SKILL);
 });
 
@@ -533,19 +458,6 @@ test("列表 ?skill= narrows the request and says so, with a way back to the ful
   expect(container.textContent).toContain("顯示全部");
 });
 
-/**
- * 網址已經指名了 Skill，建立表單還是問你一次。
- *
- * 從 `SkillDetail` 的「此 Skill 的 Test Case」過來，網址是 `?skill=<uuid>`，頁面上半
- * 部的篩選提示已經用 `ownedSkill.name` 把它叫出來了——下半部的 Skill 選單卻停在
- * 「請選擇」，停用的建立鈕下面寫著「還不能建立，因為：選一個 Skill」，**在一個已經
- * 指名了 Skill 的畫面上**。那個原因是頁面自己造出來的。
- *
- * 更難看的一半是它容許不一致：橫幅寫著「只顯示 X 的」，選單卻可以選 Y，按下建立就
- * 直接跳到一個屬於 Y 的新 Test Case，中間沒有任何一句話。
- *
- * 押的是選單的 value。把 `|| ownedSkill?.skill_id` 拿掉就變紅。
- */
 test("列表 ?skill= 指名的 Skill 要預先填進建立表單，不要再問一次", async () => {
   listSearch = { skill: SKILL };
   stubPlatform({ testCases: [LIST_ROW] });
@@ -557,10 +469,6 @@ test("列表 ?skill= 指名的 Skill 要預先填進建立表單，不要再問�
 });
 
 test("設計 §2.4 the Rubric save button says why it cannot be pressed", async () => {
-  // The fifth disabled control on this screen and the only one that stated no
-  // reason: 「目前 1 條有內容」 reports a count, not a cause, so a dead button read
-  // as a bug. The a11y scan cannot catch this shape — it checks that a reason is
-  // not *only* in a `title`, which finds nothing when there is no reason at all.
   stubPlatform();
   await render();
 
@@ -575,7 +483,6 @@ test("設計 §2.4 the Rubric save button says why it cannot be pressed", async 
   );
   expect(container.textContent).toContain("還不能儲存，因為 Rubric 版本是空的");
 
-  // And the reason goes when the cause does.
   const version = container.querySelector<HTMLInputElement>("#rubric-version")!;
   await act(async () => setValue(version, "content-007/writing/v1"));
   expect(saveButton.disabled).toBe(false);
@@ -583,19 +490,6 @@ test("設計 §2.4 the Rubric save button says why it cannot be pressed", async 
   expect(container.textContent).not.toContain("還不能儲存，因為 Rubric 版本是空的");
 });
 
-/*
- * 設計 §2.4 — 停用要說原因，而且原因不能只活在 `title` 裡。
- *
- * 確認 is disabled by `mutate.isPending || edited`, and the sentence explaining
- * an unsaved edit was gated on `edited && criterion.confirmed_at` — the OTHER
- * branch, the one whose button is 取消確認 and is not disabled at all. So a user
- * typing into an unconfirmed criterion watched the button grey out with nothing
- * on the page saying why: the exact failure §2.4 is named after.
- *
- * The existing machine check (`a11y.test.tsx`) cannot see this. It asserts that
- * a reason in a `title` is also in `aria-describedby`; a reason that is missing
- * outright has no `title` for it to catch.
- */
 test("設計 §2.4 a 確認 disabled by an unsaved edit says why, in visible text", async () => {
   stubPlatform({
     testCase: {
@@ -612,9 +506,6 @@ test("設計 §2.4 a 確認 disabled by an unsaved edit says why, in visible tex
   );
 
   expect(button("確認").disabled).toBe(true);
-  // Visible text, not a tooltip — and reachable from the control itself, since
-  // §2.10 第 5 項 keeps a disabled control's reason out of anything you have to
-  // open or hover to read.
   const describedBy = button("確認").getAttribute("aria-describedby");
   expect(describedBy, "the disabled 確認 points at no reason").toBeTruthy();
   const reason = container.querySelector(`#${describedBy}`);
@@ -623,19 +514,6 @@ test("設計 §2.4 a 確認 disabled by an unsaved edit says why, in visible tex
   expect(reason!.getAttribute("title")).toBeNull();
 });
 
-// --- 丙-116: the two halves of this page disagreed about 「這個 Skill」 --------
-
-/**
- * `?skill=` accepts any UUID (`router.tsx` only checks the shape), while the
- * create form below only accepts what `GET /skills` returns. Arriving from a
- * catalogue skill's 「試跑」 link, a reader got: a filter banner that announced
- * itself while unable to name what it filtered by, an empty state that read as
- * an invitation, and a picker in which the skill they had just come from was
- * structurally absent — with nothing on the page saying why.
- *
- * `stubPlatform`'s `GET /skills` answers exactly one skill, so a different id is
- * a skill outside this workspace by construction.
- */
 const NOT_MINE = "44444444-4444-4444-4444-444444444444";
 
 test("丙-116 a list filtered to a skill outside the workspace says so, and stops inviting", async () => {
@@ -644,22 +522,14 @@ test("丙-116 a list filtered to a skill outside the workspace says so, and stop
   await renderList();
 
   const text = container.textContent ?? "";
-  // Pinned whole, whitespace included. Prettier chooses where this paragraph
-  // wraps and JSX joins wrapped lines with one space, so a break after a
-  // full-width comma renders as 「顯示， 下面」 — which is what the first version
-  // of this copy actually shipped. Nothing else in the suite reads spacing, and
-  // a reflow leaves no other trace.
+  // Pinned whole, whitespace included: Prettier wraps this JSX text and joins
+  // the wrapped lines with a single space, so a break placed after a
+  // full-width comma would render as an extra space nobody typed.
   expect(text).toContain(
     "這個 Skill 不在你的工作區。Test Case 屬於工作區，所以這裡看不到它，建立表單的 Skill 選單也選不到它——先把它 Fork 一份，才會有屬於你的版本可以建立 Test Case。",
   );
-  // The half that mattered — the picker — named as a consequence rather than
-  // left for the reader to discover by scrolling.
   expect(text).toContain("選單也選不到它");
-  // A filter cannot claim to name what it filtered by when it has no rows and
-  // no owned skill to read the name from.
   expect(text).not.toContain("這一個 Skill");
-  // And the sentence that ended the corridor is gone: 「還沒有」 reads as "go
-  // make one" on the one screen where making one is impossible.
   expect(text).not.toContain("還沒有 Test Case");
 });
 
@@ -671,23 +541,9 @@ test("丙-116 a list filtered to your OWN empty skill keeps the invitation, and 
   const text = container.textContent ?? "";
   expect(text).not.toContain("這個 Skill 不在你的工作區");
   expect(text).toContain("這個 Skill 還沒有 Test Case");
-  // Read from the picker's own list rather than from rows there are none of —
-  // this case used to fall back to the literal 「這一個 Skill」 too.
   expect(text).toContain("去重複工具");
 });
 
-/**
- * 04 丙-121. The row for a test case whose skill the server could not name said
- * 「無權檢視（這個 Skill 已不在你的可見範圍）」 — a permissions reason, and the one
- * cause that cannot happen here.
- *
- * This list is workspace-scoped, and a test case's skill was checked to be in
- * the same workspace when it was created, so the lookup behind `skill_name` is
- * asking about the caller's own skill. It comes back empty when that skill is
- * gone from the list — deleted, or taken down. Reached without any race at all:
- * create a test case, then delete the skill, which is the ordinary way a person
- * tidies up.
- */
 test("丙-121 a test case whose skill is gone says it is gone, not that you may not see it", async () => {
   listSearch = {};
   stubPlatform({ testCases: [{ ...LIST_ROW, skill_name: "" }] });
@@ -695,12 +551,9 @@ test("丙-121 a test case whose skill is gone says it is gone, not that you may 
 
   const text = container.textContent ?? "";
   expect(text).toContain("這個 Skill 已經不在你的清單裡");
-  // Both causes, because this side cannot tell them apart and the old copy
-  // invented the more specific of two answers.
   expect(text).toContain("已刪除");
   expect(text).toContain("已下架");
   expect(text).not.toContain("無權檢視");
-  // And the id is still not what a reader is shown in place of a name.
   expect(text).not.toContain(SKILL);
 });
 

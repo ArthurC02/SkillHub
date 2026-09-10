@@ -1,29 +1,3 @@
-// Builds the offline dependency bundle clean mode needs on a machine with no
-// route to a package registry (02:PORT-005: "所需相依必須能離線帶上機器").
-//
-// Two halves, because clean mode has two toolchains: the database carrier is
-// Node, and cmd/api and sandboxd are Go programs the launcher builds on the
-// spot. Both are shipped as a *cache*, not as a copy of what is installed here:
-// a cache restores through the lockfile, so what lands on the far machine is
-// what go.sum and package-lock.json say, not whatever one developer's tree
-// happened to contain.
-//
-// Run this where a registry is reachable, copy the directory across, and run the
-// two commands this prints. It verifies both halves against its own output
-// before saying it is ready, because a bundle that is missing something should
-// fail here and not on the machine that cannot fix it.
-//
-// Size is not a detail: the Go half is ~150 MB, and 246 MB of that once
-// extracted is the Go toolchain itself. go.mod asks for a newer Go than a
-// machine may have installed, and Go fetches that as a module - so an offline
-// machine with the wrong Go version fails before it compiles a line. That is
-// measured, not assumed: against an empty bundle the build dies on "toolchain
-// not available" before it reaches any dependency.
-//
-// None of this answers whether that machine is permitted to *run* what Go
-// produces. Go writes an unsigned executable into the temp directory and
-// executes it, which is environment-probe Q2. This bundle removes the network
-// requirement; it does not remove the allowlist question.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -39,8 +13,7 @@ const npmCache = join(out, "npm");
 const goCache = join(out, "go");
 
 // A file:// proxy URL needs a drive letter on Windows - "file:///tmp/x" is
-// rejected with "file URL missing drive letter", and Windows is the platform
-// this mode exists for.
+// rejected with "file URL missing drive letter".
 const fileURL = (p) => "file:///" + resolve(p).replace(/\\/g, "/").replace(/^\/+/, "");
 
 function run(label, cmd, args, opts = {}) {
@@ -60,8 +33,6 @@ if (!existsSync(join(carrier, "package-lock.json"))) {
   process.exit(1);
 }
 
-// A stale cache hides a dependency added since it was built, and that failure
-// lands on the machine that cannot fix it.
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
@@ -69,9 +40,6 @@ console.log(`=== node half -> ${npmCache}`);
 run("npm cache population", "npm", ["ci", "--cache", npmCache, "--no-audit", "--no-fund"], { cwd: carrier });
 
 console.log(`\n=== go half -> ${goCache}`);
-// The local module cache is tried first so a rebuild costs nothing, then the
-// public proxy for anything it holds only in extracted form - measured: two of
-// apps/sandbox's dependencies had no zip locally.
 const localMod = spawnSync("go", ["env", "GOMODCACHE"], { encoding: "utf8", shell: true }).stdout.trim();
 const goProxy = `${fileURL(join(localMod, "cache", "download"))},https://proxy.golang.org,direct`;
 for (const m of goModules) {
@@ -81,10 +49,6 @@ for (const m of goModules) {
   });
 }
 
-// Only cache/download is a proxy; go mod download also extracts every module
-// beside it, and carrying both makes the bundle four times the size for
-// nothing (634 MB against 149 MB, measured). Trimming before the verification
-// is deliberate: what gets checked has to be what gets carried.
 for (const entry of readdirSync(goCache)) {
   if (entry !== "cache") rmSync(join(goCache, entry), { recursive: true, force: true });
 }
@@ -100,8 +64,6 @@ if (!tryRun("npm", ["ci", "--offline", "--cache", npmCache, "--no-audit", "--no-
   process.exit(1);
 }
 
-// An empty module cache and a proxy with no fallback: anything the bundle is
-// missing fails here rather than there.
 const scratch = join(out, ".verify-modcache");
 rmSync(scratch, { recursive: true, force: true });
 mkdirSync(scratch, { recursive: true });

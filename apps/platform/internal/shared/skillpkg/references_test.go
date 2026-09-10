@@ -5,9 +5,6 @@ import (
 	"testing/fstest"
 )
 
-// The reference check used to read markdown links only, which verifies the
-// Skills written as documents and silently skips the ones written as
-// instructions — and the second kind is the kind with scripts.
 func TestABarePathIsAReferenceWhenThePackageHasThatDirectory(t *testing.T) {
 	src := fstest.MapFS{
 		"SKILL.md": &fstest.MapFile{Data: []byte("---\nname: s\ndescription: d\n---\n" +
@@ -25,8 +22,7 @@ func TestABarePathIsAReferenceWhenThePackageHasThatDirectory(t *testing.T) {
 			t.Errorf("%s was not read as a reference: %v", want, got)
 		}
 	}
-	// The anchor. Without it every mention of another project's file becomes a
-	// missing file in this one, and a checker that cries wolf is turned off.
+
 	if got["requirements.txt"] {
 		t.Error("a path with no matching directory in the package was read as a reference")
 	}

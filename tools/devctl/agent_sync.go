@@ -11,9 +11,6 @@ import (
 	"strings"
 )
 
-// agentSync makes .claude/ the single source of truth for portable agent
-// artifacts. The generated trees stay committed so each agent can use them
-// locally; --check is the CI ratchet against hand edits and missed syncs.
 func agentSync(root string, args []string, out io.Writer) error {
 	check := false
 	for _, arg := range args {
@@ -146,7 +143,6 @@ func parseClaudeAgent(source string) (name, description, body string, err error)
 	return fields["name"], fields["description"], body, nil
 }
 
-// Sorted so an unexpected filesystem order cannot make generated diffs noisy.
 func sortedMarkdownFiles(entries []os.DirEntry) []os.DirEntry {
 	var markdown []os.DirEntry
 	for _, entry := range entries {

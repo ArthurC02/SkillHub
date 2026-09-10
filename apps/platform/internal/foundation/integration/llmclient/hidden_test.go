@@ -10,9 +10,6 @@ import (
 	"testing"
 )
 
-// A page that reads as one sentence to a person and carries an instruction to
-// a model. The Tags block mirrors ASCII, so this spells out a command nobody
-// can see on screen.
 func tagged(ascii string) string {
 	var b strings.Builder
 	for _, r := range ascii {
@@ -21,8 +18,6 @@ func tagged(ascii string) string {
 	return b.String()
 }
 
-// 04 丙-210. The request that carries the most attacker-written text is the
-// creation step: its Messages hold whole pages the fetch tool brought back.
 func TestCreationStepSendsNoCharacterThePersonCannotSee(t *testing.T) {
 	var got string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -37,8 +32,7 @@ func TestCreationStepSendsNoCharacterThePersonCannotSee(t *testing.T) {
 	_, err := c.CreationStep(context.Background(), CreationStepRequest{
 		GatewayKey: "k",
 		Messages:   []CreationMessage{{Role: "tool", Content: smuggled}},
-		// The same text in a second field, because the fix is not supposed to
-		// know which fields exist.
+
 		Brief: smuggled,
 	})
 	if err != nil {
@@ -51,8 +45,7 @@ func TestCreationStepSendsNoCharacterThePersonCannotSee(t *testing.T) {
 	if !strings.Contains(got, "這頁在講排班。") {
 		t.Errorf("the visible text did not survive; body = %q", got)
 	}
-	// Still a document Python can parse — the whole reason this runs on the
-	// marshalled bytes is that JSON's own syntax is ASCII.
+
 	var back CreationStepRequest
 	if err := json.Unmarshal([]byte(got), &back); err != nil {
 		t.Fatalf("the scrub produced invalid JSON: %v", err)
@@ -62,8 +55,6 @@ func TestCreationStepSendsNoCharacterThePersonCannotSee(t *testing.T) {
 	}
 }
 
-// The rule is a Unicode category, not a list of published tricks — and the two
-// exceptions are orthography rather than an oversight.
 func TestHiddenCoversEveryFamilyAndSparesTheJoiners(t *testing.T) {
 	for _, tc := range []struct {
 		name string

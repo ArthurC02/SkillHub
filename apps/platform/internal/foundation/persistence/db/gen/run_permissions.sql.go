@@ -12,7 +12,6 @@ import (
 )
 
 const confirmRunPermissions = `-- name: ConfirmRunPermissions :one
-
 INSERT INTO run_permission_confirmations (
     workspace_id, skill_version_id, test_case_id, summary_hash, confirmed_by
 ) VALUES ($1, $2, $3, $4, $5)
@@ -29,11 +28,6 @@ type ConfirmRunPermissionsParams struct {
 	ConfirmedBy    pgtype.UUID
 }
 
-// Pre-run permission confirmations (02:TEST-005, SEC-002 gate B). Both statements
-// are workspace scoped; the caller resolves workspace_id from the session, never
-// from request input (iron rule 3).
-// Records the user's agreement to one exact summary. Idempotent by design: the same
-// summary confirmed twice is one agreement, re-dated.
 func (q *Queries) ConfirmRunPermissions(ctx context.Context, arg ConfirmRunPermissionsParams) (RunPermissionConfirmation, error) {
 	row := q.db.QueryRow(ctx, confirmRunPermissions,
 		arg.WorkspaceID,
@@ -67,9 +61,6 @@ type GetRunPermissionConfirmationParams struct {
 	SummaryHash    string
 }
 
-// The gate B lookup: is there an agreement to *this* summary, in this workspace?
-// No row means unconfirmed or confirmed against a summary that has since changed —
-// the same answer either way, because both must block the run.
 func (q *Queries) GetRunPermissionConfirmation(ctx context.Context, arg GetRunPermissionConfirmationParams) (RunPermissionConfirmation, error) {
 	row := q.db.QueryRow(ctx, getRunPermissionConfirmation,
 		arg.WorkspaceID,

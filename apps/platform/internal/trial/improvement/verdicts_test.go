@@ -1,14 +1,5 @@
 package eval
 
-// verdictOf had no test at all, and the way it hid is worth stating: RunVerdicts
-// sits at 64.7% coverage, so the read looked exercised. Every test that reaches
-// it passes run ids with no evaluation row, takes the `notEvaluated` blank path
-// and returns before the loop — so the six sentences a user actually reads about
-// whether their task succeeded were produced by nothing.
-//
-// That is the same shape as 04 丙-28/29 ②, where `cleanup_status` shipped a blank
-// row for the one state it existed to report and every suite stayed green.
-
 import (
 	"os"
 	"regexp"
@@ -18,22 +9,9 @@ import (
 	"unicode"
 )
 
-// The two distinctions ADR-025 and 02:EVAL-001 actually require, and the only
-// two that cost a user something when they collapse.
-//
-// (1) A pending or failed *evaluation* is not a verdict about the task. 02:RUN-002
-// keeps 「執行狀態」 and 「任務判定」 on two axes precisely because 「執行完成」 beside a
-// bad verdict is a real and common combination; folding an evaluation failure
-// into 「未符合」 tells someone their skill failed when nobody judged it.
-//
-// (2) `undetermined` is a verdict the judge REACHED on insufficient evidence, not
-// a statement that no judge ran. 02:EVAL-001 makes the difference load-bearing:
-// 「`undetermined` 與判錯分開計數」 in EVAL-013's regression, and 「不得只提供無法解釋
-// 的分數」 here. 未評估 is the other one, and it is a different value.
 func TestAnEvaluationThatDidNotFinishIsNotAVerdictAboutTheTask(t *testing.T) {
 	for _, status := range []string{"pending", "failed"} {
-		// `overall` is NOT NULL and carries `undetermined` from creation until the
-		// judge finishes, so this is the combination that actually occurs.
+
 		got := verdictOf(status, "undetermined")
 		if got.Value == "not_met" || got.Value == "undetermined" {
 			t.Errorf("verdictOf(%q, \"undetermined\").Value = %q; an evaluation that "+
@@ -51,8 +29,6 @@ func TestAnEvaluationThatDidNotFinishIsNotAVerdictAboutTheTask(t *testing.T) {
 			"evaluation failing is not the task failing", failed.Note)
 	}
 
-	// The other half of the same distinction: a judge that ran and could not
-	// conclude is not a judge that never ran.
 	undetermined := verdictOf("completed", "undetermined")
 	if undetermined.Value != "undetermined" {
 		t.Fatalf("verdictOf(\"completed\", \"undetermined\").Value = %q, want undetermined",
@@ -69,12 +45,6 @@ func TestAnEvaluationThatDidNotFinishIsNotAVerdictAboutTheTask(t *testing.T) {
 	}
 }
 
-// Every value the database can store gets its own sentence, read from the CHECK
-// rather than restated here — a copy of a list is a second list.
-//
-// The failure this catches is silent by construction: verdictOf's `overall`
-// switch ends in `default`, so a seventh verdict added to the column would be
-// rendered as 「無法判斷」 with no test going red and no screen looking broken.
 func TestEveryVerdictTheDatabaseAllowsHasItsOwnSentence(t *testing.T) {
 	const migration = "../../../../../db/migrations/0004_test_lab_and_runs.sql"
 	src, err := os.ReadFile(migration)
@@ -114,8 +84,6 @@ func TestEveryVerdictTheDatabaseAllowsHasItsOwnSentence(t *testing.T) {
 		seen[got.Label] = overall
 	}
 
-	// And none of them collides with the no-evaluation value, which is served
-	// from the same field by the same read.
 	if _, clash := seen[notEvaluated.Label]; clash {
 		t.Errorf("a real verdict renders as %q, the same as a run with no evaluation at all",
 			notEvaluated.Label)

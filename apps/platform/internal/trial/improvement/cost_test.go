@@ -11,7 +11,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
-// fakeLedger records what eval handed the ledger instead of writing it.
 type fakeLedger struct {
 	events []credit.CostEvent
 	err    error
@@ -22,10 +21,6 @@ func (f *fakeLedger) RecordCost(_ context.Context, _ credit.DBTX, e credit.CostE
 	return "id", false, f.err
 }
 
-// CRED-005 clause 1, the review row. The judge call is settled inside the
-// transaction that commits the verdict, so this drives the real complete()
-// against a real database rather than calling the recorder directly — the
-// thing worth proving is that the spend row and the verdict cannot come apart.
 func TestJudgingRecordsExactlyOneReviewCostEvent(t *testing.T) {
 	ledger := &fakeLedger{}
 	s := &Service{Pool: requireEvalDB(t), Credit: ledger}
@@ -51,20 +46,16 @@ func TestJudgingRecordsExactlyOneReviewCostEvent(t *testing.T) {
 	if e.WorkspaceID != m.run.WorkspaceID {
 		t.Errorf("workspace = %v, want the run's", e.WorkspaceID)
 	}
-	// The ref is the Run, not the evaluation: ADR-068 decision 3's ref_type is
-	// a closed set of three and an evaluation is not one of them.
+
 	if e.RefType != credit.RefRun || e.RefID != m.run.ID {
 		t.Errorf("ref = %q/%v, want run/%v", e.RefType, e.RefID, m.run.ID)
 	}
-	// The evaluation id is the idempotency key, so a redelivered judge job
-	// settles the same spend once.
+
 	if !strings.Contains(e.IdempotencyKey, pgconv.UUIDString(ev.ID)) {
 		t.Errorf("idempotency key %q does not name the evaluation", e.IdempotencyKey)
 	}
 }
 
-// CRED-005 clause 2's counter-test on this path. A verdict summary is model
-// prose about a user's run; nothing about it belongs in a spend ledger.
 func TestReviewCostEventCarriesNoVerdictText(t *testing.T) {
 	const secret = "the-agent-leaked-an-internal-hostname"
 	ledger := &fakeLedger{}
@@ -82,14 +73,10 @@ func TestReviewCostEventCarriesNoVerdictText(t *testing.T) {
 	}
 }
 
-// CRED-005 clause 1, the suggestion row. This leg deliberately runs after the
-// verdict has committed and on the pool rather than in a transaction, so its
-// cost row is written the same way — see cost.go.
 func TestSuggestingRecordsExactlyOneSuggestionCostEvent(t *testing.T) {
 	cost := 0.0022
 	ledger := &fakeLedger{}
-	// A real evaluation row, because the usage row this leg writes alongside
-	// the spend row has a foreign key to one.
+
 	s := &Service{
 		Pool:   requireEvalDB(t),
 		Credit: ledger,
@@ -102,7 +89,7 @@ func TestSuggestingRecordsExactlyOneSuggestionCostEvent(t *testing.T) {
 	}
 	m := seedRun(t, s.Pool)
 	ev := beginAndComplete(t, s, m, aVerdict("not met", OverallNotMet))
-	ledger.events = nil // drop the review row; this test is about the leg after it
+	ledger.events = nil
 
 	s.suggest(context.Background(), m, ev, costTestVerdict())
 
@@ -121,9 +108,6 @@ func TestSuggestingRecordsExactlyOneSuggestionCostEvent(t *testing.T) {
 	}
 }
 
-// A cost the gateway did not price is recorded as unpriced, not as free. Zero
-// written where nothing was reported would enter the p95 the start gate reads
-// as an observation that a judgement cost nothing.
 func TestAnUnpricedCallIsRecordedAsEstimatedRatherThanFree(t *testing.T) {
 	ledger := &fakeLedger{}
 	s := &Service{
@@ -149,8 +133,6 @@ func TestAnUnpricedCallIsRecordedAsEstimatedRatherThanFree(t *testing.T) {
 	}
 }
 
-// costTestVerdict is the minimum a suggest leg needs to run: a not-met verdict
-// with one finding, which is what makes the leg call the gateway at all.
 func costTestVerdict() verdict {
 	return verdict{overall: OverallNotMet, findings: []Finding{{
 		Category: CategoryEffect, Severity: SeverityWarning, Message: "needs work",

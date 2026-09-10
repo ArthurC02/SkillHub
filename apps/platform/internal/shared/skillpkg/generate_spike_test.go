@@ -14,29 +14,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-// The measurement docs/plans/mvp/m5/README.md 的前期驗證 1 asked for, and the
-// first third of `03:GEN-009`.
-//
-// ADR-046 決策 6 makes skillpkg.Validate the only gate a generated package
-// passes through before a version is written. Eleven of the twelve blocking
-// codes are structural — SKILL.md present, well-formed frontmatter, no unknown
-// field, name shape and length, description present and length, no path
-// escape. The twelfth, possible-secret, is not: it matches credential patterns
-// against file *content* (ADR-048, and an earlier revision of this comment
-// claimed all twelve were structural). This measures whether that reading
-// holds against packages a model actually produced, and it deliberately
-// measures the second question too: a package can clear every one of those
-// checks and still be an empty shell.
-//
-// Env-gated like TestSpecFrontmatterCensus, and for the same reason: the
-// corpus costs money to produce and does not belong in the repo.
-//
-//	python <scratchpad>/spike.py <dir> <cards.json>
-//	GENERATED_CORPUS=<dir> go test ./internal/shared/skillpkg -run GenerateSpike -v
-//
-// It asserts nothing about the distribution. What it does assert is that every
-// zip opened: a census over a corpus that silently failed to load is a zero
-// that means nothing.
 func TestGenerateSpikeCensus(t *testing.T) {
 	dir := os.Getenv("GENERATED_CORPUS")
 	if dir == "" {
@@ -87,10 +64,7 @@ func TestGenerateSpikeCensus(t *testing.T) {
 		if report.Blocked {
 			blockedCount++
 		}
-		// ADR-046 決策 5: the generator must not emit this field. A model that
-		// emits it anyway is not a validator failure — `license` is one of the
-		// six spec fields, so it passes — which is exactly why it has to be
-		// counted separately here.
+
 		if report.Manifest != nil && strings.TrimSpace(report.Manifest.License) != "" {
 			r.hasLicense = true
 			licenseCount++
@@ -122,18 +96,13 @@ func TestGenerateSpikeCensus(t *testing.T) {
 	t.Logf("summary json:\n%s", out)
 }
 
-// bodyCensus returns the rune count of SKILL.md after its frontmatter, and
-// which placeholder shapes appear in it — via skillpkg.PlaceholderShapes, the corrected
-// census (placeholder.go): the first version measured 0 true positives against
-// 2 false ones over the A round, and placeholder_test.go pins each recorded
-// false positive by name.
 func bodyCensus(fsys fs.FS) (int, []string) {
 	raw, err := fs.ReadFile(fsys, "SKILL.md")
 	if err != nil {
 		return 0, []string{"no-SKILL.md"}
 	}
 	text := string(raw)
-	// Drop the frontmatter: everything up to and including the closing ---.
+
 	if strings.HasPrefix(text, "---") {
 		if i := strings.Index(text[3:], "\n---"); i >= 0 {
 			text = text[3+i+4:]

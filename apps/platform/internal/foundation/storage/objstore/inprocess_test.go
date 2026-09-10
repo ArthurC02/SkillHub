@@ -11,10 +11,6 @@ import (
 	"time"
 )
 
-// TestInProcess exercises all seven Client methods against the in-process S3
-// stand-in, including hitting the two presigned URLs with a plain HTTP client
-// the way the sandbox does - not merely asserting that a URL string comes
-// back.
 func TestInProcess(t *testing.T) {
 	client, stop, err := NewInProcess("test-bucket")
 	if err != nil {
@@ -27,7 +23,7 @@ func TestInProcess(t *testing.T) {
 	if err := client.EnsureBucket(ctx); err != nil {
 		t.Fatalf("EnsureBucket: %v", err)
 	}
-	if err := client.EnsureBucket(ctx); err != nil { // idempotent
+	if err := client.EnsureBucket(ctx); err != nil {
 		t.Fatalf("EnsureBucket (second call): %v", err)
 	}
 
@@ -63,8 +59,6 @@ func TestInProcess(t *testing.T) {
 		t.Fatalf("Get = %q, want %q", got, payload)
 	}
 
-	// PresignGet must round-trip through the actual URL - hit it with a plain
-	// http.Get like the sandbox does, not just assert the string is non-empty.
 	getURL, err := client.PresignGet(ctx, "greeting.txt", time.Minute)
 	if err != nil {
 		t.Fatalf("PresignGet: %v", err)
@@ -85,7 +79,6 @@ func TestInProcess(t *testing.T) {
 		t.Fatalf("presigned GET body = %q, want %q", body, payload)
 	}
 
-	// PresignPut, likewise, hit with a plain http.Put and confirm it lands.
 	putURL, err := client.PresignPut(ctx, "uploaded.txt", time.Minute)
 	if err != nil {
 		t.Fatalf("PresignPut: %v", err)
@@ -122,20 +115,12 @@ func TestInProcess(t *testing.T) {
 	if exists {
 		t.Fatal("Exists(after remove) = true, want false")
 	}
-	// Removing an already-absent key must still succeed (iron rule 9: destroy
-	// is safe to repeat).
+
 	if err := client.Remove(ctx, "greeting.txt"); err != nil {
 		t.Fatalf("Remove (repeat, already absent): %v", err)
 	}
 }
 
-// TestInProcessDoesNotAuthorize records, as a passing assertion, the security
-// gap documented on inProcessBackend's doc comment: this stand-in accepts a
-// tampered signature, a stripped signature, an already-expired presign, and a
-// GET-scoped presign reused for a PUT. All four succeed here by design - if
-// any of them ever starts failing, this backend has quietly grown real
-// authorization and every caller relying on "unauthenticated by design" (this
-// is not SBX-008 evidence) needs to know.
 func TestInProcessDoesNotAuthorize(t *testing.T) {
 	client, stop, err := NewInProcess("test-bucket")
 	if err != nil {
@@ -158,25 +143,20 @@ func TestInProcessDoesNotAuthorize(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PresignPut: %v", err)
 	}
-	time.Sleep(3 * time.Second) // let the 1s TTL lapse
+	time.Sleep(3 * time.Second)
 
-	// 1. Tampered signature on the GET URL: flip the last 4 hex characters.
 	tampered := getURL[:len(getURL)-4] + "dead"
 	assertStatus(t, "tampered signature", http.MethodGet, tampered, nil, http.StatusOK)
 
-	// 2. Signature stripped entirely.
 	sigIdx := strings.Index(getURL, "&X-Amz-Signature=")
 	if sigIdx < 0 {
 		t.Fatal("presigned GET URL has no &X-Amz-Signature= to strip")
 	}
 	assertStatus(t, "stripped signature", http.MethodGet, getURL[:sigIdx], nil, http.StatusOK)
 
-	// 3. Expired presign (Expires already in the past).
 	assertStatus(t, "expired presign PUT", http.MethodPut, expiredPutURL,
 		bytes.NewReader([]byte("expired-write")), http.StatusOK)
 
-	// 4. A GET-scoped presign string, hit with PUT instead of GET: it actually
-	// overwrites the object.
 	overwrite := []byte("overwritten via a GET-scoped URL")
 	assertStatus(t, "GET-scoped PUT", http.MethodPut, getURL, bytes.NewReader(overwrite), http.StatusOK)
 
@@ -205,13 +185,6 @@ func assertStatus(t *testing.T, label, method, url string, body io.Reader, want 
 	}
 }
 
-// The three ceilings clean mode needs, because in clean mode this backend is not
-// a test double: cmd/api serves it as the deployment's real object store, on a
-// loopback listener any other local process can reach.
-
-// A chunk header is a number the caller chose, and it used to be passed straight
-// to make([]byte, size). "7fffffffffffffff" asks for 8 exabytes in one
-// allocation.
 func TestAnOversizedChunkHeaderIsRefusedRatherThanAllocated(t *testing.T) {
 	client, stop, err := NewInProcess("test-bucket")
 	if err != nil {
@@ -240,10 +213,6 @@ func TestAnOversizedChunkHeaderIsRefusedRatherThanAllocated(t *testing.T) {
 	}
 }
 
-// Not authentication -- nothing here verifies a signature, and the doc comment
-// says so -- but a caller now has to HOLD the key this process generated.
-// Without it, every object on the machine was readable and writable by anything
-// that could guess a key.
 func TestARequestWithoutTheProcessKeyIsRefused(t *testing.T) {
 	client, stop, err := NewInProcess("test-bucket")
 	if err != nil {
@@ -282,16 +251,11 @@ func TestARequestWithoutTheProcessKeyIsRefused(t *testing.T) {
 		})
 	}
 
-	// The real client, which does hold the key, must be unaffected.
 	if got, err := client.Get(ctx, "secret.txt"); err != nil || string(got) != "private" {
 		t.Fatalf("the configured client can no longer read its own object: %q %v", got, err)
 	}
 }
 
-// inProcessEndpoint recovers the listener address and the key from the wired
-// client, so a test can speak to the backend the way another local process
-// would. Both come out of a presigned URL, which is the only place the client
-// exposes either.
 func inProcessEndpoint(t *testing.T, c *Client) (endpoint, key string) {
 	t.Helper()
 	raw, err := c.PresignGet(context.Background(), "probe", time.Minute)

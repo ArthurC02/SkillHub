@@ -6,9 +6,6 @@ import (
 	"testing"
 )
 
-// Pointed at the tree. Expected to be RED until the three dangling citations are
-// rewritten (`02:PDM-005`, `02:SBX-008`, `02:736-759`), so the failure names
-// them rather than just failing.
 func TestTheRealSpecCitationsAllResolve(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -20,8 +17,6 @@ func TestTheRealSpecCitationsAllResolve(t *testing.T) {
 	}
 }
 
-// The SEC-010 shape must stay accepted whatever else changes, so it gets its own
-// assertion against the real spec rather than only a fixture.
 func TestTheRealSpecKeepsExactlyTheDocumentedRepeatedID(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -50,7 +45,6 @@ func TestTheRealSpecKeepsExactlyTheDocumentedRepeatedID(t *testing.T) {
 	}
 }
 
-// spec builds a fixture spec with enough headings to clear the scan floor.
 func writeRefFixture(t *testing.T, extraHeadings, citer string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -70,7 +64,7 @@ func writeRefFixture(t *testing.T, extraHeadings, citer string) string {
 func TestRequirementRefsAcceptsCitationsThatResolve(t *testing.T) {
 	t.Parallel()
 	root := writeRefFixture(t,
-		// The documented SEC-010 shape: one `###` owner, one deeper `####` child.
+
 		"### SEC-010：安全事件回應\n\n#### SEC-010 事件嚴重度分級\n\n",
 		"- [x] 做完了（允收：`02:DISC-001`、`02:SEC-010`）\n")
 	if problems := requirementRefProblems(root); len(problems) != 0 {
@@ -83,12 +77,12 @@ func TestRequirementRefsRejectsTheThreeShapesTheTreeHasToday(t *testing.T) {
 	for _, tc := range []struct {
 		name, headings, citer, want string
 	}{{
-		// 02:PDM-005 — a number defined in an m0 proposal, cited as a spec id.
+
 		name:  "a citation to a number the spec never declares",
 		citer: "見 `02:PDM-005` §5.3。\n",
 		want:  "cites `02:PDM-005`, and docs/plans/02-specifications-and-acceptance-criteria.md has no heading declaring PDM-005",
 	}, {
-		// 02:736-759 — a line range in requirement-id notation.
+
 		name:  "a line range written as a requirement id",
 		citer: "`02:736-759` 從頭到尾沒提過 Q16。\n",
 		want:  "cites `02:736-759`",
@@ -108,9 +102,6 @@ func TestRequirementRefsRejectsTheThreeShapesTheTreeHasToday(t *testing.T) {
 	}
 }
 
-// A nested repeat is the allowed shape; a same-depth repeat is not. Both
-// directions, because an over-strict rule would force the SEC-010 sub-heading to
-// be renamed and an over-loose one enforces nothing.
 func TestRequirementRefsAllowsADeeperSubHeadingOfTheSameID(t *testing.T) {
 	t.Parallel()
 	root := writeRefFixture(t, "## SEC-010：事件回應\n\n### SEC-010 分級\n\n#### SEC-010 通知路徑\n\n",
@@ -120,9 +111,6 @@ func TestRequirementRefsAllowsADeeperSubHeadingOfTheSameID(t *testing.T) {
 	}
 }
 
-// Both halves lose their subject in ways that are green under a naive
-// implementation: no headings means every citation resolves to nothing and
-// nothing to compare, no citations means the comparison never runs.
 func TestRequirementRefsSaysSoWhenItHasLostItsSubject(t *testing.T) {
 	t.Parallel()
 	t.Run("the heading scan finds almost nothing", func(t *testing.T) {

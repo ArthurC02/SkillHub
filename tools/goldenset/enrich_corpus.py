@@ -1,23 +1,7 @@
-"""Generate real index-time enrichment for the golden-set corpus (ADR-013 section 1).
-
-Calls the platform's own LLM service endpoint POST /v1/enrich-skill once per
-corpus document, so the golden set measures the production prompt and schema
-rather than a re-implementation of them. Output lands in ./corpus_enriched as
-one JSON file per skill, carrying the model id and prompt version the service
-reported.
-
-The output doubles as the cache: a skill that already has a file is skipped, so
-re-running costs nothing. Delete a file to re-enrich just that one.
-
-Usage
-  # start the LLM service first (see golden-query-set.md section 10)
-  python enrich_corpus.py                       # enrich whatever is missing
-  python enrich_corpus.py --url http://host:port
-  python enrich_corpus.py --url ... --out corpus_enriched_v7   # a new prompt version:
-        # never into ./corpus_enriched (M1's frozen evidence) - a sibling directory,
-        # scored by creation-measure/search-f1/search_f1_score.py --docs <dir>
-  LLM_SERVICE_TOKEN=... python enrich_corpus.py ...            # a service that gates callers
-"""
+"""Generate real index-time enrichment for the golden-set corpus by calling
+the platform's own LLM service, so the golden set measures the production
+prompt and schema. Output lands in ./corpus_enriched, one JSON file per
+skill; an existing file is skipped, so re-running only fills in gaps."""
 
 from __future__ import annotations
 

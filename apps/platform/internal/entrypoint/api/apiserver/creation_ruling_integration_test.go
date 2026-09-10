@@ -10,9 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// 05 R-46 (b): the acceptance criteria the person confirmed with the brief
-// become a Test Case of the candidate skill, written in the same transaction
-// as the version, owned by the confirming workspace.
 func TestCreationMaterializeCreatesTheAcceptanceTestCase(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	alice := a.login(t, "creation-criteria-alice")
@@ -38,7 +35,7 @@ func TestCreationMaterializeCreatesTheAcceptanceTestCase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Run d (2026-09-06): the prompt is the confirmed example input, not the brief.
+
 	if prompt != v.Snapshot.SampleInput || prompt == v.Snapshot.Brief {
 		t.Fatalf("test case prompt is not the sample input: prompt=%q sample=%q", prompt, v.Snapshot.SampleInput)
 	}
@@ -59,13 +56,10 @@ func TestCreationMaterializeCreatesTheAcceptanceTestCase(t *testing.T) {
 	}
 }
 
-// 05 R-46 (raise): a session refused for its budget continues once the budget
-// is raised within the published band; outside the band it is refused with the
-// band's own error, and steps are never bought for free.
 func TestCreationRaiseBudgetLetsALimitedSessionContinue(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	alice := a.login(t, "creation-raise")
-	// The smallest budget the band allows is one call's reservation.
+
 	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .1}, 200)
 	v = creationStep(t, s, v)
 	act := func(kind string, extra map[string]any, want int) map[string]any {
@@ -75,11 +69,11 @@ func TestCreationRaiseBudgetLetsALimitedSessionContinue(t *testing.T) {
 		}
 		return body
 	}
-	// Spent $0.01 plus the next reservation exceeds the $0.10 budget: refused.
+
 	creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("confirm_brief", nil, 422), 422)
-	// Above the band: refused with the band's error, nothing changes.
+
 	creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("raise_budget", map[string]any{"budget_usd": 5.0}, 422), 422)
-	// Not a raise: refused too.
+
 	creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("raise_budget", map[string]any{"budget_usd": .1}, 422), 422)
 	raised := creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("raise_budget", map[string]any{"budget_usd": .5}, 200), 200)
 	if raised.Snapshot.BudgetUSD != .5 || raised.State != "waiting_confirmation" || raised.Snapshot.PendingAction != "confirm_brief" {
@@ -91,9 +85,6 @@ func TestCreationRaiseBudgetLetsALimitedSessionContinue(t *testing.T) {
 	}
 }
 
-// ADR-067: the session's budget and the single-shot allowance are separate.
-// The candidate is written through the generated door, so without the marker
-// ten finished sessions would silently eat GENERATE_QUOTA's daily ten.
 func TestCreationCandidateDoesNotCountAgainstTheSingleShotAllowance(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	alice := a.login(t, "creation-quota-alice")
@@ -122,9 +113,6 @@ func TestCreationCandidateDoesNotCountAgainstTheSingleShotAllowance(t *testing.T
 	}
 }
 
-// 02 GEN-012: account deletion needs a reproducible counter-test for the
-// creation tables. Removing creation from workspace/purge.go's step list must
-// turn this red, not stay green.
 func TestAccountPurgeRemovesCreationSessions(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	alice := a.login(t, "creation-purge-alice")
@@ -155,8 +143,6 @@ func TestAccountPurgeRemovesCreationSessions(t *testing.T) {
 	_ = v
 }
 
-// 2026-09-06 run c: a plain 「請繼續」 after a confirmed brief must not send
-// the session back through propose→confirm.
 func TestCreationMessageKeepsAConfirmedBrief(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	alice := a.login(t, "creation-keep-brief")

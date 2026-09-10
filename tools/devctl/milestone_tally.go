@@ -8,72 +8,35 @@ import (
 	"strings"
 )
 
-// One place may state the M5 tally, and it must match the checkboxes.
-//
-// The number "9 ticked, 2 at ◐" was written in five documents. Three of the six
-// adversarial review rounds found it disagreeing with itself — 8/3 in one file
-// while the items said 9/2, and a satellite still saying 8/3 a day after the
-// other four were corrected. Nothing was wrong with any single edit; what was
-// wrong is that a derived number had five authors.
-//
-// So: `03` §19's checkboxes ARE the tally, its own header sentence is checked
-// against them, and the satellites may carry the narrative (which items are ◐
-// and why — that is the useful half) but not the count. The rule is mechanical
-// in both directions: the one copy must be right, and the others must not exist.
-//
-// Same shape as one-number, and for the same reason — a value that has to be
-// identical in places no compiler compares.
-
-// The document that owns the tally, and the section that holds the checkboxes.
 const tallyOwner = "docs/plans/03-work-items.md"
 
 var (
-	// A tally in prose: "9 勾", "9 項已勾", "2 項 ◐", "11 項中 9", and — the
-	// shape M4's satellite uses — "十項全部不勾" in Chinese numerals. The
-	// satellites are checked against this; the owner is checked against the
-	// counts.
+	// Matches a checkbox tally in prose: "9 勾", "9 項已勾", "2 項 ◐", or a
+	// Chinese-numeral phrasing like "十項全部不勾".
 	tallyInProse = regexp.MustCompile(`[\d一二三四五六七八九十]+\s*(?:項)?\s*(?:全部)?\s*(?:已勾|不勾|勾)|\d+\s*項\s*◐`)
 
-	// M6 counts itself in a different vocabulary — "完成七項、撤回兩項、剩兩項"
-	// — which the pattern above does not match, because it names the states
-	// rather than the checkbox. Given its own pattern instead of widening the
-	// shared one: that pattern is already load-bearing for two subjects, and a
-	// rule wide enough to catch a new phrasing is wide enough to flag correct
-	// sentences elsewhere, which is how a check loses its readers.
+	// A different phrasing that names states rather than checkboxes, e.g.
+	// "完成七項、撤回兩項、剩兩項".
 	portTallyInProse = regexp.MustCompile(`(?:完成|撤回|剩下|剩)\s*[\d一二三四五六七八九十]+\s*項`)
 )
 
-// A milestone whose ticked/unticked count is derived from checkboxes `03` owns.
-//
-// Two entries, and the second exists because the audit of 2026-08-29 found the
-// M5 failure repeating verbatim one milestone earlier: `01` §10 says
-// 「`RELEASE-001`～`010` **十項全部不勾**」 while `03` §18 has ticked two of them
-// since 2026-08-28. A reader is making封測 decisions off ten red lights, two of
-// which stopped being red ten days ago.
-//
-// The comment above records why M4's OTHER number (「49 項中 16 勾」) is left
-// alone: those 49 items are a set defined in prose in m4/audit.md, so no machine
-// can confirm or deny it, and flagging what cannot be checked is how a check
-// loses its readers. RELEASE-001～010 is the opposite case — ten literal
-// checkboxes — so the same reasoning that excuses the 49 obliges this.
 type tallySubject struct {
-	// prefix is the work-item id prefix whose checkboxes are the tally.
 	prefix string
-	// what names the milestone in the messages.
+
 	what string
-	// ownerSentence renders the sentence the owner's own section header must
-	// carry, or nil when the owner states no count. RELEASE has none: `03` §18
-	// carries a narrative of which items were re-judged and when, not a count,
-	// and inventing a count sentence for it would put a second derived number in
-	// the document that is supposed to be the only author of the first.
+
+	// ownerSentence renders the header sentence the owner must carry, or nil
+	// when the owner states no count of its own.
 	ownerSentence func(ticked, open, retracted int) string
-	// prose is the pattern that recognises this milestone's count in a
-	// satellite. Zero value means tallyInProse.
+
+	// prose recognises this subject's count in a satellite; zero value means
+	// tallyInProse.
 	prose *regexp.Regexp
-	// satellites may describe the milestone but may not state its count.
+
 	satellites []string
-	// nearby is what has to appear within a few lines of a prose count for it to
-	// be about THIS milestone. Without it every count in a long document votes.
+
+	// nearby must appear within a few lines of a prose count for it to be
+	// read as this subject's tally, not an unrelated count nearby.
 	nearby []string
 }
 
@@ -97,17 +60,7 @@ func tallySubjects() []tallySubject {
 		satellites: []string{"docs/plans/01-goals-and-plan.md"},
 		nearby:     []string{"RELEASE-", "§18"},
 	}, {
-		// The same failure, a third time, found while closing M6 out: `01` §10
-		// and m6/README both said 「完成七項、撤回兩項、剩兩項」 while §20's boxes
-		// had said 6/2/3 since PORT-009 was un-ticked on 2026-08-29. m6/README
-		// even carries the sentence 「勾選數以那裡的 checkbox 為準，本檔不複述」
-		// directly above its own copy of the number.
-		//
-		// M6 is the first subject with a third state: `- [~]` for an item ADR-060
-		// withdrew (PORT-002, PORT-006). Counting only ticked and open would make
-		// the milestone's own header wrong for a reason that is not progress, so
-		// the retracted boxes are counted too and the header states all three.
-		// That also makes the total (11) derived rather than asserted.
+
 		prefix: "PORT-",
 		what:   "M6",
 		ownerSentence: func(ticked, open, retracted int) string {
@@ -149,7 +102,7 @@ func (s tallySubject) problems(root, owner string) []string {
 	}
 
 	var problems []string
-	// The owner must state what its own boxes say.
+
 	if s.ownerSentence != nil {
 		want := s.ownerSentence(ticked, open, retracted)
 		if !strings.Contains(owner, want) {
@@ -159,7 +112,6 @@ func (s tallySubject) problems(root, owner string) []string {
 		}
 	}
 
-	// Nobody else may state it at all.
 	for _, rel := range s.satellites {
 		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
 		if err != nil {

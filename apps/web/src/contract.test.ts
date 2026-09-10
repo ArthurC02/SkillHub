@@ -3,37 +3,6 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import * as generated from "@skillhub/api-client-ts";
 
-/**
- * 鐵律 12 的另一半：**契約以 codegen 檢查 drift**，在 `apps/web` 這一側。
- *
- * `api/types.ts` 是 `contracts/openapi/public.yaml` 的 639 行手抄鏡像，而它的檔頭
- * 直到 2026-08-29 都寫著「Codegen into packages/api-client-ts is not wired yet」。
- * 那句話是假的：`packages/api-client-ts/src/generated/models/` 有 161 個 model 檔，
- * `Taskfile.yml`、`tools/devctl` 與 `.github/workflows/ci.yml` 每次都建置它。真正
- * 缺的不是 codegen，是**對帳**——這一側的 drift 檢查只是一句寫在註解裡的
- * 「standing sync obligation」，也就是一個承諾，不是一道門。
- *
- * 這個 repo 已經被同一個形狀咬過一次並逐字記錄（`04` 丙-43）：
- * `file_removed_by_packager` 進了 `public.yaml` 與生成 client，**沒進**
- * `api/packaging.ts` 的手寫 union，於是畫面印出「不能打包：」後面接空白。那次的修
- * 法是加一支對著生成 enum 逐值檢查的測試——做對了兩次，剩下十七份沒做。
- *
- * 三節，各擋一種漂移：
- *
- *   1. **欄位集合與 optionality**（同名 interface ↔ 生成 model）
- *   2. **每一份 enum→中文對照表**，逐值取得非空標籤
- *   3. **`RunStatus` 的三份子集**，聯集必須等於契約
- *
- * fixture 的型別是第四種，落在 `fixtures/platform.ts` 自己的 `satisfies` 上——那裡
- * 是編譯期，比在這裡再抄一次好。
- *
- * **今天它全綠，而那正是加它最好的時機**——加在紅的時候是修 bug，加在綠的時候是
- * 裝棘輪。
- *
- * **這裡刻意不做的事**：改成直接使用生成的 client。它是 camelCase ＋ runtime 轉換
- * 層，換過去是一次大遷移；問題從來不是手寫，是手寫沒有對帳。
- */
-
 const src = import.meta.dirname;
 const MODELS = join(
   src,
@@ -47,23 +16,11 @@ const MODELS = join(
   "models",
 );
 
-// --- 1. field sets ----------------------------------------------------------
-
-/** `deletion_scope` becomes `deletionScope`. The generator lower-camels every field. */
 const camel = (snake: string) => snake.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());
 
 type Fields = Map<string, boolean>;
 
-/**
- * The fields of one `export interface X { … }` block, name to optional.
- *
- * A brace-counting scan rather than a regex over the whole file: both sides
- * carry doc comments containing braces, and only nesting depth tells a field
- * apart from the inside of one.
- */
 function fieldsOf(body: string, name: string): Fields | null {
-  // `type X = { … }` as well as `interface X { … }`: `ImportResult` in
-  // `api/import.ts` is the alias form, and `GenerateSkillResult` extends it.
   const at = body.search(new RegExp(`export (?:interface|type) ${name}\\b`));
   if (at === -1) return null;
   const open = body.indexOf("{", at);
@@ -75,7 +32,6 @@ function fieldsOf(body: string, name: string): Fields | null {
     end++;
   }
   const inner = body
-    // Comments first: they hold prose with colons and question marks.
     .slice(open + 1, end)
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/[^\n]*/g, "");
@@ -85,8 +41,6 @@ function fieldsOf(body: string, name: string): Fields | null {
   for (const line of inner.split("\n")) {
     const trimmed = line.trim();
     if (nest === 0 && !trimmed.startsWith("[")) {
-      // An index signature is not a field: `Me.features` is typed
-      // `{ [key: string]: boolean; }` on the generated side.
       const m = /^([A-Za-z_]\w*)(\??)\s*:/.exec(trimmed);
       if (m) fields.set(m[1], m[2] === "?");
     }
@@ -98,13 +52,6 @@ function fieldsOf(body: string, name: string): Fields | null {
   return fields;
 }
 
-/**
- * `extends` is followed on the hand-written side only.
- *
- * The generator flattens inheritance — `OwnSkill` carries `Skill`'s fields
- * inline — so comparing an `extends`-ing interface without its parent reports
- * every inherited field as missing. Three types here do that.
- */
 function handWritten(name: string, types: string): Fields | null {
   const own = fieldsOf(types, name);
   if (!own) return null;
@@ -112,9 +59,6 @@ function handWritten(name: string, types: string): Fields | null {
   if (!ext) return own;
   const merged: Fields = new Map(own);
   for (const parent of ext[1].split(",").map((p) => p.trim())) {
-    // A parent may live in another file (api/import.ts); an unresolvable one is
-    // skipped rather than guessed at, and the sentinel below keeps that from
-    // emptying the comparison.
     const inherited = handWritten(parent, types);
     if (inherited) for (const [k, v] of inherited) if (!merged.has(k)) merged.set(k, v);
   }
@@ -122,9 +66,6 @@ function handWritten(name: string, types: string): Fields | null {
 }
 
 test("鐵律 12: every hand-written interface with a generated twin has the same fields", () => {
-  // Both files: three interfaces here extend one declared in `api/import.ts`,
-  // and the generator flattens inheritance, so a parent this scan cannot see
-  // reports every inherited field as missing from the contract.
   const types = [
     readFileSync(join(src, "api", "types.ts"), "utf8"),
     readFileSync(join(src, "api", "import.ts"), "utf8"),
@@ -173,28 +114,10 @@ test("鐵律 12: every hand-written interface with a generated twin has the same
     }
   }
 
-  // Sentinel: a parse that quietly compares nothing would pass on any drift at
-  // all — the exact failure this file exists to stop somebody else having.
   expect(compared, "no interface was actually compared — the name match broke").toBeGreaterThan(15);
   expect(problems.sort(), "api/types.ts and the generated client disagree").toEqual([]);
 });
 
-// --- 2. every enum-to-label table, against the enum -------------------------
-
-/**
- * `generate.test.tsx:262` 的六行，再做十五次。
- *
- * `04` 丙-43 把機制寫得比我能寫的更清楚：「TS 的 `Record<union, string>` 只能綁住
- * union 與表，**綁不住 union 與契約**」。兩種失效模式，兩種都已經在這個 repo 發生過：
- *
- *   - `Record<Union, …>`：契約多一個值 → `LABEL[x]` 取到 `undefined` → **畫面印出
- *     一個空白**，正是設計 §2.1 禁止的那一格。
- *   - `Record<string, string>` ＋ `?? raw`：契約多一個值 → **英文 enum 直接出現在
- *     中文句子裡**，違反 `02:NFR-007` 第 3 條。
- *
- * 一張平鋪的清單而不是一層抽象：把六行複製十五次，凌晨三點讀起來比一個掃描登記表
- * 的巧妙迴圈便宜，而且每一列都指名它守的是哪一個畫面。
- */
 const LABEL_TABLES: Array<{
   what: string;
   values: Record<string, string>;
@@ -294,21 +217,11 @@ for (const { what, values, table } of LABEL_TABLES) {
         `${what}: no entry for ${JSON.stringify(value)} — the contract has it and this ` +
           `table does not, so the screen renders a blank or the raw enum`,
       ).not.toBeUndefined();
-      // `null` is a legal entry where the table maps to a gate rather than to
-      // copy (REDISTRIBUTION_GATE's 「不擋」); an empty string never is.
       if (typeof label === "string") expect(label.length).toBeGreaterThan(0);
     }
   });
 }
 
-/**
- * The tables keyed on `value` with a documented fallback rather than on a closed
- * union. 「Every value has a row」 is not their rule — `RunVerdict` deliberately
- * has two rows and four states (§5.3 records that trade). What IS their rule is
- * the other direction: a row for a value the contract never sends is copy no
- * reader can ever reach, and it is how a table quietly stops describing the
- * thing it is named after.
- */
 const FALLBACK_TABLES: Array<{
   what: string;
   values: string[];
@@ -321,8 +234,6 @@ const FALLBACK_TABLES: Array<{
   },
   {
     what: "相容性三軸的色調 (CompatibilityStatus)",
-    // Three axes, three enums, one tint table — `spec_validation` and `runtime`
-    // are CompatibilityResult, `capability` is AgentCapability.
     values: ["unverified", "passed", "failed", "activated", "not_activated"],
     table: async () => (await import("./components/CompatibilityStatus")).BADGE_TINT,
   },
@@ -344,18 +255,6 @@ for (const { what, values, table } of FALLBACK_TABLES) {
   });
 }
 
-// --- 3. the three subsets of RunStatus --------------------------------------
-
-/**
- * The assertion that closes three tables at once.
- *
- * `CANCELLABLE`（＝ `IN_FLIGHT_RUN_STATUSES`）and `TERMINAL_RUN_STATUSES` used to
- * be two independently hand-written sets whose union happened to equal the
- * contract. A tenth status in neither meant `InFlight` never disappeared and
- * `useTrace` polled every three seconds forever — with every existing test
- * green. `TERMINAL` is derived as the complement now, so this is really an
- * assertion about `RUN_STATUSES` itself.
- */
 test("04 丙-43: 進行中 ∪ 終態 is exactly the contract's RunStatus", async () => {
   const { IN_FLIGHT_RUN_STATUSES, TERMINAL_RUN_STATUSES, RUN_STATUSES } =
     await import("./api/trace");
@@ -368,8 +267,6 @@ test("04 丙-43: 進行中 ∪ 終態 is exactly the contract's RunStatus", asyn
     new Set([...IN_FLIGHT_RUN_STATUSES, ...TERMINAL_RUN_STATUSES]),
     "a status that is neither in flight nor terminal, or one that is both",
   ).toEqual(contract);
-  // Disjoint, which is the half a union assertion cannot see: a status in both
-  // sets would keep `InFlight` on screen for a finished run.
   expect(
     [...IN_FLIGHT_RUN_STATUSES].filter((s) => TERMINAL_RUN_STATUSES.has(s)),
     "a status that is both in flight and terminal",

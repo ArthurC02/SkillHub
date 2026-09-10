@@ -1,18 +1,5 @@
 package ingest
 
-// GEN-010: confirming the same generated candidate twice must not error. This
-// exercises the real database because the duplicate verdict comes from
-// persistVersion's VersionByContent lookup (a unique index), and
-// beginPackageWrite takes real advisory locks against a real workspace row —
-// nothing here is a restatement of Go code that could be faked instead.
-//
-// Point SKILLHUB_TEST_DATABASE_URL at a throwaway database and this test runs;
-// leave it unset and it skips, so CI without a database reports "skipped"
-// rather than a false pass (02:PORT-004).
-//
-// WARNING: TestMain drops and recreates schema "public" in that database.
-// Never point SKILLHUB_TEST_DATABASE_URL at a database you care about.
-
 import (
 	"context"
 	"fmt"
@@ -42,7 +29,7 @@ func TestMain(m *testing.M) {
 			fmt.Fprintf(os.Stderr, "SKILLHUB_REQUIRE_DB=1 but %s is unset; this run would have skipped every database test and still reported success\n", creationDBURLEnv)
 			os.Exit(1)
 		}
-		os.Exit(m.Run()) // every database test skips; see requireCreationDB
+		os.Exit(m.Run())
 	}
 	if err := validateDestructiveCreationDatabaseURL(dsn); err != nil {
 		panic(err)
@@ -63,8 +50,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// validateDestructiveCreationDatabaseURL refuses to point the schema drop
-// below at anything that is not an obviously disposable local database.
 func validateDestructiveCreationDatabaseURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -109,10 +94,6 @@ func migrateCreationSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
-// lockCreationTestSchema serialises the packages that reset this database.
-// Same lock name skill/library and trial/improvement already take (see their
-// aggregate_test.go), so a concurrent `go test ./...` run does not see one
-// package's reset land mid another package's test.
 func lockCreationTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
 	conn, err := pool.Acquire(ctx)
 	if err != nil {
@@ -137,12 +118,6 @@ func requireCreationDB(t *testing.T) *pgxpool.Pool {
 	return creationPool
 }
 
-// seedCreationWorkspace writes the minimum row MaterializeGeneratedCandidate's
-// object-write fence needs (identity.LockObjectWrite checks a real workspace
-// row). Raw SQL rather than internal/creator/workspace's service: borrowing
-// another context's writer for a fixture here would be a cross-context import
-// bought for a test (ADR-032 §1) — the same reason skill/library's own
-// seedSkill helper does the same thing.
 func seedCreationWorkspace(t *testing.T, pool *pgxpool.Pool, name string) identity.Workspace {
 	t.Helper()
 	ctx := context.Background()
@@ -162,8 +137,6 @@ func seedCreationWorkspace(t *testing.T, pool *pgxpool.Pool, name string) identi
 	return ws
 }
 
-// creationTestStore is an in-memory ObjectStore: package bytes for this test
-// never need to touch real object storage, only the fence around them does.
 type creationTestStore struct {
 	mu   sync.Mutex
 	data map[string][]byte
@@ -185,10 +158,6 @@ func (s *creationTestStore) Get(_ context.Context, key string) ([]byte, error) {
 	return s.data[key], nil
 }
 
-// TestCreationCandidateMaterializeDuplicateIsReuseNotError pins GEN-010's
-// 「同一候選重複確認不可重複建版」: confirming byte-identical content a second
-// time against the same generated skill must return the version already on
-// record, not the old hard error that turned a no-op into a 503.
 func TestCreationCandidateMaterializeDuplicateIsReuseNotError(t *testing.T) {
 	pool := requireCreationDB(t)
 	ctx := context.Background()
@@ -198,7 +167,7 @@ func TestCreationCandidateMaterializeDuplicateIsReuseNotError(t *testing.T) {
 		Pool:  pool,
 		Store: &creationTestStore{},
 		IndexSkill: func(context.Context, pgx.Tx, SkillProjection) error {
-			return nil // the search projection's shape is not under test here
+			return nil
 		},
 	}
 

@@ -1,9 +1,3 @@
-// The gaps 稽核 01 found in the four skill contexts, each pinned through the real
-// route table: a licensing hold a fork could shake off, two endpoints that kept
-// answering about a deleted skill, an operator action that would have
-// republished a generated skill, a second fork that was a 409, a workspace
-// search with no input rules, and a manifest field whose value the contract did
-// not allow.
 package apiserver_test
 
 import (
@@ -19,12 +13,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
-// 02:SEC-011's added section says the held state travels with a Fork, in as many
-// words, and names what it costs if it does not: 「Fork 一次就解除」. The propagation
-// was written; nothing held it down. Deleting `AccessRestriction: src.AccessRestriction`
-// from registry.Fork left the whole suite green, and the two places a hold is
-// enforced — the files endpoint and the packaging gate — would both have opened
-// for anybody who pressed Fork once.
 func TestAForkCarriesTheLicensingHoldItWasForkedFrom(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -34,8 +22,6 @@ func TestAForkCarriesTheLicensingHoldItWasForkedFrom(t *testing.T) {
 	held := importPackage(t, pool, a.packages, curator, "hold-travels-writer", true)
 	restrict(t, pool, held)
 
-	// A different user, so this is the real path: catalogue in, personal
-	// workspace out. A fork inside the curator's own workspace would prove less.
 	forker := a.login(t, "hold-fork-forker")
 	code, body := forker.doJSON(t, http.MethodPost, "/skills/"+held+"/fork", "{}")
 	if code != http.StatusCreated {
@@ -46,11 +32,10 @@ func TestAForkCarriesTheLicensingHoldItWasForkedFrom(t *testing.T) {
 		t.Fatalf("fork response carried no skill_id: %v", body)
 	}
 
-	// The response says so, which is the half a user can see.
 	if body["access_restriction"] == nil {
 		t.Errorf("the fork reports no hold: %v", body["access_restriction"])
 	}
-	// And the column says so, which is the half every enforcement point reads.
+
 	var restriction *string
 	if err := pool.QueryRow(context.Background(),
 		"SELECT access_restriction FROM skills WHERE id = $1", mustUUID(t, forkID),
@@ -61,8 +46,6 @@ func TestAForkCarriesTheLicensingHoldItWasForkedFrom(t *testing.T) {
 		t.Fatal("the fork's access_restriction is NULL: forking is now the way around a licensing hold")
 	}
 
-	// The consequence, stated the way the specification states it: the endpoint
-	// that reproduces the package's own bytes is closed on the copy too.
 	code, files := forker.doJSON(t, http.MethodGet, "/api/skills/"+forkID+"/files", "")
 	if code != http.StatusForbidden {
 		t.Fatalf("GET /files on the fork of a held skill answered %d, want 403", code)
@@ -72,12 +55,6 @@ func TestAForkCarriesTheLicensingHoldItWasForkedFrom(t *testing.T) {
 	}
 }
 
-// WS-005 and SEC-006: a deleted skill stops appearing in the ordinary access
-// surfaces. The delete confirmation the server writes says the skill leaves the
-// reader's 「lists」 and search — and a version history is a list, while the diff
-// is the other reader of the same query. Both kept answering, because
-// ListSkillVersions and GetSkillVersion filtered on workspace and skill alone
-// and neither handler read the skills row first.
 func TestADeletedSkillStopsAnsweringAboutItsVersions(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -97,25 +74,15 @@ func TestADeletedSkillStopsAnsweringAboutItsVersions(t *testing.T) {
 		t.Fatalf("DELETE /skills/%s: got %d", skillID, code)
 	}
 
-	// Empty rather than 404, which is this route's documented answer for a skill
-	// it cannot see: the scope comes from the session, so a caller cannot tell
-	// 「not yours」 from 「not there」 anyway, and the two screens that read this
-	// treat both as 「nothing to pick」.
 	if got := owner.listVersions(t, skillID); len(got) != 0 {
 		t.Errorf("a deleted skill still lists %d versions: %+v", len(got), got)
 	}
-	// The diff names two versions, so it has something to be not-found about.
+
 	if code := owner.status(t, http.MethodGet, diffPath); code != http.StatusNotFound {
 		t.Errorf("GET diff on a deleted skill answered %d, want 404", code)
 	}
 }
 
-// GEN-007's search exclusion has no key of its own: it reads
-// `skills.redistribution <> 'generated'`, on the search query and on the
-// enrichment worklist alike. So an operator pressing 「不可再散布」 on a generated
-// skill would not have tightened anything — it would have erased the only record
-// that the skill is generated, put it back into its workspace's search results,
-// and put it back into a queue that spends money on it.
 func TestAnOperatorCannotUnhideAGeneratedSkillBySettingItBlocked(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -135,14 +102,12 @@ func TestAnOperatorCannotUnhideAGeneratedSkillBySettingItBlocked(t *testing.T) {
 	if code != http.StatusBadRequest {
 		t.Fatalf("PUT redistribution=blocked on a generated skill: got %d, body %v", code, body)
 	}
-	// A refusal that does not name the mechanism which does work is a dead end.
+
 	msg, _ := body["error"].(string)
 	if !strings.Contains(msg, "access_restriction") {
 		t.Errorf("the refusal must point at the hold that does work, got %q", msg)
 	}
 
-	// Nothing landed: not the column, and not an audit event about a change that
-	// did not happen.
 	var value string
 	if err := pool.QueryRow(context.Background(),
 		"SELECT redistribution FROM skills WHERE id = $1", mustUUID(t, skillID)).Scan(&value); err != nil {
@@ -162,10 +127,6 @@ func TestAnOperatorCannotUnhideAGeneratedSkillBySettingItBlocked(t *testing.T) {
 	}
 }
 
-// WS-001 lets a signed-in user fork a skill into their workspace. It does not
-// say once, and the fixed `-fork` suffix meant the second one hit the unique
-// index and came back a 409 with no suggested next step — for what is the
-// ordinary shape of the work: 試跑、改、再試一份.
 func TestASecondForkGetsItsOwnNameInsteadOfAConflict(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -192,8 +153,6 @@ func TestASecondForkGetsItsOwnNameInsteadOfAConflict(t *testing.T) {
 		}
 	}
 
-	// A fork of a fork keeps the series flat rather than growing a word per
-	// generation: `x-fork-fork` is a name nobody chose and nobody can read.
 	code, body := forker.doJSON(t, http.MethodPost, "/skills/"+ids[0]+"/fork", "{}")
 	if code != http.StatusCreated {
 		t.Fatalf("forking a fork: got %d, body %v", code, body)
@@ -203,15 +162,12 @@ func TestASecondForkGetsItsOwnNameInsteadOfAConflict(t *testing.T) {
 	}
 }
 
-// DISC-001's rule — 空白或無法理解的查詢不得建立搜尋 — is about searching, not about
-// one route. The public endpoint had both checks and the workspace one had
-// neither, so a 2 MB `q` went straight into websearch_to_tsquery.
 func TestTheWorkspaceSearchAppliesTheSameQueryRulesAsThePublicOne(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	me := a.login(t, "workspace-search-rules")
 
-	long := strings.Repeat("abcdefghij", 210) // 2100 runes
+	long := strings.Repeat("abcdefghij", 210)
 	for name, query := range map[string]string{
 		"blank":                     "",
 		"over the 2000-rune cap":    long,
@@ -223,29 +179,18 @@ func TestTheWorkspaceSearchAppliesTheSameQueryRulesAsThePublicOne(t *testing.T) 
 			t.Errorf("%s: GET /skills/search answered %d, want 400", name, code)
 		}
 	}
-	// And a usable query is still answered, so the rules did not close the route.
+
 	if code := me.status(t, http.MethodGet, "/skills/search?q=csv"); code != http.StatusOK {
 		t.Errorf("a usable query answered %d, want 200", code)
 	}
 }
 
-// A generated skill's manifest writes `source_type: "generated"` straight out of
-// skill_sources, and until 2026-08-29 the packaging contract's two source_type
-// enums listed only git and upload — so the one field a downloader reads to know
-// where a package came from carried a value the schema refused.
-//
-// The permitted set is read from the shipped schema rather than restated here:
-// an expectation written in this file drifts the same way the thing it checks
-// drifts, and then agrees with it.
 func TestAGeneratedSkillsManifestNamesASourceTypeTheContractAllows(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	c := a.login(t, "generated-manifest-owner")
 	skillID, versionID := packagedSkill(t, a, pool, c, "generated-manifest-skill")
 
-	// What the generation path writes. 0037's one-way CHECK requires all three
-	// generator columns whenever source_type is 'generated', so this is the whole
-	// row shape and not a partial one.
 	if _, err := pool.Exec(context.Background(), `
 		UPDATE skill_sources SET source_type = 'generated', source_url = NULL, source_ref = NULL,
 			task_description = 'tidy a csv', generator_model = 'test-model',
@@ -284,17 +229,13 @@ func TestAGeneratedSkillsManifestNamesASourceTypeTheContractAllows(t *testing.T)
 		t.Errorf("the manifest writes source_type %q, which the contract's enum %v does not permit",
 			manifest.Source.Origin.SourceType, allowed)
 	}
-	// A producer declares the contract version it writes to, and `generated` is a
-	// 1.1 value. Declaring 1.0 while writing one would make the version string a
-	// decoration rather than a statement.
+
 	if manifest.SchemaVersion == "1.0" {
 		t.Errorf("schema_version is %q while the manifest writes a value 1.0 does not define",
 			manifest.SchemaVersion)
 	}
 }
 
-// manifestSourceTypeEnum reads the shipped schema and returns the source_type
-// values its import origin branch permits.
 func manifestSourceTypeEnum(t *testing.T) []string {
 	t.Helper()
 	path := filepath.Join("..", "..", "..", "..", "..", "..",
@@ -332,11 +273,6 @@ func manifestSourceTypeEnum(t *testing.T) []string {
 	return nil
 }
 
-// GetVersionBySkillAndHash sat in a query file whose header says every read there
-// is workspace scoped, without one. It was safe because of who called it, which
-// is precisely what skills.sql warns about in as many words: an unscoped read in
-// a query file is a cross-tenant read waiting for its second caller. Now the
-// scope is in the query, and this is what it refuses.
 func TestDuplicateDetectionCannotReachAnotherWorkspacesVersion(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -356,9 +292,7 @@ func TestDuplicateDetectionCannotReachAnotherWorkspacesVersion(t *testing.T) {
 		mustUUID(t, owner.workspaceID), mustUUID(t, skillID), "sha256:dup-scope"); err != nil || !found {
 		t.Fatalf("the owning workspace must find its own version: found=%v err=%v", found, err)
 	}
-	// A different workspace holding the same skill id — which it should never
-	// have, and that is the point: the read refuses on its own rather than on the
-	// caller having been careful.
+
 	if _, found, err := registry.VersionByContent(context.Background(), tx,
 		mustUUID(t, stranger.workspaceID), mustUUID(t, skillID), "sha256:dup-scope"); err != nil || found {
 		t.Fatalf("a foreign workspace read somebody else's version: found=%v err=%v", found, err)

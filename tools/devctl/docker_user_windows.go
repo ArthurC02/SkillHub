@@ -2,6 +2,6 @@
 
 package main
 
-// Docker Desktop maps files back to the Windows host; numeric Linux UID/GID
-// flags are neither needed nor portable there.
+// Docker Desktop on Windows already maps container file ownership back to
+// the host, so no numeric UID/GID flags are needed here.
 func dockerUserArgs() []string { return nil }

@@ -1,18 +1,5 @@
 package eval
 
-// Database coverage for the Evaluation aggregate's invariants (ADR-026 decision
-// 1, ADR-032 §4). These are the rules doc.go enumerates, and none of them can be
-// proved without PostgreSQL: the partial unique index, the 0024 immutability
-// trigger and the `status = 'pending'` predicates are the enforcement, and a Go
-// assertion about a mock would only be re-stating the code under test.
-//
-// Point SKILLHUB_TEST_DATABASE_URL at a throwaway database and they run; leave it
-// unset and they skip, so a CI job without a database reports "skipped" rather
-// than a false pass.
-//
-// WARNING: TestMain drops and recreates schema "public" in that database.
-// Never point SKILLHUB_TEST_DATABASE_URL at a database you care about.
-
 import (
 	"context"
 	"encoding/json"
@@ -40,15 +27,12 @@ var aggregatePool *pgxpool.Pool
 func TestMain(m *testing.M) {
 	dsn := os.Getenv(aggregateDBURLEnv)
 	if dsn == "" {
-		// 02:PORT-004. Without this, an unset or misspelled URL is indistinguishable
-		// from a passing run: every database test removes itself and go test still
-		// prints ok. CI sets SKILLHUB_REQUIRE_DB=1 so the service failing to come up
-		// is a red build rather than a quiet one.
+
 		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
 			fmt.Fprintf(os.Stderr, "SKILLHUB_REQUIRE_DB=1 but %s is unset; this run would have skipped every database test and still reported success\n", aggregateDBURLEnv)
 			os.Exit(1)
 		}
-		os.Exit(m.Run()) // every database test skips; see requireEvalDB
+		os.Exit(m.Run())
 	}
 	if err := validateDestructiveEvalDatabaseURL(dsn); err != nil {
 		panic(err)
@@ -69,8 +53,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// validateDestructiveEvalDatabaseURL refuses to point the schema drop below at
-// anything that is not an obviously disposable local database.
 func validateDestructiveEvalDatabaseURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -122,14 +104,12 @@ func migrateEvalSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		if err != nil {
 			return err
 		}
-		// No arguments means the simple protocol, so a file with several
-		// statements applies as one batch.
+
 		if _, err := pool.Exec(ctx, string(body)); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
 	}
-	// River's tables are not in db/migrations and nothing here queues work, so
-	// the schema is complete without them.
+
 	return nil
 }
 
@@ -141,13 +121,6 @@ func requireEvalDB(t *testing.T) *pgxpool.Pool {
 	return aggregatePool
 }
 
-// --- fixtures ----------------------------------------------------------------
-
-// seedRun writes the minimum chain an evaluation hangs off: user, workspace,
-// skill, version, test case, snapshot, terminal run. Raw SQL rather than the
-// other contexts' services, because what is under test is this table's rules and
-// borrowing internal/ingest or internal/run here would be a cross-context import
-// bought for a fixture (ADR-032 §1).
 func seedRun(t *testing.T, pool *pgxpool.Pool) material {
 	t.Helper()
 	ctx := context.Background()
@@ -188,8 +161,6 @@ func seedRun(t *testing.T, pool *pgxpool.Pool) material {
 	return material{run: run, attempt: 1}
 }
 
-// aVerdict is a completed judgement with real evidence attached, so that an
-// assertion about "the judgement did not change" is about something with content.
 func aVerdict(summary, overall string) verdict {
 	return verdict{
 		overall: overall,
@@ -209,8 +180,6 @@ func aVerdict(summary, overall string) verdict {
 	}
 }
 
-// judgement is every column the 0024 trigger freezes on a completed row: what a
-// report quotes, and therefore what must never differ between two reads.
 type judgement struct {
 	Status, Overall              string
 	Summary                      string
@@ -251,10 +220,6 @@ func beginAndComplete(t *testing.T, s *Service, m material, v verdict) gen.Evalu
 	return ev
 }
 
-// --- invariant 1, 4, 5: re-evaluation appends ---------------------------------
-
-// The headline rule of ADR-026 decision 1. A second evaluation is a second row;
-// the first keeps every word it was cited with and gains only a superseded_at.
 func TestReEvaluationAppendsARevisionInsteadOfOverwriting(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
@@ -296,11 +261,6 @@ func TestReEvaluationAppendsARevisionInsteadOfOverwriting(t *testing.T) {
 	}
 }
 
-// --- invariant 2: a completed judgement is a fact -----------------------------
-
-// Two halves of the same rule. The service refuses because the row is no longer
-// pending; the database refuses because 0024 froze the columns. The second half
-// is the one that still holds when a future writer forgets the first.
 func TestASettledVerdictCannotBeRewritten(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
@@ -336,11 +296,6 @@ func TestASettledVerdictCannotBeRewritten(t *testing.T) {
 	}
 }
 
-// --- invariant 3: one terminal per revision -----------------------------------
-
-// complete and fail race whenever the recovery sweep meets the worker that is
-// still running. Exactly one wins; the loser must not turn a verdict into a
-// failure, or a failure into a verdict.
 func TestARevisionSettlesOnce(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	ctx := context.Background()
@@ -376,11 +331,6 @@ func TestARevisionSettlesOnce(t *testing.T) {
 	})
 }
 
-// --- invariant 4: superseded_at is stamped once -------------------------------
-
-// The stamp records when *this* judgement stopped being the standing one. A third
-// evaluation must not move the first one's stamp forward, and nothing may clear
-// it: an un-superseded history row would be a second current verdict.
 func TestSupersededAtIsStampedOnceAndNeverCleared(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
@@ -398,20 +348,12 @@ func TestSupersededAtIsStampedOnceAndNeverCleared(t *testing.T) {
 		t.Fatalf("a third evaluation re-stamped the first revision: %v -> %v", stamped.Time, again.Time)
 	}
 
-	// The 0024 trigger has to leave superseded_at writable — stamping it is how a
-	// revision is retired — so the guard against clearing it is the partial unique
-	// index, not the trigger.
 	if _, err := s.Pool.Exec(ctx,
 		"UPDATE evaluations SET superseded_at = NULL WHERE id = $1", first.ID); err == nil {
 		t.Fatal("a superseded revision was restored to current; two verdicts would now stand")
 	}
 }
 
-// --- invariant 6: a pending revision is not superseded from under itself ------
-
-// A redelivered job must join the work in flight rather than start a second
-// judgement. The judge is a metered call (ADR-026 decision 4), and the abandoned
-// pending row would never reach a terminal.
 func TestASecondEvaluationWhileOneIsPendingIsRefused(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
@@ -429,11 +371,6 @@ func TestASecondEvaluationWhileOneIsPendingIsRefused(t *testing.T) {
 	}
 }
 
-// --- what append-only does not constrain: feedback ----------------------------
-
-// The user may change their mind (EVAL-001 clause 4), and doing so must not move
-// a single word of the judgement. It also must not reach a superseded revision:
-// feedback is about the verdict on screen, which is always the current one.
 func TestFeedbackIsWritableAndOnlyOnTheCurrentRevision(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
@@ -445,7 +382,6 @@ func TestFeedbackIsWritableAndOnlyOnTheCurrentRevision(t *testing.T) {
 	}
 	before := frozen(reload(t, s, m, first.ID))
 
-	// Changing the answer replaces it rather than being refused.
 	if _, err := s.SetFeedback(ctx, m.run.WorkspaceID, m.run.ID, false, ""); err != nil {
 		t.Fatalf("change feedback: %v", err)
 	}
@@ -473,11 +409,6 @@ func TestFeedbackIsWritableAndOnlyOnTheCurrentRevision(t *testing.T) {
 	}
 }
 
-// --- invariant 7: nothing here writes runs ------------------------------------
-
-// ADR-025 in one assertion: a `not_met` verdict on a run that executed cleanly is
-// an ordinary state, and the run's terminal status is not the evaluation's to
-// move. Cheap to state, and the regression it guards is silent.
 func TestAVerdictDoesNotTouchTheRunsRow(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
@@ -499,25 +430,13 @@ func TestAVerdictDoesNotTouchTheRunsRow(t *testing.T) {
 	if after != before {
 		t.Fatalf("evaluating changed the run row:\n before %s\n after  %s", before, after)
 	}
-	// Guard against the comparison passing on two unparseable strings.
+
 	var probe map[string]any
 	if err := json.Unmarshal([]byte(after), &probe); err != nil || probe["status"] != string(gen.RunStatusSucceeded) {
 		t.Fatalf("run row did not read back as a succeeded run: %v (%v)", after, err)
 	}
 }
 
-// lockTestSchema serialises the packages that reset this database.
-//
-// apiserver, eval and registry each drop and recreate schema "public" in
-// SKILLHUB_TEST_DATABASE_URL, and `go test ./...` runs packages concurrently:
-// one package's reset lands while another is mid-run, and the second one sees
-// "relation does not exist". Held on one connection for the whole package run
-// rather than only across the migration, because the hazard is a reset
-// colliding with somebody else's *tests*, not with their migration.
-//
-// Session-scoped, so a crashed run releases it along with its connection and a
-// stale lock cannot wedge CI. Every package that resets this database must take
-// it; one that forgets fails loudly with the panic above rather than silently.
 func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
 	conn, err := pool.Acquire(ctx)
 	if err != nil {
@@ -534,21 +453,10 @@ func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
 	}
 }
 
-// --- ADR-026 decision 1: every judgement records the conditions it was made under
-
-// The half of that clause a verdict never needed. A `failed` revision is the one
-// where "which judge could not answer" is the first question, and until begin
-// wrote these three columns the answer existed only in the `evaluation_started`
-// trace event — which retention drops with its partition, so the failure outlived
-// the only record of what it had been attempted with.
-//
-// Each subtest also fixes the meaning of NULL there: absent is a statement about
-// the attempt, never a forgotten write.
 func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 	pool := requireEvalDB(t)
 	ctx := context.Background()
 
-	// begin then fail, which is the exact pair a judge outage produces.
 	failed := func(t *testing.T, s *Service, m material) gen.Evaluation {
 		t.Helper()
 		ev, err := s.begin(ctx, m)
@@ -586,7 +494,7 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 	})
 
 	t.Run("a deployment with no judge records NULL, not a model name", func(t *testing.T) {
-		s := &Service{Pool: pool} // Judge nil: nothing was ever going to be called.
+		s := &Service{Pool: pool}
 		m := seedRun(t, s.Pool)
 
 		got := failed(t, s, m)

@@ -1,8 +1,3 @@
--- Keep bounded background worklists fair when one item repeatedly fails.
--- The workers claim a page by stamping these bookkeeping columns before doing
--- external work, so a poison item remains retryable without monopolising every
--- subsequent page.
-
 ALTER TABLE artifacts
     ADD COLUMN reconcile_checked_at timestamptz,
     ADD COLUMN retention_attempted_at timestamptz;
@@ -22,8 +17,6 @@ ALTER TABLE runs
     ADD COLUMN supervision_checked_at timestamptz,
     ADD COLUMN cleanup_attempted_at timestamptz;
 
--- Terminal runs are immutable except for cleanup bookkeeping. Extend the
--- original trigger's explicit allow-list rather than weakening the function.
 DROP TRIGGER runs_terminal_immutable ON runs;
 CREATE TRIGGER runs_terminal_immutable
     BEFORE UPDATE OR DELETE ON runs

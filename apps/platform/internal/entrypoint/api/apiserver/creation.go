@@ -59,12 +59,7 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 		minutes := int64(h.Svc.Limits.SessionTimeout / time.Minute)
 		text = "這次創作已超過時間上限（自開始起 " + strconv.FormatInt(minutes, 10) + " 分鐘）；進度已保留，但不能再繼續，請開始新的創作。"
 	case errors.Is(err, creation.ErrCreditThreshold):
-		// ADR-068 gate ①. 422 rather than 402: Credit is this system's currency,
-		// not money (2026-09-10 ruling), and "Payment Required" would tell a
-		// user to reach for a card that does not exist — MVP has no payment
-		// path at all, an operator grant is the whole of "top up" (CRED-007).
-		// The sentence names the next step because a refusal that does not is
-		// the failure system.md:100 forbids.
+
 		code = 422
 		text = "點數不足，無法開始新的創作。請聯絡管理者為這個帳號加點；已經開始的創作不受影響。"
 	case errors.Is(err, creation.ErrBudgetOutOfBand):

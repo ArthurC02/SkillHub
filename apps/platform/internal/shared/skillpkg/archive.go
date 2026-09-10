@@ -14,122 +14,24 @@ import (
 	"unicode/utf8"
 )
 
-// Zip archive reading, moved here from internal/ingest on 2026-08-20 (DDD-006).
-//
-// PackageFS, PackageRoot and MaxZipBytes are stateless pure functions over
-// bytes — no pool, no store, no policy, no context — and catalog, run,
-// packaging and eval all need the same answer import got. That makes them
-// Shared Kernel material (ADR-032 §1), not a reason for four bounded contexts
-// to import the Trust & Supply Chain context. What stays in ingest is the part
-// that is not stateless: SaveVersion *is* the import validation pipeline
-// (prepare → scan → enrich → tx), and M4's PACK-002 ruling requires 採納建議 to
-// reuse it rather than grow a second version-creation path (a second truth).
+const MaxZipBytes = 10 << 20
 
-// MaxZipBytes caps the uploaded archive. PDM-005 §5.1b's number, ratified by the
-// product owner on 2026-08-27 (`05` R-13, `04` 乙-23).
-//
-// It was 32 MiB for months, and the comment standing here defended the gap:
-// lowering it 「rejects packages that import successfully today」. That reasoning
-// was sound and the premise was never measured. When it finally was: 45 package
-// objects, largest 0.156 MB, p95 0.066 MB, and ZERO between 10 MB and 32 MiB.
-// Nothing was rejected by this change. **A ceiling is a one-way door** — raising
-// it breaks nobody, lowering it breaks anyone already over — and the cost of
-// walking through the reversible side was zero today and stops being zero the
-// first time a beta user imports a Skill that ships a font or a notebook.
-//
-// The ratification also ended a three-way disagreement rather than just a
-// two-way one: `02:SEC-003`'s acceptance sentence says 10 MB and adds that both
-// import paths share one set of limits. Sharing was implemented (fetch and
-// upload read this same constant); the shared VALUE was not the stated one, so
-// `03:INGEST-014` was structurally unticklable however well the fetcher was
-// written.
-//
-// The other five ceilings §5.1b names had no value at all until 2026-08-25 —
-// see the block below. `03` §1 said PDM-005's numbers were 值已全數強制; for §5.1b
-// that was true of two of seven.
-const MaxZipBytes = 10 << 20 // 10 MB, PDM-005 §5.1b
-
-// HumanMB renders a byte ceiling the way a refusal has to say it (03:INGEST-016).
-//
-// One decimal and not `n>>20`, because the two numbers a refusal prints are a
-// ceiling and an actual size, and truncation makes the interesting case unsayable:
-// 32.4 MB against a 32 MiB cap would print "over the 32 MB limit (this was 32 MB)".
 func HumanMB(n int64) string {
 	return strconv.FormatFloat(float64(n)/(1<<20), 'f', 1, 64) + " MB"
 }
 
-// maxUnpackedBytes caps total declared uncompressed size (zip bombs,
-// ADR-007 壓縮炸彈). §5.1b's second number, ratified with the first. Var only so
-// tests can lower it.
-var maxUnpackedBytes = uint64(100 << 20) // 100 MB, PDM-005 §5.1b
+var maxUnpackedBytes = uint64(100 << 20)
 
-// The rest of PDM-005 §5.1b. Each of these was unbounded until 2026-08-25, and
-// unbounded is the wrong default for every one of them: this archive is opened
-// in the control plane (TM-IMP-02), not in a sandbox, so the blast radius is the
-// import node itself.
-//
-// The values are §5.1b's, because it is the only place they are stated. Var, not
-// const, for the same reason maxUnpackedBytes is: a test that has to build a
-// 10 MB fixture to reach a ceiling is a test nobody runs.
 var (
-	// 檔案總數 ≤ 2,000 — large enough for a Skill that ships assets, small
-	// enough that a million-tiny-file archive cannot exhaust inodes.
 	maxArchiveEntries = 2000 // one-number: maxSkillPackageEntries
-	// 單一檔案大小 ≤ 10 MB. Declared size, checked before anything is read:
-	// the total cap alone lets one entry claim all of it.
+
 	maxEntryBytes = uint64(10 << 20)
-	// 目錄巢狀深度 ≤ 10.
+
 	maxEntryDepth = 10
 )
 
-// A compression-ratio ceiling was added here on 2026-09-08 (05 R-21/R-27) and
-// removed the same day, before it shipped. Recorded rather than deleted,
-// because "add a ratio check" is the standard advice and the reason it does not
-// apply here is not obvious:
-//
-//   - The blast radius is already bounded by the caps above. This reader accepts
-//     only Store and Deflate, refuses zip64, caps the archive at 10 MB, one entry
-//     at 10 MB and the declared total at 100 MB. Worst-case expansion is that
-//     100 MB, whatever the ratio says.
-//   - DEFLATE cannot exceed about 1032:1, so an aggregate ceiling anywhere near
-//     the classic 1000:1 advice is a rule that cannot fire on anything this
-//     reader accepts. The famous nested bombs get their numbers from recursion,
-//     and this platform never opens an archive inside the package.
-//   - The per-entry 100:1 the field recommends DOES fire, on legitimate content:
-//     tools/qa/skillpkg-corpus's own `oversize-file` fixture is 1.1 MB of
-//     repetitive text that compresses 338:1, and CI caught it the first time this
-//     ran. Generated corpora, logs and columnar CSV all live up there.
-//
-// What was worth keeping from that batch is the disclosure below: an archive
-// inside the package is something the platform did not look at, and the person
-// who extracts it should be told.
-
-// §5.1b's two remaining clauses are deliberately not here.
-//
-// **Symlinks are refused by validation.** The archive reader preserves their
-// mode and target for a precise finding; validation blocks them because the
-// runtime extractor accepts regular files only. Admission and execution must
-// agree on which stored package bytes are runnable.
-//
-// **Nested archives are not refused either**, and that one is a real gap rather
-// than a resolved disagreement: §5.1b forbids an archive inside an archive as a
-// standard way around the unpacking cap, and refusing by file extension would
-// also reject a Skill that legitimately ships a zip as sample data. Whether that
-// trade is worth making is a product call, recorded rather than taken.
-
-// ErrBadArchive marks input that is not an acceptable zip at all (as opposed
-// to a well-formed package that fails validation).
 var ErrBadArchive = errors.New("bad archive")
 
-// PackageFS opens the zip as a read-only fs.FS, rejecting bombs and locating
-// the package root: SKILL.md at top level, or inside a single top-level
-// directory (the shape GitHub archive downloads have).
-//
-// Exported because the read side has to resolve the package root exactly the
-// way import did: catalog's detail and file views re-open the stored archive,
-// and a second root-finding rule would show a different package than the one
-// that was validated. Opening is still pure analysis — nothing inside is ever
-// executed (iron rule 1).
 func PackageFS(data []byte) (fs.FS, error) {
 	if err := validateZipEnvelope(data); err != nil {
 		return nil, err
@@ -144,7 +46,7 @@ func PackageFS(data []byte) (fs.FS, error) {
 	}
 	var unpacked uint64
 	var findings []Finding
-	seen := make(map[string]bool, len(zr.File)) // portable name -> directory
+	seen := make(map[string]bool, len(zr.File))
 	requiredDirs := make(map[string]struct{}, len(zr.File))
 	for _, f := range zr.File {
 		if f.Name == "" || strings.ContainsRune(f.Name, 0) || !utf8.ValidString(f.Name) {
@@ -208,15 +110,12 @@ func PackageFS(data []byte) (fs.FS, error) {
 		if unpacked > maxUnpackedBytes {
 			return nil, fmt.Errorf("%w: uncompressed content exceeds %d bytes", ErrBadArchive, maxUnpackedBytes)
 		}
-		// An archive inside the archive: disclosed, never refused. The caps
-		// above bound what this platform unpacks; they say nothing about what
-		// the person who extracts the package will unpack next.
+
 		if !nameIsDir && LooksLikeArchive(f.Name) {
 			findings = append(findings, Finding{Severity: SeverityInfo, Code: CodeNestedArchive, Path: f.Name,
 				Message: "這個套件裡有一個壓縮檔，平台沒有打開它——上面的解壓上限管的是平台自己解開的內容，不涵蓋它。解壓縮這個套件的人要自己決定要不要打開。"})
 		}
-		// The raw name, read here because this is the last place it exists: the
-		// fs view below rewrites `../../evil.sh` to `evil.sh` (04 丙-15 D-1/D-2).
+
 		if escapes {
 			findings = append(findings, finding)
 		}
@@ -232,7 +131,7 @@ func PackageFS(data []byte) (fs.FS, error) {
 			}
 		}
 	}
-	var tree fs.FS = zr // no root to strip: let Validate report skill-md-missing
+	var tree fs.FS = zr
 	if root := PackageRoot(zr); root != "" {
 		if sub, err := fs.Sub(zr, strings.TrimSuffix(root, "/")); err == nil {
 			tree = sub
@@ -249,6 +148,9 @@ func validateZipEnvelope(data []byte) error {
 	if len(data) < 22 {
 		return fmt.Errorf("%w: not a zip archive", ErrBadArchive)
 	}
+	// The end-of-central-directory record sits at the very end of the file but
+	// may be preceded by a comment of up to 65535 bytes, so scan backward for
+	// its signature instead of assuming a fixed offset.
 	min := len(data) - 22 - 65535
 	if min < 0 {
 		min = 0
@@ -282,6 +184,9 @@ func validateZipEnvelope(data []byte) error {
 	return nil
 }
 
+// hasZip64Extra walks the extra field as a sequence of (id, size, payload)
+// records, since a zip entry may carry several unrelated extra blocks
+// back to back.
 func hasZip64Extra(extra []byte) (bool, error) {
 	for len(extra) > 0 {
 		if len(extra) < 4 {
@@ -300,10 +205,9 @@ func hasZip64Extra(extra []byte) (bool, error) {
 	return false, nil
 }
 
-// canonicalArchiveName follows the aliases shared by supported extractors:
-// slash direction and dot segments on every platform, plus case and trailing
-// dots/spaces on Windows. It is used only for collision detection; the original
-// name remains the one exposed by the read-only ZIP filesystem.
+// canonicalArchiveName folds the name variations that extract to the same
+// path on a case-insensitive or Windows-hosted filesystem: separators, case,
+// and trailing dots or spaces.
 func canonicalArchiveName(name string) string {
 	parts := strings.Split(path.Clean(strings.ReplaceAll(name, `\`, "/")), "/")
 	for i := range parts {
@@ -344,11 +248,6 @@ func isWindowsReservedName(part string) bool {
 		base[3] >= '1' && base[3] <= '9'
 }
 
-// packageFS is the tree plus what the archive declared before the tree
-// normalised it. The two travel together because Validate takes an fs.FS and
-// would otherwise never learn about an entry the fs view renamed; every caller
-// that opens a package through PackageFS gets the archive-level findings without
-// having to ask for them (ArchiveSource).
 type packageFS struct {
 	fs.FS
 	findings []Finding
@@ -356,14 +255,6 @@ type packageFS struct {
 
 func (p packageFS) ArchiveFindings() []Finding { return p.findings }
 
-// PackageRoot is the prefix inside the archive that PackageFS strips: empty when
-// SKILL.md is at the top level, "dir/" when the package sits in a single
-// top-level directory (the shape GitHub archive downloads have).
-//
-// Exported and shared with PackageFS because a writer needs the same answer a
-// reader got: internal/eval rebuilds an archive with one file replaced, and a
-// second root-finding rule there would write the new file next to the package
-// instead of into it.
 func PackageRoot(zr *zip.Reader) string {
 	if _, err := fs.Stat(zr, "SKILL.md"); err == nil {
 		return ""

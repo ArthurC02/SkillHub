@@ -7,15 +7,6 @@ import (
 	"testing"
 )
 
-// The web_app capability (05 R-36, extended to the artifact axis on
-// 2026-09-02). Every other mechanism in this repository measures the process
-// and its environment; the build the process hands a browser is neither, and
-// the gap had a real symptom — a blank page behind a green /readyz.
-//
-// The probe is driven through probeWebAssetsUnder with a temporary directory,
-// the seam webStaticHandlerUnder already uses for the same reason: the failures
-// have to be reachable without moving this binary to another machine.
-
 func writeBuild(t *testing.T, index string, assets map[string]string) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -43,11 +34,6 @@ func TestWebAssetProbeAcceptsABuildItCanActuallyServe(t *testing.T) {
 	}
 }
 
-// The 2026-09-02 failure itself: `task build:web` while the process was up.
-// index.html was read into memory at boot and still names the previous hash, so
-// every asset request answers 404 and the page renders nothing — while
-// /healthz stays 200 and no capability row changes, because none of them looks
-// at the build.
 func TestWebAssetProbeCatchesARebuildWithoutARestart(t *testing.T) {
 	dir := writeBuild(t,
 		`<script src="/assets/index-OLDHASH.js"></script>`,
@@ -72,9 +58,6 @@ func TestWebAssetProbeRefusesAnEmptyAsset(t *testing.T) {
 	}
 }
 
-// An index.html that references nothing is not a production build — the dev
-// server's entry point is `/src/main.tsx`. Reporting it Ready would mean the
-// probe passes hardest on the one input that serves no application at all.
 func TestWebAssetProbeRefusesAnIndexThatReferencesNoBuildOutput(t *testing.T) {
 	dir := writeBuild(t, `<script type="module" src="/src/main.tsx"></script>`, nil)
 	if err := probeWebAssetsUnder(dir); err == nil {
@@ -88,9 +71,6 @@ func TestWebAssetProbeSaysSoWhenThereIsNoBuildAtAll(t *testing.T) {
 	}
 }
 
-// The row exists only where this process serves the SPA. Elsewhere the build is
-// behind something else (ADR-018 E1) and both Unavailable and Broken would be
-// this deployment answering for somebody else's.
 func TestWebAppRowIsDeclaredOnlyWhereThisProcessServesTheBuild(t *testing.T) {
 	has := func(servesWeb bool) bool {
 		for _, c := range capabilityTable(nil, 0, servesWeb).Capabilities() {
@@ -108,8 +88,6 @@ func TestWebAppRowIsDeclaredOnlyWhereThisProcessServesTheBuild(t *testing.T) {
 	}
 }
 
-// R-36's rule, applied to this row: Ready is reachable only by measurement.
-// A row whose probe is nil would report Unmeasured forever and teach nothing.
 func TestWebAppRowCarriesAProbe(t *testing.T) {
 	for _, c := range capabilityTable(nil, 0, true).Capabilities() {
 		if c.ID != "web_app" {
@@ -126,17 +104,6 @@ func TestWebAppRowCarriesAProbe(t *testing.T) {
 	t.Fatal("web_app is not in the table")
 }
 
-// The declared table the R-36 checker reads must stay free of variables this
-// row does not have: web_app is gated by an artifact, not by configuration, and
-// a Needs entry here would send the checker looking for it in .env.example.
-//
-// ── 2026-09-09：這一支本來比較的是整張表，而那是一個會過期的代理 ──────────────
-//
-// 原本的寫法是「servesWeb 前後 DeclaredVars() 的長度必須相同」，用整張表的大小當
-// 「web_app 沒有宣告變數」的代理。同一個旗標在 09-09 起也決定 interactive_creation
-// 要不要宣告那三個 Worker 內部變數（淨模式的創作 worker 就在同一個行程裡，
-// ADR-060 決策 6，那條 HTTP 路一次都不會走），於是這個代理開始對一件為真的事說謊。
-// 現在直接問這一列自己：`web_app` 的 Needs 是不是空的。
 func TestWebAppDeclaresNoDeploymentVariables(t *testing.T) {
 	for _, c := range capabilityTable(nil, 0, true).Capabilities() {
 		if c.ID != "web_app" {
@@ -150,8 +117,6 @@ func TestWebAppDeclaresNoDeploymentVariables(t *testing.T) {
 	t.Fatal("web_app is not in the table")
 }
 
-// 同一個旗標的另一半，而它守的是相反方向：淨模式少宣告的**只有**那三個 Worker 內部
-// 變數。多縮一個，R-36 的檢查器就會漏掉一個真的必要的設定。
 func TestCleanModeDropsOnlyTheWorkerInternalVars(t *testing.T) {
 	full := creationCapability(false).Needs
 	clean := creationCapability(true).Needs

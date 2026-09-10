@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// writeTally lays out the owner document (checkboxes plus the §19 header
-// sentence derived from them) and any satellite that also talks about M5.
 func writeTally(t *testing.T, owner string, satellites map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -21,10 +19,7 @@ func writeTally(t *testing.T, owner string, satellites map[string]string) string
 			t.Fatal(err)
 		}
 	}
-	// Both subjects live in the same owner document, so a fixture that carries
-	// only one of them makes the other report a lost subject. Callers who are
-	// testing RELEASE pass their own §18 block in `owner`; everyone else gets
-	// this one, which is simply "not the thing under test".
+
 	if !strings.Contains(owner, "RELEASE-") {
 		owner += "\n## 18. 封測准入\n\n- [x] RELEASE-007 描述\n- [ ] RELEASE-008 描述\n"
 	}
@@ -42,14 +37,13 @@ func writeTally(t *testing.T, owner string, satellites map[string]string) string
 	return root
 }
 
-// Three ticked, two open, and the header says so.
 const threeTwo = "## 19. M5\n\n本節共 3 項已勾、2 項 ◐。\n\n" +
 	"- [x] GEN-001 描述\n- [x] GEN-002 描述\n- [x] GEN-003 描述\n- [ ] GEN-008 描述\n- [ ] GEN-009 描述\n"
 
 func TestMilestoneTallyAcceptsAHeaderThatMatchesItsBoxes(t *testing.T) {
 	t.Parallel()
 	root := writeTally(t, threeTwo, map[string]string{
-		// A satellite may carry the narrative, which is the useful half.
+
 		"AGENTS.md": "M5 的 ◐ 是 `GEN-008` 與 `GEN-009`；勾選數以 `03` §19 為準，本檔不複述。\n",
 	})
 	if problems := milestoneTallyProblems(root); len(problems) != 0 {
@@ -65,22 +59,19 @@ func TestMilestoneTallyRejectsTheThreeWaysTheNumberHasHadFiveAuthors(t *testing.
 		satellites map[string]string
 		want       string
 	}{{
-		// The failure three of six review rounds found: the header states 8/3
-		// while its own items say 9/2.
+
 		name: "the owner's header disagrees with its own boxes",
 		owner: "## 19. M5\n\n本節共 2 項已勾、3 項 ◐。\n\n" +
 			"- [x] GEN-001\n- [x] GEN-002\n- [x] GEN-003\n- [ ] GEN-008\n- [ ] GEN-009\n",
 		want: `must say "3 項已勾、2 項 ◐" and does not`,
 	}, {
-		// A satellite still saying 8/3 a day after the other four were corrected.
+
 		name:       "a satellite states the tally at all",
 		owner:      threeTwo,
 		satellites: map[string]string{"docs/plans/01-goals-and-plan.md": "M5 目前 8 項已勾，其餘為 ◐。\n"},
 		want:       "states M5's tally",
 	}, {
-		// Same sentence, same file, but about M4 - whose 49 items are defined in
-		// prose no machine can count. Flagging what cannot be checked is how a
-		// check loses its readers, so this one must stay quiet.
+
 		name:       "a tally about something this check cannot count is left alone",
 		owner:      threeTwo,
 		satellites: map[string]string{"docs/plans/01-goals-and-plan.md": "M4 的 release-checklist 49 項中 16 勾。\n"},
@@ -102,13 +93,6 @@ func TestMilestoneTallyRejectsTheThreeWaysTheNumberHasHadFiveAuthors(t *testing.
 	}
 }
 
-// M4's RELEASE-001～010: ten literal checkboxes in `03` §18, and `01` §10 has
-// been contradicting them since 2026-08-28 (「十項全部不勾」 against two ticked).
-// The M5 rule generalised, with the two things that make M4 different: the count
-// is written in Chinese numerals, and the same satellite line carries a SECOND
-// count — 「49 項中 16 勾」 — about a set defined in prose that no machine can
-// confirm. Flagging that one is how a check loses its readers, so it must stay
-// quiet about it while speaking about the other.
 func TestMilestoneTallyCoversTheReleaseCheckboxesToo(t *testing.T) {
 	t.Parallel()
 	const owner = "## 18. 封測准入\n\n- [x] RELEASE-007 描述\n- [x] RELEASE-008 描述\n" +
@@ -129,8 +113,7 @@ func TestMilestoneTallyCoversTheReleaseCheckboxesToo(t *testing.T) {
 		want:      "",
 	}, {
 		name: "the 49-item M4 count, which no machine can confirm, is left alone",
-		// Far enough from any RELEASE mention that the neighbourhood test does
-		// not claim it — the same distance the real 01 §10 row has.
+
 		satellite: "| M4 打包與封閉測試 | **已收斂**（m4 對帳，49 項中 16 勾／33 誠實不勾）。" +
 			strings.Repeat("補述。", 120) + " |\n",
 		want: "",
@@ -154,10 +137,6 @@ func TestMilestoneTallyCoversTheReleaseCheckboxesToo(t *testing.T) {
 	}
 }
 
-// M6 is the third subject and the first with a retracted state. The count it
-// has to get right is 「完成 N 項、撤回 N 項、剩 N 項」, and the real defect this
-// subject was added for is the middle row of this table: a satellite that kept
-// counting after the owner un-ticked an item.
 func TestMilestoneTallyCoversTheM6CheckboxesToo(t *testing.T) {
 	t.Parallel()
 	const boxes = "- [x] PORT-001 描述\n- [~] ~~PORT-002 描述~~\n- [~] ~~PORT-006 描述~~\n" +
@@ -205,8 +184,6 @@ func TestMilestoneTallyCoversTheM6CheckboxesToo(t *testing.T) {
 	}
 }
 
-// The tally is derived from the checkboxes, so a document with no checkboxes has
-// nothing to derive from. Both of these are green under a naive implementation.
 func TestMilestoneTallySaysSoWhenItHasLostItsSubject(t *testing.T) {
 	t.Parallel()
 	t.Run("no GEN items", func(t *testing.T) {

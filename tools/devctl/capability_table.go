@@ -12,70 +12,32 @@ import (
 	"time"
 )
 
-// 05 R-36's checker: a deployment variable that does not say what it blocks
-// fails CI.
-//
-// The example R-36 gives is the one that prompted it — DOWNLOAD_ARTIFACT_RETENTION
-// existed in .env.example, was read by the code, and no place at all said it
-// stops packaging. The capability table in apps/platform/cmd/api now says so,
-// and this compares the two.
-//
-// # Why it runs the binary
-//
-// The table is Go (R-36: 能力→前提的宣告放 Go) and this is a separate module, so
-// the choice was between parsing Go source and asking the program. Parsing would
-// make the checker agree with the table only as long as nobody wrote the literal
-// a different way; `--capabilities` prints the table the program actually holds,
-// before it reads or dials anything.
-//
-// # The ledger below is stock, not an extension point
-//
-// Same shape as db/query-owners.yaml's `allow:` and the design system's 偏離帳:
-// named, reasoned, and it may only get shorter. Every entry is a variable that
-// was already in .env.example on 2026-09-01 and does not yet say what it blocks.
-// A NEW variable has to go in the capability table — that is the whole ratchet.
 var capabilityLedger = []struct {
 	reason string
 	vars   []string
 }{
 	{
-		// These change HOW something behaves, never WHETHER it is there. A
-		// capability table row for them would have an empty 「沒有它會怎樣」.
+
 		reason: "不是能力的前提，是同一個能力的參數",
 		vars: []string{
 			"APP_URL", "COOKIE_INSECURE", "DEV_CORS_ORIGIN", "METRICS_ADDR",
 			"OBJSTORE_SSL", "SKILLHUB_CLEAN_MODE", "SKILLHUB_MODEL_GATEWAY_ADMIN_URL",
 			"SKILLHUB_RUN_MAX_BUDGET_USD", "SKILLHUB_RUN_TPM_LIMIT",
-			// URL import already works with no configuration at all
-			// (ingest.DefaultAllowedHosts() in cmd/api/main.go's
-			// importFetcherFromEnv). These two only loosen its host allowlist
-			// (extra hosts, plain http/loopback/RFC1918) for local stubs and
-			// E2E — never production. A capability row for them would have an
-			// empty 「沒有它會怎樣」 too: the capability they would attach to
-			// (URL import) already works without either one.
+
 			"IMPORT_ALLOW_INSECURE", "IMPORT_EXTRA_HOSTS",
 		},
 	},
 	{
-		// envx's onUnlessOff idiom: unset = enforced. Nothing is gated by their
-		// absence, so "what does it block" has no answer — turning one OFF is
-		// the action somebody has to write down, and that is a different check.
+
 		reason: "保護措施：未設定＝已啟用，所以它不擋任何能力（envx 的 onUnlessOff）",
 		vars:   []string{"GENERATE_QUOTA", "RATE_LIMIT", "RUN_QUOTA"},
 	},
 	{
-		// The API reads these only to disclose them on GET /policy/data-retention;
-		// the process that deletes is cmd/maintenance, which refuses to start
-		// without them. Two readers, two idioms, both already pinned by
-		// cmd/api/main_test.go.
+
 		reason: "由 cmd/maintenance 擁有（refuseUnlessSet），API 只是揭露它",
 		vars: []string{
 			"AUDIT_RETENTION", "FEEDBACK_RETENTION", "SKILL_DELETION_GRACE", "TRACE_RETENTION",
-			// CREDIT_RETENTION is the same shape and the same owner: only
-			// `maintenance purge-credit` reads it, and it refuses to run
-			// without it. It is the one in this bucket the API does not even
-			// disclose — GET /policy/data-retention says nothing about the
-			// ledger yet, which is a gap in the disclosure, not in the gating.
+
 			"CREDIT_RETENTION",
 		},
 	},
@@ -83,8 +45,7 @@ var capabilityLedger = []struct {
 		reason: "屬於別的行程或測試調具，不是這個 API 的部署變數",
 		vars: []string{
 			"LITELLM_API_KEY", "LITELLM_BASE_URL", "LITELLM_MASTER_KEY", "OPENAI_API_KEY",
-			// The gate test harness and the QA-002 corpus: read by tools/, never
-			// by cmd/api, and absent means those harnesses skip themselves.
+
 			"QA002_CORPUS", "SKILLHUB_E2E_EGRESS_NETWORK", "SKILLHUB_E2E_GATEWAY_KEY",
 			"SKILLHUB_E2E_GATEWAY_URL", "SKILLHUB_E2E_RUNTIME_IMAGE",
 			"SKILLHUB_E2E_SANDBOX_TOKEN", "SKILLHUB_E2E_SANDBOX_URL",
@@ -93,17 +54,10 @@ var capabilityLedger = []struct {
 		},
 	},
 	{
-		// Both ends live inside the launcher's process tree, so it mints them
-		// (05 R-36 第一段, category ①). Nobody supplies these by hand.
+
 		reason: "啟動器自己鑄造（R-36 第一段的第①類）",
 		vars:   []string{"SKILLHUB_TRACE_INGEST_SECRET", "SKILLHUB_TRACE_INGEST_URL"},
 	},
-	// The ⛔ bucket that used to sit here (12 variables that gate something but
-	// no capability said what) is gone: every one of them now has a capability
-	// row in apps/platform/cmd/api/capabilities.go (github_login, dev_login,
-	// beta_gate, object_store, generation_entry) or, for the two that are
-	// parameters rather than gates, moved into the first bucket above
-	// (05 R-36, closed 2026-09-05).
 }
 
 var envExampleVar = regexp.MustCompile(`(?m)^([A-Z][A-Z0-9_]*)=`)
@@ -139,16 +93,14 @@ func capabilityTableProblems(root string) []string {
 				"apps/platform/cmd/api/capabilities.go, or to capabilityLedger in this file with a reason "+
 				"(05 R-36)", name))
 	}
-	// The other direction: a capability standing on a variable nobody documents
-	// is a precondition an operator cannot discover.
+
 	for name := range declared {
 		if !inExample[name] {
 			problems = append(problems, fmt.Sprintf(
 				"capability table names %s, which .env.example does not document", name))
 		}
 	}
-	// A ledger entry for a variable that no longer exists is a claim nobody can
-	// check, and it makes the list look shorter than it is.
+
 	for name, reason := range excused {
 		if !inExample[name] {
 			problems = append(problems, fmt.Sprintf(
@@ -159,7 +111,6 @@ func capabilityTableProblems(root string) []string {
 	return problems
 }
 
-// declaredCapabilityVars asks the API binary for its table.
 func declaredCapabilityVars(root string) (map[string]bool, error) {
 	platform := filepath.Join(root, "apps", "platform")
 	if _, err := os.Stat(filepath.Join(platform, "go.mod")); err != nil {

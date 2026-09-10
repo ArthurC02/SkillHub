@@ -1,14 +1,5 @@
 package eval
 
-// The deterministic leg of EVAL-001: five of the six problem classes, decided by
-// rules over records the platform wrote itself. Nothing here calls a model, and
-// nothing here executes anything — a package is bytes handed to skillpkg.Validate,
-// a trace event is stored JSON, an artifact is a manifest row (evaluation-design
-// §2.5). Because the inputs are the platform's own, these five cannot be argued
-// with by anything that ran inside the sandbox.
-//
-// The sixth class, `effect`, is in judge.go. It is the only one no rule can answer.
-
 import (
 	"encoding/json"
 	"fmt"
@@ -19,8 +10,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
-// deterministicFindings runs all five rule checks. Order is the order EVAL-001
-// clause 1 lists the classes in, so the report reads the way the spec does.
 func (s *Service) deterministicFindings(m material) []Finding {
 	out := []Finding{}
 	out = append(out, specFindings(m)...)
@@ -32,15 +21,9 @@ func (s *Service) deterministicFindings(m material) []Finding {
 	return out
 }
 
-// specFindings reports what static validation says about the version that ran.
-// Re-validated rather than read from a stored verdict for the same reason
-// internal/run's gate B re-validates: the only persisted projection is a
-// warning-count for the catalogue UI, and a gate reading it would be reading a
-// cache of a decision instead of the decision.
 func specFindings(m material) []Finding {
 	if !m.reportOK {
-		// SEC-002's rule, restated: a check that could not be performed is not a
-		// check that passed. An unreadable package is not a clean one.
+
 		return []Finding{{
 			Category: CategorySpec, Severity: SeverityWarning,
 			Message: "the skill package could not be read back, so its specification " +
@@ -51,8 +34,7 @@ func specFindings(m material) []Finding {
 	out := []Finding{}
 	for _, f := range m.report.Findings {
 		if f.Severity == skillpkg.SeverityInfo {
-			// Disclosure, not a problem: scripts, URLs and dependency files are
-			// already shown by the import and permission surfaces.
+
 			continue
 		}
 		message := f.Code + ": " + f.Message
@@ -67,14 +49,6 @@ func specFindings(m material) []Finding {
 	return out
 }
 
-// activationFindings compares the skills the run mounted against the activations
-// the trace shows.
-//
-// The wording ceiling is a requirement, not a style choice (handoff 丙-4): the
-// Agent SDK message stream cannot express "offered and not chosen", so the only
-// honest statement about a missing activation is that no activation event
-// appeared. This function must never produce a sentence claiming the model saw
-// the skill and declined it.
 func activationFindings(m material) []Finding {
 	activated := map[string]bool{}
 	skipped := map[string]bool{}
@@ -125,8 +99,6 @@ func activationFindings(m material) []Finding {
 	}
 }
 
-// executionFindings reports how the run itself ended: the state machine's own
-// verdict plus every error event the trace carries.
 func executionFindings(m material) []Finding {
 	out := []Finding{}
 	severity := SeverityInfo
@@ -177,31 +149,6 @@ func executionFindings(m material) []Finding {
 	return out
 }
 
-// artifactFindings is handoff 丙-5 made checkable: the concrete M2 case was a run
-// that finished `succeeded`, activated its skill, had a complete trace, and wrote
-// nothing to /out/artifacts — its final reply was a question back to the user.
-//
-// Only the manifest is read. Nothing is unpacked and nothing is parsed by file
-// extension (evaluation-design §2.2).
-//
-// Filed under `execution` and not `effect`, although it is plainly about effect:
-// public.yaml reserves `effect` for the one category a model produces, and
-// deterministic_findings carries no `source` field, so a rule-written `effect`
-// entry would read as a model verdict. Whether the task needed a file is the
-// judge's question; that a successful run wrote none is an execution fact.
-//
-// There are three states here and not two (02:EVAL-001, 2026-08-23). An empty
-// manifest can mean the run wrote nothing, or that what it wrote has since been
-// deleted or aged past its retention — and those are opposite facts about the
-// same run. The remedy taken is the clause's option ②: the second case is a
-// state of its own in the report, worded so it cannot be read as "no output".
-// In ADR-041 §2.9 terms it is 未測量-shaped and never `0`.
-//
-// Option ① (refuse the re-evaluation outright) was rejected: deletion is
-// irreversible and user-initiated, so refusing would mean a run whose one
-// deleted file of three permanently loses the append-only re-evaluation
-// ADR-026 grants — and it would answer "the evidence is thinner" by producing
-// no judgement at all, on criteria that may not depend on a file.
 func artifactFindings(m material) []Finding {
 	var out []Finding
 	if m.absent.Any() {
@@ -216,10 +163,7 @@ func artifactFindings(m material) []Finding {
 	}
 	if len(m.artifacts) == 0 {
 		if m.absent.Any() || m.run.Status != "succeeded" {
-			// A run that did not finish has an obvious reason to have produced
-			// nothing, and saying so twice adds no information. Neither does a
-			// run whose files were removed: the sentence above already says why
-			// the manifest reads empty, and this one would contradict it.
+
 			return out
 		}
 		return []Finding{{
@@ -242,11 +186,6 @@ func artifactFindings(m material) []Finding {
 	})
 }
 
-// absenceReasons names why the rows cannot be read, in the two ways they differ
-// to a reader who has to act: one is the workspace's own deletion (02:WS-002)
-// and the other is retention running out (NFR-002a). Only reasons with a count
-// are named — a "0 expired" in the sentence would invite the reading that
-// something was checked and found intact.
 func absenceReasons(a ArtifactAbsence) string {
 	reasons := make([]string, 0, 2)
 	if a.Deleted > 0 {
@@ -258,8 +197,6 @@ func absenceReasons(a ArtifactAbsence) string {
 	return strings.Join(reasons, ", ")
 }
 
-// compatibilityFindings compares the measured (version, runtime image) pair of
-// 0022 against the image this run actually ran on.
 func compatibilityFindings(m material) []Finding {
 	if m.compat == nil {
 		return []Finding{{
@@ -294,12 +231,6 @@ func compatibilityFindings(m material) []Finding {
 	}}
 }
 
-// costFindings reports what the run's own usage events add up to — and that the
-// total is a lower bound (handoff 丙-3).
-//
-// This is the run's cost, never the evaluation's. The two are spent by different
-// workloads under different keys and are never summed into one number; the
-// evaluation's own spend lives in evaluations.cost_usd.
 func costFindings(m material) []Finding {
 	if m.summary.Usage == nil {
 		return []Finding{{
@@ -326,13 +257,6 @@ func costFindings(m material) []Finding {
 	}}
 }
 
-// traceRef cites one trace event. The (id, occurred_at) pair is the whole address:
-// trace_events is partitioned by time and keyed on both.
-//
-// `match: exact` because the excerpt here is the payload itself, copied out of
-// the platform's own record with no model claim anywhere in it. The findings
-// this mints are not citations that have to be believed; verify() overwrites
-// the field when a judge's quote is what is being placed (ADR-043 §1).
 func traceRef(e trace.EventView, kind string) EvidenceRef {
 	excerpt, truncated := cut(string(e.Payload), excerptLimit)
 	return EvidenceRef{
@@ -346,15 +270,6 @@ func traceRef(e trace.EventView, kind string) EvidenceRef {
 	}
 }
 
-// artifactRef cites one manifest row. No byte range: the bytes live inside the
-// attempt's archive and this pipeline never opens it, so there is no offset that
-// would mean anything.
-//
-// `match: not_checked`, not `exact`: the excerpt is the manifest row this
-// package read, and no quote of the file's *contents* was ever compared to
-// anything — the archive stays shut in the control plane. Stamping it `exact`
-// claimed a verification that never happened, which is the same defect on the
-// other side of the ledger from stamping it `not_found` (ADR-043 §3).
 func artifactRef(a ArtifactFacts) EvidenceRef {
 	return EvidenceRef{
 		Kind:         KindArtifact,

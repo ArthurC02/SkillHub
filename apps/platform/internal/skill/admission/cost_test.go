@@ -12,7 +12,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 )
 
-// fakeLedger records what ingest handed the ledger instead of writing it.
 type fakeLedger struct {
 	events []credit.CostEvent
 	err    error
@@ -31,11 +30,6 @@ func (f *fakeLedger) kinds() []string {
 	return out
 }
 
-// CRED-005 clause 1, the index_enrich row. Enrichment is TWO paid calls — the
-// enrichment itself and the embedding of what it produced — and each one gets
-// its own cost event. Collapsing them into one row would make the per-call
-// statistics behind the start gate (ADR-068 decision 8) describe a call that
-// does not exist.
 func TestEnrichmentRecordsOneCostEventPerPaidCall(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
 	ledger := &fakeLedger{}
@@ -64,16 +58,11 @@ func TestEnrichmentRecordsOneCostEventPerPaidCall(t *testing.T) {
 		}
 	}
 	if ledger.events[0].IdempotencyKey == ledger.events[1].IdempotencyKey {
-		// Two calls sharing a key means the second row is silently dropped by
-		// the unique constraint, which is the failure this pair of rows exists
-		// to avoid.
+
 		t.Error("both calls used the same idempotency key")
 	}
 }
 
-// The enrichment call still happened when the embedding after it fails, so its
-// cost is still recorded. Enrichment degrades to a pending document rather
-// than an error (enrich.go), and the ledger follows the call, not the outcome.
 func TestAFailedEmbeddingStillLeavesTheEnrichmentCallRecorded(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusInternalServerError}
 	ledger := &fakeLedger{}
@@ -87,9 +76,6 @@ func TestAFailedEmbeddingStillLeavesTheEnrichmentCallRecorded(t *testing.T) {
 	}
 }
 
-// CRED-005 clause 2's counter-test on this path. The enrichment request
-// carries the whole of SKILL.md and the response carries model prose; neither
-// may reach the spend ledger.
 func TestEnrichmentCostEventsCarryNoPackageOrModelText(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
 	ledger := &fakeLedger{}
@@ -108,9 +94,6 @@ func TestEnrichmentCostEventsCarryNoPackageOrModelText(t *testing.T) {
 	}
 }
 
-// A ledger that refuses must not turn a successful enrichment into a pending
-// document: the enrichment is what the import path needs, and the spend row is
-// what accounting needs.
 func TestALedgerFailureDoesNotDegradeTheEnrichment(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
 	s := &Service{LLM: stub.start(t), Credit: &fakeLedger{err: context.DeadlineExceeded}}
@@ -120,10 +103,6 @@ func TestALedgerFailureDoesNotDegradeTheEnrichment(t *testing.T) {
 	}
 }
 
-// CRED-005 clause 1, the generate row. The cost is recorded by the function
-// that makes the call, so a two-attempt generation leaves two rows: the retry
-// is not free (ADR-047 決策 1) and a ledger that priced a generation instead of
-// its calls would report the second attempt as costing nothing.
 func TestEachGenerationCallRecordsItsOwnCostEvent(t *testing.T) {
 	const body = `{"skill":{"name":"a","description":"b","body":"c"},` +
 		`"model":"gen-model","prompt_version":"generate/v3",` +
@@ -143,8 +122,7 @@ func TestEachGenerationCallRecordsItsOwnCostEvent(t *testing.T) {
 		t.Fatalf("cost event kinds = %v, want two %q", got, credit.KindGenerate)
 	}
 	e := ledger.events[0]
-	// $0.0045 is 4500 micro-dollars — ADR-068's own worked example for a
-	// single generation.
+
 	if e.UsdMicros != 4500 || e.Estimated {
 		t.Errorf("usd_micros = %d estimated = %v, want 4500 / false", e.UsdMicros, e.Estimated)
 	}
@@ -156,7 +134,6 @@ func TestEachGenerationCallRecordsItsOwnCostEvent(t *testing.T) {
 	}
 }
 
-// The task description is the user's own words and never reaches the ledger.
 func TestGenerationCostEventCarriesNoTaskDescription(t *testing.T) {
 	const secret = "an-unannounced-internal-project-name"
 	ledger := &fakeLedger{}

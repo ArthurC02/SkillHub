@@ -1,15 +1,3 @@
--- ROLLOUT: stop every pre-0049 maintenance process and drain every old API
--- object writer before this migration; do not restart either. Old APIs can PUT
--- bytes before their fenced INSERT, which a database trigger cannot protect.
--- the exact drain sequence is docs/runbooks/account-purge-write-fence-rollout.md.
---
--- Serialize every new workspace-owned row with account deletion. A producer
--- takes this shared transaction lock before its INSERT becomes visible; the
--- purge holds the matching exclusive session lock from its final eligibility
--- check through object deletion and the database transaction. This closes the
--- gap left by HTTP authentication: a request may already be in flight when an
--- account becomes due for deletion.
-
 CREATE FUNCTION fence_workspace_write_during_account_purge()
 RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
@@ -53,9 +41,6 @@ BEGIN
 END;
 $$;
 
--- These are the mutable private drafts whose contents can change without
--- creating another row. Operational updates (outbox publication, cleanup
--- bookkeeping, state transitions) deliberately remain available.
 CREATE TRIGGER account_purge_update_fence
 BEFORE UPDATE ON skills
 FOR EACH ROW EXECUTE FUNCTION fence_workspace_write_during_account_purge();
@@ -68,8 +53,6 @@ CREATE TRIGGER account_purge_update_fence
 BEFORE UPDATE ON datasets
 FOR EACH ROW EXECUTE FUNCTION fence_workspace_write_during_account_purge();
 
--- Session creation has no workspace_id column, but it is another in-flight
--- write that must not recreate account-owned state after the purge snapshot.
 CREATE FUNCTION fence_session_write_during_account_purge()
 RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE

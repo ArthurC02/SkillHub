@@ -181,7 +181,7 @@ MVP 先提供：
 
 - `SelfHostedProvider`：執行上傳資料與公開資源。
 
-未來依需求訊號加入 `LocalRunnerProvider`（本機工具與私有資料）、遠端 MCP 支援與受管理第三方 Provider，並依 Runtime、資料區域、隱私、安全等級及成本選擇。
+未來依需求訊號加入 LocalRunnerProvider（本機工具與私有資料）、遠端 MCP 支援與受管理第三方 Provider，並依 Runtime、資料區域、隱私、安全等級及成本選擇。
 
 ## 10. 里程碑
 

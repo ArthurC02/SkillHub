@@ -8,21 +8,10 @@ import (
 	"time"
 )
 
-// Registry.Capability held the registry mutex across the HTTP call to the node.
-// The provider client's own timeout is 30 seconds, so one black-holed node
-// serialised every scheduling decision and every pre-run permission summary in
-// the process behind it: SelectExcluding on each dispatch, providerSummary on
-// each preflight screen, EvaluateOrphanThresholds every five minutes and
-// detectP02Breach every thirty seconds all queue on the same lock. The API and
-// the worker each hold their own Registry, so the visible symptom was "one node
-// went dark and the preflight endpoint stopped answering for everybody".
-//
-// The assertion is about the lock and nothing else: a second caller asking about
-// a DIFFERENT provider must get its answer while the first is still hanging.
 func TestCapabilityDoesNotHoldTheRegistryLockAcrossTheNetwork(t *testing.T) {
 	blocked := make(chan struct{})
 	hang := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		<-blocked // a TCP black hole with a socket, which is the case that hurt
+		<-blocked
 	}))
 	defer hang.Close()
 	defer close(blocked)
@@ -37,7 +26,6 @@ func TestCapabilityDoesNotHoldTheRegistryLockAcrossTheNetwork(t *testing.T) {
 	fast := NewProvider("quick", quick.URL, "")
 	registry := NewRegistry(slow, fast)
 
-	// The first caller is inside p.Capability and staying there.
 	entered := make(chan struct{})
 	go func() {
 		close(entered)
@@ -61,9 +49,6 @@ func TestCapabilityDoesNotHoldTheRegistryLockAcrossTheNetwork(t *testing.T) {
 	}
 }
 
-// The TTL cache still works, failures included: a provider that is down must not
-// be re-probed once per scheduling decision, which is the whole reason the cache
-// exists and the thing a naive "just drop the lock" change loses.
 func TestCapabilityStillCachesTheAnswerAndTheFailure(t *testing.T) {
 	var hits int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +70,6 @@ func TestCapabilityStillCachesTheAnswerAndTheFailure(t *testing.T) {
 		t.Errorf("the node was probed %d times for 5 sequential reads; the failure cache is not holding", hits)
 	}
 
-	// And the TTL is real: Refresh drops it, so the next read asks again.
 	registry.Refresh()
 	if _, err := registry.Capability(context.Background(), p); err == nil {
 		t.Fatal("a 500 from the node was reported as a capability")

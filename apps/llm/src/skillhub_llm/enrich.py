@@ -1,13 +1,7 @@
-"""Index-time LLM enrichment for Skill search documents (ADR-013 section 1).
+"""Index-time LLM enrichment for Skill search documents.
 
-Runs once per Skill Version. Returns the ADR-013 enrichment whitelist only:
-plain-language summary, example task sentences, and input/output/tool/dependency
-tags. Trust, risk, safety and quality fields are deliberately absent - they are
-never model-derived.
-
-One gateway call, one attempt: the client is built with max_retries=0, so the
-timeout below is the whole ceiling and not a third of it. Retry policy is Go's
-(ADR-016 rule 6).
+One gateway call, one attempt: the client is built with max_retries=0, so
+the timeout below is the whole ceiling and not a third of it.
 """
 
 from __future__ import annotations
@@ -27,54 +21,12 @@ from .enrich_checks import Finding, check_enrichment
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.enrich")
 
-# PDM-003 model tier: index-time enrichment runs once per Skill Version and its
-# output becomes a primary retrieval field, so quality outweighs cost.
 ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
-# v2 adds `limitations`; v3 adds the locale gloss rule; v4 adds the three
-# restatement rules the CONTENT-005 audit found the model breaking (defaults
-# written as requirements, quality adjectives on outputs, capabilities
-# extrapolated to neighbouring actions); v5 makes the runtime a package's own
-# scripts are written for a stated requirement, after the CONTENT-007/008
-# baseline found 11 of 33 Python-dependent Skills naming the dependency in
-# `tags` but not in `limitations` - the reader sees the limitations block.
-# v7 (2026-09-06, F1 ≥ 0.95 goal): the task examples are the retrieval bridge
-# and 3-5 of them left the golden set's misses uncovered - every miss was a
-# phrasing the examples never used (a scanned file for a PDF Skill, a TSV for a
-# stats Skill, "our signups dropped" for an analytics Skill). 6-8 examples with
-# a required spread: format-naming ones (with the everyday synonyms), format-free
-# ones, one situational, one per distinct operation; tags name concrete formats.
-# v7.1 (two more required sentences: the runtime named as its users would, the
-# output's shape asked for without the Skill's name) measured WORSE - all F1
-# 0.955 -> 0.937 - and was reverted; the extra sentences pull near-synonym
-# documents onto each other's queries (report §15.6).
-# v6 forbids composing two separately stated facts into one, after `docx` failed
-# CONTENT-005 twice under v5 for joining "extracts .dotx template content" and
-# "converts .docx to markdown with pandoc" into a single .dotx-to-markdown
-# pipeline the document never describes. Rule 3 already covered extrapolating
-# *sideways* to a neighbouring format; this is extrapolating *along* a chain, and
-# it needs saying separately because each half of the sentence is individually
-# true, which is exactly what makes it read as supported.
-# Bumped rather than edited in place: the version is what tells a stored
-# enrichment written under the old prompt from one written under this, and
-# reindex uses it to find the stale rows.
-#
-# OWED TO v7, do not lose: content-review-report.md 12.4 condition (b) asks the
-# next bump to also carry a general rule that an English example sentence naming
-# a proper noun uses its English name (the audit found a Simplified-Chinese
-# typeface name inside an English example). It is not in v6 because v6 landed in
-# a parallel batch and its text is already generated and reviewed - editing v6
-# now would make the version string stop identifying which prompt wrote what.
 PROMPT_VERSION = "enrich-skill/v7"
 
-# The ceiling on a single gateway call, and the only one there is. Go's deadline
-# (75s, ingest/enrich.go) is client-side: abandoning the HTTP request does not
-# reach the gateway, does not stop the call and does not stop it being billed.
-# So this number, times the client's attempt count, is what actually bounds the
-# work - which is why the client is built with max_retries=0.
 # budget-ceiling: enrich.LLM_TIMEOUT_SECONDS
 LLM_TIMEOUT_SECONDS = 60.0
 
-# Delimiter isolating untrusted package content from instructions (TM-SCN-02).
 DATA_TAG = "untrusted_skill_document"
 
 SYSTEM_PROMPT = """You write search metadata for an Agent Skill catalogue.
@@ -173,43 +125,27 @@ class SkillTags(BaseModel):
 
 
 class Enrichment(BaseModel):
-    """ADR-013 enrichment whitelist. Also the JSON schema handed to the model."""
+    """The enrichment whitelist. Also the JSON schema handed to the model."""
 
     model_config = ConfigDict(extra="forbid")
 
     summary: str
     task_examples: list[TaskExample]
     tags: SkillTags
-    # Inside the ADR-013 whitelist because it restates what the document says,
-    # exactly as `summary` does. Inferred limits, and any risk/safety/quality
-    # judgement, stay out - those are never model-derived.
     limitations: list[str]
 
 
 class EnrichSkillResponse(Enrichment):
     model: str
     prompt_version: str
-    # Reported for the same reason `prompt_version` is. Enrichment feeds a
-    # primary retrieval field and gets rebuilt when the prompt moves; an
-    # unpinned sampler means two rebuilds of one version can disagree with
-    # nothing recorded saying why.
     temperature: float | None = None
     seed: int | None = None
-    # Index-time enrichment runs once per Skill Version on the flagship tier and
-    # had no bill of any kind: neither a per-call reading here nor an
-    # `operation` tag at the gateway, so the catalogue's own model spend was the
-    # one cost that grew with the catalogue and appeared in no ledger.
     usage: GatewayUsage | None = None
-    # Deterministic findings on this enrichment, from enrich_checks (05 R-34).
-    # Advisory: this service reports, Go decides what a finding costs a field
-    # (iron rule 6). Empty means every rule that can be checked without a model
-    # passed - not that the enrichment is right, because the rules that need one
-    # are not attempted here.
     checks: list[Finding] = Field(default_factory=list)
 
 
 def _client() -> AsyncOpenAI:
-    """OpenAI-compatible client pointed at the LiteLLM gateway (Iron Rule 8)."""
+    """OpenAI-compatible client pointed at the LiteLLM gateway."""
     return client(LLM_TIMEOUT_SECONDS)
 
 
@@ -234,8 +170,7 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
     client = _client()
     system = SYSTEM_PROMPT.format(tag=DATA_TAG, language=req.language)
     try:
-        # Raw response, because the cost of the call is in a header
-        # (`x-litellm-response-cost`) and never in the body.
+        # Raw response: the call's cost is in a response header, never in the body.
         raw = await client.chat.completions.with_raw_response.create(
             model=ENRICH_MODEL,
             messages=[
@@ -257,18 +192,11 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
         completion = raw.parse()
     except OpenAIError as e:
         logger.exception("enrich-skill: gateway call failed")
-        # Fixed string: the SDK's exception message carries the response body,
-        # and LiteLLM's error bodies routinely quote the request payload back -
-        # which here is the package's own SKILL.md. Go puts the first KiB of
-        # this into its error string (llmclient/client.go), so the detail is a
-        # cross-process channel. The exception itself stays in the log line
-        # above, where debugging actually reads it.
         raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:
         enrichment = Enrichment.model_validate_json(completion.choices[0].message.content or "")
     except (ValidationError, IndexError, AttributeError) as e:
-        # Never echo model output back: it may carry injected content (TM-SCN-02).
         logger.warning("enrich-skill: model returned unusable output")
         raise HTTPException(
             status_code=502, detail="enrichment model returned malformed output"

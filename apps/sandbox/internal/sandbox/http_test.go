@@ -19,9 +19,6 @@ import (
 
 const testToken = "test-provider-token"
 
-// fakeDriver stands in for Docker. Only the container work is faked: the
-// idempotency key, the state machine, the wall clock and destroy semantics
-// under test are the real ones from Manager.
 type fakeDriver struct {
 	mu                sync.Mutex
 	starts            map[string]int
@@ -34,20 +31,16 @@ type fakeDriver struct {
 	startRelease      chan struct{}
 	removeDeadlines   []bool
 	readTraceFailures int
-	// trace is what the workload has written to its trace file so far, keyed by
-	// provider_run_id. Set by a test to drive the collector (TRACE-002).
+
 	trace map[string][]byte
-	// artifacts is the tar stream the workload left in /out/artifacts (SBX-008).
+
 	artifacts map[string][]byte
-	// done and released are the collection handshake: `done` is a workload
-	// waiting to be collected, `released` counts how often it was let go.
+
 	done     map[string]bool
 	released map[string]int
-	// adopted is what a restarted provider finds still running on the node.
+
 	adopted []sandbox.Adopted
-	// rootless is what this driver reports about the account its workloads run
-	// as. Settable so a test can drive the false answer, which is the one a
-	// dispatch gate acts on.
+
 	rootless bool
 }
 
@@ -96,8 +89,6 @@ func (f *fakeDriver) Wait(ctx context.Context, id string) (sandbox.Outcome, erro
 	}
 }
 
-// Stop mimics the runtime: the workload goes down, so the pending Wait returns
-// with the exit code a killed process leaves behind.
 func (f *fakeDriver) Stop(_ context.Context, id string, grace time.Duration) error {
 	f.mu.Lock()
 	f.stops[id] = grace
@@ -134,17 +125,12 @@ func (f *fakeDriver) ReadTrace(_ context.Context, id string, offset int64) ([]by
 	return f.trace[id][offset:end], end < len(f.trace[id]), nil
 }
 
-// ReadArtifacts answers "the workload wrote nothing", which is the ordinary case
-// and the one every contract test wants: artifact collection has its own test.
 func (f *fakeDriver) ReadArtifacts(_ context.Context, id string) ([]byte, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.artifacts[id], nil
 }
 
-// WorkloadDone / ReleaseWorkload: this fake's workloads never wait to be
-// collected, so the collection handshake never triggers and the lifecycle rules
-// under test are the ones a run with no output takes.
 func (f *fakeDriver) WorkloadDone(_ context.Context, id string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -158,7 +144,6 @@ func (f *fakeDriver) ReleaseWorkload(_ context.Context, id string) error {
 	return nil
 }
 
-// writeTrace is the workload appending to its own trace file.
 func (f *fakeDriver) writeTrace(id string, lines ...string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -167,8 +152,6 @@ func (f *fakeDriver) writeTrace(id string, lines ...string) {
 	}
 }
 
-// appendRawTrace writes bytes with no line terminator, which is what a partly
-// flushed append looks like to a collector reading the file mid-write.
 func (f *fakeDriver) appendRawTrace(id, raw string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -178,8 +161,7 @@ func (f *fakeDriver) appendRawTrace(id, raw string) {
 func (f *fakeDriver) Adopt(context.Context) ([]sandbox.Adopted, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	// The containers are there whether or not this process started them, so an
-	// adopted sandbox can be exited by a test exactly like a dispatched one.
+
 	for _, a := range f.adopted {
 		f.release[a.ProviderRunID] = make(chan sandbox.Outcome, 1)
 	}
@@ -261,9 +243,6 @@ func do(t *testing.T, h http.Handler, method, path string, body any, token strin
 	return rec, run
 }
 
-// Idempotency is what makes a dispatch safe to retry when the worker cannot
-// tell whether the first one arrived (ADR-004). The second call must not open a
-// second sandbox — the assertion on starts is the whole point of the test.
 func TestCreateIsIdempotentOnRunIDAndAttempt(t *testing.T) {
 	drv, h := newServer(t)
 	req := runRequest()
@@ -284,8 +263,6 @@ func TestCreateIsIdempotentOnRunIDAndAttempt(t *testing.T) {
 	}
 }
 
-// A repeat carrying different content is a caller bug; serving the first body's
-// run would make a superseded attempt look dispatched.
 func TestCreateRejectsSameKeyWithDifferentContent(t *testing.T) {
 	_, h := newServer(t)
 	req := runRequest()
@@ -301,8 +278,6 @@ func TestCreateRejectsSameKeyWithDifferentContent(t *testing.T) {
 	}
 }
 
-// A different attempt of the same run is a different key and gets its own
-// sandbox: retries must not collapse into the first attempt.
 func TestCreateTreatsEachAttemptSeparately(t *testing.T) {
 	_, h := newServer(t)
 	first := runRequest()
@@ -320,9 +295,6 @@ func TestCreateTreatsEachAttemptSeparately(t *testing.T) {
 	}
 }
 
-// The caller polls on an interval and a run can finish between the read and the
-// cancel; making that race an error would turn a timing window into a failure
-// the worker has to special-case.
 func TestCancelOnTerminalRunStillAnswers202(t *testing.T) {
 	drv, h := newServer(t)
 	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
@@ -358,8 +330,6 @@ func TestCancelRunningRunReachesCancelled(t *testing.T) {
 	}
 }
 
-// Destroy has no 404 and no second-call failure: a worker that crashed
-// mid-cleanup has to be able to retry it (iron rule 9).
 func TestDestroyIsIdempotentAndHasNo404(t *testing.T) {
 	drv, h := newServer(t)
 	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
@@ -377,7 +347,7 @@ func TestDestroyIsIdempotentAndHasNo404(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("destroy of an unknown handle: got %d, want 204", rec.Code)
 	}
-	// The run is gone from the provider's records, so reading it is a 404.
+
 	if rec, _ := do(t, h, "GET", "/runs/"+run.ProviderRunID, nil, testToken); rec.Code != http.StatusNotFound {
 		t.Errorf("read after destroy: got %d, want 404", rec.Code)
 	}
@@ -432,7 +402,6 @@ type errRemove struct{}
 
 func (errRemove) Error() string { return "still held" }
 
-// Every route is behind the token, including the ones that only read.
 func TestEveryRouteRefusesWithoutTheProviderToken(t *testing.T) {
 	_, h := newServer(t)
 	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
@@ -454,8 +423,6 @@ func TestEveryRouteRefusesWithoutTheProviderToken(t *testing.T) {
 	}
 }
 
-// 422, not 400: a capability refusal is classified so the platform can tell it
-// from a transient failure without parsing message strings.
 func TestCreateRefusesLimitsItCannotEnforce(t *testing.T) {
 	_, h := newServer(t)
 	req := runRequest()
@@ -524,8 +491,6 @@ func TestListServesOnlyActiveTrue(t *testing.T) {
 	}
 }
 
-// `result` is present exactly when the state is terminal, and never in a
-// listing.
 func TestResultAppearsOnlyOnTerminalSingleReads(t *testing.T) {
 	drv, h := newServer(t)
 	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
@@ -550,9 +515,6 @@ func TestResultAppearsOnlyOnTerminalSingleReads(t *testing.T) {
 	}
 }
 
-// A workload that ran to its own end and reported failure is `completed` with
-// result status `failed` — not `failed`, which means the provider could not
-// carry the attempt through.
 func TestNonZeroExitIsCompletedWithFailedResult(t *testing.T) {
 	drv, h := newServer(t)
 	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
@@ -567,8 +529,6 @@ func TestNonZeroExitIsCompletedWithFailedResult(t *testing.T) {
 	}
 }
 
-// The wall clock is the provider enforcing a limit against the attempt: state
-// failed, result timed_out (RUN-004).
 func TestWallClockStopsTheRunAsFailedTimedOut(t *testing.T) {
 	drv, h := newServer(t)
 	req := runRequest()
@@ -586,8 +546,7 @@ func TestWallClockStopsTheRunAsFailedTimedOut(t *testing.T) {
 	if final.Result.Error == nil || final.Result.Error.Class != sandbox.ClassTimeout {
 		t.Errorf("error = %+v, want class timeout", final.Result.Error)
 	}
-	// The grace window handed to the runtime is the soft-to-hard gap: the time
-	// PDM-005 5.2 reserves for a cooperative stop to collect artifacts.
+
 	drv.mu.Lock()
 	grace := drv.stops[run.ProviderRunID]
 	drv.mu.Unlock()
@@ -596,8 +555,6 @@ func TestWallClockStopsTheRunAsFailedTimedOut(t *testing.T) {
 	}
 }
 
-// A provision failure is the provider's own: state failed, class provision, and
-// no sandbox left behind for the caller to guess about.
 func TestStartFailureIsAProvisionError(t *testing.T) {
 	drv, h := newServer(t)
 	drv.startErr = errRemove{}
@@ -640,8 +597,6 @@ func TestPostStartRollbackUsesABoundedCleanupContext(t *testing.T) {
 	}
 }
 
-// Secrets this provider injected must not come back out through the workload's
-// own output (iron rule 11).
 func TestWorkloadOutputIsScrubbedOfInjectedSecrets(t *testing.T) {
 	drv, h := newServer(t)
 	req := runRequest()
@@ -663,11 +618,6 @@ func TestWorkloadOutputIsScrubbedOfInjectedSecrets(t *testing.T) {
 	}
 }
 
-// The secrets list cannot survive a provider restart: an adopted attempt is
-// rebuilt from container labels, and a label is world-readable on the node, so
-// the Virtual Key was never in one. The output that comes back from such an
-// attempt is therefore unmaskable, and unmaskable output is withheld rather
-// than stored and displayed (iron rule 11, NFR-002).
 func TestAdoptedRunWithholdsOutputItCannotMask(t *testing.T) {
 	drv := newFakeDriver()
 	const id = "adopted-handle"
@@ -749,15 +699,6 @@ func waitForTerminal(t *testing.T, h http.Handler, id string) sandbox.ProviderRu
 	return sandbox.ProviderRun{}
 }
 
-// TestCapabilityReportsTheDriversRootlessDetection: isolation.rootless is what
-// the dispatch gate refuses a provider on (schedule.go: "does not run workloads
-// unprivileged"), and it used to be the literal `true` written into every
-// capability response by both drivers. localdrv has no second account to drop
-// to, so on a clean-mode node that constant was a claim about the operator's
-// own login that nothing had checked.
-//
-// Both directions are asserted: a driver saying false has to reach the wire, or
-// the gate has nothing to act on.
 func TestCapabilityReportsTheDriversRootlessDetection(t *testing.T) {
 	for _, rootless := range []bool{true, false} {
 		drv := newFakeDriver()

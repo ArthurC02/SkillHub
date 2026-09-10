@@ -1,9 +1,3 @@
-// Run Trace ingestion and reading, end to end through the real route table
-// (TRACE-002~008). The producer is simulated - a sandbox posting a batch to the
-// ingestion URL it was handed - because the pipeline being tested here is the
-// platform's half: token, scope, masking, idempotency, ordering and the two
-// read modes. The real container half is exercised by
-// apps/sandbox and by the docker end-to-end run in docs/plans/mvp/m2.
 package apiserver_test
 
 import (
@@ -24,12 +18,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-// --- seeding -----------------------------------------------------------------
-
-// seedRun writes a queued run straight into the database. These tests are about
-// the trace, so the run is a fixture: going through POST /skills/{id}/runs would
-// couple them to scheduling, permission confirmation and the queue, none of
-// which decides anything here.
 func seedRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string) string {
 	t.Helper()
 	ctx := context.Background()
@@ -57,9 +45,6 @@ func seedRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string) stri
 		t.Fatal(err)
 	}
 
-	// The first transition, as Create writes it. Without it the general view has
-	// no progress steps, and the fixture would be testing a run shape that the
-	// API cannot produce.
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO run_status_transitions (run_id, workspace_id, to_status, reason)
 		VALUES ($1, $2, 'queued', 'run requested')`,
@@ -70,9 +55,6 @@ func seedRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string) stri
 	return runID
 }
 
-// --- producer side -----------------------------------------------------------
-
-// event builds one wire event the way the sandbox harness does.
 func event(runID string, attempt, seq int, eventType string, payload string) string {
 	return fmt.Sprintf(`{
 		"schema_version": "1.0",
@@ -91,9 +73,6 @@ func event(runID string, attempt, seq int, eventType string, payload string) str
 		time.Now().UTC().Format(time.RFC3339Nano), eventType, payload)
 }
 
-// deterministicEventID makes a re-post of "the same event" actually the same
-// event: the idempotency key is the producer's event_id, so a test for
-// at-least-once delivery has to keep it stable across the two posts.
 func deterministicEventID(runID string, attempt, seq int) string {
 	return fmt.Sprintf("%s%02d%02d", runID[:len(runID)-4], attempt, seq)
 }
@@ -106,8 +85,6 @@ type ingestReport struct {
 	Reasons   []string `json:"reasons"`
 }
 
-// ingest posts a batch the way sandboxd does: no session, no provider token,
-// just the signed URL it was handed in its RunRequest.
 func (a *api) ingest(t *testing.T, runID string, attempt int, events ...string) (int, ingestReport) {
 	t.Helper()
 	var runUUID pgtype.UUID
@@ -130,8 +107,6 @@ func (a *api) ingestTo(t *testing.T, url string, events ...string) (int, ingestR
 	_ = json.NewDecoder(resp.Body).Decode(&report)
 	return resp.StatusCode, report
 }
-
-// --- reader side -------------------------------------------------------------
 
 type traceStream struct {
 	Attempt    int     `json:"attempt"`
@@ -183,8 +158,7 @@ type generalView struct {
 		InputTokens int64  `json:"input_tokens"`
 		CostCredits *int64 `json:"cost_credits"`
 	} `json:"usage"`
-	// Two fields since 2026-09-01, not one pre-joined "<status>: <reason>"
-	// string (04 丙-115 ①): writing a status for a reader is the surface's job.
+
 	Steps []struct {
 		Status string `json:"status"`
 		Reason string `json:"reason"`
@@ -207,15 +181,6 @@ func (c *client) advancedTraceAfter(t *testing.T, runID string, after int64) (in
 	return resp.StatusCode, out
 }
 
-// One endpoint, one answer to "this violates the schema".
-//
-// `after` used to be parsed inside the `advanced` arm of the mode switch, so
-// `?mode=general&after=-5` was answered with the general view and a 200 while
-// `?mode=advanced&after=-5` was a 400. Same parameter, same illegal value, two
-// different answers depending on a *different* parameter -- and the 200 is the
-// dangerous half, because a caller who paged wrongly got a page that looked
-// right. The table drives both modes on purpose: an implementation that fixed
-// only the reported case would pass a test that only asked about that case.
 func TestATraceCursorIsRefusedWhicheverViewWasAskedFor(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -253,10 +218,6 @@ func (c *client) generalTrace(t *testing.T, runID string) (int, generalView) {
 	return resp.StatusCode, out
 }
 
-// --- tests -------------------------------------------------------------------
-
-// TRACE-005 plus TRACE-008's idempotency, in one pass because they are the two
-// things that must hold on every single write.
 func TestTraceIngestionMasksBeforeStorageAndDedupesOnResend(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -279,14 +240,11 @@ func TestTraceIngestionMasksBeforeStorageAndDedupesOnResend(t *testing.T) {
 		t.Fatalf("first push: got %d %+v, want 202 with 1 stored", code, report)
 	}
 
-	// At-least-once delivery: the same batch again must change nothing.
 	code, report = a.ingest(t, runID, 1, toolCall)
 	if code != http.StatusAccepted || report.Stored != 0 || report.Duplicate != 1 {
 		t.Fatalf("re-push: got %d %+v, want 202 with 0 stored and 1 duplicate", code, report)
 	}
 
-	// event_id is the key by itself. A producer retry with a changed clock must
-	// not bypass dedupe by moving the partition key.
 	var shifted map[string]any
 	if err := json.Unmarshal([]byte(toolCall), &shifted); err != nil {
 		t.Fatal(err)
@@ -325,8 +283,6 @@ func TestTraceIngestionMasksBeforeStorageAndDedupesOnResend(t *testing.T) {
 		t.Error("masked_fields is empty although a value was redacted")
 	}
 
-	// Iron rule 11, checked at the source rather than through the API: nothing
-	// unmasked is in the column at all.
 	var raw string
 	if err := pool.QueryRow(context.Background(),
 		`SELECT payload::text FROM trace_events WHERE run_id = $1`, mustUUID(t, runID)).Scan(&raw); err != nil {
@@ -524,10 +480,6 @@ func TestEvaluationTraceSelectionIsBoundedAndCanonicallyOrdered(t *testing.T) {
 	}
 }
 
-// dumpStoredEvents writes the stored rows back out as wire envelopes, so
-// tools/contracts/validate_trace_events.py can check what the pipeline actually
-// persists - masked and all - against the schema, rather than only the schema's
-// own examples.
 func dumpStoredEvents(t *testing.T, pool *pgxpool.Pool, runID string) {
 	t.Helper()
 	path := os.Getenv("SKILLHUB_TRACE_SAMPLE_OUT")
@@ -561,34 +513,26 @@ func dumpStoredEvents(t *testing.T, pool *pgxpool.Pool, runID string) {
 	}
 }
 
-// The token is the only thing standing between an untrusted execution plane and
-// somebody else's timeline.
 func TestTraceIngestionRefusesWhatTheTokenDoesNotCover(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	owner := a.login(t, "trace-token-owner")
-	// Two skills, because seedSkillVersion derives the version's content hash
-	// from the skill id and versions are unique on content (INGEST-005).
+
 	runID := seedRun(t, pool, owner.workspaceID, seedSkill(t, pool, owner.workspaceID, "trace-token-skill-a"))
 	otherRunID := seedRun(t, pool, owner.workspaceID, seedSkill(t, pool, owner.workspaceID, "trace-token-skill-b"))
 
 	output := `{"kind":"final","text":"done","truncated":false}`
 
-	// Unsigned token: no session, no provider credential, nothing.
 	code, _ := a.ingestTo(t, a.URL+trace.IngestPath+"not-a-token", event(runID, 1, 1, "agent_output", output))
 	if code != http.StatusUnauthorized {
 		t.Errorf("unsigned token: got %d, want 401", code)
 	}
 
-	// A valid token for run A carrying an event that claims run B. Accepted as a
-	// request, rejected as an event: it must not land on B's timeline.
 	code, report := a.ingest(t, runID, 1, event(otherRunID, 1, 1, "agent_output", output))
 	if code != http.StatusAccepted || report.Rejected != 1 || report.Stored != 0 {
 		t.Fatalf("cross-run event: got %d %+v, want it rejected", code, report)
 	}
 
-	// Same for an event claiming a different attempt of its own run: that would
-	// collide with the other attempt's sequence numbers.
 	code, report = a.ingest(t, runID, 1, event(runID, 2, 1, "agent_output", output))
 	if code != http.StatusAccepted || report.Rejected != 1 {
 		t.Fatalf("cross-attempt event: got %d %+v, want it rejected", code, report)
@@ -607,14 +551,6 @@ func TestTraceIngestionRefusesWhatTheTokenDoesNotCover(t *testing.T) {
 	}
 }
 
-// TRACE-001: "Trace 事件順序可被重建，並能識別缺失或延遲事件". A hole in a
-// producer's gapless sequence is a lost event and the view has to say so.
-// TRACE-008: a sandbox is an at-least-once producer, so one event the platform
-// cannot accept must not sink the batch it arrived in. If it did, the producer
-// would resend, collide on the same event, get another 500, and every event
-// queued behind it would never land - while the events ahead of it are already
-// committed, so the retry could never converge either.
-//
 //nolint:unused
 func offTestOneRefusedEventStillDeliversTheRestAndLetsTheResendConverge(t *testing.T) {
 	pool := requireDB(t)
@@ -625,15 +561,11 @@ func offTestOneRefusedEventStillDeliversTheRestAndLetsTheResendConverge(t *testi
 
 	output := `{"kind":"final","text":"%s","truncated":false}`
 
-	// seq 2 is claimed first, by the event the producer originally emitted there.
 	if code, report := a.ingest(t, runID, 1,
 		event(runID, 1, 2, "agent_output", fmt.Sprintf(output, "the original seq 2"))); code != http.StatusAccepted || report.Stored != 1 {
 		t.Fatalf("seeding seq 2: got %d %+v, want 202 with 1 stored", code, report)
 	}
 
-	// The same stream position now arrives under a different event_id. That is
-	// not an at-least-once redelivery (0031 would have swallowed it), it is the
-	// producer contradicting itself - and it sits in the middle of the batch.
 	collidingID := deterministicEventID(runID, 99, 99)
 	collision := strings.Replace(
 		event(runID, 1, 2, "agent_output", fmt.Sprintf(output, "a second claim on seq 2")),
@@ -651,22 +583,18 @@ func offTestOneRefusedEventStillDeliversTheRestAndLetsTheResendConverge(t *testi
 	if report.Stored != 2 || report.Rejected != 1 {
 		t.Fatalf("colliding batch: got %+v, want 2 stored and 1 rejected", report)
 	}
-	// The producer has to be told *which* event was refused, or it cannot stop
-	// sending it.
+
 	if !strings.Contains(strings.Join(report.Reasons, " | "), collidingID) {
 		t.Errorf("report does not name the refused event %s: %+v", collidingID, report.Reasons)
 	}
 
-	// The event behind the collision landed, and the evidence already at seq 2
-	// was not overwritten by the second claim (trace_events is append-only).
 	assertCollisionTrace := func(stage string) {
 		t.Helper()
 		status, view := owner.advancedTrace(t, runID)
 		if status != http.StatusOK || len(view.Events) != 3 {
 			t.Fatalf("%s: got %d with %d events, want 200 with seq 1, 2 and 3", stage, status, len(view.Events))
 		}
-		// Ordering is by occurred_at across streams, so index is not seq: look
-		// each position up by the number the producer declared.
+
 		bySeq := map[int64]json.RawMessage{}
 		for _, ev := range view.Events {
 			bySeq[ev.Seq] = ev.Payload
@@ -685,9 +613,6 @@ func offTestOneRefusedEventStillDeliversTheRestAndLetsTheResendConverge(t *testi
 	}
 	assertCollisionTrace("after the colliding batch")
 
-	// The push that matters: the producer never got an ack it could trust, so it
-	// sends the identical batch again. It must converge - duplicates for the two
-	// that landed, the same refusal for the one that cannot.
 	code, report = a.ingest(t, runID, 1, batch...)
 	if code != http.StatusAccepted || report.Stored != 0 || report.Duplicate != 2 || report.Rejected != 1 {
 		t.Fatalf("resend: got %d %+v, want 202 with 0 stored, 2 duplicate and 1 rejected", code, report)
@@ -705,7 +630,7 @@ func TestAdvancedViewNamesMissingEventsAndRefusesToLookComplete(t *testing.T) {
 	output := `{"kind":"intermediate","text":"working","truncated":false}`
 	if code, report := a.ingest(t, runID, 1,
 		event(runID, 1, 1, "agent_output", output),
-		// seq 2 was lost in transit.
+
 		event(runID, 1, 3, "agent_output", output),
 	); code != http.StatusAccepted || report.Stored != 2 {
 		t.Fatalf("push: got %d %+v", code, report)
@@ -718,12 +643,11 @@ func TestAdvancedViewNamesMissingEventsAndRefusesToLookComplete(t *testing.T) {
 	if len(view.Streams) != 1 || len(view.Streams[0].MissingSeq) != 1 || view.Streams[0].MissingSeq[0] != 2 {
 		t.Fatalf("streams = %+v, want one stream missing seq 2", view.Streams)
 	}
-	// Order is reconstructed, not accidental.
+
 	if view.Events[0].Seq != 1 || view.Events[1].Seq != 3 {
 		t.Errorf("events came back out of order: %d then %d", view.Events[0].Seq, view.Events[1].Seq)
 	}
 
-	// The gap arriving late fills it, and the view stops claiming loss.
 	if code, report := a.ingest(t, runID, 1, event(runID, 1, 2, "agent_output", output)); code != http.StatusAccepted || report.Stored != 1 {
 		t.Fatalf("late push: got %d %+v", code, report)
 	}
@@ -732,9 +656,6 @@ func TestAdvancedViewNamesMissingEventsAndRefusesToLookComplete(t *testing.T) {
 	}
 }
 
-// TRACE-008: a terminal run is not a closed inbox. The sandbox pushes its last
-// batch as it shuts down, which is routinely after the platform has settled the
-// run - and that tail is the part a failed run most needs (RUN-004).
 func TestEventsArrivingAfterTheRunFinishedAreKeptAndFlagged(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -776,16 +697,12 @@ func TestEventsArrivingAfterTheRunFinishedAreKeptAndFlagged(t *testing.T) {
 	if !sandboxEvent {
 		t.Error("the late sandbox event was dropped")
 	}
-	// TRACE-004: a run that never reached a sandbox would otherwise have an
-	// empty timeline, and RUN-004 says a failed run must still show diagnostics.
+
 	if !orchestratorEvent {
 		t.Error("the control plane's own failure was not recorded in the trace")
 	}
 }
 
-// TRACE-006: the general mode has to be readable without opening a raw event,
-// and its run status comes from the runs table, never from replayed events
-// (iron rule 5).
 func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -800,12 +717,10 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 		event(runID, 1, 4, "tool_call", `{"tool_name":"bash","outcome":"failed","duration_ms":120,"truncated":false}`),
 		event(runID, 1, 5, "agent_output", `{"kind":"final","text":"Removed 17 duplicate rows.","truncated":false}`),
 		event(runID, 1, 6, "usage", `{"scope":"run_total","model":"gpt-5-mini","input_tokens":27042,"output_tokens":1180,"cost_usd":null}`),
-		// Payload shape is deliberately not trusted at ingress. An out-of-range
-		// JSON number must be ignored by the aggregate, not turn this read into 500.
+
 		event(runID, 1, 7, "tool_call", `{"tool_name":"hostile","outcome":"succeeded","duration_ms":1e100}`),
 	}
-	// Individually valid values may still overflow bigint when summed. The API
-	// saturates its int64 transport field instead of making the whole trace 500.
+
 	for seq := 8; seq <= 18; seq++ {
 		events = append(events, event(runID, 1, seq, "tool_call", `{"tool_name":"large","outcome":"succeeded","duration_ms":900000000000000000}`))
 	}
@@ -844,17 +759,14 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	if view.Usage == nil || view.Usage.InputTokens != 27042 {
 		t.Fatalf("usage = %+v", view.Usage)
 	}
-	// A cost the gateway never reported must stay unreported, not become 0
-	// (contract README §5): showing 0 would tell the user the run was free.
+
 	if view.Usage.CostCredits != nil {
 		t.Errorf("cost_credits = %v, want null (unreported)", *view.Usage.CostCredits)
 	}
 	if len(view.Steps) == 0 {
 		t.Error("progress steps are empty although the run has a transition history")
 	}
-	// The status has to survive as its own field. Asserting only on the count
-	// would pass just as happily against a list of empty objects, which is what
-	// a decode against the old string shape silently produces.
+
 	for i, st := range view.Steps {
 		if st.Status == "" {
 			t.Errorf("progress step %d carries no status: %+v", i, st)
@@ -862,8 +774,6 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	}
 }
 
-// WS-006: a trace is user data. Another workspace gets 404, not 403 - existence
-// is itself private.
 func TestTraceIsWorkspaceScoped(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

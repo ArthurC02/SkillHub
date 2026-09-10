@@ -1,10 +1,5 @@
 package outbox
 
-// What these prove is a wiring property, not a database one: an event type that
-// nobody claimed must not be reported as delivered. No Postgres — the bug this
-// guards against is a composition root that forgot a consumer, and that mistake
-// is fully visible in the routing table.
-
 import (
 	"context"
 	"errors"
@@ -18,8 +13,6 @@ func failingHandler(err error) Handler {
 	return func(context.Context, Event) error { return err }
 }
 
-// fullyWired is the shape a healthy composition root produces: every catalogue
-// entry either routed or explicitly disclaimed.
 func fullyWired(t *testing.T) *Dispatcher {
 	t.Helper()
 	d := NewDispatcher().
@@ -34,9 +27,7 @@ func fullyWired(t *testing.T) *Dispatcher {
 }
 
 func TestValidateRefusesAnUnaccountedEventType(t *testing.T) {
-	// The empty dispatcher: every single catalogue entry is a gap, and each one
-	// must be named. "Some events are unrouted" would leave the operator guessing
-	// which.
+
 	err := NewDispatcher().Validate()
 	if err == nil {
 		t.Fatal("an empty dispatcher validated, want an error naming every unrouted event type")
@@ -46,12 +37,9 @@ func TestValidateRefusesAnUnaccountedEventType(t *testing.T) {
 			t.Errorf("%q is unrouted but not named in the validation error: %v", eventType, err)
 		}
 	}
-	fullyWired(t) // and the complete wiring passes
+	fullyWired(t)
 }
 
-// The report's named case (DDD review P2). A worker built without the evaluation
-// consumer must not sail through: the whole point is that `run.succeeded` stops
-// being quietly marked published while no evaluation is ever enqueued.
 func TestMissingEvaluationWiringIsRefusedAndRunSucceededIsNotConsumed(t *testing.T) {
 	d := NewDispatcher().
 		Ignore("no consumer in this process", RunQueued, RunProvisioning, RunPreparing,
@@ -66,9 +54,6 @@ func TestMissingEvaluationWiringIsRefusedAndRunSucceededIsNotConsumed(t *testing
 		t.Errorf("validation error does not name the terminal events left unrouted: %v", err)
 	}
 
-	// And if the process started anyway, delivery still refuses. This is the half
-	// that matters at runtime: an error here keeps the event unpublished and pushes
-	// it onto the retry-and-dead-letter path instead of dropping it silently.
 	if err := d.Deliver(context.Background(), Event{EventType: RunSucceeded}); err == nil {
 		t.Fatal("run.succeeded was delivered successfully with no consumer registered")
 	}
@@ -88,9 +73,6 @@ func TestDeliverFansOutToEveryConsumer(t *testing.T) {
 	}
 }
 
-// One consumer failing means the event was not delivered, full stop. Publish
-// reads that error and leaves the row unpublished, so the consumers that did
-// succeed will see it again — which is why each of them has to be idempotent.
 func TestDeliverFailsWhenAnyConsumerFails(t *testing.T) {
 	boom := errors.New("boom")
 	d := fullyWired(t).
@@ -112,9 +94,6 @@ func TestIgnoredEventTypesAreDelivered(t *testing.T) {
 	}
 }
 
-// Registration mistakes that the type system cannot catch: a consumer wired to
-// an event type that does not exist hears nothing, and looks perfectly healthy
-// while doing so.
 func TestValidateRejectsRegistrationMistakes(t *testing.T) {
 	for name, build := range map[string]func() *Dispatcher{
 		"unknown event type": func() *Dispatcher {
@@ -136,8 +115,6 @@ func TestValidateRejectsRegistrationMistakes(t *testing.T) {
 	}
 }
 
-// The removed fallback (DDD review P2 recommendation 1): no destination is a
-// refusal, and logging to the console is something a developer opts into.
 func TestPublishRefusesWithoutADestination(t *testing.T) {
 	if _, err := (&Worker{}).delivery(); err == nil {
 		t.Error("a worker with no Deliver and no LogOnlyDelivery accepted the publish path")

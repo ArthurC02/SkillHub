@@ -17,10 +17,6 @@ func TestTierDisplayDistinctPerTier(t *testing.T) {
 	}
 }
 
-// The inverse of what this test used to require. It asserted the zero value for
-// an undefined tier, which locked in a blank badge — the one rendering NFR-001
-// and axis()' own comment call worse than an unfamiliar word, because a row with
-// no badge reads as a row with nothing to say about it.
 func TestTierDisplayUnknownValueShowsTheValueRatherThanNothing(t *testing.T) {
 	d := Tier("not-a-real-tier").Display()
 	if d.Badge == "" || d.TrustIndicator == "" {

@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-// 一場失敗的會話在 2026-09-09 之前不帶任何可讀的原因：畫面一句「這一步未完成」，
-// log 一個字都沒有。這支測試守的是那一句話**說得出是哪一邊壞了**。
 func TestStepFailureMessageNamesTheSideThatBroke(t *testing.T) {
 	for _, c := range []struct {
 		name    string
@@ -28,7 +26,7 @@ func TestStepFailureMessageNamesTheSideThatBroke(t *testing.T) {
 			}
 		})
 	}
-	// 反向：那兩句彼此不可以互相冒充，否則「說出是哪一邊」等於沒說。
+
 	transport := stepFailureMessage(ErrUnavailable, errors.New("boom"))
 	if strings.Contains(transport, "模型的回覆不符合會話規則") {
 		t.Fatal("連不上模型時卻說模型的回覆不合規則")

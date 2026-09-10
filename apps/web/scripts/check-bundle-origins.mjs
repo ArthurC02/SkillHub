@@ -1,76 +1,18 @@
-// Refuses a production bundle that talks to an absolute origin.
-//
-// # The failure this exists for
-//
-// `api/client.ts` resolves API_BASE_URL at BUILD time. It used to default to
-// `http://localhost:8080` — the dev-server shape — and nothing on the clean
-// test mode's path set VITE_API_BASE_URL. The resulting deployment rendered
-// perfectly and sent every request to a port with nothing on it. The first
-// symptom was `Failed to fetch` on a search.
-//
-// Nothing caught it, and the reason is a boundary rather than an oversight:
-// every existing check measures the process and its environment. `envx`'s four
-// idioms decide what an unset deployment variable means; the R-36 capability
-// table declares what each one blocks and CI fails a variable that declares
-// nothing; `/readyz` probes measure whether a capability actually works. This
-// value is in none of those — it is not in .env.example, no Go code reads it,
-// and the platform's own catalogue_search probe answered `ready` (truthfully:
-// the server's search was healthy the whole time) while every browser was
-// broken. The table measures what the deployment IS. This measures what it
-// HANDS OUT.
-//
-// # Why it runs from `npm run build`
-//
-// Not from a CI step: `npm run build` is the one path every caller goes
-// through — task build:web, task ci, the Playwright tier's own
-// `npm run build && npm run preview`, and a developer building by hand. A check
-// wired into CI only would let all four of the others produce the bad artifact.
-//
-// # The allowlist is stock, not an extension point
-//
-// Same shape as db/query-owners.yaml's `allow:` and the capability table's
-// exemption ledger: every entry was measured in the bundle on 2026-09-02, is
-// named with the library that emits it, and the list may only get shorter. A
-// new absolute origin means somebody introduced one — that is the whole point,
-// so it belongs in the diff, not in this list.
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const distAssets = join(dirname(fileURLToPath(import.meta.url)), "..", "dist", "assets");
 
-/** Measured 2026-09-02. Each entry names what emits it. */
 const STOCK = [
-  // React DOM writes these as XML namespaces for SVG/MathML elements.
   "http://www.w3.org/1998/Math/MathML",
   "http://www.w3.org/1999/xlink",
   "http://www.w3.org/2000/svg",
   "http://www.w3.org/XML/1998/namespace",
-  // React's minified-error decoder link.
   "https://react.dev/errors/",
-  // @tanstack/react-router's fallback when `window.origin` is null (a sandboxed
-  // or opaque origin). Bare, no port — the shape this check refuses always
-  // carries a host:port or a real hostname.
   "http://localhost",
 ];
 
-// A protocol-relative origin is the same failure wearing two fewer characters.
-// `fetch("//api.example.com/skills")` leaves this deployment exactly like an
-// `https://` one does; all the browser supplies is the scheme. The scan below
-// it cannot see one, because that pattern starts at `http` — measured
-// 2026-09-02 by building with VITE_API_BASE_URL=//api.example.com, which
-// produced `` $a=`//api.example.com` `` in the bundle and a check that exited 0.
-//
-// Anchored on the opening quote of a string literal rather than on `//` alone:
-// minified JavaScript is full of `//` inside regexes, comments that survived,
-// and paths. A *string that begins* with `//` followed by a hostname is the
-// shape nothing legitimate in this bundle has — measured on the same day, the
-// clean build matches this zero times.
-//
-// No allowlist for this one on purpose. STOCK exists because libraries really
-// do emit absolute URLs (XML namespaces, a docs link); nothing emits a
-// protocol-relative origin, so an entry here would only ever be somebody's API
-// address being waved through.
 const relativeOrigin = /["'`](\/\/[A-Za-z0-9][A-Za-z0-9._-]*(?::\d+)?)(?=[/"'`?#])/g;
 
 const origins = new Set();

@@ -10,10 +10,6 @@ func passthrough() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 }
 
-// The rule, one row per way a request can arrive. What this has to get right is
-// not "refuse cross-site" — that is one line — but the three callers that must
-// keep working: the sandbox pushing trace events with no browser headers at all,
-// a top-level navigation (Sec-Fetch-Site: none), and every GET.
 func TestSameOriginWritesRefusesOnlyCrossSiteWrites(t *testing.T) {
 	const app = "https://hub.example.test"
 	for _, tc := range []struct {
@@ -52,9 +48,6 @@ func TestSameOriginWritesRefusesOnlyCrossSiteWrites(t *testing.T) {
 	}
 }
 
-// Unset APP_URL is the shipped default and must change nothing, the same
-// acceptance shape 02:PORT-005 asks of clean mode: a middleware that only turns
-// on when configured and one that is always on look identical in a screenshot.
 func TestSameOriginWritesIsOffWithoutAnAppURL(t *testing.T) {
 	for _, appURL := range []string{"", "   ", "not a url", "://broken"} {
 		req := httptest.NewRequest(http.MethodPost, "/skills", nil)

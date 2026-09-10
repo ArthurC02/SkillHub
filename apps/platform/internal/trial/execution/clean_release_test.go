@@ -1,15 +1,5 @@
 package run
 
-// 05 R-37 (c) / ADR-061: the operator release, which is the only way content
-// that was never curated runs in the clean test mode.
-//
-// What is being pinned is a switch that **turns a protection off**, so the
-// tests are written from the refusing side: every malformed, half-written or
-// near-miss line must still be a refusal, and the one shape that releases must
-// carry a reason. A release that worked without a reason would leave nothing
-// behind at all — the reason is not paperwork attached to the control, it *is*
-// the control.
-
 import (
 	"bytes"
 	"errors"
@@ -20,9 +10,6 @@ import (
 	"testing"
 )
 
-// releasedVersion is the version contentSourceRun() is about. Written out
-// rather than derived so a reader can see that the file names one exact
-// version and the run is that version.
 const releasedVersion = "22222222-2222-2222-2222-222222222222"
 
 func writeReleases(t *testing.T, body string) string {
@@ -39,7 +26,7 @@ func TestAnOperatorReleaseRunsExactlyTheVersionItNames(t *testing.T) {
 
 	for _, tc := range []struct {
 		what     string
-		file     string // "" means: point the variable at a file that is not there
+		file     string
 		unset    bool
 		wantPass bool
 		wantSaid []string
@@ -54,9 +41,7 @@ func TestAnOperatorReleaseRunsExactlyTheVersionItNames(t *testing.T) {
 			file:     releasedVersion + "   審過了，只跑這一版\n",
 			wantPass: true,
 		},
-		// The named reason is the whole of the control, so an id on its own is
-		// not a release — and the refusal has to say that, or the operator reads
-		// a working switch as a broken one and edits something else.
+
 		{
 			what:     "an id with no reason after it",
 			file:     releasedVersion + "\n",
@@ -67,9 +52,7 @@ func TestAnOperatorReleaseRunsExactlyTheVersionItNames(t *testing.T) {
 			file:     releasedVersion + "    \n",
 			wantSaid: []string{"not a release"},
 		},
-		// Per version, never per skill: releasing one version must not release
-		// the next push, which is the same distinction the curated branch draws
-		// with curated_version_id.
+
 		{
 			what:     "a different version released",
 			file:     other + " somebody else's skill\n",
@@ -90,8 +73,7 @@ func TestAnOperatorReleaseRunsExactlyTheVersionItNames(t *testing.T) {
 			file:     "",
 			wantSaid: []string{releasedVersion},
 		},
-		// Unset is the shipped default and it must read as "nothing is released
-		// here", not as "the switch failed".
+
 		{
 			what:     "the variable never set",
 			unset:    true,
@@ -132,11 +114,6 @@ func TestAnOperatorReleaseRunsExactlyTheVersionItNames(t *testing.T) {
 	}
 }
 
-// The release is a decision to accept a risk, and the only record of it that
-// outlives the launch is what gets logged when it is used — the clean mode's
-// database is in-memory (tools/pglite has no dataDir), so an audit row would be
-// gone at shutdown while this line is in the operator's terminal. If it stops
-// being written, the switch silently becomes an unrecorded one.
 func TestUsingAReleaseSaysSoWithTheReasonTheOperatorGave(t *testing.T) {
 	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 	t.Setenv(cleanModeReleaseFile, writeReleases(t, releasedVersion+" reviewed for the 09-02 demo\n"))
@@ -152,9 +129,9 @@ func TestUsingAReleaseSaysSoWithTheReasonTheOperatorGave(t *testing.T) {
 	}
 
 	for _, want := range []string{
-		"reviewed for the 09-02 demo", // the reason, or the record says nothing
-		releasedVersion,               // which bytes
-		"no isolation boundary",       // what was given up
+		"reviewed for the 09-02 demo",
+		releasedVersion,
+		"no isolation boundary",
 	} {
 		if !strings.Contains(logged.String(), want) {
 			t.Errorf("log = %q, want it to mention %q", logged.String(), want)
@@ -162,11 +139,6 @@ func TestUsingAReleaseSaysSoWithTheReasonTheOperatorGave(t *testing.T) {
 	}
 }
 
-// Both ends of the switch have to spell it the same way, and nothing else
-// checks that: the launcher fills the variable in, this package reads it, and a
-// rename on either side leaves a mode where the refusal explains an action that
-// does nothing. Same shape as SEED_IMPORTER, which is pinned from the other
-// direction in tools/devctl/seed_clean_test.go.
 func TestTheLauncherFillsInTheVariableThisPackageReads(t *testing.T) {
 	const launcher = "../../../../../tools/cleanmode/start.mjs"
 	src, err := os.ReadFile(launcher)
@@ -179,16 +151,10 @@ func TestTheLauncherFillsInTheVariableThisPackageReads(t *testing.T) {
 	}
 }
 
-// The switch may not exist outside the clean test mode. Not because it would be
-// dangerous there — the gate returns before reaching it — but because a reader
-// finding this variable set on a production host must be able to conclude it
-// does nothing, and that conclusion needs an assertion behind it.
 func TestTheReleaseListIsNeverEvenReadOutsideTheCleanTestMode(t *testing.T) {
 	t.Setenv("SKILLHUB_CLEAN_MODE", "")
 	t.Setenv("DEV_LOGIN", "1")
-	// A directory, so reading it fails with something that is not ErrNotExist and
-	// therefore logs. That log line is the probe: without it this test would pass
-	// whether or not the list was ever consulted.
+
 	t.Setenv(cleanModeReleaseFile, t.TempDir())
 
 	var logged bytes.Buffer
@@ -212,11 +178,6 @@ func TestTheReleaseListIsNeverEvenReadOutsideTheCleanTestMode(t *testing.T) {
 	}
 }
 
-// 探索性測試（2026-09-02）找到的四種寫法，四種都曾經「不放行而且一個字都不說」。
-//
-// 這一組不是在測 parser 的寬容度，是在測**這個開關會不會看起來像壞掉的**。操作者當時
-// 的處境是：他手上有一行看起來完全正確的內容，而畫面上的拒絕訊息正在叫他去加那一行。
-// 四種寫法都不是打錯字，是不同工具的預設行為——而第三種是這個系統自己的訊息招來的。
 func TestTheReleaseSurvivesTheWayPeopleActuallyTypeIt(t *testing.T) {
 	for _, tc := range []struct {
 		what string
@@ -241,11 +202,6 @@ func TestTheReleaseSurvivesTheWayPeopleActuallyTypeIt(t *testing.T) {
 	}
 }
 
-// The one that cannot be parsed away: a line that mentions the version but does
-// not name it first. Being tolerant has a floor, and below that floor the only
-// honest thing left is to say out loud that the line was seen and not counted —
-// otherwise the operator edits the file, nothing changes, and no output anywhere
-// distinguishes that from a switch that does not work.
 func TestALineThatLooksLikeAReleaseAndIsNotSaysSo(t *testing.T) {
 	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 	t.Setenv(cleanModeReleaseFile, writeReleases(t, "release "+releasedVersion+" for the demo\n"))

@@ -83,8 +83,6 @@ func TestFrontmatterRules(t *testing.T) {
 	}
 }
 
-// The YAML parser's own English ("yaml: line 2: did not find expected ...")
-// used to be interpolated into the finding and reach the screen (04 丙-149).
 func TestBadYAMLFindingKeepsTheParserOut(t *testing.T) {
 	r := Validate(pkg("---\nname: [unclosed\n---\nbody", nil))
 	for _, f := range r.Findings {
@@ -99,10 +97,6 @@ func TestBadYAMLFindingKeepsTheParserOut(t *testing.T) {
 	t.Fatal("no frontmatter-invalid-yaml finding")
 }
 
-// ADR-044 decision 4: a warning until 2026-08-22, an error since. The unlock
-// was one measurement, not a preference - TestSpecFrontmatterCensus counted 0
-// of 106 packages across the 11 pinned source repos carrying a field outside
-// the six, so escalation retroactively blocks nothing that exists.
 func TestAnUnknownFrontmatterFieldBlocks(t *testing.T) {
 	md := "---\nname: x\ndescription: d\nauto_run: true\n---\n"
 	r := Validate(pkg(md, nil))
@@ -112,8 +106,7 @@ func TestAnUnknownFrontmatterFieldBlocks(t *testing.T) {
 	if !r.Blocked {
 		t.Fatal("an unknown field must block; the reference validator rejects it and so do some clients")
 	}
-	// metadata is one of the six and has no typed home, so it lands in Extra
-	// alongside the unknown keys. Parking it there must not make it unknown.
+
 	r = Validate(pkg("---\nname: x\ndescription: d\nmetadata:\n  team: platform\n---\n", nil))
 	if codes(r)["frontmatter-unknown-field"] != "" {
 		t.Fatalf("metadata is a specification field: %+v", r.Findings)
@@ -182,8 +175,6 @@ func urlFindings(r Report) []Finding {
 	return out
 }
 
-// import-report.md §4 Top-3: one seed package emitted 321 external-url findings,
-// which made the whole info layer unreadable. One line per host, full list kept.
 func TestURLDisclosuresAggregateByHost(t *testing.T) {
 	var refs strings.Builder
 	for i := 0; i < 40; i++ {
@@ -196,7 +187,7 @@ func TestURLDisclosuresAggregateByHost(t *testing.T) {
 	if len(urls) != 2 {
 		t.Fatalf("want one finding per host, got %d: %+v", len(urls), urls)
 	}
-	// Sorted by host: other.example.org before schemas.example.com.
+
 	big := urls[1]
 	if big.Code != "external-url" || !strings.Contains(big.Message, "schemas.example.com") || !strings.Contains(big.Message, "40") {
 		t.Fatalf("summary must name host and count, got %q", big.Message)
@@ -212,10 +203,8 @@ func TestURLDisclosuresAggregateByHost(t *testing.T) {
 	}
 }
 
-// import-report.md §6.1 bug 1: len() is bytes, so a Traditional Chinese
-// description hit the "1024 characters" limit at 341 characters.
 func TestManifestLimitsCountRunesNotBytes(t *testing.T) {
-	desc := strings.Repeat("繁", 777) // 777 runes, 2331 bytes
+	desc := strings.Repeat("繁", 777)
 	r := Validate(pkg("---\nname: x\ndescription: "+desc+"\nlicense: MIT\n---\n", nil))
 	if r.Blocked {
 		t.Fatalf("a 777-character description is within the 1024-character limit: %+v", r.Findings)
@@ -232,8 +221,6 @@ func TestManifestLimitsCountRunesNotBytes(t *testing.T) {
 	}
 }
 
-// import-report.md §4 Top-1: 37 of 45 seed packages declared no license in
-// frontmatter while their repository plainly stated one.
 func TestLicenseFallsBackToPackageLicenseFile(t *testing.T) {
 	const mit = "MIT License\n\nCopyright (c) 2026 Someone\n\n" +
 		"Permission is hereby granted, free of charge, to any person obtaining a copy\n"
@@ -251,13 +238,11 @@ func TestLicenseFallsBackToPackageLicenseFile(t *testing.T) {
 		t.Fatalf("file-derived license must be disclosed as such: %+v", r.Findings)
 	}
 
-	// The manifest still wins, and is labelled as the manifest.
 	r = Validate(pkg(goodMD, map[string]string{"LICENSE": "Apache License\nVersion 2.0\n"}))
 	if r.LicenseExpression != "MIT" || r.LicenseSource != licenseSourceManifest {
 		t.Fatalf("manifest declaration must win, got %q/%q", r.LicenseExpression, r.LicenseSource)
 	}
 
-	// Neither, or an unrecognised text, stays unknown — never guessed.
 	for name, files := range map[string]map[string]string{
 		"no license file":   nil,
 		"unrecognised text": {"LICENSE": "All rights reserved. Ask us nicely."},
@@ -275,8 +260,6 @@ const (
 	iscText    = "Permission to use, copy, modify, and/or distribute this software for any purpose\n"
 )
 
-// ADR-021: three provenance tiers, each weaker evidence about *this* package
-// than the one above it, and each one stops the search.
 func TestLicenseProvenancePrecedence(t *testing.T) {
 	noLicenseMD := "---\nname: x\ndescription: d\n---\n"
 
@@ -288,7 +271,7 @@ func TestLicenseProvenancePrecedence(t *testing.T) {
 		wantSource string
 	}{{
 		name:    "manifest beats both files",
-		skillMD: goodMD, // declares license: MIT
+		skillMD: goodMD,
 		files: map[string]string{
 			"LICENSE":          apacheText,
 			CarriedLicenseFile: iscText,
@@ -308,8 +291,7 @@ func TestLicenseProvenancePrecedence(t *testing.T) {
 		files:    map[string]string{CarriedLicenseFile: mitText},
 		wantSPDX: "MIT", wantSource: licenseSourceRepoFile,
 	}, {
-		// curated-skill-list.md §5.1 row 8: iamursky/sokrati ships a lowercase
-		// `license`. The old exact-name lookup reported it as unknown.
+
 		name:     "license filename matching is case-insensitive",
 		skillMD:  noLicenseMD,
 		files:    map[string]string{"license": mitText},
@@ -327,16 +309,11 @@ func TestLicenseProvenancePrecedence(t *testing.T) {
 		})
 	}
 
-	// A carried repo-level license is disclosed as covering the repository, not
-	// this package — the §5.3 trap is a repo-root MIT over content the repo
-	// author never owned.
 	r := Validate(pkg(noLicenseMD, map[string]string{CarriedLicenseFile: mitText}))
 	if codes(r)["license-from-repo-file"] != SeverityInfo {
 		t.Fatalf("carried repo license must be disclosed as such: %+v", r.Findings)
 	}
 
-	// No fall-through: an unreadable package-local license is not answered by the
-	// repository's, which would be the §5.3 misattribution.
 	r = Validate(pkg(noLicenseMD, map[string]string{
 		"LICENSE":          "All rights reserved. Ask us nicely.",
 		CarriedLicenseFile: mitText,
@@ -347,12 +324,8 @@ func TestLicenseProvenancePrecedence(t *testing.T) {
 	}
 }
 
-// ADR-021 待決策 #1: a frontmatter `license` that names a file is a pointer, not
-// a declaration. `anthropics/skills` ships `Complete terms in LICENSE.txt` on
-// brand-guidelines and internal-comms, and recording that verbatim lost the
-// Apache-2.0 sitting in the file right beside it.
 func TestLicenseManifestPointerResolvesReferencedFile(t *testing.T) {
-	// The exact string the two seed packages carry.
+
 	const seedPointer = "Complete terms in LICENSE.txt"
 
 	for _, name := range []string{"brand-guidelines", "internal-comms"} {
@@ -371,7 +344,6 @@ func TestLicenseManifestPointerResolvesReferencedFile(t *testing.T) {
 		})
 	}
 
-	// npm's own spelling resolves identically.
 	r := Validate(pkg(
 		"---\nname: x\ndescription: d\nlicense: SEE LICENSE IN LICENSE.txt\n---\n",
 		map[string]string{"LICENSE.txt": apacheText},
@@ -380,9 +352,6 @@ func TestLicenseManifestPointerResolvesReferencedFile(t *testing.T) {
 		t.Fatalf("npm spelling: got %q/%q", r.LicenseExpression, r.LicenseSource)
 	}
 
-	// Every way of failing to resolve keeps the old behaviour: the author's
-	// string, recorded verbatim under the manifest tier. Never a guess, and never
-	// answered by some other file that happens to be present.
 	for _, tc := range []struct {
 		name  string
 		files map[string]string
@@ -409,8 +378,7 @@ func TestLicensePointerTarget(t *testing.T) {
 		"Complete terms in LICENSE.txt.": "LICENSE.txt",
 		"Full license text in LICENSE":   "LICENSE",
 		"See the license in LICENSE.md":  "LICENSE.md",
-		// Real declarations must never be mistaken for pointers, and a pointer
-		// that leaves the package root is not evidence about the package.
+
 		"MIT":                    "",
 		"Apache-2.0":             "",
 		"Proprietary, ask Bob":   "",
@@ -436,8 +404,7 @@ func TestNormalizeSPDX(t *testing.T) {
 		"apache-2.0":     "Apache-2.0",
 		"GPLv3":          "GPL-3.0",
 		"the unlicense":  "Unlicense",
-		// Ambiguous or unknown strings are reported as the author wrote them,
-		// never guessed into an SPDX id (DISC-003).
+
 		"BSD":                  "BSD",
 		"Proprietary, ask Bob": "Proprietary, ask Bob",
 	} {
@@ -446,7 +413,6 @@ func TestNormalizeSPDX(t *testing.T) {
 		}
 	}
 
-	// Normalisation applies to the manifest tier, which is the only free text.
 	r := Validate(pkg("---\nname: x\ndescription: d\nlicense: apache 2.0\n---\n", nil))
 	if r.LicenseExpression != "Apache-2.0" || r.LicenseSource != licenseSourceManifest {
 		t.Fatalf("got %q/%q", r.LicenseExpression, r.LicenseSource)
@@ -472,8 +438,6 @@ func TestDetectLicense(t *testing.T) {
 	}
 }
 
-// import-report.md §4 Top-2: five seed packages carried ~180 lines of Python
-// inside SKILL.md and the extension-based scan reported no scripts at all.
 func TestEmbeddedCodeIsDisclosed(t *testing.T) {
 	block := func(lang string, n int) string {
 		return "```" + lang + "\n" + strings.Repeat("print(1)\n", n) + "```\n"
@@ -491,8 +455,6 @@ func TestEmbeddedCodeIsDisclosed(t *testing.T) {
 		t.Fatal("disclosure must not block")
 	}
 
-	// Many small blocks add up past the total threshold even though no single
-	// block crosses the per-block one.
 	many := goodMD
 	for i := 0; i < 6; i++ {
 		many += block("bash", 10)
@@ -501,8 +463,6 @@ func TestEmbeddedCodeIsDisclosed(t *testing.T) {
 		t.Fatalf("60 lines across 6 blocks must be disclosed")
 	}
 
-	// A usage snippet, and a long block of something that does not run, stay
-	// quiet: a finding on every SKILL.md is a finding nobody reads.
 	quiet := goodMD + block("python", 8) + "```json\n" + strings.Repeat("{}\n", 100) + "```\n"
 	if f := findingByCode(Validate(pkg(quiet, nil)), "embedded-script"); f != nil {
 		t.Fatalf("short snippets and non-runnable fences must not warn: %+v", f)
@@ -546,8 +506,7 @@ func TestAllowedToolsBothShapes(t *testing.T) {
 }
 
 func TestCategorizeSeparatesBySeverity(t *testing.T) {
-	// One finding of each severity: missing license (warning), a disclosed
-	// script (info), and a secret inside that same script (error).
+
 	secret := "AKIA" + strings.Repeat("A", 16)
 	md := "---\nname: x\ndescription: d\n---\n"
 	r := Validate(pkg(md, map[string]string{"run.py": "key = '" + secret + "'"}))
@@ -586,9 +545,7 @@ func TestCategorizeSeparatesBySeverity(t *testing.T) {
 }
 
 func TestCategorizeNeverNil(t *testing.T) {
-	// A clean package (TestValidPackage's fixture) has zero findings; the
-	// buckets must still be empty slices, not nil, so JSON encodes `[]`
-	// instead of `null` for API consumers.
+
 	c := Validate(pkg(goodMD, nil)).Categorize()
 	if c.Errors == nil || c.Warnings == nil || c.Infos == nil {
 		t.Fatalf("categorize buckets must be non-nil empty slices: %+v", c)
@@ -603,8 +560,6 @@ func TestOversizedFileSkipped(t *testing.T) {
 	}
 }
 
-// details returns the Details list of the first finding with the given code,
-// and whether such a finding exists at all.
 func details(r Report, code string) ([]string, bool) {
 	for _, f := range r.Findings {
 		if f.Code == code {
@@ -623,27 +578,23 @@ func contains(ss []string, want string) bool {
 	return false
 }
 
-// The three cases the M2 baseline actually produced (content-baseline-report.md
-// §13.4), plus the false positives that would make the warning useless.
 func TestDependencyExtraction(t *testing.T) {
 	tests := []struct {
 		name        string
 		files       map[string]string
 		md          string
-		wantListed  []string // must appear in the package-dependencies info
-		wantNot     []string // must appear in neither finding
-		wantWarning []string // must appear in undeclared-dependency
+		wantListed  []string
+		wantNot     []string
+		wantWarning []string
 		noWarning   bool
 	}{{
-		// wrangler/add-iso3166: no scripts at all, everything declared on an
-		// install line in SKILL.md. The catalog recorded only pandas.
+
 		name:       "install line in SKILL.md",
 		md:         goodMD + "\n## Dependencies\n\n```bash\npip install pandas pycountry openpyxl\n```\n",
 		wantListed: []string{"pandas", "pycountry", "openpyxl"},
-		noWarning:  true, // the package does declare them; the transcription was short
+		noWarning:  true,
 	}, {
-		// anthropic-sa/xlsx: scripts import defusedxml and lxml and the package
-		// declares neither, anywhere.
+
 		name: "scripts import what nothing declares",
 		files: map[string]string{
 			"scripts/validate.py": "import defusedxml.ElementTree as ET\nimport lxml.etree\nimport os, sys\n",
@@ -728,7 +679,7 @@ import { x } from "@scope/pkg/sub";
 					t.Errorf("undeclared-dependency missing %q: %v", want, warn)
 				}
 			}
-			// Advisory only: a package that under-declares still imports.
+
 			if r.Blocked {
 				t.Errorf("dependency findings must never block: %+v", r.Findings)
 			}
@@ -736,8 +687,6 @@ import { x } from "@scope/pkg/sub";
 	}
 }
 
-// 04 丙-15 D-3: a link entry used to be scanned as an ordinary little text file,
-// so the report never said the package contained a link at all.
 func TestASymlinkEntryIsBlockedInsteadOfBeingReadAsAFile(t *testing.T) {
 	m := pkg(goodMD, nil)
 	m["reference/host-passwd"] = &fstest.MapFile{Data: []byte("/etc/passwd"), Mode: fs.ModeSymlink}
@@ -778,8 +727,6 @@ func TestNonRegularEntriesAreBlockedBeforeRuntime(t *testing.T) {
 	}
 }
 
-// 04 丙-15 D-1/D-2: findings the archive reader hands in must reach the report
-// even when validation gives up on the first line.
 func TestArchiveFindingsSurviveAPackageWithNoSkillMD(t *testing.T) {
 	f, ok := ArchiveEntryFinding("../../evil.sh")
 	if !ok || f.Severity != SeverityError {
@@ -803,7 +750,7 @@ func TestEntryNamesThatAreNotPathsInThePackage(t *testing.T) {
 			t.Errorf("%q was accepted as a path inside the package", name)
 		}
 	}
-	// Names that merely look alarming are not: a false block costs an appeal.
+
 	for _, name := range []string{
 		"SKILL.md", "reference/..hidden.md", "a..b/c.md", "scripts/run.sh", "dir/",
 	} {
@@ -820,19 +767,6 @@ type archiveFS struct {
 
 func (a archiveFS) ArchiveFindings() []Finding { return a.findings }
 
-// --- ADR-027 decisions 1 and 2: the same content, the same list --------------
-
-// Findings are raised while ranging over Go maps, so the order they are appended
-// in is the runtime's business, not the content's. Everything that has to
-// reproduce flows through Categorize: skillhub-manifest.json prints these lists,
-// and content_hash is taken over the zip that carries the manifest. Unsorted,
-// two packagings of one input produced two different content_hash values, the
-// reuse lookup missed, and the platform wrote a second object and a second row
-// for bytes it already had.
-//
-// Two warnings from one map (metadata.updated, metadata.version) is the smallest
-// fixture that can come out either way round; the repetition is what turns a
-// coin-flip into a certainty.
 func TestCategorizeOrdersFindingsTheSameWayEveryRun(t *testing.T) {
 	const twoWarnings = `---
 name: two-warnings
@@ -865,12 +799,6 @@ func lines(fs []Finding) []string {
 	return out
 }
 
-// --- NFR-002 / PACK-001: disclosure is not exclusion -------------------------
-
-// The two files the content scan used to walk past: one over the size cap, one
-// with an early NUL. Both were disclosed and both shipped, because the scan
-// returned before secretPatterns ran — so packaging's sourceBlocked never saw a
-// possible-secret and wrote the credential into a download byte for byte.
 func TestSecretsAreFoundInOversizedAndBinaryFiles(t *testing.T) {
 	const key = "AKIAIOSFODNN7EXAMPLE"
 	for _, tc := range []struct {
@@ -892,8 +820,6 @@ func TestSecretsAreFoundInOversizedAndBinaryFiles(t *testing.T) {
 	}
 }
 
-// The oversized file is still disclosed, and the disclosure now says what was
-// actually read rather than implying nothing was.
 func TestOversizedFileSaysHowMuchWasScanned(t *testing.T) {
 	r := Validate(pkg(goodMD, map[string]string{"big.txt": strings.Repeat("x", maxScanBytes+1)}))
 	for _, f := range r.Findings {
@@ -907,11 +833,6 @@ func TestOversizedFileSaysHowMuchWasScanned(t *testing.T) {
 	t.Fatalf("want file-not-scanned info: %+v", r.Findings)
 }
 
-// SKILL-003 judges by the language tag, so until 2026-08-29 the whole rule could
-// be evaded by deleting five characters: an untagged fence did not open a code
-// block at all, so its lines reached neither the size check nor dependency
-// extraction. The verdict still keys on the tag — narrowing it is a spec
-// change — but the reader is now told the block is there.
 func TestUnlabelledFencedCodeIsDisclosed(t *testing.T) {
 	untagged := "```\n" + strings.Repeat("import os\nos.system('rm -rf /')\n", 90) + "```\n"
 
@@ -926,26 +847,17 @@ func TestUnlabelledFencedCodeIsDisclosed(t *testing.T) {
 	if r.Blocked {
 		t.Error("a disclosure must not block")
 	}
-	// Not embedded-script: that finding names the languages it found, and here
-	// there is none to name. Reporting it as one would be inventing a language.
+
 	if findingByCode(r, CodeEmbeddedScript) != nil {
 		t.Error("an untagged block must not be counted as embedded script")
 	}
 
-	// A short untagged snippet stays quiet, on the same threshold as its tagged
-	// sibling: a finding on every SKILL.md is a finding nobody reads.
 	short := goodMD + "```\n" + strings.Repeat("$ ls\n", 5) + "```\n"
 	if f := findingByCode(Validate(pkg(short, nil)), CodeUnlabelledCodeBlock); f != nil {
 		t.Errorf("a 5-line untagged fence must stay quiet: %+v", f)
 	}
 }
 
-// Every code the scanner can put on a package has to be a code some surface can
-// turn into words. The list is here rather than in a comment because a code
-// added without an entry in catalog's disclosure catalogue is invisible on both
-// screens, which is how symlink-entry, undeclared-dependency, file-not-scanned,
-// package-dependencies and entry-path-escape were all being found and none of
-// them said anything (稽核 01).
 func TestEveryDisclosureCodeIsDistinctAndNonEmpty(t *testing.T) {
 	seen := map[string]bool{}
 	for _, c := range DisclosureCodes {
@@ -962,11 +874,6 @@ func TestEveryDisclosureCodeIsDistinctAndNonEmpty(t *testing.T) {
 	}
 }
 
-// 04 丙-152: the Findings component prints Message verbatim in role="alert" on
-// the import page, the version-upload form, the packaging page and the
-// generation panel — and until this test existed, nothing ever rendered a
-// Report with a non-empty findings list, so the English sentences that command
-// used to reach that alert region were never caught by fixture or by CI.
 var cjkRune = regexp.MustCompile(`\p{Han}`)
 
 func TestFindingMessagesAreTraditionalChinese(t *testing.T) {

@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// writeTestMain builds a fake package under root so the check can be pointed at
-// a tree whose contents this test controls.
 func writeTestMain(t *testing.T, root, pkg, body string) string {
 	t.Helper()
 	dir := filepath.Join(root, "apps", "platform", "internal", pkg)
@@ -62,8 +60,7 @@ func TestRequireDBGuardCatchesAPackageThatIgnoresTheSwitch(t *testing.T) {
 
 func TestRequireDBGuardIgnoresTestMainsWithNoDatabase(t *testing.T) {
 	root := t.TempDir()
-	// A TestMain that never mentions the database URL is not this check's
-	// business; flagging it would train people to add the switch as noise.
+
 	writeTestMain(t, root, "nodb", `package p
 func TestMain(m *testing.M) { os.Exit(m.Run()) }`)
 	if err := requireDBGuardCheck(root); err != nil {
@@ -71,8 +68,6 @@ func TestMain(m *testing.M) { os.Exit(m.Run()) }`)
 	}
 }
 
-// TestTheRealRepositoryPassesIsTheOnePeopleWillSee keeps the check pointed at
-// the tree it exists for, not only at fixtures.
 func TestTheRealRepositoryPassesIsTheOnePeopleWillSee(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {

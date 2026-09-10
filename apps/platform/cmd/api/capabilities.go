@@ -20,57 +20,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 )
 
-// This deployment's capability table (05 R-36 第二段).
-//
-// It lives here rather than in the launcher because of the hard condition R-36
-// wrote: when this exists, the launcher reads THIS answer. Two lists of the same
-// preconditions is the drift this repository keeps finding, and the launcher's
-// copy was the one that could only guess — it owns no process it could ask.
-//
-// # What a probe is for, and the trap it must not repeat
-//
-// A probe measures the thing that actually breaks. It is not a liveness check
-// wearing a different name: the gateway probe asks whether the model this
-// deployment is configured to run is one the gateway serves, because that is the
-// failure R-36's first段 already blocked at the launcher — a gateway that is up
-// and a SKILLHUB_RUN_MODEL it does not serve kills every run a minute later with
-// `400 Invalid model name`. Asking the gateway's liveness endpoint instead would
-// be committing the defect this whole table exists to remove.
-//
-// Same reasoning for apps/llm: the probe calls its /readyz, which sits behind
-// the service token, so one request measures reachability, credential match and
-// the service's own configuration. On 2026-09-01 a restart without that
-// credential produced a service that answered /healthz 200 and could do none of
-// its four jobs (04 丙-118).
-//
-// Every probe here is free and read-only: /readyz is polled.
-//
-// packagingTargets is how many profiles LoadProfiles actually returned. It is a
-// count and not a bool because zero is the only interesting value and the reader
-// of a broken row deserves to know it was zero rather than "some".
-// servesWeb says this process hands the browser the SPA (clean mode; every
-// other deployment puts the build behind something else, ADR-018 E1). The
-// web_app row is added only then, because a capability this process cannot
-// serve is not one it should report on — Unavailable and Broken are both
-// wrong answers to "somebody else serves it".
-// creationCapability is the ADR-067 row, and it is built rather than written out
-// because clean mode needs three fewer variables than every other deployment.
-//
-// ── 2026-09-09：這一列本來會印一句當下為假的話 ───────────────────────────────
-//
-// 它宣告需要五個變數，其中三個是 Worker 的內部 listener。**淨測試模式不用那三個**：
-// `main.go` 的 `if clean` 把 `CreationTransient` 直接接到同一個行程裡的 worker set
-// （ADR-060 決策 6），HTTP 那條路一次都不會走。於是在淨模式打開創作之後，開機報告會
-// 印「✗ 缺前提 … /creation-sessions* 不掛載、GET /me 不列 creation_skill」——而實測
-// 兩者都掛著、`/me` 也列了。一份會說謊的能力表比沒有能力表更貴，因為下一個人會照著
-// 它去查錯的地方（2026-09-09 我自己就先照它查了一輪）。
-//
-// `servesWeb` 在呼叫端就是 `clean`（`capabilityTable(pool, len(profiles), clean)`），
-// 所以這裡不讀第二次環境變數——一個選擇點，與 cleanModeFromEnv 的承諾同一條。
 func creationCapability(clean bool) envx.Capability {
-	// Same boundary as generation_entry, one scope further in: the creation
-	// routes exist only under BOTH flags, and the limits are ruled values
-	// (05 R-45), not a default the process invents.
+
 	needs := []string{"CREATION_EXPOSED", "CREATION_LIMITS_JSON"}
 	without := "刻意的狀態：/creation-sessions* 不掛載、GET /me 不列 creation_skill；LIMITS 缺任何一鍵時 API 拒絕開始會話（Limits.Valid）"
 	if !clean {
@@ -135,18 +86,7 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 			Needs:   []string{"DOWNLOAD_ARTIFACT_RETENTION"},
 			Without: "打包一律 503",
 			Fix:     "這個值刻意沒有預設——它是一句對使用者的保存期承諾，不是參數（GOV-RETENTION-001）",
-			// The retention value is a promise about how long an artifact lives; it
-			// says nothing about whether one can be produced. The thing that actually
-			// stops packaging is an empty profile directory, and PACKAGING_PROFILES_DIR
-			// defaults to a RELATIVE path — so running the binary from anywhere but the
-			// repository root loads zero targets and every PACK-001 route answers 503
-			// (04 丙-102 ③).
-			//
-			// Measured on 2026-09-02 by exploratory testing: with zero profiles and
-			// with three, this row read `unmeasured` both times. A row that is identical
-			// whether the capability works or is completely dead carries no information,
-			// which is the exact defect this table was built to remove — and this file's
-			// own header says so: 「A probe measures the thing that actually breaks.」
+
 			Probe: func(context.Context) error {
 				if packagingTargets == 0 {
 					return errors.New(
@@ -174,11 +114,7 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 			ID:    "credit_pricing",
 			Name:  "Credit 計價與開始門檻（ADR-068）",
 			Needs: []string{"CREDIT_USD_PER_CREDIT", "CREDIT_MARKUP_BPS", "CREDIT_DEBT_FLOOR", "CREDIT_MIN_START_FALLBACK"},
-			// 這四個都有預設值，所以「沒有它會怎樣」不是能力消失——是這個部署按別人的價錢收費。
-			// 其中一個是例外，而它是唯一會真的擋住人的：滾動窗湊滿 20 筆樣本之前，
-			// CREDIT_MIN_START_FALLBACK 就是閘門①的門檻本身（credit.Service.CanStart 的
-			// 備援分支），不是備胎。封測第一天沒有任何樣本，所以第一批使用者遇到的門檻
-			// 一定是這個常數。
+
 			Without: "帳本照跑，但按 ADR-068 的預設值計價：1 credit = US$0.001、加成 1.3 倍、負債下限 −50 credit、" +
 				"樣本不足時的開始門檻 70 credit。" +
 				"CREDIT_MIN_START_FALLBACK 設得比封測發放額還高，拿到點數的人一樣開不了新創作；設成 0 則閘門①在量到 p95 之前形同不存在",
@@ -222,12 +158,7 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 			ID:    "generation_entry",
 			Name:  "M5 生成入口（ADR-052）",
 			Needs: []string{"GENERATE_SKILL_EXPOSED"},
-			// This is an exposure BOUNDARY, not a feature waiting to be turned on:
-			// 01 §10 forbids the generation entry point from appearing to
-			// closed-beta users until 01 §11.2's first funnel segment has a
-			// reading. The Fix sentence below says when NOT to set it, on purpose
-			// — wording this as encouragement would contradict the boundary it
-			// documents.
+
 			Without: "刻意的狀態：POST /skills/generate 不掛載、GET /me 不列 generate_skill，畫面不畫出生成入口",
 			Fix: "不要在 01 §11.2 第一段漏斗量到讀數之前設成 on——這是 M5 對封測使用者的曝光邊界（01 §10），" +
 				"不是一個等著被打開的功能",
@@ -238,10 +169,7 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 		caps = append(caps, envx.Capability{
 			ID:   "web_app",
 			Name: "網頁介面（這個行程送出的 SPA）",
-			// No Needs: nothing in .env.example gates this. The build is an
-			// artifact, not a variable, and that is exactly why it had no row
-			// until now — every other mechanism in this repository measures the
-			// process and its environment, and an artifact is neither.
+
 			Without: "index.html 送得出去，但它引用的 JavaScript 不在——瀏覽器拿到一個空白頁，" +
 				"伺服器這邊每一條路由都還是 200",
 			Fix: "重新 `task build:web`，然後**重啟這個行程**：index.html 在啟動時就讀進記憶體並烙上旗標，" +
@@ -258,29 +186,8 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 	return envx.NewRegistry(caps)
 }
 
-// assetRef matches the build's own asset references in index.html. Vite emits
-// them as absolute site paths (`/assets/<name>-<hash>.<ext>`), and the hash is
-// the point: it changes on every rebuild, so a stale index.html names files
-// that are no longer there.
 var assetRef = regexp.MustCompile(`/assets/[A-Za-z0-9._-]+`)
 
-// probeWebAssetsUnder measures what this process actually hands a browser.
-//
-// The failure it names happened on 2026-09-02: `task build:web` while the
-// process was up left index.html in memory pointing at the previous hash, so
-// every asset request answered 404 and the page rendered nothing — with
-// /healthz still 200 and every capability row still green, because none of them
-// looks at the build.
-//
-// It deliberately does NOT re-check what the bundle talks to. That rule lives
-// in apps/web/scripts/check-bundle-origins.mjs, which runs inside
-// `npm run build` so no caller can produce a bundle without it, and it carries
-// a named allowlist of the origins libraries legitimately emit. A second copy
-// of that allowlist here, in another language, is the drift this repository
-// keeps finding — R-36's own hard condition was that no second list exists.
-//
-// Split from its caller for the reason webStaticHandlerUnder is: the failures
-// have to be reachable from a test with a temporary directory.
 func probeWebAssetsUnder(distDir string) error {
 	index, err := os.ReadFile(filepath.Join(distDir, "index.html"))
 	if err != nil {
@@ -302,8 +209,6 @@ func probeWebAssetsUnder(distDir string) error {
 	return nil
 }
 
-// probeLLMService asks apps/llm whether it can work, with this deployment's own
-// credential. See capabilityTable's comment for why it is that endpoint.
 func probeLLMService(client *http.Client) func(context.Context) error {
 	return func(ctx context.Context) error {
 		base := strings.TrimRight(os.Getenv("LLM_SERVICE_URL"), "/")
@@ -320,8 +225,7 @@ func probeLLMService(client *http.Client) func(context.Context) error {
 		switch resp.StatusCode {
 		case http.StatusOK:
 		case http.StatusUnauthorized:
-			// The 2026-09-01 accident, named exactly: the service is reachable
-			// and its credential is not this one's.
+
 			return errors.New("apps/llm 拒絕了這個部署的服務憑證：兩邊的 LLM_SERVICE_TOKEN 不一樣")
 		case http.StatusServiceUnavailable:
 			return errors.New("apps/llm 自己沒有設定服務憑證（它會對每一個能力端點回 503）")
@@ -342,8 +246,6 @@ func probeLLMService(client *http.Client) func(context.Context) error {
 	}
 }
 
-// probeModelGateway asks the gateway which models it serves and looks for the
-// one this deployment is configured to run.
 func probeModelGateway(client *http.Client) func(context.Context) error {
 	return func(ctx context.Context) error {
 		base := strings.TrimRight(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/")
@@ -379,17 +281,12 @@ func probeModelGateway(client *http.Client) func(context.Context) error {
 			}
 			served = append(served, m.ID)
 		}
-		// The failure R-36's first段 blocked at the launcher, now measured
-		// rather than inferred from two variables both being non-empty.
+
 		return fmt.Errorf("閘道沒有服務 SKILLHUB_RUN_MODEL=%q，每個 Run 都會死在 400 Invalid model name；它服務的是：%s",
 			want, strings.Join(served, "、"))
 	}
 }
 
-// redactURL keeps an address out of an error a probe puts on an
-// unauthenticated endpoint. Go's transport wraps every failure in *url.Error,
-// which carries the full request URL; the cause underneath it is the part a
-// reader needs ("connection refused"), and the address is not ours to publish.
 func redactURL(err error) string {
 	var ue *url.Error
 	if errors.As(err, &ue) && ue.Err != nil {
@@ -398,9 +295,6 @@ func redactURL(err error) string {
 	return err.Error()
 }
 
-// reportCapabilities prints the table at boot. On the machine clean test mode
-// exists for, this print is the only diagnostic the person in front of it gets,
-// so every row that is not Ready says what a user will meet and how to fix it.
 func reportCapabilities(ctx context.Context, reg *envx.Registry) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -411,8 +305,7 @@ func reportCapabilities(ctx context.Context, reg *envx.Registry) {
 		case envx.Ready:
 			slog.Info("  ✓ 量到了，可以用", "能力", s.Name, "耗時", s.MeasuredFor)
 		case envx.Unmeasured:
-			// Printed differently from ✓ on purpose. This is the state that used
-			// to be a tick.
+
 			slog.Info("  ? 前提齊全，但沒有人量過它", "能力", s.Name)
 		case envx.Broken:
 			slog.Warn("  ✗ 前提齊全，但量到它壞的", "能力", s.Name, "原因", s.Detail, "沒有它會怎樣", s.Without)
@@ -423,19 +316,13 @@ func reportCapabilities(ctx context.Context, reg *envx.Registry) {
 	}
 }
 
-// printCapabilitiesJSON serves `--capabilities`: the declared table with no
-// probing and no database, so `devctl automation-check` can compare it against
-// .env.example without standing a deployment up (R-36's checker).
 func printCapabilitiesJSON(w io.Writer) error {
 	type row struct {
 		ID    string   `json:"id"`
 		Name  string   `json:"name"`
 		Needs []string `json:"needs"`
 	}
-	// servesWeb false: this prints the DECLARED table for the R-36 checker,
-	// which reconciles Needs against .env.example. web_app declares no
-	// variables, so its presence would change nothing there — and this path
-	// stands no deployment up, so it has no build to speak for either.
+
 	reg := capabilityTable(nil, 0, false)
 	out := make([]row, 0, len(reg.Capabilities()))
 	for _, c := range reg.Capabilities() {

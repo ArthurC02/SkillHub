@@ -1,27 +1,5 @@
 package main
 
-// Every retention sweep cmd/maintenance can run must have a cron line in the
-// release checklist's deployment section.
-//
-// cmd/maintenance ships no scheduler — its own header says so, deliberately:
-// 「程式刻意不自帶 scheduler」. That is a reasonable decision and it has one
-// consequence, which is that the sweep exists in this repository and runs
-// nowhere until an operator wires it. A sweep nobody wired is not a slow sweep;
-// it is a retention promise that will never be kept, and the only place that
-// difference is visible is a checklist item.
-//
-// The checklist has such lines for two of the seven subcommands
-// (`purge-accounts`, `rotate-partitions`). The other five — analytics, audit,
-// run artifacts, datasets, deleted skills — carry the promises made in
-// gate-test/consent-and-data-policy.md to people who will sign it, and there is
-// nothing between the promise and the operator.
-//
-// Anchored to the subcommand names because that is what an operator types, and
-// read from `main.go`'s switch rather than from its usage string: 02:PORT-004's
-// lesson is that a check satisfied by prose is satisfied by prose that lies. A
-// `case "purge-x":` added to the dispatch switch joins this comparison by
-// existing.
-
 import (
 	"fmt"
 	"go/ast"
@@ -64,10 +42,7 @@ func purgeScheduleProblems(root string) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("purge-schedule: %v", err)}
 	}
-	// The deployment section only. A subcommand named in §1's "what the code
-	// already does" or in §5's answers is not a subcommand anybody scheduled,
-	// and counting those would make this check green by reading its own subject
-	// matter back to itself.
+
 	section, err := deploymentSection(string(data))
 	if err != nil {
 		return []string{fmt.Sprintf("purge-schedule: %s: %v", deploymentDoc, err)}
@@ -95,8 +70,6 @@ func purgeScheduleProblems(root string) []string {
 	return problems
 }
 
-// deploymentSection returns the body of the checklist's 部署期 chapter — the
-// `## 2.` heading through the next `## `.
 func deploymentSection(text string) (string, error) {
 	lines := strings.Split(text, "\n")
 	start := -1
@@ -117,10 +90,6 @@ func deploymentSection(text string) (string, error) {
 	return strings.Join(lines[start:], "\n"), nil
 }
 
-// maintenanceSubcommands reads the case values of the dispatch switch out of the
-// AST. Same reason as everywhere else in this package: a text scan finds the
-// names in the usage string and the file header, both of which survive deleting
-// the code that runs them.
 func maintenanceSubcommands(path string) ([]string, error) {
 	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {

@@ -54,9 +54,7 @@ func TestMarshalCreationFeedbackKeepsFailedCriterionReasonAndEvidence(t *testing
 
 func TestMarshalCreationFeedbackBoundsLargeReportAndMarksOmissions(t *testing.T) {
 	large := strings.Repeat("x", 9000)
-	// Enough criteria that even after each one's Text/Reason is cut to
-	// creationFeedbackMaxItem, the payload still exceeds creationFeedbackMaxRunes
-	// and the whole-item drop loop still has to run.
+
 	var criteria []CriterionResult
 	for i := 0; i < 15; i++ {
 		criteria = append(criteria, CriterionResult{
@@ -103,21 +101,6 @@ func TestMarshalCreationFeedbackBoundsLargeReportAndMarksOmissions(t *testing.T)
 	}
 }
 
-// TestMarshalCreationFeedbackPerItemCutProtectsFailedCriterionAndWarning pins
-// the actual seam bug: a per-item cut on CriterionResult.Reason and
-// Finding.Message, applied before anything is dropped whole, plus ordering
-// that drops passed/met criteria and non-warning/error findings first. Without
-// it, a single oversized free-text field forced exactly the content a caller
-// most needs — the failed criterion's reason, the judge's warning — to be the
-// first things lost to the byte budget.
-//
-// Two criteria carry a full, uncut 9,000-rune reason each (an undetermined one
-// and, positioned last the way a real evaluation would append it, the failed
-// one this test is about): cut to creationFeedbackMaxItem apiece they fit
-// comfortably, but full-size together they are what actually forces the
-// criteria drop loop to reach past the merely-`passed` filler and into
-// protected territory — which is exactly the scenario that used to claim the
-// failed criterion first, because it was the one written last.
 func TestMarshalCreationFeedbackPerItemCutProtectsFailedCriterionAndWarning(t *testing.T) {
 	large := strings.Repeat("y", 9000)
 
@@ -125,8 +108,7 @@ func TestMarshalCreationFeedbackPerItemCutProtectsFailedCriterionAndWarning(t *t
 		{CriterionID: "criterion-passed", Text: "a short passed criterion", Result: ResultPassed, Reason: "ok"},
 		{CriterionID: "criterion-undetermined", Text: "a filler criterion", Result: ResultUndetermined, Reason: large},
 	}
-	// Padding: enough passed filler criteria that the report is oversized before
-	// any per-item cut is considered, so the criteria drop loop actually runs.
+
 	for i := 0; i < 14; i++ {
 		criteria = append(criteria, CriterionResult{
 			CriterionID: "criterion-filler", Text: large, Result: ResultPassed, Reason: large,
@@ -186,10 +168,6 @@ func TestMarshalCreationFeedbackPerItemCutProtectsFailedCriterionAndWarning(t *t
 		t.Fatalf("the trailing warning finding was dropped: %+v", payload.DeterministicFindings)
 	}
 }
-
-// --- 05 SEC-013 (LLM01): a judge writes about output the Skill under trial
-// produced, so a URL in its free text is an address an attacker chose. The
-// creation flow is the one reader of this payload and has no use for it.
 
 func TestCreationFeedbackStripsLinksFromTheJudgesOwnWords(t *testing.T) {
 	blob, err := marshalCreationFeedback(evaluationView{

@@ -107,9 +107,6 @@ func (s *countingObjectStore) Exists(_ context.Context, key string) (bool, error
 	return s.exists == nil || s.exists[key], nil
 }
 
-// Bounded maintenance worklists must rotate after claiming a row. Otherwise a
-// permanently failing first item occupies every batch and later retention or
-// reconciliation work never runs.
 func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 	pool := requireDB(t)
 	shelveExistingWorklists(t, pool)
@@ -467,9 +464,8 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 
 	assertConcurrentClaims := func(name string, want map[string]bool, claim func(context.Context, *gen.Queries) (string, error)) {
 		t.Helper()
-		// Production calls through the pool, so the row lock ends as soon as this
-		// statement returns and external work begins. The attempted-at lease, not
-		// an artificially open test transaction, must keep worker two away.
+		// Each claim runs its own statement against the pool rather than a shared
+		// transaction, so the row lock releases as soon as it returns.
 		first, err := claim(ctx, gen.New(pool))
 		if err != nil {
 			t.Fatalf("%s first claim: %v", name, err)
@@ -754,8 +750,8 @@ func TestDownloadRetentionKeepsBytesNeededByANewerArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Clean mode has one database connection. Holding the guard transaction and
-	// opening another transaction to mark the row would deadlock this call.
+	// One connection: a nested transaction opened while the guard transaction is
+	// still held would starve waiting for a connection that never frees up.
 	cfg := pool.Config().Copy()
 	cfg.MaxConns = 1
 	single, err := pgxpool.NewWithConfig(ctx, cfg)

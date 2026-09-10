@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// Pointed at the tree. RED until the missing cron lines are written, and the
-// failure names which sweeps have no schedule rather than just failing.
 func TestEveryRealMaintenanceSweepHasACronLine(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -17,8 +15,6 @@ func TestEveryRealMaintenanceSweepHasACronLine(t *testing.T) {
 	}
 }
 
-// The subcommand scan has to keep finding subcommands. If it stopped, the check
-// above would pass by having nothing to schedule.
 func TestTheMaintenanceSwitchScanStillFindsTheSweeps(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -28,11 +24,7 @@ func TestTheMaintenanceSwitchScanStillFindsTheSweeps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Deliberately not a list of every sweep: the names move (purge-analytics
-	// became purge-feedback on 2026-08-29) and a test that pins them turns a
-	// rename into a failure of the wrong thing. What must not move is that the
-	// scan finds a switch full of sweeps, and the two that have been there
-	// since M4.
+
 	sweeps := 0
 	have := map[string]bool{}
 	for _, n := range names {
@@ -96,7 +88,7 @@ func TestPurgeScheduleAcceptsATreeWhereEverySweepIsScheduled(t *testing.T) {
 	if problems := purgeScheduleProblems(writePurgeFixture(t, allScheduled)); len(problems) != 0 {
 		t.Fatalf("a fully scheduled deployment section was rejected: %v", problems)
 	}
-	// `collect-objects` is not a retention sweep and must not be demanded.
+
 	if strings.Contains(strings.Join(purgeScheduleProblems(writePurgeFixture(t, allScheduled)), ""), "collect-objects") {
 		t.Fatal("collect-objects is not a purge- or rotate-partitions sweep and must not be required")
 	}
@@ -112,12 +104,11 @@ func TestPurgeScheduleNamesTheSweepNobodyScheduled(t *testing.T) {
 	}
 }
 
-// The two ways this passes while proving nothing.
 func TestPurgeScheduleSaysSoWhenItHasLostItsSubject(t *testing.T) {
 	t.Parallel()
 	t.Run("a mention outside the deployment section does not count", func(t *testing.T) {
 		t.Parallel()
-		// §1 and §3 both name purge-audit; only §2 schedules anything.
+
 		without := strings.Replace(allScheduled, "- [ ] `cmd/maintenance purge-audit` 接上 cron\n", "", 1)
 		problems := purgeScheduleProblems(writePurgeFixture(t, without))
 		if len(problems) != 1 || !strings.Contains(problems[0], "purge-audit") {

@@ -1,17 +1,5 @@
 package packaging
 
-// skillhub-manifest.json: the platform's account of how one package was produced
-// (contracts/packaging/download-manifest.schema.json, ADR-027 decision 5).
-//
-// The consumer list has one member outside this repository — the user unzipping
-// the package — so the JSON Schema is the contract and these structs are one
-// implementation of it. Every level is closed there (`additionalProperties:
-// false`), which is why nothing here has a catch-all field: adding one would be a
-// contract change rather than an oversight, and the branch that matters is
-// `improvement`, where the suggestion prose quotes a Run's private inputs.
-//
-// This manifest is not a signature and not an endorsement (ADR-027 decision 3).
-
 import (
 	"context"
 	"fmt"
@@ -24,38 +12,15 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-// ManifestSchemaVersion is the contract version these structs write. Minor bumps
-// are additive and an older manifest stays a valid instance of a newer minor.
-//
-// 1.1 since 2026-08-29: `origin.import.source_type` and `rootSource.source_type`
-// gained `generated` (0037), and a producer declares the version it writes to,
-// not the version of the fields it happens to use this time. Widening an enum is
-// additive, so README §5 makes this a minor bump and every 1.0 manifest is still
-// a valid 1.1 instance.
-//
-// 1.2 since 2026-09-08 (05 R-30): `source_version_created_at` joins the
-// misleadingly named `packaged_at` and carries the same value. Renaming a
-// required field breaks every consumer at once; adding the honest name beside
-// it breaks none, and the old one keeps being written until a major version
-// retires it. Additive, so a 1.1 manifest is still a valid 1.2 instance.
 const ManifestSchemaVersion = "1.2"
 
-// unavailable is what a deleted lineage hop records. Omitting it is not an
-// option: a gap reads as "there was no upstream", which is a different and false
-// statement (packaging-design §4.2).
 const unavailable = "unavailable"
 
-// maxLineageHops bounds the provenance walk. A fork chain is a linked list of
-// rows nothing stops from being long, and a cycle would only need one bad row.
-// ponytail: flat cap; the last hop records `unavailable` if it is ever reached,
-// which is the honest answer for "we stopped looking".
 const maxLineageHops = 32
 
 type Manifest struct {
 	SchemaVersion string `json:"schema_version"`
-	// PackagedAt is deprecated in 1.2 and still written: it carries the source
-	// version's creation time, which is what SourceVersionCreatedAt says on the
-	// tin (05 R-30). Both fields, one value, until a major version drops this.
+
 	PackagedAt             string             `json:"packaged_at"`
 	SourceVersionCreatedAt string             `json:"source_version_created_at,omitempty"`
 	PackagerVersion        string             `json:"packager_version"`
@@ -67,33 +32,20 @@ type Manifest struct {
 	Compatibility          Compatibility      `json:"compatibility"`
 	IncludedTestCases      []IncludedTestCase `json:"included_test_cases"`
 	ExcludedTestCases      []ExcludedTestCase `json:"excluded_test_cases"`
-	// ExcludedFiles is what the exporter removed from the author's own tree.
-	// Never omitempty: an absent list and an empty one would say the same thing
-	// on the page, and only one of them is "nothing was removed".
+
 	ExcludedFiles []ExcludedFile `json:"excluded_files"`
 	ManifestHash  string         `json:"manifest_hash"`
 }
 
-// ExcludedFile is one source file the packager removed, and why.
-//
-// The reasons are a closed set because a user acts differently on each one, and
-// they carry their own words for the same reason every other enum on this
-// contract does (設計系統 §4.4): two surfaces wording one removal differently is
-// how a reader ends up believing the platform did two different things.
 type ExcludedFile struct {
 	Path   string `json:"path"`
 	Reason string `json:"reason"`
 	Label  string `json:"label"`
 	Note   string `json:"note"`
-	// ReferencedBySkillMD marks the case the platform treats as its own fault:
-	// the file was in the version, SKILL.md needs it, and the exporter is what
-	// took it away. Packaging refuses on that (BlockedFileRemoved). A reference
-	// that was already dangling at import never reaches here — that one is the
-	// author's, and it ships with a warning.
+
 	ReferencedBySkillMD bool `json:"referenced_by_skill_md,omitempty"`
 }
 
-// The excluded_files[].reason enum of contracts/packaging/download-manifest.schema.json.
 const (
 	ReasonExcludedDir    = "excluded_dir"
 	ReasonCredentialFile = "credential_file"
@@ -101,10 +53,6 @@ const (
 	ReasonUnsafePath     = "unsafe_path"
 )
 
-// excludedFileWords is the served wording for each reason. Written from the
-// author's side rather than the exporter's: the reader of this list is the
-// person who packaged their own Skill and is now missing a file, so each note
-// says what to do rather than restating the rule.
 var excludedFileWords = map[string][2]string{
 	ReasonExcludedDir: {"目錄不隨套件散布",
 		"這個路徑在不隨套件走的目錄底下(.git、.github、node_modules、__pycache__、.venv、.tox、.mypy_cache、.aws、.azure、.docker、.kube、.ssh)。" +
@@ -119,7 +67,6 @@ var excludedFileWords = map[string][2]string{
 		"這個 entry 名稱會逃出套件根目錄,或帶著磁碟機代號或反斜線。重新壓縮成相對路徑即可。"},
 }
 
-// withWords fills the served label and note for a reason.
 func (e ExcludedFile) withWords() ExcludedFile {
 	if w, ok := excludedFileWords[e.Reason]; ok {
 		e.Label, e.Note = w[0], w[1]
@@ -134,9 +81,7 @@ type ManifestSource struct {
 	SkillVersionID string `json:"skill_version_id"`
 	VersionNumber  int32  `json:"version_number"`
 	ContentHash    string `json:"content_hash"`
-	// Origin is one of importOrigin / forkOrigin / improvementOrigin — three
-	// mutually exclusive shapes, because in the data model PACK-003's "original
-	// source and derivation" is not one field but three mutually exclusive paths.
+
 	Origin any `json:"origin"`
 }
 
@@ -153,9 +98,7 @@ type forkOrigin struct {
 	Kind                   string `json:"kind"`
 	UpstreamSkillID        string `json:"upstream_skill_id"`
 	UpstreamSkillVersionID string `json:"upstream_skill_version_id"`
-	// Chain runs from the immediate upstream to the oldest hop still known.
-	// DISC-003 clause 5 asks for the ORIGINAL source, so one hop does not satisfy
-	// it. Elements are lineageHop or the string "unavailable".
+
 	Chain      []any `json:"chain"`
 	RootSource any   `json:"root_source"`
 }
@@ -168,10 +111,6 @@ type improvementOrigin struct {
 	RootSource   any             `json:"root_source"`
 }
 
-// suggestionRef is a suggestion's class and the file it targeted, and nothing
-// else. `problem`, `proposed_content`, `expected_impact` and the evidence
-// excerpt are model-written text quoting the private inputs of a Run; they are
-// intentionally absent here and intentionally unrepresentable (iron rule 11).
 type suggestionRef struct {
 	Category   string `json:"category"`
 	TargetPath string `json:"target_path"`
@@ -190,14 +129,6 @@ type rootSource struct {
 	FetchedAt  string  `json:"fetched_at"`
 }
 
-// ManifestLicense is the outward form of ADR-021's tiers. Expression and
-// SourceTier are a PAIR and are never flattened: "MIT" declared by the author
-// and "MIT" read off a repository root LICENSE are not the same claim. Both nil
-// or both set — the same all-or-nothing the 0012 CHECK enforces in the database.
-//
-// This block reports licence evidence. It does not decide what may be packaged:
-// that is `skills.redistribution`, and `license_status = Confirmed` is explicitly
-// not a release condition (02:CONTENT-002).
 type ManifestLicense struct {
 	Expression  *string           `json:"expression"`
 	SourceTier  *string           `json:"source_tier"`
@@ -211,8 +142,6 @@ type ManifestValidation struct {
 	Infos    []ManifestFinding `json:"infos"`
 }
 
-// ManifestFinding mirrors skillpkg.Finding minus its severity, which is implied
-// by the list it sits in.
 type ManifestFinding struct {
 	Code    string   `json:"code"`
 	Path    string   `json:"path,omitempty"`
@@ -220,16 +149,10 @@ type ManifestFinding struct {
 	Details []string `json:"details,omitempty"`
 }
 
-// Compatibility keeps ADR-012's three layers apart. Passing `format` is never a
-// claim that the package installs or runs — that is what PACK-008 exists to
-// prevent.
 type Compatibility struct {
 	Format     string `json:"format"`
 	Capability string `json:"capability"`
-	// Behaviour is a record of ONE measurement, never a promise. Its value may
-	// come only from the measured row for this Skill Version on this Runtime
-	// Image; with no such row it is `unverified` and it is never extrapolated
-	// from another version or another image (04 乙-4).
+
 	Behaviour    string `json:"behaviour"`
 	RuntimeImage string `json:"runtime_image,omitempty"`
 	MeasuredAt   string `json:"measured_at,omitempty"`
@@ -245,8 +168,6 @@ func toManifestFindings(in []skillpkg.Finding) []ManifestFinding {
 	return out
 }
 
-// licenseDisclosures are the info findings the licence resolution raised.
-// ADR-021 decision 5: every carry and every fallback is disclosed, never silent.
 func licenseDisclosures(infos []skillpkg.Finding) []ManifestFinding {
 	out := []ManifestFinding{}
 	for _, f := range infos {
@@ -257,7 +178,6 @@ func licenseDisclosures(infos []skillpkg.Finding) []ManifestFinding {
 	return out
 }
 
-// compatibilityOf reads the measured row for this version, if there is one.
 func (s *Service) compatibilityOf(ctx context.Context, versionID pgtype.UUID) (Compatibility, error) {
 	c := Compatibility{Format: "valid", Capability: unverified, Behaviour: unverified}
 	if s.ReadCompatibility == nil {
@@ -271,9 +191,7 @@ func (s *Service) compatibilityOf(ctx context.Context, versionID pgtype.UUID) (C
 		return c, err
 	}
 	c.Capability, c.Behaviour = row.Capability, row.Runtime
-	// The image is required whenever either measured axis is not `unverified`: a
-	// verdict without the image it was measured on IS the extrapolation the
-	// contract forbids. Both axes unverified means there is nothing to attribute.
+
 	if c.Capability != unverified || c.Behaviour != unverified {
 		c.RuntimeImage = row.RuntimeImage
 		if row.MeasuredAt.Valid {
@@ -283,14 +201,6 @@ func (s *Service) compatibilityOf(ctx context.Context, versionID pgtype.UUID) (C
 	return c, nil
 }
 
-// originOf resolves PACK-003's three mutually exclusive provenance paths.
-//
-// Order matters and is not the order they are listed in the design. A version
-// built from improvement suggestions goes through the ordinary version writer,
-// so it HAS a skill_sources row of type `upload` — checking `source_id` first
-// would report every improved version as a fresh import and lose the derivation
-// DISC-003 asks for. So: the reverse lookup first, then the fork shape (whose
-// marker is source_id being NULL), then the import.
 func (s *Service) originOf(
 	ctx context.Context, ws identity.Workspace, skill SkillFacts, version VersionFacts,
 ) (any, error) {
@@ -302,6 +212,9 @@ func (s *Service) originOf(
 	if err != nil {
 		return nil, err
 	}
+	// Checked first: an improved version still carries the source_id of the
+	// import it started from, so checking that before the origin below would
+	// read it as a plain import.
 	if len(sugs) > 0 {
 		return s.improvementOriginOf(ctx, ws, version, sugs)
 	}
@@ -331,10 +244,7 @@ func (s *Service) originOf(
 			ContentHash: src.ContentHash,
 		}, nil
 	}
-	// Neither a fork nor an import and nothing applied it: there is no honest
-	// origin to write, and a manifest that omits one would claim this version
-	// came from nowhere. Refusing is the correct answer to a row that should not
-	// exist.
+
 	return nil, fmt.Errorf("skill version %s has no recorded origin", pgconv.UUIDString(version.ID))
 }
 
@@ -367,20 +277,13 @@ func (s *Service) improvementOriginOf(
 	}, nil
 }
 
-// walkLineage follows a fork chain from one version up to the oldest hop still
-// readable, and resolves the import at the end of it.
-//
-// The reads it uses are not workspace scoped, deliberately: an upstream lives in
-// another workspace by definition, and DISC-003 clause 5 asks for the original
-// source rather than for the nearest one the caller happens to own (see
-// db/queries/packaging.sql for what those two statements are bounded to).
 func (s *Service) walkLineage(ctx context.Context, from pgtype.UUID) (chain []any, root any) {
 	chain = []any{}
 	cur := from
 	for i := 0; i < maxLineageHops; i++ {
 		row, found, err := s.ReadLineage(ctx, cur)
 		if err != nil || !found {
-			// Deleted or unreadable: recorded, not skipped.
+
 			return append(chain, unavailable), unavailable
 		}
 		chain = append(chain, lineageHop{
@@ -396,8 +299,6 @@ func (s *Service) walkLineage(ctx context.Context, from pgtype.UUID) (chain []an
 	return append(chain, unavailable), unavailable
 }
 
-// rootSourceOf finds the import a lineage started from: the oldest version of
-// the skill, then up through each fork until one of them has a source row.
 func (s *Service) rootSourceOf(ctx context.Context, versionID pgtype.UUID) any {
 	cur := versionID
 	for i := 0; i < maxLineageHops; i++ {
@@ -427,9 +328,6 @@ func (s *Service) rootSourceOf(ctx context.Context, versionID pgtype.UUID) any {
 	return unavailable
 }
 
-// rfc3339 is deliberately not pgconv.RFC3339: the manifest schema has no null
-// spelling for a timestamp, so a NULL becomes the epoch rather than "" and the
-// emitted document stays parseable. Do not merge the two.
 func rfc3339(ts pgtype.Timestamptz) string {
 	if !ts.Valid {
 		return time.Unix(0, 0).UTC().Format(time.RFC3339)

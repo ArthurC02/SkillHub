@@ -8,17 +8,9 @@ import (
 	"testing"
 )
 
-// TestWireMessagesAreTraditionalChinese covers 04 丙-149: every user-facing
-// message this package can put on the wire must be Traditional Chinese, never
-// a hand-written English sentence. It exercises the real validation code
-// paths rather than a copied string list, so a regression in the code (not
-// just in this file) is what turns it red.
 func TestWireMessagesAreTraditionalChinese(t *testing.T) {
 	han := regexp.MustCompile(`\p{Han}`)
-	// An English-sentence detector: catches the shape of the old messages
-	// ("... must ...", "... failed", "not found", "is required", ...) without
-	// tripping on a Chinese sentence that keeps an untranslated product term
-	// (Run, Workspace, Prompt, rubric, bytes) among Han characters.
+
 	englishSentence := regexp.MustCompile(`(?i)\b(must|failed|not found|required|invalid|cannot|could not)\b`)
 
 	check := func(t *testing.T, label, msg string) {
@@ -139,10 +131,6 @@ func mustErrRubric(t *testing.T, fn func() (Rubric, error)) string {
 	return stripSentinelPrefix(err, ErrInvalid)
 }
 
-// zipTooManyFilesErr builds a plain (non-OOXML) zip with more than
-// MaxFilesPerTestCase entries so inspectZip's file-count limit fires; the
-// unpacked-bytes limit is not cheap to reach in a unit test (it takes a
-// multi-hundred-MB payload to trip) and is left uncovered here.
 func zipTooManyFilesErr(t *testing.T) error {
 	t.Helper()
 	var buf bytes.Buffer

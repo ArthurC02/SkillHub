@@ -1,24 +1,10 @@
-# LiteLLM Proxy configuration — the platform's only model exit (ADR-017).
-#
-# Model tiers are PDM-003 v5. A Run's default is the mini tier: the spike
-# measured it as sufficient for skill try-outs, and it is what the per-Run budget
-# in SBX-008 is priced against. The flagship and judge tiers are named here so
-# the platform's own LLM workloads (ADR-013 enrichment, EVAL LLM Judge) resolve
-# through the same gateway instead of reaching a provider directly.
-#
-# The provider key is read from this process's environment and never leaves it:
-# every caller — Python service, Go control plane, sandbox — holds a Virtual Key
-# instead (iron rule 8).
 model_list:
   - model_name: gpt-5.4-mini #試跑預設 (PDM-003 v5)
     litellm_params:
       model: openai/gpt-5.4-mini
       api_key: os.environ/OPENAI_API_KEY
-      # Measured LiteLLM gap, kept as documentation and as a workaround: neither
-      # drop_params nor additional_drop_params is applied on the /v1/messages
-      # (Anthropic-compatible) route, so an Anthropic `thinking` block reaches
-      # the OpenAI backend as `reasoning_effort`. The Agent SDK speaks that
-      # route, so the drop has to be declared per model.
+      # This route does not honor drop_params/additional_drop_params globally,
+      # so unsupported params must be dropped per model here.
       additional_drop_params: ["reasoning_effort", "thinking"]
   - model_name: gpt-5.6-sol # flagship
     litellm_params:
@@ -30,11 +16,6 @@ model_list:
       model: openai/gpt-5.6-terra
       api_key: os.environ/OPENAI_API_KEY
       additional_drop_params: ["reasoning_effort", "thinking", "temperature"]
-  # match-reason tier (search rewrite not implemented, see 04 丙-76). ADR-013
-  # 決策 §2 specifies a light LLM query rewrite and quantifies it (Top-1 80% ->
-  # 100%); apps/llm has six endpoints and none of them is it, so /match-reasons
-  # is the only caller of this group. Named here so the next reader of this file
-  # does not conclude from the comment that the rewrite exists.
   - model_name: gpt-5.6-luna # match-reason tier
     litellm_params:
       model: openai/gpt-5.6-luna
@@ -48,45 +29,13 @@ model_list:
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
-  # Flush spend to the database every second. A per-Run budget that is only
-  # written on the default batched interval is a budget that cannot stop a run,
-  # and TRACE-004's cost is read back from this same record.
   proxy_batch_write_at: 1
-  # Root cause of the M2 baseline's 16 phantom-cancelled Runs (m2/README 乙-3).
-  #
-  # Since v1.84 LiteLLM reserves each in-flight request's *theoretical maximum*
-  # cost against the key's budget counter: every input token at the full
-  # (non-cached) input rate plus `max_tokens` at the output rate. For a
-  # gpt-5.4-mini Agent SDK request that is `64000 * 4.5e-6 = $0.288` of output
-  # alone, against an actual cost of a few tenths of a cent - the model emits a
-  # few hundred tokens and most of the input is a cache read at 1/10 the rate.
-  # Two overlapping requests therefore pin the counter at the whole $0.50 budget
-  # and every further request is rejected with a "Current cost" that is pure
-  # estimate. Measured here on 1.96.2: 4 concurrent requests reported
-  # `Current cost: 0.78845825` while the key's recorded spend was $0.00096.
-  #
-  # The reservation is built for coarse team/org budgets where max_tokens is
-  # close to what gets emitted. A per-Run budget priced against *actual* spend
-  # (PDM-003 v5) cannot survive it: the reservation alone exceeds the budget.
-  # Turning it off restores read-time enforcement against recorded spend, which
-  # is what the permission summary promises the user and what ADR-017 calls the
-  # authoritative number.
-  #
-  # The cost of this, stated: enforcement is read-time only, so requests already
-  # in flight when the budget is crossed still complete, and a key can overshoot
-  # by their actual cost. A sandbox runs one agent, `proxy_batch_write_at` is 1s,
-  # and `tpm_limit` still caps the rate - so the overshoot is bounded and small,
-  # unlike the false rejections it replaces.
+  # Reservation charges each in-flight request's theoretical max cost (full input
+  # rate plus max_tokens at output rate) against the budget, not actual spend;
+  # disabling it enforces against recorded spend instead.
   disable_budget_reservation: true
 
 litellm_settings:
   drop_params: true
-  # 05 R-51 (2026-09-07): the platform-level brake TM-MDL-02 left open. Every
-  # Run and every creation session already has its own ceiling; this is the
-  # sum nobody was watching. A proxy-wide daily budget: once crossed, the
-  # gateway refuses new calls until the window rolls — the same shape as
-  # SEC-012's automatic first action (stop dispatch, keep the scene). The
-  # value is a development default; production sets its own and alerts on
-  # the spend trend, not on the refusal.
   max_budget: 50
   budget_duration: 1d

@@ -5,11 +5,6 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { DataPolicy } from "./pages/DataPolicy";
 
-// 02:O11Y-004 / 04 丙-25② — the data policy page. The one thing worth a test here
-// is that it never invents a retention window: ADR-029's proposed 180 days is not
-// ratified, and a page that printed it while the deployment collected nothing
-// would be the 04 乙-2 mistake in a new place.
-
 let container: HTMLDivElement;
 let root: Root;
 
@@ -67,9 +62,6 @@ const EVENTS = [
   },
 ];
 
-// The Go server's own wording (04 丙-154 ②, strings-149-152-154-go-workspace-
-// learning.md) — a fixture that paraphrased this would hide a contract drift
-// the same way an English fixture would (04 丙-143's rule).
 const FEEDBACK = {
   what: "由已登入的參與者在 POST /feedback 送出的回報（BETA-003/004/005）",
   collected: ["kind", "message", "page_path", "run_id"],
@@ -95,13 +87,9 @@ test("O11Y-004 an unconfigured deployment says 目前不收集 rather than a pro
   );
   await render(<DataPolicy />, () => text().includes("目前不收集"));
 
-  // NFR-002 made visible: no retention value, no collection.
   expect(text()).toContain("一列都不寫");
   expect(text()).not.toContain("180");
-  // No window is stated at all, not even a zero-day one: the copy that names a
-  // retention period belongs to the other branch and must not leak into this one.
   expect(text()).not.toContain("到期後刪除");
-  // The four events are still disclosed — "we collect nothing" is a disclosure.
   expect(text()).toContain("search_performed");
   expect(text()).toContain("query_length");
 });
@@ -120,7 +108,6 @@ test("O11Y-004 a collecting deployment states the window it actually applies", a
 
   expect(text()).toContain("180 天");
   expect(text()).not.toContain("目前不收集");
-  // The disclosure the whitelist alone would hide.
   expect(text()).toContain("not one word of the query itself");
 });
 
@@ -132,9 +119,6 @@ test("O11Y-004 a failed read is a failed read, never an implied 'nothing is coll
   expect(text()).not.toContain("目前不收集");
 });
 
-// 04 丙-154 ②. GET /policy/data-retention has sent `feedback` since POST
-// /feedback existed; this page never read it. It gets its own section under
-// the four analytics events, rendered with the server's own sentences.
 test("丙-154② the feedback data class is disclosed with the server's own sentences", async () => {
   vi.stubGlobal("fetch", () =>
     json({
@@ -155,7 +139,6 @@ test("丙-154② the feedback data class is disclosed with the server's own sent
   expect(text()).toContain(FEEDBACK.page_path);
   expect(text()).toContain(FEEDBACK.run_id);
   expect(text()).toContain(FEEDBACK.on_account_deletion);
-  // §2.9: a null retention_days is the type-level absence word, not a blank.
   expect(text()).toContain("尚未定值");
   expect(text()).toContain(FEEDBACK.note);
 });

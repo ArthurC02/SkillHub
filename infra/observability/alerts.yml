@@ -1,44 +1,7 @@
-# Skill Hub 平台告警規則（O11Y-001～003 / NFR-005）
-#
-# 這是 Prometheus 的 alerting rules 檔，不是部署。Alertmanager 的部署、路由與
-# 通知管道屬部署期，本批只定義「什麼情況算異常、依據哪個指標、要人做什麼」。
-# 掛上去的方式：Prometheus 的 rule_files 指向本檔。
-#
-# 兩條硬性邊界（ADR-009、contracts/events/README.md §1）：
-#
-# 1. 這裡的每一條規則只讀 apps/platform 與 apps/sandbox 自己曝露的
-#    /metrics。**不得**讀 trace_events：Trace payload 大量來自 Sandbox，是使用者
-#    可操控的輸入，讓告警依賴它等於把告警的觸發權交給不受信任的來源。
-# 2. 指標標籤不含 run_id、workspace_id、user_id 或任何使用者內容。要定位到個別
-#    Run 一律走 log（以 run_id 關聯），不是靠展開一個高基數的 label。
-#
-# 門檻值註記：以下數字是**首發預設**，不是實測校準值。NFR-004 自陳效能目標
-# 「需在確認基礎設施後校準」。上線後第一個月應以實際分佈回填，並在此註明校準日期。
-#
-# 例外：skillhub-cleanup-and-leaks 群組的門檻**不是**首發預設——SEC-002 的六項門檻
-# 已於 2026-08-16 由 ADR-022 第二部分定值（X-02 每 5 分鐘、X-03 連 2 輪、X-04 單節點
-# 50%／全池 25% 下限 2 筆）。**該群組的規則已全部改為正式形式**：SBX-012 已落地
-# （Reconciler 的 in-flight orphan 表 `reconciler_orphan_sightings`、gauge
-# `skillhub_orphan_sandbox_persistent`、分項計數器 `skillhub_gateway_revoke_failed_total`
-# 與 `skillhub_sandbox_destroy_failed_total`），原本兩條以累加計數器近似的過渡規則
-# 已改讀這些指標，不再有「兩筆各失敗一次也會觸發」的誤報路徑。
-#
-# 本檔只定義「什麼情況算異常」；ADR-022 定的動作（drain 節點、暫停整池派送、暫停
-# P-03 例行重建）屬平台實作，不是 Alertmanager 的職責。
-#
-# 2026-08-18：前兩個動作已由 SEC-012 落地（`dispatch_halts` 表 ＋
-# `internal/run/halt.go`；Reconciler 自己撥開關，P1 由 operator 端點撥，兩者同一份
-# 狀態）。上面那句仍然成立——**告警還是不執行動作**——改變的是「平台已經自己停下來
-# 了」現在是一個看得到的狀態，故新增 `DispatchHalted` 與 `DispatchHaltedForIncident`
-# 兩條。**P-03 例行重建的暫停仍未做**：節點重建在部署期，平台沒有它的控制點。
-
 groups:
-  # --- O11Y-001：搜尋與 Run 漏斗 ---------------------------------------------
   - name: skillhub-run-funnel
     rules:
       - alert: SearchLatencyAboveTarget
-        # NFR-004：已索引內容的搜尋 p95 目標 < 2 秒。用 histogram_quantile 而非
-        # 平均值——平均值會被大量快查詢壓下去，正好蓋住使用者實際感受到的尾巴。
         expr: |
           histogram_quantile(
             0.95,
@@ -55,8 +18,6 @@ groups:
             pgvector 索引。
 
       - alert: RunQueueWaitTooLong
-        # 排隊時間長 = 沒有 worker，或所有 provider 的 slot 都滿了。使用者看到的
-        # 是「按了開始但什麼都沒發生」，這是最早能發現的訊號。
         expr: |
           histogram_quantile(
             0.95,
@@ -73,8 +34,6 @@ groups:
             再看 provider 的 concurrent_run_slots。
 
       - alert: RunFailureRateHigh
-        # 只算平台自己的錯：workload_error 是 Skill 自己跑失敗，那是產品訊號不是
-        # 事故，把它算進來會讓這條告警在使用者測試爛 Skill 時整天響。
         expr: |
           sum(rate(skillhub_run_terminal_total{failure_class=~"provider_error|platform_error|capability_mismatch"}[30m]))
           /
@@ -105,12 +64,9 @@ groups:
             PDM-005 的 wall clock 是 soft 600s / hard 900s。若逾時集中在特定時段，
             先看節點資源；若普遍發生，可能是模型閘道變慢，查 Langfuse。
 
-  # --- O11Y-002：Provider 健康度 ---------------------------------------------
   - name: skillhub-provider-health
     rules:
       - alert: ProviderCapabilityUnreachable
-        # RUN-005 用 capability 決定派送。抓不到 = 那台 Provider 事實上退出輪替，
-        # 而且使用者只會看到「no configured sandbox provider can run this request」。
         expr: |
           sum by (provider) (rate(skillhub_provider_capability_total{result="error"}[10m])) > 0
           and
@@ -144,7 +100,6 @@ groups:
           summary: "Provider {{ $labels.provider }} 的 5xx 比例超過 10%"
 
       - alert: ProviderThrottling
-        # 429 = slot 用完。不是錯誤，是容量訊號：持續出現代表要加節點或調 slot。
         expr: sum by (provider) (rate(skillhub_provider_request_total{class="throttled"}[15m])) > 0.05
         for: 30m
         labels:
@@ -152,24 +107,9 @@ groups:
         annotations:
           summary: "Provider {{ $labels.provider }} 持續回 429（slot 不足）"
 
-  # --- O11Y-003：遺留 Sandbox、清理積壓、遮罩 ---------------------------------
   - name: skillhub-cleanup-and-leaks
     rules:
       - alert: CleanupBacklogGrowing
-        # 終態但未確認釋放的 Run。這是唯一能發現「Sandbox 在燒錢而沒人回收」的
-        # 指標，因為 Run 本身看起來完全正常。
-        #
-        # 門檻仍不是 ADR-022 定的值（SEC-002 的六項門檻不含它），但**已依封測容量
-        # 校準（2026-08-16）**：舊值 5 大於整池的 4 個 slot，意思是整池的沙箱全部
-        # 洩漏都還低於門檻——一條在容量耗盡之前不可能響的告警等於沒有。
-        #
-        # 新值 2 ＝ 封測 4 slot 的 50%，與 ADR-022 X-04 的單節點 drain 門檻同一個比例
-        # （該處是「遺留 ≥ 節點 slot 的 50%」）；用同一個比例，是因為兩者測的是同一
-        # 件事的兩端——這裡是平台側「該釋放而未確認釋放」，那裡是節點側「已經留在
-        # 那裡」。for: 15m 不變，正常清理的短暫積壓仍然不會觸發（清理是冪等的、
-        # 失敗會被 supervisor 重排，15 分鐘還在就不是暫態）。
-        #
-        # 校準義務不變：這是依封測 4 slot 推的比例值，池容量改變時要重推。
         expr: skillhub_run_cleanup_backlog > 2
         for: 15m
         labels:
@@ -190,8 +130,6 @@ groups:
           summary: "Run 清理持續失敗"
 
       - alert: LeakedSandboxesDestroyed
-        # 孤兒掃描真的殺掉了東西 = 之前有東西漏掉了。不是事故，是要去看為什麼的
-        # 訊號（RUN-007 的掃描是最後一道防線，不該是常態路徑）。
         expr: increase(skillhub_orphan_sandbox_total{action="destroyed"}[1h]) > 0
         labels:
           severity: info
@@ -200,16 +138,6 @@ groups:
           description: "查該時段的 cleanup 失敗與 worker 重啟紀錄。"
 
       - alert: LeakedSandboxStillPresent
-        # X-03（ADR-022）：同一 provider_run_id 連續 2 輪掃描（10 分鐘）仍存在即告警。
-        #
-        # SBX-012 之後這是**正式形式**：gauge 直接就是「本輪還在、且已連續 ≥2 輪」的
-        # 筆數，事實來源是 Reconciler 的 in-flight orphan 表（migration 0021）。連續性
-        # 由該表保證——某一輪沒看到就刪列，重新出現從第 1 輪起算，所以這裡的 >0 不會
-        # 被「兩筆不同資源各出現一次」湊出來。gauge 已是當下狀態，不需要 for:。
-        #
-        # 【漏報方向不變】掃描**找不到**的遺留資源仍然計不到：本 gauge 的來源是
-        # GET /runs?active=true 回報的清單，節點上存在但 provider 記憶體狀態沒回報的
-        # 沙箱對本條完全隱形，只有 SEC-009 測項 T7 的注入子項驗得到。
         expr: max by (provider) (skillhub_orphan_sandbox_persistent) > 0
         labels:
           severity: warning
@@ -221,12 +149,6 @@ groups:
             平台實作，不是本告警的職責**；本條只負責讓人知道它正在往那裡走。
 
       - alert: LeakedSandboxDestroyFailed
-        # 這條才是真的要人：掃描找到了、也試著殺了、殺不掉，資源還在。
-        #
-        # 兩個來源都算：孤兒掃描（orphan_sandbox_total{action="failed"}）與 Run 結束
-        # 時的正規清理（sandbox_destroy_failed_total，SBX-012）。分開計是因為它們是
-        # 不同的失效——清理失敗是常態路徑壞了，掃描失敗是最後一道防線也壞了——但
-        # 「有沙箱殺不掉」這個結論兩邊一樣，要人做的事也一樣（drain 該節點）。
         expr: |
           increase(skillhub_orphan_sandbox_total{action="failed"}[1h]) > 0
           or
@@ -237,20 +159,6 @@ groups:
           summary: "{{ $labels.provider }} 上有無法銷毀的遺留 Sandbox"
 
       - alert: CredentialRevokeFailing
-        # X-03/X-04 的 6b（ADR-022）：不佔 slot 的遺留資源（Virtual Key、Network Rule）
-        # 連續 3 輪（15 分鐘）撤銷失敗 → 最高嚴重度，**但不暫停派送**——暫停新 Run
-        # 不會讓已經外洩的憑證消失，正確動作是人介入（閘道側強制刪除或 SEC-010 停用）。
-        #
-        # SBX-012 之後這是**正式形式**：讀的是分項計數器 gateway_revoke_failed，
-        # 不再是整體的 cleanup result="failed"。差別是實質的——沙箱殺不掉要 drain
-        # 節點，金鑰撤不掉 drain 一點用都沒有，混在一個計數器裡的告警指不出該做哪件。
-        # 沙箱側的對應計數器是 skillhub_sandbox_destroy_failed_total，由上一條
-        # LeakedSandboxDestroyFailed 承接。
-        #
-        # 【漏報方向】撤銷**沒被嘗試**就不會計入：撤銷失敗要先有人呼叫 /key/delete。
-        # cleanup job 本身沒被排入（worker 停擺、River leader 選舉卡住）時，金鑰會
-        # 安靜地活到 TTL，本條一聲不響——那條路徑由 CleanupBacklogGrowing 與
-        # OrphanScanNotRunning 覆蓋，兩者要一起看。
         expr: sum(increase(skillhub_gateway_revoke_failed_total[15m])) >= 3
         for: 15m
         labels:
@@ -262,9 +170,6 @@ groups:
             時的 TTL（SBX-008：硬牆鐘 + 5 分鐘），那是明示的殘餘風險而非可監控門檻。
 
       - alert: OrphanScanNotRunning
-        # 掃描本身停了是靜默失效：沒有告警會響，但保護也沒了。
-        # ADR-022 X-02：掃描每 5 分鐘一輪，停擺超過 2 輪（10 分鐘）即最高嚴重度，
-        # 並暫停新 Run 排入受影響節點池（暫停的動作屬平台實作，見檔頭）。
         expr: sum(increase(skillhub_orphan_scan_total[10m])) == 0
         for: 10m
         labels:
@@ -285,18 +190,6 @@ groups:
             `PUT /admin/dispatch/halt` 手動撥（見下一條）。解除一律是人的動作。
 
       - alert: DispatchHalted
-        # SEC-012 的開關本身（`skillhub_dispatch_halted`，1 = 該 target 不再派送）。
-        # 檔頭原本寫「ADR-022 定的動作（drain 節點、暫停整池派送）屬平台實作，不是
-        # Alertmanager 的職責」——那句仍然成立，改變的是那些動作現在真的存在，因此
-        # 「平台已經自己停下來了」變成一個要讓人知道的狀態。
-        #
-        # 兩個 source 的差別就是要不要人回來：`orphan_threshold` 連續 2 輪門檻以下會
-        # 自己解除（ADR-022 X-04），`p1_incident` 永遠不會（03:SEC-012「解除不得是
-        # 自動的」），所以只有後者是 critical。
-        #
-        # 【已知延遲】這個 gauge 由 Reconciler 每 5 分鐘從 dispatch_halts 重新發佈，
-        # 因為撥開關的可能是 API 程序而發佈指標的是 worker。行為沒有延遲（每條決策
-        # 路徑都直接讀表），只有這個顯示會晚最多一輪。
         expr: max by (target, source) (skillhub_dispatch_halted) > 0
         labels:
           severity: warning
@@ -309,8 +202,6 @@ groups:
             `DELETE /admin/dispatch/halt` 解除。
 
       - alert: DispatchHaltedForIncident
-        # 同一個 gauge 的 P1 切片，分開一條是因為值班要做的事完全不同：上一條可能
-        # 什麼都不用做，這一條表示平台正在等人。
         expr: max by (target) (skillhub_dispatch_halted{source="p1_incident"}) > 0
         labels:
           severity: critical
@@ -320,12 +211,9 @@ groups:
             02:SEC-010「1 小時內接手，走對應 runbook」。**保留現場期間 sandbox 不會被
             回收**，slot 與費用持續佔用；調查完成前不要以「清一清就好」繞過這個狀態。
 
-  # --- Trace 管線本身 ---------------------------------------------------------
   - name: skillhub-trace-pipeline
     rules:
       - alert: TraceMaskingStopped
-        # NFR-002 沒有其他偵測器：遮罩器壞掉時一切照常運作，只是 Secrets 開始
-        # 落庫。有事件進來、卻一個欄位都沒遮，就是它壞了的樣子。
         expr: |
           sum(rate(skillhub_trace_events_total{result="stored"}[1h])) > 0
           and
@@ -368,7 +256,6 @@ groups:
             worker 的 SKILLHUB_TRACE_INGEST_SECRET 不同步。
 
       - alert: TraceIngestLagAboveTarget
-        # NFR-004：事件產生後目標 3 秒內出現在執行畫面。
         expr: |
           histogram_quantile(
             0.95,
@@ -381,28 +268,9 @@ groups:
           summary: "Trace 事件從產生到入庫的 p95 超過 3 秒"
           description: "sandboxd 的收集 ticker 是 2 秒；超標通常是批次過大或平台端寫入變慢。"
 
-  # --- Foundation 層：建好了、但沒有人會知道 -----------------------------------
-  #
-  # 這一組的五條規則補的是同一個缺口：foundation 有七個「為了被告警而建」的
-  # metric，2026-08-29 稽核逐一 grep，在本檔的出現次數全部是 0。它們的定義處
-  # 都寫了「這是唯一的證據來源」，而唯一的消費者是 slog——本 repo 自己的判準是
-  # 「slog is sampled and thrown away」（audit/audit.go、objreconcile.go 都這樣寫）。
-  #
-  # 缺口不是均勻的：cleanup、orphan、dispatch、trace 都有規則，缺的正好是
-  # 這一層。四條規則的形式逐條照抄各 metric 定義處註解自己指定的寫法。
   - name: skillhub-foundation-signals
     rules:
       - alert: OutboxEventDeadLettered
-        # ADR-008 Poison Message：一個**已經 commit 的領域事實，永遠不會被宣告**。
-        # outbox.go 的 recordFailure 說得很直接：「Isolation is loud and is not a
-        # repair. The row is left in place for a human」——而在本條之前，那個
-        # 「for a human」沒有任何通知這個人的路徑。
-        #
-        # 具體後果：run.succeeded 被隔離 = 那次 Run 永遠不會被評估，使用者看到
-        # 「跑完了但沒有報告」，日誌裡只有一行 slog.Error。
-        #
-        # >0 就 page，不設 for：一筆就要人。event_type 是 DB CHECK 管住的 11 值
-        # 封閉集合，序列數由目錄決定而非流量。
         expr: increase(skillhub_outbox_dead_lettered_total[1h]) > 0
         labels:
           severity: critical
@@ -416,12 +284,6 @@ groups:
             清成 NULL/0，但**先確認 consumer 已經修好**，否則只是再燒十次重試。
 
       - alert: OutboxDeadLetterBacklogUncleared
-        # 上一條看的是「發生的那一刻」，本條看的是「還在那裡」。兩者都要：
-        # increase() 一小時後就歸零，而那一列還在——outbox 刻意不重放、不清除
-        # （recordFailure：「Isolation is loud and is not a repair」），所以「隔離區
-        # 裡還有沒有東西沒人處理」是一個 level 不是 rate。
-        #
-        # 由 publisher 每輪在持鎖的那條連線上重新發佈，所以只有一個行程在報。
         expr: skillhub_outbox_dead_lettered > 0
         for: 15m
         labels:
@@ -433,10 +295,6 @@ groups:
             會持續響到有人處理為止，這是刻意的：沒有任何自動路徑會清掉那些列。
 
       - alert: StoredObjectsMissing
-        # 04 丙-9。metrics.go 對這個 gauge 的說法逐字是「Above zero means user
-        # content was lost」——不是「檢查失敗」：objreconcile 的 Exists 只把明確
-        # 404 當成「沒有」，儲存不可達完全不計 sighting，所以這個數字動了就是
-        # 位元組真的不見了，而且已經連續兩輪。
         expr: max by (resource_kind) (skillhub_storage_objects_missing) > 0
         labels:
           severity: critical
@@ -448,13 +306,6 @@ groups:
             或誤刪**，再決定要不要告知受測者（RELEASE-009 的解讀依賴這一條）。
 
       - alert: OrphanObjectSweepMissingOrBacklogged
-        # metrics.go 對這個 gauge 自己指定了寫法：「an absent or stale series is
-        # itself the "nobody ran it" signal, and a rule wanting both reads it with
-        # absent()」。所以 absent() 那一半不是保險，是規格。
-        #
-        # 兩種狀態一條規則，因為要人做的事一樣：去看那個 cron 有沒有在跑。
-        # 3 小時：sweep 是部署期的 cron（m4/release-checklist 的未勾項），一個
-        # 小時的空窗可能只是排程抖動。
         expr: absent(skillhub_orphan_object_queue_depth) or skillhub_orphan_object_queue_depth > 0
         for: 3h
         labels:
@@ -468,13 +319,6 @@ groups:
             物件儲存費用，不是資料遺失。
 
       - alert: RunTokenCeilingNotEnforced
-        # PDM-005 §5.2a-4 的天花板檢查是**刻意 fail-open** 的（閘道管理 API 抖一下
-        # 不該殺掉健康的 Run），metrics.go 因此寫著「the only evidence that
-        # enforcement has stopped is this counter」。
-        #
-        # 這條看的是**檢查壞了**，不是**天花板被撞到**。後者
-        # （skillhub_run_token_ceiling_breached_total）是產品訊號不是事故，
-        # 刻意不設規則——照 metrics.go 自己的分法。
         expr: increase(skillhub_run_token_usage_unreadable_total[30m]) > 0
         for: 30m
         labels:
@@ -487,16 +331,6 @@ groups:
             成本上界此刻只剩鐘。
 
       - alert: RateLimiterRefusingHeavily
-        # 02:NFR-001 clause 5 的 in-process token bucket。RUN_QUOTA 與
-        # GENERATE_QUOTA 在 ADR-055/056 之後都是 off，所以這個限制器是「有人用
-        # 一個迴圈把整個部署的 LiteLLM 餘額燒光」的最後一道；燒光的後果是
-        # /embed、索引增強與每一個 LLM judge 一起停。
-        #
-        # 在 skillhub_rate_limited_total 之前，「今天擋了三千次」「RATE_LIMIT=off」
-        # 與「clientKey 壞了、每個連線一個 bucket」從外面看完全相同。
-        #
-        # 門檻是**首發預設**，不是實測校準值：預設每分鐘 60、burst 30，一個人
-        # 點不到，15 分鐘 100 次拒絕代表有東西在跑迴圈。
         expr: sum by (route) (increase(skillhub_rate_limited_total[15m])) > 100
         labels:
           severity: warning

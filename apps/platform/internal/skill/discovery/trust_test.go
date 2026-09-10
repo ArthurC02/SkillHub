@@ -3,8 +3,7 @@ package catalog
 import "testing"
 
 func TestSourceTrustDisplayDistinct(t *testing.T) {
-	// SourceTrustGenerated was added 2026-08-23 and this list was not updated, so
-	// the newest value was the one value with no test.
+
 	levels := []SourceTrust{
 		SourceTrustUnknown, SourceTrustTraceable, SourceTrustManuallyConfirmed, SourceTrustGenerated,
 	}
@@ -47,11 +46,6 @@ func TestDerivationBadgeDiffersByForkStatus(t *testing.T) {
 	}
 }
 
-// Redistribution is the axis that decides whether bytes leave the platform and
-// the only one of the three with a fallback branch, and until now it was the
-// only one with no test at all. Deleting the `if ok` — so an unrecognised value
-// returns an empty TrustDisplay — left every test in this package green while
-// the screen showed a blank label next to a skill nobody may copy.
 func TestRedistributionDisplayDistinct(t *testing.T) {
 	levels := []Redistribution{
 		RedistributionAllowed, RedistributionBlocked, RedistributionUnknown,
@@ -70,11 +64,6 @@ func TestRedistributionDisplayDistinct(t *testing.T) {
 	}
 }
 
-// A value this build does not know must fall back to the unknown copy, which is
-// the one that says 「未確認一律當成不可散布」. The packaging gate already refuses
-// anything that is not exactly one of the releasing values, so the fallback is
-// not what keeps the bytes in — it is what tells the reader of a refused skill
-// why, instead of showing them an empty badge.
 func TestRedistributionDisplayFallsBackToUnknownWording(t *testing.T) {
 	d := Redistribution("value-added-next-year").Display()
 	if d.Label == "" || d.Note == "" {

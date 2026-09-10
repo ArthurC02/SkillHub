@@ -1,6 +1,3 @@
--- Record cleanup before an upload touches object storage. The intent is deleted
--- in the same transaction that publishes the dataset row; a crash or definite
--- rollback therefore leaves one durable, retryable object key behind.
 CREATE TABLE dataset_object_cleanup_intents (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id uuid NOT NULL REFERENCES workspaces(id),

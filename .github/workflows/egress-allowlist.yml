@@ -1,9 +1,3 @@
-# ADR-022 Q3 / A1-c: the allow-list's rules made mechanical.
-#
-# Two of Q3's guarantees were prose a reviewer had to remember — "the sandbox tier
-# has exactly one platform-owned destination" (the re-evaluation condition for
-# bringing in an L7 proxy) and "opening a destination updates the threat model".
-# Prose that nobody diffs stops being true quietly, so both are asserted here.
 name: Egress allow-list
 
 on:
@@ -13,20 +7,8 @@ on:
     paths:
       - 'infra/egress/**'
       - '.github/workflows/egress-allowlist.yml'
-      # The renderer is here for the same reason: the files under
-      # infra/egress/rendered/ are its output, so a change to the code that
-      # writes them is a change to the ruleset a node loads. The whole directory
-      # rather than render.py alone, because test_render.py pins the writer's
-      # json keys against the reader's -- and a filter naming only the code would
-      # skip the one change that weakens the assertion about it.
       - 'tools/egress/**'
-      # The checker moved to tools/ci/ and is now named in the filter: a change to
-      # the assertion that nothing re-runs is a change nobody has tested. Free to
-      # add here, unlike runtime-image.yml, because this workflow publishes nothing.
       - 'tools/ci/check_egress_allowlist.py'
-      # The lab that loads the rendered ruleset into a kernel. Named for the
-      # same reason as the renderer: a change to the thing that grades the
-      # rules is a change nobody has run.
       - 'tools/sec009/t5-network-egress.sh'
 
 permissions:
@@ -44,58 +26,19 @@ jobs:
         run: |
           python3 -m pip install --quiet PyYAML==6.0.2
           python3 tools/ci/check_egress_allowlist.py
-          # The checker's own tests. They run here rather than in ci.yml because
-          # this is the workflow that owns the file they guard, and because a
-          # validation that is never exercised is how the pinned_ip rule came to
-          # accept a CIDR for as long as it did. No extra packages: pure asserts.
           python3 tools/ci/test_check_egress_allowlist.py
 
-      # infra/egress/rendered/ is generated, and generated files nobody diffs
-      # against their source are how a node comes to load a ruleset the
-      # allow-list does not describe. Same shape as `task gen:check`: render
-      # again and compare, never hand-merge.
       - name: The rendered ruleset still matches the allow-list
         run: |
           python3 tools/egress/render.py --self-check
           python3 tools/egress/render.py --check
-          # The writer's half of a two-language contract. apps/sandbox pins the
-          # READER's json tags; until now nothing pinned what render.py emits, so
-          # renaming a key here kept every test in the repo green while the node's
-          # admission list stopped being readable by its only reader -- and the
-          # symptom, a node refusing every run that names a destination, is
-          # indistinguishable from fail-closed working. Same runner and same
-          # zero-dependency shape as the checker's tests above.
           python3 tools/egress/test_render.py
 
-      # ...and the ruleset the renderer produces has to be one a kernel accepts,
-      # doing what its comments claim. `--check` compares bytes against the
-      # allow-list; it cannot tell you nft would load the file, and a ruleset
-      # that fails to load leaves a node with NO rules at all — the direction
-      # that fails open.
-      #
-      # ADR-022 puts T5 in Suite 2 (the node about to join the pool) and this is
-      # NOT that: it is namespaces on a fake uplink inside one privileged
-      # container, so it grades the rules, not the node. What it does buy is
-      # that every future edit to the allow-list or the renderer is executed
-      # before it reaches a node, instead of first meeting a kernel during a
-      # deployment.
-      #
-      # Both directions run. The negative control (no ruleset) is what caught
-      # three probes grading a closed port as a policy drop on 2026-08-27, and
-      # a probe that cannot see a failure is not evidence when it passes.
       - name: T5 network egress against a real kernel (ADR-022, not Suite 2)
         run: |
           bash tools/sec009/t5-network-egress.sh
           SEC009_NO_NFT=1 bash tools/sec009/t5-network-egress.sh
 
-      # ADR-022 Q3 change process, step 3. The threat model's own §3 says opening a
-      # new egress destination requires updating it; this is that sentence with a
-      # red light attached.
-      #
-      # Runs on direct pushes too, not just PRs: ADR-019 leaves single-developer
-      # direct-to-main open, and the one path this check exists for is exactly the
-      # one where nobody else is reading the diff. Squash-merge/linear history
-      # (ADR-019 §4) is what makes HEAD~1..HEAD the right range there.
       - name: A destination change must carry a threat-model update
         run: |
           set -euo pipefail
@@ -106,12 +49,6 @@ jobs:
             RANGE="HEAD~1..HEAD"
           fi
           CHANGED=$(git diff --name-only "$RANGE")
-          # The SOURCE file, not the tree. infra/egress/rendered/ is output of
-          # this same allow-list, so regenerating it opens no destination and
-          # has no threat model to update -- and a gate that fires on it teaches
-          # people this red light means nothing. The rendered files are not left
-          # unguarded: hand-editing one to open a hole is drift from
-          # allowlist.yaml, and the render check above is what sees that.
           echo "$CHANGED" | grep -q '^infra/egress/allowlist\.yaml$' || exit 0
           echo "$CHANGED" | grep -q '^docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md$' \
             || { echo "::error::changing infra/egress/allowlist.yaml requires updating docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md in the same change (ADR-022 Q3 change process; threat model §3)"; exit 1; }

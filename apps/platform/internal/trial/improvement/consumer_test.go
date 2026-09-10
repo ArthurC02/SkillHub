@@ -12,8 +12,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 )
 
-// recorder is a consumer wired to counters instead of a database and a queue.
-// `found` is whether the run already has a standing evaluation.
 type recorder struct {
 	found    bool
 	lookups  int
@@ -35,7 +33,7 @@ func (r *recorder) consumer() *RunEventConsumer {
 		) (*rivertype.JobInsertResult, error) {
 			r.inserted = append(r.inserted, args.(JobArgs))
 			r.opts = append(r.opts, opts)
-			// The first insert is what produces the evaluation row the guard reads.
+
 			r.found = true
 			return nil, nil
 		},
@@ -52,8 +50,6 @@ func runEvent(eventType string) outbox.Event {
 	}
 }
 
-// The at-least-once contract in one test: the same event twice must not cost a
-// second judge call.
 func TestRunEventConsumerEnqueuesOncePerRun(t *testing.T) {
 	for _, eventType := range []string{"run.succeeded", "run.failed"} {
 		r := &recorder{}
@@ -70,16 +66,13 @@ func TestRunEventConsumerEnqueuesOncePerRun(t *testing.T) {
 			r.inserted[0].WorkspaceID != "22222222-2222-4222-8222-222222222222" {
 			t.Errorf("%s enqueued %+v, want the event's own identifiers", eventType, r.inserted[0])
 		}
-		// The other redelivery window: the guard cannot see a row that the first
-		// job has not written yet, so the unique key has to cover it.
+
 		if r.opts[0] == nil || !r.opts[0].UniqueOpts.ByArgs {
 			t.Errorf("%s enqueued without the per-run unique key", eventType)
 		}
 	}
 }
 
-// Everything else on the stream belongs to somebody else, including the run
-// states that are deliberately not evaluated.
 func TestRunEventConsumerIgnoresOtherEvents(t *testing.T) {
 	for _, eventType := range []string{
 		"run.queued", "run.running", "run.cancelled", "run.timed_out",
@@ -95,8 +88,6 @@ func TestRunEventConsumerIgnoresOtherEvents(t *testing.T) {
 	}
 }
 
-// A lookup that fails says nothing about whether the run was evaluated. Guessing
-// "not yet" would double-charge; the event is left for the next delivery.
 func TestRunEventConsumerRefusesToGuessWhenTheLookupFails(t *testing.T) {
 	r := &recorder{err: errors.New("connection refused")}
 	err := r.consumer().Deliver(context.Background(), runEvent("run.succeeded"))

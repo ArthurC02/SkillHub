@@ -7,11 +7,6 @@ import { SkillDetail } from "./pages/SkillDetail";
 import { SkillFiles } from "./pages/SkillFiles";
 import { SKILL_VERSIONS, skillDetail } from "./fixtures/platform";
 
-// 04 丙-150/151/153: SkillDetail's ForkAction stopped printing `err.message`
-// verbatim, and SkillFiles gained its own 404/503 sentences. Same hand-rolled
-// DOM plumbing as detail.test.tsx / workspace.test.tsx; @testing-library is
-// not a dependency of this app.
-
 const SKILL = "11111111-1111-1111-1111-111111111111";
 
 let container: HTMLDivElement;
@@ -88,7 +83,6 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
 
 const text = () => container.textContent ?? "";
 
-/** 擁有者：`/skills/{id}/versions` 是 workspace-scoped，非空＝這一份是你的（ADR-011）。 */
 function stubOwner(forkResponse: () => Promise<Response>) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
@@ -117,16 +111,12 @@ async function clickFork() {
   });
 }
 
-// --- 04 丙-153: CreateHub.tsx:76-82 的邀請句在 Fork 按鈕之前 --------------------
-
 test("丙-153: Fork 按鈕之前有封測邀請的說明句（照 CreateHub 的句型）", async () => {
   stubOwner(() => json({ error: "not authenticated" }, 401));
   await render(<SkillDetail />, settledAsOwner);
 
   expect(text()).toContain("平台目前只讓有封測邀請的帳號 Fork。");
 });
-
-// --- 04 丙-150/153: 按 status 選中文句，從不印 err.message ----------------------
 
 test("丙-153: Fork 403（沒有封測邀請）印中文句，不印 betaNotInvited 的英文段落", async () => {
   stubOwner(() =>
@@ -166,8 +156,6 @@ test("丙-150: Fork 500 等其他狀態印通用的重試句", async () => {
 
   expect(text()).toContain("Fork 沒有成功，可以再按一次。");
 });
-
-// --- 04 丙-149: SkillFiles 的 503 走這一頁自己的句子，不落進通用分支 -------------
 
 test("丙-149/150: SkillFiles 讀取 503 印「儲存的套件目前讀不到，稍後再試一次。」", async () => {
   vi.stubGlobal("fetch", (input: string) => {

@@ -11,10 +11,6 @@ import (
 	"strings"
 )
 
-// serviceConstructionProblems enforces ADR-032 §5: a bounded context receives
-// another context's Service from a composition root; it never constructs one in
-// a method. Depguard cannot enforce this because approved Customer-Supplier
-// collaborators necessarily may import one another.
 func serviceConstructionProblems(root string) []string {
 	identities, problems := contextTablePackages(
 		filepath.Join(root, "docs", "adr", contextMapADR), "docs/adr/"+contextMapADR)

@@ -1,9 +1,5 @@
 package sandbox_test
 
-// TRACE-002 on the provider side: the collector reads what the workload wrote
-// and pushes it, and the two things that must hold under a flaky network are
-// that nothing is lost and nothing is skipped.
-
 import (
 	"bytes"
 	"context"
@@ -22,8 +18,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
 
-// recordingSink stands in for the platform's ingestion endpoint. failNext makes
-// one push fail, which is the case the at-least-once contract exists for.
 type recordingSink struct {
 	mu       sync.Mutex
 	batches  [][]json.RawMessage
@@ -97,7 +91,6 @@ func event(seq int) string {
 		string(rune('0'+seq)) + `","seq":` + string(rune('0'+seq)) + `,"type":"agent_output"}`
 }
 
-// newTracingServer is newServer with collection turned on.
 func newTracingServer(t *testing.T, sink sandbox.TraceSink) (*fakeDriver, http.Handler) {
 	t.Helper()
 	drv := newFakeDriver()
@@ -118,9 +111,6 @@ func tracedRequest() sandbox.RunRequest {
 	return req
 }
 
-// The final drain is the one that matters most: it runs after the workload has
-// exited but before DELETE removes the container, which is the only moment the
-// tail of the trace can still be read out of the /out tmpfs.
 func TestCollectorPushesTheTailAfterTheWorkloadExits(t *testing.T) {
 	sink := &recordingSink{}
 	drv, h := newTracingServer(t, sink)
@@ -132,9 +122,6 @@ func TestCollectorPushesTheTailAfterTheWorkloadExits(t *testing.T) {
 	waitFor(t, func() bool { return len(sink.received()) == 2 })
 }
 
-// A push that fails must not advance the high-water mark, or the events in that
-// batch would be silently dropped. Re-sending them is safe because the platform
-// dedupes on event_id (TRACE-008).
 func TestFailedPushIsRetriedRatherThanSkipped(t *testing.T) {
 	sink := &recordingSink{failNext: 1}
 	drv, h := newTracingServer(t, sink)
@@ -168,15 +155,12 @@ func TestFailedTraceReadIsRetriedBeforeTheWorkloadIsReleased(t *testing.T) {
 	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 0})
 }
 
-// A half-written last line is normal: the workload appends while the collector
-// reads. Sending it would fail validation at the far end and, worse, would mark
-// it as sent so the complete version never went.
 func TestPartialTrailingLineIsHeldBackUntilComplete(t *testing.T) {
 	sink := &recordingSink{}
 	drv, h := newTracingServer(t, sink)
 
 	_, run := do(t, h, "POST", "/runs", tracedRequest(), testToken)
-	// One whole line plus a fragment with no newline terminator.
+
 	drv.writeTrace(run.ProviderRunID, event(1))
 	drv.appendRawTrace(run.ProviderRunID, `{"schema_version":"1.0","ev`)
 	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 0})
@@ -225,13 +209,11 @@ func TestOversizedEventDoesNotPinValidTail(t *testing.T) {
 	})
 }
 
-// A run with no ingestion URL is a run nothing is collecting. It must not fail,
-// and it must not push anywhere.
 func TestNoIngestionURLCollectsNothing(t *testing.T) {
 	sink := &recordingSink{}
 	drv, h := newTracingServer(t, sink)
 
-	_, run := do(t, h, "POST", "/runs", runRequest(), testToken) // no ingestion_url
+	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
 	drv.writeTrace(run.ProviderRunID, event(1))
 	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 0})
 
@@ -241,18 +223,10 @@ func TestNoIngestionURLCollectsNothing(t *testing.T) {
 	}
 }
 
-// --- the ingestion credential (it is the URL's last path segment) ------------
-
-// liveToken is shaped like a real one: run id, attempt, expiry, signature.
 const liveToken = "11111111-1111-1111-1111-111111111111.1.99999999999.f2c1a0deadbeefcafe"
 
 const liveTraceURL = "http://platform:8080/internal/trace/" + liveToken
 
-// The driver injects the ingestion URL into the untrusted workload's
-// environment (SKILLHUB_TRACE_URL), so anything that dumps its environment puts
-// a live credential in the workload's output. It is an injected secret like the
-// Virtual Key and the grant URLs, and must be masked out of what ships back on
-// the provider's HTTP response (iron rule 11, NFR-002).
 func TestWorkloadOutputIsScrubbedOfTheTraceIngestionToken(t *testing.T) {
 	sink := &recordingSink{}
 	drv, h := newTracingServer(t, sink)
@@ -274,18 +248,12 @@ func TestWorkloadOutputIsScrubbedOfTheTraceIngestionToken(t *testing.T) {
 	}
 }
 
-// urlErrorSink fails the way net/http fails: *url.Error, whose Error() quotes
-// the whole request URL - credential included.
 type urlErrorSink struct{}
 
 func (urlErrorSink) Push(_ context.Context, url string, _ []json.RawMessage) error {
 	return &neturl.Error{Op: "Post", URL: url, Err: errors.New("dial tcp 10.0.0.2:8080: connect: connection refused")}
 }
 
-// A control-plane restart, a DNS blip or the shutdown race on the final flush
-// all reach the same log line. Logging that error verbatim writes a live 2h
-// token to the sandbox host's log, and anyone who can read that log can then
-// append whatever they like to this run's trace timeline.
 func TestPushFailureDoesNotLogTheIngestionToken(t *testing.T) {
 	var logged safeBuffer
 	drv := newFakeDriver()

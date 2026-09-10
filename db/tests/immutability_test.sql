@@ -1,6 +1,3 @@
--- Runnable check for the CORE-004 immutability triggers (0005_immutability.sql).
--- Usage: psql -v ON_ERROR_STOP=1 -f db/tests/immutability_test.sql
--- Everything runs inside one transaction and is rolled back at the end.
 BEGIN;
 
 CREATE FUNCTION must_fail(stmt text) RETURNS void LANGUAGE plpgsql AS $$
@@ -14,9 +11,7 @@ BEGIN
 END;
 $$;
 
--- Separate from must_fail on purpose: a CHECK raises check_violation, and folding
--- it into must_fail would let a constraint failure pass as proof of an
--- immutability trigger that never fired.
+-- Passes only on check_violation, so a CHECK failure cannot pass as proof of a trigger.
 CREATE FUNCTION must_violate_check(stmt text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
     BEGIN
@@ -28,9 +23,7 @@ BEGIN
 END;
 $$;
 
--- Third helper for the same reason must_violate_check is separate from must_fail:
--- a composite foreign key raises foreign_key_violation, and letting that count as
--- either of the other two would let one guard stand in as proof of another.
+-- Passes only on foreign_key_violation, so it cannot stand in for the other guards.
 CREATE FUNCTION must_violate_fk(stmt text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
     BEGIN
@@ -53,7 +46,6 @@ BEGIN
 END;
 $$;
 
--- Fixtures.
 INSERT INTO users (id, email, display_name)
 VALUES ('11111111-1111-1111-1111-111111111111', 'a@example.test', 'A');
 INSERT INTO workspaces (id, owner_user_id, name)
@@ -73,16 +65,12 @@ INSERT INTO runs (id, workspace_id, skill_version_id, test_case_snapshot_id, pro
 VALUES ('77777777-7777-7777-7777-777777777777', '22222222-2222-2222-2222-222222222222',
         '44444444-4444-4444-4444-444444444444', '66666666-6666-6666-6666-666666666666', 'self-hosted');
 
--- 1. skill_versions are frozen (iron rule 4).
 SELECT must_fail($$UPDATE skill_versions SET content_hash = 'tampered' WHERE content_hash = 'hash-1'$$);
 SELECT must_fail($$DELETE FROM skill_versions WHERE content_hash = 'hash-1'$$);
 
--- 2. test case snapshots are frozen.
 SELECT must_fail($$UPDATE test_case_snapshots SET user_prompt = 'edited' WHERE content_hash = 'hash-tc-1'$$);
 SELECT must_fail($$DELETE FROM test_case_snapshots WHERE content_hash = 'hash-tc-1'$$);
 
--- 3. A non-terminal run is still writable, legal transitions are logged, and
--- direct SQL cannot bypass the lifecycle matrix.
 SELECT must_violate_check($$UPDATE runs SET status = 'running'
 WHERE id = '77777777-7777-7777-7777-777777777777'$$);
 UPDATE runs SET status = 'provisioning', started_at = now()
@@ -91,11 +79,9 @@ INSERT INTO run_status_transitions (run_id, workspace_id, from_status, to_status
 VALUES ('77777777-7777-7777-7777-777777777777', '22222222-2222-2222-2222-222222222222',
         'queued', 'provisioning', 'provisioned');
 
--- 4. Transition log is append only.
 SELECT must_fail($$UPDATE run_status_transitions SET reason = 'rewritten' WHERE to_status = 'provisioning'$$);
 SELECT must_fail($$DELETE FROM run_status_transitions WHERE to_status = 'provisioning'$$);
 
--- 5. Trace events are append only, and land in the monthly partition.
 INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
                           event_type, source, masked)
 VALUES ('88888888-8888-4888-8888-888888888888',
@@ -111,8 +97,6 @@ $$;
 SELECT must_fail($$UPDATE trace_events SET event_type = 'rewritten' WHERE seq = 1$$);
 SELECT must_fail($$DELETE FROM trace_events WHERE seq = 1$$);
 
--- 5a. Iron rule 11 at the storage layer (0019): an unmasked event cannot be written
--- at all, so no code path can skip the masker (TRACE-005).
 SELECT must_violate_check($$
     INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
                               event_type, source, masked)
@@ -121,8 +105,6 @@ SELECT must_violate_check($$
             1, 2, '2026-08-14 10:00:01+00', 'agent_output', 'sandbox', false)
 $$);
 
--- 5b. Redelivery is a no-op, not a second row (TRACE-008): the producer's event_id
--- is the idempotency key and at-least-once delivery makes repeats routine.
 INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
                           event_type, source, masked)
 VALUES ('88888888-8888-4888-8888-888888888888',
@@ -137,8 +119,6 @@ BEGIN
 END;
 $$;
 
--- A different event cannot reuse a logical stream ordinal, even in another
--- time partition. event_id idempotency alone does not protect gap detection.
 SELECT must_violate_unique($$
     INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
                               event_type, source, masked)
@@ -147,9 +127,6 @@ SELECT must_violate_unique($$
             1, 1, '2027-03-14 10:00:00+00', 'agent_output', 'sandbox', true)
 $$);
 
--- 5c. An event outside the pre-created month still lands, in the default partition.
--- Without it the first run in a month nobody created a partition for would lose its
--- whole trace (0019 partitioning note).
 INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
                           event_type, source, masked)
 VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -163,7 +140,6 @@ BEGIN
 END;
 $$;
 
--- 6. A terminal run freezes, except for the cleanup columns (ADR-004).
 UPDATE runs SET status = 'preparing'
 WHERE id = '77777777-7777-7777-7777-777777777777';
 UPDATE runs SET status = 'running'
@@ -178,10 +154,6 @@ SELECT must_fail($$DELETE FROM runs WHERE id = '77777777-7777-7777-7777-77777777
 UPDATE runs SET cleanup_status = 'cleaned', cleanup_at = now()
 WHERE id = '77777777-7777-7777-7777-777777777777';
 
--- 6a. The retention purge escape hatch (0013_governance): DELETE opens only for
--- a transaction that set the flag, UPDATE never does, and the flag is gone again
--- as soon as it is reset. An audit event is used as the subject because it is the
--- newest append-only table and covered by the same shared trigger.
 INSERT INTO audit_events (action, resource_type) VALUES ('test.event', 'test');
 SELECT must_fail($$UPDATE audit_events SET action = 'tampered' WHERE action = 'test.event'$$);
 SELECT must_fail($$DELETE FROM audit_events WHERE action = 'test.event'$$);
@@ -192,7 +164,6 @@ SET LOCAL skillhub.purge = 'off';
 INSERT INTO audit_events (action, resource_type) VALUES ('test.event', 'test');
 SELECT must_fail($$DELETE FROM audit_events WHERE action = 'test.event'$$);
 
--- 7. Duplicate content does not create a second version (SKILL-001).
 DO $$
 BEGIN
     BEGIN
@@ -206,24 +177,19 @@ BEGIN
 END;
 $$;
 
--- 8. Evaluations (0024): re-evaluation is append-only, one current verdict per
--- run, and a completed verdict freezes except for the user's feedback.
 INSERT INTO evaluations (id, workspace_id, run_id, status, overall, evidence_complete)
 VALUES ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222',
         '77777777-7777-7777-7777-777777777777', 'pending', 'undetermined', false);
 
--- Still writable while the evaluation job is running.
 UPDATE evaluations SET status = 'completed', overall = 'met', evidence_complete = true,
        evaluated_at = now(), judge_model = 'gpt-5.6-terra', judge_prompt_version = 'judge-1'
 WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 SELECT must_fail($$UPDATE evaluations SET overall = 'not_met' WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'$$);
 SELECT must_fail($$DELETE FROM evaluations WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'$$);
--- The user may change their mind about a verdict without changing the verdict.
 UPDATE evaluations SET feedback_helpful = true, feedback_comment = 'useful', updated_at = now()
 WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
--- 8a. A second *current* evaluation for the same run is refused.
 DO $$
 BEGIN
     BEGIN
@@ -237,8 +203,6 @@ BEGIN
 END;
 $$;
 
--- 8b. Superseding the previous verdict makes room for the re-evaluation, and
--- any number of superseded ones coexist - the history is what is being kept.
 UPDATE evaluations SET superseded_at = now() WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 INSERT INTO evaluations (id, workspace_id, run_id, status, overall, evidence_complete, superseded_at)
 VALUES ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', '22222222-2222-2222-2222-222222222222',
@@ -258,8 +222,6 @@ BEGIN
 END;
 $$;
 
--- 8c. An evidence ref without its excerpt/availability would be unresolvable once
--- the trace partition is dropped, and these rows can never be repaired (0024).
 SELECT must_violate_check($$
     INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete, criterion_results)
     VALUES ('22222222-2222-2222-2222-222222222222', '77777777-7777-7777-7777-777777777777',
@@ -268,7 +230,6 @@ SELECT must_violate_check($$
                "evidence":[{"kind":"trace_event","trace_event_id":"88888888-8888-4888-8888-888888888888"}]}]'::jsonb)
 $$);
 
--- 8d. A suggestion's content is frozen; only the human decision on it moves.
 INSERT INTO evaluation_suggestions (id, workspace_id, evaluation_id, category, problem,
                                     target_path, proposed_content, expected_impact)
 VALUES ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', '22222222-2222-2222-2222-222222222222',
@@ -281,7 +242,6 @@ SET decision = 'accepted', decided_at = now(),
     applied_skill_version_id = '44444444-4444-4444-4444-444444444444'
 WHERE id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
--- 8e. A path that escapes the package cannot even be stored (design §5.2 floor).
 SELECT must_violate_check($$
     INSERT INTO evaluation_suggestions (workspace_id, evaluation_id, category, problem,
                                         target_path, proposed_content, expected_impact)
@@ -289,11 +249,6 @@ SELECT must_violate_check($$
             'skill', 'p', '../../etc/passwd', 'c', 'i')
 $$);
 
--- 9. Packaging (0027): redistribution is refused by default, a download package
--- is a fact, and its download history is append only.
-
--- 9a. Every existing skill starts blocked, because "nobody classified this yet"
--- must not read as permission to redistribute it (DISC-003, ADR-021 §5.3).
 DO $$
 BEGIN
     IF (SELECT redistribution FROM skills WHERE id = '33333333-3333-3333-3333-333333333333')
@@ -307,8 +262,6 @@ SELECT must_violate_check($$
     WHERE id = '33333333-3333-3333-3333-333333333333'
 $$);
 
--- 9b. Packaging attributes only attach to a download package, and only inside the
--- artifact's own workspace - both are copied columns, checked by composite FK.
 INSERT INTO artifacts (id, workspace_id, run_id, kind, file_name, content_type,
                        size_bytes, content_hash, object_key, expires_at)
 VALUES ('f1111111-1111-4111-8111-111111111111', '22222222-2222-2222-2222-222222222222',
@@ -334,8 +287,6 @@ INSERT INTO download_artifacts (artifact_id, workspace_id, skill_version_id, tar
 VALUES ('f1111111-1111-4111-8111-111111111111', '22222222-2222-2222-2222-222222222222',
         '44444444-4444-4444-4444-444444444444', 'standard', '1', 'pkg-1', 'sha256-m-1', false);
 
--- 9c. Repackaging is a new row, never an edit (iron rule 4). The mutable half of a
--- download lives on artifacts, which is not frozen.
 SELECT must_fail($$UPDATE download_artifacts SET manifest_hash = 'sha256-swapped'
                    WHERE artifact_id = 'f1111111-1111-4111-8111-111111111111'$$);
 SELECT must_fail($$DELETE FROM download_artifacts
@@ -343,8 +294,6 @@ SELECT must_fail($$DELETE FROM download_artifacts
 UPDATE artifacts SET scan_status = 'available'
 WHERE id = 'f1111111-1111-4111-8111-111111111111';
 
--- 9d. The download history is append only (WS-002 1): "you downloaded this on that
--- date" is not editable state.
 INSERT INTO download_records (workspace_id, artifact_id, actor_user_id)
 VALUES ('22222222-2222-2222-2222-222222222222', 'f1111111-1111-4111-8111-111111111111',
         '11111111-1111-1111-1111-111111111111');
@@ -353,17 +302,6 @@ SELECT must_fail($$UPDATE download_records SET downloaded_at = now() - interval 
 SELECT must_fail($$DELETE FROM download_records
                    WHERE artifact_id = 'f1111111-1111-4111-8111-111111111111'$$);
 
--- 9e. ...and the one door out, for the same two tables. CORE-007 has to be able
--- to delete these rows, or an account that ever produced a download package
--- cannot be deleted at all — which is exactly what happened until 2026-08-29,
--- because packaging's purge step deleted only the `artifacts` parent and 0027's
--- composite foreign keys refused it with 23503.
---
--- Both directions are asserted, and the pair is the point: 9c/9d above prove the
--- rows are frozen, and a purge path that stopped working would leave those two
--- green while the account deletion silently rolled back every night. The flag is
--- what separates "frozen" from "sealed"; only the account purge transaction sets
--- it (identity/purge.go), and it is scoped to that transaction by SET LOCAL.
 SET LOCAL skillhub.purge = 'on';
 DELETE FROM download_records WHERE workspace_id = '22222222-2222-2222-2222-222222222222';
 DELETE FROM download_artifacts WHERE workspace_id = '22222222-2222-2222-2222-222222222222';

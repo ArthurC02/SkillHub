@@ -1,37 +1,3 @@
-# Query ownership 宣告（ADR-033）
-#
-# sqlc 把 db/queries/*.sql 全部生成到同一個 Go package
-# (apps/platform/internal/foundation/persistence/db/gen)，所以 depguard 擋得住 `run` import
-# `eval`，卻擋不住 `run` 直接呼叫 `eval` 的 query。這份檔案補上那道防線：
-# 為每一個 query 宣告擁有它的 Bounded Context，由
-# `go -C tools/devctl run . automation-check` 在 CI 強制。
-#
-# 檢查範圍（ADR-033 §決策）：
-#   - **write 與 read 都強制**（ADR-035，2026-08-21 起）。write 是
-#     INSERT／UPDATE／DELETE，含 `WITH ... DELETE` 這種 CTE 寫入；其餘是 read。
-#     兩側棘輪的形狀相同，只是容忍清單分成 `allow:`（write）與
-#     `read_allow:`（read）兩段——放錯段落 CI 會指出該搬去哪一段。
-#     ADR-033 當初只鎖 write 的理由是「同一批擋 read 會製造十幾條容忍條目」；
-#     write 存量歸零後那個顧慮不再成立，read 的存量因此有自己乾淨的一段。
-#   - 呼叫端 context 由檔案路徑推得：apps/platform/internal/<context>/...
-#   - 只掃 import 了 db/gen 的非測試 Go 檔。
-#
-# owner 判準：**該 query 主要資料表的擁有 context**（context 清單見 ADR-032 §1）。
-# `artifacts` 是唯一被兩個 context 共用的表，依 `kind` 逐 query 指派：
-# run 輸出歸 run，download package 歸 packaging。
-#
-# 維護規則：
-#   - 新增 db/queries/*.sql 的 query 一定要在這裡登記，漏了 CI 會 FAIL。
-#   - 刪掉的 query 也要從這裡移除，殘留條目 CI 會 FAIL。
-#   - `files:` 的值**留空 ＝ 本檔沒有預設 owner**，每一條 query 都必須在 `queries:`
-#     具名。混合檔（governance／beta／reconcile／runs／trace）一律如此，漏掉 CI 會 FAIL。
-#     2026-08-25 之前這五個檔各有一個預設值，而「新增 query 漏登記 CI 會 FAIL」那句話
-#     因此是假的：新 query 靜默繼承檔案預設，`governance.sql` 的 24 條裡已有 17 條
-#     需要覆寫，正說明那個預設值有多不可信。
-#   - `allow:` 是**存量漂移**，不是擴充點。新的跨 context write 一律修程式，
-#     不准往下面加行；清除路徑見 ADR-033。
-
-# 每個 db/queries/*.sql 的預設 owner。
 files:
   creation.sql: creation
   credit.sql: credit
@@ -55,19 +21,14 @@ files:
   users.sql: identity
   workspaces.sql: identity
 
-# 單一 query 的 owner 覆寫。混合檔（governance/beta/reconcile/runs/trace…）
-# 依主要資料表歸屬，不依它躺在哪個檔。
 queries:
-  # beta.sql：配額與漏斗量測的讀取端在 policy／analytics，資料表不是。
   CountQuotaRuns: run
   RunInWorkspace: run
   GetWorkspaceCreatedAt: identity
   GetIdentityProviderIDs: identity
 
-  # evaluation.sql：Judge 取材讀 trace_events。
   FindLiveTraceEvents: trace
 
-  # governance.sql：一個檔裝了三種治理動作，資料表分屬四個 context。
   DeleteExpiredAuditEvents: audit
   InsertAuditEvent: audit
   ListWorkspaceAuditEvents: audit
@@ -94,10 +55,8 @@ queries:
   ListSourcesToCheck: ingest
   MarkSourceChecked: ingest
 
-  # search.sql: claiming pending enrichment updates only catalog's projection.
   ListPendingEnrichment: catalog
 
-  # packaging.sql：打包要讀的溯源材料本身屬於 registry／ingest／testlab／eval。
   ListTestCasesForSkill: testlab
   ListSuggestionsAppliedToVersion: eval
   GetPreviousSkillVersion: registry
@@ -105,11 +64,8 @@ queries:
   GetOldestSkillVersion: registry
   GetLineageSource: ingest
 
-  # skill_sources is ingest's import provenance, despite living in skills.sql.
   GetSkillSource: ingest
 
-  # reconcile.sql：objreconcile 自己的表只有 object_reconcile_sightings；
-  # 其餘是它代掃的別人的列（artifacts 這三條只碰 kind='download_package'）。
   ListArtifactsPastRetention: packaging
   MarkArtifactPurged: packaging
   ListArtifactsClaimingObject: packaging
@@ -123,13 +79,9 @@ queries:
   CountLiveDatasetsSharingObject: testlab
   ListDownloadCleanupIntents: packaging
   MarkDownloadCleanupIntentPurged: packaging
-  # 同一張 artifacts 表的另一半（kind='run_output'）是 run 的。所以保存期掃描
-  # 是「兩條各自有 owner 的敘述」而不是「一條放寬 predicate」——放寬會讓
-  # packaging 的 UPDATE 寫到 run 的列，正是本檔要擋的跨 context write。
   ListRunOutputsPastRetention: run
   MarkRunOutputPurged: run
 
-  # runs.sql：Outbox 表與 run 同檔（同交易寫入），但表是 outbox 的。
   InsertOutboxEvent: outbox
   ListUnpublishedOutboxEvents: outbox
   RecordOutboxDeliveryFailure: outbox
@@ -138,18 +90,14 @@ queries:
   ListOutboxEventsByAggregate: outbox
   CountDeadLetteredOutboxEvents: outbox
 
-  # skill_import.sql：匯入流程要先查 registry 的既有 Skill／版本。
   GetSkillByName: registry
   GetVersionBySkillAndHash: registry
 
-  # skills.sql：Enrichment 摘要住在 search_documents。
   GetSkillEnrichment: catalog
 
-  # trace.sql：Trace ingest 要先確認 run 存在。
   GetRunForTraceIngest: run
   CountRunsNeedingCleanup: run
 
-  # governance.sql：帳號刪除流程動的是 users／sessions／user_identities／workspaces。
   RequestAccountDeletion: identity
   CancelAccountDeletion: identity
   ListAccountsPastGrace: identity
@@ -161,20 +109,16 @@ queries:
   AnonymizeWorkspacesByOwner: identity
   AnonymizeUser: identity
 
-  # beta.sql：analytics_events 與 feedback_reports 是 analytics 自己的表。
   InsertAnalyticsEvent: analytics
   DetachWorkspaceAnalytics: analytics
   DetachWorkspaceFeedback: analytics
   InsertFeedbackReport: analytics
   DeleteExpiredFeedbackReports: analytics
 
-  # reconcile.sql：object_reconcile_sightings 是 objreconcile 自己的表。
   RecordObjectSighting: objreconcile
   ClearObjectSighting: objreconcile
   CountPersistentObjectSightings: objreconcile
 
-  # runs.sql：runs／run_attempts／run_status_transitions／artifacts(kind='run_output')／
-  # reconciler_orphan_sightings 都是 run 的。
   CreateRun: run
   AccountPurgeReady: run
   GetRun: run
@@ -216,7 +160,6 @@ queries:
   ForgetClearedOrphans: run
   CountPersistentOrphans: run
 
-  # trace.sql：trace_events 是 trace 的。
   InsertTraceEvent: trace
   ListTraceEventsAfter: trace
   ListEvaluationTraceEvents: trace
@@ -226,53 +169,10 @@ queries:
   NextTraceSeq: trace
   CountTraceMaskingInWindow: trace
 
-# 存量漂移：本檔導入時就已存在的跨 context write 呼叫。
-# **目前零條，維持零條**——ADR-033 記錄的 15 條已由 DDD-019／020／025／026
-# 全數清除（寫入回到 owner，呼叫端的交易原地不動），最後 6 條帳號刪除 purge
-# 由 ADR-034 的依賴反轉收斂。**不准新增條目**——新的跨 context write 要改程式。
 allow:
 
-# 存量跨 context read（ADR-035 導入時就已存在的呼叫）
-#
-# ADR-032 §2 的四種關係裡沒有「直接呼叫別人的 query」這一項——跨 context 取事實
-# 的合法機制是 **import 對方套件的公開 Service API**。下面每一條都是那條規則的
-# read 版漏洞，形狀與清空前的 `allow:` 一模一樣。
-#
-# **不是擴充點**——新的跨 context read 一律改程式（owner 開讀取面，或比照
-# ADR-034 由 composition root 注入）。逐組清除方向見 ADR-035「存量清除路徑」。
-# 值是被容忍的呼叫端 context 清單；理由按成因分組寫在各組上方。
-#
-# **這裡有兩個單位，別把它們相加**：本段講的是 **yaml 條目數**（一個 query 一行），
-# 而下面每一組標題裡的「條」是 **(query, caller) 組數**（同一 query 的多個呼叫端
-# 合成一行，所以組數大於條目數）。ADR-035「存量」節用的是同一組定義。
-#
-# 導入時是 35 個條目、七組（47 組 (query, caller)）；**B 組（鎖留在呼叫端的兩條）
-# 已由 DDD-031 收掉**，**C 組（testlab 的 Test Case／Dataset／物件鍵）與 G 組
-# （trace 的事件讀取）已由 DDD-033 收掉**，**E 組（Generic scanner 代讀 owner）
-# 已由 DDD-035 收掉**，F 組的 enrichment 單點由 DDD-036 收掉、manifest
-# 兩單點由 DDD-037 收掉、artifact reference count 由 DDD-038 收掉、F 組最後
-# 兩項由 DDD-039 收掉、D 組由 DDD-040～042 收掉，A 組最後
-# 六項由 DDD-047 收掉；**目前零條，維持零條**。
 read_allow:
 
-# 不可變資料表宣告（ADR-003、鐵律 4；ADR-032 §4 的 aggregate 不變量）
-#
-# 這裡列的表**只接受 INSERT**：任何 UPDATE 或 DELETE 命中它們，
-# `automation-check` 就 FAIL。
-#
-# 為什麼還要這道檢查——資料庫已經擋了：db/migrations 的 `enforce_immutable()`
-# trigger（0005／0013／0027／0033）會在 runtime RAISE，db/tests/immutability_test.sql
-# 也證明了它會擋。差別在**什麼時候**知道：trigger 要等語句真的跑到才炸，
-# 一條 `UPDATE skill_versions SET ...` 合進來後是 staging 的 500，
-# 這道檢查讓它在寫出來的那個 PR 上就是紅的。
-#
-# 只列**無條件凍結**的表。`runs`（終態後才凍）、`run_attempts`／`evaluations`／
-# `evaluation_suggestions`（只凍部分欄位）是列級／欄位級規則，不是「這張表不可寫」，
-# 放進來只會製造一堆假警報。
-#
-# 維護規則：每一列的值是**理由**，不得留空；而且該表在 db/migrations 必須有一個
-# 無 WHEN、無欄位參數的 `enforce_immutable()` trigger——兩邊由 CI 互相對帳，
-# 單獨拿掉任何一邊都會 FAIL。要移除一張表，先移除 trigger 的那個 migration。
 immutable:
   skill_versions: ADR-003 版本快照；採納建議＝新版本，不原地覆寫（鐵律 4）
   test_case_snapshots: ADR-003 Run 引用的測試資料快照，改了會讓歷史 Run 的輸入說謊
@@ -285,67 +185,17 @@ immutable:
   cost_events: 05（2026-09-08）平台真實支出的一次付費呼叫紀錄；重算統計是新視窗，不改舊事件
   credit_entries: 05（2026-09-08）使用者餘額異動的分錄；調整用新分錄，不原地改舊分錄（鏡射鐵律 4）
 
-# 不可變表的具名豁免。形狀比照 `allow:`：具名、有理由、有清除路徑。
-# **不得**為了讓檢查過關就把整張表移出 `immutable:`。
 immutable_allow:
-  # 帳號刪除的保存期 purge（PDM-006 6.1）。這是唯一被允許硬刪凍結列的路徑，
-  # 資料庫側同樣走具名豁免——identity/purge.go 開的交易裡那句
-  # `SET LOCAL skillhub.purge = 'on'`，trigger 只認這個旗標。
-  # DDD-026 後呼叫點搬到 registry.PurgeWorkspace，但它跑在同一個交易內
-  # （ADR-034：owner 的 purge 函式收呼叫端的 *gen.Queries，不自開交易），
-  # 所以旗標的作用範圍與本豁免都不變。ADR-034 已否決事件式自清，
-  # 這條 CTE 沒有預定的消失時程；要移除它得先讓帳號刪除不再硬刪 skill_versions。
   PurgeUnreferencedSkills: skill_versions
-  # WS-005／PDM-006 §6.1 的寬限期清除（04 丙-63）。與上面同一個具名豁免、同一個
-  # 旗標，差別只在誰觸發：那一條是帳號刪除，這一條是使用者單獨刪掉一個 Skill。
-  # 這條豁免在 2026-08-25 之前不存在，因為那個 sweep 也不存在——而伺服器在刪除
-  # 完成的畫面上，逐字告訴使用者快照「30 天寬限期後清除」。
   PurgeSkillsPastDeletionGrace: skill_versions
-  # 稽核事件的 400 天保存期 sweep（PDM-006 §6，同意書 §3 對受測者宣告的那個數字）。
-  # 與上面同一個形狀、同一個具名豁免：`audit.PurgeExpired` 自開的交易裡那句
-  # `SET LOCAL skillhub.purge = 'on'`，0013 的 trigger 只認這個旗標，其餘
-  # 每一條 DELETE 仍然被拒——那正是一條軌跡之所以是軌跡。
-  # 這條豁免在 2026-08-25 之前不存在，因為那個 sweep 也不存在：0013 為它寫了
-  # 欄位註解、以它命名索引、為它打開 DELETE 分支，四塊零件裡缺的正是會跑的那塊。
   DeleteExpiredAuditEvents: audit_events
-  # 帳號刪除的下載明細（CORE-007，2026-08-29）。與 PurgeUnreferencedSkills 同一個
-  # 旗標、同一個交易——identity/purge.go 的 `SET LOCAL skillhub.purge = 'on'` 在
-  # packaging 這一步之前就已經生效。
-  #
-  # 這兩條在 2026-08-29 之前不存在，而後果不是「少刪了兩張表」：0027 的複合外鍵沒有
-  # ON DELETE，所以帳號刪除刪 `artifacts` 那一句會拿到 23503，**整個帳號刪除交易
-  # rollback**，該帳號每一輪 sweep 都失敗。凡是產生過一次下載套件的 workspace 都刪不掉，
-  # 而下載正是封測漏斗第 6 段——走完主流程的受測者剛好是註定刪不掉的那一群。
-  # 整合測試當時是綠的，因為它的 fixture 只插了母列（見 governance_integration_test.go）。
   DeleteWorkspaceDownloadRecords: download_records
   DeleteWorkspaceDownloadArtifactDetails: download_artifacts
-  # Credit/cost retention sweep (05 2026-09-08「保存期限與刪除」), same shape
-  # and same `SET LOCAL skillhub.purge = 'on'` mechanism as the audit_events
-  # sweep above. credit_accounts.balance_credits is unaffected by either DELETE
-  # — it was already updated in the entry's own transaction, not derived from
-  # surviving rows at read time.
   PurgeExpiredCreditEntries: credit_entries
   PurgeExpiredCostEvents: cost_events
-  # Account deletion is a different question from retention and needs its own
-  # queries: the sweeps above are time-based and would leave a deleted account's
-  # spend on file until it aged out. Found by the adversarial review of the
-  # credit batch (2026-09-08), which caught the store interface claiming the
-  # retention queries covered this.
   PurgeUserCreditEntries: credit_entries
   PurgeUserCostEvents: cost_events
 
-# 裸 SQL 的具名豁免（ADR-033 2026-08-20 追加；DDD-058 2026-08-22 強化）
-#
-# `automation-check` 掃 apps/platform/internal/** 與 apps/platform/cmd/** 的非測試 Go 檔：
-# 把含 SELECT／INSERT／UPDATE／DELETE／SET／CREATE／ALTER／DROP／TRUNCATE／WITH
-# 的 SQL 交給 pgx Exec／Query／QueryRow／Queue 就 FAIL。它解析 direct literal、
-# package const、function-local binding 與 fmt.Sprintf format；生成目錄與 _test.go 排除。
-#
-# 它是 tripwire 不是完整 dataflow；跨函數傳遞、runtime 動態字串與非 pgx 入口仍是界限。
-# 界限寫在 tools/devctl/query_owners.go 的「裸 SQL tripwire」註解與 ADR-035。
-#
-# key 是精確 repo/path.go@FunctionName，value 是理由（不得留空）；失效即 FAIL，
-# 同檔其他函數不受遮蔽。領域 SQL 必須移入 db/queries/*.sql，只有下列技術 SQL保留。
 raw_sql_allow:
   apps/platform/internal/creator/workspace/service.go@signup: advisory lock serializes first-login creation for one provider identity
   apps/platform/internal/creator/workspace/purge.go@purgeAccount: SET LOCAL enables immutable-table purge only inside the account purge transaction

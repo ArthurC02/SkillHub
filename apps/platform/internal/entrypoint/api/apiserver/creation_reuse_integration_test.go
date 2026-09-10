@@ -9,12 +9,6 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
-// Re-Use before creation (05 R-49／R-50, 2026-09-06): Go asks the catalogue
-// before the first model call and before anything is stored, and the person
-// may take an existing Skill instead of composing one.
-
-// seedExistingSkill runs one whole session to its saved candidate: the
-// "existing Skill" the catalogue check will offer.
 func seedExistingSkill(t *testing.T, a *api, s *creation.Service, c *client) creation.Candidate {
 	t.Helper()
 	markCatalog(t, testPool, c.workspaceID)
@@ -32,8 +26,7 @@ func seedExistingSkill(t *testing.T, a *api, s *creation.Service, c *client) cre
 func TestCreationFirstMessageCatalogueCheckOffersAdoptKeepOrDecline(t *testing.T) {
 	a, s, calls := creationFixture(t)
 	c := a.login(t, "creation-reuse-first")
-	// The existing Skill is another workspace's catalogue entry: what a person
-	// finds, not what they already own.
+
 	existing := seedExistingSkill(t, a, s, a.login(t, "creation-reuse-first-owner"))
 	stepsBefore := calls.Load()
 	var checked []string
@@ -62,14 +55,12 @@ func TestCreationFirstMessageCatalogueCheckOffersAdoptKeepOrDecline(t *testing.T
 		t.Fatalf("a held session must not have a step queued: %d", jobs)
 	}
 
-	// Decline: the model is told, the session goes to the model with no reference.
 	d := creationAct(t, c, v, "decline_references")
 	last := d.Snapshot.Messages[len(d.Snapshot.Messages)-1]
 	if d.State != "queued" || len(d.Snapshot.References) != 0 || last.Role != "tool" || !strings.Contains(last.Content, "不採用") {
 		t.Fatalf("decline: %+v", d.Snapshot)
 	}
 
-	// Adopt: the fork is the candidate, nothing is composed, the session ends.
 	v = start()
 	ad := creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{existing.SkillID}}, 200)
 	if ad.State != "saved" || !ad.Snapshot.Adopted || ad.Snapshot.Candidate == nil || ad.Snapshot.Candidate.SkillID == existing.SkillID || ad.Snapshot.PendingAction != "" {
@@ -83,11 +74,9 @@ func TestCreationFirstMessageCatalogueCheckOffersAdoptKeepOrDecline(t *testing.T
 		t.Fatalf("adoption must cost no model call: %d", calls.Load()-stepsBefore)
 	}
 
-	// Only what Go offered may be adopted.
 	v = start()
 	creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{"11111111-1111-4111-8111-111111111111"}}, 422)
 
-	// Keep: the hits become confirmed references and the model is called.
 	k := creationAct(t, c, v, "confirm_references")
 	if k.State != "queued" || len(k.Snapshot.References) != 1 || !k.Snapshot.References[0].Confirmed {
 		t.Fatalf("keep as references: %+v", k.Snapshot)
@@ -98,8 +87,7 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-reuse-dup")
 	existing := seedExistingSkill(t, a, s, a.login(t, "creation-reuse-dup-owner"))
-	// The draft's description is what the guard embeds; the first message is not
-	// close to anything (the first-message check is a separate, looser search).
+
 	a.app.CreationSvc.CatalogCheck = func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
 		return nil, 0, nil
 	}
@@ -131,16 +119,15 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 		*held.Snapshot.SpentUSD != spentBefore+0.00002 {
 		t.Fatalf("a near-duplicate must hold materialize: %+v", held.Snapshot)
 	}
-	// Confirm anyway: the held command runs, the answer is kept for the record.
+
 	done := creationAct(t, c, held, "confirm_duplicate")
 	if done.State != "candidate_ready" || done.Snapshot.Candidate == nil || !done.Snapshot.DuplicateAcknowledged || done.Snapshot.PendingAction != "" ||
 		done.Snapshot.PendingMaterialize != "" || len(done.Snapshot.Duplicates) != 1 || *done.Snapshot.SpentUSD != spentBefore+0.00002 {
 		t.Fatalf("confirm_duplicate must materialize the held command: %+v", done.Snapshot)
 	}
-	// A second confirmation has nothing to replay.
+
 	creationPost(t, c, "/creation-sessions/"+done.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": done.Revision, "kind": "confirm_duplicate", "content_hash": done.Snapshot.Draft.ContentHash}, 422)
 
-	// Adopt the duplicate instead of storing the draft.
 	v = drafted(c)
 	held = creationAct(t, c, v, "materialize")
 	ad := creationPost(t, c, "/creation-sessions/"+held.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": held.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{existing.SkillID}}, 200)
@@ -148,8 +135,6 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 		t.Fatalf("adopt from the duplicate list: %+v", ad.Snapshot)
 	}
 
-	// "Build anyway" with the duplicate's own name: Go asks the model to rename
-	// instead of letting the save be refused as 同名 (run x R09).
 	c4 := a.login(t, "creation-reuse-dup-rename")
 	a.app.CreationSvc.DuplicateCheck = func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
 		if strings.Contains(query, "Summarize user input") {
@@ -171,9 +156,6 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 		t.Fatalf("the renamed draft saves without a second duplicate hold: %+v", saved.Snapshot)
 	}
 
-	// A held finalize resumes as finalize (a workspace of its own: the first
-	// session above already saved this draft's name into c's). The duplicate
-	// offered here does not share the draft's name, so no rename round.
 	a.app.CreationSvc.DuplicateCheck = func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
 		if strings.Contains(query, "Summarize user input") {
 			return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: "creation-summary-existing", Available: true}}, 0.00002, nil
@@ -191,8 +173,6 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 	}
 }
 
-// 05 SEC-013 (LLM02): what the session stores of the person's own words is
-// masked on the way in, the way a trace is (TRACE-005).
 func TestCreationMasksCredentialsInTheStoredConversation(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-mask")
@@ -208,8 +188,6 @@ func TestCreationMasksCredentialsInTheStoredConversation(t *testing.T) {
 	}
 }
 
-// 05 SEC-013 (LLM05): a draft that writes outside its own package is refused
-// at materialize, from the creation path and not only from an upload.
 func TestCreationRefusesADraftThatEscapesItsPackage(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-escape")
@@ -221,7 +199,7 @@ func TestCreationRefusesADraftThatEscapesItsPackage(t *testing.T) {
 		t.Fatalf("the stub did not plant the escaping file: %+v", v.Snapshot.Draft)
 	}
 	if !v.Snapshot.Draft.Blocked {
-		// Static validation is the first wall; the save is the second.
+
 		creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "materialize", "content_hash": v.Snapshot.Draft.ContentHash}, 422)
 	}
 	var versions int

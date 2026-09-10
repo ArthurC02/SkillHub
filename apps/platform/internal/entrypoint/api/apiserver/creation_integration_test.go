@@ -52,19 +52,17 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 			out.Brief = in.Brief
 			out.Draft = &llmclient.GeneratedSkill{Name: "creation-summary", Description: "Summarize user input in the requested format.", Body: "# Task\nRead the user input and summarize the important points.\nAsk for the desired output format when missing.\n", Files: []llmclient.GeneratedFile{}}
 			for _, m := range in.Messages {
-				// A model that writes outside the package (05 SEC-013, LLM05):
-				// asked for by a marker in the conversation, refused by Go.
+
 				if m.Role == "user" && strings.Contains(m.Content, "路徑穿越") {
 					out.Draft.Files = []llmclient.GeneratedFile{{Path: "../escape.txt", Content: "x"}}
 				}
-				// A model that keeps the duplicate's own name after "build anyway".
+
 				if m.Role == "tool" && strings.Contains(m.Content, "請只改名稱") {
 					out.Draft.Name = "creation-summary-renamed"
 				}
 			}
 		}
-		// 05 R-46 (b): the brief proposal carries its acceptance criteria; later
-		// turns echo the confirmed list back, as the prompt tells the real model to.
+
 		out.AcceptanceCriteria = in.AcceptanceCriteria
 		out.SampleInput = in.SampleInput
 		if out.Outcome == "confirm_brief" && len(out.AcceptanceCriteria) == 0 {
@@ -94,10 +92,7 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 	handler := app.Handler()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	// Every test in this file spends credit, so every account it logs in starts
-	// with some — which is what an operator grant leaves behind in production.
-	// Without it gate ① refuses the first session and every test here fails on
-	// a 422 that is the ledger working correctly, not the thing under test.
+
 	return &api{
 		Server: server, auth: app.Auth, app: app, packages: packages, handler: handler,
 		creditPool: pool, startingCredits: 100_000,
@@ -136,8 +131,6 @@ func creationPost(t *testing.T, c *client, path string, body any, want int) crea
 	return out
 }
 
-// creationPostStatus posts and returns the raw status and body, for tests
-// asserting on the refusal's wording rather than a decoded creation.View.
 func creationPostStatus(t *testing.T, c *client, path string, body any) (int, string) {
 	t.Helper()
 	raw, err := json.Marshal(body)
@@ -433,7 +426,7 @@ func TestCreationRestartRecoversUnknownAttemptWithoutReplay(t *testing.T) {
 	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_usd": .5}, 200)
 	job := creationJob(t, v.ID)
 	ctx := context.Background()
-	// A killed process leaves only its committed claim and reservation behind.
+
 	if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '1 minute',
 	 snapshot=jsonb_set(jsonb_set(snapshot, '{snapshot,reserved_usd}', '0.1'), '{active_deadline}', to_jsonb(now()-interval '1 minute')) WHERE id=$1`, job.SessionID); err != nil {
 		t.Fatal(err)
@@ -462,12 +455,6 @@ func TestCreationRestartRecoversUnknownAttemptWithoutReplay(t *testing.T) {
 	}
 }
 
-// The fixture model always names the draft "creation-summary" (see
-// creationFixture above), so a second, independent session that reaches
-// materialize collides with the skill the first session already created.
-// ingest.ErrGeneratedNameCollision must reach the caller as a 422 naming the
-// collision, not the handler's 503 default — which a client can never clear
-// by retrying, since the workspace still has the same name in it.
 func TestCreationSecondSessionWithACollidingNameIsRefusedActionably(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-collision")
@@ -498,9 +485,6 @@ func TestCreationSecondSessionWithACollidingNameIsRefusedActionably(t *testing.T
 	}
 }
 
-// creationLimits() bounds Create's budget to [0.1, 1]; a request outside that
-// band must be told the band, not handed the same "已達這次核准的創作限制" sentence
-// a mid-session ceiling produces.
 func TestCreationBudgetOutOfBandNamesTheBand(t *testing.T) {
 	a, _, _ := creationFixture(t)
 	c := a.login(t, "creation-budget-band")
@@ -510,9 +494,6 @@ func TestCreationBudgetOutOfBandNamesTheBand(t *testing.T) {
 	}
 }
 
-// The published ceilings must match what the fixture actually enforces
-// (creationLimits()'s MaxCallCostUSD/MaxCostUSD), so a client can show
-// used/allowed instead of guessing a budget.
 func TestCreationLimitsEndpoint(t *testing.T) {
 	a, _, _ := creationFixture(t)
 	c := a.login(t, "creation-limits")
@@ -536,20 +517,12 @@ func TestCreationLimitsEndpoint(t *testing.T) {
 	}
 }
 
-// creationDeadlineLimits mirrors creationLimits() but shortens the session
-// wall clock to 2s (Limits.Valid requires SessionTimeout >= CallTimeout,
-// which creationLimits() already sets to 2s), so a deadline can be reached in
-// a unit test without waiting out the default one-minute ceiling.
 func creationDeadlineLimits() creation.Limits {
 	l := creationLimits()
 	l.SessionTimeout = 2 * time.Second
 	return l
 }
 
-// A session past its deadline must be told about the deadline, in words
-// distinct from the mid-session budget/step/tool-call ceiling sentence
-// ("已達這次核准的創作限制") — otherwise a user who ran out of time reads a message
-// about running out of money.
 func TestCreationDeadlineIsNotTheBudgetSentence(t *testing.T) {
 	a, _, _ := creationFixtureWithLimits(t, creationDeadlineLimits())
 	c := a.login(t, "creation-deadline")

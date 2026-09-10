@@ -13,13 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// TestCreationKnowledgeAgainstLexicalOnTheDevCatalog is a measurement, not a
-// gate: for each creation task description it prints the top-3 catalog hits
-// of the lexical tool (search_catalog) and of the semantic one
-// (search_knowledge), so the owner can read whether the embedding spend buys
-// anything (2026-09-06 "Embedding 直接花錢測試"). Read-only against the
-// database named in SKILLHUB_COMPARE_DATABASE_URL, one embedding call per
-// description through the apps/llm service; skipped unless both are set.
 func TestCreationKnowledgeAgainstLexicalOnTheDevCatalog(t *testing.T) {
 	dbURL := os.Getenv("SKILLHUB_COMPARE_DATABASE_URL")
 	base := os.Getenv("SKILLHUB_E2E_LLM_URL")

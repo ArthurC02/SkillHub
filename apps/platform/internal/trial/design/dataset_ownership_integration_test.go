@@ -1,19 +1,5 @@
 package testlab
 
-// DELETE /test-cases/{id}/datasets/{datasetId} used to read only {datasetId}:
-// the row was loaded by (dataset id, workspace id) and the {id} in the URL was
-// never compared to it, so deleting one test case's file through another test
-// case's URL succeeded and answered 200. Same workspace either way — the session
-// still supplies the scope — but the path asserted a parent-child relationship
-// the code did not check, while the sibling DeleteCriterion in the same file did.
-//
-// Needs PostgreSQL: what is under test is a comparison against a column, and a
-// mock would only restate the Go line above it. Point
-// SKILLHUB_TEST_DATABASE_URL at a throwaway database and it runs; leave it unset
-// and it skips.
-//
-// WARNING: TestMain drops and recreates schema "public" in that database.
-
 import (
 	"context"
 	"errors"
@@ -42,15 +28,12 @@ var testLabPool *pgxpool.Pool
 func TestMain(m *testing.M) {
 	dsn := os.Getenv(testLabDBURLEnv)
 	if dsn == "" {
-		// 02:PORT-004. Without this, an unset or misspelled URL is indistinguishable
-		// from a passing run: every database test removes itself and go test still
-		// prints ok. CI sets SKILLHUB_REQUIRE_DB=1 so the service failing to come up
-		// is a red build rather than a quiet one.
+
 		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
 			fmt.Fprintf(os.Stderr, "SKILLHUB_REQUIRE_DB=1 but %s is unset; this run would have skipped every database test and still reported success\n", testLabDBURLEnv)
 			os.Exit(1)
 		}
-		os.Exit(m.Run()) // the database tests skip; see requireTestLabDB
+		os.Exit(m.Run())
 	}
 	if err := validateDestructiveTestLabDatabaseURL(dsn); err != nil {
 		panic(err)
@@ -71,8 +54,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// validateDestructiveTestLabDatabaseURL refuses to point the schema drop below
-// at anything that is not an obviously disposable local database.
 func validateDestructiveTestLabDatabaseURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -124,8 +105,7 @@ func migrateTestLabSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		if err != nil {
 			return err
 		}
-		// No arguments means the simple protocol, so a file with several
-		// statements applies as one batch.
+
 		if _, err := pool.Exec(ctx, string(body)); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
@@ -133,10 +113,6 @@ func migrateTestLabSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
-// lockTestSchema serialises the packages that reset this database. apiserver,
-// eval, registry and this package each drop and recreate schema "public" in
-// SKILLHUB_TEST_DATABASE_URL, and `go test ./...` runs packages concurrently.
-// Session scoped, so a crashed run releases it with its connection.
 func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
 	conn, err := pool.Acquire(ctx)
 	if err != nil {
@@ -161,8 +137,6 @@ func requireTestLabDB(t *testing.T) *pgxpool.Pool {
 	return testLabPool
 }
 
-// removedStore records the keys DeleteDataset asks storage to drop, which is the
-// second half of the bug: the wrong file's bytes went with the wrong row.
 type removedStore struct{ removed []string }
 
 func (s *removedStore) Put(context.Context, string, []byte) error { return nil }
@@ -239,10 +213,6 @@ func (s *cancelingPutStore) Remove(ctx context.Context, _ string) error {
 	return nil
 }
 
-// seedTwoCases writes one workspace holding two test cases, with one file on the
-// second. Raw SQL rather than the service: CreateTestCase needs Registry's skill
-// reader and UploadDataset needs magic-byte-valid content, and neither is what
-// this test is about.
 func seedTwoCases(t *testing.T, pool *pgxpool.Pool) (ws identity.Workspace, caseA, caseB, datasetB pgtype.UUID) {
 	t.Helper()
 	ctx := context.Background()
@@ -306,7 +276,6 @@ func TestDeleteDatasetRefusesAnUnrelatedParentInTheURL(t *testing.T) {
 	svc := datasetService(pool, store)
 	ws, caseA, caseB, datasetB := seedTwoCases(t, pool)
 
-	// The bug: B's file, addressed through A's URL.
 	if _, err := svc.DeleteDataset(t.Context(), ws, caseA, datasetB); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("deleting through the wrong test case returned %v, want ErrNotFound", err)
 	}
@@ -317,7 +286,6 @@ func TestDeleteDatasetRefusesAnUnrelatedParentInTheURL(t *testing.T) {
 		t.Errorf("stored bytes were removed for a refused delete: %v", store.removed)
 	}
 
-	// The owner still works, so the guard is not simply refusing everything.
 	if _, err := svc.DeleteDataset(t.Context(), ws, caseB, datasetB); err != nil {
 		t.Fatalf("the owning test case could not delete its own file: %v", err)
 	}

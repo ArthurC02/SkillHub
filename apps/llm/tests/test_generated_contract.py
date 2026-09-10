@@ -37,13 +37,8 @@ def test_generated_enrich_request_validates_the_internal_contract() -> None:
         "JudgeRunResponse",
         "SuggestImprovementsRequest",
         "SuggestImprovementsResponse",
-        # M5. Absent until 2026-08-23, which is how a `metadata` property that
-        # the contract carried and the runtime DTO could not express under
-        # strict `json_schema` went unnoticed: this guard covers every other
-        # endpoint, and the new one was the one it did not.
         "GenerateSkillRequest",
         "GenerateSkillResponse",
-        # GEN-005/GEN-006: the two new nested shapes, same drift risk.
         "GenerateDiagram",
         "GenerateReference",
         "CreationMessage",
@@ -88,18 +83,7 @@ def _described(spec, response) -> str:
 
 
 def test_every_endpoint_that_can_fail_on_the_gateway_declares_both_ways_it_can():
-    """502 and 503 come in a pair, and only one of them was being declared.
-
-    /v1/generate-skill borrows evaluate's client, so it answers 503 when
-    LITELLM_BASE_URL or LITELLM_API_KEY is missing - it has done since that guard
-    landed. The contract stopped at 502. Nothing caught it because `devctl gen
-    --check` compares schema shapes and never looks at status codes, and the six
-    older endpoints all happened to be right (adversarial review, 2026-08-24).
-
-    The invariant, stated so the next endpoint inherits it: an operation that can
-    fail because the gateway is broken can also fail because this process was
-    never told where the gateway is.
-    """
+    """502 and 503 come in a pair; both must be declared together."""
     missing = [
         name for name, responses in _operations() if "502" in responses and "503" not in responses
     ]
@@ -107,18 +91,8 @@ def test_every_endpoint_that_can_fail_on_the_gateway_declares_both_ways_it_can()
 
 
 def test_the_503_says_both_of_the_things_it_can_mean():
-    """A 503 here has two causes and they need different handling.
-
-    `LLM_SERVICE_TOKEN` unset is a deployment that lost a variable both sides
-    know about - Go fails closed on the same one at startup. `LITELLM_BASE_URL`
-    or `LITELLM_API_KEY` unset is an error only this process can see, and its
-    symptom on the Go side is search degrading to FTS-only, quietly, for as long
-    as it lasts (gateway.py's whole docstring is that story, M1 audit).
-
-    The contract used to state one cause: five endpoints referenced a response
-    called `AuthUnavailable` describing only the workload token, and two others
-    spelled out only the gateway. The test above passed on all seven, because it
-    only ever counted status codes. This one reads the words.
+    """The 503 description must name both causes: missing workload token and
+    unconfigured gateway.
     """
     spec = _spec()
     for name, responses in _operations():

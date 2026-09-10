@@ -8,11 +8,6 @@ import (
 	"time"
 )
 
-// TestFetcherAgainstTheLiveInternet is a measurement, not a gate: it runs only
-// with SKILLHUB_LIVE_FETCH=1 on a machine with egress (the measurement
-// container has none, so run q could only show network_error). It exercises
-// the three endings the owner's rule names (05 R-47): a page that reads, a
-// site that refuses (reported once), and a page that does not exist.
 func TestFetcherAgainstTheLiveInternet(t *testing.T) {
 	if os.Getenv("SKILLHUB_LIVE_FETCH") != "1" {
 		t.Skip("SKILLHUB_LIVE_FETCH=1 selects this live measurement")

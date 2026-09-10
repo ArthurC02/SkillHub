@@ -1,19 +1,10 @@
 -- name: UpsertSearchDocument :exec
--- bigram is Go's LexicalIndexText (latin words + CJK character bigrams), the
--- lexical leg of the creation tool's hybrid retrieval (0058).
 INSERT INTO search_documents (skill_id, workspace_id, name, summary, bigram, updated_at)
 VALUES ($1, $2, $3, $4, to_tsvector('simple', sqlc.arg(bigram_text)::text), now())
 ON CONFLICT (skill_id) DO UPDATE
 SET name = EXCLUDED.name, summary = EXCLUDED.summary, bigram = EXCLUDED.bigram, updated_at = now();
 
 -- name: UpsertSearchDocumentEnriched :exec
--- Full upsert including the ADR-013 index-time enhancement fields and the
--- embedding computed from them.
---
--- A failed enrichment overwrites a previous good one with empty text and
--- 'pending' on purpose. The old enrichment described the old content; keeping it
--- against new content would index the document as something it no longer is,
--- which is worse than indexing it as pending until the backfill catches up.
 INSERT INTO search_documents (
     skill_id, workspace_id, name, summary,
     enriched_summary, task_examples, tags, limitations, scan, embedding,
@@ -39,21 +30,9 @@ SET workspace_id = EXCLUDED.workspace_id,
     updated_at = now();
 
 -- name: ListPendingEnrichment :many
--- Backfill worklist for cmd/reindex: documents whose enrichment never landed,
--- oldest first, with the package object the enrichment is recomputed from.
---
--- The lateral join is an inner join on purpose: a skill with no version yet
--- (a fork created ahead of its content) has nothing to enrich from, so it drops
--- out of the worklist here rather than becoming a null the caller has to skip.
 WITH candidates AS (
 SELECT sd.skill_id, sv.package_object_key
 FROM search_documents sd
---
--- Generated packages used to be kept off this worklist (GEN-007: never
--- searched, so never enriched). Since 05 R-52 (2026-09-07) they are enriched
--- like everything else — "security check, then metadata, then the library" is
--- the owner's order for every new Skill — while GEN-007's read-side exclusion
--- (the SearchSkills join below) still keeps them out of every search.
 JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
 JOIN LATERAL (
     SELECT v.package_object_key
@@ -75,22 +54,6 @@ SELECT c.skill_id, c.workspace_id, c.name, candidates.package_object_key
 FROM claimed c JOIN candidates USING (skill_id);
 
 -- name: SearchSkills :many
--- FTS leg only for now (ADR-013); vector + RRF join here when the embedding
--- pipeline lands. websearch_to_tsquery tolerates raw user input.
---
--- The lexical score orders the page and is not selected; see PublicSearchSkills
--- for why it must not be handed to a caller as a rank.
---
--- The join is GEN-007's enforcement point, and it is on the READ side on
--- purpose. A generated skill must not be found by search — including by the
--- person who generated it — but its search_documents row still has to exist,
--- because the workspace's own Skill list reads the static-scan facts out of it
--- and 02:GEN-003 forbids a generated package disclosing one warning fewer than
--- an imported one. Excluding it at write time would have bought the guarantee by
--- deleting the disclosure.
---
--- The public queries below need no equivalent: they are restricted to catalog
--- workspaces, and generation is refused in one (skill/admission/generate.go).
 SELECT s.skill_id, s.workspace_id, s.name, s.summary
 FROM search_documents s
 JOIN skills sk ON sk.id = s.skill_id AND sk.redistribution <> 'generated'
@@ -99,122 +62,19 @@ WHERE s.workspace_id = $1
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
 LIMIT $2;
 
--- The two queries below serve unauthenticated callers (DISC-001), so their
--- scope cannot come from a session. They are restricted to catalog workspaces
--- (0010) instead of taking a workspace argument: a public query that accepts a
--- caller-supplied scope is exactly the shape iron rule 3 forbids, and a public
--- query with no scope at all leaks every private fork. "Public" is spelled out
--- in the name so no future caller reaches for one of these on a private path.
-
--- DISC-003 structured filters, shared by both public queries below.
---
--- Only two of the six dimensions 02:DISC-002 lists have per-row data in M1, so
--- only those two are predicates here. The other four are not silently ignored:
--- they are reported as unavailable by the API and disabled in the UI, because a
--- filter that accepts a value and does not narrow anything is worse than one
--- that says it cannot (see catalog/http.go filterAvailability).
---
---   * has_script   — evidence from the projected import scan. `script-file` is a
---                    script in the package tree, `embedded-script` is runnable
---                    code inside SKILL.md itself (SKILL-003); a user asking for
---                    "contains a script" means either.
---                    Rows with NULL scan match NEITHER true nor false: no scan
---                    was ever projected for them, and answering "no script" for
---                    an unscanned row is exactly the 不得自行推定為通過 that
---                    02:DISC-004 forbids. They drop out of a filtered page and
---                    reappear when the filter is cleared.
---   * spec_validated — a saved version is the evidence, for the reason
---                    0015_search_result_facets.sql gives: skillpkg.Validate
---                    blocks the import on any error-level finding, so a stored
---                    version means static validation passed. No version means
---                    nothing was ever validated, which is unverified and never
---                    "failed".
---   * agent_runtime — 0022's measured verdict for the newest version, matched
---                    exactly rather than as a boolean. `native`/`transpiled`/
---                    `failed` are three answers, not two, and a row with no
---                    measurement is `unverified` — a fourth. A *bool would have
---                    made "not native" quietly include the unmeasured rows,
---                    which is the same 推定 the has_script note refuses.
---
--- All three are sqlc.narg: NULL = dimension not filtered, which is the default.
--- The predicates are written twice rather than factored into a SQL function —
--- two copies of four lines beat a migration for a function that would then need
--- its own drift check.
---
--- The compatibility lateral takes the newest row for the version whatever image
--- it was measured on, and hands the image back with it. The alternative — filter
--- to a configured "current" image — needs a deployment setting to decide which
--- verdict the public catalogue shows, and a wrong setting there would be silent.
--- Labelling the answer with the image it came from cannot be silently wrong.
-
 -- name: PublicSearchSkills :many
--- FTS-only public search — the degradation path when the embedding service is
--- unavailable (ADR-013 fallback).
---
--- 05 R-52 (2026-09-07): a document whose enrichment never landed — no
--- metadata, no vector — is not in the library yet. The three public queries
--- share the predicate below: enriched, or at least embedded (the tests' seeded
--- rows and a document whose enrichment text landed but whose vector did not).
--- The version exists and its owner sees it; the hourly backfill brings it into
--- the catalogue once the metadata exists. Before this the row surfaced through
--- the english tsvector as an "unranked" hit nobody could find by meaning.
---
--- Two lexical legs since 05 R-48: the english tsvector, and the bigram column
--- (0058) for the query Go rendered from LexicalTokens — every token AND-ed, so
--- a Traditional Chinese query the english config tokenises to nothing still
--- has a floor. bigram_query is '' when the query carries no token, and the
--- CASE keeps to_tsquery off an empty string (it would only log a notice, but
--- a notice per empty search is noise).
---
--- The DISC-003 filters apply here too. A degraded answer is already lower
--- recall; letting it also ignore the user's filters would make the page lie
--- about what it contains, and the filter dimensions are projection columns that
--- do not depend on the embedding leg being up.
---
--- ts_rank_cd orders the page but is not selected. It is an unbounded lexical
--- score, not a cosine similarity, and the two used to arrive at the caller
--- through the same `rank` field that the contract documents as 0..1 — a live
--- answer came back with 1.4. The ordering is what the score is good for, and
--- the array already carries that.
 SELECT s.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-       -- Which branch the COALESCE above took. ADR-013 requires model-written
-       -- copy to be labelled, and this row already labels `match_reason` while
-       -- printing the model's rewrite of the summary in the same <p> the author's
-       -- own text would occupy. Derived here rather than in Go so the flag cannot
-       -- disagree with the value it describes.
        CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
            AS summary_source,
        s.tags, s.scan, ver.created_at AS verified_at,
-       -- COALESCEd here rather than in Go: a row with no measurement is
-       -- unverified on both axes, which is the same answer the handler used to
-       -- hard-code, and sqlc cannot see that an outer-joined column is nullable
-       -- (it reads the table's NOT NULL and would generate a scan that panics on
-       -- the first unmeasured skill).
        COALESCE(cmp.capability, 'unverified') AS agent_capability,
        COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
        cur.category,
-       -- Who assigned it (0061, 05 R-19 item 4): the read side words a curated
-       -- shelf and an owner-set shelf differently, and this is the only way it
-       -- can tell them apart -- both travel through the same `cur.category`.
        cur.category_source,
-       -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
-       -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
-       -- reader cannot tell 21 from 2100 -- because there was no count to say.
-       --
-       -- A window function and NOT a second COUNT query, deliberately. A parallel
-       -- count has to restate every predicate above, and the moment the two
-       -- restatements disagree the page reports a total that does not describe
-       -- the list under it -- which is worse than the lower bound it replaced.
-       -- count(*) OVER () is evaluated after this statement's own WHERE and
-       -- before its LIMIT, so it cannot drift from the rows it counts: there is
-       -- only one set of predicates.
-       --
-       -- Exact on this path: the lexical floor has no candidate window, so this
-       -- is every catalogue document the tsquery matched under the filters.
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
@@ -233,22 +93,10 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) cmp ON true
 LEFT JOIN LATERAL (
-    -- 02:CONTENT-001 tier, resolved here rather than stored. It is a verdict
-    -- about specific bytes, so it belongs beside the version it judged, exactly
-    -- like the compatibility row above -- and for the same reason it is joined
-    -- rather than projected into search_documents: 0015 keeps that table for
-    -- things derivable from the package, and a human review is not one.
-    --
-    -- 精選 only while the reviewed version is still the newest. A new version
-    -- silently drops the row back to 已索引 with no job and no operator action;
-    -- see 0042. A ('curated', NULL) row -- reachable only when the reviewed
-    -- version was purged -- lands in the ELSE, which is the fail-closed answer.
     SELECT CASE
         WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
         THEN 'curated' ELSE 'indexed'
     END AS tier,
-    -- PDM-001 category (0053). NULL is a typed absence the handler words as
-    -- 尚未定值, never a guessed shelf (05 R-19).
     sk.category, sk.category_source
     FROM skills sk
     WHERE sk.id = s.skill_id
@@ -287,25 +135,6 @@ ORDER BY GREATEST(
 LIMIT sqlc.arg(result_limit);
 
 -- name: BrowseCatalogSkills :many
--- 02:DISC-006 —— 目錄本身，給還沒有問題可問的人。
---
--- 為什麼是新的一條而不是把 PublicSearchSkills 的述詞變成選用：那條查詢的每一個
--- 部分都是「這個查詢字串排出來的順序」——ts_rank_cd 排序、no_results 的距離門檻、
--- query_suggestion。把 query 變成 nullable 之後，rank 對每一列都會是空的，而
--- 設計 §2.9 說缺席要有型別；一個永遠不填的 rank 不是缺席，是這個回應根本不該有
--- 那個欄位。兩個問題（「什麼東西符合我這句話」與「這裡面有什麼」）各自一條。
---
--- SELECT 清單與 PublicSearchSkills 逐欄相同，而且必須相同：同一張卡片會在同一頁
--- 的兩個狀態下渲染，02:NFR-007 第 3 條不允許它們對同一個事實講不同的話。
---
--- 排序：精選在前，其餘依版本建立時間由新到舊。ADR-041／設計 §2.11(b) 禁止把人氣
--- 當預設排序，而這裡也沒有人氣可用；curation_tier 是人真的審過的結論，是這個目錄
--- 唯一一個有證據支撐的排序訊號。skill_id 收尾讓分頁邊界不會抖。
---
--- 篩選與搜尋那條共用同四個維度：篩選條件是這一頁的控制項，而一個只在搜尋之後才
--- 生效的篩選器，等於在目錄狀態下顯示一排不強制任何事的控制項（設計 §2.2）。
---
--- total_matches 的理由與上面那條相同，而在這條路上它永遠精確：沒有候選窗。
 SELECT s.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
        CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
@@ -317,9 +146,6 @@ SELECT s.skill_id, s.name,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
        cur.category,
-       -- Who assigned it (0061, 05 R-19 item 4): the read side words a curated
-       -- shelf and an owner-set shelf differently, and this is the only way it
-       -- can tell them apart -- both travel through the same `cur.category`.
        cur.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
@@ -343,8 +169,6 @@ LEFT JOIN LATERAL (
         WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
         THEN 'curated' ELSE 'indexed'
     END AS tier,
-    -- PDM-001 category (0053). NULL is a typed absence the handler words as
-    -- 尚未定值, never a guessed shelf (05 R-19).
     sk.category, sk.category_source
     FROM skills sk
     WHERE sk.id = s.skill_id
@@ -379,55 +203,6 @@ LIMIT sqlc.arg(result_limit);
 
 
 -- name: PublicHybridSearchSkills :many
--- ADR-013 hybrid retrieval, ranked by vector distance alone.
---
--- This used to fuse both legs with equal-weight RRF. golden-query-set.md §3.7
--- measured that fusion costing 11 of 48 queries their Top-1 and 5 their
--- recall@5 against the vector leg on its own, because the BM25 leg answers only
--- 20% of Traditional Chinese queries correctly and equal-weight RRF averages
--- that near-dead leg's ranks into the strong one. ADR-013 定案調整 3 already
--- says RRF is a recall-coverage device and not a source of ranking quality, so
--- the legs now do exactly that and no more:
---
---   * vec  — nearest neighbours, and the ranking authority.
---   * fts  — candidate expansion only. It pulls in documents the vector leg
---            missed; those documents are then ranked by their own vector
---            distance like everyone else, never by their lexical rank.
---
--- A zero-hit leg contributes no rows, so it cannot dilute the other one
--- (ADR-013 定案調整 3) — that property survives the switch from FULL OUTER JOIN
--- to UNION, and UNION is now enough because there is no per-leg rank to merge.
---
--- Documents with no embedding yet (enrichment_status = 'pending') have a NULL
--- distance. They can only arrive through the FTS leg, they sort last, and the
--- distance cut-off cannot judge them, so they are kept: dropping them would
--- silently hide every not-yet-enriched skill from search instead of ranking it
--- low.
---
--- The per-leg ORDER BY before LIMIT is load-bearing: LIMIT without ORDER BY is
--- not defined to keep the best rows.
--- The legs carry only the id and the distance: everything displayed is read
--- back from search_documents in the final SELECT, so the DISC-002 result
--- columns are written out once instead of three times.
---
--- The third leg (05 R-48, 2026-09-06) is the bigram column of 0058 queried
--- with every token of the query AND-ed — the document carries the whole query,
--- which is what a person types when they know a name or one distinctive term.
--- The creation tool measured that admission at F1 0.88 over golden + name +
--- term queries against 0.59 for the vector leg alone, with the golden set's
--- own numbers unchanged (creation-measure/search-f1). Its rows are `covered`
--- and are the one thing the distance cut-off does not judge: a covered hit
--- sits past 0.75 exactly when the embedding did not see the term (7/25
--- distinctive terms survived the cut-off on their own), and dropping it there
--- is the case the leg exists to fix. Covered rows come BEFORE the vector hits
--- (search-f1/results-public-rule-2026-09-06: after the vector hits, the 25
--- distinctive terms reach Top-1 14 times; before them, 23 — with the golden
--- set's 44/48 and its 12/12 rejections unchanged either way). This is not the
--- lexical rank ADR-013 定案調整 4 keeps out of the ordering: among covered rows
--- the order is still their vector distance, and the covered set itself is a
--- precise signal (every token present), not a score. The exact-name match is
--- pinned first of all, because a person who typed the name must see it
--- (Re-Use before creation).
 WITH vec AS (
     SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
     FROM search_documents s
@@ -466,26 +241,8 @@ candidates AS (
     ) legs
     GROUP BY skill_id
 )
--- max_distance is the DISC-005 cut-off; see catalog.MaxCosineDistance for the
--- value's derivation and its expiry conditions.
---
--- unranked marks the NULL-distance rows. `rank` still comes back COALESCEd
--- because the caller drops it for exactly those rows and reports a null rank
--- (a lexical-only hit was never measured against the query, and 0 would read
--- as "measured, and terrible"). Keeping the COALESCE means one non-null float
--- column instead of a nullability inference that has to hold across a UNION.
---
--- verified_at is the newest version's creation time: the import that scanned
--- the content. Immutable, so it cannot drift from what it describes. NULL for a
--- skill with no version yet, which is also what makes spec_validation
--- unverified for that row (a blocked package never gets a version).
 SELECT c.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-       -- Which branch the COALESCE above took. ADR-013 requires model-written
-       -- copy to be labelled, and this row already labels `match_reason` while
-       -- printing the model's rewrite of the summary in the same <p> the author's
-       -- own text would occupy. Derived here rather than in Go so the flag cannot
-       -- disagree with the value it describes.
        CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
            AS summary_source,
        s.tags, s.scan, ver.created_at AS verified_at,
@@ -495,32 +252,10 @@ SELECT c.skill_id, s.name,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
        cur.category,
-       -- Who assigned it (0061, 05 R-19 item 4): the read side words a curated
-       -- shelf and an owner-set shelf differently, and this is the only way it
-       -- can tell them apart -- both travel through the same `cur.category`.
        cur.category_source,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked,
        c.covered AS lexical_covered,
-       -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
-       -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
-       -- reader cannot tell 21 from 2100 -- because there was no count to say.
-       --
-       -- A window function and NOT a second COUNT query, deliberately. A parallel
-       -- count has to restate every predicate above, and the moment the two
-       -- restatements disagree the page reports a total that does not describe
-       -- the list under it -- which is worse than the lower bound it replaced.
-       -- count(*) OVER () is evaluated after this statement's own WHERE and
-       -- before its LIMIT, so it cannot drift from the rows it counts: there is
-       -- only one set of predicates.
-       --
-       -- ponytail: bounded by the candidate window, not by the catalogue. The two
-       -- legs above take 50 rows each, so this counts what passed the filters out
-       -- of at most 100 candidates. With 45 documents indexed that is every
-       -- document and the number is exact; past 100 it silently becomes a lower
-       -- bound again, wearing the word 「共」. Push the predicates into the two
-       -- CTEs when the catalogue outgrows the window -- the same fix the ponytail
-       -- note on the filters below already asks for, and the same trigger.
        count(*) OVER ()::bigint AS total_matches
 FROM candidates c
 JOIN search_documents s ON s.skill_id = c.skill_id
@@ -539,33 +274,15 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) cmp ON true
 LEFT JOIN LATERAL (
-    -- 02:CONTENT-001 tier, resolved here rather than stored. It is a verdict
-    -- about specific bytes, so it belongs beside the version it judged, exactly
-    -- like the compatibility row above -- and for the same reason it is joined
-    -- rather than projected into search_documents: 0015 keeps that table for
-    -- things derivable from the package, and a human review is not one.
-    --
-    -- 精選 only while the reviewed version is still the newest. A new version
-    -- silently drops the row back to 已索引 with no job and no operator action;
-    -- see 0042. A ('curated', NULL) row -- reachable only when the reviewed
-    -- version was purged -- lands in the ELSE, which is the fail-closed answer.
     SELECT CASE
         WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
         THEN 'curated' ELSE 'indexed'
     END AS tier,
-    -- PDM-001 category (0053). NULL is a typed absence the handler words as
-    -- 尚未定值, never a guessed shelf (05 R-19).
     sk.category, sk.category_source
     FROM skills sk
     WHERE sk.id = c.skill_id
 ) cur ON true
 WHERE (c.covered OR c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::float8)
-  -- DISC-003 filters, applied after candidate generation.
-  --
-  -- ponytail: the two legs still take their own 50 rows before this runs, so a
-  -- filter that matches only rows 51+ of a leg cannot see them. The catalogue is
-  -- 45 documents, so no candidate is currently unreachable; push the predicates
-  -- into the two CTEs once the catalogue outgrows the candidate window.
   AND (
     sqlc.narg(has_script)::bool IS NULL
     OR (s.scan IS NOT NULL
@@ -594,22 +311,6 @@ ORDER BY (lower(s.name) = lower(btrim(sqlc.arg(query)::text))) DESC,
 LIMIT sqlc.arg(result_limit);
 
 -- name: ReindexAll :execrows
--- Rebuilds the whole projection from the source of truth (INGEST-009 重新索引).
--- Idempotent; safe to run any time.
---
--- `updated_at` is set on insert and left alone on conflict, on purpose. Its only
--- reader is ListPendingEnrichment's "oldest first" ordering, so it means "how
--- long has this document been waiting", and a rebuild does not make a document
--- newer - it re-derives the same two columns from the same source row.
---
--- Stamping now() on every row cost the timestamp its only job: after a rebuild
--- the whole projection shared one instant, ListPendingEnrichment's order became
--- arbitrary, and neither it nor REINDEX_BATCH could keep a backfill away from
--- the 45 fork documents the M2 baseline run left pending in a scratch workspace
--- (~$2 of flagship enrichment per re-run). The workaround was to hand-mark those
--- rows `enriched` before every backfill and restore them after. With the
--- timestamp preserved, the freshly forked documents sort last and a bounded
--- REINDEX_BATCH reaches the genuinely old pending rows first, with no hand step.
 INSERT INTO search_documents (skill_id, workspace_id, name, summary, updated_at)
 SELECT sk.id, sk.workspace_id, sk.name, coalesce(sk.summary, ''), now()
 FROM skills sk
@@ -619,59 +320,26 @@ SET workspace_id = EXCLUDED.workspace_id, name = EXCLUDED.name,
     summary = EXCLUDED.summary;
 
 -- name: DeleteSearchDocument :exec
--- Workspace scoped even though skill_id is the primary key of this table, on the
--- same rule the reads next door follow (iron rule 3): the id arrives from another
--- context's row, and a delete keyed on a caller-supplied id alone is the
--- cross-tenant write the scope exists to stop. Both callers already hold the
--- skill's workspace — soft delete from its own transaction, takedown from the row
--- it just flagged — so nothing widens to supply it.
 DELETE FROM search_documents WHERE skill_id = $1 AND workspace_id = $2;
 
 -- name: PruneDeletedSearchDocuments :execrows
--- Rebuild hygiene: ReindexAll only upserts live skills, so stale documents of
--- soft-deleted and manually taken-down skills (INGEST-010) are removed here
--- first. A rebuild that re-listed taken-down content would undo the takedown.
 DELETE FROM search_documents sd
 USING skills sk
 WHERE sd.skill_id = sk.id
   AND (sk.deleted_at IS NOT NULL OR sk.takedown_at IS NOT NULL);
 
 -- name: ListSkillScans :many
--- The projected scan for a set of skills in one workspace, so a caller holding a
--- page of skills can ask once instead of per row.
---
--- Workspace scoped even though skill_id is a primary key: the ids arrive from
--- another context's page, and an unscoped read keyed on caller-supplied ids is
--- the cross-tenant read iron rule 3 exists to stop.
---
--- Rows with no document, and rows whose document has no scan, simply do not come
--- back with a scan — the caller fills both as "unavailable", never as clean
--- (DISC-004 不得自行推定為通過). The commonest of those is a fork: catalog's
--- IndexSkill writes name and summary only, because a fork shares its source's
--- bytes and has nothing of its own to scan.
 SELECT skill_id, scan
 FROM search_documents
 WHERE workspace_id = $1 AND skill_id = ANY(sqlc.arg(skill_ids)::uuid[]);
 
 -- name: ListCatalogSkillScans :many
--- The same read as ListSkillScans, for the public catalogue instead of one
--- workspace. Its only caller is the inherited-measurement path: a fork whose
--- bytes are identical to a catalogue ancestor's shows the ancestor's scan
--- (ADR-042 決策 6).
---
--- Takes no workspace argument on purpose, exactly like GetCatalogSkill: the
--- scope is baked into the statement so a caller cannot name a wider one (鐵律
--- 3). Skills outside the catalogue never match, so a private ancestor stays
--- invisible and the caller reports 未測量 rather than reaching into another
--- workspace to answer.
 SELECT sd.skill_id, sd.scan
 FROM search_documents sd
 JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
 WHERE sd.skill_id = ANY(sqlc.arg(skill_ids)::uuid[]);
 
 -- name: ListSearchDocumentsMissingBigram :many
--- Rows indexed before 0058 (or by ReindexAll, which cannot tokenise CJK in
--- SQL): the text Go's LexicalIndexText needs to fill the bigram column.
 SELECT skill_id, name, summary, enriched_summary, task_examples, tags
 FROM search_documents
 WHERE bigram IS NULL
@@ -684,12 +352,6 @@ SET bigram = to_tsvector('simple', sqlc.arg(bigram_text)::text)
 WHERE skill_id = $1;
 
 -- name: ResetCatalogueEnrichmentBefore :execrows
--- cmd/reindex REINDEX_REENRICH: every catalogue document enriched under a
--- prompt version other than the current one goes back to `pending`, so the
--- backfill rewrites it under the current prompt (report §15: v7's examples are
--- what lifted F1; the live catalogue was still v2–v6). Generated and
--- taken-down rows are untouched — the former re-enrich on their own worklist
--- terms, the latter must not come back.
 UPDATE search_documents sd
 SET enrichment_status = 'pending', enrichment_attempted_at = NULL
 FROM workspaces w, skills sk
@@ -699,9 +361,6 @@ WHERE w.id = sd.workspace_id AND w.is_catalog
   AND COALESCE(sd.enrichment_prompt_version, '') <> sqlc.arg(prompt_version)::text;
 
 -- name: GetCatalogReferenceFacts :one
--- What the creation tool shows next to a Skill it offers (05 SEC-013, LLM04):
--- the projected scan (disclosures and warnings) and whether the offered
--- version is the curated one. Catalogue scope only, like every offer.
 SELECT sd.scan,
        (sk.curation_tier = 'curated' AND sk.curated_version_id = sqlc.arg(version_id)::uuid)::bool AS curated
 FROM search_documents sd
@@ -710,10 +369,6 @@ JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
 WHERE sd.skill_id = $1;
 
 -- name: CreationLexicalSearchSkills :many
--- The lexical leg of the creation tool's hybrid retrieval (0058, 05 R-47):
--- catalogue documents whose bigram tsvector matches the query rendered by Go
--- (every token AND-ed for the coverage rule; OR-ed only as the degraded
--- fallback), best lexical rank first.
 SELECT s.skill_id, s.name
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog

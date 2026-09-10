@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
-"""Teeth for check_egress_allowlist.py.
-
-Plain asserts, no fixtures: runnable as `python3 tools/ci/test_check_egress_allowlist.py`
-(what the workflow can call — it only pip-installs PyYAML) and collected by pytest
-(`test_*.py`, matching apps/llm/tests) when someone happens to have it.
-"""
+"""Tests for check_egress_allowlist.py. Plain asserts, no fixtures — runnable
+directly or collected by pytest."""
 import sys
 
 import check_egress_allowlist as chk
@@ -49,8 +45,6 @@ def test_missing_port_is_rejected():
 
 
 def test_ipv6_pin_is_rejected():
-    # The file is IPv4-only by decision; a v6 pin renders nothing (see the module
-    # docstring) and must not read as coverage.
     _rejects("an IPv6 pinned_ip", pinned_ip="2001:db8::1")
 
 

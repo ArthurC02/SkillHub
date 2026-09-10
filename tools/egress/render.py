@@ -1,48 +1,7 @@
 #!/usr/bin/env python3
-"""Render infra/egress/allowlist.yaml into the things that actually enforce it.
-
-ADR-022 Q3 chose nftables default-deny plus a node-pinned resolver over an L7
-proxy, and `03` SBX-007 records what was still missing afterwards: the ruleset
-itself, the resolver config, and sandboxd comparing a RunRequest's `egress.allow`
-against what this node actually renders (ADR-022 A1-e). All three come from one
-file, and they come from it *here*, together, on purpose.
-
-WHY ONE RENDERER AND NOT THREE ARTIFACTS MAINTAINED BY HAND
-
-`04` 甲-3 recorded the failure this closes: `Egress.Allow[].URL` was shown in the
-pre-run permission summary, written into the run record, and then dropped - no
-line of code anywhere read it. The only thing enforcing anything was the
-structural accident that one Docker network had one service on it. A destination
-a user is shown and agrees to, with nothing holding the run to it, is narration.
-
-Three hand-maintained artifacts would restore that gap in a slower form: an
-nftables rule accepting an address the admission check has never heard of, or an
-admission check accepting a destination no rule opens. The second is the worse
-one, because it dispatches the run and lets it time out - the exact behaviour
-ADR-022 A1-e replaces with a `capability_mismatch` refusal.
-
-So the ruleset, the resolver config and sandboxd's admission list are three
-projections of one source, and `--check` fails CI when the committed copies stop
-matching it.
-
-FAIL-CLOSED IS THE DEFAULT EVERYWHERE
-
-Every missing input renders *less* reachability, never more:
-
-  pinned_ip: unset      no accept rule, and the destination is left OUT of the
-                        admission list too, so the node refuses the run instead
-                        of accepting it and letting it time out.
-  --resolver unset      no DNS accept rule and no listen address; nothing
-                        resolves, so nothing is reached by name.
-  --control-plane
-     unset              no inbound accept; the node answers nobody. Useless and
-                        safe, in that order.
-
-Usage:
-    python3 tools/egress/render.py --out infra/egress/rendered
-    python3 tools/egress/render.py --check
-    python3 tools/egress/render.py --self-check
-"""
+"""Render infra/egress/allowlist.yaml into the nftables ruleset, dnsmasq
+config, and sandboxd admission list that actually enforce it — one source, so
+`--check` fails CI the moment the committed copies drift from it."""
 import argparse
 import importlib.util
 import ipaddress
@@ -56,29 +15,20 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 ALLOWLIST = ROOT / "infra" / "egress" / "allowlist.yaml"
 DEFAULT_OUT = ROOT / "infra" / "egress" / "rendered"
 
-# The checker is the authority on what a valid allow-list is, and importing it
-# rather than restating its rules is the point: a renderer with a second opinion
-# about `pinned_ip` is how the ruleset and the reviewed source diverge.
 _spec = importlib.util.spec_from_file_location(
     "check_egress_allowlist", ROOT / "tools" / "ci" / "check_egress_allowlist.py")
 _checker = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_checker)
 
-# RFC1918 plus the link-local range carrying the cloud metadata service. Blocked
-# by address rather than by name because N-03 is about the address: a resolver
-# that refuses `metadata.google.internal` does nothing about 169.254.169.254.
+# Link-local includes 169.254.169.254, the cloud metadata service; blocked by
+# address so a name-based resolver refusal can't be bypassed.
 PRIVATE_V4 = ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
 LINK_LOCAL_V4 = "169.254.0.0/16"
 
 
 def rendered_destinations(entries):
-    """The sandbox-tier destinations this node can actually reach.
-
-    An entry whose pin is `unset` is absent rather than present-and-unreachable.
-    Its accept rule does not exist, so a run allowed to name it would be
-    dispatched and then fail to connect - and "accepted, then timed out" is
-    precisely what ADR-022 A1-e replaces with a refusal.
-    """
+    """The sandbox-tier destinations this node can actually reach: entries
+    with pinned_ip unset are omitted rather than listed as unreachable."""
     out = []
     for e in entries:
         if e.get("tier") != "sandbox":
@@ -97,29 +47,9 @@ def rendered_destinations(entries):
 
 
 def render_nftables(entries, sandbox_iface, resolver, control_plane):
-    """The ruleset. Enforcement lives in `forward`, never inside the container.
-
-    SBX-007 is explicit about the hook: the enforcement point is the host's
-    forward path or the run's own netns, not an `output` chain inside the
-    sandbox, because anything inside the sandbox is editable by whatever escapes
-    into it. A rule the attacker can delete documents an intention.
-
-    Rule ORDER is load-bearing, and it is not the order the requirements are
-    numbered in. The denies for east-west (T5-4), the node's own services (T5-5)
-    and the metadata address (T5-3) come BEFORE the allow-list accepts, so a
-    `pinned_ip` that is somehow a sandbox address, the bridge gateway or the node
-    itself is dropped rather than opened. That ordering is what makes ADR-022 Q2
-    constraint 6 - the gateway must not share an address with the control plane -
-    fail closed instead of quietly granting the sandbox a route to it.
-
-    The accepts then come BEFORE the RFC1918 drop, because the gateway is an
-    internal address: N-03 blocks the private ranges as a class and the allow
-    list is the one hole punched in it, at one address and one port.
-
-    Every rule carries `counter`. ADR-022 §5 wants nftables counters as T5's
-    evidence and N-06 wants the attempt recorded: a drop nobody can count is
-    indistinguishable from traffic that was never sent.
-    """
+    """Render the sandbox forward/input chains and the IPv4-only ip6 stub as
+    an nftables ruleset string. Rule order is load-bearing: the east-west,
+    node-service and metadata drops must precede the allow-list accepts."""
     lines = []
     a = lines.append
     a("#!/usr/sbin/nft -f")
@@ -231,13 +161,9 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
 
 
 def render_dnsmasq(entries, resolver):
-    """The node's pinned resolver (N-04), which is also half of T5-1.
-
-    Two behaviours matter and neither is a default: every allow-list name
-    resolves to its pin and nothing else, and every other name returns NXDOMAIN
-    rather than being forwarded. A resolver that forwards the unknown names is a
-    DNS tunnel with extra steps, which is what T5-1 probes for.
-    """
+    """Render the node's pinned dnsmasq config: every allow-list name resolves
+    to its pin, and every other name returns NXDOMAIN rather than being
+    forwarded."""
     lines = []
     a = lines.append
     a("# GENERATED - do not edit. Source: infra/egress/allowlist.yaml")
@@ -288,11 +214,8 @@ def render_dnsmasq(entries, resolver):
 
 
 def render_admission(entries):
-    """What sandboxd loads to answer ADR-022 A1-e.
-
-    Same source as the ruleset, so "this node accepts that destination" and
-    "this node has a rule for that destination" cannot become two answers.
-    """
+    """Render the admission list sandboxd loads, from the same source as the
+    ruleset, so the two can never disagree on what this node accepts."""
     payload = {
         "source": "infra/egress/allowlist.yaml",
         "generated_by": "tools/egress/render.py",
@@ -319,9 +242,6 @@ def load_entries(path):
     entries = yaml.safe_load(path.read_text(encoding="utf-8"))["destinations"] or []
     errors, _ = _checker.check(entries)
     if errors:
-        # Refusing to render is why the checker is imported. A ruleset generated
-        # from an allow-list that fails its own invariants is a ruleset nobody
-        # reviewed the source of.
         for e in errors:
             print("::error::" + e, file=sys.stderr)
         raise SystemExit(
@@ -343,13 +263,8 @@ def _addr(value, what):
 
 
 def self_check():
-    """Assert the properties that only bite on a day nobody is watching.
-
-    Every one of these is invisible in the file this repo renders today, because
-    `pinned_ip` is `unset` and the interesting half of the renderer never runs.
-    The first real node fills that field in, and the ordering rules below are
-    what stop it from opening more than it meant to.
-    """
+    """Assert renderer invariants (rule ordering, IPv4-only filtering) using a
+    synthetic pinned entry, since today's real allow-list has none."""
     pinned = [{"name": "model_gateway", "tier": "sandbox", "fqdn": "gw.internal",
                "pinned_ip": "10.9.9.9", "port": 4000, "protocol": "tcp"}]
     unset = [{"name": "model_gateway", "tier": "sandbox", "fqdn": "gw.internal",
@@ -371,7 +286,8 @@ def self_check():
 
     accept = idx("10.9.9.9 tcp dport 4000 counter accept")
     case("the pinned destination renders an accept rule", accept >= 0)
-    # Ordering, and each of these is a hole if it goes the other way.
+    # Rule order matters: each drop below must come before the accept, or it
+    # would never apply to the pinned destination.
     case("east-west drop precedes the allow-list accept",
          0 <= idx("skillhub-drop-eastwest") < accept)
     case("node-loopback drop precedes the allow-list accept",
@@ -380,8 +296,8 @@ def self_check():
          0 <= idx("skillhub-drop-sandboxd") < accept)
     case("metadata drop precedes the allow-list accept",
          0 <= idx("skillhub-drop-metadata") < accept)
-    # ...and this one is a hole if it goes the SAME way as the others: the
-    # gateway is an RFC1918 address, so blocking the class first would drop it.
+    # Opposite ordering requirement: the gateway itself is an RFC1918 address,
+    # so this drop must come after the accept, not before it.
     case("the allow-list accept precedes the RFC1918 drop",
          accept >= 0 and accept < idx("skillhub-drop-rfc1918"))
     case("only the pinned resolver is accepted for DNS",

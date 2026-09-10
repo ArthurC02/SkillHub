@@ -22,38 +22,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
 
-// These tests open real containers, which is the only way to check an isolation
-// setting: a unit test can assert that the code asked for a read-only rootfs,
-// but only a running workload can show that it got one. They skip when no
-// daemon is reachable rather than failing, so the suite still runs on a machine
-// without Docker — and every container they create carries
-// skillhub.sandbox.test=1 and is removed on the way out.
-//
-// The gVisor half of ADR-015 used to be written off here as untestable, on the
-// grounds that runsc needs Linux and the development machine is Windows. Half of
-// that is still true and half of it was never the point: **CI runs on Linux**,
-// and ADR-022 §附錄 splits SEC-009 into a Suite 1 that needs nothing but Linux +
-// Docker + runsc and a Suite 2 that can only run on the node about to join the
-// pool. `SKILLHUB_SANDBOX_TEST_RUNTIME` is how the first half gets exercised;
-// `Config.Runtime` has existed since SBX-001 and no test had ever taken the
-// non-empty path through it.
-//
-// What that buys is syscall-compatibility regression, which ADR-015 flags as
-// recurring whenever a Runtime is added. What it does not buy is any of the
-// escape, network-egress, credential-scope or cleanup testing — those measure
-// **the production node's own configuration**, so a different machine is a
-// different subject and SEC-009 / SBX-010 stay deployment-time acceptance.
 const testLabel = "skillhub.sandbox.test"
 
-// testImage only has to run a shell. The real Runtime Image (SBX-002) is
-// hundreds of megabytes of Node and is built and scanned by its own pipeline;
-// pulling it here would make every test run wait on that for no extra coverage,
-// since none of these assertions are about its contents.
-//
-// Pinned by digest for the same reason SKILLHUB_SANDBOX_IMAGE is (I-02): a tag
-// is a moving target, and these tests assert on what a container does, so "the
-// suite went red" and "busybox published a new 1.37" must not be the same
-// event. The tag is kept beside it for a human reading the file.
 func testImage() string {
 	if v := os.Getenv("SKILLHUB_SANDBOX_TEST_IMAGE"); v != "" {
 		return v
@@ -61,16 +31,8 @@ func testImage() string {
 	return "busybox:1.37@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
 }
 
-// requireDocker is set in CI (SKILLHUB_REQUIRE_DOCKER=1) and turns every skip
-// below into a failure. The skips exist so the suite still runs on a developer
-// machine with no daemon; on a machine that is supposed to have one, a skipped
-// Docker test is a green run that measured nothing, which is the exact shape
-// the platform's own SKILLHUB_REQUIRE_DB guard exists to refuse.
 func requireDocker() bool { return os.Getenv("SKILLHUB_REQUIRE_DOCKER") == "1" }
 
-// skipOrFail is the one place that decides between the two. The message is the
-// same either way, so the reason a test did not run reads identically whether
-// it was skipped or failed.
 func skipOrFail(t *testing.T, format string, args ...any) {
 	t.Helper()
 	if requireDocker() {
@@ -80,16 +42,8 @@ func skipOrFail(t *testing.T, format string, args ...any) {
 	t.Skipf(format, args...)
 }
 
-// testRuntime is empty on a developer machine (the daemon's default runtime) and
-// `runsc` on the CI leg that installs gVisor. Everything else about these tests
-// is identical on both legs, which is the point: the same assertions have to
-// hold on the runtime the product actually deploys on.
 func testRuntime() string { return os.Getenv("SKILLHUB_SANDBOX_TEST_RUNTIME") }
 
-// dockerClient connects to the daemon or gives up loudly. Split out of
-// newDriver so a test that needs the daemon but builds its own driver (the
-// P-02 probe, which needs a network and a different image) makes the same
-// skip-or-fail decision rather than a second, quieter one.
 func dockerClient(t *testing.T) *client.Client {
 	t.Helper()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -165,7 +119,6 @@ func testRequest(script string) sandbox.RunRequest {
 	}
 }
 
-// startProbe runs one throwaway sandbox to completion and returns what it saw.
 func startProbe(t *testing.T, d *dockerdrv.Driver, req sandbox.RunRequest) (string, sandbox.Outcome) {
 	t.Helper()
 	id := handle(t)
@@ -187,10 +140,6 @@ func startProbe(t *testing.T, d *dockerdrv.Driver, req sandbox.RunRequest) (stri
 	return id, out
 }
 
-// The SEC-002 computing-isolation checks, asked of a live sandbox rather than
-// of the code that configured it: C-02 non-root and no-new-privileges, C-03
-// unprivileged, C-05 no management socket, C-06 read-only base with a writable
-// scratch path, C-07 no host paths, C-08 no capabilities, and N-01 no egress.
 func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 	d, cli := newDriver(t)
 	script := strings.Join([]string{
@@ -204,12 +153,12 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 
 	id, out := startProbe(t, d, testRequest(script))
 	for _, want := range []string{
-		"uid=65532",            // C-02
-		"rootfs=readonly",      // C-06
-		"work=writable",        // C-01, the run's own scratch space
-		"out=writable",         // C-01
-		"docker-socket=absent", // C-05
-		"net=isolated",         // N-01
+		"uid=65532",
+		"rootfs=readonly",
+		"work=writable",
+		"out=writable",
+		"docker-socket=absent",
+		"net=isolated",
 	} {
 		if !strings.Contains(out.Output, want) {
 			t.Errorf("probe output missing %q; got:\n%s", want, out.Output)
@@ -219,8 +168,6 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 		t.Errorf("probe exited %d", out.ExitCode)
 	}
 
-	// The declarative half of the same baseline (threat model 5.6 calls these
-	// configuration assertions, not penetration tests).
 	insp, err := cli.ContainerInspect(context.Background(), "skillhub-run-"+id)
 	if err != nil {
 		t.Fatalf("inspect: %v", err)
@@ -244,14 +191,11 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 	if string(hc.NetworkMode) != "none" {
 		t.Errorf("NetworkMode = %q, want none (N-01 dev baseline)", hc.NetworkMode)
 	}
-	// C-05 and C-07 in one assertion: nothing from the host is mounted at all,
-	// so there is no socket and no sensitive path to enumerate.
+
 	if len(hc.Binds) != 0 || len(hc.Mounts) != 0 || len(insp.Mounts) != 0 {
 		t.Errorf("host mounts present: binds=%v mounts=%v (C-05, C-07)", hc.Binds, hc.Mounts)
 	}
-	// C-04: no namespace is shared with the host or with another container.
-	// "private" is the daemon's own default and is exactly what we want; what
-	// must never appear is "host" or a container: reference.
+
 	for name, mode := range map[string]string{
 		"pid": string(hc.PidMode), "ipc": string(hc.IpcMode),
 		"uts": string(hc.UTSMode), "network": string(hc.NetworkMode),
@@ -265,7 +209,7 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 			t.Errorf("no tmpfs at %s: the run has no bounded scratch space (C-01, C-12)", path)
 		}
 	}
-	// C-10, C-11, C-13, C-14.
+
 	lim := testRequest("").ResourceLimits
 	if hc.Memory != lim.MemoryBytes {
 		t.Errorf("Memory = %d, want %d", hc.Memory, lim.MemoryBytes)
@@ -290,31 +234,6 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 	}
 }
 
-// C-13, the fork bomb case: the limit has to be enforced by the runtime, not
-// merely requested.
-//
-// Two probes, not one, because a single assertion cannot tell "the ceiling did
-// not bite" from "nothing ran". Both readings have been observed on the gVisor
-// leg and they call for opposite responses:
-//
-//	16 pids: OCI runtime create failed: creating container: cannot create
-//	         sandbox: cannot read client sync file: waiting for sandbox to
-//	         start: EOF
-//	64 pids: 400 processes ... produced no fork failure ... output: (empty)
-//
-// Under runc a shell needs one pid and 16 was generous. Under runsc the
-// container's pids cgroup also holds the sentry's own host threads: at 16 the
-// sandbox could not come up at all, and at 64 it came up and then produced
-// nothing -- an empty transcript, which is what a workload that could not be
-// forked looks like, not what an unenforced ceiling looks like. Reporting the
-// second as "the ceiling is not reaching guest tasks" would have been a
-// confident wrong answer about the control C-13 rests on.
-//
-// So: prove the runtime can run something trivial under this ceiling first. A
-// failure there is a fixture that has not left enough headroom for the sentry.
-// A failure in the second probe, with the first one green, is the finding that
-// matters -- the ceiling does not reach guest tasks on this runtime, and C-13 is
-// not enforced where it has to be.
 func TestPidsLimitStopsAForkBomb(t *testing.T) {
 	d, _ := newDriver(t)
 	const (
@@ -334,26 +253,6 @@ func TestPidsLimitStopsAForkBomb(t *testing.T) {
 		`i=0; while [ $i -lt %d ]; do sleep 20 & i=$((i+1)); done; echo "spawned"`, spawnAttempts))
 	req.ResourceLimits.MaxPIDs = pidCeiling
 
-	// The observable is that the workload did not finish, not what it said on the
-	// way down. Three other readings were tried against both runtimes first, and
-	// each failed differently:
-	//
-	//   - stderr wording. runc's busybox prints "can't fork: Resource temporarily
-	//     unavailable" and gVisor's prints "Cannot allocate memory", so matching
-	//     "fork" read a working ceiling as a broken one on the runtime that
-	//     actually matters.
-	//   - the transcript at all. Two CI runs of the identical commit produced
-	//     those ENOMEM lines and then produced nothing, so any assertion on text
-	//     is unobservable a good fraction of the time under runsc.
-	//   - counting the survivors. The shell exits at its first refused fork, so
-	//     nothing after the loop runs at all -- and the first attempt at counting
-	//     used a command substitution, which needs the very fork being refused.
-	//
-	// What is left is what happened: a workload that asked for more processes than
-	// it may have does not run to completion. That comes from the runtime rather
-	// than from the workload's own account of itself, and it reads the same on
-	// both. The transcript still goes into the failure message, because when this
-	// does fail it is the first thing worth reading.
 	_, out := startProbe(t, d, req)
 	if out.ExitCode == 0 && strings.Contains(out.Output, "spawned") {
 		t.Errorf("a workload asking for %d processes under a %d pid ceiling ran to completion "+
@@ -363,41 +262,12 @@ func TestPidsLimitStopsAForkBomb(t *testing.T) {
 	}
 }
 
-// The remaining three of T3's five enforcement behaviours (ADR-022 附錄 Part 3).
-// C-13 and C-15 already have theirs above and below; C-11, C-12 and C-14 had
-// only the declarative half in TestLiveSandboxMeetsTheIsolationBaseline, which
-// reads back the HostConfig fields the driver asked for. Asking is not
-// enforcing, and on runsc the two come apart in exactly the way C-13's comment
-// records: the field was set and the ceiling did not reach guest tasks.
-//
-// Each follows the two-probe discipline C-13 arrived at the hard way -- prove
-// something trivial runs under the same ceiling first, so "the limit did not
-// bite" stays distinguishable from "nothing ran".
-
-// C-11: asking for more memory than the ceiling does not get it, and the node
-// survives it.
-//
-// The ceiling is reached through the /work tmpfs rather than an anonymous
-// allocation, because tmpfs pages are charged to the container's memory cgroup
-// and dd is in busybox, whereas every portable way to allocate anonymous memory
-// from a shell goes through an interpreter whose own overhead is the thing being
-// measured. /work is sized well above the memory ceiling here so that memory is
-// what runs out first -- the mirror fixture in the C-12 test sizes it below, so
-// the tmpfs quota is what runs out first there.
-//
-// Two readings both count as enforced and the test accepts either, because
-// which one appears is a property of the runtime rather than of the control:
-// under runc the OOM killer takes dd and the shell survives to report a
-// non-zero status, and under gVisor the sentry itself can be the process that
-// dies, in which case the workload produces no completion line at all. What
-// must never appear is a completion line with status 0 -- that is a workload
-// that asked for twice its ceiling and was given it.
 func TestMemoryCeilingStopsAWorkloadThatExceedsIt(t *testing.T) {
 	d, _ := newDriver(t)
 
 	req := testRequest(`dd if=/dev/zero of=/work/ok bs=1M count=64 2>/dev/null; echo "completed rc=$?"`)
 	req.ResourceLimits.MemoryBytes = 256 << 20
-	req.ResourceLimits.DiskBytes = 1 << 30 // /work gets 3/4 of it, three times the memory ceiling
+	req.ResourceLimits.DiskBytes = 1 << 30
 	if _, out := startProbe(t, d, req); !strings.Contains(out.Output, "completed rc=0") {
 		t.Fatalf("a workload writing 64 MiB under a 256 MiB memory ceiling did not complete, "+
 			"so this runtime needs more headroom than that before C-11 can be measured at all. output:\n%s",
@@ -414,18 +284,9 @@ func TestMemoryCeilingStopsAWorkloadThatExceedsIt(t *testing.T) {
 	}
 }
 
-// C-12: the scratch quota refuses the write rather than killing the run.
-//
-// The observable that distinguishes this from C-11 is not the error text --
-// busybox says different things on different runtimes, which is the trap the
-// C-13 comment records -- but the file: a quota that holds caps it at the tmpfs
-// size no matter how much was asked for. The run must also still finish and say
-// so, because ENOSPC is an error the workload is supposed to see and handle. A
-// dead sandbox here would be a different control failing.
 func TestScratchQuotaRefusesAWriteWithoutKillingTheRun(t *testing.T) {
 	d, _ := newDriver(t)
 
-	// testRequest's 64 MiB disk gives /work 48 MiB, three quarters of it.
 	const workBytes = 48 << 20
 
 	req := testRequest(`dd if=/dev/zero of=/work/small bs=1M count=8 2>/dev/null; echo "small rc=$?"`)
@@ -450,13 +311,6 @@ func TestScratchQuotaRefusesAWriteWithoutKillingTheRun(t *testing.T) {
 	}
 }
 
-// C-14: the open-file ceiling reaches guest tasks.
-//
-// Lowered well below the 1024 default so the loop ends in seconds and so the
-// ceiling is unambiguous -- 64 is generous for a shell and far under 200. Two
-// observables, and the first is not decoration: ulimit -n read from inside is
-// the guest kernel's own account of the rlimit, which under gVisor means the
-// sentry applied it to the task rather than merely receiving it in the config.
 func TestOpenFileCeilingReachesGuestTasks(t *testing.T) {
 	d, _ := newDriver(t)
 	const ceiling = 64
@@ -482,9 +336,6 @@ func TestOpenFileCeilingReachesGuestTasks(t *testing.T) {
 	}
 }
 
-// sizeLine picks the size report out of a transcript that also carries dd's own
-// chatter. Reading the last line would work today and break the moment anything
-// else prints after it.
 func sizeLine(output string) string {
 	for _, line := range strings.Split(output, "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "size=") {
@@ -494,8 +345,6 @@ func sizeLine(output string) string {
 	return ""
 }
 
-// C-15 end to end: the soft wall clock stops the workload, the attempt lands as
-// failed with result timed_out (RUN-004), and the sandbox is gone after DELETE.
 func TestWallClockStopsALiveSandboxAndDestroyReleasesIt(t *testing.T) {
 	d, cli := newDriver(t)
 	m := sandbox.NewManager(d, sandbox.Config{
@@ -535,7 +384,6 @@ func TestWallClockStopsALiveSandboxAndDestroyReleasesIt(t *testing.T) {
 		t.Fatalf("result = %+v, want status timed_out", final.Result)
 	}
 
-	// SBX-009: destroy releases the sandbox, and repeating it is safe.
 	for i := range 2 {
 		if err := m.Destroy(context.Background(), run.ProviderRunID); err != nil {
 			t.Fatalf("destroy #%d: %v", i+1, err)
@@ -546,8 +394,6 @@ func TestWallClockStopsALiveSandboxAndDestroyReleasesIt(t *testing.T) {
 	}
 }
 
-// Adopt is what a restarted provider has instead of a database: the labels on
-// the container it left running.
 func TestAdoptRebuildsRunsFromContainerLabels(t *testing.T) {
 	d, _ := newDriver(t)
 	req := testRequest("sleep 30")
@@ -574,16 +420,6 @@ func TestAdoptRebuildsRunsFromContainerLabels(t *testing.T) {
 	}
 }
 
-// TestRequestedRuntimeIsTheOneTheContainerGot is the guard that stops the gVisor
-// leg from going green without gVisor.
-//
-// Every other test here skips when Docker is unreachable, which is right for a
-// developer machine and exactly wrong for a leg whose entire purpose is to run
-// on one specific runtime: a daemon that does not know `runsc` would answer with
-// an error, the test would skip, and the job would be green having proved
-// nothing. That failure shape has already been observed once in this repo (04
-// 丙-36, the browser tier reporting zero tests and exiting 0), so this asserts
-// rather than skips whenever a runtime was explicitly requested.
 func TestRequestedRuntimeIsTheOneTheContainerGot(t *testing.T) {
 	want := testRuntime()
 	if want == "" {
@@ -594,9 +430,6 @@ func TestRequestedRuntimeIsTheOneTheContainerGot(t *testing.T) {
 	id := handle(t)
 	t.Cleanup(func() { _ = d.Remove(context.Background(), id) })
 
-	// A workload that outlives the inspect below: startProbe waits for the
-	// container and the driver removes it on the way out, so inspecting after it
-	// would ask the daemon about something that no longer exists.
 	if err := d.Start(ctx, id, testRequest("sleep 30")); err != nil {
 		t.Fatalf("starting a container on runtime %q failed: %v", want, err)
 	}

@@ -1,10 +1,3 @@
-// Command sandboxd serves the Sandbox Provider Port
-// (contracts/openapi/sandbox-provider.yaml) for one execution node.
-//
-// It holds no database connection and needs none: the execution plane answers
-// questions and never reaches into the control plane (iron rule 2). Everything
-// it knows about a run arrives in the RunRequest or is read back from the
-// sandbox it created.
 package main
 
 import (
@@ -36,22 +29,15 @@ func main() {
 
 	token := os.Getenv("SKILLHUB_SANDBOX_TOKEN")
 	if token == "" {
-		// Fail closed. A provider that serves without a token is one any
-		// process on the node can hand untrusted code to.
+
 		log.Error("SKILLHUB_SANDBOX_TOKEN is required")
 		os.Exit(1)
 	}
 
-	runtime := os.Getenv("SKILLHUB_SANDBOX_RUNTIME") // "runsc" in production
+	runtime := os.Getenv("SKILLHUB_SANDBOX_RUNTIME")
 	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-8")
 	allowDevCmd := os.Getenv("SKILLHUB_SANDBOX_DEV_CMD") == "1"
-	// SKILLHUB_CLEAN_MODE is the one flag ADR-060 decision 6 allows for this
-	// axis: it swaps the whole execution strategy, not a capability, and there
-	// is deliberately no second env var for it. localdrv.Config resolves its
-	// node binary via PATH and its scratch directory on its own; the only
-	// thing this process supplies is where run.mjs lives, which is fixed by
-	// the repo layout (cleanModeRunnerScript), not per-node policy the way
-	// dockerdrv.Config.Image is.
+
 	cleanMode := os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
 	if err := refuseDevSettings(runtime, image, allowDevCmd, cleanMode); err != nil {
 		log.Error(err.Error())
@@ -62,10 +48,7 @@ func main() {
 		drv          sandbox.Driver
 		closer       func() error
 		maxResources = sandbox.DefaultLimits
-		// Zero values are the production answer: dockerdrv enforces every
-		// ceiling it declares (cgroups, a tmpfs size= and a nofile ulimit -
-		// all five of the OS ceilings osCeilings names), and a container holds
-		// a descendant that detaches.
+
 		unenforced    []string
 		reapsDetached = true
 	)
@@ -101,30 +84,15 @@ func main() {
 		}
 		drv, closer = d, d.Close
 	}
-	// The error is dropped on purpose: this runs during shutdown, after the
-	// server has stopped serving, and there is nobody left to act on a failure
-	// to release a docker client or a job handle.
+
 	defer func() { _ = closer() }()
 
-	// What this node routes to, rendered from infra/egress/allowlist.yaml by
-	// tools/egress/render.py in the same pass that produced its nftables ruleset
-	// and its resolver config. Loading it here is what lets accept() refuse a
-	// destination the ruleset has no rule for (ADR-022 A1-e) instead of
-	// dispatching the run and letting it time out.
-	//
-	// Required only when this node has an egress network at all. A node with no
-	// network already refuses every allow list on the older, coarser check, so
-	// demanding the file there would fail nodes that are correctly configured
-	// for `none`.
 	var egressAllow []sandbox.EgressDestination
 	network := os.Getenv("SKILLHUB_SANDBOX_NETWORK")
 	if network != "" && network != "none" {
 		path := os.Getenv("SKILLHUB_SANDBOX_EGRESS_ALLOW")
 		if path == "" {
-			// Fail closed at startup rather than at the first dispatch. A node
-			// with a network and no rendered list would advertise an egress
-			// route and refuse every destination sent to it, which the scheduler
-			// reads as a node to keep trying.
+
 			log.Error("SKILLHUB_SANDBOX_EGRESS_ALLOW is required when SKILLHUB_SANDBOX_NETWORK is set",
 				"network", network,
 				"hint", "render it: python3 tools/egress/render.py --out infra/egress/rendered")
@@ -139,33 +107,11 @@ func main() {
 	}
 	modes := sandbox.EgressModesFor(network, egressAllow)
 	if len(egressAllow) == 0 && network != "" && network != "none" {
-		// Not an error: an allow-list whose pinned_ip is still `unset` renders
-		// no destination on purpose. But the node must not go on advertising a
-		// route it cannot take, so it declares `none` and says why once.
+
 		log.Warn("no egress destination is rendered, so this node declares no egress route",
 			"network", network, "modes", modes)
 	}
 
-	// Clean mode's answer to the same question the resource ceilings answer
-	// below: declare what a caller needs to dispatch, and declare separately
-	// that nothing holds the workload to it.
-	//
-	// localdrv is a host process with no network namespace of its own, so it is
-	// neither `none` (it routes everywhere) nor `default_deny` (it filters
-	// nothing). Until 2026-08-30 that left it declaring `none`, which made every
-	// run carrying a model gateway grant unschedulable - RUN-005 refused them
-	// all, and the demo could not produce a single real trace event (04 丙-98).
-	//
-	// This is not a hole in ADR-022 A1-e. A1-e stops a node advertising a route
-	// it does not have; the hole was the opposite one, a node with every route
-	// and no vocabulary for saying it enforces none of them. The platform
-	// accepts `egress_unenforced` in exactly one deployment - the same one that
-	// accepts `isolation.level: clean` - and refuses it everywhere else
-	// (trial/execution/schedule.go).
-	//
-	// Deliberately NOT driven by SKILLHUB_SANDBOX_NETWORK: setting that variable
-	// on a clean node would make EgressModesFor return `default_deny` with no
-	// qualifier at all, which is the lie this field exists to replace.
 	egressUnenforced := false
 	if cleanMode {
 		egressUnenforced = true
@@ -174,9 +120,6 @@ func main() {
 			"the workload reaches whatever this host reaches, and the run's allow list is what the user agreed to, not a boundary")
 	}
 
-	// The declared isolation level follows the driver actually wired up.
-	// Declaring gvisor on a machine running runc would be a claim the provider
-	// cannot keep, and RUN-005 dispatches on this answer.
 	isolation := resolveIsolation(cleanMode, runtime)
 	m := sandbox.NewManager(drv, sandbox.Config{
 		Provider: envOr("SKILLHUB_SANDBOX_PROVIDER", "self_hosted"),
@@ -195,9 +138,6 @@ func main() {
 		Slots:                    envInt("SKILLHUB_SANDBOX_SLOTS", 2),
 	}, log)
 
-	// ADR-022 T10, the resident P-02 probe. The addresses come from node
-	// configuration and never from a RunRequest: the list of what must not be
-	// reachable cannot be supplied by the plane being tested.
 	probe := sandbox.NewP02Probe(
 		splitList(os.Getenv("SKILLHUB_SANDBOX_P02_TARGETS")),
 		time.Duration(envInt("SKILLHUB_SANDBOX_P02_INTERVAL_SECONDS", 300))*time.Second,
@@ -210,17 +150,10 @@ func main() {
 	probeCtx, stopProbe := context.WithCancel(context.Background())
 	defer stopProbe()
 
-	// TRACE-002: the sandbox has no network, so this process is what carries its
-	// trace events to the control plane. The destination is per run and arrives
-	// in the RunRequest; all that is configured here is the ability to push.
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	m = m.WithTrace(&sandbox.HTTPTraceSink{}, sandbox.NewMetrics(registry))
 
-	// Sandboxes outlive this process. Rebuilding from labels before serving
-	// keeps a restarted provider from answering 404 for live attempts and from
-	// reporting an empty GET /runs, which an orphan scan reads as "nothing
-	// leaked" (RUN-007, RUN-008).
 	if err := adoptBeforeProtection(func() error { return m.Adopt(context.Background()) }, func() {
 		m = m.WithP02(probeCtx, probe)
 	}); err != nil {
@@ -240,9 +173,7 @@ func main() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		// Running sandboxes are deliberately left alone: they are the
-		// platform's to cancel or destroy, and this process will adopt them
-		// again on the way back up.
+
 		_ = srv.Shutdown(shutdownCtx)
 	}()
 
@@ -261,28 +192,13 @@ func adoptBeforeProtection(adopt func() error, protect func()) error {
 	return nil
 }
 
-// refuseDevSettings fails a production node closed when it carries a
-// development setting. `runsc` is the only signal available this early that
-// this is production (ADR-015), and both of these switch off something a user
-// was already promised: an unpinned image means the run record cannot say what
-// actually ran (I-02), and a caller-chosen entrypoint replaces the image's own,
-// so run.mjs never starts - with it go the harness's token ceiling (PDM-005
-// 5.2a) and every TRACE-002 event, while the run's Virtual Key is injected as
-// usual. A systemd unit copied from a dev template is all it takes.
 func refuseDevSettings(runtime, image string, allowDevCmd, cleanMode bool) error {
 	if runtime != "runsc" {
 		return nil
 	}
 	switch {
 	case cleanMode:
-		// resolveIsolation's doc comment used to defend clean winning over the
-		// runsc branch with "a clean-mode node is never also a runsc node".
-		// That was an assumption, and nothing enforced it: a node configured
-		// correctly for production (runsc, digest image, P-02 targets) that
-		// also picked up SKILLHUB_CLEAN_MODE=1 from a shell profile or a
-		// copied EnvironmentFile would silently drop from gVisor to no
-		// boundary at all and go on passing every other check here. This is
-		// the line that turns the assumption into a refusal.
+
 		return errors.New("SKILLHUB_CLEAN_MODE must not be set with runsc: a runsc node is never a clean node, " +
 			"and both being set means some configuration was copied from a machine this is not")
 	case !strings.Contains(image, "@sha256:"):
@@ -293,20 +209,6 @@ func refuseDevSettings(runtime, image string, allowDevCmd, cleanMode bool) error
 	return nil
 }
 
-// refuseUnprobedProduction fails a production node closed when nobody told it
-// which addresses a sandbox must never reach.
-//
-// Same shape and same signal as refuseDevSettings above: `runsc` is the only
-// thing available this early that says this is production (ADR-015). The
-// asymmetry with the capability field is deliberate - a node already serving is
-// not made safer by reporting `not_configured`, but one that never starts
-// cannot be dispatched to at all.
-//
-// P-02 is the check ADR-022 pulled out of the declarative audit precisely
-// because it has to be measured rather than configured. A production node with
-// no targets would report a state that is honest and useless, and 02:SEC-010
-// lists a P-02 detection as a P1 incident - a criterion nothing can ever raise
-// is not a criterion.
 func refuseUnprobedProduction(runtime string, probe *sandbox.P02Probe) error {
 	if runtime != "runsc" || probe.Configured() {
 		return nil
@@ -316,12 +218,6 @@ func refuseUnprobedProduction(runtime string, probe *sandbox.P02Probe) error {
 		"verified by a resident probe, and a node with no targets reports not_configured forever")
 }
 
-// driverKind reports which sandbox.Driver implementation main should wire up
-// for a given SKILLHUB_CLEAN_MODE reading. "docker" is the answer whenever
-// cleanMode is false, unchanged from before this axis existed - the single
-// branch point ADR-060 decision 6 asks for, pulled out of main so the flag
-// being unset keeping today's driver is something a test asserts rather than
-// something a reader has to trust.
 func driverKind(cleanMode bool) string {
 	if cleanMode {
 		return "local"
@@ -329,14 +225,6 @@ func driverKind(cleanMode bool) string {
 	return "docker"
 }
 
-// resolveIsolation is the capability declaration's isolation.level, pulled out
-// of main for the same reason as driverKind: clean must not read as a weaker
-// gvisor or container (ADR-059 decision 1 - the name means no boundary, not a
-// smaller one), and that has to be a claim a test checks, not one a reader
-// takes on faith. clean wins over the runsc check, which used to be defended
-// here with "a clean-mode node is never also a runsc node" - an assumption
-// nothing held. refuseDevSettings now refuses that combination outright, so
-// this branch only ever sees a configuration where it is true.
 func resolveIsolation(cleanMode bool, runtime string) string {
 	switch {
 	case cleanMode:
@@ -348,29 +236,15 @@ func resolveIsolation(cleanMode bool, runtime string) string {
 	}
 }
 
-// cleanModeRunnerScript locates run.mjs relative to this source file instead
-// of a new environment variable. ADR-060 decision 6 forbids a second env var
-// for this axis, and unlike dockerdrv.Config.Image (a registry reference that
-// varies by deployment), the script's location is fixed by this repo's own
-// layout - there is nothing for a node operator to configure.
-// It returns an error rather than a bare path because the path is derived from
-// the *build* machine's source layout: runtime.Caller reports where this file
-// was compiled, so a binary built in the repo and copied somewhere else points
-// at a directory that does not exist there. That is a supported way to be
-// wrong, and 02:PORT-005 requires a startup failure to name what is missing
-// rather than to surface later as a run that will not start.
 func cleanModeRunnerScript() (string, error) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		return "", fmt.Errorf("clean mode cannot locate run.mjs: this binary carries no source path, so it was not built from this repository")
 	}
-	// apps/sandbox/cmd/sandboxd/main.go -> repo root is four directories up.
+	// Repo root is four directories up from this source file's build path.
 	return runnerScriptUnder(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", ".."))
 }
 
-// runnerScriptUnder is split out so the missing-script failure is reachable
-// from a test without moving this binary to another machine. A test that
-// rebuilt the message itself would assert nothing about this code.
 func runnerScriptUnder(repoRoot string) (string, error) {
 	script := filepath.Join(repoRoot, "infra", "images", "runtime-agent-sdk", "run.mjs")
 	if _, err := os.Stat(script); err != nil {
@@ -379,22 +253,6 @@ func runnerScriptUnder(repoRoot string) (string, error) {
 	return script, nil
 }
 
-// cleanModeMaxResources answers 02:PORT-010's literal requirement - the
-// declaration must reflect what was detected, not what was intended - for the
-// two ceilings localdrv.ResourceEnforcement can actually speak to.
-//
-// It still returns sandbox.DefaultLimits' numbers even when enf reports false
-// for them. That is a deliberate compromise, not a silent one:
-// sandbox.Config.accept() rejects any MaxResources field that is <= 0, so
-// zeroing a ceiling on an unprivileged host would not make the declaration
-// more honest - it would make clean mode unable to accept a single run there,
-// which is not what ADR-059 decision 5②'s "runtime detects and degrades"
-// asked for.
-//
-// The gap the log line used to be the only record of now has a field:
-// MaxResourcesUnenforced carries the names (unenforcedCeilings below, 04
-// 丙-83). The warning stays because it is what an operator watching a node
-// start sees, but it is no longer the only place the honest signal exists.
 func cleanModeMaxResources(enf localdrv.ResourceEnforcement, log *slog.Logger) sandbox.ResourceLimits {
 	limits := sandbox.DefaultLimits
 	if !enf.Memory {
@@ -408,8 +266,6 @@ func cleanModeMaxResources(enf localdrv.ResourceEnforcement, log *slog.Logger) s
 	return limits
 }
 
-// splitList reads a comma-separated env var, dropping the empties a trailing
-// comma leaves behind.
 func splitList(v string) []string {
 	var out []string
 	for _, part := range strings.Split(v, ",") {
@@ -435,10 +291,6 @@ func envInt(key string, fallback int) int {
 	return v
 }
 
-// osCeilings maps each ResourceLimits field that an operating system could
-// hold a process to onto the localdrv detection that says whether this one
-// does. Splitting it out of unenforcedCeilings is what lets a test check the
-// mapping covers every field rather than trusting that it does.
 func osCeilings(enf localdrv.ResourceEnforcement) map[string]bool {
 	return map[string]bool{
 		"vcpu":           enf.CPU,
@@ -449,16 +301,6 @@ func osCeilings(enf localdrv.ResourceEnforcement) map[string]bool {
 	}
 }
 
-// heldElsewhere names the ResourceLimits fields that are not OS ceilings at
-// all, so "unenforced" would be the wrong word for them: the Manager holds
-// both wall clocks and both artifact bounds itself, and the harness holds the
-// token budget (contract.go says so where TokenBudget is declared).
-//
-// Naming these rather than naming the OS ones is deliberate. Anything new in
-// ResourceLimits that nobody has classified falls through to "unenforced",
-// which over-declares the gap instead of hiding it — the first version of
-// unenforcedCeilings was a hard-coded two-name list, and three ceilings that
-// nothing enforces were declared as walls for exactly as long as it stood.
 var heldElsewhere = map[string]bool{
 	"wall_clock_soft_seconds": true,
 	"wall_clock_hard_seconds": true,
@@ -467,12 +309,6 @@ var heldElsewhere = map[string]bool{
 	"token_budget":            true,
 }
 
-// unenforcedCeilings turns the driver's own detection into the names the
-// capability declares as not held by the OS. It is the machine-readable half of
-// what cleanModeMaxResources can only say in a log line: the numbers stay,
-// because ResourceLimits requires them and the orchestrator matches on them,
-// and this says which of those numbers are a statement of intent rather than a
-// wall (02:PORT-010, 04 丙-83).
 func unenforcedCeilings(enf localdrv.ResourceEnforcement) []string {
 	held := osCeilings(enf)
 	var out []string
@@ -485,10 +321,8 @@ func unenforcedCeilings(enf localdrv.ResourceEnforcement) []string {
 	return out
 }
 
-// resourceLimitNames is every JSON field of sandbox.ResourceLimits, in
-// declaration order, read off the contract type itself rather than copied into
-// a list here — a copy is what goes stale the next time the contract grows a
-// ceiling.
+// resourceLimitNames reads field names from the struct's json tags via
+// reflection, so it stays in sync as ResourceLimits gains fields.
 func resourceLimitNames() []string {
 	t := reflect.TypeOf(sandbox.DefaultLimits)
 	out := make([]string, 0, t.NumField())

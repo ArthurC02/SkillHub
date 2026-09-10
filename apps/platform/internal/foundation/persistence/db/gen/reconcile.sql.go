@@ -21,9 +21,7 @@ type ClearObjectSightingParams struct {
 	ResourceID   pgtype.UUID
 }
 
-// The object came back, or the row has now been marked and there is nothing left
-// to count. Deleting is what makes `rounds` consecutive rather than cumulative
-// (same bookkeeping as 0021).
+// Deleting on each clear keeps rounds consecutive rather than cumulative.
 func (q *Queries) ClearObjectSighting(ctx context.Context, arg ClearObjectSightingParams) error {
 	_, err := q.db.Exec(ctx, clearObjectSighting, arg.ResourceKind, arg.ResourceID)
 	return err
@@ -54,9 +52,6 @@ type CountPersistentObjectSightingsRow struct {
 	Sightings    int64
 }
 
-// The gauge behind "is content still missing", by kind. A gauge and not a
-// counter for the reason 0021's does not work as one: the question is whether it
-// is still true now.
 func (q *Queries) CountPersistentObjectSightings(ctx context.Context, rounds int32) ([]CountPersistentObjectSightingsRow, error) {
 	rows, err := q.db.Query(ctx, countPersistentObjectSightings, rounds)
 	if err != nil {
@@ -100,9 +95,6 @@ type ListArtifactsClaimingObjectRow struct {
 	ObjectKey   string
 }
 
-// What the download surface currently promises is downloadable. Anything the
-// endpoint would refuse anyway is left out — an expired or purged row makes no
-// claim about storage, so a missing object under it is not a discrepancy.
 func (q *Queries) ListArtifactsClaimingObject(ctx context.Context, limit int32) ([]ListArtifactsClaimingObjectRow, error) {
 	rows, err := q.db.Query(ctx, listArtifactsClaimingObject, limit)
 	if err != nil {
@@ -124,7 +116,6 @@ func (q *Queries) ListArtifactsClaimingObject(ctx context.Context, limit int32) 
 }
 
 const listArtifactsPastRetention = `-- name: ListArtifactsPastRetention :many
-
 WITH candidates AS (
     SELECT id FROM artifacts
     WHERE kind = 'download_package'
@@ -145,26 +136,6 @@ type ListArtifactsPastRetentionRow struct {
 	ObjectKey   string
 }
 
-// Storage reconciliation (SEC-006 retention, 04 丙-9 object existence, 0028).
-//
-// Two directions of one question — does what the database says about stored
-// objects match what storage has. Retention says bytes should be gone and this
-// makes them gone; the existence sweep finds bytes that are already gone and
-// stops the rows claiming otherwise.
-//
-// None of these statements is workspace scoped, and that is not an iron rule 3
-// exception: they are the platform's own storage bookkeeping, they take no
-// caller input, and none of them is run on a user's behalf. Every one of them is
-// keyed by a row id the sweep itself read.
-// The retention worklist: download packages whose expiry has passed and whose
-// bytes are still there. Bounded, because a sweep is not a migration.
-//
-// Only download packages, and it stays that way. Run outputs live in the same
-// physical table but belong to the `run` context, and one statement cannot have
-// two owners: widening this predicate would make packaging's read return run's
-// rows and packaging's UPDATE write them, which is the cross-context write
-// db/query-owners.yaml exists to refuse. ListRunOutputsPastRetention below is
-// the same worklist for the other owner.
 func (q *Queries) ListArtifactsPastRetention(ctx context.Context, limit int32) ([]ListArtifactsPastRetentionRow, error) {
 	rows, err := q.db.Query(ctx, listArtifactsPastRetention, limit)
 	if err != nil {
@@ -204,9 +175,6 @@ type ListDatasetCleanupIntentsRow struct {
 	ObjectKey   string
 }
 
-// Failed or interrupted uploads have no dataset row to carry cleanup state, so
-// their pre-written intents form a small independent worklist. The one-hour
-// floor keeps a slow but live upload from racing its own cleanup.
 func (q *Queries) ListDatasetCleanupIntents(ctx context.Context, limit int32) ([]ListDatasetCleanupIntentsRow, error) {
 	rows, err := q.db.Query(ctx, listDatasetCleanupIntents, limit)
 	if err != nil {
@@ -248,8 +216,6 @@ type ListDatasetsClaimingObjectRow struct {
 	ObjectKey   string
 }
 
-// The other half of 丙-9. RunInputsStillAvailable answers from deleted_at and
-// expires_at alone, so exactly these rows are the ones it counts as available.
 func (q *Queries) ListDatasetsClaimingObject(ctx context.Context, limit int32) ([]ListDatasetsClaimingObjectRow, error) {
 	rows, err := q.db.Query(ctx, listDatasetsClaimingObject, limit)
 	if err != nil {
@@ -290,24 +256,6 @@ type ListDatasetsPastRetentionRow struct {
 	ObjectKey   string
 }
 
-// The third worklist in this file, and the one that should have been the first:
-// 0004 built `datasets_expires_at_idx` for a "retention sweep" in the same
-// breath as the comment that names it, and the sweep was never written. So the
-// column, the index and the sentence explaining the design were all here, and
-// the part that runs was not -- the same four-parts-minus-one shape as the audit
-// events and the run outputs, and the third row of the consent table to be
-// caught in it (04 丙-64).
-//
-// The user is told 90 days before they upload (`retention_days` on the upload
-// screen, testlab.DatasetRetention) and again in the consent form. Until this
-// statement existed the only DELETE that ever reached `datasets` was account
-// deletion, so a participant who never closed their account kept every file
-// they ever uploaded, forever, against a number the screen had already quoted
-// them.
-//
-// Live rows enter when their retention window expires. Soft-deleted rows enter
-// until purged_at confirms their object was removed; this is the durable retry
-// path for an object-store failure after DeleteDataset commits.
 func (q *Queries) ListDatasetsPastRetention(ctx context.Context, limit int32) ([]ListDatasetsPastRetentionRow, error) {
 	rows, err := q.db.Query(ctx, listDatasetsPastRetention, limit)
 	if err != nil {
@@ -388,25 +336,6 @@ type ListRunOutputsPastRetentionRow struct {
 	ObjectKey   string
 }
 
-// The same worklist for run's half of `artifacts` (PDM-006 §6, consent §3: 30
-// days). Deliberately a second statement rather than a wider predicate on the
-// one above — see that comment for why the owner split forces it.
-//
-// The cutoff is the row's own `expires_at` and never a window handed in by the
-// caller. That column is what InsertRunArtifact wrote, what
-// ListReadableRunArtifacts serves from and what CountUnreadableRunArtifacts
-// counts against; a sweep taking its deadline from somewhere else would be a
-// second definition of the same date, and the first thing a mismatch does is
-// delete rows another statement still calls readable.
-//
-// `deleted_at IS NULL` for the reason the download sweep has it, plus one that
-// is specific to run outputs: the user's own delete already removed the object,
-// and it did so behind a shared-key count this sweep does not have. Sweeping a
-// deleted row would be removing bytes with that guard switched off.
-//
-// Rows CAN share an object_key — one attempt's manifest is many rows over one
-// archive — but they were written by one settle and expire together, so the pass
-// that removes the object is the pass that marks all of them.
 func (q *Queries) ListRunOutputsPastRetention(ctx context.Context, limit int32) ([]ListRunOutputsPastRetentionRow, error) {
 	rows, err := q.db.Query(ctx, listRunOutputsPastRetention, limit)
 	if err != nil {
@@ -445,8 +374,6 @@ UPDATE artifacts SET purged_at = now()
 WHERE id = $1 AND kind = 'download_package' AND purged_at IS NULL
 `
 
-// The bytes are gone and the row stays readable. Idempotent by predicate, which
-// is what lets the whole sweep be re-run safely (iron rule 9).
 func (q *Queries) MarkArtifactPurged(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markArtifactPurged, id)
 	return err
@@ -466,8 +393,6 @@ UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
 WHERE id = $1 AND purged_at IS NULL
 `
 
-// The row stops claiming a file that is not there. Mark it purged too: there are
-// no bytes for the retention sweep to remove.
 func (q *Queries) MarkDatasetObjectLost(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markDatasetObjectLost, id)
 	return err
@@ -482,10 +407,6 @@ UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
 WHERE id = $1 AND purged_at IS NULL
 `
 
-// deleted_at hides the row; purged_at records that object cleanup finished.
-// Separate from MarkDatasetObjectLost because the two operations describe
-// different evidence even though both end with no bytes. Idempotent by
-// predicate, which is what lets the sweep be re-run safely (iron rule 9).
 func (q *Queries) MarkDatasetPurged(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markDatasetPurged, id)
 	return err
@@ -509,10 +430,6 @@ UPDATE artifacts SET purged_at = now()
 WHERE id = $1 AND kind = 'run_output' AND purged_at IS NULL
 `
 
-// run's own copy of MarkArtifactPurged, because that one is packaging's and a
-// cross-context write is refused. `kind = 'run_output'` is in the predicate for
-// the reason SoftDeleteRunArtifact has it: a statement that could reach any kind
-// is a statement that could destroy the wrong one. Idempotent by predicate.
 func (q *Queries) MarkRunOutputPurged(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markRunOutputPurged, id)
 	return err
@@ -532,10 +449,7 @@ type RecordObjectSightingParams struct {
 	ObjectKey    string
 }
 
-// One round found the object missing. Returns the consecutive-round count, which
-// is the threshold the caller acts on — never on the first round, because an
-// object store answering 404 during a write or a transient fault must not cost
-// somebody their file.
+// Returns the consecutive-round count; callers act only from round two.
 func (q *Queries) RecordObjectSighting(ctx context.Context, arg RecordObjectSightingParams) (int32, error) {
 	row := q.db.QueryRow(ctx, recordObjectSighting, arg.ResourceKind, arg.ResourceID, arg.ObjectKey)
 	var rounds int32

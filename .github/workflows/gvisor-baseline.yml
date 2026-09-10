@@ -1,9 +1,3 @@
-# SEC-002 P-04's second measurement point (ADR-022 A2-a).
-#
-# Gate A's probe answers "is this node at the baseline". Nothing answered "is the
-# baseline still current" — that was a human remembering to read upstream's
-# release feed, which is the part of a CVE SLA that silently stops happening.
-# This job is that part. The 24h escape-class SLA starts from the issue it opens.
 name: gVisor baseline
 
 on:
@@ -28,12 +22,6 @@ jobs:
           set -euo pipefail
           BASELINE=$(awk '!/^#/ && NF {print $1; exit}' infra/nodes/gvisor-baseline.txt)
           if [ "$BASELINE" = unset ]; then
-            # A warning and not a notice, and a line in the summary, because the
-            # job goes GREEN here and a green check named "gVisor baseline" reads
-            # as "the baseline is current". It has never compared anything. The
-            # exit code stays 0 on purpose -- 04 甲-1 has no node yet, and a red
-            # daily cron for a node nobody has provisioned is noise that gets
-            # muted, taking the real signal with it when the node arrives.
             echo "::warning::gVisor baseline is unset — this check has never compared anything. It will stay green until infra/nodes/gvisor-baseline.txt names a version (04 甲-1)."
             {
               echo '### gVisor baseline: NOT CHECKED'
@@ -46,8 +34,6 @@ jobs:
             echo "SKIP=1" >> "$GITHUB_ENV"
             exit 0
           fi
-          # Pre-releases are not candidates for a production baseline, so they must
-          # not occupy one of the two N/N-1 slots either.
           gh api repos/google/gvisor/releases --jq \
             '[.[] | select(.prerelease == false)] | .[0,1].tag_name' > recent.txt
           AGE_DAYS=$(gh api repos/google/gvisor/releases --jq \
@@ -57,13 +43,7 @@ jobs:
           [ "$AGE_DAYS" -le 90 ] || FAIL="${FAIL:+$FAIL; }latest upstream release is ${AGE_DAYS}d old"
           [ -z "$FAIL" ] || { echo "FAIL=$FAIL" >> "$GITHUB_ENV"; echo "::error::$FAIL"; }
 
-      # Two sources, and neither may fail quietly. "No new advisory" and "the feed
-      # 404'd" must not be the same green tick — this job's whole job is to be the
-      # thing that notices, so an unreachable source is a failure, not an absence.
       - name: New escape-class advisory in the last 24h
-        # Skipped while the baseline is unset: the SLA this feeds is "patch the pool
-        # within 24h", and there is no pool. Filing that issue against nothing would
-        # be the noise this job exists to avoid.
         if: ${{ env.SKIP != '1' }}
         run: |
           set -euo pipefail
@@ -73,9 +53,6 @@ jobs:
                  | select(.severity == "critical" or (.summary | ascii_downcase | test("escape")))
                  | "GHSA \(.ghsa_id) [\(.severity)] \(.summary)"' > advisories.txt \
             || { echo "::error::gVisor security-advisories feed unreachable — cannot conclude 'no new advisory'"; exit 1; }
-          # Upstream does not always file a GHSA; the release notes do carry CVE ids
-          # and the word "escape". Releases are already being fetched, so this is one
-          # more jq selector rather than a new dependency.
           gh api repos/google/gvisor/releases --jq \
             '[.[] | select(.prerelease == false)][0]
              | select(.body != null and (.body | test("escape|CVE-"; "i")))
@@ -87,26 +64,15 @@ jobs:
             echo "ESCAPE=1" >> "$GITHUB_ENV"
             cat escape.txt
           else
-            # Printed on every clean run so a run history of these is evidence the
-            # sources were reachable — an empty file alone proves nothing.
             echo "::notice::both sources reachable, 0 escape-class matches ($(date -u +%F))"
           fi
 
-      # One issue per condition, reopened rather than duplicated: a daily job that
-      # files a fresh issue every morning trains people to close them unread.
       - name: File or update the issue
         if: ${{ env.FAIL != '' || env.ESCAPE == '1' }}
         run: |
           set -euo pipefail
           if [ "${ESCAPE:-}" = 1 ]; then
             TITLE="gVisor escape-class advisory — 24h SLA started (SEC-002 P-04)"
-            # SEC-012's switch is one request, and this issue is where the 24h SLA
-            # starts, so the alternative to patching belongs in the same place as
-            # the deadline. Deliberately an instruction and not an API call: this
-            # job would need a platform session to flip the switch itself, and a
-            # credential that can stop the fleet, held by CI, is a worse exposure
-            # than the minutes a person takes to paste one command. Automating it
-            # is a deployment-period decision, not a workflow edit.
             HALT='curl -X PUT -b "$COOKIE" -H "Content-Type: application/json" -d '"'"'{"note":"gVisor escape-class advisory, pool not yet patched"}'"'"' https://<host>/admin/dispatch/halt'
             BODY=$(printf 'ADR-022 P-04: patch the whole pool within 24h of this issue, or disable SelfHostedProvider per SEC-010.\n\nTo stop dispatching now (03:SEC-012, as the operator):\n\n```\n%s\n```\n\nThat refuses new runs, stops dispatch and preserves the scene, and it is never lifted automatically: `DELETE /admin/dispatch/halt` once the pool is patched.\n\n```\n%s\n```\n' "$HALT" "$(cat escape.txt)")
           else

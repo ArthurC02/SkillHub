@@ -1,42 +1,5 @@
 package apiserver_test
 
-// GEN-009 ③ — the verdict distribution for generated skills.
-//
-// ============================ WHAT THIS IS ==================================
-// One loop, no fake on any leg: a task description goes to the real generation
-// path, the package it produces is put in the real object store, a test case is
-// created with the SAME three acceptance criteria the 45 curated skills were
-// measured against (tools/content/seed_testcases.py, BASELINE_CRITERIA), the run
-// executes in a real sandbox through the real gateway, and the real judge
-// returns a verdict. Every row lands in a JSON file for the report.
-//
-// The yardstick is deliberately the curated one and not a better one. Criteria
-// written per description would measure "did it do the task", which is a
-// stronger question — and a judgement somebody has to make. The owner chose the
-// curated three on 2026-08-28, so these numbers sit beside CONTENT-008's on the
-// same axis. What that buys is comparability; what it costs is stated in the
-// report and here: this measures that a generated skill LOADS and PRODUCES
-// something, not that it did what was asked.
-//
-// ============================ WHAT THIS IS NOT ==============================
-// Not GEN-009 ④ — "would a person keep it" needs a person, and nothing here
-// substitutes for that.
-//
-// Not a SEC-009 item: the runtime is runc.
-//
-// Usage:
-//
-//	GEN009_CORPUS=<file.json>   [{"id","group","description"}, ...]
-//	GEN009_OUT=<file.json>      where the rows are written
-//	SKILLHUB_E2E_LLM_URL        a running apps/llm pointed at a real gateway
-//	SKILLHUB_E2E_SANDBOX_URL / _TOKEN
-//	SKILLHUB_MODEL_GATEWAY_URL / _KEY
-//	OBJSTORE_*                  the real object store
-//	SKILLHUB_E2E_PUBLIC_HOST    an address the sandbox host can reach us on
-//
-// It spends money: about $0.006 to generate, $0.017 to run and a judge call per
-// description.
-
 import (
 	"context"
 	"encoding/json"
@@ -57,9 +20,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-// baselineCriteria is seed_testcases.py's BASELINE_CRITERIA, verbatim. Copied
-// rather than imported because the Python tool is the thing being matched, and a
-// paraphrase here would quietly change the yardstick the numbers claim to share.
 var baselineCriteria = []string{
 	"trace 中出現對指定 Skill 的 skill_activation 事件。",
 	"/out/artifacts/ 至少產出一個檔案。",
@@ -75,16 +35,16 @@ type gen009Case struct {
 type gen009Row struct {
 	ID    string `json:"id"`
 	Group string `json:"group"`
-	// Generation
+
 	Generated bool     `json:"generated"`
 	Blocked   bool     `json:"blocked"`
 	Findings  []string `json:"findings,omitempty"`
 	SkillName string   `json:"skill_name,omitempty"`
 	Attempts  int      `json:"attempts,omitempty"`
-	// Run
+
 	RunStatus    string `json:"run_status,omitempty"`
 	FailureClass string `json:"failure_class,omitempty"`
-	// Evaluation
+
 	EvalStatus string            `json:"eval_status,omitempty"`
 	Overall    string            `json:"overall,omitempty"`
 	Criteria   map[string]string `json:"criteria,omitempty"`
@@ -138,8 +98,6 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	a.runs.PollInterval = time.Second
 	a.runs.MaxAttempts = 1
 
-	// The sandbox host pushes trace back, and httptest binds loopback. Same
-	// second listener the e2e test uses, for the same reason.
 	public := httptest.NewUnstartedServer(a.handler)
 	listener, err := net.Listen("tcp", "0.0.0.0:0")
 	if err != nil {
@@ -152,10 +110,6 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	a.runs.TraceIngestBaseURL = fmt.Sprintf("http://%s:%d",
 		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), listener.Addr().(*net.TCPAddr).Port)
 
-	// The judge is the worker's, not the API's. cmd/worker sets
-	// Evaluations.Judge = deps.LLM; the API's own evaluation service reaches no
-	// judge on purpose (a read must never pay for a model call), so the field is
-	// set on a copy rather than on a.evaluations.
 	judging := *a.evaluations
 	judging.Judge = &llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")}
 	startWorkerWith(t, a.runs, &judging)
@@ -185,9 +139,6 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 			row.Generated = true
 			row.SkillName = res.Skill.Name
 
-			// The bytes the sandbox will execute have to be in the real store:
-			// the API's own package store is in-memory, and a pre-signed URL
-			// over a key that only exists in this process points at nothing.
 			key := res.Version.PackageObjectKey
 			pkg, ok := a.packages[key]
 			if !ok {
@@ -233,9 +184,6 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	writeGen009(t, rows)
 }
 
-// seedGen009TestCase is seedTestCase with the curated yardstick and a prompt
-// that names the skill: PDM-011 measured the autonomous trigger rate at 0, so a
-// benchmark prompt that does not name the skill measures the model's guessing.
 func seedGen009TestCase(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, skillName, task string) string {
 	t.Helper()
 	criteria := make([]map[string]string, 0, len(baselineCriteria))
@@ -262,8 +210,6 @@ func seedGen009TestCase(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, 
 	return id
 }
 
-// startNoFatal is fixture.start without the t.Fatal: one description failing to
-// start is a row in the census, not the end of the batch.
 func (f fixture) startNoFatal(t *testing.T) (int, runView) {
 	t.Helper()
 	hash := f.confirmPermissions(t)
@@ -272,7 +218,6 @@ func (f fixture) startNoFatal(t *testing.T) (int, runView) {
 			`","confirmed_summary_hash":"`+hash+`"}`)
 }
 
-// waitForTerminalSoft records what the run became instead of failing the batch.
 func waitForTerminalSoft(t *testing.T, c *client, runID string, within time.Duration) runView {
 	t.Helper()
 	deadline := time.Now().Add(within)
@@ -290,9 +235,6 @@ func waitForTerminalSoft(t *testing.T, c *client, runID string, within time.Dura
 	return last
 }
 
-// waitForEvaluation polls the production read path. The evaluation is enqueued
-// by the run.succeeded/failed consumer, so this is waiting on the outbox and the
-// judge, not on a call this test makes.
 func waitForEvaluation(t *testing.T, c *client, runID string, within time.Duration) evaluationBody {
 	t.Helper()
 	deadline := time.Now().Add(within)
@@ -327,12 +269,6 @@ func writeGen009(t *testing.T, rows []gen009Row) {
 	_ = strings.TrimSpace("")
 }
 
-// TestGen009YardstickMatchesTheCuratedOne is the only assertion in this file and
-// it guards a claim, not a behaviour: report §9 says these numbers sit on the
-// same axis as CONTENT-008's because the criteria are the curated ones. That
-// claim rests on a hand-copy, and a hand-copy of a string in another language's
-// source is exactly the kind of thing this repo has watched drift in silence.
-// Unlike the census above this runs every time, with no gate and no money.
 func TestGen009YardstickMatchesTheCuratedOne(t *testing.T) {
 	const tool = "../../../../../../tools/content/seed_testcases.py"
 	src, err := os.ReadFile(tool)

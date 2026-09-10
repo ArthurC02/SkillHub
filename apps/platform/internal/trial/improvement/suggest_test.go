@@ -1,12 +1,5 @@
 package eval
 
-// Unit coverage for the parts of EVAL-002 that decide what may be stored and what
-// may be written: the path rule, the value domain, the evidence a suggestion is
-// allowed to carry, and the archive rewrite that a new version is built from.
-//
-// The rules under test are the ones a model's output has to get past. They are
-// tested without a database because none of them asks one anything.
-
 import (
 	"archive/zip"
 	"bytes"
@@ -40,16 +33,6 @@ func TestSuggestionDigestNeverShowsEvidenceOutsideItsAllowlist(t *testing.T) {
 	}
 }
 
-// The quotable text is on its own line, and the platform's label is not on it.
-//
-// judge-v1 printed "evidence: <text>" on one line; the model copied the line
-// whole, Go compared only the payload, and 45 of 45 verdicts were downgraded
-// (m3/report-judge-regression.md). The suggest digest still had that layout, and
-// the same asymmetry underneath it: suggestionEvidence matches against
-// r.Excerpt, which never contains the heading, so any quotation that includes
-// the heading can never resolve. It had not cost 45 verdicts only because the
-// evidence extractor happens to prefer text inside quotation marks (M3 audit,
-// 2026-08-24).
 func TestTheDigestKeepsItsOwnLabelsOffTheQuotableLines(t *testing.T) {
 	const excerpt = "bash exited 1 while writing output.xlsx"
 	v := verdict{overall: OverallNotMet, findings: []Finding{{
@@ -65,8 +48,7 @@ func TestTheDigestKeepsItsOwnLabelsOffTheQuotableLines(t *testing.T) {
 		if !strings.Contains(line, "evidence (") {
 			continue
 		}
-		// A heading line ends at its colon. Anything after it is text the model
-		// will read as quotable and the platform will then fail to find.
+
 		if !strings.HasSuffix(strings.TrimRight(line, " "), ":") {
 			t.Fatalf("label and content share a line, so a verbatim quote of it "+
 				"can never be verified: %q", line)
@@ -76,9 +58,6 @@ func TestTheDigestKeepsItsOwnLabelsOffTheQuotableLines(t *testing.T) {
 		t.Fatal("the excerpt itself is gone; the split dropped what it was meant to isolate")
 	}
 
-	// The other half of the same fact: a quotation that swallowed the heading
-	// does not resolve, which is what makes the layout load-bearing rather than
-	// cosmetic.
 	if raw, _ := suggestionEvidence(llmclient.ImprovementProposal{
 		Evidence: `"evidence (agent_output): ` + excerpt + `"`,
 	}, refs); raw != nil {
@@ -114,8 +93,7 @@ func TestOnlyProposalsThePlatformCanActOnAreStored(t *testing.T) {
 	}
 
 	cases := map[string]func(p *llmclient.ImprovementProposal){
-		// `mcp` is a placeholder the MVP never acts on: storing one would ask a user
-		// to decide about something that could not be applied either way.
+
 		"mcp category":     func(p *llmclient.ImprovementProposal) { p.Category = "mcp" },
 		"unknown category": func(p *llmclient.ImprovementProposal) { p.Category = "prompt" },
 		"escaping path":    func(p *llmclient.ImprovementProposal) { p.TargetPath = "../x" },
@@ -138,8 +116,6 @@ func TestSuggestionEvidenceIsAlwaysMintedByThePlatform(t *testing.T) {
 		{Kind: KindArtifact, ArtifactPath: "output.xlsx", Excerpt: "output.xlsx (4096 bytes)", Available: true},
 	}
 
-	// A quote the platform can find in its own verified material keeps that
-	// reference, pointer and all.
 	raw, err := suggestionEvidence(llmclient.ImprovementProposal{Evidence: "bash exited 1"}, refs)
 	if err != nil {
 		t.Fatal(err)
@@ -152,7 +128,6 @@ func TestSuggestionEvidenceIsAlwaysMintedByThePlatform(t *testing.T) {
 		t.Fatalf("a quote found in a verified reference keeps it, got %+v", got)
 	}
 
-	// A quote the platform cannot find does not borrow unrelated citations.
 	raw, _ = suggestionEvidence(llmclient.ImprovementProposal{
 		Evidence: "the model is quite sure something went wrong",
 	}, refs)
@@ -164,31 +139,18 @@ func TestSuggestionEvidenceIsAlwaysMintedByThePlatform(t *testing.T) {
 		t.Fatalf("a generic one-character substring must not become evidence: %s", raw)
 	}
 
-	// An evaluation with no references cannot support a stored suggestion.
 	raw, _ = suggestionEvidence(llmclient.ImprovementProposal{Evidence: "x"}, nil)
 	if raw != nil {
 		t.Errorf("no evidence available must make the proposal unstorable, got %s", raw)
 	}
 }
 
-// The exact shape the 0823 baseline died on. 26 proposals, 26 dropped, every one
-// of them for "no matching verified evidence" - and the cause was not a model
-// inventing things. `evidence` is specified as "what supports this, quoted from
-// the digest", so the model returns two or three real quotes joined by its own
-// reasoning, and the old whole-field substring match could not accept a field
-// with any prose in it.
-//
-// The property this must not lose is the one the check exists for: a stored
-// proposal rests on text that appears verbatim in an excerpt the platform itself
-// minted. The prose around the quote is the only thing that became allowed.
 func TestAProposalMayExplainItselfAroundTheQuoteItCites(t *testing.T) {
 	refs := []EvidenceRef{
 		{Kind: KindTraceEvent, TraceEventID: eventID, Available: true,
 			Excerpt: "artifact manifest: 完整 artifact manifest 明確顯示本次 run 未寫入任何檔案"},
 	}
 
-	// Verbatim inside quotation marks, reasoning outside it: what the model
-	// actually writes, and what used to be discarded whole.
 	for _, evidence := range []string{
 		`「完整 artifact manifest 明確顯示本次 run 未寫入任何檔案」，所以 /out/artifacts/ 是空的。`,
 		`"完整 artifact manifest 明確顯示本次 run 未寫入任何檔案" and the summary agrees.`,
@@ -210,12 +172,10 @@ func TestAProposalMayExplainItselfAroundTheQuoteItCites(t *testing.T) {
 		}
 	}
 
-	// What must not become possible: quotation marks are not a way in. A fragment
-	// the platform cannot find stays unstorable however it is punctuated.
 	for _, evidence := range []string{
 		`「the manifest shows nothing was written at all」 which is the problem.`,
 		`no quotation marks here, and none of this text is in any excerpt either`,
-		`「too short」`, // under the 12-rune floor, so not a fragment worth attributing
+		`「too short」`,
 	} {
 		if raw, _ := suggestionEvidence(llmclient.ImprovementProposal{Evidence: evidence}, refs); raw != nil {
 			t.Errorf("unverifiable evidence must stay unstorable, got %s for %s", raw, evidence)
@@ -236,11 +196,6 @@ func TestAdviceIsNotPaidForOnARunThatMetEverything(t *testing.T) {
 	}
 }
 
-// --- the archive rewrite -------------------------------------------------------
-
-// zipWithRoot builds an archive shaped like a GitHub download: everything inside
-// one top-level directory, which is the case a second root-finding rule gets
-// wrong by writing the new file beside the package instead of into it.
 func zipWithRoot(t *testing.T, root string, files map[string]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -292,8 +247,6 @@ func TestPatchingKeepsThePackageRootAndEveryUntouchedFile(t *testing.T) {
 		t.Fatalf("an untouched file changed: %v / %q", err, untouched)
 	}
 
-	// The original bytes are still the original bytes: patching returns a new
-	// archive and never edits the stored one (iron rule 4 in the small).
 	if same, _ := skillpkg.PackageFS(original); same != nil {
 		if before, _ := fs.ReadFile(same, "SKILL.md"); string(before) != skillMD {
 			t.Error("patching modified the archive it was given")
@@ -318,10 +271,6 @@ func TestPatchingIsDeterministicForTheSameInput(t *testing.T) {
 	}
 }
 
-// --- the proposal counters (04 丙-38) -------------------------------------------
-
-// stubSuggester answers with a fixed response, so a test can decide exactly what
-// the drop rules are given to chew on.
 type stubSuggester struct {
 	resp llmclient.SuggestImprovementsResponse
 }
@@ -333,7 +282,6 @@ func (s stubSuggester) SuggestImprovements(
 	return &r, nil
 }
 
-// captureLogs redirects the default logger for one test.
 func captureLogs(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	var buf bytes.Buffer
@@ -343,8 +291,6 @@ func captureLogs(t *testing.T) *bytes.Buffer {
 	return &buf
 }
 
-// findRecord returns the one log record with this message, failing if there is
-// not exactly one.
 func findRecord(t *testing.T, buf *bytes.Buffer, msg string) map[string]any {
 	t.Helper()
 	var found []map[string]any
@@ -366,12 +312,6 @@ func findRecord(t *testing.T, buf *bytes.Buffer, msg string) map[string]any {
 	return found[0]
 }
 
-// The counters have to be emitted on the all-clear too.
-//
-// This is the case the old code could not express: every drop was a slog.Warn
-// and nothing was logged when nothing was dropped, so "0 dropped" and "this
-// never ran" produced identical output — and EVAL-002's acceptance-rate baseline
-// needs the denominator, which is exactly what the silent case throws away.
 func TestTheProposalCountersAreEmittedEvenWhenNothingWasDropped(t *testing.T) {
 	const excerpt = "bash exited 1 while writing output.xlsx"
 	newVerdict := func() verdict {
@@ -386,16 +326,14 @@ func TestTheProposalCountersAreEmittedEvenWhenNothingWasDropped(t *testing.T) {
 		suggestions []llmclient.ImprovementProposal
 		want        map[string]float64
 	}{{
-		// Nothing came back, so nothing was dropped. The line still has to say so.
+
 		name: "all clear",
 		want: map[string]float64{
 			"proposed": 0, "stored": 0, "dropped_no_evidence": 0,
 			"dropped_unstorable": 0, "dropped_write_failed": 0, "dropped_over_cap": 0,
 		},
 	}, {
-		// A cited proposal in a class this platform cannot act on: it clears the
-		// evidence rule and is refused by the value domain, which is the drop the
-		// counters must attribute correctly rather than lump together.
+
 		name: "one refused before storage",
 		suggestions: []llmclient.ImprovementProposal{{
 			Category: "mcp", Problem: "remote MCP would help", Evidence: excerpt,
@@ -406,8 +344,7 @@ func TestTheProposalCountersAreEmittedEvenWhenNothingWasDropped(t *testing.T) {
 			"dropped_unstorable": 1, "dropped_write_failed": 0, "dropped_over_cap": 0,
 		},
 	}, {
-		// The 0823 shape: the model wrote prose the platform cannot find in any
-		// excerpt it minted.
+
 		name: "one uncitable",
 		suggestions: []llmclient.ImprovementProposal{{
 			Category: "skill", Problem: "the description is vague",

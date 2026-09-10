@@ -11,75 +11,16 @@ import (
 	"time"
 )
 
-// 02:NFR-002a's three floors, which had no machine but one.
-//
-// The clause closes with 「三條都是下界，不是建議值。」 — floors, not
-// suggestions. Until 2026-08-29 only rule 2 was checked, and the audit noted
-// what that costs: 「只有第 2 條有機器；另外兩條改值不會撞到任何東西」. All
-// three are now here, and they are not equally strong, which is stated per rule
-// rather than averaged into one confident-looking check.
-//
-//	rule 1  Download artifact retention >= the current observation window.
-//	        BOTH sides are read: DOWNLOAD_ARTIFACT_RETENTION from .env.example,
-//	        and the window from the closed-beta section heading in
-//	        gate-test/consent-and-data-policy.md. This one was violated once
-//	        already — 7 days was set, then corrected to 30 the same day, because
-//	        a 7-day package expires in the middle of a 14-day study and the
-//	        funnel's last segment ("came back and downloaded") then measures the
-//	        expiry rather than the behaviour.
-//	rule 2  Run artifact retention >= the re-evaluation window (TRACE_RETENTION).
-//	        Both sides read: a SQL literal that ships, and the deployment
-//	        variable's only stated value.
-//
-//	        THIS ONE USED TO BE A DECLARED SHORTFALL. Until R-11 was signed on
-//	        2026-08-29, runs.sql stamped 30 days against a 90-day
-//	        TRACE_RETENTION, so days 31-90 of a re-evaluation read an empty
-//	        artifact manifest and the judge decided on it — and this file pinned
-//	        that exact pair of numbers so the gap could not grow, move or be
-//	        forgotten. R-11 raised the literal to 90 days, 03:EVAL-014 closed
-//	        with it, and the pin is gone: what is left is a plain comparison,
-//	        which is what a floor should have been all along. A declared
-//	        shortfall is a debt, not a design, and this one is paid.
-//	rule 3  Analytics retention >= one complete funnel. PINNED, not derived —
-//	        see analyticsFunnelFloor.
-//
-// WHAT THIS PROVES AND WHAT IT DOES NOT. It proves that the numbers THIS
-// REPOSITORY STATES satisfy the rules this repository wrote. It does not prove
-// that any deployment satisfies them, and it cannot: .env.example is a template,
-// not a deployment, so an operator who sets TRACE_RETENTION=4000h violates rule
-// 2 and nothing here will ever see it. The only thing that could is an assertion
-// where the values meet, and they never meet — one is compiled into a Postgres
-// statement, the others are read by cmd/maintenance out of its own environment.
-//
-// The failure mode this is built against is the repo's own recurring one: a
-// check that stops finding its subject and passes anyway. The subject has
-// already moved once — the query was called RecordRunArtifact when this was
-// commissioned and is called InsertRunArtifact now — so nothing here is anchored
-// to a query name. It is anchored to what the statement does (an INSERT into
-// artifacts of kind 'run_output' carrying expires_at), and zero matches, two
-// matches, a reworded literal or a literal that became a deployment parameter
-// are each a loud failure rather than a quiet comparison of nothing.
-
 const envExampleDoc = ".env.example"
 
 var (
-	// A sqlc statement header: `-- name: InsertRunArtifact :execrows`.
 	sqlQueryHeader = regexp.MustCompile(`^--\s*name:\s*(\S+)`)
-	// The retention literal. Whitespace is loose because the file's is.
+
 	sqlRetentionLiteral = regexp.MustCompile(`now\(\)\s*\+\s*interval\s*'\s*(\d+)\s*([a-z]+?)s?\s*'`)
-	// The shape it takes if it becomes a deployment variable: `now() + @retention`,
-	// `now() + $9`, `now() + sqlc.arg(retention)`.
+
 	sqlRetentionParam = regexp.MustCompile(`now\(\)\s*\+\s*(@\w+|\$\d+|sqlc\.arg\([^)]*\))`)
 )
 
-// Postgres interval units with a fixed length. `month` and `year` are missing on
-// purpose: they have no fixed number of hours, so a retention written in them
-// cannot be compared with a Go duration without picking a lie. Better to say so.
-//
-// `day` is 24h here. Postgres' `interval '30 days'` is 30 calendar days, which
-// differs from 720h across a DST boundary by an hour. An hour does not decide a
-// 60-day gap, and pretending otherwise would need a timezone this file has no
-// business knowing.
 var sqlIntervalUnits = map[string]time.Duration{
 	"second": time.Second,
 	"minute": time.Minute,
@@ -88,28 +29,8 @@ var sqlIntervalUnits = map[string]time.Duration{
 	"week":   7 * 24 * time.Hour,
 }
 
-// analyticsFunnelFloor is rule 3's right-hand side, PINNED rather than derived,
-// and this comment is the whole reason it is allowed to be.
-//
-// Rules 1 and 2 compare two numbers this repository states. Rule 3's right-hand
-// side is 「一次完整漏斗」 — one complete funnel — and the funnel's last segment
-// is 「首次使用後再回來」, which crosses months and has no stated length
-// anywhere. There is no number to parse, so a checker either invents one or
-// leaves the rule unenforced. Unenforced is what it was.
-//
-// SET BY: A8, 2026-08-29, during the CI/devctl hardening pass, as 180 days —
-// ADR-029 決策 5's own proposed analytics retention, chosen because it is the
-// only number anyone in this repository has ever argued for as "long enough to
-// see a funnel". It is a FLOOR and the ratified value (ANALYTICS_RETENTION=8760h
-// = 365 days) is twice it, so this is not currently binding anything; it exists
-// so that LOWERING the ratified value hits a rule instead of a user. Nobody has
-// measured a funnel, so if measurement ever says otherwise, change this line and
-// say who said so.
 const analyticsFunnelFloor = 180 * 24 * time.Hour
 
-// The observation window, read from the document that defines it rather than
-// copied. `### 8.2 B 版：封閉測試（14 天，自己使用）` — the length of the study
-// that rule 1's download retention must outlive.
 const observationWindowDoc = "docs/plans/mvp/gate-test/consent-and-data-policy.md"
 
 var observationWindowHeading = regexp.MustCompile(`(?m)^#{2,4}\s.*封閉測試（(\d+)\s*天`)
@@ -117,7 +38,6 @@ var observationWindowHeading = regexp.MustCompile(`(?m)^#{2,4}\s.*封閉測試�
 func retentionFloorProblems(root string) []string {
 	var problems []string
 
-	// Rule 2. Both sides parsed; a failure to find either is loud.
 	sqlProblems, artifact, artifactWhere := runArtifactRetention(root)
 	problems = append(problems, sqlProblems...)
 	traceProblems, trace := envRetention(root, "TRACE_RETENTION")
@@ -132,7 +52,6 @@ func retentionFloorProblems(root string) []string {
 			artifactWhere, artifact, envExampleDoc, trace, trace-artifact))
 	}
 
-	// Rule 1.
 	windowProblems, window := observationWindow(root)
 	problems = append(problems, windowProblems...)
 	downloadProblems, download := envRetention(root, "DOWNLOAD_ARTIFACT_RETENTION")
@@ -147,7 +66,6 @@ func retentionFloorProblems(root string) []string {
 			envExampleDoc, download, observationWindowDoc, window, window-download))
 	}
 
-	// Rule 3.
 	analyticsProblems, analytics := envRetention(root, "ANALYTICS_RETENTION")
 	problems = append(problems, analyticsProblems...)
 	if len(analyticsProblems) == 0 && analytics < analyticsFunnelFloor {
@@ -164,10 +82,6 @@ func retentionFloorProblems(root string) []string {
 	return problems
 }
 
-// observationWindow reads the length of the study rule 1 measures against out of
-// the document that defines it. Parsed, not copied: the study length is a
-// product decision that has already changed once, and a copied 14 would go stale
-// silently in the direction that violates the rule.
 func observationWindow(root string) ([]string, time.Duration) {
 	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(observationWindowDoc)))
 	if err != nil {
@@ -195,9 +109,6 @@ func observationWindow(root string) ([]string, time.Duration) {
 	return nil, time.Duration(days) * 24 * time.Hour
 }
 
-// runArtifactRetention finds the retention the run-output manifest INSERT stamps
-// on expires_at. Every way of not finding exactly one is a problem, because the
-// alternative is comparing nothing and reporting success.
 func runArtifactRetention(root string) (problems []string, retention time.Duration, where string) {
 	files, err := filepath.Glob(filepath.Join(root, "db", "queries", "*.sql"))
 	if err != nil || len(files) == 0 {
@@ -224,8 +135,7 @@ func runArtifactRetention(root string) (problems []string, retention time.Durati
 		}
 		relative = filepath.ToSlash(relative)
 		for _, statement := range sqlStatements(string(data)) {
-			// Anchored to what the statement does, never to its name: the name
-			// has already changed once under this check's feet.
+
 			code := strings.ToLower(sqlCode(statement.code))
 			if !strings.Contains(code, "insert into artifacts") ||
 				!strings.Contains(code, "'run_output'") ||
@@ -295,14 +205,6 @@ func runArtifactRetention(root string) (problems []string, retention time.Durati
 			"rule 2 is comparing nothing. This check has lost its subject", site)}, 0, ""
 }
 
-// traceRetention reads the re-evaluation window's only stated value. Two
-// assignments mean two answers, which is worse than none.
-// envRetention reads one retention variable's only stated value. Two
-// assignments mean two answers, which is worse than none.
-//
-// One function for all three rules rather than one per variable: the failure
-// shapes are identical (missing, duplicated, unparseable, non-positive) and
-// three copies of them is three places for one of the four to be forgotten.
 func envRetention(root, name string) (problems []string, retention time.Duration) {
 	data, err := os.ReadFile(filepath.Join(root, envExampleDoc))
 	if err != nil {
@@ -354,11 +256,6 @@ type sqlStatement struct {
 	code []sqlCodeLine
 }
 
-// sqlStatements splits a sqlc query file on its `-- name:` headers and keeps
-// only the non-comment lines of each body. Dropping the comments is what stops
-// the prose from voting: runs.sql discusses `kind = 'run_output'` in three
-// separate comment blocks, and a comment that also mentioned an interval would
-// otherwise read as the statement stamping one.
 func sqlStatements(text string) []sqlStatement {
 	var statements []sqlStatement
 	for i, line := range strings.Split(text, "\n") {

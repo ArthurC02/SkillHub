@@ -1,22 +1,7 @@
 #!/usr/bin/env python3
-"""Assert ADR-022 Q3's invariants on infra/egress/allowlist.yaml.
-
-Run it anywhere: `python3 tools/ci/check_egress_allowlist.py`.
-Exit 0 = the allow-list still matches the decision; exit 1 = it does not, and the
-message says which part of ADR-022 to go read.
-
-Address family — this allow list is IPv4-only, and that is a decision, not an
-oversight. Every `pinned_ip` is an A record and renders into the `ip` table. The
-renderer MUST therefore leave the `ip6` table at `policy drop` with no accept
-exceptions, and the node resolver must not answer AAAA for allow-list names.
-Reason: ADR-022's T5 acceptance suite is entirely IPv4-shaped (169.254.169.254,
-RFC1918 /24 scans, `pinned_ip` port probes), so a node whose `ip` table is locked
-down while its `ip6` table sits at `policy accept` passes all eight sub-items and
-still has a wide-open egress path off the sandbox. T5 cannot see that hole, so the
-file closes it by construction instead: no v6 pin can be written here at all.
-Making the file dual-stack (a v6 pin per entry, plus a v6 half of T5) is the other
-honest option and is a bigger change than one platform-owned destination warrants.
-"""
+"""Validate infra/egress/allowlist.yaml: tier:sandbox entries pin a single
+IPv4 host and port, tier:node entries match by FQDN, and no model-provider
+domain appears outside the gateway."""
 import ipaddress
 import pathlib
 import sys
@@ -26,8 +11,8 @@ import yaml
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 PATH = ROOT / "infra" / "egress" / "allowlist.yaml"
 
-# N-07 has no exception path. Substring match on the fqdn, not equality: a
-# regional or versioned host of the same provider is the same bypass.
+# Substring match on the fqdn, not equality: a regional or versioned host of
+# the same provider is still the same bypass.
 PROVIDER_DOMAINS = (
     "openai.com", "anthropic.com", "googleapis.com", "google.com",
     "azure.com", "mistral.ai", "cohere.com", "bedrock", "x.ai",
@@ -100,8 +85,6 @@ def check(entries):
                     f"instead (iron rule 8)."
                 )
 
-    # The re-evaluation condition, mechanised. One platform-owned destination is what
-    # made "no L7 proxy" the right call; a second one is the trigger to re-open it.
     if len(sandbox) != 1 or sandbox[0].get("name") != "model_gateway":
         errors.append(
             f"tier:sandbox must hold exactly one entry named model_gateway, found "
@@ -115,29 +98,25 @@ def check(entries):
         if not pin:
             errors.append(f"{e.get('name')}: tier:sandbox requires pinned_ip (ADR-022 Q3)")
         elif pin == "unset":
-            # Not an error — unset renders no accept rule, which is the fail-closed
-            # direction. But it means no node built from this file can reach anything,
-            # so it has to be visible on every run rather than discovered at deploy time.
             warnings.append(
                 f"{e.get('name')}: pinned_ip is 'unset' — fail-closed, no sandbox node "
                 f"built from this file can reach any destination (ADR-022 Q3)"
             )
         else:
             errors.extend(_pin_errors(e, pin))
-        # Required on the sandbox tier: `unset` withholds the address, never the port.
+        # Sandbox entries always require a port: unset withholds the address,
+        # never the port.
         err = _port_error(e)
         if err:
             errors.append(err)
 
-    # Node tier talks to third parties whose IPs rotate; a pin there is a rule that
-    # breaks silently on the vendor's next deploy.
     for e in node:
         if e.get("pinned_ip"):
             warnings.append(f"{e.get('name')}: tier:node must not pin an IP (ADR-022 A1-a)")
         if str(e.get("fqdn", "")).endswith(".internal"):
             warnings.append(f"{e.get('name')}: platform-owned host on tier:node — should it be tier:sandbox?")
-        # Not required here: the node tier matches on FQDN, not IP:port (ADR-022 Q3),
-        # so an entry without a port is legitimate. A malformed one never is.
+        # Node entries match by FQDN, not IP:port, so a missing port is fine;
+        # a malformed one still is not.
         if e.get("port") is not None and _port_error(e):
             errors.append(_port_error(e))
 

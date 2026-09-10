@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// writeSites lays out marked lines the way the real tree carries them: a Go
-// const, a YAML maxLength and a Python Field, in the four trees the scan walks.
 func writeSites(t *testing.T, files map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -57,8 +55,7 @@ func TestSharedNumberRejectsTheWaysACopyStopsBeingCompared(t *testing.T) {
 		files  map[string]string
 		want   string
 	}{{
-		// The incident in the file's own comment: maxDigestEntry went 2000 -> 8000
-		// in judge.go alone and every judgement came back 422.
+
 		name:   "one copy was raised and the others were not",
 		roster: []string{"maxDigestEntry"},
 		files: map[string]string{
@@ -67,7 +64,7 @@ func TestSharedNumberRejectsTheWaysACopyStopsBeingCompared(t *testing.T) {
 		},
 		want: "disagrees across 2 sites",
 	}, {
-		// Somebody deleted the other copies' markers rather than the copies.
+
 		name:   "only one site still carries a marker",
 		roster: []string{"maxDigestEntry"},
 		files: map[string]string{
@@ -76,8 +73,7 @@ func TestSharedNumberRejectsTheWaysACopyStopsBeingCompared(t *testing.T) {
 		},
 		want: "has only one marked site",
 	}, {
-		// FIX 6: every marker for an invariant is gone. `found` has no key, so
-		// nothing above this iterates and the old check was green.
+
 		name:   "every marker for a rostered invariant is gone",
 		roster: []string{"maxDigestEntry"},
 		files: map[string]string{
@@ -86,9 +82,7 @@ func TestSharedNumberRejectsTheWaysACopyStopsBeingCompared(t *testing.T) {
 		},
 		want: "is on the roster in tools/devctl/shared_number.go but no marked site was found",
 	}, {
-		// The other direction, which is what keeps the roster honest: a new
-		// invariant that never got its roster line is one whose markers can all
-		// vanish later without a sound.
+
 		name:   "a marked invariant that nobody rostered",
 		roster: nil,
 		files: map[string]string{
@@ -105,9 +99,7 @@ func TestSharedNumberRejectsTheWaysACopyStopsBeingCompared(t *testing.T) {
 		},
 		want: "marks a line with no number on it",
 	}, {
-		// The second half of the comment's incident: the marker sat in the middle
-		// of an existing comment and silently did not count. It must still not
-		// count - and now the roster is what turns that silence into a failure.
+
 		name:   "a marker that does not open its comment does not count",
 		roster: []string{"maxDigestEntry"},
 		files: map[string]string{
@@ -127,9 +119,6 @@ func TestSharedNumberRejectsTheWaysACopyStopsBeingCompared(t *testing.T) {
 	}
 }
 
-// 40_000 and 40000 are the same number. The first version of trailingIntPattern
-// read the underscored one as 000 and reported a difference nobody made, which
-// is how a check teaches people to ignore it.
 func TestSharedNumberReadsUnderscoredIntegers(t *testing.T) {
 	t.Parallel()
 	root := writeSites(t, map[string]string{
@@ -141,11 +130,6 @@ func TestSharedNumberReadsUnderscoredIntegers(t *testing.T) {
 	}
 }
 
-// The scan must not vote with generated output, a vendored copy, or a test's
-// fixture: none of the three is a copy anybody maintains, and a marker there is
-// a marker with no author. The _test.go case is this file — every marked line
-// above lives in tools/, which the scan walks, so without the exclusion this
-// package's own fixtures argue with production about what maxDigestEntry is.
 func TestSharedNumberSkipsGeneratedAndVendoredTrees(t *testing.T) {
 	t.Parallel()
 	root := writeSites(t, map[string]string{
@@ -160,18 +144,6 @@ func TestSharedNumberSkipsGeneratedAndVendoredTrees(t *testing.T) {
 	}
 }
 
-// This package's own fixtures must never be counted as production copies.
-//
-// They were, once: every marked line in this file carries a real invariant name
-// and lives under tools/, which the scan walks, so `maxDigestEntry` briefly had
-// eighteen sites and "disagreed" with itself because a fixture here says 2000.
-// A check that reports failures nobody caused is the same disease as one that
-// reports none - and in the other direction a fixture value can just as easily
-// explain away a real disagreement.
-//
-// This asserts on the scan's SITES and against the real tree, not on the
-// problems: a fixture that leaks without causing a disagreement is still a
-// fixture voting, and only the site list can see that.
 func TestSharedNumberFixturesDoNotLeakIntoTheRealScan(t *testing.T) {
 	t.Parallel()
 	found, problems := sharedNumberScan("../..")
@@ -193,9 +165,6 @@ func TestSharedNumberFixturesDoNotLeakIntoTheRealScan(t *testing.T) {
 	}
 }
 
-// The exclusion has to be exactly this package's tests. Wider than that is how a
-// real copy stops being counted, which shared_number.go's comment already
-// records happening once to the tools/eval-regression copy.
 func TestSharedNumberOwnTestIsExactlyThisPackage(t *testing.T) {
 	t.Parallel()
 	for relative, want := range map[string]bool{
@@ -213,9 +182,6 @@ func TestSharedNumberOwnTestIsExactlyThisPackage(t *testing.T) {
 	}
 }
 
-// The roster in shared_number.go is the repo's actual claim, so it has to be
-// usable as one: no duplicates, sorted, and every name shaped like a marker the
-// pattern can read.
 func TestSharedNumberRosterIsWellFormed(t *testing.T) {
 	t.Parallel()
 	seen := map[string]bool{}

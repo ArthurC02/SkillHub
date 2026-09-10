@@ -1,7 +1,3 @@
-// Package skillpkg parses and statically validates Agent Skills packages
-// (INGEST-003, INGEST-006..008; SKILL-002). It is pure analysis over an fs.FS:
-// nothing in the package is ever executed (iron rule 1, ADR-007), and the same
-// code serves uploads (zip), git imports (directory), and tests (fstest.MapFS).
 package skillpkg
 
 import (
@@ -20,67 +16,39 @@ import (
 type Severity string
 
 const (
-	// SeverityError blocks the import (SKILL-002 阻擋錯誤).
 	SeverityError Severity = "error"
-	// SeverityWarning is surfaced but does not block (可接受警告).
+
 	SeverityWarning Severity = "warning"
-	// SeverityInfo is disclosure: scripts, URLs, dependency files.
+
 	SeverityInfo Severity = "info"
 )
 
-// Finding is one message from validation, tied to a file where possible.
-// Code is stable and machine-readable; Message is for humans.
 type Finding struct {
 	Severity Severity `json:"severity"`
 	Code     string   `json:"code"`
 	Path     string   `json:"path,omitempty"`
 	Message  string   `json:"message"`
-	// Details carries the full list behind an aggregated finding, so summarising
-	// for readability never costs the underlying facts (INGEST-008).
+
 	Details []string `json:"details,omitempty"`
 }
 
-// Manifest is the parsed SKILL.md frontmatter. Extra keeps unknown fields
-// as-is: the spec evolves and unknown keys are a warning, not data loss.
 type Manifest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	License     string `json:"license,omitempty"`
-	// Compatibility is the specification's environment-requirements field
-	// ("Designed for Claude Code", "Requires Python 3.14+ and uv"). One of the
-	// six the specification defines, and the one this parser was missing.
+
 	Compatibility string         `json:"compatibility,omitempty"`
 	AllowedTools  []string       `json:"allowed_tools,omitempty"`
 	Extra         map[string]any `json:"extra,omitempty"`
 }
 
-// SpecRevision identifies the Agent Skills specification this validator was
-// written against, and it is a pair of hashes rather than a version because the
-// specification has neither a version string nor a tag nor a release
-// (contracts/spec/SOURCE.json, ADR-044).
-//
-// It is a constant so that every sentence the platform says about conformance
-// can name it. Before 2026-08-22 the produced INSTALL.md told every downloader
-// the package was "valid against the Agent Skills specification" while no such
-// document existed anywhere in this repository — the sentence's only real
-// meaning was "it passed the function below", which is not what a reader takes
-// from it. A claim about an external standard has to be able to say which one.
 const SpecRevision = "agentskills.io, agentskills/agentskills@217be54 (2026-08-04)"
 
-// SpecFields is the complete frontmatter vocabulary of that revision. Six, and
-// the specification's reference validator rejects anything outside it.
 var SpecFields = []string{"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
 
-// Report is the full validation outcome. Findings are grouped by severity at
-// the presentation layer; Blocked is true when any error-level finding exists.
-// A passing report means "format valid", never "safe" or "effective" (ADR-007).
 type Report struct {
 	Manifest *Manifest `json:"manifest"`
-	// LicenseExpression is the license the package actually evidences, and
-	// LicenseSource says which artefact it came from — one of the ADR-021
-	// provenance tiers (licenseSourceManifest, licenseSourceManifestRef,
-	// licenseSourcePackageFile, licenseSourceRepoFile). Empty means unknown,
-	// which is the only case that may be treated as unknown (DISC-003).
+
 	LicenseExpression string    `json:"license_expression,omitempty"`
 	LicenseSource     string    `json:"license_source,omitempty"`
 	Findings          []Finding `json:"findings"`
@@ -98,26 +66,12 @@ func (r *Report) addFinding(f Finding) {
 	}
 }
 
-// CategorizedFindings groups a Report's findings by severity so callers can
-// present blocking errors, non-blocking warnings, and informational notes as
-// separate lists instead of one undifferentiated feed (INGEST-008).
 type CategorizedFindings struct {
 	Errors   []Finding `json:"errors"`
 	Warnings []Finding `json:"warnings"`
 	Infos    []Finding `json:"infos"`
 }
 
-// Categorize splits r.Findings by severity, each bucket ordered by
-// (Code, Path, Message).
-//
-// The sort is not cosmetic. Findings are raised while walking Go maps —
-// frontmatter fields, metadata entries — so two validations of the same bytes
-// append them in different orders. Everything that has to be reproducible flows
-// through here: skillhub-manifest.json carries these lists, and content_hash is
-// taken over the zip that carries the manifest, so an unsorted bucket made two
-// packagings of one input produce two different content_hash values and defeat
-// the reuse lookup that is supposed to stop a second set of bytes ever existing
-// (ADR-027 decisions 1 and 2).
 func (r Report) Categorize() CategorizedFindings {
 	c := CategorizedFindings{Errors: []Finding{}, Warnings: []Finding{}, Infos: []Finding{}}
 	for _, f := range r.Findings {
@@ -145,112 +99,51 @@ func (r Report) Categorize() CategorizedFindings {
 	return c
 }
 
-// nameRule is the Agent Skills name constraint: lowercase alphanumerics
-// separated by single hyphens.
 var nameRule = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 const (
-	// Name and description caps are counted in runes, which is what the Agent
-	// Skills spec and these error messages both say. Counting bytes made the
-	// real limit depend on the author's language — a zh-Hant description hit
-	// "1024 characters" at 341 of them (import-report.md §6.1 bug 1).
 	maxNameLen        = 64
 	maxDescriptionLen = 1024
-	// maxCompatibilityLen is the specification's "1-500 characters if provided".
+
 	maxCompatibilityLen = 500
-	// maxScanBytes bounds content scanning per file.
-	// ponytail: flat cap, oversized files are disclosed and skipped; stream
-	// scanning only if real packages ever exceed it.
-	maxScanBytes = 1 << 20 // 1 MiB
+
+	maxScanBytes = 1 << 20
 )
 
-// ArchiveSource is implemented by an fs.FS that was opened from an archive and
-// can still say what that archive declared, before the fs view normalised it.
-//
-// It exists because archive/zip's fs.FS rewrites entry names: `../../evil.sh` is
-// presented as `evil.sh` and `/etc/cron.d/evil` as `etc/cron.d/evil`. A check
-// written against the tree therefore cannot see a traversal entry at all — by
-// the time anything walks, the entry has silently changed identity and the file
-// list a reviewer approves is not the one the archive carries (04 丙-15 D-1/D-2).
-// Only the opener sees the raw names, so it hands its findings in here rather
-// than every caller having to remember to ask for them separately.
 type ArchiveSource interface {
 	ArchiveFindings() []Finding
 }
 
-// The content-disclosure codes: what a package was found to *contain*, as
-// opposed to whether it validates. They are the vocabulary the search row and
-// the detail view turn into words, which is why they are constants and exported
-// — the surface that renders them used to keep its own hand-written list, and
-// what a hand-written list does is fall behind the scanner. It fell behind by
-// five: symlink-entry, undeclared-dependency, file-not-scanned,
-// package-dependencies and entry-path-escape were all being found and none of
-// them had a word (04 丙-29 ④, 稽核 01).
-//
-// [DisclosureCodes] below is the whole set, and catalog asserts against it.
-// Adding a code here without a catalogue entry turns that test red, which is the
-// only reason this list exists as a list.
-//
-// Deliberately NOT here: the spec, frontmatter and licence verdicts
-// (`name-missing`, `license-unknown`, `file-ref-missing`, …). Those say whether
-// the package is well formed, not what is inside it, and they have their own
-// surfaces. Widening this set to "every code" would put "frontmatter has no
-// closing ---" on a risk badge.
 const (
-	// CodeEntryPathEscape is one code for both shapes of the same rule: an entry
-	// name that is not a path inside the package. Same severity, same remedy —
-	// the message carries which shape it was.
 	CodeEntryPathEscape = "entry-path-escape"
-	// CodePossibleSecret is the one blocking code that reads file *content*
-	// rather than package structure. Exported since before the rest because the
-	// generation path has to tell it apart from the other eleven: those are
-	// formatting slips a second attempt at the same prompt usually fixes, and a
-	// model writing a credential-shaped line is a writing habit that reproduces
-	// (ADR-048). A string literal in the other package would have made that
-	// distinction silently wrong the day this one was renamed.
+
 	CodePossibleSecret = "possible-secret"
-	// CodeScriptFile: the package carries a script file. Never executed here.
+
 	CodeScriptFile = "script-file"
-	// CodeEmbeddedScript: runnable code written into SKILL.md itself, which no
-	// file list can show (SKILL-003, CONTENT-006).
+
 	CodeEmbeddedScript = "embedded-script"
-	// CodeUnlabelledCodeBlock: a long fenced block with no language tag. Not
-	// embedded-script, because nothing here can tell what it is — which is the
-	// disclosure. Dropping five characters used to make a block invisible to
-	// both the size check and dependency extraction.
+
 	CodeUnlabelledCodeBlock = "unlabelled-code-block"
-	// CodeExternalURL: package content points at addresses outside the platform.
+
 	CodeExternalURL = "external-url"
-	// CodeBinaryFile: a non-text file, whose contents static scanning cannot read.
+
 	CodeBinaryFile = "binary-file"
-	// CodeDependencyFile: the package ships a dependency manifest.
+
 	CodeDependencyFile = "dependency-file"
-	// CodePackageDependencies: the dependencies the scan could name.
+
 	CodePackageDependencies = "package-dependencies"
-	// CodeUndeclaredDependency: imported but declared nowhere in the package.
+
 	CodeUndeclaredDependency = "undeclared-dependency"
-	// CodeSymlinkEntry: an entry that is a link rather than a file.
+
 	CodeSymlinkEntry = "symlink-entry"
-	// CodeUnsupportedEntryType: a device, FIFO, socket, or other entry the
-	// runtime cannot materialise as a regular file or directory.
+
 	CodeUnsupportedEntryType = "unsupported-entry-type"
-	// CodeFileNotScanned: a file over maxScanBytes, of which only the first
-	// megabyte was read. The secret scan therefore did not see the rest.
+
 	CodeFileNotScanned = "file-not-scanned"
-	// CodeNestedArchive: an archive inside the package. PDM-005 §5.1b forbids
-	// one as a way around the unpacking caps, and this platform refuses it by
-	// neither name nor content — refusing by extension would also reject a
-	// Skill that legitimately ships a zip as sample data (05 R-21/R-27).
-	// What the platform can honestly say is that it did not look inside: its
-	// own caps bound what IT unpacks, and this entry is not covered by them.
-	// The person who extracts the package is, and they get told.
+
 	CodeNestedArchive = "nested-archive"
 )
 
-// DisclosureCodes is every content-disclosure code, so a renderer can assert it
-// has words for all of them instead of discovering a gap from a support ticket.
-// Order is the declaration order above and carries no meaning; the display order
-// belongs to whoever renders them.
 var DisclosureCodes = []string{
 	CodeEntryPathEscape, CodePossibleSecret, CodeScriptFile, CodeEmbeddedScript,
 	CodeUnlabelledCodeBlock, CodeExternalURL, CodeBinaryFile, CodeDependencyFile,
@@ -258,13 +151,8 @@ var DisclosureCodes = []string{
 	CodeFileNotScanned, CodeNestedArchive,
 }
 
-// archiveSuffixes are the names that mean "there is another archive in here".
-// Name-based on purpose: this decides what to DISCLOSE, never what to refuse,
-// so a false positive costs a sentence and a false negative costs nothing the
-// caps do not already bound.
 var archiveSuffixes = []string{".zip", ".tar", ".gz", ".tgz", ".bz2", ".xz", ".7z", ".rar"}
 
-// LooksLikeArchive reports whether an entry name says it is an archive.
 func LooksLikeArchive(name string) bool {
 	lower := strings.ToLower(name)
 	for _, suffix := range archiveSuffixes {
@@ -275,22 +163,6 @@ func LooksLikeArchive(name string) bool {
 	return false
 }
 
-// ArchiveEntryFinding checks one raw archive entry name — the name as the
-// archive declares it — and returns the finding to record when that name is not
-// a path the package could contain.
-//
-// Error level, because this is an attempt and not format noise. A package cannot
-// contain `../../evil.sh` or `/etc/cron.d/evil`; an entry that says it does is
-// aimed at whatever unpacks it. Nothing here is a zip-slip — the platform never
-// writes the tree to disk — but the archive and the fs view answer to two
-// different names, and the one a human reviews must be the one the package
-// declares.
-//
-// Backslashes are folded to slashes first: a zip entry name is defined to use
-// forward slashes, so a backslash in one is either a literal character or an
-// entry written for a Windows extractor that will treat it as a separator, and
-// `..\..\evil.sh` has to be caught either way. packaging.travels() makes the same
-// two judgements on the way out; this is the way in.
 func ArchiveEntryFinding(name string) (Finding, bool) {
 	if strings.Contains(name, `\`) {
 		return Finding{Severity: SeverityError, Code: CodeEntryPathEscape, Path: name,
@@ -316,12 +188,9 @@ func hasDriveLetter(path string) bool {
 		((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z'))
 }
 
-// Validate parses SKILL.md and statically checks the package rooted at fsys.
 func Validate(fsys fs.FS) Report {
 	var r Report
 
-	// First, so an archive-level finding survives the early returns below: a
-	// package with no SKILL.md at all still declared those entries.
 	if a, ok := fsys.(ArchiveSource); ok {
 		for _, f := range a.ArchiveFindings() {
 			r.addFinding(f)
@@ -345,8 +214,6 @@ func Validate(fsys fs.FS) Report {
 	return r
 }
 
-// parseFrontmatter extracts and decodes the YAML frontmatter, returning the
-// markdown body after it.
 func (r *Report) parseFrontmatter(raw []byte) (body string) {
 	s := string(raw)
 	rest, ok := strings.CutPrefix(s, "---\n")
@@ -365,8 +232,7 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 
 	var fields map[string]any
 	if err := yaml.Unmarshal([]byte(fm), &fields); err != nil {
-		// The parser's own English ("yaml: line 2: did not find expected ...") stays
-		// out of the message; the code and the file name are what a reader acts on.
+
 		r.add(SeverityError, "frontmatter-invalid-yaml", "SKILL.md", "frontmatter 不是合法的 YAML")
 		return body
 	}
@@ -381,28 +247,19 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 		case "license":
 			m.License, _ = v.(string)
 		case "compatibility":
-			// A specification field, and one this parser did not know until
-			// 2026-08-22 — so a Skill that correctly declared its environment
-			// requirements was told it had an unknown key. ADR-044.
+
 			m.Compatibility, _ = v.(string)
 		case "allowed-tools":
 			switch t := v.(type) {
 			case string:
-				// The specification says space-separated (`Bash(git:*) Bash(jq:*) Read`).
-				// Commas are accepted too — this parser read comma-separated
-				// before the specification was pinned, and refusing a comma now
-				// would reject stored packages over punctuation nobody documented
-				// as significant.
+
 				for _, s := range strings.Fields(strings.ReplaceAll(t, ",", " ")) {
 					if s = strings.TrimSpace(s); s != "" {
 						m.AllowedTools = append(m.AllowedTools, s)
 					}
 				}
 			case []any:
-				// Not the specification's shape — a YAML list here is Claude
-				// Code's extension. Parsed rather than dropped (dropping it would
-				// silently widen what the Skill may do), and reported so the
-				// author knows it does not travel.
+
 				for _, e := range t {
 					if s, ok := e.(string); ok {
 						m.AllowedTools = append(m.AllowedTools, s)
@@ -414,9 +271,7 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 			}
 		case "metadata":
 			m.Extra[k] = v
-			// The specification is specific: "a map from string keys to string
-			// values". Anything else is dropped by at least one client rather
-			// than carried, so a Skill relying on it loses data silently.
+
 			if mm, ok := v.(map[string]any); ok {
 				for mk, mv := range mm {
 					if _, isString := mv.(string); !isString {
@@ -442,15 +297,13 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 	return body
 }
 
-// cutClosingDelimiter splits frontmatter from body at the first line that is
-// exactly "---".
 func cutClosingDelimiter(s string) (fm, body string, ok bool) {
 	for _, sep := range []string{"\n---\n", "\n---\r\n", "\r\n---\r\n", "\r\n---\n"} {
 		if fm, body, ok = strings.Cut(s, sep); ok {
 			return fm, body, true
 		}
 	}
-	// Frontmatter may end at EOF with a bare closing line.
+
 	for _, tail := range []string{"\n---", "\r\n---"} {
 		if fm, cut := strings.CutSuffix(s, tail); cut {
 			return fm, "", true
@@ -470,43 +323,30 @@ func (r *Report) checkManifest() {
 		r.add(SeverityError, "name-invalid", "SKILL.md", "name 只能使用小寫英文字母、數字與單一連字號")
 	}
 	switch {
-	// Blank, not just absent. The specification says "Non-empty" and its
-	// reference validator strips before testing — and this is the field an agent
-	// reads to decide whether to load the Skill at all, so a description of
-	// spaces is a Skill nothing will ever pick up. That makes it an error rather
-	// than a warning: it is not a style preference, it is a Skill that cannot work.
+
 	case strings.TrimSpace(m.Description) == "":
 		r.add(SeverityError, "description-missing", "SKILL.md", "frontmatter 欄位 description 為必填，且不可為空白")
 	case utf8.RuneCountInString(m.Description) > maxDescriptionLen:
 		r.add(SeverityError, "description-too-long", "SKILL.md", fmt.Sprintf("description 超過 %d 個字元", maxDescriptionLen))
 	}
-	// Specification: "Must be 1-500 characters if provided". Counted in runes,
-	// for the reason import-report.md §6.1 bug 1 records about description.
+
 	if n := utf8.RuneCountInString(m.Compatibility); n > maxCompatibilityLen {
 		r.add(SeverityWarning, "spec-compatibility-too-long", "SKILL.md",
 			fmt.Sprintf("compatibility 有 %d 個字元，超過規格上限 %d", n, maxCompatibilityLen))
 	}
 }
 
-// licenseFileNames are the package-root filenames that state the package's own
-// license. Matched case-insensitively: a seed repo ships a lowercase `license`
-// (curated-skill-list.md §5.1 row 8) and the old exact-name list missed it.
 var licenseFileNames = map[string]bool{
 	"license": true, "license.txt": true, "license.md": true,
 	"licence": true, "licence.txt": true, "licence.md": true,
 	"copying": true, "copying.txt": true,
 }
 
-// CarriedLicenseFile is the repository-level license file a packer carries into
-// a package cut from a monorepo subdirectory (ADR-021 tier 3), next to
-// CarriedProvenanceFile which records where it came from. The name is matched
-// exactly, not case-insensitively: it is written by tooling, never by an author.
 const (
 	CarriedLicenseFile    = "LICENSE.repo"
 	CarriedProvenanceFile = "LICENSE.repo.provenance.json"
 )
 
-// License provenance tiers, in the precedence order fixed by ADR-021.
 const (
 	licenseSourceManifest    = "manifest"
 	licenseSourceManifestRef = "manifest-referenced-file"
@@ -514,24 +354,9 @@ const (
 	licenseSourceRepoFile    = "repo-license-file"
 )
 
-// licensePointer matches a frontmatter `license` value that names a file instead
-// of declaring a license. npm has the established convention for this
-// (`"SEE LICENSE IN <filename>"`, the file required at package top level), and
-// `anthropics/skills` writes the same idea as `Complete terms in LICENSE.txt`.
-// Recording either verbatim as an SPDX expression loses the fact the package
-// plainly states (ADR-021 待決策 #1).
-//
-// Deliberately a closed set of phrasings rather than a heuristic: a false match
-// hands the license question to some *other* file's text, so the cost of being
-// wrong is a misattributed license. Anything not matched keeps the old
-// behaviour and is recorded verbatim.
 var licensePointer = regexp.MustCompile(
 	`(?i)^(?:see|complete|full)\s+(?:the\s+)?(?:licen[sc]e|terms)(?:\s+text)?\s+in\s+(\S+?)[.,]?$`)
 
-// licensePointerTarget returns the package-root file a pointer-style license
-// value names. The target must be a bare filename at the package root, per the
-// npm convention: a pointer that walks out of the package is not evidence about
-// the package.
 func licensePointerTarget(license string) (string, bool) {
 	m := licensePointer.FindStringSubmatch(strings.Join(strings.Fields(license), " "))
 	if m == nil {
@@ -544,42 +369,21 @@ func licensePointerTarget(license string) (string, bool) {
 	return name, true
 }
 
-// licenseSignatures map a distinctive line of licence text to its SPDX id.
-// Substring matching over the file's first few KiB, no dependency: these texts
-// are fixed boilerplate and the ones below do not overlap. An unrecognised file
-// stays unknown rather than being guessed at (DISC-003).
 var licenseSignatures = []struct{ marker, spdx string }{
-	{"apache license", "Apache-2.0"}, // "Version 2.0" is checked below
+	{"apache license", "Apache-2.0"},
 	{"permission to use, copy, modify, and/or distribute this software", "ISC"},
 	{"permission is hereby granted, free of charge", "MIT"},
 	{"gnu affero general public license", "AGPL-3.0"},
 	{"gnu lesser general public license", "LGPL-3.0"},
-	{"gnu general public license", "GPL-3.0"}, // version checked below
+	{"gnu general public license", "GPL-3.0"},
 	{"mozilla public license version 2.0", "MPL-2.0"},
 	{"this is free and unencumbered software released into the public domain", "Unlicense"},
-	{"redistribution and use in source and binary forms", "BSD-3-Clause"}, // clause count checked below
+	{"redistribution and use in source and binary forms", "BSD-3-Clause"},
 }
 
-// resolveLicense records the license the package evidences and which artefact it
-// came from, following the ADR-021 precedence: the manifest field, then a
-// license file the package states for itself, then a repository-level license
-// carried in by the packer. Each tier is weaker evidence about *this* package
-// than the one above it, so LicenseSource is recorded alongside the expression
-// and never collapsed into it.
-//
-// The tiers below the manifest matter because a repository's real license is
-// very often only in a file (37 of 45 seed packages declared none in
-// frontmatter, import-report.md §4 Top-1), and dropping those left the catalogue
-// claiming "unknown" for licenses that were plainly stated.
-//
-// Every tier is still only LicenseStatusDeclared, never confirmed: a repo-level
-// MIT file says nothing about whether the subdirectory's content is the repo
-// author's to license (curated-skill-list.md §5.3).
 func (r *Report) resolveLicense(fsys fs.FS) {
 	if r.Manifest.License != "" {
-		// A pointer ("SEE LICENSE IN LICENSE.txt") is not a declaration. Resolve
-		// the file it names; if that fails for any reason, fall through to
-		// recording the author's string verbatim, exactly as before.
+
 		if name, ok := licensePointerTarget(r.Manifest.License); ok {
 			if data, err := fs.ReadFile(fsys, name); err == nil {
 				if spdx := detectLicense(data); spdx != "" {
@@ -594,10 +398,7 @@ func (r *Report) resolveLicense(fsys fs.FS) {
 		r.LicenseExpression, r.LicenseSource = normalizeSPDX(r.Manifest.License), licenseSourceManifest
 		return
 	}
-	// The first tier present decides, even when its text is unrecognised. No
-	// falling through: a package that states its own license is not licensed by
-	// whatever the repository says, and letting a carried repo-level MIT answer
-	// for an unreadable package-local license is exactly the §5.3 failure.
+
 	for _, c := range licenseCandidates(fsys) {
 		data, err := fs.ReadFile(fsys, c.name)
 		if err != nil {
@@ -605,7 +406,7 @@ func (r *Report) resolveLicense(fsys fs.FS) {
 		}
 		spdx := detectLicense(data)
 		if spdx == "" {
-			// DISC-003: unknown license must be surfaced, never assumed permissive.
+
 			r.add(SeverityWarning, "license-unknown", "SKILL.md",
 				fmt.Sprintf("frontmatter 未宣告授權，且 %s 不是可辨識的授權條款文字；視為未知授權", c.name))
 			return
@@ -624,9 +425,6 @@ func (r *Report) resolveLicense(fsys fs.FS) {
 	r.add(SeverityWarning, "license-unknown", "SKILL.md", "未宣告授權；視為未知授權")
 }
 
-// licenseCandidates lists the package-root files that may evidence a license, in
-// ADR-021 precedence order. fs.ReadDir sorts by filename, so a package carrying
-// several license files always resolves the same way.
 func licenseCandidates(fsys fs.FS) []struct{ name, source string } {
 	var out []struct{ name, source string }
 	entries, _ := fs.ReadDir(fsys, ".")
@@ -641,18 +439,12 @@ func licenseCandidates(fsys fs.FS) []struct{ name, source string } {
 	return out
 }
 
-// spdxIDs are the identifiers this scanner emits. detectLicense already returns
-// canonical ones; this list exists to canonicalise the *manifest* field, which
-// is free text an author typed.
 var spdxIDs = []string{
 	"Apache-2.0", "MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause",
 	"GPL-2.0", "GPL-3.0", "LGPL-3.0", "AGPL-3.0", "MPL-2.0",
 	"Unlicense", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0",
 }
 
-// spdxAliases are non-SPDX spellings common in frontmatter. Only unambiguous
-// ones: a bare "BSD" or "GPL" does not say which variant, and guessing a license
-// is worse than reporting the author's own string (DISC-003).
 var spdxAliases = map[string]string{
 	"apache 2.0": "Apache-2.0", "apache-2": "Apache-2.0", "apache2": "Apache-2.0",
 	"apache license 2.0": "Apache-2.0", "mit license": "MIT",
@@ -663,9 +455,6 @@ var spdxAliases = map[string]string{
 	"cc0": "CC0-1.0", "the unlicense": "Unlicense", "public domain": "Unlicense",
 }
 
-// normalizeSPDX canonicalises a declared license string so the same license
-// declared three ways compares equal (DISC-004 比較, ADR-021). An unrecognised
-// string is returned trimmed but otherwise verbatim — never mapped by guesswork.
 func normalizeSPDX(s string) string {
 	trimmed := strings.Join(strings.Fields(s), " ")
 	key := strings.ToLower(trimmed)
@@ -680,10 +469,9 @@ func normalizeSPDX(s string) string {
 	return trimmed
 }
 
-// detectLicense returns the SPDX id of a well-known license text, or "".
 func detectLicense(data []byte) string {
 	head := strings.ToLower(string(data[:min(len(data), 4096)]))
-	norm := strings.Join(strings.Fields(head), " ") // collapse the wrapping
+	norm := strings.Join(strings.Fields(head), " ")
 	for _, sig := range licenseSignatures {
 		if !strings.Contains(norm, sig.marker) {
 			continue
@@ -710,55 +498,28 @@ func detectLicense(data []byte) string {
 	return ""
 }
 
-// mdRef matches markdown links and images: [text](target) / ![alt](target).
 var mdRef = regexp.MustCompile(`!?\[[^\]]*\]\(([^)\s]+)\)`)
 
-// bareRef matches a relative path written as prose rather than as a link —
-// "Run scripts/analyze.py", "See references/passes.md", or the same path inside
-// a fenced command.
-//
-// Markdown links alone were not enough, and the seed corpus is the evidence:
-// real Skills point at their own files in running text far more often than they
-// link them (docs/plans/mvp/content/content-summaries.md records one whose whole
-// second pass lives in `references/`, named in prose). A checker that only reads
-// `[text](target)` verifies the Skills that happen to be written as documents
-// and silently skips the ones written as instructions — and the second kind is
-// the kind with scripts.
-//
-// The anchor that keeps this out of prose is not in the pattern, it is in
-// referencedPaths: **the first segment must be a directory the package actually
-// has**. `scripts/analyze.py` in a package with no `scripts/` is someone talking
-// about another repo; in a package that has one, it is a reference.
 var bareRef = regexp.MustCompile(`(?:^|[\s"'` + "`" + `(<\[])((?:[A-Za-z0-9._-]+/)+[A-Za-z0-9._-]+\.[A-Za-z0-9]{1,8})`)
 
-// SkillMDReferences returns the package-relative paths SKILL.md points at, in
-// the order they were found and without duplicates.
-//
-// Exported because the packager needs the same answer for a different question.
-// Validation asks "is this reference satisfied?"; packaging asks "did I remove
-// something this document needs?" — and those must not be allowed to disagree
-// about what counts as a reference, which two implementations eventually would.
 func SkillMDReferences(fsys fs.FS) []string {
 	raw, err := fs.ReadFile(fsys, "SKILL.md")
 	if err != nil {
 		return nil
 	}
-	// A throwaway report: this is the parse, not the validation. Findings raised
-	// here belong to the caller that runs Validate, not to this helper.
+
 	body := (&Report{}).parseFrontmatter(raw)
 	refs, _ := referencedPaths(fsys, body)
 	return refs
 }
 
-// referencedPaths extracts what SKILL.md points at, returning the in-package
-// references and, separately, the ones that escape the package root.
 func referencedPaths(fsys fs.FS, body string) (refs, escapes []string) {
 	seen := map[string]bool{}
 	add := func(target string) {
 		if strings.Contains(target, "://") || strings.HasPrefix(target, "#") || strings.HasPrefix(target, "mailto:") {
 			return
 		}
-		target, _, _ = strings.Cut(target, "#") // drop anchors
+		target, _, _ = strings.Cut(target, "#")
 		clean := strings.TrimPrefix(target, "./")
 		if clean == "" || seen[clean] {
 			return
@@ -774,8 +535,7 @@ func referencedPaths(fsys fs.FS, body string) (refs, escapes []string) {
 		add(m[1])
 	}
 	for _, m := range bareRef.FindAllStringSubmatch(body, -1) {
-		// The anchor. Without it every mention of `requirements.txt` in someone
-		// else's repo becomes a missing file in this one.
+
 		dir, _, _ := strings.Cut(m[1], "/")
 		if info, err := fs.Stat(fsys, dir); err != nil || !info.IsDir() {
 			continue
@@ -785,14 +545,6 @@ func referencedPaths(fsys fs.FS, body string) (refs, escapes []string) {
 	return refs, escapes
 }
 
-// checkFileReferences verifies that relative paths referenced from SKILL.md
-// exist in the package (SKILL-002 檔案引用).
-//
-// Still a warning and not an error, deliberately. A package that arrived with a
-// dangling reference is the author's package and the platform's job is to say
-// so, not to refuse it — 02:SKILL-002 asks for the two severities to be shown
-// apart, not for this one to block. The case that *does* block is the one the
-// platform caused: see BlockedFileRemoved in skill/delivery.
 func (r *Report) checkFileReferences(fsys fs.FS, body string) {
 	refs, escapes := referencedPaths(fsys, body)
 	for _, target := range escapes {
@@ -805,24 +557,11 @@ func (r *Report) checkFileReferences(fsys fs.FS, body string) {
 	}
 }
 
-// Embedded-code thresholds. A few lines in a fenced block illustrate usage; a
-// couple of hundred are a program that happens to live inside a document, and
-// the seed import found 5 packages shipping ~180 lines of Python that way while
-// the file-extension scan reported no scripts at all (import-report.md §4
-// Top-2). Above either threshold the package is disclosed as carrying code.
-//
-// ponytail: two flat line counts, chosen to sit well above a usage snippet and
-// well below those 180-line blocks. Tune from real appeal traffic, not from
-// theory.
 const (
-	maxEmbeddedBlockLines = 20 // one block this long is not an example
-	maxEmbeddedTotalLines = 50 // or many smaller ones adding up
+	maxEmbeddedBlockLines = 20
+	maxEmbeddedTotalLines = 50
 )
 
-// runnableFences are the fence languages whose content would run somewhere if
-// copied out. Prose-ish tags (json, yaml, text, markdown, diff, output) are
-// deliberately absent: disclosing those as code would train users to ignore
-// this finding.
 var runnableFences = map[string]string{
 	"python": "python", "py": "python", "python3": "python",
 	"bash": "bash", "sh": "bash", "shell": "bash", "zsh": "bash", "console": "bash",
@@ -833,9 +572,6 @@ var runnableFences = map[string]string{
 	"go": "go", "rust": "rust", "r": "r", "sql": "sql",
 }
 
-// checkEmbeddedCode discloses runnable code written into SKILL.md itself
-// (CONTENT-006). scanTree only sees files, so a Skill whose whole implementation
-// is a fenced Python block was being presented as containing no scripts.
 func (r *Report) checkEmbeddedCode(body string) {
 	var (
 		blocks   int
@@ -849,9 +585,7 @@ func (r *Report) checkEmbeddedCode(body string) {
 		if lines == 0 {
 			return
 		}
-		// No tag at all is its own disclosure, below. Deliberately not folded into
-		// the embedded-script count: that finding names the languages it found, and
-		// this is exactly the case where there is no language to name.
+
 		if tag == "" {
 			untagged.blocks++
 			untagged.lines += lines
@@ -859,15 +593,14 @@ func (r *Report) checkEmbeddedCode(body string) {
 			return
 		}
 		if lang == "" {
-			return // tagged with something nothing here runs: json, text, output …
+			return
 		}
 		blocks++
 		total += lines
 		longest = max(longest, lines)
 		byLang[lang] += lines
 	})
-	// SKILL-003 依語言標記判定，所以刪掉五個字元本來就整段規避——連依賴抽取一起漏掉。
-	// 判定不改（那要改規格），只補揭露：平台說出「這裡有一段它讀不懂的程式碼」。
+
 	if untagged.longest > maxEmbeddedBlockLines {
 		r.add(SeverityInfo, CodeUnlabelledCodeBlock, "SKILL.md", fmt.Sprintf(
 			"SKILL.md 內有 %d 個未標記語言的程式碼區塊，合計 %d 行；最長 %d 行。"+
@@ -889,25 +622,14 @@ func (r *Report) checkEmbeddedCode(body string) {
 		total, blocks, strings.Join(langs, ", "), longest))
 }
 
-// forEachFence calls fn once per fenced code block with the canonical runnable
-// language (empty when the tag names nothing this package can run), the raw tag
-// as written (empty when the fence carries none), and the block's body.
-//
-// It opens on *every* fence, tagged or not. Until 2026-08-29 an untagged fence
-// did not open a block at all, so its contents were walked as though they were
-// prose: neither the size check nor dependency extraction ever saw them, and
-// deleting five characters was a complete bypass of SKILL-003. The caller that
-// wants only runnable blocks filters on lang; the one that discloses untagged
-// blocks filters on tag.
-//
-// Shared by the embedded-code size check and dependency extraction: two walks
-// would eventually disagree about what counts as a code block, and then the size
-// warning and the dependency list would be describing different packages.
+// forEachFence walks body line by line, tracking whether it is inside a fence
+// and which delimiter opened it, and calls fn with the accumulated body once
+// the matching closing line is found.
 func forEachFence(body string, fn func(lang, tag, code string)) {
 	var (
-		lang  string // canonical runnable language, "" if none
-		tag   string // the fence's raw language tag, "" if untagged
-		fence string // the delimiter that opened the current block
+		lang  string
+		tag   string
+		fence string
 		code  strings.Builder
 		open  bool
 	)
@@ -930,11 +652,6 @@ func forEachFence(body string, fn func(lang, tag, code string)) {
 	}
 }
 
-// fenceDelimiter returns the opening fence marker of line, or "".
-//
-// It no longer requires a language tag: requiring one meant an untagged fence
-// was not a code block at all, which is what made deleting five characters a
-// complete bypass of the SKILL-003 disclosure.
 func fenceDelimiter(line string) string {
 	for _, f := range []string{"```", "~~~"} {
 		if strings.HasPrefix(line, f) {
@@ -944,7 +661,6 @@ func fenceDelimiter(line string) string {
 	return ""
 }
 
-// fenceTag is the raw language token on an opening fence line, or "".
 func fenceTag(line string) string {
 	if fields := strings.Fields(strings.TrimLeft(line, "`~")); len(fields) > 0 {
 		return fields[0]
@@ -969,36 +685,22 @@ var (
 
 	urlPattern = regexp.MustCompile(`https?://[^\s"'<>\)\]]+`)
 
-	// secretPatterns are deliberately few and high-confidence: a false block
-	// costs an appeal (ADR-007 誤報), so fuzzy entropy checks stay out.
 	secretPatterns = []*regexp.Regexp{
-		regexp.MustCompile(`AKIA[0-9A-Z]{16}`),                       // AWS access key id
-		regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{36,}`),             // GitHub tokens
-		regexp.MustCompile(`sk-[A-Za-z0-9_-]{32,}`),                  // OpenAI-style API keys
-		regexp.MustCompile(`xox[baprs]-[A-Za-z0-9-]{10,}`),           // Slack tokens
-		regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),     // key material
-		regexp.MustCompile(`(?i)aws_secret_access_key\s*=\s*\S{20}`), // AWS secret assignment
+		regexp.MustCompile(`AKIA[0-9A-Z]{16}`),
+		regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{36,}`),
+		regexp.MustCompile(`sk-[A-Za-z0-9_-]{32,}`),
+		regexp.MustCompile(`xox[baprs]-[A-Za-z0-9-]{10,}`),
+		regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),
+		regexp.MustCompile(`(?i)aws_secret_access_key\s*=\s*\S{20}`),
 	}
 )
 
-// IsScriptPath reports whether path is one of the script types scanTree
-// discloses. Exported so the DISC-003 file-tree view marks exactly the files the
-// scan called scripts: a second extension list in the presentation layer would
-// eventually disagree with this one, and the tree is where a user decides
-// whether to trust the package.
-//
-// It answers by name alone, so a symlink named `run.sh` is marked here while the
-// scan reports it as symlink-entry instead of script-file. The two disagree in
-// the cautious direction and only for a shape no real package has; deciding it
-// by mode would need the entry, which a path does not carry.
 func IsScriptPath(path string) bool {
 	lower := strings.ToLower(path)
 	i := strings.LastIndex(lower, ".")
 	return i >= 0 && scriptExts[lower[i:]]
 }
 
-// scanTree walks every file: discloses scripts, executables, dependency
-// manifests, and external URLs (info), and blocks on likely secrets (error).
 func (r *Report) scanTree(fsys fs.FS) {
 	urlsByHost := map[string][]string{}
 	deps := newDepScan()
@@ -1010,11 +712,7 @@ func (r *Report) scanTree(fsys fs.FS) {
 		if err != nil {
 			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
 		}
-		// A symlink before anything else: its body is a link target, not file
-		// content, so scanning it as a script or as text would describe a file
-		// that does not exist. A zip carries one as an ordinary entry with a mode
-		// bit, and without this the scan never says the package contains a link at
-		// all (04 丙-15 D-3).
+
 		if info.Mode()&fs.ModeSymlink != 0 {
 			r.add(SeverityError, CodeSymlinkEntry, path, symlinkMessage(fsys, path, info.Size()))
 			return nil
@@ -1044,11 +742,6 @@ func (r *Report) scanTree(fsys fs.FS) {
 			r.add(SeverityInfo, CodeDependencyFile, path, "套件宣告了外部依賴套件")
 		}
 
-		// Read a bounded prefix rather than skipping an oversized file outright.
-		// Skipping disclosed the file and shipped it anyway: a 1.5 MB dump
-		// carrying a credential never reached secretPatterns, so possible-secret
-		// never fired and packaging's sourceBlocked never saw it. Disclosure is
-		// not exclusion (PACK-001 "must not be packaged" / NFR-002).
 		data, err := readCapped(fsys, path, maxScanBytes)
 		if err != nil {
 			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
@@ -1059,11 +752,7 @@ func (r *Report) scanTree(fsys fs.FS) {
 				maxScanBytes, len(data)))
 		}
 		if isBinary(data) {
-			// A NUL early in the file means the text analyses below would
-			// describe something that is not text — but a credential is the same
-			// bytes whether or not they sit next to a NUL, so the patterns still
-			// run. This is the other half of the same hole: an .so or a .db with
-			// an AKIA key in it used to ship byte for byte.
+
 			r.scanSecrets(path, data)
 			return nil
 		}
@@ -1081,26 +770,12 @@ func (r *Report) scanTree(fsys fs.FS) {
 	r.addURLDisclosures(urlsByHost)
 }
 
-// maxLinkTarget bounds what a link target may contribute to a message a user
-// reads. It is untrusted package content like any other.
 const maxLinkTarget = 512
 
-// symlinkMessage describes one link entry, naming its target when the target is
-// readable, short and plain text — a zip stores a symlink's target as the entry's
-// body, and where it points is the whole question a reviewer has about it.
-//
-// Warning, not error, and the reason is the export side: packaging.travels()
-// already refuses anything that is not a regular file, so a link never reaches a
-// download and PACK-001's "must not be packaged" list is satisfied by exclusion.
-// Blocking here would instead reject import and every Run of a package that
-// carries a benign link, which is the false-block cost ADR-007 asks to weigh.
-// What was missing was not a block, it was the disclosure: the exclusion used to
-// be silent at both ends.
 func symlinkMessage(fsys fs.FS, path string, size int64) string {
 	target, err := fs.ReadLink(fsys, path)
 	if err != nil && size > 0 && size <= maxLinkTarget {
-		// A zip's fs view does not implement ReadLinkFS: it presents the entry as
-		// an ordinary little file whose body is the target path.
+
 		if data, rerr := fs.ReadFile(fsys, path); rerr == nil && utf8.Valid(data) {
 			target, err = string(data), nil
 		}
@@ -1116,16 +791,8 @@ func symlinkMessage(fsys fs.FS, path string, size int64) string {
 		"但任何把這些位元組解壓縮到磁碟的工具都會建立這個連結"
 }
 
-// urlExamplesPerHost is how many URLs the summary line names before it stops;
-// the rest stay in Finding.Details.
 const urlExamplesPerHost = 3
 
-// addURLDisclosures emits one info finding per external host instead of one per
-// URL. A single seed package produced 321 URL findings — mostly OOXML schema
-// namespaces — which is a list nobody reads and which buried the handful of
-// findings that mattered (import-report.md §4 Top-3). The host is the answer to
-// "where would this Skill connect to"; every original URL is still carried in
-// Details, so nothing is lost, only folded.
 func (r *Report) addURLDisclosures(byHost map[string][]string) {
 	hosts := make([]string, 0, len(byHost))
 	for h := range byHost {
@@ -1135,8 +802,7 @@ func (r *Report) addURLDisclosures(byHost map[string][]string) {
 	for _, h := range hosts {
 		refs := byHost[h]
 		sort.Strings(refs)
-		// Distinct URLs: the same schema URI cited from ten files makes for ten
-		// identical examples, which is exactly the noise being folded away.
+
 		examples := make([]string, 0, urlExamplesPerHost)
 		seen := map[string]bool{}
 		shown := 0
@@ -1161,8 +827,6 @@ func (r *Report) addURLDisclosures(byHost map[string][]string) {
 	}
 }
 
-// urlHost extracts the host for grouping; unparseable URLs group under their
-// own raw text rather than being dropped.
 func urlHost(raw string) string {
 	if u, err := url.Parse(raw); err == nil && u.Host != "" {
 		return strings.ToLower(u.Host)
@@ -1170,11 +834,6 @@ func urlHost(raw string) string {
 	return raw
 }
 
-// scanSecrets runs the credential patterns over raw bytes, so it applies equally
-// to text and to whatever a binary turns out to contain.
-//
-// The matched value is never echoed: findings end up in logs, in the manifest
-// and on screen, and secrets must not (NFR-002, TRACE-001).
 func (r *Report) scanSecrets(path string, data []byte) {
 	for _, pat := range secretPatterns {
 		if pat.Match(data) {
@@ -1185,9 +844,6 @@ func (r *Report) scanSecrets(path string, data []byte) {
 	}
 }
 
-// readCapped reads at most limit bytes of path. The cap is the point: an entry
-// declares its own size and the scan must not be talked into a larger read by
-// that declaration.
 func readCapped(fsys fs.FS, path string, limit int64) ([]byte, error) {
 	f, err := fsys.Open(path)
 	if err != nil {

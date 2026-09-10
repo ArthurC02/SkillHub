@@ -5,9 +5,6 @@ import App from "./App";
 import { queryClient } from "./api/queryClient";
 import { router } from "./router";
 
-// 02:TEST-002 第 2 條「上傳前顯示大小限制、保存政策及資料使用範圍」. Same hand-rolled
-// DOM plumbing as lab.test.tsx — @testing-library is not a dependency of this app.
-
 let container: HTMLDivElement;
 let root: Root;
 
@@ -30,7 +27,6 @@ const LIMITS = {
   max_test_case_bytes: 100 << 20,
   max_files_per_test_case: 20,
   retention_days: 90,
-  // 04 丙-143 的規矩：fixture 抄 Go 真的回的句子（trial/design/http.go Limits）。
   allowed_kinds: [
     "文字檔（.txt .md .csv .tsv .json .jsonl .xml .yaml .yml）",
     "文件（.pdf .docx .xlsx .pptx）",
@@ -76,22 +72,15 @@ test("02:TEST-002 the upload rules are on screen before anything is uploaded", a
   await renderUpload();
 
   const text = container.textContent ?? "";
-  // Size limits, straight from GET /test-cases/limits rather than from a copy in
-  // the UI — the published number and the enforced number are the same number.
   expect(text).toContain("25 MB");
   expect(text).toContain("100 MB");
   expect(text).toContain("20");
-  // Retention policy.
   expect(text).toContain("90");
-  // Scope of use.
   expect(text).toContain("資料使用範圍");
   expect(text).toContain("Secrets");
-  // Format rule: judged by content, not by extension.
   expect(text).toContain("副檔名");
 
   expect(calls.some((u) => u.includes("/test-cases/limits"))).toBe(true);
-  // Nothing was uploaded to get here: the rules are shown first, not as the text
-  // of a refusal.
   expect(calls.some((u) => u.includes("/datasets"))).toBe(false);
   expect(container.querySelector("input[type=file]")).not.toBeNull();
 });
@@ -104,12 +93,6 @@ test("02:TEST-002 without the rules there is no upload control at all", async ()
   expect(container.querySelector("input[type=file]")).toBeNull();
 });
 
-/**
- * 04 丙-150(e)/丙-149: filetype.go:18 (`ErrUnsupportedType`) now answers 415 with
- * the Chinese sentence itself, and the page prints it verbatim rather than a
- * generic fallback — it is the one place the server knows something the page
- * does not (which type it actually detected the file as).
- */
 test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
@@ -140,10 +123,6 @@ test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence",
 });
 
 test("02:TEST-002 changing the Test Case clears what was uploaded to the previous one", async () => {
-  // `?test_case=` is a search param on this route, so a change re-renders instead
-  // of remounting. 「已上傳 a.csv」 and the last error survived into a different
-  // Test Case and claimed a file had been attached to it — RunPreflight and
-  // Packaging both write the reset effect for exactly this.
   const OTHER = "44444444-4444-4444-4444-444444444444";
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
@@ -173,7 +152,6 @@ test("02:TEST-002 changing the Test Case clears what was uploaded to the previou
   await act(async () => uploadButton().click());
   await waitFor(() => (container.textContent ?? "").includes("已上傳 a.csv"));
 
-  // And the other half of the state: an error message from this Test Case.
   Object.defineProperty(input, "files", { value: [], configurable: true });
   await act(async () => uploadButton().click());
   expect(container.textContent).toContain("請先選擇一個檔案");

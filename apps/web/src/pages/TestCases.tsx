@@ -25,36 +25,9 @@ import { ListFreshness } from "../components/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../api/trace";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { runStatusLabel } from "./RunEvaluation";
-// One byte formatter for the app, not a third copy of the same four lines.
 import { bytes } from "./RunPreflight";
 import type { AcceptanceCriterion, RubricItem, TestCase } from "../api/testcases";
 
-/**
- * 03:TEST-012 — the Test Case and acceptance-criteria screens.
- *
- * What they close: 02:TEST-001 第 2 條前半 「使用者可純手動建立驗收條件」 and
- * 第 3 條 「使用者可新增、編輯、刪除及確認驗收條件」. The four verbs take a
- * user as their subject, and until this page existed they could only be reached
- * with curl — which is why TEST-003 was handed back to 未勾.
- *
- * The snapshot rule is stated on screen rather than assumed: a run freezes the
- * prompt and the criteria as they stand when it starts, so editing afterwards
- * produces a *new* snapshot for the *next* run and changes nothing about a run
- * that already happened or an evaluation already written (iron rule 4, ADR-003).
- *
- * Confirmation is part of the same statement as the text: changing the wording
- * of a confirmed criterion clears its confirmation, because the agreement was
- * to the old words. The server enforces that; this page says so out loud so the
- * cleared checkbox does not read as a bug.
- */
-
-/**
- * 02:NFR-007「表單具有標籤與清楚的驗證訊息」. The submit button is disabled until
- * the three required fields are filled, and a disabled control with no stated
- * cause reads as a bug — the same ruling the DISC-003 filter bar already follows
- * for its unavailable dimensions. `role="status"` and not `alert`: nothing has
- * gone wrong yet, the form is simply not finished.
- */
 function CreateValidation({
   skillId,
   name,
@@ -78,19 +51,15 @@ function CreateValidation({
   );
 }
 
-// 04 丙-149/155③: testlab.go 的 validateDraft 用 bytes 算長度,不是字元數,`maxLength`
-// 數的是 UTF-16 code unit——同一個中文字元兩者算法不同,所以檢查一律用
-// `TextEncoder`,而且在送出前算,不是等 400 回來才知道。
 const MAX_NAME_BYTES = 200;
 const MAX_PROMPT_BYTES = 32768;
-// testlab.go:643 AddCriterion 的驗收條件上限（04 丙-155④,只在新增控制項旁說一次）。
 const MAX_CRITERIA = 50;
 
+// UTF-8 byte length, not JS string length (UTF-16 units) — the server's limit is bytes.
 function byteLength(s: string): number {
   return new TextEncoder().encode(s).length;
 }
 
-/** 上限在畫面上先說一次（設計 §2.2 第三向）；超過時擋下送出並說目前是幾 bytes。 */
 function oversizeReason(name: string, prompt: string): string | null {
   const n = byteLength(name);
   if (n > MAX_NAME_BYTES) return `名稱最多 ${MAX_NAME_BYTES} bytes，目前 ${n} bytes。`;
@@ -99,13 +68,6 @@ function oversizeReason(name: string, prompt: string): string | null {
   return null;
 }
 
-/**
- * 04 丙-150 補法：mutation 的 `onError` 存錯誤物件，不是它的 `.message`——
- * `ApiError extends Error`，所以舊寫法的中文 fallback 永遠不會被用到。401 交給
- * `ReadFailure`（登入）；其餘印這一頁自己的句子，只有 `serverSaysStatuses`
- * 列出的 status 才印伺服器那句本身，因為只有那幾個（丙-149 已經改成中文）帶著
- * 這一頁自己不知道的數字——名稱／Prompt 長度、驗收條件上限、檔案上限。
- */
 function MutationError({
   error,
   what,
@@ -144,23 +106,8 @@ export function TestCaseList() {
   const [createError, setCreateError] = useState<unknown>(null);
   const sizeReason = oversizeReason(name, prompt);
   const rows = testCases.data?.pages.flatMap((page) => page.test_cases) ?? [];
-  // 丙-116. `?skill=` accepts any UUID (router.tsx only checks the shape), while
-  // the create form below only accepts what `GET /skills` returns — so the two
-  // halves of this page could disagree about what 「這個 Skill」 means with
-  // nothing on screen saying so. The answer costs no request: `useOwnSkills` is
-  // already loaded, for the picker. Only decided once that read has landed —
-  // before it, `notMine` would be true for every skill including your own.
   const ownedSkill = skills.data?.skills.find((s) => s.skill_id === filter);
   const notMine = Boolean(filter) && Boolean(skills.data) && !ownedSkill;
-  /*
-    網址已經指名的 Skill，當作建立表單的預設值——**一個值，四個消費端**（選單、
-    停用理由、停用判斷、送出）。第一次修這個缺陷時只改了選單的 `value`，於是畫面上
-    選單顯示著那個 Skill、而它旁邊的停用理由還寫著「選一個 Skill」，按下去也還是
-    送空字串：一個看起來被修好、按下去照樣失敗的表單，比原本更糟。測試抓到了。
-    fallback 而不是覆寫：使用者一旦自己改過選擇，`skillId` 就有值，這一行不再插手；
-    `notMine`（`?skill=` 指到不是你的東西）時 `ownedSkill` 是 undefined，維持空白，
-    否則會預選一個選單裡不存在的值。
-  */
   const chosenSkill = skillId || ownedSkill?.skill_id || "";
 
   const create = useMutation({
@@ -175,37 +122,11 @@ export function TestCaseList() {
   return (
     <section>
       <h1>Test Case</h1>
-      {/*
-        設計 §2.13（ADR-065）第 2 條：快照規則原本在 Test Case 的兩個畫面上講了三次
-        ——這裡、詳情頁的「驗收條件」、詳情頁的 Rubric。留在「驗收條件」那一份：規則
-        的後果（改了不會動到已經跑過的 Run）只有在**正在編輯**的地方才決定得了任何
-        事，而這一頁不能編輯任何一條。內容一個字都沒有改寫，只是不再印第二、三次。
-      */}
       <p className="note" data-role="teaching">
         Test Case 是可編輯的草稿：User Prompt、測試資料與驗收條件。
       </p>
 
-      {/*
-        設計 checklist 1 / 義務 §1.2: 這一頁要回答的是「我有哪些 Test Case」,而
-        在 375×900 下建立表單把第一列推到 ~y715——答案在 78% 的位置。清單先,
-        表單後。§1.3 說這種情況的工具是漸進式揭露而不是模式切換,而把次要動作
-        往下移是同一件事最便宜的做法:兩段都還在同一頁,誰都沒有被藏起來。
-      */}
       <h2>既有的 Test Case</h2>
-      {/*
-        The filter is stated whenever it is on, with the way out beside it: a
-        list that silently shows a subset reads as "this is everything".
-        The skill is named from the rows rather than from a second request —
-        every row of a filtered list carries the same `skill_name`.
-
-        丙-116: with no rows there is no `skill_name`, and the fallback used to
-        be 「這一個 Skill」 — a filter announcing itself while unable to name what
-        it filtered by. `ownedSkill` closes the common half of that (an own skill
-        with no test cases yet now gets its real name) and the notice below
-        closes the other half, which is the one that mattered: the id belongs to
-        a skill outside this workspace, so the list cannot show it AND the picker
-        below cannot offer it.
-      */}
       {filter && (
         <p className="note" role="status">
           只顯示 <strong>{rows[0]?.skill_name || ownedSkill?.name || "某一個 Skill"}</strong> 的
@@ -217,13 +138,6 @@ export function TestCaseList() {
       )}
       {notMine && (
         <p className="notice" role="status">
-          {/*
-            Every line break in this paragraph has to land beside a Latin token.
-            JSX joins wrapped text lines with one space, so a break after a
-            full-width comma renders as 「顯示， 下面」 — and Prettier chooses the
-            break, not the author. The rendered string is pinned in
-            testcases.test.tsx for exactly that reason.
-          */}
           這個 Skill 不在你的工作區。Test Case 屬於工作區，所以這裡看不到它，建立表單的 Skill
           選單也選不到它——
           <Link to="/skills/$skillId" params={{ skillId: filter as string }}>
@@ -236,9 +150,6 @@ export function TestCaseList() {
       <ReadFailure error={testCases.error} what=" Test Case" />
       {testCases.data &&
         (rows.length === 0 ? (
-          // Not when the skill is somebody else's: the notice above already said
-          // why this is empty, and 「還沒有」 there would read as an invitation to
-          // create one — the exact sentence that ended the corridor.
           notMine ? null : (
             <p>{filter ? "這個 Skill 還沒有 Test Case。" : "還沒有 Test Case。"}</p>
           )
@@ -250,23 +161,6 @@ export function TestCaseList() {
                   {tc.name}
                 </Link>
                 <p className="note">
-                  {/*
-                    Empty means the server could not name it — not a name and
-                    not a UUID.
-
-                    It used to say 無權檢視（已不在你的可見範圍）, and that is the
-                    one cause that cannot happen here (04 丙-121). This list is
-                    workspace-scoped and a test case's skill was checked to be in
-                    the same workspace when it was created, so the lookup behind
-                    this field is asking about the caller's OWN skill. It comes
-                    back empty when that skill is gone from the list — deleted,
-                    or taken down — which is a thing the reader did or had done to
-                    them, not a permission they lack.
-
-                    Both causes are named because this side genuinely cannot tell
-                    them apart: 設計 §2.9 wants the absence worded, and inventing
-                    the more specific of two answers is what the old copy did.
-                  */}
                   Skill：
                   {tc.skill_name === ""
                     ? "這個 Skill 已經不在你的清單裡（已刪除，或已下架）"
@@ -295,22 +189,12 @@ export function TestCaseList() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          // 04 丙-155③: bytes 上限在畫面上已經先說了,這裡是最後一道:超過的話
-          // 不送出,按鈕本來就已經停用,這一行擋的是 Enter 直接送出表單。
           if (oversizeReason(name, prompt)) return;
           create.mutate();
         }}
       >
         <p className="field">
           <label htmlFor="tc-skill">Skill</label>
-          {/*
-            網址已經指名了 Skill，這個選單還是問你一次。上半部的篩選提示已經用
-            `ownedSkill.name` 把它叫出來了，下半部的停用理由卻寫著「選一個 Skill」
-            ——**在一個已經指名了 Skill 的畫面上**，而那個原因是頁面自己造出來的。
-            `ownedSkill` 只在「確認是你自己的 Skill」之後才有值（`notMine` 那一支
-            必須維持空白，否則會預選一個選單裡不存在的值），所以 fallback 而不是
-            覆寫：使用者一旦自己改過選擇，`skillId` 就有值，這一行不再插手。
-          */}
           <select id="tc-skill" value={chosenSkill} onChange={(e) => setSkillId(e.target.value)}>
             <option value="">請選擇</option>
             {skills.data?.skills.map((s) => (
@@ -348,10 +232,6 @@ export function TestCaseList() {
             {sizeReason}
           </p>
         )}
-        {/* 設計 §4.6.3（ADR-064）的表，`/lab/test-cases` 那一列：這一頁的工作是
-            「建立一個 Test Case」。上面的清單是**很多列**，一列一顆填色按鈕等於
-            零顆，所以強調只給這一顆。停用態不變（§4.4 虛線優先，理由由
-            `CreateValidation` 說）。 */}
         <button
           type="submit"
           className="action"
@@ -386,9 +266,6 @@ export function TestCaseList() {
 export function TestCaseDetail() {
   const { testCaseId } = useParams({ from: "/lab/test-cases/$testCaseId" });
   const testCase = useTestCase(testCaseId);
-  // One read serves two things: the 執行歷史 section below, and the version the
-  // 開始試跑 link opens the picker on. The "last version run" is a fact about
-  // the run history, so it is read from there rather than copied into the draft.
   const runs = useRuns(testCaseId);
   const [deleted, setDeleted] = useState<{ datasets_deleted: number } | null>(null);
 
@@ -396,8 +273,6 @@ export function TestCaseDetail() {
     return (
       <section>
         <h1>已刪除這個 Test Case</h1>
-        {/* WS-002 「系統應說明刪除範圍」: the count is the server's, not a guess,
-            and what survived is named as plainly as what went. */}
         <p role="status">
           草稿與它的 {deleted.datasets_deleted} 個上傳檔案都已刪除，檔案本體也已移除。
         </p>
@@ -415,8 +290,6 @@ export function TestCaseDetail() {
 
   if (testCase.isPending) return <Loading what=" Test Case " />;
   if (testCase.error) {
-    // 404 stays this page's own answer — the id is wrong, and no login fixes
-    // that. Everything else goes through the shared 401 handling (資訊架構 IA-6).
     if (testCase.error instanceof ApiError && testCase.error.status === 404) {
       return <p role="alert">找不到這個 Test Case。</p>;
     }
@@ -439,10 +312,6 @@ export function TestCaseDetail() {
       <RubricSection testCase={testCase.data} />
       <DatasetSection testCaseId={testCaseId} />
       <h2>開始試跑</h2>
-      {/* 這一頁存在的理由，長得像這一頁存在的理由（index.css `a.action`）。它
-          以前是一個包在 .note 段落裡的純文字連結，也就是**被降級成次要文字的主要
-          動作**——而同一頁的「儲存」「新增」「刪除」都是按鈕。說明留在下面，是說
-          明的樣子。 */}
       <p>
         <Link
           className="action"
@@ -463,13 +332,6 @@ export function TestCaseDetail() {
   );
 }
 
-/**
- * The return leg of 建立 → 試跑 → 回來看, served by GET /runs?test_case_id=.
- *
- * `status` is worded as execution and never as a pass, the same ruling the run
- * history page keeps (ADR-025): what finished is the workload, and whether the
- * task was done is the evaluation's verdict on the run's own page.
- */
 function RunHistory({
   runs,
   history,
@@ -480,19 +342,11 @@ function RunHistory({
   return (
     <>
       <h2>執行歷史</h2>
-      {/*
-        設計 §2.5 / ADR-025 說兩軸,判定排在前面,而這份清單的每一列現在真的有兩列
-        （04 丙-32 補上判定欄位之後）。這裡原本再講一次兩軸的**定義**,/workspace/runs
-        的頂端還有第二份;§2.5 要的是「兩列、判定在前」這個版面事實,而那個事實由每一列
-        自己的兩個徽章帶著主詞說出來（任務判定：／執行狀態：）。兩列一個字都沒有動,
-        少掉的只有那段定義（§2.13,D 類）。
-      */}
       <p className="note" data-role="teaching">
         逐條驗收結果在各自的 Run 頁面上。
       </p>
       {runs.isPending && <Loading what="執行歷史" />}
       <ReadFailure error={runs.error} what="執行歷史" />
-      {/* 設計 §2.12 第 6 條: a list with a running row is an in-flight screen. */}
       {runs.data && (
         <ListFreshness
           inFlight={history.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
@@ -519,13 +373,9 @@ function RunHistory({
                 <p className="badge-row">
                   <span className="badge">執行狀態：{runStatusLabel(run.status)}</span>
                 </p>
-                {/* 義務 §1.1: 這兩個欄位一直在 RunListItem 裡而從來沒有被畫
-                    出來,所以一列「執行失敗」講不出為什麼失敗。伺服器沒給就
-                    不編一個理由出來——不渲染,而不是渲染成空白。 */}
                 {(run.status_reason || run.failure_class) && (
                   <p className="note">
                     {run.status_reason ?? "未測量（伺服器沒有回報原因）"}
-                    {/* 04 丙-115 ②: this printed 「（分類：capability_mismatch）」. */}
                     {run.failure_class && `（分類：${run.failure_class.label}）`}
                   </p>
                 )}
@@ -538,12 +388,6 @@ function RunHistory({
                     "尚未結束"
                   )}
                 </p>
-                {/*
-                  設計 §2.6 與 §3 第 8 條 — 識別符折疊。這一列平鋪過一個 36 字的
-                  UUID,是整份清單最長的一段字,而沒有人是靠它決定要點哪一次 Run:
-                  要它的人是去貼進 issue、或去跟 Run 頁面對照的人,那是一次點開的
-                  成本。§2.10 的十項一項都沒有進來,判定與執行狀態仍在上面平鋪。
-                */}
                 <details>
                   <summary>Skill Version</summary>
                   <code>{run.skill_version_id}</code>
@@ -565,11 +409,6 @@ function RunHistory({
   );
 }
 
-/**
- * 02:WS-002 第 3 條 — the delete, with its scope stated before it runs and the
- * server's own count stated after. Uses the shared two-step control so this is
- * not a fourth copy of the same markup (04 丙-22).
- */
 function DeleteTestCase({
   testCaseId,
   onDeleted,
@@ -584,9 +423,6 @@ function DeleteTestCase({
     mutationFn: () => deleteTestCase(testCaseId),
     onSuccess: async (result) => {
       setError(null);
-      // The whole ["test-cases"] subtree: this draft's own read, every filtered
-      // list, and the unfiltered one. Narrower keys would leave the list the
-      // user is about to land on still showing the row that just went.
       await client.invalidateQueries({ queryKey: ["test-cases"] });
       onDeleted(result);
     },
@@ -603,9 +439,6 @@ function DeleteTestCase({
           pending={remove.isPending}
           onAsk={() => setError(null)}
           onConfirm={() => remove.mutate()}
-          // Distinct from the 刪除 on every criterion and every uploaded file:
-          // three unlabelled 刪除 buttons on one page is three ways to destroy
-          // three different things, told apart only by position.
           label="刪除整個 Test Case"
           confirmLabel="確認刪除整個 Test Case"
         />
@@ -671,15 +504,12 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
               : undefined
         }
         onClick={() => {
-          // 04 丙-155③: 按鈕已經因為超過而停用,這裡擋的是萬一 disabled 沒擋到的情況。
           if (sizeReason) return;
           save.mutate();
         }}
       >
         {save.isPending ? "儲存中…" : "儲存"}
       </button>{" "}
-      {/* 設計 §2.4 — 停用要說原因,原因是看得見的文字而不是 title。同一頁上方的
-          CreateValidation 已經是這個形狀,這裡往下套用同一個。 */}
       {(name.trim() === "" || prompt.trim() === "") && (
         <span id="edit-required-reason" className="note" role="status">
           還不能儲存，因為：
@@ -715,8 +545,6 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
   const [addError, setAddError] = useState<unknown>(null);
   const [suggestError, setSuggestError] = useState<unknown>(null);
   const [adoptError, setAdoptError] = useState<unknown>(null);
-  // Proposals, held on the client only. Nothing was written by asking, so
-  // walking away from this list leaves the draft exactly as it was.
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const refresh = () => client.invalidateQueries({ queryKey: ["test-cases"] });
 
@@ -740,10 +568,6 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
     onError: (err) => setSuggestError(err),
   });
 
-  // Adoption is the ordinary add route with the wording labelled as a model's,
-  // one at a time: the user decides which proposals become criteria, and each
-  // one still arrives unconfirmed because adopting a wording is not agreeing
-  // to it (TEST-001 確認權在使用者).
   const adopt = useMutation({
     mutationFn: (proposal: string) =>
       addCriterion(testCase.test_case_id, proposal, "suggested").then(() => proposal),
@@ -758,12 +582,6 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
   return (
     <>
       <h2>驗收條件</h2>
-      {/*
-        設計 §2.13 第 2 條 — 快照規則在 Test Case 的兩個畫面上有三份（清單頁抬頭、
-        這裡、下面的 Rubric）。留這一份:這是**正在編輯**的地方,規則的後果（改了不會
-        動到已經跑過的 Run）只有在這裡決定得了事情。主詞從「這裡」放寬成「這一頁」,
-        因為被凍結的是 Prompt、驗收條件與 rubric,而那正是被刪掉的兩份各自涵蓋的。
-      */}
       <p className="note" data-role="teaching">
         每一條都會被逐項判定為通過／未通過／無法判斷。 開始 Run
         時，這一頁的內容會被凍結成快照：之後修改只影響<strong>下一次</strong>
@@ -780,7 +598,6 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
         </ul>
       )}
 
-      {/* 04 丙-155④: testlab.go:643 的 50 條上限,只在新增控制項旁說一次——不是每一列。 */}
       <p className="note">一個 Test Case 最多 {MAX_CRITERIA} 條驗收條件。</p>
       <p>
         <label htmlFor="new-criterion">新增驗收條件</label>{" "}
@@ -802,13 +619,8 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
         <button type="button" disabled={suggest.isPending} onClick={() => suggest.mutate()}>
           {suggest.isPending ? "建議中…" : "請系統建議（選用）"}
         </button>{" "}
-        {/* 設計 §2.4，含 aria-describedby：理由在畫面上而沒有接到控制項上，對用
-            螢幕閱讀器按到那顆灰按鈕的人來說等於不存在，而 NFR-007 沒有「看得見
-            的人」這個限定。 */}
         {text.trim() === "" && (
           <span className="note" role="status" id="criterion-add-why">
-            {/* §2.4 要的是「原因是看得見的文字」,不是一句完整的話;主詞在按鈕上
-                （新增）與 aria-describedby 上,不必在原因裡再講一次（§2.13）。 */}
             欄位是空的
           </span>
         )}
@@ -819,8 +631,6 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
         fallback="無法新增，可以再試一次。"
         serverSaysStatuses={[413]}
       />
-      {/* 04 丙-150(b): 503 印固定句、不內插伺服器那句——不管伺服器那句怎麼變,
-          「可以自己手動輸入」都成立,而伺服器那句是給 log 看的技術性描述。 */}
       <ReadFailure error={suggestError} what="建議">
         <p role="alert">
           {suggestError instanceof ApiError && suggestError.status === 503
@@ -897,14 +707,6 @@ function CriterionRow({
   });
 
   const edited = draft !== criterion.text;
-  // One expression instead of two sibling blocks, because the two conditions are
-  // the two ways 儲存文字 can be dead and a control has one reason at a time. It
-  // is also what makes `aria-describedby` conditional in the same place the
-  // sentence is chosen — the previous shape had the reason in one branch and the
-  // button in another, which is how they drifted apart.
-  // 措辭是 §2.13 的:按鈕上已經寫著「儲存文字」,而這一句是 aria-describedby 指向
-  // 的那一段,所以主詞不必再講一次。八條驗收條件就是同一句話印八次,句子縮短是唯一
-  // 不動 §2.4／§2.10 第 5 項的省法——原因仍然是平鋪的可見文字,仍然接在控制項上。
   const saveReason = !edited ? "沒有變更要存" : draft.trim() === "" ? "驗收條件不能是空白" : null;
 
   return (
@@ -920,13 +722,6 @@ function CriterionRow({
         maxLength={2000}
       />
       <p className="note">狀態：{criterionState(criterion)}</p>
-      {/*
-        設計 §2.4 — 停用要說原因，而且原因不能只活在 title 裡。這一句原本掛在
-        `edited && criterion.confirmed_at`，也就是只在「已確認」那一支渲染；而被
-        停用的是另一支的「確認」鈕。使用者在一條未確認的條件上打字、按鈕變灰、
-        畫面上沒有一個字說為什麼——正是 §2.4 命名的那個失效。兩支各有自己的話，
-        停用的那一支再以 aria-describedby 綁到按鈕上（§2.10 第 5 項：理由不折疊）。
-      */}
       {edited && (
         <p className="note" id={`criterion-edited-${criterion.id}`}>
           {criterion.confirmed_at
@@ -973,13 +768,6 @@ function CriterionRow({
               : "確認"}
           </button>
         )}{" "}
-        {/*
-          設計 §2.8 — 毀滅性動作兩段式,而範圍那句話就是整個揭露。驗收條件是使用者
-          自己寫的文字,原本是一顆一鍵即毀、沒有範圍句也沒有 aria-describedby 的
-          按鈕,與同一個檔案裡「刪除整個 Test Case」用的是兩套機制。四段照
-          WorkspaceSkills 的範本:消失什麼、還救得回來多久、什麼不受影響、還要另外
-          刪什麼。
-        */}
         <ConfirmDelete
           scopeId={`criterion-delete-scope-${criterion.id}`}
           scope={
@@ -993,34 +781,10 @@ function CriterionRow({
           pending={mutate.isPending}
           onAsk={() => setError(null)}
           onConfirm={() => mutate.mutate("delete")}
-          // Distinct from 刪除整個 Test Case and from a file's 刪除: three
-          // unlabelled 刪除 on one page is three different destructions told
-          // apart only by position.
           label="刪除這一條"
           confirmLabel="確認刪除這一條"
         />
       </p>
-      {/*
-        設計 §2.4 — this pair is the worst of the four on this screen, because
-        neither condition can be read off the screen: 儲存文字 is dead when the
-        box matches what is stored, and 確認 is dead when it does not.
-
-        Two things were wrong with the version below this one, and both were
-        invisible to the existing gate — `a11y.test.tsx` requires
-        `aria-describedby` on `[disabled][title]`, and these carry no `title`,
-        so a reason that is on the screen and wired to nothing passes it.
-
-        **① The sentence was not associated with the control.** A sighted reader
-        got the reason; a screen-reader user tabbing onto a dead 儲存文字 got a
-        button and silence. §2.4 is about the reason existing *for the person who
-        hit the control*, and NFR-007 does not have a sighted-only clause.
-
-        **② 確認's reason was rendered twice, in two different sentences.** The
-        one above the buttons（`criterion-edited-…`, already wired）and a second
-        one here saying the same thing another way — 設計 §3 第 14 條, on the row
-        where a reader is deciding whether their own edit is saved. The second
-        copy is gone; the wired one stays.
-      */}
       {saveReason && (
         <p className="note" role="status" id={`criterion-save-${criterion.id}`}>
           {saveReason}
@@ -1031,16 +795,6 @@ function CriterionRow({
   );
 }
 
-/**
- * CONTENT-007's rubric editor.
- *
- * One row per acceptance criterion, and not a free-standing list of items,
- * because a rubric item is addressed by the criterion it strengthens: the judge
- * answers one verdict per criterion id and the platform drops any id it did not
- * send, so an item that names anything else is an item whose answer has nowhere
- * to be stored. Laying the editor out this way makes that impossible to get
- * wrong instead of explaining it afterwards in an error message.
- */
 function RubricSection({ testCase }: { testCase: TestCase }) {
   const client = useQueryClient();
   const stored = testCase.rubric;
@@ -1056,8 +810,7 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
       const list = testCase.acceptance_criteria
         .map((c) => items[c.id])
         .filter((i): i is RubricItem => i !== undefined && i.text.trim() !== "");
-      // No items is not an empty rubric, it is no rubric. Sending null says so;
-      // sending `{items: []}` would be a rubric that says nothing.
+      // null means no rubric; {items: []} would mean a rubric with nothing in it.
       return updateTestCase(testCase.test_case_id, {
         rubric: list.length === 0 ? null : { version: version.trim(), items: list },
       });
@@ -1080,13 +833,6 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
 
   return (
     <>
-      {/*
-        設計 checklist 6 — `h3`, not a second `h2`. Rubric is a child of 驗收條件
-        by this section's own copy (「每一條都掛在上面某一條驗收條件上」) and by
-        its own code: it refuses to render an editor at all when the criteria
-        list is empty. axe never sees this — `heading-order` fails a skipped
-        level, not a level that should have gone down and didn't (§6).
-      */}
       <h3>Rubric（選用）</h3>
       <p className="note" data-role="teaching">
         Rubric 是驗收條件的<strong>加強說法</strong>，不是另一套判定：每一條都掛在上面某一條驗收
@@ -1174,10 +920,6 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
               ? "目前沒有任何一條有內容，儲存等於移除這個 Test Case 的 rubric。"
               : `目前 ${used} 條有內容。`}
           </span>
-          {/* 設計 §2.4 — 這是這一頁第五個停用的控制項，也是唯一一個沒有說原因的：
-              上面那句只報「幾條有內容」，讀者看到按不下去的按鈕會以為是壞掉。
-              同一頁另外四處（CreateValidation、新增驗收條件、儲存文字／確認）已經是
-              這個形狀。 */}
           {used > 0 && version.trim() === "" && (
             <span id="rubric-version-reason" className="note" role="status">
               還不能儲存，因為 Rubric 版本是空的。有內容的 rubric
@@ -1206,8 +948,6 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
   const remove = useMutation({
     mutationFn: (datasetId: string) => deleteDataset(testCaseId, datasetId),
     onSuccess: async (result) => {
-      // The server's own note (dataset.go DeleteDataset), forwarded as-is — 丙-149
-      // put it in Chinese, so this is no longer a translation this page has to do.
       setMessage(result.note);
       setError(null);
       await client.invalidateQueries({ queryKey: ["test-cases", testCaseId, "datasets"] });
@@ -1219,14 +959,6 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
     <>
       <h2>測試資料</h2>
       <p>
-        {/*
-          `a.action` 是這個 app 用來標「這一頁存在的理由」的框，而 `index.css` 自己
-          寫著理由：「if everything is emphasised nothing is, and the app already ran
-          that experiment in the other direction」。全 app 七個呼叫點，其他每一頁都
-          只有一個；這一頁有兩個，而且**先出現的是選用的那個**——上傳資料集不是必要
-          條件（沒有 Dataset 一樣跑得起來），前往權限確認才是這一頁乃至整個試驗室存在
-          的理由。拿掉這裡的強調，不動任何區塊順序。
-        */}
         <Link to="/lab/datasets" search={{ test_case: testCaseId }}>
           上傳檔案
         </Link>
@@ -1241,9 +973,6 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
           <p>還沒有上傳任何檔案。</p>
         ) : (
           <>
-            {/* 義務 §1.1: 上傳頁報的是上限,而這裡是唯一知道「已經用掉多少」的
-                地方。size_bytes 一直在型別裡而從來沒有被畫出來,所以讀者無從
-                拿一個檔案去對那兩個上限。 */}
             <p className="note">
               目前 {datasets.data.datasets.length} 個檔案，合計 {bytes(datasets.data.total_bytes)}
               。上限在上傳頁的「大小限制」。
@@ -1255,11 +984,6 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
                   <span className="note">
                     （{d.content_type}・{bytes(d.size_bytes)}）
                   </span>{" "}
-                  {/*
-                    設計 §2.8 — 同一條規則,不同的範圍句。刪掉的是檔案本體,而
-                    「已跑過的 Run 仍保留它的名稱與內容雜湊」是伺服器自己講的
-                    (trial/design/dataset.go DeleteDataset 與該端點回的 note)。
-                  */}
                   <ConfirmDelete
                     scopeId={`dataset-delete-scope-${d.dataset_id}`}
                     scope={
@@ -1278,7 +1002,6 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
                     label="刪除這個檔案"
                     confirmLabel="確認刪除這個檔案"
                   />
-                  {/* TEST-002 的保存政策，落到這一個檔案上；契約要求 expires_at 必回。 */}
                   <p className="note">
                     保存到 <Timestamp at={d.expires_at} /> 自動刪除
                   </p>

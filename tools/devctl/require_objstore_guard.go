@@ -1,31 +1,5 @@
 package main
 
-// requireObjstoreGuard checks that the one test of SBX-008's short-lived
-// authorization still exists and still fails closed.
-//
-// 02:PORT-009. Everything else in this repository that touches a pre-signed URL
-// either does not verify one (objstore's in-process backend, which says so in
-// its own header) or costs money and never runs in CI (the gateway end-to-end
-// test). So a single package carries the whole claim that a grant expires, that
-// its signature cannot be forged, and that a read ticket cannot write — and the
-// requirement says in as many words that this class of test does not usually die
-// by going red, it dies by being quietly skipped.
-//
-// Two ways it could be skipped, and this check watches both:
-//
-//   - the endpoint variable stops being set (a workflow edit, a service that
-//     failed to start) and every assertion removes itself while go test prints
-//     ok. SKILLHUB_REQUIRE_OBJSTORE=1 is what turns that into a failure.
-//   - the test file itself goes away, which no amount of switch-checking would
-//     notice, because a tree with no gated package is a tree with nothing to
-//     complain about. That is why this check names the directory.
-//
-// Comments are stripped before matching, for the reason written at
-// withoutComments in require_db_guard.go: the first version of the sibling
-// check searched raw file text, and its own mutation stayed green because the
-// guard's explanatory comment mentioned the variable. A check that a comment can
-// satisfy is the thing it exists to prevent.
-
 import (
 	"fmt"
 	"os"

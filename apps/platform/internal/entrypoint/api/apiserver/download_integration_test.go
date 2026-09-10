@@ -1,12 +1,3 @@
-// The download surface through the real route table (WS-002, WS-004, CORE-007,
-// CORE-008, SEC-006) plus the storage reconciler of 04 丙-9.
-//
-// What these hold the implementation to is mostly what it REFUSES: a package
-// that is not available, not the caller's, expired, deleted or held back must
-// answer 404 and must not spend bytes. The one thing a download is allowed to do
-// is leave two rows behind — a download record and an audit event — and the
-// tests assert they are two rows in two tables, because merging them is the
-// mistake 03:CORE-008 names by hand.
 package apiserver_test
 
 import (
@@ -77,10 +68,6 @@ func (s *blockingRemoveStore) Remove(ctx context.Context, key string) error {
 	return s.packageStore.Remove(ctx, key)
 }
 
-// newSweep builds the reconciler the way cmd/worker does: the two row
-// corrections belong to packaging and testlab and reach the generic scanner by
-// injection (ADR-033 clearance path 4), so a test that omitted them would only
-// prove the fail-closed guard.
 func newSweep(pool *pgxpool.Pool, store objreconcile.ObjectStore) *objreconcile.Service {
 	packagingSvc := &packaging.Service{Pool: pool}
 	testlabSvc := &testlab.Service{Pool: pool}
@@ -120,9 +107,6 @@ func newSweep(pool *pgxpool.Pool, store objreconcile.ObjectStore) *objreconcile.
 	}
 }
 
-// Exists completes objreconcile.ObjectStore over the in-memory store the rest of
-// these tests already use. A key that is not in the map is missing, which is the
-// whole condition the reconciler exists to notice.
 func (s packageStore) Exists(_ context.Context, key string) (bool, error) {
 	_, ok := s[key]
 	return ok, nil
@@ -175,7 +159,6 @@ type downloadView struct {
 	IncludesTestCases bool   `json:"includes_test_cases"`
 }
 
-// buildDownload packages one skill and returns the artifact the endpoint made.
 func buildDownload(t *testing.T, a *api, pool *pgxpool.Pool, c *client, name string) downloadView {
 	t.Helper()
 	skillID, versionID := packagedSkill(t, a, pool, c, name)
@@ -278,24 +261,6 @@ func auditCount(t *testing.T, pool *pgxpool.Pool, action, resourceID string) int
 		action, mustUUID(t, resourceID))
 }
 
-// Iron rule 9: the record and the audit event are one transaction, so neither
-// can exist without the other.
-//
-// The happy-path test below asserts both rows appear, which is equally true when
-// they are written independently - moving audit.Log's handle from `tx` to
-// `s.Pool` left the whole suite green (M4 audit, 2026-08-24). What that costs is
-// an audit event that survives a download the database refused, i.e. "who took a
-// copy of what" answered about a copy nobody took.
-//
-// The failure has to land at COMMIT, not before. Both handles fail the same way
-// on a statement error - the audit write returns, the handler returns, the defer
-// rolls the record back - so a plain trigger cannot tell them apart, which is
-// how the first version of this test passed the mutation too. A DEFERRABLE
-// INITIALLY DEFERRED constraint trigger on download_records fires at commit
-// instead, and only then does the pool-handled audit row have somewhere to
-// survive.
-//
-// Scoped to this test's workspace, and dropped on the way out whatever happens.
 func TestADownloadRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -303,9 +268,6 @@ func TestADownloadRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
 	art := buildDownload(t, a, pool, c, "atomic-skill")
 	ctx := context.Background()
 
-	// c.workspaceID came out of the API as a uuid and goes back in as one; the
-	// quoting is belt and braces for a value that cannot go in as a parameter,
-	// because a function body is a literal.
 	if _, err := pool.Exec(ctx, fmt.Sprintf(`
 		CREATE OR REPLACE FUNCTION skillhub_test_refuse_record() RETURNS trigger AS $fn$
 		BEGIN
@@ -340,21 +302,6 @@ func TestADownloadRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
 	}
 }
 
-// The same pairing on the other write that makes one: a soft delete and its
-// audit event.
-//
-// DeleteDownload has the identical shape to the download path above - domain
-// write, audit.Log on the same tx, commit - and the same blind spot: the
-// happy-path delete test asserts both effects appear, which stays true when the
-// audit is written on its own connection. The test next door proved that
-// mutation survives everything except a failure at COMMIT, so this one provokes
-// the same way and for the same reason (SEC-006, iron rule 9).
-//
-// AFTER UPDATE, not INSERT: a delete here sets deleted_at rather than removing
-// the row. And on `artifacts`, which is the table the statement actually names
-// - `download_artifacts` is a real table as well, so a trigger placed there
-// is created successfully and then fires for nothing. The first version of
-// this test did exactly that and reported a green 204.
 func TestASoftDeleteRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -400,8 +347,7 @@ func TestASoftDeleteRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
 	if n := auditCount(t, pool, "artifact.delete", art.ArtifactID); n != 0 {
 		t.Errorf("audit_events: %d rows for a deletion that did not happen, want 0", n)
 	}
-	// And the artifact is still there, which is what makes the audit row a lie
-	// rather than merely early.
+
 	if n := countRows(t, pool,
 		"SELECT count(*) FROM artifacts WHERE id = $1 AND deleted_at IS NULL",
 		mustUUID(t, art.ArtifactID)); n != 1 {
@@ -409,19 +355,12 @@ func TestASoftDeleteRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
 	}
 }
 
-// pgLiteral quotes a value for the one place a parameter cannot go: the body of
-// a function definition. Only ever called with ids this test just received from
-// the API, and it doubles any quote regardless.
+// pgLiteral quotes a value for inline use inside a function body definition,
+// the one place a query parameter cannot reach.
 func pgLiteral(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }
 
-// --- the happy path, and the two rows it owes --------------------------------
-
-// One download hands over the bytes and leaves a record AND an audit event —
-// two rows in two tables. 03:CORE-008 forbids merging them by name: the record
-// is a product feature the owner reads and outlives the file, the audit event is
-// a compliance record that stores identifiers only and is kept for 400 days.
 func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -435,16 +374,14 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	if got := resp.Header.Get("Content-Type"); got != "application/zip" {
 		t.Errorf("Content-Type: got %q", got)
 	}
-	// The name the artifact reports, quoted, as an attachment: the browser must
-	// save the file rather than try to render it.
+
 	if got := resp.Header.Get("Content-Disposition"); got != `attachment; filename="`+art.FileName+`"` {
 		t.Errorf("Content-Disposition: got %q, want the artifact's own file name %q", got, art.FileName)
 	}
 	if int64(len(data)) != art.SizeBytes {
 		t.Errorf("served %d bytes, artifact says %d", len(data), art.SizeBytes)
 	}
-	// The bytes are the object, not a re-build: the same assertion the packaging
-	// tests make about content_hash naming the stored object.
+
 	if want := a.packages["downloads/"+c.workspaceID+"/"+art.ContentHash+".zip"]; string(data) != string(want) {
 		t.Error("the served bytes are not the stored object")
 	}
@@ -456,8 +393,6 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 		t.Errorf("audit_events for the download: got %d, want 1", n)
 	}
 
-	// Twice downloaded is twice recorded, and the count the UI shows comes from
-	// those rows rather than from a counter column that could drift.
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusOK {
 		t.Fatalf("second GET content: got %d", resp.StatusCode)
 	}
@@ -640,11 +575,6 @@ func TestFailedDownloadObjectDeletionIsRetriedDurably(t *testing.T) {
 	}
 }
 
-// --- what must not be served -------------------------------------------------
-
-// Quarantine is the state ADR-003 releases an artifact out of, and this is the
-// endpoint that makes "only available is served" a condition rather than a habit
-// of the packaging code.
 func TestAnArtifactThatIsNotAvailableIsNotServed(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -663,8 +593,7 @@ func TestAnArtifactThatIsNotAvailableIsNotServed(t *testing.T) {
 	if n := downloadRecordCount(t, pool, art.ArtifactID); n != 0 {
 		t.Errorf("a refused download still wrote %d records", n)
 	}
-	// The owner can still read the row and see why: the 404 hides the bytes, not
-	// the artifact's own account of itself.
+
 	var single downloadView
 	if code := getJSON(t, c.Client, c.base+"/downloads/"+art.ArtifactID, &single); code != http.StatusOK {
 		t.Fatalf("GET /downloads/{id}: got %d", code)
@@ -674,8 +603,6 @@ func TestAnArtifactThatIsNotAvailableIsNotServed(t *testing.T) {
 	}
 }
 
-// Existence is private (WS-006): a stranger gets the same 404 for somebody
-// else's artifact as for one that was never built, on every route.
 func TestAnotherWorkspaceCannotSeeOrFetchAnArtifact(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -692,8 +619,7 @@ func TestAnotherWorkspaceCannotSeeOrFetchAnArtifact(t *testing.T) {
 	if list := stranger.listDownloads(t); len(list) != 0 {
 		t.Errorf("a stranger's download list: got %+v, want empty", list)
 	}
-	// And the stranger's delete is a no-op rather than a way to destroy somebody
-	// else's file: 204 says nothing about whether it existed, and the row stays.
+
 	if code := stranger.status(t, http.MethodDelete, "/downloads/"+art.ArtifactID); code != http.StatusNoContent {
 		t.Errorf("DELETE as a stranger: got %d, want 204", code)
 	}
@@ -702,10 +628,6 @@ func TestAnotherWorkspaceCannotSeeOrFetchAnArtifact(t *testing.T) {
 	}
 }
 
-// A hold applied after the package was built has to stop the copy that already
-// exists from going out. This is the argument against pre-signed URLs made
-// executable (packaging-design §7.1): a signature minted before the hold would
-// still work, a check in the handler does not.
 func TestALicensingHoldAppliedAfterPackagingStopsTheDownload(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -738,11 +660,6 @@ func TestALicensingHoldAppliedAfterPackagingStopsTheDownload(t *testing.T) {
 	}
 }
 
-// --- deletion (SEC-006, CORE-007) --------------------------------------------
-
-// Deleting is idempotent, the bytes go, the row stops appearing, and the record
-// of having downloaded it survives — it says "you downloaded this", which stays
-// true after the file is gone (WS-004).
 func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -768,7 +685,7 @@ func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {
 	if code := c.status(t, http.MethodGet, "/downloads/"+art.ArtifactID); code != http.StatusNotFound {
 		t.Error("the deleted artifact is still readable")
 	}
-	// 02:SEC-006 「完成後不再出現在一般存取介面」.
+
 	if list := c.listDownloads(t); len(list) != 0 {
 		t.Errorf("the deleted artifact is still listed: %+v", list)
 	}
@@ -780,11 +697,6 @@ func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {
 	}
 }
 
-// --- retention (SEC-006) ------------------------------------------------------
-
-// An expired package stops being served the moment it expires, and the sweep
-// then removes the bytes — but the row stays in the history, because "it
-// expired" and "it never existed" are different answers to 02:WS-002.
 func TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -812,8 +724,6 @@ func TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway(t *testing.T) {
 		t.Errorf("the expired artifact left the history: %+v", list)
 	}
 
-	// Idempotent, iron rule 9: a second sweep finds nothing left to do and does
-	// not fail trying to remove an object that is already gone.
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatalf("the second sweep failed: %v", err)
 	}
@@ -824,17 +734,12 @@ func TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway(t *testing.T) {
 	}
 }
 
-// --- the object existence reconciler (04 丙-9) --------------------------------
-
-// The database says available, storage has nothing. One round records a sighting
-// and changes nothing — an object store answering 404 during a write must not
-// cost somebody their file. The second consecutive round is what acts.
 func TestTheReconcilerNeedsTwoRoundsBeforeItMarksAMissingObject(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	c := a.login(t, "reconciled")
 	art := buildDownload(t, a, pool, c, "vanishing-skill")
-	delete(a.packages, "downloads/"+c.workspaceID+"/"+art.ContentHash+".zip") // the bytes go behind the platform's back
+	delete(a.packages, "downloads/"+c.workspaceID+"/"+art.ContentHash+".zip")
 
 	sweep := newSweep(pool, a.packages)
 	if err := sweep.Sweep(context.Background()); err != nil {
@@ -863,21 +768,17 @@ func TestTheReconcilerNeedsTwoRoundsBeforeItMarksAMissingObject(t *testing.T) {
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusNotFound {
 		t.Error("the endpoint still offers bytes that are not there")
 	}
-	// Content becoming unavailable without anybody asking is exactly what the
-	// audit trail is for, and the event has no actor because nobody acted.
+
 	if n := auditCount(t, pool, "storage.object_missing", art.ArtifactID); n != 1 {
 		t.Errorf("audit_events for the lost object: got %d, want 1", n)
 	}
-	// Nothing left to count once the row agrees with storage.
+
 	if n := countRows(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
 		mustUUID(t, art.ArtifactID)); n != 0 {
 		t.Error("the sighting was not cleared after the row was marked")
 	}
 }
 
-// An object that comes back resets the count, which is what makes `rounds` mean
-// "missing two rounds running" rather than "missing twice at some point"
-// (0021's bookkeeping, same reasoning).
 func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -916,10 +817,6 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 	}
 }
 
-// The 丙-9 half that started it: `RunInputsStillAvailable` reads
-// `datasets.deleted_at`, so a dataset whose file is gone must end up with that
-// column set — otherwise the comparison screen keeps offering a re-run that
-// fails when it fetches the file.
 func TestTheReconcilerCorrectsADatasetThatClaimsAMissingFile(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -954,9 +851,6 @@ func ageArtifactReconcileLease(t *testing.T, pool *pgxpool.Pool, artifactID stri
 	}
 }
 
-// seedDataset uploads one file through the real endpoint and returns its id and
-// object key. Real, because the reconciler reads the same columns the upload
-// writes and a hand-made row could disagree with them.
 func seedDataset(t *testing.T, pool *pgxpool.Pool, a *api, c *client, testCaseID string) (id, objectKey string) {
 	t.Helper()
 	code, out := c.upload(t, "/test-cases/"+testCaseID+"/datasets", "notes.txt",
@@ -981,11 +875,6 @@ func seedDataset(t *testing.T, pool *pgxpool.Pool, a *api, c *client, testCaseID
 	return id, objectKey
 }
 
-// --- retention configuration --------------------------------------------------
-
-// DOWNLOAD_ARTIFACT_RETENTION is deployment configuration and not schema: 0027
-// records the pointer to PDM-006 and refuses to freeze an unratified 90 days
-// into a DEFAULT. This checks the value actually reaches expires_at.
 func TestTheConfiguredRetentionIsWhatDecidesExpiry(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

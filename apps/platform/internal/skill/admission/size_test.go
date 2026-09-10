@@ -1,8 +1,5 @@
 package ingest
 
-// 03:INGEST-016: a package refused for its size says the numbers, echoes nothing
-// the caller sent (NFR-001), and is counted.
-
 import (
 	"errors"
 	"net/http"
@@ -17,10 +14,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-// The refusal a creator actually reads. Before this, it was "package exceeds the
-// upload size limit" on both upload doors: no ceiling, no size, and therefore no
-// way to tell 1 KB over from 10 MB over — which is the difference between
-// trimming a file and coming to ask.
 func TestAnOversizedUploadIsToldBothNumbers(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/skills/import/upload", strings.NewReader(""))
@@ -39,9 +32,6 @@ func TestAnOversizedUploadIsToldBothNumbers(t *testing.T) {
 	}
 }
 
-// A body that could not be read at all (not a size refusal — writeTooLarge
-// covers that) gets a Traditional Chinese sentence a reader can act on, not the
-// Go read error (04 丙-149).
 func TestAnUnreadableUploadBodyIsToldInChinese(t *testing.T) {
 	w := httptest.NewRecorder()
 	writeBadBody(w)
@@ -55,10 +45,6 @@ func TestAnUnreadableUploadBodyIsToldInChinese(t *testing.T) {
 	}
 }
 
-// http.MaxBytesReader stops at limit+1 and never learns how much more there was,
-// so when the request does not declare a size over the ceiling there is no honest
-// second number. Saying the ceiling alone is the requirement; inventing a size
-// would be worse than saying nothing.
 func TestAnOversizedUploadWithNoUsableLengthOnlyClaimsTheCeiling(t *testing.T) {
 	for _, length := range []int64{-1, 0, skillpkg.MaxZipBytes} {
 		w := httptest.NewRecorder()
@@ -76,8 +62,6 @@ func TestAnOversizedUploadWithNoUsableLengthOnlyClaimsTheCeiling(t *testing.T) {
 	}
 }
 
-// NFR-001. The refusal is two integers the platform already knew; nothing the
-// caller chose may travel back out in it — not a file name, not a path, not a URL.
 func TestASizeRefusalEchoesNothingTheCallerSent(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/skills/import/upload?name=secret-client.zip",
@@ -94,8 +78,6 @@ func TestASizeRefusalEchoesNothingTheCallerSent(t *testing.T) {
 	}
 }
 
-// The counting half. Refusals only: a counter that also moves on success answers
-// "is this ceiling too tight" (05 R-13) with noise.
 func TestAnOversizedUploadIsCounted(t *testing.T) {
 	before := refusalCount(t, metrics.CeilingUpload)
 	otherBefore := refusalCount(t, metrics.CeilingURL)
@@ -106,8 +88,7 @@ func TestAnOversizedUploadIsCounted(t *testing.T) {
 	if got := refusalCount(t, metrics.CeilingUpload) - before; got != 1 {
 		t.Errorf("upload size refusals counted %v times, want 1", got)
 	}
-	// And it must not land in another door's series: the three ceilings exist to
-	// be told apart.
+
 	if got := refusalCount(t, metrics.CeilingURL) - otherBefore; got != 0 {
 		t.Errorf("an upload refusal moved the url series by %v", got)
 	}
@@ -127,20 +108,9 @@ func refusalCount(t *testing.T, ceiling string) float64 {
 			return v
 		}
 	}
-	return 0 // never incremented: Prometheus does not export an untouched child
+	return 0
 }
 
-// 04 丙-138 — the sentence a creator reads when a URL import is refused.
-//
-// It used to be 「匯入失敗：fetch failed: host "gitlab.com" is not on the allowed
-// source list」: an English clause inside a Chinese one, two 「失敗」 stacked, and
-// for a Chinese reader the refusal did not even establish what was wrong. The
-// standard was already set two functions up in this same file — `writeTooLarge`
-// answers in full Chinese with both numbers.
-//
-// Both halves are pinned, because either one alone is passable by a wrong
-// implementation: the sentence has to be the readable one, and the sentinel's
-// own text — a Go identifier, not copy — must not travel with it.
 func TestAUrlRefusalReachesTheCreatorAsOneChineseSentence(t *testing.T) {
 	f := &URLFetcher{Allowed: map[string]bool{"github.com": true}}
 	_, _, err := f.Fetch(t.Context(), "https://gitlab.com/example/skill/archive/main.zip")
@@ -161,7 +131,7 @@ func TestAUrlRefusalReachesTheCreatorAsOneChineseSentence(t *testing.T) {
 	if !strings.Contains(body, "gitlab.com") {
 		t.Errorf("the refusal does not name the host that was refused: %s", body)
 	}
-	// The classification stays on the error and off the screen.
+
 	if strings.Contains(body, "fetch failed") {
 		t.Errorf("the Go sentinel's own text reached the client: %s", body)
 	}

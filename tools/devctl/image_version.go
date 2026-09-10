@@ -1,24 +1,5 @@
 package main
 
-// A Runtime Image version with no upgrade section is a version nobody re-verified.
-//
-// ADR-023 §4 is explicit: bumping the runtime image means re-running four
-// measurements and writing down what they said, because the failure mode this
-// image has is SILENT — an Agent SDK that no longer emits the tool events the
-// trace depends on does not crash, it produces a run whose trace is thinner.
-// UPGRADES.md is where that record lives.
-//
-// runtime-image.yml already has half of the ratchet: change the image content
-// and you must bump `ARG IMAGE_VERSION`. Nothing checked the other half, and the
-// tree shows what that costs — IMAGE_VERSION reached 2026.08-4 while UPGRADES.md
-// stops at 2026.08-3. The bump was enforced; the evidence was not.
-//
-// The check is deliberately shallow: a heading containing the version string.
-// It cannot tell whether the four measurements were really run, and claiming
-// otherwise would be worse than saying so. What it can do is make the omission
-// impossible to not notice, which is the difference between the audit finding it
-// in three months and CI finding it on the push.
-
 import (
 	"fmt"
 	"os"
@@ -32,7 +13,7 @@ const (
 	runtimeUpgrades   = "infra/images/runtime-agent-sdk/UPGRADES.md"
 )
 
-// `ARG IMAGE_VERSION=2026.08-4`, optionally quoted.
+// Matches "ARG IMAGE_VERSION=<value>", the value optionally quoted.
 var imageVersionArg = regexp.MustCompile(`(?m)^ARG\s+IMAGE_VERSION\s*=\s*"?([^"\s]+)"?\s*$`)
 
 func imageVersionProblems(root string) []string {

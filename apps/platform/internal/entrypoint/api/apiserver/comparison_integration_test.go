@@ -1,10 +1,3 @@
-// Re-running and comparing (EVAL-011/012, 02:EVAL-003) through the real route
-// table. Two things are under test here and they are deliberately in one file:
-// that a re-run is the ordinary run path and nothing new, and that the comparison
-// reads both runs without touching either.
-//
-// See authz_integration_test.go for the shared helpers (TestMain, migrate, login)
-// and evaluation_integration_test.go for seedEvaluatableRun and judgeServer.
 package apiserver_test
 
 import (
@@ -17,8 +10,6 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
-
-// --- shapes ------------------------------------------------------------------
 
 type comparisonBody struct {
 	Runs []struct {
@@ -75,8 +66,6 @@ func (c *client) compare(t *testing.T, runID, against string) (int, comparisonBo
 	return resp.StatusCode, out
 }
 
-// seedRunUsage puts a `usage` event on a run, which is where the run's own cost
-// comes from — the figure the comparison is required to label a lower bound.
 func seedRunUsage(t *testing.T, pool *pgxpool.Pool, workspaceID, runID string, costUSD float64) {
 	t.Helper()
 	payload, err := json.Marshal(map[string]any{
@@ -98,16 +87,11 @@ func seedRunUsage(t *testing.T, pool *pgxpool.Pool, workspaceID, runID string, c
 	}
 }
 
-// cmpVersion is one more stored version of a skill. Distinct content hashes,
-// because two runs of the *same* skill on *different* versions is the case the
-// comparison exists for and a shared hash cannot express it.
 func cmpVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, tag string) string {
 	t.Helper()
 	return uuidText(seedVersion(t, pool, workspaceID, skillID, "sha256:cmp-"+tag).ID)
 }
 
-// judgeAll answers every criterion the same way, which is all these tests need
-// from a judge: what is under test is the comparison, not the verdict.
 func judgeAll(result, overall, quote string) llmclient.JudgeVerdict {
 	return llmclient.JudgeVerdict{
 		CriterionResults: []llmclient.CriterionVerdict{
@@ -117,8 +101,6 @@ func judgeAll(result, overall, quote string) llmclient.JudgeVerdict {
 		Overall: overall, Summary: "fixture verdict",
 	}
 }
-
-// --- EVAL-012: two judged runs, side by side ---------------------------------
 
 func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 	pool := requireDB(t)
@@ -153,17 +135,14 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 	if len(body.Runs) != 2 {
 		t.Fatalf("a comparison has two sides, got %d", len(body.Runs))
 	}
-	// The run named in the path is first; the `against` run is second.
+
 	if body.Runs[0].RunID != before || body.Runs[1].RunID != after {
 		t.Fatalf("sides are out of order: %s / %s", body.Runs[0].RunID, body.Runs[1].RunID)
 	}
 	if body.Runs[0].SkillVersionID != beforeVersion || body.Runs[1].SkillVersionID != afterVersion {
 		t.Error("each side reports the version it actually ran")
 	}
-	// What a re-run would be started from, per side: the skill the version belongs
-	// to and the editable test case the snapshot was frozen from. Each side seeded
-	// its own test case, so equal ids here would mean one side is reporting the
-	// other's inputs.
+
 	for i, side := range body.Runs {
 		if side.SkillID != skillID {
 			t.Errorf("side %d skill_id = %q, want %q", i, side.SkillID, skillID)
@@ -176,8 +155,6 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 		t.Error("each side reports its own test case, not the other's")
 	}
 
-	// ADR-025: execution and judgement are separate fields on each side, and both
-	// runs executed successfully while only one of them achieved anything.
 	for i, want := range []string{"not_met", "met"} {
 		side := body.Runs[i]
 		if side.Status != "succeeded" {
@@ -194,9 +171,6 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 		t.Error("each side shows its own final output (02:EVAL-003 第 2 條)")
 	}
 
-	// 丙-3: the run's cost is present, labelled a lower bound, and names where the
-	// settling figure lives. The evaluation's own cost is a separate field and is
-	// never folded into it.
 	for i, side := range body.Runs {
 		if side.Cost.Credits == nil {
 			t.Errorf("side %d lost the run cost", i)
@@ -212,14 +186,11 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 			t.Errorf("side %d merged the two costs into one number", i)
 		}
 	}
-	// The trace total is $0.0134; with the shipped 1.3x markup at US$0.001 per
-	// credit that is 17.42 credits, rounded up (ADR-068 decision 6) to 18.
+
 	if got := *body.Runs[0].Cost.Credits; got != 18 {
 		t.Errorf("run cost = %v credits, want 18 (the trace total $0.0134 converted)", got)
 	}
 
-	// The matrix is per criterion, so a regression is visible without reading the
-	// overall (02:EVAL-003 第 2 條).
 	if len(body.CriterionMatrix) != 2 {
 		t.Fatalf("one row per acceptance criterion, got %d", len(body.CriterionMatrix))
 	}
@@ -236,34 +207,28 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 		if row.Results[1].Result == nil || *row.Results[1].Result != "passed" {
 			t.Errorf("criterion %s right verdict = %v, want passed", row.CriterionID, row.Results[1].Result)
 		}
-		// EVAL-001 clause 5 survives the trip into the comparison.
+
 		if row.Results[0].Source != "model" {
 			t.Errorf("criterion %s loses its judgement source in the matrix", row.CriterionID)
 		}
 	}
 
-	// WS-003's diff, linked rather than reimplemented.
 	if body.VersionDiffURL == "" {
 		t.Error("two different versions of one skill have a diff to link (WS-003)")
 	}
 
-	// Both inputs are still there, so a re-run of these inputs is still possible.
 	for i, side := range body.Runs {
 		if side.InputsAvailable == nil || !*side.InputsAvailable {
 			t.Errorf("side %d reports its inputs as gone while they are still stored", i)
 		}
 	}
 
-	// 02:EVAL-003 第 3 條: comparing wrote nothing. Both runs, both evaluations and
-	// both snapshots are exactly as they were.
 	for _, id := range []string{before, after} {
 		if _, run := c.getRun(t, id); run.Status != "succeeded" {
 			t.Errorf("run %s changed to %q by being compared", id, run.Status)
 		}
 	}
 }
-
-// --- an unevaluated side says so ----------------------------------------------
 
 func TestComparisonAgainstAnUnevaluatedRunNeverReadsAsAPass(t *testing.T) {
 	pool := requireDB(t)
@@ -304,8 +269,6 @@ func TestComparisonAgainstAnUnevaluatedRunNeverReadsAsAPass(t *testing.T) {
 	}
 }
 
-// --- scope and malformed requests ---------------------------------------------
-
 func TestComparisonRefusesRunsThatAreNotTheCallersAndSaysNothingAboutThem(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -331,8 +294,7 @@ func TestComparisonRefusesRunsThatAreNotTheCallersAndSaysNothingAboutThem(t *tes
 		{"itself", mine, mine, http.StatusBadRequest},
 		{"against does not exist", mine, absent, http.StatusNotFound},
 		{"path run does not exist", absent, mine, http.StatusNotFound},
-		// Existence is private both ways round: neither position may be used to
-		// probe for somebody else's run (WS-006, iron rule 3).
+
 		{"against is another workspace's", mine, theirs, http.StatusNotFound},
 		{"path run is another workspace's", theirs, mine, http.StatusNotFound},
 	}
@@ -341,18 +303,15 @@ func TestComparisonRefusesRunsThatAreNotTheCallersAndSaysNothingAboutThem(t *tes
 			t.Errorf("%s: got %d want %d (%s)", tc.name, status, tc.want, body.Error)
 		}
 	}
-	// The control: the owner's own pair works, so the failures above are about
-	// scope and not about the fixture.
+
 	if status, body := owner.compare(t, mine, other); status != http.StatusOK {
 		t.Fatalf("owner comparing their own runs: got %d (%s)", status, body.Error)
 	}
-	// And a stranger cannot read the owner's pair at all.
+
 	if status, _ := stranger.compare(t, mine, other); status != http.StatusNotFound {
 		t.Errorf("a stranger comparing somebody else's runs: got %d, want 404", status)
 	}
 }
-
-// --- design §5.4: deleted inputs must not look re-runnable ---------------------
 
 func TestComparisonReportsInputsThatCanNoLongerBeSupplied(t *testing.T) {
 	pool := requireDB(t)
@@ -371,8 +330,6 @@ func TestComparisonReportsInputsThatCanNoLongerBeSupplied(t *testing.T) {
 		t.Fatalf("the dataset is still stored, so the inputs are available: %+v", body.Runs[0])
 	}
 
-	// The user deletes the file. The comparison stays readable — the snapshot and
-	// the verdicts are history — but nothing may now suggest this can be re-run.
 	if _, err := pool.Exec(ctx,
 		`UPDATE datasets SET deleted_at = now() WHERE id = $1`, mustUUID(t, datasetID)); err != nil {
 		t.Fatal(err)
@@ -388,8 +345,6 @@ func TestComparisonReportsInputsThatCanNoLongerBeSupplied(t *testing.T) {
 		t.Error("the other side's inputs were untouched")
 	}
 
-	// An expired file is gone for the same purpose, and says so for the same
-	// reason: the retention sweep removes the object, not just the row.
 	if _, err := pool.Exec(ctx,
 		`UPDATE datasets SET deleted_at = NULL, expires_at = now() - interval '1 day' WHERE id = $1`,
 		mustUUID(t, datasetID)); err != nil {
@@ -400,7 +355,6 @@ func TestComparisonReportsInputsThatCanNoLongerBeSupplied(t *testing.T) {
 		t.Error("an expired dataset is not a re-runnable input either")
 	}
 
-	// Deleting the test case itself removes the other half of what a re-run needs.
 	if _, err := pool.Exec(ctx,
 		`UPDATE datasets SET expires_at = now() + interval '30 days' WHERE id = $1`,
 		mustUUID(t, datasetID)); err != nil {
@@ -417,17 +371,12 @@ func TestComparisonReportsInputsThatCanNoLongerBeSupplied(t *testing.T) {
 	if body.Runs[0].InputsAvailable == nil || *body.Runs[0].InputsAvailable {
 		t.Error("a deleted test case cannot be re-run either")
 	}
-	// The id is still served while the re-run is refused, and that is the point of
-	// having both fields: `test_case_id` says what a re-run would address,
-	// `inputs_available` says whether it may be offered. A screen that reads the id
-	// as permission is the failure this pair exists to prevent.
+
 	if body.Runs[0].TestCaseID == "" {
 		t.Error("the snapshot still names the test case it was frozen from")
 	}
 }
 
-// seedRunWithDataset is a finished run whose snapshot references one uploaded
-// file, which is what makes "the inputs are gone" a state it can reach.
 func seedRunWithDataset(
 	t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, versionID string,
 ) (runID, datasetID string) {
@@ -474,12 +423,6 @@ func seedRunWithDataset(
 	return runID, datasetID
 }
 
-// --- EVAL-011: re-running is the ordinary run path -----------------------------
-
-// There is no re-run endpoint, and this is what it would have had to be: the same
-// POST /skills/{id}/runs with the new version_id and the same test_case_id. The
-// permission screen stays on that path — which is the whole reason not to add a
-// second one (TEST-009, design §5.4).
 func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -488,14 +431,11 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 	first := f.start(t)
 	staleHash := f.confirmPermissions(t)
 
-	// The improvement was applied and a new version exists (EVAL-002 clause 4).
 	v2 := seedVersion(t, pool, f.workspaceID, f.skillID, "hash-rerun-v2")
 	a.packages[v2.PackageObjectKey] = cleanPackage(t)
 	next := f
 	next.versionID = uuidText(v2.ID)
 
-	// The confirmation the user gave for the old package does not carry over: the
-	// package contents changed, so what they agreed to is not this.
 	if code, body := next.startWithHash(t, staleHash); code != http.StatusUnprocessableEntity {
 		t.Fatalf("a stale confirmation must not start a run on a new version: got %d (%s)",
 			code, body.Error)
@@ -506,8 +446,6 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 		t.Fatal("a re-run is a new run")
 	}
 
-	// Same test case, unedited, so both snapshots hash the same — which is what
-	// makes the two runs comparable at all (design §5.4).
 	var firstHash, secondHash, firstSnapshot, secondSnapshot string
 	for _, pair := range []struct {
 		runID string
@@ -528,7 +466,6 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 		t.Error("each run freezes its own snapshot; sharing one would let a later edit rewrite history")
 	}
 
-	// Iron rule 4: the first run and the version it ran are untouched by any of this.
 	_, before := f.getRun(t, first.RunID)
 	if before.Status != "queued" {
 		t.Errorf("the earlier run changed to %q", before.Status)
@@ -544,7 +481,7 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 	if body.VersionDiffURL == "" {
 		t.Error("what changed between the two versions is the point of the comparison (WS-003)")
 	}
-	// Neither has been evaluated, and neither pretends otherwise.
+
 	for i, side := range body.Runs {
 		if side.Evaluation != nil {
 			t.Errorf("side %d invented a judgement: %+v", i, side.Evaluation)

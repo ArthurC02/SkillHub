@@ -141,17 +141,12 @@ func TestCheckPgliteInstallReconcilesAgainstToolchainPin(t *testing.T) {
 		}
 	}
 
-	// Mutation: drift the pin away from what's actually installed. This
-	// must FAIL, not warn or silently pass -- a version mismatch is an
-	// environment diagnosis, not something to skip past (02:PORT-001).
 	drifted := map[string]string{"pglite": "9.9.9", "pglite_socket": "0.1.6"}
 	driftedResults := checkPgliteInstall(root, drifted)
 	if driftedResults[0].status != "FAIL" || !driftedResults[0].required {
 		t.Fatalf("expected required FAIL on version drift, got %#v", driftedResults[0])
 	}
 
-	// Not installed yet: WARN (optional, not a hard prerequisite), never a
-	// silent PASS.
 	emptyRoot := t.TempDir()
 	notInstalled := checkPgliteInstall(emptyRoot, toolchain)
 	for _, r := range notInstalled {

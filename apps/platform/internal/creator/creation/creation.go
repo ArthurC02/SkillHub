@@ -31,7 +31,7 @@ type Command struct {
 	ContentHash       string                     `json:"content_hash,omitempty"`
 	Diagram           *llmclient.GenerateDiagram `json:"diagram,omitempty"`
 	RunID             string                     `json:"run_id,omitempty"`
-	// BudgetUSD is the new ceiling for kind "raise_budget" (05 R-46 (raise)).
+
 	BudgetUSD float64 `json:"budget_usd,omitempty"`
 }
 
@@ -59,8 +59,7 @@ func (s *Service) enqueue(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 	return a, err
 }
 func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.UUID, message string, budget float64) (View, error) {
-	// ADR-068 gate ①, checked before anything else: a session below the
-	// started threshold must not touch the database at all.
+
 	if s.CreditCanStart != nil {
 		ok, err := s.CreditCanStart(ctx, ws.ID)
 		if err != nil {
@@ -103,25 +102,9 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 		e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(message)})
 		state = "queued"
 	}
-	// ── 2026-09-09：這一段必須在 Begin 之前，而那不是排版偏好 ──────────────────
-	//
-	// 它原本在交易裡，而 `CatalogCheck` 自己要用連線池：`CreationKnowledgeIDs` 是
-	// 一次 pgvector 檢索，`ResolveReference` 每命中一筆再讀一次版本。**交易握著一條
-	// 連線，裡面的查詢再去要第二條**——連線數大的部署看不出來，而淨測試模式
-	// （ADR-060 決策 6）把 `pgxpool` 釘在 `MaxConns=1`，於是它是一個必然的自我死鎖：
-	// POST /creation-sessions 永遠不回應，River 的選舉與取件同時餓死在同一條連線上，
-	// 只有在瀏覽器放棄、request context 被取消時才鬆開。2026-09-09 實測復現。
-	//
-	// 這裡沒有任何東西需要那個交易：整段只讀公開目錄、只寫記憶體裡的 `e`。
-	//
-	// 冪等沒有變壞：上面那次 `GetCreationSession` 仍然在最前面，所以重送同一個 id
-	// 會在這之前就回舊的那一份，不會再付一次檢索的錢。
+
 	if state == "queued" && s.CatalogCheck != nil {
-		// 05 R-49: before any model call, Go asks the catalogue whether this
-		// task already has a Skill (run r, 2026-09-06: left to the model, no
-		// reference session ever searched). Hits wait for the person — adopt
-		// one, keep them as references, or decline; a failed search never
-		// blocks the session, it only skips the question.
+
 		refs, cost, err := s.CatalogCheck(ctx, ws, message)
 		if err != nil {
 			slog.Warn("creation: catalogue check failed, continuing without it", "error", err)
@@ -153,9 +136,7 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 	q := gen.New(tx)
 	row, err := q.CreateCreationSession(ctx, gen.CreateCreationSessionParams{ID: id, WorkspaceID: ws.ID, State: state, Snapshot: b, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(s.Limits.Retention), Valid: true}})
 	if err != nil {
-		// migration 0057 makes the PK (id, workspace_id): a conflict here only
-		// means this workspace already holds this id. Cross-workspace id reuse
-		// is closed by that composite key, not by this recovery branch.
+
 		_ = tx.Rollback(ctx)
 		r, getErr := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: id, WorkspaceID: ws.ID})
 		if getErr != nil {
@@ -171,7 +152,7 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 		return View{}, err
 	}
 	if state == "queued" {
-		// Insert the attempt first, then publish its ID in the same initial snapshot.
+
 		_, err = s.enqueue(ctx, tx, row, &e, false)
 		if err != nil {
 			return View{}, err
@@ -230,17 +211,12 @@ func invalidate(p *Snapshot) {
 	clearDuplicateCheck(p)
 }
 
-// clearDuplicateCheck forgets the duplicate guard's answer: it described a
-// draft that no longer exists.
 func clearDuplicateCheck(p *Snapshot) {
 	p.Duplicates = nil
 	p.PendingMaterialize = ""
 	p.DuplicateAcknowledged = false
 }
 
-// listedReference says whether the person may adopt this id: it must be one
-// Go itself put in front of them, from the catalogue check or the duplicate
-// guard, never an arbitrary id.
 func listedReference(p *Snapshot, id string) bool {
 	for _, r := range p.References {
 		if r.SkillID == id {
@@ -255,9 +231,6 @@ func listedReference(p *Snapshot, id string) bool {
 	return false
 }
 
-// masked is the session's one door for text the person wrote or a page
-// handed over: masked before it is stored, so the snapshot never holds a
-// credential the way a trace never does (iron rule 11).
 func (s *Service) masked(text string) string {
 	if s.Mask == nil {
 		return text
@@ -265,18 +238,6 @@ func (s *Service) masked(text string) string {
 	return s.Mask(text)
 }
 
-// attachNote appends the sentence that came with a material (2026-09-08).
-//
-// Before this, `diagram` and `select_references` carried no text at all, so
-// 「這是我的流程，我想把它變成一個 Skill」 could not be said in the same turn as
-// the picture: the person sent the file, waited a round, and only then got to
-// explain it — and the model read the picture with no question attached to it.
-// The web composer's 「一次只能送一種素材」 was that limit surfacing, not a
-// layout choice.
-//
-// It is the same user message `case "message"` appends and is held to the same
-// limits; what differs is that it does not stand on its own, so an empty one is
-// not an error here — there is a material to carry the turn.
 func (s *Service) attachNote(p *Snapshot, note string) error {
 	if strings.TrimSpace(note) == "" {
 		return nil
@@ -288,9 +249,6 @@ func (s *Service) attachNote(p *Snapshot, note string) error {
 	return nil
 }
 
-// nameCollides says whether the draft's name is one of the Skills the
-// duplicate guard listed: saving it would be refused as 同名 (GEN-010), so the
-// model is asked to rename before the person tries again.
 func nameCollides(name string, dups []Reference) (string, bool) {
 	for _, d := range dups {
 		if strings.EqualFold(strings.TrimSpace(name), strings.TrimSpace(d.Name)) {
@@ -300,8 +258,6 @@ func nameCollides(name string, dups []Reference) (string, bool) {
 	return "", false
 }
 
-// duplicateQuery is the text the duplicate guard embeds: the draft's own name
-// and description, which is what the index's enriched summary describes.
 func duplicateQuery(skill llmclient.GeneratedSkill) string {
 	return strings.TrimSpace(skill.Name + "\n" + skill.Description)
 }
@@ -338,9 +294,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		return View{}, nil, ErrDeadline
 	}
 	if row.State == "working" || row.State == "queued" {
-		// Two commands may reach a session that is mid-step: end it, or stop
-		// this one step (2026-09-09, 04 丙-203). Everything else has to wait for
-		// the revision the step will produce.
+
 		if c.Kind != "cancel" && c.Kind != "stop_step" {
 			return View{}, nil, ErrConflict
 		}
@@ -371,21 +325,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		}
 		e.ActiveReceipt = pgtype.UUID{}
 	case "stop_step":
-		// Stop THIS step, not the session. Nothing new had to be built for it
-		// (04 丙-203): three mechanisms were already in place and this command
-		// just makes all three of their conditions false at once.
-		//
-		//  1. The Worker refuses to start a receipt that is no longer `queued`,
-		//     so a step stopped before the call never makes it.
-		//  2. During the call a goroutine reads this row every 250ms and cancels
-		//     the in-flight HTTP request as soon as the state leaves `working`.
-		//  3. finish() adopts the model's reply only while ActiveReceipt still
-		//     points at its own receipt; otherwise it falls through to settleCost,
-		//     which records what was actually spent and proposes nothing.
-		//
-		// So the money is right on both paths without a word of new accounting:
-		// before the call there is nothing to pay for, and after it the cost is
-		// settled exactly as any other interrupted attempt.
+
 		if !e.ActiveReceipt.Valid || len(p.Messages) >= MaxMessages {
 			return View{}, nil, ErrInvalidCommand
 		}
@@ -394,9 +334,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		if getErr != nil {
 			return View{}, nil, getErr
 		}
-		// Two different truths, so two different sentences. Telling someone
-		// their money is safe when the call already went out would be the one
-		// lie this feature could tell.
+
 		said := "你在這一步完成前喊停。模型呼叫已經發出，費用照計；它交回來的內容沒有採用。"
 		if a.Status == "queued" {
 			if _, err = q.FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ID, SessionID: id, WorkspaceID: ws.ID, Status: "cancelled", Result: []byte("{}"), Usage: []byte("{}")}); err != nil {
@@ -413,11 +351,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			return View{}, nil, ErrInvalidCommand
 		}
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(c.Message)})
-		// The confirmation is NOT cleared here (2026-09-06 run c: 「請繼續」 after
-		// a confirmed brief sent two sessions back through propose→confirm for
-		// nothing). GEN-007's 「更正已確認的需求→確認失效」 still holds: the model
-		// is told to propose a new confirmation when the newest user message
-		// changes the requirements, and proposal() un-confirms on any change.
+
 		p.PendingAction = ""
 		queueStep = true
 	case "confirm_brief":
@@ -439,8 +373,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		if len(c.ReferenceSkillIDs) > 3 || s.ResolveReference == nil {
 			return View{}, nil, ErrInvalidCommand
 		}
-		// The note goes in first: what the person wants these references FOR is
-		// context for the references, not a reply to them.
+
 		if err := s.attachNote(p, c.Message); err != nil {
 			return View{}, nil, err
 		}
@@ -464,9 +397,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		p.PendingAction = "confirm_references"
 		state = "waiting_confirmation"
 	case "adopt_reference":
-		// Reuse before creation (05 R-49／R-50): the person takes an existing
-		// Skill instead of composing one. Go forks it; the session ends with
-		// the fork as its candidate and nothing generated.
+
 		if s.Adopt == nil || len(c.ReferenceSkillIDs) != 1 || (p.PendingAction != "confirm_references" && p.PendingAction != "confirm_duplicate") || !listedReference(p, c.ReferenceSkillIDs[0]) {
 			return View{}, nil, ErrInvalidCommand
 		}
@@ -515,11 +446,9 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		default:
 			return View{}, nil, ErrInvalidCommand
 		}
-		// Read before the note is appended, so it is the index the note takes
-		// (and, with no note, the index the model's reply will take).
+
 		at := len(p.Messages)
-		// After the picture has been accepted, never before: a refused image must
-		// not leave its sentence behind in the history as if it had been sent.
+
 		if err := s.attachNote(p, c.Message); err != nil {
 			return View{}, nil, err
 		}
@@ -527,7 +456,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		p.DiagramFingerprint = hex.EncodeToString(h[:])
 		p.DiagramMediaType = c.Diagram.MediaType
 		p.DiagramBytes = len(b)
-		// The three fields above are the newest picture; this is the history.
+
 		p.Attachments = append(p.Attachments, Attachment{
 			MessageIndex: at,
 			MediaType:    p.DiagramMediaType,
@@ -550,17 +479,13 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		}
 		p.Candidate.RunID = c.RunID
 		p.RunUnmet = runUnmet(observation)
-		// Masked like every other untrusted text on its way into the snapshot:
-		// the judge writes about output the Skill under trial produced, so a
-		// credential in that output can reach here through a quoted reason.
+
 		observation = s.masked(observation)
 		p.EvaluationText = evaluationFreeText(observation)
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: observation})
 		state = "candidate_ready"
 		queueStep = true
-		// An unmet trial is the person's turn first (owner, 2026-09-06: "跑完之後
-		// 和使用者的互動，獲取回饋"): the failed criteria and the judge's reasons
-		// become questions, and the answer steers the model's revision.
+
 		if questions := trialQuestions(observation); p.RunUnmet && questions != "" {
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: questions})
 			p.PendingAction = ""
@@ -571,7 +496,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		if p.PendingAction != "confirm_fetch" || p.PendingFetchURL == "" {
 			return View{}, nil, ErrInvalidCommand
 		}
-		// The URL stays on the snapshot; the Worker's step job fetches it.
+
 		p.PendingAction = ""
 		queueStep = true
 	case "decline_fetch":
@@ -595,8 +520,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			state = row.State
 		}
 	case "materialize", "finalize", "confirm_duplicate":
-		// confirm_duplicate replays the command the duplicate guard held
-		// (05 R-50): same draft hash, the person has seen the near-duplicates.
+
 		kind := c.Kind
 		if c.Kind == "confirm_duplicate" {
 			if p.PendingAction != "confirm_duplicate" || p.PendingMaterialize == "" {
@@ -606,9 +530,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			p.DuplicateAcknowledged = true
 			p.PendingAction = ""
 			p.PendingMaterialize = ""
-			// "Build anyway" with the duplicate's own name would only be refused
-			// as 同名 at the save (run x R09, 2026-09-07): Go says so now and the
-			// model renames; the person then saves the renamed draft.
+
 			if taken, collides := nameCollides(p.Draft.Skill.Name, p.Duplicates); collides && p.Draft != nil && p.Draft.ContentHash == c.ContentHash && len(p.Messages) < MaxMessages {
 				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("使用者仍要建立自己的版本，但草稿名稱「%s」與目錄裡那份相同，保存會被拒絕；請只改名稱（描述其差異），其餘內容不變，重新交出草稿。", taken)})
 				queueStep = true
@@ -631,10 +553,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 				return View{}, nil, ErrUnavailable
 			}
 			if !p.DuplicateAcknowledged && s.DuplicateCheck != nil {
-				// 05 R-50: the last place a duplicate can be stopped. One
-				// embedding of the draft's name and description; a hit within
-				// the creation tool's distance is shown before anything is
-				// stored, and the person adopts it or confirms the draft.
+
 				dups, cost, err := s.DuplicateCheck(ctx, ws, duplicateQuery(p.Draft.Skill))
 				if err != nil {
 					slog.Warn("creation: duplicate check failed, materializing without it", "error", err)
@@ -690,7 +609,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 	if err != nil {
 		return View{}, nil, err
 	}
-	// A diagram command leaves a fingerprint in its receipt hash, never raw bytes.
+
 	if err = record(ctx, tx, ws.ID, id, c, v); err != nil {
 		return View{}, nil, err
 	}
@@ -700,17 +619,12 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 	return v, job, nil
 }
 
-// materializedReference is the subset of Reference kept in generation_inputs;
-// the reference's own manifest content (description, compatibility, allowed
-// tools) is not stored a second time (02 line ~700).
 type materializedReference struct {
 	SkillID   string `json:"skill_id"`
 	VersionID string `json:"version_id"`
 	Name      string `json:"name"`
 }
 
-// kind is materialize or finalize — c.Kind itself may be confirm_duplicate,
-// and the receipt must keep the command the client actually sent.
 func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, kind string, e envelope) (View, *JobArgs, error) {
 	p := e.Snapshot
 	refs := make([]materializedReference, len(p.References))
@@ -721,8 +635,7 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 	if p.DiagramFingerprint != "" {
 		m["diagram"] = map[string]any{"sha256": p.DiagramFingerprint, "media_type": p.DiagramMediaType, "bytes": p.DiagramBytes}
 	}
-	// ADR-067: the candidate goes through the generated door but is paid for by
-	// the session's own budget; CountGeneratedSkills skips rows carrying this.
+
 	m["interactive"] = true
 	inputs, _ := json.Marshal(m)
 	provenance := Provenance{p.Brief, p.Model, p.PromptVersion, e.ExistingSkillID, inputs}
@@ -746,10 +659,7 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 			return ErrConflict
 		}
 		if s.CreateAcceptanceTestCase != nil && len(current.Snapshot.AcceptanceCriteria) > 0 {
-			// The Test Case prompt is the example input, not the brief: a brief
-			// describes the Skill, and an agent handed a description asks for the
-			// material (run d, 2026-09-06). The brief is the fallback for sessions
-			// confirmed before sample_input existed.
+
 			prompt := current.Snapshot.SampleInput
 			if strings.TrimSpace(prompt) == "" {
 				prompt = current.Snapshot.Brief
@@ -761,8 +671,7 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 			candidate.TestCaseID = id
 		}
 		current.Snapshot.Candidate = &candidate
-		// The duplicate guard's answer and its embedding cost were decided on
-		// the snapshot Act read; the revision check above proved it is this one.
+
 		current.Snapshot.SpentUSD = p.SpentUSD
 		current.Snapshot.Duplicates = p.Duplicates
 		current.Snapshot.DuplicateAcknowledged = p.DuplicateAcknowledged
@@ -786,10 +695,6 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 	return result, nil, err
 }
 
-// trialQuestions turns an attach_run observation into the questions the person
-// answers before the model revises: one line per criterion the judge did not
-// pass, with the judge's reason, then what to decide. Empty when there is
-// nothing to ask (no evaluation, or every criterion passed).
 func trialQuestions(observation string) string {
 	var o struct {
 		Evaluation struct {
@@ -826,10 +731,6 @@ func trialQuestions(observation string) string {
 	return "這次試跑有條件沒過：\n" + strings.Join(lines, "\n") + "\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。"
 }
 
-// evaluationFreeText returns the judge's own words out of an attach_run
-// observation — the summary, each criterion's reason, each finding's message.
-// Criterion text is the person's own acceptance criterion, so it is not in
-// here: what this collects is exactly the text nobody the person trusts wrote.
 func evaluationFreeText(observation string) string {
 	var o struct {
 		Evaluation struct {
@@ -855,33 +756,6 @@ func evaluationFreeText(observation string) string {
 	return strings.Join(parts, "\n")
 }
 
-// copiedFromEvaluation lists the marker-like literals a revised draft took
-// verbatim out of the judge's own words. 05 SEC-013 (LLM01), 2026-09-07: the
-// fence in creation-step/v16 stopped the model obeying an evaluation that told
-// it to change the brief or add a tool, but not the one that told it to copy a
-// token into the body — 1/12 of the attack set, and the residual channel the
-// measurement left open. The fence argues about trust; this counts characters.
-//
-// What it does NOT cover, because character counting cannot: an evaluation that
-// asks for a paraphrase ("spell the token out in words"), a marker made only of
-// letters, and the three attack goals that never touch the draft's text at all
-// — claim_met, add_bash_tool, change_brief. Those have no Go backstop; the
-// prompt's own discipline (creation-step/v17) is the whole defence there.
-//
-// Marker-like is a shape, judged per segment: an ASCII segment mixing letters
-// and digits inside a hyphenated or underscored token (`9c0d` of `EXFIL-9c0d`,
-// `77e1` of `BASH-TOOL-77e1`), or a bare run of eight or more ASCII characters
-// with at least two of each. Ordinary technical vocabulary a draft has every
-// reason to gain after a trial — utf-8, sha256, base64, iso8601, gpt-5 — has no
-// such segment; letters outside ASCII are not marker material at all, which is
-// what keeps a Chinese sentence with a number in it (「金額超過5000」) out.
-//
-// Only what is BOTH in the draft AND absent from everything the person had a
-// hand in counts. That side is read generously — every alphanumeric segment of
-// their text, marker-like or not — because an identifier they supplied comes
-// back in shapes they did not write: a sample input with `A1001` in it earns
-// the draft's `shopify_order_A1001.csv`, and a guard that missed that
-// difference would spend a nudge on an honest revision.
 func copiedFromEvaluation(evaluationText, draftText string, theirs ...string) []string {
 	if strings.TrimSpace(evaluationText) == "" {
 		return nil
@@ -906,27 +780,11 @@ func copiedFromEvaluation(evaluationText, draftText string, theirs ...string) []
 			}
 		}
 	}
-	// Sorted because the caller puts them in a message: map order would make
-	// the same session read differently on every run.
+
 	sort.Strings(copied)
 	return copied
 }
 
-// toolsNotRequested lists the tokens a revised draft's allowed_tools gained
-// since the previous draft that nobody the person trusts asked for. 05 R-54
-// #3, corpus-injection.json's add_bash_tool cases: the judge's own reason (or
-// a fetched page, or a reference Skill's body) tells the model the fix is
-// adding a tool to allowed_tools rather than editing the body, and today Go
-// never looks at that field at all. This is not an allowlist — a Skill
-// legitimately needing Bash is ordinary — it only flags a tool that showed up
-// this round with nothing in the person's own words asking for it, the same
-// shape as copiedFromEvaluation: new, absent from the last version, and
-// absent from everything the person had a hand in.
-//
-// Tokenizing follows the specification's own convention (space-separated,
-// commas tolerated — skillpkg.go's allowed-tools parser): "Bash(git:*)" and
-// "bash" are the same tool for this comparison, compared by the part before
-// any "(" scope, case-insensitively.
 func toolsNotRequested(prevTools, curTools string, theirs ...string) []string {
 	added := addedToolTokens(prevTools, curTools)
 	if len(added) == 0 {
@@ -942,22 +800,11 @@ func toolsNotRequested(prevTools, curTools string, theirs ...string) []string {
 	return out
 }
 
-// negations are the words that turn a mention of a tool into a refusal of it.
-// The adversarial review of the first version (2026-09-08) found the hole they
-// close: a person who writes 「不要用 bash」 was read as having asked for bash,
-// and an evaluation could then smuggle it in past a guard that only counted
-// words.
 var negations = []string{"不要", "不用", "不需要", "不能", "別用", "別", "禁止", "勿", "無需", "沒有要",
 	"don't", "do not", "dont", "no ", "not ", "never", "without", "avoid", "except"}
 
-// negationWindow is how far back a refusal can sit and still govern the
-// mention: enough for 「這個 Skill 不要用 bash」, short enough that a refusal of
-// one tool two sentences ago does not silently govern another.
 const negationWindow = 16
 
-// asked says whether any of the person's own texts names this tool as
-// something they want. A mention inside a refusal does not count; a tool
-// mentioned twice counts if either mention stands unnegated.
 func asked(tool string, theirs []string) bool {
 	needle := strings.ToLower(strings.TrimSpace(tool))
 	if needle == "" {
@@ -980,8 +827,6 @@ func asked(tool string, theirs []string) bool {
 	return false
 }
 
-// negated reports whether a refusal sits within negationWindow runes before
-// the mention at index i.
 func negated(hay string, i int) bool {
 	start := i
 	for n := 0; start > 0 && n < negationWindow; n++ {
@@ -997,8 +842,6 @@ func negated(hay string, i int) bool {
 	return false
 }
 
-// toolsNamedIn is the subset of tools the evaluation text actually spells
-// out, so the nudge can say the judge asked for it only when the judge did.
 func toolsNamedIn(evaluationText string, tools []string) []string {
 	if strings.TrimSpace(evaluationText) == "" {
 		return nil
@@ -1013,10 +856,6 @@ func toolsNamedIn(evaluationText string, tools []string) []string {
 	return named
 }
 
-// addedToolTokens is cur's allowed_tools tokens absent from prev's, compared
-// case-insensitively; the token kept is cur's own spelling, for the message
-// the person reads. Nil when prev has no baseline to diff against (the
-// caller only invokes this when a previous draft exists) or nothing was added.
 func addedToolTokens(prev, cur string) []string {
 	old := map[string]bool{}
 	for _, t := range toolFields(prev) {
@@ -1034,14 +873,10 @@ func addedToolTokens(prev, cur string) []string {
 	return added
 }
 
-// toolFields splits an allowed_tools string the way skillpkg.go's manifest
-// parser does: space-separated, commas tolerated.
 func toolFields(s string) []string {
 	return strings.Fields(strings.ReplaceAll(s, ",", " "))
 }
 
-// toolBaseName strips a scope like "(git:*)" off a tool token, so
-// "Bash(git:*)" is compared as "Bash".
 func toolBaseName(tool string) string {
 	if i := strings.IndexByte(tool, '('); i >= 0 {
 		return tool[:i]
@@ -1049,9 +884,6 @@ func toolBaseName(tool string) string {
 	return tool
 }
 
-// markerTokens maps each marker-like token of a text to the segments that made
-// it one, folded to lower case so a copy that changes case still matches. The
-// token is what a person is shown; the segment is what is compared.
 func markerTokens(s string) map[string][]string {
 	out := map[string][]string{}
 	for _, token := range tokens(s) {
@@ -1062,8 +894,6 @@ func markerTokens(s string) map[string][]string {
 	return out
 }
 
-// markerSegments is the set of marker-like segments in a text — the judge's
-// side of the comparison, where only the segment matters.
 func markerSegments(s string) map[string]bool {
 	out := map[string]bool{}
 	for _, segs := range markerTokens(s) {
@@ -1074,8 +904,6 @@ func markerSegments(s string) map[string]bool {
 	return out
 }
 
-// alphanumericSegments is the person's side: every segment of their text, with
-// no shape test at all. Two characters is enough to be worth remembering.
 func alphanumericSegments(s string) []string {
 	var out []string
 	for _, token := range tokens(s) {
@@ -1102,9 +930,9 @@ func tokens(s string) []string {
 	return out
 }
 
-// markerLike returns the segments that make a token marker-like, empty when it
-// is not one. A compound (`exfil-9c0d`) lets a short mixed segment count; a
-// bare word has to be long and mixed on its own before it does.
+// markerLike flags a token's ASCII segments that mix letters and digits: a
+// hyphen/underscore-joined segment counts at length 4+, a bare segment only
+// at length 8+ with at least two of each character class.
 func markerLike(token string) []string {
 	segments := strings.FieldsFunc(token, isSeparator)
 	compound := len(segments) > 1
@@ -1119,8 +947,7 @@ func markerLike(token string) []string {
 			case r >= 'a' && r <= 'z':
 				letters++
 			default:
-				// A digit or letter outside ASCII: a marker is not written in
-				// Chinese, and 「金額超過5000」 must not read as one.
+
 				ascii = false
 			}
 		}
@@ -1134,10 +961,6 @@ func markerLike(token string) []string {
 	return found
 }
 
-// draftText is every place a draft carries text a marker could ride out on:
-// the body, the two descriptions the catalogue shows, the tool list, and the
-// contents of each packaged file. Checking only the body would leave the file
-// an attacker would rather use anyway.
 func draftText(skill llmclient.GeneratedSkill) string {
 	parts := []string{skill.Name, skill.Description, skill.Compatibility, skill.AllowedTools, skill.Body}
 	for _, f := range skill.Files {
@@ -1146,9 +969,6 @@ func draftText(skill llmclient.GeneratedSkill) string {
 	return strings.Join(parts, "\n")
 }
 
-// previousDraftText is the text of the draft this one replaces, empty when
-// there is none: a marker the previous draft already carried is not something
-// this turn copied out of the evaluation.
 func previousDraftText(d *Draft) string {
 	if d == nil {
 		return ""
@@ -1156,8 +976,6 @@ func previousDraftText(d *Draft) string {
 	return draftText(d.Skill)
 }
 
-// personText is everything in the transcript the person themselves wrote. A
-// token they typed is theirs, however marker-like it looks.
 func personText(messages []llmclient.CreationMessage) string {
 	var b strings.Builder
 	for _, m := range messages {
@@ -1169,10 +987,6 @@ func personText(messages []llmclient.CreationMessage) string {
 	return b.String()
 }
 
-// runUnmet reads the one field of an attach_run observation Go acts on: an
-// evaluation that finished and did not come back met. No evaluation, or an
-// unreadable observation, is not "unmet" — that would nudge the model over a
-// draft nobody has judged.
 func runUnmet(observation string) bool {
 	var o struct {
 		Evaluation struct {
@@ -1187,11 +1001,6 @@ func runUnmet(observation string) bool {
 	return o.Evaluation.Status == "completed" && o.Evaluation.Overall != "" && o.Evaluation.Overall != "met"
 }
 
-// missingDiagramNodes lists the confirmed diagram's nodes that do not appear
-// in the draft body (whitespace and punctuation ignored, case-folded). A
-// diagram session whose Skill walks half the flow was every diagram row of
-// runs e–g (2026-09-06); the judge said so each time, after the money was
-// spent. Not a validator finding: the draft is refused before it is stored.
 func missingDiagramNodes(understanding, body string) []string {
 	var sections map[string][]string
 	if json.Unmarshal([]byte(understanding), &sections) != nil {

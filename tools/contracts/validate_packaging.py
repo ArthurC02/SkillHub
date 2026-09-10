@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
-"""PACK-001/002/003/005 contract check for contracts/packaging/.
-
-Every example in each of the three schemas validates, and one counterexample per
-failure mode that actually matters is rejected. The counterexamples are the half
-that carries the argument: a schema that accepts everything still passes its own
-examples, so the boundaries this milestone cares about - a licence expression
-without its provenance tier, a compatibility verdict without the image it was
-measured on, evaluation prose smuggled into a package - are asserted as
-rejections, not described in prose.
-
-Run: python tools/contracts/validate_packaging.py
-"""
+"""Validate contracts/packaging/: every schema example must validate, and one
+counterexample per failure mode must be rejected."""
 
 from __future__ import annotations
 
@@ -27,11 +17,6 @@ MANIFEST = "download-manifest.schema.json"
 PROFILE = "packaging-profile.schema.json"
 TEST_CASE = "portable-test-case.schema.json"
 
-# The profile schema carries no inline examples: the three built-in targets are
-# real files that ship, so they are the examples. An inline copy would be a
-# second version of the same document, and the one it replaced had drifted -
-# its Agent SDK snippet passed setting_sources, which is the option ADR-023
-# measured as loading zero Skills on the pinned SDK.
 PACKAGING_TARGETS = ("claude-agent-sdk", "claude-code", "standard")
 
 
@@ -115,7 +100,6 @@ def _test_case(**overrides: object) -> dict:
     return base
 
 
-# One counterexample per failure mode that actually matters. Each must be rejected.
 NEGATIVE_CASES: list[tuple[str, str, dict]] = [
     (
         MANIFEST,
@@ -141,8 +125,6 @@ NEGATIVE_CASES: list[tuple[str, str, dict]] = [
             compatibility={
                 "format": "valid",
                 "capability": "unverified",
-                # A measured verdict extrapolated off its (version x image) row is
-                # exactly what changing the runtime image is supposed to invalidate.
                 "behaviour": "native",
             }
         ),
@@ -165,7 +147,6 @@ NEGATIVE_CASES: list[tuple[str, str, dict]] = [
                         {
                             "category": "skill",
                             "target_path": "SKILL.md",
-                            # Model-written prose quoting the Run's private inputs.
                             "problem": "The skill ignored the user's spreadsheet.",
                             "expected_impact": "Fewer missed columns.",
                         }
@@ -230,10 +211,6 @@ NEGATIVE_CASES: list[tuple[str, str, dict]] = [
     ),
     (
         PROFILE,
-        # Not "must pass setting_sources" - ADR-023 measured the opposite on the
-        # pinned SDK, where omitting it is what loads the Skill. What this
-        # rejects is a snippet that never raises the subject, leaving a reader
-        # unable to tell a deliberate omission from a forgotten line.
         "an Agent SDK snippet that never mentions setting_sources at all (ADR-023)",
         _profile(
             id="claude-agent-sdk",
@@ -299,10 +276,6 @@ NEGATIVE_CASES: list[tuple[str, str, dict]] = [
                     "name": "ANTHROPIC_API_KEY",
                     "required": True,
                     "description": "SDK credential.",
-                    # Split so the literal credential prefix never appears in the
-                    # tree: the repository's own pre-push scan greps for exactly
-                    # this pattern, and a counterexample is not worth a false
-                    # positive on every future scan.
                     "example": "sk-" + "ant-api03-DEADBEEF",
                 }
             ]
@@ -340,10 +313,6 @@ NEGATIVE_CASES: list[tuple[str, str, dict]] = [
     ),
 ]
 
-# The canonical manifest-hash preimage is a $defs sub-schema rather than a file of
-# its own, so it needs its own pair of assertions: the definition is only useful if
-# it actually refuses the two inputs that would make the hash answer the wrong
-# question (packaging-design.md 2.4).
 HASH_INPUT_NEGATIVE_CASES: list[tuple[str, dict]] = [
     (
         "the manifest hashing itself",

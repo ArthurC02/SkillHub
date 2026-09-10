@@ -1,8 +1,5 @@
 package run
 
-// A Run is gated on the account covering its gateway ceiling and charged its
-// actual spend at cleanup. Both calls are injected funcs: run may not import credit.
-
 import (
 	"context"
 	"errors"
@@ -17,10 +14,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
-// ErrCreditBalance refuses a Run the account cannot cover.
 var ErrCreditBalance = errors.New("點數不足，無法開始這次試跑。請聯絡管理者為這個帳號加點；已經開始的試跑不受影響。")
 
-// usdMicros converts dollars to ledger micros, rounding up.
 func usdMicros(usd float64) int64 {
 	micros := usd * 1_000_000
 	whole := int64(micros)
@@ -30,8 +25,6 @@ func usdMicros(usd float64) int64 {
 	return whole
 }
 
-// requireCredit runs on create()'s tx after requireRunSlot's lock, so two
-// simultaneous requests cannot both reserve the last of a balance.
 func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
 	if s.CreditReserve == nil {
 		return nil
@@ -46,11 +39,9 @@ func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgty
 	return nil
 }
 
-// settleCredit runs before cleanup revokes the keys, since a revoked key's
-// spend is unreadable. It never fails cleanup; the charge is idempotent.
 func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.RunAttempt) {
 	if s.CreditSettle == nil || len(attempts) == 0 {
-		// No attempts: no key was minted, nothing to settle.
+
 		return
 	}
 	var spent float64
@@ -63,7 +54,7 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 			}
 			usage, err := s.Gateway.AttemptUsage(ctx, pgconv.UUIDString(attempt.ID), since)
 			if err != nil {
-				// An unread spend would look like a free run, so count it.
+
 				metrics.RunTokenUsageUnreadable.Inc()
 				slog.Warn("could not read this attempt's spend; it will not be charged",
 					"run_id", pgconv.UUIDString(run.ID),
@@ -88,7 +79,7 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	if err := s.CreditSettle(ctx, tx, run.WorkspaceID, run.ID, micros, usdMicros(RunBudgetUSD())); err != nil {
-		// Never block teardown on the ledger; the supervisor's next sweep retries.
+
 		slog.Error("run credit settlement failed", "run_id", pgconv.UUIDString(run.ID), "error", err)
 		return
 	}

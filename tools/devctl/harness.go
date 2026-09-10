@@ -1,32 +1,5 @@
 package main
 
-// The agent harness under .claude/ has three rules that were prose until now.
-//
-// # Why this exists
-//
-// 2026-09-03 added roles (.claude/agents), generic skills (.claude/skills) and
-// path-triggered pointers (.claude/rules), each with a placement rule written
-// into AGENTS.md: a skill holds only what is true in any repository, so it must
-// not cite docs/, an ADR or a requirement ID — cite one and the skill expires
-// with that document; a role must name its model, because the standing rule
-// of this repo is that subagents never inherit the session's model; and the
-// root AGENTS.md is capped, because Codex stops reading project instructions at
-// 32 KiB (`project_doc_max_bytes`) and the file was at 20.9 KiB and growing by
-// one dated correction a day.
-//
-// None of that had a machine. The day after the rules were written, the review
-// found two skills without a `name:` field — a defect nothing checked. This is
-// the machine next to the sentence, in the shape every other checker here has.
-//
-// # What it does not check
-//
-// Whether a skill is actually generic; only that it names nothing local. Whether
-// the model named is a good choice; only that one is named and it is not the
-// values the rule forbids (fable, sol, inherit). Whether the rules' `paths:` globs match anything;
-// that needs a session, not a file. Whether a skill's frontmatter is a valid
-// Agent Skills manifest: the product's own validator does that, in
-// apps/platform/internal/shared/skillpkg/repo_skills_test.go.
-
 import (
 	"fmt"
 	"os"
@@ -40,19 +13,16 @@ const (
 	harnessSkillsDir    = ".claude/skills"
 	harnessAgentsDir    = ".claude/agents"
 	harnessWorkflowsDir = ".claude/workflows"
-	// Codex's project_doc_max_bytes default is 32 KiB and it truncates silently.
-	// 16 KiB: the file was 22 KiB before 2026-09-04 and 12.9 KiB after the rewrite;
-	// the cap is a ratchet, so it sits just above where the file is, not at the cliff.
+
 	agentsDocMaxBytes = 16 * 1024
 )
 
-// A skill that cites any of these is bound to this repository.
 var harnessLocalReferences = []*regexp.Regexp{
 	regexp.MustCompile(`docs/`),
-	requirementID, // requirement_refs.go: DISC-001, PORT-010, and ADR-034 — an ADR number has the same shape
+	requirementID,
 }
 
-// `model: opus` inside the frontmatter block.
+// Matches "model: opus" inside a frontmatter block.
 var agentModelLine = regexp.MustCompile(`(?m)^model:\s*(\S+)\s*$`)
 
 func harnessProblems(root string) []string {
@@ -143,7 +113,6 @@ func harnessRelative(root, path string) string {
 	return filepath.ToSlash(rel)
 }
 
-// The text between the opening `---` line and the next `---` line.
 func frontmatterOf(text string) (string, bool) {
 	text = strings.TrimPrefix(text, "\uFEFF")
 	text = strings.ReplaceAll(text, "\r\n", "\n")
@@ -160,13 +129,8 @@ func frontmatterOf(text string) (string, bool) {
 	return "", false
 }
 
-// A workflow script's agent() inherits the dispatcher's model unless told
-// otherwise, and the dispatcher's model is the flagship tier the subagent rule
-// forbids. So every agent( call must sit on a line that also names model:, and
-// no model literal may be fable, sol or inherit. Scripts get there with a
-// one-line wrapper — const run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet' })
-// — which is why the check is per line, not per call: a call split across lines
-// is flagged, and the fix is to route it through the wrapper.
+// A call is flagged only when its own line lacks "model:", so a call split
+// across multiple lines must be rewritten onto one.
 var (
 	workflowAgentCall     = regexp.MustCompile(`\bagent\(`)
 	workflowModelLiteral  = regexp.MustCompile(`model:\s*['"]([^'"]*)['"]`)
@@ -198,7 +162,7 @@ func harnessWorkflowProblems(root string) []string {
 		}
 		for i, line := range strings.Split(text, "\n") {
 			if strings.HasPrefix(strings.TrimSpace(line), "//") {
-				continue // prose about agent() is not a call
+				continue // a comment line is prose, not a call
 			}
 			if workflowAgentCall.MatchString(line) && !strings.Contains(line, "model:") {
 				problems = append(problems, fmt.Sprintf(

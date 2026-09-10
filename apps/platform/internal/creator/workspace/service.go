@@ -19,23 +19,16 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
-// SessionTTL is the fixed absolute session lifetime (ADR-020: no sliding renewal).
 const SessionTTL = 30 * 24 * time.Hour
 
 const providerGitHub = "github"
 
 var ErrAccountPurging = errors.New("account deletion is already in progress")
 
-// Service wires OAuth identity to users, workspaces, and sessions.
 type Service struct {
 	Pool  *pgxpool.Pool
 	OAuth *GitHubOAuth
 
-	// The account purge's cross-context steps, all of them required. Each one
-	// belongs to the context that owns the rows it clears, and arrives here from
-	// a composition root rather than an import because every context imports this
-	// one for its workspace scope (iron rule 3), so this one can import none of
-	// them (ADR-034). purge.go holds the order and the refusal.
 	PurgeAnalytics     WorkspacePurge
 	PurgeTestData      WorkspacePurge
 	PurgeRunArtifacts  WorkspacePurge
@@ -43,25 +36,15 @@ type Service struct {
 	PurgeCreation      WorkspacePurge
 	PurgeSkills        WorkspacePurge
 	PurgeImportSources WorkspacePurge
-	// PurgeCredit clears the account's two ledgers (ADR-068 decision 11).
-	// Same shape as its seven neighbours and required the same way, but the
-	// composition root's closure does one extra thing first: credit_accounts
-	// and credit_entries are keyed on the USER, so it resolves the workspace
-	// to its owner before deleting. Nothing here knows that — this field only
-	// knows that account deletion is not finished until it has run.
+
 	PurgeCredit WorkspacePurge
 
-	// Object-key readers run before the transaction and are split by owner just
-	// like the row purges. All three are required; see purge.go.
 	DatasetObjectKeys          WorkspaceObjectKeys
 	RunArtifactObjectKeys      WorkspaceObjectKeys
 	DownloadArtifactObjectKeys WorkspaceObjectKeys
 	WorkspaceQuiescent         WorkspaceQuiescence
 }
 
-// MayStoreObjects is Identity's owner read for the account-lifecycle gate.
-// Producers call it using the same connection or transaction that holds their
-// workspace object fence.
 func (s *Service) MayStoreObjects(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {
 	if db == nil {
 		return false, errors.New("identity: object eligibility database is not configured")
@@ -69,10 +52,6 @@ func (s *Service) MayStoreObjects(ctx context.Context, db gen.DBTX, workspaceID 
 	return gen.New(db).WorkspaceAcceptsObjects(ctx, workspaceID)
 }
 
-// LockObjectWrite takes the shared, session-scoped side of the account-purge
-// fence and rechecks eligibility after any exclusive purge has released it.
-// Callers that span object-store I/O must pair it with UnlockObjectWrite on the
-// same database connection.
 func LockObjectWrite(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {
 	q := gen.New(db)
 	if err := q.LockWorkspaceObjectWrite(ctx, workspaceID); err != nil {
@@ -93,8 +72,6 @@ func UnlockObjectWrite(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID
 	return err
 }
 
-// User and Workspace are Identity's published language. Persistence rows stay
-// inside this context so schema changes do not become cross-context contracts.
 type User struct {
 	ID                  pgtype.UUID
 	Email               string
@@ -131,21 +108,14 @@ func workspaceDTO(row gen.Workspace) Workspace {
 
 func (s *Service) queries() *gen.Queries { return gen.New(s.Pool) }
 
-// ExternalIdentity is an identity a provider has already verified (GitHub
-// OAuth, the dev provider, later LDAP). LoginOrSignup trusts it; verifying
-// credentials against the provider is the caller's job.
 type ExternalIdentity struct {
 	Provider       string
 	ProviderUserID string
 	Email          string
 	Name           string
-	Login          string // workspace name on first login
+	Login          string
 }
 
-// LoginOrSignup resolves an external identity to a user — creating user,
-// personal workspace, and identity in one transaction on first login
-// (ADR-011 1:1 workspace, ADR-020) — and mints a session. It returns the raw
-// session token; only its SHA-256 is stored.
 func (s *Service) LoginOrSignup(ctx context.Context, id ExternalIdentity) (string, error) {
 	user, err := s.queries().GetUserByIdentity(ctx, gen.GetUserByIdentityParams{
 		Provider:       id.Provider,
@@ -171,10 +141,10 @@ func (s *Service) signup(ctx context.Context, id ExternalIdentity) (gen.User, er
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := s.queries().WithTx(tx)
-	// The optimistic lookup in LoginOrSignup keeps established logins cheap.
-	// Serialize only first-login contenders for the same provider identity, then
-	// re-check under the lock so two OAuth callbacks cannot create an orphan user
-	// and workspace before one loses the identity primary-key race.
+
+	// Serializes concurrent first-login attempts for the same external
+	// identity so two callbacks racing here cannot each create a user and
+	// workspace before the identity's primary key rejects the loser.
 	if _, err := tx.Exec(ctx,
 		"SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))",
 		id.Provider, id.ProviderUserID,
@@ -237,8 +207,7 @@ func (s *Service) mintSession(ctx context.Context, user gen.User) (string, error
 		}
 		return "", err
 	}
-	// CORE-008: the session row and its audit event commit together, so a
-	// session that exists always has a login on the trail.
+
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor:        user.ID,
 		Action:       audit.ActionLogin,
@@ -250,16 +219,11 @@ func (s *Service) mintSession(ctx context.Context, user gen.User) (string, error
 	return token, tx.Commit(ctx)
 }
 
-// UserForToken resolves a cookie token to its user; expiry is checked in SQL.
 func (s *Service) UserForToken(ctx context.Context, token string) (User, error) {
 	row, err := s.queries().GetSessionUser(ctx, hashToken(token))
 	return userDTO(row), err
 }
 
-// Logout revokes the session; deleting a missing row is a no-op (idempotent).
-// The audit event commits with the revocation (CORE-008). An unknown or already
-// expired token leaves no trail: there is no session to revoke and no verified
-// actor to attribute one to.
 func (s *Service) Logout(ctx context.Context, token string) error {
 	hash := hashToken(token)
 	user, err := s.queries().GetSessionUser(ctx, hash)
@@ -290,21 +254,12 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 	return tx.Commit(ctx)
 }
 
-// AccountDeletionGrace is how long a deletion request stays cancellable before
-// the purge runs and becomes irreversible (PDM-006 6.1).
 const AccountDeletionGrace = 30 * 24 * time.Hour
 
-// RequestAccountDeletion starts the grace period (CORE-007). The account stays
-// fully usable meanwhile — that is the point of a cancellable window — so this
-// deliberately does not touch users.deleted_at, which is what every read and
-// the login path treat as "gone" (see 0013).
-//
-// Idempotent: asking twice keeps the original start time.
 func (s *Service) RequestAccountDeletion(ctx context.Context, user User) (User, error) {
 	return s.setDeletionRequest(ctx, user, true)
 }
 
-// CancelAccountDeletion withdraws the request at any point in the grace period.
 func (s *Service) CancelAccountDeletion(ctx context.Context, user User) (User, error) {
 	return s.setDeletionRequest(ctx, user, false)
 }
@@ -342,28 +297,10 @@ func (s *Service) setDeletionRequest(ctx context.Context, user User, request boo
 	return userDTO(updated), tx.Commit(ctx)
 }
 
-// CleanupExpiredSessions batch-deletes sessions past their absolute expiry.
-// Idempotent: an empty result on repeated calls is expected, not an error
-// (ADR-020, matches the ADR-008 cleanup convention). The caller is
-// responsible for scheduling; no cron/queue is wired here.
 func (s *Service) CleanupExpiredSessions(ctx context.Context) (int64, error) {
 	return s.queries().DeleteExpiredSessions(ctx)
 }
 
-// PersonalWorkspace returns the user's single personal workspace (ADR-011).
-//
-// More than one is an error and not a choice. This function is where every
-// workspace scope in the platform comes from (iron rule 3): /me, feedback, the
-// download funnel. ListWorkspacesByOwner orders by created_at with no
-// tie-breaker, so two rows for one owner would make "the first" whichever
-// Postgres returned — a request's scope, non-deterministic and silent.
-//
-// The state is unreachable today and this branch is defence behind the thing
-// that makes it so: db/migrations/0002 creates workspaces_owner_user_id_key, a
-// unique index, and TestOneAccountCannotHaveTwoWorkspaces asserts it. The two
-// lines stay because the index is the load-bearing half and this file cannot see
-// it — picking ws[0] would be how the wrong workspace's rows get served on the
-// day somebody relaxes that index for an org feature.
 func (s *Service) PersonalWorkspace(ctx context.Context, user User) (Workspace, error) {
 	ws, err := s.queries().ListWorkspacesByOwner(ctx, user.ID)
 	if err != nil {
@@ -380,36 +317,10 @@ func (s *Service) PersonalWorkspace(ctx context.Context, user User) (Workspace, 
 	return workspaceDTO(ws[0]), nil
 }
 
-// WorkspaceOwner is PersonalWorkspace's inverse, and until 2026-09-10 this
-// codebase had only the forward direction — which is why nothing could charge
-// a workspace's spending to an account.
-//
-// Credit keys accounts on the user (migration 0060: "每個帳號" is the user),
-// while creation's job args and the operator grant route both carry a
-// workspace id. Somebody has to bridge that, and the tempting shortcut — MVP
-// gives each account exactly one workspace, so pass the workspace id as the
-// user id — is a coincidence the schema does not promise: ADR-011 says one
-// personal workspace per user, which is not the same as the two ids being
-// interchangeable. They are different columns and this is the query that
-// relates them.
-//
-// A workspace that does not exist is an error, not a zero uuid: the caller is
-// about to decide whose balance to move.
 func (s *Service) WorkspaceOwner(ctx context.Context, workspaceID pgtype.UUID) (pgtype.UUID, error) {
 	return s.WorkspaceOwnerIn(ctx, s.Pool, workspaceID)
 }
 
-// WorkspaceOwnerIn is WorkspaceOwner on a caller-supplied handle, the same
-// shape and for the same reason as MayStoreObjects: a caller inside a
-// transaction must not reach for the pool.
-//
-// The account purge is why this exists. Its steps run on one connection that
-// already holds the workspace's exclusive object fence, and credit's step has
-// to resolve the workspace to its owner before it can delete anything — doing
-// that on a second connection waits on a lock the first connection holds and
-// the purge dies on its context deadline instead. The integration test that
-// pins the purge to its own connection caught exactly that, on the day credit
-// was wired in.
 func (s *Service) WorkspaceOwnerIn(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (pgtype.UUID, error) {
 	if db == nil {
 		return pgtype.UUID{}, errors.New("identity: workspace owner lookup has no database handle")
@@ -424,15 +335,6 @@ func (s *Service) WorkspaceOwnerIn(ctx context.Context, db gen.DBTX, workspaceID
 	return owner, nil
 }
 
-// AccountState answers "does this user still exist, and has a purge begun"
-// for a bare user id — the one fact credit needs before it grants or charges
-// (ADR-068 decision 11), delivered through an injected func so credit never
-// imports this package.
-//
-// Plain bools rather than credit's own AccountFacts: this context may not
-// import that one either (the depguard rules deny it in both directions), so
-// the composition root assembles the struct. A user id with no row reports
-// present=false rather than an error — "no such user" is an answer.
 func (s *Service) AccountState(ctx context.Context, userID pgtype.UUID) (present bool, purging bool, err error) {
 	row, err := s.queries().GetUserAccountState(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {

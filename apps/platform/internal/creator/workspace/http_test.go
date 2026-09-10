@@ -6,10 +6,6 @@ import (
 	"testing"
 )
 
-// The dev-login body is a Chinese sentence a user can read, not the English
-// error the handler used to write straight onto the wire (04 丙-149). The
-// over-length name is rejected before Service is touched, so this needs no
-// database.
 func TestDevLoginRejectsOverlongNameInChinese(t *testing.T) {
 	h := &Handler{DevLogin: true}
 	body := strings.NewReader(`{"user":"` + strings.Repeat("a", 65) + `"}`)
@@ -27,10 +23,6 @@ func TestDevLoginRejectsOverlongNameInChinese(t *testing.T) {
 	}
 }
 
-// The download link is an <a href>, so a browser that follows it while not
-// invited lands on the gate's answer with no page to catch it. That answer is a
-// Chinese HTML page for a browser and stays the JSON body for an API caller
-// (04 丙-149).
 func TestNotInvitedAnswersABrowserWithAChinesePage(t *testing.T) {
 	browser := httptest.NewRequest("GET", "/downloads/x/content", nil)
 	browser.Header.Set("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")

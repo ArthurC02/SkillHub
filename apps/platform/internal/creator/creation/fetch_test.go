@@ -9,7 +9,6 @@ import (
 	"testing"
 )
 
-// The URL rule runs before the person is asked: only public http(s) hosts.
 func TestValidateFetchURLRefusesWhatMustNeverBeAsked(t *testing.T) {
 	for _, raw := range []string{"ftp://example.com/x", "file:///etc/passwd", "http://user:pw@example.com/", "http://127.0.0.1/", "http://10.1.2.3/", "http://[::1]/", "http://169.254.169.254/latest/meta-data", "example.com/no-scheme", ""} {
 		if _, err := validateFetchURL(raw); err == nil {
@@ -22,8 +21,6 @@ func TestValidateFetchURLRefusesWhatMustNeverBeAsked(t *testing.T) {
 	}
 }
 
-// A page comes back as prose with its markup and scripts gone; the record
-// carries where it came from and how big it was.
 func TestFetcherReadsTextAndReportsBlocksWithoutRetry(t *testing.T) {
 	hits := map[string]int{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -68,14 +65,12 @@ func TestFetcherReadsTextAndReportsBlocksWithoutRetry(t *testing.T) {
 	if rec, _ := f.Fetch(ctx, srv.URL+"/missing"); rec.Status != "not_found" {
 		t.Fatalf("missing: %+v", rec)
 	}
-	// Production wiring refuses loopback outright.
+
 	if rec, _ := NewFetcher(false).Fetch(ctx, srv.URL+"/page"); rec.Status != "blocked" {
 		t.Fatalf("loopback must be blocked outside tests: %+v", rec)
 	}
 }
 
-// The observation is JSON the model reads; the sentence is Go's and the page
-// text is inside the JSON, never concatenated into prose.
 func TestFetchObservationIsJSONWithGoSentence(t *testing.T) {
 	obs := fetchObservation(Fetch{URL: "https://x.test/a", Status: "blocked"}, "")
 	var parsed map[string]map[string]any

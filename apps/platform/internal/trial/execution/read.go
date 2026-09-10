@@ -11,22 +11,17 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
-// BelongsToWorkspace answers membership without exposing Run's generated query
-// contract to consumers.
 func (s *Service) BelongsToWorkspace(ctx context.Context, workspaceID, runID pgtype.UUID) (bool, error) {
 	return s.queries().RunInWorkspace(ctx, gen.RunInWorkspaceParams{
 		ID: runID, WorkspaceID: workspaceID,
 	})
 }
 
-// TraceRun is the run state Trace may show without exposing sqlc's Run row.
 type TraceRun struct {
 	Status       string
 	StatusReason *string
 }
 
-// TraceIngestRun is the trusted scope and lifecycle state resolved from a
-// signed ingestion grant. The workspace never comes from the event body.
 type TraceIngestRun struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -34,13 +29,11 @@ type TraceIngestRun struct {
 	FinishedAt  *time.Time
 }
 
-// TraceTransition is one authoritative lifecycle step rendered by Trace.
 type TraceTransition struct {
 	ToStatus string
 	Reason   *string
 }
 
-// EvaluationRun is the Run-owned fact shape used by Evaluation reads.
 type EvaluationRun struct {
 	ID                 pgtype.UUID
 	WorkspaceID        pgtype.UUID
@@ -54,7 +47,6 @@ type EvaluationRun struct {
 	FailureClass       *string
 }
 
-// EvaluationArtifact is one live output-manifest row used as evidence.
 type EvaluationArtifact struct {
 	FileName    string
 	ContentType string
@@ -62,31 +54,19 @@ type EvaluationArtifact struct {
 	ContentHash string
 }
 
-// EvaluationInput is the Run-owned aggregate needed to evaluate one attempt.
 type EvaluationInput struct {
 	Run       EvaluationRun
 	Artifacts []EvaluationArtifact
-	// Absent is what the manifest has that Artifacts cannot carry: rows this
-	// run recorded and the evaluation cannot read. Without it a short
-	// Artifacts slice says "this run produced nothing", which is a different
-	// claim and the one 02:EVAL-001 forbids sharing a sentence with.
+
 	Absent        EvaluationArtifactAbsence
 	LatestAttempt int
 }
 
-// EvaluationArtifactAbsence counts the two ways a recorded output stops being
-// readable. Deleted is the user's own doing (WS-002 / SEC-006) and is reachable
-// today; Expired is the platform's, and counts a row whose retention has passed
-// -- the column is the platform saying it may no longer hold the bytes, and an
-// evaluation that declines to rely on them is the safe direction to be wrong in.
-// The sweep that acts on it is reconcile.go's ExpiredArtifactCandidates, driven
-// by `maintenance purge-run-artifacts`.
 type EvaluationArtifactAbsence struct {
 	Deleted int
 	Expired int
 }
 
-// TraceRun returns a workspace-scoped run fact for Trace.
 func (s *Service) TraceRun(ctx context.Context, workspaceID, runID pgtype.UUID) (TraceRun, bool, error) {
 	row, err := s.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -98,8 +78,6 @@ func (s *Service) TraceRun(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	return TraceRun{Status: string(row.Status), StatusReason: row.StatusReason}, true, nil
 }
 
-// TraceIngestRun resolves the owner-controlled workspace and state named by a
-// signed run grant.
 func (s *Service) TraceIngestRun(ctx context.Context, runID pgtype.UUID) (TraceIngestRun, bool, error) {
 	row, err := s.queries().GetRunForTraceIngest(ctx, runID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -118,7 +96,6 @@ func (s *Service) TraceIngestRun(ctx context.Context, runID pgtype.UUID) (TraceI
 	}, true, nil
 }
 
-// TraceTransitions returns authoritative lifecycle steps in occurrence order.
 func (s *Service) TraceTransitions(ctx context.Context, workspaceID, runID pgtype.UUID) ([]TraceTransition, error) {
 	rows, err := s.queries().ListRunStatusTransitions(ctx, gen.ListRunStatusTransitionsParams{
 		RunID: runID, WorkspaceID: workspaceID,
@@ -133,7 +110,6 @@ func (s *Service) TraceTransitions(ctx context.Context, workspaceID, runID pgtyp
 	return out, nil
 }
 
-// EvaluationRun returns one workspace-scoped Run fact without exposing sqlc.
 func (s *Service) EvaluationRun(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationRun, bool, error) {
 	row, err := s.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -145,8 +121,6 @@ func (s *Service) EvaluationRun(ctx context.Context, workspaceID, runID pgtype.U
 	return evaluationRun(row), true, nil
 }
 
-// EvaluationInput returns Run facts, the latest attempt number (default 1),
-// and live output evidence under the same workspace scope.
 func (s *Service) EvaluationInput(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, bool, error) {
 	run, found, err := s.EvaluationRun(ctx, workspaceID, runID)
 	if err != nil || !found {
@@ -168,9 +142,7 @@ func (s *Service) EvaluationInput(ctx context.Context, workspaceID, runID pgtype
 	if err != nil {
 		return EvaluationInput{}, false, err
 	}
-	// Counted rather than inferred from the two lengths: the readable query has
-	// already filtered its own gap away, so the difference between "recorded
-	// nothing" and "recorded something unreadable" only exists here.
+
 	absent, err := s.queries().CountUnreadableRunArtifacts(ctx, gen.CountUnreadableRunArtifactsParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})

@@ -3,68 +3,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 
-/**
- * 04 丙-21 ③ / 02:NFR-007 — the colour-contrast guard, at the token layer.
- *
- * `a11y.test.tsx` says in its own header that **a contrast regression will not
- * fail that test**: axe answers `incomplete` for `color-contrast` under jsdom,
- * which computes no layout. The palette was measured by hand instead, and a hand
- * measurement decays the first time somebody edits `index.css`. This file is
- * that measurement, re-run on every build.
- *
- * **What it proves.** For each pair listed in PAIRS below, the two static hex
- * tokens in `index.css` — in both the `:root` and the `prefers-color-scheme:
- * dark` sets — meet the stated WCAG 2.1 ratio. The values are read out of
- * `index.css` itself (plain `readFileSync` — no CSS parser, no new dependency;
- * `?raw` is not an option because Vitest stubs CSS imports empty unless
- * `test.css` is on), never copied here, so the two cannot drift apart: editing a
- * token re-runs the arithmetic against the new value, and deleting one fails the
- * "defined in both themes" assertion below. A second hand-kept copy of the
- * palette in this file would be the thing that rots, which is the failure this
- * test exists to end.
- *
- * **What it does not prove**, in the same spirit as the a11y header:
- *
- * 1. **Anything involving alpha.** `--accent-bg` and `--accent-border` are
- *    `rgba()`; whatever sits on top of them is composited against a background
- *    this file never resolves. `.notice` (text on `--accent-bg`) is therefore
- *    unchecked here — but no longer unchecked anywhere: the browser tier
- *    (ADR-036) composites it in three engines, and that gap was verified closed
- *    by breaking `--accent-bg` on purpose and watching this file stay green
- *    while the browser tier failed.
- * 2. **`opacity`.** A multiplier lands wherever it lands regardless of the
- *    token — which is exactly why QA-009 removed the `opacity: 0.65`–`0.8`
- *    mutes from `index.css` rather than tuning them. Nothing stops them coming
- *    back; only a rendered-pixel check would catch that.
- * 3. **Which pairs actually occur on screen.** PAIRS is a hand-written list,
- *    read off `index.css` and the pages that use those classes. A new rule that
- *    puts `--text` on some third background is a pairing this file has never
- *    heard of. Adding a token pairing means adding a line here — which is the
- *    whole of ADR-064's 「沒有進 `PAIRS` 的配對等於沒有被守」, and why the §4.6
- *    surfaces took the list from 9 pairs to 25. The direction of that ignorance
- *    runs both ways: the interactive lines (`--surface-hover`,
- *    `--surface-active`) are arithmetic on two hex values and say nothing about
- *    whether any rule paints those states, or whether a pointer can reach them.
- *    Neither can any static tier; that is the browser tier's job (ADR-036).
- * 4. **Rendered pixels** — anti-aliasing, font weight and size at the real
- *    breakpoints, browser colour management. That is QA-008's job (real browser
- *    plus manual walkthrough), and it stays QA-008's job; this is the cheap
- *    layer underneath it that runs in CI.
- */
-
-// `join(import.meta.dirname, …)` rather than `new URL("./index.css",
-// import.meta.url)`: Vite rewrites that second form at transform time into an
-// asset URL, so it never reaches the filesystem.
 const css = readFileSync(join(import.meta.dirname, "index.css"), "utf8");
 
-/**
- * Both palettes, without a CSS parser: `index.css` declares each colour token
- * exactly twice — once in `:root`, once in the dark `@media` block, in that
- * order — so the first hex for a name is light and the second is dark. The
- * "exactly twice" assertion below is what keeps that assumption honest: a token
- * that stops being redefined for dark mode fails here rather than silently
- * inheriting the light value onto a dark background.
- */
 const declarations = [...css.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{3,8})\s*;/g)];
 
 function palette(nth: 0 | 1): Record<string, string> {
@@ -79,7 +19,6 @@ function palette(nth: 0 | 1): Record<string, string> {
 
 const THEMES = { light: palette(0), dark: palette(1) } as const;
 
-/** WCAG 2.1 relative luminance, sRGB. */
 function luminance(hex: string): number {
   const h =
     hex.length === 4
@@ -97,27 +36,6 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/**
- * The pairings that exist in `index.css`, with the rule each one answers to.
- *
- * 4.5:1 is WCAG 2.1 **1.4.3 Contrast (Minimum)** for body text. Nothing here
- * claims the 3:1 large-text exemption — `h1` (56px) and `.verdict` (20px/500)
- * would qualify, but they use `--text-h`, which clears 4.5:1 anyway, so the
- * stricter bar costs nothing and survives a font-size change.
- *
- * The 3:1 lines are the ones that carry no text. `--accent` is the 3px
- * `border-left` of `.notice`; `--border-strong` (ADR-064 / §4.6.1) is the
- * **control boundary** — the edge of an input or a secondary button, which is
- * the only thing telling a reader where the control is, and therefore a user
- * interface component under WCAG 2.1 **1.4.11 Non-text Contrast**: 3:1 against
- * whatever it sits on, and it sits on both 地 (`--bg`) and 面 (`--surface`), so
- * both are listed. That rule is exactly what the old 1px `--border` on an input
- * failed at 1.27:1, which is why `--border-strong` exists at all.
- *
- * `--border` and `--accent-border` stay deliberately absent: they outline cards,
- * table cells and badges whose state is always also stated in words (NFR-007),
- * so they are decoration under 1.4.11, not the sole carrier of any information.
- */
 const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
   ["text", "bg", 4.5, "body and .note/.rank/.file-size on the page"],
   ["text", "code-bg", 4.5, ".skill-md and .diff body text"],
@@ -126,17 +44,9 @@ const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
   ["danger", "bg", 4.5, ".file-script .script-tag"],
   ["danger", "code-bg", 4.5, ".badge-compat-failed/.badge-risk/.badge-expired text"],
   ["accent", "bg", 3, ".notice border-left — 1.4.11 non-text, never used as text"],
-  // --link exists because --accent is 4.39:1 on --bg: it can outline a .notice
-  // and it cannot be a link. That distinction only holds while something checks
-  // it, so these two lines are the check — without them the reason --link was
-  // added is a sentence in a comment rather than a property of the palette.
   ["link", "bg", 4.5, "a, .app-nav links — link text on the page"],
   ["link", "code-bg", 4.5, "a inside .skill-md / .diff / a styled control"],
 
-  // ── ADR-064 §4.6.1: 面 (--surface). Everything that used to sit on 地 now
-  // sits on a card, a control or the header instead, so every text token that
-  // had a --bg line needs a --surface line or it moved onto an unguarded
-  // background. --accent joins them because .notice is a surface object too.
   ["text", "surface", 4.5, "card body, .note inside a card, control labels"],
   ["text-h", "surface", 4.5, "h1/h2, .app-title, .verdict on a card or the header"],
   ["danger", "surface", 4.5, ".script-tag and ConfirmDelete's outlined button on a card"],
@@ -145,23 +55,14 @@ const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
   ["border-strong", "surface", 3, "1.4.11 — input/secondary-button edge on a card"],
   ["border-strong", "bg", 3, "1.4.11 — the same edge where a control sits on 地"],
 
-  // ── §4.6.3 互動態. Pre-mixed flat colours, not overlays (the repo bans
-  // `opacity`), so they are ordinary backgrounds and get measured like any
-  // other. Only the tokens a hovered/pressed control actually paints are here:
-  // hover and active are reached on controls, whose text is --text or --link.
   ["text", "surface-hover", 4.5, "a hovered secondary button or row"],
   ["link", "surface-hover", 4.5, "a hovered link-shaped control"],
   ["text", "surface-active", 4.5, "a pressed secondary button or row"],
   ["link", "surface-active", 4.5, "a pressed link-shaped control — the tightest light pair"],
   ["text-h", "surface-active", 4.5, "a pressed control whose label is a heading token"],
 
-  // ── §4.6.3 主要動作. The only filled control in the app; --on-cta exists for
-  // this one pairing and for nothing else, so this line is the whole guard.
   ["on-cta", "cta", 4.5, ".action — the one filled primary action per page"],
 
-  // ── §4.6.1 / §5.3 缺口 ①: the blocking notice's own ground. This is the
-  // second signal for role="alert" — a background that only ever means 「這件事
-  // 擋住你」 — so all three text tokens that can land on it are listed.
   ["danger", "danger-bg", 4.5, ".notice-danger heading and inline emphasis"],
   ["text-h", "danger-bg", 4.5, ".notice-danger's own heading"],
   ["text", "danger-bg", 4.5, ".notice-danger body text"],
@@ -175,8 +76,6 @@ test("QA-009: every colour token is declared once per theme", () => {
       `--${name} must be declared in both :root and the dark @media block`,
     ).toHaveLength(2);
   }
-  // Guards the regex itself: a rename or a switch to another colour notation
-  // would otherwise leave PAIRS silently comparing `undefined`.
   for (const [fg, bg] of PAIRS) {
     for (const theme of Object.values(THEMES)) {
       expect(theme[fg], `--${fg} not found as a hex token`).toMatch(/^#/);
@@ -197,19 +96,6 @@ for (const [themeName, theme] of Object.entries(THEMES)) {
   }
 }
 
-/**
- * ADR-064 §4.6.2 的第二半：三層平面**要量得出來**。
- *
- * 結構寫進文件之後，這件事被讀成「地與面是兩個不同的 token」——而兩個不同的 token
- * 可以差 1.07:1，那是一個色碼上成立、眼睛裡不成立的層級。2026-09-08 之前它就是
- * 1.07:1，卡片邊 `--border` 對面 1.27:1，於是外部審查連續讀到「純白畫布上的白色
- * 線框」。PAIRS 抓不到這件事：那 25 對量的是**字讀不讀得到**，而這裡量的是**面看不
- * 看得出來**，兩者的門檻與理由都不同（面之間沒有 WCAG 門檻，1.4.11 管的是控制項與
- * 資訊性圖形的邊，那條邊是 `--border-strong`，在 PAIRS 裡）。
- *
- * 兩個門檻都低於現值一階，所以它是棘輪不是天花板：把地調回 `#f6f7f9`（1.07）或把
- * `--border` 調回 `#e1e4ea`（1.27）就會紅。
- */
 const luminanceOrder = (hex: string) => contrast(hex, "#000000");
 
 for (const [themeName, theme] of Object.entries(THEMES)) {

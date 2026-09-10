@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 )
 
-// zipOf builds an in-memory archive with the given entries.
 func zipOf(t *testing.T, entries map[string]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -29,9 +28,6 @@ func zipOf(t *testing.T, entries map[string]string) []byte {
 	return buf.Bytes()
 }
 
-// TestDetectContentTypeAllows covers the PDM-005 §5.1 allow-list. The file name
-// is not an argument to detectContentType at all, which is the point: the type
-// comes from the bytes.
 func TestDetectContentTypeAllows(t *testing.T) {
 	png := append([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}, bytes.Repeat([]byte{0}, 64)...)
 	cases := map[string][]byte{
@@ -57,9 +53,6 @@ func TestDetectContentTypeAllows(t *testing.T) {
 	}
 }
 
-// TestDetectContentTypeRejectsDisguisedExecutables is the "不信任副檔名" rule: an
-// executable stays an executable however it is named, and detectContentType is
-// never told the name in the first place.
 func TestDetectContentTypeRejectsDisguisedExecutables(t *testing.T) {
 	pad := bytes.Repeat([]byte{0}, 128)
 	cases := map[string][]byte{
@@ -81,9 +74,6 @@ func TestDetectContentTypeRejectsDisguisedExecutables(t *testing.T) {
 	}
 }
 
-// TestDetectContentTypeRejectsUnknownBinary: anything that is neither text nor
-// an allowed container is refused, so the allow-list is closed rather than a
-// list of known-bad prefixes.
 func TestDetectContentTypeRejectsUnknownBinary(t *testing.T) {
 	data := append([]byte{'O', 'g', 'g', 'S', 0x00}, bytes.Repeat([]byte{0x01, 0x00}, 128)...)
 	if _, err := detectContentType(data); !errors.Is(err, ErrUnsupportedType) {
@@ -108,8 +98,6 @@ func TestInspectZipRejectsUnsafeEntries(t *testing.T) {
 	}
 }
 
-// TestInspectZipAppliesUnpackBudget: a plain archive's contents count against
-// the per-test-case file budget, since that is what the sandbox will mount.
 func TestInspectZipAppliesUnpackBudget(t *testing.T) {
 	entries := map[string]string{}
 	for i := range MaxFilesPerTestCase + 1 {
@@ -119,20 +107,12 @@ func TestInspectZipAppliesUnpackBudget(t *testing.T) {
 		t.Fatalf("accepted archive of %d files: err = %v", len(entries), err)
 	}
 
-	// The same entry count inside an OOXML container is one document, not 21
-	// user files: a real .xlsx routinely carries more parts than that. The FILE
-	// COUNT is the only budget that entry turns off - see the byte-budget test
-	// below, which is the half that used to be turned off with it.
 	entries["[Content_Types].xml"] = "<Types/>"
 	if _, err := detectContentType(zipOf(t, entries)); err != nil {
 		t.Fatalf("rejected an OOXML document for its internal part count: %v", err)
 	}
 }
 
-// zipDeclaring builds a zip whose central directory declares the given unpacked
-// sizes without carrying the bytes. That is the shape inspectZip actually reads
-// (it never unpacks - the sandbox does, ADR-005), and it is also the shape of the
-// attack: deflate lets a 25 MB upload declare gigabytes.
 func zipDeclaring(t *testing.T, entries map[string]uint64) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -147,7 +127,7 @@ func zipDeclaring(t *testing.T, entries map[string]uint64) []byte {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := w.Write([]byte{0x03, 0x00}); err != nil { // an empty deflate stream
+		if _, err := w.Write([]byte{0x03, 0x00}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -157,13 +137,6 @@ func zipDeclaring(t *testing.T, entries map[string]uint64) []byte {
 	return buf.Bytes()
 }
 
-// TestInspectZipKeepsTheUnpackBudgetForOOXML: [Content_Types].xml switches off
-// the file-count limit and nothing else.
-//
-// It used to switch off the byte budget as well, which put the whole PDM-005 §5.1
-// unpack allowance for a zip dataset behind one filename - and the only remaining
-// upper bound was the 25 MB compressed-side limit, which deflate turns into
-// several GB of content the sandbox would be asked to mount.
 func TestInspectZipKeepsTheUnpackBudgetForOOXML(t *testing.T) {
 	bomb := zipDeclaring(t, map[string]uint64{
 		"[Content_Types].xml":      32,
@@ -174,7 +147,6 @@ func TestInspectZipKeepsTheUnpackBudgetForOOXML(t *testing.T) {
 			humanMB(MaxTestCaseBytes), err)
 	}
 
-	// And a real spreadsheet's shape still passes: many parts, small total.
 	ok := zipDeclaring(t, map[string]uint64{
 		"[Content_Types].xml":      32,
 		"xl/worksheets/sheet1.xml": 4096,
@@ -184,7 +156,6 @@ func TestInspectZipKeepsTheUnpackBudgetForOOXML(t *testing.T) {
 	}
 }
 
-// TestSanitizeFileName: the display name can never be read as a path.
 func TestSanitizeFileName(t *testing.T) {
 	cases := map[string]string{
 		"data.csv":               "data.csv",
@@ -202,11 +173,6 @@ func TestSanitizeFileName(t *testing.T) {
 	}
 }
 
-// The length cap is by bytes, and every case above is ASCII — so deleting the
-// cap entirely left this test green (M2 audit, 2026-08-24), and so did the
-// original `name = name[:MaxNameBytes]`, which halves a rune on any name that
-// is not. The name reaches a text column, the permission summary and a snapshot
-// manifest; the first of those refuses an invalid byte sequence outright.
 func TestSanitizeFileNameCutsToBytesWithoutHalvingARune(t *testing.T) {
 	long := strings.Repeat("\u9577", MaxNameBytes) + ".csv"
 

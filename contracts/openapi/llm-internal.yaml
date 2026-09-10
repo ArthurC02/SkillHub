@@ -9,8 +9,6 @@ info:
 servers:
   - url: http://llm:8000
 
-# Every route requires the workload identity token from the Go control plane.
-# Private networking remains a separate deployment boundary (ADR-020).
 security:
   - serviceBearer: []
 
@@ -917,8 +915,6 @@ components:
             JudgeRunResponse.usage. Reported even when `reasons` is empty: an
             answer the service could not use was still a paid call.
 
-    # --- /judge-run (EVAL-001 task-effect leg) ---
-
     JudgeCriterion:
       type: object
       description: One acceptance criterion, taken from the test case snapshot.
@@ -1126,8 +1122,6 @@ components:
           type: string
           minLength: 1
           maxLength: 40000  # deliberately unmarked: not maxFinalOutput. Nothing produces a prompt this long
-          # - trial/design MaxPromptBytes caps it at 32 KiB upstream, and bytes bound
-          # characters from above, so this ceiling cannot bite. Same number, different fact.
           description: The task the user asked for. Untrusted, and the thing the criteria are about.
         criteria:
           type: array
@@ -1388,8 +1382,6 @@ components:
             `cost_source`, kept in its own column apart from the Run's own cost:
             one is what the user's workload spent, the other what the platform's
             verdict spent, and they are never added into one number (丙-3).
-
-    # --- /suggest-improvements (EVAL-002) ---
 
     TargetFile:
       type: object

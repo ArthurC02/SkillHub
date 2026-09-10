@@ -1,31 +1,5 @@
 package apiserver_test
 
-// GEN-005 / GEN-006 ①② — the two newer input modes, twenty of each, against a
-// real gateway. report-generate-modes.md ran each mode once and said so: "三次
-// 各一筆，不是分布". This is the distribution.
-//
-// ============================ WHAT THIS IS ==================================
-// For each corpus item the real generation path runs (ingest → apps/llm →
-// gateway → skillpkg.Validate → version), and the row records what the earlier
-// rounds recorded: validated or blocked, attempts, cost, the provenance row. Two
-// machine checks are added because the modes have a question the text mode did
-// not: did the model READ the input? For a diagram, each node carries a key
-// token a faithful document would contain; the row counts how many appear. For
-// a reference, each reference carries three marker phrases that appear only in
-// its own body; the row counts how many the output copied, and the longest
-// run of runes shared between the reference body and the output.
-//
-// ============================ WHAT THIS IS NOT ==============================
-// Not GEN-009 ③④: nothing is run in a sandbox and nobody reads the output.
-// A key token present says the node was seen, not that the step was right.
-//
-// Usage (spends money — about US$0.004 per item):
-//
-//	GEN_MODES_CORPUS=<corpus.json>  {"diagram":[{id,nodes:[{label,key}],media}],"reference":[{id,description,description_keys,reference:{name,skill_md,markers}}]}
-//	GEN_MODES_DIAGRAMS=<dir>        <id>.png / <id>.jpg drawn from the corpus
-//	GEN_MODES_OUT=<dir>             results.json and one <id>.SKILL.md per item
-//	SKILLHUB_E2E_LLM_URL            a running apps/llm pointed at a real gateway
-
 import (
 	"context"
 	"encoding/json"
@@ -73,12 +47,12 @@ type modesRow struct {
 	Attempts  int      `json:"attempts,omitempty"`
 	CostUSD   *float64 `json:"cost_usd,omitempty"`
 	SkillName string   `json:"skill_name,omitempty"`
-	// ProvenanceRecorded: skill_sources.generation_inputs is non-NULL (ADR-066).
+
 	ProvenanceRecorded bool `json:"provenance_recorded"`
-	// Diagram: node keys found in the output / total.
+
 	KeysFound int `json:"keys_found"`
 	KeysTotal int `json:"keys_total"`
-	// Reference: marker phrases copied verbatim, and the longest shared run.
+
 	MarkersCopied      int `json:"markers_copied,omitempty"`
 	MarkersTotal       int `json:"markers_total,omitempty"`
 	LongestSharedRunes int `json:"longest_shared_runes,omitempty"`
@@ -117,8 +91,6 @@ func TestTheTwoNewerModesTwentyTimesEach(t *testing.T) {
 		}
 	}
 
-	// One workspace per item: a generated name that repeats across items would
-	// be ErrGeneratedNameCollision, and the daily allowance is per workspace.
 	generate := func(id, mode string, build func(c *client) ingest.GenerateInput) (modesRow, string) {
 		row := modesRow{ID: id, Mode: mode}
 		c := a.login(t, "gen-modes-"+strings.ToLower(id))
@@ -226,8 +198,6 @@ func TestTheTwoNewerModesTwentyTimesEach(t *testing.T) {
 	}
 }
 
-// longestCommonRun is the length of the longest substring (in runes) a and b
-// share. Two rows of DP; the inputs are a few thousand runes each.
 func longestCommonRun(a, b []rune) int {
 	prev, cur := make([]int, len(b)+1), make([]int, len(b)+1)
 	best := 0

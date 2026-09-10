@@ -11,10 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// putCategory calls PUT /skills/{id}/category as the given client and returns
-// the status code and, for a 200, the decoded Skill body. It never fails the
-// test on a non-2xx status — every test here checks that itself, some of them
-// expecting a 4xx.
 func putCategory(t *testing.T, c *client, skillID, category string) (int, map[string]any) {
 	t.Helper()
 	body := `{"category":"` + category + `"}`
@@ -34,9 +30,6 @@ func putCategory(t *testing.T, c *client, skillID, category string) (int, map[st
 	return resp.StatusCode, out
 }
 
-// skillCategoryColumns reads the two 0061 columns directly, bypassing every
-// read path, so these tests check what the write actually persisted rather
-// than trusting the same code that might be wrong on both ends.
 func skillCategoryColumns(t *testing.T, pool *pgxpool.Pool, skillID string) (category, source *string) {
 	t.Helper()
 	var id pgtype.UUID
@@ -51,9 +44,6 @@ func skillCategoryColumns(t *testing.T, pool *pgxpool.Pool, skillID string) (cat
 	return category, source
 }
 
-// 05 R-19 item 1: the owner may set any of the three PDM-001 shelves on their
-// own skill, and the write is attributed to them, not to curation — the two
-// writers 0061 exists to tell apart.
 func TestSetCategoryOwnerCanAssignAnyOfTheThreeShelves(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -78,9 +68,6 @@ func TestSetCategoryOwnerCanAssignAnyOfTheThreeShelves(t *testing.T) {
 	}
 }
 
-// 05 R-19 item 3: `unassigned` clears both columns together, never one without
-// the other — 0061's pairing CHECK would reject that anyway, but the write
-// path has to ask for the pair on purpose rather than happen to satisfy it.
 func TestSetCategoryUnassignedClearsBothColumns(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -107,11 +94,6 @@ func TestSetCategoryUnassignedClearsBothColumns(t *testing.T) {
 	}
 }
 
-// 05 R-19 item 3 / ADR-011: reading somebody else's skill is allowed (fork),
-// saying what it is for is not. The contract answers 404, not 403 — the same
-// "not yours or does not exist" WS-006 already uses everywhere else in this
-// package, so a caller cannot use this endpoint to probe which skill ids exist
-// in another workspace.
 func TestSetCategoryOnAnotherWorkspacesSkillIs404(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -123,16 +105,12 @@ func TestSetCategoryOnAnotherWorkspacesSkillIs404(t *testing.T) {
 	if code != http.StatusNotFound {
 		t.Fatalf("intruder PUT: got %d, want 404", code)
 	}
-	// Unchanged: a 404 must not be a side effect of a partial write.
+
 	if category, source := skillCategoryColumns(t, pool, skillID); category != nil || source != nil {
 		t.Errorf("a rejected write still touched the row: category=%v source=%v", category, source)
 	}
 }
 
-// 05 R-19: no session, no write. Every other owner-scoped registry route
-// answers 401 the same way (RequireSession); this route uses the identical
-// wrapper, and the test exists so a future refactor that drops it here — the
-// only place in this table nothing else exercises this exact path — is caught.
 func TestSetCategoryRequiresSession(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

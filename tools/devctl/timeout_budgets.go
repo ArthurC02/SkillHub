@@ -1,45 +1,5 @@
 package main
 
-// Go's deadline must outlive Python's by a margin, and nothing compared them.
-//
-// evaluate.py's own header says what goes wrong: 「Go's deadline (judgeTimeout)
-// is client-side: it stops Go waiting, it does not reach the gateway and it does
-// not stop the call or its bill.」 So when the Go side gives up FIRST, three
-// things happen at once and none of them is visible: Go records a timeout
-// failure, the gateway keeps working and keeps billing, and the answer Python
-// eventually produces is thrown away. The system reports a failure it caused.
-//
-// The pairing is not derivable — the two numbers live in different languages,
-// different repositories of meaning (one is a context deadline, one is an httpx
-// timeout) and are related only by an argument written in a comment. So each end
-// carries a marker naming the budget, exactly like the `one-number` markers in
-// shared_number.go, and this compares them:
-//
-//	Go      judgeTimeout = 135 * time.Second // budget-over: evaluate.LLM_TIMEOUT_SECONDS
-//	Python  LLM_TIMEOUT_SECONDS = 120.0      # budget-ceiling: evaluate.LLM_TIMEOUT_SECONDS
-//
-// The name is chosen by whoever writes the pair; this only requires that both
-// ends spell it identically, and it reports an unpaired marker on EITHER side.
-// One-sided is the failure mode that matters: a marker with no partner protects
-// nothing and looks exactly like a marker that does.
-//
-// Two Python modules define `LLM_TIMEOUT_SECONDS` (enrich.py at 60s,
-// evaluate.py at 120s), which is why a bare name is not enough and the
-// convention is `<module>.<CONST>`.
-//
-// THE MARGIN. Go must be at least timeoutBudgetMargin above Python. Equal is not
-// enough: the Python number is the httpx timeout on the gateway call alone,
-// while the Go number has to cover that call plus the internal HTTP hop,
-// serialisation of a digest that can reach tens of kilobytes, and the scheduling
-// slack of a worker doing other things.
-//
-// WHERE THE VALUE SITS. On the marked line, and — the one concession — on the
-// next non-blank line when the marked line has no number on it. shared_number.go
-// is strict about this for good reasons, but reality got there first: apps/llm
-// already writes the marker on its own line above the constant, and a check that
-// is red for a formatting reason is a check somebody weakens. A marker with no
-// number on either line is a loud failure, never a skipped pair.
-
 import (
 	"fmt"
 	"io/fs"
@@ -52,17 +12,14 @@ import (
 	"time"
 )
 
-// The slack Go's deadline must carry over Python's.
 const timeoutBudgetMargin = 5 * time.Second
 
 var (
 	timeoutOverMarker    = regexp.MustCompile(`//\s*budget-over:\s*([A-Za-z0-9_.]+)`)
 	timeoutCeilingMarker = regexp.MustCompile(`#\s*budget-ceiling:\s*([A-Za-z0-9_.]+)`)
-	// `135 * time.Second`, `2 * time.Minute`, `500 * time.Millisecond`. Anything
-	// else on a marked line is refused rather than guessed at.
+
 	goDurationValue = regexp.MustCompile(`(\d+)\s*\*\s*time\.(Second|Minute|Millisecond|Hour)`)
-	// `120.0`, `120`, `60_000` — the last number on the line, same shape as
-	// trailingIntPattern next door but admitting a decimal point.
+
 	pyFloatValue = regexp.MustCompile(`=\s*([0-9][0-9_]*(?:\.[0-9]+)?)\s*(?:#.*)?$`)
 )
 
@@ -73,8 +30,6 @@ var goDurationUnits = map[string]time.Duration{
 	"Hour":        time.Hour,
 }
 
-// The trees each side is scanned in. Narrow on purpose: a marker in a test
-// fixture is not a budget, and .venv is large.
 var (
 	timeoutGoRoots = []string{"apps/platform", "apps/sandbox"}
 	timeoutPyRoots = []string{"apps/llm/src"}
@@ -122,7 +77,7 @@ func timeoutBudgetProblems(root string) []string {
 				name, whereTimeout(server), name, strings.Join(timeoutGoRoots, ", ")))
 			continue
 		}
-		// The ceiling is one number by definition; two would be two answers.
+
 		if len(server) > 1 {
 			problems = append(problems, fmt.Sprintf(
 				"timeout-budget: %s is marked `budget-ceiling` at %d sites (%s); a budget has one ceiling",
@@ -191,8 +146,7 @@ func scanTimeoutMarkers(root string, trees []string, ext string, marker *regexp.
 				value, ok := parse(line)
 				at := i + 1
 				if !ok {
-					// The concession: apps/llm writes the marker on its own line
-					// above the constant.
+
 					for j := i + 1; j < len(lines) && j <= i+2; j++ {
 						if strings.TrimSpace(lines[j]) == "" {
 							continue

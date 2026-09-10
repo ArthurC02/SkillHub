@@ -47,8 +47,7 @@ func TestPublicSearchRejectsOversizedQueryBeforeLLMOrDatabase(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("oversized query returned %d, want 400; body=%s", rec.Code, rec.Body.String())
 	}
-	// 04 丙-149: the refusal is a Traditional Chinese sentence, not the Go
-	// validation message.
+
 	if !strings.Contains(rec.Body.String(), "搜尋文字最多 2000 字") {
 		t.Errorf("the refusal is not the Chinese sentence: %s", rec.Body.String())
 	}
@@ -63,9 +62,6 @@ func scanJSON(t *testing.T, warnings int, codes ...string) []byte {
 	return b
 }
 
-// DISC-004 不得自行推定為通過: a row the projection has no scan for reports
-// unknown. The tempting default — zero warnings, no flags — is indistinguishable
-// from a package that was scanned and found clean.
 func TestRiskHintReportsMissingScanAsUnknown(t *testing.T) {
 	for name, stored := range map[string][]byte{
 		"absent":      nil,
@@ -111,8 +107,6 @@ func TestRiskHintLevels(t *testing.T) {
 	}
 }
 
-// The projection stores the tag buckets; only the dependency one is shown on a
-// result row (DISC-002 依賴).
 func TestDependencyTagsReadOnlyTheDependencyBucket(t *testing.T) {
 	stored, err := json.Marshal(map[string][]string{
 		"inputs":       {"pdf"},
@@ -127,8 +121,7 @@ func TestDependencyTagsReadOnlyTheDependencyBucket(t *testing.T) {
 	if len(got) != 2 || got[0] != "poppler" || got[1] != "pandas" {
 		t.Fatalf("dependencies = %v, want only the dependency bucket", got)
 	}
-	// Never nil: an omitted list reads as "this skill has no dependencies",
-	// which is not what a pending enrichment means.
+
 	for name, stored := range map[string][]byte{"absent": nil, "empty object": []byte(`{}`)} {
 		if got := dependencyTags(stored); got == nil || len(got) != 0 {
 			t.Fatalf("%s: dependencies = %v, want an empty list", name, got)
@@ -136,10 +129,6 @@ func TestDependencyTagsReadOnlyTheDependencyBucket(t *testing.T) {
 	}
 }
 
-// spec_validation is derived from "does a version exist", because a package that
-// fails static validation is never stored. The two sandbox axes must stay
-// unverified when nothing measured them — that is DISC-002's 尚未試跑, and an
-// empty runtime image is how "no measurement" arrives from SQL.
 func TestResultFacetsDeriveCompatibilityFromVersionPresence(t *testing.T) {
 	unmeasured := measuredCompat("unverified", "unverified", "", pgtype.Timestamptz{})
 
@@ -174,9 +163,6 @@ func TestResultFacetsDeriveCompatibilityFromVersionPresence(t *testing.T) {
 	}
 }
 
-// DISC-003 限制, scan half: the package's own contents imply requirements
-// regardless of what its document claims, and each finding code contributes at
-// most one line however many findings carry it.
 func TestScanDerivedLimitationsAreDeduplicatedAndLabelled(t *testing.T) {
 	report := skillpkg.Validate(fstest.MapFS{
 		"SKILL.md": {Data: []byte("---\nname: demo-skill\ndescription: demo\nlicense: MIT\n---\n\n" +
@@ -206,8 +192,6 @@ func TestScanDerivedLimitationsAreDeduplicatedAndLabelled(t *testing.T) {
 	}
 }
 
-// The model half is labelled too, so a reader can tell the author's documented
-// limits from what the platform inferred from the package (ADR-013).
 func TestModelLimitationsAreLabelledAndSplitPerLine(t *testing.T) {
 	got := modelLimitations("無法處理加密的 PDF。\n\n需要 OpenAI API key。\n")
 	if len(got) != 2 {
@@ -223,11 +207,6 @@ func TestModelLimitationsAreLabelledAndSplitPerLine(t *testing.T) {
 	}
 }
 
-// The measured half of the DISC-002 Agent axis. Two things must survive from the
-// projection to the response, and both have been wrong in the same way before:
-// the verdict must not be reported without the image it was measured on, and the
-// note must switch, because the unverified note tells a reader the axis has no
-// answer while this row has one.
 func TestResultFacetsCarryTheMeasuredAgentAxis(t *testing.T) {
 	var r searchResult
 	measured := measuredCompat("activated", "transpiled", "skillhub/runtime-agent-sdk:2026.08-1",
@@ -243,17 +222,12 @@ func TestResultFacetsCarryTheMeasuredAgentAxis(t *testing.T) {
 	if r.Compat.Note != compatMeasuredNote {
 		t.Fatalf("measured row carried the unverified note: %q", r.Compat.Note)
 	}
-	// spec_validation is a different axis with a different source and must not be
-	// overwritten by the measurement block.
+
 	if r.Compat.SpecValidation.Value != "passed" {
 		t.Fatalf("spec_validation = %q, want passed", r.Compat.SpecValidation)
 	}
 }
 
-// ?agent= is the DISC-002 Agent dimension, live since 0022. An unknown value has
-// to be a 400 rather than a silently ignored filter, for the same reason the
-// unavailable dimensions are: a shared URL must never come back as a full page
-// that looks filtered.
 func TestParseFiltersAgentRuntime(t *testing.T) {
 	for _, v := range []string{"native", "transpiled", "failed", "unverified"} {
 		f, err := parseFilters(httptest.NewRequest(http.MethodGet, "/?q=x&agent="+v, nil))
@@ -281,11 +255,6 @@ func TestParseFiltersRejectsExplicitEmptyValues(t *testing.T) {
 	}
 }
 
-// DISC-004: a field with no data says unknown and is never read as passed. The
-// unavailable branch used to report `level: none` — the lowest rung of a
-// three-value ladder — while ScanStatus and Note both said there was no scan.
-// A client that reads only `level`, or a reader who only sees the colour, was
-// being told the opposite of what the other two fields said.
 func TestAnUnavailableScanIsUnknownAndNotTheLowestRisk(t *testing.T) {
 	for name, scan := range map[string][]byte{
 		"no scan at all":     nil,
@@ -306,8 +275,7 @@ func TestAnUnavailableScanIsUnknownAndNotTheLowestRisk(t *testing.T) {
 			t.Errorf("%s: disclosures must serialise as [] rather than null", name)
 		}
 	}
-	// The contrast that gives the value its meaning: a real scan that found
-	// nothing to disclose still says `none`, and that is a different statement.
+
 	if got := riskHint(scanJSON(t, 0, "license-from-manifest-reference")); got.Level != riskLevelNone {
 		t.Errorf("a scan that found nothing to disclose = %q, want %q", got.Level, riskLevelNone)
 	}

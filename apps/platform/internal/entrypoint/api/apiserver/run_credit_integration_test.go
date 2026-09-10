@@ -12,12 +12,10 @@ import (
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-// An account that cannot cover the gateway ceiling is turned away before any
-// run row exists, and the refusal is audited with its own reason.
 func TestARunIsRefusedWhenTheBalanceCannotCoverItsCeiling(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
-	a.startingCredits = 0 // the only test in this file that wants an empty account
+	a.startingCredits = 0
 	fake, _ := haltHarness(t, a, pool)
 	f := newFixture(t, a, pool, "alice-no-credit")
 
@@ -39,8 +37,6 @@ func TestARunIsRefusedWhenTheBalanceCannotCoverItsCeiling(t *testing.T) {
 	}
 }
 
-// Settlement charges what the gateway billed ($0.0382 -> 50 credits), not the
-// 650-credit reservation, and once: the supervisor re-runs cleanup until `cleaned`.
 func TestARunIsChargedWhatItSpentAndOnlyOnce(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -52,7 +48,7 @@ func TestARunIsChargedWhatItSpentAndOnlyOnce(t *testing.T) {
 	if err := svc.Drive(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("driving the run: %v", err)
 	}
-	// Attached after Drive: the only gateway calls left are spend read and revoke.
+
 	svc.Gateway = spendingGateway(t, 0.0382)
 
 	for pass := 1; pass <= 2; pass++ {
@@ -84,8 +80,6 @@ func TestARunIsChargedWhatItSpentAndOnlyOnce(t *testing.T) {
 	}
 }
 
-// An unreadable spend charges nothing (never the whole ceiling) but still
-// leaves an estimated cost row, so the Run stays visible.
 func TestARunWhoseSpendIsUnreadableIsRecordedButNotCharged(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -97,7 +91,7 @@ func TestARunWhoseSpendIsUnreadableIsRecordedButNotCharged(t *testing.T) {
 	if err := svc.Drive(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("driving the run: %v", err)
 	}
-	svc.Gateway = spendingGateway(t, -1) // rows with no spend field
+	svc.Gateway = spendingGateway(t, -1)
 
 	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
 		t.Fatalf("cleanup: %v", err)
@@ -117,8 +111,6 @@ func TestARunWhoseSpendIsUnreadableIsRecordedButNotCharged(t *testing.T) {
 	}
 }
 
-// spendingGateway serves the spend log and key deletion cleanup calls;
-// spendUSD < 0 serves rows with no spend field.
 func spendingGateway(t *testing.T, spendUSD float64) *run.Gateway {
 	t.Helper()
 	mux := http.NewServeMux()

@@ -1,31 +1,3 @@
-// Package partition rotates monthly range partitions: it pre-creates the months
-// that are about to be written to, and drops the ones whose data has aged past a
-// retention window.
-//
-// Generic (ADR-032 §1 Generic row): the mechanism is identical for every table
-// declared PARTITION BY RANGE on a timestamptz, so nothing here knows what any
-// of them mean. The table name and the retention window are supplied by the
-// context that owns them — trace for `trace_events`, analytics for
-// `analytics_events` — and neither owner can reach the other's table through
-// this package, because this package only ever touches the one name it is
-// handed.
-//
-// # Why the DDL is assembled from formatted strings
-//
-// A partition name is an identifier and identifiers cannot be parameterised, so
-// the statements below are necessarily built with fmt.Sprintf. Every identifier
-// and every bound literal that reaches a statement comes from exactly two
-// sources: the caller's table name, which must match [identifierPattern] before
-// anything is executed, and a month boundary this package computed from the
-// `now` it was given. Nothing read out of the database, and nothing that
-// originated with a user or an HTTP request, is ever formatted into a statement
-// here — the introspection query passes the table as a bind parameter, and its
-// results are only ever compared against names this package derived itself.
-//
-// These catalog reads and DDL are intentionally raw because sqlc cannot safely
-// bind PostgreSQL identifiers. `devctl automation-check` sees SELECT/CREATE/DROP
-// and permits only the three exact functions named in raw_sql_allow; another
-// function in this file does not inherit their exemption.
 package partition
 
 import (
@@ -41,58 +13,26 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// monthsAhead is how far past the current month partitions are pre-created.
-// Two, not one, is operational slack rather than a policy: this job is invoked
-// by whatever cron the deployment already runs (iron rule 6 keeps the "when"
-// outside the code), and a monthly schedule that misses two consecutive runs
-// would otherwise start writing into the default partition — which is exactly
-// the state 0019 describes and which no partition drop can clean up.
 const monthsAhead = 2
 
-// identifierPattern is what a table name has to look like before it is allowed
-// into a statement. Deliberately narrower than Postgres allows (no quoting, no
-// schema qualification, no upper case): every caller is a compile-time constant
-// in the owning context, so anything else is a bug worth failing on rather than
-// a case worth supporting.
+// identifierPattern gates every table name before it is formatted into DDL:
+// SQL identifiers cannot be bound as parameters, so this is what keeps the
+// fmt.Sprintf calls below from ever building a statement out of unsafe input.
 var identifierPattern = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 
-// boundLayout formats the FROM/TO literals. RFC 3339 in UTC, so the bound a
-// partition is created with is textually the same shape the migrations wrote by
-// hand (db/migrations/0004, 0029).
 const boundLayout = time.RFC3339
 
-// Report is what one run did. Both slices are the partition names, in the order
-// the statements ran, so an operator reading the log sees the actual effect
-// rather than "ok".
 type Report struct {
 	Created []string
 	Dropped []string
 }
 
-// MaintainMonthly brings one partitioned table's set of monthly partitions into
-// step with `now`: partitions whose whole month ended before now-retention are
-// dropped, and the current month plus [monthsAhead] are created.
-//
-// Idempotent and safe to re-run: a partition that already exists is skipped
-// (and CREATE ... IF NOT EXISTS covers the race with a concurrent run), and a
-// partition that is already gone is a no-op DROP ... IF EXISTS. Running it twice
-// in a row produces an empty second Report.
-//
-// Retention runs before creation on purpose. A creation that collides with the
-// default partition is a hard stop (see createMonth), and if that ran first, one
-// stuck month would silently suspend retention on every other one — a disk
-// filling up while the job reports a failure that looks unrelated.
-//
-// The Report is returned even when the error is non-nil: work already done is
-// what tells an operator how far the run got.
 func MaintainMonthly(ctx context.Context, pool *pgxpool.Pool, table string, now time.Time, retention time.Duration) (Report, error) {
 	var report Report
 	if !identifierPattern.MatchString(table) {
 		return report, fmt.Errorf("partition: %q is not a bare lower-case table identifier", table)
 	}
-	// Fail-closed, mirroring the call sites: a zero or negative window would
-	// make "expired" mean "everything up to now", and this job's mistakes are
-	// not recoverable.
+
 	if retention <= 0 {
 		return report, fmt.Errorf("partition: %s needs a positive retention window, got %s", table, retention)
 	}
@@ -104,11 +44,7 @@ func MaintainMonthly(ctx context.Context, pool *pgxpool.Pool, table string, now 
 	}
 
 	for _, name := range expiredMonths(table, existing, now, retention) {
-		// Bounded by construction: only names this package could have created
-		// itself are candidates, so the list is the set of months that exist.
-		// Plain DROP TABLE rather than DETACH CONCURRENTLY + DROP — it takes a
-		// brief ACCESS EXCLUSIVE lock on the parent, which is acceptable for an
-		// operator-invoked job and honest about what it does.
+
 		if _, err := pool.Exec(ctx, fmt.Sprintf(`DROP TABLE IF EXISTS %s`, name)); err != nil {
 			return report, fmt.Errorf("partition: drop %s: %w", name, err)
 		}
@@ -120,31 +56,6 @@ func MaintainMonthly(ctx context.Context, pool *pgxpool.Pool, table string, now 
 	return report, err
 }
 
-// CreateUpcoming is MaintainMonthly's first half and only its first half: it
-// creates the current month and [monthsAhead] after it, and drops nothing.
-//
-// It exists so the "when" of the two halves can differ, because they are not the
-// same kind of decision. Iron rule 6 keeps deletion's schedule outside the code
-// and that is right — a job that removes user content on a deadline needs a
-// human to have set the deadline, which is why every retention variable in this
-// platform is fail-closed. Making next month's drawer is not that. Nobody has to
-// sign for it, it needs no retention window as input, and it is idempotent.
-//
-// The asymmetry in the consequences is the actual argument. Miss the drop and
-// data is kept too long, visibly, and the next run fixes it. Miss the create
-// twice and rows start landing in <table>_default — which no partition drop can
-// ever reach (see expiredMonths), so the retention promise silently stops
-// applying to them, and recovering needs the ACCESS EXCLUSIVE drain createMonth's
-// 23514 branch spells out. That failure is delayed, invisible and expensive, and
-// it is the one a periodic job in the worker prevents outright.
-//
-// So: this half is registered as a River periodic job (entrypoint/worker), the
-// dropping half stays in `maintenance rotate-partitions` behind its fail-closed
-// retention variable.
-//
-// No retention parameter, deliberately. It is not that the argument would be
-// unused — there is nothing here for it to mean, and a function that accepted
-// one could grow a drop later without its call sites noticing.
 func CreateUpcoming(ctx context.Context, pool *pgxpool.Pool, table string, now time.Time) (Report, error) {
 	var report Report
 	if !identifierPattern.MatchString(table) {
@@ -161,17 +72,6 @@ func CreateUpcoming(ctx context.Context, pool *pgxpool.Pool, table string, now t
 	return report, err
 }
 
-// createUpcoming is the creation half both entry points run, so there is one
-// copy of "which months must exist" rather than two that can drift.
-//
-// A private helper and not a bool on MaintainMonthly: a flag would put the
-// retention window on a code path that does not use it, and MaintainMonthly’s
-// retention<=0 refusal is the fail-closed guard that stops "expired" from
-// meaning "everything up to now". That guard has to stay unbypassable, and a
-// caller passing skipDrops=true would be bypassing it.
-//
-// Returns the names created so both callers report the same way; existing is
-// passed in because MaintainMonthly has already read it to decide what to drop.
 func createUpcoming(
 	ctx context.Context, pool *pgxpool.Pool, table string, existing []string, now time.Time,
 ) ([]string, error) {
@@ -193,10 +93,6 @@ func createUpcoming(
 	return created, nil
 }
 
-// childPartitions names every partition currently attached to table, including
-// the default one. The table travels as a bind parameter; the names come back as
-// data and are never formatted into a statement — expiredMonths only uses them
-// to decide whether a name this package can derive is already there.
 func childPartitions(ctx context.Context, pool *pgxpool.Pool, table string) ([]string, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT c.relname
@@ -222,7 +118,6 @@ func childPartitions(ctx context.Context, pool *pgxpool.Pool, table string) ([]s
 	return names, nil
 }
 
-// createMonth attaches one month.
 func createMonth(ctx context.Context, pool *pgxpool.Pool, table, name string, start time.Time) error {
 	end := start.AddDate(0, 1, 0)
 	statement := fmt.Sprintf(
@@ -232,21 +127,7 @@ func createMonth(ctx context.Context, pool *pgxpool.Pool, table, name string, st
 	if err == nil {
 		return nil
 	}
-	// 23514 check_violation is what Postgres raises when the default partition
-	// already holds rows inside the new bound: attaching the month would move
-	// them, so the whole statement is refused. This is not a failure to paper
-	// over. It is the only signal an operator gets that the drain 0019 predicted
-	// has become necessary, so the message says what to do rather than what
-	// went wrong.
-	//
-	// ponytail: the drain is not automated. Ceiling — a deployment that reaches
-	// this state stays stuck until a human runs the four statements below, and
-	// on a large default partition they need a maintenance window because the
-	// detach and the re-attach both take ACCESS EXCLUSIVE. Upgrade path: do it
-	// here in one transaction, driven off a row count that says how long it will
-	// take. Not built now because the job that exists from today onwards is what
-	// stops the default from filling up in the first place; the drain is a
-	// one-off for the months that already landed there.
+
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23514" {
 		from, to := start.Format(boundLayout), end.Format(boundLayout)
@@ -268,8 +149,6 @@ func createMonth(ctx context.Context, pool *pgxpool.Pool, table, name string, st
 	return fmt.Errorf("partition: create %s: %w", name, err)
 }
 
-// upcomingMonths is the set of months that must exist after this run: the one
-// `now` falls in, and [monthsAhead] after it.
 func upcomingMonths(now time.Time) []time.Time {
 	start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	months := make([]time.Time, 0, monthsAhead+1)
@@ -279,24 +158,10 @@ func upcomingMonths(now time.Time) []time.Time {
 	return months
 }
 
-// monthName is the one naming rule in this package, and it is also what makes
-// dropping safe: it is the shape the migrations already used
-// (trace_events_2026_08, analytics_events_2026_08), and expiredMonths will only
-// ever consider a name that matches it.
 func monthName(table string, start time.Time) string {
 	return fmt.Sprintf("%s_%04d_%02d", table, start.Year(), int(start.Month()))
 }
 
-// expiredMonths picks the partitions whose month ended at or before
-// now-retention. A partition is only a candidate if its name is one monthName
-// could have produced, which has two consequences worth stating: the DEFAULT
-// partition is never dropped (`<table>_default` cannot parse as a month), and
-// neither is any partition somebody attached by hand under another name. This
-// job removes only what it recognises as its own.
-//
-// The comparison is on the month's exclusive upper bound, not its start: a
-// partition is expired only once every row it can hold is older than the window,
-// so an in-window month is never dropped for containing older rows too.
 func expiredMonths(table string, existing []string, now time.Time, retention time.Duration) []string {
 	cutoff := now.Add(-retention)
 	pattern := regexp.MustCompile(`^` + regexp.QuoteMeta(table) + `_(\d{4})_(\d{2})$`)
@@ -311,6 +176,8 @@ func expiredMonths(table string, existing []string, now time.Time, retention tim
 		if month < 1 || month > 12 {
 			continue
 		}
+		// Compared against the month's exclusive end, not its start, so a month
+		// is only expired once every row it could hold is past the cutoff.
 		end := time.Date(year, time.Month(month)+1, 1, 0, 0, 0, 0, time.UTC)
 		if !end.After(cutoff) {
 			expired = append(expired, name)

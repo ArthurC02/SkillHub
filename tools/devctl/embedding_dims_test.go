@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// The tree: vector(1536) in the migration against the marked literals in
-// apps/llm.
 func TestTheRealEmbeddingWidthAgrees(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -15,10 +13,7 @@ func TestTheRealEmbeddingWidthAgrees(t *testing.T) {
 	if problems := embeddingDimsProblems(root); len(problems) > 0 {
 		t.Fatalf("%s", strings.Join(problems, "\n"))
 	}
-	// Guard the reach: both halves must actually have been found, or the
-	// comparison above agreed about nothing. embeddingDimensions is on
-	// sharedNumberRoster too, so losing every marker is caught there as well —
-	// this says it in this check's own terms.
+
 	sites, _ := sharedNumberScan(root)
 	if len(sites[embeddingInvariant]) == 0 {
 		t.Fatalf("no line is marked `one-number: %s`; the Python half of this comparison is gone",
@@ -26,8 +21,6 @@ func TestTheRealEmbeddingWidthAgrees(t *testing.T) {
 	}
 }
 
-// A fixture repo: one migration, one marked Python file. sharedNumberScan walks
-// the real tree roots, so the fixture uses the same layout.
 func writeDimsFixture(t *testing.T, migration, python string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -47,9 +40,6 @@ func TestEmbeddingDimsAcceptsAMatchingPair(t *testing.T) {
 	}
 }
 
-// The drift that matters: a model swap changes the Python literal, the column
-// stays, and every insert fails per document while search degrades to FTS with
-// no error anywhere.
 func TestEmbeddingDimsNamesTheDrift(t *testing.T) {
 	t.Parallel()
 	root := writeDimsFixture(t, goodMigration, "dims = 3072  # one-number: embeddingDimensions\n")

@@ -6,9 +6,6 @@ import (
 	"testing"
 )
 
-// The one that matters: 72 mounted routes against 72 documented operations, in
-// the tree as it stands. A fixture-only checker is a checker nobody has pointed
-// at the subject.
 func TestTheRealRouteTableAndTheContractAgree(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -17,9 +14,7 @@ func TestTheRealRouteTableAndTheContractAgree(t *testing.T) {
 	if problems := routeTableProblems(root); len(problems) > 0 {
 		t.Fatalf("route table and %s disagree:\n%s", routeContractFile, strings.Join(problems, "\n"))
 	}
-	// Guard the scan's own reach in both directions, not only through the
-	// floor inside the checker: if either side silently found nothing, the
-	// comparison above would agree about the empty set.
+
 	mounted, problems := mountedRoutes(root)
 	if len(problems) > 0 {
 		t.Fatalf("scanning the real route table reported problems: %v", problems)
@@ -27,7 +22,7 @@ func TestTheRealRouteTableAndTheContractAgree(t *testing.T) {
 	if len(mounted) < routeTableFloor {
 		t.Fatalf("scan found %d mounted routes, floor is %d", len(mounted), routeTableFloor)
 	}
-	// The documented exception, resolved rather than skipped.
+
 	found := false
 	for _, pattern := range mounted {
 		if pattern == "POST /internal/trace/{token}" {
@@ -40,13 +35,11 @@ func TestTheRealRouteTableAndTheContractAgree(t *testing.T) {
 	}
 }
 
-// A whole fixture repo: two route tables, one contract, one string constant.
 func writeRouteFixture(t *testing.T, extraRoute, extraOperation string) string {
 	t.Helper()
 	root := t.TempDir()
 	var mounts strings.Builder
-	// The floor is 60, so the fixture has to clear it on both sides or the
-	// sentinel speaks instead of the comparison.
+
 	var ops strings.Builder
 	ops.WriteString("openapi: 3.1.0\npaths:\n")
 	for i := 0; i < routeTableFloor+1; i++ {
@@ -88,7 +81,7 @@ func TestRouteTableSpeaksInBothDirections(t *testing.T) {
 		wantOccurrence int
 	}{{
 		name: "a route nobody documented",
-		// The M4/M5 shape: a route added to NewRouter, contract untouched.
+
 		route: "GET /skills/{id}/undocumented",
 		want:  `"GET /skills/{id}/undocumented" is mounted but has no operation`,
 	}, {
@@ -106,8 +99,6 @@ func TestRouteTableSpeaksInBothDirections(t *testing.T) {
 	}
 }
 
-// Both floors, and the unknown-identifier refusal. Each of these is green under
-// a naive implementation that skips what it cannot read.
 func TestRouteTableSaysSoWhenItHasLostItsSubject(t *testing.T) {
 	t.Parallel()
 	t.Run("the mount scan matches nothing", func(t *testing.T) {

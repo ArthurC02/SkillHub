@@ -23,12 +23,6 @@ type AdjustCreditBalanceParams struct {
 	UserID       pgtype.UUID
 }
 
-// Applied in the same transaction as the InsertCreditEntry it accounts for,
-// after the insert succeeds (a 23505 on the entry's idempotency_key means the
-// caller already applied this delta on a previous attempt — skip this call
-// rather than double-apply). The row lock this UPDATE takes serializes
-// concurrent debits on one account; the CHECK on credit_accounts enforces
-// the -50 debt floor as the last backstop.
 func (q *Queries) AdjustCreditBalance(ctx context.Context, arg AdjustCreditBalanceParams) (int64, error) {
 	row := q.db.QueryRow(ctx, adjustCreditBalance, arg.DeltaCredits, arg.UserID)
 	var balance_credits int64
@@ -41,9 +35,6 @@ INSERT INTO credit_accounts (user_id) VALUES ($1)
 ON CONFLICT (user_id) DO NOTHING
 `
 
-// Idempotent existence upsert (not a ledger write): called once at signup,
-// and defensively before the first debit for accounts predating this
-// migration. Never touches balance_credits if the row already exists.
 func (q *Queries) EnsureCreditAccount(ctx context.Context, userID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, ensureCreditAccount, userID)
 	return err
@@ -86,9 +77,6 @@ type InsertCreditEntryParams struct {
 	IdempotencyKey string
 }
 
-// Plain insert, not ON CONFLICT: the codebase's idempotency convention
-// (registry.go, evidence/service.go) is catching pgErr.Code=="23505" on the
-// unique idempotency_key and treating it as "already applied", not upserting.
 func (q *Queries) InsertCreditEntry(ctx context.Context, arg InsertCreditEntryParams) (CreditEntry, error) {
 	row := q.db.QueryRow(ctx, insertCreditEntry,
 		arg.UserID,
@@ -136,8 +124,6 @@ type ListRecentCreditEntriesParams struct {
 	Limit  int32
 }
 
-// Ledger view for a user (balance reconciliation, support, self-service
-// history). Newest first.
 func (q *Queries) ListRecentCreditEntries(ctx context.Context, arg ListRecentCreditEntriesParams) ([]CreditEntry, error) {
 	rows, err := q.db.Query(ctx, listRecentCreditEntries, arg.UserID, arg.Limit)
 	if err != nil {
@@ -177,12 +163,6 @@ const purgeExpiredCreditEntries = `-- name: PurgeExpiredCreditEntries :execrows
 DELETE FROM credit_entries WHERE created_at < $1
 `
 
-// Retention sweep (05 "保存期限與刪除"), same shape as
-// audit.PurgeExpired/DeleteExpiredAuditEvents: caller runs this inside a
-// transaction with `SET LOCAL skillhub.purge = 'on'` set first, which is what
-// lets this DELETE past credit_entries_immutable (0060's enforce_immutable
-// trigger). credit_accounts.balance_credits is unaffected — it was already
-// updated when the entry was written, not derived from surviving rows.
 func (q *Queries) PurgeExpiredCreditEntries(ctx context.Context, createdAt pgtype.Timestamptz) (int64, error) {
 	result, err := q.db.Exec(ctx, purgeExpiredCreditEntries, createdAt)
 	if err != nil {
@@ -195,10 +175,6 @@ const purgeUserCreditEntries = `-- name: PurgeUserCreditEntries :execrows
 DELETE FROM credit_entries WHERE user_id = $1
 `
 
-// Account deletion, not retention (see PurgeUserCostEvents). The account row
-// itself goes with the user's FK cascade; these entries are addressed by
-// user_id and have to be named explicitly.
-// Same purge guard: `SET LOCAL skillhub.purge = 'on'` before this DELETE.
 func (q *Queries) PurgeUserCreditEntries(ctx context.Context, userID pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, purgeUserCreditEntries, userID)
 	if err != nil {
@@ -212,10 +188,6 @@ SELECT coalesce(sum(delta_credits), 0)::bigint AS total_delta_credits
 FROM credit_entries WHERE user_id = $1
 `
 
-// Reconciliation: what credit_accounts.balance_credits should equal, summed
-// from the entries actually still retained. Diverges from the live balance
-// once entries older than the retention window have been purged — that is
-// the known, accepted cost of PurgeExpiredCreditEntries (05 "保存期限與刪除").
 func (q *Queries) SumCreditEntries(ctx context.Context, userID pgtype.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, sumCreditEntries, userID)
 	var total_delta_credits int64

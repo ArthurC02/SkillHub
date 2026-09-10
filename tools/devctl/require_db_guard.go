@@ -1,17 +1,5 @@
 package main
 
-// requireDBGuard checks that every test package which disables itself when the
-// test database URL is unset also honours SKILLHUB_REQUIRE_DB.
-//
-// 02:PORT-004. Five packages currently do this, and each one is a place where a
-// misspelled variable, a service that failed to start, or a CI edit that drops
-// the env block turns 281 assertions into silence while go test still prints
-// ok. The switch is what makes that silence red; this check is what stops the
-// sixth package from being added without it.
-//
-// A comment asking people to remember would have been cheaper and would have
-// worked until the first time someone did not.
-
 import (
 	"bytes"
 	"fmt"
@@ -32,19 +20,11 @@ const (
 	testMainExit    = "os.Exit(m.Run())"
 )
 
-// withoutComments reprints a Go file from its AST, which drops comments.
-//
-// The first version of this check searched the raw file for the switch's name,
-// and its own mutation test stayed green: the guard's explanatory comment
-// mentions SKILLHUB_REQUIRE_DB, so deleting the actual call changed nothing the
-// check could see. A check a comment can satisfy is the thing it exists to
-// prevent.
 func withoutComments(path string, src []byte) string {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, src, 0)
 	if err != nil {
-		// Unparseable test files are the compiler's problem, not this check's;
-		// fall back to the raw text rather than hiding the package.
+
 		return string(src)
 	}
 	var buf bytes.Buffer
@@ -54,12 +34,9 @@ func withoutComments(path string, src []byte) string {
 	return buf.String()
 }
 
-// unguardedDBTestMains returns, relative to root, the test files that hand a
-// database-gated package straight to m.Run() without consulting the switch.
 func unguardedDBTestMains(root string) ([]string, error) {
 	base := filepath.Join(root, "apps", "platform", "internal")
-	// A package's env constant and its TestMain do not have to share a file, so
-	// membership is decided per directory.
+
 	dbPackages := map[string]bool{}
 	type candidate struct{ dir, path, body string }
 	var candidates []candidate
