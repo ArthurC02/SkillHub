@@ -174,7 +174,8 @@ export interface GenerateSkillRequest {
 
 export interface GenerationFailure {
   occurred_at: string;
-  failure: "quota" | "unavailable" | "gateway" | "unpackageable" | "rejected" | "blocked" | "credit" | "";
+  failure:
+    "quota" | "unavailable" | "gateway" | "unpackageable" | "rejected" | "blocked" | "credit" | "";
   attempts: number;
   codes?: string[];
   truncated?: boolean;
