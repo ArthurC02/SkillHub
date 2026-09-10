@@ -94,7 +94,14 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 	handler := app.Handler()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	return &api{Server: server, auth: app.Auth, app: app, packages: packages, handler: handler}, set.Creation, count
+	// Every test in this file spends credit, so every account it logs in starts
+	// with some — which is what an operator grant leaves behind in production.
+	// Without it gate ① refuses the first session and every test here fails on
+	// a 422 that is the ledger working correctly, not the thing under test.
+	return &api{
+		Server: server, auth: app.Auth, app: app, packages: packages, handler: handler,
+		creditPool: pool, startingCredits: 100_000,
+	}, set.Creation, count
 }
 func creationID(t *testing.T) pgtype.UUID {
 	t.Helper()

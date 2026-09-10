@@ -211,6 +211,17 @@ func requireDB(t *testing.T) *pgxpool.Pool {
 type api struct {
 	*httptest.Server
 	auth *identity.Handler
+	// creditPool and startingCredits stand in for the operator grant that is
+	// MVP's only way credit enters an account (CRED-007). Set together by a
+	// fixture whose tests spend credit; left zero everywhere else, where a
+	// zero balance is the honest starting state.
+	//
+	// The balance is seeded directly rather than through a ledger entry
+	// because the gates read the materialized column, and the entry-to-column
+	// relationship is what credit's own tests are about. A test that seeded an
+	// entry here would be re-testing that instead of what it came for.
+	creditPool      *pgxpool.Pool
+	startingCredits int64
 	// packages is the object store behind the detail and file views; a test
 	// seeds a real zip into it under the version's package_object_key.
 	packages packageStore
@@ -370,6 +381,18 @@ func (a *api) login(t *testing.T, name string) *client {
 	c.workspaceID, _ = me["workspace_id"].(string)
 	if c.workspaceID == "" {
 		t.Fatalf("login for %s produced no workspace", name)
+	}
+	if a.startingCredits != 0 && a.creditPool != nil {
+		var userID pgtype.UUID
+		if err := userID.Scan(c.userID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := a.creditPool.Exec(context.Background(),
+			`INSERT INTO credit_accounts (user_id, balance_credits) VALUES ($1, $2)
+			 ON CONFLICT (user_id) DO UPDATE SET balance_credits = EXCLUDED.balance_credits`,
+			userID, a.startingCredits); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return c
 }

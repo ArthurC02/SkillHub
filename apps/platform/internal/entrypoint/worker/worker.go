@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/jackc/pgx/v5"
@@ -198,6 +199,15 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	wireCreationReads(set.Creation, creationVersions, creationSearch)
 	wireCreationGateway(set.Creation, deps.Gateway)
 	wireCreationFetch(set.Creation)
+	// ADR-068's spending half. Every paid model call happens in this process,
+	// so gate ② and the settlement after it are reached only through here — an
+	// unwired hook is nil, and a nil gate is indistinguishable from one that
+	// allowed.
+	creditSvc, err := newCreditService(pool)
+	if err != nil {
+		return nil, fmt.Errorf("credit wiring: %w", err)
+	}
+	wireCreationCredit(set.Creation, creditSvc, pool)
 	workers := river.NewWorkers()
 	addWorker(set, workers, &creation.Worker{Svc: set.Creation})
 	addWorker(set, workers, &creation.ExpiryWorker{Svc: set.Creation})
@@ -237,6 +247,10 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	// deletes anything, which is what lets their schedule live in code at all.
 	addWorker(set, workers, &PartitionCreateWorker{Pool: pool})
 	addWorker(set, workers, &EnrichmentBackfillWorker{Svc: newBackfillService(pool, deps)})
+	// ADR-068 decision 9's fixed-time trigger. The thresholds gate ① blocks on
+	// are derived from these windows, so a kind whose statistics stop being
+	// recomputed does not fail — it quietly keeps using an old p95.
+	addWorker(set, workers, &credit.RecomputeWorker{Svc: creditSvc})
 
 	// Periodic jobs run on the elected leader only, so several worker processes
 	// do not each sweep. RunOnStart is what makes the supervisor the restart
@@ -265,6 +279,15 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	// restart, and a deploy loop would otherwise re-probe every stored object on
 	// every rollout. An hour late is on time here.
 	schedule(objreconcile.Args{}, objreconcile.Interval, false)
+	// One daily recompute per cost-event kind (decision 9). They share a job
+	// kind and differ by args, so `schedule` records one entry in Scheduled and
+	// appends six periodic jobs — the list they come from is creditStatKinds,
+	// which is where a new kind has to be added or it is never recomputed.
+	// No RunOnStart: a redeploy loop should not re-aggregate six windows every
+	// rollout, and a day-old p95 is what the previous day's job already left.
+	for _, kind := range creditStatKinds {
+		schedule(credit.RecomputeArgs{StatKind: kind, WindowSeconds: int64(creditStatWindow / time.Second)}, 24*time.Hour, false)
+	}
 	// RunOnStart, and that is the point rather than a nicety: a deployment brought
 	// up in the last days of a month must have next month’s partitions before the
 	// month turns, not one interval later. Idempotent, and one catalog query when

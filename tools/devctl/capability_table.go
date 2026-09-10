@@ -71,6 +71,12 @@ var capabilityLedger = []struct {
 		reason: "由 cmd/maintenance 擁有（refuseUnlessSet），API 只是揭露它",
 		vars: []string{
 			"AUDIT_RETENTION", "FEEDBACK_RETENTION", "SKILL_DELETION_GRACE", "TRACE_RETENTION",
+			// CREDIT_RETENTION is the same shape and the same owner: only
+			// `maintenance purge-credit` reads it, and it refuses to run
+			// without it. It is the one in this bucket the API does not even
+			// disclose — GET /policy/data-retention says nothing about the
+			// ledger yet, which is a gap in the disclosure, not in the gating.
+			"CREDIT_RETENTION",
 		},
 	},
 	{

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
@@ -235,6 +236,14 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 	//     a price tag. Each pending document costs one enrichment call on the
 	//     deployment-wide LiteLLM key, so a rollout must not become a burst of
 	//     them.
+	//
+	// The eighth arrived on 2026-09-10 with ADR-068's ledger:
+	//
+	//   - credit_recompute_statistics: RunOnStart FALSE, for enrichment's reason
+	//     without the price tag. It is six periodic jobs sharing one kind (one
+	//     per cost-event kind, differing only in args), so this map records it
+	//     once; a rollout loop re-aggregating six windows every time buys
+	//     nothing, because the previous day's job already left a current p95.
 	want := map[string]bool{
 		eval.RecoveryArgs{}.Kind():      true,
 		run.SuperviseArgs{}.Kind():      true,
@@ -243,6 +252,7 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 		objreconcile.Args{}.Kind():      false,
 		PartitionCreateArgs{}.Kind():    true,
 		EnrichmentBackfillArgs{}.Kind(): false,
+		credit.RecomputeArgs{}.Kind():   false,
 	}
 	if !maps.Equal(set.Scheduled, want) {
 		t.Errorf("scheduled periodic jobs (kind -> RunOnStart) are %v, want %v", set.Scheduled, want)

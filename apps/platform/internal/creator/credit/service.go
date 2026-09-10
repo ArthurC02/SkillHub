@@ -173,8 +173,25 @@ func (s *Service) Charge(ctx context.Context, tx DBTX, in ChargeInput) (ChargeRe
 		return ChargeResult{}, err
 	}
 	credits := CreditsForMicros(billed, s.Config.MicrosPerCredit)
+	if credits == 0 {
+		// A call that cost the platform nothing at all. The cost event above is
+		// still written — it happened, and the statistics window should see it —
+		// but no debit is: migration 0060 requires a debit to move the balance
+		// (delta_credits < 0), so a zero debit is not a row this schema has, and
+		// writing one credit for a free call would be inventing a charge.
+		//
+		// This is not decision 5's "never charge zero for an unknown cost": that
+		// case has UsdMicros nil, bills the reservation, and lands above with a
+		// non-zero amount. This one is a genuinely zero measured cost.
+		balance, err := s.Store.Balance(ctx, in.UserID)
+		if err != nil {
+			return ChargeResult{}, err
+		}
+		return ChargeResult{CostEventID: eventID, Existed: eventExisted, NewBalance: balance, Estimated: estimated}, nil
+	}
 	balance, debitExisted, err := s.Store.ApplyDebit(ctx, tx, DebitEntry{
 		CostEventID: eventID, UserID: in.UserID, Credits: credits,
+		UsdMicros: billingMicros,
 		MarkupBps: s.Config.MarkupBps, Estimated: estimated,
 		RefType: in.RefType, RefID: in.RefID, IdempotencyKey: in.IdempotencyKey,
 	})
@@ -266,6 +283,71 @@ func (s *Service) startThreshold(ctx context.Context, kind string) (threshold in
 		return s.Config.StartFallbackCredits, true, nil
 	}
 	return CreditsForMicros(billed, s.Config.MicrosPerCredit), false, nil
+}
+
+// Balance is the account's materialized balance — the column decision 4
+// keeps in step with the entries inside their own transaction, never a live
+// re-sum of credit_entries. Reconciling the two is a maintenance-time job;
+// this is the request-time read.
+func (s *Service) Balance(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	if s.Store == nil {
+		return 0, ErrUnavailable
+	}
+	return s.Store.Balance(ctx, userID)
+}
+
+// Estimate is what one call of statKind is expected to cost, in credits, and
+// the threshold gate ① measures a balance against. It is the display side of
+// [Service.CanStart] — same threshold, same fallback, same rounding — so a
+// screen and the gate that blocks it can never quote different numbers,
+// which is the failure entitlements.QuotaView was built to avoid for
+// PDM-010's counters.
+//
+// The band is p50 to p95: the middle of what these calls actually cost, and
+// the point gate ① draws its line at. Both are marked up and rounded up like
+// every other conversion in this package.
+type Estimate struct {
+	LowCredits       int64
+	HighCredits      int64
+	ThresholdCredits int64
+	SampleCount      int
+	// Estimated is true when the threshold came from
+	// Config.StartFallbackCredits rather than a measured p95.
+	Estimated bool
+}
+
+// Estimate reports the current window for statKind. With fewer than
+// MinStatSamples samples the whole band collapses to the conservative
+// constant and Estimated is true — a fallback that presented itself as a
+// measurement would be worse than no number at all.
+func (s *Service) Estimate(ctx context.Context, statKind string) (Estimate, error) {
+	if s.Store == nil {
+		return Estimate{}, ErrUnavailable
+	}
+	threshold, estimated, err := s.startThreshold(ctx, statKind)
+	if err != nil {
+		return Estimate{}, err
+	}
+	est := Estimate{
+		LowCredits: threshold, HighCredits: threshold,
+		ThresholdCredits: threshold, Estimated: estimated,
+	}
+	if estimated {
+		return est, nil
+	}
+	stats, err := s.Store.RecentStatistics(ctx, statKind)
+	if err != nil {
+		// The threshold above already read these statistics successfully, so
+		// a failure here is a race with the recompute job, not a missing
+		// window: report the threshold band rather than an error a screen
+		// would have to render as a failure.
+		return est, nil
+	}
+	est.SampleCount = stats.SampleCount
+	if low, err := BilledMicros(stats.P50UsdMicros, s.Config.MarkupBps); err == nil {
+		est.LowCredits = CreditsForMicros(low, s.Config.MicrosPerCredit)
+	}
+	return est, nil
 }
 
 // GrantInput is one operator-initiated balance change (decision 10). A

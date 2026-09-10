@@ -43,6 +43,13 @@ type Service struct {
 	PurgeCreation      WorkspacePurge
 	PurgeSkills        WorkspacePurge
 	PurgeImportSources WorkspacePurge
+	// PurgeCredit clears the account's two ledgers (ADR-068 decision 11).
+	// Same shape as its seven neighbours and required the same way, but the
+	// composition root's closure does one extra thing first: credit_accounts
+	// and credit_entries are keyed on the USER, so it resolves the workspace
+	// to its owner before deleting. Nothing here knows that — this field only
+	// knows that account deletion is not finished until it has run.
+	PurgeCredit WorkspacePurge
 
 	// Object-key readers run before the transaction and are split by owner just
 	// like the row purges. All three are required; see purge.go.
@@ -371,6 +378,70 @@ func (s *Service) PersonalWorkspace(ctx context.Context, user User) (Workspace, 
 			len(ws))
 	}
 	return workspaceDTO(ws[0]), nil
+}
+
+// WorkspaceOwner is PersonalWorkspace's inverse, and until 2026-09-10 this
+// codebase had only the forward direction — which is why nothing could charge
+// a workspace's spending to an account.
+//
+// Credit keys accounts on the user (migration 0060: "每個帳號" is the user),
+// while creation's job args and the operator grant route both carry a
+// workspace id. Somebody has to bridge that, and the tempting shortcut — MVP
+// gives each account exactly one workspace, so pass the workspace id as the
+// user id — is a coincidence the schema does not promise: ADR-011 says one
+// personal workspace per user, which is not the same as the two ids being
+// interchangeable. They are different columns and this is the query that
+// relates them.
+//
+// A workspace that does not exist is an error, not a zero uuid: the caller is
+// about to decide whose balance to move.
+func (s *Service) WorkspaceOwner(ctx context.Context, workspaceID pgtype.UUID) (pgtype.UUID, error) {
+	return s.WorkspaceOwnerIn(ctx, s.Pool, workspaceID)
+}
+
+// WorkspaceOwnerIn is WorkspaceOwner on a caller-supplied handle, the same
+// shape and for the same reason as MayStoreObjects: a caller inside a
+// transaction must not reach for the pool.
+//
+// The account purge is why this exists. Its steps run on one connection that
+// already holds the workspace's exclusive object fence, and credit's step has
+// to resolve the workspace to its owner before it can delete anything — doing
+// that on a second connection waits on a lock the first connection holds and
+// the purge dies on its context deadline instead. The integration test that
+// pins the purge to its own connection caught exactly that, on the day credit
+// was wired in.
+func (s *Service) WorkspaceOwnerIn(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (pgtype.UUID, error) {
+	if db == nil {
+		return pgtype.UUID{}, errors.New("identity: workspace owner lookup has no database handle")
+	}
+	owner, err := gen.New(db).GetWorkspaceOwner(ctx, workspaceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return pgtype.UUID{}, fmt.Errorf("no workspace %s", pgconv.UUIDString(workspaceID))
+	}
+	if err != nil {
+		return pgtype.UUID{}, err
+	}
+	return owner, nil
+}
+
+// AccountState answers "does this user still exist, and has a purge begun"
+// for a bare user id — the one fact credit needs before it grants or charges
+// (ADR-068 decision 11), delivered through an injected func so credit never
+// imports this package.
+//
+// Plain bools rather than credit's own AccountFacts: this context may not
+// import that one either (the depguard rules deny it in both directions), so
+// the composition root assembles the struct. A user id with no row reports
+// present=false rather than an error — "no such user" is an answer.
+func (s *Service) AccountState(ctx context.Context, userID pgtype.UUID) (present bool, purging bool, err error) {
+	row, err := s.queries().GetUserAccountState(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, false, nil
+	}
+	if err != nil {
+		return false, false, err
+	}
+	return row.Present, row.Purging, nil
 }
 
 func hashToken(token string) []byte {

@@ -3723,6 +3723,131 @@ func (s *CreationSnapshot) SetPreviousDraft(val OptCreationDraft) {
 	s.PreviousDraft = val
 }
 
+// One account's Credit standing (CRED-001, ADR-068). No field here is denominated in money: Credit is
+// the currency this system shows, US dollars are what the platform itself pays, and the two ledgers
+// behind this response are deliberately separate tables.
+// Ref: #/components/schemas/CreditBalance
+type CreditBalance struct {
+	// May be negative: a step already taken is always settled, so a balance can go under before the next
+	// one is refused.
+	BalanceCredits int64 `json:"balance_credits"`
+	// How far below zero the balance may go before the per-step gate stops the session. Reported so a
+	// blocked screen can say how much room is left rather than only that there is none.
+	DebtFloorCredits int64          `json:"debt_floor_credits"`
+	EstimatedSession CreditEstimate `json:"estimated_session"`
+	// Gate 1's answer for a new interactive-creation session, measured against the same threshold the
+	// domain service blocks on.
+	CanStart bool `json:"can_start"`
+	// Absent when can_start is true. Otherwise it names the shortfall in credits and what to do about it -
+	// never a bare refusal.
+	BlockReason OptString `json:"block_reason"`
+}
+
+// GetBalanceCredits returns the value of BalanceCredits.
+func (s *CreditBalance) GetBalanceCredits() int64 {
+	return s.BalanceCredits
+}
+
+// GetDebtFloorCredits returns the value of DebtFloorCredits.
+func (s *CreditBalance) GetDebtFloorCredits() int64 {
+	return s.DebtFloorCredits
+}
+
+// GetEstimatedSession returns the value of EstimatedSession.
+func (s *CreditBalance) GetEstimatedSession() CreditEstimate {
+	return s.EstimatedSession
+}
+
+// GetCanStart returns the value of CanStart.
+func (s *CreditBalance) GetCanStart() bool {
+	return s.CanStart
+}
+
+// GetBlockReason returns the value of BlockReason.
+func (s *CreditBalance) GetBlockReason() OptString {
+	return s.BlockReason
+}
+
+// SetBalanceCredits sets the value of BalanceCredits.
+func (s *CreditBalance) SetBalanceCredits(val int64) {
+	s.BalanceCredits = val
+}
+
+// SetDebtFloorCredits sets the value of DebtFloorCredits.
+func (s *CreditBalance) SetDebtFloorCredits(val int64) {
+	s.DebtFloorCredits = val
+}
+
+// SetEstimatedSession sets the value of EstimatedSession.
+func (s *CreditBalance) SetEstimatedSession(val CreditEstimate) {
+	s.EstimatedSession = val
+}
+
+// SetCanStart sets the value of CanStart.
+func (s *CreditBalance) SetCanStart(val bool) {
+	s.CanStart = val
+}
+
+// SetBlockReason sets the value of BlockReason.
+func (s *CreditBalance) SetBlockReason(val OptString) {
+	s.BlockReason = val
+}
+
+func (*CreditBalance) getCreditBalanceRes() {}
+
+// What one interactive-creation session is expected to cost, in Credit.
+// Ref: #/components/schemas/CreditEstimate
+type CreditEstimate struct {
+	LowCredits  int64 `json:"low_credits"`
+	HighCredits int64 `json:"high_credits"`
+	// How many cost samples the current rolling window holds. Below 20 the band collapses to the
+	// configured fallback and `estimated` is true.
+	SampleSize int `json:"sample_size"`
+	// True when a configured constant stood in for a measured p95. It must be shown wherever the figure is
+	// - an unlabelled fallback is a measurement claim nobody made.
+	Estimated bool `json:"estimated"`
+}
+
+// GetLowCredits returns the value of LowCredits.
+func (s *CreditEstimate) GetLowCredits() int64 {
+	return s.LowCredits
+}
+
+// GetHighCredits returns the value of HighCredits.
+func (s *CreditEstimate) GetHighCredits() int64 {
+	return s.HighCredits
+}
+
+// GetSampleSize returns the value of SampleSize.
+func (s *CreditEstimate) GetSampleSize() int {
+	return s.SampleSize
+}
+
+// GetEstimated returns the value of Estimated.
+func (s *CreditEstimate) GetEstimated() bool {
+	return s.Estimated
+}
+
+// SetLowCredits sets the value of LowCredits.
+func (s *CreditEstimate) SetLowCredits(val int64) {
+	s.LowCredits = val
+}
+
+// SetHighCredits sets the value of HighCredits.
+func (s *CreditEstimate) SetHighCredits(val int64) {
+	s.HighCredits = val
+}
+
+// SetSampleSize sets the value of SampleSize.
+func (s *CreditEstimate) SetSampleSize(val int) {
+	s.SampleSize = val
+}
+
+// SetEstimated sets the value of Estimated.
+func (s *CreditEstimate) SetEstimated(val bool) {
+	s.Estimated = val
+}
+
 // One acceptance criterion's verdict. `criterion_id` refers to the run's frozen test case snapshot, so
 // editing the draft afterwards cannot rewrite what was judged (iron rule 4).
 // Ref: #/components/schemas/CriterionResult
@@ -5475,6 +5600,7 @@ func (*Error) browseCatalogRes()          {}
 func (*Error) deleteDownloadArtifactRes() {}
 func (*Error) deleteRunArtifactRes()      {}
 func (*Error) devLoginRes()               {}
+func (*Error) getCreditBalanceRes()       {}
 func (*Error) getDatasetLimitsRes()       {}
 func (*Error) getDispatchStatusRes()      {}
 func (*Error) getMeRes()                  {}
@@ -8288,6 +8414,80 @@ func (*GetTestCaseNotFound) getTestCaseRes() {}
 type GetTestCaseUnauthorized Error
 
 func (*GetTestCaseUnauthorized) getTestCaseRes() {}
+
+type GrantCreditsBadRequest Error
+
+func (*GrantCreditsBadRequest) grantCreditsRes() {}
+
+type GrantCreditsNotFound Error
+
+func (*GrantCreditsNotFound) grantCreditsRes() {}
+
+type GrantCreditsOK struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	// The balance after this grant.
+	BalanceCredits int64 `json:"balance_credits"`
+	AmountCredits  int64 `json:"amount_credits"`
+}
+
+// GetWorkspaceID returns the value of WorkspaceID.
+func (s *GrantCreditsOK) GetWorkspaceID() uuid.UUID {
+	return s.WorkspaceID
+}
+
+// GetBalanceCredits returns the value of BalanceCredits.
+func (s *GrantCreditsOK) GetBalanceCredits() int64 {
+	return s.BalanceCredits
+}
+
+// GetAmountCredits returns the value of AmountCredits.
+func (s *GrantCreditsOK) GetAmountCredits() int64 {
+	return s.AmountCredits
+}
+
+// SetWorkspaceID sets the value of WorkspaceID.
+func (s *GrantCreditsOK) SetWorkspaceID(val uuid.UUID) {
+	s.WorkspaceID = val
+}
+
+// SetBalanceCredits sets the value of BalanceCredits.
+func (s *GrantCreditsOK) SetBalanceCredits(val int64) {
+	s.BalanceCredits = val
+}
+
+// SetAmountCredits sets the value of AmountCredits.
+func (s *GrantCreditsOK) SetAmountCredits(val int64) {
+	s.AmountCredits = val
+}
+
+func (*GrantCreditsOK) grantCreditsRes() {}
+
+type GrantCreditsReq struct {
+	// Credits to add. Negative for a corrective adjustment; zero is refused.
+	AmountCredits int64 `json:"amount_credits"`
+	// Why. Required, non-empty after trimming, and recorded in the audit event.
+	Reason string `json:"reason"`
+}
+
+// GetAmountCredits returns the value of AmountCredits.
+func (s *GrantCreditsReq) GetAmountCredits() int64 {
+	return s.AmountCredits
+}
+
+// GetReason returns the value of Reason.
+func (s *GrantCreditsReq) GetReason() string {
+	return s.Reason
+}
+
+// SetAmountCredits sets the value of AmountCredits.
+func (s *GrantCreditsReq) SetAmountCredits(val int64) {
+	s.AmountCredits = val
+}
+
+// SetReason sets the value of Reason.
+func (s *GrantCreditsReq) SetReason(val string) {
+	s.Reason = val
+}
 
 // Ref: #/components/schemas/Health
 type Health struct {

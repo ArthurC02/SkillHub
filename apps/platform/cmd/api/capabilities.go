@@ -171,6 +171,21 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 			Fix:     "設一個保存期，例如 4320h",
 		},
 		{
+			ID:    "credit_pricing",
+			Name:  "Credit 計價與開始門檻（ADR-068）",
+			Needs: []string{"CREDIT_USD_PER_CREDIT", "CREDIT_MARKUP_BPS", "CREDIT_DEBT_FLOOR", "CREDIT_MIN_START_FALLBACK"},
+			// 這四個都有預設值，所以「沒有它會怎樣」不是能力消失——是這個部署按別人的價錢收費。
+			// 其中一個是例外，而它是唯一會真的擋住人的：滾動窗湊滿 20 筆樣本之前，
+			// CREDIT_MIN_START_FALLBACK 就是閘門①的門檻本身（credit.Service.CanStart 的
+			// 備援分支），不是備胎。封測第一天沒有任何樣本，所以第一批使用者遇到的門檻
+			// 一定是這個常數。
+			Without: "帳本照跑，但按 ADR-068 的預設值計價：1 credit = US$0.001、加成 1.3 倍、負債下限 −50 credit、" +
+				"樣本不足時的開始門檻 70 credit。" +
+				"CREDIT_MIN_START_FALLBACK 設得比封測發放額還高，拿到點數的人一樣開不了新創作；設成 0 則閘門①在量到 p95 之前形同不存在",
+			Fix: "只有在這個部署的真實成本或加成與 ADR-068 不同時才設；" +
+				"改動只影響之後寫入的 credit_entries（每一筆都記下當時的 markup_bps，舊帳不回頭改寫）",
+		},
+		{
 			ID:      "github_login",
 			Name:    "GitHub OAuth 登入",
 			Needs:   []string{"GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "OAUTH_REDIRECT_URL"},

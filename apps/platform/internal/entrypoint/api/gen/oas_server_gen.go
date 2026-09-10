@@ -354,6 +354,25 @@ type Handler interface {
 	//
 	// GET /creation-sessions/{session_id}
 	GetCreationSession(ctx context.Context, params GetCreationSessionParams) (GetCreationSessionRes, error)
+	// GetCreditBalance implements getCreditBalance operation.
+	//
+	// Credit is this platform's only unit of account (ADR-068). Everything a user is shown about cost is
+	// denominated in it; US dollars are the platform's own ledger and never appear on this route.
+	//
+	// Three numbers and a verdict: the balance, how far below zero it may go before the per-step gate
+	// stops a session, what one interactive-creation session is expected to cost, and whether a new one
+	// may begin.
+	//
+	// The threshold `can_start` is measured against is the same one the domain gate blocks on — one
+	// definition, computed once — for the reason GET /me/quota never recomputes PDM-010's counters: a
+	// display with its own arithmetic can disagree with the rule it is showing.
+	//
+	// `estimated_session.estimated` true means fewer than 20 cost samples exist for the current window and
+	// a conservative configured constant was used in place of a measured p95. A fallback that presented
+	// itself as a measurement would be worse than no number at all, so it is labelled.
+	//
+	// GET /me/credits
+	GetCreditBalance(ctx context.Context) (GetCreditBalanceRes, error)
 	// GetDataRetentionPolicy implements getDataRetentionPolicy operation.
 	//
 	// 02:O11Y-004: product analytics is the only data class a user produces without submitting anything,
@@ -564,6 +583,25 @@ type Handler interface {
 	//
 	// GET /test-cases/{id}
 	GetTestCase(ctx context.Context, params GetTestCaseParams) (GetTestCaseRes, error)
+	// GrantCredits implements grantCredits operation.
+	//
+	// Operator only. MVP connects no payment gateway, so an operator entry is the whole of "top up" —
+	// and it is also how a beta participant's reward is issued, which is why this route exists before any
+	// billing does.
+	//
+	// The reason is required and is not decoration: it becomes part of the audit event this write emits in
+	// the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who
+	// granted it and why is not a state this endpoint can end in.
+	//
+	// `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other
+	// direction — but never zero, which would write an entry that changes nothing while claiming an
+	// operator did something.
+	//
+	// Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants.
+	// Deliberate for MVP, where a grant is a deliberate act and each one is audited.
+	//
+	// POST /admin/credits/{workspace_id}/grants
+	GrantCredits(ctx context.Context, req *GrantCreditsReq, params GrantCreditsParams) (GrantCreditsRes, error)
 	// ImportSkillFromURL implements importSkillFromURL operation.
 	//
 	// Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs

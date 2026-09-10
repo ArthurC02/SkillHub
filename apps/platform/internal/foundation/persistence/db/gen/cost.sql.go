@@ -54,6 +54,24 @@ func (q *Queries) AggregateCostEventsWindow(ctx context.Context, arg AggregateCo
 	return i, err
 }
 
+const getCostEventByIdempotencyKey = `-- name: GetCostEventByIdempotencyKey :one
+SELECT id FROM cost_events WHERE idempotency_key = $1
+`
+
+// The replay half of InsertCostEvent's idempotency. The insert above is a
+// plain INSERT and the codebase catches 23505 rather than upserting, which
+// leaves the caller holding a duplicate-key error and no id -- and credit's
+// Charge needs that id to point the debit entry at the cost event it came
+// from. Without this query a retried settlement would write a debit whose
+// cost_event_id is empty, which is precisely the "扣了錢但答不出為什麼"
+// ADR-068 decision 3 forbids.
+func (q *Queries) GetCostEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getCostEventByIdempotencyKey, idempotencyKey)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getLatestCostStatistics = `-- name: GetLatestCostStatistics :one
 SELECT id, kind, window_start, window_end, sample_count, p50_usd_micros, p90_usd_micros, p95_usd_micros, max_usd_micros, created_at FROM cost_statistics
 WHERE kind = $1

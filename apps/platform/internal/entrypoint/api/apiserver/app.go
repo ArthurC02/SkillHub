@@ -332,6 +332,30 @@ func NewApp(cfg Config) (*App, error) {
 	wireCreationWrites(creationSvc, versions, runSvc, evalSvc)
 	wireCreationTestCases(creationSvc, testlabSvc)
 	wireCreationAdopt(creationSvc, registrySvc)
+
+	// ADR-068's ledger, and the three gates that spend against it. Built here
+	// rather than lazily inside creation because a nil hook is indistinguishable
+	// from a hook that decided to allow: creation runs exactly as it did before
+	// Credit when these are unassigned, which is the one state this composition
+	// root must not be able to reach by accident.
+	creditSvc, err := newCreditService(cfg.Pool, identitySvc)
+	if err != nil {
+		return nil, err
+	}
+	wireCreationCredit(creationSvc, creditSvc, identitySvc.WorkspaceOwner)
+	// Account deletion clears the ledger too. identity's purge steps are all
+	// workspace-keyed and credit's rows are user-keyed, so this is the one step
+	// that resolves in the other direction before it deletes.
+	identitySvc.PurgeCredit = func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
+		// On the purge's own transaction, not the pool: that connection already
+		// holds this workspace's exclusive fence, so a second one would wait on
+		// it until the context expires.
+		userID, err := identitySvc.WorkspaceOwnerIn(ctx, tx, workspaceID)
+		if err != nil {
+			return err
+		}
+		return creditSvc.PurgeUser(ctx, tx, userID)
+	}
 	return &App{
 		Deps: Deps{
 			Auth:            auth,
@@ -359,6 +383,10 @@ func NewApp(cfg Config) (*App, error) {
 			Trace:     &trace.Handler{Svc: traceSvc, Identity: auth.Service},
 			Eval:      &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 			Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
+			Credits: &creditsHandler{
+				Ledger:   &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
+				Identity: identitySvc,
+			},
 			Analytics: &analytics.Handler{
 				Svc: funnel, Identity: auth.Service, FeedbackRetention: cfg.FeedbackRetention,
 			},

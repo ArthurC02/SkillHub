@@ -19,6 +19,9 @@
 //	                               Run outputs whose expires_at has passed and
 //	                               mark the rows purged. Needs DATABASE_URL and
 //	                               object storage.
+//	maintenance purge-credit       ADR-068 11: remove cost_events and
+//	                               credit_entries older than CREDIT_RETENTION.
+//	                               Needs DATABASE_URL and CREDIT_RETENTION.
 //	maintenance purge-datasets     PDM-006 6 / SEC-006: remove the bytes behind
 //	                               uploaded datasets whose expires_at has passed
 //	                               and mark the rows deleted. Needs DATABASE_URL
@@ -121,8 +124,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
@@ -141,8 +147,8 @@ import (
 func main() {
 	if len(os.Args) != 2 {
 		slog.Error("usage: maintenance purge-accounts|purge-audit|purge-feedback|" +
-			"purge-run-artifacts|purge-datasets|purge-deleted-skills|collect-objects|" +
-			"check-sources|rotate-partitions")
+			"purge-run-artifacts|purge-datasets|purge-deleted-skills|purge-credit|" +
+			"collect-objects|check-sources|rotate-partitions")
 		os.Exit(2)
 	}
 	ctx := context.Background()
@@ -168,6 +174,8 @@ func main() {
 		err = purgeDatasets(ctx, pool)
 	case "purge-deleted-skills":
 		err = purgeDeletedSkills(ctx, pool)
+	case "purge-credit":
+		err = purgeCredit(ctx, pool)
 	case "collect-objects":
 		err = collectObjects(ctx, pool)
 	case "rotate-partitions":
@@ -452,6 +460,46 @@ func purgeFeedback(ctx context.Context, pool *pgxpool.Pool) error {
 	return err
 }
 
+// purgeCredit is ADR-068 decision 11's retention half: cost_events and
+// credit_entries past CREDIT_RETENTION go, whatever account they belong to.
+//
+// Deliberately separate from the per-user delete the account purge runs. That
+// one is keyed on a user and removes everything they ever spent; this one is
+// keyed on time and removes everything anybody spent long enough ago. The
+// store interface's own comment records that this distinction was got wrong
+// once already — it claimed the retention queries covered account deletion,
+// which would have left a deleted account's spend on file until it aged out.
+//
+// Fail-closed on CREDIT_RETENTION for AUDIT_RETENTION's reason: these two
+// tables are the platform's financial record, and a default window would be
+// this process deciding on its own how long a billing trail lives.
+//
+// Both deletes run in one transaction because both need the same
+// `SET LOCAL skillhub.purge = 'on'` the immutability triggers check, and a
+// half-swept ledger — entries gone, their cost events still there — is worse
+// than an unswept one: every surviving debit would point at nothing.
+func purgeCredit(ctx context.Context, pool *pgxpool.Pool) error {
+	retention, err := positiveDuration("CREDIT_RETENTION")
+	if err != nil {
+		return err
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	entries, events, err := credit.NewPostgresStore(pool).SweepExpiredRows(ctx, tx, time.Now().Add(-retention))
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	slog.Info("credit purge complete", "entries_removed", entries, "cost_events_removed", events)
+	return nil
+}
+
 func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 	store, err := objstore.FromEnv()
 	if err != nil {
@@ -485,6 +533,19 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 // only the transaction they share (ADR-034). A step left out here is refused,
 // not skipped — see identity.requirePurgeSteps.
 func purgeService(pool *pgxpool.Pool) *identity.Service {
+	ids := &identity.Service{Pool: pool}
+	// credit's rows are keyed on the user; every other purge step is keyed on
+	// the workspace. The resolution happens on the purge's OWN transaction —
+	// that connection already holds this workspace's exclusive fence, so going
+	// back to the pool for it would wait on a lock the same purge is holding.
+	creditSvc := &credit.Service{Store: credit.NewPostgresStore(pool)}
+	purgeCredit := func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
+		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
+		if err != nil {
+			return err
+		}
+		return creditSvc.PurgeUser(ctx, tx, userID)
+	}
 	analyticsSvc := &analytics.Service{Pool: pool}
 	testlabSvc := &testlab.Service{Pool: pool}
 	runSvc := &run.Service{Pool: pool}
@@ -500,6 +561,7 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 		PurgeSkills:                registrySvc.PurgeWorkspace,
 		PurgeImportSources:         ingestSvc.PurgeWorkspace,
 		PurgeCreation:              (&creation.Service{Pool: pool}).PurgeWorkspace,
+		PurgeCredit:                purgeCredit,
 		DatasetObjectKeys:          testlabSvc.WorkspaceObjectKeys,
 		RunArtifactObjectKeys:      runSvc.WorkspaceObjectKeys,
 		DownloadArtifactObjectKeys: packagingSvc.WorkspaceObjectKeys,

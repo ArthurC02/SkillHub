@@ -84,9 +84,15 @@ type CostEvent struct {
 // CostEvent it was computed from and always against a specific user's
 // account (credit_entries.user_id is NOT NULL).
 type DebitEntry struct {
-	CostEventID    string
-	UserID         pgtype.UUID
-	Credits        int64 // positive magnitude; the ledger's delta_credits is its negation
+	CostEventID string
+	UserID      pgtype.UUID
+	Credits     int64 // positive magnitude; the ledger's delta_credits is its negation
+	// UsdMicros is the real cost this debit was computed from. Not
+	// redundant with the cost event it points at: migration 0060's
+	// credit_entries_debit_has_cost requires it on the row itself, so a
+	// reconciliation can check the arithmetic of one entry without joining,
+	// and so an entry survives its cost event being swept.
+	UsdMicros      int64
 	MarkupBps      int64 // the markup in effect when this entry was written (decision 2: never rewritten)
 	Estimated      bool
 	RefType        string

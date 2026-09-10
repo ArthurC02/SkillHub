@@ -36,6 +36,7 @@ import type {
   CreationAction,
   CreationLimits,
   CreationSession,
+  CreditBalance,
   DataRetentionPolicy,
   Dataset,
   DatasetLimits,
@@ -57,6 +58,8 @@ import type {
   GetDispatchStatus200Response,
   GetReadiness200Response,
   GetRunTrace200Response,
+  GrantCredits200Response,
+  GrantCreditsRequest,
   Health,
   ImportSkillFromURLRequest,
   ImprovementSuggestion,
@@ -147,6 +150,8 @@ import {
     CreationLimitsToJSON,
     CreationSessionFromJSON,
     CreationSessionToJSON,
+    CreditBalanceFromJSON,
+    CreditBalanceToJSON,
     DataRetentionPolicyFromJSON,
     DataRetentionPolicyToJSON,
     DatasetFromJSON,
@@ -189,6 +194,10 @@ import {
     GetReadiness200ResponseToJSON,
     GetRunTrace200ResponseFromJSON,
     GetRunTrace200ResponseToJSON,
+    GrantCredits200ResponseFromJSON,
+    GrantCredits200ResponseToJSON,
+    GrantCreditsRequestFromJSON,
+    GrantCreditsRequestToJSON,
     HealthFromJSON,
     HealthToJSON,
     ImportSkillFromURLRequestFromJSON,
@@ -447,6 +456,11 @@ export interface GetSuggestionDiffRequest {
 
 export interface GetTestCaseRequest {
     id: string;
+}
+
+export interface GrantCreditsOperationRequest {
+    workspaceId: string;
+    grantCreditsRequest: GrantCreditsRequest;
 }
 
 export interface ImportSkillFromURLOperationRequest {
@@ -1062,6 +1076,21 @@ export interface DefaultApiInterface {
     getCreationSession(requestParameters: GetCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationSession>;
 
     /**
+     * Credit is this platform\'s only unit of account (ADR-068). Everything a user is shown about cost is denominated in it; US dollars are the platform\'s own ledger and never appear on this route.  Three numbers and a verdict: the balance, how far below zero it may go before the per-step gate stops a session, what one interactive-creation session is expected to cost, and whether a new one may begin.  The threshold `can_start` is measured against is the same one the domain gate blocks on — one definition, computed once — for the reason GET /me/quota never recomputes PDM-010\'s counters: a display with its own arithmetic can disagree with the rule it is showing.  `estimated_session.estimated` true means fewer than 20 cost samples exist for the current window and a conservative configured constant was used in place of a measured p95. A fallback that presented itself as a measurement would be worse than no number at all, so it is labelled. 
+     * @summary The account\'s Credit balance and what one creation session costs (CRED-001)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreditBalanceRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditBalance>>;
+
+    /**
+     * Credit is this platform\'s only unit of account (ADR-068). Everything a user is shown about cost is denominated in it; US dollars are the platform\'s own ledger and never appear on this route.  Three numbers and a verdict: the balance, how far below zero it may go before the per-step gate stops a session, what one interactive-creation session is expected to cost, and whether a new one may begin.  The threshold `can_start` is measured against is the same one the domain gate blocks on — one definition, computed once — for the reason GET /me/quota never recomputes PDM-010\'s counters: a display with its own arithmetic can disagree with the rule it is showing.  `estimated_session.estimated` true means fewer than 20 cost samples exist for the current window and a conservative configured constant was used in place of a measured p95. A fallback that presented itself as a measurement would be worse than no number at all, so it is labelled. 
+     * The account\'s Credit balance and what one creation session costs (CRED-001)
+     */
+    getCreditBalance(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditBalance>;
+
+    /**
      * 02:O11Y-004: product analytics is the only data class a user produces without submitting anything, so its disclosure obligation is no lower than any other\'s. This is that disclosure as an endpoint rather than a document, for the reason GET /test-cases/limits is one — the values come from the constants the writer itself reads, so the page and the behaviour cannot drift.  No session. A data policy a visitor has to log in to read is not a policy they can decide by, and the funnel\'s first segment is measured before any login exists. Nothing user-specific is read or returned.  `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5\'s 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no cookie. 
      * @summary What the product analytics events record, and for how long (O11Y-004)
      * @param {*} [options] Override http request option.
@@ -1311,6 +1340,23 @@ export interface DefaultApiInterface {
      * Read one test case draft
      */
     getTestCase(requestParameters: GetTestCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
+
+    /**
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
+     * @summary Put Credit into an account (CRED-007)
+     * @param {string} workspaceId 
+     * @param {GrantCreditsRequest} grantCreditsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    grantCreditsRaw(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GrantCredits200Response>>;
+
+    /**
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
+     * Put Credit into an account (CRED-007)
+     */
+    grantCredits(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GrantCredits200Response>;
 
     /**
      * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The package goes through the same static validation as uploads. 
@@ -3156,6 +3202,37 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Credit is this platform\'s only unit of account (ADR-068). Everything a user is shown about cost is denominated in it; US dollars are the platform\'s own ledger and never appear on this route.  Three numbers and a verdict: the balance, how far below zero it may go before the per-step gate stops a session, what one interactive-creation session is expected to cost, and whether a new one may begin.  The threshold `can_start` is measured against is the same one the domain gate blocks on — one definition, computed once — for the reason GET /me/quota never recomputes PDM-010\'s counters: a display with its own arithmetic can disagree with the rule it is showing.  `estimated_session.estimated` true means fewer than 20 cost samples exist for the current window and a conservative configured constant was used in place of a measured p95. A fallback that presented itself as a measurement would be worse than no number at all, so it is labelled. 
+     * The account\'s Credit balance and what one creation session costs (CRED-001)
+     */
+    async getCreditBalanceRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditBalance>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/credits`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreditBalanceFromJSON(jsonValue));
+    }
+
+    /**
+     * Credit is this platform\'s only unit of account (ADR-068). Everything a user is shown about cost is denominated in it; US dollars are the platform\'s own ledger and never appear on this route.  Three numbers and a verdict: the balance, how far below zero it may go before the per-step gate stops a session, what one interactive-creation session is expected to cost, and whether a new one may begin.  The threshold `can_start` is measured against is the same one the domain gate blocks on — one definition, computed once — for the reason GET /me/quota never recomputes PDM-010\'s counters: a display with its own arithmetic can disagree with the rule it is showing.  `estimated_session.estimated` true means fewer than 20 cost samples exist for the current window and a conservative configured constant was used in place of a measured p95. A fallback that presented itself as a measurement would be worse than no number at all, so it is labelled. 
+     * The account\'s Credit balance and what one creation session costs (CRED-001)
+     */
+    async getCreditBalance(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditBalance> {
+        const response = await this.getCreditBalanceRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * 02:O11Y-004: product analytics is the only data class a user produces without submitting anything, so its disclosure obligation is no lower than any other\'s. This is that disclosure as an endpoint rather than a document, for the reason GET /test-cases/limits is one — the values come from the constants the writer itself reads, so the page and the behaviour cannot drift.  No session. A data policy a visitor has to log in to read is not a policy they can decide by, and the funnel\'s first segment is measured before any login exists. Nothing user-specific is read or returned.  `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5\'s 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no cookie. 
      * What the product analytics events record, and for how long (O11Y-004)
      */
@@ -3750,6 +3827,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getTestCase(requestParameters: GetTestCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase> {
         const response = await this.getTestCaseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
+     * Put Credit into an account (CRED-007)
+     */
+    async grantCreditsRaw(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GrantCredits200Response>> {
+        if (requestParameters['workspaceId'] == null) {
+            throw new runtime.RequiredError(
+                'workspaceId',
+                'Required parameter "workspaceId" was null or undefined when calling grantCredits().'
+            );
+        }
+
+        if (requestParameters['grantCreditsRequest'] == null) {
+            throw new runtime.RequiredError(
+                'grantCreditsRequest',
+                'Required parameter "grantCreditsRequest" was null or undefined when calling grantCredits().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/credits/{workspace_id}/grants`;
+        urlPath = urlPath.replace(`{${"workspace_id"}}`, encodeURIComponent(String(requestParameters['workspaceId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: GrantCreditsRequestToJSON(requestParameters['grantCreditsRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GrantCredits200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
+     * Put Credit into an account (CRED-007)
+     */
+    async grantCredits(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GrantCredits200Response> {
+        const response = await this.grantCreditsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -313,6 +313,39 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /me/credits:
+    get:
+      operationId: getCreditBalance
+      summary: The account's Credit balance and what one creation session costs (CRED-001)
+      description: |
+        Credit is this platform's only unit of account (ADR-068). Everything a
+        user is shown about cost is denominated in it; US dollars are the
+        platform's own ledger and never appear on this route.
+
+        Three numbers and a verdict: the balance, how far below zero it may go
+        before the per-step gate stops a session, what one interactive-creation
+        session is expected to cost, and whether a new one may begin.
+
+        The threshold `can_start` is measured against is the same one the
+        domain gate blocks on — one definition, computed once — for the reason
+        GET /me/quota never recomputes PDM-010's counters: a display with its
+        own arithmetic can disagree with the rule it is showing.
+
+        `estimated_session.estimated` true means fewer than 20 cost samples
+        exist for the current window and a conservative configured constant was
+        used in place of a measured p95. A fallback that presented itself as a
+        measurement would be worse than no number at all, so it is labelled.
+      responses:
+        "200":
+          description: The balance as it stands right now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreditBalance" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /policy/data-retention:
     get:
       operationId: getDataRetentionPolicy
@@ -1767,6 +1800,80 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: Already taken down.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/credits/{workspace_id}/grants:
+    parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: grantCredits
+      summary: Put Credit into an account (CRED-007)
+      description: |
+        Operator only. MVP connects no payment gateway, so an operator entry is
+        the whole of "top up" — and it is also how a beta participant's reward
+        is issued, which is why this route exists before any billing does.
+
+        The reason is required and is not decoration: it becomes part of the
+        audit event this write emits in the same transaction as the balance
+        change (02:SEC-011). A granted balance with no trail of who granted it
+        and why is not a state this endpoint can end in.
+
+        `amount_credits` may be negative — a corrective adjustment is the same
+        mechanism in the other direction — but never zero, which would write an
+        entry that changes nothing while claiming an operator did something.
+
+        Not idempotent: nothing in this request identifies a retry, so two
+        identical calls are two grants. Deliberate for MVP, where a grant is a
+        deliberate act and each one is audited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount_credits, reason]
+              properties:
+                amount_credits:
+                  type: integer
+                  format: int64
+                  description: |
+                    Credits to add. Negative for a corrective adjustment; zero
+                    is refused.
+                reason:
+                  type: string
+                  description: |
+                    Why. Required, non-empty after trimming, and recorded in the
+                    audit event.
+      responses:
+        "200":
+          description: The entry was written and the balance moved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [workspace_id, balance_credits, amount_credits]
+                properties:
+                  workspace_id: { type: string, format: uuid }
+                  balance_credits:
+                    type: integer
+                    format: int64
+                    description: The balance after this grant.
+                  amount_credits: { type: integer, format: int64 }
+        "400":
+          description: Zero amount, or a missing reason.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            No such workspace, or the caller is not an operator. One answer for
+            both, the same way every other operator route on this table replies:
+            an endpoint that moves balances is one whose existence is worth not
+            confirming.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -8209,6 +8316,59 @@ components:
         profile_version:
           type: string
           description: The target profile's version. Absent for `standard`, which has no profile.
+    CreditBalance:
+      description: |
+        One account's Credit standing (CRED-001, ADR-068). No field here is
+        denominated in money: Credit is the currency this system shows, US
+        dollars are what the platform itself pays, and the two ledgers behind
+        this response are deliberately separate tables.
+      type: object
+      required: [balance_credits, debt_floor_credits, estimated_session, can_start]
+      properties:
+        balance_credits:
+          type: integer
+          format: int64
+          description: |
+            May be negative: a step already taken is always settled, so a
+            balance can go under before the next one is refused.
+        debt_floor_credits:
+          type: integer
+          format: int64
+          description: |
+            How far below zero the balance may go before the per-step gate
+            stops the session. Reported so a blocked screen can say how much
+            room is left rather than only that there is none.
+        estimated_session:
+          $ref: "#/components/schemas/CreditEstimate"
+        can_start:
+          type: boolean
+          description: |
+            Gate 1's answer for a new interactive-creation session, measured
+            against the same threshold the domain service blocks on.
+        block_reason:
+          type: string
+          description: |
+            Absent when can_start is true. Otherwise it names the shortfall in
+            credits and what to do about it - never a bare refusal.
+    CreditEstimate:
+      description: |
+        What one interactive-creation session is expected to cost, in Credit.
+      type: object
+      required: [low_credits, high_credits, sample_size, estimated]
+      properties:
+        low_credits: { type: integer, format: int64 }
+        high_credits: { type: integer, format: int64 }
+        sample_size:
+          type: integer
+          description: |
+            How many cost samples the current rolling window holds. Below 20 the
+            band collapses to the configured fallback and `estimated` is true.
+        estimated:
+          type: boolean
+          description: |
+            True when a configured constant stood in for a measured p95. It must
+            be shown wherever the figure is - an unlabelled fallback is a
+            measurement claim nobody made.
     RunQuota:
       description: |
         The free-tier allowance (PDM-010). Four limits in one place so a user can

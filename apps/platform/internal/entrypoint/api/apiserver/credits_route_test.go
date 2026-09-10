@@ -1,23 +1,21 @@
-// CRED-001/CRED-007's HTTP surface. router.go deliberately does NOT mount
-// GET /me/credits or POST /admin/credits/{workspace_id}/grants yet — neither
-// has an operation in contracts/openapi/public.yaml, and devctl
-// automation-check's route-table scan fails a route mounted ahead of its
-// contract entry (iron rule 12; see credits.go's package doc comment and the
-// Credits field comment in router.go).
+// CRED-001/CRED-007's HTTP surface.
 //
-// So this file tests two different things:
+// Until 2026-09-10 neither route was mounted: the contract had no operation
+// for either, and devctl automation-check's route-table scan fails a route
+// mounted ahead of its contract entry (iron rule 12). The contract landed and
+// they are mounted, so this file tests two different things:
 //
-//  1. TestCreditRoutesAreNotYetMountedInProduction confirms the real,
-//     production NewRouter table — Deps.Credits included — genuinely does not
-//     expose either route today, which is the point rather than an oversight.
-//  2. Everything else wires creditsHandler into its OWN httptest mux (not
-//     router.go), through the real auth.RequireSession/RequireOperator
-//     wrappers and a real session, to prove the handler logic and the CRED
-//     gating rules once the two lines above are ready to add.
+//  1. TestCreditRoutesAreMountedInProduction goes through the real,
+//     production NewRouter table and proves both routes are reachable there —
+//     the inverse of what this test asserted while the contract was pending,
+//     and the assertion that would have caught the mount silently regressing.
+//  2. Everything else wires creditsHandler into its OWN httptest mux, through
+//     the real auth.RequireSession/RequireOperator wrappers and a real
+//     session, to exercise the handler logic and the CRED gating rules
+//     against a fake ledger.
 //
 // Self-contained in this (internal) package rather than apiserver_test,
-// because creditsHandler and CreditLedger are unexported and no real
-// CreditLedger exists yet for NewApp to wire on its own. It shares this
+// because creditsHandler and CreditLedger are unexported. It shares this
 // directory's TestMain (migration lives in authz_integration_test.go) and
 // needs SKILLHUB_TEST_DATABASE_URL the same way; unset, every test below
 // skips.
@@ -85,11 +83,22 @@ func creditsTestPool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-// Confirms router.go's real, production table — not a copy — genuinely does
-// not expose either CRED route yet, even with Deps.Credits set: the gate is
-// contract-first, not ledger-presence, until the two lines noted in
-// router.go are added.
-func TestCreditRoutesAreNotYetMountedInProduction(t *testing.T) {
+// Both CRED routes are reachable through router.go's real, production table —
+// not a copy of it, which is the only version of this assertion worth having.
+//
+// This test used to assert the exact opposite, and the inversion is the point:
+// while the contract was pending it proved the routes were absent on purpose,
+// and now it proves they are present. Either way the thing under test is the
+// production table, so a future edit that drops a mount turns this red instead
+// of quietly removing a balance from the product.
+//
+// The signed-in user here is not an operator, so the grant route answers 404 —
+// the same answer it gives a stranger, which is the whole point of that block
+// in router.go. That it is 404 rather than 405 or 401 is what proves the route
+// exists AND is operator-gated: an unmounted path and a refused operator call
+// are deliberately indistinguishable from outside, so the balance read below
+// is what separates "mounted" from "not there at all".
+func TestCreditRoutesAreMountedInProduction(t *testing.T) {
 	pool := creditsTestPool(t)
 	app, err := NewApp(Config{Pool: pool, OAuth: &identity.GitHubOAuth{}, DevLogin: true})
 	if err != nil {
@@ -100,13 +109,25 @@ func TestCreditRoutesAreNotYetMountedInProduction(t *testing.T) {
 	}
 	srv := httptest.NewServer(app.Handler())
 	t.Cleanup(srv.Close)
-	c := creditsLogin(t, srv, "credits-unmounted")
+	c := creditsLogin(t, srv, "credits-mounted")
 
-	if code, _ := c.getJSON(t, "/me/credits"); code != http.StatusNotFound {
-		t.Fatalf("GET /me/credits: got %d, want 404 (not mounted pending the contract)", code)
+	code, body := c.getJSON(t, "/me/credits")
+	if code != http.StatusOK {
+		t.Fatalf("GET /me/credits: got %d, want 200 (mounted since the contract landed)", code)
+	}
+	if _, ok := body["balance_credits"]; !ok {
+		t.Fatalf("GET /me/credits body has no balance_credits: %v", body)
+	}
+	// ADR-068 decision 1: no field a user is shown is denominated in money.
+	// Asserted on the wire rather than trusted from the struct tags, because
+	// the tags are what a future edit would change.
+	for k := range body {
+		if strings.Contains(strings.ToLower(k), "usd") {
+			t.Fatalf("GET /me/credits sent a dollar-denominated field %q to a user: %v", k, body)
+		}
 	}
 	if code, _ := c.postJSON(t, "/admin/credits/"+c.workspaceID+"/grants", `{"amount_credits":10,"reason":"x"}`); code != http.StatusNotFound {
-		t.Fatalf("POST grant: got %d, want 404 (not mounted pending the contract)", code)
+		t.Fatalf("POST grant as a non-operator: got %d, want 404", code)
 	}
 }
 

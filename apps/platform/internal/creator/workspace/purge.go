@@ -75,6 +75,13 @@ func (s *Service) purgeSteps() []purgeStep {
 		// swapping these two lines makes fail.
 		{"registry", s.PurgeSkills},
 		{"ingest", s.PurgeImportSources},
+		// credit last, and its position is not load-bearing the way the two
+		// above are: the ledger references nothing another step deletes and
+		// nothing else references it. It is in this list at all for the reason
+		// requirePurgeSteps exists — a deleted account whose spend is still on
+		// file is exactly the "reported success, rows still there" outcome that
+		// check refuses to allow.
+		{"credit", s.PurgeCredit},
 	}
 }
 

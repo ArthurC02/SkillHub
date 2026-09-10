@@ -41,13 +41,14 @@ type Deps struct {
 	Trace           *trace.Handler
 	Eval            *eval.Handler
 	Packaging       *packaging.Handler
-	// Credits is CRED-001/CRED-007's handler (see credits.go). Built and
-	// tested, but deliberately NOT mounted below yet: neither route has an
-	// operation in contracts/openapi/public.yaml, and devctl automation-check's
-	// route-table scan fails a route mounted ahead of its contract entry (iron
-	// rule 12). Mounting is two lines once the contract lands — see credits.go's
-	// package doc comment for the exact lines and why this field still exists
-	// unread in the meantime.
+	// Credits is CRED-001/CRED-007's handler (see credits.go). Both routes are
+	// mounted as of 2026-09-10, when the contract gained their operations —
+	// until then this field was deliberately built, tested and unread, because
+	// devctl automation-check's route-table scan fails a route mounted ahead of
+	// its contract entry (iron rule 12).
+	//
+	// Nil means this deployment has no ledger and neither route exists, the
+	// same shape GET /me/quota uses for an unenforced allowance.
 	Credits *creditsHandler
 	// Analytics serves POST /feedback and carries the funnel-event writer the
 	// public handlers use (02:O11Y-004, BETA-003/004/005).
@@ -223,10 +224,13 @@ func NewRouter(d Deps) http.Handler {
 	// search exclusion answer both (02:533「不得為 operator 另開第二套」).
 	mux.HandleFunc("PUT /admin/skills/{id}/takedown", auth.RequireOperator(d.Search.Takedown))
 
-	// CRED-007, MVP's only top-up path and how a gate-test participant's
-	// Credit reward is issued, is not mounted here yet for the same
-	// contract-first reason GET /me/credits above is not: see the Credits
-	// field comment and credits.go's package doc comment.
+	// CRED-007, MVP's only top-up path and how a beta participant's Credit
+	// reward is issued. RequireOperator like every other route in this block,
+	// and therefore the same 404 to everybody else: an endpoint that moves
+	// balances is one whose existence is worth not confirming.
+	if d.Credits != nil {
+		mux.HandleFunc("POST /admin/credits/{workspace_id}/grants", auth.RequireOperator(d.Credits.Grant))
+	}
 
 	// 03:SEC-012's operator surface: 02:SEC-010's P1 first action, and the one place
 	// 「現在到底有沒有在派送」 is answered. Same RequireOperator and therefore the same
@@ -275,9 +279,13 @@ func NewRouter(d Deps) http.Handler {
 	if d.Runs.Svc.Quota.Enforced() {
 		mux.HandleFunc("GET /me/quota", auth.RequireSession(d.Runs.Quota))
 	}
-	// CRED-001 (GET /me/credits) is not mounted here yet — see the Credits field
-	// comment above and credits.go's package doc comment for the one line that
-	// wires it in, once the contract has the operation.
+	// CRED-001: the balance as the account holder sees it. Mounted only when a
+	// ledger is wired, for the same reason GET /me/quota is mounted only where
+	// an allowance is enforced — a route that answered with zeroes would be a
+	// claim that a balance exists, which is 04 乙-2's mistake in a new unit.
+	if d.Credits != nil {
+		mux.HandleFunc("GET /me/credits", auth.RequireSession(d.Credits.Get))
+	}
 	// WS-004's Run history. A list route beside the detail one, and the literal
 	// segments below stay more specific than {id}, so all of them coexist.
 	mux.HandleFunc("GET /runs", auth.RequireSession(d.Runs.List))

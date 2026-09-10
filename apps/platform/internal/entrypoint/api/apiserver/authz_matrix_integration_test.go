@@ -141,6 +141,10 @@ var anonymousRoutes = []anonCase{
 	{pattern: "DELETE /admin/skills/{id}/restriction", want: http.StatusNotFound},
 	{pattern: "PUT /admin/skills/{id}/redistribution", want: http.StatusNotFound},
 	{pattern: "PUT /admin/skills/{id}/takedown", want: http.StatusNotFound},
+	// CRED-007 moves balances, so it gets the same treatment as the rest of
+	// this block: an anonymous caller is never an operator, so 404 is the whole
+	// assertion and the route's existence is never confirmed.
+	{pattern: "POST /admin/credits/{workspace_id}/grants", want: http.StatusNotFound},
 	{pattern: "GET /admin/dispatch", want: http.StatusNotFound},
 	{pattern: "PUT /admin/dispatch/halt", want: http.StatusNotFound},
 	{pattern: "DELETE /admin/dispatch/halt", want: http.StatusNotFound},
@@ -170,6 +174,10 @@ var anonymousRoutes = []anonCase{
 	// none, so the answer here is the unmounted one; the mounted one is asserted
 	// separately below, because a route with two states needs both.
 	{pattern: "GET /me/quota", want: http.StatusNotFound, conditional: "policy.QuotaLimits.Enforced()"},
+	// CRED-001. Session scoped, and unlike the allowance above it is mounted
+	// whenever a ledger is wired at all — newAPI wires one, so the anonymous
+	// answer here is 401 rather than the unmounted 404.
+	{pattern: "GET /me/credits", want: http.StatusUnauthorized},
 	{pattern: "GET /runs", want: http.StatusUnauthorized},
 	{pattern: "GET /runs/{id}", want: http.StatusUnauthorized},
 	{pattern: "POST /runs/{id}/cancel", want: http.StatusUnauthorized},

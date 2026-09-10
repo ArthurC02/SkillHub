@@ -41,3 +41,23 @@ DELETE FROM sessions WHERE token_hash = $1;
 
 -- name: DeleteExpiredSessions :execrows
 DELETE FROM sessions WHERE expires_at <= now();
+
+-- name: GetWorkspaceOwner :one
+-- The reverse of PersonalWorkspace, and until 2026-09-10 the whole codebase
+-- had only the forward direction. credit keys accounts on the USER
+-- (migration 0060: "每個帳號" is the user), while creation's job args and the
+-- operator grant route both carry a WORKSPACE id -- so somebody has to do
+-- this lookup, and doing it by assuming MVP's 1:1 user/workspace would be a
+-- coincidence the schema does not promise (ADR-011 gives one personal
+-- workspace per user, not one workspace per user forever).
+SELECT w.owner_user_id FROM workspaces w WHERE w.id = sqlc.arg(workspace_id)::uuid;
+
+-- name: GetUserAccountState :one
+-- credit's AccountFacts (ADR-068 decision 11), reached through the injected
+-- Facts func so credit never imports identity. Returns a row for a
+-- soft-deleted or purging user rather than filtering it out: "no such user"
+-- and "this user is being deleted" are different answers, credit refuses
+-- both, and only one of them means something went wrong upstream.
+SELECT (u.deleted_at IS NULL)::boolean AS present,
+       (u.purge_started_at IS NOT NULL)::boolean AS purging
+FROM users u WHERE u.id = $1;

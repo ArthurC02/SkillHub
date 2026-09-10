@@ -113,6 +113,10 @@ type GetCreationSessionRes interface {
 	getCreationSessionRes()
 }
 
+type GetCreditBalanceRes interface {
+	getCreditBalanceRes()
+}
+
 type GetDatasetLimitsRes interface {
 	getDatasetLimitsRes()
 }
@@ -163,6 +167,10 @@ type GetSuggestionDiffRes interface {
 
 type GetTestCaseRes interface {
 	getTestCaseRes()
+}
+
+type GrantCreditsRes interface {
+	grantCreditsRes()
 }
 
 type ImportSkillFromURLRes interface {
