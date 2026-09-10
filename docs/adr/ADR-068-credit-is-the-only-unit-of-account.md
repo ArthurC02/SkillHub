@@ -139,3 +139,35 @@ MVP 期間不存在任何真實付款路徑：充值 = operator 在既有 `/admi
 以上四項均以鐵律 9 的還原—變紅—改回流程驗證過紅／綠證據。
 
 **用詞更正**：決策 4 寫「一個帳號（本 MVP 即一個 Workspace,[ADR-011](./ADR-011-workspace-tenancy-policy-and-usage.md)「每位使用者一個個人 Workspace」)」的 Credit 餘額——這句把帳戶的鍵誤植為 Workspace。落地的鍵是**使用者**：`credit_accounts.user_id`,不是 workspace id。負責人裁定 2 逐字說的是「每個帳號」,帳號在這個系統裡是使用者,不是 Workspace；MVP 期間一位使用者剛好只有一個個人 Workspace,那只是巧合的基數對應,不代表兩個 id 可以互換或省略轉換這一步。`creator/creation` 既有的三個掛勾（`CreditCanStart`／`CreditReserve`／`CreditSettle`）傳的是 `WorkspaceID`,把它換成 `user_id` 是組裝根（`apiserver.NewApp`)明確要做的一步,不能假設兩個 id 相同——這個轉換今天仍未落地,見 [`docs/development/interactive-creation.md`](../development/interactive-creation.md) 2026-09-08 條目。
+
+## 2026-09-10 補記：貨幣是 Credit，Money 是美元——以及決策 1 兩天來沒有被強制
+
+負責人本日逐字：「**整個系統對於錢的概念都改以 Credit 作為貨幣，美金才是 Money**」。
+
+**這不是新決策，是決策 1 的詞彙定版，外加一個查證結果。** 定版的部分：
+
+| | 單位 | 出現在哪 | 誰看得到 |
+| --- | --- | --- | --- |
+| **貨幣（currency）** | **Credit** | `credit_entries`、餘額、扣點、三道閘、報酬 | **使用者** |
+| **Money** | **美元** | `cost_events`、LiteLLM 閘道的 `max_budget`／spend、成本模型 | **平台自己** |
+
+**因此本 ADR §「決策 1」裡「Credit 不是貨幣的影子」那句話，措辭與本補記相反而意思相同**，就地說明而不改寫：那句話裡的「貨幣」指的是**系統外的真實金錢**（它要說的是 Credit 不可兌現），本補記裡的「貨幣」指的是**系統內的計價單位**。**兩個詞今天起分開**——`Credit` 是這個系統的貨幣，`Money` 專指美元。
+
+**查證結果，也是開這一則補記的真正理由**：決策 1 逐字寫著「平台面對使用者的每一個成本呈現，只有一種單位——**不顯示美元**」。那是 2026-09-08 寫的。**2026-09-10 逐條查過契約，六個欄位一個都沒有動**：
+
+1. `RunCostEstimate.currency`（**釘死 `USD`**）＋ `low`／`typical`／`high`
+2. `evaluation_usd`（評估成本）
+3. Run 自己的 `usd` ＋ `is_lower_bound`
+4. trace `usage.cost_usd`
+5. `CreationSnapshot.budget_usd`／`reserved_usd`／`spent_usd`
+6. `CreationLimits.min_budget_usd`／`max_budget_usd`
+
+**最刺眼的是同一個畫面上今天有兩種單位**：`apps/web/src/components/CreationSession.tsx` 右上角，預算選單印的是 `$0.50`，而**緊接在它下面那一行**印的是「餘額 N 點 · 這場約 a–b 點」。決策 1 要防的正是這個。
+
+**一條會被誤讀成「換算已經被否決過」的既有理由，寫在這裡**：`RunCostEstimate.currency` 的契約註解說「a converted number would present an exchange rate the platform does not own as a fact about a run」。**那句話對外幣成立，對 Credit 不成立**——面額 1 credit = US$0.001 與加成 1.3 都是**平台自己訂的常數**，而且決策 2 已經要求每一筆分錄記下寫入當時生效的加成。**平台不擁有的是台幣兌美元，不是自己的定價。**
+
+**遷移規則沿用既有的，不發明新的**：換算取寫入當時的加成、無條件進位（決策 2）；`cost_events` 與閘道那一側**維持美元不動**，那一側是 Money。
+
+**今天做不了的理由，與 [`05` R-73](../plans/05-pending-rulings.md) 是同一件**：`credit.Service` 尚未接進 `apiserver.NewApp`／`entrypoint/worker`、路由未掛，所以伺服器算不出要送出去的 credit 值。落點與逐條清單記在 [`04` 丙-231](../plans/04-backlog-and-handoffs.md)。
+
+**接線之後建議補一條機器檢查**：使用者可達的 response schema 不得出現 `*_usd` 欄位。理由與本 repo 既有的每一條機器檢查相同——**決策 1 已經被寫下來兩天而沒有任何東西會為它出聲**，這則補記本身就是那個空缺的證據。
