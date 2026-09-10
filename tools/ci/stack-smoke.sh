@@ -106,7 +106,8 @@ echo "--- Postgres"
 docker run -d --name smoke-pg --network "$NET" \
 	-e POSTGRES_USER=skillhub -e POSTGRES_PASSWORD=skillhub -e POSTGRES_DB=skillhub \
 	"$PG_IMAGE" >/dev/null
-wait_for "Postgres" 60 docker exec smoke-pg pg_isready -U skillhub -d skillhub
+# Over TCP: the image's init server answers on the socket before POSTGRES_DB exists.
+wait_for "Postgres" 60 docker exec -e PGPASSWORD=skillhub smoke-pg psql -h 127.0.0.1 -U skillhub -d skillhub -tAc "select 1"
 
 echo "--- Schema (db/migrations, in order)"
 # The repository has no migration runner: the Go tests apply the files as one
