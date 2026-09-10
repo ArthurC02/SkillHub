@@ -567,6 +567,12 @@ func wirePackagingRegistryReaders(service *packaging.Service, registryService *r
 			ForkedFromVersionID: step.ForkedFromVersionID,
 		}, found, err
 	}
+	// 05 R-26: the one read that reaches outside the caller's workspace, and it
+	// reaches exactly as far as GetCatalogSkill does — public catalog rows only.
+	service.CuratedSource = func(ctx context.Context, skillID pgtype.UUID) (packaging.CuratedSource, bool, error) {
+		skill, found, err := registryService.CatalogSkill(ctx, skillID)
+		return packaging.CuratedSource{SkillID: skill.ID, WorkspaceID: skill.WorkspaceID}, found, err
+	}
 	service.ReadOldest = func(ctx context.Context, skillID pgtype.UUID) (packaging.OldestVersion, bool, error) {
 		version, found, err := registryService.OldestVersion(ctx, skillID)
 		return packaging.OldestVersion{SourceID: version.SourceID}, found, err

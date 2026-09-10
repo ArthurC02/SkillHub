@@ -121,6 +121,15 @@ type Service struct {
 	// composition root; packaging must not read eval or ingest tables directly.
 	AppliedSuggestions func(ctx context.Context, versionID, workspaceID pgtype.UUID) ([]AppliedSuggestion, error)
 	SourceLineage      func(ctx context.Context, sourceID pgtype.UUID) (LineageSource, error)
+	// CuratedSource answers one question about a fork's source and nothing
+	// else: is it a catalog skill, and if so which workspace holds it. It is
+	// the whole of 05 R-26's change of criterion — packaging asks it about
+	// `forked_from_skill_id`, and a hit means the Test Cases over there were
+	// produced by curation. Adapted by the composition root like every other
+	// read on this struct; the widened scope lives in GetCatalogSkill, which
+	// bakes "catalog workspaces only" into the statement and takes no
+	// workspace argument (iron rule 3).
+	CuratedSource      func(ctx context.Context, skillID pgtype.UUID) (CuratedSource, bool, error)
 	ReadSkill          func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
 	ReadVersion        func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
 	ReadCompatibility  func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error)
@@ -177,7 +186,7 @@ type OldestVersion struct {
 func (s *Service) requireOwnerReads() error {
 	if s.TestLab == nil || s.AppliedSuggestions == nil || s.SourceLineage == nil || s.ReadSkill == nil ||
 		s.ReadVersion == nil || s.ReadCompatibility == nil || s.ReadPrevious == nil ||
-		s.ReadLineage == nil || s.ReadOldest == nil {
+		s.ReadLineage == nil || s.ReadOldest == nil || s.CuratedSource == nil {
 		return errOwnerReadNotConfigured
 	}
 	return nil
@@ -187,6 +196,12 @@ type AppliedSuggestion struct {
 	EvaluationID pgtype.UUID
 	Category     string
 	TargetPath   string
+}
+
+// CuratedSource is a fork's source when that source is a catalog skill.
+type CuratedSource struct {
+	SkillID     pgtype.UUID
+	WorkspaceID pgtype.UUID
 }
 
 type LineageSource struct {
@@ -544,7 +559,7 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspa
 		files[i].data = patched
 	}
 
-	included, excluded, caseFiles, err := s.selectTestCases(ctx, ws, p.Skill.ID, p.IncludeTestCases)
+	included, excluded, caseFiles, err := s.selectTestCases(ctx, ws, p.Skill, p.IncludeTestCases)
 	if err != nil {
 		return err
 	}

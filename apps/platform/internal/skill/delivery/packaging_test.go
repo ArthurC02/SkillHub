@@ -49,6 +49,9 @@ func TestRequireOwnerReadsDoesNotInspectTestLabInternals(t *testing.T) {
 		},
 		ReadLineage: func(context.Context, pgtype.UUID) (LineageStep, bool, error) { return LineageStep{}, false, nil },
 		ReadOldest:  func(context.Context, pgtype.UUID) (OldestVersion, bool, error) { return OldestVersion{}, false, nil },
+		CuratedSource: func(context.Context, pgtype.UUID) (CuratedSource, bool, error) {
+			return CuratedSource{}, false, nil
+		},
 	}
 	if err := svc.requireOwnerReads(); err != nil {
 		t.Fatalf("injected Test Lab owner was rejected because of its private configuration: %v", err)

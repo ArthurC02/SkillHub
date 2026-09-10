@@ -120,65 +120,109 @@ type portableDataset struct {
 	ContentType string `json:"content_type"`
 }
 
+// caseSource is one place to look for a Skill's Test Cases, and whether what
+// lives there was produced by curation.
+type caseSource struct {
+	workspaceID pgtype.UUID
+	skillID     pgtype.UUID
+	curated     bool
+}
+
 // selectTestCases decides which of a Skill's Test Cases travel, and builds the
 // files for the ones that do.
 //
-// Curation is the criterion, and the platform's curated content lives in a
-// catalog workspace (0010) — so "was this produced by platform curation" is a
-// property of the workspace the packaging request is scoped to, not a flag
-// somebody sets per row. A user packaging their own Skill therefore gets no test
-// cases and is told why, rather than being offered an opt-in the platform cannot
-// honour.
+// Curation is the criterion. Until 2026-09-10 the criterion was read off the
+// packaging request's own workspace — is it the catalog — and that is a
+// property only an operator can ever have: a reader gets a curated Skill by
+// forking it, a fork lands in a personal workspace, so every download came back
+// with `include_test_cases=true` and a not_curated exclusion for every case.
+// The 45 curated Skills' example data was unreachable to the people it was made
+// for (05 R-26).
+//
+// The fix reads the criterion where it actually lives. A fork records its
+// source in skills.forked_from_skill_id, and the source of a curated Skill sits
+// in a catalog workspace — so packaging looks in two places: the caller's own
+// workspace (unchanged rules: not curated, so nothing travels and the exclusion
+// says why) and, when this Skill is a fork of a catalog Skill, that Skill's
+// cases in the catalog workspace.
+//
+// NOTHING IS COPIED, and that is what keeps this safe rather than a comment
+// promising it is. The second source only ever reads a catalog workspace, and a
+// user's uploaded Dataset cannot be in one — so "do not let the user's own
+// files travel" is structural here, not a condition somebody has to remember to
+// write. It also means no migration, no origin column, and no change to Fork.
+//
+// One hop, deliberately: a fork OF a fork records its immediate parent, which
+// is a personal workspace, so it gets nothing from the catalog. Walking the
+// chain is a different read and a different decision; the common shape is one
+// fork of a catalog entry.
 func (s *Service) selectTestCases(
-	ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, include bool,
+	ctx context.Context, ws identity.Workspace, skill SkillFacts, include bool,
 ) (included []IncludedTestCase, excluded []ExcludedTestCase, files []exportFile, err error) {
 	included, excluded, files = []IncludedTestCase{}, []ExcludedTestCase{}, nil
 
-	rows, err := s.TestLab.CasesForSkill(ctx, ws.ID, skillID)
-	if err != nil {
-		return nil, nil, nil, err
+	sources := []caseSource{{workspaceID: ws.ID, skillID: skill.ID, curated: ws.IsCatalog}}
+	if skill.ForkedFromSkillID.Valid {
+		src, found, err := s.CuratedSource(ctx, skill.ForkedFromSkillID)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		// Not found is the ordinary answer for a fork of a private Skill, and it
+		// is not an error: there is simply no curated source to read.
+		if found {
+			sources = append(sources, caseSource{
+				workspaceID: src.WorkspaceID, skillID: src.SkillID, curated: true,
+			})
+		}
 	}
-	for _, tc := range rows {
-		datasets, err := s.TestLab.CaseDatasets(ctx, ws.ID, tc.ID)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		switch {
-		case !include:
-			excluded = append(excluded, ExcludedTestCase{
-				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedUserOptedOut,
-			}.withWords())
-			continue
-		case !ws.IsCatalog && len(datasets) > 0:
-			// The more specific of the two refusals, and the one worth naming: it
-			// says the obstacle is a licensing judgement about their files, not a
-			// defect in their test case.
-			excluded = append(excluded, ExcludedTestCase{
-				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedUserUploadedDataset,
-			}.withWords())
-			continue
-		case !ws.IsCatalog:
-			excluded = append(excluded, ExcludedTestCase{
-				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedNotCurated,
-			}.withWords())
-			continue
-		case unsafeDatasetName(datasets):
-			excluded = append(excluded, ExcludedTestCase{
-				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name,
-				Reason: ExcludedUnsafeDatasetFileName,
-			}.withWords())
-			continue
-		}
 
-		slug := testCaseSlug(tc.Name, pgconv.UUIDString(tc.ID))
-		caseFiles, err := s.portableFiles(ctx, tc, datasets, slug)
+	for _, src := range sources {
+		rows, err := s.TestLab.CasesForSkill(ctx, src.workspaceID, src.skillID)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		files = append(files, caseFiles...)
-		included = append(included, IncludedTestCase{
-			TestCaseID: pgconv.UUIDString(tc.ID), Slug: slug, Name: tc.Name,
-		})
+		for _, tc := range rows {
+			datasets, err := s.TestLab.CaseDatasets(ctx, src.workspaceID, tc.ID)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			switch {
+			case !include:
+				excluded = append(excluded, ExcludedTestCase{
+					TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedUserOptedOut,
+				}.withWords())
+				continue
+			case !src.curated && len(datasets) > 0:
+				// The more specific of the two refusals, and the one worth naming: it
+				// says the obstacle is a licensing judgement about their files, not a
+				// defect in their test case.
+				excluded = append(excluded, ExcludedTestCase{
+					TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedUserUploadedDataset,
+				}.withWords())
+				continue
+			case !src.curated:
+				excluded = append(excluded, ExcludedTestCase{
+					TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedNotCurated,
+				}.withWords())
+				continue
+			case unsafeDatasetName(datasets):
+				excluded = append(excluded, ExcludedTestCase{
+					TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name,
+					Reason: ExcludedUnsafeDatasetFileName,
+				}.withWords())
+				continue
+			}
+
+			slug := testCaseSlug(tc.Name, pgconv.UUIDString(tc.ID))
+			caseFiles, err := s.portableFiles(ctx, tc, datasets, slug)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			files = append(files, caseFiles...)
+			included = append(included, IncludedTestCase{
+				TestCaseID: pgconv.UUIDString(tc.ID), Slug: slug, Name: tc.Name,
+			})
+		}
 	}
 	return included, excluded, files, nil
 }

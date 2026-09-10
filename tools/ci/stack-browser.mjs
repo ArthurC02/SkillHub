@@ -22,7 +22,8 @@
 // that list and detail a skill are driven with something on them; the ids that
 // nothing seeded still render their not-found state, which is a real scenario
 // and the one an empty result set produces, so it is asserted rather than
-// skipped. Runs and Test Cases are still unseeded — a Run needs a model.
+// skipped. A Test Case is seeded too (it costs nothing to create); a Run is
+// not, because a Run has to reach a model — see stack-seed.mjs.
 import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
 import { seedSkill } from "./stack-seed.mjs";
@@ -55,8 +56,12 @@ const routes = [
   url: url.replace(/\$\{(\w+)\}/g, (whole, key) => fixtures[key] ?? whole),
 }));
 // Kept before the seed overwrites them, so the substitution below can tell the
-// two fixture ids apart from every other uuid in the table.
-const ORIGINAL = { SKILL: fixtures.SKILL, VERSION: fixtures.VERSION };
+// seeded fixture ids apart from every other uuid in the table.
+const ORIGINAL = {
+  SKILL: fixtures.SKILL,
+  VERSION: fixtures.VERSION,
+  TEST_CASE: fixtures.TEST_CASE,
+};
 
 if (routes.length < 15) {
   // The regex above is the kind of thing that starts matching nothing after a
@@ -100,9 +105,10 @@ const HAS_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
 const allowed404 = (routeUrl, signedIn) => {
   if (!HAS_UUID.test(routeUrl)) return false;
   if (!signedIn) return true;
+  const known = new Set(seeded ? Object.values(seeded) : []);
   return [...routeUrl.matchAll(UUID_G)]
     .map((m) => m[0])
-    .some((id) => !seeded || (id !== seeded.SKILL && id !== seeded.VERSION));
+    .some((id) => !known.has(id));
 };
 
 const browser = await chromium.launch();
@@ -132,16 +138,21 @@ let seeded = null;
 try {
   seeded = await seedSkill(member.request, base);
   for (const [key, id] of Object.entries(seeded)) fixtures[key] = id;
+  // Keyed by the id the table carried, so adding a seeded fixture is one entry
+  // in ORIGINAL and nothing here -- the chain of ternaries this replaced would
+  // have needed a branch, and a missed branch reads as "that page has no data".
+  const swap = new Map(
+    Object.entries(ORIGINAL).map(([key, was]) => [was, seeded[key]]),
+  );
   for (const route of routes) {
-    route.url = route.url.replace(/[0-9a-f-]{36}/g, (was) =>
-      was === ORIGINAL.SKILL
-        ? seeded.SKILL
-        : was === ORIGINAL.VERSION
-          ? seeded.VERSION
-          : was,
+    route.url = route.url.replace(
+      /[0-9a-f-]{36}/g,
+      (was) => swap.get(was) ?? was,
     );
   }
-  console.log(`seeded skill ${seeded.SKILL} version ${seeded.VERSION}`);
+  console.log(
+    `seeded skill ${seeded.SKILL} version ${seeded.VERSION} test case ${seeded.TEST_CASE}`,
+  );
 } catch (err) {
   // Not a skip. A seed that failed silently would turn every not-found page
   // green for the wrong reason.

@@ -92,10 +92,16 @@ Summarise the text the user provides, in the format they ask for.
 `;
 
 /**
- * Imports the seed package with the caller's session and returns the ids the
+ * Puts the seed content in with the caller's session and returns the ids the
  * routes need. Throws with the server's own words on any other status: a seed
  * that quietly failed would turn every "not found" page green for the wrong
  * reason, which is worse than not seeding at all.
+ *
+ * A Test Case is seeded here and a Run is not, and the line between them is not
+ * effort. POST /test-cases takes a skill id, a name and a prompt and calls
+ * nothing; a Run has to reach a model (05 R-35: no model route, no dispatch),
+ * so it costs money and waits on the cadence 05 R-72 rules. 04 丙-227 said both
+ * were blocked on the same thing because they were noticed together.
  */
 export async function seedSkill(request, base) {
   const res = await request.post(base + "/skills/import/upload", {
@@ -113,5 +119,29 @@ export async function seedSkill(request, base) {
       `seed upload returned no ids: ${JSON.stringify(body).slice(0, 200)}`,
     );
   }
-  return { SKILL: body.skill_id, VERSION: body.version_id };
+
+  const tc = await request.post(base + "/test-cases", {
+    data: {
+      skill_id: body.skill_id,
+      name: "煙霧測試題",
+      user_prompt: "把下面這段文字整理成三個重點。",
+    },
+  });
+  if (tc.status() !== 201) {
+    throw new Error(
+      `seed test case answered ${tc.status()}: ${(await tc.text()).slice(0, 300)}`,
+    );
+  }
+  const tcBody = await tc.json();
+  if (!tcBody.test_case_id) {
+    throw new Error(
+      `seed test case returned no id: ${JSON.stringify(tcBody).slice(0, 200)}`,
+    );
+  }
+
+  return {
+    SKILL: body.skill_id,
+    VERSION: body.version_id,
+    TEST_CASE: tcBody.test_case_id,
+  };
 }

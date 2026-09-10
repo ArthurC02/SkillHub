@@ -8,7 +8,7 @@ CI 用的輔助腳本。放在這裡而不是 `.github/workflows/`，是因為�
 | [`scan_predicate.sh`](scan_predicate.sh) | [`.github/workflows/runtime-image.yml`](../../.github/workflows/runtime-image.yml)（`review` 與 `rescan` 兩個 job 都用） | 把 grype 的 JSON 轉成 in-toto vulns predicate（含 `scanned_at` 與 `fixable_critical_high`），供 I-04 的 attestation 使用 |
 | [`stack-smoke.sh`](stack-smoke.sh) | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（`images` job，**推 GHCR 之前**） | 把剛建好的三個服務映像真的啟動起來：Postgres＋migration＋物件儲存＋`platform-api`＋worker＋nginx＋`llm`，斷言 SPA 出得來、CSP 標頭真的送出、目錄 API 經 nginx 回得出合契約的 body、worker 沒有立刻死，最後用 [`stack-browser.mjs`](stack-browser.mjs) 開真的 Chromium 走公開頁與登入後的工作區頁。在此之前這個 job 從來沒有啟動過任何一個它建出來的映像 |
 | [`stack-browser.mjs`](stack-browser.mjs) | 由 `stack-smoke.sh` 在 Playwright 映像裡執行 | 真瀏覽器打真後端（`04` 丙-221）：路由清單**直接讀 `e2e/routes.ts` 與 `fixtures/platform.ts`**，每一條跑登入與未登入兩次，斷言 React 有掛上、沒有未捕捉例外、沒有非預期的 4xx／5xx。第一次跑就抓到 `GET /downloads` 被 nginx 301 成 `/downloads/` 然後 404 |
-| [`stack-seed.mjs`](stack-seed.mjs) | 由 `stack-browser.mjs` 匯入 | 用四十行寫出一個 store-only 的 zip，走產品自己的 `POST /skills/import/upload` 種一個真的 Skill，讓 skill-detail／skill-files／packaging 三條路由對著有東西的頁面跑，而不是空狀態 |
+| [`stack-seed.mjs`](stack-seed.mjs) | 由 `stack-browser.mjs` 匯入 | 用四十行寫出一個 store-only 的 zip，走產品自己的 `POST /skills/import/upload` 種一個真的 Skill，再用 `POST /test-cases` 種一題，讓 skill-detail／skill-files／packaging 與 lab-test-case-detail／lab-datasets／lab-run 六條路由對著有東西的頁面跑，而不是空狀態。**Run 不種**，理由是它要打模型（`05` R-35）而付費節奏綁在 `05` R-72 的兩個時刻上——**Test Case 一度也被記成「要錢」，那是錯的**（`04` 丙-227 於 2026-09-10 訂正） |
 
 三支都可在本機直接跑：`python3 tools/ci/check_egress_allowlist.py`、`bash tools/ci/scan_predicate.sh <grype-json> <output-json>`、`PLATFORM_IMAGE=… WEB_IMAGE=… LLM_IMAGE=… bash tools/ci/stack-smoke.sh`（後者要有 Docker；`SMOKE_KEEP=1` 會把整組留著給人手動戳）。
 

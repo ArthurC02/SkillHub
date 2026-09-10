@@ -1066,6 +1066,100 @@ func TestOnlyCuratedTestCasesTravelAndTheRestAreNamed(t *testing.T) {
 	}
 }
 
+// 05 R-26. PACK-001 clause 5 offers a downloader the curated example data, and
+// until 2026-09-10 only an operator could ever receive any: the criterion was
+// "is the packaging request scoped to a catalog workspace", and a reader gets a
+// curated Skill by forking it into a personal one. Every download therefore came
+// back with include_test_cases=true and an exclusion list — the M2 example data
+// was worth nothing to the people it was made for, and the first beta tester who
+// forked a curated Skill and ticked the box was going to find that out.
+//
+// Both halves are asserted here on one package, because they are the same
+// criterion read two ways: the curated case travels, and the forker's OWN case,
+// sitting in the same workspace as the packaging request, still does not.
+func TestAForksCuratedTestCasesTravelAndItsOwnStillDoNot(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-with-tests")
+	makeCatalog(t, pool, curator.workspaceID)
+	curatedSkill, _ := packagedSkill(t, a, pool, curator, "curated-with-tests")
+	curatedCase := seedTestCase(t, pool, curator.workspaceID, curatedSkill)
+
+	forker := a.login(t, "fork-and-package")
+	code, body := postJSON(t, forker, "/skills/"+curatedSkill+"/fork", `{}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST fork: got %d, body %v", code, body)
+	}
+	forkID, _ := body["skill_id"].(string)
+	// The forker writes their own Test Case on their own copy. It is not curated
+	// and it must not travel — that rule is what the old criterion was really
+	// protecting, and widening the wrong thing would have taken it out too.
+	ownCase := seedTestCase(t, pool, forker.workspaceID, forkID)
+
+	forkVersionID := latestVersionID(t, pool, forkID)
+	code, body = postJSON(t, forker, packagingPath(forkID, forkVersionID),
+		`{"target":"standard","include_test_cases":true}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST packaging a fork: got %d, body %v", code, body)
+	}
+	if body["includes_test_cases"] != true {
+		t.Errorf("includes_test_cases = %v; the curated case did not travel", body["includes_test_cases"])
+	}
+
+	hash, _ := body["content_hash"].(string)
+	entries := zipEntries(t, a, hash)
+	var carried []string
+	for name, content := range entries {
+		if !strings.HasPrefix(name, "test-cases/") || !strings.HasSuffix(name, "/case.json") {
+			continue
+		}
+		carried = append(carried, name)
+		var portable map[string]any
+		if err := json.Unmarshal(content, &portable); err != nil {
+			t.Fatal(err)
+		}
+		if portable["origin"] != "curated" {
+			t.Errorf("%s origin = %v, want curated", name, portable["origin"])
+		}
+	}
+	if len(carried) != 1 {
+		t.Fatalf("%d portable test cases in the fork's package, want exactly the curated one: %v",
+			len(carried), keysOf(entries))
+	}
+
+	// And the page the forker looks at BEFORE downloading has to say the same
+	// thing the zip says. The manifest carries slugs, not ids (test_case_id is
+	// json:"-" there on purpose — it is a platform id, not something a
+	// downloader can do anything with), so the ids are asserted on the preview,
+	// which is the surface that names them. A preview that disagreed with the
+	// bytes is the shape of this defect, not a variant of it: PACK-001 clause 5
+	// is a promise made on that page.
+	var preview map[string]any
+	if code := getJSON(t, forker.Client,
+		forker.base+packagingPath(forkID, forkVersionID)+"/preview?target=standard&include_test_cases=true",
+		&preview); code != http.StatusOK {
+		t.Fatalf("GET preview: got %d", code)
+	}
+	included, _ := preview["included_test_cases"].([]any)
+	if len(included) != 1 {
+		t.Fatalf("preview lists %d included test cases, want 1: %v", len(included), preview["included_test_cases"])
+	}
+	if id, _ := included[0].(map[string]any)["test_case_id"].(string); id != curatedCase {
+		t.Errorf("the included test case is %s, want the curated one %s", id, curatedCase)
+	}
+	excluded, _ := preview["excluded_test_cases"].([]any)
+	if len(excluded) != 1 {
+		t.Fatalf("preview lists %d excluded test cases, want the forker's own: %v", len(excluded), preview["excluded_test_cases"])
+	}
+	row, _ := excluded[0].(map[string]any)
+	if id, _ := row["test_case_id"].(string); id != ownCase {
+		t.Errorf("the excluded test case is %s, want the forker's own %s", id, ownCase)
+	}
+	if row["reason"] != "not_curated" {
+		t.Errorf("exclusion reason = %v, want not_curated", row["reason"])
+	}
+}
+
 // --- PACK-003 / QA-007: the licence and attribution bytes ---------------------
 
 // mitText is a real MIT licence, because skillpkg identifies a licence by its
