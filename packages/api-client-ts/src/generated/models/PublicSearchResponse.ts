@@ -90,10 +90,9 @@ export interface PublicSearchResponse {
      * filters out of at most 100. The indexed catalogue is 45 documents, so
      * today it is exact for every query; past 100 candidates it becomes a
      * lower bound again while still being called a total. The fix at that
-     * point is to push the filters into the candidate CTEs — the same change
-     * the ponytail note on those filters already asks for, on the same
-     * trigger. On the degraded lexical path there is no candidate window and
-     * the count is exact.
+     * point is to push the filters into the two candidate CTEs. On the
+     * degraded lexical path there is no candidate window and the count is
+     * exact.
      * 
      * `total == len(results)` whenever `truncated` is false.
      * 
