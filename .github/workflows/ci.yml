@@ -770,6 +770,18 @@ jobs:
           docker build -f infra/images/web/Dockerfile      -t "${REGISTRY}/skillhub-web:${GITHUB_SHA}" .
           docker build -f infra/images/llm/Dockerfile      -t "${REGISTRY}/skillhub-llm:${GITHUB_SHA}" apps/llm
           docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep skillhub-
+      # Until 2026-09-10 this job built three images, listed them and pushed
+      # them, and no container was ever started from any of them -- a broken
+      # entrypoint or an nginx.conf that does not parse reached GHCR green.
+      # Before the push, deliberately: an image that cannot serve is not a
+      # release candidate. tools/ci/stack-smoke.sh says what it does and does
+      # not cover.
+      - name: Smoke the images before pushing them
+        env:
+          PLATFORM_IMAGE: ${{ env.REGISTRY }}/skillhub-platform:${{ github.sha }}
+          WEB_IMAGE: ${{ env.REGISTRY }}/skillhub-web:${{ github.sha }}
+          LLM_IMAGE: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
+        run: bash tools/ci/stack-smoke.sh
       - name: Push to GHCR (main only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
