@@ -14,10 +14,11 @@
 | 新網址、導覽多一項、入口藏在旗標後面                  | [information-architecture.md](../../docs/design/information-architecture.md) §0（**§0 的規則走在程式前面**：不一致是改程式，不是改文件）                      | `src/ia.test.ts`                                                                                                                                                                                                                |
 | 顏色、對比、視覺層級                                  | system.md §5 與 [ADR-064](../../docs/adr/ADR-064-the-visual-layer-is-hierarchy-carried-by-tokens.md)                                                          | `src/contrast.test.ts`                                                                                                                                                                                                          |
 
-## 三個會咬人的地方
+## 會咬人的地方
 
 - **IDE diagnostics 經常是 stale 的**（多人平行編輯時尤其），判準是實跑 `npm run typecheck`。
 - **`prettier --check` 曾經 ubuntu 紅而 windows 綠**（2026-09-03 的 CI）。CI 信的是 Linux；push 前跑 `npm run format:check`，而且判準是**有沒有出現** `All matched files use Prettier code style!` 那一行——命令輸出會被過濾，「沒看到抱怨」不等於通過。
+- **`npm run test:e2e` 預設跑三個引擎，而本機很可能只裝了 chromium。** 缺的那兩個不會讓你看到「跳過」，會看到 `browserType.launch: Executable doesn't exist` ——很容易被當成環境缺件略過，而 CI 上**唯一會紅的那一格就是 ubuntu 的三引擎那格**（2026-09-09 實測：同一個 commit 在 windows/chromium 綠、在 ubuntu 三引擎紅，紅的還是一頁我沒有動過的畫面）。開工前補齊：`npm --prefix apps/web exec -- playwright install firefox webkit`。跑的時候讓機器安靜——2026-09-10 一次與 `docker build` 並行的三引擎跑出兩個 firefox 紅，單獨重跑 74/74 全綠，那兩個是逾時不是缺陷。
 - ⛔ **M5 的生成入口不得對封測使用者出現，也不得變得更顯眼**。邊界原文在 [`01` §10](../../docs/plans/01-goals-and-plan.md)，不要憑記憶判斷它是否已放行。
 - **凍結狀態、逐次放行紀錄、閘門期間「一律不動」的條款，都只在 [`01` §10](../../docs/plans/01-goals-and-plan.md) 的裁定表**。動手前先確認今天是否落在閘門期間、這次的改動屬於哪一次放行；本檔不抄日期，因為日期會過期而這裡不會跟著改。
 

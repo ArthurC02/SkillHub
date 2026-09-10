@@ -20,7 +20,7 @@
 #         (SBX-011). Thresholds are settled in ADR-022 §2.
 #
 # Build:
-#   docker build -t skillhub/runtime-agent-sdk:2026.08-8 infra/images/runtime-agent-sdk
+#   docker build -t skillhub/runtime-agent-sdk:2026.08-9 infra/images/runtime-agent-sdk
 FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
 # The SDK version is pinned, not floated: it is the runtime_version the
@@ -39,7 +39,7 @@ ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 # running on a host process with no cgroup behind it. Both are behaviour
 # changes inside the image, so both are ADR-023 upgrades and both are written up
 # in UPGRADES.md.
-ARG IMAGE_VERSION=2026.08-8
+ARG IMAGE_VERSION=2026.08-9
 
 # Non-root from the image on up (C-02). The provider also passes --user, but an
 # image whose only account is root is one bad flag away from running as root.
@@ -65,6 +65,17 @@ RUN groupadd --gid 65532 sandbox \
 # product with no field in the catalog saying so
 # (docs/plans/mvp/m2/content-baseline-report.md §6.3).
 RUN apt-get update \
+    # 2026-09-10, I-06: grype 擋下 CVE-2026-86145（libpcre2-8-0，High，fixed in
+    # 10.42-1+deb12u1）。**修法不是換 base digest**——README〈Digest 更新程序〉
+    # 逐字寫著「不要為了讓掃描變綠而改 digest，除非確認新 digest 真的含修復」，
+    # 而這裡量過了：釘住的那個 digest 與今天的 `node:22-bookworm-slim` **都**還是
+    # 10.42-1（`dpkg -s libpcre2-8-0`），修復只在 bookworm-security 裡（`apt-cache
+    # policy` 的 candidate 是 10.42-1+deb12u1，來源 deb.debian.org/debian-security）。
+    # 所以指名升級那一個套件。
+    # **只升這一個、不做全域 `apt-get upgrade`**：這個檔案處處在釘版本（FROM 帶
+    # digest、constraints.txt、package-lock.json），一個會隨日期漂移的全域升級會把
+    # 那些工夫抵銷掉。下一個 CVE 出現時這裡再多一行——那一行看得見，漂移看不見。
+    && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 \
     && apt-get install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/* \
     # Skills write `python foo.py` as often as `python3 foo.py`; Debian ships

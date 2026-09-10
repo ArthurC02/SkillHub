@@ -451,3 +451,66 @@ skipped 1
 | **4. Skill 載入條件（含套件內腳本真的被執行）** | ✅ **通過** | 同第 2 項那支測試：`e2eSkillPackage` 的 `scripts/check.py` 在映像自己的直譯器上跑出 `SKILLHUB-SCRIPT-RAN py3.`，斷言在測試裡（`-5` 那節說明過它為什麼抄不出來） |
 
 **預設映像同批從 `-5` 移到 `-8`**：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE` 與 `p02_docker_test.go` 的常數、`automation.md` 的實跑範例。`-6`／`-7` 兩節寫的「四項實測尚未跑」到此為止：它們的行為變更（`run.mjs`）都包含在 `-8` 這個 digest 裡，本次四項就是對它們的實測。
+
+## `2026.08-8` → `2026.08-9`（2026-09-10）— **安全性修補；四項實測尚未跑，預設映像仍留在 `-8`**
+
+> **這一節是被 CI 逼出來的，不是計畫內的升級。** `Runtime Image` workflow 在
+> [run #34422644109](https://github.com/ArthurC02/SkillHub/actions/runs/34422644109) 的
+> `publish` job、`Build and run publication gates` 這一步紅掉，I-06 閘門（ADR-022 §2：
+> fixable Critical/High 無豁免路徑）擋下一筆：
+>
+> ```
+> NAME          INSTALLED  FIXED IN          TYPE  VULNERABILITY   SEVERITY
+> libpcre2-8-0  10.42-1    10.42-1+deb12u1   deb   CVE-2026-86145  High
+> ```
+>
+> 觸發那一次 workflow 的 commit（`24872a4e`）動的是 `infra/images/web/nginx.conf`，與這個
+> 映像無關——**這條紅燈是被路徑比對順帶照出來的，不是那批改壞的**。
+
+### 為什麼不是換 base digest
+
+README〈Digest 更新程序〉逐字寫著「**不要為了讓掃描變綠而改 digest，除非確認新 digest
+真的含修復**」。所以先量，再決定：
+
+| 量的東西 | 指令 | 結果 |
+| --- | --- | --- |
+| 目前釘住的 base | `docker run --rm node:22-bookworm-slim@sha256:d649c27… dpkg -s libpcre2-8-0` | `Version: 10.42-1` |
+| 今天最新的 `node:22-bookworm-slim`（`sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5`） | 同上 | `Version: 10.42-1` |
+| 修復在哪 | `apt-cache policy libpcre2-8-0` | candidate `10.42-1+deb12u1`，來源 `deb.debian.org/debian-security bookworm-security/main` |
+
+**新 digest 沒有含修復**，所以換 digest 不成立。修法是在既有的那一層 apt 指名升級那一個
+套件。**刻意不做全域 `apt-get upgrade`**：這個 Dockerfile 處處在釘版本（`FROM` 帶 digest、
+`constraints.txt`、`package-lock.json`），一個會隨日期漂移的全域升級會把那些工夫抵銷掉；
+下一個 CVE 出現時這裡再多一行——那一行看得見，漂移看不見。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `Dockerfile` 既有的 apt 層加一句 `apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0`。**沒有其他改動** |
+| 為什麼是升級而不是整理 | 它改變 image digest（多裝了一個套件版本），依 ADR-023 §1 就是升級，所以走版本號 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**，理由見上表） |
+| 依賴集 | Python 與 Node 兩份**未變**（`pip3 install` 與 `npm ci` 兩段一字未動） |
+| 預設映像 | **仍是 `-8`**：`sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，四處都沒有動 |
+| ADR-023 §2 四項實測 | **一項都沒跑**，本節不主張任何一項通過 |
+
+### 本機驗證（閘門用的是同兩個釘住的 digest）
+
+```
+docker build -t skillhub/runtime-agent-sdk:2026.08-9 infra/images/runtime-agent-sdk
+docker run --rm --user 0 --entrypoint /bin/sh skillhub/runtime-agent-sdk:2026.08-9   -c "dpkg -s libpcre2-8-0 | grep -i '^Version'"
+  → Version: 10.42-1+deb12u1
+
+docker run … anchore/syft:v1.51.0@sha256:678bfa56…  skillhub/runtime-agent-sdk:2026.08-9   -o spdx-json=/scan/sbom.spdx.json
+docker run … anchore/grype:v0.117.0@sha256:ddf9e9f2… sbom:/scan/sbom.spdx.json   --only-fixed --fail-on high -o table
+  → No vulnerabilities found        (exit 0)
+```
+
+映像大小 307 MB。**「紅」那一半的證據不是本機重現的，是上面那個 CI run**——同一份
+Dockerfile 少掉本節加的那一行，在同一道閘門上紅，逐字輸出在那個 run 的 log 裡。
+
+### 這個修補還沒有到達任何一個在跑的東西
+
+**`-9` 是修好的那一個，而部署預設是 `-8`。** 移動預設是 ADR-023 §2 四項實測通過之後的
+動作（成本約 $0.06，且必須跑在 CI 發佈出來的 digest 上，不是本機這一個——`-5` 那節付過
+這個學費）。在那之前，這個 CVE 在**實際會被派送的映像裡仍然在**。這件事開在
+[`04` 丙-225](../../../docs/plans/04-backlog-and-handoffs.md)，不藏在這一節裡。
