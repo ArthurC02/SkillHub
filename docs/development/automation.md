@@ -366,8 +366,13 @@ docker run --rm --network container:skillhub-postgres-1 \
 - `go -C tools/devctl test ./...`
 - `go -C tools/devctl run . automation-check`
 - `task gen:check`
+- **`task format:check`**（2026-09-10 補入）
 - 受影響語言的 typecheck/test/build
 - `git diff --check`
+
+**為什麼把 `format:check` 單獨列出來**：上面那一列「typecheck/test/build」不涵蓋它——`go build` 對一個 `gofmt` 會改寫的檔案完全沒有意見，所以編得過、測得過、推上去，然後 CI 的 `golangci-lint fmt --diff` 才是第一個說話的人（2026-09-10 實際發生：`packaging.go` 多一個結構欄位改變了欄寬對齊，platform job 紅在那一步）。`git diff --check` 也抓不到，它只看行尾空白與衝突標記。
+
+**機器上沒有 `golangci-lint` 的時候**（本專案在 Windows 開發，它不一定裝得起來）：`task format:check:platform` 會直接失敗於「找不到指令」，而那看起來很像「檢查過了」。**退路是 `gofmt -l ./apps/ ./tools/`**——它隨 Go 工具鏈一起來，一定在；輸出**任何一個檔名就是未通過**（`golangci-lint fmt` 的 Go 部分預設就是 gofmt ＋ goimports，所以 `gofmt -l` 乾淨時剩下的差異只會是 import 分組）。
 
 版本／generator／Task入口異動要同步更新**本文件**、`tools/toolchain.yaml`、相關 package README與 CI；**`AGENTS.md` 只在紅線本身增刪時才動**（它不複製版本、命令清單與生成來源表）。工具能跑但新 Agent找不到，視為未完成。
 

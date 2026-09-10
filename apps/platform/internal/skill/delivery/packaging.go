@@ -129,13 +129,13 @@ type Service struct {
 	// read on this struct; the widened scope lives in GetCatalogSkill, which
 	// bakes "catalog workspaces only" into the statement and takes no
 	// workspace argument (iron rule 3).
-	CuratedSource      func(ctx context.Context, skillID pgtype.UUID) (CuratedSource, bool, error)
-	ReadSkill          func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
-	ReadVersion        func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
-	ReadCompatibility  func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error)
-	ReadPrevious       func(context.Context, pgtype.UUID, pgtype.UUID, int32) (PreviousVersion, bool, error)
-	ReadLineage        func(context.Context, pgtype.UUID) (LineageStep, bool, error)
-	ReadOldest         func(context.Context, pgtype.UUID) (OldestVersion, bool, error)
+	CuratedSource     func(ctx context.Context, skillID pgtype.UUID) (CuratedSource, bool, error)
+	ReadSkill         func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
+	ReadVersion       func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+	ReadCompatibility func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error)
+	ReadPrevious      func(context.Context, pgtype.UUID, pgtype.UUID, int32) (PreviousVersion, bool, error)
+	ReadLineage       func(context.Context, pgtype.UUID) (LineageStep, bool, error)
+	ReadOldest        func(context.Context, pgtype.UUID) (OldestVersion, bool, error)
 }
 
 type SkillFacts struct {
