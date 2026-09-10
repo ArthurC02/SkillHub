@@ -314,7 +314,28 @@ func (s *Service) RecomputeStatistics(ctx context.Context, statKind string, wind
 		return Statistics{}, ErrUnavailable
 	}
 	now := time.Now()
+	if statKind == KindCreationSession && s.Config.SessionIdle > 0 {
+		if _, err := s.Store.SweepSessionSummaries(ctx, now.Add(-window), now.Add(-s.Config.SessionIdle)); err != nil {
+			return Statistics{}, err
+		}
+	}
 	return s.Store.RecomputeStatistics(ctx, statKind, now.Add(-window), now)
+}
+
+// SummarizeSession runs in a savepoint so a failed summary cannot abort the caller's transaction.
+func (s *Service) SummarizeSession(ctx context.Context, tx pgx.Tx, sessionID pgtype.UUID) error {
+	if s.Store == nil {
+		return ErrUnavailable
+	}
+	sp, err := tx.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.Store.SummarizeSession(ctx, sp, sessionID); err != nil {
+		_ = sp.Rollback(ctx)
+		return err
+	}
+	return sp.Commit(ctx)
 }
 
 func (s *Service) PurgeUser(ctx context.Context, tx pgx.Tx, userID pgtype.UUID) error {

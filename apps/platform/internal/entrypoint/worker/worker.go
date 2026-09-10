@@ -153,6 +153,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	if err != nil {
 		return nil, fmt.Errorf("credit wiring: %w", err)
 	}
+	creditSvc.Config.SessionIdle = deps.CreationLimits.SessionTimeout
 	wireCreationCredit(set.Creation, creditSvc, pool)
 	backfillSvc := newBackfillService(pool, deps)
 	wireCostRecording(creditSvc, creationSearch, creationVersions, backfillSvc, set.Evaluations)

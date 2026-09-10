@@ -106,12 +106,13 @@ func wireCreationCredit(
 		if err != nil {
 			return false, err
 		}
-		check, err := svc.CanStart(ctx, userID, credit.KindCreationStep)
+		check, err := svc.CanStart(ctx, userID, credit.KindCreationSession)
 		if err != nil {
 			return false, err
 		}
 		return check.OK, nil
 	}
+	target.CreditSessionEnded = svc.SummarizeSession
 	target.CreditReserve = func(ctx context.Context, workspaceID pgtype.UUID, reservedUSDMicros int64) (bool, error) {
 		userID, err := owner(ctx, workspaceID)
 		if err != nil {

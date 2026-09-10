@@ -205,6 +205,15 @@ type CostEvent struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+type CostSessionSummary struct {
+	SessionID  pgtype.UUID
+	UserID     pgtype.UUID
+	UsdMicros  int64
+	Steps      int32
+	Estimated  bool
+	LastStepAt pgtype.Timestamptz
+}
+
 type CostStatistic struct {
 	ID           pgtype.UUID
 	Kind         string

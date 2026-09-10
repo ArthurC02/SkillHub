@@ -50,6 +50,43 @@ func (q *Queries) AggregateCostEventsWindow(ctx context.Context, arg AggregateCo
 	return i, err
 }
 
+const aggregateSessionSummariesWindow = `-- name: AggregateSessionSummariesWindow :one
+SELECT
+    count(*)::bigint AS sample_count,
+    coalesce(percentile_cont(0.5) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p50_usd_micros,
+    coalesce(percentile_cont(0.9) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p90_usd_micros,
+    coalesce(percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p95_usd_micros,
+    coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
+FROM cost_session_summaries
+WHERE last_step_at >= $1 AND last_step_at < $2
+`
+
+type AggregateSessionSummariesWindowParams struct {
+	WindowStart pgtype.Timestamptz
+	WindowEnd   pgtype.Timestamptz
+}
+
+type AggregateSessionSummariesWindowRow struct {
+	SampleCount  int64
+	P50UsdMicros int64
+	P90UsdMicros int64
+	P95UsdMicros int64
+	MaxUsdMicros int64
+}
+
+func (q *Queries) AggregateSessionSummariesWindow(ctx context.Context, arg AggregateSessionSummariesWindowParams) (AggregateSessionSummariesWindowRow, error) {
+	row := q.db.QueryRow(ctx, aggregateSessionSummariesWindow, arg.WindowStart, arg.WindowEnd)
+	var i AggregateSessionSummariesWindowRow
+	err := row.Scan(
+		&i.SampleCount,
+		&i.P50UsdMicros,
+		&i.P90UsdMicros,
+		&i.P95UsdMicros,
+		&i.MaxUsdMicros,
+	)
+	return i, err
+}
+
 const getCostEventByIdempotencyKey = `-- name: GetCostEventByIdempotencyKey :one
 SELECT id FROM cost_events WHERE idempotency_key = $1
 `
@@ -209,6 +246,18 @@ func (q *Queries) PurgeExpiredCostEvents(ctx context.Context, createdAt pgtype.T
 	return result.RowsAffected(), nil
 }
 
+const purgeExpiredSessionCostSummaries = `-- name: PurgeExpiredSessionCostSummaries :execrows
+DELETE FROM cost_session_summaries WHERE last_step_at < $1
+`
+
+func (q *Queries) PurgeExpiredSessionCostSummaries(ctx context.Context, lastStepAt pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeExpiredSessionCostSummaries, lastStepAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const purgeUserCostEvents = `-- name: PurgeUserCostEvents :execrows
 DELETE FROM cost_events WHERE user_id = $1
 `
@@ -219,4 +268,60 @@ func (q *Queries) PurgeUserCostEvents(ctx context.Context, userID pgtype.UUID) (
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const purgeUserSessionCostSummaries = `-- name: PurgeUserSessionCostSummaries :execrows
+DELETE FROM cost_session_summaries WHERE user_id = $1
+`
+
+func (q *Queries) PurgeUserSessionCostSummaries(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeUserSessionCostSummaries, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const sweepSessionCostSummaries = `-- name: SweepSessionCostSummaries :execrows
+INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
+SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,
+       count(*)::integer, bool_or(cost_source = 'estimated'), max(created_at)
+FROM cost_events
+WHERE kind = 'creation_step' AND ref_type = 'creation_session' AND ref_id IS NOT NULL
+GROUP BY ref_id
+HAVING max(created_at) >= $1 AND max(created_at) < $2
+ON CONFLICT (session_id) DO UPDATE SET
+    user_id = EXCLUDED.user_id, usd_micros = EXCLUDED.usd_micros, steps = EXCLUDED.steps,
+    estimated = EXCLUDED.estimated, last_step_at = EXCLUDED.last_step_at
+`
+
+type SweepSessionCostSummariesParams struct {
+	WindowStart pgtype.Timestamptz
+	IdleBefore  pgtype.Timestamptz
+}
+
+func (q *Queries) SweepSessionCostSummaries(ctx context.Context, arg SweepSessionCostSummariesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, sweepSessionCostSummaries, arg.WindowStart, arg.IdleBefore)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const upsertSessionCostSummary = `-- name: UpsertSessionCostSummary :exec
+INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
+SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,
+       count(*)::integer, bool_or(cost_source = 'estimated'), max(created_at)
+FROM cost_events
+WHERE kind = 'creation_step' AND ref_type = 'creation_session' AND ref_id IS NOT NULL
+  AND ref_id = $1
+GROUP BY ref_id
+ON CONFLICT (session_id) DO UPDATE SET
+    user_id = EXCLUDED.user_id, usd_micros = EXCLUDED.usd_micros, steps = EXCLUDED.steps,
+    estimated = EXCLUDED.estimated, last_step_at = EXCLUDED.last_step_at
+`
+
+func (q *Queries) UpsertSessionCostSummary(ctx context.Context, sessionID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, upsertSessionCostSummary, sessionID)
+	return err
 }

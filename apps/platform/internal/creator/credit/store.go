@@ -27,6 +27,8 @@ const (
 	KindGenerate        = "generate"
 
 	KindRun = "run"
+
+	KindCreationSession = "creation_session"
 )
 
 const (
@@ -96,4 +98,8 @@ type Store interface {
 	RecomputeStatistics(ctx context.Context, kind string, windowStart, windowEnd time.Time) (Statistics, error)
 
 	PurgeUser(ctx context.Context, tx pgx.Tx, userID pgtype.UUID) error
+
+	SummarizeSession(ctx context.Context, tx DBTX, sessionID pgtype.UUID) error
+
+	SweepSessionSummaries(ctx context.Context, windowStart, idleBefore time.Time) (int64, error)
 }

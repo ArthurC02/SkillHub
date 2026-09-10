@@ -157,7 +157,7 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 		if err != nil {
 			return View{}, err
 		}
-		row, err = advance(ctx, tx, row, state, "started", e)
+		row, err = s.advance(ctx, tx, row, state, "started", e)
 	}
 	if err != nil {
 		return View{}, err
@@ -601,7 +601,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			job = &a
 		}
 	}
-	row, err = advance(ctx, tx, row, state, c.Kind, e)
+	row, err = s.advance(ctx, tx, row, state, c.Kind, e)
 	if err != nil {
 		return View{}, nil, err
 	}
@@ -682,7 +682,7 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 		if kind == "finalize" {
 			state = "saved"
 		}
-		row, err = advance(ctx, tx, row, state, c.Kind, current)
+		row, err = s.advance(ctx, tx, row, state, c.Kind, current)
 		if err != nil {
 			return err
 		}

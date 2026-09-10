@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"log/slog"
 	"math"
 	"os"
 	"time"
@@ -252,6 +253,8 @@ type Service struct {
 	CreditReserve func(ctx context.Context, workspaceID pgtype.UUID, reservedUSDMicros int64) (ok bool, err error)
 
 	CreditSettle func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error
+
+	CreditSessionEnded func(ctx context.Context, tx pgx.Tx, sessionID pgtype.UUID) error
 }
 
 func digest(v any) string {
@@ -309,7 +312,7 @@ func (s *Service) List(ctx context.Context, ws identity.Workspace) ([]View, erro
 	}
 	return out, nil
 }
-func advance(ctx context.Context, tx pgx.Tx, row gen.CreationSession, state, event string, e envelope) (gen.CreationSession, error) {
+func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSession, state, event string, e envelope) (gen.CreationSession, error) {
 	b, err := json.Marshal(e)
 	if err != nil {
 		return row, err
@@ -323,6 +326,11 @@ func advance(ctx context.Context, tx pgx.Tx, row gen.CreationSession, state, eve
 		return r, err
 	}
 	err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: r.ID, WorkspaceID: r.WorkspaceID, Revision: r.Revision, EventType: event, Snapshot: b})
+	if err == nil && s.CreditSessionEnded != nil && terminal(state) && !terminal(row.State) {
+		if endErr := s.CreditSessionEnded(ctx, tx, r.ID); endErr != nil {
+			slog.Warn("creation: session cost summary not written", "error", endErr)
+		}
+	}
 	return r, err
 }
 func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, ws pgtype.UUID) error {

@@ -173,7 +173,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 	e.Snapshot.Steps++
 	e.Snapshot.ReservedUSD += e.Limits.MaxCallCostUSD
 	e.ActiveDeadline = time.Now().Add(e.Limits.CallTimeout + 10*time.Second)
-	row, err = advance(ctx, tx, row, "working", "attempt_started", e)
+	row, err = s.advance(ctx, tx, row, "working", "attempt_started", e)
 	if err != nil {
 		return err
 	}
@@ -292,7 +292,7 @@ func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSes
 	}
 	e.ActiveReceipt = pgtype.UUID{}
 	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: message})
-	if _, err := advance(ctx, tx, row, state, "attempt_refused", e); err != nil {
+	if _, err := s.advance(ctx, tx, row, state, "attempt_refused", e); err != nil {
 		return err
 	}
 	_, err := gen.New(tx).FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: "failed", Result: []byte("{}"), Usage: []byte("{}")})
@@ -414,7 +414,7 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 			e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: limitSentence(e.Snapshot, e.Limits)})
 		}
 	}
-	_, err = advance(ctx, tx, row, state, "attempt_settled", e)
+	_, err = s.advance(ctx, tx, row, state, "attempt_settled", e)
 	if err != nil {
 		return err
 	}

@@ -183,11 +183,22 @@ func (s *PostgresStore) RecentStatistics(ctx context.Context, kind string) (Stat
 
 func (s *PostgresStore) RecomputeStatistics(ctx context.Context, kind string, windowStart, windowEnd time.Time) (Statistics, error) {
 	q := s.q(nil)
-	agg, err := q.AggregateCostEventsWindow(ctx, gen.AggregateCostEventsWindowParams{
-		Kind:        kind,
-		WindowStart: pgconv.Timestamptz(windowStart),
-		WindowEnd:   pgconv.Timestamptz(windowEnd),
-	})
+	var agg gen.AggregateCostEventsWindowRow
+	var err error
+	if kind == KindCreationSession {
+		var row gen.AggregateSessionSummariesWindowRow
+		row, err = q.AggregateSessionSummariesWindow(ctx, gen.AggregateSessionSummariesWindowParams{
+			WindowStart: pgconv.Timestamptz(windowStart),
+			WindowEnd:   pgconv.Timestamptz(windowEnd),
+		})
+		agg = gen.AggregateCostEventsWindowRow(row)
+	} else {
+		agg, err = q.AggregateCostEventsWindow(ctx, gen.AggregateCostEventsWindowParams{
+			Kind:        kind,
+			WindowStart: pgconv.Timestamptz(windowStart),
+			WindowEnd:   pgconv.Timestamptz(windowEnd),
+		})
+	}
 	if err != nil {
 		return Statistics{}, fmt.Errorf("credit: aggregate window: %w", err)
 	}
@@ -226,7 +237,21 @@ func (s *PostgresStore) PurgeUser(ctx context.Context, tx pgx.Tx, userID pgtype.
 	if _, err := q.PurgeUserCostEvents(ctx, userID); err != nil {
 		return fmt.Errorf("credit: purge user cost events: %w", err)
 	}
+	if _, err := q.PurgeUserSessionCostSummaries(ctx, userID); err != nil {
+		return fmt.Errorf("credit: purge user session summaries: %w", err)
+	}
 	return nil
+}
+
+func (s *PostgresStore) SummarizeSession(ctx context.Context, tx DBTX, sessionID pgtype.UUID) error {
+	return s.q(tx).UpsertSessionCostSummary(ctx, sessionID)
+}
+
+func (s *PostgresStore) SweepSessionSummaries(ctx context.Context, windowStart, idleBefore time.Time) (int64, error) {
+	return s.q(nil).SweepSessionCostSummaries(ctx, gen.SweepSessionCostSummariesParams{
+		WindowStart: pgconv.Timestamptz(windowStart),
+		IdleBefore:  pgconv.Timestamptz(idleBefore),
+	})
 }
 
 func (s *PostgresStore) SweepExpiredRows(ctx context.Context, tx pgx.Tx, cutoff time.Time) (entries int64, events int64, err error) {
@@ -244,6 +269,9 @@ func (s *PostgresStore) SweepExpiredRows(ctx context.Context, tx pgx.Tx, cutoff 
 	events, err = q.PurgeExpiredCostEvents(ctx, at)
 	if err != nil {
 		return 0, 0, fmt.Errorf("credit: sweep expired cost events: %w", err)
+	}
+	if _, err := q.PurgeExpiredSessionCostSummaries(ctx, at); err != nil {
+		return 0, 0, fmt.Errorf("credit: sweep expired session summaries: %w", err)
 	}
 	return entries, events, nil
 }

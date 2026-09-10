@@ -477,7 +477,7 @@ hello in-process s3
 - [x] CRED-001 對 `credit.sql`／`cost.sql` 跑 `task gen:sql`（主 Agent 序列化），寫出 `credit.Store` 的真實 Postgres adapter，並在 `apiserver.NewApp`／`entrypoint/worker` 兩個組裝根建立 `credit.Service`。（對應 `02:CRED-001`）
 - [x] CRED-002 把組裝出的 `credit.Service` 接進 `creation.Service` 的 `CreditCanStart`／`CreditReserve`／`CreditSettle` 三個掛勾，使三道消費閘在生產環境真正生效（今天恆為 `nil`＝不檢查）。**接線時必須在組裝根明確做 Workspace → User 的轉換**——三個掛勾今天傳的是 `WorkspaceID`，`credit.Service` 的簽章收的是 `userID`；MVP 雖然一人一個工作區，但沒有任何程式碼保證兩個 id 相同，不得在呼叫端直接把 `WorkspaceID` 當 `userID` 傳入。（對應 `02:CRED-002`、`CRED-003`；依 CRED-001）
 - [x] CRED-003 `contracts/openapi/public.yaml` 補 `GET /me/credits` 與 operator 授予端點的 operation（主 Agent 序列化），`router.go` 掛上 `credits.go` 已寫好的兩個 handler。（對應 `02:CRED-004`、`CRED-007`）
-- [ ] CRED-004 註冊 `credit.RecomputeWorker` 為 River 每日 periodic job；互動創作會話終結（保存／放棄／逾時）時寫入一列成本摘要，餵給滾動窗統計（事件驅動那一半今天還沒有程式碼）。（對應 `02:CRED-006`；依 CRED-001）
+- [x] CRED-004 註冊 `credit.RecomputeWorker` 為 River 每日 periodic job；互動創作會話終結（保存／放棄／逾時）時寫入一列成本摘要，餵給滾動窗統計（事件驅動那一半今天還沒有程式碼）。（對應 `02:CRED-006`；依 CRED-001）
 - [x] CRED-005 讓 `catalog`（搜尋 embedding、索引增強）、`eval`（評審／建議）、`ingest`（單次生成對照）三個既有 context 各自呼叫 `credit.RecordCost`（ADR-032 附錄 A 新增四列 Customer–Supplier 依賴）；MVP 期間這三類只寫 `cost_events` 餵統計，不對使用者扣點（待決策見 ADR-068）。（對應 `02:CRED-005`；依 CRED-001）
 - [x] CRED-006 `cmd/maintenance` 帳號刪除步驟清單新增一步呼叫既有的 `credit.PurgeUser`，並補上 `PurgeExpiredCostEvents`／`PurgeExpiredCreditEntries` 的時間視窗保存掃描排程（同 `SEC-006` 形狀，值待負責人與既有保存清冊一併裁定）。（對應 `02:CRED-008`；依 CRED-001）
 - [x] CRED-007 `apps/platform/.golangci.yml` 補 `creator/credit` 的 depguard 規則，收斂 ADR-032 §1「先登記後建目錄」的過渡態（目錄已建，depguard 待補）。（依 ADR-032 §1、附錄 A；鐵律 7）

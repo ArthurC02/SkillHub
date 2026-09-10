@@ -369,3 +369,9 @@ func TestServiceMethodsFailClosedWithoutAStore(t *testing.T) {
 		t.Error("PurgeUser without a Store must fail closed")
 	}
 }
+
+func (f *fakeStore) SummarizeSession(context.Context, DBTX, pgtype.UUID) error { return nil }
+
+func (f *fakeStore) SweepSessionSummaries(context.Context, time.Time, time.Time) (int64, error) {
+	return 0, nil
+}

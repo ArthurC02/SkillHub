@@ -175,7 +175,7 @@ func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, force bool) err
 	e.ActiveReceipt = pgtype.UUID{}
 	e.Snapshot.PendingAction = ""
 	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: "工作已中斷，已保留進度。費用無法確認時仍占用預算；流程圖請重新上傳。"})
-	if _, err = advance(ctx, tx, row, state, "attempt_interrupted", e); err != nil {
+	if _, err = s.advance(ctx, tx, row, state, "attempt_interrupted", e); err != nil {
 		return err
 	}
 	_, err = q.FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: status, Result: []byte("{}"), Usage: []byte("null")})

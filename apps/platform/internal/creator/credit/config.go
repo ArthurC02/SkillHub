@@ -6,9 +6,12 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"time"
 )
 
 type Config struct {
+	SessionIdle time.Duration
+
 	MicrosPerCredit int64
 
 	MarkupBps int64

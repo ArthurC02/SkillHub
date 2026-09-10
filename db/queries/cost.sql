@@ -44,3 +44,43 @@ DELETE FROM cost_events WHERE user_id = $1;
 
 -- name: GetCostEventByIdempotencyKey :one
 SELECT id FROM cost_events WHERE idempotency_key = $1;
+
+-- name: UpsertSessionCostSummary :exec
+INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
+SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,
+       count(*)::integer, bool_or(cost_source = 'estimated'), max(created_at)
+FROM cost_events
+WHERE kind = 'creation_step' AND ref_type = 'creation_session' AND ref_id IS NOT NULL
+  AND ref_id = sqlc.arg(session_id)
+GROUP BY ref_id
+ON CONFLICT (session_id) DO UPDATE SET
+    user_id = EXCLUDED.user_id, usd_micros = EXCLUDED.usd_micros, steps = EXCLUDED.steps,
+    estimated = EXCLUDED.estimated, last_step_at = EXCLUDED.last_step_at;
+
+-- name: SweepSessionCostSummaries :execrows
+INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
+SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,
+       count(*)::integer, bool_or(cost_source = 'estimated'), max(created_at)
+FROM cost_events
+WHERE kind = 'creation_step' AND ref_type = 'creation_session' AND ref_id IS NOT NULL
+GROUP BY ref_id
+HAVING max(created_at) >= sqlc.arg(window_start) AND max(created_at) < sqlc.arg(idle_before)
+ON CONFLICT (session_id) DO UPDATE SET
+    user_id = EXCLUDED.user_id, usd_micros = EXCLUDED.usd_micros, steps = EXCLUDED.steps,
+    estimated = EXCLUDED.estimated, last_step_at = EXCLUDED.last_step_at;
+
+-- name: AggregateSessionSummariesWindow :one
+SELECT
+    count(*)::bigint AS sample_count,
+    coalesce(percentile_cont(0.5) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p50_usd_micros,
+    coalesce(percentile_cont(0.9) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p90_usd_micros,
+    coalesce(percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p95_usd_micros,
+    coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
+FROM cost_session_summaries
+WHERE last_step_at >= sqlc.arg(window_start) AND last_step_at < sqlc.arg(window_end);
+
+-- name: PurgeUserSessionCostSummaries :execrows
+DELETE FROM cost_session_summaries WHERE user_id = $1;
+
+-- name: PurgeExpiredSessionCostSummaries :execrows
+DELETE FROM cost_session_summaries WHERE last_step_at < $1;
