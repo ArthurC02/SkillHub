@@ -25,6 +25,10 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 
 語言版本由 `go.mod`、`.node-version`、`.python-version` 擁有；其他工具與 generator image 由 `tools/toolchain.yaml` 擁有。不要從 README 文字或 Agent 記憶抄版本。
 
+**釘選的版本要有人去啟用它，否則 doctor 的 FAIL 是唯一的提醒**：`.node-version` 只是一個寫著數字的檔案，不會讓任何 shell 換版本。2026-09-10 這台開發機上 `devctl doctor` 的 node 那一列長期是 FAIL——CI 跑 v22.14.0，本機跑 v25.0.0，而**版本釘選存在的理由就是不要有這條落差**。查下去發現 `fnm` 早就裝好、22.14.0 也早就是它的 default，**只是沒有任何一個 shell 在啟動時呼叫它**；Windows 上還多一層：機器層 `PATH` 排在使用者層前面，所以 `C:\Program Files\nodejs\` 一定贏過任何使用者層的 shim 目錄。修法是在 shell 啟動檔裡掛 `fnm env --use-on-cd`（`--use-on-cd` 讓它跟著目錄走，不會把整個帳號釘死在一個版本），**不是再裝一次 Node**。Git Bash 這邊還要注意：Agent 的每一次 `bash -c` 都是非互動 shell，`~/.bashrc` 只透過 `BASH_ENV` 才會被讀到，而那表示**帳號上每一個非互動 bash 都會源它**——所以那個檔案裡任何一行輸出都會混進別的腳本的 stdout，必須全程沉默。
+
+**換過 Node 版本之後 `node_modules` 不算數**：舊的樹是在舊版本底下裝的，要重跑 `task bootstrap` 再驗一次，否則綠燈只證明「在另一個 runtime 上是綠的」。
+
 ## 能力與成本分級
 
 | 入口 | Docker | Secret | 可能花錢 | 作用 |
