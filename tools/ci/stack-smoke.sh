@@ -8,17 +8,17 @@
 # check reads nginx.conf as text, so nginx was never asked whether the file is
 # valid. This runs before the push for that reason.
 #
-# What it is NOT. This is a smoke test, not the browser-against-a-real-backend
-# tier (04 丙-221). It asserts that the processes come up, that the two hops a
-# browser actually takes (nginx -> platform-api -> Postgres) are connected, and
-# that one contract-shaped answer comes back. It drives no UI and seeds no data.
+# What it does. Four HTTP assertions against the running stack, and then
+# tools/ci/stack-browser.mjs drives a real browser over every route the router
+# declares, signed in and signed out (04 丙-221).
 #
-# Why an empty database is the right fixture rather than a limitation: Go's
-# encoding/json writes a nil slice as `null`, and a nil slice is exactly what an
-# empty result set produces. `results` is `required` and `type: array` in
-# contracts/openapi/public.yaml, and a `null` there crashed the web client on
-# 2026-09-06 (`.length` of null). An empty catalogue is the state that exposes
-# it, so this test wants the database empty.
+# The catalogue assertion below runs BEFORE anything is seeded, and that order
+# is the assertion: Go's encoding/json writes a nil slice as `null`, a nil slice
+# is exactly what an empty result set produces, and `results` is `required` and
+# `type: array` in contracts/openapi/public.yaml. That `null` crashed the web
+# client on 2026-09-06. An empty catalogue is the state that exposes it, so it
+# is checked while the database is still empty; the browser pass seeds itself
+# afterwards.
 #
 # Usage:
 #   PLATFORM_IMAGE=... WEB_IMAGE=... LLM_IMAGE=... bash tools/ci/stack-smoke.sh
@@ -232,7 +232,7 @@ docker run --rm --network "$NET" \
 	-e BASE_URL=http://smoke-web \
 	"$PLAYWRIGHT_IMAGE" \
 	sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 >/dev/null 2>&1 &&
-	       cp /work/tools/ci/stack-browser.mjs /tmp/ && node /tmp/stack-browser.mjs' && rc=0 || rc=1
+	       cp /work/tools/ci/stack-browser.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-browser.mjs' && rc=0 || rc=1
 check "public routes render in a browser against the real API" "$rc"
 
 if [ "$fail" -ne 0 ]; then
