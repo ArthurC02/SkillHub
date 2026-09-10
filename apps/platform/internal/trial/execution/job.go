@@ -925,7 +925,7 @@ func (d *driver) tokenCeilingBreach(ctx context.Context, attempt gen.RunAttempt)
 	// spend-log reads across a run's whole wall clock, which the gateway carries
 	// at beta scale; if it stops carrying it, give this its own slower interval
 	// rather than widening the ceiling.
-	used, err := d.svc.Gateway.AttemptTokens(ctx, pgconv.UUIDString(attempt.ID), since)
+	used, err := d.svc.Gateway.AttemptUsage(ctx, pgconv.UUIDString(attempt.ID), since)
 	if err != nil {
 		// Counted, not just logged. This branch is the whole mechanism failing
 		// open, and a fail-open guard with no series is indistinguishable from a

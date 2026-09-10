@@ -108,7 +108,7 @@ func wireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgx
 }
 
 // creditStatKinds are the cost-event kinds whose rolling windows the daily
-// job recomputes. Every kind migration 0060's CHECK constraint allows is
+// job recomputes. Every kind the CHECK allows is
 // listed: RecomputeArgs carries the kind, so a kind left out of this slice is
 // a kind whose statistics are never recomputed — silently, because there is
 // no error anywhere for "nobody scheduled this one". Adding a kind to the
@@ -120,6 +120,7 @@ var creditStatKinds = []string{
 	credit.KindReview,
 	credit.KindSuggestion,
 	credit.KindGenerate,
+	credit.KindRun,
 }
 
 // creditStatWindow is how far back each daily recompute looks. Seven days,
@@ -156,4 +157,52 @@ func wireCreditDisplay(svc *credit.Service, runs *run.Service, traces *trace.Ser
 	runs.Credits = svc.CreditsForUSD
 	traces.Credits = svc.CreditsForUSD
 	evaluations.Credits = svc.CreditsForUSD
+}
+
+// wireRunCredit assigns both Run hooks in every root, so neither process can
+// end up with a nil gate it needed.
+func wireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool) {
+	ids := &identity.Service{Pool: pool}
+
+	target.CreditReserve = func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, reservedUSDMicros int64) (bool, error) {
+		// On the caller's tx: create() holds the workspace lock and may hold the
+		// pool's only connection.
+		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
+		if err != nil {
+			return false, err
+		}
+		return svc.CanAffordStepIn(ctx, tx, userID, reservedUSDMicros)
+	}
+	target.CreditSettle = func(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, usdMicros *int64, reservedUSDMicros int64) error {
+		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
+		if err != nil {
+			return err
+		}
+		key := "run:" + pgconv.UUIDString(runID)
+		if usdMicros == nil {
+			// No reported spend: record the Run, charge nothing.
+			_, _, err := svc.RecordCost(ctx, tx, credit.CostEvent{
+				Kind:           credit.KindRun,
+				Estimated:      true,
+				WorkspaceID:    workspaceID,
+				UserID:         userID,
+				RefType:        credit.RefRun,
+				RefID:          runID,
+				IdempotencyKey: key,
+			})
+			return err
+		}
+		_, err = svc.Charge(ctx, tx, credit.ChargeInput{
+			Kind:              credit.KindRun,
+			UsdMicros:         usdMicros,
+			ReservedUsdMicros: reservedUSDMicros,
+			UserID:            userID,
+			WorkspaceID:       workspaceID,
+			RefType:           credit.RefRun,
+			RefID:             runID,
+			// Cleanup re-runs until the run is `cleaned`; one key keeps it one debit.
+			IdempotencyKey: key,
+		})
+		return err
+	}
 }

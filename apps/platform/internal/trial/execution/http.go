@@ -283,7 +283,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// is not a malformed request either, and 422 keeps the whole of gate B on one
 	// status code. The message carries the reset time, because "come back later"
 	// without a time is the version of this screen nobody can act on.
-	if errors.Is(err, ErrScanBlocked) || errors.Is(err, ErrRunLimitReached) ||
+	if errors.Is(err, ErrCreditBalance) || errors.Is(err, ErrScanBlocked) || errors.Is(err, ErrRunLimitReached) ||
 		errors.Is(err, ErrAccessRestricted) || errors.Is(err, policy.ErrQuotaExceeded) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 		return

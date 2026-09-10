@@ -12,6 +12,7 @@ package run
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -27,7 +28,8 @@ import (
 // spendLogStub is a stand-in for the gateway's /spend/logs/v2, paginating a list
 // of per-call token counts the way LiteLLM does.
 type spendLogStub struct {
-	calls [][2]int // {prompt_tokens, completion_tokens} per model call
+	calls  [][2]int  // {prompt_tokens, completion_tokens} per model call
+	spends []float64 // per call when set; nil serves rows with no spend field
 	// gotAlias is what the platform asked about, which is the whole reason the
 	// answer belongs to one attempt and not to the fleet.
 	gotAlias string
@@ -48,11 +50,13 @@ func (s *spendLogStub) start(t *testing.T) *Gateway {
 			page = 1
 		}
 		totalPages := (len(s.calls) + size - 1) / size
-		rows := []map[string]int{}
+		rows := []map[string]any{}
 		for i := (page - 1) * size; i < len(s.calls) && i < page*size; i++ {
-			rows = append(rows, map[string]int{
-				"prompt_tokens": s.calls[i][0], "completion_tokens": s.calls[i][1],
-			})
+			row := map[string]any{"prompt_tokens": s.calls[i][0], "completion_tokens": s.calls[i][1]}
+			if s.spends != nil {
+				row["spend"] = s.spends[i]
+			}
+			rows = append(rows, row)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"data": rows, "total_pages": totalPages})
 	}))
@@ -66,7 +70,7 @@ func TestAttemptTokensSumsWhatTheGatewayBilledThisAttempt(t *testing.T) {
 	stub := &spendLogStub{calls: [][2]int{{420, 12}, {19_215, 300}, {19_415, 250}}}
 	g := stub.start(t)
 
-	used, err := g.AttemptTokens(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
+	used, err := g.AttemptUsage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,6 +87,27 @@ func TestAttemptTokensSumsWhatTheGatewayBilledThisAttempt(t *testing.T) {
 	}
 }
 
+// A gateway that priced nothing must read as unreported, not as $0.
+func TestAttemptUsageSumsSpendAndSaysWhetherAnyWasReported(t *testing.T) {
+	priced := (&spendLogStub{calls: [][2]int{{420, 12}, {19_215, 300}}, spends: []float64{0.0012, 0.037}}).start(t)
+	used, err := priced.AttemptUsage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !used.SpendReported || math.Abs(used.SpendUSD-0.0382) > 1e-9 {
+		t.Errorf("spend = %v reported = %v, want 0.0382 / true", used.SpendUSD, used.SpendReported)
+	}
+
+	unpriced := (&spendLogStub{calls: [][2]int{{420, 12}}}).start(t)
+	used, err = unpriced.AttemptUsage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if used.SpendReported || used.SpendUSD != 0 {
+		t.Errorf("spend = %v reported = %v, want 0 / false for rows without a spend field", used.SpendUSD, used.SpendReported)
+	}
+}
+
 // A workload that made more calls than one page holds is exactly the one the
 // ceiling is for, so the sum must not stop at the first page.
 func TestAttemptTokensFollowsThePagesTheGatewayReports(t *testing.T) {
@@ -93,7 +118,7 @@ func TestAttemptTokensFollowsThePagesTheGatewayReports(t *testing.T) {
 	stub := &spendLogStub{calls: calls}
 	g := stub.start(t)
 
-	used, err := g.AttemptTokens(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
+	used, err := g.AttemptUsage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}

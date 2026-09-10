@@ -349,6 +349,7 @@ func NewApp(cfg Config) (*App, error) {
 	// looking for "who records cost" should find one line, not three.
 	wireCostRecording(creditSvc, catalogSvc, versions)
 	wireCreditDisplay(creditSvc, runSvc, traceSvc, evalSvc)
+	wireRunCredit(runSvc, creditSvc, cfg.Pool)
 	// Account deletion clears the ledger too. identity's purge steps are all
 	// workspace-keyed and credit's rows are user-keyed, so this is the one step
 	// that resolves in the other direction before it deletes.

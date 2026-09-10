@@ -211,15 +211,8 @@ func requireDB(t *testing.T) *pgxpool.Pool {
 type api struct {
 	*httptest.Server
 	auth *identity.Handler
-	// creditPool and startingCredits stand in for the operator grant that is
-	// MVP's only way credit enters an account (CRED-007). Set together by a
-	// fixture whose tests spend credit; left zero everywhere else, where a
-	// zero balance is the honest starting state.
-	//
-	// The balance is seeded directly rather than through a ledger entry
-	// because the gates read the materialized column, and the entry-to-column
-	// relationship is what credit's own tests are about. A test that seeded an
-	// entry here would be re-testing that instead of what it came for.
+	// creditPool and startingCredits stand in for the operator grant; a test of
+	// the empty-balance refusal sets startingCredits to 0 before logging in.
 	creditPool      *pgxpool.Pool
 	startingCredits int64
 	// packages is the object store behind the detail and file views; a test
@@ -344,11 +337,16 @@ func newAPITuned(
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return &api{
+		creditPool: pool, startingCredits: betaGrantCredits,
 		Server: srv, auth: app.Auth, packages: packages, runs: app.RunSvc,
 		traceSigner: traceSigner, handler: handler, evaluations: app.EvalSvc,
 		packaging: app.PackagingSvc, versions: app.Versions, app: app,
 	}
 }
+
+// betaGrantCredits is a beta participant's grant: 20 Runs at the gateway
+// ceiling, 20 x $0.50 x 1.3 / $0.001.
+const betaGrantCredits = 13_000
 
 // client is one logged-in browser: its jar carries exactly one user's session.
 type client struct {

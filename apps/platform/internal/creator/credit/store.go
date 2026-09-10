@@ -37,6 +37,9 @@ const (
 	KindReview          = "review"
 	KindSuggestion      = "suggestion"
 	KindGenerate        = "generate"
+	// KindRun is a trial Run's gateway spend; unlike the other kinds it has a
+	// platform-set ceiling (the Virtual Key's max_budget).
+	KindRun = "run"
 )
 
 // credit_entries.kind values (decision 3).
@@ -130,7 +133,9 @@ type Store interface {
 	// with no credit_accounts row yet reads as 0 (EnsureCreditAccount has
 	// not run for them, which is itself a fact worth the adapter logging,
 	// not this interface's problem to expose).
-	Balance(ctx context.Context, userID pgtype.UUID) (int64, error)
+	// Balance reads on tx when given, else on the pool; a gate inside a caller's
+	// transaction must pass it or deadlock a one-connection pool.
+	Balance(ctx context.Context, tx DBTX, userID pgtype.UUID) (int64, error)
 
 	// RecordCostEvent maps to InsertCostEvent: one real platform spend,
 	// inside tx. Idempotent on IdempotencyKey (the column's UNIQUE

@@ -112,6 +112,12 @@ type Service struct {
 	// caller treats as a configuration failure rather than as zero. Nil refuses
 	// the pre-run summary outright — see permissionSummaryFor.
 	Credits func(usd float64) (credits int64, ok bool)
+	// CreditReserve reports whether the workspace's account covers the Run's
+	// gateway ceiling, on create()'s tx inside the per-workspace lock. nil skips it.
+	CreditReserve func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, reservedUSDMicros int64) (ok bool, err error)
+	// CreditSettle charges a finished Run's actual spend, idempotent on run id;
+	// usdMicros nil means unreported and must charge nothing. nil skips it.
+	CreditSettle func(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, usdMicros *int64, reservedUSDMicros int64) error
 	// WorkspaceCreatedAt is identity's pool-backed owner read for quota display.
 	WorkspaceCreatedAt func(context.Context, pgtype.UUID) (time.Time, error)
 	// ActiveArtifactReferences is packaging's owner read, injected by each
@@ -449,6 +455,10 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	// quota.go for why max_budget, tpm_limit and the concurrency limit are three
 	// different brakes and none of them is a monthly allowance.
 	if err := s.requireQuota(ctx, tx, p.WorkspaceID); err != nil {
+		return gen.Run{}, err
+	}
+	// Same critical section as the allowance: both brakes answer before any spend.
+	if err := s.requireCredit(ctx, tx, p.WorkspaceID); err != nil {
 		return gen.Run{}, err
 	}
 

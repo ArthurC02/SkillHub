@@ -474,13 +474,14 @@ hello in-process s3
 
 > **狀態（2026-09-08）：schema、套件與掛勾已寫，端到端尚未接通，以下全部未勾。** `db/migrations/0060_credit_ledger.sql` 建了 `cost_events`／`credit_accounts`／`credit_entries`／`cost_statistics` 四表；`apps/platform/internal/creator/credit` 套件（`Service.Charge`／`CanStart`／`CanAffordStep`／`Grant`／`RecomputeStatistics`／`PurgeUser`，`money.go` 的無條件進位換算）對著一個假 `Store` 寫了完整單元測試；`creator/creation` 的 `CreditCanStart`／`CreditReserve`／`CreditSettle` 三個 nil-able 掛勾已接進 `creation.go`／`job.go`（`credit_hooks_test.go` 守）；`apiserver/credits.go` 的 `GET /me/credits`／operator 授予 handler 已寫且有測試；Web `api/credits.ts`／`CreationSession.tsx` 已接畫面。**但沒有一段真正被組裝起來**——詳細缺口與逐項責任見 [`04` 丙-185](04-backlog-and-handoffs.md)，這裡不重複。**程式面收斂不等於完成**（AGENTS.md）：下列八項在對應缺口補齊、走完 `02` 的 Given／When／Then 之前一律不勾。
 
-- [ ] CRED-001 對 `credit.sql`／`cost.sql` 跑 `task gen:sql`（主 Agent 序列化），寫出 `credit.Store` 的真實 Postgres adapter，並在 `apiserver.NewApp`／`entrypoint/worker` 兩個組裝根建立 `credit.Service`。（對應 `02:CRED-001`）
-- [ ] CRED-002 把組裝出的 `credit.Service` 接進 `creation.Service` 的 `CreditCanStart`／`CreditReserve`／`CreditSettle` 三個掛勾，使三道消費閘在生產環境真正生效（今天恆為 `nil`＝不檢查）。**接線時必須在組裝根明確做 Workspace → User 的轉換**——三個掛勾今天傳的是 `WorkspaceID`，`credit.Service` 的簽章收的是 `userID`；MVP 雖然一人一個工作區，但沒有任何程式碼保證兩個 id 相同，不得在呼叫端直接把 `WorkspaceID` 當 `userID` 傳入。（對應 `02:CRED-002`、`CRED-003`；依 CRED-001）
-- [ ] CRED-003 `contracts/openapi/public.yaml` 補 `GET /me/credits` 與 operator 授予端點的 operation（主 Agent 序列化），`router.go` 掛上 `credits.go` 已寫好的兩個 handler。（對應 `02:CRED-004`、`CRED-007`）
+- [x] CRED-001 對 `credit.sql`／`cost.sql` 跑 `task gen:sql`（主 Agent 序列化），寫出 `credit.Store` 的真實 Postgres adapter，並在 `apiserver.NewApp`／`entrypoint/worker` 兩個組裝根建立 `credit.Service`。（對應 `02:CRED-001`）
+- [x] CRED-002 把組裝出的 `credit.Service` 接進 `creation.Service` 的 `CreditCanStart`／`CreditReserve`／`CreditSettle` 三個掛勾，使三道消費閘在生產環境真正生效（今天恆為 `nil`＝不檢查）。**接線時必須在組裝根明確做 Workspace → User 的轉換**——三個掛勾今天傳的是 `WorkspaceID`，`credit.Service` 的簽章收的是 `userID`；MVP 雖然一人一個工作區，但沒有任何程式碼保證兩個 id 相同，不得在呼叫端直接把 `WorkspaceID` 當 `userID` 傳入。（對應 `02:CRED-002`、`CRED-003`；依 CRED-001）
+- [x] CRED-003 `contracts/openapi/public.yaml` 補 `GET /me/credits` 與 operator 授予端點的 operation（主 Agent 序列化），`router.go` 掛上 `credits.go` 已寫好的兩個 handler。（對應 `02:CRED-004`、`CRED-007`）
 - [ ] CRED-004 註冊 `credit.RecomputeWorker` 為 River 每日 periodic job；互動創作會話終結（保存／放棄／逾時）時寫入一列成本摘要，餵給滾動窗統計（事件驅動那一半今天還沒有程式碼）。（對應 `02:CRED-006`；依 CRED-001）
-- [ ] CRED-005 讓 `catalog`（搜尋 embedding、索引增強）、`eval`（評審／建議）、`ingest`（單次生成對照）三個既有 context 各自呼叫 `credit.RecordCost`（ADR-032 附錄 A 新增四列 Customer–Supplier 依賴）；MVP 期間這三類只寫 `cost_events` 餵統計，不對使用者扣點（待決策見 ADR-068）。（對應 `02:CRED-005`；依 CRED-001）
-- [ ] CRED-006 `cmd/maintenance` 帳號刪除步驟清單新增一步呼叫既有的 `credit.PurgeUser`，並補上 `PurgeExpiredCostEvents`／`PurgeExpiredCreditEntries` 的時間視窗保存掃描排程（同 `SEC-006` 形狀，值待負責人與既有保存清冊一併裁定）。（對應 `02:CRED-008`；依 CRED-001）
-- [ ] CRED-007 `apps/platform/.golangci.yml` 補 `creator/credit` 的 depguard 規則，收斂 ADR-032 §1「先登記後建目錄」的過渡態（目錄已建，depguard 待補）。（依 ADR-032 §1、附錄 A；鐵律 7）
+- [x] CRED-005 讓 `catalog`（搜尋 embedding、索引增強）、`eval`（評審／建議）、`ingest`（單次生成對照）三個既有 context 各自呼叫 `credit.RecordCost`（ADR-032 附錄 A 新增四列 Customer–Supplier 依賴）；MVP 期間這三類只寫 `cost_events` 餵統計，不對使用者扣點（待決策見 ADR-068）。（對應 `02:CRED-005`；依 CRED-001）
+- [x] CRED-006 `cmd/maintenance` 帳號刪除步驟清單新增一步呼叫既有的 `credit.PurgeUser`，並補上 `PurgeExpiredCostEvents`／`PurgeExpiredCreditEntries` 的時間視窗保存掃描排程（同 `SEC-006` 形狀，值待負責人與既有保存清冊一併裁定）。（對應 `02:CRED-008`；依 CRED-001）
+- [x] CRED-007 `apps/platform/.golangci.yml` 補 `creator/credit` 的 depguard 規則，收斂 ADR-032 §1「先登記後建目錄」的過渡態（目錄已建，depguard 待補）。（依 ADR-032 §1、附錄 A；鐵律 7）
 - [ ] CRED-008 CRED-001～003 落地後，對真後端跑一次端到端驗收（開始前拒絕、每步負債下限、餘額顯示、operator 授予），並把面額、加成、保守常數、滾動窗長度的最終值（ADR-068「待決策」）回填部署設定，替換主線反推的預設值。（對應 `02:CRED-002`、`CRED-004`；依 CRED-001～003）
+- [x] CRED-009 試跑扣點（`05` R-74）：`cost_events.kind` 加 `run`（migration 0062），建立 Run 時以閘道上界做開始前檢查，清理時依閘道實付結算、以 run id 冪等；讀不到花費只記不扣。兩個組裝根都接上。（對應 `02:CRED-003` 試跑那一條；依 CRED-001、CRED-002）
 
 **目前狀態：0 項已勾、8 項皆待接線。** 各項完成須同時提交對應 `02` Given／When／Then 的成功與拒絕證據；依 AGENTS.md 鐵律 9，每條新規則要留一次「把修法還原、對應測試變紅、改回」的證據。

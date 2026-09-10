@@ -50,7 +50,7 @@ func newFakeStore() *fakeStore {
 
 func idKey(id pgtype.UUID) string { return string(id.Bytes[:]) }
 
-func (f *fakeStore) Balance(ctx context.Context, userID pgtype.UUID) (int64, error) {
+func (f *fakeStore) Balance(ctx context.Context, _ DBTX, userID pgtype.UUID) (int64, error) {
 	return f.balances[idKey(userID)], nil
 }
 

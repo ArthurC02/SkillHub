@@ -183,7 +183,7 @@ func (s *Service) Charge(ctx context.Context, tx DBTX, in ChargeInput) (ChargeRe
 		// This is not decision 5's "never charge zero for an unknown cost": that
 		// case has UsdMicros nil, bills the reservation, and lands above with a
 		// non-zero amount. This one is a genuinely zero measured cost.
-		balance, err := s.Store.Balance(ctx, in.UserID)
+		balance, err := s.Store.Balance(ctx, nil, in.UserID)
 		if err != nil {
 			return ChargeResult{}, err
 		}
@@ -214,10 +214,16 @@ func (s *Service) Charge(ctx context.Context, tx DBTX, in ChargeInput) (ChargeRe
 // through Charge, floor or no floor, because the cost was already incurred
 // (decision 7: "已發生的成本仍照決策 5 結算").
 func (s *Service) CanAffordStep(ctx context.Context, userID pgtype.UUID, reservedUsdMicros int64) (bool, error) {
+	return s.CanAffordStepIn(ctx, nil, userID, reservedUsdMicros)
+}
+
+// CanAffordStepIn is CanAffordStep read on the caller's transaction, so a gate
+// already holding a pool's only connection does not wait for a second one.
+func (s *Service) CanAffordStepIn(ctx context.Context, tx DBTX, userID pgtype.UUID, reservedUsdMicros int64) (bool, error) {
 	if s.Store == nil {
 		return false, ErrUnavailable
 	}
-	balance, err := s.Store.Balance(ctx, userID)
+	balance, err := s.Store.Balance(ctx, tx, userID)
 	if err != nil {
 		return false, err
 	}
@@ -254,7 +260,7 @@ func (s *Service) CanStart(ctx context.Context, userID pgtype.UUID, statKind str
 	if err := s.checkAccount(ctx, userID); err != nil {
 		return StartCheck{}, err
 	}
-	balance, err := s.Store.Balance(ctx, userID)
+	balance, err := s.Store.Balance(ctx, nil, userID)
 	if err != nil {
 		return StartCheck{}, err
 	}
@@ -293,7 +299,7 @@ func (s *Service) Balance(ctx context.Context, userID pgtype.UUID) (int64, error
 	if s.Store == nil {
 		return 0, ErrUnavailable
 	}
-	return s.Store.Balance(ctx, userID)
+	return s.Store.Balance(ctx, nil, userID)
 }
 
 // Estimate is what one call of statKind is expected to cost, in credits, and

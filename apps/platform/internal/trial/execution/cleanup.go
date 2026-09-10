@@ -133,6 +133,9 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 		return err
 	}
 
+	// Before teardown: a revoked key's spend can no longer be read.
+	s.settleCredit(ctx, run, attempts)
+
 	var failures []string
 	// Attempts on a node held for an incident are left standing while the rest of
 	// the run is released. Tracked rather than aborted, because a run can have

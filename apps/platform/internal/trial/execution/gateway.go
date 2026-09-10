@@ -122,6 +122,17 @@ func GatewayURL() string {
 	return strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/")
 }
 
+// RunBudgetUSD is the per-Run gateway ceiling (the Virtual Key's max_budget).
+// A package func because the API process, which gates on it, has no Gateway.
+func RunBudgetUSD() float64 {
+	if raw := os.Getenv("SKILLHUB_RUN_MAX_BUDGET_USD"); raw != "" {
+		if v, err := strconv.ParseFloat(raw, 64); err == nil && v > 0 {
+			return v
+		}
+	}
+	return defaultKeyBudgetUSD
+}
+
 // keyAlias is the gateway-side name of one attempt's key. Derived from the
 // permanent attempt id rather than stored, which is what makes revocation
 // possible after a crash that lost every in-memory handle - and what keeps the
@@ -191,14 +202,18 @@ func (g *Gateway) Revoke(ctx context.Context, runAttemptID string) error {
 	return err
 }
 
-// TokenUsage is how many tokens one attempt has actually consumed, as counted by
-// the gateway that billed them.
+// AttemptUsage is what one attempt actually consumed, as counted by the gateway
+// that billed it: how many tokens, and what it charged for them.
 //
 // Cache-hit tokens are in InputTokens, which is what the 300K ceiling counts:
 // caching discounts the price, not the number (PDM-005 5.2a-3).
-type TokenUsage struct {
+type AttemptUsage struct {
 	InputTokens  int
 	OutputTokens int
+	// SpendUSD is what the gateway billed this attempt.
+	SpendUSD float64
+	// SpendReported tells a billed zero from no spend field at all.
+	SpendReported bool
 }
 
 const (
@@ -220,7 +235,7 @@ const (
 	usageDateFormat = "2006-01-02 15:04:05"
 )
 
-// AttemptTokens is how many tokens this attempt has spent, according to the
+// AttemptUsage is what this attempt has spent, according to the
 // gateway's own spend log.
 //
 // This is the only trustworthy token count the platform has. The sandbox harness
@@ -236,7 +251,7 @@ const (
 //
 // The window is the caller's: a start date is required by the endpoint, and one
 // that starts at the attempt keeps the gateway from scanning its whole history.
-func (g *Gateway) AttemptTokens(ctx context.Context, runAttemptID string, since time.Time) (TokenUsage, error) {
+func (g *Gateway) AttemptUsage(ctx context.Context, runAttemptID string, since time.Time) (AttemptUsage, error) {
 	q := url.Values{}
 	q.Set("key_alias", keyAlias(runAttemptID))
 	q.Set("start_date", since.UTC().Format(usageDateFormat))
@@ -248,22 +263,27 @@ func (g *Gateway) AttemptTokens(ctx context.Context, runAttemptID string, since 
 	q.Set("sort_by", "startTime")
 	q.Set("sort_order", "asc")
 
-	var total TokenUsage
+	var total AttemptUsage
 	for page := 1; page <= maxUsagePages; page++ {
 		q.Set("page", strconv.Itoa(page))
 		var out struct {
 			Data []struct {
-				PromptTokens     int `json:"prompt_tokens"`
-				CompletionTokens int `json:"completion_tokens"`
+				PromptTokens     int      `json:"prompt_tokens"`
+				CompletionTokens int      `json:"completion_tokens"`
+				Spend            *float64 `json:"spend"`
 			} `json:"data"`
 			TotalPages int `json:"total_pages"`
 		}
 		if err := g.get(ctx, "/spend/logs/v2?"+q.Encode(), &out); err != nil {
-			return TokenUsage{}, fmt.Errorf("read attempt token usage: %w", err)
+			return AttemptUsage{}, fmt.Errorf("read attempt usage: %w", err)
 		}
 		for _, row := range out.Data {
 			total.InputTokens += row.PromptTokens
 			total.OutputTokens += row.CompletionTokens
+			if row.Spend != nil {
+				total.SpendUSD += *row.Spend
+				total.SpendReported = true
+			}
 		}
 		if len(out.Data) == 0 || page >= out.TotalPages {
 			break

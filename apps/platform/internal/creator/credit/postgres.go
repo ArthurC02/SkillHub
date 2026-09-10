@@ -68,8 +68,8 @@ func (s *PostgresStore) q(tx DBTX) *gen.Queries {
 // reads as 0 rather than as an error: the row is created on first write
 // (EnsureCreditAccount), so its absence means "has never spent or been
 // granted anything", which is exactly a zero balance.
-func (s *PostgresStore) Balance(ctx context.Context, userID pgtype.UUID) (int64, error) {
-	acct, err := s.q(nil).GetCreditBalance(ctx, userID)
+func (s *PostgresStore) Balance(ctx context.Context, tx DBTX, userID pgtype.UUID) (int64, error) {
+	acct, err := s.q(tx).GetCreditBalance(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, nil
 	}
