@@ -101,6 +101,10 @@ jobs:
               # (egress-allowlist.yml) and never the Go half -- the two filters
               # were disjoint over exactly the file they share. Added 2026-08-29.
               - 'infra/egress/**'
+              # The SEC-009 suites and the gate-A probe. Its --self-check is
+              # what holds the probe's grading rules, and they are rules that
+              # only fire on the one day they are meant to stop something.
+              - 'tools/sec009/**'
               - '.github/workflows/ci.yml'
             qa002:
               - 'apps/platform/internal/skill/admission/**'
@@ -476,6 +480,14 @@ jobs:
       # it belongs to the sandbox, and this job is already the one filtered on
       # infra/images/**. Its zip extractor replaced unzip's refusal of absolute
       # and ../ entries with its own (04 丙-82), so those refusals need a machine.
+      # Offline: no node, no docker, no runsc. It drives the version
+      # comparison, the node-age and build_phase grading, and which statuses
+      # let a gate pass -- including the one that says `unknown` is still a
+      # fail, which is the assertion that keeps 05 R-17a's ELSEWHERE from
+      # becoming a way to make any red row disappear.
+      - name: Gate A node probe self-check (SEC-009 T8)
+        working-directory: ${{ github.workspace }}
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Gate A node probe self-check' python3 tools/sec009/t8-node-probe.py --self-check
       - name: Runtime workload script tests
         working-directory: ${{ github.workspace }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Runtime workload script tests' node --test infra/images/runtime-agent-sdk/run.test.mjs

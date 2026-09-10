@@ -321,10 +321,13 @@ python tools/sec009/t8-node-probe.py --self-check  # 離線，不碰節點也不
 
 ```json
 { "node_id": "sbx-01", "role": "sandbox-exec",
-  "node_created_at": "2026-08-25T04:11:07Z", "iac_commit": "c860c64" }
+  "node_created_at": "2026-08-25T04:11:07Z", "iac_commit": "c860c64",
+  "build_phase": "serving" }
 ```
 
 `node_created_at` 有兩個性質是它存在的全部理由，部署批兩個都要保住：**①由 cloud-init 在建置時寫入一次**（ADR-022 §1 明文「非節點自報的當下時間」），**②跨重開機不變**（那是建置時戳，不是開機時戳）。一台每次開機都幫自己蓋章的節點，年齡永遠是零，**7 天重建這條規則會安靜地停止存在**。
+
+**`build_phase` 是第五個必填欄位（2026-09-10，[`05` R-17c](../../docs/plans/05-pending-rulings.md)）**，取代原本用來判「時戳是不是節點自報的」那個 2 秒容差：cloud-init 在建置階段寫 `provision`，節點正式服役後由開機腳本改寫為 `serving`。**容差是啟發式，欄位是事實**——一個 2 秒的窗分不出「探針剛好在 cloud-init 之後 2 秒跑起來」與「有人在探針啟動時寫了 `now()`」，所以它會在一台慢節點上誤判，而沒有人會知道。同批把 `role` 的字面值定為 `sandbox-exec`（追認探針已經在用的字串）。
 
 **檔案不存在 ⇒ 相關項目全部 `unknown` ⇒ fail。** 那是設計，不是缺陷：一台說不出自己是誰的機器不進池。
 
@@ -334,10 +337,10 @@ python tools/sec009/t8-node-probe.py --self-check  # 離線，不碰節點也不
 | --- | --- |
 | **C-01a** | `docker info` 的 runtime 清單裡有沒有 `runsc` |
 | **C-01b** | `docker inspect .Mounts`：任何 `Type=bind` 且 `RW=true` 就是一條可寫的 host 路徑（`dockerdrv` 刻意讓 `Binds`／`Mounts` 保持空的——C-05／C-07） |
-| **C-01c** | **刻意不量，印 `unknown`**。見下 |
+| **C-01c** | **刻意不量，印 `ELSEWHERE`**（2026-09-10 之前是 `unknown`）。見下 |
 | **P-01a** | node facts 的 `role` 必須等於 `sandbox-exec` |
 | **P-01b** | `docker ps`：每個容器要嘛帶 `skillhub.sandbox.managed` label（`dockerdrv` 給每個 Run 都加），要嘛是 `sandboxd` 自己；其餘逐一具名 fail |
-| **P-03** | node facts 的 `node_created_at` 年齡對 7 天；> 14 天在 detail 裡點名值班依 SEC-010 手動 drain |
+| **P-03** | node facts 的 `node_created_at` 年齡對 7 天；> 14 天在 detail 裡點名值班依 SEC-010 手動 drain。**先看 `build_phase`**：不是 `serving` 一律 `unknown`（`provision` ＝ 還沒建完、其他值 ＝ 不合契約、沒有 ＝ IaC 比這份契約舊） |
 | **P-04** | `runsc --version` 對 `infra/nodes/gvisor-baseline.txt`，以 `(release 日期, patch)` tuple 比大小 |
 | **P-05** | 掃 `/proc/*/environ` 與 `/etc/skillhub`、`/etc/environment`、`/etc/default`、`/run/secrets`、`/opt/skillhub`，找 `SKILLHUB_DATABASE_URL`／`DATABASE_URL`／`PGPASSWORD`／`SKILLHUB_SECRETS_TOKEN` 這些名字與 `postgres://` 形態的值。**命中只印位置與樣式名，絕不印值** |
 
@@ -355,7 +358,9 @@ python tools/sec009/t8-node-probe.py --self-check  # 離線，不碰節點也不
 
 **P-05 在第一次是 `PASS`，而那是這張表上最弱的一格**：一個幾乎空的容器裡當然找不到憑證。所以另外跑了一次負對照，種兩個假憑證進去——P-05 如期轉 `FAIL`、指出位置與樣式，而對輸出 `grep -c` 那個假密碼的結果是 **`0`**。**一支會把找到的憑證印進 log 的洩漏偵測器，本身就是那個洩漏**（鐵律 11）。
 
-`--self-check` 用 17 組案例離線驅動 P-04 的版本比較與 P-03 的年齡判定，理由和 T8 映像半的 I-04 一樣：**這兩條規則都只在它們真的該擋的那一天被行使一次**。四次突變全部讓它變紅，其中最值得看的是把 `SELF_REPORT_TOLERANCE_SECONDS` 歸零——**拿掉之後每一次實測都會更好看**（P-03 從 `unknown` 變 `PASS`），而這種突變不會有人在 code review 抓到。
+`--self-check` 離線驅動 P-04 的版本比較、P-03 的年齡與 `build_phase` 判定，以及 `Report.ok` 的四種狀態，理由和 T8 映像半的 I-04 一樣：**這些規則都只在它們真的該擋的那一天被行使一次**。2026-08 的四次突變全部讓它變紅，其中最值得看的是把 `SELF_REPORT_TOLERANCE_SECONDS` 歸零——**拿掉之後每一次實測都會更好看**（P-03 從 `unknown` 變 `PASS`），而這種突變不會有人在 code review 抓到。（那個常數已於 2026-09-10 被 `build_phase` 取代。）
+
+**2026-09-10 這一批的三次突變，以及它們順手抓到的兩個弱斷言**：放寬 `Report.ok` 讓 `unknown` 不再 fail → 紅；拿掉「還在 provision」那條分支 → **第一次沒有紅**，因為斷言只比對「provision」這個字，而不合契約那條分支的訊息裡也有這個字（`%r` 印出來的）；拿掉「完全沒有 `build_phase`」那條分支 → **同樣沒有紅**，同一個原因。兩條斷言都改成比對只有該分支寫得出來的整句話之後，三次突變才全部變紅。**這正是鐵律 9 存在的形狀**：綠燈只證明測試存在，而這兩條測試在被弄壞之前，證明的是「訊息裡有某個字」而不是「走了哪條路」。
 
 ### 它仍然不是 SEC-009 的驗收
 
@@ -363,4 +368,8 @@ python tools/sec009/t8-node-probe.py --self-check  # 離線，不碰節點也不
 
 而且這一支比 T1／T2／T5 離驗收更遠：那三支至少在真的核心上量真的邊界，**這一支在第二次執行裡連受測物都是我自己寫進 `/etc/skillhub/node.json` 的**。它證明的是「這支探針拿到事實時會怎麼判」，不是「有一台節點通過了」。
 
-**還有一件事需要 ADR-022 回答，不該由腳本自己決定**：C-01c 永遠是 `unknown`，所以這支探針**在一台完全正確的節點上也會 exit 2**。C-01 的後半是關於兩個並行 Run 的敘述，閘門 A 拍的是一台閒置節點的照片；那半邊由 SBX-005 的整合測試覆蓋。探針選擇印 `unknown` 而不是省略（省略會讓綠燈看起來像 C-01 被整條檢查過了），代價是**一個永遠紅的閘門會被值班的人關掉**。ADR-022 §4 的覆蓋表把 C-01 整條指派給 T8，那需要一次裁定。
+~~**還有一件事需要 ADR-022 回答，不該由腳本自己決定**：C-01c 永遠是 `unknown`，所以這支探針**在一台完全正確的節點上也會 exit 2**。~~
+
+**✅ 2026-09-10 裁定（[`05` R-17a](../../docs/plans/05-pending-rulings.md)）：C-01 拆成兩半，兩邊都有承接者。** 閘門 A 判**宣告面**（C-01a、C-01b），`SBX-005` 的整合測試判**執行期**那半句（「不與其他 Run 共用可寫路徑」）——那裡真的有兩個 Run。**後半句不刪**：刪掉它是把一條真的允收準則換成一個比較好過的閘門。
+
+腳本因此多一個狀態 **`ELSEWHERE`**：**它不是 pass**（這裡什麼都沒量到），**也不再是 `unknown`**（ADR-022 §3 把 `unknown` 讀成 fail，而一個在正確節點上也紅的閘門，第一週就會被值班的人關掉——那比沒有閘門更糟，因為關掉之後沒有人記得它曾經該擋什麼）。**那一列照印，而且點名誰在判它**，所以「省略會讓綠燈看起來像 C-01 被整條檢查過了」這個顧慮並沒有被交換掉。ADR-022 §2 覆蓋表第 1 列同日補了對帳，`Report.ok` 的四種狀態各有一個 `--self-check` 案例，**其中「`unknown` 仍然算 fail」那一個是把這次放寬釘住的那一條**。

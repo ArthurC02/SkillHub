@@ -24,8 +24,16 @@ wrote at build time, from a JSON file:
                                                 #       execution-pool role
       "node_created_at": "2026-08-25T04:11:07Z", # P-03: ISO8601, written ONCE
                                                 #       by cloud-init at build
-      "iac_commit":      "c860c64"              # which IaC built it
+      "iac_commit":      "c860c64",             # which IaC built it
+      "build_phase":     "serving"              # P-03: `provision` written by
+                                                #       cloud-init at build,
+                                                #       rewritten `serving` by
+                                                #       the boot script once
+                                                #       the node is in service
     }
+
+All five fields are required (05 R-17c, 2026-09-10); `role` must be the
+literal `sandbox-exec`.
 
 Two properties of `node_created_at` are the whole point of it, and the
 deployment batch has to preserve both:
@@ -36,6 +44,12 @@ deployment batch has to preserve both:
      the 7-day rebuild rule silently stops existing.
   2. It survives reboots. It is the node's *build* time, not its boot time.
 
+`build_phase` is what proves property 1, and it replaced a 2-second clock
+window that could only guess at it (05 R-17c). A node whose facts say
+`serving` finished being built and is not stamping itself now; one that says
+`provision`, says something else, or says nothing is `unknown` -- and the
+last of those means the node's IaC predates this contract.
+
 File missing => every fact-dependent item is `unknown` => fail. That is the
 designed behaviour, not a gap: a node that cannot say what it is does not join
 the pool.
@@ -45,11 +59,12 @@ Not the SEC-009 acceptance, and not even all of C-01. Three honest limits:
 
   - C-01's runtime half ("each Run gets its own scratch, Runs share no writable
     path") is a statement about two concurrent Runs. A declarative snapshot of
-    an idle node cannot see it; SBX-005's integration tests can. This probe
-    reports that half as `unknown` and says so, which -- per ADR-022's own
-    fail-closed rule -- means a perfectly configured node still exits 2. See
-    the note printed at the end of a run: that is a question for ADR-022's
-    coverage table, not something to paper over here.
+    an idle node cannot see it; SBX-005's integration tests can. Until
+    2026-09-10 this probe reported it as `unknown`, which under ADR-022's
+    fail-closed rule meant a perfectly configured node still exited 2. 05 R-17a
+    ruled the split: gate A judges C-01's declarative face, SBX-005 judges the
+    runtime one, and the row here is `ELSEWHERE` -- printed, named, and not
+    counted as this gate's answer.
   - P-01's "not co-scheduled with Web/API/DB workloads" is graded from the
     declared role plus what is actually running. A node can lie in its facts
     file; only the IaC review catches that.
@@ -88,13 +103,21 @@ EXPECTED_ROLE = "sandbox-exec"
 REBUILD_DAYS = 7
 DRAIN_DAYS = 14
 
-# ponytail: a 2-second window is a heuristic, not a proof, that the timestamp
-# was not self-reported. It separates "cloud-init wrote this at build" from
-# "something wrote datetime.now() as the probe started"; it cannot separate it
-# from a probe that genuinely ran 2s after cloud-init. If that ever happens,
-# the answer is to have cloud-init also record its own boot id, not to widen
-# this window.
-SELF_REPORT_TOLERANCE_SECONDS = 2
+# 05 R-17c (2026-09-10) replaced the 2-second window with a field. The window
+# was a heuristic: it separated "cloud-init wrote this at build" from
+# "something wrote datetime.now() as the probe started", and it could not
+# separate either from a probe that genuinely ran 2s after cloud-init -- so on
+# a slow node it misjudged, and nobody would have known. The comment that used
+# to sit here said the answer was for cloud-init to record something rather
+# than for this window to widen; that is now the input contract.
+#
+# `build_phase` is written `provision` by cloud-init at build and rewritten
+# `serving` by the boot script once the node is in service. A node still in
+# `provision` has not finished being built, and one with no phase at all is
+# running an IaC older than this contract -- both are `unknown`, which is what
+# "we could not tell" is supposed to look like.
+BUILD_PHASE_PROVISION = "provision"
+BUILD_PHASE_SERVING = "serving"
 
 # apps/sandbox/internal/dockerdrv/docker.go: every Run container carries this.
 SANDBOX_LABEL = "skillhub.sandbox.managed"
@@ -108,6 +131,12 @@ CRED_VALUE_RE = re.compile(rb"postgres(?:ql)?://[^\s\"']+")
 CRED_PATHS = ("/etc/skillhub", "/etc/environment", "/etc/default", "/run/secrets", "/opt/skillhub")
 
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
+# 05 R-17a: a baseline item this gate is not the one that judges. It is not a
+# pass -- nothing here measured it -- and it must not be an `unknown`, because
+# ADR-022 §3 reads `unknown` as fail and a gate that is red on a correct node
+# gets switched off. The row still prints, and it names who does judge it, so
+# omitting the check is not what "covered" means here.
+ELSEWHERE = "ELSEWHERE"
 
 
 class SetupError(Exception):
@@ -123,7 +152,7 @@ class Report:
 
     @property
     def ok(self) -> bool:
-        return all(r["status"] == PASS for r in self.rows)
+        return all(r["status"] in (PASS, ELSEWHERE) for r in self.rows)
 
     def render(self) -> None:
         width = max(len(r["id"]) for r in self.rows)
@@ -224,10 +253,27 @@ def grade_gvisor(node_version: str | None, baseline: str | None) -> tuple[str, s
     return FAIL, shown + " -- BELOW BASELINE, node must not join the pool"
 
 
-def grade_node_age(created_at: str | None, now: datetime) -> tuple[str, str]:
+def grade_node_age(created_at: str | None, now: datetime,
+                   build_phase: str | None = None) -> tuple[str, str]:
     """P-03. Age of the cloud-init build timestamp against the 7-day cycle."""
     if not created_at:
         return UNKNOWN, "node facts carry no `node_created_at`, so the node's age is unknown"
+    if not build_phase:
+        return UNKNOWN, (
+            "node facts carry no `build_phase`, so nothing says this timestamp came from the "
+            "build rather than from this boot. ADR-022 §1 measures the cloud-init BUILD "
+            "timestamp specifically to exclude that -- a node that stamps itself on every "
+            "boot reports age zero forever and the 7-day rule stops existing. The node's IaC "
+            "predates 05 R-17c; re-render it")
+    if build_phase == BUILD_PHASE_PROVISION:
+        return UNKNOWN, (
+            "`build_phase` is still %r, so this node has not finished being built and its "
+            "age is not yet a fact about a serving node" % build_phase)
+    if build_phase != BUILD_PHASE_SERVING:
+        return UNKNOWN, (
+            "`build_phase` is %r, which is neither %r nor %r -- the facts file does not "
+            "follow the contract this gate reads" % (
+                build_phase, BUILD_PHASE_PROVISION, BUILD_PHASE_SERVING))
     try:
         built = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
     except (ValueError, TypeError):
@@ -238,13 +284,6 @@ def grade_node_age(created_at: str | None, now: datetime) -> tuple[str, str]:
     age = now - built
     if age < timedelta(seconds=0):
         return UNKNOWN, "`node_created_at` (%s) is in the future -- not a build timestamp" % created_at
-    if age < timedelta(seconds=SELF_REPORT_TOLERANCE_SECONDS):
-        return UNKNOWN, (
-            "`node_created_at` (%s) is within %ds of this probe's own clock, which is what a "
-            "self-reported timestamp looks like. ADR-022 §1 measures the cloud-init BUILD "
-            "timestamp specifically to exclude that -- a node that stamps itself on every boot "
-            "reports age zero forever and the 7-day rule stops existing" % (
-                created_at, SELF_REPORT_TOLERANCE_SECONDS))
 
     detail = "built %s, %d day(s) old (limit %d)" % (created_at, age.days, REBUILD_DAYS)
     if age > timedelta(days=DRAIN_DAYS):
@@ -309,7 +348,8 @@ def check_p03(rep: Report, facts: dict | None, facts_why: str) -> None:
     if facts is None:
         rep.add("P-03", "rebuilt within the 7-day cycle", UNKNOWN, facts_why)
         return
-    status, detail = grade_node_age(facts.get("node_created_at"), datetime.now(timezone.utc))
+    status, detail = grade_node_age(facts.get("node_created_at"), datetime.now(timezone.utc),
+                                    facts.get("build_phase"))
     rep.add("P-03", "rebuilt within the 7-day cycle", status, detail)
 
 
@@ -430,12 +470,15 @@ def check_c01(rep: Report) -> None:
                 else:
                     rep.add("C-01b", "no host path shared writable into a container", PASS, how)
 
-    rep.add("C-01c", "each Run gets its own scratch, Runs share none", UNKNOWN,
-            "NOT MEASURABLE FROM A SNAPSHOT OF ONE NODE. C-01's runtime half is a statement "
-            "about two concurrent Runs; this probe photographs an idle node. That half is "
-            "covered by SBX-005's integration tests, not by this script. Reported as unknown "
-            "rather than omitted, because omitting it would let a green gate A imply C-01 "
-            "was checked in full")
+    rep.add("C-01c", "each Run gets its own scratch, Runs share none", ELSEWHERE,
+            "NOT MEASURABLE FROM A SNAPSHOT OF ONE NODE, AND NOT THIS GATE'S TO JUDGE. "
+            "C-01's runtime half is a statement about two concurrent Runs; this probe "
+            "photographs an idle node. 05 R-17a (2026-09-10) split C-01 accordingly -- gate A "
+            "judges the declarative face (C-01a, C-01b) and SBX-005's integration tests judge "
+            "this one, where two Runs actually exist. Until that ruling this row was `unknown`, "
+            "which ADR-022 §3 reads as fail: a correctly built node exited 2, and a gate that "
+            "is red on a correct node gets switched off in week one. The row still prints and "
+            "still names its judge, so nothing here is omitted -- see ADR-022 §2 row 1")
 
 
 # --------------------------------------------------------------------------
@@ -471,8 +514,25 @@ def self_check() -> int:
     want("runsc not installed", grade_gvisor(None, "release-20260817.0"), UNKNOWN)
     want("runsc printed something else", grade_gvisor("command not found", "release-20260817.0"), UNKNOWN)
 
+    print("Report.ok -- which statuses let a gate pass:")
+    for label, status, expect in [
+        ("a pass alone passes", PASS, True),
+        ("an unknown still fails (ADR-022 §3)", UNKNOWN, False),
+        ("a fail still fails", FAIL, False),
+        # 05 R-17a. Before the ruling this was UNKNOWN and a correct node
+        ("judged elsewhere does not fail this gate", ELSEWHERE, True),
+    ]:
+        rep = Report()
+        rep.add("X", "case", status, "self-check")
+        wrong = rep.ok is not expect
+        bad += 1 if wrong else 0
+        print("  %s %-46s want %-7s got %-7s" % (
+            "BAD " if wrong else "ok  ", label, "ok" if expect else "not ok",
+            "ok" if rep.ok else "not ok"))
+
     print("P-03 -- node age:")
     now = datetime(2026, 8, 27, 12, 0, 0, tzinfo=timezone.utc)
+    SERVING = BUILD_PHASE_SERVING
 
     def at(days: float) -> str:
         return (now - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -480,14 +540,27 @@ def self_check() -> int:
     # Literal 6.9 / 7.1 / 15 on purpose, not REBUILD_DAYS +/- epsilon: ADR-022 §1
     # is where 7 and 14 come from, so the self-check has to pin those numbers
     # rather than re-derive them from the constant it is supposed to be guarding.
-    want("one day old", grade_node_age(at(1), now), PASS)
-    want("6.9 days -- inside the cycle", grade_node_age(at(6.9), now), PASS)
-    want("7.1 days -- past the cycle", grade_node_age(at(7.1), now), FAIL)
-    want("15 days names the drain", grade_node_age(at(15), now), FAIL, "drain")
+    want("one day old", grade_node_age(at(1), now, SERVING), PASS)
+    want("6.9 days -- inside the cycle", grade_node_age(at(6.9), now, SERVING), PASS)
+    want("7.1 days -- past the cycle", grade_node_age(at(7.1), now, SERVING), FAIL)
+    want("15 days names the drain", grade_node_age(at(15), now, SERVING), FAIL, "drain")
     want("no timestamp", grade_node_age(None, now), UNKNOWN)
-    want("unparseable timestamp", grade_node_age("last tuesday", now), UNKNOWN)
-    want("timestamp in the future", grade_node_age(at(-1), now), UNKNOWN)
-    want("timestamp == probe's own clock", grade_node_age(at(0), now), UNKNOWN, "self-reported")
+    want("unparseable timestamp", grade_node_age("last tuesday", now, SERVING), UNKNOWN)
+    want("timestamp in the future", grade_node_age(at(-1), now, SERVING), UNKNOWN)
+    # 05 R-17c: the phase, not a clock window. A node that stamps itself on
+    # every boot now fails to say `serving` from a build, and a probe that
+    # happens to run seconds after cloud-init is no longer misread as one.
+    # Same trap as the case below: every phase branch says "build_phase", so the
+    # assertion has to name the sentence only this branch writes.
+    want("no build_phase at all", grade_node_age(at(1), now, None), UNKNOWN,
+         "predates 05 R-17c")
+    # The phrase, not the word: "provision" also appears in the off-contract
+    # branch's message, so asserting on it let a mutation that deleted this
+    # branch entirely stay green. Caught on 2026-09-10 by making it red.
+    want("still provisioning", grade_node_age(at(1), now, "provision"), UNKNOWN,
+         "has not finished being built")
+    want("phase off contract", grade_node_age(at(1), now, "ready"), UNKNOWN, "contract")
+    want("serving, fresh off the build", grade_node_age(at(0), now, SERVING), PASS)
 
     print("self-check: %s" % ("all grading cases behave" if not bad else "%d case(s) wrong" % bad))
     return 0 if not bad else 2
