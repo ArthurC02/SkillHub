@@ -242,9 +242,12 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-category.
 - [ ] 驗 `anthropics/skills` 那四筆**真的打不出包**（兩道鎖各驗一次：撤下 hold 之後 `redistribution` 仍應擋住）——**這是寄詢問信前的實測要求**（§3）
 - [ ] 驗至少一個 `documents` 類精選 Skill **可下載**（[beta-design.md §8](beta-design.md) 第 11 項；那四筆受限讓該類最好的樣本不可下載，PDM-002 早已要求補 2–3 個 OSI 授權的替代品，**那是 `documents` 類的必要條件不是加分項**）
 
+- [ ] **跑一次 `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey`，並把閘道回報的實際金額寫進這一格**（**2026-09-10 新增，`05` R-72 裁定 (b)**）。它是唯一一支走完整條路的測試——套件進物件儲存 → preflight → 派送 → sandboxd → 容器跑 Agent SDK → 每 Run 短效 Virtual Key 經閘道呼叫模型 → trace 回推 → artifact 收集 → 金鑰撤銷。**它不在 CI 也不排程**（排程要把閘道金鑰複製進 CI secret，撞鐵律 11），所以它的保證就是這一格。執行配方在 [automation.md](../../../development/automation.md)〈什麼時候要跑它〉的上一節，**不在此複述**。**這條線斷掉的樣子是「派送成功、Run 永遠不完成」**——`web` 與 `platform` 兩個 job 會全綠，所以沒有跑過就勾這一格，等於用一個看不見的紅燈換一個看得見的綠燈。上一次實跑：2026-09-10，$0.021103
+
 ### 2.8 仍待定值或部署驗證的技術債
 
-- [ ] **`DEPLOY-IAC-001`**：部署負責人建立 ADR-022 的 sandbox node IaC／cloud-init/render；pinned IP 未填時不得產生放行規則，並以 SEC-009 真機證據驗收。
+- [ ] **`DEPLOY-IAC-001`**：部署負責人建立 ADR-022 的 sandbox node IaC／cloud-init/render；pinned IP 未填時不得產生放行規則，並以 SEC-009 真機證據驗收。**✅ 2026-09-10 目標已定值（`05` R-43）**：Hetzner Cloud／Falkenstein、第一批 1 台 CPX31（4 vCPU／8 GB／160 GB NVMe）、每月預算上限 US$60。cloud-init 從此有目標。同批定案 `/etc/skillhub/node.json` 的五個必填欄位（`05` R-17c）：`node_id`、`role`（字面值 `sandbox-exec`）、`node_created_at`、`iac_commit`、**`build_phase`**——最後一欄是新的，cloud-init 在建置階段寫 `provision`、服役後由開機腳本改寫為 `serving`，用來取代閘門 A 探針目前那個 2 秒容差的啟發式（啟發式會在一台慢節點上誤判，而沒有人會知道）。
+- [ ] **Suite 1 在該節點上跑過一次，結果存檔**（**2026-09-10 新增，`05` R-6 第 1 條裁定「是」**）。Suite 1 只要 Linux ＋ Docker ＋ runsc（ADR-022 §0 已推翻巢狀虛擬化的前提），在節點上跑一次是一天的事。**這一格擋的是「第一位外部使用者的第一個 Run」**——在它之前沒有跑過，等於第一個外部使用者在一台從來沒有被驗過的節點上跑他自己的程式碼，而那正是 ADR-050 說「沒有答案等於否」時所指的那個預設。與閘門 A 節點准入探針同一次執行
 - [ ] **`RUNTIME-PYTHON-001`**：負責人先定值 Python runtime 版本；部署負責人令 runtime image、文件與真實 gVisor 證據一致。不得把目前 image 的版本視為追認。**✅ 2026-09-05 定值：3.13**（[`05` R-44](../../05-pending-rulings.md)）。落地路徑已本機驗證（`node:22-trixie-slim` 讓 apt 原生 `python3` 就是 3.13.5，`constraints.txt` 的鎖版不變），**但未推上 main**：`infra/images/README.md`（2026-08-29 夯實稽核）已把「換 base 發行版需要重跑 SEC-009」列為前提，而 SEC-009 需要的 gVisor 節點就是甲-5／R-43 還沒有的那台。這一格因此仍未勾，理由從「沒有值」變成「有值但沒有 gVisor 證據」。
 - [ ] **`LLM-RES-001`（partial）**：既有 query 長度三層上限保留；部署負責人補 anonymous search 的分散式 rate limit／成本保護，並證明拒絕請求不會呼叫 embedding 或 match-reason LLM。
 - [x] **`SUPPLY-RUNTIME-LOCK-001`**：runtime image owner 將 Python／Node transitive dependency 改為 repo-owned lock 或 constraints；以乾淨 cache 的兩次 build 證明 dependency tree 一致。**✅ 2026-09-05**：`constraints.txt`＋`package-lock.json`，兩次 `--no-cache --pull` build 的 29 個 Python distribution 與 106 個 Node 套件逐行相同；映像升 `2026.08-8`，ADR-023 四項在 CI 發佈的 digest 上全過，預設映像同批移到 `-8`（`UPGRADES.md`）。

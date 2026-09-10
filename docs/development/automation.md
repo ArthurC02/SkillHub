@@ -348,6 +348,17 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 **沒證明**：這一輪的 runtime 是 `runc` 不是 `runsc`，所以它不是 SEC-009 的任何一項；`--network skillhub_egress` 是 Docker 網路隔離，**不是** ADR-022 Q3 的 nftables 強制層（那條路的實驗室在 `tools/sec009/t5-network-egress.sh`）。
 
+### 什麼時候要跑它（2026-09-10 裁定，`05` R-72）
+
+**它不在 CI，而且刻意不排程。** 排程要一把能用的閘道金鑰放在 GitHub secret 裡，而鐵律 11 的形狀是「供應商金鑰只存在閘道」——為了一個每週一次的檢查，在閘道之外多開一個金鑰存放點。裁定取的是兩個**由人按、但綁死在事件上**的時刻：
+
+- **(b) 發布前**：[release-checklist §2.7](../plans/mvp/m4/release-checklist.md) 有一列，勾選前必須附閘道回報的實際金額。
+- **(c) 改到就跑**：`apps/sandbox`、`apps/llm`，或派送路徑（`apps/platform/internal/trial/` 的 Run 狀態機與 Worker）**有改動時**，用上面那段配方手動跑一次。這三個位置是這條線斷掉時唯一會動到的地方。
+
+**為什麼不能像其他依賴那樣「跳過就是紅」**：`SKILLHUB_REQUIRE_DB`／`_OBJSTORE`／`_CREATION_PYTHON` 三個都做成了缺依賴即失敗，**唯獨這一支不行，因為它會花錢**。
+
+**接受的殘留風險，明寫**：這條線的保證從「機器會檢查」降成「兩個明確的時刻有人記得」。它斷掉的樣子是**派送成功、Run 永遠不完成**——`web` 與 `platform` 兩個 job 全綠，沒有任何一盞燈會變色。若封測期間需要更硬的保證，正解是**在節點上跑**（節點本來就要有閘道金鑰），不是在 CI 裡多放一把。
+
 ## 完成判準
 
 一次 automation 變更至少通過：

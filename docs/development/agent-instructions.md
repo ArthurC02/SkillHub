@@ -16,7 +16,7 @@
 | 身分 | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | ADR-020 |
 | Sandbox | gVisor `systrap`，獨立 VM 池，nftables default-deny ＋固定 DNS，不部署 L7 Proxy | ADR-015、005、022 |
 | Runtime Image | 自建映像發佈至 GHCR，SBOM 與掃描以 attestation 隨 digest 保存 | ADR-022 |
-| LLM 觀測 | Langfuse Cloud（工程調優用，非事實來源；**MVP 未實作**，見 [`05` R-24](../plans/05-pending-rulings.md)） | ADR-017 |
+| LLM 觀測 | **不外接第三方服務**（2026-09-10 `05` R-24 裁定 (b)）：花多少看 `cost_events`、發生了什麼看 Trace 分割表、品質有沒有退步看 `tools/eval-regression`。**Langfuse 不做**——回呼那半邊要在閘道之外多存一把金鑰，撞鐵律 11 | [ADR-070](../adr/ADR-070-llm-observability-without-an-external-service.md)（縮限 ADR-017 的觀測半邊） |
 | 互動創作 | Python LangGraph 分階段編排、Go／Postgres 會話快照與事件；已接線，曝光與品質驗收仍待核准，見[開發與驗證](interactive-creation.md) | ADR-067 |
 | 契約 | OpenAPI-first；Go 側 models-only，handler 手寫並逐條對齊 | ADR-016、030 |
 
