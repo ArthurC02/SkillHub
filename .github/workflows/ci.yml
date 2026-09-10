@@ -575,6 +575,20 @@ jobs:
           node-version: 22
       - run: go build ./...
       - run: go vet ./...
+      # The other half of this job's own reason for existing. It was created
+      # because "every Go job here is ubuntu, so the GOOS=windows half of the
+      # build tags was checked by nobody" -- and it fixed that for the
+      # compiler, the vetter and localdrv's tests, but not for the linter,
+      # which is still only ever run on ubuntu in `platform` and `sandbox`.
+      # Installing it locally on 2026-09-10 found four unchecked
+      # windows.CloseHandle calls in tree_windows.go that had been there since
+      # the file was written. Same install line and same pinned version as the
+      # two ubuntu jobs; GOTOOLCHAIN is not needed here because setup-go
+      # already put the go.mod toolchain (1.27.0) on PATH, which is exactly
+      # what those jobs rely on too.
+      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
+      - run: golangci-lint run
+      - run: golangci-lint fmt --diff
       - run: go test ./internal/localdrv/... -count=1
 
   llm:

@@ -29,6 +29,16 @@ import (
 // jobTree holds one Job Object handle. A zero job means none has been created
 // yet (CreateJobObject never returns a valid handle equal to 0 on success), so
 // it doubles as the "nothing to release" sentinel.
+// Every windows.CloseHandle below discards its error with an explicit `_ =`,
+// and that is a decision rather than an oversight: three of them sit on error
+// paths that are already returning the failure worth reporting, and the fourth
+// is a defer releasing this function's own handle on the way out, which no
+// caller can act on. Written out because until 2026-09-10 nothing checked --
+// both golangci-lint jobs run on ubuntu, so this file's //go:build windows
+// half was linted by nobody, and "discarded on purpose" and "never looked at"
+// are the same bytes until one of them is said out loud. The sandbox-windows
+// job now lints it.
+
 type jobTree struct {
 	mu  sync.Mutex
 	job windows.Handle
@@ -74,7 +84,7 @@ func (t *jobTree) attach(pid int, lim treeLimits) error {
 		job, windows.JobObjectExtendedLimitInformation,
 		uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)),
 	); err != nil {
-		windows.CloseHandle(job)
+		_ = windows.CloseHandle(job)
 		return fmt.Errorf("set job limits: %w", err)
 	}
 
@@ -84,13 +94,13 @@ func (t *jobTree) attach(pid int, lim treeLimits) error {
 	// broader access right is requested.
 	proc, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE, false, uint32(pid))
 	if err != nil {
-		windows.CloseHandle(job)
+		_ = windows.CloseHandle(job)
 		return fmt.Errorf("open process for job assignment: %w", err)
 	}
-	defer windows.CloseHandle(proc)
+	defer func() { _ = windows.CloseHandle(proc) }()
 
 	if err := windows.AssignProcessToJobObject(job, proc); err != nil {
-		windows.CloseHandle(job)
+		_ = windows.CloseHandle(job)
 		return fmt.Errorf("assign process to job: %w", err)
 	}
 

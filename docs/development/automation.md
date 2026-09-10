@@ -372,7 +372,17 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 **為什麼把 `format:check` 單獨列出來**：上面那一列「typecheck/test/build」不涵蓋它——`go build` 對一個 `gofmt` 會改寫的檔案完全沒有意見，所以編得過、測得過、推上去，然後 CI 的 `golangci-lint fmt --diff` 才是第一個說話的人（2026-09-10 實際發生：`packaging.go` 多一個結構欄位改變了欄寬對齊，platform job 紅在那一步）。`git diff --check` 也抓不到，它只看行尾空白與衝突標記。
 
-**機器上沒有 `golangci-lint` 的時候**（本專案在 Windows 開發，它不一定裝得起來）：`task format:check:platform` 會直接失敗於「找不到指令」，而那看起來很像「檢查過了」。**退路是 `gofmt -l ./apps/ ./tools/`**——它隨 Go 工具鏈一起來，一定在；輸出**任何一個檔名就是未通過**（`golangci-lint fmt` 的 Go 部分預設就是 gofmt ＋ goimports，所以 `gofmt -l` 乾淨時剩下的差異只會是 import 分組）。
+**怎麼裝 `golangci-lint`，以及為什麼不能照著它官網那一行裝**：
+
+```bash
+GOTOOLCHAIN=go1.27.0 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
+```
+
+版本 `v2.13.1` 來自 [`tools/toolchain.yaml`](../../tools/toolchain.yaml) 的 `golangci_lint`，與 CI 同一行指令、同一個版本；模組代理與 sumdb 會驗 checksum，所以上游再發版也不會讓一棵沒動過的樹變紅。**`GOTOOLCHAIN=go1.27.0` 那個前綴是必要的，不是保險**：`golangci-lint` 會拒絕載入一份「目標 Go 版本比它自己編譯時用的 Go 還新」的設定，而本 repo 三個模組的 `go` 指示都是 **1.27.0**。CI 為此付過一次代價，錯誤訊息與四天八個 commit 的損失逐字記在 [`ci.yml`](../../.github/workflows/ci.yml) 那一步的註解裡——**它當時的形狀不是 lint 紅了，是同一個 job 裡後面五個 `- run:` 全部被跳過**，所以那段時間每一句「套件全綠」的意思都是「在某人的筆電上是綠的」。本機的 `go version` 比 1.27 舊沒有關係（`GOTOOLCHAIN=auto` 會自己抓），**沒有寫這個前綴才有關係**。
+
+裝完之後 `go env GOPATH`／`bin` 要在 `PATH` 上，`devctl doctor` 的 `golangci-lint` 那一列才會 PASS。**那一列從一開始就在 doctor 裡**——[開工守則第 1 條](../../AGENTS.md)「先診斷再修改」指的就是這件事，而 2026-09-10 那次格式紅燈的真正成因不是缺工具，是**沒有人先跑 doctor**。
+
+**真的裝不起來時的退路是 `gofmt -l ./apps/ ./tools/`**——它隨 Go 工具鏈一起來，一定在；輸出**任何一個檔名就是未通過**（`golangci-lint fmt` 的 Go 部分預設就是 gofmt ＋ goimports，所以 `gofmt -l` 乾淨時剩下的差異只會是 import 分組）。**但它是退路不是等價物**，而且 `task format:check:platform` 在沒有那支指令時會失敗於「找不到指令」，**那看起來很像「檢查過了」**。
 
 版本／generator／Task入口異動要同步更新**本文件**、`tools/toolchain.yaml`、相關 package README與 CI；**`AGENTS.md` 只在紅線本身增刪時才動**（它不複製版本、命令清單與生成來源表）。工具能跑但新 Agent找不到，視為未完成。
 
