@@ -285,6 +285,9 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 
 		httpx.WriteError(w, http.StatusConflict,
 			"這個工作區已經有一次生成正在進行。等它結束再送出——同時跑兩次會付兩次錢。")
+	case errors.Is(err, ErrCreditThreshold):
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"點數不足，無法開始這次生成，沒有呼叫模型。請聯絡管理者為這個帳號加點。")
 	case errors.Is(err, ErrGenerateNotForCatalogue):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, ErrGeneratedNameCollision):

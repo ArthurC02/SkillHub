@@ -16638,6 +16638,8 @@ func (s *GenerationFailureFailure) Decode(d *jx.Decoder) error {
 		*s = GenerationFailureFailureRejected
 	case GenerationFailureFailureBlocked:
 		*s = GenerationFailureFailureBlocked
+	case GenerationFailureFailureCredit:
+		*s = GenerationFailureFailureCredit
 	case GenerationFailureFailureEmpty:
 		*s = GenerationFailureFailureEmpty
 	default:

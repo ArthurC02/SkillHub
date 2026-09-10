@@ -44,6 +44,8 @@ type Service struct {
 
 	Credit CostRecorder
 
+	CreditCanStart func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
+
 	GenerateQuota policy.QuotaLimits
 
 	generating sync.Map

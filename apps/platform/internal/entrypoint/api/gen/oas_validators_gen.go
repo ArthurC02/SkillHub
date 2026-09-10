@@ -3008,6 +3008,8 @@ func (s GenerationFailureFailure) Validate() error {
 		return nil
 	case "blocked":
 		return nil
+	case "credit":
+		return nil
 	case "":
 		return nil
 	default:

@@ -7465,10 +7465,11 @@ type GenerationFailure struct {
 	OccurredAt time.Time `json:"occurred_at"`
 	// What went wrong. `quota` never reached the gateway; `unavailable` never reached it either, but for
 	// the opposite reason — the allowance could not be counted, and that is not the account running out,
-	// so it is not called `quota`; `gateway` is the model service or the proxy; `unpackageable` is an
-	// answer that parsed but cannot be made into an archive; `rejected` is admission refusing it (a name
-	// collision, most often); `blocked` is a validation finding. Empty when a row's metadata could not be
-	// decoded — the row still happened, and its timestamp is the part the screen needs most.
+	// so it is not called `quota`; `credit` never reached it because the account's balance was below the
+	// start threshold; `gateway` is the model service or the proxy; `unpackageable` is an answer that
+	// parsed but cannot be made into an archive; `rejected` is admission refusing it (a name collision,
+	// most often); `blocked` is a validation finding. Empty when a row's metadata could not be decoded —
+	// the row still happened, and its timestamp is the part the screen needs most.
 	Failure GenerationFailureFailure `json:"failure"`
 	// How many gateway calls that failure cost. 0 for a refusal that never reached the gateway — `quota`
 	// and `unavailable`.
@@ -7547,10 +7548,11 @@ func (s *GenerationFailure) SetCollision(val OptBool) {
 
 // What went wrong. `quota` never reached the gateway; `unavailable` never reached it either, but for
 // the opposite reason — the allowance could not be counted, and that is not the account running out,
-// so it is not called `quota`; `gateway` is the model service or the proxy; `unpackageable` is an
-// answer that parsed but cannot be made into an archive; `rejected` is admission refusing it (a name
-// collision, most often); `blocked` is a validation finding. Empty when a row's metadata could not be
-// decoded — the row still happened, and its timestamp is the part the screen needs most.
+// so it is not called `quota`; `credit` never reached it because the account's balance was below the
+// start threshold; `gateway` is the model service or the proxy; `unpackageable` is an answer that
+// parsed but cannot be made into an archive; `rejected` is admission refusing it (a name collision,
+// most often); `blocked` is a validation finding. Empty when a row's metadata could not be decoded —
+// the row still happened, and its timestamp is the part the screen needs most.
 type GenerationFailureFailure string
 
 const (
@@ -7560,6 +7562,7 @@ const (
 	GenerationFailureFailureUnpackageable GenerationFailureFailure = "unpackageable"
 	GenerationFailureFailureRejected      GenerationFailureFailure = "rejected"
 	GenerationFailureFailureBlocked       GenerationFailureFailure = "blocked"
+	GenerationFailureFailureCredit        GenerationFailureFailure = "credit"
 	GenerationFailureFailureEmpty         GenerationFailureFailure = ""
 )
 
@@ -7572,6 +7575,7 @@ func (GenerationFailureFailure) AllValues() []GenerationFailureFailure {
 		GenerationFailureFailureUnpackageable,
 		GenerationFailureFailureRejected,
 		GenerationFailureFailureBlocked,
+		GenerationFailureFailureCredit,
 		GenerationFailureFailureEmpty,
 	}
 }
@@ -7590,6 +7594,8 @@ func (s GenerationFailureFailure) MarshalText() ([]byte, error) {
 	case GenerationFailureFailureRejected:
 		return []byte(s), nil
 	case GenerationFailureFailureBlocked:
+		return []byte(s), nil
+	case GenerationFailureFailureCredit:
 		return []byte(s), nil
 	case GenerationFailureFailureEmpty:
 		return []byte(s), nil
@@ -7618,6 +7624,9 @@ func (s *GenerationFailureFailure) UnmarshalText(data []byte) error {
 		return nil
 	case GenerationFailureFailureBlocked:
 		*s = GenerationFailureFailureBlocked
+		return nil
+	case GenerationFailureFailureCredit:
+		*s = GenerationFailureFailureCredit
 		return nil
 	case GenerationFailureFailureEmpty:
 		*s = GenerationFailureFailureEmpty

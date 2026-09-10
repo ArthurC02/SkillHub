@@ -1031,3 +1031,33 @@ func TestARealGatewayGenerationRecordsWhatItActuallyCost(t *testing.T) {
 	}
 	t.Logf("real gateway generation cost US$%.6f, attempts=%d", cost, res.Attempts)
 }
+
+func TestAGenerationTheBalanceCannotStartIsRefusedBeforeTheGateway(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t)
+	a := newAPITuned(t, pool, stub.URL, func(d *apiserver.Deps) {
+		d.GenerateExposed = true
+		d.Auth.Features = map[string]bool{"generate_skill": true}
+	})
+	a.startingCredits = 0
+	c := a.login(t, "gen-no-credit")
+
+	code, body := postJSON(t, c, "/skills/generate", `{"task_description":"把掃描的單據整理成一張表"}`)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("got %d %v, want 422", code, body)
+	}
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "點數不足") {
+		t.Errorf("the refusal does not say it was the balance: %q", msg)
+	}
+	if stub.calls != 0 {
+		t.Errorf("a refused generation paid for %d gateway call(s)", stub.calls)
+	}
+	code, list := c.doJSON(t, http.MethodGet, "/skills/generate/failures", "")
+	failures, _ := list["failures"].([]any)
+	if code != http.StatusOK || len(failures) != 1 {
+		t.Fatalf("failures = %d %v, want 200 with one row", code, list)
+	}
+	if got, _ := failures[0].(map[string]any)["failure"].(string); got != ingest.FailureCredit {
+		t.Errorf("failure = %q, want %q", got, ingest.FailureCredit)
+	}
+}

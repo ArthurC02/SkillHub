@@ -40,6 +40,8 @@ var ErrGenerateBlank = errors.New("ingest: task description is empty or too shor
 
 var ErrGenerateTooLong = errors.New("ingest: task description is too long")
 
+var ErrCreditThreshold = errors.New("ingest: credit balance below the start threshold")
+
 var ErrGenerateInFlight = errors.New("ingest: a generation is already running for this workspace")
 
 const (
@@ -107,10 +109,11 @@ const (
 	FailureUnpackageable = "unpackageable"
 	FailureRejected      = "rejected"
 	FailureBlocked       = "blocked"
+	FailureCredit        = "credit"
 )
 
 var FailureVocabulary = []string{
-	FailureQuota, FailureUnavailable, FailureGateway, FailureUnpackageable, FailureRejected, FailureBlocked,
+	FailureQuota, FailureUnavailable, FailureGateway, FailureUnpackageable, FailureRejected, FailureBlocked, FailureCredit,
 }
 
 type GenerateResult struct {
@@ -205,6 +208,17 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 			"reason":  reason,
 		})
 		return GenerateResult{}, err
+	}
+
+	if s.CreditCanStart != nil {
+		ok, err := s.CreditCanStart(ctx, ws.ID)
+		if err != nil {
+			return GenerateResult{}, err
+		}
+		if !ok {
+			s.auditGenerateFailure(ctx, ws, task, in, GenerateResult{}, map[string]any{"failure": FailureCredit})
+			return GenerateResult{}, ErrCreditThreshold
+		}
 	}
 
 	var out GenerateResult

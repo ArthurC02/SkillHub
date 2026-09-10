@@ -195,3 +195,21 @@ func wireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool)
 		return err
 	}
 }
+
+func wireGenerateCredit(
+	target *ingest.Service,
+	svc *credit.Service,
+	owner func(ctx context.Context, workspaceID pgtype.UUID) (pgtype.UUID, error),
+) {
+	target.CreditCanStart = func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+		userID, err := owner(ctx, workspaceID)
+		if err != nil {
+			return false, err
+		}
+		check, err := svc.CanStart(ctx, userID, credit.KindGenerate)
+		if err != nil {
+			return false, err
+		}
+		return check.OK, nil
+	}
+}
