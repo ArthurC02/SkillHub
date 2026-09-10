@@ -68,6 +68,8 @@ const LIMITS = {
   session_timeout_seconds: 3600,
   retention_seconds: 604800,
 };
+/** 預算預選 $0.50（落在 LIMITS 的範圍裡），而第一次送出那顆按鈕的字就是金額。 */
+const START = "開始創作（上限 $0.50）";
 /** Every GET fires against one of three routes; `/limits` is checked first
  * since it also ends in neither of the other two suffixes.
  *
@@ -140,9 +142,11 @@ async function openReferencePicker() {
   await click("參考目錄裡的 Skill");
 }
 async function resume() {
-  await waitFor(() => !!box.querySelector("select"));
+  // 會話還沒開始時頂部也有一個預算選單，所以要指名是哪一個。
+  const picker = 'select[aria-label="恢復創作"]';
+  await waitFor(() => !!box.querySelector(picker));
   await act(async () => {
-    const select = box.querySelector("select")!;
+    const select = box.querySelector<HTMLSelectElement>(picker)!;
     select.value = "s1";
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
@@ -163,9 +167,8 @@ test("natural language creates one budgeted session", async () => {
     }),
   );
   await render();
-  await input("這次預算上限（美元）", ".5");
   await input("想完成的任務", "建立摘要 Skill");
-  await click("開始互動創作");
+  await click(START);
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({ message: "建立摘要 Skill", budget_usd: 0.5 });
   expect(posts[0].id).toBeTruthy();
@@ -195,7 +198,9 @@ test("a balance at or above the threshold leaves the start button enabled and sh
   await waitFor(() => box.textContent!.includes("目前餘額"));
   expect(box.textContent).toContain("目前餘額 100 點");
   expect(box.textContent).toContain("30–65 點");
-  expect(button("開始互動創作").disabled).toBe(false);
+  // 餘額不擋；而送出鍵在有東西可送之前本來就停用（2026-09-10），所以先寫一句。
+  await input("想完成的任務", "建立摘要 Skill");
+  expect(button(START).disabled).toBe(false);
 });
 test("a balance below the threshold disables the start button and names the deficit", async () => {
   const reason =
@@ -214,7 +219,7 @@ test("a balance below the threshold disables the start button and names the defi
   await render();
   await waitFor(() => box.textContent!.includes("還差"));
   expect(box.textContent).toContain(reason);
-  const submit = button("開始互動創作");
+  const submit = button(START);
   expect(submit.disabled).toBe(true);
   expect(submit.getAttribute("aria-describedby")).toBe("creation-credits-why-disabled");
 });
@@ -253,11 +258,10 @@ test("a diagram and reference Skills at once are refused before anything is sent
     }),
   );
   await render();
-  await input("這次預算上限（美元）", ".5");
   await openReferencePicker();
   await click("選擇摘要參考");
   await attachDiagram();
-  await click("開始互動創作");
+  await click(START);
   await waitFor(() => box.textContent!.includes("一次只能送一種"));
   expect(box.textContent).toContain("文字說明可以跟著任一種一起送");
   expect(posts, "擋下來之前就已經送出去了").toHaveLength(0);
@@ -280,10 +284,9 @@ test("a diagram carries the sentence that came with it, in one action", async ()
     }),
   );
   await render();
-  await input("這次預算上限（美元）", ".5");
   await input("想完成的任務", "這是我的流程，我想把它變成待辦清單 Skill。");
   await attachDiagram();
-  await click("開始互動創作");
+  await click(START);
   await waitFor(() => posts.length === 2);
   expect(posts[0].message, "會話本身不帶那句話，它跟著素材走").toBe("");
   expect(posts[1]).toMatchObject({
@@ -330,7 +333,6 @@ test("Enter sends, Shift+Enter does not, and neither does Enter while choosing c
     }),
   );
   await render();
-  await input("這次預算上限（美元）", ".5");
   await input("想完成的任務", "建立摘要 Skill");
   await pressKey("Enter", { shiftKey: true });
   await pressKey("Enter", { isComposing: true });
@@ -673,15 +675,15 @@ test("a picture and the words it came with are one turn in the conversation", as
     }),
   );
   await render();
-  await input("這次預算上限（美元）", ".5");
   await input("想完成的任務", "這是我的流程，幫我做成 Skill。");
   // 送出前就看得到縮圖：那是唯一能回答「我選到的是不是我要的那張」的東西。
   await attachDiagram();
   expect(box.querySelector("img.chip-thumb"), "輸入區裡沒有預覽").not.toBe(null);
-  await click("開始互動創作");
-  // 注意不能等文字：textarea 自己就帶著它。等對話本身出現。
-  await waitFor(() => !!box.querySelector(".creation-log"));
-  const mine = [...box.querySelectorAll('.creation-log > li[data-role="user"]')];
+  await click(START);
+  // 注意不能等文字：textarea 自己就帶著它。等對話本身出現——而且是 `role="log"` 裡
+  // 那一份：會話開始前 Agent 的招呼語也是一個 `.creation-log`（2026-09-10）。
+  await waitFor(() => !!box.querySelector('[role="log"] li[data-role="user"]'));
+  const mine = [...box.querySelectorAll('[role="log"] .creation-log > li[data-role="user"]')];
   expect(mine).toHaveLength(1);
   expect(mine[0].textContent).toContain("這是我的流程，幫我做成 Skill。");
   expect(mine[0].querySelector("img"), "圖沒有和它的文字在同一則訊息裡").not.toBe(null);
@@ -760,10 +762,9 @@ test("references are cleared once they have been sent, so the next turn can be w
     }),
   );
   await render();
-  await input("這次預算上限（美元）", ".5");
   await openReferencePicker();
   await click("選擇摘要參考");
-  await click("開始互動創作");
+  await click(START);
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toMatchObject({ kind: "select_references", reference_skill_ids: ["ref-1"] });
   await waitFor(() => !box.textContent!.includes("移除參考"));
@@ -851,7 +852,6 @@ test("diagram starts with an unbilled empty session then sends transient input",
     }),
   );
   await render();
-  await input("這次預算上限（美元）", ".5");
   const file = box.querySelector('input[type="file"]') as HTMLInputElement;
   await act(async () => {
     Object.defineProperty(file, "files", {
@@ -859,7 +859,7 @@ test("diagram starts with an unbilled empty session then sends transient input",
     });
     file.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await click("開始互動創作");
+  await click(START);
   await waitFor(() => posts.length === 2);
   expect(posts[0].message).toBe("");
   expect(posts[1]).toMatchObject({
@@ -947,10 +947,9 @@ test("catalog references can start a session and require confirmation", async ()
     }),
   );
   await render();
-  await input("這次預算上限（美元）", ".5");
   await openReferencePicker();
   await click("選擇摘要參考");
-  await click("開始互動創作");
+  await click(START);
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toMatchObject({ kind: "select_references", reference_skill_ids: ["ref-1"] });
   await waitFor(() => box.textContent!.includes("以這些為參考"));
@@ -1144,7 +1143,12 @@ test("network retry reuses the command ID and payload", async () => {
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toEqual(posts[0]);
 });
-test("budget band is shown and an out-of-band amount is refused locally", async () => {
+/**
+ * 2026-09-10：預算不再是一個空白輸入框，而是頂部一個已經選好的選單。守的三件事：
+ * 選項只有平台範圍裡的檔位（所以「超出範圍」不再可能）、預選的是 $0.50、而且
+ * 按鈕的字跟著選的金額變——授權的那個動作就是按下寫著金額的那顆鍵（§2.2）。
+ */
+test("the budget is a pre-set choice inside the platform's band, named on the start button", async () => {
   const posts: Record<string, unknown>[] = [];
   vi.stubGlobal(
     "fetch",
@@ -1157,14 +1161,38 @@ test("budget band is shown and an out-of-band amount is refused locally", async 
     }),
   );
   await render();
-  await waitFor(() => box.textContent!.includes("之間"));
-  expect(box.textContent).toContain("介於 $ 0.1 與 $ 5 之間");
-  await input("這次預算上限（美元）", "50");
-  await input("想完成的任務", "超出預算的任務");
-  await click("開始互動創作");
-  await waitFor(() => !!box.querySelector('[role="alert"]'));
-  expect(box.textContent).toContain("介於 $0.1 與 $5 之間");
-  expect(posts).toHaveLength(0);
+  const pick = 'select[aria-label="這次預算上限（美元）"]';
+  await waitFor(() => !!box.querySelector(pick));
+  const select = box.querySelector<HTMLSelectElement>(pick)!;
+  expect([...select.options].map((o) => o.value)).toEqual(["0.1", "0.2", "0.5", "1", "2", "5"]);
+  expect(select.value).toBe("0.5");
+  await act(async () => {
+    select.value = "2";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await input("想完成的任務", "建立摘要 Skill");
+  await click("開始創作（上限 $2.00）");
+  await waitFor(() => posts.length === 1);
+  expect(posts[0]).toMatchObject({ budget_usd: 2 });
+});
+/**
+ * 2026-09-10 外部審查的三張截圖：什麼都沒寫就按送出，錯誤跳在對話區頂端。現在
+ * 送出鍵在有東西可送之前是停用的，**原因寫在它旁邊而且綁在它身上**（§2.4），
+ * 寫了一個字它就亮起來、那句原因也跟著消失。
+ */
+test("the send button stays disabled with its reason beside it until there is something to send", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [], sample())),
+  );
+  await render();
+  await waitFor(() => !!box.querySelector('select[aria-label="這次預算上限（美元）"]'));
+  expect(button(START).disabled).toBe(true);
+  expect(button(START).getAttribute("aria-describedby")).toBe("composer-why");
+  expect(box.querySelector("#composer-why")!.textContent).toBe("還沒有要送出的內容");
+  await input("想完成的任務", "建立摘要 Skill");
+  expect(button(START).disabled).toBe(false);
+  expect(box.querySelector("#composer-why")).toBe(null);
 });
 test("an open session shows its deadline and retention", async () => {
   const v = sample();

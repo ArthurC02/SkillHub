@@ -429,6 +429,13 @@ function buildRoundTimeline(messages: CreationSnapshot["messages"]): TimelineIte
   });
   return items;
 }
+/** 預算上限的選項：平台給的範圍兩端，加上落在範圍裡的幾個整數檔位。 */
+function budgetChoices(min: number, max: number) {
+  return [...new Set([min, 0.2, 0.5, 1, 2, 5, max])]
+    .filter((v) => v >= min && v <= max)
+    .sort((a, b) => a - b);
+}
+const usd = (v: number) => "$" + v.toFixed(2);
 export function CreationSession() {
   const client = useQueryClient();
   const [id, setID] = useState(""),
@@ -450,6 +457,9 @@ export function CreationSession() {
    * had this pair since it shipped; this screen was missing it.
    */
   const fileInput = useRef<HTMLInputElement>(null);
+  // 進來就能打字（2026-09-10）：這一頁要你做的第一件事是說話，不是找輸入框。
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => textarea.current?.focus(), []);
   const clearFile = () => {
     setFile(undefined);
     if (fileInput.current) fileInput.current.value = "";
@@ -540,7 +550,7 @@ export function CreationSession() {
     p = session?.snapshot;
   // CRED-001 (ADR-068)'s gate ① applies only to STARTING a new session — an
   // already-running one already reserved its budget, so `!session` gates it
-  // the same way the budget input a few lines below is only asked once.
+  // the same way the budget choice in the top bar is only asked once.
   // `credits.data` is undefined while loading and on every deployment today
   // (the route is not mounted yet, see api/credits.ts), which must read as
   // "nothing to show", never as blocked (04 乙-2's rule, applied here too).
@@ -557,6 +567,32 @@ export function CreationSession() {
   const terminal = !!session && ["saved", "cancelled"].includes(session.state);
   const working = !!session && ["queued", "working"].includes(session.state);
   const locked = busy || working || terminal;
+  const choices = limits.data
+    ? budgetChoices(limits.data.min_budget_usd, limits.data.max_budget_usd)
+    : [];
+  const budgetUSD = Number(budget) || (choices.includes(0.5) ? 0.5 : choices[0]);
+  /*
+   * 送不出去的理由，在按之前就說（§2.4），而不是按下去才在畫面另一頭跳一句紅字
+   * （2026-09-10 外部審查的三張截圖：人照直覺按了送出，錯誤卻插在對話區頂端）。
+   * 這些檢查原本在 `submit` 裡用 throw 表達；搬到這裡之後按鈕停用、原因寫在
+   * 按鈕旁邊，`submit` 裡對應的分支因此刪掉。Go 與契約仍各檢一次。
+   */
+  const typed = message.trim();
+  const whyNotSend =
+    busy || working
+      ? ""
+      : !session && budgetUSD === undefined
+        ? "還讀不到這次可用的預算範圍，暫時不能開始。"
+        : !file && refs.length === 0 && !typed
+          ? // 短是刻意的：這是停在畫面上的常態，長一點就把送出鍵擠到第二列（1280 實測）。
+            // 要寫什麼由 placeholder 說，這一句只說「為什麼按不下去」。
+            "還沒有要送出的內容"
+          : [...typed].length > MAX_MESSAGE_RUNES
+            ? `文字說明最多 ${MAX_MESSAGE_RUNES} 字，目前 ${[...typed].length} 字，請先剪短。`
+            : file && refs.length > 0
+              ? "流程圖和參考 Skill 一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。"
+              : "";
+  const canSend = !locked && !creditsBlocked && !whyNotSend;
   const save = (value: Session) => {
     setID(value.id);
     client.setQueryData<Session>(["creation-session", value.id], (old) =>
@@ -666,34 +702,15 @@ export function CreationSession() {
        * 就進 working、下一個 action 要等新的 revision。所以這裡擋下來並說出順序，而
        * 不是連送兩次然後第二次撞 409。
        */
-      const note = message.trim();
+      // 空白、太長、圖＋參考同時在：這三種在 `whyNotSend` 裡先擋了，按鈕根本按不到。
+      const note = typed;
       const mode = file ? "diagram" : refs.length > 0 ? "references" : "message";
-      if (!file && refs.length === 0 && !note)
-        throw new Error("請描述想完成的任務，或附一張流程圖，或挑一個要參考的 Skill。");
-      // 說出超過多少，而不是讓契約的 maxLength 回一句泛用的 400。**擋在這裡不等於
-      // 這裡是強制者**：Go 與契約各檢一次，這一句只是把同一個上限講成人話。
-      if ([...note].length > MAX_MESSAGE_RUNES)
-        throw new Error(
-          `文字說明最多 ${MAX_MESSAGE_RUNES} 字，目前 ${[...note].length} 字，請先剪短。`,
-        );
-      if (file && refs.length > 0)
-        throw new Error(
-          "流程圖和參考 Skill 一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。",
-        );
       const diagram = mode === "diagram" ? (file ? await readImage(file) : undefined) : undefined;
       if (mode === "diagram" && !diagram) throw new Error("請先選擇流程圖。");
       let value = session;
       if (!value) {
-        const amount = Number(budget);
-        if (!Number.isFinite(amount) || amount <= 0)
-          throw new Error("請填寫這次同意支付的美元預算上限。");
-        if (
-          limits.data &&
-          (amount < limits.data.min_budget_usd || amount > limits.data.max_budget_usd)
-        )
-          throw new Error(
-            `請填寫介於 $${limits.data.min_budget_usd} 與 $${limits.data.max_budget_usd} 之間的預算上限。`,
-          );
+        if (budgetUSD === undefined) return;
+        const amount = budgetUSD;
         const initial = mode === "message" ? message : "";
         const key = JSON.stringify([initial, amount]);
         if (startPending.current?.key !== key)
@@ -741,6 +758,24 @@ export function CreationSession() {
       setBusy(false);
     }
   };
+  /*
+   * 錯誤說在輸入艙正上方（2026-09-10）。它原本在對話區頂端，而對話區自己捲、而且
+   * 會自動捲到底——長一點的對話裡，送出失敗的那一句根本不在畫面上。會話結束後
+   * 輸入艙不在了，才退回對話區裡。
+   */
+  const failure = !!error && (
+    <ReadFailure error={error} what="互動創作">
+      <p role="alert">
+        {error instanceof ApiError && error.status === 409
+          ? "進度已更新，輸入仍保留。請檢查最新內容後再送出。"
+          : error instanceof TypeError
+            ? "網路連線失敗，請重試。"
+            : error instanceof Error
+              ? error.message
+              : "這一步未完成，請重試。"}
+      </p>
+    </ReadFailure>
+  );
   return (
     /* ── 2026-09-09：這一頁從一份會長高的文件變成一個對話視窗 ──────────────
        負責人第四次講同一件事：「不論是否有開費用，我都應該看到的像是 ChatGPT 的
@@ -784,6 +819,30 @@ export function CreationSession() {
               {sessions.data.slice(0, 50).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.snapshot.brief.slice(0, 40) || "尚未確認需求"} · {labels[s.state]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {/* 2026-09-10：預算上限從對話區正中央一個空白輸入框，搬成這一列上一個已經選好的
+            選單。§2.2「授權是一次阻斷式的決定，不是被動通知」仍然成立，只是授權的
+            那個動作換了位置：**第一次送出那顆按鈕的字就是金額**（「開始創作（上限
+            $0.50）」），按下之前平台一分錢都不保留。被動通知的失效是「沒有按任何東西
+            就開始花」，這裡沒有那條路；空白欄位的代價則是量得到的——人照直覺填了預算、
+            按送出，被一句「請描述想完成的任務」打回來。選項只有平台範圍裡的檔位，所以
+            「超出範圍」這個錯誤不再存在。 */}
+        {!session && choices.length > 0 && (
+          <label className="creation-picker">
+            預算上限
+            <select
+              aria-label="這次預算上限（美元）"
+              value={budgetUSD}
+              disabled={busy}
+              onChange={(e) => setBudget(e.target.value)}
+            >
+              {choices.map((v) => (
+                <option key={v} value={v}>
+                  {usd(v)}
                 </option>
               ))}
             </select>
@@ -859,13 +918,21 @@ export function CreationSession() {
         <div className="creation-feed">
           <ReadFailure error={sessions.error ?? current.error} what="創作紀錄" />
           {!p && (
-            <div className="creation-kickoff">
-              <h4>還沒有開始</h4>
-              {/* 這一句是教學（§2.13 的 D 類）：它回答「這一頁是什麼」，而那是
-                  開始之前的問題，所以只在開始之前出現。 */}
-              <p className="note">
-                逐步確認需求與草稿，保存到私人工作區。模型處理與改善會使用這次核准的預算。
-              </p>
+            <>
+              {/* 2026-09-10：「還沒有開始」那張卡換成 Agent 的第一句話——對話介面從對方
+                  開口開始。**這一句是寫死的，不是模型說的**：它不在 `role="log"` 裡、不
+                  花錢，會話一開始就被真正的對話紀錄取代。它同時是這一頁的教學（§2.13
+                  D 類），所以只在開始之前出現。 */}
+              <ol className="creation-log">
+                <li data-role="assistant">
+                  <span className="creation-who">Agent</span>
+                  <span className="creation-text">
+                    請描述你想做成 Skill
+                    的那件事：要完成什麼、輸入是什麼、預期產出是什麼。也可以附上流程圖，或挑一個目錄裡的
+                    Skill 當參考。我們會一起確認需求與草稿，最後保存到你的私人工作區。
+                  </span>
+                </li>
+              </ol>
               {credits.data &&
                 (creditsBlocked ? (
                   <p className="note" id="creation-credits-why-disabled">
@@ -879,37 +946,9 @@ export function CreationSession() {
                     {credits.data.estimated_session.estimated && "（樣本不足，此為估計值）"}。
                   </p>
                 ))}
-              {/* 這是一次授權，不是一個設定：§2.2 逐字寫著「授權是一次阻斷式的決定，
-                  不是被動通知」，所以它不預填、也不折。 */}
-              <label>
-                這次預算上限（美元）
-                {limits.data && (
-                  <span className="note">
-                    （介於 $ {limits.data.min_budget_usd} 與 $ {limits.data.max_budget_usd} 之間）
-                  </span>
-                )}
-                <input
-                  aria-label="這次預算上限（美元）"
-                  inputMode="decimal"
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                />
-              </label>
-            </div>
+            </>
           )}
-          {!!error && (
-            <ReadFailure error={error} what="互動創作">
-              <p role="alert">
-                {error instanceof ApiError && error.status === 409
-                  ? "進度已更新，輸入仍保留。請檢查最新內容後再送出。"
-                  : error instanceof TypeError
-                    ? "網路連線失敗，請重試。"
-                    : error instanceof Error
-                      ? error.message
-                      : "這一步未完成，請重試。"}
-              </p>
-            </ReadFailure>
-          )}
+          {terminal && failure}
 
           {p && (
             <>
@@ -1474,6 +1513,7 @@ export function CreationSession() {
          * 圖只能經由檔案對話框。**貼上尤其重要**——流程圖多半是一張截圖。
          */
         <div className="composer-dock">
+          {failure}
           <div
             className="composer"
             data-dragging={dragging || undefined}
@@ -1500,6 +1540,7 @@ export function CreationSession() {
                 那一行）＋送出前一句明話。`GenerateSkill.tsx` 的任務描述早就是
                 這個配方，只有這裡不是。 */}
               <textarea
+                ref={textarea}
                 aria-label="想完成的任務"
                 aria-describedby="composer-count composer-limits"
                 value={message}
@@ -1509,7 +1550,7 @@ export function CreationSession() {
                   // 「送出」。少了這一條，中文使用者每打一個字就送出一次。
                   if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
                   e.preventDefault();
-                  if (!locked && !creditsBlocked) void submit();
+                  if (canSend) void submit();
                 }}
                 onPaste={(e) => {
                   const picked = [...e.clipboardData.files].find((f) =>
@@ -1559,14 +1600,31 @@ export function CreationSession() {
                 {MAX_MESSAGE_RUNES.toLocaleString("zh-TW")} 字
                 {[...message].length > MAX_MESSAGE_RUNES && "——超過了，送出會被擋下"}
               </span>
+              {whyNotSend && (
+                <span className="note" id="composer-why">
+                  {whyNotSend}
+                </span>
+              )}
               <button
                 type="button"
                 className="composer-send"
-                disabled={locked || creditsBlocked}
-                aria-describedby={creditsBlocked ? "creation-credits-why-disabled" : undefined}
+                disabled={!canSend}
+                aria-describedby={
+                  creditsBlocked
+                    ? "creation-credits-why-disabled"
+                    : whyNotSend
+                      ? "composer-why"
+                      : undefined
+                }
                 onClick={() => void submit()}
               >
-                {busy ? "送出中…" : session ? "送出" : "開始互動創作"}
+                {busy
+                  ? "送出中…"
+                  : session
+                    ? "送出"
+                    : budgetUSD === undefined
+                      ? "開始創作"
+                      : `開始創作（上限 ${usd(budgetUSD)}）`}
               </button>
             </div>
             {/* 每一顆 chip 說的是按下去會發生什麼事（「移除」），不是它代表什麼東西。
@@ -1620,8 +1678,8 @@ export function CreationSession() {
             **一個數字都沒有拿掉**——§2.2 第二向要它在人撞上之前就在畫面上，而它
             還在畫面上；搬出去的是它的框，不是它的內容。 */}
           <p className="note composer-limits" id="composer-limits">
-            Enter 送出，Shift＋Enter 換行；圖可以直接貼上或拖進來。流程圖限 PNG、JPEG 或 WebP，最多
-            4,000,000 位元組（約 3.8 MB）；參考 Skill 最多三個。文字說明可以跟著流程圖或參考一起送。
+            Enter 送出，Shift＋Enter 換行。流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多 4,000,000
+            位元組（約 3.8 MB）；參考 Skill 最多三個。
           </p>
         </div>
       )}

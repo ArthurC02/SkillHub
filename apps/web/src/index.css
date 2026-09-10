@@ -2340,18 +2340,6 @@ summary {
   padding: 24px 0;
 }
 
-/* 還沒有開始的那一屏：一張卡，而不是散在畫面上的三段話與一個裸露的輸入框。 */
-.creation-kickoff {
-  padding: 24px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.creation-kickoff h4 {
-  margin-top: 0;
-}
-
 /* 這一輪壞掉時能做的事，長在那一輪上。 */
 .turn-actions {
   display: flex;
@@ -2370,6 +2358,12 @@ summary {
 .composer-limits {
   max-width: 768px;
   margin-inline: auto;
+}
+
+/* 錯誤說在輸入艙正上方，與它同寬（2026-09-10）。 */
+.composer-dock > [role="alert"] {
+  max-width: 768px;
+  margin: 0 auto 8px;
 }
 
 /* 上限與快捷鍵在艙外、下面一行。 */
