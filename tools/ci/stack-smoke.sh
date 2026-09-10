@@ -137,6 +137,13 @@ api_env=(
 	# the run and is never reachable from outside the runner.
 	-e COOKIE_INSECURE=1
 	-e DEV_LOGIN=1
+	# Without it, building a download answers 503 by design -- the value has no
+	# default because it is a retention promise made to users, not a parameter
+	# (GOV-RETENTION-001), and PDM-006's proposed 90 days is not ratified. `1h`
+	# is chosen to be obviously throwaway: this stack is deleted at the end of
+	# the run, and no one should be able to read a policy proposal out of it.
+	# Set only so the packaging route is exercised rather than short-circuited.
+	-e DOWNLOAD_ARTIFACT_RETENTION=1h
 )
 
 echo "--- platform-api"

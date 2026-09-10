@@ -241,9 +241,14 @@ test.describe("QA-008 real layout", () => {
     expect(header.height, `375px 下頁首高 ${header.height}px：它又長回三列了`).toBeLessThanOrEqual(
       130,
     );
+    // The numbers are in the message because "they are not on the same row" is
+    // not something anyone can act on: which one moved, and by how much, is the
+    // whole diagnosis, and this assertion reads differently on each engine.
     expect(
       header.title.bottom > header.auth.top && header.auth.bottom > header.title.top,
-      "標題與身分沒有在同一列上——頁首的第一列又被一個 auto 留白推開了",
+      `標題與身分沒有在同一列上——頁首的第一列又被一個 auto 留白推開了：` +
+        `標題 ${Math.round(header.title.top)}–${Math.round(header.title.bottom)}、` +
+        `身分 ${Math.round(header.auth.top)}–${Math.round(header.auth.bottom)}（頁首高 ${header.height}px）`,
     ).toBe(true);
   });
 
