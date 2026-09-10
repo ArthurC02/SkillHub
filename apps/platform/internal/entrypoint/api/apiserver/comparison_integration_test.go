@@ -32,8 +32,8 @@ type comparisonBody struct {
 			Status       string `json:"status"`
 			Overall      string `json:"overall"`
 			Cost         struct {
-				EvaluationUSD *float64 `json:"evaluation_usd"`
-				Source        string   `json:"source"`
+				EvaluationCredits *int64 `json:"evaluation_credits"`
+				Source            string `json:"source"`
 			} `json:"cost"`
 		} `json:"evaluation"`
 		FinalOutput string `json:"final_output"`
@@ -44,9 +44,9 @@ type comparisonBody struct {
 		} `json:"errors"`
 		DurationMS *int64 `json:"duration_ms"`
 		Cost       struct {
-			USD                 *float64 `json:"usd"`
-			IsLowerBound        *bool    `json:"is_lower_bound"`
-			AuthoritativeSource string   `json:"authoritative_source"`
+			Credits             *int64 `json:"credits"`
+			IsLowerBound        *bool  `json:"is_lower_bound"`
+			AuthoritativeSource string `json:"authoritative_source"`
 		} `json:"cost"`
 		InputsAvailable *bool `json:"inputs_available"`
 	} `json:"runs"`
@@ -198,7 +198,7 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 	// settling figure lives. The evaluation's own cost is a separate field and is
 	// never folded into it.
 	for i, side := range body.Runs {
-		if side.Cost.USD == nil {
+		if side.Cost.Credits == nil {
 			t.Errorf("side %d lost the run cost", i)
 		}
 		if side.Cost.IsLowerBound == nil || !*side.Cost.IsLowerBound {
@@ -207,13 +207,15 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 		if side.Cost.AuthoritativeSource == "" {
 			t.Errorf("side %d does not name the authoritative cost source (ADR-017)", i)
 		}
-		if side.Evaluation != nil && side.Evaluation.Cost.EvaluationUSD != nil &&
-			side.Cost.USD != nil && *side.Evaluation.Cost.EvaluationUSD == *side.Cost.USD {
+		if side.Evaluation != nil && side.Evaluation.Cost.EvaluationCredits != nil &&
+			side.Cost.Credits != nil && *side.Evaluation.Cost.EvaluationCredits == *side.Cost.Credits {
 			t.Errorf("side %d merged the two costs into one number", i)
 		}
 	}
-	if got := *body.Runs[0].Cost.USD; got != 0.0134 {
-		t.Errorf("run cost = %v, want the trace total 0.0134", got)
+	// The trace total is $0.0134; with the shipped 1.3x markup at US$0.001 per
+	// credit that is 17.42 credits, rounded up (ADR-068 decision 6) to 18.
+	if got := *body.Runs[0].Cost.Credits; got != 18 {
+		t.Errorf("run cost = %v credits, want 18 (the trace total $0.0134 converted)", got)
 	}
 
 	// The matrix is per criterion, so a regression is visible without reading the

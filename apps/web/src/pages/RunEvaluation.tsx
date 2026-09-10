@@ -155,9 +155,10 @@ export const BLOCKED_REASON_LABEL: Record<SuggestionBlockedReason, string> = {
   diff_unavailable: "算不出差異。看不到會改什麼就不提供套用。",
 };
 
-function usd(value: number | null): string {
+function credits(value: number | null): string {
   // 設計 §2.9 的表列詞;閘道沒有回報一個成本，不是 0。
-  return value === null ? "未測量" : `US$${value.toFixed(4)}`;
+  // 單位是點數，不是美元：ADR-068 決策 1——使用者面前只有一種單位。
+  return value === null ? "未測量" : `${value} 點`;
 }
 
 /**
@@ -478,9 +479,9 @@ function EvaluationReport({
         </>
       )}
 
-      <h3>評估本身的成本</h3>
+      <h3>評估本身用掉的點數</h3>
       <p>
-        {usd(evaluation.cost.evaluation_usd)}
+        {credits(evaluation.cost.evaluation_credits)}
         {/* 04 丙-147: `unreported` travels with a null amount that `usd()`
             already prints as 未測量 — appending 「（模型閘道實付）」 to that
             would claim the gateway paid an amount it never reported. */}
@@ -489,7 +490,7 @@ function EvaluationReport({
       </p>
       <p className="note">
         {evaluation.cost.note}
-        {" 這是平台判定花的錢，與 Run 自己花的錢分開列，不相加。"}
+        {" 這是平台判定用掉的點數，與 Run 自己用掉的分開列，不相加。"}
       </p>
 
       {/* Design §2.6 / checklist 5: the model, the two version strings and the

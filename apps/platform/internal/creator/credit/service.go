@@ -350,6 +350,37 @@ func (s *Service) Estimate(ctx context.Context, statKind string) (Estimate, erro
 	return est, nil
 }
 
+// CreditsForUSD converts a dollar figure into the number of credits the
+// platform shows for it. It is the one place a US dollar becomes a Credit on
+// a screen (ADR-068 decision 1: 「平台對使用者的每一個成本呈現，只有一種單位」),
+// and the composition roots hand it to the contexts that may not import this
+// package at all — trial/execution's pre-run estimate and trial/evidence's
+// trace usage, both of which depguard denies a credit import.
+//
+// The markup is applied, and that is the whole reason this is not a unit
+// relabelling. A displayed credit figure has to mean the same thing as a
+// charged one, or the number on the run page and the number that left the
+// balance are two different quantities wearing one word. Rounded up, like
+// every other conversion here.
+//
+// A cost the platform cannot represent — negative, non-finite, or past the
+// billable ceiling — converts to 0, false. false means "no number", not
+// "free": the caller renders absence, which is what every one of these
+// surfaces already does for an unreported gateway cost.
+func (s *Service) CreditsForUSD(usd float64) (credits int64, ok bool) {
+	micros, estimated := UsageCost(&usd, "gateway")
+	if estimated {
+		// UsageCost only reports estimated here when the value itself was
+		// unusable: the source is pinned to "gateway" one line above.
+		return 0, false
+	}
+	billed, err := BilledMicros(micros, s.Config.MarkupBps)
+	if err != nil {
+		return 0, false
+	}
+	return CreditsForMicros(billed, s.Config.MicrosPerCredit), true
+}
+
 // GrantInput is one operator-initiated balance change (decision 10). A
 // downward Adjustment is the only kind allowed negative Credits.
 type GrantInput struct {

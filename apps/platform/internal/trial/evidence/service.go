@@ -38,6 +38,15 @@ type Service struct {
 	ReadRunState       func(context.Context, pgtype.UUID, pgtype.UUID) (RunState, bool, error)
 	ReadIngestRunState func(context.Context, pgtype.UUID) (IngestRunState, bool, error)
 	ReadRunTransitions func(context.Context, pgtype.UUID, pgtype.UUID) ([]RunTransition, error)
+	// Credits converts the fold's dollar figure into what this deployment
+	// charges for it, in Credit (ADR-068 decision 1). It is
+	// credit.Service.CreditsForUSD, injected rather than imported: ADR-032
+	// appendix A has no `trace` → `credit` row and depguard denies it.
+	//
+	// Nil leaves cost_credits null, which every consumer already renders as
+	// 未測量 — a trace whose cost cannot be expressed says nothing rather than
+	// says zero.
+	Credits func(usd float64) (credits int64, ok bool)
 }
 
 // RunState is the small Run-owned fact needed by Trace's read views.
@@ -443,11 +452,25 @@ type ErrorSummary struct {
 // did not report one, and the UI must render that as "unreported" rather than as
 // zero (contract README §5).
 type UsageSummary struct {
-	Model        string   `json:"model,omitempty"`
-	InputTokens  int64    `json:"input_tokens"`
-	OutputTokens int64    `json:"output_tokens"`
-	CostUSD      *float64 `json:"cost_usd"`
-	CostSource   string   `json:"cost_source,omitempty"`
+	Model        string `json:"model,omitempty"`
+	InputTokens  int64  `json:"input_tokens"`
+	OutputTokens int64  `json:"output_tokens"`
+	// CostCredits is what the run cost, in Credit (ADR-068 decision 1). Nil
+	// keeps the same meaning the dollar field had — unreported, never zero.
+	CostCredits *int64 `json:"cost_credits"`
+	CostSource  string `json:"cost_source,omitempty"`
+	// CostUSD is what the SQL fold actually computed, and it stays in dollars
+	// because that is the unit the gateway priced in and the unit trace_events
+	// stores (ADR-068 decision 3: the platform's own book is in money).
+	//
+	// Never serialized — the conversion to Credit happens once, in General,
+	// and a response carrying both would be publishing the rate as a pair of
+	// numbers for the reader to divide. It is filled by an explicit second
+	// decode there rather than by a tag, so that "this field does not go on
+	// the wire" and "this field comes off the fold" are two visible statements
+	// instead of one clever one. Read by eval's run-comparison, which does its
+	// own conversion.
+	CostUSD *float64 `json:"-"`
 }
 
 const tracePageSize = int32(1_000)
@@ -666,6 +689,24 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	}
 	if err := json.Unmarshal(folded, &summary); err != nil {
 		return Summary{}, err
+	}
+	// The fold's own key, decoded separately because UsageSummary.CostUSD is
+	// deliberately untagged (see its comment).
+	var foldCost struct {
+		Usage *struct {
+			CostUSD *float64 `json:"cost_usd"`
+		} `json:"usage"`
+	}
+	if err := json.Unmarshal(folded, &foldCost); err != nil {
+		return Summary{}, err
+	}
+	if summary.Usage != nil && foldCost.Usage != nil {
+		summary.Usage.CostUSD = foldCost.Usage.CostUSD
+		if c := summary.Usage.CostUSD; c != nil && s.Credits != nil {
+			if credits, ok := s.Credits(*c); ok {
+				summary.Usage.CostCredits = &credits
+			}
+		}
 	}
 	summary.Truncated = summary.SkillsTotal > len(summary.Skills) || summary.ErrorsTotal > len(summary.Errors)
 	health, err := s.traceStreamHealth(ctx, workspaceID, runID)

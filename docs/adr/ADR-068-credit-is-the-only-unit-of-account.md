@@ -171,3 +171,24 @@ MVP 期間不存在任何真實付款路徑：充值 = operator 在既有 `/admi
 **今天做不了的理由，與 [`05` R-73](../plans/05-pending-rulings.md) 是同一件**：`credit.Service` 尚未接進 `apiserver.NewApp`／`entrypoint/worker`、路由未掛，所以伺服器算不出要送出去的 credit 值。落點與逐條清單記在 [`04` 丙-231](../plans/04-backlog-and-handoffs.md)。
 
 **接線之後建議補一條機器檢查**：使用者可達的 response schema 不得出現 `*_usd` 欄位。理由與本 repo 既有的每一條機器檢查相同——**決策 1 已經被寫下來兩天而沒有任何東西會為它出聲**，這則補記本身就是那個空缺的證據。
+
+## 2026-09-11 補記：決策 1 的四個欄位換完了，剩下的三件套為什麼一起換
+
+前一則補記列了六個仍以美元示人的契約欄位，並說阻塞在 `credit.Service` 沒有接線。線接上了（CRED-005 同批），四個已經換成 Credit：
+
+| 原本 | 現在 | 換算發生在 |
+| --- | --- | --- |
+| `RunCostEstimate.currency`／`low`／`typical`／`high` | `low_credits`／`typical_credits`／`high_credits`（`currency` 消失，因為只剩一種單位） | `trial/execution` 的 `defaultCostEstimate` |
+| `evaluation_usd` | `evaluation_credits` | `trial/improvement` 的 `costViewOf` |
+| Run 自己的 `usd` | `credits` | `trial/improvement` 的 `comparisonSide` |
+| trace `usage.cost_usd` | `cost_credits` | `trial/evidence` 的 `General` |
+
+三件事值得寫下來。
+
+**換算只有一個地方，而且是注入的。** `credit.Service.CreditsForUSD` 由兩個組裝根交給 `run`、`trace`、`eval`。前兩個 context 的 depguard 不准 import `credit`（ADR-032 附錄 A 沒有那兩列），所以注入不是風格選擇；而第三個明明可以直接 import，仍然收同一個函式，因為三個畫面各自換算就是三個會分岔的匯率。同一條理由 `GET /me/quota` 已經用過一次：顯示不重算規則。
+
+**「換算會呈現一個平台不擁有的匯率」這句反對意見，在這裡是不成立的。** 它原本寫在 `RunCostEstimate.currency` 的欄位說明裡，而它講的是外幣：平台不決定歐元兌美元。Credit 不是外幣——US$0.001 與 1.3 倍加成都是平台自己公告的常數，決策 2 還要求每一筆分錄記下當時的加成。平台擁有這個匯率，只是不擁有那個。
+
+**資料庫仍然存美元，這不是遺漏。** `cost_events`、`evaluations.cost_usd`、`trace_events` 的 usage payload 全部照舊，因為決策 3 說得很清楚：那是平台自己的帳，帳記在閘道計價的單位上。換算發生在回應邊界，一次，不回寫——一個被寫回資料表的換算結果會變成匯率的第二份副本，和真正扣點的那一份各自老去。
+
+**剩下的三件套為什麼沒有一起做。** `CreationSnapshot.budget_usd`／`reserved_usd`／`spent_usd`、`CreationLimits.min_budget_usd`／`max_budget_usd`，以及 `raise_budget` 請求裡的 `budget_usd`，是同一個滑桿的顯示值、上下界與送出值。前四個是回應、最後一個是請求，拆開換就會出現「畫面講點數、請求送美元」這種一半的狀態，而那正是這次要消滅的東西。留在 [`04` 丙-231](../plans/04-backlog-and-handoffs.md)，收窄成一批。

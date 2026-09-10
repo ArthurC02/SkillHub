@@ -30,6 +30,17 @@ type CostRecorder interface {
 	RecordCost(ctx context.Context, tx credit.DBTX, e credit.CostEvent) (id string, existed bool, err error)
 }
 
+// CreditsForUSD is the other half of this context's relationship with credit,
+// and it points the other way: recording spend is a write, showing spend is a
+// conversion. It is credit.Service.CreditsForUSD, injected as a plain func for
+// the reason [CostRecorder] is a narrow interface — what eval needs of credit
+// is two operations, not a package.
+//
+// ok=false means the amount has no credit representation; every caller renders
+// absence rather than zero, which is the same disposition they already had for
+// a cost the gateway never reported.
+type CreditsForUSD = func(usd float64) (credits int64, ok bool)
+
 // recordEvalCost writes one cost_events row for one paid call.
 //
 // The evaluation id is the idempotency key and it is a real one, not a

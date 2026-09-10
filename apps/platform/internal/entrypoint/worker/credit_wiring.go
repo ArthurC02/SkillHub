@@ -15,6 +15,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	trace "github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
@@ -144,4 +146,14 @@ func wireCostRecording(svc *credit.Service, search *catalog.Service, versions, b
 		backfill.Credit = svc
 	}
 	evaluations.Credit = svc
+}
+
+// wireCreditDisplay is the API's counterpart (see its comment there). The
+// Worker builds the same three contexts, and eval's comparison view is
+// assembled here as well as there — a converter wired in one process and not
+// the other would make the same field null in half the deployments.
+func wireCreditDisplay(svc *credit.Service, runs *run.Service, traces *trace.Service, evaluations *eval.Service) {
+	runs.Credits = svc.CreditsForUSD
+	traces.Credits = svc.CreditsForUSD
+	evaluations.Credits = svc.CreditsForUSD
 }

@@ -30,26 +30,26 @@ import { mapValues } from '../runtime';
  */
 export interface RunCostEstimate {
     /**
-     * Fixed at USD - the gateway prices in it and the baseline was measured
-     * in it. A converted number would present an exchange rate the platform
-     * does not own as a fact about a run.
+     * In Credit, the platform's only unit of account (ADR-068 decision 1).
      * 
-     * @type {string}
+     * The field this replaced was `low` beside a `currency` fixed at USD,
+     * whose description argued that converting would "present an exchange
+     * rate the platform does not own". That is true of a foreign currency
+     * and false of Credit: the rate is US$0.001 per credit and the markup
+     * is the platform's own constants, and decision 2 requires the markup
+     * to be recorded on every entry. The platform owns this rate; it does
+     * not own the euro.
+     * 
+     * @type {number}
      * @memberof RunCostEstimate
      */
-    currency: string;
+    lowCredits: number;
     /**
      * 
      * @type {number}
      * @memberof RunCostEstimate
      */
-    low: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof RunCostEstimate
-     */
-    typical: number;
+    typicalCredits: number;
     /**
      * Rounded up past the observed maximum, not a bound: the baseline is 45
      * runs and a sample that size does not establish one.
@@ -57,7 +57,7 @@ export interface RunCostEstimate {
      * @type {number}
      * @memberof RunCostEstimate
      */
-    high: number;
+    highCredits: number;
     /**
      * Where the numbers came from, in the user's language, so nobody reads
      * them as a quote. Display it with them rather than beside them.
@@ -72,10 +72,9 @@ export interface RunCostEstimate {
  * Check if a given object implements the RunCostEstimate interface.
  */
 export function instanceOfRunCostEstimate(value: object): value is RunCostEstimate {
-    if (!('currency' in value) || value['currency'] === undefined) return false;
-    if (!('low' in value) || value['low'] === undefined) return false;
-    if (!('typical' in value) || value['typical'] === undefined) return false;
-    if (!('high' in value) || value['high'] === undefined) return false;
+    if (!('lowCredits' in value) || value['lowCredits'] === undefined) return false;
+    if (!('typicalCredits' in value) || value['typicalCredits'] === undefined) return false;
+    if (!('highCredits' in value) || value['highCredits'] === undefined) return false;
     if (!('basis' in value) || value['basis'] === undefined) return false;
     return true;
 }
@@ -90,10 +89,9 @@ export function RunCostEstimateFromJSONTyped(json: any, ignoreDiscriminator: boo
     }
     return {
         
-        'currency': json['currency'],
-        'low': json['low'],
-        'typical': json['typical'],
-        'high': json['high'],
+        'lowCredits': json['low_credits'],
+        'typicalCredits': json['typical_credits'],
+        'highCredits': json['high_credits'],
         'basis': json['basis'],
     };
 }
@@ -109,10 +107,9 @@ export function RunCostEstimateToJSONTyped(value?: RunCostEstimate | null, ignor
 
     return {
         
-        'currency': value['currency'],
-        'low': value['low'],
-        'typical': value['typical'],
-        'high': value['high'],
+        'low_credits': value['lowCredits'],
+        'typical_credits': value['typicalCredits'],
+        'high_credits': value['highCredits'],
         'basis': value['basis'],
     };
 }

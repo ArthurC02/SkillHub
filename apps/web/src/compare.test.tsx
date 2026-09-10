@@ -351,7 +351,7 @@ test("§2.13 去重 1：兩側相同的成本但書印在列首，一次", async
   stubPlatform();
   search = { against: OTHER_RUN };
   await render(<RunCompare />);
-  await waitFor(() => text().includes("Run 成本"));
+  await waitFor(() => text().includes("Run 用掉的點數"));
 
   expect(occurrences(COST_NOTE), "同一句但書在左右兩格各印了一次").toBe(1);
   expect(occurrences("與上一列分開列，不相加。")).toBe(1);
@@ -382,7 +382,7 @@ test("§2.13 去重 1：兩側的權威來源不同時，每一格各自留著�
   });
   search = { against: OTHER_RUN };
   await render(<RunCompare />);
-  await waitFor(() => text().includes("Run 成本"));
+  await waitFor(() => text().includes("Run 用掉的點數"));
 
   // 這一支才是「一律搬到列首」那個錯誤實作的照妖鏡：兩句不一樣時它們必須留在格子裡。
   expect(text()).toContain(`權威來源：${RUN_COST_AUTHORITY}`);
@@ -397,7 +397,7 @@ test("§2.13：回答沒有人問的問題那一句刪了；重跑的但書縮�
   stubPlatform();
   search = { against: OTHER_RUN };
   await render(<RunCompare />);
-  await waitFor(() => text().includes("Run 成本"));
+  await waitFor(() => text().includes("Run 用掉的點數"));
 
   // 這一頁沒有任何寫入控制項，所以「不會改動歷史資料」回答的是沒有人問的問題。
   expect(text()).not.toContain("比較只是讀取");

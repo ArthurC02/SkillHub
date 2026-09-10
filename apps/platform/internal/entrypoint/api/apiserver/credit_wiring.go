@@ -15,6 +15,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	trace "github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 // This file is the one place the two id spaces meet.
@@ -195,4 +198,21 @@ func wireCreationCredit(
 func wireCostRecording(svc *credit.Service, search *catalog.Service, versions *ingest.Service) {
 	search.Credit = svc
 	versions.Credit = svc
+}
+
+// wireCreditDisplay hands the USD→Credit conversion to the three contexts that
+// put a cost on a screen (丙-231, ADR-068 decision 1).
+//
+// A func rather than the service, and the same func in all three, because two
+// of them may not import credit at all: ADR-032 appendix A has no `run` →
+// `credit` and no `trace` → `credit` row, and depguard denies both. `eval` may
+// import it and still takes the func, so that the three surfaces cannot drift
+// into converting at three rates.
+//
+// One conversion point, not three copies of the arithmetic: this is the same
+// reason GET /me/quota never recomputes PDM-010's counters.
+func wireCreditDisplay(svc *credit.Service, runs *run.Service, traces *trace.Service, evaluations *eval.Service) {
+	runs.Credits = svc.CreditsForUSD
+	traces.Credits = svc.CreditsForUSD
+	evaluations.Credits = svc.CreditsForUSD
 }

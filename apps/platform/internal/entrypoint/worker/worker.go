@@ -210,6 +210,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	wireCreationCredit(set.Creation, creditSvc, pool)
 	backfillSvc := newBackfillService(pool, deps)
 	wireCostRecording(creditSvc, creationSearch, creationVersions, backfillSvc, set.Evaluations)
+	wireCreditDisplay(creditSvc, set.Runs, traceSvc, set.Evaluations)
 	workers := river.NewWorkers()
 	addWorker(set, workers, &creation.Worker{Svc: set.Creation})
 	addWorker(set, workers, &creation.ExpiryWorker{Svc: set.Creation})

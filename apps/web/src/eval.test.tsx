@@ -263,7 +263,7 @@ const evaluation: Evaluation = {
   judge_prompt_version: "judge-2026-08-17",
   evidence_complete: false,
   cost: {
-    evaluation_usd: 0.0212,
+    evaluation_credits: 28,
     source: "gateway",
     note: "權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）。",
   },
@@ -955,7 +955,7 @@ test("04 丙-147 an unreported cost shows 未測量 and never claims 模型閘�
       return json({
         ...evaluation,
         cost: {
-          evaluation_usd: null,
+          evaluation_credits: null,
           source: "unreported",
           note: "Judge 這一次呼叫沒有回報花費：這裡是未測量，不是 0 美元。",
         },

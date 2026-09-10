@@ -180,8 +180,8 @@ type generalView struct {
 	Truncated   bool   `json:"summary_truncated"`
 	FinalOutput string `json:"final_output"`
 	Usage       *struct {
-		InputTokens int64    `json:"input_tokens"`
-		CostUSD     *float64 `json:"cost_usd"`
+		InputTokens int64  `json:"input_tokens"`
+		CostCredits *int64 `json:"cost_credits"`
 	} `json:"usage"`
 	// Two fields since 2026-09-01, not one pre-joined "<status>: <reason>"
 	// string (04 丙-115 ①): writing a status for a reader is the surface's job.
@@ -846,8 +846,8 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	}
 	// A cost the gateway never reported must stay unreported, not become 0
 	// (contract README §5): showing 0 would tell the user the run was free.
-	if view.Usage.CostUSD != nil {
-		t.Errorf("cost_usd = %v, want null (unreported)", *view.Usage.CostUSD)
+	if view.Usage.CostCredits != nil {
+		t.Errorf("cost_credits = %v, want null (unreported)", *view.Usage.CostCredits)
 	}
 	if len(view.Steps) == 0 {
 		t.Error("progress steps are empty although the run has a transition history")

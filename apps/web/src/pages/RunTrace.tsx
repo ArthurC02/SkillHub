@@ -543,9 +543,9 @@ function GeneralMode({ runId }: { runId: string }) {
             成本：
             {/* null is "the gateway did not report it", which is not zero. */}
             {/* 設計 §2.9 的表列詞:閘道沒有回報，不是 0。 */}
-            {trace.usage.cost_usd === null
+            {trace.usage.cost_credits === null
               ? "未測量"
-              : `US$${trace.usage.cost_usd.toFixed(4)}${
+              : `${trace.usage.cost_credits} 點${
                   trace.usage.cost_source === "estimated" ? "（估算值）" : ""
                 }`}
           </li>

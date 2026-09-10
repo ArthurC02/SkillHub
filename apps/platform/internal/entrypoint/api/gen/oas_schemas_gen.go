@@ -5855,9 +5855,13 @@ func (*Evaluation) setEvaluationFeedbackRes() {}
 // guarantee without saying so.
 // Ref: #/components/schemas/EvaluationCost
 type EvaluationCost struct {
-	// NULL means the gateway reported no cost. Render that as "unreported" and never as 0 — 0 tells the
-	// user the judgement was free.
-	EvaluationUsd NilFloat64 `json:"evaluation_usd"`
+	// In Credit (ADR-068 decision 1). NULL means the gateway reported no cost. Render that as "unreported"
+	// and never as 0 — 0 tells the user the judgement was free.
+	//
+	// NULL also covers a cost the platform could not convert. The two collapse on purpose: both mean
+	// "there is no number to show", and a screen that distinguished them would be explaining the ledger's
+	// internals to somebody reading a verdict.
+	EvaluationCredits NilInt64 `json:"evaluation_credits"`
 	// `gateway` is the LiteLLM per-key spend for this evaluation, which is the authoritative figure
 	// (ADR-017). `estimated` is a computed one and must be labelled as such wherever it is shown.
 	// `unreported` is what the server sends when the gateway reported nothing: it goes with a null
@@ -5867,9 +5871,9 @@ type EvaluationCost struct {
 	Note   string               `json:"note"`
 }
 
-// GetEvaluationUsd returns the value of EvaluationUsd.
-func (s *EvaluationCost) GetEvaluationUsd() NilFloat64 {
-	return s.EvaluationUsd
+// GetEvaluationCredits returns the value of EvaluationCredits.
+func (s *EvaluationCost) GetEvaluationCredits() NilInt64 {
+	return s.EvaluationCredits
 }
 
 // GetSource returns the value of Source.
@@ -5882,9 +5886,9 @@ func (s *EvaluationCost) GetNote() string {
 	return s.Note
 }
 
-// SetEvaluationUsd sets the value of EvaluationUsd.
-func (s *EvaluationCost) SetEvaluationUsd(val NilFloat64) {
-	s.EvaluationUsd = val
+// SetEvaluationCredits sets the value of EvaluationCredits.
+func (s *EvaluationCost) SetEvaluationCredits(val NilInt64) {
+	s.EvaluationCredits = val
 }
 
 // SetSource sets the value of Source.
@@ -9605,6 +9609,51 @@ func (o NilInt) Or(d int) int {
 	return d
 }
 
+// NewNilInt64 returns new NilInt64 with value set to v.
+func NewNilInt64(v int64) NilInt64 {
+	return NilInt64{
+		Value: v,
+	}
+}
+
+// NilInt64 is nullable int64.
+type NilInt64 struct {
+	Value int64
+	Null  bool
+}
+
+// SetTo sets value to v.
+func (o *NilInt64) SetTo(v int64) {
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o NilInt64) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *NilInt64) SetToNull() {
+	o.Null = true
+	var v int64
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o NilInt64) Get() (v int64, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o NilInt64) Or(d int64) int64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewNilRunComparisonCriterionMatrixItemResultsItemResult returns new NilRunComparisonCriterionMatrixItemResultsItemResult with value set to v.
 func NewNilRunComparisonCriterionMatrixItemResultsItemResult(v RunComparisonCriterionMatrixItemResultsItemResult) NilRunComparisonCriterionMatrixItemResultsItemResult {
 	return NilRunComparisonCriterionMatrixItemResultsItemResult{
@@ -11051,57 +11100,57 @@ func (o OptNilDateTime) Or(d time.Time) time.Time {
 	return d
 }
 
-// NewOptNilFloat64 returns new OptNilFloat64 with value set to v.
-func NewOptNilFloat64(v float64) OptNilFloat64 {
-	return OptNilFloat64{
+// NewOptNilInt64 returns new OptNilInt64 with value set to v.
+func NewOptNilInt64(v int64) OptNilInt64 {
+	return OptNilInt64{
 		Value: v,
 		Set:   true,
 	}
 }
 
-// OptNilFloat64 is optional nullable float64.
-type OptNilFloat64 struct {
-	Value float64
+// OptNilInt64 is optional nullable int64.
+type OptNilInt64 struct {
+	Value int64
 	Set   bool
 	Null  bool
 }
 
-// IsSet returns true if OptNilFloat64 was set.
-func (o OptNilFloat64) IsSet() bool { return o.Set }
+// IsSet returns true if OptNilInt64 was set.
+func (o OptNilInt64) IsSet() bool { return o.Set }
 
 // Reset unsets value.
-func (o *OptNilFloat64) Reset() {
-	var v float64
+func (o *OptNilInt64) Reset() {
+	var v int64
 	o.Value = v
 	o.Set = false
 	o.Null = false
 }
 
 // SetTo sets value to v.
-func (o *OptNilFloat64) SetTo(v float64) {
+func (o *OptNilInt64) SetTo(v int64) {
 	o.Set = true
 	o.Null = false
 	o.Value = v
 }
 
 // IsNull returns true if value is Null.
-func (o OptNilFloat64) IsNull() bool { return o.Null }
+func (o OptNilInt64) IsNull() bool { return o.Null }
 
 // SetToNull sets value to null.
-func (o *OptNilFloat64) SetToNull() {
+func (o *OptNilInt64) SetToNull() {
 	o.Set = true
 	o.Null = true
-	var v float64
+	var v int64
 	o.Value = v
 }
 
 // IsEmpty returns true if the field was omitted from the payload (not Set and not Null).
-func (o OptNilFloat64) IsEmpty() bool {
+func (o OptNilInt64) IsEmpty() bool {
 	return !o.Set && !o.Null
 }
 
 // Get returns value and boolean that denotes whether value was set.
-func (o OptNilFloat64) Get() (v float64, ok bool) {
+func (o OptNilInt64) Get() (v int64, ok bool) {
 	if o.Null {
 		return v, false
 	}
@@ -11112,7 +11161,7 @@ func (o OptNilFloat64) Get() (v float64, ok bool) {
 }
 
 // Or returns value if set, or given parameter if does not.
-func (o OptNilFloat64) Or(d float64) float64 {
+func (o OptNilInt64) Or(d int64) int64 {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -15401,8 +15450,9 @@ func (s *RunComparisonRunsItem) SetInputsAvailable(val bool) {
 // What the run spent, kept in its own field beside the evaluation's own cost. Two columns, never one
 // total (design §5.4).
 type RunComparisonRunsItemCost struct {
-	// NULL means no usage event carried a cost. Render as "unreported", never as 0.
-	Usd NilFloat64 `json:"usd"`
+	// In Credit (ADR-068 decision 1). NULL means no usage event carried a cost. Render as "unreported",
+	// never as 0.
+	Credits NilInt64 `json:"credits"`
 	// Always true, and required so it cannot be dropped on the way to a screen. The figure is summed from
 	// trace `usage` events and that sum is structurally incomplete: a response still in flight when the
 	// stream ends is not counted, and a producer's last flush can land after this was read. It is a floor,
@@ -15414,9 +15464,9 @@ type RunComparisonRunsItemCost struct {
 	AuthoritativeSource string `json:"authoritative_source"`
 }
 
-// GetUsd returns the value of Usd.
-func (s *RunComparisonRunsItemCost) GetUsd() NilFloat64 {
-	return s.Usd
+// GetCredits returns the value of Credits.
+func (s *RunComparisonRunsItemCost) GetCredits() NilInt64 {
+	return s.Credits
 }
 
 // GetIsLowerBound returns the value of IsLowerBound.
@@ -15429,9 +15479,9 @@ func (s *RunComparisonRunsItemCost) GetAuthoritativeSource() string {
 	return s.AuthoritativeSource
 }
 
-// SetUsd sets the value of Usd.
-func (s *RunComparisonRunsItemCost) SetUsd(val NilFloat64) {
-	s.Usd = val
+// SetCredits sets the value of Credits.
+func (s *RunComparisonRunsItemCost) SetCredits(val NilInt64) {
+	s.Credits = val
 }
 
 // SetIsLowerBound sets the value of IsLowerBound.
@@ -15735,37 +15785,36 @@ func (s *RunComparisonRunsItemStatus) UnmarshalText(data []byte) error {
 // the median is six cents.
 // Ref: #/components/schemas/RunCostEstimate
 type RunCostEstimate struct {
-	// Fixed at USD - the gateway prices in it and the baseline was measured in it. A converted number
-	// would present an exchange rate the platform does not own as a fact about a run.
-	Currency string  `json:"currency"`
-	Low      float64 `json:"low"`
-	Typical  float64 `json:"typical"`
+	// In Credit, the platform's only unit of account (ADR-068 decision 1).
+	//
+	// The field this replaced was `low` beside a `currency` fixed at USD, whose description argued that
+	// converting would "present an exchange rate the platform does not own". That is true of a foreign
+	// currency and false of Credit: the rate is US$0.001 per credit and the markup is the platform's own
+	// constants, and decision 2 requires the markup to be recorded on every entry. The platform owns this
+	// rate; it does not own the euro.
+	LowCredits     int64 `json:"low_credits"`
+	TypicalCredits int64 `json:"typical_credits"`
 	// Rounded up past the observed maximum, not a bound: the baseline is 45 runs and a sample that size
 	// does not establish one.
-	High float64 `json:"high"`
+	HighCredits int64 `json:"high_credits"`
 	// Where the numbers came from, in the user's language, so nobody reads them as a quote. Display it
 	// with them rather than beside them.
 	Basis string `json:"basis"`
 }
 
-// GetCurrency returns the value of Currency.
-func (s *RunCostEstimate) GetCurrency() string {
-	return s.Currency
+// GetLowCredits returns the value of LowCredits.
+func (s *RunCostEstimate) GetLowCredits() int64 {
+	return s.LowCredits
 }
 
-// GetLow returns the value of Low.
-func (s *RunCostEstimate) GetLow() float64 {
-	return s.Low
+// GetTypicalCredits returns the value of TypicalCredits.
+func (s *RunCostEstimate) GetTypicalCredits() int64 {
+	return s.TypicalCredits
 }
 
-// GetTypical returns the value of Typical.
-func (s *RunCostEstimate) GetTypical() float64 {
-	return s.Typical
-}
-
-// GetHigh returns the value of High.
-func (s *RunCostEstimate) GetHigh() float64 {
-	return s.High
+// GetHighCredits returns the value of HighCredits.
+func (s *RunCostEstimate) GetHighCredits() int64 {
+	return s.HighCredits
 }
 
 // GetBasis returns the value of Basis.
@@ -15773,24 +15822,19 @@ func (s *RunCostEstimate) GetBasis() string {
 	return s.Basis
 }
 
-// SetCurrency sets the value of Currency.
-func (s *RunCostEstimate) SetCurrency(val string) {
-	s.Currency = val
+// SetLowCredits sets the value of LowCredits.
+func (s *RunCostEstimate) SetLowCredits(val int64) {
+	s.LowCredits = val
 }
 
-// SetLow sets the value of Low.
-func (s *RunCostEstimate) SetLow(val float64) {
-	s.Low = val
+// SetTypicalCredits sets the value of TypicalCredits.
+func (s *RunCostEstimate) SetTypicalCredits(val int64) {
+	s.TypicalCredits = val
 }
 
-// SetTypical sets the value of Typical.
-func (s *RunCostEstimate) SetTypical(val float64) {
-	s.Typical = val
-}
-
-// SetHigh sets the value of High.
-func (s *RunCostEstimate) SetHigh(val float64) {
-	s.High = val
+// SetHighCredits sets the value of HighCredits.
+func (s *RunCostEstimate) SetHighCredits(val int64) {
+	s.HighCredits = val
 }
 
 // SetBasis sets the value of Basis.
@@ -21771,10 +21815,10 @@ type TraceSummaryUsage struct {
 	Model        OptString `json:"model"`
 	InputTokens  OptInt    `json:"input_tokens"`
 	OutputTokens OptInt    `json:"output_tokens"`
-	// NULL means the gateway did not report a cost. Consumers MUST render that as "unreported" and never
-	// as 0 - showing 0 tells the user the run was free.
-	CostUsd    OptNilFloat64                  `json:"cost_usd"`
-	CostSource OptTraceSummaryUsageCostSource `json:"cost_source"`
+	// In Credit (ADR-068 decision 1). NULL means the gateway did not report a cost. Consumers MUST render
+	// that as "unreported" and never as 0 - showing 0 tells the user the run was free.
+	CostCredits OptNilInt64                    `json:"cost_credits"`
+	CostSource  OptTraceSummaryUsageCostSource `json:"cost_source"`
 }
 
 // GetModel returns the value of Model.
@@ -21792,9 +21836,9 @@ func (s *TraceSummaryUsage) GetOutputTokens() OptInt {
 	return s.OutputTokens
 }
 
-// GetCostUsd returns the value of CostUsd.
-func (s *TraceSummaryUsage) GetCostUsd() OptNilFloat64 {
-	return s.CostUsd
+// GetCostCredits returns the value of CostCredits.
+func (s *TraceSummaryUsage) GetCostCredits() OptNilInt64 {
+	return s.CostCredits
 }
 
 // GetCostSource returns the value of CostSource.
@@ -21817,9 +21861,9 @@ func (s *TraceSummaryUsage) SetOutputTokens(val OptInt) {
 	s.OutputTokens = val
 }
 
-// SetCostUsd sets the value of CostUsd.
-func (s *TraceSummaryUsage) SetCostUsd(val OptNilFloat64) {
-	s.CostUsd = val
+// SetCostCredits sets the value of CostCredits.
+func (s *TraceSummaryUsage) SetCostCredits(val OptNilInt64) {
+	s.CostCredits = val
 }
 
 // SetCostSource sets the value of CostSource.

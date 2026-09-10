@@ -68,9 +68,10 @@ type evaluationView struct {
 // to the run's cost: the two are spent by different workloads under different
 // keys, and one combined number would inherit the weaker guarantee silently.
 type costView struct {
-	EvaluationUSD *float64 `json:"evaluation_usd"`
-	Source        string   `json:"source"`
-	Note          string   `json:"note"`
+	// In Credit (ADR-068 decision 1). Nil is「未測量」and never 0.
+	EvaluationCredits *int64 `json:"evaluation_credits"`
+	Source            string `json:"source"`
+	Note              string `json:"note"`
 }
 
 type feedbackView struct {
@@ -319,7 +320,7 @@ func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Eval
 		JudgePromptVersion:    derefString(ev.JudgePromptVersion),
 		RubricVersion:         derefString(ev.RubricVersion),
 		EvidenceComplete:      ev.EvidenceComplete,
-		Cost:                  costViewOf(ev),
+		Cost:                  costViewOf(ev, s.Credits),
 		EvaluatedAt:           pgconv.RFC3339(ev.EvaluatedAt),
 		SupersededAt:          optionalTime(ev.SupersededAt),
 	}
@@ -446,7 +447,7 @@ func markAvailability(refs []EvidenceRef, live liveEvidence) {
 	}
 }
 
-func costViewOf(ev gen.Evaluation) costView {
+func costViewOf(ev gen.Evaluation, credits func(float64) (int64, bool)) costView {
 	// "unreported", not "estimated". eval.go's costSource() writes a source only
 	// when the gateway reported one, and judge.go says it in as many words: the
 	// internal contract has no estimated source, and an unrecognised label is
@@ -459,17 +460,24 @@ func costViewOf(ev gen.Evaluation) costView {
 	if ev.CostSource != nil {
 		v.Source = *ev.CostSource
 	}
-	if ev.CostUsd.Valid {
+	// The stored figure is dollars — cost_events and evaluations both keep the
+	// platform's own book in the unit the gateway prices in (ADR-068 decision
+	// 3). It becomes Credit here, at the response boundary, and nowhere else: a
+	// converted number written back to a table would be a second copy of the
+	// rate, ageing separately from the one that charged the account.
+	if ev.CostUsd.Valid && credits != nil {
 		if f, err := ev.CostUsd.Float64Value(); err == nil && f.Valid {
-			v.EvaluationUSD = &f.Float64
+			if c, ok := credits(f.Float64); ok {
+				v.EvaluationCredits = &c
+			}
 		}
 	}
 	switch {
-	case v.EvaluationUSD == nil:
-		v.Note = "Judge 這一次呼叫沒有回報花費：這裡是未測量，不是 0 美元。" +
-			"權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）。"
+	case v.EvaluationCredits == nil:
+		v.Note = "Judge 這一次呼叫沒有回報花費：這裡是未測量，不是 0 點。" +
+			"權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）換算的點數。"
 	case ev.CostIsLowerBound:
-		v.Note = "權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）。"
+		v.Note = "權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）換算的點數。"
 	}
 	return v
 }

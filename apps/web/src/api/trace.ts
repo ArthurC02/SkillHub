@@ -41,7 +41,8 @@ export type TraceSummary = {
     input_tokens: number;
     output_tokens: number;
     /** null means the gateway did not report a cost. Never render it as 0. */
-    cost_usd: number | null;
+    /** In Credit (ADR-068 決策 1). null is 未測量, never 0. */
+    cost_credits: number | null;
     cost_source?: string;
   };
   /**

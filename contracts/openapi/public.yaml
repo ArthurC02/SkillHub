@@ -5069,12 +5069,13 @@ components:
             model: { type: string }
             input_tokens: { type: integer }
             output_tokens: { type: integer }
-            cost_usd:
-              type: [number, "null"]
+            cost_credits:
+              type: [integer, "null"]
+              format: int64
               description: |
-                NULL means the gateway did not report a cost. Consumers MUST render
-                that as "unreported" and never as 0 - showing 0 tells the user the
-                run was free.
+                In Credit (ADR-068 decision 1). NULL means the gateway did not
+                report a cost. Consumers MUST render that as "unreported" and
+                never as 0 - showing 0 tells the user the run was free.
             cost_source: { type: string, enum: [gateway, estimated] }
         steps:
           type: array
@@ -6768,18 +6769,25 @@ components:
         showing the ceiling here would tell every user their run costs half a
         dollar when the median is six cents.
       type: object
-      required: [currency, low, typical, high, basis]
+      required: [low_credits, typical_credits, high_credits, basis]
       properties:
-        currency:
-          type: string
+        low_credits:
+          type: integer
+          format: int64
           description: |
-            Fixed at USD - the gateway prices in it and the baseline was measured
-            in it. A converted number would present an exchange rate the platform
-            does not own as a fact about a run.
-        low: { type: number }
-        typical: { type: number }
-        high:
-          type: number
+            In Credit, the platform's only unit of account (ADR-068 decision 1).
+
+            The field this replaced was `low` beside a `currency` fixed at USD,
+            whose description argued that converting would "present an exchange
+            rate the platform does not own". That is true of a foreign currency
+            and false of Credit: the rate is US$0.001 per credit and the markup
+            is the platform's own constants, and decision 2 requires the markup
+            to be recorded on every entry. The platform owns this rate; it does
+            not own the euro.
+        typical_credits: { type: integer, format: int64 }
+        high_credits:
+          type: integer
+          format: int64
           description: |
             Rounded up past the observed maximum, not a bound: the baseline is 45
             runs and a sample that size does not establish one.
@@ -7511,14 +7519,20 @@ components:
         (see RunComparison) while this one is not. One combined number would
         inherit the weaker guarantee without saying so.
       type: object
-      required: [evaluation_usd, source, note]
+      required: [evaluation_credits, source, note]
       properties:
-        evaluation_usd:
-          type: [number, "null"]
+        evaluation_credits:
+          type: [integer, "null"]
+          format: int64
           description: |
-            NULL means the gateway reported no cost. Render that as
-            "unreported" and never as 0 — 0 tells the user the judgement was
-            free.
+            In Credit (ADR-068 decision 1). NULL means the gateway reported no
+            cost. Render that as "unreported" and never as 0 — 0 tells the user
+            the judgement was free.
+
+            NULL also covers a cost the platform could not convert. The two
+            collapse on purpose: both mean "there is no number to show", and a
+            screen that distinguished them would be explaining the ledger's
+            internals to somebody reading a verdict.
         source:
           type: string
           enum: [gateway, estimated, unreported]
@@ -7754,13 +7768,14 @@ components:
                   What the *run* spent, kept in its own field beside the
                   evaluation's own cost. Two columns, never one total (design
                   §5.4).
-                required: [usd, is_lower_bound, authoritative_source]
+                required: [credits, is_lower_bound, authoritative_source]
                 properties:
-                  usd:
-                    type: [number, "null"]
+                  credits:
+                    type: [integer, "null"]
+                    format: int64
                     description: |
-                      NULL means no usage event carried a cost. Render as
-                      "unreported", never as 0.
+                      In Credit (ADR-068 decision 1). NULL means no usage event
+                      carried a cost. Render as "unreported", never as 0.
                   is_lower_bound:
                     type: boolean
                     const: true

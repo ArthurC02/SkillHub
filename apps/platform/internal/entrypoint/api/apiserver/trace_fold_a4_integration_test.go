@@ -127,8 +127,10 @@ func TestTraceGeneralFoldReadsUsageTheWayTheContractDoes(t *testing.T) {
 	if u.InputTokens != 1200 || u.OutputTokens != 120 {
 		t.Errorf("summed usage = %d in / %d out, want 1200 / 120", u.InputTokens, u.OutputTokens)
 	}
-	if u.CostUSD == nil || *u.CostUSD != 0.75 {
-		t.Errorf("summed cost = %v, want 0.75", u.CostUSD)
+	// $0.75 summed, converted at the shipped rate (1.3x markup, US$0.001 per
+	// credit): 975 credits.
+	if u.CostCredits == nil || *u.CostCredits != 975 {
+		t.Errorf("summed cost = %v credits, want 975 (the $0.75 sum converted)", derefCredits(u.CostCredits))
 	}
 	if u.Model != "gpt-5-nano" {
 		t.Errorf("model = %q, want the last usage event's %q", u.Model, "gpt-5-nano")
@@ -150,8 +152,8 @@ func TestTraceGeneralFoldReadsUsageTheWayTheContractDoes(t *testing.T) {
 		t.Errorf("usage = %d in / %d out, want the run_total event's 27042 / 1180 and not the sum",
 			u.InputTokens, u.OutputTokens)
 	}
-	if u.CostUSD == nil || *u.CostUSD != 0.9 {
-		t.Errorf("cost = %v, want the run_total event's 0.9", u.CostUSD)
+	if u.CostCredits == nil || *u.CostCredits != 1170 {
+		t.Errorf("cost = %v credits, want 1170 (the run_total event's $0.9 converted, not the sum)", derefCredits(u.CostCredits))
 	}
 
 	// (3) An unreported cost stays null, on the run_total branch — the branch that
@@ -164,8 +166,8 @@ func TestTraceGeneralFoldReadsUsageTheWayTheContractDoes(t *testing.T) {
 	if u == nil {
 		t.Fatal("usage events did not reach the summary")
 	}
-	if u.CostUSD != nil {
-		t.Errorf("cost_usd = %v, want null (unreported, not $0)", *u.CostUSD)
+	if u.CostCredits != nil {
+		t.Errorf("cost_credits = %v, want null (unreported, not 0 點)", *u.CostCredits)
 	}
 	if u.InputTokens != 27042 {
 		t.Errorf("input tokens = %d, want 27042 — a null cost must not lose the token counts", u.InputTokens)
@@ -175,11 +177,11 @@ func TestTraceGeneralFoldReadsUsageTheWayTheContractDoes(t *testing.T) {
 // --- readers -----------------------------------------------------------------
 
 type foldUsage struct {
-	Model        string   `json:"model"`
-	InputTokens  int64    `json:"input_tokens"`
-	OutputTokens int64    `json:"output_tokens"`
-	CostUSD      *float64 `json:"cost_usd"`
-	CostSource   string   `json:"cost_source"`
+	Model        string `json:"model"`
+	InputTokens  int64  `json:"input_tokens"`
+	OutputTokens int64  `json:"output_tokens"`
+	CostCredits  *int64 `json:"cost_credits"`
+	CostSource   string `json:"cost_source"`
 }
 
 // foldedUsage reads the general view's usage block. Its own struct rather than
@@ -225,4 +227,13 @@ func (c *client) advancedTraceRaw(t *testing.T, runID string) (int, foldAdvanced
 	defer resp.Body.Close()
 	_ = json.NewDecoder(resp.Body).Decode(&out)
 	return resp.StatusCode, out
+}
+
+// derefCredits prints a nullable credit figure without printing its address,
+// which is what %v on the pointer did and what made one red run unreadable.
+func derefCredits(v *int64) any {
+	if v == nil {
+		return "null"
+	}
+	return *v
 }

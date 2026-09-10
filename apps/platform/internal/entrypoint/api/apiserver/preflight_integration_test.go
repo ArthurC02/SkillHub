@@ -51,11 +51,10 @@ type preflightView struct {
 	Hash          string   `json:"summary_hash"`
 	Notes         []string `json:"notes"`
 	EstimatedCost struct {
-		Currency string  `json:"currency"`
-		Low      float64 `json:"low"`
-		Typical  float64 `json:"typical"`
-		High     float64 `json:"high"`
-		Basis    string  `json:"basis"`
+		LowCredits     int64  `json:"low_credits"`
+		TypicalCredits int64  `json:"typical_credits"`
+		HighCredits    int64  `json:"high_credits"`
+		Basis          string `json:"basis"`
 	} `json:"estimated_cost"`
 	Error string `json:"error"`
 }
@@ -221,8 +220,14 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	}
 	// PDM-005 §5.3: the estimated cost, and §5.2a-6: as a range, because prompt
 	// caching makes a first run and a repeat differ by roughly 8x.
-	if view.EstimatedCost.Currency == "" || view.EstimatedCost.High <= view.EstimatedCost.Low {
-		t.Errorf("estimated cost = %+v, want a currency and a non-degenerate range", view.EstimatedCost)
+	// 丙-231 / ADR-068 decision 1: the range is in Credit, and the screen shows
+	// no other unit. A zero low end would read as 「有些 Run 不用點」, which is
+	// not what the baseline says, so the floor is checked too.
+	if view.EstimatedCost.LowCredits <= 0 || view.EstimatedCost.HighCredits <= view.EstimatedCost.LowCredits {
+		t.Errorf("estimated cost = %+v, want a non-degenerate credit range", view.EstimatedCost)
+	}
+	if strings.Contains(view.EstimatedCost.Basis, "$") || strings.Contains(view.EstimatedCost.Basis, "美元") {
+		t.Errorf("the basis still quotes money: %q", view.EstimatedCost.Basis)
 	}
 	if view.EstimatedCost.Basis == "" {
 		t.Error("the cost estimate does not say where its numbers came from")

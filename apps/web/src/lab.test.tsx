@@ -51,10 +51,9 @@ function summary(hash: string, files: string[]): PreflightResponse {
   return {
     summary_hash: hash,
     estimated_cost: {
-      currency: "USD",
-      low: 0.01,
-      typical: 0.06,
-      high: 0.3,
+      low_credits: 13,
+      typical_credits: 78,
+      high_credits: 390,
       basis: "估計值,非報價。來源:M2 基準試跑 45 個 Skill 的閘道實付分布。",
     },
     notes: ["以上任何一項變更都會產生新的摘要,必須重新確認。"],
@@ -361,10 +360,12 @@ test("PDM-005 §5.3 the pre-run screen shows an estimated cost range, labelled a
   await renderLab();
 
   const text = container.textContent ?? "";
-  expect(text).toContain("預估成本");
+  expect(text).toContain("預估點數");
   expect(text).toContain("估計值");
-  expect(text).toContain("$0.01");
-  expect(text).toContain("$0.30");
+  expect(text).toContain("13 – 390 點");
+  // ADR-068 決策 1：這個畫面上不會有第二種單位。
+  expect(text).not.toContain("US$");
+  expect(text).not.toContain("$0.");
 });
 
 test("04 \u4e59-2 every resource ceiling is guarded, not only the four measured in bytes", async () => {

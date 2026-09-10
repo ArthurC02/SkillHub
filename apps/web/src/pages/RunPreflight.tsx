@@ -368,15 +368,15 @@ export function RunPreflight() {
             (right) and landed on a blank (wrong), and a blank in a cost row in
             front of somebody about to press 我確認 reads as free. The word is
             「未測量」:「這個伺服器版本不回報」. */}
-        <dt>預估成本（估計值）</dt>
+        <dt>預估點數（估計值）</dt>
         <dd>
           {cost ? (
             <>
-              {cost.currency} ${cost.low.toFixed(2)} – ${cost.high.toFixed(2)}（常見約 $
-              {cost.typical.toFixed(2)}）<p>{cost.basis}</p>
+              {cost.low_credits} – {cost.high_credits} 點（常見約 {cost.typical_credits} 點）
+              <p>{cost.basis}</p>
             </>
           ) : (
-            <>未測量——這個伺服器版本沒有回報預估成本，不代表這次 Run 不花錢。</>
+            <>未測量——這個伺服器版本沒有回報預估點數，不代表這次 Run 不用點。</>
           )}
         </dd>
         {/* PDM-010 / ADR-028: the display comes after the enforcement, never

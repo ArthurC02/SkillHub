@@ -174,7 +174,7 @@ const summary: TraceSummary = {
   errors_total: 1,
   summary_truncated: false,
   final_output: "Removed 17 duplicate rows.",
-  usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_usd: null },
+  usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_credits: null },
   steps: [
     // One of each kind the field carries, which is what the server now
     // produces: the platform's own sentence, in the interface language, and
@@ -226,7 +226,7 @@ test("the general mode says the trace is incomplete and never shows an unreporte
   // The gateway reported no cost. Rendering 0 would tell the user it was free,
   // and 設計 §2.9's table has one word for it (「未回報」 was not on the table).
   expect(text).toContain("未測量");
-  expect(text).not.toContain("US$0.0000");
+  expect(text).not.toContain("0 點");
   // Status is whatever the runs table said, reason included (iron rule 5).
   expect(text).toContain("failed");
 });

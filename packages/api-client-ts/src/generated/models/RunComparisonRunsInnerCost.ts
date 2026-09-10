@@ -23,13 +23,13 @@ import { mapValues } from '../runtime';
  */
 export interface RunComparisonRunsInnerCost {
     /**
-     * NULL means no usage event carried a cost. Render as
-     * "unreported", never as 0.
+     * In Credit (ADR-068 decision 1). NULL means no usage event
+     * carried a cost. Render as "unreported", never as 0.
      * 
      * @type {number}
      * @memberof RunComparisonRunsInnerCost
      */
-    usd: number | null;
+    credits: number | null;
     /**
      * Always true, and required so it cannot be dropped on the
      * way to a screen. The figure is summed from trace `usage`
@@ -70,7 +70,7 @@ export type RunComparisonRunsInnerCostIsLowerBoundEnum = typeof RunComparisonRun
  * Check if a given object implements the RunComparisonRunsInnerCost interface.
  */
 export function instanceOfRunComparisonRunsInnerCost(value: object): value is RunComparisonRunsInnerCost {
-    if (!('usd' in value) || value['usd'] === undefined) return false;
+    if (!('credits' in value) || value['credits'] === undefined) return false;
     if (!('isLowerBound' in value) || value['isLowerBound'] === undefined) return false;
     if (!('authoritativeSource' in value) || value['authoritativeSource'] === undefined) return false;
     return true;
@@ -86,7 +86,7 @@ export function RunComparisonRunsInnerCostFromJSONTyped(json: any, ignoreDiscrim
     }
     return {
         
-        'usd': json['usd'],
+        'credits': json['credits'],
         'isLowerBound': json['is_lower_bound'],
         'authoritativeSource': json['authoritative_source'],
     };
@@ -103,7 +103,7 @@ export function RunComparisonRunsInnerCostToJSONTyped(value?: RunComparisonRunsI
 
     return {
         
-        'usd': value['usd'],
+        'credits': value['credits'],
         'is_lower_bound': value['isLowerBound'],
         'authoritative_source': value['authoritativeSource'],
     };

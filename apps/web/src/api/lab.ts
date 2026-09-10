@@ -67,10 +67,10 @@ export interface PreflightSummary {
  * hash — recalibrating an estimate is not a permission change (see the Go type).
  */
 export interface CostEstimate {
-  currency: string;
-  low: number;
-  typical: number;
-  high: number;
+  /** In Credit — the only unit this platform shows (ADR-068 決策 1). */
+  low_credits: number;
+  typical_credits: number;
+  high_credits: number;
   basis: string;
 }
 

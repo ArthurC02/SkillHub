@@ -103,6 +103,15 @@ type Service struct {
 	// ask, because the deployment it guards has no isolation boundary at all -
 	// see requireCuratedContent.
 	ReadContentSource func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
+	// Credits converts a dollar figure into what this deployment charges for
+	// it, in Credit (ADR-068 decision 1). It is credit.Service.CreditsForUSD,
+	// injected rather than imported: there is no `run` → `credit` row in
+	// ADR-032 appendix A and the depguard rule denies the import.
+	//
+	// ok=false means the amount has no credit representation, which the one
+	// caller treats as a configuration failure rather than as zero. Nil refuses
+	// the pre-run summary outright — see permissionSummaryFor.
+	Credits func(usd float64) (credits int64, ok bool)
 	// WorkspaceCreatedAt is identity's pool-backed owner read for quota display.
 	WorkspaceCreatedAt func(context.Context, pgtype.UUID) (time.Time, error)
 	// ActiveArtifactReferences is packaging's owner read, injected by each

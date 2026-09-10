@@ -136,9 +136,9 @@ type evaluationBody struct {
 	EvidenceComplete   bool    `json:"evidence_complete"`
 	SupersededAt       *string `json:"superseded_at"`
 	Cost               struct {
-		EvaluationUSD *float64 `json:"evaluation_usd"`
-		Source        string   `json:"source"`
-		Note          string   `json:"note"`
+		EvaluationCredits *int64 `json:"evaluation_credits"`
+		Source            string `json:"source"`
+		Note              string `json:"note"`
 	} `json:"cost"`
 	Feedback *struct {
 		Helpful bool   `json:"helpful"`
@@ -306,7 +306,7 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 	if body.JudgeModel != "gpt-5.6-terra" || body.JudgePromptVersion != "judge-run@2026-08-17" {
 		t.Errorf("the row records what actually judged, got %q / %q", body.JudgeModel, body.JudgePromptVersion)
 	}
-	if body.Cost.EvaluationUSD != nil {
+	if body.Cost.EvaluationCredits != nil {
 		t.Error("this judge reported no spend, and an unreported cost is not a number")
 	}
 	if !strings.Contains(body.Cost.Note, "ADR-017") {

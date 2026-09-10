@@ -78,9 +78,10 @@ type comparisonVerdict struct {
 // response still in flight when the stream ends is not in it, and a producer's
 // last flush can land after this was read.
 type runCostView struct {
-	USD                 *float64 `json:"usd"`
-	IsLowerBound        bool     `json:"is_lower_bound"`
-	AuthoritativeSource string   `json:"authoritative_source"`
+	// In Credit (ADR-068 decision 1). Nil is「未測量」and never 0.
+	Credits             *int64 `json:"credits"`
+	IsLowerBound        bool   `json:"is_lower_bound"`
+	AuthoritativeSource string `json:"authoritative_source"`
 }
 
 type criterionRow struct {
@@ -236,8 +237,10 @@ func (s *Service) comparisonSide(
 	if len(summary.Errors) > 0 {
 		side.Errors = summary.Errors
 	}
-	if summary.Usage != nil {
-		side.Cost.USD = summary.Usage.CostUSD
+	if summary.Usage != nil && summary.Usage.CostUSD != nil && s.Credits != nil {
+		if c, ok := s.Credits(*summary.Usage.CostUSD); ok {
+			side.Cost.Credits = &c
+		}
 	}
 	if run.StartedAt != nil && run.FinishedAt != nil {
 		ms := run.FinishedAt.Sub(*run.StartedAt).Milliseconds()
@@ -256,7 +259,7 @@ func (s *Service) comparisonSide(
 		EvaluationID: pgconv.UUIDString(ev.ID),
 		Status:       ev.Status,
 		Overall:      ev.Overall,
-		Cost:         costViewOf(ev),
+		Cost:         costViewOf(ev, s.Credits),
 	}
 	var results []CriterionResult
 	if len(ev.CriterionResults) > 0 {

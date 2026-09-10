@@ -73,10 +73,11 @@ export type DeterministicFinding = {
 };
 
 export type EvaluationCost = {
-  /** null means the gateway reported nothing. Never render it as 0. */
-  evaluation_usd: number | null;
+  /** In Credit (ADR-068 決策 1). null means the gateway reported nothing — or
+   * that the amount had no credit representation. Never render it as 0. */
+  evaluation_credits: number | null;
   /**
-   * `unreported` travels with a null `evaluation_usd` and takes neither of the
+   * `unreported` travels with a null `evaluation_credits` and takes neither of the
    * other two labels — the server sent it long before the contract listed it,
    * and the page's `else` branch called it 「模型閘道實付」 (04 丙-147).
    */
@@ -179,8 +180,8 @@ export type ComparisonSide = {
   errors?: { category?: string; code?: string; message?: string }[];
   duration_ms?: number;
   cost: {
-    /** null means no usage event carried a cost. Never 0. */
-    usd: number | null;
+    /** In Credit (ADR-068 決策 1). null means no usage event carried a cost. Never 0. */
+    credits: number | null;
     /** Always true by contract: the sum over trace usage events is a floor. */
     is_lower_bound: boolean;
     authoritative_source: string;

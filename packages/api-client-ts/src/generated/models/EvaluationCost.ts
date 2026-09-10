@@ -25,14 +25,19 @@ import { mapValues } from '../runtime';
  */
 export interface EvaluationCost {
     /**
-     * NULL means the gateway reported no cost. Render that as
-     * "unreported" and never as 0 — 0 tells the user the judgement was
-     * free.
+     * In Credit (ADR-068 decision 1). NULL means the gateway reported no
+     * cost. Render that as "unreported" and never as 0 — 0 tells the user
+     * the judgement was free.
+     * 
+     * NULL also covers a cost the platform could not convert. The two
+     * collapse on purpose: both mean "there is no number to show", and a
+     * screen that distinguished them would be explaining the ledger's
+     * internals to somebody reading a verdict.
      * 
      * @type {number}
      * @memberof EvaluationCost
      */
-    evaluationUsd: number | null;
+    evaluationCredits: number | null;
     /**
      * `gateway` is the LiteLLM per-key spend for this evaluation, which is
      * the authoritative figure (ADR-017). `estimated` is a computed one
@@ -70,7 +75,7 @@ export type EvaluationCostSourceEnum = typeof EvaluationCostSourceEnum[keyof typ
  * Check if a given object implements the EvaluationCost interface.
  */
 export function instanceOfEvaluationCost(value: object): value is EvaluationCost {
-    if (!('evaluationUsd' in value) || value['evaluationUsd'] === undefined) return false;
+    if (!('evaluationCredits' in value) || value['evaluationCredits'] === undefined) return false;
     if (!('source' in value) || value['source'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
@@ -86,7 +91,7 @@ export function EvaluationCostFromJSONTyped(json: any, ignoreDiscriminator: bool
     }
     return {
         
-        'evaluationUsd': json['evaluation_usd'],
+        'evaluationCredits': json['evaluation_credits'],
         'source': json['source'],
         'note': json['note'],
     };
@@ -103,7 +108,7 @@ export function EvaluationCostToJSONTyped(value?: EvaluationCost | null, ignoreD
 
     return {
         
-        'evaluation_usd': value['evaluationUsd'],
+        'evaluation_credits': value['evaluationCredits'],
         'source': value['source'],
         'note': value['note'],
     };

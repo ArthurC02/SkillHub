@@ -206,13 +206,17 @@ type PermissionSummary struct {
 // must not silently revoke every confirmation a user has outstanding, and a
 // prediction changing is not a permission changing.
 type CostEstimate struct {
-	// Currency is fixed at USD: the gateway prices in it and the baseline was
-	// measured in it. A converted number would be an exchange rate the platform
-	// does not own, presented as a fact about a run.
-	Currency   string  `json:"currency"`
-	LowUSD     float64 `json:"low"`
-	TypicalUSD float64 `json:"typical"`
-	HighUSD    float64 `json:"high"`
+	// In Credit, the platform's only unit of account (ADR-068 decision 1).
+	//
+	// This field used to be a dollar amount beside a `Currency` fixed at USD,
+	// whose comment said a converted number would be 「an exchange rate the
+	// platform does not own」. That argument holds for a foreign currency and
+	// not for Credit: US$0.001 per credit and the markup are the platform's own
+	// constants, published in ADR-068 and recorded on every entry. The rate
+	// belongs to the platform; the euro does not.
+	LowCredits     int64 `json:"low_credits"`
+	TypicalCredits int64 `json:"typical_credits"`
+	HighCredits    int64 `json:"high_credits"`
 	// Basis says where the numbers came from, so nobody reads them as a quote.
 	Basis string `json:"basis"`
 }
@@ -239,17 +243,71 @@ const (
 	estimatedCostHighUSD    = 0.30
 )
 
-func defaultCostEstimate() CostEstimate {
-	return CostEstimate{
-		Currency:   "USD",
-		LowUSD:     estimatedCostLowUSD,
-		TypicalUSD: estimatedCostTypicalUSD,
-		HighUSD:    estimatedCostHighUSD,
-		Basis: "估計值,非報價。來源:M2 基準試跑 45 個 Skill 各一次的閘道實付分布" +
-			"(中位數 $0.0566、平均 $0.0702、最大 $0.2367,mini 級模型)。" +
-			"首次執行與重複執行因 prompt caching 可差約 8 倍,故為區間;" +
-			"實際費用以閘道每把金鑰的 spend 為準。",
+// The three baseline figures the 「來源」 sentence quotes, kept in the unit they
+// were measured in and converted at the same moment as the range itself. They
+// are prose in the response, but they are the same three numbers — a basis that
+// quoted dollars under a range in credits would be inviting the reader to work
+// out the rate, which is exactly the arithmetic decision 1 removes from the
+// screen.
+const (
+	baselineMedianUSD = 0.0566
+	baselineMeanUSD   = 0.0702
+	baselineMaxUSD    = 0.2367
+)
+
+// defaultCostEstimate converts the measured dollar baseline into what this
+// deployment would charge for it. credits is [credit.Service.CreditsForUSD],
+// injected because this context may not import credit (ADR-032 appendix A has
+// no `run` → `credit` row, and the depguard rule says so).
+//
+// ok=false from the converter is treated as a build failure rather than a zero:
+// the three constants are inside the billable range by construction, so a
+// refusal means the deployment's own rate is misconfigured, and quoting 「0
+// 點」 for a run that costs money is the one output this whole change exists to
+// prevent.
+func defaultCostEstimate(credits func(float64) (int64, bool)) (CostEstimate, error) {
+	conv := func(usd float64) (int64, error) {
+		c, ok := credits(usd)
+		if !ok {
+			return 0, fmt.Errorf("run: cost estimate cannot be expressed in credits (%v USD)", usd)
+		}
+		return c, nil
 	}
+	low, err := conv(estimatedCostLowUSD)
+	if err != nil {
+		return CostEstimate{}, err
+	}
+	typical, err := conv(estimatedCostTypicalUSD)
+	if err != nil {
+		return CostEstimate{}, err
+	}
+	high, err := conv(estimatedCostHighUSD)
+	if err != nil {
+		return CostEstimate{}, err
+	}
+	median, err := conv(baselineMedianUSD)
+	if err != nil {
+		return CostEstimate{}, err
+	}
+	mean, err := conv(baselineMeanUSD)
+	if err != nil {
+		return CostEstimate{}, err
+	}
+	max, err := conv(baselineMaxUSD)
+	if err != nil {
+		return CostEstimate{}, err
+	}
+	return CostEstimate{
+		LowCredits:     low,
+		TypicalCredits: typical,
+		HighCredits:    high,
+		Basis: fmt.Sprintf(
+			"估計值,非報價。來源:M2 基準試跑 45 個 Skill 各一次的閘道實付分布"+
+				"(中位數 %d 點、平均 %d 點、最大 %d 點,mini 級模型)。"+
+				"首次執行與重複執行因 prompt caching 可差約 8 倍,故為區間;"+
+				"實際扣點以這個 Run 結算時的實付換算為準。",
+			median, mean, max),
+	}, nil
 }
 
 func (s *Service) store() ObjectStore { return s.Store }
@@ -395,10 +453,20 @@ func (s *Service) permissionSummaryFor(
 		quota = &view
 	}
 
+	if s.Credits == nil {
+		// Fail closed, the way requireCuratedContent does. The alternative is a
+		// pre-run screen that quotes a cost of zero, and 「免費」 is the one
+		// wrong answer this screen must never give (設計 §2.9).
+		return PermissionSummary{}, errors.New("run: no credit conversion wired; the pre-run screen cannot state a cost")
+	}
+	estimate, err := defaultCostEstimate(s.Credits)
+	if err != nil {
+		return PermissionSummary{}, err
+	}
 	return PermissionSummary{
 		Content:       content,
 		Hash:          hex.EncodeToString(sum[:]),
-		EstimatedCost: defaultCostEstimate(),
+		EstimatedCost: estimate,
 		Quota:         quota,
 		Notes:         permissionSummaryNotes,
 	}, nil

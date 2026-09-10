@@ -38,14 +38,14 @@ export interface TraceSummaryUsage {
      */
     outputTokens?: number;
     /**
-     * NULL means the gateway did not report a cost. Consumers MUST render
-     * that as "unreported" and never as 0 - showing 0 tells the user the
-     * run was free.
+     * In Credit (ADR-068 decision 1). NULL means the gateway did not
+     * report a cost. Consumers MUST render that as "unreported" and
+     * never as 0 - showing 0 tells the user the run was free.
      * 
      * @type {number}
      * @memberof TraceSummaryUsage
      */
-    costUsd?: number | null;
+    costCredits?: number | null;
     /**
      * 
      * @type {string}
@@ -85,7 +85,7 @@ export function TraceSummaryUsageFromJSONTyped(json: any, ignoreDiscriminator: b
         'model': json['model'] == null ? undefined : json['model'],
         'inputTokens': json['input_tokens'] == null ? undefined : json['input_tokens'],
         'outputTokens': json['output_tokens'] == null ? undefined : json['output_tokens'],
-        'costUsd': json['cost_usd'] == null ? undefined : json['cost_usd'],
+        'costCredits': json['cost_credits'] == null ? undefined : json['cost_credits'],
         'costSource': json['cost_source'] == null ? undefined : json['cost_source'],
     };
 }
@@ -104,7 +104,7 @@ export function TraceSummaryUsageToJSONTyped(value?: TraceSummaryUsage | null, i
         'model': value['model'],
         'input_tokens': value['inputTokens'],
         'output_tokens': value['outputTokens'],
-        'cost_usd': value['costUsd'],
+        'cost_credits': value['costCredits'],
         'cost_source': value['costSource'],
     };
 }

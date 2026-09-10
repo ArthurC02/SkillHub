@@ -65,9 +65,10 @@ function costNote(side: ComparisonSide): string {
   }`;
 }
 
-function usd(value: number | null): string {
+function credits(value: number | null): string {
   // 設計 §2.9 的表列詞;閘道沒有回報一個成本，不是 0。
-  return value === null ? "未測量" : `US$${value.toFixed(4)}`;
+  // 單位是點數，不是美元：ADR-068 決策 1——使用者面前只有一種單位。
+  return value === null ? "未測量" : `${value} 點`;
 }
 
 export function RunCompare() {
@@ -352,25 +353,25 @@ function ComparisonTables({ data }: { data: RunComparison }) {
             </tr>
             <tr>
               <th scope="row">
-                Run 成本（下界）
+                Run 用掉的點數（下界）
                 {sharedCostNote && <p className="note">{sharedCostNote}</p>}
               </th>
               {sides.map((s) => (
                 <td key={s.run_id}>
-                  {usd(s.cost.usd)}
+                  {credits(s.cost.credits)}
                   {sharedCostNote ? null : <p className="note">{costNote(s)}</p>}
                 </td>
               ))}
             </tr>
             <tr>
               <th scope="row">
-                評估成本
+                評估用掉的點數
                 {/* 每一格都一樣的一句話，而且它講的是這一列與上一列的關係——列首。 */}
                 <p className="note">與上一列分開列，不相加。</p>
               </th>
               {sides.map((s) => (
                 <td key={s.run_id}>
-                  {s.evaluation ? usd(s.evaluation.cost.evaluation_usd) : "未評估"}
+                  {s.evaluation ? credits(s.evaluation.cost.evaluation_credits) : "未評估"}
                 </td>
               ))}
             </tr>

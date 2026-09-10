@@ -216,6 +216,10 @@ type Service struct {
 	// a deployment that produces verdicts and no advice; an evaluation is complete
 	// either way, so its absence is never an evaluation failure.
 	Suggester Suggester
+	// Credits turns a stored dollar figure into what this deployment charges
+	// for it, for the two cost fields this context puts on a screen. nil leaves
+	// both null, which every consumer already renders as 未測量 — see cost.go.
+	Credits CreditsForUSD
 	// Credit is where the two paid calls above are written down (CRED-005).
 	// nil = not wired, and then evaluation runs unchanged: the ledger records
 	// spend, it never gates it. See cost.go.

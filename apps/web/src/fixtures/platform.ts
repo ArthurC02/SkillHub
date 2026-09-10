@@ -511,10 +511,11 @@ export const TEST_CASE_DRAFT = {
 export const PREFLIGHT = {
   summary_hash: "hash-one",
   estimated_cost: {
-    currency: "USD",
-    low: 0.01,
-    typical: 0.06,
-    high: 0.3,
+    // $0.01 / $0.06 / $0.30 converted at the shipped rate (ADR-068: 1.3x
+    // markup, US$0.001 per credit, rounding up).
+    low_credits: 13,
+    typical_credits: 78,
+    high_credits: 390,
     basis: "估計值，非報價。",
   },
   quota: {
@@ -630,7 +631,7 @@ export const TRACE_GENERAL = {
   },
   errors: [{ category: "provision", code: "provider_error", message: "no slot" }],
   final_output: "Removed 17 duplicate rows.",
-  usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_usd: null },
+  usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_credits: null },
   steps: [
     // One of each kind the field carries, which is what the server now
     // produces: the platform's own sentence, in the interface language, and
@@ -717,7 +718,7 @@ export const EVALUATION = {
   rubric_version: "content-007/writing/v1",
   evidence_complete: false,
   cost: {
-    evaluation_usd: 0.0212,
+    evaluation_credits: 28,
     source: "gateway",
     note: "權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）。",
   },
@@ -773,14 +774,14 @@ export function comparisonSide(runId: string, evaluated: boolean) {
           evaluation_id: "eval-2",
           status: "completed",
           overall: "not_met",
-          cost: { evaluation_usd: 0.02, source: "gateway", note: "" },
+          cost: { evaluation_credits: 26, source: "gateway", note: "" },
         }
       : undefined,
     final_output: "Removed 17 duplicate rows.",
     errors: [{ category: "provision", code: "provider_error", message: "no slot" }],
     duration_ms: 4200,
     cost: {
-      usd: 0.13,
+      credits: 169,
       is_lower_bound: true,
       authoritative_source: "模型閘道對這個 Run 的 per-key 實付（ADR-017）",
     },
