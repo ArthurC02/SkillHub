@@ -446,7 +446,6 @@ export function CreationSession() {
     [file, setFile] = useState<File>(),
     [refs, setRefs] = useState<{ id: string; name: string }[]>([]),
     [raiseBudget, setRaiseBudget] = useState(""),
-    [raiseError, setRaiseError] = useState(""),
     [error, setError] = useState<unknown>(),
     [busy, setBusy] = useState(false);
   /**
@@ -457,9 +456,9 @@ export function CreationSession() {
    * had this pair since it shipped; this screen was missing it.
    */
   const fileInput = useRef<HTMLInputElement>(null);
-  // 進來就能打字（2026-09-10）：這一頁要你做的第一件事是說話，不是找輸入框。
+  // 輸入框一解凍就把游標放進去（2026-09-10）：選完預算，下一件事就是說話。
   const textarea = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => textarea.current?.focus(), []);
+  useEffect(() => textarea.current?.focus(), [budget]);
   const clearFile = () => {
     setFile(undefined);
     if (fileInput.current) fileInput.current.value = "";
@@ -570,29 +569,15 @@ export function CreationSession() {
   const choices = limits.data
     ? budgetChoices(limits.data.min_budget_usd, limits.data.max_budget_usd)
     : [];
-  const budgetUSD = Number(budget) || (choices.includes(0.5) ? 0.5 : choices[0]);
   /*
-   * 送不出去的理由，在按之前就說（§2.4），而不是按下去才在畫面另一頭跳一句紅字
-   * （2026-09-10 外部審查的三張截圖：人照直覺按了送出，錯誤卻插在對話區頂端）。
-   * 這些檢查原本在 `submit` 裡用 throw 表達；搬到這裡之後按鈕停用、原因寫在
-   * 按鈕旁邊，`submit` 裡對應的分支因此刪掉。Go 與契約仍各檢一次。
+   * 2026-09-10（負責人）：「如果希望先有預算再進行對話，也是可以；你就先凍結 ChatUI
+   * 的對話輸入框和類 Submit 按鈕。」所以預算沒有預設值：右上角選一個檔位之前，
+   * 輸入框、附件與送出鍵都凍結，輸入框的 placeholder 說為什麼。§2.2「授權是一次
+   * 阻斷式的決定」照字面成立——選那一下就是那個決定；選項只有平台範圍裡的檔位，
+   * 不必猜數字，也不可能超出範圍。
    */
-  const typed = message.trim();
-  const whyNotSend =
-    busy || working
-      ? ""
-      : !session && budgetUSD === undefined
-        ? "還讀不到這次可用的預算範圍，暫時不能開始。"
-        : !file && refs.length === 0 && !typed
-          ? // 短是刻意的：這是停在畫面上的常態，長一點就把送出鍵擠到第二列（1280 實測）。
-            // 要寫什麼由 placeholder 說，這一句只說「為什麼按不下去」。
-            "還沒有要送出的內容"
-          : [...typed].length > MAX_MESSAGE_RUNES
-            ? `文字說明最多 ${MAX_MESSAGE_RUNES} 字，目前 ${[...typed].length} 字，請先剪短。`
-            : file && refs.length > 0
-              ? "流程圖和參考 Skill 一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。"
-              : "";
-  const canSend = !locked && !creditsBlocked && !whyNotSend;
+  const budgetUSD = Number(budget) || undefined;
+  const frozen = !session && (budgetUSD === undefined || creditsBlocked);
   const save = (value: Session) => {
     setID(value.id);
     client.setQueryData<Session>(["creation-session", value.id], (old) =>
@@ -642,12 +627,13 @@ export function CreationSession() {
     if (!p || !limits.data) return;
     const amount = Number(raiseBudget);
     if (!Number.isFinite(amount) || amount <= p.budget_usd || amount > limits.data.max_budget_usd) {
-      setRaiseError(
-        `請填寫高於目前上限 $${p.budget_usd} 且不超過 $${limits.data.max_budget_usd} 的金額。`,
+      setError(
+        new Error(
+          `請填寫高於目前上限 $${p.budget_usd} 且不超過 $${limits.data.max_budget_usd} 的金額。`,
+        ),
       );
       return;
     }
-    setRaiseError("");
     await perform("raise_budget", { budget_usd: amount });
   };
   /**
@@ -702,9 +688,20 @@ export function CreationSession() {
        * 就進 working、下一個 action 要等新的 revision。所以這裡擋下來並說出順序，而
        * 不是連送兩次然後第二次撞 409。
        */
-      // 空白、太長、圖＋參考同時在：這三種在 `whyNotSend` 裡先擋了，按鈕根本按不到。
-      const note = typed;
+      // 做錯的動作由 toast 當場說（2026-09-10 負責人）：送出鍵不因為這三種情況停用，
+      // 按下去就得到一句話說清楚。擋在這裡不等於這裡是強制者——Go 與契約各檢一次。
+      const note = message.trim();
       const mode = file ? "diagram" : refs.length > 0 ? "references" : "message";
+      if (!file && refs.length === 0 && !note)
+        throw new Error("還沒有要送出的內容：寫一句話，或附上流程圖、挑一個參考 Skill。");
+      if ([...note].length > MAX_MESSAGE_RUNES)
+        throw new Error(
+          `文字說明最多 ${MAX_MESSAGE_RUNES} 字，目前 ${[...note].length} 字，請先剪短。`,
+        );
+      if (file && refs.length > 0)
+        throw new Error(
+          "流程圖和參考 Skill 一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。",
+        );
       const diagram = mode === "diagram" ? (file ? await readImage(file) : undefined) : undefined;
       if (mode === "diagram" && !diagram) throw new Error("請先選擇流程圖。");
       let value = session;
@@ -759,9 +756,11 @@ export function CreationSession() {
     }
   };
   /*
-   * 錯誤說在輸入艙正上方（2026-09-10）。它原本在對話區頂端，而對話區自己捲、而且
-   * 會自動捲到底——長一點的對話裡，送出失敗的那一句根本不在畫面上。會話結束後
-   * 輸入艙不在了，才退回對話區裡。
+   * 錯誤與做錯動作的回應是一則 toast（2026-09-10 負責人：「這些內容可以使用 toastr
+   * 去顯示，不應該一開始就顯示在畫面上」）。它原本插在對話區頂端，而對話區自己捲、
+   * 會自動捲到底——長一點的對話裡那一句根本不在畫面上。toast 固定在視窗上，不隨
+   * 捲動消失；它停到你關掉或下一個動作開始為止，不自己計時消失（錯誤不該在人讀完
+   * 之前走掉）。
    */
   const failure = !!error && (
     <ReadFailure error={error} what="互動創作">
@@ -824,30 +823,6 @@ export function CreationSession() {
             </select>
           </label>
         )}
-        {/* 2026-09-10：預算上限從對話區正中央一個空白輸入框，搬成這一列上一個已經選好的
-            選單。§2.2「授權是一次阻斷式的決定，不是被動通知」仍然成立，只是授權的
-            那個動作換了位置：**第一次送出那顆按鈕的字就是金額**（「開始創作（上限
-            $0.50）」），按下之前平台一分錢都不保留。被動通知的失效是「沒有按任何東西
-            就開始花」，這裡沒有那條路；空白欄位的代價則是量得到的——人照直覺填了預算、
-            按送出，被一句「請描述想完成的任務」打回來。選項只有平台範圍裡的檔位，所以
-            「超出範圍」這個錯誤不再存在。 */}
-        {!session && choices.length > 0 && (
-          <label className="creation-picker">
-            預算上限
-            <select
-              aria-label="這次預算上限（美元）"
-              value={budgetUSD}
-              disabled={busy}
-              onChange={(e) => setBudget(e.target.value)}
-            >
-              {choices.map((v) => (
-                <option key={v} value={v}>
-                  {usd(v)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
         {session && (
           <span className="creation-state" role="status">
             {labels[session.state]}
@@ -863,9 +838,6 @@ export function CreationSession() {
             費用 {p.spent_usd === undefined || p.usage_unknown ? "未知" : "$ " + p.spent_usd} / ${" "}
             {p.budget_usd}
           </span>
-        )}
-        {p?.usage_unknown && (
-          <span className="creation-fact">部分用量未能取得，費用仍是未知，不能當作零。</span>
         )}
         {(p || (session && !terminal)) && (
           <details className="creation-details">
@@ -903,11 +875,47 @@ export function CreationSession() {
                   <button type="button" disabled={busy} onClick={() => void submitRaiseBudget()}>
                     提高預算後繼續
                   </button>
-                  {!!raiseError && <p role="alert">{raiseError}</p>}
                 </>
               )}
             </div>
           </details>
+        )}
+        {/* 右上角：預算上限（2026-09-10 負責人同意的位置）。會話開始之後這一格換成
+            「預算與詳情」，一樣在最右邊——`.creation-bar > :last-child` 把它推過去。
+            餘額與這一場的估計（CRED-001）是費用，§2.10 不折，所以跟著預算坐在同一格，
+            而不是一段說明。 */}
+        {!session && choices.length > 0 && (
+          <label className="creation-picker">
+            預算上限
+            <select
+              aria-label="這次預算上限（美元）"
+              value={budget}
+              disabled={busy}
+              onChange={(e) => setBudget(e.target.value)}
+            >
+              <option value="" disabled>
+                請選擇
+              </option>
+              {choices.map((v) => (
+                <option key={v} value={v}>
+                  {usd(v)}
+                </option>
+              ))}
+            </select>
+            {credits.data &&
+              (creditsBlocked ? (
+                <span className="creation-fact" id="creation-credits-why-disabled">
+                  {credits.data.block_reason}
+                </span>
+              ) : (
+                <span className="creation-fact">
+                  餘額 {credits.data.balance_credits} 點 · 這場約{" "}
+                  {credits.data.estimated_session.low_credits}–
+                  {credits.data.estimated_session.high_credits} 點
+                  {credits.data.estimated_session.estimated && "（估計）"}
+                </span>
+              ))}
+          </label>
         )}
       </div>
       {/* ── 中央：唯一一條捲軸 ───────────────────────────────────────────────
@@ -917,38 +925,19 @@ export function CreationSession() {
       <div className="creation-stream" ref={stream}>
         <div className="creation-feed">
           <ReadFailure error={sessions.error ?? current.error} what="創作紀錄" />
+          {/* 2026-09-10：Agent 的第一句話，一句就好（負責人：「不需要這麼大量的警告標語
+              或是內容描述」）。**這一句是寫死的，不是模型說的**：它不在 `role="log"`
+              裡、不花錢，會話一開始就被真正的對話紀錄取代。 */}
           {!p && (
-            <>
-              {/* 2026-09-10：「還沒有開始」那張卡換成 Agent 的第一句話——對話介面從對方
-                  開口開始。**這一句是寫死的，不是模型說的**：它不在 `role="log"` 裡、不
-                  花錢，會話一開始就被真正的對話紀錄取代。它同時是這一頁的教學（§2.13
-                  D 類），所以只在開始之前出現。 */}
-              <ol className="creation-log">
-                <li data-role="assistant">
-                  <span className="creation-who">Agent</span>
-                  <span className="creation-text">
-                    請描述你想做成 Skill
-                    的那件事：要完成什麼、輸入是什麼、預期產出是什麼。也可以附上流程圖，或挑一個目錄裡的
-                    Skill 當參考。我們會一起確認需求與草稿，最後保存到你的私人工作區。
-                  </span>
-                </li>
-              </ol>
-              {credits.data &&
-                (creditsBlocked ? (
-                  <p className="note" id="creation-credits-why-disabled">
-                    {credits.data.block_reason}
-                  </p>
-                ) : (
-                  <p className="note">
-                    目前餘額 {credits.data.balance_credits} 點；這一場大約要{" "}
-                    {credits.data.estimated_session.low_credits}–
-                    {credits.data.estimated_session.high_credits} 點
-                    {credits.data.estimated_session.estimated && "（樣本不足，此為估計值）"}。
-                  </p>
-                ))}
-            </>
+            <ol className="creation-log">
+              <li data-role="assistant">
+                <span className="creation-who">Agent</span>
+                <span className="creation-text">
+                  想做一個什麼樣的 Skill？說說它要完成什麼，也可以附上流程圖。
+                </span>
+              </li>
+            </ol>
           )}
-          {terminal && failure}
 
           {p && (
             <>
@@ -1513,7 +1502,6 @@ export function CreationSession() {
          * 圖只能經由檔案對話框。**貼上尤其重要**——流程圖多半是一張截圖。
          */
         <div className="composer-dock">
-          {failure}
           <div
             className="composer"
             data-dragging={dragging || undefined}
@@ -1550,7 +1538,7 @@ export function CreationSession() {
                   // 「送出」。少了這一條，中文使用者每打一個字就送出一次。
                   if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
                   e.preventDefault();
-                  if (canSend) void submit();
+                  if (!locked && !frozen) void submit();
                 }}
                 onPaste={(e) => {
                   const picked = [...e.clipboardData.files].find((f) =>
@@ -1560,14 +1548,18 @@ export function CreationSession() {
                   e.preventDefault();
                   chooseFile(picked);
                 }}
-                disabled={busy}
-                placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
+                disabled={busy || frozen}
+                placeholder={
+                  !frozen
+                    ? "描述想完成的任務（Enter 送出，Shift＋Enter 換行）"
+                    : creditsBlocked
+                      ? "餘額不足，暫時不能開始"
+                      : choices.length > 0
+                        ? "先在右上角選擇這次的預算上限"
+                        : "讀不到這次可用的預算範圍，暫時不能開始"
+                }
               />
             </label>
-            {/* 兩個上限說在控制項**之前**，而不是等 4xx 才說（設計 §2.2 第二向）。
-              位置從送出鍵之後搬上來：一句「你只能附這麼大的圖」出現在你按下送出
-              之後，就不是在講上限，是在解釋失敗。`aria-describedby` 把它綁在兩個
-              控制項上，`GenerateSkill.tsx` 對同一種素材本來就是這個配方。 */}
             <div className="composer-tools">
               {/* 沒有 `aria-label`：`<label>` 包著這個輸入，可及名稱就是看得見的那五個
                 字。原本掛的 `aria-label="流程圖"` 會蓋掉它，於是語音操作念畫面上的
@@ -1579,7 +1571,7 @@ export function CreationSession() {
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   aria-describedby="composer-limits"
-                  disabled={locked}
+                  disabled={locked || frozen}
                   onChange={(e) => chooseFile(e.target.files?.[0])}
                 />
               </label>
@@ -1588,7 +1580,7 @@ export function CreationSession() {
                 aria-expanded={picking}
                 aria-controls="composer-references"
                 aria-describedby="composer-limits"
-                disabled={locked}
+                disabled={locked || frozen}
                 onClick={() => setPicking((v) => !v)}
               >
                 參考目錄裡的 Skill{refs.length > 0 && `（${refs.length}）`}
@@ -1600,31 +1592,14 @@ export function CreationSession() {
                 {MAX_MESSAGE_RUNES.toLocaleString("zh-TW")} 字
                 {[...message].length > MAX_MESSAGE_RUNES && "——超過了，送出會被擋下"}
               </span>
-              {whyNotSend && (
-                <span className="note" id="composer-why">
-                  {whyNotSend}
-                </span>
-              )}
               <button
                 type="button"
                 className="composer-send"
-                disabled={!canSend}
-                aria-describedby={
-                  creditsBlocked
-                    ? "creation-credits-why-disabled"
-                    : whyNotSend
-                      ? "composer-why"
-                      : undefined
-                }
+                disabled={locked || frozen}
+                aria-describedby={creditsBlocked ? "creation-credits-why-disabled" : undefined}
                 onClick={() => void submit()}
               >
-                {busy
-                  ? "送出中…"
-                  : session
-                    ? "送出"
-                    : budgetUSD === undefined
-                      ? "開始創作"
-                      : `開始創作（上限 ${usd(budgetUSD)}）`}
+                {busy ? "送出中…" : session ? "送出" : "開始創作"}
               </button>
             </div>
             {/* 每一顆 chip 說的是按下去會發生什麼事（「移除」），不是它代表什麼東西。
@@ -1660,27 +1635,34 @@ export function CreationSession() {
                 <ReferencePicker
                   disabled={locked}
                   references={refs}
-                  onToggle={(skillID, name) =>
-                    setRefs((old) =>
-                      old.some((r) => r.id === skillID)
-                        ? old.filter((r) => r.id !== skillID)
-                        : old.length < 3
-                          ? [...old, { id: skillID, name }]
-                          : old,
-                    )
-                  }
+                  onToggle={(skillID, name) => {
+                    if (refs.some((r) => r.id === skillID))
+                      setRefs(refs.filter((r) => r.id !== skillID));
+                    // 第四個原本是無聲地不收——強制了卻不說（§2.2）。
+                    else if (refs.length >= 3)
+                      setError(new Error("參考 Skill 最多三個；先移除一個再加。"));
+                    else setRefs([...refs, { id: skillID, name }]);
+                  }}
                 />
               </div>
             )}
-            {working && <p className="note">正在處理目前素材；完成後即可補充或確認。</p>}
           </div>
-          {/* 上限與快捷鍵在輸入艙**外面**、下面一行，字級 §4.1 的 micro 之上一階。
-            **一個數字都沒有拿掉**——§2.2 第二向要它在人撞上之前就在畫面上，而它
-            還在畫面上；搬出去的是它的框，不是它的內容。 */}
-          <p className="note composer-limits" id="composer-limits">
-            Enter 送出，Shift＋Enter 換行。流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多 4,000,000
-            位元組（約 3.8 MB）；參考 Skill 最多三個。
-          </p>
+          {/* 上限只給螢幕閱讀器（2026-09-10 負責人：「不應該一開始就顯示在畫面上」）。
+            看得見的那一半改成撞上時的 toast——超過大小、格式不對、第四個參考各有一句；
+            這一句仍然被三個控制項 `aria-describedby` 指著，讀到它們的當下就會念出來。
+            **這是 §2.2 第二向的一個具名例外**，記在 system.md §2.2。 */}
+          <span id="composer-limits">
+            流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多 4,000,000 位元組（約 3.8 MB）；參考 Skill
+            最多三個。
+          </span>
+        </div>
+      )}
+      {failure && (
+        <div className="toast">
+          {failure}
+          <button type="button" onClick={() => setError(undefined)}>
+            關閉
+          </button>
         </div>
       )}
     </div>

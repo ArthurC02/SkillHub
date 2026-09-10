@@ -543,7 +543,10 @@ button:active:not(:disabled, .action, .destructive),
 button:disabled,
 select:disabled,
 textarea:disabled,
-input:disabled {
+input:disabled,
+/* 附件鈕是一個包著檔案輸入的 `<label>`：輸入停用時，看得見的那一格要跟著停用
+   （2026-09-10 截圖：凍結時旁邊的鈕都是虛線，只有它看起來還能按）。 */
+.composer-attach:has(> input:disabled) {
   color: var(--text);
   background: var(--code-bg);
   border-color: var(--border-strong);
@@ -2354,22 +2357,53 @@ summary {
   padding: 12px 0 8px;
 }
 
-.composer-dock > .composer,
-.composer-limits {
+.composer-dock > .composer {
   max-width: 768px;
   margin-inline: auto;
 }
 
-/* 錯誤說在輸入艙正上方，與它同寬（2026-09-10）。 */
-.composer-dock > [role="alert"] {
-  max-width: 768px;
-  margin: 0 auto 8px;
+/* 預算上限（會話開始後是「預算與詳情」）坐在工具列最右邊（2026-09-10）。 */
+.creation-bar > :last-child {
+  margin-left: auto;
 }
 
-/* 上限與快捷鍵在艙外、下面一行。 */
-.composer-limits {
-  padding: 4px 0 0;
-  font-size: 14px;
+/* 錯誤與做錯動作的回應：固定在視窗頂端置中，不隨對話捲動（2026-09-10）。
+   沒有陰影、沒有進場動畫（§4.6.4）；框用 `--border-strong`，與輸入艙同一個語彙。 */
+.toast {
+  position: fixed;
+  top: 16px;
+  inset-inline: 16px;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: fit-content;
+  max-width: 480px;
+  margin-inline: auto;
+  padding: 12px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.toast > p {
+  margin: 0;
+}
+
+/* 「關閉」不讓位給訊息：沒有這一條它會被擠成兩個字一行的直排（2026-09-10 截圖）。 */
+.toast > button {
+  flex: none;
+}
+
+/* 上限只給螢幕閱讀器；看得見的那一半是撞上時的 toast（2026-09-10）。
+   與附件鈕裡那個檔案輸入是同一個剪裁配方。 */
+#composer-limits {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* 輸入區：文字框永遠在，底下一列是附加動作與送出（2026-09-08）。

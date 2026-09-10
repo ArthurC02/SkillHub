@@ -68,8 +68,8 @@ const LIMITS = {
   session_timeout_seconds: 3600,
   retention_seconds: 604800,
 };
-/** 預算預選 $0.50（落在 LIMITS 的範圍裡），而第一次送出那顆按鈕的字就是金額。 */
-const START = "開始創作（上限 $0.50）";
+/** 會話開始前的那顆送出鍵。 */
+const START = "開始創作";
 /** Every GET fires against one of three routes; `/limits` is checked first
  * since it also ends in neither of the other two suffixes.
  *
@@ -134,6 +134,19 @@ async function input(label: string, value: string) {
   });
 }
 /**
+ * 2026-09-10：預算沒有預設值，選之前整個輸入區凍結（負責人）。所以每一支會開始新
+ * 會話的測試，先在右上角選一個檔位——選那一下就是授權。
+ */
+async function pickBudget(value = "0.5") {
+  const pick = 'select[aria-label="這次預算上限（美元）"]';
+  await waitFor(() => !!box.querySelector(pick));
+  await act(async () => {
+    const select = box.querySelector<HTMLSelectElement>(pick)!;
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+/**
  * 2026-09-08：素材種類不再由一組 radio 先選，而是由輸入區裡放了什麼推出來
  * （`CreationSession` 的 `submit`）。文字框與「附一張流程圖」永遠在，所以只剩
  * 「參考目錄裡的 Skill」還需要先按開它的挑選器。
@@ -167,6 +180,7 @@ test("natural language creates one budgeted session", async () => {
     }),
   );
   await render();
+  await pickBudget();
   await input("想完成的任務", "建立摘要 Skill");
   await click(START);
   await waitFor(() => posts.length === 1);
@@ -195,11 +209,10 @@ test("a balance at or above the threshold leaves the start button enabled and sh
     }),
   );
   await render();
-  await waitFor(() => box.textContent!.includes("目前餘額"));
-  expect(box.textContent).toContain("目前餘額 100 點");
+  await pickBudget();
+  await waitFor(() => box.textContent!.includes("餘額 100"));
+  expect(box.textContent).toContain("餘額 100 點");
   expect(box.textContent).toContain("30–65 點");
-  // 餘額不擋；而送出鍵在有東西可送之前本來就停用（2026-09-10），所以先寫一句。
-  await input("想完成的任務", "建立摘要 Skill");
   expect(button(START).disabled).toBe(false);
 });
 test("a balance below the threshold disables the start button and names the deficit", async () => {
@@ -217,6 +230,7 @@ test("a balance below the threshold disables the start button and names the defi
     }),
   );
   await render();
+  await pickBudget();
   await waitFor(() => box.textContent!.includes("還差"));
   expect(box.textContent).toContain(reason);
   const submit = button(START);
@@ -258,6 +272,7 @@ test("a diagram and reference Skills at once are refused before anything is sent
     }),
   );
   await render();
+  await pickBudget();
   await openReferencePicker();
   await click("選擇摘要參考");
   await attachDiagram();
@@ -284,6 +299,7 @@ test("a diagram carries the sentence that came with it, in one action", async ()
     }),
   );
   await render();
+  await pickBudget();
   await input("想完成的任務", "這是我的流程，我想把它變成待辦清單 Skill。");
   await attachDiagram();
   await click(START);
@@ -333,6 +349,7 @@ test("Enter sends, Shift+Enter does not, and neither does Enter while choosing c
     }),
   );
   await render();
+  await pickBudget();
   await input("想完成的任務", "建立摘要 Skill");
   await pressKey("Enter", { shiftKey: true });
   await pressKey("Enter", { isComposing: true });
@@ -675,6 +692,7 @@ test("a picture and the words it came with are one turn in the conversation", as
     }),
   );
   await render();
+  await pickBudget();
   await input("想完成的任務", "這是我的流程，幫我做成 Skill。");
   // 送出前就看得到縮圖：那是唯一能回答「我選到的是不是我要的那張」的東西。
   await attachDiagram();
@@ -762,6 +780,7 @@ test("references are cleared once they have been sent, so the next turn can be w
     }),
   );
   await render();
+  await pickBudget();
   await openReferencePicker();
   await click("選擇摘要參考");
   await click(START);
@@ -779,9 +798,7 @@ test("references are cleared once they have been sent, so the next turn can be w
  * 1. 檔案輸入**沒有** `aria-label`。它原本掛著「流程圖」，蓋掉可見的「附一張流程圖」，
  *    於是語音操作念畫面上的字點不到它（WCAG 2.5.3）。
  * 2. 兩個上限那句話有 `id`，而且兩個控制項都 `aria-describedby` 指著它。
- * 3. 那句話在控制項**之前**——它原本在送出鍵之後，那時候它已經不是在講上限，是在
- *    解釋失敗。
- * 4. 展開鈕的 `aria-controls` 指的元素，展開之後真的在。
+ * 3. 展開鈕的 `aria-controls` 指的元素，展開之後真的在。
  */
 test("the two attachment controls name themselves and carry their limits", async () => {
   vi.stubGlobal(
@@ -789,6 +806,7 @@ test("the two attachment controls name themselves and carry their limits", async
     vi.fn((url: string) => routeGet(url, [], sample())),
   );
   await render();
+  await pickBudget();
   const fileEl = box.querySelector('input[type="file"]') as HTMLInputElement;
   expect(fileEl.getAttribute("aria-label"), "它會蓋掉看得見的那五個字").toBe(null);
   expect(fileEl.closest("label")!.textContent).toContain("附一張流程圖");
@@ -798,12 +816,10 @@ test("the two attachment controls name themselves and carry their limits", async
   expect(picker.getAttribute("aria-describedby")).toBe("composer-limits");
   const limits = box.querySelector("#composer-limits")!;
   expect(limits.textContent).toContain("4,000,000");
-  // 2026-09-09：這一句從輸入艙**裡面**搬到艙**外面下方**（負責人第五次指示所附的
-  // 規格逐字畫著那個位置）。原本的斷言查的是「它排在送出鍵之前」，而排序在新的版面
-  // 上不再成立——它現在跟在整個輸入艙後面。**要守的東西沒有變，只是換了通道**：
-  // 這一句不必互動就在畫面上（§2.2 第二向），而且兩個受它約束的控制項都以
-  // `aria-describedby` 指著它（上面兩條斷言），所以螢幕閱讀器在讀到那兩個控制項的
-  // 當下就會念到它——那比 DOM 順序更接近「在你撞上之前告訴你」。
+  // 2026-09-10（負責人：「不應該一開始就顯示在畫面上」）：這一句從畫面上拿掉，只留給
+  // 螢幕閱讀器——兩個受它約束的控制項仍以 `aria-describedby` 指著它，讀到它們的當下
+  // 就會念出來；看得見的那一半改成撞上時的 toast。所以這裡守的是「它還在、沒被折起來、
+  // 數字一個都沒少」，不再是「它在畫面上」。這是 §2.2 第二向的具名例外（system.md）。
   expect(limits.closest("details"), "上限被折起來了（§2.2 第二向）").toBe(null);
   expect(limits.textContent, "上限那一句不見了").toContain("約 3.8 MB");
   expect(box.querySelector("#composer-references")).toBe(null);
@@ -852,6 +868,7 @@ test("diagram starts with an unbilled empty session then sends transient input",
     }),
   );
   await render();
+  await pickBudget();
   const file = box.querySelector('input[type="file"]') as HTMLInputElement;
   await act(async () => {
     Object.defineProperty(file, "files", {
@@ -947,6 +964,7 @@ test("catalog references can start a session and require confirmation", async ()
     }),
   );
   await render();
+  await pickBudget();
   await openReferencePicker();
   await click("選擇摘要參考");
   await click(START);
@@ -1085,7 +1103,9 @@ test("resume shows unknown costs and confirms the displayed diagram revision", a
   await render();
   await resume();
   expect(box.textContent, "費用未知時工具列要說「未知」，不能顯示成 0").toContain("費用 未知");
-  expect(box.textContent).toContain("不能當作零");
+  // 2026-09-10：那一句「不能當作零」從工具列拿掉了（負責人：警語不佔版面）。它要守的
+  // 事沒有變——費用未知時畫面上不得出現一個數字——所以直接斷言那件事。
+  expect(box.textContent, "未知的費用被顯示成一個數字").not.toMatch(/費用 \$/);
   await click("確認流程圖理解");
   expect(posts[0]).toMatchObject({ kind: "confirm_diagram", expected_revision: 7 });
 });
@@ -1144,11 +1164,12 @@ test("network retry reuses the command ID and payload", async () => {
   expect(posts[1]).toEqual(posts[0]);
 });
 /**
- * 2026-09-10：預算不再是一個空白輸入框，而是頂部一個已經選好的選單。守的三件事：
- * 選項只有平台範圍裡的檔位（所以「超出範圍」不再可能）、預選的是 $0.50、而且
- * 按鈕的字跟著選的金額變——授權的那個動作就是按下寫著金額的那顆鍵（§2.2）。
+ * 2026-09-10（負責人）：「如果希望先有預算再進行對話，也是可以；你就先凍結 ChatUI 的
+ * 對話輸入框和類 Submit 按鈕。」守的四件事：預算沒有預設值；選之前輸入框與送出鍵都
+ * 凍結、placeholder 說為什麼；選項只有平台範圍裡的檔位（所以超出範圍不再可能）；
+ * 選了之後送出的就是選的那個數。
  */
-test("the budget is a pre-set choice inside the platform's band, named on the start button", async () => {
+test("no budget, no conversation: the composer is frozen until a step inside the band is chosen", async () => {
   const posts: Record<string, unknown>[] = [];
   vi.stubGlobal(
     "fetch",
@@ -1164,36 +1185,56 @@ test("the budget is a pre-set choice inside the platform's band, named on the st
   const pick = 'select[aria-label="這次預算上限（美元）"]';
   await waitFor(() => !!box.querySelector(pick));
   const select = box.querySelector<HTMLSelectElement>(pick)!;
-  expect([...select.options].map((o) => o.value)).toEqual(["0.1", "0.2", "0.5", "1", "2", "5"]);
-  expect(select.value).toBe("0.5");
-  await act(async () => {
-    select.value = "2";
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  expect([...select.options].map((o) => o.value)).toEqual(["", "0.1", "0.2", "0.5", "1", "2", "5"]);
+  expect(select.value, "預算不能有預設值：選那一下就是授權").toBe("");
+  const textarea = box.querySelector("textarea")!;
+  expect(textarea.disabled, "沒有預算，輸入框卻沒有凍結").toBe(true);
+  expect(textarea.placeholder).toContain("右上角");
+  expect(button(START).disabled).toBe(true);
+  await pickBudget("2");
+  expect(textarea.disabled).toBe(false);
+  expect(button(START).disabled).toBe(false);
   await input("想完成的任務", "建立摘要 Skill");
-  await click("開始創作（上限 $2.00）");
+  await click(START);
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({ budget_usd: 2 });
+});
+/**
+ * 2026-09-10：預算不再是一個空白輸入框，而是頂部一個已經選好的選單。守的三件事：
+ * 選項只有平台範圍裡的檔位（所以「超出範圍」不再可能）、預選的是 $0.50、而且
+ * 按鈕的字跟著選的金額變——授權的那個動作就是按下寫著金額的那顆鍵（§2.2）。
+ */
+/**
+ * 2026-09-10（負責人）：做錯的動作由介面當場說，而且用 toast——不佔版面、不在一開始
+ * 就出現。送出鍵不因為「還沒寫」而停用；按下去得到一句話，一個 POST 都沒有發出去，
+ * 關掉它就沒了。
+ */
+test("sending nothing is answered by a toast, and nothing is sent", async () => {
+  const posts: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(init.body);
+        return response(sample());
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await pickBudget();
+  await click(START);
+  await waitFor(() => !!box.querySelector(".toast"));
+  expect(box.querySelector('.toast [role="alert"]')!.textContent).toContain("還沒有要送出的內容");
+  expect(posts).toHaveLength(0);
+  await click("關閉");
+  expect(box.querySelector(".toast")).toBe(null);
 });
 /**
  * 2026-09-10 外部審查的三張截圖：什麼都沒寫就按送出，錯誤跳在對話區頂端。現在
  * 送出鍵在有東西可送之前是停用的，**原因寫在它旁邊而且綁在它身上**（§2.4），
  * 寫了一個字它就亮起來、那句原因也跟著消失。
  */
-test("the send button stays disabled with its reason beside it until there is something to send", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string) => routeGet(url, [], sample())),
-  );
-  await render();
-  await waitFor(() => !!box.querySelector('select[aria-label="這次預算上限（美元）"]'));
-  expect(button(START).disabled).toBe(true);
-  expect(button(START).getAttribute("aria-describedby")).toBe("composer-why");
-  expect(box.querySelector("#composer-why")!.textContent).toBe("還沒有要送出的內容");
-  await input("想完成的任務", "建立摘要 Skill");
-  expect(button(START).disabled).toBe(false);
-  expect(box.querySelector("#composer-why")).toBe(null);
-});
 test("an open session shows its deadline and retention", async () => {
   const v = sample();
   vi.stubGlobal(
