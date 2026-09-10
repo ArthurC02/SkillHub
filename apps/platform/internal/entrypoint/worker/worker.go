@@ -208,6 +208,8 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		return nil, fmt.Errorf("credit wiring: %w", err)
 	}
 	wireCreationCredit(set.Creation, creditSvc, pool)
+	backfillSvc := newBackfillService(pool, deps)
+	wireCostRecording(creditSvc, creationSearch, creationVersions, backfillSvc, set.Evaluations)
 	workers := river.NewWorkers()
 	addWorker(set, workers, &creation.Worker{Svc: set.Creation})
 	addWorker(set, workers, &creation.ExpiryWorker{Svc: set.Creation})
@@ -246,7 +248,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	// partitions, and catching up the enrichment an import left pending. Neither
 	// deletes anything, which is what lets their schedule live in code at all.
 	addWorker(set, workers, &PartitionCreateWorker{Pool: pool})
-	addWorker(set, workers, &EnrichmentBackfillWorker{Svc: newBackfillService(pool, deps)})
+	addWorker(set, workers, &EnrichmentBackfillWorker{Svc: backfillSvc})
 	// ADR-068 decision 9's fixed-time trigger. The thresholds gate ① blocks on
 	// are derived from these windows, so a kind whose statistics stop being
 	// recomputed does not fail — it quietly keeps using an old p95.

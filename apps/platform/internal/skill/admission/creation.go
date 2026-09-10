@@ -58,7 +58,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 	if !found || existing.Redistribution != registry.RedistributionGenerated {
 		return Result{}, ErrGeneratedNameCollision
 	}
-	version, duplicate, err := s.persistVersion(ctx, tx, ws, existing, prepared, src, s.enrichPackage(ctx, prepared))
+	version, duplicate, err := s.persistVersion(ctx, tx, ws, existing, prepared, src, s.enrichPackage(ctx, prepared, ws.ID))
 	if err != nil {
 		return Result{}, err
 	}

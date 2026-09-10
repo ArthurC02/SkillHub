@@ -48,6 +48,11 @@ type Service struct {
 	IndexSkill func(ctx context.Context, tx pgx.Tx, projection SkillProjection) error
 	// PendingEnrichments is catalog's owner read, adapted by the composition root.
 	PendingEnrichments func(ctx context.Context, limit int32) ([]PendingEnrichment, error)
+	// Credit is where the paid calls on this path are written down (CRED-005):
+	// index-time enrichment and single-shot generation. nil = not wired, and
+	// then both run unchanged — the ledger records spend, it never gates it.
+	// See cost.go.
+	Credit CostRecorder
 	// GenerateQuota is the generation allowance (GEN-004, ADR-047 決策 5). The
 	// zero value enforces nothing and displays nothing, which is what a build
 	// with no generation allowance is. Deliberately NOT the run allowance: one
@@ -356,7 +361,7 @@ func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace
 	// order for every new Skill is security check, then metadata, then the
 	// library; GEN-007's exclusion from search lives on the read side
 	// (SearchSkills' join), not in whether the metadata exists.
-	e := s.enrichPackage(ctx, p)
+	e := s.enrichPackage(ctx, p, ws.ID)
 
 	tx, release, err := s.beginPackageWrite(ctx, ws, p, data)
 	if err != nil {
@@ -471,7 +476,7 @@ func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillI
 	}
 	res := Result{Report: p.report}
 
-	e := s.enrichPackage(ctx, p) // outside the transaction; see importZip
+	e := s.enrichPackage(ctx, p, ws.ID) // outside the transaction; see importZip
 
 	tx, release, err := s.beginPackageWrite(ctx, ws, p, data)
 	if err != nil {
@@ -645,7 +650,7 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 			failed++
 			continue
 		}
-		e := s.enrichPackage(ctx, p)
+		e := s.enrichPackage(ctx, p, row.WorkspaceID)
 		if e.status != enrichmentEnriched {
 			failed++ // enrichPackage already logged why; the row stays pending
 			continue

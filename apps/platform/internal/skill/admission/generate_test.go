@@ -370,7 +370,7 @@ func TestAGenerationRecordsTheCostTheGatewayReported(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := gatewayReturning(t, "{"+skill+tc.usage+"}")
-			resp, err := svc.generateOnce(context.Background(), "把掃描的單據整理成表格。", nil, nil)
+			resp, err := svc.generateOnce(context.Background(), pgtype.UUID{}, "把掃描的單據整理成表格。", nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -466,7 +466,7 @@ func TestDiagramOnlyReachesTheGatewayWithAnEmptyTaskDescription(t *testing.T) {
 	svc, captured := requestCapturingStub(t, skillResp)
 
 	diagram := &GenerateDiagram{MediaType: "image/png", Data: []byte("not really a png, just bytes")}
-	if _, err := svc.generateOnce(context.Background(), "", diagram, nil); err != nil {
+	if _, err := svc.generateOnce(context.Background(), pgtype.UUID{}, "", diagram, nil); err != nil {
 		t.Fatalf("generateOnce: %v", err)
 	}
 
@@ -674,7 +674,7 @@ func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
 	// returns: the same path GenerateSkill takes, one level down.
 	const skillResp = `{"skill":{"name":"a","description":"b","body":"c"},"model":"m","prompt_version":"v"}`
 	fakeSvc, captured := requestCapturingStub(t, skillResp)
-	if _, err := fakeSvc.generateOnce(context.Background(), "抽出重點。", nil,
+	if _, err := fakeSvc.generateOnce(context.Background(), pgtype.UUID{}, "抽出重點。", nil,
 		[]llmclient.GenerateReference{ref}); err != nil {
 		t.Fatalf("generateOnce: %v", err)
 	}

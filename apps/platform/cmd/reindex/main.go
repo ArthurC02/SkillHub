@@ -32,6 +32,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
@@ -105,6 +106,17 @@ func main() {
 			return pendingEnrichments(ctx, catalogSvc, limit)
 		},
 	}
+	// This binary's whole job is to spend enrichment calls in bulk, so it is
+	// the last place that should be missing from the spend ledger (CRED-005).
+	// REINDEX_REENRICH below can re-enrich the entire catalogue in one run;
+	// unwired, that would be the largest single spend the platform ever makes
+	// and the one with no row anywhere.
+	creditCfg, err := credit.ConfigFromEnv()
+	if err != nil {
+		slog.Error("credit config", "error", err)
+		os.Exit(1)
+	}
+	svc.Credit = &credit.Service{Store: credit.NewPostgresStore(pool), Config: creditCfg}
 	// REINDEX_REENRICH=<prompt version>: every catalogue document enriched
 	// under another prompt version goes back to pending first, so the backfill
 	// rewrites it under the current one (report §15: the v7 examples are what

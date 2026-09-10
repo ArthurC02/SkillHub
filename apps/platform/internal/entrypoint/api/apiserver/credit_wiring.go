@@ -13,6 +13,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 )
 
 // This file is the one place the two id spaces meet.
@@ -180,4 +182,17 @@ func wireCreationCredit(
 		})
 		return err
 	}
+}
+
+// wireCostRecording hands the ledger to the contexts that make paid calls of
+// their own (CRED-005). None of them asks it a question — catalog and ingest
+// only write what a call cost — so this is assignment, not a gate, and a
+// deployment that skipped it degrades to a ledger with holes rather than to a
+// platform that refuses to search or import.
+//
+// The three services are the ones this process actually holds. eval's paid
+// calls all happen in the Worker, which wires its own (worker/credit_wiring.go).
+func wireCostRecording(svc *credit.Service, search *catalog.Service, versions *ingest.Service) {
+	search.Credit = svc
+	versions.Credit = svc
 }

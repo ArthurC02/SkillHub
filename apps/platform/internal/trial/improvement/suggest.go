@@ -25,6 +25,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -118,6 +119,12 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 		// The paid model result is still useful. Accounting availability is not
 		// permission to discard proposals after a successful external call.
 	}
+	// On the pool, not in a transaction, because there is no transaction here
+	// to join: complete() committed the verdict before this leg ran, on
+	// purpose (paying for advice and losing it must not roll back a durable
+	// verdict). The spend row inherits that shape rather than fighting it.
+	s.recordEvalCost(ctx, s.Pool, credit.KindSuggestion, ev.ID, ev.WorkspaceID, m.run.ID,
+		resp.Model, resp.PromptVersion, resp.Usage)
 
 	q := s.queries()
 	// The counters exist because 04 丙-38 asked "what fraction of proposals gets

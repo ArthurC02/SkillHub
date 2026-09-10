@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"gopkg.in/yaml.v3"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -405,7 +406,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 		// Same prompt, same model, no correction hint added from the first
 		// failure (ADR-047 決策 1). Feeding the findings back would be a second
 		// prompt, and then the provenance row no longer reproduces the package.
-		gen, err := s.generateOnce(ctx, task, in.Diagram, references)
+		gen, err := s.generateOnce(ctx, ws.ID, task, in.Diagram, references)
 		if err != nil {
 			// Logged as well as audited. The audit row records that a generation
 			// failed at the gateway; nothing recorded WHY, so a deployment failing
@@ -517,7 +518,8 @@ func shouldRetry(attempt int, r skillpkg.Report) bool {
 const generateTimeout = 130 * time.Second
 
 func (s *Service) generateOnce(
-	ctx context.Context, task string, diagram *GenerateDiagram, references []llmclient.GenerateReference,
+	ctx context.Context, workspaceID pgtype.UUID, task string,
+	diagram *GenerateDiagram, references []llmclient.GenerateReference,
 ) (*llmclient.GenerateSkillResponse, error) {
 	callCtx, cancel := context.WithTimeout(ctx, generateTimeout)
 	defer cancel()
@@ -530,7 +532,16 @@ func (s *Service) generateOnce(
 			Data:      base64.StdEncoding.EncodeToString(diagram.Data),
 		}
 	}
-	return s.LLM.GenerateSkill(callCtx, req)
+	resp, err := s.LLM.GenerateSkill(callCtx, req)
+	if err != nil {
+		return nil, err
+	}
+	// One row per CALL, not per generation, and that is the point: a generation
+	// is up to two attempts (ADR-047 決策 1) and the retry is not free.
+	// Recorded here rather than at the caller so the row and the call cannot
+	// drift apart — every path that reaches the gateway goes through here.
+	s.recordCost(ctx, credit.KindGenerate, workspaceID, resp.Model, resp.PromptVersion, resp.Usage)
+	return resp, nil
 }
 
 // validDiagramMediaType is the three formats 02:GEN-005 and GenerateDiagram's

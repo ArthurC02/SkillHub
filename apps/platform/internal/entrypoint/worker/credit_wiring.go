@@ -13,6 +13,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 // The Worker's half of ADR-068's gates, and it is the half that spends.
@@ -123,3 +126,22 @@ var creditStatKinds = []string{
 // beta does not reliably reach that. A wider window is the difference between
 // a measured p95 and a constant that never gets replaced.
 const creditStatWindow = 7 * 24 * time.Hour
+
+// wireCostRecording hands the ledger to the contexts in this process that make
+// paid calls of their own (CRED-005).
+//
+// The Worker's list is longer than the API's by one and it is the important
+// one: judging and advising are only ever reached from here, so eval's spend
+// is recorded in this process or in none. backfill is the enrichment worker's
+// own ingest service — a nil there is a re-enrichment run that costs money and
+// leaves no trace of having done so, which is exactly the hole this batch
+// exists to close, so it is wired even though it is optional (nil when the
+// deployment has no LLM at all).
+func wireCostRecording(svc *credit.Service, search *catalog.Service, versions, backfill *ingest.Service, evaluations *eval.Service) {
+	search.Credit = svc
+	versions.Credit = svc
+	if backfill != nil {
+		backfill.Credit = svc
+	}
+	evaluations.Credit = svc
+}

@@ -207,6 +207,13 @@ type EnrichSkillResponse struct {
 	// that were declared in a contract and read by nothing, and each one cost
 	// somebody a day; a fourth is not being added deliberately.
 	Checks []EnrichCheck `json:"checks,omitempty"`
+	// Usage is what this enrichment cost at the gateway. The contract has
+	// carried it since llm-internal.yaml's EnrichSkillResponse.usage and
+	// apps/llm has always filled it in; this struct simply did not decode
+	// it, so index-time enrichment was the one paid call in the system whose
+	// price never reached Go (ADR-068 decision 3 names it as a cost kind).
+	// Nil means unreported and must not be rendered as zero.
+	Usage *GatewayUsage `json:"usage,omitempty"`
 }
 
 // EnrichCheck is one deterministic finding. It carries no text from the model:

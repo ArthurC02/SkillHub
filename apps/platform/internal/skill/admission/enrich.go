@@ -7,8 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pgvector/pgvector-go"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
@@ -101,7 +103,7 @@ func scanFactsFrom(r skillpkg.Report) []byte {
 // Called outside the import transaction on purpose — these are two network
 // round-trips and holding a Postgres transaction open across them would pin a
 // connection for the length of an LLM call.
-func (s *Service) enrichPackage(ctx context.Context, p preparedPackage) enrichment {
+func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspaceID pgtype.UUID) enrichment {
 	e := enrichment{
 		summary: p.report.Manifest.Description,
 		scan:    scanFactsFrom(p.report),
@@ -123,6 +125,11 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage) enrichme
 			"skill", p.report.Manifest.Name, "error", err)
 		return e
 	}
+	// Two paid calls, two rows (cost.go). ADR-068 decision 3 records every
+	// paid call, and the embedding below is a separate call to a separate
+	// model — folding them into one row would make the per-call statistics
+	// this table feeds describe a call nobody makes.
+	s.recordCost(ctx, credit.KindIndexEnrich, workspaceID, resp.Model, resp.PromptVersion, resp.Usage)
 	e.enrichedSummary = resp.Summary
 	e.taskExamples = joinTaskExamples(resp.TaskExamples)
 	e.tags = marshalTags(resp.Tags)
@@ -146,6 +153,9 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage) enrichme
 	embedCtx, cancelEmbed := context.WithTimeout(ctx, embedTimeout)
 	defer cancelEmbed()
 	emb, err := s.LLM.Embed(embedCtx, []string{embeddingText(p.report.Manifest.Name, e)})
+	if emb != nil {
+		s.recordCost(ctx, credit.KindIndexEnrich, workspaceID, emb.Model, "", emb.Usage)
+	}
 	if err != nil || len(emb.Embeddings) == 0 {
 		// The generated text is worth keeping — it is still the better display
 		// summary — but without a vector this document cannot be ranked, so it

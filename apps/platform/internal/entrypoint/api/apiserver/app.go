@@ -343,6 +343,11 @@ func NewApp(cfg Config) (*App, error) {
 		return nil, err
 	}
 	wireCreationCredit(creationSvc, creditSvc, identitySvc.WorkspaceOwner)
+	// CRED-005's other half: the contexts that spend without being the
+	// creation session. Assigned here rather than at each Service literal
+	// because credit is built after both of them — and because a reader
+	// looking for "who records cost" should find one line, not three.
+	wireCostRecording(creditSvc, catalogSvc, versions)
 	// Account deletion clears the ledger too. identity's purge steps are all
 	// workspace-keyed and credit's rows are user-keyed, so this is the one step
 	// that resolves in the other direction before it deletes.

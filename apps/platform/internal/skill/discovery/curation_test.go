@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func uuid(t *testing.T, s string) pgtype.UUID {
+func mustUUID(t *testing.T, s string) pgtype.UUID {
 	t.Helper()
 	var u pgtype.UUID
 	if err := u.Scan(s); err != nil {
@@ -20,8 +20,8 @@ func uuid(t *testing.T, s string) pgtype.UUID {
 // getting caught by, so this is the Go one's own test: the SQL one is covered by
 // TestACuratedSkillSaysSoUntilANewVersionArrives in the apiserver suite.
 func TestCurationTierNeedsBothHalvesOfTheRecord(t *testing.T) {
-	reviewed := uuid(t, "11111111-1111-4111-8111-111111111111")
-	newer := uuid(t, "22222222-2222-4222-8222-222222222222")
+	reviewed := mustUUID(t, "11111111-1111-4111-8111-111111111111")
+	newer := mustUUID(t, "22222222-2222-4222-8222-222222222222")
 
 	for _, c := range []struct {
 		name   string

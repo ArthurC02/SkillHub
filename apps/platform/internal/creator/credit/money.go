@@ -3,6 +3,7 @@ package credit
 import (
 	"errors"
 	"fmt"
+	"math"
 )
 
 // ceilDiv is ceiling integer division for a non-negative numerator and a
@@ -59,4 +60,44 @@ func BilledMicros(usdMicros, markupBps int64) (int64, error) {
 // whole credits, rounding up: any nonzero spend costs at least one credit.
 func CreditsForMicros(billedMicros, microsPerCredit int64) int64 {
 	return ceilDiv(billedMicros, microsPerCredit)
+}
+
+// UsageCost turns a gateway usage report into the two cost_events columns
+// that describe what a call cost: `usd_micros` and whether `cost_source` is
+// 'gateway' or 'estimated'.
+//
+// costSource is the gateway's own word, and only its own word counts as a
+// measurement. Every caller of this function already discards a cost that
+// arrived with any other source (eval's judge.go and suggest.go nil the
+// field out before storing it) for the reason ADR-026 gives about verdicts:
+// a number is only as good as the ruler that produced it, and a price the
+// gateway did not set is a guess wearing a price's clothes.
+//
+// A call the gateway did not price is recorded at zero micros and marked
+// estimated — not dropped. Dropping it would make the platform's own spend
+// ledger silently disagree with the number of paid calls it made, and the
+// first place that would show up is the p95 the start gate is derived from
+// (ADR-068 decision 8), which reads this table. Zero-and-labelled is
+// recoverable arithmetic; a missing row is not.
+//
+// Rounds up, for the reason ceilDiv documents.
+func UsageCost(costUSD *float64, costSource string) (usdMicros int64, estimated bool) {
+	if costUSD == nil || costSource != "gateway" {
+		return 0, true
+	}
+	v := *costUSD
+	if math.IsNaN(v) || math.IsInf(v, 0) || v <= 0 {
+		// A non-finite or negative cost is not a cheaper call, it is a
+		// broken report — same disposition as an absent one.
+		return 0, true
+	}
+	micros := int64(math.Ceil(v * 1_000_000))
+	if micros > MaxBillableMicros {
+		// The caller of RecordCost cannot refuse a call that already
+		// happened, so this clamps rather than errors, and the clamp is
+		// visible: an estimated row at the ceiling is a row somebody will
+		// ask about, which is the intent.
+		return MaxBillableMicros, true
+	}
+	return micros, false
 }

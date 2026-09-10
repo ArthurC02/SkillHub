@@ -38,6 +38,10 @@ type Service struct {
 	// LLM provides query embeddings and match reasons. nil = embedding
 	// unavailable, FTS-only fallback.
 	LLM *llmclient.Client
+	// Credit is where a paid embedding call is written down (CRED-005). nil =
+	// not wired, and then search still runs — the ledger is a record of spend,
+	// never a precondition for it. See cost.go.
+	Credit CostRecorder
 	// Store reads stored packages for the detail and file views. nil = those
 	// views report the package scan as unavailable rather than clean.
 	Store ObjectStore
@@ -307,6 +311,10 @@ func (s *Service) embedQuery(ctx context.Context, query string) (*pgvector.Vecto
 	if err != nil {
 		return nil, err
 	}
+	// Recorded before the empty-vector check below: a call that answered with
+	// no vectors still ran and was still billed, and the ledger records what
+	// the platform spent, not what the platform got for it.
+	s.recordSearchCost(ctx, embedResp)
 	if len(embedResp.Embeddings) == 0 {
 		// An empty vector list is a failed embed, not an empty result set. It
 		// has to surface as an error or the caller reports full-quality zero

@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"encoding/json"
+	"github.com/jackc/pgx/v5/pgtype"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -95,7 +96,7 @@ func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
 	s := &Service{LLM: stub.start(t)}
 
-	e := s.enrichPackage(context.Background(), testPackage())
+	e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{})
 
 	if e.status != enrichmentEnriched {
 		t.Fatalf("status = %q, want %q", e.status, enrichmentEnriched)
@@ -151,7 +152,7 @@ func TestScanFactsProjectedWithoutLLM(t *testing.T) {
 	}
 	s := &Service{}
 
-	e := s.enrichPackage(context.Background(), p)
+	e := s.enrichPackage(context.Background(), p, pgtype.UUID{})
 
 	var got scanFacts
 	if err := json.Unmarshal(e.scan, &got); err != nil {
@@ -174,7 +175,7 @@ func TestEmbeddingCoversEnrichedSummaryAndTaskExamples(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
 	s := &Service{LLM: stub.start(t)}
 
-	s.enrichPackage(context.Background(), testPackage())
+	s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{})
 
 	if len(stub.embedded) != 1 {
 		t.Fatalf("embed called with %d texts, want 1", len(stub.embedded))
@@ -198,7 +199,7 @@ func TestEnrichPackageFallsBackToPendingWhenEnrichFails(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusBadGateway, embedStatus: http.StatusOK}
 	s := &Service{LLM: stub.start(t)}
 
-	e := s.enrichPackage(context.Background(), testPackage())
+	e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{})
 
 	if e.status != enrichmentPending {
 		t.Fatalf("status = %q, want %q", e.status, enrichmentPending)
@@ -221,7 +222,7 @@ func TestEnrichPackageStaysPendingWhenEmbedFails(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusBadGateway}
 	s := &Service{LLM: stub.start(t)}
 
-	e := s.enrichPackage(context.Background(), testPackage())
+	e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{})
 
 	if e.status != enrichmentPending {
 		t.Fatalf("status = %q, want %q", e.status, enrichmentPending)
@@ -238,7 +239,7 @@ func TestEnrichPackageStaysPendingWhenEmbedFails(t *testing.T) {
 func TestEnrichPackageWithoutLLMIsPending(t *testing.T) {
 	s := &Service{}
 
-	e := s.enrichPackage(context.Background(), testPackage())
+	e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{})
 
 	if e.status != enrichmentPending {
 		t.Fatalf("status = %q, want %q", e.status, enrichmentPending)

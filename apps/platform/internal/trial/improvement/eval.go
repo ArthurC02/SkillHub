@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -215,6 +216,10 @@ type Service struct {
 	// a deployment that produces verdicts and no advice; an evaluation is complete
 	// either way, so its absence is never an evaluation failure.
 	Suggester Suggester
+	// Credit is where the two paid calls above are written down (CRED-005).
+	// nil = not wired, and then evaluation runs unchanged: the ledger records
+	// spend, it never gates it. See cost.go.
+	Credit CostRecorder
 	// Store reads the stored package for the `spec` check, for the files a
 	// suggestion is written against, and for the archive a new version is patched
 	// from. Nil means those report themselves unavailable — never that the package
@@ -793,6 +798,11 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 		v.model, v.promptVersion, v.usage); err != nil {
 		return err
 	}
+	// The platform's own copy of the same bill, in the same transaction and
+	// for the same reason (CRED-005). See cost.go for why it is not the same
+	// row.
+	s.recordEvalCost(ctx, tx, credit.KindReview, ev.ID, ev.WorkspaceID, m.run.ID,
+		v.model, v.promptVersion, v.usage)
 
 	passed, failed, undetermined := tally(v.results)
 	if err := trace.RecordOrchestratorEvent(ctx, tx, m.run.WorkspaceID, m.run.ID, m.attempt,
