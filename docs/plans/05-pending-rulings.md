@@ -1900,3 +1900,25 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 **不決定的代價**：每一次視覺整改都會在這條邊界上重新爭論一次，而爭論的雙方（顯眼 vs 漏斗）在同一個部署裡從來沒有同時出現過。
 
 **決定之後誰動**：改 `01` §10 邊界 1 的措辭；`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊與 `rendered.spec.ts` 都不受影響（它們守的是前半句）。
+
+## R-72｜付費 E2E 要多久跑一次，由誰按（`04` 丙-224、[automation.md](../development/automation.md)）
+
+**這一項是排程與費用，不是技術**——技術面 2026-09-10 已經確認可跑並通過。
+
+**已查到的事實**：
+
+- `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` 是唯一一支走完整條路的測試：套件進物件儲存 → preflight → 派送 → sandboxd → 容器跑 Agent SDK → 每 Run 短效 Virtual Key 經閘道呼叫模型 → trace 回推 → artifact 收集 → 金鑰撤銷。
+- 它**不在 CI**，因為它花錢。2026-09-10 手動跑一次通過，閘道回報 **$0.021103**。
+- 它也**不在任何排程上**：上一次有人跑是這一次。兩次手動之間，這條線斷掉不會有人知道，而它斷掉的樣子是「派送成功、Run 永遠不完成」——`web`／`platform` 全綠。
+- 對照組：`SKILLHUB_REQUIRE_DB`／`_OBJSTORE`／`_CREATION_PYTHON` 三個依賴都已經做成「跳過就是紅」，**唯獨這一支不能這樣做，因為它會花錢**。
+
+**要決定的**：
+
+1. **節奏**：(a) 每週一次排程；(b) 只在發布前（`release-checklist` 加一列）；(c) 每次 `apps/sandbox`／`apps/llm`／派送路徑有改動時手動跑；(d) 維持現狀（想到才跑）。
+2. **誰按**：排程要一把能用的閘道金鑰放在 CI secret 裡，而 ⛔ 鐵律 11 說金鑰只存在閘道——放進 GitHub secret 是新的一份，要負責人明示同意。
+
+**代理建議**：**(b) ＋ (c)**，不要排程。理由：$0.02 不是成本問題，**把閘道金鑰複製進 CI 才是**——那是為了一個每週一次的檢查，在 repo 之外多開一個金鑰存放點。(b) 讓它綁在真的會傷到人的時刻（發布），(c) 讓它綁在真的會弄壞它的改動上，兩者都不需要新的金鑰位置。
+
+**不決定的代價**：這條線的狀態會停在「2026-09-10 那天是好的」，而它正是封測當天唯一不能壞的那一條。
+
+**決定之後誰動**：(b) 改 [release-checklist](mvp/m4/release-checklist.md)；(c) 改 [automation.md](../development/automation.md) 的那一節（指令已經在那裡，不複述）；(a) 要另開一支 workflow 與一個 CI secret。
