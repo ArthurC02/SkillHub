@@ -39,6 +39,9 @@ S3_IMAGE="docker.io/chrislusf/seaweedfs:3.80@sha256:1055999e08eed1789b0ae45d2351
 # published port timed out against a healthy service. In-network also exercises
 # the DNS name infra/images/web/nginx.conf actually dials.
 CURL_IMAGE="docker.io/curlimages/curl@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69"
+# The version apps/web pins for @playwright/test, so the engine here is the one
+# the rest of the browser tier is written against.
+PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.62.1-noble"
 
 NET="skillhub-smoke"
 
@@ -128,7 +131,12 @@ api_env=(
 	-e OBJSTORE_SECRET_KEY=skillhubdevsecret
 	-e OBJSTORE_BUCKET=skillhub
 	-e OBJSTORE_SSL=0
+	# ADR-020's offline provider, so the browser pass can look at the pages
+	# behind a session. The API refuses to start with DEV_LOGIN=1 and a secure
+	# cookie, so the two go together. This stack is thrown away at the end of
+	# the run and is never reachable from outside the runner.
 	-e COOKIE_INSECURE=1
+	-e DEV_LOGIN=1
 )
 
 echo "--- platform-api"
@@ -205,6 +213,20 @@ sleep 5
 running="$(docker inspect -f '{{.State.Running}}' smoke-worker)"
 [ "$running" = "true" ] && rc=0 || rc=1
 check "platform-worker is still running" "$rc"
+
+# 5. A real browser against the real backend (04 丙-221). In its own container
+#    on the same network: the browsers are already in the Playwright image, and
+#    running it here rather than through a published port keeps this working the
+#    same way on a laptop and on a runner. `npm i` fetches only the JS package
+#    -- the image supplies the browser binaries.
+echo "--- browser"
+docker run --rm --network "$NET" \
+	-v "$HOST_ROOT:/work:ro" -w /work \
+	-e BASE_URL=http://smoke-web \
+	"$PLAYWRIGHT_IMAGE" \
+	sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 >/dev/null 2>&1 &&
+	       cp /work/tools/ci/stack-browser.mjs /tmp/ && node /tmp/stack-browser.mjs' && rc=0 || rc=1
+check "public routes render in a browser against the real API" "$rc"
 
 if [ "$fail" -ne 0 ]; then
 	echo "stack-smoke: at least one assertion failed" >&2
