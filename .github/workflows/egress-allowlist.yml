@@ -2,6 +2,12 @@ name: Egress allow-list
 
 on:
   pull_request:
+    paths:
+      - 'infra/egress/**'
+      - '.github/workflows/egress-allowlist.yml'
+      - 'tools/egress/**'
+      - 'tools/ci/check_egress_allowlist.py'
+      - 'tools/sec009/t5-network-egress.sh'
   push:
     branches: [main]
     paths:
@@ -46,8 +52,10 @@ jobs:
           if [ "${{ github.event_name }}" = pull_request ]; then
             git fetch --quiet origin "${{ github.base_ref }}"
             RANGE="origin/${{ github.base_ref }}...HEAD"
-          else
+          elif [ "${{ github.event.before }}" = 0000000000000000000000000000000000000000 ]; then
             RANGE="HEAD~1..HEAD"
+          else
+            RANGE="${{ github.event.before }}..HEAD"
           fi
           CHANGED=$(git diff --name-only "$RANGE")
           echo "$CHANGED" | grep -q '^infra/egress/allowlist\.yaml$' || exit 0
