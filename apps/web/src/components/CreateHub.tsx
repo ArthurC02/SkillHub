@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { followPointer, releasePointer } from "./spotlight";
 
 export function CreateHub({
   generateExposed,
@@ -15,8 +16,11 @@ export function CreateHub({
     <section className="create-hub" id="create" aria-labelledby="create-heading">
       <h2 id="create-heading">建立一個 Skill</h2>
 
-      <ul className="create-cards">
+      <ul className="create-cards" onPointerMove={followPointer} onPointerLeave={releasePointer}>
         <li className="download-item">
+          <span className="door-mono" aria-hidden="true">
+            ↑
+          </span>
           <h3>匯入現成的套件</h3>
           {explain && (
             <p className="note" data-role="teaching">
@@ -31,6 +35,9 @@ export function CreateHub({
         </li>
 
         <li className="download-item">
+          <span className="door-mono" aria-hidden="true">
+            ✎
+          </span>
           <h3>從目錄挑一個來改</h3>
           <p className="note">
             {explain && (
@@ -47,6 +54,9 @@ export function CreateHub({
 
         {generateExposed && (
           <li className="download-item">
+            <span className="door-mono" aria-hidden="true">
+              ✦
+            </span>
             <h3>{doorway}</h3>
             {explain && (
               <p className="note" data-role="teaching">

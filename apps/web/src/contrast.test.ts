@@ -63,6 +63,15 @@ const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
 
   ["on-cta", "cta", 4.5, ".action — the one filled primary action per page"],
 
+  ["on-tile", "tile-violet", 4.5, ".skill-mono initial on its tile, light stop"],
+  ["on-tile", "tile-violet-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
+  ["on-tile", "tile-blue", 4.5, ".skill-mono initial on its tile, light stop"],
+  ["on-tile", "tile-blue-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
+  ["on-tile", "tile-teal", 4.5, ".skill-mono initial on its tile, light stop"],
+  ["on-tile", "tile-teal-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
+  ["on-tile", "tile-rose", 4.5, ".skill-mono initial on its tile, light stop"],
+  ["on-tile", "tile-rose-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
+
   ["danger", "danger-bg", 4.5, ".notice-danger heading and inline emphasis"],
   ["text-h", "danger-bg", 4.5, ".notice-danger's own heading"],
   ["text", "danger-bg", 4.5, ".notice-danger body text"],

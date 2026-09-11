@@ -14,6 +14,7 @@ import { CreateHub } from "../components/CreateHub";
 import { GeneratedNotice } from "../components/GeneratedNotice";
 import { RiskSummary } from "../components/RiskIndicator";
 import { FacetNotes, liftedNotes, type FacetNote } from "../components/FacetNotes";
+import { followPointer, releasePointer } from "../components/spotlight";
 import type { OwnSkill, Redistribution } from "../api/types";
 
 const OWN_SKILL_NOTES: Array<FacetNote<OwnSkill>> = [
@@ -38,6 +39,16 @@ function RedistributionBadge({ value }: { value: string }) {
     ? REDISTRIBUTION_BADGE[value as Redistribution]
     : REDISTRIBUTION_BADGE.unknown;
   return <span className={badge.danger ? "badge badge-danger" : "badge"}>{badge.text}</span>;
+}
+
+const TILE_TONES = 4;
+
+function toneOf(skillId: string) {
+  return [...skillId].reduce((sum, c) => sum + c.charCodeAt(0), 0) % TILE_TONES;
+}
+
+function initialOf(name: string) {
+  return Array.from(name.trim())[0]?.toUpperCase() ?? "?";
 }
 
 export function WorkspaceSkills() {
@@ -98,14 +109,23 @@ export function WorkspaceSkills() {
       {hasSkills && <FacetNotes rows={rows} facets={OWN_SKILL_NOTES} />}
 
       {hasSkills && (
-        <ul className="search-results">
+        <ul
+          className="search-results skill-grid"
+          onPointerMove={followPointer}
+          onPointerLeave={releasePointer}
+        >
           {rows.map((s) => (
-            <li key={s.skill_id} className="search-result">
-              <p>
-                <Link to="/skills/$skillId" params={{ skillId: s.skill_id }}>
-                  <strong>{s.name}</strong>
-                </Link>
-              </p>
+            <li key={s.skill_id} className="search-result skill-card">
+              <div className="skill-card-head">
+                <span className="skill-mono" data-tone={toneOf(s.skill_id)} aria-hidden="true">
+                  {initialOf(s.name)}
+                </span>
+                <p className="skill-card-title">
+                  <Link to="/skills/$skillId" params={{ skillId: s.skill_id }}>
+                    <strong>{s.name}</strong>
+                  </Link>
+                </p>
+              </div>
               <p>{s.summary}</p>
               <p className="badge-row">
                 <RedistributionBadge value={s.redistribution} />

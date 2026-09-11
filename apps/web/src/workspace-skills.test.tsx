@@ -85,6 +85,42 @@ const SKILL: OwnSkill = {
   verification: { value: "not_measured", label: "未測量", note: "" },
 };
 
+const SECOND: OwnSkill = { ...SKILL, skill_id: "s-2", name: "第二個 Skill" };
+
+function pointAt(target: Element, type: string, pointerType: string) {
+  target.dispatchEvent(
+    new PointerEvent(type, { bubbles: true, clientX: 30, clientY: 40, pointerType }),
+  );
+}
+
+test("the card grid lights up where a mouse points, stays dark for touch, and goes dark on leave", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = typeof input === "string" ? input : String(input);
+    if (path.endsWith("/me")) return json(ME);
+    return json({ skills: [SKILL, SECOND], limit: 100, truncated: false, total: 2 });
+  });
+  await render(<WorkspaceSkills />, () => text().includes("第二個 Skill"));
+  const grid = container.querySelector(".skill-grid")!;
+  const glow = () =>
+    Array.from(
+      grid.querySelectorAll<HTMLElement>(".skill-card"),
+      (card) => `${card.style.getPropertyValue("--x")} ${card.style.getPropertyValue("--y")}`,
+    );
+
+  await act(async () => pointAt(grid.firstElementChild!, "pointermove", "touch"));
+  expect(glow()).toEqual([" ", " "]);
+
+  await act(async () => pointAt(grid.firstElementChild!, "pointermove", "mouse"));
+  expect(glow()).toEqual(["30px 40px", "30px 40px"]);
+
+  await act(async () =>
+    grid.dispatchEvent(
+      new PointerEvent("pointerout", { bubbles: true, relatedTarget: document.body }),
+    ),
+  );
+  expect(glow()).toEqual([" ", " "]);
+});
+
 const DELETION_NOTE =
   "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；Fork 引用的共用套件物件不受影響";
 

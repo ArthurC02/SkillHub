@@ -370,6 +370,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 | **chip**（`a.chip`） | 次要按鈕的盒（描邊、藥丸）；選中＝凹面＋字重 | **導覽用的分類列**：它是控制項 | 任何主張（那是 badge）；填色（那是 `.action`） |
 | **對話訊息**（`.creation-log > li`，2026-09-08；2026-09-11 **具名例外**：聊天介面版型，負責人明示「徹底改造，讓整個畫面有現代感」） | `--surface` 無框的泡泡，圓角 16px、貼著說話者那一角收成 4px。**誰在說話由位置說**：Agent 靠左並掛一顆 36px 的圓形頭像（`--accent`→`--cta` 漸層，`aria-hidden`），頭像與泡泡間隔 12px；**你說的話填 `--cta`、字 `--on-cta` 並靠右**（本表唯一一個不是動作卻填色的東西——填的是「這是你」，不是「按這裡」）；`工具結果` 置中成一塊 `--surface-active` 的系統訊息。三個名字只留給螢幕閱讀器。**Agent 遞給你的東西**（回合時間線、需求摘要、流程圖理解、連網確認、參考 Skill、相近 Skill、草稿）是它那一側的卡片：無框 `--surface`、圓角 16px、與泡泡同一條左緣；頭一列是標題＋狀態標籤（描邊藥丸，已確認換 `--accent-bg`），尾一列是等寬的按鈕列，**卡片的確認鍵是 `--accent-bg` 的淡填色**，保存仍是這一頁唯一的 `.action`。卡片排在對話之後、`role="log"` 之外（草稿全文不會被當成新訊息念出來） | **互動創作（ADR-067）的多輪對話**，`components/CreationSession.tsx` 一處 | 任何不是對話的清單 |
 | **輸入區**（`.composer`，2026-09-08；2026-09-11 同上例外） | `--surface` ＋ `1px solid var(--border)`、圓角 24px、`padding: 12px 16px`，坐在地上；文字框沒有自己的框。附加動作（＋ 流程圖、＋ 參考 Skill）是 `--code-bg` 的藥丸；**送出鍵是填 `--cta` 的藥丸**，還沒有東西可送（只有空白、也沒有附件）或停用時退成 `--surface-active` 的灰。預算檔位在輸入區上方排成一列可橫捲的藥丸（原生 radio，選中換 `--accent-bg`），**沒有預設值** | **同一段對話裡的所有素材入口**：文字、流程圖、參考 Skill。2026-09-08 之前它們是三個 radio 切換的互斥欄位，負責人的原話是「不應該是拆開來多個 UI 項目」 | 一般表單（那是 `.field`）。送出鍵不是 `.action`（見 §4.6.3 表的 `/workspace/creations` 列） |
+| **Skill 卡片**（`.skill-card`，2026-09-11 **具名例外**，負責人：「這一頁其實有很多 Card，但是目前的樣式真的太醜太單調了」） | 卡片族 `.search-result` 之上再加一層：圓角 16px、內距 20px（不是 §5.2 的 `10px 12px`）、兩欄格線（每欄至少 400px，窄螢幕一欄）、動作列貼底並以一條 `--border` 分開。名稱左邊一塊 44px 的字首方塊：名稱第一個字、`aria-hidden`，底是四組 `--tile-*` 漸層之一，依 `skill_id` 固定——同一個 Skill 永遠同一色，**顏色只是識別，不承載任何主張**；字色 `--on-tile`，八對都在 `contrast.test.ts` 的 `PAIRS`。滑鼠在清單上移動時，游標附近的卡片邊緣亮起一圈 `--accent`、面上一片 `--accent-bg`（`components/spotlight.ts`，只認滑鼠，觸控不亮）；hover 上移 2px（`transform`，§4.6.4 允許的轉場）。建立中心的三張卡同一套圓角與光，記號方塊換成 `--accent-bg` 底、`--link` 字。徽章、但書、刪除的範圍句一個字沒動，§2.10 的每一項仍然不必互動就看得到 | `/workspace/skills` 的 Skill 清單與建立中心 | 另外三處 `.search-result`（搜尋結果、Test Case 列、逐版歷史）；任何要用顏色說狀態的地方 |
 
 **卡片判準（2026-08-22 改寫）：**
 
@@ -381,7 +382,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 
 | class | 誰在用 |
 | --- | --- |
-| `.search-result` | 搜尋結果、Test Case 列、Workspace Skill 列、**Skill 詳情的逐版歷史**（**四處**；2026-09-03 訂正，原寫三處） |
+| `.search-result` | 搜尋結果、Test Case 列、Workspace Skill 列（另加 `.skill-card`，見上表）、**Skill 詳情的逐版歷史**（**四處**；2026-09-03 訂正，原寫三處） |
 | `.criterion` / `.suggestion` | 驗收條件、改善建議、**匯入與打包的驗證發現**（`.finding-list` 於 2026-08-22 套用） |
 | `.packaging-target` | 打包目標 |
 | `.download-item` | **這是全 app 的通用卡片，不是「下載紀錄」**——**八個呼叫點裡七個不是下載**：Run 產出、Workspace Run 歷史、Test Case 執行歷史、Run 比較、以及建立中心的三張卡（2026-09-03 訂正，原寫四個呼叫點；**論點沒有被推翻，是變強了**） |
@@ -515,7 +516,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 
 - **不引入 webfont**：外部請求要進同意書的第三方清單、字型載入會跳版、ADR-039 否決的是依賴面。槓桿是**字重**：`h1`／`h2` 600、`.app-title` 700（今天全部 500／600），GOV.UK 與 USWDS 的視覺品質就是這樣來的。
 - favicon 以 inline SVG data URI 寫在 `index.html`（不開 `public/`）；`.app-title` 前一個 `--accent` 方塊記號（`::before`，全 app 第一個 pseudo-element，~~只此一處~~）。<br>**2026-09-08 訂正：「只此一處」自 2026-09-03 起不成立**，而它在文件裡當了五天的現行事實。今天 `index.css` 有**三個** pseudo-element 站點：`.app-title::before`（方塊記號）、`summary::before`（展開記號，展開時 `rotate(90deg)`；字形 2026-09-08 由 `›` 換成 `▸`，理由在 `index.css` 該條註解）、`details[open] > summary::before`。**規則的意思沒有變，變的是它的數字**——pseudo-element 是被配給的，不是自由的：2026-09-08 外部審查提議在每一顆次要按鈕後面加一個 `›`，那會是第四個站點，而且會讓同一個字形在這個 app 裡同時表示「這裡可以展開」與「這裡會換頁」。不採用。
-- **不做**：漸層、主題切換按鈕（`prefers-color-scheme` 就是偏好；IA R4）、~~圖示集（等第一個「沒有它會誤讀」的實例）~~〔2026-09-03 由 [ADR-065](../adr/ADR-065-hot-path-text-budget-and-the-fourth-disclosure-mechanism.md) 決策 5 回答：允許至多六個形狀的 inline SVG、一列一個、永遠伴隨文字，規則在 §4.7；「不做圖示**集**」仍成立〕、成功綠、任何「Verified」填色、視覺回歸截圖基準線（§6 已證偽兩次）。
+- **不做**：漸層〔2026-09-11 例外兩處，都記在 §4.3：互動創作頁的 Agent 頭像、`/workspace/skills` 的字首方塊與游標光〕、主題切換按鈕（`prefers-color-scheme` 就是偏好；IA R4）、~~圖示集（等第一個「沒有它會誤讀」的實例）~~〔2026-09-03 由 [ADR-065](../adr/ADR-065-hot-path-text-budget-and-the-fourth-disclosure-mechanism.md) 決策 5 回答：允許至多六個形狀的 inline SVG、一列一個、永遠伴隨文字，規則在 §4.7；「不做圖示**集**」仍成立〕、成功綠、任何「Verified」填色、視覺回歸截圖基準線（§6 已證偽兩次）。
 
 #### 4.6.7 凍結下的分類與時間窗
 

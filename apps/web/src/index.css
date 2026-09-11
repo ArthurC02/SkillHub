@@ -56,6 +56,15 @@
      channel; the words stay the first one (§2.3). Not for degradation — that is
      --accent-bg and stays --accent-bg. */
   --danger-bg: #fdf1f0;
+  --tile-violet: #6d4aeb;
+  --tile-violet-deep: #4c2fb0;
+  --tile-blue: #2563eb;
+  --tile-blue-deep: #1d4ed8;
+  --tile-teal: #0f766e;
+  --tile-teal-deep: #0b5f63;
+  --tile-rose: #be185d;
+  --tile-rose-deep: #9e2a66;
+  --on-tile: #ffffff;
 
   /* 版面尺寸，不是顏色：`main`／`.app-footer` 的欄寬，以及頁首把自己的內距對回
      那條左緣時要減掉的那一段。設計 §4.5 記的 1126px 從 2026-09-08 起住在這裡。 */
@@ -121,6 +130,15 @@
     --cta: #b3a0ff;
     --on-cta: #120c22;
     --danger-bg: #3a1a19;
+    --tile-violet: #6d4aeb;
+    --tile-violet-deep: #4c2fb0;
+    --tile-blue: #2563eb;
+    --tile-blue-deep: #1d4ed8;
+    --tile-teal: #0f766e;
+    --tile-teal-deep: #0b5f63;
+    --tile-rose: #be185d;
+    --tile-rose-deep: #9e2a66;
+    --on-tile: #ffffff;
     --code-bg: #1e222a;
     --accent: #a78bfa;
     --accent-bg: rgba(167, 139, 250, 0.15);
@@ -752,7 +770,7 @@ main :is(p, li, dd, dt, summary) {
 
    `.badge-row` and `.tag-list` are untouched: they are flex containers with
    their own `gap`, and neither is in the selector below. */
-:is(li, p, h2, h3, h4, td, th) > .badge:not(:first-child) {
+:is(li, p, h2, h3, h4, td, th):not(.badge-row, .tag-list) > .badge:not(:first-child) {
   margin-left: 8px;
 }
 
@@ -2009,6 +2027,119 @@ summary {
 
 .create-cards > li > p:last-child {
   margin-top: auto;
+}
+
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+  gap: 16px;
+}
+
+/* The glow is two radial layers centred on --x/--y (set by spotlight.ts): one
+   tints the face, one paints the 1px border-box ring over the resting border. */
+.skill-card,
+.create-cards > li {
+  --x: -999px;
+  --y: -999px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background:
+    radial-gradient(480px circle at var(--x) var(--y), var(--accent-bg), transparent 60%)
+      padding-box,
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    radial-gradient(280px circle at var(--x) var(--y), var(--accent), transparent 70%) border-box,
+    linear-gradient(var(--border), var(--border)) border-box;
+  transition: transform var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  .skill-card:hover,
+  .create-cards > li:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.skill-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.skill-card p {
+  margin: 0;
+}
+
+.skill-grid > .skill-card > .badge {
+  align-self: flex-start;
+}
+
+.skill-grid > .skill-card > .badge:not(:first-child),
+.skill-grid > .skill-card > .badge + .note {
+  margin-left: 0;
+}
+
+.skill-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.skill-card-title {
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.skill-card-title a {
+  color: var(--text-h);
+  text-decoration: none;
+}
+
+.skill-card-title a:hover {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+.skill-mono,
+.door-mono {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.skill-mono {
+  background: linear-gradient(135deg, var(--tile-violet), var(--tile-violet-deep));
+  color: var(--on-tile);
+}
+
+.skill-mono[data-tone="1"] {
+  background: linear-gradient(135deg, var(--tile-blue), var(--tile-blue-deep));
+}
+
+.skill-mono[data-tone="2"] {
+  background: linear-gradient(135deg, var(--tile-teal), var(--tile-teal-deep));
+}
+
+.skill-mono[data-tone="3"] {
+  background: linear-gradient(135deg, var(--tile-rose), var(--tile-rose-deep));
+}
+
+.door-mono {
+  background: var(--accent-bg);
+  color: var(--link);
+}
+
+.skill-card .skill-actions {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
 /* The file had three breakpoints before this and all three were 1024px, i.e.
