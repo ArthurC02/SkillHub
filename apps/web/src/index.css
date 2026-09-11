@@ -2247,36 +2247,33 @@ summary {
    路由。三層：頁首（既有）、`main`（彈性）、頁尾（收成一列）。整個外層 `overflow:
    hidden`，**全畫面只有一條捲軸**，在對話上。
    `dvh` 不是 `vh`：手機網址列吃掉的正好是最下面那一格。 */
-/* **鎖死只在 640px 以上。** 375×812 實測，鎖起來之後對話只剩 60px——頁首、工具列
-   與輸入艙在窄螢幕各自換行，把中間那一格擠光。窄螢幕維持文件捲動（系統鍵盤本來就
-   會把文件底端的輸入區推上來），版面上的其他改動（工具列、氣泡、輸入艙）照樣套用。 */
-@media (min-width: 640px) {
-  .app-shell[data-chat] {
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-    overflow: hidden;
-  }
+/* 所有寬度都鎖。窄螢幕上工具列收成兩列（見下方 640px 那一塊），對話那一格才有
+   位置；輸入艙因此永遠在視窗底端，不會被文件捲動推出畫面。 */
+.app-shell[data-chat] {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
 
-  .app-shell[data-chat] > main {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
+.app-shell[data-chat] > main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 
-  .creation-shell {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
+.creation-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 
-  .creation-stream {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
+.creation-stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* 頁尾在這一條路由上收成一列。**不是拿掉**：資料保存政策（02:O11Y-004）與 Build
@@ -2331,6 +2328,38 @@ summary {
 .creation-bar .creation-picker > select {
   width: auto;
   max-width: 200px;
+}
+
+/* 窄螢幕：返回連結交給頁首導覽（它本來就有「我的 Skill」），標題與選單旁的字只留給
+   螢幕閱讀器（選單自己有 aria-label），選單吃滿剩下的寬。 */
+@media (max-width: 640px) {
+  .creation-bar > nav,
+  .creation-picker-text {
+    display: none;
+  }
+
+  .creation-bar h3 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .creation-bar .creation-picker {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .creation-bar .creation-picker > select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .composer:has(textarea:placeholder-shown) .field-count {
+    display: none;
+  }
 }
 
 /* 狀態是一個詞，所以它戴徽章的殼——描邊、凹面底，§4.6.3：主張永遠是描邊。 */

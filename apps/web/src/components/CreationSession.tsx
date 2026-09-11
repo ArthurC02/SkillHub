@@ -621,7 +621,7 @@ export function CreationSession() {
         <h3>和 Agent 一起創作 Skill</h3>
         {sessions.data && sessions.data.length > 0 && (
           <label className="creation-picker">
-            恢復創作
+            <span className="creation-picker-text">恢復創作</span>
             <select
               aria-label="恢復創作"
               value={id}
@@ -704,7 +704,7 @@ export function CreationSession() {
         )}
         {!session && choices.length > 0 && (
           <label className="creation-picker">
-            預算上限
+            <span className="creation-picker-text">預算上限</span>
             <select
               aria-label="這次預算上限（點）"
               value={budget}
