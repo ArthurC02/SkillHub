@@ -59,6 +59,42 @@ operator 名冊與封測名單，照舊改設定再重啟。SEC-011 與 ADR-061 
 - 入口放在帳號選單裡，只有 operator 看得到；後台自己有一條側邊導覽。
 - 做法是在 §0 新增一條規則，不是在 §0.2 偏離帳加一列。
 
+### 7. 在 DDD 裡的位置：後台不是一個 Bounded Context
+
+判準照 [platform-ddd-practices](../development/platform-ddd-practices.md)：Bounded Context 是「事實、不變量與公開協作面的 owner」。把後台上的東西逐項對過：
+
+| 後台上的東西 | 事實與不變量屬於誰（ADR-032 §1） | 為什麼不是後台的 |
+| --- | --- | --- |
+| 授予點數、餘額、分錄、成本統計 | Credit Ledger（`credit`） | 餘額等於分錄之和、理由必填、冪等，這些都是帳本的規則 |
+| 限制展示、再散布判定、跨工作區下架 | Catalog（`catalog`） | SEC-011 規定下架與 `CONTENT-009`／`INGEST-010` 共用同一流程、同一組狀態，不得為 operator 另開第二套 |
+| 派送煞車 | Run Orchestration（`run`） | 煞車是 Run 狀態機的一部分（鐵律 5） |
+| 帳號查詢、operator 名冊、封測名單、`RequireOperator` | Identity & Workspace（`identity`） | 誰是誰、誰有什麼角色，本來就歸這裡 |
+| operator 動作紀錄 | `audit`（Generic） | 只是依 action 名稱過濾的讀取，不含任何規則 |
+
+對完一項都不剩。**operator 在這個模型裡是另一種使用者，不是另一個領域**：同一個 Skill、同一本帳，只是換一個權力不同的人來操作。
+
+如果另立一個「後台 context」，它只可能是兩種樣子：一是只會轉呼叫各 owner 的空殼；二是直接寫別人的表。第二種正是 SEC-011「不得另開第二套」和 ADR-033 的 query ownership 會擋下的形狀。
+
+因此：
+
+- **operator 端點放在擁有那項事實的 context**，沿用現有做法（`skill/discovery/restriction.go`、`trial/execution/halt.go`）。決策 3 的四種讀取，各歸上表的 owner；新 query 登記在 `db/query-owners.yaml`，不需要 `allow:` 例外。
+- **授予點數的 handler 可以留在 `apiserver`**：它目前在那裡，跟另外兩個 context 的做法不同。但它只做轉譯，再呼叫 `credit` 的 Service；理由檢查、冪等和 audit 都在 `credit` 裡，所以不必搬。
+- **後台是組裝層**：
+  - 後端由 `entrypoint/api/apiserver` 逐條掛上 `RequireOperator`；前端是 `apps/web` 的 `/admin/*`。
+  - 一個畫面要同時顯示多個 context 的東西時（例如帳號頁同時有身分與點數），**由前端分別呼叫各條端點再拼起來**，不在後端新增聚合端點。這樣每條端點只有一個 owner，授權也只在一個地方。
+- **operator 動作紀錄的過濾條件由組裝層傳入**：`audit` 是 Generic，不應該自己知道哪些 action 算 operator 動作。這份清單由 `apiserver` 依它掛了哪些 operator 路由來提供。
+- **ADR-032 §1 不用改**：不新增套件、不新增 Boundary ID、不新增跨 context 的 import。產品語言上也不新增價值流（ADR-038）：那些價值流描述的是創作者能完成的事，operator 只是替它們開一扇門。
+
+**什麼時候才會長出一個真正的 context**：當後台有了自己的事實與生命週期，而不只是替別人的事實開一扇門。
+
+- 最可能的是**濫用檢舉案件**，SEC-011 說它要另立需求與授權。它有自己的流程：檢舉、分派、裁決、執行，還可以申訴。
+- 那會是一個新的 Supporting context，擁有案件與裁決，再透過 Catalog 公開的下架 API 執行結果；它是下游的 Customer。屆時照 ADR-032 §1 先登記，再建目錄。
+
+另外兩件常被當成後台的事，其實各有歸屬：
+
+- 把 operator 名冊改成資料表，仍然歸 `identity`。
+- 接真實金流，歸 `credit`，外加一層 payment 防腐層（ADR-032 §2 已經預留）。
+
 ## 第一批範圍（提案）
 
 1. 後台外殼，以及 `GET /me` 的 operator 欄位。

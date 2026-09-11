@@ -98,7 +98,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-071](./ADR-071-user-facing-words-are-everyday-words.md) | 畫面上的名詞用日常用語，受控術語（ADR-038 §3 規則 2）縮限為「跨文件與跨程序的指稱一致」——**縮限它的適用面而不推翻它的目的**，因為沒有任何一個機器讀畫面上的那個名詞。對照表：`Skill`→小工具、`Run`→試跑／試跑紀錄（中文動名詞同形，故給兩個詞）、`Test Case`→測試題、`Fork`→複製一份；**`Workspace` 不改**——它是唯一一個換掉會讓租戶邊界（ADR-011）變模糊的詞。契約、資料庫、識別字、ADR 內文與需求 ID 一個字都不動。**不做括號並列、不做開關、不做逐頁分批**：三者都會讓同一個東西有兩個名字，正是受控術語當初要防的事。落地時點綁在版面批合併之後（382 處／31 檔／無 i18n 層，兩個 Writer 同時改同一批檔案是單一 Writer 規則直接禁止的），承接工作項 `03:DESIGN-014`，`04` 丙-182 結在它做完 | Accepted |
 | [ADR-072](./ADR-072-rationale-lives-in-adrs-not-code-comments.md) | 決策理由與估算依據只寫在 ADR、`docs/` 與 commit message，程式碼不寫——取代 ADR-036 §1 的「每支測試的檔頭寫明它屬於哪一件」與 ADR-056 決策 3 的「在程式碼裡寫明它們是怎麼估的」這兩句（兩份其餘不變、不 Superseded）。起因是 2026-09-11 全 repo 註解清理：根 `AGENTS.md` 的註解規則與 `comment-budget` 零容忍禁止決策說明，而那兩句要的正是它；兩處的內容本來就在 ADR-036、ADR-056 內文與 m5 生成基線報告，刪掉的只是程式碼裡的副本 | Accepted |
 | [ADR-073](./ADR-073-account-deletion-keeps-the-credit-ledger.md) | 帳號刪除不清 Credit 紀錄：清除流程不再刪扣點分錄、成本事件與會話摘要，時間視窗的保存掃描照舊（取代 ADR-068 決策 11 的帳號刪除那一半；2026-09-12 補記：也不設保存期限，Credit 紀錄永久保存） | Accepted |
-| [ADR-074](./ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) | 營運後台是 `apps/web` 裡只有 operator 進得去的 `/admin/*`：不新增 app、不擴大 SEC-011 的權力，每顆寫入按鈕都對應既有或依 SEC-011 新增的端點；只新增四種讀取（以 email 找帳號、點數分錄、operator 動作紀錄、成本統計），前兩種每查一次留 audit；名冊仍在部署設定，後台只顯示 | Proposed |
+| [ADR-074](./ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) | 營運後台是 `apps/web` 裡只有 operator 進得去的 `/admin/*`，**不是新的 Bounded Context**（每個 operator 動作與讀取都留在擁有那項事實的 context，後台只是組裝層）：不新增 app、不擴大 SEC-011 的權力，每顆寫入按鈕都對應既有或依 SEC-011 新增的端點；只新增四種讀取（以 email 找帳號、點數分錄、operator 動作紀錄、成本統計），前兩種每查一次留 audit；名冊仍在部署設定，後台只顯示 | Proposed |
 
 ## 整體架構摘要
 
