@@ -283,6 +283,14 @@ function quoteForShell(value) {
   return /\s/.test(value) ? `"${value}"` : value;
 }
 
+function echo(stream, prefix) {
+  stream.on("data", (b) => {
+    for (const line of String(b).split(/\r?\n/)) {
+      if (line.trim()) console.log(`[${prefix}] ${line}`);
+    }
+  });
+}
+
 function start(label, cmd, args, opts = {}) {
   const child = spawn(quoteForShell(cmd), args.map(quoteForShell), {
     cwd: repoRoot,
@@ -292,12 +300,6 @@ function start(label, cmd, args, opts = {}) {
     stdio: ["ignore", "pipe", "pipe"],
   });
   children.push({ label, child });
-  const echo = (stream, prefix) =>
-    stream.on("data", (b) => {
-      for (const line of String(b).split(/\r?\n/)) {
-        if (line.trim()) console.log(`[${prefix}] ${line}`);
-      }
-    });
   echo(child.stdout, label);
   echo(child.stderr, label);
   child.on("exit", (code) => {
@@ -361,6 +363,41 @@ function shutdown(code = 0) {
 
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
+
+async function apiAnswers(timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const r = await fetch(`http://127.0.0.1:${API_PORT}/healthz`, {
+        signal: AbortSignal.timeout(2000),
+      });
+      if (r.ok) return true;
+    } catch {}
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return false;
+}
+
+function seedDemoSkills() {
+  const seeder = spawn("go", ["-C", "tools/devctl", "run", ".", "seed-clean"], {
+    cwd: repoRoot,
+    shell: true,
+    env: { ...process.env, SKILLHUB_API: `http://127.0.0.1:${API_PORT}` },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  echo(seeder.stdout, "seed");
+  echo(seeder.stderr, "seed");
+  return new Promise((resolve) => seeder.on("exit", resolve));
+}
+
+const flags = process.argv.slice(2);
+const unknownFlag = flags.find((f) => f !== "--seed");
+if (unknownFlag) {
+  fail(
+    `unknown argument ${unknownFlag}`,
+    "the only flag is --seed: upload the demo skills (devctl seed-clean) once the API answers",
+  );
+}
 
 const filledSettings = applyOwnedSettings();
 seedReleaseFile();
@@ -453,4 +490,18 @@ console.log(
 );
 console.log(`[launcher] ctrl-c stops all three.\n`);
 
-await reportCapabilities(filledSettings);
+if (!(await apiAnswers(600_000))) {
+  console.log(
+    `[launcher] the API did not answer /healthz within ten minutes; not asking it anything else.`,
+  );
+} else {
+  await reportCapabilities(filledSettings);
+  if (flags.includes("--seed")) {
+    const code = await seedDemoSkills();
+    console.log(
+      code === 0
+        ? `[launcher] demo skills are in; the three processes keep running.`
+        : `[launcher] seeding stopped with code ${code} (the [seed] lines above say why); the three processes keep running.`,
+    );
+  }
+}

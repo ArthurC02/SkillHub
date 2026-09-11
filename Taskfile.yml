@@ -21,6 +21,10 @@ tasks:
       # With -f, compose resolves ${...} against the compose file's directory, hence --env-file.
       - docker compose --env-file .env --profile model -f infra/compose/docker-compose.yml up -d
 
+  clean-mode:
+    desc: Start the clean test mode and upload the demo skills once the API answers; the catalog shows them only while apps/llm is up (dev:model, dev:llm)
+    cmd: node tools/cleanmode/start.mjs --seed
+
   dev:observability:
     desc: Start Prometheus so infra/observability/alerts.yml is actually evaluated
     cmd: docker compose --profile observability -f infra/compose/docker-compose.yml up -d prometheus
