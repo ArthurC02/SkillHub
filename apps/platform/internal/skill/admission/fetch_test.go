@@ -91,6 +91,22 @@ func TestFetchSizeCap(t *testing.T) {
 	}
 }
 
+func TestFetchAcceptsExactlyTheSizeCap(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(make([]byte, skillpkg.MaxZipBytes))
+	}))
+	defer srv.Close()
+	host := strings.TrimPrefix(srv.URL, "http://")
+	f := &URLFetcher{Allowed: map[string]bool{host: true}, AllowInsecure: true}
+	data, _, err := f.Fetch(context.Background(), srv.URL+"/big.zip")
+	if err != nil {
+		t.Fatalf("want a package at exactly the size cap to be accepted, got %v", err)
+	}
+	if len(data) != skillpkg.MaxZipBytes {
+		t.Fatalf("got %d bytes, want %d", len(data), skillpkg.MaxZipBytes)
+	}
+}
+
 func TestFetchDownloadsFromAllowedHost(t *testing.T) {
 	payload := []byte("zip-bytes")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -284,6 +300,32 @@ func TestFetchRedirectLimit(t *testing.T) {
 	if err == nil ||
 		err.Error() != "fetch failed: 來源網址的轉址次數超過上限，平台不再往下追。請直接給出套件 zip 的最終網址。" {
 		t.Fatalf("want the redirect budget to stop this, got %v", err)
+	}
+	if hops != 1+maxRedirects {
+		t.Fatalf("server saw %d requests, want %d", hops, 1+maxRedirects)
+	}
+}
+
+func TestFetchAcceptsExactlyTheRedirectLimit(t *testing.T) {
+	var hops int
+	payload := []byte("zip-bytes")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hops++
+		if hops <= maxRedirects {
+			http.Redirect(w, r, "/next", http.StatusFound)
+			return
+		}
+		_, _ = w.Write(payload)
+	}))
+	defer srv.Close()
+	host := strings.TrimPrefix(srv.URL, "http://")
+	f := &URLFetcher{Allowed: map[string]bool{host: true}, AllowInsecure: true}
+	data, _, err := f.Fetch(context.Background(), srv.URL+"/pkg.zip")
+	if err != nil {
+		t.Fatalf("want exactly %d redirects to be accepted, got %v", maxRedirects, err)
+	}
+	if string(data) != string(payload) {
+		t.Fatalf("got %q, want %q", data, payload)
 	}
 	if hops != 1+maxRedirects {
 		t.Fatalf("server saw %d requests, want %d", hops, 1+maxRedirects)

@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
@@ -199,6 +200,15 @@ func TestATooShortOrTooLongDescriptionNeverReachesTheGateway(t *testing.T) {
 	long := strings.Repeat("台", maxTaskDescriptionRunes+1)
 	if _, err := svc.GenerateSkill(ctx, ws, GenerateInput{TaskDescription: long}); !errors.Is(err, ErrGenerateTooLong) {
 		t.Errorf("an over-long description err = %v, want ErrGenerateTooLong", err)
+	}
+}
+
+func TestExactlyTheDescriptionLengthBoundsAreAccepted(t *testing.T) {
+	if err := classifyTaskDescription(strings.Repeat("a", minTaskDescriptionRunes), false); err != nil {
+		t.Errorf("classifyTaskDescription at the minimum length = %v, want nil", err)
+	}
+	if err := classifyTaskDescription(strings.Repeat("台", maxTaskDescriptionRunes), false); err != nil {
+		t.Errorf("classifyTaskDescription at the maximum length = %v, want nil", err)
 	}
 }
 
@@ -450,6 +460,25 @@ func TestAnOversizedDiagramIsRefusedBeforeTheGateway(t *testing.T) {
 	}
 }
 
+func TestExactlyTheDiagramSizeCapIsNotRefused(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	svc := &Service{LLM: &llmclient.Client{}, Pool: pool}
+	in := GenerateInput{
+		TaskDescription: "把掃描的單據整理成一份表格。",
+		Diagram: &GenerateDiagram{
+			MediaType: "image/png",
+			Data:      make([]byte, generateMaxDiagramBytes),
+		},
+	}
+	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); errors.Is(err, ErrDiagramInvalid) {
+		t.Errorf("a diagram at exactly the size cap was refused as invalid: %v", err)
+	}
+}
+
 func TestFourReferencesIsRefusedBeforeTheGateway(t *testing.T) {
 	svc := &Service{LLM: &llmclient.Client{}}
 	var ids []pgtype.UUID
@@ -459,6 +488,18 @@ func TestFourReferencesIsRefusedBeforeTheGateway(t *testing.T) {
 	in := GenerateInput{TaskDescription: "把掃描的單據整理成一份表格。", ReferenceSkillIDs: ids}
 	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrTooManyReferences) {
 		t.Errorf("err = %v, want ErrTooManyReferences", err)
+	}
+}
+
+func TestExactlyTheReferenceCapIsNotRefused(t *testing.T) {
+	svc := &Service{LLM: &llmclient.Client{}}
+	var ids []pgtype.UUID
+	for i := 1; i <= generateMaxReferences; i++ {
+		ids = append(ids, mustUUIDForTest(t, fmt.Sprintf("00000000-0000-0000-0000-%012d", i)))
+	}
+	in := GenerateInput{TaskDescription: "把掃描的單據整理成一份表格。", ReferenceSkillIDs: ids}
+	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); errors.Is(err, ErrTooManyReferences) {
+		t.Errorf("exactly %d references were refused as too many: %v", generateMaxReferences, err)
 	}
 }
 

@@ -3,8 +3,18 @@ package catalog
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
+
+func TestQueryTooLongAcceptsExactlyTheRuneCap(t *testing.T) {
+	if got := queryTooLong(strings.Repeat("x", maxQueryRunes)); got != "" {
+		t.Errorf("queryTooLong at exactly the rune cap = %q, want accepted", got)
+	}
+	if got := queryTooLong(strings.Repeat("x", maxQueryRunes+1)); got == "" {
+		t.Error("queryTooLong one over the rune cap was accepted")
+	}
+}
 
 func TestPublicSearchRejectsAnUnknownPurpose(t *testing.T) {
 	h := &Handler{Svc: &Service{}}

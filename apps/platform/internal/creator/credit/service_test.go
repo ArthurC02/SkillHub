@@ -193,6 +193,22 @@ func TestChargeRequiresAUser(t *testing.T) {
 	}
 }
 
+func TestChargeRejectsNegativeUsage(t *testing.T) {
+	store := newFakeStore()
+	s := &Service{Store: store, Config: testConfig()}
+	negativeKnown := int64(-1)
+	if _, err := s.Charge(context.Background(), nil, ChargeInput{
+		Kind: KindCreationStep, UserID: testUser(14), IdempotencyKey: "session-14:rev-1", UsdMicros: &negativeKnown,
+	}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("Charge with negative UsdMicros must be refused with ErrInvalid, got %v", err)
+	}
+	if _, err := s.Charge(context.Background(), nil, ChargeInput{
+		Kind: KindCreationStep, UserID: testUser(15), IdempotencyKey: "session-15:rev-1", ReservedUsdMicros: -1,
+	}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("Charge with negative ReservedUsdMicros must be refused with ErrInvalid, got %v", err)
+	}
+}
+
 func TestRecordCostWritesNoDebit(t *testing.T) {
 	store := newFakeStore()
 	s := &Service{Store: store, Config: testConfig()}
@@ -329,6 +345,37 @@ func TestFactsBlockPurgedAccount(t *testing.T) {
 		OperatorID: testUser(99), IdempotencyKey: "g4",
 	}); !errors.Is(err, ErrAccountGone) {
 		t.Fatalf("a grant to a purged account must be refused with ErrAccountGone, got %v", err)
+	}
+}
+
+func TestGrantRejectsUnrecognizedEntryKind(t *testing.T) {
+	store := newFakeStore()
+	s := &Service{Store: store, Config: testConfig()}
+	if _, err := s.Grant(context.Background(), nil, GrantInput{
+		UserID: testUser(13), EntryKind: "bogus", Credits: 50, Reason: "beta reward",
+		OperatorID: testUser(99), IdempotencyKey: "g6",
+	}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("Grant with an unrecognized EntryKind must be refused with ErrInvalid, got %v", err)
+	}
+}
+
+func TestFactsBlockPurgedAccountOnCharge(t *testing.T) {
+	store := newFakeStore()
+	user := testUser(16)
+	s := &Service{Store: store, Config: testConfig(), Facts: func(ctx context.Context, _ DBTX, id pgtype.UUID) (AccountFacts, error) {
+		return AccountFacts{Exists: true, Purged: true}, nil
+	}}
+	usd := int64(1_000)
+	if _, err := s.Charge(context.Background(), nil, ChargeInput{
+		Kind: KindCreationStep, UserID: user, IdempotencyKey: "session-16:rev-1", UsdMicros: &usd,
+	}); !errors.Is(err, ErrAccountGone) {
+		t.Fatalf("a charge to a purged account must be refused with ErrAccountGone, got %v", err)
+	}
+	if len(store.events) != 0 {
+		t.Fatalf("a refused charge must not record a cost event, got %v", store.events)
+	}
+	if len(store.applied) != 0 {
+		t.Fatalf("a refused charge must not apply a debit, got %v", store.applied)
 	}
 }
 

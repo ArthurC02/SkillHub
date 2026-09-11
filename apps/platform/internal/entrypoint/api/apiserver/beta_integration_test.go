@@ -373,6 +373,31 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 	}
 }
 
+func TestAdmissionListGatesCreationSessionsAsWell(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+		d.Auth.Invited = map[string]bool{"alice-creation-invited": true}
+		d.GenerateExposed = true
+		d.CreationExposed = true
+	})
+	alice := newFixture(t, a, pool, "alice-creation-invited")
+	bob := newFixture(t, a, pool, "bob-creation-uninvited")
+
+	code, body := bob.doJSON(t, http.MethodPost, "/creation-sessions",
+		`{"id":"00000000-0000-4000-8000-000000000301","message":"x","budget_credits":650}`)
+	if code != http.StatusForbidden {
+		t.Errorf("POST /creation-sessions as an uninvited user: got %d, want 403", code)
+	}
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "closed beta") {
+		t.Errorf("the refusal does not explain itself: %v", body)
+	}
+
+	if code, body := alice.doJSON(t, http.MethodPost, "/creation-sessions",
+		`{"id":"00000000-0000-4000-8000-000000000302","message":"x","budget_credits":650}`); code == http.StatusForbidden {
+		t.Errorf("POST /creation-sessions as an invited user: got 403 (%v); the gate refused somebody on the list", body)
+	}
+}
+
 func TestNoAdmissionListMeansNoGate(t *testing.T) {
 	pool := requireDB(t)
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
@@ -657,5 +682,36 @@ func TestFeedbackRejectsWhatTheContractRejects(t *testing.T) {
 	if n := betaCount(t, pool,
 		`SELECT count(*) FROM feedback_reports WHERE page_path IS NOT NULL AND page_path LIKE '%?%'`); n != 0 {
 		t.Error("a page_path with a query string reached the table")
+	}
+
+	messageAtCap := strings.Repeat("x", 2000)
+	if code, _ := f.doJSON(t, http.MethodPost, "/feedback",
+		`{"kind":"need_signal","message":"`+messageAtCap+`"}`); code != http.StatusNoContent {
+		t.Fatal("a message at exactly the 2000-rune cap was refused")
+	}
+	if n := betaCount(t, pool,
+		`SELECT count(*) FROM feedback_reports WHERE message = $1`, messageAtCap); n != 1 {
+		t.Errorf("a message at exactly the 2000-rune cap was not stored: %d rows", n)
+	}
+
+	pathAtCap := "/" + strings.Repeat("p", 511)
+	if code, _ := f.doJSON(t, http.MethodPost, "/feedback",
+		`{"kind":"need_signal","message":"path at the cap","page_path":"`+pathAtCap+`"}`); code != http.StatusNoContent {
+		t.Fatal("a page_path at exactly the 512-character cap was refused")
+	}
+	if n := betaCount(t, pool,
+		`SELECT count(*) FROM feedback_reports WHERE message = 'path at the cap' AND page_path = $1`,
+		pathAtCap); n != 1 {
+		t.Errorf("a page_path at exactly the 512-character cap was not stored verbatim: %d rows", n)
+	}
+
+	pathOverCap := "/" + strings.Repeat("p", 512)
+	if code, _ := f.doJSON(t, http.MethodPost, "/feedback",
+		`{"kind":"need_signal","message":"path over the cap","page_path":"`+pathOverCap+`"}`); code != http.StatusNoContent {
+		t.Fatal("a page_path one character over the cap was refused instead of dropped")
+	}
+	if n := betaCount(t, pool,
+		`SELECT count(*) FROM feedback_reports WHERE message = 'path over the cap' AND page_path IS NULL`); n != 1 {
+		t.Errorf("a page_path over the 512-character cap was not dropped: %d rows", n)
 	}
 }

@@ -494,6 +494,18 @@ func TestCreationBudgetOutOfBandNamesTheBand(t *testing.T) {
 	}
 }
 
+func TestCreationBudgetAtTheUpperCeilingIsAcceptedOneOverIsNot(t *testing.T) {
+	a, _, _ := creationFixture(t)
+	c := a.login(t, "creation-budget-ceiling")
+	creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "x", "budget_credits": 1300}, 200)
+
+	over := a.login(t, "creation-budget-over-ceiling")
+	status, body := creationPostStatus(t, over, "/creation-sessions", map[string]any{"id": creationID(t), "message": "x", "budget_credits": 1301})
+	if status != 422 || !strings.Contains(body, "1300 點") {
+		t.Fatalf("one credit over the ceiling: got %d %s", status, body)
+	}
+}
+
 func TestCreationLimitsEndpoint(t *testing.T) {
 	a, _, _ := creationFixture(t)
 	c := a.login(t, "creation-limits")

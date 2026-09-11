@@ -493,6 +493,26 @@ func TestALostPackageIsNotDescribedAsExpired(t *testing.T) {
 	}
 }
 
+func TestQuarantinedAndPurgedServeStates(t *testing.T) {
+	quarantined := Artifact{Status: "quarantined"}.
+		withServeState(time.Now().Add(time.Hour), time.Time{})
+	if quarantined.ServeState.Value != "quarantined" {
+		t.Errorf("serve_state = %q, want quarantined", quarantined.ServeState.Value)
+	}
+	if quarantined.Servable {
+		t.Error("a quarantined package is not servable")
+	}
+
+	purged := Artifact{Status: "available"}.
+		withServeState(time.Time{}, time.Now())
+	if purged.ServeState.Value != "purged" {
+		t.Errorf("serve_state = %q, want purged", purged.ServeState.Value)
+	}
+	if purged.Servable {
+		t.Error("a purged package is not servable")
+	}
+}
+
 func TestTheTwoWritersOfPurgedAtStaySeparatedByTheDeadline(t *testing.T) {
 	sql, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "..", "db", "queries", "reconcile.sql"))
 	if err != nil {

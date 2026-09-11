@@ -94,6 +94,26 @@ func TestSetCategoryUnassignedClearsBothColumns(t *testing.T) {
 	}
 }
 
+func TestSetCategoryRejectsAnUnknownShelf(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "category-bogus")
+	skillID := importPackage(t, pool, a.packages, owner, "category-bogus-pick", false)
+
+	code, resp := putCategory(t, owner, skillID, "bogus")
+	if code != http.StatusBadRequest {
+		t.Fatalf("category=bogus: got %d, body=%v", code, resp)
+	}
+	want := `category must be "documents", "writing", "data" or "unassigned"`
+	if got, _ := resp["error"].(string); got != want {
+		t.Errorf("error = %q, want %q", got, want)
+	}
+
+	if category, source := skillCategoryColumns(t, pool, skillID); category != nil || source != nil {
+		t.Errorf("a rejected write still touched the row: category=%v source=%v", category, source)
+	}
+}
+
 func TestSetCategoryOnAnotherWorkspacesSkillIs404(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

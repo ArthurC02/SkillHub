@@ -77,6 +77,30 @@ func TestIncidentHeldCoversTheRightNodes(t *testing.T) {
 	}
 }
 
+func TestIncidentPaused(t *testing.T) {
+	two := &Registry{Providers: []*Provider{
+		NewProvider("node_a", "http://a", ""),
+		NewProvider("node_b", "http://b", ""),
+	}}
+	for _, tc := range []struct {
+		what     string
+		state    haltState
+		registry *Registry
+		want     bool
+	}{
+		{"healthy fleet", haltsOf(), two, false},
+		{"pool-wide incident", haltsOf(incident(haltPool)), two, true},
+		{"pool-wide threshold-only", haltsOf(threshold(haltPool)), two, false},
+		{"one node incident-held, one healthy", haltsOf(incident("node_a")), two, false},
+		{"every node incident-held, alongside an unrelated threshold-held node", haltsOf(incident("node_a"), incident("node_b"), threshold("node_c")), two, true},
+		{"one node threshold-held only, no incident anywhere", haltsOf(threshold("node_a")), two, false},
+	} {
+		if got := tc.state.incidentPaused(tc.registry); got != tc.want {
+			t.Errorf("%s: incidentPaused = %v, want %v", tc.what, got, tc.want)
+		}
+	}
+}
+
 func TestDispatchPaused(t *testing.T) {
 	two := &Registry{Providers: []*Provider{
 		NewProvider("node_a", "http://a", ""),

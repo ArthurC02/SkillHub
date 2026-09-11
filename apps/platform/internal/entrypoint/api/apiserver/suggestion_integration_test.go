@@ -372,6 +372,11 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 	if code, _ := c.decide(t, s.SuggestionID, "rejected"); code != http.StatusConflict {
 		t.Errorf("rejecting an applied suggestion: got %d, want 409", code)
 	}
+	if code, reaccepted := c.decide(t, s.SuggestionID, "accepted"); code != http.StatusOK ||
+		reaccepted.AppliedSkillVersionID != applied.VersionID {
+		t.Errorf("re-accepting an already-applied suggestion: got %d %+v, want 200 with applied_skill_version_id %q",
+			code, reaccepted, applied.VersionID)
+	}
 
 	code, diff = c.suggestionDiff(t, s.SuggestionID)
 	if code != http.StatusOK || diff.Applicable || diff.BlockedReason != "target_changed" {
@@ -527,6 +532,34 @@ func TestAHeldSkillNeitherShowsADiffNorBuildsAVersion(t *testing.T) {
 	if len(applied.RejectedSuggestions) != 1 ||
 		applied.RejectedSuggestions[0].BlockedReason != "access_restricted" {
 		t.Errorf("rejection: %+v", applied.RejectedSuggestions)
+	}
+}
+
+func TestApplyingSuggestionsAgainstAnUnrelatedSkillIsNotFound(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "sugg-wrong-skill")
+	const name = "sugg-wrong-skill-target"
+
+	seed := evaluateWithSuggestions(t, a, pool, c, name, []llmclient.ImprovementProposal{{
+		Category: "skill", Problem: "the description is thin", Evidence: suggestionQuote,
+		TargetPath: "SKILL.md", ProposedContent: packagedSkillMD(name) + "\nMore detail.\n",
+		ExpectedImpact: "clearer",
+	}})
+	_, suggestions, evaluationID := c.listSuggestions(t, seed.runID)
+	id := suggestions[0].SuggestionID
+	if code, _ := c.decide(t, id, "accepted"); code != http.StatusOK {
+		t.Fatal("accept failed")
+	}
+
+	otherSkillID := importPackage(t, pool, a.packages, c, "sugg-wrong-skill-other", false)
+
+	code, applied := c.applySuggestions(t, otherSkillID, evaluationID, id)
+	if code != http.StatusNotFound {
+		t.Fatalf("apply with a skill the evaluation does not belong to: got %d, want 404", code)
+	}
+	if applied.VersionID != "" {
+		t.Error("a rejected mismatched-skill apply must not create a version")
 	}
 }
 

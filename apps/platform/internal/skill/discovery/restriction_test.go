@@ -50,3 +50,9 @@ func TestRestrictionServiceRejectsInvalidInputBeforeDatabase(t *testing.T) {
 		})
 	}
 }
+
+func TestValidRestrictionNoteAcceptsExactlyTheByteCap(t *testing.T) {
+	if _, err := validRestrictionNote(strings.Repeat("x", maxOperatorNoteBytes)); err != nil {
+		t.Errorf("a note at exactly the byte cap was rejected: %v", err)
+	}
+}

@@ -1130,7 +1130,8 @@ func enqueueObjectKeys(t *testing.T, pool *pgxpool.Pool, keys ...string) {
 	t.Helper()
 	for _, key := range keys {
 		if _, err := pool.Exec(context.Background(),
-			"INSERT INTO object_collection_queue (object_key) VALUES ($1) ON CONFLICT DO NOTHING",
+			"INSERT INTO object_collection_queue (object_key, enqueued_at) VALUES ($1, '-infinity') "+
+				"ON CONFLICT (object_key) DO UPDATE SET enqueued_at = EXCLUDED.enqueued_at",
 			key); err != nil {
 			t.Fatal(err)
 		}
@@ -1300,12 +1301,14 @@ func TestOrphanCollectorRechecksAfterAnUploaderWinsThePackageLock(t *testing.T) 
 		done <- result{collection: collection, err: err}
 	}()
 
+	uploaderPID := uploader.Conn().PgConn().PID()
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		var waiting bool
 		if err := pool.QueryRow(ctx, `SELECT EXISTS (
 			SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND NOT granted
-		)`).Scan(&waiting); err != nil {
+			  AND $1 = ANY (pg_blocking_pids(pid))
+		)`, uploaderPID).Scan(&waiting); err != nil {
 			t.Fatal(err)
 		}
 		if waiting {

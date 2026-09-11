@@ -45,6 +45,8 @@ type Fake struct {
 
 	DispatchStatuses []int
 
+	OnDispatch func(runID string, attempt int)
+
 	Plan Plan
 
 	DestroyStatus int
@@ -178,6 +180,9 @@ func (f *Fake) createRun(w http.ResponseWriter, r *http.Request) {
 	if len(f.DispatchStatuses) > 0 {
 		status := f.DispatchStatuses[0]
 		f.DispatchStatuses = f.DispatchStatuses[1:]
+		if f.OnDispatch != nil {
+			f.OnDispatch(req.RunID, req.Attempt)
+		}
 		if status >= 400 {
 			if status == http.StatusUnprocessableEntity {
 				writeJSON(w, status, run.RunError{

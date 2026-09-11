@@ -272,6 +272,30 @@ func TestRunIsRefusedWhenTheStaticScanIsBlocking(t *testing.T) {
 	}
 }
 
+func TestRunIsRefusedWhenTheSkillIsAccessRestricted(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-gate-b-access-restricted")
+
+	hash := f.confirmPermissions(t)
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE skills SET access_restriction = 'license-review' WHERE id = $1",
+		mustUUID(t, f.skillID)); err != nil {
+		t.Fatal(err)
+	}
+
+	code, refused := f.startWithHash(t, hash)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("run on an access-restricted skill: got %d, want 422", code)
+	}
+	if !strings.Contains(refused.Error, "license") {
+		t.Errorf("refusal = %q, want it to name the license restriction", refused.Error)
+	}
+	if refused.RunID != "" {
+		t.Error("a refused run still created a run row")
+	}
+}
+
 func TestWorkspaceConcurrencyLimitBlocksTheThirdRun(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

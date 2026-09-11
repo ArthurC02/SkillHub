@@ -3,6 +3,7 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -19,8 +20,10 @@ import (
 )
 
 type fakeCreditLedger struct {
-	balances map[string]int64
-	estimate CreditSessionEstimate
+	balances    map[string]int64
+	estimate    CreditSessionEstimate
+	balanceErr  error
+	estimateErr error
 }
 
 func newFakeCreditLedger(est CreditSessionEstimate) *fakeCreditLedger {
@@ -28,10 +31,16 @@ func newFakeCreditLedger(est CreditSessionEstimate) *fakeCreditLedger {
 }
 
 func (f *fakeCreditLedger) Balance(_ context.Context, workspaceID pgtype.UUID) (int64, error) {
+	if f.balanceErr != nil {
+		return 0, f.balanceErr
+	}
 	return f.balances[pgconv.UUIDString(workspaceID)], nil
 }
 
 func (f *fakeCreditLedger) SessionEstimate(context.Context) (CreditSessionEstimate, error) {
+	if f.estimateErr != nil {
+		return CreditSessionEstimate{}, f.estimateErr
+	}
 	return f.estimate, nil
 }
 
@@ -274,5 +283,70 @@ func TestAnOperatorGrantCompletesOnOneConnection(t *testing.T) {
 	code, body := operator.postJSON(t, "/admin/credits/"+member.workspaceID+"/grants", `{"amount_credits":100,"reason":"beta reward"}`)
 	if code != http.StatusOK {
 		t.Fatalf("operator grant on a one-connection pool: got %d, body %v", code, body)
+	}
+}
+
+func TestGrantRejectsInvalidRequestsBeforeTheLedgerRuns(t *testing.T) {
+	pool := creditsTestPool(t)
+	ledger := newFakeCreditLedger(CreditSessionEstimate{ThresholdCredits: 65})
+	app, srv := creditsTestServer(t, pool, ledger)
+	member := creditsLogin(t, srv, "credits-grant-invalid-member")
+	operator := creditsLogin(t, srv, "credits-grant-invalid-operator")
+	app.Auth.Operators = map[string]bool{operator.userID: true}
+
+	cases := []struct {
+		name, path, body string
+		want             int
+	}{
+		{"zero amount", "/admin/credits/" + member.workspaceID + "/grants",
+			`{"amount_credits":0,"reason":"x"}`, http.StatusBadRequest},
+		{"blank reason", "/admin/credits/" + member.workspaceID + "/grants",
+			`{"amount_credits":10,"reason":"   "}`, http.StatusBadRequest},
+		{"malformed workspace id", "/admin/credits/not-a-uuid/grants",
+			`{"amount_credits":10,"reason":"x"}`, http.StatusNotFound},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			code, body := operator.postJSON(t, tc.path, tc.body)
+			if code != tc.want {
+				t.Errorf("got %d, want %d (%v)", code, tc.want, body)
+			}
+		})
+	}
+
+	if len(ledger.balances) != 0 {
+		t.Errorf("a rejected grant reached the ledger: balances=%v", ledger.balances)
+	}
+}
+
+func TestGetCreditsFailsClosedWhenTheBalanceLookupErrors(t *testing.T) {
+	pool := creditsTestPool(t)
+	ledger := newFakeCreditLedger(CreditSessionEstimate{ThresholdCredits: 65})
+	ledger.balanceErr = errors.New("ledger unavailable")
+	_, srv := creditsTestServer(t, pool, ledger)
+	c := creditsLogin(t, srv, "credits-balance-error")
+
+	code, body := c.getJSON(t, "/me/credits")
+	if code != http.StatusInternalServerError {
+		t.Fatalf("GET /me/credits with a failing balance lookup: got %d, body %v", code, body)
+	}
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "balance lookup failed") {
+		t.Errorf("the refusal does not name the failing dependency: %v", body)
+	}
+}
+
+func TestGetCreditsFailsClosedWhenTheSessionEstimateErrors(t *testing.T) {
+	pool := creditsTestPool(t)
+	ledger := newFakeCreditLedger(CreditSessionEstimate{ThresholdCredits: 65})
+	ledger.estimateErr = errors.New("estimate unavailable")
+	_, srv := creditsTestServer(t, pool, ledger)
+	c := creditsLogin(t, srv, "credits-estimate-error")
+
+	code, body := c.getJSON(t, "/me/credits")
+	if code != http.StatusInternalServerError {
+		t.Fatalf("GET /me/credits with a failing session estimate: got %d, body %v", code, body)
+	}
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "session estimate unavailable") {
+		t.Errorf("the refusal does not name the failing dependency: %v", body)
 	}
 }

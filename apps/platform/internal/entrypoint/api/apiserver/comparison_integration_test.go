@@ -230,6 +230,99 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 	}
 }
 
+func seedRunWithCriteria(
+	t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, versionID, criteriaJSON string,
+) string {
+	t.Helper()
+	ctx := context.Background()
+	testCaseID := seedTestCase(t, pool, workspaceID, skillID)
+
+	var snapshotID, runID string
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+		VALUES ($1, $2, 'compare a criterion only one side declares', $3::jsonb, $4)
+		RETURNING id::text`,
+		mustUUID(t, workspaceID), mustUUID(t, testCaseID), criteriaJSON, "sha256:disjoint-"+versionID,
+	).Scan(&snapshotID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
+		                  runtime_snapshot, policy_snapshot, status, finished_at)
+		VALUES ($1, $2, $3, 'fake_sandbox', '{}'::jsonb, '{}'::jsonb, 'succeeded', now())
+		RETURNING id::text`,
+		mustUUID(t, workspaceID), mustUUID(t, versionID), mustUUID(t, snapshotID),
+	).Scan(&runID); err != nil {
+		t.Fatal(err)
+	}
+	return runID
+}
+
+func TestComparisonMatrixIncludesACriterionOnlyOneSideDeclares(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "cmp-disjoint")
+	skillID := seedSkill(t, pool, c.workspaceID, "cmp-disjoint-skill")
+
+	leftVersion := cmpVersion(t, pool, c.workspaceID, skillID, "disjoint-left")
+	rightVersion := cmpVersion(t, pool, c.workspaceID, skillID, "disjoint-right")
+	left := seedRunWithCriteria(t, pool, c.workspaceID, skillID, leftVersion,
+		`[{"id":"c1","text":"shared","source":"user"}]`)
+	right := seedRunWithCriteria(t, pool, c.workspaceID, skillID, rightVersion,
+		`[{"id":"c1","text":"shared","source":"user"},{"id":"c2","text":"only on the right","source":"user"}]`)
+	seedFinalOutput(t, pool, c.workspaceID, left, "it worked fine")
+	seedFinalOutput(t, pool, c.workspaceID, right, "it worked fine")
+
+	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: "passed", Reason: "fixture",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "worked fine"}}},
+		},
+		Overall: "met", Summary: "fixture verdict",
+	}, "judge-run@v1")
+	if err := a.evaluations.Evaluate(context.Background(),
+		mustUUID(t, c.workspaceID), mustUUID(t, left)); err != nil {
+		t.Fatal(err)
+	}
+	a.evaluations.Judge = judgeServer(t, judgeAll("passed", "met", "worked fine"), "judge-run@v1")
+	if err := a.evaluations.Evaluate(context.Background(),
+		mustUUID(t, c.workspaceID), mustUUID(t, right)); err != nil {
+		t.Fatal(err)
+	}
+
+	status, body := c.compare(t, left, right)
+	if status != http.StatusOK {
+		t.Fatalf("GET comparison: got %d (%s)", status, body.Error)
+	}
+	if len(body.CriterionMatrix) != 2 {
+		t.Fatalf("one row per distinct criterion (c1 shared, c2 right-only), got %d: %+v",
+			len(body.CriterionMatrix), body.CriterionMatrix)
+	}
+
+	var sawC2 bool
+	for _, row := range body.CriterionMatrix {
+		if row.CriterionID != "c2" {
+			continue
+		}
+		sawC2 = true
+		if len(row.Results) != 2 {
+			t.Fatalf("criterion c2 has %d results, want 2", len(row.Results))
+		}
+		if row.Results[0].RunID != left || row.Results[1].RunID != right {
+			t.Errorf("criterion c2 results are not keyed to the two runs: %+v", row.Results)
+		}
+		if row.Results[0].Result != nil {
+			t.Errorf("the left side never declared c2, so its result must be null, got %q", *row.Results[0].Result)
+		}
+		if row.Results[1].Result == nil || *row.Results[1].Result != "passed" {
+			t.Errorf("the right side judged c2, got %v", row.Results[1].Result)
+		}
+	}
+	if !sawC2 {
+		t.Fatal("a criterion declared only by the right side's snapshot was dropped from the matrix")
+	}
+}
+
 func TestComparisonAgainstAnUnevaluatedRunNeverReadsAsAPass(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -257,6 +350,9 @@ func TestComparisonAgainstAnUnevaluatedRunNeverReadsAsAPass(t *testing.T) {
 	}
 	if body.Runs[1].Status != "succeeded" {
 		t.Errorf("the unevaluated side still reports how it executed, got %q", body.Runs[1].Status)
+	}
+	if len(body.CriterionMatrix) == 0 {
+		t.Fatal("no criterion rows to check")
 	}
 	for _, row := range body.CriterionMatrix {
 		if row.Results[1].Result != nil {

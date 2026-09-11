@@ -1,9 +1,12 @@
 package identity
 
 import (
+	"context"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestDevLoginRejectsOverlongNameInChinese(t *testing.T) {
@@ -20,6 +23,24 @@ func TestDevLoginRejectsOverlongNameInChinese(t *testing.T) {
 	}
 	if strings.Contains(w.Body.String(), "too long") {
 		t.Errorf("body still carries the English sentence: %q", w.Body.String())
+	}
+}
+
+func TestDevLoginLetsANameAtTheBoundaryThroughToLogin(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(),
+		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	h := &Handler{DevLogin: true, Service: &Service{Pool: pool}}
+	body := strings.NewReader(`{"user":"` + strings.Repeat("a", 64) + `"}`)
+	w := httptest.NewRecorder()
+
+	h.devLogin(w, httptest.NewRequest("POST", "/auth/dev/login", body))
+
+	if w.Code != 500 || !strings.Contains(w.Body.String(), "login failed") {
+		t.Fatalf("status = %d body = %q, want 500 \"login failed\" from the unreachable store: a 64-character name must clear the length gate", w.Code, w.Body.String())
 	}
 }
 

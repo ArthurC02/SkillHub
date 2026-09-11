@@ -437,6 +437,33 @@ func TestUploadDatasetRemovesObjectAfterDefiniteQuotaFailure(t *testing.T) {
 	}
 }
 
+func TestUploadDatasetSucceedsAtExactlyTheFileQuota(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, caseA, _, _ := seedTwoCases(t, pool)
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO datasets
+			(workspace_id, test_case_id, file_name, content_type, size_bytes,
+			 content_hash, object_key, expires_at)
+		SELECT $1, $2, 'existing-' || n || '.csv', 'text/csv', 1,
+		       'hash-at-limit-' || n, 'datasets/at-limit/' || n, now() + interval '90 days'
+		FROM generate_series(1, $3::int) AS n`, ws.ID, caseA, MaxFilesPerTestCase-1); err != nil {
+		t.Fatalf("seed quota: %v", err)
+	}
+	store := &removedStore{}
+	svc := datasetService(pool, store)
+	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "atlimit.csv", []byte("id,name\n1,a\n")); err != nil {
+		t.Fatalf("upload at the file quota returned %v, want success", err)
+	}
+	var n int
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM datasets
+		WHERE test_case_id = $1 AND deleted_at IS NULL`, caseA).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != MaxFilesPerTestCase {
+		t.Fatalf("test case has %d live datasets, want exactly %d", n, MaxFilesPerTestCase)
+	}
+}
+
 func TestFailedUploadCompensationLeavesADurableCleanupIntent(t *testing.T) {
 	pool := requireTestLabDB(t)
 	ws, caseA, _, _ := seedTwoCases(t, pool)

@@ -469,6 +469,32 @@ func TestEmbeddedCodeIsDisclosed(t *testing.T) {
 	}
 }
 
+func TestEmbeddedCodeBoundaryLines(t *testing.T) {
+	block := func(lang string, n int) string {
+		return "```" + lang + "\n" + strings.Repeat("print(1)\n", n) + "```\n"
+	}
+
+	if f := findingByCode(Validate(pkg(goodMD+block("python", maxEmbeddedBlockLines), nil)), "embedded-script"); f != nil {
+		t.Fatalf("a block of exactly %d lines must not be disclosed: %+v", maxEmbeddedBlockLines, f)
+	}
+	if f := findingByCode(Validate(pkg(goodMD+block("python", maxEmbeddedBlockLines+1), nil)), "embedded-script"); f == nil {
+		t.Fatalf("a block of %d lines must be disclosed", maxEmbeddedBlockLines+1)
+	}
+
+	atTotal := goodMD
+	for i := 0; i < 5; i++ {
+		atTotal += block("bash", maxEmbeddedTotalLines/5)
+	}
+	if f := findingByCode(Validate(pkg(atTotal, nil)), "embedded-script"); f != nil {
+		t.Fatalf("blocks totalling exactly %d lines must not be disclosed: %+v", maxEmbeddedTotalLines, f)
+	}
+
+	overTotal := atTotal + block("bash", 1)
+	if f := findingByCode(Validate(pkg(overTotal, nil)), "embedded-script"); f == nil {
+		t.Fatalf("blocks totalling %d lines must be disclosed", maxEmbeddedTotalLines+1)
+	}
+}
+
 func findingByCode(r Report, code string) *Finding {
 	for i, f := range r.Findings {
 		if f.Code == code {

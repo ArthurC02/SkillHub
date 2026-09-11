@@ -411,6 +411,39 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	}
 }
 
+func TestDownloadContentDispositionSanitizesTheFileName(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "downloader-sanitized-name")
+
+	cases := []struct {
+		name     string
+		fileName string
+		want     string
+	}{
+		{"strips unsafe characters", "a\"b\\c\x01d", `attachment; filename="abcd"`},
+		{"falls back when nothing survives", "\x01\x02\x03", `attachment; filename="download.zip"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			art := buildDownload(t, a, pool, c, uniqueWorklistLabel("sanitized-name"))
+			if _, err := pool.Exec(context.Background(),
+				"UPDATE artifacts SET file_name = $1 WHERE id = $2",
+				tc.fileName, mustUUID(t, art.ArtifactID)); err != nil {
+				t.Fatal(err)
+			}
+
+			resp, _ := c.fetchContent(t, art.ArtifactID)
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("GET content: got %d", resp.StatusCode)
+			}
+			if got := resp.Header.Get("Content-Disposition"); got != tc.want {
+				t.Errorf("Content-Disposition = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestPackagingWaitsForRetentionOfTheSameSharedObject(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

@@ -113,3 +113,23 @@ func TestCreateTestCaseWithCriteriaRejectsTooManyOrBlank(t *testing.T) {
 		t.Fatalf("blank criterion returned %v, want ErrInvalid", err)
 	}
 }
+
+func TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, skillID := seedWorkspaceWithSkill(t)
+	svc := testCaseServiceWithSkill(pool, ws, skillID)
+
+	tc, err := svc.CreateTestCase(t.Context(), ws, skillID, "n", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < MaxCriteria; i++ {
+		if _, err := svc.AddCriterion(t.Context(), ws, tc.ID, "c", SourceUser); err != nil {
+			t.Fatalf("criterion %d: %v", i+1, err)
+		}
+	}
+	if _, err := svc.AddCriterion(t.Context(), ws, tc.ID, "overflow", SourceUser); !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("criterion %d returned %v, want ErrLimitExceeded", MaxCriteria+1, err)
+	}
+}

@@ -56,6 +56,7 @@ type packagingRaceStore struct {
 
 type packagingFaultStore struct {
 	base      packageStore
+	getErr    error
 	existsErr error
 	putErr    error
 	puts      int
@@ -63,6 +64,9 @@ type packagingFaultStore struct {
 }
 
 func (s *packagingFaultStore) Get(ctx context.Context, key string) ([]byte, error) {
+	if s.getErr != nil {
+		return nil, s.getErr
+	}
 	return s.base.Get(ctx, key)
 }
 
@@ -778,6 +782,18 @@ func TestPackagingObjectFailuresAreFailClosedAndCompensated(t *testing.T) {
 		_, err := a.packaging.Create(context.Background(), publishedWorkspace(ws), mustUUID(t, skillID),
 			mustUUID(t, versionID), "standard", false)
 		return err
+	}
+
+	getFailure := &packagingFaultStore{base: a.packages, getErr: errors.New("stored package unreadable")}
+	a.packaging.Store = getFailure
+	if err := create(); err == nil || getFailure.puts != 0 || getFailure.removes != 0 {
+		t.Fatalf("source Get failure was not fail-closed: err=%v puts=%d removes=%d",
+			err, getFailure.puts, getFailure.removes)
+	}
+	for key := range a.packages {
+		if strings.HasPrefix(key, "downloads/"+owner.workspaceID+"/") {
+			t.Errorf("a failed source read still left a download object %q", key)
+		}
 	}
 
 	existsFailure := &packagingFaultStore{base: a.packages, existsErr: errors.New("exists unavailable")}

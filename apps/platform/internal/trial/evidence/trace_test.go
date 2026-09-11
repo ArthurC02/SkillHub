@@ -209,6 +209,28 @@ func TestValidateRejectsMalformedEnvelopes(t *testing.T) {
 	}
 }
 
+func TestValidateAcceptsTheSeqAndAttemptCeilingsThemselves(t *testing.T) {
+	base := func() Event {
+		return Event{
+			SchemaVersion: "1.0", EventID: "0f0a1e6c-1c9a-4f8e-9a2b-1d5a2c7b3e01",
+			RunID: "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20", Attempt: 1, Seq: 1,
+			OccurredAt: time.Now(), EmittedBy: SourceSandbox, Type: TypeAgentOutput,
+			Payload: json.RawMessage(`{"kind":"final","text":"done","truncated":false}`),
+		}
+	}
+	cases := map[string]func(*Event){
+		"seq at the ceiling":     func(e *Event) { e.Seq = maxTraceSeq },
+		"attempt at the ceiling": func(e *Event) { e.Attempt = maxTraceAttempt },
+	}
+	for name, mutate := range cases {
+		event := base()
+		mutate(&event)
+		if err := event.Validate(); err != nil {
+			t.Errorf("%s was rejected: %v", name, err)
+		}
+	}
+}
+
 func TestValidateAcceptsAdditiveMinorVersions(t *testing.T) {
 	event := Event{
 		SchemaVersion: "1.7", EventID: "0f0a1e6c-1c9a-4f8e-9a2b-1d5a2c7b3e01",

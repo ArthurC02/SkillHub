@@ -261,6 +261,40 @@ func TestDispatchFailuresAreRetriedWithNewAttempts(t *testing.T) {
 	}
 }
 
+func TestCancelBetweenDispatchAttemptsStopsTheRetryLoop(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-cancel-mid-dispatch")
+	fake, _ := withProvider(t, a, pool, providertest.Plan{})
+
+	fake.DispatchStatuses = []int{http.StatusServiceUnavailable}
+	fake.OnDispatch = func(runID string, attempt int) {
+		if attempt != 1 {
+			return
+		}
+		if _, err := pool.Exec(context.Background(),
+			"UPDATE runs SET cancel_requested_at = now() WHERE id = $1", mustUUID(t, runID)); err != nil {
+			t.Error(err)
+		}
+	}
+
+	created := f.start(t)
+	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusCancelled))
+
+	if final.FailureClass.Value != "cancelled" {
+		t.Errorf("failure_class = %q, want cancelled", final.FailureClass.Value)
+	}
+	if !strings.Contains(final.StatusReason, "派送進行中被取消") {
+		t.Errorf("status_reason = %q, want it to name the mid-dispatch cancellation", final.StatusReason)
+	}
+	if len(final.Attempts) != 1 {
+		t.Fatalf("attempts = %d, want 1 (the retryable dispatch, and no second one)", len(final.Attempts))
+	}
+	if fake.Dispatches() != 0 {
+		t.Errorf("dispatches = %d, want 0: the only attempt was refused", fake.Dispatches())
+	}
+}
+
 func TestRetriesAreBoundedAndClassifiedAsProviderFailure(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
