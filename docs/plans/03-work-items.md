@@ -490,11 +490,11 @@ hello in-process s3
 
 > 依 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md)（Accepted，[`05` R-77](05-pending-rulings.md)）新增，允收準則見 [`02` §4.12](02-specifications-and-acceptance-criteria.md)。後台不是新的 Bounded Context：每一項工作各自落在擁有那項事實的 context，這裡只是把它們排成兩批。
 
-- [ ] OPS-001 契約 `GET /me` 加 `operator`；`apps/web` 新增 `/admin/*`（延遲載入、帳號選單入口、非 operator 看到「這一頁現在不存在」、淨測試模式的說明）；資訊架構 §0.1 R2 收下 `/admin/*`。（對應 `02:OPS-001`）
-- [ ] OPS-002 以 email 找帳號的端點（`identity`），找到時同一交易寫 audit；前端帳號頁。（對應 `02:OPS-002`）
-- [ ] OPS-003 點數餘額與分錄的端點（`credit`），同一交易寫 audit；前端帳號頁顯示並授予。（對應 `02:OPS-003`；依 OPS-002）
-- [ ] OPS-004 Skill 治理查詢端點（`catalog` 的 handler、`registry` 的 query）；前端治理頁接三個既有動作。（對應 `02:OPS-004`）
-- [ ] OPS-005 名冊唯讀端點（`identity`）；前端派送煞車頁與名冊頁。（對應 `02:OPS-005`）
-- [ ] OPS-006 operator 動作紀錄端點（`audit` 的 query，action 清單由 `apiserver` 提供）與前端頁。（對應 `02:OPS-006`；第二批）
-- [ ] OPS-007 成本統計端點（`credit`）與前端頁；丙-233 的觀察改看這一頁。（對應 `02:OPS-007`；第二批）
-- [ ] OPS-008 每一條新 `/admin/...` 端點列入 `authz_matrix_integration_test.go`；新 query 登記在 `db/query-owners.yaml`，不加 `allow:` 例外。（依 ADR-032、ADR-033；鐵律 7、8）
+- [x] OPS-001 契約 `GET /me` 加 `operator`；`apps/web` 新增 `/admin/*`（延遲載入、帳號選單入口、非 operator 看到「這一頁現在不存在」、淨測試模式的說明）；資訊架構 §0.1 R2 收下 `/admin/*`。（對應 `02:OPS-001`）
+- [x] OPS-002 以 email 找帳號的端點（`identity`），找到時同一交易寫 audit；前端帳號頁。（對應 `02:OPS-002`）
+- [x] OPS-003 點數餘額與分錄的端點（`credit`），同一交易寫 audit；前端帳號頁顯示並授予。（對應 `02:OPS-003`；依 OPS-002）
+- [x] OPS-004 Skill 治理查詢端點（`catalog` 的 handler、`registry` 的 query）；前端治理頁接三個既有動作。（對應 `02:OPS-004`）
+- [x] OPS-005 名冊唯讀端點（`identity`）；前端派送煞車頁與名冊頁。（對應 `02:OPS-005`）
+- [x] OPS-006 operator 動作紀錄端點（`audit` 的 query，action 清單由 `apiserver` 提供）與前端頁。（對應 `02:OPS-006`；第二批）
+- [x] OPS-007 成本統計端點（`credit`）與前端頁；丙-233 的觀察改看這一頁。（對應 `02:OPS-007`；第二批）
+- [x] OPS-008 每一條新 `/admin/...` 端點列入 `authz_matrix_integration_test.go`；新 query 登記在 `db/query-owners.yaml`，不加 `allow:` 例外。（依 ADR-032、ADR-033；鐵律 7、8）
