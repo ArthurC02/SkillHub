@@ -245,7 +245,7 @@ func NewApp(cfg Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	wireCreationCredit(creationSvc, creditSvc, identitySvc.WorkspaceOwner)
+	wireCreationCredit(creationSvc, creditSvc, identitySvc)
 
 	wireCostRecording(creditSvc, catalogSvc, versions)
 	wireGenerateCredit(versions, creditSvc, identitySvc.WorkspaceOwner)

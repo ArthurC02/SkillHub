@@ -253,7 +253,7 @@ func TestCanAffordStepEnforcesDebtFloor(t *testing.T) {
 
 func TestCanStartUsesP95WithMarkupWhenEnoughSamples(t *testing.T) {
 	store := newFakeStore()
-	store.stats[KindGenerate] = Statistics{SampleCount: MinStatSamples, P95UsdMicros: 30_000_000}
+	store.stats[KindGenerate] = Statistics{SampleCount: MinStatSamples, P95UsdMicros: 30_000_000, WindowEnd: time.Now()}
 	s := &Service{Store: store, Config: testConfig()}
 	user := testUser(5)
 	store.balances[idKey(user)] = 1000
@@ -290,7 +290,7 @@ func TestCanStartFallsBackWhenNoStatisticsExist(t *testing.T) {
 
 func TestCanStartFallsBackBelowMinSamples(t *testing.T) {
 	store := newFakeStore()
-	store.stats[KindGenerate] = Statistics{SampleCount: MinStatSamples - 1, P95UsdMicros: 30_000_000}
+	store.stats[KindGenerate] = Statistics{SampleCount: MinStatSamples - 1, P95UsdMicros: 30_000_000, WindowEnd: time.Now()}
 	s := &Service{Store: store, Config: testConfig()}
 	user := testUser(10)
 	check, err := s.CanStart(context.Background(), user, KindGenerate)
@@ -452,5 +452,30 @@ func TestAccountChecksReadThroughTheCallersTransaction(t *testing.T) {
 		if db == nil {
 			t.Errorf("account check %d ran outside the caller's transaction; on a one-connection pool it waits forever", i+1)
 		}
+	}
+}
+
+func TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		age       time.Duration
+		estimated bool
+		threshold int64
+	}{
+		{"an hour inside the shelf life", MaxStatisticsAge - time.Hour, false, 39_000},
+		{"an hour past the shelf life", MaxStatisticsAge + time.Hour, true, 70},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := newFakeStore()
+			store.stats[KindGenerate] = Statistics{SampleCount: MinStatSamples, P95UsdMicros: 30_000_000, WindowEnd: time.Now().Add(-tc.age)}
+			s := &Service{Store: store, Config: testConfig()}
+			check, err := s.CanStart(context.Background(), testUser(21), KindGenerate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if check.Estimated != tc.estimated || check.Threshold != tc.threshold {
+				t.Errorf("threshold = %d (estimated %v), want %d (estimated %v)", check.Threshold, check.Estimated, tc.threshold, tc.estimated)
+			}
+		})
 	}
 }

@@ -66,7 +66,7 @@ func wireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgx
 		return svc.CanAffordStep(ctx, userID, reservedUSDMicros)
 	}
 	target.CreditSettle = func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error {
-		userID, err := owner(ctx, workspaceID)
+		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
 		if err != nil {
 			return err
 		}
@@ -139,7 +139,7 @@ func wireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool)
 				UserID:         userID,
 				RefType:        credit.RefRun,
 				RefID:          runID,
-				IdempotencyKey: key,
+				IdempotencyKey: key + ":unreadable",
 			})
 			return err
 		}

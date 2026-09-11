@@ -18,13 +18,15 @@ func ceilDiv(a, b int64) int64 {
 // billing an oversized cost as free instead of refusing it.
 const MaxBillableMicros = 1_000_000_000
 
+const MaxMarkupBps = 1_000_000
+
 var ErrAmountOutOfRange = errors.New("credit: amount is outside the billable range")
 
 func BilledMicros(usdMicros, markupBps int64) (int64, error) {
 	if usdMicros < 0 || usdMicros > MaxBillableMicros {
 		return 0, fmt.Errorf("%w: %d micros", ErrAmountOutOfRange, usdMicros)
 	}
-	if markupBps < 0 || markupBps > 1_000_000 {
+	if markupBps < 0 || markupBps > MaxMarkupBps {
 		return 0, fmt.Errorf("%w: markup %d bps", ErrAmountOutOfRange, markupBps)
 	}
 	return ceilDiv(usdMicros*markupBps, 10000), nil

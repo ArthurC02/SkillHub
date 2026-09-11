@@ -178,6 +178,7 @@ func (s *PostgresStore) RecentStatistics(ctx context.Context, kind string) (Stat
 		P90UsdMicros: deref(row.P90UsdMicros),
 		P95UsdMicros: deref(row.P95UsdMicros),
 		MaxUsdMicros: deref(row.MaxUsdMicros),
+		WindowEnd:    row.WindowEnd.Time,
 	}, nil
 }
 
@@ -220,6 +221,7 @@ func (s *PostgresStore) RecomputeStatistics(ctx context.Context, kind string, wi
 		P90UsdMicros: agg.P90UsdMicros,
 		P95UsdMicros: agg.P95UsdMicros,
 		MaxUsdMicros: agg.MaxUsdMicros,
+		WindowEnd:    windowEnd,
 	}, nil
 }
 

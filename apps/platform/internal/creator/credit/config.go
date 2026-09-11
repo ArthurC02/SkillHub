@@ -41,6 +41,9 @@ func ConfigFromEnv() (Config, error) {
 	if markupBps <= 0 {
 		return Config{}, errors.New("credit: CREDIT_MARKUP_BPS must be > 0")
 	}
+	if markupBps > MaxMarkupBps {
+		return Config{}, fmt.Errorf("credit: CREDIT_MARKUP_BPS must be <= %d", MaxMarkupBps)
+	}
 
 	floor, err := envInt("CREDIT_DEBT_FLOOR", -50)
 	if err != nil {

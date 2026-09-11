@@ -37,7 +37,7 @@ func (l *creditLedger) Balance(ctx context.Context, workspaceID pgtype.UUID) (in
 }
 
 func (l *creditLedger) SessionEstimate(ctx context.Context) (CreditSessionEstimate, error) {
-	est, err := l.svc.Estimate(ctx, credit.KindCreationStep)
+	est, err := l.svc.Estimate(ctx, credit.KindCreationSession)
 	if err != nil {
 		return CreditSessionEstimate{}, err
 	}
@@ -46,6 +46,7 @@ func (l *creditLedger) SessionEstimate(ctx context.Context) (CreditSessionEstima
 		HighCredits:      est.HighCredits,
 		ThresholdCredits: est.ThresholdCredits,
 		SampleSize:       est.SampleCount,
+		DebtFloorCredits: l.svc.Config.DebtFloorCredits,
 		Estimated:        est.Estimated,
 	}, nil
 }
@@ -61,9 +62,13 @@ func (l *creditLedger) Grant(ctx context.Context, workspaceID pgtype.UUID, amoun
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	kind := credit.EntryGrant
+	if amountCredits < 0 {
+		kind = credit.EntryAdjustment
+	}
 	balance, err := l.svc.Grant(ctx, tx, credit.GrantInput{
 		UserID:         userID,
-		EntryKind:      credit.EntryGrant,
+		EntryKind:      kind,
 		Credits:        amountCredits,
 		Reason:         reason,
 		OperatorID:     actorUserID,
@@ -99,11 +104,8 @@ func newCreditService(pool *pgxpool.Pool, identitySvc *identity.Service) (*credi
 	}, nil
 }
 
-func wireCreationCredit(
-	target *creation.Service,
-	svc *credit.Service,
-	owner func(ctx context.Context, workspaceID pgtype.UUID) (pgtype.UUID, error),
-) {
+func wireCreationCredit(target *creation.Service, svc *credit.Service, ids *identity.Service) {
+	owner := ids.WorkspaceOwner
 	target.CreditCanStart = func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
 		userID, err := owner(ctx, workspaceID)
 		if err != nil {
@@ -124,7 +126,7 @@ func wireCreationCredit(
 		return svc.CanAffordStep(ctx, userID, reservedUSDMicros)
 	}
 	target.CreditSettle = func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error {
-		userID, err := owner(ctx, workspaceID)
+		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
 		if err != nil {
 			return err
 		}
@@ -181,7 +183,7 @@ func wireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool)
 				UserID:         userID,
 				RefType:        credit.RefRun,
 				RefID:          runID,
-				IdempotencyKey: key,
+				IdempotencyKey: key + ":unreadable",
 			})
 			return err
 		}

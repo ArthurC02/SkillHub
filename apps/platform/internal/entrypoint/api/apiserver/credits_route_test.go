@@ -12,9 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
@@ -205,8 +207,8 @@ func TestGrantCreditsIsInvisibleWithoutTheOperatorRole(t *testing.T) {
 func TestOperatorGrantUnblocksANewSession(t *testing.T) {
 	pool := creditsTestPool(t)
 	ledger := newFakeCreditLedger(CreditSessionEstimate{
-		LowCredits: 30, HighCredits: FallbackSessionThresholdCredits,
-		ThresholdCredits: FallbackSessionThresholdCredits, SampleSize: 2, Estimated: true,
+		LowCredits: 30, HighCredits: testSessionThreshold,
+		ThresholdCredits: testSessionThreshold, SampleSize: 2, Estimated: true,
 	})
 	app, srv := creditsTestServer(t, pool, ledger)
 	member := creditsLogin(t, srv, "credits-member-grant")
@@ -219,7 +221,7 @@ func TestOperatorGrantUnblocksANewSession(t *testing.T) {
 		t.Fatalf("GET /me/credits: got %d, body %v", code, before)
 	}
 	if canStart, _ := before["can_start"].(bool); canStart {
-		t.Fatalf("a fresh account (balance 0) reported can_start = true against threshold %d", FallbackSessionThresholdCredits)
+		t.Fatalf("a fresh account (balance 0) reported can_start = true against threshold %d", testSessionThreshold)
 	}
 	if reason, _ := before["block_reason"].(string); reason == "" {
 		t.Fatal("blocked but block_reason is empty")
@@ -239,14 +241,15 @@ func TestOperatorGrantUnblocksANewSession(t *testing.T) {
 		t.Fatalf("GET /me/credits after grant: got %d, body %v", code, after)
 	}
 	if canStart, _ := after["can_start"].(bool); !canStart {
-		t.Fatalf("balance 100 >= threshold %d but can_start is still false: %v", FallbackSessionThresholdCredits, after)
+		t.Fatalf("balance 100 >= threshold %d but can_start is still false: %v", testSessionThreshold, after)
 	}
 	if reason, _ := after["block_reason"].(string); reason != "" {
 		t.Fatalf("can_start but block_reason is still %q", reason)
 	}
 }
 
-func TestAnOperatorGrantCompletesOnOneConnection(t *testing.T) {
+func creditsOneConnectionPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
 	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping CRED route test")
@@ -261,6 +264,11 @@ func TestAnOperatorGrantCompletesOnOneConnection(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
+	return pool
+}
+
+func realCreditsServer(t *testing.T, pool *pgxpool.Pool) (*App, *httptest.Server) {
+	t.Helper()
 	app, err := NewApp(Config{Pool: pool, OAuth: &identity.GitHubOAuth{}, Secure: false, DevLogin: true})
 	if err != nil {
 		t.Fatal(err)
@@ -274,7 +282,11 @@ func TestAnOperatorGrantCompletesOnOneConnection(t *testing.T) {
 	mux.HandleFunc("POST /admin/credits/{workspace_id}/grants", app.Auth.RequireOperator(h.Grant))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
+	return app, srv
+}
 
+func TestAnOperatorGrantCompletesOnOneConnection(t *testing.T) {
+	app, srv := realCreditsServer(t, creditsOneConnectionPool(t))
 	member := creditsLogin(t, srv, "credits-member-oneconn")
 	operator := creditsLogin(t, srv, "credits-operator-oneconn")
 	app.Auth.Operators = map[string]bool{operator.userID: true}
@@ -284,6 +296,95 @@ func TestAnOperatorGrantCompletesOnOneConnection(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("operator grant on a one-connection pool: got %d, body %v", code, body)
 	}
+}
+
+func TestAnOperatorCorrectionLowersTheBalance(t *testing.T) {
+	pool := creditsTestPool(t)
+	app, srv := realCreditsServer(t, pool)
+	member := creditsLogin(t, srv, "credits-member-correction")
+	operator := creditsLogin(t, srv, "credits-operator-correction")
+	app.Auth.Operators = map[string]bool{operator.userID: true}
+	grants := "/admin/credits/" + member.workspaceID + "/grants"
+
+	code, granted := operator.postJSON(t, grants, `{"amount_credits":100,"reason":"beta reward"}`)
+	if code != http.StatusOK {
+		t.Fatalf("grant: got %d, body %v", code, granted)
+	}
+	before, _ := granted["balance_credits"].(float64)
+
+	code, corrected := operator.postJSON(t, grants, `{"amount_credits":-30,"reason":"corrects an over-grant"}`)
+	if code != http.StatusOK {
+		t.Fatalf("a corrective adjustment the contract allows: got %d, body %v", code, corrected)
+	}
+	if corrected["balance_credits"] != before-30 {
+		t.Errorf("balance after the correction = %v, want %v", corrected["balance_credits"], before-30)
+	}
+	var kind string
+	if err := pool.QueryRow(context.Background(), `
+		SELECT kind FROM credit_entries WHERE user_id = $1 AND delta_credits = -30`,
+		mustParseUUID(t, member.userID)).Scan(&kind); err != nil {
+		t.Fatalf("reading the correction's ledger entry: %v", err)
+	}
+	if kind != "adjustment" {
+		t.Errorf("a negative grant was booked as %q, want adjustment", kind)
+	}
+}
+
+func TestGrantingToAWorkspaceThatDoesNotExistIsNotFound(t *testing.T) {
+	app, srv := realCreditsServer(t, creditsTestPool(t))
+	operator := creditsLogin(t, srv, "credits-operator-unknown-workspace")
+	app.Auth.Operators = map[string]bool{operator.userID: true}
+
+	code, body := operator.postJSON(t, "/admin/credits/"+uuid.NewString()+"/grants", `{"amount_credits":10,"reason":"beta reward"}`)
+	if code != http.StatusNotFound {
+		t.Fatalf("grant to a workspace that does not exist: got %d (%v), want 404", code, body)
+	}
+}
+
+func TestCreationSettlementCompletesOnOneConnection(t *testing.T) {
+	_, srv := realCreditsServer(t, creditsTestPool(t))
+	member := creditsLogin(t, srv, "credits-settle-oneconn")
+	workspaceID := mustParseUUID(t, member.workspaceID)
+
+	pool := creditsOneConnectionPool(t)
+	ids := &identity.Service{Pool: pool}
+	svc, err := newCreditService(pool, ids)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := &creation.Service{}
+	wireCreationCredit(target, svc, ids)
+
+	for _, tc := range []struct {
+		name      string
+		usdMicros int64
+	}{
+		{"a paid step", 3_000},
+		{"a step that cost nothing", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			tx, err := pool.Begin(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = tx.Rollback(context.Background()) }()
+			spent := tc.usdMicros
+			if err := target.CreditSettle(ctx, tx, workspaceID, mustParseUUID(t, uuid.NewString()), 1, &spent, 100_000); err != nil {
+				t.Fatalf("settling a creation step on one connection: %v", err)
+			}
+		})
+	}
+}
+
+func mustParseUUID(t *testing.T, s string) pgtype.UUID {
+	t.Helper()
+	var id pgtype.UUID
+	if err := id.Scan(s); err != nil {
+		t.Fatalf("parsing %q: %v", s, err)
+	}
+	return id
 }
 
 func TestGrantRejectsInvalidRequestsBeforeTheLedgerRuns(t *testing.T) {

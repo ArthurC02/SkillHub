@@ -111,6 +111,35 @@ func TestARunWhoseSpendIsUnreadableIsRecordedButNotCharged(t *testing.T) {
 	}
 }
 
+func TestARunWhoseSpendIsReadOnALaterCleanupReachesTheLedgerAtItsRealCost(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	_, svc := haltHarness(t, a, pool)
+	f := newFixture(t, a, pool, "alice-run-read-later")
+	ctx := context.Background()
+
+	finished := f.start(t)
+	if err := svc.Drive(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
+		t.Fatalf("driving the run: %v", err)
+	}
+	for _, spend := range []float64{-1, 0.0382} {
+		svc.Gateway = spendingGateway(t, spend)
+		if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
+			t.Fatalf("cleanup with spend %v: %v", spend, err)
+		}
+	}
+
+	runID := mustUUID(t, finished.RunID)
+	if n := countRow(t, pool,
+		"SELECT count(*) FROM cost_events WHERE kind = 'run' AND ref_id = $1 AND cost_source = 'gateway' AND usd_micros > 0",
+		runID); n != 1 {
+		t.Errorf("gateway-priced cost events for this run = %d, want 1 — the spend read later must reach the ledger the statistics read", n)
+	}
+	if got := balanceOf(t, pool, f.userID); got != betaGrantCredits-50 {
+		t.Errorf("balance = %d, want %d", got, betaGrantCredits-50)
+	}
+}
+
 func spendingGateway(t *testing.T, spendUSD float64) *run.Gateway {
 	t.Helper()
 	mux := http.NewServeMux()

@@ -14,12 +14,12 @@ import (
 const aggregateCostEventsWindow = `-- name: AggregateCostEventsWindow :one
 SELECT
     count(*)::bigint AS sample_count,
-    percentile_cont(0.5) WITHIN GROUP (ORDER BY usd_micros)::bigint AS p50_usd_micros,
-    percentile_cont(0.9) WITHIN GROUP (ORDER BY usd_micros)::bigint AS p90_usd_micros,
-    percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros)::bigint AS p95_usd_micros,
-    max(usd_micros)::bigint AS max_usd_micros
+    coalesce(percentile_cont(0.5) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p50_usd_micros,
+    coalesce(percentile_cont(0.9) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p90_usd_micros,
+    coalesce(percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p95_usd_micros,
+    coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
 FROM cost_events
-WHERE kind = $1
+WHERE kind = $1 AND cost_source = 'gateway'
   AND created_at >= $2 AND created_at < $3
 `
 
@@ -58,7 +58,7 @@ SELECT
     coalesce(percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p95_usd_micros,
     coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
 FROM cost_session_summaries
-WHERE last_step_at >= $1 AND last_step_at < $2
+WHERE NOT estimated AND last_step_at >= $1 AND last_step_at < $2
 `
 
 type AggregateSessionSummariesWindowParams struct {

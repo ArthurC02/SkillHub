@@ -59,3 +59,23 @@ func TestConfigFromEnvRespectsOverride(t *testing.T) {
 		t.Fatalf("MicrosPerCredit = %d, want 10000 for CREDIT_USD_PER_CREDIT=0.01", cfg.MicrosPerCredit)
 	}
 }
+
+func TestConfigFromEnvAcceptsTheLargestMarkupAChargeCanUse(t *testing.T) {
+	clearCreditEnv(t)
+	t.Setenv("CREDIT_MARKUP_BPS", "1000000")
+	cfg, err := ConfigFromEnv()
+	if err != nil {
+		t.Fatalf("CREDIT_MARKUP_BPS=1000000: %v", err)
+	}
+	if cfg.MarkupBps != 1_000_000 {
+		t.Fatalf("MarkupBps = %d, want 1000000", cfg.MarkupBps)
+	}
+}
+
+func TestConfigFromEnvFailsClosedOnAMarkupNoChargeCanUse(t *testing.T) {
+	clearCreditEnv(t)
+	t.Setenv("CREDIT_MARKUP_BPS", "1000001")
+	if _, err := ConfigFromEnv(); err == nil {
+		t.Fatal("CREDIT_MARKUP_BPS=1000001 must fail at startup: every charge would be refused and every call would go unbilled")
+	}
+}

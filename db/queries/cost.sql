@@ -12,12 +12,12 @@ INSERT INTO cost_events (
 -- name: AggregateCostEventsWindow :one
 SELECT
     count(*)::bigint AS sample_count,
-    percentile_cont(0.5) WITHIN GROUP (ORDER BY usd_micros)::bigint AS p50_usd_micros,
-    percentile_cont(0.9) WITHIN GROUP (ORDER BY usd_micros)::bigint AS p90_usd_micros,
-    percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros)::bigint AS p95_usd_micros,
-    max(usd_micros)::bigint AS max_usd_micros
+    coalesce(percentile_cont(0.5) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p50_usd_micros,
+    coalesce(percentile_cont(0.9) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p90_usd_micros,
+    coalesce(percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p95_usd_micros,
+    coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
 FROM cost_events
-WHERE kind = sqlc.arg(kind)
+WHERE kind = sqlc.arg(kind) AND cost_source = 'gateway'
   AND created_at >= sqlc.arg(window_start) AND created_at < sqlc.arg(window_end);
 
 -- name: InsertCostStatistics :one
@@ -77,7 +77,7 @@ SELECT
     coalesce(percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p95_usd_micros,
     coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
 FROM cost_session_summaries
-WHERE last_step_at >= sqlc.arg(window_start) AND last_step_at < sqlc.arg(window_end);
+WHERE NOT estimated AND last_step_at >= sqlc.arg(window_start) AND last_step_at < sqlc.arg(window_end);
 
 -- name: PurgeUserSessionCostSummaries :execrows
 DELETE FROM cost_session_summaries WHERE user_id = $1;

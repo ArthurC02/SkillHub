@@ -3,6 +3,7 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,17 +16,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
-const DebtFloorCredits int64 = -50
-
-const MinCostSampleSize = 20
-
-const FallbackSessionThresholdCredits int64 = 65
-
 type CreditSessionEstimate struct {
 	LowCredits       int64
 	HighCredits      int64
 	ThresholdCredits int64
 	SampleSize       int
+	DebtFloorCredits int64
 
 	Estimated bool
 }
@@ -62,7 +58,7 @@ type creditEstimateView struct {
 func creditBalanceResponse(balance int64, est CreditSessionEstimate) creditBalanceView {
 	view := creditBalanceView{
 		BalanceCredits:   balance,
-		DebtFloorCredits: DebtFloorCredits,
+		DebtFloorCredits: est.DebtFloorCredits,
 		EstimatedSession: creditEstimateView{
 			LowCredits: est.LowCredits, HighCredits: est.HighCredits,
 			SampleSize: est.SampleSize, Estimated: est.Estimated,
@@ -138,6 +134,10 @@ func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	balance, err := h.Ledger.Grant(r.Context(), workspaceID, body.AmountCredits, body.Reason, actor.ID)
+	if errors.Is(err, identity.ErrWorkspaceNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "grant failed")
 		return

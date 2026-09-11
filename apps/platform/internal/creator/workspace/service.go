@@ -25,6 +25,8 @@ const providerGitHub = "github"
 
 var ErrAccountPurging = errors.New("account deletion is already in progress")
 
+var ErrWorkspaceNotFound = errors.New("workspace not found")
+
 type Service struct {
 	Pool  *pgxpool.Pool
 	OAuth *GitHubOAuth
@@ -327,7 +329,7 @@ func (s *Service) WorkspaceOwnerIn(ctx context.Context, db gen.DBTX, workspaceID
 	}
 	owner, err := gen.New(db).GetWorkspaceOwner(ctx, workspaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return pgtype.UUID{}, fmt.Errorf("no workspace %s", pgconv.UUIDString(workspaceID))
+		return pgtype.UUID{}, fmt.Errorf("%w: %s", ErrWorkspaceNotFound, pgconv.UUIDString(workspaceID))
 	}
 	if err != nil {
 		return pgtype.UUID{}, err

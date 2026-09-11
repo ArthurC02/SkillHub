@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
@@ -93,6 +94,14 @@ func TestTheStartGateReadsWhatAWholeSessionCosts(t *testing.T) {
 	c := a.login(t, "summary-gate")
 
 	creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 422)
+
+	var credits map[string]any
+	if code := getJSON(t, c.Client, c.base+"/me/credits", &credits); code != 200 {
+		t.Fatalf("GET /me/credits: got %d", code)
+	}
+	if credits["can_start"] != false {
+		t.Errorf("the balance screen says can_start = %v while the gate refuses; both must read what a whole session costs", credits["can_start"])
+	}
 }
 
 func creationDomain(t *testing.T, s *creation.Service, c *client, v creation.View) creation.View {
@@ -144,5 +153,120 @@ func TestNoFieldInThePublicContractIsPricedInDollars(t *testing.T) {
 		if m := dollarField.FindStringSubmatch(line); m != nil {
 			t.Errorf("public.yaml:%d names the field %q; users see credits, only the ledger holds dollars", i+1, m[1])
 		}
+	}
+}
+
+func TestTheBalanceScreenShowsTheConfiguredDebtFloor(t *testing.T) {
+	t.Setenv("CREDIT_DEBT_FLOOR", "-80")
+	a := newAPI(t, requireDB(t))
+	c := a.login(t, "credit-floor-shown")
+
+	var credits map[string]any
+	if code := getJSON(t, c.Client, c.base+"/me/credits", &credits); code != 200 {
+		t.Fatalf("GET /me/credits: got %d", code)
+	}
+	if credits["debt_floor_credits"] != float64(-80) {
+		t.Errorf("debt_floor_credits = %v, want the configured -80", credits["debt_floor_credits"])
+	}
+}
+
+func forgetStatistics(t *testing.T, windowEnd time.Time) {
+	t.Helper()
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(context.Background(), `DELETE FROM cost_statistics WHERE window_end = $1`, windowEnd)
+	})
+}
+
+func seedCostEvent(t *testing.T, kind string, usdMicros int64, source string, at time.Time) {
+	t.Helper()
+	key := "statistics-fixture:" + uuid.NewString()
+	if _, err := testPool.Exec(context.Background(), `
+		INSERT INTO cost_events (kind, model, usd_micros, cost_source, idempotency_key, created_at)
+		VALUES ($1, 'fixture-model', $2, $3, $4, $5)`, kind, usdMicros, source, key, at); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		ctx := context.Background()
+		tx, err := testPool.Begin(ctx)
+		if err != nil {
+			t.Errorf("cleanup: %v", err)
+			return
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		if _, err := tx.Exec(ctx, "SET LOCAL skillhub.purge = 'on'"); err != nil {
+			t.Errorf("cleanup: %v", err)
+			return
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM cost_events WHERE idempotency_key = $1`, key); err != nil {
+			t.Errorf("cleanup: %v", err)
+			return
+		}
+		if err := tx.Commit(ctx); err != nil {
+			t.Errorf("cleanup: %v", err)
+		}
+	})
+}
+
+func TestTheDailyStatisticsSurviveAWindowWithNoEvents(t *testing.T) {
+	store := credit.NewPostgresStore(requireDB(t))
+	start := time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := start.Add(time.Second)
+	forgetStatistics(t, end)
+
+	for _, kind := range []string{credit.KindSuggestion, credit.KindCreationSession} {
+		stats, err := store.RecomputeStatistics(context.Background(), kind, start, end)
+		if err != nil {
+			t.Fatalf("%s over a window with no events: %v", kind, err)
+		}
+		if stats.SampleCount != 0 {
+			t.Errorf("%s sample count = %d, want 0", kind, stats.SampleCount)
+		}
+	}
+}
+
+func TestAnEstimatedCallCostStaysOutOfTheStatistics(t *testing.T) {
+	store := credit.NewPostgresStore(requireDB(t))
+	start := time.Date(2002, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	forgetStatistics(t, end)
+	seedCostEvent(t, credit.KindSuggestion, 1_000, "gateway", start.Add(time.Minute))
+	seedCostEvent(t, credit.KindSuggestion, 999_000, "estimated", start.Add(time.Minute))
+
+	stats, err := store.RecomputeStatistics(context.Background(), credit.KindSuggestion, start, end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.SampleCount != 1 || stats.MaxUsdMicros != 1_000 {
+		t.Errorf("statistics = %d samples, max %d micros; want 1 sample, max 1000 — only the gateway-priced call counts", stats.SampleCount, stats.MaxUsdMicros)
+	}
+}
+
+func TestASessionWithAnEstimatedStepStaysOutOfTheStatistics(t *testing.T) {
+	pool := requireDB(t)
+	store := credit.NewPostgresStore(pool)
+	start := time.Date(2003, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	forgetStatistics(t, end)
+	for _, row := range []struct {
+		usdMicros int64
+		estimated bool
+	}{{2_000, false}, {888_000, true}} {
+		id := uuid.NewString()
+		if _, err := pool.Exec(context.Background(), `
+			INSERT INTO cost_session_summaries (session_id, usd_micros, steps, estimated, last_step_at)
+			VALUES ($1, $2, 1, $3, $4)`, id, row.usdMicros, row.estimated, start.Add(time.Minute)); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM cost_session_summaries WHERE session_id = $1`, id)
+		})
+	}
+
+	stats, err := store.RecomputeStatistics(context.Background(), credit.KindCreationSession, start, end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.SampleCount != 1 || stats.MaxUsdMicros != 2_000 {
+		t.Errorf("statistics = %d samples, max %d micros; want 1 sample, max 2000 — a session priced by a guess is not a sample", stats.SampleCount, stats.MaxUsdMicros)
 	}
 }

@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+const testSessionThreshold int64 = 65
+
+const testMinSamples = 20
+
 func TestCreditBalanceResponseAllowsStartingASessionAtOrAboveTheThreshold(t *testing.T) {
 	for _, balance := range []int64{65, 66, 1000} {
 		est := CreditSessionEstimate{LowCredits: 30, HighCredits: 65, ThresholdCredits: 65, SampleSize: 40}
@@ -35,10 +39,13 @@ func TestCreditBalanceResponseBlocksBelowThresholdAndNamesTheDeficit(t *testing.
 }
 
 func TestCreditBalanceResponseHandlesANegativeBalance(t *testing.T) {
-	est := CreditSessionEstimate{ThresholdCredits: 65, SampleSize: 25}
+	est := CreditSessionEstimate{ThresholdCredits: 65, SampleSize: 25, DebtFloorCredits: -80}
 	view := creditBalanceResponse(-12, est)
 	if view.BalanceCredits != -12 {
 		t.Fatalf("BalanceCredits = %d, want -12 (a negative balance is not rounded up to zero)", view.BalanceCredits)
+	}
+	if view.DebtFloorCredits != -80 {
+		t.Fatalf("DebtFloorCredits = %d, want the configured -80", view.DebtFloorCredits)
 	}
 	if view.CanStart {
 		t.Fatal("a negative balance must never be allowed to start a session")
@@ -46,27 +53,24 @@ func TestCreditBalanceResponseHandlesANegativeBalance(t *testing.T) {
 	if !strings.Contains(view.BlockReason, "77") {
 		t.Errorf("BlockReason = %q; want the deficit 77", view.BlockReason)
 	}
-	if view.DebtFloorCredits != DebtFloorCredits {
-		t.Fatalf("DebtFloorCredits view = %d, want the package constant %d", view.DebtFloorCredits, DebtFloorCredits)
-	}
 }
 
 func TestCreditBalanceResponseCarriesTheEstimatedFlagThrough(t *testing.T) {
 	fallback := CreditSessionEstimate{
-		LowCredits: 30, HighCredits: FallbackSessionThresholdCredits,
-		ThresholdCredits: FallbackSessionThresholdCredits, SampleSize: 3, Estimated: true,
+		LowCredits: 30, HighCredits: testSessionThreshold,
+		ThresholdCredits: testSessionThreshold, SampleSize: 3, Estimated: true,
 	}
 	view := creditBalanceResponse(100, fallback)
 	if !view.EstimatedSession.Estimated {
-		t.Fatal("a below-MinCostSampleSize estimate reached the view with Estimated = false")
+		t.Fatal("an estimate under 20 samples reached the view with Estimated = false")
 	}
 	if view.EstimatedSession.SampleSize != 3 {
 		t.Fatalf("SampleSize = %d, want 3 (the real sample count, not hidden)", view.EstimatedSession.SampleSize)
 	}
 
-	measured := CreditSessionEstimate{ThresholdCredits: 50, SampleSize: MinCostSampleSize, Estimated: false}
+	measured := CreditSessionEstimate{ThresholdCredits: 50, SampleSize: testMinSamples, Estimated: false}
 	view = creditBalanceResponse(100, measured)
 	if view.EstimatedSession.Estimated {
-		t.Fatal("a measured (sample >= MinCostSampleSize) estimate was reported as Estimated = true")
+		t.Fatal("a measured estimate (20 samples or more) was reported as Estimated = true")
 	}
 }

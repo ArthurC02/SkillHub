@@ -124,7 +124,7 @@ func (s *Service) Charge(ctx context.Context, tx DBTX, in ChargeInput) (ChargeRe
 	credits := CreditsForMicros(billed, s.Config.MicrosPerCredit)
 	if credits == 0 {
 
-		balance, err := s.Store.Balance(ctx, nil, in.UserID)
+		balance, err := s.Store.Balance(ctx, tx, in.UserID)
 		if err != nil {
 			return ChargeResult{}, err
 		}
@@ -203,7 +203,7 @@ func (s *Service) startThreshold(ctx context.Context, kind string) (threshold in
 	if err != nil {
 		return 0, false, err
 	}
-	if stats.SampleCount < MinStatSamples {
+	if stats.SampleCount < MinStatSamples || time.Since(stats.WindowEnd) > MaxStatisticsAge {
 		return s.Config.StartFallbackCredits, true, nil
 	}
 	billed, err := BilledMicros(stats.P95UsdMicros, s.Config.MarkupBps)
