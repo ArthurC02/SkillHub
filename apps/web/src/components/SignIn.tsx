@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_BASE_URL, ApiError } from "../api/client";
 import { devLogin, useDevLogin } from "../api/me";
@@ -18,6 +18,7 @@ export function SignInAction() {
 
 function OfflineSignIn() {
   const [user, setUser] = useState("seed-importer");
+  const inputId = useId();
   const queryClient = useQueryClient();
   const signIn = useMutation({
     mutationFn: () => devLogin(user.trim()),
@@ -31,9 +32,9 @@ function OfflineSignIn() {
         signIn.mutate();
       }}
     >
-      <label htmlFor="offline-user">離線登入（這台機器沒有 GitHub 可以連）</label>{" "}
+      <label htmlFor={inputId}>離線登入（這台機器沒有 GitHub 可以連）</label>{" "}
       <input
-        id="offline-user"
+        id={inputId}
         value={user}
         onChange={(e) => setUser(e.target.value)}
         autoComplete="off"

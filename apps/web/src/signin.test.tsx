@@ -19,19 +19,21 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-async function mount() {
+async function mount(forms = 1) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   await act(async () => {
     root = createRoot(container);
     root.render(
       <QueryClientProvider client={qc}>
-        <SignInAction />
+        {Array.from({ length: forms }, (_, i) => (
+          <SignInAction key={i} />
+        ))}
       </QueryClientProvider>,
     );
   });
 }
 
-const offlineBox = () => container.querySelector<HTMLInputElement>("#offline-user");
+const offlineBox = () => container.querySelector<HTMLInputElement>("form input");
 const githubLink = () =>
   [...container.querySelectorAll("a")].find((a) => a.textContent?.includes("GitHub"));
 
@@ -52,8 +54,23 @@ test("it defaults to the identity that can actually run the curated catalogue", 
   window.__SKILLHUB_DEV_LOGIN__ = true;
   await mount();
   expect(offlineBox()?.value).toBe("seed-importer");
-  const label = container.querySelector<HTMLLabelElement>('label[for="offline-user"]');
+  const label = container.querySelector<HTMLLabelElement>(`label[for="${offlineBox()!.id}"]`);
   expect(label?.textContent ?? "").toContain("離線登入");
+});
+
+test("two offline forms on one page each label their own box", async () => {
+  window.__SKILLHUB_DEV_LOGIN__ = true;
+  await mount(2);
+  const pairs = [...container.querySelectorAll("form")].map((form) => ({
+    labelFor: form.querySelector("label")!.htmlFor,
+    boxId: form.querySelector("input")!.id,
+  }));
+  expect(pairs).toHaveLength(2);
+  expect(
+    pairs.map((p) => p.labelFor === p.boxId),
+    "a label points at a box in another form",
+  ).toEqual([true, true]);
+  expect(new Set(pairs.map((p) => p.boxId)).size, "the two boxes share one id").toBe(2);
 });
 
 test("submitting posts the typed name to the offline endpoint", async () => {
