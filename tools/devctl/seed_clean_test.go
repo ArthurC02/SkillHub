@@ -494,9 +494,12 @@ func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 		t.Fatal("seed-clean accepted a deployment that imported without enriching; the catalogue it just built cannot answer an intent query and cannot be repaired")
 	}
 
-	for _, want := range []string{"LLM_SERVICE_URL", "--allow-unindexed"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("the refusal never mentions %q, so it does not say how to recover: %v", want, err)
+	if !strings.Contains(err.Error(), "LLM_SERVICE_URL") {
+		t.Errorf("the refusal never mentions LLM_SERVICE_URL, so it does not say how to recover: %v", err)
+	}
+	for _, stale := range []string{"--allow-unindexed", "keyword search will find it", "not fixable after the fact"} {
+		if strings.Contains(err.Error(), stale) {
+			t.Errorf("the refusal still says %q, which stopped being true when pending documents left every catalog query: %v", stale, err)
 		}
 	}
 	if got := atomic.LoadInt32(&uploads); got != 1 {
@@ -505,10 +508,11 @@ func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 
 	atomic.StoreInt32(&uploads, 0)
 	out.Reset()
-	if err := seedClean(root, []string{"--allow-unindexed"}, &out); err != nil {
-		t.Fatalf("--allow-unindexed still refused: %v", err)
+	err = seedClean(root, []string{"--allow-unindexed"}, &out)
+	if err == nil || !strings.Contains(err.Error(), "unknown argument") {
+		t.Fatalf("--allow-unindexed was accepted; it can only seed a catalog nobody can see: %v", err)
 	}
-	if got, want := atomic.LoadInt32(&uploads), int32(seedExpectedUploads()); got != want {
-		t.Errorf("uploads = %d; want %d", got, want)
+	if got := atomic.LoadInt32(&uploads); got != 0 {
+		t.Errorf("uploads = %d; want 0 — a refused argument must be refused before anything is sent", got)
 	}
 }

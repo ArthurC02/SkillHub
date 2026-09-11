@@ -260,13 +260,11 @@ func verifyEnrichmentReached(client *http.Client, api, name, skillID string, out
 	}
 	return fmt.Errorf(
 		"seed-clean: the first package imported but was left unindexed (enrichment.status is \"pending\" for %q).\n"+
-			"  The deployment accepted the upload and skipped enrichment, so its search document has no summary,\n"+
-			"  no task examples and no embedding: keyword search will find it, an intent query in any language will not.\n"+
-			"  This is not fixable after the fact here. `cmd/reindex` reads the object store through OBJSTORE_*, and clean\n"+
-			"  mode's store lives inside the API process, so it cannot see these packages; the PGlite carrier is in-memory,\n"+
-			"  so a restart loses them too.\n"+
-			"  Start apps/llm, point the API's LLM_SERVICE_URL at it, restart clean mode and seed again — in that order.\n"+
-			"  To seed a keyword-only catalogue on purpose, pass --allow-unindexed (04 丙-108)",
+			"  A pending package is kept out of every catalog query, keyword search and browse included, so the demo's\n"+
+			"  catalog would stay empty however many packages followed; nothing after this one was uploaded.\n"+
+			"  Start apps/llm and the model gateway it calls, check that the API's LLM_SERVICE_URL points at it, then seed again.\n"+
+			"  What is already uploaded is not lost while clean mode keeps running: the worker's hourly enrichment backfill\n"+
+			"  indexes pending packages once apps/llm answers. A restart does lose it, because the PGlite carrier is in memory.",
 		name)
 }
 
@@ -299,16 +297,13 @@ func verifyCatalogVisible(client *http.Client, api string, uploaded []seedEntry,
 }
 
 func seedClean(root string, args []string, out io.Writer) error {
-	dryRun, allowUnindexed := false, false
+	dryRun := false
 	for _, a := range args {
 		switch a {
 		case "--dry-run":
 			dryRun = true
-		case "--allow-unindexed":
-
-			allowUnindexed = true
 		default:
-			return fmt.Errorf("seed-clean: unknown argument %q (only --dry-run and --allow-unindexed are accepted)", a)
+			return fmt.Errorf("seed-clean: unknown argument %q (only --dry-run is accepted)", a)
 		}
 	}
 
@@ -361,7 +356,7 @@ func seedClean(root string, args []string, out io.Writer) error {
 			fmt.Fprintf(out, "          %s\n", firstLine(body))
 			continue
 		}
-		if imported == 1 && !allowUnindexed {
+		if imported == 1 {
 			var created struct {
 				SkillID string `json:"skill_id"`
 			}
