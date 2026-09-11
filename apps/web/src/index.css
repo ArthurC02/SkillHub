@@ -2141,39 +2141,291 @@ summary {
   display: block;
 }
 
-/* ── 互動創作的對話（ADR-067，2026-09-08 第一次被畫）────────────────────────
-   在這之前 `CreationSession.tsx` 有 945 行、零條 CSS：對話紀錄是一個編號 `<ol>`，
-   每一列前面掛「你：」「Agent：」。多輪的流程都在，**對話這個介面從來沒有被畫過**，
-   而負責人記得的是一個 Chat UI。
+.app-shell[data-chat] {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
 
-   這裡沒有新 token、沒有新字級、沒有陰影：三層平面（ADR-064 §4.6.2）第一次真的
-   在做事——Agent 的訊息是 `--surface` 的面，你說的話是 `--surface-active`。
-   你的訊息靠右是對話介面通行的那個慣例。 */
+.app-shell[data-chat] > main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell[data-chat] > .app-footer {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0 16px;
+  padding: 4px 24px 8px;
+  margin: 0;
+  border-top: 0;
+}
+
+.app-shell[data-chat] > .app-footer > * {
+  margin: 0;
+}
+
+.creation-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  --avatar: 36px;
+  --avatar-gap: 12px;
+}
+
+.creation-stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.creation-feed {
+  max-width: 768px;
+  margin-inline: auto;
+  padding: 24px 0;
+}
+
+.creation-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.creation-bar > nav {
+  margin: 0;
+}
+
+.bar-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  color: var(--text-h);
+  font-size: 20px;
+  text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.bar-back:hover {
+  background: var(--surface-active);
+}
+
+.agent-avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar);
+  height: var(--avatar);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--cta));
+  color: var(--on-cta);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.bar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.creation-bar h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.creation-state {
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.creation-state > [role="status"] {
+  color: var(--link);
+  font-weight: 600;
+}
+
+.creation-details,
+.creation-history {
+  position: relative;
+  flex: none;
+}
+
+.creation-details > summary,
+.creation-history > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-h);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.creation-details > summary::before,
+.creation-history > summary::before {
+  content: none;
+}
+
+.creation-details > summary::after,
+.creation-history > summary::after {
+  content: "▾";
+  color: var(--text);
+}
+
+.creation-details > summary:hover,
+.creation-history > summary:hover {
+  border-color: var(--accent-border);
+}
+
+.creation-details > div,
+.creation-history > ul {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  box-sizing: border-box;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.creation-details > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: max-content;
+  max-width: min(480px, calc(100vw - 32px));
+  padding: 12px 16px;
+}
+
+.creation-details > div > p {
+  margin: 0;
+}
+
+.creation-history > ul {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 60dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.creation-history button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border-color: transparent;
+  border-radius: 12px;
+  background: transparent;
+  font-weight: 400;
+  text-align: left;
+}
+
+.creation-history button > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.creation-history button[aria-current] {
+  background: var(--accent-bg);
+  color: var(--link);
+}
+
+.system-line {
+  margin: 0 0 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text);
+}
+
 .creation-log {
   list-style: none;
-  margin: 16px 0;
+  margin: 0 0 16px;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .creation-log > li {
   position: relative;
+  scroll-margin-top: 16px;
   max-width: 75%;
   padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--surface);
+  color: var(--text-h);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
-/* 你說的那一則：靠右、`--surface-active` 底、沒有框。對話坐在地上，`--code-bg`
-   與地幾乎同色，那一則會讀成裸字。 */
+.creation-log > li[data-role="assistant"] {
+  margin-left: calc(var(--avatar) + var(--avatar-gap));
+  max-width: calc(85% - var(--avatar));
+  border-top-left-radius: 4px;
+}
+
+.creation-log > li > .agent-avatar {
+  position: absolute;
+  top: 0;
+  left: calc(-1 * (var(--avatar) + var(--avatar-gap)));
+}
+
 .creation-log > li[data-role="user"] {
   align-self: flex-end;
-  border: 0;
-  border-radius: 16px 16px 4px 16px;
+  border-top-right-radius: 4px;
+  background: var(--cta);
+  color: var(--on-cta);
+}
+
+.creation-log > li[data-role="user"] .note {
+  color: var(--on-cta);
+}
+
+.creation-log > li[data-role="tool"] {
+  align-self: center;
+  max-width: 85%;
+  padding: 8px 16px;
+  border-radius: 12px;
   background: var(--surface-active);
+  color: var(--text);
+  font-size: 14px;
 }
 
 .creation-who {
@@ -2185,21 +2437,11 @@ summary {
   white-space: nowrap;
 }
 
-.creation-log > li[data-role="tool"] {
-  align-self: center;
-  max-width: 85%;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--code-bg);
-  font-size: 14px;
+.creation-text {
+  display: block;
+  white-space: pre-wrap;
 }
 
-/* 圖片在對話裡（2026-09-09）。**這是這個 app 的第一個 `<img>`**，所以三條
-   規則都寫在這裡而不是散在別處：`max-width` 讓它永遠折得進訊息塊（訊息塊本身已經
-   有 `max-width`），`height: auto` 保住比例，`display: block` 去掉行內圖片底下那條
-   基線縫。240px 不是新的一階尺寸——它是縮圖的上限，不是版面的欄寬，而且在 4px 網格
-   上。原圖不保存（ADR-066 決策 4），所以這裡永遠只會是本機那一份。 */
 .creation-attachments {
   list-style: none;
   padding: 0;
@@ -2219,28 +2461,98 @@ summary {
   display: block;
   max-width: 240px;
   height: auto;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
-/* 訊息本文。`pre-wrap` 而不是 `pre`：換行照留，但長句仍然照容器寬度折——
-   `.skill-md` 對草稿內容用的是同一個宣告，這裡只是不帶它的等寬字與凹面底。 */
-.creation-text {
-  display: block;
-  white-space: pre-wrap;
+.turn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-.creation-log > li[data-role="assistant"],
-.creation-feed > section {
-  max-width: 85%;
+.typing {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
 }
 
-.creation-feed > section {
-  margin: 12px 0 0;
+.typing > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  animation: typing-dot 1.2s var(--ease) infinite;
+}
+
+.typing > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    background-color: var(--border-strong);
+  }
+  30% {
+    transform: translateY(-4px);
+    background-color: var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing > span {
+    animation: none;
+  }
+}
+
+.starter-cards {
+  list-style: none;
+  margin: 0 0 16px calc(var(--avatar) + var(--avatar-gap));
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.starter-cards button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
   padding: 12px 16px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--surface);
+  font-weight: 400;
+  text-align: left;
+}
+
+.starter-cards strong {
+  color: var(--text-h);
+  font-size: 15px;
+}
+
+.starter-cards span {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.creation-feed > section {
+  margin: 0 0 16px calc(var(--avatar) + var(--avatar-gap));
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text-h);
+  font-size: 16px;
 }
 
 .creation-feed > section > :first-child {
@@ -2251,139 +2563,229 @@ summary {
   margin-bottom: 0;
 }
 
-/* ══ 互動創作：一個固定高度的視窗應用程式，不是一份長文件（2026-09-09 第二輪） ══
-   負責人第五次講同一件事，並附了一份規格：「不論是否有開費用，我都應該看到的像是
-   ChatGPT 的 Chatbot UI」，而診斷是對的——上一輪把對話放進一個會捲的格子，結果是
-   **兩條垂直捲軸並排**：外層文件一條、對話一條。真正的做法是把外層鎖死。
+.creation-feed > section h4 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
 
-   `data-chat` 由 router 掛在 `.app-shell` 上，只在 `/workspace/creations` 這一條
-   路由。三層：頁首（既有）、`main`（彈性）、頁尾（收成一列）。整個外層 `overflow:
-   hidden`，**全畫面只有一條捲軸**，在對話上。
-   `dvh` 不是 `vh`：手機網址列吃掉的正好是最下面那一格。 */
-/* 所有寬度都鎖。窄螢幕上工具列收成兩列（見下方 640px 那一塊），對話那一格才有
-   位置；輸入艙因此永遠在視窗底端，不會被文件捲動推出畫面。 */
-.app-shell[data-chat] {
+.creation-feed > section h5 {
+  margin: 16px 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.card-header {
   display: flex;
-  flex-direction: column;
-  height: 100dvh;
-  overflow: hidden;
-}
-
-.app-shell[data-chat] > main {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.creation-shell {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.creation-stream {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* 頁尾在這一條路由上收成一列。**不是拿掉**：資料保存政策（02:O11Y-004）與 Build
-   識別碼（IA-11）是每一頁都要有的揭露，藏掉它們是拿一條規則換版面。 */
-.app-shell[data-chat] > .app-footer {
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: baseline;
-  gap: 0 16px;
-  padding: 4px 24px 8px;
-  margin: 0;
-  border-top: 0;
-}
-
-.app-shell[data-chat] > .app-footer > * {
-  margin: 0;
-}
-
-/* ── 頂部工具列：固定高度，不參與捲動 ─────────────────────────────────────── */
-.creation-bar {
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.creation-bar h3 {
-  margin: 0 auto 0 0;
-  font-size: 20px;
-  white-space: nowrap;
-}
-
-.creation-bar > nav {
+.card-header > h4 {
   margin: 0;
-  white-space: nowrap;
 }
 
-.creation-bar .creation-picker {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  max-width: none;
-  white-space: nowrap;
-}
-
-.creation-bar .creation-picker > select {
-  width: auto;
-  max-width: 200px;
-}
-
-/* 窄螢幕：返回連結交給頁首導覽（它本來就有「我的 Skill」），標題與選單旁的字只留給
-   螢幕閱讀器（選單自己有 aria-label），選單吃滿剩下的寬。 */
-@media (max-width: 640px) {
-  .creation-bar > nav,
-  .creation-picker-text {
-    display: none;
-  }
-
-  .creation-bar h3 {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .creation-bar .creation-picker {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .creation-bar .creation-picker > select {
-    width: 100%;
-    max-width: none;
-  }
-
-  .composer:has(textarea:placeholder-shown) .field-count {
-    display: none;
-  }
-}
-
-/* 狀態是一個詞，所以它戴徽章的殼——描邊、凹面底，§4.6.3：主張永遠是描邊。 */
-.creation-state {
+.card-tag {
+  flex: none;
   padding: 4px 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--code-bg);
+  color: var(--text);
   font-size: 14px;
+  font-weight: 500;
+}
+
+.card-tag[data-tone="done"] {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--link);
+}
+
+.card-tag[data-tone="danger"] {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.card-actions > button {
+  flex: 1 1 160px;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 999px;
+}
+
+.card-primary {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--link);
+}
+
+.round-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 20px;
+  border-left: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.round-timeline > li {
+  position: relative;
+  font-size: 15px;
+}
+
+.round-timeline > li::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: -27px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.ref-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ref-list > li {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.ref-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ref-list p {
+  margin: 4px 0 8px;
+}
+
+.ref-facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ref-facts > li {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--code-bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.ref-adopt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.composer-dock {
+  position: relative;
+  flex: none;
+  padding: 8px 0;
+}
+
+.composer-dock > .composer,
+.composer-dock > .budget-picker,
+.composer-dock > .notice {
+  max-width: 768px;
+  margin-inline: auto;
+}
+
+.composer-dock > .notice {
+  margin-bottom: 8px;
+}
+
+.budget-picker {
+  min-width: 0;
+  margin-bottom: 8px;
+  padding: 0;
+  border: 0;
+}
+
+.budget-picker > legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-h);
-  white-space: nowrap;
+}
+
+.budget-picker .quick-replies {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.budget-picker .quick-replies > label {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 4px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-h);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.budget-picker .quick-replies > label:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--link);
+  font-weight: 600;
+}
+
+.budget-picker .quick-replies > label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.budget-picker .quick-replies > label > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  clip-path: inset(50%);
+}
+
+.budget-picker .creation-fact {
+  display: block;
+  margin-top: 8px;
 }
 
 .creation-fact {
@@ -2391,67 +2793,6 @@ summary {
   color: var(--text);
 }
 
-/* 費用是這個抽屜的 summary，不必互動就看得到（§2.10）；步數在狀態藥丸裡。
-   期限、工具次數、仍占用的預算、提高上限與取消折在裡面。 */
-.creation-details {
-  position: relative;
-  white-space: nowrap;
-}
-
-/* 打開時浮在 summary 下方、靠右，不把工具列推成兩行（同 Tip：開合不推動鄰居）。 */
-.creation-details > div {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  width: max-content;
-  max-width: min(480px, calc(100vw - 32px));
-  padding: 12px 16px;
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  background: var(--surface);
-  white-space: normal;
-}
-
-.creation-details > div > p {
-  margin: 0;
-}
-
-/* ── 中央：全畫面唯一一條捲軸 ─────────────────────────────────────────────── */
-.creation-feed {
-  max-width: 768px;
-  margin-inline: auto;
-  padding: 24px 0;
-}
-
-/* 這一輪壞掉時能做的事，長在那一輪上。 */
-.turn-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-
-/* ── 底部輸入艙：釘在下面，不隨捲動消失 ───────────────────────────────────── */
-.composer-dock {
-  position: relative;
-  flex: none;
-  padding: 12px 0 8px;
-}
-
-.composer-dock > .composer {
-  max-width: 768px;
-  margin-inline: auto;
-}
-
-/* 浮在輸入艙上方、對齊它的右緣（toastr 的 bottom-right）：靠近按下去的那顆鍵，
-   不推動對話，也碰不到頁首導覽。沒有陰影，靠實色邊框與表面分開。 */
 .composer-dock .notice.toast {
   position: absolute;
   bottom: calc(100% + 12px);
@@ -2466,7 +2807,7 @@ summary {
   margin: 0;
   border: 1px solid var(--danger);
   border-left-width: 3px;
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .toast > :first-child {
@@ -2486,16 +2827,15 @@ summary {
 
 .to-latest {
   position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: calc(100% + 12px);
+  right: 0;
   z-index: 10;
+  border-color: var(--accent-border);
   border-radius: 999px;
+  color: var(--link);
   font-size: 14px;
 }
 
-/* 上限只給螢幕閱讀器；看得見的那一半是撞上時浮在輸入艙上方的通知。
-   與附件鈕裡那個檔案輸入是同一個剪裁配方。 */
 #composer-limits {
   position: absolute;
   width: 1px;
@@ -2505,55 +2845,44 @@ summary {
   white-space: nowrap;
 }
 
-/* 輸入區：文字框永遠在，底下一列是附加動作與送出（2026-09-08）。
-   `--border-strong` 的框而不是 `--border`：這一整塊是一個控制項，不是一張卡。
-   沒有新 token、沒有新字級，88px 在 4px 網格上。 */
-/* 輸入艙：一個圓角容器，裡面是一個沒有框的文字框加一列工具。文字框自己的框拿掉
-   了——一個框裡再畫一個框是那張「古早留言板」的來源。焦點環因此掛在艙上，而不是
-   消失：`:has()` 讓它跟著文字框的 `:focus-visible` 走（WCAG 1.4.11 的 3:1 由
-   `--accent` 提供，與全站的 `:focus-visible` 同一個值）。 */
 .composer {
   position: relative;
   flex: none;
-  padding: 8px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
   background: var(--surface);
+  transition: border-color var(--dur-fast) var(--ease);
 }
 
 .composer:has(textarea:focus-visible) {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-border);
+  outline-offset: 0;
 }
 
-/* 拖著一張圖經過輸入區時，它要看得出來接得住。用的是既有的那組強調色，沒有新值；
-   `data-dragging` 而不是一個 class，理由與 `aria-expanded` 那條相同——狀態只有一個
-   來源。 */
 .composer[data-dragging] {
   border-color: var(--accent-border);
   background: var(--accent-bg);
 }
 
-/* 輸入區裡的標籤不吃 480px 的欄寬——這一塊自己就是那個欄。 */
 .composer > label {
   margin: 0;
   max-width: none;
 }
 
-/* 打字時長高，到 240px 為止（之後自己捲）。`field-sizing` 是瀏覽器原生的那一個
-   ——不引入 JS，也不是動畫（§4.6.4 禁的是進場動畫與 spinner，這是重排）。還沒實作
-   它的引擎維持 88px，也就是這一行之前的行為。 */
 .composer textarea {
-  /* 88px（約三行）→ 56px（約兩行）：它會跟著打的字長高（`field-sizing`），所以起
-     手的高度只要夠寫一句話。 */
   min-height: 48px;
-  max-height: 240px;
+  max-height: 200px;
   field-sizing: content;
   border: 0;
   border-radius: 0;
   background: transparent;
   padding: 4px 0;
   resize: none;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
 }
 
 .composer textarea:focus-visible {
@@ -2568,68 +2897,67 @@ summary {
   margin-top: 8px;
 }
 
-/* Frozen attachment controls drop their dashed box, so a blocked composer
-   shows one disabled box: the send key, which says why. */
-.composer-tools > button:not(.composer-send):disabled,
-.composer .composer-attach:has(> input:disabled) {
-  border-color: transparent;
-  background: transparent;
-}
-
-.composer-dock > .notice {
-  max-width: 768px;
-  margin: 0 auto 8px;
-}
-
-.composer-tools > .field-count {
-  align-self: center;
-}
-
-/* 挑選器開著時那顆按鈕要看得出是按下去的狀態。**掛在 `aria-expanded` 上而不是一個
-   class**：那個屬性本來就必須是對的（螢幕閱讀器讀它），讓外觀跟著它走，兩者就不會
-   各說各話。底色用既有的 `:active` 那一階，沒有新值。 */
-.composer-tools > button[aria-expanded="true"] {
-  background: var(--surface-active);
-  border-color: var(--accent-border);
-}
-
-/* 送出永遠在最右邊，附加動作在左邊——不管中間有幾顆。
-   **它刻意不是 `.action`**：這一頁的填色配給「確認保存到私人工作區」（§4.6.3 的表，
-   2026-09-09 入表）。送出推進的是一輪對話，不是完成這一頁的工作；而那張表一頁只給
-   一顆。舊註解寫的是 `/workspace/skills` 的「零個」那一列——輸入區在 2026-09-08
-   搬到 `/workspace/creations` 之後，那個理由就不是這裡的理由了。 */
-.composer-send {
-  margin-left: auto;
-}
-
-/* 這一個 `<label>` 包著檔案輸入，所以上面那條會把它變成一欄；在工具列裡它要橫著。
-   選擇器多帶一層 `.composer`：`label:has(> input:not(…))` 的 `:has()` 取的是它參數
-   裡最重的那一個（屬性選擇器），所以那條是 0-1-1，單一個 class 壓不過它。 */
+.composer-tools > button:not(.composer-send),
 .composer .composer-attach {
   flex-direction: row;
   align-items: center;
   gap: 8px;
   margin: 0;
   max-width: none;
+  padding: 8px 16px;
+  border-color: transparent;
+  border-radius: 999px;
+  background: var(--code-bg);
+  color: var(--text-h);
+  font-size: 14px;
 }
 
-/* ── 2026-09-09：那顆 `Choose File` ──────────────────────────────────────
-   在這之前工具列上坐著一個原生檔案輸入：實測 330×48px、寫著英文的 `Choose File`
-   與 `No file chosen`，是整個輸入區最大也最不像這個 app 的東西。**這裡不新增任何
-   樣式**——`<label>` 本來就包著那個輸入，所以把 `.composer-attach` 加進基礎控制項
-   規則（以及它的 hover 與 `:active`），它就與旁邊那顆「參考目錄裡的 Skill」逐位元
-   同框，因為那是同一條規則。
-   輸入本身留在無障礙樹裡、仍然可以 Tab 到：`clip-path` 而不是 `display: none`。
-   焦點環要畫在看得見的那個框上，所以掛在 `:has()` 上。
-   選到的檔名沒有消失——它在下面那顆帶縮圖的 chip 上，而且那顆說得出按下去會發生
-   什麼事（「移除流程圖：flow.png」）。 */
+.composer-tools > button[aria-expanded="true"] {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--link);
+}
+
+.composer-tools > button:not(.composer-send):disabled,
+.composer .composer-attach:has(> input:disabled) {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text);
+}
+
+.composer:has(textarea:placeholder-shown) .field-count {
+  display: none;
+}
+
+.composer-send {
+  margin-left: auto;
+  padding: 8px 24px;
+  border-color: var(--cta);
+  border-radius: 999px;
+  background: var(--cta);
+  color: var(--on-cta);
+  font-weight: 600;
+}
+
+.composer-send:hover:not(:disabled),
+.composer-send:active:not(:disabled) {
+  border-color: var(--text-h);
+  background: var(--cta);
+  color: var(--on-cta);
+}
+
+.composer[data-empty] .composer-send,
+.composer-send:disabled {
+  border-style: solid;
+  border-color: var(--surface-active);
+  background: var(--surface-active);
+  color: var(--text);
+}
+
 .composer .composer-attach > input {
   position: absolute;
   width: 1px;
   height: 1px;
-  /* 這兩行不是裝飾：上面那條基礎控制項規則給每個 `<input>` 40px 的最小高與內距，
-     於是被裁掉的它仍然占著一個 34×40 的絕對定位盒，蓋在旁邊那顆按鈕上，點下去會
-     開檔案對話框。歸零之後它是 1×1。 */
   min-height: 0;
   padding: 0;
   clip-path: inset(50%);
@@ -2640,12 +2968,15 @@ summary {
   outline-offset: 2px;
 }
 
-/* 輸入區裡那顆「移除流程圖」帶著縮圖，所以它是一列而不是一段文字。24px 在 4px
-   網格上，`object-fit: cover` 讓長圖與寬圖都填滿同一個方格而不變形。 */
+.composer .chip-row {
+  margin: 0 0 8px;
+}
+
 .composer .chip-row button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  border-radius: 999px;
 }
 
 .chip-thumb {
@@ -2653,6 +2984,49 @@ summary {
   height: 24px;
   object-fit: cover;
   border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+  .creation-shell {
+    --avatar: 32px;
+    --avatar-gap: 8px;
+  }
+
+  .creation-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .creation-bar > nav,
+  .creation-bar > .agent-avatar {
+    display: none;
+  }
+
+  .bar-title {
+    flex-basis: 100%;
+  }
+
+  .creation-bar h3 {
+    font-size: 16px;
+  }
+
+  .creation-details > summary,
+  .creation-history > summary {
+    padding: 8px 12px;
+  }
+
+  .creation-log > li {
+    max-width: 85%;
+  }
+
+  .starter-cards {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .starter-cards > li {
+    flex: 0 0 70%;
+  }
 }
 
 /* 空目錄：一句例外處理換成一個看得懂下一步的區塊。 */

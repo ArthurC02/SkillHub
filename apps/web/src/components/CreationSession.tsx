@@ -11,6 +11,7 @@ import {
   streamCreationSession,
   type CreationAction,
   type CreationAttachment,
+  type CreationReference,
   type CreationSession as Session,
   type CreationSnapshot,
   type CreationState,
@@ -361,6 +362,79 @@ function budgetChoices(min: number, max: number) {
     .sort((a, b) => a - b);
 }
 const points = (v: number) => v + " 點";
+const STARTERS = [
+  {
+    title: "會議記錄 → 待辦清單",
+    desc: "從逐字稿抓出待辦、負責人和期限",
+    prompt: "把會議逐字稿整理成待辦清單，每一項要有負責人和期限；沒講到期限就標「未定」。",
+  },
+  {
+    title: "客服來信分類",
+    desc: "依問題類型分類，並草擬第一版回覆",
+    prompt: "把客服來信依問題類型分類，並為每一封草擬第一版回覆。",
+  },
+  {
+    title: "發票資料擷取",
+    desc: "抓出金額、日期與統一編號",
+    prompt: "從發票內容擷取金額、開立日期與統一編號，輸出成一張表格。",
+  },
+  {
+    title: "PR → 版本說明",
+    desc: "把合併的 PR 整理成給使用者看的更新說明",
+    prompt: "把這週合併的 PR 描述整理成給使用者看的版本更新說明，依功能分組。",
+  },
+];
+function ReferenceList({
+  items,
+  adoptable,
+  showStatus,
+  locked,
+  onAdopt,
+}: {
+  items: CreationReference[];
+  adoptable: boolean;
+  showStatus: boolean;
+  locked: boolean;
+  onAdopt: (skillID: string) => void;
+}) {
+  return (
+    <ul className="ref-list">
+      {items.map((r) => (
+        <li key={r.skill_id}>
+          <div className="ref-head">
+            <strong>{r.name}</strong>
+            {showStatus && (
+              <span className="card-tag" data-tone={r.confirmed ? "done" : undefined}>
+                {!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}
+              </span>
+            )}
+          </div>
+          <p>{declaredReferenceField(r.description)}</p>
+          <ul className="ref-facts">
+            <li>相容：{declaredReferenceField(r.compatibility)}</li>
+            <li>工具：{declaredReferenceField(r.allowed_tools)}</li>
+            <li>{referenceTierLabel(r.tier)}</li>
+            <li>{referenceScanLabel(r.scan_status, r.warnings)}</li>
+          </ul>
+          <details>
+            <summary>固定版本</summary>
+            {r.version_id}
+          </details>
+          {adoptable && (
+            <div className="ref-adopt">
+              <button disabled={locked || !r.available} onClick={() => onAdopt(r.skill_id)}>
+                直接採用
+              </button>
+              {r.scan_status !== "scanned" && (
+                <span className="note">沒有掃描紀錄，不建議直接採用</span>
+              )}
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
 function newestMessageIn(pane: HTMLElement) {
   const messages = pane.querySelectorAll<HTMLElement>(".creation-log > li[data-index]");
   return messages[messages.length - 1] as HTMLElement | undefined;
@@ -660,44 +734,44 @@ export function CreationSession() {
       </button>
     </div>
   );
+  const historyMenu = useRef<HTMLDetailsElement>(null);
+  const pickSession = (next: string) => {
+    setID(next);
+    setMessage("");
+    clearFile();
+    setRefs([]);
+    pending.current = undefined;
+    setError(undefined);
+    if (historyMenu.current) historyMenu.current.open = false;
+  };
+  const hasContent = message.trim() !== "" || !!file || refs.length > 0;
+  const avatar = (
+    <span className="agent-avatar" aria-hidden="true">
+      ✦
+    </span>
+  );
   return (
     <div className="creation-shell">
-      <div className="creation-bar">
+      <header className="creation-bar">
         <nav aria-label="離開這一頁">
-          <Link to="/workspace/skills">← 回到我的 Skill</Link>
+          <Link to="/workspace/skills" className="bar-back" aria-label="回到我的 Skill">
+            ←
+          </Link>
         </nav>
-        <h3>和 Agent 一起創作 Skill</h3>
-        {sessions.data && sessions.data.length > 0 && (
-          <label className="creation-picker">
-            <span className="creation-picker-text">恢復創作</span>
-            <select
-              aria-label="恢復創作"
-              value={id}
-              disabled={busy}
-              onChange={(e) => {
-                setID(e.target.value);
-                setMessage("");
-                clearFile();
-                setRefs([]);
-                pending.current = undefined;
-                setError(undefined);
-              }}
-            >
-              <option value="">開始新的創作</option>
-              {sessions.data.slice(0, 50).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.snapshot.brief.slice(0, 40) || "尚未確認需求"} · {labels[s.state]}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {session && (
+        {avatar}
+        <div className="bar-title">
+          <h3>和 Agent 一起創作 Skill</h3>
           <span className="creation-state">
-            <span role="status">{labels[session.state]}</span>
-            {p && limits.data && ` · ${p.steps}／${limits.data.max_steps} 步`}
+            {session ? (
+              <>
+                <span role="status">{labels[session.state]}</span>
+                {p && limits.data && ` · ${p.steps}／${limits.data.max_steps} 步`}
+              </>
+            ) : (
+              "說出任務，一步步做成你的 Skill"
+            )}
           </span>
-        )}
+        </div>
         {session && p && (
           <details className="creation-details">
             <summary>
@@ -750,47 +824,71 @@ export function CreationSession() {
             </div>
           </details>
         )}
-        {!session && choices.length > 0 && (
-          <label className="creation-picker">
-            <span className="creation-picker-text">預算上限</span>
-            <select
-              aria-label="這次預算上限（點）"
-              value={budget}
-              disabled={busy}
-              onChange={(e) => setBudget(e.target.value)}
-            >
-              <option value="" disabled>
-                請選擇
-              </option>
-              {choices.map((v) => (
-                <option key={v} value={v}>
-                  {points(v)}
-                </option>
+        {sessions.data && sessions.data.length > 0 && (
+          <details className="creation-history" ref={historyMenu}>
+            <summary>對話紀錄</summary>
+            <ul>
+              <li>
+                <button
+                  type="button"
+                  disabled={busy}
+                  aria-current={!id || undefined}
+                  onClick={() => pickSession("")}
+                >
+                  ＋ 開始新的創作
+                </button>
+              </li>
+              {sessions.data.slice(0, 50).map((s) => (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    data-session={s.id}
+                    disabled={busy}
+                    aria-current={s.id === id || undefined}
+                    onClick={() => pickSession(s.id)}
+                  >
+                    <span>{s.snapshot.brief.slice(0, 40) || "尚未確認需求"}</span>
+                    <span className="note">{labels[s.state]}</span>
+                  </button>
+                </li>
               ))}
-            </select>
-            {credits.data && !creditsBlocked && (
-              <span className="creation-fact">
-                餘額 {credits.data.balance_credits} 點 · 這場約{" "}
-                {credits.data.estimated_session.low_credits}–
-                {credits.data.estimated_session.high_credits} 點
-                {credits.data.estimated_session.estimated && "（估計）"}
-              </span>
-            )}
-          </label>
+            </ul>
+          </details>
         )}
-      </div>
+      </header>
       <div className="creation-stream" ref={stream}>
         <div className="creation-feed">
           <ReadFailure error={sessions.error ?? current.error} what="創作紀錄" />
           {!p && (
-            <ol className="creation-log">
-              <li data-role="assistant">
-                <span className="creation-who">Agent</span>
-                <span className="creation-text">
-                  想做一個什麼樣的 Skill？說說它要完成什麼，也可以附上流程圖。
-                </span>
-              </li>
-            </ol>
+            <>
+              <p className="system-line">Agent 會先和你確認需求與驗收條件，才開始寫草稿</p>
+              <ol className="creation-log">
+                <li data-role="assistant">
+                  {avatar}
+                  <span className="creation-who">Agent</span>
+                  <span className="creation-text">
+                    想做一個什麼樣的 Skill？說說它要完成什麼，也可以附上流程圖。
+                  </span>
+                </li>
+              </ol>
+              <ul className="starter-cards" aria-label="可以這樣開始">
+                {STARTERS.map((s) => (
+                  <li key={s.title}>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setMessage(s.prompt);
+                        textarea.current?.focus();
+                      }}
+                    >
+                      <strong>{s.title}</strong>
+                      <span>{s.desc}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
 
           {p && (
@@ -808,6 +906,7 @@ export function CreationSession() {
                           </li>
                         )}
                         <li data-role={m.role} data-index={i}>
+                          {m.role === "assistant" && avatar}
                           <span className="creation-who">
                             {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
                           </span>
@@ -859,10 +958,16 @@ export function CreationSession() {
                   )}
                   {working && p && (
                     <li data-role="assistant" data-pending="">
+                      {avatar}
                       <span className="creation-who">Agent</span>
+                      <span className="typing" aria-hidden="true">
+                        <span />
+                        <span />
+                        <span />
+                      </span>
                       <span className="creation-text">{stepDescription(p)}</span>
                       <p className="note">
-                        這一步會自己結束。可以關掉這一頁，回來時從「恢復創作」繼續；上次更新{" "}
+                        這一步會自己結束。可以關掉這一頁，回來時從「對話紀錄」繼續；上次更新{" "}
                         <Timestamp at={session.updated_at} relative />
                       </p>
                       <div className="turn-actions">
@@ -889,7 +994,7 @@ export function CreationSession() {
               {roundTimeline.length > 0 && (
                 <section>
                   <h4>回合時間線</h4>
-                  <ol>
+                  <ol className="round-timeline">
                     {roundTimeline.map((item) => (
                       <li key={item.key}>{item.text}</li>
                     ))}
@@ -898,7 +1003,12 @@ export function CreationSession() {
               )}
               {p.brief && (
                 <section>
-                  <h4>需求摘要</h4>
+                  <header className="card-header">
+                    <h4>需求摘要</h4>
+                    <span className="card-tag" data-tone={p.brief_confirmed ? "done" : undefined}>
+                      {p.brief_confirmed ? "已確認" : "尚未確認"}
+                    </span>
+                  </header>
                   <p>{p.brief}</p>
                   {p.model_changed?.brief !== undefined && (
                     <p className="note">
@@ -941,29 +1051,45 @@ export function CreationSession() {
                       </pre>
                     </>
                   )}
-                  <p>{p.brief_confirmed ? "需求摘要與驗收條件皆已確認" : "尚未確認"}</p>
                   {p.pending_action === "confirm_brief" && (
-                    <button disabled={locked} onClick={() => void perform("confirm_brief")}>
-                      {p.model_changed ? "我看過差異，確認新的需求摘要" : "確認需求摘要與驗收條件"}
-                    </button>
+                    <div className="card-actions">
+                      <button
+                        className="card-primary"
+                        disabled={locked}
+                        onClick={() => void perform("confirm_brief")}
+                      >
+                        {p.model_changed
+                          ? "我看過差異，確認新的需求摘要"
+                          : "確認需求摘要與驗收條件"}
+                      </button>
+                    </div>
                   )}
                 </section>
               )}
               {session?.state === "needs_reupload" && (
-                <p>這一步中斷了，Agent 沒能讀出那張圖；請在下面重新上傳同一張。</p>
+                <p className="system-line">
+                  這一步中斷了，Agent 沒能讀出那張圖；請在下面重新上傳同一張。
+                </p>
               )}
               {p.diagram_understanding && (
                 <section>
-                  <h4>流程圖理解</h4>
+                  <header className="card-header">
+                    <h4>流程圖理解</h4>
+                    <span className="card-tag" data-tone={p.diagram_confirmed ? "done" : undefined}>
+                      {p.diagram_confirmed ? "已確認" : "尚未確認"}
+                    </span>
+                  </header>
                   <DiagramUnderstandingView raw={p.diagram_understanding} />
-                  <p>{p.diagram_confirmed ? "已確認" : "尚未確認"}</p>
                   {p.pending_action === "confirm_diagram" && (
-                    <button
-                      disabled={locked || !parseDiagramUnderstanding(p.diagram_understanding)}
-                      onClick={() => void perform("confirm_diagram")}
-                    >
-                      確認流程圖理解
-                    </button>
+                    <div className="card-actions">
+                      <button
+                        className="card-primary"
+                        disabled={locked || !parseDiagramUnderstanding(p.diagram_understanding)}
+                        onClick={() => void perform("confirm_diagram")}
+                      >
+                        確認流程圖理解
+                      </button>
+                    </div>
                   )}
                 </section>
               )}
@@ -974,18 +1100,24 @@ export function CreationSession() {
                     模型想連到 <code>{p.pending_fetch_url}</code>{" "}
                     讀取內容來補資料。你的網路環境可能擋住這個網站；被擋住時會直接回報，不會重試。
                   </p>
-                  <button disabled={locked} onClick={() => void perform("confirm_fetch")}>
-                    同意連網
-                  </button>
-                  <button disabled={locked} onClick={() => void perform("decline_fetch")}>
-                    不連網
-                  </button>
+                  <div className="card-actions">
+                    <button disabled={locked} onClick={() => void perform("decline_fetch")}>
+                      不連網
+                    </button>
+                    <button
+                      className="card-primary"
+                      disabled={locked}
+                      onClick={() => void perform("confirm_fetch")}
+                    >
+                      同意連網
+                    </button>
+                  </div>
                 </section>
               )}
               {!!p.fetches?.length && (
                 <section>
                   <h4>已讀取的網頁</h4>
-                  <ul>
+                  <ul className="ref-facts">
                     {p.fetches.map((f, i) => (
                       <li key={i}>
                         {f.url}：{FETCH_STATUS_LABEL[f.status] ?? f.status}
@@ -1001,72 +1133,28 @@ export function CreationSession() {
                   {p.pending_action === "confirm_references" && p.catalog_checked && (
                     <p>目錄裡已有相近的 Skill；你可以直接採用其中一個、以它們為參考，或從頭寫。</p>
                   )}
-                  <div className="table-scroll">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Skill</th>
-                          <th>摘要</th>
-                          <th>相容</th>
-                          <th>工具</th>
-                          <th>版本</th>
-                          <th>層級</th>
-                          <th>掃描</th>
-                          <th>狀態</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {p.references.map((r) => (
-                          <tr key={r.skill_id}>
-                            <th scope="row">{r.name}</th>
-                            <td>{declaredReferenceField(r.description)}</td>
-                            <td>{declaredReferenceField(r.compatibility)}</td>
-                            <td>{declaredReferenceField(r.allowed_tools)}</td>
-                            <td>
-                              <details>
-                                <summary>固定版本</summary>
-                                {r.version_id}
-                              </details>
-                            </td>
-                            <td>{referenceTierLabel(r.tier)}</td>
-                            <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
-                            <td>
-                              {!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}
-                              {p.pending_action === "confirm_references" && (
-                                <>
-                                  <button
-                                    disabled={locked || !r.available}
-                                    onClick={() =>
-                                      void perform("adopt_reference", {
-                                        reference_skill_ids: [r.skill_id],
-                                      })
-                                    }
-                                  >
-                                    直接採用
-                                  </button>
-                                  {r.scan_status !== "scanned" && (
-                                    <span className="note">沒有掃描紀錄，不建議直接採用</span>
-                                  )}
-                                </>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <ReferenceList
+                    items={p.references}
+                    adoptable={p.pending_action === "confirm_references"}
+                    showStatus
+                    locked={locked}
+                    onAdopt={(skillID) =>
+                      void perform("adopt_reference", { reference_skill_ids: [skillID] })
+                    }
+                  />
                   {p.pending_action === "confirm_references" && (
-                    <>
+                    <div className="card-actions">
+                      <button disabled={locked} onClick={() => void perform("decline_references")}>
+                        都不是，從頭寫
+                      </button>
                       <button
+                        className="card-primary"
                         disabled={locked || p.references.some((r) => !r.available)}
                         onClick={() => void perform("confirm_references")}
                       >
                         以這些為參考
                       </button>
-                      <button disabled={locked} onClick={() => void perform("decline_references")}>
-                        都不是，從頭寫
-                      </button>
-                    </>
+                    </div>
                   )}
                 </section>
               )}
@@ -1079,68 +1167,36 @@ export function CreationSession() {
                       保存前 Go
                       查了一次目錄：下面這些和你的草稿很接近。你可以直接採用其中一個，或仍然建立自己的版本。
                     </p>
-                    <div className="table-scroll">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Skill</th>
-                            <th>摘要</th>
-                            <th>相容</th>
-                            <th>工具</th>
-                            <th>版本</th>
-                            <th>層級</th>
-                            <th>掃描</th>
-                            <th></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {p.duplicates.map((r) => (
-                            <tr key={r.skill_id}>
-                              <th scope="row">{r.name}</th>
-                              <td>{declaredReferenceField(r.description)}</td>
-                              <td>{declaredReferenceField(r.compatibility)}</td>
-                              <td>{declaredReferenceField(r.allowed_tools)}</td>
-                              <td>
-                                <details>
-                                  <summary>固定版本</summary>
-                                  {r.version_id}
-                                </details>
-                              </td>
-                              <td>{referenceTierLabel(r.tier)}</td>
-                              <td>{referenceScanLabel(r.scan_status, r.warnings)}</td>
-                              <td>
-                                <button
-                                  disabled={locked || !r.available}
-                                  onClick={() =>
-                                    void perform("adopt_reference", {
-                                      reference_skill_ids: [r.skill_id],
-                                    })
-                                  }
-                                >
-                                  直接採用
-                                </button>
-                                {r.scan_status !== "scanned" && (
-                                  <span className="note">沒有掃描紀錄，不建議直接採用</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <button
-                      disabled={locked || !p.draft?.content_hash}
-                      onClick={() =>
-                        void perform("confirm_duplicate", { content_hash: p.draft!.content_hash })
+                    <ReferenceList
+                      items={p.duplicates}
+                      adoptable
+                      showStatus={false}
+                      locked={locked}
+                      onAdopt={(skillID) =>
+                        void perform("adopt_reference", { reference_skill_ids: [skillID] })
                       }
-                    >
-                      仍然建立
-                    </button>
+                    />
+                    <div className="card-actions">
+                      <button
+                        className="card-primary"
+                        disabled={locked || !p.draft?.content_hash}
+                        onClick={() =>
+                          void perform("confirm_duplicate", { content_hash: p.draft!.content_hash })
+                        }
+                      >
+                        仍然建立
+                      </button>
+                    </div>
                   </section>
                 )}
               {p.draft && (
                 <section>
-                  <h4>Skill 草稿：{p.draft.skill.name}</h4>
+                  <header className="card-header">
+                    <h4>Skill 草稿：{p.draft.skill.name}</h4>
+                    <span className="card-tag" data-tone={p.draft.blocked ? "danger" : "done"}>
+                      {p.draft.blocked ? "靜態檢查阻擋保存" : "已完成靜態檢查"}
+                    </span>
+                  </header>
                   <p>{p.draft.skill.description}</p>
                   <p>
                     允許工具：{p.draft.skill.allowed_tools || "未宣告"}。相容條件：
@@ -1169,21 +1225,9 @@ export function CreationSession() {
                     </details>
                   ))}
                   <DraftFindings raw={p.draft.validation} />
-                  <p>
-                    {p.draft.blocked
-                      ? "靜態檢查阻擋保存，請補充需求後修訂。"
-                      : "已完成靜態檢查；這不代表試跑成功。"}
+                  <p className="note">
+                    {p.draft.blocked ? "請補充需求後修訂。" : "靜態檢查通過不代表試跑成功。"}
                   </p>
-                  {!p.candidate && p.pending_action !== "confirm_duplicate" && (
-                    <button
-                      disabled={locked || p.draft.blocked || !p.draft.content_hash}
-                      onClick={() =>
-                        void perform("materialize", { content_hash: p.draft!.content_hash })
-                      }
-                    >
-                      建立私人候選版本
-                    </button>
-                  )}
                   {p.candidate && (
                     <>
                       {p.adopted && (
@@ -1249,15 +1293,27 @@ export function CreationSession() {
                         {!p.candidate?.run_id && "這份草稿尚未試跑。"}
                         {runNotPassing && "試跑未通過或未評估；保存前請確認。"}
                       </p>
-                      <button
-                        className="action"
-                        disabled={locked || p.draft.blocked || !p.draft.content_hash}
-                        onClick={() =>
-                          void perform("finalize", { content_hash: p.draft!.content_hash })
-                        }
-                      >
-                        確認保存到私人工作區
-                      </button>
+                      <div className="card-actions">
+                        {!p.candidate && p.pending_action !== "confirm_duplicate" && (
+                          <button
+                            disabled={locked || p.draft.blocked || !p.draft.content_hash}
+                            onClick={() =>
+                              void perform("materialize", { content_hash: p.draft!.content_hash })
+                            }
+                          >
+                            建立私人候選版本
+                          </button>
+                        )}
+                        <button
+                          className="action"
+                          disabled={locked || p.draft.blocked || !p.draft.content_hash}
+                          onClick={() =>
+                            void perform("finalize", { content_hash: p.draft!.content_hash })
+                          }
+                        >
+                          確認保存到私人工作區
+                        </button>
+                      </div>
                     </>
                   )}
                   {session?.state === "saved" && p.candidate && (
@@ -1285,9 +1341,38 @@ export function CreationSession() {
                 : "讀不到這次可用的預算範圍，暫時不能開始。"}
             </p>
           )}
+          {!session && choices.length > 0 && (
+            <fieldset className="budget-picker">
+              <legend>這次預算上限</legend>
+              <div className="quick-replies">
+                {choices.map((v) => (
+                  <label key={v}>
+                    <input
+                      type="radio"
+                      name="creation-budget"
+                      value={v}
+                      checked={budget === String(v)}
+                      disabled={busy}
+                      onChange={(e) => setBudget(e.target.value)}
+                    />
+                    {points(v)}
+                  </label>
+                ))}
+              </div>
+              {credits.data && !creditsBlocked && (
+                <span className="creation-fact">
+                  餘額 {credits.data.balance_credits} 點 · 這場約{" "}
+                  {credits.data.estimated_session.low_credits}–
+                  {credits.data.estimated_session.high_credits} 點
+                  {credits.data.estimated_session.estimated && "（估計）"}
+                </span>
+              )}
+            </fieldset>
+          )}
           <div
             className="composer"
             data-dragging={dragging || undefined}
+            data-empty={!hasContent || undefined}
             onDragOver={(e) => {
               if (locked) return;
               e.preventDefault();
@@ -1300,6 +1385,29 @@ export function CreationSession() {
               if (!locked) chooseFile(e.dataTransfer.files[0]);
             }}
           >
+            {(file || refs.length > 0) && (
+              <ul className="chip-row">
+                {file && (
+                  <li>
+                    <button type="button" disabled={locked} onClick={clearFile}>
+                      {preview && <img className="chip-thumb" src={preview} alt="" />}
+                      移除流程圖：{file.name}
+                    </button>
+                  </li>
+                )}
+                {refs.map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      disabled={locked}
+                      onClick={() => setRefs((old) => old.filter((x) => x.id !== r.id))}
+                    >
+                      移除參考：{r.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             <label>
               <textarea
                 ref={textarea}
@@ -1325,7 +1433,7 @@ export function CreationSession() {
                 disabled={busy || frozen}
                 placeholder={
                   frozen && !creditsBlocked && choices.length > 0
-                    ? "先在右上角選擇這次的預算上限"
+                    ? "先在上方選這次的預算上限"
                     : "描述想完成的任務（Enter 送出，Shift＋Enter 換行）"
                 }
               />
@@ -1350,7 +1458,7 @@ export function CreationSession() {
                 disabled={locked || frozen}
                 onClick={() => setPicking((v) => !v)}
               >
-                ＋ 參考目錄 Skill{refs.length > 0 && `（${refs.length}）`}
+                ＋ 參考 Skill{refs.length > 0 && `（${refs.length}）`}
               </button>
               <span className="note field-count" id="composer-count">
                 {[...message].length.toLocaleString("zh-TW")} /{" "}
@@ -1369,29 +1477,6 @@ export function CreationSession() {
                 {busy ? "送出中…" : session ? "送出" : "開始創作"}
               </button>
             </div>
-            {(file || refs.length > 0) && (
-              <ul className="chip-row">
-                {file && (
-                  <li>
-                    <button type="button" disabled={locked} onClick={clearFile}>
-                      {preview && <img className="chip-thumb" src={preview} alt="" />}
-                      移除流程圖：{file.name}
-                    </button>
-                  </li>
-                )}
-                {refs.map((r) => (
-                  <li key={r.id}>
-                    <button
-                      type="button"
-                      disabled={locked}
-                      onClick={() => setRefs((old) => old.filter((x) => x.id !== r.id))}
-                    >
-                      移除參考：{r.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
             {picking && (
               <div id="composer-references">
                 <ReferencePicker

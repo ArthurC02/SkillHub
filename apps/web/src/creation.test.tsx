@@ -130,25 +130,17 @@ async function input(label: string, value: string) {
   });
 }
 async function pickBudget(value = "500") {
-  const pick = 'select[aria-label="這次預算上限（點）"]';
+  const pick = `input[name="creation-budget"][value="${value}"]`;
   await waitFor(() => !!box.querySelector(pick));
-  await act(async () => {
-    const select = box.querySelector<HTMLSelectElement>(pick)!;
-    select.value = value;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  await act(async () => box.querySelector<HTMLInputElement>(pick)!.click());
 }
 async function openReferencePicker() {
-  await click("＋ 參考目錄 Skill");
+  await click("＋ 參考 Skill");
 }
 async function resume() {
-  const picker = 'select[aria-label="恢復創作"]';
-  await waitFor(() => !!box.querySelector(picker));
-  await act(async () => {
-    const select = box.querySelector<HTMLSelectElement>(picker)!;
-    select.value = "s1";
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  const pick = '.creation-history button[data-session="s1"]';
+  await waitFor(() => !!box.querySelector(pick));
+  await act(async () => box.querySelector<HTMLButtonElement>(pick)!.click());
   await waitFor(() => !!box.querySelector('.creation-bar [role="status"]'));
 }
 test("natural language creates one budgeted session", async () => {
@@ -862,7 +854,7 @@ test("the two attachment controls name themselves and carry their limits", async
   expect(fileEl.getAttribute("aria-label"), "它會蓋掉看得見的那五個字").toBe(null);
   expect(fileEl.closest("label")!.textContent).toContain("＋ 流程圖");
   expect(fileEl.getAttribute("aria-describedby")).toBe("composer-limits");
-  const picker = button("＋ 參考目錄 Skill");
+  const picker = button("＋ 參考 Skill");
   expect(picker.getAttribute("aria-controls")).toBe("composer-references");
   expect(picker.getAttribute("aria-describedby")).toBe("composer-limits");
   const limits = box.querySelector("#composer-limits")!;
@@ -1243,23 +1235,18 @@ test("no budget, no conversation: the composer is frozen until a step inside the
     }),
   );
   await render();
-  const pick = 'select[aria-label="這次預算上限（點）"]';
+  const pick = 'input[name="creation-budget"]';
   await waitFor(() => !!box.querySelector(pick));
-  const select = box.querySelector<HTMLSelectElement>(pick)!;
-  expect([...select.options].map((o) => o.value)).toEqual([
-    "",
-    "130",
-    "200",
-    "500",
-    "1000",
-    "2000",
-    "5000",
-    "6500",
-  ]);
-  expect(select.value, "預算不能有預設值：選那一下就是授權").toBe("");
+  const steps = [...box.querySelectorAll<HTMLInputElement>(pick)];
+  expect(steps.map((o) => o.value)).toEqual(["130", "200", "500", "1000", "2000", "5000", "6500"]);
+  expect(
+    steps.filter((o) => o.checked),
+    "預算不能有預設值：選那一下就是授權",
+  ).toEqual([]);
+  expect(steps[0].closest("fieldset")!.querySelector("legend")!.textContent).toBe("這次預算上限");
   const textarea = box.querySelector("textarea")!;
   expect(textarea.disabled, "沒有預算，輸入框卻沒有凍結").toBe(true);
-  expect(textarea.placeholder).toContain("右上角");
+  expect(textarea.placeholder).toContain("上方");
   expect(button(START).disabled).toBe(true);
   await pickBudget("2000");
   expect(textarea.disabled).toBe(false);
@@ -1268,6 +1255,52 @@ test("no budget, no conversation: the composer is frozen until a step inside the
   await click(START);
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({ budget_credits: 2000 });
+});
+test("a starter card fills the composer with its prompt and sends nothing", async () => {
+  const posts: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") posts.push(init.body);
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await pickBudget();
+  await act(async () => box.querySelector<HTMLButtonElement>(".starter-cards button")!.click());
+  expect(box.querySelector("textarea")!.value).toContain("會議逐字稿");
+  expect(posts, "點一張建議卡就替人送出了").toHaveLength(0);
+});
+test("choosing a conversation from the history menu opens it and folds the menu away", async () => {
+  const v = sample();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await waitFor(() => !!box.querySelector(".creation-history"));
+  const menu = box.querySelector<HTMLDetailsElement>(".creation-history")!;
+  menu.open = true;
+  await resume();
+  expect(menu.open, "選完之後選單還開著，蓋在對話上").toBe(false);
+  expect(menu.querySelector("[aria-current]")!.getAttribute("data-session")).toBe("s1");
+});
+test("the send key goes quiet while there is nothing to send", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [], sample())),
+  );
+  await render();
+  await pickBudget();
+  const composer = box.querySelector(".composer")!;
+  expect(composer.hasAttribute("data-empty"), "空的時候送出鍵沒有退下").toBe(true);
+  await input("想完成的任務", "   ");
+  expect(composer.hasAttribute("data-empty"), "只有空白也被當成有東西可送").toBe(true);
+  await input("想完成的任務", "建立摘要 Skill");
+  expect(composer.hasAttribute("data-empty")).toBe(false);
+  await input("想完成的任務", "");
+  await attachDiagram();
+  expect(composer.hasAttribute("data-empty"), "附了流程圖，送出鍵卻還退著").toBe(false);
 });
 test("重試 after a network failure on a turn action resends that action with the same command ID", async () => {
   const posts: Record<string, unknown>[] = [];
