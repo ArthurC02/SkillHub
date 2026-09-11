@@ -213,7 +213,11 @@ test("a balance below the threshold disables the start button and names the defi
   expect(box.textContent).toContain(reason);
   const submit = button(START);
   expect(submit.disabled).toBe(true);
-  expect(submit.getAttribute("aria-describedby")).toBe("creation-credits-why-disabled");
+  expect(submit.getAttribute("aria-describedby")).toBe("composer-why");
+  expect(box.textContent!.split(reason).length - 1, "the block reason is said more than once").toBe(
+    1,
+  );
+  expect(box.querySelector("textarea")!.placeholder).not.toContain("餘額");
 });
 async function attachDiagram(name = "flow.png", body = "diagram") {
   const el = box.querySelector('input[type="file"]') as HTMLInputElement;

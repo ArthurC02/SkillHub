@@ -2217,6 +2217,18 @@ summary {
   color: var(--text);
 }
 
+.creation-log > li[data-role="assistant"] {
+  max-width: 85%;
+}
+
+.creation-log > li[data-role="assistant"] > .creation-who {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
 /* ══ 互動創作：一個固定高度的視窗應用程式，不是一份長文件（2026-09-09 第二輪） ══
    負責人第五次講同一件事，並附了一份規格：「不論是否有開費用，我都應該看到的像是
    ChatGPT 的 Chatbot UI」，而診斷是對的——上一輪把對話放進一個會捲的格子，結果是
@@ -2264,10 +2276,12 @@ summary {
   flex: none;
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   align-items: baseline;
   gap: 0 16px;
-  padding: 8px 24px;
+  padding: 4px 24px 8px;
   margin: 0;
+  border-top: 0;
 }
 
 .app-shell[data-chat] > .app-footer > * {
@@ -2446,7 +2460,7 @@ summary {
 .composer textarea {
   /* 88px（約三行）→ 56px（約兩行）：它會跟著打的字長高（`field-sizing`），所以起
      手的高度只要夠寫一句話。 */
-  min-height: 56px;
+  min-height: 48px;
   max-height: 240px;
   field-sizing: content;
   border: 0;
@@ -2466,6 +2480,23 @@ summary {
   align-items: center;
   gap: 8px;
   margin-top: 8px;
+}
+
+/* Only the send key looks like a button; the attachment controls are ghosts
+   until hovered, pressed or open, and stay ghosts when frozen. */
+.composer-tools > button:not(.composer-send):not(:hover, :active, [aria-expanded="true"]),
+.composer .composer-attach:not(:hover, :active) {
+  border-color: transparent;
+  background: transparent;
+}
+
+.composer-dock > .notice {
+  max-width: 768px;
+  margin: 0 auto 8px;
+}
+
+.composer-tools > .field-count {
+  align-self: center;
 }
 
 /* 挑選器開著時那顆按鈕要看得出是按下去的狀態。**掛在 `aria-expanded` 上而不是一個

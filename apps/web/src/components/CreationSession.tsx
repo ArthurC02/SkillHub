@@ -720,19 +720,14 @@ export function CreationSession() {
                 </option>
               ))}
             </select>
-            {credits.data &&
-              (creditsBlocked ? (
-                <span className="creation-fact" id="creation-credits-why-disabled">
-                  {credits.data.block_reason}
-                </span>
-              ) : (
-                <span className="creation-fact">
-                  餘額 {credits.data.balance_credits} 點 · 這場約{" "}
-                  {credits.data.estimated_session.low_credits}–
-                  {credits.data.estimated_session.high_credits} 點
-                  {credits.data.estimated_session.estimated && "（估計）"}
-                </span>
-              ))}
+            {credits.data && !creditsBlocked && (
+              <span className="creation-fact">
+                餘額 {credits.data.balance_credits} 點 · 這場約{" "}
+                {credits.data.estimated_session.low_credits}–
+                {credits.data.estimated_session.high_credits} 點
+                {credits.data.estimated_session.estimated && "（估計）"}
+              </span>
+            )}
           </label>
         )}
       </div>
@@ -1226,6 +1221,13 @@ export function CreationSession() {
       </div>
       {!terminal && (
         <div className="composer-dock">
+          {!session && (creditsBlocked || !!limits.error) && (
+            <p className="notice notice-danger" id="composer-why">
+              {creditsBlocked
+                ? credits.data?.block_reason
+                : "讀不到這次可用的預算範圍，暫時不能開始。"}
+            </p>
+          )}
           <div
             className="composer"
             data-dragging={dragging || undefined}
@@ -1265,13 +1267,9 @@ export function CreationSession() {
                 }}
                 disabled={busy || frozen}
                 placeholder={
-                  !frozen
-                    ? "描述想完成的任務（Enter 送出，Shift＋Enter 換行）"
-                    : creditsBlocked
-                      ? "餘額不足，暫時不能開始"
-                      : choices.length > 0
-                        ? "先在右上角選擇這次的預算上限"
-                        : "讀不到這次可用的預算範圍，暫時不能開始"
+                  frozen && !creditsBlocked && choices.length > 0
+                    ? "先在右上角選擇這次的預算上限"
+                    : "描述想完成的任務（Enter 送出，Shift＋Enter 換行）"
                 }
               />
             </label>
@@ -1306,7 +1304,9 @@ export function CreationSession() {
                 type="button"
                 className="composer-send"
                 disabled={locked || frozen}
-                aria-describedby={creditsBlocked ? "creation-credits-why-disabled" : undefined}
+                aria-describedby={
+                  !session && (creditsBlocked || !!limits.error) ? "composer-why" : undefined
+                }
                 onClick={() => void submit()}
               >
                 {busy ? "送出中…" : session ? "送出" : "開始創作"}
