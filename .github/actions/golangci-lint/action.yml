@@ -1,0 +1,29 @@
+name: golangci-lint
+description: Installs the golangci-lint pinned in tools/toolchain.yaml with the job's Go toolchain, reusing a cached binary.
+runs:
+  using: composite
+  steps:
+    - id: pin
+      shell: bash
+      run: |
+        version=$(sed -n 's/^  golangci_lint: "\([^"]*\)".*/\1/p' tools/toolchain.yaml)
+        if [ -z "$version" ]; then
+          echo "::error file=tools/toolchain.yaml::golangci_lint is not pinned"
+          exit 1
+        fi
+        echo "version=v$version" >> "$GITHUB_OUTPUT"
+        echo "go=$(go env GOVERSION)" >> "$GITHUB_OUTPUT"
+        echo "bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
+    - id: restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pin.outputs.bin }}
+        key: golangci-lint-${{ steps.pin.outputs.version }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.pin.outputs.go }}
+    - if: steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      run: go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${{ steps.pin.outputs.version }}"
+    - if: steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pin.outputs.bin }}
+        key: ${{ steps.restore.outputs.cache-primary-key }}

@@ -57,7 +57,7 @@ jobs:
             sandbox:
               - 'apps/sandbox/**'
               - 'contracts/**'
-              - 'infra/images/**'
+              - 'infra/images/runtime-agent-sdk/**'
               - 'infra/egress/**'
               - 'tools/sec009/**'
               - 'tools/ci/**'
@@ -225,9 +225,7 @@ jobs:
       - name: Sync the creation service's interpreter (Go-to-Python test)
         working-directory: apps/llm
         run: uv sync --frozen
-      # A prebuilt golangci-lint rejects a config targeting a newer Go than it was built with,
-      # so it is installed with the job's own toolchain.
-      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
+      - uses: ./.github/actions/golangci-lint
       - run: golangci-lint run
       - run: golangci-lint fmt --diff
       - run: go vet ./...
@@ -270,7 +268,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
+      - uses: ./.github/actions/golangci-lint
       - run: golangci-lint run
       - run: golangci-lint fmt --diff
       - run: go vet ./...
@@ -326,7 +324,7 @@ jobs:
           node-version: 22
       - run: go build ./...
       - run: go vet ./...
-      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
+      - uses: ./.github/actions/golangci-lint
       - run: golangci-lint run
       - run: golangci-lint fmt --diff
       - run: go test ./internal/localdrv/... -count=1
@@ -349,6 +347,24 @@ jobs:
       - run: uv run ruff check .
       - run: uv run pytest
 
+  devctl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: tools/devctl/go.mod
+          cache-dependency-path: |
+            tools/devctl/go.mod
+            apps/platform/go.sum
+      - run: go -C tools/devctl vet ./...
+      - run: go -C tools/devctl test -race -count=1 ./...
+      - name: Agent automation contract
+        run: go -C tools/devctl run . automation-check
+      - name: Generate portable Agent artifacts from Claude sources
+        run: go -C tools/devctl run . agent-sync
+
   contracts-drift:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -358,12 +374,6 @@ jobs:
         with:
           go-version-file: tools/devctl/go.mod
           cache: false
-      - run: go -C tools/devctl vet ./...
-      - run: go -C tools/devctl test -race -count=1 ./...
-      - name: Agent automation contract
-        run: go -C tools/devctl run . automation-check
-      - name: Generate portable Agent artifacts from Claude sources
-        run: go -C tools/devctl run . agent-sync
       - name: Deterministic generated-output check
         run: go -C tools/devctl run . gen --check
 
@@ -479,7 +489,7 @@ jobs:
         run: bash tools/ci/stack-smoke.sh
 
   images-push:
-    needs: [images, web, platform, llm, contracts-drift]
+    needs: [images, web, platform, llm, devctl, contracts-drift]
     if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

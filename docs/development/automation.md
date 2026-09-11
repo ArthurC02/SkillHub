@@ -383,6 +383,9 @@ docker run --rm --network container:skillhub-postgres-1 \
 - `images` 有自己的 path filter（ADR-019 §3 第 5 列本來就這樣寫），純文件 commit 不再建置、smoke、推送三個服務映像。它不再等語言 job，與它們並行；推送拆成 `images-push`，等所有 job 綠了才推，從同一次 run 的 GHA 快取重建，不重新編譯。
 - 每週日一次 `schedule` 全量跑（所有 path filter 視為命中），`workflow_dispatch` 也是全量——手寫 path filter 漏掉的那一格由它兜底。
 - 每個 job 都有 `timeout-minutes`，一個卡住的 job 不會再佔滿預設的 6 小時。
+- 每次都跑、沒有 path filter 的有兩個並行 job：`devctl`（devctl 自己的 vet／race 測試、`automation-check`、`agent-sync`）與 `contracts-drift`（`gen --check` 與 `contracts/` 的各項檢查）。純文件 commit 的等待時間由兩者中較慢的那個決定，不再是兩者相加。
+- `golangci-lint` 由 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 安裝：版本讀 `tools/toolchain.yaml` 的 `golangci_lint`，編好的 binary 以「版本＋OS＋Go 版本」為鍵另外快取。不能指望 `setup-go` 的快取帶著它——那份快取的鍵只有 `go.sum` 的雜湊，第一次存下之後內容就不再更新，`go.sum` 沒動過的模組會一直拿到那天的舊內容。
+- `sandbox` 的 filter 只看 `infra/images/runtime-agent-sdk/**`：其他服務映像與 `infra/images/` 下的說明文件不影響 sandbox 的任何測試。
 
 **Runtime Image**（`runtime-image.yml`）：發佈前先查 registry 有沒有這個版本的 tag，**有就只跑閘門、不推送、不移 tag**。版本 tag 一旦發佈就不再變，因為 ADR-023 決策 1 的事實來源是 digest，而 build 不是位元可重現的——同版重推會讓同一個版本字串悄悄指向另一份沒量過的映像。attestation 失敗會在同一個 run 裡自動重試一次；發佈中的 run 不會被下一次 push 取消。
 
@@ -406,7 +409,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 GOTOOLCHAIN=go1.27.0 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
 ```
 
-版本 `v2.13.1` 來自 [`tools/toolchain.yaml`](../../tools/toolchain.yaml) 的 `golangci_lint`，與 CI 同一行指令、同一個版本；模組代理與 sumdb 會驗 checksum，所以上游再發版也不會讓一棵沒動過的樹變紅。**`GOTOOLCHAIN=go1.27.0` 那個前綴是必要的，不是保險**：`golangci-lint` 會拒絕載入一份「目標 Go 版本比它自己編譯時用的 Go 還新」的設定，而本 repo 三個模組的 `go` 指示都是 **1.27.0**。CI 為此付過一次代價，錯誤訊息與四天八個 commit 的損失逐字記在 [`ci.yml`](../../.github/workflows/ci.yml) 那一步的註解裡——**它當時的形狀不是 lint 紅了，是同一個 job 裡後面五個 `- run:` 全部被跳過**，所以那段時間每一句「套件全綠」的意思都是「在某人的筆電上是綠的」。本機的 `go version` 比 1.27 舊沒有關係（`GOTOOLCHAIN=auto` 會自己抓），**沒有寫這個前綴才有關係**。
+版本 `v2.13.1` 來自 [`tools/toolchain.yaml`](../../tools/toolchain.yaml) 的 `golangci_lint`，CI 的 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 讀同一個欄位、跑同一個 `go install`；模組代理與 sumdb 會驗 checksum，所以上游再發版也不會讓一棵沒動過的樹變紅。**`GOTOOLCHAIN=go1.27.0` 那個前綴是必要的，不是保險**：`golangci-lint` 會拒絕載入一份「目標 Go 版本比它自己編譯時用的 Go 還新」的設定，而本 repo 三個模組的 `go` 指示都是 **1.27.0**。CI 為此付過一次代價，錯誤訊息與四天八個 commit 的損失逐字記在 `b255333c` 的 commit message 裡——**它當時的形狀不是 lint 紅了，是同一個 job 裡後面五個 `- run:` 全部被跳過**，所以那段時間每一句「套件全綠」的意思都是「在某人的筆電上是綠的」。本機的 `go version` 比 1.27 舊沒有關係（`GOTOOLCHAIN=auto` 會自己抓），**沒有寫這個前綴才有關係**。
 
 裝完之後 `go env GOPATH`／`bin` 要在 `PATH` 上，`devctl doctor` 的 `golangci-lint` 那一列才會 PASS。**那一列從一開始就在 doctor 裡**——[開工守則第 1 條](../../AGENTS.md)「先診斷再修改」指的就是這件事，而 2026-09-10 那次格式紅燈的真正成因不是缺工具，是**沒有人先跑 doctor**。
 
