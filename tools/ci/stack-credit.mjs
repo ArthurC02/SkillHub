@@ -34,11 +34,27 @@ const startSession = async (context) => {
 };
 const balanceOf = async (context) =>
   (await context.request.get(base + "/me/credits")).json();
-const placeholder = (page) =>
+const startKey = (page) =>
   page
-    .locator("textarea")
-    .first()
-    .getAttribute("placeholder", { timeout: 5000 })
+    .getByRole("button", { name: "開始創作" })
+    .evaluate(
+      (key) => {
+        const why = key.getAttribute("aria-describedby");
+        const reason = (why && document.getElementById(why)?.textContent) || "";
+        return {
+          disabled: key.disabled,
+          reason,
+          timesSaid: reason
+            ? document.body.innerText.split(reason).length - 1
+            : 0,
+          placeholder:
+            document.querySelector('textarea[aria-label="想完成的任務"]')
+              ?.placeholder ?? null,
+        };
+      },
+      undefined,
+      { timeout: 5000 },
+    )
     .catch(() => null);
 
 try {
@@ -67,11 +83,15 @@ try {
     "the creation page states the shortfall",
     (await page.getByText(/目前 0 點/).count()) > 0,
   );
-  const blocked = await placeholder(page);
+  const blocked = await startKey(page);
   check(
-    "the composer says why it cannot start",
-    blocked === "餘額不足，暫時不能開始",
-    String(blocked),
+    "the start key is disabled and says why once, outside the placeholder",
+    blocked?.disabled === true &&
+      /目前 0 點/.test(blocked.reason) &&
+      blocked.timesSaid === 1 &&
+      typeof blocked.placeholder === "string" &&
+      !/餘額|點/.test(blocked.placeholder),
+    JSON.stringify(blocked),
   );
 
   const selfGrant = await member.request.post(
