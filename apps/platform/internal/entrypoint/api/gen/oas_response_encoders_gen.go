@@ -1318,6 +1318,49 @@ func encodeDownloadArtifactContentResponse(response DownloadArtifactContentRes, 
 	}
 }
 
+func encodeFindSkillsForGovernanceResponse(response FindSkillsForGovernanceRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *FindSkillsForGovernanceOK:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *FindSkillsForGovernanceBadRequest:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(400)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *FindSkillsForGovernanceNotFound:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeFinishGithubLoginResponse(response FinishGithubLoginRes, w http.ResponseWriter, span trace.Span) error {
 	switch response := response.(type) {
 	case *FinishGithubLoginFound:
@@ -1555,6 +1598,37 @@ func encodeGenerateSkillResponse(response GenerateSkillRes, w http.ResponseWrite
 	}
 }
 
+func encodeGetCostStatisticsResponse(response GetCostStatisticsRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *GetCostStatisticsOK:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *Error:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeGetCreationLimitsResponse(response GetCreationLimitsRes, w http.ResponseWriter, span trace.Span) error {
 	switch response := response.(type) {
 	case *CreationLimits:
@@ -1734,6 +1808,37 @@ func encodeGetCreditBalanceResponse(response GetCreditBalanceRes, w http.Respons
 	}
 }
 
+func encodeGetCreditLedgerResponse(response GetCreditLedgerRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *CreditLedger:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *Error:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeGetDataRetentionPolicyResponse(response *DataRetentionPolicy, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
@@ -1882,6 +1987,37 @@ func encodeGetMeResponse(response GetMeRes, w http.ResponseWriter, span trace.Sp
 	case *Error:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(401)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
+func encodeGetOperatorRostersResponse(response GetOperatorRostersRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *GetOperatorRostersOK:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *Error:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -2852,6 +2988,49 @@ func encodeListGenerationFailuresResponse(response ListGenerationFailuresRes, w 
 	}
 }
 
+func encodeListOperatorAuditLogResponse(response ListOperatorAuditLogRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *ListOperatorAuditLogOK:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ListOperatorAuditLogBadRequest:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(400)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ListOperatorAuditLogNotFound:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeListPackagingTargetsResponse(response ListPackagingTargetsRes, w http.ResponseWriter, span trace.Span) error {
 	switch response := response.(type) {
 	case *ListPackagingTargetsOK:
@@ -3177,6 +3356,49 @@ func encodeLogoutResponse(response *LogoutNoContent, w http.ResponseWriter, span
 	w.WriteHeader(204)
 
 	return nil
+}
+
+func encodeLookupAccountResponse(response LookupAccountRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *AccountLookup:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *LookupAccountBadRequest:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(400)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *LookupAccountNotFound:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
 }
 
 func encodePreviewPackagingResponse(response PreviewPackagingRes, w http.ResponseWriter, span trace.Span) error {

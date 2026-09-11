@@ -44,6 +44,16 @@ export interface Me {
      */
     workspaceId: string;
     /**
+     * Whether the caller is on this deployment's OPERATOR_USER_IDS. It only
+     * tells the client whether to draw the entry to /admin; it grants
+     * nothing. Every /admin route checks the roster itself and answers a
+     * member 404 whatever this field says (ADR-074 decision 1).
+     * 
+     * @type {boolean}
+     * @memberof Me
+     */
+    operator: boolean;
+    /**
      * Optional entry points this deployment turns on. **Absent** when there
      * are none — not an empty object, so a client never has to tell "off"
      * apart from "this build predates the flag".
@@ -105,6 +115,7 @@ export function instanceOfMe(value: object): value is Me {
     if (!('email' in value) || value['email'] === undefined) return false;
     if (!('displayName' in value) || value['displayName'] === undefined) return false;
     if (!('workspaceId' in value) || value['workspaceId'] === undefined) return false;
+    if (!('operator' in value) || value['operator'] === undefined) return false;
     if (!('deletionScope' in value) || value['deletionScope'] === undefined) return false;
     if (!('deletionRequestedAt' in value) || value['deletionRequestedAt'] === undefined) return false;
     if (!('purgeAfter' in value) || value['purgeAfter'] === undefined) return false;
@@ -125,6 +136,7 @@ export function MeFromJSONTyped(json: any, ignoreDiscriminator: boolean): Me {
         'email': json['email'],
         'displayName': json['display_name'],
         'workspaceId': json['workspace_id'],
+        'operator': json['operator'],
         'features': json['features'] == null ? undefined : json['features'],
         'deletionScope': json['deletion_scope'],
         'deletionRequestedAt': (json['deletion_requested_at'] == null ? null : new Date(json['deletion_requested_at'])),
@@ -147,6 +159,7 @@ export function MeToJSONTyped(value?: Me | null, ignoreDiscriminator: boolean = 
         'email': value['email'],
         'display_name': value['displayName'],
         'workspace_id': value['workspaceId'],
+        'operator': value['operator'],
         'features': value['features'],
         'deletion_scope': value['deletionScope'],
         'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : value['deletionRequestedAt'].toISOString(),

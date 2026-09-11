@@ -8,6 +8,13 @@ WHERE workspace_id = $1 AND action = ANY(@actions::text[])
 ORDER BY created_at DESC, id DESC
 LIMIT $2;
 
+-- name: ListPlatformAuditEvents :many
+SELECT * FROM audit_events
+WHERE action = ANY(@actions::text[])
+   OR (action = ANY(@scoped_actions::text[]) AND metadata->>'scope' = @scope::text)
+ORDER BY created_at DESC, id DESC
+LIMIT @page_limit OFFSET @page_offset;
+
 -- name: DeleteExpiredAuditEvents :execrows
 DELETE FROM audit_events WHERE created_at < $1;
 

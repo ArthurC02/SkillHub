@@ -78,6 +78,59 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 	return i, err
 }
 
+const findSkillsForGovernance = `-- name: FindSkillsForGovernance :many
+SELECT id, workspace_id, name, access_restriction, redistribution, takedown_at, takedown_reason
+FROM skills
+WHERE deleted_at IS NULL
+  AND (id = $1::uuid
+       OR ($1::uuid IS NULL AND name ILIKE '%' || $2::text || '%'))
+ORDER BY created_at DESC, id
+LIMIT 20
+`
+
+type FindSkillsForGovernanceParams struct {
+	SkillID  pgtype.UUID
+	NamePart string
+}
+
+type FindSkillsForGovernanceRow struct {
+	ID                pgtype.UUID
+	WorkspaceID       pgtype.UUID
+	Name              string
+	AccessRestriction *string
+	Redistribution    string
+	TakedownAt        pgtype.Timestamptz
+	TakedownReason    *string
+}
+
+func (q *Queries) FindSkillsForGovernance(ctx context.Context, arg FindSkillsForGovernanceParams) ([]FindSkillsForGovernanceRow, error) {
+	rows, err := q.db.Query(ctx, findSkillsForGovernance, arg.SkillID, arg.NamePart)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindSkillsForGovernanceRow
+	for rows.Next() {
+		var i FindSkillsForGovernanceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.AccessRestriction,
+			&i.Redistribution,
+			&i.TakedownAt,
+			&i.TakedownReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCatalogSkill = `-- name: GetCatalogSkill :one
 SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
 WHERE id = $1 AND workspace_id = ANY($2::uuid[]) AND deleted_at IS NULL

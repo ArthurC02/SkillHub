@@ -71,7 +71,13 @@ const (
 	ActionDispatchResume = "dispatch.resumed"
 
 	ActionOperatorRefused = "operator.refused"
+
+	ActionCreditGrant   = "credit.grant"
+	ActionAccountLookup = "account.lookup"
+	ActionCreditLookup  = "credit.lookup"
 )
+
+const ScopeOperator = "operator"
 
 const (
 	ResourceSession  = "session"
@@ -93,6 +99,8 @@ const (
 	ResourceFeatureFlags = "feature_flags"
 
 	ResourceDispatch = "dispatch"
+
+	ResourceCreditAccount = "credit_account"
 )
 
 type Event struct {
@@ -128,9 +136,20 @@ func Log(ctx context.Context, db DBTX, ev Event) error {
 }
 
 type Record struct {
-	Action     string
-	OccurredAt time.Time
-	Metadata   map[string]any
+	Actor        pgtype.UUID
+	Workspace    pgtype.UUID
+	Action       string
+	ResourceType string
+	ResourceID   pgtype.UUID
+	OccurredAt   time.Time
+	Metadata     map[string]any
+}
+
+type PlatformFilter struct {
+	Actions []string
+
+	ScopedActions []string
+	Scope         string
 }
 
 func ListForWorkspace(
@@ -150,14 +169,37 @@ func ListForWorkspace(
 	if err != nil {
 		return nil, err
 	}
+	return records(rows), nil
+}
+
+func ListPlatform(ctx context.Context, db DBTX, filter PlatformFilter, limit, offset int32) ([]Record, error) {
+	if db == nil {
+		return nil, errors.New("audit: database handle is not configured")
+	}
+	rows, err := gen.New(db).ListPlatformAuditEvents(ctx, gen.ListPlatformAuditEventsParams{
+		Actions:       filter.Actions,
+		ScopedActions: filter.ScopedActions,
+		Scope:         filter.Scope,
+		PageLimit:     limit,
+		PageOffset:    offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return records(rows), nil
+}
+
+func records(rows []gen.AuditEvent) []Record {
 	out := make([]Record, 0, len(rows))
 	for _, r := range rows {
-		rec := Record{Action: r.Action, OccurredAt: r.CreatedAt.Time}
-
+		rec := Record{
+			Actor: r.ActorUserID, Workspace: r.WorkspaceID, Action: r.Action,
+			ResourceType: r.ResourceType, ResourceID: r.ResourceID, OccurredAt: r.CreatedAt.Time,
+		}
 		if len(r.Metadata) > 0 {
 			_ = json.Unmarshal(r.Metadata, &rec.Metadata)
 		}
 		out = append(out, rec)
 	}
-	return out, nil
+	return out
 }

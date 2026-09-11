@@ -72,3 +72,7 @@ SELECT
     coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
 FROM cost_session_summaries
 WHERE NOT estimated AND last_step_at >= sqlc.arg(window_start) AND last_step_at < sqlc.arg(window_end);
+
+-- name: ListLatestCostStatistics :many
+SELECT DISTINCT ON (kind) * FROM cost_statistics
+ORDER BY kind, window_end DESC;

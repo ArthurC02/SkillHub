@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-faster/errors"
+	"github.com/go-faster/jx"
 	"github.com/google/uuid"
 	ht "github.com/ogen-go/ogen/http"
 )
@@ -196,6 +197,91 @@ func (s *AccountDeletion) SetScope(val string) {
 }
 
 func (*AccountDeletion) requestAccountDeletionRes() {}
+
+// Ref: #/components/schemas/AccountLookup
+type AccountLookup struct {
+	UserID              uuid.UUID   `json:"user_id"`
+	Email               string      `json:"email"`
+	DisplayName         string      `json:"display_name"`
+	WorkspaceID         uuid.UUID   `json:"workspace_id"`
+	CreatedAt           time.Time   `json:"created_at"`
+	DeletionRequestedAt NilDateTime `json:"deletion_requested_at"`
+	// True when one of the account's identity-provider ids is on BETA_ALLOWLIST, or when no allowlist is
+	// configured.
+	InBetaAllowlist bool `json:"in_beta_allowlist"`
+}
+
+// GetUserID returns the value of UserID.
+func (s *AccountLookup) GetUserID() uuid.UUID {
+	return s.UserID
+}
+
+// GetEmail returns the value of Email.
+func (s *AccountLookup) GetEmail() string {
+	return s.Email
+}
+
+// GetDisplayName returns the value of DisplayName.
+func (s *AccountLookup) GetDisplayName() string {
+	return s.DisplayName
+}
+
+// GetWorkspaceID returns the value of WorkspaceID.
+func (s *AccountLookup) GetWorkspaceID() uuid.UUID {
+	return s.WorkspaceID
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *AccountLookup) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetDeletionRequestedAt returns the value of DeletionRequestedAt.
+func (s *AccountLookup) GetDeletionRequestedAt() NilDateTime {
+	return s.DeletionRequestedAt
+}
+
+// GetInBetaAllowlist returns the value of InBetaAllowlist.
+func (s *AccountLookup) GetInBetaAllowlist() bool {
+	return s.InBetaAllowlist
+}
+
+// SetUserID sets the value of UserID.
+func (s *AccountLookup) SetUserID(val uuid.UUID) {
+	s.UserID = val
+}
+
+// SetEmail sets the value of Email.
+func (s *AccountLookup) SetEmail(val string) {
+	s.Email = val
+}
+
+// SetDisplayName sets the value of DisplayName.
+func (s *AccountLookup) SetDisplayName(val string) {
+	s.DisplayName = val
+}
+
+// SetWorkspaceID sets the value of WorkspaceID.
+func (s *AccountLookup) SetWorkspaceID(val uuid.UUID) {
+	s.WorkspaceID = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *AccountLookup) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetDeletionRequestedAt sets the value of DeletionRequestedAt.
+func (s *AccountLookup) SetDeletionRequestedAt(val NilDateTime) {
+	s.DeletionRequestedAt = val
+}
+
+// SetInBetaAllowlist sets the value of InBetaAllowlist.
+func (s *AccountLookup) SetInBetaAllowlist(val bool) {
+	s.InBetaAllowlist = val
+}
+
+func (*AccountLookup) lookupAccountRes() {}
 
 type ActOnCreationSessionBadRequest Error
 
@@ -1303,6 +1389,98 @@ func (*ConfirmRunPreflightUnauthorized) confirmRunPreflightRes() {}
 type ConfirmRunPreflightUnprocessableEntity Error
 
 func (*ConfirmRunPreflightUnprocessableEntity) confirmRunPreflightRes() {}
+
+// Ref: #/components/schemas/CostStatisticsWindow
+type CostStatisticsWindow struct {
+	Kind         string    `json:"kind"`
+	WindowStart  time.Time `json:"window_start"`
+	WindowEnd    time.Time `json:"window_end"`
+	SampleCount  int64     `json:"sample_count"`
+	P50UsdMicros NilInt64  `json:"p50_usd_micros"`
+	P90UsdMicros NilInt64  `json:"p90_usd_micros"`
+	P95UsdMicros NilInt64  `json:"p95_usd_micros"`
+	MaxUsdMicros NilInt64  `json:"max_usd_micros"`
+}
+
+// GetKind returns the value of Kind.
+func (s *CostStatisticsWindow) GetKind() string {
+	return s.Kind
+}
+
+// GetWindowStart returns the value of WindowStart.
+func (s *CostStatisticsWindow) GetWindowStart() time.Time {
+	return s.WindowStart
+}
+
+// GetWindowEnd returns the value of WindowEnd.
+func (s *CostStatisticsWindow) GetWindowEnd() time.Time {
+	return s.WindowEnd
+}
+
+// GetSampleCount returns the value of SampleCount.
+func (s *CostStatisticsWindow) GetSampleCount() int64 {
+	return s.SampleCount
+}
+
+// GetP50UsdMicros returns the value of P50UsdMicros.
+func (s *CostStatisticsWindow) GetP50UsdMicros() NilInt64 {
+	return s.P50UsdMicros
+}
+
+// GetP90UsdMicros returns the value of P90UsdMicros.
+func (s *CostStatisticsWindow) GetP90UsdMicros() NilInt64 {
+	return s.P90UsdMicros
+}
+
+// GetP95UsdMicros returns the value of P95UsdMicros.
+func (s *CostStatisticsWindow) GetP95UsdMicros() NilInt64 {
+	return s.P95UsdMicros
+}
+
+// GetMaxUsdMicros returns the value of MaxUsdMicros.
+func (s *CostStatisticsWindow) GetMaxUsdMicros() NilInt64 {
+	return s.MaxUsdMicros
+}
+
+// SetKind sets the value of Kind.
+func (s *CostStatisticsWindow) SetKind(val string) {
+	s.Kind = val
+}
+
+// SetWindowStart sets the value of WindowStart.
+func (s *CostStatisticsWindow) SetWindowStart(val time.Time) {
+	s.WindowStart = val
+}
+
+// SetWindowEnd sets the value of WindowEnd.
+func (s *CostStatisticsWindow) SetWindowEnd(val time.Time) {
+	s.WindowEnd = val
+}
+
+// SetSampleCount sets the value of SampleCount.
+func (s *CostStatisticsWindow) SetSampleCount(val int64) {
+	s.SampleCount = val
+}
+
+// SetP50UsdMicros sets the value of P50UsdMicros.
+func (s *CostStatisticsWindow) SetP50UsdMicros(val NilInt64) {
+	s.P50UsdMicros = val
+}
+
+// SetP90UsdMicros sets the value of P90UsdMicros.
+func (s *CostStatisticsWindow) SetP90UsdMicros(val NilInt64) {
+	s.P90UsdMicros = val
+}
+
+// SetP95UsdMicros sets the value of P95UsdMicros.
+func (s *CostStatisticsWindow) SetP95UsdMicros(val NilInt64) {
+	s.P95UsdMicros = val
+}
+
+// SetMaxUsdMicros sets the value of MaxUsdMicros.
+func (s *CostStatisticsWindow) SetMaxUsdMicros(val NilInt64) {
+	s.MaxUsdMicros = val
+}
 
 // An empty message creates an unbilled session awaiting its first diagram or reference selection. The
 // supplied budget is a user-approved ceiling, bounded again by deployment policy.
@@ -3848,6 +4026,161 @@ func (s *CreditEstimate) SetEstimated(val bool) {
 	s.Estimated = val
 }
 
+// Ref: #/components/schemas/CreditLedger
+type CreditLedger struct {
+	WorkspaceID    uuid.UUID           `json:"workspace_id"`
+	BalanceCredits int64               `json:"balance_credits"`
+	Entries        []CreditLedgerEntry `json:"entries"`
+}
+
+// GetWorkspaceID returns the value of WorkspaceID.
+func (s *CreditLedger) GetWorkspaceID() uuid.UUID {
+	return s.WorkspaceID
+}
+
+// GetBalanceCredits returns the value of BalanceCredits.
+func (s *CreditLedger) GetBalanceCredits() int64 {
+	return s.BalanceCredits
+}
+
+// GetEntries returns the value of Entries.
+func (s *CreditLedger) GetEntries() []CreditLedgerEntry {
+	return s.Entries
+}
+
+// SetWorkspaceID sets the value of WorkspaceID.
+func (s *CreditLedger) SetWorkspaceID(val uuid.UUID) {
+	s.WorkspaceID = val
+}
+
+// SetBalanceCredits sets the value of BalanceCredits.
+func (s *CreditLedger) SetBalanceCredits(val int64) {
+	s.BalanceCredits = val
+}
+
+// SetEntries sets the value of Entries.
+func (s *CreditLedger) SetEntries(val []CreditLedgerEntry) {
+	s.Entries = val
+}
+
+func (*CreditLedger) getCreditLedgerRes() {}
+
+// Ref: #/components/schemas/CreditLedgerEntry
+type CreditLedgerEntry struct {
+	Kind         CreditLedgerEntryKind `json:"kind"`
+	DeltaCredits int64                 `json:"delta_credits"`
+	// What the entry settles, such as run or operator_grant.
+	RefType NilString `json:"ref_type"`
+	// True when a debit was charged at an estimate because the real cost could not be read.
+	Estimated bool      `json:"estimated"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetKind returns the value of Kind.
+func (s *CreditLedgerEntry) GetKind() CreditLedgerEntryKind {
+	return s.Kind
+}
+
+// GetDeltaCredits returns the value of DeltaCredits.
+func (s *CreditLedgerEntry) GetDeltaCredits() int64 {
+	return s.DeltaCredits
+}
+
+// GetRefType returns the value of RefType.
+func (s *CreditLedgerEntry) GetRefType() NilString {
+	return s.RefType
+}
+
+// GetEstimated returns the value of Estimated.
+func (s *CreditLedgerEntry) GetEstimated() bool {
+	return s.Estimated
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *CreditLedgerEntry) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetKind sets the value of Kind.
+func (s *CreditLedgerEntry) SetKind(val CreditLedgerEntryKind) {
+	s.Kind = val
+}
+
+// SetDeltaCredits sets the value of DeltaCredits.
+func (s *CreditLedgerEntry) SetDeltaCredits(val int64) {
+	s.DeltaCredits = val
+}
+
+// SetRefType sets the value of RefType.
+func (s *CreditLedgerEntry) SetRefType(val NilString) {
+	s.RefType = val
+}
+
+// SetEstimated sets the value of Estimated.
+func (s *CreditLedgerEntry) SetEstimated(val bool) {
+	s.Estimated = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *CreditLedgerEntry) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+type CreditLedgerEntryKind string
+
+const (
+	CreditLedgerEntryKindDebit      CreditLedgerEntryKind = "debit"
+	CreditLedgerEntryKindGrant      CreditLedgerEntryKind = "grant"
+	CreditLedgerEntryKindTopup      CreditLedgerEntryKind = "topup"
+	CreditLedgerEntryKindAdjustment CreditLedgerEntryKind = "adjustment"
+)
+
+// AllValues returns all CreditLedgerEntryKind values.
+func (CreditLedgerEntryKind) AllValues() []CreditLedgerEntryKind {
+	return []CreditLedgerEntryKind{
+		CreditLedgerEntryKindDebit,
+		CreditLedgerEntryKindGrant,
+		CreditLedgerEntryKindTopup,
+		CreditLedgerEntryKindAdjustment,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreditLedgerEntryKind) MarshalText() ([]byte, error) {
+	switch s {
+	case CreditLedgerEntryKindDebit:
+		return []byte(s), nil
+	case CreditLedgerEntryKindGrant:
+		return []byte(s), nil
+	case CreditLedgerEntryKindTopup:
+		return []byte(s), nil
+	case CreditLedgerEntryKindAdjustment:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreditLedgerEntryKind) UnmarshalText(data []byte) error {
+	switch CreditLedgerEntryKind(data) {
+	case CreditLedgerEntryKindDebit:
+		*s = CreditLedgerEntryKindDebit
+		return nil
+	case CreditLedgerEntryKindGrant:
+		*s = CreditLedgerEntryKindGrant
+		return nil
+	case CreditLedgerEntryKindTopup:
+		*s = CreditLedgerEntryKindTopup
+		return nil
+	case CreditLedgerEntryKindAdjustment:
+		*s = CreditLedgerEntryKindAdjustment
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // One acceptance criterion's verdict. `criterion_id` refers to the run's frozen test case snapshot, so
 // editing the draft afterwards cannot rewrite what was judged (iron rule 4).
 // Ref: #/components/schemas/CriterionResult
@@ -5600,10 +5933,13 @@ func (*Error) browseCatalogRes()          {}
 func (*Error) deleteDownloadArtifactRes() {}
 func (*Error) deleteRunArtifactRes()      {}
 func (*Error) devLoginRes()               {}
+func (*Error) getCostStatisticsRes()      {}
 func (*Error) getCreditBalanceRes()       {}
+func (*Error) getCreditLedgerRes()        {}
 func (*Error) getDatasetLimitsRes()       {}
 func (*Error) getDispatchStatusRes()      {}
 func (*Error) getMeRes()                  {}
+func (*Error) getOperatorRostersRes()     {}
 func (*Error) listDownloadArtifactsRes()  {}
 func (*Error) listSkillVersionsRes()      {}
 func (*Error) listSkillsRes()             {}
@@ -6715,6 +7051,30 @@ func (s *FileDiffStatus) UnmarshalText(data []byte) error {
 	}
 }
 
+type FindSkillsForGovernanceBadRequest Error
+
+func (*FindSkillsForGovernanceBadRequest) findSkillsForGovernanceRes() {}
+
+type FindSkillsForGovernanceNotFound Error
+
+func (*FindSkillsForGovernanceNotFound) findSkillsForGovernanceRes() {}
+
+type FindSkillsForGovernanceOK struct {
+	Skills []SkillGovernance `json:"skills"`
+}
+
+// GetSkills returns the value of Skills.
+func (s *FindSkillsForGovernanceOK) GetSkills() []SkillGovernance {
+	return s.Skills
+}
+
+// SetSkills sets the value of Skills.
+func (s *FindSkillsForGovernanceOK) SetSkills(val []SkillGovernance) {
+	s.Skills = val
+}
+
+func (*FindSkillsForGovernanceOK) findSkillsForGovernanceRes() {}
+
 // Ref: #/components/schemas/Finding
 type Finding struct {
 	Severity FindingSeverity `json:"severity"`
@@ -7810,6 +8170,22 @@ func (s *GenerationInputsReferencesItem) SetName(val string) {
 	s.Name = val
 }
 
+type GetCostStatisticsOK struct {
+	Statistics []CostStatisticsWindow `json:"statistics"`
+}
+
+// GetStatistics returns the value of Statistics.
+func (s *GetCostStatisticsOK) GetStatistics() []CostStatisticsWindow {
+	return s.Statistics
+}
+
+// SetStatistics sets the value of Statistics.
+func (s *GetCostStatisticsOK) SetStatistics(val []CostStatisticsWindow) {
+	s.Statistics = val
+}
+
+func (*GetCostStatisticsOK) getCostStatisticsRes() {}
+
 type GetCreationLimitsServiceUnavailable Error
 
 func (*GetCreationLimitsServiceUnavailable) getCreationLimitsRes() {}
@@ -7997,6 +8373,35 @@ func (*GetDownloadArtifactNotFound) getDownloadArtifactRes() {}
 type GetDownloadArtifactUnauthorized Error
 
 func (*GetDownloadArtifactUnauthorized) getDownloadArtifactRes() {}
+
+type GetOperatorRostersOK struct {
+	OperatorUserIds []uuid.UUID `json:"operator_user_ids"`
+	// Identity-provider user ids. Empty when no allowlist is configured, and then every signed-in account
+	// counts as invited.
+	BetaAllowlist []string `json:"beta_allowlist"`
+}
+
+// GetOperatorUserIds returns the value of OperatorUserIds.
+func (s *GetOperatorRostersOK) GetOperatorUserIds() []uuid.UUID {
+	return s.OperatorUserIds
+}
+
+// GetBetaAllowlist returns the value of BetaAllowlist.
+func (s *GetOperatorRostersOK) GetBetaAllowlist() []string {
+	return s.BetaAllowlist
+}
+
+// SetOperatorUserIds sets the value of OperatorUserIds.
+func (s *GetOperatorRostersOK) SetOperatorUserIds(val []uuid.UUID) {
+	s.OperatorUserIds = val
+}
+
+// SetBetaAllowlist sets the value of BetaAllowlist.
+func (s *GetOperatorRostersOK) SetBetaAllowlist(val []string) {
+	s.BetaAllowlist = val
+}
+
+func (*GetOperatorRostersOK) getOperatorRostersRes() {}
 
 type GetReadinessOK struct {
 	// Every capability was measured and works. `unmeasured` is deliberately not enough — a caller asking
@@ -9049,6 +9454,30 @@ type ListGenerationFailuresUnauthorized Error
 
 func (*ListGenerationFailuresUnauthorized) listGenerationFailuresRes() {}
 
+type ListOperatorAuditLogBadRequest Error
+
+func (*ListOperatorAuditLogBadRequest) listOperatorAuditLogRes() {}
+
+type ListOperatorAuditLogNotFound Error
+
+func (*ListOperatorAuditLogNotFound) listOperatorAuditLogRes() {}
+
+type ListOperatorAuditLogOK struct {
+	Events []OperatorAuditEvent `json:"events"`
+}
+
+// GetEvents returns the value of Events.
+func (s *ListOperatorAuditLogOK) GetEvents() []OperatorAuditEvent {
+	return s.Events
+}
+
+// SetEvents sets the value of Events.
+func (s *ListOperatorAuditLogOK) SetEvents(val []OperatorAuditEvent) {
+	s.Events = val
+}
+
+func (*ListOperatorAuditLogOK) listOperatorAuditLogRes() {}
+
 type ListPackagingTargetsOK struct {
 	Targets []PackagingTarget `json:"targets"`
 }
@@ -9347,12 +9776,24 @@ func (*ListTestCasesUnauthorized) listTestCasesRes() {}
 // LogoutNoContent is response for Logout operation.
 type LogoutNoContent struct{}
 
+type LookupAccountBadRequest Error
+
+func (*LookupAccountBadRequest) lookupAccountRes() {}
+
+type LookupAccountNotFound Error
+
+func (*LookupAccountNotFound) lookupAccountRes() {}
+
 // Ref: #/components/schemas/Me
 type Me struct {
 	UserID      uuid.UUID `json:"user_id"`
 	Email       string    `json:"email"`
 	DisplayName string    `json:"display_name"`
 	WorkspaceID uuid.UUID `json:"workspace_id"`
+	// Whether the caller is on this deployment's OPERATOR_USER_IDS. It only tells the client whether to
+	// draw the entry to /admin; it grants nothing. Every /admin route checks the roster itself and answers
+	// a member 404 whatever this field says (ADR-074 decision 1).
+	Operator bool `json:"operator"`
 	// Optional entry points this deployment turns on. Absent when there are none — not an empty object,
 	// so a client never has to tell "off" apart from "this build predates the flag".
 	//
@@ -9400,6 +9841,11 @@ func (s *Me) GetWorkspaceID() uuid.UUID {
 	return s.WorkspaceID
 }
 
+// GetOperator returns the value of Operator.
+func (s *Me) GetOperator() bool {
+	return s.Operator
+}
+
 // GetFeatures returns the value of Features.
 func (s *Me) GetFeatures() OptMeFeatures {
 	return s.Features
@@ -9438,6 +9884,11 @@ func (s *Me) SetDisplayName(val string) {
 // SetWorkspaceID sets the value of WorkspaceID.
 func (s *Me) SetWorkspaceID(val uuid.UUID) {
 	s.WorkspaceID = val
+}
+
+// SetOperator sets the value of Operator.
+func (s *Me) SetOperator(val bool) {
+	s.Operator = val
 }
 
 // SetFeatures sets the value of Features.
@@ -9751,6 +10202,143 @@ func (o NilString) Or(d string) string {
 		return v
 	}
 	return d
+}
+
+// NewNilUUID returns new NilUUID with value set to v.
+func NewNilUUID(v uuid.UUID) NilUUID {
+	return NilUUID{
+		Value: v,
+	}
+}
+
+// NilUUID is nullable uuid.UUID.
+type NilUUID struct {
+	Value uuid.UUID
+	Null  bool
+}
+
+// SetTo sets value to v.
+func (o *NilUUID) SetTo(v uuid.UUID) {
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o NilUUID) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *NilUUID) SetToNull() {
+	o.Null = true
+	var v uuid.UUID
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o NilUUID) Get() (v uuid.UUID, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o NilUUID) Or(d uuid.UUID) uuid.UUID {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// Ref: #/components/schemas/OperatorAuditEvent
+type OperatorAuditEvent struct {
+	ActorUserID  NilUUID                    `json:"actor_user_id"`
+	Action       string                     `json:"action"`
+	ResourceType string                     `json:"resource_type"`
+	ResourceID   NilUUID                    `json:"resource_id"`
+	WorkspaceID  NilUUID                    `json:"workspace_id"`
+	OccurredAt   time.Time                  `json:"occurred_at"`
+	Metadata     OperatorAuditEventMetadata `json:"metadata"`
+}
+
+// GetActorUserID returns the value of ActorUserID.
+func (s *OperatorAuditEvent) GetActorUserID() NilUUID {
+	return s.ActorUserID
+}
+
+// GetAction returns the value of Action.
+func (s *OperatorAuditEvent) GetAction() string {
+	return s.Action
+}
+
+// GetResourceType returns the value of ResourceType.
+func (s *OperatorAuditEvent) GetResourceType() string {
+	return s.ResourceType
+}
+
+// GetResourceID returns the value of ResourceID.
+func (s *OperatorAuditEvent) GetResourceID() NilUUID {
+	return s.ResourceID
+}
+
+// GetWorkspaceID returns the value of WorkspaceID.
+func (s *OperatorAuditEvent) GetWorkspaceID() NilUUID {
+	return s.WorkspaceID
+}
+
+// GetOccurredAt returns the value of OccurredAt.
+func (s *OperatorAuditEvent) GetOccurredAt() time.Time {
+	return s.OccurredAt
+}
+
+// GetMetadata returns the value of Metadata.
+func (s *OperatorAuditEvent) GetMetadata() OperatorAuditEventMetadata {
+	return s.Metadata
+}
+
+// SetActorUserID sets the value of ActorUserID.
+func (s *OperatorAuditEvent) SetActorUserID(val NilUUID) {
+	s.ActorUserID = val
+}
+
+// SetAction sets the value of Action.
+func (s *OperatorAuditEvent) SetAction(val string) {
+	s.Action = val
+}
+
+// SetResourceType sets the value of ResourceType.
+func (s *OperatorAuditEvent) SetResourceType(val string) {
+	s.ResourceType = val
+}
+
+// SetResourceID sets the value of ResourceID.
+func (s *OperatorAuditEvent) SetResourceID(val NilUUID) {
+	s.ResourceID = val
+}
+
+// SetWorkspaceID sets the value of WorkspaceID.
+func (s *OperatorAuditEvent) SetWorkspaceID(val NilUUID) {
+	s.WorkspaceID = val
+}
+
+// SetOccurredAt sets the value of OccurredAt.
+func (s *OperatorAuditEvent) SetOccurredAt(val time.Time) {
+	s.OccurredAt = val
+}
+
+// SetMetadata sets the value of Metadata.
+func (s *OperatorAuditEvent) SetMetadata(val OperatorAuditEventMetadata) {
+	s.Metadata = val
+}
+
+type OperatorAuditEventMetadata map[string]jx.Raw
+
+func (s *OperatorAuditEventMetadata) init() OperatorAuditEventMetadata {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
 }
 
 // NewOptAddAcceptanceCriterionReqSource returns new OptAddAcceptanceCriterionReqSource with value set to v.
@@ -19325,6 +19913,88 @@ func (s *SkillFiles) SetNote(val string) {
 }
 
 func (*SkillFiles) getSkillFilesRes() {}
+
+// Ref: #/components/schemas/SkillGovernance
+type SkillGovernance struct {
+	SkillID     uuid.UUID `json:"skill_id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	Name        string    `json:"name"`
+	// The restriction reason code, or null when the skill is not restricted.
+	AccessRestriction NilString   `json:"access_restriction"`
+	Redistribution    string      `json:"redistribution"`
+	TakedownAt        NilDateTime `json:"takedown_at"`
+	TakedownReason    NilString   `json:"takedown_reason"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *SkillGovernance) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetWorkspaceID returns the value of WorkspaceID.
+func (s *SkillGovernance) GetWorkspaceID() uuid.UUID {
+	return s.WorkspaceID
+}
+
+// GetName returns the value of Name.
+func (s *SkillGovernance) GetName() string {
+	return s.Name
+}
+
+// GetAccessRestriction returns the value of AccessRestriction.
+func (s *SkillGovernance) GetAccessRestriction() NilString {
+	return s.AccessRestriction
+}
+
+// GetRedistribution returns the value of Redistribution.
+func (s *SkillGovernance) GetRedistribution() string {
+	return s.Redistribution
+}
+
+// GetTakedownAt returns the value of TakedownAt.
+func (s *SkillGovernance) GetTakedownAt() NilDateTime {
+	return s.TakedownAt
+}
+
+// GetTakedownReason returns the value of TakedownReason.
+func (s *SkillGovernance) GetTakedownReason() NilString {
+	return s.TakedownReason
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *SkillGovernance) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetWorkspaceID sets the value of WorkspaceID.
+func (s *SkillGovernance) SetWorkspaceID(val uuid.UUID) {
+	s.WorkspaceID = val
+}
+
+// SetName sets the value of Name.
+func (s *SkillGovernance) SetName(val string) {
+	s.Name = val
+}
+
+// SetAccessRestriction sets the value of AccessRestriction.
+func (s *SkillGovernance) SetAccessRestriction(val NilString) {
+	s.AccessRestriction = val
+}
+
+// SetRedistribution sets the value of Redistribution.
+func (s *SkillGovernance) SetRedistribution(val string) {
+	s.Redistribution = val
+}
+
+// SetTakedownAt sets the value of TakedownAt.
+func (s *SkillGovernance) SetTakedownAt(val NilDateTime) {
+	s.TakedownAt = val
+}
+
+// SetTakedownReason sets the value of TakedownReason.
+func (s *SkillGovernance) SetTakedownReason(val NilString) {
+	s.TakedownReason = val
+}
 
 // ADR-021 two axes. The expression alone cannot distinguish "the author declared MIT in frontmatter"
 // from "the monorepo root had an MIT file", and DISC-003 forbids presenting the second as the first.

@@ -285,6 +285,7 @@ func NewApp(cfg Config) (*App, error) {
 				Ledger:   &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
 				Identity: identitySvc,
 			},
+			OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
 			Analytics: &analytics.Handler{
 				Svc: funnel, Identity: auth.Service, FeedbackRetention: cfg.FeedbackRetention,
 			},

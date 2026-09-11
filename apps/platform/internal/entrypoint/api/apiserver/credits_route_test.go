@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -517,4 +518,12 @@ func TestGetCreditsFailsClosedWhenTheSessionEstimateErrors(t *testing.T) {
 	if msg, _ := body["error"].(string); !strings.Contains(msg, "session estimate unavailable") {
 		t.Errorf("the refusal does not name the failing dependency: %v", body)
 	}
+}
+
+func (f *fakeCreditLedger) Ledger(context.Context, pgtype.UUID, pgtype.UUID) (credit.Ledger, error) {
+	return credit.Ledger{}, nil
+}
+
+func (f *fakeCreditLedger) CostStatistics(context.Context) ([]credit.KindStatistics, error) {
+	return nil, nil
 }

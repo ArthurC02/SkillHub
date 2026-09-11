@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -32,6 +33,10 @@ type CreditLedger interface {
 	SessionEstimate(ctx context.Context) (CreditSessionEstimate, error)
 
 	Grant(ctx context.Context, workspaceID pgtype.UUID, amountCredits int64, reason string, actorUserID pgtype.UUID) (newBalance int64, err error)
+
+	Ledger(ctx context.Context, workspaceID, operatorID pgtype.UUID) (credit.Ledger, error)
+
+	CostStatistics(ctx context.Context) ([]credit.KindStatistics, error)
 }
 
 type creditsHandler struct {
@@ -144,4 +149,75 @@ func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
 		"balance_credits": balance,
 		"amount_credits":  body.AmountCredits,
 	})
+}
+
+type creditEntryView struct {
+	Kind         string  `json:"kind"`
+	DeltaCredits int64   `json:"delta_credits"`
+	RefType      *string `json:"ref_type"`
+	Estimated    bool    `json:"estimated"`
+	CreatedAt    string  `json:"created_at"`
+}
+
+func (h *creditsHandler) Account(w http.ResponseWriter, r *http.Request) {
+	var workspaceID pgtype.UUID
+	if err := workspaceID.Scan(r.PathValue("workspace_id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	operator, ok := identity.SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	ledger, err := h.Ledger.Ledger(r.Context(), workspaceID, operator.ID)
+	switch {
+	case errors.Is(err, identity.ErrWorkspaceNotFound):
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	case err != nil:
+		httpx.WriteError(w, http.StatusInternalServerError, "ledger lookup failed")
+		return
+	}
+	entries := make([]creditEntryView, 0, len(ledger.Entries))
+	for _, e := range ledger.Entries {
+		entries = append(entries, creditEntryView{
+			Kind: e.Kind, DeltaCredits: e.DeltaCredits, RefType: e.RefType,
+			Estimated: e.Estimated, CreatedAt: e.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"workspace_id":    pgconv.UUIDString(workspaceID),
+		"balance_credits": ledger.Balance,
+		"entries":         entries,
+	})
+}
+
+type costStatisticsView struct {
+	Kind         string `json:"kind"`
+	WindowStart  string `json:"window_start"`
+	WindowEnd    string `json:"window_end"`
+	SampleCount  int64  `json:"sample_count"`
+	P50UsdMicros *int64 `json:"p50_usd_micros"`
+	P90UsdMicros *int64 `json:"p90_usd_micros"`
+	P95UsdMicros *int64 `json:"p95_usd_micros"`
+	MaxUsdMicros *int64 `json:"max_usd_micros"`
+}
+
+func (h *creditsHandler) CostStatistics(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.Ledger.CostStatistics(r.Context())
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "statistics lookup failed")
+		return
+	}
+	views := make([]costStatisticsView, 0, len(stats))
+	for _, s := range stats {
+		views = append(views, costStatisticsView{
+			Kind: s.Kind, WindowStart: s.WindowStart.UTC().Format(time.RFC3339),
+			WindowEnd: s.WindowEnd.UTC().Format(time.RFC3339), SampleCount: s.SampleCount,
+			P50UsdMicros: s.P50UsdMicros, P90UsdMicros: s.P90UsdMicros,
+			P95UsdMicros: s.P95UsdMicros, MaxUsdMicros: s.MaxUsdMicros,
+		})
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"statistics": views})
 }

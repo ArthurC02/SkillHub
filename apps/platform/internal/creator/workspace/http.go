@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -284,16 +285,75 @@ func (h *Handler) invited(ctx context.Context, user User) (bool, error) {
 	if len(h.Invited) == 0 {
 		return true, nil
 	}
-	ids, err := h.Service.queries().GetIdentityProviderIDs(ctx, user.ID)
+	rows, err := h.Service.queries().GetIdentityProviderIDs(ctx, user.ID)
 	if err != nil {
 		return false, err
 	}
-	for _, id := range ids {
-		if h.Invited[id.ProviderUserID] {
-			return true, nil
+	ids := make([]string, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ProviderUserID)
+	}
+	return h.allowlisted(ids), nil
+}
+
+func (h *Handler) allowlisted(providerUserIDs []string) bool {
+	if len(h.Invited) == 0 {
+		return true
+	}
+	return slices.ContainsFunc(providerUserIDs, func(id string) bool { return h.Invited[id] })
+}
+
+func (h *Handler) LookupAccount(w http.ResponseWriter, r *http.Request) {
+	email := strings.TrimSpace(r.URL.Query().Get("email"))
+	if email == "" {
+		httpx.WriteError(w, http.StatusBadRequest, "email is required")
+		return
+	}
+	operator, ok := SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	found, ok, err := h.Service.LookupAccount(r.Context(), email, operator.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "account lookup failed")
+		return
+	}
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	var deletionRequestedAt any
+	if found.DeletionRequestedAt.Valid {
+		deletionRequestedAt = pgconv.RFC3339(found.DeletionRequestedAt)
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"user_id":               pgconv.UUIDString(found.UserID),
+		"email":                 found.Email,
+		"display_name":          found.DisplayName,
+		"workspace_id":          pgconv.UUIDString(found.WorkspaceID),
+		"created_at":            pgconv.RFC3339(found.CreatedAt),
+		"deletion_requested_at": deletionRequestedAt,
+		"in_beta_allowlist":     h.allowlisted(found.ProviderUserIDs),
+	})
+}
+
+func (h *Handler) Rosters(w http.ResponseWriter, _ *http.Request) {
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"operator_user_ids": rosterOf(h.Operators),
+		"beta_allowlist":    rosterOf(h.Invited),
+	})
+}
+
+func rosterOf(roster map[string]bool) []string {
+	ids := make([]string, 0, len(roster))
+	for id, on := range roster {
+		if on {
+			ids = append(ids, id)
 		}
 	}
-	return false, nil
+	slices.Sort(ids)
+	return ids
 }
 
 func (h *Handler) LogInviteRoster(ctx context.Context) error {
@@ -350,6 +410,7 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		"email":                 user.Email,
 		"display_name":          user.DisplayName,
 		"workspace_id":          pgconv.UUIDString(ws.ID),
+		"operator":              h.Operators[pgconv.UUIDString(user.ID)],
 		"deletion_requested_at": nil,
 		"purge_after":           nil,
 

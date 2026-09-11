@@ -93,6 +93,10 @@ type DownloadArtifactContentRes interface {
 	downloadArtifactContentRes()
 }
 
+type FindSkillsForGovernanceRes interface {
+	findSkillsForGovernanceRes()
+}
+
 type FinishGithubLoginRes interface {
 	finishGithubLoginRes()
 }
@@ -105,6 +109,10 @@ type GenerateSkillRes interface {
 	generateSkillRes()
 }
 
+type GetCostStatisticsRes interface {
+	getCostStatisticsRes()
+}
+
 type GetCreationLimitsRes interface {
 	getCreationLimitsRes()
 }
@@ -115,6 +123,10 @@ type GetCreationSessionRes interface {
 
 type GetCreditBalanceRes interface {
 	getCreditBalanceRes()
+}
+
+type GetCreditLedgerRes interface {
+	getCreditLedgerRes()
 }
 
 type GetDatasetLimitsRes interface {
@@ -131,6 +143,10 @@ type GetDownloadArtifactRes interface {
 
 type GetMeRes interface {
 	getMeRes()
+}
+
+type GetOperatorRostersRes interface {
+	getOperatorRostersRes()
 }
 
 type GetRunEvaluationRes interface {
@@ -205,6 +221,10 @@ type ListGenerationFailuresRes interface {
 	listGenerationFailuresRes()
 }
 
+type ListOperatorAuditLogRes interface {
+	listOperatorAuditLogRes()
+}
+
 type ListPackagingTargetsRes interface {
 	listPackagingTargetsRes()
 }
@@ -235,6 +255,10 @@ type ListSkillsRes interface {
 
 type ListTestCasesRes interface {
 	listTestCasesRes()
+}
+
+type LookupAccountRes interface {
+	lookupAccountRes()
 }
 
 type PreviewPackagingRes interface {

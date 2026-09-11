@@ -101,4 +101,27 @@ type Store interface {
 	SummarizeSession(ctx context.Context, tx DBTX, sessionID pgtype.UUID) error
 
 	SweepSessionSummaries(ctx context.Context, windowStart, idleBefore time.Time) (int64, error)
+
+	RecentEntries(ctx context.Context, tx DBTX, userID pgtype.UUID, limit int32) ([]LedgerEntry, error)
+
+	LatestStatistics(ctx context.Context) ([]KindStatistics, error)
+}
+
+type LedgerEntry struct {
+	Kind         string
+	DeltaCredits int64
+	RefType      *string
+	Estimated    bool
+	CreatedAt    time.Time
+}
+
+type KindStatistics struct {
+	Kind         string
+	WindowStart  time.Time
+	WindowEnd    time.Time
+	SampleCount  int64
+	P50UsdMicros *int64
+	P90UsdMicros *int64
+	P95UsdMicros *int64
+	MaxUsdMicros *int64
 }

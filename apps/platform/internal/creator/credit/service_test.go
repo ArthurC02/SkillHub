@@ -521,3 +521,9 @@ func TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold(t *testi
 		})
 	}
 }
+
+func (f *fakeStore) RecentEntries(context.Context, DBTX, pgtype.UUID, int32) ([]LedgerEntry, error) {
+	return nil, nil
+}
+
+func (f *fakeStore) LatestStatistics(context.Context) ([]KindStatistics, error) { return nil, nil }

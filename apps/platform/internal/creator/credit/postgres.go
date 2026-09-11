@@ -260,3 +260,35 @@ func uuidFromString(s string) pgtype.UUID {
 	}
 	return u
 }
+
+func (s *PostgresStore) RecentEntries(ctx context.Context, tx DBTX, userID pgtype.UUID, limit int32) ([]LedgerEntry, error) {
+	rows, err := s.q(tx).ListRecentCreditEntries(ctx, gen.ListRecentCreditEntriesParams{UserID: userID, Limit: limit})
+	if err != nil {
+		return nil, fmt.Errorf("credit: read entries: %w", err)
+	}
+	out := make([]LedgerEntry, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, LedgerEntry{
+			Kind: r.Kind, DeltaCredits: r.DeltaCredits, RefType: r.RefType,
+			Estimated: r.Estimated, CreatedAt: r.CreatedAt.Time,
+		})
+	}
+	return out, nil
+}
+
+func (s *PostgresStore) LatestStatistics(ctx context.Context) ([]KindStatistics, error) {
+	rows, err := s.q(nil).ListLatestCostStatistics(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("credit: read statistics: %w", err)
+	}
+	out := make([]KindStatistics, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, KindStatistics{
+			Kind: r.Kind, WindowStart: r.WindowStart.Time, WindowEnd: r.WindowEnd.Time,
+			SampleCount:  r.SampleCount,
+			P50UsdMicros: r.P50UsdMicros, P90UsdMicros: r.P90UsdMicros,
+			P95UsdMicros: r.P95UsdMicros, MaxUsdMicros: r.MaxUsdMicros,
+		})
+	}
+	return out, nil
+}

@@ -17,6 +17,7 @@ import * as runtime from '../runtime';
 import type {
   AcceptanceCriteriaSuggestions,
   AccountDeletion,
+  AccountLookup,
   AddAcceptanceCriterionRequest,
   CancelAccountDeletion200Response,
   CancelRun202Response,
@@ -37,6 +38,7 @@ import type {
   CreationLimits,
   CreationSession,
   CreditBalance,
+  CreditLedger,
   DataRetentionPolicy,
   Dataset,
   DatasetLimits,
@@ -50,12 +52,15 @@ import type {
   DiffSkillVersions200Response,
   DownloadArtifact,
   Evaluation,
+  FindSkillsForGovernance200Response,
   ForkSkill201Response,
   GenerateSkillRefusal,
   GenerateSkillRequest,
   GenerateSkillResult,
   GenerationFailures,
+  GetCostStatistics200Response,
   GetDispatchStatus200Response,
+  GetOperatorRosters200Response,
   GetReadiness200Response,
   GetRunTrace200Response,
   GrantCredits200Response,
@@ -67,6 +72,7 @@ import type {
   ListDatasets200Response,
   ListDownloadArtifacts200Response,
   ListDownloadRecords200Response,
+  ListOperatorAuditLog200Response,
   ListPackagingTargets200Response,
   ListRunArtifacts200Response,
   ListRunEvaluationRevisions200Response,
@@ -112,6 +118,8 @@ import {
     AcceptanceCriteriaSuggestionsToJSON,
     AccountDeletionFromJSON,
     AccountDeletionToJSON,
+    AccountLookupFromJSON,
+    AccountLookupToJSON,
     AddAcceptanceCriterionRequestFromJSON,
     AddAcceptanceCriterionRequestToJSON,
     CancelAccountDeletion200ResponseFromJSON,
@@ -152,6 +160,8 @@ import {
     CreationSessionToJSON,
     CreditBalanceFromJSON,
     CreditBalanceToJSON,
+    CreditLedgerFromJSON,
+    CreditLedgerToJSON,
     DataRetentionPolicyFromJSON,
     DataRetentionPolicyToJSON,
     DatasetFromJSON,
@@ -178,6 +188,8 @@ import {
     DownloadArtifactToJSON,
     EvaluationFromJSON,
     EvaluationToJSON,
+    FindSkillsForGovernance200ResponseFromJSON,
+    FindSkillsForGovernance200ResponseToJSON,
     ForkSkill201ResponseFromJSON,
     ForkSkill201ResponseToJSON,
     GenerateSkillRefusalFromJSON,
@@ -188,8 +200,12 @@ import {
     GenerateSkillResultToJSON,
     GenerationFailuresFromJSON,
     GenerationFailuresToJSON,
+    GetCostStatistics200ResponseFromJSON,
+    GetCostStatistics200ResponseToJSON,
     GetDispatchStatus200ResponseFromJSON,
     GetDispatchStatus200ResponseToJSON,
+    GetOperatorRosters200ResponseFromJSON,
+    GetOperatorRosters200ResponseToJSON,
     GetReadiness200ResponseFromJSON,
     GetReadiness200ResponseToJSON,
     GetRunTrace200ResponseFromJSON,
@@ -212,6 +228,8 @@ import {
     ListDownloadArtifacts200ResponseToJSON,
     ListDownloadRecords200ResponseFromJSON,
     ListDownloadRecords200ResponseToJSON,
+    ListOperatorAuditLog200ResponseFromJSON,
+    ListOperatorAuditLog200ResponseToJSON,
     ListPackagingTargets200ResponseFromJSON,
     ListPackagingTargets200ResponseToJSON,
     ListRunArtifacts200ResponseFromJSON,
@@ -399,6 +417,10 @@ export interface DownloadArtifactContentRequest {
     artifactId: string;
 }
 
+export interface FindSkillsForGovernanceRequest {
+    q: string;
+}
+
 export interface FinishGithubLoginRequest {
     code: string;
     state: string;
@@ -414,6 +436,10 @@ export interface GenerateSkillOperationRequest {
 
 export interface GetCreationSessionRequest {
     sessionId: string;
+}
+
+export interface GetCreditLedgerRequest {
+    workspaceId: string;
 }
 
 export interface GetDownloadArtifactRequest {
@@ -484,6 +510,11 @@ export interface ListDownloadRecordsRequest {
     artifactId: string;
 }
 
+export interface ListOperatorAuditLogRequest {
+    limit?: number;
+    offset?: number;
+}
+
 export interface ListRunArtifactsRequest {
     id: string;
 }
@@ -510,6 +541,10 @@ export interface ListTestCasesRequest {
     skillId?: string;
     limit?: number;
     offset?: number;
+}
+
+export interface LookupAccountRequest {
+    email: string;
 }
 
 export interface PreviewPackagingRequest {
@@ -998,6 +1033,22 @@ export interface DefaultApiInterface {
     downloadArtifactContent(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob>;
 
     /**
+     * Operator only. A `q` that is a UUID matches that skill id; anything else is a case-insensitive substring of the name. Every workspace is searched, private and taken-down skills included, because those are what public search cannot find and what an operator acts on. Deleted skills are never listed. At most 20, newest first.  Each match carries governance state only, never SKILL.md or the file tree, so this is not a personal-data read and writes no audit event. 
+     * @summary Find skills to govern, in every workspace (02:OPS-004)
+     * @param {string} q 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    findSkillsForGovernanceRaw(requestParameters: FindSkillsForGovernanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FindSkillsForGovernance200Response>>;
+
+    /**
+     * Operator only. A `q` that is a UUID matches that skill id; anything else is a case-insensitive substring of the name. Every workspace is searched, private and taken-down skills included, because those are what public search cannot find and what an operator acts on. Deleted skills are never listed. At most 20, newest first.  Each match carries governance state only, never SKILL.md or the file tree, so this is not a personal-data read and writes no audit event. 
+     * Find skills to govern, in every workspace (02:OPS-004)
+     */
+    findSkillsForGovernance(requestParameters: FindSkillsForGovernanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FindSkillsForGovernance200Response>;
+
+    /**
      * 
      * @summary GitHub OAuth callback; creates user and workspace on first login
      * @param {string} code 
@@ -1046,6 +1097,21 @@ export interface DefaultApiInterface {
     generateSkill(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateSkillResult>;
 
     /**
+     * Operator only. The same numbers the start threshold and the session estimate read. No user or workspace dimension. A kind that has never been computed is absent. 
+     * @summary The newest statistics window of every cost kind (02:OPS-007)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCostStatisticsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetCostStatistics200Response>>;
+
+    /**
+     * Operator only. The same numbers the start threshold and the session estimate read. No user or workspace dimension. A kind that has never been computed is absent. 
+     * The newest statistics window of every cost kind (02:OPS-007)
+     */
+    getCostStatistics(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetCostStatistics200Response>;
+
+    /**
      * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
      * @summary getCreationLimits
      * @param {*} [options] Override http request option.
@@ -1089,6 +1155,22 @@ export interface DefaultApiInterface {
      * The account\'s Credit balance and what one creation session costs (CRED-001)
      */
     getCreditBalance(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditBalance>;
+
+    /**
+     * Operator only. The balance and the 50 newest ledger entries of the account that owns this workspace: how an operator confirms a grant landed, and answers \"where did my credits go\".  Entries carry no reason. credit_entries is an immutable ledger with no reason column; the reason of a grant is in its `credit.grant` audit event, listed by GET /admin/audit-log.  Every call writes one `credit.lookup` audit event in the same transaction as the read. 
+     * @summary Balance and recent entries of one account (02:OPS-003)
+     * @param {string} workspaceId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreditLedgerRaw(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditLedger>>;
+
+    /**
+     * Operator only. The balance and the 50 newest ledger entries of the account that owns this workspace: how an operator confirms a grant landed, and answers \"where did my credits go\".  Entries carry no reason. credit_entries is an immutable ledger with no reason column; the reason of a grant is in its `credit.grant` audit event, listed by GET /admin/audit-log.  Every call writes one `credit.lookup` audit event in the same transaction as the read. 
+     * Balance and recent entries of one account (02:OPS-003)
+     */
+    getCreditLedger(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditLedger>;
 
     /**
      * 02:O11Y-004: product analytics is the only data class a user produces without submitting anything, so its disclosure obligation is no lower than any other\'s. This is that disclosure as an endpoint rather than a document, for the reason GET /test-cases/limits is one — the values come from the constants the writer itself reads, so the page and the behaviour cannot drift.  No session. A data policy a visitor has to log in to read is not a policy they can decide by, and the funnel\'s first segment is measured before any login exists. Nothing user-specific is read or returned.  `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5\'s 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no cookie. 
@@ -1177,6 +1259,21 @@ export interface DefaultApiInterface {
      * Current user and personal workspace, resolved from the session
      */
     getMe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Me>;
+
+    /**
+     * Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still an edit and a restart (ADR-074 decision 4). This only shows what is in force. 
+     * @summary The two rosters in force, read-only (02:OPS-005)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOperatorRostersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetOperatorRosters200Response>>;
+
+    /**
+     * Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still an edit and a restart (ADR-074 decision 4). This only shows what is in force. 
+     * The two rosters in force, read-only (02:OPS-005)
+     */
+    getOperatorRosters(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetOperatorRosters200Response>;
 
     /**
      * The question people ask `/healthz`. That one is a liveness probe and a constant, which is correct and was never the defect; the defect was that it was the only endpoint that looked like it answered this one (05 R-36 第二段, 04 丙-110/118).  **`ready` is reachable only by measurement.** A capability whose variables are all present and which nothing probed reports `unmeasured`, a distinct value — configuration is not function, and every green tick the launcher used to print was really this state. On 2026-09-01 three greens in a row (a launcher that tested only whether a variable was set, this platform\'s `/healthz`, and apps/llm\'s own `/healthz`) sat over a service that could perform none of its four jobs.  Always `200`, whatever the table says: a readiness endpoint that answered 503 because an OPTIONAL capability is off would make \"packaging is not configured\" indistinguishable from \"the process is broken\", which is the collapsing of two facts into one signal that this endpoint exists to undo.  Unauthenticated, because the launcher that has to read it holds no session — and R-36\'s hard condition is that the launcher reads THIS answer rather than keeping a second list of the same preconditions. Outside clean test mode the per-row detail is withheld: a list of what a deployment has not configured is reconnaissance, so `missing`, `detail`, `without` and `fix` are served only in clean test mode, where the reader is the operator on that machine. 
@@ -1483,6 +1580,23 @@ export interface DefaultApiInterface {
     listGenerationFailures(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationFailures>;
 
     /**
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * @summary What operators did, platform-wide (02:OPS-006)
+     * @param {number} [limit] 
+     * @param {number} [offset] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listOperatorAuditLogRaw(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOperatorAuditLog200Response>>;
+
+    /**
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * What operators did, platform-wide (02:OPS-006)
+     */
+    listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response>;
+
+    /**
      * One standard package plus two verified install profiles (PDM-008), which is how the product describes them everywhere: `kind` keeps the standard package and the profiles apart rather than folding all three into one list of \"profiles\", because the standard package is the evidence that Skill Hub is not bound to a single agent and a profile is not.  An endpoint rather than a constant in the web client. `support_status` changes when a target is measured, and a copy of it compiled into the front end would be a second truth that nobody re-measures. 
      * @summary The packaging targets a download can be built for (PACK-002)
      * @param {*} [options] Override http request option.
@@ -1625,6 +1739,22 @@ export interface DefaultApiInterface {
      * Revoke the current session
      */
     logout(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Operator only. Turns the email a person gave into the account and the workspace id that POST /admin/credits/{workspace_id}/grants needs. Case-insensitive exact match against live accounts only, the same rule as the unique email index.  A hit is a read of somebody\'s personal data: it writes one `account.lookup` audit event naming the operator and the account, in the same transaction as the read. A miss reads nobody\'s data and writes nothing. 
+     * @summary Find an account by email (02:OPS-002)
+     * @param {string} email 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    lookupAccountRaw(requestParameters: LookupAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountLookup>>;
+
+    /**
+     * Operator only. Turns the email a person gave into the account and the workspace id that POST /admin/credits/{workspace_id}/grants needs. Case-insensitive exact match against live accounts only, the same rule as the unique email index.  A hit is a read of somebody\'s personal data: it writes one `account.lookup` audit event naming the operator and the account, in the same transaction as the read. A miss reads nobody\'s data and writes nothing. 
+     * Find an account by email (02:OPS-002)
+     */
+    lookupAccount(requestParameters: LookupAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountLookup>;
 
     /**
      * Runs the checks the packaging call runs, so a preview that says yes and a packaging that refuses cannot both happen. Same relationship GET /suggestions/{id}/diff has with the apply call, and for the same reason: two sets of criteria drift, and the drift always favours the step the user most wants to succeed.  It re-validates the bytes it *would* produce, not the bytes it read. The source version passed validation at import, but packaging adds files and a profile may add frontmatter fields, so validating the source would make PACK-002 a check of something nobody downloads.  Nothing is written and no object is created. A preview of a version that cannot be packaged still answers 200 with `allowed: false` and the reason — being told why is the point. 
@@ -3004,6 +3134,48 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Operator only. A `q` that is a UUID matches that skill id; anything else is a case-insensitive substring of the name. Every workspace is searched, private and taken-down skills included, because those are what public search cannot find and what an operator acts on. Deleted skills are never listed. At most 20, newest first.  Each match carries governance state only, never SKILL.md or the file tree, so this is not a personal-data read and writes no audit event. 
+     * Find skills to govern, in every workspace (02:OPS-004)
+     */
+    async findSkillsForGovernanceRaw(requestParameters: FindSkillsForGovernanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FindSkillsForGovernance200Response>> {
+        if (requestParameters['q'] == null) {
+            throw new runtime.RequiredError(
+                'q',
+                'Required parameter "q" was null or undefined when calling findSkillsForGovernance().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/skills`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FindSkillsForGovernance200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. A `q` that is a UUID matches that skill id; anything else is a case-insensitive substring of the name. Every workspace is searched, private and taken-down skills included, because those are what public search cannot find and what an operator acts on. Deleted skills are never listed. At most 20, newest first.  Each match carries governance state only, never SKILL.md or the file tree, so this is not a personal-data read and writes no audit event. 
+     * Find skills to govern, in every workspace (02:OPS-004)
+     */
+    async findSkillsForGovernance(requestParameters: FindSkillsForGovernanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FindSkillsForGovernance200Response> {
+        const response = await this.findSkillsForGovernanceRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * GitHub OAuth callback; creates user and workspace on first login
      */
     async finishGithubLoginRaw(requestParameters: FinishGithubLoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -3134,6 +3306,37 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Operator only. The same numbers the start threshold and the session estimate read. No user or workspace dimension. A kind that has never been computed is absent. 
+     * The newest statistics window of every cost kind (02:OPS-007)
+     */
+    async getCostStatisticsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetCostStatistics200Response>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/cost-statistics`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GetCostStatistics200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The same numbers the start threshold and the session estimate read. No user or workspace dimension. A kind that has never been computed is absent. 
+     * The newest statistics window of every cost kind (02:OPS-007)
+     */
+    async getCostStatistics(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetCostStatistics200Response> {
+        const response = await this.getCostStatisticsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
      * getCreationLimits
      */
@@ -3229,6 +3432,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getCreditBalance(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditBalance> {
         const response = await this.getCreditBalanceRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Operator only. The balance and the 50 newest ledger entries of the account that owns this workspace: how an operator confirms a grant landed, and answers \"where did my credits go\".  Entries carry no reason. credit_entries is an immutable ledger with no reason column; the reason of a grant is in its `credit.grant` audit event, listed by GET /admin/audit-log.  Every call writes one `credit.lookup` audit event in the same transaction as the read. 
+     * Balance and recent entries of one account (02:OPS-003)
+     */
+    async getCreditLedgerRaw(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditLedger>> {
+        if (requestParameters['workspaceId'] == null) {
+            throw new runtime.RequiredError(
+                'workspaceId',
+                'Required parameter "workspaceId" was null or undefined when calling getCreditLedger().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/credits/{workspace_id}`;
+        urlPath = urlPath.replace(`{${"workspace_id"}}`, encodeURIComponent(String(requestParameters['workspaceId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreditLedgerFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The balance and the 50 newest ledger entries of the account that owns this workspace: how an operator confirms a grant landed, and answers \"where did my credits go\".  Entries carry no reason. credit_entries is an immutable ledger with no reason column; the reason of a grant is in its `credit.grant` audit event, listed by GET /admin/audit-log.  Every call writes one `credit.lookup` audit event in the same transaction as the read. 
+     * Balance and recent entries of one account (02:OPS-003)
+     */
+    async getCreditLedger(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditLedger> {
+        const response = await this.getCreditLedgerRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -3417,6 +3659,37 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getMe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Me> {
         const response = await this.getMeRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still an edit and a restart (ADR-074 decision 4). This only shows what is in force. 
+     * The two rosters in force, read-only (02:OPS-005)
+     */
+    async getOperatorRostersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetOperatorRosters200Response>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/rosters`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GetOperatorRosters200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still an edit and a restart (ADR-074 decision 4). This only shows what is in force. 
+     * The two rosters in force, read-only (02:OPS-005)
+     */
+    async getOperatorRosters(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetOperatorRosters200Response> {
+        const response = await this.getOperatorRostersRaw(initOverrides);
         return await response.value();
     }
 
@@ -4177,6 +4450,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * What operators did, platform-wide (02:OPS-006)
+     */
+    async listOperatorAuditLogRaw(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOperatorAuditLog200Response>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/audit-log`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListOperatorAuditLog200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * What operators did, platform-wide (02:OPS-006)
+     */
+    async listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response> {
+        const response = await this.listOperatorAuditLogRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * One standard package plus two verified install profiles (PDM-008), which is how the product describes them everywhere: `kind` keeps the standard package and the profiles apart rather than folding all three into one list of \"profiles\", because the standard package is the evidence that Skill Hub is not bound to a single agent and a profile is not.  An endpoint rather than a constant in the web client. `support_status` changes when a target is measured, and a copy of it compiled into the front end would be a second truth that nobody re-measures. 
      * The packaging targets a download can be built for (PACK-002)
      */
@@ -4506,6 +4818,48 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async logout(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.logoutRaw(initOverrides);
+    }
+
+    /**
+     * Operator only. Turns the email a person gave into the account and the workspace id that POST /admin/credits/{workspace_id}/grants needs. Case-insensitive exact match against live accounts only, the same rule as the unique email index.  A hit is a read of somebody\'s personal data: it writes one `account.lookup` audit event naming the operator and the account, in the same transaction as the read. A miss reads nobody\'s data and writes nothing. 
+     * Find an account by email (02:OPS-002)
+     */
+    async lookupAccountRaw(requestParameters: LookupAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountLookup>> {
+        if (requestParameters['email'] == null) {
+            throw new runtime.RequiredError(
+                'email',
+                'Required parameter "email" was null or undefined when calling lookupAccount().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['email'] != null) {
+            queryParameters['email'] = requestParameters['email'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/accounts`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AccountLookupFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Turns the email a person gave into the account and the workspace id that POST /admin/credits/{workspace_id}/grants needs. Case-insensitive exact match against live accounts only, the same rule as the unique email index.  A hit is a read of somebody\'s personal data: it writes one `account.lookup` audit event naming the operator and the account, in the same transaction as the read. A miss reads nobody\'s data and writes nothing. 
+     * Find an account by email (02:OPS-002)
+     */
+    async lookupAccount(requestParameters: LookupAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountLookup> {
+        const response = await this.lookupAccountRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

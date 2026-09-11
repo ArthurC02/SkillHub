@@ -259,3 +259,27 @@ func versionDTO(row gen.SkillVersion) Version {
 		CreatedAt: row.CreatedAt, LicenseSource: row.LicenseSource,
 	}
 }
+
+type Governance struct {
+	ID                pgtype.UUID
+	WorkspaceID       pgtype.UUID
+	Name              string
+	AccessRestriction *string
+	Redistribution    string
+	TakedownAt        pgtype.Timestamptz
+	TakedownReason    *string
+}
+
+func SkillsForGovernance(ctx context.Context, db gen.DBTX, skillID pgtype.UUID, namePart string) ([]Governance, error) {
+	rows, err := gen.New(db).FindSkillsForGovernance(ctx, gen.FindSkillsForGovernanceParams{
+		SkillID: skillID, NamePart: namePart,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Governance, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, Governance(row))
+	}
+	return out, nil
+}

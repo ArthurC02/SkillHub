@@ -378,6 +378,21 @@ func (UnimplementedHandler) DownloadArtifactContent(ctx context.Context, params 
 	return r, ht.ErrNotImplemented
 }
 
+// FindSkillsForGovernance implements findSkillsForGovernance operation.
+//
+// Operator only. A `q` that is a UUID matches that skill id; anything else is a case-insensitive
+// substring of the name. Every workspace is searched, private and taken-down skills included, because
+// those are what public search cannot find and what an operator acts on. Deleted skills are never
+// listed. At most 20, newest first.
+//
+// Each match carries governance state only, never SKILL.md or the file tree, so this is not a
+// personal-data read and writes no audit event.
+//
+// GET /admin/skills
+func (UnimplementedHandler) FindSkillsForGovernance(ctx context.Context, params FindSkillsForGovernanceParams) (r FindSkillsForGovernanceRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // FinishGithubLogin implements finishGithubLogin operation.
 //
 // GitHub OAuth callback; creates user and workspace on first login.
@@ -424,6 +439,16 @@ func (UnimplementedHandler) GenerateSkill(ctx context.Context, req *GenerateSkil
 	return r, ht.ErrNotImplemented
 }
 
+// GetCostStatistics implements getCostStatistics operation.
+//
+// Operator only. The same numbers the start threshold and the session estimate read. No user or
+// workspace dimension. A kind that has never been computed is absent.
+//
+// GET /admin/cost-statistics
+func (UnimplementedHandler) GetCostStatistics(ctx context.Context) (r GetCostStatisticsRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetCreationLimits implements getCreationLimits operation.
 //
 // The session ceilings this deployment enforces. Mounted under the same double exposure flag as the
@@ -462,6 +487,21 @@ func (UnimplementedHandler) GetCreationSession(ctx context.Context, params GetCr
 //
 // GET /me/credits
 func (UnimplementedHandler) GetCreditBalance(ctx context.Context) (r GetCreditBalanceRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetCreditLedger implements getCreditLedger operation.
+//
+// Operator only. The balance and the 50 newest ledger entries of the account that owns this workspace:
+// how an operator confirms a grant landed, and answers "where did my credits go".
+//
+// Entries carry no reason. credit_entries is an immutable ledger with no reason column; the reason of
+// a grant is in its `credit.grant` audit event, listed by GET /admin/audit-log.
+//
+// Every call writes one `credit.lookup` audit event in the same transaction as the read.
+//
+// GET /admin/credits/{workspace_id}
+func (UnimplementedHandler) GetCreditLedger(ctx context.Context, params GetCreditLedgerParams) (r GetCreditLedgerRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -534,6 +574,16 @@ func (UnimplementedHandler) GetHealth(ctx context.Context) (r *Health, _ error) 
 //
 // GET /me
 func (UnimplementedHandler) GetMe(ctx context.Context) (r GetMeRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetOperatorRosters implements getOperatorRosters operation.
+//
+// Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still
+// an edit and a restart (ADR-074 decision 4). This only shows what is in force.
+//
+// GET /admin/rosters
+func (UnimplementedHandler) GetOperatorRosters(ctx context.Context) (r GetOperatorRostersRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -877,6 +927,17 @@ func (UnimplementedHandler) ListGenerationFailures(ctx context.Context) (r ListG
 	return r, ht.ErrNotImplemented
 }
 
+// ListOperatorAuditLog implements listOperatorAuditLog operation.
+//
+// Operator only. Newest first. The server decides which actions are operator actions; the account and
+// ledger lookups are among them. `skill.takedown` is also written by the owner's own takedown, so only
+// the events whose metadata carries `scope: operator` are listed.
+//
+// GET /admin/audit-log
+func (UnimplementedHandler) ListOperatorAuditLog(ctx context.Context, params ListOperatorAuditLogParams) (r ListOperatorAuditLogRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // ListPackagingTargets implements listPackagingTargets operation.
 //
 // One standard package plus two verified install profiles (PDM-008), which is how the product
@@ -985,6 +1046,21 @@ func (UnimplementedHandler) ListTestCases(ctx context.Context, params ListTestCa
 // POST /auth/logout
 func (UnimplementedHandler) Logout(ctx context.Context) error {
 	return ht.ErrNotImplemented
+}
+
+// LookupAccount implements lookupAccount operation.
+//
+// Operator only. Turns the email a person gave into the account and the workspace id that POST
+// /admin/credits/{workspace_id}/grants needs. Case-insensitive exact match against live accounts only,
+// the same rule as the unique email index.
+//
+// A hit is a read of somebody's personal data: it writes one `account.lookup` audit event naming the
+// operator and the account, in the same transaction as the read. A miss reads nobody's data and writes
+// nothing.
+//
+// GET /admin/accounts
+func (UnimplementedHandler) LookupAccount(ctx context.Context, params LookupAccountParams) (r LookupAccountRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // PreviewPackaging implements previewPackaging operation.

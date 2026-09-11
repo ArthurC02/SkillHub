@@ -374,6 +374,57 @@ func (q *Queries) ListCollectableObjects(ctx context.Context, rowLimit int32) ([
 	return items, nil
 }
 
+const listPlatformAuditEvents = `-- name: ListPlatformAuditEvents :many
+SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at FROM audit_events
+WHERE action = ANY($1::text[])
+   OR (action = ANY($2::text[]) AND metadata->>'scope' = $3::text)
+ORDER BY created_at DESC, id DESC
+LIMIT $5 OFFSET $4
+`
+
+type ListPlatformAuditEventsParams struct {
+	Actions       []string
+	ScopedActions []string
+	Scope         string
+	PageOffset    int32
+	PageLimit     int32
+}
+
+func (q *Queries) ListPlatformAuditEvents(ctx context.Context, arg ListPlatformAuditEventsParams) ([]AuditEvent, error) {
+	rows, err := q.db.Query(ctx, listPlatformAuditEvents,
+		arg.Actions,
+		arg.ScopedActions,
+		arg.Scope,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditEvent
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorUserID,
+			&i.WorkspaceID,
+			&i.Action,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Metadata,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSkillsPastDeletionGrace = `-- name: ListSkillsPastDeletionGrace :many
 SELECT sk.id,
        (EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)

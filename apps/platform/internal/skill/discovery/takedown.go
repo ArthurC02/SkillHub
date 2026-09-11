@@ -88,7 +88,7 @@ func (s *Service) Takedown(ctx context.Context, skillID, actor pgtype.UUID, reas
 		Action:       audit.ActionSkillTakedown,
 		ResourceType: audit.ResourceSkill,
 		ResourceID:   skillID,
-		Metadata:     map[string]any{"reason": reason, "scope": "operator"},
+		Metadata:     map[string]any{"reason": reason, "scope": audit.ScopeOperator},
 	}); err != nil {
 		return err
 	}

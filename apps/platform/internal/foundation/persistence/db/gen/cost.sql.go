@@ -234,6 +234,42 @@ func (q *Queries) InsertCostStatistics(ctx context.Context, arg InsertCostStatis
 	return i, err
 }
 
+const listLatestCostStatistics = `-- name: ListLatestCostStatistics :many
+SELECT DISTINCT ON (kind) id, kind, window_start, window_end, sample_count, p50_usd_micros, p90_usd_micros, p95_usd_micros, max_usd_micros, created_at FROM cost_statistics
+ORDER BY kind, window_end DESC
+`
+
+func (q *Queries) ListLatestCostStatistics(ctx context.Context) ([]CostStatistic, error) {
+	rows, err := q.db.Query(ctx, listLatestCostStatistics)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CostStatistic
+	for rows.Next() {
+		var i CostStatistic
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.WindowStart,
+			&i.WindowEnd,
+			&i.SampleCount,
+			&i.P50UsdMicros,
+			&i.P90UsdMicros,
+			&i.P95UsdMicros,
+			&i.MaxUsdMicros,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sweepSessionCostSummaries = `-- name: SweepSessionCostSummaries :execrows
 INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
 SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,

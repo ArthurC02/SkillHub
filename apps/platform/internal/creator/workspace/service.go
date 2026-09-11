@@ -379,3 +379,51 @@ func hashToken(token string) []byte {
 	h := sha256.Sum256([]byte(token))
 	return h[:]
 }
+
+type AccountLookup struct {
+	UserID              pgtype.UUID
+	Email               string
+	DisplayName         string
+	CreatedAt           pgtype.Timestamptz
+	DeletionRequestedAt pgtype.Timestamptz
+	WorkspaceID         pgtype.UUID
+	ProviderUserIDs     []string
+}
+
+func (s *Service) LookupAccount(ctx context.Context, email string, operatorID pgtype.UUID) (AccountLookup, bool, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return AccountLookup{}, false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.queries().WithTx(tx)
+
+	row, err := q.FindLiveUserByEmail(ctx, email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return AccountLookup{}, false, nil
+	}
+	if err != nil {
+		return AccountLookup{}, false, err
+	}
+	identities, err := q.GetIdentityProviderIDs(ctx, row.ID)
+	if err != nil {
+		return AccountLookup{}, false, err
+	}
+	if err := audit.Log(ctx, tx, audit.Event{
+		Actor:        operatorID,
+		Workspace:    row.WorkspaceID,
+		Action:       audit.ActionAccountLookup,
+		ResourceType: audit.ResourceAccount,
+		ResourceID:   row.ID,
+	}); err != nil {
+		return AccountLookup{}, false, err
+	}
+	found := AccountLookup{
+		UserID: row.ID, Email: row.Email, DisplayName: row.DisplayName, CreatedAt: row.CreatedAt,
+		DeletionRequestedAt: row.DeletionRequestedAt, WorkspaceID: row.WorkspaceID,
+	}
+	for _, id := range identities {
+		found.ProviderUserIDs = append(found.ProviderUserIDs, id.ProviderUserID)
+	}
+	return found, true, tx.Commit(ctx)
+}

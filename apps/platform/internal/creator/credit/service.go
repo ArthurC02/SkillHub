@@ -26,8 +26,6 @@ var (
 	ErrAccountGone = errors.New("credit: account not eligible")
 )
 
-const auditActionGrant = "credit.grant"
-
 type AccountFacts struct {
 	Exists bool
 	Purged bool
@@ -353,7 +351,7 @@ func (s *Service) Grant(ctx context.Context, tx DBTX, in GrantInput) (int64, err
 		return 0, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
-		Actor: in.OperatorID, Workspace: in.WorkspaceID, Action: auditActionGrant,
+		Actor: in.OperatorID, Workspace: in.WorkspaceID, Action: audit.ActionCreditGrant,
 		ResourceType: "credit_entry", ResourceID: in.UserID,
 		Metadata: map[string]any{"kind": in.EntryKind, "credits": in.Credits, "reason": in.Reason},
 	}); err != nil {
@@ -389,4 +387,39 @@ func (s *Service) SummarizeSession(ctx context.Context, tx pgx.Tx, sessionID pgt
 		return err
 	}
 	return sp.Commit(ctx)
+}
+
+type Ledger struct {
+	Balance int64
+	Entries []LedgerEntry
+}
+
+const ledgerEntryLimit = 50
+
+func (s *Service) Ledger(ctx context.Context, tx DBTX, userID, workspaceID, operatorID pgtype.UUID) (Ledger, error) {
+	if s.Store == nil {
+		return Ledger{}, ErrUnavailable
+	}
+	balance, err := s.Store.Balance(ctx, tx, userID)
+	if err != nil {
+		return Ledger{}, err
+	}
+	entries, err := s.Store.RecentEntries(ctx, tx, userID, ledgerEntryLimit)
+	if err != nil {
+		return Ledger{}, err
+	}
+	if err := audit.Log(ctx, tx, audit.Event{
+		Actor: operatorID, Workspace: workspaceID, Action: audit.ActionCreditLookup,
+		ResourceType: audit.ResourceCreditAccount, ResourceID: userID,
+	}); err != nil {
+		return Ledger{}, err
+	}
+	return Ledger{Balance: balance, Entries: entries}, nil
+}
+
+func (s *Service) LatestStatistics(ctx context.Context) ([]KindStatistics, error) {
+	if s.Store == nil {
+		return nil, ErrUnavailable
+	}
+	return s.Store.LatestStatistics(ctx)
 }

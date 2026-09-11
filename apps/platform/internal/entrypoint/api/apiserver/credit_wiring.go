@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -97,4 +98,22 @@ func wireGenerateCredit(
 		}
 		return check.OK, nil
 	}
+}
+
+func (l *creditLedger) Ledger(ctx context.Context, workspaceID, operatorID pgtype.UUID) (credit.Ledger, error) {
+	userID, err := l.owner(ctx, workspaceID)
+	if err != nil {
+		return credit.Ledger{}, err
+	}
+	var ledger credit.Ledger
+	err = pgx.BeginFunc(ctx, l.pool, func(tx pgx.Tx) error {
+		var err error
+		ledger, err = l.svc.Ledger(ctx, tx, userID, workspaceID, operatorID)
+		return err
+	})
+	return ledger, err
+}
+
+func (l *creditLedger) CostStatistics(ctx context.Context) ([]credit.KindStatistics, error) {
+	return l.svc.LatestStatistics(ctx)
 }

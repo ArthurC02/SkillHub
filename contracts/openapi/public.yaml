@@ -2436,6 +2436,211 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/accounts:
+    get:
+      operationId: lookupAccount
+      summary: Find an account by email (02:OPS-002)
+      description: |
+        Operator only. Turns the email a person gave into the account and the
+        workspace id that POST /admin/credits/{workspace_id}/grants needs.
+        Case-insensitive exact match against live accounts only, the same
+        rule as the unique email index.
+
+        A hit is a read of somebody's personal data: it writes one
+        `account.lookup` audit event naming the operator and the account, in
+        the same transaction as the read. A miss reads nobody's data and
+        writes nothing.
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "200":
+          description: The one live account with this email.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountLookup" }
+        "400":
+          description: "`email` is missing or blank."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            No live account has this email, or the caller is not an operator.
+            One answer for both, like every other operator route.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/credits/{workspace_id}:
+    parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getCreditLedger
+      summary: Balance and recent entries of one account (02:OPS-003)
+      description: |
+        Operator only. The balance and the 50 newest ledger entries of the
+        account that owns this workspace: how an operator confirms a grant
+        landed, and answers "where did my credits go".
+
+        Entries carry no reason. credit_entries is an immutable ledger with no
+        reason column; the reason of a grant is in its `credit.grant` audit
+        event, listed by GET /admin/audit-log.
+
+        Every call writes one `credit.lookup` audit event in the same
+        transaction as the read.
+      responses:
+        "200":
+          description: The account's balance and newest entries.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreditLedger" }
+        "404":
+          description: No such workspace, or the caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/skills:
+    get:
+      operationId: findSkillsForGovernance
+      summary: Find skills to govern, in every workspace (02:OPS-004)
+      description: |
+        Operator only. A `q` that is a UUID matches that skill id; anything
+        else is a case-insensitive substring of the name. Every workspace is
+        searched, private and taken-down skills included, because those are
+        what public search cannot find and what an operator acts on. Deleted
+        skills are never listed. At most 20, newest first.
+
+        Each match carries governance state only, never SKILL.md or the file
+        tree, so this is not a personal-data read and writes no audit event.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "200":
+          description: Zero or more matches.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [skills]
+                properties:
+                  skills:
+                    type: array
+                    items: { $ref: "#/components/schemas/SkillGovernance" }
+        "400":
+          description: "`q` is missing or blank."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/rosters:
+    get:
+      operationId: getOperatorRosters
+      summary: The two rosters in force, read-only (02:OPS-005)
+      description: |
+        Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment
+        config; changing either is still an edit and a restart (ADR-074
+        decision 4). This only shows what is in force.
+      responses:
+        "200":
+          description: Both rosters, sorted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [operator_user_ids, beta_allowlist]
+                properties:
+                  operator_user_ids:
+                    type: array
+                    items: { type: string, format: uuid }
+                  beta_allowlist:
+                    type: array
+                    items: { type: string }
+                    description: |
+                      Identity-provider user ids. Empty when no allowlist is
+                      configured, and then every signed-in account counts as
+                      invited.
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/audit-log:
+    get:
+      operationId: listOperatorAuditLog
+      summary: What operators did, platform-wide (02:OPS-006)
+      description: |
+        Operator only. Newest first. The server decides which actions are
+        operator actions; the account and ledger lookups are among them.
+        `skill.takedown` is also written by the owner's own takedown, so only
+        the events whose metadata carries `scope: operator` are listed.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: One page of events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/OperatorAuditEvent" }
+        "400":
+          description: "`limit` or `offset` is out of range."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/cost-statistics:
+    get:
+      operationId: getCostStatistics
+      summary: The newest statistics window of every cost kind (02:OPS-007)
+      description: |
+        Operator only. The same numbers the start threshold and the session
+        estimate read. No user or workspace dimension. A kind that has never
+        been computed is absent.
+      responses:
+        "200":
+          description: One window per computed kind.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statistics]
+                properties:
+                  statistics:
+                    type: array
+                    items: { $ref: "#/components/schemas/CostStatisticsWindow" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/runs/preflight:
     get:
       operationId: getRunPreflight
@@ -5086,6 +5291,7 @@ components:
           email,
           display_name,
           workspace_id,
+          operator,
           deletion_requested_at,
           purge_after,
           deletion_scope,
@@ -5101,6 +5307,13 @@ components:
         workspace_id:
           type: string
           format: uuid
+        operator:
+          type: boolean
+          description: |
+            Whether the caller is on this deployment's OPERATOR_USER_IDS. It only
+            tells the client whether to draw the entry to /admin; it grants
+            nothing. Every /admin route checks the roster itself and answers a
+            member 404 whatever this field says (ADR-074 decision 1).
         features:
           type: object
           additionalProperties:
@@ -5145,6 +5358,89 @@ components:
           description: |
             When the grace period ends and the purge becomes due; cancellable
             until then. Null exactly when `deletion_requested_at` is null.
+    AccountLookup:
+      type: object
+      required: [user_id, email, display_name, workspace_id, created_at, deletion_requested_at, in_beta_allowlist]
+      properties:
+        user_id: { type: string, format: uuid }
+        email: { type: string }
+        display_name: { type: string }
+        workspace_id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        deletion_requested_at:
+          type: [string, "null"]
+          format: date-time
+        in_beta_allowlist:
+          type: boolean
+          description: True when one of the account's identity-provider ids is on BETA_ALLOWLIST, or when no allowlist is configured.
+    CreditLedger:
+      type: object
+      required: [workspace_id, balance_credits, entries]
+      properties:
+        workspace_id: { type: string, format: uuid }
+        balance_credits: { type: integer, format: int64 }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/CreditLedgerEntry" }
+    CreditLedgerEntry:
+      type: object
+      required: [kind, delta_credits, ref_type, estimated, created_at]
+      properties:
+        kind: { type: string, enum: [debit, grant, topup, adjustment] }
+        delta_credits: { type: integer, format: int64 }
+        ref_type:
+          type: [string, "null"]
+          description: What the entry settles, such as run or operator_grant.
+        estimated:
+          type: boolean
+          description: True when a debit was charged at an estimate because the real cost could not be read.
+        created_at: { type: string, format: date-time }
+    SkillGovernance:
+      type: object
+      required: [skill_id, workspace_id, name, access_restriction, redistribution, takedown_at, takedown_reason]
+      properties:
+        skill_id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        name: { type: string }
+        access_restriction:
+          type: [string, "null"]
+          description: The restriction reason code, or null when the skill is not restricted.
+        redistribution: { type: string }
+        takedown_at:
+          type: [string, "null"]
+          format: date-time
+        takedown_reason: { type: [string, "null"] }
+    OperatorAuditEvent:
+      type: object
+      required: [actor_user_id, action, resource_type, resource_id, workspace_id, occurred_at, metadata]
+      properties:
+        actor_user_id:
+          type: [string, "null"]
+          format: uuid
+        action: { type: string }
+        resource_type: { type: string }
+        resource_id:
+          type: [string, "null"]
+          format: uuid
+        workspace_id:
+          type: [string, "null"]
+          format: uuid
+        occurred_at: { type: string, format: date-time }
+        metadata:
+          type: object
+          additionalProperties: true
+    CostStatisticsWindow:
+      type: object
+      required: [kind, window_start, window_end, sample_count, p50_usd_micros, p90_usd_micros, p95_usd_micros, max_usd_micros]
+      properties:
+        kind: { type: string }
+        window_start: { type: string, format: date-time }
+        window_end: { type: string, format: date-time }
+        sample_count: { type: integer, format: int64 }
+        p50_usd_micros: { type: [integer, "null"], format: int64 }
+        p90_usd_micros: { type: [integer, "null"], format: int64 }
+        p95_usd_micros: { type: [integer, "null"], format: int64 }
+        max_usd_micros: { type: [integer, "null"], format: int64 }
     AccountDeletion:
       type: object
       required: [deletion_requested_at, purge_after, cancellable, scope]

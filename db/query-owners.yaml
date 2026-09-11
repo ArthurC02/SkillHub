@@ -32,6 +32,7 @@ queries:
   DeleteExpiredAuditEvents: audit
   InsertAuditEvent: audit
   ListWorkspaceAuditEvents: audit
+  ListPlatformAuditEvents: audit
   ListWorkspaceDatasetObjectKeys: testlab
   ListWorkspaceRunArtifactObjectKeys: run
   ListWorkspaceDownloadArtifactObjectKeys: packaging

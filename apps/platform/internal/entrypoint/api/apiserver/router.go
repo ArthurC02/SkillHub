@@ -33,6 +33,8 @@ type Deps struct {
 
 	Credits *creditsHandler
 
+	OperatorAudit *operatorAuditHandler
+
 	Analytics *analytics.Handler
 
 	Limits *httpx.RateLimiter
@@ -108,11 +110,18 @@ func NewRouter(d Deps) http.Handler {
 
 	if d.Credits != nil {
 		mux.HandleFunc("POST /admin/credits/{workspace_id}/grants", auth.RequireOperator(d.Credits.Grant))
+		mux.HandleFunc("GET /admin/credits/{workspace_id}", auth.RequireOperator(d.Credits.Account))
+		mux.HandleFunc("GET /admin/cost-statistics", auth.RequireOperator(d.Credits.CostStatistics))
 	}
 
 	mux.HandleFunc("GET /admin/dispatch", auth.RequireOperator(d.Runs.Halts))
 	mux.HandleFunc("PUT /admin/dispatch/halt", auth.RequireOperator(d.Runs.DeclareHalt))
 	mux.HandleFunc("DELETE /admin/dispatch/halt", auth.RequireOperator(d.Runs.LiftHalt))
+
+	mux.HandleFunc("GET /admin/accounts", auth.RequireOperator(auth.LookupAccount))
+	mux.HandleFunc("GET /admin/rosters", auth.RequireOperator(auth.Rosters))
+	mux.HandleFunc("GET /admin/skills", auth.RequireOperator(d.Search.FindSkillsForGovernance))
+	mux.HandleFunc("GET /admin/audit-log", auth.RequireOperator(d.OperatorAudit.List))
 
 	lab := d.TestLab
 	mux.HandleFunc("GET /test-cases/limits", auth.RequireSession(lab.Limits))

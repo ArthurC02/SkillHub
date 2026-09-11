@@ -105,3 +105,12 @@ ORDER BY id;
 -- name: ListLiveSkillIDs :many
 SELECT id FROM skills
 WHERE id = ANY(sqlc.arg(skill_ids)::uuid[]) AND deleted_at IS NULL AND takedown_at IS NULL;
+
+-- name: FindSkillsForGovernance :many
+SELECT id, workspace_id, name, access_restriction, redistribution, takedown_at, takedown_reason
+FROM skills
+WHERE deleted_at IS NULL
+  AND (id = sqlc.narg(skill_id)::uuid
+       OR (sqlc.narg(skill_id)::uuid IS NULL AND name ILIKE '%' || @name_part::text || '%'))
+ORDER BY created_at DESC, id
+LIMIT 20;
