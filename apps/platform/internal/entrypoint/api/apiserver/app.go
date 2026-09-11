@@ -20,6 +20,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -95,9 +96,11 @@ type App struct {
 func NewApp(cfg Config) (*App, error) {
 	analyticsPurgeSvc := &analytics.Service{Pool: cfg.Pool}
 	identitySvc := &identity.Service{Pool: cfg.Pool, OAuth: cfg.OAuth}
-	testlabSvc := &testlab.Service{Pool: cfg.Pool, MayStoreObjects: identitySvc.MayStoreObjects}
-	runPurgeSvc := &run.Service{Pool: cfg.Pool}
-	packagingPurgeSvc := &packaging.Service{Pool: cfg.Pool}
+	testlabSvc := &testlab.Service{
+		Pool: cfg.Pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
+	}
+	runPurgeSvc := &run.Service{Pool: cfg.Pool, ClearSightings: objreconcile.ClearArtifactSightings}
+	packagingPurgeSvc := &packaging.Service{Pool: cfg.Pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	registryPurgeSvc := &registry.Service{Pool: cfg.Pool}
 	ingestPurgeSvc := &ingest.Service{Pool: cfg.Pool}
 	creationPurgeSvc := &creation.Service{Pool: cfg.Pool}
@@ -171,6 +174,7 @@ func NewApp(cfg Config) (*App, error) {
 
 	runSvc := &run.Service{
 		Pool: cfg.Pool, TestLab: testlabSvc, Queue: jobs, Providers: cfg.Providers, Store: cfg.Store,
+		ClearSightings:     objreconcile.ClearArtifactSightings,
 		Quota:              cfg.Quota,
 		WorkspaceCreatedAt: auth.Service.WorkspaceCreatedAt,
 	}
@@ -187,6 +191,7 @@ func NewApp(cfg Config) (*App, error) {
 
 	packagingSvc := &packaging.Service{
 		Pool: cfg.Pool, TestLab: testlabSvc, Store: cfg.Store, Profiles: cfg.Profiles,
+		ClearSightings:  objreconcile.ClearArtifactSightings,
 		MayStoreObjects: identitySvc.MayStoreObjects,
 		Retention:       policy.DownloadRetention(cfg.DownloadRetention),
 		AppliedSuggestions: func(ctx context.Context, versionID, workspaceID pgtype.UUID) ([]packaging.AppliedSuggestion, error) {

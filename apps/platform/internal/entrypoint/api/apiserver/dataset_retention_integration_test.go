@@ -12,7 +12,7 @@ import (
 
 func purgeDatasets(t *testing.T, pool *pgxpool.Pool, store objreconcile.ObjectStore) int {
 	t.Helper()
-	svc := &testlab.Service{Pool: pool}
+	svc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	n, err := objreconcile.PurgeExpired(context.Background(), pool, store,
 		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ExpiredDatasetCandidates(ctx, limit)

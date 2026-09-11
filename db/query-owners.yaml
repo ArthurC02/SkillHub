@@ -117,6 +117,7 @@ queries:
 
   RecordObjectSighting: objreconcile
   ClearObjectSighting: objreconcile
+  ClearObjectSightings: objreconcile
   CountPersistentObjectSightings: objreconcile
 
   CreateRun: run

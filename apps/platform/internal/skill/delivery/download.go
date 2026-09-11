@@ -231,7 +231,9 @@ func (s *Service) DeleteDownload(ctx context.Context, ws identity.Workspace, id 
 		err = s.Store.Remove(cleanupCtx, row.ObjectKey)
 	}
 	if err == nil {
-		err = gen.New(conn).MarkArtifactPurged(cleanupCtx, row.ID)
+		err = pgx.BeginFunc(cleanupCtx, conn, func(tx pgx.Tx) error {
+			return s.MarkArtifactPurged(cleanupCtx, tx, row.ID)
+		})
 	}
 	if err != nil {
 		slog.Warn("download object not removed; cleanup will retry",

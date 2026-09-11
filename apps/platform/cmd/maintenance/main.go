@@ -76,7 +76,7 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
-	svc := &testlab.Service{Pool: pool}
+	svc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	n, err := objreconcile.PurgeExpired(ctx, pool, store,
 		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ExpiredDatasetCandidates(ctx, limit)
@@ -151,7 +151,7 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	n, err := objreconcile.PurgeExpired(ctx, pool, store,
 		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ExpiredArtifactCandidates(ctx, limit)
@@ -240,9 +240,9 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 
 func purgeService(pool *pgxpool.Pool) *identity.Service {
 	analyticsSvc := &analytics.Service{Pool: pool}
-	testlabSvc := &testlab.Service{Pool: pool}
-	runSvc := &run.Service{Pool: pool}
-	packagingSvc := &packaging.Service{Pool: pool}
+	testlabSvc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
+	runSvc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
+	packagingSvc := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	registrySvc := &registry.Service{Pool: pool}
 	ingestSvc := &ingest.Service{Pool: pool}
 	return &identity.Service{

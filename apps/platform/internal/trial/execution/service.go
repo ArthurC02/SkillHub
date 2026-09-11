@@ -95,6 +95,8 @@ type Service struct {
 
 	ActiveArtifactReferences func(ctx context.Context, db gen.DBTX, objectKey string) (int64, error)
 
+	ClearSightings func(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error
+
 	Queue *river.Client[pgx.Tx]
 
 	Providers *Registry
@@ -551,7 +553,9 @@ func (s *Service) DeleteArtifact(
 		err = s.Store.Remove(cleanupCtx, row.ObjectKey)
 	}
 	if err == nil {
-		err = gen.New(conn).MarkRunOutputPurged(cleanupCtx, row.ID)
+		err = pgx.BeginFunc(cleanupCtx, conn, func(tx pgx.Tx) error {
+			return s.MarkRunOutputPurged(cleanupCtx, tx, row.ID)
+		})
 	}
 	if err != nil {
 		slog.Warn("run artifact object not removed; cleanup will retry",

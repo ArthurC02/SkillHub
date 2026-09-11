@@ -93,10 +93,13 @@ func (s *Service) GuardDatasetObjectRemoval(
 }
 
 func (s *Service) MarkDatasetPurged(ctx context.Context, tx pgx.Tx, datasetID pgtype.UUID) error {
-	if s == nil || tx == nil {
+	if s == nil || tx == nil || s.ClearSightings == nil {
 		return errPersistenceNotConfigured
 	}
-	return gen.New(tx).MarkDatasetPurged(ctx, datasetID)
+	if err := gen.New(tx).MarkDatasetPurged(ctx, datasetID); err != nil {
+		return err
+	}
+	return s.ClearSightings(ctx, tx, []pgtype.UUID{datasetID})
 }
 
 func (s *Service) MarkDatasetObjectLost(ctx context.Context, tx pgx.Tx, datasetID pgtype.UUID) error {

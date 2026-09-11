@@ -13,11 +13,18 @@ func (*Service) WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceI
 	return gen.New(db).ListWorkspaceDatasetObjectKeys(ctx, workspaceID)
 }
 
-func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
+func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
+	if s.ClearSightings == nil {
+		return errPersistenceNotConfigured
+	}
 	q := gen.New(tx)
-	if _, err := q.DeleteWorkspaceDatasets(ctx, workspaceID); err != nil {
+	ids, err := q.DeleteWorkspaceDatasets(ctx, workspaceID)
+	if err != nil {
 		return err
 	}
-	_, err := q.DeleteWorkspaceTestCases(ctx, workspaceID)
+	if err := s.ClearSightings(ctx, tx, ids); err != nil {
+		return err
+	}
+	_, err = q.DeleteWorkspaceTestCases(ctx, workspaceID)
 	return err
 }

@@ -522,6 +522,7 @@ func TestARunArtifactCanBeListedAndDeletedOnItsOwn(t *testing.T) {
 	created := f.start(t)
 	artifactID := seedRunArtifact(t, a, pool, f.workspaceID, created.RunID, "report.csv")
 	objectKey := "run-artifacts/" + created.RunID + "/report.csv"
+	seedSighting(t, pool, "artifact", artifactID)
 
 	list := func() []map[string]any {
 		t.Helper()
@@ -553,6 +554,10 @@ func TestARunArtifactCanBeListedAndDeletedOnItsOwn(t *testing.T) {
 
 	if _, still := a.packages[objectKey]; still {
 		t.Error("the artifact row is gone and its bytes are not")
+	}
+	if n := countRows(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
+		mustUUID(t, artifactID)); n != 0 {
+		t.Error("the deleted run output left a stale missing-object sighting")
 	}
 
 	if n := countRows(t, pool,

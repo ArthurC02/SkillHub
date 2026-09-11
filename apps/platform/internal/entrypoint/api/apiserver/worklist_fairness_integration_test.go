@@ -700,7 +700,7 @@ func TestRetentionRemovesASharedObjectOnlyOncePerBatch(t *testing.T) {
 	}
 
 	store := &countingObjectStore{}
-	svc := &packaging.Service{Pool: pool}
+	svc := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	n, err := objreconcile.PurgeExpired(ctx, pool, store,
 		func(context.Context, int32) ([]objreconcile.Candidate, error) {
 			return candidates, nil
@@ -760,7 +760,7 @@ func TestDownloadRetentionKeepsBytesNeededByANewerArtifact(t *testing.T) {
 	}
 	defer single.Close()
 	store := &countingObjectStore{}
-	svc := &packaging.Service{Pool: single}
+	svc := &packaging.Service{Pool: single, ClearSightings: objreconcile.ClearArtifactSightings}
 	n, err := objreconcile.PurgeExpired(ctx, single, store,
 		func(context.Context, int32) ([]objreconcile.Candidate, error) {
 			return []objreconcile.Candidate{expired}, nil
@@ -812,7 +812,7 @@ func TestReconciliationChecksASharedObjectOnlyOncePerBatch(t *testing.T) {
 	store := &countingObjectStore{exists: map[string]bool{
 		"shared-live-key": true, "shared-dataset-key": true,
 	}}
-	svc := &packaging.Service{Pool: pool}
+	svc := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	noCandidates := func(context.Context, int32) ([]objreconcile.Candidate, error) { return nil, nil }
 	sweep := &objreconcile.Service{
 		Pool: pool, Store: store,

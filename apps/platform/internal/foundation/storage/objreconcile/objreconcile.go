@@ -173,6 +173,21 @@ func PurgeExpired(
 	return purged, nil
 }
 
+func ClearArtifactSightings(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error {
+	return clearSightings(ctx, tx, kindArtifact, ids)
+}
+
+func ClearDatasetSightings(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error {
+	return clearSightings(ctx, tx, kindDataset, ids)
+}
+
+func clearSightings(ctx context.Context, tx pgx.Tx, kind string, ids []pgtype.UUID) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return gen.New(tx).ClearObjectSightings(ctx, gen.ClearObjectSightingsParams{ResourceKind: kind, ResourceIds: ids})
+}
+
 func markPurged(ctx context.Context, pool *pgxpool.Pool, mark MarkFunc, artifactID pgtype.UUID) error {
 	tx, err := pool.Begin(ctx)
 	if err != nil {

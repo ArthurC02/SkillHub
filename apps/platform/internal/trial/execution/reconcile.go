@@ -34,10 +34,13 @@ func (s *Service) ExpiredArtifactCandidates(ctx context.Context, limit int32) ([
 }
 
 func (s *Service) MarkRunOutputPurged(ctx context.Context, tx pgx.Tx, artifactID pgtype.UUID) error {
-	if s == nil || tx == nil {
+	if s == nil || tx == nil || s.ClearSightings == nil {
 		return errReconcilePersistenceNotConfigured
 	}
-	return gen.New(tx).MarkRunOutputPurged(ctx, artifactID)
+	if err := gen.New(tx).MarkRunOutputPurged(ctx, artifactID); err != nil {
+		return err
+	}
+	return s.ClearSightings(ctx, tx, []pgtype.UUID{artifactID})
 }
 
 func (s *Service) ArtifactUploadIntentCandidates(ctx context.Context, limit int32) ([]ReconcileCandidate, error) {

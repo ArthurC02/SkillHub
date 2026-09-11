@@ -72,6 +72,8 @@ type Service struct {
 	ReadSkill       func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
 	MayStoreObjects func(context.Context, gen.DBTX, pgtype.UUID) (bool, error)
 
+	ClearSightings func(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error
+
 	LLM CriteriaSuggester
 }
 

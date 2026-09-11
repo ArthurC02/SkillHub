@@ -166,64 +166,92 @@ func (q *Queries) DeleteUserSessions(ctx context.Context, userID pgtype.UUID) (i
 	return result.RowsAffected(), nil
 }
 
-const deleteWorkspaceDatasets = `-- name: DeleteWorkspaceDatasets :execrows
+const deleteWorkspaceDatasets = `-- name: DeleteWorkspaceDatasets :many
 WITH cleanup_intents AS (
     DELETE FROM dataset_object_cleanup_intents i WHERE i.workspace_id = $1
-), sightings AS (
-    DELETE FROM object_reconcile_sightings s USING datasets d
-    WHERE s.resource_kind = 'dataset' AND s.resource_id = d.id AND d.workspace_id = $1
 )
 DELETE FROM datasets d WHERE d.workspace_id = $1
+RETURNING d.id
 `
 
-func (q *Queries) DeleteWorkspaceDatasets(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteWorkspaceDatasets, workspaceID)
+func (q *Queries) DeleteWorkspaceDatasets(ctx context.Context, workspaceID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, deleteWorkspaceDatasets, workspaceID)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return result.RowsAffected(), nil
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-const deleteWorkspaceDownloadArtifacts = `-- name: DeleteWorkspaceDownloadArtifacts :execrows
+const deleteWorkspaceDownloadArtifacts = `-- name: DeleteWorkspaceDownloadArtifacts :many
 WITH cleanup_intents AS (
     DELETE FROM download_object_cleanup_intents
     WHERE workspace_id = $1::uuid
-), sightings AS (
-    DELETE FROM object_reconcile_sightings s USING artifacts a
-    WHERE s.resource_kind = 'artifact' AND s.resource_id = a.id
-      AND a.workspace_id = $1::uuid AND a.kind = 'download_package'
 )
 DELETE FROM artifacts
 WHERE workspace_id = $1::uuid AND kind = 'download_package'
+RETURNING id
 `
 
-func (q *Queries) DeleteWorkspaceDownloadArtifacts(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteWorkspaceDownloadArtifacts, workspaceID)
+func (q *Queries) DeleteWorkspaceDownloadArtifacts(ctx context.Context, workspaceID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, deleteWorkspaceDownloadArtifacts, workspaceID)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return result.RowsAffected(), nil
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-const deleteWorkspaceRunArtifacts = `-- name: DeleteWorkspaceRunArtifacts :execrows
+const deleteWorkspaceRunArtifacts = `-- name: DeleteWorkspaceRunArtifacts :many
 WITH cleanup_intents AS (
     DELETE FROM run_artifact_upload_intents
     WHERE workspace_id = $1::uuid
-), sightings AS (
-    DELETE FROM object_reconcile_sightings s USING artifacts a
-    WHERE s.resource_kind = 'artifact' AND s.resource_id = a.id
-      AND a.workspace_id = $1::uuid AND a.kind = 'run_output'
 )
 DELETE FROM artifacts
 WHERE workspace_id = $1::uuid AND kind = 'run_output'
+RETURNING id
 `
 
-func (q *Queries) DeleteWorkspaceRunArtifacts(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteWorkspaceRunArtifacts, workspaceID)
+func (q *Queries) DeleteWorkspaceRunArtifacts(ctx context.Context, workspaceID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, deleteWorkspaceRunArtifacts, workspaceID)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return result.RowsAffected(), nil
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deleteWorkspaceTestCases = `-- name: DeleteWorkspaceTestCases :execrows

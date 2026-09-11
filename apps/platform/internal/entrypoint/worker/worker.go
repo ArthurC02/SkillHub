@@ -86,16 +86,17 @@ func datasetCandidates(list func(context.Context, int32) ([]testlab.ReconcileCan
 
 func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	set := &Set{WorkerKinds: map[string]bool{}, Scheduled: map[string]bool{}}
-	downloads := &packaging.Service{Pool: pool}
+	downloads := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	set.Packaging = downloads
 	registrySvc := &registry.Service{Pool: pool}
-	testlabSvc := &testlab.Service{Pool: pool}
+	testlabSvc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	downloads.TestLab = testlabSvc
 
 	set.Runs = &run.Service{
 		Pool: pool, Providers: deps.Providers, Store: deps.Store, Gateway: deps.Gateway,
-		TestLab:     testlabSvc,
-		TraceSigner: deps.TraceSigner, TraceIngestBaseURL: deps.TraceIngestBaseURL,
+		ClearSightings: objreconcile.ClearArtifactSightings,
+		TestLab:        testlabSvc,
+		TraceSigner:    deps.TraceSigner, TraceIngestBaseURL: deps.TraceIngestBaseURL,
 		ActiveArtifactReferences: downloads.ActiveArtifactReferences,
 	}
 	wiring.WireRunRegistryReaders(set.Runs, registrySvc)

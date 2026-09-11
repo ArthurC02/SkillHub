@@ -13,10 +13,6 @@ FROM candidates c WHERE a.id = c.id
 RETURNING a.id, a.workspace_id, a.object_key;
 
 -- name: MarkArtifactPurged :exec
-WITH cleared_sighting AS (
-    DELETE FROM object_reconcile_sightings
-    WHERE resource_kind = 'artifact' AND resource_id = $1
-)
 UPDATE artifacts SET purged_at = now()
 WHERE id = $1 AND kind = 'download_package' AND purged_at IS NULL;
 
@@ -35,10 +31,6 @@ FROM candidates c WHERE a.id = c.id
 RETURNING a.id, a.workspace_id, a.object_key;
 
 -- name: MarkRunOutputPurged :exec
-WITH cleared_sighting AS (
-    DELETE FROM object_reconcile_sightings
-    WHERE resource_kind = 'artifact' AND resource_id = $1
-)
 UPDATE artifacts SET purged_at = now()
 WHERE id = $1 AND kind = 'run_output' AND purged_at IS NULL;
 
@@ -86,10 +78,6 @@ FROM candidates c WHERE d.id = c.id
 RETURNING d.id, d.workspace_id, d.object_key;
 
 -- name: MarkDatasetPurged :exec
-WITH cleared_sighting AS (
-    DELETE FROM object_reconcile_sightings
-    WHERE resource_kind = 'dataset' AND resource_id = $1
-)
 UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
 WHERE id = $1 AND purged_at IS NULL;
 
@@ -143,6 +131,10 @@ RETURNING rounds;
 -- Deleting on each clear keeps rounds consecutive rather than cumulative.
 DELETE FROM object_reconcile_sightings
 WHERE resource_kind = $1 AND resource_id = $2;
+
+-- name: ClearObjectSightings :exec
+DELETE FROM object_reconcile_sightings
+WHERE resource_kind = @resource_kind AND resource_id = ANY(@resource_ids::uuid[]);
 
 -- name: CountPersistentObjectSightings :many
 SELECT resource_kind, count(*)::bigint AS sightings

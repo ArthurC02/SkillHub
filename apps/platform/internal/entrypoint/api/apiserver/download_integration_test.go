@@ -69,7 +69,7 @@ func (s *blockingRemoveStore) Remove(ctx context.Context, key string) error {
 }
 
 func newSweep(pool *pgxpool.Pool, store objreconcile.ObjectStore) *objreconcile.Service {
-	packagingSvc := &packaging.Service{Pool: pool}
+	packagingSvc := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	testlabSvc := &testlab.Service{Pool: pool}
 	packagingCandidates := func(list func(context.Context, int32) ([]packaging.ReconcileCandidate, error)) objreconcile.ListFunc {
 		return func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
@@ -703,6 +703,7 @@ func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {
 		t.Fatal("the artifact was not downloadable before the delete")
 	}
 	objectKey := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
+	seedSighting(t, pool, "artifact", art.ArtifactID)
 
 	for i := range 2 {
 		if code := c.status(t, http.MethodDelete, "/downloads/"+art.ArtifactID); code != http.StatusNoContent {
@@ -711,6 +712,10 @@ func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {
 	}
 	if _, ok := a.packages[objectKey]; ok {
 		t.Error("the stored object survived the delete")
+	}
+	if n := countRows(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
+		mustUUID(t, art.ArtifactID)); n != 0 {
+		t.Error("the deleted download left a stale missing-object sighting")
 	}
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusNotFound {
 		t.Error("content is still served after the delete")
@@ -921,5 +926,14 @@ func TestTheConfiguredRetentionIsWhatDecidesExpiry(t *testing.T) {
 	}
 	if d := time.Until(expires); d > 2*time.Hour || d < 30*time.Minute {
 		t.Errorf("expires in %s; the configured hour did not reach the row", d)
+	}
+}
+
+func seedSighting(t *testing.T, pool *pgxpool.Pool, kind, resourceID string) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(), `INSERT INTO object_reconcile_sightings
+		(resource_kind, resource_id, object_key, rounds) VALUES ($1, $2, 'seeded-sighting', 1)`,
+		kind, mustUUID(t, resourceID)); err != nil {
+		t.Fatal(err)
 	}
 }

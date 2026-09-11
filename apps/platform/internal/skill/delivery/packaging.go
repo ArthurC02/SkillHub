@@ -68,6 +68,8 @@ type Service struct {
 	TestLab         *testlab.Service
 	MayStoreObjects func(context.Context, gen.DBTX, pgtype.UUID) (bool, error)
 
+	ClearSightings func(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error
+
 	Profiles Profiles
 
 	Retention policy.DownloadRetention

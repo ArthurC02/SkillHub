@@ -9,10 +9,15 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
-func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
-	q := gen.New(tx)
-	_, err := q.DeleteWorkspaceRunArtifacts(ctx, workspaceID)
-	return err
+func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
+	if s.ClearSightings == nil {
+		return errReconcilePersistenceNotConfigured
+	}
+	ids, err := gen.New(tx).DeleteWorkspaceRunArtifacts(ctx, workspaceID)
+	if err != nil {
+		return err
+	}
+	return s.ClearSightings(ctx, tx, ids)
 }
 
 func (*Service) WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error) {

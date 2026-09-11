@@ -75,14 +75,12 @@ UNION
 SELECT object_key FROM download_object_cleanup_intents
 WHERE workspace_id = sqlc.arg(workspace_id)::uuid;
 
--- name: DeleteWorkspaceDatasets :execrows
+-- name: DeleteWorkspaceDatasets :many
 WITH cleanup_intents AS (
     DELETE FROM dataset_object_cleanup_intents i WHERE i.workspace_id = $1
-), sightings AS (
-    DELETE FROM object_reconcile_sightings s USING datasets d
-    WHERE s.resource_kind = 'dataset' AND s.resource_id = d.id AND d.workspace_id = $1
 )
-DELETE FROM datasets d WHERE d.workspace_id = $1;
+DELETE FROM datasets d WHERE d.workspace_id = $1
+RETURNING d.id;
 
 -- name: DeleteWorkspaceTestCases :execrows
 DELETE FROM test_cases
@@ -91,29 +89,23 @@ WHERE test_cases.workspace_id = $1
       SELECT 1 FROM test_case_snapshots s WHERE s.test_case_id = test_cases.id
   );
 
--- name: DeleteWorkspaceRunArtifacts :execrows
+-- name: DeleteWorkspaceRunArtifacts :many
 WITH cleanup_intents AS (
     DELETE FROM run_artifact_upload_intents
     WHERE workspace_id = sqlc.arg(workspace_id)::uuid
-), sightings AS (
-    DELETE FROM object_reconcile_sightings s USING artifacts a
-    WHERE s.resource_kind = 'artifact' AND s.resource_id = a.id
-      AND a.workspace_id = sqlc.arg(workspace_id)::uuid AND a.kind = 'run_output'
 )
 DELETE FROM artifacts
-WHERE workspace_id = sqlc.arg(workspace_id)::uuid AND kind = 'run_output';
+WHERE workspace_id = sqlc.arg(workspace_id)::uuid AND kind = 'run_output'
+RETURNING id;
 
--- name: DeleteWorkspaceDownloadArtifacts :execrows
+-- name: DeleteWorkspaceDownloadArtifacts :many
 WITH cleanup_intents AS (
     DELETE FROM download_object_cleanup_intents
     WHERE workspace_id = sqlc.arg(workspace_id)::uuid
-), sightings AS (
-    DELETE FROM object_reconcile_sightings s USING artifacts a
-    WHERE s.resource_kind = 'artifact' AND s.resource_id = a.id
-      AND a.workspace_id = sqlc.arg(workspace_id)::uuid AND a.kind = 'download_package'
 )
 DELETE FROM artifacts
-WHERE workspace_id = sqlc.arg(workspace_id)::uuid AND kind = 'download_package';
+WHERE workspace_id = sqlc.arg(workspace_id)::uuid AND kind = 'download_package'
+RETURNING id;
 
 -- name: PurgeUnreferencedSkills :execrows
 WITH referenced AS (

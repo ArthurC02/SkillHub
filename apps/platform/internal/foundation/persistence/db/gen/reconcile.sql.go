@@ -27,6 +27,21 @@ func (q *Queries) ClearObjectSighting(ctx context.Context, arg ClearObjectSighti
 	return err
 }
 
+const clearObjectSightings = `-- name: ClearObjectSightings :exec
+DELETE FROM object_reconcile_sightings
+WHERE resource_kind = $1 AND resource_id = ANY($2::uuid[])
+`
+
+type ClearObjectSightingsParams struct {
+	ResourceKind string
+	ResourceIds  []pgtype.UUID
+}
+
+func (q *Queries) ClearObjectSightings(ctx context.Context, arg ClearObjectSightingsParams) error {
+	_, err := q.db.Exec(ctx, clearObjectSightings, arg.ResourceKind, arg.ResourceIds)
+	return err
+}
+
 const countLiveDatasetsSharingObject = `-- name: CountLiveDatasetsSharingObject :one
 SELECT count(*) FROM datasets
 WHERE object_key = $1 AND deleted_at IS NULL AND purged_at IS NULL
@@ -366,10 +381,6 @@ func (q *Queries) LockDatasetObjectKey(ctx context.Context, objectKey string) er
 }
 
 const markArtifactPurged = `-- name: MarkArtifactPurged :exec
-WITH cleared_sighting AS (
-    DELETE FROM object_reconcile_sightings
-    WHERE resource_kind = 'artifact' AND resource_id = $1
-)
 UPDATE artifacts SET purged_at = now()
 WHERE id = $1 AND kind = 'download_package' AND purged_at IS NULL
 `
@@ -399,10 +410,6 @@ func (q *Queries) MarkDatasetObjectLost(ctx context.Context, id pgtype.UUID) err
 }
 
 const markDatasetPurged = `-- name: MarkDatasetPurged :exec
-WITH cleared_sighting AS (
-    DELETE FROM object_reconcile_sightings
-    WHERE resource_kind = 'dataset' AND resource_id = $1
-)
 UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
 WHERE id = $1 AND purged_at IS NULL
 `
@@ -422,10 +429,6 @@ func (q *Queries) MarkDownloadCleanupIntentPurged(ctx context.Context, id pgtype
 }
 
 const markRunOutputPurged = `-- name: MarkRunOutputPurged :exec
-WITH cleared_sighting AS (
-    DELETE FROM object_reconcile_sightings
-    WHERE resource_kind = 'artifact' AND resource_id = $1
-)
 UPDATE artifacts SET purged_at = now()
 WHERE id = $1 AND kind = 'run_output' AND purged_at IS NULL
 `

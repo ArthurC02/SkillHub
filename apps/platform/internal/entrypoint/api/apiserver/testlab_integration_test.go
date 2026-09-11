@@ -540,6 +540,7 @@ func TestDatasetDeletionRemovesTheObject(t *testing.T) {
 	_, body := alice.upload(t, "/test-cases/"+id+"/datasets", "rows.csv", csvBytes(512))
 	datasetID := body["dataset_id"].(string)
 	keyCount := len(a.packages)
+	seedSighting(t, pool, "dataset", datasetID)
 
 	code, body := alice.doJSON(t, http.MethodDelete, "/test-cases/"+id+"/datasets/"+datasetID, "")
 	if code != http.StatusOK || body["deleted"] != true {
@@ -547,6 +548,10 @@ func TestDatasetDeletionRemovesTheObject(t *testing.T) {
 	}
 	if len(a.packages) != keyCount-1 {
 		t.Error("the stored object survived the deletion")
+	}
+	if n := countRows(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
+		mustUUID(t, datasetID)); n != 0 {
+		t.Error("the deleted dataset left a stale missing-object sighting")
 	}
 	if _, list := alice.doJSON(t, http.MethodGet, "/test-cases/"+id+"/datasets", ""); len(list["datasets"].([]any)) != 0 {
 		t.Errorf("deleted dataset still listed: %v", list)

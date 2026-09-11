@@ -794,7 +794,7 @@ type labelledJSON struct {
 
 func purgeRunOutputs(t *testing.T, pool *pgxpool.Pool, store objreconcile.ObjectStore) int {
 	t.Helper()
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	n, err := objreconcile.PurgeExpired(context.Background(), pool, store,
 		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ExpiredArtifactCandidates(ctx, limit)

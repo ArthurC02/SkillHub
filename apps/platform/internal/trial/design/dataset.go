@@ -297,7 +297,9 @@ func (s *Service) removeDatasetObject(ctx context.Context, ds gen.Dataset) {
 		slog.Warn("dataset object not removed; retention sweep will retry", "error", err)
 		return
 	}
-	if err := gen.New(s.Pool).MarkDatasetPurged(cleanupCtx, ds.ID); err != nil {
+	if err := pgx.BeginFunc(cleanupCtx, s.Pool, func(tx pgx.Tx) error {
+		return s.MarkDatasetPurged(cleanupCtx, tx, ds.ID)
+	}); err != nil {
 
 		slog.Warn("dataset object removed but cleanup state was not recorded; retention sweep will retry", "error", err)
 	}
