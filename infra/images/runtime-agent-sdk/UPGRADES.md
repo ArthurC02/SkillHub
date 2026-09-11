@@ -550,3 +550,22 @@ docker run … anchore/grype:v0.117.0@sha256:ddf9e9f2… sbom:/scan/sbom.spdx.js
 ```
 
 I-05、`UPGRADES.md` 標題與 I-02 三道靜態閘門以 `runtime-image.yml` 的原腳本在本機重播，全數通過。
+
+### 2026-09-11：ADR-023 §2 四項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:8f465e4f2522ae2b8a5b551c07010a48f11ffb407d25a70bbaacef3f49945cdb`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-10`，[runtime-image #34545703806](https://github.com/ArthurC02/SkillHub/actions/runs/34545703806) 於 commit `e649ef88` 發佈；以 digest `docker pull`） |
+| 環境 | 本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress` ＋ 以 `debian:12-slim` 容器跑、自 `785aeb5b` 交叉編譯的 `sandboxd`（`SKILLHUB_SANDBOX_IMAGE` 設成上面的 digest 參照）；兩支測試二進位同樣交叉編譯後在容器裡跑，DB 是一次性的 `skillhub_r10_test`，物件放獨立 bucket；允許清單沿用 dev 那份（`pinned_ip` 指 litellm 在 `skillhub_egress` 的位址），committed 的那份一字未動 |
+| 費用 | 合計約 **$0.05**（`gpt-5.4-mini`）：harness 兩支 $0.02534175、端到端一次 $0.0211392；第一次端到端被閘道以 400 拒絕，未計費。第 3 項用一把 6 小時、0.5 USD 上限、只准 `gpt-5.4-mini` 的 Virtual Key，跑完即以 `/key/delete` 撤銷 |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. 依賴集以新 digest 跑 import 檢查** | ✅ **通過** | `docker run --rm --network none --user 65532:65532 --entrypoint python3 …@sha256:8f465e4f… -c '…'` → `OK 17/17 3.11.2`，外加 `-3` 節那三則功能斷言（exit 0）。同一映像 `node --version` → `v22.23.2`、`command -v nc` → `NO_NC`、`command -v npm` → `NO_NPM`、`id -u` → `65532` |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（21.30s）：`gateway-reported cost for this run: $0.021139`，Run `succeeded`；撤銷後的 401 由該測試自己斷言。第 3 項那把金鑰撤銷後，拿它打 `/v1/models` 回 **401** |
+| **3. usage 發出條件、caching 欄位與對帳** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（`in=16504 out=26 token_source=result cost=0.012495/gateway`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（撞上限仍回報 `in=16504 out=24 cost=0.02534175`，這是該金鑰到當下的累計值）。**對帳逐分錢一致**：`/spend/logs?api_key=…` 三列 `0.012495`＋`0.00036075`＋`0.012486`＝**`0.02534175`**＝`/key/info` 的 spend＝harness 回報值（`-8` 那次沒做成的這一半，這次做成了）。**caching 欄位仍全為 `null`**：端到端那次 `usage` 事件的 `cache_read_input_tokens`／`cache_write_input_tokens` 皆 `null` |
+| **4. Skill 載入條件（含套件內腳本真的被執行）** | ✅ **通過** | 同第 2 項那次 Run 的 trace：`skill_activation {"skill_name":"run-marker","decision":"activated"}` → `tool_call` `Bash` `cd /work/.claude/skills/run-marker && python3 scripts/check.py` → `script_log {"stream":"stdout","message":"SKILLHUB-SCRIPT-RAN py3.11"}` |
+
+**跑法上的一個坑**：第一次端到端 Run 以 `workload_error` 結束，trace 寫著閘道回 400 `Invalid model name passed in model=claude-opus-5`。`claude-opus-5` 不在 repo 任何地方——那是 `SKILLHUB_RUN_MODEL` 未設時 SDK 自己帶的預設模型，而本機閘道沒有它。設 `SKILLHUB_RUN_MODEL=gpt-5.4-mini` 後同一支測試直接通過。這不是映像的問題；跑這支測試要設這個變數。
+
+**預設映像同批從 `-8` 移到 `-10`**：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例。`-9` 那節寫的「這個修補還沒有到達任何一個在跑的東西」到此為止：CVE-2026-86145 的修補隨 `-10` 進入預設映像，`04` 丙-225 同批結案。

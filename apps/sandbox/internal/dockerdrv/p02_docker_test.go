@@ -53,7 +53,7 @@ func TestProbeEgressAgainstARealListener(t *testing.T) {
 
 func probeImage(t *testing.T, cli *client.Client) string {
 	t.Helper()
-	const runtimeImage = "skillhub/runtime-agent-sdk:2026.08-8"
+	const runtimeImage = "skillhub/runtime-agent-sdk:2026.08-10"
 	img := runtimeImage
 	if v := os.Getenv("SKILLHUB_SANDBOX_TEST_IMAGE"); v != "" {
 		img = v
