@@ -93,7 +93,7 @@
 | 項 | 現在是什麼狀態 | 追認之後 |
 | --- | --- | --- |
 | **PDM-006**（保存期限分級表 ＋ §6.1 帳號刪除分類） | **三個變數全部未設，而三者都 fail-closed**：`DOWNLOAD_ARTIFACT_RETENTION` 未設 ⇒ **打包建立回 503**（生產上整條打包路徑是死的）；`ANALYTICS_RETENTION` 未設 ⇒ **不設 cookie、不寫任何一列** ⇒ `BETA-002` 的漏斗量不到任何東西；`TRACE_RETENTION` 未設 ⇒ **`rotate-partitions` 整個 job 拒絕執行** | 三個變數有值、`RELEASE-005` 可判、封測收得到讀數 |
-| **PDM-010**（首月額度語意二選一） | ~~強制點已經在跑，但 `RUN_QUOTA` 未開 ⇒ **額度不強制、`GET /me/quota` 不掛載、preflight 不帶配額區塊**~~ **⚠️ 這一格描述錯了**：那是 `RUN_QUOTA=off` 的行為，**未設反而是用提案值強制**（`quotaFromEnv` 的註解逐字寫明這個不對稱是刻意的——未設的保存期限代表不蒐集，是安全的；未設的額度代表唯一的成本上限是開的，不安全）。<br>**2026-08-23：負責人裁定本次封測不限制額度 ⇒ 顯式設 `RUN_QUOTA=off`** → [ADR-055](../adr/ADR-055-the-run-allowance-is-turned-off-and-that-took-an-action.md)。**「不限制」是一個動作不是維持現狀。** | ~~剩餘次數與重置時間對使用者看得見~~ **本次封測看不見**（顯示與強制一起關，乙-2 的教訓：**沒有被強制的數字不得出現在畫面上**）。PDM-010 的四個值**仍待追認**，程式碼與測試未動，拿掉 `RUN_QUOTA` 即回到強制 |
+| **PDM-010**（首月額度語意二選一） | ~~強制點已經在跑，但 `RUN_QUOTA` 未開 ⇒ **額度不強制、`GET /me/quota` 不掛載、preflight 不帶配額區塊**~~ **⚠️ 這一格描述錯了**：那是 `RUN_QUOTA=off` 的行為，**未設反而是用提案值強制**（這個不對稱是刻意的——未設的保存期限代表不蒐集，是安全的；未設的額度代表唯一的成本上限是開的，不安全）。<br>**2026-08-23：負責人裁定本次封測不限制額度 ⇒ 顯式設 `RUN_QUOTA=off`** → [ADR-055](../adr/ADR-055-the-run-allowance-is-turned-off-and-that-took-an-action.md)。**「不限制」是一個動作不是維持現狀。** | ~~剩餘次數與重置時間對使用者看得見~~ **本次封測看不見**（顯示與強制一起關，乙-2 的教訓：**沒有被強制的數字不得出現在畫面上**）。PDM-010 的四個值**仍待追認**，程式碼與測試未動，拿掉 `RUN_QUOTA` 即回到強制 |
 
 **PDM-006 是本清單上單一影響最大的一項**，而且它的影響不是「某個工作項不能勾」——**是封測跑完 14 天之後沒有任何資料可以拿來判定 `RELEASE-009` 的 B2 門檻**（前六段無一段低於 50%）。**MVP 存在的理由是驗證 `01` §4.1 的五個假設，而驗證工具就是那個漏斗。** 不追認它，這次封測買到的是感想而不是數字。
 
@@ -190,7 +190,7 @@ PDM-001／002／003／003×011／004／005／008（兩列）：**值都已經在
 
 **已落地**：
 
-- Migration `db/migrations/0061_skill_category_source.sql`：`skills` 加 `category_source text`（`CHECK IN ('curated','owner')`），加一條配對 CHECK 保證 `category` 與 `category_source` 同生同滅；既有 45 筆策展列回填 `'curated'`。註解逐字解釋為什麼不是 `'model'`（上面第 2 點的付費理由）。
+- Migration `db/migrations/0061_skill_category_source.sql`：`skills` 加 `category_source text`（`CHECK IN ('curated','owner')`），加一條配對 CHECK 保證 `category` 與 `category_source` 同生同滅；既有 45 筆策展列回填 `'curated'`。為什麼不是 `'model'`，理由見上面第 2 點的付費理由。
 - `db/queries/skills.sql` 新增 `SetSkillCategory`；owner 為 `apps/platform/internal/skill/library/registry.go`（`registry.Service.SetCategory`，`category == nil` 同時清空兩欄）。
 - `PUT /skills/{id}/category` 掛在 `RequireSession`（不是 operator），只能改自己工作區的 Skill，別人的一律 404（同 WS-006 的「讀得到、動不了」）；四支整合測試（`skill_category_integration_test.go`）：擁有者三值皆可設、`unassigned` 兩欄一起清、別的工作區 404 且未寫入、無 session 401。
 - 讀取面：`skill/discovery/category.go` 的 `Category.Display(source *string)` 依 `category_source` 換 note 的第一句——`owner` 顯示「由擁有者標示」，其餘（含 `curated` 與任何未來未知值）顯示「由平台策展時分類」；`CategoryUnassigned` 維持「尚未定值」不變。**沒有新增契約欄位**，note 是 `Labelled` 既有欄位。
@@ -232,7 +232,7 @@ PDM-001／002／003／003×011／004／005／008（兩列）：**值都已經在
 
 ## R-21｜套件裡的巢狀壓縮檔要不要拒（PDM-005 §5.1b 說拒，程式沒有拒）
 
-**2026-08-28 新增。這一項是程式自己記下來的，而它從未進過任何清單。** `apps/platform/internal/shared/skillpkg/archive.go` 的註解逐字寫著：巢狀壓縮**不拒**，而且「that one is **a real gap** rather than a resolved disagreement」。
+**2026-08-28 新增。這一項是程式自己記下來的，而它從未進過任何清單。** `apps/platform/internal/shared/skillpkg/archive.go` 當時的註解逐字寫著：巢狀壓縮**不拒**，而且「that one is **a real gap** rather than a resolved disagreement」。
 
 **要決定什麼**：PDM-005 §5.1b 明訂「禁巢狀壓縮」，理由是它是繞過解壓上限的標準手法。程式沒有實作，理由也寫在同一段：**依副檔名拒絕會同時拒掉一個合法地把 zip 當範例資料附上的 Skill**。要嘛接受那個誤殺，要嘛承認這條禁令不做。
 
@@ -440,7 +440,7 @@ PDM-001／002／003／003×011／004／005／008（兩列）：**值都已經在
 
 **2026-09-08 追記：本項問的「趕不趕在 D 日之前」，答案是趕上了。** R-21 已裁定並落地（`nested-archive` 揭露、壓縮比上限加了又撤回，見該項）——本項的排程綁定因此在 D 日（2026-09-11）之前完成，落地細節不重複，見 R-21。
 
-**這一項要記的只有一件事**：`shared/skillpkg/archive.go` 的註解逐字寫著巢狀壓縮**不拒**、而且「that one is **a real gap** rather than a resolved disagreement」，並且寫著這件事「recorded rather than taken」——**而它被 record 在程式註解裡，不在任何一份清單上**，直到 2026-08-28 才由 R-21 收進來。
+**這一項要記的只有一件事**：`shared/skillpkg/archive.go` 當時的註解逐字寫著巢狀壓縮**不拒**、而且「that one is **a real gap** rather than a resolved disagreement」，並且寫著這件事「recorded rather than taken」——**而它被 record 在程式註解裡，不在任何一份清單上**，直到 2026-08-28 才由 R-21 收進來。
 
 **要決定什麼（R-21 沒問的那一半）**：**這個裁定要不要趕在 D 日（2026-09-11）之前**。
 
@@ -536,7 +536,7 @@ PDM-001／002／003／003×011／004／005／008（兩列）：**值都已經在
 **已查到的事實**
 
 - **值是刻意的，不是 bug。** 它必須是**決定性的**：同一個版本重打兩次要得到同一份 manifest。若它是「打包的那一刻」，兩次 byte-identical 的建置就會有不同的 manifest——而 `manifest_hash` 存在的整個目的正是回答「這兩包的**內容**是不是一樣」。schema 自己在兩處長描述裡把這件事寫清楚了。
-- **A5 已修掉會誤導的註解**（`delivery/export.go`），並在原地寫明「這個欄位該不該叫 `packaged_at` 是一個命名問題」。**程式面到此為止是誠實的。**
+- **A5 已修掉會誤導的註解**（`delivery/export.go`），當時在原地寫明「這個欄位該不該叫 `packaged_at` 是一個命名問題」。**程式面到此為止是誠實的。**
 - **改名的代價是 schema 版本**：`contracts/packaging/download-manifest.schema.json` 目前是 **1.1**，而 `packaged_at` 在 `required` 裡。改名 ＝ 對已下載過套件的人破壞相容。
 - **不改名的代價是誤讀**：讀 manifest 的人（**包括不會來讀 schema 描述的下游工具**）會把它當成打包時間戳。這是 `NFR-001`「UI 不得誤導」在交付物上的同一條紀律——只是這一次讀者不是使用者，是拿到 zip 的人。
 
@@ -654,7 +654,7 @@ PDM-001／002／003／003×011／004／005／008（兩列）：**值都已經在
 | v7（已欠） | 英文例句裡的專有名詞用英文名 | content-review-report 12.4 (b) |
 
 **這四條全部是「輸出對照原文可檢查的性質」**，而目前唯一的工具是「再往 prompt 加一句話，然後希望」。
-v6 自己的註解逐字說明了為什麼那個工具會失效：**「each half of the sentence is individually true,
+那個工具會失效的原因是：**「each half of the sentence is individually true,
 which is exactly what makes it read as supported」**——一條規則越是要靠比對原文才判得出來，
 越不可能靠寫在同一段 prompt 裡的一句話避免。
 
@@ -712,7 +712,7 @@ repair 只在違規時才發生。**若違規率是 v5 時代的 11/33，總成�
 | 選項 | 內容 | 代價 |
 | --- | --- | --- |
 | **(a) 只在 `enrich-skill` 做，帶上面五個硬性條件**（建議） | 一個端點、四個節點、一次修復上限 | 一批實作 ＋ 一次 CONTENT-005 重跑。**凍結期內要負責人放行** |
-| (b) 先做 prompt v7，暫不引入 | 零成本 | v7 是第四次「再加一句話」，而 v6 的註解已經說明這條路為什麼會失效 |
+| (b) 先做 prompt v7，暫不引入 | 零成本 | v7 是第四次「再加一句話」，而 v6 當時的註解已經說明這條路為什麼會失效 |
 | (c) 同時做 `suggest-improvements` 的三步（§2.3 點名的那個） | 範圍加倍 | **沒有量到的證據說它需要**，不像 enrich 有 11/33 與 docx 兩次 |
 
 **建議 (a)，而且要先問一個更便宜的問題**：verify 那一步**能不能不用模型**？
@@ -735,7 +735,7 @@ v5 那條（runtime 有沒有寫進 `limitations`）是字串比對；v4 的三�
 | v5：runtime 要進 `limitations` | **確定性** | import 行／shebang／副檔名／frontmatter 都是字串證據 |
 | v7（已欠）：英文例句不該有中日韓字 | **確定性** | 一個 codepoint 測試 |
 | 規則 2：品質形容詞 | **確定性**（詞表就寫在 prompt 裡） | 出現在輸出而原文沒宣稱過即為候選 |
-| 規則 1／3／4、v3 詞彙注釋 | 語義 | v6 註解說明為什麼寫一句話沒用 |
+| 規則 1／3／4、v3 詞彙注釋 | 語義 | v6 當時的註解說明為什麼寫一句話沒用 |
 
 **落地**：`apps/llm/src/skillhub_llm/enrich_checks.py`，每次增強都跑，**零模型呼叫、零費用**，
 findings 進 `EnrichSkillResponse.checks`（契約已補），**Go 側解碼並逐筆 log**
@@ -781,7 +781,7 @@ findings 不含任何模型文字（TM-SCN-02），這一點有獨立測試押�
 
 **已查到的事實**
 
-- **這道牆是刻意的，而且理由很硬**：淨測試模式的 driver 宣告 `isolation.level = "clean"`，而該等級的意思是**沒有邊界**，不是比較弱的邊界（ADR-059）。程式註解逐字寫著：「the cost of a wrong 'no' is a demo that will not start, and the cost of a wrong 'yes' is somebody else's code running on the operator's laptop as the operator.」
+- **這道牆是刻意的，而且理由很硬**：淨測試模式的 driver 宣告 `isolation.level = "clean"`，而該等級的意思是**沒有邊界**，不是比較弱的邊界（ADR-059）。理由是：「the cost of a wrong 'no' is a demo that will not start, and the cost of a wrong 'yes' is somebody else's code running on the operator's laptop as the operator.」
 - **平台分不出「我自己寫的」與「我從網路上抓來再上傳的」**。這正是 ADR-045 為 `self_supplied` 立下的同一條推理：判準只能是「誰的工作區帶進來的」，不是「內容可不可信」。所以**不能拿 `self_supplied` 當「可以在沒有沙箱的機器上執行」的依據**。
 - **`02:PORT-010` 自己預言過這個動作**：「今天實際成立的保護是『操作者不會去 Fork 一個陌生的 Skill 再按試跑』」——2026-08-31 那次派送是這道閘門第一次被真的 Run 觸發並擋下，它成立。
 - **今天的拒絕來得太晚**：`04` 丙-114 記著它發生在 `201 queued` **之後**——preflight 完整回答了權限摘要、confirm 回 201、建立回 201，**一秒後**才 failed。而 `requireCuratedContent()` 是一個對 Skill 的**純粹判斷**，preflight 完全問得起（設計 §2.2「顯示與強制成對」）。
@@ -803,7 +803,7 @@ findings 不含任何模型文字（TM-SCN-02），這一點有獨立測試押�
 
 **落地時長出兩件建議裡沒有的東西，兩件都改變了這個開關的形狀：**
 
-1. **開關不能長在產品的 UI 裡，而理由不是成本。** 上面那張表把 (c) 的代價寫成「要新的 operator 動作＋稽核＋UI」——**寫的時候漏掉了一件事**：這個模式跑在 `DEV_LOGIN=1` 上，**任何到得了那個頁面的人都能以任何身分登入，包含 operator**（`tools/cleanmode/start.mjs` 自己的註解就是這麼寫的，它正是靠這一點才敢把 operator 名冊發給展示匯入者）。所以一個長在該 UI 裡、寫著「允許這個不經沙箱執行」的按鈕，**按得動它的人包含剛剛上傳那個 Skill 的人**——那正是這道閘門存在要擋的那隻手。**一個 operator 端點在這個模式裡買不到任何東西。** 開關因此長在啟動 launcher 的那個鍵盤上（`SKILLHUB_CLEAN_MODE_RELEASES` 指向的檔案），而這不是省工的變通：`02:SEC-011` 對「單人團隊的 operator 名冊」已經給過一模一樣的答案（授予＝改部署環境並重啟）。
+1. **開關不能長在產品的 UI 裡，而理由不是成本。** 上面那張表把 (c) 的代價寫成「要新的 operator 動作＋稽核＋UI」——**寫的時候漏掉了一件事**：這個模式跑在 `DEV_LOGIN=1` 上，**任何到得了那個頁面的人都能以任何身分登入，包含 operator**（這正是 `tools/cleanmode/start.mjs` 敢把 operator 名冊發給展示匯入者的原因）。所以一個長在該 UI 裡、寫著「允許這個不經沙箱執行」的按鈕，**按得動它的人包含剛剛上傳那個 Skill 的人**——那正是這道閘門存在要擋的那隻手。**一個 operator 端點在這個模式裡買不到任何東西。** 開關因此長在啟動 launcher 的那個鍵盤上（`SKILLHUB_CLEAN_MODE_RELEASES` 指向的檔案），而這不是省工的變通：`02:SEC-011` 對「單人團隊的 operator 名冊」已經給過一模一樣的答案（授予＝改部署環境並重啟）。
 2. **環境變數不行，必須是檔案。** 被放行的版本**在啟動時還不存在**——它是使用者上傳之後才生出來的 id。只在啟動時讀一次的值，只能放行上一輪的內容。所以逐次讀一個可以在跑的時候編輯的檔案，改完下一次派送就生效、不必重啟。
 
 **稽核也換了形狀，而這一次是往「更耐得住」的方向**：刻意**不寫 DB audit event**，因為該模式的載體是記憶體內的 PGlite，一列關機就沒的稽核比操作者終端機裡那一行更差。紀錄有兩半：**檔案本身**（他寫下的理由，重啟後還在）＋**每一次被用到時的一行 `slog.Warn`**（說出 run、版本與放棄了什麼）。
@@ -1198,7 +1198,7 @@ findings 不含任何模型文字（TM-SCN-02），這一點有獨立測試押�
 
 **✅ 2026-08-27 追認：每日 10／每窗 30／首窗 20／窗長 30 天，照提案值，`04` 乙-22 結案。**
 
-**依據沒有重新推導，讀的就是 `generate_quota.go` 註解裡已經寫好的三個數**——生成實測 $0.00553（mini）與 $0.1186（flagship），Run 的閘道實付中位數 $0.0382。**這正是 [ADR-056](../adr/ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md) 決策 3 把估算依據寫進程式碼的目的**：讓追認是複審而不是重來。`policy.DefaultGenerateQuotaLimits()` 與它的四個常數**一個值都沒有改**。
+**依據沒有重新推導，讀的就是 `generate_quota.go` 當時註解裡已經寫好的三個數**——生成實測 $0.00553（mini）與 $0.1186（flagship），Run 的閘道實付中位數 $0.0382。**這正是 [ADR-056](../adr/ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md) 決策 3 把估算依據寫進程式碼的目的**：讓追認是複審而不是重來。`policy.DefaultGenerateQuotaLimits()` 與它的四個常數**一個值都沒有改**。
 
 **追認解除的是一條禁令，不是一個開關**——這個分別是本項唯一容易被讀錯的地方：
 
@@ -1286,7 +1286,7 @@ PDM-005 §5.1b 說的是**壓縮檔 10 MB／解壓後 100 MB**。`02:SEC-003` �
 共用一個數字的意思是：一個貼著上限的套件可以匯入成功、跑完試跑、評估完，
 **然後在旅程的最後一步被拒絕**，而所有的工都做完了。
 
-**2026-08-26 落地後補記，而它揭出一件本項讀者該知道的事**：`PACK-012` 的新常數**推導不完**，因為算式要的「打包能加的量」＝ 單筆大小 × **數量**，而**「一個 Skill 可以有幾個 Test Case」全 repo 沒有任何上限**（`03` **TEST-013**，同日新增）。`MaxProducedZipBytes` 因此寫成 `MaxZipBytes + 8 MiB`，其中 8 MiB ＝「1 MiB 平台自己的兩個檔 ＋ 約 48 個純文字 Test Case」，**而 48 是沒有來源的那一半**——常數註解如實寫著「真撞到時該補的不是這個數字，是那個不存在的 per-skill 上限」。**這對本項的意義**：無論 R-13 裁 10 MB 還是 32 MiB，**匯入上限都不是套件大小的唯一入口**——測試案例是第二個，而它今天無界。<br>**這個缺陷與選哪個數字無關**（`produced_cap == import_cap` 在任何數字下都留一段死區），
+**2026-08-26 落地後補記，而它揭出一件本項讀者該知道的事**：`PACK-012` 的新常數**推導不完**，因為算式要的「打包能加的量」＝ 單筆大小 × **數量**，而**「一個 Skill 可以有幾個 Test Case」全 repo 沒有任何上限**（`03` **TEST-013**，同日新增）。`MaxProducedZipBytes` 因此寫成 `MaxZipBytes + 8 MiB`，其中 8 MiB ＝「1 MiB 平台自己的兩個檔 ＋ 約 48 個純文字 Test Case」，**而 48 是沒有來源的那一半**——背後的道理是「真撞到時該補的不是這個數字，是那個不存在的 per-skill 上限」。**這對本項的意義**：無論 R-13 裁 10 MB 還是 32 MiB，**匯入上限都不是套件大小的唯一入口**——測試案例是第二個，而它今天無界。<br>**這個缺陷與選哪個數字無關**（`produced_cap == import_cap` 在任何數字下都留一段死區），
 所以它不等本項裁定，已開為 `03` **PACK-012**。查證附帶結論：`PackageFS` **不檢查壓縮總量**
 （它管條目數、單檔、深度、解壓總量），所以解耦**不會破壞 PACK-009 的不變式**。
 
@@ -1549,7 +1549,7 @@ macOS 落在已被覆蓋的那一端。**買第三種字型度量要付 5 倍價
 `skill_activation` 事件、也逐檔列出了產出的檔案；**評審自己的 summary 三段都寫著「三項驗收條件都有可驗證的證據」**。
 **兩條判準的答案是平台機械查出來的、完全不依賴那段被剪掉的摘錄，卻一起被降成不確定。**
 
-**這是一個已知未決，不是新發現**——`judge.go` 那段的註解逐字寫著：
+**這是一個已知未決，不是新發現**——`judge.go` 那段當時的註解逐字寫著：
 「whether a trimmed tail deserves the same conservatism as a missing event is a judgement about 丙-1's rule
 and is not decided by renaming it」。**缺的一直是「它多常發生」，現在有了：20 分之 4。**
 
@@ -1575,7 +1575,7 @@ and is not decided by renaming it」。**缺的一直是「它多常發生」，
 **決定之後**：改 `judge.go` 的 `merge()`；`02:EVAL-*` 的截斷句補一行說明降級的粒度；
 [m5/report-generate-baseline.md §9.3](mvp/m5/report-generate-baseline.md) 的發生率是重測的基準線。
 
-**2026-09-08 裁定並落地：採建議 (b)，逐判準降級。** `judge.go` 的 `merge()` 不再用一個批次布林值決定全部三條判準的命運：`evidenceCuts` 把「缺口」拆成兩種——`batch`（整批都擋，涵蓋最終輸出被剪、判準或 artifact 列被丟、manifest 讀不到、整段 trace 事件不見，這幾種缺口任何一條判準都洗不清）與 `trimmedEvents`（窄缺口，只記哪些 trace 事件的內容被剪了尾巴）。一條判準只有在**自己引用的證據**指向被剪的那個事件時才降成 `undetermined`（`restsOnATrimmedSource`）；引用平台自己 exact-match 查到的、沒被剪過的事件或 artifact manifest 列的判準，維持原本的判定。`batchWideCut()` 把「哪些截斷名稱算整批、哪些只算窄缺口」寫成一條規則：目前只有 `trace_digest.entries[].excerpt` 算窄缺口，其餘（`final_output`、`criteria`、`artifacts`、`artifacts.unreadable`、`trace_events`、`trace_digest.entries`）一律維持整批降級。**測試**：`TestATrimmedExcerptOnlySilencesTheCriterionThatCitesIt`（一條判準引用被剪事件降級、另一條引用未受影響的 artifact 維持 `passed`）、`TestOnlyAnExcerptCutIsNarrow`（逐一斷言每個截斷名稱該落在哪一類，含「一個整批缺口混進窄缺口裡仍算整批」）。程式註解逐字引用本項（「05 R-18: 20 measured runs put 4 through the truncation rule and 3 of those came back with every criterion undetermined」）。**尚未落地的一件**：「決定之後」原本要求的 `02:EVAL-*` 補一行說明降級粒度——查證 `02:EVAL-001` 目前仍只有 `NFR-002a` 那一條關於 Artifact 過期的補充，沒有這一句；本檔案不可修改 `02`，此項留給下一批。
+**2026-09-08 裁定並落地：採建議 (b)，逐判準降級。** `judge.go` 的 `merge()` 不再用一個批次布林值決定全部三條判準的命運：`evidenceCuts` 把「缺口」拆成兩種——`batch`（整批都擋，涵蓋最終輸出被剪、判準或 artifact 列被丟、manifest 讀不到、整段 trace 事件不見，這幾種缺口任何一條判準都洗不清）與 `trimmedEvents`（窄缺口，只記哪些 trace 事件的內容被剪了尾巴）。一條判準只有在**自己引用的證據**指向被剪的那個事件時才降成 `undetermined`（`restsOnATrimmedSource`）；引用平台自己 exact-match 查到的、沒被剪過的事件或 artifact manifest 列的判準，維持原本的判定。`batchWideCut()` 把「哪些截斷名稱算整批、哪些只算窄缺口」寫成一條規則：目前只有 `trace_digest.entries[].excerpt` 算窄缺口，其餘（`final_output`、`criteria`、`artifacts`、`artifacts.unreadable`、`trace_events`、`trace_digest.entries`）一律維持整批降級。**測試**：`TestATrimmedExcerptOnlySilencesTheCriterionThatCitesIt`（一條判準引用被剪事件降級、另一條引用未受影響的 artifact 維持 `passed`）、`TestOnlyAnExcerptCutIsNarrow`（逐一斷言每個截斷名稱該落在哪一類，含「一個整批缺口混進窄缺口裡仍算整批」）。程式註解當時逐字引用本項（「05 R-18: 20 measured runs put 4 through the truncation rule and 3 of those came back with every criterion undetermined」）。**尚未落地的一件**：「決定之後」原本要求的 `02:EVAL-*` 補一行說明降級粒度——查證 `02:EVAL-001` 目前仍只有 `NFR-002a` 那一條關於 Artifact 過期的補充，沒有這一句；本檔案不可修改 `02`，此項留給下一批。
 
 ---
 
@@ -1587,7 +1587,7 @@ and is not decided by renaming it」。**缺的一直是「它多常發生」，
 而同一段時間 **LiteLLM 收到 0 個模型請求**（逐條核對，那段時間的請求全是平台在查帳），`artifacts` 為空。
 `status_reason` 逐字是「workload ran to its own end and reported success」。
 
-**這不是設定的錯，設定那一半是刻意的**：`GatewayFromEnv` 的註解明寫「nil 是合法部署：不發 grant、egress 清單留空、
+**這不是設定的錯，設定那一半是刻意的**：`GatewayFromEnv` 背後的道理是「nil 是合法部署：不發 grant、egress 清單留空、
 Run 拿到一個沒有出路的沙箱——誠實，而且比半套設定安全」。**問題在於結果被記成成功。**
 
 **同一條路徑在閘道設好、模型名沒設時是 `failed`。設定越少越綠**，而 demo 當天最可能發生的就是少設一項。
@@ -1621,7 +1621,7 @@ Run 拿到一個沒有出路的沙箱——誠實，而且比半套設定安全�
 
 **已落地的第一段（本次批次）**：啟動器照三分類處理前提——
 ①**兩端都自己擁有的自己補**（`SKILLHUB_TRACE_INGEST_SECRET`／`_URL`／`PACKAGING_PROFILES_DIR`；
-sandbox token 一直是這樣做的，那段註解就是這條規則的原文）；
+sandbox token 一直是這樣做的，當時那段註解就是這條規則的原文）；
 ②**只有人知道的逐項報出來**（缺什麼、少了會怎樣、怎麼補）；
 ③**是承諾而不是參數的，報出來並說明為什麼沒有預設**（`DOWNLOAD_ARTIFACT_RETENTION`，`GOV-RETENTION-001`）。
 **只有一個組合被擋下**：設了閘道卻沒設 `SKILLHUB_RUN_MODEL`——那不是「比較小的部署」，是**不成立**的部署，
