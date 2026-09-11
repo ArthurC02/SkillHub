@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
@@ -88,7 +89,14 @@ func main() {
 	svc.Credit = &credit.Service{Store: credit.NewPostgresStore(pool), Config: creditCfg}
 
 	if keep := os.Getenv("REINDEX_REENRICH"); keep != "" {
-		reset, err := q.ResetCatalogueEnrichmentBefore(ctx, keep)
+		catalogs, err := (&identity.Service{Pool: pool}).CatalogWorkspaceIDs(ctx, pool)
+		if err != nil {
+			slog.Error("catalog workspaces", "error", err)
+			os.Exit(1)
+		}
+		reset, err := q.ResetCatalogueEnrichmentBefore(ctx, gen.ResetCatalogueEnrichmentBeforeParams{
+			PromptVersion: keep, CatalogWorkspaceIds: catalogs,
+		})
 		if err != nil {
 			slog.Error("re-enrichment reset", "error", err)
 			os.Exit(1)

@@ -27,13 +27,17 @@ const CreationDuplicateDistance = 0.55
 const CreationMaxDistance = MaxCosineDistance
 
 func (s *Service) CreationKnowledgeIDs(ctx context.Context, query string, maxDistance float64) (ids []string, costUSD float64, degraded bool, err error) {
+	catalogs, err := s.catalogWorkspaceIDs(ctx)
+	if err != nil {
+		return nil, 0, false, err
+	}
 	queries := gen.New(s.Pool)
 	lexical := func(op string, limit int32) ([]string, error) {
 		q := lexicalQuery(query, op)
 		if q == "" {
 			return nil, nil
 		}
-		rows, err := queries.CreationLexicalSearchSkills(ctx, gen.CreationLexicalSearchSkillsParams{Query: q, ResultLimit: limit})
+		rows, err := queries.CreationLexicalSearchSkills(ctx, gen.CreationLexicalSearchSkillsParams{CatalogWorkspaceIds: catalogs, Query: q, ResultLimit: limit})
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +100,13 @@ func (s *Service) CatalogReferenceFacts(ctx context.Context, skillID, versionID 
 	if err := vid.Scan(versionID); err != nil {
 		return "unknown", "unknown", 0, err
 	}
-	row, err := gen.New(s.Pool).GetCatalogReferenceFacts(ctx, gen.GetCatalogReferenceFactsParams{SkillID: sid, VersionID: vid})
+	catalogs, err := s.catalogWorkspaceIDs(ctx)
+	if err != nil {
+		return "unknown", "unknown", 0, err
+	}
+	row, err := gen.New(s.Pool).GetCatalogReferenceFacts(ctx, gen.GetCatalogReferenceFactsParams{
+		SkillID: sid, VersionID: vid, CatalogWorkspaceIds: catalogs,
+	})
 	if err != nil {
 		return "unknown", "unknown", 0, err
 	}

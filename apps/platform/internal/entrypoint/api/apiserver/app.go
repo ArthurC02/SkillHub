@@ -215,7 +215,8 @@ func NewApp(cfg Config) (*App, error) {
 	wirePackagingRegistryReaders(packagingSvc, registrySvc)
 	runSvc.ActiveArtifactReferences = packagingSvc.ActiveArtifactReferences
 	catalogSvc := &catalog.Service{
-		Pool: cfg.Pool, LLM: cfg.LLM, Store: cfg.Store, Analytics: funnel,
+		CatalogWorkspaces: identitySvc.CatalogWorkspaceIDs,
+		Pool:              cfg.Pool, LLM: cfg.LLM, Store: cfg.Store, Analytics: funnel,
 		SourceByID: func(ctx context.Context, workspaceID, sourceID pgtype.UUID) (catalog.SourceFacts, bool, error) {
 			source, found, err := versions.ReadSource(ctx, workspaceID, sourceID)
 			return catalog.SourceFacts{

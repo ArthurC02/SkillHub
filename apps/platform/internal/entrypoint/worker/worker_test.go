@@ -67,6 +67,8 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 		t.Error("run service has no content-source read: clean mode would refuse every dispatch")
 	case set.Registry == nil || set.Registry.CatalogWorkspaces == nil:
 		t.Error("registry service has no catalog workspace read: every catalog skill reads as not found")
+	case set.CreationSearch == nil || set.CreationSearch.CatalogWorkspaces == nil:
+		t.Error("creation search has no catalog workspace read: every creation knowledge search fails")
 	case set.Runs.TestLab == nil:
 		t.Error("run service has no Test Lab owner reads")
 	case set.Runs.Trace == nil:

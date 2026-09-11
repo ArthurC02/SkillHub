@@ -27,7 +27,6 @@ SELECT s.skill_id, s.name,
        cur.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
-JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
 LEFT JOIN LATERAL (
     SELECT v.id, v.created_at
     FROM skill_versions v
@@ -51,42 +50,44 @@ LEFT JOIN LATERAL (
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
-WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
-  AND (
-    $1::bool IS NULL
-    OR (s.scan IS NOT NULL
-        AND (s.scan->'codes' @> '["script-file"]'::jsonb
-             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $1::bool)
-  )
+WHERE s.workspace_id = ANY($1::uuid[])
+  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
   AND (
     $2::bool IS NULL
-    OR (ver.created_at IS NOT NULL) = $2::bool
+    OR (s.scan IS NOT NULL
+        AND (s.scan->'codes' @> '["script-file"]'::jsonb
+             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $2::bool)
   )
   AND (
-    $3::text IS NULL
-    OR COALESCE(cmp.runtime, 'unverified') = $3::text
+    $3::bool IS NULL
+    OR (ver.created_at IS NOT NULL) = $3::bool
   )
   AND (
     $4::text IS NULL
-    OR COALESCE(cur.tier, 'indexed') = $4::text
+    OR COALESCE(cmp.runtime, 'unverified') = $4::text
   )
   AND (
     $5::text IS NULL
-    OR cur.category = $5::text
+    OR COALESCE(cur.tier, 'indexed') = $5::text
+  )
+  AND (
+    $6::text IS NULL
+    OR cur.category = $6::text
   )
 ORDER BY (COALESCE(cur.tier, 'indexed') = 'curated') DESC,
          ver.created_at DESC NULLS LAST,
          s.skill_id
-LIMIT $6
+LIMIT $7
 `
 
 type BrowseCatalogSkillsParams struct {
-	HasScript     *bool
-	SpecValidated *bool
-	AgentRuntime  *string
-	CurationTier  *string
-	Category      *string
-	ResultLimit   int32
+	CatalogWorkspaceIds []pgtype.UUID
+	HasScript           *bool
+	SpecValidated       *bool
+	AgentRuntime        *string
+	CurationTier        *string
+	Category            *string
+	ResultLimit         int32
 }
 
 type BrowseCatalogSkillsRow struct {
@@ -109,6 +110,7 @@ type BrowseCatalogSkillsRow struct {
 
 func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkillsParams) ([]BrowseCatalogSkillsRow, error) {
 	rows, err := q.db.Query(ctx, browseCatalogSkills,
+		arg.CatalogWorkspaceIds,
 		arg.HasScript,
 		arg.SpecValidated,
 		arg.AgentRuntime,
@@ -153,16 +155,17 @@ func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkil
 const creationLexicalSearchSkills = `-- name: CreationLexicalSearchSkills :many
 SELECT s.skill_id, s.name
 FROM search_documents s
-JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
-  AND s.bigram @@ to_tsquery('simple', $1::text)
-ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $1::text)) DESC
-LIMIT $2::int
+WHERE s.workspace_id = ANY($1::uuid[])
+  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND s.bigram @@ to_tsquery('simple', $2::text)
+ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $2::text)) DESC
+LIMIT $3::int
 `
 
 type CreationLexicalSearchSkillsParams struct {
-	Query       string
-	ResultLimit int32
+	CatalogWorkspaceIds []pgtype.UUID
+	Query               string
+	ResultLimit         int32
 }
 
 type CreationLexicalSearchSkillsRow struct {
@@ -171,7 +174,7 @@ type CreationLexicalSearchSkillsRow struct {
 }
 
 func (q *Queries) CreationLexicalSearchSkills(ctx context.Context, arg CreationLexicalSearchSkillsParams) ([]CreationLexicalSearchSkillsRow, error) {
-	rows, err := q.db.Query(ctx, creationLexicalSearchSkills, arg.Query, arg.ResultLimit)
+	rows, err := q.db.Query(ctx, creationLexicalSearchSkills, arg.CatalogWorkspaceIds, arg.Query, arg.ResultLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -206,16 +209,17 @@ func (q *Queries) DeleteSearchDocument(ctx context.Context, arg DeleteSearchDocu
 
 const getCatalogReferenceFacts = `-- name: GetCatalogReferenceFacts :one
 SELECT sd.scan,
-       (sk.curation_tier = 'curated' AND sk.curated_version_id = $2::uuid)::bool AS curated
+       (sk.curation_tier = 'curated' AND sk.curated_version_id = $1::uuid)::bool AS curated
 FROM search_documents sd
 JOIN skills sk ON sk.id = sd.skill_id
-JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
-WHERE sd.skill_id = $1
+WHERE sd.skill_id = $2
+  AND sd.workspace_id = ANY($3::uuid[])
 `
 
 type GetCatalogReferenceFactsParams struct {
-	SkillID   pgtype.UUID
-	VersionID pgtype.UUID
+	VersionID           pgtype.UUID
+	SkillID             pgtype.UUID
+	CatalogWorkspaceIds []pgtype.UUID
 }
 
 type GetCatalogReferenceFactsRow struct {
@@ -224,7 +228,7 @@ type GetCatalogReferenceFactsRow struct {
 }
 
 func (q *Queries) GetCatalogReferenceFacts(ctx context.Context, arg GetCatalogReferenceFactsParams) (GetCatalogReferenceFactsRow, error) {
-	row := q.db.QueryRow(ctx, getCatalogReferenceFacts, arg.SkillID, arg.VersionID)
+	row := q.db.QueryRow(ctx, getCatalogReferenceFacts, arg.VersionID, arg.SkillID, arg.CatalogWorkspaceIds)
 	var i GetCatalogReferenceFactsRow
 	err := row.Scan(&i.Scan, &i.Curated)
 	return i, err
@@ -233,17 +237,22 @@ func (q *Queries) GetCatalogReferenceFacts(ctx context.Context, arg GetCatalogRe
 const listCatalogSkillScans = `-- name: ListCatalogSkillScans :many
 SELECT sd.skill_id, sd.scan
 FROM search_documents sd
-JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
 WHERE sd.skill_id = ANY($1::uuid[])
+  AND sd.workspace_id = ANY($2::uuid[])
 `
+
+type ListCatalogSkillScansParams struct {
+	SkillIds            []pgtype.UUID
+	CatalogWorkspaceIds []pgtype.UUID
+}
 
 type ListCatalogSkillScansRow struct {
 	SkillID pgtype.UUID
 	Scan    []byte
 }
 
-func (q *Queries) ListCatalogSkillScans(ctx context.Context, skillIds []pgtype.UUID) ([]ListCatalogSkillScansRow, error) {
-	rows, err := q.db.Query(ctx, listCatalogSkillScans, skillIds)
+func (q *Queries) ListCatalogSkillScans(ctx context.Context, arg ListCatalogSkillScansParams) ([]ListCatalogSkillScansRow, error) {
+	rows, err := q.db.Query(ctx, listCatalogSkillScans, arg.SkillIds, arg.CatalogWorkspaceIds)
 	if err != nil {
 		return nil, err
 	}
@@ -418,16 +427,16 @@ const publicHybridSearchSkills = `-- name: PublicHybridSearchSkills :many
 WITH vec AS (
     SELECT s.skill_id, s.embedding <=> $9::vector AS distance
     FROM search_documents s
-    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.embedding IS NOT NULL
+    WHERE s.workspace_id = ANY($10::uuid[])
+      AND s.embedding IS NOT NULL
     ORDER BY s.embedding <=> $9::vector ASC
     LIMIT 50
 ),
 fts AS (
     SELECT s.skill_id, s.embedding <=> $9::vector AS distance
     FROM search_documents s
-    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+    WHERE s.workspace_id = ANY($10::uuid[])
+      AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
       AND s.tsv @@ websearch_to_tsquery('english', $7::text)
     ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $7::text)) DESC
     LIMIT 50
@@ -435,11 +444,11 @@ fts AS (
 lex AS (
     SELECT s.skill_id, s.embedding <=> $9::vector AS distance
     FROM search_documents s
-    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
-      AND $10::text <> ''
-      AND s.bigram @@ to_tsquery('simple', $10::text)
-    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $10::text)) DESC
+    WHERE s.workspace_id = ANY($10::uuid[])
+      AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+      AND $11::text <> ''
+      AND s.bigram @@ to_tsquery('simple', $11::text)
+    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $11::text)) DESC
     LIMIT 5
 ),
 candidates AS (
@@ -524,16 +533,17 @@ LIMIT $8
 `
 
 type PublicHybridSearchSkillsParams struct {
-	MaxDistance    float64
-	HasScript      *bool
-	SpecValidated  *bool
-	AgentRuntime   *string
-	CurationTier   *string
-	Category       *string
-	Query          string
-	ResultLimit    int32
-	QueryEmbedding *pgvector.Vector
-	BigramQuery    string
+	MaxDistance         float64
+	HasScript           *bool
+	SpecValidated       *bool
+	AgentRuntime        *string
+	CurationTier        *string
+	Category            *string
+	Query               string
+	ResultLimit         int32
+	QueryEmbedding      *pgvector.Vector
+	CatalogWorkspaceIds []pgtype.UUID
+	BigramQuery         string
 }
 
 type PublicHybridSearchSkillsRow struct {
@@ -568,6 +578,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 		arg.Query,
 		arg.ResultLimit,
 		arg.QueryEmbedding,
+		arg.CatalogWorkspaceIds,
 		arg.BigramQuery,
 	)
 	if err != nil {
@@ -622,7 +633,6 @@ SELECT s.skill_id, s.name,
        cur.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
-JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
 LEFT JOIN LATERAL (
     SELECT v.id, v.created_at
     FROM skill_versions v
@@ -646,49 +656,51 @@ LEFT JOIN LATERAL (
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
-WHERE (s.tsv @@ websearch_to_tsquery('english', $1::text)
-       OR ($2::text <> ''
-           AND s.bigram @@ to_tsquery('simple', $2::text)))
+WHERE s.workspace_id = ANY($1::uuid[])
+  AND (s.tsv @@ websearch_to_tsquery('english', $2::text)
+       OR ($3::text <> ''
+           AND s.bigram @@ to_tsquery('simple', $3::text)))
   AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
   AND (
-    $3::bool IS NULL
+    $4::bool IS NULL
     OR (s.scan IS NOT NULL
         AND (s.scan->'codes' @> '["script-file"]'::jsonb
-             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $3::bool)
+             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $4::bool)
   )
   AND (
-    $4::bool IS NULL
-    OR (ver.created_at IS NOT NULL) = $4::bool
-  )
-  AND (
-    $5::text IS NULL
-    OR COALESCE(cmp.runtime, 'unverified') = $5::text
+    $5::bool IS NULL
+    OR (ver.created_at IS NOT NULL) = $5::bool
   )
   AND (
     $6::text IS NULL
-    OR COALESCE(cur.tier, 'indexed') = $6::text
+    OR COALESCE(cmp.runtime, 'unverified') = $6::text
   )
   AND (
     $7::text IS NULL
-    OR cur.category = $7::text
+    OR COALESCE(cur.tier, 'indexed') = $7::text
+  )
+  AND (
+    $8::text IS NULL
+    OR cur.category = $8::text
   )
 ORDER BY GREATEST(
-    ts_rank_cd(s.tsv, websearch_to_tsquery('english', $1::text)),
-    CASE WHEN $2::text <> ''
-         THEN ts_rank_cd(s.bigram, to_tsquery('simple', $2::text))
+    ts_rank_cd(s.tsv, websearch_to_tsquery('english', $2::text)),
+    CASE WHEN $3::text <> ''
+         THEN ts_rank_cd(s.bigram, to_tsquery('simple', $3::text))
          ELSE 0 END) DESC
-LIMIT $8
+LIMIT $9
 `
 
 type PublicSearchSkillsParams struct {
-	Query         string
-	BigramQuery   string
-	HasScript     *bool
-	SpecValidated *bool
-	AgentRuntime  *string
-	CurationTier  *string
-	Category      *string
-	ResultLimit   int32
+	CatalogWorkspaceIds []pgtype.UUID
+	Query               string
+	BigramQuery         string
+	HasScript           *bool
+	SpecValidated       *bool
+	AgentRuntime        *string
+	CurationTier        *string
+	Category            *string
+	ResultLimit         int32
 }
 
 type PublicSearchSkillsRow struct {
@@ -711,6 +723,7 @@ type PublicSearchSkillsRow struct {
 
 func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkillsParams) ([]PublicSearchSkillsRow, error) {
 	rows, err := q.db.Query(ctx, publicSearchSkills,
+		arg.CatalogWorkspaceIds,
 		arg.Query,
 		arg.BigramQuery,
 		arg.HasScript,
@@ -775,15 +788,20 @@ func (q *Queries) ReindexAll(ctx context.Context) (int64, error) {
 const resetCatalogueEnrichmentBefore = `-- name: ResetCatalogueEnrichmentBefore :execrows
 UPDATE search_documents sd
 SET enrichment_status = 'pending', enrichment_attempted_at = NULL
-FROM workspaces w, skills sk
-WHERE w.id = sd.workspace_id AND w.is_catalog
+FROM skills sk
+WHERE sd.workspace_id = ANY($1::uuid[])
   AND sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
   AND sd.enrichment_status = 'enriched'
-  AND COALESCE(sd.enrichment_prompt_version, '') <> $1::text
+  AND COALESCE(sd.enrichment_prompt_version, '') <> $2::text
 `
 
-func (q *Queries) ResetCatalogueEnrichmentBefore(ctx context.Context, promptVersion string) (int64, error) {
-	result, err := q.db.Exec(ctx, resetCatalogueEnrichmentBefore, promptVersion)
+type ResetCatalogueEnrichmentBeforeParams struct {
+	CatalogWorkspaceIds []pgtype.UUID
+	PromptVersion       string
+}
+
+func (q *Queries) ResetCatalogueEnrichmentBefore(ctx context.Context, arg ResetCatalogueEnrichmentBeforeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, resetCatalogueEnrichmentBefore, arg.CatalogWorkspaceIds, arg.PromptVersion)
 	if err != nil {
 		return 0, err
 	}

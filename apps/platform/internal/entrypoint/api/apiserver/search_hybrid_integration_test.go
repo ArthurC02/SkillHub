@@ -5,8 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -19,6 +23,7 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 	ctx := context.Background()
 	near := newFixture(t, a, pool, uniqueWorklistLabel("hybrid-near"))
 	far := newFixture(t, a, pool, uniqueWorklistLabel("hybrid-far"))
+	private := newFixture(t, a, pool, uniqueWorklistLabel("hybrid-private"))
 	markCatalog(t, pool, near.workspaceID)
 	markCatalog(t, pool, far.workspaceID)
 	unit := func(axis int) pgvector.Vector {
@@ -35,6 +40,7 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 	}{
 		{near, "excel-deduplicate", 0, catalog.LexicalIndexText("excel-deduplicate", "remove duplicate rows 去除重複列")},
 		{far, "pii-flag", 1, catalog.LexicalIndexText("pii-flag", "flag personal data 標記個資")},
+		{private, "pii-flag-private", 2, catalog.LexicalIndexText("pii-flag", "flag personal data 標記個資")},
 	} {
 		emb := unit(doc.axis)
 		if err := q.UpsertSearchDocumentEnriched(ctx, gen.UpsertSearchDocumentEnrichedParams{
@@ -52,7 +58,7 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 		_ = json.NewEncoder(w).Encode(llmclient.EmbedResponse{Embeddings: [][]float32{unit(0).Slice()}, Model: "stub", Dimensions: 1536, Usage: &llmclient.GatewayUsage{CostUSD: &cost}})
 	}))
 	t.Cleanup(embed.Close)
-	svc := &catalog.Service{Pool: pool, LLM: &llmclient.Client{BaseURL: embed.URL}}
+	svc := &catalog.Service{Pool: pool, LLM: &llmclient.Client{BaseURL: embed.URL}, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
 
 	ids, cost, degraded, err := svc.CreationKnowledgeIDs(ctx, "pii-flag 標記個資", catalog.CreationMaxDistance)
 	if err != nil || degraded || cost != 0.00001 {
@@ -72,7 +78,7 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 		t.Fatalf("duplicate cut-off: %v err=%v", ids, err)
 	}
 
-	lexOnly := &catalog.Service{Pool: pool}
+	lexOnly := &catalog.Service{Pool: pool, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
 	ids, cost, degraded, err = lexOnly.CreationKnowledgeIDs(ctx, "pii-flag", catalog.CreationMaxDistance)
 	if err != nil || !degraded || cost != 0 || len(ids) != 1 || ids[0] != far.skillID {
 		t.Fatalf("degraded answer: ids=%v cost=%v degraded=%v err=%v", ids, cost, degraded, err)
@@ -124,7 +130,7 @@ func TestCatalogReferenceFactsReadTheTierAndTheScan(t *testing.T) {
 	if _, err := pool.Exec(ctx, `UPDATE search_documents SET scan = '{"warnings": 2, "codes": ["script-file"]}'::jsonb WHERE skill_id = $1`, mustUUID(t, skill)); err != nil {
 		t.Fatal(err)
 	}
-	svc := &catalog.Service{Pool: pool}
+	svc := &catalog.Service{Pool: pool, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
 	tier, scan, warnings, err := svc.CatalogReferenceFacts(ctx, skill, version)
 	if err != nil || tier != "indexed" || scan != "scanned" || warnings != 2 {
 		t.Fatalf("indexed: tier=%q scan=%q warnings=%d err=%v", tier, scan, warnings, err)
@@ -165,7 +171,13 @@ func TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions(t *testing.
 	set(current, "enrich-skill/v7")
 	set(private.skillID, "enrich-skill/v2")
 
-	n, err := q.ResetCatalogueEnrichmentBefore(ctx, "enrich-skill/v7")
+	catalogs, err := (&identity.Service{Pool: pool}).CatalogWorkspaceIDs(ctx, pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := q.ResetCatalogueEnrichmentBefore(ctx, gen.ResetCatalogueEnrichmentBeforeParams{
+		PromptVersion: "enrich-skill/v7", CatalogWorkspaceIds: catalogs,
+	})
 	if err != nil || n < 1 {
 		t.Fatalf("reset %d err=%v, want at least the old catalogue document", n, err)
 	}
@@ -178,5 +190,36 @@ func TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions(t *testing.
 	}
 	if status(old) != "pending" || status(current) != "enriched" || status(private.skillID) != "enriched" {
 		t.Fatalf("old=%s current=%s private=%s", status(old), status(current), status(private.skillID))
+	}
+}
+
+func TestCatalogSkillRisksAnswerOnlyForCatalogSkills(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-risks")
+	markCatalog(t, pool, curator.workspaceID)
+	public := seedSkill(t, pool, curator.workspaceID, "risks-public")
+	private := newFixture(t, a, pool, uniqueWorklistLabel("risks-private"))
+	for _, id := range []string{public, private.skillID} {
+		tag, err := pool.Exec(ctx, `UPDATE search_documents SET scan = '{"warnings": 3, "codes": ["script-file"]}'::jsonb WHERE skill_id = $1`, mustUUID(t, id))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tag.RowsAffected() != 1 {
+			t.Fatalf("skill %s has no search document to carry a scan", id)
+		}
+	}
+
+	svc := &catalog.Service{Pool: pool, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
+	risks, err := svc.CatalogSkillRisks(ctx, []pgtype.UUID{mustUUID(t, public), mustUUID(t, private.skillID)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(risks[public]); !strings.Contains(got, `"scan_status":"scanned"`) {
+		t.Errorf("a catalog skill's scan was not reported: %s", got)
+	}
+	if got := string(risks[private.skillID]); !strings.Contains(got, `"scan_status":"unavailable"`) {
+		t.Errorf("a private skill's scan was reported as a catalog fact: %s", got)
 	}
 }

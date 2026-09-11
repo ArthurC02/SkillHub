@@ -44,15 +44,16 @@ type Deps struct {
 }
 
 type Set struct {
-	Creation    *creation.Service
-	Runs        *run.Service
-	Evaluations *eval.Service
-	Packaging   *packaging.Service
-	Registry    *registry.Service
-	RunEvents   *eval.RunEventConsumer
-	Events      *outbox.Dispatcher
-	Objects     *objreconcile.Service
-	Queue       *river.Client[pgx.Tx]
+	Creation       *creation.Service
+	Runs           *run.Service
+	Evaluations    *eval.Service
+	Packaging      *packaging.Service
+	Registry       *registry.Service
+	CreationSearch *catalog.Service
+	RunEvents      *eval.RunEventConsumer
+	Events         *outbox.Dispatcher
+	Objects        *objreconcile.Service
+	Queue          *river.Client[pgx.Tx]
 
 	WorkerKinds map[string]bool
 	Scheduled   map[string]bool
@@ -136,7 +137,8 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 
 	set.Creation = &creation.Service{Pool: pool, Limits: deps.CreationLimits, LLM: deps.LLM}
 	creationVersions := &ingest.Service{Pool: pool, Store: deps.Store, References: registrySvc}
-	creationSearch := &catalog.Service{Pool: pool, LLM: deps.LLM}
+	creationSearch := &catalog.Service{Pool: pool, LLM: deps.LLM, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
+	set.CreationSearch = creationSearch
 	wireCreationReads(set.Creation, creationVersions, creationSearch)
 	wireCreationGateway(set.Creation, deps.Gateway)
 	wireCreationFetch(set.Creation)

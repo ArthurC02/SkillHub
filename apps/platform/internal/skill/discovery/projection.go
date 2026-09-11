@@ -151,7 +151,13 @@ func (s *Service) CatalogSkillRisks(
 		return out, nil
 	}
 
-	rows, err := gen.New(s.Pool).ListCatalogSkillScans(ctx, skillIDs)
+	catalogs, err := s.catalogWorkspaceIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := gen.New(s.Pool).ListCatalogSkillScans(ctx, gen.ListCatalogSkillScansParams{
+		SkillIds: skillIDs, CatalogWorkspaceIds: catalogs,
+	})
 	if err != nil {
 		return nil, err
 	}

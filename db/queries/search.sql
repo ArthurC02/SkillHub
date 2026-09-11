@@ -77,7 +77,6 @@ SELECT s.skill_id, s.name,
        cur.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
-JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
 LEFT JOIN LATERAL (
     SELECT v.id, v.created_at
     FROM skill_versions v
@@ -101,7 +100,8 @@ LEFT JOIN LATERAL (
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
-WHERE (s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
+WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+  AND (s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
        OR (sqlc.arg(bigram_query)::text <> ''
            AND s.bigram @@ to_tsquery('simple', sqlc.arg(bigram_query)::text)))
   AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
@@ -149,7 +149,6 @@ SELECT s.skill_id, s.name,
        cur.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
-JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
 LEFT JOIN LATERAL (
     SELECT v.id, v.created_at
     FROM skill_versions v
@@ -173,7 +172,8 @@ LEFT JOIN LATERAL (
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
-WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
   AND (
     sqlc.narg(has_script)::bool IS NULL
     OR (s.scan IS NOT NULL
@@ -206,16 +206,16 @@ LIMIT sqlc.arg(result_limit);
 WITH vec AS (
     SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
     FROM search_documents s
-    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.embedding IS NOT NULL
+    WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+      AND s.embedding IS NOT NULL
     ORDER BY s.embedding <=> sqlc.arg(query_embedding)::vector ASC
     LIMIT 50
 ),
 fts AS (
     SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
     FROM search_documents s
-    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+    WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+      AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
       AND s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
     ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
     LIMIT 50
@@ -223,8 +223,8 @@ fts AS (
 lex AS (
     SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
     FROM search_documents s
-    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+    WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+      AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
       AND sqlc.arg(bigram_query)::text <> ''
       AND s.bigram @@ to_tsquery('simple', sqlc.arg(bigram_query)::text)
     ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(bigram_query)::text)) DESC
@@ -336,8 +336,8 @@ WHERE workspace_id = $1 AND skill_id = ANY(sqlc.arg(skill_ids)::uuid[]);
 -- name: ListCatalogSkillScans :many
 SELECT sd.skill_id, sd.scan
 FROM search_documents sd
-JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
-WHERE sd.skill_id = ANY(sqlc.arg(skill_ids)::uuid[]);
+WHERE sd.skill_id = ANY(sqlc.arg(skill_ids)::uuid[])
+  AND sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[]);
 
 -- name: ListSearchDocumentsMissingBigram :many
 SELECT skill_id, name, summary, enriched_summary, task_examples, tags
@@ -354,8 +354,8 @@ WHERE skill_id = $1;
 -- name: ResetCatalogueEnrichmentBefore :execrows
 UPDATE search_documents sd
 SET enrichment_status = 'pending', enrichment_attempted_at = NULL
-FROM workspaces w, skills sk
-WHERE w.id = sd.workspace_id AND w.is_catalog
+FROM skills sk
+WHERE sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   AND sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
   AND sd.enrichment_status = 'enriched'
   AND COALESCE(sd.enrichment_prompt_version, '') <> sqlc.arg(prompt_version)::text;
@@ -365,14 +365,14 @@ SELECT sd.scan,
        (sk.curation_tier = 'curated' AND sk.curated_version_id = sqlc.arg(version_id)::uuid)::bool AS curated
 FROM search_documents sd
 JOIN skills sk ON sk.id = sd.skill_id
-JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
-WHERE sd.skill_id = $1;
+WHERE sd.skill_id = sqlc.arg(skill_id)
+  AND sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[]);
 
 -- name: CreationLexicalSearchSkills :many
 SELECT s.skill_id, s.name
 FROM search_documents s
-JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-WHERE (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
   AND s.bigram @@ to_tsquery('simple', sqlc.arg(query)::text)
 ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(query)::text)) DESC
 LIMIT sqlc.arg(result_limit)::int;

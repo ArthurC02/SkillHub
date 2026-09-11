@@ -28,6 +28,8 @@ type Service struct {
 
 	SourceByID func(context.Context, pgtype.UUID, pgtype.UUID) (SourceFacts, bool, error)
 
+	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
+
 	LLM *llmclient.Client
 
 	Credit CostRecorder
@@ -199,18 +201,30 @@ func (s *Service) embedQuery(ctx context.Context, query string) (*pgvector.Vecto
 	return &embedding, nil
 }
 
+func (s *Service) catalogWorkspaceIDs(ctx context.Context) ([]pgtype.UUID, error) {
+	if s.CatalogWorkspaces == nil {
+		return nil, errors.New("catalog: catalog workspace read not injected")
+	}
+	return s.CatalogWorkspaces(ctx, s.Pool)
+}
+
 func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query string, embedding *pgvector.Vector, limit int32, filters searchFilters, maxDistance float64) ([]searchResult, int64, error) {
+	catalogs, err := s.catalogWorkspaceIDs(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
 	rows, err := queries.PublicHybridSearchSkills(ctx, gen.PublicHybridSearchSkillsParams{
-		Query:          query,
-		BigramQuery:    lexicalQuery(query, "&"),
-		QueryEmbedding: embedding,
-		MaxDistance:    maxDistance,
-		ResultLimit:    limit,
-		HasScript:      filters.HasScript,
-		SpecValidated:  filters.SpecValidated,
-		AgentRuntime:   filters.AgentRuntime,
-		CurationTier:   filters.CurationTier,
-		Category:       filters.Category,
+		CatalogWorkspaceIds: catalogs,
+		Query:               query,
+		BigramQuery:         lexicalQuery(query, "&"),
+		QueryEmbedding:      embedding,
+		MaxDistance:         maxDistance,
+		ResultLimit:         limit,
+		HasScript:           filters.HasScript,
+		SpecValidated:       filters.SpecValidated,
+		AgentRuntime:        filters.AgentRuntime,
+		CurationTier:        filters.CurationTier,
+		Category:            filters.Category,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -245,14 +259,19 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 }
 
 func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters) ([]searchResult, int64, error) {
+	catalogs, err := s.catalogWorkspaceIDs(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
 	queries := gen.New(s.Pool)
 	rows, err := queries.BrowseCatalogSkills(ctx, gen.BrowseCatalogSkillsParams{
-		ResultLimit:   limit,
-		HasScript:     filters.HasScript,
-		SpecValidated: filters.SpecValidated,
-		AgentRuntime:  filters.AgentRuntime,
-		CurationTier:  filters.CurationTier,
-		Category:      filters.Category,
+		CatalogWorkspaceIds: catalogs,
+		ResultLimit:         limit,
+		HasScript:           filters.HasScript,
+		SpecValidated:       filters.SpecValidated,
+		AgentRuntime:        filters.AgentRuntime,
+		CurationTier:        filters.CurationTier,
+		Category:            filters.Category,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -281,15 +300,20 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 }
 
 func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query string, limit int32, filters searchFilters) ([]searchResult, int64, error) {
+	catalogs, err := s.catalogWorkspaceIDs(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
 	rows, err := queries.PublicSearchSkills(ctx, gen.PublicSearchSkillsParams{
-		Query:         query,
-		BigramQuery:   lexicalQuery(query, "&"),
-		ResultLimit:   limit,
-		HasScript:     filters.HasScript,
-		SpecValidated: filters.SpecValidated,
-		AgentRuntime:  filters.AgentRuntime,
-		CurationTier:  filters.CurationTier,
-		Category:      filters.Category,
+		CatalogWorkspaceIds: catalogs,
+		Query:               query,
+		BigramQuery:         lexicalQuery(query, "&"),
+		ResultLimit:         limit,
+		HasScript:           filters.HasScript,
+		SpecValidated:       filters.SpecValidated,
+		AgentRuntime:        filters.AgentRuntime,
+		CurationTier:        filters.CurationTier,
+		Category:            filters.Category,
 	})
 	if err != nil {
 		return nil, 0, err
