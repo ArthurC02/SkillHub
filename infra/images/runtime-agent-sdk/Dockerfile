@@ -2,7 +2,7 @@ FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0
 
 ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 
-ARG IMAGE_VERSION=2026.08-10
+ARG IMAGE_VERSION=2026.08-11
 
 # Non-root from the image on up: the provider also passes --user, but an image
 # whose only account is root is one bad flag away from running as root.

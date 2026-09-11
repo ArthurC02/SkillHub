@@ -569,3 +569,18 @@ I-05、`UPGRADES.md` 標題與 I-02 三道靜態閘門以 `runtime-image.yml` �
 **跑法上的一個坑**：第一次端到端 Run 以 `workload_error` 結束，trace 寫著閘道回 400 `Invalid model name passed in model=claude-opus-5`。`claude-opus-5` 不在 repo 任何地方——那是 `SKILLHUB_RUN_MODEL` 未設時 SDK 自己帶的預設模型，而本機閘道沒有它。設 `SKILLHUB_RUN_MODEL=gpt-5.4-mini` 後同一支測試直接通過。這不是映像的問題；跑這支測試要設這個變數。
 
 **預設映像同批從 `-8` 移到 `-10`**：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例。`-9` 那節寫的「這個修補還沒有到達任何一個在跑的東西」到此為止：CVE-2026-86145 的修補隨 `-10` 進入預設映像，`04` 丙-225 同批結案。
+
+## `2026.08-10` → `2026.08-11`（2026-09-11）— **只有測試檔變動；四項實測沒有重跑，預設映像仍是 `-10`**
+
+> **又一次被 I-05 逼出來的升版。** `a13923a9` 在本目錄只改了 `run.test.mjs`（補上 ISTQB 稽核找出的測試案例），
+> `Runtime Image` 在 [run #34564152676](https://github.com/ArthurC02/SkillHub/actions/runs/34564152676) 的 I-05
+> 閘門紅掉。閘門依路徑判斷，不看檔案有沒有進映像；把測試檔改回去本身也是一次內容變更，所以版本號照規則走。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | 只有 `run.test.mjs`。`Dockerfile` 對 `-10` 的差異只有 `ARG IMAGE_VERSION` 這一行；`run.mjs`、`constraints.txt`、`package.json`、`package-lock.json` 一字未動 |
+| 映像裡會變什麼 | `run.test.mjs` 不在任何 `COPY` 裡，不會進映像。確定會變的只有 `org.opencontainers.image.version` 這個 label（取自 `IMAGE_VERSION`）。`apt-get install` 沒有釘版本，CI 重建時 Debian 套件可能取到較新的修補版，所以**不主張檔案層與 `-10` 逐位元組相同** |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
+| 預設映像 | **仍是 `-10`**（`sha256:8f465e4f2522ae2b8a5b551c07010a48f11ffb407d25a70bbaacef3f49945cdb`）：四處預設都沒有動 |
+| ADR-023 §2 四項實測 | **一項都沒跑**，本節不主張任何一項通過；`-11` 在補跑之前不該成為預設 |
