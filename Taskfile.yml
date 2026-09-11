@@ -57,6 +57,14 @@ tasks:
     desc: Verify local portable Agent artifacts match .claude sources
     cmd: go -C tools/devctl run . agent-sync --check
 
+  preflight:
+    desc: Check unpushed commits for what CI would fail on (committed formatting, runtime image version bump) plus automation-check
+    cmd: go -C tools/devctl run . preflight
+
+  ci:status:
+    desc: List every workflow run for HEAD with failing jobs and steps; pass -- --wait to block until it finishes
+    cmd: go -C tools/devctl run . ci-status {{.CLI_ARGS}}
+
   ci:
     desc: Run the local secret-free CI sequence in deterministic order
     cmds:

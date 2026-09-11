@@ -364,6 +364,28 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 **接受的殘留風險，明寫**：這條線的保證從「機器會檢查」降成「兩個明確的時刻有人記得」。它斷掉的樣子是**派送成功、Run 永遠不完成**——`web` 與 `platform` 兩個 job 全綠，沒有任何一盞燈會變色。若封測期間需要更硬的保證，正解是**在節點上跑**（節點本來就要有閘道金鑰），不是在 CI 裡多放一把。
 
+## 推送前與推送後：pre-push hook、`task preflight`、`task ci:status`（2026-09-11）
+
+**pre-push hook**：`task bootstrap` 會把 `core.hooksPath` 指到 `.githooks/`，`pre-push` 跑 `devctl preflight --hook`。它只檢查**這次要推的 commit**，而且讀的是 commit 裡的位元組（`git show <sha>:<path>`）而不是工作樹，所以共享工作樹裡別人未提交的修改擋不到你的推送。它查兩件 CI 會紅的事：
+
+- 推送範圍內改到的 `apps/platform`／`apps/sandbox` Go 檔（gofmt）、`apps/web` 檔（prettier）、`apps/llm` Python 檔（ruff format）有沒有照 CI 的格式；
+- `infra/images/runtime-agent-sdk/` 的 Dockerfile 或它 `COPY` 進映像的檔有改、`ARG IMAGE_VERSION` 卻沒動（I-05）。這段判斷與 `Runtime Image` workflow 呼叫的 `devctl image-gate` 是同一份程式，兩邊不會再各說各話；沒被複製進映像的檔（例如 `run.test.mjs`）不觸發。
+
+格式工具不在這台機器上時只印 `WARN`、不擋，CI 仍會查。**不要用 `--no-verify` 跳過**（`.claude/settings.json` 的 deny 已擋）；hook 誤擋就修 `tools/devctl/preflight.go`，不要繞過它。
+
+**`task preflight`**：手動版，範圍是 `@{upstream}..HEAD`，另外多跑一次 `automation-check`。後者讀的是工作樹，所以別人未提交的檔可能讓它紅——看 `FAIL` 的檔名判斷是不是你的。
+
+**`task ci:status`**（`devctl ci-status [ref] [--wait]`）：列出該 commit 的**每一個** workflow run、失敗的 job 與 step、以及被 path filter 跳過而沒跑的 job。token 用 `git credential fill` 取得、只放在記憶體裡，所以不吃未驗證呼叫每小時 60 次的上限——幾個工作階段同時輪詢時，那個上限幾分鐘就會用完。結束碼：0 綠、1 紅（`cancelled` 也算，因為那個 commit 沒被驗到）、3 還在跑、4 還沒有 run。
+
+**CI 的形狀**（`ci.yml`）：
+
+- main 上的 push 以 commit SHA 分組、**不互相取消**，每個 commit 都會被驗到；只有 PR 會被同一個 PR 的下一次 push 取消。改之前的三天內 87 次 run 有 14 次被取消，那些 commit 從來沒被驗過。
+- `images` 有自己的 path filter（ADR-019 §3 第 5 列本來就這樣寫），純文件 commit 不再建置、smoke、推送三個服務映像。它不再等語言 job，與它們並行；推送拆成 `images-push`，等所有 job 綠了才推，從同一次 run 的 GHA 快取重建，不重新編譯。
+- 每週日一次 `schedule` 全量跑（所有 path filter 視為命中），`workflow_dispatch` 也是全量——手寫 path filter 漏掉的那一格由它兜底。
+- 每個 job 都有 `timeout-minutes`，一個卡住的 job 不會再佔滿預設的 6 小時。
+
+**Runtime Image**（`runtime-image.yml`）：發佈前先查 registry 有沒有這個版本的 tag，**有就只跑閘門、不推送、不移 tag**。版本 tag 一旦發佈就不再變，因為 ADR-023 決策 1 的事實來源是 digest，而 build 不是位元可重現的——同版重推會讓同一個版本字串悄悄指向另一份沒量過的映像。attestation 失敗會在同一個 run 裡自動重試一次；發佈中的 run 不會被下一次 push 取消。
+
 ## 完成判準
 
 一次 automation 變更至少通過：
@@ -372,6 +394,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 - `go -C tools/devctl run . automation-check`
 - `task gen:check`
 - **`task format:check`**（2026-09-10 補入）
+- `task preflight`（2026-09-11 補入；推送時 pre-push hook 會自動跑它的 `--hook` 版）
 - 受影響語言的 typecheck/test/build
 - `git diff --check`
 

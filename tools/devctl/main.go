@@ -28,6 +28,9 @@ Usage:
 	devctl comment-lint [path-prefix...]  list comments that break AGENTS.md's comment rule
 	devctl test-report dir [go test args]  run the suite and report what skipped and why
 	devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
+	devctl image-gate [--range A..B]  runtime image source gates: digest-pinned base, upgrade record, version bump
+	devctl preflight [--hook]  check unpushed commits for what CI would fail on (--hook reads git's pre-push input)
+	devctl ci-status [ref] [--wait]  every workflow run for a commit; exit 0 green, 1 red, 3 pending, 4 no runs
 `
 
 type checkResult struct {
@@ -96,6 +99,20 @@ func main() {
 		if err := seedClean(root, os.Args[2:], os.Stdout); err != nil {
 			fatal(err)
 		}
+	case "image-gate":
+		if err := imageGate(root, os.Args[2:], os.Stdout); err != nil {
+			fatal(err)
+		}
+	case "preflight":
+		if err := preflight(root, os.Args[2:], os.Stdin, os.Stdout); err != nil {
+			fatal(err)
+		}
+	case "ci-status":
+		code, err := ciStatus(root, os.Args[2:], os.Stdout)
+		if err != nil {
+			fatal(err)
+		}
+		os.Exit(code)
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:
@@ -321,6 +338,7 @@ func bootstrap(root string, out io.Writer) error {
 		{name: "generated TypeScript client build", dir: "packages/api-client-ts", cmd: "npm", args: []string{"run", "build"}},
 		{name: "web packages", dir: "apps/web", cmd: "npm", args: []string{"ci"}},
 		{name: "LLM packages", dir: "apps/llm", cmd: "uv", args: []string{"sync", "--frozen"}, env: []string{"UV_LINK_MODE=copy"}},
+		{name: "git hooks (pre-push runs devctl preflight --hook)", dir: ".", cmd: "git", args: []string{"config", "core.hooksPath", ".githooks"}},
 	}
 	for _, step := range steps {
 		fmt.Fprintln(out, "==>", step.name)

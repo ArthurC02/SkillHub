@@ -16,7 +16,8 @@
       "Bash(*git commit --all*)",
       "Bash(*git push --force*)",
       "Bash(*git push -f*)",
-      "Bash(*git commit --amend*)"
+      "Bash(*git commit --amend*)",
+      "Bash(*--no-verify*)"
     ]
   }
 }
