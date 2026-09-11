@@ -7,6 +7,7 @@ on:
       - '!infra/images/**/*.md'
       - '.github/workflows/runtime-image.yml'
       - 'tools/ci/scan_predicate.sh'
+      - 'tools/devctl/image_*.go'
   push:
     branches: [main]
     paths:
@@ -14,13 +15,14 @@ on:
       - '!infra/images/**/*.md'
       - '.github/workflows/runtime-image.yml'
       - 'tools/ci/scan_predicate.sh'
+      - 'tools/devctl/image_*.go'
   schedule:
     - cron: '17 4 * * 1'
   workflow_dispatch:
 
 concurrency:
   group: runtime-image-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -33,17 +35,25 @@ env:
   GRYPE: docker.io/anchore/grype:v0.117.0@sha256:ddf9e9f204049f3a4a0955ef70873cabab6a31432125ad4f20a490b54950a253
 
 jobs:
-  review:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+  image:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
+      packages: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: tools/devctl/go.mod
+          cache: false
 
-      - name: Runtime content changes must bump IMAGE_VERSION (I-05)
+      - name: Source gates (I-05 version bump, I-02 digest pin, ADR-023 §4 upgrade record)
         run: |
           set -euo pipefail
           case "${{ github.event_name }}" in
@@ -52,32 +62,9 @@ jobs:
               RANGE="origin/${{ github.base_ref }}...HEAD"
               ;;
             push) RANGE="${{ github.event.before }}..${{ github.sha }}" ;;
-            *) exit 0 ;;
+            *) RANGE="" ;;
           esac
-          if git diff --quiet "$RANGE" -- infra/images/runtime-agent-sdk \
-            ':!infra/images/runtime-agent-sdk/*.md'; then
-            exit 0
-          fi
-          git diff -U0 "$RANGE" -- infra/images/runtime-agent-sdk/Dockerfile \
-            | grep -Eq '^[+-]ARG IMAGE_VERSION=' \
-            || { echo "::error file=infra/images/runtime-agent-sdk/Dockerfile::Runtime image content changed; bump ARG IMAGE_VERSION."; exit 1; }
-
-      - name: The new IMAGE_VERSION must have an UPGRADES.md section (ADR-023 §4)
-        run: |
-          set -euo pipefail
-          VERSION=$(awk -F= '/^ARG IMAGE_VERSION=/{gsub(/"/,"",$2); print $2}' infra/images/runtime-agent-sdk/Dockerfile)
-          # An empty VERSION would make the grep below match any heading, so it is
-          # a failure and not a fall-through.
-          [ -n "$VERSION" ] || { echo "::error file=infra/images/runtime-agent-sdk/Dockerfile::no ARG IMAGE_VERSION= found"; exit 1; }
-          grep -q "^#.*$VERSION" infra/images/runtime-agent-sdk/UPGRADES.md || {
-            echo "::error file=infra/images/runtime-agent-sdk/UPGRADES.md::IMAGE_VERSION is $VERSION and no section heading mentions it. ADR-023 §4 wants the four measurements re-run and written down, or a sentence saying which were carried over and why."
-            exit 1
-          }
-
-      - name: Fail if the base image is not pinned by digest (I-02)
-        run: |
-          grep -qE '^FROM .+@sha256:[0-9a-f]{64}$' infra/images/runtime-agent-sdk/Dockerfile \
-            || { echo "::error file=infra/images/runtime-agent-sdk/Dockerfile::FROM must pin a digest (SEC-002 I-02). See infra/images/README.md."; exit 1; }
+          go -C tools/devctl run . image-gate --range "$RANGE"
 
       - name: Build
         run: docker build -t "$IMAGE" infra/images/runtime-agent-sdk
@@ -118,47 +105,37 @@ jobs:
       - name: Build scan attestation predicate (I-04)
         run: bash tools/ci/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
 
-  publish:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          fetch-depth: 0
-      - name: Runtime content changes must bump IMAGE_VERSION (I-05)
-        run: |
-          RANGE="${{ github.event.before }}..${{ github.sha }}"
-          if git diff --quiet "$RANGE" -- infra/images/runtime-agent-sdk \
-            ':!infra/images/runtime-agent-sdk/*.md'; then
-            exit 0
-          fi
-          git diff -U0 "$RANGE" -- infra/images/runtime-agent-sdk/Dockerfile \
-            | grep -Eq '^[+-]ARG IMAGE_VERSION=' \
-            || { echo "::error file=infra/images/runtime-agent-sdk/Dockerfile::Runtime image content changed; bump ARG IMAGE_VERSION."; exit 1; }
-      - name: Build and run publication gates
-        run: |
-          grep -qE '^FROM .+@sha256:[0-9a-f]{64}$' infra/images/runtime-agent-sdk/Dockerfile
-          docker build -t "$IMAGE" infra/images/runtime-agent-sdk
-          mkdir -p scan
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "$PWD/scan:/scan" "$SYFT" "$IMAGE" -o spdx-json=/scan/sbom.spdx.json
-          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
-            -o json --file /scan/vulnerabilities.json
-          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
-            --only-fixed --fail-on high -o table
-          bash tools/ci/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
       - name: Log in to GHCR
+        if: github.event_name == 'push'
         run: echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
-      - name: Push to GHCR
-        id: push
+
+      - name: Publish only a version the registry does not have yet
+        id: version
+        if: github.event_name == 'push'
         run: |
+          set -euo pipefail
           version=$(sed -n 's/^ARG IMAGE_VERSION=\(.*\)$/\1/p' infra/images/runtime-agent-sdk/Dockerfile)
           [ -n "$version" ] || { echo "::error::ARG IMAGE_VERSION not found in Dockerfile"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if found=$(docker buildx imagetools inspect "$REGISTRY_IMAGE:$version" 2>&1); then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "$REGISTRY_IMAGE:$version is already published, and a version tag is never moved; nothing was pushed."
+              grep -m1 'Digest:' <<<"$found" || true
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif grep -qiE 'not found|manifest unknown|no such manifest' <<<"$found"; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::could not tell whether $REGISTRY_IMAGE:$version exists: $found"
+            exit 1
+          fi
+
+      - name: Push to GHCR
+        id: push
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          set -euo pipefail
+          version='${{ steps.version.outputs.version }}'
           docker tag "$IMAGE" "$REGISTRY_IMAGE:$version"
           docker tag "$IMAGE" "$REGISTRY_IMAGE:sha-${GITHUB_SHA::12}"
           docker push "$REGISTRY_IMAGE:$version"
@@ -166,14 +143,39 @@ jobs:
           digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$REGISTRY_IMAGE:$version" | cut -d@ -f2)
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "Published $REGISTRY_IMAGE:$version@$digest" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Attest the SBOM to the pushed digest (I-03)
+        id: attest-sbom
+        if: steps.push.outcome == 'success'
+        continue-on-error: true
         uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2
         with:
           subject-name: ${{ env.REGISTRY_IMAGE }}
           subject-digest: ${{ steps.push.outputs.digest }}
           sbom-path: scan/sbom.spdx.json
           push-to-registry: true
+      - name: Attest the SBOM to the pushed digest (I-03, second attempt)
+        if: steps.attest-sbom.outcome == 'failure'
+        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2
+        with:
+          subject-name: ${{ env.REGISTRY_IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          sbom-path: scan/sbom.spdx.json
+          push-to-registry: true
+
       - name: Record the scan attestation (I-04)
+        id: attest-scan
+        if: steps.push.outcome == 'success'
+        continue-on-error: true
+        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2
+        with:
+          subject-name: ${{ env.REGISTRY_IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          predicate-type: https://in-toto.io/attestation/vulns/v0.1
+          predicate-path: scan/scan-predicate.json
+          push-to-registry: true
+      - name: Record the scan attestation (I-04, second attempt)
+        if: steps.attest-scan.outcome == 'failure'
         uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2
         with:
           subject-name: ${{ env.REGISTRY_IMAGE }}
@@ -185,6 +187,7 @@ jobs:
   rescan:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write # the re-attestation is a registry write; see below

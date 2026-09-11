@@ -5,11 +5,13 @@ on:
     branches: [main]
   push:
     branches: [main]
+  schedule:
+    - cron: '23 3 * * 0'
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -17,16 +19,21 @@ permissions:
 jobs:
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
-      web: ${{ steps.filter.outputs.web }}
-      platform: ${{ steps.filter.outputs.platform }}
-      llm: ${{ steps.filter.outputs.llm }}
-      sandbox: ${{ steps.filter.outputs.sandbox }}
-      qa002: ${{ steps.filter.outputs.qa002 }}
-      pglite: ${{ steps.filter.outputs.pglite }}
+      web: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.web == 'true' }}
+      platform: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.platform == 'true' }}
+      llm: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.llm == 'true' }}
+      sandbox: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.sandbox == 'true' }}
+      qa002: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.qa002 == 'true' }}
+      pglite: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.pglite == 'true' }}
+      images: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.images == 'true' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - id: scope
+        run: echo "all=${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}" >> "$GITHUB_OUTPUT"
       - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
+        if: steps.scope.outputs.all != 'true'
         id: filter
         with:
           filters: |
@@ -40,6 +47,7 @@ jobs:
               - 'db/**'
               - 'contracts/**'
               - 'apps/llm/**'
+              - 'tools/ci/**'
               - '.github/workflows/ci.yml'
             llm:
               - 'apps/llm/**'
@@ -52,15 +60,31 @@ jobs:
               - 'infra/images/**'
               - 'infra/egress/**'
               - 'tools/sec009/**'
+              - 'tools/ci/**'
               - '.github/workflows/ci.yml'
             qa002:
               - 'apps/platform/internal/skill/admission/**'
               - 'apps/platform/internal/shared/skillpkg/**'
               - 'tools/qa/**'
+              - 'tools/ci/**'
               - '.github/workflows/ci.yml'
             pglite:
               - 'tools/pglite/**'
               - 'tools/cleanmode/**'
+              - '.github/workflows/ci.yml'
+            images:
+              - 'apps/platform/**'
+              - 'apps/web/**'
+              - 'apps/llm/**'
+              - 'packages/**'
+              - 'contracts/**'
+              - 'db/**'
+              - 'infra/images/platform/**'
+              - 'infra/images/web/**'
+              - 'infra/images/llm/**'
+              - 'infra/compose/**'
+              - 'tools/ci/**'
+              - '.dockerignore'
               - '.github/workflows/ci.yml'
 
   web:
@@ -71,6 +95,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: apps/web
@@ -115,6 +140,7 @@ jobs:
             install: chromium
             projects: "--project=chromium"
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: apps/web
@@ -150,6 +176,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.platform == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/platform
@@ -221,6 +248,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: apps/sandbox
@@ -228,7 +256,7 @@ jobs:
       SKILLHUB_REQUIRE_DOCKER: "1"
       # docker_test.go also reads SKILLHUB_SANDBOX_TEST_IMAGE; setting only this variable
       # keeps the other dockerdrv tests on busybox.
-      RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-10
+      RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk@sha256:8f465e4f2522ae2b8a5b551c07010a48f11ffb407d25a70bbaacef3f49945cdb
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
@@ -257,9 +285,6 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Runtime workload script tests' node --test infra/images/runtime-agent-sdk/run.test.mjs
       - run: go build ./...
-      - name: Build the runtime image (SBX-002)
-        run: docker build -t skillhub/runtime-agent-sdk:ci infra/images/runtime-agent-sdk
-        working-directory: .
       - name: Install gVisor
         run: |
           set -euo pipefail
@@ -286,6 +311,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'
     runs-on: windows-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/sandbox
@@ -308,6 +334,7 @@ jobs:
   llm:
     needs: changes
     if: needs.changes.outputs.llm == 'true'
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -324,6 +351,7 @@ jobs:
 
   contracts-drift:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
@@ -357,6 +385,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.qa002 == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
@@ -380,6 +409,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.pglite == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -402,10 +432,57 @@ jobs:
           done
 
   images:
-    # Jobs skipped by path filters count as success, so this blocks only on a real failure.
-    if: ${{ !failure() && !cancelled() }}
-    needs: [web, platform, llm, contracts-drift]
+    needs: changes
+    if: needs.changes.outputs.images == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      REGISTRY: ghcr.io/arthurc02
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: Build the platform image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: infra/images/platform/Dockerfile
+          tags: ${{ env.REGISTRY }}/skillhub-platform:${{ github.sha }}
+          load: true
+          provenance: false
+          cache-from: type=gha,scope=platform
+          cache-to: type=gha,mode=max,scope=platform
+      - name: Build the web image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: infra/images/web/Dockerfile
+          tags: ${{ env.REGISTRY }}/skillhub-web:${{ github.sha }}
+          load: true
+          provenance: false
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+      - name: Build the llm image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: apps/llm
+          file: infra/images/llm/Dockerfile
+          tags: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
+          load: true
+          provenance: false
+          cache-from: type=gha,scope=llm
+          cache-to: type=gha,mode=max,scope=llm
+      - name: Smoke the images before pushing them
+        env:
+          PLATFORM_IMAGE: ${{ env.REGISTRY }}/skillhub-platform:${{ github.sha }}
+          WEB_IMAGE: ${{ env.REGISTRY }}/skillhub-web:${{ github.sha }}
+          LLM_IMAGE: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
+        run: bash tools/ci/stack-smoke.sh
+
+  images-push:
+    needs: [images, web, platform, llm, contracts-drift]
+    if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       packages: write
@@ -413,25 +490,30 @@ jobs:
       REGISTRY: ghcr.io/arthurc02
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Build service images
-        run: |
-          set -euo pipefail
-          # platform and web build from the repo root (go.work, packages/); llm builds from apps/llm.
-          docker build -f infra/images/platform/Dockerfile -t "${REGISTRY}/skillhub-platform:${GITHUB_SHA}" .
-          docker build -f infra/images/web/Dockerfile      -t "${REGISTRY}/skillhub-web:${GITHUB_SHA}" .
-          docker build -f infra/images/llm/Dockerfile      -t "${REGISTRY}/skillhub-llm:${GITHUB_SHA}" apps/llm
-          docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep skillhub-
-      - name: Smoke the images before pushing them
-        env:
-          PLATFORM_IMAGE: ${{ env.REGISTRY }}/skillhub-platform:${{ github.sha }}
-          WEB_IMAGE: ${{ env.REGISTRY }}/skillhub-web:${{ github.sha }}
-          LLM_IMAGE: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
-        run: bash tools/ci/stack-smoke.sh
-      - name: Push to GHCR (main only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          set -euo pipefail
-          echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
-          for svc in platform llm web; do
-            docker push "${REGISTRY}/skillhub-${svc}:${GITHUB_SHA}"
-          done
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: Log in to GHCR
+        run: echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+      - name: Push the platform image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: infra/images/platform/Dockerfile
+          tags: ${{ env.REGISTRY }}/skillhub-platform:${{ github.sha }}
+          push: true
+          cache-from: type=gha,scope=platform
+      - name: Push the web image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: infra/images/web/Dockerfile
+          tags: ${{ env.REGISTRY }}/skillhub-web:${{ github.sha }}
+          push: true
+          cache-from: type=gha,scope=web
+      - name: Push the llm image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: apps/llm
+          file: infra/images/llm/Dockerfile
+          tags: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
+          push: true
+          cache-from: type=gha,scope=llm

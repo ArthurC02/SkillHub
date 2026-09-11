@@ -305,8 +305,8 @@ CI artifact `runtime-agent-sdk-scan-<sha>`（保留 90 天，含 `sbom.spdx.json
 ### 已發佈的 digest 與孤兒清單
 
 **現行 digest ＝ `ghcr.io/arthurc02/skillhub-runtime-agent-sdk:<最新版本>` 當下解析到的那個。**
-這裡不抄它——build 不是位元可重現的，所以每一次跑到發佈步驟都會產生**新的 digest** 並把版本
-tag 移過去，一份寫在文件裡的「現行 digest」保證會過期，而過期的那份看起來跟正確的一模一樣。
+這裡不抄它——build 不是位元可重現的，每升一次版就換一個 digest，一份寫在文件裡的「現行
+digest」保證會過期，而過期的那份看起來跟正確的一模一樣。
 **版本字串同理不抄**（原文寫死 `2026.08-3`，2026-09-03 訂正）：唯一來源是 Dockerfile 的
 `ARG IMAGE_VERSION`，`runtime-image.yml` 的發佈步驟與 `rescan` job 讀的也是它。要拿當下的值：
 
@@ -363,7 +363,15 @@ filter 裡**，所以連「只改 filter」這種編輯也會重建一次、把�
 這在 `8b16f56` 重新評估過，結論是維持現狀：拿掉它可以省下這種孤兒，但 ADR-019 允許
 單人直推 main 而本專案確實這樣用，拿掉之後**一個改動 build 或閘門的 commit 會沒有任何東西
 驗它**——正是那一行 filter 存在的理由。一個有清理路徑的孤兒比一個沒被驗過的閘門便宜。
-理由同時寫在 `runtime-image.yml` 檔頭，改動前先讀那段。
+
+**2026-09-11 起，同版重建不再推送，這個取捨也就不再有代價。** 發佈步驟先查 registry 有沒有
+這個版本的 tag：有，就只跑閘門、不推送、不移 tag（job summary 會寫明）；只有新版本才會推。
+改 build 或閘門的 commit 仍然整套驗一次，只是不再把前一個 digest 孤立掉。**上表因此不會再長新列，
+但它並不完整**：同日逐一對過 `runtime-image.yml` 的 run 紀錄，`8b16f56` 之後還有 9 次版本沒改的
+push 跑完了發佈（`e813abb`、`1712099`、`da0019e`、`b87601d`、`a9e27b6`、`0210705`、`d0a6182`、
+`f3f8bb0`、`07fae2e`）。後三次逐一查過 publish job，`Push to GHCR` 與兩個 attestation 都成功；
+前六次依當時 workflow 的結構推定同樣推送了。每一次都把當時的版本 tag 移到了新 digest，被移走的
+那些還沒補進上表——每一個都能用它自己那次發佈的 `sha-<commit 前 12 碼>` tag 反查。
 
 **`2026.08-3` 首次發佈後的實測複核（當時 3 筆）**：①發佈後 `2026.08-2` 仍解析到
 `sha256:61ef902f…`（tag 未被移走，故未成孤兒）；②同批的純 `.md` commit（`68abae5`）**沒有
