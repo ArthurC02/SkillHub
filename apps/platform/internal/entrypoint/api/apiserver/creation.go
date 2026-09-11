@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -20,6 +21,71 @@ type creationHandler struct {
 	Svc       *creation.Service
 	Identity  *identity.Service
 	Transient func(context.Context, creation.JobArgs, *llmclient.GenerateDiagram) error
+	Credit    *credit.Service
+}
+
+var errNoCreditRate = errors.New("creation: credit conversion unavailable")
+
+var snapshotCreditFields = map[string]string{
+	"budget_usd":   "budget_credits",
+	"reserved_usd": "reserved_credits",
+	"spent_usd":    "spent_credits",
+}
+
+func (h *creationHandler) present(v creation.View) (map[string]any, error) {
+	if h.Credit == nil {
+		return nil, errNoCreditRate
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	snap, _ := out["snapshot"].(map[string]any)
+	for usdKey, creditKey := range snapshotCreditFields {
+		usd, present := snap[usdKey].(float64)
+		delete(snap, usdKey)
+		if !present {
+			continue
+		}
+		credits := int64(0)
+		if usd > 0 {
+			var ok bool
+			if credits, ok = h.Credit.CreditsForUSD(usd); !ok {
+				return nil, errNoCreditRate
+			}
+		}
+		snap[creditKey] = credits
+	}
+	return out, nil
+}
+
+func (h *creationHandler) writeView(w http.ResponseWriter, v creation.View) {
+	out, err := h.present(v)
+	if err != nil {
+		httpx.WriteError(w, 503, "創作服務暫時無法完成這個動作，進度已保留。")
+		return
+	}
+	httpx.WriteJSON(w, 200, out)
+}
+
+func (h *creationHandler) budgetBand() (minCredits, maxCredits int64, ok bool) {
+	if h.Credit == nil {
+		return 0, 0, false
+	}
+	minCredits, okMin := h.Credit.CreditsForUSD(h.Svc.Limits.MaxCallCostUSD)
+	maxCredits, okMax := h.Credit.CreditsWithinUSD(h.Svc.Limits.MaxCostUSD)
+	return minCredits, maxCredits, okMin && okMax
+}
+
+func (h *creationHandler) usdForCredits(credits int64) (float64, bool) {
+	if h.Credit == nil {
+		return 0, false
+	}
+	return h.Credit.USDForCredits(credits)
 }
 
 func (h *creationHandler) scope(w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
@@ -64,9 +130,11 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 		text = "點數不足，無法開始新的創作。請聯絡管理者為這個帳號加點；已經開始的創作不受影響。"
 	case errors.Is(err, creation.ErrBudgetOutOfBand):
 		code = 422
-		min := strconv.FormatFloat(h.Svc.Limits.MaxCallCostUSD, 'f', -1, 64)
-		max := strconv.FormatFloat(h.Svc.Limits.MaxCostUSD, 'f', -1, 64)
-		text = "這次預算必須介於 $" + min + " 與 $" + max + " 之間。"
+		if minCredits, maxCredits, ok := h.budgetBand(); ok {
+			text = "這次預算必須介於 " + strconv.FormatInt(minCredits, 10) + " 點與 " + strconv.FormatInt(maxCredits, 10) + " 點之間。"
+		} else {
+			text = "這次預算超出允許的範圍。"
+		}
 	}
 	httpx.WriteError(w, code, text)
 }
@@ -94,7 +162,16 @@ func (h *creationHandler) List(w http.ResponseWriter, r *http.Request) {
 		h.creationError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, 200, v)
+	out := make([]map[string]any, 0, len(v))
+	for _, one := range v {
+		presented, err := h.present(one)
+		if err != nil {
+			httpx.WriteError(w, 503, "創作服務暫時無法完成這個動作，進度已保留。")
+			return
+		}
+		out = append(out, presented)
+	}
+	httpx.WriteJSON(w, 200, out)
 }
 func (h *creationHandler) Get(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.scope(w, r)
@@ -111,7 +188,7 @@ func (h *creationHandler) Get(w http.ResponseWriter, r *http.Request) {
 		h.creationError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, 200, v)
+	h.writeView(w, v)
 }
 func (h *creationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.scope(w, r)
@@ -119,19 +196,24 @@ func (h *creationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		ID        pgtype.UUID `json:"id"`
-		Message   string      `json:"message"`
-		BudgetUSD float64     `json:"budget_usd"`
+		ID            pgtype.UUID `json:"id"`
+		Message       string      `json:"message"`
+		BudgetCredits int64       `json:"budget_credits"`
 	}
 	if !creationDecode(w, r, &in) {
 		return
 	}
-	v, err := h.Svc.Create(r.Context(), ws, in.ID, in.Message, in.BudgetUSD)
+	budget, ok := h.usdForCredits(in.BudgetCredits)
+	if !ok {
+		h.creationError(w, creation.ErrBudgetOutOfBand)
+		return
+	}
+	v, err := h.Svc.Create(r.Context(), ws, in.ID, in.Message, budget)
 	if err != nil {
 		h.creationError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, 200, v)
+	h.writeView(w, v)
 }
 func (h *creationHandler) Act(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.scope(w, r)
@@ -143,9 +225,22 @@ func (h *creationHandler) Act(w http.ResponseWriter, r *http.Request) {
 		h.creationError(w, creation.ErrNotFound)
 		return
 	}
-	var in creation.Command
-	if !creationDecode(w, r, &in) {
+	var body struct {
+		creation.Command
+		BudgetCredits *int64 `json:"budget_credits"`
+	}
+	if !creationDecode(w, r, &body) {
 		return
+	}
+	in := body.Command
+	in.BudgetUSD = 0
+	if body.BudgetCredits != nil {
+		budget, ok := h.usdForCredits(*body.BudgetCredits)
+		if !ok {
+			h.creationError(w, creation.ErrBudgetOutOfBand)
+			return
+		}
+		in.BudgetUSD = budget
 	}
 	v, job, err := h.Svc.Act(r.Context(), ws, id, in)
 	if err != nil {
@@ -169,7 +264,7 @@ func (h *creationHandler) Act(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	httpx.WriteJSON(w, 200, v)
+	h.writeView(w, v)
 }
 func (h *creationHandler) Limits(w http.ResponseWriter, r *http.Request) {
 	l := h.Svc.Limits
@@ -177,17 +272,22 @@ func (h *creationHandler) Limits(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, 503, "創作服務暫時無法完成這個動作，進度已保留。")
 		return
 	}
+	minCredits, maxCredits, ok := h.budgetBand()
+	if !ok {
+		httpx.WriteError(w, 503, "創作服務暫時無法完成這個動作，進度已保留。")
+		return
+	}
 	httpx.WriteJSON(w, 200, struct {
-		MinBudgetUSD          float64 `json:"min_budget_usd"`
-		MaxBudgetUSD          float64 `json:"max_budget_usd"`
-		MaxSteps              int     `json:"max_steps"`
-		MaxToolCalls          int     `json:"max_tool_calls"`
-		CallTimeoutSeconds    int64   `json:"call_timeout_seconds"`
-		SessionTimeoutSeconds int64   `json:"session_timeout_seconds"`
-		RetentionSeconds      int64   `json:"retention_seconds"`
+		MinBudgetCredits      int64 `json:"min_budget_credits"`
+		MaxBudgetCredits      int64 `json:"max_budget_credits"`
+		MaxSteps              int   `json:"max_steps"`
+		MaxToolCalls          int   `json:"max_tool_calls"`
+		CallTimeoutSeconds    int64 `json:"call_timeout_seconds"`
+		SessionTimeoutSeconds int64 `json:"session_timeout_seconds"`
+		RetentionSeconds      int64 `json:"retention_seconds"`
 	}{
-		MinBudgetUSD:          l.MaxCallCostUSD,
-		MaxBudgetUSD:          l.MaxCostUSD,
+		MinBudgetCredits:      minCredits,
+		MaxBudgetCredits:      maxCredits,
 		MaxSteps:              l.MaxSteps,
 		MaxToolCalls:          l.MaxToolCalls,
 		CallTimeoutSeconds:    int64(l.CallTimeout / time.Second),

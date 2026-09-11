@@ -13,7 +13,7 @@ import (
 func TestCreationMaterializeCreatesTheAcceptanceTestCase(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	alice := a.login(t, "creation-criteria-alice")
-	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	if v.Snapshot.PendingAction != "confirm_brief" || len(v.Snapshot.AcceptanceCriteria) != 1 {
 		t.Fatalf("brief proposal without criteria: %+v", v.Snapshot)
@@ -60,7 +60,7 @@ func TestCreationRaiseBudgetLetsALimitedSessionContinue(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	alice := a.login(t, "creation-raise")
 
-	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .1}, 200)
+	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 130}, 200)
 	v = creationStep(t, s, v)
 	act := func(kind string, extra map[string]any, want int) map[string]any {
 		body := map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": kind}
@@ -72,11 +72,11 @@ func TestCreationRaiseBudgetLetsALimitedSessionContinue(t *testing.T) {
 
 	creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("confirm_brief", nil, 422), 422)
 
-	creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("raise_budget", map[string]any{"budget_usd": 5.0}, 422), 422)
+	creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("raise_budget", map[string]any{"budget_credits": 6500}, 422), 422)
 
-	creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("raise_budget", map[string]any{"budget_usd": .1}, 422), 422)
-	raised := creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("raise_budget", map[string]any{"budget_usd": .5}, 200), 200)
-	if raised.Snapshot.BudgetUSD != .5 || raised.State != "waiting_confirmation" || raised.Snapshot.PendingAction != "confirm_brief" {
+	creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("raise_budget", map[string]any{"budget_credits": 130}, 422), 422)
+	raised := creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", act("raise_budget", map[string]any{"budget_credits": 650}, 200), 200)
+	if creationDomain(t, s, alice, raised).Snapshot.BudgetUSD != .5 || raised.State != "waiting_confirmation" || raised.Snapshot.PendingAction != "confirm_brief" {
 		t.Fatalf("raise changed more than the budget: %+v", raised)
 	}
 	after := creationAct(t, alice, raised, "confirm_brief")
@@ -88,7 +88,7 @@ func TestCreationRaiseBudgetLetsALimitedSessionContinue(t *testing.T) {
 func TestCreationCandidateDoesNotCountAgainstTheSingleShotAllowance(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	alice := a.login(t, "creation-quota-alice")
-	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	v = creationAct(t, alice, v, "confirm_brief")
 	v = creationStep(t, s, v)
@@ -116,7 +116,7 @@ func TestCreationCandidateDoesNotCountAgainstTheSingleShotAllowance(t *testing.T
 func TestAccountPurgeRemovesCreationSessions(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	alice := a.login(t, "creation-purge-alice")
-	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	ws := workspaceOf(t, testPool, alice)
 	count := func(q string) int {
@@ -146,7 +146,7 @@ func TestAccountPurgeRemovesCreationSessions(t *testing.T) {
 func TestCreationMessageKeepsAConfirmedBrief(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	alice := a.login(t, "creation-keep-brief")
-	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	v = creationAct(t, alice, v, "confirm_brief")
 	v = creationStep(t, s, v)

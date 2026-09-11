@@ -3,6 +3,7 @@ package credit
 import (
 	"context"
 	"errors"
+	"math"
 	"strings"
 	"time"
 
@@ -257,8 +258,12 @@ func (s *Service) Estimate(ctx context.Context, statKind string) (Estimate, erro
 }
 
 func (s *Service) CreditsForUSD(usd float64) (credits int64, ok bool) {
-	micros, estimated := UsageCost(&usd, "gateway")
-	if estimated {
+	if math.IsNaN(usd) || math.IsInf(usd, 0) || usd <= 0 {
+		return 0, false
+	}
+	// The epsilon absorbs float noise from usd*1e6; a real fraction of a micro still rounds up.
+	micros := int64(math.Ceil(usd*1_000_000 - 1e-6))
+	if micros > MaxBillableMicros {
 
 		return 0, false
 	}
@@ -267,6 +272,31 @@ func (s *Service) CreditsForUSD(usd float64) (credits int64, ok bool) {
 		return 0, false
 	}
 	return CreditsForMicros(billed, s.Config.MicrosPerCredit), true
+}
+
+// CreditsWithinUSD is the most credits whose worth does not exceed usd, for a ceiling shown as credits.
+func (s *Service) CreditsWithinUSD(usd float64) (credits int64, ok bool) {
+	if math.IsNaN(usd) || math.IsInf(usd, 0) || usd < 0 || s.Config.MicrosPerCredit <= 0 {
+		return 0, false
+	}
+	micros := int64(math.Floor(usd * 1_000_000))
+	if micros > MaxBillableMicros {
+		return 0, false
+	}
+	return micros * s.Config.MarkupBps / 10000 / s.Config.MicrosPerCredit, true
+}
+
+// USDForCredits is what credits are worth to the platform, rounded down so a budget never exceeds its credits.
+func (s *Service) USDForCredits(credits int64) (usd float64, ok bool) {
+	if credits < 0 || s.Config.MarkupBps <= 0 || s.Config.MicrosPerCredit <= 0 ||
+		credits > MaxBillableMicros/s.Config.MicrosPerCredit {
+		return 0, false
+	}
+	micros := credits * s.Config.MicrosPerCredit * 10000 / s.Config.MarkupBps
+	if micros > MaxBillableMicros {
+		return 0, false
+	}
+	return float64(micros) / 1_000_000, true
 }
 
 type GrantInput struct {

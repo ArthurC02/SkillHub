@@ -8589,8 +8589,8 @@ components:
         - "diagram_confirmed"
         - "references"
         - "pending_action"
-        - "budget_usd"
-        - "reserved_usd"
+        - "budget_credits"
+        - "reserved_credits"
         - "usage_unknown"
         - "steps"
         - "tool_calls"
@@ -8635,12 +8635,12 @@ components:
           $ref: "#/components/schemas/CreationCandidate"
         pending_action:
           type: "string"
-        budget_usd:
-          type: "number"
-        reserved_usd:
-          type: "number"
-        spent_usd:
-          type: "number"
+        budget_credits:
+          type: "integer"
+        reserved_credits:
+          type: "integer"
+        spent_credits:
+          type: "integer"
         usage_unknown:
           type: "boolean"
         steps:
@@ -8751,19 +8751,19 @@ components:
       additionalProperties: false
       description: "The ceilings this deployment enforces on one interactive creation session (CREATION_LIMITS_JSON, values ruled by 05 R-45). Published so the first action, choosing a budget, is not a guess, and so the screen can show used/allowed instead of a bare count."
       required:
-        - "min_budget_usd"
-        - "max_budget_usd"
+        - "min_budget_credits"
+        - "max_budget_credits"
         - "max_steps"
         - "max_tool_calls"
         - "call_timeout_seconds"
         - "session_timeout_seconds"
         - "retention_seconds"
       properties:
-        min_budget_usd:
-          type: "number"
+        min_budget_credits:
+          type: "integer"
           description: "Lowest budget a session may start with: one model call's reserved cost."
-        max_budget_usd:
-          type: "number"
+        max_budget_credits:
+          type: "integer"
         max_steps:
           type: "integer"
         max_tool_calls:
@@ -8781,7 +8781,7 @@ components:
       required:
         - "id"
         - "message"
-        - "budget_usd"
+        - "budget_credits"
       properties:
         id:
           type: "string"
@@ -8789,8 +8789,8 @@ components:
         message:
           type: "string"
           maxLength: 4000
-        budget_usd:
-          type: "number"
+        budget_credits:
+          type: "integer"
           minimum: 0
       description: "An empty message creates an unbilled session awaiting its first diagram or reference selection. The supplied budget is a user-approved ceiling, bounded again by deployment policy."
 
@@ -8832,9 +8832,9 @@ components:
           type: "string"
           maxLength: 4000
           description: "message: the turn itself, and required. diagram and select_references: optional, the sentence that came with the material - appended as the same user message before the material is applied, so the picture and what it is for are one turn. Ignored by every other kind."
-        budget_usd:
-          type: "number"
-          description: "raise_budget only: the new session ceiling. Must exceed the current one and stay within max_budget_usd from GET /creation-sessions/limits; a session refused for its limit becomes waiting_input again."
+        budget_credits:
+          type: "integer"
+          description: "raise_budget only: the new session ceiling. Must exceed the current one and stay within max_budget_credits from GET /creation-sessions/limits; a session refused for its limit becomes waiting_input again."
         reference_skill_ids:
           type: "array"
           maxItems: 3
@@ -8849,4 +8849,4 @@ components:
         run_id:
           type: "string"
           format: "uuid"
-      description: "stop_step ends the step in flight, not the session: permitted only while the session is queued or working, it releases the attempt so the Worker refuses to start it (or its in-flight call is cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid for and the session says so. Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_usd for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service."
+      description: "stop_step ends the step in flight, not the session: permitted only while the session is queued or working, it releases the attempt so the Worker refuses to start it (or its in-flight call is cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid for and the session says so. Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_credits for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service."

@@ -3239,15 +3239,15 @@ func (s *CreateCreationSession) encodeFields(e *jx.Encoder) {
 		e.Str(s.Message)
 	}
 	{
-		e.FieldStart("budget_usd")
-		e.Float64(s.BudgetUsd)
+		e.FieldStart("budget_credits")
+		e.Int(s.BudgetCredits)
 	}
 }
 
 var jsonFieldsNameOfCreateCreationSession = [3]string{
 	0: "id",
 	1: "message",
-	2: "budget_usd",
+	2: "budget_credits",
 }
 
 // Decode decodes CreateCreationSession from json.
@@ -3283,17 +3283,17 @@ func (s *CreateCreationSession) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"message\"")
 			}
-		case "budget_usd":
+		case "budget_credits":
 			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
-				v, err := d.Float64()
-				s.BudgetUsd = float64(v)
+				v, err := d.Int()
+				s.BudgetCredits = int(v)
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"budget_usd\"")
+				return errors.Wrap(err, "decode field \"budget_credits\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
@@ -5388,9 +5388,9 @@ func (s *CreationAction) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
-		if s.BudgetUsd.Set {
-			e.FieldStart("budget_usd")
-			s.BudgetUsd.Encode(e)
+		if s.BudgetCredits.Set {
+			e.FieldStart("budget_credits")
+			s.BudgetCredits.Encode(e)
 		}
 	}
 	{
@@ -5428,7 +5428,7 @@ var jsonFieldsNameOfCreationAction = [9]string{
 	1: "expected_revision",
 	2: "kind",
 	3: "message",
-	4: "budget_usd",
+	4: "budget_credits",
 	5: "reference_skill_ids",
 	6: "content_hash",
 	7: "diagram",
@@ -5488,15 +5488,15 @@ func (s *CreationAction) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"message\"")
 			}
-		case "budget_usd":
+		case "budget_credits":
 			if err := func() error {
-				s.BudgetUsd.Reset()
-				if err := s.BudgetUsd.Decode(d); err != nil {
+				s.BudgetCredits.Reset()
+				if err := s.BudgetCredits.Decode(d); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"budget_usd\"")
+				return errors.Wrap(err, "decode field \"budget_credits\"")
 			}
 		case "reference_skill_ids":
 			if err := func() error {
@@ -6327,12 +6327,12 @@ func (s *CreationLimits) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *CreationLimits) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("min_budget_usd")
-		e.Float64(s.MinBudgetUsd)
+		e.FieldStart("min_budget_credits")
+		e.Int(s.MinBudgetCredits)
 	}
 	{
-		e.FieldStart("max_budget_usd")
-		e.Float64(s.MaxBudgetUsd)
+		e.FieldStart("max_budget_credits")
+		e.Int(s.MaxBudgetCredits)
 	}
 	{
 		e.FieldStart("max_steps")
@@ -6357,8 +6357,8 @@ func (s *CreationLimits) encodeFields(e *jx.Encoder) {
 }
 
 var jsonFieldsNameOfCreationLimits = [7]string{
-	0: "min_budget_usd",
-	1: "max_budget_usd",
+	0: "min_budget_credits",
+	1: "max_budget_credits",
 	2: "max_steps",
 	3: "max_tool_calls",
 	4: "call_timeout_seconds",
@@ -6375,29 +6375,29 @@ func (s *CreationLimits) Decode(d *jx.Decoder) error {
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
-		case "min_budget_usd":
+		case "min_budget_credits":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Float64()
-				s.MinBudgetUsd = float64(v)
+				v, err := d.Int()
+				s.MinBudgetCredits = int(v)
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"min_budget_usd\"")
+				return errors.Wrap(err, "decode field \"min_budget_credits\"")
 			}
-		case "max_budget_usd":
+		case "max_budget_credits":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := d.Float64()
-				s.MaxBudgetUsd = float64(v)
+				v, err := d.Int()
+				s.MaxBudgetCredits = int(v)
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"max_budget_usd\"")
+				return errors.Wrap(err, "decode field \"max_budget_credits\"")
 			}
 		case "max_steps":
 			requiredBitSet[0] |= 1 << 2
@@ -7794,17 +7794,17 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		e.Str(s.PendingAction)
 	}
 	{
-		e.FieldStart("budget_usd")
-		e.Float64(s.BudgetUsd)
+		e.FieldStart("budget_credits")
+		e.Int(s.BudgetCredits)
 	}
 	{
-		e.FieldStart("reserved_usd")
-		e.Float64(s.ReservedUsd)
+		e.FieldStart("reserved_credits")
+		e.Int(s.ReservedCredits)
 	}
 	{
-		if s.SpentUsd.Set {
-			e.FieldStart("spent_usd")
-			s.SpentUsd.Encode(e)
+		if s.SpentCredits.Set {
+			e.FieldStart("spent_credits")
+			s.SpentCredits.Encode(e)
 		}
 	}
 	{
@@ -7946,9 +7946,9 @@ var jsonFieldsNameOfCreationSnapshot = [37]string{
 	11: "draft",
 	12: "candidate",
 	13: "pending_action",
-	14: "budget_usd",
-	15: "reserved_usd",
-	16: "spent_usd",
+	14: "budget_credits",
+	15: "reserved_credits",
+	16: "spent_credits",
 	17: "usage_unknown",
 	18: "steps",
 	19: "tool_calls",
@@ -8163,39 +8163,39 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"pending_action\"")
 			}
-		case "budget_usd":
+		case "budget_credits":
 			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
-				v, err := d.Float64()
-				s.BudgetUsd = float64(v)
+				v, err := d.Int()
+				s.BudgetCredits = int(v)
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"budget_usd\"")
+				return errors.Wrap(err, "decode field \"budget_credits\"")
 			}
-		case "reserved_usd":
+		case "reserved_credits":
 			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
-				v, err := d.Float64()
-				s.ReservedUsd = float64(v)
+				v, err := d.Int()
+				s.ReservedCredits = int(v)
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"reserved_usd\"")
+				return errors.Wrap(err, "decode field \"reserved_credits\"")
 			}
-		case "spent_usd":
+		case "spent_credits":
 			if err := func() error {
-				s.SpentUsd.Reset()
-				if err := s.SpentUsd.Decode(d); err != nil {
+				s.SpentCredits.Reset()
+				if err := s.SpentCredits.Decode(d); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"spent_usd\"")
+				return errors.Wrap(err, "decode field \"spent_credits\"")
 			}
 		case "usage_unknown":
 			requiredBitSet[2] |= 1 << 1

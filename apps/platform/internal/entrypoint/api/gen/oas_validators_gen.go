@@ -544,7 +544,7 @@ func (s *CreateCreationSession) Validate() error {
 		})
 	}
 	if err := func() error {
-		if err := (validate.Float{
+		if err := (validate.Int{
 			MinSet:        true,
 			Min:           0,
 			MaxSet:        false,
@@ -552,15 +552,15 @@ func (s *CreateCreationSession) Validate() error {
 			MinExclusive:  false,
 			MaxExclusive:  false,
 			MultipleOfSet: false,
-			MultipleOf:    nil,
+			MultipleOf:    0,
 			Pattern:       nil,
-		}).Validate(float64(s.BudgetUsd)); err != nil {
-			return errors.Wrap(err, "float")
+		}).Validate(int64(s.BudgetCredits)); err != nil {
+			return errors.Wrap(err, "int")
 		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "budget_usd",
+			Name:  "budget_credits",
 			Error: err,
 		})
 	}
@@ -941,24 +941,6 @@ func (s *CreationAction) Validate() error {
 		})
 	}
 	if err := func() error {
-		if value, ok := s.BudgetUsd.Get(); ok {
-			if err := func() error {
-				if err := (validate.Float{}).Validate(float64(value)); err != nil {
-					return errors.Wrap(err, "float")
-				}
-				return nil
-			}(); err != nil {
-				return err
-			}
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "budget_usd",
-			Error: err,
-		})
-	}
-	if err := func() error {
 		if s.ReferenceSkillIds == nil {
 			return nil // optional
 		}
@@ -1092,40 +1074,6 @@ func (s *CreationDraft) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "skill",
-			Error: err,
-		})
-	}
-	if len(failures) > 0 {
-		return &validate.Error{Fields: failures}
-	}
-	return nil
-}
-
-func (s *CreationLimits) Validate() error {
-	if s == nil {
-		return validate.ErrNilPointer
-	}
-
-	var failures []validate.FieldError
-	if err := func() error {
-		if err := (validate.Float{}).Validate(float64(s.MinBudgetUsd)); err != nil {
-			return errors.Wrap(err, "float")
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "min_budget_usd",
-			Error: err,
-		})
-	}
-	if err := func() error {
-		if err := (validate.Float{}).Validate(float64(s.MaxBudgetUsd)); err != nil {
-			return errors.Wrap(err, "float")
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "max_budget_usd",
 			Error: err,
 		})
 	}
@@ -1442,46 +1390,6 @@ func (s *CreationSnapshot) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "draft",
-			Error: err,
-		})
-	}
-	if err := func() error {
-		if err := (validate.Float{}).Validate(float64(s.BudgetUsd)); err != nil {
-			return errors.Wrap(err, "float")
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "budget_usd",
-			Error: err,
-		})
-	}
-	if err := func() error {
-		if err := (validate.Float{}).Validate(float64(s.ReservedUsd)); err != nil {
-			return errors.Wrap(err, "float")
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "reserved_usd",
-			Error: err,
-		})
-	}
-	if err := func() error {
-		if value, ok := s.SpentUsd.Get(); ok {
-			if err := func() error {
-				if err := (validate.Float{}).Validate(float64(value)); err != nil {
-					return errors.Wrap(err, "float")
-				}
-				return nil
-			}(); err != nil {
-				return err
-			}
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "spent_usd",
 			Error: err,
 		})
 	}

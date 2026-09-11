@@ -50,7 +50,11 @@ func (h *creationHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	flusher.Flush()
 
 	send := func(v creation.View) bool {
-		b, marshalErr := json.Marshal(v)
+		presented, presentErr := h.present(v)
+		if presentErr != nil {
+			return false
+		}
+		b, marshalErr := json.Marshal(presented)
 		if marshalErr != nil {
 			return false
 		}

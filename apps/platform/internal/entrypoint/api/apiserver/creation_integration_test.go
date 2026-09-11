@@ -181,7 +181,7 @@ func TestCreationJourneyPreservesConfirmedCandidateAndWorkspace(t *testing.T) {
 	alice := a.login(t, "creation-alice")
 	bob := a.login(t, "creation-bob")
 	id := creationID(t)
-	input := map[string]any{"id": id, "message": "請建立資料摘要 Skill。", "budget_usd": .5}
+	input := map[string]any{"id": id, "message": "請建立資料摘要 Skill。", "budget_credits": 650}
 	v := creationPost(t, alice, "/creation-sessions", input, 200)
 	replay := creationPost(t, alice, "/creation-sessions", input, 200)
 	if replay.Revision != v.Revision {
@@ -221,7 +221,7 @@ func TestCreationJourneyPreservesConfirmedCandidateAndWorkspace(t *testing.T) {
 func TestCreationDiagramUsesTransientWorkerAndStoresNoImage(t *testing.T) {
 	a, _, calls := creationFixture(t)
 	c := a.login(t, "creation-diagram")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
 	const image = "cHJpdmF0ZS1mbG93Y2hhcnQtYnl0ZXMtY3JlYXRpb24="
 	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "diagram", "diagram": map[string]string{"media_type": "image/png", "data": image}}, 200)
 	if v.State != "waiting_confirmation" || v.Snapshot.PendingAction != "confirm_diagram" || calls.Load() != 1 {
@@ -243,7 +243,7 @@ func TestCreationDiagramUsesTransientWorkerAndStoresNoImage(t *testing.T) {
 func TestCreationCommandReplayCASAndQueuedCancellation(t *testing.T) {
 	a, s, calls := creationFixture(t)
 	c := a.login(t, "creation-cas")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
 	command := map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "message", "message": "建立摘要"}
 	queued := creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", command, 200)
 	replay := creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", command, 200)
@@ -315,7 +315,7 @@ func TestCreationCancellationSettlesUnknownCostWithoutDraft(t *testing.T) {
 		<-ctx.Done()
 		return nil, ctx.Err()
 	})
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_credits": 650}, 200)
 	job := creationJob(t, v.ID)
 	done := make(chan error, 1)
 	go func() { done <- s.Step(context.Background(), job, nil) }()
@@ -346,7 +346,7 @@ func TestCreationPurgeFencesLateModelResult(t *testing.T) {
 		<-ctx.Done()
 		return nil, ctx.Err()
 	})
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_credits": 650}, 200)
 	job := creationJob(t, v.ID)
 	done := make(chan error, 1)
 	go func() { done <- s.Step(context.Background(), job, nil) }()
@@ -379,14 +379,14 @@ func TestCreationFixedReferencesAreReauthorizedBeforeEachCall(t *testing.T) {
 	a, s, calls := creationFixture(t)
 	owner := a.login(t, "creation-reference-owner")
 	other := a.login(t, "creation-reference-other")
-	v := creationPost(t, owner, "/creation-sessions", map[string]any{"id": creationID(t), "message": "建立參考範本", "budget_usd": .5}, 200)
+	v := creationPost(t, owner, "/creation-sessions", map[string]any{"id": creationID(t), "message": "建立參考範本", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	v = creationAct(t, owner, v, "confirm_brief")
 	v = creationStep(t, s, v)
 	v = creationAct(t, owner, v, "finalize")
 	candidate := v.Snapshot.Candidate
 	newSession := func(c *client) creation.View {
-		return creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": .5}, 200)
+		return creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
 	}
 	private := newSession(other)
 	creationPost(t, other, "/creation-sessions/"+private.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": private.Revision, "kind": "select_references", "reference_skill_ids": []string{candidate.SkillID}}, 404)
@@ -408,7 +408,7 @@ func TestCreationFixedReferencesAreReauthorizedBeforeEachCall(t *testing.T) {
 func TestCreationBudgetExhaustionDoesNotEnqueueAnotherCall(t *testing.T) {
 	a, s, calls := creationFixture(t)
 	c := a.login(t, "creation-budget")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_usd": .1}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_credits": 130}, 200)
 	v = creationStep(t, s, v)
 	creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "confirm_brief"}, 422)
 	var jobs int
@@ -423,7 +423,7 @@ func TestCreationBudgetExhaustionDoesNotEnqueueAnotherCall(t *testing.T) {
 func TestCreationRestartRecoversUnknownAttemptWithoutReplay(t *testing.T) {
 	a, s, calls := creationFixture(t)
 	c := a.login(t, "creation-restart")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_credits": 650}, 200)
 	job := creationJob(t, v.ID)
 	ctx := context.Background()
 
@@ -459,7 +459,7 @@ func TestCreationSecondSessionWithACollidingNameIsRefusedActionably(t *testing.T
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-collision")
 	toDraftReady := func() creation.View {
-		v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+		v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 		v = creationStep(t, s, v)
 		v = creationAct(t, c, v, "confirm_brief")
 		return creationStep(t, s, v)
@@ -488,8 +488,8 @@ func TestCreationSecondSessionWithACollidingNameIsRefusedActionably(t *testing.T
 func TestCreationBudgetOutOfBandNamesTheBand(t *testing.T) {
 	a, _, _ := creationFixture(t)
 	c := a.login(t, "creation-budget-band")
-	status, body := creationPostStatus(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "x", "budget_usd": 0.05})
-	if status != 422 || !strings.Contains(body, "0.1") || !strings.Contains(body, "1") {
+	status, body := creationPostStatus(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "x", "budget_credits": 65})
+	if status != 422 || !strings.Contains(body, "130 點") || !strings.Contains(body, "1300 點") {
 		t.Fatalf("out-of-band budget: got %d %s", status, body)
 	}
 }
@@ -506,13 +506,13 @@ func TestCreationLimitsEndpoint(t *testing.T) {
 		t.Fatalf("limits: got %d", res.StatusCode)
 	}
 	var out struct {
-		MinBudgetUSD float64 `json:"min_budget_usd"`
-		MaxBudgetUSD float64 `json:"max_budget_usd"`
+		MinBudgetCredits int64 `json:"min_budget_credits"`
+		MaxBudgetCredits int64 `json:"max_budget_credits"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
 		t.Fatal(err)
 	}
-	if out.MinBudgetUSD != .1 || out.MaxBudgetUSD != 1 {
+	if out.MinBudgetCredits != 130 || out.MaxBudgetCredits != 1300 {
 		t.Fatalf("limits body: %+v", out)
 	}
 }
@@ -526,7 +526,7 @@ func creationDeadlineLimits() creation.Limits {
 func TestCreationDeadlineIsNotTheBudgetSentence(t *testing.T) {
 	a, _, _ := creationFixtureWithLimits(t, creationDeadlineLimits())
 	c := a.login(t, "creation-deadline")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_credits": 650}, 200)
 	time.Sleep(2100 * time.Millisecond)
 	status, body := creationPostStatus(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
 		"command_id": creationID(t), "expected_revision": v.Revision, "kind": "message", "message": "繼續",

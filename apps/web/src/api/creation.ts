@@ -61,9 +61,9 @@ export interface CreationSnapshot {
   duplicate_acknowledged?: boolean;
   adopted?: boolean;
   pending_action: string;
-  budget_usd: number;
-  reserved_usd: number;
-  spent_usd?: number;
+  budget_credits: number;
+  reserved_credits: number;
+  spent_credits?: number;
   usage_unknown: boolean;
   steps: number;
   tool_calls: number;
@@ -100,8 +100,8 @@ export interface CreationSession {
   deadline: string;
 }
 export interface CreationLimits {
-  min_budget_usd: number;
-  max_budget_usd: number;
+  min_budget_credits: number;
+  max_budget_credits: number;
   max_steps: number;
   max_tool_calls: number;
   call_timeout_seconds: number;
@@ -134,13 +134,17 @@ export interface CreationAction {
   content_hash?: string;
   diagram?: { media_type: string; data: string };
   run_id?: string;
-  budget_usd?: number;
+  budget_credits?: number;
 }
 export const listCreationSessions = () => apiFetch<CreationSession[]>("/creation-sessions");
 export const getCreationLimits = () => apiFetch<CreationLimits>("/creation-sessions/limits");
 export const getCreationSession = (id: string) =>
   apiFetch<CreationSession>("/creation-sessions/" + id);
-export const createCreationSession = (body: { id: string; message: string; budget_usd: number }) =>
+export const createCreationSession = (body: {
+  id: string;
+  message: string;
+  budget_credits: number;
+}) =>
   apiFetch<CreationSession>("/creation-sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

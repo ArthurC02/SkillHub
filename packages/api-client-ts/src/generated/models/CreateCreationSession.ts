@@ -36,7 +36,7 @@ export interface CreateCreationSession {
      * @type {number}
      * @memberof CreateCreationSession
      */
-    budgetUsd: number;
+    budgetCredits: number;
 }
 
 /**
@@ -45,7 +45,7 @@ export interface CreateCreationSession {
 export function instanceOfCreateCreationSession(value: object): value is CreateCreationSession {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('message' in value) || value['message'] === undefined) return false;
-    if (!('budgetUsd' in value) || value['budgetUsd'] === undefined) return false;
+    if (!('budgetCredits' in value) || value['budgetCredits'] === undefined) return false;
     return true;
 }
 
@@ -61,7 +61,7 @@ export function CreateCreationSessionFromJSONTyped(json: any, ignoreDiscriminato
         
         'id': json['id'],
         'message': json['message'],
-        'budgetUsd': json['budget_usd'],
+        'budgetCredits': json['budget_credits'],
     };
 }
 
@@ -78,7 +78,7 @@ export function CreateCreationSessionToJSONTyped(value?: CreateCreationSession |
         
         'id': value['id'],
         'message': value['message'],
-        'budget_usd': value['budgetUsd'],
+        'budget_credits': value['budgetCredits'],
     };
 }
 

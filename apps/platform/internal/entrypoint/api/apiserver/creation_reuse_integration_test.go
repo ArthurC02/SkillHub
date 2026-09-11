@@ -12,7 +12,7 @@ import (
 func seedExistingSkill(t *testing.T, a *api, s *creation.Service, c *client) creation.Candidate {
 	t.Helper()
 	markCatalog(t, testPool, c.workspaceID)
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "建立可重用的範本", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "建立可重用的範本", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	v = creationAct(t, c, v, "confirm_brief")
 	v = creationStep(t, s, v)
@@ -35,13 +35,13 @@ func TestCreationFirstMessageCatalogueCheckOffersAdoptKeepOrDecline(t *testing.T
 		return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: "creation-summary", Available: true, Confirmed: true}}, 0.00001, nil
 	}
 	start := func() creation.View {
-		return creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "幫我整理輸入資料並輸出摘要", "budget_usd": .5}, 200)
+		return creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "幫我整理輸入資料並輸出摘要", "budget_credits": 650}, 200)
 	}
 
 	v := start()
 	if v.State != "waiting_confirmation" || v.Snapshot.PendingAction != "confirm_references" || !v.Snapshot.CatalogChecked ||
 		len(v.Snapshot.References) != 1 || v.Snapshot.References[0].SkillID != existing.SkillID || v.Snapshot.References[0].Confirmed ||
-		v.Snapshot.SpentUSD == nil || *v.Snapshot.SpentUSD != 0.00001 || calls.Load() != stepsBefore {
+		creationDomain(t, s, c, v).Snapshot.SpentUSD == nil || *creationDomain(t, s, c, v).Snapshot.SpentUSD != 0.00001 || calls.Load() != stepsBefore {
 		t.Fatalf("the catalogue hit must wait for the person before any model call: %+v calls=%d", v.Snapshot, calls.Load()-stepsBefore)
 	}
 	if len(checked) != 1 || checked[0] != "幫我整理輸入資料並輸出摘要" {
@@ -98,7 +98,7 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 		return nil, 0, nil
 	}
 	drafted := func(c *client) creation.View {
-		v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "再做一個摘要 Skill", "budget_usd": .5}, 200)
+		v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "再做一個摘要 Skill", "budget_credits": 650}, 200)
 		if v.State != "queued" || v.Snapshot.PendingAction != "" {
 			t.Fatalf("the first message must not be held: %+v", v.Snapshot)
 		}
@@ -116,13 +116,13 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 	held := creationAct(t, c, v, "materialize")
 	if held.State != "waiting_confirmation" || held.Snapshot.PendingAction != "confirm_duplicate" || held.Snapshot.PendingMaterialize != "materialize" ||
 		len(held.Snapshot.Duplicates) != 1 || held.Snapshot.Duplicates[0].SkillID != existing.SkillID || held.Snapshot.Candidate != nil ||
-		*held.Snapshot.SpentUSD != spentBefore+0.00002 {
+		*creationDomain(t, s, c, held).Snapshot.SpentUSD != spentBefore+0.00002 {
 		t.Fatalf("a near-duplicate must hold materialize: %+v", held.Snapshot)
 	}
 
 	done := creationAct(t, c, held, "confirm_duplicate")
 	if done.State != "candidate_ready" || done.Snapshot.Candidate == nil || !done.Snapshot.DuplicateAcknowledged || done.Snapshot.PendingAction != "" ||
-		done.Snapshot.PendingMaterialize != "" || len(done.Snapshot.Duplicates) != 1 || *done.Snapshot.SpentUSD != spentBefore+0.00002 {
+		done.Snapshot.PendingMaterialize != "" || len(done.Snapshot.Duplicates) != 1 || *creationDomain(t, s, c, done).Snapshot.SpentUSD != spentBefore+0.00002 {
 		t.Fatalf("confirm_duplicate must materialize the held command: %+v", done.Snapshot)
 	}
 
@@ -177,7 +177,7 @@ func TestCreationMasksCredentialsInTheStoredConversation(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-mask")
 	key := "sk-proj-" + strings.Repeat("A", 28)
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "用這把金鑰 " + key + " 讀資料", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "用這把金鑰 " + key + " 讀資料", "budget_credits": 650}, 200)
 	if got := v.Snapshot.Messages[0].Content; strings.Contains(got, key) || !strings.Contains(got, "[REDACTED]") {
 		t.Fatalf("the first message stored the credential: %q", got)
 	}
@@ -191,7 +191,7 @@ func TestCreationMasksCredentialsInTheStoredConversation(t *testing.T) {
 func TestCreationRefusesADraftThatEscapesItsPackage(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-escape")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "做一個摘要 Skill，順便測路徑穿越", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "做一個摘要 Skill，順便測路徑穿越", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	v = creationAct(t, c, v, "confirm_brief")
 	v = creationStep(t, s, v)

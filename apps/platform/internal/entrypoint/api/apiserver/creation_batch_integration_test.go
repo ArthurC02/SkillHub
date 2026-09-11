@@ -14,7 +14,7 @@ import (
 func TestCreationBatchCandidateSurvivesAMessage(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-batch-message")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	v = creationAct(t, c, v, "confirm_brief")
 	v = creationStep(t, s, v)
@@ -89,7 +89,7 @@ func TestCreationBatchConfirmReferencesRestoresAvailable(t *testing.T) {
 func TestCreationBatchGenerationInputsShape(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-batch-inputs")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立摘要 Skill。", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	v = creationAct(t, c, v, "confirm_brief")
 	v = creationStep(t, s, v)
@@ -168,12 +168,12 @@ func TestCreationBatchForeignSessionIDIsNotAnOracle(t *testing.T) {
 	alice := a.login(t, "creation-batch-oracle-alice")
 	bob := a.login(t, "creation-batch-oracle-bob")
 	aliceID := creationID(t)
-	creationPost(t, alice, "/creation-sessions", map[string]any{"id": aliceID, "message": "", "budget_usd": .5}, 200)
+	creationPost(t, alice, "/creation-sessions", map[string]any{"id": aliceID, "message": "", "budget_credits": 650}, 200)
 	if bob.status(t, "GET", "/creation-sessions/"+creation.UUID(aliceID)) != 404 {
 		t.Fatal("bob could see alice's session before reusing its id")
 	}
-	reused, reusedBody := creationStatusBody(t, bob, map[string]any{"id": aliceID, "message": "", "budget_usd": .5})
-	fresh := creationStatus(t, bob, map[string]any{"id": creationID(t), "message": "", "budget_usd": .5})
+	reused, reusedBody := creationStatusBody(t, bob, map[string]any{"id": aliceID, "message": "", "budget_credits": 650})
+	fresh := creationStatus(t, bob, map[string]any{"id": creationID(t), "message": "", "budget_credits": 650})
 	if reused != fresh {
 		t.Fatalf("reusing a foreign id gave a different status than a fresh one (GEN-011 oracle): reused=%d body=%s fresh=%d", reused, reusedBody, fresh)
 	}
@@ -187,7 +187,7 @@ func TestCreationBatchAMaterialCarriesItsSentence(t *testing.T) {
 	c := a.login(t, "creation-batch-note")
 
 	const withDiagram = "這是我的流程，我想把它變成待辦清單 Skill。"
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
 	if len(v.Snapshot.Messages) != 0 {
 		t.Fatalf("an unbilled session started with messages: %+v", v.Snapshot.Messages)
 	}
@@ -205,7 +205,7 @@ func TestCreationBatchAMaterialCarriesItsSentence(t *testing.T) {
 	}
 
 	const withRefs = "我想要和這個很像，但是輸出成表格。"
-	v = creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": .5}, 200)
+	v = creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
 	a.app.CreationSvc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
 		return creation.Reference{SkillID: "33333333-3333-3333-3333-333333333333", VersionID: "44444444-4444-4444-4444-444444444444", Name: "Ref", Available: true}, llmclient.GenerateReference{}, nil
 	}
@@ -226,7 +226,7 @@ func TestCreationBatchAMaterialCarriesItsSentence(t *testing.T) {
 func TestCreationBatchEveryPictureKeepsItsPlaceInTheConversation(t *testing.T) {
 	a, _, _ := creationFixture(t)
 	c := a.login(t, "creation-batch-pictures")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
 
 	const said = "這是我的流程。"
 	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
@@ -289,7 +289,7 @@ func TestCreationBatchStopEndsTheStepNotTheSession(t *testing.T) {
 		return id, status
 	}
 
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立摘要 Skill。", "budget_credits": 650}, 200)
 	if v.State != "queued" {
 		t.Fatalf("a new session with a message should be queued: %+v", v.State)
 	}
@@ -308,7 +308,7 @@ func TestCreationBatchStopEndsTheStepNotTheSession(t *testing.T) {
 		t.Fatalf("the attempt was left for the Worker to pick up: %s", status)
 	}
 
-	v = creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "另一個摘要 Skill。", "budget_usd": .5}, 200)
+	v = creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "另一個摘要 Skill。", "budget_credits": 650}, 200)
 	receiptID, _ := receiptOf(v.ID)
 	if _, err := testPool.Exec(context.Background(),
 		"UPDATE creation_receipts SET status='running' WHERE id=$1", receiptID); err != nil {

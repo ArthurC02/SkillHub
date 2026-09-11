@@ -24,13 +24,13 @@ export interface CreationLimits {
      * @type {number}
      * @memberof CreationLimits
      */
-    minBudgetUsd: number;
+    minBudgetCredits: number;
     /**
      * 
      * @type {number}
      * @memberof CreationLimits
      */
-    maxBudgetUsd: number;
+    maxBudgetCredits: number;
     /**
      * 
      * @type {number}
@@ -67,8 +67,8 @@ export interface CreationLimits {
  * Check if a given object implements the CreationLimits interface.
  */
 export function instanceOfCreationLimits(value: object): value is CreationLimits {
-    if (!('minBudgetUsd' in value) || value['minBudgetUsd'] === undefined) return false;
-    if (!('maxBudgetUsd' in value) || value['maxBudgetUsd'] === undefined) return false;
+    if (!('minBudgetCredits' in value) || value['minBudgetCredits'] === undefined) return false;
+    if (!('maxBudgetCredits' in value) || value['maxBudgetCredits'] === undefined) return false;
     if (!('maxSteps' in value) || value['maxSteps'] === undefined) return false;
     if (!('maxToolCalls' in value) || value['maxToolCalls'] === undefined) return false;
     if (!('callTimeoutSeconds' in value) || value['callTimeoutSeconds'] === undefined) return false;
@@ -87,8 +87,8 @@ export function CreationLimitsFromJSONTyped(json: any, ignoreDiscriminator: bool
     }
     return {
         
-        'minBudgetUsd': json['min_budget_usd'],
-        'maxBudgetUsd': json['max_budget_usd'],
+        'minBudgetCredits': json['min_budget_credits'],
+        'maxBudgetCredits': json['max_budget_credits'],
         'maxSteps': json['max_steps'],
         'maxToolCalls': json['max_tool_calls'],
         'callTimeoutSeconds': json['call_timeout_seconds'],
@@ -108,8 +108,8 @@ export function CreationLimitsToJSONTyped(value?: CreationLimits | null, ignoreD
 
     return {
         
-        'min_budget_usd': value['minBudgetUsd'],
-        'max_budget_usd': value['maxBudgetUsd'],
+        'min_budget_credits': value['minBudgetCredits'],
+        'max_budget_credits': value['maxBudgetCredits'],
         'max_steps': value['maxSteps'],
         'max_tool_calls': value['maxToolCalls'],
         'call_timeout_seconds': value['callTimeoutSeconds'],

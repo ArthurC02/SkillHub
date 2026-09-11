@@ -2,6 +2,9 @@ package apiserver_test
 
 import (
 	"context"
+	"os"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -9,6 +12,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
 func creditTestLimits() creation.Limits {
@@ -38,7 +42,7 @@ func sessionSummary(t *testing.T, sessionID pgtype.UUID) (rows int, usdMicros in
 func TestAnEndedCreationSessionLeavesExactlyOneCostSummary(t *testing.T) {
 	a, _, _ := creationFixtureWithLimits(t, creditTestLimits())
 	c := a.login(t, "summary-cancel")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": 0.5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
 	id := mustUUID(t, v.ID)
 	seedCreationStep(t, c, id, 3000, "gateway", 0)
 	seedCreationStep(t, c, id, 5000, "estimated", 0)
@@ -88,5 +92,57 @@ func TestTheStartGateReadsWhatAWholeSessionCosts(t *testing.T) {
 	a.startingCredits = 1000
 	c := a.login(t, "summary-gate")
 
-	creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_usd": 0.5}, 422)
+	creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 422)
+}
+
+func creationDomain(t *testing.T, s *creation.Service, c *client, v creation.View) creation.View {
+	t.Helper()
+	out, err := s.Get(context.Background(), identity.Workspace{ID: mustUUID(t, c.workspaceID)}, mustUUID(t, v.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+func TestTheCreationScreenIsQuotedInCredits(t *testing.T) {
+	a, _, _ := creationFixtureWithLimits(t, creditTestLimits())
+	c := a.login(t, "creation-in-credits")
+
+	var limits map[string]any
+	if code := getJSON(t, c.Client, c.base+"/creation-sessions/limits", &limits); code != 200 {
+		t.Fatalf("limits: got %d", code)
+	}
+	if limits["min_budget_credits"] != float64(130) || limits["max_budget_credits"] != float64(1300) {
+		t.Errorf("limits = %v, want 130..1300 credits", limits)
+	}
+
+	id := creationID(t)
+	creationPost(t, c, "/creation-sessions", map[string]any{"id": id, "message": "", "budget_credits": 650}, 200)
+	var raw map[string]any
+	if code := getJSON(t, c.Client, c.base+"/creation-sessions/"+uuidText(id), &raw); code != 200 {
+		t.Fatalf("get: got %d", code)
+	}
+	snap, _ := raw["snapshot"].(map[string]any)
+	if snap["budget_credits"] != float64(650) || snap["reserved_credits"] != float64(0) {
+		t.Errorf("snapshot budget = %v reserved = %v, want 650 / 0", snap["budget_credits"], snap["reserved_credits"])
+	}
+	for _, dollars := range []string{"budget_usd", "reserved_usd", "spent_usd"} {
+		if _, shown := snap[dollars]; shown {
+			t.Errorf("the snapshot still shows %s", dollars)
+		}
+	}
+}
+
+var dollarField = regexp.MustCompile(`^\s+((?:[a-z0-9_]+_)?usd):\s*$`)
+
+func TestNoFieldInThePublicContractIsPricedInDollars(t *testing.T) {
+	b, err := os.ReadFile("../../../../../../contracts/openapi/public.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, line := range strings.Split(string(b), "\n") {
+		if m := dollarField.FindStringSubmatch(line); m != nil {
+			t.Errorf("public.yaml:%d names the field %q; users see credits, only the ledger holds dollars", i+1, m[1])
+		}
+	}
 }

@@ -356,11 +356,11 @@ function buildRoundTimeline(messages: CreationSnapshot["messages"]): TimelineIte
   return items;
 }
 function budgetChoices(min: number, max: number) {
-  return [...new Set([min, 0.2, 0.5, 1, 2, 5, max])]
+  return [...new Set([min, 200, 500, 1000, 2000, 5000, max])]
     .filter((v) => v >= min && v <= max)
     .sort((a, b) => a - b);
 }
-const usd = (v: number) => "$" + v.toFixed(2);
+const points = (v: number) => v + " 點";
 export function CreationSession() {
   const client = useQueryClient();
   const [id, setID] = useState(""),
@@ -405,7 +405,7 @@ export function CreationSession() {
   );
   const pending = useRef<{ key: string; body: CreationAction } | undefined>(undefined);
   const startPending = useRef<
-    { key: string; body: { id: string; message: string; budget_usd: number } } | undefined
+    { key: string; body: { id: string; message: string; budget_credits: number } } | undefined
   >(undefined);
   const sessions = useQuery({
     queryKey: ["creation-sessions"],
@@ -449,10 +449,10 @@ export function CreationSession() {
   const working = !!session && ["queued", "working"].includes(session.state);
   const locked = busy || working || terminal;
   const choices = limits.data
-    ? budgetChoices(limits.data.min_budget_usd, limits.data.max_budget_usd)
+    ? budgetChoices(limits.data.min_budget_credits, limits.data.max_budget_credits)
     : [];
-  const budgetUSD = Number(budget) || undefined;
-  const frozen = !session && (budgetUSD === undefined || creditsBlocked);
+  const budgetCredits = Number(budget) || undefined;
+  const frozen = !session && (budgetCredits === undefined || creditsBlocked);
   const save = (value: Session) => {
     setID(value.id);
     client.setQueryData<Session>(["creation-session", value.id], (old) =>
@@ -501,15 +501,19 @@ export function CreationSession() {
   const submitRaiseBudget = async () => {
     if (!p || !limits.data) return;
     const amount = Number(raiseBudget);
-    if (!Number.isFinite(amount) || amount <= p.budget_usd || amount > limits.data.max_budget_usd) {
+    if (
+      !Number.isInteger(amount) ||
+      amount <= p.budget_credits ||
+      amount > limits.data.max_budget_credits
+    ) {
       setError(
         new Error(
-          `請填寫高於目前上限 $${p.budget_usd} 且不超過 $${limits.data.max_budget_usd} 的金額。`,
+          `請填寫高於目前上限 ${p.budget_credits} 點且不超過 ${limits.data.max_budget_credits} 點的點數。`,
         ),
       );
       return;
     }
-    await perform("raise_budget", { budget_usd: amount });
+    await perform("raise_budget", { budget_credits: amount });
   };
   const bottom = useRef<HTMLDivElement>(null);
   const stream = useRef<HTMLDivElement>(null);
@@ -552,14 +556,14 @@ export function CreationSession() {
       if (mode === "diagram" && !diagram) throw new Error("請先選擇流程圖。");
       let value = session;
       if (!value) {
-        if (budgetUSD === undefined) return;
-        const amount = budgetUSD;
+        if (budgetCredits === undefined) return;
+        const amount = budgetCredits;
         const initial = mode === "message" ? message : "";
         const key = JSON.stringify([initial, amount]);
         if (startPending.current?.key !== key)
           startPending.current = {
             key,
-            body: { id: crypto.randomUUID(), message: initial, budget_usd: amount },
+            body: { id: crypto.randomUUID(), message: initial, budget_credits: amount },
           };
         value = await createCreationSession(startPending.current.body);
         save(value);
@@ -652,8 +656,9 @@ export function CreationSession() {
         )}
         {p && (
           <span className="creation-fact">
-            費用 {p.spent_usd === undefined || p.usage_unknown ? "未知" : "$ " + p.spent_usd} / ${" "}
-            {p.budget_usd}
+            費用{" "}
+            {p.spent_credits === undefined || p.usage_unknown ? "未知" : p.spent_credits + " 點"} /{" "}
+            {p.budget_credits} 點
           </span>
         )}
         {(p || (session && !terminal)) && (
@@ -662,7 +667,7 @@ export function CreationSession() {
             <div>
               {p && (
                 <p className="note">
-                  仍占用預算 $ {p.reserved_usd}
+                  仍占用預算 {p.reserved_credits} 點
                   {limits.data && (
                     <>
                       {" "}
@@ -680,9 +685,9 @@ export function CreationSession() {
               {p && limits.data && (
                 <>
                   <label>
-                    提高這次預算上限（美元）
+                    提高這次預算上限（點）
                     <input
-                      aria-label="提高這次預算上限（美元）"
+                      aria-label="提高這次預算上限（點）"
                       inputMode="decimal"
                       disabled={busy}
                       value={raiseBudget}
@@ -701,7 +706,7 @@ export function CreationSession() {
           <label className="creation-picker">
             預算上限
             <select
-              aria-label="這次預算上限（美元）"
+              aria-label="這次預算上限（點）"
               value={budget}
               disabled={busy}
               onChange={(e) => setBudget(e.target.value)}
@@ -711,7 +716,7 @@ export function CreationSession() {
               </option>
               {choices.map((v) => (
                 <option key={v} value={v}>
-                  {usd(v)}
+                  {points(v)}
                 </option>
               ))}
             </select>

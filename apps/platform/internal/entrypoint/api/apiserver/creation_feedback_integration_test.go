@@ -17,7 +17,7 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 	c := a.login(t, "creation-evidence-owner")
 	other := a.login(t, "creation-evidence-other")
 	ctx := context.Background()
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "Create a summary skill", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "Create a summary skill", "budget_credits": 650}, 200)
 	v = creationStep(t, service, v)
 	v = creationAct(t, c, v, "confirm_brief")
 	v = creationStep(t, service, v)

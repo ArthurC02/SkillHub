@@ -540,7 +540,7 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 		markCatalog(t, testPool, c.workspaceID)
 	}
 	v := creationPost(t, c, "/creation-sessions", map[string]any{
-		"id": creationID(t), "message": initialMessage, "budget_usd": limits.MaxCostUSD,
+		"id": creationID(t), "message": initialMessage, "budget_credits": int64(limits.MaxCostUSD * 1300),
 	}, 200)
 
 	defer func() {

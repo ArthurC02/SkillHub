@@ -43,8 +43,8 @@ const sample = (patch: Partial<Session> = {}): Session => ({
     diagram_confirmed: false,
     references: [],
     pending_action: "",
-    budget_usd: 1,
-    reserved_usd: 0.1,
+    budget_credits: 1300,
+    reserved_credits: 130,
     usage_unknown: true,
     steps: 1,
     tool_calls: 0,
@@ -60,8 +60,8 @@ const response = (v: unknown, status = 200) =>
     new Response(JSON.stringify(v), { status, headers: { "Content-Type": "application/json" } }),
   );
 const LIMITS = {
-  min_budget_usd: 0.1,
-  max_budget_usd: 5,
+  min_budget_credits: 130,
+  max_budget_credits: 6500,
   max_steps: 20,
   max_tool_calls: 10,
   call_timeout_seconds: 120,
@@ -123,8 +123,8 @@ async function input(label: string, value: string) {
     el.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
-async function pickBudget(value = "0.5") {
-  const pick = 'select[aria-label="這次預算上限（美元）"]';
+async function pickBudget(value = "500") {
+  const pick = 'select[aria-label="這次預算上限（點）"]';
   await waitFor(() => !!box.querySelector(pick));
   await act(async () => {
     const select = box.querySelector<HTMLSelectElement>(pick)!;
@@ -162,7 +162,7 @@ test("natural language creates one budgeted session", async () => {
   await input("想完成的任務", "建立摘要 Skill");
   await click(START);
   await waitFor(() => posts.length === 1);
-  expect(posts[0]).toMatchObject({ message: "建立摘要 Skill", budget_usd: 0.5 });
+  expect(posts[0]).toMatchObject({ message: "建立摘要 Skill", budget_credits: 500 });
   expect(posts[0].id).toBeTruthy();
 });
 const creditsResponse = (patch: Record<string, unknown> = {}) => ({
@@ -945,7 +945,7 @@ test("resume shows unknown costs and confirms the displayed diagram revision", a
   await render();
   await resume();
   expect(box.textContent, "費用未知時工具列要說「未知」，不能顯示成 0").toContain("費用 未知");
-  expect(box.textContent, "未知的費用被顯示成一個數字").not.toMatch(/費用 \$/);
+  expect(box.textContent, "未知的費用被顯示成一個數字").not.toMatch(/費用 \d/);
   await click("確認流程圖理解");
   expect(posts[0]).toMatchObject({ kind: "confirm_diagram", expected_revision: 7 });
 });
@@ -1016,22 +1016,31 @@ test("no budget, no conversation: the composer is frozen until a step inside the
     }),
   );
   await render();
-  const pick = 'select[aria-label="這次預算上限（美元）"]';
+  const pick = 'select[aria-label="這次預算上限（點）"]';
   await waitFor(() => !!box.querySelector(pick));
   const select = box.querySelector<HTMLSelectElement>(pick)!;
-  expect([...select.options].map((o) => o.value)).toEqual(["", "0.1", "0.2", "0.5", "1", "2", "5"]);
+  expect([...select.options].map((o) => o.value)).toEqual([
+    "",
+    "130",
+    "200",
+    "500",
+    "1000",
+    "2000",
+    "5000",
+    "6500",
+  ]);
   expect(select.value, "預算不能有預設值：選那一下就是授權").toBe("");
   const textarea = box.querySelector("textarea")!;
   expect(textarea.disabled, "沒有預算，輸入框卻沒有凍結").toBe(true);
   expect(textarea.placeholder).toContain("右上角");
   expect(button(START).disabled).toBe(true);
-  await pickBudget("2");
+  await pickBudget("2000");
   expect(textarea.disabled).toBe(false);
   expect(button(START).disabled).toBe(false);
   await input("想完成的任務", "建立摘要 Skill");
   await click(START);
   await waitFor(() => posts.length === 1);
-  expect(posts[0]).toMatchObject({ budget_usd: 2 });
+  expect(posts[0]).toMatchObject({ budget_credits: 2000 });
 });
 test("sending nothing is answered by a toast, and nothing is sent", async () => {
   const posts: unknown[] = [];
@@ -1165,16 +1174,16 @@ test("a failed session shows the raise form, refuses an out-of-band amount local
   );
   await render();
   await resume();
-  await waitFor(() => !!box.querySelector('[aria-label="提高這次預算上限（美元）"]'));
-  await input("提高這次預算上限（美元）", "50");
+  await waitFor(() => !!box.querySelector('[aria-label="提高這次預算上限（點）"]'));
+  await input("提高這次預算上限（點）", "50000");
   await click("提高預算後繼續");
   await waitFor(() => !!box.querySelector('[role="alert"]'));
-  expect(box.textContent).toContain("不超過 $5");
+  expect(box.textContent).toContain("不超過 6500 點");
   expect(posts).toHaveLength(0);
-  await input("提高這次預算上限（美元）", "2");
+  await input("提高這次預算上限（點）", "2000");
   await click("提高預算後繼續");
   await waitFor(() => posts.length === 1);
-  expect(posts[0]).toMatchObject({ kind: "raise_budget", budget_usd: 2 });
+  expect(posts[0]).toMatchObject({ kind: "raise_budget", budget_credits: 2000 });
 });
 test("a candidate with a test_case_id renders the Test Case sentence and the run link carries it", async () => {
   const v = sample({ state: "candidate_ready" });

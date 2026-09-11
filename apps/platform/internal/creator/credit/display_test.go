@@ -67,3 +67,22 @@ func TestCreditsForUSDFollowsTheDeploymentsOwnRate(t *testing.T) {
 		t.Errorf("with the shipped 1.3x markup, $0.0134 = %d credits, want 18", got)
 	}
 }
+
+func TestABudgetEnteredInCreditsComesBackAsTheSameCredits(t *testing.T) {
+	s := &Service{Config: Config{MicrosPerCredit: 1000, MarkupBps: 13000}}
+	for credits := int64(1); credits <= 20000; credits++ {
+		usd, ok := s.USDForCredits(credits)
+		if !ok {
+			t.Fatalf("USDForCredits(%d) refused", credits)
+		}
+		if back, _ := s.CreditsForUSD(usd); back != credits {
+			t.Fatalf("%d credits -> $%v -> %d credits", credits, usd, back)
+		}
+	}
+	if got, _ := s.CreditsWithinUSD(1); got != 1300 {
+		t.Errorf("CreditsWithinUSD($1) = %d, want 1300", got)
+	}
+	if usd, _ := s.USDForCredits(1300); usd > 1 {
+		t.Errorf("the ceiling shown as credits is worth $%v, more than $1", usd)
+	}
+}

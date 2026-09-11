@@ -263,7 +263,7 @@ func NewApp(cfg Config) (*App, error) {
 	return &App{
 		Deps: Deps{
 			Auth:            auth,
-			Creation:        &creationHandler{Svc: creationSvc, Identity: identitySvc, Transient: cfg.CreationTransient},
+			Creation:        &creationHandler{Svc: creationSvc, Identity: identitySvc, Transient: cfg.CreationTransient, Credit: creditSvc},
 			CreationExposed: creationEnabled(cfg),
 			Readiness:       cfg.Readiness,
 			CleanMode:       cfg.CleanMode,

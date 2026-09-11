@@ -80,7 +80,7 @@ func waitEvent(t *testing.T, ch <-chan sseEvent, why string) sseEvent {
 func TestCreationStreamCarriesTheSameDocumentAsGet(t *testing.T) {
 	a, _, _ := creationFixture(t)
 	c := a.login(t, "creation-stream-shape")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 
 	events, stop := readSSE(t, c, v.ID, "")
 	defer stop()
@@ -112,7 +112,7 @@ func TestCreationStreamCarriesTheSameDocumentAsGet(t *testing.T) {
 func TestCreationStreamDeliversTheNextStepWithoutPolling(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-stream-step")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 
 	events, stop := readSSE(t, c, v.ID, "")
 	defer stop()
@@ -144,7 +144,7 @@ func TestCreationStreamDeliversTheNextStepWithoutPolling(t *testing.T) {
 func TestCreationStreamResumesFromLastEventID(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-stream-resume")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 
 	events, stop := readSSE(t, c, v.ID, strconv.FormatInt(v.Revision, 10))
@@ -169,7 +169,7 @@ func TestCreationStreamResumesFromLastEventID(t *testing.T) {
 func TestCreationStreamEndsWhenTheSessionDoes(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-stream-ends")
-	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	v = creationAct(t, c, v, "cancel")
 	if v.State != "cancelled" {
@@ -194,7 +194,7 @@ func TestCreationStreamEndsWhenTheSessionDoes(t *testing.T) {
 func TestCreationStreamRefusesAnotherWorkspace(t *testing.T) {
 	a, _, _ := creationFixture(t)
 	mine := a.login(t, "creation-stream-owner")
-	v := creationPost(t, mine, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+	v := creationPost(t, mine, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 
 	other := a.login(t, "creation-stream-stranger")
 	res, err := other.Get(other.base + "/creation-sessions/" + v.ID + "/events")

@@ -158,19 +158,19 @@ export interface CreationSnapshot {
      * @type {number}
      * @memberof CreationSnapshot
      */
-    budgetUsd: number;
+    budgetCredits: number;
     /**
      * 
      * @type {number}
      * @memberof CreationSnapshot
      */
-    reservedUsd: number;
+    reservedCredits: number;
     /**
      * 
      * @type {number}
      * @memberof CreationSnapshot
      */
-    spentUsd?: number;
+    spentCredits?: number;
     /**
      * 
      * @type {boolean}
@@ -305,8 +305,8 @@ export function instanceOfCreationSnapshot(value: object): value is CreationSnap
     if (!('diagramConfirmed' in value) || value['diagramConfirmed'] === undefined) return false;
     if (!('references' in value) || value['references'] === undefined) return false;
     if (!('pendingAction' in value) || value['pendingAction'] === undefined) return false;
-    if (!('budgetUsd' in value) || value['budgetUsd'] === undefined) return false;
-    if (!('reservedUsd' in value) || value['reservedUsd'] === undefined) return false;
+    if (!('budgetCredits' in value) || value['budgetCredits'] === undefined) return false;
+    if (!('reservedCredits' in value) || value['reservedCredits'] === undefined) return false;
     if (!('usageUnknown' in value) || value['usageUnknown'] === undefined) return false;
     if (!('steps' in value) || value['steps'] === undefined) return false;
     if (!('toolCalls' in value) || value['toolCalls'] === undefined) return false;
@@ -337,9 +337,9 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'draft': json['draft'] == null ? undefined : CreationDraftFromJSON(json['draft']),
         'candidate': json['candidate'] == null ? undefined : CreationCandidateFromJSON(json['candidate']),
         'pendingAction': json['pending_action'],
-        'budgetUsd': json['budget_usd'],
-        'reservedUsd': json['reserved_usd'],
-        'spentUsd': json['spent_usd'] == null ? undefined : json['spent_usd'],
+        'budgetCredits': json['budget_credits'],
+        'reservedCredits': json['reserved_credits'],
+        'spentCredits': json['spent_credits'] == null ? undefined : json['spent_credits'],
         'usageUnknown': json['usage_unknown'],
         'steps': json['steps'],
         'toolCalls': json['tool_calls'],
@@ -388,9 +388,9 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'draft': CreationDraftToJSON(value['draft']),
         'candidate': CreationCandidateToJSON(value['candidate']),
         'pending_action': value['pendingAction'],
-        'budget_usd': value['budgetUsd'],
-        'reserved_usd': value['reservedUsd'],
-        'spent_usd': value['spentUsd'],
+        'budget_credits': value['budgetCredits'],
+        'reserved_credits': value['reservedCredits'],
+        'spent_credits': value['spentCredits'],
         'usage_unknown': value['usageUnknown'],
         'steps': value['steps'],
         'tool_calls': value['toolCalls'],

@@ -22,7 +22,7 @@ func TestCreationStreamMeasureDeliveryLag(t *testing.T) {
 
 	gains := make([]float64, 0, rounds)
 	for i := 0; i < rounds; i++ {
-		v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_usd": .5}, 200)
+		v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 
 		events, stop := readSSE(t, c, v.ID, fmt.Sprint(v.Revision))
 		target := v.Revision + 1

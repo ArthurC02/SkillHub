@@ -1308,9 +1308,9 @@ func (*ConfirmRunPreflightUnprocessableEntity) confirmRunPreflightRes() {}
 // supplied budget is a user-approved ceiling, bounded again by deployment policy.
 // Ref: #/components/schemas/CreateCreationSession
 type CreateCreationSession struct {
-	ID        uuid.UUID `json:"id"`
-	Message   string    `json:"message"`
-	BudgetUsd float64   `json:"budget_usd"`
+	ID            uuid.UUID `json:"id"`
+	Message       string    `json:"message"`
+	BudgetCredits int       `json:"budget_credits"`
 }
 
 // GetID returns the value of ID.
@@ -1323,9 +1323,9 @@ func (s *CreateCreationSession) GetMessage() string {
 	return s.Message
 }
 
-// GetBudgetUsd returns the value of BudgetUsd.
-func (s *CreateCreationSession) GetBudgetUsd() float64 {
-	return s.BudgetUsd
+// GetBudgetCredits returns the value of BudgetCredits.
+func (s *CreateCreationSession) GetBudgetCredits() int {
+	return s.BudgetCredits
 }
 
 // SetID sets the value of ID.
@@ -1338,9 +1338,9 @@ func (s *CreateCreationSession) SetMessage(val string) {
 	s.Message = val
 }
 
-// SetBudgetUsd sets the value of BudgetUsd.
-func (s *CreateCreationSession) SetBudgetUsd(val float64) {
-	s.BudgetUsd = val
+// SetBudgetCredits sets the value of BudgetCredits.
+func (s *CreateCreationSession) SetBudgetCredits(val int) {
+	s.BudgetCredits = val
 }
 
 type CreateCreationSessionBadRequest Error
@@ -2029,7 +2029,7 @@ func (*CreateTestCaseUnauthorized) createTestCaseRes() {}
 // working, it releases the attempt so the Worker refuses to start it (or its in-flight call is
 // cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid
 // for and the session says so. Go requires a nonempty matching content_hash for materialize/finalize,
-// a diagram for diagram, run_id for attach_run, and budget_usd for raise_budget. expected_revision
+// a diagram for diagram, run_id for attach_run, and budget_credits for raise_budget. expected_revision
 // binds the exact displayed snapshot including draft revision and candidate identity. These
 // conditional requirements are enforced by the domain service.
 // Ref: #/components/schemas/CreationAction
@@ -2042,9 +2042,9 @@ type CreationAction struct {
 	// picture and what it is for are one turn. Ignored by every other kind.
 	Message OptString `json:"message"`
 	// Raise_budget only: the new session ceiling. Must exceed the current one and stay within
-	// max_budget_usd from GET /creation-sessions/limits; a session refused for its limit becomes
+	// max_budget_credits from GET /creation-sessions/limits; a session refused for its limit becomes
 	// waiting_input again.
-	BudgetUsd OptFloat64 `json:"budget_usd"`
+	BudgetCredits OptInt `json:"budget_credits"`
 	// Select_references: up to three catalogue Skills to read as references. adopt_reference: exactly one
 	// id from `references` or `duplicates` — Go forks it into the workspace and the session ends `saved`
 	// with that fork as the candidate (05 R-49／R-50: reuse before creation).
@@ -2074,9 +2074,9 @@ func (s *CreationAction) GetMessage() OptString {
 	return s.Message
 }
 
-// GetBudgetUsd returns the value of BudgetUsd.
-func (s *CreationAction) GetBudgetUsd() OptFloat64 {
-	return s.BudgetUsd
+// GetBudgetCredits returns the value of BudgetCredits.
+func (s *CreationAction) GetBudgetCredits() OptInt {
+	return s.BudgetCredits
 }
 
 // GetReferenceSkillIds returns the value of ReferenceSkillIds.
@@ -2119,9 +2119,9 @@ func (s *CreationAction) SetMessage(val OptString) {
 	s.Message = val
 }
 
-// SetBudgetUsd sets the value of BudgetUsd.
-func (s *CreationAction) SetBudgetUsd(val OptFloat64) {
-	s.BudgetUsd = val
+// SetBudgetCredits sets the value of BudgetCredits.
+func (s *CreationAction) SetBudgetCredits(val OptInt) {
+	s.BudgetCredits = val
 }
 
 // SetReferenceSkillIds sets the value of ReferenceSkillIds.
@@ -2556,23 +2556,23 @@ func (s *CreationFetch) SetStatus(val string) {
 // Ref: #/components/schemas/CreationLimits
 type CreationLimits struct {
 	// Lowest budget a session may start with: one model call's reserved cost.
-	MinBudgetUsd          float64 `json:"min_budget_usd"`
-	MaxBudgetUsd          float64 `json:"max_budget_usd"`
-	MaxSteps              int     `json:"max_steps"`
-	MaxToolCalls          int     `json:"max_tool_calls"`
-	CallTimeoutSeconds    int     `json:"call_timeout_seconds"`
-	SessionTimeoutSeconds int     `json:"session_timeout_seconds"`
-	RetentionSeconds      int     `json:"retention_seconds"`
+	MinBudgetCredits      int `json:"min_budget_credits"`
+	MaxBudgetCredits      int `json:"max_budget_credits"`
+	MaxSteps              int `json:"max_steps"`
+	MaxToolCalls          int `json:"max_tool_calls"`
+	CallTimeoutSeconds    int `json:"call_timeout_seconds"`
+	SessionTimeoutSeconds int `json:"session_timeout_seconds"`
+	RetentionSeconds      int `json:"retention_seconds"`
 }
 
-// GetMinBudgetUsd returns the value of MinBudgetUsd.
-func (s *CreationLimits) GetMinBudgetUsd() float64 {
-	return s.MinBudgetUsd
+// GetMinBudgetCredits returns the value of MinBudgetCredits.
+func (s *CreationLimits) GetMinBudgetCredits() int {
+	return s.MinBudgetCredits
 }
 
-// GetMaxBudgetUsd returns the value of MaxBudgetUsd.
-func (s *CreationLimits) GetMaxBudgetUsd() float64 {
-	return s.MaxBudgetUsd
+// GetMaxBudgetCredits returns the value of MaxBudgetCredits.
+func (s *CreationLimits) GetMaxBudgetCredits() int {
+	return s.MaxBudgetCredits
 }
 
 // GetMaxSteps returns the value of MaxSteps.
@@ -2600,14 +2600,14 @@ func (s *CreationLimits) GetRetentionSeconds() int {
 	return s.RetentionSeconds
 }
 
-// SetMinBudgetUsd sets the value of MinBudgetUsd.
-func (s *CreationLimits) SetMinBudgetUsd(val float64) {
-	s.MinBudgetUsd = val
+// SetMinBudgetCredits sets the value of MinBudgetCredits.
+func (s *CreationLimits) SetMinBudgetCredits(val int) {
+	s.MinBudgetCredits = val
 }
 
-// SetMaxBudgetUsd sets the value of MaxBudgetUsd.
-func (s *CreationLimits) SetMaxBudgetUsd(val float64) {
-	s.MaxBudgetUsd = val
+// SetMaxBudgetCredits sets the value of MaxBudgetCredits.
+func (s *CreationLimits) SetMaxBudgetCredits(val int) {
+	s.MaxBudgetCredits = val
 }
 
 // SetMaxSteps sets the value of MaxSteps.
@@ -3298,17 +3298,17 @@ type CreationSnapshot struct {
 	// Every picture the person put into this conversation, in order, each tied to the turn it arrived
 	// with. Metadata only: the platform keeps the digest and refuses the bytes (ADR-066 決策 4), so a
 	// client that did not itself send the picture has its description and not the picture.
-	Attachments   []CreationAttachment `json:"attachments"`
-	References    []CreationReference  `json:"references"`
-	Draft         OptCreationDraft     `json:"draft"`
-	Candidate     OptCreationCandidate `json:"candidate"`
-	PendingAction string               `json:"pending_action"`
-	BudgetUsd     float64              `json:"budget_usd"`
-	ReservedUsd   float64              `json:"reserved_usd"`
-	SpentUsd      OptFloat64           `json:"spent_usd"`
-	UsageUnknown  bool                 `json:"usage_unknown"`
-	Steps         int                  `json:"steps"`
-	ToolCalls     int                  `json:"tool_calls"`
+	Attachments     []CreationAttachment `json:"attachments"`
+	References      []CreationReference  `json:"references"`
+	Draft           OptCreationDraft     `json:"draft"`
+	Candidate       OptCreationCandidate `json:"candidate"`
+	PendingAction   string               `json:"pending_action"`
+	BudgetCredits   int                  `json:"budget_credits"`
+	ReservedCredits int                  `json:"reserved_credits"`
+	SpentCredits    OptInt               `json:"spent_credits"`
+	UsageUnknown    bool                 `json:"usage_unknown"`
+	Steps           int                  `json:"steps"`
+	ToolCalls       int                  `json:"tool_calls"`
 	// Automatic re-queues after the model answered outcome=draft with no draft (at most one per session).
 	DraftRetries OptInt `json:"draft_retries"`
 	// The attached Run's evaluation finished and was not met; a draft identical to the one that ran is
@@ -3423,19 +3423,19 @@ func (s *CreationSnapshot) GetPendingAction() string {
 	return s.PendingAction
 }
 
-// GetBudgetUsd returns the value of BudgetUsd.
-func (s *CreationSnapshot) GetBudgetUsd() float64 {
-	return s.BudgetUsd
+// GetBudgetCredits returns the value of BudgetCredits.
+func (s *CreationSnapshot) GetBudgetCredits() int {
+	return s.BudgetCredits
 }
 
-// GetReservedUsd returns the value of ReservedUsd.
-func (s *CreationSnapshot) GetReservedUsd() float64 {
-	return s.ReservedUsd
+// GetReservedCredits returns the value of ReservedCredits.
+func (s *CreationSnapshot) GetReservedCredits() int {
+	return s.ReservedCredits
 }
 
-// GetSpentUsd returns the value of SpentUsd.
-func (s *CreationSnapshot) GetSpentUsd() OptFloat64 {
-	return s.SpentUsd
+// GetSpentCredits returns the value of SpentCredits.
+func (s *CreationSnapshot) GetSpentCredits() OptInt {
+	return s.SpentCredits
 }
 
 // GetUsageUnknown returns the value of UsageUnknown.
@@ -3608,19 +3608,19 @@ func (s *CreationSnapshot) SetPendingAction(val string) {
 	s.PendingAction = val
 }
 
-// SetBudgetUsd sets the value of BudgetUsd.
-func (s *CreationSnapshot) SetBudgetUsd(val float64) {
-	s.BudgetUsd = val
+// SetBudgetCredits sets the value of BudgetCredits.
+func (s *CreationSnapshot) SetBudgetCredits(val int) {
+	s.BudgetCredits = val
 }
 
-// SetReservedUsd sets the value of ReservedUsd.
-func (s *CreationSnapshot) SetReservedUsd(val float64) {
-	s.ReservedUsd = val
+// SetReservedCredits sets the value of ReservedCredits.
+func (s *CreationSnapshot) SetReservedCredits(val int) {
+	s.ReservedCredits = val
 }
 
-// SetSpentUsd sets the value of SpentUsd.
-func (s *CreationSnapshot) SetSpentUsd(val OptFloat64) {
-	s.SpentUsd = val
+// SetSpentCredits sets the value of SpentCredits.
+func (s *CreationSnapshot) SetSpentCredits(val OptInt) {
+	s.SpentCredits = val
 }
 
 // SetUsageUnknown sets the value of UsageUnknown.

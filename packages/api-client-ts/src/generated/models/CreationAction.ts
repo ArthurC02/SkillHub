@@ -22,7 +22,7 @@ import {
 } from './GenerateDiagram';
 
 /**
- * stop_step ends the step in flight, not the session: permitted only while the session is queued or working, it releases the attempt so the Worker refuses to start it (or its in-flight call is cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid for and the session says so. Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_usd for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service.
+ * stop_step ends the step in flight, not the session: permitted only while the session is queued or working, it releases the attempt so the Worker refuses to start it (or its in-flight call is cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid for and the session says so. Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_credits for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service.
  * @export
  * @interface CreationAction
  */
@@ -52,11 +52,11 @@ export interface CreationAction {
      */
     message?: string;
     /**
-     * raise_budget only: the new session ceiling. Must exceed the current one and stay within max_budget_usd from GET /creation-sessions/limits; a session refused for its limit becomes waiting_input again.
+     * raise_budget only: the new session ceiling. Must exceed the current one and stay within max_budget_credits from GET /creation-sessions/limits; a session refused for its limit becomes waiting_input again.
      * @type {number}
      * @memberof CreationAction
      */
-    budgetUsd?: number;
+    budgetCredits?: number;
     /**
      * select_references: up to three catalogue Skills to read as references. adopt_reference: exactly one id from `references` or `duplicates` — Go forks it into the workspace and the session ends `saved` with that fork as the candidate (05 R-49／R-50: reuse before creation).
      * @type {Array<string>}
@@ -133,7 +133,7 @@ export function CreationActionFromJSONTyped(json: any, ignoreDiscriminator: bool
         'expectedRevision': json['expected_revision'],
         'kind': json['kind'],
         'message': json['message'] == null ? undefined : json['message'],
-        'budgetUsd': json['budget_usd'] == null ? undefined : json['budget_usd'],
+        'budgetCredits': json['budget_credits'] == null ? undefined : json['budget_credits'],
         'referenceSkillIds': json['reference_skill_ids'] == null ? undefined : json['reference_skill_ids'],
         'contentHash': json['content_hash'] == null ? undefined : json['content_hash'],
         'diagram': json['diagram'] == null ? undefined : GenerateDiagramFromJSON(json['diagram']),
@@ -156,7 +156,7 @@ export function CreationActionToJSONTyped(value?: CreationAction | null, ignoreD
         'expected_revision': value['expectedRevision'],
         'kind': value['kind'],
         'message': value['message'],
-        'budget_usd': value['budgetUsd'],
+        'budget_credits': value['budgetCredits'],
         'reference_skill_ids': value['referenceSkillIds'],
         'content_hash': value['contentHash'],
         'diagram': GenerateDiagramToJSON(value['diagram']),
