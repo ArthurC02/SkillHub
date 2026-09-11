@@ -963,6 +963,69 @@ Run 至少支援：
 - ~~帳號刪除的清除路徑併入 `cmd/maintenance` 既有的 `skillhub_purge` 角色。有一條測試證明：對一個已標記刪除的帳號執行既有 purge 流程後，其名下的 `cost_events`／`credit_entries` 依既有刪除語意處理，不殘留可回指真人身分的欄位。~~ **2026-09-11 改寫（[`05` R-75](05-pending-rulings.md)、[ADR-073](../adr/ADR-073-account-deletion-keeps-the-credit-ledger.md)）**：帳號刪除**不清** Credit 紀錄。有一條測試證明：對一個已標記刪除的帳號跑完既有 purge 流程後，其名下的 `credit_accounts`／`credit_entries`／`cost_events`／`cost_session_summaries` 列數與清除前相同。這些紀錄也不會因時間而清除（第一條，2026-09-12）。
 - **未涵蓋（待決策）**：Credit 是否有效期、`grant`／`topup` 分錄是否應帶到期時間（[ADR-068](../adr/ADR-068-credit-is-the-only-unit-of-account.md) 待決策）；在裁定之前預設 Credit 不過期。
 
+### 4.12 營運後台（OPS）
+
+本節 **2026-09-12 新增**（[`05` R-77](05-pending-rulings.md) 裁定，[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) Accepted）。背景：operator 能做的動作都有端點，卻沒有任何畫面；授予點數之前要先直接查資料庫才找得到 `workspace_id`，operator 自己的動作紀錄與成本數字也只能靠貼 SQL。
+
+**本節不新增 operator 的權力**：每一顆寫入按鈕都對應 `SEC-011` 已有的端點。後台也不是新的 Bounded Context，是組裝層——新讀取各歸原本的事實 owner（帳號與名冊歸 `identity`、點數與成本統計歸 `credit`、Skill 治理狀態歸 `catalog`、operator 動作紀錄歸 `audit`），畫面在 `apps/web` 的 `/admin/*` 把它們拼起來，後端不新增跨 context 的聚合端點。
+
+第一批：`OPS-001`～`OPS-005`。第二批：`OPS-006`、`OPS-007`。**不在範圍**：編輯 `OPERATOR_USER_IDS`／`BETA_ALLOWLIST`；讀取 `SEC-011` 列為私有的資料；漏斗儀表板（ADR-029 決策 6）；濫用檢舉案件（`SEC-011` 要求另立需求）；下架後的恢復（`04` 丙-80）；精選層的寫入（`04` 丙-77）。
+
+#### OPS-001：後台外殼與 operator 旗標
+
+允收準則：
+
+- `GET /me` 多一個必填的 `operator`（boolean）：呼叫者在 `OPERATOR_USER_IDS` 上為 `true`，否則為 `false`。它只決定前端畫不畫後台入口，**不是授權**。
+- 後台入口只出現在帳號選單（`AuthControls`），只有 `operator` 為 `true` 時才畫；不進主導覽列（[資訊架構 §0.1 R7](../design/information-architecture.md)）。
+- **真正擋人的是每一條 `/admin/...` 端點各自的 `RequireOperator`**：`member` 直接輸入 `/admin/*` 網址，看到的是一般的「這一頁現在不存在」；直接呼叫任一 `/admin/...` 端點一律 404。每一條新端點都在 `router.go` 逐條套上 `RequireOperator`，並列入 `authz_matrix_integration_test.go` 的路由表。
+- 淨測試模式（`DEV_LOGIN=1`）任何人都能以 operator 登入（ADR-061）；`/admin/*` 每一頁頂端固定多一行字說明這件事。
+
+#### OPS-002：以 email 找帳號
+
+允收準則：
+
+- operator 輸入 email，回傳 user id、workspace id、顯示名稱、建立時間、刪除申請狀態，以及是否在 `BETA_ALLOWLIST` 封測名單上。比對不分大小寫、只找未刪除的帳號（與 email 唯一索引同一條規則）。找不到回 404，與非 operator 得到的回應相同。
+- **找到帳號時，在同一個交易裡寫一筆 audit event**：動作者是 operator、對象是被查的帳號。找不到時不寫——沒有任何人的資料被讀到。有這筆紀錄，才能接受 operator 看得到別人的 email（ADR-074 決策 3）。
+- email 只留在畫面的輸入框裡，**不寫進網址**：網址會進瀏覽器歷史，也會隨連結被分享出去，別人的 email 不該留在那裡。
+
+#### OPS-003：點數餘額與分錄、授予
+
+允收準則：
+
+- 以 `workspace_id` 查該帳戶的餘額與最近 50 筆分錄（種類、點數、來源類型、是否為估計值、時間）。**每查一次，在同一個交易裡寫一筆 audit event**，理由同 `OPS-002`。不存在的 workspace 回 404。
+- 授予點數沿用 `POST /admin/credits/{workspace_id}/grants`：畫面要求金額與理由，理由空白由前端擋、後端也擋（`ErrReasonRequired`）。授予成功後，同一頁重新讀取並顯示新的餘額與分錄。
+- 分錄不帶授予理由（`credit_entries` 是不可變的帳，沒有理由欄）；誰在何時、以什麼理由授予，看 `OPS-006` 的 operator 動作紀錄。
+
+#### OPS-004：Skill 治理
+
+允收準則：
+
+- 以 id 或名稱片段找 Skill，**範圍是所有 workspace，含私人的與已下架的**——公開搜尋找不到這兩種，而它們正是 operator 要處理的對象；已刪除的 Skill 不列。每筆只顯示治理狀態：名稱、所屬 workspace、授權受限展示、再散布判定、下架時間與理由，不含 `SKILL.md` 內容與檔案樹。這不是個人資料查詢，不寫 audit。
+- 三個既有動作在畫面上呈現：設定／解除受限（`PUT`／`DELETE /admin/skills/{id}/restriction`）、再散布判定（`PUT /admin/skills/{id}/redistribution`）、跨工作區下架（`PUT /admin/skills/{id}/takedown`）。**畫面不發明新動作**，理由必填與 audit 沿用各端點既有的規則。
+- 下架沒有恢復的路（`04` 丙-80），畫面用兩段式確認（[system.md §2.8](../design/system.md)）；受限與再散布判定可以用同一個端點改回來，一次送出即可。
+
+#### OPS-005：派送煞車與名冊
+
+允收準則：
+
+- 派送煞車沿用 `GET /admin/dispatch`、`PUT`／`DELETE /admin/dispatch/halt`：顯示目前是否派送，以及每一個煞車的對象、來源、理由與宣告時間；宣告與解除都要求理由。
+- 名冊唯讀：顯示目前生效的 `OPERATOR_USER_IDS` 與 `BETA_ALLOWLIST`。**後台不提供編輯**——改名冊仍是改部署設定並重啟（ADR-074 決策 4）。
+
+#### OPS-006：operator 動作紀錄（第二批）
+
+允收準則：
+
+- 全平台、只列 operator 動作，新的在上，一次 50 筆、可以載入更多。每筆含動作者、時間、動作、對象、所屬 workspace 與 metadata（理由、前後狀態）。
+- **哪些 action 算 operator 動作，由組裝層（`apiserver`）提供**；`audit` 是 Generic，不自己知道。清單包含 `OPS-002`／`OPS-003` 的查詢紀錄。新增一條 operator 端點時，這份清單要一起改，否則那個動作不會出現在這裡。
+- `skill.takedown` 同時由自助下架與 operator 下架寫入，只有 operator 下架在 metadata 帶 `scope = operator`；這份紀錄只列後者。
+
+#### OPS-007：成本統計（第二批）
+
+允收準則：
+
+- 每一種成本 kind 最新的一個統計窗：窗的起訖、樣本數、p50／p90／p95／最大值（美元 micros）。**不含使用者維度**（`cost_statistics` 本來就沒有）。從未統計過的 kind 不列。
+- 這是 `04` 丙-233 要觀察的數字：上線後，丙-233 的觀察方式從一段貼進 psql 的 SQL 改成這個畫面。
+
 ## 5. 非功能需求
 
 ### NFR-001：安全
@@ -1233,7 +1296,9 @@ Run 至少支援：
 - ~~**現況限制（誠實記錄）**：設定與解除目前**只能由審查者直接執行 SQL**（`tools/content/restrict-anthropic-sa-display.sql`），沒有端點、沒有 audit event——因為 operator 角色（本需求）與 `CORE-008` 都尚未實作。這正是備忘 §3 指出「可一鍵下架目前做不到」的同一個缺口，本次未一併解決。~~
   > **2026-08-16 已解除**：受限的設定與解除已有 operator 端點與 audit event（實作見 `03` `SEC-011`）。旗標語意、Fork 傳播與 fail-closed 規則皆不變，改變的只是「誰能動它、動了留不留紀錄」。
   >
-  > **操作方式（單人團隊以 curl 直接操作，不做管理 UI）**：先在部署設定 `OPERATOR_USER_IDS` 填入自己的 user id 並重啟；`member` 呼叫這兩個端點一律 404。
+  > ~~**操作方式（單人團隊以 curl 直接操作，不做管理 UI）**：先在部署設定 `OPERATOR_USER_IDS` 填入自己的 user id 並重啟；`member` 呼叫這兩個端點一律 404。~~
+  >
+  > **2026-09-12 取代（[`05` R-77](05-pending-rulings.md)、[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md）**：「不做管理 UI」這半句不再成立——管理 UI 放在 `apps/web` 的 `/admin/*`，需求見 §4.12（`OPS-001`～`OPS-007`）。前半句照舊：operator 仍由部署設定 `OPERATOR_USER_IDS` 決定，`member` 呼叫這兩個端點仍一律 404；下面的 curl 仍然可用，只是不再是唯一的操作方式。
   >
   > ```bash
   > # 設定受限（reason 必須是平台認得的原因碼，目前只有 license-review；note 必填）
