@@ -18,7 +18,7 @@
 
 `results_v2_enriched.txt` 的數字就是 [`docs/plans/mvp/gate-test/README.md` §3.1](../../docs/plans/mvp/gate-test/README.md) 「量化前置（檢索品質）」那一列判定為 ✅ 的依據。因此：
 
-- **`corpus/`、`queries.json`、`manifest.json` 屬閘門凍結標的的上游**——改動它們會讓 §3.1 記錄的 recall 數字與現況不符，D 日之後動了就必須依 §3.2 分開統計並在分析報告中明列。
+- **`corpus/`、`queries.json`、`manifest.json` 屬閘門量測標的的上游**——可以改，但改動會讓 §3.1 記錄的 recall 數字與現況不符，所以改了就要依 §3.2 分開統計並在分析報告中明列。
 - 閘門測試本身**不量 recall**（它量的是真人會怎麼打字、看到結果敢不敢往下走）。兩者測的不是同一件事，這裡的數字取代不了那場測試，反之亦然。
 
 `evaluate.py` 與 `enrich_corpus.py` 是**驗證工具，不是產品程式碼**：不被服務引用，重跑要花真實的模型費用。`__pycache__/` 是本機執行的副產物。

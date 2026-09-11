@@ -1,6 +1,6 @@
 # Skill Hub
 
-Skill Hub 的產品核心是 Catalog、輕鬆創建與私人訂製／公開散布。互動式創作已依 [ADR-067](docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md) 接上 Python LangGraph、Go 會話與 Web 三種入口；[設定與驗證](docs/development/interactive-creation.md) 列出免費證據及待量測項目。功能預設關閉，尚未解封 M5 曝光或付費實測。
+Skill Hub 的產品核心是 Catalog、輕鬆創建與私人訂製／公開散布。互動式創作已依 [ADR-067](docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md) 接上 Python LangGraph、Go 會話與 Web 三種入口；[設定與驗證](docs/development/interactive-creation.md) 列出免費證據及待量測項目。功能預設關閉；M5 的曝光與付費實測都還沒有開。
 
 An Agent Skill platform for discovery, creation, private customization and public
 distribution. Existing search, sandbox trials and portable packages support this

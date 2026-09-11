@@ -8,7 +8,7 @@
 - 改 `04` 的殘項數字時，同一格末尾的 `<!-- open: … -->` 要一起改（`backlog-tally` 會對帳）。
 - `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫；下一號＝[索引](adr/README.md)最大號 + 1，新增後更新索引。
-- 活文件放 `docs/plans/` 根層；里程碑產出放 `docs/plans/mvp/mX/`，完結即凍結，不回溯修正（含 `03` 的歷史 flat path）。
+- 活文件放 `docs/plans/` 根層；里程碑產出放 `docs/plans/mvp/mX/`，完結後是當時的紀錄，不回溯修正（含 `03` 的歷史 flat path）。
 - 里程碑目錄固定骨架：`README.md`（計畫＋狀態＋檔案地圖）、`audit.md`、報告用 `report-*` 前綴；目錄內檔名不重複 `mX` 前綴（M3 起適用，既有檔名不回溯改）。
 
 `.claude/rules/docs.md` 是文件路徑的提早提示；它不取代本檔。文件區的權威規格仍是 `docs/plans/`、`docs/adr/` 與 `docs/design/` 各自的文件。

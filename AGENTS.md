@@ -17,7 +17,7 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 
 ## 現在在哪
 
-各里程碑與新增創作旅程的實作狀態以 [`01` §10](docs/plans/01-goals-and-plan.md) 為準；**「程式面收斂」不等於「完成」**——M1 驗證閘門、M4 封測、M5 曝光都在等真人數字。**新功能凍結生效中**，逐次放行紀錄、閘門期間條款與三條 ⛔ 邊界只在 [`01` §10](docs/plans/01-goals-and-plan.md)；其中最硬的一條：**M5 的生成入口不得對封測使用者出現**。狀態變動改 `01` §10 與 `04`，不改這裡——本檔不放日期、不放數字。
+各里程碑與新增創作旅程的實作狀態以 [`01` §10](docs/plans/01-goals-and-plan.md) 為準；**「程式面收斂」不等於「完成」**——M1 驗證閘門、M4 封測、M5 曝光都在等真人數字。**本專案永遠不凍結**：任何時候都可以修改程式、新增系統能力，不得以凍結、閘門期間、日期或「沒有放行」為由擋下或延後；品質靠測試、CI 與〈開發自動化〉第 9 條的突變證明守住，不靠禁止修改。文件裡殘留的「凍結例外」「第 N 次放行」都是歷史紀錄。三條 ⛔ 曝光邊界只在 [`01` §10](docs/plans/01-goals-and-plan.md)；其中最硬的一條：**M5 的生成入口不得對封測使用者出現**。狀態變動改 `01` §10 與 `04`，不改這裡——本檔不放日期、不放數字。
 
 ## 目錄地圖
 
@@ -29,7 +29,7 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 | `db/` | Migration、query、sqlc 設定與 `query-owners.yaml` |
 | `infra/` | 部署、runtime image、網路、節點與 observability |
 | `tools/` | 開發、CI、資料維護、維運命令；`tools/devctl` 是所有機器檢查的家 |
-| `docs/plans/` | 產品基準：`01` 目標與里程碑、`02` 規格允收（需求 ID）、`03` 工作清單、`04` 殘項與移交、`05` 待裁定；`mvp/mX/` 為凍結產出 |
+| `docs/plans/` | 產品基準：`01` 目標與里程碑、`02` 規格允收（需求 ID）、`03` 工作清單、`04` 殘項與移交、`05` 待裁定；`mvp/mX/` 為里程碑當時的紀錄 |
 | `docs/adr/` | 架構決策；份數、狀態與取代關係見 [索引](docs/adr/README.md) |
 | `docs/design/` | 前端兩把尺：[system.md](docs/design/system.md) 管一頁之內、[information-architecture.md](docs/design/information-architecture.md) 管頁與頁之間；**兩份都有機器測試直接解析** |
 | `docs/development/` | 開工前讀的手冊；[docs/runbooks/](docs/runbooks/) 是出事時讀的 |
@@ -58,7 +58,7 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 
 ## 文件規則摘要
 
-ADR 是決策歷史，不原地改寫；凍結的里程碑產出也不回溯修正；只有完全符合允收準則才勾選。完整六條文件維護規則與文件區路由見 [`docs/AGENTS.md`](docs/AGENTS.md)；動任何 `docs/` 文件前必須先讀它。
+ADR 是決策歷史，不原地改寫；里程碑當時的紀錄也不回溯修正（程式與新能力不受這條限制）；只有完全符合允收準則才勾選。完整六條文件維護規則與文件區路由見 [`docs/AGENTS.md`](docs/AGENTS.md)；動任何 `docs/` 文件前必須先讀它。
 
 ## 慣例
 
@@ -110,7 +110,7 @@ ADR 是決策歷史，不原地改寫；凍結的里程碑產出也不回溯修�
 
 | 你要做的事 | 先看 |
 | --- | --- |
-| 狀態全貌、里程碑、凍結放行與 ⛔ 邊界 | [`01` §10](docs/plans/01-goals-and-plan.md) |
+| 狀態全貌、里程碑與 ⛔ 邊界 | [`01` §10](docs/plans/01-goals-and-plan.md) |
 | 還缺什麼、誰在等誰（殘項總數唯一來源） | [`04`](docs/plans/04-backlog-and-handoffs.md) |
 | 我現在要簽什麼 | [`05`](docs/plans/05-pending-rulings.md) |
 | 某功能的允收準則 | [`02`](docs/plans/02-specifications-and-acceptance-criteria.md)（按需求 ID） |
