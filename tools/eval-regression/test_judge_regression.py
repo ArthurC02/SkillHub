@@ -152,6 +152,37 @@ def test_a_verified_quote_satisfies_evidence_required():
     assert got["result"] == "passed", got
 
 
+def test_a_passed_verdict_on_an_incomplete_trace_is_downgraded():
+    request = request_of(criteria=[("r1", "produces a report")], complete=False)
+    verdict = verdict_of("r1", "passed", [])
+    got = store(verdict, request, {}, [], "")[0]
+    assert got["result"] == "undetermined", got
+    assert got["downgrade"] == "incomplete_evidence", got
+
+
+def test_a_verdict_citing_an_unresolvable_reference_is_downgraded():
+    request = request_of(criteria=[("r1", "produces a report")])
+    verdict = verdict_of("r1", "passed", [
+        {"kind": "trace_event", "trace_event_id": "missing"},
+    ])
+    got = store(verdict, request, {}, [], "")[0]
+    assert got["result"] == "undetermined", got
+    assert got["downgrade"] == "evidence_unverifiable", got
+
+
+def test_an_unrecognised_reference_kind_is_refused():
+    stored, why = verify({"kind": "bogus"}, {}, [], "")
+    assert stored is None, stored
+    assert why == "reference kind 'bogus' is not one this platform can resolve", why
+
+
+def test_an_artifact_citation_outside_the_manifest_is_refused():
+    ref = {"kind": "artifact", "artifact_path": "missing.md", "quote": "nothing to match here"}
+    stored, why = verify(ref, {}, [{"path": "report.md"}], "")
+    assert stored is None, stored
+    assert why == "cited artifact 'missing.md' is not in this run's manifest", why
+
+
 def main() -> int:
     failed = 0
     for name, fn in sorted(globals().items()):

@@ -56,6 +56,16 @@ func TestTimeoutBudgetAcceptsAGoDeadlineWithEnoughSlack(t *testing.T) {
 	}
 }
 
+func TestTimeoutBudgetAcceptsExactlyAtTheMarginBoundary(t *testing.T) {
+	t.Parallel()
+	root := writeBudgetFixture(t,
+		"package improvement\n\nconst judgeTimeout = 125 * time.Second // budget-over: evaluate.LLM_TIMEOUT_SECONDS\n",
+		"# budget-ceiling: evaluate.LLM_TIMEOUT_SECONDS\nLLM_TIMEOUT_SECONDS = 120.0\n")
+	if problems := timeoutBudgetProblems(root); len(problems) != 0 {
+		t.Fatalf("125s over a 120s ceiling (exactly ceiling+margin) was rejected: %v", problems)
+	}
+}
+
 func TestTimeoutBudgetRefusesTheThreeWaysThePairFails(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

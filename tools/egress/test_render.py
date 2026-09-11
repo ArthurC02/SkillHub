@@ -37,6 +37,16 @@ def test_the_emitted_destination_matches_the_keys_the_reader_declares():
         f"naming a destination -- indistinguishable from fail-closed working correctly.")
 
 
+def test_a_node_tier_entry_recurses_by_name_and_carries_no_pin():
+    entries = [{"name": "docs-site", "tier": "node", "fqdn": "docs.example.com"}]
+    dns = render.render_dnsmasq(entries, "10.0.0.53")
+
+    assert "server=/docs.example.com/#" in dns, (
+        f"a tier:node entry must recurse by fqdn, not be pinned: {dns!r}")
+    assert "address=/docs.example.com/" not in dns, (
+        f"a tier:node entry must not get the sandbox-tier pinned address line: {dns!r}")
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

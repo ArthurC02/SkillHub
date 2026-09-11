@@ -114,6 +114,16 @@ func TestProfileCheckNamesMissingVariablesWithoutValues(t *testing.T) {
 	}
 }
 
+func TestProfileCheckRejectsAnUnknownProfile(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	var output strings.Builder
+	err := profileCheck(root, "bogus", &output)
+	if err == nil || !strings.Contains(err.Error(), "unknown profile") {
+		t.Fatalf("profileCheck(root, \"bogus\", ...) = %v, want an unknown-profile error", err)
+	}
+}
+
 func TestCheckPgliteInstallReconcilesAgainstToolchainPin(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

@@ -42,6 +42,7 @@ def test_missing_port_is_rejected():
     assert errors, "a sandbox entry with no port was accepted"
     _rejects("a non-numeric port", port="4000")
     _rejects("an out-of-range port", port=70000)
+    _rejects("a boolean port", port=True)
 
 
 def test_ipv6_pin_is_rejected():
@@ -51,6 +52,34 @@ def test_ipv6_pin_is_rejected():
 def test_loopback_pin_is_rejected():
     _rejects("a loopback pinned_ip", pinned_ip="127.0.0.1")
     _rejects("the unspecified address as pinned_ip", pinned_ip="0.0.0.0")
+    _rejects("a multicast pinned_ip", pinned_ip="224.0.0.1")
+
+
+def test_provider_domain_fqdn_is_rejected():
+    errors = _rejects("a model provider fqdn", fqdn="api.openai.com")
+    assert any("api.openai.com" in e and "model provider domain" in e for e in errors), errors
+
+
+def test_two_sandbox_entries_is_rejected():
+    errors, _ = chk.check([_entry(), _entry(name="second_gateway")])
+    assert any("must hold exactly one entry named model_gateway" in e for e in errors), errors
+
+
+def _node_entry(**over):
+    e = {"name": "docs-site", "tier": "node", "fqdn": "docs.example.com", "port": None}
+    e.update(over)
+    return e
+
+
+def test_node_tier_checks():
+    _, warnings = chk.check([_node_entry(pinned_ip="10.1.2.3")])
+    assert any("must not pin an IP" in w for w in warnings), warnings
+
+    _, warnings = chk.check([_node_entry(fqdn="gateway.internal")])
+    assert any("should it be tier:sandbox" in w for w in warnings), warnings
+
+    errors, _ = chk.check([_node_entry(port=70000)])
+    assert any("port must be an integer" in e for e in errors), errors
 
 
 def test_unset_stays_fail_closed_not_an_error():

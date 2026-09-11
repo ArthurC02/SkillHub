@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestCollectSeedEntriesReadsBothRealBatches(t *testing.T) {
@@ -105,6 +106,36 @@ func writeSkillMD(t *testing.T, path, name string) {
 	content := fmt.Sprintf("---\nname: %s\ndescription: fixture skill for devctl seed-clean tests.\n---\n\nbody\n", name)
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRetryAfter(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, header string
+		attempt      int
+		want         time.Duration
+	}{{
+		name:    "a numeric header adds a one-second cushion",
+		header:  "3",
+		attempt: 1,
+		want:    4 * time.Second,
+	}, {
+		name:    "an empty header falls back to the attempt number",
+		header:  "",
+		attempt: 5,
+		want:    5 * time.Second,
+	}, {
+		name:    "a non-numeric header falls back to the attempt number",
+		header:  "soon",
+		attempt: 2,
+		want:    2 * time.Second,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := retryAfter(tc.header, tc.attempt); got != tc.want {
+				t.Fatalf("retryAfter(%q, %d) = %v, want %v", tc.header, tc.attempt, got, tc.want)
+			}
+		})
 	}
 }
 

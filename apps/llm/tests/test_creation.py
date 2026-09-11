@@ -356,6 +356,20 @@ def test_thirteen_acceptance_criteria_is_refused():
     assert response.status_code == 502
 
 
+def test_twelve_acceptance_criteria_is_accepted():
+    criteria = [f"criterion {i}" for i in range(12)]
+    response, _ = invoke(
+        request(brief="agreed", brief_confirmed=True),
+        decision(
+            outcome="confirm_brief",
+            brief="agreed",
+            acceptance_criteria=criteria,
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["acceptance_criteria"] == criteria
+
+
 def test_image_is_only_multimodal_and_requires_confirmation():
     diagram = {
         "media_type": "image/png",

@@ -30,6 +30,14 @@ test("mints over the admin key too", () => {
   assert.equal(plan.action, "mint");
 });
 
+test("SKILLHUB_MODEL_GATEWAY_ADMIN_URL alone is enough to plan a mint", () => {
+  const plan = serviceKeyPlan({
+    SKILLHUB_MODEL_GATEWAY_ADMIN_URL: "http://127.0.0.1:4001",
+    SKILLHUB_MODEL_GATEWAY_KEY: "sk-fake-admin",
+  });
+  assert.equal(plan.action, "mint");
+});
+
 test("keeps an operator-supplied distinct key", () => {
   const plan = serviceKeyPlan({
     SKILLHUB_MODEL_GATEWAY_URL: "http://127.0.0.1:4000",
@@ -75,6 +83,23 @@ test("mintServiceKey posts to /key/generate with the admin bearer and returns th
     max_budget: 1.0,
     models: ["gpt-5.4-mini"],
   });
+});
+
+test("mintServiceKey does not double the slash when adminUrl already ends in one", async () => {
+  let seenUrl;
+  const fetchImpl = async (url) => {
+    seenUrl = url;
+    return { ok: true, status: 200, json: async () => ({ key: "sk-fake-minted" }) };
+  };
+  await mintServiceKey({
+    fetchImpl,
+    adminUrl: "http://127.0.0.1:4000/",
+    adminKey: "sk-fake-admin",
+    models: [],
+    budgetUsd: 1.0,
+    alias: "skillhub-llm-service",
+  });
+  assert.equal(seenUrl, "http://127.0.0.1:4000/key/generate");
 });
 
 test("mintServiceKey throws (no key value) on a non-2xx response", async () => {

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
-import { childOverlay, parseDotEnv, releasePath, resolve } from "./env.mjs";
+import { childOverlay, parseDotEnv, readDotEnv, releasePath, resolve } from "./env.mjs";
 
 test("parses the shapes .env.example actually writes", () => {
   const env = parseDotEnv(
@@ -16,6 +19,7 @@ test("parses the shapes .env.example actually writes", () => {
       "export EXPORTED=yes",
       "not a variable line",
       "=novalue",
+      "1FOO=bar",
     ].join("\n"),
   );
   assert.deepEqual(env, {
@@ -73,6 +77,18 @@ test("an exported-but-empty shell variable is not an instruction", () => {
   assert.deepEqual(childOverlay(dotEnv, { OPERATOR_USER_IDS: "" }), { OPERATOR_USER_IDS: "abc" });
   assert.equal(resolve(dotEnv, { OPERATOR_USER_IDS: "xyz" }, "OPERATOR_USER_IDS"), "xyz");
   assert.deepEqual(childOverlay(dotEnv, { OPERATOR_USER_IDS: "xyz" }), {});
+});
+
+test("readDotEnv reads an existing file and returns {} when the file is missing", () => {
+  const dir = mkdtempSync(join(tmpdir(), "cleanmode-env-"));
+  const file = join(dir, ".env");
+  try {
+    writeFileSync(file, "A=1\nB=two\n");
+    assert.deepEqual(readDotEnv(file), { A: "1", B: "two" });
+    assert.deepEqual(readDotEnv(join(dir, "missing.env")), {});
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("the release list the launcher announces is the one the API will read", () => {

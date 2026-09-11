@@ -43,3 +43,20 @@ func TestParseClaudeAgentRejectsIncompleteFrontmatter(t *testing.T) {
 		t.Fatal("incomplete frontmatter was accepted")
 	}
 }
+
+func TestCopyTreeRefusesASymlink(t *testing.T) {
+	source := t.TempDir()
+	target := filepath.Join(t.TempDir(), "out")
+	real := filepath.Join(source, "real.txt")
+	if err := os.WriteFile(real, []byte("data"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(source, "link.txt")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("cannot create a symlink on this platform: %v", err)
+	}
+	err := copyTree(source, target)
+	if err == nil || !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("copyTree(%q) with a symlinked entry = %v, want an error mentioning symlink", source, err)
+	}
+}

@@ -44,6 +44,89 @@ test("gateway spend lookup times out instead of blocking run completion", async 
   }
 });
 
+async function withJsonServer(status, body, handler) {
+  const server = createServer((_req, res) => {
+    res.writeHead(status, { "content-type": "application/json" });
+    res.end(JSON.stringify(body));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address();
+    return await handler(`http://127.0.0.1:${port}`);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
+test("gateway spend lookup returns null immediately when base or key is missing, without waiting out the retry budget", async () => {
+  const started = Date.now();
+  const spend = await gatewaySpend({
+    base: "",
+    key: "",
+    initialDelayMs: 5000,
+    retryDelayMs: 5000,
+    requestTimeoutMs: 2000,
+    attempts: 2,
+  });
+  assert.equal(spend, null);
+  assert.ok(Date.now() - started < 500, "missing config should skip the retry wait entirely");
+});
+
+test("gateway spend lookup returns the reading once two consecutive polls agree, not the first one", async () => {
+  let calls = 0;
+  const server = createServer((_req, res) => {
+    calls += 1;
+    const spend = calls === 1 ? 10 : 42;
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ info: { spend } }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address();
+    const spend = await gatewaySpend({
+      base: `http://127.0.0.1:${port}`,
+      key: "test",
+      initialDelayMs: 0,
+      retryDelayMs: 5,
+      requestTimeoutMs: 200,
+      attempts: 3,
+    });
+    assert.equal(spend, 42);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("gateway spend lookup ignores a non-ok response body even when it carries a spend field", async () => {
+  await withJsonServer(500, { info: { spend: 42 } }, async (base) => {
+    const spend = await gatewaySpend({
+      base,
+      key: "test",
+      initialDelayMs: 0,
+      retryDelayMs: 5,
+      requestTimeoutMs: 200,
+      attempts: 2,
+    });
+    assert.equal(spend, null);
+  });
+});
+
+test("gateway spend lookup ignores a spend field that is not a number", async () => {
+  await withJsonServer(200, { info: { spend: "42" } }, async (base) => {
+    const spend = await gatewaySpend({
+      base,
+      key: "test",
+      initialDelayMs: 0,
+      retryDelayMs: 5,
+      requestTimeoutMs: 200,
+      attempts: 2,
+    });
+    assert.equal(spend, null);
+  });
+});
+
 test("package extraction failures become structured provision errors", () => {
   const root = mkdtempSync(join(tmpdir(), "skillhub-provision-"));
   const archivePath = join(root, "bad.zip");
@@ -175,6 +258,44 @@ for (const [name, offset, value] of [
   const zip = buildZip([{ name: "SKILL.md", data: Buffer.from("ok") }]);
   zip.writeUInt16LE(value, zip.length - 22 + offset);
   assertRejectedZip(name, zip, /unsupported zip feature/);
+}
+
+{
+  const zip = buildZip([{ name: "SKILL.md", data: Buffer.from("x") }]);
+  const eocdOffset = zip.length - 22;
+  const cdOffset = zip.readUInt32LE(eocdOffset + 16);
+  zip.writeUInt32LE(0xdeadbeef, cdOffset);
+  assertRejectedZip(
+    "a central directory entry with a corrupted signature",
+    zip,
+    /central directory entry signature mismatch/,
+  );
+}
+
+{
+  const zip = buildZip([
+    { name: "a", data: Buffer.from("x") },
+    { name: "b", data: Buffer.from("y") },
+  ]);
+  const secondLocalHeaderOffset = zip.indexOf(Buffer.from([0x50, 0x4b, 0x03, 0x04]), 4);
+  zip.writeUInt32LE(0xdeadbeef, secondLocalHeaderOffset);
+  assertRejectedZip(
+    "a local file header with a corrupted signature",
+    zip,
+    /local file header signature mismatch/,
+  );
+}
+
+{
+  const zip = buildZip([{ name: "SKILL.md", data: Buffer.from("x") }]);
+  const eocdOffset = zip.length - 22;
+  const cdOffset = zip.readUInt32LE(eocdOffset + 16);
+  zip.writeUInt32LE(zip.length + 100, cdOffset + 42);
+  assertRejectedZip(
+    "a central directory entry whose local header offset points past the end of the file",
+    zip,
+    /out of range/i,
+  );
 }
 
 function stageZip(entries) {
@@ -380,6 +501,17 @@ assertRejected(
   [{ name: `${"d/".repeat(11)}file.txt`, data: Buffer.from("x") }],
   /nested 11 directories deep/,
 );
+test("accepts a path exactly at admission's ten-segment depth ceiling", () => {
+  const segments = Array.from({ length: 10 }, (_, i) => `d${i}`);
+  const name = [...segments, "file.txt"].join("/");
+  const { archivePath, destDir, root } = stageZip([{ name, data: Buffer.from("x") }]);
+  try {
+    extractPackage(archivePath, destDir);
+    assert.equal(readFileSync(join(destDir, ...segments, "file.txt"), "utf8"), "x");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 assertRejected("an empty entry name", [{ name: "", data: Buffer.alloc(0) }], /invalid name/);
 assertRejected(
   "an entry name containing NUL",
@@ -634,6 +766,22 @@ test("refuses a package whose declared sizes add up past the total limit", () =>
   }
 });
 
+test("accepts a package whose declared bytes total exactly the 100 MiB limit", () => {
+  const tenMiB = 10 * 1024 * 1024;
+  const entries = Array.from({ length: 10 }, (_, i) => ({
+    name: `part${i}.bin`,
+    data: Buffer.alloc(tenMiB, 7),
+    method: 8,
+  }));
+  const { archivePath, destDir, root } = stageZip(entries);
+  try {
+    extractPackage(archivePath, destDir);
+    assert.equal(readdirSync(destDir).length, 10);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("refuses a stored entry whose two sizes disagree", () => {
   const payload = Buffer.alloc(1024 * 1024, 3);
   const { archivePath, destDir, root } = stageZip([
@@ -669,6 +817,17 @@ test("the agent turn still carries every option that fails silently", () => {
 
   assert.equal(typeof options.systemPrompt, "string");
   assert.ok(options.systemPrompt.includes("/out/artifacts"));
+
+  assert.equal(options.cwd, process.env.SKILLHUB_WORKDIR ?? "/work");
+
+  const previousModel = process.env.SKILLHUB_MODEL;
+  process.env.SKILLHUB_MODEL = "claude-test-model";
+  try {
+    assert.equal(agentOptions("/out/artifacts").model, "claude-test-model");
+  } finally {
+    if (previousModel === undefined) delete process.env.SKILLHUB_MODEL;
+    else process.env.SKILLHUB_MODEL = previousModel;
+  }
 
   assert.equal(options.skills, "all");
   assert.equal(options.includePartialMessages, true);
