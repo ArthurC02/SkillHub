@@ -17,6 +17,15 @@ WHERE skill_versions.id = $1 AND skill_versions.workspace_id = $2
       WHERE sk.id = skill_versions.skill_id AND sk.deleted_at IS NULL
   );
 
+-- name: ListVersionSummaries :many
+SELECT sv.id, sv.skill_id, sv.version_number, sk.name AS skill_name,
+       sk.access_restriction, sk.redistribution,
+       (SELECT max(v2.version_number) FROM skill_versions v2
+         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number
+FROM skill_versions sv
+JOIN skills sk ON sk.id = sv.skill_id
+WHERE sv.workspace_id = @workspace_id AND sv.id = ANY(@version_ids::uuid[]);
+
 -- name: ListSkillVersions :many
 SELECT * FROM skill_versions
 WHERE skill_versions.workspace_id = $1 AND skill_versions.skill_id = $2

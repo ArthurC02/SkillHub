@@ -153,6 +153,39 @@ func (s *Service) WorkspaceVersion(ctx context.Context, workspaceID, versionID p
 	return versionDTO(row), true, nil
 }
 
+type VersionSummary struct {
+	ID                  pgtype.UUID
+	SkillID             pgtype.UUID
+	SkillName           string
+	VersionNumber       int32
+	LatestVersionNumber int32
+	AccessRestriction   *string
+	Redistribution      string
+}
+
+func (s *Service) VersionSummaries(
+	ctx context.Context, workspaceID pgtype.UUID, versionIDs []pgtype.UUID,
+) (map[pgtype.UUID]VersionSummary, error) {
+	summaries := make(map[pgtype.UUID]VersionSummary, len(versionIDs))
+	if len(versionIDs) == 0 {
+		return summaries, nil
+	}
+	rows, err := gen.New(s.Pool).ListVersionSummaries(ctx, gen.ListVersionSummariesParams{
+		WorkspaceID: workspaceID, VersionIds: versionIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		summaries[row.ID] = VersionSummary{
+			ID: row.ID, SkillID: row.SkillID, SkillName: row.SkillName,
+			VersionNumber: row.VersionNumber, LatestVersionNumber: row.LatestVersionNumber,
+			AccessRestriction: row.AccessRestriction, Redistribution: row.Redistribution,
+		}
+	}
+	return summaries, nil
+}
+
 func (s *Service) RuntimeCompatibility(ctx context.Context, versionID pgtype.UUID) (RuntimeCompatibility, bool, error) {
 	row, err := gen.New(s.Pool).GetSkillRuntimeCompatibility(ctx, versionID)
 	if errors.Is(err, pgx.ErrNoRows) {

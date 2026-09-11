@@ -87,6 +87,46 @@ func (s *Service) ReadSnapshot(ctx context.Context, workspaceID, snapshotID pgty
 	return snapshotDTO(snap), nil
 }
 
+func (s *Service) SnapshotIDsForTestCase(ctx context.Context, workspaceID, testCaseID pgtype.UUID) ([]pgtype.UUID, error) {
+	if s == nil || s.Pool == nil {
+		return nil, errPersistenceNotConfigured
+	}
+	return gen.New(s.Pool).ListTestCaseSnapshotIDs(ctx, gen.ListTestCaseSnapshotIDsParams{
+		WorkspaceID: workspaceID, TestCaseID: testCaseID,
+	})
+}
+
+func (s *Service) SnapshotTestCases(
+	ctx context.Context, workspaceID pgtype.UUID, snapshotIDs []pgtype.UUID,
+) (map[pgtype.UUID]pgtype.UUID, error) {
+	if s == nil || s.Pool == nil {
+		return nil, errPersistenceNotConfigured
+	}
+	testCases := make(map[pgtype.UUID]pgtype.UUID, len(snapshotIDs))
+	if len(snapshotIDs) == 0 {
+		return testCases, nil
+	}
+	rows, err := gen.New(s.Pool).ListSnapshotTestCases(ctx, gen.ListSnapshotTestCasesParams{
+		WorkspaceID: workspaceID, SnapshotIds: snapshotIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		testCases[row.ID] = row.TestCaseID
+	}
+	return testCases, nil
+}
+
+func (s *Service) SnapshotInputsAvailable(ctx context.Context, workspaceID, snapshotID pgtype.UUID) (bool, error) {
+	if s == nil || s.Pool == nil {
+		return false, errPersistenceNotConfigured
+	}
+	return gen.New(s.Pool).SnapshotInputsStillAvailable(ctx, gen.SnapshotInputsStillAvailableParams{
+		SnapshotID: snapshotID, WorkspaceID: workspaceID,
+	})
+}
+
 func (s *Service) CreateSnapshot(ctx context.Context, tx pgx.Tx, workspaceID, testCaseID pgtype.UUID) (Snapshot, error) {
 	if tx == nil {
 		return Snapshot{}, errPersistenceNotConfigured

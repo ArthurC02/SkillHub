@@ -173,6 +173,7 @@ type RunFacts struct {
 	StartedAt          *time.Time
 	FinishedAt         *time.Time
 	FailureClass       *string
+	Terminal           bool
 }
 
 type SkillFacts struct {
@@ -217,6 +218,7 @@ type EvaluationInput struct {
 
 var errRunReaderNotConfigured = errors.New("evaluation run reader is not configured")
 var errRegistryReadNotConfigured = errors.New("evaluation registry reader is not configured")
+var errRunStillGoing = errors.New("evaluation: the run has not finished")
 
 func (s *Service) queries() *gen.Queries { return gen.New(s.Pool) }
 
@@ -297,14 +299,11 @@ type material struct {
 
 func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) error {
 	m, err := s.gather(ctx, workspaceID, runID)
-	if errors.Is(err, ErrNotFound) {
+	if errors.Is(err, ErrNotFound) || errors.Is(err, errRunStillGoing) {
 		return nil
 	}
 	if err != nil {
 		return err
-	}
-	if !terminal(m.run.Status) {
-		return nil
 	}
 
 	if current, currentErr := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
@@ -437,6 +436,9 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 	}
 	m.run, m.artifacts, m.attempt = input.Run, input.Artifacts, input.LatestAttempt
 	m.absent = input.Absent
+	if !m.run.Terminal {
+		return m, errRunStillGoing
+	}
 
 	if m.version, found, err = s.ReadVersion(ctx, workspaceID, m.run.SkillVersionID); !found && err == nil {
 		return m, ErrNotFound
@@ -687,15 +689,6 @@ func tally(results []CriterionResult) (passed, failed, undetermined int) {
 		}
 	}
 	return passed, failed, undetermined
-}
-
-func terminal(status string) bool {
-	switch status {
-	case "succeeded", "failed", "cancelled", "timed_out":
-		return true
-	default:
-		return false
-	}
 }
 
 func (s *Service) runFacts(ctx context.Context, workspaceID, runID pgtype.UUID) (RunFacts, error) {

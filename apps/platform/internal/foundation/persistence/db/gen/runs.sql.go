@@ -404,11 +404,9 @@ func (q *Queries) GetRunAttemptForReconcile(ctx context.Context, id pgtype.UUID)
 }
 
 const getRunLinkage = `-- name: GetRunLinkage :one
-SELECT v.skill_id, s.test_case_id
-FROM runs r
-JOIN skill_versions v ON v.id = r.skill_version_id
-JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
-WHERE r.id = $1 AND r.workspace_id = $2
+SELECT skill_version_id, test_case_snapshot_id
+FROM runs
+WHERE id = $1 AND workspace_id = $2
 `
 
 type GetRunLinkageParams struct {
@@ -417,14 +415,14 @@ type GetRunLinkageParams struct {
 }
 
 type GetRunLinkageRow struct {
-	SkillID    pgtype.UUID
-	TestCaseID pgtype.UUID
+	SkillVersionID     pgtype.UUID
+	TestCaseSnapshotID pgtype.UUID
 }
 
 func (q *Queries) GetRunLinkage(ctx context.Context, arg GetRunLinkageParams) (GetRunLinkageRow, error) {
 	row := q.db.QueryRow(ctx, getRunLinkage, arg.RunID, arg.WorkspaceID)
 	var i GetRunLinkageRow
-	err := row.Scan(&i.SkillID, &i.TestCaseID)
+	err := row.Scan(&i.SkillVersionID, &i.TestCaseSnapshotID)
 	return i, err
 }
 
@@ -963,21 +961,17 @@ func (q *Queries) ListUnpublishedOutboxEvents(ctx context.Context, limit int32) 
 const listWorkspaceRuns = `-- name: ListWorkspaceRuns :many
 SELECT r.id, r.status, r.status_reason, r.provider, r.failure_class,
        r.cleanup_status, r.skill_version_id, r.test_case_snapshot_id,
-       r.cancel_requested_at, r.created_at, r.started_at, r.finished_at,
-       v.skill_id, sk.name AS skill_name, s.test_case_id
+       r.cancel_requested_at, r.created_at, r.started_at, r.finished_at
 FROM runs r
-JOIN skill_versions v ON v.id = r.skill_version_id
-JOIN skills sk ON sk.id = v.skill_id
-JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
 WHERE r.workspace_id = $1
-  AND ($2::uuid IS NULL OR s.test_case_id = $2::uuid)
+  AND ($2::uuid[] IS NULL OR r.test_case_snapshot_id = ANY($2::uuid[]))
 ORDER BY r.created_at DESC, r.id
 LIMIT $4 OFFSET $3
 `
 
 type ListWorkspaceRunsParams struct {
 	WorkspaceID pgtype.UUID
-	TestCaseID  pgtype.UUID
+	SnapshotIds []pgtype.UUID
 	PageOffset  int32
 	PageSize    int32
 }
@@ -995,15 +989,12 @@ type ListWorkspaceRunsRow struct {
 	CreatedAt          pgtype.Timestamptz
 	StartedAt          pgtype.Timestamptz
 	FinishedAt         pgtype.Timestamptz
-	SkillID            pgtype.UUID
-	SkillName          string
-	TestCaseID         pgtype.UUID
 }
 
 func (q *Queries) ListWorkspaceRuns(ctx context.Context, arg ListWorkspaceRunsParams) ([]ListWorkspaceRunsRow, error) {
 	rows, err := q.db.Query(ctx, listWorkspaceRuns,
 		arg.WorkspaceID,
-		arg.TestCaseID,
+		arg.SnapshotIds,
 		arg.PageOffset,
 		arg.PageSize,
 	)
@@ -1027,9 +1018,6 @@ func (q *Queries) ListWorkspaceRuns(ctx context.Context, arg ListWorkspaceRunsPa
 			&i.CreatedAt,
 			&i.StartedAt,
 			&i.FinishedAt,
-			&i.SkillID,
-			&i.SkillName,
-			&i.TestCaseID,
 		); err != nil {
 			return nil, err
 		}

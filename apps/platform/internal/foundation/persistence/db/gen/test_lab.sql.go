@@ -314,6 +314,71 @@ func (q *Queries) ListDatasets(ctx context.Context, arg ListDatasetsParams) ([]D
 	return items, nil
 }
 
+const listSnapshotTestCases = `-- name: ListSnapshotTestCases :many
+SELECT id, test_case_id FROM test_case_snapshots
+WHERE workspace_id = $1 AND id = ANY($2::uuid[])
+`
+
+type ListSnapshotTestCasesParams struct {
+	WorkspaceID pgtype.UUID
+	SnapshotIds []pgtype.UUID
+}
+
+type ListSnapshotTestCasesRow struct {
+	ID         pgtype.UUID
+	TestCaseID pgtype.UUID
+}
+
+func (q *Queries) ListSnapshotTestCases(ctx context.Context, arg ListSnapshotTestCasesParams) ([]ListSnapshotTestCasesRow, error) {
+	rows, err := q.db.Query(ctx, listSnapshotTestCases, arg.WorkspaceID, arg.SnapshotIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSnapshotTestCasesRow
+	for rows.Next() {
+		var i ListSnapshotTestCasesRow
+		if err := rows.Scan(&i.ID, &i.TestCaseID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTestCaseSnapshotIDs = `-- name: ListTestCaseSnapshotIDs :many
+SELECT id FROM test_case_snapshots
+WHERE workspace_id = $1 AND test_case_id = $2
+`
+
+type ListTestCaseSnapshotIDsParams struct {
+	WorkspaceID pgtype.UUID
+	TestCaseID  pgtype.UUID
+}
+
+func (q *Queries) ListTestCaseSnapshotIDs(ctx context.Context, arg ListTestCaseSnapshotIDsParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listTestCaseSnapshotIDs, arg.WorkspaceID, arg.TestCaseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTestCases = `-- name: ListTestCases :many
 SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric FROM test_cases
 WHERE workspace_id = $1 AND deleted_at IS NULL
@@ -403,6 +468,37 @@ func (q *Queries) LockTestCase(ctx context.Context, arg LockTestCaseParams) (Tes
 		&i.Rubric,
 	)
 	return i, err
+}
+
+const snapshotInputsStillAvailable = `-- name: SnapshotInputsStillAvailable :one
+SELECT (
+    tc.deleted_at IS NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM jsonb_array_elements(s.dataset_refs) AS ref
+        WHERE NOT EXISTS (
+            SELECT 1 FROM datasets d
+            WHERE d.id = (ref->>'dataset_id')::uuid
+              AND d.workspace_id = s.workspace_id
+              AND d.deleted_at IS NULL
+              AND d.expires_at > now()
+        )
+    )
+)::boolean AS available
+FROM test_case_snapshots s
+JOIN test_cases tc ON tc.id = s.test_case_id
+WHERE s.id = $1 AND s.workspace_id = $2
+`
+
+type SnapshotInputsStillAvailableParams struct {
+	SnapshotID  pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) SnapshotInputsStillAvailable(ctx context.Context, arg SnapshotInputsStillAvailableParams) (bool, error) {
+	row := q.db.QueryRow(ctx, snapshotInputsStillAvailable, arg.SnapshotID, arg.WorkspaceID)
+	var available bool
+	err := row.Scan(&available)
+	return available, err
 }
 
 const softDeleteDataset = `-- name: SoftDeleteDataset :one

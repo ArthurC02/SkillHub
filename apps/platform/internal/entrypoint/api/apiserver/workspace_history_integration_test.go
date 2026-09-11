@@ -762,3 +762,33 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 		t.Fatalf("run history index has the wrong columns: %s", indexDefinition)
 	}
 }
+
+func TestEachRowOfTheRunHistoryNamesItsOwnSkillAndTestCase(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	first := newFixture(t, a, pool, "history-two-skills")
+	second := first
+	second.skillID = seedSkill(t, pool, first.workspaceID, "history-second-skill")
+	version := seedVersion(t, pool, first.workspaceID, second.skillID, "hash-history-second-skill")
+	a.packages[version.PackageObjectKey] = cleanPackage(t)
+	second.versionID = uuidText(version.ID)
+	second.testCaseID = seedTestCase(t, pool, first.workspaceID, second.skillID)
+
+	want := map[string]fixture{first.start(t).RunID: first, second.start(t).RunID: second}
+	names := map[string]string{first.skillID: "history-two-skills-runnable-skill", second.skillID: "history-second-skill"}
+	seen := 0
+	for _, row := range first.listRuns(t) {
+		f, ok := want[row.RunID]
+		if !ok {
+			continue
+		}
+		seen++
+		if row.SkillID != f.skillID || row.SkillName != names[f.skillID] || row.TestCaseID != f.testCaseID {
+			t.Errorf("run %s shows skill %s %q and case %s; want skill %s %q and case %s",
+				row.RunID, row.SkillID, row.SkillName, row.TestCaseID, f.skillID, names[f.skillID], f.testCaseID)
+		}
+	}
+	if seen != len(want) {
+		t.Fatalf("the history shows %d of the %d runs", seen, len(want))
+	}
+}

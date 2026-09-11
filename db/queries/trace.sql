@@ -1,9 +1,9 @@
 -- name: InsertTraceEvent :execrows
 INSERT INTO trace_events (
     event_id, workspace_id, run_id, attempt, seq, occurred_at,
-    event_type, source, status, schema_version, masked, masked_fields, payload, late
+    event_type, source, status, schema_version, masked, masked_fields, payload
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
 
 -- name: ListTraceEventsAfter :many
 SELECT * FROM trace_events

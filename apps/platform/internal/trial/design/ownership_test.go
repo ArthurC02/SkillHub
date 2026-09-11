@@ -3,6 +3,8 @@ package testlab
 import (
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
@@ -27,6 +29,9 @@ func TestPublishedFaceRefusesWithoutPersistence(t *testing.T) {
 		{"CaseDatasets", func() error { _, err := svc.CaseDatasets(t.Context(), id, id); return err }},
 		{"LockDraft", func() error { _, err := svc.LockDraft(t.Context(), nil, id, id); return err }},
 		{"CreateSnapshot", func() error { _, err := svc.CreateSnapshot(t.Context(), nil, id, id); return err }},
+		{"SnapshotIDsForTestCase", func() error { _, err := svc.SnapshotIDsForTestCase(t.Context(), id, id); return err }},
+		{"SnapshotTestCases", func() error { _, err := svc.SnapshotTestCases(t.Context(), id, []pgtype.UUID{id}); return err }},
+		{"SnapshotInputsAvailable", func() error { _, err := svc.SnapshotInputsAvailable(t.Context(), id, id); return err }},
 	}
 	for _, check := range checks {
 		t.Run(check.name, func(t *testing.T) {

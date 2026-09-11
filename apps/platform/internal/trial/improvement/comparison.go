@@ -8,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -140,7 +139,6 @@ func (s *Service) comparisonSide(
 	if s.ReadVersion == nil {
 		return comparisonSide{}, sideDetail{}, errRegistryReadNotConfigured
 	}
-	q := s.queries()
 	run, err := s.runFacts(ctx, workspaceID, runID)
 	if err != nil {
 		return comparisonSide{}, sideDetail{}, err
@@ -177,9 +175,7 @@ func (s *Service) comparisonSide(
 		return comparisonSide{}, sideDetail{}, err
 	}
 
-	if side.InputsAvailable, err = q.RunInputsStillAvailable(ctx, gen.RunInputsStillAvailableParams{
-		SnapshotID: snapshot.ID, WorkspaceID: workspaceID,
-	}); err != nil {
+	if side.InputsAvailable, err = s.TestLab.SnapshotInputsAvailable(ctx, workspaceID, snapshot.ID); err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}
 

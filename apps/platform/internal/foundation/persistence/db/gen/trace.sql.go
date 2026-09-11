@@ -271,9 +271,9 @@ func (q *Queries) GetTraceStreamHealth(ctx context.Context, arg GetTraceStreamHe
 const insertTraceEvent = `-- name: InsertTraceEvent :execrows
 INSERT INTO trace_events (
     event_id, workspace_id, run_id, attempt, seq, occurred_at,
-    event_type, source, status, schema_version, masked, masked_fields, payload, late
+    event_type, source, status, schema_version, masked, masked_fields, payload
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 `
 
 type InsertTraceEventParams struct {
@@ -290,7 +290,6 @@ type InsertTraceEventParams struct {
 	Masked        bool
 	MaskedFields  []byte
 	Payload       []byte
-	Late          bool
 }
 
 func (q *Queries) InsertTraceEvent(ctx context.Context, arg InsertTraceEventParams) (int64, error) {
@@ -308,7 +307,6 @@ func (q *Queries) InsertTraceEvent(ctx context.Context, arg InsertTraceEventPara
 		arg.Masked,
 		arg.MaskedFields,
 		arg.Payload,
-		arg.Late,
 	)
 	if err != nil {
 		return 0, err

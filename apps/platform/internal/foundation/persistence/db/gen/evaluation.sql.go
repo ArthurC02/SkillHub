@@ -700,37 +700,6 @@ func (q *Queries) RecordEvaluationModelUsage(ctx context.Context, arg RecordEval
 	return err
 }
 
-const runInputsStillAvailable = `-- name: RunInputsStillAvailable :one
-SELECT (
-    tc.deleted_at IS NULL
-    AND NOT EXISTS (
-        SELECT 1 FROM jsonb_array_elements(s.dataset_refs) AS ref
-        WHERE NOT EXISTS (
-            SELECT 1 FROM datasets d
-            WHERE d.id = (ref->>'dataset_id')::uuid
-              AND d.workspace_id = s.workspace_id
-              AND d.deleted_at IS NULL
-              AND d.expires_at > now()
-        )
-    )
-)::boolean AS available
-FROM test_case_snapshots s
-JOIN test_cases tc ON tc.id = s.test_case_id
-WHERE s.id = $1 AND s.workspace_id = $2
-`
-
-type RunInputsStillAvailableParams struct {
-	SnapshotID  pgtype.UUID
-	WorkspaceID pgtype.UUID
-}
-
-func (q *Queries) RunInputsStillAvailable(ctx context.Context, arg RunInputsStillAvailableParams) (bool, error) {
-	row := q.db.QueryRow(ctx, runInputsStillAvailable, arg.SnapshotID, arg.WorkspaceID)
-	var available bool
-	err := row.Scan(&available)
-	return available, err
-}
-
 const setEvaluationFeedback = `-- name: SetEvaluationFeedback :one
 UPDATE evaluations SET
     feedback_helpful = $1,

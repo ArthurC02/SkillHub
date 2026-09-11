@@ -897,3 +897,35 @@ func TestOnlyAnExcerptCutIsNarrow(t *testing.T) {
 		t.Error("one batch-wide cut among narrow ones is still batch-wide")
 	}
 }
+
+func TestEvaluateLeavesARunThatHasNotFinishedAlone(t *testing.T) {
+	id := gen.Workspace{}.ID
+	for _, tc := range []struct {
+		name     string
+		finished bool
+		wantErr  bool
+	}{
+		{"a run still going is skipped", false, false},
+		{"a finished run goes on to read its test case", true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &Service{
+				ReadEvaluationInput: func(context.Context, pgtype.UUID, pgtype.UUID) (EvaluationInput, bool, error) {
+					return EvaluationInput{Run: RunFacts{Terminal: tc.finished}}, true, nil
+				},
+				ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
+					return VersionFacts{}, true, nil
+				},
+				ReadSkill: func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error) {
+					return SkillFacts{}, true, nil
+				},
+				ReadRuntimeCompatibility: func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error) {
+					return RuntimeCompatibility{}, false, nil
+				},
+			}
+			if err := svc.Evaluate(t.Context(), id, id); (err != nil) != tc.wantErr {
+				t.Fatalf("Evaluate error = %v, want an error: %v", err, tc.wantErr)
+			}
+		})
+	}
+}

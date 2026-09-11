@@ -110,24 +110,6 @@ WHERE id = ANY(@ids::uuid[])
   AND workspace_id = @workspace_id
   AND decision = 'accepted';
 
--- name: RunInputsStillAvailable :one
-SELECT (
-    tc.deleted_at IS NULL
-    AND NOT EXISTS (
-        SELECT 1 FROM jsonb_array_elements(s.dataset_refs) AS ref
-        WHERE NOT EXISTS (
-            SELECT 1 FROM datasets d
-            WHERE d.id = (ref->>'dataset_id')::uuid
-              AND d.workspace_id = s.workspace_id
-              AND d.deleted_at IS NULL
-              AND d.expires_at > now()
-        )
-    )
-)::boolean AS available
-FROM test_case_snapshots s
-JOIN test_cases tc ON tc.id = s.test_case_id
-WHERE s.id = @snapshot_id AND s.workspace_id = @workspace_id;
-
 -- name: FindLiveTraceEvents :many
 SELECT event_id FROM trace_events
 WHERE workspace_id = @workspace_id AND run_id = @run_id

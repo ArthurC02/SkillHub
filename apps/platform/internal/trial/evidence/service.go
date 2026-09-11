@@ -74,14 +74,12 @@ func (s *Service) Ingest(ctx context.Context, grant Grant, token string, events 
 		return IngestReport{}, err
 	}
 
-	late := terminal(gen.RunStatus(run.Status))
-
 	masker := &Masker{Known: []string{token}}
 
 	report := IngestReport{Received: len(events)}
 	for i := range events {
 		event := &events[i]
-		if err := s.ingestOne(ctx, run, grant, masker, event, late); err != nil {
+		if err := s.ingestOne(ctx, run, grant, masker, event); err != nil {
 			switch {
 			case errors.Is(err, ErrInvalid):
 				report.Rejected++
@@ -105,7 +103,7 @@ var errDuplicate = errors.New("event already stored")
 
 func (s *Service) ingestOne(
 	ctx context.Context, run IngestRunState, grant Grant,
-	masker *Masker, event *Event, late bool,
+	masker *Masker, event *Event,
 ) error {
 	if err := event.Validate(); err != nil {
 		return err
@@ -157,7 +155,6 @@ func (s *Service) ingestOne(
 		Masked:       true,
 		MaskedFields: fields,
 		Payload:      masked.Payload,
-		Late:         late,
 	})
 	if err != nil {
 
@@ -593,15 +590,6 @@ func newUUID() string {
 	b[6] = (b[6] & 0x0f) | 0x40
 	b[8] = (b[8] & 0x3f) | 0x80
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
-}
-
-func terminal(status gen.RunStatus) bool {
-	switch status {
-	case gen.RunStatusSucceeded, gen.RunStatusFailed, gen.RunStatusCancelled, gen.RunStatusTimedOut:
-		return true
-	default:
-		return false
-	}
 }
 
 func sourceLabel(source string) string {

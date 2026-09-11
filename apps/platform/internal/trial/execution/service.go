@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -29,6 +30,7 @@ var (
 
 	ErrRunFinished               = errors.New("run has already finished")
 	errRegistryReadNotConfigured = errors.New("run: registry owner read is not configured")
+	errRunLinkMissing            = errors.New("run: its skill version or test case snapshot is gone")
 )
 
 const artifactCleanupTimeout = 5 * time.Second
@@ -42,6 +44,23 @@ type VersionFacts struct {
 	SkillID          pgtype.UUID
 	ContentHash      string
 	PackageObjectKey string
+}
+
+type VersionSummary struct {
+	SkillID   pgtype.UUID
+	SkillName string
+}
+
+type RunSummary struct {
+	gen.ListWorkspaceRunsRow
+	SkillID    pgtype.UUID
+	SkillName  string
+	TestCaseID pgtype.UUID
+}
+
+type Linkage struct {
+	SkillID    pgtype.UUID
+	TestCaseID pgtype.UUID
 }
 
 type ContentSource struct {
@@ -61,6 +80,8 @@ type Service struct {
 
 	ReadSkill   func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
 	ReadVersion func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+
+	ReadVersionSummaries func(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error)
 
 	ReadContentSource func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
 
@@ -102,6 +123,13 @@ func (s *Service) requireTestLab() error {
 		return errors.New("run: test lab service not injected")
 	}
 	return nil
+}
+
+func (s *Service) requireRunLinks() error {
+	if s.ReadVersionSummaries == nil {
+		return errRegistryReadNotConfigured
+	}
+	return s.requireTestLab()
 }
 
 func (s *Service) maxAttempts() int {
@@ -360,16 +388,68 @@ func (s *Service) Get(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.
 
 func (s *Service) List(
 	ctx context.Context, workspaceID, testCaseID pgtype.UUID, limit, offset int32,
-) ([]gen.ListWorkspaceRunsRow, error) {
+) ([]RunSummary, error) {
+	if err := s.requireRunLinks(); err != nil {
+		return nil, err
+	}
 	if limit <= 0 || limit > maxRunPageSize {
 		limit = defaultRunPageSize
 	}
 	if offset < 0 {
 		offset = 0
 	}
-	return s.queries().ListWorkspaceRuns(ctx, gen.ListWorkspaceRunsParams{
-		WorkspaceID: workspaceID, TestCaseID: testCaseID, PageSize: limit, PageOffset: offset,
+	var snapshotIDs []pgtype.UUID
+	if testCaseID.Valid {
+		ids, err := s.TestLab.SnapshotIDsForTestCase(ctx, workspaceID, testCaseID)
+		if err != nil {
+			return nil, err
+		}
+		if len(ids) == 0 {
+			return []RunSummary{}, nil
+		}
+		snapshotIDs = ids
+	}
+	rows, err := s.queries().ListWorkspaceRuns(ctx, gen.ListWorkspaceRunsParams{
+		WorkspaceID: workspaceID, SnapshotIds: snapshotIDs, PageSize: limit, PageOffset: offset,
 	})
+	if err != nil {
+		return nil, err
+	}
+	versionIDs := make([]pgtype.UUID, len(rows))
+	caseSnapshotIDs := make([]pgtype.UUID, len(rows))
+	for i, row := range rows {
+		versionIDs[i], caseSnapshotIDs[i] = row.SkillVersionID, row.TestCaseSnapshotID
+	}
+	versions, testCases, err := s.runLinks(ctx, workspaceID, versionIDs, caseSnapshotIDs)
+	if err != nil {
+		return nil, err
+	}
+	summaries := make([]RunSummary, len(rows))
+	for i, row := range rows {
+		version, versionFound := versions[row.SkillVersionID]
+		testCaseID, caseFound := testCases[row.TestCaseSnapshotID]
+		if !versionFound || !caseFound {
+			return nil, fmt.Errorf("%w: run %s", errRunLinkMissing, pgconv.UUIDString(row.ID))
+		}
+		summaries[i] = RunSummary{
+			ListWorkspaceRunsRow: row, SkillID: version.SkillID, SkillName: version.SkillName, TestCaseID: testCaseID,
+		}
+	}
+	return summaries, nil
+}
+
+func (s *Service) runLinks(
+	ctx context.Context, workspaceID pgtype.UUID, versionIDs, snapshotIDs []pgtype.UUID,
+) (map[pgtype.UUID]VersionSummary, map[pgtype.UUID]pgtype.UUID, error) {
+	versions, err := s.ReadVersionSummaries(ctx, workspaceID, versionIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	testCases, err := s.TestLab.SnapshotTestCases(ctx, workspaceID, snapshotIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	return versions, testCases, nil
 }
 
 const (
@@ -480,14 +560,30 @@ func (s *Service) DeleteArtifact(
 	return nil
 }
 
-func (s *Service) Linkage(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.GetRunLinkageRow, error) {
+func (s *Service) Linkage(ctx context.Context, workspaceID, runID pgtype.UUID) (Linkage, error) {
+	if err := s.requireRunLinks(); err != nil {
+		return Linkage{}, err
+	}
 	row, err := s.queries().GetRunLinkage(ctx, gen.GetRunLinkageParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.GetRunLinkageRow{}, ErrNotFound
+		return Linkage{}, ErrNotFound
 	}
-	return row, err
+	if err != nil {
+		return Linkage{}, err
+	}
+	versions, testCases, err := s.runLinks(ctx, workspaceID,
+		[]pgtype.UUID{row.SkillVersionID}, []pgtype.UUID{row.TestCaseSnapshotID})
+	if err != nil {
+		return Linkage{}, err
+	}
+	version, versionFound := versions[row.SkillVersionID]
+	testCaseID, caseFound := testCases[row.TestCaseSnapshotID]
+	if !versionFound || !caseFound {
+		return Linkage{}, fmt.Errorf("%w: run %s", errRunLinkMissing, pgconv.UUIDString(runID))
+	}
+	return Linkage{SkillID: version.SkillID, TestCaseID: testCaseID}, nil
 }
 
 func (s *Service) History(ctx context.Context, workspaceID, runID pgtype.UUID) ([]gen.RunStatusTransition, error) {

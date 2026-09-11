@@ -11,14 +11,10 @@ SELECT * FROM runs WHERE id = $1 AND workspace_id = $2;
 -- name: ListWorkspaceRuns :many
 SELECT r.id, r.status, r.status_reason, r.provider, r.failure_class,
        r.cleanup_status, r.skill_version_id, r.test_case_snapshot_id,
-       r.cancel_requested_at, r.created_at, r.started_at, r.finished_at,
-       v.skill_id, sk.name AS skill_name, s.test_case_id
+       r.cancel_requested_at, r.created_at, r.started_at, r.finished_at
 FROM runs r
-JOIN skill_versions v ON v.id = r.skill_version_id
-JOIN skills sk ON sk.id = v.skill_id
-JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
 WHERE r.workspace_id = @workspace_id
-  AND (sqlc.narg(test_case_id)::uuid IS NULL OR s.test_case_id = sqlc.narg(test_case_id)::uuid)
+  AND (sqlc.narg(snapshot_ids)::uuid[] IS NULL OR r.test_case_snapshot_id = ANY(sqlc.narg(snapshot_ids)::uuid[]))
 ORDER BY r.created_at DESC, r.id
 LIMIT @page_size OFFSET @page_offset;
 
@@ -40,11 +36,9 @@ SELECT pg_advisory_lock(hashtextextended(@lock_key::text, 0));
 SELECT pg_advisory_unlock(hashtextextended(@lock_key::text, 0));
 
 -- name: GetRunLinkage :one
-SELECT v.skill_id, s.test_case_id
-FROM runs r
-JOIN skill_versions v ON v.id = r.skill_version_id
-JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
-WHERE r.id = @run_id AND r.workspace_id = @workspace_id;
+SELECT skill_version_id, test_case_snapshot_id
+FROM runs
+WHERE id = @run_id AND workspace_id = @workspace_id;
 
 -- name: TransitionRun :one
 UPDATE runs SET

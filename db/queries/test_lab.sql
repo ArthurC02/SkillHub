@@ -94,6 +94,33 @@ RETURNING *;
 -- name: GetTestCaseSnapshot :one
 SELECT * FROM test_case_snapshots
 WHERE id = $1 AND workspace_id = $2;
+
+-- name: ListTestCaseSnapshotIDs :many
+SELECT id FROM test_case_snapshots
+WHERE workspace_id = @workspace_id AND test_case_id = @test_case_id;
+
+-- name: ListSnapshotTestCases :many
+SELECT id, test_case_id FROM test_case_snapshots
+WHERE workspace_id = @workspace_id AND id = ANY(@snapshot_ids::uuid[]);
+
+-- name: SnapshotInputsStillAvailable :one
+SELECT (
+    tc.deleted_at IS NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM jsonb_array_elements(s.dataset_refs) AS ref
+        WHERE NOT EXISTS (
+            SELECT 1 FROM datasets d
+            WHERE d.id = (ref->>'dataset_id')::uuid
+              AND d.workspace_id = s.workspace_id
+              AND d.deleted_at IS NULL
+              AND d.expires_at > now()
+        )
+    )
+)::boolean AS available
+FROM test_case_snapshots s
+JOIN test_cases tc ON tc.id = s.test_case_id
+WHERE s.id = @snapshot_id AND s.workspace_id = @workspace_id;
+
 -- name: LockDatasetWorkspaceObjects :exec
 SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
 
