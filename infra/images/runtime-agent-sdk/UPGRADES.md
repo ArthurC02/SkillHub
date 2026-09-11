@@ -514,3 +514,39 @@ Dockerfile 少掉本節加的那一行，在同一道閘門上紅，逐字輸出
 動作（成本約 $0.06，且必須跑在 CI 發佈出來的 digest 上，不是本機這一個——`-5` 那節付過
 這個學費）。在那之前，這個 CVE 在**實際會被派送的映像裡仍然在**。這件事開在
 [`04` 丙-225](../../../docs/plans/04-backlog-and-handoffs.md)，不藏在這一節裡。
+
+## `2026.08-9` → `2026.08-10`（2026-09-11）— **只拿掉註解；四項實測尚未跑，預設映像仍留在 `-8`**
+
+> **這一節也是被 CI 逼出來的。** 2026-09-11 的全 repo 註解清理（`5d57718e`）刪掉本目錄
+> `Dockerfile`、`run.mjs`、`run.test.mjs` 的註解而沒有動版本號，`Runtime Image` 在
+> [run #34544146903](https://github.com/ArthurC02/SkillHub/actions/runs/34544146903) 的 I-05
+> 閘門紅掉——那是對的：映像裡的 `run.mjs` 位元組變了，版本就要跟著走。把註解還原不是出路，
+> 還原本身也是一次內容變更。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | 三個檔只刪註解。`Dockerfile` 對 `-9`（`4e389e75`）的非註解差異只有 `ARG IMAGE_VERSION` 這一行；`run.mjs`、`run.test.mjs` 以 TypeScript printer 去掉註解後與 `-9` 相同。**沒有其他改動** |
+| 為什麼仍是升級 | 映像裡的檔案位元組變了、digest 跟著變，依 ADR-023 §1 走版本號 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
+| 依賴集 | Python 與 Node 兩份**未變**（`constraints.txt`、`package.json`、`package-lock.json` 一字未動） |
+| `-9` 的 CVE 修補 | **帶著**：`libpcre2-8-0` 的指名升級那一行還在 |
+| 預設映像 | **仍是 `-8`**：四處預設都沒有動（同上一節那張表） |
+| ADR-023 §2 四項實測 | **一項都沒跑**，本節不主張任何一項通過 |
+
+**`04` 丙-225 講的「修好了但沒被派送的那一版」從這一版起是 `-10`**：它帶著同一個修補，`-9` 從此只是被取代的 tag。
+
+### 本機驗證（閘門用的是同兩個釘住的 digest）
+
+```
+docker build -t skillhub/runtime-agent-sdk:2026.08-10 infra/images/runtime-agent-sdk
+  → exit 0，映像大小 307 MB（與 -9 相同）
+docker run --rm --user 0 --entrypoint /bin/sh skillhub/runtime-agent-sdk:2026.08-10   -c "dpkg -s libpcre2-8-0 | grep -i '^Version'"
+  → Version: 10.42-1+deb12u1
+
+docker run … anchore/syft:v1.51.0@sha256:678bfa56…  skillhub/runtime-agent-sdk:2026.08-10   -o spdx-json=/scan/sbom.spdx.json
+docker run … anchore/grype:v0.117.0@sha256:ddf9e9f2… sbom:/scan/sbom.spdx.json   --only-fixed --fail-on high -o table
+  → No vulnerabilities found        (exit 0)
+```
+
+I-05、`UPGRADES.md` 標題與 I-02 三道靜態閘門以 `runtime-image.yml` 的原腳本在本機重播，全數通過。

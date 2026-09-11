@@ -323,6 +323,7 @@ docker buildx imagetools inspect "ghcr.io/arthurc02/skillhub-runtime-agent-sdk:$
 > docker build -t "skillhub/runtime-agent-sdk:${IMAGE_VERSION}" infra/images/runtime-agent-sdk
 > ```
 > 〔2026-09-03：這一段原本被寫進 Dockerfile 的註解裡，CI 當場擋下並且是對的——已還原成原樣，改記於此。〕
+> 〔2026-09-11：Dockerfile 檔頭那行 `docker build -t …` 在 `2026.08-10` 隨全 repo 註解清理拿掉了，第二份版本字串從此不存在；上面取 tag 的方式不變。〕
 ```
 
 > **注意這裡有兩個不同的問題，答案也不同**：「registry 上最新的是哪一版」看 `ARG IMAGE_VERSION`；
