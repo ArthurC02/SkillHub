@@ -169,7 +169,7 @@ test("OPS-001: clean mode adds the operator sentence on /admin pages only", asyn
 
 async function lookUp(email: string) {
   await mountAt("/admin/accounts");
-  await waitFor(has("輸入 email 找帳號"));
+  await waitFor(has("誰在何時查了誰"));
   await type("#admin-account-email", email);
   await submit("#admin-account-email");
 }
@@ -369,8 +369,7 @@ test("OPS-004: a taken-down skill shows when and why, and offers no action", asy
       : undefined,
   );
   await mountAt("/admin/skills", { q: SKILL });
-  await waitFor(has("已下架"));
-  expect(has("理由：DMCA")()).toBe(true);
+  await waitFor(has("理由：DMCA"));
   expect(has("的動作")()).toBe(false);
 });
 

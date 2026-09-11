@@ -30,7 +30,7 @@ function AdminPage({
   children,
 }: {
   heading: string;
-  lede: ReactNode;
+  lede?: ReactNode;
   children: ReactNode;
 }) {
   const me = useMe();
@@ -40,9 +40,7 @@ function AdminPage({
     <section>
       <AdminNav />
       <h1>{heading}</h1>
-      <p className="note" data-role="teaching">
-        {lede}
-      </p>
+      {lede && <p className="note">{lede}</p>}
       {children}
     </section>
   );
@@ -116,10 +114,7 @@ function ActionForm({
 
 export function AdminHome() {
   return (
-    <AdminPage
-      heading="營運後台"
-      lede="只有 operator 看得到這一區。每一個動作都走既有的端點，理由必填，而且都留紀錄。"
-    >
+    <AdminPage heading="營運後台">
       <ul className="download-list">
         <li className="download-item">
           <p>
@@ -182,7 +177,7 @@ export function AdminAccounts() {
   return (
     <AdminPage
       heading="帳號與點數"
-      lede="輸入 email 找帳號。每查到一次帳號、每讀一次點數，都會留下一筆紀錄：誰在何時查了誰。email 不會出現在網址上。"
+      lede="每查到一次帳號、每讀一次點數，都會留下一筆紀錄：誰在何時查了誰。"
     >
       <form
         onSubmit={(event) => {
@@ -369,7 +364,7 @@ export function AdminSkills() {
   return (
     <AdminPage
       heading="Skill 治理"
-      lede="用 id 或名稱片段找 Skill，範圍是所有工作區，含私人的與已下架的。這裡只顯示治理狀態，不顯示內容。"
+      lede="範圍是所有工作區，含私人的與已下架的；只顯示治理狀態，不顯示內容。"
     >
       <form
         onSubmit={(event) => {
@@ -574,7 +569,7 @@ export function AdminDispatch() {
   const target = provider.trim() || undefined;
 
   return (
-    <AdminPage heading="派送煞車" lede="停止或恢復派送新的 Run。宣告與解除都要理由，而且都留紀錄。">
+    <AdminPage heading="派送煞車">
       {status.isPending && <Loading what="派送狀態" />}
       <ReadFailure error={status.error} what="派送狀態" />
       {status.data && (
@@ -641,10 +636,7 @@ export function AdminDispatch() {
 export function AdminRosters() {
   const rosters = useRosters();
   return (
-    <AdminPage
-      heading="名冊"
-      lede="目前生效的兩份名冊。要改，只能改部署設定再重啟；後台不提供編輯。"
-    >
+    <AdminPage heading="名冊" lede="要改名冊只能改部署設定再重啟，後台不提供編輯。">
       {rosters.isPending && <Loading what="名冊" />}
       <ReadFailure error={rosters.error} what="名冊" />
       {rosters.data && (
@@ -713,10 +705,7 @@ export function AdminAuditLog() {
   const rows = log.data?.pages.flatMap((page) => page.events) ?? [];
 
   return (
-    <AdminPage
-      heading="動作紀錄"
-      lede="全平台 operator 做過的事，新的在上面。查詢帳號與點數也算在內。"
-    >
+    <AdminPage heading="動作紀錄">
       {log.isPending && <Loading what="動作紀錄" />}
       <ReadFailure error={log.error} what="動作紀錄" />
       {log.data &&
@@ -783,10 +772,7 @@ export function AdminCostStatistics() {
   const rows = stats.data?.statistics ?? [];
 
   return (
-    <AdminPage
-      heading="成本統計"
-      lede="每一種呼叫最新的一個統計窗，與開始前檢查、會話估價讀的是同一組數字。不含使用者維度。"
-    >
+    <AdminPage heading="成本統計" lede="與開始前檢查、會話估價讀的是同一組數字；不含使用者維度。">
       {stats.isPending && <Loading what="成本統計" />}
       <ReadFailure error={stats.error} what="成本統計" />
       {stats.data &&
