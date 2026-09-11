@@ -1,7 +1,7 @@
 import { Loading } from "../components/Loading";
 import { ReadFailure } from "../components/LoginRequired";
 import { ApiError } from "../api/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { deleteSkill } from "../api/skills";
@@ -36,6 +36,44 @@ function toneOf(skillId: string) {
 
 function initialOf(name: string) {
   return Array.from(name.trim())[0]?.toUpperCase() ?? "?";
+}
+
+const MENU = ".skill-menu[open]";
+
+function useMenuDismiss() {
+  useEffect(() => {
+    const onPointer = (e: PointerEvent) => {
+      for (const menu of document.querySelectorAll<HTMLDetailsElement>(MENU)) {
+        if (!(e.target instanceof Node && menu.contains(e.target))) menu.open = false;
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      const menu = document.querySelector<HTMLDetailsElement>(MENU);
+      if (e.key !== "Escape" || !menu) return;
+      menu.open = false;
+      menu.querySelector("summary")?.focus();
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+}
+
+function MenuItem({ glyph, label, hint }: { glyph: string; label: string; hint: string }) {
+  return (
+    <>
+      <span className="skill-menu-glyph" aria-hidden="true">
+        {glyph}
+      </span>
+      <span className="skill-menu-text">
+        <strong>{label}</strong>
+        <span className="skill-menu-hint">{hint}</span>
+      </span>
+    </>
+  );
 }
 
 function SkillFlags({ skill }: { skill: OwnSkill }) {
@@ -83,6 +121,7 @@ export function WorkspaceSkills() {
   const rows = skills.data?.skills ?? [];
   const hasSkills = rows.length > 0;
   const isEmpty = Boolean(skills.data) && !hasSkills;
+  useMenuDismiss();
 
   const remove = useMutation({
     mutationFn: deleteSkill,
@@ -149,34 +188,50 @@ export function WorkspaceSkills() {
                 <span className="skill-card-summary">{s.summary}</span>
               </Link>
               <SkillFlags skill={s} />
-              <details className="skill-menu">
+              <details className="skill-menu" name="skill-menu">
                 <summary aria-label={`管理「${s.name}」`}>
-                  管理 <span aria-hidden="true">▾</span>
+                  管理
+                  <span className="skill-menu-caret" aria-hidden="true">
+                    ▾
+                  </span>
                 </summary>
                 <ul className="skill-menu-list">
                   <li>
-                    <Link to="/skills/$skillId/files" params={{ skillId: s.skill_id }}>
-                      檔案
+                    <Link
+                      className="skill-menu-item"
+                      to="/skills/$skillId/files"
+                      params={{ skillId: s.skill_id }}
+                    >
+                      <MenuItem glyph="▤" label="檔案" hint="瀏覽套件裡的每個檔案" />
                     </Link>
                   </li>
                   <li>
                     <Link
+                      className="skill-menu-item"
                       to="/skills/$skillId/package"
                       params={{ skillId: s.skill_id }}
                       search={{ version: undefined }}
                     >
-                      打包與下載
+                      <MenuItem glyph="↓" label="打包與下載" hint="產生可以帶走的套件" />
                     </Link>
                   </li>
                   <li>
-                    <Link to="/lab/test-cases" search={{ skill: s.skill_id }}>
-                      Test Case
+                    <Link
+                      className="skill-menu-item"
+                      to="/lab/test-cases"
+                      search={{ skill: s.skill_id }}
+                    >
+                      <MenuItem glyph="✓" label="Test Case" hint="設計測試並試跑" />
                     </Link>
                   </li>
                   {s.forked_from_skill_id && (
                     <li>
-                      <Link to="/skills/$skillId" params={{ skillId: s.forked_from_skill_id }}>
-                        Fork 來源 Skill
+                      <Link
+                        className="skill-menu-item"
+                        to="/skills/$skillId"
+                        params={{ skillId: s.forked_from_skill_id }}
+                      >
+                        <MenuItem glyph="↗" label="Fork 來源 Skill" hint="打開被 Fork 的原版" />
                       </Link>
                     </li>
                   )}

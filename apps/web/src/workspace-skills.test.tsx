@@ -121,6 +121,38 @@ test("the card grid lights up where a mouse points, stays dark for touch, and go
   expect(glow()).toEqual([" ", " "]);
 });
 
+test("a manage menu stays open for a click inside it, and closes on a click outside or Escape", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = typeof input === "string" ? input : String(input);
+    if (path.endsWith("/me")) return json(ME);
+    return json({ skills: [SKILL, SECOND], limit: 100, truncated: false, total: 2 });
+  });
+  await render(<WorkspaceSkills />, () => text().includes("第二個 Skill"));
+  const [first, second] = Array.from(container.querySelectorAll<HTMLDetailsElement>(".skill-menu"));
+  const press = (target: EventTarget) =>
+    act(async () => {
+      target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    });
+
+  await act(async () => {
+    first.open = true;
+  });
+  await press(first.querySelector("a")!);
+  expect(first.open, "a click on a menu item closed its own menu").toBe(true);
+
+  await press(document.body);
+  expect(first.open).toBe(false);
+
+  await act(async () => {
+    second.open = true;
+  });
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+  });
+  expect(second.open).toBe(false);
+  expect(document.activeElement).toBe(second.querySelector("summary"));
+});
+
 const DELETION_NOTE =
   "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；Fork 引用的共用套件物件不受影響";
 

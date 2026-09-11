@@ -2209,6 +2209,9 @@ summary {
   font-size: 14px;
   list-style: none;
   cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
 }
 
 .skill-menu > summary::-webkit-details-marker {
@@ -2220,11 +2223,27 @@ summary {
   content: none;
 }
 
+.skill-menu > summary:hover,
+.skill-menu[open] > summary {
+  border-color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, var(--surface));
+}
+
+.skill-menu-caret {
+  display: inline-block;
+  transition: transform var(--dur) var(--ease);
+}
+
+.skill-menu[open] .skill-menu-caret {
+  transform: rotate(180deg);
+}
+
+/* Scales in from the trigger's corner; @starting-style gives the first frame. */
 .skill-menu-list {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  width: min(320px, 80vw);
+  width: min(288px, calc(100vw - 48px));
   margin: 0;
   padding: 8px;
   list-style: none;
@@ -2233,26 +2252,83 @@ summary {
   gap: 4px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   box-shadow: var(--shadow-lift);
+  transform-origin: top right;
+  transition: transform var(--dur) var(--ease);
 }
 
-.skill-menu-list a {
-  display: flex;
+@starting-style {
+  .skill-menu[open] > .skill-menu-list {
+    transform: translateY(-8px) scale(0.96);
+  }
+}
+
+.skill-menu-item {
+  display: grid;
+  grid-template-columns: 32px 1fr;
   align-items: center;
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 8px;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 12px;
+  color: var(--text-h);
+  text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease);
 }
 
-.skill-menu-list a:hover {
-  background: var(--surface-hover);
+.skill-menu-item:hover,
+.skill-menu-item:focus-visible {
+  background: color-mix(in srgb, var(--tone) 10%, var(--surface));
+}
+
+.skill-menu-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--tone), var(--tone-deep));
+  color: var(--on-tile);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.skill-menu-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.skill-menu-text strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.skill-menu-hint {
+  font-size: 14px;
+  color: var(--text);
 }
 
 .skill-menu-delete {
   margin-top: 4px;
-  padding: 8px 12px 4px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
+}
+
+.skill-menu-delete > button:only-child {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 0 12px;
+  border-color: transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--danger);
+}
+
+.skill-menu-delete > button:only-child:hover {
+  border-color: transparent;
+  background: var(--danger-bg);
 }
 
 /* The file had three breakpoints before this and all three were 1024px, i.e.
