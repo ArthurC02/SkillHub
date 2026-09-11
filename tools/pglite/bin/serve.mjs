@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-// An abruptly dropped client connection (not a clean wire-protocol close) can
-// leave this socket server refusing every later connection; with
-// maxConnections=1 the whole carrier is then unusable and must be restarted.
 
 import { startHarness } from "../lib/harness.mjs";
 

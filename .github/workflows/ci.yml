@@ -393,7 +393,7 @@ jobs:
       - name: The acceptance checks must be able to fail
         run: |
           set -uo pipefail
-          for mutation in multiplexer missing-row; do
+          for mutation in multiplexer missing-row no-prune; do
             if node tools/pglite/verify.mjs "--mutate=$mutation"; then
               echo "::error::verify.mjs --mutate=$mutation exited 0; the check that mutation breaks is not asserting anything"
               exit 1

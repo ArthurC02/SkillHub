@@ -19,7 +19,11 @@ if (mutate === "multiplexer") {
   console.log(`>>> MUTATION multiplexer: maxConnections forced to ${maxConnections} (disallowed by ADR-060 decision 2)`);
 }
 
-const harness = await startHarness({ maxConnections });
+if (mutate === "no-prune") {
+  console.log(">>> MUTATION no-prune: a handler whose socket errored stays counted against maxConnections");
+}
+
+const harness = await startHarness({ maxConnections, forgetDetachedHandlers: mutate !== "no-prune" });
 
 {
   const { applied, failed } = harness.migrationResult;
@@ -195,6 +199,36 @@ async function checkAdvisoryLockExclusion() {
   await a.end();
 }
 await checkAdvisoryLockExclusion();
+
+// A reset is what a client sends when it abandons a connection mid-query. The
+// next client retries the way a pool does; a wedged carrier refuses every try.
+async function checkResetClientDoesNotWedge() {
+  const name = "a client reset mid-session does not wedge the carrier";
+  const victim = new Client({ connectionString: harness.connectionString });
+  victim.on("error", () => {});
+  await victim.connect();
+  await victim.query("SELECT 1");
+  victim.connection.stream.resetAndDestroy();
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= 20; attempt++) {
+    const next = new Client({ connectionString: harness.connectionString });
+    next.on("error", () => {});
+    try {
+      await next.connect();
+      const one = (await next.query("SELECT 1 AS one")).rows[0].one;
+      await next.end();
+      report(name, true, one === 1, `a new client connected on attempt ${attempt} and read ${one}`);
+      return;
+    } catch (err) {
+      lastError = String(err.message ?? err);
+      await next.end().catch(() => {});
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+  report(name, true, false, `20 attempts after the reset were all refused; last: ${lastError}`);
+}
+await checkResetClientDoesNotWedge();
 
 await harness.stop();
 
