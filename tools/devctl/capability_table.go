@@ -37,8 +37,6 @@ var capabilityLedger = []struct {
 		reason: "由 cmd/maintenance 擁有（refuseUnlessSet），API 只是揭露它",
 		vars: []string{
 			"AUDIT_RETENTION", "FEEDBACK_RETENTION", "SKILL_DELETION_GRACE", "TRACE_RETENTION",
-
-			"CREDIT_RETENTION",
 		},
 	},
 	{

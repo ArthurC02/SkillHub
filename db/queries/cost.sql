@@ -36,9 +36,6 @@ WHERE kind = $1
 ORDER BY window_end DESC
 LIMIT 1;
 
--- name: PurgeExpiredCostEvents :execrows
-DELETE FROM cost_events WHERE created_at < $1;
-
 -- name: GetCostEventByIdempotencyKey :one
 SELECT id FROM cost_events WHERE idempotency_key = $1;
 
@@ -75,6 +72,3 @@ SELECT
     coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
 FROM cost_session_summaries
 WHERE NOT estimated AND last_step_at >= sqlc.arg(window_start) AND last_step_at < sqlc.arg(window_end);
-
--- name: PurgeExpiredSessionCostSummaries :execrows
-DELETE FROM cost_session_summaries WHERE last_step_at < $1;

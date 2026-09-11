@@ -234,30 +234,6 @@ func (q *Queries) InsertCostStatistics(ctx context.Context, arg InsertCostStatis
 	return i, err
 }
 
-const purgeExpiredCostEvents = `-- name: PurgeExpiredCostEvents :execrows
-DELETE FROM cost_events WHERE created_at < $1
-`
-
-func (q *Queries) PurgeExpiredCostEvents(ctx context.Context, createdAt pgtype.Timestamptz) (int64, error) {
-	result, err := q.db.Exec(ctx, purgeExpiredCostEvents, createdAt)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const purgeExpiredSessionCostSummaries = `-- name: PurgeExpiredSessionCostSummaries :execrows
-DELETE FROM cost_session_summaries WHERE last_step_at < $1
-`
-
-func (q *Queries) PurgeExpiredSessionCostSummaries(ctx context.Context, lastStepAt pgtype.Timestamptz) (int64, error) {
-	result, err := q.db.Exec(ctx, purgeExpiredSessionCostSummaries, lastStepAt)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const sweepSessionCostSummaries = `-- name: SweepSessionCostSummaries :execrows
 INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
 SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,

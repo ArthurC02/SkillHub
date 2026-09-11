@@ -236,36 +236,6 @@ func (s *PostgresStore) SweepSessionSummaries(ctx context.Context, windowStart, 
 	})
 }
 
-func (s *PostgresStore) SweepExpiredRows(ctx context.Context, tx pgx.Tx, cutoff time.Time) (entries int64, events int64, err error) {
-	if err := enablePurge(ctx, tx); err != nil {
-		return 0, 0, err
-	}
-	q := gen.New(tx)
-	at := pgconv.Timestamptz(cutoff)
-
-	// Entries before events: credit_entries.cost_event_id is a foreign key
-	// into cost_events, so the reverse order fails on the constraint.
-	entries, err = q.PurgeExpiredCreditEntries(ctx, at)
-	if err != nil {
-		return 0, 0, fmt.Errorf("credit: sweep expired credit entries: %w", err)
-	}
-	events, err = q.PurgeExpiredCostEvents(ctx, at)
-	if err != nil {
-		return 0, 0, fmt.Errorf("credit: sweep expired cost events: %w", err)
-	}
-	if _, err := q.PurgeExpiredSessionCostSummaries(ctx, at); err != nil {
-		return 0, 0, fmt.Errorf("credit: sweep expired session summaries: %w", err)
-	}
-	return entries, events, nil
-}
-
-func enablePurge(ctx context.Context, tx pgx.Tx) error {
-	if _, err := tx.Exec(ctx, "SET LOCAL skillhub.purge = 'on'"); err != nil {
-		return fmt.Errorf("credit: enable purge: %w", err)
-	}
-	return nil
-}
-
 func nullString(s string) *string {
 	if s == "" {
 		return nil

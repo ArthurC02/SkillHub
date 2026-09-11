@@ -12,7 +12,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
@@ -31,7 +30,7 @@ import (
 func main() {
 	if len(os.Args) != 2 {
 		slog.Error("usage: maintenance purge-accounts|purge-audit|purge-feedback|" +
-			"purge-run-artifacts|purge-datasets|purge-deleted-skills|purge-credit|" +
+			"purge-run-artifacts|purge-datasets|purge-deleted-skills|" +
 			"collect-objects|check-sources|rotate-partitions")
 		os.Exit(2)
 	}
@@ -58,8 +57,6 @@ func main() {
 		err = purgeDatasets(ctx, pool)
 	case "purge-deleted-skills":
 		err = purgeDeletedSkills(ctx, pool)
-	case "purge-credit":
-		err = purgeCredit(ctx, pool)
 	case "collect-objects":
 		err = collectObjects(ctx, pool)
 	case "rotate-partitions":
@@ -222,28 +219,6 @@ func purgeFeedback(ctx context.Context, pool *pgxpool.Pool) error {
 		slog.Info("feedback purge complete", "reports_removed", n)
 	}
 	return err
-}
-
-func purgeCredit(ctx context.Context, pool *pgxpool.Pool) error {
-	retention, err := positiveDuration("CREDIT_RETENTION")
-	if err != nil {
-		return err
-	}
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	entries, events, err := credit.NewPostgresStore(pool).SweepExpiredRows(ctx, tx, time.Now().Add(-retention))
-	if err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-	slog.Info("credit purge complete", "entries_removed", entries, "cost_events_removed", events)
-	return nil
 }
 
 func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {

@@ -24,21 +24,23 @@ var docIdentifierScope = []string{
 var docIdentifierPattern = regexp.MustCompile("`(Test[A-Za-z0-9_]{3,}|test_[a-z0-9_]{3,}|[A-Z][A-Za-z0-9]{4,})`")
 
 var allowedDocWords = map[string]string{
-	"PurgeUser":                "removed with the account-deletion credit step (ADR-073); 03 CRED-006 and 04 record it as it was",
-	"Superseded":               "ADR status vocabulary (AGENTS.md), not a symbol",
-	"Proposed":                 "ADR status vocabulary",
-	"Accepted":                 "ADR status vocabulary",
-	"FileCountLimit":           "tail of an elided list: TestDatasetUploadEnforcesPerFileSizeLimit／FileCountLimit／TotalSizeLimit",
-	"TotalSizeLimit":           "tail of the same elided list",
-	"Deallocate":               "pgx / Postgres protocol message, not a SkillHub symbol",
-	"MaxConnLifetime":          "pgxpool.Config field, not a SkillHub symbol",
-	"QueryExecModeExec":        "pgx query exec mode, not a SkillHub symbol",
-	"ReadyForQuery":            "Postgres wire-protocol message",
-	"NOTIFY":                   "Postgres command",
-	"ModuleNotFoundError":      "Python builtin exception",
-	"test_cases_skill_id_fkey": "constraint name Postgres generates for the test_cases foreign key",
-	"Querier":                  "sqlc interface that db/sqlc.yaml deliberately does not emit",
-	"MARKER":                   "shell variable in tools/sec009 (.sh is outside codeExtensions)",
+	"PurgeExpiredCostEvents":    "removed with the credit retention sweep (05 R-76); 03 CRED-006 records it as it was",
+	"PurgeExpiredCreditEntries": "removed with the same sweep",
+	"PurgeUser":                 "removed with the account-deletion credit step (ADR-073); 03 CRED-006 and 04 record it as it was",
+	"Superseded":                "ADR status vocabulary (AGENTS.md), not a symbol",
+	"Proposed":                  "ADR status vocabulary",
+	"Accepted":                  "ADR status vocabulary",
+	"FileCountLimit":            "tail of an elided list: TestDatasetUploadEnforcesPerFileSizeLimit／FileCountLimit／TotalSizeLimit",
+	"TotalSizeLimit":            "tail of the same elided list",
+	"Deallocate":                "pgx / Postgres protocol message, not a SkillHub symbol",
+	"MaxConnLifetime":           "pgxpool.Config field, not a SkillHub symbol",
+	"QueryExecModeExec":         "pgx query exec mode, not a SkillHub symbol",
+	"ReadyForQuery":             "Postgres wire-protocol message",
+	"NOTIFY":                    "Postgres command",
+	"ModuleNotFoundError":       "Python builtin exception",
+	"test_cases_skill_id_fkey":  "constraint name Postgres generates for the test_cases foreign key",
+	"Querier":                   "sqlc interface that db/sqlc.yaml deliberately does not emit",
+	"MARKER":                    "shell variable in tools/sec009 (.sh is outside codeExtensions)",
 }
 
 var codeExtensions = map[string]bool{

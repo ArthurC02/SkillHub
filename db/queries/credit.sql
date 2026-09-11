@@ -30,7 +30,3 @@ LIMIT $2;
 -- name: SumCreditEntries :one
 SELECT coalesce(sum(delta_credits), 0)::bigint AS total_delta_credits
 FROM credit_entries WHERE user_id = $1;
-
--- name: PurgeExpiredCreditEntries :execrows
-DELETE FROM credit_entries WHERE created_at < $1;
-
