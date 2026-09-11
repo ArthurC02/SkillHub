@@ -106,7 +106,7 @@ func VersionByContent(
 }
 
 func (s *Service) CatalogSkill(ctx context.Context, skillID pgtype.UUID) (Skill, bool, error) {
-	row, err := gen.New(s.Pool).GetCatalogSkill(ctx, skillID)
+	row, err := s.catalogSkillIn(ctx, s.Pool, skillID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Skill{}, false, nil
 	}

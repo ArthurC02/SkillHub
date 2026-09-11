@@ -8,6 +8,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -47,6 +48,7 @@ type Set struct {
 	Runs        *run.Service
 	Evaluations *eval.Service
 	Packaging   *packaging.Service
+	Registry    *registry.Service
 	RunEvents   *eval.RunEventConsumer
 	Events      *outbox.Dispatcher
 	Objects     *objreconcile.Service
@@ -88,7 +90,8 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	set := &Set{WorkerKinds: map[string]bool{}, Scheduled: map[string]bool{}}
 	downloads := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	set.Packaging = downloads
-	registrySvc := &registry.Service{Pool: pool}
+	registrySvc := &registry.Service{Pool: pool, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
+	set.Registry = registrySvc
 	testlabSvc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	downloads.TestLab = testlabSvc
 

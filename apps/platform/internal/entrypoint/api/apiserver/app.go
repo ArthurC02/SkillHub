@@ -161,7 +161,8 @@ func NewApp(cfg Config) (*App, error) {
 				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
 			})
 		},
-		RemoveFromIndex: catalog.RemoveSkillFromIndex,
+		RemoveFromIndex:   catalog.RemoveSkillFromIndex,
+		CatalogWorkspaces: identitySvc.CatalogWorkspaceIDs,
 	}
 
 	versions.References = registrySvc

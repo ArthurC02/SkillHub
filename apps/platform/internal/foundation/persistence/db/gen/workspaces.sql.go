@@ -60,6 +60,30 @@ func (q *Queries) GetWorkspace(ctx context.Context, arg GetWorkspaceParams) (Wor
 	return i, err
 }
 
+const listCatalogWorkspaceIDs = `-- name: ListCatalogWorkspaceIDs :many
+SELECT id FROM workspaces WHERE is_catalog ORDER BY id
+`
+
+func (q *Queries) ListCatalogWorkspaceIDs(ctx context.Context) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listCatalogWorkspaceIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspacesByOwner = `-- name: ListWorkspacesByOwner :many
 SELECT id, owner_user_id, name, created_at, updated_at, is_catalog FROM workspaces
 WHERE owner_user_id = $1

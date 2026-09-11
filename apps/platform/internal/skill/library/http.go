@@ -287,8 +287,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	const listSkillsLimit = 100
+	catalogs, err := h.Svc.catalogWorkspaceIDs(r.Context(), h.Svc.Pool)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
+		return
+	}
 	rows, err := gen.New(h.Svc.Pool).ListSkills(r.Context(), gen.ListSkillsParams{
-		WorkspaceID: ws.ID, Limit: listSkillsLimit + 1, Offset: 0,
+		WorkspaceID: ws.ID, CatalogWorkspaceIds: catalogs, RowLimit: listSkillsLimit + 1, RowOffset: 0,
 	})
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "list failed")

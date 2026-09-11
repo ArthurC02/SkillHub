@@ -45,6 +45,8 @@ type Service struct {
 	SkillRisks func(ctx context.Context, workspaceID pgtype.UUID, skillIDs []pgtype.UUID) (map[string]json.RawMessage, error)
 
 	CatalogSkillRisks func(ctx context.Context, skillIDs []pgtype.UUID) (map[string]json.RawMessage, error)
+
+	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
 }
 
 func (s *Service) requireProjection() error {
@@ -52,6 +54,21 @@ func (s *Service) requireProjection() error {
 		return errors.New("registry: search projection writes not injected; refusing to write")
 	}
 	return nil
+}
+
+func (s *Service) catalogWorkspaceIDs(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error) {
+	if s.CatalogWorkspaces == nil {
+		return nil, errors.New("registry: catalog workspace read not injected")
+	}
+	return s.CatalogWorkspaces(ctx, db)
+}
+
+func (s *Service) catalogSkillIn(ctx context.Context, db gen.DBTX, skillID pgtype.UUID) (gen.Skill, error) {
+	catalogs, err := s.catalogWorkspaceIDs(ctx, db)
+	if err != nil {
+		return gen.Skill{}, err
+	}
+	return gen.New(db).GetCatalogSkill(ctx, gen.GetCatalogSkillParams{ID: skillID, CatalogWorkspaceIds: catalogs})
 }
 
 func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID) (gen.Skill, gen.SkillVersion, error) {
@@ -67,7 +84,7 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 
 	src, err := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		src, err = q.GetCatalogSkill(ctx, skillID)
+		src, err = s.catalogSkillIn(ctx, tx, skillID)
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return gen.Skill{}, gen.SkillVersion{}, ErrNotFound

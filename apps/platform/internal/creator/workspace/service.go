@@ -332,6 +332,13 @@ func (s *Service) DisplayNames(ctx context.Context, userIDs []pgtype.UUID) (map[
 	return names, nil
 }
 
+func (s *Service) CatalogWorkspaceIDs(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error) {
+	if db == nil {
+		return nil, errors.New("identity: catalog workspace lookup has no database handle")
+	}
+	return gen.New(db).ListCatalogWorkspaceIDs(ctx)
+}
+
 func (s *Service) WorkspaceOwner(ctx context.Context, workspaceID pgtype.UUID) (pgtype.UUID, error) {
 	return s.WorkspaceOwnerIn(ctx, s.Pool, workspaceID)
 }

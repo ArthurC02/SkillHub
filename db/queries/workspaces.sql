@@ -11,3 +11,6 @@ WHERE id = $1 AND owner_user_id = $2;
 SELECT * FROM workspaces
 WHERE owner_user_id = $1
 ORDER BY created_at;
+
+-- name: ListCatalogWorkspaceIDs :many
+SELECT id FROM workspaces WHERE is_catalog ORDER BY id;

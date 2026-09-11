@@ -48,3 +48,9 @@ func TestWritesRefuseWithoutTheProjectionWrites(t *testing.T) {
 		}
 	}
 }
+
+func TestCatalogReadsRefuseWithoutKnowingTheCatalogWorkspaces(t *testing.T) {
+	if _, _, err := (&Service{}).CatalogSkill(context.Background(), pgtype.UUID{}); err == nil {
+		t.Error("CatalogSkill answered without the catalog workspace read injected")
+	}
+}

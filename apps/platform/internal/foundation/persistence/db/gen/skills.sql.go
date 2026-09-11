@@ -79,13 +79,17 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 }
 
 const getCatalogSkill = `-- name: GetCatalogSkill :one
-SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, sk.curation_tier, sk.curated_version_id, sk.category, sk.category_source FROM skills sk
-JOIN workspaces w ON w.id = sk.workspace_id AND w.is_catalog
-WHERE sk.id = $1 AND sk.deleted_at IS NULL
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
+WHERE id = $1 AND workspace_id = ANY($2::uuid[]) AND deleted_at IS NULL
 `
 
-func (q *Queries) GetCatalogSkill(ctx context.Context, id pgtype.UUID) (Skill, error) {
-	row := q.db.QueryRow(ctx, getCatalogSkill, id)
+type GetCatalogSkillParams struct {
+	ID                  pgtype.UUID
+	CatalogWorkspaceIds []pgtype.UUID
+}
+
+func (q *Queries) GetCatalogSkill(ctx context.Context, arg GetCatalogSkillParams) (Skill, error) {
+	row := q.db.QueryRow(ctx, getCatalogSkill, arg.ID, arg.CatalogWorkspaceIds)
 	var i Skill
 	err := row.Scan(
 		&i.ID,
@@ -233,22 +237,23 @@ LEFT JOIN LATERAL (
 LEFT JOIN LATERAL (
     SELECT anc.id AS skill_id, anc.name, ancv.created_at
     FROM skills anc
-    JOIN workspaces w ON w.id = anc.workspace_id AND w.is_catalog
     JOIN skill_versions ancv ON ancv.id = sk.forked_from_version_id AND ancv.skill_id = anc.id
     WHERE ver.source_id IS NULL
       AND anc.id = sk.forked_from_skill_id
+      AND anc.workspace_id = ANY($1::uuid[])
       AND anc.deleted_at IS NULL AND anc.takedown_at IS NULL
       AND ancv.content_hash = ver.content_hash
 ) inh ON true
-WHERE sk.workspace_id = $1 AND sk.deleted_at IS NULL
+WHERE sk.workspace_id = $2 AND sk.deleted_at IS NULL
 ORDER BY sk.created_at DESC
-LIMIT $2 OFFSET $3
+LIMIT $4::int OFFSET $3::int
 `
 
 type ListSkillsParams struct {
-	WorkspaceID pgtype.UUID
-	Limit       int32
-	Offset      int32
+	CatalogWorkspaceIds []pgtype.UUID
+	WorkspaceID         pgtype.UUID
+	RowOffset           int32
+	RowLimit            int32
 }
 
 type ListSkillsRow struct {
@@ -262,7 +267,12 @@ type ListSkillsRow struct {
 }
 
 func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListSkillsRow, error) {
-	rows, err := q.db.Query(ctx, listSkills, arg.WorkspaceID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listSkills,
+		arg.CatalogWorkspaceIds,
+		arg.WorkspaceID,
+		arg.RowOffset,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

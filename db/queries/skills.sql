@@ -10,9 +10,8 @@ SELECT * FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL;
 
 -- name: GetCatalogSkill :one
-SELECT sk.* FROM skills sk
-JOIN workspaces w ON w.id = sk.workspace_id AND w.is_catalog
-WHERE sk.id = $1 AND sk.deleted_at IS NULL;
+SELECT * FROM skills
+WHERE id = @id AND workspace_id = ANY(@catalog_workspace_ids::uuid[]) AND deleted_at IS NULL;
 
 -- name: SoftDeleteSkill :one
 UPDATE skills SET deleted_at = now(), updated_at = now()
@@ -46,16 +45,16 @@ LEFT JOIN LATERAL (
 LEFT JOIN LATERAL (
     SELECT anc.id AS skill_id, anc.name, ancv.created_at
     FROM skills anc
-    JOIN workspaces w ON w.id = anc.workspace_id AND w.is_catalog
     JOIN skill_versions ancv ON ancv.id = sk.forked_from_version_id AND ancv.skill_id = anc.id
     WHERE ver.source_id IS NULL
       AND anc.id = sk.forked_from_skill_id
+      AND anc.workspace_id = ANY(@catalog_workspace_ids::uuid[])
       AND anc.deleted_at IS NULL AND anc.takedown_at IS NULL
       AND ancv.content_hash = ver.content_hash
 ) inh ON true
-WHERE sk.workspace_id = $1 AND sk.deleted_at IS NULL
+WHERE sk.workspace_id = @workspace_id AND sk.deleted_at IS NULL
 ORDER BY sk.created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT @row_limit::int OFFSET @row_offset::int;
 
 -- name: CountSkillVersions :one
 SELECT count(*) FROM skill_versions

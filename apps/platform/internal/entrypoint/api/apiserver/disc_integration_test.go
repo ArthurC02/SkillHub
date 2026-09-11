@@ -1308,3 +1308,48 @@ func TestAForkCarriesTheCategoryOfWhatItWasForkedFrom(t *testing.T) {
 		t.Errorf("fork detail category = %+v, want data/資料", forkDetail.Category)
 	}
 }
+
+func TestAForkInheritsTheScanOnlyWhileItsSourceIsInTheCatalog(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+
+	curator := a.login(t, "curator-inherit")
+	markCatalog(t, pool, curator.workspaceID)
+	published := seedSkill(t, pool, curator.workspaceID, "catalog-inherited-scan")
+	seedSkillVersion(t, pool, curator.workspaceID, published)
+
+	alice := a.login(t, "alice-inherit")
+	fork := postFork(t, alice, published, http.StatusCreated)
+
+	verification := func() string {
+		var out struct {
+			Skills []struct {
+				SkillID      string `json:"skill_id"`
+				Verification struct {
+					Value string `json:"value"`
+				} `json:"verification"`
+			} `json:"skills"`
+		}
+		if code := getJSON(t, alice.Client, alice.base+"/skills", &out); code != http.StatusOK {
+			t.Fatalf("GET /skills: got %d", code)
+		}
+		for _, s := range out.Skills {
+			if s.SkillID == fork.SkillID {
+				return s.Verification.Value
+			}
+		}
+		t.Fatalf("fork %s missing from GET /skills", fork.SkillID)
+		return ""
+	}
+
+	if got := verification(); got != "scanned" {
+		t.Errorf("a fork of a catalog skill with the same bytes: verification %q, want scanned", got)
+	}
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE workspaces SET is_catalog = false WHERE id = $1", mustUUID(t, curator.workspaceID)); err != nil {
+		t.Fatal(err)
+	}
+	if got := verification(); got != "not_measured" {
+		t.Errorf("a fork whose source left the catalog: verification %q, want not_measured", got)
+	}
+}
