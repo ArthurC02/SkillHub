@@ -28,6 +28,14 @@ type p02Driver struct {
 	hangStopAfter     int
 	releaseStop       chan struct{}
 	stopHadDeadline   bool
+	probeReached      []string
+	probeErr          error
+}
+
+func (d *p02Driver) ProbeEgress(context.Context, []string) ([]string, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.probeReached, d.probeErr
 }
 
 func newP02Driver() *p02Driver { return &p02Driver{done: make(chan struct{})} }
@@ -612,5 +620,42 @@ func TestAManagerWithNoProbeClaimsNothing(t *testing.T) {
 	m := p02Manager(newP02Driver())
 	if c := m.Capability(context.Background()); c.Security != nil {
 		t.Fatalf("a manager with no probe reported a security block: %+v", c.Security)
+	}
+}
+
+func TestWithP02NilProbeIsANoOp(t *testing.T) {
+	m := p02Manager(newP02Driver())
+	got := m.WithP02(context.Background(), nil)
+	time.Sleep(50 * time.Millisecond)
+	if got.p02 != nil {
+		t.Fatalf("WithP02(nil) set p02 = %+v, want nil", got.p02)
+	}
+	if c := m.Capability(context.Background()); c.Security != nil {
+		t.Fatalf("a manager wired with a nil probe reported a security block: %+v", c.Security)
+	}
+}
+
+func TestWithP02RunsThePeriodicCheckAndBreachTeardown(t *testing.T) {
+	drv := newP02Driver()
+	drv.probeReached = []string{"db.internal:5432"}
+	m := p02Manager(drv)
+	if _, _, err := m.Create(context.Background(), p02Request()); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	probe := NewP02Probe([]string{"db.internal:5432"}, time.Millisecond, time.Second)
+	m.WithP02(ctx, probe)
+
+	deadline := time.Now().Add(2 * time.Second)
+	for len(m.List().Runs) != 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the goroutine WithP02 spawned never ran its periodic Check and breach teardown")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if probe.Result().State != P02Fail {
+		t.Errorf("probe result = %+v, want the periodic Check to have stored a fail reading", probe.Result())
 	}
 }

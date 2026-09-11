@@ -436,6 +436,12 @@ func TestAcceptChecksEveryDeclaredResourceCeiling(t *testing.T) {
 		"input tokens":        func(r *RunRequest, _ *Config) { r.ResourceLimits.TokenBudget.MaxInputTokens++ },
 		"output tokens":       func(r *RunRequest, _ *Config) { r.ResourceLimits.TokenBudget.MaxOutputTokens++ },
 		"missing token limit": func(_ *RunRequest, c *Config) { c.MaxResources.TokenBudget = nil },
+		"wall clock hard equal to soft": func(r *RunRequest, _ *Config) {
+			r.ResourceLimits.WallClockHardSeconds = r.ResourceLimits.WallClockSoftSeconds
+		},
+		"wall clock hard below soft": func(r *RunRequest, _ *Config) {
+			r.ResourceLimits.WallClockHardSeconds = r.ResourceLimits.WallClockSoftSeconds - 1
+		},
 	}
 	for name, exceed := range checks {
 		t.Run(name, func(t *testing.T) {

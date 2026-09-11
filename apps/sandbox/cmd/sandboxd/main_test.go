@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/localdrv"
+	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
 
 func TestStartupAdoptsSandboxesBeforeTheResidentProbeCanTearThemDown(t *testing.T) {
@@ -56,6 +57,25 @@ func TestRefuseDevSettingsOnAProductionRuntime(t *testing.T) {
 	}
 	if err := refuseDevSettings("runsc", digest, false, false); err != nil {
 		t.Errorf("a production node with production settings was refused: %v", err)
+	}
+}
+
+func TestRefuseUnprobedProductionGatesRunscOnAConfiguredProbe(t *testing.T) {
+	unconfigured := sandbox.NewP02Probe(nil, 0, 0)
+	configured := sandbox.NewP02Probe([]string{"db.internal:5432"}, 0, 0)
+
+	err := refuseUnprobedProduction("runsc", unconfigured)
+	if err == nil {
+		t.Fatal("runsc with no P-02 targets was accepted: a node with no targets reports not_configured forever")
+	}
+	if !strings.Contains(err.Error(), "SKILLHUB_SANDBOX_P02_TARGETS") {
+		t.Errorf("refusal must name the variable an operator has to set; got %q", err)
+	}
+	if err := refuseUnprobedProduction("runsc", configured); err != nil {
+		t.Errorf("runsc with a configured probe was refused: %v", err)
+	}
+	if err := refuseUnprobedProduction("", unconfigured); err != nil {
+		t.Errorf("a non-runsc node with no targets was refused: %v", err)
 	}
 }
 

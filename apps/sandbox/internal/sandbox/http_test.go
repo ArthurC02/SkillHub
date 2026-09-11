@@ -516,16 +516,35 @@ func TestResultAppearsOnlyOnTerminalSingleReads(t *testing.T) {
 }
 
 func TestNonZeroExitIsCompletedWithFailedResult(t *testing.T) {
-	drv, h := newServer(t)
-	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
-	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 3})
+	for _, tc := range []struct {
+		name      string
+		outcome   sandbox.Outcome
+		wantState sandbox.RunState
+		wantMsg   string
+	}{
+		{"generic non-zero exit", sandbox.Outcome{ExitCode: 3}, sandbox.StateCompleted, "workload exited with code 3"},
+		{"oom killed", sandbox.Outcome{OOMKilled: true}, sandbox.StateFailed, "memory limit enforced against the workload"},
+		{"token ceiling reached", sandbox.Outcome{ExitCode: 9}, sandbox.StateCompleted, "token ceiling"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			drv, h := newServer(t)
+			_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
+			drv.exit(run.ProviderRunID, tc.outcome)
 
-	final := waitForTerminal(t, h, run.ProviderRunID)
-	if final.State != sandbox.StateCompleted {
-		t.Errorf("state = %s, want completed", final.State)
-	}
-	if final.Result.Status != sandbox.ResultFailed {
-		t.Errorf("result status = %s, want failed", final.Result.Status)
+			final := waitForTerminal(t, h, run.ProviderRunID)
+			if final.State != tc.wantState {
+				t.Errorf("state = %s, want %s", final.State, tc.wantState)
+			}
+			if final.Result.Status != sandbox.ResultFailed {
+				t.Errorf("result status = %s, want failed", final.Result.Status)
+			}
+			if final.Result.Error == nil || final.Result.Error.Class != sandbox.ClassExecution {
+				t.Fatalf("error = %+v, want class execution", final.Result.Error)
+			}
+			if !strings.Contains(final.Result.Error.Message, tc.wantMsg) {
+				t.Errorf("error message = %q, want it to mention %q", final.Result.Error.Message, tc.wantMsg)
+			}
+		})
 	}
 }
 
@@ -678,10 +697,24 @@ func TestCreateRejectsMalformedBody(t *testing.T) {
 		t.Fatalf("trailing JSON value: got %d, want 400", rec.Code)
 	}
 
-	incomplete := runRequest()
-	incomplete.TestCase.UserPrompt = ""
-	if rec, _ := do(t, h, "POST", "/runs", incomplete, testToken); rec.Code != http.StatusBadRequest {
-		t.Fatalf("missing prompt: got %d, want 400", rec.Code)
+	blank := map[string]func(*sandbox.RunRequest){
+		"run_id":                         func(r *sandbox.RunRequest) { r.RunID = "" },
+		"run_attempt_id":                 func(r *sandbox.RunRequest) { r.RunAttemptID = "" },
+		"attempt":                        func(r *sandbox.RunRequest) { r.Attempt = 0 },
+		"workspace_id":                   func(r *sandbox.RunRequest) { r.WorkspaceID = "" },
+		"test_case_snapshot.user_prompt": func(r *sandbox.RunRequest) { r.TestCase.UserPrompt = "" },
+		"runtime.runtime":                func(r *sandbox.RunRequest) { r.Runtime.Runtime = "" },
+		"egress.mode":                    func(r *sandbox.RunRequest) { r.Egress.Mode = "" },
+		"trace.level":                    func(r *sandbox.RunRequest) { r.Trace.Level = "" },
+	}
+	for name, blankField := range blank {
+		t.Run("missing "+name, func(t *testing.T) {
+			incomplete := runRequest()
+			blankField(&incomplete)
+			if rec, _ := do(t, h, "POST", "/runs", incomplete, testToken); rec.Code != http.StatusBadRequest {
+				t.Fatalf("missing %s: got %d, want 400", name, rec.Code)
+			}
+		})
 	}
 }
 
