@@ -191,6 +191,40 @@ docker run --rm --network "$NET" \
 	       cp /work/tools/ci/stack-browser.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-browser.mjs' && rc=0 || rc=1
 check "public routes render in a browser against the real API" "$rc"
 
+# 6. Credit on the real images: refused at 0, an operator grant, then allowed.
+#    Operator ids and the creation entry are read at startup, so the API restarts
+#    with them; nginx restarts too so it dials the new container.
+echo "--- credit"
+login="$(hget -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' \
+	-d '{"user":"smoke-operator"}' http://platform-api:8080/auth/dev/login)" || login=""
+operator="$(docker exec -e PGPASSWORD=skillhub smoke-pg psql -h 127.0.0.1 -U skillhub -d skillhub -tAc \
+	"select id from users where email = 'smoke-operator@dev.local'")" || operator=""
+limits="$(grep '^CREATION_LIMITS_JSON=' "$REPO_ROOT/.env.example" | cut -d= -f2-)"
+if [ "$login" = 204 ] && [ -n "$operator" ] && [ -n "$limits" ]; then
+	docker rm -f smoke-api >/dev/null
+	docker run -d --name smoke-api --network "$NET" --network-alias platform-api \
+		"${api_env[@]}" \
+		-e "OPERATOR_USER_IDS=$operator" -e CREATION_EXPOSED=on -e GENERATE_SKILL_EXPOSED=on \
+		-e "CREATION_LIMITS_JSON=$limits" -e CREATION_WORKER_INTERNAL_ADDR=:8091 \
+		-e CREATION_WORKER_INTERNAL_URL=http://smoke-worker:8091 -e CREATION_WORKER_INTERNAL_TOKEN=smoke-only \
+		"$PLATFORM_IMAGE" api >/dev/null
+	docker restart smoke-web >/dev/null
+	if wait_for "platform-api (credit)" 90 hget -fs -o /dev/null http://platform-api:8080/healthz &&
+		wait_for "web (credit)" 60 hget -fs -o /dev/null -H "Accept: text/html" http://smoke-web/ &&
+		docker run --rm --network "$NET" -v "$HOST_ROOT:/work:ro" -w /work -e BASE_URL=http://smoke-web \
+			"$PLAYWRIGHT_IMAGE" \
+			sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 >/dev/null 2>&1 &&
+			       cp /work/tools/ci/stack-credit.mjs /tmp/ && node /tmp/stack-credit.mjs'; then
+		rc=0
+	else
+		rc=1
+	fi
+else
+	echo "credit setup: login=$login operator=${operator:-none} limits=${limits:+set}" >&2
+	rc=1
+fi
+check "credit refuses at 0 and an operator grant unblocks it, on the real images" "$rc"
+
 if [ "$fail" -ne 0 ]; then
 	echo "stack-smoke: at least one assertion failed" >&2
 	exit 1
