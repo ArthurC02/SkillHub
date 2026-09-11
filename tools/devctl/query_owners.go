@@ -24,6 +24,7 @@ type sqlQuery struct {
 	file    string
 	write   bool
 	mutates []string
+	tables  []string
 }
 
 type callSite struct {
@@ -150,6 +151,7 @@ func queryOwnerProblems(root string) []string {
 		}
 
 	}
+	problems = append(problems, tableOwnershipProblems(root, sections, queries, owner, identities)...)
 	problems = append(problems, immutableTableProblems(root, sections, queries)...)
 	return append(problems, rawSQLProblems(root, sections[rawSQLAllowSection])...)
 }
@@ -320,6 +322,14 @@ var (
 	sqlNonTargetPattern = regexp.MustCompile(`FOR (NO KEY )?UPDATE|FOR SHARE|DO UPDATE`)
 	sqlWritePattern     = regexp.MustCompile(`\b(INSERT|UPDATE|DELETE)\b`)
 	sqlMutatePattern    = regexp.MustCompile(`\b(?:UPDATE|DELETE\s+FROM)\s+(?:ONLY\s+)?([A-Z_][A-Z0-9_]*)`)
+	sqlTableRefPattern  = regexp.MustCompile(`\b(?:FROM|JOIN|INTO|UPDATE|USING)\s+(?:ONLY\s+)?([A-Z_][A-Z0-9_]*)`)
+	sqlTableListPattern = regexp.MustCompile(
+		`\b(?:FROM|USING)\s+(?:ONLY\s+)?[A-Z_][A-Z0-9_]*(?:\s+(?:AS\s+)?[A-Z_][A-Z0-9_]*)?((?:\s*,\s*[A-Z_][A-Z0-9_]*(?:\s+(?:AS\s+)?[A-Z_][A-Z0-9_]*)?)+)`)
+	sqlListedTablePattern = regexp.MustCompile(`,\s*([A-Z_][A-Z0-9_]*)`)
+	sqlCTEPattern         = regexp.MustCompile(`(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)([A-Z_][A-Z0-9_]*)\s+AS\s*(?:NOT\s+)?(?:MATERIALIZED\s*)?\(`)
+
+	createTablePattern    = regexp.MustCompile(`(?i)CREATE TABLE\s+(?:IF NOT EXISTS\s+)?(\w+)`)
+	partitionTablePattern = regexp.MustCompile(`(?i)CREATE TABLE\s+(?:IF NOT EXISTS\s+)?(\w+)\s+PARTITION OF\b`)
 )
 
 func loadSQLQueries(dir string) (map[string]sqlQuery, error) {
@@ -349,6 +359,7 @@ func loadSQLQueries(dir string) (map[string]sqlQuery, error) {
 				file:    filepath.Base(path),
 				write:   isWriteStatement(body),
 				mutates: mutatedTables(body),
+				tables:  referencedTables(body),
 			}
 		}
 	}
@@ -376,6 +387,116 @@ func mutatedTables(body string) []string {
 		tables = append(tables, strings.ToLower(match[1]))
 	}
 	return tables
+}
+
+const tablesSection = "tables"
+
+func referencedTables(body string) []string {
+	sql := normalizeSQL(body)
+	ctes := map[string]bool{}
+	for _, match := range sqlCTEPattern.FindAllStringSubmatch(sql, -1) {
+		ctes[match[1]] = true
+	}
+	seen := map[string]bool{}
+	var tables []string
+	add := func(name string) {
+		if !ctes[name] && !seen[name] {
+			seen[name] = true
+			tables = append(tables, strings.ToLower(name))
+		}
+	}
+	for _, match := range sqlTableRefPattern.FindAllStringSubmatch(sql, -1) {
+		add(match[1])
+	}
+	for _, list := range sqlTableListPattern.FindAllStringSubmatch(sql, -1) {
+		for _, match := range sqlListedTablePattern.FindAllStringSubmatch(list[1], -1) {
+			add(match[1])
+		}
+	}
+	return tables
+}
+
+func createdTables(dir string) (map[string]bool, error) {
+	paths, err := filepath.Glob(filepath.Join(dir, "*.sql"))
+	if err != nil {
+		return nil, err
+	}
+	tables := map[string]bool{}
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		text := sqlCommentPattern.ReplaceAllString(string(data), " ")
+		for _, match := range createTablePattern.FindAllStringSubmatch(text, -1) {
+			tables[strings.ToLower(match[1])] = true
+		}
+		for _, match := range partitionTablePattern.FindAllStringSubmatch(text, -1) {
+			delete(tables, strings.ToLower(match[1]))
+		}
+	}
+	return tables, nil
+}
+
+func tableOwnershipProblems(root string, sections map[string]map[string]string, queries map[string]sqlQuery,
+	owner func(string) string, identities map[string]packageIdentity) []string {
+	created, err := createdTables(filepath.Join(root, "db", "migrations"))
+	if err != nil {
+		return []string{fmt.Sprintf("db/migrations: %v", err)}
+	}
+	declared, ok := sections[tablesSection]
+	if !ok {
+		if len(created) == 0 {
+			return nil
+		}
+		return []string{fmt.Sprintf(
+			"db/%s: missing section %q; every table needs the context that owns it", queryOwnersFile, tablesSection)}
+	}
+
+	var problems []string
+	for _, table := range sortedKeys(created) {
+		if _, ok := declared[table]; !ok {
+			problems = append(problems, fmt.Sprintf(
+				"db/%s: db/migrations creates %s but %s: does not name the context that owns it",
+				queryOwnersFile, table, tablesSection))
+		}
+	}
+	owners := map[string][]string{}
+	for _, table := range sortedKeys(declared) {
+		if !created[table] {
+			problems = append(problems, fmt.Sprintf(
+				"db/%s: %s.%s is not created by any migration", queryOwnersFile, tablesSection, table))
+		}
+		ids := splitList(declared[table])
+		if len(ids) == 0 {
+			problems = append(problems, fmt.Sprintf(
+				"db/%s: %s.%s names no owner", queryOwnersFile, tablesSection, table))
+		}
+		for _, id := range ids {
+			if !knownBoundaryID(identities, id) {
+				problems = append(problems, fmt.Sprintf(
+					"db/%s: %s.%s = %q is not a Boundary ID in ADR-032 §1", queryOwnersFile, tablesSection, table, id))
+			}
+		}
+		owners[table] = ids
+	}
+
+	for _, name := range sortedKeys(queries) {
+		context := owner(name)
+		if context == "" {
+			continue
+		}
+		for _, table := range queries[name].tables {
+			ids, ok := owners[table]
+			if !ok || slices.Contains(ids, context) {
+				continue
+			}
+			problems = append(problems, fmt.Sprintf(
+				"cross-context table: %s is owned by %q but its SQL touches %s, which belongs to %s (db/queries/%s)",
+				name, context, table, strings.Join(ids, ", "), queries[name].file))
+		}
+	}
+	return problems
 }
 
 var commandContexts = map[string]string{

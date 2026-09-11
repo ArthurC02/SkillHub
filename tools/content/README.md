@@ -23,6 +23,8 @@
 | **DB 自己的** `skills`／`skill_versions`／`skill_sources` 三表（判準見 [ADR-045](../../docs/adr/ADR-045-self-supplied-content-is-not-redistribution.md)；只改 `redistribution = 'unknown'` 的列） | [`backfill-self-supplied.sql`](backfill-self-supplied.sql)（冪等；四個條件缺一不可，其中 `NOT w.is_catalog` 是整個變更的安全性所在；末尾印出改了幾列與剩餘分佈） | **無檔案**——寫入 `skills.redistribution = 'self_supplied'`；**需先套用 `0036`，且每個部署跑一次**（檔頭：`Run once per deployment, after 0036`）。不跑＝使用者自己上傳的 Skill 停在 `unknown`，**擁有者下載不了自己的東西** |
 | 物件儲存的 `run-artifacts/<run_id>/<attempt_id>/artifacts.tar`（先自行 `s3 sync` 下來，腳本不碰憑證） | [`backfill_artifacts.py`](backfill_artifacts.py)（`04` 丙-13 的一次性資料修復；預設 dry-run，`--apply` 才寫。只讀 tar 索引與算 sha256，不解壓、不送模型） | **無檔案**——補寫 M2 那 159 個 Run 從未寫進 `artifacts` 的 manifest 列。**順序是硬的：先回填再評估**——沒有列時 Judge 會在「這個 Run 沒有任何產出檔」的前提下判定，而評估是 append-only，錯的判定會永久留在修訂列表裡（已發生過一次，見 [`m3/report-suggest-baseline.md` §9](../../docs/plans/mvp/m3/report-suggest-baseline.md)） |
 
+**改了 `skills` 的分類、策展層級或 `skill_runtime_compatibility` 之後，接著跑一次 `go run ./cmd/reindex`（在 `apps/platform`）。** 目錄列表讀的是 `search_documents` 上的投影，手跑的 SQL 應用程式看不到；不跑的話列表會一直顯示回填前的值（[ADR-075](../../docs/adr/ADR-075-a-query-touches-only-its-owners-tables.md) 決策 6）。
+
 **部署時這些回填的先後順序**見 [`m4/release-checklist.md` §2.4.1](../../docs/plans/mvp/m4/release-checklist.md)（那裡是操作順序的唯一來源，本表只說每一支在做什麼）。
 
 五支 Python 都是**驗證工具，不是產品程式碼**：不進 CI、不被服務引用。`import_seed.py`／`generate_summaries.py`／`review_summaries.py` 重跑的代價是真實的模型費用；`seed_testcases.py` 與 `backfill_artifacts.py` 不呼叫模型，代價只有寫入（後者預設 dry-run）。`__pycache__/` 是本機執行的副產物。

@@ -206,3 +206,47 @@ raw_sql_allow:
   apps/platform/internal/foundation/persistence/partition/partition.go@MaintainMonthly: drops validated monthly partition identifiers through PostgreSQL DDL
   apps/platform/internal/foundation/persistence/partition/partition.go@childPartitions: reads PostgreSQL partition catalogs rather than a domain table
   apps/platform/internal/foundation/persistence/partition/partition.go@createMonth: creates validated monthly partitions through PostgreSQL DDL
+
+tables:
+  users: identity
+  user_identities: identity
+  sessions: identity
+  workspaces: identity
+  skills: registry
+  skill_versions: registry
+  skill_runtime_compatibility: registry
+  object_collection_queue: registry
+  skill_sources: ingest
+  search_documents: catalog
+  test_cases: testlab
+  test_case_snapshots: testlab
+  datasets: testlab
+  dataset_object_cleanup_intents: testlab
+  runs: run
+  run_attempts: run
+  run_status_transitions: run
+  run_permission_confirmations: run
+  run_artifact_upload_intents: run
+  reconciler_orphan_sightings: run
+  dispatch_halts: run
+  artifacts: run, packaging
+  download_artifacts: packaging
+  download_records: packaging
+  download_object_cleanup_intents: packaging
+  evaluations: eval
+  evaluation_suggestions: eval
+  evaluation_model_usage: eval
+  trace_events: trace
+  object_reconcile_sightings: objreconcile
+  credit_accounts: credit
+  credit_entries: credit
+  cost_events: credit
+  cost_statistics: credit
+  cost_session_summaries: credit
+  creation_sessions: creation
+  creation_session_events: creation
+  creation_receipts: creation
+  analytics_events: analytics
+  feedback_reports: analytics
+  audit_events: audit
+  outbox_events: outbox

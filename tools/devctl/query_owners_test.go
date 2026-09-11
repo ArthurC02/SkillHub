@@ -689,3 +689,96 @@ func TestRawSQLProblems(t *testing.T) {
 		})
 	}
 }
+
+func writeMigration(t *testing.T, root, name, sql string) {
+	t.Helper()
+	dir := filepath.Join(root, "db", "migrations")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(sql), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReferencedTables(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, sql string
+		want      []string
+	}{
+		{"select and join", "SELECT r.id FROM runs r JOIN skills s ON s.id = r.skill_id", []string{"runs", "skills"}},
+		{"insert", "INSERT INTO audit_events (action) VALUES ($1)", []string{"audit_events"}},
+		{"update", "UPDATE runs SET status = $1", []string{"runs"}},
+		{"delete", "DELETE FROM datasets WHERE id = $1", []string{"datasets"}},
+		{"a cte name is not a table", "WITH gone AS (DELETE FROM sightings RETURNING id) SELECT id FROM gone", []string{"sightings"}},
+		{"a second cte name is not a table", "WITH a AS (SELECT 1 FROM runs), b AS (SELECT 1 FROM a) SELECT * FROM b", []string{"runs"}},
+		{"a string literal is not a table", "SELECT 'FROM users' FROM runs", []string{"runs"}},
+		{"a comment is not a table", "-- FROM users\nSELECT 1 FROM runs", []string{"runs"}},
+		{"an upsert target is not a second table", "INSERT INTO runs (id) VALUES ($1) ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id", []string{"runs"}},
+		{"a row lock is not a table", "SELECT id FROM runs FOR UPDATE", []string{"runs"}},
+		{"only", "UPDATE ONLY runs SET x = 1", []string{"runs"}},
+		{"a table named twice is listed once", "SELECT 1 FROM runs a JOIN runs b ON a.id = b.id", []string{"runs"}},
+		{"delete using", "DELETE FROM search_documents sd USING skills sk WHERE sd.skill_id = sk.id", []string{"search_documents", "skills"}},
+		{"join using columns is not a table", "SELECT 1 FROM runs JOIN run_attempts USING (run_id)", []string{"runs", "run_attempts"}},
+		{"a comma join", "UPDATE search_documents sd SET x = 1 FROM workspaces w, skills sk WHERE w.id = sk.workspace_id", []string{"search_documents", "workspaces", "skills"}},
+		{"a comma join without aliases", "SELECT 1 FROM runs, skills", []string{"runs", "skills"}},
+		{"an order by list is not a comma join", "SELECT a, b FROM runs ORDER BY a, b", []string{"runs"}},
+	} {
+		if got := referencedTables(tc.sql); !slices.Equal(got, tc.want) {
+			t.Errorf("%s: referencedTables = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+const tableOwnerMigration = "CREATE TABLE runs (id int);\nCREATE TABLE skills (id int);\nCREATE TABLE artifacts (id int);\n" +
+	"CREATE TABLE runs_2026 PARTITION OF runs FOR VALUES FROM (1) TO (2);\n"
+
+func TestTableOwnershipFlagsAQueryThatTouchesAnotherContextsTable(t *testing.T) {
+	t.Parallel()
+	declaration := decl("files:\n  q.sql: run\nqueries:\nallow:\n") +
+		"tables:\n  runs: run\n  skills: registry\n  artifacts: run, registry\n"
+	root := writeQueryOwnerFixture(t, declaration, map[string]string{"q.sql": "-- name: OwnRead :many\nSELECT id FROM runs;\n\n" +
+		"-- name: SharedRead :many\nSELECT id FROM artifacts;\n\n" +
+		"-- name: ForeignJoin :many\nSELECT r.id FROM runs r JOIN skills s ON s.id = r.skill_id;\n"}, nil)
+	writeMigration(t, root, "0001_init.sql", tableOwnerMigration)
+
+	problems := queryOwnerProblems(root)
+	if len(problems) != 1 || !strings.Contains(problems[0],
+		`ForeignJoin is owned by "run" but its SQL touches skills, which belongs to registry`) {
+		t.Fatalf("want exactly the ForeignJoin problem, got %q", problems)
+	}
+}
+
+func TestTableOwnershipRequiresEveryTableToHaveAKnownOwner(t *testing.T) {
+	t.Parallel()
+	declaration := decl("files:\n  q.sql: run\nqueries:\nallow:\n") +
+		"tables:\n  runs: run\n  artifacts: run\n  ghosts: run\n  skills: nobody\n"
+	root := writeQueryOwnerFixture(t, declaration, map[string]string{"q.sql": "-- name: OwnRead :many\nSELECT id FROM runs;\n"}, nil)
+	writeMigration(t, root, "0001_init.sql", tableOwnerMigration+"CREATE TABLE orphans (id int);\n")
+
+	joined := strings.Join(queryOwnerProblems(root), "\n")
+	for _, want := range []string{
+		"db/migrations creates orphans but tables: does not name the context that owns it",
+		"tables.ghosts is not created by any migration",
+		`tables.skills = "nobody" is not a Boundary ID`,
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("missing %q in:\n%s", want, joined)
+		}
+	}
+	if strings.Contains(joined, "runs_2026") {
+		t.Errorf("a partition was treated as a table of its own:\n%s", joined)
+	}
+}
+
+func TestTableOwnershipRequiresTheSectionOnceMigrationsExist(t *testing.T) {
+	t.Parallel()
+	root := writeQueryOwnerFixture(t, decl("files:\n  q.sql: run\nqueries:\nallow:\n"),
+		map[string]string{"q.sql": "-- name: OwnRead :many\nSELECT id FROM runs;\n"}, nil)
+	writeMigration(t, root, "0001_init.sql", tableOwnerMigration)
+
+	if joined := strings.Join(queryOwnerProblems(root), "\n"); !strings.Contains(joined, `missing section "tables"`) {
+		t.Fatalf("want the missing tables section reported, got:\n%s", joined)
+	}
+}

@@ -1,6 +1,6 @@
 # ADR-074：營運後台是同一個前端裡、只有 operator 進得去的一組畫面
 
-- 狀態：**Proposed**（2026-09-12 起草，等 [`05` R-77](../plans/05-pending-rulings.md) 裁定）
+- 狀態：**Accepted**（2026-09-12，[`05` R-77](../plans/05-pending-rulings.md) 一～四照建議；第五題在 [ADR-075](./ADR-075-a-query-touches-only-its-owners-tables.md) 的稽核之後確認決策 7）
 - 日期：2026-09-12
 - 相關：`02` SEC-011（operator 角色、窮舉動作、不讀私有資料）、`02` CRED-007（operator 授予是唯一的入帳入口）、[ADR-061](./ADR-061-the-clean-mode-release-lives-on-the-keyboard-not-in-the-product.md)（淨測試模式任何人都能以 operator 登入）、[ADR-029](./ADR-029-product-analytics-events-and-audit-trace-boundaries.md) 決策 6（分析不做即時儀表板）、[資訊架構](../design/information-architecture.md) §0
 
@@ -89,6 +89,8 @@ operator 名冊與封測名單，照舊改設定再重啟。SEC-011 與 ADR-061 
 
 - 最可能的是**濫用檢舉案件**，SEC-011 說它要另立需求與授權。它有自己的流程：檢舉、分派、裁決、執行，還可以申訴。
 - 那會是一個新的 Supporting context，擁有案件與裁決，再透過 Catalog 公開的下架 API 執行結果；它是下游的 Customer。屆時照 ADR-032 §1 先登記，再建目錄。
+
+**2026-09-12 補記（不改寫上文）**：R-77 第五題定案。負責人要求先稽核、穩定 Bounded Context 再定；[ADR-075](./ADR-075-a-query-touches-only-its-owners-tables.md) 逐條比對每條 query 碰到的表，收掉 31 條讀寫別人表的 query（55 處），每一條的事實都有明確的擁有者，沒有一條需要移動 context 的邊界。上表的歸屬因此照原文確認，後台是組裝層，ADR-032 §1 不改。
 
 另外兩件常被當成後台的事，其實各有歸屬：
 

@@ -2166,7 +2166,7 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 
 ---
 
-## R-77｜要不要有營運後台、長什麼樣、operator 看得到什麼（[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md)、`02` SEC-011／CRED-007） — ✅ **已裁定（2026-09-12）：一～四照建議；第五題依負責人指示先穩定 Bounded Context 再定**
+## R-77｜要不要有營運後台、長什麼樣、operator 看得到什麼（[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md)、`02` SEC-011／CRED-007） — ✅ **已裁定（2026-09-12）：一～四照建議；第五題依負責人指示先穩定 Bounded Context，稽核後照建議定案（[ADR-075](../adr/ADR-075-a-query-touches-only-its-owners-tables.md)）**
 
 負責人逐字：「1. 管理UI是必要的 2. 同意 3. 同意照舊 4. 同意」，並指示：「嚴格按照DDD去設計，完成BackOffice。先詳細探索現有程式碼，因為已經經過大量開發異動，可能違背了DDD或是新知識需要調整BC，先穩定BC再去思考和設計BackOffice」。所以第五題（後台在 DDD 裡的位置）不直接照建議簽，而是等全平台的 DDD 稽核與 Bounded Context 調整完成後，再依結果定案（ADR-074 決策 7 屆時改寫或確認）。
 
@@ -2193,3 +2193,5 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
    - 等出現有自己生命週期的東西（例如濫用檢舉案件），再另立一個 Supporting context。
 
 **決定之後誰動**：主 Agent 把 ADR-074 改成 Accepted，補上 `02`／`03` 的需求與 `01` §7，先改契約再寫程式。
+
+**第五題定案（2026-09-12）**：稽核逐條比對每條 query 碰到的表，找到並收掉 31 條讀寫別人表的 query（55 處）（分六組，做法與理由見 [ADR-075](../adr/ADR-075-a-query-touches-only-its-owners-tables.md)）。每一條的事實都有明確的擁有者，修法都是讓查詢回到擁有者，沒有一條需要移動 context 的邊界。所以照建議：後台是組裝層，不是 Bounded Context，ADR-032 §1 不改；`db/query-owners.yaml` 從此多一段 `tables:`，機器擋下任何碰到別人表的 query。ADR-074 改為 Accepted。
