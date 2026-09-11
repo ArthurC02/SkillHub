@@ -361,6 +361,13 @@ function budgetChoices(min: number, max: number) {
     .sort((a, b) => a - b);
 }
 const points = (v: number) => v + " 點";
+function newestMessageIn(pane: HTMLElement) {
+  const messages = pane.querySelectorAll<HTMLElement>(".creation-log > li[data-index]");
+  return messages[messages.length - 1] as HTMLElement | undefined;
+}
+function isBelow(el: HTMLElement | undefined, pane: HTMLElement) {
+  return !!el && el.getBoundingClientRect().top > pane.getBoundingClientRect().bottom;
+}
 export function CreationSession() {
   const client = useQueryClient();
   const [id, setID] = useState(""),
@@ -517,27 +524,43 @@ export function CreationSession() {
     }
     await perform("raise_budget", { budget_credits: amount });
   };
-  const bottom = useRef<HTMLDivElement>(null);
   const stream = useRef<HTMLDivElement>(null);
-  const atBottom = useRef(true);
+  const [latestHidden, setLatestHidden] = useState(false),
+    [unseen, setUnseen] = useState(0);
   useEffect(() => {
     const el = stream.current;
     if (!el) return;
     const onScroll = () => {
-      atBottom.current = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
+      const hidden = isBelow(newestMessageIn(el), el);
+      setLatestHidden(hidden);
+      if (!hidden) setUnseen(0);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
+  const showLatest = () => {
+    if (stream.current) newestMessageIn(stream.current)?.scrollIntoView?.({ block: "start" });
+    setLatestHidden(false);
+    setUnseen(0);
+  };
   const messageCount = p?.messages.length ?? 0;
+  const newestRole = p?.messages[messageCount - 1]?.role;
+  const seen = useRef({ id: "", count: 0 });
   useEffect(() => {
-    if (messageCount === 0 || !atBottom.current) return;
-    // scrollIntoView can land short on the render where the container's own
-    // height just changed; setting scrollTop directly is the reliable fallback.
-    bottom.current?.scrollIntoView?.({ block: "nearest" });
-    const el = stream.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messageCount]);
+    const before = seen.current;
+    seen.current = { id, count: messageCount };
+    const reopened = before.id !== id || before.count === 0;
+    const added = messageCount - (reopened ? 0 : before.count);
+    if (added <= 0) return;
+    if (!reopened && latestHidden && newestRole !== "user") setUnseen((n) => n + added);
+    else showLatest();
+  }, [id, messageCount, newestRole, latestHidden]);
+  useEffect(() => {
+    if (working)
+      stream.current
+        ?.querySelector(".creation-log > li[data-pending]")
+        ?.scrollIntoView?.({ block: "nearest" });
+  }, [working]);
   const submit = async () => {
     setBusy(true);
     setError(undefined);
@@ -784,7 +807,7 @@ export function CreationSession() {
                             <Attachments list={here} thumbs={thumbs.current} />
                           </li>
                         )}
-                        <li data-role={m.role}>
+                        <li data-role={m.role} data-index={i}>
                           <span className="creation-who">
                             {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
                           </span>
@@ -862,7 +885,6 @@ export function CreationSession() {
                     </li>
                   )}
                 </ol>
-                <div ref={bottom} />
               </div>
               {roundTimeline.length > 0 && (
                 <section>
@@ -1251,6 +1273,11 @@ export function CreationSession() {
       </div>
       {!terminal && (
         <div className="composer-dock">
+          {latestHidden && !failureBox && (
+            <button type="button" className="to-latest" onClick={showLatest}>
+              ↓ {unseen > 0 ? `${unseen} 則新訊息` : "回到最新"}
+            </button>
+          )}
           {!session && (creditsBlocked || !!limits.error) && (
             <p className="notice notice-danger" id="composer-why">
               {creditsBlocked

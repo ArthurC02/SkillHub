@@ -2159,6 +2159,7 @@ summary {
 }
 
 .creation-log > li {
+  position: relative;
   max-width: 75%;
   padding: 12px 16px;
   border: 1px solid var(--border);
@@ -2175,8 +2176,7 @@ summary {
   background: var(--surface-active);
 }
 
-/* 靠右已經說了是誰；「你」只留給螢幕閱讀器。 */
-.creation-log > li[data-role="user"] > .creation-who {
+.creation-who {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -2185,12 +2185,14 @@ summary {
   white-space: nowrap;
 }
 
-/* 工具結果是機器講的話，不是對話的一方：一條左緣導軌把它與兩個說話的人分開
-   （同 `.notice` 的做法，那一族的意思就是「這不是人講的」）。 */
 .creation-log > li[data-role="tool"] {
+  align-self: center;
+  max-width: 85%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
   background: var(--code-bg);
-  border-left: 3px solid var(--border-strong);
-  font-size: 15px;
+  font-size: 14px;
 }
 
 /* 圖片在對話裡（2026-09-09）。**這是這個 app 的第一個 `<img>`**，所以三條
@@ -2228,24 +2230,25 @@ summary {
   white-space: pre-wrap;
 }
 
-.creation-who {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.creation-log > li[data-role="assistant"] {
+.creation-log > li[data-role="assistant"],
+.creation-feed > section {
   max-width: 85%;
 }
 
-.creation-log > li[data-role="assistant"] > .creation-who {
-  display: inline-block;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--code-bg);
-  color: var(--text-h);
+.creation-feed > section {
+  margin: 12px 0 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.creation-feed > section > :first-child {
+  margin-top: 0;
+}
+
+.creation-feed > section > :last-child {
+  margin-bottom: 0;
 }
 
 /* ══ 互動創作：一個固定高度的視窗應用程式，不是一份長文件（2026-09-09 第二輪） ══
@@ -2479,6 +2482,16 @@ summary {
   border-color: transparent;
   background: transparent;
   font-size: 18px;
+}
+
+.to-latest {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  border-radius: 999px;
+  font-size: 14px;
 }
 
 /* 上限只給螢幕閱讀器；看得見的那一半是撞上時浮在輸入艙上方的通知。

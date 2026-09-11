@@ -95,6 +95,7 @@ afterEach(async () => {
   q.clear();
   box.remove();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 async function waitFor(fn: () => boolean) {
   const until = Date.now() + 2500;
@@ -581,31 +582,149 @@ test("the transcript is a named live region and the list keeps its own semantics
   expect(log.getAttribute("aria-label")).toBeTruthy();
   expect(log.querySelector("ol.creation-log"), "角色蓋掉了清單語意").not.toBe(null);
 });
-test("a new message is scrolled into view, unless the person has scrolled away", async () => {
+function recordScrolls() {
+  const scrolls: { target: Element; block?: string }[] = [];
+  Element.prototype.scrollIntoView = vi.fn(function (
+    this: Element,
+    arg?: boolean | ScrollIntoViewOptions,
+  ) {
+    scrolls.push({ target: this, block: typeof arg === "object" ? arg.block : undefined });
+  });
+  return scrolls;
+}
+async function scrollNewestMessage(where: "in view" | "below view") {
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    const top = where === "below view" && this.matches("li[data-index]") ? 1000 : 0;
+    const bottom = this.matches(".creation-stream") ? 400 : top;
+    return {
+      top,
+      bottom,
+      left: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+      x: 0,
+      y: top,
+      toJSON: () => ({}),
+    };
+  });
+  await act(async () => box.querySelector(".creation-stream")!.dispatchEvent(new Event("scroll")));
+}
+function conversationGrowing(
+  first: CreationSnapshot["messages"],
+  next: CreationSnapshot["messages"],
+) {
   const one = sample({ revision: 2 });
-  one.snapshot.messages = [{ role: "assistant", content: "第一句。" }];
+  one.snapshot.messages = first;
   const two = sample({ revision: 3 });
-  two.snapshot.messages = [...one.snapshot.messages, { role: "assistant", content: "第二句。" }];
+  two.snapshot.messages = [...first, ...next];
   let latest = one;
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) => routeGet(url, [latest], latest)),
   );
-  let scrolled = 0;
-  Element.prototype.scrollIntoView = vi.fn(() => {
-    scrolled += 1;
-  });
+  return async () => {
+    latest = two;
+    await act(async () => q.invalidateQueries({ queryKey: ["creation-session", "s1"] }));
+    await waitFor(() => box.textContent!.includes(next[next.length - 1].content));
+  };
+}
+test("a resumed conversation opens on its newest message, not on the bottom of the cards below it", async () => {
+  const v = sample();
+  v.snapshot.messages = [
+    { role: "user", content: "做一個摘要 Skill。" },
+    { role: "assistant", content: "請確認下面的需求摘要。" },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  const scrolls = recordScrolls();
   await render();
   await resume();
-  await waitFor(() => box.textContent!.includes("第一句。"));
-  const before = scrolled;
-  const streamBox = box.querySelector(".creation-stream")!;
-  Object.defineProperty(streamBox, "scrollHeight", { configurable: true, value: 100000 });
-  await act(async () => streamBox.dispatchEvent(new Event("scroll")));
-  latest = two;
-  await act(async () => q.invalidateQueries({ queryKey: ["creation-session", "s1"] }));
-  await waitFor(() => box.textContent!.includes("第二句。"));
-  expect(scrolled, "捲上去看舊訊息的人被新訊息拉回底部了").toBe(before);
+  expect(box.querySelector(".creation-feed > section"), "需求摘要那張卡不見了").not.toBe(null);
+  expect(scrolls.at(-1)?.target).toBe(box.querySelector('.creation-log > li[data-index="1"]'));
+  expect(scrolls.at(-1)?.block).toBe("start");
+});
+test("a message that arrives while the newest one is out of view is counted on a pill instead of pulling the view", async () => {
+  const grow = conversationGrowing(
+    [{ role: "assistant", content: "第一句。" }],
+    [{ role: "assistant", content: "第二句。" }],
+  );
+  const scrolls = recordScrolls();
+  await render();
+  await resume();
+  await scrollNewestMessage("below view");
+  expect(box.querySelector(".to-latest")?.textContent).toBe("↓ 回到最新");
+  const before = scrolls.length;
+  await grow();
+  expect(scrolls.length, "捲上去看舊訊息的人被新訊息拉走了").toBe(before);
+  await click("↓ 1 則新訊息");
+  expect(scrolls.at(-1)?.target).toBe(box.querySelector('.creation-log > li[data-index="1"]'));
+  expect(box.querySelector(".to-latest"), "回到最新之後按鈕還在").toBe(null);
+});
+test("the pill goes away once the newest message is scrolled back into view by hand", async () => {
+  conversationGrowing([{ role: "assistant", content: "第一句。" }], []);
+  await render();
+  await resume();
+  await scrollNewestMessage("below view");
+  expect(box.querySelector(".to-latest")).not.toBe(null);
+  await scrollNewestMessage("in view");
+  expect(box.querySelector(".to-latest")).toBe(null);
+});
+test("the person's own message is brought into view even from far up the conversation", async () => {
+  const grow = conversationGrowing(
+    [{ role: "assistant", content: "第一句。" }],
+    [{ role: "user", content: "我補一句。" }],
+  );
+  const scrolls = recordScrolls();
+  await render();
+  await resume();
+  await scrollNewestMessage("below view");
+  await grow();
+  expect(scrolls.at(-1)?.target).toBe(box.querySelector('.creation-log > li[data-index="1"]'));
+  expect(box.querySelector(".to-latest")).toBe(null);
+});
+test("a step that starts running brings its progress bubble into view", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.pending_action = "confirm_brief";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) =>
+      init?.method === "POST"
+        ? response(sample({ state: "working", revision: 8 }))
+        : routeGet(url, [v], v),
+    ),
+  );
+  const scrolls = recordScrolls();
+  await render();
+  await resume();
+  await click("確認需求摘要與驗收條件");
+  await waitFor(() => !!box.querySelector(".creation-log > li[data-pending]"));
+  expect(scrolls.at(-1)?.target).toBe(box.querySelector(".creation-log > li[data-pending]"));
+});
+test("the pill steps aside while an error is showing above the composer", async () => {
+  const v = sample();
+  v.snapshot.messages = [{ role: "assistant", content: "第一句。" }];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) =>
+      init?.method === "POST"
+        ? Promise.reject(new TypeError("network unavailable"))
+        : routeGet(url, [v], v),
+    ),
+  );
+  await render();
+  await resume();
+  await scrollNewestMessage("below view");
+  await input("想完成的任務", "送不出去的一句");
+  await click("送出");
+  await waitFor(() => !!box.querySelector('[role="alert"]'));
+  expect(box.querySelector(".to-latest"), "回到最新的按鈕疊在錯誤通知上").toBe(null);
+  await act(async () =>
+    box.querySelector<HTMLButtonElement>('.toast [aria-label="關閉"]')!.click(),
+  );
+  expect(box.querySelector(".to-latest")).not.toBe(null);
 });
 test("the counter counts what the server counts, and nothing truncates silently", async () => {
   vi.stubGlobal(
