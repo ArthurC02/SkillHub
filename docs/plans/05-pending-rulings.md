@@ -2166,7 +2166,9 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 
 ---
 
-## R-77｜要不要有營運後台、長什麼樣、operator 看得到什麼（[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md)、`02` SEC-011／CRED-007） — ⬜ **待裁定（2026-09-12 提出）**
+## R-77｜要不要有營運後台、長什麼樣、operator 看得到什麼（[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md)、`02` SEC-011／CRED-007） — ✅ **已裁定（2026-09-12）：一～四照建議；第五題依負責人指示先穩定 Bounded Context 再定**
+
+負責人逐字：「1. 管理UI是必要的 2. 同意 3. 同意照舊 4. 同意」，並指示：「嚴格按照DDD去設計，完成BackOffice。先詳細探索現有程式碼，因為已經經過大量開發異動，可能違背了DDD或是新知識需要調整BC，先穩定BC再去思考和設計BackOffice」。所以第五題（後台在 DDD 裡的位置）不直接照建議簽，而是等全平台的 DDD 稽核與 Bounded Context 調整完成後，再依結果定案（ADR-074 決策 7 屆時改寫或確認）。
 
 負責人逐字：「從這個需求，意識到該有一個BackOffice。開始規劃，先不要寫程式碼」。規劃寫在 ADR-074（Proposed），這裡只列要簽的四件事。
 
