@@ -1084,7 +1084,7 @@ test("409 preserves input and needs an explicit action with the refreshed revisi
   expect(posts[1].expected_revision).toBe(8);
   expect(posts[1].command_id).not.toBe(posts[0].command_id);
 });
-test("network retry reuses the command ID and payload", async () => {
+test("a network failure is said beside the composer, and 重試 resends the same command ID and payload", async () => {
   const posts: Record<string, unknown>[] = [];
   const v = sample();
   vi.stubGlobal(
@@ -1104,8 +1104,10 @@ test("network retry reuses the command ID and payload", async () => {
   await input("想完成的任務", "重試同一個修改");
   await click("送出");
   await waitFor(() => !!box.querySelector('[role="alert"]'));
-  expect(box.textContent).toContain("網路連線失敗");
-  await click("送出");
+  const alert = box.querySelector('[role="alert"]')!;
+  expect(alert.textContent).toContain("網路連線失敗");
+  expect(alert.closest(".composer-dock"), "錯誤離開了輸入艙").not.toBe(null);
+  await click("重試");
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toEqual(posts[0]);
 });
@@ -1148,7 +1150,31 @@ test("no budget, no conversation: the composer is frozen until a step inside the
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({ budget_credits: 2000 });
 });
-test("sending nothing is answered by a toast, and nothing is sent", async () => {
+test("重試 after a network failure on a turn action resends that action with the same command ID", async () => {
+  const posts: Record<string, unknown>[] = [];
+  const v = sample({ state: "waiting_input" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return posts.length === 1
+          ? Promise.reject(new TypeError("network unavailable"))
+          : response(v);
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  await click("取消這次創作");
+  await waitFor(() => !!box.querySelector('.toast [role="alert"]'));
+  await click("重試");
+  await waitFor(() => posts.length === 2);
+  expect(posts[0]).toMatchObject({ kind: "cancel" });
+  expect(posts[1]).toEqual(posts[0]);
+});
+test("sending nothing is answered beside the composer, with nothing to retry and nothing sent", async () => {
   const posts: unknown[] = [];
   vi.stubGlobal(
     "fetch",
@@ -1163,10 +1189,17 @@ test("sending nothing is answered by a toast, and nothing is sent", async () => 
   await render();
   await pickBudget();
   await click(START);
-  await waitFor(() => !!box.querySelector(".toast"));
+  await waitFor(() => !!box.querySelector(".composer-dock .toast"));
   expect(box.querySelector('.toast [role="alert"]')!.textContent).toContain("還沒有要送出的內容");
+  expect(
+    [...box.querySelectorAll(".toast button")].map(
+      (b) => b.getAttribute("aria-label") ?? b.textContent,
+    ),
+  ).toEqual(["關閉"]);
   expect(posts).toHaveLength(0);
-  await click("關閉");
+  await act(async () =>
+    box.querySelector<HTMLButtonElement>('.toast [aria-label="關閉"]')!.click(),
+  );
   expect(box.querySelector(".toast")).toBe(null);
 });
 test("an open session shows its deadline and retention", async () => {

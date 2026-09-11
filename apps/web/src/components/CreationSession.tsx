@@ -373,6 +373,7 @@ export function CreationSession() {
     [raiseBudget, setRaiseBudget] = useState(""),
     [error, setError] = useState<unknown>(),
     [busy, setBusy] = useState(false);
+  const [lastAttempt, setLastAttempt] = useState<"submit" | [CreationAction["kind"], Extra]>();
   const fileInput = useRef<HTMLInputElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   useEffect(() => textarea.current?.focus(), [budget]);
@@ -494,6 +495,7 @@ export function CreationSession() {
       if (kind === "message") setMessage("");
     } catch (err) {
       setError(err);
+      setLastAttempt([kind, extra]);
     } finally {
       setBusy(false);
     }
@@ -595,9 +597,14 @@ export function CreationSession() {
       }
     } catch (err) {
       setError(err);
+      setLastAttempt("submit");
     } finally {
       setBusy(false);
     }
+  };
+  const retry = () => {
+    if (lastAttempt === "submit") void submit();
+    else if (lastAttempt) void perform(...lastAttempt);
   };
   const failure = !!error && (
     <ReadFailure error={error} what="互動創作">
@@ -611,6 +618,24 @@ export function CreationSession() {
               : "這一步未完成，請重試。"}
       </p>
     </ReadFailure>
+  );
+  const failureBox = failure && (
+    <div className="notice notice-danger toast">
+      {failure}
+      {error instanceof TypeError && lastAttempt && (
+        <button type="button" disabled={busy} onClick={retry}>
+          重試
+        </button>
+      )}
+      <button
+        type="button"
+        className="toast-close"
+        aria-label="關閉"
+        onClick={() => setError(undefined)}
+      >
+        ×
+      </button>
+    </div>
   );
   return (
     <div className="creation-shell">
@@ -1355,6 +1380,7 @@ export function CreationSession() {
                 />
               </div>
             )}
+            {failureBox}
           </div>
           <span id="composer-limits">
             流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多 4,000,000 位元組（約 3.8 MB）；參考 Skill
@@ -1362,14 +1388,7 @@ export function CreationSession() {
           </span>
         </div>
       )}
-      {failure && (
-        <div className="toast">
-          {failure}
-          <button type="button" onClick={() => setError(undefined)}>
-            關閉
-          </button>
-        </div>
-      )}
+      {terminal && failureBox && <div className="composer-dock">{failureBox}</div>}
     </div>
   );
 }

@@ -2437,6 +2437,7 @@ summary {
 
 /* ── 底部輸入艙：釘在下面，不隨捲動消失 ───────────────────────────────────── */
 .composer-dock {
+  position: relative;
   flex: none;
   padding: 12px 0 8px;
 }
@@ -2446,35 +2447,41 @@ summary {
   margin-inline: auto;
 }
 
-/* 錯誤與做錯動作的回應：固定在視窗頂端置中，不隨對話捲動（2026-09-10）。
-   沒有陰影、沒有進場動畫（§4.6.4）；框用 `--border-strong`，與輸入艙同一個語彙。 */
-.toast {
-  position: fixed;
-  top: 16px;
-  inset-inline: 16px;
+/* 浮在輸入艙上方、對齊它的右緣（toastr 的 bottom-right）：靠近按下去的那顆鍵，
+   不推動對話，也碰不到頁首導覽。沒有陰影，靠實色邊框與表面分開。 */
+.composer-dock .notice.toast {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
   z-index: 10;
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  width: fit-content;
-  max-width: 480px;
-  margin-inline: auto;
-  padding: 12px 16px;
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  background: var(--surface);
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(420px, 100%);
+  margin: 0;
+  border: 1px solid var(--danger);
+  border-left-width: 3px;
+  border-radius: 8px;
 }
 
-.toast > p {
+.toast > :first-child {
+  flex: 1 1 auto;
   margin: 0;
 }
 
-/* 「關閉」不讓位給訊息：沒有這一條它會被擠成兩個字一行的直排（2026-09-10 截圖）。 */
 .toast > button {
   flex: none;
 }
 
-/* 上限只給螢幕閱讀器；看得見的那一半是撞上時的 toast（2026-09-10）。
+.toast > .toast-close {
+  border-color: transparent;
+  background: transparent;
+  font-size: 18px;
+}
+
+/* 上限只給螢幕閱讀器；看得見的那一半是撞上時浮在輸入艙上方的通知。
    與附件鈕裡那個檔案輸入是同一個剪裁配方。 */
 #composer-limits {
   position: absolute;
@@ -2493,6 +2500,7 @@ summary {
    消失：`:has()` 讓它跟著文字框的 `:focus-visible` 走（WCAG 1.4.11 的 3:1 由
    `--accent` 提供，與全站的 `:focus-visible` 同一個值）。 */
 .composer {
+  position: relative;
   flex: none;
   padding: 8px 12px;
   border: 1px solid var(--border-strong);
