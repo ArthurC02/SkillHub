@@ -5,6 +5,7 @@ export interface Me {
   email: string;
   display_name: string;
   workspace_id: string;
+  operator: boolean;
   deletion_requested_at: string | null;
   deletion_scope: string | null;
   features?: Record<string, boolean>;

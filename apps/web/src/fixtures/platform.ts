@@ -1,4 +1,13 @@
 import type {
+  AccountLookup,
+  CostStatisticsWindow,
+  CreditLedger,
+  DispatchStatus,
+  OperatorAuditEvent,
+  Rosters,
+  SkillGovernance,
+} from "../api/admin";
+import type {
   Me,
   PublicSearchResponse,
   PublicSearchResult,
@@ -723,6 +732,118 @@ export const VERSION_DIFF = {
   ],
 };
 
+export const ADMIN_ACCOUNT = {
+  user_id: "u-2",
+  email: "member@example.com",
+  display_name: "封測者甲",
+  workspace_id: "ws-2",
+  created_at: "2026-08-20T00:00:00Z",
+  deletion_requested_at: null,
+  in_beta_allowlist: true,
+} satisfies AccountLookup;
+
+export const ADMIN_LEDGER = {
+  workspace_id: "ws-2",
+  balance_credits: 120,
+  entries: [
+    {
+      kind: "debit",
+      delta_credits: -30,
+      ref_type: "run",
+      estimated: true,
+      created_at: "2026-09-11T08:00:00Z",
+    },
+    {
+      kind: "grant",
+      delta_credits: 150,
+      ref_type: null,
+      estimated: false,
+      created_at: "2026-09-10T08:00:00Z",
+    },
+  ],
+} satisfies CreditLedger;
+
+export const ADMIN_SKILLS = {
+  skills: [
+    {
+      skill_id: SKILL,
+      workspace_id: "ws-2",
+      name: "PDF Summariser",
+      access_restriction: null,
+      redistribution: "unknown",
+      takedown_at: null,
+      takedown_reason: null,
+    },
+  ],
+} satisfies { skills: SkillGovernance[] };
+
+export const ADMIN_DISPATCH = {
+  dispatching: false,
+  halts: [
+    {
+      target: "pool",
+      source: "p1_incident",
+      reason: "sandbox escape suspected on node-2",
+      declared_at: "2026-09-11T09:00:00Z",
+      clear_rounds: 0,
+      automatic_recovery: false,
+    },
+  ],
+} satisfies DispatchStatus;
+
+export const ADMIN_ROSTERS = {
+  operator_user_ids: ["u-1"],
+  beta_allowlist: [],
+} satisfies Rosters;
+
+export const ADMIN_AUDIT_LOG = {
+  events: [
+    {
+      actor_user_id: "u-1",
+      action: "credit.grant",
+      resource_type: "credit_entry",
+      resource_id: "u-2",
+      workspace_id: "ws-2",
+      occurred_at: "2026-09-10T08:00:00Z",
+      metadata: { kind: "grant", credits: 150, reason: "beta reward" },
+    },
+    {
+      actor_user_id: "u-1",
+      action: "account.lookup",
+      resource_type: "account",
+      resource_id: "u-2",
+      workspace_id: "ws-2",
+      occurred_at: "2026-09-10T07:59:00Z",
+      metadata: {},
+    },
+  ],
+} satisfies { events: OperatorAuditEvent[] };
+
+export const ADMIN_COST_STATISTICS = {
+  statistics: [
+    {
+      kind: "match_reasons",
+      window_start: "2026-08-12T00:00:00Z",
+      window_end: "2026-09-11T00:00:00Z",
+      sample_count: 0,
+      p50_usd_micros: null,
+      p90_usd_micros: null,
+      p95_usd_micros: null,
+      max_usd_micros: null,
+    },
+    {
+      kind: "review",
+      window_start: "2026-08-12T00:00:00Z",
+      window_end: "2026-09-11T00:00:00Z",
+      sample_count: 40,
+      p50_usd_micros: 1200,
+      p90_usd_micros: 3400,
+      p95_usd_micros: 4100,
+      max_usd_micros: 9000,
+    },
+  ],
+} satisfies { statistics: CostStatisticsWindow[] };
+
 function ok(body: unknown, status = 200) {
   return { body, status };
 }
@@ -731,6 +852,13 @@ export function platformResponse(input: string): { body: unknown; status: number
   const url = String(input).replace(/^https?:\/\/[^/]+/, "");
   const path = url.split("?")[0];
 
+  if (path === "/admin/accounts") return ok(ADMIN_ACCOUNT);
+  if (path.startsWith("/admin/credits/") && !path.endsWith("/grants")) return ok(ADMIN_LEDGER);
+  if (path === "/admin/skills") return ok(ADMIN_SKILLS);
+  if (path === "/admin/dispatch") return ok(ADMIN_DISPATCH);
+  if (path === "/admin/rosters") return ok(ADMIN_ROSTERS);
+  if (path === "/admin/audit-log") return ok(ADMIN_AUDIT_LOG);
+  if (path === "/admin/cost-statistics") return ok(ADMIN_COST_STATISTICS);
   if (path.startsWith("/api/skills/search")) return ok(SEARCH);
   if (path.startsWith("/api/skills/catalog")) {
     const category = new URLSearchParams(url.split("?")[1] ?? "").get("category");
@@ -748,6 +876,7 @@ export function platformResponse(input: string): { body: unknown; status: number
       email: "tester@example.com",
       display_name: "tester",
       workspace_id: "ws-1",
+      operator: false,
       deletion_requested_at: "2026-08-17T00:00:00Z",
       purge_after: "2026-09-16T00:00:00Z",
       deletion_scope:

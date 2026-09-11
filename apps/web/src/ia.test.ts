@@ -96,7 +96,8 @@ test("IA §0.1 R3 / §2.3: the pages with 0 and with 1 way in are the ones the d
 
 test("IA §0.1 R2: every route the rule can judge either follows it or is in the ledger", () => {
   const routes = [...router.matchAll(/^\s*path: "([^"]+)"/gm)].map((m) => m[1]);
-  const owned = (p: string) => p.startsWith("/workspace/") || p.startsWith("/lab/");
+  const owned = (p: string) =>
+    p.startsWith("/workspace/") || p.startsWith("/lab/") || p.startsWith("/admin/");
 
   const violations = routes
     .filter((p) => {

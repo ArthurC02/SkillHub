@@ -8,6 +8,11 @@ export async function stubPlatform(page: Page) {
       return route.continue();
     }
     const { body, status } = platformResponse(request.url());
-    return route.fulfill({ status, json: body as object });
+    const operatorPage = new URL(page.url()).pathname.startsWith("/admin");
+    const me = new URL(request.url()).pathname === "/me";
+    return route.fulfill({
+      status,
+      json: operatorPage && me ? { ...(body as object), operator: true } : (body as object),
+    });
   });
 }

@@ -271,7 +271,53 @@ const SCANNED_ROUTES = [
   "/workspace/import",
   "/workspace/runs",
   "/workspace/skills",
+  "/admin",
+  "/admin/accounts",
+  "/admin/skills",
+  "/admin/dispatch",
+  "/admin/rosters",
+  "/admin/audit-log",
+  "/admin/cost-statistics",
 ];
+
+function stubOperator() {
+  vi.stubGlobal("fetch", (input: string) => {
+    const { body, status } = platformResponse(String(input));
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    return json(path === "/me" ? { ...(body as object), operator: true } : body, status);
+  });
+}
+
+for (const [to, heading] of [
+  ["/admin", "營運後台"],
+  ["/admin/accounts", "帳號與點數"],
+  ["/admin/dispatch", "停止派送"],
+  ["/admin/rosters", "這個部署沒有設定封測名單"],
+  ["/admin/audit-log", "授予點數"],
+  ["/admin/cost-statistics", "搜尋理由"],
+] as const) {
+  test(`QA-009: 後台 ${to}`, async () => {
+    stubOperator();
+    await mount();
+    await act(async () => {
+      await router.navigate({ to });
+    });
+    await waitFor(has(heading));
+    await scan(to);
+  }, 30000);
+}
+
+test("QA-009: 後台 /admin/skills（查到一個）", async () => {
+  stubOperator();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/admin/skills", search: { q: SKILL } });
+  });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await scan("/admin/skills");
+}, 30000);
 
 test("QA-009: Skill import", async () => {
   stubPlatform();

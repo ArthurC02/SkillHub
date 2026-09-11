@@ -20,6 +20,13 @@ export const ROUTES: [name: string, url: string][] = [
   ["workspace-import", "/workspace/import"],
   ["workspace-runs", "/workspace/runs"],
   ["workspace-skills", "/workspace/skills"],
+  ["admin-home", "/admin"],
+  ["admin-accounts", "/admin/accounts"],
+  ["admin-skills", `/admin/skills?q=${SKILL}`],
+  ["admin-dispatch", "/admin/dispatch"],
+  ["admin-rosters", "/admin/rosters"],
+  ["admin-audit-log", "/admin/audit-log"],
+  ["admin-cost-statistics", "/admin/cost-statistics"],
 ];
 
 export const PHONE_ROUTES = ROUTES;

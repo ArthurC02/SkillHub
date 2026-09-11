@@ -4,11 +4,13 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   useRouterState,
 } from "@tanstack/react-router";
 import { FeedbackEntry } from "./components/FeedbackEntry";
 import { AuthControls } from "./components/AuthControls";
 import { CleanModeNotice } from "./components/CleanModeNotice";
+import { RouteNotFound } from "./components/RouteNotFound";
 import { Compare } from "./pages/Compare";
 import { DataPolicy } from "./pages/DataPolicy";
 import { DatasetUpload } from "./pages/DatasetUpload";
@@ -47,7 +49,7 @@ function RootLayout() {
         <AuthControls />
       </header>
       <main>
-        <CleanModeNotice />
+        <CleanModeNotice admin={pathname === "/admin" || pathname.startsWith("/admin/")} />
         <Outlet />
       </main>
       <footer className="app-footer">
@@ -237,6 +239,51 @@ const testCaseDetailRoute = createRoute({
   component: TestCaseDetail,
 });
 
+const adminHomeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: lazyRouteComponent(() => import("./pages/Admin"), "AdminHome"),
+});
+
+const adminAccountsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/accounts",
+  component: lazyRouteComponent(() => import("./pages/Admin"), "AdminAccounts"),
+});
+
+const adminSkillsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/skills",
+  component: lazyRouteComponent(() => import("./pages/Admin"), "AdminSkills"),
+  validateSearch: (search: Record<string, unknown>): { q?: string } => ({
+    q: typeof search.q === "string" && search.q.trim() ? search.q.trim() : undefined,
+  }),
+});
+
+const adminDispatchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/dispatch",
+  component: lazyRouteComponent(() => import("./pages/Admin"), "AdminDispatch"),
+});
+
+const adminRostersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/rosters",
+  component: lazyRouteComponent(() => import("./pages/Admin"), "AdminRosters"),
+});
+
+const adminAuditLogRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/audit-log",
+  component: lazyRouteComponent(() => import("./pages/Admin"), "AdminAuditLog"),
+});
+
+const adminCostStatisticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/cost-statistics",
+  component: lazyRouteComponent(() => import("./pages/Admin"), "AdminCostStatistics"),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   compareRoute,
@@ -256,9 +303,16 @@ const routeTree = rootRoute.addChildren([
   datasetUploadRoute,
   testCaseListRoute,
   testCaseDetailRoute,
+  adminHomeRoute,
+  adminAccountsRoute,
+  adminSkillsRoute,
+  adminDispatchRoute,
+  adminRostersRoute,
+  adminAuditLogRoute,
+  adminCostStatisticsRoute,
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({ routeTree, defaultNotFoundComponent: RouteNotFound });
 
 declare module "@tanstack/react-router" {
   interface Register {

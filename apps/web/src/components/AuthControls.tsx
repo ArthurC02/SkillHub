@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { unauthenticated } from "./LoginRequired";
 import { SignInAction } from "./SignIn";
 import { logout, useMe } from "../api/me";
@@ -21,6 +22,11 @@ export function AuthControls() {
   return (
     <span>
       {me.data.display_name}{" "}
+      {me.data.operator && (
+        <>
+          <Link to="/admin">後台</Link>{" "}
+        </>
+      )}
       <button type="button" disabled={signOut.isPending} onClick={() => signOut.mutate()}>
         登出
       </button>
