@@ -131,6 +131,16 @@ test("GEN-005: task_description 為空、只有流程圖時顯示流程圖句，
   expect(body).toContain("abc123");
 });
 
+test("GEN-005: task_description 為空、也沒有流程圖時顯示不指名來源的句子", async () => {
+  stubVisitor(generatedDetail({ task_description: "" }));
+  await render(<SkillDetail />, settledAsVisitor);
+
+  const sourceLine = Array.from(container.querySelectorAll("p")).find((p) =>
+    (p.textContent ?? "").startsWith("來源："),
+  );
+  expect(sourceLine?.textContent).toBe("來源：由平台生成");
+});
+
 test("GEN-006: 參考的 Skill 名稱各是一個連到 /skills/<id> 的連結", async () => {
   stubVisitor(
     generatedDetail({

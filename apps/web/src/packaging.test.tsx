@@ -504,6 +504,30 @@ test("04 R-42(c)③ 風險與 License：判定行與最高嚴重度留在外面�
   }
 });
 
+test("風險判定行：只有警告時說最高為警告，只有提示時說最高為提示", async () => {
+  stubPlatform({
+    skill: {
+      ...skill,
+      risk: { ...skill.risk, counts: { errors: 0, warnings: 2, infos: 0 } },
+    },
+  });
+  await render(<Packaging />, () => text().includes("打包與下載"));
+
+  expect(text()).toContain("有 2 項風險，最高為警告。");
+});
+
+test("風險判定行：只有提示時說最高為提示", async () => {
+  stubPlatform({
+    skill: {
+      ...skill,
+      risk: { ...skill.risk, counts: { errors: 0, warnings: 0, infos: 3 } },
+    },
+  });
+  await render(<Packaging />, () => text().includes("打包與下載"));
+
+  expect(text()).toContain("有 3 項風險，最高為提示。");
+});
+
 test("04 R-42(c)③ 相容性：三軸的驗證狀態留在外面，逐軸備註與實測環境折進 <details>", async () => {
   stubPlatform({ skill: SKILL_WITH_DETAILS });
   await render(<Packaging />, () => text().includes("這個版本的相容性"));

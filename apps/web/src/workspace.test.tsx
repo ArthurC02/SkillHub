@@ -1067,6 +1067,13 @@ test("04 丙-143(c): cancelling a run that already ended says so (409)", async (
   await waitFor(() => text().includes("已經結束"));
 });
 
+test("a run in a terminal status shows no cancel button and no confirm dialog", async () => {
+  await render(<CancelRunControl runId={RUN} status="succeeded" />, () => true);
+
+  expect(button("取消這個 Run")).toBeUndefined();
+  expect(text()).not.toContain("確定要取消？");
+});
+
 test("CORE-007 cancelling a deletion request invalidates /me, so the badge goes away", async () => {
   const invalidated = vi.spyOn(queryClient, "invalidateQueries");
   vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {

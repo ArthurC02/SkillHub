@@ -358,3 +358,30 @@ test("05 R-19: 非擁有者看不到類別選單", async () => {
   await render(<SkillDetail />, settledAsVisitor);
   expect(container.querySelector("#skill-category")).toBeNull();
 });
+
+test("05 R-19: 類別儲存失敗時顯示可以再按一次，而不是類別已更新", async () => {
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const url = String(input).replace(/^https?:\/\/[^/]+/, "");
+    const path = url.split("?")[0];
+    if (path === "/me") return json({ user_id: "u-1", workspace_id: "ws-1" });
+    if (path.endsWith("/category") && init?.method === "PUT") return json({ error: "boom" }, 500);
+    if (path.endsWith("/versions")) return json(SKILL_VERSIONS);
+    if (path.startsWith("/api/skills/")) return json(detailBody());
+    return json({ error: "not found" }, 404);
+  });
+  await render(<SkillDetail />, settledAsOwner);
+
+  const select = container.querySelector<HTMLSelectElement>("#skill-category")!;
+  await act(async () => selectValue(select, "writing"));
+  await act(async () =>
+    Array.from(container.querySelectorAll("button"))
+      .find((b) => (b.textContent ?? "").includes("儲存"))!
+      .click(),
+  );
+  await waitFor(() => text().includes("類別沒有設定成功，可以再按一次。"));
+
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+    "類別沒有設定成功，可以再按一次。",
+  );
+  expect(text()).not.toContain("類別已更新。");
+});

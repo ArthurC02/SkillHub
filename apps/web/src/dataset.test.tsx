@@ -122,6 +122,35 @@ test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence",
   expect(container.textContent).not.toContain("上傳沒有成功");
 });
 
+test("丙-150(e) a 500 upload failure falls back to the generic retry sentence", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/test-cases/limits")) {
+      return Promise.resolve(
+        new Response(JSON.stringify(LIMITS), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ error: "internal error, do not show this" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await renderUpload();
+
+  const input = container.querySelector<HTMLInputElement>("input[type=file]")!;
+  const file = new File(["bogus"], "a.txt", { type: "text/plain" });
+  Object.defineProperty(input, "files", { value: [file], configurable: true });
+  await act(async () => uploadButton().click());
+  await waitFor(() => (container.textContent ?? "").includes("上傳沒有成功，可以再按一次。"));
+
+  expect(container.textContent).not.toContain("internal error, do not show this");
+});
+
 test("02:TEST-002 changing the Test Case clears what was uploaded to the previous one", async () => {
   const OTHER = "44444444-4444-4444-4444-444444444444";
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {

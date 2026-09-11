@@ -168,6 +168,17 @@ test("BETA-003 an over-long report says how long it is instead of being cut in h
   );
 });
 
+test("a report at exactly the length ceiling is accepted, not refused", async () => {
+  const calls = stubPlatform();
+  await render(<FeedbackEntry pathname="/" />);
+
+  await type("字".repeat(FEEDBACK_MAX_MESSAGE));
+  await submit();
+  await waitFor(() => calls.length > 0);
+
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
 test("BETA-004 a failed submit keeps the words and says what to do next", async () => {
   stubPlatform(400);
   await render(<FeedbackEntry pathname="/" />);

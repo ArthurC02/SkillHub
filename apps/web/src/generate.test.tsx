@@ -402,6 +402,69 @@ test("GEN-005: an oversized file is refused client-side with an alert, and nothi
   expect(posted.some((p) => p.path === "/skills/generate")).toBe(false);
 });
 
+test("GEN-005: a diagram file at exactly the size ceiling is accepted", async () => {
+  const { posted } = stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const fileInput = container.querySelector<HTMLInputElement>("#generate-diagram-file")!;
+  const atCeiling = new File([new Uint8Array(4_000_000)], "ok.png", { type: "image/png" });
+  await act(async () => {
+    Object.defineProperty(fileInput, "files", { value: [atCeiling], configurable: true });
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("ok.png"));
+
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  const submitBtn = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "生成一個 Skill",
+  )!;
+  expect(submitBtn.disabled).toBe(false);
+
+  await act(async () => {
+    submitBtn.click();
+  });
+  await waitFor(() => posted.some((p) => p.path === "/skills/generate"));
+});
+
+test("GEN-005: a diagram file with an unsupported MIME type is refused with its own message", async () => {
+  const { posted } = stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const fileInput = container.querySelector<HTMLInputElement>("#generate-diagram-file")!;
+  const wrongType = new File([new Uint8Array([1, 2, 3, 4])], "flow.gif", { type: "image/gif" });
+  await act(async () => {
+    Object.defineProperty(fileInput, "files", { value: [wrongType], configurable: true });
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  const alert = container.querySelector('[role="alert"]');
+  expect(alert?.textContent).toBe("圖片格式需為 PNG、JPEG 或 WebP。");
+  expect(posted.some((p) => p.path === "/skills/generate")).toBe(false);
+});
+
+test("GEN-001: typing past the rune ceiling warns that the server will enforce it, without disabling submit", async () => {
+  stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  await act(async () => {
+    const textarea = container.querySelector("#generate-task")!;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    setter.call(textarea, "字".repeat(4001));
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  const count = container.querySelector("#generate-task-count")!;
+  expect(count.textContent).toContain("4,001 / 4,000 字");
+  expect(count.textContent).toContain("——超過了，送出會被伺服器擋下");
+  const submitBtn = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "生成一個 Skill",
+  )!;
+  expect(submitBtn.disabled).toBe(false);
+});
+
 const REFERENCE_HIT = (n: number) => ({
   skill_id: `ref-${n}`,
   name: `參考 Skill ${n}`,

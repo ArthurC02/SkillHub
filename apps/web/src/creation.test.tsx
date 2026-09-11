@@ -26,7 +26,12 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("./components/GenerateSkill", () => ({
   GenerateSkill: () => <div>舊生成入口</div>,
   ReferencePicker: ({ onToggle }: { onToggle: (id: string, name: string) => void }) => (
-    <button onClick={() => onToggle("ref-1", "摘要 Skill")}>選擇摘要參考</button>
+    <>
+      <button onClick={() => onToggle("ref-1", "摘要 Skill")}>選擇摘要參考</button>
+      <button onClick={() => onToggle("ref-2", "參考 Skill 2")}>選擇參考 Skill 2</button>
+      <button onClick={() => onToggle("ref-3", "參考 Skill 3")}>選擇參考 Skill 3</button>
+      <button onClick={() => onToggle("ref-4", "參考 Skill 4")}>選擇參考 Skill 4</button>
+    </>
   ),
 }));
 let box: HTMLDivElement, root: Root, q: QueryClient;
@@ -327,6 +332,28 @@ test("a dropped image attaches, and a dropped PDF says why it cannot", async () 
   await waitFor(() => box.textContent!.includes("流程圖只收 PNG、JPEG 或 WebP"));
   expect(box.textContent, "被拒絕的檔案還是掛上去了").not.toContain("移除流程圖");
   await dropFiles("drop", [png("flow.png")], composer);
+  await waitFor(() => box.textContent!.includes("移除流程圖：flow.png"));
+});
+test("a diagram outside the byte range is refused locally, at both ends, and the cap itself is accepted", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [], sample())),
+  );
+  await render();
+  const composer = box.querySelector(".composer")!;
+  const sizeMessage = "請選擇最多 4,000,000 位元組";
+  const empty = new File([], "flow.png", { type: "image/png" });
+  await dropFiles("drop", [empty], composer);
+  await waitFor(() => box.textContent!.includes(sizeMessage));
+  expect(box.textContent, "被拒絕的檔案還是掛上去了").not.toContain("移除流程圖");
+  const tooBig = new File(["x"], "flow.png", { type: "image/png" });
+  Object.defineProperty(tooBig, "size", { value: 4_000_001 });
+  await dropFiles("drop", [tooBig], composer);
+  await waitFor(() => box.textContent!.includes(sizeMessage));
+  expect(box.textContent, "被拒絕的檔案還是掛上去了").not.toContain("移除流程圖");
+  const atCap = new File(["x"], "flow.png", { type: "image/png" });
+  Object.defineProperty(atCap, "size", { value: 4_000_000 });
+  await dropFiles("drop", [atCap], composer);
   await waitFor(() => box.textContent!.includes("移除流程圖：flow.png"));
 });
 const DRAFT = {
@@ -653,6 +680,21 @@ test("references are cleared once they have been sent, so the next turn can be w
   await click("送出");
   await waitFor(() => posts.length === 3);
   expect(posts[2]).toMatchObject({ kind: "message", message: "請照這個風格，但輸出成表格。" });
+});
+test("a fourth reference is refused; the cap stays at three", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [], sample())),
+  );
+  await render();
+  await pickBudget();
+  await openReferencePicker();
+  await click("選擇摘要參考");
+  await click("選擇參考 Skill 2");
+  await click("選擇參考 Skill 3");
+  await click("選擇參考 Skill 4");
+  expect(box.textContent).toContain("參考 Skill 最多三個；先移除一個再加。");
+  expect([...box.querySelectorAll(".chip-row li")], "第四個還是被加進去了").toHaveLength(3);
 });
 test("the two attachment controls name themselves and carry their limits", async () => {
   vi.stubGlobal(
@@ -1180,6 +1222,14 @@ test("a failed session shows the raise form, refuses an out-of-band amount local
   await waitFor(() => !!box.querySelector('[role="alert"]'));
   expect(box.textContent).toContain("不超過 6500 點");
   expect(posts).toHaveLength(0);
+  await input("提高這次預算上限（點）", "1300");
+  await click("提高預算後繼續");
+  expect(box.textContent, "等於目前上限，應該被拒絕").toContain("高於目前上限 1300 點");
+  expect(posts, "等於目前上限卻送出了").toHaveLength(0);
+  await input("提高這次預算上限（點）", "1300.5");
+  await click("提高預算後繼續");
+  expect(box.textContent, "非整數，應該被拒絕").toContain("高於目前上限 1300 點");
+  expect(posts, "非整數卻送出了").toHaveLength(0);
   await input("提高這次預算上限（點）", "2000");
   await click("提高預算後繼續");
   await waitFor(() => posts.length === 1);
@@ -1216,6 +1266,94 @@ test("a candidate with a test_case_id renders the Test Case sentence and the run
   expect(JSON.parse(link?.getAttribute("data-search") ?? "{}")).toMatchObject({
     test_case: "tc-1",
   });
+});
+function draftCandidate(patch: Partial<NonNullable<CreationSnapshot["candidate"]>> = {}) {
+  return {
+    skill_id: "sk-1",
+    version_id: "v1",
+    test_case_id: "tc-1",
+    ...patch,
+  };
+}
+test("a differing latest run offers to bring it into the session, and posts attach_run", async () => {
+  const v = sample({ state: "candidate_ready" });
+  v.snapshot.draft = DRAFT;
+  v.snapshot.candidate = draftCandidate({ run_id: "run-old" });
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(v);
+      }
+      if (url.startsWith("/runs?")) {
+        return response({
+          runs: [
+            {
+              run_id: "run-new",
+              status: "succeeded",
+              evaluation: { value: "met", label: "符合", note: "" },
+            },
+          ],
+        });
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  await waitFor(() => box.textContent!.includes("最新試跑：執行完成；評估：符合"));
+  expect(box.textContent, "跟候選版本一致的試跑不該還在提示改善").not.toContain(
+    "最新試跑結果已帶回會話",
+  );
+  await click("把最新試跑結果帶回來改善");
+  await waitFor(() => posts.length > 0);
+  expect(posts[0]).toMatchObject({ kind: "attach_run", run_id: "run-new" });
+});
+test("a candidate whose run matches the latest says so, with no button to attach it again", async () => {
+  const v = sample({ state: "candidate_ready" });
+  v.snapshot.draft = DRAFT;
+  v.snapshot.candidate = draftCandidate({ run_id: "run-new" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.startsWith("/runs?")) {
+        return response({
+          runs: [
+            {
+              run_id: "run-new",
+              status: "succeeded",
+              evaluation: { value: "met", label: "符合", note: "" },
+            },
+          ],
+        });
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  await waitFor(() => box.textContent!.includes("最新試跑結果已帶回會話"));
+  expect(() => button("把最新試跑結果帶回來改善")).toThrow();
+});
+test("no completed run at all just says a run has not come back yet", async () => {
+  const v = sample({ state: "candidate_ready" });
+  v.snapshot.draft = DRAFT;
+  v.snapshot.candidate = draftCandidate();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.startsWith("/runs?")) return response({ runs: [] });
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  await waitFor(() =>
+    box.textContent!.includes("試跑完成後，這裡會出現「把最新試跑結果帶回來改善」。"),
+  );
+  expect(() => button("把最新試跑結果帶回來改善")).toThrow();
 });
 function EntryPointProbe() {
   return <>{String(useCreationEntryPoint())}</>;

@@ -353,6 +353,41 @@ test("丙-155③ 名稱超過 200 bytes 送出前先擋下，不送出請求", a
   expect(calls.some((c) => c.method === "POST" && c.url === "/test-cases")).toBe(false);
 });
 
+test("名稱剛好 200 bytes 不擋，建立按鈕不停用", async () => {
+  stubPlatform();
+  await renderList();
+
+  await act(async () =>
+    selectValue(container.querySelector<HTMLSelectElement>("#tc-skill")!, SKILL),
+  );
+  await act(async () =>
+    setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "x".repeat(200)),
+  );
+  await act(async () =>
+    setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "prompt"),
+  );
+
+  expect(container.textContent).not.toContain("名稱最多 200 bytes，目前");
+  expect(button("建立").disabled).toBe(false);
+});
+
+test("Prompt 超過 32768 bytes 送出前先擋下，不送出請求", async () => {
+  const calls = stubPlatform();
+  await renderList();
+
+  await act(async () =>
+    selectValue(container.querySelector<HTMLSelectElement>("#tc-skill")!, SKILL),
+  );
+  await act(async () => setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "名稱"));
+  await act(async () =>
+    setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "x".repeat(32769)),
+  );
+
+  expect(container.textContent).toContain("Prompt 最多 32768 bytes，目前 32769 bytes。");
+  expect(button("建立").disabled).toBe(true);
+  expect(calls.some((c) => c.method === "POST" && c.url === "/test-cases")).toBe(false);
+});
+
 test("a pending suggestion says why its button is disabled", async () => {
   let finish!: (response: Response) => void;
   const suggestResponse = new Promise<Response>((resolve) => {
