@@ -481,7 +481,7 @@ hello in-process s3
 - [x] CRED-005 讓 `catalog`（搜尋 embedding、索引增強）、`eval`（評審／建議）、`ingest`（單次生成對照）三個既有 context 各自呼叫 `credit.RecordCost`（ADR-032 附錄 A 新增四列 Customer–Supplier 依賴）；MVP 期間這三類只寫 `cost_events` 餵統計，不對使用者扣點（待決策見 ADR-068）。（對應 `02:CRED-005`；依 CRED-001）
 - [x] CRED-006 `cmd/maintenance` 帳號刪除步驟清單新增一步呼叫既有的 `credit.PurgeUser`，並補上 `PurgeExpiredCostEvents`／`PurgeExpiredCreditEntries` 的時間視窗保存掃描排程（同 `SEC-006` 形狀，值待負責人與既有保存清冊一併裁定）。（對應 `02:CRED-008`；依 CRED-001）
 - [x] CRED-007 `apps/platform/.golangci.yml` 補 `creator/credit` 的 depguard 規則，收斂 ADR-032 §1「先登記後建目錄」的過渡態（目錄已建，depguard 待補）。（依 ADR-032 §1、附錄 A；鐵律 7）
-- [ ] CRED-008 CRED-001～003 落地後，對真後端跑一次端到端驗收（開始前拒絕、每步負債下限、餘額顯示、operator 授予），並把面額、加成、保守常數、滾動窗長度的最終值（ADR-068「待決策」）回填部署設定，替換主線反推的預設值。（對應 `02:CRED-002`、`CRED-004`；依 CRED-001～003）
+- [ ] CRED-008 CRED-001～003 落地後，對真後端跑一次端到端驗收（開始前拒絕、每步負債下限、餘額顯示、operator 授予），並把面額、加成、保守常數、滾動窗長度的最終值（ADR-068「待決策」）回填部署設定，替換主線反推的預設值。（對應 `02:CRED-002`、`CRED-004`；依 CRED-001～003）**2026-09-11 前半已跑**：淨測試模式的真後端上，開始前拒絕、餘額顯示、operator 授予三項通過（並抓到一個單連線死鎖，見 `04` 丙-185）；每步負債下限要一次付費模型呼叫，未在真後端跑；最終值待負責人裁定，所以不勾。
 - [x] CRED-009 試跑扣點（`05` R-74）：`cost_events.kind` 加 `run`（migration 0062），建立 Run 時以閘道上界做開始前檢查，清理時依閘道實付結算、以 run id 冪等；讀不到花費只記不扣。兩個組裝根都接上。（對應 `02:CRED-003` 試跑那一條；依 CRED-001、CRED-002）
 
-**目前狀態：0 項已勾、8 項皆待接線。** 各項完成須同時提交對應 `02` Given／When／Then 的成功與拒絕證據；依 AGENTS.md 鐵律 9，每條新規則要留一次「把修法還原、對應測試變紅、改回」的證據。
+**目前狀態：9 項中 8 項已勾，只剩 CRED-008（等最終值裁定）。** 各項完成須同時提交對應 `02` Given／When／Then 的成功與拒絕證據；依 AGENTS.md 鐵律 9，每條新規則要留一次「把修法還原、對應測試變紅、改回」的證據。

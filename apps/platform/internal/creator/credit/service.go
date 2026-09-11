@@ -32,14 +32,14 @@ type Service struct {
 	Store  Store
 	Config Config
 
-	Facts func(ctx context.Context, userID pgtype.UUID) (AccountFacts, error)
+	Facts func(ctx context.Context, db DBTX, userID pgtype.UUID) (AccountFacts, error)
 }
 
-func (s *Service) checkAccount(ctx context.Context, userID pgtype.UUID) error {
+func (s *Service) checkAccount(ctx context.Context, db DBTX, userID pgtype.UUID) error {
 	if !userID.Valid || s.Facts == nil {
 		return nil
 	}
-	f, err := s.Facts(ctx, userID)
+	f, err := s.Facts(ctx, db, userID)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (s *Service) Charge(ctx context.Context, tx DBTX, in ChargeInput) (ChargeRe
 	if billingMicros < 0 {
 		return ChargeResult{}, ErrInvalid
 	}
-	if err := s.checkAccount(ctx, in.UserID); err != nil {
+	if err := s.checkAccount(ctx, tx, in.UserID); err != nil {
 		return ChargeResult{}, err
 	}
 
@@ -181,7 +181,7 @@ func (s *Service) CanStart(ctx context.Context, userID pgtype.UUID, statKind str
 	if s.Store == nil {
 		return StartCheck{}, ErrUnavailable
 	}
-	if err := s.checkAccount(ctx, userID); err != nil {
+	if err := s.checkAccount(ctx, nil, userID); err != nil {
 		return StartCheck{}, err
 	}
 	balance, err := s.Store.Balance(ctx, nil, userID)
@@ -321,7 +321,7 @@ func (s *Service) Grant(ctx context.Context, tx DBTX, in GrantInput) (int64, err
 		strings.TrimSpace(in.Reason) == "" || in.IdempotencyKey == "" {
 		return 0, ErrInvalid
 	}
-	if err := s.checkAccount(ctx, in.UserID); err != nil {
+	if err := s.checkAccount(ctx, tx, in.UserID); err != nil {
 		return 0, err
 	}
 

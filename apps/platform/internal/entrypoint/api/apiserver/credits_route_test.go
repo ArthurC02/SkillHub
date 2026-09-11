@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -233,5 +234,45 @@ func TestOperatorGrantUnblocksANewSession(t *testing.T) {
 	}
 	if reason, _ := after["block_reason"].(string); reason != "" {
 		t.Fatalf("can_start but block_reason is still %q", reason)
+	}
+}
+
+func TestAnOperatorGrantCompletesOnOneConnection(t *testing.T) {
+	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping CRED route test")
+	}
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.MaxConns = 1
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	app, err := NewApp(Config{Pool: pool, OAuth: &identity.GitHubOAuth{}, Secure: false, DevLogin: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := app.Deps.Credits
+	if h == nil || h.Ledger == nil {
+		t.Fatal("NewApp wired no credit ledger")
+	}
+	mux := http.NewServeMux()
+	app.Auth.Mount(mux)
+	mux.HandleFunc("POST /admin/credits/{workspace_id}/grants", app.Auth.RequireOperator(h.Grant))
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	member := creditsLogin(t, srv, "credits-member-oneconn")
+	operator := creditsLogin(t, srv, "credits-operator-oneconn")
+	app.Auth.Operators = map[string]bool{operator.userID: true}
+	operator.Timeout = 10 * time.Second
+
+	code, body := operator.postJSON(t, "/admin/credits/"+member.workspaceID+"/grants", `{"amount_credits":100,"reason":"beta reward"}`)
+	if code != http.StatusOK {
+		t.Fatalf("operator grant on a one-connection pool: got %d, body %v", code, body)
 	}
 }

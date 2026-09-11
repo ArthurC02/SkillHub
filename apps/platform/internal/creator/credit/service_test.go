@@ -321,7 +321,7 @@ func TestGrantAppliesToBalance(t *testing.T) {
 func TestFactsBlockPurgedAccount(t *testing.T) {
 	store := newFakeStore()
 	user := testUser(11)
-	s := &Service{Store: store, Config: testConfig(), Facts: func(ctx context.Context, id pgtype.UUID) (AccountFacts, error) {
+	s := &Service{Store: store, Config: testConfig(), Facts: func(ctx context.Context, _ DBTX, id pgtype.UUID) (AccountFacts, error) {
 		return AccountFacts{Exists: true, Purged: true}, nil
 	}}
 	if _, err := s.Grant(context.Background(), nil, GrantInput{
@@ -374,4 +374,36 @@ func (f *fakeStore) SummarizeSession(context.Context, DBTX, pgtype.UUID) error {
 
 func (f *fakeStore) SweepSessionSummaries(context.Context, time.Time, time.Time) (int64, error) {
 	return 0, nil
+}
+
+func TestAccountChecksReadThroughTheCallersTransaction(t *testing.T) {
+	store := newFakeStore()
+	user := testUser(12)
+	store.balances[idKey(user)] = 100
+	var seen []DBTX
+	s := &Service{Store: store, Config: testConfig(), Facts: func(_ context.Context, db DBTX, _ pgtype.UUID) (AccountFacts, error) {
+		seen = append(seen, db)
+		return AccountFacts{Exists: true}, nil
+	}}
+	if _, err := s.Grant(context.Background(), fakeTx{}, GrantInput{
+		UserID: user, EntryKind: EntryGrant, Credits: 10, Reason: "beta reward",
+		OperatorID: testUser(99), IdempotencyKey: "g5",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	usd := int64(1_000)
+	if _, err := s.Charge(context.Background(), fakeTx{}, ChargeInput{
+		Kind: KindCreationStep, UserID: user, IdempotencyKey: "session-12:rev-1",
+		UsdMicros: &usd, ReservedUsdMicros: usd,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(seen) != 2 {
+		t.Fatalf("account checks = %d, want one for the grant and one for the charge", len(seen))
+	}
+	for i, db := range seen {
+		if db == nil {
+			t.Errorf("account check %d ran outside the caller's transaction; on a one-connection pool it waits forever", i+1)
+		}
+	}
 }

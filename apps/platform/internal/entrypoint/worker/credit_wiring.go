@@ -29,8 +29,11 @@ func newCreditService(pool *pgxpool.Pool) (*credit.Service, error) {
 	return &credit.Service{
 		Store:  credit.NewPostgresStore(pool),
 		Config: cfg,
-		Facts: func(ctx context.Context, userID pgtype.UUID) (credit.AccountFacts, error) {
-			present, purging, err := ids.AccountState(ctx, userID)
+		Facts: func(ctx context.Context, db credit.DBTX, userID pgtype.UUID) (credit.AccountFacts, error) {
+			if db == nil {
+				db = pool
+			}
+			present, purging, err := ids.AccountStateIn(ctx, db, userID)
 			if err != nil {
 				return credit.AccountFacts{}, err
 			}

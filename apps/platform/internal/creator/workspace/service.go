@@ -336,7 +336,14 @@ func (s *Service) WorkspaceOwnerIn(ctx context.Context, db gen.DBTX, workspaceID
 }
 
 func (s *Service) AccountState(ctx context.Context, userID pgtype.UUID) (present bool, purging bool, err error) {
-	row, err := s.queries().GetUserAccountState(ctx, userID)
+	return s.AccountStateIn(ctx, s.Pool, userID)
+}
+
+func (s *Service) AccountStateIn(ctx context.Context, db gen.DBTX, userID pgtype.UUID) (present bool, purging bool, err error) {
+	if db == nil {
+		return false, false, errors.New("identity: account state lookup has no database handle")
+	}
+	row, err := gen.New(db).GetUserAccountState(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, false, nil
 	}
