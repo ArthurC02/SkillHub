@@ -262,3 +262,10 @@ Run 屬於 `trial/execution`，而附錄 A 沒有 `run → credit` 這一列，�
 **讀不到花費的 Run，之後讀到了。** 讀不到時記的那筆 `estimated` 0 元事件，用的冪等鍵和之後的實付是同一把；下一次清理讀到實付時，成本事件被冪等鍵擋成空操作，點數扣了，真實支出卻沒進統計讀的 `cost_events`。估計的那一筆改用自己的鍵。
 
 **加成設定有上限。** `CREDIT_MARKUP_BPS` 超過 1,000,000（100 倍）時，換算會拒絕每一筆——每次扣點都失敗、每次呼叫都沒有收點。改成啟動時就拒絕這個設定。
+
+## 2026-09-11 補記：待決策的四個值、第七個成本種類，以及決策 11 的一半被取代
+
+- **面額、加成、保守常數、滾動窗維持現值**（[`05` R-75](../plans/05-pending-rulings.md)）：1 credit = US$0.001、加成 1.3、保守開始門檻 70 點、滾動窗 7 天。「待決策」那四項的原文不改，答案記在這裡。
+- **決策 3 的成本種類多一個 `match_reasons`**（`04` 丙-232）：搜尋結果旁「為什麼符合」的說明是一次文字生成，原本沒有可寫的種類，錢照花、不進帳。負責人裁定獨立成一種、不併入 `search_embedding`。migration 0064 讓 `cost_events` 與 `cost_statistics` 的 CHECK 都收下它；`apps/llm` 的回應多帶 `model`（契約先改），`catalog` 在每次成功的呼叫之後寫一筆，每日重算多算這一種。它和搜尋一樣只記不扣（R-74）。
+- **決策 11 的帳號刪除那一半由 [ADR-073](./ADR-073-account-deletion-keeps-the-credit-ledger.md) 取代**：帳號清除不再刪 Credit 紀錄。保存期限那一半不變。
+- **兩個組裝根的 Credit 接線併成一份。** Worker 與 API 各有一份逐行相同的 `wireCreationCredit`／`wireRunCredit`，只有 API 那份有測試，而實際在 Run 清理時扣點的是 Worker 那份。現在由 Worker 匯出、API 呼叫同一份；把 Worker 那份的兩處修法各還原一次，API 的測試都會紅。
