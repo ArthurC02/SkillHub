@@ -262,7 +262,7 @@ const FORKED = {
   },
 } as const;
 
-test("WS-004 the own-skills row says whether this skill can be taken away", async () => {
+test("WS-004 a gallery card flags only what stops the skill being taken away", async () => {
   vi.stubGlobal("fetch", () =>
     json({
       skills: [
@@ -307,25 +307,22 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
   );
   await render(<WorkspaceSkills />, () => text().includes("一份自己傳上來的套件"));
 
-  expect(text()).toContain("授權未知，不能打包");
-  expect(text()).toContain("可打包下載");
-  expect(text()).toContain("可下載（你自己帶進來的）");
-  expect(text()).toContain("可下載（平台為你生成的）");
-  expect(text()).toContain("Fork 自");
-  expect(text()).toContain("自己匯入");
+  const flags = (name: string) =>
+    Array.from(container.querySelectorAll(".skill-card"))
+      .find((card) => (card.textContent ?? "").includes(name))
+      ?.querySelector(".skill-card-flags")?.textContent ?? "";
+  expect(flags("沒人判定過的")).toContain("授權未知，不能打包");
+  expect(flags("平台生成的")).toContain("平台生成，未經人工檢視");
+  expect(flags("自己匯入的")).not.toContain("可下載");
+  expect(text(), "a card that can be taken away still says so").not.toContain("可打包下載");
   expect(text()).toContain("只列出前 100 個");
-
-  expect(
-    text().split("相容性驗證").length - 1,
-    "the compatibility absence is printed once per row again",
-  ).toBe(1);
 
   expect(text(), "清單有列的時候，那句『公開目錄的不在』才是它在做的事").toContain(
     "公開目錄的不在",
   );
 });
 
-test("WS-004 a forked row says the scan happened somewhere else, not that it passed", async () => {
+test("WS-004 a forked card reaches its source from the manage menu, and claims no scan", async () => {
   vi.stubGlobal("fetch", () =>
     json({
       skills: [
@@ -345,48 +342,36 @@ test("WS-004 a forked row says the scan happened somewhere else, not that it pas
   );
   await render(<WorkspaceSkills />, () => text().includes("從目錄 Fork 的"));
 
-  expect(text()).toContain("未測量");
-  expect(text()).toContain("靜態掃描是在來源工作區做的");
+  const menu = container.querySelector(".skill-menu")!;
+  expect(Array.from(menu.querySelectorAll("a"), (a) => a.getAttribute("href"))).toContain(
+    "/skills/s-origin",
+  );
+  expect(container.querySelector(".skill-card-flags")).toBeNull();
   expect(text()).not.toContain("未發現警告");
-  expect(container.querySelector(".badge-row")?.textContent ?? "").not.toBe("");
 });
 
-test("WS-004 a fork of identical bytes shows the source's scan, attributed and dated to the source", async () => {
+test("WS-004 a gallery card keeps the scan's warning count and drops the all-clear sentence", async () => {
   vi.stubGlobal("fetch", () =>
     json({
       skills: [
         {
           skill_id: SKILL,
-          name: "Fork 來的",
-          summary: "從目錄 Fork 的。",
-          redistribution: "allowed",
+          name: "有警告的",
+          summary: "掃出兩個警告。",
+          redistribution: "self_supplied",
           access_restriction: null,
-          forked_from_skill_id: "s-origin",
-          risk: SCANNED.risk,
-          verification: {
-            value: "scanned",
-            label: "已掃描（來源）",
-            note: "這個版本是 Fork 進來的複本,內容雜湊與來源「PDF Summariser」相同,所以沿用來源匯入時的靜態掃描結果。",
-            scanned_at: "2026-07-01T09:00:00Z",
-          },
+          risk: { ...SCANNED.risk, warnings: 2, disclosures: [] },
+          verification: SCANNED.verification,
         },
       ],
       limit: 100,
       truncated: false,
     }),
   );
-  await render(<WorkspaceSkills />, () => text().includes("從目錄 Fork 的"));
+  await render(<WorkspaceSkills />, () => text().includes("掃出兩個警告"));
 
-  expect(text()).toContain("已掃描（來源）");
-  expect(text()).toContain("PDF Summariser");
-  expect(
-    Array.from(container.querySelectorAll("time")).map((t) => t.getAttribute("dateTime")),
-  ).toContain("2026-07-01T09:00:00Z");
-  expect(text()).toContain("含可執行 Script 檔案");
-  const hrefs = Array.from(container.querySelectorAll("a")).map(
-    (a) => a.getAttribute("href") ?? "",
-  );
-  expect(hrefs).toContain("/skills/s-origin");
+  expect(container.querySelector(".skill-card-flags")?.textContent).toBe("警告 2");
+  expect(text()).not.toContain("靜態掃描未發現警告");
 });
 
 test("WS-004 the own-skills list links each row on to its files and packaging", async () => {
@@ -546,68 +531,6 @@ test("GEN-008 with the flag on, /workspace/skills shows the door and not the wor
   );
   expect(door, "第三張卡不是一扇門").toBeTruthy();
   expect(door!.getAttribute("href")).toBe("/workspace/creations");
-});
-
-function occurrences(needle: string) {
-  return text().split(needle).length - 1;
-}
-
-test("設計 §2.13 一句逐列相同的但書只講一次，而分不出是哪一列的那一句不准搬", async () => {
-  const row = (id: string, name: string, facets: typeof SCANNED | typeof FORKED) => ({
-    skill_id: id,
-    name,
-    summary: "一份套件。",
-    redistribution: "self_supplied",
-    access_restriction: null,
-    ...facets,
-  });
-  vi.stubGlobal("fetch", () =>
-    json({
-      skills: [
-        row(SKILL, "掃過的甲", SCANNED),
-        row("00000000-0000-4000-8000-000000000002", "掃過的乙", SCANNED),
-        row("00000000-0000-4000-8000-000000000003", "Fork 來的", FORKED),
-      ],
-      limit: 100,
-      total: 3,
-      truncated: false,
-    }),
-  );
-  await render(<WorkspaceSkills />, () => text().includes("Fork 來的"));
-
-  expect(occurrences(SCANNED.verification.note)).toBe(1);
-  expect(text()).toContain(`掃描狀態「${SCANNED.verification.label}」：`);
-  expect(occurrences(FORKED.verification.note)).toBe(1);
-  expect(text()).toContain(`掃描狀態「${FORKED.verification.label}」：`);
-
-  expect(occurrences(SCANNED.risk.note)).toBe(0);
-  expect(occurrences(FORKED.risk.note)).toBe(0);
-  expect(occurrences("未掃描"), "沒掃過的那一列失去了挑出自己那一行的詞").toBe(1);
-});
-
-test("設計 §2.13 一列的清單上，靜態掃描的來歷只講一次，掃描狀態徽章留在列上", async () => {
-  vi.stubGlobal("fetch", () =>
-    json({
-      skills: [
-        {
-          skill_id: SKILL,
-          name: "掃過的甲",
-          summary: "一份套件。",
-          redistribution: "unknown",
-          access_restriction: null,
-          ...SCANNED,
-        },
-      ],
-      limit: 100,
-      total: 1,
-      truncated: false,
-    }),
-  );
-  await render(<WorkspaceSkills />, () => text().includes("掃過的甲"));
-
-  expect(occurrences("不執行套件內任何程式碼")).toBe(1);
-  expect(occurrences("逐項")).toBe(1);
-  expect(text()).toContain(`掃描狀態：${SCANNED.verification.label}`);
 });
 
 const hub = () => container.querySelector<HTMLElement>(".create-hub");
