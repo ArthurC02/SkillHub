@@ -24,16 +24,11 @@ func (q *Queries) CountArtifactsSharingObject(ctx context.Context, objectKey str
 	return column_1, err
 }
 
-const createDownloadArtifactDetail = `-- name: CreateDownloadArtifactDetail :one
+const createDownloadArtifactDetail = `-- name: CreateDownloadArtifactDetail :exec
 INSERT INTO download_artifacts (
     artifact_id, workspace_id, skill_version_id, target,
     profile_version, packager_version, manifest_hash, includes_test_cases
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING artifact_id, kind, workspace_id, skill_version_id, target, profile_version, packager_version, manifest_hash, includes_test_cases, (
-    SELECT max(v2.version_number) FROM skill_versions v2
-     WHERE v2.skill_id = (SELECT v1.skill_id FROM skill_versions v1
-                           WHERE v1.id = download_artifacts.skill_version_id)
-)::int AS latest_version_number
 `
 
 type CreateDownloadArtifactDetailParams struct {
@@ -47,21 +42,8 @@ type CreateDownloadArtifactDetailParams struct {
 	IncludesTestCases bool
 }
 
-type CreateDownloadArtifactDetailRow struct {
-	ArtifactID          pgtype.UUID
-	Kind                string
-	WorkspaceID         pgtype.UUID
-	SkillVersionID      pgtype.UUID
-	Target              string
-	ProfileVersion      string
-	PackagerVersion     string
-	ManifestHash        string
-	IncludesTestCases   bool
-	LatestVersionNumber int32
-}
-
-func (q *Queries) CreateDownloadArtifactDetail(ctx context.Context, arg CreateDownloadArtifactDetailParams) (CreateDownloadArtifactDetailRow, error) {
-	row := q.db.QueryRow(ctx, createDownloadArtifactDetail,
+func (q *Queries) CreateDownloadArtifactDetail(ctx context.Context, arg CreateDownloadArtifactDetailParams) error {
+	_, err := q.db.Exec(ctx, createDownloadArtifactDetail,
 		arg.ArtifactID,
 		arg.WorkspaceID,
 		arg.SkillVersionID,
@@ -71,20 +53,7 @@ func (q *Queries) CreateDownloadArtifactDetail(ctx context.Context, arg CreateDo
 		arg.ManifestHash,
 		arg.IncludesTestCases,
 	)
-	var i CreateDownloadArtifactDetailRow
-	err := row.Scan(
-		&i.ArtifactID,
-		&i.Kind,
-		&i.WorkspaceID,
-		&i.SkillVersionID,
-		&i.Target,
-		&i.ProfileVersion,
-		&i.PackagerVersion,
-		&i.ManifestHash,
-		&i.IncludesTestCases,
-		&i.LatestVersionNumber,
-	)
-	return i, err
+	return err
 }
 
 const createDownloadArtifactRow = `-- name: CreateDownloadArtifactRow :one
@@ -207,16 +176,12 @@ func (q *Queries) DeleteWorkspaceDownloadRecords(ctx context.Context, workspaceI
 const findReusableDownloadArtifact = `-- name: FindReusableDownloadArtifact :one
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
-       sv.version_number,
-       (SELECT max(v2.version_number) FROM skill_versions v2
-         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
        a.expires_at, a.created_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
            AS download_count
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
-JOIN skill_versions sv ON sv.id = da.skill_version_id
 WHERE da.workspace_id = $1
   AND da.skill_version_id = $2
   AND da.target = $3
@@ -241,22 +206,20 @@ type FindReusableDownloadArtifactParams struct {
 }
 
 type FindReusableDownloadArtifactRow struct {
-	ArtifactID          pgtype.UUID
-	SkillVersionID      pgtype.UUID
-	Target              string
-	ProfileVersion      string
-	PackagerVersion     string
-	ManifestHash        string
-	IncludesTestCases   bool
-	VersionNumber       int32
-	LatestVersionNumber int32
-	FileName            string
-	SizeBytes           int64
-	ContentHash         string
-	ScanStatus          string
-	ExpiresAt           pgtype.Timestamptz
-	CreatedAt           pgtype.Timestamptz
-	DownloadCount       int64
+	ArtifactID        pgtype.UUID
+	SkillVersionID    pgtype.UUID
+	Target            string
+	ProfileVersion    string
+	PackagerVersion   string
+	ManifestHash      string
+	IncludesTestCases bool
+	FileName          string
+	SizeBytes         int64
+	ContentHash       string
+	ScanStatus        string
+	ExpiresAt         pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	DownloadCount     int64
 }
 
 func (q *Queries) FindReusableDownloadArtifact(ctx context.Context, arg FindReusableDownloadArtifactParams) (FindReusableDownloadArtifactRow, error) {
@@ -277,8 +240,6 @@ func (q *Queries) FindReusableDownloadArtifact(ctx context.Context, arg FindReus
 		&i.PackagerVersion,
 		&i.ManifestHash,
 		&i.IncludesTestCases,
-		&i.VersionNumber,
-		&i.LatestVersionNumber,
 		&i.FileName,
 		&i.SizeBytes,
 		&i.ContentHash,
@@ -293,19 +254,12 @@ func (q *Queries) FindReusableDownloadArtifact(ctx context.Context, arg FindReus
 const getDownloadArtifact = `-- name: GetDownloadArtifact :one
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
-       sv.skill_id,
-       sv.version_number,
-       (SELECT max(v2.version_number) FROM skill_versions v2
-         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status, a.object_key,
        a.expires_at, a.created_at, a.purged_at,
-       sk.access_restriction, sk.redistribution,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
            AS download_count
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
-JOIN skill_versions sv ON sv.id = da.skill_version_id
-JOIN skills sk ON sk.id = sv.skill_id
 WHERE da.workspace_id = $1 AND da.artifact_id = $2 AND a.deleted_at IS NULL
 `
 
@@ -315,27 +269,22 @@ type GetDownloadArtifactParams struct {
 }
 
 type GetDownloadArtifactRow struct {
-	ArtifactID          pgtype.UUID
-	SkillVersionID      pgtype.UUID
-	Target              string
-	ProfileVersion      string
-	PackagerVersion     string
-	ManifestHash        string
-	IncludesTestCases   bool
-	SkillID             pgtype.UUID
-	VersionNumber       int32
-	LatestVersionNumber int32
-	FileName            string
-	SizeBytes           int64
-	ContentHash         string
-	ScanStatus          string
-	ObjectKey           string
-	ExpiresAt           pgtype.Timestamptz
-	CreatedAt           pgtype.Timestamptz
-	PurgedAt            pgtype.Timestamptz
-	AccessRestriction   *string
-	Redistribution      string
-	DownloadCount       int64
+	ArtifactID        pgtype.UUID
+	SkillVersionID    pgtype.UUID
+	Target            string
+	ProfileVersion    string
+	PackagerVersion   string
+	ManifestHash      string
+	IncludesTestCases bool
+	FileName          string
+	SizeBytes         int64
+	ContentHash       string
+	ScanStatus        string
+	ObjectKey         string
+	ExpiresAt         pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	PurgedAt          pgtype.Timestamptz
+	DownloadCount     int64
 }
 
 func (q *Queries) GetDownloadArtifact(ctx context.Context, arg GetDownloadArtifactParams) (GetDownloadArtifactRow, error) {
@@ -349,9 +298,6 @@ func (q *Queries) GetDownloadArtifact(ctx context.Context, arg GetDownloadArtifa
 		&i.PackagerVersion,
 		&i.ManifestHash,
 		&i.IncludesTestCases,
-		&i.SkillID,
-		&i.VersionNumber,
-		&i.LatestVersionNumber,
 		&i.FileName,
 		&i.SizeBytes,
 		&i.ContentHash,
@@ -360,8 +306,6 @@ func (q *Queries) GetDownloadArtifact(ctx context.Context, arg GetDownloadArtifa
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.PurgedAt,
-		&i.AccessRestriction,
-		&i.Redistribution,
 		&i.DownloadCount,
 	)
 	return i, err
@@ -520,40 +464,32 @@ func (q *Queries) InsertDownloadRecord(ctx context.Context, arg InsertDownloadRe
 const listDownloadArtifacts = `-- name: ListDownloadArtifacts :many
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
-       sv.skill_id,
-       sv.version_number,
-       (SELECT max(v2.version_number) FROM skill_versions v2
-         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
        a.expires_at, a.created_at, a.purged_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
            AS download_count
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
-JOIN skill_versions sv ON sv.id = da.skill_version_id
 WHERE da.workspace_id = $1 AND a.deleted_at IS NULL
 ORDER BY a.created_at DESC, da.artifact_id
 `
 
 type ListDownloadArtifactsRow struct {
-	ArtifactID          pgtype.UUID
-	SkillVersionID      pgtype.UUID
-	Target              string
-	ProfileVersion      string
-	PackagerVersion     string
-	ManifestHash        string
-	IncludesTestCases   bool
-	SkillID             pgtype.UUID
-	VersionNumber       int32
-	LatestVersionNumber int32
-	FileName            string
-	SizeBytes           int64
-	ContentHash         string
-	ScanStatus          string
-	ExpiresAt           pgtype.Timestamptz
-	CreatedAt           pgtype.Timestamptz
-	PurgedAt            pgtype.Timestamptz
-	DownloadCount       int64
+	ArtifactID        pgtype.UUID
+	SkillVersionID    pgtype.UUID
+	Target            string
+	ProfileVersion    string
+	PackagerVersion   string
+	ManifestHash      string
+	IncludesTestCases bool
+	FileName          string
+	SizeBytes         int64
+	ContentHash       string
+	ScanStatus        string
+	ExpiresAt         pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	PurgedAt          pgtype.Timestamptz
+	DownloadCount     int64
 }
 
 func (q *Queries) ListDownloadArtifacts(ctx context.Context, workspaceID pgtype.UUID) ([]ListDownloadArtifactsRow, error) {
@@ -573,9 +509,6 @@ func (q *Queries) ListDownloadArtifacts(ctx context.Context, workspaceID pgtype.
 			&i.PackagerVersion,
 			&i.ManifestHash,
 			&i.IncludesTestCases,
-			&i.SkillID,
-			&i.VersionNumber,
-			&i.LatestVersionNumber,
 			&i.FileName,
 			&i.SizeBytes,
 			&i.ContentHash,
@@ -596,10 +529,9 @@ func (q *Queries) ListDownloadArtifacts(ctx context.Context, workspaceID pgtype.
 }
 
 const listDownloadRecordsForArtifact = `-- name: ListDownloadRecordsForArtifact :many
-SELECT dr.downloaded_at, dr.actor_user_id, u.display_name
+SELECT dr.downloaded_at, dr.actor_user_id
 FROM download_records dr
 JOIN download_artifacts da ON da.artifact_id = dr.artifact_id
-LEFT JOIN users u ON u.id = dr.actor_user_id
 WHERE dr.workspace_id = $1 AND dr.artifact_id = $2
   AND da.workspace_id = $1
 ORDER BY dr.downloaded_at DESC
@@ -613,7 +545,6 @@ type ListDownloadRecordsForArtifactParams struct {
 type ListDownloadRecordsForArtifactRow struct {
 	DownloadedAt pgtype.Timestamptz
 	ActorUserID  pgtype.UUID
-	DisplayName  *string
 }
 
 func (q *Queries) ListDownloadRecordsForArtifact(ctx context.Context, arg ListDownloadRecordsForArtifactParams) ([]ListDownloadRecordsForArtifactRow, error) {
@@ -625,7 +556,7 @@ func (q *Queries) ListDownloadRecordsForArtifact(ctx context.Context, arg ListDo
 	var items []ListDownloadRecordsForArtifactRow
 	for rows.Next() {
 		var i ListDownloadRecordsForArtifactRow
-		if err := rows.Scan(&i.DownloadedAt, &i.ActorUserID, &i.DisplayName); err != nil {
+		if err := rows.Scan(&i.DownloadedAt, &i.ActorUserID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

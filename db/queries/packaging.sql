@@ -1,16 +1,12 @@
 -- name: FindReusableDownloadArtifact :one
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
-       sv.version_number,
-       (SELECT max(v2.version_number) FROM skill_versions v2
-         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
        a.expires_at, a.created_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
            AS download_count
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
-JOIN skill_versions sv ON sv.id = da.skill_version_id
 WHERE da.workspace_id = $1
   AND da.skill_version_id = $2
   AND da.target = $3
@@ -31,16 +27,11 @@ INSERT INTO artifacts (
 ) VALUES ($1, NULL, 'download_package', $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
--- name: CreateDownloadArtifactDetail :one
+-- name: CreateDownloadArtifactDetail :exec
 INSERT INTO download_artifacts (
     artifact_id, workspace_id, skill_version_id, target,
     profile_version, packager_version, manifest_hash, includes_test_cases
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING *, (
-    SELECT max(v2.version_number) FROM skill_versions v2
-     WHERE v2.skill_id = (SELECT v1.skill_id FROM skill_versions v1
-                           WHERE v1.id = download_artifacts.skill_version_id)
-)::int AS latest_version_number;
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: MarkDownloadArtifactAvailable :exec
 UPDATE artifacts SET scan_status = 'available'
@@ -49,36 +40,24 @@ WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package';
 -- name: ListDownloadArtifacts :many
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
-       sv.skill_id,
-       sv.version_number,
-       (SELECT max(v2.version_number) FROM skill_versions v2
-         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
        a.expires_at, a.created_at, a.purged_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
            AS download_count
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
-JOIN skill_versions sv ON sv.id = da.skill_version_id
 WHERE da.workspace_id = $1 AND a.deleted_at IS NULL
 ORDER BY a.created_at DESC, da.artifact_id;
 
 -- name: GetDownloadArtifact :one
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
-       sv.skill_id,
-       sv.version_number,
-       (SELECT max(v2.version_number) FROM skill_versions v2
-         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status, a.object_key,
        a.expires_at, a.created_at, a.purged_at,
-       sk.access_restriction, sk.redistribution,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
            AS download_count
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
-JOIN skill_versions sv ON sv.id = da.skill_version_id
-JOIN skills sk ON sk.id = sv.skill_id
 WHERE da.workspace_id = $1 AND da.artifact_id = $2 AND a.deleted_at IS NULL;
 
 -- name: InsertDownloadRecord :exec
@@ -86,10 +65,9 @@ INSERT INTO download_records (workspace_id, artifact_id, actor_user_id)
 VALUES ($1, $2, $3);
 
 -- name: ListDownloadRecordsForArtifact :many
-SELECT dr.downloaded_at, dr.actor_user_id, u.display_name
+SELECT dr.downloaded_at, dr.actor_user_id
 FROM download_records dr
 JOIN download_artifacts da ON da.artifact_id = dr.artifact_id
-LEFT JOIN users u ON u.id = dr.actor_user_id
 WHERE dr.workspace_id = @workspace_id AND dr.artifact_id = @artifact_id
   AND da.workspace_id = @workspace_id
 ORDER BY dr.downloaded_at DESC;

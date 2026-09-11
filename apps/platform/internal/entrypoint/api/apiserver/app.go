@@ -191,9 +191,10 @@ func NewApp(cfg Config) (*App, error) {
 
 	packagingSvc := &packaging.Service{
 		Pool: cfg.Pool, TestLab: testlabSvc, Store: cfg.Store, Profiles: cfg.Profiles,
-		ClearSightings:  objreconcile.ClearArtifactSightings,
-		MayStoreObjects: identitySvc.MayStoreObjects,
-		Retention:       policy.DownloadRetention(cfg.DownloadRetention),
+		ClearSightings:   objreconcile.ClearArtifactSightings,
+		MayStoreObjects:  identitySvc.MayStoreObjects,
+		ReadDisplayNames: identitySvc.DisplayNames,
+		Retention:        policy.DownloadRetention(cfg.DownloadRetention),
 		AppliedSuggestions: func(ctx context.Context, versionID, workspaceID pgtype.UUID) ([]packaging.AppliedSuggestion, error) {
 			return packagingSuggestions(ctx, evalSvc, versionID, workspaceID)
 		},
@@ -382,6 +383,23 @@ func wirePackagingRegistryReaders(service *packaging.Service, registryService *r
 	service.CuratedSource = func(ctx context.Context, skillID pgtype.UUID) (packaging.CuratedSource, bool, error) {
 		skill, found, err := registryService.CatalogSkill(ctx, skillID)
 		return packaging.CuratedSource{SkillID: skill.ID, WorkspaceID: skill.WorkspaceID}, found, err
+	}
+	service.ReadVersionSummaries = func(
+		ctx context.Context, workspaceID pgtype.UUID, versionIDs []pgtype.UUID,
+	) (map[pgtype.UUID]packaging.VersionSummary, error) {
+		summaries, err := registryService.VersionSummaries(ctx, workspaceID, versionIDs)
+		if err != nil {
+			return nil, err
+		}
+		out := make(map[pgtype.UUID]packaging.VersionSummary, len(summaries))
+		for id, summary := range summaries {
+			out[id] = packaging.VersionSummary{
+				SkillID: summary.SkillID, VersionNumber: summary.VersionNumber,
+				LatestVersionNumber: summary.LatestVersionNumber,
+				AccessRestriction:   summary.AccessRestriction, Redistribution: summary.Redistribution,
+			}
+		}
+		return out, nil
 	}
 	service.ReadOldest = func(ctx context.Context, skillID pgtype.UUID) (packaging.OldestVersion, bool, error) {
 		version, found, err := registryService.OldestVersion(ctx, skillID)

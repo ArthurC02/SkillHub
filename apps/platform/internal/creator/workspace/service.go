@@ -317,6 +317,21 @@ func (s *Service) PersonalWorkspace(ctx context.Context, user User) (Workspace, 
 	return workspaceDTO(ws[0]), nil
 }
 
+func (s *Service) DisplayNames(ctx context.Context, userIDs []pgtype.UUID) (map[pgtype.UUID]string, error) {
+	names := make(map[pgtype.UUID]string, len(userIDs))
+	if len(userIDs) == 0 {
+		return names, nil
+	}
+	rows, err := gen.New(s.Pool).ListUserDisplayNames(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		names[row.ID] = row.DisplayName
+	}
+	return names, nil
+}
+
 func (s *Service) WorkspaceOwner(ctx context.Context, workspaceID pgtype.UUID) (pgtype.UUID, error) {
 	return s.WorkspaceOwnerIn(ctx, s.Pool, workspaceID)
 }

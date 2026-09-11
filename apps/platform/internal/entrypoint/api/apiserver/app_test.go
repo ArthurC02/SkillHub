@@ -148,7 +148,8 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	}
 	if app.PackagingSvc.ReadSkill == nil || app.PackagingSvc.ReadVersion == nil ||
 		app.PackagingSvc.ReadCompatibility == nil || app.PackagingSvc.ReadPrevious == nil ||
-		app.PackagingSvc.ReadLineage == nil || app.PackagingSvc.ReadOldest == nil {
+		app.PackagingSvc.ReadLineage == nil || app.PackagingSvc.ReadOldest == nil ||
+		app.PackagingSvc.ReadVersionSummaries == nil || app.PackagingSvc.ReadDisplayNames == nil {
 		t.Error("the packaging service is missing Registry owner reads")
 	}
 	if app.RunSvc.ActiveArtifactReferences == nil {

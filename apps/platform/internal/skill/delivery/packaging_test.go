@@ -33,6 +33,9 @@ func TestRequireOwnerReadsDoesNotInspectTestLabInternals(t *testing.T) {
 		ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
 			return VersionFacts{}, false, nil
 		},
+		ReadVersionSummaries: func(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error) {
+			return nil, nil
+		},
 		ReadCompatibility: func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error) {
 			return RuntimeCompatibility{}, false, nil
 		},

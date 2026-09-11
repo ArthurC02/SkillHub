@@ -3,6 +3,7 @@ package packaging
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -20,22 +21,44 @@ import (
 
 var ErrGone = errors.New("this package is no longer available for download")
 
+var errDownloadReadNotConfigured = errors.New("packaging: version summary or display name read is not configured")
+
+type downloadArtifact struct {
+	gen.GetDownloadArtifactRow
+	VersionSummary
+}
+
 func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]Artifact, error) {
+	if s.ReadVersionSummaries == nil {
+		return nil, errDownloadReadNotConfigured
+	}
 	rows, err := gen.New(s.Pool).ListDownloadArtifacts(ctx, ws.ID)
+	if err != nil {
+		return nil, err
+	}
+	versionIDs := make([]pgtype.UUID, len(rows))
+	for i, r := range rows {
+		versionIDs[i] = r.SkillVersionID
+	}
+	summaries, err := s.ReadVersionSummaries(ctx, ws.ID, versionIDs)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]Artifact, 0, len(rows))
 	for _, r := range rows {
+		summary, found := summaries[r.SkillVersionID]
+		if !found {
+			return nil, fmt.Errorf("%w: artifact %s", errVersionSummaryMissing, pgconv.UUIDString(r.ArtifactID))
+		}
 		out = append(out, Artifact{
-			ArtifactID: pgconv.UUIDString(r.ArtifactID), SkillID: pgconv.UUIDString(r.SkillID),
+			ArtifactID: pgconv.UUIDString(r.ArtifactID), SkillID: pgconv.UUIDString(summary.SkillID),
 			SkillVersionID: pgconv.UUIDString(r.SkillVersionID), Target: r.Target,
 			FileName: r.FileName, SizeBytes: r.SizeBytes,
 			ContentHash: r.ContentHash, ManifestHash: r.ManifestHash,
 			Status: r.ScanStatus, ExpiresAt: rfc3339(r.ExpiresAt), CreatedAt: rfc3339(r.CreatedAt),
 			DownloadCount: r.DownloadCount, IncludesTestCases: r.IncludesTestCases,
 			PackagerVersion: r.PackagerVersion, ProfileVersion: r.ProfileVersion,
-			VersionNumber: r.VersionNumber, LatestVersionNumber: r.LatestVersionNumber,
+			VersionNumber: summary.VersionNumber, LatestVersionNumber: summary.LatestVersionNumber,
 		}.withVersionState().withServeState(r.ExpiresAt.Time, r.PurgedAt.Time))
 	}
 	return out, nil
@@ -49,6 +72,9 @@ type DownloadRecord struct {
 func (s *Service) ListDownloadRecords(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
 ) ([]DownloadRecord, error) {
+	if s.ReadDisplayNames == nil {
+		return nil, errDownloadReadNotConfigured
+	}
 	if _, err := s.downloadRow(ctx, ws, id); err != nil {
 		return nil, err
 	}
@@ -57,12 +83,19 @@ func (s *Service) ListDownloadRecords(
 	if err != nil {
 		return nil, err
 	}
+	actors := make([]pgtype.UUID, len(rows))
+	for i, r := range rows {
+		actors[i] = r.ActorUserID
+	}
+	names, err := s.ReadDisplayNames(ctx, actors)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]DownloadRecord, 0, len(rows))
 	for _, r := range rows {
-
 		actor := "deleted user"
-		if r.DisplayName != nil && *r.DisplayName != "" {
-			actor = *r.DisplayName
+		if name := names[r.ActorUserID]; name != "" {
+			actor = name
 		}
 		out = append(out, DownloadRecord{DownloadedAt: rfc3339(r.DownloadedAt), Actor: actor})
 	}
@@ -88,20 +121,34 @@ func (s *Service) GetDownload(ctx context.Context, ws identity.Workspace, id pgt
 
 func (s *Service) downloadRow(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
-) (gen.GetDownloadArtifactRow, error) {
+) (downloadArtifact, error) {
+	if s.ReadVersionSummaries == nil {
+		return downloadArtifact{}, errDownloadReadNotConfigured
+	}
 	row, err := gen.New(s.Pool).GetDownloadArtifact(ctx, gen.GetDownloadArtifactParams{
 		WorkspaceID: ws.ID, ArtifactID: id,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return row, ErrNotFound
+		return downloadArtifact{}, ErrNotFound
 	}
-	return row, err
+	if err != nil {
+		return downloadArtifact{}, err
+	}
+	summaries, err := s.ReadVersionSummaries(ctx, ws.ID, []pgtype.UUID{row.SkillVersionID})
+	if err != nil {
+		return downloadArtifact{}, err
+	}
+	summary, found := summaries[row.SkillVersionID]
+	if !found {
+		return downloadArtifact{}, ErrNotFound
+	}
+	return downloadArtifact{GetDownloadArtifactRow: row, VersionSummary: summary}, nil
 }
 
 func (s *Service) Download(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
-) (gen.GetDownloadArtifactRow, []byte, error) {
-	var none gen.GetDownloadArtifactRow
+) (downloadArtifact, []byte, error) {
+	var none downloadArtifact
 	if s.Store == nil {
 		return none, nil, ErrNoStore
 	}

@@ -52,6 +52,7 @@ var (
 
 	ErrRetentionNotConfigured = policy.ErrRetentionNotConfigured
 	errOwnerReadNotConfigured = errors.New("packaging: owner reads not injected")
+	errVersionSummaryMissing  = errors.New("packaging: a download's skill version is gone")
 )
 
 type ObjectStore interface {
@@ -84,6 +85,17 @@ type Service struct {
 	ReadPrevious      func(context.Context, pgtype.UUID, pgtype.UUID, int32) (PreviousVersion, bool, error)
 	ReadLineage       func(context.Context, pgtype.UUID) (LineageStep, bool, error)
 	ReadOldest        func(context.Context, pgtype.UUID) (OldestVersion, bool, error)
+
+	ReadVersionSummaries func(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error)
+	ReadDisplayNames     func(context.Context, []pgtype.UUID) (map[pgtype.UUID]string, error)
+}
+
+type VersionSummary struct {
+	SkillID             pgtype.UUID
+	VersionNumber       int32
+	LatestVersionNumber int32
+	AccessRestriction   *string
+	Redistribution      string
 }
 
 type SkillFacts struct {
@@ -134,7 +146,7 @@ type OldestVersion struct {
 func (s *Service) requireOwnerReads() error {
 	if s.TestLab == nil || s.AppliedSuggestions == nil || s.SourceLineage == nil || s.ReadSkill == nil ||
 		s.ReadVersion == nil || s.ReadCompatibility == nil || s.ReadPrevious == nil ||
-		s.ReadLineage == nil || s.ReadOldest == nil || s.CuratedSource == nil {
+		s.ReadLineage == nil || s.ReadOldest == nil || s.CuratedSource == nil || s.ReadVersionSummaries == nil {
 		return errOwnerReadNotConfigured
 	}
 	return nil
@@ -180,6 +192,8 @@ type Plan struct {
 	BlockedMessage   string
 
 	Retention time.Duration
+
+	LatestVersionNumber int32
 
 	Validation ManifestValidation
 	Included   []IncludedTestCase
@@ -245,12 +259,21 @@ func (s *Service) Plan(
 	if version.SkillID != skill.ID {
 		return nil, ErrNotFound
 	}
+	summaries, err := s.ReadVersionSummaries(ctx, ws.ID, []pgtype.UUID{version.ID})
+	if err != nil {
+		return nil, err
+	}
+	summary, found := summaries[version.ID]
+	if !found {
+		return nil, ErrNotFound
+	}
 
 	p := &Plan{
 		Skill: skill, Version: version, Profile: profile,
 		IncludeTestCases: includeTestCases, Retention: retention,
-		Validation: ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
-		Included:   []IncludedTestCase{}, Excluded: []ExcludedTestCase{},
+		LatestVersionNumber: summary.LatestVersionNumber,
+		Validation:          ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
+		Included:            []IncludedTestCase{}, Excluded: []ExcludedTestCase{},
 		Dependencies: []string{},
 	}
 	if reason, msg := gate(skill); reason != "" {
@@ -696,7 +719,7 @@ func (s *Service) persist(
 		PackagerVersion: PackagerVersion, IncludesTestCases: p.IncludeTestCases,
 		ContentHash: p.ContentHash,
 	}); err == nil {
-		return Result{Artifact: reusedArtifact(p.Skill.ID, existing), Duplicate: true}, nil
+		return Result{Artifact: reusedArtifact(p, existing), Duplicate: true}, nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return Result{}, err
 	}
@@ -757,13 +780,12 @@ func (s *Service) persist(
 	if err != nil {
 		return Result{}, err
 	}
-	detail, err := q.CreateDownloadArtifactDetail(ctx, gen.CreateDownloadArtifactDetailParams{
+	if err := q.CreateDownloadArtifactDetail(ctx, gen.CreateDownloadArtifactDetailParams{
 		ArtifactID: row.ID, WorkspaceID: ws.ID, SkillVersionID: p.Version.ID,
 		Target: p.Profile.ID, ProfileVersion: p.Profile.Version,
 		PackagerVersion: PackagerVersion, ManifestHash: p.ManifestHash,
 		IncludesTestCases: p.IncludeTestCases,
-	})
-	if err != nil {
+	}); err != nil {
 		return Result{}, err
 	}
 
@@ -801,14 +823,14 @@ func (s *Service) persist(
 		PackagerVersion:     PackagerVersion,
 		ProfileVersion:      p.Profile.Version,
 		VersionNumber:       p.Version.VersionNumber,
-		LatestVersionNumber: detail.LatestVersionNumber,
+		LatestVersionNumber: p.LatestVersionNumber,
 	}.withVersionState().withServeState(row.ExpiresAt.Time, time.Time{})}, nil
 }
 
-func reusedArtifact(skillID pgtype.UUID, row gen.FindReusableDownloadArtifactRow) Artifact {
+func reusedArtifact(p *Plan, row gen.FindReusableDownloadArtifactRow) Artifact {
 	return Artifact{
 		ArtifactID:          pgconv.UUIDString(row.ArtifactID),
-		SkillID:             pgconv.UUIDString(skillID),
+		SkillID:             pgconv.UUIDString(p.Skill.ID),
 		SkillVersionID:      pgconv.UUIDString(row.SkillVersionID),
 		Target:              row.Target,
 		FileName:            row.FileName,
@@ -822,7 +844,7 @@ func reusedArtifact(skillID pgtype.UUID, row gen.FindReusableDownloadArtifactRow
 		IncludesTestCases:   row.IncludesTestCases,
 		PackagerVersion:     row.PackagerVersion,
 		ProfileVersion:      row.ProfileVersion,
-		VersionNumber:       row.VersionNumber,
-		LatestVersionNumber: row.LatestVersionNumber,
+		VersionNumber:       p.Version.VersionNumber,
+		LatestVersionNumber: p.LatestVersionNumber,
 	}.withVersionState().withServeState(row.ExpiresAt.Time, time.Time{})
 }

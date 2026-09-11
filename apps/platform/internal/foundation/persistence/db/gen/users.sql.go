@@ -7,6 +7,8 @@ package gen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -35,4 +37,33 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PurgeStartedAt,
 	)
 	return i, err
+}
+
+const listUserDisplayNames = `-- name: ListUserDisplayNames :many
+SELECT id, display_name FROM users WHERE id = ANY($1::uuid[])
+`
+
+type ListUserDisplayNamesRow struct {
+	ID          pgtype.UUID
+	DisplayName string
+}
+
+func (q *Queries) ListUserDisplayNames(ctx context.Context, userIds []pgtype.UUID) ([]ListUserDisplayNamesRow, error) {
+	rows, err := q.db.Query(ctx, listUserDisplayNames, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserDisplayNamesRow
+	for rows.Next() {
+		var i ListUserDisplayNamesRow
+		if err := rows.Scan(&i.ID, &i.DisplayName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

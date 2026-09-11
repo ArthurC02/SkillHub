@@ -157,6 +157,9 @@ type downloadView struct {
 	ExpiresAt         string `json:"expires_at"`
 	DownloadCount     int64  `json:"download_count"`
 	IncludesTestCases bool   `json:"includes_test_cases"`
+
+	VersionNumber       int32 `json:"version_number"`
+	LatestVersionNumber int32 `json:"latest_version_number"`
 }
 
 func buildDownload(t *testing.T, a *api, pool *pgxpool.Pool, c *client, name string) downloadView {
@@ -935,5 +938,72 @@ func seedSighting(t *testing.T, pool *pgxpool.Pool, kind, resourceID string) {
 		(resource_kind, resource_id, object_key, rounds) VALUES ($1, $2, 'seeded-sighting', 1)`,
 		kind, mustUUID(t, resourceID)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestEachListedDownloadNamesItsOwnSkillAndVersion(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "download-lister")
+	current := buildDownload(t, a, pool, c, "listed-current")
+	superseded := buildDownload(t, a, pool, c, "listed-superseded")
+	seedVersion(t, pool, c.workspaceID, superseded.SkillID, "hash-listed-superseded-v2")
+
+	want := map[string]struct {
+		skillID         string
+		version, latest int32
+	}{
+		current.ArtifactID:    {current.SkillID, 1, 1},
+		superseded.ArtifactID: {superseded.SkillID, 1, 2},
+	}
+	seen := 0
+	for _, got := range c.listDownloads(t) {
+		w, ok := want[got.ArtifactID]
+		if !ok {
+			continue
+		}
+		seen++
+		if got.SkillID != w.skillID || got.VersionNumber != w.version || got.LatestVersionNumber != w.latest {
+			t.Errorf("artifact %s lists skill %s v%d of v%d; want skill %s v%d of v%d",
+				got.ArtifactID, got.SkillID, got.VersionNumber, got.LatestVersionNumber, w.skillID, w.version, w.latest)
+		}
+	}
+	if seen != len(want) {
+		t.Fatalf("the list shows %d of the %d artifacts", seen, len(want))
+	}
+}
+
+func TestPackagingAnOlderVersionSaysWhichVersionIsLatest(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "older-version-packager")
+	skillID, versionID := packagedSkill(t, a, pool, c, "older-version")
+	seedVersion(t, pool, c.workspaceID, skillID, "hash-older-version-v2")
+
+	for _, attempt := range []struct {
+		name      string
+		duplicate bool
+	}{{"first build", false}, {"repeated build", true}} {
+		code, body := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"standard"}`)
+		if code != http.StatusCreated {
+			t.Fatalf("%s: got %d, body %v", attempt.name, code, body)
+		}
+		if body["duplicate"] != attempt.duplicate || body["version_number"] != float64(1) || body["latest_version_number"] != float64(2) {
+			t.Errorf("%s: got duplicate=%v v%v of v%v, want duplicate=%t v1 of v2",
+				attempt.name, body["duplicate"], body["version_number"], body["latest_version_number"], attempt.duplicate)
+		}
+	}
+
+	list := c.listDownloads(t)
+	if len(list) != 1 {
+		t.Fatalf("GET /downloads: got %d artifacts, want 1", len(list))
+	}
+	var one downloadView
+	if code := getJSON(t, c.Client, c.base+"/downloads/"+list[0].ArtifactID, &one); code != http.StatusOK {
+		t.Fatalf("GET /downloads/{id}: got %d", code)
+	}
+	if one.SkillID != skillID || one.VersionNumber != 1 || one.LatestVersionNumber != 2 {
+		t.Errorf("GET /downloads/{id}: skill %s v%d of v%d, want skill %s v1 of v2",
+			one.SkillID, one.VersionNumber, one.LatestVersionNumber, skillID)
 	}
 }

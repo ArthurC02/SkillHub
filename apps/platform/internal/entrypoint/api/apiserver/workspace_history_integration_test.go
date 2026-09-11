@@ -614,9 +614,14 @@ func TestTheDownloadRecordsAreListedOneRowPerDownload(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("%d records for two downloads: %v", len(got), got)
 	}
+	var owner string
+	if err := pool.QueryRow(context.Background(), `SELECT u.display_name FROM users u
+		JOIN workspaces w ON w.owner_user_id = u.id WHERE w.id = $1`, mustUUID(t, c.workspaceID)).Scan(&owner); err != nil {
+		t.Fatal(err)
+	}
 	for _, r := range got {
-		if r["downloaded_at"] == "" || r["actor"] == "" {
-			t.Errorf("a record answers neither who nor when: %v", r)
+		if r["downloaded_at"] == "" || r["actor"] != owner {
+			t.Errorf("a record does not say when, or does not name %q as the downloader: %v", owner, r)
 		}
 	}
 
