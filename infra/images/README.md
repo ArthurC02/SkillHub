@@ -336,7 +336,7 @@ docker buildx imagetools inspect "ghcr.io/arthurc02/skillhub-runtime-agent-sdk:$
 `2026.08-2` → `2026.08-3` 這種**版本一起改**的發佈，是把新 digest 掛到一個**新 tag** 上，
 舊 digest 的 `2026.08-2` tag 原地不動、仍指得到、attestation 仍對應——它是**被取代的版本**，
 不是孤兒。下表因此**沒有新增列**。孤兒只在「版本沒改而重跑發佈」時產生（tag 被移到新
-digest，舊 digest 失去指向），第三列就是那個情況的唯一實例。
+digest，舊 digest 失去指向），第三列是那個情況最早的實例，其餘都在表裡。
 
 > ⚠️ 但**被取代的版本會在 30 天後停止可用**：`rescan` job 同樣從 Dockerfile 讀版本
 > （同檔第 246 行），只重掃**當前**版本，所以 `2026.08-2` 的 `scanned_at` 不再更新，
@@ -354,6 +354,14 @@ digest，舊 digest 失去指向），第三列就是那個情況的唯一實例
 | `sha256:33e9e4bdf95346d97b0ce37703cf4d0bec3b0cdd2b721bb57a3f31fe17f71c45` | `sha-0a4272c37ca1` | SBOM ＋ 掃描 | 修好後的重跑；被下一次發佈取代 |
 | `sha256:7b79380c94b90621d0fb23f052ed883bbaaa0f53f6d65e2cd91328270c2c5d75` | `sha-27cbbe707359` | SBOM ＋ 掃描 | **一次純 README 編輯觸發的重建** ——已修，見下 |
 | `sha256:5bcbca884feaccb4bf1cfb437644f87627898216fde7ba428228712635c9b23d` | `sha-b2180b28e458` | SBOM ＋ 掃描 | **一次 workflow 檔自身的編輯觸發的重建**（`8b16f56`：CI 腳本搬到 `tools/ci/`，`runtime-image.yml` 的呼叫路徑與 path filter 同步改）。內容與被它取代的 `sha256:774ec87b…` 是同一份 Dockerfile 的兩次 build |
+| `sha256:774ec87b503d5a5fbec00083bcfe3ea0009f2ee09bf39a059ec1fb324d8412e7` | `sha-8b16f56ee138` | SBOM ＋ 掃描 | `2026.08-3` 同版重推（被 `e813abb` 取代） |
+| `sha256:82325cfc43d2167eb3e16988cdcc77b361ab650c760466404decc58f94d2750b` | `sha-e813abb10200` | SBOM ＋ 掃描 | `2026.08-3` 同版重推（被 `1712099` 取代） |
+| `sha256:d4363589361bfdaaa678c67f6713d20206c9902528ac536bf9b00067c0dedb1a` | `sha-1712099bea0f` | SBOM ＋ 掃描 | `2026.08-3` 同版重推（被 `da0019e` 取代） |
+| `sha256:5a7f8d03a4ca132ec3953f20c7f768fe9e1aba2eb9ce51691576a972164e4d84` | `sha-da0019e504c1` | SBOM ＋ 掃描 | `2026.08-3` 同版重推（被 `b87601d` 取代） |
+| `sha256:4d7b24b4d4e7ec1f22f68b0e2d76977f4a2f449f9b166727e6e08096faded3ee` | `sha-b87601db3529` | SBOM ＋ 掃描 | `2026.08-3` 同版重推（被 `a9e27b6` 取代） |
+| `sha256:cc7a9ebf504a30ea3db6d1712a28e1855ebfb6ed626212ca40e429167db69f12` | `sha-a9e27b64e191` | SBOM ＋ 掃描 | `2026.08-3` 同版重推（被 `0210705` 取代） |
+| `sha256:6a99b373bf04cdbe2a08f34bc299fdfd7fd572d6729c00925a39c522d7b3abbf` | `sha-02107050e0e8` | SBOM ＋ 掃描 | `2026.08-3` 同版重推（被 `d0a6182` 取代；`2026.08-3` 現在解析到 `d0a6182` 的 `sha256:740f71e2…`） |
+| `sha256:9b7ae7c2aec02d580134efaae25d9c52809a38225df2ea2b7e6edaa59e127a7b` | `sha-c7a331180570` | SBOM ＋ 掃描 | `2026.08-7` 首次發佈，兩天後被 `07fae2e` 同版重推取代（`2026.08-7` 現在解析到 `sha256:3698f9ad…`）。**`UPGRADES.md` 的 `2026.08-7` 節記的就是這個 digest**；`-7` 從沒跑過四項實測、也從沒當過預設，所以沒有任何量測因此失效 |
 
 **第三列的成因已修，第四列的成因是刻意留著的**：path filter 已排除
 `infra/images/**/*.md`，所以純文件編輯不會再重推（第三列是那個缺口的唯一實例；第一、二列
@@ -366,19 +374,21 @@ filter 裡**，所以連「只改 filter」這種編輯也會重建一次、把�
 
 **2026-09-11 起，同版重建不再推送，這個取捨也就不再有代價。** 發佈步驟先查 registry 有沒有
 這個版本的 tag：有，就只跑閘門、不推送、不移 tag（job summary 會寫明）；只有新版本才會推。
-改 build 或閘門的 commit 仍然整套驗一次，只是不再把前一個 digest 孤立掉。**上表因此不會再長新列，
-但它並不完整**：同日逐一對過 `runtime-image.yml` 的 run 紀錄，`8b16f56` 之後還有 9 次版本沒改的
-push 跑完了發佈（`e813abb`、`1712099`、`da0019e`、`b87601d`、`a9e27b6`、`0210705`、`d0a6182`、
-`f3f8bb0`、`07fae2e`）。後三次逐一查過 publish job，`Push to GHCR` 與兩個 attestation 都成功；
-前六次依當時 workflow 的結構推定同樣推送了。每一次都把當時的版本 tag 移到了新 digest，被移走的
-那些還沒補進上表——每一個都能用它自己那次發佈的 `sha-<commit 前 12 碼>` tag 反查。
+改 build 或閘門的 commit 仍然整套驗一次，只是不再把前一個 digest 孤立掉。**上表因此不會再長新列。**
+
+**表中後八列是 2026-09-12 補的**，證據直接取自 registry：每次發佈都另推一個 `sha-<commit 前 12 碼>`
+tag，逐一 `docker buildx imagetools inspect` 之後，同一個版本底下只有最後一次發佈的 digest 仍被版本
+tag 指著，其餘就是孤兒。`8b16f56` 之後共 8 次同版重推：7 次在 `2026.08-3`，1 次在 `2026.08-7`。
+**`f3f8bb0` 不在其中**（09-11 的初稿誤列）：把版本升到 `-5` 的 `d4f3662` 那次沒有推上去（registry
+沒有它的 `sha-` tag），所以 `f3f8bb0` 是 `-5` 的第一次發佈，`-5` 至今仍解析到它的 `sha256:ba2bc95e…`
+——也就是 ADR-023 四項實測跑的那一個。
 
 **`2026.08-3` 首次發佈後的實測複核（當時 3 筆）**：①發佈後 `2026.08-2` 仍解析到
 `sha256:61ef902f…`（tag 未被移走，故未成孤兒）；②同批的純 `.md` commit（`68abae5`）**沒有
 觸發任何 workflow run**，path filter 如文件所述生效。**`8b16f56` 後複核：4 筆**——
 `2026.08-3` 現解析到 `sha256:774ec87b…`（＝`sha-8b16f56ee138`），前一個 digest 依上表入列。
 
-**這四筆仍待負責人刪除**（本機 token 無 `delete:packages`，見下）。它們不是新問題，而是
+**這十二筆仍待負責人刪除**（本機 token 無 `delete:packages`，見下）。它們不是新問題，而是
 每次讀到這裡都應該順手處理掉的舊帳。
 
 **刪除方式**（本機 git credential 的 token scope 是 `gist, repo, workflow`，**沒有
