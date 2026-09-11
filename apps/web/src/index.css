@@ -2137,9 +2137,8 @@ summary {
    而負責人記得的是一個 Chat UI。
 
    這裡沒有新 token、沒有新字級、沒有陰影：三層平面（ADR-064 §4.6.2）第一次真的
-   在做事——訊息坐在卡片的 `--surface` 上，**你說的話用 `--code-bg` 這一層凹面**
-   （凹面只相對於 `--surface` 成立，而這一段正好整個都在卡片裡）。你的訊息靠右是
-   對話介面通行的那個慣例，它不花任何顏色。 */
+   在做事——Agent 的訊息是 `--surface` 的面，你說的話是 `--surface-active`。
+   你的訊息靠右是對話介面通行的那個慣例。 */
 .creation-log {
   list-style: none;
   margin: 16px 0;
@@ -2157,13 +2156,23 @@ summary {
   background: var(--surface);
 }
 
-/* 你說的那一則：靠右、凹面底、**沒有框**。框讓它讀起來像一個欄位而不是一句話，
-   而它與 Agent 那一則的分界已經由位置與底色講了兩次（§2.3 的形狀：不只靠一個
-   通道）。 */
+/* 你說的那一則：靠右、`--surface-active` 底、沒有框。對話坐在地上，`--code-bg`
+   與地幾乎同色，那一則會讀成裸字。 */
 .creation-log > li[data-role="user"] {
   align-self: flex-end;
   border: 0;
-  background: var(--code-bg);
+  border-radius: 16px 16px 4px 16px;
+  background: var(--surface-active);
+}
+
+/* 靠右已經說了是誰；「你」只留給螢幕閱讀器。 */
+.creation-log > li[data-role="user"] > .creation-who {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* 工具結果是機器講的話，不是對話的一方：一條左緣導軌把它與兩個說話的人分開
@@ -2300,7 +2309,7 @@ summary {
 }
 
 .creation-bar h3 {
-  margin: 0;
+  margin: 0 auto 0 0;
   font-size: 20px;
   white-space: nowrap;
 }
@@ -2340,14 +2349,34 @@ summary {
   color: var(--text);
 }
 
-/* 期限、工具次數、仍占用的預算與「提高預算上限」那個表單折在這裡。**費用與步數
-   不在這裡面**——那兩個在列上，因為 §2.10 與 §2.12 第 4 條要它們不必互動就看得到。 */
+/* 費用是這個抽屜的 summary，不必互動就看得到（§2.10）；步數在狀態藥丸裡。
+   期限、工具次數、仍占用的預算、提高上限與取消折在裡面。 */
 .creation-details {
+  position: relative;
   white-space: nowrap;
 }
 
+/* 打開時浮在 summary 下方、靠右，不把工具列推成兩行（同 Tip：開合不推動鄰居）。 */
 .creation-details > div {
-  padding: 8px 0;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: max-content;
+  max-width: min(480px, calc(100vw - 32px));
+  padding: 12px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  white-space: normal;
+}
+
+.creation-details > div > p {
+  margin: 0;
 }
 
 /* ── 中央：全畫面唯一一條捲軸 ─────────────────────────────────────────────── */
@@ -2362,7 +2391,9 @@ summary {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 
 /* ── 底部輸入艙：釘在下面，不隨捲動消失 ───────────────────────────────────── */
@@ -2374,11 +2405,6 @@ summary {
 .composer-dock > .composer {
   max-width: 768px;
   margin-inline: auto;
-}
-
-/* 預算上限（會話開始後是「預算與詳情」）坐在工具列最右邊（2026-09-10）。 */
-.creation-bar > :last-child {
-  margin-left: auto;
 }
 
 /* 錯誤與做錯動作的回應：固定在視窗頂端置中，不隨對話捲動（2026-09-10）。
@@ -2482,10 +2508,10 @@ summary {
   margin-top: 8px;
 }
 
-/* Only the send key looks like a button; the attachment controls are ghosts
-   until hovered, pressed or open, and stay ghosts when frozen. */
-.composer-tools > button:not(.composer-send):not(:hover, :active, [aria-expanded="true"]),
-.composer .composer-attach:not(:hover, :active) {
+/* Frozen attachment controls drop their dashed box, so a blocked composer
+   shows one disabled box: the send key, which says why. */
+.composer-tools > button:not(.composer-send):disabled,
+.composer .composer-attach:has(> input:disabled) {
   border-color: transparent;
   background: transparent;
 }

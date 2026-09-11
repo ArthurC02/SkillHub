@@ -138,7 +138,7 @@ async function pickBudget(value = "500") {
   });
 }
 async function openReferencePicker() {
-  await click("參考目錄裡的 Skill");
+  await click("＋ 參考目錄 Skill");
 }
 async function resume() {
   const picker = 'select[aria-label="恢復創作"]';
@@ -478,6 +478,38 @@ test("a step in flight can be stopped without ending the session", async () => {
   expect(posts[0]).toMatchObject({ kind: "stop_step", expected_revision: 7 });
   expect(box.textContent).toContain("取消這次創作");
 });
+test("cancel is on the page exactly once, beside whatever the state makes current", async () => {
+  const cases: [Session["state"], string | null][] = [
+    ["queued", ".creation-log > li[data-pending]"],
+    ["working", ".creation-log > li[data-pending]"],
+    ["waiting_input", ".creation-bar .creation-details"],
+    ["draft_ready", ".creation-bar .creation-details"],
+    ["failed", '.creation-log > li[data-role="assistant"]'],
+    ["saved", null],
+    ["cancelled", null],
+  ];
+  for (const [state, home] of cases) {
+    const v = sample({ state });
+    if (state === "failed")
+      v.snapshot.messages = [{ role: "assistant", content: "這一步沒有完成。" }];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => routeGet(url, [v], v)),
+    );
+    await render();
+    await resume();
+    const cancels = [...box.querySelectorAll("button")].filter(
+      (b) => b.textContent === "取消這次創作",
+    );
+    expect(
+      cancels.map((b) => home !== null && b.closest(home) !== null),
+      `${state}：取消鍵應該${home ? `只在 ${home} 裡出現一次` : "不出現"}`,
+    ).toEqual(home ? [true] : []);
+    await act(async () => root.unmount());
+    box.innerHTML = "";
+    q.clear();
+  }
+});
 test("waiting says which step is running, derived from the snapshot alone", async () => {
   const cases: [Partial<CreationSnapshot>, string][] = [
     [{ pending_fetch_url: "https://example.com/a" }, "正在讀你同意的那個網頁"],
@@ -709,9 +741,9 @@ test("the two attachment controls name themselves and carry their limits", async
   await pickBudget();
   const fileEl = box.querySelector('input[type="file"]') as HTMLInputElement;
   expect(fileEl.getAttribute("aria-label"), "它會蓋掉看得見的那五個字").toBe(null);
-  expect(fileEl.closest("label")!.textContent).toContain("附一張流程圖");
+  expect(fileEl.closest("label")!.textContent).toContain("＋ 流程圖");
   expect(fileEl.getAttribute("aria-describedby")).toBe("composer-limits");
-  const picker = button("參考目錄裡的 Skill");
+  const picker = button("＋ 參考目錄 Skill");
   expect(picker.getAttribute("aria-controls")).toBe("composer-references");
   expect(picker.getAttribute("aria-describedby")).toBe("composer-limits");
   const limits = box.querySelector("#composer-limits")!;
@@ -992,8 +1024,36 @@ test("resume shows unknown costs and confirms the displayed diagram revision", a
   await resume();
   expect(box.textContent, "費用未知時工具列要說「未知」，不能顯示成 0").toContain("費用 未知");
   expect(box.textContent, "未知的費用被顯示成一個數字").not.toMatch(/費用 \d/);
+  expect(box.querySelector(".creation-bar .creation-details > summary")!.textContent).toBe(
+    "費用 未知 / 1300 點",
+  );
   await click("確認流程圖理解");
   expect(posts[0]).toMatchObject({ kind: "confirm_diagram", expected_revision: 7 });
+});
+test("a known cost of zero is 0 points in the drawer's summary, not unknown", async () => {
+  const v = sample();
+  Object.assign(v.snapshot, { usage_unknown: false, spent_credits: 0 });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  expect(box.querySelector(".creation-bar .creation-details > summary")!.textContent).toBe(
+    "費用 0 / 1300 點",
+  );
+});
+test("the state and the step count share one pill in the bar", async () => {
+  const v = sample();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  expect(box.querySelector(".creation-bar .creation-state")!.textContent).toBe(
+    "等待你的補充 · 1／20 步",
+  );
 });
 test("409 preserves input and needs an explicit action with the refreshed revision", async () => {
   const posts: Record<string, unknown>[] = [];

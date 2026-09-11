@@ -645,44 +645,34 @@ export function CreationSession() {
           </label>
         )}
         {session && (
-          <span className="creation-state" role="status">
-            {labels[session.state]}
+          <span className="creation-state">
+            <span role="status">{labels[session.state]}</span>
+            {p && limits.data && ` · ${p.steps}／${limits.data.max_steps} 步`}
           </span>
         )}
-        {p && limits.data && (
-          <span className="creation-fact">
-            {p.steps}／{limits.data.max_steps} 步
-          </span>
-        )}
-        {p && (
-          <span className="creation-fact">
-            費用{" "}
-            {p.spent_credits === undefined || p.usage_unknown ? "未知" : p.spent_credits + " 點"} /{" "}
-            {p.budget_credits} 點
-          </span>
-        )}
-        {(p || (session && !terminal)) && (
+        {session && p && (
           <details className="creation-details">
-            <summary>預算與詳情</summary>
+            <summary>
+              費用 {p.spent_credits === undefined || p.usage_unknown ? "未知" : p.spent_credits} /{" "}
+              {points(p.budget_credits)}
+            </summary>
             <div>
-              {p && (
-                <p className="note">
-                  仍占用預算 {p.reserved_credits} 點
-                  {limits.data && (
-                    <>
-                      {" "}
-                      · 工具 {p.tool_calls}／{limits.data.max_tool_calls} 次
-                    </>
-                  )}
-                </p>
-              )}
-              {session && !terminal && (
+              <p className="note">
+                仍占用預算 {p.reserved_credits} 點
+                {limits.data && (
+                  <>
+                    {" "}
+                    · 工具 {p.tool_calls}／{limits.data.max_tool_calls} 次
+                  </>
+                )}
+              </p>
+              {!terminal && (
                 <p className="note">
                   可進行到 <Timestamp at={session.deadline} /> · 紀錄保留到{" "}
                   <Timestamp at={session.expires_at} />
                 </p>
               )}
-              {p && limits.data && (
+              {limits.data && (
                 <>
                   <label>
                     提高這次預算上限（點）
@@ -698,6 +688,16 @@ export function CreationSession() {
                     提高預算後繼續
                   </button>
                 </>
+              )}
+              {!terminal && !working && session.state !== "failed" && (
+                <button
+                  type="button"
+                  className="destructive"
+                  disabled={busy}
+                  onClick={() => void perform("cancel")}
+                >
+                  取消這次創作
+                </button>
               )}
             </div>
           </details>
@@ -817,13 +817,23 @@ export function CreationSession() {
                         這一步會自己結束。可以關掉這一頁，回來時從「恢復創作」繼續；上次更新{" "}
                         <Timestamp at={session.updated_at} relative />
                       </p>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void perform("stop_step")}
-                      >
-                        停止這一步
-                      </button>
+                      <div className="turn-actions">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void perform("stop_step")}
+                        >
+                          停止這一步
+                        </button>
+                        <button
+                          type="button"
+                          className="destructive"
+                          disabled={busy}
+                          onClick={() => void perform("cancel")}
+                        >
+                          取消這次創作
+                        </button>
+                      </div>
                     </li>
                   )}
                 </ol>
@@ -1210,11 +1220,6 @@ export function CreationSession() {
                   )}
                 </section>
               )}
-              {!terminal && session?.state !== "failed" && (
-                <button disabled={busy} onClick={() => void perform("cancel")}>
-                  取消這次創作
-                </button>
-              )}
             </>
           )}
         </div>
@@ -1275,7 +1280,7 @@ export function CreationSession() {
             </label>
             <div className="composer-tools">
               <label className="composer-attach">
-                附一張流程圖
+                ＋ 流程圖
                 <input
                   ref={fileInput}
                   type="file"
@@ -1293,7 +1298,7 @@ export function CreationSession() {
                 disabled={locked || frozen}
                 onClick={() => setPicking((v) => !v)}
               >
-                參考目錄裡的 Skill{refs.length > 0 && `（${refs.length}）`}
+                ＋ 參考目錄 Skill{refs.length > 0 && `（${refs.length}）`}
               </button>
               <span className="note field-count" id="composer-count">
                 {[...message].length.toLocaleString("zh-TW")} /{" "}
