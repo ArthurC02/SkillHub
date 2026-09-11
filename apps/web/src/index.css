@@ -1937,6 +1937,16 @@ summary {
   gap: 8px;
 }
 
+.skill-actions {
+  margin-top: 8px;
+  align-items: center;
+  column-gap: 24px;
+}
+
+.skill-actions > :last-child {
+  margin-left: auto;
+}
+
 .create-hub {
   margin: 16px 0 24px;
 }

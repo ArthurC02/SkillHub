@@ -447,7 +447,7 @@ test.describe("ADR-065 the text budget and the fourth disclosure, in a real engi
     "workspace-account": 42,
     "workspace-downloads": 107,
     "workspace-runs": 18,
-    "workspace-skills": 112,
+    "workspace-skills": 21,
   };
 
   test("flat teaching text: ≤100 runes a block, and never more than the day it was measured", async ({

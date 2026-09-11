@@ -17,7 +17,6 @@ import { FacetNotes, liftedNotes, type FacetNote } from "../components/FacetNote
 import type { OwnSkill, Redistribution } from "../api/types";
 
 const OWN_SKILL_NOTES: Array<FacetNote<OwnSkill>> = [
-  { key: "risk", label: "風險提示", note: (s) => s.risk?.note },
   {
     key: "verification",
     label: "掃描狀態",
@@ -93,7 +92,7 @@ export function WorkspaceSkills() {
       {hasSkills && (
         <p className="note">
           相容性驗證（Agent 是否載入、Runtime 是否齊備）不在這份清單的資料裡，
-          平台目前也不會為你自己的 Skill 量測它。要看某一個的逐項掃描結果，請開它的頁面。
+          平台目前也不會為你自己的 Skill 量測它。
         </p>
       )}
       {hasSkills && <FacetNotes rows={rows} facets={OWN_SKILL_NOTES} />}
@@ -135,47 +134,51 @@ export function WorkspaceSkills() {
                     </>
                   )}
                 </span>
-                <RiskSummary risk={s.risk} noteInRow={!lifted.risk} />
+                <RiskSummary risk={s.risk} noteInRow={false} />
               </p>
               {!lifted.verification && <p className="note">{s.verification.note}</p>}
               {s.redistribution === "generated" && <GeneratedNotice skillId={s.skill_id} />}
-              <p className="note">
-                <Link to="/skills/$skillId/files" params={{ skillId: s.skill_id }}>
-                  檔案
-                </Link>
-                {" ｜ "}
-                <Link
-                  to="/skills/$skillId/package"
-                  params={{ skillId: s.skill_id }}
-                  search={{ version: undefined }}
-                >
-                  打包與下載
-                </Link>
-                {" ｜ "}
-                <Link to="/lab/test-cases" search={{ skill: s.skill_id }}>
-                  Test Case
-                </Link>
-              </p>
-              <p>
-                <ConfirmDelete
-                  scopeId={`skill-delete-scope-${s.skill_id}`}
-                  pending={remove.isPending}
-                  onAsk={() => {
-                    setMessage("");
-                    remove.reset();
-                  }}
-                  onConfirm={() => remove.mutate(s.skill_id)}
-                  scope={
-                    <>
-                      刪除的是這個 Skill
-                      在你工作區裡的存在：它會離開這份清單與搜尋結果，也不能再拿來試跑或打包。
-                      版本快照會凍結保留，不隨這次刪除消失，所以誤刪還有救； 別人 Fork
-                      過的版本與歷史 Run 引用的內容不受影響——那是他們的溯源鏈，不是你的。
-                      已經打包好的下載檔案要另外刪，在下載紀錄那一頁。
-                    </>
-                  }
-                />
-              </p>
+              <ul className="chip-row skill-actions">
+                <li>
+                  <Link to="/skills/$skillId/files" params={{ skillId: s.skill_id }}>
+                    檔案
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/skills/$skillId/package"
+                    params={{ skillId: s.skill_id }}
+                    search={{ version: undefined }}
+                  >
+                    打包與下載
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/lab/test-cases" search={{ skill: s.skill_id }}>
+                    Test Case
+                  </Link>
+                </li>
+                <li>
+                  <ConfirmDelete
+                    scopeId={`skill-delete-scope-${s.skill_id}`}
+                    pending={remove.isPending}
+                    onAsk={() => {
+                      setMessage("");
+                      remove.reset();
+                    }}
+                    onConfirm={() => remove.mutate(s.skill_id)}
+                    scope={
+                      <>
+                        刪除的是這個 Skill
+                        在你工作區裡的存在：它會離開這份清單與搜尋結果，也不能再拿來試跑或打包。
+                        版本快照會凍結保留，不隨這次刪除消失，所以誤刪還有救； 別人 Fork
+                        過的版本與歷史 Run 引用的內容不受影響——那是他們的溯源鏈，不是你的。
+                        已經打包好的下載檔案要另外刪，在下載紀錄那一頁。
+                      </>
+                    }
+                  />
+                </li>
+              </ul>
             </li>
           ))}
         </ul>
@@ -189,7 +192,11 @@ export function WorkspaceSkills() {
       )}
 
       {hasSkills && (
-        <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />
+        <CreateHub
+          generateExposed={generateExposed}
+          creationExposed={creationExposed}
+          explain={false}
+        />
       )}
 
       <section className="workspace-index">

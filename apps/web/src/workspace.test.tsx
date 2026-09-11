@@ -249,8 +249,9 @@ const SCANNED = {
 const FORKED = {
   risk: {
     scan_status: "unavailable",
-    level: "none",
+    level: "unknown",
     warnings: 0,
+    disclosures: [],
     note: "此結果尚無掃描紀錄,狀態未知——不代表已通過檢查。",
   },
   verification: {
@@ -579,9 +580,34 @@ test("設計 §2.13 一句逐列相同的但書只講一次，而分不出是哪
   expect(occurrences(FORKED.verification.note)).toBe(1);
   expect(text()).toContain(`掃描狀態「${FORKED.verification.label}」：`);
 
-  expect(occurrences(SCANNED.risk.note)).toBe(2);
-  expect(occurrences(FORKED.risk.note)).toBe(1);
-  expect(text()).not.toContain(`風險提示：${SCANNED.risk.note}`);
+  expect(occurrences(SCANNED.risk.note)).toBe(0);
+  expect(occurrences(FORKED.risk.note)).toBe(0);
+  expect(occurrences("未掃描"), "沒掃過的那一列失去了挑出自己那一行的詞").toBe(1);
+});
+
+test("設計 §2.13 一列的清單上，靜態掃描的來歷只講一次，掃描狀態徽章留在列上", async () => {
+  vi.stubGlobal("fetch", () =>
+    json({
+      skills: [
+        {
+          skill_id: SKILL,
+          name: "掃過的甲",
+          summary: "一份套件。",
+          redistribution: "unknown",
+          access_restriction: null,
+          ...SCANNED,
+        },
+      ],
+      limit: 100,
+      total: 1,
+      truncated: false,
+    }),
+  );
+  await render(<WorkspaceSkills />, () => text().includes("掃過的甲"));
+
+  expect(occurrences("不執行套件內任何程式碼")).toBe(1);
+  expect(occurrences("逐項")).toBe(1);
+  expect(text()).toContain(`掃描狀態：${SCANNED.verification.label}`);
 });
 
 const hub = () => container.querySelector<HTMLElement>(".create-hub");
@@ -629,6 +655,22 @@ test("建立中心 ⛔ with the flag off, the hub has no generation card and doe
   expect(hub()!.querySelector("#generate-task")).toBeNull();
   expect(hubText()).not.toContain("生成");
   expect(hubText()).not.toContain("即將推出");
+});
+
+test("建立中心 on an empty list teaches each door", async () => {
+  vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
+  await render(<WorkspaceSkills />, () => text().includes("還沒有任何 Skill"));
+
+  expect(hub()!.querySelectorAll('[data-role="teaching"]').length).toBe(2);
+});
+
+test("建立中心 below a list that has a Skill keeps every door and the invite rule, without the teaching", async () => {
+  stubOwnSkillsWithFeatures({ generate_skill: true });
+  await render(<WorkspaceSkills />, () => text().includes("開始描述"));
+
+  expect(hub()!.querySelectorAll('[data-role="teaching"]').length).toBe(0);
+  expect(hub()!.querySelectorAll("a").length).toBe(3);
+  expect(hubText()).toContain("平台目前只讓有封測邀請的帳號Fork。");
 });
 
 test("建立中心 with the flag on, the generation entry appears exactly once on the page", async () => {
