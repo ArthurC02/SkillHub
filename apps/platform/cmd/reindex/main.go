@@ -28,12 +28,7 @@ func main() {
 	defer pool.Close()
 
 	q := gen.New(pool)
-	pruned, err := q.PruneDeletedSearchDocuments(ctx)
-	if err != nil {
-		slog.Error("prune deleted", "error", err)
-		os.Exit(1)
-	}
-	n, err := q.ReindexAll(ctx)
+	n, pruned, err := catalog.RebuildIndex(ctx, pool)
 	if err != nil {
 		slog.Error("reindex", "error", err)
 		os.Exit(1)

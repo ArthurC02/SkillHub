@@ -41,6 +41,7 @@ type Service struct {
 
 	IndexSkill      func(ctx context.Context, tx pgx.Tx, projection SkillProjection) error
 	RemoveFromIndex func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) error
+	RefreshListing  func(ctx context.Context, db gen.DBTX, skillID pgtype.UUID) error
 
 	SkillRisks func(ctx context.Context, workspaceID pgtype.UUID, skillIDs []pgtype.UUID) (map[string]json.RawMessage, error)
 

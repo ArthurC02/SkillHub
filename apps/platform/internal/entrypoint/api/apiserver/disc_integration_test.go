@@ -68,9 +68,17 @@ func seedSkillVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID str
 	if err != nil {
 		t.Fatal(err)
 	}
+	refreshListing(t, pool, skillID)
 	id, _ := ver.ID.Value()
 	s, _ := id.(string)
 	return s
+}
+
+func refreshListing(t *testing.T, pool *pgxpool.Pool, skillID string) {
+	t.Helper()
+	if err := catalog.RefreshListing(context.Background(), pool, mustUUID(t, skillID)); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func seedEmbedding(t *testing.T, pool *pgxpool.Pool, skillID string, axis int) {
@@ -199,6 +207,9 @@ func TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall(t *testing.T) {
 			VALUES ($1, 'ghcr.io/example/runtime@sha256:1111', 'activated', $2)`, mustUUID(t, versionID), runtime); err != nil {
 			t.Fatal(err)
 		}
+	}
+	for _, skillID := range []string{versionedID, curatedID, otherRuntimeID} {
+		refreshListing(t, pool, skillID)
 	}
 
 	anon := &client{Client: http.DefaultClient, base: a.URL}
@@ -1027,6 +1038,7 @@ func setCategory(t *testing.T, pool *pgxpool.Pool, skillID, category string) {
 	); err != nil {
 		t.Fatal(err)
 	}
+	refreshListing(t, pool, skillID)
 }
 
 func TestCategoryFiltersTheCatalogAndNamesTheAbsence(t *testing.T) {
@@ -1093,6 +1105,18 @@ func TestCategoryFiltersTheCatalogAndNamesTheAbsence(t *testing.T) {
 	}
 	if plainDetail.Category.Value != "unassigned" || plainDetail.Category.Label != "尚未定值" {
 		t.Errorf("detail rendered an unclassified skill as %+v, want unassigned/尚未定值", plainDetail.Category)
+	}
+
+	if code, body := curator.doJSON(t, http.MethodPut, "/skills/"+unclassified+"/category", `{"category":"writing"}`); code != http.StatusOK {
+		t.Fatalf("the owner shelving the skill as writing: got %d (%v)", code, body)
+	}
+	for _, path := range []string{
+		"/api/skills/search?q=borogove&category=writing",
+		"/api/skills/catalog?category=writing",
+	} {
+		if ids := anon.search(t, path).ids(); len(ids) != 1 || ids[0] != unclassified {
+			t.Errorf("%s returned %v after its owner shelved it as writing, want just %s", path, ids, unclassified)
+		}
 	}
 }
 

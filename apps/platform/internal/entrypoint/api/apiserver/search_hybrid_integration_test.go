@@ -138,6 +138,7 @@ func TestCatalogReferenceFactsReadTheTierAndTheScan(t *testing.T) {
 	if _, err := pool.Exec(ctx, `UPDATE skills SET curation_tier = 'curated', curated_version_id = $2 WHERE id = $1`, mustUUID(t, skill), mustUUID(t, version)); err != nil {
 		t.Fatal(err)
 	}
+	refreshListing(t, pool, skill)
 	if tier, _, _, err = svc.CatalogReferenceFacts(ctx, skill, version); err != nil || tier != "curated" {
 		t.Fatalf("curated version: tier=%q err=%v", tier, err)
 	}
@@ -221,5 +222,91 @@ func TestCatalogSkillRisksAnswerOnlyForCatalogSkills(t *testing.T) {
 	}
 	if got := string(risks[private.skillID]); !strings.Contains(got, `"scan_status":"unavailable"`) {
 		t.Errorf("a private skill's scan was reported as a catalog fact: %s", got)
+	}
+}
+
+func TestIndexWritesSkipSkillsThatAreNoLongerLive(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	owner := newAPI(t, pool).login(t, "owner-index-live")
+	index := func(skill string) {
+		t.Helper()
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		if err := catalog.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
+			SkillID: mustUUID(t, skill), WorkspaceID: mustUUID(t, owner.workspaceID), Name: "late write", Summary: "late write",
+			TaskExamples: "[]", Tags: []byte(`[]`), Limitations: "[]", Scan: []byte(`{}`), EnrichmentStatus: "enriched",
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for name, retire := range map[string]string{
+		"deleted":    "UPDATE skills SET deleted_at = now() WHERE id = $1",
+		"taken down": "UPDATE skills SET takedown_at = now(), takedown_reason = 'test' WHERE id = $1",
+	} {
+		skill := seedSkill(t, pool, owner.workspaceID, "retired-"+strings.ReplaceAll(name, " ", "-"))
+		for _, stmt := range []string{"DELETE FROM search_documents WHERE skill_id = $1", retire} {
+			if _, err := pool.Exec(ctx, stmt, mustUUID(t, skill)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		index(skill)
+		if n := countRow(t, pool, "SELECT count(*) FROM search_documents WHERE skill_id = $1", mustUUID(t, skill)); n != 0 {
+			t.Errorf("a late index write brought back the search document of a %s skill", name)
+		}
+	}
+
+	live := seedSkill(t, pool, owner.workspaceID, "still-live")
+	version := seedSkillVersion(t, pool, owner.workspaceID, live)
+	if _, err := pool.Exec(ctx, "DELETE FROM search_documents WHERE skill_id = $1", mustUUID(t, live)); err != nil {
+		t.Fatal(err)
+	}
+	index(live)
+	var latest pgtype.UUID
+	if err := pool.QueryRow(ctx, "SELECT latest_version_id FROM search_documents WHERE skill_id = $1", mustUUID(t, live)).Scan(&latest); err != nil {
+		t.Fatalf("a live skill's index write left no document: %v", err)
+	}
+	if latest != mustUUID(t, version) {
+		t.Errorf("the document names %v as the latest version, want %s", latest, version)
+	}
+}
+
+func TestRebuildIndexDropsRetiredSkillsAndCarriesHandWrittenFacts(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	owner := newAPI(t, pool).login(t, "owner-rebuild")
+	retired := seedSkill(t, pool, owner.workspaceID, "rebuild-retired")
+	missing := seedSkill(t, pool, owner.workspaceID, "rebuild-missing")
+	version := seedSkillVersion(t, pool, owner.workspaceID, missing)
+	shelved := seedSkill(t, pool, owner.workspaceID, "rebuild-shelved")
+	for _, stmt := range []struct{ sql, skill string }{
+		{"UPDATE skills SET deleted_at = now() WHERE id = $1", retired},
+		{"DELETE FROM search_documents WHERE skill_id = $1", missing},
+		{"UPDATE skills SET category = 'data', category_source = 'curated' WHERE id = $1", shelved},
+	} {
+		if _, err := pool.Exec(ctx, stmt.sql, mustUUID(t, stmt.skill)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if _, _, err := catalog.RebuildIndex(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	if n := countRow(t, pool, "SELECT count(*) FROM search_documents WHERE skill_id = $1", mustUUID(t, retired)); n != 0 {
+		t.Error("the rebuild kept the search document of a skill deleted by hand")
+	}
+	var latest pgtype.UUID
+	if err := pool.QueryRow(ctx, "SELECT latest_version_id FROM search_documents WHERE skill_id = $1", mustUUID(t, missing)).Scan(&latest); err != nil || latest != mustUUID(t, version) {
+		t.Errorf("the rebuild did not restore the missing document with its latest version: %v err=%v", latest, err)
+	}
+	var category *string
+	if err := pool.QueryRow(ctx, "SELECT category FROM search_documents WHERE skill_id = $1", mustUUID(t, shelved)).Scan(&category); err != nil || category == nil || *category != "data" {
+		t.Errorf("the rebuild did not carry a category set by hand: %v err=%v", category, err)
 	}
 }

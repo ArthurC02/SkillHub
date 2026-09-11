@@ -69,3 +69,39 @@ SELECT summary, enriched_summary, task_examples, tags, limitations,
        enrichment_status, enrichment_model, enrichment_prompt_version
 FROM search_documents
 WHERE skill_id = $1 AND workspace_id = $2;
+
+-- name: GetLiveSkillListingFacts :one
+SELECT sk.redistribution, sk.category, sk.category_source, sk.curation_tier, sk.curated_version_id,
+       ver.id AS latest_version_id, ver.created_at AS verified_at,
+       COALESCE(ver.package_object_key, '')::text AS latest_package_object_key,
+       COALESCE(cmp.capability, 'unverified')::text AS agent_capability,
+       COALESCE(cmp.runtime, 'unverified')::text AS agent_runtime,
+       COALESCE(cmp.runtime_image, '')::text AS agent_runtime_image,
+       cmp.measured_at AS agent_measured_at
+FROM skills sk
+LEFT JOIN LATERAL (
+    SELECT v.id, v.created_at, v.package_object_key
+    FROM skill_versions v
+    WHERE v.skill_id = sk.id
+    ORDER BY v.version_number DESC
+    LIMIT 1
+) ver ON true
+LEFT JOIN LATERAL (
+    SELECT c.capability, c.runtime, c.runtime_image, c.measured_at
+    FROM skill_runtime_compatibility c
+    WHERE c.skill_version_id = ver.id
+    ORDER BY c.measured_at DESC
+    LIMIT 1
+) cmp ON true
+WHERE sk.id = $1 AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
+FOR NO KEY UPDATE OF sk;
+
+-- name: ListLiveSkillsForIndex :many
+SELECT id, workspace_id, name, coalesce(summary, '')::text AS summary, redistribution
+FROM skills
+WHERE deleted_at IS NULL AND takedown_at IS NULL
+ORDER BY id;
+
+-- name: ListLiveSkillIDs :many
+SELECT id FROM skills
+WHERE id = ANY(sqlc.arg(skill_ids)::uuid[]) AND deleted_at IS NULL AND takedown_at IS NULL;

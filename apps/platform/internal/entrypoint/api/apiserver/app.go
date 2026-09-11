@@ -167,6 +167,7 @@ func NewApp(cfg Config) (*App, error) {
 			})
 		},
 		RemoveFromIndex:   catalog.RemoveSkillFromIndex,
+		RefreshListing:    catalog.RefreshListing,
 		CatalogWorkspaces: identitySvc.CatalogWorkspaceIDs,
 	}
 

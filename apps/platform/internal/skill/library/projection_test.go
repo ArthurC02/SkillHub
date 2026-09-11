@@ -54,3 +54,9 @@ func TestCatalogReadsRefuseWithoutKnowingTheCatalogWorkspaces(t *testing.T) {
 		t.Error("CatalogSkill answered without the catalog workspace read injected")
 	}
 }
+
+func TestSetCategoryRefusesWithoutTheListingRefresh(t *testing.T) {
+	if _, err := (&Service{}).SetCategory(context.Background(), identity.Workspace{}, pgtype.UUID{}, nil); err == nil {
+		t.Error("SetCategory wrote without the catalog listing refresh injected")
+	}
+}

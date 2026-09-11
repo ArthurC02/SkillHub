@@ -7,10 +7,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 type PendingEnrichment struct {
@@ -25,14 +27,17 @@ func (s *Service) PendingEnrichments(ctx context.Context, limit int32) ([]Pendin
 	if err != nil {
 		return nil, err
 	}
-	result := make([]PendingEnrichment, len(rows))
-	for i, row := range rows {
-		result[i] = PendingEnrichment{
+	result := make([]PendingEnrichment, 0, len(rows))
+	for _, row := range rows {
+		if row.PackageObjectKey == nil {
+			continue
+		}
+		result = append(result, PendingEnrichment{
 			SkillID:          row.SkillID,
 			WorkspaceID:      row.WorkspaceID,
 			Name:             row.Name,
-			PackageObjectKey: row.PackageObjectKey,
-		}
+			PackageObjectKey: *row.PackageObjectKey,
+		})
 	}
 	return result, nil
 }
@@ -61,24 +66,118 @@ type EnrichedSkillProjection struct {
 }
 
 func IndexSkill(ctx context.Context, tx pgx.Tx, projection SkillProjection) error {
-	return gen.New(tx).UpsertSearchDocument(ctx, gen.UpsertSearchDocumentParams{
-		SkillID: projection.SkillID, WorkspaceID: projection.WorkspaceID,
-		Name: projection.Name, Summary: projection.Summary,
-		BigramText: LexicalIndexText(projection.Name, projection.Summary),
+	return indexLive(ctx, tx, projection.SkillID, func(q *gen.Queries) error {
+		return q.UpsertSearchDocument(ctx, gen.UpsertSearchDocumentParams{
+			SkillID: projection.SkillID, WorkspaceID: projection.WorkspaceID,
+			Name: projection.Name, Summary: projection.Summary,
+			BigramText: LexicalIndexText(projection.Name, projection.Summary),
+		})
 	})
 }
 
 func IndexSkillEnriched(ctx context.Context, tx pgx.Tx, projection EnrichedSkillProjection) error {
-	return gen.New(tx).UpsertSearchDocumentEnriched(ctx, gen.UpsertSearchDocumentEnrichedParams{
-		SkillID: projection.SkillID, WorkspaceID: projection.WorkspaceID,
-		Name: projection.Name, Summary: projection.Summary,
-		EnrichedSummary: projection.EnrichedSummary, TaskExamples: projection.TaskExamples,
-		Tags: projection.Tags, Limitations: projection.Limitations, Scan: projection.Scan,
-		Embedding: projection.Embedding, EnrichmentStatus: projection.EnrichmentStatus,
-		EnrichmentModel:         projection.EnrichmentModel,
-		EnrichmentPromptVersion: projection.EnrichmentPromptVersion,
-		BigramText:              LexicalIndexText(projection.Name, projection.Summary, projection.EnrichedSummary, projection.TaskExamples, jsonStrings(projection.Tags)),
+	return indexLive(ctx, tx, projection.SkillID, func(q *gen.Queries) error {
+		return q.UpsertSearchDocumentEnriched(ctx, gen.UpsertSearchDocumentEnrichedParams{
+			SkillID: projection.SkillID, WorkspaceID: projection.WorkspaceID,
+			Name: projection.Name, Summary: projection.Summary,
+			EnrichedSummary: projection.EnrichedSummary, TaskExamples: projection.TaskExamples,
+			Tags: projection.Tags, Limitations: projection.Limitations, Scan: projection.Scan,
+			Embedding: projection.Embedding, EnrichmentStatus: projection.EnrichmentStatus,
+			EnrichmentModel:         projection.EnrichmentModel,
+			EnrichmentPromptVersion: projection.EnrichmentPromptVersion,
+			BigramText:              LexicalIndexText(projection.Name, projection.Summary, projection.EnrichedSummary, projection.TaskExamples, jsonStrings(projection.Tags)),
+		})
 	})
+}
+
+func RefreshListing(ctx context.Context, db gen.DBTX, skillID pgtype.UUID) error {
+	return indexLive(ctx, db, skillID, func(*gen.Queries) error { return nil })
+}
+
+func indexLive(ctx context.Context, db gen.DBTX, skillID pgtype.UUID, upsert func(*gen.Queries) error) error {
+	facts, live, err := registry.LiveListingFacts(ctx, db, skillID)
+	if err != nil || !live {
+		return err
+	}
+	q := gen.New(db)
+	if err := upsert(q); err != nil {
+		return err
+	}
+	return q.SetSearchDocumentListing(ctx, listingOf(skillID, facts))
+}
+
+func listingOf(skillID pgtype.UUID, facts gen.GetLiveSkillListingFactsRow) gen.SetSearchDocumentListingParams {
+	listing := gen.SetSearchDocumentListingParams{
+		SkillID:         skillID,
+		Generated:       facts.Redistribution == string(RedistributionGenerated),
+		Category:        facts.Category,
+		CategorySource:  facts.CategorySource,
+		LatestVersionID: facts.LatestVersionID,
+		VerifiedAt:      facts.VerifiedAt,
+		AgentMeasuredAt: facts.AgentMeasuredAt,
+	}
+	if facts.LatestVersionID.Valid {
+		listing.LatestPackageObjectKey = &facts.LatestPackageObjectKey
+	}
+	if facts.CurationTier == string(TierCurated) {
+		listing.CuratedVersionID = facts.CuratedVersionID
+	}
+	if facts.AgentMeasuredAt.Valid {
+		listing.AgentCapability = &facts.AgentCapability
+		listing.AgentRuntime = &facts.AgentRuntime
+		listing.AgentRuntimeImage = &facts.AgentRuntimeImage
+	}
+	return listing
+}
+
+func RebuildIndex(ctx context.Context, pool *pgxpool.Pool) (indexed, pruned int64, err error) {
+	skills, err := registry.LiveSkills(ctx, pool)
+	if err != nil {
+		return 0, 0, err
+	}
+	var all gen.ReindexAllParams
+	for _, sk := range skills {
+		all.SkillIds = append(all.SkillIds, sk.ID)
+		all.WorkspaceIds = append(all.WorkspaceIds, sk.WorkspaceID)
+		all.Names = append(all.Names, sk.Name)
+		all.Summaries = append(all.Summaries, sk.Summary)
+		all.Generated = append(all.Generated, sk.Redistribution == string(RedistributionGenerated))
+	}
+	q := gen.New(pool)
+	if indexed, err = q.ReindexAll(ctx, all); err != nil {
+		return 0, 0, err
+	}
+	if pruned, err = pruneRetired(ctx, q, pool); err != nil {
+		return indexed, 0, err
+	}
+	for _, sk := range skills {
+		if err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error { return RefreshListing(ctx, tx, sk.ID) }); err != nil {
+			return indexed, pruned, err
+		}
+	}
+	return indexed, pruned, nil
+}
+
+func pruneRetired(ctx context.Context, q *gen.Queries, db gen.DBTX) (int64, error) {
+	indexed, err := q.ListSearchDocumentSkillIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	live, err := registry.LiveSkillIDs(ctx, db, indexed)
+	if err != nil {
+		return 0, err
+	}
+	alive := make(map[pgtype.UUID]bool, len(live))
+	for _, id := range live {
+		alive[id] = true
+	}
+	var retired []pgtype.UUID
+	for _, id := range indexed {
+		if !alive[id] {
+			retired = append(retired, id)
+		}
+	}
+	return q.PruneDeletedSearchDocuments(ctx, retired)
 }
 
 func BackfillBigram(ctx context.Context, db gen.DBTX, batch int32) (int, error) {

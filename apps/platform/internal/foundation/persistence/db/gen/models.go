@@ -545,6 +545,17 @@ type SearchDocument struct {
 	Scan                    []byte
 	EnrichmentAttemptedAt   pgtype.Timestamptz
 	Bigram                  interface{}
+	Generated               bool
+	Category                *string
+	CategorySource          *string
+	LatestVersionID         pgtype.UUID
+	VerifiedAt              pgtype.Timestamptz
+	LatestPackageObjectKey  *string
+	CuratedVersionID        pgtype.UUID
+	AgentCapability         *string
+	AgentRuntime            *string
+	AgentRuntimeImage       *string
+	AgentMeasuredAt         pgtype.Timestamptz
 }
 
 type Session struct {

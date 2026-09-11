@@ -113,6 +113,68 @@ func (q *Queries) GetCatalogSkill(ctx context.Context, arg GetCatalogSkillParams
 	return i, err
 }
 
+const getLiveSkillListingFacts = `-- name: GetLiveSkillListingFacts :one
+SELECT sk.redistribution, sk.category, sk.category_source, sk.curation_tier, sk.curated_version_id,
+       ver.id AS latest_version_id, ver.created_at AS verified_at,
+       COALESCE(ver.package_object_key, '')::text AS latest_package_object_key,
+       COALESCE(cmp.capability, 'unverified')::text AS agent_capability,
+       COALESCE(cmp.runtime, 'unverified')::text AS agent_runtime,
+       COALESCE(cmp.runtime_image, '')::text AS agent_runtime_image,
+       cmp.measured_at AS agent_measured_at
+FROM skills sk
+LEFT JOIN LATERAL (
+    SELECT v.id, v.created_at, v.package_object_key
+    FROM skill_versions v
+    WHERE v.skill_id = sk.id
+    ORDER BY v.version_number DESC
+    LIMIT 1
+) ver ON true
+LEFT JOIN LATERAL (
+    SELECT c.capability, c.runtime, c.runtime_image, c.measured_at
+    FROM skill_runtime_compatibility c
+    WHERE c.skill_version_id = ver.id
+    ORDER BY c.measured_at DESC
+    LIMIT 1
+) cmp ON true
+WHERE sk.id = $1 AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
+FOR NO KEY UPDATE OF sk
+`
+
+type GetLiveSkillListingFactsRow struct {
+	Redistribution         string
+	Category               *string
+	CategorySource         *string
+	CurationTier           string
+	CuratedVersionID       pgtype.UUID
+	LatestVersionID        pgtype.UUID
+	VerifiedAt             pgtype.Timestamptz
+	LatestPackageObjectKey string
+	AgentCapability        string
+	AgentRuntime           string
+	AgentRuntimeImage      string
+	AgentMeasuredAt        pgtype.Timestamptz
+}
+
+func (q *Queries) GetLiveSkillListingFacts(ctx context.Context, id pgtype.UUID) (GetLiveSkillListingFactsRow, error) {
+	row := q.db.QueryRow(ctx, getLiveSkillListingFacts, id)
+	var i GetLiveSkillListingFactsRow
+	err := row.Scan(
+		&i.Redistribution,
+		&i.Category,
+		&i.CategorySource,
+		&i.CurationTier,
+		&i.CuratedVersionID,
+		&i.LatestVersionID,
+		&i.VerifiedAt,
+		&i.LatestPackageObjectKey,
+		&i.AgentCapability,
+		&i.AgentRuntime,
+		&i.AgentRuntimeImage,
+		&i.AgentMeasuredAt,
+	)
+	return i, err
+}
+
 const getSkill = `-- name: GetSkill :one
 SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
@@ -218,6 +280,72 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 		&i.GenerationInputs,
 	)
 	return i, err
+}
+
+const listLiveSkillIDs = `-- name: ListLiveSkillIDs :many
+SELECT id FROM skills
+WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL AND takedown_at IS NULL
+`
+
+func (q *Queries) ListLiveSkillIDs(ctx context.Context, skillIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listLiveSkillIDs, skillIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveSkillsForIndex = `-- name: ListLiveSkillsForIndex :many
+SELECT id, workspace_id, name, coalesce(summary, '')::text AS summary, redistribution
+FROM skills
+WHERE deleted_at IS NULL AND takedown_at IS NULL
+ORDER BY id
+`
+
+type ListLiveSkillsForIndexRow struct {
+	ID             pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	Name           string
+	Summary        string
+	Redistribution string
+}
+
+func (q *Queries) ListLiveSkillsForIndex(ctx context.Context) ([]ListLiveSkillsForIndexRow, error) {
+	rows, err := q.db.Query(ctx, listLiveSkillsForIndex)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLiveSkillsForIndexRow
+	for rows.Next() {
+		var i ListLiveSkillsForIndexRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.Summary,
+			&i.Redistribution,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listSkills = `-- name: ListSkills :many

@@ -17,39 +17,16 @@ SELECT s.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
        CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
            AS summary_source,
-       s.tags, s.scan, ver.created_at AS verified_at,
-       COALESCE(cmp.capability, 'unverified') AS agent_capability,
-       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
-       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
-       cmp.measured_at AS agent_measured_at,
-       COALESCE(cur.tier, 'indexed') AS curation_tier,
-       cur.category,
-       cur.category_source,
+       s.tags, s.scan, s.verified_at,
+       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
+       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
+       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
+       s.agent_measured_at,
+       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.category,
+       s.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
-LEFT JOIN LATERAL (
-    SELECT v.id, v.created_at
-    FROM skill_versions v
-    WHERE v.skill_id = s.skill_id
-    ORDER BY v.version_number DESC
-    LIMIT 1
-) ver ON true
-LEFT JOIN LATERAL (
-    SELECT c.capability, c.runtime, c.runtime_image, c.measured_at
-    FROM skill_runtime_compatibility c
-    WHERE c.skill_version_id = ver.id
-    ORDER BY c.measured_at DESC
-    LIMIT 1
-) cmp ON true
-LEFT JOIN LATERAL (
-    SELECT CASE
-        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
-        THEN 'curated' ELSE 'indexed'
-    END AS tier,
-    sk.category, sk.category_source
-    FROM skills sk
-    WHERE sk.id = s.skill_id
-) cur ON true
 WHERE s.workspace_id = ANY($1::uuid[])
   AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
   AND (
@@ -60,22 +37,22 @@ WHERE s.workspace_id = ANY($1::uuid[])
   )
   AND (
     $3::bool IS NULL
-    OR (ver.created_at IS NOT NULL) = $3::bool
+    OR (s.verified_at IS NOT NULL) = $3::bool
   )
   AND (
     $4::text IS NULL
-    OR COALESCE(cmp.runtime, 'unverified') = $4::text
+    OR COALESCE(s.agent_runtime, 'unverified') = $4::text
   )
   AND (
     $5::text IS NULL
-    OR COALESCE(cur.tier, 'indexed') = $5::text
+    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = $5::text
   )
   AND (
     $6::text IS NULL
-    OR cur.category = $6::text
+    OR s.category = $6::text
   )
-ORDER BY (COALESCE(cur.tier, 'indexed') = 'curated') DESC,
-         ver.created_at DESC NULLS LAST,
+ORDER BY (COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = 'curated') DESC,
+         s.verified_at DESC NULLS LAST,
          s.skill_id
 LIMIT $7
 `
@@ -209,9 +186,8 @@ func (q *Queries) DeleteSearchDocument(ctx context.Context, arg DeleteSearchDocu
 
 const getCatalogReferenceFacts = `-- name: GetCatalogReferenceFacts :one
 SELECT sd.scan,
-       (sk.curation_tier = 'curated' AND sk.curated_version_id = $1::uuid)::bool AS curated
+       COALESCE(sd.curated_version_id = $1::uuid, false)::bool AS curated
 FROM search_documents sd
-JOIN skills sk ON sk.id = sd.skill_id
 WHERE sd.skill_id = $2
   AND sd.workspace_id = ANY($3::uuid[])
 `
@@ -273,17 +249,10 @@ func (q *Queries) ListCatalogSkillScans(ctx context.Context, arg ListCatalogSkil
 
 const listPendingEnrichment = `-- name: ListPendingEnrichment :many
 WITH candidates AS (
-SELECT sd.skill_id, sv.package_object_key
+SELECT sd.skill_id, sd.latest_package_object_key AS package_object_key
 FROM search_documents sd
-JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
-JOIN LATERAL (
-    SELECT v.package_object_key
-    FROM skill_versions v
-    WHERE v.skill_id = sd.skill_id
-    ORDER BY v.version_number DESC
-    LIMIT 1
-) sv ON true
 WHERE sd.enrichment_status = 'pending'
+  AND sd.latest_package_object_key IS NOT NULL
   AND (sd.enrichment_attempted_at IS NULL OR sd.enrichment_attempted_at < now() - interval '15 minutes')
 ORDER BY sd.enrichment_attempted_at NULLS FIRST, sd.enrichment_attempted_at, sd.updated_at, sd.skill_id
 LIMIT $1 FOR UPDATE OF sd SKIP LOCKED
@@ -300,7 +269,7 @@ type ListPendingEnrichmentRow struct {
 	SkillID          pgtype.UUID
 	WorkspaceID      pgtype.UUID
 	Name             string
-	PackageObjectKey string
+	PackageObjectKey *string
 }
 
 func (q *Queries) ListPendingEnrichment(ctx context.Context, limit int32) ([]ListPendingEnrichmentRow, error) {
@@ -321,6 +290,30 @@ func (q *Queries) ListPendingEnrichment(ctx context.Context, limit int32) ([]Lis
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSearchDocumentSkillIDs = `-- name: ListSearchDocumentSkillIDs :many
+SELECT skill_id FROM search_documents ORDER BY skill_id
+`
+
+func (q *Queries) ListSearchDocumentSkillIDs(ctx context.Context) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSearchDocumentSkillIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var skill_id pgtype.UUID
+		if err := rows.Scan(&skill_id); err != nil {
+			return nil, err
+		}
+		items = append(items, skill_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -409,14 +402,11 @@ func (q *Queries) ListSkillScans(ctx context.Context, arg ListSkillScansParams) 
 }
 
 const pruneDeletedSearchDocuments = `-- name: PruneDeletedSearchDocuments :execrows
-DELETE FROM search_documents sd
-USING skills sk
-WHERE sd.skill_id = sk.id
-  AND (sk.deleted_at IS NOT NULL OR sk.takedown_at IS NOT NULL)
+DELETE FROM search_documents WHERE skill_id = ANY($1::uuid[])
 `
 
-func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, pruneDeletedSearchDocuments)
+func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context, skillIds []pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneDeletedSearchDocuments, skillIds)
 	if err != nil {
 		return 0, err
 	}
@@ -466,43 +456,20 @@ SELECT c.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
        CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
            AS summary_source,
-       s.tags, s.scan, ver.created_at AS verified_at,
-       COALESCE(cmp.capability, 'unverified') AS agent_capability,
-       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
-       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
-       cmp.measured_at AS agent_measured_at,
-       COALESCE(cur.tier, 'indexed') AS curation_tier,
-       cur.category,
-       cur.category_source,
+       s.tags, s.scan, s.verified_at,
+       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
+       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
+       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
+       s.agent_measured_at,
+       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.category,
+       s.category_source,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked,
        c.covered AS lexical_covered,
        count(*) OVER ()::bigint AS total_matches
 FROM candidates c
 JOIN search_documents s ON s.skill_id = c.skill_id
-LEFT JOIN LATERAL (
-    SELECT v.id, v.created_at
-    FROM skill_versions v
-    WHERE v.skill_id = c.skill_id
-    ORDER BY v.version_number DESC
-    LIMIT 1
-) ver ON true
-LEFT JOIN LATERAL (
-    SELECT sc.capability, sc.runtime, sc.runtime_image, sc.measured_at
-    FROM skill_runtime_compatibility sc
-    WHERE sc.skill_version_id = ver.id
-    ORDER BY sc.measured_at DESC
-    LIMIT 1
-) cmp ON true
-LEFT JOIN LATERAL (
-    SELECT CASE
-        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
-        THEN 'curated' ELSE 'indexed'
-    END AS tier,
-    sk.category, sk.category_source
-    FROM skills sk
-    WHERE sk.id = c.skill_id
-) cur ON true
 WHERE (c.covered OR c.distance IS NULL OR c.distance <= $1::float8)
   AND (
     $2::bool IS NULL
@@ -512,19 +479,19 @@ WHERE (c.covered OR c.distance IS NULL OR c.distance <= $1::float8)
   )
   AND (
     $3::bool IS NULL
-    OR (ver.created_at IS NOT NULL) = $3::bool
+    OR (s.verified_at IS NOT NULL) = $3::bool
   )
   AND (
     $4::text IS NULL
-    OR COALESCE(cmp.runtime, 'unverified') = $4::text
+    OR COALESCE(s.agent_runtime, 'unverified') = $4::text
   )
   AND (
     $5::text IS NULL
-    OR COALESCE(cur.tier, 'indexed') = $5::text
+    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = $5::text
   )
   AND (
     $6::text IS NULL
-    OR cur.category = $6::text
+    OR s.category = $6::text
   )
 ORDER BY (lower(s.name) = lower(btrim($7::text))) DESC,
          c.covered DESC,
@@ -623,39 +590,16 @@ SELECT s.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
        CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
            AS summary_source,
-       s.tags, s.scan, ver.created_at AS verified_at,
-       COALESCE(cmp.capability, 'unverified') AS agent_capability,
-       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
-       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
-       cmp.measured_at AS agent_measured_at,
-       COALESCE(cur.tier, 'indexed') AS curation_tier,
-       cur.category,
-       cur.category_source,
+       s.tags, s.scan, s.verified_at,
+       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
+       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
+       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
+       s.agent_measured_at,
+       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.category,
+       s.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
-LEFT JOIN LATERAL (
-    SELECT v.id, v.created_at
-    FROM skill_versions v
-    WHERE v.skill_id = s.skill_id
-    ORDER BY v.version_number DESC
-    LIMIT 1
-) ver ON true
-LEFT JOIN LATERAL (
-    SELECT c.capability, c.runtime, c.runtime_image, c.measured_at
-    FROM skill_runtime_compatibility c
-    WHERE c.skill_version_id = ver.id
-    ORDER BY c.measured_at DESC
-    LIMIT 1
-) cmp ON true
-LEFT JOIN LATERAL (
-    SELECT CASE
-        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
-        THEN 'curated' ELSE 'indexed'
-    END AS tier,
-    sk.category, sk.category_source
-    FROM skills sk
-    WHERE sk.id = s.skill_id
-) cur ON true
 WHERE s.workspace_id = ANY($1::uuid[])
   AND (s.tsv @@ websearch_to_tsquery('english', $2::text)
        OR ($3::text <> ''
@@ -669,19 +613,19 @@ WHERE s.workspace_id = ANY($1::uuid[])
   )
   AND (
     $5::bool IS NULL
-    OR (ver.created_at IS NOT NULL) = $5::bool
+    OR (s.verified_at IS NOT NULL) = $5::bool
   )
   AND (
     $6::text IS NULL
-    OR COALESCE(cmp.runtime, 'unverified') = $6::text
+    OR COALESCE(s.agent_runtime, 'unverified') = $6::text
   )
   AND (
     $7::text IS NULL
-    OR COALESCE(cur.tier, 'indexed') = $7::text
+    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = $7::text
   )
   AND (
     $8::text IS NULL
-    OR cur.category = $8::text
+    OR s.category = $8::text
   )
 ORDER BY GREATEST(
     ts_rank_cd(s.tsv, websearch_to_tsquery('english', $2::text)),
@@ -768,17 +712,31 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 }
 
 const reindexAll = `-- name: ReindexAll :execrows
-INSERT INTO search_documents (skill_id, workspace_id, name, summary, updated_at)
-SELECT sk.id, sk.workspace_id, sk.name, coalesce(sk.summary, ''), now()
-FROM skills sk
-WHERE sk.deleted_at IS NULL AND sk.takedown_at IS NULL
+INSERT INTO search_documents (skill_id, workspace_id, name, summary, generated, updated_at)
+SELECT unnest($1::uuid[]), unnest($2::uuid[]),
+       unnest($3::text[]), unnest($4::text[]),
+       unnest($5::bool[]), now()
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id, name = EXCLUDED.name,
     summary = EXCLUDED.summary
 `
 
-func (q *Queries) ReindexAll(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, reindexAll)
+type ReindexAllParams struct {
+	SkillIds     []pgtype.UUID
+	WorkspaceIds []pgtype.UUID
+	Names        []string
+	Summaries    []string
+	Generated    []bool
+}
+
+func (q *Queries) ReindexAll(ctx context.Context, arg ReindexAllParams) (int64, error) {
+	result, err := q.db.Exec(ctx, reindexAll,
+		arg.SkillIds,
+		arg.WorkspaceIds,
+		arg.Names,
+		arg.Summaries,
+		arg.Generated,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -788,9 +746,7 @@ func (q *Queries) ReindexAll(ctx context.Context) (int64, error) {
 const resetCatalogueEnrichmentBefore = `-- name: ResetCatalogueEnrichmentBefore :execrows
 UPDATE search_documents sd
 SET enrichment_status = 'pending', enrichment_attempted_at = NULL
-FROM skills sk
 WHERE sd.workspace_id = ANY($1::uuid[])
-  AND sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
   AND sd.enrichment_status = 'enriched'
   AND COALESCE(sd.enrichment_prompt_version, '') <> $2::text
 `
@@ -811,8 +767,8 @@ func (q *Queries) ResetCatalogueEnrichmentBefore(ctx context.Context, arg ResetC
 const searchSkills = `-- name: SearchSkills :many
 SELECT s.skill_id, s.workspace_id, s.name, s.summary
 FROM search_documents s
-JOIN skills sk ON sk.id = s.skill_id AND sk.redistribution <> 'generated'
 WHERE s.workspace_id = $1
+  AND NOT s.generated
   AND s.tsv @@ websearch_to_tsquery('english', $3::text)
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $3::text)) DESC
 LIMIT $2
@@ -869,6 +825,55 @@ type SetSearchDocumentBigramParams struct {
 
 func (q *Queries) SetSearchDocumentBigram(ctx context.Context, arg SetSearchDocumentBigramParams) error {
 	_, err := q.db.Exec(ctx, setSearchDocumentBigram, arg.SkillID, arg.BigramText)
+	return err
+}
+
+const setSearchDocumentListing = `-- name: SetSearchDocumentListing :exec
+UPDATE search_documents
+SET generated = $1,
+    category = $2,
+    category_source = $3,
+    latest_version_id = $4,
+    verified_at = $5,
+    latest_package_object_key = $6,
+    curated_version_id = $7,
+    agent_capability = $8,
+    agent_runtime = $9,
+    agent_runtime_image = $10,
+    agent_measured_at = $11
+WHERE skill_id = $12
+`
+
+type SetSearchDocumentListingParams struct {
+	Generated              bool
+	Category               *string
+	CategorySource         *string
+	LatestVersionID        pgtype.UUID
+	VerifiedAt             pgtype.Timestamptz
+	LatestPackageObjectKey *string
+	CuratedVersionID       pgtype.UUID
+	AgentCapability        *string
+	AgentRuntime           *string
+	AgentRuntimeImage      *string
+	AgentMeasuredAt        pgtype.Timestamptz
+	SkillID                pgtype.UUID
+}
+
+func (q *Queries) SetSearchDocumentListing(ctx context.Context, arg SetSearchDocumentListingParams) error {
+	_, err := q.db.Exec(ctx, setSearchDocumentListing,
+		arg.Generated,
+		arg.Category,
+		arg.CategorySource,
+		arg.LatestVersionID,
+		arg.VerifiedAt,
+		arg.LatestPackageObjectKey,
+		arg.CuratedVersionID,
+		arg.AgentCapability,
+		arg.AgentRuntime,
+		arg.AgentRuntimeImage,
+		arg.AgentMeasuredAt,
+		arg.SkillID,
+	)
 	return err
 }
 

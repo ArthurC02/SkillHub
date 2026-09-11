@@ -20,6 +20,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -87,6 +88,7 @@ func seedVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, hash st
 	if err != nil {
 		t.Fatal(err)
 	}
+	refreshListing(t, pool, skillID)
 	return v
 }
 
@@ -935,11 +937,7 @@ func TestTakedownRemovesSkillFromPublicSurface(t *testing.T) {
 		t.Fatalf("repeat takedown: got %d, want 409", s)
 	}
 
-	q := gen.New(pool)
-	if _, err := q.PruneDeletedSearchDocuments(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := q.ReindexAll(ctx); err != nil {
+	if _, _, err := catalog.RebuildIndex(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
 	if ids := other.skillIDs(t, "/api/skills/search?q=quarantined-parser"); contains(ids, skillID) {

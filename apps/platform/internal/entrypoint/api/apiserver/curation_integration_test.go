@@ -24,6 +24,7 @@ func curate(t *testing.T, pool *pgxpool.Pool, skillID, versionID string) {
 	); err != nil {
 		t.Fatal(err)
 	}
+	refreshListing(t, pool, skillID)
 }
 
 func newestVersion(t *testing.T, pool *pgxpool.Pool, skillID string) string {

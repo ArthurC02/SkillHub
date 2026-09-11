@@ -839,3 +839,34 @@ func TestReconciliationChecksASharedObjectOnlyOncePerBatch(t *testing.T) {
 		t.Fatalf("shared dataset HEAD calls = %d, want 1", got)
 	}
 }
+
+func TestEnrichmentLeavesASkillWithNoVersionUnclaimed(t *testing.T) {
+	pool := requireDB(t)
+	shelveExistingWorklists(t, pool)
+	a := newAPI(t, pool)
+	ctx := context.Background()
+	owner := a.login(t, uniqueWorklistLabel("versionless-owner"))
+	versionless := seedSkill(t, pool, owner.workspaceID, uniqueWorklistLabel("versionless"))
+	versioned := newFixture(t, a, pool, uniqueWorklistLabel("versioned"))
+	for _, skill := range []string{versionless, versioned.skillID} {
+		if _, err := pool.Exec(ctx, `UPDATE search_documents
+			SET enrichment_status = 'pending', enrichment_attempted_at = NULL,
+			    updated_at = '1700-01-01' WHERE skill_id = $1`, mustUUID(t, skill)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	claimed, err := gen.New(pool).ListPendingEnrichment(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, row := range claimed {
+		ids = append(ids, uuidText(row.SkillID))
+	}
+	if !contains(ids, versioned.skillID) {
+		t.Fatalf("the pending skill with a version was not claimed: %v", ids)
+	}
+	if contains(ids, versionless) {
+		t.Errorf("claimed a skill with no version, which has no package to enrich: %v", ids)
+	}
+}

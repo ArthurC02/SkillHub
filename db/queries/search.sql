@@ -31,17 +31,10 @@ SET workspace_id = EXCLUDED.workspace_id,
 
 -- name: ListPendingEnrichment :many
 WITH candidates AS (
-SELECT sd.skill_id, sv.package_object_key
+SELECT sd.skill_id, sd.latest_package_object_key AS package_object_key
 FROM search_documents sd
-JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
-JOIN LATERAL (
-    SELECT v.package_object_key
-    FROM skill_versions v
-    WHERE v.skill_id = sd.skill_id
-    ORDER BY v.version_number DESC
-    LIMIT 1
-) sv ON true
 WHERE sd.enrichment_status = 'pending'
+  AND sd.latest_package_object_key IS NOT NULL
   AND (sd.enrichment_attempted_at IS NULL OR sd.enrichment_attempted_at < now() - interval '15 minutes')
 ORDER BY sd.enrichment_attempted_at NULLS FIRST, sd.enrichment_attempted_at, sd.updated_at, sd.skill_id
 LIMIT $1 FOR UPDATE OF sd SKIP LOCKED
@@ -56,8 +49,8 @@ FROM claimed c JOIN candidates USING (skill_id);
 -- name: SearchSkills :many
 SELECT s.skill_id, s.workspace_id, s.name, s.summary
 FROM search_documents s
-JOIN skills sk ON sk.id = s.skill_id AND sk.redistribution <> 'generated'
 WHERE s.workspace_id = $1
+  AND NOT s.generated
   AND s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
 LIMIT $2;
@@ -67,39 +60,16 @@ SELECT s.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
        CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
            AS summary_source,
-       s.tags, s.scan, ver.created_at AS verified_at,
-       COALESCE(cmp.capability, 'unverified') AS agent_capability,
-       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
-       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
-       cmp.measured_at AS agent_measured_at,
-       COALESCE(cur.tier, 'indexed') AS curation_tier,
-       cur.category,
-       cur.category_source,
+       s.tags, s.scan, s.verified_at,
+       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
+       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
+       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
+       s.agent_measured_at,
+       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.category,
+       s.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
-LEFT JOIN LATERAL (
-    SELECT v.id, v.created_at
-    FROM skill_versions v
-    WHERE v.skill_id = s.skill_id
-    ORDER BY v.version_number DESC
-    LIMIT 1
-) ver ON true
-LEFT JOIN LATERAL (
-    SELECT c.capability, c.runtime, c.runtime_image, c.measured_at
-    FROM skill_runtime_compatibility c
-    WHERE c.skill_version_id = ver.id
-    ORDER BY c.measured_at DESC
-    LIMIT 1
-) cmp ON true
-LEFT JOIN LATERAL (
-    SELECT CASE
-        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
-        THEN 'curated' ELSE 'indexed'
-    END AS tier,
-    sk.category, sk.category_source
-    FROM skills sk
-    WHERE sk.id = s.skill_id
-) cur ON true
 WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   AND (s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
        OR (sqlc.arg(bigram_query)::text <> ''
@@ -113,19 +83,19 @@ WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   )
   AND (
     sqlc.narg(spec_validated)::bool IS NULL
-    OR (ver.created_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
+    OR (s.verified_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
   )
   AND (
     sqlc.narg(agent_runtime)::text IS NULL
-    OR COALESCE(cmp.runtime, 'unverified') = sqlc.narg(agent_runtime)::text
+    OR COALESCE(s.agent_runtime, 'unverified') = sqlc.narg(agent_runtime)::text
   )
   AND (
     sqlc.narg(curation_tier)::text IS NULL
-    OR COALESCE(cur.tier, 'indexed') = sqlc.narg(curation_tier)::text
+    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = sqlc.narg(curation_tier)::text
   )
   AND (
     sqlc.narg(category)::text IS NULL
-    OR cur.category = sqlc.narg(category)::text
+    OR s.category = sqlc.narg(category)::text
   )
 ORDER BY GREATEST(
     ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)),
@@ -139,39 +109,16 @@ SELECT s.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
        CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
            AS summary_source,
-       s.tags, s.scan, ver.created_at AS verified_at,
-       COALESCE(cmp.capability, 'unverified') AS agent_capability,
-       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
-       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
-       cmp.measured_at AS agent_measured_at,
-       COALESCE(cur.tier, 'indexed') AS curation_tier,
-       cur.category,
-       cur.category_source,
+       s.tags, s.scan, s.verified_at,
+       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
+       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
+       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
+       s.agent_measured_at,
+       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.category,
+       s.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
-LEFT JOIN LATERAL (
-    SELECT v.id, v.created_at
-    FROM skill_versions v
-    WHERE v.skill_id = s.skill_id
-    ORDER BY v.version_number DESC
-    LIMIT 1
-) ver ON true
-LEFT JOIN LATERAL (
-    SELECT c.capability, c.runtime, c.runtime_image, c.measured_at
-    FROM skill_runtime_compatibility c
-    WHERE c.skill_version_id = ver.id
-    ORDER BY c.measured_at DESC
-    LIMIT 1
-) cmp ON true
-LEFT JOIN LATERAL (
-    SELECT CASE
-        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
-        THEN 'curated' ELSE 'indexed'
-    END AS tier,
-    sk.category, sk.category_source
-    FROM skills sk
-    WHERE sk.id = s.skill_id
-) cur ON true
 WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
   AND (
@@ -182,22 +129,22 @@ WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   )
   AND (
     sqlc.narg(spec_validated)::bool IS NULL
-    OR (ver.created_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
+    OR (s.verified_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
   )
   AND (
     sqlc.narg(agent_runtime)::text IS NULL
-    OR COALESCE(cmp.runtime, 'unverified') = sqlc.narg(agent_runtime)::text
+    OR COALESCE(s.agent_runtime, 'unverified') = sqlc.narg(agent_runtime)::text
   )
   AND (
     sqlc.narg(curation_tier)::text IS NULL
-    OR COALESCE(cur.tier, 'indexed') = sqlc.narg(curation_tier)::text
+    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = sqlc.narg(curation_tier)::text
   )
   AND (
     sqlc.narg(category)::text IS NULL
-    OR cur.category = sqlc.narg(category)::text
+    OR s.category = sqlc.narg(category)::text
   )
-ORDER BY (COALESCE(cur.tier, 'indexed') = 'curated') DESC,
-         ver.created_at DESC NULLS LAST,
+ORDER BY (COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = 'curated') DESC,
+         s.verified_at DESC NULLS LAST,
          s.skill_id
 LIMIT sqlc.arg(result_limit);
 
@@ -245,43 +192,20 @@ SELECT c.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
        CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
            AS summary_source,
-       s.tags, s.scan, ver.created_at AS verified_at,
-       COALESCE(cmp.capability, 'unverified') AS agent_capability,
-       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
-       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
-       cmp.measured_at AS agent_measured_at,
-       COALESCE(cur.tier, 'indexed') AS curation_tier,
-       cur.category,
-       cur.category_source,
+       s.tags, s.scan, s.verified_at,
+       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
+       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
+       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
+       s.agent_measured_at,
+       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.category,
+       s.category_source,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked,
        c.covered AS lexical_covered,
        count(*) OVER ()::bigint AS total_matches
 FROM candidates c
 JOIN search_documents s ON s.skill_id = c.skill_id
-LEFT JOIN LATERAL (
-    SELECT v.id, v.created_at
-    FROM skill_versions v
-    WHERE v.skill_id = c.skill_id
-    ORDER BY v.version_number DESC
-    LIMIT 1
-) ver ON true
-LEFT JOIN LATERAL (
-    SELECT sc.capability, sc.runtime, sc.runtime_image, sc.measured_at
-    FROM skill_runtime_compatibility sc
-    WHERE sc.skill_version_id = ver.id
-    ORDER BY sc.measured_at DESC
-    LIMIT 1
-) cmp ON true
-LEFT JOIN LATERAL (
-    SELECT CASE
-        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
-        THEN 'curated' ELSE 'indexed'
-    END AS tier,
-    sk.category, sk.category_source
-    FROM skills sk
-    WHERE sk.id = c.skill_id
-) cur ON true
 WHERE (c.covered OR c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::float8)
   AND (
     sqlc.narg(has_script)::bool IS NULL
@@ -291,19 +215,19 @@ WHERE (c.covered OR c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::
   )
   AND (
     sqlc.narg(spec_validated)::bool IS NULL
-    OR (ver.created_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
+    OR (s.verified_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
   )
   AND (
     sqlc.narg(agent_runtime)::text IS NULL
-    OR COALESCE(cmp.runtime, 'unverified') = sqlc.narg(agent_runtime)::text
+    OR COALESCE(s.agent_runtime, 'unverified') = sqlc.narg(agent_runtime)::text
   )
   AND (
     sqlc.narg(curation_tier)::text IS NULL
-    OR COALESCE(cur.tier, 'indexed') = sqlc.narg(curation_tier)::text
+    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = sqlc.narg(curation_tier)::text
   )
   AND (
     sqlc.narg(category)::text IS NULL
-    OR cur.category = sqlc.narg(category)::text
+    OR s.category = sqlc.narg(category)::text
   )
 ORDER BY (lower(s.name) = lower(btrim(sqlc.arg(query)::text))) DESC,
          c.covered DESC,
@@ -311,10 +235,10 @@ ORDER BY (lower(s.name) = lower(btrim(sqlc.arg(query)::text))) DESC,
 LIMIT sqlc.arg(result_limit);
 
 -- name: ReindexAll :execrows
-INSERT INTO search_documents (skill_id, workspace_id, name, summary, updated_at)
-SELECT sk.id, sk.workspace_id, sk.name, coalesce(sk.summary, ''), now()
-FROM skills sk
-WHERE sk.deleted_at IS NULL AND sk.takedown_at IS NULL
+INSERT INTO search_documents (skill_id, workspace_id, name, summary, generated, updated_at)
+SELECT unnest(sqlc.arg(skill_ids)::uuid[]), unnest(sqlc.arg(workspace_ids)::uuid[]),
+       unnest(sqlc.arg(names)::text[]), unnest(sqlc.arg(summaries)::text[]),
+       unnest(sqlc.arg(generated)::bool[]), now()
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id, name = EXCLUDED.name,
     summary = EXCLUDED.summary;
@@ -322,11 +246,26 @@ SET workspace_id = EXCLUDED.workspace_id, name = EXCLUDED.name,
 -- name: DeleteSearchDocument :exec
 DELETE FROM search_documents WHERE skill_id = $1 AND workspace_id = $2;
 
+-- name: ListSearchDocumentSkillIDs :many
+SELECT skill_id FROM search_documents ORDER BY skill_id;
+
 -- name: PruneDeletedSearchDocuments :execrows
-DELETE FROM search_documents sd
-USING skills sk
-WHERE sd.skill_id = sk.id
-  AND (sk.deleted_at IS NOT NULL OR sk.takedown_at IS NOT NULL);
+DELETE FROM search_documents WHERE skill_id = ANY(sqlc.arg(skill_ids)::uuid[]);
+
+-- name: SetSearchDocumentListing :exec
+UPDATE search_documents
+SET generated = sqlc.arg(generated),
+    category = sqlc.narg(category),
+    category_source = sqlc.narg(category_source),
+    latest_version_id = sqlc.narg(latest_version_id),
+    verified_at = sqlc.narg(verified_at),
+    latest_package_object_key = sqlc.narg(latest_package_object_key),
+    curated_version_id = sqlc.narg(curated_version_id),
+    agent_capability = sqlc.narg(agent_capability),
+    agent_runtime = sqlc.narg(agent_runtime),
+    agent_runtime_image = sqlc.narg(agent_runtime_image),
+    agent_measured_at = sqlc.narg(agent_measured_at)
+WHERE skill_id = sqlc.arg(skill_id);
 
 -- name: ListSkillScans :many
 SELECT skill_id, scan
@@ -354,17 +293,14 @@ WHERE skill_id = $1;
 -- name: ResetCatalogueEnrichmentBefore :execrows
 UPDATE search_documents sd
 SET enrichment_status = 'pending', enrichment_attempted_at = NULL
-FROM skills sk
 WHERE sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-  AND sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
   AND sd.enrichment_status = 'enriched'
   AND COALESCE(sd.enrichment_prompt_version, '') <> sqlc.arg(prompt_version)::text;
 
 -- name: GetCatalogReferenceFacts :one
 SELECT sd.scan,
-       (sk.curation_tier = 'curated' AND sk.curated_version_id = sqlc.arg(version_id)::uuid)::bool AS curated
+       COALESCE(sd.curated_version_id = sqlc.arg(version_id)::uuid, false)::bool AS curated
 FROM search_documents sd
-JOIN skills sk ON sk.id = sd.skill_id
 WHERE sd.skill_id = sqlc.arg(skill_id)
   AND sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[]);
 
