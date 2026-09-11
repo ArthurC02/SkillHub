@@ -9,22 +9,20 @@ const testSessionThreshold int64 = 65
 
 const testMinSamples = 20
 
-func TestCreditBalanceResponseAllowsStartingASessionAtOrAboveTheThreshold(t *testing.T) {
-	for _, balance := range []int64{65, 66, 1000} {
-		est := CreditSessionEstimate{LowCredits: 30, HighCredits: 65, ThresholdCredits: 65, SampleSize: 40}
-		view := creditBalanceResponse(balance, est)
-		if !view.CanStart {
-			t.Fatalf("balance=%d threshold=%d: CanStart = false, want true", balance, est.ThresholdCredits)
-		}
-		if view.BlockReason != "" {
-			t.Fatalf("balance=%d: BlockReason = %q, want empty when a session may start", balance, view.BlockReason)
-		}
+func TestCreditBalanceResponseShowsTheLedgersAnswerAndNoBlockReasonWhenAStartIsAllowed(t *testing.T) {
+	est := CreditSessionEstimate{LowCredits: 30, HighCredits: 65, ThresholdCredits: 65, SampleSize: 40}
+	view := creditBalanceResponse(65, true, est)
+	if !view.CanStart {
+		t.Fatal("the ledger allowed a start but the view says CanStart = false")
+	}
+	if view.BlockReason != "" {
+		t.Fatalf("BlockReason = %q, want empty when a session may start", view.BlockReason)
 	}
 }
 
 func TestCreditBalanceResponseBlocksBelowThresholdAndNamesTheDeficit(t *testing.T) {
 	est := CreditSessionEstimate{LowCredits: 30, HighCredits: 65, ThresholdCredits: 65, SampleSize: 40}
-	view := creditBalanceResponse(10, est)
+	view := creditBalanceResponse(10, false, est)
 	if view.CanStart {
 		t.Fatalf("balance=10 threshold=65: CanStart = true, want false")
 	}
@@ -40,7 +38,7 @@ func TestCreditBalanceResponseBlocksBelowThresholdAndNamesTheDeficit(t *testing.
 
 func TestCreditBalanceResponseHandlesANegativeBalance(t *testing.T) {
 	est := CreditSessionEstimate{ThresholdCredits: 65, SampleSize: 25, DebtFloorCredits: -80}
-	view := creditBalanceResponse(-12, est)
+	view := creditBalanceResponse(-12, false, est)
 	if view.BalanceCredits != -12 {
 		t.Fatalf("BalanceCredits = %d, want -12 (a negative balance is not rounded up to zero)", view.BalanceCredits)
 	}
@@ -60,7 +58,7 @@ func TestCreditBalanceResponseCarriesTheEstimatedFlagThrough(t *testing.T) {
 		LowCredits: 30, HighCredits: testSessionThreshold,
 		ThresholdCredits: testSessionThreshold, SampleSize: 3, Estimated: true,
 	}
-	view := creditBalanceResponse(100, fallback)
+	view := creditBalanceResponse(100, true, fallback)
 	if !view.EstimatedSession.Estimated {
 		t.Fatal("an estimate under 20 samples reached the view with Estimated = false")
 	}
@@ -69,7 +67,7 @@ func TestCreditBalanceResponseCarriesTheEstimatedFlagThrough(t *testing.T) {
 	}
 
 	measured := CreditSessionEstimate{ThresholdCredits: 50, SampleSize: testMinSamples, Estimated: false}
-	view = creditBalanceResponse(100, measured)
+	view = creditBalanceResponse(100, true, measured)
 	if view.EstimatedSession.Estimated {
 		t.Fatal("a measured estimate (20 samples or more) was reported as Estimated = true")
 	}

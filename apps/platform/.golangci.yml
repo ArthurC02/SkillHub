@@ -40,6 +40,8 @@ linters:
               desc: "creation uses injected owner APIs (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
               desc: "creation uses injected owner APIs (ADR-067)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
+              desc: "creation uses injected owner APIs (ADR-067)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "creation uses injected owner APIs (ADR-067)"
 
@@ -53,6 +55,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
               desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
@@ -113,6 +117,8 @@ linters:
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
@@ -147,6 +153,8 @@ linters:
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
@@ -175,6 +183,8 @@ linters:
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
@@ -200,6 +210,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
@@ -228,6 +240,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
@@ -258,6 +272,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
@@ -295,6 +311,8 @@ linters:
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
@@ -329,6 +347,8 @@ linters:
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
@@ -356,6 +376,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
@@ -391,6 +413,8 @@ linters:
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
@@ -424,6 +448,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
@@ -463,6 +489,8 @@ linters:
               desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
               desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
+              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
 
         shared-kernel:
           files:
@@ -498,6 +526,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
               desc: "shared kernel must not import a process composition root (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "shared kernel must not import a process composition root (ADR-032 §5)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
               desc: "shared kernel must not import a process composition root (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "shared kernel must not import a generic worker (ADR-037)"
@@ -546,6 +576,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
               desc: "presentation layer / composition root; generic subdomains must not import it (ADR-032 §5)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "composition root; generic subdomains must not import it (ADR-032 §5, ADR-060 decision 6)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
               desc: "composition root; generic subdomains must not import it (ADR-032 §5, ADR-060 decision 6)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain must not import another generic worker (ADR-032 appendix A)"

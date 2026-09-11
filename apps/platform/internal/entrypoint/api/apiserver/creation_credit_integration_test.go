@@ -14,7 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 )
 
 func creditTestLimits() creation.Limits {
@@ -278,7 +278,7 @@ func TestAccountDeletionLeavesTheCreditLedgerAlone(t *testing.T) {
 	c := a.login(t, "credit-kept-after-deletion")
 	ctx := context.Background()
 	user := mustUUID(t, c.userID)
-	ledger, err := worker.NewCreditService(pool)
+	ledger, err := wiring.NewCreditService(pool)
 	if err != nil {
 		t.Fatal(err)
 	}

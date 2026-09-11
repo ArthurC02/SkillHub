@@ -3,6 +3,7 @@ package credit
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -17,6 +18,10 @@ var (
 	ErrUnavailable = errors.New("credit: capability unavailable")
 
 	ErrInvalid = errors.New("credit: invalid input")
+
+	ErrZeroAmount         = fmt.Errorf("%w: amount must not be zero", ErrInvalid)
+	ErrReasonRequired     = fmt.Errorf("%w: reason is required", ErrInvalid)
+	ErrGrantLowersBalance = fmt.Errorf("%w: only an adjustment may lower a balance", ErrInvalid)
 
 	ErrAccountGone = errors.New("credit: account not eligible")
 )
@@ -299,8 +304,16 @@ func (s *Service) USDForCredits(credits int64) (usd float64, ok bool) {
 	return float64(micros) / 1_000_000, true
 }
 
+func OperatorEntryKind(credits int64) string {
+	if credits < 0 {
+		return EntryAdjustment
+	}
+	return EntryGrant
+}
+
 type GrantInput struct {
 	UserID         pgtype.UUID
+	WorkspaceID    pgtype.UUID
 	EntryKind      string
 	Credits        int64
 	Reason         string
@@ -317,20 +330,30 @@ func (s *Service) Grant(ctx context.Context, tx DBTX, in GrantInput) (int64, err
 	default:
 		return 0, ErrInvalid
 	}
-	if !in.UserID.Valid || !in.OperatorID.Valid || in.Credits == 0 ||
-		strings.TrimSpace(in.Reason) == "" || in.IdempotencyKey == "" {
+	in.Reason = strings.TrimSpace(in.Reason)
+	switch {
+	case in.Credits == 0:
+		return 0, ErrZeroAmount
+	case in.Reason == "":
+		return 0, ErrReasonRequired
+	case in.Credits < 0 && in.EntryKind != EntryAdjustment:
+		return 0, ErrGrantLowersBalance
+	case !in.UserID.Valid || !in.OperatorID.Valid || in.IdempotencyKey == "":
 		return 0, ErrInvalid
 	}
 	if err := s.checkAccount(ctx, tx, in.UserID); err != nil {
 		return 0, err
 	}
 
-	balance, err := s.Store.ApplyGrant(ctx, tx, GrantEntry(in))
+	balance, err := s.Store.ApplyGrant(ctx, tx, GrantEntry{
+		UserID: in.UserID, EntryKind: in.EntryKind, Credits: in.Credits,
+		Reason: in.Reason, OperatorID: in.OperatorID, IdempotencyKey: in.IdempotencyKey,
+	})
 	if err != nil {
 		return 0, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
-		Actor: in.OperatorID, Action: auditActionGrant,
+		Actor: in.OperatorID, Workspace: in.WorkspaceID, Action: auditActionGrant,
 		ResourceType: "credit_entry", ResourceID: in.UserID,
 		Metadata: map[string]any{"kind": in.EntryKind, "credits": in.Credits, "reason": in.Reason},
 	}); err != nil {

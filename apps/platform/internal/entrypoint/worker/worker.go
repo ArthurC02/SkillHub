@@ -8,6 +8,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/jackc/pgx/v5"
@@ -149,16 +150,16 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	wireCreationGateway(set.Creation, deps.Gateway)
 	wireCreationFetch(set.Creation)
 
-	creditSvc, err := NewCreditService(pool)
+	creditSvc, err := wiring.NewCreditService(pool)
 	if err != nil {
 		return nil, fmt.Errorf("credit wiring: %w", err)
 	}
 	creditSvc.Config.SessionIdle = deps.CreationLimits.SessionTimeout
-	WireCreationCredit(set.Creation, creditSvc, pool)
+	wiring.WireCreationCredit(set.Creation, creditSvc, pool)
 	backfillSvc := newBackfillService(pool, deps)
 	wireCostRecording(creditSvc, creationSearch, creationVersions, backfillSvc, set.Evaluations)
-	WireCreditDisplay(creditSvc, set.Runs, traceSvc, set.Evaluations)
-	WireRunCredit(set.Runs, creditSvc, pool)
+	wiring.WireCreditDisplay(creditSvc, set.Runs, traceSvc, set.Evaluations)
+	wiring.WireRunCredit(set.Runs, creditSvc, pool)
 	workers := river.NewWorkers()
 	addWorker(set, workers, &creation.Worker{Svc: set.Creation})
 	addWorker(set, workers, &creation.ExpiryWorker{Svc: set.Creation})

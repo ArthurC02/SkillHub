@@ -283,6 +283,25 @@ func TestCanStartFallsBackWhenNoStatisticsExist(t *testing.T) {
 	}
 }
 
+func TestCanStartAllowsAStartExactlyAtTheThreshold(t *testing.T) {
+	store := newFakeStore()
+	s := &Service{Store: store, Config: testConfig()}
+	for _, tc := range []struct {
+		balance int64
+		want    bool
+	}{{69, false}, {70, true}} {
+		user := testUser(byte(30 + tc.balance%10))
+		store.balances[idKey(user)] = tc.balance
+		check, err := s.CanStart(context.Background(), user, KindGenerate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if check.OK != tc.want {
+			t.Errorf("balance %d against the fallback threshold 70: OK = %v, want %v", tc.balance, check.OK, tc.want)
+		}
+	}
+}
+
 func TestCanStartFallsBackBelowMinSamples(t *testing.T) {
 	store := newFakeStore()
 	store.stats[KindGenerate] = Statistics{SampleCount: MinStatSamples - 1, P95UsdMicros: 30_000_000, WindowEnd: time.Now()}
@@ -310,6 +329,37 @@ func TestGrantRequiresReasonAndOperator(t *testing.T) {
 		UserID: user, EntryKind: EntryGrant, Credits: 50, Reason: "beta reward", IdempotencyKey: "g2",
 	}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("a self-service grant with no operator id must be refused with ErrInvalid, got %v", err)
+	}
+}
+
+func TestOnlyAnAdjustmentMayLowerABalance(t *testing.T) {
+	s := &Service{Store: newFakeStore(), Config: testConfig()}
+	base := GrantInput{UserID: testUser(21), Credits: -10, Reason: "corrects an over-grant", OperatorID: testUser(99)}
+
+	lowering := base
+	lowering.EntryKind, lowering.IdempotencyKey = EntryGrant, "g-lower-grant"
+	if _, err := s.Grant(context.Background(), fakeTx{}, lowering); !errors.Is(err, ErrGrantLowersBalance) {
+		t.Fatalf("a negative grant must be refused with ErrGrantLowersBalance, got %v", err)
+	}
+	adjustment := base
+	adjustment.EntryKind, adjustment.IdempotencyKey = EntryAdjustment, "g-lower-adjustment"
+	balance, err := s.Grant(context.Background(), fakeTx{}, adjustment)
+	if err != nil {
+		t.Fatalf("a negative adjustment must be accepted, got %v", err)
+	}
+	if balance != -10 {
+		t.Fatalf("balance after a -10 adjustment = %d, want -10", balance)
+	}
+}
+
+func TestAnOperatorEntryIsAnAdjustmentExactlyWhenItLowersTheBalance(t *testing.T) {
+	for _, tc := range []struct {
+		credits int64
+		want    string
+	}{{-1, EntryAdjustment}, {1, EntryGrant}} {
+		if got := OperatorEntryKind(tc.credits); got != tc.want {
+			t.Errorf("OperatorEntryKind(%d) = %q, want %q", tc.credits, got, tc.want)
+		}
 	}
 }
 

@@ -872,11 +872,7 @@ func architectureNeedsDepguard(identity packageIdentity) bool {
 	if identity.Kind != architectureGeneric {
 		return true
 	}
-	switch identity.ID {
-	case "apiserver", "api", "worker":
-		return false
-	}
-	return true
+	return identity.ID != "api" && !isCompositionRoot(identity.ID)
 }
 
 func knownBoundaryID(identities map[string]packageIdentity, id string) bool {

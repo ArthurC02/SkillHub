@@ -53,6 +53,7 @@ ADR-002 的領域模組正式對映為 Bounded Context。每個 Go package dir �
 | — | Generic | apiserver | entrypoint/api/apiserver | — |
 | — | Generic | api | entrypoint/api/gen | — |
 | — | Generic | worker | entrypoint/worker | — |
+| — | Generic | wiring | entrypoint/wiring | — |
 
 2026-08-20（DDD-006）：原設想自 `ingest` 拆出的「套件儲存面」經盤點實為無狀態 zip 讀取 helper（`PackageFS`／`PackageRoot`／`MaxZipBytes`），已移入 Shared Kernel `skillpkg`；版本寫入與 Trust 驗證管線不可分（M4 PACK-002 重用裁定），留在 `ingest`。
 
@@ -142,6 +143,10 @@ Generic 列的套件**不得包含領域規則**：`foundation/observability/aud
 **2026-08-29 增補（[ADR-060](./ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 6）**：worker 的 composition root 搬到 `internal/entrypoint/worker`，因為淨測試模式下 `cmd/api` 要在**同一個行程**裡把 worker 也跑起來。<br>**這動到本節「兩個 deployment unit 共享零個物件」那句話，而收斂方式是限制例外範圍不是推翻它**：合併只在 `SKILLHUB_CLEAN_MODE` 設定時發生，生產路徑的兩個二進位一個字不改。<br>**搬移沒有放寬任何規則**：composition root 之所以在 depguard 的 deny 檢查外，是因為它按定義必須 import 每一個 context，**而一條空的 deny 規則比沒有規則更糟——它讀起來像覆蓋，實際什麼都不禁止**。真正生效的保護方向相反且是實的：**沒有任何 context 可以 import 它**，12 條 deny 已入 `.golangci.yml`。豁免名單在 `tools/devctl` 的 `architectureNeedsDepguard`，看得到、數得完。
 
 四個 root 是刻意的（deployment unit 不同、需要的設定也不同），此註記只是把文件講準：原文的「唯一化」約束仍然成立於各 process 內部——領域 Service 只在該 process 的 root 建構，禁止在方法內現場建構其他 context 的 Service。漂移防線改為機械化：`internal/entrypoint/worker/worker_test.go`（2026-08-29 前為 `cmd/worker/main_test.go`）與 `internal/entrypoint/api/apiserver/app_test.go` 是不需要資料庫的 wiring smoke test，關鍵依賴漏注入即紅（worker 曾因漏設 `run.Service.Queue` 導致每個 run 都沒清理，當時沒有任何測試會紅）。`cmd/maintenance` 與 `cmd/reindex` 未補測試：兩者的 wiring 是單一 struct literal 且緊接著就被使用，漏注入會在該次命令當場失敗，smoke test 抓不到額外的失效模式。）
+
+**2026-09-12 增補（兩個 root 共用的接線）**：API 與 worker 兩個 composition root 都要把 Credit 接到創作、Run 與顯示上，這段接線住在 `entrypoint/wiring`，兩個 root 各自呼叫、各自建構自己的物件，不共享任何執行期物件。在這之前它長在 `entrypoint/worker`、由 `apiserver` import，API 的組裝因此依賴 worker 的組裝，2026-09-12 的全平台 DDD 稽核判為邊界問題。
+
+`wiring` 與 `apiserver`、`worker` 同為組裝套件：不受 depguard 的 deny 檢查、可以在方法內建構各 context 的 Service，而**沒有任何 context 可以 import 它**（`.golangci.yml` 每一條規則都 deny）。devctl 裡組裝套件的名單只有一份（`compositionRoots`）；本檔 §1 註記裡「僅 `entrypoint/api/apiserver` 與 `entrypoint/api/gen` 例外」那一句以該名單為準。
 
 ## 考慮過的替代方案
 

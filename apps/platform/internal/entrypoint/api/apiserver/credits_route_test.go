@@ -18,7 +18,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -33,11 +33,12 @@ func newFakeCreditLedger(est CreditSessionEstimate) *fakeCreditLedger {
 	return &fakeCreditLedger{balances: map[string]int64{}, estimate: est}
 }
 
-func (f *fakeCreditLedger) Balance(_ context.Context, workspaceID pgtype.UUID) (int64, error) {
+func (f *fakeCreditLedger) Standing(_ context.Context, workspaceID pgtype.UUID) (int64, bool, error) {
 	if f.balanceErr != nil {
-		return 0, f.balanceErr
+		return 0, false, f.balanceErr
 	}
-	return f.balances[pgconv.UUIDString(workspaceID)], nil
+	balance := f.balances[pgconv.UUIDString(workspaceID)]
+	return balance, balance >= f.estimate.ThresholdCredits, nil
 }
 
 func (f *fakeCreditLedger) SessionEstimate(context.Context) (CreditSessionEstimate, error) {
@@ -280,10 +281,38 @@ func realCreditsServer(t *testing.T, pool *pgxpool.Pool) (*App, *httptest.Server
 	}
 	mux := http.NewServeMux()
 	app.Auth.Mount(mux)
+	mux.HandleFunc("GET /me/credits", app.Auth.RequireSession(h.Get))
 	mux.HandleFunc("POST /admin/credits/{workspace_id}/grants", app.Auth.RequireOperator(h.Grant))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return app, srv
+}
+
+func TestTheBalanceScreenAsksTheLedgerWhetherASessionMayStart(t *testing.T) {
+	app, srv := realCreditsServer(t, creditsTestPool(t))
+	member := creditsLogin(t, srv, "credits-standing-member")
+	operator := creditsLogin(t, srv, "credits-standing-operator")
+	app.Auth.Operators = map[string]bool{operator.userID: true}
+
+	code, before := member.getJSON(t, "/me/credits")
+	if code != http.StatusOK {
+		t.Fatalf("GET /me/credits: got %d, body %v", code, before)
+	}
+	if canStart, _ := before["can_start"].(bool); canStart {
+		t.Fatalf("a fresh account with 0 credits was told it can start a session: %v", before)
+	}
+
+	if code, body := operator.postJSON(t, "/admin/credits/"+member.workspaceID+"/grants",
+		`{"amount_credits":1000000,"reason":"beta reward"}`); code != http.StatusOK {
+		t.Fatalf("grant: got %d, body %v", code, body)
+	}
+	code, after := member.getJSON(t, "/me/credits")
+	if code != http.StatusOK {
+		t.Fatalf("GET /me/credits after the grant: got %d, body %v", code, after)
+	}
+	if canStart, _ := after["can_start"].(bool); !canStart {
+		t.Fatalf("1,000,000 credits and the screen still says a session cannot start: %v", after)
+	}
 }
 
 func TestAnOperatorGrantCompletesOnOneConnection(t *testing.T) {
@@ -348,12 +377,12 @@ func TestCreationSettlementCompletesOnOneConnection(t *testing.T) {
 	workspaceID := mustParseUUID(t, member.workspaceID)
 
 	pool := creditsOneConnectionPool(t)
-	svc, err := worker.NewCreditService(pool)
+	svc, err := wiring.NewCreditService(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	target := &creation.Service{}
-	worker.WireCreationCredit(target, svc, pool)
+	wiring.WireCreationCredit(target, svc, pool)
 
 	for _, tc := range []struct {
 		name      string
@@ -387,36 +416,74 @@ func mustParseUUID(t *testing.T, s string) pgtype.UUID {
 	return id
 }
 
-func TestGrantRejectsInvalidRequestsBeforeTheLedgerRuns(t *testing.T) {
+func TestGrantRefusesAZeroAmountOrABlankReasonAndWritesNoEntry(t *testing.T) {
 	pool := creditsTestPool(t)
-	ledger := newFakeCreditLedger(CreditSessionEstimate{ThresholdCredits: 65})
-	app, srv := creditsTestServer(t, pool, ledger)
+	app, srv := realCreditsServer(t, pool)
 	member := creditsLogin(t, srv, "credits-grant-invalid-member")
 	operator := creditsLogin(t, srv, "credits-grant-invalid-operator")
 	app.Auth.Operators = map[string]bool{operator.userID: true}
+	grants := "/admin/credits/" + member.workspaceID + "/grants"
 
 	cases := []struct {
-		name, path, body string
-		want             int
+		name, path, body, message string
+		want                      int
 	}{
-		{"zero amount", "/admin/credits/" + member.workspaceID + "/grants",
-			`{"amount_credits":0,"reason":"x"}`, http.StatusBadRequest},
-		{"blank reason", "/admin/credits/" + member.workspaceID + "/grants",
-			`{"amount_credits":10,"reason":"   "}`, http.StatusBadRequest},
-		{"malformed workspace id", "/admin/credits/not-a-uuid/grants",
-			`{"amount_credits":10,"reason":"x"}`, http.StatusNotFound},
+		{"zero amount", grants, `{"amount_credits":0,"reason":"x"}`,
+			"amount_credits must not be zero", http.StatusBadRequest},
+		{"blank reason", grants, `{"amount_credits":10,"reason":"   "}`,
+			"reason is required", http.StatusBadRequest},
+		{"malformed workspace id", "/admin/credits/not-a-uuid/grants", `{"amount_credits":10,"reason":"x"}`,
+			"workspace not found", http.StatusNotFound},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			code, body := operator.postJSON(t, tc.path, tc.body)
 			if code != tc.want {
-				t.Errorf("got %d, want %d (%v)", code, tc.want, body)
+				t.Fatalf("got %d, want %d (%v)", code, tc.want, body)
+			}
+			if msg, _ := body["error"].(string); msg != tc.message {
+				t.Errorf("error = %q, want %q", msg, tc.message)
 			}
 		})
 	}
 
-	if len(ledger.balances) != 0 {
-		t.Errorf("a rejected grant reached the ledger: balances=%v", ledger.balances)
+	var entries int
+	if err := pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM credit_entries WHERE user_id = $1`, mustParseUUID(t, member.userID)).Scan(&entries); err != nil {
+		t.Fatal(err)
+	}
+	if entries != 0 {
+		t.Errorf("a refused grant wrote %d ledger entries", entries)
+	}
+}
+
+func TestASuccessfulGrantIsAuditedWithItsTargetWorkspace(t *testing.T) {
+	pool := creditsTestPool(t)
+	app, srv := realCreditsServer(t, pool)
+	member := creditsLogin(t, srv, "credits-grant-audit-member")
+	operator := creditsLogin(t, srv, "credits-grant-audit-operator")
+	app.Auth.Operators = map[string]bool{operator.userID: true}
+
+	code, body := operator.postJSON(t, "/admin/credits/"+member.workspaceID+"/grants",
+		`{"amount_credits":40,"reason":"  beta reward  "}`)
+	if code != http.StatusOK {
+		t.Fatalf("grant: got %d, body %v", code, body)
+	}
+
+	var workspaceID, reason string
+	var credits int64
+	if err := pool.QueryRow(context.Background(), `
+		SELECT workspace_id::text, metadata->>'reason', (metadata->>'credits')::bigint
+		FROM audit_events
+		WHERE action = 'credit.grant' AND actor_user_id = $1`,
+		mustParseUUID(t, operator.userID)).Scan(&workspaceID, &reason, &credits); err != nil {
+		t.Fatalf("reading the grant's audit event: %v", err)
+	}
+	if workspaceID != member.workspaceID {
+		t.Errorf("audit workspace = %q, want the granted workspace %q", workspaceID, member.workspaceID)
+	}
+	if reason != "beta reward" || credits != 40 {
+		t.Errorf("audit metadata reason=%q credits=%d, want %q and 40", reason, credits, "beta reward")
 	}
 }
 

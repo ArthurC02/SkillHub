@@ -24,7 +24,7 @@ func serviceConstructionProblems(root string) []string {
 			return err
 		}
 		caller, known := resolveContextPath(filepath.ToSlash(filepath.Dir(rel)), identities)
-		if !known || ((caller.ID == "apiserver" || caller.ID == "worker") && filepath.ToSlash(filepath.Dir(rel)) == strings.TrimSuffix(caller.Path, "/*")) {
+		if !known || (isCompositionRoot(caller.ID) && filepath.ToSlash(filepath.Dir(rel)) == strings.TrimSuffix(caller.Path, "/*")) {
 			return nil
 		}
 

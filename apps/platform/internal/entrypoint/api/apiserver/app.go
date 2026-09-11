@@ -14,7 +14,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -242,16 +242,16 @@ func NewApp(cfg Config) (*App, error) {
 	wireCreationTestCases(creationSvc, testlabSvc)
 	wireCreationAdopt(creationSvc, registrySvc)
 
-	creditSvc, err := worker.NewCreditService(cfg.Pool)
+	creditSvc, err := wiring.NewCreditService(cfg.Pool)
 	if err != nil {
 		return nil, err
 	}
-	worker.WireCreationCredit(creationSvc, creditSvc, cfg.Pool)
+	wiring.WireCreationCredit(creationSvc, creditSvc, cfg.Pool)
 
 	wireCostRecording(creditSvc, catalogSvc, versions)
 	wireGenerateCredit(versions, creditSvc, identitySvc.WorkspaceOwner)
-	worker.WireCreditDisplay(creditSvc, runSvc, traceSvc, evalSvc)
-	worker.WireRunCredit(runSvc, creditSvc, cfg.Pool)
+	wiring.WireCreditDisplay(creditSvc, runSvc, traceSvc, evalSvc)
+	wiring.WireRunCredit(runSvc, creditSvc, cfg.Pool)
 
 	return &App{
 		Deps: Deps{

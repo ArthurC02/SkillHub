@@ -5,13 +5,18 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 )
 
 const denyPackagePrefix = "github.com/ArthurC02/skillhub/apps/platform/internal/"
 
-var alwaysDenied = []string{"apiserver", "worker", "objreconcile"}
+var compositionRoots = []string{"apiserver", "worker", "wiring"}
+
+var alwaysDenied = append(slices.Clone(compositionRoots), "objreconcile")
+
+func isCompositionRoot(id string) bool { return slices.Contains(compositionRoots, id) }
 
 var (
 	appendixHeading = "## 附錄 A"
@@ -139,12 +144,15 @@ func specialDepguardProblems(rules map[string]map[string][]string, declared map[
 		"generic":       copySet(bounded),
 		"objreconcile":  copySet(bounded),
 	}
-	for _, id := range []string{"apiserver", "worker", "objreconcile"} {
+	for _, id := range alwaysDenied {
+		if _, ok := declared[id]; !ok {
+			continue
+		}
 		expected["generic"][id] = true
 		expected["shared-kernel"][id] = true
-	}
-	for _, id := range []string{"apiserver", "worker"} {
-		expected["objreconcile"][id] = true
+		if id != "objreconcile" {
+			expected["objreconcile"][id] = true
+		}
 	}
 
 	var problems []string
@@ -190,7 +198,7 @@ func depguardSelectorProblems(rules map[string]map[string][]string, declared map
 				expected["shared-kernel"] = map[string]bool{}
 			}
 			expected["shared-kernel"][id] = true
-		case identity.Kind == architectureGeneric && id != "apiserver" && id != "api" && id != "worker" && id != "objreconcile":
+		case identity.Kind == architectureGeneric && id != "api" && id != "objreconcile" && !isCompositionRoot(id):
 			if expected["generic"] == nil {
 				expected["generic"] = map[string]bool{}
 			}

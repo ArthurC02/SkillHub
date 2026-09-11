@@ -20,12 +20,16 @@ type creditLedger struct {
 
 var _ CreditLedger = (*creditLedger)(nil)
 
-func (l *creditLedger) Balance(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+func (l *creditLedger) Standing(ctx context.Context, workspaceID pgtype.UUID) (int64, bool, error) {
 	userID, err := l.owner(ctx, workspaceID)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
-	return l.svc.Balance(ctx, userID)
+	check, err := l.svc.CanStart(ctx, userID, credit.KindCreationSession)
+	if err != nil {
+		return 0, false, err
+	}
+	return check.Balance, check.OK, nil
 }
 
 func (l *creditLedger) SessionEstimate(ctx context.Context) (CreditSessionEstimate, error) {
@@ -54,13 +58,10 @@ func (l *creditLedger) Grant(ctx context.Context, workspaceID pgtype.UUID, amoun
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	kind := credit.EntryGrant
-	if amountCredits < 0 {
-		kind = credit.EntryAdjustment
-	}
 	balance, err := l.svc.Grant(ctx, tx, credit.GrantInput{
 		UserID:         userID,
-		EntryKind:      kind,
+		WorkspaceID:    workspaceID,
+		EntryKind:      credit.OperatorEntryKind(amountCredits),
 		Credits:        amountCredits,
 		Reason:         reason,
 		OperatorID:     actorUserID,

@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -27,7 +27,7 @@ type CreditSessionEstimate struct {
 }
 
 type CreditLedger interface {
-	Balance(ctx context.Context, workspaceID pgtype.UUID) (int64, error)
+	Standing(ctx context.Context, workspaceID pgtype.UUID) (balance int64, canStart bool, err error)
 
 	SessionEstimate(ctx context.Context) (CreditSessionEstimate, error)
 
@@ -55,7 +55,7 @@ type creditEstimateView struct {
 	Estimated   bool  `json:"estimated"`
 }
 
-func creditBalanceResponse(balance int64, est CreditSessionEstimate) creditBalanceView {
+func creditBalanceResponse(balance int64, canStart bool, est CreditSessionEstimate) creditBalanceView {
 	view := creditBalanceView{
 		BalanceCredits:   balance,
 		DebtFloorCredits: est.DebtFloorCredits,
@@ -63,7 +63,7 @@ func creditBalanceResponse(balance int64, est CreditSessionEstimate) creditBalan
 			LowCredits: est.LowCredits, HighCredits: est.HighCredits,
 			SampleSize: est.SampleSize, Estimated: est.Estimated,
 		},
-		CanStart: balance >= est.ThresholdCredits,
+		CanStart: canStart,
 	}
 	if !view.CanStart {
 		short := est.ThresholdCredits - balance
@@ -87,7 +87,7 @@ func (h *creditsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
-	balance, err := h.Ledger.Balance(r.Context(), ws.ID)
+	balance, canStart, err := h.Ledger.Standing(r.Context(), ws.ID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "balance lookup failed")
 		return
@@ -97,7 +97,7 @@ func (h *creditsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "session estimate unavailable")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, creditBalanceResponse(balance, est))
+	httpx.WriteJSON(w, http.StatusOK, creditBalanceResponse(balance, canStart, est))
 }
 
 const maxCreditGrantRequestBytes = 4096
@@ -124,21 +124,18 @@ func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	body.Reason = strings.TrimSpace(body.Reason)
-	if body.AmountCredits == 0 {
-		httpx.WriteError(w, http.StatusBadRequest, "amount_credits must not be zero")
-		return
-	}
-	if body.Reason == "" {
-		httpx.WriteError(w, http.StatusBadRequest, "reason is required")
-		return
-	}
 	balance, err := h.Ledger.Grant(r.Context(), workspaceID, body.AmountCredits, body.Reason, actor.ID)
-	if errors.Is(err, identity.ErrWorkspaceNotFound) {
+	switch {
+	case errors.Is(err, identity.ErrWorkspaceNotFound):
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
-	}
-	if err != nil {
+	case errors.Is(err, credit.ErrZeroAmount):
+		httpx.WriteError(w, http.StatusBadRequest, "amount_credits must not be zero")
+		return
+	case errors.Is(err, credit.ErrReasonRequired):
+		httpx.WriteError(w, http.StatusBadRequest, "reason is required")
+		return
+	case err != nil:
 		httpx.WriteError(w, http.StatusInternalServerError, "grant failed")
 		return
 	}
