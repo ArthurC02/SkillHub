@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -12,10 +13,85 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
-func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
+type ReferenceRead func(ctx context.Context, db gen.DBTX, ids []pgtype.UUID) ([]pgtype.UUID, error)
+
+var errPurgeReadsNotInjected = errors.New("registry: purge reference reads not injected; refusing to purge")
+
+type purgeCandidate struct {
+	skillID    pgtype.UUID
+	forked     bool
+	versionIDs []pgtype.UUID
+}
+
+func (s *Service) requirePurgeReads() error {
+	if s.VersionsInRuns == nil || s.VersionsInDownloads == nil || s.SkillsWithTestCases == nil {
+		return errPurgeReadsNotInjected
+	}
+	return nil
+}
+
+func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
+	if err := s.requirePurgeReads(); err != nil {
+		return err
+	}
 	q := gen.New(tx)
-	_, err := q.PurgeUnreferencedSkills(ctx, workspaceID)
+	rows, err := q.ListWorkspacePurgeCandidates(ctx, workspaceID)
+	if err != nil {
+		return err
+	}
+	candidates := make([]purgeCandidate, len(rows))
+	for i, r := range rows {
+		candidates[i] = purgeCandidate{skillID: r.ID, forked: r.Forked, versionIDs: r.VersionIds}
+	}
+	purgeable, _, err := s.unreferenced(ctx, tx, candidates)
+	if err != nil || len(purgeable) == 0 {
+		return err
+	}
+	_, err = q.PurgeSkillsByID(ctx, gen.PurgeSkillsByIDParams{SkillIds: purgeable})
 	return err
+}
+
+func (s *Service) unreferenced(ctx context.Context, db gen.DBTX, candidates []purgeCandidate) ([]pgtype.UUID, int64, error) {
+	var skillIDs, versionIDs []pgtype.UUID
+	for _, c := range candidates {
+		if !c.forked {
+			skillIDs = append(skillIDs, c.skillID)
+			versionIDs = append(versionIDs, c.versionIDs...)
+		}
+	}
+	heldVersions := map[pgtype.UUID]bool{}
+	for _, read := range []ReferenceRead{s.VersionsInRuns, s.VersionsInDownloads} {
+		ids, err := read(ctx, db, versionIDs)
+		if err != nil {
+			return nil, 0, err
+		}
+		for _, id := range ids {
+			heldVersions[id] = true
+		}
+	}
+	tested, err := s.SkillsWithTestCases(ctx, db, skillIDs)
+	if err != nil {
+		return nil, 0, err
+	}
+	heldSkills := map[pgtype.UUID]bool{}
+	for _, id := range tested {
+		heldSkills[id] = true
+	}
+
+	var purgeable []pgtype.UUID
+	var kept int64
+	for _, c := range candidates {
+		if c.forked || heldSkills[c.skillID] || slices.ContainsFunc(c.versionIDs, func(id pgtype.UUID) bool { return heldVersions[id] }) {
+			kept++
+			continue
+		}
+		purgeable = append(purgeable, c.skillID)
+	}
+	return purgeable, kept, nil
+}
+
+func (*Service) SourcesInVersions(ctx context.Context, db gen.DBTX, sourceIDs []pgtype.UUID) ([]pgtype.UUID, error) {
+	return gen.New(db).ListSkillSourcesInVersions(ctx, sourceIDs)
 }
 
 type DeletionSweep struct {
@@ -29,6 +105,9 @@ func (s *Service) PurgeDeletedSkills(ctx context.Context, grace time.Duration, l
 
 		return DeletionSweep{}, errors.New("registry: deletion grace period must be positive")
 	}
+	if err := s.requirePurgeReads(); err != nil {
+		return DeletionSweep{}, err
+	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return DeletionSweep{}, err
@@ -40,21 +119,35 @@ func (s *Service) PurgeDeletedSkills(ctx context.Context, grace time.Duration, l
 	}
 	cutoff := pgtype.Timestamptz{Time: time.Now().Add(-grace), Valid: true}
 	q := gen.New(tx)
-	purged, err := q.PurgeSkillsPastDeletionGrace(ctx, gen.PurgeSkillsPastDeletionGraceParams{
-		Cutoff: cutoff, RowLimit: limit,
-	})
+	rows, err := q.ListSkillsPastDeletionGrace(ctx, cutoff)
 	if err != nil {
 		return DeletionSweep{}, err
 	}
+	candidates := make([]purgeCandidate, len(rows))
+	for i, r := range rows {
+		candidates[i] = purgeCandidate{skillID: r.ID, forked: r.Forked, versionIDs: r.VersionIds}
+	}
+	purgeable, kept, err := s.unreferenced(ctx, tx, candidates)
+	if err != nil {
+		return DeletionSweep{}, err
+	}
+	purgeable = purgeable[:min(len(purgeable), max(int(limit), 0))]
+	var purged int64
+	if len(purgeable) > 0 {
+		purged, err = q.PurgeSkillsByID(ctx, gen.PurgeSkillsByIDParams{SkillIds: purgeable, Cutoff: cutoff})
+		if err != nil {
+			return DeletionSweep{}, err
+		}
+	}
 
-	counts, err := q.CountSkillsAwaitingDeletionGrace(ctx, cutoff)
+	waiting, err := q.CountSkillsWaitingForDeletionGrace(ctx, cutoff)
 	if err != nil {
 		return DeletionSweep{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return DeletionSweep{}, err
 	}
-	return DeletionSweep{Purged: purged, Waiting: counts.Waiting, Kept: counts.Kept}, nil
+	return DeletionSweep{Purged: purged, Waiting: waiting, Kept: kept}, nil
 }
 
 type ObjectRemover interface {

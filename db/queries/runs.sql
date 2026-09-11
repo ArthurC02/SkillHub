@@ -312,3 +312,6 @@ WHERE kind = 'run_output' AND object_key = @object_key
 
 -- name: LockRunArtifactObjectKey :exec
 SELECT pg_advisory_xact_lock(hashtextextended('artifact-object:' || @object_key::text, 0));
+
+-- name: ListSkillVersionsInRuns :many
+SELECT DISTINCT skill_version_id FROM runs WHERE skill_version_id = ANY(@version_ids::uuid[]);

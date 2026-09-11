@@ -28,3 +28,7 @@ func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgt
 	_, err = q.DeleteWorkspaceTestCases(ctx, workspaceID)
 	return err
 }
+
+func (*Service) SkillsWithTestCases(ctx context.Context, db gen.DBTX, skillIDs []pgtype.UUID) ([]pgtype.UUID, error) {
+	return gen.New(db).ListSkillsWithTestCases(ctx, skillIDs)
+}

@@ -47,6 +47,10 @@ type Service struct {
 	CatalogSkillRisks func(ctx context.Context, skillIDs []pgtype.UUID) (map[string]json.RawMessage, error)
 
 	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
+
+	VersionsInRuns      ReferenceRead
+	VersionsInDownloads ReferenceRead
+	SkillsWithTestCases ReferenceRead
 }
 
 func (s *Service) requireProjection() error {

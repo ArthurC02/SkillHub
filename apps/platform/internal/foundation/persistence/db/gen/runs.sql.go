@@ -917,6 +917,30 @@ func (q *Queries) ListRunsNeedingCleanup(ctx context.Context, limit int32) ([]Ru
 	return items, nil
 }
 
+const listSkillVersionsInRuns = `-- name: ListSkillVersionsInRuns :many
+SELECT DISTINCT skill_version_id FROM runs WHERE skill_version_id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListSkillVersionsInRuns(ctx context.Context, versionIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSkillVersionsInRuns, versionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var skill_version_id pgtype.UUID
+		if err := rows.Scan(&skill_version_id); err != nil {
+			return nil, err
+		}
+		items = append(items, skill_version_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnpublishedOutboxEvents = `-- name: ListUnpublishedOutboxEvents :many
 SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at FROM outbox_events
 WHERE published_at IS NULL AND dead_lettered_at IS NULL

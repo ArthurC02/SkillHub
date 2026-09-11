@@ -187,7 +187,7 @@ func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
-	sweep, err := (&registry.Service{Pool: pool}).PurgeDeletedSkills(ctx, grace, batch())
+	sweep, err := registryPurger(pool).PurgeDeletedSkills(ctx, grace, batch())
 	if err == nil {
 
 		slog.Info("deleted skill purge complete",
@@ -238,13 +238,22 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 	return errors.Join(purgeErr, sessionsErr)
 }
 
+func registryPurger(pool *pgxpool.Pool) *registry.Service {
+	return &registry.Service{
+		Pool:                pool,
+		VersionsInRuns:      (&run.Service{}).SkillVersionsInRuns,
+		VersionsInDownloads: (&packaging.Service{}).SkillVersionsInDownloads,
+		SkillsWithTestCases: (&testlab.Service{}).SkillsWithTestCases,
+	}
+}
+
 func purgeService(pool *pgxpool.Pool) *identity.Service {
 	analyticsSvc := &analytics.Service{Pool: pool}
 	testlabSvc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	runSvc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	packagingSvc := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
-	registrySvc := &registry.Service{Pool: pool}
-	ingestSvc := &ingest.Service{Pool: pool}
+	registrySvc := registryPurger(pool)
+	ingestSvc := &ingest.Service{Pool: pool, SourcesInVersions: registrySvc.SourcesInVersions}
 	return &identity.Service{
 		Pool:                       pool,
 		PurgeAnalytics:             analyticsSvc.PurgeWorkspace,

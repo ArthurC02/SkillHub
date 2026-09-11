@@ -126,3 +126,6 @@ SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || (sqlc.ar
 
 -- name: UnlockDatasetWorkspaceObjects :one
 SELECT pg_advisory_unlock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
+
+-- name: ListSkillsWithTestCases :many
+SELECT DISTINCT skill_id FROM test_cases WHERE skill_id = ANY(@skill_ids::uuid[]);

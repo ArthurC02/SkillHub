@@ -19,8 +19,10 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 type recordingStore struct{ removed []string }
@@ -593,11 +595,34 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
+		VALUES ($1, $2, 'tc-private', 'goes in the same purge')`,
+		mustUUID(t, alice.workspaceID), mustUUID(t, private)); err != nil {
+		t.Fatal(err)
+	}
 	shared := seedSkill(t, pool, alice.workspaceID, "alice-shared")
 	sharedVer := seedVersion(t, pool, alice.workspaceID, shared, "hash-shared")
 
 	if status, _ := postJSON(t, bob, "/skills/"+shared+"/fork", "{}"); status != http.StatusCreated {
 		t.Fatalf("bob fork of alice's catalog skill: got %d", status)
+	}
+	var keptSourceID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at)
+		VALUES ($1, 'git', 'https://example.invalid/alice-shared.git', 'hash-shared-v2', now()) RETURNING id`,
+		mustUUID(t, alice.workspaceID)).Scan(&keptSourceID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
+		WorkspaceID:      mustUUID(t, alice.workspaceID),
+		SkillID:          mustUUID(t, shared),
+		SourceID:         keptSourceID,
+		ContentHash:      "hash-shared-v2",
+		PackageObjectKey: "packages/hash-shared-v2.zip",
+		Manifest:         []byte(`{}`),
+	}); err != nil {
+		t.Fatal(err)
 	}
 
 	var testCaseID pgtype.UUID
@@ -701,6 +726,9 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	}
 	if c := countRow(t, pool, "SELECT count(*) FROM skill_sources WHERE id = $1", sourceID); c != 0 {
 		t.Fatal("import source of a purged version survived; the purge steps ran out of order")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_sources WHERE id = $1", keptSourceID); c != 1 {
+		t.Fatal("the import source of a version the purge kept was deleted")
 	}
 	if c := countRow(t, pool, "SELECT count(*) FROM datasets WHERE workspace_id = $1", mustUUID(t, alice.workspaceID)); c != 0 {
 		t.Fatal("dataset rows survived the purge")
@@ -846,7 +874,7 @@ func TestAccountPurgeRollsBackEveryContextWhenOneStepFails(t *testing.T) {
 		t.Fatalf("the user row was de-identified even though the purge failed: %s", email)
 	}
 
-	svc.PurgeImportSources = (&ingest.Service{Pool: pool}).PurgeWorkspace
+	svc.PurgeImportSources = (&ingest.Service{Pool: pool, SourcesInVersions: (&registry.Service{}).SourcesInVersions}).PurgeWorkspace
 	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = now() - interval '16 minutes' WHERE id = $1`, mustUUID(t, alice.userID)); err != nil {
 		t.Fatal(err)
 	}
@@ -1063,7 +1091,7 @@ func TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced(t *testing.T) 
 		}
 	}
 
-	svc := &registry.Service{Pool: pool}
+	svc := registryPurger(pool)
 
 	if _, err := svc.PurgeDeletedSkills(ctx, 0, 100); err == nil {
 		t.Fatal("a zero grace period was accepted; every deletion would be purged instantly")
@@ -1179,7 +1207,7 @@ func TestOrphanObjectCollectionTakesOnlyWhatNothingReferences(t *testing.T) {
 		mustUUID(t, orphan)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (&registry.Service{Pool: pool}).PurgeDeletedSkills(ctx, 30*24*time.Hour, 100); err != nil {
+	if _, err := registryPurger(pool).PurgeDeletedSkills(ctx, 30*24*time.Hour, 100); err != nil {
 		t.Fatal(err)
 	}
 	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE package_object_key = $1",
@@ -1357,6 +1385,7 @@ var purgeKeepsWorkspaceRows = map[string]string{
 	"skills": "content a third party forked is retained with its owner de-identified " +
 		"(DISC-003 provenance, iron rule 4); the unreferenced ones are asserted gone above",
 	"skill_versions":         "same rule as skills: a version somebody forked or ran is a third party's provenance chain",
+	"skill_sources":          "a version retained above still points at its import source through skill_versions.source_id",
 	"test_cases":             "snapshots that retained runs point at resolve through these rows (0017)",
 	"test_case_snapshots":    "the frozen inputs of a retained run; deleting them makes that run's history lie (ADR-003)",
 	"runs":                   "retained with the versions above, de-identified rather than deleted",
@@ -1404,6 +1433,62 @@ func assertPurgedWorkspaceIsGone(t *testing.T, pool *pgxpool.Pool, workspaceID p
 		if c := countRow(t, pool, "SELECT count(*) FROM "+table+" WHERE workspace_id = $1", workspaceID); c != 0 {
 			t.Errorf("%s still holds %d row(s) for the purged workspace; "+
 				"either give it a purge step or add it to purgeKeepsWorkspaceRows with the reason", table, c)
+		}
+	}
+}
+
+func registryPurger(pool *pgxpool.Pool) *registry.Service {
+	return &registry.Service{
+		Pool:                pool,
+		VersionsInRuns:      (&run.Service{}).SkillVersionsInRuns,
+		VersionsInDownloads: (&packaging.Service{}).SkillVersionsInDownloads,
+		SkillsWithTestCases: (&testlab.Service{}).SkillsWithTestCases,
+	}
+}
+
+func TestADeletionSweepIsNotHeldUpByOlderSkillsThatStayReferenced(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+
+	alice := a.login(t, "alice-sweep-order")
+	bob := a.login(t, "bob-sweep-order")
+	makeCatalog(t, pool, alice.workspaceID)
+
+	forked := seedSkill(t, pool, alice.workspaceID, "sweep-order-forked")
+	seedVersion(t, pool, alice.workspaceID, forked, "sweep-order-forked-hash")
+	tested := seedSkill(t, pool, alice.workspaceID, "sweep-order-tested")
+	seedVersion(t, pool, alice.workspaceID, tested, "sweep-order-tested-hash")
+	free := seedSkill(t, pool, alice.workspaceID, "sweep-order-free")
+	seedVersion(t, pool, alice.workspaceID, free, "sweep-order-free-hash")
+	next := seedSkill(t, pool, alice.workspaceID, "sweep-order-next")
+	seedVersion(t, pool, alice.workspaceID, next, "sweep-order-next-hash")
+
+	if status, _ := postJSON(t, bob, "/skills/"+forked+"/fork", "{}"); status != http.StatusCreated {
+		t.Fatalf("bob fork of alice's catalog skill: got %d", status)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
+		VALUES ($1, $2, 'sweep-order-tc', 'do the thing')`,
+		mustUUID(t, alice.workspaceID), mustUUID(t, tested)); err != nil {
+		t.Fatal(err)
+	}
+	for id, age := range map[string]string{forked: "202 years", tested: "201 years", free: "200 years", next: "199 years"} {
+		if _, err := pool.Exec(ctx, "UPDATE skills SET deleted_at = now() - $2::interval WHERE id = $1",
+			mustUUID(t, id), age); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	sweep, err := registryPurger(pool).PurgeDeletedSkills(ctx, 30*24*time.Hour, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sweep.Purged != 1 {
+		t.Errorf("a one-skill sweep purged %d skills, want 1", sweep.Purged)
+	}
+	for id, want := range map[string]int{forked: 1, tested: 1, free: 0, next: 1} {
+		if got := int(countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, id))); got != want {
+			t.Errorf("skill %s: %d rows left, want %d", id, got, want)
 		}
 	}
 }

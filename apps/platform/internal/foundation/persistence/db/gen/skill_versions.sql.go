@@ -142,6 +142,30 @@ func (q *Queries) GetSkillVersion(ctx context.Context, arg GetSkillVersionParams
 	return i, err
 }
 
+const listSkillSourcesInVersions = `-- name: ListSkillSourcesInVersions :many
+SELECT DISTINCT source_id FROM skill_versions WHERE source_id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListSkillSourcesInVersions(ctx context.Context, sourceIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSkillSourcesInVersions, sourceIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var source_id pgtype.UUID
+		if err := rows.Scan(&source_id); err != nil {
+			return nil, err
+		}
+		items = append(items, source_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSkillVersions = `-- name: ListSkillVersions :many
 SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source FROM skill_versions
 WHERE skill_versions.workspace_id = $1 AND skill_versions.skill_id = $2

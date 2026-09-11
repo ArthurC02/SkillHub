@@ -51,6 +51,8 @@ type Service struct {
 	generating sync.Map
 
 	References ReferenceReader
+
+	SourcesInVersions func(ctx context.Context, db gen.DBTX, sourceIDs []pgtype.UUID) ([]pgtype.UUID, error)
 }
 
 type SkillProjection struct {

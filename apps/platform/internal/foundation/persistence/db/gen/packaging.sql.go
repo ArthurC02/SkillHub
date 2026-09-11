@@ -567,6 +567,30 @@ func (q *Queries) ListDownloadRecordsForArtifact(ctx context.Context, arg ListDo
 	return items, nil
 }
 
+const listSkillVersionsInDownloads = `-- name: ListSkillVersionsInDownloads :many
+SELECT DISTINCT skill_version_id FROM download_artifacts WHERE skill_version_id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListSkillVersionsInDownloads(ctx context.Context, versionIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSkillVersionsInDownloads, versionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var skill_version_id pgtype.UUID
+		if err := rows.Scan(&skill_version_id); err != nil {
+			return nil, err
+		}
+		items = append(items, skill_version_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSuggestionsAppliedToVersion = `-- name: ListSuggestionsAppliedToVersion :many
 SELECT evaluation_id, category, target_path
 FROM evaluation_suggestions

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -9,8 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
@@ -127,5 +133,35 @@ func TestPurgeFeedbackRefusesWithoutARetentionWindow(t *testing.T) {
 		if !strings.Contains(err.Error(), "FEEDBACK_RETENTION") {
 			t.Errorf("FEEDBACK_RETENTION=%q: error does not name the variable: %v", unusable, err)
 		}
+	}
+}
+
+func TestTheDeletionSweepCarriesEveryReferenceRead(t *testing.T) {
+	svc := reflect.ValueOf(*registryPurger(nil))
+	for i := range svc.NumField() {
+		field := svc.Field(i)
+		if field.Type() == reflect.TypeFor[registry.ReferenceRead]() && field.IsNil() {
+			t.Errorf("registry.Service.%s is nil: the deleted-skill sweep and account purge would refuse to run",
+				svc.Type().Field(i).Name)
+		}
+	}
+}
+
+type queryFailingTx struct{ pgx.Tx }
+
+var errNoDatabaseHere = errors.New("no database in this test")
+
+func (queryFailingTx) Query(context.Context, string, ...any) (pgx.Rows, error) {
+	return nil, errNoDatabaseHere
+}
+
+func (queryFailingTx) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
+	return pgconn.CommandTag{}, errNoDatabaseHere
+}
+
+func TestAccountPurgeAsksRegistryWhichImportSourcesAreStillUsed(t *testing.T) {
+	err := purgeService(nil).PurgeImportSources(context.Background(), queryFailingTx{}, pgtype.UUID{})
+	if !errors.Is(err, errNoDatabaseHere) {
+		t.Errorf("the ingest purge step stopped before reading its sources: %v", err)
 	}
 }

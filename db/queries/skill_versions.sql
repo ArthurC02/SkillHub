@@ -62,3 +62,6 @@ SELECT pg_advisory_unlock(hashtextextended('package-object:' || sqlc.arg(object_
 SELECT NOT EXISTS (
     SELECT 1 FROM skill_versions WHERE package_object_key = sqlc.arg(object_key)
 );
+
+-- name: ListSkillSourcesInVersions :many
+SELECT DISTINCT source_id FROM skill_versions WHERE source_id = ANY(@source_ids::uuid[]);

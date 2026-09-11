@@ -314,6 +314,30 @@ func (q *Queries) ListDatasets(ctx context.Context, arg ListDatasetsParams) ([]D
 	return items, nil
 }
 
+const listSkillsWithTestCases = `-- name: ListSkillsWithTestCases :many
+SELECT DISTINCT skill_id FROM test_cases WHERE skill_id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListSkillsWithTestCases(ctx context.Context, skillIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSkillsWithTestCases, skillIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var skill_id pgtype.UUID
+		if err := rows.Scan(&skill_id); err != nil {
+			return nil, err
+		}
+		items = append(items, skill_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSnapshotTestCases = `-- name: ListSnapshotTestCases :many
 SELECT id, test_case_id FROM test_case_snapshots
 WHERE workspace_id = $1 AND id = ANY($2::uuid[])

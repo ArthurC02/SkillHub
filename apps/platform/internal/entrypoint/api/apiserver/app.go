@@ -101,8 +101,13 @@ func NewApp(cfg Config) (*App, error) {
 	}
 	runPurgeSvc := &run.Service{Pool: cfg.Pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	packagingPurgeSvc := &packaging.Service{Pool: cfg.Pool, ClearSightings: objreconcile.ClearArtifactSightings}
-	registryPurgeSvc := &registry.Service{Pool: cfg.Pool}
-	ingestPurgeSvc := &ingest.Service{Pool: cfg.Pool}
+	registryPurgeSvc := &registry.Service{
+		Pool:                cfg.Pool,
+		VersionsInRuns:      runPurgeSvc.SkillVersionsInRuns,
+		VersionsInDownloads: packagingPurgeSvc.SkillVersionsInDownloads,
+		SkillsWithTestCases: testlabSvc.SkillsWithTestCases,
+	}
+	ingestPurgeSvc := &ingest.Service{Pool: cfg.Pool, SourcesInVersions: registryPurgeSvc.SourcesInVersions}
 	creationPurgeSvc := &creation.Service{Pool: cfg.Pool}
 
 	identitySvc.PurgeAnalytics = analyticsPurgeSvc.PurgeWorkspace

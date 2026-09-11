@@ -39,14 +39,17 @@ queries:
   DeleteWorkspaceTestCases: testlab
   DeleteWorkspaceRunArtifacts: run
   DeleteWorkspaceDownloadArtifacts: packaging
-  PurgeUnreferencedSkills: registry
-  PurgeSkillsPastDeletionGrace: registry
+  ListWorkspacePurgeCandidates: registry
+  PurgeSkillsByID: registry
+  ListSkillVersionsInRuns: run
+  ListSkillsPastDeletionGrace: registry
   ListCollectableObjects: registry
   DeleteObjectCollectionEntry: registry
   DropReferencedCollectionEntries: registry
   CountCollectableObjects: registry
-  CountSkillsAwaitingDeletionGrace: registry
-  PurgeUnreferencedSkillSources: ingest
+  CountSkillsWaitingForDeletionGrace: registry
+  ListWorkspaceSkillSourceIDs: ingest
+  DeleteSkillSources: ingest
   TakedownSkill: registry
   LockSkillForOperatorWrite: registry
   SetSkillAccessRestriction: registry
@@ -187,8 +190,7 @@ immutable:
   credit_entries: 05（2026-09-08）使用者餘額異動的分錄；調整用新分錄，不原地改舊分錄（鏡射鐵律 4）
 
 immutable_allow:
-  PurgeUnreferencedSkills: skill_versions
-  PurgeSkillsPastDeletionGrace: skill_versions
+  PurgeSkillsByID: skill_versions
   DeleteExpiredAuditEvents: audit_events
   DeleteWorkspaceDownloadRecords: download_records
   DeleteWorkspaceDownloadArtifactDetails: download_artifacts

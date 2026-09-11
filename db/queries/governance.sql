@@ -107,114 +107,57 @@ DELETE FROM artifacts
 WHERE workspace_id = sqlc.arg(workspace_id)::uuid AND kind = 'download_package'
 RETURNING id;
 
--- name: PurgeUnreferencedSkills :execrows
-WITH referenced AS (
-    SELECT DISTINCT v.skill_id
-    FROM skill_versions v
-    WHERE EXISTS (
-            SELECT 1 FROM skills f
-            WHERE f.forked_from_version_id = v.id AND f.workspace_id <> v.workspace_id
-          )
-       OR EXISTS (SELECT 1 FROM runs r WHERE r.skill_version_id = v.id)
-),
-purgeable AS (
-    SELECT sk.id FROM skills sk
-    WHERE sk.workspace_id = $1
-      AND NOT EXISTS (SELECT 1 FROM referenced ref WHERE ref.skill_id = sk.id)
-      AND NOT EXISTS (
-            SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id
-          )
-      AND NOT EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
-      AND NOT EXISTS (
-            SELECT 1 FROM skills f
-            JOIN skill_versions v ON v.id = f.forked_from_version_id
-            WHERE v.skill_id = sk.id
-          )
-      AND NOT EXISTS (
-            SELECT 1 FROM download_artifacts da
-            JOIN skill_versions v ON v.id = da.skill_version_id
-            WHERE v.skill_id = sk.id
-          )
-),
-enqueued AS (
-    INSERT INTO object_collection_queue (object_key)
-    SELECT DISTINCT v.package_object_key
-    FROM skill_versions v
-    WHERE v.skill_id IN (SELECT id FROM purgeable)
-      AND v.package_object_key <> ''
-    ON CONFLICT (object_key) DO NOTHING
-),
-versions AS (
-    DELETE FROM skill_versions WHERE skill_id IN (SELECT id FROM purgeable)
-)
-DELETE FROM skills WHERE id IN (SELECT id FROM purgeable);
-
--- name: PurgeSkillsPastDeletionGrace :execrows
-WITH referenced AS (
-    SELECT DISTINCT v.skill_id
-    FROM skill_versions v
-    WHERE EXISTS (
-            SELECT 1 FROM skills f
-            WHERE f.forked_from_version_id = v.id AND f.workspace_id <> v.workspace_id
-          )
-       OR EXISTS (SELECT 1 FROM runs r WHERE r.skill_version_id = v.id)
-),
-purgeable AS (
-    SELECT sk.id FROM skills sk
-    WHERE sk.deleted_at IS NOT NULL
-      AND sk.deleted_at <= @cutoff::timestamptz
-      AND NOT EXISTS (SELECT 1 FROM referenced ref WHERE ref.skill_id = sk.id)
-      AND NOT EXISTS (
-            SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id
-          )
-      AND NOT EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
-      AND NOT EXISTS (
-            SELECT 1 FROM skills f
-            JOIN skill_versions v ON v.id = f.forked_from_version_id
-            WHERE v.skill_id = sk.id
-          )
-      AND NOT EXISTS (
-            SELECT 1 FROM download_artifacts da
-            JOIN skill_versions v ON v.id = da.skill_version_id
-            WHERE v.skill_id = sk.id
-          )
-    ORDER BY sk.deleted_at
-    LIMIT @row_limit::int
-),
-enqueued AS (
-    INSERT INTO object_collection_queue (object_key)
-    SELECT DISTINCT v.package_object_key
-    FROM skill_versions v
-    WHERE v.skill_id IN (SELECT id FROM purgeable)
-      AND v.package_object_key <> ''
-    ON CONFLICT (object_key) DO NOTHING
-),
-versions AS (
-    DELETE FROM skill_versions WHERE skill_id IN (SELECT id FROM purgeable)
-)
-DELETE FROM skills WHERE id IN (SELECT id FROM purgeable);
-
--- name: CountSkillsAwaitingDeletionGrace :one
-SELECT
-    count(*) FILTER (
-        WHERE sk.deleted_at > @cutoff::timestamptz
-    )::bigint AS waiting,
-    count(*) FILTER (
-        WHERE sk.deleted_at <= @cutoff::timestamptz
-          AND (
-            EXISTS (SELECT 1 FROM skill_versions v
-                    WHERE v.skill_id = sk.id
-                      AND (EXISTS (SELECT 1 FROM skills f
-                                   WHERE f.forked_from_version_id = v.id)
-                           OR EXISTS (SELECT 1 FROM runs r WHERE r.skill_version_id = v.id)
-                           OR EXISTS (SELECT 1 FROM download_artifacts da
-                                      WHERE da.skill_version_id = v.id)))
-            OR EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
-            OR EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
-          )
-    )::bigint AS kept
+-- name: ListWorkspacePurgeCandidates :many
+SELECT sk.id,
+       (EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
+        OR EXISTS (SELECT 1 FROM skills f
+                   JOIN skill_versions v ON v.id = f.forked_from_version_id
+                   WHERE v.skill_id = sk.id))::bool AS forked,
+       COALESCE((SELECT array_agg(v.id) FROM skill_versions v WHERE v.skill_id = sk.id),
+                '{}')::uuid[] AS version_ids
 FROM skills sk
-WHERE sk.deleted_at IS NOT NULL;
+WHERE sk.workspace_id = $1;
+
+-- name: ListSkillsPastDeletionGrace :many
+SELECT sk.id,
+       (EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
+        OR EXISTS (SELECT 1 FROM skills f
+                   JOIN skill_versions v ON v.id = f.forked_from_version_id
+                   WHERE v.skill_id = sk.id))::bool AS forked,
+       COALESCE((SELECT array_agg(v.id) FROM skill_versions v WHERE v.skill_id = sk.id),
+                '{}')::uuid[] AS version_ids
+FROM skills sk
+WHERE sk.deleted_at IS NOT NULL AND sk.deleted_at <= @cutoff::timestamptz
+ORDER BY sk.deleted_at, sk.id;
+
+-- name: CountSkillsWaitingForDeletionGrace :one
+SELECT count(*)::bigint FROM skills WHERE deleted_at > @cutoff::timestamptz;
+
+-- name: PurgeSkillsByID :execrows
+WITH purgeable AS (
+    SELECT sk.id FROM skills sk
+    WHERE sk.id = ANY(@skill_ids::uuid[])
+      AND (sqlc.narg(cutoff)::timestamptz IS NULL
+           OR (sk.deleted_at IS NOT NULL AND sk.deleted_at <= sqlc.narg(cutoff)::timestamptz))
+      AND NOT EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
+      AND NOT EXISTS (
+            SELECT 1 FROM skills f
+            JOIN skill_versions v ON v.id = f.forked_from_version_id
+            WHERE v.skill_id = sk.id
+          )
+),
+enqueued AS (
+    INSERT INTO object_collection_queue (object_key)
+    SELECT DISTINCT v.package_object_key
+    FROM skill_versions v
+    WHERE v.skill_id IN (SELECT id FROM purgeable)
+      AND v.package_object_key <> ''
+    ON CONFLICT (object_key) DO NOTHING
+),
+versions AS (
+    DELETE FROM skill_versions WHERE skill_id IN (SELECT id FROM purgeable)
+)
+DELETE FROM skills WHERE id IN (SELECT id FROM purgeable);
 
 -- name: ListCollectableObjects :many
 SELECT object_key FROM object_collection_queue q
@@ -236,10 +179,11 @@ WHERE EXISTS (
 -- name: CountCollectableObjects :one
 SELECT count(*)::bigint FROM object_collection_queue;
 
--- name: PurgeUnreferencedSkillSources :execrows
-DELETE FROM skill_sources s
-WHERE s.workspace_id = $1
-  AND NOT EXISTS (SELECT 1 FROM skill_versions v WHERE v.source_id = s.id);
+-- name: ListWorkspaceSkillSourceIDs :many
+SELECT id FROM skill_sources WHERE workspace_id = $1;
+
+-- name: DeleteSkillSources :execrows
+DELETE FROM skill_sources WHERE workspace_id = @workspace_id AND id = ANY(@source_ids::uuid[]);
 
 -- name: DeleteUserIdentities :execrows
 DELETE FROM user_identities WHERE user_id = $1;

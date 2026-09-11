@@ -27,3 +27,7 @@ func (*Service) WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceI
 func (*Service) PurgeQuiescent(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {
 	return gen.New(db).AccountPurgeReady(ctx, workspaceID)
 }
+
+func (*Service) SkillVersionsInRuns(ctx context.Context, db gen.DBTX, versionIDs []pgtype.UUID) ([]pgtype.UUID, error) {
+	return gen.New(db).ListSkillVersionsInRuns(ctx, versionIDs)
+}

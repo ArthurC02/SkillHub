@@ -156,3 +156,6 @@ SELECT pg_advisory_lock(hashtextextended(@lock_key::text, 0));
 
 -- name: UnlockDownloadObjectKeySession :one
 SELECT pg_advisory_unlock(hashtextextended(@lock_key::text, 0));
+
+-- name: ListSkillVersionsInDownloads :many
+SELECT DISTINCT skill_version_id FROM download_artifacts WHERE skill_version_id = ANY(@version_ids::uuid[]);

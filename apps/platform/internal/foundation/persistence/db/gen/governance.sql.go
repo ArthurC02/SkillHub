@@ -86,39 +86,15 @@ func (q *Queries) CountCollectableObjects(ctx context.Context) (int64, error) {
 	return column_1, err
 }
 
-const countSkillsAwaitingDeletionGrace = `-- name: CountSkillsAwaitingDeletionGrace :one
-SELECT
-    count(*) FILTER (
-        WHERE sk.deleted_at > $1::timestamptz
-    )::bigint AS waiting,
-    count(*) FILTER (
-        WHERE sk.deleted_at <= $1::timestamptz
-          AND (
-            EXISTS (SELECT 1 FROM skill_versions v
-                    WHERE v.skill_id = sk.id
-                      AND (EXISTS (SELECT 1 FROM skills f
-                                   WHERE f.forked_from_version_id = v.id)
-                           OR EXISTS (SELECT 1 FROM runs r WHERE r.skill_version_id = v.id)
-                           OR EXISTS (SELECT 1 FROM download_artifacts da
-                                      WHERE da.skill_version_id = v.id)))
-            OR EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
-            OR EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
-          )
-    )::bigint AS kept
-FROM skills sk
-WHERE sk.deleted_at IS NOT NULL
+const countSkillsWaitingForDeletionGrace = `-- name: CountSkillsWaitingForDeletionGrace :one
+SELECT count(*)::bigint FROM skills WHERE deleted_at > $1::timestamptz
 `
 
-type CountSkillsAwaitingDeletionGraceRow struct {
-	Waiting int64
-	Kept    int64
-}
-
-func (q *Queries) CountSkillsAwaitingDeletionGrace(ctx context.Context, cutoff pgtype.Timestamptz) (CountSkillsAwaitingDeletionGraceRow, error) {
-	row := q.db.QueryRow(ctx, countSkillsAwaitingDeletionGrace, cutoff)
-	var i CountSkillsAwaitingDeletionGraceRow
-	err := row.Scan(&i.Waiting, &i.Kept)
-	return i, err
+func (q *Queries) CountSkillsWaitingForDeletionGrace(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error) {
+	row := q.db.QueryRow(ctx, countSkillsWaitingForDeletionGrace, cutoff)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const deleteExpiredAuditEvents = `-- name: DeleteExpiredAuditEvents :execrows
@@ -140,6 +116,23 @@ DELETE FROM object_collection_queue WHERE object_key = $1
 func (q *Queries) DeleteObjectCollectionEntry(ctx context.Context, objectKey string) error {
 	_, err := q.db.Exec(ctx, deleteObjectCollectionEntry, objectKey)
 	return err
+}
+
+const deleteSkillSources = `-- name: DeleteSkillSources :execrows
+DELETE FROM skill_sources WHERE workspace_id = $1 AND id = ANY($2::uuid[])
+`
+
+type DeleteSkillSourcesParams struct {
+	WorkspaceID pgtype.UUID
+	SourceIds   []pgtype.UUID
+}
+
+func (q *Queries) DeleteSkillSources(ctx context.Context, arg DeleteSkillSourcesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSkillSources, arg.WorkspaceID, arg.SourceIds)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteUserIdentities = `-- name: DeleteUserIdentities :execrows
@@ -381,6 +374,45 @@ func (q *Queries) ListCollectableObjects(ctx context.Context, rowLimit int32) ([
 	return items, nil
 }
 
+const listSkillsPastDeletionGrace = `-- name: ListSkillsPastDeletionGrace :many
+SELECT sk.id,
+       (EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
+        OR EXISTS (SELECT 1 FROM skills f
+                   JOIN skill_versions v ON v.id = f.forked_from_version_id
+                   WHERE v.skill_id = sk.id))::bool AS forked,
+       COALESCE((SELECT array_agg(v.id) FROM skill_versions v WHERE v.skill_id = sk.id),
+                '{}')::uuid[] AS version_ids
+FROM skills sk
+WHERE sk.deleted_at IS NOT NULL AND sk.deleted_at <= $1::timestamptz
+ORDER BY sk.deleted_at, sk.id
+`
+
+type ListSkillsPastDeletionGraceRow struct {
+	ID         pgtype.UUID
+	Forked     bool
+	VersionIds []pgtype.UUID
+}
+
+func (q *Queries) ListSkillsPastDeletionGrace(ctx context.Context, cutoff pgtype.Timestamptz) ([]ListSkillsPastDeletionGraceRow, error) {
+	rows, err := q.db.Query(ctx, listSkillsPastDeletionGrace, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSkillsPastDeletionGraceRow
+	for rows.Next() {
+		var i ListSkillsPastDeletionGraceRow
+		if err := rows.Scan(&i.ID, &i.Forked, &i.VersionIds); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSourcesToCheck = `-- name: ListSourcesToCheck :many
 SELECT id, workspace_id, source_url, unavailable_since, content_hash, content_changed_at
 FROM skill_sources
@@ -521,6 +553,44 @@ func (q *Queries) ListWorkspaceDownloadArtifactObjectKeys(ctx context.Context, w
 	return items, nil
 }
 
+const listWorkspacePurgeCandidates = `-- name: ListWorkspacePurgeCandidates :many
+SELECT sk.id,
+       (EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
+        OR EXISTS (SELECT 1 FROM skills f
+                   JOIN skill_versions v ON v.id = f.forked_from_version_id
+                   WHERE v.skill_id = sk.id))::bool AS forked,
+       COALESCE((SELECT array_agg(v.id) FROM skill_versions v WHERE v.skill_id = sk.id),
+                '{}')::uuid[] AS version_ids
+FROM skills sk
+WHERE sk.workspace_id = $1
+`
+
+type ListWorkspacePurgeCandidatesRow struct {
+	ID         pgtype.UUID
+	Forked     bool
+	VersionIds []pgtype.UUID
+}
+
+func (q *Queries) ListWorkspacePurgeCandidates(ctx context.Context, workspaceID pgtype.UUID) ([]ListWorkspacePurgeCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listWorkspacePurgeCandidates, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWorkspacePurgeCandidatesRow
+	for rows.Next() {
+		var i ListWorkspacePurgeCandidatesRow
+		if err := rows.Scan(&i.ID, &i.Forked, &i.VersionIds); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspaceRunArtifactObjectKeys = `-- name: ListWorkspaceRunArtifactObjectKeys :many
 SELECT object_key FROM artifacts
 WHERE artifacts.workspace_id = $1::uuid AND kind = 'run_output'
@@ -547,6 +617,30 @@ func (q *Queries) ListWorkspaceRunArtifactObjectKeys(ctx context.Context, worksp
 			return nil, err
 		}
 		items = append(items, object_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkspaceSkillSourceIDs = `-- name: ListWorkspaceSkillSourceIDs :many
+SELECT id FROM skill_sources WHERE workspace_id = $1
+`
+
+func (q *Queries) ListWorkspaceSkillSourceIDs(ctx context.Context, workspaceID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceSkillSourceIDs, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -628,37 +722,18 @@ func (q *Queries) MarkSourceChecked(ctx context.Context, arg MarkSourceCheckedPa
 	return err
 }
 
-const purgeSkillsPastDeletionGrace = `-- name: PurgeSkillsPastDeletionGrace :execrows
-WITH referenced AS (
-    SELECT DISTINCT v.skill_id
-    FROM skill_versions v
-    WHERE EXISTS (
-            SELECT 1 FROM skills f
-            WHERE f.forked_from_version_id = v.id AND f.workspace_id <> v.workspace_id
-          )
-       OR EXISTS (SELECT 1 FROM runs r WHERE r.skill_version_id = v.id)
-),
-purgeable AS (
+const purgeSkillsByID = `-- name: PurgeSkillsByID :execrows
+WITH purgeable AS (
     SELECT sk.id FROM skills sk
-    WHERE sk.deleted_at IS NOT NULL
-      AND sk.deleted_at <= $1::timestamptz
-      AND NOT EXISTS (SELECT 1 FROM referenced ref WHERE ref.skill_id = sk.id)
-      AND NOT EXISTS (
-            SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id
-          )
-      AND NOT EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
+    WHERE sk.id = ANY($1::uuid[])
+      AND ($2::timestamptz IS NULL
+           OR (sk.deleted_at IS NOT NULL AND sk.deleted_at <= $2::timestamptz))
+      AND NOT EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
       AND NOT EXISTS (
             SELECT 1 FROM skills f
             JOIN skill_versions v ON v.id = f.forked_from_version_id
             WHERE v.skill_id = sk.id
           )
-      AND NOT EXISTS (
-            SELECT 1 FROM download_artifacts da
-            JOIN skill_versions v ON v.id = da.skill_version_id
-            WHERE v.skill_id = sk.id
-          )
-    ORDER BY sk.deleted_at
-    LIMIT $2::int
 ),
 enqueued AS (
     INSERT INTO object_collection_queue (object_key)
@@ -674,78 +749,13 @@ versions AS (
 DELETE FROM skills WHERE id IN (SELECT id FROM purgeable)
 `
 
-type PurgeSkillsPastDeletionGraceParams struct {
+type PurgeSkillsByIDParams struct {
+	SkillIds []pgtype.UUID
 	Cutoff   pgtype.Timestamptz
-	RowLimit int32
 }
 
-func (q *Queries) PurgeSkillsPastDeletionGrace(ctx context.Context, arg PurgeSkillsPastDeletionGraceParams) (int64, error) {
-	result, err := q.db.Exec(ctx, purgeSkillsPastDeletionGrace, arg.Cutoff, arg.RowLimit)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const purgeUnreferencedSkillSources = `-- name: PurgeUnreferencedSkillSources :execrows
-DELETE FROM skill_sources s
-WHERE s.workspace_id = $1
-  AND NOT EXISTS (SELECT 1 FROM skill_versions v WHERE v.source_id = s.id)
-`
-
-func (q *Queries) PurgeUnreferencedSkillSources(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, purgeUnreferencedSkillSources, workspaceID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const purgeUnreferencedSkills = `-- name: PurgeUnreferencedSkills :execrows
-WITH referenced AS (
-    SELECT DISTINCT v.skill_id
-    FROM skill_versions v
-    WHERE EXISTS (
-            SELECT 1 FROM skills f
-            WHERE f.forked_from_version_id = v.id AND f.workspace_id <> v.workspace_id
-          )
-       OR EXISTS (SELECT 1 FROM runs r WHERE r.skill_version_id = v.id)
-),
-purgeable AS (
-    SELECT sk.id FROM skills sk
-    WHERE sk.workspace_id = $1
-      AND NOT EXISTS (SELECT 1 FROM referenced ref WHERE ref.skill_id = sk.id)
-      AND NOT EXISTS (
-            SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id
-          )
-      AND NOT EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
-      AND NOT EXISTS (
-            SELECT 1 FROM skills f
-            JOIN skill_versions v ON v.id = f.forked_from_version_id
-            WHERE v.skill_id = sk.id
-          )
-      AND NOT EXISTS (
-            SELECT 1 FROM download_artifacts da
-            JOIN skill_versions v ON v.id = da.skill_version_id
-            WHERE v.skill_id = sk.id
-          )
-),
-enqueued AS (
-    INSERT INTO object_collection_queue (object_key)
-    SELECT DISTINCT v.package_object_key
-    FROM skill_versions v
-    WHERE v.skill_id IN (SELECT id FROM purgeable)
-      AND v.package_object_key <> ''
-    ON CONFLICT (object_key) DO NOTHING
-),
-versions AS (
-    DELETE FROM skill_versions WHERE skill_id IN (SELECT id FROM purgeable)
-)
-DELETE FROM skills WHERE id IN (SELECT id FROM purgeable)
-`
-
-func (q *Queries) PurgeUnreferencedSkills(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, purgeUnreferencedSkills, workspaceID)
+func (q *Queries) PurgeSkillsByID(ctx context.Context, arg PurgeSkillsByIDParams) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeSkillsByID, arg.SkillIds, arg.Cutoff)
 	if err != nil {
 		return 0, err
 	}
