@@ -149,16 +149,16 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	wireCreationGateway(set.Creation, deps.Gateway)
 	wireCreationFetch(set.Creation)
 
-	creditSvc, err := newCreditService(pool)
+	creditSvc, err := NewCreditService(pool)
 	if err != nil {
 		return nil, fmt.Errorf("credit wiring: %w", err)
 	}
 	creditSvc.Config.SessionIdle = deps.CreationLimits.SessionTimeout
-	wireCreationCredit(set.Creation, creditSvc, pool)
+	WireCreationCredit(set.Creation, creditSvc, pool)
 	backfillSvc := newBackfillService(pool, deps)
 	wireCostRecording(creditSvc, creationSearch, creationVersions, backfillSvc, set.Evaluations)
-	wireCreditDisplay(creditSvc, set.Runs, traceSvc, set.Evaluations)
-	wireRunCredit(set.Runs, creditSvc, pool)
+	WireCreditDisplay(creditSvc, set.Runs, traceSvc, set.Evaluations)
+	WireRunCredit(set.Runs, creditSvc, pool)
 	workers := river.NewWorkers()
 	addWorker(set, workers, &creation.Worker{Svc: set.Creation})
 	addWorker(set, workers, &creation.ExpiryWorker{Svc: set.Creation})

@@ -367,10 +367,3 @@ func (s *Service) SummarizeSession(ctx context.Context, tx pgx.Tx, sessionID pgt
 	}
 	return sp.Commit(ctx)
 }
-
-func (s *Service) PurgeUser(ctx context.Context, tx pgx.Tx, userID pgtype.UUID) error {
-	if s.Store == nil {
-		return ErrUnavailable
-	}
-	return s.Store.PurgeUser(ctx, tx, userID)
-}

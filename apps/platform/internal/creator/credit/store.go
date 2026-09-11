@@ -25,6 +25,7 @@ const (
 	KindReview          = "review"
 	KindSuggestion      = "suggestion"
 	KindGenerate        = "generate"
+	KindMatchReasons    = "match_reasons"
 
 	KindRun = "run"
 
@@ -96,8 +97,6 @@ type Store interface {
 	RecentStatistics(ctx context.Context, kind string) (Statistics, error)
 
 	RecomputeStatistics(ctx context.Context, kind string, windowStart, windowEnd time.Time) (Statistics, error)
-
-	PurgeUser(ctx context.Context, tx pgx.Tx, userID pgtype.UUID) error
 
 	SummarizeSession(ctx context.Context, tx DBTX, sessionID pgtype.UUID) error
 

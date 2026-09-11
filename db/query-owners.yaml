@@ -193,8 +193,6 @@ immutable_allow:
   DeleteWorkspaceDownloadArtifactDetails: download_artifacts
   PurgeExpiredCreditEntries: credit_entries
   PurgeExpiredCostEvents: cost_events
-  PurgeUserCreditEntries: credit_entries
-  PurgeUserCostEvents: cost_events
 
 raw_sql_allow:
   apps/platform/internal/creator/workspace/service.go@signup: advisory lock serializes first-login creation for one provider identity

@@ -225,6 +225,17 @@ def test_match_reasons_returns_one_reason_per_candidate():
     assert reasons == {"s1": "it parses invoices", "s2": "it cleans csv"}
 
 
+def test_match_reasons_names_the_model_the_batch_is_billed_to():
+    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices"}]}'
+    with _stub_chat(body):
+        response = client.post(
+            "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["model"] == app_module.MATCH_REASON_MODEL
+
+
 def test_match_reasons_asks_the_gateway_for_the_shape_it_parses():
     """The schema handed to the gateway and the schema used to parse the
     answer come from the same model, so they cannot drift apart."""

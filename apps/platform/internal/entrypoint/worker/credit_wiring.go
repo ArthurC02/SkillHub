@@ -20,7 +20,7 @@ import (
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
-func newCreditService(pool *pgxpool.Pool) (*credit.Service, error) {
+func NewCreditService(pool *pgxpool.Pool) (*credit.Service, error) {
 	cfg, err := credit.ConfigFromEnv()
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func newCreditService(pool *pgxpool.Pool) (*credit.Service, error) {
 	}, nil
 }
 
-func wireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgxpool.Pool) {
+func WireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgxpool.Pool) {
 	ids := &identity.Service{Pool: pool}
 	owner := ids.WorkspaceOwner
 
@@ -92,6 +92,7 @@ var creditStatKinds = []string{
 	credit.KindReview,
 	credit.KindSuggestion,
 	credit.KindGenerate,
+	credit.KindMatchReasons,
 	credit.KindRun,
 	credit.KindCreationSession,
 }
@@ -107,13 +108,13 @@ func wireCostRecording(svc *credit.Service, search *catalog.Service, versions, b
 	evaluations.Credit = svc
 }
 
-func wireCreditDisplay(svc *credit.Service, runs *run.Service, traces *trace.Service, evaluations *eval.Service) {
+func WireCreditDisplay(svc *credit.Service, runs *run.Service, traces *trace.Service, evaluations *eval.Service) {
 	runs.Credits = svc.CreditsForUSD
 	traces.Credits = svc.CreditsForUSD
 	evaluations.Credits = svc.CreditsForUSD
 }
 
-func wireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool) {
+func WireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool) {
 	ids := &identity.Service{Pool: pool}
 
 	target.CreditReserve = func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, reservedUSDMicros int64) (bool, error) {

@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
@@ -266,16 +264,6 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func purgeService(pool *pgxpool.Pool) *identity.Service {
-	ids := &identity.Service{Pool: pool}
-
-	creditSvc := &credit.Service{Store: credit.NewPostgresStore(pool)}
-	purgeCredit := func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
-		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
-		if err != nil {
-			return err
-		}
-		return creditSvc.PurgeUser(ctx, tx, userID)
-	}
 	analyticsSvc := &analytics.Service{Pool: pool}
 	testlabSvc := &testlab.Service{Pool: pool}
 	runSvc := &run.Service{Pool: pool}
@@ -291,7 +279,6 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 		PurgeSkills:                registrySvc.PurgeWorkspace,
 		PurgeImportSources:         ingestSvc.PurgeWorkspace,
 		PurgeCreation:              (&creation.Service{Pool: pool}).PurgeWorkspace,
-		PurgeCredit:                purgeCredit,
 		DatasetObjectKeys:          testlabSvc.WorkspaceObjectKeys,
 		RunArtifactObjectKeys:      runSvc.WorkspaceObjectKeys,
 		DownloadArtifactObjectKeys: packagingSvc.WorkspaceObjectKeys,

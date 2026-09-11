@@ -157,6 +157,9 @@ type MatchReason struct {
 
 type MatchReasonsResponse struct {
 	Reasons []MatchReason `json:"reasons"`
+	Model   string        `json:"model"`
+
+	Usage *GatewayUsage `json:"usage,omitempty"`
 }
 
 func (c *Client) MatchReasons(ctx context.Context, query string, candidates []SkillCandidate) (*MatchReasonsResponse, error) {

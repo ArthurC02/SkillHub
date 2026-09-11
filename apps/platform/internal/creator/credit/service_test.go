@@ -94,11 +94,6 @@ func (f *fakeStore) RecomputeStatistics(ctx context.Context, kind string, window
 	return stats, nil
 }
 
-func (f *fakeStore) PurgeUser(ctx context.Context, tx pgx.Tx, userID pgtype.UUID) error {
-	delete(f.balances, idKey(userID))
-	return nil
-}
-
 func testConfig() Config {
 	return Config{MicrosPerCredit: 1000, MarkupBps: 13000, DebtFloorCredits: -50, StartFallbackCredits: 70}
 }
@@ -411,9 +406,6 @@ func TestServiceMethodsFailClosedWithoutAStore(t *testing.T) {
 	}
 	if _, err := s.Grant(context.Background(), nil, GrantInput{}); !errors.Is(err, ErrUnavailable) {
 		t.Error("Grant without a Store must fail closed")
-	}
-	if err := s.PurgeUser(context.Background(), nil, testUser(1)); !errors.Is(err, ErrUnavailable) {
-		t.Error("PurgeUser without a Store must fail closed")
 	}
 }
 

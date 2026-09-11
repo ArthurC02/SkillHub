@@ -225,26 +225,6 @@ func (s *PostgresStore) RecomputeStatistics(ctx context.Context, kind string, wi
 	}, nil
 }
 
-func (s *PostgresStore) PurgeUser(ctx context.Context, tx pgx.Tx, userID pgtype.UUID) error {
-	if err := enablePurge(ctx, tx); err != nil {
-		return err
-	}
-	q := gen.New(tx)
-
-	// Entries before events: credit_entries.cost_event_id is a foreign key
-	// into cost_events, so the reverse order fails on the constraint.
-	if _, err := q.PurgeUserCreditEntries(ctx, userID); err != nil {
-		return fmt.Errorf("credit: purge user credit entries: %w", err)
-	}
-	if _, err := q.PurgeUserCostEvents(ctx, userID); err != nil {
-		return fmt.Errorf("credit: purge user cost events: %w", err)
-	}
-	if _, err := q.PurgeUserSessionCostSummaries(ctx, userID); err != nil {
-		return fmt.Errorf("credit: purge user session summaries: %w", err)
-	}
-	return nil
-}
-
 func (s *PostgresStore) SummarizeSession(ctx context.Context, tx DBTX, sessionID pgtype.UUID) error {
 	return s.q(tx).UpsertSessionCostSummary(ctx, sessionID)
 }
@@ -263,7 +243,8 @@ func (s *PostgresStore) SweepExpiredRows(ctx context.Context, tx pgx.Tx, cutoff 
 	q := gen.New(tx)
 	at := pgconv.Timestamptz(cutoff)
 
-	// Entries before events, for the same foreign-key reason as PurgeUser.
+	// Entries before events: credit_entries.cost_event_id is a foreign key
+	// into cost_events, so the reverse order fails on the constraint.
 	entries, err = q.PurgeExpiredCreditEntries(ctx, at)
 	if err != nil {
 		return 0, 0, fmt.Errorf("credit: sweep expired credit entries: %w", err)

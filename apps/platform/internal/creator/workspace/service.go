@@ -39,8 +39,6 @@ type Service struct {
 	PurgeSkills        WorkspacePurge
 	PurgeImportSources WorkspacePurge
 
-	PurgeCredit WorkspacePurge
-
 	DatasetObjectKeys          WorkspaceObjectKeys
 	RunArtifactObjectKeys      WorkspaceObjectKeys
 	DownloadArtifactObjectKeys WorkspaceObjectKeys

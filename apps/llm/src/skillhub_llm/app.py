@@ -200,6 +200,7 @@ class MatchReasonsResponse(MatchReasons):
     strict JSON schema validation.
     """
 
+    model: str
     usage: GatewayUsage | None = None
 
 
@@ -272,11 +273,14 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         parsed = MatchReasons.model_validate_json(content)
     except ValidationError:
         logger.warning("match-reasons: model output did not match the schema")
-        return MatchReasonsResponse(reasons=[], usage=_usage(response, raw.headers))
+        return MatchReasonsResponse(
+            reasons=[], model=MATCH_REASON_MODEL, usage=_usage(response, raw.headers)
+        )
 
     wanted = {c.skill_id for c in req.candidates}
     return MatchReasonsResponse(
         reasons=[r for r in parsed.reasons if r.skill_id in wanted and r.reason],
+        model=MATCH_REASON_MODEL,
         usage=_usage(response, raw.headers),
     )
 

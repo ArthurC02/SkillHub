@@ -18,6 +18,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -347,13 +348,12 @@ func TestCreationSettlementCompletesOnOneConnection(t *testing.T) {
 	workspaceID := mustParseUUID(t, member.workspaceID)
 
 	pool := creditsOneConnectionPool(t)
-	ids := &identity.Service{Pool: pool}
-	svc, err := newCreditService(pool, ids)
+	svc, err := worker.NewCreditService(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	target := &creation.Service{}
-	wireCreationCredit(target, svc, ids)
+	worker.WireCreationCredit(target, svc, pool)
 
 	for _, tc := range []struct {
 		name      string

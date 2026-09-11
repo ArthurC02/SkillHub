@@ -14,6 +14,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -241,25 +242,17 @@ func NewApp(cfg Config) (*App, error) {
 	wireCreationTestCases(creationSvc, testlabSvc)
 	wireCreationAdopt(creationSvc, registrySvc)
 
-	creditSvc, err := newCreditService(cfg.Pool, identitySvc)
+	creditSvc, err := worker.NewCreditService(cfg.Pool)
 	if err != nil {
 		return nil, err
 	}
-	wireCreationCredit(creationSvc, creditSvc, identitySvc)
+	worker.WireCreationCredit(creationSvc, creditSvc, cfg.Pool)
 
 	wireCostRecording(creditSvc, catalogSvc, versions)
 	wireGenerateCredit(versions, creditSvc, identitySvc.WorkspaceOwner)
-	wireCreditDisplay(creditSvc, runSvc, traceSvc, evalSvc)
-	wireRunCredit(runSvc, creditSvc, cfg.Pool)
+	worker.WireCreditDisplay(creditSvc, runSvc, traceSvc, evalSvc)
+	worker.WireRunCredit(runSvc, creditSvc, cfg.Pool)
 
-	identitySvc.PurgeCredit = func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
-
-		userID, err := identitySvc.WorkspaceOwnerIn(ctx, tx, workspaceID)
-		if err != nil {
-			return err
-		}
-		return creditSvc.PurgeUser(ctx, tx, userID)
-	}
 	return &App{
 		Deps: Deps{
 			Auth:            auth,

@@ -110,3 +110,42 @@ func TestALedgerFailureDoesNotFailTheSearch(t *testing.T) {
 		t.Errorf("embedQuery err = %v, want nil", err)
 	}
 }
+
+func matchReasonsServer(t *testing.T, usage *llmclient.GatewayUsage) *llmclient.Client {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(llmclient.MatchReasonsResponse{
+			Reasons: []llmclient.MatchReason{{SkillID: "s1", Reason: "it parses invoices"}},
+			Model:   "gpt-5.6-luna",
+			Usage:   usage,
+		})
+	}))
+	t.Cleanup(srv.Close)
+	return &llmclient.Client{BaseURL: srv.URL}
+}
+
+func TestMatchReasonsRecordOneCostEventOfTheirOwnKind(t *testing.T) {
+	cost := 0.00042
+	ledger := &fakeLedger{}
+	s := &Service{LLM: matchReasonsServer(t, &llmclient.GatewayUsage{
+		PromptTokens: 300, CompletionTokens: 40, CostUSD: &cost, CostSource: "gateway",
+	}), Credit: ledger}
+
+	s.matchReasons(context.Background(), "read my invoices",
+		[]searchResult{{SkillID: "s1", Name: "invoice-parser", Summary: "reads invoices"}})
+
+	if len(ledger.events) != 1 {
+		t.Fatalf("cost events = %d, want exactly 1", len(ledger.events))
+	}
+	e := ledger.events[0]
+	if e.Kind != credit.KindMatchReasons {
+		t.Errorf("kind = %q, want %q", e.Kind, credit.KindMatchReasons)
+	}
+	if e.UsdMicros != 420 || e.Estimated {
+		t.Errorf("usd_micros = %d estimated = %v, want 420 / false", e.UsdMicros, e.Estimated)
+	}
+	if e.Model != "gpt-5.6-luna" || e.PromptTokens != 300 || e.CompletionTokens != 40 {
+		t.Errorf("model = %q tokens = %d/%d", e.Model, e.PromptTokens, e.CompletionTokens)
+	}
+}

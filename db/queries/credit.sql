@@ -34,5 +34,3 @@ FROM credit_entries WHERE user_id = $1;
 -- name: PurgeExpiredCreditEntries :execrows
 DELETE FROM credit_entries WHERE created_at < $1;
 
--- name: PurgeUserCreditEntries :execrows
-DELETE FROM credit_entries WHERE user_id = $1;

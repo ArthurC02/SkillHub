@@ -24,6 +24,7 @@ var docIdentifierScope = []string{
 var docIdentifierPattern = regexp.MustCompile("`(Test[A-Za-z0-9_]{3,}|test_[a-z0-9_]{3,}|[A-Z][A-Za-z0-9]{4,})`")
 
 var allowedDocWords = map[string]string{
+	"PurgeUser":                "removed with the account-deletion credit step (ADR-073); 03 CRED-006 and 04 record it as it was",
 	"Superseded":               "ADR status vocabulary (AGENTS.md), not a symbol",
 	"Proposed":                 "ADR status vocabulary",
 	"Accepted":                 "ADR status vocabulary",

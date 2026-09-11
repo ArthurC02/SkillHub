@@ -46,8 +46,6 @@ func (s *Service) purgeSteps() []purgeStep {
 		// at. Reversed, every source still backs a live version and none is removed.
 		{"registry", s.PurgeSkills},
 		{"ingest", s.PurgeImportSources},
-
-		{"credit", s.PurgeCredit},
 	}
 }
 

@@ -902,12 +902,17 @@ components:
         uncovered candidate and labels it `template`, and a filler returned from
         here would be labelled `model` instead (DISC-002 provenance).
       type: object
-      required: [reasons]
+      required: [reasons, model]
       properties:
         reasons:
           type: array
           items:
             $ref: "#/components/schemas/MatchReason"
+        model:
+          type: string
+          description: |
+            The gateway model the batch was sent to, so the call's cost is
+            recorded against the model that answered it.
         usage:
           $ref: "#/components/schemas/GatewayUsage"
           description: |

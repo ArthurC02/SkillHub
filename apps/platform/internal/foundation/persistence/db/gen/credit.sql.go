@@ -171,18 +171,6 @@ func (q *Queries) PurgeExpiredCreditEntries(ctx context.Context, createdAt pgtyp
 	return result.RowsAffected(), nil
 }
 
-const purgeUserCreditEntries = `-- name: PurgeUserCreditEntries :execrows
-DELETE FROM credit_entries WHERE user_id = $1
-`
-
-func (q *Queries) PurgeUserCreditEntries(ctx context.Context, userID pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, purgeUserCreditEntries, userID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const sumCreditEntries = `-- name: SumCreditEntries :one
 SELECT coalesce(sum(delta_credits), 0)::bigint AS total_delta_credits
 FROM credit_entries WHERE user_id = $1

@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -335,6 +336,7 @@ func (s *Service) matchReasons(ctx context.Context, query string, hits []searchR
 		slog.Warn("match-reasons call failed, using template fallback", "error", err)
 		return nil
 	}
+	s.recordCallCost(ctx, credit.KindMatchReasons, resp.Model, resp.Usage)
 	return resp.Reasons
 }
 

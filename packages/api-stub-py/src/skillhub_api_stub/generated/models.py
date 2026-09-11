@@ -652,6 +652,10 @@ class SuggestCriteriaResponse(BaseModel):
 
 class MatchReasonsResponse(BaseModel):
     reasons: List[MatchReason]
+    model: str = Field(
+        ...,
+        description="The gateway model the batch was sent to, so the call's cost is\nrecorded against the model that answered it.\n",
+    )
     usage: Optional[GatewayUsage] = Field(
         None,
         description='What the batch cost at the gateway. Optional, same rule as\nJudgeRunResponse.usage. Reported even when `reasons` is empty: an\nanswer the service could not use was still a paid call.\n',

@@ -14,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 )
 
 func creditTestLimits() creation.Limits {
@@ -268,5 +269,79 @@ func TestASessionWithAnEstimatedStepStaysOutOfTheStatistics(t *testing.T) {
 	}
 	if stats.SampleCount != 1 || stats.MaxUsdMicros != 2_000 {
 		t.Errorf("statistics = %d samples, max %d micros; want 1 sample, max 2000 — a session priced by a guess is not a sample", stats.SampleCount, stats.MaxUsdMicros)
+	}
+}
+
+func TestAccountDeletionLeavesTheCreditLedgerAlone(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "credit-kept-after-deletion")
+	ctx := context.Background()
+	user := mustUUID(t, c.userID)
+	ledger, err := worker.NewCreditService(pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ledger.Grant(ctx, tx, credit.GrantInput{
+		UserID: user, EntryKind: credit.EntryGrant, Credits: 100, Reason: "fixture", OperatorID: user,
+		IdempotencyKey: "kept-after-deletion:" + uuid.NewString(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO cost_events (kind, model, usd_micros, cost_source, user_id, idempotency_key)
+		VALUES ('suggestion', 'fixture-model', 1000, 'gateway', $1, $2)`, user, "kept-after-deletion:"+uuid.NewString()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
+		VALUES ($1, $2, 1000, 1, false, now())`, uuid.NewString(), user); err != nil {
+		t.Fatal(err)
+	}
+	tables := []string{"credit_accounts", "credit_entries", "cost_events", "cost_session_summaries"}
+	before := map[string]int{}
+	for _, table := range tables {
+		before[table] = countRow(t, pool, "SELECT count(*) FROM "+table+" WHERE user_id = $1", user)
+		if before[table] == 0 {
+			t.Fatalf("the fixture left no %s rows to keep", table)
+		}
+	}
+
+	if code := c.status(t, "DELETE", "/me"); code != 200 {
+		t.Fatalf("DELETE /me: %d", code)
+	}
+	if _, err := a.auth.Service.PurgeExpiredAccounts(ctx, a.packages, 0, 10); err != nil {
+		t.Fatal(err)
+	}
+	if n := countRow(t, pool, "SELECT count(*) FROM users WHERE id = $1 AND deleted_at IS NOT NULL", user); n != 1 {
+		t.Fatal("the account purge did not finish, so nothing here was tested")
+	}
+	for _, table := range tables {
+		if got := countRow(t, pool, "SELECT count(*) FROM "+table+" WHERE user_id = $1", user); got != before[table] {
+			t.Errorf("%s rows for the deleted account = %d, want the %d it had", table, got, before[table])
+		}
+	}
+}
+
+func TestTheLedgerAndItsStatisticsAcceptTheMatchReasonsKind(t *testing.T) {
+	store := credit.NewPostgresStore(requireDB(t))
+	start := time.Date(2004, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	forgetStatistics(t, end)
+	seedCostEvent(t, credit.KindMatchReasons, 420, "gateway", start.Add(time.Minute))
+
+	stats, err := store.RecomputeStatistics(context.Background(), credit.KindMatchReasons, start, end)
+	if err != nil {
+		t.Fatalf("recomputing match_reasons statistics: %v", err)
+	}
+	if stats.SampleCount != 1 || stats.MaxUsdMicros != 420 {
+		t.Errorf("statistics = %d samples, max %d micros; want 1 sample, max 420", stats.SampleCount, stats.MaxUsdMicros)
 	}
 }
