@@ -269,3 +269,7 @@ Run 屬於 `trial/execution`，而附錄 A 沒有 `run → credit` 這一列，�
 - **決策 3 的成本種類多一個 `match_reasons`**（`04` 丙-232）：搜尋結果旁「為什麼符合」的說明是一次文字生成，原本沒有可寫的種類，錢照花、不進帳。負責人裁定獨立成一種、不併入 `search_embedding`。migration 0064 讓 `cost_events` 與 `cost_statistics` 的 CHECK 都收下它；`apps/llm` 的回應多帶 `model`（契約先改），`catalog` 在每次成功的呼叫之後寫一筆，每日重算多算這一種。它和搜尋一樣只記不扣（R-74）。
 - **決策 11 的帳號刪除那一半由 [ADR-073](./ADR-073-account-deletion-keeps-the-credit-ledger.md) 取代**：帳號清除不再刪 Credit 紀錄。保存期限那一半不變。
 - **兩個組裝根的 Credit 接線併成一份。** Worker 與 API 各有一份逐行相同的 `wireCreationCredit`／`wireRunCredit`，只有 API 那份有測試，而實際在 Run 清理時扣點的是 Worker 那份。現在由 Worker 匯出、API 呼叫同一份；把 Worker 那份的兩處修法各還原一次，API 的測試都會紅。
+
+## 2026-09-12 補記：決策 11 整條由 ADR-073 取代
+
+保存期限那一半也被取代：負責人裁定 Credit 紀錄永遠不清（[`05` R-76](../plans/05-pending-rulings.md)），保存掃描移除，見 [ADR-073](./ADR-073-account-deletion-keeps-the-credit-ledger.md) 同日補記。「Credit 過期政策」那一項待決策講的是點數本身會不會過期，不是紀錄保存多久，不受影響。

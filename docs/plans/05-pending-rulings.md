@@ -2147,3 +2147,19 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 - **改了什麼**：帳號清除不再有 Credit 那一步；`credit_accounts`、`credit_entries`、`cost_events`、`cost_session_summaries` 在清除後原樣留著。時間視窗的保存掃描（`maintenance purge-credit`）不變，只是不因帳號刪除而提前清；它的期限 `CREDIT_RETENTION` 仍未定值，未設時掃描拒絕啟動，所以在定值之前這些紀錄不會被清。
 - **推翻的是 ADR 的一條決策**，所以依文件規則另立 [ADR-073](../adr/ADR-073-account-deletion-keeps-the-credit-ledger.md)，取代 ADR-068 決策 11 的帳號刪除那一半；`02` CRED-008 的第二條允收準則同步改寫。
 - **這一條要法務看**：[同意書與資料保存](mvp/gate-test/consent-and-data-policy.md) 的保存表原本沒有 Credit 紀錄那一列，受測者因此不知道刪了帳號之後這些紀錄還在。同批補上一列並標明待法務確認——那份文件自己的規則是「任何一個保存期限變動都要重新確認一次」，而這是一次變動。
+
+---
+
+## R-76｜Credit 紀錄保存多久、評估要不要扣點（`02` CRED-008、[ADR-073](../adr/ADR-073-account-deletion-keeps-the-credit-ledger.md)、`04` 丙-185／丙-233） — ✅ **已裁定（2026-09-12）：永遠不清；評估先不扣點，觀察後再決定**
+
+兩題都是 R-75 落地後回報裡的「需要確認」。
+
+**一、Credit 紀錄永遠不清**（負責人逐字：「永遠不清」）。R-75 之後，帳號刪除已經不清 Credit 紀錄，剩下的只有時間視窗的保存掃描（`maintenance purge-credit`，期限 `CREDIT_RETENTION`，未設時拒絕啟動）。
+
+- **改了什麼**：這支掃描整個移除——子命令、按時間刪除的三條 query 與 `.env.example` 的 `CREDIT_RETENTION`。只把值留空也能做到「不清」，但 [release-checklist](mvp/m4/release-checklist.md) §2 有一列要求把它接上每週 cron，照著部署的人會填一個值，紀錄就被清了；移除之後，沒有任何一條路徑會刪這幾張表。
+- **機器怎麼守**：`cost_events` 與 `credit_entries` 是不可變表，`db/query-owners.yaml` 的 `immutable_allow` 不再列任何刪除它們的 query；新增一條會被 query-owners 檢查擋下。
+- ADR-073 決策 2 當時留的待裁值由此回答（該 ADR 同日補記）；`02` CRED-008 第一條允收準則同步改寫；同意書那一列改成「永久保存」，**仍待法務確認**。
+
+**二、評估先不扣點，觀察之後再決定**（負責人逐字：「先不扣點，然後觀察再決定是否扣點」）。現狀就是這樣：評審與改善建議的每一次模型呼叫都寫 `cost_events`（`review`／`suggestion`），不寫扣點分錄，所以這一半沒有程式要改。
+
+- **「觀察」要有東西可看，也要有人回來看**，所以開 `04` 丙-233 追這件事：每日重算已經替這兩個種類算出滾動窗的樣本數與 p50／p95（`cost_statistics`），那就是要看的數字；回來裁的時間由負責人決定。

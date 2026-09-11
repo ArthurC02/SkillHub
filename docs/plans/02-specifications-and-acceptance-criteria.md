@@ -959,8 +959,8 @@ Run 至少支援：
 
 允收準則：
 
-- `cost_events` 與 `credit_entries` 併入既有的保存期限對帳（同 `SEC-006` 既有形狀），保存期限值留待負責人與既有保存清冊一併裁定。有一條測試證明：兩張表出現在保存期限的既有對帳清單中（不論其值，只驗證「有沒有被納管」）。
-- ~~帳號刪除的清除路徑併入 `cmd/maintenance` 既有的 `skillhub_purge` 角色。有一條測試證明：對一個已標記刪除的帳號執行既有 purge 流程後，其名下的 `cost_events`／`credit_entries` 依既有刪除語意處理，不殘留可回指真人身分的欄位。~~ **2026-09-11 改寫（[`05` R-75](05-pending-rulings.md)、[ADR-073](../adr/ADR-073-account-deletion-keeps-the-credit-ledger.md)）**：帳號刪除**不清** Credit 紀錄。有一條測試證明：對一個已標記刪除的帳號跑完既有 purge 流程後，其名下的 `credit_accounts`／`credit_entries`／`cost_events`／`cost_session_summaries` 列數與清除前相同。這些紀錄只由第一條的保存期限掃描清除。
+- ~~`cost_events` 與 `credit_entries` 併入既有的保存期限對帳（同 `SEC-006` 既有形狀），保存期限值留待負責人與既有保存清冊一併裁定。有一條測試證明：兩張表出現在保存期限的既有對帳清單中（不論其值，只驗證「有沒有被納管」）。~~ **2026-09-12 改寫（[`05` R-76](05-pending-rulings.md)、[ADR-073](../adr/ADR-073-account-deletion-keeps-the-credit-ledger.md) 補記）**：Credit 紀錄永久保存，沒有保存期限，也沒有任何清除路徑。機器守著：`cost_events`／`credit_entries` 是不可變表，`db/query-owners.yaml` 的 `immutable_allow` 不列任何刪除它們的 query，新增一條會被 query-owners 檢查擋下。
+- ~~帳號刪除的清除路徑併入 `cmd/maintenance` 既有的 `skillhub_purge` 角色。有一條測試證明：對一個已標記刪除的帳號執行既有 purge 流程後，其名下的 `cost_events`／`credit_entries` 依既有刪除語意處理，不殘留可回指真人身分的欄位。~~ **2026-09-11 改寫（[`05` R-75](05-pending-rulings.md)、[ADR-073](../adr/ADR-073-account-deletion-keeps-the-credit-ledger.md)）**：帳號刪除**不清** Credit 紀錄。有一條測試證明：對一個已標記刪除的帳號跑完既有 purge 流程後，其名下的 `credit_accounts`／`credit_entries`／`cost_events`／`cost_session_summaries` 列數與清除前相同。這些紀錄也不會因時間而清除（第一條，2026-09-12）。
 - **未涵蓋（待決策）**：Credit 是否有效期、`grant`／`topup` 分錄是否應帶到期時間（[ADR-068](../adr/ADR-068-credit-is-the-only-unit-of-account.md) 待決策）；在裁定之前預設 Credit 不過期。
 
 ## 5. 非功能需求

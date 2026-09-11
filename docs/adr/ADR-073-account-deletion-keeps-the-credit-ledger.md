@@ -34,3 +34,11 @@ ADR-068 決策 11 把 `cost_events` 與 `credit_entries` 當成一般使用者�
 
 - **只保留 `credit_accounts`**（負責人第一句話的字面範圍）：扣點分錄、成本事件與會話摘要照舊刪。負責人問過之後沒有選。
 - **保留但去識別化**（把 `user_id` 設為空）：`credit_entries.user_id` 是指向 `credit_accounts` 的必填外鍵，要改 schema；而負責人要的是不碰。
+
+## 2026-09-12 補記：決策 2 的待裁值是「永遠不清」，保存掃描因此移除
+
+[`05` R-76](../plans/05-pending-rulings.md)：負責人裁定 Credit 紀錄永遠不清。決策 2 的原文不改，答案記在這裡。
+
+- 值是「永遠」，時間視窗的保存掃描就沒有事可做：`maintenance purge-credit`、按時間刪除的三條 query 與 `CREDIT_RETENTION` 一併移除。只把值留空也不會清，但 release-checklist 要求把它接上 cron，照著部署的人會填值；移除之後，沒有任何一條路徑刪這幾張表。
+- `cost_events` 與 `credit_entries` 是不可變表，`db/query-owners.yaml` 的 `immutable_allow` 不再列任何刪除它們的 query，新增一條會被 query-owners 檢查擋下。
+- 本份因此取代 ADR-068 決策 11 的整條：帳號刪除那一半（決策 1），與保存期限那一半（本補記）。
