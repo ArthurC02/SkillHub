@@ -95,6 +95,21 @@ operator 名冊與封測名單，照舊改設定再重啟。SEC-011 與 ADR-061 
 - 把 operator 名冊改成資料表，仍然歸 `identity`。
 - 接真實金流，歸 `credit`，外加一層 payment 防腐層（ADR-032 §2 已經預留）。
 
+**外部對照（2026-09-12 查）**：
+
+- **切 context 的依據是語言與模型，不是畫面或角色。**
+  - [Fowler](https://martinfowler.com/bliki/BoundedContext.html)：劃分的主要因素是人的文化，語言不同才需要不同的模型。
+  - [Jovanović](https://milanjovanovic.tech/blog/bounded-context-ddd-explained) 列了四個訊號：語言不同、資料不同、規則不同、組織不同。他也建議先少切，被逼時再切。
+  - 對到本案：operator 用的是 SEC-011 的同一套詞，同一個團隊，同一組規則。四個訊號一個也沒出現。
+- **反方論點，以及它為什麼不適用。** [一個角色邊界的案例](https://dev.to/epigene/recognizing-actor-boundaries-through-domain-driven-design-lessons-from-a-shared-worklog-58fi)主張：兩種角色對同一份資料期待相衝突時（一方要可改、一方要不可變且可稽核），就該分成兩個模型。本案沒有這種衝突：operator 與使用者看到的是同一本不可變的帳、同一個下架狀態。這個論點真正對應的是濫用檢舉案件，所以上文把它列為「會長出 context」的條件。
+- **跨 context 的畫面在前端組合。**
+  - [Particular](https://particular.net/blog/secret-of-better-ui-composition) 與 [Udi Dahan](https://udidahan.com/2012/07/09/ui-composition-vs-server-side-orchestration/) 主張：client 端是唯一能把多個端點的資料拼在一起的地方；各服務只收自己的資料，別人不必依賴它的資料結構。
+  - 這就是上文「前端分別呼叫各條端點」的依據。
+- **現在不做後端聚合層（BFF）。**
+  - [Newman](https://samnewman.io/patterns/architectural/bff/)：只有網頁介面的應用，要等伺服器端有大量聚合需求才值得做 BFF。
+  - 真的要做時，守[「只聚合、不擁有領域規則、不存別人的狀態」](https://thebackenddevelopers.substack.com/p/backend-for-frontend-pattern-evolution)。這一條對應 ADR-032 對 `apiserver` 的定位：表現層與 composition root，不擁有產品規則。
+- **「後台就用 CRUD」只適用於沒有規則的東西。** [DDD 社群的討論](https://groups.google.com/g/dddcqrs/c/X0UjLaoZt6Y)同意：低價值的設定畫面直接 CRUD 是合理的，不必每處都走 DDD。本案的寫入都碰到不變量（帳本、下架、派送），所以不適用。日後若把封測名單改成資料表，那才是可以直接 CRUD 的一塊，而且仍歸 `identity`。
+
 ## 第一批範圍（提案）
 
 1. 後台外殼，以及 `GET /me` 的 operator 欄位。
