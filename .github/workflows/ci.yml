@@ -214,7 +214,7 @@ jobs:
         run: |
           docker run -d --name seaweedfs --network host \
             -v "$GITHUB_WORKSPACE/infra/compose/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro" \
-            docker.io/chrislusf/seaweedfs:3.80@sha256:1055999e08eed1789b0ae45d235126e4495e23d3fb9d6396293fd42539b1ae6a \
+            docker.io/chrislusf/seaweedfs:4.46@sha256:08d516132314207d10c8e37cbffc1f32b147d870169688734cc61c6231625b62 \
             server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
           for _ in $(seq 60); do
             if curl -fs -o /dev/null http://127.0.0.1:8333/status; then exit 0; fi

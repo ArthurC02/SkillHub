@@ -35,7 +35,7 @@ func dependencyPolicyProblems(root string) []string {
 	}
 	var problems []string
 	updated := map[string]bool{}
-	composeFiles, workflowFiles := map[string]string{}, map[string]string{}
+	composeFiles, ciFiles := map[string]string{}, map[string]string{}
 	for _, file := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		dir, base := path.Dir(file), path.Base(file)
 		switch {
@@ -79,8 +79,15 @@ func dependencyPolicyProblems(root string) []string {
 				problems = append(problems, err.Error())
 				continue
 			}
-			workflowFiles[file] = content
+			ciFiles[file] = content
 			problems = append(problems, workflowPinProblems(file, content)...)
+		case strings.HasPrefix(file, "tools/ci/") && strings.HasSuffix(base, ".sh"):
+			content, err := read(file)
+			if err != nil {
+				problems = append(problems, err.Error())
+				continue
+			}
+			ciFiles[file] = content
 		}
 	}
 	for dir := range updated {
@@ -89,7 +96,7 @@ func dependencyPolicyProblems(root string) []string {
 		}
 	}
 	problems = append(problems, versionAgreementProblems(versionsThatMoveTogether, read)...)
-	return append(problems, composeAndWorkflowImageDrift(composeFiles, workflowFiles)...)
+	return append(problems, composeAndWorkflowImageDrift(composeFiles, ciFiles)...)
 }
 
 func isYAML(base string) bool {
@@ -143,7 +150,7 @@ func workflowPinProblems(file, content string) []string {
 	return problems
 }
 
-func composeAndWorkflowImageDrift(composeFiles, workflowFiles map[string]string) []string {
+func composeAndWorkflowImageDrift(composeFiles, ciFiles map[string]string) []string {
 	compose := map[string]string{}
 	for _, content := range composeFiles {
 		for _, ref := range pinnedImageRef.FindAllString(content, -1) {
@@ -151,7 +158,7 @@ func composeAndWorkflowImageDrift(composeFiles, workflowFiles map[string]string)
 		}
 	}
 	var problems []string
-	for file, content := range workflowFiles {
+	for file, content := range ciFiles {
 		for _, ref := range pinnedImageRef.FindAllString(content, -1) {
 			if want, shared := compose[imageRepository(ref)]; shared && canonicalImage(ref) != want {
 				problems = append(problems, fmt.Sprintf("%s: %s differs from infra/compose's %s; bump both together", file, ref, want))

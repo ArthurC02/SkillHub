@@ -127,6 +127,7 @@ func TestDependencyPolicyComparesComposeWithTheWorkflows(t *testing.T) {
 		".github/dependabot.yml":           "updates:\n  - package-ecosystem: docker-compose\n    directory: /infra/compose\n",
 		"infra/compose/docker-compose.yml": "services:\n  db:\n    image: pgvector/pgvector:pg17" + digest + "\n",
 		".github/workflows/ci.yml":         "jobs:\n  test:\n    services:\n      db:\n        image: pgvector/pgvector:pg16" + digest + "\n",
+		"tools/ci/stack-smoke.sh":          "PG_IMAGE=\"docker.io/pgvector/pgvector:pg15" + digest + "\"\n",
 	}
 	for name, content := range files {
 		full := filepath.Join(root, filepath.FromSlash(name))
@@ -143,7 +144,7 @@ func TestDependencyPolicyComparesComposeWithTheWorkflows(t *testing.T) {
 		}
 	}
 	problems := strings.Join(dependencyPolicyProblems(root), "\n")
-	for _, want := range []string{".github/workflows/ci.yml: pgvector/pgvector:pg16", ".node-version: no node version found"} {
+	for _, want := range []string{".github/workflows/ci.yml: pgvector/pgvector:pg16", "tools/ci/stack-smoke.sh: docker.io/pgvector/pgvector:pg15", ".node-version: no node version found"} {
 		if !strings.Contains(problems, want) {
 			t.Fatalf("missing %q in:\n%s", want, problems)
 		}
