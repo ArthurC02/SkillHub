@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { focusManager } from "@tanstack/react-query";
 import App from "./App";
 import { queryClient } from "./api/queryClient";
-import { router } from "./router";
+import { createAppRouter } from "./router";
 import { daysOf, seriesOf, usd } from "./api/admin";
 import { ADMIN_AUDIT_LOG, ADMIN_SKILLS, SKILL, platformResponse } from "./fixtures/platform";
 
@@ -14,10 +14,12 @@ type Reply = { body: unknown; status: number } | undefined;
 let container: HTMLDivElement;
 let root: Root;
 let calls: Call[];
+let router: ReturnType<typeof createAppRouter>;
 
 beforeEach(() => {
   queryClient.clear();
   window.history.pushState({}, "", "/");
+  router = createAppRouter();
   container = document.createElement("div");
   document.body.appendChild(container);
   calls = [];
@@ -55,7 +57,7 @@ async function mountAt(to: string, search?: Record<string, string>) {
     root = createRoot(container);
     root.render(
       <StrictMode>
-        <App />
+        <App router={router} />
       </StrictMode>,
     );
   });

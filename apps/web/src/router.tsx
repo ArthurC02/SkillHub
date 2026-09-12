@@ -322,7 +322,11 @@ const routeTree = rootRoute.addChildren([
   adminTrendsRoute,
 ]);
 
-export const router = createRouter({ routeTree, defaultNotFoundComponent: RouteNotFound });
+export function createAppRouter() {
+  return createRouter({ routeTree, defaultNotFoundComponent: RouteNotFound });
+}
+
+export const router = createAppRouter();
 
 declare module "@tanstack/react-router" {
   interface Register {
