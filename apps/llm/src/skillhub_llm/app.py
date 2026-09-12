@@ -152,7 +152,7 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
             isinstance(vector, list) and len(vector) == 1536  # one-number: embeddingDimensions
             for vector in vectors
         )
-    except (AttributeError, KeyError, TypeError):
+    except AttributeError, KeyError, TypeError:
         valid = False
         vectors = []
     if not valid:
@@ -264,7 +264,7 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
 
     try:
         content = (response.choices[0].message.content or "").strip()
-    except (AttributeError, IndexError, TypeError):
+    except AttributeError, IndexError, TypeError:
         logger.warning("match-reasons provider returned a malformed envelope")
         raise HTTPException(
             status_code=502, detail="match-reasons provider returned malformed output"

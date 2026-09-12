@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1.7
 
-FROM python:3.12-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254 AS build
+FROM python:3.14-slim-bookworm@sha256:9ab8d9c8514b44f90cf0029dd42fdd7e9e211e639c8b995304cc04568dee900f AS build
 
-ARG UV_VERSION=0.11.3
-ARG UV_INSTALLER_SHA256=b953b3f2a2764cbf860eee4578a5949fa90ed010644c6be1006f29010bada946
+ARG UV_VERSION=0.12.13
+ARG UV_INSTALLER_SHA256=e7265962d703f3ca66b3e90fae8fcdc6d4e4b587027e9479ccc29b25c3f68d4e
 ENV UV_INSTALL_DIR=/usr/local/bin \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv
@@ -28,7 +28,7 @@ COPY README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
 
-FROM python:3.12-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254 AS runtime
+FROM python:3.14-slim-bookworm@sha256:9ab8d9c8514b44f90cf0029dd42fdd7e9e211e639c8b995304cc04568dee900f AS runtime
 
 RUN groupadd --gid 65532 skillhub \
     && useradd --uid 65532 --gid 65532 --no-create-home --shell /usr/sbin/nologin skillhub

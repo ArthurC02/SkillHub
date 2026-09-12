@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "ArthurC", email = "a802216@gmail.com" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.32",
@@ -29,7 +29,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.11.3,<0.12.0"]
+requires = ["uv_build>=0.12.13,<0.13"]
 build-backend = "uv_build"
 
 [tool.ruff]

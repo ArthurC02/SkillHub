@@ -87,7 +87,7 @@ def _diagram_text(value: str) -> str:
         ):
             raise ValueError("invalid diagram item")
         return json.dumps(interpretation.model_dump(), ensure_ascii=False, separators=(",", ":"))
-    except (ValidationError, ValueError):
+    except ValidationError, ValueError:
         raise HTTPException(
             status_code=502, detail="creation returned an incomplete diagram interpretation"
         ) from None
@@ -256,7 +256,7 @@ def _unmet_evaluation(messages) -> bool:
             return False
         try:
             results = json.loads(m.content)["evaluation"].get("criterion_results") or []
-        except (ValueError, KeyError, AttributeError, TypeError):
+        except ValueError, KeyError, AttributeError, TypeError:
             return False
         return any(r.get("result") in ("failed", "undetermined") for r in results)
     return False

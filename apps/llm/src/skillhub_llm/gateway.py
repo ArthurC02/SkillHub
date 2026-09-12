@@ -140,7 +140,7 @@ def _reading(prompt_tokens, completion_tokens, headers) -> GatewayUsage | None:
         return None
     try:
         cost = float(headers["x-litellm-response-cost"])
-    except (KeyError, TypeError, ValueError):
+    except KeyError, TypeError, ValueError:
         cost = None
     if cost is not None and (not math.isfinite(cost) or cost < 0):
         cost = None
