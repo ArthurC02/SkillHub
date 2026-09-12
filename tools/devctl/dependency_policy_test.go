@@ -142,9 +142,11 @@ func TestDependencyPolicyComparesComposeWithTheWorkflows(t *testing.T) {
 			t.Fatalf("git %v: %v\n%s", args, err, out)
 		}
 	}
-	problems := dependencyPolicyProblems(root)
-	if len(problems) != 1 || !strings.Contains(problems[0], ".github/workflows/ci.yml: pgvector/pgvector:pg16") {
-		t.Fatalf("got %v, want the one drift between compose and ci.yml", problems)
+	problems := strings.Join(dependencyPolicyProblems(root), "\n")
+	for _, want := range []string{".github/workflows/ci.yml: pgvector/pgvector:pg16", ".node-version: no node version found"} {
+		if !strings.Contains(problems, want) {
+			t.Fatalf("missing %q in:\n%s", want, problems)
+		}
 	}
 }
 

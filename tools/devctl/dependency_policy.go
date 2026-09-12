@@ -88,6 +88,7 @@ func dependencyPolicyProblems(root string) []string {
 			problems = append(problems, fmt.Sprintf(".github/dependabot.yml does not list /%s", dir))
 		}
 	}
+	problems = append(problems, versionAgreementProblems(versionsThatMoveTogether, read)...)
 	return append(problems, composeAndWorkflowImageDrift(composeFiles, workflowFiles)...)
 }
 
