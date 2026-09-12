@@ -137,13 +137,14 @@ func TestCheckPgliteInstallReconcilesAgainstToolchainPin(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	writePackageJSON("@electric-sql/pglite", "0.4.6")
-	writePackageJSON("@electric-sql/pglite-socket", "0.1.6")
+	writePackageJSON("@electric-sql/pglite", "0.5.8")
+	writePackageJSON("@electric-sql/pglite-socket", "0.2.11")
+	writePackageJSON("@electric-sql/pglite-pgvector", "0.0.9")
 
-	toolchain := map[string]string{"pglite": "0.4.6", "pglite_socket": "0.1.6"}
+	toolchain := map[string]string{"pglite": "0.5.8", "pglite_socket": "0.2.11", "pglite_pgvector": "0.0.9"}
 	results := checkPgliteInstall(root, toolchain)
-	if len(results) != 2 {
-		t.Fatalf("expected 2 results, got %d: %#v", len(results), results)
+	if len(results) != 3 {
+		t.Fatalf("expected 3 results, got %d: %#v", len(results), results)
 	}
 	for _, r := range results {
 		if r.status != "PASS" {
@@ -151,7 +152,7 @@ func TestCheckPgliteInstallReconcilesAgainstToolchainPin(t *testing.T) {
 		}
 	}
 
-	drifted := map[string]string{"pglite": "9.9.9", "pglite_socket": "0.1.6"}
+	drifted := map[string]string{"pglite": "9.9.9", "pglite_socket": "0.2.11", "pglite_pgvector": "0.0.9"}
 	driftedResults := checkPgliteInstall(root, drifted)
 	if driftedResults[0].status != "FAIL" || !driftedResults[0].required {
 		t.Fatalf("expected required FAIL on version drift, got %#v", driftedResults[0])

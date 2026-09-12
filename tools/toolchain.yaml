@@ -15,8 +15,9 @@ tools:
   pip_audit: "2.10.1"
   go_licenses: "2.0.1"
   zizmor: "1.30.1"
-  pglite: "0.4.6"
-  pglite_socket: "0.1.6"
+  pglite: "0.5.8"
+  pglite_socket: "0.2.11"
+  pglite_pgvector: "0.0.9"
   pglite_pgvector_extension: "0.8.1"
 
 images:

@@ -2230,16 +2230,14 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 
 ---
 
-## R-79｜pglite 要不要跟著升到 PostgreSQL 18（`04` 乙-35）
+## ~~R-79~~｜pglite 要不要跟著升到 PostgreSQL 18（`04` 乙-35）— ✅ **已裁定（2026-09-12）：升，兩邊同批**
 
 - 日期：2026-09-12
 
-- **要決定的是什麼**：淨測試模式的資料庫承載要不要從 PGlite 0.4.6（PostgreSQL 17.5）換到 0.5.8（PostgreSQL 18.3），以及 CI 與 compose 的 Postgres 要不要一起升到 18。
-- **已經查到的事實**：
-  - [`02` PORT-001](02-specifications-and-acceptance-criteria.md) 的允收要求淨測試模式的 PostgreSQL 主版本與 CI 同一個 major；CI 與 compose 現在是 `pgvector/pgvector:pg17`，`tools/toolchain.yaml` 與 `tools/pglite/package.json` 釘 0.4.6。
-  - `pgvector/pgvector:pg18` 映像存在，換版在技術上可行。
-  - 65 支 migration 與 `PORT-001` 的五條行為檢查在 0.4.6 與 0.5.8 上都通過，**沒有任何自動化檢查看得出主版本不一致**——擋住它的只有那條允收準則。
-  - pglite 0.5 把擴充移出主套件（`@electric-sql/pglite/vector` → `@electric-sql/pglite-pgvector`），pgvector 擴充仍是 0.8.1；`tools/pglite/lib/harness.mjs` 對 socket 斷線的繞道在新版仍然必要。
-- **建議**：兩邊一起動或都不動。要升就先決定 CI 與 compose 的 Postgres 升到 18，pglite 隨之；不升就讓 Dependabot 的 pglite 提案持續被擋。
-- **不決定的代價**：Dependabot 會反覆提出同一個升級，每次都要有人重新查一次它為什麼不能合併。
-- **決定之後誰動**：Agent 同批改 `tools/toolchain.yaml`、`tools/pglite/package.json` 與 `lib/harness.mjs` 的擴充匯入、compose 與 `ci.yml` 的 pgvector 映像，並重跑 `02` PORT-001 的允收檢查。
+- **裁定的內容**：CI、compose 與 `tools/ci/stack-smoke.sh` 的資料庫映像是 `pgvector/pgvector:pg18`；淨測試模式的承載是 PGlite 0.5.8，自述 `PostgreSQL 18.3`。兩邊同一個 major，[`02` PORT-001](02-specifications-and-acceptance-criteria.md) 的版本釘選準則因此成立——**那條準則本身沒有改，被改的是兩邊的值**。
+- **現在的形狀**：
+  - `tools/toolchain.yaml` 釘 pglite `0.5.8`、pglite-socket `0.2.11`、`pglite_pgvector` `0.0.9`；pgvector 擴充仍是 `0.8.1`。
+  - pglite 0.5 把擴充移出主套件，所以 `tools/pglite/lib/harness.mjs` 從 `@electric-sql/pglite-pgvector` 匯入 `vector`；`devctl doctor` 對帳的 npm 套件因此是三個而不是兩個。
+  - socket 斷線的繞道在 pglite-socket 0.2.11 **仍然必要**（`verify.mjs --mutate=no-prune` 仍然紅）。
+  - PostgreSQL 18 的官方映像把資料目錄換成 `/var/lib/postgresql/18/docker`，所以 compose 的資料卷掛在 `/var/lib/postgresql`。**掛回舊的 `/var/lib/postgresql/data` 不會報錯，只是資料寫在 volume 之外、容器一重建就消失**；而上一個主版本留下的資料卷會讓 pg18 直接拒絕啟動（處置見 [automation.md〈常見失敗〉](../development/automation.md)）。
+- **仍然成立的那個缺口**：65 支 migration 與 `PORT-001` 的行為檢查在 17 與 18 上都通過，**沒有任何自動化檢查看得出兩邊主版本不一致**。守住它的只有 `02` PORT-001 那條準則，升級沒有改善這一點。

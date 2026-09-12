@@ -266,8 +266,7 @@ func checkEnv(root string) checkResult {
 }
 
 // Reads the version actually installed under node_modules rather than the
-// range in package.json. pgvector isn't checked separately: at this pinned
-// version it ships bundled inside the pglite package itself.
+// range in package.json.
 func checkPgliteInstall(root string, toolchain map[string]string) []checkResult {
 	packages := []struct {
 		checkName    string
@@ -276,6 +275,7 @@ func checkPgliteInstall(root string, toolchain map[string]string) []checkResult 
 	}{
 		{"pglite", "pglite", "@electric-sql/pglite"},
 		{"pglite-socket", "pglite_socket", "@electric-sql/pglite-socket"},
+		{"pglite-pgvector", "pglite_pgvector", "@electric-sql/pglite-pgvector"},
 	}
 
 	results := make([]checkResult, 0, len(packages))

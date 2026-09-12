@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 import pg from "pg";
-import { startHarness, DISALLOWED_MULTIPLEXER_MAX_CONNECTIONS } from "./lib/harness.mjs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { startHarness, DISALLOWED_MULTIPLEXER_MAX_CONNECTIONS, REPO_ROOT } from "./lib/harness.mjs";
 
 const { Client } = pg;
 
@@ -115,6 +117,19 @@ await checkImmutability();
   const res = await client.query(`SELECT ('[1,0,0]'::vector <=> '[0,1,0]'::vector) AS d`);
   const d = res.rows[0]?.d;
   report("pgvector <=> operator computes a value", true, d !== undefined && d !== null, `d = ${d}`);
+}
+
+{
+  const toolchain = readFileSync(join(REPO_ROOT, "tools", "toolchain.yaml"), "utf8");
+  const pinned = toolchain.match(/^\s*pglite_pgvector_extension:\s*"([^"]+)"/m)?.[1];
+  const res = await client.query(`SELECT extversion FROM pg_extension WHERE extname = 'vector'`);
+  const installed = res.rows[0]?.extversion;
+  report(
+    "the pgvector extension is the version tools/toolchain.yaml pins",
+    true,
+    installed !== undefined && installed === pinned,
+    `carrier has ${installed ?? "no vector extension"}; tools/toolchain.yaml pins ${pinned ?? "nothing"}`,
+  );
 }
 
 {

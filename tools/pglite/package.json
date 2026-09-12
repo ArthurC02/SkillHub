@@ -12,8 +12,9 @@
     "verify": "node verify.mjs"
   },
   "dependencies": {
-    "@electric-sql/pglite": "0.4.6",
-    "@electric-sql/pglite-socket": "0.1.6"
+    "@electric-sql/pglite": "0.5.8",
+    "@electric-sql/pglite-pgvector": "0.0.9",
+    "@electric-sql/pglite-socket": "0.2.11"
   },
   "devDependencies": {
     "pg": "8.16.3"

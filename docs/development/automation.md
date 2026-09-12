@@ -129,6 +129,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | generated conflict | 合併 OpenAPI／SQL來源後重生；不手動 merge generated code |
 | `dev:model` 缺變數 | devctl只列變數名稱。把 secret放 ignored `.env`，不要放 `.env.example` |
 | Python editable install access denied on OneDrive | 關閉仍占用 `.venv` 的程序後重跑 `uv sync --frozen`；不要刪他人工作或 lockfile |
+| postgres 容器起不來，日誌說 `there appears to be PostgreSQL data in: /var/lib/postgresql/data` | 本機資料卷是上一個 Postgres 主版本留的。PostgreSQL 18 起官方映像把 `PGDATA` 分到 `/var/lib/postgresql/<major>/docker`，舊版面它不會就地升級。開發資料是可拋的：`task down` 後 `docker volume rm skillhub_postgres-data` 重建；要留就先用舊主版本的映像掛上同一個卷 `pg_dumpall` |
 
 ## `automation-check` 跑了哪些檢查（名冊）
 

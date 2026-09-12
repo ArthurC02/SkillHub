@@ -1,5 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
-import { vector } from "@electric-sql/pglite/vector";
+import { vector } from "@electric-sql/pglite-pgvector";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -11,7 +11,7 @@ export const MIGRATIONS_DIR = join(REPO_ROOT, "db", "migrations");
 
 export const DISALLOWED_MULTIPLEXER_MAX_CONNECTIONS = 2;
 
-// When a client's socket errors (a reset), pglite-socket 0.1.6 strips the socket's
+// When a client's socket errors (a reset), pglite-socket 0.2.11 strips the socket's
 // listeners before "close" fires, so the server keeps counting a handler with no
 // socket and refuses every later connection. Drop those before it counts.
 function forgetHandlersWithoutSocket(server) {
