@@ -101,6 +101,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-074](./ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) | 營運後台是 `apps/web` 裡只有 operator 進得去的 `/admin/*`，**不是新的 Bounded Context**（每個 operator 動作與讀取都留在擁有那項事實的 context，後台只是組裝層）：不新增 app、不擴大 SEC-011 的權力，每顆寫入按鈕都對應既有或依 SEC-011 新增的端點；只新增四種讀取（以 email 找帳號、點數分錄、operator 動作紀錄、成本統計），前兩種每查一次留 audit；名冊仍在部署設定，後台只顯示 | Accepted（決策 7 經 [ADR-075](./ADR-075-a-query-touches-only-its-owners-tables.md) 稽核確認） |
 | [ADR-075](./ADR-075-a-query-touches-only-its-owners-tables.md) | 一條 query 只碰它擁有者的表：`db/query-owners.yaml` 新增 `tables:`，每張表登記擁有者，`devctl` 逐條比對 SQL 碰到的表；全平台稽核收掉 31 條讀寫別人表的 query（55 處），沒有例外清單。跨 context 拿事實只用三種形狀——擁有者的批次讀取（吃 `gen.DBTX`，清除流程在同一交易裡問）、範圍當參數（目錄 workspace 由 identity 即時回答，不複製 `is_catalog`）、讀取模型（catalog 的列表事實投影到 `search_documents`）；決定誰看得到的事實即時讀、只描述一列的事實才投影，索引寫入前在同一交易裡鎖住並確認 Skill 仍存活；清除類先決定、再刪，靠 NO ACTION 外鍵兜底。context 劃分不變，確認 ADR-074 決策 7 | Accepted |
 | [ADR-076](./ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md) | 後台的圖表用 Chart.js（MIT，連同傳遞依賴只多兩個套件；ApexCharts、Highcharts、amCharts 因授權排除），是 system.md §4.8「不裝套件」一個只限圖表的具名例外；圖表是按需查詢、不是即時儀表板（與 ADR-029 決策 6 相容），只畫依日期分組、不指向任何帳號的彙總；漏斗與依帳號排行交 `05` R-78 | Accepted |
+| [ADR-077](./ADR-077-dependency-vulnerabilities-block-only-when-a-fix-exists.md) | 依賴漏洞只擋有修補版的（沿用 ADR-022 的 `--only-fixed`）：push／PR 由 `devctl dep-audit` 擋會出貨的四個專案（web 的 production 依賴 high 以上、platform／sandbox 程式呼叫得到的、llm 的非 dev 依賴），每週排程改跑 `--full`，掃每個有 lockfile 的專案連 dev 依賴；沒有修補版的只列出不擋；本批修掉 vitest、x/crypto、datamodel-code-generator，閘門第一天就是綠的 | Accepted |
 
 ## 整體架構摘要
 

@@ -383,7 +383,8 @@ docker run --rm --network container:skillhub-postgres-1 \
 - `images` 有自己的 path filter（ADR-019 §3 第 5 列本來就這樣寫），純文件 commit 不再建置、smoke、推送三個服務映像。它不再等語言 job，與它們並行；推送拆成 `images-push`，等所有 job 綠了才推，從同一次 run 的 GHA 快取重建，不重新編譯。
 - 每週日一次 `schedule` 全量跑（所有 path filter 視為命中），`workflow_dispatch` 也是全量——手寫 path filter 漏掉的那一格由它兜底。
 - 每個 job 都有 `timeout-minutes`，一個卡住的 job 不會再佔滿預設的 6 小時。
-- 每次都跑、沒有 path filter 的有兩個並行 job：`devctl`（devctl 自己的 vet／race 測試、`automation-check`、`agent-sync`）與 `contracts-drift`（`gen --check` 與 `contracts/` 的各項檢查）。純文件 commit 的等待時間由兩者中較慢的那個決定，不再是兩者相加。
+- 每次都跑、沒有 path filter 的有三個並行 job：`devctl`（devctl 自己的 vet／race 測試、`automation-check`、`agent-sync`）、`contracts-drift`（`gen --check` 與 `contracts/` 的各項檢查）與 `dependency-audit`（見下一條）。純文件 commit 的等待時間由三者中最慢的那個決定，不再是相加。
+- **依賴漏洞**（[ADR-077](../adr/ADR-077-dependency-vulnerabilities-block-only-when-a-fix-exists.md)）：push／PR 跑 `devctl dep-audit`，只看會出貨的四個專案——`apps/web` 的 production 依賴（high 以上）、`apps/platform`／`apps/sandbox` 程式呼叫得到的漏洞、`apps/llm` 的非 dev 依賴——而且**只擋有修補版的**，沒有修補版的印成 `NOTE`。每週排程與 `workflow_dispatch` 改跑 `--full`：每個有 lockfile 的專案連 dev 依賴、npm 取 moderate 以上、Go 連沒呼叫到的模組也算，紅了就是那一週的報告。`images-push` 等它綠了才推。本機 `task deps:audit`（加 `-- --full` 全掃）；工具版本在 `tools/toolchain.yaml` 的 `govulncheck`／`pip_audit`。
 - `golangci-lint` 由 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 安裝：版本讀 `tools/toolchain.yaml` 的 `golangci_lint`，編好的 binary 以「版本＋OS＋Go 版本」為鍵另外快取。不能指望 `setup-go` 的快取帶著它——那份快取的鍵只有 `go.sum` 的雜湊，第一次存下之後內容就不再更新，`go.sum` 沒動過的模組會一直拿到那天的舊內容。
 - `sandbox` 的 filter 只看 `infra/images/runtime-agent-sdk/**`：其他服務映像與 `infra/images/` 下的說明文件不影響 sandbox 的任何測試。
 
