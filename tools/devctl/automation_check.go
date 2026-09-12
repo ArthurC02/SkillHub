@@ -133,6 +133,7 @@ func documentCheckers() []namedChecker {
 
 		{"doc-links", docLinkProblems},
 
+		{"dependency-policy", dependencyPolicyProblems},
 		{"harness", harnessProblems},
 		{"comment-budget", commentBudgetProblems},
 	}

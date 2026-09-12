@@ -64,9 +64,19 @@ func digestPinProblems(root string) []string {
 }
 
 func unpinnedBaseImages(dockerfile string) []string {
-	stages := map[string]bool{}
+	unpinned, sawFrom := unpinnedFromImages(dockerfile)
 	var problems []string
-	sawFrom := false
+	for _, image := range unpinned {
+		problems = append(problems, fmt.Sprintf("I-02: %s has `FROM %s`, which is not pinned by digest", runtimeDockerfile, image))
+	}
+	if !sawFrom {
+		problems = append(problems, fmt.Sprintf("I-02: %s has no FROM instruction", runtimeDockerfile))
+	}
+	return problems
+}
+
+func unpinnedFromImages(dockerfile string) (unpinned []string, sawFrom bool) {
+	stages := map[string]bool{}
 	for _, instruction := range dockerInstructions(dockerfile) {
 		fields := strings.Fields(instruction)
 		if len(fields) < 2 || !strings.EqualFold(fields[0], "FROM") {
@@ -79,16 +89,13 @@ func unpinnedBaseImages(dockerfile string) []string {
 		sawFrom = true
 		image := args[0]
 		if !stages[strings.ToLower(image)] && !digestPinnedImage.MatchString(image) {
-			problems = append(problems, fmt.Sprintf("I-02: %s has `FROM %s`, which is not pinned by digest", runtimeDockerfile, image))
+			unpinned = append(unpinned, image)
 		}
 		if len(args) >= 3 && strings.EqualFold(args[1], "AS") {
 			stages[strings.ToLower(args[2])] = true
 		}
 	}
-	if !sawFrom {
-		problems = append(problems, fmt.Sprintf("I-02: %s has no FROM instruction", runtimeDockerfile))
-	}
-	return problems
+	return unpinned, sawFrom
 }
 
 func withoutFlags(args []string) []string {

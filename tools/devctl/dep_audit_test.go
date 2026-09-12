@@ -258,3 +258,39 @@ func TestEveryLockedProjectIsAudited(t *testing.T) {
 		}
 	}
 }
+
+const zizmorReport = `[
+{"ident":"artipacked","ignored":false,"determinations":{"severity":"Medium"},"locations":[{"symbolic":{"key":{"Local":{"verbatim_path":".github/workflows/ci.yml"}},"kind":"Primary"},"concrete":{"location":{"start_point":{"row":102}}}}]},
+{"ident":"template-injection","ignored":false,"determinations":{"severity":"High"},"locations":[{"symbolic":{"key":{"Local":{"verbatim_path":".github/workflows/a.yml"}},"kind":"Related"},"concrete":{"location":{"start_point":{"row":1}}}},{"symbolic":{"key":{"Local":{"verbatim_path":".github/workflows/a.yml"}},"kind":"Primary"},"concrete":{"location":{"start_point":{"row":9}}}}]},
+{"ident":"self-repository","ignored":false,"determinations":{"severity":"Low"},"locations":[]},
+{"ident":"template-injection","ignored":false,"determinations":{"severity":"Informational"},"locations":[]},
+{"ident":"unpinned-uses","ignored":true,"determinations":{"severity":"High"},"locations":[]}
+]`
+
+func TestZizmorFailsOnMediumAndHighFindingsAtTheirPrimaryLocation(t *testing.T) {
+	t.Parallel()
+	findings, err := zizmorFindings([]byte(zizmorReport))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, finding := range findings {
+		got = append(got, finding.subject+" "+finding.id)
+	}
+	want := "artipacked .github/workflows/ci.yml:103,template-injection .github/workflows/a.yml:10"
+	if strings.Join(got, ",") != want {
+		t.Fatalf("got %s, want %s", strings.Join(got, ","), want)
+	}
+}
+
+func TestZizmorOutputThatIsNotAListIsNotAScan(t *testing.T) {
+	t.Parallel()
+	for _, output := range []string{"error: no inputs collected", "null"} {
+		if _, err := zizmorFindings([]byte(output)); err == nil {
+			t.Fatalf("zizmor output %q parsed as zero findings", output)
+		}
+	}
+	if findings, err := zizmorFindings([]byte("[]\n")); err != nil || len(findings) != 0 {
+		t.Fatalf("an empty report: findings=%v err=%v", findings, err)
+	}
+}

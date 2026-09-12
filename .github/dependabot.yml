@@ -1,0 +1,142 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories:
+      - /apps/web
+      - /packages/api-client-ts
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Taipei
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+    groups:
+      npm:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: npm
+    directories:
+      - /tools/pglite
+      - /infra/images/runtime-agent-sdk
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: gomod
+    directories:
+      - /apps/platform
+      - /apps/sandbox
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Taipei
+    cooldown:
+      default-days: 7
+    groups:
+      go:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: gomod
+    directories:
+      - /tools/devctl
+      - /tools/codegen/go
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: uv
+    directories:
+      - /apps/llm
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Taipei
+    cooldown:
+      default-days: 7
+    groups:
+      python:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: uv
+    directories:
+      - /tools/codegen/python
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/golangci-lint
+    schedule:
+      interval: monthly
+      time: "06:00"
+      timezone: Asia/Taipei
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: docker
+    directories:
+      - /infra/images/devtools
+      - /infra/images/llm
+      - /infra/images/platform
+      - /infra/images/web
+      - /tools/codegen/go
+      - /tools/codegen/python
+    schedule:
+      interval: monthly
+      time: "06:00"
+      timezone: Asia/Taipei
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*astral-sh/uv"
+      - dependency-name: node
+    groups:
+      docker:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: docker
+    directories:
+      - /infra/images/runtime-agent-sdk
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: docker-compose
+    directories:
+      - /infra/compose
+    schedule:
+      interval: monthly
+      time: "06:00"
+      timezone: Asia/Taipei
+    cooldown:
+      default-days: 7
+    groups:
+      compose:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope

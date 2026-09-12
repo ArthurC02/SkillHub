@@ -48,8 +48,10 @@ func depAudit(root string, args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if toolchain["govulncheck"] == "" || toolchain["pip_audit"] == "" {
-		return errors.New("govulncheck and pip_audit versions are missing from tools/toolchain.yaml")
+	for _, key := range []string{"govulncheck", "pip_audit", "go_licenses", "zizmor"} {
+		if toolchain[key] == "" {
+			return fmt.Errorf("%s version is missing from tools/toolchain.yaml", key)
+		}
 	}
 	var fail, note []string
 	for _, target := range auditTargets {
@@ -70,6 +72,21 @@ func depAudit(root string, args []string, out io.Writer) error {
 			}
 		}
 	}
+	workflowFindings, err := scanWorkflows(root, toolchain)
+	if err != nil {
+		return fmt.Errorf("actions .github: %w", err)
+	}
+	fmt.Fprintln(out, "scanned actions .github")
+	for _, finding := range workflowFindings {
+		fail = append(fail, fmt.Sprintf("actions .github: %s %s (fix: %s)", finding.subject, finding.id, finding.fix))
+	}
+	licenseFail, licenseNote, err := licenseAudit(root, toolchain)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(out, "checked the licenses of shipped dependencies")
+	fail = append(fail, licenseFail...)
+	note = append(note, licenseNote...)
 	return reportAudit(fail, note, out)
 }
 
@@ -91,9 +108,9 @@ func reportAudit(fail, note []string, out io.Writer) error {
 		fmt.Fprintln(out, "FAIL", line)
 	}
 	if len(fail) > 0 {
-		return fmt.Errorf("%d fixable vulnerabilities; upgrade to the fixed versions", len(fail))
+		return fmt.Errorf("%d problems to fix: upgrade to the fixed version, replace the dependency or fix the workflow", len(fail))
 	}
-	fmt.Fprintln(out, "no fixable vulnerabilities")
+	fmt.Fprintln(out, "no fixable vulnerabilities, disallowed licenses or workflow findings")
 	return nil
 }
 
@@ -304,4 +321,69 @@ func sortFindings(findings []vulnFinding) {
 		}
 		return findings[i].id < findings[j].id
 	})
+}
+
+func scanWorkflows(root string, toolchain map[string]string) ([]vulnFinding, error) {
+	args := []string{"zizmor==" + toolchain["zizmor"], "--format", "json"}
+	if os.Getenv("GH_TOKEN") == "" && os.Getenv("GITHUB_TOKEN") == "" {
+		args = append(args, "--offline")
+	}
+	data, err := auditToolOutput(root, "uvx", append(args, ".github/workflows", ".github/actions")...)
+	if err != nil {
+		return nil, err
+	}
+	return zizmorFindings(data)
+}
+
+func zizmorFindings(data []byte) ([]vulnFinding, error) {
+	if !bytes.HasPrefix(bytes.TrimSpace(data), []byte("[")) {
+		return nil, fmt.Errorf("zizmor output is not a list of findings: %.300s", data)
+	}
+	var report []struct {
+		Ident          string `json:"ident"`
+		Ignored        bool   `json:"ignored"`
+		Determinations struct {
+			Severity string `json:"severity"`
+		} `json:"determinations"`
+		Locations []struct {
+			Symbolic struct {
+				Key struct {
+					Local struct {
+						Path string `json:"verbatim_path"`
+					} `json:"Local"`
+				} `json:"key"`
+				Kind string `json:"kind"`
+			} `json:"symbolic"`
+			Concrete struct {
+				Location struct {
+					Start struct {
+						Row int `json:"row"`
+					} `json:"start_point"`
+				} `json:"location"`
+			} `json:"concrete"`
+		} `json:"locations"`
+	}
+	if err := json.Unmarshal(data, &report); err != nil {
+		return nil, fmt.Errorf("zizmor output: %w", err)
+	}
+	var findings []vulnFinding
+	for _, finding := range report {
+		severity := finding.Determinations.Severity
+		if finding.Ignored || !(strings.EqualFold(severity, "Medium") || strings.EqualFold(severity, "High")) {
+			continue
+		}
+		where := "(no location)"
+		for i, location := range finding.Locations {
+			primary := location.Symbolic.Kind == "Primary"
+			if i == 0 || primary {
+				where = fmt.Sprintf("%s:%d", location.Symbolic.Key.Local.Path, location.Concrete.Location.Start.Row+1)
+			}
+			if primary {
+				break
+			}
+		}
+		findings = append(findings, vulnFinding{subject: finding.Ident, id: where, fix: "https://docs.zizmor.sh/audits/#" + finding.Ident})
+	}
+	sortFindings(findings)
+	return findings, nil
 }

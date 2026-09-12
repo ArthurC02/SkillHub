@@ -1,0 +1,96 @@
+package main
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestWorkflowDependenciesNeedAPinAndAVersionComment(t *testing.T) {
+	t.Parallel()
+	const workflow = `jobs:
+  image:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+  build:
+    services:
+      db:
+        image: postgres:17
+      cache:
+        image: "redis:7@sha256:` + "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" + `"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@v5
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      - uses: ./.github/actions/golangci-lint
+      - name: container step
+        uses: docker://alpine:3
+`
+	problems := workflowPinProblems("ci.yml", workflow)
+	want := []string{"image postgres:17", "uses actions/setup-go@v5 is not pinned to a commit SHA", "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 has no # vX", "uses docker://alpine:3 is not pinned by digest"}
+	if len(problems) != len(want) {
+		t.Fatalf("got %d problems, want %d:\n%s", len(problems), len(want), strings.Join(problems, "\n"))
+	}
+	for _, fragment := range want {
+		if !strings.Contains(strings.Join(problems, "\n"), fragment) {
+			t.Fatalf("missing %q in:\n%s", fragment, strings.Join(problems, "\n"))
+		}
+	}
+}
+
+func TestDockerfileStagesDoNotNeedDigests(t *testing.T) {
+	t.Parallel()
+	const dockerfile = "FROM golang:1.27@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef AS build\n" +
+		"FROM build AS test\n" +
+		"FROM --platform=linux/amd64 nginx:1\n"
+	problems := dockerfilePinProblems("Dockerfile", dockerfile)
+	if len(problems) != 1 || !strings.Contains(problems[0], "FROM nginx:1") {
+		t.Fatalf("got %v", problems)
+	}
+}
+
+func TestNpmrcMustTurnOffInstallScripts(t *testing.T) {
+	t.Parallel()
+	cases := map[string]bool{
+		"ignore-scripts=true\n":                  true,
+		"audit=false\n ignore-scripts = true \n": true,
+		"ignore-scripts=false\n":                 false,
+		"# ignore-scripts=true\n":                false,
+		"":                                       false,
+	}
+	for npmrc, want := range cases {
+		if got := npmrcIgnoresScripts(npmrc); got != want {
+			t.Errorf("npmrcIgnoresScripts(%q) = %v, want %v", npmrc, got, want)
+		}
+	}
+}
+
+func TestUvProjectsMustSetACooldown(t *testing.T) {
+	t.Parallel()
+	if !uvCooldown.MatchString("[project]\nname = \"x\"\n\n[tool.uv]\nexclude-newer = \"7 days\"\n") {
+		t.Fatal("a pyproject with exclude-newer was rejected")
+	}
+	if uvCooldown.MatchString("[tool.uv]\n# exclude-newer = \"7 days\"\n") {
+		t.Fatal("a commented-out exclude-newer was accepted")
+	}
+}
+
+func TestDependabotMustListTheExactDirectory(t *testing.T) {
+	t.Parallel()
+	const config = "    directories:\n      - /apps/web\n      - /apps/webx\n    directory: /tools/pglite\n"
+	cases := map[string]bool{"apps/web": true, "apps/webx": true, "tools/pglite": true, "apps": false, "apps/we": false, "tools": false}
+	for dir, want := range cases {
+		if got := dependabotCovers(config, dir); got != want {
+			t.Errorf("dependabotCovers(%q) = %v, want %v", dir, got, want)
+		}
+	}
+}
+
+func TestTheRealTreeFollowsTheDependencyPolicy(t *testing.T) {
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if problems := dependencyPolicyProblems(root); len(problems) > 0 {
+		t.Fatalf("%s", strings.Join(problems, "\n"))
+	}
+}

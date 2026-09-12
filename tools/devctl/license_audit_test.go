@@ -1,0 +1,174 @@
+package main
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestLicenseExpressionsPassOnlyWhenEveryRequiredBranchIsAllowed(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name       string
+		expression string
+		allowed    bool
+	}{
+		{"a single allowed id", "MIT", true},
+		{"ids match case-insensitively", "apache-2.0", true},
+		{"an or-later suffix keeps the id", "Apache-2.0+", true},
+		{"a WITH exception keeps the base license", "Apache-2.0 WITH LLVM-exception", true},
+		{"OR needs one allowed branch", "GPL-3.0-only OR MIT", true},
+		{"lowercase operators", "gpl-3.0-only or mit", true},
+		{"AND needs every branch", "MIT AND GPL-3.0-only", false},
+		{"parentheses bind before AND", "(Apache-2.0 OR MIT) AND MPL-2.0", true},
+		{"a disallowed branch inside parentheses", "(GPL-3.0-only OR AGPL-3.0-only) AND MIT", false},
+		{"a disallowed id", "GPL-3.0-only", false},
+		{"an empty license", "", false},
+		{"npm's pointer to a license file", "SEE LICENSE IN LICENSE.md", false},
+		{"an unclosed parenthesis", "(MIT", false},
+		{"a dangling operator", "MIT OR", false},
+		{"WITH without an exception", "Apache-2.0 WITH", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := licenseAllowed(tc.expression); got != tc.allowed {
+				t.Fatalf("licenseAllowed(%q) = %v, want %v", tc.expression, got, tc.allowed)
+			}
+		})
+	}
+}
+
+func TestNpmLicensesCoverOnlyWhatShips(t *testing.T) {
+	t.Parallel()
+	const lock = `{"lockfileVersion":3,"packages":{
+"":{"name":"web","version":"0.0.0"},
+"../../packages/api-client-ts":{"version":"0.0.0"},
+"node_modules/@skillhub/api-client-ts":{"resolved":"../../packages/api-client-ts","link":true},
+"node_modules/react":{"version":"19.2.8","license":"MIT"},
+"node_modules/vitest":{"version":"4.1.11","license":"MIT","dev":true},
+"node_modules/a/node_modules/b":{"version":"1.0.0","license":"ISC"},
+"node_modules/fsevents":{"version":"2.3.3","license":"MIT","optional":true,"devOptional":true},
+"node_modules/unlabelled":{"version":"1.0.0"}
+}}`
+	packages, err := npmLockLicenses([]byte(lock))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, pkg := range packages {
+		got = append(got, pkg.name+"="+pkg.license)
+	}
+	want := "b=ISC,fsevents=MIT,react=MIT,unlabelled="
+	if strings.Join(got, ",") != want {
+		t.Fatalf("got %s, want %s", strings.Join(got, ","), want)
+	}
+}
+
+func TestNpmLockfileWithoutPackagesIsAnError(t *testing.T) {
+	t.Parallel()
+	if _, err := npmLockLicenses([]byte(`{"lockfileVersion":1,"dependencies":{}}`)); err == nil {
+		t.Fatal("a lockfile without a packages section passed as having nothing to check")
+	}
+}
+
+func TestGoLicenseReportNeedsThreeColumnsAndAtLeastOnePackage(t *testing.T) {
+	t.Parallel()
+	packages, err := goLicenseReport([]byte("github.com/a/b,https://x/LICENSE,MIT\ngithub.com/segmentio/asm/cpu,Unknown,Unknown\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packages) != 2 || packages[1].name != "github.com/segmentio/asm/cpu" || packages[1].license != "Unknown" {
+		t.Fatalf("got %+v", packages)
+	}
+	for name, report := range map[string]string{"an empty report": "", "a short line": "github.com/a/b,MIT\n"} {
+		if _, err := goLicenseReport([]byte(report)); err == nil {
+			t.Fatalf("%s was accepted", name)
+		}
+	}
+}
+
+func TestPythonLicenseResolution(t *testing.T) {
+	t.Parallel()
+	const (
+		mit    = "License :: OSI Approved :: MIT License"
+		apache = "License :: OSI Approved :: Apache Software License"
+		gpl    = "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
+	)
+	cases := []struct {
+		name    string
+		info    pypiLicenseInfo
+		want    string
+		allowed bool
+	}{
+		{"the expression wins", pypiLicenseInfo{LicenseExpression: "Apache-2.0 OR MIT", License: "GPL", Classifiers: []string{gpl}}, "Apache-2.0 OR MIT", true},
+		{"a license field that parses is taken at face value", pypiLicenseInfo{License: "MPL-2.0", Classifiers: []string{mit}}, "MPL-2.0", true},
+		{"a single word is taken at face value too", pypiLicenseInfo{License: "BSD", Classifiers: []string{"License :: OSI Approved :: BSD License"}}, "BSD", false},
+		{"free text falls back to the classifier", pypiLicenseInfo{License: "Apache 2.0", Classifiers: []string{apache, "Programming Language :: Python"}}, "(Apache-2.0)", true},
+		{"two classifiers are both required", pypiLicenseInfo{Classifiers: []string{mit, apache}}, "(MIT) AND (Apache-2.0)", true},
+		{"an unmapped classifier is shown, not guessed", pypiLicenseInfo{Classifiers: []string{mit, gpl}}, gpl, false},
+		{"nothing at all", pypiLicenseInfo{}, "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := pythonLicense(tc.info)
+			if got != tc.want || licenseAllowed(got) != tc.allowed {
+				t.Fatalf("got %q (allowed %v), want %q (allowed %v)", got, licenseAllowed(got), tc.want, tc.allowed)
+			}
+		})
+	}
+}
+
+func TestExportedPinsReadNameAndVersionAndRejectAnythingElse(t *testing.T) {
+	t.Parallel()
+	pins, err := exportedPins([]byte("# This file was autogenerated by uv\nannotated-types==0.7.0\n    # via pydantic\ncolorama==0.4.6 ; sys_platform == 'win32'\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pins) != 2 || pins[1] != (exportedPin{name: "colorama", version: "0.4.6"}) {
+		t.Fatalf("got %+v", pins)
+	}
+	for name, requirements := range map[string]string{"an unpinned range": "requests>=2\n", "an empty export": "# nothing\n"} {
+		if _, err := exportedPins([]byte(requirements)); err == nil {
+			t.Fatalf("%s was accepted", name)
+		}
+	}
+}
+
+func TestOnlyANamedFamilyWithItsRecordedLicenseIsAccepted(t *testing.T) {
+	t.Parallel()
+	runtime := licenseTarget{ecosystem: "npm", dir: "infra/images/runtime-agent-sdk"}
+	fail, note := judgeLicenses(runtime, []packageLicense{
+		{name: "@anthropic-ai/claude-agent-sdk", version: "0.3.233", license: "SEE LICENSE IN README.md"},
+		{name: "@anthropic-ai/claude-agent-sdk-linux-x64", version: "0.3.233", license: "SEE LICENSE IN LICENSE.md"},
+		{name: "@anthropic-ai/claude-agent-sdkx", version: "1.0.0", license: "SEE LICENSE IN LICENSE.md"},
+		{name: "@anthropic-ai/claude-agent-sdk", version: "0.4.0", license: "GPL-3.0-only"},
+		{name: "left-pad", version: "1.3.0", license: "WTFPL"},
+		{name: "react", version: "19.2.8", license: "MIT"},
+	})
+	if len(note) != 2 || len(fail) != 3 {
+		t.Fatalf("got %d notes and %d failures\nnotes: %v\nfailures: %v", len(note), len(fail), note, fail)
+	}
+	for _, want := range []string{"claude-agent-sdkx", `0.4.0 "GPL-3.0-only"`, "left-pad"} {
+		if !strings.Contains(strings.Join(fail, "\n"), want) {
+			t.Fatalf("%s should fail: %v", want, fail)
+		}
+	}
+	goTarget := licenseTarget{ecosystem: "go", dir: "apps/platform"}
+	if fail, _ := judgeLicenses(goTarget, []packageLicense{{name: "@anthropic-ai/claude-agent-sdk", license: "SEE LICENSE IN README.md"}}); len(fail) != 1 {
+		t.Fatal("an acceptance recorded for npm must not apply to another ecosystem")
+	}
+}
+
+func TestEveryShippedProjectHasItsLicensesChecked(t *testing.T) {
+	t.Parallel()
+	checked := map[string]bool{}
+	for _, target := range licenseTargets {
+		checked[target.ecosystem+" "+target.dir] = true
+	}
+	for _, target := range auditTargets {
+		if target.shipped && !checked[target.ecosystem+" "+target.dir] {
+			t.Errorf("%s %s ships but its licenses are not checked", target.ecosystem, target.dir)
+		}
+	}
+}
