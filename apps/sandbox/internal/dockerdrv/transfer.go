@@ -13,8 +13,8 @@ import (
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/client"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
@@ -181,15 +181,15 @@ func (d *Driver) exec(ctx context.Context, id string, cmd []string, stdin []byte
 }
 
 func (d *Driver) isRunning(ctx context.Context, id string) bool {
-	insp, err := d.cli.ContainerInspect(context.WithoutCancel(ctx), name(id))
+	insp, err := d.cli.ContainerInspect(context.WithoutCancel(ctx), name(id), client.ContainerInspectOptions{})
 	if err != nil {
 		return !cerrdefs.IsNotFound(err)
 	}
-	return insp.State != nil && insp.State.Running
+	return insp.Container.State != nil && insp.Container.State.Running
 }
 
 func (d *Driver) execOnce(ctx context.Context, id string, cmd []string, stdin []byte) error {
-	created, err := d.cli.ContainerExecCreate(ctx, name(id), container.ExecOptions{
+	created, err := d.cli.ExecCreate(ctx, name(id), client.ExecCreateOptions{
 		Cmd:          cmd,
 		AttachStdin:  stdin != nil,
 		AttachStdout: true,
@@ -199,7 +199,7 @@ func (d *Driver) execOnce(ctx context.Context, id string, cmd []string, stdin []
 	if err != nil {
 		return err
 	}
-	attached, err := d.cli.ContainerExecAttach(ctx, created.ID, container.ExecAttachOptions{})
+	attached, err := d.cli.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (d *Driver) execOnce(ctx context.Context, id string, cmd []string, stdin []
 	if _, err := stdcopy.StdCopy(io.Discard, io.Discard, io.LimitReader(attached.Reader, 1<<20)); err != nil {
 		return err
 	}
-	inspect, err := d.cli.ContainerExecInspect(ctx, created.ID)
+	inspect, err := d.cli.ExecInspect(ctx, created.ID, client.ExecInspectOptions{})
 	if err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func (d *Driver) execOnce(ctx context.Context, id string, cmd []string, stdin []
 }
 
 func (d *Driver) execOut(ctx context.Context, id string, cmd []string, out io.Writer, limit int64) error {
-	created, err := d.cli.ContainerExecCreate(ctx, name(id), container.ExecOptions{
+	created, err := d.cli.ExecCreate(ctx, name(id), client.ExecCreateOptions{
 		Cmd:          cmd,
 		AttachStdout: true,
 		User:         fmt.Sprintf("%d:%d", d.cfg.UID, d.cfg.GID),
@@ -243,7 +243,7 @@ func (d *Driver) execOut(ctx context.Context, id string, cmd []string, out io.Wr
 		}
 		return err
 	}
-	attached, err := d.cli.ContainerExecAttach(ctx, created.ID, container.ExecAttachOptions{})
+	attached, err := d.cli.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
 	if err != nil {
 		return err
 	}

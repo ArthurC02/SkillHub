@@ -15,8 +15,7 @@ import (
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/dockerdrv"
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
@@ -46,13 +45,13 @@ func testRuntime() string { return os.Getenv("SKILLHUB_SANDBOX_TEST_RUNTIME") }
 
 func dockerClient(t *testing.T) *client.Client {
 	t.Helper()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		skipOrFail(t, "no docker client: %v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := cli.Ping(ctx); err != nil {
+	if _, err := cli.Ping(ctx, client.PingOptions{}); err != nil {
 		skipOrFail(t, "no docker daemon reachable: %v", err)
 	}
 	t.Cleanup(func() { _ = cli.Close() })
@@ -66,7 +65,7 @@ func newDriver(t *testing.T) (*dockerdrv.Driver, *client.Client) {
 	pullCtx, pullCancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer pullCancel()
 	if _, err := cli.ImageInspect(pullCtx, testImage()); err != nil {
-		rc, err := cli.ImagePull(pullCtx, testImage(), image.PullOptions{})
+		rc, err := cli.ImagePull(pullCtx, testImage(), client.ImagePullOptions{})
 		if err != nil {
 			skipOrFail(t, "cannot pull %s: %v", testImage(), err)
 		}
@@ -168,10 +167,11 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 		t.Errorf("probe exited %d", out.ExitCode)
 	}
 
-	insp, err := cli.ContainerInspect(context.Background(), "skillhub-run-"+id)
+	inspected, err := cli.ContainerInspect(context.Background(), "skillhub-run-"+id, client.ContainerInspectOptions{})
 	if err != nil {
 		t.Fatalf("inspect: %v", err)
 	}
+	insp := inspected.Container
 	hc := insp.HostConfig
 	if insp.Config.User != "65532:65532" {
 		t.Errorf("User = %q, want a non-root uid:gid", insp.Config.User)
@@ -389,7 +389,7 @@ func TestWallClockStopsALiveSandboxAndDestroyReleasesIt(t *testing.T) {
 			t.Fatalf("destroy #%d: %v", i+1, err)
 		}
 	}
-	if _, err := cli.ContainerInspect(context.Background(), "skillhub-run-"+run.ProviderRunID); !cerrdefs.IsNotFound(err) {
+	if _, err := cli.ContainerInspect(context.Background(), "skillhub-run-"+run.ProviderRunID, client.ContainerInspectOptions{}); !cerrdefs.IsNotFound(err) {
 		t.Errorf("container still exists after destroy: %v", err)
 	}
 }
@@ -433,12 +433,12 @@ func TestRequestedRuntimeIsTheOneTheContainerGot(t *testing.T) {
 	if err := d.Start(ctx, id, testRequest("sleep 30")); err != nil {
 		t.Fatalf("starting a container on runtime %q failed: %v", want, err)
 	}
-	info, err := cli.ContainerInspect(ctx, "skillhub-run-"+id)
+	info, err := cli.ContainerInspect(ctx, "skillhub-run-"+id, client.ContainerInspectOptions{})
 	if err != nil {
 		t.Fatalf("inspect: %v", err)
 	}
-	if info.HostConfig.Runtime != want {
-		t.Fatalf("asked the daemon for runtime %q and got %q", want, info.HostConfig.Runtime)
+	if info.Container.HostConfig.Runtime != want {
+		t.Fatalf("asked the daemon for runtime %q and got %q", want, info.Container.HostConfig.Runtime)
 	}
 	if err := d.Stop(ctx, id, time.Second); err != nil {
 		t.Fatalf("stop: %v", err)

@@ -10,10 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/pkg/stdcopy"
-
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/strslice"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
@@ -38,8 +37,8 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 	cfg := &container.Config{
 		Image: d.cfg.Image,
 
-		Entrypoint: strslice.StrSlice{"node", "-e"},
-		Cmd:        strslice.StrSlice{script},
+		Entrypoint: []string{"node", "-e"},
+		Cmd:        []string{script},
 		User:       fmt.Sprintf("%d:%d", d.cfg.UID, d.cfg.GID),
 
 		Labels:          map[string]string{labelProbe: "p02"},
@@ -51,7 +50,7 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 
 		ReadonlyRootfs: true,
 		Tmpfs:          map[string]string{"/tmp": "rw,nosuid,nodev,size=1m,noexec"},
-		CapDrop:        strslice.StrSlice{"ALL"},
+		CapDrop:        []string{"ALL"},
 		SecurityOpt:    []string{"no-new-privileges:true"},
 		Privileged:     false,
 		NetworkMode:    container.NetworkMode(network),
@@ -66,8 +65,8 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 
 	const probeName = "skillhub-p02-probe"
 
-	_ = d.cli.ContainerRemove(ctx, probeName, container.RemoveOptions{Force: true})
-	created, err := d.cli.ContainerCreate(ctx, cfg, hc, nil, nil, probeName)
+	_, _ = d.cli.ContainerRemove(ctx, probeName, client.ContainerRemoveOptions{Force: true})
+	created, err := d.cli.ContainerCreate(ctx, client.ContainerCreateOptions{Config: cfg, HostConfig: hc, Name: probeName})
 	if err != nil {
 		return nil, fmt.Errorf("create p02 probe: %w", err)
 	}
@@ -75,19 +74,19 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 
 		cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		_ = d.cli.ContainerRemove(cleanup, created.ID, container.RemoveOptions{Force: true})
+		_, _ = d.cli.ContainerRemove(cleanup, created.ID, client.ContainerRemoveOptions{Force: true})
 	}()
-	if err := d.cli.ContainerStart(ctx, created.ID, container.StartOptions{}); err != nil {
+	if _, err := d.cli.ContainerStart(ctx, created.ID, client.ContainerStartOptions{}); err != nil {
 		return nil, fmt.Errorf("start p02 probe: %w", err)
 	}
 
-	statusCh, errCh := d.cli.ContainerWait(ctx, created.ID, container.WaitConditionNotRunning)
+	wait := d.cli.ContainerWait(ctx, created.ID, client.ContainerWaitOptions{Condition: container.WaitConditionNotRunning})
 	select {
-	case err := <-errCh:
+	case err := <-wait.Error:
 		return nil, fmt.Errorf("p02 probe did not finish: %w", err)
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-statusCh:
+	case <-wait.Result:
 	}
 
 	out, err := d.probeLogs(ctx, created.ID)
@@ -99,7 +98,7 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 }
 
 func (d *Driver) probeLogs(ctx context.Context, id string) (string, error) {
-	rc, err := d.cli.ContainerLogs(ctx, id, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+	rc, err := d.cli.ContainerLogs(ctx, id, client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 	if err != nil {
 		return "", err
 	}

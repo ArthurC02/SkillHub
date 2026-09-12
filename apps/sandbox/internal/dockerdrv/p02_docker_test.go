@@ -9,10 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/strslice"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/dockerdrv"
 )
@@ -77,40 +76,41 @@ func startListener(t *testing.T, cli *client.Client, img string) (ip, port strin
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	created, err := cli.ContainerCreate(ctx,
-		&container.Config{
+	created, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config: &container.Config{
 			Image:      img,
-			Entrypoint: strslice.StrSlice{"node", "-e"},
-			Cmd:        strslice.StrSlice{src},
+			Entrypoint: []string{"node", "-e"},
+			Cmd:        []string{src},
 			Labels:     map[string]string{testLabel: "1"},
 		},
-		&container.HostConfig{NetworkMode: "bridge", Runtime: testRuntime()},
-		nil, nil, "")
+		HostConfig: &container.HostConfig{NetworkMode: "bridge", Runtime: testRuntime()},
+	})
 	if err != nil {
 		t.Fatalf("create listener: %v", err)
 	}
 	t.Cleanup(func() {
 		rmCtx, rmCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer rmCancel()
-		_ = cli.ContainerRemove(rmCtx, created.ID, container.RemoveOptions{Force: true})
+		_, _ = cli.ContainerRemove(rmCtx, created.ID, client.ContainerRemoveOptions{Force: true})
 	})
-	if err := cli.ContainerStart(ctx, created.ID, container.StartOptions{}); err != nil {
+	if _, err := cli.ContainerStart(ctx, created.ID, client.ContainerStartOptions{}); err != nil {
 		t.Fatalf("start listener: %v", err)
 	}
 
 	deadline := time.Now().Add(60 * time.Second)
 	for {
-		insp, err := cli.ContainerInspect(ctx, created.ID)
+		inspected, err := cli.ContainerInspect(ctx, created.ID, client.ContainerInspectOptions{})
 		if err != nil {
 			t.Fatalf("inspect listener: %v", err)
 		}
+		insp := inspected.Container
 		logs := containerLogs(t, cli, created.ID)
 		if strings.Contains(logs, "LISTENING") {
 
 			addr := ""
 			for _, n := range insp.NetworkSettings.Networks {
-				if n.IPAddress != "" {
-					addr = n.IPAddress
+				if n.IPAddress.IsValid() {
+					addr = n.IPAddress.String()
 					break
 				}
 			}
@@ -130,7 +130,7 @@ func containerLogs(t *testing.T, cli *client.Client, id string) string {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	rc, err := cli.ContainerLogs(ctx, id, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+	rc, err := cli.ContainerLogs(ctx, id, client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 	if err != nil {
 		return ""
 	}

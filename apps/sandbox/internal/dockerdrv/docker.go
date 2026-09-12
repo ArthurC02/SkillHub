@@ -11,11 +11,9 @@ import (
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/strslice"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
@@ -64,7 +62,7 @@ type Driver struct {
 }
 
 func New(cfg Config) (*Driver, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +119,7 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 			"/tmp": mount(64<<20, ",noexec"),
 		},
 
-		CapDrop:     strslice.StrSlice{"ALL"},
+		CapDrop:     []string{"ALL"},
 		SecurityOpt: []string{"no-new-privileges:true"},
 		Privileged:  false,
 
@@ -149,11 +147,11 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 		hc.StorageOpt = map[string]string{"size": strconv.FormatInt(lim.DiskBytes, 10)}
 	}
 
-	created, err := d.cli.ContainerCreate(ctx, cfg, hc, nil, nil, name(id))
+	created, err := d.cli.ContainerCreate(ctx, client.ContainerCreateOptions{Config: cfg, HostConfig: hc, Name: name(id)})
 	if err != nil {
 		return fmt.Errorf("create sandbox: %w", err)
 	}
-	if err := d.cli.ContainerStart(ctx, created.ID, container.StartOptions{}); err != nil {
+	if _, err := d.cli.ContainerStart(ctx, created.ID, client.ContainerStartOptions{}); err != nil {
 
 		return fmt.Errorf("start sandbox: %w", err)
 	}
@@ -173,20 +171,20 @@ func (d *Driver) networkFor(req sandbox.RunRequest) string {
 }
 
 func (d *Driver) Wait(ctx context.Context, id string) (sandbox.Outcome, error) {
-	statusCh, errCh := d.cli.ContainerWait(ctx, name(id), container.WaitConditionNotRunning)
+	wait := d.cli.ContainerWait(ctx, name(id), client.ContainerWaitOptions{Condition: container.WaitConditionNotRunning})
 	select {
-	case err := <-errCh:
+	case err := <-wait.Error:
 		return sandbox.Outcome{}, err
 	case <-ctx.Done():
 		return sandbox.Outcome{}, ctx.Err()
-	case st := <-statusCh:
+	case st := <-wait.Result:
 		out := sandbox.Outcome{ExitCode: int(st.StatusCode)}
 		if st.Error != nil {
 			return out, errors.New(st.Error.Message)
 		}
 
-		if insp, err := d.cli.ContainerInspect(context.WithoutCancel(ctx), name(id)); err == nil && insp.State != nil {
-			out.OOMKilled = insp.State.OOMKilled
+		if insp, err := d.cli.ContainerInspect(context.WithoutCancel(ctx), name(id), client.ContainerInspectOptions{}); err == nil && insp.Container.State != nil {
+			out.OOMKilled = insp.Container.State.OOMKilled
 		}
 		out.Output = d.tail(context.WithoutCancel(ctx), id)
 		return out, nil
@@ -198,7 +196,7 @@ func (d *Driver) Stop(ctx context.Context, id string, grace time.Duration) error
 	if secs < 0 {
 		secs = 0
 	}
-	err := d.cli.ContainerStop(ctx, name(id), container.StopOptions{Timeout: &secs})
+	_, err := d.cli.ContainerStop(ctx, name(id), client.ContainerStopOptions{Timeout: &secs})
 	if err != nil && !cerrdefs.IsNotFound(err) {
 		return err
 	}
@@ -206,7 +204,7 @@ func (d *Driver) Stop(ctx context.Context, id string, grace time.Duration) error
 }
 
 func (d *Driver) Remove(ctx context.Context, id string) error {
-	err := d.cli.ContainerRemove(ctx, name(id), container.RemoveOptions{
+	_, err := d.cli.ContainerRemove(ctx, name(id), client.ContainerRemoveOptions{
 		Force:         true,
 		RemoveVolumes: true,
 	})
@@ -217,15 +215,15 @@ func (d *Driver) Remove(ctx context.Context, id string) error {
 }
 
 func (d *Driver) Adopt(ctx context.Context) ([]sandbox.Adopted, error) {
-	list, err := d.cli.ContainerList(ctx, container.ListOptions{
+	list, err := d.cli.ContainerList(ctx, client.ContainerListOptions{
 		All:     true,
-		Filters: filters.NewArgs(filters.Arg("label", labelManaged+"=1")),
+		Filters: make(client.Filters).Add("label", labelManaged+"=1"),
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]sandbox.Adopted, 0, len(list))
-	for _, c := range list {
+	out := make([]sandbox.Adopted, 0, len(list.Items))
+	for _, c := range list.Items {
 		attempt, _ := strconv.Atoi(c.Labels[labelAttempt])
 		deadline, _ := time.Parse(time.RFC3339, c.Labels[labelDeadline])
 		out = append(out, sandbox.Adopted{
@@ -235,7 +233,7 @@ func (d *Driver) Adopt(ctx context.Context) ([]sandbox.Adopted, error) {
 			Attempt:       attempt,
 			RequestHash:   c.Labels[labelHash],
 			CreatedAt:     time.Unix(c.Created, 0).UTC(),
-			Running:       c.State == "running",
+			Running:       c.State == container.StateRunning,
 			HardDeadline:  deadline,
 		})
 	}
@@ -248,7 +246,7 @@ func (d *Driver) ReadTrace(ctx context.Context, id string, offset int64) ([]byte
 	const blockSize = int64(1 << 20)
 	base := offset / blockSize * blockSize
 	prefix := int(offset - base)
-	exec, err := d.cli.ContainerExecCreate(ctx, name(id), container.ExecOptions{
+	exec, err := d.cli.ExecCreate(ctx, name(id), client.ExecCreateOptions{
 		Cmd: []string{
 			"/bin/dd", "if=" + TracePath, "bs=" + strconv.FormatInt(blockSize, 10),
 			"skip=" + strconv.FormatInt(base/blockSize, 10), "count=9",
@@ -262,7 +260,7 @@ func (d *Driver) ReadTrace(ctx context.Context, id string, offset int64) ([]byte
 		}
 		return nil, false, err
 	}
-	attached, err := d.cli.ContainerExecAttach(ctx, exec.ID, container.ExecAttachOptions{})
+	attached, err := d.cli.ExecAttach(ctx, exec.ID, client.ExecAttachOptions{})
 	if err != nil {
 		return nil, false, err
 	}
@@ -284,7 +282,7 @@ func (d *Driver) ReadTrace(ctx context.Context, id string, offset int64) ([]byte
 }
 
 func (d *Driver) Healthy(ctx context.Context) bool {
-	_, err := d.cli.Ping(ctx)
+	_, err := d.cli.Ping(ctx, client.PingOptions{})
 	return err == nil
 }
 
@@ -353,7 +351,7 @@ func env(req sandbox.RunRequest) []string {
 }
 
 func (d *Driver) tail(ctx context.Context, id string) string {
-	rc, err := d.cli.ContainerLogs(ctx, name(id), container.LogsOptions{
+	rc, err := d.cli.ContainerLogs(ctx, name(id), client.ContainerLogsOptions{
 		ShowStdout: true, ShowStderr: true, Tail: "200",
 	})
 	if err != nil {
