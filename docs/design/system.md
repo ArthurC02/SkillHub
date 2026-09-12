@@ -544,6 +544,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 - **範例庫**：<https://freefrontend.com/javascript-code-examples/>（分類頁如 `javascript-cards/`、`javascript-menus/`）。要做新的互動或視覺效果（卡片、選單、導覽、轉場、游標光）之前，先在這裡找同類範例。
 - **讀原始碼，不是讀簡介**：列表頁只有縮圖與一段描述，每一則的來源是一支 CodePen（列表頁 `data-stash-source` 屬性）。CSS 取 `https://codepen.io/<user>/pen/<id>.scss`（`.css` 會被擋），JS 取同一路徑的 `.js`，HTML 取 `https://cdpn.io/<user>/debug/<id>`。CodePen 對密集請求會回 403 或人機驗證：一次抓少量、間隔數秒；抓不到的只能看縮圖，回報時要說清楚哪些讀了原始碼、哪些只看了縮圖。
 - **不裝套件**：範例常用 GSAP、Swiper、Three.js、Tailwind、open-props，或從 esm.sh／unpkg 匯入；**這些一個都不進 `package.json`，也不從 CDN 載入**。只取技法，用原生 CSS（漸層、`color-mix()`、`@starting-style`、`transform`、`mask`）與幾行 TypeScript 重寫（例：`components/spotlight.ts` 的游標座標）；重寫不了的效果就不做。
+- **一個有名字的例外：圖表**（2026-09-12，負責人明示「可以考慮安裝如 chart.js 這類圖表套件……但是要注意授權問題」）。`chart.js` 進 `package.json`，只用在營運後台；選型與逐層授權查詢見 [ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md)。它不打開這一條的其他部分，視覺效果仍然不裝套件。圖表本身照樣服從本文件：顏色只從 token 讀、一個色相、不動畫、每張圖旁有同一組數字的表。
 - **本文件的規則照樣適用**：顏色只能是 token（`design-system.test.ts` 會擋色彩字面值與 `opacity`）、字級與間距在 §4.1／§4.2 的尺度上、`<svg` 站點至多六個、一頁至多一個填色主要動作、`prefers-reduced-motion` 時動效歸零、§2.10 的判斷依據不因好看而折疊。範例裡與這些衝突的做法（陰影、漸層、`@keyframes`、只在 hover 才出現的內容），要嘛換成合規的寫法，要嘛照負責人的指示記成具名例外——§4.3、§4.6 的 2026-09-11 各條就是這樣記的。
 - **程式註解不寫範例庫或原作者的名字**（根 `AGENTS.md` 的註解規則）；參考了哪一則，寫進 commit message。
 

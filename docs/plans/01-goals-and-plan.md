@@ -122,7 +122,7 @@ MVP 承諾：
 - 結果評估、具體改善建議與重新試跑。
 - 標準 Agent Skill 套件與安裝說明下載。
 - 基本帳號、Run 歷史及使用者主動刪除資料。
-- operator 營運後台（`/admin/*`）：帳號與點數的查詢及授予、Skill 治理、派送煞車、名冊（唯讀）、operator 動作紀錄與成本統計；不含名冊編輯，也不讀 `SEC-011` 列為私有的資料（[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md)、`02` §4.12）。
+- operator 營運後台（`/admin/*`）：帳號與點數的查詢及授予、Skill 治理、派送煞車、名冊（唯讀）、operator 動作紀錄、成本統計與每日趨勢圖（[ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md)）；不含名冊編輯，也不讀 `SEC-011` 列為私有的資料（[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md)、`02` §4.12）。
 
 ### 7.2 MVP 可簡化
 
@@ -187,6 +187,8 @@ MVP 先提供：
 ## 10. 里程碑
 
 > **2026-09-12 營運後台。** [`05` R-77](05-pending-rulings.md) 裁定需要管理 UI，放在 `apps/web` 的 `/admin/*`；[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) Accepted。這取代 `02` SEC-011「以 curl 直接操作，不做管理 UI」那一句（該處已加刪除線與補記）。需求見 `02` §4.12（OPS-001～OPS-007），工作項目見 `03` §22。後台不是新的里程碑，比照 `03` §21 Credit 的做法，不進里程碑表。
+>
+> **2026-09-12 營運趨勢圖。** 負責人指示「需要圖表的查詢和展示」：`/admin/trends` 以 Chart.js（MIT）畫四組每日彙總，只畫不指向任何帳號的數字（[ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md)、`02:OPS-008`）。漏斗儀表板與依帳號排行交 [`05` R-78](05-pending-rulings.md)。
 
 > **2026-09-11 負責人裁定：永遠不凍結。** 原話：「這個系統要永遠維持可以隨意調整，但是仍然保持高品質。」2026-08-29 裁定 4（M6 真正完成後凍結新功能）撤銷，連同它衍生的「只接受修既有缺陷」「新能力等第一個真人數字」「閘門期間動視覺層要在這裡記一次放行」一併撤銷；**之後不得再立任何凍結、閘門期間禁改或以日期擋修改的規則**。品質由測試、CI 與突變證明守住，不由禁止修改守住。本節裁定表第 4 列與其後的逐次「放行」紀錄、各文件裡的「凍結例外」字樣都是歷史，不再約束任何修改；變更也不再需要在這裡登記放行。
 

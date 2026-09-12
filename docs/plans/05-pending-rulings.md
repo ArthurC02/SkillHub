@@ -2196,3 +2196,34 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 **決定之後誰動**：主 Agent 把 ADR-074 改成 Accepted，補上 `02`／`03` 的需求與 `01` §7，先改契約再寫程式。
 
 **第五題定案（2026-09-12）**：稽核逐條比對每條 query 碰到的表，找到並收掉 31 條讀寫別人表的 query（55 處）（分六組，做法與理由見 [ADR-075](../adr/ADR-075-a-query-touches-only-its-owners-tables.md)）。每一條的事實都有明確的擁有者，修法都是讓查詢回到擁有者，沒有一條需要移動 context 的邊界。所以照建議：後台是組裝層，不是 Bounded Context，ADR-032 §1 不改；`db/query-owners.yaml` 從此多一段 `tables:`，機器擋下任何碰到別人表的 query。ADR-074 改為 Accepted。
+
+---
+
+## R-78｜營運後台要不要有漏斗儀表板、要不要依帳號或工作區排行（[ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md) 待決策、[ADR-029](../adr/ADR-029-product-analytics-events-and-audit-trace-boundaries.md) 決策 6、[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 3）
+
+- 日期：2026-09-12
+
+兩題都是 ADR-076（營運趨勢圖）刻意留下沒做的：前一題碰到一條既有的 ADR 決策，後一題碰到個資。
+
+**一、漏斗儀表板**
+
+- **要決定的是什麼**：`/admin/trends` 要不要多一組 `analytics_events` 的漏斗圖（搜尋 → 看詳情 → 試跑 → 下載）。
+- **已經查到的事實**：
+  - ADR-029 決策 6 寫「讀取面是後台查詢，**不做即時儀表板**」，`02` §4.12 的範圍表也排除它。
+  - ADR-076 的圖是打開頁面才查一次、不輪詢，形狀上不是「一直開著的畫面」。
+  - 漏斗的數字有 ADR-029 自己記下的限制：`session_id` 只追到 session 粒度，第一段的分母會系統性高估；報表必須寫明，百分比讀作量級。
+  - 分析事件保存 365 天（`05` R-1a），帳號刪除後去識別化保留。
+- **建議**：做。形狀照 ADR-076（按需、UTC 日分桶、只有計數），每一段旁邊寫明分母高估；ADR-029 補記一句「按需查詢的圖不算即時儀表板」。
+- **不決定的代價**：看漏斗仍要貼 SQL 進 psql。
+- **決定之後誰動**：Agent 補 `02` 的 OPS 需求與 `analytics` 的彙總 query。
+
+**二、依帳號或工作區的排行與下鑽**
+
+- **要決定的是什麼**：趨勢圖要不要能看「誰花最多」「誰的點數最多」，以及從一格點進某一個帳號。
+- **已經查到的事實**：
+  - `cost_events`、`credit_entries` 永久保存、帶 `user_id`，沒有清除路徑（[ADR-073](../adr/ADR-073-account-deletion-keeps-the-credit-ledger.md)）。
+  - ADR-074 決策 3：指向特定帳號的讀取，每查一次在同一交易裡寫一筆 audit。
+  - 同意書「營運人員看得到你的 email 與點數紀錄」要不要揭露，仍待法務（R-77）。
+- **建議**：先不做排行。要找某個帳號，從「帳號與點數」頁以 email 查（已經有 audit）。若要做，排行只列 workspace id、不列 email，每次載入寫一筆 audit，對象是整份排行。
+- **不決定的代價**：找「異常花費的帳號」只能先在成本圖看到哪一天偏高，再去資料庫查。
+- **決定之後誰動**：法務（同意書）→ Agent。

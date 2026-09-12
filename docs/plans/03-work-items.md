@@ -498,3 +498,4 @@ hello in-process s3
 - [x] OPS-006 operator 動作紀錄端點（`audit` 的 query，action 清單由 `apiserver` 提供）與前端頁。（對應 `02:OPS-006`；第二批）
 - [x] OPS-007 成本統計端點（`credit`）與前端頁；丙-233 的觀察改看這一頁。（對應 `02:OPS-007`；第二批）
 - [x] OPS-008 每一條新 `/admin/...` 端點列入 `authz_matrix_integration_test.go`；新 query 登記在 `db/query-owners.yaml`，不加 `allow:` 例外。（依 ADR-032、ADR-033；鐵律 7、8）
+- [x] OPS-009 營運趨勢圖：`apps/web` 新增 `chart.js` 依賴（[ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md)，§4.8 的具名例外）與 `/admin/trends`；四條每日彙總端點（`credit` 兩條、`run`、`audit`），逐條 `RequireOperator` 並列入 authz 矩陣。（對應 `02:OPS-008`；第三批）

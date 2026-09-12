@@ -969,7 +969,7 @@ Run 至少支援：
 
 **本節不新增 operator 的權力**：每一顆寫入按鈕都對應 `SEC-011` 已有的端點。後台也不是新的 Bounded Context，是組裝層——新讀取各歸原本的事實 owner（帳號與名冊歸 `identity`、點數與成本統計歸 `credit`、Skill 治理狀態歸 `catalog`、operator 動作紀錄歸 `audit`），畫面在 `apps/web` 的 `/admin/*` 把它們拼起來，後端不新增跨 context 的聚合端點。
 
-第一批：`OPS-001`～`OPS-005`。第二批：`OPS-006`、`OPS-007`。**不在範圍**：編輯 `OPERATOR_USER_IDS`／`BETA_ALLOWLIST`；讀取 `SEC-011` 列為私有的資料；漏斗儀表板（ADR-029 決策 6）；濫用檢舉案件（`SEC-011` 要求另立需求）；下架後的恢復（`04` 丙-80）；精選層的寫入（`04` 丙-77）。
+第一批：`OPS-001`～`OPS-005`。第二批：`OPS-006`、`OPS-007`。第三批（2026-09-12 新增，[ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md)）：`OPS-008`。**不在範圍**：編輯 `OPERATOR_USER_IDS`／`BETA_ALLOWLIST`；讀取 `SEC-011` 列為私有的資料；漏斗儀表板（ADR-029 決策 6；要不要做交 `05` R-78）；依帳號或工作區的排行與下鑽（`05` R-78）；濫用檢舉案件（`SEC-011` 要求另立需求）；下架後的恢復（`04` 丙-80）；精選層的寫入（`04` 丙-77）。
 
 #### OPS-001：後台外殼與 operator 旗標
 
@@ -1025,6 +1025,19 @@ Run 至少支援：
 
 - 每一種成本 kind 最新的一個統計窗：窗的起訖、樣本數、p50／p90／p95／最大值（美元 micros）。**不含使用者維度**（`cost_statistics` 本來就沒有）。從未統計過的 kind 不列。
 - 這是 `04` 丙-233 要觀察的數字：上線後，丙-233 的觀察方式從一段貼進 psql 的 SQL 改成這個畫面。
+
+#### OPS-008：營運趨勢圖（第三批）
+
+本項 2026-09-12 新增（負責人指示「需要圖表的查詢和展示」，[ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md)）。
+
+允收準則：
+
+- 新頁 `/admin/trends`，四組每日圖：成本（`cost_events`，依種類，美元，含估計值）、點數異動（`credit_entries`，依分錄種類的淨額，另列全平台目前餘額總和）、建立的 Run（`runs`，依目前狀態）、operator 動作（`audit_events`，與 `OPS-006` 同一份 action 清單）。一個種類一張小圖，同一個色相。
+- 時間範圍 7／30／90 天，預設 30，寫進網址（`?days=`）；伺服器只收這三個值，其他值回 400。以 UTC 日期分桶，畫面寫明；範圍內沒有事件的日子畫成 0，整段都沒有事件的種類不畫圖、列出名字。
+- **只查彙總**：每條查詢只依日期與種類／狀態／動作分組，不回 user id、workspace id 或 email。它不指向任何人，不寫 audit。
+- 按需查詢：打開頁面或換範圍才查，不輪詢、不在視窗回到前景時重查（ADR-029 決策 6）。
+- 每張圖旁邊有同一組數字的逐日表；canvas 帶 `role="img"` 與一句說明；顏色只從 token 讀，不動畫。
+- 四條端點各歸事實 owner（`credit` 兩條、`run`、`audit`），在 `router.go` 逐條套 `RequireOperator`、列入 authz 矩陣；新 query 登記在 `db/query-owners.yaml`，不加例外。
 
 ## 5. 非功能需求
 
