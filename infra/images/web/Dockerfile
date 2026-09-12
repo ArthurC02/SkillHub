@@ -15,7 +15,7 @@ RUN cd apps/web && npm ci --ignore-scripts
 COPY apps/web ./apps/web
 RUN cd apps/web && npm run build
 
-FROM nginx:1.29-alpine-slim@sha256:c9366b8c560169b101ca0e5422ed063b20779e6454c2326b9c9704225c9b0c08 AS runtime
+FROM nginx:1.31-alpine-slim@sha256:3b171d7224b669faa3cc2137fea0a65301791df1ec1f271ebd2a2b7461f7fade AS runtime
 
 COPY --from=build /src/apps/web/dist /usr/share/nginx/html
 COPY infra/images/web/nginx.conf /etc/nginx/conf.d/default.conf

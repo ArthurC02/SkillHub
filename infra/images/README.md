@@ -554,7 +554,7 @@ GHCR push 仍是協調者的工作**（本批範圍只到映像與本機驗證�
 | --- | --- | --- | --- |
 | [`platform/`](platform/) | `apps/platform`（單一 Go module） | build stage 用 `golang:1.27.1-bookworm`（與 `devtools/Dockerfile` 同一 digest）靜態編譯 `api`／`worker`／`maintenance`／`reindex` 四個指令；runtime stage 是 `gcr.io/distroless/static-debian12:nonroot`（無 shell、無套件管理器——這是鐵律 1 要保護的控制平面，能少一樣東西可用就少一樣），另外把 `contracts/packaging/profiles` 複製進去供 `PACKAGING_PROFILES_DIR` 使用 | 無 `ENTRYPOINT`，靠 distroless 內建的 `PATH` 解析：`CMD ["api"]` 是預設，`docker run <image> worker\|maintenance\|reindex ...` 換另外三個 |
 | [`llm/`](llm/) | `apps/llm`（FastAPI＋uv，build context 是 `apps/llm` 本身，不是 repo root——`packages/api-stub-py` 那個本機路徑依賴只在 `dev` dependency group，`--no-dev` sync 用不到） | build stage 裝 `uv`（版本與 sha256 installer 校驗值取自 `tools/toolchain.yaml`，做法與 `devtools/Dockerfile` 相同），`uv sync --frozen --no-dev --no-editable` 到 `/opt/venv`——**`--no-editable` 是必要的**：預設的 editable 安裝是一個指回 build stage `/src/src` 的 `.pth` 檔，runtime stage 只複製 `/opt/venv` 的話 `import skillhub_llm` 會找不到套件（本批實測撞過這個） | `uvicorn skillhub_llm.app:app --host 0.0.0.0 --port 8000`，match `contracts/openapi/llm-internal.yaml` 的 `servers[0]`；`/healthz` 不需要 `LLM_SERVICE_TOKEN`，掛了 `HEALTHCHECK` |
-| [`web/`](web/) | `apps/web` ＋ `packages/api-client-ts`（build context 是 repo root，因為 `apps/web` 的 `file:../../packages/api-client-ts` 依賴需要兩棵樹都在） | build stage 依序 `npm ci`＋`npm run build`（先 client 套件再 web，與 `Taskfile.yml` 的 `build:web`／`build:api-client` 一致；`npm run build` 本身會跑 `check-bundle-origins.mjs`，建置失敗代表 bundle 裡出現了預期外的絕對網址）；runtime stage 是 `nginx:1.29-alpine-slim`，只放編譯好的 `dist/` 與 [`nginx.conf`](web/nginx.conf) | 見下一節 |
+| [`web/`](web/) | `apps/web` ＋ `packages/api-client-ts`（build context 是 repo root，因為 `apps/web` 的 `file:../../packages/api-client-ts` 依賴需要兩棵樹都在） | build stage 依序 `npm ci`＋`npm run build`（先 client 套件再 web，與 `Taskfile.yml` 的 `build:web`／`build:api-client` 一致；`npm run build` 本身會跑 `check-bundle-origins.mjs`，建置失敗代表 bundle 裡出現了預期外的絕對網址）；runtime stage 是 `nginx:1.31-alpine-slim`，只放編譯好的 `dist/` 與 [`nginx.conf`](web/nginx.conf) | 見下一節 |
 
 ### `web` 的反向代理：為什麼不是 `location /api/`
 
@@ -661,7 +661,7 @@ digest 由 `docker pull` 後 `docker inspect --format '{{index .RepoDigests 0}}'
 | `gcr.io/distroless/static-debian12:nonroot` | `sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab`（2026-09-04 `docker pull` 當下） |
 | `python:3.12-slim-bookworm` | `sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254`（同上） |
 | `node:24.21.0-bookworm-slim` | `sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553`（同上） |
-| `nginx:1.29-alpine-slim` | `sha256:c9366b8c560169b101ca0e5422ed063b20779e6454c2326b9c9704225c9b0c08`（同上） |
+| `nginx:1.31-alpine-slim` | `sha256:3b171d7224b669faa3cc2137fea0a65301791df1ec1f271ebd2a2b7461f7fade`（同上） |
 
 映像大小（`docker images`，本機建置）：`skillhub/platform:local` 124 MB、
 `skillhub/llm:local` 216 MB、`skillhub/web:local` 21.3 MB。
