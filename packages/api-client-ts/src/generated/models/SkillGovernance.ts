@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,44 +21,30 @@ import { mapValues } from '../runtime';
 export interface SkillGovernance {
     /**
      * 
-     * @type {string}
-     * @memberof SkillGovernance
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillGovernance
      */
     workspaceId: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillGovernance
      */
     name: string;
     /**
      * The restriction reason code, or null when the skill is not restricted.
-     * @type {string}
-     * @memberof SkillGovernance
      */
     accessRestriction: string | null;
     /**
      * 
-     * @type {string}
-     * @memberof SkillGovernance
      */
     redistribution: string;
     /**
      * 
-     * @type {Date}
-     * @memberof SkillGovernance
      */
     takedownAt: Date | null;
     /**
      * 
-     * @type {string}
-     * @memberof SkillGovernance
      */
     takedownReason: string | null;
 }
@@ -67,13 +53,13 @@ export interface SkillGovernance {
  * Check if a given object implements the SkillGovernance interface.
  */
 export function instanceOfSkillGovernance(value: object): value is SkillGovernance {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('workspaceId' in value) || value['workspaceId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('workspaceId' in (value as Record<string, any>)) && !('workspace_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['workspaceId'] === undefined && (value as Record<string, any>)['workspace_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
-    if (!('accessRestriction' in value) || value['accessRestriction'] === undefined) return false;
+    if ((!('accessRestriction' in (value as Record<string, any>)) && !('access_restriction' in (value as Record<string, any>))) || ((value as Record<string, any>)['accessRestriction'] === undefined && (value as Record<string, any>)['access_restriction'] === undefined)) return false;
     if (!('redistribution' in value) || value['redistribution'] === undefined) return false;
-    if (!('takedownAt' in value) || value['takedownAt'] === undefined) return false;
-    if (!('takedownReason' in value) || value['takedownReason'] === undefined) return false;
+    if ((!('takedownAt' in (value as Record<string, any>)) && !('takedown_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['takedownAt'] === undefined && (value as Record<string, any>)['takedown_at'] === undefined)) return false;
+    if ((!('takedownReason' in (value as Record<string, any>)) && !('takedown_reason' in (value as Record<string, any>))) || ((value as Record<string, any>)['takedownReason'] === undefined && (value as Record<string, any>)['takedown_reason'] === undefined)) return false;
     return true;
 }
 
@@ -92,7 +78,7 @@ export function SkillGovernanceFromJSONTyped(json: any, ignoreDiscriminator: boo
         'name': json['name'],
         'accessRestriction': json['access_restriction'],
         'redistribution': json['redistribution'],
-        'takedownAt': (json['takedown_at'] == null ? null : new Date(json['takedown_at'])),
+        'takedownAt': (json['takedown_at'] == null ? null : parseDateTime(json['takedown_at'])),
         'takedownReason': json['takedown_reason'],
     };
 }
@@ -113,7 +99,7 @@ export function SkillGovernanceToJSONTyped(value?: SkillGovernance | null, ignor
         'name': value['name'],
         'access_restriction': value['accessRestriction'],
         'redistribution': value['redistribution'],
-        'takedown_at': value['takedownAt'] == null ? value['takedownAt'] : value['takedownAt'].toISOString(),
+        'takedown_at': value['takedownAt'] == null ? value['takedownAt'] : serializeDateTime(value['takedownAt']),
         'takedown_reason': value['takedownReason'],
     };
 }

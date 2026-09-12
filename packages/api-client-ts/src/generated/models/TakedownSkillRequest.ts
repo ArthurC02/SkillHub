@@ -21,8 +21,6 @@ import { mapValues } from '../runtime';
 export interface TakedownSkillRequest {
     /**
      * Why the content was withdrawn; required and reviewable later.
-     * @type {string}
-     * @memberof TakedownSkillRequest
      */
     reason: string;
 }

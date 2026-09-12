@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface RunQuotaLimits {
     /**
      * 
-     * @type {number}
-     * @memberof RunQuotaLimits
      */
     daily: number;
     /**
      * 
-     * @type {number}
-     * @memberof RunQuotaLimits
      */
     window: number;
     /**
      * 
-     * @type {number}
-     * @memberof RunQuotaLimits
      */
     windowDays: number;
     /**
@@ -43,8 +37,6 @@ export interface RunQuotaLimits {
      * allowance, which is the only place where a run is about to exist
      * and nothing has been spent yet.
      * 
-     * @type {number}
-     * @memberof RunQuotaLimits
      */
     concurrent: number;
 }
@@ -55,7 +47,7 @@ export interface RunQuotaLimits {
 export function instanceOfRunQuotaLimits(value: object): value is RunQuotaLimits {
     if (!('daily' in value) || value['daily'] === undefined) return false;
     if (!('window' in value) || value['window'] === undefined) return false;
-    if (!('windowDays' in value) || value['windowDays'] === undefined) return false;
+    if ((!('windowDays' in (value as Record<string, any>)) && !('window_days' in (value as Record<string, any>))) || ((value as Record<string, any>)['windowDays'] === undefined && (value as Record<string, any>)['window_days'] === undefined)) return false;
     if (!('concurrent' in value) || value['concurrent'] === undefined) return false;
     return true;
 }

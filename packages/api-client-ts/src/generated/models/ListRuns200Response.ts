@@ -29,8 +29,6 @@ import {
 export interface ListRuns200Response {
     /**
      * 
-     * @type {Array<RunListItem>}
-     * @memberof ListRuns200Response
      */
     runs: Array<RunListItem>;
 }

@@ -25,8 +25,6 @@ import { mapValues } from '../runtime';
 export interface RunPermissionSummaryContentProvider {
     /**
      * `unassigned` when no provider could be resolved right now.
-     * @type {string}
-     * @memberof RunPermissionSummaryContentProvider
      */
     name: string;
     /**
@@ -37,26 +35,18 @@ export interface RunPermissionSummaryContentProvider {
      * sandbox-provider.yaml — the prose form let `clean` be emitted here
      * for a day without anything noticing (2026-08-29).
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContentProvider
      */
     isolationLevel?: RunPermissionSummaryContentProviderIsolationLevelEnum;
     /**
      * 
-     * @type {boolean}
-     * @memberof RunPermissionSummaryContentProvider
      */
     rootless: boolean;
     /**
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContentProvider
      */
     runtime?: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContentProvider
      */
     runtimeVersion?: string;
 }
@@ -70,7 +60,7 @@ export const RunPermissionSummaryContentProviderIsolationLevelEnum = {
     Container: 'container',
     Vm: 'vm',
     Process: 'process',
-    Clean: 'clean'
+    Clean: 'clean',
 } as const;
 export type RunPermissionSummaryContentProviderIsolationLevelEnum = typeof RunPermissionSummaryContentProviderIsolationLevelEnum[keyof typeof RunPermissionSummaryContentProviderIsolationLevelEnum];
 

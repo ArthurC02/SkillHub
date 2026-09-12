@@ -26,8 +26,6 @@ export interface RunComparisonRunsInnerCost {
      * In Credit (ADR-068 decision 1). NULL means no usage event
      * carried a cost. Render as "unreported", never as 0.
      * 
-     * @type {number}
-     * @memberof RunComparisonRunsInnerCost
      */
     credits: number | null;
     /**
@@ -40,8 +38,6 @@ export interface RunComparisonRunsInnerCost {
      * shows that too. Making it a constant field puts the
      * obligation in the contract instead of in everyone's memory.
      * 
-     * @type {boolean}
-     * @memberof RunComparisonRunsInnerCost
      */
     isLowerBound: RunComparisonRunsInnerCostIsLowerBoundEnum;
     /**
@@ -50,8 +46,6 @@ export interface RunComparisonRunsInnerCost {
      * so a reader knows what a disagreement would be resolved
      * against.
      * 
-     * @type {string}
-     * @memberof RunComparisonRunsInnerCost
      */
     authoritativeSource: string;
 }
@@ -61,7 +55,7 @@ export interface RunComparisonRunsInnerCost {
  * @export
  */
 export const RunComparisonRunsInnerCostIsLowerBoundEnum = {
-    True: true
+    True: true,
 } as const;
 export type RunComparisonRunsInnerCostIsLowerBoundEnum = typeof RunComparisonRunsInnerCostIsLowerBoundEnum[keyof typeof RunComparisonRunsInnerCostIsLowerBoundEnum];
 
@@ -71,8 +65,10 @@ export type RunComparisonRunsInnerCostIsLowerBoundEnum = typeof RunComparisonRun
  */
 export function instanceOfRunComparisonRunsInnerCost(value: object): value is RunComparisonRunsInnerCost {
     if (!('credits' in value) || value['credits'] === undefined) return false;
-    if (!('isLowerBound' in value) || value['isLowerBound'] === undefined) return false;
-    if (!('authoritativeSource' in value) || value['authoritativeSource'] === undefined) return false;
+    if ((!('isLowerBound' in (value as Record<string, any>)) && !('is_lower_bound' in (value as Record<string, any>))) || ((value as Record<string, any>)['isLowerBound'] === undefined && (value as Record<string, any>)['is_lower_bound'] === undefined)) return false;
+    
+    if ((value as Record<string, any>)['isLowerBound'] !== true && (value as Record<string, any>)['is_lower_bound'] !== true) return false;
+    if ((!('authoritativeSource' in (value as Record<string, any>)) && !('authoritative_source' in (value as Record<string, any>))) || ((value as Record<string, any>)['authoritativeSource'] === undefined && (value as Record<string, any>)['authoritative_source'] === undefined)) return false;
     return true;
 }
 

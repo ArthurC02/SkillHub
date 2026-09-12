@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface DataRetentionPolicyEventsInner {
     /**
      * 
-     * @type {string}
-     * @memberof DataRetentionPolicyEventsInner
      */
     name: DataRetentionPolicyEventsInnerNameEnum;
     /**
      * 
-     * @type {string}
-     * @memberof DataRetentionPolicyEventsInner
      */
     when: string;
     /**
@@ -36,14 +32,10 @@ export interface DataRetentionPolicyEventsInner {
      * It is the constructor signature in analytics.go: an attribute
      * nobody declared cannot be passed, so it cannot be stored.
      * 
-     * @type {Array<string>}
-     * @memberof DataRetentionPolicyEventsInner
      */
     attributes: Array<string>;
     /**
      * The disclosure that a summary of what *is* stored would hide.
-     * @type {string}
-     * @memberof DataRetentionPolicyEventsInner
      */
     notRecorded: string;
 }
@@ -56,7 +48,7 @@ export const DataRetentionPolicyEventsInnerNameEnum = {
     SearchPerformed: 'search_performed',
     SkillDetailViewed: 'skill_detail_viewed',
     SessionStarted: 'session_started',
-    DownloadStarted: 'download_started'
+    DownloadStarted: 'download_started',
 } as const;
 export type DataRetentionPolicyEventsInnerNameEnum = typeof DataRetentionPolicyEventsInnerNameEnum[keyof typeof DataRetentionPolicyEventsInnerNameEnum];
 
@@ -68,7 +60,7 @@ export function instanceOfDataRetentionPolicyEventsInner(value: object): value i
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('when' in value) || value['when'] === undefined) return false;
     if (!('attributes' in value) || value['attributes'] === undefined) return false;
-    if (!('notRecorded' in value) || value['notRecorded'] === undefined) return false;
+    if ((!('notRecorded' in (value as Record<string, any>)) && !('not_recorded' in (value as Record<string, any>))) || ((value as Record<string, any>)['notRecorded'] === undefined && (value as Record<string, any>)['not_recorded'] === undefined)) return false;
     return true;
 }
 

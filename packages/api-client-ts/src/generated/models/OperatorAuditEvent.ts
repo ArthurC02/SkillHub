@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,44 +21,30 @@ import { mapValues } from '../runtime';
 export interface OperatorAuditEvent {
     /**
      * 
-     * @type {string}
-     * @memberof OperatorAuditEvent
      */
     actorUserId: string | null;
     /**
      * 
-     * @type {string}
-     * @memberof OperatorAuditEvent
      */
     action: string;
     /**
      * 
-     * @type {string}
-     * @memberof OperatorAuditEvent
      */
     resourceType: string;
     /**
      * 
-     * @type {string}
-     * @memberof OperatorAuditEvent
      */
     resourceId: string | null;
     /**
      * 
-     * @type {string}
-     * @memberof OperatorAuditEvent
      */
     workspaceId: string | null;
     /**
      * 
-     * @type {Date}
-     * @memberof OperatorAuditEvent
      */
     occurredAt: Date;
     /**
      * 
-     * @type {{ [key: string]: any; }}
-     * @memberof OperatorAuditEvent
      */
     metadata: { [key: string]: any; };
 }
@@ -67,12 +53,12 @@ export interface OperatorAuditEvent {
  * Check if a given object implements the OperatorAuditEvent interface.
  */
 export function instanceOfOperatorAuditEvent(value: object): value is OperatorAuditEvent {
-    if (!('actorUserId' in value) || value['actorUserId'] === undefined) return false;
+    if ((!('actorUserId' in (value as Record<string, any>)) && !('actor_user_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['actorUserId'] === undefined && (value as Record<string, any>)['actor_user_id'] === undefined)) return false;
     if (!('action' in value) || value['action'] === undefined) return false;
-    if (!('resourceType' in value) || value['resourceType'] === undefined) return false;
-    if (!('resourceId' in value) || value['resourceId'] === undefined) return false;
-    if (!('workspaceId' in value) || value['workspaceId'] === undefined) return false;
-    if (!('occurredAt' in value) || value['occurredAt'] === undefined) return false;
+    if ((!('resourceType' in (value as Record<string, any>)) && !('resource_type' in (value as Record<string, any>))) || ((value as Record<string, any>)['resourceType'] === undefined && (value as Record<string, any>)['resource_type'] === undefined)) return false;
+    if ((!('resourceId' in (value as Record<string, any>)) && !('resource_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['resourceId'] === undefined && (value as Record<string, any>)['resource_id'] === undefined)) return false;
+    if ((!('workspaceId' in (value as Record<string, any>)) && !('workspace_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['workspaceId'] === undefined && (value as Record<string, any>)['workspace_id'] === undefined)) return false;
+    if ((!('occurredAt' in (value as Record<string, any>)) && !('occurred_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['occurredAt'] === undefined && (value as Record<string, any>)['occurred_at'] === undefined)) return false;
     if (!('metadata' in value) || value['metadata'] === undefined) return false;
     return true;
 }
@@ -92,7 +78,7 @@ export function OperatorAuditEventFromJSONTyped(json: any, ignoreDiscriminator: 
         'resourceType': json['resource_type'],
         'resourceId': json['resource_id'],
         'workspaceId': json['workspace_id'],
-        'occurredAt': (new Date(json['occurred_at'])),
+        'occurredAt': (json['occurred_at'] == null ? json['occurred_at'] : parseDateTime(json['occurred_at'])),
         'metadata': json['metadata'],
     };
 }
@@ -113,7 +99,7 @@ export function OperatorAuditEventToJSONTyped(value?: OperatorAuditEvent | null,
         'resource_type': value['resourceType'],
         'resource_id': value['resourceId'],
         'workspace_id': value['workspaceId'],
-        'occurred_at': value['occurredAt'].toISOString(),
+        'occurred_at': value['occurredAt'] == null ? value['occurredAt'] : serializeDateTime(value['occurredAt']),
         'metadata': value['metadata'],
     };
 }

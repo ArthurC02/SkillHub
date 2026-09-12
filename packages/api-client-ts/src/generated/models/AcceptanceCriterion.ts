@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * One acceptance condition (TEST-003). Stored inside the test case rather
  * than as its own resource, because the run snapshot and the evaluation
@@ -24,14 +24,10 @@ import { mapValues } from '../runtime';
 export interface AcceptanceCriterion {
     /**
      * Unique within one test case; stable across edits.
-     * @type {string}
-     * @memberof AcceptanceCriterion
      */
     id: string;
     /**
      * 
-     * @type {string}
-     * @memberof AcceptanceCriterion
      */
     text: string;
     /**
@@ -39,16 +35,12 @@ export interface AcceptanceCriterion {
      * automatic suggestion so EVAL-001 can keep a model's proposal from
      * being presented as the user's own (not written yet).
      * 
-     * @type {string}
-     * @memberof AcceptanceCriterion
      */
     source: AcceptanceCriterionSourceEnum;
     /**
      * When the user explicitly agreed to this wording. Null means proposed
      * but not confirmed. Editing the text clears it.
      * 
-     * @type {Date}
-     * @memberof AcceptanceCriterion
      */
     confirmedAt: Date | null;
 }
@@ -59,7 +51,7 @@ export interface AcceptanceCriterion {
  */
 export const AcceptanceCriterionSourceEnum = {
     User: 'user',
-    Suggested: 'suggested'
+    Suggested: 'suggested',
 } as const;
 export type AcceptanceCriterionSourceEnum = typeof AcceptanceCriterionSourceEnum[keyof typeof AcceptanceCriterionSourceEnum];
 
@@ -71,7 +63,7 @@ export function instanceOfAcceptanceCriterion(value: object): value is Acceptanc
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('text' in value) || value['text'] === undefined) return false;
     if (!('source' in value) || value['source'] === undefined) return false;
-    if (!('confirmedAt' in value) || value['confirmedAt'] === undefined) return false;
+    if ((!('confirmedAt' in (value as Record<string, any>)) && !('confirmed_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['confirmedAt'] === undefined && (value as Record<string, any>)['confirmed_at'] === undefined)) return false;
     return true;
 }
 
@@ -88,7 +80,7 @@ export function AcceptanceCriterionFromJSONTyped(json: any, ignoreDiscriminator:
         'id': json['id'],
         'text': json['text'],
         'source': json['source'],
-        'confirmedAt': (json['confirmed_at'] == null ? null : new Date(json['confirmed_at'])),
+        'confirmedAt': (json['confirmed_at'] == null ? null : parseDateTime(json['confirmed_at'])),
     };
 }
 
@@ -106,7 +98,7 @@ export function AcceptanceCriterionToJSONTyped(value?: AcceptanceCriterion | nul
         'id': value['id'],
         'text': value['text'],
         'source': value['source'],
-        'confirmed_at': value['confirmedAt'] == null ? value['confirmedAt'] : value['confirmedAt'].toISOString(),
+        'confirmed_at': value['confirmedAt'] == null ? value['confirmedAt'] : serializeDateTime(value['confirmedAt']),
     };
 }
 

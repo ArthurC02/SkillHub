@@ -38,14 +38,10 @@ export interface Rubric {
      * (`Evaluation.rubric_version`). Not sent to the judge: the internal
      * contract's Rubric carries only the items.
      * 
-     * @type {string}
-     * @memberof Rubric
      */
     version: string;
     /**
      * 
-     * @type {Array<RubricItem>}
-     * @memberof Rubric
      */
     items: Array<RubricItem>;
 }

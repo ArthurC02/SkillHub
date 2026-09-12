@@ -29,14 +29,10 @@ export interface RubricItem {
      * else could never produce a stored verdict. An item whose criterion is
      * deleted is removed with it.
      * 
-     * @type {string}
-     * @memberof RubricItem
      */
     id: string;
     /**
      * 
-     * @type {string}
-     * @memberof RubricItem
      */
     text: string;
     /**
@@ -45,8 +41,6 @@ export interface RubricItem {
      * verdict is recomputed from the per-criterion results, so this is not
      * a score. Absent means the author gave none.
      * 
-     * @type {number}
-     * @memberof RubricItem
      */
     weight?: number;
     /**
@@ -54,8 +48,6 @@ export interface RubricItem {
      * rather than a global switch, because a quote can show that something
      * is present and cannot show that something is absent.
      * 
-     * @type {boolean}
-     * @memberof RubricItem
      */
     evidenceRequired: boolean;
 }
@@ -66,7 +58,7 @@ export interface RubricItem {
 export function instanceOfRubricItem(value: object): value is RubricItem {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('text' in value) || value['text'] === undefined) return false;
-    if (!('evidenceRequired' in value) || value['evidenceRequired'] === undefined) return false;
+    if ((!('evidenceRequired' in (value as Record<string, any>)) && !('evidence_required' in (value as Record<string, any>))) || ((value as Record<string, any>)['evidenceRequired'] === undefined && (value as Record<string, any>)['evidence_required'] === undefined)) return false;
     return true;
 }
 

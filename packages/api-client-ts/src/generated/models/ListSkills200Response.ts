@@ -29,8 +29,6 @@ import {
 export interface ListSkills200Response {
     /**
      * 
-     * @type {Array<OwnSkill>}
-     * @memberof ListSkills200Response
      */
     skills: Array<OwnSkill>;
     /**
@@ -38,8 +36,6 @@ export interface ListSkills200Response {
      * server-side cap, not a page size the caller chose — there
      * is no pagination here yet.
      * 
-     * @type {number}
-     * @memberof ListSkills200Response
      */
     limit: number;
     /**
@@ -49,8 +45,6 @@ export interface ListSkills200Response {
      * cannot see is 02:NFR-001's other direction, and a list that
      * is silently short reads as a complete answer.
      * 
-     * @type {boolean}
-     * @memberof ListSkills200Response
      */
     truncated: boolean;
     /**
@@ -69,8 +63,6 @@ export interface ListSkills200Response {
      * the two restatements disagreed the page would report a
      * total that does not describe the list beneath it.
      * 
-     * @type {number}
-     * @memberof ListSkills200Response
      */
     total: number;
 }

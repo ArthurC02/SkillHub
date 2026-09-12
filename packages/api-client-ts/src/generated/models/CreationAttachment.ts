@@ -21,26 +21,18 @@ import { mapValues } from '../runtime';
 export interface CreationAttachment {
     /**
      * Where this picture sits among `messages`. When the person typed something with it, this is the index of their own message and the picture belongs inside that turn; when they typed nothing, it is the index the model's reply takes, so the picture still renders between the turns it happened between.
-     * @type {number}
-     * @memberof CreationAttachment
      */
     messageIndex: number;
     /**
      * 
-     * @type {string}
-     * @memberof CreationAttachment
      */
     mediaType: CreationAttachmentMediaTypeEnum;
     /**
      * 
-     * @type {number}
-     * @memberof CreationAttachment
      */
     bytes: number;
     /**
      * The digest of the bytes that were sent. It is what the platform keeps INSTEAD of them; it is not a URL and nothing serves the picture back.
-     * @type {string}
-     * @memberof CreationAttachment
      */
     sha256: string;
 }
@@ -52,7 +44,7 @@ export interface CreationAttachment {
 export const CreationAttachmentMediaTypeEnum = {
     ImagePng: 'image/png',
     ImageJpeg: 'image/jpeg',
-    ImageWebp: 'image/webp'
+    ImageWebp: 'image/webp',
 } as const;
 export type CreationAttachmentMediaTypeEnum = typeof CreationAttachmentMediaTypeEnum[keyof typeof CreationAttachmentMediaTypeEnum];
 
@@ -61,8 +53,8 @@ export type CreationAttachmentMediaTypeEnum = typeof CreationAttachmentMediaType
  * Check if a given object implements the CreationAttachment interface.
  */
 export function instanceOfCreationAttachment(value: object): value is CreationAttachment {
-    if (!('messageIndex' in value) || value['messageIndex'] === undefined) return false;
-    if (!('mediaType' in value) || value['mediaType'] === undefined) return false;
+    if ((!('messageIndex' in (value as Record<string, any>)) && !('message_index' in (value as Record<string, any>))) || ((value as Record<string, any>)['messageIndex'] === undefined && (value as Record<string, any>)['message_index'] === undefined)) return false;
+    if ((!('mediaType' in (value as Record<string, any>)) && !('media_type' in (value as Record<string, any>))) || ((value as Record<string, any>)['mediaType'] === undefined && (value as Record<string, any>)['media_type'] === undefined)) return false;
     if (!('bytes' in value) || value['bytes'] === undefined) return false;
     if (!('sha256' in value) || value['sha256'] === undefined) return false;
     return true;

@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * Whether anything was measured **in this workspace**, and when.
  * 
@@ -57,26 +57,18 @@ import { mapValues } from '../runtime';
 export interface SkillVerification {
     /**
      * 
-     * @type {string}
-     * @memberof SkillVerification
      */
     value: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillVerification
      */
     label: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillVerification
      */
     note: string;
     /**
      * Present only when `value` is `scanned`.
-     * @type {Date}
-     * @memberof SkillVerification
      */
     scannedAt?: Date | null;
 }
@@ -104,7 +96,7 @@ export function SkillVerificationFromJSONTyped(json: any, ignoreDiscriminator: b
         'value': json['value'],
         'label': json['label'],
         'note': json['note'],
-        'scannedAt': json['scanned_at'] == null ? undefined : (new Date(json['scanned_at'])),
+        'scannedAt': json['scanned_at'] === undefined ? undefined : json['scanned_at'] === null ? null : (parseDateTime(json['scanned_at'])),
     };
 }
 
@@ -122,7 +114,7 @@ export function SkillVerificationToJSONTyped(value?: SkillVerification | null, i
         'value': value['value'],
         'label': value['label'],
         'note': value['note'],
-        'scanned_at': value['scannedAt'] == null ? value['scannedAt'] : value['scannedAt'].toISOString(),
+        'scanned_at': value['scannedAt'] == null ? value['scannedAt'] : serializeDateTime(value['scannedAt']),
     };
 }
 

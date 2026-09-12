@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,32 +21,22 @@ import { mapValues } from '../runtime';
 export interface CreditLedgerEntry {
     /**
      * 
-     * @type {string}
-     * @memberof CreditLedgerEntry
      */
     kind: CreditLedgerEntryKindEnum;
     /**
      * 
-     * @type {number}
-     * @memberof CreditLedgerEntry
      */
     deltaCredits: number;
     /**
      * What the entry settles, such as run or operator_grant.
-     * @type {string}
-     * @memberof CreditLedgerEntry
      */
     refType: string | null;
     /**
      * True when a debit was charged at an estimate because the real cost could not be read.
-     * @type {boolean}
-     * @memberof CreditLedgerEntry
      */
     estimated: boolean;
     /**
      * 
-     * @type {Date}
-     * @memberof CreditLedgerEntry
      */
     createdAt: Date;
 }
@@ -59,7 +49,7 @@ export const CreditLedgerEntryKindEnum = {
     Debit: 'debit',
     Grant: 'grant',
     Topup: 'topup',
-    Adjustment: 'adjustment'
+    Adjustment: 'adjustment',
 } as const;
 export type CreditLedgerEntryKindEnum = typeof CreditLedgerEntryKindEnum[keyof typeof CreditLedgerEntryKindEnum];
 
@@ -69,10 +59,10 @@ export type CreditLedgerEntryKindEnum = typeof CreditLedgerEntryKindEnum[keyof t
  */
 export function instanceOfCreditLedgerEntry(value: object): value is CreditLedgerEntry {
     if (!('kind' in value) || value['kind'] === undefined) return false;
-    if (!('deltaCredits' in value) || value['deltaCredits'] === undefined) return false;
-    if (!('refType' in value) || value['refType'] === undefined) return false;
+    if ((!('deltaCredits' in (value as Record<string, any>)) && !('delta_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['deltaCredits'] === undefined && (value as Record<string, any>)['delta_credits'] === undefined)) return false;
+    if ((!('refType' in (value as Record<string, any>)) && !('ref_type' in (value as Record<string, any>))) || ((value as Record<string, any>)['refType'] === undefined && (value as Record<string, any>)['ref_type'] === undefined)) return false;
     if (!('estimated' in value) || value['estimated'] === undefined) return false;
-    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
+    if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
     return true;
 }
 
@@ -90,7 +80,7 @@ export function CreditLedgerEntryFromJSONTyped(json: any, ignoreDiscriminator: b
         'deltaCredits': json['delta_credits'],
         'refType': json['ref_type'],
         'estimated': json['estimated'],
-        'createdAt': (new Date(json['created_at'])),
+        'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
     };
 }
 
@@ -109,7 +99,7 @@ export function CreditLedgerEntryToJSONTyped(value?: CreditLedgerEntry | null, i
         'delta_credits': value['deltaCredits'],
         'ref_type': value['refType'],
         'estimated': value['estimated'],
-        'created_at': value['createdAt'].toISOString(),
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
     };
 }
 

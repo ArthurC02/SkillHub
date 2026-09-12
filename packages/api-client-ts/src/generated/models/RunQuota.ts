@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { RunQuotaLimits } from './RunQuotaLimits';
 import {
     RunQuotaLimitsFromJSON,
@@ -38,14 +38,10 @@ import {
 export interface RunQuota {
     /**
      * 
-     * @type {number}
-     * @memberof RunQuota
      */
     remainingToday: number;
     /**
      * 
-     * @type {number}
-     * @memberof RunQuota
      */
     remainingWindow: number;
     /**
@@ -53,14 +49,10 @@ export interface RunQuota {
      * calendar: the count is a time-window query over the runs themselves,
      * so there is no monthly reset moment to name.
      * 
-     * @type {Date}
-     * @memberof RunQuota
      */
     windowResetsAt: Date;
     /**
      * 
-     * @type {RunQuotaLimits}
-     * @memberof RunQuota
      */
     limits: RunQuotaLimits;
 }
@@ -69,9 +61,9 @@ export interface RunQuota {
  * Check if a given object implements the RunQuota interface.
  */
 export function instanceOfRunQuota(value: object): value is RunQuota {
-    if (!('remainingToday' in value) || value['remainingToday'] === undefined) return false;
-    if (!('remainingWindow' in value) || value['remainingWindow'] === undefined) return false;
-    if (!('windowResetsAt' in value) || value['windowResetsAt'] === undefined) return false;
+    if ((!('remainingToday' in (value as Record<string, any>)) && !('remaining_today' in (value as Record<string, any>))) || ((value as Record<string, any>)['remainingToday'] === undefined && (value as Record<string, any>)['remaining_today'] === undefined)) return false;
+    if ((!('remainingWindow' in (value as Record<string, any>)) && !('remaining_window' in (value as Record<string, any>))) || ((value as Record<string, any>)['remainingWindow'] === undefined && (value as Record<string, any>)['remaining_window'] === undefined)) return false;
+    if ((!('windowResetsAt' in (value as Record<string, any>)) && !('window_resets_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['windowResetsAt'] === undefined && (value as Record<string, any>)['window_resets_at'] === undefined)) return false;
     if (!('limits' in value) || value['limits'] === undefined) return false;
     return true;
 }
@@ -88,7 +80,7 @@ export function RunQuotaFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         
         'remainingToday': json['remaining_today'],
         'remainingWindow': json['remaining_window'],
-        'windowResetsAt': (new Date(json['window_resets_at'])),
+        'windowResetsAt': (json['window_resets_at'] == null ? json['window_resets_at'] : parseDateTime(json['window_resets_at'])),
         'limits': RunQuotaLimitsFromJSON(json['limits']),
     };
 }
@@ -106,7 +98,7 @@ export function RunQuotaToJSONTyped(value?: RunQuota | null, ignoreDiscriminator
         
         'remaining_today': value['remainingToday'],
         'remaining_window': value['remainingWindow'],
-        'window_resets_at': value['windowResetsAt'].toISOString(),
+        'window_resets_at': value['windowResetsAt'] == null ? value['windowResetsAt'] : serializeDateTime(value['windowResetsAt']),
         'limits': RunQuotaLimitsToJSON(value['limits']),
     };
 }

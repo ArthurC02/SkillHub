@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface GrantCredits200Response {
     /**
      * 
-     * @type {string}
-     * @memberof GrantCredits200Response
      */
     workspaceId: string;
     /**
      * The balance after this grant.
-     * @type {number}
-     * @memberof GrantCredits200Response
      */
     balanceCredits: number;
     /**
      * 
-     * @type {number}
-     * @memberof GrantCredits200Response
      */
     amountCredits: number;
 }
@@ -43,9 +37,9 @@ export interface GrantCredits200Response {
  * Check if a given object implements the GrantCredits200Response interface.
  */
 export function instanceOfGrantCredits200Response(value: object): value is GrantCredits200Response {
-    if (!('workspaceId' in value) || value['workspaceId'] === undefined) return false;
-    if (!('balanceCredits' in value) || value['balanceCredits'] === undefined) return false;
-    if (!('amountCredits' in value) || value['amountCredits'] === undefined) return false;
+    if ((!('workspaceId' in (value as Record<string, any>)) && !('workspace_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['workspaceId'] === undefined && (value as Record<string, any>)['workspace_id'] === undefined)) return false;
+    if ((!('balanceCredits' in (value as Record<string, any>)) && !('balance_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['balanceCredits'] === undefined && (value as Record<string, any>)['balance_credits'] === undefined)) return false;
+    if ((!('amountCredits' in (value as Record<string, any>)) && !('amount_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['amountCredits'] === undefined && (value as Record<string, any>)['amount_credits'] === undefined)) return false;
     return true;
 }
 

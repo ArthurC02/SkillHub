@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface AccountDeletion {
     /**
      * 
-     * @type {Date}
-     * @memberof AccountDeletion
      */
     deletionRequestedAt: Date;
     /**
      * When the purge becomes due; cancellable until then.
-     * @type {Date}
-     * @memberof AccountDeletion
      */
     purgeAfter: Date;
     /**
      * 
-     * @type {boolean}
-     * @memberof AccountDeletion
      */
     cancellable: boolean;
     /**
@@ -42,8 +36,6 @@ export interface AccountDeletion {
      * de-identified. WS-002 requires the scope to be shown before the
      * deletion, not discovered after it.
      * 
-     * @type {string}
-     * @memberof AccountDeletion
      */
     scope: string;
 }
@@ -52,8 +44,8 @@ export interface AccountDeletion {
  * Check if a given object implements the AccountDeletion interface.
  */
 export function instanceOfAccountDeletion(value: object): value is AccountDeletion {
-    if (!('deletionRequestedAt' in value) || value['deletionRequestedAt'] === undefined) return false;
-    if (!('purgeAfter' in value) || value['purgeAfter'] === undefined) return false;
+    if ((!('deletionRequestedAt' in (value as Record<string, any>)) && !('deletion_requested_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['deletionRequestedAt'] === undefined && (value as Record<string, any>)['deletion_requested_at'] === undefined)) return false;
+    if ((!('purgeAfter' in (value as Record<string, any>)) && !('purge_after' in (value as Record<string, any>))) || ((value as Record<string, any>)['purgeAfter'] === undefined && (value as Record<string, any>)['purge_after'] === undefined)) return false;
     if (!('cancellable' in value) || value['cancellable'] === undefined) return false;
     if (!('scope' in value) || value['scope'] === undefined) return false;
     return true;
@@ -69,8 +61,8 @@ export function AccountDeletionFromJSONTyped(json: any, ignoreDiscriminator: boo
     }
     return {
         
-        'deletionRequestedAt': (new Date(json['deletion_requested_at'])),
-        'purgeAfter': (new Date(json['purge_after'])),
+        'deletionRequestedAt': (json['deletion_requested_at'] == null ? json['deletion_requested_at'] : parseDateTime(json['deletion_requested_at'])),
+        'purgeAfter': (json['purge_after'] == null ? json['purge_after'] : parseDateTime(json['purge_after'])),
         'cancellable': json['cancellable'],
         'scope': json['scope'],
     };
@@ -87,8 +79,8 @@ export function AccountDeletionToJSONTyped(value?: AccountDeletion | null, ignor
 
     return {
         
-        'deletion_requested_at': value['deletionRequestedAt'].toISOString(),
-        'purge_after': value['purgeAfter'].toISOString(),
+        'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : serializeDateTime(value['deletionRequestedAt']),
+        'purge_after': value['purgeAfter'] == null ? value['purgeAfter'] : serializeDateTime(value['purgeAfter']),
         'cancellable': value['cancellable'],
         'scope': value['scope'],
     };

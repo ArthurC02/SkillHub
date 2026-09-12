@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,26 +21,18 @@ import { mapValues } from '../runtime';
 export interface RunTransitionsInner {
     /**
      * 
-     * @type {string}
-     * @memberof RunTransitionsInner
      */
     fromStatus?: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunTransitionsInner
      */
     toStatus: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunTransitionsInner
      */
     reason?: string;
     /**
      * 
-     * @type {Date}
-     * @memberof RunTransitionsInner
      */
     occurredAt: Date;
 }
@@ -49,8 +41,8 @@ export interface RunTransitionsInner {
  * Check if a given object implements the RunTransitionsInner interface.
  */
 export function instanceOfRunTransitionsInner(value: object): value is RunTransitionsInner {
-    if (!('toStatus' in value) || value['toStatus'] === undefined) return false;
-    if (!('occurredAt' in value) || value['occurredAt'] === undefined) return false;
+    if ((!('toStatus' in (value as Record<string, any>)) && !('to_status' in (value as Record<string, any>))) || ((value as Record<string, any>)['toStatus'] === undefined && (value as Record<string, any>)['to_status'] === undefined)) return false;
+    if ((!('occurredAt' in (value as Record<string, any>)) && !('occurred_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['occurredAt'] === undefined && (value as Record<string, any>)['occurred_at'] === undefined)) return false;
     return true;
 }
 
@@ -67,7 +59,7 @@ export function RunTransitionsInnerFromJSONTyped(json: any, ignoreDiscriminator:
         'fromStatus': json['from_status'] == null ? undefined : json['from_status'],
         'toStatus': json['to_status'],
         'reason': json['reason'] == null ? undefined : json['reason'],
-        'occurredAt': (new Date(json['occurred_at'])),
+        'occurredAt': (json['occurred_at'] == null ? json['occurred_at'] : parseDateTime(json['occurred_at'])),
     };
 }
 
@@ -85,7 +77,7 @@ export function RunTransitionsInnerToJSONTyped(value?: RunTransitionsInner | nul
         'from_status': value['fromStatus'],
         'to_status': value['toStatus'],
         'reason': value['reason'],
-        'occurred_at': value['occurredAt'].toISOString(),
+        'occurred_at': value['occurredAt'] == null ? value['occurredAt'] : serializeDateTime(value['occurredAt']),
     };
 }
 

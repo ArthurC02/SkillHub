@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface ForkSkill201Response {
     /**
      * 
-     * @type {string}
-     * @memberof ForkSkill201Response
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof ForkSkill201Response
      */
     name: string;
     /**
      * 
-     * @type {string}
-     * @memberof ForkSkill201Response
      */
     summary: string;
     /**
@@ -51,8 +45,6 @@ export interface ForkSkill201Response {
      * download the Skill I just wrote" was permanently no, over a licensing
      * question nobody could resolve (ADR-045).
      * 
-     * @type {string}
-     * @memberof ForkSkill201Response
      */
     redistribution: ForkSkill201ResponseRedistributionEnum;
     /**
@@ -61,32 +53,22 @@ export interface ForkSkill201Response {
      * belongs on a list of skills the caller owns rather than only on the
      * detail view.
      * 
-     * @type {string}
-     * @memberof ForkSkill201Response
      */
     accessRestriction?: string;
     /**
      * 
-     * @type {string}
-     * @memberof ForkSkill201Response
      */
     forkedFromSkillId?: string;
     /**
      * 
-     * @type {string}
-     * @memberof ForkSkill201Response
      */
     forkedFromVersionId?: string;
     /**
      * 
-     * @type {string}
-     * @memberof ForkSkill201Response
      */
     versionId: string;
     /**
      * 
-     * @type {number}
-     * @memberof ForkSkill201Response
      */
     versionNumber: number;
 }
@@ -100,7 +82,7 @@ export const ForkSkill201ResponseRedistributionEnum = {
     Blocked: 'blocked',
     Unknown: 'unknown',
     SelfSupplied: 'self_supplied',
-    Generated: 'generated'
+    Generated: 'generated',
 } as const;
 export type ForkSkill201ResponseRedistributionEnum = typeof ForkSkill201ResponseRedistributionEnum[keyof typeof ForkSkill201ResponseRedistributionEnum];
 
@@ -109,12 +91,12 @@ export type ForkSkill201ResponseRedistributionEnum = typeof ForkSkill201Response
  * Check if a given object implements the ForkSkill201Response interface.
  */
 export function instanceOfForkSkill201Response(value: object): value is ForkSkill201Response {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('summary' in value) || value['summary'] === undefined) return false;
     if (!('redistribution' in value) || value['redistribution'] === undefined) return false;
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
-    if (!('versionNumber' in value) || value['versionNumber'] === undefined) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
+    if ((!('versionNumber' in (value as Record<string, any>)) && !('version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionNumber'] === undefined && (value as Record<string, any>)['version_number'] === undefined)) return false;
     return true;
 }
 

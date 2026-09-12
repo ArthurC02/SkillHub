@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * A stored, server-masked Trace event returned by the advanced reader.
  * @export
@@ -21,62 +21,42 @@ import { mapValues } from '../runtime';
 export interface TraceEventView {
     /**
      * 
-     * @type {string}
-     * @memberof TraceEventView
      */
     eventId: string;
     /**
      * 
-     * @type {number}
-     * @memberof TraceEventView
      */
     attempt: number;
     /**
      * 
-     * @type {number}
-     * @memberof TraceEventView
      */
     seq: number;
     /**
      * 
-     * @type {Date}
-     * @memberof TraceEventView
      */
     occurredAt: Date;
     /**
      * 
-     * @type {string}
-     * @memberof TraceEventView
      */
     emittedBy: TraceEventViewEmittedByEnum;
     /**
      * 
-     * @type {string}
-     * @memberof TraceEventView
      */
     type: TraceEventViewTypeEnum;
     /**
      * 
-     * @type {string}
-     * @memberof TraceEventView
      */
     status?: TraceEventViewStatusEnum;
     /**
      * 
-     * @type {boolean}
-     * @memberof TraceEventView
      */
     late?: boolean;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof TraceEventView
      */
     maskedFields: Array<string>;
     /**
      * 
-     * @type {object}
-     * @memberof TraceEventView
      */
     payload: object;
 }
@@ -88,7 +68,7 @@ export interface TraceEventView {
 export const TraceEventViewEmittedByEnum = {
     Sandbox: 'sandbox',
     Orchestrator: 'orchestrator',
-    LlmService: 'llm_service'
+    LlmService: 'llm_service',
 } as const;
 export type TraceEventViewEmittedByEnum = typeof TraceEventViewEmittedByEnum[keyof typeof TraceEventViewEmittedByEnum];
 
@@ -106,7 +86,7 @@ export const TraceEventViewTypeEnum = {
     Usage: 'usage',
     RunLifecycle: 'run_lifecycle',
     EvaluationStarted: 'evaluation_started',
-    EvaluationCompleted: 'evaluation_completed'
+    EvaluationCompleted: 'evaluation_completed',
 } as const;
 export type TraceEventViewTypeEnum = typeof TraceEventViewTypeEnum[keyof typeof TraceEventViewTypeEnum];
 
@@ -118,7 +98,7 @@ export const TraceEventViewStatusEnum = {
     Error: 'error',
     Skipped: 'skipped',
     Cancelled: 'cancelled',
-    TimedOut: 'timed_out'
+    TimedOut: 'timed_out',
 } as const;
 export type TraceEventViewStatusEnum = typeof TraceEventViewStatusEnum[keyof typeof TraceEventViewStatusEnum];
 
@@ -127,13 +107,13 @@ export type TraceEventViewStatusEnum = typeof TraceEventViewStatusEnum[keyof typ
  * Check if a given object implements the TraceEventView interface.
  */
 export function instanceOfTraceEventView(value: object): value is TraceEventView {
-    if (!('eventId' in value) || value['eventId'] === undefined) return false;
+    if ((!('eventId' in (value as Record<string, any>)) && !('event_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['eventId'] === undefined && (value as Record<string, any>)['event_id'] === undefined)) return false;
     if (!('attempt' in value) || value['attempt'] === undefined) return false;
     if (!('seq' in value) || value['seq'] === undefined) return false;
-    if (!('occurredAt' in value) || value['occurredAt'] === undefined) return false;
-    if (!('emittedBy' in value) || value['emittedBy'] === undefined) return false;
+    if ((!('occurredAt' in (value as Record<string, any>)) && !('occurred_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['occurredAt'] === undefined && (value as Record<string, any>)['occurred_at'] === undefined)) return false;
+    if ((!('emittedBy' in (value as Record<string, any>)) && !('emitted_by' in (value as Record<string, any>))) || ((value as Record<string, any>)['emittedBy'] === undefined && (value as Record<string, any>)['emitted_by'] === undefined)) return false;
     if (!('type' in value) || value['type'] === undefined) return false;
-    if (!('maskedFields' in value) || value['maskedFields'] === undefined) return false;
+    if ((!('maskedFields' in (value as Record<string, any>)) && !('masked_fields' in (value as Record<string, any>))) || ((value as Record<string, any>)['maskedFields'] === undefined && (value as Record<string, any>)['masked_fields'] === undefined)) return false;
     if (!('payload' in value) || value['payload'] === undefined) return false;
     return true;
 }
@@ -151,7 +131,7 @@ export function TraceEventViewFromJSONTyped(json: any, ignoreDiscriminator: bool
         'eventId': json['event_id'],
         'attempt': json['attempt'],
         'seq': json['seq'],
-        'occurredAt': (new Date(json['occurred_at'])),
+        'occurredAt': (json['occurred_at'] == null ? json['occurred_at'] : parseDateTime(json['occurred_at'])),
         'emittedBy': json['emitted_by'],
         'type': json['type'],
         'status': json['status'] == null ? undefined : json['status'],
@@ -175,7 +155,7 @@ export function TraceEventViewToJSONTyped(value?: TraceEventView | null, ignoreD
         'event_id': value['eventId'],
         'attempt': value['attempt'],
         'seq': value['seq'],
-        'occurred_at': value['occurredAt'].toISOString(),
+        'occurred_at': value['occurredAt'] == null ? value['occurredAt'] : serializeDateTime(value['occurredAt']),
         'emitted_by': value['emittedBy'],
         'type': value['type'],
         'status': value['status'],

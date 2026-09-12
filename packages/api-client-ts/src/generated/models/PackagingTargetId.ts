@@ -24,7 +24,7 @@
 export const PackagingTargetId = {
     Standard: 'standard',
     ClaudeCode: 'claude-code',
-    ClaudeAgentSdk: 'claude-agent-sdk'
+    ClaudeAgentSdk: 'claude-agent-sdk',
 } as const;
 export type PackagingTargetId = typeof PackagingTargetId[keyof typeof PackagingTargetId];
 

@@ -29,38 +29,26 @@ import {
 export interface UploadResult {
     /**
      * 
-     * @type {string}
-     * @memberof UploadResult
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof UploadResult
      */
     versionId: string;
     /**
      * 
-     * @type {number}
-     * @memberof UploadResult
      */
     versionNumber: number;
     /**
      * 
-     * @type {string}
-     * @memberof UploadResult
      */
     contentHash: string;
     /**
      * True when identical content already existed as a version of this skill.
-     * @type {boolean}
-     * @memberof UploadResult
      */
     duplicate: boolean;
     /**
      * 
-     * @type {CategorizedFindings}
-     * @memberof UploadResult
      */
     findings: CategorizedFindings;
 }
@@ -69,10 +57,10 @@ export interface UploadResult {
  * Check if a given object implements the UploadResult interface.
  */
 export function instanceOfUploadResult(value: object): value is UploadResult {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
-    if (!('versionNumber' in value) || value['versionNumber'] === undefined) return false;
-    if (!('contentHash' in value) || value['contentHash'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
+    if ((!('versionNumber' in (value as Record<string, any>)) && !('version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionNumber'] === undefined && (value as Record<string, any>)['version_number'] === undefined)) return false;
+    if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
     if (!('duplicate' in value) || value['duplicate'] === undefined) return false;
     if (!('findings' in value) || value['findings'] === undefined) return false;
     return true;

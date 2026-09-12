@@ -38,8 +38,6 @@ export interface SearchResultRisk {
      * phase). Reported as unknown, never as a clean scan (DISC-004
      * 不得自行推定為通過); every flag below is then absent.
      * 
-     * @type {string}
-     * @memberof SearchResultRisk
      */
     scanStatus: SearchResultRiskScanStatusEnum;
     /**
@@ -53,14 +51,10 @@ export interface SearchResultRisk {
      * findings never appear: they block the import, so nothing carrying one
      * is in the index at all.
      * 
-     * @type {string}
-     * @memberof SearchResultRisk
      */
     level: SearchResultRiskLevelEnum;
     /**
      * Warning-level finding count.
-     * @type {number}
-     * @memberof SearchResultRisk
      */
     warnings: number;
     /**
@@ -68,14 +62,10 @@ export interface SearchResultRisk {
      * it declared none of them — which is not 「安全」 and is not rendered
      * as such (NFR-001).
      * 
-     * @type {Array<Disclosure>}
-     * @memberof SearchResultRisk
      */
     disclosures: Array<Disclosure>;
     /**
      * 
-     * @type {string}
-     * @memberof SearchResultRisk
      */
     note: string;
 }
@@ -86,7 +76,7 @@ export interface SearchResultRisk {
  */
 export const SearchResultRiskScanStatusEnum = {
     Scanned: 'scanned',
-    Unavailable: 'unavailable'
+    Unavailable: 'unavailable',
 } as const;
 export type SearchResultRiskScanStatusEnum = typeof SearchResultRiskScanStatusEnum[keyof typeof SearchResultRiskScanStatusEnum];
 
@@ -97,7 +87,7 @@ export const SearchResultRiskLevelEnum = {
     Unknown: 'unknown',
     None: 'none',
     Disclosed: 'disclosed',
-    Warning: 'warning'
+    Warning: 'warning',
 } as const;
 export type SearchResultRiskLevelEnum = typeof SearchResultRiskLevelEnum[keyof typeof SearchResultRiskLevelEnum];
 
@@ -106,7 +96,7 @@ export type SearchResultRiskLevelEnum = typeof SearchResultRiskLevelEnum[keyof t
  * Check if a given object implements the SearchResultRisk interface.
  */
 export function instanceOfSearchResultRisk(value: object): value is SearchResultRisk {
-    if (!('scanStatus' in value) || value['scanStatus'] === undefined) return false;
+    if ((!('scanStatus' in (value as Record<string, any>)) && !('scan_status' in (value as Record<string, any>))) || ((value as Record<string, any>)['scanStatus'] === undefined && (value as Record<string, any>)['scan_status'] === undefined)) return false;
     if (!('level' in value) || value['level'] === undefined) return false;
     if (!('warnings' in value) || value['warnings'] === undefined) return false;
     if (!('disclosures' in value) || value['disclosures'] === undefined) return false;

@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface StartRunRequest {
     /**
      * 
-     * @type {string}
-     * @memberof StartRunRequest
      */
     versionId: string;
     /**
      * 
-     * @type {string}
-     * @memberof StartRunRequest
      */
     testCaseId: string;
     /**
@@ -41,8 +37,6 @@ export interface StartRunRequest {
      * hash, and requires a recorded confirmation of it. Sending a
      * hash nobody confirmed fails the second check.
      * 
-     * @type {string}
-     * @memberof StartRunRequest
      */
     confirmedSummaryHash: string;
 }
@@ -51,9 +45,9 @@ export interface StartRunRequest {
  * Check if a given object implements the StartRunRequest interface.
  */
 export function instanceOfStartRunRequest(value: object): value is StartRunRequest {
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
-    if (!('testCaseId' in value) || value['testCaseId'] === undefined) return false;
-    if (!('confirmedSummaryHash' in value) || value['confirmedSummaryHash'] === undefined) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
+    if ((!('testCaseId' in (value as Record<string, any>)) && !('test_case_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCaseId'] === undefined && (value as Record<string, any>)['test_case_id'] === undefined)) return false;
+    if ((!('confirmedSummaryHash' in (value as Record<string, any>)) && !('confirmed_summary_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['confirmedSummaryHash'] === undefined && (value as Record<string, any>)['confirmed_summary_hash'] === undefined)) return false;
     return true;
 }
 

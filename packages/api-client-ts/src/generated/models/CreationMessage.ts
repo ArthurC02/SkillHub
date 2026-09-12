@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface CreationMessage {
     /**
      * 
-     * @type {string}
-     * @memberof CreationMessage
      */
     role: CreationMessageRoleEnum;
     /**
      * 
-     * @type {string}
-     * @memberof CreationMessage
      */
     content: string;
 }
@@ -40,7 +36,7 @@ export interface CreationMessage {
 export const CreationMessageRoleEnum = {
     User: 'user',
     Assistant: 'assistant',
-    Tool: 'tool'
+    Tool: 'tool',
 } as const;
 export type CreationMessageRoleEnum = typeof CreationMessageRoleEnum[keyof typeof CreationMessageRoleEnum];
 

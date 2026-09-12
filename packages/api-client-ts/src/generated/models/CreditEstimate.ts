@@ -22,22 +22,16 @@ import { mapValues } from '../runtime';
 export interface CreditEstimate {
     /**
      * 
-     * @type {number}
-     * @memberof CreditEstimate
      */
     lowCredits: number;
     /**
      * 
-     * @type {number}
-     * @memberof CreditEstimate
      */
     highCredits: number;
     /**
      * How many cost samples the current rolling window holds. Below 20 the
      * band collapses to the configured fallback and `estimated` is true.
      * 
-     * @type {number}
-     * @memberof CreditEstimate
      */
     sampleSize: number;
     /**
@@ -45,8 +39,6 @@ export interface CreditEstimate {
      * be shown wherever the figure is - an unlabelled fallback is a
      * measurement claim nobody made.
      * 
-     * @type {boolean}
-     * @memberof CreditEstimate
      */
     estimated: boolean;
 }
@@ -55,9 +47,9 @@ export interface CreditEstimate {
  * Check if a given object implements the CreditEstimate interface.
  */
 export function instanceOfCreditEstimate(value: object): value is CreditEstimate {
-    if (!('lowCredits' in value) || value['lowCredits'] === undefined) return false;
-    if (!('highCredits' in value) || value['highCredits'] === undefined) return false;
-    if (!('sampleSize' in value) || value['sampleSize'] === undefined) return false;
+    if ((!('lowCredits' in (value as Record<string, any>)) && !('low_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['lowCredits'] === undefined && (value as Record<string, any>)['low_credits'] === undefined)) return false;
+    if ((!('highCredits' in (value as Record<string, any>)) && !('high_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['highCredits'] === undefined && (value as Record<string, any>)['high_credits'] === undefined)) return false;
+    if ((!('sampleSize' in (value as Record<string, any>)) && !('sample_size' in (value as Record<string, any>))) || ((value as Record<string, any>)['sampleSize'] === undefined && (value as Record<string, any>)['sample_size'] === undefined)) return false;
     if (!('estimated' in value) || value['estimated'] === undefined) return false;
     return true;
 }

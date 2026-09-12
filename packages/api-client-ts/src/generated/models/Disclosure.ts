@@ -43,20 +43,14 @@ export interface Disclosure {
      * code this client does not know still has a label and a note, and
      * dropping it would hide a disclosure to keep a union tidy.
      * 
-     * @type {string}
-     * @memberof Disclosure
      */
     code: string;
     /**
      * 
-     * @type {string}
-     * @memberof Disclosure
      */
     label: string;
     /**
      * 
-     * @type {string}
-     * @memberof Disclosure
      */
     note: string;
 }

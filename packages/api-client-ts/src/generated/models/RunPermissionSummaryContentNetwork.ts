@@ -23,14 +23,10 @@ export interface RunPermissionSummaryContentNetwork {
      * Egress policy the sandbox is held to (ADR-005). `default_deny`
      * with an empty `allow` means it can reach nothing at all.
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContentNetwork
      */
     mode: string;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof RunPermissionSummaryContentNetwork
      */
     allow: Array<string>;
 }

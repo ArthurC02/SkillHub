@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -24,8 +24,6 @@ export interface CancelAccountDeletion200Response {
      * the post-cancel state from the same shape it reads
      * elsewhere, rather than inferring it from a bare 200.
      * 
-     * @type {Date}
-     * @memberof CancelAccountDeletion200Response
      */
     deletionRequestedAt: Date | null;
 }
@@ -34,7 +32,7 @@ export interface CancelAccountDeletion200Response {
  * Check if a given object implements the CancelAccountDeletion200Response interface.
  */
 export function instanceOfCancelAccountDeletion200Response(value: object): value is CancelAccountDeletion200Response {
-    if (!('deletionRequestedAt' in value) || value['deletionRequestedAt'] === undefined) return false;
+    if ((!('deletionRequestedAt' in (value as Record<string, any>)) && !('deletion_requested_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['deletionRequestedAt'] === undefined && (value as Record<string, any>)['deletion_requested_at'] === undefined)) return false;
     return true;
 }
 
@@ -48,7 +46,7 @@ export function CancelAccountDeletion200ResponseFromJSONTyped(json: any, ignoreD
     }
     return {
         
-        'deletionRequestedAt': (json['deletion_requested_at'] == null ? null : new Date(json['deletion_requested_at'])),
+        'deletionRequestedAt': (json['deletion_requested_at'] == null ? null : parseDateTime(json['deletion_requested_at'])),
     };
 }
 
@@ -63,7 +61,7 @@ export function CancelAccountDeletion200ResponseToJSONTyped(value?: CancelAccoun
 
     return {
         
-        'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : value['deletionRequestedAt'].toISOString(),
+        'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : serializeDateTime(value['deletionRequestedAt']),
     };
 }
 

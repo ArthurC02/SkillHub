@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface TraceSummarySkillsInner {
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummarySkillsInner
      */
     name?: string;
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummarySkillsInner
      */
     decision?: TraceSummarySkillsInnerDecisionEnum;
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummarySkillsInner
      */
     reason?: string;
 }
@@ -45,7 +39,7 @@ export interface TraceSummarySkillsInner {
  */
 export const TraceSummarySkillsInnerDecisionEnum = {
     Activated: 'activated',
-    Skipped: 'skipped'
+    Skipped: 'skipped',
 } as const;
 export type TraceSummarySkillsInnerDecisionEnum = typeof TraceSummarySkillsInnerDecisionEnum[keyof typeof TraceSummarySkillsInnerDecisionEnum];
 

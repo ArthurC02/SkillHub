@@ -35,8 +35,6 @@ export interface CreditBalance {
      * May be negative: a step already taken is always settled, so a
      * balance can go under before the next one is refused.
      * 
-     * @type {number}
-     * @memberof CreditBalance
      */
     balanceCredits: number;
     /**
@@ -44,30 +42,22 @@ export interface CreditBalance {
      * stops the session. Reported so a blocked screen can say how much
      * room is left rather than only that there is none.
      * 
-     * @type {number}
-     * @memberof CreditBalance
      */
     debtFloorCredits: number;
     /**
      * 
-     * @type {CreditEstimate}
-     * @memberof CreditBalance
      */
     estimatedSession: CreditEstimate;
     /**
      * Gate 1's answer for a new interactive-creation session, measured
      * against the same threshold the domain service blocks on.
      * 
-     * @type {boolean}
-     * @memberof CreditBalance
      */
     canStart: boolean;
     /**
      * Absent when can_start is true. Otherwise it names the shortfall in
      * credits and what to do about it - never a bare refusal.
      * 
-     * @type {string}
-     * @memberof CreditBalance
      */
     blockReason?: string;
 }
@@ -76,10 +66,10 @@ export interface CreditBalance {
  * Check if a given object implements the CreditBalance interface.
  */
 export function instanceOfCreditBalance(value: object): value is CreditBalance {
-    if (!('balanceCredits' in value) || value['balanceCredits'] === undefined) return false;
-    if (!('debtFloorCredits' in value) || value['debtFloorCredits'] === undefined) return false;
-    if (!('estimatedSession' in value) || value['estimatedSession'] === undefined) return false;
-    if (!('canStart' in value) || value['canStart'] === undefined) return false;
+    if ((!('balanceCredits' in (value as Record<string, any>)) && !('balance_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['balanceCredits'] === undefined && (value as Record<string, any>)['balance_credits'] === undefined)) return false;
+    if ((!('debtFloorCredits' in (value as Record<string, any>)) && !('debt_floor_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['debtFloorCredits'] === undefined && (value as Record<string, any>)['debt_floor_credits'] === undefined)) return false;
+    if ((!('estimatedSession' in (value as Record<string, any>)) && !('estimated_session' in (value as Record<string, any>))) || ((value as Record<string, any>)['estimatedSession'] === undefined && (value as Record<string, any>)['estimated_session'] === undefined)) return false;
+    if ((!('canStart' in (value as Record<string, any>)) && !('can_start' in (value as Record<string, any>))) || ((value as Record<string, any>)['canStart'] === undefined && (value as Record<string, any>)['can_start'] === undefined)) return false;
     return true;
 }
 

@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,42 +21,30 @@ import { mapValues } from '../runtime';
 export interface Dataset {
     /**
      * 
-     * @type {string}
-     * @memberof Dataset
      */
     datasetId: string;
     /**
      * Display name only; it is never used as a storage path.
-     * @type {string}
-     * @memberof Dataset
      */
     fileName: string;
     /**
      * Decided from the content's magic bytes, not from the file name
      * (PDM-005 §5.1). It may disagree with the uploaded extension.
      * 
-     * @type {string}
-     * @memberof Dataset
      */
     contentType: string;
     /**
      * 
-     * @type {number}
-     * @memberof Dataset
      */
     sizeBytes: number;
     /**
      * SHA-256 of the stored bytes. Copied into the run snapshot, where it
      * outlives the file itself (ADR-003).
      * 
-     * @type {string}
-     * @memberof Dataset
      */
     contentHash: string;
     /**
      * 90 days from upload; deleting earlier is always allowed.
-     * @type {Date}
-     * @memberof Dataset
      */
     expiresAt: Date;
 }
@@ -65,12 +53,12 @@ export interface Dataset {
  * Check if a given object implements the Dataset interface.
  */
 export function instanceOfDataset(value: object): value is Dataset {
-    if (!('datasetId' in value) || value['datasetId'] === undefined) return false;
-    if (!('fileName' in value) || value['fileName'] === undefined) return false;
-    if (!('contentType' in value) || value['contentType'] === undefined) return false;
-    if (!('sizeBytes' in value) || value['sizeBytes'] === undefined) return false;
-    if (!('contentHash' in value) || value['contentHash'] === undefined) return false;
-    if (!('expiresAt' in value) || value['expiresAt'] === undefined) return false;
+    if ((!('datasetId' in (value as Record<string, any>)) && !('dataset_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['datasetId'] === undefined && (value as Record<string, any>)['dataset_id'] === undefined)) return false;
+    if ((!('fileName' in (value as Record<string, any>)) && !('file_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['fileName'] === undefined && (value as Record<string, any>)['file_name'] === undefined)) return false;
+    if ((!('contentType' in (value as Record<string, any>)) && !('content_type' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentType'] === undefined && (value as Record<string, any>)['content_type'] === undefined)) return false;
+    if ((!('sizeBytes' in (value as Record<string, any>)) && !('size_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['sizeBytes'] === undefined && (value as Record<string, any>)['size_bytes'] === undefined)) return false;
+    if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
+    if ((!('expiresAt' in (value as Record<string, any>)) && !('expires_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['expiresAt'] === undefined && (value as Record<string, any>)['expires_at'] === undefined)) return false;
     return true;
 }
 
@@ -89,7 +77,7 @@ export function DatasetFromJSONTyped(json: any, ignoreDiscriminator: boolean): D
         'contentType': json['content_type'],
         'sizeBytes': json['size_bytes'],
         'contentHash': json['content_hash'],
-        'expiresAt': (new Date(json['expires_at'])),
+        'expiresAt': (json['expires_at'] == null ? json['expires_at'] : parseDateTime(json['expires_at'])),
     };
 }
 
@@ -109,7 +97,7 @@ export function DatasetToJSONTyped(value?: Dataset | null, ignoreDiscriminator: 
         'content_type': value['contentType'],
         'size_bytes': value['sizeBytes'],
         'content_hash': value['contentHash'],
-        'expires_at': value['expiresAt'].toISOString(),
+        'expires_at': value['expiresAt'] == null ? value['expiresAt'] : serializeDateTime(value['expiresAt']),
     };
 }
 

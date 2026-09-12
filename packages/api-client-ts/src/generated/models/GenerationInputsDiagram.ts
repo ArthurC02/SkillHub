@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface GenerationInputsDiagram {
     /**
      * 
-     * @type {string}
-     * @memberof GenerationInputsDiagram
      */
     mediaType: GenerationInputsDiagramMediaTypeEnum;
     /**
      * Hex digest of the decoded image bytes.
-     * @type {string}
-     * @memberof GenerationInputsDiagram
      */
     sha256: string;
     /**
      * Decoded size of the image.
-     * @type {number}
-     * @memberof GenerationInputsDiagram
      */
     bytes: number;
 }
@@ -46,7 +40,7 @@ export interface GenerationInputsDiagram {
 export const GenerationInputsDiagramMediaTypeEnum = {
     ImagePng: 'image/png',
     ImageJpeg: 'image/jpeg',
-    ImageWebp: 'image/webp'
+    ImageWebp: 'image/webp',
 } as const;
 export type GenerationInputsDiagramMediaTypeEnum = typeof GenerationInputsDiagramMediaTypeEnum[keyof typeof GenerationInputsDiagramMediaTypeEnum];
 
@@ -55,7 +49,7 @@ export type GenerationInputsDiagramMediaTypeEnum = typeof GenerationInputsDiagra
  * Check if a given object implements the GenerationInputsDiagram interface.
  */
 export function instanceOfGenerationInputsDiagram(value: object): value is GenerationInputsDiagram {
-    if (!('mediaType' in value) || value['mediaType'] === undefined) return false;
+    if ((!('mediaType' in (value as Record<string, any>)) && !('media_type' in (value as Record<string, any>))) || ((value as Record<string, any>)['mediaType'] === undefined && (value as Record<string, any>)['media_type'] === undefined)) return false;
     if (!('sha256' in value) || value['sha256'] === undefined) return false;
     if (!('bytes' in value) || value['bytes'] === undefined) return false;
     return true;

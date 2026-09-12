@@ -42,8 +42,6 @@ import {
 export interface RunComparison {
     /**
      * The run named in the path first, the `against` run second.
-     * @type {Array<RunComparisonRunsInner>}
-     * @memberof RunComparison
      */
     runs: Array<RunComparisonRunsInner>;
     /**
@@ -54,8 +52,6 @@ export interface RunComparison {
      * present on only a single side carries a null verdict for the other
      * rather than being dropped.
      * 
-     * @type {Array<RunComparisonCriterionMatrixInner>}
-     * @memberof RunComparison
      */
     criterionMatrix: Array<RunComparisonCriterionMatrixInner>;
     /**
@@ -67,8 +63,6 @@ export interface RunComparison {
      * cross-skill one would be a second diff implementation for a
      * comparison nobody asked for.
      * 
-     * @type {string}
-     * @memberof RunComparison
      */
     versionDiffUrl?: string;
 }
@@ -78,7 +72,7 @@ export interface RunComparison {
  */
 export function instanceOfRunComparison(value: object): value is RunComparison {
     if (!('runs' in value) || value['runs'] === undefined) return false;
-    if (!('criterionMatrix' in value) || value['criterionMatrix'] === undefined) return false;
+    if ((!('criterionMatrix' in (value as Record<string, any>)) && !('criterion_matrix' in (value as Record<string, any>))) || ((value as Record<string, any>)['criterionMatrix'] === undefined && (value as Record<string, any>)['criterion_matrix'] === undefined)) return false;
     return true;
 }
 

@@ -68,20 +68,14 @@ import {
 export interface PackagingPreview {
     /**
      * 
-     * @type {PackagingTargetId}
-     * @memberof PackagingPreview
      */
     target: PackagingTargetId;
     /**
      * Whether packaging would be permitted right now.
-     * @type {boolean}
-     * @memberof PackagingPreview
      */
     allowed: boolean;
     /**
      * Present exactly when `allowed` is false.
-     * @type {PackagingBlockedReason}
-     * @memberof PackagingPreview
      */
     blockedReason?: PackagingBlockedReason;
     /**
@@ -89,14 +83,10 @@ export interface PackagingPreview {
      * rather than assembled client-side, so the preview and the 422 from
      * the packaging call say the same sentence.
      * 
-     * @type {string}
-     * @memberof PackagingPreview
      */
     blockedMessage?: string;
     /**
      * 
-     * @type {PackageValidation}
-     * @memberof PackagingPreview
      */
     validation: PackageValidation;
     /**
@@ -114,8 +104,6 @@ export interface PackagingPreview {
      * package genuinely declares and imports nothing. The preview's
      * `allowed` and `blocked_reason` tell those two apart.
      * 
-     * @type {Array<string>}
-     * @memberof PackagingPreview
      */
     dependencies: Array<string>;
     /**
@@ -124,8 +112,6 @@ export interface PackagingPreview {
      * "there are none" — `excluded_test_cases` says which were left out
      * and why.
      * 
-     * @type {Array<PackagingPreviewIncludedTestCasesInner>}
-     * @memberof PackagingPreview
      */
     includedTestCases: Array<PackagingPreviewIncludedTestCasesInner>;
     /**
@@ -134,8 +120,6 @@ export interface PackagingPreview {
      * often that a dataset they uploaded cannot be redistributed, which is
      * a decision about licensing and not a defect in their test case.
      * 
-     * @type {Array<PackagingPreviewExcludedTestCasesInner>}
-     * @memberof PackagingPreview
      */
     excludedTestCases: Array<PackagingPreviewExcludedTestCasesInner>;
     /**
@@ -154,8 +138,6 @@ export interface PackagingPreview {
      * matters — a Skill that vendored its dependencies, or one whose
      * `SKILL.md` points at something the exporter would not carry.
      * 
-     * @type {Array<PackagingPreviewExcludedFilesInner>}
-     * @memberof PackagingPreview
      */
     excludedFiles: Array<PackagingPreviewExcludedFilesInner>;
     /**
@@ -183,8 +165,6 @@ export interface PackagingPreview {
      * promising less. A deployment configured shorter than a day answers 0,
      * which 02:NFR-002a 第 1 條 already forbids.
      * 
-     * @type {number}
-     * @memberof PackagingPreview
      */
     retentionDays: number;
 }
@@ -199,10 +179,10 @@ export function instanceOfPackagingPreview(value: object): value is PackagingPre
     if (!('allowed' in value) || value['allowed'] === undefined) return false;
     if (!('validation' in value) || value['validation'] === undefined) return false;
     if (!('dependencies' in value) || value['dependencies'] === undefined) return false;
-    if (!('includedTestCases' in value) || value['includedTestCases'] === undefined) return false;
-    if (!('excludedTestCases' in value) || value['excludedTestCases'] === undefined) return false;
-    if (!('excludedFiles' in value) || value['excludedFiles'] === undefined) return false;
-    if (!('retentionDays' in value) || value['retentionDays'] === undefined) return false;
+    if ((!('includedTestCases' in (value as Record<string, any>)) && !('included_test_cases' in (value as Record<string, any>))) || ((value as Record<string, any>)['includedTestCases'] === undefined && (value as Record<string, any>)['included_test_cases'] === undefined)) return false;
+    if ((!('excludedTestCases' in (value as Record<string, any>)) && !('excluded_test_cases' in (value as Record<string, any>))) || ((value as Record<string, any>)['excludedTestCases'] === undefined && (value as Record<string, any>)['excluded_test_cases'] === undefined)) return false;
+    if ((!('excludedFiles' in (value as Record<string, any>)) && !('excluded_files' in (value as Record<string, any>))) || ((value as Record<string, any>)['excludedFiles'] === undefined && (value as Record<string, any>)['excluded_files'] === undefined)) return false;
+    if ((!('retentionDays' in (value as Record<string, any>)) && !('retention_days' in (value as Record<string, any>))) || ((value as Record<string, any>)['retentionDays'] === undefined && (value as Record<string, any>)['retention_days'] === undefined)) return false;
     return true;
 }
 

@@ -28,8 +28,6 @@ export interface SetSkillRestrictionRequest {
      * generic sentence when a specific one was meant. The 400 names
      * the codes that exist.
      * 
-     * @type {string}
-     * @memberof SetSkillRestrictionRequest
      */
     reason: string;
     /**
@@ -39,8 +37,6 @@ export interface SetSkillRestrictionRequest {
      * into the audit event rather than onto the row - unlike a
      * takedown, whose reason the row itself carries.
      * 
-     * @type {string}
-     * @memberof SetSkillRestrictionRequest
      */
     note: string;
 }

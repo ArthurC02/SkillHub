@@ -21,8 +21,6 @@ import { mapValues } from '../runtime';
 export interface ClearSkillRestrictionRequest {
     /**
      * Why the hold was lifted. Required, same rule as on PUT.
-     * @type {string}
-     * @memberof ClearSkillRestrictionRequest
      */
     note: string;
 }

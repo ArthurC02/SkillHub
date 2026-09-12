@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,50 +21,34 @@ import { mapValues } from '../runtime';
 export interface RunAttemptsInner {
     /**
      * 
-     * @type {string}
-     * @memberof RunAttemptsInner
      */
     runAttemptId: string;
     /**
      * 
-     * @type {number}
-     * @memberof RunAttemptsInner
      */
     attemptNumber: number;
     /**
      * 
-     * @type {string}
-     * @memberof RunAttemptsInner
      */
     provider: string;
     /**
      * Never a key and never part of a URL (iron rule 10).
-     * @type {string}
-     * @memberof RunAttemptsInner
      */
     providerRunId?: string;
     /**
      * RunError.class from the provider contract.
-     * @type {string}
-     * @memberof RunAttemptsInner
      */
     errorClass?: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunAttemptsInner
      */
     errorMessage?: string;
     /**
      * 
-     * @type {Date}
-     * @memberof RunAttemptsInner
      */
     startedAt?: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof RunAttemptsInner
      */
     finishedAt?: Date;
 }
@@ -73,8 +57,8 @@ export interface RunAttemptsInner {
  * Check if a given object implements the RunAttemptsInner interface.
  */
 export function instanceOfRunAttemptsInner(value: object): value is RunAttemptsInner {
-    if (!('runAttemptId' in value) || value['runAttemptId'] === undefined) return false;
-    if (!('attemptNumber' in value) || value['attemptNumber'] === undefined) return false;
+    if ((!('runAttemptId' in (value as Record<string, any>)) && !('run_attempt_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['runAttemptId'] === undefined && (value as Record<string, any>)['run_attempt_id'] === undefined)) return false;
+    if ((!('attemptNumber' in (value as Record<string, any>)) && !('attempt_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['attemptNumber'] === undefined && (value as Record<string, any>)['attempt_number'] === undefined)) return false;
     if (!('provider' in value) || value['provider'] === undefined) return false;
     return true;
 }
@@ -95,8 +79,8 @@ export function RunAttemptsInnerFromJSONTyped(json: any, ignoreDiscriminator: bo
         'providerRunId': json['provider_run_id'] == null ? undefined : json['provider_run_id'],
         'errorClass': json['error_class'] == null ? undefined : json['error_class'],
         'errorMessage': json['error_message'] == null ? undefined : json['error_message'],
-        'startedAt': json['started_at'] == null ? undefined : (new Date(json['started_at'])),
-        'finishedAt': json['finished_at'] == null ? undefined : (new Date(json['finished_at'])),
+        'startedAt': json['started_at'] == null ? undefined : (parseDateTime(json['started_at'])),
+        'finishedAt': json['finished_at'] == null ? undefined : (parseDateTime(json['finished_at'])),
     };
 }
 
@@ -117,8 +101,8 @@ export function RunAttemptsInnerToJSONTyped(value?: RunAttemptsInner | null, ign
         'provider_run_id': value['providerRunId'],
         'error_class': value['errorClass'],
         'error_message': value['errorMessage'],
-        'started_at': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
-        'finished_at': value['finishedAt'] == null ? value['finishedAt'] : value['finishedAt'].toISOString(),
+        'started_at': value['startedAt'] == null ? value['startedAt'] : serializeDateTime(value['startedAt']),
+        'finished_at': value['finishedAt'] == null ? value['finishedAt'] : serializeDateTime(value['finishedAt']),
     };
 }
 

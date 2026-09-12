@@ -24,8 +24,6 @@ export interface CreateSkillVersionFromSuggestionsRequest {
      * rather than derived, so applying a set produced under one
      * rubric cannot pick up a suggestion from a re-evaluation.
      * 
-     * @type {string}
-     * @memberof CreateSkillVersionFromSuggestionsRequest
      */
     evaluationId: string;
     /**
@@ -33,8 +31,6 @@ export interface CreateSkillVersionFromSuggestionsRequest {
      * `evaluation_id`. Order does not matter; two suggestions
      * touching the same file are applied in path order.
      * 
-     * @type {Array<string>}
-     * @memberof CreateSkillVersionFromSuggestionsRequest
      */
     suggestionIds: Array<string>;
 }
@@ -43,8 +39,8 @@ export interface CreateSkillVersionFromSuggestionsRequest {
  * Check if a given object implements the CreateSkillVersionFromSuggestionsRequest interface.
  */
 export function instanceOfCreateSkillVersionFromSuggestionsRequest(value: object): value is CreateSkillVersionFromSuggestionsRequest {
-    if (!('evaluationId' in value) || value['evaluationId'] === undefined) return false;
-    if (!('suggestionIds' in value) || value['suggestionIds'] === undefined) return false;
+    if ((!('evaluationId' in (value as Record<string, any>)) && !('evaluation_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['evaluationId'] === undefined && (value as Record<string, any>)['evaluation_id'] === undefined)) return false;
+    if ((!('suggestionIds' in (value as Record<string, any>)) && !('suggestion_ids' in (value as Record<string, any>))) || ((value as Record<string, any>)['suggestionIds'] === undefined && (value as Record<string, any>)['suggestion_ids'] === undefined)) return false;
     return true;
 }
 

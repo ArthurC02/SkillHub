@@ -24,8 +24,6 @@ import { mapValues } from '../runtime';
 export interface SkillLimitation {
     /**
      * 
-     * @type {string}
-     * @memberof SkillLimitation
      */
     text: string;
     /**
@@ -36,8 +34,6 @@ export interface SkillLimitation {
      * package cites external URLs so it needs network access. ADR-013
      * requires the model-written half to be labelled as such.
      * 
-     * @type {string}
-     * @memberof SkillLimitation
      */
     source: SkillLimitationSourceEnum;
 }
@@ -48,7 +44,7 @@ export interface SkillLimitation {
  */
 export const SkillLimitationSourceEnum = {
     Model: 'model',
-    Scan: 'scan'
+    Scan: 'scan',
 } as const;
 export type SkillLimitationSourceEnum = typeof SkillLimitationSourceEnum[keyof typeof SkillLimitationSourceEnum];
 

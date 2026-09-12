@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface SkillFileEntry {
     /**
      * 
-     * @type {string}
-     * @memberof SkillFileEntry
      */
     path: string;
     /**
      * Uncompressed size in bytes.
-     * @type {number}
-     * @memberof SkillFileEntry
      */
     size: number;
     /**
@@ -36,8 +32,6 @@ export interface SkillFileEntry {
      * and the risk block never disagree about what counts as a script
      * (DISC-003 Script 必須有明確標示).
      * 
-     * @type {boolean}
-     * @memberof SkillFileEntry
      */
     isScript: boolean;
 }
@@ -48,7 +42,7 @@ export interface SkillFileEntry {
 export function instanceOfSkillFileEntry(value: object): value is SkillFileEntry {
     if (!('path' in value) || value['path'] === undefined) return false;
     if (!('size' in value) || value['size'] === undefined) return false;
-    if (!('isScript' in value) || value['isScript'] === undefined) return false;
+    if ((!('isScript' in (value as Record<string, any>)) && !('is_script' in (value as Record<string, any>))) || ((value as Record<string, any>)['isScript'] === undefined && (value as Record<string, any>)['is_script'] === undefined)) return false;
     return true;
 }
 

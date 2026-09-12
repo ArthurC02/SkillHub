@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { CreationSnapshot } from './CreationSnapshot';
 import {
     CreationSnapshotFromJSON,
@@ -29,50 +29,34 @@ import {
 export interface CreationSession {
     /**
      * 
-     * @type {string}
-     * @memberof CreationSession
      */
     id: string;
     /**
      * 
-     * @type {number}
-     * @memberof CreationSession
      */
     revision: number;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSession
      */
     state: CreationSessionStateEnum;
     /**
      * 
-     * @type {CreationSnapshot}
-     * @memberof CreationSession
      */
     snapshot: CreationSnapshot;
     /**
      * 
-     * @type {Date}
-     * @memberof CreationSession
      */
     createdAt: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof CreationSession
      */
     updatedAt: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof CreationSession
      */
     expiresAt: Date;
     /**
      * Session-timeout clock: after this instant every command except cancel is refused (GEN-012). Distinct from expires_at, the retention clock that decides when the row is deleted.
-     * @type {Date}
-     * @memberof CreationSession
      */
     deadline: Date;
 }
@@ -91,7 +75,7 @@ export const CreationSessionStateEnum = {
     Saved: 'saved',
     Cancelled: 'cancelled',
     Failed: 'failed',
-    NeedsReupload: 'needs_reupload'
+    NeedsReupload: 'needs_reupload',
 } as const;
 export type CreationSessionStateEnum = typeof CreationSessionStateEnum[keyof typeof CreationSessionStateEnum];
 
@@ -104,9 +88,9 @@ export function instanceOfCreationSession(value: object): value is CreationSessi
     if (!('revision' in value) || value['revision'] === undefined) return false;
     if (!('state' in value) || value['state'] === undefined) return false;
     if (!('snapshot' in value) || value['snapshot'] === undefined) return false;
-    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
-    if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
-    if (!('expiresAt' in value) || value['expiresAt'] === undefined) return false;
+    if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
+    if ((!('updatedAt' in (value as Record<string, any>)) && !('updated_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['updatedAt'] === undefined && (value as Record<string, any>)['updated_at'] === undefined)) return false;
+    if ((!('expiresAt' in (value as Record<string, any>)) && !('expires_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['expiresAt'] === undefined && (value as Record<string, any>)['expires_at'] === undefined)) return false;
     if (!('deadline' in value) || value['deadline'] === undefined) return false;
     return true;
 }
@@ -125,10 +109,10 @@ export function CreationSessionFromJSONTyped(json: any, ignoreDiscriminator: boo
         'revision': json['revision'],
         'state': json['state'],
         'snapshot': CreationSnapshotFromJSON(json['snapshot']),
-        'createdAt': (new Date(json['created_at'])),
-        'updatedAt': (new Date(json['updated_at'])),
-        'expiresAt': (new Date(json['expires_at'])),
-        'deadline': (new Date(json['deadline'])),
+        'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
+        'updatedAt': (json['updated_at'] == null ? json['updated_at'] : parseDateTime(json['updated_at'])),
+        'expiresAt': (json['expires_at'] == null ? json['expires_at'] : parseDateTime(json['expires_at'])),
+        'deadline': (json['deadline'] == null ? json['deadline'] : parseDateTime(json['deadline'])),
     };
 }
 
@@ -147,10 +131,10 @@ export function CreationSessionToJSONTyped(value?: CreationSession | null, ignor
         'revision': value['revision'],
         'state': value['state'],
         'snapshot': CreationSnapshotToJSON(value['snapshot']),
-        'created_at': value['createdAt'].toISOString(),
-        'updated_at': value['updatedAt'].toISOString(),
-        'expires_at': value['expiresAt'].toISOString(),
-        'deadline': value['deadline'].toISOString(),
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'updated_at': value['updatedAt'] == null ? value['updatedAt'] : serializeDateTime(value['updatedAt']),
+        'expires_at': value['expiresAt'] == null ? value['expiresAt'] : serializeDateTime(value['expiresAt']),
+        'deadline': value['deadline'] == null ? value['deadline'] : serializeDateTime(value['deadline']),
     };
 }
 

@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface TakedownSkillAsOperator200Response {
     /**
      * 
-     * @type {string}
-     * @memberof TakedownSkillAsOperator200Response
      */
     skillId: string;
     /**
      * 
-     * @type {boolean}
-     * @memberof TakedownSkillAsOperator200Response
      */
     takenDown: boolean;
 }
@@ -37,8 +33,8 @@ export interface TakedownSkillAsOperator200Response {
  * Check if a given object implements the TakedownSkillAsOperator200Response interface.
  */
 export function instanceOfTakedownSkillAsOperator200Response(value: object): value is TakedownSkillAsOperator200Response {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('takenDown' in value) || value['takenDown'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('takenDown' in (value as Record<string, any>)) && !('taken_down' in (value as Record<string, any>))) || ((value as Record<string, any>)['takenDown'] === undefined && (value as Record<string, any>)['taken_down'] === undefined)) return false;
     return true;
 }
 

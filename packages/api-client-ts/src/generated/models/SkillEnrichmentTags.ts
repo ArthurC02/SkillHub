@@ -24,26 +24,18 @@ import { mapValues } from '../runtime';
 export interface SkillEnrichmentTags {
     /**
      * 
-     * @type {Array<string>}
-     * @memberof SkillEnrichmentTags
      */
     inputs: Array<string>;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof SkillEnrichmentTags
      */
     outputs: Array<string>;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof SkillEnrichmentTags
      */
     tools: Array<string>;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof SkillEnrichmentTags
      */
     dependencies: Array<string>;
 }

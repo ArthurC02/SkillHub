@@ -21,8 +21,6 @@ import { mapValues } from '../runtime';
 export interface AddAcceptanceCriterionRequest {
     /**
      * 
-     * @type {string}
-     * @memberof AddAcceptanceCriterionRequest
      */
     text: string;
     /**
@@ -33,8 +31,6 @@ export interface AddAcceptanceCriterionRequest {
      * the text later re-labels it `user`, because by then the words
      * are theirs.
      * 
-     * @type {string}
-     * @memberof AddAcceptanceCriterionRequest
      */
     source?: AddAcceptanceCriterionRequestSourceEnum;
 }
@@ -45,7 +41,7 @@ export interface AddAcceptanceCriterionRequest {
  */
 export const AddAcceptanceCriterionRequestSourceEnum = {
     User: 'user',
-    Suggested: 'suggested'
+    Suggested: 'suggested',
 } as const;
 export type AddAcceptanceCriterionRequestSourceEnum = typeof AddAcceptanceCriterionRequestSourceEnum[keyof typeof AddAcceptanceCriterionRequestSourceEnum];
 

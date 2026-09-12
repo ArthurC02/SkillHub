@@ -39,14 +39,10 @@ export interface GenerateSkillRequest {
      * diagram alone is enough. When present it is bounded on both
      * sides exactly as before.
      * 
-     * @type {string}
-     * @memberof GenerateSkillRequest
      */
     taskDescription?: string;
     /**
      * 
-     * @type {GenerateDiagram}
-     * @memberof GenerateSkillRequest
      */
     diagram?: GenerateDiagram;
     /**
@@ -61,8 +57,6 @@ export interface GenerateSkillRequest {
      * `redistribution = generated`: a reference is something the
      * model read, not something the package contains (ADR-066).
      * 
-     * @type {Array<string>}
-     * @memberof GenerateSkillRequest
      */
     referenceSkillIds?: Array<string>;
 }

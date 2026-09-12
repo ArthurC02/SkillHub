@@ -29,8 +29,6 @@ import {
 export interface ListPackagingTargets200Response {
     /**
      * 
-     * @type {Array<PackagingTarget>}
-     * @memberof ListPackagingTargets200Response
      */
     targets: Array<PackagingTarget>;
 }

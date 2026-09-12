@@ -29,20 +29,14 @@ import {
 export interface UpdateTestCaseRequest {
     /**
      * 
-     * @type {string}
-     * @memberof UpdateTestCaseRequest
      */
     name?: string;
     /**
      * 
-     * @type {string}
-     * @memberof UpdateTestCaseRequest
      */
     userPrompt?: string;
     /**
      * 
-     * @type {Rubric}
-     * @memberof UpdateTestCaseRequest
      */
     rubric?: Rubric | null;
 }
@@ -66,7 +60,7 @@ export function UpdateTestCaseRequestFromJSONTyped(json: any, ignoreDiscriminato
         
         'name': json['name'] == null ? undefined : json['name'],
         'userPrompt': json['user_prompt'] == null ? undefined : json['user_prompt'],
-        'rubric': json['rubric'] == null ? undefined : RubricFromJSON(json['rubric']),
+        'rubric': json['rubric'] === undefined ? undefined : json['rubric'] === null ? null : RubricFromJSON(json['rubric']),
     };
 }
 

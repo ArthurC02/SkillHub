@@ -26,14 +26,10 @@ export interface SubmitFeedbackRequest {
      * not-invited and the out-of-allowance surfaces send
      * (BETA-005).
      * 
-     * @type {string}
-     * @memberof SubmitFeedbackRequest
      */
     kind: SubmitFeedbackRequestKindEnum;
     /**
      * The user's own words. Must not be blank.
-     * @type {string}
-     * @memberof SubmitFeedbackRequest
      */
     message: string;
     /**
@@ -42,8 +38,6 @@ export interface SubmitFeedbackRequest {
      * data and this channel is not where it belongs (beta-design
      * §4.2 界線 2).
      * 
-     * @type {string}
-     * @memberof SubmitFeedbackRequest
      */
     pagePath?: string;
     /**
@@ -52,8 +46,6 @@ export interface SubmitFeedbackRequest {
      * failing the report, because losing the feedback would be the
      * worse outcome.
      * 
-     * @type {string}
-     * @memberof SubmitFeedbackRequest
      */
     runId?: string;
     /**
@@ -62,8 +54,6 @@ export interface SubmitFeedbackRequest {
      * labelled local build otherwise). Sent by the form, never
      * typed; anything over the length is dropped, not refused.
      * 
-     * @type {string}
-     * @memberof SubmitFeedbackRequest
      */
     buildId?: string;
 }
@@ -74,7 +64,7 @@ export interface SubmitFeedbackRequest {
  */
 export const SubmitFeedbackRequestKindEnum = {
     BlockingIssue: 'blocking_issue',
-    NeedSignal: 'need_signal'
+    NeedSignal: 'need_signal',
 } as const;
 export type SubmitFeedbackRequestKindEnum = typeof SubmitFeedbackRequestKindEnum[keyof typeof SubmitFeedbackRequestKindEnum];
 

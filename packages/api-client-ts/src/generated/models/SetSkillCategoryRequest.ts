@@ -24,8 +24,6 @@ export interface SetSkillCategoryRequest {
      * skill back off every shelf — an owner who is unsure has to be
      * able to say so, and 尚未定值 is a real answer, not a gap.
      * 
-     * @type {string}
-     * @memberof SetSkillCategoryRequest
      */
     category: SetSkillCategoryRequestCategoryEnum;
 }
@@ -38,7 +36,7 @@ export const SetSkillCategoryRequestCategoryEnum = {
     Documents: 'documents',
     Writing: 'writing',
     Data: 'data',
-    Unassigned: 'unassigned'
+    Unassigned: 'unassigned',
 } as const;
 export type SetSkillCategoryRequestCategoryEnum = typeof SetSkillCategoryRequestCategoryEnum[keyof typeof SetSkillCategoryRequestCategoryEnum];
 

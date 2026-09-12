@@ -29,14 +29,10 @@ import {
 export interface SetSkillRestriction200Response {
     /**
      * 
-     * @type {string}
-     * @memberof SetSkillRestriction200Response
      */
     skillId: string;
     /**
      * 
-     * @type {SkillAccessRestriction}
-     * @memberof SetSkillRestriction200Response
      */
     accessRestriction: SkillAccessRestriction;
     /**
@@ -45,8 +41,6 @@ export interface SetSkillRestriction200Response {
      * with a blank reason is a state 0023's CHECK constraint
      * makes impossible, and "" would read as one.
      * 
-     * @type {string}
-     * @memberof SetSkillRestriction200Response
      */
     previousReason: string | null;
 }
@@ -55,9 +49,9 @@ export interface SetSkillRestriction200Response {
  * Check if a given object implements the SetSkillRestriction200Response interface.
  */
 export function instanceOfSetSkillRestriction200Response(value: object): value is SetSkillRestriction200Response {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('accessRestriction' in value) || value['accessRestriction'] === undefined) return false;
-    if (!('previousReason' in value) || value['previousReason'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('accessRestriction' in (value as Record<string, any>)) && !('access_restriction' in (value as Record<string, any>))) || ((value as Record<string, any>)['accessRestriction'] === undefined && (value as Record<string, any>)['access_restriction'] === undefined)) return false;
+    if ((!('previousReason' in (value as Record<string, any>)) && !('previous_reason' in (value as Record<string, any>))) || ((value as Record<string, any>)['previousReason'] === undefined && (value as Record<string, any>)['previous_reason'] === undefined)) return false;
     return true;
 }
 

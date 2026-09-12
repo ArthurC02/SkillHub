@@ -25,8 +25,6 @@ export interface TakedownSkillAsOperatorRequest {
      * reason does not constitute one, and a takedown nobody can
      * account for later is the row an abuse review cannot close.
      * 
-     * @type {string}
-     * @memberof TakedownSkillAsOperatorRequest
      */
     reason: string;
 }

@@ -34,8 +34,6 @@ export interface EvaluationCost {
      * screen that distinguished them would be explaining the ledger's
      * internals to somebody reading a verdict.
      * 
-     * @type {number}
-     * @memberof EvaluationCost
      */
     evaluationCredits: number | null;
     /**
@@ -47,14 +45,10 @@ export interface EvaluationCost {
      * the other two labels to it (the value was on the wire before it was
      * in this enum; 04 丙-147).
      * 
-     * @type {string}
-     * @memberof EvaluationCost
      */
     source: EvaluationCostSourceEnum;
     /**
      * 
-     * @type {string}
-     * @memberof EvaluationCost
      */
     note: string;
 }
@@ -66,7 +60,7 @@ export interface EvaluationCost {
 export const EvaluationCostSourceEnum = {
     Gateway: 'gateway',
     Estimated: 'estimated',
-    Unreported: 'unreported'
+    Unreported: 'unreported',
 } as const;
 export type EvaluationCostSourceEnum = typeof EvaluationCostSourceEnum[keyof typeof EvaluationCostSourceEnum];
 
@@ -75,7 +69,7 @@ export type EvaluationCostSourceEnum = typeof EvaluationCostSourceEnum[keyof typ
  * Check if a given object implements the EvaluationCost interface.
  */
 export function instanceOfEvaluationCost(value: object): value is EvaluationCost {
-    if (!('evaluationCredits' in value) || value['evaluationCredits'] === undefined) return false;
+    if ((!('evaluationCredits' in (value as Record<string, any>)) && !('evaluation_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['evaluationCredits'] === undefined && (value as Record<string, any>)['evaluation_credits'] === undefined)) return false;
     if (!('source' in value) || value['source'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;

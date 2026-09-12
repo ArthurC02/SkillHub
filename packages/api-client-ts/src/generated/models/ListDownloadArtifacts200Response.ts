@@ -29,8 +29,6 @@ import {
 export interface ListDownloadArtifacts200Response {
     /**
      * 
-     * @type {Array<DownloadArtifact>}
-     * @memberof ListDownloadArtifacts200Response
      */
     downloads: Array<DownloadArtifact>;
 }

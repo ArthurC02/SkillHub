@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { EvidenceRefByteRange } from './EvidenceRefByteRange';
 import {
     EvidenceRefByteRangeFromJSON,
@@ -41,8 +41,6 @@ import {
 export interface EvidenceRef {
     /**
      * 
-     * @type {string}
-     * @memberof EvidenceRef
      */
     kind: EvidenceRefKindEnum;
     /**
@@ -75,8 +73,6 @@ export interface EvidenceRef {
      *   Like `not_found` it never counts as verified evidence, so a rubric
      *   item with `evidence_required` is not satisfied by it.
      * 
-     * @type {string}
-     * @memberof EvidenceRef
      */
     match: EvidenceRefMatchEnum;
     /**
@@ -87,14 +83,10 @@ export interface EvidenceRef {
      * platform stopped treating them the same. Absent when `kind` was
      * right, which is the ordinary case.
      * 
-     * @type {string}
-     * @memberof EvidenceRef
      */
     reattributedFrom?: EvidenceRefReattributedFromEnum;
     /**
      * Present for `trace_event`.
-     * @type {string}
-     * @memberof EvidenceRef
      */
     traceEventId?: string;
     /**
@@ -102,28 +94,20 @@ export interface EvidenceRef {
      * is partitioned by time and keyed on (id, occurred_at), so an id on
      * its own does not locate the row.
      * 
-     * @type {Date}
-     * @memberof EvidenceRef
      */
     occurredAt?: Date;
     /**
      * Run-output-relative path for `artifact`. Never absolute and never
      * escaping the run's own output.
      * 
-     * @type {string}
-     * @memberof EvidenceRef
      */
     artifactPath?: string;
     /**
      * 
-     * @type {EvidenceRefByteRange}
-     * @memberof EvidenceRef
      */
     byteRange?: EvidenceRefByteRange;
     /**
      * 
-     * @type {EvidenceRefCharRange}
-     * @memberof EvidenceRef
      */
     charRange?: EvidenceRefCharRange;
     /**
@@ -132,14 +116,10 @@ export interface EvidenceRef {
      * content that crossed the trust boundary (ADR-001) — render it as
      * inert text, never interpreting HTML, ANSI or SVG.
      * 
-     * @type {string}
-     * @memberof EvidenceRef
      */
     excerpt: string;
     /**
      * True when the excerpt is a cut of a longer passage.
-     * @type {boolean}
-     * @memberof EvidenceRef
      */
     excerptTruncated: boolean;
     /**
@@ -149,8 +129,6 @@ export interface EvidenceRef {
      * Never presented as though the original were still there, and never
      * blanked out either (ADR-009).
      * 
-     * @type {boolean}
-     * @memberof EvidenceRef
      */
     available: boolean;
 }
@@ -162,7 +140,7 @@ export interface EvidenceRef {
 export const EvidenceRefKindEnum = {
     TraceEvent: 'trace_event',
     Artifact: 'artifact',
-    AgentOutput: 'agent_output'
+    AgentOutput: 'agent_output',
 } as const;
 export type EvidenceRefKindEnum = typeof EvidenceRefKindEnum[keyof typeof EvidenceRefKindEnum];
 
@@ -173,7 +151,7 @@ export const EvidenceRefMatchEnum = {
     Exact: 'exact',
     Normalized: 'normalized',
     NotFound: 'not_found',
-    NotChecked: 'not_checked'
+    NotChecked: 'not_checked',
 } as const;
 export type EvidenceRefMatchEnum = typeof EvidenceRefMatchEnum[keyof typeof EvidenceRefMatchEnum];
 
@@ -183,7 +161,7 @@ export type EvidenceRefMatchEnum = typeof EvidenceRefMatchEnum[keyof typeof Evid
 export const EvidenceRefReattributedFromEnum = {
     TraceEvent: 'trace_event',
     Artifact: 'artifact',
-    AgentOutput: 'agent_output'
+    AgentOutput: 'agent_output',
 } as const;
 export type EvidenceRefReattributedFromEnum = typeof EvidenceRefReattributedFromEnum[keyof typeof EvidenceRefReattributedFromEnum];
 
@@ -195,7 +173,7 @@ export function instanceOfEvidenceRef(value: object): value is EvidenceRef {
     if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('match' in value) || value['match'] === undefined) return false;
     if (!('excerpt' in value) || value['excerpt'] === undefined) return false;
-    if (!('excerptTruncated' in value) || value['excerptTruncated'] === undefined) return false;
+    if ((!('excerptTruncated' in (value as Record<string, any>)) && !('excerpt_truncated' in (value as Record<string, any>))) || ((value as Record<string, any>)['excerptTruncated'] === undefined && (value as Record<string, any>)['excerpt_truncated'] === undefined)) return false;
     if (!('available' in value) || value['available'] === undefined) return false;
     return true;
 }
@@ -214,7 +192,7 @@ export function EvidenceRefFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'match': json['match'],
         'reattributedFrom': json['reattributed_from'] == null ? undefined : json['reattributed_from'],
         'traceEventId': json['trace_event_id'] == null ? undefined : json['trace_event_id'],
-        'occurredAt': json['occurred_at'] == null ? undefined : (new Date(json['occurred_at'])),
+        'occurredAt': json['occurred_at'] == null ? undefined : (parseDateTime(json['occurred_at'])),
         'artifactPath': json['artifact_path'] == null ? undefined : json['artifact_path'],
         'byteRange': json['byte_range'] == null ? undefined : EvidenceRefByteRangeFromJSON(json['byte_range']),
         'charRange': json['char_range'] == null ? undefined : EvidenceRefCharRangeFromJSON(json['char_range']),
@@ -239,7 +217,7 @@ export function EvidenceRefToJSONTyped(value?: EvidenceRef | null, ignoreDiscrim
         'match': value['match'],
         'reattributed_from': value['reattributedFrom'],
         'trace_event_id': value['traceEventId'],
-        'occurred_at': value['occurredAt'] == null ? value['occurredAt'] : value['occurredAt'].toISOString(),
+        'occurred_at': value['occurredAt'] == null ? value['occurredAt'] : serializeDateTime(value['occurredAt']),
         'artifact_path': value['artifactPath'],
         'byte_range': EvidenceRefByteRangeToJSON(value['byteRange']),
         'char_range': EvidenceRefCharRangeToJSON(value['charRange']),

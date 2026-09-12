@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { DailyAmount } from './DailyAmount';
 import {
     DailyAmountFromJSON,
@@ -29,26 +29,18 @@ import {
 export interface CreditTrend {
     /**
      * 
-     * @type {Date}
-     * @memberof CreditTrend
      */
     from: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof CreditTrend
      */
     to: Date;
     /**
      * 
-     * @type {Array<DailyAmount>}
-     * @memberof CreditTrend
      */
     buckets: Array<DailyAmount>;
     /**
      * 
-     * @type {number}
-     * @memberof CreditTrend
      */
     balanceTotal: number;
 }
@@ -60,7 +52,7 @@ export function instanceOfCreditTrend(value: object): value is CreditTrend {
     if (!('from' in value) || value['from'] === undefined) return false;
     if (!('to' in value) || value['to'] === undefined) return false;
     if (!('buckets' in value) || value['buckets'] === undefined) return false;
-    if (!('balanceTotal' in value) || value['balanceTotal'] === undefined) return false;
+    if ((!('balanceTotal' in (value as Record<string, any>)) && !('balance_total' in (value as Record<string, any>))) || ((value as Record<string, any>)['balanceTotal'] === undefined && (value as Record<string, any>)['balance_total'] === undefined)) return false;
     return true;
 }
 
@@ -74,8 +66,8 @@ export function CreditTrendFromJSONTyped(json: any, ignoreDiscriminator: boolean
     }
     return {
         
-        'from': (new Date(json['from'])),
-        'to': (new Date(json['to'])),
+        'from': (json['from'] == null ? json['from'] : parseDate(json['from'])),
+        'to': (json['to'] == null ? json['to'] : parseDate(json['to'])),
         'buckets': ((json['buckets'] as Array<any>).map(DailyAmountFromJSON)),
         'balanceTotal': json['balance_total'],
     };
@@ -92,8 +84,8 @@ export function CreditTrendToJSONTyped(value?: CreditTrend | null, ignoreDiscrim
 
     return {
         
-        'from': value['from'].toISOString().substring(0,10),
-        'to': value['to'].toISOString().substring(0,10),
+        'from': value['from'] == null ? value['from'] : serializeDate(value['from']),
+        'to': value['to'] == null ? value['to'] : serializeDate(value['to']),
         'buckets': ((value['buckets'] as Array<any>).map(DailyAmountToJSON)),
         'balance_total': value['balanceTotal'],
     };

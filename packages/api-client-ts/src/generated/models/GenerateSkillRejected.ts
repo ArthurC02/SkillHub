@@ -36,26 +36,18 @@ import {
 export interface GenerateSkillRejected {
     /**
      * 
-     * @type {Array<Finding>}
-     * @memberof GenerateSkillRejected
      */
     errors: Array<Finding>;
     /**
      * 
-     * @type {Array<Finding>}
-     * @memberof GenerateSkillRejected
      */
     warnings: Array<Finding>;
     /**
      * 
-     * @type {Array<Finding>}
-     * @memberof GenerateSkillRejected
      */
     infos: Array<Finding>;
     /**
      * 
-     * @type {number}
-     * @memberof GenerateSkillRejected
      */
     attempts: number;
 }

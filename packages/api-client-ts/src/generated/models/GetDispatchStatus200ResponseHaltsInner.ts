@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,26 +21,18 @@ import { mapValues } from '../runtime';
 export interface GetDispatchStatus200ResponseHaltsInner {
     /**
      * A provider name, or `pool` for the whole fleet.
-     * @type {string}
-     * @memberof GetDispatchStatus200ResponseHaltsInner
      */
     target: string;
     /**
      * 
-     * @type {string}
-     * @memberof GetDispatchStatus200ResponseHaltsInner
      */
     source: GetDispatchStatus200ResponseHaltsInnerSourceEnum;
     /**
      * 
-     * @type {string}
-     * @memberof GetDispatchStatus200ResponseHaltsInner
      */
     reason: string;
     /**
      * 
-     * @type {Date}
-     * @memberof GetDispatchStatus200ResponseHaltsInner
      */
     declaredAt: Date;
     /**
@@ -48,8 +40,6 @@ export interface GetDispatchStatus200ResponseHaltsInner {
      * condition has been clear. Only moves for
      * `orphan_threshold`; two lifts it.
      * 
-     * @type {number}
-     * @memberof GetDispatchStatus200ResponseHaltsInner
      */
     clearRounds?: number;
     /**
@@ -57,8 +47,6 @@ export interface GetDispatchStatus200ResponseHaltsInner {
      * the trigger decide when service resumes, which
      * 03:SEC-012 forbids.
      * 
-     * @type {boolean}
-     * @memberof GetDispatchStatus200ResponseHaltsInner
      */
     automaticRecovery: boolean;
 }
@@ -69,7 +57,7 @@ export interface GetDispatchStatus200ResponseHaltsInner {
  */
 export const GetDispatchStatus200ResponseHaltsInnerSourceEnum = {
     P1Incident: 'p1_incident',
-    OrphanThreshold: 'orphan_threshold'
+    OrphanThreshold: 'orphan_threshold',
 } as const;
 export type GetDispatchStatus200ResponseHaltsInnerSourceEnum = typeof GetDispatchStatus200ResponseHaltsInnerSourceEnum[keyof typeof GetDispatchStatus200ResponseHaltsInnerSourceEnum];
 
@@ -81,8 +69,8 @@ export function instanceOfGetDispatchStatus200ResponseHaltsInner(value: object):
     if (!('target' in value) || value['target'] === undefined) return false;
     if (!('source' in value) || value['source'] === undefined) return false;
     if (!('reason' in value) || value['reason'] === undefined) return false;
-    if (!('declaredAt' in value) || value['declaredAt'] === undefined) return false;
-    if (!('automaticRecovery' in value) || value['automaticRecovery'] === undefined) return false;
+    if ((!('declaredAt' in (value as Record<string, any>)) && !('declared_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['declaredAt'] === undefined && (value as Record<string, any>)['declared_at'] === undefined)) return false;
+    if ((!('automaticRecovery' in (value as Record<string, any>)) && !('automatic_recovery' in (value as Record<string, any>))) || ((value as Record<string, any>)['automaticRecovery'] === undefined && (value as Record<string, any>)['automatic_recovery'] === undefined)) return false;
     return true;
 }
 
@@ -99,7 +87,7 @@ export function GetDispatchStatus200ResponseHaltsInnerFromJSONTyped(json: any, i
         'target': json['target'],
         'source': json['source'],
         'reason': json['reason'],
-        'declaredAt': (new Date(json['declared_at'])),
+        'declaredAt': (json['declared_at'] == null ? json['declared_at'] : parseDateTime(json['declared_at'])),
         'clearRounds': json['clear_rounds'] == null ? undefined : json['clear_rounds'],
         'automaticRecovery': json['automatic_recovery'],
     };
@@ -119,7 +107,7 @@ export function GetDispatchStatus200ResponseHaltsInnerToJSONTyped(value?: GetDis
         'target': value['target'],
         'source': value['source'],
         'reason': value['reason'],
-        'declared_at': value['declaredAt'].toISOString(),
+        'declared_at': value['declaredAt'] == null ? value['declaredAt'] : serializeDateTime(value['declaredAt']),
         'clear_rounds': value['clearRounds'],
         'automatic_recovery': value['automaticRecovery'],
     };

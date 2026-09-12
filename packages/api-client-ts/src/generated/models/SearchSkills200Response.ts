@@ -29,8 +29,6 @@ import {
 export interface SearchSkills200Response {
     /**
      * 
-     * @type {Array<SearchHit>}
-     * @memberof SearchSkills200Response
      */
     results: Array<SearchHit>;
 }

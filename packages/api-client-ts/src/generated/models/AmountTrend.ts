@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { DailyAmount } from './DailyAmount';
 import {
     DailyAmountFromJSON,
@@ -29,20 +29,14 @@ import {
 export interface AmountTrend {
     /**
      * 
-     * @type {Date}
-     * @memberof AmountTrend
      */
     from: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof AmountTrend
      */
     to: Date;
     /**
      * 
-     * @type {Array<DailyAmount>}
-     * @memberof AmountTrend
      */
     buckets: Array<DailyAmount>;
 }
@@ -67,8 +61,8 @@ export function AmountTrendFromJSONTyped(json: any, ignoreDiscriminator: boolean
     }
     return {
         
-        'from': (new Date(json['from'])),
-        'to': (new Date(json['to'])),
+        'from': (json['from'] == null ? json['from'] : parseDate(json['from'])),
+        'to': (json['to'] == null ? json['to'] : parseDate(json['to'])),
         'buckets': ((json['buckets'] as Array<any>).map(DailyAmountFromJSON)),
     };
 }
@@ -84,8 +78,8 @@ export function AmountTrendToJSONTyped(value?: AmountTrend | null, ignoreDiscrim
 
     return {
         
-        'from': value['from'].toISOString().substring(0,10),
-        'to': value['to'].toISOString().substring(0,10),
+        'from': value['from'] == null ? value['from'] : serializeDate(value['from']),
+        'to': value['to'] == null ? value['to'] : serializeDate(value['to']),
         'buckets': ((value['buckets'] as Array<any>).map(DailyAmountToJSON)),
     };
 }

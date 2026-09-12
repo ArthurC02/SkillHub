@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { Labelled } from './Labelled';
 import {
     LabelledFromJSON,
@@ -46,8 +46,6 @@ import {
 export interface Run {
     /**
      * The permanent platform identifier (iron rule 10).
-     * @type {string}
-     * @memberof Run
      */
     runId: string;
     /**
@@ -63,8 +61,6 @@ export interface Run {
      * value alone must word it as execution (執行完成 / 執行失敗) and must
      * not present it as a pass.
      * 
-     * @type {string}
-     * @memberof Run
      */
     status: RunStatusEnum;
     /**
@@ -78,8 +74,6 @@ export interface Run {
      * English sentence here, and that is the mark of a relayed one
      * (04 丙-115 ①).
      * 
-     * @type {string}
-     * @memberof Run
      */
     statusReason?: string;
     /**
@@ -92,22 +86,16 @@ export interface Run {
      * It is a fact about the version, not about the run: a run never moves
      * between skills, and this changes for no reason at all.
      * 
-     * @type {string}
-     * @memberof Run
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof Run
      */
     skillVersionId: string;
     /**
      * The frozen copy taken when the run was created, not the editable test
      * case (iron rule 4).
      * 
-     * @type {string}
-     * @memberof Run
      */
     testCaseSnapshotId: string;
     /**
@@ -124,14 +112,10 @@ export interface Run {
      * GET /runs/{id}/comparison is what answers that — and a re-run goes
      * through preflight and `confirmed_summary_hash` either way (TEST-009).
      * 
-     * @type {string}
-     * @memberof Run
      */
     testCaseId?: string;
     /**
      * `unassigned` until provider selection lands (RUN-005).
-     * @type {string}
-     * @memberof Run
      */
     provider: string;
     /**
@@ -145,8 +129,6 @@ export interface Run {
      * hand-written handlers (ADR-030's 2026-08-29 note), so a handler can
      * serve what the contract never declared.
      * 
-     * @type {Labelled}
-     * @memberof Run
      */
     failureClass?: Labelled;
     /**
@@ -155,32 +137,22 @@ export interface Run {
      * database enum; see RunListItem.cleanup_status for why it is served
      * with its words.
      * 
-     * @type {Labelled}
-     * @memberof Run
      */
     cleanupStatus: Labelled;
     /**
      * Set by POST /runs/{id}/cancel. Intent, not the outcome.
-     * @type {Date}
-     * @memberof Run
      */
     cancelRequestedAt?: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof Run
      */
     createdAt: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof Run
      */
     startedAt?: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof Run
      */
     finishedAt?: Date;
     /**
@@ -188,8 +160,6 @@ export interface Run {
      * and oldest first; the first entry has no `from_status` because it is
      * the run's creation.
      * 
-     * @type {Array<RunTransitionsInner>}
-     * @memberof Run
      */
     transitions?: Array<RunTransitionsInner>;
     /**
@@ -197,8 +167,6 @@ export interface Run {
      * id hangs off the attempt that owns it, so a retry adds a mapping
      * instead of overwriting the previous one.
      * 
-     * @type {Array<RunAttemptsInner>}
-     * @memberof Run
      */
     attempts?: Array<RunAttemptsInner>;
 }
@@ -216,7 +184,7 @@ export const RunStatusEnum = {
     Succeeded: 'succeeded',
     Failed: 'failed',
     Cancelled: 'cancelled',
-    TimedOut: 'timed_out'
+    TimedOut: 'timed_out',
 } as const;
 export type RunStatusEnum = typeof RunStatusEnum[keyof typeof RunStatusEnum];
 
@@ -225,14 +193,14 @@ export type RunStatusEnum = typeof RunStatusEnum[keyof typeof RunStatusEnum];
  * Check if a given object implements the Run interface.
  */
 export function instanceOfRun(value: object): value is Run {
-    if (!('runId' in value) || value['runId'] === undefined) return false;
+    if ((!('runId' in (value as Record<string, any>)) && !('run_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['runId'] === undefined && (value as Record<string, any>)['run_id'] === undefined)) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('skillVersionId' in value) || value['skillVersionId'] === undefined) return false;
-    if (!('testCaseSnapshotId' in value) || value['testCaseSnapshotId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('skillVersionId' in (value as Record<string, any>)) && !('skill_version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillVersionId'] === undefined && (value as Record<string, any>)['skill_version_id'] === undefined)) return false;
+    if ((!('testCaseSnapshotId' in (value as Record<string, any>)) && !('test_case_snapshot_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCaseSnapshotId'] === undefined && (value as Record<string, any>)['test_case_snapshot_id'] === undefined)) return false;
     if (!('provider' in value) || value['provider'] === undefined) return false;
-    if (!('cleanupStatus' in value) || value['cleanupStatus'] === undefined) return false;
-    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
+    if ((!('cleanupStatus' in (value as Record<string, any>)) && !('cleanup_status' in (value as Record<string, any>))) || ((value as Record<string, any>)['cleanupStatus'] === undefined && (value as Record<string, any>)['cleanup_status'] === undefined)) return false;
+    if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
     return true;
 }
 
@@ -256,10 +224,10 @@ export function RunFromJSONTyped(json: any, ignoreDiscriminator: boolean): Run {
         'provider': json['provider'],
         'failureClass': json['failure_class'] == null ? undefined : LabelledFromJSON(json['failure_class']),
         'cleanupStatus': LabelledFromJSON(json['cleanup_status']),
-        'cancelRequestedAt': json['cancel_requested_at'] == null ? undefined : (new Date(json['cancel_requested_at'])),
-        'createdAt': (new Date(json['created_at'])),
-        'startedAt': json['started_at'] == null ? undefined : (new Date(json['started_at'])),
-        'finishedAt': json['finished_at'] == null ? undefined : (new Date(json['finished_at'])),
+        'cancelRequestedAt': json['cancel_requested_at'] == null ? undefined : (parseDateTime(json['cancel_requested_at'])),
+        'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
+        'startedAt': json['started_at'] == null ? undefined : (parseDateTime(json['started_at'])),
+        'finishedAt': json['finished_at'] == null ? undefined : (parseDateTime(json['finished_at'])),
         'transitions': json['transitions'] == null ? undefined : ((json['transitions'] as Array<any>).map(RunTransitionsInnerFromJSON)),
         'attempts': json['attempts'] == null ? undefined : ((json['attempts'] as Array<any>).map(RunAttemptsInnerFromJSON)),
     };
@@ -286,10 +254,10 @@ export function RunToJSONTyped(value?: Run | null, ignoreDiscriminator: boolean 
         'provider': value['provider'],
         'failure_class': LabelledToJSON(value['failureClass']),
         'cleanup_status': LabelledToJSON(value['cleanupStatus']),
-        'cancel_requested_at': value['cancelRequestedAt'] == null ? value['cancelRequestedAt'] : value['cancelRequestedAt'].toISOString(),
-        'created_at': value['createdAt'].toISOString(),
-        'started_at': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
-        'finished_at': value['finishedAt'] == null ? value['finishedAt'] : value['finishedAt'].toISOString(),
+        'cancel_requested_at': value['cancelRequestedAt'] == null ? value['cancelRequestedAt'] : serializeDateTime(value['cancelRequestedAt']),
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'started_at': value['startedAt'] == null ? value['startedAt'] : serializeDateTime(value['startedAt']),
+        'finished_at': value['finishedAt'] == null ? value['finishedAt'] : serializeDateTime(value['finishedAt']),
         'transitions': value['transitions'] == null ? undefined : ((value['transitions'] as Array<any>).map(RunTransitionsInnerToJSON)),
         'attempts': value['attempts'] == null ? undefined : ((value['attempts'] as Array<any>).map(RunAttemptsInnerToJSON)),
     };

@@ -29,8 +29,6 @@ import {
 export interface CreateDownloadArtifactRequest {
     /**
      * 
-     * @type {PackagingTargetId}
-     * @memberof CreateDownloadArtifactRequest
      */
     target: PackagingTargetId;
     /**
@@ -41,8 +39,6 @@ export interface CreateDownloadArtifactRequest {
      * the person least equipped to make it, about files that may
      * not be theirs (packaging-design §5.1).
      * 
-     * @type {boolean}
-     * @memberof CreateDownloadArtifactRequest
      */
     includeTestCases?: boolean;
 }

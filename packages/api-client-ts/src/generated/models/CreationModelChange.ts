@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface CreationModelChange {
     /**
      * The brief as the person last confirmed it, before this change.
-     * @type {string}
-     * @memberof CreationModelChange
      */
     brief?: string;
     /**
      * The criteria as the person last confirmed them.
-     * @type {Array<string>}
-     * @memberof CreationModelChange
      */
     acceptanceCriteria?: Array<string>;
     /**
      * The sample input as the person last confirmed it.
-     * @type {string}
-     * @memberof CreationModelChange
      */
     sampleInput?: string;
 }

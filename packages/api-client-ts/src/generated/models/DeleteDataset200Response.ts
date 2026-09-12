@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface DeleteDataset200Response {
     /**
      * 
-     * @type {boolean}
-     * @memberof DeleteDataset200Response
      */
     deleted: boolean;
     /**
      * 
-     * @type {string}
-     * @memberof DeleteDataset200Response
      */
     datasetId: string;
     /**
      * 
-     * @type {string}
-     * @memberof DeleteDataset200Response
      */
     note: string;
 }
@@ -44,7 +38,7 @@ export interface DeleteDataset200Response {
  */
 export function instanceOfDeleteDataset200Response(value: object): value is DeleteDataset200Response {
     if (!('deleted' in value) || value['deleted'] === undefined) return false;
-    if (!('datasetId' in value) || value['datasetId'] === undefined) return false;
+    if ((!('datasetId' in (value as Record<string, any>)) && !('dataset_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['datasetId'] === undefined && (value as Record<string, any>)['dataset_id'] === undefined)) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
 }

@@ -32,8 +32,6 @@ import {
 export interface CriterionResult {
     /**
      * 
-     * @type {string}
-     * @memberof CriterionResult
      */
     criterionId: string;
     /**
@@ -41,8 +39,6 @@ export interface CriterionResult {
      * evaluation report stays readable without resolving the snapshot —
      * and so it keeps showing the words that were actually judged.
      * 
-     * @type {string}
-     * @memberof CriterionResult
      */
     text: string;
     /**
@@ -51,8 +47,6 @@ export interface CriterionResult {
      * incomplete. It is one of EVAL-001's required states, not a missing
      * answer, and it is what the pipeline falls back to on any doubt.
      * 
-     * @type {string}
-     * @memberof CriterionResult
      */
     result: CriterionResultResultEnum;
     /**
@@ -66,8 +60,6 @@ export interface CriterionResult {
      * check over the platform's own records, `user` is a person's verdict
      * recorded over the automated one.
      * 
-     * @type {string}
-     * @memberof CriterionResult
      */
     source: CriterionResultSourceEnum;
     /**
@@ -76,16 +68,12 @@ export interface CriterionResult {
      * resolve drops the verdict to `undetermined` instead of being passed
      * through as given.
      * 
-     * @type {Array<EvidenceRef>}
-     * @memberof CriterionResult
      */
     evidence: Array<EvidenceRef>;
     /**
      * Why, in the user's language. Untrusted text when `source` is
      * `model`: render it as inert text like any other model output.
      * 
-     * @type {string}
-     * @memberof CriterionResult
      */
     reason: string;
 }
@@ -97,7 +85,7 @@ export interface CriterionResult {
 export const CriterionResultResultEnum = {
     Passed: 'passed',
     Failed: 'failed',
-    Undetermined: 'undetermined'
+    Undetermined: 'undetermined',
 } as const;
 export type CriterionResultResultEnum = typeof CriterionResultResultEnum[keyof typeof CriterionResultResultEnum];
 
@@ -107,7 +95,7 @@ export type CriterionResultResultEnum = typeof CriterionResultResultEnum[keyof t
 export const CriterionResultSourceEnum = {
     Rule: 'rule',
     Model: 'model',
-    User: 'user'
+    User: 'user',
 } as const;
 export type CriterionResultSourceEnum = typeof CriterionResultSourceEnum[keyof typeof CriterionResultSourceEnum];
 
@@ -116,7 +104,7 @@ export type CriterionResultSourceEnum = typeof CriterionResultSourceEnum[keyof t
  * Check if a given object implements the CriterionResult interface.
  */
 export function instanceOfCriterionResult(value: object): value is CriterionResult {
-    if (!('criterionId' in value) || value['criterionId'] === undefined) return false;
+    if ((!('criterionId' in (value as Record<string, any>)) && !('criterion_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['criterionId'] === undefined && (value as Record<string, any>)['criterion_id'] === undefined)) return false;
     if (!('text' in value) || value['text'] === undefined) return false;
     if (!('result' in value) || value['result'] === undefined) return false;
     if (!('source' in value) || value['source'] === undefined) return false;

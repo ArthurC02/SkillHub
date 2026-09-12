@@ -29,8 +29,6 @@ import {
 export interface SuggestionDiff {
     /**
      * 
-     * @type {string}
-     * @memberof SuggestionDiff
      */
     targetPath: string;
     /**
@@ -38,8 +36,6 @@ export interface SuggestionDiff {
      * for. Absent when none could be computed, which is also
      * `applicable: false` with `diff_unavailable`.
      * 
-     * @type {string}
-     * @memberof SuggestionDiff
      */
     unifiedDiff?: string;
     /**
@@ -48,14 +44,10 @@ export interface SuggestionDiff {
      * false when another version is saved in between — the apply call
      * checks again and is the one that decides.
      * 
-     * @type {boolean}
-     * @memberof SuggestionDiff
      */
     applicable: boolean;
     /**
      * 
-     * @type {SuggestionBlockedReason}
-     * @memberof SuggestionDiff
      */
     blockedReason?: SuggestionBlockedReason;
 }
@@ -66,7 +58,7 @@ export interface SuggestionDiff {
  * Check if a given object implements the SuggestionDiff interface.
  */
 export function instanceOfSuggestionDiff(value: object): value is SuggestionDiff {
-    if (!('targetPath' in value) || value['targetPath'] === undefined) return false;
+    if ((!('targetPath' in (value as Record<string, any>)) && !('target_path' in (value as Record<string, any>))) || ((value as Record<string, any>)['targetPath'] === undefined && (value as Record<string, any>)['target_path'] === undefined)) return false;
     if (!('applicable' in value) || value['applicable'] === undefined) return false;
     return true;
 }

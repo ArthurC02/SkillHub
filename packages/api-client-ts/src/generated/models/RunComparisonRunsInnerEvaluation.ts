@@ -32,26 +32,18 @@ import {
 export interface RunComparisonRunsInnerEvaluation {
     /**
      * 
-     * @type {string}
-     * @memberof RunComparisonRunsInnerEvaluation
      */
     evaluationId: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunComparisonRunsInnerEvaluation
      */
     status: RunComparisonRunsInnerEvaluationStatusEnum;
     /**
      * 
-     * @type {string}
-     * @memberof RunComparisonRunsInnerEvaluation
      */
     overall: RunComparisonRunsInnerEvaluationOverallEnum;
     /**
      * 
-     * @type {EvaluationCost}
-     * @memberof RunComparisonRunsInnerEvaluation
      */
     cost: EvaluationCost;
 }
@@ -63,7 +55,7 @@ export interface RunComparisonRunsInnerEvaluation {
 export const RunComparisonRunsInnerEvaluationStatusEnum = {
     Pending: 'pending',
     Completed: 'completed',
-    Failed: 'failed'
+    Failed: 'failed',
 } as const;
 export type RunComparisonRunsInnerEvaluationStatusEnum = typeof RunComparisonRunsInnerEvaluationStatusEnum[keyof typeof RunComparisonRunsInnerEvaluationStatusEnum];
 
@@ -74,7 +66,7 @@ export const RunComparisonRunsInnerEvaluationOverallEnum = {
     Met: 'met',
     PartiallyMet: 'partially_met',
     NotMet: 'not_met',
-    Undetermined: 'undetermined'
+    Undetermined: 'undetermined',
 } as const;
 export type RunComparisonRunsInnerEvaluationOverallEnum = typeof RunComparisonRunsInnerEvaluationOverallEnum[keyof typeof RunComparisonRunsInnerEvaluationOverallEnum];
 
@@ -83,7 +75,7 @@ export type RunComparisonRunsInnerEvaluationOverallEnum = typeof RunComparisonRu
  * Check if a given object implements the RunComparisonRunsInnerEvaluation interface.
  */
 export function instanceOfRunComparisonRunsInnerEvaluation(value: object): value is RunComparisonRunsInnerEvaluation {
-    if (!('evaluationId' in value) || value['evaluationId'] === undefined) return false;
+    if ((!('evaluationId' in (value as Record<string, any>)) && !('evaluation_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['evaluationId'] === undefined && (value as Record<string, any>)['evaluation_id'] === undefined)) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('overall' in value) || value['overall'] === undefined) return false;
     if (!('cost' in value) || value['cost'] === undefined) return false;

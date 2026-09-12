@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,26 +21,18 @@ import { mapValues } from '../runtime';
 export interface Me {
     /**
      * 
-     * @type {string}
-     * @memberof Me
      */
     userId: string;
     /**
      * 
-     * @type {string}
-     * @memberof Me
      */
     email: string;
     /**
      * 
-     * @type {string}
-     * @memberof Me
      */
     displayName: string;
     /**
      * 
-     * @type {string}
-     * @memberof Me
      */
     workspaceId: string;
     /**
@@ -49,8 +41,6 @@ export interface Me {
      * nothing. Every /admin route checks the roster itself and answers a
      * member 404 whatever this field says (ADR-074 decision 1).
      * 
-     * @type {boolean}
-     * @memberof Me
      */
     operator: boolean;
     /**
@@ -69,8 +59,6 @@ export interface Me {
      * one connection, and the screen must say so. A client that treats
      * `clean_mode` as something to unlock has read it backwards.
      * 
-     * @type {{ [key: string]: boolean; }}
-     * @memberof Me
      */
     features?: { [key: string]: boolean; };
     /**
@@ -82,8 +70,6 @@ export interface Me {
      * want the scope stated up front rather than discovered afterwards, and
      * a disclosure that survives one render is not stated.
      * 
-     * @type {string}
-     * @memberof Me
      */
     deletionScope: string | null;
     /**
@@ -93,16 +79,12 @@ export interface Me {
      * place it appeared was the response to DELETE /me itself — a user who
      * closed the tab could not ask again.
      * 
-     * @type {Date}
-     * @memberof Me
      */
     deletionRequestedAt: Date | null;
     /**
      * When the grace period ends and the purge becomes due; cancellable
      * until then. Null exactly when `deletion_requested_at` is null.
      * 
-     * @type {Date}
-     * @memberof Me
      */
     purgeAfter: Date | null;
 }
@@ -111,14 +93,14 @@ export interface Me {
  * Check if a given object implements the Me interface.
  */
 export function instanceOfMe(value: object): value is Me {
-    if (!('userId' in value) || value['userId'] === undefined) return false;
+    if ((!('userId' in (value as Record<string, any>)) && !('user_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['userId'] === undefined && (value as Record<string, any>)['user_id'] === undefined)) return false;
     if (!('email' in value) || value['email'] === undefined) return false;
-    if (!('displayName' in value) || value['displayName'] === undefined) return false;
-    if (!('workspaceId' in value) || value['workspaceId'] === undefined) return false;
+    if ((!('displayName' in (value as Record<string, any>)) && !('display_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['displayName'] === undefined && (value as Record<string, any>)['display_name'] === undefined)) return false;
+    if ((!('workspaceId' in (value as Record<string, any>)) && !('workspace_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['workspaceId'] === undefined && (value as Record<string, any>)['workspace_id'] === undefined)) return false;
     if (!('operator' in value) || value['operator'] === undefined) return false;
-    if (!('deletionScope' in value) || value['deletionScope'] === undefined) return false;
-    if (!('deletionRequestedAt' in value) || value['deletionRequestedAt'] === undefined) return false;
-    if (!('purgeAfter' in value) || value['purgeAfter'] === undefined) return false;
+    if ((!('deletionScope' in (value as Record<string, any>)) && !('deletion_scope' in (value as Record<string, any>))) || ((value as Record<string, any>)['deletionScope'] === undefined && (value as Record<string, any>)['deletion_scope'] === undefined)) return false;
+    if ((!('deletionRequestedAt' in (value as Record<string, any>)) && !('deletion_requested_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['deletionRequestedAt'] === undefined && (value as Record<string, any>)['deletion_requested_at'] === undefined)) return false;
+    if ((!('purgeAfter' in (value as Record<string, any>)) && !('purge_after' in (value as Record<string, any>))) || ((value as Record<string, any>)['purgeAfter'] === undefined && (value as Record<string, any>)['purge_after'] === undefined)) return false;
     return true;
 }
 
@@ -139,8 +121,8 @@ export function MeFromJSONTyped(json: any, ignoreDiscriminator: boolean): Me {
         'operator': json['operator'],
         'features': json['features'] == null ? undefined : json['features'],
         'deletionScope': json['deletion_scope'],
-        'deletionRequestedAt': (json['deletion_requested_at'] == null ? null : new Date(json['deletion_requested_at'])),
-        'purgeAfter': (json['purge_after'] == null ? null : new Date(json['purge_after'])),
+        'deletionRequestedAt': (json['deletion_requested_at'] == null ? null : parseDateTime(json['deletion_requested_at'])),
+        'purgeAfter': (json['purge_after'] == null ? null : parseDateTime(json['purge_after'])),
     };
 }
 
@@ -162,8 +144,8 @@ export function MeToJSONTyped(value?: Me | null, ignoreDiscriminator: boolean = 
         'operator': value['operator'],
         'features': value['features'],
         'deletion_scope': value['deletionScope'],
-        'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : value['deletionRequestedAt'].toISOString(),
-        'purge_after': value['purgeAfter'] == null ? value['purgeAfter'] : value['purgeAfter'].toISOString(),
+        'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : serializeDateTime(value['deletionRequestedAt']),
+        'purge_after': value['purgeAfter'] == null ? value['purgeAfter'] : serializeDateTime(value['purgeAfter']),
     };
 }
 

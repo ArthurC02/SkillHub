@@ -21,44 +21,30 @@ import { mapValues } from '../runtime';
 export interface TraceStream {
     /**
      * 
-     * @type {number}
-     * @memberof TraceStream
      */
     attempt: number;
     /**
      * 
-     * @type {string}
-     * @memberof TraceStream
      */
     emittedBy: string;
     /**
      * 
-     * @type {number}
-     * @memberof TraceStream
      */
     received: number;
     /**
      * 
-     * @type {number}
-     * @memberof TraceStream
      */
     highestSeq: number;
     /**
      * Exact count of sequence numbers that never arrived.
-     * @type {number}
-     * @memberof TraceStream
      */
     missingCount: number;
     /**
      * At most the first 1,000 missing numbers; missing_count is authoritative.
-     * @type {Array<number>}
-     * @memberof TraceStream
      */
     missingSeq?: Array<number>;
     /**
      * Events that arrived after the run had already reached a terminal state.
-     * @type {number}
-     * @memberof TraceStream
      */
     lateEvents: number;
 }
@@ -68,11 +54,11 @@ export interface TraceStream {
  */
 export function instanceOfTraceStream(value: object): value is TraceStream {
     if (!('attempt' in value) || value['attempt'] === undefined) return false;
-    if (!('emittedBy' in value) || value['emittedBy'] === undefined) return false;
+    if ((!('emittedBy' in (value as Record<string, any>)) && !('emitted_by' in (value as Record<string, any>))) || ((value as Record<string, any>)['emittedBy'] === undefined && (value as Record<string, any>)['emitted_by'] === undefined)) return false;
     if (!('received' in value) || value['received'] === undefined) return false;
-    if (!('highestSeq' in value) || value['highestSeq'] === undefined) return false;
-    if (!('missingCount' in value) || value['missingCount'] === undefined) return false;
-    if (!('lateEvents' in value) || value['lateEvents'] === undefined) return false;
+    if ((!('highestSeq' in (value as Record<string, any>)) && !('highest_seq' in (value as Record<string, any>))) || ((value as Record<string, any>)['highestSeq'] === undefined && (value as Record<string, any>)['highest_seq'] === undefined)) return false;
+    if ((!('missingCount' in (value as Record<string, any>)) && !('missing_count' in (value as Record<string, any>))) || ((value as Record<string, any>)['missingCount'] === undefined && (value as Record<string, any>)['missing_count'] === undefined)) return false;
+    if ((!('lateEvents' in (value as Record<string, any>)) && !('late_events' in (value as Record<string, any>))) || ((value as Record<string, any>)['lateEvents'] === undefined && (value as Record<string, any>)['late_events'] === undefined)) return false;
     return true;
 }
 

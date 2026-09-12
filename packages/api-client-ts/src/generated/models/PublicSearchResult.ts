@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { SearchResultRisk } from './SearchResultRisk';
 import {
     SearchResultRiskFromJSON,
@@ -43,14 +43,10 @@ import {
 export interface PublicSearchResult {
     /**
      * 
-     * @type {string}
-     * @memberof PublicSearchResult
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof PublicSearchResult
      */
     name: string;
     /**
@@ -60,8 +56,6 @@ export interface PublicSearchResult {
      * because until it existed this sentence was documented as sometimes
      * model-written and had no field a client could act on.
      * 
-     * @type {string}
-     * @memberof PublicSearchResult
      */
     summary: string;
     /**
@@ -76,8 +70,6 @@ export interface PublicSearchResult {
      * read well here and be passed over by the agent, and nothing about
      * the enriched summary changes what the downloaded package says.
      * 
-     * @type {string}
-     * @memberof PublicSearchResult
      */
     summarySource: PublicSearchResultSummarySourceEnum;
     /**
@@ -94,16 +86,12 @@ export interface PublicSearchResult {
      * measured 1.4) and is not the same quantity as a cosine similarity,
      * so squeezing it into 0..1 would be false precision.
      * 
-     * @type {number}
-     * @memberof PublicSearchResult
      */
     rank: number | null;
     /**
      * Why `rank` is null and what ordered the page instead. Present only
      * when `rank` is null.
      * 
-     * @type {string}
-     * @memberof PublicSearchResult
      */
     rankNote?: string;
     /**
@@ -116,8 +104,6 @@ export interface PublicSearchResult {
      * note says where the value came from — a curation judgement, never
      * a guess.
      * 
-     * @type {Labelled}
-     * @memberof PublicSearchResult
      */
     category: Labelled;
     /**
@@ -126,14 +112,10 @@ export interface PublicSearchResult {
      * parameter for what `indexed` does and does not mean. `external` never
      * appears here: a result in this list was imported by definition.
      * 
-     * @type {Labelled}
-     * @memberof PublicSearchResult
      */
     tier: Labelled;
     /**
      * 
-     * @type {SearchResultRisk}
-     * @memberof PublicSearchResult
      */
     risk: SearchResultRisk;
     /**
@@ -142,8 +124,6 @@ export interface PublicSearchResult {
      * not a resolved dependency graph, and empty while enrichment is
      * pending.
      * 
-     * @type {Array<string>}
-     * @memberof PublicSearchResult
      */
     dependencies: Array<string>;
     /**
@@ -156,8 +136,6 @@ export interface PublicSearchResult {
      * does not — that is the 「尚未試跑」 state DISC-002 requires to be
      * explicit, and it is what `runtime_image` being absent means.
      * 
-     * @type {SkillCompatibility}
-     * @memberof PublicSearchResult
      */
     compatibility: SkillCompatibility;
     /**
@@ -167,16 +145,12 @@ export interface PublicSearchResult {
      * cannot drift from the content it describes. Absent for a skill with
      * no saved version.
      * 
-     * @type {Date}
-     * @memberof PublicSearchResult
      */
     verifiedAt?: Date;
     /**
      * Human-readable explanation of why this skill matches the query
      * (DISC-002). Template-based fallback when LLM polish times out.
      * 
-     * @type {string}
-     * @memberof PublicSearchResult
      */
     matchReason?: string;
     /**
@@ -185,8 +159,6 @@ export interface PublicSearchResult {
      * assembled from the query/document lexical overlap, or state plainly
      * that the hit came from semantic similarity with no shared keywords.
      * 
-     * @type {string}
-     * @memberof PublicSearchResult
      */
     matchReasonSource?: PublicSearchResultMatchReasonSourceEnum;
 }
@@ -197,7 +169,7 @@ export interface PublicSearchResult {
  */
 export const PublicSearchResultSummarySourceEnum = {
     Model: 'model',
-    Package: 'package'
+    Package: 'package',
 } as const;
 export type PublicSearchResultSummarySourceEnum = typeof PublicSearchResultSummarySourceEnum[keyof typeof PublicSearchResultSummarySourceEnum];
 
@@ -206,7 +178,7 @@ export type PublicSearchResultSummarySourceEnum = typeof PublicSearchResultSumma
  */
 export const PublicSearchResultMatchReasonSourceEnum = {
     Model: 'model',
-    Template: 'template'
+    Template: 'template',
 } as const;
 export type PublicSearchResultMatchReasonSourceEnum = typeof PublicSearchResultMatchReasonSourceEnum[keyof typeof PublicSearchResultMatchReasonSourceEnum];
 
@@ -215,10 +187,10 @@ export type PublicSearchResultMatchReasonSourceEnum = typeof PublicSearchResultM
  * Check if a given object implements the PublicSearchResult interface.
  */
 export function instanceOfPublicSearchResult(value: object): value is PublicSearchResult {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('summary' in value) || value['summary'] === undefined) return false;
-    if (!('summarySource' in value) || value['summarySource'] === undefined) return false;
+    if ((!('summarySource' in (value as Record<string, any>)) && !('summary_source' in (value as Record<string, any>))) || ((value as Record<string, any>)['summarySource'] === undefined && (value as Record<string, any>)['summary_source'] === undefined)) return false;
     if (!('rank' in value) || value['rank'] === undefined) return false;
     if (!('category' in value) || value['category'] === undefined) return false;
     if (!('tier' in value) || value['tier'] === undefined) return false;
@@ -249,7 +221,7 @@ export function PublicSearchResultFromJSONTyped(json: any, ignoreDiscriminator: 
         'risk': SearchResultRiskFromJSON(json['risk']),
         'dependencies': json['dependencies'],
         'compatibility': SkillCompatibilityFromJSON(json['compatibility']),
-        'verifiedAt': json['verified_at'] == null ? undefined : (new Date(json['verified_at'])),
+        'verifiedAt': json['verified_at'] == null ? undefined : (parseDateTime(json['verified_at'])),
         'matchReason': json['match_reason'] == null ? undefined : json['match_reason'],
         'matchReasonSource': json['match_reason_source'] == null ? undefined : json['match_reason_source'],
     };
@@ -277,7 +249,7 @@ export function PublicSearchResultToJSONTyped(value?: PublicSearchResult | null,
         'risk': SearchResultRiskToJSON(value['risk']),
         'dependencies': value['dependencies'],
         'compatibility': SkillCompatibilityToJSON(value['compatibility']),
-        'verified_at': value['verifiedAt'] == null ? value['verifiedAt'] : value['verifiedAt'].toISOString(),
+        'verified_at': value['verifiedAt'] == null ? value['verifiedAt'] : serializeDateTime(value['verifiedAt']),
         'match_reason': value['matchReason'],
         'match_reason_source': value['matchReasonSource'],
     };

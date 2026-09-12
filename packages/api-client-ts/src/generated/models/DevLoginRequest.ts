@@ -21,8 +21,6 @@ import { mapValues } from '../runtime';
 export interface DevLoginRequest {
     /**
      * Dev user handle; defaults to "dev".
-     * @type {string}
-     * @memberof DevLoginRequest
      */
     user?: string;
 }

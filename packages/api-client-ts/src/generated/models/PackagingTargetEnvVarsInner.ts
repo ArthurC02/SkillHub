@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface PackagingTargetEnvVarsInner {
     /**
      * 
-     * @type {string}
-     * @memberof PackagingTargetEnvVarsInner
      */
     name: string;
     /**
      * Whether the target fails without it.
-     * @type {boolean}
-     * @memberof PackagingTargetEnvVarsInner
      */
     required: boolean;
     /**
      * 
-     * @type {string}
-     * @memberof PackagingTargetEnvVarsInner
      */
     description: string;
     /**
@@ -44,8 +38,6 @@ export interface PackagingTargetEnvVarsInner {
      * verbatim into an INSTALL.md that ships inside a package
      * (iron rule 11).
      * 
-     * @type {string}
-     * @memberof PackagingTargetEnvVarsInner
      */
     example?: string;
 }

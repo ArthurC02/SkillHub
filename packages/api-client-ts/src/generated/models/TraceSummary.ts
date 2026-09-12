@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { TraceSummaryToolCalls } from './TraceSummaryToolCalls';
 import {
     TraceSummaryToolCallsFromJSON,
@@ -59,8 +59,6 @@ import {
 export interface TraceSummary {
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummary
      */
     runId: string;
     /**
@@ -68,62 +66,42 @@ export interface TraceSummary {
      * (iron rule 5). Never reconstructed by replaying run_lifecycle trace
      * events, and never allowed to disagree with `Run.status`.
      * 
-     * @type {string}
-     * @memberof TraceSummary
      */
     status: TraceSummaryStatusEnum;
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummary
      */
     statusReason?: string;
     /**
      * 
-     * @type {boolean}
-     * @memberof TraceSummary
      */
     complete: boolean;
     /**
      * 
-     * @type {Array<TraceSummarySkillsInner>}
-     * @memberof TraceSummary
      */
     skills: Array<TraceSummarySkillsInner>;
     /**
      * Exact number of skill activation events; skills contains at most the first 100.
-     * @type {number}
-     * @memberof TraceSummary
      */
     skillsTotal: number;
     /**
      * 
-     * @type {number}
-     * @memberof TraceSummary
      */
     resourcesRead: number;
     /**
      * 
-     * @type {TraceSummaryToolCalls}
-     * @memberof TraceSummary
      */
     toolCalls: TraceSummaryToolCalls;
     /**
      * 
-     * @type {Array<TraceSummaryErrorsInner>}
-     * @memberof TraceSummary
      */
     errors: Array<TraceSummaryErrorsInner>;
     /**
      * Exact number of error events; errors contains at most the first 100.
-     * @type {number}
-     * @memberof TraceSummary
      */
     errorsTotal: number;
     /**
      * True when a repeated summary list was bounded; exact totals remain available.
-     * @type {boolean}
-     * @memberof TraceSummary
      */
     summaryTruncated: boolean;
     /**
@@ -138,20 +116,14 @@ export interface TraceSummary {
      * restarts at zero on every page load and would report a stalled run as
      * having just moved.
      * 
-     * @type {Date}
-     * @memberof TraceSummary
      */
     lastEventAt?: Date;
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummary
      */
     finalOutput?: string;
     /**
      * 
-     * @type {TraceSummaryUsage}
-     * @memberof TraceSummary
      */
     usage?: TraceSummaryUsage;
     /**
@@ -167,8 +139,6 @@ export interface TraceSummary {
      * lines higher on the same screen, so `/runs/{id}` showed
      * 「執行完成」and`succeeded:`at once (04 丙-115 ①).
      * 
-     * @type {Array<TraceSummaryStepsInner>}
-     * @memberof TraceSummary
      */
     steps: Array<TraceSummaryStepsInner>;
 }
@@ -186,7 +156,7 @@ export const TraceSummaryStatusEnum = {
     Succeeded: 'succeeded',
     Failed: 'failed',
     Cancelled: 'cancelled',
-    TimedOut: 'timed_out'
+    TimedOut: 'timed_out',
 } as const;
 export type TraceSummaryStatusEnum = typeof TraceSummaryStatusEnum[keyof typeof TraceSummaryStatusEnum];
 
@@ -195,16 +165,16 @@ export type TraceSummaryStatusEnum = typeof TraceSummaryStatusEnum[keyof typeof 
  * Check if a given object implements the TraceSummary interface.
  */
 export function instanceOfTraceSummary(value: object): value is TraceSummary {
-    if (!('runId' in value) || value['runId'] === undefined) return false;
+    if ((!('runId' in (value as Record<string, any>)) && !('run_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['runId'] === undefined && (value as Record<string, any>)['run_id'] === undefined)) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('complete' in value) || value['complete'] === undefined) return false;
     if (!('skills' in value) || value['skills'] === undefined) return false;
-    if (!('skillsTotal' in value) || value['skillsTotal'] === undefined) return false;
-    if (!('resourcesRead' in value) || value['resourcesRead'] === undefined) return false;
-    if (!('toolCalls' in value) || value['toolCalls'] === undefined) return false;
+    if ((!('skillsTotal' in (value as Record<string, any>)) && !('skills_total' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillsTotal'] === undefined && (value as Record<string, any>)['skills_total'] === undefined)) return false;
+    if ((!('resourcesRead' in (value as Record<string, any>)) && !('resources_read' in (value as Record<string, any>))) || ((value as Record<string, any>)['resourcesRead'] === undefined && (value as Record<string, any>)['resources_read'] === undefined)) return false;
+    if ((!('toolCalls' in (value as Record<string, any>)) && !('tool_calls' in (value as Record<string, any>))) || ((value as Record<string, any>)['toolCalls'] === undefined && (value as Record<string, any>)['tool_calls'] === undefined)) return false;
     if (!('errors' in value) || value['errors'] === undefined) return false;
-    if (!('errorsTotal' in value) || value['errorsTotal'] === undefined) return false;
-    if (!('summaryTruncated' in value) || value['summaryTruncated'] === undefined) return false;
+    if ((!('errorsTotal' in (value as Record<string, any>)) && !('errors_total' in (value as Record<string, any>))) || ((value as Record<string, any>)['errorsTotal'] === undefined && (value as Record<string, any>)['errors_total'] === undefined)) return false;
+    if ((!('summaryTruncated' in (value as Record<string, any>)) && !('summary_truncated' in (value as Record<string, any>))) || ((value as Record<string, any>)['summaryTruncated'] === undefined && (value as Record<string, any>)['summary_truncated'] === undefined)) return false;
     if (!('steps' in value) || value['steps'] === undefined) return false;
     return true;
 }
@@ -230,7 +200,7 @@ export function TraceSummaryFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'errors': ((json['errors'] as Array<any>).map(TraceSummaryErrorsInnerFromJSON)),
         'errorsTotal': json['errors_total'],
         'summaryTruncated': json['summary_truncated'],
-        'lastEventAt': json['last_event_at'] == null ? undefined : (new Date(json['last_event_at'])),
+        'lastEventAt': json['last_event_at'] == null ? undefined : (parseDateTime(json['last_event_at'])),
         'finalOutput': json['final_output'] == null ? undefined : json['final_output'],
         'usage': json['usage'] == null ? undefined : TraceSummaryUsageFromJSON(json['usage']),
         'steps': ((json['steps'] as Array<any>).map(TraceSummaryStepsInnerFromJSON)),
@@ -259,7 +229,7 @@ export function TraceSummaryToJSONTyped(value?: TraceSummary | null, ignoreDiscr
         'errors': ((value['errors'] as Array<any>).map(TraceSummaryErrorsInnerToJSON)),
         'errors_total': value['errorsTotal'],
         'summary_truncated': value['summaryTruncated'],
-        'last_event_at': value['lastEventAt'] == null ? value['lastEventAt'] : value['lastEventAt'].toISOString(),
+        'last_event_at': value['lastEventAt'] == null ? value['lastEventAt'] : serializeDateTime(value['lastEventAt']),
         'final_output': value['finalOutput'],
         'usage': TraceSummaryUsageToJSON(value['usage']),
         'steps': ((value['steps'] as Array<any>).map(TraceSummaryStepsInnerToJSON)),

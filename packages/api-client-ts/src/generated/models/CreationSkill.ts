@@ -29,38 +29,26 @@ import {
 export interface CreationSkill {
     /**
      * 
-     * @type {string}
-     * @memberof CreationSkill
      */
     name: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSkill
      */
     description: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSkill
      */
     compatibility: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSkill
      */
     allowedTools: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSkill
      */
     body: string;
     /**
      * 
-     * @type {Array<CreationSkillFilesInner>}
-     * @memberof CreationSkill
      */
     files: Array<CreationSkillFilesInner>;
 }
@@ -72,7 +60,7 @@ export function instanceOfCreationSkill(value: object): value is CreationSkill {
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('description' in value) || value['description'] === undefined) return false;
     if (!('compatibility' in value) || value['compatibility'] === undefined) return false;
-    if (!('allowedTools' in value) || value['allowedTools'] === undefined) return false;
+    if ((!('allowedTools' in (value as Record<string, any>)) && !('allowed_tools' in (value as Record<string, any>))) || ((value as Record<string, any>)['allowedTools'] === undefined && (value as Record<string, any>)['allowed_tools'] === undefined)) return false;
     if (!('body' in value) || value['body'] === undefined) return false;
     if (!('files' in value) || value['files'] === undefined) return false;
     return true;

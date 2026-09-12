@@ -32,14 +32,10 @@ export interface GetDispatchStatus200Response {
      * halted, or every configured provider is drained one at a
      * time, which is the same operational fact.
      * 
-     * @type {boolean}
-     * @memberof GetDispatchStatus200Response
      */
     dispatching: boolean;
     /**
      * 
-     * @type {Array<GetDispatchStatus200ResponseHaltsInner>}
-     * @memberof GetDispatchStatus200Response
      */
     halts: Array<GetDispatchStatus200ResponseHaltsInner>;
 }

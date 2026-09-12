@@ -43,8 +43,6 @@ import {
 export interface RunComparisonRunsInner {
     /**
      * 
-     * @type {string}
-     * @memberof RunComparisonRunsInner
      */
     runId: string;
     /**
@@ -53,14 +51,10 @@ export interface RunComparisonRunsInner {
      * compared, and one shared field would have to be wrong for one
      * of them.
      * 
-     * @type {string}
-     * @memberof RunComparisonRunsInner
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunComparisonRunsInner
      */
     skillVersionId: string;
     /**
@@ -71,8 +65,6 @@ export interface RunComparisonRunsInner {
      * that re-running is still POST /skills/{id}/runs behind
      * preflight — there is no re-run endpoint here.
      * 
-     * @type {string}
-     * @memberof RunComparisonRunsInner
      */
     testCaseId?: string;
     /**
@@ -82,40 +74,28 @@ export interface RunComparisonRunsInner {
      * execution wording (執行完成 / 執行失敗) and the judgement on
      * its own row.
      * 
-     * @type {string}
-     * @memberof RunComparisonRunsInner
      */
     status: RunComparisonRunsInnerStatusEnum;
     /**
      * 
-     * @type {RunComparisonRunsInnerEvaluation}
-     * @memberof RunComparisonRunsInner
      */
     evaluation?: RunComparisonRunsInnerEvaluation;
     /**
      * The run's final answer, masked. Untrusted content — render as
      * inert text (ADR-001).
      * 
-     * @type {string}
-     * @memberof RunComparisonRunsInner
      */
     finalOutput?: string;
     /**
      * 
-     * @type {Array<TraceSummaryErrorsInner>}
-     * @memberof RunComparisonRunsInner
      */
     errors?: Array<TraceSummaryErrorsInner>;
     /**
      * Wall clock from start to terminal state. Absent for a run that never started.
-     * @type {number}
-     * @memberof RunComparisonRunsInner
      */
     durationMs?: number;
     /**
      * 
-     * @type {RunComparisonRunsInnerCost}
-     * @memberof RunComparisonRunsInner
      */
     cost: RunComparisonRunsInnerCost;
     /**
@@ -134,8 +114,6 @@ export interface RunComparisonRunsInner {
      * which is what the storage sweep acts on, rather than by
      * probing object storage per dataset on every read.
      * 
-     * @type {boolean}
-     * @memberof RunComparisonRunsInner
      */
     inputsAvailable: boolean;
 }
@@ -153,7 +131,7 @@ export const RunComparisonRunsInnerStatusEnum = {
     Succeeded: 'succeeded',
     Failed: 'failed',
     Cancelled: 'cancelled',
-    TimedOut: 'timed_out'
+    TimedOut: 'timed_out',
 } as const;
 export type RunComparisonRunsInnerStatusEnum = typeof RunComparisonRunsInnerStatusEnum[keyof typeof RunComparisonRunsInnerStatusEnum];
 
@@ -162,12 +140,12 @@ export type RunComparisonRunsInnerStatusEnum = typeof RunComparisonRunsInnerStat
  * Check if a given object implements the RunComparisonRunsInner interface.
  */
 export function instanceOfRunComparisonRunsInner(value: object): value is RunComparisonRunsInner {
-    if (!('runId' in value) || value['runId'] === undefined) return false;
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('skillVersionId' in value) || value['skillVersionId'] === undefined) return false;
+    if ((!('runId' in (value as Record<string, any>)) && !('run_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['runId'] === undefined && (value as Record<string, any>)['run_id'] === undefined)) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('skillVersionId' in (value as Record<string, any>)) && !('skill_version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillVersionId'] === undefined && (value as Record<string, any>)['skill_version_id'] === undefined)) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('cost' in value) || value['cost'] === undefined) return false;
-    if (!('inputsAvailable' in value) || value['inputsAvailable'] === undefined) return false;
+    if ((!('inputsAvailable' in (value as Record<string, any>)) && !('inputs_available' in (value as Record<string, any>))) || ((value as Record<string, any>)['inputsAvailable'] === undefined && (value as Record<string, any>)['inputs_available'] === undefined)) return false;
     return true;
 }
 

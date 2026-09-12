@@ -36,7 +36,7 @@ export const SuggestionBlockedReason = {
     TargetChanged: 'target_changed',
     ValidationBlocked: 'validation_blocked',
     AccessRestricted: 'access_restricted',
-    DiffUnavailable: 'diff_unavailable'
+    DiffUnavailable: 'diff_unavailable',
 } as const;
 export type SuggestionBlockedReason = typeof SuggestionBlockedReason[keyof typeof SuggestionBlockedReason];
 

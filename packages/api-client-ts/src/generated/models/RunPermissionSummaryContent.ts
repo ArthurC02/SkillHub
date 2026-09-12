@@ -65,40 +65,28 @@ import {
 export interface RunPermissionSummaryContent {
     /**
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContent
      */
     skillVersionId: string;
     /**
      * The exact package bytes this run would execute. In the hash because
      * "which code runs" is a permission fact.
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContent
      */
     skillContentHash: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContent
      */
     testCaseId: string;
     /**
      * Every file the run will be able to read, oldest upload first.
-     * @type {Array<RunPermissionSummaryContentDatasetsInner>}
-     * @memberof RunPermissionSummaryContent
      */
     datasets: Array<RunPermissionSummaryContentDatasetsInner>;
     /**
      * 
-     * @type {number}
-     * @memberof RunPermissionSummaryContent
      */
     datasetTotalBytes: number;
     /**
      * 
-     * @type {RunPermissionSummaryContentScripts}
-     * @memberof RunPermissionSummaryContent
      */
     scripts: RunPermissionSummaryContentScripts;
     /**
@@ -106,8 +94,6 @@ export interface RunPermissionSummaryContent {
      * no per-tool grant to disclose because there is none to make: the
      * isolation boundary is the container, not a tool list.
      * 
-     * @type {Array<string>}
-     * @memberof RunPermissionSummaryContent
      */
     tools: Array<string>;
     /**
@@ -115,14 +101,10 @@ export interface RunPermissionSummaryContent {
      * missing row reads as a question nobody asked; an empty one states
      * that the answer is none (remote MCP is out of first release).
      * 
-     * @type {Array<string>}
-     * @memberof RunPermissionSummaryContent
      */
     mcpServers: Array<string>;
     /**
      * 
-     * @type {RunPermissionSummaryContentNetwork}
-     * @memberof RunPermissionSummaryContent
      */
     network: RunPermissionSummaryContentNetwork;
     /**
@@ -130,20 +112,14 @@ export interface RunPermissionSummaryContent {
      * per-run short-lived credentials minted at dispatch, and they appear
      * in no screen, log or trace.
      * 
-     * @type {Array<string>}
-     * @memberof RunPermissionSummaryContent
      */
     injectedSecrets: Array<string>;
     /**
      * 
-     * @type {RunPermissionSummaryContentProvider}
-     * @memberof RunPermissionSummaryContent
      */
     provider: RunPermissionSummaryContentProvider;
     /**
      * 
-     * @type {RunResourceLimits}
-     * @memberof RunPermissionSummaryContent
      */
     resourceLimits: RunResourceLimits;
 }
@@ -152,18 +128,18 @@ export interface RunPermissionSummaryContent {
  * Check if a given object implements the RunPermissionSummaryContent interface.
  */
 export function instanceOfRunPermissionSummaryContent(value: object): value is RunPermissionSummaryContent {
-    if (!('skillVersionId' in value) || value['skillVersionId'] === undefined) return false;
-    if (!('skillContentHash' in value) || value['skillContentHash'] === undefined) return false;
-    if (!('testCaseId' in value) || value['testCaseId'] === undefined) return false;
+    if ((!('skillVersionId' in (value as Record<string, any>)) && !('skill_version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillVersionId'] === undefined && (value as Record<string, any>)['skill_version_id'] === undefined)) return false;
+    if ((!('skillContentHash' in (value as Record<string, any>)) && !('skill_content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillContentHash'] === undefined && (value as Record<string, any>)['skill_content_hash'] === undefined)) return false;
+    if ((!('testCaseId' in (value as Record<string, any>)) && !('test_case_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCaseId'] === undefined && (value as Record<string, any>)['test_case_id'] === undefined)) return false;
     if (!('datasets' in value) || value['datasets'] === undefined) return false;
-    if (!('datasetTotalBytes' in value) || value['datasetTotalBytes'] === undefined) return false;
+    if ((!('datasetTotalBytes' in (value as Record<string, any>)) && !('dataset_total_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['datasetTotalBytes'] === undefined && (value as Record<string, any>)['dataset_total_bytes'] === undefined)) return false;
     if (!('scripts' in value) || value['scripts'] === undefined) return false;
     if (!('tools' in value) || value['tools'] === undefined) return false;
-    if (!('mcpServers' in value) || value['mcpServers'] === undefined) return false;
+    if ((!('mcpServers' in (value as Record<string, any>)) && !('mcp_servers' in (value as Record<string, any>))) || ((value as Record<string, any>)['mcpServers'] === undefined && (value as Record<string, any>)['mcp_servers'] === undefined)) return false;
     if (!('network' in value) || value['network'] === undefined) return false;
-    if (!('injectedSecrets' in value) || value['injectedSecrets'] === undefined) return false;
+    if ((!('injectedSecrets' in (value as Record<string, any>)) && !('injected_secrets' in (value as Record<string, any>))) || ((value as Record<string, any>)['injectedSecrets'] === undefined && (value as Record<string, any>)['injected_secrets'] === undefined)) return false;
     if (!('provider' in value) || value['provider'] === undefined) return false;
-    if (!('resourceLimits' in value) || value['resourceLimits'] === undefined) return false;
+    if ((!('resourceLimits' in (value as Record<string, any>)) && !('resource_limits' in (value as Record<string, any>))) || ((value as Record<string, any>)['resourceLimits'] === undefined && (value as Record<string, any>)['resource_limits'] === undefined)) return false;
     return true;
 }
 

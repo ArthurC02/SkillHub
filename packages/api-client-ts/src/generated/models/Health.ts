@@ -21,8 +21,6 @@ import { mapValues } from '../runtime';
 export interface Health {
     /**
      * 
-     * @type {string}
-     * @memberof Health
      */
     status: HealthStatusEnum;
 }
@@ -32,7 +30,7 @@ export interface Health {
  * @export
  */
 export const HealthStatusEnum = {
-    Ok: 'ok'
+    Ok: 'ok',
 } as const;
 export type HealthStatusEnum = typeof HealthStatusEnum[keyof typeof HealthStatusEnum];
 
@@ -42,6 +40,8 @@ export type HealthStatusEnum = typeof HealthStatusEnum[keyof typeof HealthStatus
  */
 export function instanceOfHealth(value: object): value is Health {
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (value['status'] !== 'ok') return false;
+    
     return true;
 }
 

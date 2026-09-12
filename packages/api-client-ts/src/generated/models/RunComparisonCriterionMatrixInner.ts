@@ -29,20 +29,14 @@ import {
 export interface RunComparisonCriterionMatrixInner {
     /**
      * 
-     * @type {string}
-     * @memberof RunComparisonCriterionMatrixInner
      */
     criterionId: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunComparisonCriterionMatrixInner
      */
     text: string;
     /**
      * Same order as `runs`.
-     * @type {Array<RunComparisonCriterionMatrixInnerResultsInner>}
-     * @memberof RunComparisonCriterionMatrixInner
      */
     results: Array<RunComparisonCriterionMatrixInnerResultsInner>;
 }
@@ -51,7 +45,7 @@ export interface RunComparisonCriterionMatrixInner {
  * Check if a given object implements the RunComparisonCriterionMatrixInner interface.
  */
 export function instanceOfRunComparisonCriterionMatrixInner(value: object): value is RunComparisonCriterionMatrixInner {
-    if (!('criterionId' in value) || value['criterionId'] === undefined) return false;
+    if ((!('criterionId' in (value as Record<string, any>)) && !('criterion_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['criterionId'] === undefined && (value as Record<string, any>)['criterion_id'] === undefined)) return false;
     if (!('text' in value) || value['text'] === undefined) return false;
     if (!('results' in value) || value['results'] === undefined) return false;
     return true;

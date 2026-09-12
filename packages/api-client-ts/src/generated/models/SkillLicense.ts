@@ -32,8 +32,6 @@ import {
 export interface SkillLicense {
     /**
      * SPDX id. Absent means unknown, which must never be shown as permissive.
-     * @type {string}
-     * @memberof SkillLicense
      */
     expression?: string;
     /**
@@ -44,22 +42,16 @@ export interface SkillLicense {
      * not declared. Absent on versions imported before ADR-021, whose tier
      * was never recorded and must not be invented.
      * 
-     * @type {string}
-     * @memberof SkillLicense
      */
     source?: SkillLicenseSourceEnum;
     /**
      * What that tier does and does not claim about this package.
-     * @type {string}
-     * @memberof SkillLicense
      */
     sourceNote?: string;
     /**
      * unknown | declared. `confirmed` requires a reviewer's check and
      * nothing records one, so it is never returned here.
      * 
-     * @type {Labelled}
-     * @memberof SkillLicense
      */
     status: Labelled;
 }
@@ -72,7 +64,7 @@ export const SkillLicenseSourceEnum = {
     Manifest: 'manifest',
     ManifestReferencedFile: 'manifest-referenced-file',
     PackageLicenseFile: 'package-license-file',
-    RepoLicenseFile: 'repo-license-file'
+    RepoLicenseFile: 'repo-license-file',
 } as const;
 export type SkillLicenseSourceEnum = typeof SkillLicenseSourceEnum[keyof typeof SkillLicenseSourceEnum];
 

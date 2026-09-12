@@ -21,8 +21,6 @@ import { mapValues } from '../runtime';
 export interface AcceptanceCriteriaSuggestionsSuggestionsInner {
     /**
      * 
-     * @type {string}
-     * @memberof AcceptanceCriteriaSuggestionsSuggestionsInner
      */
     text: string;
 }

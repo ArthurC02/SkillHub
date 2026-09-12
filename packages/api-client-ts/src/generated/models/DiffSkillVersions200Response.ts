@@ -29,8 +29,6 @@ import {
 export interface DiffSkillVersions200Response {
     /**
      * 
-     * @type {Array<FileDiff>}
-     * @memberof DiffSkillVersions200Response
      */
     files: Array<FileDiff>;
 }

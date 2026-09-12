@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,32 +21,22 @@ import { mapValues } from '../runtime';
 export interface DeclareDispatchHalt200Response {
     /**
      * 
-     * @type {string}
-     * @memberof DeclareDispatchHalt200Response
      */
     target: string;
     /**
      * 
-     * @type {string}
-     * @memberof DeclareDispatchHalt200Response
      */
     source: DeclareDispatchHalt200ResponseSourceEnum;
     /**
      * 
-     * @type {string}
-     * @memberof DeclareDispatchHalt200Response
      */
     reason: string;
     /**
      * 
-     * @type {Date}
-     * @memberof DeclareDispatchHalt200Response
      */
     declaredAt: Date;
     /**
      * What the halt now does, in one sentence.
-     * @type {string}
-     * @memberof DeclareDispatchHalt200Response
      */
     note: string;
 }
@@ -56,7 +46,7 @@ export interface DeclareDispatchHalt200Response {
  * @export
  */
 export const DeclareDispatchHalt200ResponseSourceEnum = {
-    P1Incident: 'p1_incident'
+    P1Incident: 'p1_incident',
 } as const;
 export type DeclareDispatchHalt200ResponseSourceEnum = typeof DeclareDispatchHalt200ResponseSourceEnum[keyof typeof DeclareDispatchHalt200ResponseSourceEnum];
 
@@ -67,8 +57,10 @@ export type DeclareDispatchHalt200ResponseSourceEnum = typeof DeclareDispatchHal
 export function instanceOfDeclareDispatchHalt200Response(value: object): value is DeclareDispatchHalt200Response {
     if (!('target' in value) || value['target'] === undefined) return false;
     if (!('source' in value) || value['source'] === undefined) return false;
+    if (value['source'] !== 'p1_incident') return false;
+    
     if (!('reason' in value) || value['reason'] === undefined) return false;
-    if (!('declaredAt' in value) || value['declaredAt'] === undefined) return false;
+    if ((!('declaredAt' in (value as Record<string, any>)) && !('declared_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['declaredAt'] === undefined && (value as Record<string, any>)['declared_at'] === undefined)) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
 }
@@ -86,7 +78,7 @@ export function DeclareDispatchHalt200ResponseFromJSONTyped(json: any, ignoreDis
         'target': json['target'],
         'source': json['source'],
         'reason': json['reason'],
-        'declaredAt': (new Date(json['declared_at'])),
+        'declaredAt': (json['declared_at'] == null ? json['declared_at'] : parseDateTime(json['declared_at'])),
         'note': json['note'],
     };
 }
@@ -105,7 +97,7 @@ export function DeclareDispatchHalt200ResponseToJSONTyped(value?: DeclareDispatc
         'target': value['target'],
         'source': value['source'],
         'reason': value['reason'],
-        'declared_at': value['declaredAt'].toISOString(),
+        'declared_at': value['declaredAt'] == null ? value['declaredAt'] : serializeDateTime(value['declaredAt']),
         'note': value['note'],
     };
 }

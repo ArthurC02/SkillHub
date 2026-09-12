@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,44 +21,30 @@ import { mapValues } from '../runtime';
 export interface AccountLookup {
     /**
      * 
-     * @type {string}
-     * @memberof AccountLookup
      */
     userId: string;
     /**
      * 
-     * @type {string}
-     * @memberof AccountLookup
      */
     email: string;
     /**
      * 
-     * @type {string}
-     * @memberof AccountLookup
      */
     displayName: string;
     /**
      * 
-     * @type {string}
-     * @memberof AccountLookup
      */
     workspaceId: string;
     /**
      * 
-     * @type {Date}
-     * @memberof AccountLookup
      */
     createdAt: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof AccountLookup
      */
     deletionRequestedAt: Date | null;
     /**
      * True when one of the account's identity-provider ids is on BETA_ALLOWLIST, or when no allowlist is configured.
-     * @type {boolean}
-     * @memberof AccountLookup
      */
     inBetaAllowlist: boolean;
 }
@@ -67,13 +53,13 @@ export interface AccountLookup {
  * Check if a given object implements the AccountLookup interface.
  */
 export function instanceOfAccountLookup(value: object): value is AccountLookup {
-    if (!('userId' in value) || value['userId'] === undefined) return false;
+    if ((!('userId' in (value as Record<string, any>)) && !('user_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['userId'] === undefined && (value as Record<string, any>)['user_id'] === undefined)) return false;
     if (!('email' in value) || value['email'] === undefined) return false;
-    if (!('displayName' in value) || value['displayName'] === undefined) return false;
-    if (!('workspaceId' in value) || value['workspaceId'] === undefined) return false;
-    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
-    if (!('deletionRequestedAt' in value) || value['deletionRequestedAt'] === undefined) return false;
-    if (!('inBetaAllowlist' in value) || value['inBetaAllowlist'] === undefined) return false;
+    if ((!('displayName' in (value as Record<string, any>)) && !('display_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['displayName'] === undefined && (value as Record<string, any>)['display_name'] === undefined)) return false;
+    if ((!('workspaceId' in (value as Record<string, any>)) && !('workspace_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['workspaceId'] === undefined && (value as Record<string, any>)['workspace_id'] === undefined)) return false;
+    if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
+    if ((!('deletionRequestedAt' in (value as Record<string, any>)) && !('deletion_requested_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['deletionRequestedAt'] === undefined && (value as Record<string, any>)['deletion_requested_at'] === undefined)) return false;
+    if ((!('inBetaAllowlist' in (value as Record<string, any>)) && !('in_beta_allowlist' in (value as Record<string, any>))) || ((value as Record<string, any>)['inBetaAllowlist'] === undefined && (value as Record<string, any>)['in_beta_allowlist'] === undefined)) return false;
     return true;
 }
 
@@ -91,8 +77,8 @@ export function AccountLookupFromJSONTyped(json: any, ignoreDiscriminator: boole
         'email': json['email'],
         'displayName': json['display_name'],
         'workspaceId': json['workspace_id'],
-        'createdAt': (new Date(json['created_at'])),
-        'deletionRequestedAt': (json['deletion_requested_at'] == null ? null : new Date(json['deletion_requested_at'])),
+        'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
+        'deletionRequestedAt': (json['deletion_requested_at'] == null ? null : parseDateTime(json['deletion_requested_at'])),
         'inBetaAllowlist': json['in_beta_allowlist'],
     };
 }
@@ -112,8 +98,8 @@ export function AccountLookupToJSONTyped(value?: AccountLookup | null, ignoreDis
         'email': value['email'],
         'display_name': value['displayName'],
         'workspace_id': value['workspaceId'],
-        'created_at': value['createdAt'].toISOString(),
-        'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : value['deletionRequestedAt'].toISOString(),
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : serializeDateTime(value['deletionRequestedAt']),
         'in_beta_allowlist': value['inBetaAllowlist'],
     };
 }

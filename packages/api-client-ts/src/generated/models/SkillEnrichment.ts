@@ -31,44 +31,30 @@ import {
 export interface SkillEnrichment {
     /**
      * 
-     * @type {string}
-     * @memberof SkillEnrichment
      */
     status: SkillEnrichmentStatusEnum;
     /**
      * Plain-language summary written by the model.
-     * @type {string}
-     * @memberof SkillEnrichment
      */
     summary?: string;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof SkillEnrichment
      */
     taskExamples?: Array<string>;
     /**
      * 
-     * @type {SkillEnrichmentTags}
-     * @memberof SkillEnrichment
      */
     tags?: SkillEnrichmentTags;
     /**
      * 
-     * @type {string}
-     * @memberof SkillEnrichment
      */
     model?: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillEnrichment
      */
     promptVersion?: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillEnrichment
      */
     note: string;
 }
@@ -79,7 +65,7 @@ export interface SkillEnrichment {
  */
 export const SkillEnrichmentStatusEnum = {
     Pending: 'pending',
-    Enriched: 'enriched'
+    Enriched: 'enriched',
 } as const;
 export type SkillEnrichmentStatusEnum = typeof SkillEnrichmentStatusEnum[keyof typeof SkillEnrichmentStatusEnum];
 

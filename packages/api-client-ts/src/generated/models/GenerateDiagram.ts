@@ -29,8 +29,6 @@ import { mapValues } from '../runtime';
 export interface GenerateDiagram {
     /**
      * What `data` decodes to. Three formats, all of which the mini tier reads natively; SVG is refused because it is text that can carry scripts and the diagram path must not become a second import path.
-     * @type {string}
-     * @memberof GenerateDiagram
      */
     mediaType: GenerateDiagramMediaTypeEnum;
     /**
@@ -38,8 +36,6 @@ export interface GenerateDiagram {
      * cap is `x-max-decoded-bytes` above — a `maxLength` on the base64
      * text would be a different number for the same rule.
      * 
-     * @type {string}
-     * @memberof GenerateDiagram
      */
     data: string;
 }
@@ -51,7 +47,7 @@ export interface GenerateDiagram {
 export const GenerateDiagramMediaTypeEnum = {
     ImagePng: 'image/png',
     ImageJpeg: 'image/jpeg',
-    ImageWebp: 'image/webp'
+    ImageWebp: 'image/webp',
 } as const;
 export type GenerateDiagramMediaTypeEnum = typeof GenerateDiagramMediaTypeEnum[keyof typeof GenerateDiagramMediaTypeEnum];
 
@@ -60,7 +56,7 @@ export type GenerateDiagramMediaTypeEnum = typeof GenerateDiagramMediaTypeEnum[k
  * Check if a given object implements the GenerateDiagram interface.
  */
 export function instanceOfGenerateDiagram(value: object): value is GenerateDiagram {
-    if (!('mediaType' in value) || value['mediaType'] === undefined) return false;
+    if ((!('mediaType' in (value as Record<string, any>)) && !('media_type' in (value as Record<string, any>))) || ((value as Record<string, any>)['mediaType'] === undefined && (value as Record<string, any>)['media_type'] === undefined)) return false;
     if (!('data' in value) || value['data'] === undefined) return false;
     return true;
 }

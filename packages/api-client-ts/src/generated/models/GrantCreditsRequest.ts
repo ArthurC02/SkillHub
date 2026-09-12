@@ -23,16 +23,12 @@ export interface GrantCreditsRequest {
      * Credits to add. Negative for a corrective adjustment; zero
      * is refused.
      * 
-     * @type {number}
-     * @memberof GrantCreditsRequest
      */
     amountCredits: number;
     /**
      * Why. Required, non-empty after trimming, and recorded in the
      * audit event.
      * 
-     * @type {string}
-     * @memberof GrantCreditsRequest
      */
     reason: string;
 }
@@ -41,7 +37,7 @@ export interface GrantCreditsRequest {
  * Check if a given object implements the GrantCreditsRequest interface.
  */
 export function instanceOfGrantCreditsRequest(value: object): value is GrantCreditsRequest {
-    if (!('amountCredits' in value) || value['amountCredits'] === undefined) return false;
+    if ((!('amountCredits' in (value as Record<string, any>)) && !('amount_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['amountCredits'] === undefined && (value as Record<string, any>)['amount_credits'] === undefined)) return false;
     if (!('reason' in value) || value['reason'] === undefined) return false;
     return true;
 }

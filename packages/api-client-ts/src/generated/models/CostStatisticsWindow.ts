@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,50 +21,34 @@ import { mapValues } from '../runtime';
 export interface CostStatisticsWindow {
     /**
      * 
-     * @type {string}
-     * @memberof CostStatisticsWindow
      */
     kind: string;
     /**
      * 
-     * @type {Date}
-     * @memberof CostStatisticsWindow
      */
     windowStart: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof CostStatisticsWindow
      */
     windowEnd: Date;
     /**
      * 
-     * @type {number}
-     * @memberof CostStatisticsWindow
      */
     sampleCount: number;
     /**
      * 
-     * @type {number}
-     * @memberof CostStatisticsWindow
      */
     p50UsdMicros: number | null;
     /**
      * 
-     * @type {number}
-     * @memberof CostStatisticsWindow
      */
     p90UsdMicros: number | null;
     /**
      * 
-     * @type {number}
-     * @memberof CostStatisticsWindow
      */
     p95UsdMicros: number | null;
     /**
      * 
-     * @type {number}
-     * @memberof CostStatisticsWindow
      */
     maxUsdMicros: number | null;
 }
@@ -74,13 +58,13 @@ export interface CostStatisticsWindow {
  */
 export function instanceOfCostStatisticsWindow(value: object): value is CostStatisticsWindow {
     if (!('kind' in value) || value['kind'] === undefined) return false;
-    if (!('windowStart' in value) || value['windowStart'] === undefined) return false;
-    if (!('windowEnd' in value) || value['windowEnd'] === undefined) return false;
-    if (!('sampleCount' in value) || value['sampleCount'] === undefined) return false;
-    if (!('p50UsdMicros' in value) || value['p50UsdMicros'] === undefined) return false;
-    if (!('p90UsdMicros' in value) || value['p90UsdMicros'] === undefined) return false;
-    if (!('p95UsdMicros' in value) || value['p95UsdMicros'] === undefined) return false;
-    if (!('maxUsdMicros' in value) || value['maxUsdMicros'] === undefined) return false;
+    if ((!('windowStart' in (value as Record<string, any>)) && !('window_start' in (value as Record<string, any>))) || ((value as Record<string, any>)['windowStart'] === undefined && (value as Record<string, any>)['window_start'] === undefined)) return false;
+    if ((!('windowEnd' in (value as Record<string, any>)) && !('window_end' in (value as Record<string, any>))) || ((value as Record<string, any>)['windowEnd'] === undefined && (value as Record<string, any>)['window_end'] === undefined)) return false;
+    if ((!('sampleCount' in (value as Record<string, any>)) && !('sample_count' in (value as Record<string, any>))) || ((value as Record<string, any>)['sampleCount'] === undefined && (value as Record<string, any>)['sample_count'] === undefined)) return false;
+    if ((!('p50UsdMicros' in (value as Record<string, any>)) && !('p50_usd_micros' in (value as Record<string, any>))) || ((value as Record<string, any>)['p50UsdMicros'] === undefined && (value as Record<string, any>)['p50_usd_micros'] === undefined)) return false;
+    if ((!('p90UsdMicros' in (value as Record<string, any>)) && !('p90_usd_micros' in (value as Record<string, any>))) || ((value as Record<string, any>)['p90UsdMicros'] === undefined && (value as Record<string, any>)['p90_usd_micros'] === undefined)) return false;
+    if ((!('p95UsdMicros' in (value as Record<string, any>)) && !('p95_usd_micros' in (value as Record<string, any>))) || ((value as Record<string, any>)['p95UsdMicros'] === undefined && (value as Record<string, any>)['p95_usd_micros'] === undefined)) return false;
+    if ((!('maxUsdMicros' in (value as Record<string, any>)) && !('max_usd_micros' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxUsdMicros'] === undefined && (value as Record<string, any>)['max_usd_micros'] === undefined)) return false;
     return true;
 }
 
@@ -95,8 +79,8 @@ export function CostStatisticsWindowFromJSONTyped(json: any, ignoreDiscriminator
     return {
         
         'kind': json['kind'],
-        'windowStart': (new Date(json['window_start'])),
-        'windowEnd': (new Date(json['window_end'])),
+        'windowStart': (json['window_start'] == null ? json['window_start'] : parseDateTime(json['window_start'])),
+        'windowEnd': (json['window_end'] == null ? json['window_end'] : parseDateTime(json['window_end'])),
         'sampleCount': json['sample_count'],
         'p50UsdMicros': json['p50_usd_micros'],
         'p90UsdMicros': json['p90_usd_micros'],
@@ -117,8 +101,8 @@ export function CostStatisticsWindowToJSONTyped(value?: CostStatisticsWindow | n
     return {
         
         'kind': value['kind'],
-        'window_start': value['windowStart'].toISOString(),
-        'window_end': value['windowEnd'].toISOString(),
+        'window_start': value['windowStart'] == null ? value['windowStart'] : serializeDateTime(value['windowStart']),
+        'window_end': value['windowEnd'] == null ? value['windowEnd'] : serializeDateTime(value['windowEnd']),
         'sample_count': value['sampleCount'],
         'p50_usd_micros': value['p50UsdMicros'],
         'p90_usd_micros': value['p90UsdMicros'],

@@ -42,26 +42,18 @@ export interface DeterministicFinding {
      * produces. `compatibility` — the measured (version, runtime image)
      * pair. `cost` — the run's usage totals, which are a lower bound.
      * 
-     * @type {string}
-     * @memberof DeterministicFinding
      */
     category: DeterministicFindingCategoryEnum;
     /**
      * Same three levels as `Finding`, so one severity vocabulary covers the product.
-     * @type {string}
-     * @memberof DeterministicFinding
      */
     severity: DeterministicFindingSeverityEnum;
     /**
      * 
-     * @type {string}
-     * @memberof DeterministicFinding
      */
     message: string;
     /**
      * 
-     * @type {Array<EvidenceRef>}
-     * @memberof DeterministicFinding
      */
     evidence: Array<EvidenceRef>;
 }
@@ -76,7 +68,7 @@ export const DeterministicFindingCategoryEnum = {
     Execution: 'execution',
     Effect: 'effect',
     Compatibility: 'compatibility',
-    Cost: 'cost'
+    Cost: 'cost',
 } as const;
 export type DeterministicFindingCategoryEnum = typeof DeterministicFindingCategoryEnum[keyof typeof DeterministicFindingCategoryEnum];
 
@@ -86,7 +78,7 @@ export type DeterministicFindingCategoryEnum = typeof DeterministicFindingCatego
 export const DeterministicFindingSeverityEnum = {
     Error: 'error',
     Warning: 'warning',
-    Info: 'info'
+    Info: 'info',
 } as const;
 export type DeterministicFindingSeverityEnum = typeof DeterministicFindingSeverityEnum[keyof typeof DeterministicFindingSeverityEnum];
 

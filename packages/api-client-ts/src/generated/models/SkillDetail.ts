@@ -92,26 +92,18 @@ import {
 export interface SkillDetail {
     /**
      * 
-     * @type {string}
-     * @memberof SkillDetail
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillDetail
      */
     name: string;
     /**
      * The package's own frontmatter description, never the model's rewrite.
-     * @type {string}
-     * @memberof SkillDetail
      */
     summary: string;
     /**
      * Which read answered — the public catalog, or the caller's own workspace.
-     * @type {string}
-     * @memberof SkillDetail
      */
     scope: SkillDetailScopeEnum;
     /**
@@ -120,8 +112,6 @@ export interface SkillDetail {
      * every read; the detail page shows it beside `tier` so a reader can
      * see what the skill is for before what was reviewed.
      * 
-     * @type {Labelled}
-     * @memberof SkillDetail
      */
     category: Labelled;
     /**
@@ -138,32 +128,22 @@ export interface SkillDetail {
      * `external` is declared by DISC-002 but never returned here: an
      * external result has not been imported, so it has no detail view.
      * 
-     * @type {Labelled}
-     * @memberof SkillDetail
      */
     tier: Labelled;
     /**
      * 
-     * @type {SkillEnrichment}
-     * @memberof SkillDetail
      */
     enrichment: SkillEnrichment;
     /**
      * 
-     * @type {SkillDetailVersion}
-     * @memberof SkillDetail
      */
     version?: SkillDetailVersion;
     /**
      * 
-     * @type {SkillSource}
-     * @memberof SkillDetail
      */
     source?: SkillSource;
     /**
      * 
-     * @type {SkillLicense}
-     * @memberof SkillDetail
      */
     license: SkillLicense;
     /**
@@ -198,14 +178,10 @@ export interface SkillDetail {
      * The copy in `label`/`note` says what was and was not established,
      * server-side so every surface words it the same way (NFR-001).
      * 
-     * @type {Labelled}
-     * @memberof SkillDetail
      */
     redistribution: Labelled;
     /**
      * 
-     * @type {SkillDetailDerivation}
-     * @memberof SkillDetail
      */
     derivation: SkillDetailDerivation;
     /**
@@ -215,26 +191,18 @@ export interface SkillDetail {
      * labelled. An empty list means neither source found anything to
      * state, never that the skill is unconstrained.
      * 
-     * @type {Array<SkillLimitation>}
-     * @memberof SkillDetail
      */
     limitations: Array<SkillLimitation>;
     /**
      * The manifest's allowed-tools, as declared by the package.
-     * @type {Array<string>}
-     * @memberof SkillDetail
      */
     allowedTools?: Array<string>;
     /**
      * 
-     * @type {SkillRisk}
-     * @memberof SkillDetail
      */
     risk: SkillRisk;
     /**
      * 
-     * @type {SkillCompatibility}
-     * @memberof SkillDetail
      */
     compatibility: SkillCompatibility;
     /**
@@ -249,8 +217,6 @@ export interface SkillDetail {
      * this is set. A client that sees it should say so before offering the
      * advanced view rather than letting the user walk into the refusal.
      * 
-     * @type {SkillAccessRestriction}
-     * @memberof SkillDetail
      */
     accessRestriction?: SkillAccessRestriction;
 }
@@ -261,7 +227,7 @@ export interface SkillDetail {
  */
 export const SkillDetailScopeEnum = {
     Catalog: 'catalog',
-    Private: 'private'
+    Private: 'private',
 } as const;
 export type SkillDetailScopeEnum = typeof SkillDetailScopeEnum[keyof typeof SkillDetailScopeEnum];
 
@@ -270,7 +236,7 @@ export type SkillDetailScopeEnum = typeof SkillDetailScopeEnum[keyof typeof Skil
  * Check if a given object implements the SkillDetail interface.
  */
 export function instanceOfSkillDetail(value: object): value is SkillDetail {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('summary' in value) || value['summary'] === undefined) return false;
     if (!('scope' in value) || value['scope'] === undefined) return false;

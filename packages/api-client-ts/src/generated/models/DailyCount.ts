@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface DailyCount {
     /**
      * 
-     * @type {Date}
-     * @memberof DailyCount
      */
     day: Date;
     /**
      * 
-     * @type {string}
-     * @memberof DailyCount
      */
     key: string;
     /**
      * 
-     * @type {number}
-     * @memberof DailyCount
      */
     count: number;
 }
@@ -59,7 +53,7 @@ export function DailyCountFromJSONTyped(json: any, ignoreDiscriminator: boolean)
     }
     return {
         
-        'day': (new Date(json['day'])),
+        'day': (json['day'] == null ? json['day'] : parseDate(json['day'])),
         'key': json['key'],
         'count': json['count'],
     };
@@ -76,7 +70,7 @@ export function DailyCountToJSONTyped(value?: DailyCount | null, ignoreDiscrimin
 
     return {
         
-        'day': value['day'].toISOString().substring(0,10),
+        'day': value['day'] == null ? value['day'] : serializeDate(value['day']),
         'key': value['key'],
         'count': value['count'],
     };

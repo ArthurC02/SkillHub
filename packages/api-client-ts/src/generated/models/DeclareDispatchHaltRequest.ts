@@ -30,8 +30,6 @@ export interface DeclareDispatchHaltRequest {
      * stopping sandboxd and rebuilding the node are deployment-period
      * actions and nothing here simulates them.
      * 
-     * @type {string}
-     * @memberof DeclareDispatchHaltRequest
      */
     provider?: string;
     /**
@@ -40,8 +38,6 @@ export interface DeclareDispatchHaltRequest {
      * the fleet is not a decision if nobody can explain it later. It
      * is stored as the halt's reason and copied into the audit event.
      * 
-     * @type {string}
-     * @memberof DeclareDispatchHaltRequest
      */
     note: string;
 }

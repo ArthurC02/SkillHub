@@ -43,8 +43,6 @@ import {
 export interface GenerationInputs {
     /**
      * 
-     * @type {GenerationInputsDiagram}
-     * @memberof GenerationInputs
      */
     diagram?: GenerationInputsDiagram;
     /**
@@ -53,8 +51,6 @@ export interface GenerationInputs {
      * page shows the name recorded at generation time and must not treat
      * a failed follow-up read as "never existed".
      * 
-     * @type {Array<GenerationInputsReferencesInner>}
-     * @memberof GenerationInputs
      */
     references?: Array<GenerationInputsReferencesInner>;
 }

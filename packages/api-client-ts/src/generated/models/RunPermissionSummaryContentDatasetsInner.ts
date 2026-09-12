@@ -21,32 +21,22 @@ import { mapValues } from '../runtime';
 export interface RunPermissionSummaryContentDatasetsInner {
     /**
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContentDatasetsInner
      */
     datasetId: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContentDatasetsInner
      */
     fileName: string;
     /**
      * From the content's magic bytes, not its name (PDM-005 §5.1).
-     * @type {string}
-     * @memberof RunPermissionSummaryContentDatasetsInner
      */
     contentType: string;
     /**
      * 
-     * @type {number}
-     * @memberof RunPermissionSummaryContentDatasetsInner
      */
     sizeBytes: number;
     /**
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContentDatasetsInner
      */
     contentHash: string;
 }
@@ -55,11 +45,11 @@ export interface RunPermissionSummaryContentDatasetsInner {
  * Check if a given object implements the RunPermissionSummaryContentDatasetsInner interface.
  */
 export function instanceOfRunPermissionSummaryContentDatasetsInner(value: object): value is RunPermissionSummaryContentDatasetsInner {
-    if (!('datasetId' in value) || value['datasetId'] === undefined) return false;
-    if (!('fileName' in value) || value['fileName'] === undefined) return false;
-    if (!('contentType' in value) || value['contentType'] === undefined) return false;
-    if (!('sizeBytes' in value) || value['sizeBytes'] === undefined) return false;
-    if (!('contentHash' in value) || value['contentHash'] === undefined) return false;
+    if ((!('datasetId' in (value as Record<string, any>)) && !('dataset_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['datasetId'] === undefined && (value as Record<string, any>)['dataset_id'] === undefined)) return false;
+    if ((!('fileName' in (value as Record<string, any>)) && !('file_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['fileName'] === undefined && (value as Record<string, any>)['file_name'] === undefined)) return false;
+    if ((!('contentType' in (value as Record<string, any>)) && !('content_type' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentType'] === undefined && (value as Record<string, any>)['content_type'] === undefined)) return false;
+    if ((!('sizeBytes' in (value as Record<string, any>)) && !('size_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['sizeBytes'] === undefined && (value as Record<string, any>)['size_bytes'] === undefined)) return false;
+    if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
     return true;
 }
 

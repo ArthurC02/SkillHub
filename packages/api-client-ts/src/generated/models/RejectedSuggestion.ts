@@ -29,20 +29,14 @@ import {
 export interface RejectedSuggestion {
     /**
      * 
-     * @type {string}
-     * @memberof RejectedSuggestion
      */
     suggestionId: string;
     /**
      * 
-     * @type {SuggestionBlockedReason}
-     * @memberof RejectedSuggestion
      */
     blockedReason: SuggestionBlockedReason;
     /**
      * The reason in the user's language, safe to display as-is.
-     * @type {string}
-     * @memberof RejectedSuggestion
      */
     message: string;
 }
@@ -53,8 +47,8 @@ export interface RejectedSuggestion {
  * Check if a given object implements the RejectedSuggestion interface.
  */
 export function instanceOfRejectedSuggestion(value: object): value is RejectedSuggestion {
-    if (!('suggestionId' in value) || value['suggestionId'] === undefined) return false;
-    if (!('blockedReason' in value) || value['blockedReason'] === undefined) return false;
+    if ((!('suggestionId' in (value as Record<string, any>)) && !('suggestion_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['suggestionId'] === undefined && (value as Record<string, any>)['suggestion_id'] === undefined)) return false;
+    if ((!('blockedReason' in (value as Record<string, any>)) && !('blocked_reason' in (value as Record<string, any>))) || ((value as Record<string, any>)['blockedReason'] === undefined && (value as Record<string, any>)['blocked_reason'] === undefined)) return false;
     if (!('message' in value) || value['message'] === undefined) return false;
     return true;
 }

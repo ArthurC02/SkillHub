@@ -24,20 +24,14 @@ import { mapValues } from '../runtime';
 export interface Labelled {
     /**
      * 
-     * @type {string}
-     * @memberof Labelled
      */
     value: string;
     /**
      * 
-     * @type {string}
-     * @memberof Labelled
      */
     label: string;
     /**
      * 
-     * @type {string}
-     * @memberof Labelled
      */
     note: string;
 }

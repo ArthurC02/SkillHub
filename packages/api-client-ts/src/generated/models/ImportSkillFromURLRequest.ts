@@ -21,8 +21,6 @@ import { mapValues } from '../runtime';
 export interface ImportSkillFromURLRequest {
     /**
      * 
-     * @type {string}
-     * @memberof ImportSkillFromURLRequest
      */
     url: string;
 }

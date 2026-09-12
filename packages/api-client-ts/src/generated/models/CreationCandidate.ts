@@ -21,26 +21,18 @@ import { mapValues } from '../runtime';
 export interface CreationCandidate {
     /**
      * 
-     * @type {string}
-     * @memberof CreationCandidate
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationCandidate
      */
     versionId: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationCandidate
      */
     runId?: string;
     /**
      * The Test Case Go created from the confirmed acceptance criteria when this candidate was materialized.
-     * @type {string}
-     * @memberof CreationCandidate
      */
     testCaseId?: string;
 }
@@ -49,8 +41,8 @@ export interface CreationCandidate {
  * Check if a given object implements the CreationCandidate interface.
  */
 export function instanceOfCreationCandidate(value: object): value is CreationCandidate {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
     return true;
 }
 

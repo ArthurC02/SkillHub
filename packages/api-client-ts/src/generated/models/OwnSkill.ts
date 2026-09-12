@@ -46,20 +46,14 @@ import {
 export interface OwnSkill {
     /**
      * 
-     * @type {string}
-     * @memberof OwnSkill
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof OwnSkill
      */
     name: string;
     /**
      * 
-     * @type {string}
-     * @memberof OwnSkill
      */
     summary: string;
     /**
@@ -76,8 +70,6 @@ export interface OwnSkill {
      * download the Skill I just wrote" was permanently no, over a licensing
      * question nobody could resolve (ADR-045).
      * 
-     * @type {string}
-     * @memberof OwnSkill
      */
     redistribution: OwnSkillRedistributionEnum;
     /**
@@ -86,20 +78,14 @@ export interface OwnSkill {
      * belongs on a list of skills the caller owns rather than only on the
      * detail view.
      * 
-     * @type {string}
-     * @memberof OwnSkill
      */
     accessRestriction?: string;
     /**
      * 
-     * @type {string}
-     * @memberof OwnSkill
      */
     forkedFromSkillId?: string;
     /**
      * 
-     * @type {string}
-     * @memberof OwnSkill
      */
     forkedFromVersionId?: string;
     /**
@@ -110,14 +96,10 @@ export interface OwnSkill {
      * (02:NFR-007 第 3 條). `scan_status: unavailable` is the usual
      * answer for a fork; see `verification` for why.
      * 
-     * @type {SearchResultRisk}
-     * @memberof OwnSkill
      */
     risk: SearchResultRisk;
     /**
      * 
-     * @type {SkillVerification}
-     * @memberof OwnSkill
      */
     verification: SkillVerification;
 }
@@ -131,7 +113,7 @@ export const OwnSkillRedistributionEnum = {
     Blocked: 'blocked',
     Unknown: 'unknown',
     SelfSupplied: 'self_supplied',
-    Generated: 'generated'
+    Generated: 'generated',
 } as const;
 export type OwnSkillRedistributionEnum = typeof OwnSkillRedistributionEnum[keyof typeof OwnSkillRedistributionEnum];
 
@@ -140,7 +122,7 @@ export type OwnSkillRedistributionEnum = typeof OwnSkillRedistributionEnum[keyof
  * Check if a given object implements the OwnSkill interface.
  */
 export function instanceOfOwnSkill(value: object): value is OwnSkill {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('summary' in value) || value['summary'] === undefined) return false;
     if (!('redistribution' in value) || value['redistribution'] === undefined) return false;

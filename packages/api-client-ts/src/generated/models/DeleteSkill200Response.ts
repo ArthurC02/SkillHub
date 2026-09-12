@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface DeleteSkill200Response {
     /**
      * 
-     * @type {boolean}
-     * @memberof DeleteSkill200Response
      */
     deleted: boolean;
     /**
      * 
-     * @type {number}
-     * @memberof DeleteSkill200Response
      */
     versionsRetained: number;
     /**
      * 
-     * @type {string}
-     * @memberof DeleteSkill200Response
      */
     note: string;
 }
@@ -44,7 +38,7 @@ export interface DeleteSkill200Response {
  */
 export function instanceOfDeleteSkill200Response(value: object): value is DeleteSkill200Response {
     if (!('deleted' in value) || value['deleted'] === undefined) return false;
-    if (!('versionsRetained' in value) || value['versionsRetained'] === undefined) return false;
+    if ((!('versionsRetained' in (value as Record<string, any>)) && !('versions_retained' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionsRetained'] === undefined && (value as Record<string, any>)['versions_retained'] === undefined)) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
 }

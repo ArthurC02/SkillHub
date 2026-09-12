@@ -33,20 +33,14 @@ export interface GetReadiness200Response {
      * know whether the deployment works, and "nobody looked" is
      * not an answer to that.
      * 
-     * @type {boolean}
-     * @memberof GetReadiness200Response
      */
     ready: boolean;
     /**
      * 
-     * @type {string}
-     * @memberof GetReadiness200Response
      */
     detail?: string;
     /**
      * 
-     * @type {Array<GetReadiness200ResponseCapabilitiesInner>}
-     * @memberof GetReadiness200Response
      */
     capabilities: Array<GetReadiness200ResponseCapabilitiesInner>;
 }

@@ -29,14 +29,10 @@ import {
 export interface SetSkillRedistribution200Response {
     /**
      * 
-     * @type {string}
-     * @memberof SetSkillRedistribution200Response
      */
     skillId: string;
     /**
      * 
-     * @type {SetSkillRedistribution200ResponseRedistribution}
-     * @memberof SetSkillRedistribution200Response
      */
     redistribution: SetSkillRedistribution200ResponseRedistribution;
     /**
@@ -44,8 +40,6 @@ export interface SetSkillRedistribution200Response {
      * nullable: the column is NOT NULL with a default, so there
      * is no "no verdict yet" state for null to mean.
      * 
-     * @type {string}
-     * @memberof SetSkillRedistribution200Response
      */
     previousValue: SetSkillRedistribution200ResponsePreviousValueEnum;
 }
@@ -59,7 +53,7 @@ export const SetSkillRedistribution200ResponsePreviousValueEnum = {
     Blocked: 'blocked',
     Unknown: 'unknown',
     SelfSupplied: 'self_supplied',
-    Generated: 'generated'
+    Generated: 'generated',
 } as const;
 export type SetSkillRedistribution200ResponsePreviousValueEnum = typeof SetSkillRedistribution200ResponsePreviousValueEnum[keyof typeof SetSkillRedistribution200ResponsePreviousValueEnum];
 
@@ -68,9 +62,9 @@ export type SetSkillRedistribution200ResponsePreviousValueEnum = typeof SetSkill
  * Check if a given object implements the SetSkillRedistribution200Response interface.
  */
 export function instanceOfSetSkillRedistribution200Response(value: object): value is SetSkillRedistribution200Response {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('redistribution' in value) || value['redistribution'] === undefined) return false;
-    if (!('previousValue' in value) || value['previousValue'] === undefined) return false;
+    if ((!('previousValue' in (value as Record<string, any>)) && !('previous_value' in (value as Record<string, any>))) || ((value as Record<string, any>)['previousValue'] === undefined && (value as Record<string, any>)['previous_value'] === undefined)) return false;
     return true;
 }
 

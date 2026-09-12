@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface CreateCreationSession {
     /**
      * 
-     * @type {string}
-     * @memberof CreateCreationSession
      */
     id: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreateCreationSession
      */
     message: string;
     /**
      * 
-     * @type {number}
-     * @memberof CreateCreationSession
      */
     budgetCredits: number;
 }
@@ -45,7 +39,7 @@ export interface CreateCreationSession {
 export function instanceOfCreateCreationSession(value: object): value is CreateCreationSession {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('message' in value) || value['message'] === undefined) return false;
-    if (!('budgetCredits' in value) || value['budgetCredits'] === undefined) return false;
+    if ((!('budgetCredits' in (value as Record<string, any>)) && !('budget_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['budgetCredits'] === undefined && (value as Record<string, any>)['budget_credits'] === undefined)) return false;
     return true;
 }
 

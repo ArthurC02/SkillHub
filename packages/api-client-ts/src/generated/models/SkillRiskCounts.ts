@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface SkillRiskCounts {
     /**
      * 
-     * @type {number}
-     * @memberof SkillRiskCounts
      */
     errors: number;
     /**
      * 
-     * @type {number}
-     * @memberof SkillRiskCounts
      */
     warnings: number;
     /**
      * 
-     * @type {number}
-     * @memberof SkillRiskCounts
      */
     infos: number;
 }

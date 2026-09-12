@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface GetReadiness200ResponseCapabilitiesInner {
     /**
      * Stable machine key; the launcher and this endpoint both use it.
-     * @type {string}
-     * @memberof GetReadiness200ResponseCapabilitiesInner
      */
     id: string;
     /**
      * 
-     * @type {string}
-     * @memberof GetReadiness200ResponseCapabilitiesInner
      */
     name: string;
     /**
@@ -38,38 +34,26 @@ export interface GetReadiness200ResponseCapabilitiesInner {
      * names which. `broken` — probed and it failed;
      * `detail` says how.
      * 
-     * @type {string}
-     * @memberof GetReadiness200ResponseCapabilitiesInner
      */
     readiness: GetReadiness200ResponseCapabilitiesInnerReadinessEnum;
     /**
      * Variable NAMES, never values. Clean test mode only.
-     * @type {Array<string>}
-     * @memberof GetReadiness200ResponseCapabilitiesInner
      */
     missing?: Array<string>;
     /**
      * Clean test mode only.
-     * @type {string}
-     * @memberof GetReadiness200ResponseCapabilitiesInner
      */
     detail?: string;
     /**
      * What a user meets without it. Clean test mode only.
-     * @type {string}
-     * @memberof GetReadiness200ResponseCapabilitiesInner
      */
     without?: string;
     /**
      * How to supply it. Clean test mode only.
-     * @type {string}
-     * @memberof GetReadiness200ResponseCapabilitiesInner
      */
     fix?: string;
     /**
      * How long the probe took.
-     * @type {string}
-     * @memberof GetReadiness200ResponseCapabilitiesInner
      */
     measuredFor?: string;
 }
@@ -82,7 +66,7 @@ export const GetReadiness200ResponseCapabilitiesInnerReadinessEnum = {
     Ready: 'ready',
     Unmeasured: 'unmeasured',
     Unavailable: 'unavailable',
-    Broken: 'broken'
+    Broken: 'broken',
 } as const;
 export type GetReadiness200ResponseCapabilitiesInnerReadinessEnum = typeof GetReadiness200ResponseCapabilitiesInnerReadinessEnum[keyof typeof GetReadiness200ResponseCapabilitiesInnerReadinessEnum];
 

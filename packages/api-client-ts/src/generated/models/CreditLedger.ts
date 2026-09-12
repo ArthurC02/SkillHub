@@ -29,20 +29,14 @@ import {
 export interface CreditLedger {
     /**
      * 
-     * @type {string}
-     * @memberof CreditLedger
      */
     workspaceId: string;
     /**
      * 
-     * @type {number}
-     * @memberof CreditLedger
      */
     balanceCredits: number;
     /**
      * 
-     * @type {Array<CreditLedgerEntry>}
-     * @memberof CreditLedger
      */
     entries: Array<CreditLedgerEntry>;
 }
@@ -51,8 +45,8 @@ export interface CreditLedger {
  * Check if a given object implements the CreditLedger interface.
  */
 export function instanceOfCreditLedger(value: object): value is CreditLedger {
-    if (!('workspaceId' in value) || value['workspaceId'] === undefined) return false;
-    if (!('balanceCredits' in value) || value['balanceCredits'] === undefined) return false;
+    if ((!('workspaceId' in (value as Record<string, any>)) && !('workspace_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['workspaceId'] === undefined && (value as Record<string, any>)['workspace_id'] === undefined)) return false;
+    if ((!('balanceCredits' in (value as Record<string, any>)) && !('balance_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['balanceCredits'] === undefined && (value as Record<string, any>)['balance_credits'] === undefined)) return false;
     if (!('entries' in value) || value['entries'] === undefined) return false;
     return true;
 }

@@ -36,8 +36,6 @@ import {
 export interface TraceAdvanced {
     /**
      * 
-     * @type {string}
-     * @memberof TraceAdvanced
      */
     runId: string;
     /**
@@ -45,14 +43,10 @@ export interface TraceAdvanced {
      * run with a gap is incomplete, and a running one with no gap yet is
      * complete so far.
      * 
-     * @type {boolean}
-     * @memberof TraceAdvanced
      */
     complete: boolean;
     /**
      * 
-     * @type {Array<TraceStream>}
-     * @memberof TraceAdvanced
      */
     streams: Array<TraceStream>;
     /**
@@ -61,20 +55,14 @@ export interface TraceAdvanced {
      * cross-producer timeline must fetch every page and then sort the
      * combined events by (occurred_at, emitted_by, attempt, seq).
      * 
-     * @type {Array<TraceEventView>}
-     * @memberof TraceAdvanced
      */
     events: Array<TraceEventView>;
     /**
      * Cursor to send as `after` to fetch events ingested after this page.
-     * @type {number}
-     * @memberof TraceAdvanced
      */
     nextAfter: number;
     /**
      * True when another page is already available.
-     * @type {boolean}
-     * @memberof TraceAdvanced
      */
     hasMore: boolean;
 }
@@ -83,12 +71,12 @@ export interface TraceAdvanced {
  * Check if a given object implements the TraceAdvanced interface.
  */
 export function instanceOfTraceAdvanced(value: object): value is TraceAdvanced {
-    if (!('runId' in value) || value['runId'] === undefined) return false;
+    if ((!('runId' in (value as Record<string, any>)) && !('run_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['runId'] === undefined && (value as Record<string, any>)['run_id'] === undefined)) return false;
     if (!('complete' in value) || value['complete'] === undefined) return false;
     if (!('streams' in value) || value['streams'] === undefined) return false;
     if (!('events' in value) || value['events'] === undefined) return false;
-    if (!('nextAfter' in value) || value['nextAfter'] === undefined) return false;
-    if (!('hasMore' in value) || value['hasMore'] === undefined) return false;
+    if ((!('nextAfter' in (value as Record<string, any>)) && !('next_after' in (value as Record<string, any>))) || ((value as Record<string, any>)['nextAfter'] === undefined && (value as Record<string, any>)['next_after'] === undefined)) return false;
+    if ((!('hasMore' in (value as Record<string, any>)) && !('has_more' in (value as Record<string, any>))) || ((value as Record<string, any>)['hasMore'] === undefined && (value as Record<string, any>)['has_more'] === undefined)) return false;
     return true;
 }
 

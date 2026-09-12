@@ -33,8 +33,6 @@ import {
 export interface AcceptanceCriteriaSuggestions {
     /**
      * 
-     * @type {Array<AcceptanceCriteriaSuggestionsSuggestionsInner>}
-     * @memberof AcceptanceCriteriaSuggestions
      */
     suggestions: Array<AcceptanceCriteriaSuggestionsSuggestionsInner>;
 }

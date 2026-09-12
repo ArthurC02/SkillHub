@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { EvaluationFeedback } from './EvaluationFeedback';
 import {
     EvaluationFeedbackFromJSON,
@@ -61,14 +61,10 @@ import {
 export interface Evaluation {
     /**
      * 
-     * @type {string}
-     * @memberof Evaluation
      */
     evaluationId: string;
     /**
      * 
-     * @type {string}
-     * @memberof Evaluation
      */
     runId: string;
     /**
@@ -78,8 +74,6 @@ export interface Evaluation {
      * lenient verdict. It is a different thing from having no evaluation
      * at all, which is a 404 rather than a row.
      * 
-     * @type {string}
-     * @memberof Evaluation
      */
     status: EvaluationStatusEnum;
     /**
@@ -88,24 +82,18 @@ export interface Evaluation {
      * the evidence does not settle the question, and it is what a
      * `pending` or `failed` evaluation reports.
      * 
-     * @type {string}
-     * @memberof Evaluation
      */
     overall: EvaluationOverallEnum;
     /**
      * Human-readable verdict, for display above the per-criterion detail.
      * On `status: failed` it states what stopped the judgement instead.
      * 
-     * @type {string}
-     * @memberof Evaluation
      */
     summary?: string;
     /**
      * One entry per acceptance criterion in the run's *snapshot*, not the
      * editable test case (iron rule 4).
      * 
-     * @type {Array<CriterionResult>}
-     * @memberof Evaluation
      */
     criterionResults: Array<CriterionResult>;
     /**
@@ -113,8 +101,6 @@ export interface Evaluation {
      * questions: "what is wrong with this run" versus "did this criterion
      * pass". An empty list is not a clean bill of health.
      * 
-     * @type {Array<DeterministicFinding>}
-     * @memberof Evaluation
      */
     deterministicFindings: Array<DeterministicFinding>;
     /**
@@ -123,24 +109,18 @@ export interface Evaluation {
      * criteria is settled without one - because naming a model here would
      * describe a call that was never made.
      * 
-     * @type {string}
-     * @memberof Evaluation
      */
     judgeModel: string;
     /**
      * The judge prompt this verdict was reached under (ADR-017). Together
      * with `rubric_version` it is what makes two revisions comparable.
      * 
-     * @type {string}
-     * @memberof Evaluation
      */
     judgePromptVersion: string;
     /**
      * The CONTENT-007 rubric in force. Absent when the skill's category
      * has none — absent means "no rubric", not "the default rubric".
      * 
-     * @type {string}
-     * @memberof Evaluation
      */
     rubricVersion?: string;
     /**
@@ -150,26 +130,18 @@ export interface Evaluation {
      * incomplete evidence must not come back `passed`; `undetermined` is
      * the honest outcome and the UI has to keep saying so (ADR-009).
      * 
-     * @type {boolean}
-     * @memberof Evaluation
      */
     evidenceComplete: boolean;
     /**
      * 
-     * @type {EvaluationCost}
-     * @memberof Evaluation
      */
     cost: EvaluationCost;
     /**
      * 
-     * @type {EvaluationFeedback}
-     * @memberof Evaluation
      */
     feedback?: EvaluationFeedback;
     /**
      * 
-     * @type {Date}
-     * @memberof Evaluation
      */
     evaluatedAt: Date;
     /**
@@ -177,8 +149,6 @@ export interface Evaluation {
      * current revision. Returned so that reading an old revision through
      * `?revision=` cannot be mistaken for reading the standing verdict.
      * 
-     * @type {Date}
-     * @memberof Evaluation
      */
     supersededAt?: Date | null;
 }
@@ -190,7 +160,7 @@ export interface Evaluation {
 export const EvaluationStatusEnum = {
     Pending: 'pending',
     Completed: 'completed',
-    Failed: 'failed'
+    Failed: 'failed',
 } as const;
 export type EvaluationStatusEnum = typeof EvaluationStatusEnum[keyof typeof EvaluationStatusEnum];
 
@@ -201,7 +171,7 @@ export const EvaluationOverallEnum = {
     Met: 'met',
     PartiallyMet: 'partially_met',
     NotMet: 'not_met',
-    Undetermined: 'undetermined'
+    Undetermined: 'undetermined',
 } as const;
 export type EvaluationOverallEnum = typeof EvaluationOverallEnum[keyof typeof EvaluationOverallEnum];
 
@@ -210,17 +180,17 @@ export type EvaluationOverallEnum = typeof EvaluationOverallEnum[keyof typeof Ev
  * Check if a given object implements the Evaluation interface.
  */
 export function instanceOfEvaluation(value: object): value is Evaluation {
-    if (!('evaluationId' in value) || value['evaluationId'] === undefined) return false;
-    if (!('runId' in value) || value['runId'] === undefined) return false;
+    if ((!('evaluationId' in (value as Record<string, any>)) && !('evaluation_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['evaluationId'] === undefined && (value as Record<string, any>)['evaluation_id'] === undefined)) return false;
+    if ((!('runId' in (value as Record<string, any>)) && !('run_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['runId'] === undefined && (value as Record<string, any>)['run_id'] === undefined)) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('overall' in value) || value['overall'] === undefined) return false;
-    if (!('criterionResults' in value) || value['criterionResults'] === undefined) return false;
-    if (!('deterministicFindings' in value) || value['deterministicFindings'] === undefined) return false;
-    if (!('judgeModel' in value) || value['judgeModel'] === undefined) return false;
-    if (!('judgePromptVersion' in value) || value['judgePromptVersion'] === undefined) return false;
-    if (!('evidenceComplete' in value) || value['evidenceComplete'] === undefined) return false;
+    if ((!('criterionResults' in (value as Record<string, any>)) && !('criterion_results' in (value as Record<string, any>))) || ((value as Record<string, any>)['criterionResults'] === undefined && (value as Record<string, any>)['criterion_results'] === undefined)) return false;
+    if ((!('deterministicFindings' in (value as Record<string, any>)) && !('deterministic_findings' in (value as Record<string, any>))) || ((value as Record<string, any>)['deterministicFindings'] === undefined && (value as Record<string, any>)['deterministic_findings'] === undefined)) return false;
+    if ((!('judgeModel' in (value as Record<string, any>)) && !('judge_model' in (value as Record<string, any>))) || ((value as Record<string, any>)['judgeModel'] === undefined && (value as Record<string, any>)['judge_model'] === undefined)) return false;
+    if ((!('judgePromptVersion' in (value as Record<string, any>)) && !('judge_prompt_version' in (value as Record<string, any>))) || ((value as Record<string, any>)['judgePromptVersion'] === undefined && (value as Record<string, any>)['judge_prompt_version'] === undefined)) return false;
+    if ((!('evidenceComplete' in (value as Record<string, any>)) && !('evidence_complete' in (value as Record<string, any>))) || ((value as Record<string, any>)['evidenceComplete'] === undefined && (value as Record<string, any>)['evidence_complete'] === undefined)) return false;
     if (!('cost' in value) || value['cost'] === undefined) return false;
-    if (!('evaluatedAt' in value) || value['evaluatedAt'] === undefined) return false;
+    if ((!('evaluatedAt' in (value as Record<string, any>)) && !('evaluated_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['evaluatedAt'] === undefined && (value as Record<string, any>)['evaluated_at'] === undefined)) return false;
     return true;
 }
 
@@ -247,8 +217,8 @@ export function EvaluationFromJSONTyped(json: any, ignoreDiscriminator: boolean)
         'evidenceComplete': json['evidence_complete'],
         'cost': EvaluationCostFromJSON(json['cost']),
         'feedback': json['feedback'] == null ? undefined : EvaluationFeedbackFromJSON(json['feedback']),
-        'evaluatedAt': (new Date(json['evaluated_at'])),
-        'supersededAt': json['superseded_at'] == null ? undefined : (new Date(json['superseded_at'])),
+        'evaluatedAt': (json['evaluated_at'] == null ? json['evaluated_at'] : parseDateTime(json['evaluated_at'])),
+        'supersededAt': json['superseded_at'] === undefined ? undefined : json['superseded_at'] === null ? null : (parseDateTime(json['superseded_at'])),
     };
 }
 
@@ -276,8 +246,8 @@ export function EvaluationToJSONTyped(value?: Evaluation | null, ignoreDiscrimin
         'evidence_complete': value['evidenceComplete'],
         'cost': EvaluationCostToJSON(value['cost']),
         'feedback': EvaluationFeedbackToJSON(value['feedback']),
-        'evaluated_at': value['evaluatedAt'].toISOString(),
-        'superseded_at': value['supersededAt'] == null ? value['supersededAt'] : value['supersededAt'].toISOString(),
+        'evaluated_at': value['evaluatedAt'] == null ? value['evaluatedAt'] : serializeDateTime(value['evaluatedAt']),
+        'superseded_at': value['supersededAt'] == null ? value['supersededAt'] : serializeDateTime(value['supersededAt']),
     };
 }
 

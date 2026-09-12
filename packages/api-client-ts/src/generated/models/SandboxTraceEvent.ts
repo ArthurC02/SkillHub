@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,58 +21,40 @@ import { mapValues } from '../runtime';
 export interface SandboxTraceEvent {
     /**
      * 
-     * @type {string}
-     * @memberof SandboxTraceEvent
      */
     schemaVersion: string;
     /**
      * Producer-assigned. This is the consumer idempotency key (TRACE-008).
-     * @type {string}
-     * @memberof SandboxTraceEvent
      */
     eventId: string;
     /**
      * 
-     * @type {string}
-     * @memberof SandboxTraceEvent
      */
     runId: string;
     /**
      * 
-     * @type {number}
-     * @memberof SandboxTraceEvent
      */
     attempt: number;
     /**
      * Gapless from 1, scoped to (run_id, attempt, emitted_by). A hole is how
      * a lost event is detected; it is not a run-wide ordinal.
      * 
-     * @type {number}
-     * @memberof SandboxTraceEvent
      */
     seq: number;
     /**
      * 
-     * @type {Date}
-     * @memberof SandboxTraceEvent
      */
     occurredAt: Date;
     /**
      * 
-     * @type {string}
-     * @memberof SandboxTraceEvent
      */
     emittedBy: SandboxTraceEventEmittedByEnum;
     /**
      * 
-     * @type {string}
-     * @memberof SandboxTraceEvent
      */
     type: SandboxTraceEventTypeEnum;
     /**
      * 
-     * @type {string}
-     * @memberof SandboxTraceEvent
      */
     status?: SandboxTraceEventStatusEnum | null;
     /**
@@ -80,20 +62,14 @@ export interface SandboxTraceEvent {
      * masker runs on every event regardless, and a sandbox vouching for
      * itself is exactly what the trust boundary forbids.
      * 
-     * @type {boolean}
-     * @memberof SandboxTraceEvent
      */
     masked: boolean;
     /**
      * JSON Pointers, relative to payload, of values actually redacted.
-     * @type {Array<string>}
-     * @memberof SandboxTraceEvent
      */
     maskedFields?: Array<string>;
     /**
      * 
-     * @type {object}
-     * @memberof SandboxTraceEvent
      */
     payload: object;
 }
@@ -103,7 +79,7 @@ export interface SandboxTraceEvent {
  * @export
  */
 export const SandboxTraceEventEmittedByEnum = {
-    Sandbox: 'sandbox'
+    Sandbox: 'sandbox',
 } as const;
 export type SandboxTraceEventEmittedByEnum = typeof SandboxTraceEventEmittedByEnum[keyof typeof SandboxTraceEventEmittedByEnum];
 
@@ -121,7 +97,7 @@ export const SandboxTraceEventTypeEnum = {
     Usage: 'usage',
     RunLifecycle: 'run_lifecycle',
     EvaluationStarted: 'evaluation_started',
-    EvaluationCompleted: 'evaluation_completed'
+    EvaluationCompleted: 'evaluation_completed',
 } as const;
 export type SandboxTraceEventTypeEnum = typeof SandboxTraceEventTypeEnum[keyof typeof SandboxTraceEventTypeEnum];
 
@@ -133,7 +109,7 @@ export const SandboxTraceEventStatusEnum = {
     Error: 'error',
     Skipped: 'skipped',
     Cancelled: 'cancelled',
-    TimedOut: 'timed_out'
+    TimedOut: 'timed_out',
 } as const;
 export type SandboxTraceEventStatusEnum = typeof SandboxTraceEventStatusEnum[keyof typeof SandboxTraceEventStatusEnum];
 
@@ -142,13 +118,15 @@ export type SandboxTraceEventStatusEnum = typeof SandboxTraceEventStatusEnum[key
  * Check if a given object implements the SandboxTraceEvent interface.
  */
 export function instanceOfSandboxTraceEvent(value: object): value is SandboxTraceEvent {
-    if (!('schemaVersion' in value) || value['schemaVersion'] === undefined) return false;
-    if (!('eventId' in value) || value['eventId'] === undefined) return false;
-    if (!('runId' in value) || value['runId'] === undefined) return false;
+    if ((!('schemaVersion' in (value as Record<string, any>)) && !('schema_version' in (value as Record<string, any>))) || ((value as Record<string, any>)['schemaVersion'] === undefined && (value as Record<string, any>)['schema_version'] === undefined)) return false;
+    if ((!('eventId' in (value as Record<string, any>)) && !('event_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['eventId'] === undefined && (value as Record<string, any>)['event_id'] === undefined)) return false;
+    if ((!('runId' in (value as Record<string, any>)) && !('run_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['runId'] === undefined && (value as Record<string, any>)['run_id'] === undefined)) return false;
     if (!('attempt' in value) || value['attempt'] === undefined) return false;
     if (!('seq' in value) || value['seq'] === undefined) return false;
-    if (!('occurredAt' in value) || value['occurredAt'] === undefined) return false;
-    if (!('emittedBy' in value) || value['emittedBy'] === undefined) return false;
+    if ((!('occurredAt' in (value as Record<string, any>)) && !('occurred_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['occurredAt'] === undefined && (value as Record<string, any>)['occurred_at'] === undefined)) return false;
+    if ((!('emittedBy' in (value as Record<string, any>)) && !('emitted_by' in (value as Record<string, any>))) || ((value as Record<string, any>)['emittedBy'] === undefined && (value as Record<string, any>)['emitted_by'] === undefined)) return false;
+    if ((value as Record<string, any>)['emittedBy'] !== 'sandbox' && (value as Record<string, any>)['emitted_by'] !== 'sandbox') return false;
+    
     if (!('type' in value) || value['type'] === undefined) return false;
     if (!('masked' in value) || value['masked'] === undefined) return false;
     if (!('payload' in value) || value['payload'] === undefined) return false;
@@ -170,10 +148,10 @@ export function SandboxTraceEventFromJSONTyped(json: any, ignoreDiscriminator: b
         'runId': json['run_id'],
         'attempt': json['attempt'],
         'seq': json['seq'],
-        'occurredAt': (new Date(json['occurred_at'])),
+        'occurredAt': (json['occurred_at'] == null ? json['occurred_at'] : parseDateTime(json['occurred_at'])),
         'emittedBy': json['emitted_by'],
         'type': json['type'],
-        'status': json['status'] == null ? undefined : json['status'],
+        'status': json['status'] === undefined ? undefined : json['status'] === null ? null : json['status'],
         'masked': json['masked'],
         'maskedFields': json['masked_fields'] == null ? undefined : json['masked_fields'],
         'payload': json['payload'],
@@ -196,7 +174,7 @@ export function SandboxTraceEventToJSONTyped(value?: SandboxTraceEvent | null, i
         'run_id': value['runId'],
         'attempt': value['attempt'],
         'seq': value['seq'],
-        'occurred_at': value['occurredAt'].toISOString(),
+        'occurred_at': value['occurredAt'] == null ? value['occurredAt'] : serializeDateTime(value['occurredAt']),
         'emitted_by': value['emittedBy'],
         'type': value['type'],
         'status': value['status'],

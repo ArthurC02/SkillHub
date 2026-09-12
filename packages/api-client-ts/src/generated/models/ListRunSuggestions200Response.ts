@@ -31,14 +31,10 @@ export interface ListRunSuggestions200Response {
      * Which evaluation these came from. Quote it back to
      * POST /skills/{id}/versions/from-suggestions.
      * 
-     * @type {string}
-     * @memberof ListRunSuggestions200Response
      */
     evaluationId: string;
     /**
      * 
-     * @type {Array<ImprovementSuggestion>}
-     * @memberof ListRunSuggestions200Response
      */
     suggestions: Array<ImprovementSuggestion>;
 }
@@ -47,7 +43,7 @@ export interface ListRunSuggestions200Response {
  * Check if a given object implements the ListRunSuggestions200Response interface.
  */
 export function instanceOfListRunSuggestions200Response(value: object): value is ListRunSuggestions200Response {
-    if (!('evaluationId' in value) || value['evaluationId'] === undefined) return false;
+    if ((!('evaluationId' in (value as Record<string, any>)) && !('evaluation_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['evaluationId'] === undefined && (value as Record<string, any>)['evaluation_id'] === undefined)) return false;
     if (!('suggestions' in value) || value['suggestions'] === undefined) return false;
     return true;
 }

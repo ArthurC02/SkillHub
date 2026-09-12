@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * One generation that produced nothing, as the workspace reads it back.
  * 
@@ -28,8 +28,6 @@ import { mapValues } from '../runtime';
 export interface GenerationFailure {
     /**
      * 
-     * @type {Date}
-     * @memberof GenerationFailure
      */
     occurredAt: Date;
     /**
@@ -42,16 +40,12 @@ export interface GenerationFailure {
      * Empty when a row's metadata could not be decoded — the row still
      * happened, and its timestamp is the part the screen needs most.
      * 
-     * @type {string}
-     * @memberof GenerationFailure
      */
     failure: GenerationFailureFailureEnum;
     /**
      * How many gateway calls that failure cost. 0 for a refusal that never
      * reached the gateway — `quota` and `unavailable`.
      * 
-     * @type {number}
-     * @memberof GenerationFailure
      */
     attempts: number;
     /**
@@ -59,16 +53,12 @@ export interface GenerationFailure {
      * values**: a finding's message never carries the matched text (iron
      * rule 11), and this must not become the place that reintroduces it.
      * 
-     * @type {Array<string>}
-     * @memberof GenerationFailure
      */
     codes?: Array<string>;
     /**
      * The model hit the token ceiling. One of the two failures a user can
      * act on — the action is "make the task smaller".
      * 
-     * @type {boolean}
-     * @memberof GenerationFailure
      */
     truncated?: boolean;
     /**
@@ -76,8 +66,6 @@ export interface GenerationFailure {
      * the same kind of content. The other actionable one — rename or delete
      * the existing skill.
      * 
-     * @type {boolean}
-     * @memberof GenerationFailure
      */
     collision?: boolean;
 }
@@ -94,7 +82,7 @@ export const GenerationFailureFailureEnum = {
     Rejected: 'rejected',
     Blocked: 'blocked',
     Credit: 'credit',
-    Empty: ''
+    Empty: '',
 } as const;
 export type GenerationFailureFailureEnum = typeof GenerationFailureFailureEnum[keyof typeof GenerationFailureFailureEnum];
 
@@ -103,7 +91,7 @@ export type GenerationFailureFailureEnum = typeof GenerationFailureFailureEnum[k
  * Check if a given object implements the GenerationFailure interface.
  */
 export function instanceOfGenerationFailure(value: object): value is GenerationFailure {
-    if (!('occurredAt' in value) || value['occurredAt'] === undefined) return false;
+    if ((!('occurredAt' in (value as Record<string, any>)) && !('occurred_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['occurredAt'] === undefined && (value as Record<string, any>)['occurred_at'] === undefined)) return false;
     if (!('failure' in value) || value['failure'] === undefined) return false;
     if (!('attempts' in value) || value['attempts'] === undefined) return false;
     return true;
@@ -119,7 +107,7 @@ export function GenerationFailureFromJSONTyped(json: any, ignoreDiscriminator: b
     }
     return {
         
-        'occurredAt': (new Date(json['occurred_at'])),
+        'occurredAt': (json['occurred_at'] == null ? json['occurred_at'] : parseDateTime(json['occurred_at'])),
         'failure': json['failure'],
         'attempts': json['attempts'],
         'codes': json['codes'] == null ? undefined : json['codes'],
@@ -139,7 +127,7 @@ export function GenerationFailureToJSONTyped(value?: GenerationFailure | null, i
 
     return {
         
-        'occurred_at': value['occurredAt'].toISOString(),
+        'occurred_at': value['occurredAt'] == null ? value['occurredAt'] : serializeDateTime(value['occurredAt']),
         'failure': value['failure'],
         'attempts': value['attempts'],
         'codes': value['codes'],

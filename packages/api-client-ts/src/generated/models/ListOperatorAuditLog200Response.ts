@@ -29,8 +29,6 @@ import {
 export interface ListOperatorAuditLog200Response {
     /**
      * 
-     * @type {Array<OperatorAuditEvent>}
-     * @memberof ListOperatorAuditLog200Response
      */
     events: Array<OperatorAuditEvent>;
 }

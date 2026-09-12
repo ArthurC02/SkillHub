@@ -42,36 +42,26 @@ export interface DataRetentionPolicy {
      * is set. The four events below are still disclosed: "we collect
      * nothing" is a disclosure, not the absence of one.
      * 
-     * @type {boolean}
-     * @memberof DataRetentionPolicy
      */
     collecting: boolean;
     /**
      * How long an event is kept, and the analytics cookie's own lifetime.
      * Zero exactly when `collecting` is false.
      * 
-     * @type {number}
-     * @memberof DataRetentionPolicy
      */
     retentionDays: number;
     /**
      * The closed set of four (the CHECK in 0029). A fifth would have to
      * explain first why no domain table answers it (ADR-029 決策 1).
      * 
-     * @type {Array<DataRetentionPolicyEventsInner>}
-     * @memberof DataRetentionPolicy
      */
     events: Array<DataRetentionPolicyEventsInner>;
     /**
      * 
-     * @type {string}
-     * @memberof DataRetentionPolicy
      */
     note: string;
     /**
      * 
-     * @type {DataRetentionPolicyFeedback}
-     * @memberof DataRetentionPolicy
      */
     feedback: DataRetentionPolicyFeedback;
 }
@@ -81,7 +71,7 @@ export interface DataRetentionPolicy {
  */
 export function instanceOfDataRetentionPolicy(value: object): value is DataRetentionPolicy {
     if (!('collecting' in value) || value['collecting'] === undefined) return false;
-    if (!('retentionDays' in value) || value['retentionDays'] === undefined) return false;
+    if ((!('retentionDays' in (value as Record<string, any>)) && !('retention_days' in (value as Record<string, any>))) || ((value as Record<string, any>)['retentionDays'] === undefined && (value as Record<string, any>)['retention_days'] === undefined)) return false;
     if (!('events' in value) || value['events'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     if (!('feedback' in value) || value['feedback'] === undefined) return false;

@@ -47,8 +47,6 @@ import {
 export interface RunPermissionSummary {
     /**
      * 
-     * @type {RunPermissionSummaryContent}
-     * @memberof RunPermissionSummary
      */
     summary: RunPermissionSummaryContent;
     /**
@@ -57,8 +55,6 @@ export interface RunPermissionSummary {
      * recomputes it rather than trusting either, so it is an integrity
      * check on what the user saw and not a token.
      * 
-     * @type {string}
-     * @memberof RunPermissionSummary
      */
     summaryHash: string;
     /**
@@ -68,8 +64,6 @@ export interface RunPermissionSummary {
      * numbers against a larger sample must not silently revoke every
      * confirmation a user has outstanding.
      * 
-     * @type {RunCostEstimate}
-     * @memberof RunPermissionSummary
      */
     estimatedCost: RunCostEstimate;
     /**
@@ -89,8 +83,6 @@ export interface RunPermissionSummary {
      * it is applied (04 乙-2), so a build with no enforcement shows nothing
      * at all.
      * 
-     * @type {RunQuota}
-     * @memberof RunPermissionSummary
      */
     quota?: RunQuota;
     /**
@@ -99,8 +91,6 @@ export interface RunPermissionSummary {
      * confirmation, and the facts are in `summary` where the hash covers
      * them.
      * 
-     * @type {Array<string>}
-     * @memberof RunPermissionSummary
      */
     notes: Array<string>;
 }
@@ -110,8 +100,8 @@ export interface RunPermissionSummary {
  */
 export function instanceOfRunPermissionSummary(value: object): value is RunPermissionSummary {
     if (!('summary' in value) || value['summary'] === undefined) return false;
-    if (!('summaryHash' in value) || value['summaryHash'] === undefined) return false;
-    if (!('estimatedCost' in value) || value['estimatedCost'] === undefined) return false;
+    if ((!('summaryHash' in (value as Record<string, any>)) && !('summary_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['summaryHash'] === undefined && (value as Record<string, any>)['summary_hash'] === undefined)) return false;
+    if ((!('estimatedCost' in (value as Record<string, any>)) && !('estimated_cost' in (value as Record<string, any>))) || ((value as Record<string, any>)['estimatedCost'] === undefined && (value as Record<string, any>)['estimated_cost'] === undefined)) return false;
     if (!('notes' in value) || value['notes'] === undefined) return false;
     return true;
 }

@@ -40,30 +40,22 @@ export interface RunCostEstimate {
      * to be recorded on every entry. The platform owns this rate; it does
      * not own the euro.
      * 
-     * @type {number}
-     * @memberof RunCostEstimate
      */
     lowCredits: number;
     /**
      * 
-     * @type {number}
-     * @memberof RunCostEstimate
      */
     typicalCredits: number;
     /**
      * Rounded up past the observed maximum, not a bound: the baseline is 45
      * runs and a sample that size does not establish one.
      * 
-     * @type {number}
-     * @memberof RunCostEstimate
      */
     highCredits: number;
     /**
      * Where the numbers came from, in the user's language, so nobody reads
      * them as a quote. Display it with them rather than beside them.
      * 
-     * @type {string}
-     * @memberof RunCostEstimate
      */
     basis: string;
 }
@@ -72,9 +64,9 @@ export interface RunCostEstimate {
  * Check if a given object implements the RunCostEstimate interface.
  */
 export function instanceOfRunCostEstimate(value: object): value is RunCostEstimate {
-    if (!('lowCredits' in value) || value['lowCredits'] === undefined) return false;
-    if (!('typicalCredits' in value) || value['typicalCredits'] === undefined) return false;
-    if (!('highCredits' in value) || value['highCredits'] === undefined) return false;
+    if ((!('lowCredits' in (value as Record<string, any>)) && !('low_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['lowCredits'] === undefined && (value as Record<string, any>)['low_credits'] === undefined)) return false;
+    if ((!('typicalCredits' in (value as Record<string, any>)) && !('typical_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['typicalCredits'] === undefined && (value as Record<string, any>)['typical_credits'] === undefined)) return false;
+    if ((!('highCredits' in (value as Record<string, any>)) && !('high_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['highCredits'] === undefined && (value as Record<string, any>)['high_credits'] === undefined)) return false;
     if (!('basis' in value) || value['basis'] === undefined) return false;
     return true;
 }

@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface TraceSummaryUsage {
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummaryUsage
      */
     model?: string;
     /**
      * 
-     * @type {number}
-     * @memberof TraceSummaryUsage
      */
     inputTokens?: number;
     /**
      * 
-     * @type {number}
-     * @memberof TraceSummaryUsage
      */
     outputTokens?: number;
     /**
@@ -42,14 +36,10 @@ export interface TraceSummaryUsage {
      * report a cost. Consumers MUST render that as "unreported" and
      * never as 0 - showing 0 tells the user the run was free.
      * 
-     * @type {number}
-     * @memberof TraceSummaryUsage
      */
     costCredits?: number | null;
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummaryUsage
      */
     costSource?: TraceSummaryUsageCostSourceEnum;
 }
@@ -60,7 +50,7 @@ export interface TraceSummaryUsage {
  */
 export const TraceSummaryUsageCostSourceEnum = {
     Gateway: 'gateway',
-    Estimated: 'estimated'
+    Estimated: 'estimated',
 } as const;
 export type TraceSummaryUsageCostSourceEnum = typeof TraceSummaryUsageCostSourceEnum[keyof typeof TraceSummaryUsageCostSourceEnum];
 
@@ -85,7 +75,7 @@ export function TraceSummaryUsageFromJSONTyped(json: any, ignoreDiscriminator: b
         'model': json['model'] == null ? undefined : json['model'],
         'inputTokens': json['input_tokens'] == null ? undefined : json['input_tokens'],
         'outputTokens': json['output_tokens'] == null ? undefined : json['output_tokens'],
-        'costCredits': json['cost_credits'] == null ? undefined : json['cost_credits'],
+        'costCredits': json['cost_credits'] === undefined ? undefined : json['cost_credits'] === null ? null : json['cost_credits'],
         'costSource': json['cost_source'] == null ? undefined : json['cost_source'],
     };
 }

@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface PackagingPreviewExcludedTestCasesInner {
     /**
      * 
-     * @type {string}
-     * @memberof PackagingPreviewExcludedTestCasesInner
      */
     testCaseId: string;
     /**
      * 
-     * @type {string}
-     * @memberof PackagingPreviewExcludedTestCasesInner
      */
     name: string;
     /**
@@ -37,20 +33,14 @@ export interface PackagingPreviewExcludedTestCasesInner {
      * are the served words, the same three-part shape as
      * `excluded_files` one field down (04 丙-154 ①).
      * 
-     * @type {string}
-     * @memberof PackagingPreviewExcludedTestCasesInner
      */
     reason: PackagingPreviewExcludedTestCasesInnerReasonEnum;
     /**
      * 
-     * @type {string}
-     * @memberof PackagingPreviewExcludedTestCasesInner
      */
     label: string;
     /**
      * 
-     * @type {string}
-     * @memberof PackagingPreviewExcludedTestCasesInner
      */
     note: string;
 }
@@ -63,7 +53,7 @@ export const PackagingPreviewExcludedTestCasesInnerReasonEnum = {
     UserUploadedDataset: 'user_uploaded_dataset',
     NotCurated: 'not_curated',
     UserOptedOut: 'user_opted_out',
-    UnsafeDatasetFileName: 'unsafe_dataset_file_name'
+    UnsafeDatasetFileName: 'unsafe_dataset_file_name',
 } as const;
 export type PackagingPreviewExcludedTestCasesInnerReasonEnum = typeof PackagingPreviewExcludedTestCasesInnerReasonEnum[keyof typeof PackagingPreviewExcludedTestCasesInnerReasonEnum];
 
@@ -72,7 +62,7 @@ export type PackagingPreviewExcludedTestCasesInnerReasonEnum = typeof PackagingP
  * Check if a given object implements the PackagingPreviewExcludedTestCasesInner interface.
  */
 export function instanceOfPackagingPreviewExcludedTestCasesInner(value: object): value is PackagingPreviewExcludedTestCasesInner {
-    if (!('testCaseId' in value) || value['testCaseId'] === undefined) return false;
+    if ((!('testCaseId' in (value as Record<string, any>)) && !('test_case_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCaseId'] === undefined && (value as Record<string, any>)['test_case_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('reason' in value) || value['reason'] === undefined) return false;
     if (!('label' in value) || value['label'] === undefined) return false;

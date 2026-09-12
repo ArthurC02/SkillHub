@@ -26,20 +26,14 @@ import { mapValues } from '../runtime';
 export interface SearchHit {
     /**
      * 
-     * @type {string}
-     * @memberof SearchHit
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof SearchHit
      */
     name: string;
     /**
      * 
-     * @type {string}
-     * @memberof SearchHit
      */
     summary: string;
 }
@@ -48,7 +42,7 @@ export interface SearchHit {
  * Check if a given object implements the SearchHit interface.
  */
 export function instanceOfSearchHit(value: object): value is SearchHit {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('summary' in value) || value['summary'] === undefined) return false;
     return true;

@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface SetEvaluationFeedbackRequest {
     /**
      * 
-     * @type {boolean}
-     * @memberof SetEvaluationFeedbackRequest
      */
     helpful: boolean;
     /**
      * Optional; sending it empty clears a previous comment.
-     * @type {string}
-     * @memberof SetEvaluationFeedbackRequest
      */
     comment?: string;
 }

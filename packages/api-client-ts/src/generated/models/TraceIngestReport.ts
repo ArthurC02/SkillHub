@@ -21,32 +21,22 @@ import { mapValues } from '../runtime';
 export interface TraceIngestReport {
     /**
      * 
-     * @type {number}
-     * @memberof TraceIngestReport
      */
     received: number;
     /**
      * 
-     * @type {number}
-     * @memberof TraceIngestReport
      */
     stored: number;
     /**
      * Already had this event_id. Expected under at-least-once delivery, not an error.
-     * @type {number}
-     * @memberof TraceIngestReport
      */
     duplicate: number;
     /**
      * 
-     * @type {number}
-     * @memberof TraceIngestReport
      */
     rejected: number;
     /**
      * One line per rejected event, so a producer can fix its output.
-     * @type {Array<string>}
-     * @memberof TraceIngestReport
      */
     reasons?: Array<string>;
 }

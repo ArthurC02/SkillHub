@@ -29,8 +29,6 @@ import {
 export interface ListSkillVersions200Response {
     /**
      * 
-     * @type {Array<ListSkillVersions200ResponseVersionsInner>}
-     * @memberof ListSkillVersions200Response
      */
     versions: Array<ListSkillVersions200ResponseVersionsInner>;
 }

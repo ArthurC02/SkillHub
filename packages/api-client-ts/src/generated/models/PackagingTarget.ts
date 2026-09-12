@@ -38,8 +38,6 @@ import {
 export interface PackagingTarget {
     /**
      * 
-     * @type {PackagingTargetId}
-     * @memberof PackagingTarget
      */
     id: PackagingTargetId;
     /**
@@ -52,8 +50,6 @@ export interface PackagingTarget {
      * checkable (PDM-008): its SKILL.md is unchanged from the source
      * version, byte for byte, and a profile's is not.
      * 
-     * @type {string}
-     * @memberof PackagingTarget
      */
     kind: PackagingTargetKindEnum;
     /**
@@ -62,14 +58,10 @@ export interface PackagingTarget {
      * package reports the packager's version instead — there is no profile
      * to version.
      * 
-     * @type {string}
-     * @memberof PackagingTarget
      */
     version: string;
     /**
      * 
-     * @type {string}
-     * @memberof PackagingTarget
      */
     displayName: string;
     /**
@@ -82,8 +74,6 @@ export interface PackagingTarget {
      * an agent's working directory — so the copy has to state the
      * difference or the two read as one option listed twice (PDM-008 v4).
      * 
-     * @type {string}
-     * @memberof PackagingTarget
      */
     installLocation?: string;
     /**
@@ -98,8 +88,6 @@ export interface PackagingTarget {
      * the skill, and passing format validation is never permission to say
      * it installs (ADR-012).
      * 
-     * @type {string}
-     * @memberof PackagingTarget
      */
     supportStatus: PackagingTargetSupportStatusEnum;
     /**
@@ -108,8 +96,6 @@ export interface PackagingTarget {
      * (02:PACK-002 第 3 條). Absent for `standard_package`, which names no
      * agent to run a prompt against — its check is `verification_steps`.
      * 
-     * @type {string}
-     * @memberof PackagingTarget
      */
     verificationPrompt?: string;
     /**
@@ -123,8 +109,6 @@ export interface PackagingTarget {
      * 02:PACK-002 第 3 條 asks for the check itself, not for a promise
      * that one ships.
      * 
-     * @type {Array<string>}
-     * @memberof PackagingTarget
      */
     verificationSteps?: Array<string>;
     /**
@@ -140,8 +124,6 @@ export interface PackagingTarget {
      * choose a target. Empty array for a target that needs none — the
      * standard package names no agent and therefore no variable.
      * 
-     * @type {Array<PackagingTargetEnvVarsInner>}
-     * @memberof PackagingTarget
      */
     envVars: Array<PackagingTargetEnvVarsInner>;
     /**
@@ -150,8 +132,6 @@ export interface PackagingTarget {
      * installing and a skill silently never loads without them (ADR-023).
      * Server-side so every surface states them identically (NFR-001).
      * 
-     * @type {Array<string>}
-     * @memberof PackagingTarget
      */
     notes: Array<string>;
 }
@@ -162,7 +142,7 @@ export interface PackagingTarget {
  */
 export const PackagingTargetKindEnum = {
     StandardPackage: 'standard_package',
-    Profile: 'profile'
+    Profile: 'profile',
 } as const;
 export type PackagingTargetKindEnum = typeof PackagingTargetKindEnum[keyof typeof PackagingTargetKindEnum];
 
@@ -171,7 +151,7 @@ export type PackagingTargetKindEnum = typeof PackagingTargetKindEnum[keyof typeo
  */
 export const PackagingTargetSupportStatusEnum = {
     Verified: 'verified',
-    Unverified: 'unverified'
+    Unverified: 'unverified',
 } as const;
 export type PackagingTargetSupportStatusEnum = typeof PackagingTargetSupportStatusEnum[keyof typeof PackagingTargetSupportStatusEnum];
 
@@ -183,9 +163,9 @@ export function instanceOfPackagingTarget(value: object): value is PackagingTarg
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('version' in value) || value['version'] === undefined) return false;
-    if (!('displayName' in value) || value['displayName'] === undefined) return false;
-    if (!('supportStatus' in value) || value['supportStatus'] === undefined) return false;
-    if (!('envVars' in value) || value['envVars'] === undefined) return false;
+    if ((!('displayName' in (value as Record<string, any>)) && !('display_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['displayName'] === undefined && (value as Record<string, any>)['display_name'] === undefined)) return false;
+    if ((!('supportStatus' in (value as Record<string, any>)) && !('support_status' in (value as Record<string, any>))) || ((value as Record<string, any>)['supportStatus'] === undefined && (value as Record<string, any>)['support_status'] === undefined)) return false;
+    if ((!('envVars' in (value as Record<string, any>)) && !('env_vars' in (value as Record<string, any>))) || ((value as Record<string, any>)['envVars'] === undefined && (value as Record<string, any>)['env_vars'] === undefined)) return false;
     if (!('notes' in value) || value['notes'] === undefined) return false;
     return true;
 }

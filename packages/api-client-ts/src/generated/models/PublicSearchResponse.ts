@@ -29,14 +29,10 @@ import {
 export interface PublicSearchResponse {
     /**
      * The original query, echoed back (DISC-001).
-     * @type {string}
-     * @memberof PublicSearchResponse
      */
     query: string;
     /**
      * 
-     * @type {Array<PublicSearchResult>}
-     * @memberof PublicSearchResponse
      */
     results: Array<PublicSearchResult>;
     /**
@@ -45,8 +41,6 @@ export interface PublicSearchResponse {
      * carries cross-language recall, so a degraded answer has materially
      * lower recall and must not be presented as "nothing matches".
      * 
-     * @type {boolean}
-     * @memberof PublicSearchResponse
      */
     degraded: boolean;
     /**
@@ -54,8 +48,6 @@ export interface PublicSearchResponse {
      * result on a degraded answer carries a null `rank`: the page is
      * ordered by lexical score, which is not a similarity.
      * 
-     * @type {string}
-     * @memberof PublicSearchResponse
      */
     degradedReason?: string;
     /**
@@ -64,8 +56,6 @@ export interface PublicSearchResponse {
      * retrieved at all, because naming a cap that never applied would be a
      * number with no enforcement behind it (設計系統 §2.2).
      * 
-     * @type {number}
-     * @memberof PublicSearchResponse
      */
     limit: number;
     /**
@@ -96,8 +86,6 @@ export interface PublicSearchResponse {
      * 
      * `total == len(results)` whenever `truncated` is false.
      * 
-     * @type {number}
-     * @memberof PublicSearchResponse
      */
     total: number;
     /**
@@ -109,8 +97,6 @@ export interface PublicSearchResponse {
      * and `partial_index`, which are statements about how well the search
      * could look rather than about how much of what it found is here.
      * 
-     * @type {boolean}
-     * @memberof PublicSearchResponse
      */
     truncated: boolean;
     /**
@@ -125,8 +111,6 @@ export interface PublicSearchResponse {
      * import is designed not to fail when enrichment does. One flag for
      * both would let a normal state mask an outage and vice versa.
      * 
-     * @type {boolean}
-     * @memberof PublicSearchResponse
      */
     partialIndex: boolean;
     /**
@@ -140,8 +124,6 @@ export interface PublicSearchResponse {
      * 
      * Always false when `filtered_out` is true.
      * 
-     * @type {boolean}
-     * @memberof PublicSearchResponse
      */
     noResults: boolean;
     /**
@@ -155,8 +137,6 @@ export interface PublicSearchResponse {
      * not share copy, and `query_suggestion` is absent here — advice about
      * rewriting the query would be advice about the wrong thing.
      * 
-     * @type {boolean}
-     * @memberof PublicSearchResponse
      */
     filteredOut: boolean;
     /**
@@ -164,8 +144,6 @@ export interface PublicSearchResponse {
      * task, the input they have and the output they want (DISC-001).
      * Absent when there are results, and absent when `filtered_out`.
      * 
-     * @type {string}
-     * @memberof PublicSearchResponse
      */
     querySuggestion?: string;
 }
@@ -180,9 +158,9 @@ export function instanceOfPublicSearchResponse(value: object): value is PublicSe
     if (!('limit' in value) || value['limit'] === undefined) return false;
     if (!('total' in value) || value['total'] === undefined) return false;
     if (!('truncated' in value) || value['truncated'] === undefined) return false;
-    if (!('partialIndex' in value) || value['partialIndex'] === undefined) return false;
-    if (!('noResults' in value) || value['noResults'] === undefined) return false;
-    if (!('filteredOut' in value) || value['filteredOut'] === undefined) return false;
+    if ((!('partialIndex' in (value as Record<string, any>)) && !('partial_index' in (value as Record<string, any>))) || ((value as Record<string, any>)['partialIndex'] === undefined && (value as Record<string, any>)['partial_index'] === undefined)) return false;
+    if ((!('noResults' in (value as Record<string, any>)) && !('no_results' in (value as Record<string, any>))) || ((value as Record<string, any>)['noResults'] === undefined && (value as Record<string, any>)['no_results'] === undefined)) return false;
+    if ((!('filteredOut' in (value as Record<string, any>)) && !('filtered_out' in (value as Record<string, any>))) || ((value as Record<string, any>)['filteredOut'] === undefined && (value as Record<string, any>)['filtered_out'] === undefined)) return false;
     return true;
 }
 

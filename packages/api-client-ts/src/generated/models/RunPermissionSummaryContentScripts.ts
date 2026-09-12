@@ -31,14 +31,10 @@ export interface RunPermissionSummaryContentScripts {
      * an unreadable package is not a clean one (DISC-004
      * 不得自行推定為通過).
      * 
-     * @type {string}
-     * @memberof RunPermissionSummaryContentScripts
      */
     status: RunPermissionSummaryContentScriptsStatusEnum;
     /**
      * `<code>: <path>` per finding, sorted. Empty unless `present`.
-     * @type {Array<string>}
-     * @memberof RunPermissionSummaryContentScripts
      */
     findings: Array<string>;
 }
@@ -50,7 +46,7 @@ export interface RunPermissionSummaryContentScripts {
 export const RunPermissionSummaryContentScriptsStatusEnum = {
     None: 'none',
     Present: 'present',
-    Unavailable: 'unavailable'
+    Unavailable: 'unavailable',
 } as const;
 export type RunPermissionSummaryContentScriptsStatusEnum = typeof RunPermissionSummaryContentScriptsStatusEnum[keyof typeof RunPermissionSummaryContentScriptsStatusEnum];
 

@@ -21,26 +21,18 @@ import { mapValues } from '../runtime';
 export interface PackagingPreviewExcludedFilesInner {
     /**
      * Package-relative path of the file that was removed.
-     * @type {string}
-     * @memberof PackagingPreviewExcludedFilesInner
      */
     path: string;
     /**
      * 
-     * @type {string}
-     * @memberof PackagingPreviewExcludedFilesInner
      */
     reason: PackagingPreviewExcludedFilesInnerReasonEnum;
     /**
      * 
-     * @type {string}
-     * @memberof PackagingPreviewExcludedFilesInner
      */
     label: string;
     /**
      * 
-     * @type {string}
-     * @memberof PackagingPreviewExcludedFilesInner
      */
     note: string;
     /**
@@ -52,8 +44,6 @@ export interface PackagingPreviewExcludedFilesInner {
      * A reference that was already dangling on import is a different
      * fact and stays a warning — the platform did not break that one.
      * 
-     * @type {boolean}
-     * @memberof PackagingPreviewExcludedFilesInner
      */
     referencedBySkillMd?: boolean;
 }
@@ -66,7 +56,7 @@ export const PackagingPreviewExcludedFilesInnerReasonEnum = {
     ExcludedDir: 'excluded_dir',
     CredentialFile: 'credential_file',
     NotARegularFile: 'not_a_regular_file',
-    UnsafePath: 'unsafe_path'
+    UnsafePath: 'unsafe_path',
 } as const;
 export type PackagingPreviewExcludedFilesInnerReasonEnum = typeof PackagingPreviewExcludedFilesInnerReasonEnum[keyof typeof PackagingPreviewExcludedFilesInnerReasonEnum];
 

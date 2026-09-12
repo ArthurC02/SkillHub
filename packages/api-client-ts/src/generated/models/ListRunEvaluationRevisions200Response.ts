@@ -29,8 +29,6 @@ import {
 export interface ListRunEvaluationRevisions200Response {
     /**
      * 
-     * @type {Array<EvaluationRevision>}
-     * @memberof ListRunEvaluationRevisions200Response
      */
     revisions: Array<EvaluationRevision>;
 }

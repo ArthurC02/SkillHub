@@ -21,8 +21,6 @@ import { mapValues } from '../runtime';
 export interface RunComparisonCriterionMatrixInnerResultsInner {
     /**
      * 
-     * @type {string}
-     * @memberof RunComparisonCriterionMatrixInnerResultsInner
      */
     runId: string;
     /**
@@ -31,14 +29,10 @@ export interface RunComparisonCriterionMatrixInnerResultsInner {
      * that snapshot. Not the same as `undetermined`, which is
      * a verdict that was reached.
      * 
-     * @type {string}
-     * @memberof RunComparisonCriterionMatrixInnerResultsInner
      */
     result: RunComparisonCriterionMatrixInnerResultsInnerResultEnum | null;
     /**
      * 
-     * @type {string}
-     * @memberof RunComparisonCriterionMatrixInnerResultsInner
      */
     source?: RunComparisonCriterionMatrixInnerResultsInnerSourceEnum;
 }
@@ -50,7 +44,7 @@ export interface RunComparisonCriterionMatrixInnerResultsInner {
 export const RunComparisonCriterionMatrixInnerResultsInnerResultEnum = {
     Passed: 'passed',
     Failed: 'failed',
-    Undetermined: 'undetermined'
+    Undetermined: 'undetermined',
 } as const;
 export type RunComparisonCriterionMatrixInnerResultsInnerResultEnum = typeof RunComparisonCriterionMatrixInnerResultsInnerResultEnum[keyof typeof RunComparisonCriterionMatrixInnerResultsInnerResultEnum];
 
@@ -60,7 +54,7 @@ export type RunComparisonCriterionMatrixInnerResultsInnerResultEnum = typeof Run
 export const RunComparisonCriterionMatrixInnerResultsInnerSourceEnum = {
     Rule: 'rule',
     Model: 'model',
-    User: 'user'
+    User: 'user',
 } as const;
 export type RunComparisonCriterionMatrixInnerResultsInnerSourceEnum = typeof RunComparisonCriterionMatrixInnerResultsInnerSourceEnum[keyof typeof RunComparisonCriterionMatrixInnerResultsInnerSourceEnum];
 
@@ -69,7 +63,7 @@ export type RunComparisonCriterionMatrixInnerResultsInnerSourceEnum = typeof Run
  * Check if a given object implements the RunComparisonCriterionMatrixInnerResultsInner interface.
  */
 export function instanceOfRunComparisonCriterionMatrixInnerResultsInner(value: object): value is RunComparisonCriterionMatrixInnerResultsInner {
-    if (!('runId' in value) || value['runId'] === undefined) return false;
+    if ((!('runId' in (value as Record<string, any>)) && !('run_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['runId'] === undefined && (value as Record<string, any>)['run_id'] === undefined)) return false;
     if (!('result' in value) || value['result'] === undefined) return false;
     return true;
 }

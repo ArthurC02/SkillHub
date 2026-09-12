@@ -24,8 +24,6 @@ export interface TraceSummaryStepsInner {
      * the reader's surface to choose, the same way it chooses them
      * for `Run.status`.
      * 
-     * @type {string}
-     * @memberof TraceSummaryStepsInner
      */
     status: string;
     /**
@@ -33,8 +31,6 @@ export interface TraceSummaryStepsInner {
      * when it did not — see `Run.status_reason` for the two kinds of
      * sentence that arrive here.
      * 
-     * @type {string}
-     * @memberof TraceSummaryStepsInner
      */
     reason?: string;
 }

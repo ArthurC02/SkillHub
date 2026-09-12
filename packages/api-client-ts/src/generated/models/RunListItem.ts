@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { Labelled } from './Labelled';
 import {
     LabelledFromJSON,
@@ -37,8 +37,6 @@ import {
 export interface RunListItem {
     /**
      * 
-     * @type {string}
-     * @memberof RunListItem
      */
     runId: string;
     /**
@@ -56,14 +54,10 @@ export interface RunListItem {
      * verdicts `met` / `partially_met` / `not_met` / `undetermined`.
      * `evaluation_failed` says nobody judged, **not** that the task failed.
      * 
-     * @type {Labelled}
-     * @memberof RunListItem
      */
     evaluation: Labelled;
     /**
      * 
-     * @type {string}
-     * @memberof RunListItem
      */
     status: RunListItemStatusEnum;
     /**
@@ -77,14 +71,10 @@ export interface RunListItem {
      * English sentence here, and that is the mark of a relayed one
      * (04 丙-115 ①).
      * 
-     * @type {string}
-     * @memberof RunListItem
      */
     statusReason?: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunListItem
      */
     skillId: string;
     /**
@@ -92,14 +82,10 @@ export interface RunListItem {
      * history page is the one place where N runs render at once, and a
      * lookup per row is how a page becomes a hundred round trips.
      * 
-     * @type {string}
-     * @memberof RunListItem
      */
     skillName: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunListItem
      */
     skillVersionId: string;
     /**
@@ -107,14 +93,10 @@ export interface RunListItem {
      * re-run can be started from a history row. Not permission to re-run —
      * that is preflight's answer (TEST-009).
      * 
-     * @type {string}
-     * @memberof RunListItem
      */
     testCaseId?: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunListItem
      */
     provider: string;
     /**
@@ -139,8 +121,6 @@ export interface RunListItem {
      * interpolated the raw token into a Chinese sentence —「失敗類別
      * capability_mismatch」(04 丙-115 ②).
      * 
-     * @type {Labelled}
-     * @memberof RunListItem
      */
     failureClass?: Labelled;
     /**
@@ -157,26 +137,18 @@ export interface RunListItem {
      * cannot. One field, one consumer, four values: the cheapest place to
      * stop the whole failure mode.
      * 
-     * @type {Labelled}
-     * @memberof RunListItem
      */
     cleanupStatus: Labelled;
     /**
      * 
-     * @type {Date}
-     * @memberof RunListItem
      */
     createdAt: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof RunListItem
      */
     startedAt?: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof RunListItem
      */
     finishedAt?: Date;
 }
@@ -194,7 +166,7 @@ export const RunListItemStatusEnum = {
     Succeeded: 'succeeded',
     Failed: 'failed',
     Cancelled: 'cancelled',
-    TimedOut: 'timed_out'
+    TimedOut: 'timed_out',
 } as const;
 export type RunListItemStatusEnum = typeof RunListItemStatusEnum[keyof typeof RunListItemStatusEnum];
 
@@ -203,15 +175,15 @@ export type RunListItemStatusEnum = typeof RunListItemStatusEnum[keyof typeof Ru
  * Check if a given object implements the RunListItem interface.
  */
 export function instanceOfRunListItem(value: object): value is RunListItem {
-    if (!('runId' in value) || value['runId'] === undefined) return false;
+    if ((!('runId' in (value as Record<string, any>)) && !('run_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['runId'] === undefined && (value as Record<string, any>)['run_id'] === undefined)) return false;
     if (!('evaluation' in value) || value['evaluation'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('skillName' in value) || value['skillName'] === undefined) return false;
-    if (!('skillVersionId' in value) || value['skillVersionId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('skillName' in (value as Record<string, any>)) && !('skill_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillName'] === undefined && (value as Record<string, any>)['skill_name'] === undefined)) return false;
+    if ((!('skillVersionId' in (value as Record<string, any>)) && !('skill_version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillVersionId'] === undefined && (value as Record<string, any>)['skill_version_id'] === undefined)) return false;
     if (!('provider' in value) || value['provider'] === undefined) return false;
-    if (!('cleanupStatus' in value) || value['cleanupStatus'] === undefined) return false;
-    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
+    if ((!('cleanupStatus' in (value as Record<string, any>)) && !('cleanup_status' in (value as Record<string, any>))) || ((value as Record<string, any>)['cleanupStatus'] === undefined && (value as Record<string, any>)['cleanup_status'] === undefined)) return false;
+    if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
     return true;
 }
 
@@ -236,9 +208,9 @@ export function RunListItemFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'provider': json['provider'],
         'failureClass': json['failure_class'] == null ? undefined : LabelledFromJSON(json['failure_class']),
         'cleanupStatus': LabelledFromJSON(json['cleanup_status']),
-        'createdAt': (new Date(json['created_at'])),
-        'startedAt': json['started_at'] == null ? undefined : (new Date(json['started_at'])),
-        'finishedAt': json['finished_at'] == null ? undefined : (new Date(json['finished_at'])),
+        'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
+        'startedAt': json['started_at'] == null ? undefined : (parseDateTime(json['started_at'])),
+        'finishedAt': json['finished_at'] == null ? undefined : (parseDateTime(json['finished_at'])),
     };
 }
 
@@ -264,9 +236,9 @@ export function RunListItemToJSONTyped(value?: RunListItem | null, ignoreDiscrim
         'provider': value['provider'],
         'failure_class': LabelledToJSON(value['failureClass']),
         'cleanup_status': LabelledToJSON(value['cleanupStatus']),
-        'created_at': value['createdAt'].toISOString(),
-        'started_at': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
-        'finished_at': value['finishedAt'] == null ? value['finishedAt'] : value['finishedAt'].toISOString(),
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'started_at': value['startedAt'] == null ? value['startedAt'] : serializeDateTime(value['startedAt']),
+        'finished_at': value['finishedAt'] == null ? value['finishedAt'] : serializeDateTime(value['finishedAt']),
     };
 }
 

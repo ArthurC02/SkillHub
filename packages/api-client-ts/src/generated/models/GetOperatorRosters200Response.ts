@@ -21,8 +21,6 @@ import { mapValues } from '../runtime';
 export interface GetOperatorRosters200Response {
     /**
      * 
-     * @type {Array<string>}
-     * @memberof GetOperatorRosters200Response
      */
     operatorUserIds: Array<string>;
     /**
@@ -30,8 +28,6 @@ export interface GetOperatorRosters200Response {
      * configured, and then every signed-in account counts as
      * invited.
      * 
-     * @type {Array<string>}
-     * @memberof GetOperatorRosters200Response
      */
     betaAllowlist: Array<string>;
 }
@@ -40,8 +36,8 @@ export interface GetOperatorRosters200Response {
  * Check if a given object implements the GetOperatorRosters200Response interface.
  */
 export function instanceOfGetOperatorRosters200Response(value: object): value is GetOperatorRosters200Response {
-    if (!('operatorUserIds' in value) || value['operatorUserIds'] === undefined) return false;
-    if (!('betaAllowlist' in value) || value['betaAllowlist'] === undefined) return false;
+    if ((!('operatorUserIds' in (value as Record<string, any>)) && !('operator_user_ids' in (value as Record<string, any>))) || ((value as Record<string, any>)['operatorUserIds'] === undefined && (value as Record<string, any>)['operator_user_ids'] === undefined)) return false;
+    if ((!('betaAllowlist' in (value as Record<string, any>)) && !('beta_allowlist' in (value as Record<string, any>))) || ((value as Record<string, any>)['betaAllowlist'] === undefined && (value as Record<string, any>)['beta_allowlist'] === undefined)) return false;
     return true;
 }
 

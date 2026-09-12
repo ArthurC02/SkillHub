@@ -29,8 +29,6 @@ import {
 export interface FindSkillsForGovernance200Response {
     /**
      * 
-     * @type {Array<SkillGovernance>}
-     * @memberof FindSkillsForGovernance200Response
      */
     skills: Array<SkillGovernance>;
 }

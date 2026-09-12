@@ -26,8 +26,6 @@ export interface SkillAccessRestriction {
      * code still restricts, because failing open on a code nobody
      * recognises would make a typo in a review the way to unlock content.
      * 
-     * @type {string}
-     * @memberof SkillAccessRestriction
      */
     reason: string;
     /**
@@ -35,8 +33,6 @@ export interface SkillAccessRestriction {
      * the decision does not change when the wording does. An unrecognised
      * code falls back to a generic sentence rather than to no sentence.
      * 
-     * @type {string}
-     * @memberof SkillAccessRestriction
      */
     note: string;
 }

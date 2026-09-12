@@ -29,14 +29,10 @@ import {
 export interface ListDatasets200Response {
     /**
      * 
-     * @type {Array<Dataset>}
-     * @memberof ListDatasets200Response
      */
     datasets: Array<Dataset>;
     /**
      * 
-     * @type {number}
-     * @memberof ListDatasets200Response
      */
     totalBytes: number;
 }
@@ -46,7 +42,7 @@ export interface ListDatasets200Response {
  */
 export function instanceOfListDatasets200Response(value: object): value is ListDatasets200Response {
     if (!('datasets' in value) || value['datasets'] === undefined) return false;
-    if (!('totalBytes' in value) || value['totalBytes'] === undefined) return false;
+    if ((!('totalBytes' in (value as Record<string, any>)) && !('total_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['totalBytes'] === undefined && (value as Record<string, any>)['total_bytes'] === undefined)) return false;
     return true;
 }
 

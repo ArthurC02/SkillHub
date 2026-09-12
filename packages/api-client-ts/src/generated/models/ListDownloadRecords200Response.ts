@@ -29,8 +29,6 @@ import {
 export interface ListDownloadRecords200Response {
     /**
      * 
-     * @type {Array<ListDownloadRecords200ResponseRecordsInner>}
-     * @memberof ListDownloadRecords200Response
      */
     records: Array<ListDownloadRecords200ResponseRecordsInner>;
 }

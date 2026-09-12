@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface LiftDispatchHaltRequest {
     /**
      * The drained node to return to service; omit for the fleet-wide halt.
-     * @type {string}
-     * @memberof LiftDispatchHaltRequest
      */
     provider?: string;
     /**
      * Why it is safe to resume. Required, same rule as on PUT.
-     * @type {string}
-     * @memberof LiftDispatchHaltRequest
      */
     note: string;
 }

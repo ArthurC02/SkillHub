@@ -29,14 +29,10 @@ import {
 export interface CreateSkillVersionFromSuggestions422Response {
     /**
      * 
-     * @type {string}
-     * @memberof CreateSkillVersionFromSuggestions422Response
      */
     error: string;
     /**
      * 
-     * @type {Array<RejectedSuggestion>}
-     * @memberof CreateSkillVersionFromSuggestions422Response
      */
     rejectedSuggestions: Array<RejectedSuggestion>;
 }
@@ -46,7 +42,7 @@ export interface CreateSkillVersionFromSuggestions422Response {
  */
 export function instanceOfCreateSkillVersionFromSuggestions422Response(value: object): value is CreateSkillVersionFromSuggestions422Response {
     if (!('error' in value) || value['error'] === undefined) return false;
-    if (!('rejectedSuggestions' in value) || value['rejectedSuggestions'] === undefined) return false;
+    if ((!('rejectedSuggestions' in (value as Record<string, any>)) && !('rejected_suggestions' in (value as Record<string, any>))) || ((value as Record<string, any>)['rejectedSuggestions'] === undefined && (value as Record<string, any>)['rejected_suggestions'] === undefined)) return false;
     return true;
 }
 

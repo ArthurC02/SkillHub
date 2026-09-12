@@ -32,20 +32,14 @@ import {
 export interface CategorizedFindings {
     /**
      * 
-     * @type {Array<Finding>}
-     * @memberof CategorizedFindings
      */
     errors: Array<Finding>;
     /**
      * 
-     * @type {Array<Finding>}
-     * @memberof CategorizedFindings
      */
     warnings: Array<Finding>;
     /**
      * 
-     * @type {Array<Finding>}
-     * @memberof CategorizedFindings
      */
     infos: Array<Finding>;
 }

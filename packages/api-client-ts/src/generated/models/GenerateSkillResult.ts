@@ -31,38 +31,26 @@ import {
 export interface GenerateSkillResult {
     /**
      * 
-     * @type {string}
-     * @memberof GenerateSkillResult
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof GenerateSkillResult
      */
     versionId: string;
     /**
      * 
-     * @type {number}
-     * @memberof GenerateSkillResult
      */
     versionNumber: number;
     /**
      * 
-     * @type {string}
-     * @memberof GenerateSkillResult
      */
     contentHash: string;
     /**
      * True when identical content already existed as a version of this skill.
-     * @type {boolean}
-     * @memberof GenerateSkillResult
      */
     duplicate: boolean;
     /**
      * 
-     * @type {CategorizedFindings}
-     * @memberof GenerateSkillResult
      */
     findings: CategorizedFindings;
     /**
@@ -70,20 +58,14 @@ export interface GenerateSkillResult {
      * success rate: one retry was measured to move 80% to 90%, not to
      * nothing, and "it took two goes" is the honest form of that.
      * 
-     * @type {number}
-     * @memberof GenerateSkillResult
      */
     attempts: number;
     /**
      * 
-     * @type {string}
-     * @memberof GenerateSkillResult
      */
     generatorModel: string;
     /**
      * 
-     * @type {string}
-     * @memberof GenerateSkillResult
      */
     generatorPromptVersion: string;
 }
@@ -92,15 +74,15 @@ export interface GenerateSkillResult {
  * Check if a given object implements the GenerateSkillResult interface.
  */
 export function instanceOfGenerateSkillResult(value: object): value is GenerateSkillResult {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
-    if (!('versionNumber' in value) || value['versionNumber'] === undefined) return false;
-    if (!('contentHash' in value) || value['contentHash'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
+    if ((!('versionNumber' in (value as Record<string, any>)) && !('version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionNumber'] === undefined && (value as Record<string, any>)['version_number'] === undefined)) return false;
+    if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
     if (!('duplicate' in value) || value['duplicate'] === undefined) return false;
     if (!('findings' in value) || value['findings'] === undefined) return false;
     if (!('attempts' in value) || value['attempts'] === undefined) return false;
-    if (!('generatorModel' in value) || value['generatorModel'] === undefined) return false;
-    if (!('generatorPromptVersion' in value) || value['generatorPromptVersion'] === undefined) return false;
+    if ((!('generatorModel' in (value as Record<string, any>)) && !('generator_model' in (value as Record<string, any>))) || ((value as Record<string, any>)['generatorModel'] === undefined && (value as Record<string, any>)['generator_model'] === undefined)) return false;
+    if ((!('generatorPromptVersion' in (value as Record<string, any>)) && !('generator_prompt_version' in (value as Record<string, any>))) || ((value as Record<string, any>)['generatorPromptVersion'] === undefined && (value as Record<string, any>)['generator_prompt_version'] === undefined)) return false;
     return true;
 }
 

@@ -49,20 +49,14 @@ export interface SkillRisk {
      * reported as unknown, never as a clean scan (DISC-004
      * 不得自行推定為通過).
      * 
-     * @type {string}
-     * @memberof SkillRisk
      */
     scanStatus: SkillRiskScanStatusEnum;
     /**
      * 
-     * @type {SkillRiskCounts}
-     * @memberof SkillRisk
      */
     counts: SkillRiskCounts;
     /**
      * Every error- and warning-level finding, verbatim.
-     * @type {Array<Finding>}
-     * @memberof SkillRisk
      */
     highlights: Array<Finding>;
     /**
@@ -70,8 +64,6 @@ export interface SkillRisk {
      * package produced 321 URL findings; a list nobody reads hides the
      * findings that matter.
      * 
-     * @type {{ [key: string]: number; }}
-     * @memberof SkillRisk
      */
     infoCounts: { [key: string]: number; };
     /**
@@ -83,14 +75,10 @@ export interface SkillRisk {
      * `script-file`: runnable code inside SKILL.md is SKILL-003's case and
      * no file list can show it.
      * 
-     * @type {Array<Disclosure>}
-     * @memberof SkillRisk
      */
     disclosures: Array<Disclosure>;
     /**
      * 
-     * @type {string}
-     * @memberof SkillRisk
      */
     note: string;
 }
@@ -101,7 +89,7 @@ export interface SkillRisk {
  */
 export const SkillRiskScanStatusEnum = {
     Scanned: 'scanned',
-    Unavailable: 'unavailable'
+    Unavailable: 'unavailable',
 } as const;
 export type SkillRiskScanStatusEnum = typeof SkillRiskScanStatusEnum[keyof typeof SkillRiskScanStatusEnum];
 
@@ -110,10 +98,10 @@ export type SkillRiskScanStatusEnum = typeof SkillRiskScanStatusEnum[keyof typeo
  * Check if a given object implements the SkillRisk interface.
  */
 export function instanceOfSkillRisk(value: object): value is SkillRisk {
-    if (!('scanStatus' in value) || value['scanStatus'] === undefined) return false;
+    if ((!('scanStatus' in (value as Record<string, any>)) && !('scan_status' in (value as Record<string, any>))) || ((value as Record<string, any>)['scanStatus'] === undefined && (value as Record<string, any>)['scan_status'] === undefined)) return false;
     if (!('counts' in value) || value['counts'] === undefined) return false;
     if (!('highlights' in value) || value['highlights'] === undefined) return false;
-    if (!('infoCounts' in value) || value['infoCounts'] === undefined) return false;
+    if ((!('infoCounts' in (value as Record<string, any>)) && !('info_counts' in (value as Record<string, any>))) || ((value as Record<string, any>)['infoCounts'] === undefined && (value as Record<string, any>)['info_counts'] === undefined)) return false;
     if (!('disclosures' in value) || value['disclosures'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;

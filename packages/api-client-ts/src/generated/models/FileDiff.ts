@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface FileDiff {
     /**
      * 
-     * @type {string}
-     * @memberof FileDiff
      */
     path: string;
     /**
      * 
-     * @type {string}
-     * @memberof FileDiff
      */
     status: FileDiffStatusEnum;
     /**
      * Unified diff; absent for binary or oversized files.
-     * @type {string}
-     * @memberof FileDiff
      */
     diff?: string;
 }
@@ -46,7 +40,7 @@ export interface FileDiff {
 export const FileDiffStatusEnum = {
     Added: 'added',
     Removed: 'removed',
-    Modified: 'modified'
+    Modified: 'modified',
 } as const;
 export type FileDiffStatusEnum = typeof FileDiffStatusEnum[keyof typeof FileDiffStatusEnum];
 

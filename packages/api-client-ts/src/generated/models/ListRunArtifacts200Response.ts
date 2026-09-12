@@ -29,14 +29,10 @@ import {
 export interface ListRunArtifacts200Response {
     /**
      * 
-     * @type {Array<RunArtifact>}
-     * @memberof ListRunArtifacts200Response
      */
     artifacts: Array<RunArtifact>;
     /**
      * True when the run's frozen artifact limits dropped any output, including when every file was dropped.
-     * @type {boolean}
-     * @memberof ListRunArtifacts200Response
      */
     truncated: boolean;
 }

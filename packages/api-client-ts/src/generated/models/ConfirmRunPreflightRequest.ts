@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface ConfirmRunPreflightRequest {
     /**
      * 
-     * @type {string}
-     * @memberof ConfirmRunPreflightRequest
      */
     versionId: string;
     /**
      * 
-     * @type {string}
-     * @memberof ConfirmRunPreflightRequest
      */
     testCaseId: string;
     /**
      * The `summary_hash` from GET .../preflight, verbatim.
-     * @type {string}
-     * @memberof ConfirmRunPreflightRequest
      */
     summaryHash: string;
 }
@@ -43,9 +37,9 @@ export interface ConfirmRunPreflightRequest {
  * Check if a given object implements the ConfirmRunPreflightRequest interface.
  */
 export function instanceOfConfirmRunPreflightRequest(value: object): value is ConfirmRunPreflightRequest {
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
-    if (!('testCaseId' in value) || value['testCaseId'] === undefined) return false;
-    if (!('summaryHash' in value) || value['summaryHash'] === undefined) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
+    if ((!('testCaseId' in (value as Record<string, any>)) && !('test_case_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCaseId'] === undefined && (value as Record<string, any>)['test_case_id'] === undefined)) return false;
+    if ((!('summaryHash' in (value as Record<string, any>)) && !('summary_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['summaryHash'] === undefined && (value as Record<string, any>)['summary_hash'] === undefined)) return false;
     return true;
 }
 

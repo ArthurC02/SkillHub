@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface PackagingPreviewIncludedTestCasesInner {
     /**
      * 
-     * @type {string}
-     * @memberof PackagingPreviewIncludedTestCasesInner
      */
     testCaseId: string;
     /**
      * 
-     * @type {string}
-     * @memberof PackagingPreviewIncludedTestCasesInner
      */
     name: string;
     /**
@@ -36,8 +32,6 @@ export interface PackagingPreviewIncludedTestCasesInner {
      * packaging the same test case twice produces the same slug, so
      * two packages can be diffed by path.
      * 
-     * @type {string}
-     * @memberof PackagingPreviewIncludedTestCasesInner
      */
     slug: string;
 }
@@ -46,7 +40,7 @@ export interface PackagingPreviewIncludedTestCasesInner {
  * Check if a given object implements the PackagingPreviewIncludedTestCasesInner interface.
  */
 export function instanceOfPackagingPreviewIncludedTestCasesInner(value: object): value is PackagingPreviewIncludedTestCasesInner {
-    if (!('testCaseId' in value) || value['testCaseId'] === undefined) return false;
+    if ((!('testCaseId' in (value as Record<string, any>)) && !('test_case_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCaseId'] === undefined && (value as Record<string, any>)['test_case_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('slug' in value) || value['slug'] === undefined) return false;
     return true;

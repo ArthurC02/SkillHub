@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface ConfirmRunPreflight201Response {
     /**
      * 
-     * @type {boolean}
-     * @memberof ConfirmRunPreflight201Response
      */
     confirmed: boolean;
     /**
      * 
-     * @type {string}
-     * @memberof ConfirmRunPreflight201Response
      */
     summaryHash: string;
     /**
      * 
-     * @type {Date}
-     * @memberof ConfirmRunPreflight201Response
      */
     confirmedAt: Date;
 }
@@ -44,8 +38,8 @@ export interface ConfirmRunPreflight201Response {
  */
 export function instanceOfConfirmRunPreflight201Response(value: object): value is ConfirmRunPreflight201Response {
     if (!('confirmed' in value) || value['confirmed'] === undefined) return false;
-    if (!('summaryHash' in value) || value['summaryHash'] === undefined) return false;
-    if (!('confirmedAt' in value) || value['confirmedAt'] === undefined) return false;
+    if ((!('summaryHash' in (value as Record<string, any>)) && !('summary_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['summaryHash'] === undefined && (value as Record<string, any>)['summary_hash'] === undefined)) return false;
+    if ((!('confirmedAt' in (value as Record<string, any>)) && !('confirmed_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['confirmedAt'] === undefined && (value as Record<string, any>)['confirmed_at'] === undefined)) return false;
     return true;
 }
 
@@ -61,7 +55,7 @@ export function ConfirmRunPreflight201ResponseFromJSONTyped(json: any, ignoreDis
         
         'confirmed': json['confirmed'],
         'summaryHash': json['summary_hash'],
-        'confirmedAt': (new Date(json['confirmed_at'])),
+        'confirmedAt': (json['confirmed_at'] == null ? json['confirmed_at'] : parseDateTime(json['confirmed_at'])),
     };
 }
 
@@ -78,7 +72,7 @@ export function ConfirmRunPreflight201ResponseToJSONTyped(value?: ConfirmRunPref
         
         'confirmed': value['confirmed'],
         'summary_hash': value['summaryHash'],
-        'confirmed_at': value['confirmedAt'].toISOString(),
+        'confirmed_at': value['confirmedAt'] == null ? value['confirmedAt'] : serializeDateTime(value['confirmedAt']),
     };
 }
 

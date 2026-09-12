@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { Labelled } from './Labelled';
 import {
     LabelledFromJSON,
@@ -52,8 +52,6 @@ export interface SkillCompatibility {
      * one reading a client-side table makes easy and a served label makes
      * impossible.
      * 
-     * @type {Labelled}
-     * @memberof SkillCompatibility
      */
     specValidation: Labelled;
     /**
@@ -72,8 +70,6 @@ export interface SkillCompatibility {
      * 限制註記), so a missing activation event on a truncated run is not
      * evidence of non-activation, and it is reported as `unverified`.
      * 
-     * @type {Labelled}
-     * @memberof SkillCompatibility
      */
     capability: Labelled;
     /**
@@ -96,8 +92,6 @@ export interface SkillCompatibility {
      * - `failed` — they are not, and the run failed because of it.
      * - `unverified` — this (version, image) pair was never measured.
      * 
-     * @type {Labelled}
-     * @memberof SkillCompatibility
      */
     runtime: Labelled;
     /**
@@ -108,14 +102,10 @@ export interface SkillCompatibility {
      * invented to fit. Absent exactly when nothing was measured, so there is
      * no image to name.
      * 
-     * @type {string}
-     * @memberof SkillCompatibility
      */
     runtimeImage?: string;
     /**
      * When the measurement ran. Absent when unmeasured.
-     * @type {Date}
-     * @memberof SkillCompatibility
      */
     measuredAt?: Date;
     /**
@@ -124,8 +114,6 @@ export interface SkillCompatibility {
      * measured and unmeasured cases, and the measured one spells out the
      * `transpiled` meaning in words rather than leaving it as a value name.
      * 
-     * @type {string}
-     * @memberof SkillCompatibility
      */
     note: string;
 }
@@ -134,7 +122,7 @@ export interface SkillCompatibility {
  * Check if a given object implements the SkillCompatibility interface.
  */
 export function instanceOfSkillCompatibility(value: object): value is SkillCompatibility {
-    if (!('specValidation' in value) || value['specValidation'] === undefined) return false;
+    if ((!('specValidation' in (value as Record<string, any>)) && !('spec_validation' in (value as Record<string, any>))) || ((value as Record<string, any>)['specValidation'] === undefined && (value as Record<string, any>)['spec_validation'] === undefined)) return false;
     if (!('capability' in value) || value['capability'] === undefined) return false;
     if (!('runtime' in value) || value['runtime'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
@@ -155,7 +143,7 @@ export function SkillCompatibilityFromJSONTyped(json: any, ignoreDiscriminator: 
         'capability': LabelledFromJSON(json['capability']),
         'runtime': LabelledFromJSON(json['runtime']),
         'runtimeImage': json['runtime_image'] == null ? undefined : json['runtime_image'],
-        'measuredAt': json['measured_at'] == null ? undefined : (new Date(json['measured_at'])),
+        'measuredAt': json['measured_at'] == null ? undefined : (parseDateTime(json['measured_at'])),
         'note': json['note'],
     };
 }
@@ -175,7 +163,7 @@ export function SkillCompatibilityToJSONTyped(value?: SkillCompatibility | null,
         'capability': LabelledToJSON(value['capability']),
         'runtime': LabelledToJSON(value['runtime']),
         'runtime_image': value['runtimeImage'],
-        'measured_at': value['measuredAt'] == null ? value['measuredAt'] : value['measuredAt'].toISOString(),
+        'measured_at': value['measuredAt'] == null ? value['measuredAt'] : serializeDateTime(value['measuredAt']),
         'note': value['note'],
     };
 }

@@ -34,64 +34,44 @@ import {
 export interface RunResourceLimits {
     /**
      * 
-     * @type {number}
-     * @memberof RunResourceLimits
      */
     vcpu: number;
     /**
      * 
-     * @type {number}
-     * @memberof RunResourceLimits
      */
     memoryBytes: number;
     /**
      * Total; PDM-005 splits it /work 6 GiB + /out 2 GiB.
-     * @type {number}
-     * @memberof RunResourceLimits
      */
     diskBytes: number;
     /**
      * 
-     * @type {number}
-     * @memberof RunResourceLimits
      */
     maxPids: number;
     /**
      * 
-     * @type {number}
-     * @memberof RunResourceLimits
      */
     maxOpenFiles: number;
     /**
      * Reaching this marks the run `timed_out`.
-     * @type {number}
-     * @memberof RunResourceLimits
      */
     wallClockSoftSeconds: number;
     /**
      * Forced destroy. The gap above the soft limit is the window in which a
      * cooperative stop can still collect artifacts.
      * 
-     * @type {number}
-     * @memberof RunResourceLimits
      */
     wallClockHardSeconds: number;
     /**
      * 
-     * @type {number}
-     * @memberof RunResourceLimits
      */
     artifactTotalBytes: number;
     /**
      * 
-     * @type {number}
-     * @memberof RunResourceLimits
      */
     artifactFileBytes: number;
     /**
      * 
-     * @type {RunResourceLimitsTokenBudget}
-     * @memberof RunResourceLimits
      */
     tokenBudget: RunResourceLimitsTokenBudget;
 }
@@ -101,15 +81,15 @@ export interface RunResourceLimits {
  */
 export function instanceOfRunResourceLimits(value: object): value is RunResourceLimits {
     if (!('vcpu' in value) || value['vcpu'] === undefined) return false;
-    if (!('memoryBytes' in value) || value['memoryBytes'] === undefined) return false;
-    if (!('diskBytes' in value) || value['diskBytes'] === undefined) return false;
-    if (!('maxPids' in value) || value['maxPids'] === undefined) return false;
-    if (!('maxOpenFiles' in value) || value['maxOpenFiles'] === undefined) return false;
-    if (!('wallClockSoftSeconds' in value) || value['wallClockSoftSeconds'] === undefined) return false;
-    if (!('wallClockHardSeconds' in value) || value['wallClockHardSeconds'] === undefined) return false;
-    if (!('artifactTotalBytes' in value) || value['artifactTotalBytes'] === undefined) return false;
-    if (!('artifactFileBytes' in value) || value['artifactFileBytes'] === undefined) return false;
-    if (!('tokenBudget' in value) || value['tokenBudget'] === undefined) return false;
+    if ((!('memoryBytes' in (value as Record<string, any>)) && !('memory_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['memoryBytes'] === undefined && (value as Record<string, any>)['memory_bytes'] === undefined)) return false;
+    if ((!('diskBytes' in (value as Record<string, any>)) && !('disk_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['diskBytes'] === undefined && (value as Record<string, any>)['disk_bytes'] === undefined)) return false;
+    if ((!('maxPids' in (value as Record<string, any>)) && !('max_pids' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxPids'] === undefined && (value as Record<string, any>)['max_pids'] === undefined)) return false;
+    if ((!('maxOpenFiles' in (value as Record<string, any>)) && !('max_open_files' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxOpenFiles'] === undefined && (value as Record<string, any>)['max_open_files'] === undefined)) return false;
+    if ((!('wallClockSoftSeconds' in (value as Record<string, any>)) && !('wall_clock_soft_seconds' in (value as Record<string, any>))) || ((value as Record<string, any>)['wallClockSoftSeconds'] === undefined && (value as Record<string, any>)['wall_clock_soft_seconds'] === undefined)) return false;
+    if ((!('wallClockHardSeconds' in (value as Record<string, any>)) && !('wall_clock_hard_seconds' in (value as Record<string, any>))) || ((value as Record<string, any>)['wallClockHardSeconds'] === undefined && (value as Record<string, any>)['wall_clock_hard_seconds'] === undefined)) return false;
+    if ((!('artifactTotalBytes' in (value as Record<string, any>)) && !('artifact_total_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['artifactTotalBytes'] === undefined && (value as Record<string, any>)['artifact_total_bytes'] === undefined)) return false;
+    if ((!('artifactFileBytes' in (value as Record<string, any>)) && !('artifact_file_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['artifactFileBytes'] === undefined && (value as Record<string, any>)['artifact_file_bytes'] === undefined)) return false;
+    if ((!('tokenBudget' in (value as Record<string, any>)) && !('token_budget' in (value as Record<string, any>))) || ((value as Record<string, any>)['tokenBudget'] === undefined && (value as Record<string, any>)['token_budget'] === undefined)) return false;
     return true;
 }
 

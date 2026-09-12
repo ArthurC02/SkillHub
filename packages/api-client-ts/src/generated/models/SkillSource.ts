@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { GenerationInputs } from './GenerationInputs';
 import {
     GenerationInputsFromJSON,
@@ -38,14 +38,10 @@ import {
 export interface SkillSource {
     /**
      * 
-     * @type {string}
-     * @memberof SkillSource
      */
     type: SkillSourceTypeEnum;
     /**
      * Source URL for a git import.
-     * @type {string}
-     * @memberof SkillSource
      */
     url?: string;
     /**
@@ -55,14 +51,10 @@ export interface SkillSource {
      * skill is never reported as unknown — it is known, it just is not a
      * URL.
      * 
-     * @type {string}
-     * @memberof SkillSource
      */
     taskDescription?: string;
     /**
      * Model id that wrote a generated package. Present only for `generated`.
-     * @type {string}
-     * @memberof SkillSource
      */
     generatorModel?: string;
     /**
@@ -70,8 +62,6 @@ export interface SkillSource {
      * `generated`. Together with task_description and generator_model this
      * is what lets someone re-derive the package (ADR-047 決策 1).
      * 
-     * @type {string}
-     * @memberof SkillSource
      */
     generatorPromptVersion?: string;
     /**
@@ -82,34 +72,24 @@ export interface SkillSource {
      * "nothing else was used", not "unknown" — the platform wrote every
      * generated row and knows.
      * 
-     * @type {GenerationInputs}
-     * @memberof SkillSource
      */
     generationInputs?: GenerationInputs;
     /**
      * Commit SHA, tag, or branch, when the fetch resolved one.
-     * @type {string}
-     * @memberof SkillSource
      */
     sourceVersion?: string;
     /**
      * 
-     * @type {Date}
-     * @memberof SkillSource
      */
     fetchedAt?: Date;
     /**
      * Hash of the package as fetched.
-     * @type {string}
-     * @memberof SkillSource
      */
     contentHash?: string;
     /**
      * When the upstream-availability probe last looked at this source.
      * Absent means never probed — which is not the same as "available".
      * 
-     * @type {Date}
-     * @memberof SkillSource
      */
     lastCheckedAt?: Date;
     /**
@@ -117,8 +97,6 @@ export interface SkillSource {
      * two-week outage stays distinguishable from a blip. Absent means the
      * source answered on its last probe.
      * 
-     * @type {Date}
-     * @memberof SkillSource
      */
     unavailableSince?: Date;
     /**
@@ -130,8 +108,6 @@ export interface SkillSource {
      * recorded and is not a URL, and it makes no claim at all about
      * quality or safety.
      * 
-     * @type {Labelled}
-     * @memberof SkillSource
      */
     trust: Labelled;
 }
@@ -143,7 +119,7 @@ export interface SkillSource {
 export const SkillSourceTypeEnum = {
     Git: 'git',
     Upload: 'upload',
-    Generated: 'generated'
+    Generated: 'generated',
 } as const;
 export type SkillSourceTypeEnum = typeof SkillSourceTypeEnum[keyof typeof SkillSourceTypeEnum];
 
@@ -174,10 +150,10 @@ export function SkillSourceFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'generatorPromptVersion': json['generator_prompt_version'] == null ? undefined : json['generator_prompt_version'],
         'generationInputs': json['generation_inputs'] == null ? undefined : GenerationInputsFromJSON(json['generation_inputs']),
         'sourceVersion': json['source_version'] == null ? undefined : json['source_version'],
-        'fetchedAt': json['fetched_at'] == null ? undefined : (new Date(json['fetched_at'])),
+        'fetchedAt': json['fetched_at'] == null ? undefined : (parseDateTime(json['fetched_at'])),
         'contentHash': json['content_hash'] == null ? undefined : json['content_hash'],
-        'lastCheckedAt': json['last_checked_at'] == null ? undefined : (new Date(json['last_checked_at'])),
-        'unavailableSince': json['unavailable_since'] == null ? undefined : (new Date(json['unavailable_since'])),
+        'lastCheckedAt': json['last_checked_at'] == null ? undefined : (parseDateTime(json['last_checked_at'])),
+        'unavailableSince': json['unavailable_since'] == null ? undefined : (parseDateTime(json['unavailable_since'])),
         'trust': LabelledFromJSON(json['trust']),
     };
 }
@@ -200,10 +176,10 @@ export function SkillSourceToJSONTyped(value?: SkillSource | null, ignoreDiscrim
         'generator_prompt_version': value['generatorPromptVersion'],
         'generation_inputs': GenerationInputsToJSON(value['generationInputs']),
         'source_version': value['sourceVersion'],
-        'fetched_at': value['fetchedAt'] == null ? value['fetchedAt'] : value['fetchedAt'].toISOString(),
+        'fetched_at': value['fetchedAt'] == null ? value['fetchedAt'] : serializeDateTime(value['fetchedAt']),
         'content_hash': value['contentHash'],
-        'last_checked_at': value['lastCheckedAt'] == null ? value['lastCheckedAt'] : value['lastCheckedAt'].toISOString(),
-        'unavailable_since': value['unavailableSince'] == null ? value['unavailableSince'] : value['unavailableSince'].toISOString(),
+        'last_checked_at': value['lastCheckedAt'] == null ? value['lastCheckedAt'] : serializeDateTime(value['lastCheckedAt']),
+        'unavailable_since': value['unavailableSince'] == null ? value['unavailableSince'] : serializeDateTime(value['unavailableSince']),
         'trust': LabelledToJSON(value['trust']),
     };
 }

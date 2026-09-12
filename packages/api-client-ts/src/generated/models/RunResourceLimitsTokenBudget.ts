@@ -23,14 +23,10 @@ export interface RunResourceLimitsTokenBudget {
      * Counts cache-hit tokens: caching cuts cost, not token count
      * (PDM-005 §5.2a-3).
      * 
-     * @type {number}
-     * @memberof RunResourceLimitsTokenBudget
      */
     maxInputTokens: number;
     /**
      * 
-     * @type {number}
-     * @memberof RunResourceLimitsTokenBudget
      */
     maxOutputTokens: number;
 }
@@ -39,8 +35,8 @@ export interface RunResourceLimitsTokenBudget {
  * Check if a given object implements the RunResourceLimitsTokenBudget interface.
  */
 export function instanceOfRunResourceLimitsTokenBudget(value: object): value is RunResourceLimitsTokenBudget {
-    if (!('maxInputTokens' in value) || value['maxInputTokens'] === undefined) return false;
-    if (!('maxOutputTokens' in value) || value['maxOutputTokens'] === undefined) return false;
+    if ((!('maxInputTokens' in (value as Record<string, any>)) && !('max_input_tokens' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxInputTokens'] === undefined && (value as Record<string, any>)['max_input_tokens'] === undefined)) return false;
+    if ((!('maxOutputTokens' in (value as Record<string, any>)) && !('max_output_tokens' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxOutputTokens'] === undefined && (value as Record<string, any>)['max_output_tokens'] === undefined)) return false;
     return true;
 }
 

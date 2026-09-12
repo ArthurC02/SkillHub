@@ -26,58 +26,40 @@ import { mapValues } from '../runtime';
 export interface DataRetentionPolicyFeedback {
     /**
      * 
-     * @type {string}
-     * @memberof DataRetentionPolicyFeedback
      */
     what: string;
     /**
      * The columns a report writes, one entry each.
-     * @type {Array<string>}
-     * @memberof DataRetentionPolicyFeedback
      */
     collected: Array<string>;
     /**
      * 
-     * @type {string}
-     * @memberof DataRetentionPolicyFeedback
      */
     freeText: string;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof DataRetentionPolicyFeedback
      */
     kind: Array<DataRetentionPolicyFeedbackKindEnum>;
     /**
      * 
-     * @type {string}
-     * @memberof DataRetentionPolicyFeedback
      */
     pagePath: string;
     /**
      * 
-     * @type {string}
-     * @memberof DataRetentionPolicyFeedback
      */
     runId: string;
     /**
      * 
-     * @type {string}
-     * @memberof DataRetentionPolicyFeedback
      */
     onAccountDeletion: string;
     /**
      * Null when FEEDBACK_RETENTION is unset: nothing purges these rows
      * and they are kept until a window is configured. `note` says so.
      * 
-     * @type {number}
-     * @memberof DataRetentionPolicyFeedback
      */
     retentionDays: number | null;
     /**
      * 
-     * @type {string}
-     * @memberof DataRetentionPolicyFeedback
      */
     note?: string;
 }
@@ -88,7 +70,7 @@ export interface DataRetentionPolicyFeedback {
  */
 export const DataRetentionPolicyFeedbackKindEnum = {
     BlockingIssue: 'blocking_issue',
-    NeedSignal: 'need_signal'
+    NeedSignal: 'need_signal',
 } as const;
 export type DataRetentionPolicyFeedbackKindEnum = typeof DataRetentionPolicyFeedbackKindEnum[keyof typeof DataRetentionPolicyFeedbackKindEnum];
 
@@ -99,12 +81,12 @@ export type DataRetentionPolicyFeedbackKindEnum = typeof DataRetentionPolicyFeed
 export function instanceOfDataRetentionPolicyFeedback(value: object): value is DataRetentionPolicyFeedback {
     if (!('what' in value) || value['what'] === undefined) return false;
     if (!('collected' in value) || value['collected'] === undefined) return false;
-    if (!('freeText' in value) || value['freeText'] === undefined) return false;
+    if ((!('freeText' in (value as Record<string, any>)) && !('free_text' in (value as Record<string, any>))) || ((value as Record<string, any>)['freeText'] === undefined && (value as Record<string, any>)['free_text'] === undefined)) return false;
     if (!('kind' in value) || value['kind'] === undefined) return false;
-    if (!('pagePath' in value) || value['pagePath'] === undefined) return false;
-    if (!('runId' in value) || value['runId'] === undefined) return false;
-    if (!('onAccountDeletion' in value) || value['onAccountDeletion'] === undefined) return false;
-    if (!('retentionDays' in value) || value['retentionDays'] === undefined) return false;
+    if ((!('pagePath' in (value as Record<string, any>)) && !('page_path' in (value as Record<string, any>))) || ((value as Record<string, any>)['pagePath'] === undefined && (value as Record<string, any>)['page_path'] === undefined)) return false;
+    if ((!('runId' in (value as Record<string, any>)) && !('run_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['runId'] === undefined && (value as Record<string, any>)['run_id'] === undefined)) return false;
+    if ((!('onAccountDeletion' in (value as Record<string, any>)) && !('on_account_deletion' in (value as Record<string, any>))) || ((value as Record<string, any>)['onAccountDeletion'] === undefined && (value as Record<string, any>)['on_account_deletion'] === undefined)) return false;
+    if ((!('retentionDays' in (value as Record<string, any>)) && !('retention_days' in (value as Record<string, any>))) || ((value as Record<string, any>)['retentionDays'] === undefined && (value as Record<string, any>)['retention_days'] === undefined)) return false;
     return true;
 }
 

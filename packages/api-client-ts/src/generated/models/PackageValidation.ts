@@ -38,20 +38,14 @@ import {
 export interface PackageValidation {
     /**
      * 
-     * @type {Array<Finding>}
-     * @memberof PackageValidation
      */
     errors: Array<Finding>;
     /**
      * 
-     * @type {Array<Finding>}
-     * @memberof PackageValidation
      */
     warnings: Array<Finding>;
     /**
      * 
-     * @type {Array<Finding>}
-     * @memberof PackageValidation
      */
     infos: Array<Finding>;
     /**
@@ -59,8 +53,6 @@ export interface PackageValidation {
      * client to derive, so no surface can decide for itself what
      * counts as blocking.
      * 
-     * @type {boolean}
-     * @memberof PackageValidation
      */
     blocked: boolean;
 }

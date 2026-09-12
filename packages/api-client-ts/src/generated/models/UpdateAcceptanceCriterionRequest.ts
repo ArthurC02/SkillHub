@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface UpdateAcceptanceCriterionRequest {
     /**
      * 
-     * @type {string}
-     * @memberof UpdateAcceptanceCriterionRequest
      */
     text?: string;
     /**
      * True records the user's explicit agreement; false withdraws it.
-     * @type {boolean}
-     * @memberof UpdateAcceptanceCriterionRequest
      */
     confirmed?: boolean;
 }

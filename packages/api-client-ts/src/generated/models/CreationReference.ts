@@ -21,68 +21,46 @@ import { mapValues } from '../runtime';
 export interface CreationReference {
     /**
      * 
-     * @type {string}
-     * @memberof CreationReference
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationReference
      */
     versionId: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationReference
      */
     name: string;
     /**
      * 
-     * @type {boolean}
-     * @memberof CreationReference
      */
     confirmed: boolean;
     /**
      * 
-     * @type {boolean}
-     * @memberof CreationReference
      */
     available: boolean;
     /**
      * The catalogue's curation tier for this exact version (CONTENT-001), shown wherever Go offers a Skill to adopt or reference (SEC-013, LLM04: an offer must carry the same trust facts as a search row). `unknown` when the Skill is not in the catalogue.
-     * @type {string}
-     * @memberof CreationReference
      */
     tier?: CreationReferenceTierEnum;
     /**
      * Whether the projection holds an import scan for this Skill (DISC-004: unavailable is never clean).
-     * @type {string}
-     * @memberof CreationReference
      */
     scanStatus?: CreationReferenceScanStatusEnum;
     /**
      * Warning-level findings from the import scan, 0 when scanned and clean; absent when scan_status is not scanned.
-     * @type {number}
-     * @memberof CreationReference
      */
     warnings?: number;
     /**
      * Description read from this exact immutable reference version.
-     * @type {string}
-     * @memberof CreationReference
      */
     description?: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationReference
      */
     compatibility?: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationReference
      */
     allowedTools?: string;
 }
@@ -94,7 +72,7 @@ export interface CreationReference {
 export const CreationReferenceTierEnum = {
     Curated: 'curated',
     Indexed: 'indexed',
-    Unknown: 'unknown'
+    Unknown: 'unknown',
 } as const;
 export type CreationReferenceTierEnum = typeof CreationReferenceTierEnum[keyof typeof CreationReferenceTierEnum];
 
@@ -104,7 +82,7 @@ export type CreationReferenceTierEnum = typeof CreationReferenceTierEnum[keyof t
 export const CreationReferenceScanStatusEnum = {
     Scanned: 'scanned',
     Unavailable: 'unavailable',
-    Unknown: 'unknown'
+    Unknown: 'unknown',
 } as const;
 export type CreationReferenceScanStatusEnum = typeof CreationReferenceScanStatusEnum[keyof typeof CreationReferenceScanStatusEnum];
 
@@ -113,8 +91,8 @@ export type CreationReferenceScanStatusEnum = typeof CreationReferenceScanStatus
  * Check if a given object implements the CreationReference interface.
  */
 export function instanceOfCreationReference(value: object): value is CreationReference {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('confirmed' in value) || value['confirmed'] === undefined) return false;
     if (!('available' in value) || value['available'] === undefined) return false;

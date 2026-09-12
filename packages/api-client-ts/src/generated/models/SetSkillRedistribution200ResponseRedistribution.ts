@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface SetSkillRedistribution200ResponseRedistribution {
     /**
      * 
-     * @type {string}
-     * @memberof SetSkillRedistribution200ResponseRedistribution
      */
     value: SetSkillRedistribution200ResponseRedistributionValueEnum;
     /**
      * 
-     * @type {string}
-     * @memberof SetSkillRedistribution200ResponseRedistribution
      */
     label: string;
     /**
@@ -36,8 +32,6 @@ export interface SetSkillRedistribution200ResponseRedistribution {
      * values it says explicitly that this is not a licensing
      * judgement, because it is not one.
      * 
-     * @type {string}
-     * @memberof SetSkillRedistribution200ResponseRedistribution
      */
     note: string;
 }
@@ -51,7 +45,7 @@ export const SetSkillRedistribution200ResponseRedistributionValueEnum = {
     Blocked: 'blocked',
     Unknown: 'unknown',
     SelfSupplied: 'self_supplied',
-    Generated: 'generated'
+    Generated: 'generated',
 } as const;
 export type SetSkillRedistribution200ResponseRedistributionValueEnum = typeof SetSkillRedistribution200ResponseRedistributionValueEnum[keyof typeof SetSkillRedistribution200ResponseRedistributionValueEnum];
 

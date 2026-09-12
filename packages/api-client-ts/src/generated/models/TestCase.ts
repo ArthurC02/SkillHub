@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { Rubric } from './Rubric';
 import {
     RubricFromJSON,
@@ -36,32 +36,22 @@ import {
 export interface TestCase {
     /**
      * 
-     * @type {string}
-     * @memberof TestCase
      */
     testCaseId: string;
     /**
      * 
-     * @type {string}
-     * @memberof TestCase
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof TestCase
      */
     name: string;
     /**
      * 
-     * @type {string}
-     * @memberof TestCase
      */
     userPrompt: string;
     /**
      * 
-     * @type {Array<AcceptanceCriterion>}
-     * @memberof TestCase
      */
     acceptanceCriteria: Array<AcceptanceCriterion>;
     /**
@@ -69,20 +59,14 @@ export interface TestCase {
      * default one. The copy a run was judged against is the one frozen in
      * its snapshot, which is what `Evaluation.rubric_version` names.
      * 
-     * @type {Rubric}
-     * @memberof TestCase
      */
     rubric?: Rubric;
     /**
      * 
-     * @type {Date}
-     * @memberof TestCase
      */
     createdAt: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof TestCase
      */
     updatedAt: Date;
 }
@@ -91,13 +75,13 @@ export interface TestCase {
  * Check if a given object implements the TestCase interface.
  */
 export function instanceOfTestCase(value: object): value is TestCase {
-    if (!('testCaseId' in value) || value['testCaseId'] === undefined) return false;
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
+    if ((!('testCaseId' in (value as Record<string, any>)) && !('test_case_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCaseId'] === undefined && (value as Record<string, any>)['test_case_id'] === undefined)) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
-    if (!('userPrompt' in value) || value['userPrompt'] === undefined) return false;
-    if (!('acceptanceCriteria' in value) || value['acceptanceCriteria'] === undefined) return false;
-    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
-    if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
+    if ((!('userPrompt' in (value as Record<string, any>)) && !('user_prompt' in (value as Record<string, any>))) || ((value as Record<string, any>)['userPrompt'] === undefined && (value as Record<string, any>)['user_prompt'] === undefined)) return false;
+    if ((!('acceptanceCriteria' in (value as Record<string, any>)) && !('acceptance_criteria' in (value as Record<string, any>))) || ((value as Record<string, any>)['acceptanceCriteria'] === undefined && (value as Record<string, any>)['acceptance_criteria'] === undefined)) return false;
+    if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
+    if ((!('updatedAt' in (value as Record<string, any>)) && !('updated_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['updatedAt'] === undefined && (value as Record<string, any>)['updated_at'] === undefined)) return false;
     return true;
 }
 
@@ -117,8 +101,8 @@ export function TestCaseFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'userPrompt': json['user_prompt'],
         'acceptanceCriteria': ((json['acceptance_criteria'] as Array<any>).map(AcceptanceCriterionFromJSON)),
         'rubric': json['rubric'] == null ? undefined : RubricFromJSON(json['rubric']),
-        'createdAt': (new Date(json['created_at'])),
-        'updatedAt': (new Date(json['updated_at'])),
+        'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
+        'updatedAt': (json['updated_at'] == null ? json['updated_at'] : parseDateTime(json['updated_at'])),
     };
 }
 
@@ -139,8 +123,8 @@ export function TestCaseToJSONTyped(value?: TestCase | null, ignoreDiscriminator
         'user_prompt': value['userPrompt'],
         'acceptance_criteria': ((value['acceptanceCriteria'] as Array<any>).map(AcceptanceCriterionToJSON)),
         'rubric': RubricToJSON(value['rubric']),
-        'created_at': value['createdAt'].toISOString(),
-        'updated_at': value['updatedAt'].toISOString(),
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'updated_at': value['updatedAt'] == null ? value['updatedAt'] : serializeDateTime(value['updatedAt']),
     };
 }
 

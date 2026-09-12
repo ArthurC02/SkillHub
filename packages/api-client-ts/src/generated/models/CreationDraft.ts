@@ -29,32 +29,22 @@ import {
 export interface CreationDraft {
     /**
      * 
-     * @type {number}
-     * @memberof CreationDraft
      */
     revision: number;
     /**
      * 
-     * @type {string}
-     * @memberof CreationDraft
      */
     contentHash: string;
     /**
      * 
-     * @type {CreationSkill}
-     * @memberof CreationDraft
      */
     skill: CreationSkill;
     /**
      * 
-     * @type {string}
-     * @memberof CreationDraft
      */
     validation: string;
     /**
      * 
-     * @type {boolean}
-     * @memberof CreationDraft
      */
     blocked: boolean;
 }
@@ -64,7 +54,7 @@ export interface CreationDraft {
  */
 export function instanceOfCreationDraft(value: object): value is CreationDraft {
     if (!('revision' in value) || value['revision'] === undefined) return false;
-    if (!('contentHash' in value) || value['contentHash'] === undefined) return false;
+    if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
     if (!('skill' in value) || value['skill'] === undefined) return false;
     if (!('validation' in value) || value['validation'] === undefined) return false;
     if (!('blocked' in value) || value['blocked'] === undefined) return false;

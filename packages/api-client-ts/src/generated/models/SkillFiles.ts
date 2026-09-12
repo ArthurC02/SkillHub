@@ -29,54 +29,38 @@ import {
 export interface SkillFiles {
     /**
      * 
-     * @type {string}
-     * @memberof SkillFiles
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillFiles
      */
     versionId: string;
     /**
      * 
-     * @type {number}
-     * @memberof SkillFiles
      */
     versionNumber: number;
     /**
      * Full SKILL.md text of that version, capped at 1 MiB.
-     * @type {string}
-     * @memberof SkillFiles
      */
     skillMd: string;
     /**
      * 
-     * @type {boolean}
-     * @memberof SkillFiles
      */
     skillMdTruncated: boolean;
     /**
      * Every file in the package, sorted by path. Directories are omitted:
      * the paths carry the structure.
      * 
-     * @type {Array<SkillFileEntry>}
-     * @memberof SkillFiles
      */
     tree: Array<SkillFileEntry>;
     /**
      * The SKILL-003 disclosure, repeated on the view where its absence
      * would mislead: this tree cannot show code that lives inside SKILL.md.
      * 
-     * @type {string}
-     * @memberof SkillFiles
      */
     embeddedScriptNote?: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillFiles
      */
     note: string;
 }
@@ -85,11 +69,11 @@ export interface SkillFiles {
  * Check if a given object implements the SkillFiles interface.
  */
 export function instanceOfSkillFiles(value: object): value is SkillFiles {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
-    if (!('versionNumber' in value) || value['versionNumber'] === undefined) return false;
-    if (!('skillMd' in value) || value['skillMd'] === undefined) return false;
-    if (!('skillMdTruncated' in value) || value['skillMdTruncated'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
+    if ((!('versionNumber' in (value as Record<string, any>)) && !('version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionNumber'] === undefined && (value as Record<string, any>)['version_number'] === undefined)) return false;
+    if ((!('skillMd' in (value as Record<string, any>)) && !('skill_md' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillMd'] === undefined && (value as Record<string, any>)['skill_md'] === undefined)) return false;
+    if ((!('skillMdTruncated' in (value as Record<string, any>)) && !('skill_md_truncated' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillMdTruncated'] === undefined && (value as Record<string, any>)['skill_md_truncated'] === undefined)) return false;
     if (!('tree' in value) || value['tree'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;

@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,26 +21,18 @@ import { mapValues } from '../runtime';
 export interface TakedownSkill200Response {
     /**
      * 
-     * @type {string}
-     * @memberof TakedownSkill200Response
      */
     skillId: string;
     /**
      * 
-     * @type {Date}
-     * @memberof TakedownSkill200Response
      */
     takedownAt: Date;
     /**
      * 
-     * @type {string}
-     * @memberof TakedownSkill200Response
      */
     reason: string;
     /**
      * 
-     * @type {string}
-     * @memberof TakedownSkill200Response
      */
     note: string;
 }
@@ -49,8 +41,8 @@ export interface TakedownSkill200Response {
  * Check if a given object implements the TakedownSkill200Response interface.
  */
 export function instanceOfTakedownSkill200Response(value: object): value is TakedownSkill200Response {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('takedownAt' in value) || value['takedownAt'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('takedownAt' in (value as Record<string, any>)) && !('takedown_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['takedownAt'] === undefined && (value as Record<string, any>)['takedown_at'] === undefined)) return false;
     if (!('reason' in value) || value['reason'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
@@ -67,7 +59,7 @@ export function TakedownSkill200ResponseFromJSONTyped(json: any, ignoreDiscrimin
     return {
         
         'skillId': json['skill_id'],
-        'takedownAt': (new Date(json['takedown_at'])),
+        'takedownAt': (json['takedown_at'] == null ? json['takedown_at'] : parseDateTime(json['takedown_at'])),
         'reason': json['reason'],
         'note': json['note'],
     };
@@ -85,7 +77,7 @@ export function TakedownSkill200ResponseToJSONTyped(value?: TakedownSkill200Resp
     return {
         
         'skill_id': value['skillId'],
-        'takedown_at': value['takedownAt'].toISOString(),
+        'takedown_at': value['takedownAt'] == null ? value['takedownAt'] : serializeDateTime(value['takedownAt']),
         'reason': value['reason'],
         'note': value['note'],
     };

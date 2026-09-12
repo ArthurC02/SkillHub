@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * The latest version. Absent for a skill with no saved content yet.
  * @export
@@ -21,26 +21,18 @@ import { mapValues } from '../runtime';
 export interface SkillDetailVersion {
     /**
      * 
-     * @type {string}
-     * @memberof SkillDetailVersion
      */
     versionId: string;
     /**
      * 
-     * @type {number}
-     * @memberof SkillDetailVersion
      */
     versionNumber: number;
     /**
      * 
-     * @type {string}
-     * @memberof SkillDetailVersion
      */
     contentHash: string;
     /**
      * 
-     * @type {Date}
-     * @memberof SkillDetailVersion
      */
     createdAt: Date;
 }
@@ -49,10 +41,10 @@ export interface SkillDetailVersion {
  * Check if a given object implements the SkillDetailVersion interface.
  */
 export function instanceOfSkillDetailVersion(value: object): value is SkillDetailVersion {
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
-    if (!('versionNumber' in value) || value['versionNumber'] === undefined) return false;
-    if (!('contentHash' in value) || value['contentHash'] === undefined) return false;
-    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
+    if ((!('versionNumber' in (value as Record<string, any>)) && !('version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionNumber'] === undefined && (value as Record<string, any>)['version_number'] === undefined)) return false;
+    if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
+    if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
     return true;
 }
 
@@ -69,7 +61,7 @@ export function SkillDetailVersionFromJSONTyped(json: any, ignoreDiscriminator: 
         'versionId': json['version_id'],
         'versionNumber': json['version_number'],
         'contentHash': json['content_hash'],
-        'createdAt': (new Date(json['created_at'])),
+        'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
     };
 }
 
@@ -87,7 +79,7 @@ export function SkillDetailVersionToJSONTyped(value?: SkillDetailVersion | null,
         'version_id': value['versionId'],
         'version_number': value['versionNumber'],
         'content_hash': value['contentHash'],
-        'created_at': value['createdAt'].toISOString(),
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
     };
 }
 

@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface CreateTestCaseRequest {
     /**
      * 
-     * @type {string}
-     * @memberof CreateTestCaseRequest
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreateTestCaseRequest
      */
     name: string;
     /**
      * Must not be blank (TEST-001).
-     * @type {string}
-     * @memberof CreateTestCaseRequest
      */
     userPrompt: string;
 }
@@ -43,9 +37,9 @@ export interface CreateTestCaseRequest {
  * Check if a given object implements the CreateTestCaseRequest interface.
  */
 export function instanceOfCreateTestCaseRequest(value: object): value is CreateTestCaseRequest {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
-    if (!('userPrompt' in value) || value['userPrompt'] === undefined) return false;
+    if ((!('userPrompt' in (value as Record<string, any>)) && !('user_prompt' in (value as Record<string, any>))) || ((value as Record<string, any>)['userPrompt'] === undefined && (value as Record<string, any>)['user_prompt'] === undefined)) return false;
     return true;
 }
 

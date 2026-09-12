@@ -36,20 +36,14 @@ import {
 export interface CreateDownloadArtifact422Response {
     /**
      * 
-     * @type {string}
-     * @memberof CreateDownloadArtifact422Response
      */
     error: string;
     /**
      * 
-     * @type {PackagingBlockedReason}
-     * @memberof CreateDownloadArtifact422Response
      */
     blockedReason: PackagingBlockedReason;
     /**
      * 
-     * @type {PackageValidation}
-     * @memberof CreateDownloadArtifact422Response
      */
     validation?: PackageValidation;
 }
@@ -61,7 +55,7 @@ export interface CreateDownloadArtifact422Response {
  */
 export function instanceOfCreateDownloadArtifact422Response(value: object): value is CreateDownloadArtifact422Response {
     if (!('error' in value) || value['error'] === undefined) return false;
-    if (!('blockedReason' in value) || value['blockedReason'] === undefined) return false;
+    if ((!('blockedReason' in (value as Record<string, any>)) && !('blocked_reason' in (value as Record<string, any>))) || ((value as Record<string, any>)['blockedReason'] === undefined && (value as Record<string, any>)['blocked_reason'] === undefined)) return false;
     return true;
 }
 

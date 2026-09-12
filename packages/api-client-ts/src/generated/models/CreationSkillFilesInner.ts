@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface CreationSkillFilesInner {
     /**
      * 
-     * @type {string}
-     * @memberof CreationSkillFilesInner
      */
     path: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSkillFilesInner
      */
     content: string;
 }

@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * The user's own answer about this judgement (EVAL-001 第 4 條). Absent
  * means nobody answered, which is not the same as "not helpful".
@@ -23,20 +23,14 @@ import { mapValues } from '../runtime';
 export interface EvaluationFeedback {
     /**
      * 
-     * @type {boolean}
-     * @memberof EvaluationFeedback
      */
     helpful: boolean;
     /**
      * 
-     * @type {string}
-     * @memberof EvaluationFeedback
      */
     comment?: string;
     /**
      * 
-     * @type {Date}
-     * @memberof EvaluationFeedback
      */
     submittedAt: Date;
 }
@@ -46,7 +40,7 @@ export interface EvaluationFeedback {
  */
 export function instanceOfEvaluationFeedback(value: object): value is EvaluationFeedback {
     if (!('helpful' in value) || value['helpful'] === undefined) return false;
-    if (!('submittedAt' in value) || value['submittedAt'] === undefined) return false;
+    if ((!('submittedAt' in (value as Record<string, any>)) && !('submitted_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['submittedAt'] === undefined && (value as Record<string, any>)['submitted_at'] === undefined)) return false;
     return true;
 }
 
@@ -62,7 +56,7 @@ export function EvaluationFeedbackFromJSONTyped(json: any, ignoreDiscriminator: 
         
         'helpful': json['helpful'],
         'comment': json['comment'] == null ? undefined : json['comment'],
-        'submittedAt': (new Date(json['submitted_at'])),
+        'submittedAt': (json['submitted_at'] == null ? json['submitted_at'] : parseDateTime(json['submitted_at'])),
     };
 }
 
@@ -79,7 +73,7 @@ export function EvaluationFeedbackToJSONTyped(value?: EvaluationFeedback | null,
         
         'helpful': value['helpful'],
         'comment': value['comment'],
-        'submitted_at': value['submittedAt'].toISOString(),
+        'submitted_at': value['submittedAt'] == null ? value['submittedAt'] : serializeDateTime(value['submittedAt']),
     };
 }
 

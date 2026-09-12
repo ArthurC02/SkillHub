@@ -71,224 +71,150 @@ import {
 export interface CreationSnapshot {
     /**
      * 
-     * @type {Array<CreationMessage>}
-     * @memberof CreationSnapshot
      */
     messages: Array<CreationMessage>;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSnapshot
      */
     brief: string;
     /**
      * Observable acceptance sentences proposed with the brief and confirmed by the same confirm_brief; materialize turns them into the candidate's Test Case (05 R-46).
-     * @type {Array<string>}
-     * @memberof CreationSnapshot
      */
     acceptanceCriteria: Array<string>;
     /**
      * The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt of the candidate's Test Case. Empty until proposed.
-     * @type {string}
-     * @memberof CreationSnapshot
      */
     sampleInput?: string;
     /**
      * 
-     * @type {boolean}
-     * @memberof CreationSnapshot
      */
     briefConfirmed: boolean;
     /**
      * 
-     * @type {CreationModelChange}
-     * @memberof CreationSnapshot
      */
     modelChanged?: CreationModelChange;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSnapshot
      */
     diagramUnderstanding: string;
     /**
      * 
-     * @type {boolean}
-     * @memberof CreationSnapshot
      */
     diagramConfirmed: boolean;
     /**
      * The NEWEST picture's digest - the one the model reads and materialize records. `attachments` is the conversation's own history; a second upload overwrites this field but adds to that list.
-     * @type {string}
-     * @memberof CreationSnapshot
      */
     diagramFingerprint?: string;
     /**
      * Every picture the person put into this conversation, in order, each tied to the turn it arrived with. Metadata only: the platform keeps the digest and refuses the bytes (ADR-066 決策 4), so a client that did not itself send the picture has its description and not the picture.
-     * @type {Array<CreationAttachment>}
-     * @memberof CreationSnapshot
      */
     attachments?: Array<CreationAttachment>;
     /**
      * 
-     * @type {Array<CreationReference>}
-     * @memberof CreationSnapshot
      */
     references: Array<CreationReference>;
     /**
      * 
-     * @type {CreationDraft}
-     * @memberof CreationSnapshot
      */
     draft?: CreationDraft;
     /**
      * 
-     * @type {CreationCandidate}
-     * @memberof CreationSnapshot
      */
     candidate?: CreationCandidate;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSnapshot
      */
     pendingAction: string;
     /**
      * 
-     * @type {number}
-     * @memberof CreationSnapshot
      */
     budgetCredits: number;
     /**
      * 
-     * @type {number}
-     * @memberof CreationSnapshot
      */
     reservedCredits: number;
     /**
      * 
-     * @type {number}
-     * @memberof CreationSnapshot
      */
     spentCredits?: number;
     /**
      * 
-     * @type {boolean}
-     * @memberof CreationSnapshot
      */
     usageUnknown: boolean;
     /**
      * 
-     * @type {number}
-     * @memberof CreationSnapshot
      */
     steps: number;
     /**
      * 
-     * @type {number}
-     * @memberof CreationSnapshot
      */
     toolCalls: number;
     /**
      * Automatic re-queues after the model answered outcome=draft with no draft (at most one per session).
-     * @type {number}
-     * @memberof CreationSnapshot
      */
     draftRetries?: number;
     /**
      * The attached Run's evaluation finished and was not met; a draft identical to the one that ran is then handed back to the model instead of stored. Cleared by a draft with new content.
-     * @type {boolean}
-     * @memberof CreationSnapshot
      */
     runUnmet?: boolean;
     /**
      * Automatic re-queues in which Go declined a draft and told the model why (identical after an unmet run, diagram nodes missing); at most two per session.
-     * @type {number}
-     * @memberof CreationSnapshot
      */
     nudges?: number;
     /**
      * Consecutive blocked validations with the same report; at two the session waits for the person instead of a further model call.
-     * @type {number}
-     * @memberof CreationSnapshot
      */
     blockedRepeats?: number;
     /**
      * Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts without a reference (04 丙-177).
-     * @type {number}
-     * @memberof CreationSnapshot
      */
     searchRounds?: number;
     /**
      * Go searched the catalogue with the first message before any model call (05 R-49). When it found something the session waits at confirm_references with the hits in `references`; the person confirms them as references, adopts one (adopt_reference) or declines them all (decline_references).
-     * @type {boolean}
-     * @memberof CreationSnapshot
      */
     catalogChecked?: boolean;
     /**
      * Catalogue Skills within the creation tool's distance of the draft, found by Go when materialize／finalize was requested (05 R-50). The session waits at confirm_duplicate: the person adopts one (adopt_reference) or confirms the draft anyway (confirm_duplicate, same content_hash).
-     * @type {Array<CreationReference>}
-     * @memberof CreationSnapshot
      */
     duplicates?: Array<CreationReference>;
     /**
      * materialize or finalize: the command held back by the duplicate check, replayed by confirm_duplicate.
-     * @type {string}
-     * @memberof CreationSnapshot
      */
     pendingMaterialize?: string;
     /**
      * The duplicate check ran for this draft revision (found nothing, or the person confirmed anyway); cleared when the draft changes.
-     * @type {boolean}
-     * @memberof CreationSnapshot
      */
     duplicateAcknowledged?: boolean;
     /**
      * The candidate is a fork of an existing catalogue Skill chosen through adopt_reference, not a generated one; nothing was composed.
-     * @type {boolean}
-     * @memberof CreationSnapshot
      */
     adopted?: boolean;
     /**
      * The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until the person confirms (05 R-47).
-     * @type {string}
-     * @memberof CreationSnapshot
      */
     pendingFetchUrl?: string;
     /**
      * Pages Go fetched for this session after the person's consent: URL, sha256 and size of the text kept, and how it ended. Content is not stored here.
-     * @type {Array<CreationFetch>}
-     * @memberof CreationSnapshot
      */
     fetches?: Array<CreationFetch>;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSnapshot
      */
     model?: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSnapshot
      */
     promptVersion?: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationSnapshot
      */
     diagramMediaType?: string;
     /**
      * 
-     * @type {number}
-     * @memberof CreationSnapshot
      */
     diagramBytes?: number;
     /**
      * 
-     * @type {CreationDraft}
-     * @memberof CreationSnapshot
      */
     previousDraft?: CreationDraft;
 }
@@ -299,17 +225,17 @@ export interface CreationSnapshot {
 export function instanceOfCreationSnapshot(value: object): value is CreationSnapshot {
     if (!('messages' in value) || value['messages'] === undefined) return false;
     if (!('brief' in value) || value['brief'] === undefined) return false;
-    if (!('acceptanceCriteria' in value) || value['acceptanceCriteria'] === undefined) return false;
-    if (!('briefConfirmed' in value) || value['briefConfirmed'] === undefined) return false;
-    if (!('diagramUnderstanding' in value) || value['diagramUnderstanding'] === undefined) return false;
-    if (!('diagramConfirmed' in value) || value['diagramConfirmed'] === undefined) return false;
+    if ((!('acceptanceCriteria' in (value as Record<string, any>)) && !('acceptance_criteria' in (value as Record<string, any>))) || ((value as Record<string, any>)['acceptanceCriteria'] === undefined && (value as Record<string, any>)['acceptance_criteria'] === undefined)) return false;
+    if ((!('briefConfirmed' in (value as Record<string, any>)) && !('brief_confirmed' in (value as Record<string, any>))) || ((value as Record<string, any>)['briefConfirmed'] === undefined && (value as Record<string, any>)['brief_confirmed'] === undefined)) return false;
+    if ((!('diagramUnderstanding' in (value as Record<string, any>)) && !('diagram_understanding' in (value as Record<string, any>))) || ((value as Record<string, any>)['diagramUnderstanding'] === undefined && (value as Record<string, any>)['diagram_understanding'] === undefined)) return false;
+    if ((!('diagramConfirmed' in (value as Record<string, any>)) && !('diagram_confirmed' in (value as Record<string, any>))) || ((value as Record<string, any>)['diagramConfirmed'] === undefined && (value as Record<string, any>)['diagram_confirmed'] === undefined)) return false;
     if (!('references' in value) || value['references'] === undefined) return false;
-    if (!('pendingAction' in value) || value['pendingAction'] === undefined) return false;
-    if (!('budgetCredits' in value) || value['budgetCredits'] === undefined) return false;
-    if (!('reservedCredits' in value) || value['reservedCredits'] === undefined) return false;
-    if (!('usageUnknown' in value) || value['usageUnknown'] === undefined) return false;
+    if ((!('pendingAction' in (value as Record<string, any>)) && !('pending_action' in (value as Record<string, any>))) || ((value as Record<string, any>)['pendingAction'] === undefined && (value as Record<string, any>)['pending_action'] === undefined)) return false;
+    if ((!('budgetCredits' in (value as Record<string, any>)) && !('budget_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['budgetCredits'] === undefined && (value as Record<string, any>)['budget_credits'] === undefined)) return false;
+    if ((!('reservedCredits' in (value as Record<string, any>)) && !('reserved_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['reservedCredits'] === undefined && (value as Record<string, any>)['reserved_credits'] === undefined)) return false;
+    if ((!('usageUnknown' in (value as Record<string, any>)) && !('usage_unknown' in (value as Record<string, any>))) || ((value as Record<string, any>)['usageUnknown'] === undefined && (value as Record<string, any>)['usage_unknown'] === undefined)) return false;
     if (!('steps' in value) || value['steps'] === undefined) return false;
-    if (!('toolCalls' in value) || value['toolCalls'] === undefined) return false;
+    if ((!('toolCalls' in (value as Record<string, any>)) && !('tool_calls' in (value as Record<string, any>))) || ((value as Record<string, any>)['toolCalls'] === undefined && (value as Record<string, any>)['tool_calls'] === undefined)) return false;
     return true;
 }
 

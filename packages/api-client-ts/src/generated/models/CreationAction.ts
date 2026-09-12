@@ -29,56 +29,38 @@ import {
 export interface CreationAction {
     /**
      * 
-     * @type {string}
-     * @memberof CreationAction
      */
     commandId: string;
     /**
      * 
-     * @type {number}
-     * @memberof CreationAction
      */
     expectedRevision: number;
     /**
      * 
-     * @type {string}
-     * @memberof CreationAction
      */
     kind: CreationActionKindEnum;
     /**
      * message: the turn itself, and required. diagram and select_references: optional, the sentence that came with the material - appended as the same user message before the material is applied, so the picture and what it is for are one turn. Ignored by every other kind.
-     * @type {string}
-     * @memberof CreationAction
      */
     message?: string;
     /**
      * raise_budget only: the new session ceiling. Must exceed the current one and stay within max_budget_credits from GET /creation-sessions/limits; a session refused for its limit becomes waiting_input again.
-     * @type {number}
-     * @memberof CreationAction
      */
     budgetCredits?: number;
     /**
      * select_references: up to three catalogue Skills to read as references. adopt_reference: exactly one id from `references` or `duplicates` — Go forks it into the workspace and the session ends `saved` with that fork as the candidate (05 R-49／R-50: reuse before creation).
-     * @type {Array<string>}
-     * @memberof CreationAction
      */
     referenceSkillIds?: Array<string>;
     /**
      * 
-     * @type {string}
-     * @memberof CreationAction
      */
     contentHash?: string;
     /**
      * 
-     * @type {GenerateDiagram}
-     * @memberof CreationAction
      */
     diagram?: GenerateDiagram;
     /**
      * 
-     * @type {string}
-     * @memberof CreationAction
      */
     runId?: string;
 }
@@ -104,7 +86,7 @@ export const CreationActionKindEnum = {
     AdoptReference: 'adopt_reference',
     DeclineReferences: 'decline_references',
     ConfirmDuplicate: 'confirm_duplicate',
-    StopStep: 'stop_step'
+    StopStep: 'stop_step',
 } as const;
 export type CreationActionKindEnum = typeof CreationActionKindEnum[keyof typeof CreationActionKindEnum];
 
@@ -113,8 +95,8 @@ export type CreationActionKindEnum = typeof CreationActionKindEnum[keyof typeof 
  * Check if a given object implements the CreationAction interface.
  */
 export function instanceOfCreationAction(value: object): value is CreationAction {
-    if (!('commandId' in value) || value['commandId'] === undefined) return false;
-    if (!('expectedRevision' in value) || value['expectedRevision'] === undefined) return false;
+    if ((!('commandId' in (value as Record<string, any>)) && !('command_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['commandId'] === undefined && (value as Record<string, any>)['command_id'] === undefined)) return false;
+    if ((!('expectedRevision' in (value as Record<string, any>)) && !('expected_revision' in (value as Record<string, any>))) || ((value as Record<string, any>)['expectedRevision'] === undefined && (value as Record<string, any>)['expected_revision'] === undefined)) return false;
     if (!('kind' in value) || value['kind'] === undefined) return false;
     return true;
 }

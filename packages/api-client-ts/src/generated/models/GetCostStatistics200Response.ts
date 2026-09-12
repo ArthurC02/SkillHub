@@ -29,8 +29,6 @@ import {
 export interface GetCostStatistics200Response {
     /**
      * 
-     * @type {Array<CostStatisticsWindow>}
-     * @memberof GetCostStatistics200Response
      */
     statistics: Array<CostStatisticsWindow>;
 }

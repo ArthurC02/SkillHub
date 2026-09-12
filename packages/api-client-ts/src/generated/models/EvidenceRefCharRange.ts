@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface EvidenceRefCharRange {
     /**
      * 
-     * @type {number}
-     * @memberof EvidenceRefCharRange
      */
     start: number;
     /**
      * 
-     * @type {number}
-     * @memberof EvidenceRefCharRange
      */
     end: number;
 }

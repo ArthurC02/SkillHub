@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { EvidenceRef } from './EvidenceRef';
 import {
     EvidenceRefFromJSON,
@@ -36,8 +36,6 @@ import {
 export interface ImprovementSuggestion {
     /**
      * 
-     * @type {string}
-     * @memberof ImprovementSuggestion
      */
     suggestionId: string;
     /**
@@ -46,22 +44,16 @@ export interface ImprovementSuggestion {
      * exists so the value does not have to be added to a live enum later,
      * the same placement TRACE-003 already uses.
      * 
-     * @type {string}
-     * @memberof ImprovementSuggestion
      */
     category: ImprovementSuggestionCategoryEnum;
     /**
      * What went wrong. Model-written; render as inert text.
-     * @type {string}
-     * @memberof ImprovementSuggestion
      */
     problem: string;
     /**
      * Why the model believes it, in verifiable form. Same server-side
      * re-check as on a criterion verdict.
      * 
-     * @type {Array<EvidenceRef>}
-     * @memberof ImprovementSuggestion
      */
     evidence: Array<EvidenceRef>;
     /**
@@ -69,14 +61,10 @@ export interface ImprovementSuggestion {
      * again when it is applied; anything resolving outside the package is
      * refused there as `path_out_of_bounds`.
      * 
-     * @type {string}
-     * @memberof ImprovementSuggestion
      */
     targetPath: string;
     /**
      * What the model expects to improve. A prediction, not a measurement.
-     * @type {string}
-     * @memberof ImprovementSuggestion
      */
     expectedImpact: string;
     /**
@@ -85,14 +73,10 @@ export interface ImprovementSuggestion {
      * written to any package until
      * POST /skills/{id}/versions/from-suggestions is called.
      * 
-     * @type {string}
-     * @memberof ImprovementSuggestion
      */
     decision: ImprovementSuggestionDecisionEnum;
     /**
      * 
-     * @type {Date}
-     * @memberof ImprovementSuggestion
      */
     decidedAt?: Date;
     /**
@@ -100,8 +84,6 @@ export interface ImprovementSuggestion {
      * Absent means it has not been applied. The version it was written
      * against is untouched either way (iron rule 4).
      * 
-     * @type {string}
-     * @memberof ImprovementSuggestion
      */
     appliedSkillVersionId?: string;
 }
@@ -115,7 +97,7 @@ export const ImprovementSuggestionCategoryEnum = {
     Runtime: 'runtime',
     Mcp: 'mcp',
     Tool: 'tool',
-    Dataset: 'dataset'
+    Dataset: 'dataset',
 } as const;
 export type ImprovementSuggestionCategoryEnum = typeof ImprovementSuggestionCategoryEnum[keyof typeof ImprovementSuggestionCategoryEnum];
 
@@ -125,7 +107,7 @@ export type ImprovementSuggestionCategoryEnum = typeof ImprovementSuggestionCate
 export const ImprovementSuggestionDecisionEnum = {
     Pending: 'pending',
     Accepted: 'accepted',
-    Rejected: 'rejected'
+    Rejected: 'rejected',
 } as const;
 export type ImprovementSuggestionDecisionEnum = typeof ImprovementSuggestionDecisionEnum[keyof typeof ImprovementSuggestionDecisionEnum];
 
@@ -134,12 +116,12 @@ export type ImprovementSuggestionDecisionEnum = typeof ImprovementSuggestionDeci
  * Check if a given object implements the ImprovementSuggestion interface.
  */
 export function instanceOfImprovementSuggestion(value: object): value is ImprovementSuggestion {
-    if (!('suggestionId' in value) || value['suggestionId'] === undefined) return false;
+    if ((!('suggestionId' in (value as Record<string, any>)) && !('suggestion_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['suggestionId'] === undefined && (value as Record<string, any>)['suggestion_id'] === undefined)) return false;
     if (!('category' in value) || value['category'] === undefined) return false;
     if (!('problem' in value) || value['problem'] === undefined) return false;
     if (!('evidence' in value) || value['evidence'] === undefined) return false;
-    if (!('targetPath' in value) || value['targetPath'] === undefined) return false;
-    if (!('expectedImpact' in value) || value['expectedImpact'] === undefined) return false;
+    if ((!('targetPath' in (value as Record<string, any>)) && !('target_path' in (value as Record<string, any>))) || ((value as Record<string, any>)['targetPath'] === undefined && (value as Record<string, any>)['target_path'] === undefined)) return false;
+    if ((!('expectedImpact' in (value as Record<string, any>)) && !('expected_impact' in (value as Record<string, any>))) || ((value as Record<string, any>)['expectedImpact'] === undefined && (value as Record<string, any>)['expected_impact'] === undefined)) return false;
     if (!('decision' in value) || value['decision'] === undefined) return false;
     return true;
 }
@@ -161,7 +143,7 @@ export function ImprovementSuggestionFromJSONTyped(json: any, ignoreDiscriminato
         'targetPath': json['target_path'],
         'expectedImpact': json['expected_impact'],
         'decision': json['decision'],
-        'decidedAt': json['decided_at'] == null ? undefined : (new Date(json['decided_at'])),
+        'decidedAt': json['decided_at'] == null ? undefined : (parseDateTime(json['decided_at'])),
         'appliedSkillVersionId': json['applied_skill_version_id'] == null ? undefined : json['applied_skill_version_id'],
     };
 }
@@ -184,7 +166,7 @@ export function ImprovementSuggestionToJSONTyped(value?: ImprovementSuggestion |
         'target_path': value['targetPath'],
         'expected_impact': value['expectedImpact'],
         'decision': value['decision'],
-        'decided_at': value['decidedAt'] == null ? value['decidedAt'] : value['decidedAt'].toISOString(),
+        'decided_at': value['decidedAt'] == null ? value['decidedAt'] : serializeDateTime(value['decidedAt']),
         'applied_skill_version_id': value['appliedSkillVersionId'],
     };
 }

@@ -21,26 +21,18 @@ import { mapValues } from '../runtime';
 export interface CreationFetch {
     /**
      * 
-     * @type {string}
-     * @memberof CreationFetch
      */
     url: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreationFetch
      */
     sha256?: string;
     /**
      * 
-     * @type {number}
-     * @memberof CreationFetch
      */
     bytes?: number;
     /**
      * ok, blocked (the site or the network environment refused; not retried), not_found, unsupported (not text), network_error (retried once), or declined.
-     * @type {string}
-     * @memberof CreationFetch
      */
     status: string;
 }

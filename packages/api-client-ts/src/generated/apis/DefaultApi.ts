@@ -12,659 +12,1325 @@
  * Do not edit the class manually.
  */
 
-
 import * as runtime from '../runtime';
-import type {
-  AcceptanceCriteriaSuggestions,
-  AccountDeletion,
-  AccountLookup,
-  AddAcceptanceCriterionRequest,
-  AmountTrend,
-  CancelAccountDeletion200Response,
-  CancelRun202Response,
-  CatalogResponse,
-  CategorizedFindings,
-  ClearSkillRestrictionRequest,
-  ConfirmRunPreflight201Response,
-  ConfirmRunPreflightRequest,
-  CountTrend,
-  CreateCreationSession,
-  CreateDownloadArtifact201Response,
-  CreateDownloadArtifact422Response,
-  CreateDownloadArtifactRequest,
-  CreateSkillVersionFromSuggestions201Response,
-  CreateSkillVersionFromSuggestions422Response,
-  CreateSkillVersionFromSuggestionsRequest,
-  CreateTestCaseRequest,
-  CreationAction,
-  CreationLimits,
-  CreationSession,
-  CreditBalance,
-  CreditLedger,
-  CreditTrend,
-  DataRetentionPolicy,
-  Dataset,
-  DatasetLimits,
-  DecideSuggestionRequest,
-  DeclareDispatchHalt200Response,
-  DeclareDispatchHaltRequest,
-  DeleteDataset200Response,
-  DeleteSkill200Response,
-  DeleteTestCase200Response,
-  DevLoginRequest,
-  DiffSkillVersions200Response,
-  DownloadArtifact,
-  Evaluation,
-  FindSkillsForGovernance200Response,
-  ForkSkill201Response,
-  GenerateSkillRefusal,
-  GenerateSkillRequest,
-  GenerateSkillResult,
-  GenerationFailures,
-  GetCostStatistics200Response,
-  GetDispatchStatus200Response,
-  GetOperatorRosters200Response,
-  GetReadiness200Response,
-  GetRunTrace200Response,
-  GrantCredits200Response,
-  GrantCreditsRequest,
-  Health,
-  ImportSkillFromURLRequest,
-  ImprovementSuggestion,
-  LiftDispatchHaltRequest,
-  ListDatasets200Response,
-  ListDownloadArtifacts200Response,
-  ListDownloadRecords200Response,
-  ListOperatorAuditLog200Response,
-  ListPackagingTargets200Response,
-  ListRunArtifacts200Response,
-  ListRunEvaluationRevisions200Response,
-  ListRunSuggestions200Response,
-  ListRuns200Response,
-  ListSkillVersions200Response,
-  ListSkills200Response,
-  ListTestCases200Response,
-  Me,
-  PackagingPreview,
-  PackagingTargetId,
-  PublicSearchResponse,
-  Run,
-  RunComparison,
-  RunPermissionSummary,
-  RunQuota,
-  SandboxTraceEvent,
-  SearchSkills200Response,
-  SetEvaluationFeedbackRequest,
-  SetSkillCategoryRequest,
-  SetSkillRedistribution200Response,
-  SetSkillRedistributionRequest,
-  SetSkillRestriction200Response,
-  SetSkillRestrictionRequest,
-  Skill,
-  SkillDetail,
-  SkillFiles,
-  StartRunRequest,
-  SubmitFeedbackRequest,
-  SuggestionDiff,
-  TakedownSkill200Response,
-  TakedownSkillAsOperator200Response,
-  TakedownSkillAsOperatorRequest,
-  TakedownSkillRequest,
-  TestCase,
-  TraceIngestReport,
-  UpdateAcceptanceCriterionRequest,
-  UpdateTestCaseRequest,
-  UploadResult,
-} from '../models/index';
 import {
+    type AcceptanceCriteriaSuggestions,
     AcceptanceCriteriaSuggestionsFromJSON,
     AcceptanceCriteriaSuggestionsToJSON,
+} from '../models/AcceptanceCriteriaSuggestions';
+import {
+    type AccountDeletion,
     AccountDeletionFromJSON,
     AccountDeletionToJSON,
+} from '../models/AccountDeletion';
+import {
+    type AccountLookup,
     AccountLookupFromJSON,
     AccountLookupToJSON,
+} from '../models/AccountLookup';
+import {
+    type AddAcceptanceCriterionRequest,
     AddAcceptanceCriterionRequestFromJSON,
     AddAcceptanceCriterionRequestToJSON,
+} from '../models/AddAcceptanceCriterionRequest';
+import {
+    type AmountTrend,
     AmountTrendFromJSON,
     AmountTrendToJSON,
+} from '../models/AmountTrend';
+import {
+    type CancelAccountDeletion200Response,
     CancelAccountDeletion200ResponseFromJSON,
     CancelAccountDeletion200ResponseToJSON,
+} from '../models/CancelAccountDeletion200Response';
+import {
+    type CancelRun202Response,
     CancelRun202ResponseFromJSON,
     CancelRun202ResponseToJSON,
+} from '../models/CancelRun202Response';
+import {
+    type CatalogResponse,
     CatalogResponseFromJSON,
     CatalogResponseToJSON,
+} from '../models/CatalogResponse';
+import {
+    type CategorizedFindings,
     CategorizedFindingsFromJSON,
     CategorizedFindingsToJSON,
+} from '../models/CategorizedFindings';
+import {
+    type ClearSkillRestrictionRequest,
     ClearSkillRestrictionRequestFromJSON,
     ClearSkillRestrictionRequestToJSON,
+} from '../models/ClearSkillRestrictionRequest';
+import {
+    type ConfirmRunPreflight201Response,
     ConfirmRunPreflight201ResponseFromJSON,
     ConfirmRunPreflight201ResponseToJSON,
+} from '../models/ConfirmRunPreflight201Response';
+import {
+    type ConfirmRunPreflightRequest,
     ConfirmRunPreflightRequestFromJSON,
     ConfirmRunPreflightRequestToJSON,
+} from '../models/ConfirmRunPreflightRequest';
+import {
+    type CountTrend,
     CountTrendFromJSON,
     CountTrendToJSON,
+} from '../models/CountTrend';
+import {
+    type CreateCreationSession,
     CreateCreationSessionFromJSON,
     CreateCreationSessionToJSON,
+} from '../models/CreateCreationSession';
+import {
+    type CreateDownloadArtifact201Response,
     CreateDownloadArtifact201ResponseFromJSON,
     CreateDownloadArtifact201ResponseToJSON,
+} from '../models/CreateDownloadArtifact201Response';
+import {
+    type CreateDownloadArtifact422Response,
     CreateDownloadArtifact422ResponseFromJSON,
     CreateDownloadArtifact422ResponseToJSON,
+} from '../models/CreateDownloadArtifact422Response';
+import {
+    type CreateDownloadArtifactRequest,
     CreateDownloadArtifactRequestFromJSON,
     CreateDownloadArtifactRequestToJSON,
+} from '../models/CreateDownloadArtifactRequest';
+import {
+    type CreateSkillVersionFromSuggestions201Response,
     CreateSkillVersionFromSuggestions201ResponseFromJSON,
     CreateSkillVersionFromSuggestions201ResponseToJSON,
+} from '../models/CreateSkillVersionFromSuggestions201Response';
+import {
+    type CreateSkillVersionFromSuggestions422Response,
     CreateSkillVersionFromSuggestions422ResponseFromJSON,
     CreateSkillVersionFromSuggestions422ResponseToJSON,
+} from '../models/CreateSkillVersionFromSuggestions422Response';
+import {
+    type CreateSkillVersionFromSuggestionsRequest,
     CreateSkillVersionFromSuggestionsRequestFromJSON,
     CreateSkillVersionFromSuggestionsRequestToJSON,
+} from '../models/CreateSkillVersionFromSuggestionsRequest';
+import {
+    type CreateTestCaseRequest,
     CreateTestCaseRequestFromJSON,
     CreateTestCaseRequestToJSON,
+} from '../models/CreateTestCaseRequest';
+import {
+    type CreationAction,
     CreationActionFromJSON,
     CreationActionToJSON,
+} from '../models/CreationAction';
+import {
+    type CreationLimits,
     CreationLimitsFromJSON,
     CreationLimitsToJSON,
+} from '../models/CreationLimits';
+import {
+    type CreationSession,
     CreationSessionFromJSON,
     CreationSessionToJSON,
+} from '../models/CreationSession';
+import {
+    type CreditBalance,
     CreditBalanceFromJSON,
     CreditBalanceToJSON,
+} from '../models/CreditBalance';
+import {
+    type CreditLedger,
     CreditLedgerFromJSON,
     CreditLedgerToJSON,
+} from '../models/CreditLedger';
+import {
+    type CreditTrend,
     CreditTrendFromJSON,
     CreditTrendToJSON,
+} from '../models/CreditTrend';
+import {
+    type DataRetentionPolicy,
     DataRetentionPolicyFromJSON,
     DataRetentionPolicyToJSON,
+} from '../models/DataRetentionPolicy';
+import {
+    type Dataset,
     DatasetFromJSON,
     DatasetToJSON,
+} from '../models/Dataset';
+import {
+    type DatasetLimits,
     DatasetLimitsFromJSON,
     DatasetLimitsToJSON,
+} from '../models/DatasetLimits';
+import {
+    type DecideSuggestionRequest,
     DecideSuggestionRequestFromJSON,
     DecideSuggestionRequestToJSON,
+} from '../models/DecideSuggestionRequest';
+import {
+    type DeclareDispatchHalt200Response,
     DeclareDispatchHalt200ResponseFromJSON,
     DeclareDispatchHalt200ResponseToJSON,
+} from '../models/DeclareDispatchHalt200Response';
+import {
+    type DeclareDispatchHaltRequest,
     DeclareDispatchHaltRequestFromJSON,
     DeclareDispatchHaltRequestToJSON,
+} from '../models/DeclareDispatchHaltRequest';
+import {
+    type DeleteDataset200Response,
     DeleteDataset200ResponseFromJSON,
     DeleteDataset200ResponseToJSON,
+} from '../models/DeleteDataset200Response';
+import {
+    type DeleteSkill200Response,
     DeleteSkill200ResponseFromJSON,
     DeleteSkill200ResponseToJSON,
+} from '../models/DeleteSkill200Response';
+import {
+    type DeleteTestCase200Response,
     DeleteTestCase200ResponseFromJSON,
     DeleteTestCase200ResponseToJSON,
+} from '../models/DeleteTestCase200Response';
+import {
+    type DevLoginRequest,
     DevLoginRequestFromJSON,
     DevLoginRequestToJSON,
+} from '../models/DevLoginRequest';
+import {
+    type DiffSkillVersions200Response,
     DiffSkillVersions200ResponseFromJSON,
     DiffSkillVersions200ResponseToJSON,
+} from '../models/DiffSkillVersions200Response';
+import {
+    type DownloadArtifact,
     DownloadArtifactFromJSON,
     DownloadArtifactToJSON,
+} from '../models/DownloadArtifact';
+import {
+    type Evaluation,
     EvaluationFromJSON,
     EvaluationToJSON,
+} from '../models/Evaluation';
+import {
+    type FindSkillsForGovernance200Response,
     FindSkillsForGovernance200ResponseFromJSON,
     FindSkillsForGovernance200ResponseToJSON,
+} from '../models/FindSkillsForGovernance200Response';
+import {
+    type ForkSkill201Response,
     ForkSkill201ResponseFromJSON,
     ForkSkill201ResponseToJSON,
+} from '../models/ForkSkill201Response';
+import {
+    type GenerateSkillRefusal,
     GenerateSkillRefusalFromJSON,
     GenerateSkillRefusalToJSON,
+} from '../models/GenerateSkillRefusal';
+import {
+    type GenerateSkillRequest,
     GenerateSkillRequestFromJSON,
     GenerateSkillRequestToJSON,
+} from '../models/GenerateSkillRequest';
+import {
+    type GenerateSkillResult,
     GenerateSkillResultFromJSON,
     GenerateSkillResultToJSON,
+} from '../models/GenerateSkillResult';
+import {
+    type GenerationFailures,
     GenerationFailuresFromJSON,
     GenerationFailuresToJSON,
+} from '../models/GenerationFailures';
+import {
+    type GetCostStatistics200Response,
     GetCostStatistics200ResponseFromJSON,
     GetCostStatistics200ResponseToJSON,
+} from '../models/GetCostStatistics200Response';
+import {
+    type GetDispatchStatus200Response,
     GetDispatchStatus200ResponseFromJSON,
     GetDispatchStatus200ResponseToJSON,
+} from '../models/GetDispatchStatus200Response';
+import {
+    type GetOperatorRosters200Response,
     GetOperatorRosters200ResponseFromJSON,
     GetOperatorRosters200ResponseToJSON,
+} from '../models/GetOperatorRosters200Response';
+import {
+    type GetReadiness200Response,
     GetReadiness200ResponseFromJSON,
     GetReadiness200ResponseToJSON,
+} from '../models/GetReadiness200Response';
+import {
+    type GetRunTrace200Response,
     GetRunTrace200ResponseFromJSON,
     GetRunTrace200ResponseToJSON,
+} from '../models/GetRunTrace200Response';
+import {
+    type GrantCredits200Response,
     GrantCredits200ResponseFromJSON,
     GrantCredits200ResponseToJSON,
+} from '../models/GrantCredits200Response';
+import {
+    type GrantCreditsRequest,
     GrantCreditsRequestFromJSON,
     GrantCreditsRequestToJSON,
+} from '../models/GrantCreditsRequest';
+import {
+    type Health,
     HealthFromJSON,
     HealthToJSON,
+} from '../models/Health';
+import {
+    type ImportSkillFromURLRequest,
     ImportSkillFromURLRequestFromJSON,
     ImportSkillFromURLRequestToJSON,
+} from '../models/ImportSkillFromURLRequest';
+import {
+    type ImprovementSuggestion,
     ImprovementSuggestionFromJSON,
     ImprovementSuggestionToJSON,
+} from '../models/ImprovementSuggestion';
+import {
+    type LiftDispatchHaltRequest,
     LiftDispatchHaltRequestFromJSON,
     LiftDispatchHaltRequestToJSON,
+} from '../models/LiftDispatchHaltRequest';
+import {
+    type ListDatasets200Response,
     ListDatasets200ResponseFromJSON,
     ListDatasets200ResponseToJSON,
+} from '../models/ListDatasets200Response';
+import {
+    type ListDownloadArtifacts200Response,
     ListDownloadArtifacts200ResponseFromJSON,
     ListDownloadArtifacts200ResponseToJSON,
+} from '../models/ListDownloadArtifacts200Response';
+import {
+    type ListDownloadRecords200Response,
     ListDownloadRecords200ResponseFromJSON,
     ListDownloadRecords200ResponseToJSON,
+} from '../models/ListDownloadRecords200Response';
+import {
+    type ListOperatorAuditLog200Response,
     ListOperatorAuditLog200ResponseFromJSON,
     ListOperatorAuditLog200ResponseToJSON,
+} from '../models/ListOperatorAuditLog200Response';
+import {
+    type ListPackagingTargets200Response,
     ListPackagingTargets200ResponseFromJSON,
     ListPackagingTargets200ResponseToJSON,
+} from '../models/ListPackagingTargets200Response';
+import {
+    type ListRunArtifacts200Response,
     ListRunArtifacts200ResponseFromJSON,
     ListRunArtifacts200ResponseToJSON,
+} from '../models/ListRunArtifacts200Response';
+import {
+    type ListRunEvaluationRevisions200Response,
     ListRunEvaluationRevisions200ResponseFromJSON,
     ListRunEvaluationRevisions200ResponseToJSON,
+} from '../models/ListRunEvaluationRevisions200Response';
+import {
+    type ListRunSuggestions200Response,
     ListRunSuggestions200ResponseFromJSON,
     ListRunSuggestions200ResponseToJSON,
+} from '../models/ListRunSuggestions200Response';
+import {
+    type ListRuns200Response,
     ListRuns200ResponseFromJSON,
     ListRuns200ResponseToJSON,
+} from '../models/ListRuns200Response';
+import {
+    type ListSkillVersions200Response,
     ListSkillVersions200ResponseFromJSON,
     ListSkillVersions200ResponseToJSON,
+} from '../models/ListSkillVersions200Response';
+import {
+    type ListSkills200Response,
     ListSkills200ResponseFromJSON,
     ListSkills200ResponseToJSON,
+} from '../models/ListSkills200Response';
+import {
+    type ListTestCases200Response,
     ListTestCases200ResponseFromJSON,
     ListTestCases200ResponseToJSON,
+} from '../models/ListTestCases200Response';
+import {
+    type Me,
     MeFromJSON,
     MeToJSON,
+} from '../models/Me';
+import {
+    type PackagingPreview,
     PackagingPreviewFromJSON,
     PackagingPreviewToJSON,
+} from '../models/PackagingPreview';
+import {
+    type PackagingTargetId,
     PackagingTargetIdFromJSON,
     PackagingTargetIdToJSON,
+} from '../models/PackagingTargetId';
+import {
+    type PublicSearchResponse,
     PublicSearchResponseFromJSON,
     PublicSearchResponseToJSON,
+} from '../models/PublicSearchResponse';
+import {
+    type Run,
     RunFromJSON,
     RunToJSON,
+} from '../models/Run';
+import {
+    type RunComparison,
     RunComparisonFromJSON,
     RunComparisonToJSON,
+} from '../models/RunComparison';
+import {
+    type RunPermissionSummary,
     RunPermissionSummaryFromJSON,
     RunPermissionSummaryToJSON,
+} from '../models/RunPermissionSummary';
+import {
+    type RunQuota,
     RunQuotaFromJSON,
     RunQuotaToJSON,
+} from '../models/RunQuota';
+import {
+    type SandboxTraceEvent,
     SandboxTraceEventFromJSON,
     SandboxTraceEventToJSON,
+} from '../models/SandboxTraceEvent';
+import {
+    type SearchSkills200Response,
     SearchSkills200ResponseFromJSON,
     SearchSkills200ResponseToJSON,
+} from '../models/SearchSkills200Response';
+import {
+    type SetEvaluationFeedbackRequest,
     SetEvaluationFeedbackRequestFromJSON,
     SetEvaluationFeedbackRequestToJSON,
+} from '../models/SetEvaluationFeedbackRequest';
+import {
+    type SetSkillCategoryRequest,
     SetSkillCategoryRequestFromJSON,
     SetSkillCategoryRequestToJSON,
+} from '../models/SetSkillCategoryRequest';
+import {
+    type SetSkillRedistribution200Response,
     SetSkillRedistribution200ResponseFromJSON,
     SetSkillRedistribution200ResponseToJSON,
+} from '../models/SetSkillRedistribution200Response';
+import {
+    type SetSkillRedistributionRequest,
     SetSkillRedistributionRequestFromJSON,
     SetSkillRedistributionRequestToJSON,
+} from '../models/SetSkillRedistributionRequest';
+import {
+    type SetSkillRestriction200Response,
     SetSkillRestriction200ResponseFromJSON,
     SetSkillRestriction200ResponseToJSON,
+} from '../models/SetSkillRestriction200Response';
+import {
+    type SetSkillRestrictionRequest,
     SetSkillRestrictionRequestFromJSON,
     SetSkillRestrictionRequestToJSON,
+} from '../models/SetSkillRestrictionRequest';
+import {
+    type Skill,
     SkillFromJSON,
     SkillToJSON,
+} from '../models/Skill';
+import {
+    type SkillDetail,
     SkillDetailFromJSON,
     SkillDetailToJSON,
+} from '../models/SkillDetail';
+import {
+    type SkillFiles,
     SkillFilesFromJSON,
     SkillFilesToJSON,
+} from '../models/SkillFiles';
+import {
+    type StartRunRequest,
     StartRunRequestFromJSON,
     StartRunRequestToJSON,
+} from '../models/StartRunRequest';
+import {
+    type SubmitFeedbackRequest,
     SubmitFeedbackRequestFromJSON,
     SubmitFeedbackRequestToJSON,
+} from '../models/SubmitFeedbackRequest';
+import {
+    type SuggestionDiff,
     SuggestionDiffFromJSON,
     SuggestionDiffToJSON,
+} from '../models/SuggestionDiff';
+import {
+    type TakedownSkill200Response,
     TakedownSkill200ResponseFromJSON,
     TakedownSkill200ResponseToJSON,
+} from '../models/TakedownSkill200Response';
+import {
+    type TakedownSkillAsOperator200Response,
     TakedownSkillAsOperator200ResponseFromJSON,
     TakedownSkillAsOperator200ResponseToJSON,
+} from '../models/TakedownSkillAsOperator200Response';
+import {
+    type TakedownSkillAsOperatorRequest,
     TakedownSkillAsOperatorRequestFromJSON,
     TakedownSkillAsOperatorRequestToJSON,
+} from '../models/TakedownSkillAsOperatorRequest';
+import {
+    type TakedownSkillRequest,
     TakedownSkillRequestFromJSON,
     TakedownSkillRequestToJSON,
+} from '../models/TakedownSkillRequest';
+import {
+    type TestCase,
     TestCaseFromJSON,
     TestCaseToJSON,
+} from '../models/TestCase';
+import {
+    type TraceIngestReport,
     TraceIngestReportFromJSON,
     TraceIngestReportToJSON,
+} from '../models/TraceIngestReport';
+import {
+    type UpdateAcceptanceCriterionRequest,
     UpdateAcceptanceCriterionRequestFromJSON,
     UpdateAcceptanceCriterionRequestToJSON,
+} from '../models/UpdateAcceptanceCriterionRequest';
+import {
+    type UpdateTestCaseRequest,
     UpdateTestCaseRequestFromJSON,
     UpdateTestCaseRequestToJSON,
+} from '../models/UpdateTestCaseRequest';
+import {
+    type UploadResult,
     UploadResultFromJSON,
     UploadResultToJSON,
-} from '../models/index';
+} from '../models/UploadResult';
 
 export interface ActOnCreationSessionRequest {
+    /**
+     * 
+     */
     sessionId: string;
+    /**
+     * 
+     */
     creationAction: CreationAction;
 }
 
 export interface AddAcceptanceCriterionOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     addAcceptanceCriterionRequest: AddAcceptanceCriterionRequest;
 }
 
 export interface BrowseCatalogRequest {
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * As on `GET /api/skills/search`. Absent = not filtered.
+     */
     script?: BrowseCatalogScriptEnum;
+    /**
+     * As on `GET /api/skills/search`. Absent = not filtered.
+     */
     validation?: BrowseCatalogValidationEnum;
+    /**
+     * As on `GET /api/skills/search`. Absent = not filtered.
+     */
     agent?: BrowseCatalogAgentEnum;
+    /**
+     * As on `GET /api/skills/search`. Absent = not filtered.
+     */
     tier?: BrowseCatalogTierEnum;
+    /**
+     * As on `GET /api/skills/search`. Absent = not filtered.
+     */
     category?: BrowseCatalogCategoryEnum;
 }
 
 export interface CancelRunRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface ClearSkillRestrictionOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     clearSkillRestrictionRequest: ClearSkillRestrictionRequest;
 }
 
 export interface CompareRunsRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * The other run. Must be in the caller's workspace.
+     */
     against: string;
 }
 
 export interface ConfirmRunPreflightOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     confirmRunPreflightRequest: ConfirmRunPreflightRequest;
 }
 
 export interface CreateCreationSessionRequest {
+    /**
+     * 
+     */
     createCreationSession: CreateCreationSession;
 }
 
 export interface CreateDownloadArtifactOperationRequest {
+    /**
+     * Skill id. The version must belong to this skill.
+     */
     id: string;
+    /**
+     * 
+     */
     versionId: string;
+    /**
+     * 
+     */
     createDownloadArtifactRequest: CreateDownloadArtifactRequest;
 }
 
 export interface CreateSkillVersionFromSuggestionsOperationRequest {
+    /**
+     * Skill id. The evaluation's run must belong to a version of this skill.
+     */
     id: string;
+    /**
+     * 
+     */
     createSkillVersionFromSuggestionsRequest: CreateSkillVersionFromSuggestionsRequest;
 }
 
 export interface CreateTestCaseOperationRequest {
+    /**
+     * 
+     */
     createTestCaseRequest: CreateTestCaseRequest;
 }
 
 export interface DecideSuggestionOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     decideSuggestionRequest: DecideSuggestionRequest;
 }
 
 export interface DeclareDispatchHaltOperationRequest {
+    /**
+     * 
+     */
     declareDispatchHaltRequest: DeclareDispatchHaltRequest;
 }
 
 export interface DeleteAcceptanceCriterionRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     criterionId: string;
 }
 
 export interface DeleteDatasetRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     datasetId: string;
 }
 
 export interface DeleteDownloadArtifactRequest {
+    /**
+     * 
+     */
     artifactId: string;
 }
 
 export interface DeleteRunArtifactRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     artifactId: string;
 }
 
 export interface DeleteSkillRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface DeleteTestCaseRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface DevLoginOperationRequest {
+    /**
+     * 
+     */
     devLoginRequest?: DevLoginRequest;
 }
 
 export interface DiffSkillVersionsRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     from: string;
+    /**
+     * 
+     */
     to: string;
 }
 
 export interface DownloadArtifactContentRequest {
+    /**
+     * 
+     */
     artifactId: string;
 }
 
 export interface FindSkillsForGovernanceRequest {
+    /**
+     * 
+     */
     q: string;
 }
 
 export interface FinishGithubLoginRequest {
+    /**
+     * 
+     */
     code: string;
+    /**
+     * 
+     */
     state: string;
 }
 
 export interface ForkSkillRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface GenerateSkillOperationRequest {
+    /**
+     * 
+     */
     generateSkillRequest: GenerateSkillRequest;
 }
 
 export interface GetCostTrendRequest {
+    /**
+     * 
+     */
     days?: GetCostTrendDaysEnum;
 }
 
 export interface GetCreationSessionRequest {
+    /**
+     * 
+     */
     sessionId: string;
 }
 
 export interface GetCreditLedgerRequest {
+    /**
+     * 
+     */
     workspaceId: string;
 }
 
 export interface GetCreditTrendRequest {
+    /**
+     * 
+     */
     days?: GetCreditTrendDaysEnum;
 }
 
 export interface GetDownloadArtifactRequest {
+    /**
+     * 
+     */
     artifactId: string;
 }
 
 export interface GetOperatorActionTrendRequest {
+    /**
+     * 
+     */
     days?: GetOperatorActionTrendDaysEnum;
 }
 
 export interface GetRunRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface GetRunEvaluationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * An `evaluation_id` from GET /runs/{id}/evaluation/revisions.
+     */
     revision?: string;
 }
 
 export interface GetRunPreflightRequest {
+    /**
+     * Skill id. The version must belong to this skill.
+     */
     id: string;
+    /**
+     * 
+     */
     versionId: string;
+    /**
+     * The editable draft, not a snapshot. The summary describes a run that
+     * has not started, and a snapshot only exists once one has.
+     * 
+     */
     testCaseId: string;
 }
 
 export interface GetRunTraceRequest {
+    /**
+     * The platform run_id. A provider's ephemeral id never appears in a URL (iron rule 10).
+     */
     id: string;
+    /**
+     * 
+     */
     mode?: GetRunTraceModeEnum;
+    /**
+     * Advanced-mode ingestion cursor. Omit or use 0 for the first page.
+     * Page boundaries follow receipt order so a running producer cannot
+     * make an earlier page skip a newly committed event.
+     * 
+     */
     after?: number;
 }
 
 export interface GetRunTrendRequest {
+    /**
+     * 
+     */
     days?: GetRunTrendDaysEnum;
 }
 
 export interface GetSkillDetailRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * `embedded` marks a read that is NOT a detail-page view: a surface
+     * that needs the same data for its own purpose (packaging, side-by-side
+     * comparison). Such a read records no `skill_detail_viewed`, because
+     * 01 §11.2's first segment counts sessions in which somebody opened a
+     * skill, and Compare was minting that event for skills whose detail
+     * page was never opened (04 丙-57 follow-up).
+     * 
+     */
     view?: GetSkillDetailViewEnum;
 }
 
 export interface GetSkillFilesRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface GetSuggestionDiffRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface GetTestCaseRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface GrantCreditsOperationRequest {
+    /**
+     * 
+     */
     workspaceId: string;
+    /**
+     * 
+     */
     grantCreditsRequest: GrantCreditsRequest;
 }
 
 export interface ImportSkillFromURLOperationRequest {
+    /**
+     * 
+     */
     importSkillFromURLRequest: ImportSkillFromURLRequest;
 }
 
 export interface IngestTraceEventsRequest {
+    /**
+     * The signed per-attempt ingestion credential. Secret material; never logged.
+     */
     token: string;
+    /**
+     * 
+     */
     sandboxTraceEvent: Array<SandboxTraceEvent>;
 }
 
 export interface LiftDispatchHaltOperationRequest {
+    /**
+     * 
+     */
     liftDispatchHaltRequest: LiftDispatchHaltRequest;
 }
 
 export interface ListDatasetsRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface ListDownloadRecordsRequest {
+    /**
+     * 
+     */
     artifactId: string;
 }
 
 export interface ListOperatorAuditLogRequest {
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     offset?: number;
 }
 
 export interface ListRunArtifactsRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface ListRunEvaluationRevisionsRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface ListRunSuggestionsRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface ListRunsRequest {
+    /**
+     * Only runs of this test case — the "執行歷史" of one draft, which is
+     * what closes the 建立 → 試跑 → 回來看 loop. Matched against the test
+     * case the run's snapshot was frozen from, so a run stays in the list
+     * after the draft has been edited. Workspace scoped like the unfiltered
+     * list; another workspace's id matches nothing (WS-006).
+     * 
+     */
     testCaseId?: string;
+    /**
+     * Refused with a 400 when outside the schema, not clamped: both bounds
+     * are inclusive and an out-of-range value is not replaced by the default.
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     offset?: number;
 }
 
 export interface ListSkillVersionsRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface ListTestCasesRequest {
+    /**
+     * Only this skill's test cases. Answers "which test cases have I
+     * written for this skill", which the Skill detail page asks.
+     * 
+     */
     skillId?: string;
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     offset?: number;
 }
 
 export interface LookupAccountRequest {
+    /**
+     * 
+     */
     email: string;
 }
 
 export interface PreviewPackagingRequest {
+    /**
+     * Skill id. The version must belong to this skill.
+     */
     id: string;
+    /**
+     * 
+     */
     versionId: string;
+    /**
+     * Which target to preview. Required and not defaulted: the answer
+     * differs per target, and a default would let a user read the standard
+     * package's verdict as a profile's.
+     * 
+     */
     target: PackagingTargetId;
+    /**
+     * Preview with the PACK-005 test cases included. The excluded list is
+     * returned either way, so a user can see what would be left out before
+     * deciding.
+     * 
+     */
     includeTestCases?: boolean;
 }
 
 export interface PublicSearchSkillsRequest {
+    /**
+     * Natural language task description.
+     */
     q: string;
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * Why this search is being made, when it is not the user looking for
+     * a Skill to use. `reference` is GEN-006's reference picker: the
+     * caller is choosing worked examples for a generation, not
+     * expressing an intent the funnel measures. The server then writes
+     * no `search_performed` event (01 §11.2 segment 1 counts intents,
+     * and this is not one) and makes no match-reason model call (the
+     * reason a hit matched is DISC-002's answer to "should I use this",
+     * which the picker does not ask). Retrieval itself is unchanged.
+     * Absent = an ordinary search.
+     * 
+     */
     purpose?: PublicSearchSkillsPurposeEnum;
+    /**
+     * DISC-003 filter on whether the package carries runnable code, as
+     * recorded by the import scan: a script file in the tree, or code
+     * embedded in SKILL.md itself (SKILL-003). Absent = not filtered.
+     * 
+     * A row the projection holds no scan for matches neither value. It is
+     * not known to have a script and it is not known to be free of one,
+     * and answering `no` for it would be the 不得自行推定為通過 that
+     * DISC-004 forbids. Such rows leave a filtered page and return when
+     * the filter is cleared.
+     * 
+     */
     script?: PublicSearchSkillsScriptEnum;
+    /**
+     * DISC-003 filter on the spec-validation axis of `compatibility`.
+     * `passed` is a skill with a saved version — static validation blocks
+     * the import on any error-level finding, so a stored version is the
+     * evidence. `unverified` is a skill with no saved content, which is
+     * never reported as failed. Absent = not filtered.
+     * 
+     */
     validation?: PublicSearchSkillsValidationEnum;
+    /**
+     * DISC-002's Agent dimension, live since migration 0022. It filters the
+     * `runtime` axis of `compatibility` and only that axis, matching the
+     * measured verdict **exactly** rather than as a boolean: `unverified`
+     * is a value a caller can ask for, and a "not native" filter would
+     * silently mean transpiled-or-failed-or-never-measured, which are three
+     * different things to someone choosing a skill. Absent = not filtered.
+     * 
+     * The `capability` axis is shown but not filterable. Every measured
+     * skill in the catalogue came back `activated` (45/45 in the M2
+     * baseline), so a control on it separates nothing; it becomes a filter
+     * when a `not_activated` row exists and not before.
+     * 
+     */
     agent?: PublicSearchSkillsAgentEnum;
+    /**
+     * DISC-002's 來源層級 dimension, live since migration 0042. Absent =
+     * not filtered.
+     * 
+     * `curated` means the PDM-002 nine-item review passed **and** the
+     * version it examined is still the newest one; a curated skill whose
+     * content has moved on answers `indexed` here, because five of those
+     * nine checks are about specific bytes. So `indexed` is not "never
+     * reviewed" — it is "not currently carrying a review of what you are
+     * looking at", which is the question a reader is actually asking.
+     * 
+     * `external` is not accepted. An external result was never imported and
+     * has no row, so it is a state of the search rather than a value this
+     * filter can select.
+     * 
+     */
     tier?: PublicSearchSkillsTierEnum;
+    /**
+     * DISC-002's 類別 dimension (PDM-001's three shelves), live since
+     * migration 0053. Absent = not filtered.
+     * 
+     * Matches the skill's stored category exactly. A skill with no
+     * category — every user-imported skill today, because the platform
+     * has not decided how one gets a category (05 R-19) — matches none of
+     * the three values; it is not silently filed under any of them, and
+     * its row says 尚未定值 rather than a guess (02:DISC-004).
+     * 
+     */
     category?: PublicSearchSkillsCategoryEnum;
 }
 
 export interface SaveSkillVersionRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     body: Blob;
 }
 
 export interface SearchSkillsRequest {
+    /**
+     * 
+     */
     q: string;
+    /**
+     * 
+     */
     limit?: number;
 }
 
 export interface SetEvaluationFeedbackOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     setEvaluationFeedbackRequest: SetEvaluationFeedbackRequest;
 }
 
 export interface SetSkillCategoryOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     setSkillCategoryRequest: SetSkillCategoryRequest;
 }
 
 export interface SetSkillRedistributionOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     setSkillRedistributionRequest: SetSkillRedistributionRequest;
 }
 
 export interface SetSkillRestrictionOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     setSkillRestrictionRequest: SetSkillRestrictionRequest;
 }
 
 export interface StartRunOperationRequest {
+    /**
+     * Skill id. The version must belong to this skill.
+     */
     id: string;
+    /**
+     * 
+     */
     startRunRequest: StartRunRequest;
 }
 
 export interface StreamCreationSessionRequest {
+    /**
+     * 
+     */
     sessionId: string;
+    /**
+     * The revision of the last event this client already has; the server replays from the next one, so a reconnect loses nothing and repeats nothing. Absent means 「everything this session has」. Named as the SSE specification names it — HTTP header names are case-insensitive, and a browser's own reconnect sends exactly this.
+     */
     lastEventID?: number;
 }
 
 export interface SubmitFeedbackOperationRequest {
+    /**
+     * 
+     */
     submitFeedbackRequest: SubmitFeedbackRequest;
 }
 
 export interface SuggestAcceptanceCriteriaRequest {
+    /**
+     * 
+     */
     id: string;
 }
 
 export interface TakedownSkillOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     takedownSkillRequest: TakedownSkillRequest;
 }
 
 export interface TakedownSkillAsOperatorOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     takedownSkillAsOperatorRequest: TakedownSkillAsOperatorRequest;
 }
 
 export interface UpdateAcceptanceCriterionOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     criterionId: string;
+    /**
+     * 
+     */
     updateAcceptanceCriterionRequest: UpdateAcceptanceCriterionRequest;
 }
 
 export interface UpdateTestCaseOperationRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     updateTestCaseRequest: UpdateTestCaseRequest;
 }
 
 export interface UploadDatasetRequest {
+    /**
+     * 
+     */
     id: string;
+    /**
+     * 
+     */
     file: Blob;
 }
 
 export interface UploadSkillPackageRequest {
+    /**
+     * 
+     */
     body: Blob;
 }
 
@@ -675,6 +1341,15 @@ export interface UploadSkillPackageRequest {
  * @interface DefaultApiInterface
  */
 export interface DefaultApiInterface {
+    /**
+     * Creates request options for actOnCreationSession without sending the request
+     * @param {string} sessionId 
+     * @param {CreationAction} creationAction 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    actOnCreationSessionRequestOpts(requestParameters: ActOnCreationSessionRequest): Promise<runtime.RequestOpts>;
+
     /**
      * 
      * @summary actOnCreationSession
@@ -692,6 +1367,15 @@ export interface DefaultApiInterface {
     actOnCreationSession(requestParameters: ActOnCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationSession>;
 
     /**
+     * Creates request options for addAcceptanceCriterion without sending the request
+     * @param {string} id 
+     * @param {AddAcceptanceCriterionRequest} addAcceptanceCriterionRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    addAcceptanceCriterionRequestOpts(requestParameters: AddAcceptanceCriterionOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * The one write path for a criterion, whether the user typed it or adopted a proposal from POST .../criteria/suggest. Either way it arrives unconfirmed: adopting a wording is not yet agreeing to it (TEST-003). 
      * @summary Add an acceptance criterion (TEST-003)
      * @param {string} id 
@@ -707,6 +1391,19 @@ export interface DefaultApiInterface {
      * Add an acceptance criterion (TEST-003)
      */
     addAcceptanceCriterion(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
+
+    /**
+     * Creates request options for browseCatalog without sending the request
+     * @param {number} [limit] 
+     * @param {'yes' | 'no'} [script] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
+     * @param {'passed' | 'unverified'} [validation] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
+     * @param {'native' | 'transpiled' | 'failed' | 'unverified'} [agent] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
+     * @param {'curated' | 'indexed'} [tier] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
+     * @param {'documents' | 'writing' | 'data'} [category] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    browseCatalogRequestOpts(requestParameters: BrowseCatalogRequest): Promise<runtime.RequestOpts>;
 
     /**
      * What is in the catalogue, for a caller who has not asked a question yet.  This is a second operation and not a `q`-less mode of `GET /api/skills/search`, because the two answer different questions and the difference is visible in the payload. Search answers 「what matches this sentence」 and everything about its response is downstream of that: the ordering is a similarity, `no_results` is a distance cut-off, `query_suggestion` is advice about the words. A browse has none of those, and folding it in would have shipped a response whose `query` is empty, whose `no_results` means 「the catalogue is empty」 on one path and 「nothing was close enough」 on the other, and whose `rank` is null for every row. The separate envelope keeps browse from pretending to be a query-less search; rows still share the public Skill card shape, and `rank_note` explicitly explains this third kind of absent rank.  **Ordering: curated first, then newest version first, then by id.** ADR-041 / 設計系統 §2.11(b) forbid popularity as a default order and this product has no popularity signal to misuse anyway; `curation_tier` is the one ordering input backed by a human review (PDM-002\'s nine items), and the id tiebreak keeps the order stable between two calls. Every row carries `rank: null` and a `rank_note` saying so, which is the same contract the degraded search path already uses — a client never has to guess why a page is not ranked by similarity.  Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can widen it (CORE-006, ADR-011).  The five live DISC-002 filters apply here for the reason they exist: they are the controls on the same screen, and a filter that only bites after a search would be a live control that narrows nothing (設計系統 §2.2). They are script, validation, agent, tier and category — category joined them on 2026-09-03 with migration 0053, and this sentence said \"four\" until then. DISC-003 is the work item that built them; the acceptance criteria are DISC-002\'s. 
@@ -730,6 +1427,13 @@ export interface DefaultApiInterface {
     browseCatalog(requestParameters: BrowseCatalogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CatalogResponse>;
 
     /**
+     * Creates request options for cancelAccountDeletion without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    cancelAccountDeletionRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * Valid for the whole grace period. Idempotent: cancelling when nothing is pending is a no-op. 
      * @summary Withdraw a pending account deletion (CORE-007)
      * @param {*} [options] Override http request option.
@@ -743,6 +1447,14 @@ export interface DefaultApiInterface {
      * Withdraw a pending account deletion (CORE-007)
      */
     cancelAccountDeletion(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CancelAccountDeletion200Response>;
+
+    /**
+     * Creates request options for cancelRun without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    cancelRunRequestOpts(requestParameters: CancelRunRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Records the request and returns 202. The run keeps its current status: the workload is still up until something stops it, and reporting `cancelled` before that would misdescribe a live sandbox.  A queued run has no workload yet, so it does move to `cancelled` shortly after. Propagating the request to a run already at a provider — and the wall-clock timeout that shares the same machinery — is RUN-006.  Idempotent: asking twice keeps the first request time. 
@@ -759,6 +1471,15 @@ export interface DefaultApiInterface {
      * Request cancellation of a run (RUN-004)
      */
     cancelRun(requestParameters: CancelRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CancelRun202Response>;
+
+    /**
+     * Creates request options for clearSkillRestriction without sending the request
+     * @param {string} id 
+     * @param {ClearSkillRestrictionRequest} clearSkillRestrictionRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    clearSkillRestrictionRequestOpts(requestParameters: ClearSkillRestrictionOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only; the 終判允許 half of 0023, setting the column back to null. Takes a `note` but no `reason`: there is no code to name when the answer is \"no hold at all\", and the operator still has to say why.  Idempotent by construction - lifting a hold that was never there writes the same audit event with a null before-state and answers 204, because the caller\'s intent (this skill must not be held) is satisfied either way. Same single transaction as the PUT. 
@@ -778,6 +1499,15 @@ export interface DefaultApiInterface {
     clearSkillRestriction(requestParameters: ClearSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for compareRuns without sending the request
+     * @param {string} id 
+     * @param {string} against The other run. Must be in the caller\&#39;s workspace.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    compareRunsRequestOpts(requestParameters: CompareRunsRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Read-only. Both sides are frozen snapshots, so comparing cannot rewrite either run (iron rule 4).  **There is no re-run endpoint.** Re-running is POST /skills/{id}/runs with the new `skill_version_id` and the same `test_case_id`, which keeps preflight and `confirmed_summary_hash` on the path. A one-click shortcut would be a way around the single screen TEST-009 exists to force, and the package contents genuinely did change.  Each side reports its execution status and its task judgement separately, and a side with no judgement says so rather than reading as a pass (ADR-025).  Any two runs in the caller\'s workspace may be compared. Two runs of different test cases, or of different skills, are not refused: the criterion matrix carries a null verdict where a criterion exists on one side only, and `version_diff_url` is absent when there is no diff to link. Refusing them would need a rule the acceptance criteria do not state, and would hide the case a user most wants to see — the same test case re-run after the package changed — behind a guess about intent. 
      * @summary Compare this run with another one (EVAL-003)
      * @param {string} id 
@@ -793,6 +1523,15 @@ export interface DefaultApiInterface {
      * Compare this run with another one (EVAL-003)
      */
     compareRuns(requestParameters: CompareRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunComparison>;
+
+    /**
+     * Creates request options for confirmRunPreflight without sending the request
+     * @param {string} id 
+     * @param {ConfirmRunPreflightRequest} confirmRunPreflightRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    confirmRunPreflightRequestOpts(requestParameters: ConfirmRunPreflightOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * The user\'s explicit agreement to the summary they were shown. Declining is not an operation: a user who declines simply does not call this, and without a record here the run cannot start.  The hash is checked against a freshly built summary rather than taken on trust, so a client cannot confirm a hash it invented or one that has already gone stale.  Confirmations accumulate by hash, and re-confirming an already-agreed summary is harmless. Nothing expires them: a summary that no longer describes the run hashes differently and its old agreement is simply never looked up again. 
@@ -812,6 +1551,14 @@ export interface DefaultApiInterface {
     confirmRunPreflight(requestParameters: ConfirmRunPreflightOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfirmRunPreflight201Response>;
 
     /**
+     * Creates request options for createCreationSession without sending the request
+     * @param {CreateCreationSession} createCreationSession 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createCreationSessionRequestOpts(requestParameters: CreateCreationSessionRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * 
      * @summary createCreationSession
      * @param {CreateCreationSession} createCreationSession 
@@ -825,6 +1572,16 @@ export interface DefaultApiInterface {
      * createCreationSession
      */
     createCreationSession(requestParameters: CreateCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationSession>;
+
+    /**
+     * Creates request options for createDownloadArtifact without sending the request
+     * @param {string} id Skill id. The version must belong to this skill.
+     * @param {string} versionId 
+     * @param {CreateDownloadArtifactRequest} createDownloadArtifactRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createDownloadArtifactRequestOpts(requestParameters: CreateDownloadArtifactOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Reads the version\'s stored bytes, filters them against the PACK-004 allow-list, applies the target\'s profile, adds the platform\'s own three files, and validates the result before any of it becomes downloadable. The skill version is neither created nor modified (iron rule 4); a Download Artifact is a new row every time.  **Idempotent.** The same (version, target, include_test_cases, packager version) that already has an unexpired `available` artifact returns that one with `duplicate: true` rather than spending the bytes again — the same answer POST /skills/{id}/versions gives for identical content. Re-packaging is this call again; there is no separate re-package endpoint, because a second route to here would be a second route around the four checks below (the same ruling that left EVAL-003 without a re-run endpoint).  Four things can refuse it, and `blocked_reason` says which, because whether the user can do anything about it depends entirely on that: a licensing hold, content that may not be redistributed, a licence nobody could establish, and a package that would not validate. The first three fail closed — an unknown restriction code restricts and an unestablished licence blocks, in the same direction every read of those flags already faces (SEC-011, 02:DISC-003).  A refusal writes no object and leaves no artifact behind. A build that gets as far as bytes and then fails validation keeps its row at `rejected` with the reason, so \"why can I not download this\" has an answer that outlives the request (packaging-design §4.6). 
@@ -845,6 +1602,15 @@ export interface DefaultApiInterface {
     createDownloadArtifact(requestParameters: CreateDownloadArtifactOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateDownloadArtifact201Response>;
 
     /**
+     * Creates request options for createSkillVersionFromSuggestions without sending the request
+     * @param {string} id Skill id. The evaluation\&#39;s run must belong to a version of this skill.
+     * @param {CreateSkillVersionFromSuggestionsRequest} createSkillVersionFromSuggestionsRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createSkillVersionFromSuggestionsRequestOpts(requestParameters: CreateSkillVersionFromSuggestionsOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Turns accepted suggestions into exactly **one** new immutable version (iron rule 4). The version they were written against is not touched and historical runs keep pointing at it. Several suggestions land in one version on purpose: one version per suggestion would leave a chain of intermediate versions nobody ever ran.  Every suggestion is re-checked here rather than trusted from when it was proposed. `target_path` must resolve inside the package, the target file must still hash as it did then, the package must still pass the same static validation an import goes through, and a skill under a 0023 licensing hold is refused. Anything that fails comes back by id with its reason instead of being applied quietly.  Creating a version is not permission to run it. The new content hashes differently, so the preflight summary changes and TEST-009 requires a fresh confirmation before POST /skills/{id}/runs will start anything — the same reason EVAL-003 has no re-run endpoint of its own. 
      * @summary Apply accepted improvement suggestions as one new version (EVAL-002)
      * @param {string} id Skill id. The evaluation\&#39;s run must belong to a version of this skill.
@@ -862,6 +1628,14 @@ export interface DefaultApiInterface {
     createSkillVersionFromSuggestions(requestParameters: CreateSkillVersionFromSuggestionsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateSkillVersionFromSuggestions201Response>;
 
     /**
+     * Creates request options for createTestCase without sending the request
+     * @param {CreateTestCaseRequest} createTestCaseRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createTestCaseRequestOpts(requestParameters: CreateTestCaseOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * A test case is an editable draft bound to a skill in the caller\'s workspace. The prompt and criteria a run actually executed are frozen separately in a snapshot (TEST-010), so editing a draft never rewrites what a past run did.  The skill is chosen here; the skill *version* is chosen when the run starts, so improving a skill does not orphan its test cases (iron rule 4). 
      * @summary Create a test case draft (TEST-001)
      * @param {CreateTestCaseRequest} createTestCaseRequest 
@@ -876,6 +1650,15 @@ export interface DefaultApiInterface {
      * Create a test case draft (TEST-001)
      */
     createTestCase(requestParameters: CreateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
+
+    /**
+     * Creates request options for decideSuggestion without sending the request
+     * @param {string} id 
+     * @param {DecideSuggestionRequest} decideSuggestionRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    decideSuggestionRequestOpts(requestParameters: DecideSuggestionOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Records the decision and changes no package. Applying is POST /skills/{id}/versions/from-suggestions, and the two are separate so that accepting five suggestions produces one new version rather than five.  Repeatable: a later call replaces the decision. It does not undo anything already applied — a version that was built is history, and the way back from it is another version (iron rule 4). Withdrawing the acceptance of a suggestion that has already been built into a version is therefore refused with 409 rather than recorded: the record would say the user never agreed to a change that is sitting in a stored package. 
@@ -895,6 +1678,14 @@ export interface DefaultApiInterface {
     decideSuggestion(requestParameters: DecideSuggestionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ImprovementSuggestion>;
 
     /**
+     * Creates request options for declareDispatchHalt without sending the request
+     * @param {DeclareDispatchHaltRequest} declareDispatchHaltRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    declareDispatchHaltRequestOpts(requestParameters: DeclareDispatchHaltOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation.  This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on.  Writes the halt row and its audit event in one transaction (iron rule 9). Idempotent: re-declaring rewrites the reason and writes a second audit event, because an operator repeating an action is not an error.  A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens. 
      * @summary Stop dispatching new Runs (SEC-012, 02:SEC-010 P1)
      * @param {DeclareDispatchHaltRequest} declareDispatchHaltRequest 
@@ -911,6 +1702,15 @@ export interface DefaultApiInterface {
     declareDispatchHalt(requestParameters: DeclareDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeclareDispatchHalt200Response>;
 
     /**
+     * Creates request options for deleteAcceptanceCriterion without sending the request
+     * @param {string} id 
+     * @param {string} criterionId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    deleteAcceptanceCriterionRequestOpts(requestParameters: DeleteAcceptanceCriterionRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * 
      * @summary Remove an acceptance criterion (TEST-003)
      * @param {string} id 
@@ -925,6 +1725,15 @@ export interface DefaultApiInterface {
      * Remove an acceptance criterion (TEST-003)
      */
     deleteAcceptanceCriterion(requestParameters: DeleteAcceptanceCriterionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
+
+    /**
+     * Creates request options for deleteDataset without sending the request
+     * @param {string} id 
+     * @param {string} datasetId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    deleteDatasetRequestOpts(requestParameters: DeleteDatasetRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Usable before a run to withdraw a file and after a run to remove it. The stored object is deleted; snapshots keep the file\'s name and content hash so past runs stay traceable (ADR-003). 
@@ -944,6 +1753,14 @@ export interface DefaultApiInterface {
     deleteDataset(requestParameters: DeleteDatasetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeleteDataset200Response>;
 
     /**
+     * Creates request options for deleteDownloadArtifact without sending the request
+     * @param {string} artifactId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    deleteDownloadArtifactRequestOpts(requestParameters: DeleteDownloadArtifactRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Removes the stored object, and the row stops being visible: it leaves this list, `GET /downloads/{artifactId}` answers 404, and so does the content route. That is what 02:SEC-006 asks for — deleted content no longer appearing in ordinary access surfaces.  The row itself is kept rather than dropped, for two reasons that both outrank tidiness: the download *records* have a foreign key onto it and outlive it by design (`WS-004` — they say the user once downloaded this, which stays true after the file is gone), and the packaging row is immutable (iron rule 4). The bytes are what actually go, and they can: every packaging run writes its own object, unlike a skill version\'s package object, which forks share by content address and the governance purge deliberately spares.  Idempotent, and 204 for an id that is not there — the caller\'s intent (this artifact must not exist) is satisfied either way, and answering 404 for a repeat of a delete that worked would report success as failure. 
      * @summary Delete a download artifact of one\'s own (WS-002, SEC-006)
      * @param {string} artifactId 
@@ -958,6 +1775,15 @@ export interface DefaultApiInterface {
      * Delete a download artifact of one\'s own (WS-002, SEC-006)
      */
     deleteDownloadArtifact(requestParameters: DeleteDownloadArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for deleteRunArtifact without sending the request
+     * @param {string} id 
+     * @param {string} artifactId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    deleteRunArtifactRequestOpts(requestParameters: DeleteRunArtifactRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Idempotent: an id that is not there, is already deleted, or belongs to somebody else all answer 204. The caller asked for the file not to exist, and that holds in every one of those cases; answering 404 to a repeat of a delete that worked would report success as failure.  The row is soft-deleted so evaluations keep the evidence reference they already recorded, and stops appearing in this workspace\'s surfaces, which is what 02:SEC-006 asks for. The stored object is removed after the commit unless another artifact row still names the same key. 
@@ -977,6 +1803,14 @@ export interface DefaultApiInterface {
     deleteRunArtifact(requestParameters: DeleteRunArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for deleteSkill without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    deleteSkillRequestOpts(requestParameters: DeleteSkillRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Soft delete: the skill leaves lists, reads, and search immediately. Version snapshots stay frozen for the 30-day grace period before the background purge; shared package objects are unaffected. 
      * @summary Delete a private skill (WS-005)
      * @param {string} id 
@@ -991,6 +1825,14 @@ export interface DefaultApiInterface {
      * Delete a private skill (WS-005)
      */
     deleteSkill(requestParameters: DeleteSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeleteSkill200Response>;
+
+    /**
+     * Creates request options for deleteTestCase without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    deleteTestCaseRequestOpts(requestParameters: DeleteTestCaseRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Soft delete. The draft and its live datasets leave every read now and the stored objects are removed. Snapshots of past runs are retained and keep the prompt, the criteria and each file\'s name and content hash, so those runs stay traceable although they are no longer reproducible (ADR-003). 
@@ -1009,6 +1851,14 @@ export interface DefaultApiInterface {
     deleteTestCase(requestParameters: DeleteTestCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeleteTestCase200Response>;
 
     /**
+     * Creates request options for devLogin without sending the request
+     * @param {DevLoginRequest} [devLoginRequest] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    devLoginRequestOpts(requestParameters: DevLoginOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Exists only when the server runs with DEV_LOGIN=1 (local demo and E2E); in production the route is absent and returns 404. 
      * @summary Offline dev-provider login (ADR-020)
      * @param {DevLoginRequest} [devLoginRequest] 
@@ -1023,6 +1873,16 @@ export interface DefaultApiInterface {
      * Offline dev-provider login (ADR-020)
      */
     devLogin(requestParameters: DevLoginOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for diffSkillVersions without sending the request
+     * @param {string} id 
+     * @param {string} from 
+     * @param {string} to 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    diffSkillVersionsRequestOpts(requestParameters: DiffSkillVersionsRequest): Promise<runtime.RequestOpts>;
 
     /**
      * 
@@ -1042,6 +1902,14 @@ export interface DefaultApiInterface {
     diffSkillVersions(requestParameters: DiffSkillVersionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DiffSkillVersions200Response>;
 
     /**
+     * Creates request options for downloadArtifactContent without sending the request
+     * @param {string} artifactId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    downloadArtifactContentRequestOpts(requestParameters: DownloadArtifactContentRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * **The platform streams the bytes; it does not hand out a pre-signed URL** (packaging-design §7.1). Workspace scope is then the session middleware already in place rather than a second authorization scheme; the URL is not secret material, so it can appear in a log and in the audit event this download writes; and the status and restriction checks happen in this handler on every request instead of once at signing time, where a hold applied inside the TTL would not have stopped anything. Bytes crossing the API process is movement, not execution (iron rule 1).  One successful download writes three things in one transaction (iron rule 9): the artifact\'s access time, a download record (WS-004, what the user sees) and an audit event (CORE-008, what compliance keeps). Those two are not merged — their retention and their visibility differ, and one row would bind each to the stricter of the two. 
      * @summary The package bytes themselves (PACK-001)
      * @param {string} artifactId 
@@ -1056,6 +1924,14 @@ export interface DefaultApiInterface {
      * The package bytes themselves (PACK-001)
      */
     downloadArtifactContent(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob>;
+
+    /**
+     * Creates request options for findSkillsForGovernance without sending the request
+     * @param {string} q 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    findSkillsForGovernanceRequestOpts(requestParameters: FindSkillsForGovernanceRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. A `q` that is a UUID matches that skill id; anything else is a case-insensitive substring of the name. Every workspace is searched, private and taken-down skills included, because those are what public search cannot find and what an operator acts on. Deleted skills are never listed. At most 20, newest first.  Each match carries governance state only, never SKILL.md or the file tree, so this is not a personal-data read and writes no audit event. 
@@ -1074,6 +1950,15 @@ export interface DefaultApiInterface {
     findSkillsForGovernance(requestParameters: FindSkillsForGovernanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FindSkillsForGovernance200Response>;
 
     /**
+     * Creates request options for finishGithubLogin without sending the request
+     * @param {string} code 
+     * @param {string} state 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    finishGithubLoginRequestOpts(requestParameters: FinishGithubLoginRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * 
      * @summary GitHub OAuth callback; creates user and workspace on first login
      * @param {string} code 
@@ -1088,6 +1973,14 @@ export interface DefaultApiInterface {
      * GitHub OAuth callback; creates user and workspace on first login
      */
     finishGithubLogin(requestParameters: FinishGithubLoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for forkSkill without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    forkSkillRequestOpts(requestParameters: ForkSkillRequest): Promise<runtime.RequestOpts>;
 
     /**
      * The package object is shared (content-addressed), not copied. Lineage to the original skill and version is preserved on the fork. 
@@ -1106,6 +1999,14 @@ export interface DefaultApiInterface {
     forkSkill(requestParameters: ForkSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ForkSkill201Response>;
 
     /**
+     * Creates request options for generateSkill without sending the request
+     * @param {GenerateSkillRequest} generateSkillRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    generateSkillRequestOpts(requestParameters: GenerateSkillOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist — it answers whatever an unregistered path under /skills answers (405 today, because DELETE /skills/{id} matches the shape; the sameness is the point, not the number) — and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Three ways in, one path out (ADR-066). The input is a task description in the user\'s own words (GEN-001), a flowchart or diagram image (GEN-005), or both together; and any of those may name up to three existing Skills the user found by searching, which the model reads as worked examples and not as bytes to copy (GEN-006). Whatever the input shape, the output is the same: one new Skill, version 1, `redistribution = generated`, and a provenance row that names every input. **At least one of `task_description` and `diagram` must be present**; references alone are refused (422), because \"make me one like this\" with nothing said about the task is a fork, and Fork already exists.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
      * @summary Generate a Skill from a task description, a diagram, or both, optionally guided by existing Skills (GEN-001, GEN-005, GEN-006)
      * @param {GenerateSkillRequest} generateSkillRequest 
@@ -1122,6 +2023,13 @@ export interface DefaultApiInterface {
     generateSkill(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateSkillResult>;
 
     /**
+     * Creates request options for getCostStatistics without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCostStatisticsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * Operator only. The same numbers the start threshold and the session estimate read. No user or workspace dimension. A kind that has never been computed is absent. 
      * @summary The newest statistics window of every cost kind (02:OPS-007)
      * @param {*} [options] Override http request option.
@@ -1135,6 +2043,14 @@ export interface DefaultApiInterface {
      * The newest statistics window of every cost kind (02:OPS-007)
      */
     getCostStatistics(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetCostStatistics200Response>;
+
+    /**
+     * Creates request options for getCostTrend without sending the request
+     * @param {7 | 30 | 90} [days] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCostTrendRequestOpts(requestParameters: GetCostTrendRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. Sum of usd_micros and event count per UTC day and cost kind, estimated costs included. Grouped by UTC day only; no user, workspace or email in the response. A day or kind with no events has no bucket. 
@@ -1153,6 +2069,13 @@ export interface DefaultApiInterface {
     getCostTrend(requestParameters: GetCostTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AmountTrend>;
 
     /**
+     * Creates request options for getCreationLimits without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreationLimitsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
      * @summary getCreationLimits
      * @param {*} [options] Override http request option.
@@ -1166,6 +2089,14 @@ export interface DefaultApiInterface {
      * getCreationLimits
      */
     getCreationLimits(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationLimits>;
+
+    /**
+     * Creates request options for getCreationSession without sending the request
+     * @param {string} sessionId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreationSessionRequestOpts(requestParameters: GetCreationSessionRequest): Promise<runtime.RequestOpts>;
 
     /**
      * 
@@ -1183,6 +2114,13 @@ export interface DefaultApiInterface {
     getCreationSession(requestParameters: GetCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreationSession>;
 
     /**
+     * Creates request options for getCreditBalance without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreditBalanceRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * Credit is this platform\'s only unit of account (ADR-068). Everything a user is shown about cost is denominated in it; US dollars are the platform\'s own ledger and never appear on this route.  Three numbers and a verdict: the balance, how far below zero it may go before the per-step gate stops a session, what one interactive-creation session is expected to cost, and whether a new one may begin.  The threshold `can_start` is measured against is the same one the domain gate blocks on — one definition, computed once — for the reason GET /me/quota never recomputes PDM-010\'s counters: a display with its own arithmetic can disagree with the rule it is showing.  `estimated_session.estimated` true means fewer than 20 cost samples exist for the current window and a conservative configured constant was used in place of a measured p95. A fallback that presented itself as a measurement would be worse than no number at all, so it is labelled. 
      * @summary The account\'s Credit balance and what one creation session costs (CRED-001)
      * @param {*} [options] Override http request option.
@@ -1196,6 +2134,14 @@ export interface DefaultApiInterface {
      * The account\'s Credit balance and what one creation session costs (CRED-001)
      */
     getCreditBalance(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditBalance>;
+
+    /**
+     * Creates request options for getCreditLedger without sending the request
+     * @param {string} workspaceId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreditLedgerRequestOpts(requestParameters: GetCreditLedgerRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. The balance and the 50 newest ledger entries of the account that owns this workspace: how an operator confirms a grant landed, and answers \"where did my credits go\".  Entries carry no reason. credit_entries is an immutable ledger with no reason column; the reason of a grant is in its `credit.grant` audit event, listed by GET /admin/audit-log.  Every call writes one `credit.lookup` audit event in the same transaction as the read. 
@@ -1214,6 +2160,14 @@ export interface DefaultApiInterface {
     getCreditLedger(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditLedger>;
 
     /**
+     * Creates request options for getCreditTrend without sending the request
+     * @param {7 | 30 | 90} [days] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreditTrendRequestOpts(requestParameters: GetCreditTrendRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Operator only. Net delta_credits and entry count per UTC day and entry kind, plus the sum of every current balance. Grouped by UTC day only; no user, workspace or email in the response. 
      * @summary Daily credit movement by entry kind (02:OPS-008)
      * @param {7 | 30 | 90} [days] 
@@ -1228,6 +2182,13 @@ export interface DefaultApiInterface {
      * Daily credit movement by entry kind (02:OPS-008)
      */
     getCreditTrend(requestParameters: GetCreditTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditTrend>;
+
+    /**
+     * Creates request options for getDataRetentionPolicy without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getDataRetentionPolicyRequestOpts(): Promise<runtime.RequestOpts>;
 
     /**
      * 02:O11Y-004: product analytics is the only data class a user produces without submitting anything, so its disclosure obligation is no lower than any other\'s. This is that disclosure as an endpoint rather than a document, for the reason GET /test-cases/limits is one — the values come from the constants the writer itself reads, so the page and the behaviour cannot drift.  No session. A data policy a visitor has to log in to read is not a policy they can decide by, and the funnel\'s first segment is measured before any login exists. Nothing user-specific is read or returned.  `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5\'s 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no cookie. 
@@ -1245,6 +2206,13 @@ export interface DefaultApiInterface {
     getDataRetentionPolicy(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DataRetentionPolicy>;
 
     /**
+     * Creates request options for getDatasetLimits without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getDatasetLimitsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * 02:TEST-002 requires the size limit, the retention policy and the data usage scope to be shown *before* an upload, not discovered by being refused. The values are PDM-005 §5.1 and are served from the same constants the upload path enforces, so the two can never drift. 
      * @summary Upload limits and storage policy (TEST-002 上傳前顯示)
      * @param {*} [options] Override http request option.
@@ -1258,6 +2226,13 @@ export interface DefaultApiInterface {
      * Upload limits and storage policy (TEST-002 上傳前顯示)
      */
     getDatasetLimits(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatasetLimits>;
+
+    /**
+     * Creates request options for getDispatchStatus without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getDispatchStatusRequestOpts(): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. The single answer to 「現在到底有沒有在派送」, which is the whole reason 03:SEC-012 requires the P1 halt and ADR-022 X-04\'s drain/suspend to be one switch rather than two.  Both triggers appear here in the same list and are told apart by `source`: `p1_incident` waits for a person, `orphan_threshold` clears itself after two consecutive reconciler rounds below the threshold. 
@@ -1275,6 +2250,14 @@ export interface DefaultApiInterface {
     getDispatchStatus(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetDispatchStatus200Response>;
 
     /**
+     * Creates request options for getDownloadArtifact without sending the request
+     * @param {string} artifactId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getDownloadArtifactRequestOpts(requestParameters: GetDownloadArtifactRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * 
      * @summary One download artifact, with its expiry and download count (WS-002)
      * @param {string} artifactId 
@@ -1288,6 +2271,13 @@ export interface DefaultApiInterface {
      * One download artifact, with its expiry and download count (WS-002)
      */
     getDownloadArtifact(requestParameters: GetDownloadArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DownloadArtifact>;
+
+    /**
+     * Creates request options for getHealth without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getHealthRequestOpts(): Promise<runtime.RequestOpts>;
 
     /**
      * 
@@ -1304,6 +2294,13 @@ export interface DefaultApiInterface {
     getHealth(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Health>;
 
     /**
+     * Creates request options for getMe without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getMeRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * 
      * @summary Current user and personal workspace, resolved from the session
      * @param {*} [options] Override http request option.
@@ -1316,6 +2313,14 @@ export interface DefaultApiInterface {
      * Current user and personal workspace, resolved from the session
      */
     getMe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Me>;
+
+    /**
+     * Creates request options for getOperatorActionTrend without sending the request
+     * @param {7 | 30 | 90} [days] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOperatorActionTrendRequestOpts(requestParameters: GetOperatorActionTrendRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. The same action list as the operator audit log, counted per UTC day. Grouped by UTC day only; no user, workspace or email in the response. 
@@ -1334,6 +2339,13 @@ export interface DefaultApiInterface {
     getOperatorActionTrend(requestParameters: GetOperatorActionTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CountTrend>;
 
     /**
+     * Creates request options for getOperatorRosters without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOperatorRostersRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still an edit and a restart (ADR-074 decision 4). This only shows what is in force. 
      * @summary The two rosters in force, read-only (02:OPS-005)
      * @param {*} [options] Override http request option.
@@ -1349,6 +2361,13 @@ export interface DefaultApiInterface {
     getOperatorRosters(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetOperatorRosters200Response>;
 
     /**
+     * Creates request options for getReadiness without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getReadinessRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * The question people ask `/healthz`. That one is a liveness probe and a constant, which is correct and was never the defect; the defect was that it was the only endpoint that looked like it answered this one (05 R-36 第二段, 04 丙-110/118).  **`ready` is reachable only by measurement.** A capability whose variables are all present and which nothing probed reports `unmeasured`, a distinct value — configuration is not function, and every green tick the launcher used to print was really this state. On 2026-09-01 three greens in a row (a launcher that tested only whether a variable was set, this platform\'s `/healthz`, and apps/llm\'s own `/healthz`) sat over a service that could perform none of its four jobs.  Always `200`, whatever the table says: a readiness endpoint that answered 503 because an OPTIONAL capability is off would make \"packaging is not configured\" indistinguishable from \"the process is broken\", which is the collapsing of two facts into one signal that this endpoint exists to undo.  Unauthenticated, because the launcher that has to read it holds no session — and R-36\'s hard condition is that the launcher reads THIS answer rather than keeping a second list of the same preconditions. Outside clean test mode the per-row detail is withheld: a list of what a deployment has not configured is reconnaissance, so `missing`, `detail`, `without` and `fix` are served only in clean test mode, where the reader is the operator on that machine. 
      * @summary Deployment capability table — what this deployment can do right now
      * @param {*} [options] Override http request option.
@@ -1362,6 +2381,14 @@ export interface DefaultApiInterface {
      * Deployment capability table — what this deployment can do right now
      */
     getReadiness(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetReadiness200Response>;
+
+    /**
+     * Creates request options for getRun without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunRequestOpts(requestParameters: GetRunRequest): Promise<runtime.RequestOpts>;
 
     /**
      * `id` is the platform `run_id` and always will be: a provider\'s ephemeral id is never part of a URL (iron rule 10). It appears in the response only as an attribute of the attempt that owns it. 
@@ -1380,6 +2407,15 @@ export interface DefaultApiInterface {
     getRun(requestParameters: GetRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Run>;
 
     /**
+     * Creates request options for getRunEvaluation without sending the request
+     * @param {string} id 
+     * @param {string} [revision] An &#x60;evaluation_id&#x60; from GET /runs/{id}/evaluation/revisions.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunEvaluationRequestOpts(requestParameters: GetRunEvaluationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Answers \"was the task achieved\". That is a different question from `Run.status`, which answers \"what happened while this executed\", and the two are separate resources because they are separate facts: a run at `succeeded` whose evaluation is `not_met` is an ordinary consistent state — the workload finished and did not do what was asked. No surface may collapse them into one verdict (ADR-025, NFR-001).  A run with no evaluation answers **404, not an empty evaluation**. 「未評估」 is a state of its own, and a blank body is exactly what a UI would render as a pass. An evaluation that ran and broke is a third state again, and it does have a body: `status: failed`.  `revision` reads one particular judgement by id; omitted, the answer is the current one. Re-evaluation is append-only (a new rubric or judge prompt writes a new row and supersedes the old), so a verdict quoted in a report never changes underneath it. 
      * @summary The task judgement for one run (EVAL-001)
      * @param {string} id 
@@ -1395,6 +2431,16 @@ export interface DefaultApiInterface {
      * The task judgement for one run (EVAL-001)
      */
     getRunEvaluation(requestParameters: GetRunEvaluationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation>;
+
+    /**
+     * Creates request options for getRunPreflight without sending the request
+     * @param {string} id Skill id. The version must belong to this skill.
+     * @param {string} versionId 
+     * @param {string} testCaseId The editable draft, not a snapshot. The summary describes a run that has not started, and a snapshot only exists once one has. 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunPreflightRequestOpts(requestParameters: GetRunPreflightRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Eight disclosures for one (version, test case) pair: the datasets it can read, whether the package carries runnable code, the tools and MCP servers it gets, its egress policy, the names of the secrets injected into it, who will run it, and the resource ceilings it is held to.  Nothing here is a claim that the skill is safe (NFR-001) and nothing in the package is executed to produce it (iron rule 1) — `scripts` comes from re-scanning the stored bytes, which is why an unreadable package reports `unavailable` and never `none`.  `summary_hash` is a hash over exactly those facts and is what `POST .../preflight/confirm` and `POST /skills/{id}/runs` agree to. It changes whenever any of them does, so a dataset added after a confirmation invalidates that confirmation by construction — nothing sweeps for stale agreements. `notes` sits outside the hash: rewording an explanation must not invalidate every outstanding confirmation. 
@@ -1415,6 +2461,13 @@ export interface DefaultApiInterface {
     getRunPreflight(requestParameters: GetRunPreflightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunPermissionSummary>;
 
     /**
+     * Creates request options for getRunQuota without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunQuotaRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * The beta\'s cost ceiling as the account holder sees it: runs left today, runs left in the rolling window, when the window resets, and the four limits in force.  Served from the same counters POST /skills/{id}/runs enforces, never from a stored balance. A balance column drifts and a refund would be a write that can be missed; the count is a time-window query over the runs themselves, so a refund is a predicate excluding a failure class rather than a row nobody remembered to add back.  This endpoint exists only because the enforcement point does. Showing an allowance the platform does not apply is the exact mistake PDM-005 made once already (04 乙-2): a ceiling displayed on the preflight screen and enforced nowhere, which NFR-001 forbids. Read that order as binding — the numbers here are a report on a rule, not the rule. 
      * @summary How much of the free run allowance is left (PDM-010)
      * @param {*} [options] Override http request option.
@@ -1428,6 +2481,16 @@ export interface DefaultApiInterface {
      * How much of the free run allowance is left (PDM-010)
      */
     getRunQuota(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunQuota>;
+
+    /**
+     * Creates request options for getRunTrace without sending the request
+     * @param {string} id The platform run_id. A provider\&#39;s ephemeral id never appears in a URL (iron rule 10).
+     * @param {'general' | 'advanced'} [mode] 
+     * @param {number} [after] Advanced-mode ingestion cursor. Omit or use 0 for the first page. Page boundaries follow receipt order so a running producer cannot make an earlier page skip a newly committed event. 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunTraceRequestOpts(requestParameters: GetRunTraceRequest): Promise<runtime.RequestOpts>;
 
     /**
      * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reliable receipt-order pages, with canonical ordering inside each page, plus an explicit statement of which ones are missing. A consumer that needs one reconstructed cross-producer timeline fetches all pages and applies the ordering tuple documented on `events`.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
@@ -1448,6 +2511,14 @@ export interface DefaultApiInterface {
     getRunTrace(requestParameters: GetRunTraceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetRunTrace200Response>;
 
     /**
+     * Creates request options for getRunTrend without sending the request
+     * @param {7 | 30 | 90} [days] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunTrendRequestOpts(requestParameters: GetRunTrendRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Operator only. Runs counted by the UTC day they were created and the status they are in now. Grouped by UTC day only; no user, workspace or email in the response. 
      * @summary Runs created per day by current status (02:OPS-008)
      * @param {7 | 30 | 90} [days] 
@@ -1462,6 +2533,15 @@ export interface DefaultApiInterface {
      * Runs created per day by current status (02:OPS-008)
      */
     getRunTrend(requestParameters: GetRunTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CountTrend>;
+
+    /**
+     * Creates request options for getSkillDetail without sending the request
+     * @param {string} id 
+     * @param {'embedded'} [view] &#x60;embedded&#x60; marks a read that is NOT a detail-page view: a surface that needs the same data for its own purpose (packaging, side-by-side comparison). Such a read records no &#x60;skill_detail_viewed&#x60;, because 01 §11.2\&#39;s first segment counts sessions in which somebody opened a skill, and Compare was minting that event for skills whose detail page was never opened (04 丙-57 follow-up). 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getSkillDetailRequestOpts(requestParameters: GetSkillDetailRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Does not require authentication. Scope is resolved by the server and never by the request (CORE-006, ADR-011): the public catalog answers for every caller, and a caller with a session additionally sees skills in their own workspace. Anything outside both scopes answers 404, identical to a skill that does not exist, so the status code is not an existence oracle for someone else\'s private content (WS-006).  `summary` is always the package\'s own frontmatter description. Model-generated text lives under `enrichment` and is labelled there (ADR-013). `license` carries the ADR-021 two-axis answer — the expression and the provenance tier it was established at — and its status is `declared` at best: confirmation is a reviewer\'s act and nothing records one yet. `risk` reports a static scan of the stored package; the scan never executes anything (iron rule 1) and passing it is not a safety claim (NFR-001). `compatibility` keeps the three axes apart; the two that need a sandbox carry a measured verdict together with the `runtime_image` it holds for, and say `unverified` rather than being omitted when this (version, image) pair was never measured. 
@@ -1481,6 +2561,14 @@ export interface DefaultApiInterface {
     getSkillDetail(requestParameters: GetSkillDetailRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SkillDetail>;
 
     /**
+     * Creates request options for getSkillFiles without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getSkillFilesRequestOpts(requestParameters: GetSkillFilesRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Advanced view of the latest version. Same scope rules as GET /api/skills/{id}, so it needs no authentication for catalog content. Scripts are marked with the same rule the import scan used, and the SKILL.md embedded-code disclosure is repeated here because the file tree is exactly what cannot show code living inside the document (SKILL-003). Package files other than SKILL.md are listed with their metadata; an endpoint serving their content is later DISC-007 work.  This is the endpoint that reproduces the package\'s own bytes, so it is the one a 0023 licensing hold closes: a skill carrying `access_restriction` answers 403 here while everything else about it still answers. 
      * @summary SKILL.md and the package file tree (DISC-007)
      * @param {string} id 
@@ -1495,6 +2583,14 @@ export interface DefaultApiInterface {
      * SKILL.md and the package file tree (DISC-007)
      */
     getSkillFiles(requestParameters: GetSkillFilesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SkillFiles>;
+
+    /**
+     * Creates request options for getSuggestionDiff without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getSuggestionDiffRequestOpts(requestParameters: GetSuggestionDiffRequest): Promise<runtime.RequestOpts>;
 
     /**
      * EVAL-002 第 3 條 requires the change to be viewable before it is applied, so the diff is served rather than assembled in the client: computing it needs the stored package bytes, which the client does not have, and a client-side guess could disagree with what apply actually does.  It runs the same checks the apply call runs, so `applicable: false` here and a rejection there give the same `blocked_reason`. A suggestion that cannot be applied still shows why. 
@@ -1513,6 +2609,14 @@ export interface DefaultApiInterface {
     getSuggestionDiff(requestParameters: GetSuggestionDiffRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SuggestionDiff>;
 
     /**
+     * Creates request options for getTestCase without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getTestCaseRequestOpts(requestParameters: GetTestCaseRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * 
      * @summary Read one test case draft
      * @param {string} id 
@@ -1526,6 +2630,15 @@ export interface DefaultApiInterface {
      * Read one test case draft
      */
     getTestCase(requestParameters: GetTestCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
+
+    /**
+     * Creates request options for grantCredits without sending the request
+     * @param {string} workspaceId 
+     * @param {GrantCreditsRequest} grantCreditsRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    grantCreditsRequestOpts(requestParameters: GrantCreditsOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
@@ -1545,6 +2658,14 @@ export interface DefaultApiInterface {
     grantCredits(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GrantCredits200Response>;
 
     /**
+     * Creates request options for importSkillFromURL without sending the request
+     * @param {ImportSkillFromURLRequest} importSkillFromURLRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    importSkillFromURLRequestOpts(requestParameters: ImportSkillFromURLOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The package goes through the same static validation as uploads. 
      * @summary Import a skill package from an allow-listed URL (SKILL-001)
      * @param {ImportSkillFromURLRequest} importSkillFromURLRequest 
@@ -1559,6 +2680,15 @@ export interface DefaultApiInterface {
      * Import a skill package from an allow-listed URL (SKILL-001)
      */
     importSkillFromURL(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UploadResult>;
+
+    /**
+     * Creates request options for ingestTraceEvents without sending the request
+     * @param {string} token The signed per-attempt ingestion credential. Secret material; never logged.
+     * @param {Array<SandboxTraceEvent>} sandboxTraceEvent 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    ingestTraceEventsRequestOpts(requestParameters: IngestTraceEventsRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Machine to machine, not a user endpoint. The caller is a sandbox provider pushing what the workload wrote; the sandbox itself has no network and cannot reach this.  **Authentication is the token in the path and nothing else.** Not a session: there is no user. Not the provider\'s bearer token: that credential is deployment-wide, and a credential covering every run must not be able to append to one run\'s timeline. The token is HMAC-signed by the control plane, scoped to one (run_id, attempt), short-lived, and grants append only - it can read nothing. It travels inside `TracePolicy.ingestion_url` of the sandbox provider contract, which has no separate token field.  Everything in the body is untrusted input (ADR-001). The order on this side is fixed: verify the token, resolve workspace_id from run_id under the platform\'s own authority (iron rule 3), validate each envelope, mask (TRACE-005), then store. Nothing reaches the database unmasked.  Rejection is per event, not per batch: one malformed event must not discard the well-formed ones beside it. An event naming a different run or attempt than the token covers is rejected, never re-homed.  Delivery is at-least-once, so a redelivered `event_id` is counted as a duplicate and stored once. Events arriving after the run reached a terminal state are accepted and flagged late rather than dropped: a sandbox pushes its last batch as it shuts down, and that tail is the part a failed run most needs (RUN-004, TRACE-008). 
@@ -1578,6 +2708,14 @@ export interface DefaultApiInterface {
     ingestTraceEvents(requestParameters: IngestTraceEventsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TraceIngestReport>;
 
     /**
+     * Creates request options for liftDispatchHalt without sending the request
+     * @param {LiftDispatchHaltRequest} liftDispatchHaltRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    liftDispatchHaltRequestOpts(requestParameters: LiftDispatchHaltOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」.  It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one.  Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well.  Idempotent: lifting nothing answers 204, because the caller\'s intent is already true. 
      * @summary Resume dispatching (SEC-012)
      * @param {LiftDispatchHaltRequest} liftDispatchHaltRequest 
@@ -1594,6 +2732,13 @@ export interface DefaultApiInterface {
     liftDispatchHalt(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for listCreationSessions without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listCreationSessionsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * 
      * @summary listCreationSessions
      * @param {*} [options] Override http request option.
@@ -1606,6 +2751,14 @@ export interface DefaultApiInterface {
      * listCreationSessions
      */
     listCreationSessions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CreationSession>>;
+
+    /**
+     * Creates request options for listDatasets without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listDatasetsRequestOpts(requestParameters: ListDatasetsRequest): Promise<runtime.RequestOpts>;
 
     /**
      * 
@@ -1623,6 +2776,13 @@ export interface DefaultApiInterface {
     listDatasets(requestParameters: ListDatasetsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDatasets200Response>;
 
     /**
+     * Creates request options for listDownloadArtifacts without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listDownloadArtifactsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * Every Download Artifact in the caller\'s workspace, newest first, including expired ones. 02:WS-002 asks the user to be able to see what they downloaded, and an expired package leaving the list silently would answer that question wrongly — the row states that it expired, which is a different fact from never having existed. 
      * @summary The workspace\'s download history (WS-002, WS-004)
      * @param {*} [options] Override http request option.
@@ -1636,6 +2796,14 @@ export interface DefaultApiInterface {
      * The workspace\'s download history (WS-002, WS-004)
      */
     listDownloadArtifacts(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDownloadArtifacts200Response>;
+
+    /**
+     * Creates request options for listDownloadRecords without sending the request
+     * @param {string} artifactId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listDownloadRecordsRequestOpts(requestParameters: ListDownloadRecordsRequest): Promise<runtime.RequestOpts>;
 
     /**
      * WS-004\'s own words are \"誰、何時、哪一筆 artifact、哪一個 profile\". The artifact list answers the last two plus a count; this answers the first two, one row per download, which is what an aggregate cannot give.  Deliberately not the audit trail. The same download writes an audit event too (CORE-008), and the two are separate records with different retention and different visibility: this one is the product feature the owner reads and it goes with the account, the audit row is the compliance record and does not.  The actor is a display name, not a user id: on a personal workspace it is always the owner, and an id would be an identifier the reader cannot resolve. It reads `deleted user` when the account was purged — the rows survive de-identified (PDM-006 §6.1), because \"somebody, at this time\" is still true. 
@@ -1654,6 +2822,13 @@ export interface DefaultApiInterface {
     listDownloadRecords(requestParameters: ListDownloadRecordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDownloadRecords200Response>;
 
     /**
+     * Creates request options for listGenerationFailures without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listGenerationFailuresRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * The read half of 02:GEN-003 「在工作區留下可查的失敗紀錄」. A generation that failed leaves an audit row; until this route existed, that row could only be seen by someone holding a database connection, which is not a record left in the workspace.  Requires a session and an invite, and is **mounted on the same flag as POST /skills/generate** (ADR-052) — a failure list is a generation surface, and a route answering 200 with an empty array is still an answer about a feature that must not be discoverable. Where the flag is off this route does not exist and answers 404.  Workspace-scoped from the session; the caller never names a workspace (iron rule 3).  **The task description is not here and will not be added.** It belongs to the skill_sources row, under NFR-002 deletion; these rows are kept 400 days under a different rule, and one copy under each is a retention promise nobody made (ADR-029 decision 3 draws the same line). 
      * @summary Generations in this workspace that produced nothing (GEN-003)
      * @param {*} [options] Override http request option.
@@ -1667,6 +2842,15 @@ export interface DefaultApiInterface {
      * Generations in this workspace that produced nothing (GEN-003)
      */
     listGenerationFailures(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationFailures>;
+
+    /**
+     * Creates request options for listOperatorAuditLog without sending the request
+     * @param {number} [limit] 
+     * @param {number} [offset] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listOperatorAuditLogRequestOpts(requestParameters: ListOperatorAuditLogRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
@@ -1686,6 +2870,13 @@ export interface DefaultApiInterface {
     listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response>;
 
     /**
+     * Creates request options for listPackagingTargets without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPackagingTargetsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * One standard package plus two verified install profiles (PDM-008), which is how the product describes them everywhere: `kind` keeps the standard package and the profiles apart rather than folding all three into one list of \"profiles\", because the standard package is the evidence that Skill Hub is not bound to a single agent and a profile is not.  An endpoint rather than a constant in the web client. `support_status` changes when a target is measured, and a copy of it compiled into the front end would be a second truth that nobody re-measures. 
      * @summary The packaging targets a download can be built for (PACK-002)
      * @param {*} [options] Override http request option.
@@ -1699,6 +2890,14 @@ export interface DefaultApiInterface {
      * The packaging targets a download can be built for (PACK-002)
      */
     listPackagingTargets(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPackagingTargets200Response>;
+
+    /**
+     * Creates request options for listRunArtifacts without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listRunArtifactsRequestOpts(requestParameters: ListRunArtifactsRequest): Promise<runtime.RequestOpts>;
 
     /**
      * File names, sizes and hashes — never the bytes. The archive a sandbox produced is untrusted content and the control plane does not open it (iron rule 1); evaluation reads these same rows.  This list exists so the owner can see what there is to delete. Before it, the only way to remove a run artifact was to delete the whole account. 
@@ -1717,6 +2916,14 @@ export interface DefaultApiInterface {
     listRunArtifacts(requestParameters: ListRunArtifactsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListRunArtifacts200Response>;
 
     /**
+     * Creates request options for listRunEvaluationRevisions without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listRunEvaluationRevisionsRequestOpts(requestParameters: ListRunEvaluationRevisionsRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Newest first. Re-evaluating writes a new revision and stamps `superseded_at` on the previous one; nothing is overwritten, so a reader can always tell which rubric and judge prompt a verdict was reached under. Exactly one revision has a null `superseded_at` — that is the one GET /runs/{id}/evaluation returns without `revision`. 
      * @summary Every judgement ever recorded for one run (EVAL-001)
      * @param {string} id 
@@ -1733,6 +2940,14 @@ export interface DefaultApiInterface {
     listRunEvaluationRevisions(requestParameters: ListRunEvaluationRevisionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListRunEvaluationRevisions200Response>;
 
     /**
+     * Creates request options for listRunSuggestions without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listRunSuggestionsRequestOpts(requestParameters: ListRunSuggestionsRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Suggestions belong to an evaluation, not to a run: re-evaluating under a different rubric produces its own set, and this returns the current evaluation\'s. An empty list means that evaluation produced none; a run with no evaluation answers 404, for the same reason GET /runs/{id}/evaluation does. 
      * @summary Improvement suggestions from the current evaluation (EVAL-002)
      * @param {string} id 
@@ -1747,6 +2962,16 @@ export interface DefaultApiInterface {
      * Improvement suggestions from the current evaluation (EVAL-002)
      */
     listRunSuggestions(requestParameters: ListRunSuggestionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListRunSuggestions200Response>;
+
+    /**
+     * Creates request options for listRuns without sending the request
+     * @param {string} [testCaseId] Only runs of this test case — the \&quot;執行歷史\&quot; of one draft, which is what closes the 建立 → 試跑 → 回來看 loop. Matched against the test case the run\&#39;s snapshot was frozen from, so a run stays in the list after the draft has been edited. Workspace scoped like the unfiltered list; another workspace\&#39;s id matches nothing (WS-006). 
+     * @param {number} [limit] Refused with a 400 when outside the schema, not clamped: both bounds are inclusive and an out-of-range value is not replaced by the default. 
+     * @param {number} [offset] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listRunsRequestOpts(requestParameters: ListRunsRequest): Promise<runtime.RequestOpts>;
 
     /**
      * 02:WS-002 第 1 條\'s \"Run 歷史\". Workspace scoped from the session like every other run route (iron rule 3).  Each row carries what happened, to which skill, and when. The status transitions and the per-attempt provider ids stay on GET /runs/{id}: they are what a reader opens one run to see, and serving them for a page of runs would make the list the heaviest read in the API for information nobody reads a page of. 
@@ -1767,6 +2992,14 @@ export interface DefaultApiInterface {
     listRuns(requestParameters: ListRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListRuns200Response>;
 
     /**
+     * Creates request options for listSkillVersions without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listSkillVersionsRequestOpts(requestParameters: ListSkillVersionsRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Workspace scoped from the session like every other registry read (ADR-011): a skill in somebody else\'s workspace answers with an empty list rather than with their history.  This is the list the pre-run permission screen and the packaging screen pick a version from. Before it existed, both took the version id from the URL only, so the reader had to paste one by hand. 
      * @summary List a skill\'s immutable versions, newest first (WS-001)
      * @param {string} id 
@@ -1783,6 +3016,13 @@ export interface DefaultApiInterface {
     listSkillVersions(requestParameters: ListSkillVersionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListSkillVersions200Response>;
 
     /**
+     * Creates request options for listSkills without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listSkillsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * 
      * @summary List the caller\'s skills (WS-004)
      * @param {*} [options] Override http request option.
@@ -1795,6 +3035,16 @@ export interface DefaultApiInterface {
      * List the caller\'s skills (WS-004)
      */
     listSkills(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListSkills200Response>;
+
+    /**
+     * Creates request options for listTestCases without sending the request
+     * @param {string} [skillId] Only this skill\&#39;s test cases. Answers \&quot;which test cases have I written for this skill\&quot;, which the Skill detail page asks. 
+     * @param {number} [limit] 
+     * @param {number} [offset] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listTestCasesRequestOpts(requestParameters: ListTestCasesRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Workspace scoped from the session (iron rule 3). `skill_id` narrows the list to one skill and is not a widening: a skill outside the caller\'s workspace matches nothing, exactly as an id that does not exist does (WS-006). 
@@ -1815,6 +3065,13 @@ export interface DefaultApiInterface {
     listTestCases(requestParameters: ListTestCasesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTestCases200Response>;
 
     /**
+     * Creates request options for logout without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    logoutRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * No session is required to call it. The handler revokes whatever session cookie arrives and clears the cookie either way, so a caller holding an already-invalid cookie can still get rid of it. 
      * @summary Revoke the current session
      * @param {*} [options] Override http request option.
@@ -1828,6 +3085,14 @@ export interface DefaultApiInterface {
      * Revoke the current session
      */
     logout(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for lookupAccount without sending the request
+     * @param {string} email 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    lookupAccountRequestOpts(requestParameters: LookupAccountRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. Turns the email a person gave into the account and the workspace id that POST /admin/credits/{workspace_id}/grants needs. Case-insensitive exact match against live accounts only, the same rule as the unique email index.  A hit is a read of somebody\'s personal data: it writes one `account.lookup` audit event naming the operator and the account, in the same transaction as the read. A miss reads nobody\'s data and writes nothing. 
@@ -1844,6 +3109,17 @@ export interface DefaultApiInterface {
      * Find an account by email (02:OPS-002)
      */
     lookupAccount(requestParameters: LookupAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountLookup>;
+
+    /**
+     * Creates request options for previewPackaging without sending the request
+     * @param {string} id Skill id. The version must belong to this skill.
+     * @param {string} versionId 
+     * @param {PackagingTargetId} target Which target to preview. Required and not defaulted: the answer differs per target, and a default would let a user read the standard package\&#39;s verdict as a profile\&#39;s. 
+     * @param {boolean} [includeTestCases] Preview with the PACK-005 test cases included. The excluded list is returned either way, so a user can see what would be left out before deciding. 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    previewPackagingRequestOpts(requestParameters: PreviewPackagingRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Runs the checks the packaging call runs, so a preview that says yes and a packaging that refuses cannot both happen. Same relationship GET /suggestions/{id}/diff has with the apply call, and for the same reason: two sets of criteria drift, and the drift always favours the step the user most wants to succeed.  It re-validates the bytes it *would* produce, not the bytes it read. The source version passed validation at import, but packaging adds files and a profile may add frontmatter fields, so validating the source would make PACK-002 a check of something nobody downloads.  Nothing is written and no object is created. A preview of a version that cannot be packaged still answers 200 with `allowed: false` and the reason — being told why is the point. 
@@ -1863,6 +3139,21 @@ export interface DefaultApiInterface {
      * What packaging this version would produce, before producing it (PACK-001)
      */
     previewPackaging(requestParameters: PreviewPackagingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PackagingPreview>;
+
+    /**
+     * Creates request options for publicSearchSkills without sending the request
+     * @param {string} q Natural language task description.
+     * @param {number} [limit] 
+     * @param {'reference'} [purpose] Why this search is being made, when it is not the user looking for a Skill to use. &#x60;reference&#x60; is GEN-006\&#39;s reference picker: the caller is choosing worked examples for a generation, not expressing an intent the funnel measures. The server then writes no &#x60;search_performed&#x60; event (01 §11.2 segment 1 counts intents, and this is not one) and makes no match-reason model call (the reason a hit matched is DISC-002\&#39;s answer to \&quot;should I use this\&quot;, which the picker does not ask). Retrieval itself is unchanged. Absent &#x3D; an ordinary search. 
+     * @param {'yes' | 'no'} [script] DISC-003 filter on whether the package carries runnable code, as recorded by the import scan: a script file in the tree, or code embedded in SKILL.md itself (SKILL-003). Absent &#x3D; not filtered.  A row the projection holds no scan for matches neither value. It is not known to have a script and it is not known to be free of one, and answering &#x60;no&#x60; for it would be the 不得自行推定為通過 that DISC-004 forbids. Such rows leave a filtered page and return when the filter is cleared. 
+     * @param {'passed' | 'unverified'} [validation] DISC-003 filter on the spec-validation axis of &#x60;compatibility&#x60;. &#x60;passed&#x60; is a skill with a saved version — static validation blocks the import on any error-level finding, so a stored version is the evidence. &#x60;unverified&#x60; is a skill with no saved content, which is never reported as failed. Absent &#x3D; not filtered. 
+     * @param {'native' | 'transpiled' | 'failed' | 'unverified'} [agent] DISC-002\&#39;s Agent dimension, live since migration 0022. It filters the &#x60;runtime&#x60; axis of &#x60;compatibility&#x60; and only that axis, matching the measured verdict **exactly** rather than as a boolean: &#x60;unverified&#x60; is a value a caller can ask for, and a \&quot;not native\&quot; filter would silently mean transpiled-or-failed-or-never-measured, which are three different things to someone choosing a skill. Absent &#x3D; not filtered.  The &#x60;capability&#x60; axis is shown but not filterable. Every measured skill in the catalogue came back &#x60;activated&#x60; (45/45 in the M2 baseline), so a control on it separates nothing; it becomes a filter when a &#x60;not_activated&#x60; row exists and not before. 
+     * @param {'curated' | 'indexed'} [tier] DISC-002\&#39;s 來源層級 dimension, live since migration 0042. Absent &#x3D; not filtered.  &#x60;curated&#x60; means the PDM-002 nine-item review passed **and** the version it examined is still the newest one; a curated skill whose content has moved on answers &#x60;indexed&#x60; here, because five of those nine checks are about specific bytes. So &#x60;indexed&#x60; is not \&quot;never reviewed\&quot; — it is \&quot;not currently carrying a review of what you are looking at\&quot;, which is the question a reader is actually asking.  &#x60;external&#x60; is not accepted. An external result was never imported and has no row, so it is a state of the search rather than a value this filter can select. 
+     * @param {'documents' | 'writing' | 'data'} [category] DISC-002\&#39;s 類別 dimension (PDM-001\&#39;s three shelves), live since migration 0053. Absent &#x3D; not filtered.  Matches the skill\&#39;s stored category exactly. A skill with no category — every user-imported skill today, because the platform has not decided how one gets a category (05 R-19) — matches none of the three values; it is not silently filed under any of them, and its row says 尚未定值 rather than a guess (02:DISC-004). 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    publicSearchSkillsRequestOpts(requestParameters: PublicSearchSkillsRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Natural language search over the public skill catalog. Uses hybrid retrieval (ADR-013): pgvector embedding similarity ranks the results and Postgres FTS only widens the candidate set, so a lexical hit the vector leg missed is still ordered by its own vector distance. Does not require authentication. Scope is the public catalog only: private workspace content is never returned, and no request parameter can widen the scope (CORE-006, ADR-011). Use GET /skills/search for the caller\'s own workspace. Candidates further than the cosine distance cut-off are not returned at all; when nothing survives it, the response carries no_results and a query_suggestion rather than a page of weak matches. Blank or incomprehensible queries take the same no_results path. 
@@ -1888,6 +3179,13 @@ export interface DefaultApiInterface {
     publicSearchSkills(requestParameters: PublicSearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicSearchResponse>;
 
     /**
+     * Creates request options for requestAccountDeletion without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    requestAccountDeletionRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * Starts a 30-day grace period; nothing is removed yet and the account stays usable so the request can be cancelled. Idempotent — asking twice keeps the original start time rather than extending the wait.  When the grace period ends, uploaded datasets, run and download artifacts, and every skill nobody else forked or ran are permanently deleted, files included. Skill versions other users forked or historical runs used are retained with the owner\'s identity removed (PDM-006 §6.1): deleting them would break a third party\'s provenance chain, which DISC-003 requires to stay intact. 
      * @summary Request deletion of the caller\'s account (CORE-007)
      * @param {*} [options] Override http request option.
@@ -1901,6 +3199,15 @@ export interface DefaultApiInterface {
      * Request deletion of the caller\'s account (CORE-007)
      */
     requestAccountDeletion(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountDeletion>;
+
+    /**
+     * Creates request options for saveSkillVersion without sending the request
+     * @param {string} id 
+     * @param {Blob} body 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    saveSkillVersionRequestOpts(requestParameters: SaveSkillVersionRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
@@ -1920,6 +3227,15 @@ export interface DefaultApiInterface {
     saveSkillVersion(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UploadResult>;
 
     /**
+     * Creates request options for searchSkills without sending the request
+     * @param {string} q 
+     * @param {number} [limit] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    searchSkillsRequestOpts(requestParameters: SearchSkillsRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * FTS leg of hybrid retrieval (ADR-013); vector recall and match reasons arrive with the Explorer milestone. Scoped to the session workspace. 
      * @summary Full-text search over the caller\'s skills (INGEST-009)
      * @param {string} q 
@@ -1935,6 +3251,15 @@ export interface DefaultApiInterface {
      * Full-text search over the caller\'s skills (INGEST-009)
      */
     searchSkills(requestParameters: SearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchSkills200Response>;
+
+    /**
+     * Creates request options for setEvaluationFeedback without sending the request
+     * @param {string} id 
+     * @param {SetEvaluationFeedbackRequest} setEvaluationFeedbackRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setEvaluationFeedbackRequestOpts(requestParameters: SetEvaluationFeedbackOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * PUT and not POST: this is a mutable field of an evaluation that already exists, and a user is allowed to change their mind. Sending it again replaces the previous answer instead of recording a second one.  It attaches to the current revision. A later re-evaluation starts without feedback — carrying an opinion about one verdict onto another one would be attributing something nobody said. 
@@ -1954,6 +3279,15 @@ export interface DefaultApiInterface {
     setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation>;
 
     /**
+     * Creates request options for setSkillCategory without sending the request
+     * @param {string} id 
+     * @param {SetSkillCategoryRequest} setSkillCategoryRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setSkillCategoryRequestOpts(requestParameters: SetSkillCategoryOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * A user-imported skill has no category until somebody assigns one, and until 2026-09-08 nobody could: the value was written by the curation backfill and by nothing else, so `?category=` matched no imported skill and the taxonomy existed only for the 45 seeded rows (migration 0053).  The platform does not guess it. A model could be asked, and that was the recorded upgrade path, but a guessed shelf is exactly what DISC-004 and 設計 §2.9 refuse, and the enrichment prompt that would carry the question is pinned to the F1 and poisoning measurements (05 R-53) — changing it costs a paid re-measurement, not a line of prompt. So the answer is the person who owns the bytes: this endpoint, on their own skill, in their own workspace.  The stored provenance separates the two sources: `curated` for the seeded rows a person classified during curation, `owner` for a value set here. Both render as a shelf; only the note differs. 
      * @summary The owner says what their own skill is for (DISC-002 類別, 05 R-19)
      * @param {string} id 
@@ -1969,6 +3303,15 @@ export interface DefaultApiInterface {
      * The owner says what their own skill is for (DISC-002 類別, 05 R-19)
      */
     setSkillCategory(requestParameters: SetSkillCategoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Skill>;
+
+    /**
+     * Creates request options for setSkillRedistribution without sending the request
+     * @param {string} id 
+     * @param {SetSkillRedistributionRequest} setSkillRedistributionRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setSkillRedistributionRequestOpts(requestParameters: SetSkillRedistributionOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. Sets the redistribution verdict on one skill and records who changed it and why.  This gate and the `restriction` above block the same download, and until 2026-08-23 this was the one of the two with no route, no operator check and no audit event (`05` R-3c). It then spent a further two days with a route and no contract, which is the same gap one layer up: an operator tool generated from this file could set a hold and not release content.  Idempotent, for the same reason as `restriction`: writing the value a skill already has is a second audit event and no change to the row.  The column write and the audit event share one transaction (iron rule 9). This gate decides whether content leaves the platform, so \"released, and no record of who released it\" is the one outcome that must be impossible.  Cross-workspace like `restriction`, and for the same reason: the verdict is about a *source*, so it has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data.  Operator-only is now a ruling rather than a holding position (2026-08-27, `05` R-3a, ADR-057). The route was written narrow while the question was open, on the grounds that widening later adds callers where narrowing later takes something away; the ruling kept it there, because ADR-021 §5.3\'s false positive was made by people who audit licences for a living.  Releasing a skill also has to carry evidence now — see `license_expression` and `license_source` (`05` R-3b). 
@@ -1988,6 +3331,15 @@ export interface DefaultApiInterface {
     setSkillRedistribution(requestParameters: SetSkillRedistributionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetSkillRedistribution200Response>;
 
     /**
+     * Creates request options for setSkillRestriction without sending the request
+     * @param {string} id 
+     * @param {SetSkillRestrictionRequest} setSkillRestrictionRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setSkillRestrictionRequestOpts(requestParameters: SetSkillRestrictionOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. A licensing question is about a *source*, so a hold has to reach the catalogue entry and every fork of it alike; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
      * @summary Put the licensing hold on a skill (SEC-011)
      * @param {string} id 
@@ -2005,6 +3357,13 @@ export interface DefaultApiInterface {
     setSkillRestriction(requestParameters: SetSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetSkillRestriction200Response>;
 
     /**
+     * Creates request options for startGithubLogin without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    startGithubLoginRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
      * 
      * @summary Begin GitHub OAuth login (ADR-020)
      * @param {*} [options] Override http request option.
@@ -2017,6 +3376,15 @@ export interface DefaultApiInterface {
      * Begin GitHub OAuth login (ADR-020)
      */
     startGithubLogin(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for startRun without sending the request
+     * @param {string} id Skill id. The version must belong to this skill.
+     * @param {StartRunRequest} startRunRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    startRunRequestOpts(requestParameters: StartRunOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Creates the run in `queued` and enqueues its execution job in the same transaction, so a run that exists is always a run something will pick up.  The test case is snapshotted here, not referenced: a run points at frozen content (iron rule 4), and later edits to the test case cannot rewrite what a past run was asked to do.  The response is immediate — execution is asynchronous (ADR-008). Poll `GET /runs/{run_id}` for progress.  Two things are checked before anything is written. Whether the configured fleet can carry the work at all (RUN-005), and whether the caller has agreed to the current permission summary (TEST-005); both refuse with 422 and neither leaves a run behind. `provider` still comes back as `unassigned` — the fleet was checked here, but the individual provider is picked when the job is dispatched, and naming one now would name one the scheduler may not use. 
@@ -2036,6 +3404,15 @@ export interface DefaultApiInterface {
     startRun(requestParameters: StartRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Run>;
 
     /**
+     * Creates request options for streamCreationSession without sending the request
+     * @param {string} sessionId 
+     * @param {number} [lastEventID] The revision of the last event this client already has; the server replays from the next one, so a reconnect loses nothing and repeats nothing. Absent means 「everything this session has」. Named as the SSE specification names it — HTTP header names are case-insensitive, and a browser\&#39;s own reconnect sends exactly this.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    streamCreationSessionRequestOpts(requestParameters: StreamCreationSessionRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * The step events of one creation session, as they are written (ADR-069).  THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the honest description rather than an omission. The body is an SSE stream (`text/event-stream`): a sequence of events whose `id:` is the session revision and whose `data:` is one CreationSession — the same document GET /creation-sessions/{session_id} returns — plus a comment line at least every 20 seconds so an idle proxy does not close the connection. OpenAPI can describe a document; it cannot describe a stream of them, and naming CreationSession as the *body* schema would assert that the body IS one of those, which is false. What pins the payload instead is a test: apiserver\'s stream test unmarshals what the handler writes into the very type this contract\'s CreationSession is generated from, so the two cannot drift without going red (05 R-71 signature 2).  What this stream does NOT carry is model tokens. A model reply is a proposal until Go accepts it — it can be rejected whole, or thrown away and asked for again — so what streams here is state Go has already committed, never text a model is still writing. ADR-069 決策 1 and 6 carry the reasoning and the conditions under which that could change.  The stream ends when the session reaches a terminal state or its deadline passes. A client that cannot hold a stream keeps polling GET /creation-sessions/{session_id}; this endpoint adds nothing that polling cannot get, only sooner and with far less traffic. 
      * @summary streamCreationSession
      * @param {string} sessionId 
@@ -2051,6 +3428,14 @@ export interface DefaultApiInterface {
      * streamCreationSession
      */
     streamCreationSession(requestParameters: StreamCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for submitFeedback without sending the request
+     * @param {SubmitFeedbackRequest} submitFeedbackRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    submitFeedbackRequestOpts(requestParameters: SubmitFeedbackOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * One endpoint for the three entry points the closed beta needs, split by `kind` rather than by URL: the person who is not on the invite list, the person whose allowance ran out, and the person who is stuck somewhere in the journey. The first two are the same question (\"what did you want that you could not have\") and were designed to share one form (PDM-010 §8.1); the third is a different question and says so in `kind`.  Not the same channel as PUT /runs/{id}/evaluation/feedback, which answers \"was this judgement useful\" about one evaluation. Merging them would produce one bucket that answers neither.  `page_path`, `run_id` and `build_id` are what the client already knows about where the report came from. Nothing is captured beyond them — no screenshot, no console, no automatic context grab (beta-design §5): the message is the user\'s own words and everything else is a field they can see. `build_id` (2026-09-04, 資訊架構 IA-11) is the identifier the page prints in its own footer; it names the software, not the person, and it is what makes a report reproducible against a rolling deployment. 
@@ -2069,6 +3454,14 @@ export interface DefaultApiInterface {
     submitFeedback(requestParameters: SubmitFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for suggestAcceptanceCriteria without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    suggestAcceptanceCriteriaRequestOpts(requestParameters: SuggestAcceptanceCriteriaRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * **Returns proposals and stores nothing.** TEST-001 makes automatic suggestion 可選強化 and puts the confirmation with the user; a route that wrote first and left the user deleting what it had decided for them was the opposite shape. Adopting a proposal is POST /test-cases/{id}/criteria with its text, one at a time, which is the same route a hand-written criterion goes through.  A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
      * @summary Ask the model to propose acceptance criteria (TEST-002)
      * @param {string} id 
@@ -2083,6 +3476,15 @@ export interface DefaultApiInterface {
      * Ask the model to propose acceptance criteria (TEST-002)
      */
     suggestAcceptanceCriteria(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AcceptanceCriteriaSuggestions>;
+
+    /**
+     * Creates request options for takedownSkill without sending the request
+     * @param {string} id 
+     * @param {TakedownSkillRequest} takedownSkillRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    takedownSkillRequestOpts(requestParameters: TakedownSkillOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Not a delete. The skill, its versions and their import sources are retained (PDM-006 §6 makes takedown the only removal path for them); the skill leaves search, stops being a fork source, and its detail view answers 410. Existing forks and historical runs are unaffected, and a full reindex does not bring it back.  Authorization is the ordinary workspace scope, which for curated catalog entries means the operator who owns the catalog workspace. Taking down content in someone else\'s workspace needs an operator role the MVP does not define yet. 
@@ -2102,6 +3504,15 @@ export interface DefaultApiInterface {
     takedownSkill(requestParameters: TakedownSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TakedownSkill200Response>;
 
     /**
+     * Creates request options for takedownSkillAsOperator without sending the request
+     * @param {string} id 
+     * @param {TakedownSkillAsOperatorRequest} takedownSkillAsOperatorRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    takedownSkillAsOperatorRequestOpts(requestParameters: TakedownSkillAsOperatorOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. What had no path at all until 2026-08-28 was the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace. `registry.go` carried a comment saying so, and saying exactly how to fix it, since the method was written (`04` 丙-80).  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built (`04` 丙-80).  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
      * @summary Withdraw a skill from anywhere on the platform (SEC-011 action 1)
      * @param {string} id 
@@ -2117,6 +3528,16 @@ export interface DefaultApiInterface {
      * Withdraw a skill from anywhere on the platform (SEC-011 action 1)
      */
     takedownSkillAsOperator(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TakedownSkillAsOperator200Response>;
+
+    /**
+     * Creates request options for updateAcceptanceCriterion without sending the request
+     * @param {string} id 
+     * @param {string} criterionId 
+     * @param {UpdateAcceptanceCriterionRequest} updateAcceptanceCriterionRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    updateAcceptanceCriterionRequestOpts(requestParameters: UpdateAcceptanceCriterionOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Edit and confirmation are one statement because they are one decision: confirming means agreeing to the text as it stands. Changing the text of a confirmed criterion therefore clears the confirmation — the agreement applied to the old words. 
@@ -2137,6 +3558,15 @@ export interface DefaultApiInterface {
     updateAcceptanceCriterion(requestParameters: UpdateAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
 
     /**
+     * Creates request options for updateTestCase without sending the request
+     * @param {string} id 
+     * @param {UpdateTestCaseRequest} updateTestCaseRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    updateTestCaseRequestOpts(requestParameters: UpdateTestCaseOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4, ADR-003). 
      * @summary Edit a test case\'s name, prompt or rubric (TEST-001, CONTENT-007)
      * @param {string} id 
@@ -2154,6 +3584,15 @@ export interface DefaultApiInterface {
     updateTestCase(requestParameters: UpdateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
 
     /**
+     * Creates request options for uploadDataset without sending the request
+     * @param {string} id 
+     * @param {Blob} file 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    uploadDatasetRequestOpts(requestParameters: UploadDatasetRequest): Promise<runtime.RequestOpts>;
+
+    /**
      * PDM-005 §5.1 limits are enforced here: at most 25 MB per file, 100 MB and 20 files per test case, and an allow-list of kinds judged by magic bytes — the file extension is never consulted, so an executable renamed to `.csv` is refused. Rejections name the limit that was hit and nothing about the system behind it (02:TEST-002 不洩漏系統資訊).  The stored file is reachable only by runs of this test case, and `expires_at` is 90 days from upload. 
      * @summary Upload one dataset file to a test case (TEST-004)
      * @param {string} id 
@@ -2169,6 +3608,14 @@ export interface DefaultApiInterface {
      * Upload one dataset file to a test case (TEST-004)
      */
     uploadDataset(requestParameters: UploadDatasetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Dataset>;
+
+    /**
+     * Creates request options for uploadSkillPackage without sending the request
+     * @param {Blob} body 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    uploadSkillPackageRequestOpts(requestParameters: UploadSkillPackageRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Requires a session. The archive is statically validated only; nothing inside it is executed. Blocking findings reject the import; identical content re-uploaded to the same skill returns the existing version. 
@@ -2194,9 +3641,9 @@ export interface DefaultApiInterface {
 export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
     /**
-     * actOnCreationSession
+     * Creates request options for actOnCreationSession without sending the request
      */
-    async actOnCreationSessionRaw(requestParameters: ActOnCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>> {
+    async actOnCreationSessionRequestOpts(requestParameters: ActOnCreationSessionRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['sessionId'] == null) {
             throw new runtime.RequiredError(
                 'sessionId',
@@ -2219,15 +3666,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/creation-sessions/{session_id}/actions`;
-        urlPath = urlPath.replace(`{${"session_id"}}`, encodeURIComponent(String(requestParameters['sessionId'])));
+        urlPath = urlPath.replace('{session_id}', encodeURIComponent(String(requestParameters['sessionId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: CreationActionToJSON(requestParameters['creationAction']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * actOnCreationSession
+     */
+    async actOnCreationSessionRaw(requestParameters: ActOnCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>> {
+        const requestOptions = await this.actOnCreationSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CreationSessionFromJSON(jsonValue));
     }
@@ -2241,10 +3696,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The one write path for a criterion, whether the user typed it or adopted a proposal from POST .../criteria/suggest. Either way it arrives unconfirmed: adopting a wording is not yet agreeing to it (TEST-003). 
-     * Add an acceptance criterion (TEST-003)
+     * Creates request options for addAcceptanceCriterion without sending the request
      */
-    async addAcceptanceCriterionRaw(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+    async addAcceptanceCriterionRequestOpts(requestParameters: AddAcceptanceCriterionOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2267,15 +3721,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/test-cases/{id}/criteria`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: AddAcceptanceCriterionRequestToJSON(requestParameters['addAcceptanceCriterionRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * The one write path for a criterion, whether the user typed it or adopted a proposal from POST .../criteria/suggest. Either way it arrives unconfirmed: adopting a wording is not yet agreeing to it (TEST-003). 
+     * Add an acceptance criterion (TEST-003)
+     */
+    async addAcceptanceCriterionRaw(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+        const requestOptions = await this.addAcceptanceCriterionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TestCaseFromJSON(jsonValue));
     }
@@ -2290,10 +3753,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * What is in the catalogue, for a caller who has not asked a question yet.  This is a second operation and not a `q`-less mode of `GET /api/skills/search`, because the two answer different questions and the difference is visible in the payload. Search answers 「what matches this sentence」 and everything about its response is downstream of that: the ordering is a similarity, `no_results` is a distance cut-off, `query_suggestion` is advice about the words. A browse has none of those, and folding it in would have shipped a response whose `query` is empty, whose `no_results` means 「the catalogue is empty」 on one path and 「nothing was close enough」 on the other, and whose `rank` is null for every row. The separate envelope keeps browse from pretending to be a query-less search; rows still share the public Skill card shape, and `rank_note` explicitly explains this third kind of absent rank.  **Ordering: curated first, then newest version first, then by id.** ADR-041 / 設計系統 §2.11(b) forbid popularity as a default order and this product has no popularity signal to misuse anyway; `curation_tier` is the one ordering input backed by a human review (PDM-002\'s nine items), and the id tiebreak keeps the order stable between two calls. Every row carries `rank: null` and a `rank_note` saying so, which is the same contract the degraded search path already uses — a client never has to guess why a page is not ranked by similarity.  Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can widen it (CORE-006, ADR-011).  The five live DISC-002 filters apply here for the reason they exist: they are the controls on the same screen, and a filter that only bites after a search would be a live control that narrows nothing (設計系統 §2.2). They are script, validation, agent, tier and category — category joined them on 2026-09-03 with migration 0053, and this sentence said \"four\" until then. DISC-003 is the work item that built them; the acceptance criteria are DISC-002\'s. 
-     * Browse the public skill catalogue (02:DISC-006)
+     * Creates request options for browseCatalog without sending the request
      */
-    async browseCatalogRaw(requestParameters: BrowseCatalogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CatalogResponse>> {
+    async browseCatalogRequestOpts(requestParameters: BrowseCatalogRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         if (requestParameters['limit'] != null) {
@@ -2325,12 +3787,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/api/skills/catalog`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * What is in the catalogue, for a caller who has not asked a question yet.  This is a second operation and not a `q`-less mode of `GET /api/skills/search`, because the two answer different questions and the difference is visible in the payload. Search answers 「what matches this sentence」 and everything about its response is downstream of that: the ordering is a similarity, `no_results` is a distance cut-off, `query_suggestion` is advice about the words. A browse has none of those, and folding it in would have shipped a response whose `query` is empty, whose `no_results` means 「the catalogue is empty」 on one path and 「nothing was close enough」 on the other, and whose `rank` is null for every row. The separate envelope keeps browse from pretending to be a query-less search; rows still share the public Skill card shape, and `rank_note` explicitly explains this third kind of absent rank.  **Ordering: curated first, then newest version first, then by id.** ADR-041 / 設計系統 §2.11(b) forbid popularity as a default order and this product has no popularity signal to misuse anyway; `curation_tier` is the one ordering input backed by a human review (PDM-002\'s nine items), and the id tiebreak keeps the order stable between two calls. Every row carries `rank: null` and a `rank_note` saying so, which is the same contract the degraded search path already uses — a client never has to guess why a page is not ranked by similarity.  Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can widen it (CORE-006, ADR-011).  The five live DISC-002 filters apply here for the reason they exist: they are the controls on the same screen, and a filter that only bites after a search would be a live control that narrows nothing (設計系統 §2.2). They are script, validation, agent, tier and category — category joined them on 2026-09-03 with migration 0053, and this sentence said \"four\" until then. DISC-003 is the work item that built them; the acceptance criteria are DISC-002\'s. 
+     * Browse the public skill catalogue (02:DISC-006)
+     */
+    async browseCatalogRaw(requestParameters: BrowseCatalogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CatalogResponse>> {
+        const requestOptions = await this.browseCatalogRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CatalogResponseFromJSON(jsonValue));
     }
@@ -2345,10 +3816,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Valid for the whole grace period. Idempotent: cancelling when nothing is pending is a no-op. 
-     * Withdraw a pending account deletion (CORE-007)
+     * Creates request options for cancelAccountDeletion without sending the request
      */
-    async cancelAccountDeletionRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CancelAccountDeletion200Response>> {
+    async cancelAccountDeletionRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -2356,12 +3826,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/me/deletion/cancel`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Valid for the whole grace period. Idempotent: cancelling when nothing is pending is a no-op. 
+     * Withdraw a pending account deletion (CORE-007)
+     */
+    async cancelAccountDeletionRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CancelAccountDeletion200Response>> {
+        const requestOptions = await this.cancelAccountDeletionRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CancelAccountDeletion200ResponseFromJSON(jsonValue));
     }
@@ -2376,10 +3855,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Records the request and returns 202. The run keeps its current status: the workload is still up until something stops it, and reporting `cancelled` before that would misdescribe a live sandbox.  A queued run has no workload yet, so it does move to `cancelled` shortly after. Propagating the request to a run already at a provider — and the wall-clock timeout that shares the same machinery — is RUN-006.  Idempotent: asking twice keeps the first request time. 
-     * Request cancellation of a run (RUN-004)
+     * Creates request options for cancelRun without sending the request
      */
-    async cancelRunRaw(requestParameters: CancelRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CancelRun202Response>> {
+    async cancelRunRequestOpts(requestParameters: CancelRunRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2393,14 +3871,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/runs/{id}/cancel`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Records the request and returns 202. The run keeps its current status: the workload is still up until something stops it, and reporting `cancelled` before that would misdescribe a live sandbox.  A queued run has no workload yet, so it does move to `cancelled` shortly after. Propagating the request to a run already at a provider — and the wall-clock timeout that shares the same machinery — is RUN-006.  Idempotent: asking twice keeps the first request time. 
+     * Request cancellation of a run (RUN-004)
+     */
+    async cancelRunRaw(requestParameters: CancelRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CancelRun202Response>> {
+        const requestOptions = await this.cancelRunRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CancelRun202ResponseFromJSON(jsonValue));
     }
@@ -2415,10 +3902,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only; the 終判允許 half of 0023, setting the column back to null. Takes a `note` but no `reason`: there is no code to name when the answer is \"no hold at all\", and the operator still has to say why.  Idempotent by construction - lifting a hold that was never there writes the same audit event with a null before-state and answers 204, because the caller\'s intent (this skill must not be held) is satisfied either way. Same single transaction as the PUT. 
-     * Lift the licensing hold on a skill (SEC-011)
+     * Creates request options for clearSkillRestriction without sending the request
      */
-    async clearSkillRestrictionRaw(requestParameters: ClearSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async clearSkillRestrictionRequestOpts(requestParameters: ClearSkillRestrictionOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2441,15 +3927,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/admin/skills/{id}/restriction`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
             body: ClearSkillRestrictionRequestToJSON(requestParameters['clearSkillRestrictionRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only; the 終判允許 half of 0023, setting the column back to null. Takes a `note` but no `reason`: there is no code to name when the answer is \"no hold at all\", and the operator still has to say why.  Idempotent by construction - lifting a hold that was never there writes the same audit event with a null before-state and answers 204, because the caller\'s intent (this skill must not be held) is satisfied either way. Same single transaction as the PUT. 
+     * Lift the licensing hold on a skill (SEC-011)
+     */
+    async clearSkillRestrictionRaw(requestParameters: ClearSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.clearSkillRestrictionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -2463,10 +3958,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Read-only. Both sides are frozen snapshots, so comparing cannot rewrite either run (iron rule 4).  **There is no re-run endpoint.** Re-running is POST /skills/{id}/runs with the new `skill_version_id` and the same `test_case_id`, which keeps preflight and `confirmed_summary_hash` on the path. A one-click shortcut would be a way around the single screen TEST-009 exists to force, and the package contents genuinely did change.  Each side reports its execution status and its task judgement separately, and a side with no judgement says so rather than reading as a pass (ADR-025).  Any two runs in the caller\'s workspace may be compared. Two runs of different test cases, or of different skills, are not refused: the criterion matrix carries a null verdict where a criterion exists on one side only, and `version_diff_url` is absent when there is no diff to link. Refusing them would need a rule the acceptance criteria do not state, and would hide the case a user most wants to see — the same test case re-run after the package changed — behind a guess about intent. 
-     * Compare this run with another one (EVAL-003)
+     * Creates request options for compareRuns without sending the request
      */
-    async compareRunsRaw(requestParameters: CompareRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunComparison>> {
+    async compareRunsRequestOpts(requestParameters: CompareRunsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2491,14 +3985,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/runs/{id}/comparison`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Read-only. Both sides are frozen snapshots, so comparing cannot rewrite either run (iron rule 4).  **There is no re-run endpoint.** Re-running is POST /skills/{id}/runs with the new `skill_version_id` and the same `test_case_id`, which keeps preflight and `confirmed_summary_hash` on the path. A one-click shortcut would be a way around the single screen TEST-009 exists to force, and the package contents genuinely did change.  Each side reports its execution status and its task judgement separately, and a side with no judgement says so rather than reading as a pass (ADR-025).  Any two runs in the caller\'s workspace may be compared. Two runs of different test cases, or of different skills, are not refused: the criterion matrix carries a null verdict where a criterion exists on one side only, and `version_diff_url` is absent when there is no diff to link. Refusing them would need a rule the acceptance criteria do not state, and would hide the case a user most wants to see — the same test case re-run after the package changed — behind a guess about intent. 
+     * Compare this run with another one (EVAL-003)
+     */
+    async compareRunsRaw(requestParameters: CompareRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunComparison>> {
+        const requestOptions = await this.compareRunsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => RunComparisonFromJSON(jsonValue));
     }
@@ -2513,10 +4016,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The user\'s explicit agreement to the summary they were shown. Declining is not an operation: a user who declines simply does not call this, and without a record here the run cannot start.  The hash is checked against a freshly built summary rather than taken on trust, so a client cannot confirm a hash it invented or one that has already gone stale.  Confirmations accumulate by hash, and re-confirming an already-agreed summary is harmless. Nothing expires them: a summary that no longer describes the run hashes differently and its old agreement is simply never looked up again. 
-     * Record agreement to a permission summary (TEST-009)
+     * Creates request options for confirmRunPreflight without sending the request
      */
-    async confirmRunPreflightRaw(requestParameters: ConfirmRunPreflightOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ConfirmRunPreflight201Response>> {
+    async confirmRunPreflightRequestOpts(requestParameters: ConfirmRunPreflightOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2539,15 +4041,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/runs/preflight/confirm`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: ConfirmRunPreflightRequestToJSON(requestParameters['confirmRunPreflightRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * The user\'s explicit agreement to the summary they were shown. Declining is not an operation: a user who declines simply does not call this, and without a record here the run cannot start.  The hash is checked against a freshly built summary rather than taken on trust, so a client cannot confirm a hash it invented or one that has already gone stale.  Confirmations accumulate by hash, and re-confirming an already-agreed summary is harmless. Nothing expires them: a summary that no longer describes the run hashes differently and its old agreement is simply never looked up again. 
+     * Record agreement to a permission summary (TEST-009)
+     */
+    async confirmRunPreflightRaw(requestParameters: ConfirmRunPreflightOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ConfirmRunPreflight201Response>> {
+        const requestOptions = await this.confirmRunPreflightRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ConfirmRunPreflight201ResponseFromJSON(jsonValue));
     }
@@ -2562,9 +4073,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * createCreationSession
+     * Creates request options for createCreationSession without sending the request
      */
-    async createCreationSessionRaw(requestParameters: CreateCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>> {
+    async createCreationSessionRequestOpts(requestParameters: CreateCreationSessionRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['createCreationSession'] == null) {
             throw new runtime.RequiredError(
                 'createCreationSession',
@@ -2581,13 +4092,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/creation-sessions`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: CreateCreationSessionToJSON(requestParameters['createCreationSession']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * createCreationSession
+     */
+    async createCreationSessionRaw(requestParameters: CreateCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>> {
+        const requestOptions = await this.createCreationSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CreationSessionFromJSON(jsonValue));
     }
@@ -2601,10 +4120,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Reads the version\'s stored bytes, filters them against the PACK-004 allow-list, applies the target\'s profile, adds the platform\'s own three files, and validates the result before any of it becomes downloadable. The skill version is neither created nor modified (iron rule 4); a Download Artifact is a new row every time.  **Idempotent.** The same (version, target, include_test_cases, packager version) that already has an unexpired `available` artifact returns that one with `duplicate: true` rather than spending the bytes again — the same answer POST /skills/{id}/versions gives for identical content. Re-packaging is this call again; there is no separate re-package endpoint, because a second route to here would be a second route around the four checks below (the same ruling that left EVAL-003 without a re-run endpoint).  Four things can refuse it, and `blocked_reason` says which, because whether the user can do anything about it depends entirely on that: a licensing hold, content that may not be redistributed, a licence nobody could establish, and a package that would not validate. The first three fail closed — an unknown restriction code restricts and an unestablished licence blocks, in the same direction every read of those flags already faces (SEC-011, 02:DISC-003).  A refusal writes no object and leaves no artifact behind. A build that gets as far as bytes and then fails validation keeps its row at `rejected` with the reason, so \"why can I not download this\" has an answer that outlives the request (packaging-design §4.6). 
-     * Build a downloadable package from one immutable version (PACK-001)
+     * Creates request options for createDownloadArtifact without sending the request
      */
-    async createDownloadArtifactRaw(requestParameters: CreateDownloadArtifactOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateDownloadArtifact201Response>> {
+    async createDownloadArtifactRequestOpts(requestParameters: CreateDownloadArtifactOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2634,16 +4152,25 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/versions/{versionId}/packaging`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
-        urlPath = urlPath.replace(`{${"versionId"}}`, encodeURIComponent(String(requestParameters['versionId'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{versionId}', encodeURIComponent(String(requestParameters['versionId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: CreateDownloadArtifactRequestToJSON(requestParameters['createDownloadArtifactRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Reads the version\'s stored bytes, filters them against the PACK-004 allow-list, applies the target\'s profile, adds the platform\'s own three files, and validates the result before any of it becomes downloadable. The skill version is neither created nor modified (iron rule 4); a Download Artifact is a new row every time.  **Idempotent.** The same (version, target, include_test_cases, packager version) that already has an unexpired `available` artifact returns that one with `duplicate: true` rather than spending the bytes again — the same answer POST /skills/{id}/versions gives for identical content. Re-packaging is this call again; there is no separate re-package endpoint, because a second route to here would be a second route around the four checks below (the same ruling that left EVAL-003 without a re-run endpoint).  Four things can refuse it, and `blocked_reason` says which, because whether the user can do anything about it depends entirely on that: a licensing hold, content that may not be redistributed, a licence nobody could establish, and a package that would not validate. The first three fail closed — an unknown restriction code restricts and an unestablished licence blocks, in the same direction every read of those flags already faces (SEC-011, 02:DISC-003).  A refusal writes no object and leaves no artifact behind. A build that gets as far as bytes and then fails validation keeps its row at `rejected` with the reason, so \"why can I not download this\" has an answer that outlives the request (packaging-design §4.6). 
+     * Build a downloadable package from one immutable version (PACK-001)
+     */
+    async createDownloadArtifactRaw(requestParameters: CreateDownloadArtifactOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateDownloadArtifact201Response>> {
+        const requestOptions = await this.createDownloadArtifactRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CreateDownloadArtifact201ResponseFromJSON(jsonValue));
     }
@@ -2658,10 +4185,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Turns accepted suggestions into exactly **one** new immutable version (iron rule 4). The version they were written against is not touched and historical runs keep pointing at it. Several suggestions land in one version on purpose: one version per suggestion would leave a chain of intermediate versions nobody ever ran.  Every suggestion is re-checked here rather than trusted from when it was proposed. `target_path` must resolve inside the package, the target file must still hash as it did then, the package must still pass the same static validation an import goes through, and a skill under a 0023 licensing hold is refused. Anything that fails comes back by id with its reason instead of being applied quietly.  Creating a version is not permission to run it. The new content hashes differently, so the preflight summary changes and TEST-009 requires a fresh confirmation before POST /skills/{id}/runs will start anything — the same reason EVAL-003 has no re-run endpoint of its own. 
-     * Apply accepted improvement suggestions as one new version (EVAL-002)
+     * Creates request options for createSkillVersionFromSuggestions without sending the request
      */
-    async createSkillVersionFromSuggestionsRaw(requestParameters: CreateSkillVersionFromSuggestionsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateSkillVersionFromSuggestions201Response>> {
+    async createSkillVersionFromSuggestionsRequestOpts(requestParameters: CreateSkillVersionFromSuggestionsOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2684,15 +4210,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/versions/from-suggestions`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: CreateSkillVersionFromSuggestionsRequestToJSON(requestParameters['createSkillVersionFromSuggestionsRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Turns accepted suggestions into exactly **one** new immutable version (iron rule 4). The version they were written against is not touched and historical runs keep pointing at it. Several suggestions land in one version on purpose: one version per suggestion would leave a chain of intermediate versions nobody ever ran.  Every suggestion is re-checked here rather than trusted from when it was proposed. `target_path` must resolve inside the package, the target file must still hash as it did then, the package must still pass the same static validation an import goes through, and a skill under a 0023 licensing hold is refused. Anything that fails comes back by id with its reason instead of being applied quietly.  Creating a version is not permission to run it. The new content hashes differently, so the preflight summary changes and TEST-009 requires a fresh confirmation before POST /skills/{id}/runs will start anything — the same reason EVAL-003 has no re-run endpoint of its own. 
+     * Apply accepted improvement suggestions as one new version (EVAL-002)
+     */
+    async createSkillVersionFromSuggestionsRaw(requestParameters: CreateSkillVersionFromSuggestionsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateSkillVersionFromSuggestions201Response>> {
+        const requestOptions = await this.createSkillVersionFromSuggestionsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CreateSkillVersionFromSuggestions201ResponseFromJSON(jsonValue));
     }
@@ -2707,10 +4242,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * A test case is an editable draft bound to a skill in the caller\'s workspace. The prompt and criteria a run actually executed are frozen separately in a snapshot (TEST-010), so editing a draft never rewrites what a past run did.  The skill is chosen here; the skill *version* is chosen when the run starts, so improving a skill does not orphan its test cases (iron rule 4). 
-     * Create a test case draft (TEST-001)
+     * Creates request options for createTestCase without sending the request
      */
-    async createTestCaseRaw(requestParameters: CreateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+    async createTestCaseRequestOpts(requestParameters: CreateTestCaseOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['createTestCaseRequest'] == null) {
             throw new runtime.RequiredError(
                 'createTestCaseRequest',
@@ -2727,13 +4261,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/test-cases`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: CreateTestCaseRequestToJSON(requestParameters['createTestCaseRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * A test case is an editable draft bound to a skill in the caller\'s workspace. The prompt and criteria a run actually executed are frozen separately in a snapshot (TEST-010), so editing a draft never rewrites what a past run did.  The skill is chosen here; the skill *version* is chosen when the run starts, so improving a skill does not orphan its test cases (iron rule 4). 
+     * Create a test case draft (TEST-001)
+     */
+    async createTestCaseRaw(requestParameters: CreateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+        const requestOptions = await this.createTestCaseRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TestCaseFromJSON(jsonValue));
     }
@@ -2748,10 +4291,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Records the decision and changes no package. Applying is POST /skills/{id}/versions/from-suggestions, and the two are separate so that accepting five suggestions produces one new version rather than five.  Repeatable: a later call replaces the decision. It does not undo anything already applied — a version that was built is history, and the way back from it is another version (iron rule 4). Withdrawing the acceptance of a suggestion that has already been built into a version is therefore refused with 409 rather than recorded: the record would say the user never agreed to a change that is sitting in a stored package. 
-     * Accept or reject one suggestion (EVAL-002)
+     * Creates request options for decideSuggestion without sending the request
      */
-    async decideSuggestionRaw(requestParameters: DecideSuggestionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ImprovementSuggestion>> {
+    async decideSuggestionRequestOpts(requestParameters: DecideSuggestionOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2774,15 +4316,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/suggestions/{id}/decision`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PUT',
             headers: headerParameters,
             query: queryParameters,
             body: DecideSuggestionRequestToJSON(requestParameters['decideSuggestionRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Records the decision and changes no package. Applying is POST /skills/{id}/versions/from-suggestions, and the two are separate so that accepting five suggestions produces one new version rather than five.  Repeatable: a later call replaces the decision. It does not undo anything already applied — a version that was built is history, and the way back from it is another version (iron rule 4). Withdrawing the acceptance of a suggestion that has already been built into a version is therefore refused with 409 rather than recorded: the record would say the user never agreed to a change that is sitting in a stored package. 
+     * Accept or reject one suggestion (EVAL-002)
+     */
+    async decideSuggestionRaw(requestParameters: DecideSuggestionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ImprovementSuggestion>> {
+        const requestOptions = await this.decideSuggestionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ImprovementSuggestionFromJSON(jsonValue));
     }
@@ -2797,10 +4348,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation.  This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on.  Writes the halt row and its audit event in one transaction (iron rule 9). Idempotent: re-declaring rewrites the reason and writes a second audit event, because an operator repeating an action is not an error.  A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens. 
-     * Stop dispatching new Runs (SEC-012, 02:SEC-010 P1)
+     * Creates request options for declareDispatchHalt without sending the request
      */
-    async declareDispatchHaltRaw(requestParameters: DeclareDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeclareDispatchHalt200Response>> {
+    async declareDispatchHaltRequestOpts(requestParameters: DeclareDispatchHaltOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['declareDispatchHaltRequest'] == null) {
             throw new runtime.RequiredError(
                 'declareDispatchHaltRequest',
@@ -2817,13 +4367,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/dispatch/halt`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PUT',
             headers: headerParameters,
             query: queryParameters,
             body: DeclareDispatchHaltRequestToJSON(requestParameters['declareDispatchHaltRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation.  This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on.  Writes the halt row and its audit event in one transaction (iron rule 9). Idempotent: re-declaring rewrites the reason and writes a second audit event, because an operator repeating an action is not an error.  A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens. 
+     * Stop dispatching new Runs (SEC-012, 02:SEC-010 P1)
+     */
+    async declareDispatchHaltRaw(requestParameters: DeclareDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeclareDispatchHalt200Response>> {
+        const requestOptions = await this.declareDispatchHaltRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => DeclareDispatchHalt200ResponseFromJSON(jsonValue));
     }
@@ -2838,9 +4397,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Remove an acceptance criterion (TEST-003)
+     * Creates request options for deleteAcceptanceCriterion without sending the request
      */
-    async deleteAcceptanceCriterionRaw(requestParameters: DeleteAcceptanceCriterionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+    async deleteAcceptanceCriterionRequestOpts(requestParameters: DeleteAcceptanceCriterionRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2861,15 +4420,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/test-cases/{id}/criteria/{criterionId}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
-        urlPath = urlPath.replace(`{${"criterionId"}}`, encodeURIComponent(String(requestParameters['criterionId'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{criterionId}', encodeURIComponent(String(requestParameters['criterionId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Remove an acceptance criterion (TEST-003)
+     */
+    async deleteAcceptanceCriterionRaw(requestParameters: DeleteAcceptanceCriterionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+        const requestOptions = await this.deleteAcceptanceCriterionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TestCaseFromJSON(jsonValue));
     }
@@ -2883,10 +4450,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Usable before a run to withdraw a file and after a run to remove it. The stored object is deleted; snapshots keep the file\'s name and content hash so past runs stay traceable (ADR-003). 
-     * Delete an uploaded file (TEST-004)
+     * Creates request options for deleteDataset without sending the request
      */
-    async deleteDatasetRaw(requestParameters: DeleteDatasetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeleteDataset200Response>> {
+    async deleteDatasetRequestOpts(requestParameters: DeleteDatasetRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2907,15 +4473,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/test-cases/{id}/datasets/{datasetId}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
-        urlPath = urlPath.replace(`{${"datasetId"}}`, encodeURIComponent(String(requestParameters['datasetId'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{datasetId}', encodeURIComponent(String(requestParameters['datasetId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Usable before a run to withdraw a file and after a run to remove it. The stored object is deleted; snapshots keep the file\'s name and content hash so past runs stay traceable (ADR-003). 
+     * Delete an uploaded file (TEST-004)
+     */
+    async deleteDatasetRaw(requestParameters: DeleteDatasetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeleteDataset200Response>> {
+        const requestOptions = await this.deleteDatasetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => DeleteDataset200ResponseFromJSON(jsonValue));
     }
@@ -2930,10 +4505,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Removes the stored object, and the row stops being visible: it leaves this list, `GET /downloads/{artifactId}` answers 404, and so does the content route. That is what 02:SEC-006 asks for — deleted content no longer appearing in ordinary access surfaces.  The row itself is kept rather than dropped, for two reasons that both outrank tidiness: the download *records* have a foreign key onto it and outlive it by design (`WS-004` — they say the user once downloaded this, which stays true after the file is gone), and the packaging row is immutable (iron rule 4). The bytes are what actually go, and they can: every packaging run writes its own object, unlike a skill version\'s package object, which forks share by content address and the governance purge deliberately spares.  Idempotent, and 204 for an id that is not there — the caller\'s intent (this artifact must not exist) is satisfied either way, and answering 404 for a repeat of a delete that worked would report success as failure. 
-     * Delete a download artifact of one\'s own (WS-002, SEC-006)
+     * Creates request options for deleteDownloadArtifact without sending the request
      */
-    async deleteDownloadArtifactRaw(requestParameters: DeleteDownloadArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async deleteDownloadArtifactRequestOpts(requestParameters: DeleteDownloadArtifactRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['artifactId'] == null) {
             throw new runtime.RequiredError(
                 'artifactId',
@@ -2947,14 +4521,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/downloads/{artifactId}`;
-        urlPath = urlPath.replace(`{${"artifactId"}}`, encodeURIComponent(String(requestParameters['artifactId'])));
+        urlPath = urlPath.replace('{artifactId}', encodeURIComponent(String(requestParameters['artifactId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Removes the stored object, and the row stops being visible: it leaves this list, `GET /downloads/{artifactId}` answers 404, and so does the content route. That is what 02:SEC-006 asks for — deleted content no longer appearing in ordinary access surfaces.  The row itself is kept rather than dropped, for two reasons that both outrank tidiness: the download *records* have a foreign key onto it and outlive it by design (`WS-004` — they say the user once downloaded this, which stays true after the file is gone), and the packaging row is immutable (iron rule 4). The bytes are what actually go, and they can: every packaging run writes its own object, unlike a skill version\'s package object, which forks share by content address and the governance purge deliberately spares.  Idempotent, and 204 for an id that is not there — the caller\'s intent (this artifact must not exist) is satisfied either way, and answering 404 for a repeat of a delete that worked would report success as failure. 
+     * Delete a download artifact of one\'s own (WS-002, SEC-006)
+     */
+    async deleteDownloadArtifactRaw(requestParameters: DeleteDownloadArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.deleteDownloadArtifactRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -2968,10 +4551,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Idempotent: an id that is not there, is already deleted, or belongs to somebody else all answer 204. The caller asked for the file not to exist, and that holds in every one of those cases; answering 404 to a repeat of a delete that worked would report success as failure.  The row is soft-deleted so evaluations keep the evidence reference they already recorded, and stops appearing in this workspace\'s surfaces, which is what 02:SEC-006 asks for. The stored object is removed after the commit unless another artifact row still names the same key. 
-     * Delete one of the caller\'s run outputs (02:WS-002 第 3 條, 02:SEC-006 第 1 條)
+     * Creates request options for deleteRunArtifact without sending the request
      */
-    async deleteRunArtifactRaw(requestParameters: DeleteRunArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async deleteRunArtifactRequestOpts(requestParameters: DeleteRunArtifactRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -2992,15 +4574,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/runs/{id}/artifacts/{artifactId}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
-        urlPath = urlPath.replace(`{${"artifactId"}}`, encodeURIComponent(String(requestParameters['artifactId'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{artifactId}', encodeURIComponent(String(requestParameters['artifactId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Idempotent: an id that is not there, is already deleted, or belongs to somebody else all answer 204. The caller asked for the file not to exist, and that holds in every one of those cases; answering 404 to a repeat of a delete that worked would report success as failure.  The row is soft-deleted so evaluations keep the evidence reference they already recorded, and stops appearing in this workspace\'s surfaces, which is what 02:SEC-006 asks for. The stored object is removed after the commit unless another artifact row still names the same key. 
+     * Delete one of the caller\'s run outputs (02:WS-002 第 3 條, 02:SEC-006 第 1 條)
+     */
+    async deleteRunArtifactRaw(requestParameters: DeleteRunArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.deleteRunArtifactRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -3014,10 +4605,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Soft delete: the skill leaves lists, reads, and search immediately. Version snapshots stay frozen for the 30-day grace period before the background purge; shared package objects are unaffected. 
-     * Delete a private skill (WS-005)
+     * Creates request options for deleteSkill without sending the request
      */
-    async deleteSkillRaw(requestParameters: DeleteSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeleteSkill200Response>> {
+    async deleteSkillRequestOpts(requestParameters: DeleteSkillRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -3031,14 +4621,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Soft delete: the skill leaves lists, reads, and search immediately. Version snapshots stay frozen for the 30-day grace period before the background purge; shared package objects are unaffected. 
+     * Delete a private skill (WS-005)
+     */
+    async deleteSkillRaw(requestParameters: DeleteSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeleteSkill200Response>> {
+        const requestOptions = await this.deleteSkillRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => DeleteSkill200ResponseFromJSON(jsonValue));
     }
@@ -3053,10 +4652,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Soft delete. The draft and its live datasets leave every read now and the stored objects are removed. Snapshots of past runs are retained and keep the prompt, the criteria and each file\'s name and content hash, so those runs stay traceable although they are no longer reproducible (ADR-003). 
-     * Delete a test case and its uploaded files (WS-002)
+     * Creates request options for deleteTestCase without sending the request
      */
-    async deleteTestCaseRaw(requestParameters: DeleteTestCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeleteTestCase200Response>> {
+    async deleteTestCaseRequestOpts(requestParameters: DeleteTestCaseRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -3070,14 +4668,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/test-cases/{id}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Soft delete. The draft and its live datasets leave every read now and the stored objects are removed. Snapshots of past runs are retained and keep the prompt, the criteria and each file\'s name and content hash, so those runs stay traceable although they are no longer reproducible (ADR-003). 
+     * Delete a test case and its uploaded files (WS-002)
+     */
+    async deleteTestCaseRaw(requestParameters: DeleteTestCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeleteTestCase200Response>> {
+        const requestOptions = await this.deleteTestCaseRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => DeleteTestCase200ResponseFromJSON(jsonValue));
     }
@@ -3092,10 +4699,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Exists only when the server runs with DEV_LOGIN=1 (local demo and E2E); in production the route is absent and returns 404. 
-     * Offline dev-provider login (ADR-020)
+     * Creates request options for devLogin without sending the request
      */
-    async devLoginRaw(requestParameters: DevLoginOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async devLoginRequestOpts(requestParameters: DevLoginOperationRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3105,13 +4711,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/auth/dev/login`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: DevLoginRequestToJSON(requestParameters['devLoginRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Exists only when the server runs with DEV_LOGIN=1 (local demo and E2E); in production the route is absent and returns 404. 
+     * Offline dev-provider login (ADR-020)
+     */
+    async devLoginRaw(requestParameters: DevLoginOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.devLoginRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -3125,9 +4740,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Compare any two versions of a skill (WS-003)
+     * Creates request options for diffSkillVersions without sending the request
      */
-    async diffSkillVersionsRaw(requestParameters: DiffSkillVersionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DiffSkillVersions200Response>> {
+    async diffSkillVersionsRequestOpts(requestParameters: DiffSkillVersionsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -3163,14 +4778,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/diff`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Compare any two versions of a skill (WS-003)
+     */
+    async diffSkillVersionsRaw(requestParameters: DiffSkillVersionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DiffSkillVersions200Response>> {
+        const requestOptions = await this.diffSkillVersionsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => DiffSkillVersions200ResponseFromJSON(jsonValue));
     }
@@ -3184,10 +4807,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * **The platform streams the bytes; it does not hand out a pre-signed URL** (packaging-design §7.1). Workspace scope is then the session middleware already in place rather than a second authorization scheme; the URL is not secret material, so it can appear in a log and in the audit event this download writes; and the status and restriction checks happen in this handler on every request instead of once at signing time, where a hold applied inside the TTL would not have stopped anything. Bytes crossing the API process is movement, not execution (iron rule 1).  One successful download writes three things in one transaction (iron rule 9): the artifact\'s access time, a download record (WS-004, what the user sees) and an audit event (CORE-008, what compliance keeps). Those two are not merged — their retention and their visibility differ, and one row would bind each to the stricter of the two. 
-     * The package bytes themselves (PACK-001)
+     * Creates request options for downloadArtifactContent without sending the request
      */
-    async downloadArtifactContentRaw(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
+    async downloadArtifactContentRequestOpts(requestParameters: DownloadArtifactContentRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['artifactId'] == null) {
             throw new runtime.RequiredError(
                 'artifactId',
@@ -3201,14 +4823,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/downloads/{artifactId}/content`;
-        urlPath = urlPath.replace(`{${"artifactId"}}`, encodeURIComponent(String(requestParameters['artifactId'])));
+        urlPath = urlPath.replace('{artifactId}', encodeURIComponent(String(requestParameters['artifactId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * **The platform streams the bytes; it does not hand out a pre-signed URL** (packaging-design §7.1). Workspace scope is then the session middleware already in place rather than a second authorization scheme; the URL is not secret material, so it can appear in a log and in the audit event this download writes; and the status and restriction checks happen in this handler on every request instead of once at signing time, where a hold applied inside the TTL would not have stopped anything. Bytes crossing the API process is movement, not execution (iron rule 1).  One successful download writes three things in one transaction (iron rule 9): the artifact\'s access time, a download record (WS-004, what the user sees) and an audit event (CORE-008, what compliance keeps). Those two are not merged — their retention and their visibility differ, and one row would bind each to the stricter of the two. 
+     * The package bytes themselves (PACK-001)
+     */
+    async downloadArtifactContentRaw(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
+        const requestOptions = await this.downloadArtifactContentRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.BlobApiResponse(response);
     }
@@ -3223,10 +4854,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. A `q` that is a UUID matches that skill id; anything else is a case-insensitive substring of the name. Every workspace is searched, private and taken-down skills included, because those are what public search cannot find and what an operator acts on. Deleted skills are never listed. At most 20, newest first.  Each match carries governance state only, never SKILL.md or the file tree, so this is not a personal-data read and writes no audit event. 
-     * Find skills to govern, in every workspace (02:OPS-004)
+     * Creates request options for findSkillsForGovernance without sending the request
      */
-    async findSkillsForGovernanceRaw(requestParameters: FindSkillsForGovernanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FindSkillsForGovernance200Response>> {
+    async findSkillsForGovernanceRequestOpts(requestParameters: FindSkillsForGovernanceRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['q'] == null) {
             throw new runtime.RequiredError(
                 'q',
@@ -3245,12 +4875,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/skills`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. A `q` that is a UUID matches that skill id; anything else is a case-insensitive substring of the name. Every workspace is searched, private and taken-down skills included, because those are what public search cannot find and what an operator acts on. Deleted skills are never listed. At most 20, newest first.  Each match carries governance state only, never SKILL.md or the file tree, so this is not a personal-data read and writes no audit event. 
+     * Find skills to govern, in every workspace (02:OPS-004)
+     */
+    async findSkillsForGovernanceRaw(requestParameters: FindSkillsForGovernanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FindSkillsForGovernance200Response>> {
+        const requestOptions = await this.findSkillsForGovernanceRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => FindSkillsForGovernance200ResponseFromJSON(jsonValue));
     }
@@ -3265,9 +4904,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * GitHub OAuth callback; creates user and workspace on first login
+     * Creates request options for finishGithubLogin without sending the request
      */
-    async finishGithubLoginRaw(requestParameters: FinishGithubLoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async finishGithubLoginRequestOpts(requestParameters: FinishGithubLoginRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['code'] == null) {
             throw new runtime.RequiredError(
                 'code',
@@ -3297,12 +4936,20 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/auth/github/callback`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * GitHub OAuth callback; creates user and workspace on first login
+     */
+    async finishGithubLoginRaw(requestParameters: FinishGithubLoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.finishGithubLoginRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -3315,10 +4962,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The package object is shared (content-addressed), not copied. Lineage to the original skill and version is preserved on the fork. 
-     * Fork a readable skill\'s latest version into the caller\'s workspace (WS-001)
+     * Creates request options for forkSkill without sending the request
      */
-    async forkSkillRaw(requestParameters: ForkSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ForkSkill201Response>> {
+    async forkSkillRequestOpts(requestParameters: ForkSkillRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -3332,14 +4978,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/fork`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * The package object is shared (content-addressed), not copied. Lineage to the original skill and version is preserved on the fork. 
+     * Fork a readable skill\'s latest version into the caller\'s workspace (WS-001)
+     */
+    async forkSkillRaw(requestParameters: ForkSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ForkSkill201Response>> {
+        const requestOptions = await this.forkSkillRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ForkSkill201ResponseFromJSON(jsonValue));
     }
@@ -3354,10 +5009,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist — it answers whatever an unregistered path under /skills answers (405 today, because DELETE /skills/{id} matches the shape; the sameness is the point, not the number) — and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Three ways in, one path out (ADR-066). The input is a task description in the user\'s own words (GEN-001), a flowchart or diagram image (GEN-005), or both together; and any of those may name up to three existing Skills the user found by searching, which the model reads as worked examples and not as bytes to copy (GEN-006). Whatever the input shape, the output is the same: one new Skill, version 1, `redistribution = generated`, and a provenance row that names every input. **At least one of `task_description` and `diagram` must be present**; references alone are refused (422), because \"make me one like this\" with nothing said about the task is a fork, and Fork already exists.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
-     * Generate a Skill from a task description, a diagram, or both, optionally guided by existing Skills (GEN-001, GEN-005, GEN-006)
+     * Creates request options for generateSkill without sending the request
      */
-    async generateSkillRaw(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerateSkillResult>> {
+    async generateSkillRequestOpts(requestParameters: GenerateSkillOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['generateSkillRequest'] == null) {
             throw new runtime.RequiredError(
                 'generateSkillRequest',
@@ -3374,13 +5028,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/skills/generate`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: GenerateSkillRequestToJSON(requestParameters['generateSkillRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist — it answers whatever an unregistered path under /skills answers (405 today, because DELETE /skills/{id} matches the shape; the sameness is the point, not the number) — and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Three ways in, one path out (ADR-066). The input is a task description in the user\'s own words (GEN-001), a flowchart or diagram image (GEN-005), or both together; and any of those may name up to three existing Skills the user found by searching, which the model reads as worked examples and not as bytes to copy (GEN-006). Whatever the input shape, the output is the same: one new Skill, version 1, `redistribution = generated`, and a provenance row that names every input. **At least one of `task_description` and `diagram` must be present**; references alone are refused (422), because \"make me one like this\" with nothing said about the task is a fork, and Fork already exists.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
+     * Generate a Skill from a task description, a diagram, or both, optionally guided by existing Skills (GEN-001, GEN-005, GEN-006)
+     */
+    async generateSkillRaw(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerateSkillResult>> {
+        const requestOptions = await this.generateSkillRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => GenerateSkillResultFromJSON(jsonValue));
     }
@@ -3395,10 +5058,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. The same numbers the start threshold and the session estimate read. No user or workspace dimension. A kind that has never been computed is absent. 
-     * The newest statistics window of every cost kind (02:OPS-007)
+     * Creates request options for getCostStatistics without sending the request
      */
-    async getCostStatisticsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetCostStatistics200Response>> {
+    async getCostStatisticsRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3406,12 +5068,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/cost-statistics`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. The same numbers the start threshold and the session estimate read. No user or workspace dimension. A kind that has never been computed is absent. 
+     * The newest statistics window of every cost kind (02:OPS-007)
+     */
+    async getCostStatisticsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetCostStatistics200Response>> {
+        const requestOptions = await this.getCostStatisticsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => GetCostStatistics200ResponseFromJSON(jsonValue));
     }
@@ -3426,10 +5097,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Sum of usd_micros and event count per UTC day and cost kind, estimated costs included. Grouped by UTC day only; no user, workspace or email in the response. A day or kind with no events has no bucket. 
-     * Daily platform cost by kind (02:OPS-008)
+     * Creates request options for getCostTrend without sending the request
      */
-    async getCostTrendRaw(requestParameters: GetCostTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AmountTrend>> {
+    async getCostTrendRequestOpts(requestParameters: GetCostTrendRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         if (requestParameters['days'] != null) {
@@ -3441,12 +5111,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/trends/cost`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. Sum of usd_micros and event count per UTC day and cost kind, estimated costs included. Grouped by UTC day only; no user, workspace or email in the response. A day or kind with no events has no bucket. 
+     * Daily platform cost by kind (02:OPS-008)
+     */
+    async getCostTrendRaw(requestParameters: GetCostTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AmountTrend>> {
+        const requestOptions = await this.getCostTrendRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => AmountTrendFromJSON(jsonValue));
     }
@@ -3461,10 +5140,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
-     * getCreationLimits
+     * Creates request options for getCreationLimits without sending the request
      */
-    async getCreationLimitsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationLimits>> {
+    async getCreationLimitsRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3472,12 +5150,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/creation-sessions/limits`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
+     * getCreationLimits
+     */
+    async getCreationLimitsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationLimits>> {
+        const requestOptions = await this.getCreationLimitsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CreationLimitsFromJSON(jsonValue));
     }
@@ -3492,9 +5179,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * getCreationSession
+     * Creates request options for getCreationSession without sending the request
      */
-    async getCreationSessionRaw(requestParameters: GetCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>> {
+    async getCreationSessionRequestOpts(requestParameters: GetCreationSessionRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['sessionId'] == null) {
             throw new runtime.RequiredError(
                 'sessionId',
@@ -3508,14 +5195,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/creation-sessions/{session_id}`;
-        urlPath = urlPath.replace(`{${"session_id"}}`, encodeURIComponent(String(requestParameters['sessionId'])));
+        urlPath = urlPath.replace('{session_id}', encodeURIComponent(String(requestParameters['sessionId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * getCreationSession
+     */
+    async getCreationSessionRaw(requestParameters: GetCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreationSession>> {
+        const requestOptions = await this.getCreationSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CreationSessionFromJSON(jsonValue));
     }
@@ -3529,10 +5224,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Credit is this platform\'s only unit of account (ADR-068). Everything a user is shown about cost is denominated in it; US dollars are the platform\'s own ledger and never appear on this route.  Three numbers and a verdict: the balance, how far below zero it may go before the per-step gate stops a session, what one interactive-creation session is expected to cost, and whether a new one may begin.  The threshold `can_start` is measured against is the same one the domain gate blocks on — one definition, computed once — for the reason GET /me/quota never recomputes PDM-010\'s counters: a display with its own arithmetic can disagree with the rule it is showing.  `estimated_session.estimated` true means fewer than 20 cost samples exist for the current window and a conservative configured constant was used in place of a measured p95. A fallback that presented itself as a measurement would be worse than no number at all, so it is labelled. 
-     * The account\'s Credit balance and what one creation session costs (CRED-001)
+     * Creates request options for getCreditBalance without sending the request
      */
-    async getCreditBalanceRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditBalance>> {
+    async getCreditBalanceRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3540,12 +5234,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/me/credits`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Credit is this platform\'s only unit of account (ADR-068). Everything a user is shown about cost is denominated in it; US dollars are the platform\'s own ledger and never appear on this route.  Three numbers and a verdict: the balance, how far below zero it may go before the per-step gate stops a session, what one interactive-creation session is expected to cost, and whether a new one may begin.  The threshold `can_start` is measured against is the same one the domain gate blocks on — one definition, computed once — for the reason GET /me/quota never recomputes PDM-010\'s counters: a display with its own arithmetic can disagree with the rule it is showing.  `estimated_session.estimated` true means fewer than 20 cost samples exist for the current window and a conservative configured constant was used in place of a measured p95. A fallback that presented itself as a measurement would be worse than no number at all, so it is labelled. 
+     * The account\'s Credit balance and what one creation session costs (CRED-001)
+     */
+    async getCreditBalanceRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditBalance>> {
+        const requestOptions = await this.getCreditBalanceRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CreditBalanceFromJSON(jsonValue));
     }
@@ -3560,10 +5263,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. The balance and the 50 newest ledger entries of the account that owns this workspace: how an operator confirms a grant landed, and answers \"where did my credits go\".  Entries carry no reason. credit_entries is an immutable ledger with no reason column; the reason of a grant is in its `credit.grant` audit event, listed by GET /admin/audit-log.  Every call writes one `credit.lookup` audit event in the same transaction as the read. 
-     * Balance and recent entries of one account (02:OPS-003)
+     * Creates request options for getCreditLedger without sending the request
      */
-    async getCreditLedgerRaw(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditLedger>> {
+    async getCreditLedgerRequestOpts(requestParameters: GetCreditLedgerRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['workspaceId'] == null) {
             throw new runtime.RequiredError(
                 'workspaceId',
@@ -3577,14 +5279,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/admin/credits/{workspace_id}`;
-        urlPath = urlPath.replace(`{${"workspace_id"}}`, encodeURIComponent(String(requestParameters['workspaceId'])));
+        urlPath = urlPath.replace('{workspace_id}', encodeURIComponent(String(requestParameters['workspaceId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. The balance and the 50 newest ledger entries of the account that owns this workspace: how an operator confirms a grant landed, and answers \"where did my credits go\".  Entries carry no reason. credit_entries is an immutable ledger with no reason column; the reason of a grant is in its `credit.grant` audit event, listed by GET /admin/audit-log.  Every call writes one `credit.lookup` audit event in the same transaction as the read. 
+     * Balance and recent entries of one account (02:OPS-003)
+     */
+    async getCreditLedgerRaw(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditLedger>> {
+        const requestOptions = await this.getCreditLedgerRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CreditLedgerFromJSON(jsonValue));
     }
@@ -3599,10 +5310,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Net delta_credits and entry count per UTC day and entry kind, plus the sum of every current balance. Grouped by UTC day only; no user, workspace or email in the response. 
-     * Daily credit movement by entry kind (02:OPS-008)
+     * Creates request options for getCreditTrend without sending the request
      */
-    async getCreditTrendRaw(requestParameters: GetCreditTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditTrend>> {
+    async getCreditTrendRequestOpts(requestParameters: GetCreditTrendRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         if (requestParameters['days'] != null) {
@@ -3614,12 +5324,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/trends/credits`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. Net delta_credits and entry count per UTC day and entry kind, plus the sum of every current balance. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Daily credit movement by entry kind (02:OPS-008)
+     */
+    async getCreditTrendRaw(requestParameters: GetCreditTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditTrend>> {
+        const requestOptions = await this.getCreditTrendRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CreditTrendFromJSON(jsonValue));
     }
@@ -3634,10 +5353,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * 02:O11Y-004: product analytics is the only data class a user produces without submitting anything, so its disclosure obligation is no lower than any other\'s. This is that disclosure as an endpoint rather than a document, for the reason GET /test-cases/limits is one — the values come from the constants the writer itself reads, so the page and the behaviour cannot drift.  No session. A data policy a visitor has to log in to read is not a policy they can decide by, and the funnel\'s first segment is measured before any login exists. Nothing user-specific is read or returned.  `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5\'s 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no cookie. 
-     * What the product analytics events record, and for how long (O11Y-004)
+     * Creates request options for getDataRetentionPolicy without sending the request
      */
-    async getDataRetentionPolicyRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DataRetentionPolicy>> {
+    async getDataRetentionPolicyRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3645,12 +5363,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/policy/data-retention`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * 02:O11Y-004: product analytics is the only data class a user produces without submitting anything, so its disclosure obligation is no lower than any other\'s. This is that disclosure as an endpoint rather than a document, for the reason GET /test-cases/limits is one — the values come from the constants the writer itself reads, so the page and the behaviour cannot drift.  No session. A data policy a visitor has to log in to read is not a policy they can decide by, and the funnel\'s first segment is measured before any login exists. Nothing user-specific is read or returned.  `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5\'s 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no cookie. 
+     * What the product analytics events record, and for how long (O11Y-004)
+     */
+    async getDataRetentionPolicyRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DataRetentionPolicy>> {
+        const requestOptions = await this.getDataRetentionPolicyRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => DataRetentionPolicyFromJSON(jsonValue));
     }
@@ -3665,10 +5392,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * 02:TEST-002 requires the size limit, the retention policy and the data usage scope to be shown *before* an upload, not discovered by being refused. The values are PDM-005 §5.1 and are served from the same constants the upload path enforces, so the two can never drift. 
-     * Upload limits and storage policy (TEST-002 上傳前顯示)
+     * Creates request options for getDatasetLimits without sending the request
      */
-    async getDatasetLimitsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatasetLimits>> {
+    async getDatasetLimitsRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3676,12 +5402,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/test-cases/limits`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * 02:TEST-002 requires the size limit, the retention policy and the data usage scope to be shown *before* an upload, not discovered by being refused. The values are PDM-005 §5.1 and are served from the same constants the upload path enforces, so the two can never drift. 
+     * Upload limits and storage policy (TEST-002 上傳前顯示)
+     */
+    async getDatasetLimitsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatasetLimits>> {
+        const requestOptions = await this.getDatasetLimitsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => DatasetLimitsFromJSON(jsonValue));
     }
@@ -3696,10 +5431,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. The single answer to 「現在到底有沒有在派送」, which is the whole reason 03:SEC-012 requires the P1 halt and ADR-022 X-04\'s drain/suspend to be one switch rather than two.  Both triggers appear here in the same list and are told apart by `source`: `p1_incident` waits for a person, `orphan_threshold` clears itself after two consecutive reconciler rounds below the threshold. 
-     * Is the platform dispatching new Runs (SEC-012)
+     * Creates request options for getDispatchStatus without sending the request
      */
-    async getDispatchStatusRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetDispatchStatus200Response>> {
+    async getDispatchStatusRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3707,12 +5441,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/dispatch`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. The single answer to 「現在到底有沒有在派送」, which is the whole reason 03:SEC-012 requires the P1 halt and ADR-022 X-04\'s drain/suspend to be one switch rather than two.  Both triggers appear here in the same list and are told apart by `source`: `p1_incident` waits for a person, `orphan_threshold` clears itself after two consecutive reconciler rounds below the threshold. 
+     * Is the platform dispatching new Runs (SEC-012)
+     */
+    async getDispatchStatusRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetDispatchStatus200Response>> {
+        const requestOptions = await this.getDispatchStatusRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => GetDispatchStatus200ResponseFromJSON(jsonValue));
     }
@@ -3727,9 +5470,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * One download artifact, with its expiry and download count (WS-002)
+     * Creates request options for getDownloadArtifact without sending the request
      */
-    async getDownloadArtifactRaw(requestParameters: GetDownloadArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DownloadArtifact>> {
+    async getDownloadArtifactRequestOpts(requestParameters: GetDownloadArtifactRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['artifactId'] == null) {
             throw new runtime.RequiredError(
                 'artifactId',
@@ -3743,14 +5486,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/downloads/{artifactId}`;
-        urlPath = urlPath.replace(`{${"artifactId"}}`, encodeURIComponent(String(requestParameters['artifactId'])));
+        urlPath = urlPath.replace('{artifactId}', encodeURIComponent(String(requestParameters['artifactId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * One download artifact, with its expiry and download count (WS-002)
+     */
+    async getDownloadArtifactRaw(requestParameters: GetDownloadArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DownloadArtifact>> {
+        const requestOptions = await this.getDownloadArtifactRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => DownloadArtifactFromJSON(jsonValue));
     }
@@ -3764,9 +5515,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Process liveness probe
+     * Creates request options for getHealth without sending the request
      */
-    async getHealthRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Health>> {
+    async getHealthRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3774,12 +5525,20 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/healthz`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Process liveness probe
+     */
+    async getHealthRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Health>> {
+        const requestOptions = await this.getHealthRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => HealthFromJSON(jsonValue));
     }
@@ -3793,9 +5552,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Current user and personal workspace, resolved from the session
+     * Creates request options for getMe without sending the request
      */
-    async getMeRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Me>> {
+    async getMeRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3803,12 +5562,20 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/me`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Current user and personal workspace, resolved from the session
+     */
+    async getMeRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Me>> {
+        const requestOptions = await this.getMeRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => MeFromJSON(jsonValue));
     }
@@ -3822,10 +5589,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. The same action list as the operator audit log, counted per UTC day. Grouped by UTC day only; no user, workspace or email in the response. 
-     * Operator actions per day by action (02:OPS-008)
+     * Creates request options for getOperatorActionTrend without sending the request
      */
-    async getOperatorActionTrendRaw(requestParameters: GetOperatorActionTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CountTrend>> {
+    async getOperatorActionTrendRequestOpts(requestParameters: GetOperatorActionTrendRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         if (requestParameters['days'] != null) {
@@ -3837,12 +5603,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/trends/operator-actions`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. The same action list as the operator audit log, counted per UTC day. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Operator actions per day by action (02:OPS-008)
+     */
+    async getOperatorActionTrendRaw(requestParameters: GetOperatorActionTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CountTrend>> {
+        const requestOptions = await this.getOperatorActionTrendRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CountTrendFromJSON(jsonValue));
     }
@@ -3857,10 +5632,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still an edit and a restart (ADR-074 decision 4). This only shows what is in force. 
-     * The two rosters in force, read-only (02:OPS-005)
+     * Creates request options for getOperatorRosters without sending the request
      */
-    async getOperatorRostersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetOperatorRosters200Response>> {
+    async getOperatorRostersRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3868,12 +5642,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/rosters`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still an edit and a restart (ADR-074 decision 4). This only shows what is in force. 
+     * The two rosters in force, read-only (02:OPS-005)
+     */
+    async getOperatorRostersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetOperatorRosters200Response>> {
+        const requestOptions = await this.getOperatorRostersRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => GetOperatorRosters200ResponseFromJSON(jsonValue));
     }
@@ -3888,10 +5671,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The question people ask `/healthz`. That one is a liveness probe and a constant, which is correct and was never the defect; the defect was that it was the only endpoint that looked like it answered this one (05 R-36 第二段, 04 丙-110/118).  **`ready` is reachable only by measurement.** A capability whose variables are all present and which nothing probed reports `unmeasured`, a distinct value — configuration is not function, and every green tick the launcher used to print was really this state. On 2026-09-01 three greens in a row (a launcher that tested only whether a variable was set, this platform\'s `/healthz`, and apps/llm\'s own `/healthz`) sat over a service that could perform none of its four jobs.  Always `200`, whatever the table says: a readiness endpoint that answered 503 because an OPTIONAL capability is off would make \"packaging is not configured\" indistinguishable from \"the process is broken\", which is the collapsing of two facts into one signal that this endpoint exists to undo.  Unauthenticated, because the launcher that has to read it holds no session — and R-36\'s hard condition is that the launcher reads THIS answer rather than keeping a second list of the same preconditions. Outside clean test mode the per-row detail is withheld: a list of what a deployment has not configured is reconnaissance, so `missing`, `detail`, `without` and `fix` are served only in clean test mode, where the reader is the operator on that machine. 
-     * Deployment capability table — what this deployment can do right now
+     * Creates request options for getReadiness without sending the request
      */
-    async getReadinessRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetReadiness200Response>> {
+    async getReadinessRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -3899,12 +5681,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/readyz`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * The question people ask `/healthz`. That one is a liveness probe and a constant, which is correct and was never the defect; the defect was that it was the only endpoint that looked like it answered this one (05 R-36 第二段, 04 丙-110/118).  **`ready` is reachable only by measurement.** A capability whose variables are all present and which nothing probed reports `unmeasured`, a distinct value — configuration is not function, and every green tick the launcher used to print was really this state. On 2026-09-01 three greens in a row (a launcher that tested only whether a variable was set, this platform\'s `/healthz`, and apps/llm\'s own `/healthz`) sat over a service that could perform none of its four jobs.  Always `200`, whatever the table says: a readiness endpoint that answered 503 because an OPTIONAL capability is off would make \"packaging is not configured\" indistinguishable from \"the process is broken\", which is the collapsing of two facts into one signal that this endpoint exists to undo.  Unauthenticated, because the launcher that has to read it holds no session — and R-36\'s hard condition is that the launcher reads THIS answer rather than keeping a second list of the same preconditions. Outside clean test mode the per-row detail is withheld: a list of what a deployment has not configured is reconnaissance, so `missing`, `detail`, `without` and `fix` are served only in clean test mode, where the reader is the operator on that machine. 
+     * Deployment capability table — what this deployment can do right now
+     */
+    async getReadinessRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetReadiness200Response>> {
+        const requestOptions = await this.getReadinessRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => GetReadiness200ResponseFromJSON(jsonValue));
     }
@@ -3919,10 +5710,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * `id` is the platform `run_id` and always will be: a provider\'s ephemeral id is never part of a URL (iron rule 10). It appears in the response only as an attribute of the attempt that owns it. 
-     * Current run status and how it got there (RUN-002)
+     * Creates request options for getRun without sending the request
      */
-    async getRunRaw(requestParameters: GetRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Run>> {
+    async getRunRequestOpts(requestParameters: GetRunRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -3936,14 +5726,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/runs/{id}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * `id` is the platform `run_id` and always will be: a provider\'s ephemeral id is never part of a URL (iron rule 10). It appears in the response only as an attribute of the attempt that owns it. 
+     * Current run status and how it got there (RUN-002)
+     */
+    async getRunRaw(requestParameters: GetRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Run>> {
+        const requestOptions = await this.getRunRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => RunFromJSON(jsonValue));
     }
@@ -3958,10 +5757,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Answers \"was the task achieved\". That is a different question from `Run.status`, which answers \"what happened while this executed\", and the two are separate resources because they are separate facts: a run at `succeeded` whose evaluation is `not_met` is an ordinary consistent state — the workload finished and did not do what was asked. No surface may collapse them into one verdict (ADR-025, NFR-001).  A run with no evaluation answers **404, not an empty evaluation**. 「未評估」 is a state of its own, and a blank body is exactly what a UI would render as a pass. An evaluation that ran and broke is a third state again, and it does have a body: `status: failed`.  `revision` reads one particular judgement by id; omitted, the answer is the current one. Re-evaluation is append-only (a new rubric or judge prompt writes a new row and supersedes the old), so a verdict quoted in a report never changes underneath it. 
-     * The task judgement for one run (EVAL-001)
+     * Creates request options for getRunEvaluation without sending the request
      */
-    async getRunEvaluationRaw(requestParameters: GetRunEvaluationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Evaluation>> {
+    async getRunEvaluationRequestOpts(requestParameters: GetRunEvaluationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -3979,14 +5777,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/runs/{id}/evaluation`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Answers \"was the task achieved\". That is a different question from `Run.status`, which answers \"what happened while this executed\", and the two are separate resources because they are separate facts: a run at `succeeded` whose evaluation is `not_met` is an ordinary consistent state — the workload finished and did not do what was asked. No surface may collapse them into one verdict (ADR-025, NFR-001).  A run with no evaluation answers **404, not an empty evaluation**. 「未評估」 is a state of its own, and a blank body is exactly what a UI would render as a pass. An evaluation that ran and broke is a third state again, and it does have a body: `status: failed`.  `revision` reads one particular judgement by id; omitted, the answer is the current one. Re-evaluation is append-only (a new rubric or judge prompt writes a new row and supersedes the old), so a verdict quoted in a report never changes underneath it. 
+     * The task judgement for one run (EVAL-001)
+     */
+    async getRunEvaluationRaw(requestParameters: GetRunEvaluationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Evaluation>> {
+        const requestOptions = await this.getRunEvaluationRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationFromJSON(jsonValue));
     }
@@ -4001,10 +5808,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Eight disclosures for one (version, test case) pair: the datasets it can read, whether the package carries runnable code, the tools and MCP servers it gets, its egress policy, the names of the secrets injected into it, who will run it, and the resource ceilings it is held to.  Nothing here is a claim that the skill is safe (NFR-001) and nothing in the package is executed to produce it (iron rule 1) — `scripts` comes from re-scanning the stored bytes, which is why an unreadable package reports `unavailable` and never `none`.  `summary_hash` is a hash over exactly those facts and is what `POST .../preflight/confirm` and `POST /skills/{id}/runs` agree to. It changes whenever any of them does, so a dataset added after a confirmation invalidates that confirmation by construction — nothing sweeps for stale agreements. `notes` sits outside the hash: rewording an explanation must not invalidate every outstanding confirmation. 
-     * What the run will be allowed to touch, before it starts (TEST-008)
+     * Creates request options for getRunPreflight without sending the request
      */
-    async getRunPreflightRaw(requestParameters: GetRunPreflightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunPermissionSummary>> {
+    async getRunPreflightRequestOpts(requestParameters: GetRunPreflightRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4040,14 +5846,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/runs/preflight`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Eight disclosures for one (version, test case) pair: the datasets it can read, whether the package carries runnable code, the tools and MCP servers it gets, its egress policy, the names of the secrets injected into it, who will run it, and the resource ceilings it is held to.  Nothing here is a claim that the skill is safe (NFR-001) and nothing in the package is executed to produce it (iron rule 1) — `scripts` comes from re-scanning the stored bytes, which is why an unreadable package reports `unavailable` and never `none`.  `summary_hash` is a hash over exactly those facts and is what `POST .../preflight/confirm` and `POST /skills/{id}/runs` agree to. It changes whenever any of them does, so a dataset added after a confirmation invalidates that confirmation by construction — nothing sweeps for stale agreements. `notes` sits outside the hash: rewording an explanation must not invalidate every outstanding confirmation. 
+     * What the run will be allowed to touch, before it starts (TEST-008)
+     */
+    async getRunPreflightRaw(requestParameters: GetRunPreflightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunPermissionSummary>> {
+        const requestOptions = await this.getRunPreflightRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => RunPermissionSummaryFromJSON(jsonValue));
     }
@@ -4062,10 +5877,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The beta\'s cost ceiling as the account holder sees it: runs left today, runs left in the rolling window, when the window resets, and the four limits in force.  Served from the same counters POST /skills/{id}/runs enforces, never from a stored balance. A balance column drifts and a refund would be a write that can be missed; the count is a time-window query over the runs themselves, so a refund is a predicate excluding a failure class rather than a row nobody remembered to add back.  This endpoint exists only because the enforcement point does. Showing an allowance the platform does not apply is the exact mistake PDM-005 made once already (04 乙-2): a ceiling displayed on the preflight screen and enforced nowhere, which NFR-001 forbids. Read that order as binding — the numbers here are a report on a rule, not the rule. 
-     * How much of the free run allowance is left (PDM-010)
+     * Creates request options for getRunQuota without sending the request
      */
-    async getRunQuotaRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunQuota>> {
+    async getRunQuotaRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -4073,12 +5887,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/me/quota`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * The beta\'s cost ceiling as the account holder sees it: runs left today, runs left in the rolling window, when the window resets, and the four limits in force.  Served from the same counters POST /skills/{id}/runs enforces, never from a stored balance. A balance column drifts and a refund would be a write that can be missed; the count is a time-window query over the runs themselves, so a refund is a predicate excluding a failure class rather than a row nobody remembered to add back.  This endpoint exists only because the enforcement point does. Showing an allowance the platform does not apply is the exact mistake PDM-005 made once already (04 乙-2): a ceiling displayed on the preflight screen and enforced nowhere, which NFR-001 forbids. Read that order as binding — the numbers here are a report on a rule, not the rule. 
+     * How much of the free run allowance is left (PDM-010)
+     */
+    async getRunQuotaRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunQuota>> {
+        const requestOptions = await this.getRunQuotaRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => RunQuotaFromJSON(jsonValue));
     }
@@ -4093,10 +5916,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reliable receipt-order pages, with canonical ordering inside each page, plus an explicit statement of which ones are missing. A consumer that needs one reconstructed cross-producer timeline fetches all pages and applies the ordering tuple documented on `events`.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
-     * Run trace, in either the general or the advanced mode (TRACE-006, TRACE-007)
+     * Creates request options for getRunTrace without sending the request
      */
-    async getRunTraceRaw(requestParameters: GetRunTraceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetRunTrace200Response>> {
+    async getRunTraceRequestOpts(requestParameters: GetRunTraceRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4118,14 +5940,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/runs/{id}/trace`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reliable receipt-order pages, with canonical ordering inside each page, plus an explicit statement of which ones are missing. A consumer that needs one reconstructed cross-producer timeline fetches all pages and applies the ordering tuple documented on `events`.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
+     * Run trace, in either the general or the advanced mode (TRACE-006, TRACE-007)
+     */
+    async getRunTraceRaw(requestParameters: GetRunTraceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetRunTrace200Response>> {
+        const requestOptions = await this.getRunTraceRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => GetRunTrace200ResponseFromJSON(jsonValue));
     }
@@ -4140,10 +5971,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Runs counted by the UTC day they were created and the status they are in now. Grouped by UTC day only; no user, workspace or email in the response. 
-     * Runs created per day by current status (02:OPS-008)
+     * Creates request options for getRunTrend without sending the request
      */
-    async getRunTrendRaw(requestParameters: GetRunTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CountTrend>> {
+    async getRunTrendRequestOpts(requestParameters: GetRunTrendRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         if (requestParameters['days'] != null) {
@@ -4155,12 +5985,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/trends/runs`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. Runs counted by the UTC day they were created and the status they are in now. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Runs created per day by current status (02:OPS-008)
+     */
+    async getRunTrendRaw(requestParameters: GetRunTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CountTrend>> {
+        const requestOptions = await this.getRunTrendRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => CountTrendFromJSON(jsonValue));
     }
@@ -4175,10 +6014,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Does not require authentication. Scope is resolved by the server and never by the request (CORE-006, ADR-011): the public catalog answers for every caller, and a caller with a session additionally sees skills in their own workspace. Anything outside both scopes answers 404, identical to a skill that does not exist, so the status code is not an existence oracle for someone else\'s private content (WS-006).  `summary` is always the package\'s own frontmatter description. Model-generated text lives under `enrichment` and is labelled there (ADR-013). `license` carries the ADR-021 two-axis answer — the expression and the provenance tier it was established at — and its status is `declared` at best: confirmation is a reviewer\'s act and nothing records one yet. `risk` reports a static scan of the stored package; the scan never executes anything (iron rule 1) and passing it is not a safety claim (NFR-001). `compatibility` keeps the three axes apart; the two that need a sandbox carry a measured verdict together with the `runtime_image` it holds for, and say `unverified` rather than being omitted when this (version, image) pair was never measured. 
-     * Skill detail, source, license, risk and compatibility (DISC-006, DISC-008)
+     * Creates request options for getSkillDetail without sending the request
      */
-    async getSkillDetailRaw(requestParameters: GetSkillDetailRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SkillDetail>> {
+    async getSkillDetailRequestOpts(requestParameters: GetSkillDetailRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4196,14 +6034,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/api/skills/{id}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Does not require authentication. Scope is resolved by the server and never by the request (CORE-006, ADR-011): the public catalog answers for every caller, and a caller with a session additionally sees skills in their own workspace. Anything outside both scopes answers 404, identical to a skill that does not exist, so the status code is not an existence oracle for someone else\'s private content (WS-006).  `summary` is always the package\'s own frontmatter description. Model-generated text lives under `enrichment` and is labelled there (ADR-013). `license` carries the ADR-021 two-axis answer — the expression and the provenance tier it was established at — and its status is `declared` at best: confirmation is a reviewer\'s act and nothing records one yet. `risk` reports a static scan of the stored package; the scan never executes anything (iron rule 1) and passing it is not a safety claim (NFR-001). `compatibility` keeps the three axes apart; the two that need a sandbox carry a measured verdict together with the `runtime_image` it holds for, and say `unverified` rather than being omitted when this (version, image) pair was never measured. 
+     * Skill detail, source, license, risk and compatibility (DISC-006, DISC-008)
+     */
+    async getSkillDetailRaw(requestParameters: GetSkillDetailRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SkillDetail>> {
+        const requestOptions = await this.getSkillDetailRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => SkillDetailFromJSON(jsonValue));
     }
@@ -4218,10 +6065,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Advanced view of the latest version. Same scope rules as GET /api/skills/{id}, so it needs no authentication for catalog content. Scripts are marked with the same rule the import scan used, and the SKILL.md embedded-code disclosure is repeated here because the file tree is exactly what cannot show code living inside the document (SKILL-003). Package files other than SKILL.md are listed with their metadata; an endpoint serving their content is later DISC-007 work.  This is the endpoint that reproduces the package\'s own bytes, so it is the one a 0023 licensing hold closes: a skill carrying `access_restriction` answers 403 here while everything else about it still answers. 
-     * SKILL.md and the package file tree (DISC-007)
+     * Creates request options for getSkillFiles without sending the request
      */
-    async getSkillFilesRaw(requestParameters: GetSkillFilesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SkillFiles>> {
+    async getSkillFilesRequestOpts(requestParameters: GetSkillFilesRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4235,14 +6081,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/api/skills/{id}/files`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Advanced view of the latest version. Same scope rules as GET /api/skills/{id}, so it needs no authentication for catalog content. Scripts are marked with the same rule the import scan used, and the SKILL.md embedded-code disclosure is repeated here because the file tree is exactly what cannot show code living inside the document (SKILL-003). Package files other than SKILL.md are listed with their metadata; an endpoint serving their content is later DISC-007 work.  This is the endpoint that reproduces the package\'s own bytes, so it is the one a 0023 licensing hold closes: a skill carrying `access_restriction` answers 403 here while everything else about it still answers. 
+     * SKILL.md and the package file tree (DISC-007)
+     */
+    async getSkillFilesRaw(requestParameters: GetSkillFilesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SkillFiles>> {
+        const requestOptions = await this.getSkillFilesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => SkillFilesFromJSON(jsonValue));
     }
@@ -4257,10 +6112,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * EVAL-002 第 3 條 requires the change to be viewable before it is applied, so the diff is served rather than assembled in the client: computing it needs the stored package bytes, which the client does not have, and a client-side guess could disagree with what apply actually does.  It runs the same checks the apply call runs, so `applicable: false` here and a rejection there give the same `blocked_reason`. A suggestion that cannot be applied still shows why. 
-     * What applying this suggestion would change (EVAL-002)
+     * Creates request options for getSuggestionDiff without sending the request
      */
-    async getSuggestionDiffRaw(requestParameters: GetSuggestionDiffRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SuggestionDiff>> {
+    async getSuggestionDiffRequestOpts(requestParameters: GetSuggestionDiffRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4274,14 +6128,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/suggestions/{id}/diff`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * EVAL-002 第 3 條 requires the change to be viewable before it is applied, so the diff is served rather than assembled in the client: computing it needs the stored package bytes, which the client does not have, and a client-side guess could disagree with what apply actually does.  It runs the same checks the apply call runs, so `applicable: false` here and a rejection there give the same `blocked_reason`. A suggestion that cannot be applied still shows why. 
+     * What applying this suggestion would change (EVAL-002)
+     */
+    async getSuggestionDiffRaw(requestParameters: GetSuggestionDiffRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SuggestionDiff>> {
+        const requestOptions = await this.getSuggestionDiffRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => SuggestionDiffFromJSON(jsonValue));
     }
@@ -4296,9 +6159,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Read one test case draft
+     * Creates request options for getTestCase without sending the request
      */
-    async getTestCaseRaw(requestParameters: GetTestCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+    async getTestCaseRequestOpts(requestParameters: GetTestCaseRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4312,14 +6175,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/test-cases/{id}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Read one test case draft
+     */
+    async getTestCaseRaw(requestParameters: GetTestCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+        const requestOptions = await this.getTestCaseRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TestCaseFromJSON(jsonValue));
     }
@@ -4333,10 +6204,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
-     * Put Credit into an account (CRED-007)
+     * Creates request options for grantCredits without sending the request
      */
-    async grantCreditsRaw(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GrantCredits200Response>> {
+    async grantCreditsRequestOpts(requestParameters: GrantCreditsOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['workspaceId'] == null) {
             throw new runtime.RequiredError(
                 'workspaceId',
@@ -4359,15 +6229,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/admin/credits/{workspace_id}/grants`;
-        urlPath = urlPath.replace(`{${"workspace_id"}}`, encodeURIComponent(String(requestParameters['workspaceId'])));
+        urlPath = urlPath.replace('{workspace_id}', encodeURIComponent(String(requestParameters['workspaceId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: GrantCreditsRequestToJSON(requestParameters['grantCreditsRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
+     * Put Credit into an account (CRED-007)
+     */
+    async grantCreditsRaw(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GrantCredits200Response>> {
+        const requestOptions = await this.grantCreditsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => GrantCredits200ResponseFromJSON(jsonValue));
     }
@@ -4382,10 +6261,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The package goes through the same static validation as uploads. 
-     * Import a skill package from an allow-listed URL (SKILL-001)
+     * Creates request options for importSkillFromURL without sending the request
      */
-    async importSkillFromURLRaw(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>> {
+    async importSkillFromURLRequestOpts(requestParameters: ImportSkillFromURLOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['importSkillFromURLRequest'] == null) {
             throw new runtime.RequiredError(
                 'importSkillFromURLRequest',
@@ -4402,13 +6280,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/skills/import/url`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: ImportSkillFromURLRequestToJSON(requestParameters['importSkillFromURLRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The package goes through the same static validation as uploads. 
+     * Import a skill package from an allow-listed URL (SKILL-001)
+     */
+    async importSkillFromURLRaw(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>> {
+        const requestOptions = await this.importSkillFromURLRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => UploadResultFromJSON(jsonValue));
     }
@@ -4423,10 +6310,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Machine to machine, not a user endpoint. The caller is a sandbox provider pushing what the workload wrote; the sandbox itself has no network and cannot reach this.  **Authentication is the token in the path and nothing else.** Not a session: there is no user. Not the provider\'s bearer token: that credential is deployment-wide, and a credential covering every run must not be able to append to one run\'s timeline. The token is HMAC-signed by the control plane, scoped to one (run_id, attempt), short-lived, and grants append only - it can read nothing. It travels inside `TracePolicy.ingestion_url` of the sandbox provider contract, which has no separate token field.  Everything in the body is untrusted input (ADR-001). The order on this side is fixed: verify the token, resolve workspace_id from run_id under the platform\'s own authority (iron rule 3), validate each envelope, mask (TRACE-005), then store. Nothing reaches the database unmasked.  Rejection is per event, not per batch: one malformed event must not discard the well-formed ones beside it. An event naming a different run or attempt than the token covers is rejected, never re-homed.  Delivery is at-least-once, so a redelivered `event_id` is counted as a duplicate and stored once. Events arriving after the run reached a terminal state are accepted and flagged late rather than dropped: a sandbox pushes its last batch as it shuts down, and that tail is the part a failed run most needs (RUN-004, TRACE-008). 
-     * Accept one batch of trace events from the execution plane (TRACE-002)
+     * Creates request options for ingestTraceEvents without sending the request
      */
-    async ingestTraceEventsRaw(requestParameters: IngestTraceEventsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TraceIngestReport>> {
+    async ingestTraceEventsRequestOpts(requestParameters: IngestTraceEventsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['token'] == null) {
             throw new runtime.RequiredError(
                 'token',
@@ -4449,15 +6335,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/internal/trace/{token}`;
-        urlPath = urlPath.replace(`{${"token"}}`, encodeURIComponent(String(requestParameters['token'])));
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: requestParameters['sandboxTraceEvent']!.map(SandboxTraceEventToJSON),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Machine to machine, not a user endpoint. The caller is a sandbox provider pushing what the workload wrote; the sandbox itself has no network and cannot reach this.  **Authentication is the token in the path and nothing else.** Not a session: there is no user. Not the provider\'s bearer token: that credential is deployment-wide, and a credential covering every run must not be able to append to one run\'s timeline. The token is HMAC-signed by the control plane, scoped to one (run_id, attempt), short-lived, and grants append only - it can read nothing. It travels inside `TracePolicy.ingestion_url` of the sandbox provider contract, which has no separate token field.  Everything in the body is untrusted input (ADR-001). The order on this side is fixed: verify the token, resolve workspace_id from run_id under the platform\'s own authority (iron rule 3), validate each envelope, mask (TRACE-005), then store. Nothing reaches the database unmasked.  Rejection is per event, not per batch: one malformed event must not discard the well-formed ones beside it. An event naming a different run or attempt than the token covers is rejected, never re-homed.  Delivery is at-least-once, so a redelivered `event_id` is counted as a duplicate and stored once. Events arriving after the run reached a terminal state are accepted and flagged late rather than dropped: a sandbox pushes its last batch as it shuts down, and that tail is the part a failed run most needs (RUN-004, TRACE-008). 
+     * Accept one batch of trace events from the execution plane (TRACE-002)
+     */
+    async ingestTraceEventsRaw(requestParameters: IngestTraceEventsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TraceIngestReport>> {
+        const requestOptions = await this.ingestTraceEventsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TraceIngestReportFromJSON(jsonValue));
     }
@@ -4472,10 +6367,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」.  It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one.  Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well.  Idempotent: lifting nothing answers 204, because the caller\'s intent is already true. 
-     * Resume dispatching (SEC-012)
+     * Creates request options for liftDispatchHalt without sending the request
      */
-    async liftDispatchHaltRaw(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async liftDispatchHaltRequestOpts(requestParameters: LiftDispatchHaltOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['liftDispatchHaltRequest'] == null) {
             throw new runtime.RequiredError(
                 'liftDispatchHaltRequest',
@@ -4492,13 +6386,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/dispatch/halt`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
             body: LiftDispatchHaltRequestToJSON(requestParameters['liftDispatchHaltRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」.  It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one.  Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well.  Idempotent: lifting nothing answers 204, because the caller\'s intent is already true. 
+     * Resume dispatching (SEC-012)
+     */
+    async liftDispatchHaltRaw(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.liftDispatchHaltRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -4512,9 +6415,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * listCreationSessions
+     * Creates request options for listCreationSessions without sending the request
      */
-    async listCreationSessionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CreationSession>>> {
+    async listCreationSessionsRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -4522,12 +6425,20 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/creation-sessions`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * listCreationSessions
+     */
+    async listCreationSessionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CreationSession>>> {
+        const requestOptions = await this.listCreationSessionsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CreationSessionFromJSON));
     }
@@ -4541,9 +6452,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * List a test case\'s uploaded files (TEST-004)
+     * Creates request options for listDatasets without sending the request
      */
-    async listDatasetsRaw(requestParameters: ListDatasetsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDatasets200Response>> {
+    async listDatasetsRequestOpts(requestParameters: ListDatasetsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4557,14 +6468,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/test-cases/{id}/datasets`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * List a test case\'s uploaded files (TEST-004)
+     */
+    async listDatasetsRaw(requestParameters: ListDatasetsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDatasets200Response>> {
+        const requestOptions = await this.listDatasetsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListDatasets200ResponseFromJSON(jsonValue));
     }
@@ -4578,10 +6497,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Every Download Artifact in the caller\'s workspace, newest first, including expired ones. 02:WS-002 asks the user to be able to see what they downloaded, and an expired package leaving the list silently would answer that question wrongly — the row states that it expired, which is a different fact from never having existed. 
-     * The workspace\'s download history (WS-002, WS-004)
+     * Creates request options for listDownloadArtifacts without sending the request
      */
-    async listDownloadArtifactsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDownloadArtifacts200Response>> {
+    async listDownloadArtifactsRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -4589,12 +6507,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/downloads`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Every Download Artifact in the caller\'s workspace, newest first, including expired ones. 02:WS-002 asks the user to be able to see what they downloaded, and an expired package leaving the list silently would answer that question wrongly — the row states that it expired, which is a different fact from never having existed. 
+     * The workspace\'s download history (WS-002, WS-004)
+     */
+    async listDownloadArtifactsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDownloadArtifacts200Response>> {
+        const requestOptions = await this.listDownloadArtifactsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListDownloadArtifacts200ResponseFromJSON(jsonValue));
     }
@@ -4609,10 +6536,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * WS-004\'s own words are \"誰、何時、哪一筆 artifact、哪一個 profile\". The artifact list answers the last two plus a count; this answers the first two, one row per download, which is what an aggregate cannot give.  Deliberately not the audit trail. The same download writes an audit event too (CORE-008), and the two are separate records with different retention and different visibility: this one is the product feature the owner reads and it goes with the account, the audit row is the compliance record and does not.  The actor is a display name, not a user id: on a personal workspace it is always the owner, and an id would be an identifier the reader cannot resolve. It reads `deleted user` when the account was purged — the rows survive de-identified (PDM-006 §6.1), because \"somebody, at this time\" is still true. 
-     * Who took a copy of this package, and when (WS-004)
+     * Creates request options for listDownloadRecords without sending the request
      */
-    async listDownloadRecordsRaw(requestParameters: ListDownloadRecordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDownloadRecords200Response>> {
+    async listDownloadRecordsRequestOpts(requestParameters: ListDownloadRecordsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['artifactId'] == null) {
             throw new runtime.RequiredError(
                 'artifactId',
@@ -4626,14 +6552,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/downloads/{artifactId}/records`;
-        urlPath = urlPath.replace(`{${"artifactId"}}`, encodeURIComponent(String(requestParameters['artifactId'])));
+        urlPath = urlPath.replace('{artifactId}', encodeURIComponent(String(requestParameters['artifactId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * WS-004\'s own words are \"誰、何時、哪一筆 artifact、哪一個 profile\". The artifact list answers the last two plus a count; this answers the first two, one row per download, which is what an aggregate cannot give.  Deliberately not the audit trail. The same download writes an audit event too (CORE-008), and the two are separate records with different retention and different visibility: this one is the product feature the owner reads and it goes with the account, the audit row is the compliance record and does not.  The actor is a display name, not a user id: on a personal workspace it is always the owner, and an id would be an identifier the reader cannot resolve. It reads `deleted user` when the account was purged — the rows survive de-identified (PDM-006 §6.1), because \"somebody, at this time\" is still true. 
+     * Who took a copy of this package, and when (WS-004)
+     */
+    async listDownloadRecordsRaw(requestParameters: ListDownloadRecordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDownloadRecords200Response>> {
+        const requestOptions = await this.listDownloadRecordsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListDownloadRecords200ResponseFromJSON(jsonValue));
     }
@@ -4648,10 +6583,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The read half of 02:GEN-003 「在工作區留下可查的失敗紀錄」. A generation that failed leaves an audit row; until this route existed, that row could only be seen by someone holding a database connection, which is not a record left in the workspace.  Requires a session and an invite, and is **mounted on the same flag as POST /skills/generate** (ADR-052) — a failure list is a generation surface, and a route answering 200 with an empty array is still an answer about a feature that must not be discoverable. Where the flag is off this route does not exist and answers 404.  Workspace-scoped from the session; the caller never names a workspace (iron rule 3).  **The task description is not here and will not be added.** It belongs to the skill_sources row, under NFR-002 deletion; these rows are kept 400 days under a different rule, and one copy under each is a retention promise nobody made (ADR-029 decision 3 draws the same line). 
-     * Generations in this workspace that produced nothing (GEN-003)
+     * Creates request options for listGenerationFailures without sending the request
      */
-    async listGenerationFailuresRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerationFailures>> {
+    async listGenerationFailuresRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -4659,12 +6593,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/skills/generate/failures`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * The read half of 02:GEN-003 「在工作區留下可查的失敗紀錄」. A generation that failed leaves an audit row; until this route existed, that row could only be seen by someone holding a database connection, which is not a record left in the workspace.  Requires a session and an invite, and is **mounted on the same flag as POST /skills/generate** (ADR-052) — a failure list is a generation surface, and a route answering 200 with an empty array is still an answer about a feature that must not be discoverable. Where the flag is off this route does not exist and answers 404.  Workspace-scoped from the session; the caller never names a workspace (iron rule 3).  **The task description is not here and will not be added.** It belongs to the skill_sources row, under NFR-002 deletion; these rows are kept 400 days under a different rule, and one copy under each is a retention promise nobody made (ADR-029 decision 3 draws the same line). 
+     * Generations in this workspace that produced nothing (GEN-003)
+     */
+    async listGenerationFailuresRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerationFailures>> {
+        const requestOptions = await this.listGenerationFailuresRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => GenerationFailuresFromJSON(jsonValue));
     }
@@ -4679,10 +6622,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
-     * What operators did, platform-wide (02:OPS-006)
+     * Creates request options for listOperatorAuditLog without sending the request
      */
-    async listOperatorAuditLogRaw(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOperatorAuditLog200Response>> {
+    async listOperatorAuditLogRequestOpts(requestParameters: ListOperatorAuditLogRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         if (requestParameters['limit'] != null) {
@@ -4698,12 +6640,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/audit-log`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * What operators did, platform-wide (02:OPS-006)
+     */
+    async listOperatorAuditLogRaw(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOperatorAuditLog200Response>> {
+        const requestOptions = await this.listOperatorAuditLogRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListOperatorAuditLog200ResponseFromJSON(jsonValue));
     }
@@ -4718,10 +6669,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * One standard package plus two verified install profiles (PDM-008), which is how the product describes them everywhere: `kind` keeps the standard package and the profiles apart rather than folding all three into one list of \"profiles\", because the standard package is the evidence that Skill Hub is not bound to a single agent and a profile is not.  An endpoint rather than a constant in the web client. `support_status` changes when a target is measured, and a copy of it compiled into the front end would be a second truth that nobody re-measures. 
-     * The packaging targets a download can be built for (PACK-002)
+     * Creates request options for listPackagingTargets without sending the request
      */
-    async listPackagingTargetsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPackagingTargets200Response>> {
+    async listPackagingTargetsRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -4729,12 +6679,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/packaging/targets`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * One standard package plus two verified install profiles (PDM-008), which is how the product describes them everywhere: `kind` keeps the standard package and the profiles apart rather than folding all three into one list of \"profiles\", because the standard package is the evidence that Skill Hub is not bound to a single agent and a profile is not.  An endpoint rather than a constant in the web client. `support_status` changes when a target is measured, and a copy of it compiled into the front end would be a second truth that nobody re-measures. 
+     * The packaging targets a download can be built for (PACK-002)
+     */
+    async listPackagingTargetsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPackagingTargets200Response>> {
+        const requestOptions = await this.listPackagingTargetsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListPackagingTargets200ResponseFromJSON(jsonValue));
     }
@@ -4749,10 +6708,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * File names, sizes and hashes — never the bytes. The archive a sandbox produced is untrusted content and the control plane does not open it (iron rule 1); evaluation reads these same rows.  This list exists so the owner can see what there is to delete. Before it, the only way to remove a run artifact was to delete the whole account. 
-     * What a run produced, as a manifest (WS-004, 02:SEC-006)
+     * Creates request options for listRunArtifacts without sending the request
      */
-    async listRunArtifactsRaw(requestParameters: ListRunArtifactsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRunArtifacts200Response>> {
+    async listRunArtifactsRequestOpts(requestParameters: ListRunArtifactsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4766,14 +6724,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/runs/{id}/artifacts`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * File names, sizes and hashes — never the bytes. The archive a sandbox produced is untrusted content and the control plane does not open it (iron rule 1); evaluation reads these same rows.  This list exists so the owner can see what there is to delete. Before it, the only way to remove a run artifact was to delete the whole account. 
+     * What a run produced, as a manifest (WS-004, 02:SEC-006)
+     */
+    async listRunArtifactsRaw(requestParameters: ListRunArtifactsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRunArtifacts200Response>> {
+        const requestOptions = await this.listRunArtifactsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListRunArtifacts200ResponseFromJSON(jsonValue));
     }
@@ -4788,10 +6755,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Newest first. Re-evaluating writes a new revision and stamps `superseded_at` on the previous one; nothing is overwritten, so a reader can always tell which rubric and judge prompt a verdict was reached under. Exactly one revision has a null `superseded_at` — that is the one GET /runs/{id}/evaluation returns without `revision`. 
-     * Every judgement ever recorded for one run (EVAL-001)
+     * Creates request options for listRunEvaluationRevisions without sending the request
      */
-    async listRunEvaluationRevisionsRaw(requestParameters: ListRunEvaluationRevisionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRunEvaluationRevisions200Response>> {
+    async listRunEvaluationRevisionsRequestOpts(requestParameters: ListRunEvaluationRevisionsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4805,14 +6771,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/runs/{id}/evaluation/revisions`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Newest first. Re-evaluating writes a new revision and stamps `superseded_at` on the previous one; nothing is overwritten, so a reader can always tell which rubric and judge prompt a verdict was reached under. Exactly one revision has a null `superseded_at` — that is the one GET /runs/{id}/evaluation returns without `revision`. 
+     * Every judgement ever recorded for one run (EVAL-001)
+     */
+    async listRunEvaluationRevisionsRaw(requestParameters: ListRunEvaluationRevisionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRunEvaluationRevisions200Response>> {
+        const requestOptions = await this.listRunEvaluationRevisionsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListRunEvaluationRevisions200ResponseFromJSON(jsonValue));
     }
@@ -4827,10 +6802,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Suggestions belong to an evaluation, not to a run: re-evaluating under a different rubric produces its own set, and this returns the current evaluation\'s. An empty list means that evaluation produced none; a run with no evaluation answers 404, for the same reason GET /runs/{id}/evaluation does. 
-     * Improvement suggestions from the current evaluation (EVAL-002)
+     * Creates request options for listRunSuggestions without sending the request
      */
-    async listRunSuggestionsRaw(requestParameters: ListRunSuggestionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRunSuggestions200Response>> {
+    async listRunSuggestionsRequestOpts(requestParameters: ListRunSuggestionsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4844,14 +6818,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/runs/{id}/suggestions`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Suggestions belong to an evaluation, not to a run: re-evaluating under a different rubric produces its own set, and this returns the current evaluation\'s. An empty list means that evaluation produced none; a run with no evaluation answers 404, for the same reason GET /runs/{id}/evaluation does. 
+     * Improvement suggestions from the current evaluation (EVAL-002)
+     */
+    async listRunSuggestionsRaw(requestParameters: ListRunSuggestionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRunSuggestions200Response>> {
+        const requestOptions = await this.listRunSuggestionsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListRunSuggestions200ResponseFromJSON(jsonValue));
     }
@@ -4866,10 +6849,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * 02:WS-002 第 1 條\'s \"Run 歷史\". Workspace scoped from the session like every other run route (iron rule 3).  Each row carries what happened, to which skill, and when. The status transitions and the per-attempt provider ids stay on GET /runs/{id}: they are what a reader opens one run to see, and serving them for a page of runs would make the list the heaviest read in the API for information nobody reads a page of. 
-     * The workspace\'s run history, newest first (WS-004)
+     * Creates request options for listRuns without sending the request
      */
-    async listRunsRaw(requestParameters: ListRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRuns200Response>> {
+    async listRunsRequestOpts(requestParameters: ListRunsRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         if (requestParameters['testCaseId'] != null) {
@@ -4889,12 +6871,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/runs`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * 02:WS-002 第 1 條\'s \"Run 歷史\". Workspace scoped from the session like every other run route (iron rule 3).  Each row carries what happened, to which skill, and when. The status transitions and the per-attempt provider ids stay on GET /runs/{id}: they are what a reader opens one run to see, and serving them for a page of runs would make the list the heaviest read in the API for information nobody reads a page of. 
+     * The workspace\'s run history, newest first (WS-004)
+     */
+    async listRunsRaw(requestParameters: ListRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRuns200Response>> {
+        const requestOptions = await this.listRunsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListRuns200ResponseFromJSON(jsonValue));
     }
@@ -4909,10 +6900,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Workspace scoped from the session like every other registry read (ADR-011): a skill in somebody else\'s workspace answers with an empty list rather than with their history.  This is the list the pre-run permission screen and the packaging screen pick a version from. Before it existed, both took the version id from the URL only, so the reader had to paste one by hand. 
-     * List a skill\'s immutable versions, newest first (WS-001)
+     * Creates request options for listSkillVersions without sending the request
      */
-    async listSkillVersionsRaw(requestParameters: ListSkillVersionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListSkillVersions200Response>> {
+    async listSkillVersionsRequestOpts(requestParameters: ListSkillVersionsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4926,14 +6916,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/versions`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Workspace scoped from the session like every other registry read (ADR-011): a skill in somebody else\'s workspace answers with an empty list rather than with their history.  This is the list the pre-run permission screen and the packaging screen pick a version from. Before it existed, both took the version id from the URL only, so the reader had to paste one by hand. 
+     * List a skill\'s immutable versions, newest first (WS-001)
+     */
+    async listSkillVersionsRaw(requestParameters: ListSkillVersionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListSkillVersions200Response>> {
+        const requestOptions = await this.listSkillVersionsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListSkillVersions200ResponseFromJSON(jsonValue));
     }
@@ -4948,9 +6947,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * List the caller\'s skills (WS-004)
+     * Creates request options for listSkills without sending the request
      */
-    async listSkillsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListSkills200Response>> {
+    async listSkillsRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -4958,12 +6957,20 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/skills`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * List the caller\'s skills (WS-004)
+     */
+    async listSkillsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListSkills200Response>> {
+        const requestOptions = await this.listSkillsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListSkills200ResponseFromJSON(jsonValue));
     }
@@ -4977,10 +6984,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Workspace scoped from the session (iron rule 3). `skill_id` narrows the list to one skill and is not a widening: a skill outside the caller\'s workspace matches nothing, exactly as an id that does not exist does (WS-006). 
-     * List the caller\'s test cases (WS-004)
+     * Creates request options for listTestCases without sending the request
      */
-    async listTestCasesRaw(requestParameters: ListTestCasesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTestCases200Response>> {
+    async listTestCasesRequestOpts(requestParameters: ListTestCasesRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         if (requestParameters['skillId'] != null) {
@@ -5000,12 +7006,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/test-cases`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Workspace scoped from the session (iron rule 3). `skill_id` narrows the list to one skill and is not a widening: a skill outside the caller\'s workspace matches nothing, exactly as an id that does not exist does (WS-006). 
+     * List the caller\'s test cases (WS-004)
+     */
+    async listTestCasesRaw(requestParameters: ListTestCasesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTestCases200Response>> {
+        const requestOptions = await this.listTestCasesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListTestCases200ResponseFromJSON(jsonValue));
     }
@@ -5020,10 +7035,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * No session is required to call it. The handler revokes whatever session cookie arrives and clears the cookie either way, so a caller holding an already-invalid cookie can still get rid of it. 
-     * Revoke the current session
+     * Creates request options for logout without sending the request
      */
-    async logoutRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async logoutRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -5031,12 +7045,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/auth/logout`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * No session is required to call it. The handler revokes whatever session cookie arrives and clears the cookie either way, so a caller holding an already-invalid cookie can still get rid of it. 
+     * Revoke the current session
+     */
+    async logoutRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.logoutRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -5050,10 +7073,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Turns the email a person gave into the account and the workspace id that POST /admin/credits/{workspace_id}/grants needs. Case-insensitive exact match against live accounts only, the same rule as the unique email index.  A hit is a read of somebody\'s personal data: it writes one `account.lookup` audit event naming the operator and the account, in the same transaction as the read. A miss reads nobody\'s data and writes nothing. 
-     * Find an account by email (02:OPS-002)
+     * Creates request options for lookupAccount without sending the request
      */
-    async lookupAccountRaw(requestParameters: LookupAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountLookup>> {
+    async lookupAccountRequestOpts(requestParameters: LookupAccountRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['email'] == null) {
             throw new runtime.RequiredError(
                 'email',
@@ -5072,12 +7094,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/admin/accounts`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. Turns the email a person gave into the account and the workspace id that POST /admin/credits/{workspace_id}/grants needs. Case-insensitive exact match against live accounts only, the same rule as the unique email index.  A hit is a read of somebody\'s personal data: it writes one `account.lookup` audit event naming the operator and the account, in the same transaction as the read. A miss reads nobody\'s data and writes nothing. 
+     * Find an account by email (02:OPS-002)
+     */
+    async lookupAccountRaw(requestParameters: LookupAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountLookup>> {
+        const requestOptions = await this.lookupAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => AccountLookupFromJSON(jsonValue));
     }
@@ -5092,10 +7123,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Runs the checks the packaging call runs, so a preview that says yes and a packaging that refuses cannot both happen. Same relationship GET /suggestions/{id}/diff has with the apply call, and for the same reason: two sets of criteria drift, and the drift always favours the step the user most wants to succeed.  It re-validates the bytes it *would* produce, not the bytes it read. The source version passed validation at import, but packaging adds files and a profile may add frontmatter fields, so validating the source would make PACK-002 a check of something nobody downloads.  Nothing is written and no object is created. A preview of a version that cannot be packaged still answers 200 with `allowed: false` and the reason — being told why is the point. 
-     * What packaging this version would produce, before producing it (PACK-001)
+     * Creates request options for previewPackaging without sending the request
      */
-    async previewPackagingRaw(requestParameters: PreviewPackagingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PackagingPreview>> {
+    async previewPackagingRequestOpts(requestParameters: PreviewPackagingRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5131,15 +7161,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/versions/{versionId}/packaging/preview`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
-        urlPath = urlPath.replace(`{${"versionId"}}`, encodeURIComponent(String(requestParameters['versionId'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{versionId}', encodeURIComponent(String(requestParameters['versionId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Runs the checks the packaging call runs, so a preview that says yes and a packaging that refuses cannot both happen. Same relationship GET /suggestions/{id}/diff has with the apply call, and for the same reason: two sets of criteria drift, and the drift always favours the step the user most wants to succeed.  It re-validates the bytes it *would* produce, not the bytes it read. The source version passed validation at import, but packaging adds files and a profile may add frontmatter fields, so validating the source would make PACK-002 a check of something nobody downloads.  Nothing is written and no object is created. A preview of a version that cannot be packaged still answers 200 with `allowed: false` and the reason — being told why is the point. 
+     * What packaging this version would produce, before producing it (PACK-001)
+     */
+    async previewPackagingRaw(requestParameters: PreviewPackagingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PackagingPreview>> {
+        const requestOptions = await this.previewPackagingRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => PackagingPreviewFromJSON(jsonValue));
     }
@@ -5154,10 +7193,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Natural language search over the public skill catalog. Uses hybrid retrieval (ADR-013): pgvector embedding similarity ranks the results and Postgres FTS only widens the candidate set, so a lexical hit the vector leg missed is still ordered by its own vector distance. Does not require authentication. Scope is the public catalog only: private workspace content is never returned, and no request parameter can widen the scope (CORE-006, ADR-011). Use GET /skills/search for the caller\'s own workspace. Candidates further than the cosine distance cut-off are not returned at all; when nothing survives it, the response carries no_results and a query_suggestion rather than a page of weak matches. Blank or incomprehensible queries take the same no_results path. 
-     * Public intent search for skills (DISC-001, DISC-002)
+     * Creates request options for publicSearchSkills without sending the request
      */
-    async publicSearchSkillsRaw(requestParameters: PublicSearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicSearchResponse>> {
+    async publicSearchSkillsRequestOpts(requestParameters: PublicSearchSkillsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['q'] == null) {
             throw new runtime.RequiredError(
                 'q',
@@ -5204,12 +7242,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/api/skills/search`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Natural language search over the public skill catalog. Uses hybrid retrieval (ADR-013): pgvector embedding similarity ranks the results and Postgres FTS only widens the candidate set, so a lexical hit the vector leg missed is still ordered by its own vector distance. Does not require authentication. Scope is the public catalog only: private workspace content is never returned, and no request parameter can widen the scope (CORE-006, ADR-011). Use GET /skills/search for the caller\'s own workspace. Candidates further than the cosine distance cut-off are not returned at all; when nothing survives it, the response carries no_results and a query_suggestion rather than a page of weak matches. Blank or incomprehensible queries take the same no_results path. 
+     * Public intent search for skills (DISC-001, DISC-002)
+     */
+    async publicSearchSkillsRaw(requestParameters: PublicSearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicSearchResponse>> {
+        const requestOptions = await this.publicSearchSkillsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => PublicSearchResponseFromJSON(jsonValue));
     }
@@ -5224,10 +7271,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Starts a 30-day grace period; nothing is removed yet and the account stays usable so the request can be cancelled. Idempotent — asking twice keeps the original start time rather than extending the wait.  When the grace period ends, uploaded datasets, run and download artifacts, and every skill nobody else forked or ran are permanently deleted, files included. Skill versions other users forked or historical runs used are retained with the owner\'s identity removed (PDM-006 §6.1): deleting them would break a third party\'s provenance chain, which DISC-003 requires to stay intact. 
-     * Request deletion of the caller\'s account (CORE-007)
+     * Creates request options for requestAccountDeletion without sending the request
      */
-    async requestAccountDeletionRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountDeletion>> {
+    async requestAccountDeletionRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -5235,12 +7281,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/me`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Starts a 30-day grace period; nothing is removed yet and the account stays usable so the request can be cancelled. Idempotent — asking twice keeps the original start time rather than extending the wait.  When the grace period ends, uploaded datasets, run and download artifacts, and every skill nobody else forked or ran are permanently deleted, files included. Skill versions other users forked or historical runs used are retained with the owner\'s identity removed (PDM-006 §6.1): deleting them would break a third party\'s provenance chain, which DISC-003 requires to stay intact. 
+     * Request deletion of the caller\'s account (CORE-007)
+     */
+    async requestAccountDeletionRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountDeletion>> {
+        const requestOptions = await this.requestAccountDeletionRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => AccountDeletionFromJSON(jsonValue));
     }
@@ -5255,10 +7310,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
-     * Save a zip as the next immutable version of a skill (WS-002)
+     * Creates request options for saveSkillVersion without sending the request
      */
-    async saveSkillVersionRaw(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>> {
+    async saveSkillVersionRequestOpts(requestParameters: SaveSkillVersionRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5281,15 +7335,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/versions`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: requestParameters['body'] as any,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
+     * Save a zip as the next immutable version of a skill (WS-002)
+     */
+    async saveSkillVersionRaw(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>> {
+        const requestOptions = await this.saveSkillVersionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => UploadResultFromJSON(jsonValue));
     }
@@ -5304,10 +7367,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * FTS leg of hybrid retrieval (ADR-013); vector recall and match reasons arrive with the Explorer milestone. Scoped to the session workspace. 
-     * Full-text search over the caller\'s skills (INGEST-009)
+     * Creates request options for searchSkills without sending the request
      */
-    async searchSkillsRaw(requestParameters: SearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SearchSkills200Response>> {
+    async searchSkillsRequestOpts(requestParameters: SearchSkillsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['q'] == null) {
             throw new runtime.RequiredError(
                 'q',
@@ -5330,12 +7392,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/skills/search`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * FTS leg of hybrid retrieval (ADR-013); vector recall and match reasons arrive with the Explorer milestone. Scoped to the session workspace. 
+     * Full-text search over the caller\'s skills (INGEST-009)
+     */
+    async searchSkillsRaw(requestParameters: SearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SearchSkills200Response>> {
+        const requestOptions = await this.searchSkillsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => SearchSkills200ResponseFromJSON(jsonValue));
     }
@@ -5350,10 +7421,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * PUT and not POST: this is a mutable field of an evaluation that already exists, and a user is allowed to change their mind. Sending it again replaces the previous answer instead of recording a second one.  It attaches to the current revision. A later re-evaluation starts without feedback — carrying an opinion about one verdict onto another one would be attributing something nobody said. 
-     * Say whether the judgement was helpful (EVAL-001)
+     * Creates request options for setEvaluationFeedback without sending the request
      */
-    async setEvaluationFeedbackRaw(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Evaluation>> {
+    async setEvaluationFeedbackRequestOpts(requestParameters: SetEvaluationFeedbackOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5376,15 +7446,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/runs/{id}/evaluation/feedback`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PUT',
             headers: headerParameters,
             query: queryParameters,
             body: SetEvaluationFeedbackRequestToJSON(requestParameters['setEvaluationFeedbackRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * PUT and not POST: this is a mutable field of an evaluation that already exists, and a user is allowed to change their mind. Sending it again replaces the previous answer instead of recording a second one.  It attaches to the current revision. A later re-evaluation starts without feedback — carrying an opinion about one verdict onto another one would be attributing something nobody said. 
+     * Say whether the judgement was helpful (EVAL-001)
+     */
+    async setEvaluationFeedbackRaw(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Evaluation>> {
+        const requestOptions = await this.setEvaluationFeedbackRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationFromJSON(jsonValue));
     }
@@ -5399,10 +7478,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * A user-imported skill has no category until somebody assigns one, and until 2026-09-08 nobody could: the value was written by the curation backfill and by nothing else, so `?category=` matched no imported skill and the taxonomy existed only for the 45 seeded rows (migration 0053).  The platform does not guess it. A model could be asked, and that was the recorded upgrade path, but a guessed shelf is exactly what DISC-004 and 設計 §2.9 refuse, and the enrichment prompt that would carry the question is pinned to the F1 and poisoning measurements (05 R-53) — changing it costs a paid re-measurement, not a line of prompt. So the answer is the person who owns the bytes: this endpoint, on their own skill, in their own workspace.  The stored provenance separates the two sources: `curated` for the seeded rows a person classified during curation, `owner` for a value set here. Both render as a shelf; only the note differs. 
-     * The owner says what their own skill is for (DISC-002 類別, 05 R-19)
+     * Creates request options for setSkillCategory without sending the request
      */
-    async setSkillCategoryRaw(requestParameters: SetSkillCategoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Skill>> {
+    async setSkillCategoryRequestOpts(requestParameters: SetSkillCategoryOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5425,15 +7503,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/category`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PUT',
             headers: headerParameters,
             query: queryParameters,
             body: SetSkillCategoryRequestToJSON(requestParameters['setSkillCategoryRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * A user-imported skill has no category until somebody assigns one, and until 2026-09-08 nobody could: the value was written by the curation backfill and by nothing else, so `?category=` matched no imported skill and the taxonomy existed only for the 45 seeded rows (migration 0053).  The platform does not guess it. A model could be asked, and that was the recorded upgrade path, but a guessed shelf is exactly what DISC-004 and 設計 §2.9 refuse, and the enrichment prompt that would carry the question is pinned to the F1 and poisoning measurements (05 R-53) — changing it costs a paid re-measurement, not a line of prompt. So the answer is the person who owns the bytes: this endpoint, on their own skill, in their own workspace.  The stored provenance separates the two sources: `curated` for the seeded rows a person classified during curation, `owner` for a value set here. Both render as a shelf; only the note differs. 
+     * The owner says what their own skill is for (DISC-002 類別, 05 R-19)
+     */
+    async setSkillCategoryRaw(requestParameters: SetSkillCategoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Skill>> {
+        const requestOptions = await this.setSkillCategoryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => SkillFromJSON(jsonValue));
     }
@@ -5448,10 +7535,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Sets the redistribution verdict on one skill and records who changed it and why.  This gate and the `restriction` above block the same download, and until 2026-08-23 this was the one of the two with no route, no operator check and no audit event (`05` R-3c). It then spent a further two days with a route and no contract, which is the same gap one layer up: an operator tool generated from this file could set a hold and not release content.  Idempotent, for the same reason as `restriction`: writing the value a skill already has is a second audit event and no change to the row.  The column write and the audit event share one transaction (iron rule 9). This gate decides whether content leaves the platform, so \"released, and no record of who released it\" is the one outcome that must be impossible.  Cross-workspace like `restriction`, and for the same reason: the verdict is about a *source*, so it has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data.  Operator-only is now a ruling rather than a holding position (2026-08-27, `05` R-3a, ADR-057). The route was written narrow while the question was open, on the grounds that widening later adds callers where narrowing later takes something away; the ruling kept it there, because ADR-021 §5.3\'s false positive was made by people who audit licences for a living.  Releasing a skill also has to carry evidence now — see `license_expression` and `license_source` (`05` R-3b). 
-     * Set whether a skill\'s bytes may be handed back (SEC-011)
+     * Creates request options for setSkillRedistribution without sending the request
      */
-    async setSkillRedistributionRaw(requestParameters: SetSkillRedistributionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetSkillRedistribution200Response>> {
+    async setSkillRedistributionRequestOpts(requestParameters: SetSkillRedistributionOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5474,15 +7560,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/admin/skills/{id}/redistribution`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PUT',
             headers: headerParameters,
             query: queryParameters,
             body: SetSkillRedistributionRequestToJSON(requestParameters['setSkillRedistributionRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. Sets the redistribution verdict on one skill and records who changed it and why.  This gate and the `restriction` above block the same download, and until 2026-08-23 this was the one of the two with no route, no operator check and no audit event (`05` R-3c). It then spent a further two days with a route and no contract, which is the same gap one layer up: an operator tool generated from this file could set a hold and not release content.  Idempotent, for the same reason as `restriction`: writing the value a skill already has is a second audit event and no change to the row.  The column write and the audit event share one transaction (iron rule 9). This gate decides whether content leaves the platform, so \"released, and no record of who released it\" is the one outcome that must be impossible.  Cross-workspace like `restriction`, and for the same reason: the verdict is about a *source*, so it has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data.  Operator-only is now a ruling rather than a holding position (2026-08-27, `05` R-3a, ADR-057). The route was written narrow while the question was open, on the grounds that widening later adds callers where narrowing later takes something away; the ruling kept it there, because ADR-021 §5.3\'s false positive was made by people who audit licences for a living.  Releasing a skill also has to carry evidence now — see `license_expression` and `license_source` (`05` R-3b). 
+     * Set whether a skill\'s bytes may be handed back (SEC-011)
+     */
+    async setSkillRedistributionRaw(requestParameters: SetSkillRedistributionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetSkillRedistribution200Response>> {
+        const requestOptions = await this.setSkillRedistributionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => SetSkillRedistribution200ResponseFromJSON(jsonValue));
     }
@@ -5497,10 +7592,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. A licensing question is about a *source*, so a hold has to reach the catalogue entry and every fork of it alike; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
-     * Put the licensing hold on a skill (SEC-011)
+     * Creates request options for setSkillRestriction without sending the request
      */
-    async setSkillRestrictionRaw(requestParameters: SetSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetSkillRestriction200Response>> {
+    async setSkillRestrictionRequestOpts(requestParameters: SetSkillRestrictionOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5523,15 +7617,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/admin/skills/{id}/restriction`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PUT',
             headers: headerParameters,
             query: queryParameters,
             body: SetSkillRestrictionRequestToJSON(requestParameters['setSkillRestrictionRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. A licensing question is about a *source*, so a hold has to reach the catalogue entry and every fork of it alike; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
+     * Put the licensing hold on a skill (SEC-011)
+     */
+    async setSkillRestrictionRaw(requestParameters: SetSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetSkillRestriction200Response>> {
+        const requestOptions = await this.setSkillRestrictionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => SetSkillRestriction200ResponseFromJSON(jsonValue));
     }
@@ -5546,9 +7649,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Begin GitHub OAuth login (ADR-020)
+     * Creates request options for startGithubLogin without sending the request
      */
-    async startGithubLoginRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async startGithubLoginRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -5556,12 +7659,20 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/auth/github/login`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Begin GitHub OAuth login (ADR-020)
+     */
+    async startGithubLoginRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.startGithubLoginRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -5574,10 +7685,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Creates the run in `queued` and enqueues its execution job in the same transaction, so a run that exists is always a run something will pick up.  The test case is snapshotted here, not referenced: a run points at frozen content (iron rule 4), and later edits to the test case cannot rewrite what a past run was asked to do.  The response is immediate — execution is asynchronous (ADR-008). Poll `GET /runs/{run_id}` for progress.  Two things are checked before anything is written. Whether the configured fleet can carry the work at all (RUN-005), and whether the caller has agreed to the current permission summary (TEST-005); both refuse with 422 and neither leaves a run behind. `provider` still comes back as `unassigned` — the fleet was checked here, but the individual provider is picked when the job is dispatched, and naming one now would name one the scheduler may not use. 
-     * Start a run of one skill version against one test case (RUN-001)
+     * Creates request options for startRun without sending the request
      */
-    async startRunRaw(requestParameters: StartRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Run>> {
+    async startRunRequestOpts(requestParameters: StartRunOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5600,15 +7710,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/runs`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: StartRunRequestToJSON(requestParameters['startRunRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Creates the run in `queued` and enqueues its execution job in the same transaction, so a run that exists is always a run something will pick up.  The test case is snapshotted here, not referenced: a run points at frozen content (iron rule 4), and later edits to the test case cannot rewrite what a past run was asked to do.  The response is immediate — execution is asynchronous (ADR-008). Poll `GET /runs/{run_id}` for progress.  Two things are checked before anything is written. Whether the configured fleet can carry the work at all (RUN-005), and whether the caller has agreed to the current permission summary (TEST-005); both refuse with 422 and neither leaves a run behind. `provider` still comes back as `unassigned` — the fleet was checked here, but the individual provider is picked when the job is dispatched, and naming one now would name one the scheduler may not use. 
+     * Start a run of one skill version against one test case (RUN-001)
+     */
+    async startRunRaw(requestParameters: StartRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Run>> {
+        const requestOptions = await this.startRunRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => RunFromJSON(jsonValue));
     }
@@ -5623,10 +7742,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The step events of one creation session, as they are written (ADR-069).  THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the honest description rather than an omission. The body is an SSE stream (`text/event-stream`): a sequence of events whose `id:` is the session revision and whose `data:` is one CreationSession — the same document GET /creation-sessions/{session_id} returns — plus a comment line at least every 20 seconds so an idle proxy does not close the connection. OpenAPI can describe a document; it cannot describe a stream of them, and naming CreationSession as the *body* schema would assert that the body IS one of those, which is false. What pins the payload instead is a test: apiserver\'s stream test unmarshals what the handler writes into the very type this contract\'s CreationSession is generated from, so the two cannot drift without going red (05 R-71 signature 2).  What this stream does NOT carry is model tokens. A model reply is a proposal until Go accepts it — it can be rejected whole, or thrown away and asked for again — so what streams here is state Go has already committed, never text a model is still writing. ADR-069 決策 1 and 6 carry the reasoning and the conditions under which that could change.  The stream ends when the session reaches a terminal state or its deadline passes. A client that cannot hold a stream keeps polling GET /creation-sessions/{session_id}; this endpoint adds nothing that polling cannot get, only sooner and with far less traffic. 
-     * streamCreationSession
+     * Creates request options for streamCreationSession without sending the request
      */
-    async streamCreationSessionRaw(requestParameters: StreamCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async streamCreationSessionRequestOpts(requestParameters: StreamCreationSessionRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['sessionId'] == null) {
             throw new runtime.RequiredError(
                 'sessionId',
@@ -5644,14 +7762,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/creation-sessions/{session_id}/events`;
-        urlPath = urlPath.replace(`{${"session_id"}}`, encodeURIComponent(String(requestParameters['sessionId'])));
+        urlPath = urlPath.replace('{session_id}', encodeURIComponent(String(requestParameters['sessionId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * The step events of one creation session, as they are written (ADR-069).  THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the honest description rather than an omission. The body is an SSE stream (`text/event-stream`): a sequence of events whose `id:` is the session revision and whose `data:` is one CreationSession — the same document GET /creation-sessions/{session_id} returns — plus a comment line at least every 20 seconds so an idle proxy does not close the connection. OpenAPI can describe a document; it cannot describe a stream of them, and naming CreationSession as the *body* schema would assert that the body IS one of those, which is false. What pins the payload instead is a test: apiserver\'s stream test unmarshals what the handler writes into the very type this contract\'s CreationSession is generated from, so the two cannot drift without going red (05 R-71 signature 2).  What this stream does NOT carry is model tokens. A model reply is a proposal until Go accepts it — it can be rejected whole, or thrown away and asked for again — so what streams here is state Go has already committed, never text a model is still writing. ADR-069 決策 1 and 6 carry the reasoning and the conditions under which that could change.  The stream ends when the session reaches a terminal state or its deadline passes. A client that cannot hold a stream keeps polling GET /creation-sessions/{session_id}; this endpoint adds nothing that polling cannot get, only sooner and with far less traffic. 
+     * streamCreationSession
+     */
+    async streamCreationSessionRaw(requestParameters: StreamCreationSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.streamCreationSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -5665,10 +7792,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * One endpoint for the three entry points the closed beta needs, split by `kind` rather than by URL: the person who is not on the invite list, the person whose allowance ran out, and the person who is stuck somewhere in the journey. The first two are the same question (\"what did you want that you could not have\") and were designed to share one form (PDM-010 §8.1); the third is a different question and says so in `kind`.  Not the same channel as PUT /runs/{id}/evaluation/feedback, which answers \"was this judgement useful\" about one evaluation. Merging them would produce one bucket that answers neither.  `page_path`, `run_id` and `build_id` are what the client already knows about where the report came from. Nothing is captured beyond them — no screenshot, no console, no automatic context grab (beta-design §5): the message is the user\'s own words and everything else is a field they can see. `build_id` (2026-09-04, 資訊架構 IA-11) is the identifier the page prints in its own footer; it names the software, not the person, and it is what makes a report reproducible against a rolling deployment. 
-     * Report a blocking problem or a missing capability (BETA-003/004/005)
+     * Creates request options for submitFeedback without sending the request
      */
-    async submitFeedbackRaw(requestParameters: SubmitFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async submitFeedbackRequestOpts(requestParameters: SubmitFeedbackOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['submitFeedbackRequest'] == null) {
             throw new runtime.RequiredError(
                 'submitFeedbackRequest',
@@ -5685,13 +7811,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/feedback`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: SubmitFeedbackRequestToJSON(requestParameters['submitFeedbackRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * One endpoint for the three entry points the closed beta needs, split by `kind` rather than by URL: the person who is not on the invite list, the person whose allowance ran out, and the person who is stuck somewhere in the journey. The first two are the same question (\"what did you want that you could not have\") and were designed to share one form (PDM-010 §8.1); the third is a different question and says so in `kind`.  Not the same channel as PUT /runs/{id}/evaluation/feedback, which answers \"was this judgement useful\" about one evaluation. Merging them would produce one bucket that answers neither.  `page_path`, `run_id` and `build_id` are what the client already knows about where the report came from. Nothing is captured beyond them — no screenshot, no console, no automatic context grab (beta-design §5): the message is the user\'s own words and everything else is a field they can see. `build_id` (2026-09-04, 資訊架構 IA-11) is the identifier the page prints in its own footer; it names the software, not the person, and it is what makes a report reproducible against a rolling deployment. 
+     * Report a blocking problem or a missing capability (BETA-003/004/005)
+     */
+    async submitFeedbackRaw(requestParameters: SubmitFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.submitFeedbackRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
@@ -5705,10 +7840,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * **Returns proposals and stores nothing.** TEST-001 makes automatic suggestion 可選強化 and puts the confirmation with the user; a route that wrote first and left the user deleting what it had decided for them was the opposite shape. Adopting a proposal is POST /test-cases/{id}/criteria with its text, one at a time, which is the same route a hand-written criterion goes through.  A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
-     * Ask the model to propose acceptance criteria (TEST-002)
+     * Creates request options for suggestAcceptanceCriteria without sending the request
      */
-    async suggestAcceptanceCriteriaRaw(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AcceptanceCriteriaSuggestions>> {
+    async suggestAcceptanceCriteriaRequestOpts(requestParameters: SuggestAcceptanceCriteriaRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5722,14 +7856,23 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/test-cases/{id}/criteria/suggest`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * **Returns proposals and stores nothing.** TEST-001 makes automatic suggestion 可選強化 and puts the confirmation with the user; a route that wrote first and left the user deleting what it had decided for them was the opposite shape. Adopting a proposal is POST /test-cases/{id}/criteria with its text, one at a time, which is the same route a hand-written criterion goes through.  A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
+     * Ask the model to propose acceptance criteria (TEST-002)
+     */
+    async suggestAcceptanceCriteriaRaw(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AcceptanceCriteriaSuggestions>> {
+        const requestOptions = await this.suggestAcceptanceCriteriaRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => AcceptanceCriteriaSuggestionsFromJSON(jsonValue));
     }
@@ -5744,10 +7887,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Not a delete. The skill, its versions and their import sources are retained (PDM-006 §6 makes takedown the only removal path for them); the skill leaves search, stops being a fork source, and its detail view answers 410. Existing forks and historical runs are unaffected, and a full reindex does not bring it back.  Authorization is the ordinary workspace scope, which for curated catalog entries means the operator who owns the catalog workspace. Taking down content in someone else\'s workspace needs an operator role the MVP does not define yet. 
-     * Withdraw a skill from the public surface (INGEST-010)
+     * Creates request options for takedownSkill without sending the request
      */
-    async takedownSkillRaw(requestParameters: TakedownSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TakedownSkill200Response>> {
+    async takedownSkillRequestOpts(requestParameters: TakedownSkillOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5770,15 +7912,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/skills/{id}/takedown`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: TakedownSkillRequestToJSON(requestParameters['takedownSkillRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Not a delete. The skill, its versions and their import sources are retained (PDM-006 §6 makes takedown the only removal path for them); the skill leaves search, stops being a fork source, and its detail view answers 410. Existing forks and historical runs are unaffected, and a full reindex does not bring it back.  Authorization is the ordinary workspace scope, which for curated catalog entries means the operator who owns the catalog workspace. Taking down content in someone else\'s workspace needs an operator role the MVP does not define yet. 
+     * Withdraw a skill from the public surface (INGEST-010)
+     */
+    async takedownSkillRaw(requestParameters: TakedownSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TakedownSkill200Response>> {
+        const requestOptions = await this.takedownSkillRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TakedownSkill200ResponseFromJSON(jsonValue));
     }
@@ -5793,10 +7944,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. What had no path at all until 2026-08-28 was the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace. `registry.go` carried a comment saying so, and saying exactly how to fix it, since the method was written (`04` 丙-80).  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built (`04` 丙-80).  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
-     * Withdraw a skill from anywhere on the platform (SEC-011 action 1)
+     * Creates request options for takedownSkillAsOperator without sending the request
      */
-    async takedownSkillAsOperatorRaw(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TakedownSkillAsOperator200Response>> {
+    async takedownSkillAsOperatorRequestOpts(requestParameters: TakedownSkillAsOperatorOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5819,15 +7969,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/admin/skills/{id}/takedown`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PUT',
             headers: headerParameters,
             query: queryParameters,
             body: TakedownSkillAsOperatorRequestToJSON(requestParameters['takedownSkillAsOperatorRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. What had no path at all until 2026-08-28 was the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace. `registry.go` carried a comment saying so, and saying exactly how to fix it, since the method was written (`04` 丙-80).  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built (`04` 丙-80).  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
+     * Withdraw a skill from anywhere on the platform (SEC-011 action 1)
+     */
+    async takedownSkillAsOperatorRaw(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TakedownSkillAsOperator200Response>> {
+        const requestOptions = await this.takedownSkillAsOperatorRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TakedownSkillAsOperator200ResponseFromJSON(jsonValue));
     }
@@ -5842,10 +8001,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Edit and confirmation are one statement because they are one decision: confirming means agreeing to the text as it stands. Changing the text of a confirmed criterion therefore clears the confirmation — the agreement applied to the old words. 
-     * Edit and/or confirm an acceptance criterion (TEST-003)
+     * Creates request options for updateAcceptanceCriterion without sending the request
      */
-    async updateAcceptanceCriterionRaw(requestParameters: UpdateAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+    async updateAcceptanceCriterionRequestOpts(requestParameters: UpdateAcceptanceCriterionOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5875,16 +8033,25 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/test-cases/{id}/criteria/{criterionId}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
-        urlPath = urlPath.replace(`{${"criterionId"}}`, encodeURIComponent(String(requestParameters['criterionId'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{criterionId}', encodeURIComponent(String(requestParameters['criterionId'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PATCH',
             headers: headerParameters,
             query: queryParameters,
             body: UpdateAcceptanceCriterionRequestToJSON(requestParameters['updateAcceptanceCriterionRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Edit and confirmation are one statement because they are one decision: confirming means agreeing to the text as it stands. Changing the text of a confirmed criterion therefore clears the confirmation — the agreement applied to the old words. 
+     * Edit and/or confirm an acceptance criterion (TEST-003)
+     */
+    async updateAcceptanceCriterionRaw(requestParameters: UpdateAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+        const requestOptions = await this.updateAcceptanceCriterionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TestCaseFromJSON(jsonValue));
     }
@@ -5899,10 +8066,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4, ADR-003). 
-     * Edit a test case\'s name, prompt or rubric (TEST-001, CONTENT-007)
+     * Creates request options for updateTestCase without sending the request
      */
-    async updateTestCaseRaw(requestParameters: UpdateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+    async updateTestCaseRequestOpts(requestParameters: UpdateTestCaseOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5925,15 +8091,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/test-cases/{id}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'PATCH',
             headers: headerParameters,
             query: queryParameters,
             body: UpdateTestCaseRequestToJSON(requestParameters['updateTestCaseRequest']),
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4, ADR-003). 
+     * Edit a test case\'s name, prompt or rubric (TEST-001, CONTENT-007)
+     */
+    async updateTestCaseRaw(requestParameters: UpdateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+        const requestOptions = await this.updateTestCaseRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TestCaseFromJSON(jsonValue));
     }
@@ -5948,10 +8123,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * PDM-005 §5.1 limits are enforced here: at most 25 MB per file, 100 MB and 20 files per test case, and an allow-list of kinds judged by magic bytes — the file extension is never consulted, so an executable renamed to `.csv` is refused. Rejections name the limit that was hit and nothing about the system behind it (02:TEST-002 不洩漏系統資訊).  The stored file is reachable only by runs of this test case, and `expires_at` is 90 days from upload. 
-     * Upload one dataset file to a test case (TEST-004)
+     * Creates request options for uploadDataset without sending the request
      */
-    async uploadDatasetRaw(requestParameters: UploadDatasetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Dataset>> {
+    async uploadDatasetRequestOpts(requestParameters: UploadDatasetRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -5992,15 +8166,24 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
 
         let urlPath = `/test-cases/{id}/datasets`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: formParams,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * PDM-005 §5.1 limits are enforced here: at most 25 MB per file, 100 MB and 20 files per test case, and an allow-list of kinds judged by magic bytes — the file extension is never consulted, so an executable renamed to `.csv` is refused. Rejections name the limit that was hit and nothing about the system behind it (02:TEST-002 不洩漏系統資訊).  The stored file is reachable only by runs of this test case, and `expires_at` is 90 days from upload. 
+     * Upload one dataset file to a test case (TEST-004)
+     */
+    async uploadDatasetRaw(requestParameters: UploadDatasetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Dataset>> {
+        const requestOptions = await this.uploadDatasetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => DatasetFromJSON(jsonValue));
     }
@@ -6015,10 +8198,9 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Requires a session. The archive is statically validated only; nothing inside it is executed. Blocking findings reject the import; identical content re-uploaded to the same skill returns the existing version. 
-     * Import a skill package by uploading a zip archive (SKILL-001)
+     * Creates request options for uploadSkillPackage without sending the request
      */
-    async uploadSkillPackageRaw(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>> {
+    async uploadSkillPackageRequestOpts(requestParameters: UploadSkillPackageRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['body'] == null) {
             throw new runtime.RequiredError(
                 'body',
@@ -6035,13 +8217,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         let urlPath = `/skills/import/upload`;
 
-        const response = await this.request({
+        return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: requestParameters['body'] as any,
-        }, initOverrides);
+        };
+    }
+
+    /**
+     * Requires a session. The archive is statically validated only; nothing inside it is executed. Blocking findings reject the import; identical content re-uploaded to the same skill returns the existing version. 
+     * Import a skill package by uploading a zip archive (SKILL-001)
+     */
+    async uploadSkillPackageRaw(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>> {
+        const requestOptions = await this.uploadSkillPackageRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => UploadResultFromJSON(jsonValue));
     }
@@ -6062,7 +8253,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
  */
 export const BrowseCatalogScriptEnum = {
     Yes: 'yes',
-    No: 'no'
+    No: 'no',
 } as const;
 export type BrowseCatalogScriptEnum = typeof BrowseCatalogScriptEnum[keyof typeof BrowseCatalogScriptEnum];
 /**
@@ -6070,7 +8261,7 @@ export type BrowseCatalogScriptEnum = typeof BrowseCatalogScriptEnum[keyof typeo
  */
 export const BrowseCatalogValidationEnum = {
     Passed: 'passed',
-    Unverified: 'unverified'
+    Unverified: 'unverified',
 } as const;
 export type BrowseCatalogValidationEnum = typeof BrowseCatalogValidationEnum[keyof typeof BrowseCatalogValidationEnum];
 /**
@@ -6080,7 +8271,7 @@ export const BrowseCatalogAgentEnum = {
     Native: 'native',
     Transpiled: 'transpiled',
     Failed: 'failed',
-    Unverified: 'unverified'
+    Unverified: 'unverified',
 } as const;
 export type BrowseCatalogAgentEnum = typeof BrowseCatalogAgentEnum[keyof typeof BrowseCatalogAgentEnum];
 /**
@@ -6088,7 +8279,7 @@ export type BrowseCatalogAgentEnum = typeof BrowseCatalogAgentEnum[keyof typeof 
  */
 export const BrowseCatalogTierEnum = {
     Curated: 'curated',
-    Indexed: 'indexed'
+    Indexed: 'indexed',
 } as const;
 export type BrowseCatalogTierEnum = typeof BrowseCatalogTierEnum[keyof typeof BrowseCatalogTierEnum];
 /**
@@ -6097,7 +8288,7 @@ export type BrowseCatalogTierEnum = typeof BrowseCatalogTierEnum[keyof typeof Br
 export const BrowseCatalogCategoryEnum = {
     Documents: 'documents',
     Writing: 'writing',
-    Data: 'data'
+    Data: 'data',
 } as const;
 export type BrowseCatalogCategoryEnum = typeof BrowseCatalogCategoryEnum[keyof typeof BrowseCatalogCategoryEnum];
 /**
@@ -6106,7 +8297,7 @@ export type BrowseCatalogCategoryEnum = typeof BrowseCatalogCategoryEnum[keyof t
 export const GetCostTrendDaysEnum = {
     NUMBER_7: 7,
     NUMBER_30: 30,
-    NUMBER_90: 90
+    NUMBER_90: 90,
 } as const;
 export type GetCostTrendDaysEnum = typeof GetCostTrendDaysEnum[keyof typeof GetCostTrendDaysEnum];
 /**
@@ -6115,7 +8306,7 @@ export type GetCostTrendDaysEnum = typeof GetCostTrendDaysEnum[keyof typeof GetC
 export const GetCreditTrendDaysEnum = {
     NUMBER_7: 7,
     NUMBER_30: 30,
-    NUMBER_90: 90
+    NUMBER_90: 90,
 } as const;
 export type GetCreditTrendDaysEnum = typeof GetCreditTrendDaysEnum[keyof typeof GetCreditTrendDaysEnum];
 /**
@@ -6124,7 +8315,7 @@ export type GetCreditTrendDaysEnum = typeof GetCreditTrendDaysEnum[keyof typeof 
 export const GetOperatorActionTrendDaysEnum = {
     NUMBER_7: 7,
     NUMBER_30: 30,
-    NUMBER_90: 90
+    NUMBER_90: 90,
 } as const;
 export type GetOperatorActionTrendDaysEnum = typeof GetOperatorActionTrendDaysEnum[keyof typeof GetOperatorActionTrendDaysEnum];
 /**
@@ -6132,7 +8323,7 @@ export type GetOperatorActionTrendDaysEnum = typeof GetOperatorActionTrendDaysEn
  */
 export const GetRunTraceModeEnum = {
     General: 'general',
-    Advanced: 'advanced'
+    Advanced: 'advanced',
 } as const;
 export type GetRunTraceModeEnum = typeof GetRunTraceModeEnum[keyof typeof GetRunTraceModeEnum];
 /**
@@ -6141,21 +8332,21 @@ export type GetRunTraceModeEnum = typeof GetRunTraceModeEnum[keyof typeof GetRun
 export const GetRunTrendDaysEnum = {
     NUMBER_7: 7,
     NUMBER_30: 30,
-    NUMBER_90: 90
+    NUMBER_90: 90,
 } as const;
 export type GetRunTrendDaysEnum = typeof GetRunTrendDaysEnum[keyof typeof GetRunTrendDaysEnum];
 /**
  * @export
  */
 export const GetSkillDetailViewEnum = {
-    Embedded: 'embedded'
+    Embedded: 'embedded',
 } as const;
 export type GetSkillDetailViewEnum = typeof GetSkillDetailViewEnum[keyof typeof GetSkillDetailViewEnum];
 /**
  * @export
  */
 export const PublicSearchSkillsPurposeEnum = {
-    Reference: 'reference'
+    Reference: 'reference',
 } as const;
 export type PublicSearchSkillsPurposeEnum = typeof PublicSearchSkillsPurposeEnum[keyof typeof PublicSearchSkillsPurposeEnum];
 /**
@@ -6163,7 +8354,7 @@ export type PublicSearchSkillsPurposeEnum = typeof PublicSearchSkillsPurposeEnum
  */
 export const PublicSearchSkillsScriptEnum = {
     Yes: 'yes',
-    No: 'no'
+    No: 'no',
 } as const;
 export type PublicSearchSkillsScriptEnum = typeof PublicSearchSkillsScriptEnum[keyof typeof PublicSearchSkillsScriptEnum];
 /**
@@ -6171,7 +8362,7 @@ export type PublicSearchSkillsScriptEnum = typeof PublicSearchSkillsScriptEnum[k
  */
 export const PublicSearchSkillsValidationEnum = {
     Passed: 'passed',
-    Unverified: 'unverified'
+    Unverified: 'unverified',
 } as const;
 export type PublicSearchSkillsValidationEnum = typeof PublicSearchSkillsValidationEnum[keyof typeof PublicSearchSkillsValidationEnum];
 /**
@@ -6181,7 +8372,7 @@ export const PublicSearchSkillsAgentEnum = {
     Native: 'native',
     Transpiled: 'transpiled',
     Failed: 'failed',
-    Unverified: 'unverified'
+    Unverified: 'unverified',
 } as const;
 export type PublicSearchSkillsAgentEnum = typeof PublicSearchSkillsAgentEnum[keyof typeof PublicSearchSkillsAgentEnum];
 /**
@@ -6189,7 +8380,7 @@ export type PublicSearchSkillsAgentEnum = typeof PublicSearchSkillsAgentEnum[key
  */
 export const PublicSearchSkillsTierEnum = {
     Curated: 'curated',
-    Indexed: 'indexed'
+    Indexed: 'indexed',
 } as const;
 export type PublicSearchSkillsTierEnum = typeof PublicSearchSkillsTierEnum[keyof typeof PublicSearchSkillsTierEnum];
 /**
@@ -6198,6 +8389,6 @@ export type PublicSearchSkillsTierEnum = typeof PublicSearchSkillsTierEnum[keyof
 export const PublicSearchSkillsCategoryEnum = {
     Documents: 'documents',
     Writing: 'writing',
-    Data: 'data'
+    Data: 'data',
 } as const;
 export type PublicSearchSkillsCategoryEnum = typeof PublicSearchSkillsCategoryEnum[keyof typeof PublicSearchSkillsCategoryEnum];

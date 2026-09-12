@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface Skill {
     /**
      * 
-     * @type {string}
-     * @memberof Skill
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof Skill
      */
     name: string;
     /**
      * 
-     * @type {string}
-     * @memberof Skill
      */
     summary: string;
     /**
@@ -51,8 +45,6 @@ export interface Skill {
      * download the Skill I just wrote" was permanently no, over a licensing
      * question nobody could resolve (ADR-045).
      * 
-     * @type {string}
-     * @memberof Skill
      */
     redistribution: SkillRedistributionEnum;
     /**
@@ -61,20 +53,14 @@ export interface Skill {
      * belongs on a list of skills the caller owns rather than only on the
      * detail view.
      * 
-     * @type {string}
-     * @memberof Skill
      */
     accessRestriction?: string | null;
     /**
      * 
-     * @type {string}
-     * @memberof Skill
      */
     forkedFromSkillId?: string;
     /**
      * 
-     * @type {string}
-     * @memberof Skill
      */
     forkedFromVersionId?: string;
 }
@@ -88,7 +74,7 @@ export const SkillRedistributionEnum = {
     Blocked: 'blocked',
     Unknown: 'unknown',
     SelfSupplied: 'self_supplied',
-    Generated: 'generated'
+    Generated: 'generated',
 } as const;
 export type SkillRedistributionEnum = typeof SkillRedistributionEnum[keyof typeof SkillRedistributionEnum];
 
@@ -97,7 +83,7 @@ export type SkillRedistributionEnum = typeof SkillRedistributionEnum[keyof typeo
  * Check if a given object implements the Skill interface.
  */
 export function instanceOfSkill(value: object): value is Skill {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('summary' in value) || value['summary'] === undefined) return false;
     if (!('redistribution' in value) || value['redistribution'] === undefined) return false;
@@ -118,7 +104,7 @@ export function SkillFromJSONTyped(json: any, ignoreDiscriminator: boolean): Ski
         'name': json['name'],
         'summary': json['summary'],
         'redistribution': json['redistribution'],
-        'accessRestriction': json['access_restriction'] == null ? undefined : json['access_restriction'],
+        'accessRestriction': json['access_restriction'] === undefined ? undefined : json['access_restriction'] === null ? null : json['access_restriction'],
         'forkedFromSkillId': json['forked_from_skill_id'] == null ? undefined : json['forked_from_skill_id'],
         'forkedFromVersionId': json['forked_from_version_id'] == null ? undefined : json['forked_from_version_id'],
     };

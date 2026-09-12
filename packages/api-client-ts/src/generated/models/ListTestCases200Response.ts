@@ -29,8 +29,6 @@ import {
 export interface ListTestCases200Response {
     /**
      * 
-     * @type {Array<TestCaseListItem>}
-     * @memberof ListTestCases200Response
      */
     testCases: Array<TestCaseListItem>;
 }
@@ -39,7 +37,7 @@ export interface ListTestCases200Response {
  * Check if a given object implements the ListTestCases200Response interface.
  */
 export function instanceOfListTestCases200Response(value: object): value is ListTestCases200Response {
-    if (!('testCases' in value) || value['testCases'] === undefined) return false;
+    if ((!('testCases' in (value as Record<string, any>)) && !('test_cases' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCases'] === undefined && (value as Record<string, any>)['test_cases'] === undefined)) return false;
     return true;
 }
 

@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface GenerationInputsReferencesInner {
     /**
      * 
-     * @type {string}
-     * @memberof GenerationInputsReferencesInner
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof GenerationInputsReferencesInner
      */
     versionId: string;
     /**
      * The Skill's name at generation time.
-     * @type {string}
-     * @memberof GenerationInputsReferencesInner
      */
     name: string;
 }
@@ -43,8 +37,8 @@ export interface GenerationInputsReferencesInner {
  * Check if a given object implements the GenerationInputsReferencesInner interface.
  */
 export function instanceOfGenerationInputsReferencesInner(value: object): value is GenerationInputsReferencesInner {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     return true;
 }

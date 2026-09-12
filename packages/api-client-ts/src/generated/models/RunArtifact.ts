@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * One file a run produced, as a manifest row. The bytes are never served
  * here: the archive is a sandbox's output and the control plane does not
@@ -24,44 +24,30 @@ import { mapValues } from '../runtime';
 export interface RunArtifact {
     /**
      * 
-     * @type {string}
-     * @memberof RunArtifact
      */
     artifactId: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunArtifact
      */
     fileName: string;
     /**
      * 
-     * @type {string}
-     * @memberof RunArtifact
      */
     contentType: string;
     /**
      * 
-     * @type {number}
-     * @memberof RunArtifact
      */
     sizeBytes: number;
     /**
      * 
-     * @type {string}
-     * @memberof RunArtifact
      */
     contentHash: string;
     /**
      * 
-     * @type {Date}
-     * @memberof RunArtifact
      */
     createdAt: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof RunArtifact
      */
     expiresAt?: Date;
     /**
@@ -70,8 +56,6 @@ export interface RunArtifact {
      * the owner deleting it, which removes the row from this list entirely:
      * "it expired" and "it never existed" are different answers.
      * 
-     * @type {boolean}
-     * @memberof RunArtifact
      */
     purged: boolean;
 }
@@ -80,12 +64,12 @@ export interface RunArtifact {
  * Check if a given object implements the RunArtifact interface.
  */
 export function instanceOfRunArtifact(value: object): value is RunArtifact {
-    if (!('artifactId' in value) || value['artifactId'] === undefined) return false;
-    if (!('fileName' in value) || value['fileName'] === undefined) return false;
-    if (!('contentType' in value) || value['contentType'] === undefined) return false;
-    if (!('sizeBytes' in value) || value['sizeBytes'] === undefined) return false;
-    if (!('contentHash' in value) || value['contentHash'] === undefined) return false;
-    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
+    if ((!('artifactId' in (value as Record<string, any>)) && !('artifact_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['artifactId'] === undefined && (value as Record<string, any>)['artifact_id'] === undefined)) return false;
+    if ((!('fileName' in (value as Record<string, any>)) && !('file_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['fileName'] === undefined && (value as Record<string, any>)['file_name'] === undefined)) return false;
+    if ((!('contentType' in (value as Record<string, any>)) && !('content_type' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentType'] === undefined && (value as Record<string, any>)['content_type'] === undefined)) return false;
+    if ((!('sizeBytes' in (value as Record<string, any>)) && !('size_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['sizeBytes'] === undefined && (value as Record<string, any>)['size_bytes'] === undefined)) return false;
+    if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
+    if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
     if (!('purged' in value) || value['purged'] === undefined) return false;
     return true;
 }
@@ -105,8 +89,8 @@ export function RunArtifactFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'contentType': json['content_type'],
         'sizeBytes': json['size_bytes'],
         'contentHash': json['content_hash'],
-        'createdAt': (new Date(json['created_at'])),
-        'expiresAt': json['expires_at'] == null ? undefined : (new Date(json['expires_at'])),
+        'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
+        'expiresAt': json['expires_at'] == null ? undefined : (parseDateTime(json['expires_at'])),
         'purged': json['purged'],
     };
 }
@@ -127,8 +111,8 @@ export function RunArtifactToJSONTyped(value?: RunArtifact | null, ignoreDiscrim
         'content_type': value['contentType'],
         'size_bytes': value['sizeBytes'],
         'content_hash': value['contentHash'],
-        'created_at': value['createdAt'].toISOString(),
-        'expires_at': value['expiresAt'] == null ? value['expiresAt'] : value['expiresAt'].toISOString(),
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'expires_at': value['expiresAt'] == null ? value['expiresAt'] : serializeDateTime(value['expiresAt']),
         'purged': value['purged'],
     };
 }

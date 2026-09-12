@@ -21,44 +21,30 @@ import { mapValues } from '../runtime';
 export interface CreationLimits {
     /**
      * Lowest budget a session may start with: one model call's reserved cost.
-     * @type {number}
-     * @memberof CreationLimits
      */
     minBudgetCredits: number;
     /**
      * 
-     * @type {number}
-     * @memberof CreationLimits
      */
     maxBudgetCredits: number;
     /**
      * 
-     * @type {number}
-     * @memberof CreationLimits
      */
     maxSteps: number;
     /**
      * 
-     * @type {number}
-     * @memberof CreationLimits
      */
     maxToolCalls: number;
     /**
      * 
-     * @type {number}
-     * @memberof CreationLimits
      */
     callTimeoutSeconds: number;
     /**
      * 
-     * @type {number}
-     * @memberof CreationLimits
      */
     sessionTimeoutSeconds: number;
     /**
      * 
-     * @type {number}
-     * @memberof CreationLimits
      */
     retentionSeconds: number;
 }
@@ -67,13 +53,13 @@ export interface CreationLimits {
  * Check if a given object implements the CreationLimits interface.
  */
 export function instanceOfCreationLimits(value: object): value is CreationLimits {
-    if (!('minBudgetCredits' in value) || value['minBudgetCredits'] === undefined) return false;
-    if (!('maxBudgetCredits' in value) || value['maxBudgetCredits'] === undefined) return false;
-    if (!('maxSteps' in value) || value['maxSteps'] === undefined) return false;
-    if (!('maxToolCalls' in value) || value['maxToolCalls'] === undefined) return false;
-    if (!('callTimeoutSeconds' in value) || value['callTimeoutSeconds'] === undefined) return false;
-    if (!('sessionTimeoutSeconds' in value) || value['sessionTimeoutSeconds'] === undefined) return false;
-    if (!('retentionSeconds' in value) || value['retentionSeconds'] === undefined) return false;
+    if ((!('minBudgetCredits' in (value as Record<string, any>)) && !('min_budget_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['minBudgetCredits'] === undefined && (value as Record<string, any>)['min_budget_credits'] === undefined)) return false;
+    if ((!('maxBudgetCredits' in (value as Record<string, any>)) && !('max_budget_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxBudgetCredits'] === undefined && (value as Record<string, any>)['max_budget_credits'] === undefined)) return false;
+    if ((!('maxSteps' in (value as Record<string, any>)) && !('max_steps' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxSteps'] === undefined && (value as Record<string, any>)['max_steps'] === undefined)) return false;
+    if ((!('maxToolCalls' in (value as Record<string, any>)) && !('max_tool_calls' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxToolCalls'] === undefined && (value as Record<string, any>)['max_tool_calls'] === undefined)) return false;
+    if ((!('callTimeoutSeconds' in (value as Record<string, any>)) && !('call_timeout_seconds' in (value as Record<string, any>))) || ((value as Record<string, any>)['callTimeoutSeconds'] === undefined && (value as Record<string, any>)['call_timeout_seconds'] === undefined)) return false;
+    if ((!('sessionTimeoutSeconds' in (value as Record<string, any>)) && !('session_timeout_seconds' in (value as Record<string, any>))) || ((value as Record<string, any>)['sessionTimeoutSeconds'] === undefined && (value as Record<string, any>)['session_timeout_seconds'] === undefined)) return false;
+    if ((!('retentionSeconds' in (value as Record<string, any>)) && !('retention_seconds' in (value as Record<string, any>))) || ((value as Record<string, any>)['retentionSeconds'] === undefined && (value as Record<string, any>)['retention_seconds'] === undefined)) return false;
     return true;
 }
 

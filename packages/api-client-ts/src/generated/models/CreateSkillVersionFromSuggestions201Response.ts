@@ -36,50 +36,34 @@ import {
 export interface CreateSkillVersionFromSuggestions201Response {
     /**
      * 
-     * @type {string}
-     * @memberof CreateSkillVersionFromSuggestions201Response
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreateSkillVersionFromSuggestions201Response
      */
     versionId: string;
     /**
      * 
-     * @type {number}
-     * @memberof CreateSkillVersionFromSuggestions201Response
      */
     versionNumber: number;
     /**
      * 
-     * @type {string}
-     * @memberof CreateSkillVersionFromSuggestions201Response
      */
     contentHash: string;
     /**
      * True when identical content already existed as a version of this skill.
-     * @type {boolean}
-     * @memberof CreateSkillVersionFromSuggestions201Response
      */
     duplicate: boolean;
     /**
      * 
-     * @type {CategorizedFindings}
-     * @memberof CreateSkillVersionFromSuggestions201Response
      */
     findings: CategorizedFindings;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof CreateSkillVersionFromSuggestions201Response
      */
     appliedSuggestionIds: Array<string>;
     /**
      * 
-     * @type {Array<RejectedSuggestion>}
-     * @memberof CreateSkillVersionFromSuggestions201Response
      */
     rejectedSuggestions: Array<RejectedSuggestion>;
 }
@@ -88,14 +72,14 @@ export interface CreateSkillVersionFromSuggestions201Response {
  * Check if a given object implements the CreateSkillVersionFromSuggestions201Response interface.
  */
 export function instanceOfCreateSkillVersionFromSuggestions201Response(value: object): value is CreateSkillVersionFromSuggestions201Response {
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('versionId' in value) || value['versionId'] === undefined) return false;
-    if (!('versionNumber' in value) || value['versionNumber'] === undefined) return false;
-    if (!('contentHash' in value) || value['contentHash'] === undefined) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
+    if ((!('versionNumber' in (value as Record<string, any>)) && !('version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionNumber'] === undefined && (value as Record<string, any>)['version_number'] === undefined)) return false;
+    if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
     if (!('duplicate' in value) || value['duplicate'] === undefined) return false;
     if (!('findings' in value) || value['findings'] === undefined) return false;
-    if (!('appliedSuggestionIds' in value) || value['appliedSuggestionIds'] === undefined) return false;
-    if (!('rejectedSuggestions' in value) || value['rejectedSuggestions'] === undefined) return false;
+    if ((!('appliedSuggestionIds' in (value as Record<string, any>)) && !('applied_suggestion_ids' in (value as Record<string, any>))) || ((value as Record<string, any>)['appliedSuggestionIds'] === undefined && (value as Record<string, any>)['applied_suggestion_ids'] === undefined)) return false;
+    if ((!('rejectedSuggestions' in (value as Record<string, any>)) && !('rejected_suggestions' in (value as Record<string, any>))) || ((value as Record<string, any>)['rejectedSuggestions'] === undefined && (value as Record<string, any>)['rejected_suggestions'] === undefined)) return false;
     return true;
 }
 

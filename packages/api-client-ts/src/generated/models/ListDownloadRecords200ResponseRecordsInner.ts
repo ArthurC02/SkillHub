@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -21,14 +21,10 @@ import { mapValues } from '../runtime';
 export interface ListDownloadRecords200ResponseRecordsInner {
     /**
      * 
-     * @type {Date}
-     * @memberof ListDownloadRecords200ResponseRecordsInner
      */
     downloadedAt: Date;
     /**
      * 
-     * @type {string}
-     * @memberof ListDownloadRecords200ResponseRecordsInner
      */
     actor: string;
 }
@@ -37,7 +33,7 @@ export interface ListDownloadRecords200ResponseRecordsInner {
  * Check if a given object implements the ListDownloadRecords200ResponseRecordsInner interface.
  */
 export function instanceOfListDownloadRecords200ResponseRecordsInner(value: object): value is ListDownloadRecords200ResponseRecordsInner {
-    if (!('downloadedAt' in value) || value['downloadedAt'] === undefined) return false;
+    if ((!('downloadedAt' in (value as Record<string, any>)) && !('downloaded_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['downloadedAt'] === undefined && (value as Record<string, any>)['downloaded_at'] === undefined)) return false;
     if (!('actor' in value) || value['actor'] === undefined) return false;
     return true;
 }
@@ -52,7 +48,7 @@ export function ListDownloadRecords200ResponseRecordsInnerFromJSONTyped(json: an
     }
     return {
         
-        'downloadedAt': (new Date(json['downloaded_at'])),
+        'downloadedAt': (json['downloaded_at'] == null ? json['downloaded_at'] : parseDateTime(json['downloaded_at'])),
         'actor': json['actor'],
     };
 }
@@ -68,7 +64,7 @@ export function ListDownloadRecords200ResponseRecordsInnerToJSONTyped(value?: Li
 
     return {
         
-        'downloaded_at': value['downloadedAt'].toISOString(),
+        'downloaded_at': value['downloadedAt'] == null ? value['downloadedAt'] : serializeDateTime(value['downloadedAt']),
         'actor': value['actor'],
     };
 }

@@ -21,20 +21,14 @@ import { mapValues } from '../runtime';
 export interface TraceSummaryErrorsInner {
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummaryErrorsInner
      */
     category?: string;
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummaryErrorsInner
      */
     code?: string;
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummaryErrorsInner
      */
     message?: string;
 }

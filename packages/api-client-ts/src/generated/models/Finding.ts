@@ -21,26 +21,18 @@ import { mapValues } from '../runtime';
 export interface Finding {
     /**
      * 
-     * @type {string}
-     * @memberof Finding
      */
     severity: FindingSeverityEnum;
     /**
      * 
-     * @type {string}
-     * @memberof Finding
      */
     code: string;
     /**
      * 
-     * @type {string}
-     * @memberof Finding
      */
     path?: string;
     /**
      * 
-     * @type {string}
-     * @memberof Finding
      */
     message: string;
     /**
@@ -50,8 +42,6 @@ export interface Finding {
      * a package citing hundreds of schema URIs stays readable without the
      * individual references being lost.
      * 
-     * @type {Array<string>}
-     * @memberof Finding
      */
     details?: Array<string>;
 }
@@ -63,7 +53,7 @@ export interface Finding {
 export const FindingSeverityEnum = {
     Error: 'error',
     Warning: 'warning',
-    Info: 'info'
+    Info: 'info',
 } as const;
 export type FindingSeverityEnum = typeof FindingSeverityEnum[keyof typeof FindingSeverityEnum];
 

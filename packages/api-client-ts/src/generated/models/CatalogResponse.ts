@@ -36,8 +36,6 @@ export interface CatalogResponse {
      * does not allow one surface to word a fact two ways. Every row here
      * carries `rank: null` plus a `rank_note` naming the ordering.
      * 
-     * @type {Array<PublicSearchResult>}
-     * @memberof CatalogResponse
      */
     results: Array<PublicSearchResult>;
     /**
@@ -45,8 +43,6 @@ export interface CatalogResponse {
      * given, otherwise the default. Named only because it is enforced
      * (設計系統 §2.2).
      * 
-     * @type {number}
-     * @memberof CatalogResponse
      */
     limit: number;
     /**
@@ -64,16 +60,12 @@ export interface CatalogResponse {
      * 
      * `total == len(results)` whenever `truncated` is false.
      * 
-     * @type {number}
-     * @memberof CatalogResponse
      */
     total: number;
     /**
      * True when the catalogue holds more than this page shows. ADR-042
      * 決策 3: a truncated list must say so, or it reads as the whole answer.
      * 
-     * @type {boolean}
-     * @memberof CatalogResponse
      */
     truncated: boolean;
 }

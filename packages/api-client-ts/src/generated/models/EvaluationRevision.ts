@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * One entry in a run's judgement history. It carries just enough to tell
  * which rubric and judge prompt a verdict was reached under, because a
@@ -24,40 +24,28 @@ import { mapValues } from '../runtime';
 export interface EvaluationRevision {
     /**
      * Pass as `?revision=` to GET /runs/{id}/evaluation to read it in full.
-     * @type {string}
-     * @memberof EvaluationRevision
      */
     evaluationId: string;
     /**
      * 
-     * @type {string}
-     * @memberof EvaluationRevision
      */
     judgePromptVersion: string;
     /**
      * Absent when the skill's category has no rubric.
-     * @type {string}
-     * @memberof EvaluationRevision
      */
     rubricVersion?: string;
     /**
      * 
-     * @type {string}
-     * @memberof EvaluationRevision
      */
     overall: EvaluationRevisionOverallEnum;
     /**
      * 
-     * @type {Date}
-     * @memberof EvaluationRevision
      */
     evaluatedAt: Date;
     /**
      * When a later re-evaluation replaced this one. Null on the current
      * revision, and exactly one revision has it null.
      * 
-     * @type {Date}
-     * @memberof EvaluationRevision
      */
     supersededAt: Date | null;
 }
@@ -70,7 +58,7 @@ export const EvaluationRevisionOverallEnum = {
     Met: 'met',
     PartiallyMet: 'partially_met',
     NotMet: 'not_met',
-    Undetermined: 'undetermined'
+    Undetermined: 'undetermined',
 } as const;
 export type EvaluationRevisionOverallEnum = typeof EvaluationRevisionOverallEnum[keyof typeof EvaluationRevisionOverallEnum];
 
@@ -79,11 +67,11 @@ export type EvaluationRevisionOverallEnum = typeof EvaluationRevisionOverallEnum
  * Check if a given object implements the EvaluationRevision interface.
  */
 export function instanceOfEvaluationRevision(value: object): value is EvaluationRevision {
-    if (!('evaluationId' in value) || value['evaluationId'] === undefined) return false;
-    if (!('judgePromptVersion' in value) || value['judgePromptVersion'] === undefined) return false;
+    if ((!('evaluationId' in (value as Record<string, any>)) && !('evaluation_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['evaluationId'] === undefined && (value as Record<string, any>)['evaluation_id'] === undefined)) return false;
+    if ((!('judgePromptVersion' in (value as Record<string, any>)) && !('judge_prompt_version' in (value as Record<string, any>))) || ((value as Record<string, any>)['judgePromptVersion'] === undefined && (value as Record<string, any>)['judge_prompt_version'] === undefined)) return false;
     if (!('overall' in value) || value['overall'] === undefined) return false;
-    if (!('evaluatedAt' in value) || value['evaluatedAt'] === undefined) return false;
-    if (!('supersededAt' in value) || value['supersededAt'] === undefined) return false;
+    if ((!('evaluatedAt' in (value as Record<string, any>)) && !('evaluated_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['evaluatedAt'] === undefined && (value as Record<string, any>)['evaluated_at'] === undefined)) return false;
+    if ((!('supersededAt' in (value as Record<string, any>)) && !('superseded_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['supersededAt'] === undefined && (value as Record<string, any>)['superseded_at'] === undefined)) return false;
     return true;
 }
 
@@ -101,8 +89,8 @@ export function EvaluationRevisionFromJSONTyped(json: any, ignoreDiscriminator: 
         'judgePromptVersion': json['judge_prompt_version'],
         'rubricVersion': json['rubric_version'] == null ? undefined : json['rubric_version'],
         'overall': json['overall'],
-        'evaluatedAt': (new Date(json['evaluated_at'])),
-        'supersededAt': (json['superseded_at'] == null ? null : new Date(json['superseded_at'])),
+        'evaluatedAt': (json['evaluated_at'] == null ? json['evaluated_at'] : parseDateTime(json['evaluated_at'])),
+        'supersededAt': (json['superseded_at'] == null ? null : parseDateTime(json['superseded_at'])),
     };
 }
 
@@ -121,8 +109,8 @@ export function EvaluationRevisionToJSONTyped(value?: EvaluationRevision | null,
         'judge_prompt_version': value['judgePromptVersion'],
         'rubric_version': value['rubricVersion'],
         'overall': value['overall'],
-        'evaluated_at': value['evaluatedAt'].toISOString(),
-        'superseded_at': value['supersededAt'] == null ? value['supersededAt'] : value['supersededAt'].toISOString(),
+        'evaluated_at': value['evaluatedAt'] == null ? value['evaluatedAt'] : serializeDateTime(value['evaluatedAt']),
+        'superseded_at': value['supersededAt'] == null ? value['supersededAt'] : serializeDateTime(value['supersededAt']),
     };
 }
 

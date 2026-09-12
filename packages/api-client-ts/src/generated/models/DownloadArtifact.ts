@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { PackagingTargetId } from './PackagingTargetId';
 import {
     PackagingTargetIdFromJSON,
@@ -46,20 +46,14 @@ import {
 export interface DownloadArtifact {
     /**
      * 
-     * @type {string}
-     * @memberof DownloadArtifact
      */
     artifactId: string;
     /**
      * 
-     * @type {string}
-     * @memberof DownloadArtifact
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof DownloadArtifact
      */
     skillVersionId: string;
     /**
@@ -68,8 +62,6 @@ export interface DownloadArtifact {
      * row; this is the only field on this schema a person can read as an
      * answer to "which one is this" (04 丙-42, `02:WS-002` 1「版本」).
      * 
-     * @type {number}
-     * @memberof DownloadArtifact
      */
     versionNumber: number;
     /**
@@ -78,8 +70,6 @@ export interface DownloadArtifact {
      * is showing a stale package, and equal to `version_number` when this
      * is the newest.
      * 
-     * @type {number}
-     * @memberof DownloadArtifact
      */
     latestVersionNumber: number;
     /**
@@ -98,40 +88,28 @@ export interface DownloadArtifact {
      * imported from has moved is `CONTENT-009`/`INGEST-010`, neither of
      * which is built, and whose re-fetch cadence is still 待決策.
      * 
-     * @type {Labelled}
-     * @memberof DownloadArtifact
      */
     versionState: Labelled;
     /**
      * 
-     * @type {PackagingTargetId}
-     * @memberof DownloadArtifact
      */
     target: PackagingTargetId;
     /**
      * Display and attachment name only. Like a dataset's, it is never used
      * as a storage path.
      * 
-     * @type {string}
-     * @memberof DownloadArtifact
      */
     fileName: string;
     /**
      * 
-     * @type {number}
-     * @memberof DownloadArtifact
      */
     sizeBytes: number;
     /**
      * 
-     * @type {string}
-     * @memberof DownloadArtifact
      */
     contentHash: string;
     /**
      * 
-     * @type {string}
-     * @memberof DownloadArtifact
      */
     manifestHash: string;
     /**
@@ -146,8 +124,6 @@ export interface DownloadArtifact {
      * one handler that a test can hold to, rather than a habit of not
      * handing bytes over too early.
      * 
-     * @type {string}
-     * @memberof DownloadArtifact
      */
     status: DownloadArtifactStatusEnum;
     /**
@@ -163,8 +139,6 @@ export interface DownloadArtifact {
      * `expires_at` says when, and this says the answer. Folding them into
      * one flag would lose why (`quarantined` is not over, `rejected` is).
      * 
-     * @type {boolean}
-     * @memberof DownloadArtifact
      */
     servable: boolean;
     /**
@@ -186,8 +160,6 @@ export interface DownloadArtifact {
      * report it. The server decides which; a client must not re-derive it,
      * and must not print retention copy beside `lost`.
      * 
-     * @type {Labelled}
-     * @memberof DownloadArtifact
      */
     serveState: Labelled;
     /**
@@ -201,20 +173,14 @@ export interface DownloadArtifact {
      * Expiry deletes the object and this row; the download records it
      * produced are kept, because "you downloaded this" stays true.
      * 
-     * @type {Date}
-     * @memberof DownloadArtifact
      */
     expiresAt: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof DownloadArtifact
      */
     createdAt: Date;
     /**
      * How many times the bytes were actually served.
-     * @type {number}
-     * @memberof DownloadArtifact
      */
     downloadCount: number;
     /**
@@ -222,8 +188,6 @@ export interface DownloadArtifact {
      * key, so the same version packaged with and without them is two
      * artifacts rather than one that quietly changed.
      * 
-     * @type {boolean}
-     * @memberof DownloadArtifact
      */
     includesTestCases: boolean;
     /**
@@ -231,14 +195,10 @@ export interface DownloadArtifact {
      * within one packager version and not guaranteed across them, which is
      * exactly why the version is recorded rather than assumed.
      * 
-     * @type {string}
-     * @memberof DownloadArtifact
      */
     packagerVersion?: string;
     /**
      * The target profile's version. Absent for `standard`, which has no profile.
-     * @type {string}
-     * @memberof DownloadArtifact
      */
     profileVersion?: string;
 }
@@ -250,7 +210,7 @@ export interface DownloadArtifact {
 export const DownloadArtifactStatusEnum = {
     Quarantined: 'quarantined',
     Available: 'available',
-    Rejected: 'rejected'
+    Rejected: 'rejected',
 } as const;
 export type DownloadArtifactStatusEnum = typeof DownloadArtifactStatusEnum[keyof typeof DownloadArtifactStatusEnum];
 
@@ -259,24 +219,24 @@ export type DownloadArtifactStatusEnum = typeof DownloadArtifactStatusEnum[keyof
  * Check if a given object implements the DownloadArtifact interface.
  */
 export function instanceOfDownloadArtifact(value: object): value is DownloadArtifact {
-    if (!('artifactId' in value) || value['artifactId'] === undefined) return false;
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
-    if (!('skillVersionId' in value) || value['skillVersionId'] === undefined) return false;
-    if (!('versionNumber' in value) || value['versionNumber'] === undefined) return false;
-    if (!('latestVersionNumber' in value) || value['latestVersionNumber'] === undefined) return false;
-    if (!('versionState' in value) || value['versionState'] === undefined) return false;
+    if ((!('artifactId' in (value as Record<string, any>)) && !('artifact_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['artifactId'] === undefined && (value as Record<string, any>)['artifact_id'] === undefined)) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
+    if ((!('skillVersionId' in (value as Record<string, any>)) && !('skill_version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillVersionId'] === undefined && (value as Record<string, any>)['skill_version_id'] === undefined)) return false;
+    if ((!('versionNumber' in (value as Record<string, any>)) && !('version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionNumber'] === undefined && (value as Record<string, any>)['version_number'] === undefined)) return false;
+    if ((!('latestVersionNumber' in (value as Record<string, any>)) && !('latest_version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['latestVersionNumber'] === undefined && (value as Record<string, any>)['latest_version_number'] === undefined)) return false;
+    if ((!('versionState' in (value as Record<string, any>)) && !('version_state' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionState'] === undefined && (value as Record<string, any>)['version_state'] === undefined)) return false;
     if (!('target' in value) || value['target'] === undefined) return false;
-    if (!('fileName' in value) || value['fileName'] === undefined) return false;
-    if (!('sizeBytes' in value) || value['sizeBytes'] === undefined) return false;
-    if (!('contentHash' in value) || value['contentHash'] === undefined) return false;
-    if (!('manifestHash' in value) || value['manifestHash'] === undefined) return false;
+    if ((!('fileName' in (value as Record<string, any>)) && !('file_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['fileName'] === undefined && (value as Record<string, any>)['file_name'] === undefined)) return false;
+    if ((!('sizeBytes' in (value as Record<string, any>)) && !('size_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['sizeBytes'] === undefined && (value as Record<string, any>)['size_bytes'] === undefined)) return false;
+    if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
+    if ((!('manifestHash' in (value as Record<string, any>)) && !('manifest_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['manifestHash'] === undefined && (value as Record<string, any>)['manifest_hash'] === undefined)) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('servable' in value) || value['servable'] === undefined) return false;
-    if (!('serveState' in value) || value['serveState'] === undefined) return false;
-    if (!('expiresAt' in value) || value['expiresAt'] === undefined) return false;
-    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
-    if (!('downloadCount' in value) || value['downloadCount'] === undefined) return false;
-    if (!('includesTestCases' in value) || value['includesTestCases'] === undefined) return false;
+    if ((!('serveState' in (value as Record<string, any>)) && !('serve_state' in (value as Record<string, any>))) || ((value as Record<string, any>)['serveState'] === undefined && (value as Record<string, any>)['serve_state'] === undefined)) return false;
+    if ((!('expiresAt' in (value as Record<string, any>)) && !('expires_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['expiresAt'] === undefined && (value as Record<string, any>)['expires_at'] === undefined)) return false;
+    if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
+    if ((!('downloadCount' in (value as Record<string, any>)) && !('download_count' in (value as Record<string, any>))) || ((value as Record<string, any>)['downloadCount'] === undefined && (value as Record<string, any>)['download_count'] === undefined)) return false;
+    if ((!('includesTestCases' in (value as Record<string, any>)) && !('includes_test_cases' in (value as Record<string, any>))) || ((value as Record<string, any>)['includesTestCases'] === undefined && (value as Record<string, any>)['includes_test_cases'] === undefined)) return false;
     return true;
 }
 
@@ -304,8 +264,8 @@ export function DownloadArtifactFromJSONTyped(json: any, ignoreDiscriminator: bo
         'status': json['status'],
         'servable': json['servable'],
         'serveState': LabelledFromJSON(json['serve_state']),
-        'expiresAt': (new Date(json['expires_at'])),
-        'createdAt': (new Date(json['created_at'])),
+        'expiresAt': (json['expires_at'] == null ? json['expires_at'] : parseDateTime(json['expires_at'])),
+        'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
         'downloadCount': json['download_count'],
         'includesTestCases': json['includes_test_cases'],
         'packagerVersion': json['packager_version'] == null ? undefined : json['packager_version'],
@@ -338,8 +298,8 @@ export function DownloadArtifactToJSONTyped(value?: DownloadArtifact | null, ign
         'status': value['status'],
         'servable': value['servable'],
         'serve_state': LabelledToJSON(value['serveState']),
-        'expires_at': value['expiresAt'].toISOString(),
-        'created_at': value['createdAt'].toISOString(),
+        'expires_at': value['expiresAt'] == null ? value['expiresAt'] : serializeDateTime(value['expiresAt']),
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
         'download_count': value['downloadCount'],
         'includes_test_cases': value['includesTestCases'],
         'packager_version': value['packagerVersion'],

@@ -53,7 +53,7 @@ export const PackagingBlockedReason = {
     NotRedistributable: 'not_redistributable',
     LicenseUnknown: 'license_unknown',
     ValidationBlocked: 'validation_blocked',
-    FileRemovedByPackager: 'file_removed_by_packager'
+    FileRemovedByPackager: 'file_removed_by_packager',
 } as const;
 export type PackagingBlockedReason = typeof PackagingBlockedReason[keyof typeof PackagingBlockedReason];
 

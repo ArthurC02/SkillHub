@@ -32,8 +32,6 @@ export interface SetSkillRedistributionRequest {
      * uploaded, or the platform wrote, can still turn out to be
      * something the platform must stop handing back.
      * 
-     * @type {string}
-     * @memberof SetSkillRedistributionRequest
      */
     value: SetSkillRedistributionRequestValueEnum;
     /**
@@ -42,8 +40,6 @@ export interface SetSkillRedistributionRequest {
      * `restriction`: an operator action nobody can explain later is
      * not a decision (02:SEC-011 理由必填).
      * 
-     * @type {string}
-     * @memberof SetSkillRedistributionRequest
      */
     note: string;
     /**
@@ -64,8 +60,6 @@ export interface SetSkillRedistributionRequest {
      * defined case-insensitively, and refusing `mit` against `MIT`
      * would teach operators to paste rather than read.
      * 
-     * @type {string}
-     * @memberof SetSkillRedistributionRequest
      */
     licenseExpression?: string;
     /**
@@ -86,8 +80,6 @@ export interface SetSkillRedistributionRequest {
      * travel inside the package, so nobody holding the bytes could
      * re-verify a release made on it.
      * 
-     * @type {string}
-     * @memberof SetSkillRedistributionRequest
      */
     licenseSource?: SetSkillRedistributionRequestLicenseSourceEnum;
 }
@@ -99,7 +91,7 @@ export interface SetSkillRedistributionRequest {
 export const SetSkillRedistributionRequestValueEnum = {
     Allowed: 'allowed',
     Blocked: 'blocked',
-    Unknown: 'unknown'
+    Unknown: 'unknown',
 } as const;
 export type SetSkillRedistributionRequestValueEnum = typeof SetSkillRedistributionRequestValueEnum[keyof typeof SetSkillRedistributionRequestValueEnum];
 
@@ -110,7 +102,7 @@ export const SetSkillRedistributionRequestLicenseSourceEnum = {
     Manifest: 'manifest',
     ManifestReferencedFile: 'manifest-referenced-file',
     PackageLicenseFile: 'package-license-file',
-    RepoLicenseFile: 'repo-license-file'
+    RepoLicenseFile: 'repo-license-file',
 } as const;
 export type SetSkillRedistributionRequestLicenseSourceEnum = typeof SetSkillRedistributionRequestLicenseSourceEnum[keyof typeof SetSkillRedistributionRequestLicenseSourceEnum];
 

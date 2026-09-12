@@ -23,8 +23,6 @@ export interface DecideSuggestionRequest {
      * `pending` is not settable: it is the state a suggestion
      * starts in, and there is no request that means "un-decide".
      * 
-     * @type {string}
-     * @memberof DecideSuggestionRequest
      */
     decision: DecideSuggestionRequestDecisionEnum;
 }
@@ -35,7 +33,7 @@ export interface DecideSuggestionRequest {
  */
 export const DecideSuggestionRequestDecisionEnum = {
     Accepted: 'accepted',
-    Rejected: 'rejected'
+    Rejected: 'rejected',
 } as const;
 export type DecideSuggestionRequestDecisionEnum = typeof DecideSuggestionRequestDecisionEnum[keyof typeof DecideSuggestionRequestDecisionEnum];
 

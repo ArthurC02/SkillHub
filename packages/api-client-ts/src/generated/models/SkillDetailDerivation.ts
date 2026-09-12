@@ -24,32 +24,22 @@ import { mapValues } from '../runtime';
 export interface SkillDetailDerivation {
     /**
      * 
-     * @type {boolean}
-     * @memberof SkillDetailDerivation
      */
     isFork: boolean;
     /**
      * 
-     * @type {string}
-     * @memberof SkillDetailDerivation
      */
     forkedFromSkillId?: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillDetailDerivation
      */
     forkedFromVersionId?: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillDetailDerivation
      */
     label: string;
     /**
      * 
-     * @type {string}
-     * @memberof SkillDetailDerivation
      */
     note: string;
 }
@@ -58,7 +48,7 @@ export interface SkillDetailDerivation {
  * Check if a given object implements the SkillDetailDerivation interface.
  */
 export function instanceOfSkillDetailDerivation(value: object): value is SkillDetailDerivation {
-    if (!('isFork' in value) || value['isFork'] === undefined) return false;
+    if ((!('isFork' in (value as Record<string, any>)) && !('is_fork' in (value as Record<string, any>))) || ((value as Record<string, any>)['isFork'] === undefined && (value as Record<string, any>)['is_fork'] === undefined)) return false;
     if (!('label' in value) || value['label'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;

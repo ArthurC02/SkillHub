@@ -29,8 +29,6 @@ import {
 export interface GenerationFailures {
     /**
      * 
-     * @type {Array<GenerationFailure>}
-     * @memberof GenerationFailures
      */
     failures: Array<GenerationFailure>;
 }

@@ -21,38 +21,26 @@ import { mapValues } from '../runtime';
 export interface DatasetLimits {
     /**
      * 
-     * @type {number}
-     * @memberof DatasetLimits
      */
     maxFileBytes: number;
     /**
      * 
-     * @type {number}
-     * @memberof DatasetLimits
      */
     maxTestCaseBytes: number;
     /**
      * 
-     * @type {number}
-     * @memberof DatasetLimits
      */
     maxFilesPerTestCase: number;
     /**
      * 
-     * @type {number}
-     * @memberof DatasetLimits
      */
     retentionDays: number;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof DatasetLimits
      */
     allowedKinds: Array<string>;
     /**
      * 
-     * @type {string}
-     * @memberof DatasetLimits
      */
     note: string;
 }
@@ -61,11 +49,11 @@ export interface DatasetLimits {
  * Check if a given object implements the DatasetLimits interface.
  */
 export function instanceOfDatasetLimits(value: object): value is DatasetLimits {
-    if (!('maxFileBytes' in value) || value['maxFileBytes'] === undefined) return false;
-    if (!('maxTestCaseBytes' in value) || value['maxTestCaseBytes'] === undefined) return false;
-    if (!('maxFilesPerTestCase' in value) || value['maxFilesPerTestCase'] === undefined) return false;
-    if (!('retentionDays' in value) || value['retentionDays'] === undefined) return false;
-    if (!('allowedKinds' in value) || value['allowedKinds'] === undefined) return false;
+    if ((!('maxFileBytes' in (value as Record<string, any>)) && !('max_file_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxFileBytes'] === undefined && (value as Record<string, any>)['max_file_bytes'] === undefined)) return false;
+    if ((!('maxTestCaseBytes' in (value as Record<string, any>)) && !('max_test_case_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxTestCaseBytes'] === undefined && (value as Record<string, any>)['max_test_case_bytes'] === undefined)) return false;
+    if ((!('maxFilesPerTestCase' in (value as Record<string, any>)) && !('max_files_per_test_case' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxFilesPerTestCase'] === undefined && (value as Record<string, any>)['max_files_per_test_case'] === undefined)) return false;
+    if ((!('retentionDays' in (value as Record<string, any>)) && !('retention_days' in (value as Record<string, any>))) || ((value as Record<string, any>)['retentionDays'] === undefined && (value as Record<string, any>)['retention_days'] === undefined)) return false;
+    if ((!('allowedKinds' in (value as Record<string, any>)) && !('allowed_kinds' in (value as Record<string, any>))) || ((value as Record<string, any>)['allowedKinds'] === undefined && (value as Record<string, any>)['allowed_kinds'] === undefined)) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
 }

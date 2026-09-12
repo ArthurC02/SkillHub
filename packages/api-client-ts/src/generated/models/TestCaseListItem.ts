@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { Rubric } from './Rubric';
 import {
     RubricFromJSON,
@@ -41,32 +41,22 @@ import {
 export interface TestCaseListItem {
     /**
      * 
-     * @type {string}
-     * @memberof TestCaseListItem
      */
     testCaseId: string;
     /**
      * 
-     * @type {string}
-     * @memberof TestCaseListItem
      */
     skillId: string;
     /**
      * 
-     * @type {string}
-     * @memberof TestCaseListItem
      */
     name: string;
     /**
      * 
-     * @type {string}
-     * @memberof TestCaseListItem
      */
     userPrompt: string;
     /**
      * 
-     * @type {Array<AcceptanceCriterion>}
-     * @memberof TestCaseListItem
      */
     acceptanceCriteria: Array<AcceptanceCriterion>;
     /**
@@ -74,20 +64,14 @@ export interface TestCaseListItem {
      * default one. The copy a run was judged against is the one frozen in
      * its snapshot, which is what `Evaluation.rubric_version` names.
      * 
-     * @type {Rubric}
-     * @memberof TestCaseListItem
      */
     rubric?: Rubric;
     /**
      * 
-     * @type {Date}
-     * @memberof TestCaseListItem
      */
     createdAt: Date;
     /**
      * 
-     * @type {Date}
-     * @memberof TestCaseListItem
      */
     updatedAt: Date;
     /**
@@ -96,8 +80,6 @@ export interface TestCaseListItem {
      * caller — an empty string is "we cannot name it", which the UI
      * renders as unknown rather than as a name.
      * 
-     * @type {string}
-     * @memberof TestCaseListItem
      */
     skillName: string;
     /**
@@ -105,14 +87,10 @@ export interface TestCaseListItem {
      * The pair with `criteria_total` is what tells a user a draft is
      * not ready yet.
      * 
-     * @type {number}
-     * @memberof TestCaseListItem
      */
     criteriaConfirmed: number;
     /**
      * 
-     * @type {number}
-     * @memberof TestCaseListItem
      */
     criteriaTotal: number;
     /**
@@ -120,8 +98,6 @@ export interface TestCaseListItem {
      * rubric", never "a default one" — same distinction `rubric`
      * itself makes by being absent.
      * 
-     * @type {boolean}
-     * @memberof TestCaseListItem
      */
     hasRubric: boolean;
 }
@@ -130,17 +106,17 @@ export interface TestCaseListItem {
  * Check if a given object implements the TestCaseListItem interface.
  */
 export function instanceOfTestCaseListItem(value: object): value is TestCaseListItem {
-    if (!('testCaseId' in value) || value['testCaseId'] === undefined) return false;
-    if (!('skillId' in value) || value['skillId'] === undefined) return false;
+    if ((!('testCaseId' in (value as Record<string, any>)) && !('test_case_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCaseId'] === undefined && (value as Record<string, any>)['test_case_id'] === undefined)) return false;
+    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
-    if (!('userPrompt' in value) || value['userPrompt'] === undefined) return false;
-    if (!('acceptanceCriteria' in value) || value['acceptanceCriteria'] === undefined) return false;
-    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
-    if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
-    if (!('skillName' in value) || value['skillName'] === undefined) return false;
-    if (!('criteriaConfirmed' in value) || value['criteriaConfirmed'] === undefined) return false;
-    if (!('criteriaTotal' in value) || value['criteriaTotal'] === undefined) return false;
-    if (!('hasRubric' in value) || value['hasRubric'] === undefined) return false;
+    if ((!('userPrompt' in (value as Record<string, any>)) && !('user_prompt' in (value as Record<string, any>))) || ((value as Record<string, any>)['userPrompt'] === undefined && (value as Record<string, any>)['user_prompt'] === undefined)) return false;
+    if ((!('acceptanceCriteria' in (value as Record<string, any>)) && !('acceptance_criteria' in (value as Record<string, any>))) || ((value as Record<string, any>)['acceptanceCriteria'] === undefined && (value as Record<string, any>)['acceptance_criteria'] === undefined)) return false;
+    if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
+    if ((!('updatedAt' in (value as Record<string, any>)) && !('updated_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['updatedAt'] === undefined && (value as Record<string, any>)['updated_at'] === undefined)) return false;
+    if ((!('skillName' in (value as Record<string, any>)) && !('skill_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillName'] === undefined && (value as Record<string, any>)['skill_name'] === undefined)) return false;
+    if ((!('criteriaConfirmed' in (value as Record<string, any>)) && !('criteria_confirmed' in (value as Record<string, any>))) || ((value as Record<string, any>)['criteriaConfirmed'] === undefined && (value as Record<string, any>)['criteria_confirmed'] === undefined)) return false;
+    if ((!('criteriaTotal' in (value as Record<string, any>)) && !('criteria_total' in (value as Record<string, any>))) || ((value as Record<string, any>)['criteriaTotal'] === undefined && (value as Record<string, any>)['criteria_total'] === undefined)) return false;
+    if ((!('hasRubric' in (value as Record<string, any>)) && !('has_rubric' in (value as Record<string, any>))) || ((value as Record<string, any>)['hasRubric'] === undefined && (value as Record<string, any>)['has_rubric'] === undefined)) return false;
     return true;
 }
 
@@ -160,8 +136,8 @@ export function TestCaseListItemFromJSONTyped(json: any, ignoreDiscriminator: bo
         'userPrompt': json['user_prompt'],
         'acceptanceCriteria': ((json['acceptance_criteria'] as Array<any>).map(AcceptanceCriterionFromJSON)),
         'rubric': json['rubric'] == null ? undefined : RubricFromJSON(json['rubric']),
-        'createdAt': (new Date(json['created_at'])),
-        'updatedAt': (new Date(json['updated_at'])),
+        'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
+        'updatedAt': (json['updated_at'] == null ? json['updated_at'] : parseDateTime(json['updated_at'])),
         'skillName': json['skill_name'],
         'criteriaConfirmed': json['criteria_confirmed'],
         'criteriaTotal': json['criteria_total'],
@@ -186,8 +162,8 @@ export function TestCaseListItemToJSONTyped(value?: TestCaseListItem | null, ign
         'user_prompt': value['userPrompt'],
         'acceptance_criteria': ((value['acceptanceCriteria'] as Array<any>).map(AcceptanceCriterionToJSON)),
         'rubric': RubricToJSON(value['rubric']),
-        'created_at': value['createdAt'].toISOString(),
-        'updated_at': value['updatedAt'].toISOString(),
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'updated_at': value['updatedAt'] == null ? value['updatedAt'] : serializeDateTime(value['updatedAt']),
         'skill_name': value['skillName'],
         'criteria_confirmed': value['criteriaConfirmed'],
         'criteria_total': value['criteriaTotal'],

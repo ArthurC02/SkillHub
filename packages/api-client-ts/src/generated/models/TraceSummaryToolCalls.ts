@@ -21,38 +21,26 @@ import { mapValues } from '../runtime';
 export interface TraceSummaryToolCalls {
     /**
      * 
-     * @type {number}
-     * @memberof TraceSummaryToolCalls
      */
     total?: number;
     /**
      * 
-     * @type {number}
-     * @memberof TraceSummaryToolCalls
      */
     succeeded?: number;
     /**
      * 
-     * @type {number}
-     * @memberof TraceSummaryToolCalls
      */
     failed?: number;
     /**
      * 
-     * @type {number}
-     * @memberof TraceSummaryToolCalls
      */
     totalDurationMs?: number;
     /**
      * 
-     * @type {number}
-     * @memberof TraceSummaryToolCalls
      */
     slowestDurationMs?: number;
     /**
      * 
-     * @type {string}
-     * @memberof TraceSummaryToolCalls
      */
     slowestTool?: string;
 }
