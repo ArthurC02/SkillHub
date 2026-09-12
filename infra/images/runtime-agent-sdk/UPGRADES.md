@@ -584,3 +584,37 @@ I-05、`UPGRADES.md` 標題與 I-02 三道靜態閘門以 `runtime-image.yml` �
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
 | 預設映像 | **仍是 `-10`**（`sha256:8f465e4f2522ae2b8a5b551c07010a48f11ffb407d25a70bbaacef3f49945cdb`）：四處預設都沒有動 |
 | ADR-023 §2 四項實測 | **一項都沒跑**，本節不主張任何一項通過；`-11` 在補跑之前不該成為預設 |
+
+---
+
+## `2026.08-11` → `2026.08-12`（2026-09-12）— 基底映像更新；四項實測隨後補入本節
+
+> **這一節是基底映像的升級，不是被 CI 逼出來的版本號**。`node:22-bookworm-slim` 這條浮動
+> 標籤在 2026-08-25 被重新建置，而 Dockerfile 釘的 digest 還指著舊的那一次；上游比對查出
+> 這是本 repo 三十多個釘選裡唯一真正落後的一個。依 ADR-023 §1，基底 digest 變更就是升級，
+> 四項實測因此要重跑——結果見本節末的子節。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | 只有基底 digest 與 `ARG IMAGE_VERSION`。`run.mjs`、`run.test.mjs`、`constraints.txt`、`package.json`、`package-lock.json` 一字未動 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436` → **`sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5`**（同一條 `node:22-bookworm-slim` 標籤，上游於 2026-08-25 重建） |
+| 映像裡會變什麼 | **量到的是零內容差異**：兩個基底 digest 的 `dpkg-query -W` 輸出逐行相同（0 行差異），`node -v` 同為 `v22.23.2`、`npm` 10.9.8、`yarn` 1.22.22、`/etc/debian_version` 同為 12.15。差的只有建置時間（2026-08-05 → 2026-08-25）。**這一版買到的是「釘選指回該標籤現行的那一次建置」，不是任何新內容** |
+| `constraints.txt` 的生成紀錄 | 該檔檔頭記的是 2026-09-05 那次 resolve（用舊基底 digest），**那是當時的事實，不改寫**；本次未重新 resolve，直接依 `-c constraints.txt` 套用同一份釘選 |
+| 預設映像 | 本節第一批推送時仍是 `-10`；四項通過後同批移到 `-12`（見末節） |
+
+### 本機驗證（閘門用的是同兩個釘住的 digest）
+
+```
+docker build -t skillhub/runtime-agent-sdk:2026.08-12 infra/images/runtime-agent-sdk
+  → exit 0，映像大小 306.7 MB
+docker run --rm --network none --user 65532:65532 … node --version     → v22.23.2
+docker run --rm --network none --user 65532:65532 … python3 -c "<17 個套件逐一 import>"
+  → OK 17/17 3.11.2
+docker run … id -u → 65532；command -v nc → NO_NC；command -v npm → NO_NPM
+docker run … dpkg -s libpcre2-8-0 | grep -i "^Version" → Version: 10.42-1+deb12u1（`-9` 的 CVE-2026-86145 修補仍在）
+
+docker run … anchore/syft:v1.51.0@sha256:678bfa56…  skillhub/runtime-agent-sdk:2026.08-12   -o spdx-json=/scan/sbom.spdx.json
+docker run … anchore/grype:v0.117.0@sha256:ddf9e9f2… sbom:/scan/sbom.spdx.json   --only-fixed --fail-on high -o table
+  → No vulnerabilities found        (exit 0)
+```
