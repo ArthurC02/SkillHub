@@ -24,6 +24,9 @@ export function AdminNav() {
       <Link to="/admin/cost-statistics" className="chip">
         成本統計
       </Link>
+      <Link to="/admin/trends" search={{}} className="chip">
+        趨勢
+      </Link>
     </nav>
   );
 }

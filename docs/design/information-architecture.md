@@ -113,6 +113,7 @@
 | `/admin/rosters` | `AdminRosters` | 02:OPS-005 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
 | `/admin/audit-log` | `AdminAuditLog` | 02:OPS-006 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
 | `/admin/cost-statistics` | `AdminCostStatistics` | 02:OPS-007 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
+| `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md) 決策 4；另見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
 
 > **訂正（2026-08-25）：上表第三欄原本寫「取自 `router.tsx` 檔頭」，而那個檔頭不存在。** `router.tsx` 的開頭是 import，需求 ID 逐條寫在各個 `createRoute` 上方的註解裡——來源是**十七條路由裡的十三條註解**，不是一處。
 >
@@ -223,7 +224,7 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | 3 | ~~`/`~~、~~`/workspace/skills`~~、`/workspace/import` | 2026-09-03 各多一條頁內入邊，來源都是「建立一個 Skill」那一批：首頁 hero 的「自己做一個 Skill」→ `/workspace/skills`；`components/CreateHub.tsx` → `/workspace/import` 與 `/`（目錄）。這三個位址從下一列搬上來；機器只比對 0 與 1 兩列，所以這一列與下一列是人手維護的 |<br>**2026-09-03 稍晚重數訂正**：這一列寫成時把三個位址都放在 3，而依本節自己宣告的計數規則（`pages/`＋`components/` 的 `to="…"`，**以不同來源檔計數、不排除自我連結**，見 `ia.test.ts` 的 `inboundByRoute()`），`/` 是 **4**（`Compare.tsx`、`Home.tsx`、`WorkspaceSkills.tsx`、`CreateHub.tsx`）、`/workspace/skills` 也是 **4**（`DataPolicy.tsx`、`Downloads.tsx`、`Home.tsx`、`WorkspaceAccount.tsx`），兩者都已移到下面的 4 那一列；只有 `/workspace/import` 留在 3。**這一列不會變紅**：測試只雙向比對 0 與 1 兩列，其餘各列沒有機器。 |
 | 2 | ~~`/`~~、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/lab/test-cases/$testCaseId`、`/workspace/account`、**`/workspace/runs`**（2026-09-08 重數自下面的 3 移入）、~~`/workspace/skills`~~、~~`/workspace/import`~~ | ✅ 匯入頁於 2026-08-25 取得第二條入邊（IA-9）：`/workspace/skills` 空狀態裡那句「或匯入自己的套件」本來就在講它，只是沒有連結——**那一頁說出了下一步，然後叫你自己去導覽列找**。文案一字未改，詞組變成連結 |
 | 3 | ~~`/workspace/runs`~~、**`/workspace/downloads`** | 2026-09-08 重數：`/workspace/runs` 是 **2**（`DataPolicy.tsx`、`WorkspaceSkills.tsx`），移到上一列；`/workspace/downloads` 是 **3**（`DataPolicy.tsx`、`Packaging.tsx`、`WorkspaceSkills.tsx`），自下面的 4 移入 |
-| 2 | `/admin`、`/admin/accounts`、`/admin/skills`、`/admin/dispatch`、`/admin/rosters`、`/admin/audit-log`、`/admin/cost-statistics` | ✅ 2026-09-12 新增。每一頁都有兩條來源檔不同的頁內入邊：`components/AdminNav.tsx`（後台每一頁都有）與 `pages/Admin.tsx`（後台首頁的卡片；`/admin` 本身則是 `components/AuthControls.tsx`）。**同日 `/` 多一條入邊**：`components/RouteNotFound.tsx`（沒有這一頁時的「回到目錄」），`/` 因此是 **4**（`Compare.tsx`、`Home.tsx`、`CreateHub.tsx`、`RouteNotFound.tsx`）——這一格人手維護，機器只比對 0 與 1 |
+| 2 | `/admin`、`/admin/accounts`、`/admin/skills`、`/admin/dispatch`、`/admin/rosters`、`/admin/audit-log`、`/admin/cost-statistics`、`/admin/trends` | ✅ 2026-09-12 新增（`/admin/trends` 同日稍晚）。每一頁都有兩條來源檔不同的頁內入邊：`components/AdminNav.tsx`（後台每一頁都有）與 `pages/Admin.tsx`（後台首頁的卡片；`/admin` 本身則是 `components/AuthControls.tsx`）。**同日 `/` 多一條入邊**：`components/RouteNotFound.tsx`（沒有這一頁時的「回到目錄」），`/` 因此是 **4**（`Compare.tsx`、`Home.tsx`、`CreateHub.tsx`、`RouteNotFound.tsx`）——這一格人手維護，機器只比對 0 與 1 |
 | 4 | `/lab/run`、`/runs/$runId`、~~`/workspace/downloads`~~（2026-09-08 重數為 **3**，已移入 2 那一列）、**`/`**、**`/workspace/skills`**（後兩者 2026-09-03 自上面的 3 移入） | ✅ |
 | 6 | `/lab/test-cases` | ✅ |
 | 12 | `/skills/$skillId` | ✅ 全 app 的匯流點（2026-09-03 重數：~~10~~ **12**，`SkillFiles.tsx` 與 `GenerateSkill.tsx` 也指過來） |
@@ -272,8 +273,9 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | `/runs/$id/compare` | `against` | EVAL-003：對照的另一次 Run 在網址裡，比較才能被連結 |
 | `/runs/$id` | `evaluation`、`events` | ~~**無**~~ **（2026-08-29 訂正：這一格從來沒有更新過。）** 一般／進階模式確實不在網址上（IA-4 的裁定，R4），但那不代表這一條路由沒有 search param——它有兩個，而且兩個都是 R4 的另一半「你在看哪一份東西」：`evaluation` 指名這次 Run 的某一份不可變判定（ADR-003／026；沒有它，被取代的舊判定連不出去，而重新評估過的 Run 的「目前判定」是另一個判定），`events` 是進階 Trace 的游標堆疊，讓事件流的第 7 頁貼得出去也撐得過重新整理。<br>**這一格是本節在 2026-08-29 補上機器的直接原因**：文件說「無」，程式說「兩個」，而在那之前沒有任何東西會 FAIL |
 | `/admin/skills` | `q` | 你在治理哪一個 Skill（`02:OPS-004`）：一個 UUID 就是那一個，其他字串是名稱片段；清單上「處理這一個」把 `q` 換成那個 UUID，所以處理中的那一個可以連結、撐得過重新整理 |
+| `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
 
-**其餘~~九~~**十**條路由沒有 `validateSearch`**〔2026-09-03 重數：17 − 8 = 9；原寫十條。**2026-09-09 再重數：18 − 8 = 10**，`/workspace/creations` 新增且不帶參數。**2026-09-12 再重數：25 − 9 = 16**，後台七條只有 `/admin/skills` 帶參數〕（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
+**其餘~~九~~**十**條路由沒有 `validateSearch`**〔2026-09-03 重數：17 − 8 = 9；原寫十條。**2026-09-09 再重數：18 − 8 = 10**，`/workspace/creations` 新增且不帶參數。**2026-09-12 再重數：25 − 9 = 16**，後台七條只有 `/admin/skills` 帶參數；同日稍晚 27 − 10 = 17，`/admin/trends` 帶 `days`〕（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 
@@ -478,11 +480,11 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | 規則 | 把關者 | 覆蓋範圍 |
 | --- | --- | --- |
 | 每條路由的標題階層不跳級 | [`a11y.test.tsx`](../../apps/web/src/a11y.test.tsx)（axe `heading-order`） | 全部路由；新路由沒加案例會 FAIL |
-| 標題階層變了要被看到 | [`__outlines__/`](../../apps/web/src/__outlines__/) 快照 | **32** 個檔〔2026-09-03 重數 24；**2026-09-12 重數 32**：後台七頁各一份，另一份是先前沒帶著這一格走的〕。**不判斷對錯，只讓變更變成必須核可的 diff** |
+| 標題階層變了要被看到 | [`__outlines__/`](../../apps/web/src/__outlines__/) 快照 | **33** 個檔〔2026-09-03 重數 24；**2026-09-12 重數 32**，同日稍晚 33（`/admin/trends`）；後台七頁各一份，另一份是先前沒帶著這一格走的〕。**不判斷對錯，只讓變更變成必須核可的 diff** |
 | 導覽 landmark 唯一且具名 | `a11y.test.tsx`（axe `landmark-unique`） | 全部路由。`SkillDetail` 與 `SkillFiles` 各自帶一個未命名的 `<nav>`，主導覽因此必須具名 |
 | 「你在哪裡」有語意 | TanStack Router 自動加的 `aria-current="page"` | 主要導覽五項 |
-| 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/ia.test.ts) 的棘輪 | **全部路由**，三引擎（~~今天 18 個位址~~ **2026-09-12 重數：26 個位址**，後台七頁各一；進後台之前已是 19，這一格早就過期了一個）。~~清單是手寫的，沒有棘輪~~——**2026-08-25 同日補上**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
-| 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **8** 條〔2026-09-03 重數〕；**2026-09-12：9 條**（`/admin/skills` 的 `q`） |
+| 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/ia.test.ts) 的棘輪 | **全部路由**，三引擎（~~今天 18 個位址~~ **2026-09-12 重數：26 個位址**，同日稍晚 27（`/admin/trends`），後台七頁各一；進後台之前已是 19，這一格早就過期了一個）。~~清單是手寫的，沒有棘輪~~——**2026-08-25 同日補上**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
+| 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **8** 條〔2026-09-03 重數〕；**2026-09-12：9 條**（`/admin/skills` 的 `q`），同日稍晚 **10 條**（`/admin/trends` 的 `days`） |
 | §4 的網址狀態表與程式一致 | [`ia.test.ts`](../../apps/web/src/ia.test.ts) | **雙向**：逐路由比對 `validateSearch` 的 key 與表格第二欄，兩邊都不得多也不得少〔2026-09-03 補列——這個把關者一直存在，只是 §6 沒有它的列，而本節自己說「沒有進表＝沒有被守」〕 |
 | **§1 的路由表與 `router.tsx` 一致** | [`ia.test.ts`](../../apps/web/src/ia.test.ts) | 全部路由，**雙向**：新路由沒補列會 FAIL，刪了路由沒刪列也會 |
 | **§2.1 的主要導覽與 `RootLayout` 一致** | 同上 | 導覽列全部項目 |

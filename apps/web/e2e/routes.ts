@@ -27,6 +27,7 @@ export const ROUTES: [name: string, url: string][] = [
   ["admin-rosters", "/admin/rosters"],
   ["admin-audit-log", "/admin/audit-log"],
   ["admin-cost-statistics", "/admin/cost-statistics"],
+  ["admin-trends", "/admin/trends"],
 ];
 
 export const PHONE_ROUTES = ROUTES;

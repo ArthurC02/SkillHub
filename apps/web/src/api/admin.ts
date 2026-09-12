@@ -188,3 +188,52 @@ export function useCostStatistics() {
 export function usd(micros: number | null): string {
   return micros === null ? "未測量" : `$${(micros / 1_000_000).toFixed(4)}`;
 }
+
+export type DailyCount = { day: string; key: string; count: number };
+export type DailyAmount = DailyCount & { total: number };
+export type Trend<B extends DailyCount = DailyCount> = { from: string; to: string; buckets: B[] };
+export type CreditTrend = Trend<DailyAmount> & { balance_total: number };
+export type TrendDays = 7 | 30 | 90;
+export const TREND_DAYS: TrendDays[] = [7, 30, 90];
+
+export function useTrend<T extends Trend<DailyCount>>(
+  path: "cost" | "credits" | "runs" | "operator-actions",
+  days: TrendDays,
+) {
+  return useQuery({
+    queryKey: ["admin", "trends", path, days],
+    queryFn: () => apiFetch<T>(`/admin/trends/${path}?days=${days}`),
+    enabled: useOperator(),
+    retry: false,
+  });
+}
+
+export function daysOf(from: string, to: string): string[] {
+  const days: string[] = [];
+  const end = Date.parse(`${to}T00:00:00Z`);
+  for (let at = Date.parse(`${from}T00:00:00Z`); at <= end; at += 86_400_000) {
+    days.push(new Date(at).toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+export type TrendSeries = { key: string; counts: number[]; values: number[] };
+
+export function seriesOf<B extends DailyCount>(trend: Trend<B>, value: (bucket: B) => number) {
+  const days = daysOf(trend.from, trend.to);
+  const at = new Map(days.map((day, index) => [day, index]));
+  const series = new Map<string, TrendSeries>();
+  for (const bucket of trend.buckets) {
+    const index = at.get(bucket.day);
+    if (index === undefined) continue;
+    const row = series.get(bucket.key) ?? {
+      key: bucket.key,
+      counts: days.map(() => 0),
+      values: days.map(() => 0),
+    };
+    row.counts[index] += bucket.count;
+    row.values[index] += value(bucket);
+    series.set(bucket.key, row);
+  }
+  return { days, series: [...series.values()].sort((a, b) => a.key.localeCompare(b.key)) };
+}

@@ -6,6 +6,9 @@ import type {
   OperatorAuditEvent,
   Rosters,
   SkillGovernance,
+  CreditTrend,
+  DailyAmount,
+  Trend,
 } from "../api/admin";
 import type {
   Me,
@@ -819,6 +822,44 @@ export const ADMIN_AUDIT_LOG = {
   ],
 } satisfies { events: OperatorAuditEvent[] };
 
+export const ADMIN_TREND_COST = {
+  from: "2026-09-06",
+  to: "2026-09-12",
+  buckets: [
+    { day: "2026-09-06", key: "review", count: 2, total: 2400 },
+    { day: "2026-09-08", key: "review", count: 1, total: 1200 },
+    { day: "2026-09-12", key: "generate", count: 3, total: 90000 },
+  ],
+} satisfies Trend<DailyAmount>;
+
+export const ADMIN_TREND_CREDITS = {
+  from: "2026-09-06",
+  to: "2026-09-12",
+  buckets: [
+    { day: "2026-09-10", key: "grant", count: 1, total: 150 },
+    { day: "2026-09-11", key: "debit", count: 4, total: -32 },
+  ],
+  balance_total: 1268,
+} satisfies CreditTrend;
+
+export const ADMIN_TREND_RUNS = {
+  from: "2026-09-06",
+  to: "2026-09-12",
+  buckets: [
+    { day: "2026-09-11", key: "succeeded", count: 5 },
+    { day: "2026-09-11", key: "failed", count: 1 },
+  ],
+} satisfies Trend;
+
+export const ADMIN_TREND_ACTIONS = {
+  from: "2026-09-06",
+  to: "2026-09-12",
+  buckets: [
+    { day: "2026-09-10", key: "account.lookup", count: 1 },
+    { day: "2026-09-10", key: "credit.grant", count: 1 },
+  ],
+} satisfies Trend;
+
 export const ADMIN_COST_STATISTICS = {
   statistics: [
     {
@@ -859,6 +900,10 @@ export function platformResponse(input: string): { body: unknown; status: number
   if (path === "/admin/rosters") return ok(ADMIN_ROSTERS);
   if (path === "/admin/audit-log") return ok(ADMIN_AUDIT_LOG);
   if (path === "/admin/cost-statistics") return ok(ADMIN_COST_STATISTICS);
+  if (path === "/admin/trends/cost") return ok(ADMIN_TREND_COST);
+  if (path === "/admin/trends/credits") return ok(ADMIN_TREND_CREDITS);
+  if (path === "/admin/trends/runs") return ok(ADMIN_TREND_RUNS);
+  if (path === "/admin/trends/operator-actions") return ok(ADMIN_TREND_ACTIONS);
   if (path.startsWith("/api/skills/search")) return ok(SEARCH);
   if (path.startsWith("/api/skills/catalog")) {
     const category = new URLSearchParams(url.split("?")[1] ?? "").get("category");

@@ -1,10 +1,11 @@
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { focusManager } from "@tanstack/react-query";
 import App from "./App";
 import { queryClient } from "./api/queryClient";
 import { router } from "./router";
-import { usd } from "./api/admin";
+import { daysOf, seriesOf, usd } from "./api/admin";
 import { ADMIN_AUDIT_LOG, ADMIN_SKILLS, SKILL, platformResponse } from "./fixtures/platform";
 
 type Call = { method: string; url: string; body?: Record<string, unknown> };
@@ -517,4 +518,120 @@ test("OPS-007: micro-dollars format at four places, and a missing percentile is 
   expect(usd(49)).toBe("$0.0000");
   expect(usd(50)).toBe("$0.0001");
   expect(usd(1_234_567)).toBe("$1.2346");
+});
+
+test("OPS-008: the day list runs from the first to the last day inclusive, across a month end", () => {
+  expect(daysOf("2026-08-30", "2026-09-02")).toEqual([
+    "2026-08-30",
+    "2026-08-31",
+    "2026-09-01",
+    "2026-09-02",
+  ]);
+  expect(daysOf("2026-09-12", "2026-09-12")).toEqual(["2026-09-12"]);
+  expect(daysOf("2026-09-13", "2026-09-12")).toEqual([]);
+});
+
+test("OPS-008: a series fills a day with no bucket with zero and drops a bucket outside the range", () => {
+  const { days, series } = seriesOf(
+    {
+      from: "2026-09-10",
+      to: "2026-09-12",
+      buckets: [
+        { day: "2026-09-12", key: "review", count: 2, total: 30 },
+        { day: "2026-09-10", key: "review", count: 1, total: 5 },
+        { day: "2026-09-09", key: "review", count: 9, total: 900 },
+        { day: "2026-09-11", key: "generate", count: 1, total: 7 },
+      ],
+    },
+    (bucket) => bucket.total,
+  );
+  expect(days).toEqual(["2026-09-10", "2026-09-11", "2026-09-12"]);
+  expect(series).toEqual([
+    { key: "generate", counts: [0, 1, 0], values: [0, 7, 0] },
+    { key: "review", counts: [1, 0, 2], values: [5, 0, 30] },
+  ]);
+});
+
+const TREND_PATHS = ["cost", "credits", "operator-actions", "runs"];
+const trendCalls = () => calls.filter((c) => c.url.startsWith("/admin/trends/")).map((c) => c.url);
+const trendsFor = (days: number) =>
+  new Set(TREND_PATHS.map((path) => `/admin/trends/${path}?days=${days}`));
+
+test("OPS-008: the trends page asks each owner for 30 days by default and draws one chart per kind with events", async () => {
+  stub(true);
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+  expect(new Set(trendCalls())).toEqual(trendsFor(30));
+  expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(true);
+  expect(
+    Array.from(container.querySelectorAll('canvas[role="img"]')).map((c) =>
+      c.getAttribute("aria-label"),
+    ),
+  ).toEqual(
+    ["單次生成", "評審", "扣點", "授予", "執行失敗", "執行完成", "查詢帳號", "授予點數"].map(
+      (name) => `${name}：每日長條圖，逐日數字在下方的表`,
+    ),
+  );
+});
+
+test("OPS-008: a kind's figure totals its range and its table shows zero on the days it had nothing", async () => {
+  stub(true);
+  await mountAt("/admin/trends");
+  await waitFor(has("評審：3 筆，合計 $0.0036"));
+  expect(has("扣點：4 筆，合計 -32 點")()).toBe(true);
+  const review = Array.from(container.querySelectorAll("figure")).find((figure) =>
+    figure.textContent?.startsWith("評審"),
+  );
+  expect(Array.from(review!.querySelectorAll("tbody tr")).map((tr) => tr.textContent)).toEqual([
+    "2026-09-062$0.0024",
+    "2026-09-070$0.0000",
+    "2026-09-081$0.0012",
+    "2026-09-090$0.0000",
+    "2026-09-100$0.0000",
+    "2026-09-110$0.0000",
+    "2026-09-120$0.0000",
+  ]);
+});
+
+test("OPS-008: a kind with no events in the range is named instead of drawn", async () => {
+  stub(true);
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和"));
+  expect(has("這段期間沒有事件：儲值、更正。")()).toBe(true);
+  expect(
+    has("這段期間沒有事件：創作步驟、創作會話、搜尋向量、索引增強、改善建議、試跑、搜尋理由。")(),
+  ).toBe(true);
+});
+
+test("OPS-008: a range in the address is asked for, and a range the page does not offer falls back to 30", async () => {
+  stub(true);
+  await mountAt("/admin/trends", { days: "7" });
+  await waitFor(has("全平台目前餘額總和"));
+  expect(new Set(trendCalls())).toEqual(trendsFor(7));
+
+  calls = [];
+  await go("/admin/trends", { days: "8" });
+  await waitFor(() => trendCalls().length >= 4);
+  expect(new Set(trendCalls())).toEqual(trendsFor(30));
+});
+
+test("OPS-008: the trends are asked for once, not again when the window regains focus", async () => {
+  stub(true);
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和"));
+  const asked = trendCalls().length;
+  await act(async () => {
+    focusManager.setFocused(false);
+    focusManager.setFocused(true);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+  focusManager.setFocused(undefined);
+  expect(trendCalls().length).toBe(asked);
+});
+
+test("OPS-008: a member who types the trends address gets the missing page and no trend request", async () => {
+  stub(false);
+  await mountAt("/admin/trends");
+  await waitFor(has("這一頁現在不存在"));
+  expect(trendCalls()).toEqual([]);
 });

@@ -284,6 +284,15 @@ const adminCostStatisticsRoute = createRoute({
   component: lazyRouteComponent(() => import("./pages/Admin"), "AdminCostStatistics"),
 });
 
+const adminTrendsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/trends",
+  component: lazyRouteComponent(() => import("./pages/Admin"), "AdminTrends"),
+  validateSearch: (search: Record<string, unknown>): { days?: 7 | 30 | 90 } => ({
+    days: ([7, 30, 90] as const).find((days) => days === Number(search.days)),
+  }),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   compareRoute,
@@ -310,6 +319,7 @@ const routeTree = rootRoute.addChildren([
   adminRostersRoute,
   adminAuditLogRoute,
   adminCostStatisticsRoute,
+  adminTrendsRoute,
 ]);
 
 export const router = createRouter({ routeTree, defaultNotFoundComponent: RouteNotFound });

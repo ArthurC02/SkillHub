@@ -1,3 +1,6 @@
+import type { UseQueryResult } from "@tanstack/react-query";
+import { BarChart } from "../components/BarChart";
+import { RUN_STATUS_LABEL } from "./RunEvaluation";
 import { Fragment, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMe } from "../api/me";
@@ -13,6 +16,14 @@ import {
   useOperatorAuditLog,
   useRosters,
   usd,
+  useTrend,
+  seriesOf,
+  daysOf,
+  TREND_DAYS,
+  type CreditTrend,
+  type DailyAmount,
+  type DailyCount,
+  type Trend,
   type AccountLookup,
   type SkillGovernance,
 } from "../api/admin";
@@ -163,6 +174,14 @@ export function AdminHome() {
             </Link>
           </p>
           <p className="note">每一種模型與沙箱呼叫最新的成本分布，不含使用者維度。</p>
+        </li>
+        <li className="download-item">
+          <p>
+            <Link to="/admin/trends" search={{}}>
+              <strong>趨勢</strong>
+            </Link>
+          </p>
+          <p className="note">成本、點數、Run 與 operator 動作的每日走勢，只有彙總。</p>
         </li>
       </ul>
     </AdminPage>
@@ -818,6 +837,172 @@ export function AdminCostStatistics() {
             </table>
           </div>
         ))}
+    </AdminPage>
+  );
+}
+
+const sum = (numbers: number[]) => numbers.reduce((total, n) => total + n, 0);
+
+function TrendCharts<B extends DailyCount>({
+  trend,
+  value,
+  format,
+  labels,
+  valueHeading,
+}: {
+  trend: Trend<B>;
+  value: (bucket: B) => number;
+  format: (n: number) => string;
+  labels: Record<string, string>;
+  valueHeading?: string;
+}) {
+  const { days, series } = seriesOf(trend, value);
+  const absent = Object.keys(labels).filter((key) => !series.some((s) => s.key === key));
+  return (
+    <>
+      {series.length > 0 && (
+        <div className="chart-grid">
+          {series.map((s) => {
+            const name = labels[s.key] ?? s.key;
+            return (
+              <figure key={s.key}>
+                <figcaption>
+                  {name}：{sum(s.counts)} 筆{valueHeading && `，合計 ${format(sum(s.values))}`}
+                </figcaption>
+                <BarChart label={name} days={days} values={s.values} format={format} />
+                <details>
+                  <summary>{name}的逐日數字</summary>
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th scope="col">日期（UTC）</th>
+                          <th scope="col">筆數</th>
+                          {valueHeading && <th scope="col">{valueHeading}</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {days.map((day, index) => (
+                          <tr key={day}>
+                            <th scope="row">{day}</th>
+                            <td>{s.counts[index]}</td>
+                            {valueHeading && <td>{format(s.values[index])}</td>}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              </figure>
+            );
+          })}
+        </div>
+      )}
+      {absent.length > 0 && (
+        <p>這段期間沒有事件：{absent.map((key) => labels[key]).join("、")}。</p>
+      )}
+    </>
+  );
+}
+
+function TrendSection<B extends DailyCount, T extends Trend<B>>({
+  heading,
+  query,
+  value,
+  format,
+  labels,
+  valueHeading,
+  children,
+}: {
+  heading: string;
+  query: UseQueryResult<T>;
+  value: (bucket: B) => number;
+  format: (n: number) => string;
+  labels: Record<string, string>;
+  valueHeading?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <section>
+      <h2>{heading}</h2>
+      {query.isPending && <Loading what={heading} />}
+      <ReadFailure error={query.error} what={heading} />
+      {query.data && (
+        <TrendCharts
+          trend={query.data}
+          value={value}
+          format={format}
+          labels={labels}
+          valueHeading={valueHeading}
+        />
+      )}
+      {children}
+    </section>
+  );
+}
+
+const usdAmount = (micros: number) => usd(micros);
+const creditAmount = (credits: number) => `${credits} 點`;
+const countOf = (bucket: DailyCount) => bucket.count;
+const totalOf = (bucket: DailyAmount) => bucket.total;
+
+export function AdminTrends() {
+  const { days = 30 } = useSearch({ from: "/admin/trends" });
+  const cost = useTrend<Trend<DailyAmount>>("cost", days);
+  const credits = useTrend<CreditTrend>("credits", days);
+  const runs = useTrend<Trend>("runs", days);
+  const actions = useTrend<Trend>("operator-actions", days);
+  const range = [cost, credits, runs, actions].find((query) => query.data)?.data;
+
+  return (
+    <AdminPage
+      heading="趨勢"
+      lede="依 UTC 日期分組，台灣時間早上八點換日；只有彙總，不指向任何帳號。"
+    >
+      <nav aria-label="時間範圍" className="category-nav">
+        {TREND_DAYS.map((n) => (
+          <Link key={n} to="/admin/trends" search={{ days: n }} className="chip">
+            {n} 天
+          </Link>
+        ))}
+      </nav>
+      {range && (
+        <p>
+          {range.from} 到 {range.to}（UTC），共 {daysOf(range.from, range.to).length} 天。
+        </p>
+      )}
+      <TrendSection
+        heading="每日成本（美元，含估計值）"
+        query={cost}
+        value={totalOf}
+        format={usdAmount}
+        labels={COST_KIND}
+        valueHeading="美元"
+      />
+      <TrendSection
+        heading="每日點數異動（淨額）"
+        query={credits}
+        value={totalOf}
+        format={creditAmount}
+        labels={ENTRY_KIND}
+        valueHeading="點數"
+      >
+        {credits.data && <p>全平台目前餘額總和：{credits.data.balance_total} 點。</p>}
+      </TrendSection>
+      <TrendSection
+        heading="每天建立的 Run（依目前狀態）"
+        query={runs}
+        value={countOf}
+        format={String}
+        labels={RUN_STATUS_LABEL}
+      />
+      <TrendSection
+        heading="每日 operator 動作"
+        query={actions}
+        value={countOf}
+        format={String}
+        labels={ACTION_LABEL}
+      />
     </AdminPage>
   );
 }

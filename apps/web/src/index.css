@@ -1206,6 +1206,21 @@ main h3 {
   border-radius: 8px;
 }
 
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.chart-grid figure {
+  margin: 0;
+}
+
+.chart-frame {
+  position: relative;
+  height: 160px;
+}
+
 /* 同一個修正的另一半：那一列快速導航回到 `--surface`，也就是這個 app 已經有的
    容器配方（§4.3「修法一律是套用既有的卡片族」）。它與上面三張卡的差別由字級與
    內距承擔，不由第四種底色承擔。 */

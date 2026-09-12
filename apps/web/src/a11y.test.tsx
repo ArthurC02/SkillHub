@@ -278,6 +278,7 @@ const SCANNED_ROUTES = [
   "/admin/rosters",
   "/admin/audit-log",
   "/admin/cost-statistics",
+  "/admin/trends",
 ];
 
 function stubOperator() {
@@ -297,6 +298,7 @@ for (const [to, heading] of [
   ["/admin/rosters", "這個部署沒有設定封測名單"],
   ["/admin/audit-log", "授予點數"],
   ["/admin/cost-statistics", "搜尋理由"],
+  ["/admin/trends", "全平台目前餘額總和"],
 ] as const) {
   test(`QA-009: 後台 ${to}`, async () => {
     stubOperator();
