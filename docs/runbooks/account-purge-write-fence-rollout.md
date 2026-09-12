@@ -33,7 +33,7 @@ WHERE object_grants_state = 'legacy_unknown';
 COMMIT;
 ```
 
-更新 expiry 會由 `0051` trigger 建立 Run Artifact cleanup intent。修復後全域確認 `legacy_unknown` 為零；若仍有，停止 account purge 並調查。
+更新 expiry 會由 `0051` 的 `run_attempt_artifact_upload_intent` trigger 在 `run_artifact_upload_intents` 建一列。修復後全域確認 `legacy_unknown` 為零；若仍有，停止 account purge 並調查。
 
 ## 4. 歷史孤兒物件對帳
 

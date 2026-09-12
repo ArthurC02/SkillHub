@@ -108,55 +108,45 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 
 ## 整體架構摘要
 
-> **2026-09-03 訂正**：這張圖是**目標架構**，不是今天跑著的系統。兩處以現在式畫了 MVP 首發不含的東西，已在節點名稱上標明：**Local Runner**（AGENTS.md：「Local Runner 與遠端 MCP 已移出 MVP 首發」，決策保留於 ADR-006）與 **MCP Proxy**（ADR-022 Q3 決定沙箱層採 nftables default-deny ＋固定 DNS，**不部署 L7 Proxy**）。圖的其餘部分不變。
+> 這張圖畫的是**今天跑著的四個行程與三個平面**。兩處標著「MVP 首發不含」的節點是刻意留在圖上的已決策項目（[ADR-006](./ADR-006-local-runner-for-local-resources.md) 的 Local Runner、[ADR-022](./ADR-022-sandbox-deployment-topology-and-security-thresholds.md) Q3 決定不部署的 L7／MCP Proxy），不是還沒畫完。**功能不在圖上**——控制平面內部怎麼切 Bounded Context 見 [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md) §1，實作進度見 [`01` §10](../plans/01-goals-and-plan.md)。
 
 ```mermaid
 flowchart TB
-    User["個人創作者"] --> UI["Web UI / API Edge"]
-    Runner["Local Runner（MVP 首發不含，ADR-006）"] --> RunnerGateway["Runner Gateway（同上）"]
+    User["個人創作者"] --> Web["apps/web（React SPA）"]
+    Runner["Local Runner（MVP 首發不含，ADR-006）"] --> API
 
-    subgraph Control["控制平面"]
-        App["模組化應用核心"]
-        Catalog["Catalog & Discovery"]
-        Registry["Skill Registry"]
-        Lab["Test Lab"]
-        Orchestrator["Run Orchestrator"]
-        Evaluation["Evaluation"]
-        Packaging["Packaging"]
-        Policy["Policy & Usage"]
+    subgraph Control["控制平面（apps/platform，Go）"]
+        API["API 行程：AuthZ 與領域規則"]
+        Worker["Go Worker：唯一的佇列消費者"]
     end
 
     subgraph Data["資料平面"]
-        DB["Relational Database"]
-        Object["Object Storage"]
-        Search["Search Index"]
-        Queue["Queue / Event Transport"]
-        Vault["Secrets Store"]
+        DB["PostgreSQL：Run 狀態機、River 佇列、FTS＋pgvector、Trace 分割表、Outbox"]
+        Object["物件儲存（S3 協定）"]
+    end
+
+    subgraph Capability["能力提供者"]
+        LLM["apps/llm（Python FastAPI）"]
+        Gateway["LiteLLM 閘道：供應商金鑰只存在這裡"]
     end
 
     subgraph Execution["不受信任執行平面"]
-        Provider["Sandbox Provider"]
-        Sandbox["Self-hosted Sandbox"]
-        Egress["Controlled Egress（nftables default-deny ＋固定 DNS；L7/MCP Proxy 不部署，ADR-022 Q3）"]
+        Provider["apps/sandbox（Sandbox Provider）"]
+        Sandbox["gVisor 沙箱：跑釘選 digest 的 runtime image"]
+        Egress["受控 egress（nftables default-deny ＋固定 DNS；L7／MCP Proxy 不部署，ADR-022 Q3）"]
     end
 
-    UI --> App
-    RunnerGateway --> Orchestrator
-    App --> Catalog
-    App --> Registry
-    App --> Lab
-    Lab --> Orchestrator
-    Orchestrator --> Evaluation
-    App --> Packaging
-    App --> Policy
-    Registry --> DB
-    Registry --> Object
-    Catalog --> Search
-    Orchestrator --> Queue
-    Orchestrator --> Vault
-    Queue --> Provider
+    Web --> API
+    API --> DB
+    API --> Object
+    API --> Worker
+    Worker --> DB
+    Worker --> LLM
+    Worker --> Provider
+    LLM --> Gateway
     Provider --> Sandbox
     Sandbox --> Egress
+    Sandbox -. "只有短效授權，碰不到 DB" .-> Object
 ```
 
 ## 核心架構原則

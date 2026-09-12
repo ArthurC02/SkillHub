@@ -2,7 +2,7 @@
 
 - 對應需求：[`02:SEC-010`](../plans/02-specifications-and-acceptance-criteria.md)（「流程以 runbook 形式產出，可被值班人員直接執行」）、`03:SEC-012`
 - 對應決策：[ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) X-02／X-04、`02:SEC-010` 的嚴重度分級表
-- 殘項：[`04` 丙-26](../plans/04-backlog-and-handoffs.md)
+- 歷史殘項（已結案）：[`04` 丙-26](../plans/04-backlog-and-handoffs.md)
 
 **這份文件的讀者是停派送當下的那個人。** 前三節照順序讀就能動作，背景在後面。
 
@@ -16,10 +16,10 @@
 - `source = 'p1_incident'`：人或偵測器宣告的 P1。**永遠不會自動解除。**
 - `source = 'orphan_threshold'`：ADR-022 X-04 的容量事件，Reconciler 連續 2 輪乾淨會**自己解除**。
 - **三個讀者都 fail-closed，但「有列在」對三者不是同一件事**（**2026-08-25 訂正**：原本這一行寫「有列在 → 建立 Run 直接回錯誤」，那句話只有在**停整池**時成立）：
-  - **建立 Run**（`requireDispatchable`）：只有 **`provider = ''`（整池）且 `source = 'p1_incident'`** 的列，才會直接回 `the execution environment is temporarily unavailable`；只停某一個 provider、或門檻類（`orphan_threshold`）的列，**Run 照常建立**。
+  - **建立 Run**（`requireDispatchable` → `incidentPaused`）：**整池的 `p1_incident` 列，或「已設定的每一個 provider 各自都有 `p1_incident` 列」**，才會直接回 `the execution environment is temporarily unavailable`。門檻類（`orphan_threshold`）的列**不擋建立**，多 provider 部署下只停其中一個也不擋。
   - **派送已排入的 Run**（`dispatchPaused`）：整池的列（**不分 source**），或**所有已設定的 provider 各自都有列**時，Run 留在 `queued` 等；只要還有沒被停的 provider，就改派給它。
   - **清理與遺留資源拆除**（`incidentHeld`）：只有 `source = 'p1_incident'` 才**停手**（保留現場）——整池的列擋全部，單一 provider 的列只擋那一個池；`orphan_threshold` **不停清理**，因為清理正是清掉觸發它的那些洩漏。
-- ⚠️ **單一 provider 部署（目前的形態）有一個會咬人的組合**：依 §2.3 填了那個唯一的 provider 名字停池 → **建立不被擋**（使用者拿不到那句話）、派送全停 → Run 沉在 `queued`，而 `p1_incident` **沒有自動解除**。**要讓使用者當場知道，就省略 `provider` 停整池。**
+- ⚠️ **單一 provider 部署（目前的形態）下，「停那一個 provider」與「停整池」對建立的效果相同**：`incidentPaused` 要的是「每一個已設定的 provider 都被停」，而那台機器上只有一個。差別在**清理**——單一 provider 的列只擋那一個池的清理，整池的列擋全部。`p1_incident` **沒有自動解除**，兩種形式都一樣。
 
 使用者看到的那句話**不含任何事故細節**——開不了 Run 的人不是事故關於的人。
 

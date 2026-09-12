@@ -654,7 +654,7 @@
   },
   "examples": [
     {
-      "schema_version": "1.0",
+      "schema_version": "1.2",
       "packaged_at": "2026-08-17T09:00:00Z",
       "source_version_created_at": "2026-08-17T09:00:00Z",
       "packager_version": "0.1.0",
@@ -707,7 +707,7 @@
       "manifest_hash": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9"
     },
     {
-      "schema_version": "1.0",
+      "schema_version": "1.2",
       "packaged_at": "2026-08-17T09:30:00Z",
       "source_version_created_at": "2026-08-17T09:30:00Z",
       "packager_version": "0.1.0",
@@ -783,8 +783,9 @@
       "manifest_hash": "1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9a0"
     },
     {
-      "schema_version": "1.0",
+      "schema_version": "1.2",
       "packaged_at": "2026-08-17T10:15:00Z",
+      "source_version_created_at": "2026-08-17T10:15:00Z",
       "packager_version": "0.1.0",
       "profile_id": "claude-agent-sdk",
       "profile_version": "1.0.0",
