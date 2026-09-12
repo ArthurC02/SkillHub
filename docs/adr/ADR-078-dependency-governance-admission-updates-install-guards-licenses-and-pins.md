@@ -100,6 +100,14 @@
 - **冷卻期擋不住潛伏更久的惡意版本，也擋不住維護者本人作惡**；它擋的是「帳號被盜到被發現」之間的那個窗口。
 - **自動更新會帶來 PR**：每週最多三個群組（npm、Go、Python 的 minor＋patch），加上各自的 major；每月最多三個（Actions、映像、compose）。
 
+## 補充：第一輪 Dependabot 之後（同日）
+
+設定推上去之後，Dependabot 的第一輪就開了三個 PR，其中兩個露出本 ADR 沒想到的耦合。以下兩件是對決策 1 與決策 4 的補充，不改寫原本的決策：
+
+- **Dockerfile 的更新再忽略 `python` 與 `golang`**。第一輪的 Docker 群組 PR 把 python 映像從 3.12 升到 3.14，其中也包括 codegen 映像；codegen 的 `requires-python` 是 `==3.12.*`，CI 也寫死 3.12。golang 映像從 1.27.0 升到 1.27.1，但 CI 用的 Go 版本讀的是 `go.mod` 的 `go` 行。它們跟 uv、node 一樣，要人工連同原生檔一起升。Go 標準庫的漏洞仍然由 govulncheck 報出來：有修補版就 FAIL，逼著去做這次手動升級。
+- **`dependency-policy` 再比對 compose 與 workflow 的同一個映像**。第一輪的 compose PR 把 seaweedfs 從 3.80 升到 4.46，但 CI 的 `docker run` 那一行（pgvector 則是 `services: image:`）Dependabot 不會改。現在只要兩邊的 tag 或 digest 不一樣就 FAIL，這種 PR 在補齊 CI 那一行之前不會是綠的。
+- **npm 再忽略 `@types/node` 的 major，uv 再忽略 `uv-build`**。第一輪另外開了兩個 PR：`@types/node` 24 → 26，但型別要跟 `.node-version` 的 Node 主版本走；`uv-build` 的上限從 0.12 放寬到 0.13，但 build backend 跟 toolchain.yaml 的 uv 走。
+
 ## 待決策
 
 - 無。
