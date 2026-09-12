@@ -65,6 +65,10 @@ tasks:
     desc: List every workflow run for HEAD with failing jobs and steps; pass -- --wait to block until it finishes
     cmd: go -C tools/devctl run . ci-status {{.CLI_ARGS}}
 
+  deps:audit:
+    desc: Fail on fixable vulnerabilities in shipped dependencies; pass -- --full to scan every project, dev dependencies too
+    cmd: go -C tools/devctl run . dep-audit {{.CLI_ARGS}}
+
   ci:
     desc: Run the local secret-free CI sequence in deterministic order
     cmds:

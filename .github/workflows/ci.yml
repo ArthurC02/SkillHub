@@ -365,6 +365,28 @@ jobs:
       - name: Generate portable Agent artifacts from Claude sources
         run: go -C tools/devctl run . agent-sync
 
+  dependency-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: tools/devctl/go.mod
+          cache-dependency-path: |
+            apps/platform/go.sum
+            apps/sandbox/go.sum
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      - name: Fixable vulnerabilities in shipped dependencies
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        run: go -C tools/devctl run . dep-audit
+      - name: Fixable vulnerabilities in every project, dev dependencies too
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: go -C tools/devctl run . dep-audit --full
+
   contracts-drift:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -489,7 +511,7 @@ jobs:
         run: bash tools/ci/stack-smoke.sh
 
   images-push:
-    needs: [images, web, platform, llm, devctl, contracts-drift]
+    needs: [images, web, platform, llm, devctl, contracts-drift, dependency-audit]
     if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

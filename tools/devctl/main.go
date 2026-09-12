@@ -31,6 +31,7 @@ Usage:
 	devctl image-gate [--range A..B]  runtime image source gates: digest-pinned base, upgrade record, version bump
 	devctl preflight [--hook]  check unpushed commits for what CI would fail on (--hook reads git's pre-push input)
 	devctl ci-status [ref] [--wait]  every workflow run for a commit; exit 0 green, 1 red, 3 pending, 4 no runs
+	devctl dep-audit [--full]  fail on fixable vulnerabilities in shipped dependencies (--full: every project, dev dependencies too)
 `
 
 type checkResult struct {
@@ -113,6 +114,10 @@ func main() {
 			fatal(err)
 		}
 		os.Exit(code)
+	case "dep-audit":
+		if err := depAudit(root, os.Args[2:], os.Stdout); err != nil {
+			fatal(err)
+		}
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:
