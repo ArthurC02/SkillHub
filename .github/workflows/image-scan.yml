@@ -1,0 +1,58 @@
+name: Image Scan
+
+on:
+  pull_request:
+    paths:
+      - 'infra/compose/**'
+      - 'infra/images/platform/**'
+      - 'infra/images/web/**'
+      - 'infra/images/llm/**'
+      - 'infra/images/devtools/**'
+      - 'tools/ci/scan-images.sh'
+      - '.github/workflows/image-scan.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/compose/**'
+      - 'infra/images/platform/**'
+      - 'infra/images/web/**'
+      - 'infra/images/llm/**'
+      - 'infra/images/devtools/**'
+      - 'tools/ci/scan-images.sh'
+      - '.github/workflows/image-scan.yml'
+  schedule:
+    - cron: '41 4 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: image-scan-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  SYFT: docker.io/anchore/syft:v1.51.0@sha256:678bfa565b60f747aac0f8e964fe5588a24445b8d0a480e91f6efd70020dfbb0
+  GRYPE: docker.io/anchore/grype:v0.117.0@sha256:ddf9e9f204049f3a4a0955ef70873cabab6a31432125ad4f20a490b54950a253
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Scan the compose and application images
+        env:
+          FAIL_ON_UPSTREAM: ${{ github.event_name == 'schedule' && '1' || '0' }}
+        run: bash tools/ci/scan-images.sh
+
+      - name: Keep the SBOMs and the reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: image-scan-${{ github.sha }}
+          path: scan/
+          retention-days: 90

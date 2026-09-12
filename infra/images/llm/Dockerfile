@@ -30,6 +30,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.14-slim-bookworm@sha256:9ab8d9c8514b44f90cf0029dd42fdd7e9e211e639c8b995304cc04568dee900f AS runtime
 
+RUN apt-get update \
+    # Upgrades this one package to pick up a fixed CVE without floating the
+    # pinned base digest or doing a drifting whole-image apt-get upgrade.
+    && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --gid 65532 skillhub \
     && useradd --uid 65532 --gid 65532 --no-create-home --shell /usr/sbin/nologin skillhub
 

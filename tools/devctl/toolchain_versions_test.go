@@ -55,7 +55,7 @@ func TestEveryToolThatMovesTogetherHasMoreThanOneSite(t *testing.T) {
 			t.Errorf("%s has %d site; one site cannot drift from anything", group.tool, len(group.sites))
 		}
 	}
-	for _, tool := range []string{"node", "go", "python", "uv", "task", "golangci-lint"} {
+	for _, tool := range []string{"node", "go", "python", "uv", "task", "golangci-lint", "syft", "grype"} {
 		if !tools[tool] {
 			t.Errorf("%s is no longer checked for version agreement", tool)
 		}

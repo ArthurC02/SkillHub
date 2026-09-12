@@ -67,6 +67,18 @@ var versionsThatMoveTogether = []versionGroup{
 		{"tools/toolchain.yaml", toolchainPin("golangci_lint")},
 		{"infra/images/devtools/Dockerfile", regexp.MustCompile(`(?m)^ARG GOLANGCI_LINT_VERSION=(\S+)`)},
 	}},
+	{"syft", []versionSite{
+		{".github/workflows/runtime-image.yml", scannerPin("SYFT", "syft")},
+		{".github/workflows/image-scan.yml", scannerPin("SYFT", "syft")},
+	}},
+	{"grype", []versionSite{
+		{".github/workflows/runtime-image.yml", scannerPin("GRYPE", "grype")},
+		{".github/workflows/image-scan.yml", scannerPin("GRYPE", "grype")},
+	}},
+}
+
+func scannerPin(key, image string) *regexp.Regexp {
+	return regexp.MustCompile(`(?m)^  ` + key + `: docker\.io/anchore/` + image + `:(\S+)$`)
 }
 
 func versionAgreementProblems(groups []versionGroup, read func(string) (string, error)) []string {
