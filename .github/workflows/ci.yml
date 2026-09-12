@@ -30,6 +30,8 @@ jobs:
       images: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.images == 'true' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - id: scope
         run: echo "all=${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}" >> "$GITHUB_OUTPUT"
       - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
@@ -101,6 +103,8 @@ jobs:
         working-directory: apps/web
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -146,6 +150,8 @@ jobs:
         working-directory: apps/web
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -202,6 +208,8 @@ jobs:
       SKILLHUB_REQUIRE_CREATION_PYTHON: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Start SeaweedFS (credentialed S3, for the SBX-008 grant tests)
         run: |
           docker run -d --name seaweedfs --network host \
@@ -219,6 +227,7 @@ jobs:
         with:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
+      - run: go mod verify
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
@@ -257,10 +266,13 @@ jobs:
       RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk@sha256:8f465e4f2522ae2b8a5b551c07010a48f11ffb407d25a70bbaacef3f49945cdb
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: apps/sandbox/go.mod
           cache-dependency-path: apps/sandbox/go.sum
+      - run: go mod verify
       - name: Pull the Runtime Image the P-02 probe dials from
         run: |
           docker pull "$RUNTIME_IMAGE_FOR_PROBE"
@@ -315,6 +327,8 @@ jobs:
         working-directory: apps/sandbox
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: apps/sandbox/go.mod
@@ -339,6 +353,8 @@ jobs:
         working-directory: apps/llm
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
@@ -352,6 +368,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: tools/devctl/go.mod
@@ -368,8 +386,12 @@ jobs:
   dependency-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: tools/devctl/go.mod
@@ -380,10 +402,10 @@ jobs:
         with:
           node-version: 22
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
-      - name: Fixable vulnerabilities in shipped dependencies
+      - name: Shipped dependencies — fixable vulnerabilities, licenses, workflow audit
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         run: go -C tools/devctl run . dep-audit
-      - name: Fixable vulnerabilities in every project, dev dependencies too
+      - name: Every project — fixable vulnerabilities (dev dependencies too), licenses, workflow audit
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: go -C tools/devctl run . dep-audit --full
 
@@ -392,6 +414,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: tools/devctl/go.mod
@@ -420,11 +444,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
-      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
         with:
           python-version: '3.12'
       - name: Corpus generator self-test (offline)
@@ -444,6 +470,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -472,6 +500,8 @@ jobs:
       REGISTRY: ghcr.io/arthurc02
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - name: Build the platform image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -522,9 +552,13 @@ jobs:
       REGISTRY: ghcr.io/arthurc02
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - name: Log in to GHCR
-        run: echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
       - name: Push the platform image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:

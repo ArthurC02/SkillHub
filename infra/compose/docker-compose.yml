@@ -2,7 +2,7 @@ name: skillhub
 
 services:
   postgres:
-    image: pgvector/pgvector:pg17
+    image: pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
     environment:
       POSTGRES_USER: skillhub
       POSTGRES_PASSWORD: skillhub
@@ -20,7 +20,7 @@ services:
   # Probes 127.0.0.1, not localhost: this container listens on IPv4 only, and
   # localhost can resolve to ::1 first.
   seaweedfs:
-    image: chrislusf/seaweedfs:3.80
+    image: chrislusf/seaweedfs:3.80@sha256:1055999e08eed1789b0ae45d235126e4495e23d3fb9d6396293fd42539b1ae6a
     command: server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
     ports:
       - "127.0.0.1:8333:8333"
@@ -34,7 +34,7 @@ services:
       retries: 10
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable
+    image: ghcr.io/berriai/litellm:main-stable@sha256:a3715fa7ad8387941ab697259bd2881d68931657247a41984f90fae6d11c62bf
     profiles: ["model"]
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     environment:
@@ -51,7 +51,7 @@ services:
       - egress
 
   prometheus:
-    image: prom/prometheus:v3.6.0
+    image: prom/prometheus:v3.6.0@sha256:76947e7ef22f8a698fc638f706685909be425dbe09bd7a2cd7aca849f79b5f64
     profiles: ["observability"]
     command:
       - --config.file=/etc/prometheus/prometheus.yml

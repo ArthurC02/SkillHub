@@ -21,7 +21,9 @@ runs:
         key: golangci-lint-${{ steps.pin.outputs.version }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.pin.outputs.go }}
     - if: steps.restore.outputs.cache-hit != 'true'
       shell: bash
-      run: go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${{ steps.pin.outputs.version }}"
+      env:
+        GOLANGCI_LINT_VERSION: ${{ steps.pin.outputs.version }}
+      run: go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
     - if: steps.restore.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:

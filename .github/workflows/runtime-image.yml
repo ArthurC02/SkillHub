@@ -47,6 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
@@ -54,14 +55,16 @@ jobs:
           cache: false
 
       - name: Source gates (I-05 version bump, I-02 digest pin, ADR-023 §4 upgrade record)
+        env:
+          BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          case "${{ github.event_name }}" in
+          case "$GITHUB_EVENT_NAME" in
             pull_request)
-              git fetch --quiet origin "${{ github.base_ref }}"
-              RANGE="origin/${{ github.base_ref }}...HEAD"
+              git fetch --quiet origin "$GITHUB_BASE_REF"
+              RANGE="origin/$GITHUB_BASE_REF...HEAD"
               ;;
-            push) RANGE="${{ github.event.before }}..${{ github.sha }}" ;;
+            push) RANGE="$BEFORE..$GITHUB_SHA" ;;
             *) RANGE="" ;;
           esac
           go -C tools/devctl run . image-gate --range "$RANGE"
@@ -107,7 +110,9 @@ jobs:
 
       - name: Log in to GHCR
         if: github.event_name == 'push'
-        run: echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
 
       - name: Publish only a version the registry does not have yet
         id: version
@@ -133,9 +138,11 @@ jobs:
       - name: Push to GHCR
         id: push
         if: steps.version.outputs.publish == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          version='${{ steps.version.outputs.version }}'
+          version="$VERSION"
           docker tag "$IMAGE" "$REGISTRY_IMAGE:$version"
           docker tag "$IMAGE" "$REGISTRY_IMAGE:sha-${GITHUB_SHA::12}"
           docker push "$REGISTRY_IMAGE:$version"
@@ -195,9 +202,13 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Log in to GHCR
-        run: echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
 
       - name: Resolve the published digest
         id: published
@@ -209,11 +220,13 @@ jobs:
           echo "Re-scanning $REGISTRY_IMAGE:$version@$digest" >> "$GITHUB_STEP_SUMMARY"
 
       - name: SBOM and scan of the published digest
+        env:
+          PUBLISHED_DIGEST: ${{ steps.published.outputs.digest }}
         run: |
           mkdir -p scan
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$PWD/scan:/scan" "$SYFT" \
-            "$REGISTRY_IMAGE@${{ steps.published.outputs.digest }}" -o spdx-json=/scan/sbom.spdx.json
+            "$REGISTRY_IMAGE@$PUBLISHED_DIGEST" -o spdx-json=/scan/sbom.spdx.json
           docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             -o json --file /scan/vulnerabilities.json
           docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \

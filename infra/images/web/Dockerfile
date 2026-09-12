@@ -6,12 +6,12 @@ FROM node:22.14.0-bookworm-slim@sha256:1c18d9ab3af4585870b92e4dbc5cac5a0dc77dd13
 
 WORKDIR /src
 COPY packages/api-client-ts/package.json packages/api-client-ts/package-lock.json ./packages/api-client-ts/
-RUN cd packages/api-client-ts && npm ci
+RUN cd packages/api-client-ts && npm ci --ignore-scripts
 COPY packages/api-client-ts ./packages/api-client-ts
 RUN cd packages/api-client-ts && npm run build
 
 COPY apps/web/package.json apps/web/package-lock.json ./apps/web/
-RUN cd apps/web && npm ci
+RUN cd apps/web && npm ci --ignore-scripts
 COPY apps/web ./apps/web
 RUN cd apps/web && npm run build
 

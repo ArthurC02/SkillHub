@@ -27,6 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Allow-list invariants (ADR-022 Q3)
@@ -47,15 +48,17 @@ jobs:
           SEC009_NO_NFT=1 bash tools/sec009/t5-network-egress.sh
 
       - name: A destination change must carry a threat-model update
+        env:
+          BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = pull_request ]; then
-            git fetch --quiet origin "${{ github.base_ref }}"
-            RANGE="origin/${{ github.base_ref }}...HEAD"
-          elif [ "${{ github.event.before }}" = 0000000000000000000000000000000000000000 ]; then
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            git fetch --quiet origin "$GITHUB_BASE_REF"
+            RANGE="origin/$GITHUB_BASE_REF...HEAD"
+          elif [ "$BEFORE" = 0000000000000000000000000000000000000000 ]; then
             RANGE="HEAD~1..HEAD"
           else
-            RANGE="${{ github.event.before }}..HEAD"
+            RANGE="$BEFORE..HEAD"
           fi
           CHANGED=$(git diff --name-only "$RANGE")
           echo "$CHANGED" | grep -q '^infra/egress/allowlist\.yaml$' || exit 0

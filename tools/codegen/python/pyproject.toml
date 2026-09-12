@@ -5,3 +5,6 @@ requires-python = "==3.12.*"
 dependencies = [
     "datamodel-code-generator==0.64.0",
 ]
+
+[tool.uv]
+exclude-newer = "7 days"
