@@ -6,8 +6,8 @@ ARG TASK_VERSION=3.53.1
 ARG UV_VERSION=0.12.13
 ARG UV_INSTALLER_SHA256=e7265962d703f3ca66b3e90fae8fcdc6d4e4b587027e9479ccc29b25c3f68d4e
 ARG GOLANGCI_LINT_VERSION=2.13.2
-ARG DOCKER_VERSION=29.0.1
-ARG COMPOSE_VERSION=2.40.3
+ARG DOCKER_VERSION=29.8.0
+ARG COMPOSE_VERSION=5.5.1
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000
@@ -40,7 +40,7 @@ RUN apt-get update \
     && echo "${UV_INSTALLER_SHA256}  /tmp/uv-install.sh" | sha256sum -c - \
     && sh /tmp/uv-install.sh \
     && rm /tmp/uv-install.sh \
-    && uv python install 3.12 \
+    && uv python install 3.14 \
     && groupadd --gid "${USER_GID}" "${USERNAME}" \
     && useradd --uid "${USER_UID}" --gid "${USER_GID}" -m -s /bin/bash "${USERNAME}" \
     && groupadd --force docker \

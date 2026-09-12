@@ -51,6 +51,7 @@ var versionsThatMoveTogether = []versionGroup{
 		{"tools/codegen/python/pyproject.toml", regexp.MustCompile(`(?m)^requires-python = "==(\d+\.\d+)\.\*"`)},
 		{"infra/images/llm/Dockerfile", pythonBaseImage},
 		{"tools/codegen/python/Dockerfile", pythonBaseImage},
+		{"infra/images/devtools/Dockerfile", regexp.MustCompile(`uv python install (\d+\.\d+)`)},
 	}},
 	{"uv", []versionSite{
 		{"tools/toolchain.yaml", toolchainPin("uv")},

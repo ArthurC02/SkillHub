@@ -424,7 +424,7 @@ jobs:
         run: go -C tools/devctl run . gen --check
 
       - name: redocly lint (contracts/openapi)
-        run: npx --yes @redocly/cli@2.46.1 lint contracts/openapi/*.yaml
+        run: npx --yes @redocly/cli@2.52.1 lint contracts/openapi/*.yaml
 
       - name: Trace event contract (contracts/events)
         run: |
