@@ -103,6 +103,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-076](./ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md) | 後台的圖表用 Chart.js（MIT，連同傳遞依賴只多兩個套件；ApexCharts、Highcharts、amCharts 因授權排除），是 system.md §4.8「不裝套件」一個只限圖表的具名例外；圖表是按需查詢、不是即時儀表板（與 ADR-029 決策 6 相容），只畫依日期分組、不指向任何帳號的彙總；漏斗與依帳號排行交 `05` R-78 | Accepted |
 | [ADR-077](./ADR-077-dependency-vulnerabilities-block-only-when-a-fix-exists.md) | 依賴漏洞只擋有修補版的（沿用 ADR-022 的 `--only-fixed`）：push／PR 由 `devctl dep-audit` 擋會出貨的四個專案（web 的 production 依賴 high 以上、platform／sandbox 程式呼叫得到的、llm 的非 dev 依賴），每週排程改跑 `--full`，掃每個有 lockfile 的專案連 dev 依賴；沒有修補版的只列出不擋；本批修掉 vitest、x/crypto、datamodel-code-generator，閘門第一天就是綠的 | Accepted |
 | [ADR-078](./ADR-078-dependency-governance-admission-updates-install-guards-licenses-and-pins.md) | 依賴治理：Dependabot 每週／每月開群組 PR、新版本冷卻 7 天（toolchain 綁住的版本不自動升）；npm 一律 `ignore-scripts`、uv `exclude-newer = "7 days"`；`dep-audit` 加上出貨依賴的授權閘門（允許清單＋SPDX 判讀，兩筆具名接受）與 zizmor 的 workflow 稽核；automation-check `dependency-policy` 擋沒釘 digest／SHA 的映像與 Action；新增依賴先答五個准入問題 | Accepted |
+| [ADR-079](./ADR-079-toolchain-versions-follow-upstream-and-move-together.md) | 工具鏈版本跟著上游升級：Node 24 LTS、Python 3.14、Go 1.27.1、uv 0.12.13、Actions 升到最新主版本，npm 開 `min-release-age=7`；取代 ADR-078 對 node／python／golang／uv 映像與 uv-build 的忽略，改由 `dependency-policy` 要求同一個工具在每個位置版本一致，Dependabot 只改到一處的 PR 會紅並列出其餘位置 | Accepted |
 
 ## 整體架構摘要
 

@@ -1,6 +1,7 @@
 # ADR-078：依賴治理——准入、更新、安裝防護、授權與釘選
 
 - 狀態：**Accepted**（2026-09-12，負責人指示：「繼續，完善整個套件管理，先分析現況，你可以參考網路資訊，思考最佳治理方案並且實現」）
+- 部分取代：決策 1 對 `astral-sh/uv`、`node` 映像的忽略，與〈補充〉裡對 `python`、`golang`、`uv-build` 的忽略，已被 [ADR-079](./ADR-079-toolchain-versions-follow-upstream-and-move-together.md) 取代（不再忽略，改由機器要求所有位置一起動）
 - 日期：2026-09-12
 - 相關：[ADR-077](./ADR-077-dependency-vulnerabilities-block-only-when-a-fix-exists.md)（漏洞閘門；本 ADR 在同一條 `devctl dep-audit` 加上授權與 workflow 稽核）、[ADR-022](./ADR-022-sandbox-deployment-topology-and-security-thresholds.md)（映像 SBOM 與 grype）、[ADR-023](./ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md)（Agent SDK 的釘選與重驗）、[ADR-030](./ADR-030-portable-developer-automation-and-contract-code-generation.md)（產碼工具版本）、[ADR-076](./ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md)（圖表套件的授權逐層調查）、[system.md §4.8](../design/system.md)
 
