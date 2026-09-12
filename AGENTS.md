@@ -122,4 +122,5 @@ ADR 是決策歷史，不原地改寫；里程碑當時的紀錄也不回溯修�
 | 封測上線前要做什麼 | [release-checklist](docs/plans/mvp/m4/release-checklist.md) |
 | 同意書與資料保存 | [consent-and-data-policy.md](docs/plans/mvp/gate-test/consent-and-data-policy.md) |
 | 評估判定與 Judge／打包簽章／封測准入／漏斗量測 | ADR-025、026／027／028／029 |
+| 新增、升級或移除一個依賴 | automation.md〈依賴的准入、更新與閘門〉 |
 | 所有未決議題 | 各 ADR 的「待決策」＋ `03` 第 1 節 |

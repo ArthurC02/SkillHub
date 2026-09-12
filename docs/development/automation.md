@@ -132,7 +132,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 ## `automation-check` 跑了哪些檢查（名冊）
 
-`go -C tools/devctl run . automation-check` 除了固定的文件字句、`Taskfile.yml` 的 `desc` 與 generated ownership marker 之外，還會跑一份**檢查名冊**：`tools/devctl/automation_check.go` 的 `documentCheckers()`。**那個函式就是名冊本身**（`TestAutomationCheckRunsEveryChecker` 逐項走過它），下表是 2026-09-03 逐項讀出來的 **24 條**（同日先讀到 23 條，`doc-links` 是當天稍晚加的第 24 條），加上 2026-09-04 的第 25 條 `harness` 與 2026-09-11 的第 26 條 `comment-budget`。**這個數字本身會過期**——以 `documentCheckers()` 的實際回傳為準。
+`go -C tools/devctl run . automation-check` 除了固定的文件字句、`Taskfile.yml` 的 `desc` 與 generated ownership marker 之外，還會跑一份**檢查名冊**：`tools/devctl/automation_check.go` 的 `documentCheckers()`。**那個函式就是名冊本身**（`TestAutomationCheckRunsEveryChecker` 逐項走過它），下表是 2026-09-03 逐項讀出來的 **24 條**（同日先讀到 23 條，`doc-links` 是當天稍晚加的第 24 條），加上 2026-09-04 的第 25 條 `harness` 、2026-09-11 的第 26 條 `comment-budget` 與 2026-09-12 的第 27 條 `dependency-policy`。**這個數字本身會過期**——以 `documentCheckers()` 的實際回傳為準。
 
 **撞到紅燈時的用法**：`FAIL` 訊息開頭的名字對到下表，再去「規則寫在哪」那一欄讀該檔；它為什麼存在、抓到過什麼，看那個檔的 `git log`（程式裡不寫施工日誌，見根 `AGENTS.md`〈慣例〉）。**本節只給名字與落點；下面的散文只保留有故事的那五條**（`one-number`、`milestone-tally`、`backlog-tally`、`baseline-tally`、`doc-identifier`），其餘不在此重述。
 
@@ -163,6 +163,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `goldenset-mirror` | `tools/goldenset/evaluate.py` 的 `enriched_index_text` 與 Go 的 `embeddingText` 以 digest 綁在一起 | `tools/devctl/goldenset_mirror.go` |
 | `capability-table` | `.env.example` 的每個變數都要說出它擋著什麼（`05` R-36），見下節 | `tools/devctl/capability_table.go` |
 | `doc-links` | 每一條相對路徑的 markdown 連結都要指得到真實檔案（只驗路徑，不驗 `#` 錨點、不連外） | `tools/devctl/doc_links.go` |
+| `dependency-policy` | Dockerfile 的 FROM、compose 與 workflow 的 `image:` 都釘 digest；`uses:` 釘 40 碼 SHA 並寫 `# vX`；每個 npm 專案有 `.npmrc` 的 `ignore-scripts=true`；每個 uv 專案有 `exclude-newer`；每個有 lockfile、Dockerfile、compose 或 composite action 的目錄都列在 `.github/dependabot.yml`（ADR-078，見〈依賴的准入、更新與閘門〉） | `tools/devctl/dependency_policy.go` |
 | `harness` | `.claude/skills/` 不得引用 `docs/`、ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／sol／inherit；預設是各角色 frontmatter 的低階模型，簡報依任務難度升級）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）；`.claude/workflows/*.js` 以 `export const meta = { name }` 開頭、`name` 等於檔名，且每個 `agent(` 呼叫同一行要有 `model:`、字面值不得 fable／sol／inherit（裸 `agent()` 會繼承派工者的旗艦級）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
 | `comment-budget` | 手寫程式與設定檔（Go／TS／JS／Python／SQL／YAML／TOML／shell／Dockerfile／`.env.example`，含 `doc.go`；不含 generated 檔與 `go:`／`one-number:`／`-- name:` 等機器標記）的兩種註解：超過 3 行的區塊，以及帶需求／裁定編號、日期或 `§` 的施工日誌。`comment-lint <路徑>` 逐行列出。零容忍、沒有存量清單：2026-09-11 全 repo 清理後歸零。規則本體是根 `AGENTS.md`〈慣例〉 | `tools/devctl/comment_budget.go` |
 
@@ -384,11 +385,39 @@ docker run --rm --network container:skillhub-postgres-1 \
 - 每週日一次 `schedule` 全量跑（所有 path filter 視為命中），`workflow_dispatch` 也是全量——手寫 path filter 漏掉的那一格由它兜底。
 - 每個 job 都有 `timeout-minutes`，一個卡住的 job 不會再佔滿預設的 6 小時。
 - 每次都跑、沒有 path filter 的有三個並行 job：`devctl`（devctl 自己的 vet／race 測試、`automation-check`、`agent-sync`）、`contracts-drift`（`gen --check` 與 `contracts/` 的各項檢查）與 `dependency-audit`（見下一條）。純文件 commit 的等待時間由三者中最慢的那個決定，不再是相加。
-- **依賴漏洞**（[ADR-077](../adr/ADR-077-dependency-vulnerabilities-block-only-when-a-fix-exists.md)）：push／PR 跑 `devctl dep-audit`，只看會出貨的四個專案——`apps/web` 的 production 依賴（high 以上）、`apps/platform`／`apps/sandbox` 程式呼叫得到的漏洞、`apps/llm` 的非 dev 依賴——而且**只擋有修補版的**，沒有修補版的印成 `NOTE`。每週排程與 `workflow_dispatch` 改跑 `--full`：每個有 lockfile 的專案連 dev 依賴、npm 取 moderate 以上、Go 連沒呼叫到的模組也算，紅了就是那一週的報告。`images-push` 等它綠了才推。本機 `task deps:audit`（加 `-- --full` 全掃）；工具版本在 `tools/toolchain.yaml` 的 `govulncheck`／`pip_audit`。
+- **依賴漏洞**（[ADR-077](../adr/ADR-077-dependency-vulnerabilities-block-only-when-a-fix-exists.md)）：push／PR 跑 `devctl dep-audit`，只看會出貨的四個專案——`apps/web` 的 production 依賴（high 以上）、`apps/platform`／`apps/sandbox` 程式呼叫得到的漏洞、`apps/llm` 的非 dev 依賴——而且**只擋有修補版的**，沒有修補版的印成 `NOTE`。每週排程與 `workflow_dispatch` 改跑 `--full`：每個有 lockfile 的專案連 dev 依賴、npm 取 moderate 以上、Go 連沒呼叫到的模組也算，紅了就是那一週的報告。`images-push` 等它綠了才推。本機 `task deps:audit`（加 `-- --full` 全掃）；同一條命令也擋出貨依賴的授權與 workflow 的 zizmor 稽核（[ADR-078](../adr/ADR-078-dependency-governance-admission-updates-install-guards-licenses-and-pins.md)，用法見〈依賴的准入、更新與閘門〉）；job 帶 `GH_TOKEN`，zizmor 連網的稽核項目只在 CI 跑。工具版本在 `tools/toolchain.yaml` 的 `govulncheck`／`pip_audit`／`go_licenses`／`zizmor`。
 - `golangci-lint` 由 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 安裝：版本讀 `tools/toolchain.yaml` 的 `golangci_lint`，編好的 binary 以「版本＋OS＋Go 版本」為鍵另外快取。不能指望 `setup-go` 的快取帶著它——那份快取的鍵只有 `go.sum` 的雜湊，第一次存下之後內容就不再更新，`go.sum` 沒動過的模組會一直拿到那天的舊內容。
 - `sandbox` 的 filter 只看 `infra/images/runtime-agent-sdk/**`：其他服務映像與 `infra/images/` 下的說明文件不影響 sandbox 的任何測試。
 
 **Runtime Image**（`runtime-image.yml`）：發佈前先查 registry 有沒有這個版本的 tag，**有就只跑閘門、不推送、不移 tag**。版本 tag 一旦發佈就不再變，因為 ADR-023 決策 1 的事實來源是 digest，而 build 不是位元可重現的——同版重推會讓同一個版本字串悄悄指向另一份沒量過的映像。attestation 失敗會在同一個 run 裡自動重試一次；發佈中的 run 不會被下一次 push 取消。
+
+## 依賴的准入、更新與閘門
+
+決策與理由在 [ADR-077](../adr/ADR-077-dependency-vulnerabilities-block-only-when-a-fix-exists.md)（漏洞）與 [ADR-078](../adr/ADR-078-dependency-governance-admission-updates-install-guards-licenses-and-pins.md)（其餘）；這裡只放動手時要知道的事。
+
+**新增一個直接依賴之前**，回答五個問題，答案寫進 commit message：標準庫、平台或已經裝的依賴做得到嗎（做得到就不加）；授權在允許清單上嗎；還有人維護嗎（最近一年有發佈、安全問題有回應）；會多拉進幾個傳遞依賴；需要 install script 嗎（`ignore-scripts=true` 會讓它失效，需要就寫 ADR）。`apps/web` 的執行期依賴另外要一份 ADR（system.md §4.8，前例 ADR-076）。
+
+**這些版本要一起動，Dependabot 不會替你動**：
+
+| 版本 | 同時要改的地方 |
+| --- | --- |
+| uv | `tools/toolchain.yaml` 的 `uv`、`tools/codegen/python/Dockerfile` 的 uv 映像、`infra/images/llm/Dockerfile` 的 `UV_VERSION` 與安裝腳本雜湊 |
+| Node | `.node-version`、`infra/images/web/Dockerfile` 的 node 映像 |
+| datamodel-code-generator | `tools/codegen/python/pyproject.toml`、`uv.lock`、toolchain.yaml 的版本與 `python_codegen` 映像標籤，然後 `task gen:openapi` |
+| ogen | `tools/codegen/go/go.mod`、toolchain.yaml 的 `ogen` 與 `go_codegen` 映像標籤，然後 `task gen:openapi` |
+| pglite | `tools/pglite/package.json`、toolchain.yaml 的三個 `pglite*` |
+| Agent SDK | ADR-023 的四項重驗，`UPGRADES.md` 一節 |
+| 稽核工具 | toolchain.yaml 的 `govulncheck`、`pip_audit`、`go_licenses`、`zizmor` |
+
+**Dependabot 的 PR**：每週一（npm、Go、Python）與每月（Actions、映像、compose）各開一個群組 PR，major 另開。新版本要先存在 7 天才會被提（npm 的 major 14 天）。CI 綠了就能合；major 先讀 changelog。PR 若碰到上表的版本，關掉，照上表手動升。
+
+**`devctl dep-audit`**（本機 `task deps:audit`，全掃加 `-- --full`）一次跑三件事，任何一件出現 `FAIL` 都會紅：
+
+- 有修補版的漏洞 → 升到訊息裡的版本。
+- 出貨依賴的授權不在允許清單 → 換一個依賴。確認授權其實可以接受（例如分類器認不出的 MIT 變體）時，在 `tools/devctl/license_audit.go` 的 `acceptedLicenses` 加一筆，附上理由，並在 commit message 說明你讀過的授權原文。
+- zizmor 的 medium 以上 → 照訊息裡的連結修 workflow。本機沒有 `GH_TOKEN` 時只跑離線稽核，CI 會多跑連網的幾項。
+
+**automation-check 的 `dependency-policy`** 擋的是：FROM、compose 與 workflow 的 `image:` 沒釘 digest；`uses:` 沒釘 SHA 或少了 `# vX` 註解；npm 專案少了 `.npmrc` 的 `ignore-scripts=true`；uv 專案少了 `exclude-newer`；新目錄沒列進 `.github/dependabot.yml`。
 
 ## 完成判準
 
