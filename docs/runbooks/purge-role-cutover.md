@@ -20,7 +20,7 @@
 3. `rotate-partitions` 不在 `0059` 的授權範圍內——它對 `trace_events`／`analytics_events` 的月分區做 `CREATE TABLE`／`DROP TABLE`，這是 schema 層級的 DDL，不是這個角色要有的表層級 `SELECT`／`DELETE`。兩個選項擇一：
    - （建議）繼續讓 `rotate-partitions` 用現有的 `DATABASE_URL`／API 角色連線，不要把它排進走 `SKILLHUB_PURGE_DATABASE_URL` 的那次呼叫；或
    - 額外對 `skillhub_purge_login` 授予這兩張表的 `CREATE`／建表權限（依部署的 schema 擁有權模型決定怎麼授予），並在本檔備註中記下你做了什麼。
-   `cmd/maintenance` 目前是一個 process 一個 pool，七個子命令加 `rotate-partitions` 共用同一條連線字串；沒有依子命令切換連線字串的程式碼，所以哪個環境變數指到哪個帳號，是部署設定的責任，不是程式的。
+   `cmd/maintenance` 目前是一個 process 一個 pool，八個子命令加 `rotate-partitions` 共用同一條連線字串；沒有依子命令切換連線字串的程式碼，所以哪個環境變數指到哪個帳號，是部署設定的責任，不是程式的。
 4. 在部署設定（cron、secret、環境變數）裡把 `SKILLHUB_PURGE_DATABASE_URL` 指到 `skillhub_purge_login` 的連線字串。`DATABASE_URL` 維持不動——它仍是 API／Worker 在用的角色，這一步不影響它們。
 
 ## 2. 驗證
@@ -35,7 +35,7 @@
 
 ## 3. 驗證過了才 revoke
 
-只有第 2 節四項都留下證據之後，才進行這一步；`0059` 的 migration 註解裡也寫了同一個理由：任何一個現存部署，只要 `maintenance` 還沒切過去就先 revoke，等於當場拔掉那個部署刪資料的能力。
+只有第 2 節四項都留下證據之後，才進行這一步；理由是：任何一個現存部署，只要 `maintenance` 還沒切過去就先 revoke，等於當場拔掉那個部署刪資料的能力。
 
 1. 再次確認**所有**會跑清除子命令的 `maintenance` 部署（不只是你剛測的那一個）都已完成第 1、2 節。多環境／多叢集部署逐一列出來勾選，不要用「應該都一樣」代替逐一確認。
 2. 確認之後，對 API 角色執行（把 `skillhub_api_role` 換成實際的登入或群組角色名）：

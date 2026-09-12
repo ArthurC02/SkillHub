@@ -79,13 +79,13 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 
 | 第一層目錄 | 底下的 package | 邊界類型 | 這一層的判準（一句話） |
 | --- | --- | --- | --- |
-| `creator/` | `workspace` | **Core Context** | 帳戶與工作區的身分與歸屬。**Workspace Scope 是這裡定義的**，其他 context 只是遵守它（鐵律 3） |
+| `creator/` | `workspace`、`creation`、`credit` | **Core Context**（`credit` 是 Supporting） | 帳戶與工作區的身分與歸屬。**Workspace Scope 是這裡定義的**，其他 context 只是遵守它（鐵律 3）。`creation` 是互動創作的會話，`credit` 是創作者的點數帳務 |
 | `skill/` | `admission`、`discovery`、`library`、`delivery` | **Core Context**（四個，各自是 owner 邊界） | Skill 這個資產的一生：**進來**（接納與信任）、**被找到**（探索）、**被保存**（版本歷史，不可變）、**被帶走**（打包與安裝）。**四者不共用 owner**——`skill/` 只是路徑前綴，不是一個邊界 |
 | `trial/` | `design`、`execution`、`improvement`、`evidence` | **Core Context** ×3 ＋ **Supporting** ×1（`evidence`） | 「跑一次」的一生：**設計情境**、**執行與狀態機**（唯一事實來源，鐵律 5）、**判定與改善**、**留下證據**。`evidence` 是 Supporting——它服務前三個，不定義它們 |
 | `product/` | `entitlements`、`learning` | **Supporting Context** | 使用者的權益與資料生命週期、以及產品自己的學習（分析與漏斗）。**Supporting 的意思是它們可以晚一步、也可以被換掉**，Core 不可以 |
 | `shared/` | `skillpkg` | **Shared Kernel（唯一一個）** | 共同領域語言的**純函式**。**新增第二個 Shared Kernel 要先改 ADR-032／040**——把共用碼往這裡塞是這份文件明文禁止的那條路 |
 | `foundation/` | `persistence`、`messaging`、`observability`、`storage`、`integration`、`runtime` | **Generic** | 機制不是政策。**不得承載領域規則，不得反向 import domain**——這一條由 depguard ＋ `devctl automation-check` 兩道守著 |
-| `entrypoint/` | `api`、`worker` | **組裝，不是邊界** | 只做 composition：`api` 是 HTTP 與 generated transport，`worker` 是佇列消費者（鐵律 7）。**兩者不擁有任何產品規則**；領域 Service 一律由 `apiserver.NewApp` 注入，**禁止在方法內現場建構其他 context 的 Service** |
+| `entrypoint/` | `api`、`worker`、`wiring` | **組裝，不是邊界** | 只做 composition：`api` 是 HTTP 與 generated transport，`worker` 是佇列消費者（鐵律 7）。**兩者不擁有任何產品規則**；領域 Service 一律由 `apiserver.NewApp` 注入，**禁止在方法內現場建構其他 context 的 Service**。`wiring` 是兩個組裝根共用的接線，**任何 context 都不得 import 它** |
 
 **這張表怎麼用，以及它怎麼會過期**
 

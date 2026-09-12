@@ -2227,3 +2227,19 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 - **建議**：先不做排行。要找某個帳號，從「帳號與點數」頁以 email 查（已經有 audit）。若要做，排行只列 workspace id、不列 email，每次載入寫一筆 audit，對象是整份排行。
 - **不決定的代價**：找「異常花費的帳號」只能先在成本圖看到哪一天偏高，再去資料庫查。
 - **決定之後誰動**：法務（同意書）→ Agent。
+
+---
+
+## R-79｜pglite 要不要跟著升到 PostgreSQL 18（`04` 乙-35）
+
+- 日期：2026-09-12
+
+- **要決定的是什麼**：淨測試模式的資料庫承載要不要從 PGlite 0.4.6（PostgreSQL 17.5）換到 0.5.8（PostgreSQL 18.3），以及 CI 與 compose 的 Postgres 要不要一起升到 18。
+- **已經查到的事實**：
+  - [`02` PORT-001](02-specifications-and-acceptance-criteria.md) 的允收要求淨測試模式的 PostgreSQL 主版本與 CI 同一個 major；CI 與 compose 現在是 `pgvector/pgvector:pg17`，`tools/toolchain.yaml` 與 `tools/pglite/package.json` 釘 0.4.6。
+  - `pgvector/pgvector:pg18` 映像存在，換版在技術上可行。
+  - 65 支 migration 與 `PORT-001` 的五條行為檢查在 0.4.6 與 0.5.8 上都通過，**沒有任何自動化檢查看得出主版本不一致**——擋住它的只有那條允收準則。
+  - pglite 0.5 把擴充移出主套件（`@electric-sql/pglite/vector` → `@electric-sql/pglite-pgvector`），pgvector 擴充仍是 0.8.1；`tools/pglite/lib/harness.mjs` 對 socket 斷線的繞道在新版仍然必要。
+- **建議**：兩邊一起動或都不動。要升就先決定 CI 與 compose 的 Postgres 升到 18，pglite 隨之；不升就讓 Dependabot 的 pglite 提案持續被擋。
+- **不決定的代價**：Dependabot 會反覆提出同一個升級，每次都要有人重新查一次它為什麼不能合併。
+- **決定之後誰動**：Agent 同批改 `tools/toolchain.yaml`、`tools/pglite/package.json` 與 `lib/harness.mjs` 的擴充匯入、compose 與 `ci.yml` 的 pgvector 映像，並重跑 `02` PORT-001 的允收檢查。

@@ -6,7 +6,7 @@ atomically replaces only generated subdirectories.
 
 | Source | Generator | Generated target |
 | --- | --- | --- |
-| `contracts/openapi/public.yaml` | OpenAPI Generator 7.19.0 `typescript-fetch`, digest-pinned container | `packages/api-client-ts/src/generated/` |
+| `contracts/openapi/public.yaml` | OpenAPI Generator 7.25.0 `typescript-fetch`, digest-pinned container | `packages/api-client-ts/src/generated/` |
 | `contracts/openapi/llm-internal.yaml` | datamodel-code-generator 0.76.2/Pydantic v2, fully locked image in `python/` | `packages/api-stub-py/src/skillhub_api_stub/generated/` |
 | `contracts/openapi/public.yaml` | ogen 1.24.0 server-only, fully locked image in `go/` | `apps/platform/internal/entrypoint/api/gen/` |
 

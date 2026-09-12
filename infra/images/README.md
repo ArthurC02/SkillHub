@@ -659,7 +659,7 @@ digest 由 `docker pull` 後 `docker inspect --format '{{index .RepoDigests 0}}'
 | --- | --- |
 | `golang:1.27.1-bookworm` | 沿用 `devtools/Dockerfile` 已經釘的那個（同一個工具鏈版本） |
 | `gcr.io/distroless/static-debian12:nonroot` | `sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab`（2026-09-04 `docker pull` 當下） |
-| `python:3.12-slim-bookworm` | `sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254`（同上） |
+| `python:3.14-slim-bookworm` | `sha256:9ab8d9c8514b44f90cf0029dd42fdd7e9e211e639c8b995304cc04568dee900f`（同上） |
 | `node:24.21.0-bookworm-slim` | `sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553`（同上） |
 | `nginx:1.31-alpine-slim` | `sha256:3b171d7224b669faa3cc2137fea0a65301791df1ec1f271ebd2a2b7461f7fade`（同上） |
 
@@ -668,12 +668,13 @@ digest 由 `docker pull` 後 `docker inspect --format '{{index .RepoDigests 0}}'
 
 **Tag 慣例：commit SHA，絕不用 `latest`**——理由與 `runtime-agent-sdk` 那條一致
 （ADR-019 job 5 原文、本檔「Digest 更新程序」一節）：部署與回滾都要能指向明確的
-commit，`latest` 是會動的標的。本批只建到本機 `:local` tag 供驗證；CI 端建置後
-`push` 到 GHCR、打 commit SHA tag，是協調者要接上 `.github/workflows/ci.yml` 的
-`images` job 的部分，不在本批範圍內。
+commit，`latest` 是會動的標的。`.github/workflows/ci.yml` 的 `images` job 以
+commit SHA 為 tag 建置這三個映像，先跑 `tools/ci/stack-smoke.sh`；`images-push`
+只在 main 的 push 且其餘閘門全綠時把同一組 tag 推上 GHCR。本機建置用 `:local`
+tag 驗證。
 
 **掃描與 attestation 不比照 `runtime-agent-sdk`**：那一節的 syft／grype／GHCR
 attestation 流水線是 SEC-002 對「會執行不受信任內容」的 Sandbox Runtime Image 的
 要求（鐵律 1）；`platform`／`llm`／`web` 是控制平面／能力提供者／靜態前端，不執行
 不受信任內容，本 ADR-019 job 5 原文對它們也只要求 tag＋push，沒有 SBOM／掃描閘門的
-字面要求。是否比照辦理是留給協調者與負責人的政策問題，本批未擅自決定。
+字面要求。是否比照辦理是尚未裁定的政策問題。
