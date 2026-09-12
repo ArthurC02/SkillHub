@@ -424,7 +424,7 @@ function GovernanceRow({ skill, single }: { skill: SkillGovernance; single: bool
       {skill.takedown_at && (
         <p>
           下架於 <Timestamp at={skill.takedown_at} />
-          ，理由：{skill.takedown_reason ?? "未測量"}。下架沒有恢復的路。
+          ，理由：{skill.takedown_reason ?? "未記錄"}。下架沒有恢復的路。
         </p>
       )}
       {!single && (
@@ -682,6 +682,14 @@ const ACTION_LABEL: Record<string, string> = {
   "credit.lookup": "查詢點數",
 };
 
+const RESOURCE_LABEL: Record<string, string> = {
+  account: "帳號",
+  credit_account: "點數帳戶",
+  credit_entry: "點數分錄",
+  dispatch: "派送",
+  skill: "Skill",
+};
+
 function MetadataCell({ metadata }: { metadata: Record<string, unknown> }) {
   const entries = Object.entries(metadata);
   if (entries.length === 0) return <>不適用</>;
@@ -731,11 +739,10 @@ export function AdminAuditLog() {
                       <Timestamp at={event.occurred_at} />
                     </td>
                     <td>{ACTION_LABEL[event.action] ?? event.action}</td>
+                    <td>{event.actor_user_id ? <code>{event.actor_user_id}</code> : "平台自動"}</td>
                     <td>
-                      <code>{event.actor_user_id ?? "未測量"}</code>
-                    </td>
-                    <td>
-                      {event.resource_type} <code>{event.resource_id ?? "不適用"}</code>
+                      {RESOURCE_LABEL[event.resource_type] ?? event.resource_type}{" "}
+                      <code>{event.resource_id ?? "不適用"}</code>
                     </td>
                     <td>
                       <MetadataCell metadata={event.metadata} />

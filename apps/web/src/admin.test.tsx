@@ -373,6 +373,27 @@ test("OPS-004: a taken-down skill shows when and why, and offers no action", asy
   expect(has("的動作")()).toBe(false);
 });
 
+test("OPS-004: a takedown with no reason on record says it was not recorded", async () => {
+  stub(true, (path) =>
+    path === "/admin/skills"
+      ? {
+          body: {
+            skills: [
+              {
+                ...ADMIN_SKILLS.skills[0],
+                takedown_at: "2026-09-10T00:00:00Z",
+                takedown_reason: null,
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("理由：未記錄"));
+});
+
 test("OPS-005: the dispatch page names the halt, and a declaration without a node halts the fleet", async () => {
   stub(true, (path, method) =>
     path === "/admin/dispatch/halt" && method === "PUT"
@@ -411,11 +432,40 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
   await mountAt("/admin/audit-log");
   await waitFor(has("授予點數"));
   expect(has("查詢帳號")()).toBe(true);
+  expect(has("點數分錄")()).toBe(true);
+  expect(has("credit_entry")()).toBe(false);
   expect(field("td details summary").textContent).toBe("3 項");
   expect(field("td details").textContent).toContain("beta reward");
   expect(
     Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "載入更多"),
   ).toBe(false);
+});
+
+test("OPS-006: a halt the platform declared by itself names the platform as the actor", async () => {
+  stub(true, (path) =>
+    path.startsWith("/admin/audit-log")
+      ? {
+          body: {
+            events: [
+              {
+                actor_user_id: null,
+                action: "dispatch.halted",
+                resource_type: "dispatch",
+                resource_id: "h-1",
+                workspace_id: null,
+                occurred_at: "2026-09-10T08:00:00Z",
+                metadata: { target: "all", source: "orphan_threshold", reason: "orphans" },
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/audit-log");
+  await waitFor(has("停止派送"));
+  expect(has("平台自動")()).toBe(true);
+  expect(has("未測量")()).toBe(false);
 });
 
 test("OPS-006: a full page of 50 stops, the 51st event offers the next page", async () => {
