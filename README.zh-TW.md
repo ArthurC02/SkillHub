@@ -109,7 +109,7 @@ task clean-mode
 
 ## 參與貢獻
 
-歡迎開 issue 與 pull request。動手前請讀 [`AGENTS.md`](AGENTS.md) 了解本專案強制的慣例，並在本機跑一次 `task ci`——那就是 CI 會跑的同一段確定性、不需要 secret 的流程。
+歡迎開 issue 與 pull request——先看 [CONTRIBUTING.md](CONTRIBUTING.md)，裡面寫了動手前該跑什麼，以及少數幾條能擋掉多數審查意見的規則。發現資安問題請走私下回報：見 [SECURITY.md](SECURITY.md)。
 
 ## 授權
 

@@ -109,7 +109,7 @@ Setting no flag changes nothing: without `SKILLHUB_CLEAN_MODE` the program build
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening one, read [`AGENTS.md`](AGENTS.md) for the conventions this repository enforces, and run `task ci` locally — it is the same deterministic, secret-free sequence CI runs.
+Issues and pull requests are welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md), which covers what to run before opening one and the few rules that catch most review comments. Found a vulnerability? Report it privately: see [SECURITY.md](SECURITY.md).
 
 ## License
 
