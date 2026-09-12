@@ -292,3 +292,35 @@ func (s *PostgresStore) LatestStatistics(ctx context.Context) ([]KindStatistics,
 	}
 	return out, nil
 }
+
+func (s *PostgresStore) DailyCost(ctx context.Context, since time.Time) ([]DailyAmount, error) {
+	rows, err := s.q(nil).SumCostEventsByDay(ctx, pgtype.Timestamptz{Time: since, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("credit: read daily cost: %w", err)
+	}
+	out := make([]DailyAmount, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, DailyAmount{Day: r.Day.Time, Key: r.Kind, Count: r.Events, Total: r.UsdMicros})
+	}
+	return out, nil
+}
+
+func (s *PostgresStore) DailyCredits(ctx context.Context, since time.Time) ([]DailyAmount, error) {
+	rows, err := s.q(nil).SumCreditEntriesByDay(ctx, pgtype.Timestamptz{Time: since, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("credit: read daily credits: %w", err)
+	}
+	out := make([]DailyAmount, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, DailyAmount{Day: r.Day.Time, Key: r.Kind, Count: r.Entries, Total: r.DeltaCredits})
+	}
+	return out, nil
+}
+
+func (s *PostgresStore) BalanceTotal(ctx context.Context) (int64, error) {
+	total, err := s.q(nil).SumCreditBalances(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("credit: read balance total: %w", err)
+	}
+	return total, nil
+}

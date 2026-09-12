@@ -527,3 +527,11 @@ func (f *fakeCreditLedger) Ledger(context.Context, pgtype.UUID, pgtype.UUID) (cr
 func (f *fakeCreditLedger) CostStatistics(context.Context) ([]credit.KindStatistics, error) {
 	return nil, nil
 }
+
+func (f *fakeCreditLedger) DailyCost(context.Context, time.Time) ([]credit.DailyAmount, error) {
+	return nil, nil
+}
+
+func (f *fakeCreditLedger) DailyCredits(context.Context, time.Time) ([]credit.DailyAmount, int64, error) {
+	return nil, 0, nil
+}

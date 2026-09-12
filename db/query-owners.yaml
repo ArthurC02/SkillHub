@@ -33,6 +33,7 @@ queries:
   InsertAuditEvent: audit
   ListWorkspaceAuditEvents: audit
   ListPlatformAuditEvents: audit
+  CountPlatformAuditEventsByDay: audit
   ListWorkspaceDatasetObjectKeys: testlab
   ListWorkspaceRunArtifactObjectKeys: run
   ListWorkspaceDownloadArtifactObjectKeys: packaging
@@ -128,6 +129,7 @@ queries:
   AccountPurgeReady: run
   GetRun: run
   ListWorkspaceRuns: run
+  CountRunsByDay: run
   SoftDeleteRunArtifact: run
   GetRunArtifactForDelete: run
   LockRunArtifactObjectSession: run

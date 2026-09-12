@@ -105,6 +105,12 @@ type Store interface {
 	RecentEntries(ctx context.Context, tx DBTX, userID pgtype.UUID, limit int32) ([]LedgerEntry, error)
 
 	LatestStatistics(ctx context.Context) ([]KindStatistics, error)
+
+	DailyCost(ctx context.Context, since time.Time) ([]DailyAmount, error)
+
+	DailyCredits(ctx context.Context, since time.Time) ([]DailyAmount, error)
+
+	BalanceTotal(ctx context.Context) (int64, error)
 }
 
 type LedgerEntry struct {
@@ -124,4 +130,11 @@ type KindStatistics struct {
 	P90UsdMicros *int64
 	P95UsdMicros *int64
 	MaxUsdMicros *int64
+}
+
+type DailyAmount struct {
+	Day   time.Time
+	Key   string
+	Count int64
+	Total int64
 }

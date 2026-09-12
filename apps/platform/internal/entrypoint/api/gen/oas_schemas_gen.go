@@ -401,6 +401,45 @@ type AddAcceptanceCriterionUnauthorized Error
 
 func (*AddAcceptanceCriterionUnauthorized) addAcceptanceCriterionRes() {}
 
+// Ref: #/components/schemas/AmountTrend
+type AmountTrend struct {
+	From    time.Time     `json:"from"`
+	To      time.Time     `json:"to"`
+	Buckets []DailyAmount `json:"buckets"`
+}
+
+// GetFrom returns the value of From.
+func (s *AmountTrend) GetFrom() time.Time {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *AmountTrend) GetTo() time.Time {
+	return s.To
+}
+
+// GetBuckets returns the value of Buckets.
+func (s *AmountTrend) GetBuckets() []DailyAmount {
+	return s.Buckets
+}
+
+// SetFrom sets the value of From.
+func (s *AmountTrend) SetFrom(val time.Time) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *AmountTrend) SetTo(val time.Time) {
+	s.To = val
+}
+
+// SetBuckets sets the value of Buckets.
+func (s *AmountTrend) SetBuckets(val []DailyAmount) {
+	s.Buckets = val
+}
+
+func (*AmountTrend) getCostTrendRes() {}
+
 type BrowseCatalogAgent string
 
 const (
@@ -1481,6 +1520,46 @@ func (s *CostStatisticsWindow) SetP95UsdMicros(val NilInt64) {
 func (s *CostStatisticsWindow) SetMaxUsdMicros(val NilInt64) {
 	s.MaxUsdMicros = val
 }
+
+// Ref: #/components/schemas/CountTrend
+type CountTrend struct {
+	From    time.Time    `json:"from"`
+	To      time.Time    `json:"to"`
+	Buckets []DailyCount `json:"buckets"`
+}
+
+// GetFrom returns the value of From.
+func (s *CountTrend) GetFrom() time.Time {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *CountTrend) GetTo() time.Time {
+	return s.To
+}
+
+// GetBuckets returns the value of Buckets.
+func (s *CountTrend) GetBuckets() []DailyCount {
+	return s.Buckets
+}
+
+// SetFrom sets the value of From.
+func (s *CountTrend) SetFrom(val time.Time) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *CountTrend) SetTo(val time.Time) {
+	s.To = val
+}
+
+// SetBuckets sets the value of Buckets.
+func (s *CountTrend) SetBuckets(val []DailyCount) {
+	s.Buckets = val
+}
+
+func (*CountTrend) getOperatorActionTrendRes() {}
+func (*CountTrend) getRunTrendRes()            {}
 
 // An empty message creates an unbilled session awaiting its first diagram or reference selection. The
 // supplied budget is a user-approved ceiling, bounded again by deployment policy.
@@ -4181,6 +4260,56 @@ func (s *CreditLedgerEntryKind) UnmarshalText(data []byte) error {
 	}
 }
 
+// Ref: #/components/schemas/CreditTrend
+type CreditTrend struct {
+	From         time.Time     `json:"from"`
+	To           time.Time     `json:"to"`
+	Buckets      []DailyAmount `json:"buckets"`
+	BalanceTotal int64         `json:"balance_total"`
+}
+
+// GetFrom returns the value of From.
+func (s *CreditTrend) GetFrom() time.Time {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *CreditTrend) GetTo() time.Time {
+	return s.To
+}
+
+// GetBuckets returns the value of Buckets.
+func (s *CreditTrend) GetBuckets() []DailyAmount {
+	return s.Buckets
+}
+
+// GetBalanceTotal returns the value of BalanceTotal.
+func (s *CreditTrend) GetBalanceTotal() int64 {
+	return s.BalanceTotal
+}
+
+// SetFrom sets the value of From.
+func (s *CreditTrend) SetFrom(val time.Time) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *CreditTrend) SetTo(val time.Time) {
+	s.To = val
+}
+
+// SetBuckets sets the value of Buckets.
+func (s *CreditTrend) SetBuckets(val []DailyAmount) {
+	s.Buckets = val
+}
+
+// SetBalanceTotal sets the value of BalanceTotal.
+func (s *CreditTrend) SetBalanceTotal(val int64) {
+	s.BalanceTotal = val
+}
+
+func (*CreditTrend) getCreditTrendRes() {}
+
 // One acceptance criterion's verdict. `criterion_id` refers to the run's frozen test case snapshot, so
 // editing the draft afterwards cannot rewrite what was judged (iron rule 4).
 // Ref: #/components/schemas/CriterionResult
@@ -4374,6 +4503,91 @@ func (s *CriterionResultSource) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// Ref: #/components/schemas/DailyAmount
+type DailyAmount struct {
+	Day   time.Time `json:"day"`
+	Key   string    `json:"key"`
+	Count int64     `json:"count"`
+	Total int64     `json:"total"`
+}
+
+// GetDay returns the value of Day.
+func (s *DailyAmount) GetDay() time.Time {
+	return s.Day
+}
+
+// GetKey returns the value of Key.
+func (s *DailyAmount) GetKey() string {
+	return s.Key
+}
+
+// GetCount returns the value of Count.
+func (s *DailyAmount) GetCount() int64 {
+	return s.Count
+}
+
+// GetTotal returns the value of Total.
+func (s *DailyAmount) GetTotal() int64 {
+	return s.Total
+}
+
+// SetDay sets the value of Day.
+func (s *DailyAmount) SetDay(val time.Time) {
+	s.Day = val
+}
+
+// SetKey sets the value of Key.
+func (s *DailyAmount) SetKey(val string) {
+	s.Key = val
+}
+
+// SetCount sets the value of Count.
+func (s *DailyAmount) SetCount(val int64) {
+	s.Count = val
+}
+
+// SetTotal sets the value of Total.
+func (s *DailyAmount) SetTotal(val int64) {
+	s.Total = val
+}
+
+// Ref: #/components/schemas/DailyCount
+type DailyCount struct {
+	Day   time.Time `json:"day"`
+	Key   string    `json:"key"`
+	Count int64     `json:"count"`
+}
+
+// GetDay returns the value of Day.
+func (s *DailyCount) GetDay() time.Time {
+	return s.Day
+}
+
+// GetKey returns the value of Key.
+func (s *DailyCount) GetKey() string {
+	return s.Key
+}
+
+// GetCount returns the value of Count.
+func (s *DailyCount) GetCount() int64 {
+	return s.Count
+}
+
+// SetDay sets the value of Day.
+func (s *DailyCount) SetDay(val time.Time) {
+	s.Day = val
+}
+
+// SetKey sets the value of Key.
+func (s *DailyCount) SetKey(val string) {
+	s.Key = val
+}
+
+// SetCount sets the value of Count.
+func (s *DailyCount) SetCount(val int64) {
+	s.Count = val
 }
 
 // ADR-029's four events and their attribute whitelist, plus the retention this deployment actually
@@ -8186,6 +8400,31 @@ func (s *GetCostStatisticsOK) SetStatistics(val []CostStatisticsWindow) {
 
 func (*GetCostStatisticsOK) getCostStatisticsRes() {}
 
+type GetCostTrendBadRequest Error
+
+func (*GetCostTrendBadRequest) getCostTrendRes() {}
+
+type GetCostTrendDays int
+
+const (
+	GetCostTrendDays7  GetCostTrendDays = 7
+	GetCostTrendDays30 GetCostTrendDays = 30
+	GetCostTrendDays90 GetCostTrendDays = 90
+)
+
+// AllValues returns all GetCostTrendDays values.
+func (GetCostTrendDays) AllValues() []GetCostTrendDays {
+	return []GetCostTrendDays{
+		GetCostTrendDays7,
+		GetCostTrendDays30,
+		GetCostTrendDays90,
+	}
+}
+
+type GetCostTrendNotFound Error
+
+func (*GetCostTrendNotFound) getCostTrendRes() {}
+
 type GetCreationLimitsServiceUnavailable Error
 
 func (*GetCreationLimitsServiceUnavailable) getCreationLimitsRes() {}
@@ -8221,6 +8460,31 @@ func (*GetCreationSessionUnauthorized) getCreationSessionRes() {}
 type GetCreationSessionUnprocessableEntity Error
 
 func (*GetCreationSessionUnprocessableEntity) getCreationSessionRes() {}
+
+type GetCreditTrendBadRequest Error
+
+func (*GetCreditTrendBadRequest) getCreditTrendRes() {}
+
+type GetCreditTrendDays int
+
+const (
+	GetCreditTrendDays7  GetCreditTrendDays = 7
+	GetCreditTrendDays30 GetCreditTrendDays = 30
+	GetCreditTrendDays90 GetCreditTrendDays = 90
+)
+
+// AllValues returns all GetCreditTrendDays values.
+func (GetCreditTrendDays) AllValues() []GetCreditTrendDays {
+	return []GetCreditTrendDays{
+		GetCreditTrendDays7,
+		GetCreditTrendDays30,
+		GetCreditTrendDays90,
+	}
+}
+
+type GetCreditTrendNotFound Error
+
+func (*GetCreditTrendNotFound) getCreditTrendRes() {}
 
 type GetDispatchStatusOK struct {
 	// False when nothing can be dispatched at all — the pool is halted, or every configured provider is
@@ -8373,6 +8637,31 @@ func (*GetDownloadArtifactNotFound) getDownloadArtifactRes() {}
 type GetDownloadArtifactUnauthorized Error
 
 func (*GetDownloadArtifactUnauthorized) getDownloadArtifactRes() {}
+
+type GetOperatorActionTrendBadRequest Error
+
+func (*GetOperatorActionTrendBadRequest) getOperatorActionTrendRes() {}
+
+type GetOperatorActionTrendDays int
+
+const (
+	GetOperatorActionTrendDays7  GetOperatorActionTrendDays = 7
+	GetOperatorActionTrendDays30 GetOperatorActionTrendDays = 30
+	GetOperatorActionTrendDays90 GetOperatorActionTrendDays = 90
+)
+
+// AllValues returns all GetOperatorActionTrendDays values.
+func (GetOperatorActionTrendDays) AllValues() []GetOperatorActionTrendDays {
+	return []GetOperatorActionTrendDays{
+		GetOperatorActionTrendDays7,
+		GetOperatorActionTrendDays30,
+		GetOperatorActionTrendDays90,
+	}
+}
+
+type GetOperatorActionTrendNotFound Error
+
+func (*GetOperatorActionTrendNotFound) getOperatorActionTrendRes() {}
 
 type GetOperatorRostersOK struct {
 	OperatorUserIds []uuid.UUID `json:"operator_user_ids"`
@@ -8750,6 +9039,31 @@ func (*GetRunTraceOK) getRunTraceRes() {}
 type GetRunTraceUnauthorized Error
 
 func (*GetRunTraceUnauthorized) getRunTraceRes() {}
+
+type GetRunTrendBadRequest Error
+
+func (*GetRunTrendBadRequest) getRunTrendRes() {}
+
+type GetRunTrendDays int
+
+const (
+	GetRunTrendDays7  GetRunTrendDays = 7
+	GetRunTrendDays30 GetRunTrendDays = 30
+	GetRunTrendDays90 GetRunTrendDays = 90
+)
+
+// AllValues returns all GetRunTrendDays values.
+func (GetRunTrendDays) AllValues() []GetRunTrendDays {
+	return []GetRunTrendDays{
+		GetRunTrendDays7,
+		GetRunTrendDays30,
+		GetRunTrendDays90,
+	}
+}
+
+type GetRunTrendNotFound Error
+
+func (*GetRunTrendNotFound) getRunTrendRes() {}
 
 type GetRunUnauthorized Error
 
@@ -11353,6 +11667,144 @@ func (o OptGenerationInputsDiagram) Or(d GenerationInputsDiagram) GenerationInpu
 	return d
 }
 
+// NewOptGetCostTrendDays returns new OptGetCostTrendDays with value set to v.
+func NewOptGetCostTrendDays(v GetCostTrendDays) OptGetCostTrendDays {
+	return OptGetCostTrendDays{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGetCostTrendDays is optional GetCostTrendDays.
+type OptGetCostTrendDays struct {
+	Value GetCostTrendDays
+	Set   bool
+}
+
+// IsSet returns true if OptGetCostTrendDays was set.
+func (o OptGetCostTrendDays) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGetCostTrendDays) Reset() {
+	var v GetCostTrendDays
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGetCostTrendDays) SetTo(v GetCostTrendDays) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGetCostTrendDays) Get() (v GetCostTrendDays, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGetCostTrendDays) Or(d GetCostTrendDays) GetCostTrendDays {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGetCreditTrendDays returns new OptGetCreditTrendDays with value set to v.
+func NewOptGetCreditTrendDays(v GetCreditTrendDays) OptGetCreditTrendDays {
+	return OptGetCreditTrendDays{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGetCreditTrendDays is optional GetCreditTrendDays.
+type OptGetCreditTrendDays struct {
+	Value GetCreditTrendDays
+	Set   bool
+}
+
+// IsSet returns true if OptGetCreditTrendDays was set.
+func (o OptGetCreditTrendDays) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGetCreditTrendDays) Reset() {
+	var v GetCreditTrendDays
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGetCreditTrendDays) SetTo(v GetCreditTrendDays) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGetCreditTrendDays) Get() (v GetCreditTrendDays, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGetCreditTrendDays) Or(d GetCreditTrendDays) GetCreditTrendDays {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGetOperatorActionTrendDays returns new OptGetOperatorActionTrendDays with value set to v.
+func NewOptGetOperatorActionTrendDays(v GetOperatorActionTrendDays) OptGetOperatorActionTrendDays {
+	return OptGetOperatorActionTrendDays{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGetOperatorActionTrendDays is optional GetOperatorActionTrendDays.
+type OptGetOperatorActionTrendDays struct {
+	Value GetOperatorActionTrendDays
+	Set   bool
+}
+
+// IsSet returns true if OptGetOperatorActionTrendDays was set.
+func (o OptGetOperatorActionTrendDays) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGetOperatorActionTrendDays) Reset() {
+	var v GetOperatorActionTrendDays
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGetOperatorActionTrendDays) SetTo(v GetOperatorActionTrendDays) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGetOperatorActionTrendDays) Get() (v GetOperatorActionTrendDays, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGetOperatorActionTrendDays) Or(d GetOperatorActionTrendDays) GetOperatorActionTrendDays {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptGetRunTraceMode returns new OptGetRunTraceMode with value set to v.
 func NewOptGetRunTraceMode(v GetRunTraceMode) OptGetRunTraceMode {
 	return OptGetRunTraceMode{
@@ -11393,6 +11845,52 @@ func (o OptGetRunTraceMode) Get() (v GetRunTraceMode, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptGetRunTraceMode) Or(d GetRunTraceMode) GetRunTraceMode {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGetRunTrendDays returns new OptGetRunTrendDays with value set to v.
+func NewOptGetRunTrendDays(v GetRunTrendDays) OptGetRunTrendDays {
+	return OptGetRunTrendDays{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGetRunTrendDays is optional GetRunTrendDays.
+type OptGetRunTrendDays struct {
+	Value GetRunTrendDays
+	Set   bool
+}
+
+// IsSet returns true if OptGetRunTrendDays was set.
+func (o OptGetRunTrendDays) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGetRunTrendDays) Reset() {
+	var v GetRunTrendDays
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGetRunTrendDays) SetTo(v GetRunTrendDays) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGetRunTrendDays) Get() (v GetRunTrendDays, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGetRunTrendDays) Or(d GetRunTrendDays) GetRunTrendDays {
 	if v, ok := o.Get(); ok {
 		return v
 	}

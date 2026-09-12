@@ -527,3 +527,9 @@ func (f *fakeStore) RecentEntries(context.Context, DBTX, pgtype.UUID, int32) ([]
 }
 
 func (f *fakeStore) LatestStatistics(context.Context) ([]KindStatistics, error) { return nil, nil }
+
+func (f *fakeStore) DailyCost(context.Context, time.Time) ([]DailyAmount, error) { return nil, nil }
+
+func (f *fakeStore) DailyCredits(context.Context, time.Time) ([]DailyAmount, error) { return nil, nil }
+
+func (f *fakeStore) BalanceTotal(context.Context) (int64, error) { return 0, nil }

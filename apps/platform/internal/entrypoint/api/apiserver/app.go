@@ -286,6 +286,12 @@ func NewApp(cfg Config) (*App, error) {
 				Identity: identitySvc,
 			},
 			OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
+			Trends: &trendsHandler{
+				Credits:   &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
+				DailyRuns: runSvc.DailyRuns,
+				Audit:     cfg.Pool,
+				Now:       time.Now,
+			},
 			Analytics: &analytics.Handler{
 				Svc: funnel, Identity: auth.Service, FeedbackRetention: cfg.FeedbackRetention,
 			},

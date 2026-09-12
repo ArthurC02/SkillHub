@@ -36,6 +36,14 @@ WHERE kind = $1
 ORDER BY window_end DESC
 LIMIT 1;
 
+-- name: SumCostEventsByDay :many
+SELECT (created_at AT TIME ZONE 'UTC')::date AS day, kind,
+       count(*)::bigint AS events, sum(usd_micros)::bigint AS usd_micros
+FROM cost_events
+WHERE created_at >= @since::timestamptz
+GROUP BY 1, 2
+ORDER BY 1, 2;
+
 -- name: GetCostEventByIdempotencyKey :one
 SELECT id FROM cost_events WHERE idempotency_key = $1;
 

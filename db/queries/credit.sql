@@ -30,3 +30,14 @@ LIMIT $2;
 -- name: SumCreditEntries :one
 SELECT coalesce(sum(delta_credits), 0)::bigint AS total_delta_credits
 FROM credit_entries WHERE user_id = $1;
+
+-- name: SumCreditEntriesByDay :many
+SELECT (created_at AT TIME ZONE 'UTC')::date AS day, kind,
+       count(*)::bigint AS entries, sum(delta_credits)::bigint AS delta_credits
+FROM credit_entries
+WHERE created_at >= @since::timestamptz
+GROUP BY 1, 2
+ORDER BY 1, 2;
+
+-- name: SumCreditBalances :one
+SELECT coalesce(sum(balance_credits), 0)::bigint AS balance_total FROM credit_accounts;

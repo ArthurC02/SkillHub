@@ -2641,6 +2641,119 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/trends/cost:
+    get:
+      operationId: getCostTrend
+      summary: Daily platform cost by kind (02:OPS-008)
+      description: |
+        Operator only. Sum of usd_micros and event count per UTC day and cost
+        kind, estimated costs included. Grouped by UTC day only; no user, workspace or email in the response.
+        A day or kind with no events has no bucket.
+      parameters:
+        - name: days
+          in: query
+          required: false
+          schema: { type: integer, enum: [7, 30, 90], default: 30 }
+      responses:
+        "200":
+          description: Daily buckets from the first to the last UTC day of the range.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AmountTrend" }
+        "400":
+          description: days is not 7, 30 or 90.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/trends/credits:
+    get:
+      operationId: getCreditTrend
+      summary: Daily credit movement by entry kind (02:OPS-008)
+      description: |
+        Operator only. Net delta_credits and entry count per UTC day and entry
+        kind, plus the sum of every current balance. Grouped by UTC day only; no user, workspace or email in the response.
+      parameters:
+        - name: days
+          in: query
+          required: false
+          schema: { type: integer, enum: [7, 30, 90], default: 30 }
+      responses:
+        "200":
+          description: Daily buckets from the first to the last UTC day of the range.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreditTrend" }
+        "400":
+          description: days is not 7, 30 or 90.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/trends/runs:
+    get:
+      operationId: getRunTrend
+      summary: Runs created per day by current status (02:OPS-008)
+      description: |
+        Operator only. Runs counted by the UTC day they were created and the
+        status they are in now. Grouped by UTC day only; no user, workspace or email in the response.
+      parameters:
+        - name: days
+          in: query
+          required: false
+          schema: { type: integer, enum: [7, 30, 90], default: 30 }
+      responses:
+        "200":
+          description: Daily buckets from the first to the last UTC day of the range.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CountTrend" }
+        "400":
+          description: days is not 7, 30 or 90.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/trends/operator-actions:
+    get:
+      operationId: getOperatorActionTrend
+      summary: Operator actions per day by action (02:OPS-008)
+      description: |
+        Operator only. The same action list as the operator audit log,
+        counted per UTC day. Grouped by UTC day only; no user, workspace or email in the response.
+      parameters:
+        - name: days
+          in: query
+          required: false
+          schema: { type: integer, enum: [7, 30, 90], default: 30 }
+      responses:
+        "200":
+          description: Daily buckets from the first to the last UTC day of the range.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CountTrend" }
+        "400":
+          description: days is not 7, 30 or 90.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/runs/preflight:
     get:
       operationId: getRunPreflight
@@ -5441,6 +5554,49 @@ components:
         p90_usd_micros: { type: [integer, "null"], format: int64 }
         p95_usd_micros: { type: [integer, "null"], format: int64 }
         max_usd_micros: { type: [integer, "null"], format: int64 }
+    DailyCount:
+      type: object
+      required: [day, key, count]
+      properties:
+        day: { type: string, format: date }
+        key: { type: string }
+        count: { type: integer, format: int64 }
+    DailyAmount:
+      type: object
+      required: [day, key, count, total]
+      properties:
+        day: { type: string, format: date }
+        key: { type: string }
+        count: { type: integer, format: int64 }
+        total: { type: integer, format: int64 }
+    CountTrend:
+      type: object
+      required: [from, to, buckets]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        buckets:
+          type: array
+          items: { $ref: "#/components/schemas/DailyCount" }
+    AmountTrend:
+      type: object
+      required: [from, to, buckets]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        buckets:
+          type: array
+          items: { $ref: "#/components/schemas/DailyAmount" }
+    CreditTrend:
+      type: object
+      required: [from, to, buckets, balance_total]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        buckets:
+          type: array
+          items: { $ref: "#/components/schemas/DailyAmount" }
+        balance_total: { type: integer, format: int64 }
     AccountDeletion:
       type: object
       required: [deletion_requested_at, purge_after, cancellable, scope]

@@ -360,6 +360,14 @@ type Handler interface {
 	//
 	// GET /admin/cost-statistics
 	GetCostStatistics(ctx context.Context) (GetCostStatisticsRes, error)
+	// GetCostTrend implements getCostTrend operation.
+	//
+	// Operator only. Sum of usd_micros and event count per UTC day and cost kind, estimated costs
+	// included. Grouped by UTC day only; no user, workspace or email in the response. A day or kind with
+	// no events has no bucket.
+	//
+	// GET /admin/trends/cost
+	GetCostTrend(ctx context.Context, params GetCostTrendParams) (GetCostTrendRes, error)
 	// GetCreationLimits implements getCreationLimits operation.
 	//
 	// The session ceilings this deployment enforces. Mounted under the same double exposure flag as the
@@ -404,6 +412,13 @@ type Handler interface {
 	//
 	// GET /admin/credits/{workspace_id}
 	GetCreditLedger(ctx context.Context, params GetCreditLedgerParams) (GetCreditLedgerRes, error)
+	// GetCreditTrend implements getCreditTrend operation.
+	//
+	// Operator only. Net delta_credits and entry count per UTC day and entry kind, plus the sum of every
+	// current balance. Grouped by UTC day only; no user, workspace or email in the response.
+	//
+	// GET /admin/trends/credits
+	GetCreditTrend(ctx context.Context, params GetCreditTrendParams) (GetCreditTrendRes, error)
 	// GetDataRetentionPolicy implements getDataRetentionPolicy operation.
 	//
 	// 02:O11Y-004: product analytics is the only data class a user produces without submitting anything,
@@ -458,6 +473,13 @@ type Handler interface {
 	//
 	// GET /me
 	GetMe(ctx context.Context) (GetMeRes, error)
+	// GetOperatorActionTrend implements getOperatorActionTrend operation.
+	//
+	// Operator only. The same action list as the operator audit log, counted per UTC day. Grouped by UTC
+	// day only; no user, workspace or email in the response.
+	//
+	// GET /admin/trends/operator-actions
+	GetOperatorActionTrend(ctx context.Context, params GetOperatorActionTrendParams) (GetOperatorActionTrendRes, error)
 	// GetOperatorRosters implements getOperatorRosters operation.
 	//
 	// Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still
@@ -571,6 +593,13 @@ type Handler interface {
 	//
 	// GET /runs/{id}/trace
 	GetRunTrace(ctx context.Context, params GetRunTraceParams) (GetRunTraceRes, error)
+	// GetRunTrend implements getRunTrend operation.
+	//
+	// Operator only. Runs counted by the UTC day they were created and the status they are in now. Grouped
+	// by UTC day only; no user, workspace or email in the response.
+	//
+	// GET /admin/trends/runs
+	GetRunTrend(ctx context.Context, params GetRunTrendParams) (GetRunTrendRes, error)
 	// GetSkillDetail implements getSkillDetail operation.
 	//
 	// Does not require authentication. Scope is resolved by the server and never by the request (CORE-006,

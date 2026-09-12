@@ -213,6 +213,29 @@ func (s AddAcceptanceCriterionReqSource) Validate() error {
 	}
 }
 
+func (s *AmountTrend) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if s.Buckets == nil {
+			return errors.New("nil is invalid value")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "buckets",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
 func (s BrowseCatalogAgent) Validate() error {
 	switch s {
 	case "native":
@@ -505,6 +528,29 @@ func (s *ClearSkillRestrictionReq) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "note",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s *CountTrend) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if s.Buckets == nil {
+			return errors.New("nil is invalid value")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "buckets",
 			Error: err,
 		})
 	}
@@ -1546,6 +1592,29 @@ func (s CreditLedgerEntryKind) Validate() error {
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}
+}
+
+func (s *CreditTrend) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if s.Buckets == nil {
+			return errors.New("nil is invalid value")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "buckets",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
 }
 
 func (s *CriterionResult) Validate() error {
@@ -3155,6 +3224,32 @@ func (s *GetCostStatisticsOK) Validate() error {
 	return nil
 }
 
+func (s GetCostTrendDays) Validate() error {
+	switch s {
+	case 7:
+		return nil
+	case 30:
+		return nil
+	case 90:
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s GetCreditTrendDays) Validate() error {
+	switch s {
+	case 7:
+		return nil
+	case 30:
+		return nil
+	case 90:
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s *GetDispatchStatusOK) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -3223,6 +3318,19 @@ func (s GetDispatchStatusOKHaltsItemSource) Validate() error {
 	case "p1_incident":
 		return nil
 	case "orphan_threshold":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s GetOperatorActionTrendDays) Validate() error {
+	switch s {
+	case 7:
+		return nil
+	case 30:
+		return nil
+	case 90:
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
@@ -3366,6 +3474,19 @@ func (s GetRunTraceOK) Validate() error {
 		return nil
 	default:
 		return errors.Errorf("invalid type %q", s.Type)
+	}
+}
+
+func (s GetRunTrendDays) Validate() error {
+	switch s {
+	case 7:
+		return nil
+	case 30:
+		return nil
+	case 90:
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
 	}
 }
 

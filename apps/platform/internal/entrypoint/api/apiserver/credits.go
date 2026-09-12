@@ -37,6 +37,10 @@ type CreditLedger interface {
 	Ledger(ctx context.Context, workspaceID, operatorID pgtype.UUID) (credit.Ledger, error)
 
 	CostStatistics(ctx context.Context) ([]credit.KindStatistics, error)
+
+	DailyCost(ctx context.Context, since time.Time) ([]credit.DailyAmount, error)
+
+	DailyCredits(ctx context.Context, since time.Time) ([]credit.DailyAmount, int64, error)
 }
 
 type creditsHandler struct {

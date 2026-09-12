@@ -315,3 +315,10 @@ SELECT pg_advisory_xact_lock(hashtextextended('artifact-object:' || @object_key:
 
 -- name: ListSkillVersionsInRuns :many
 SELECT DISTINCT skill_version_id FROM runs WHERE skill_version_id = ANY(@version_ids::uuid[]);
+
+-- name: CountRunsByDay :many
+SELECT (created_at AT TIME ZONE 'UTC')::date AS day, status::text AS status, count(*)::bigint AS runs
+FROM runs
+WHERE created_at >= @since::timestamptz
+GROUP BY 1, 2
+ORDER BY 1, 2;

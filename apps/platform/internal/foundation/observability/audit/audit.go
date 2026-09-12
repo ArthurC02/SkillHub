@@ -203,3 +203,27 @@ func records(rows []gen.AuditEvent) []Record {
 	}
 	return out
 }
+
+type DailyCount struct {
+	Day    time.Time
+	Action string
+	Count  int64
+}
+
+func DailyPlatform(ctx context.Context, db DBTX, filter PlatformFilter, since time.Time) ([]DailyCount, error) {
+	if db == nil {
+		return nil, errors.New("audit: database handle is not configured")
+	}
+	rows, err := gen.New(db).CountPlatformAuditEventsByDay(ctx, gen.CountPlatformAuditEventsByDayParams{
+		Since:   pgtype.Timestamptz{Time: since, Valid: true},
+		Actions: filter.Actions, ScopedActions: filter.ScopedActions, Scope: filter.Scope,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]DailyCount, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, DailyCount{Day: r.Day.Time, Action: r.Action, Count: r.Events})
+	}
+	return out, nil
+}

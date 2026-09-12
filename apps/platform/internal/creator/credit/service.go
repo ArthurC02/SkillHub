@@ -423,3 +423,22 @@ func (s *Service) LatestStatistics(ctx context.Context) ([]KindStatistics, error
 	}
 	return s.Store.LatestStatistics(ctx)
 }
+
+func (s *Service) DailyCost(ctx context.Context, since time.Time) ([]DailyAmount, error) {
+	if s.Store == nil {
+		return nil, ErrUnavailable
+	}
+	return s.Store.DailyCost(ctx, since)
+}
+
+func (s *Service) DailyCredits(ctx context.Context, since time.Time) ([]DailyAmount, int64, error) {
+	if s.Store == nil {
+		return nil, 0, ErrUnavailable
+	}
+	days, err := s.Store.DailyCredits(ctx, since)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := s.Store.BalanceTotal(ctx)
+	return days, total, err
+}

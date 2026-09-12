@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -116,4 +117,12 @@ func (l *creditLedger) Ledger(ctx context.Context, workspaceID, operatorID pgtyp
 
 func (l *creditLedger) CostStatistics(ctx context.Context) ([]credit.KindStatistics, error) {
 	return l.svc.LatestStatistics(ctx)
+}
+
+func (l *creditLedger) DailyCost(ctx context.Context, since time.Time) ([]credit.DailyAmount, error) {
+	return l.svc.DailyCost(ctx, since)
+}
+
+func (l *creditLedger) DailyCredits(ctx context.Context, since time.Time) ([]credit.DailyAmount, int64, error) {
+	return l.svc.DailyCredits(ctx, since)
 }

@@ -253,3 +253,12 @@ SET last_checked_at = now(),
         ELSE content_changed_at
     END
 WHERE id = $1;
+
+-- name: CountPlatformAuditEventsByDay :many
+SELECT (created_at AT TIME ZONE 'UTC')::date AS day, action, count(*)::bigint AS events
+FROM audit_events
+WHERE created_at >= @since::timestamptz
+  AND (action = ANY(@actions::text[])
+       OR (action = ANY(@scoped_actions::text[]) AND metadata->>'scope' = @scope::text))
+GROUP BY 1, 2
+ORDER BY 1, 2;

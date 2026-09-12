@@ -633,3 +633,21 @@ func (s *Service) RequestCancel(ctx context.Context, workspaceID, runID, actor p
 }
 
 func nowUTC() string { return time.Now().UTC().Format(time.RFC3339) }
+
+type RunsOnDay struct {
+	Day    time.Time
+	Status string
+	Runs   int64
+}
+
+func (s *Service) DailyRuns(ctx context.Context, since time.Time) ([]RunsOnDay, error) {
+	rows, err := s.queries().CountRunsByDay(ctx, pgtype.Timestamptz{Time: since, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]RunsOnDay, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, RunsOnDay{Day: r.Day.Time, Status: r.Status, Runs: r.Runs})
+	}
+	return out, nil
+}

@@ -104,6 +104,40 @@ func (q *Queries) CountPersistentOrphans(ctx context.Context, provider string) (
 	return count, err
 }
 
+const countRunsByDay = `-- name: CountRunsByDay :many
+SELECT (created_at AT TIME ZONE 'UTC')::date AS day, status::text AS status, count(*)::bigint AS runs
+FROM runs
+WHERE created_at >= $1::timestamptz
+GROUP BY 1, 2
+ORDER BY 1, 2
+`
+
+type CountRunsByDayRow struct {
+	Day    pgtype.Date
+	Status string
+	Runs   int64
+}
+
+func (q *Queries) CountRunsByDay(ctx context.Context, since pgtype.Timestamptz) ([]CountRunsByDayRow, error) {
+	rows, err := q.db.Query(ctx, countRunsByDay, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountRunsByDayRow
+	for rows.Next() {
+		var i CountRunsByDayRow
+		if err := rows.Scan(&i.Day, &i.Status, &i.Runs); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countUnreadableRunArtifacts = `-- name: CountUnreadableRunArtifacts :one
 SELECT
   count(*) FILTER (WHERE deleted_at IS NOT NULL)::bigint AS deleted,

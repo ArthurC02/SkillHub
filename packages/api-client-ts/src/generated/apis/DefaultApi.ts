@@ -19,6 +19,7 @@ import type {
   AccountDeletion,
   AccountLookup,
   AddAcceptanceCriterionRequest,
+  AmountTrend,
   CancelAccountDeletion200Response,
   CancelRun202Response,
   CatalogResponse,
@@ -26,6 +27,7 @@ import type {
   ClearSkillRestrictionRequest,
   ConfirmRunPreflight201Response,
   ConfirmRunPreflightRequest,
+  CountTrend,
   CreateCreationSession,
   CreateDownloadArtifact201Response,
   CreateDownloadArtifact422Response,
@@ -39,6 +41,7 @@ import type {
   CreationSession,
   CreditBalance,
   CreditLedger,
+  CreditTrend,
   DataRetentionPolicy,
   Dataset,
   DatasetLimits,
@@ -122,6 +125,8 @@ import {
     AccountLookupToJSON,
     AddAcceptanceCriterionRequestFromJSON,
     AddAcceptanceCriterionRequestToJSON,
+    AmountTrendFromJSON,
+    AmountTrendToJSON,
     CancelAccountDeletion200ResponseFromJSON,
     CancelAccountDeletion200ResponseToJSON,
     CancelRun202ResponseFromJSON,
@@ -136,6 +141,8 @@ import {
     ConfirmRunPreflight201ResponseToJSON,
     ConfirmRunPreflightRequestFromJSON,
     ConfirmRunPreflightRequestToJSON,
+    CountTrendFromJSON,
+    CountTrendToJSON,
     CreateCreationSessionFromJSON,
     CreateCreationSessionToJSON,
     CreateDownloadArtifact201ResponseFromJSON,
@@ -162,6 +169,8 @@ import {
     CreditBalanceToJSON,
     CreditLedgerFromJSON,
     CreditLedgerToJSON,
+    CreditTrendFromJSON,
+    CreditTrendToJSON,
     DataRetentionPolicyFromJSON,
     DataRetentionPolicyToJSON,
     DatasetFromJSON,
@@ -434,6 +443,10 @@ export interface GenerateSkillOperationRequest {
     generateSkillRequest: GenerateSkillRequest;
 }
 
+export interface GetCostTrendRequest {
+    days?: GetCostTrendDaysEnum;
+}
+
 export interface GetCreationSessionRequest {
     sessionId: string;
 }
@@ -442,8 +455,16 @@ export interface GetCreditLedgerRequest {
     workspaceId: string;
 }
 
+export interface GetCreditTrendRequest {
+    days?: GetCreditTrendDaysEnum;
+}
+
 export interface GetDownloadArtifactRequest {
     artifactId: string;
+}
+
+export interface GetOperatorActionTrendRequest {
+    days?: GetOperatorActionTrendDaysEnum;
 }
 
 export interface GetRunRequest {
@@ -465,6 +486,10 @@ export interface GetRunTraceRequest {
     id: string;
     mode?: GetRunTraceModeEnum;
     after?: number;
+}
+
+export interface GetRunTrendRequest {
+    days?: GetRunTrendDaysEnum;
 }
 
 export interface GetSkillDetailRequest {
@@ -1112,6 +1137,22 @@ export interface DefaultApiInterface {
     getCostStatistics(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetCostStatistics200Response>;
 
     /**
+     * Operator only. Sum of usd_micros and event count per UTC day and cost kind, estimated costs included. Grouped by UTC day only; no user, workspace or email in the response. A day or kind with no events has no bucket. 
+     * @summary Daily platform cost by kind (02:OPS-008)
+     * @param {7 | 30 | 90} [days] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCostTrendRaw(requestParameters: GetCostTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AmountTrend>>;
+
+    /**
+     * Operator only. Sum of usd_micros and event count per UTC day and cost kind, estimated costs included. Grouped by UTC day only; no user, workspace or email in the response. A day or kind with no events has no bucket. 
+     * Daily platform cost by kind (02:OPS-008)
+     */
+    getCostTrend(requestParameters: GetCostTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AmountTrend>;
+
+    /**
      * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
      * @summary getCreationLimits
      * @param {*} [options] Override http request option.
@@ -1171,6 +1212,22 @@ export interface DefaultApiInterface {
      * Balance and recent entries of one account (02:OPS-003)
      */
     getCreditLedger(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditLedger>;
+
+    /**
+     * Operator only. Net delta_credits and entry count per UTC day and entry kind, plus the sum of every current balance. Grouped by UTC day only; no user, workspace or email in the response. 
+     * @summary Daily credit movement by entry kind (02:OPS-008)
+     * @param {7 | 30 | 90} [days] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreditTrendRaw(requestParameters: GetCreditTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditTrend>>;
+
+    /**
+     * Operator only. Net delta_credits and entry count per UTC day and entry kind, plus the sum of every current balance. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Daily credit movement by entry kind (02:OPS-008)
+     */
+    getCreditTrend(requestParameters: GetCreditTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditTrend>;
 
     /**
      * 02:O11Y-004: product analytics is the only data class a user produces without submitting anything, so its disclosure obligation is no lower than any other\'s. This is that disclosure as an endpoint rather than a document, for the reason GET /test-cases/limits is one — the values come from the constants the writer itself reads, so the page and the behaviour cannot drift.  No session. A data policy a visitor has to log in to read is not a policy they can decide by, and the funnel\'s first segment is measured before any login exists. Nothing user-specific is read or returned.  `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5\'s 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no cookie. 
@@ -1259,6 +1316,22 @@ export interface DefaultApiInterface {
      * Current user and personal workspace, resolved from the session
      */
     getMe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Me>;
+
+    /**
+     * Operator only. The same action list as the operator audit log, counted per UTC day. Grouped by UTC day only; no user, workspace or email in the response. 
+     * @summary Operator actions per day by action (02:OPS-008)
+     * @param {7 | 30 | 90} [days] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOperatorActionTrendRaw(requestParameters: GetOperatorActionTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CountTrend>>;
+
+    /**
+     * Operator only. The same action list as the operator audit log, counted per UTC day. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Operator actions per day by action (02:OPS-008)
+     */
+    getOperatorActionTrend(requestParameters: GetOperatorActionTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CountTrend>;
 
     /**
      * Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still an edit and a restart (ADR-074 decision 4). This only shows what is in force. 
@@ -1373,6 +1446,22 @@ export interface DefaultApiInterface {
      * Run trace, in either the general or the advanced mode (TRACE-006, TRACE-007)
      */
     getRunTrace(requestParameters: GetRunTraceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetRunTrace200Response>;
+
+    /**
+     * Operator only. Runs counted by the UTC day they were created and the status they are in now. Grouped by UTC day only; no user, workspace or email in the response. 
+     * @summary Runs created per day by current status (02:OPS-008)
+     * @param {7 | 30 | 90} [days] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunTrendRaw(requestParameters: GetRunTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CountTrend>>;
+
+    /**
+     * Operator only. Runs counted by the UTC day they were created and the status they are in now. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Runs created per day by current status (02:OPS-008)
+     */
+    getRunTrend(requestParameters: GetRunTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CountTrend>;
 
     /**
      * Does not require authentication. Scope is resolved by the server and never by the request (CORE-006, ADR-011): the public catalog answers for every caller, and a caller with a session additionally sees skills in their own workspace. Anything outside both scopes answers 404, identical to a skill that does not exist, so the status code is not an existence oracle for someone else\'s private content (WS-006).  `summary` is always the package\'s own frontmatter description. Model-generated text lives under `enrichment` and is labelled there (ADR-013). `license` carries the ADR-021 two-axis answer — the expression and the provenance tier it was established at — and its status is `declared` at best: confirmation is a reviewer\'s act and nothing records one yet. `risk` reports a static scan of the stored package; the scan never executes anything (iron rule 1) and passing it is not a safety claim (NFR-001). `compatibility` keeps the three axes apart; the two that need a sandbox carry a measured verdict together with the `runtime_image` it holds for, and say `unverified` rather than being omitted when this (version, image) pair was never measured. 
@@ -3337,6 +3426,41 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Operator only. Sum of usd_micros and event count per UTC day and cost kind, estimated costs included. Grouped by UTC day only; no user, workspace or email in the response. A day or kind with no events has no bucket. 
+     * Daily platform cost by kind (02:OPS-008)
+     */
+    async getCostTrendRaw(requestParameters: GetCostTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AmountTrend>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/trends/cost`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AmountTrendFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Sum of usd_micros and event count per UTC day and cost kind, estimated costs included. Grouped by UTC day only; no user, workspace or email in the response. A day or kind with no events has no bucket. 
+     * Daily platform cost by kind (02:OPS-008)
+     */
+    async getCostTrend(requestParameters: GetCostTrendRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AmountTrend> {
+        const response = await this.getCostTrendRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The session ceilings this deployment enforces. Mounted under the same double exposure flag as the sessions themselves.
      * getCreationLimits
      */
@@ -3471,6 +3595,41 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getCreditLedger(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditLedger> {
         const response = await this.getCreditLedgerRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Operator only. Net delta_credits and entry count per UTC day and entry kind, plus the sum of every current balance. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Daily credit movement by entry kind (02:OPS-008)
+     */
+    async getCreditTrendRaw(requestParameters: GetCreditTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditTrend>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/trends/credits`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreditTrendFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Net delta_credits and entry count per UTC day and entry kind, plus the sum of every current balance. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Daily credit movement by entry kind (02:OPS-008)
+     */
+    async getCreditTrend(requestParameters: GetCreditTrendRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditTrend> {
+        const response = await this.getCreditTrendRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -3659,6 +3818,41 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getMe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Me> {
         const response = await this.getMeRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Operator only. The same action list as the operator audit log, counted per UTC day. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Operator actions per day by action (02:OPS-008)
+     */
+    async getOperatorActionTrendRaw(requestParameters: GetOperatorActionTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CountTrend>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/trends/operator-actions`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CountTrendFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The same action list as the operator audit log, counted per UTC day. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Operator actions per day by action (02:OPS-008)
+     */
+    async getOperatorActionTrend(requestParameters: GetOperatorActionTrendRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CountTrend> {
+        const response = await this.getOperatorActionTrendRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -3942,6 +4136,41 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getRunTrace(requestParameters: GetRunTraceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetRunTrace200Response> {
         const response = await this.getRunTraceRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Operator only. Runs counted by the UTC day they were created and the status they are in now. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Runs created per day by current status (02:OPS-008)
+     */
+    async getRunTrendRaw(requestParameters: GetRunTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CountTrend>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/trends/runs`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CountTrendFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Runs counted by the UTC day they were created and the status they are in now. Grouped by UTC day only; no user, workspace or email in the response. 
+     * Runs created per day by current status (02:OPS-008)
+     */
+    async getRunTrend(requestParameters: GetRunTrendRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CountTrend> {
+        const response = await this.getRunTrendRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5874,11 +6103,47 @@ export type BrowseCatalogCategoryEnum = typeof BrowseCatalogCategoryEnum[keyof t
 /**
  * @export
  */
+export const GetCostTrendDaysEnum = {
+    NUMBER_7: 7,
+    NUMBER_30: 30,
+    NUMBER_90: 90
+} as const;
+export type GetCostTrendDaysEnum = typeof GetCostTrendDaysEnum[keyof typeof GetCostTrendDaysEnum];
+/**
+ * @export
+ */
+export const GetCreditTrendDaysEnum = {
+    NUMBER_7: 7,
+    NUMBER_30: 30,
+    NUMBER_90: 90
+} as const;
+export type GetCreditTrendDaysEnum = typeof GetCreditTrendDaysEnum[keyof typeof GetCreditTrendDaysEnum];
+/**
+ * @export
+ */
+export const GetOperatorActionTrendDaysEnum = {
+    NUMBER_7: 7,
+    NUMBER_30: 30,
+    NUMBER_90: 90
+} as const;
+export type GetOperatorActionTrendDaysEnum = typeof GetOperatorActionTrendDaysEnum[keyof typeof GetOperatorActionTrendDaysEnum];
+/**
+ * @export
+ */
 export const GetRunTraceModeEnum = {
     General: 'general',
     Advanced: 'advanced'
 } as const;
 export type GetRunTraceModeEnum = typeof GetRunTraceModeEnum[keyof typeof GetRunTraceModeEnum];
+/**
+ * @export
+ */
+export const GetRunTrendDaysEnum = {
+    NUMBER_7: 7,
+    NUMBER_30: 30,
+    NUMBER_90: 90
+} as const;
+export type GetRunTrendDaysEnum = typeof GetRunTrendDaysEnum[keyof typeof GetRunTrendDaysEnum];
 /**
  * @export
  */

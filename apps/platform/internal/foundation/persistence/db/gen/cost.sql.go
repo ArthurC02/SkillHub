@@ -270,6 +270,47 @@ func (q *Queries) ListLatestCostStatistics(ctx context.Context) ([]CostStatistic
 	return items, nil
 }
 
+const sumCostEventsByDay = `-- name: SumCostEventsByDay :many
+SELECT (created_at AT TIME ZONE 'UTC')::date AS day, kind,
+       count(*)::bigint AS events, sum(usd_micros)::bigint AS usd_micros
+FROM cost_events
+WHERE created_at >= $1::timestamptz
+GROUP BY 1, 2
+ORDER BY 1, 2
+`
+
+type SumCostEventsByDayRow struct {
+	Day       pgtype.Date
+	Kind      string
+	Events    int64
+	UsdMicros int64
+}
+
+func (q *Queries) SumCostEventsByDay(ctx context.Context, since pgtype.Timestamptz) ([]SumCostEventsByDayRow, error) {
+	rows, err := q.db.Query(ctx, sumCostEventsByDay, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumCostEventsByDayRow
+	for rows.Next() {
+		var i SumCostEventsByDayRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.Kind,
+			&i.Events,
+			&i.UsdMicros,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sweepSessionCostSummaries = `-- name: SweepSessionCostSummaries :execrows
 INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
 SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,

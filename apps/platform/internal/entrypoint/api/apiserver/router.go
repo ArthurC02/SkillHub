@@ -35,6 +35,8 @@ type Deps struct {
 
 	OperatorAudit *operatorAuditHandler
 
+	Trends *trendsHandler
+
 	Analytics *analytics.Handler
 
 	Limits *httpx.RateLimiter
@@ -112,6 +114,8 @@ func NewRouter(d Deps) http.Handler {
 		mux.HandleFunc("POST /admin/credits/{workspace_id}/grants", auth.RequireOperator(d.Credits.Grant))
 		mux.HandleFunc("GET /admin/credits/{workspace_id}", auth.RequireOperator(d.Credits.Account))
 		mux.HandleFunc("GET /admin/cost-statistics", auth.RequireOperator(d.Credits.CostStatistics))
+		mux.HandleFunc("GET /admin/trends/cost", auth.RequireOperator(d.Trends.Cost))
+		mux.HandleFunc("GET /admin/trends/credits", auth.RequireOperator(d.Trends.CreditMovement))
 	}
 
 	mux.HandleFunc("GET /admin/dispatch", auth.RequireOperator(d.Runs.Halts))
@@ -122,6 +126,8 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /admin/rosters", auth.RequireOperator(auth.Rosters))
 	mux.HandleFunc("GET /admin/skills", auth.RequireOperator(d.Search.FindSkillsForGovernance))
 	mux.HandleFunc("GET /admin/audit-log", auth.RequireOperator(d.OperatorAudit.List))
+	mux.HandleFunc("GET /admin/trends/runs", auth.RequireOperator(d.Trends.Runs))
+	mux.HandleFunc("GET /admin/trends/operator-actions", auth.RequireOperator(d.Trends.OperatorActions))
 
 	lab := d.TestLab
 	mux.HandleFunc("GET /test-cases/limits", auth.RequireSession(lab.Limits))

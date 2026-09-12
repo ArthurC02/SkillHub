@@ -159,6 +159,17 @@ func (q *Queries) ListRecentCreditEntries(ctx context.Context, arg ListRecentCre
 	return items, nil
 }
 
+const sumCreditBalances = `-- name: SumCreditBalances :one
+SELECT coalesce(sum(balance_credits), 0)::bigint AS balance_total FROM credit_accounts
+`
+
+func (q *Queries) SumCreditBalances(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, sumCreditBalances)
+	var balance_total int64
+	err := row.Scan(&balance_total)
+	return balance_total, err
+}
+
 const sumCreditEntries = `-- name: SumCreditEntries :one
 SELECT coalesce(sum(delta_credits), 0)::bigint AS total_delta_credits
 FROM credit_entries WHERE user_id = $1
@@ -169,4 +180,45 @@ func (q *Queries) SumCreditEntries(ctx context.Context, userID pgtype.UUID) (int
 	var total_delta_credits int64
 	err := row.Scan(&total_delta_credits)
 	return total_delta_credits, err
+}
+
+const sumCreditEntriesByDay = `-- name: SumCreditEntriesByDay :many
+SELECT (created_at AT TIME ZONE 'UTC')::date AS day, kind,
+       count(*)::bigint AS entries, sum(delta_credits)::bigint AS delta_credits
+FROM credit_entries
+WHERE created_at >= $1::timestamptz
+GROUP BY 1, 2
+ORDER BY 1, 2
+`
+
+type SumCreditEntriesByDayRow struct {
+	Day          pgtype.Date
+	Kind         string
+	Entries      int64
+	DeltaCredits int64
+}
+
+func (q *Queries) SumCreditEntriesByDay(ctx context.Context, since pgtype.Timestamptz) ([]SumCreditEntriesByDayRow, error) {
+	rows, err := q.db.Query(ctx, sumCreditEntriesByDay, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumCreditEntriesByDayRow
+	for rows.Next() {
+		var i SumCreditEntriesByDayRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.Kind,
+			&i.Entries,
+			&i.DeltaCredits,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

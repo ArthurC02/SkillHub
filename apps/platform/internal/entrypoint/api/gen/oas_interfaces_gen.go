@@ -113,6 +113,10 @@ type GetCostStatisticsRes interface {
 	getCostStatisticsRes()
 }
 
+type GetCostTrendRes interface {
+	getCostTrendRes()
+}
+
 type GetCreationLimitsRes interface {
 	getCreationLimitsRes()
 }
@@ -129,6 +133,10 @@ type GetCreditLedgerRes interface {
 	getCreditLedgerRes()
 }
 
+type GetCreditTrendRes interface {
+	getCreditTrendRes()
+}
+
 type GetDatasetLimitsRes interface {
 	getDatasetLimitsRes()
 }
@@ -143,6 +151,10 @@ type GetDownloadArtifactRes interface {
 
 type GetMeRes interface {
 	getMeRes()
+}
+
+type GetOperatorActionTrendRes interface {
+	getOperatorActionTrendRes()
 }
 
 type GetOperatorRostersRes interface {
@@ -167,6 +179,10 @@ type GetRunRes interface {
 
 type GetRunTraceRes interface {
 	getRunTraceRes()
+}
+
+type GetRunTrendRes interface {
+	getRunTrendRes()
 }
 
 type GetSkillDetailRes interface {

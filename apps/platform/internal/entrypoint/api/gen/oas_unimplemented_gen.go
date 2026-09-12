@@ -449,6 +449,17 @@ func (UnimplementedHandler) GetCostStatistics(ctx context.Context) (r GetCostSta
 	return r, ht.ErrNotImplemented
 }
 
+// GetCostTrend implements getCostTrend operation.
+//
+// Operator only. Sum of usd_micros and event count per UTC day and cost kind, estimated costs
+// included. Grouped by UTC day only; no user, workspace or email in the response. A day or kind with
+// no events has no bucket.
+//
+// GET /admin/trends/cost
+func (UnimplementedHandler) GetCostTrend(ctx context.Context, params GetCostTrendParams) (r GetCostTrendRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetCreationLimits implements getCreationLimits operation.
 //
 // The session ceilings this deployment enforces. Mounted under the same double exposure flag as the
@@ -502,6 +513,16 @@ func (UnimplementedHandler) GetCreditBalance(ctx context.Context) (r GetCreditBa
 //
 // GET /admin/credits/{workspace_id}
 func (UnimplementedHandler) GetCreditLedger(ctx context.Context, params GetCreditLedgerParams) (r GetCreditLedgerRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetCreditTrend implements getCreditTrend operation.
+//
+// Operator only. Net delta_credits and entry count per UTC day and entry kind, plus the sum of every
+// current balance. Grouped by UTC day only; no user, workspace or email in the response.
+//
+// GET /admin/trends/credits
+func (UnimplementedHandler) GetCreditTrend(ctx context.Context, params GetCreditTrendParams) (r GetCreditTrendRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -574,6 +595,16 @@ func (UnimplementedHandler) GetHealth(ctx context.Context) (r *Health, _ error) 
 //
 // GET /me
 func (UnimplementedHandler) GetMe(ctx context.Context) (r GetMeRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetOperatorActionTrend implements getOperatorActionTrend operation.
+//
+// Operator only. The same action list as the operator audit log, counted per UTC day. Grouped by UTC
+// day only; no user, workspace or email in the response.
+//
+// GET /admin/trends/operator-actions
+func (UnimplementedHandler) GetOperatorActionTrend(ctx context.Context, params GetOperatorActionTrendParams) (r GetOperatorActionTrendRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -708,6 +739,16 @@ func (UnimplementedHandler) GetRunQuota(ctx context.Context) (r GetRunQuotaRes, 
 //
 // GET /runs/{id}/trace
 func (UnimplementedHandler) GetRunTrace(ctx context.Context, params GetRunTraceParams) (r GetRunTraceRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetRunTrend implements getRunTrend operation.
+//
+// Operator only. Runs counted by the UTC day they were created and the status they are in now. Grouped
+// by UTC day only; no user, workspace or email in the response.
+//
+// GET /admin/trends/runs
+func (UnimplementedHandler) GetRunTrend(ctx context.Context, params GetRunTrendParams) (r GetRunTrendRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

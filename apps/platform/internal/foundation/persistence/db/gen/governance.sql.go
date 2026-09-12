@@ -86,6 +86,54 @@ func (q *Queries) CountCollectableObjects(ctx context.Context) (int64, error) {
 	return column_1, err
 }
 
+const countPlatformAuditEventsByDay = `-- name: CountPlatformAuditEventsByDay :many
+SELECT (created_at AT TIME ZONE 'UTC')::date AS day, action, count(*)::bigint AS events
+FROM audit_events
+WHERE created_at >= $1::timestamptz
+  AND (action = ANY($2::text[])
+       OR (action = ANY($3::text[]) AND metadata->>'scope' = $4::text))
+GROUP BY 1, 2
+ORDER BY 1, 2
+`
+
+type CountPlatformAuditEventsByDayParams struct {
+	Since         pgtype.Timestamptz
+	Actions       []string
+	ScopedActions []string
+	Scope         string
+}
+
+type CountPlatformAuditEventsByDayRow struct {
+	Day    pgtype.Date
+	Action string
+	Events int64
+}
+
+func (q *Queries) CountPlatformAuditEventsByDay(ctx context.Context, arg CountPlatformAuditEventsByDayParams) ([]CountPlatformAuditEventsByDayRow, error) {
+	rows, err := q.db.Query(ctx, countPlatformAuditEventsByDay,
+		arg.Since,
+		arg.Actions,
+		arg.ScopedActions,
+		arg.Scope,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountPlatformAuditEventsByDayRow
+	for rows.Next() {
+		var i CountPlatformAuditEventsByDayRow
+		if err := rows.Scan(&i.Day, &i.Action, &i.Events); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countSkillsWaitingForDeletionGrace = `-- name: CountSkillsWaitingForDeletionGrace :one
 SELECT count(*)::bigint FROM skills WHERE deleted_at > $1::timestamptz
 `
