@@ -129,7 +129,14 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | generated conflict | 合併 OpenAPI／SQL來源後重生；不手動 merge generated code |
 | `dev:model` 缺變數 | devctl只列變數名稱。把 secret放 ignored `.env`，不要放 `.env.example` |
 | Python editable install access denied on OneDrive | 關閉仍占用 `.venv` 的程序後重跑 `uv sync --frozen`；不要刪他人工作或 lockfile |
+| `gofmt`／`prettier --check`／`golangci-lint fmt --diff` 對你沒碰過的檔案報格式錯，但 CI 的 Linux runner 全綠 | 工作樹是 CRLF checkout。行尾一律 LF，由 [`.gitattributes`](../../.gitattributes) 強制，它**蓋過 `core.autocrlf`**，所以 Windows 上不需要任何 per-machine git 設定。早於該檔的 clone 可以刷新一次：`git rm --cached -r . && git reset --hard`（**會重寫工作樹，先提交你的工作**） |
 | postgres 容器起不來，日誌說 `there appears to be PostgreSQL data in: /var/lib/postgresql/data` | 本機資料卷是上一個 Postgres 主版本留的。PostgreSQL 18 起官方映像把 `PGDATA` 分到 `/var/lib/postgresql/<major>/docker`，舊版面它不會就地升級。開發資料是可拋的：`task down` 後 `docker volume rm skillhub_postgres-data` 重建；要留就先用舊主版本的映像掛上同一個卷 `pg_dumpall` |
+
+### 本機同時跑 SPA 與 API：一個旗標加一個檔案
+
+`cmd/api` 要 `DEV_CORS_ORIGIN=http://localhost:5173` 才會放行前端——**開發時兩者是不同來源，正式環境是同源**，所以這個放行逐行程選擇性開啟、其他地方一律不設（`httpx.DevCORS` 說明了為什麼不用 Vite dev-server proxy 解決）。
+
+另一半是一個檔案而不是旗標：[`apps/web/.env.development`](../../apps/web/.env.development) 只在 `npm run dev` 時把 client 指向 `http://localhost:8080`。`vite build` 跑在 production 模式、不讀它，所以建置出來的 bundle 打的是同源路徑——正式部署與淨測試模式供應的都是那個形狀。**預設之所以是這一邊**：`API_BASE_URL` 在**建置期**解析，沒有人設值時它取到的那個值，會被每一份產物帶著走。`npm run build` 會拒絕一個對外指向絕對來源的 bundle（[`scripts/check-bundle-origins.mjs`](../../apps/web/scripts/check-bundle-origins.mjs)）；刪掉 `.env.development` 只會弄壞 `npm run dev`，其他什麼都不影響。
 
 ## `automation-check` 跑了哪些檢查（名冊）
 

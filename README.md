@@ -1,91 +1,116 @@
-# Skill Hub
+<h1 align="center">Skill Hub</h1>
 
-Skill Hub 的產品核心是 Catalog、輕鬆創建與私人訂製／公開散布。互動式創作已依 [ADR-067](docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md) 接上 Python LangGraph、Go 會話與 Web 三種入口；[設定與驗證](docs/development/interactive-creation.md) 列出免費證據及待量測項目。功能預設關閉；M5 的曝光與付費實測都還沒有開。
+<p align="center">
+  An open platform for finding, building, trialling and sharing Agent Skills.
+</p>
 
-An Agent Skill platform for discovery, creation, private customization and public
-distribution. Existing search, sandbox trials and portable packages support this
-journey; conversational creation is accepted planning, not an implemented feature.
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <a href="https://github.com/ArthurC02/SkillHub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ArthurC02/SkillHub/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="README.zh-TW.md">繁體中文</a>
+</p>
 
-## Layout
+## What it does
 
-| Path | What lives there |
-| --- | --- |
-| `apps/web/` | React + TypeScript SPA (Vite) |
-| `apps/platform/` | Go control plane: `cmd/api` HTTP server, `cmd/worker` queue consumer |
-| `apps/llm/` | Python FastAPI service for LLM workloads (uv) |
-| `apps/sandbox/` | Go execution-plane provider (`sandboxd`) |
-| `packages/` | Importable libraries: committed generated TS client and Python transport models; generated subdirectories are never hand-edited |
-| `contracts/` | Cross-process interface sources of truth: OpenAPI, event and packaging schemas |
-| `db/` | PostgreSQL persistence sources: migrations, sqlc queries/config and DB tests |
-| `infra/` | Deployment, runtime image, network, node and observability configuration |
-| `tools/` | Developer, CI, data-maintenance and operations commands with their tightly coupled fixtures |
-| `docs/` | Narrative documentation and historical records, never product imports (ADR-031) |
-| `docs/plans/`, `docs/adr/` | Product plan and architecture decision records (Traditional Chinese) |
-| `docs/spikes/` | Tombstone only — the M0 exploration code was deleted once its conclusions landed in the M0 reports, ADR-013/023 and `tools/goldenset/` ([details](docs/spikes/README.md)) |
+- **Catalog and search** — keyword and semantic search over published skills, with the two combined into one ranking.
+- **Sandboxed trials** — every run executes in an isolated sandbox, and the run keeps its trace and its cost.
+- **Evaluation** — test cases and judged results per skill version, so "it got better" is a measurement rather than an impression.
+- **Immutable versions and portable packages** — a published version never changes, and a skill exports as a package that carries its licence, its provenance and, if you want, its test cases.
+- **Guided creation** — a conversational flow that drafts a skill from a plain request. Off by default.
+- **Clean test mode** — the same system, running on a machine that cannot install software or reach the internet. See [below](#clean-test-mode).
 
-## Development
+## Quick start
 
-The recommended cross-machine path is the repository's Dev Container. Native
-development needs Go, Node.js, [uv](https://docs.astral.sh/uv/), Docker, and
-[Task](https://taskfile.dev/); exact versions come from native version files and
-[`tools/toolchain.yaml`](tools/toolchain.yaml), not from this prose.
+The fastest way to see the product running is **clean test mode**: one command, no Docker, no API keys, no cost.
 
 ```bash
-task doctor              # diagnose versions and missing prerequisites
-task env:init            # create .env without overwriting an existing one
-task bootstrap           # download Go, npm and uv dependencies
-task dev                 # start secret-free Postgres and SeaweedFS
-task dev:model           # opt in to LiteLLM; requires secrets and may spend money
-task gen                 # regenerate committed outputs atomically
-task gen:openapi         # regenerate Go/TypeScript/Python contract outputs
-task gen:check           # verify generated output without changing tracked files
-task automation:check    # verify Agent docs, task descriptions and ownership markers
-task ci                  # run the deterministic, secret-free local CI sequence
-task test                # run every test suite
-task lint                # lint every application
+task bootstrap                    # Go, npm and uv dependencies
+npm ci --prefix tools/pglite      # the embedded PostgreSQL carrier
+npm --prefix apps/web run build   # clean mode serves this build itself
+task clean-mode                   # starts everything, then prints the URL
 ```
 
-On a new machine without Task, use `go -C tools/devctl run . doctor` and
-`go -C tools/devctl run . env-init` as the bootstrap escape hatch. Never fill
-real credentials into [`.env.example`](.env.example); only the ignored `.env`
-may hold local secrets.
+`task clean-mode` starts three processes and prints `open http://127.0.0.1:8080/`. It refuses to start with a named reason and the exact command to fix it when something is missing, so you can also just run it first and follow what it says.
 
-Coding Agents must read [`AGENTS.md`](AGENTS.md); detailed cross-machine setup,
-generation ownership, shared-worktree rules and troubleshooting live in
-[`docs/development/automation.md`](docs/development/automation.md).
+The app itself works straight away; the bundled demo skills only reach the catalog once the model-facing service is running too, because a package stays unindexed until it has been enriched.
 
-Each application also works with its own native toolchain — `go test ./...`,
-`uv run pytest`, `npm test` — from its own directory.
+Without [Task](https://taskfile.dev/), every command has a plain equivalent: `go -C tools/devctl run . bootstrap` and `node tools/cleanmode/start.mjs --seed`.
 
-Line endings are LF everywhere, enforced by [`.gitattributes`](.gitattributes),
-which overrides `core.autocrlf`. No per-machine git config is needed on Windows
-or anywhere else — leave `core.autocrlf` at whatever it is and clone normally.
-Without this, a CRLF checkout makes `gofmt`, `prettier --check` and
-`golangci-lint fmt --diff` report format errors on files you never touched,
-because they read the working tree directly rather than through git, while the
-same checks pass on CI's Linux runner. A clone that predates the file can be
-refreshed once with `git rm --cached -r . && git reset --hard` (commit your work
-first — this rewrites the working tree).
+## Requirements
 
-Running the SPA against a local API needs `DEV_CORS_ORIGIN=http://localhost:5173`
-on `cmd/api`: the two are separate origins in development and same-origin in
-production, so the allowance is opt-in per process and unset everywhere else.
-`httpx.DevCORS` explains why this is not a Vite dev-server proxy.
+| Tool | Needed for |
+| --- | --- |
+| Go | the control plane and the sandbox provider |
+| Node.js | the web app, the clean-mode launcher and the database carrier |
+| [uv](https://docs.astral.sh/uv/) | the Python service and its interpreter |
+| Docker | the development database, object storage and model gateway |
+| [Task](https://taskfile.dev/) | optional; every task has a plain command equivalent |
 
-That arrangement has a second half, on the web side, and it is a file rather
-than a flag: [`apps/web/.env.development`](apps/web/.env.development) points the
-client at `http://localhost:8080` for `npm run dev` only. `vite build` runs in
-production mode and never reads it, so a built bundle calls same-origin paths —
-the shape a production deployment and the clean test mode both serve. The
-default lives that way round because `API_BASE_URL` is resolved at BUILD time:
-whichever value it takes when nobody sets one is the one every artifact carries.
-`npm run build` refuses a bundle that talks to an absolute origin
-([`scripts/check-bundle-origins.mjs`](apps/web/scripts/check-bundle-origins.mjs));
-deleting the `.env.development` file breaks `npm run dev` and nothing else.
+Exact versions live in the files the tooling actually reads — `go.mod`, `.node-version`, `apps/llm/.python-version` and [`tools/toolchain.yaml`](tools/toolchain.yaml) — never in prose. `task doctor` compares your machine against them and names whatever is off.
 
-## Before you write code
+A [Dev Container](.devcontainer/README.md) is available with everything pinned and installed; clean test mode needs only Node and Go.
 
-Read [AGENTS.md](AGENTS.md) for the implementation rules, and
-[ADR-019](docs/adr/ADR-019-monorepo-structure-and-cicd.md) plus
-[ADR-031](docs/adr/ADR-031-artifact-role-repository-layout.md) for why the repository
-is laid out this way and what CI enforces.
+## Running the full system
+
+Clean test mode swaps three pieces out. To run the real thing, start the infrastructure and then the four services:
+
+```bash
+task doctor      # versions and prerequisites
+task env:init    # create .env from .env.example; never overwrites an existing one
+task bootstrap   # dependencies; also points git's hooksPath at .githooks
+task dev         # Postgres and SeaweedFS containers, no secrets, no cost
+```
+
+| Service | Command | Port |
+| --- | --- | --- |
+| Control plane API (Go) | `go -C apps/platform run ./cmd/api` | 8080 |
+| Queue worker (Go) | `go -C apps/platform run ./cmd/worker` | — |
+| Model-facing service (Python) | `uv run uvicorn skillhub_llm.app:app` in `apps/llm` | 8000 |
+| Sandbox provider (Go) | `go -C apps/sandbox run ./cmd/sandboxd` | 9000 |
+| Web app (React) | `npm --prefix apps/web run dev` | 5173 |
+
+The API needs `DATABASE_URL`; the sandbox provider refuses to start without `SKILLHUB_SANDBOX_TOKEN`. [`.env.example`](.env.example) lists every variable — fill values into the ignored `.env`, never into the example.
+
+Model calls go through a gateway that is **off by default**. `task dev:model` starts it and checks that the required keys are present; anything that reaches a provider after that costs money. Everything else in this section is free.
+
+Running the SPA against a local API also needs `DEV_CORS_ORIGIN=http://localhost:5173` on the API process: in development the two are separate origins, in production they are not, so the allowance is opt-in per process.
+
+## Clean test mode
+
+Skill Hub normally needs a real database, real object storage and a real isolated sandbox. Clean test mode is the **same program** with those three swapped for stand-ins that run in-process: PostgreSQL compiled to WebAssembly, an in-memory object store, and a local-process execution driver. It exists because some demonstrations happen on machines that cannot install software and have no general network access.
+
+```bash
+task clean-mode
+```
+
+> [!WARNING]
+> This mode is weaker than production on purpose, and it says so on screen: **the sandbox provides no isolation**, presigned object URLs are **not verified**, and the database serves **a single connection**, so concurrency does not behave the way production does. Never point it at untrusted skills or real data.
+
+Setting no flag changes nothing: without `SKILLHUB_CLEAN_MODE` the program builds exactly the production wiring.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `apps/` | The four deployable programs: `web`, `platform`, `llm`, `sandbox` |
+| `packages/` | Libraries other programs import, including generated API clients |
+| `contracts/` | The source of truth for every cross-process interface (OpenAPI, events, packaging) |
+| `db/` | Migrations, queries and database tests |
+| `infra/` | Compose files, runtime images, networking and observability |
+| `tools/` | Developer, CI and operations commands |
+| `docs/` | Architecture decisions, plans and runbooks |
+
+## Documentation
+
+- [Architecture decisions](docs/adr/README.md) — why the system is shaped the way it is.
+- [Development handbook](docs/development/automation.md) — setup, code generation, CI and troubleshooting.
+- [Runbooks](docs/runbooks/) — what to do when something breaks.
+- [`AGENTS.md`](AGENTS.md) — the conventions and hard rules, written for coding agents and equally binding on people.
+
+## Contributing
+
+Issues and pull requests are welcome. Before opening one, read [`AGENTS.md`](AGENTS.md) for the conventions this repository enforces, and run `task ci` locally — it is the same deterministic, secret-free sequence CI runs.
+
+## License
+
+[MIT](LICENSE)
