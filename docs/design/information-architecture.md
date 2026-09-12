@@ -11,9 +11,9 @@
 | **§0 規則** | **本檔** | **改程式。** 一條新路由要先過 §0，過不了就先改 §0.2 的偏離帳並寫下理由——比照 `db/query-owners.yaml` 的 `allow:` 與 system.md §5 |
 | §1～§4 的表（清單、導覽、連結、網址狀態） | `router.tsx` 與各頁 | 改本檔。它們是**盤點**，不是政策 |
 
-**§1、§2.1、§2.3、§2.4、§4 與 §0.1 R2／R3 由 [`ia.test.ts`](../../apps/web/src/ia.test.ts) 比對**〔2026-09-03 補：§4 的網址狀態表也有機器且是**雙向**比對，§4 自己早就寫了，這一句與 §6 都沒跟上〕——比照 `design-system.test.ts`：文件持有政策，程式持有事實，測試比對兩者。其餘章節沒有機器（見 §6），所以每一列都註明從哪裡讀來的，讓下一個人有辦法自己重數一次。
+**§1、§2.1、§2.3、§2.4、§4 與 §0.1 R2／R3 由 [`ia.test.ts`](../../apps/web/src/ia.test.ts) 比對**（§4 的網址狀態表是**雙向**比對）——比照 `design-system.test.ts`：文件持有政策，程式持有事實，測試比對兩者。其餘章節沒有機器（見 §6），所以每一列都註明從哪裡讀來的，讓下一個人有辦法自己重數一次。
 
-> **這條規矩是本檔自己交的學費。** 初版寫於 2026-08-23 21:02，**21:24 就過期了**——另一批把 M5 的生成入口掛上了兩個畫面，而 §7 還在說它不存在。當時沒有任何東西會 FAIL。§2.4 與那四項比對就是那 22 分鐘換來的。
+> **沒有機器守的章節會安靜地過期。** 本檔曾經在寫完二十幾分鐘內就失準——另一批把生成入口掛上了兩個畫面，而 §7 還在說它不存在，當時沒有任何東西會 FAIL。§2.4 與上面那幾項比對就是為了這件事加的。
 
 產品領域語言與價值流的定義在 [ADR-038](../adr/ADR-038-platform-product-domain-language-and-value-stream-navigation.md) §2；本檔用它的價值流當第一層分組，而不是用 `/workspace` 與 `/lab` 這兩個現行網址前綴——**那兩個前綴本身就是本檔第一個要記的問題**（§5 IA-2）。
 
@@ -46,16 +46,16 @@
 機器：**有**（0 入邊與 1 入邊兩份清單都雙向比對；具名與否是判斷題，機器只保證「有沒有出現在表上」）。
 
 **R4. 「你在看哪一份東西」進網址，「你偏好怎麼看」不進。**
-出處：現行 `router.tsx` **八條** `validateSearch` 實際遵守的判準，見 §4。〔2026-09-03 重數：17 條路由、8 條帶 `validateSearch`；原寫七條〕
+出處：現行 `router.tsx` 的 `validateSearch` 實際遵守的判準，見 §4。
 機器：**沒有**。現行爭議：IA-4（閱讀模式該歸哪一邊，`05` 待裁定）。<br>**2026-09-03 補一句**（[ADR-065](../adr/ADR-065-hot-path-text-budget-and-the-fourth-disclosure-mechanism.md) 決策 3、6）：Tip 的開合與 `<details>` 的開合同屬「你偏好怎麼看」，**不進網址**；「記住已讀」若被裁定要做（`05` R-42 (a)），它的狀態也只能住在瀏覽器裡，不能住在網址裡——一個貼出去的連結對收件人不得少一段文字。
 
 **R5. 標題要說出這一頁回答什麼，不用容器詞。**
 出處：ADR-038 §3 規則 2、規則 5。
 **「詳情」「管理」「中心」這類容器詞不是名字**——它們是「我還沒決定這一頁在回答什麼」的另一種寫法，所以 R5 與 R1 總是一起被違反。
 
-> **R5 不是要求把 `Run` 翻成「試跑」。** 本檔初版把這件事寫成「UI 自成第三套用語」，那是一個誤會，已於 2026-08-23 訂正（§3）：ADR-038 §3 規則 2 定的是**概念的中文名**，沒有禁止英文術語，而 AGENTS.md 的慣例本來就保留 `Run`。**「Run 歷史」沒有問題，「Run 詳情」有問題**，而有問題的是後半不是前半。
+> **R5 不是要求把 `Run` 翻成「試跑」。** ADR-038 §3 規則 2 定的是**概念的中文名**，沒有禁止英文術語，而 AGENTS.md 的慣例本來就保留 `Run`。**「Run 歷史」沒有問題，「Run 詳情」有問題**，而有問題的是後半不是前半。
 
-機器：**沒有**。~~現行違規：IA-8（`/lab/datasets`）~~ **IA-8 已於 2026-08-24 修正**（`上傳 Dataset` → `Dataset`）；**IA-3 已於 2026-08-23 修正**（`Run 詳情` → `Run 結果`）。
+機器：**沒有**。IA-8（`/lab/datasets` 的 `上傳 Dataset`）與 IA-3（`Run 詳情`）都已修正。
 
 **R6. 一個入口是否出現，可以是旗標；但旗標本身必須寫在 §2.4。**
 出處：[ADR-052](../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)（開工不等於曝光）。
@@ -84,7 +84,7 @@
 
 ## 1. 現況：路由清單
 
-`__outlines__/` 是 **24** 個檔〔2026-09-03 重數，原寫 20〕，`rendered.spec.ts` 說「18 個位址」——差額不是矛盾：`/` 有帶查詢與不帶查詢兩種、`/runs/$runId` 的兩種閱讀模式各存一份快照、還有一個不是路由的回報問題面板，**以及非成功態與目錄態各自存一份**（例如 `workspace-skills-401`、`lab-run-loading`、`workspace-runs-empty`、`回報問題-驗證訊息`）。**快照認得的狀態比網址多**，這件事本身是 §5 IA-4。
+`__outlines__/` 的快照份數多於位址數，而這不是矛盾（份數以 §6 為準）：`/` 有帶查詢與不帶查詢兩種、`/runs/$runId` 的兩種閱讀模式各存一份快照、還有一個不是路由的回報問題面板，**以及非成功態與目錄態各自存一份**（例如 `workspace-skills-401`、`lab-run-loading`、`workspace-runs-empty`、`回報問題-驗證訊息`）。**快照認得的狀態比網址多**，這件事本身是 §5 IA-4。
 
 | 位址 | 頁面元件 | 需求 ID（見表下訂正） | ADR-038 價值流／產品領域 |
 | --- | --- | --- | --- |
@@ -106,26 +106,22 @@
 | `/lab/run` | `RunPreflight` | 03:TEST-008／009（＋02:TEST-005 的同意綁定） | 試跑與改善／Skill 試跑執行 |
 | `/runs/$runId` | `RunTrace` | 03:TRACE-006／007 **＋ EVAL-001／002** | 試跑與改善／**執行證據＋成果判定（兩個）** |
 | `/runs/$runId/compare` | `RunCompare` | 02:EVAL-003 | 試跑與改善／成果判定與改善 |
-| `/admin` | `AdminHome` | 02:OPS-001 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
-| `/admin/accounts` | `AdminAccounts` | 02:OPS-002／OPS-003 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
-| `/admin/skills` | `AdminSkills` | 02:OPS-004 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
-| `/admin/dispatch` | `AdminDispatch` | 02:OPS-005 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
-| `/admin/rosters` | `AdminRosters` | 02:OPS-005 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
-| `/admin/audit-log` | `AdminAuditLog` | 02:OPS-006 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
-| `/admin/cost-statistics` | `AdminCostStatistics` | 02:OPS-007 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
-| `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔2026-09-12 新增：組裝層，不是 Bounded Context，見 [ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md) 決策 4；另見 [ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7〕 |
+| `/admin` | `AdminHome` | 02:OPS-001 | 產品營運／**營運後台** |
+| `/admin/accounts` | `AdminAccounts` | 02:OPS-002／OPS-003 | 產品營運／**營運後台** |
+| `/admin/skills` | `AdminSkills` | 02:OPS-004 | 產品營運／**營運後台** |
+| `/admin/dispatch` | `AdminDispatch` | 02:OPS-005 | 產品營運／**營運後台** |
+| `/admin/rosters` | `AdminRosters` | 02:OPS-005 | 產品營運／**營運後台** |
+| `/admin/audit-log` | `AdminAuditLog` | 02:OPS-006 | 產品營運／**營運後台** |
+| `/admin/cost-statistics` | `AdminCostStatistics` | 02:OPS-007 | 產品營運／**營運後台** |
+| `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔圖表見 [ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md) 決策 4〕 |
 
-> **訂正（2026-08-25）：上表第三欄原本寫「取自 `router.tsx` 檔頭」，而那個檔頭不存在。** `router.tsx` 的開頭是 import，需求 ID 逐條寫在各個 `createRoute` 上方的註解裡——來源是**十七條路由裡的十三條註解**，不是一處。
+> **營運後台是組裝層，不是 Bounded Context**（[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7）——上表 `/admin/*` 那幾列的「價值流／Bounded Context」欄寫的是它服務的價值流。
 >
-> **另外四列沒有任何註解可抄**：`/skills/$skillId`、`/skills/$skillId/files`、`/workspace/import`、`/lab/test-cases/$testCaseId` 的路由定義各只有三行。那四格的需求 ID 是本檔自己推的，所以它們標的是前綴（`SKILL`、`TEST`）而不是號碼——**看起來與另外十三格同一個來源，其實不是**。
+> **這一欄只記在本表。** 全 repo 註解清理拿掉了 `router.tsx` 逐路由的需求 ID 註解，路由與需求 ID 的對照今天只剩這裡，**沒有第二個作者，也沒有機器**——改路由時要自己回來改這一格。
 >
-> 同一批訂正 `/workspace/account` 那一列：原文寫 ~~`WS、NFR`~~，註解寫的是 `CORE-007／02:SEC-006`。
->
-> **2026-09-11 起這一欄只記在本表**：全 repo 註解清理拿掉了 `router.tsx` 逐路由的需求 ID 註解，路由與需求 ID 的對照今天只剩這裡。
->
-> **這一欄沒有機器**（§6：`ia.test.ts` 只比對位址那一欄），四個缺口就是那件事長出來的樣子。
+> **這一欄沒有機器**（§6：`ia.test.ts` 只比對位址那一欄）。
 
-**沒有位址的頁面一個**：[`RunEvaluation.tsx`](../../apps/web/src/pages/RunEvaluation.tsx)（**全 app 最大的幾個檔案之一**——這裡原本寫「31 KB，全 app 第二大」，而檔案大小每次改動都會讓那句話再錯一次；今天約 38 KB、排第五）。它以 `EvaluationPanel` 的形式長在 `/runs/$runId` 裡，並且把 `RUN_STATUS_LABEL` 供給另外四個檔。詳見 §5 IA-3。
+**沒有位址的頁面一個**：[`RunEvaluation.tsx`](../../apps/web/src/pages/RunEvaluation.tsx)（全 app 最大的幾個檔案之一）。它以 `EvaluationPanel` 的形式長在 `/runs/$runId` 裡，並且把 `RUN_STATUS_LABEL` 供給另外四個檔。詳見 §5 IA-3。
 
 **深度最多三層**（`/skills/$id/package`），沒有一條路由需要記住兩個以上的 id。
 
@@ -155,11 +151,10 @@ SkillDetail ────► /skills/$id/files, /skills/$id/package, /lab/test-ca
 SkillFiles ─────► /skills/$id
 ImportSkill ────► /skills/$id
 Packaging ──────► /skills/$id, /workspace/downloads
-Downloads ──────► /skills/$id
+Downloads ──────► /skills/$id, /workspace/skills
 WorkspaceSkills ► /skills/$id, /skills/$id/files, /skills/$id/package,
                   /lab/test-cases, /workspace/runs, /workspace/downloads,
-                  /workspace/account, /policy      （2026-09-07 少了 / 與
-                  /workspace/import，見下方第二段補記）
+                  /workspace/account, /policy
 WorkspaceRuns ──► /runs/$id, /lab/test-cases
 TestCases ──────► /lab/test-cases/$id, /lab/datasets, /lab/run, /runs/$id, /skills/$id
 DatasetUpload ──► /lab/test-cases, /lab/test-cases/$id
@@ -172,28 +167,17 @@ DataPolicy ─────► /workspace/{skills,runs,downloads,account}
 GenerateSkill ──► /skills/$id                 （旗標後面的元件，§2.4）
 GeneratedNotice ► /lab/run                    （同上）
 CreateHub ──────► /, /workspace/import        （渲染在 /workspace/skills 之內）
+CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
+                                              （渲染在 /workspace/creations 之內）
 ```
 
-> **補記（2026-09-03）：`/workspace/skills` 的「建立中心」。**
+> **`/workspace/skills` 的建立中心（`components/CreateHub.tsx`）。** 它把三條建立路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從目錄挑一個來改** → `/`（Fork 需要封測邀請，卡片上直接說）、**依任務描述生成一個** → 旗標後面的那個掛載點（§2.4），不新增邊。首頁的 hero 指著 `/workspace/skills#create`。
 >
-> `components/CreateHub.tsx` 是 `/workspace/skills` 上的一個區塊，位置**由清單空不空決定**（**2026-09-07 訂正**：本句原本寫「`<h1>` 之下、清單之上」，那在 2026-09-03 落地時為真，當天起就不再為真的是「清單之上」那一半——清單有東西的時候它排在清單**之後**。理由是 system.md §3 checklist 第 1 條，它的「不過的樣子」逐字是「一整排控制項排在答案前面」；清單是空的時候它仍然排在最前面，因為那時它就是這一頁的答案。兩個掛載點而不是 CSS `order`，因為 `order` 只改視覺順序不改 DOM 順序）（`#create`，首頁的 hero 指著 `/workspace/skills#create`），把三條建立路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從目錄挑一個來改** → `/`（Fork 需要封測邀請，卡片上直接說，§2.2 第三向的強制者是**平台**）、**依任務描述生成一個** → 沒有新的邊，那是 `GenerateSkill` 原本就在這一頁的那個掛載點被搬進卡片裡，**旗標與 §2.4 一個字都沒有改**。
+> **掛載位置由清單空不空決定**：清單空的時候它排在最前面——那時它就是這一頁的答案；清單有東西的時候排在清單**之後**，因為 [system.md](system.md) §3 checklist 第 1 條不准「一整排控制項排在答案前面」。用兩個掛載點而不是 CSS `order`，因為 `order` 只改視覺順序、不改 DOM 順序。空狀態只留 §2.9 的缺席型別詞，不再用另一種措辭把同樣兩條路再講一次。
 >
-> **三條邊裡有兩條是既有的**：`WorkspaceSkills ► /` 與 `WorkspaceSkills ► /workspace/import` 上面那一列本來就有（空狀態那句「或匯入自己的套件」，IA-9）。新的是**來源檔**——`CreateHub.tsx` 讓這兩個位址的 §2.3 入邊各從 2 變 3（`ia.test.ts` 以不同來源檔計數），而 §2.3 只對 0 與 1 那兩列斷言，所以那裡是輸出不是失敗。
->
-> **續（2026-09-07）：那兩條既有的邊走了，因為它們變成了同一句話的第二份。**
->
-> 上面那一段記的是 09-03 當天的狀態：`WorkspaceSkills` 的空狀態與 `CreateHub` 各講一次同樣的兩條路，兩個來源檔，§2.3 的入邊各 3。**它漏看了一件事**——空狀態那一句只在 `!hasSkills` 時渲染，而那正是 `CreateHub` 掛在它**正上方**的那個條件，所以讀者不是在兩個時刻各看到一次，是在同一屏裡連著看到兩次：先是兩張卡（「匯入 Skill」連 `/workspace/import`、「到目錄挑一個」連 `/`），緊接著一句用不同措辭再說一次同樣兩條路的散文。外部評閱把它讀成「我到底是在填表還是在看清單」。
->
-> 空狀態現在只留 §2.9 的缺席型別詞（「這裡是空的代表你還沒有建立過，不是清單讀取失敗」），那一半 §2.10 第 10 項不准折疊，也就留在句子裡。兩個位址的頁內入邊各回到 **2 個來源檔**（`/workspace/import`：`Home.tsx` 的 `no_results` ＋ `CreateHub.tsx`；`/`：`Home.tsx`、`Compare.tsx` ＋ `CreateHub.tsx` 共 3），§2.3 只斷言 0 與 1 那兩列，**IA-9 要的「第二條頁內入邊」性質沒有變，換的是承載它的那一個檔案**。
->
-> 旗標讀在 `pages/WorkspaceSkills.tsx`、以 prop 傳進來，不在 `CreateHub` 裡讀：`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊是**以呼叫 `useGenerateEntryPoint` 的檔案為鍵**且只能變短，把讀移進元件會同時讓名冊上的那一列腐爛、又要在一張不能長的清單上加第四個名字。
+> **旗標讀在 `pages/WorkspaceSkills.tsx`、以 prop 傳進元件**：`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊以呼叫 `useGenerateEntryPoint` 的檔案為鍵，且只能變短。
 
-> **訂正（2026-08-25）：這張圖漏了三條邊，而三條都是同一個原因。**
->
-> 1. **`Home ► /workspace/import`**：那正是 08-24 關掉 IA-5 的那條邊（§5 IA-5、§2.3 的 0 列因它清空）。修好了程式而沒改這張圖，圖就變成了問題還在的證據。
-> 2. **`components/` 的兩個來源**（`GenerateSkill`、`GeneratedNotice`）：這張圖原本只讀 `pages/`，而 §2.3 的反向連結數是**連 `components/` 一起數的**（`ia.test.ts` 掃兩個目錄）。所以在此之前，**§2.2 重現不出 §2.3 的數字**——`/skills/$skillId` 的 10 與 `/lab/run` 的 4 各少一。
->
-> **成因寫在 §6：§2.2 在那張強制對照表上一列都沒有。** §2.1、§2.3、§2.4 都有機器，夾在中間的 §2.2 沒有，於是它是這一節唯一會無聲過期的一格。
+> **這張圖是本節唯一沒有機器守的一格**（§6 上它一列都沒有，而 §2.1、§2.3、§2.4 都有），所以它會無聲過期。它要連 `components/` 的元件一起畫——§2.3 的反向連結數就是這樣數的（`ia.test.ts` 掃 `pages/` 與 `components/` 兩個目錄），只畫 `pages/` 會重現不出那些數字。
 
 ### 2.4 條件入口（旗標後面的入口）
 
@@ -275,7 +259,7 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | `/admin/skills` | `q` | 你在治理哪一個 Skill（`02:OPS-004`）：一個 UUID 就是那一個，其他字串是名稱片段；清單上「處理這一個」把 `q` 換成那個 UUID，所以處理中的那一個可以連結、撐得過重新整理 |
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
 
-**其餘~~九~~**十**條路由沒有 `validateSearch`**〔2026-09-03 重數：17 − 8 = 9；原寫十條。**2026-09-09 再重數：18 − 8 = 10**，`/workspace/creations` 新增且不帶參數。**2026-09-12 再重數：25 − 9 = 16**，後台七條只有 `/admin/skills` 帶參數；同日稍晚 27 − 10 = 17，`/admin/trends` 帶 `days`〕（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
+**其餘十六條路由沒有 `validateSearch`**（26 條路由減去上表的 10 條）（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 
@@ -518,36 +502,13 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 
 ---
 
-## 8. 現況與先後
+## 8. 查核怎麼做
 
-> **訂正（2026-08-25）：本節整節與 §5 相反，而且它的算術在寫下的當天就錯了。**
->
-> 下表原本把 IA-2、IA-5、IA-7、IA-8 標成 ⏳，並寫「剩四項」——但表上是 3 個 ✅ 與 **5** 個 ⏳，四項從第一天起就少數了一項。四項在 §5 都各自有結案段落（08-24），2026-08-25 逐項複驗於程式：IA-2 由 §0.1 R2 回答並由 `ia.test.ts` 守著；IA-5 的匯入出口在 `pages/Home.tsx` 的 `no_results`，**不分旗標**都渲染（訪客另有一句話）；IA-7 三頁裁定為 R3 的「具名」那一支；IA-8 的 `<h1>` 是 `Dataset`（`pages/DatasetUpload.tsx`）。
->
-> 本節還把**最高優先**指給了「IA-5 的 `filtered_out` 那一格」——而 §5 IA-5 明文**裁定為不加**（把人送去匯入一個目錄裡已經有的東西，比沒有出口更壞）。**這份清單上排第一的那一項，是同一份文件上一節已經否決掉的東西。**
->
-> 以下是 2026-08-25 覆核後的狀態。
+§5 的 IA-1～IA-10 全數已關，逐項的裁定、理由與落點都在 §5，這裡不複述。
 
-**狀態**：
+**兩種查核找得到的東西不一樣，兩種都要做**：逐項讀這份文件與 `router.tsx`，找的是「哪一條規則被違反了」；把主動線當成一個新使用者實際走一次，找的是「規則沒說到的地方」。IA-1～IA-9 來自前者，IA-10 來自後者——它被走出來的那天，前九項全結、四份機器的測試全綠。
 
-| 項 | 狀態 | 誰能決定 |
-| --- | --- | --- |
-| **IA-3** 標題是容器詞 | ✅ **已修**（`Run 詳情` → `Run 結果`）。原本被寫成 R1 違規，實際是 R5 | — |
-| **IA-4** 閱讀模式該不該可連結 | ✅ **已裁定**：不進網址，依 §0.1 R4。system.md §7.1 已改 | — |
-| **IA-1** 探索不在導覽列 | ✅ **已裁定**（產品負責人）：不進導覽列。已升成 §0.1 **R7** 並由機器守著 | — |
-| **IA-5** 空狀態的出口 | ✅ **已關**（2026-08-24）：`no_results` 不分旗標都有匯入出口，訪客另有一句話。`filtered_out` **裁定為不加**（§5 IA-5） | — |
-| **IA-2** 四個網址前綴 | ✅ **已解決**：判準寫成 §0.1 R2，偏離帳三列且只能變短，`ia.test.ts` 守著兩個可機械判定子句 | — |
-| **IA-7** 三個單一入口 | ✅ **已裁定**（2026-08-24）：三個都是 R3 的「具名」那一支，逐項理由在 §5 | — |
-| **IA-8** 網址是名詞、標題是動詞 | ✅ **已修**（2026-08-24）：`上傳 Dataset` → `Dataset`。`/workspace/import` 的同型問題已裁定不排工（見 §3 與 §5 IA-8） | — |
-| **IA-6** 沒有登出狀態的資訊架構 | ✅ **已裁定**（2026-08-25，查核當日） | 查核做了（逐路由 17 列），裁定為**不加 router 守衛、不改導覽列**，由 401 這個具名狀態在讀取匯流處說一次。查完之後它不是原本以為的那個問題 |
-| **IA-9** `/workspace/import` 欠第二條頁內入邊 | ✅ **已解決**（2026-08-25，補號當日） | `/workspace/skills` 空狀態那句「或匯入自己的套件」變成連結，文案未改。規則未動，程式動了 |
-| **IA-10** `?skill=` 與建立表單的選單對「這個 Skill」定義不同 | ✅ **已解決**（2026-09-01，入列即結案） | 每一個位址與每一條邊都正確，R1～R7 沒有一條被違反——缺的是本檔沒寫過的一件事：同一頁的範圍參數與選擇器必須對同一個集合說話。**只有一個實例，故不升成 R8** |
-
-**十項全數已關**（IA-1～IA-10，其中兩項是本檔自己的訂正）。**這不代表資訊架構沒有問題了**——它代表這兩輪查核提出的十項都有了答案；下一輪查核會提出新的，而 §6 那張表上仍然有好幾列寫著「沒有機器」。<br>**IA-10 是下一輪的第一項，而它的來歷值得記**：前九項是逐項讀這份文件與 `router.tsx` 讀出來的，**IA-10 是把主動線當成一個新使用者實際走一次走出來的**——走的當天，本節前九項全結、四份機器 64 支全綠。**逐項查核找的是「哪一條規則被違反了」；走一次找的是「規則沒說到的地方」**，而 IA-10 正是後者。
-
-**先後仍依 system.md §0 的優先序，不依工作量**：~~排最前面的是 **IA-9**~~（08-25 同日結案），~~所以現在只剩 **IA-6 的查核**~~（同日稍晚也做完並裁定了）。<br>**08-25 記一件與 IA-6 有關、而且是這次動手才看清楚的事**：IA-6 曾被當成「導覽列上那個 `/workspace/import` 連結對訪客是錯的」這一個小缺陷，所以看起來像是可以繞過設計決定機械修掉的。**不行。** 五個導覽項**全部**要求 session，所以只修匯入那一項會讓另外四項繼續騙人（而且違反在匯流處修一次的原則），五項一起修則訪客的導覽列沒有任何可用項——**那就等於畫出了登出狀態的導覽列，也就是 IA-6 本身**。四種可能的裁定裡，前兩種（守衛導向登入／隱藏）要求連結消失，後兩種（停用加說明／各頁畫 401）要求連結留著，**沒有任何修法能同時活過四種**。所以這裡沒有與裁定無關的最小修法，本檔維持不代簽。<br>**同日稍晚的後續，而且它推翻了上面那段的前提**：真的去查了之後，四種裁定的那個框架**本身就選錯了問題**。導覽列該不該變只是表象；量出來的是十一處呼叫點把 `not authenticated` 印在中文句子裡、兩頁把可操作的表單畫給訪客再事後拒絕、一頁把訪客送去找查詢參數。**修對了抵達，導覽列就不必動**——上面那個「五項一起修就等於畫出登出導覽列」的推論成立，但它問的是一個不需要回答的問題。**記著這一段而不是刪掉它**：它是一次正確的拒絕（在沒有查核的情況下不代簽是對的），同時也是一次證明——**沒有查核的時候，連問題是什麼都會猜錯**。§0.2 偏離帳裡 `/lab/run` 那一列標的「待修，成本低」不在這張表上，它是帳不是問題。
-
-**這份清單上現在沒有任何一項在等簽名**——但 IA-6 查核之後會需要一個設計決定，那與簽名不同：它要的是一個人畫出登出狀態該長什麼樣，不是一個人核可一個已經想好的方案。
+**全綠不等於沒有問題**：§6 那張表上仍有好幾列寫著「沒有機器」，而 §2.2 的連結圖是其中最會無聲過期的一格。
 
 ## 9. 互動創作會話（尚未實作）
 

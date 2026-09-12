@@ -20,7 +20,7 @@
 | 互動創作 | Python LangGraph 分階段編排、Go／Postgres 會話快照與事件；已接線，曝光與品質驗收仍待核准，見[開發與驗證](interactive-creation.md) | ADR-067 |
 | 契約 | OpenAPI-first；Go 側 models-only，handler 手寫並逐條對齊 | ADR-016、030 |
 
-**Local Runner 與遠端 MCP 已移出 MVP 首發**（決策保留於 ADR-006）。
+**Local Runner 與遠端 MCP 已移出 MVP 首發**（Local Runner 的決策在 ADR-006；遠端 MCP 的範圍在 [`01` §8](../plans/01-goals-and-plan.md)）。
 
 ## 三層指示
 

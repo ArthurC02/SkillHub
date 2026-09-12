@@ -42,7 +42,7 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 
 前兩種關係的理由與強制規則見 ADR-032；Shared Kernel 的單一範圍與組裝位置見 ADR-040。若需要新增跨界 import，必須同批更新 ADR-032 附錄 A 與 `apps/platform/.golangci.yml`，讓 depguard 反映新關係。
 
-### 同步 owner 讀取的兩種形狀（2026-09-03 新增）
+### 同步 owner 讀取的兩種形狀
 
 上表第一列在程式裡有兩種寫法，**判準是對方回給你的是不是 generated row，或建立在 generated row 之上的型別**：
 
@@ -51,7 +51,7 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 
 兩件容易做錯的事：
 
-- **Facts 只放你真的會用到的欄位。** 同樣是讀 Skill，`catalog.SkillFacts` 有十二個欄位、`eval.SkillFacts` 只有四個。把 owner 的欄位抄滿，等於把它的形狀複製一份放在自己家，對方改欄位你還是得跟著改——ACL 的意義就沒了。
+- **Facts 只放你真的會用到的欄位。** 同樣是讀 Skill，`catalog.SkillFacts` 抄了十幾個欄位，`eval.SkillFacts` 只有四個。把 owner 的欄位抄滿，等於把它的形狀複製一份放在自己家，對方改欄位你還是得跟著改——ACL 的意義就沒了。
 - **翻譯只發生在 composition root。** `wireXxxReaders(...)` 與 `xxxFacts(...)` 轉換函式住在 `app.go`；一旦下放到領域套件，那個套件就得 import 對方，整個做法就白做了。
 
 同理，**不要靠讀合作者的內部欄位來確認它接好了**（`s.TestLab.Pool != nil` 這種寫法）：知道對方有一個 `Pool`，就是知道對方怎麼實作。守衛只判 `s.TestLab == nil`。
@@ -73,9 +73,9 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 
 完整拓撲理由、禁止把所有共用碼塞入 Shared Kernel 的原因，見 ADR-040。不要為了外觀再建立技術三層目錄；這不會強化 owner boundary，反而擴大 Go export surface 與 cycle 風險。
 
-### 第一層目錄 → 底下有哪些 package → 它們是什麼邊界（2026-08-29 新增）
+### 第一層目錄 → 底下有哪些 package → 它們是什麼邊界
 
-上面四段是規則，這張表是**規則的當前實例**——`apps/platform/internal/` 的七個第一層目錄，一列一個。**寫它的理由是稽核指出的一件事**：一個新來的人（或 Agent）要判斷「我這支檔案該放哪」時，讀到的是四段散文加一份 ADR 的十九列對照表，而**兩者之間沒有一個「先看目錄」的入口**。
+上面四段是規則，這張表是規則的當前實例：`apps/platform/internal/` 的七個第一層目錄，一列一個。判斷「我這支檔案該放哪」時先看它。
 
 | 第一層目錄 | 底下的 package | 邊界類型 | 這一層的判準（一句話） |
 | --- | --- | --- | --- |

@@ -13,7 +13,7 @@
 
 Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS／Linux 的 nested generator 都看到同一個 `/workspace`；其 images/volumes 不借用 host daemon。Privileged container仍是高權限，只對可信任的 SkillHub repo 使用，細節見 `.devcontainer/README.md`。它不執行不受信任 Skill，也不取代 gVisor 部署驗收。
 
-此處不用 host socket是實測結論：Docker-outside-of-Docker會讓內層 daemon把 container的 `/workspace` 當成物理主機路徑，第一次 clean-container `gen:check` 因此找不到 sqlc config。DinD修正後，以預設非 root `vscode` 使用者啟動、獨立 `/var/lib/docker` volume重跑 doctor與四個 generator，全部通過且零 drift。Python／Go generator image各自使用 `tools/codegen/<lang>` 作最小 build context；不得改回 repo root context，否則 builder會遍歷無關 Dataset／Trace sample與本機依賴目錄。
+**不要改用 host socket**：Docker-outside-of-Docker 會讓內層 daemon 把 container 的 `/workspace` 當成物理主機路徑，generator 因此找不到 sqlc config。容器以預設非 root `vscode` 使用者啟動，Docker 資料放獨立 volume。Python／Go generator image 各自以 `tools/codegen/<lang>` 作最小 build context；**不得改回 repo root context**，否則 builder 會遍歷無關的 Dataset／Trace sample 與本機依賴目錄。
 
 ### Native fallback
 
@@ -25,7 +25,7 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 
 語言版本由 `go.mod`、`.node-version`、`.python-version` 擁有；其他工具與 generator image 由 `tools/toolchain.yaml` 擁有。不要從 README 文字或 Agent 記憶抄版本。
 
-**釘選的版本要有人去啟用它，否則 doctor 的 FAIL 是唯一的提醒**：`.node-version` 只是一個寫著數字的檔案，不會讓任何 shell 換版本。2026-09-10 這台開發機上 `devctl doctor` 的 node 那一列長期是 FAIL——CI 跑 v22.14.0，本機跑 v25.0.0，而**版本釘選存在的理由就是不要有這條落差**。查下去發現 `fnm` 早就裝好、22.14.0 也早就是它的 default，**只是沒有任何一個 shell 在啟動時呼叫它**；Windows 上還多一層：機器層 `PATH` 排在使用者層前面，所以 `C:\Program Files\nodejs\` 一定贏過任何使用者層的 shim 目錄。修法是在 shell 啟動檔裡掛 `fnm env --use-on-cd`（`--use-on-cd` 讓它跟著目錄走，不會把整個帳號釘死在一個版本），**不是再裝一次 Node**。Git Bash 這邊還要注意：Agent 的每一次 `bash -c` 都是非互動 shell，`~/.bashrc` 只透過 `BASH_ENV` 才會被讀到，而那表示**帳號上每一個非互動 bash 都會源它**——所以那個檔案裡任何一行輸出都會混進別的腳本的 stdout，必須全程沉默。
+**釘選的版本要有人去啟用它，否則 doctor 的 FAIL 是唯一的提醒**：`.node-version` 只是一個寫著數字的檔案，不會讓任何 shell 換版本。裝了 `fnm` 也不夠——**要有人在 shell 啟動時呼叫它**（`fnm env --use-on-cd`，跟著目錄走，不把整個帳號釘死在一個版本）。Windows 上還多一層：機器層 `PATH` 排在使用者層前面，所以機器層安裝的 Node 目錄一定贏過任何使用者層的 shim 目錄，**再裝一次 Node 不會解決這件事**。Git Bash 這邊要注意：Agent 的每一次 `bash -c` 都是非互動 shell，`~/.bashrc` 只透過 `BASH_ENV` 才會被讀到，而那表示**帳號上每一個非互動 bash 都會源它**——所以那個檔案裡任何一行輸出都會混進別的腳本的 stdout，必須全程沉默。
 
 **換過 Node 版本之後 `node_modules` 不算數**：舊的樹是在舊版本底下裝的，要重跑 `task bootstrap` 再驗一次，否則綠燈只證明「在另一個 runtime 上是綠的」。
 
@@ -38,6 +38,8 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 | `task bootstrap` | 否 | 否 | 否 | Go download、npm ci/build、uv frozen sync |
 | `task dev`／`dev:core` | 是 | 否 | 否 | Postgres＋SeaweedFS |
 | `task dev:model` | 是 | **是** | 後續模型呼叫會 | 先 fail-closed 檢查 OPENAI/LiteLLM 變數，再啟動 gateway |
+| `task dev:llm` | 否 | **是** | 視後續呼叫而定 | 讀閘道的管理金鑰，替 `apps/llm` 簽一把有預算上限的 Virtual Key 再啟動它；沒設閘道變數就直接以空金鑰啟動 |
+| `task clean-mode` | 否 | 否 | 否 | 淨測試模式：內嵌資料庫、行程內物件儲存、本機行程 Driver，不碰閘道 |
 | `task dev:observability` | 是 | 否 | 否 | `docker compose --profile observability … up -d prometheus`：起一個**開發機**的 Prometheus，讓 `infra/observability/alerts.yml` 真的被求值（不是生產部署） |
 | `task down` | 是 | 否 | 否 | `docker compose … down`：停掉本機基礎設施（不刪 volume）。**它停的是共享的那一組**，唯讀／寫入 SubAgent 一律不得自行執行 |
 | `task gen*` | 是 | 否 | 否 | 固定版本 generator；apply 會改 generated files，check 只寫 `.devctl/` scratch |
@@ -78,7 +80,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 - 唯讀 SubAgent 可以平行；寫入、generator、formatter、package manager、migration、contracts、CI/Taskfile 全部序列化。
 - 未知 delta 視為他人工作：不得 reset、clean或 checkout還原。
 - 只有負責整合的主 Agent執行明確 pathspec stage、commit、pull --rebase與 push。
-- **子代理的模型按「這件事需要多少推論」選，不按名字選**（負責人 2026-09-04 明定：禁最高階之後反射性地全派次高階，不是正確做法）。每次派工明確指定；從能做完的最低一級起，升級要在 brief 裡寫理由。規則用特性描述，因為模型名稱會換、而且本 repo 同時有多個 coding agent 在協作；名稱只出現在「現行對應」一欄，換名只改那一欄：
+- **子代理的模型按「這件事需要多少推論」選，不按名字選**——禁了最高階之後反射性地全派次高階，同樣不對。每次派工明確指定；從能做完的最低一級起，升級要在 brief 裡寫理由。規則用特性描述，因為模型名稱會換、而且本 repo 同時有多個 coding agent 在協作；名稱只出現在「現行對應」一欄，換名只改那一欄：
 
   | 等級 | 特性 | 派給它的事 | 現行對應（Claude Code／Codex） |
   | --- | --- | --- | --- |
@@ -102,15 +104,15 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 **三次都不是 code review 找到的**，是突變找到的。成本是一次 `sed` 加一次 `go test`。程序：把修正那一行還原、跑對應的那一條測試、確認變紅、改回來、`git diff` 確認為空。不適用於純文案、純註解與本來就沒有斷言可言的變更；適用於任何你在 commit 訊息裡寫「修好了 X」的東西。Claude Code 的 `mutation-check` 技能與 `skillhub-mutation` 角色是這條的可執行版本。
 
-## Harness：角色、技能、rules、workflows 與 deny 的放置規則（2026-09-03 建立，09-04 重整）
+## Harness：角色、技能、rules、workflows 與 deny 的放置規則
 
 `AGENTS.md`〈分區指標與攔阻〉只放入口；分層與派工契約見[開發者指示](./agent-instructions.md)；規則本體在這裡；**建立這套東西的歷程、洞見、工序與功法在 [harness/](./harness/README.md)**。**判準：換一個 repo 還成立嗎？** 成立才進 `.claude/skills/`；不成立留在 `docs/`、各層 `AGENTS.md`、`.claude/rules/` 或 deny／CI。`.claude/` 不是整體可攜來源：只有 roles／skills 的來源檔可攜，rules／workflows 是本 repo harness。每一層只放一種東西：
 
 - **`.claude/rules/`**：按路徑觸發的指標，內容只有「先讀哪一份、會被哪個檢查擋」。實測會送達子代理，首次命中注入一次。
 - **`.claude/agents/`**：按**風險**切的三個角色——`skillhub-writer`（寫，路徑範圍由簡報給）、`skillhub-verify`（唯讀驗證）、`skillhub-mutation`（證明測試會紅）。**角色不按目錄切、不新增**：某個區域該先讀什麼、哪些檔屬於 coordinator，寫在該區域的 `AGENTS.md`，由 rules 按路徑送達。禁令只有一份（`AGENTS.md` 開發自動化第 3 條），角色檔引用不複述。
 - **`.claude/skills/`**：換一個 repo 還成立的程序。技能不得引用 `docs/`、ADR 編號或需求 ID——引用了就隨那份文件過期。
-- **`.claude/workflows/`**（2026-09-04 起）：**有固定形狀的多代理程序**——哪些事平行、哪一步驗證、由流程決定是否有 gate——寫成一支 `<name>.js`，以 `/<name>` 呼叫；判斷本身仍在子代理，腳本只決定順序與扇出。`ux-text-audit` 與 `error-path-audit` 都是 Read → Refute → Critic 的唯讀稽核；`parallel-page-edit` 才是寫入後 Verify → Mutation → Gate。跨工具契約、無 runtime 時的原生派工映射與完成判定見[開發者指示](./agent-instructions.md)；原生腳本的扇出安全不是跨工具保證。**腳本裡的 `agent()` 不指定模型就繼承派工者的旗艦級**，所以每一個 `agent(` 呼叫都要在同一行寫 `model:`（慣例是一行 wrapper：`const run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet' })`），`harness` 檢查逐行看。
-- **`permissions.deny`**（`.claude/settings.json`）：把慣例變成真的拒絕——`stash`、`reset --hard`、`clean`、`checkout -- `、`checkout .`、`restore`、`add -A`／`--all`／`.`、`commit -a`／`--all`、`push --force`／`-f`、`commit --amend`。對子代理同樣生效、不需 workspace trust。**每條加完要親自撞一次**（2026-09-03 就撞出一個誤擋 `git add .claude/` 的偽陽性）。陷阱：路徑型規則只認 `Edit(...)` 與 `Read(...)`，寫成 `Write(...)`／`Glob(...)` 會被接受但永不被查詢。
+- **`.claude/workflows/`**：**有固定形狀的多代理程序**——哪些事平行、哪一步驗證、由流程決定是否有 gate——寫成一支 `<name>.js`，以 `/<name>` 呼叫；判斷本身仍在子代理，腳本只決定順序與扇出。`ux-text-audit` 與 `error-path-audit` 都是 Read → Refute → Critic 的唯讀稽核；`parallel-page-edit` 才是寫入後 Verify → Mutation → Gate。跨工具契約、無 runtime 時的原生派工映射與完成判定見[開發者指示](./agent-instructions.md)；原生腳本的扇出安全不是跨工具保證。**腳本裡的 `agent()` 不指定模型就繼承派工者的旗艦級**，所以每一個 `agent(` 呼叫都要在同一行寫 `model:`（慣例是一行 wrapper：`const run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet' })`），`harness` 檢查逐行看。
+- **`permissions.deny`**（`.claude/settings.json`）：把慣例變成真的拒絕——`stash`、`reset --hard`、`clean`、`checkout -- `、`checkout .`、`restore`、`add -A`／`--all`／`.`、`commit -a`／`--all`、`push --force`／`-f`、`commit --amend`。對子代理同樣生效、不需 workspace trust。**每條加完要親自撞一次**——曾經撞出過一個誤擋 `git add .claude/` 的偽陽性。陷阱：路徑型規則只認 `Edit(...)` 與 `Read(...)`，寫成 `Write(...)`／`Glob(...)` 會被接受但永不被查詢。
 
 **送達與契約**：官方啟動載入規則見 [Agent configuration](https://learn.chatgpt.com/docs/agent-configuration/agents-md)；若有 `AGENTS.override.md` 必須先讀並檢查衝突。派工介面未提供 `cwd` 參數時（例如本次驗證的 `spawn_agent`），代理共享目前工作目錄；工具不保證按檔案自動載入，brief 必須列出 root → 目標父目錄的明確讀取路徑。Codex 指示總量上限 32 KiB（`project_doc_max_bytes`），所以根 `AGENTS.md` 有大小上限。Claude 的額外層是提早發現，真正的保證仍在 `automation-check`、測試與 CI。
 
@@ -140,7 +142,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 ## `automation-check` 跑了哪些檢查（名冊）
 
-`go -C tools/devctl run . automation-check` 除了固定的文件字句、`Taskfile.yml` 的 `desc` 與 generated ownership marker 之外，還會跑一份**檢查名冊**：`tools/devctl/automation_check.go` 的 `documentCheckers()`。**那個函式就是名冊本身**（`TestAutomationCheckRunsEveryChecker` 逐項走過它），下表是 2026-09-03 逐項讀出來的 **24 條**（同日先讀到 23 條，`doc-links` 是當天稍晚加的第 24 條），加上 2026-09-04 的第 25 條 `harness` 、2026-09-11 的第 26 條 `comment-budget` 與 2026-09-12 的第 27 條 `dependency-policy`。**這個數字本身會過期**——以 `documentCheckers()` 的實際回傳為準。
+`go -C tools/devctl run . automation-check` 除了固定的文件字句、`Taskfile.yml` 的 `desc` 與 generated ownership marker 之外，還會跑一份**檢查名冊**：`tools/devctl/automation_check.go` 的 `documentCheckers()`。**那個函式就是名冊本身**（`TestAutomationCheckRunsEveryChecker` 逐項走過它），下表逐條對應那個函式回傳的檢查。**條數會變**——以 `documentCheckers()` 的實際回傳為準，不以本節的敘述為準。
 
 **撞到紅燈時的用法**：`FAIL` 訊息開頭的名字對到下表，再去「規則寫在哪」那一欄讀該檔；它為什麼存在、抓到過什麼，看那個檔的 `git log`（程式裡不寫施工日誌，見根 `AGENTS.md`〈慣例〉）。**本節只給名字與落點；下面的散文只保留有故事的那五條**（`one-number`、`milestone-tally`、`backlog-tally`、`baseline-tally`、`doc-identifier`），其餘不在此重述。
 
@@ -283,11 +285,11 @@ maxDigestEntry  = 8000 // one-number: maxDigestEntry
 1. **死掉的名字不要穿反引號。** 反引號的意思是「這是一個真的符號」；訂正句裡提到一個從來不存在的名字時寫成純文字，檢查就不會命中，而讀者看到的資訊完全一樣。
 2. **`declared` 是「這個字出現在任何一個程式檔裡」，不是「這個符號有宣告」。** 便宜、不需要 parser，代價是**一個被刪掉但名字還留在某段註解裡的函式會溜過去**。寫這個檢查的當天就踩到了：它自己的說明註解引用了三個要抓的名字，於是把它們全部漂白——所以掃描時跳過 `doc_identifiers.go` 自己。
 
-## 跑一次真實的端到端 Run（2026-08-27 實測重寫）
+## 跑一次真實的端到端 Run
 
 **成本：一次約 $0.017（mini 級）。會真的花錢。**
 
-`m2/README.md` 有一份「跑一個 Skill 的最短路徑」，那是里程碑時點的證據、已凍結，而**照它今天逐字做會得到一個沒有網路的 Run**——2026-08-26 之後 sandboxd 多了一個 fail-closed 的前置，那份文件寫的時候還不存在。下面是 2026-08-27 實際跑通的版本，`gateway-reported cost for this run: $0.016671`。
+`m2/README.md` 也有一份「跑一個 Skill 的最短路徑」，但那是里程碑當時的證據、不回溯修正，**照它逐字做會得到一個沒有網路的 Run**——sandboxd 後來多了一個 fail-closed 的前置。要跑就照下面這份。
 
 ### 今天多出來的那一步：沒有渲染過的允許清單，就沒有網路
 
@@ -295,7 +297,7 @@ maxDigestEntry  = 8000 // one-number: maxDigestEntry
 
 所以 dev 要**另外渲一份**，不要動 committed 的那一份（動它會踩 `egress-allowlist.yml` 的「同 PR 必須改威脅模型」閘門）：
 
-> ⚠️ **下面三行限 Linux／Dev Container 內執行**（2026-09-03 補記）。它們是 2026-08-27 那次實測當下的原樣，不是可攜的標準流程：`cp -r`、GNU `sed -i` 與 `python3` 三個都不是本專案的跨平台入口，而本專案主開發機是 Windows（`Taskfile.yml` 用的是 `python`，不是 `python3`）。在 Windows 主機上請進 Dev Container 再跑；**這裡刻意不改寫成一個沒有人實際驗過的跨平台版本**——一條沒跑過的指令比一條標明適用範圍的指令貴。
+> ⚠️ **下面三行限 Linux／Dev Container 內執行**：`cp -r`、GNU `sed -i` 與 `python3` 都不是本專案的跨平台入口（`Taskfile.yml` 用的是 `python`），而主開發機是 Windows。在 Windows 主機上請進 Dev Container 再跑；**這裡刻意不改寫成一個沒有人實際驗過的跨平台版本**——一條沒跑過的指令比一條標明適用範圍的指令貴。
 
 ```bash
 # Linux / Dev Container only
@@ -352,17 +354,17 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 **`-w` 那一行是必要的**：測試以相對路徑 `../../../../../../db/migrations` 找 migration。
 
-**`DEV_LOGIN=1` 也是必要的（2026-09-06 補）**：`execution.Match` 對隔離等級是允許清單，這台 sandboxd 跑 runc、自報 `container`，只有標成開發部署的程序才接受它，否則每個 Run 都是 422「which this deployment does not accept」。這不是繞過——它就是那條規則為開發機留的門，生產部署不設它。同日的互動創作量測第一次跑 Run 階段就撞到這裡，14 場全 422 才發現配方缺這一行。
+**`DEV_LOGIN=1` 也是必要的**：`execution.Match` 對隔離等級是允許清單，這台 sandboxd 跑 runc、自報 `container`，只有標成開發部署的程序才接受它，否則每個 Run 都是 422「which this deployment does not accept」。這不是繞過——它就是那條規則為開發機留的門，生產部署不設它。
 
 **Git Bash 跑上面這段時**：MSYS 會把以 `/` 開頭的參數與環境變數值改寫成 Windows 路徑（`-e X=/etc/foo` 進容器變成 `C:/Program Files/Git/etc/foo`）。整段前面加 `MSYS_NO_PATHCONV=1`，或把容器內路徑寫成 `//etc/foo`（Linux 把雙斜線當單斜線）。掛載來源用 `C:/...` 的寫法就不會被動。
 
 ### 它證明了什麼、沒證明什麼
 
-**證明**：套件進物件儲存 → preflight → 確認 → 派送 → sandboxd → 容器跑 Agent SDK → 每 Run 短效 Virtual Key 經閘道呼叫模型 → trace 回推 → artifact 收集 → 金鑰撤銷，**整條在今天仍然是通的**。
+**證明**：套件進物件儲存 → preflight → 確認 → 派送 → sandboxd → 容器跑 Agent SDK → 每 Run 短效 Virtual Key 經閘道呼叫模型 → trace 回推 → artifact 收集 → 金鑰撤銷，整條是通的。
 
 **沒證明**：這一輪的 runtime 是 `runc` 不是 `runsc`，所以它不是 SEC-009 的任何一項；`--network skillhub_egress` 是 Docker 網路隔離，**不是** ADR-022 Q3 的 nftables 強制層（那條路的實驗室在 `tools/sec009/t5-network-egress.sh`）。
 
-### 什麼時候要跑它（2026-09-10 裁定，`05` R-72）
+### 什麼時候要跑它（`05` R-72）
 
 **它不在 CI，而且刻意不排程。** 排程要一把能用的閘道金鑰放在 GitHub secret 裡，而鐵律 11 的形狀是「供應商金鑰只存在閘道」——為了一個每週一次的檢查，在閘道之外多開一個金鑰存放點。裁定取的是兩個**由人按、但綁死在事件上**的時刻：
 
@@ -373,7 +375,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 **接受的殘留風險，明寫**：這條線的保證從「機器會檢查」降成「兩個明確的時刻有人記得」。它斷掉的樣子是**派送成功、Run 永遠不完成**——`web` 與 `platform` 兩個 job 全綠，沒有任何一盞燈會變色。若封測期間需要更硬的保證，正解是**在節點上跑**（節點本來就要有閘道金鑰），不是在 CI 裡多放一把。
 
-## 推送前與推送後：pre-push hook、`task preflight`、`task ci:status`（2026-09-11）
+## 推送前與推送後：pre-push hook、`task preflight`、`task ci:status`
 
 **pre-push hook**：`task bootstrap` 會把 `core.hooksPath` 指到 `.githooks/`，`pre-push` 跑 `devctl preflight --hook`。它只檢查**這次要推的 commit**，而且讀的是 commit 裡的位元組（`git show <sha>:<path>`）而不是工作樹，所以共享工作樹裡別人未提交的修改擋不到你的推送。它查兩件 CI 會紅的事：
 
@@ -439,12 +441,12 @@ docker run --rm --network container:skillhub-postgres-1 \
 - `go -C tools/devctl test ./...`
 - `go -C tools/devctl run . automation-check`
 - `task gen:check`
-- **`task format:check`**（2026-09-10 補入）
-- `task preflight`（2026-09-11 補入；推送時 pre-push hook 會自動跑它的 `--hook` 版）
+- **`task format:check`**
+- `task preflight`（推送時 pre-push hook 會自動跑它的 `--hook` 版）
 - 受影響語言的 typecheck/test/build
 - `git diff --check`
 
-**為什麼把 `format:check` 單獨列出來**：上面那一列「typecheck/test/build」不涵蓋它——`go build` 對一個 `gofmt` 會改寫的檔案完全沒有意見，所以編得過、測得過、推上去，然後 CI 的 `golangci-lint fmt --diff` 才是第一個說話的人（2026-09-10 實際發生：`packaging.go` 多一個結構欄位改變了欄寬對齊，platform job 紅在那一步）。`git diff --check` 也抓不到，它只看行尾空白與衝突標記。
+**為什麼把 `format:check` 單獨列出來**：上面那一列「typecheck/test/build」不涵蓋它——`go build` 對一個 `gofmt` 會改寫的檔案完全沒有意見，所以編得過、測得過、推上去，然後 CI 的 `golangci-lint fmt --diff` 才是第一個說話的人——一個結構欄位改變欄寬對齊就足以讓 platform job 紅在那一步。`git diff --check` 也抓不到，它只看行尾空白與衝突標記。
 
 **怎麼裝 `golangci-lint`，以及為什麼不能照著它官網那一行裝**：
 
@@ -454,24 +456,14 @@ GOTOOLCHAIN=go1.27.1 go install github.com/golangci/golangci-lint/v2/cmd/golangc
 
 版本 `v2.13.2` 來自 [`tools/toolchain.yaml`](../../tools/toolchain.yaml) 的 `golangci_lint`，CI 的 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 讀同一個欄位、跑同一個 `go install`；模組代理與 sumdb 會驗 checksum，所以上游再發版也不會讓一棵沒動過的樹變紅。**`GOTOOLCHAIN=go1.27.1` 那個前綴是必要的，不是保險**：`golangci-lint` 會拒絕載入一份「目標 Go 版本比它自己編譯時用的 Go 還新」的設定，而本 repo 四個模組的 `go` 指示都是 **1.27.1**。CI 為此付過一次代價，錯誤訊息與四天八個 commit 的損失逐字記在 `b255333c` 的 commit message 裡——**它當時的形狀不是 lint 紅了，是同一個 job 裡後面五個 `- run:` 全部被跳過**，所以那段時間每一句「套件全綠」的意思都是「在某人的筆電上是綠的」。本機的 `go version` 比 1.27 舊沒有關係（`GOTOOLCHAIN=auto` 會自己抓），**沒有寫這個前綴才有關係**。
 
-裝完之後 `go env GOPATH`／`bin` 要在 `PATH` 上，`devctl doctor` 的 `golangci-lint` 那一列才會 PASS。**那一列從一開始就在 doctor 裡**——[開工守則第 1 條](../../AGENTS.md)「先診斷再修改」指的就是這件事，而 2026-09-10 那次格式紅燈的真正成因不是缺工具，是**沒有人先跑 doctor**。
+裝完之後 `go env GOPATH`／`bin` 要在 `PATH` 上，`devctl doctor` 的 `golangci-lint` 那一列才會 PASS。**那一列從一開始就在 doctor 裡**——[開工守則第 1 條](../../AGENTS.md)「先診斷再修改」指的就是這件事：格式紅燈的成因通常不是缺工具，是沒有人先跑 doctor。
 
 **真的裝不起來時的退路是 `gofmt -l ./apps/ ./tools/`**——它隨 Go 工具鏈一起來，一定在；輸出**任何一個檔名就是未通過**（`golangci-lint fmt` 的 Go 部分預設就是 gofmt ＋ goimports，所以 `gofmt -l` 乾淨時剩下的差異只會是 import 分組）。**但它是退路不是等價物**，而且 `task format:check:platform` 在沒有那支指令時會失敗於「找不到指令」，**那看起來很像「檢查過了」**。
 
 版本／generator／Task入口異動要同步更新**本文件**、`tools/toolchain.yaml`、相關 package README與 CI；**`AGENTS.md` 只在紅線本身增刪時才動**（它不複製版本、命令清單與生成來源表）。工具能跑但新 Agent找不到，視為未完成。
 
-## Agent 黑箱驗收（2026-08-18）
+## 一個新 Agent 找不到的東西，就是還沒完成的東西
 
-給一個沒有前文、唯讀的低成本 Explore Agent 任務：「新增 authenticated GET API field、SQL query並顯示在 Web」，不提示任何 automation名稱。它自行找到並正確回報：
+這份手冊的驗收方式是黑箱：給一個沒有前文、唯讀的低成本 Agent 一個任務（例如「新增一個需要登入的 GET 欄位，從 SQL 一路接到畫面」），不提示任何 task 或檔名，看它能不能自己走到正確的入口。它找不到的路徑不是它的問題，是這份文件或 `automation-check` 的缺口。
 
-- 先讀 `AGENTS.md`，跑 doctor／bootstrap；
-- OpenAPI-first 與 SQL-first 的來源位置；
-- `task gen:openapi`、`gen:sql`、`gen:check`；
-- 四類 generated target禁止手改；
-- 共享工作樹單一 Writer、禁止 stash；
-- `dev:model` 與 E2E 的 secret／費用邊界；
-- Web view model不應被 generated DTO 整批取代。
-
-黑箱同時抓到兩個可發現性缺口：它把 `.devctl/phase4-ogen` scratch誤列為正式產物，並建議一般 Agent自行切 branch。本文因此明列 `.devctl/**` 不是可提交 API，且只有整合主 Agent做 Git 寫入；SubAgent 不切 branch。`devctl automation-check` 現在把這些字句、所有 task的 `desc` 與 generated ownership marker設為 CI gate。
-
-同一批 clean-machine 驗收另跑過 canonical Linux toolchain 的 `task check && task test && task build`：Web 117 tests、LLM 62 tests、Platform／Sandbox Go suites、兩個 TypeScript build與 platform build全數通過。這是開發環境證據，不取代部署期 SEC-009。
+兩條由這種驗收補上的字句今天仍然有效，而且由 `automation-check` 當成 CI gate 守著：`.devctl/**` 是暫存產物、不是可提交的 API；Git 寫入只由整合的主 Agent 做，SubAgent 不切 branch。
