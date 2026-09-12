@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -82,6 +85,66 @@ func TestDependabotMustListTheExactDirectory(t *testing.T) {
 		if got := dependabotCovers(config, dir); got != want {
 			t.Errorf("dependabotCovers(%q) = %v, want %v", dir, got, want)
 		}
+	}
+}
+
+func TestComposeAndCIMustRunTheSameImage(t *testing.T) {
+	t.Parallel()
+	digestA, digestB := "@sha256:"+strings.Repeat("a", 64), "@sha256:"+strings.Repeat("b", 64)
+	compose := map[string]string{"infra/compose/docker-compose.yml": "services:\n  db:\n    image: pgvector/pgvector:pg17" + digestA +
+		"\n  s3:\n    image: chrislusf/seaweedfs:3.80" + digestA + "\n"}
+	cases := []struct {
+		name, workflow, drifted string
+	}{
+		{"the same image written with its registry", "        image: docker.io/pgvector/pgvector:pg17" + digestA, ""},
+		{"another tag written with its registry", "        image: docker.io/pgvector/pgvector:pg16" + digestA, "docker.io/pgvector/pgvector:pg16"},
+		{"another tag in a docker run line", "          docker run -d chrislusf/seaweedfs:4.46" + digestA + " server", "chrislusf/seaweedfs:4.46"},
+		{"the same tag with another digest", "        image: pgvector/pgvector:pg17" + digestB, "pgvector/pgvector:pg17" + digestB},
+		{"an image compose does not run", "        image: redis:7" + digestB, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			problems := composeAndWorkflowImageDrift(compose, map[string]string{"ci.yml": c.workflow + "\n"})
+			if c.drifted == "" {
+				if len(problems) != 0 {
+					t.Fatalf("got %v, want no drift", problems)
+				}
+				return
+			}
+			if len(problems) != 1 || !strings.Contains(problems[0], "ci.yml: "+c.drifted) || !strings.Contains(problems[0], "bump both together") {
+				t.Fatalf("got %v, want one drift naming ci.yml and %s", problems, c.drifted)
+			}
+		})
+	}
+}
+
+func TestDependencyPolicyComparesComposeWithTheWorkflows(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	digest := "@sha256:" + strings.Repeat("c", 64)
+	files := map[string]string{
+		".github/dependabot.yml":           "updates:\n  - package-ecosystem: docker-compose\n    directory: /infra/compose\n",
+		"infra/compose/docker-compose.yml": "services:\n  db:\n    image: pgvector/pgvector:pg17" + digest + "\n",
+		".github/workflows/ci.yml":         "jobs:\n  test:\n    services:\n      db:\n        image: pgvector/pgvector:pg16" + digest + "\n",
+	}
+	for name, content := range files {
+		full := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, args := range [][]string{{"init", "-q"}, {"add", "-A"}} {
+		if out, err := exec.Command("git", append([]string{"-C", root}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	problems := dependencyPolicyProblems(root)
+	if len(problems) != 1 || !strings.Contains(problems[0], ".github/workflows/ci.yml: pgvector/pgvector:pg16") {
+		t.Fatalf("got %v, want the one drift between compose and ci.yml", problems)
 	}
 }
 

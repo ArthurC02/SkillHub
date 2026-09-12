@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -16,6 +17,7 @@ var (
 	shaPinnedAction  = regexp.MustCompile(`@[0-9a-f]{40}$`)
 	versionComment   = regexp.MustCompile(`^\s+#\s*v\d`)
 	uvCooldown       = regexp.MustCompile(`(?m)^exclude-newer\s*=`)
+	pinnedImageRef   = regexp.MustCompile(`[a-z0-9][a-z0-9./_-]*:[A-Za-z0-9._-]+@sha256:[0-9a-f]{64}`)
 )
 
 func dependencyPolicyProblems(root string) []string {
@@ -33,6 +35,7 @@ func dependencyPolicyProblems(root string) []string {
 	}
 	var problems []string
 	updated := map[string]bool{}
+	composeFiles, workflowFiles := map[string]string{}, map[string]string{}
 	for _, file := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		dir, base := path.Dir(file), path.Base(file)
 		switch {
@@ -65,6 +68,7 @@ func dependencyPolicyProblems(root string) []string {
 				problems = append(problems, err.Error())
 				continue
 			}
+			composeFiles[file] = content
 			problems = append(problems, composeImageProblems(file, content)...)
 		case (strings.HasPrefix(file, ".github/workflows/") || strings.HasPrefix(file, ".github/actions/")) && isYAML(base):
 			if strings.HasPrefix(file, ".github/actions/") {
@@ -75,6 +79,7 @@ func dependencyPolicyProblems(root string) []string {
 				problems = append(problems, err.Error())
 				continue
 			}
+			workflowFiles[file] = content
 			problems = append(problems, workflowPinProblems(file, content)...)
 		}
 	}
@@ -83,7 +88,7 @@ func dependencyPolicyProblems(root string) []string {
 			problems = append(problems, fmt.Sprintf(".github/dependabot.yml does not list /%s", dir))
 		}
 	}
-	return problems
+	return append(problems, composeAndWorkflowImageDrift(composeFiles, workflowFiles)...)
 }
 
 func isYAML(base string) bool {
@@ -135,6 +140,34 @@ func workflowPinProblems(file, content string) []string {
 		}
 	}
 	return problems
+}
+
+func composeAndWorkflowImageDrift(composeFiles, workflowFiles map[string]string) []string {
+	compose := map[string]string{}
+	for _, content := range composeFiles {
+		for _, ref := range pinnedImageRef.FindAllString(content, -1) {
+			compose[imageRepository(ref)] = canonicalImage(ref)
+		}
+	}
+	var problems []string
+	for file, content := range workflowFiles {
+		for _, ref := range pinnedImageRef.FindAllString(content, -1) {
+			if want, shared := compose[imageRepository(ref)]; shared && canonicalImage(ref) != want {
+				problems = append(problems, fmt.Sprintf("%s: %s differs from infra/compose's %s; bump both together", file, ref, want))
+			}
+		}
+	}
+	sort.Strings(problems)
+	return problems
+}
+
+func canonicalImage(ref string) string {
+	return strings.TrimPrefix(strings.TrimPrefix(ref, "docker.io/"), "library/")
+}
+
+func imageRepository(ref string) string {
+	name, _, _ := strings.Cut(canonicalImage(ref), "@")
+	return name[:strings.LastIndex(name, ":")]
 }
 
 func dependabotCovers(config, dir string) bool {

@@ -12,6 +12,9 @@ updates:
     cooldown:
       default-days: 7
       semver-major-days: 14
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       npm:
         update-types: [minor, patch]
@@ -63,6 +66,8 @@ updates:
       timezone: Asia/Taipei
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: uv-build
     groups:
       python:
         update-types: [minor, patch]
@@ -111,6 +116,8 @@ updates:
     ignore:
       - dependency-name: "*astral-sh/uv"
       - dependency-name: node
+      - dependency-name: python
+      - dependency-name: golang
     groups:
       docker:
         patterns: ["*"]
