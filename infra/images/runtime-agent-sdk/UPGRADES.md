@@ -618,3 +618,23 @@ docker run … anchore/syft:v1.51.0@sha256:678bfa56…  skillhub/runtime-agent-s
 docker run … anchore/grype:v0.117.0@sha256:ddf9e9f2… sbom:/scan/sbom.spdx.json   --only-fixed --fail-on high -o table
   → No vulnerabilities found        (exit 0)
 ```
+
+### 2026-09-12：ADR-023 §2 四項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:56c63f30f0b523f725f3b3055a0fb4e48e0c52310f497fe49896ff5c90a914e1`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-12`，[Runtime Image #34694066312](https://github.com/ArthurC02/SkillHub/actions/runs/34694066312) 於 commit `ca468405` 發佈；以 digest `docker pull`） |
+| 環境 | 本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 `debian:12-slim` 容器跑（`SKILLHUB_SANDBOX_IMAGE` 指上面的 digest），兩支測試二進位交叉編譯後在容器裡跑；DB 是一次性的 `skillhub_rt12_test`，物件放獨立 bucket；允許清單沿用 dev 那份（`pinned_ip` 指 litellm 在 `skillhub_egress` 的位址），committed 的那份一字未動 |
+| 費用 | 合計 **$0.0504936**（`gpt-5.4-mini`）：harness 兩支 $0.02745075、端到端一次 $0.02304285。第 3 項那把 Virtual Key 限 `gpt-5.4-mini`、0.5 USD、6 小時，跑完 `/key/delete` |
+| 見證 | 本版是 `actions/attest` 遷移後第一次真的執行到見證步驟：GHCR 上該 digest 有兩份 attestation——`https://spdx.dev/Document/v2.3`（SBOM）與 `https://in-toto.io/attestation/vulns/v0.1`（掃描結果），以 `/repos/.../attestations/<digest>` 取回確認 |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過** | 端到端那次 Run 的 trace：`skill_activation {"skill_name":"run-marker","decision":"activated"}` → `tool_call` `Skill` → `tool_call` `Bash` `cd /work/.claude/skills/run-marker && python3 scripts/check.py` → `script_log {"message":"SKILLHUB-SCRIPT-RAN py3.11"}`。映像內的 import 檢查另外跑過 `OK 17/17 3.11.2` |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（19.52s）：`gateway-reported cost for this run: $0.023043`，Run `succeeded`。第 3 項那把金鑰 `/key/delete` 後拿它打 `/v1/models` 回 **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **通過，且欄位行為與前幾版不同** | **對帳逐分錢一致**：閘道 `/spend/logs` 當日兩列合計 **$0.0504936** ＝ harness 回報 $0.02745075 ＋ 端到端 trace 的 $0.02304285。**`cache_read_input_tokens` 這一版量到有值（`71168`），不再是缺欄**；`cache_write_input_tokens` 仍為 `null`。token 上限的強制點仍是 `input_tokens`（該次 `19646`），未受影響 |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（`in=17901 out=25 token_source=result cost=0.013908/gateway`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（撞上限仍回報 `in=17901 out=26 cost=0.013908`，並帶 `token_budget_exceeded`） |
+
+**是否推翻既有文件敘述**：是，但推翻的不是映像的敘述——**第 3 項的 caching 欄位**。`contracts/events/README.md` §5 引的是 LiteLLM 1.96.2 當時的實測（兩個欄位都缺欄），而今天在現行閘道上 `cache_read_input_tokens` 有值。schema 的 nullable 不變、消費端「`null` 呈現為未回報」的規約也不變；該節同批補上今天的量測。
+
+**預設映像同批從 `-10` 移到 `-12`**：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例。`-11` 從此只是被取代的 tag——它與 `-12` 的映像內容差異只有 `IMAGE_VERSION` 這個 label。

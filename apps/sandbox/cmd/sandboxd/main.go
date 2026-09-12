@@ -35,7 +35,7 @@ func main() {
 	}
 
 	runtime := os.Getenv("SKILLHUB_SANDBOX_RUNTIME")
-	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-10")
+	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-12")
 	allowDevCmd := os.Getenv("SKILLHUB_SANDBOX_DEV_CMD") == "1"
 
 	cleanMode := os.Getenv("SKILLHUB_CLEAN_MODE") == "1"

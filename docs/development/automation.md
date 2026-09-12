@@ -312,11 +312,11 @@ docker run -d --name skillhub-sandboxd --network skillhub_default --network-alia
   -e SKILLHUB_SANDBOX_TOKEN=devsandboxtoken \
   -e SKILLHUB_SANDBOX_NETWORK=skillhub_egress \
   -e SKILLHUB_SANDBOX_EGRESS_ALLOW=/etc/skillhub/egress-allow.json \
-  -e SKILLHUB_SANDBOX_IMAGE=skillhub/runtime-agent-sdk:2026.08-10 \
+  -e SKILLHUB_SANDBOX_IMAGE=skillhub/runtime-agent-sdk:2026.08-12 \
   debian:12-slim /usr/local/bin/sandboxd
 ```
 
-**映像版本（2026-09-03 訂正）**：上面原本寫 `2026.08-3`，那是 2026-08-27 實測當天的值，而 `-3` 之後映像有四次行為變更（`UPGRADES.md` 的 `-4`／`-5`／`-6`／`-7` 四節）。**這裡寫 `2026.08-5`，因為它就是部署預設**——`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` fallback、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`、`p02_docker_test.go` 的常數三處同值。**不是最新的 `2026.08-7`**：`-6` 與 `-7` 只動了 Dockerfile 的 `ARG IMAGE_VERSION`，ADR-023 §2 的四項實測還沒跑（`UPGRADES.md` 那兩節自陳、`04` 丙-125 開著），移動預設是四項通過之後的動作。要在這裡改成別的版本，先讀那兩節。
+**映像版本**：這裡寫的一律等於**部署預設**，不是 `UPGRADES.md` 裡最新的那一版——`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` fallback、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 出來的本地 tag）、`p02_docker_test.go` 的常數與這一行，四處同值。**預設只在 ADR-023 §2 的四項實測跑過那個 digest 之後才移動**，而那是人工關卡：沒有任何 job 會催它，`UPGRADES.md` 每一節自己寫著那一版跑了沒有。要改這裡的版本，先讀該版那一節。
 
 **交叉編譯而不是在容器裡 `go run`**：這個 repo 的 module 目標版本比多數 `golang:` 映像新，而在容器裡下載 toolchain 只是為了跑一個已經編得出來的二進位。
 

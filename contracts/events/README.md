@@ -66,6 +66,8 @@ envelope 的 `status` 承擔「評完了」與「評不動」的區別：`ok` �
 
 `pdm-003-litellm-spike-report.md` §11.5.2 實測：LiteLLM 1.96.2 在 `/v1/messages` 路由上**完全不輸出** `cache_read_input_tokens` 與 `cache_creation_input_tokens`（是缺欄，不是 0），`/v1/chat/completions` 則正常透傳。計費不受影響（LiteLLM 內部有正確套用快取折扣），**受損的是可觀測性**。
 
+**閘道換版之後這件事會變，而且不會有人通知**：現行閘道上 `cache_read_input_tokens` 已經量得到值（`infra/images/runtime-agent-sdk/UPGRADES.md` 的 `2026.08-12` 那節，ADR-023 §2 第 3 項），`cache_write_input_tokens` 仍是 `null`。**兩個欄位維持 nullable，下面的消費端規約一字不變**——它管的是「收到 `null` 時怎麼呈現」，與某一版閘道給不給值無關。
+
 所以 schema 把 `cache_read_input_tokens` / `cache_write_input_tokens` / `cost_usd` 都設為 nullable，並在 `$comment` 註明成因與出處。消費端規約：
 
 - `null` 一律呈現為「未回報」，**不得**顯示為 `0`——那會讓使用者以為快取沒命中。
