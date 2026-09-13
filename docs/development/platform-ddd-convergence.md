@@ -8,7 +8,7 @@
 
 ## 0 執行協定
 
-1. **一次做一件事**，§6 的驗證全綠才開始下一件。
+1. **一次做一件事**，§7 的驗證全綠才開始下一件。
 2. **本檔不放靜態清單，只放 DISCOVER 指令。** 指令輸出與本檔描述不符時，**以輸出為準**，停下並回報差異，不要照記憶動手。
 3. **裸 `grep` 在部分開發機會被外掛改寫。** 一律用 `git grep` 或 `awk`。用裸 `grep` 得到的數字不可採信。
 4. **PROVE 沒有紅過就不算修好。** 沒有紅，回報裡就不要出現「修好了」。
@@ -29,7 +29,7 @@
 | C5 | 高衝突區只由主 Agent 序列化：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml`、`.github/workflows/`。 |
 | C6 | codegen（`task gen:sql`／`task gen:openapi`）只由主 Agent 跑；提交前 `task gen:check`。generated 檔禁止手改。 |
 | C7 | **不寫註解。** 唯一例外：艱難演算法，一個區塊最多 3 行，說明它怎麼運作。施工日誌、決策說明、需求編號、日期一律禁止。 |
-| C8 | 每個宣稱修好的東西都要有一次紅（§7；[automation.md](automation.md) 開發自動化第 9 條）。 |
+| C8 | 每個宣稱修好的東西都要有一次紅（§8；[automation.md](automation.md) 開發自動化第 9 條）。 |
 | C9 | 禁止 `git stash`。對不屬於自己的修改禁止 `git reset`／`git clean`／`git checkout -- <path>`。還原自己的檔案用 `git show HEAD:<path> > <path>`。 |
 | C10 | 只以明確 pathspec stage，永不 `git add .`。 |
 | C11 | 子代理預設唯讀，派工必須指定 model，禁用旗艦級；子代理不做 git 寫入。 |
@@ -116,7 +116,7 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 - `domain-vocabulary` — Go 常數 ↔ DB `CHECK (… IN (…))` ↔ Postgres enum 三處對帳，缺一側時列為待補而不是錯誤。
 - `run-status-sql` — Go 的 `successors` ↔ migration 0032 的 trigger 轉移列 ↔ 每一處終態 `IN` 清單。
 
-閘門的順序仍然寫在 `create()` 的呼叫序，那是刻意的：順序決定哪個 reason 先浮出來，而 reason 直接餵 `metrics.RunRefused` 與 `audit.ActionRunRefused`。要改順序就是改對外行為，先看 §8。
+閘門的順序仍然寫在 `create()` 的呼叫序，那是刻意的：順序決定哪個 reason 先浮出來，而 reason 直接餵 `metrics.RunRefused` 與 `audit.ActionRunRefused`。要改順序就是改對外行為，先看 §9。
 
 C1 成立：SQL 側沒有任何 constraint、trigger、unique 或外鍵被刪除或放寬。
 
@@ -154,19 +154,36 @@ worker 那個 `packaging.Service` 不是地雷：從它取得的每一個方法�
 
 ### 5.4 把 `pgtype` 趕出領域簽名
 
-原本設想「逐 context 一個 commit」。量測之後兩半都不成立。
+不做的理由不是「太大」，是**它擋不住危害最大的那一類換位，而它擋得住的那一類已經有人擋了**。
 
-**`gen.DBTX` 那一半是空的。** 以它為參數的函式有 29 個，逐一追呼叫端：13 個真的收過交易，16 個收的是連線。收連線的那些也不是轉手——advisory lock（`LockObjectWrite`、`LockPackageObject`）與帳號清除迴圈必須在交易之外持有同一條連線，那是呼叫端在宣告自己控制著哪一條連線，看得見的邊界要留下。**沒有一個是純粹為了轉手而存在。**
+型別化只能分辨**不同種類**的識別碼（workspace 對 skill）。同一種類的兩個值（兩個使用者、兩個版本、兩次 Run）在型別系統裡完全相同，換位照樣編譯。把每一種換位逐一追到後果：
 
-**`pgtype.UUID` 那一半太大且接縫不成立。**
+| 換位種類 | 實測入口 | 後果 | 今天誰擋住 | 型別化擋得住？ |
+| --- | --- | --- | --- | --- |
+| 跨種類寫入 | 全部寫入路徑 | 交易回滾 | 外鍵：18＋張表 `REFERENCES workspaces(id)`；`creation_session_events`／`creation_receipts` 用複合外鍵 `(session_id, workspace_id)` | 是，但已有人擋 |
+| 跨種類讀取（有 scope） | 絕大多數 | 查無資料 | `WHERE id = … AND workspace_id = …` | 是，但已有人擋 |
+| 跨種類讀取（無 scope） | 約 5 支 skill／version 讀取 | **讀到別的工作區的列** | **沒有人** | **是** |
+| 同種類 workspace↔workspace | `skill/library/registry.go` 的 `Fork`（`ws.ID` 對 `src.WorkspaceID`） | 查無資料 | `skill_id`＋`workspace_id` 聯合條件 | 否 |
+| 同種類 user↔user | `creator/credit/service.go` 的 `Ledger(userID, workspaceID, operatorID)` | **回傳錯的人的餘額，稽核列的 Actor 與 ResourceID 對調** | **沒有人** | 否 |
+| 同種類 version↔version | `skill/library/diff.go` 的 `DiffVersions(skillID, fromID, toID)` | diff 方向顛倒 | 沒有人 | 否 |
+| 同種類 run↔run | `trial/improvement/comparison.go` 的 `Comparison(workspaceID, runID, againstID)` | 比較兩側對調，`VersionDiffURL` 的 from／to 一起反向 | 沒有人 | 否 |
+
+會產生「查得到、但答案是錯的」的有三處，型別化一處都擋不住。它唯一獨到的價值落在無 scope 的那一列，而那一列更好的修法是補 scope（§6.2），不是換型別。
+
+額度帳戶是 `credit_accounts.user_id PRIMARY KEY`，**按使用者算不是按工作區算**，所以 `Balance` 不比對工作區是設計正確。`Ledger` 的問題純粹是三個裸 `pgtype.UUID` 連排、其中兩個都是 user。
+
+**擋同種類換位的是具名欄位，不是具名型別。** 把並排的裸參數換成一個有欄位名字的結構，同種類與跨種類一起擋掉，成本是三支函式而不是 162 個轉換站點（§6.1）。
+
+`gen.DBTX` 那一半是空的：以它為參數的函式 29 個，13 個真的收過交易，16 個收的是連線——advisory lock（`LockObjectWrite`、`LockPackageObject`）與帳號清除迴圈必須在交易之外持有同一條連線，那是呼叫端在宣告自己控制著哪一條連線，看得見的邊界要留下。**沒有一個是純粹為了轉手而存在。**
+
+規模，供重開時參考：
 
 ```
 git grep -oh "pgtype\.[A-Z][A-Za-z]*" -- apps/platform/internal/ | sort | uniq -c | sort -rn
+git grep -n "gen\.[A-Za-z]*Params{" -- apps/platform/internal/ | awk '!/_test|\/gen\//' | wc -l
 ```
 
-1630 處 `pgtype.UUID`、263 處 `pgtype.Timestamptz`，橫跨 20 個套件；非測試非生成的部分就有 160 個結構欄位與 178 個回傳簽名。唯一便宜的做法是在自家套件宣告 `type ID = pgtype.UUID` 這種別名接縫，但 `Timestamptz` 會跟著留下，套件仍得 import `pgtype`，depguard 擋不掉，接縫的好處歸零。改成真正的領域 ID 值物件則要在每個生成列的邊界寫轉換——**那次遷移的成本，等於它要預防的那次更換驅動的成本。**
-
-`pgtype.UUID` 也不擁有任何領域概念（C4／J1 問的是那個），它是 UUID 的容器。要做就是一次 ADR 加一次全 repo 遷移，不是這份規格的任務。
+1630 處 `pgtype.UUID`、263 處 `pgtype.Timestamptz`，20 個套件；轉換面是 162 個 `gen.*Params{` 字面值站點。便宜的別名接縫（`type ID = pgtype.UUID`）不成立——`Timestamptz` 會把 `pgtype` 的 import 留在原地，depguard 擋不掉。`pgtype.UUID` 也不擁有任何領域概念（C4／J1 問的是那個），它是 UUID 的容器。要做就是一次 ADR 加一次全 repo 遷移。
 
 ### 5.5 其餘九條中文領域 sentinel
 
@@ -182,7 +199,76 @@ git grep -oh "pgtype\.[A-Z][A-Za-z]*" -- apps/platform/internal/ | sort | uniq -
 
 ---
 
-## 6 驗證指令
+## 6 待做
+
+§5.4 的量測換出三件事。三件都是換位防護，覆蓋率比全面型別化高，成本是它的零頭。建議順序 6.1 → 6.3 → 6.2。
+
+### 6.1 並排的裸識別碼換成具名欄位
+
+**GOAL** 讓同種類換位在呼叫端不可能寫錯。這是 §5.4 那三處「查得到但答案是錯的」唯一有效的修法。
+
+**DISCOVER**
+
+```
+git grep -n "userID, workspaceID, operatorID\|skillID, fromID, toID\|runID, againstID" -- apps/platform/internal/ | awk '!/_test/'
+```
+
+**目標三支**
+
+| 函式 | 現行簽名的危險 | 換位後果 |
+| --- | --- | --- |
+| `creator/credit/service.go` 的 `Ledger` | 三個裸 UUID，其中 `userID` 與 `operatorID` 同為使用者 | 回傳操作員自己的餘額；稽核列的 `Actor` 與 `ResourceID` 對調 |
+| `skill/library/diff.go` 的 `DiffVersions` | `fromID`／`toID` 同為版本，驗證規則對稱 | 新增與刪除整個顛倒，不會落到查無資料 |
+| `trial/improvement/comparison.go` 的 `Comparison` | `runID`／`againstID` 同為 Run，同一 workspace 都驗得過 | 比較兩側對調，`VersionDiffURL` 的 from／to 一起反向 |
+
+**EDIT** 每支收一個具名結構（例如 `LedgerQuery{Subject, Workspace, Operator}`），欄位名說出角色。**不要**改成領域 ID 型別——同種類換位型別擋不住，欄位名才擋得住。
+
+**PROVE** 把呼叫端兩個欄位對調 → 對應測試必須紅。`Ledger` 目前沒有測試看它回的是誰的餘額，先補那一支，再做突變。
+
+**STOP-IF** 任何一支的對外 JSON 欄位名要跟著改 → 停，那是契約。
+
+### 6.2 鐵律 3 的機器檢查
+
+**GOAL** 「所有使用者資料查詢預設要求 Workspace Scope」（根 `AGENTS.md` 鐵律 3）目前**沒有任何機器在檢查**。`db/query-owners.yaml` 管的是擁有權，不是 scope。
+
+**DISCOVER**
+
+```
+awk '/^-- name:/{if (n && !ws && p) print FILENAME": "n; n=$3; ws=0; p=0; next}
+     /workspace_id/{ws=1}
+     /\$[0-9]/{p=1}
+     END{if (n && !ws && p) print FILENAME": "n}' db/queries/*.sql
+```
+
+302 支查詢裡有 58 支吃參數卻沒有任何 `workspace_id` 條件。多數是對的——auth 與 credit 按使用者算（`credit_accounts.user_id` 是主鍵）、operator 治理與 worker 掃描本來就跨租戶。但其中約 5 支是 skill／version 的讀取（`VersionLineage`、`OldestVersion`、`GetLineageSource`、`GetLatestVersionLicense`、`CountSkillVersions`），傳錯識別碼讀到的是別的工作區的列，不是查無資料。
+
+**EDIT** 在 `db/query-owners.yaml` 加 scope 宣告，讓每一支無工作區條件的查詢逐支表態（`user`／`operator`／`worker`／`content-addressed`），檢查器比對宣告與 SQL 實況；未宣告即 FAIL。範本照 `tools/devctl/query_owners.go`。
+
+**PROVE** 拿掉某一支的宣告 → 檢查器指名該支 → 還原 → `git diff` 空。另加自我校驗：斷言掃到的查詢數量下限，**防止檢查器空轉卻回報通過**。
+
+**STOP-IF** 這一項要改 `db/query-owners.yaml`，是 C5 高衝突區，只由主 Agent 序列化。若發現某支查詢**應該**有工作區條件卻沒有，那是行為缺陷不是宣告問題——停，回報，進 [`05`](../plans/05-pending-rulings.md)。
+
+### 6.3 識別碼參數順序統一
+
+**GOAL** 消掉「同一個名字、相反的參數順序」這個陷阱。
+
+**DISCOVER**
+
+```
+git grep -n "func (s \*Service) WorkspaceSkill" -- apps/platform/internal/
+```
+
+`skill/library/read.go` 是 `(workspaceID, skillID)`，8 個呼叫點；`skill/discovery/detail.go` 是 `(id, workspaceID)`，靠同檔下一行再翻一次才接得上 `apiserver/app.go` 的轉接器。而那個轉接器欄位的型別是 `func(context.Context, pgtype.UUID, pgtype.UUID)`——**連參數名字都沒有，契約是隱形的**。
+
+另有 10 支函式帶工作區識別碼但沒放在其他 UUID 之前。
+
+**EDIT** 統一成工作區在先；函式型別欄位一律寫出參數名字。
+
+**PROVE** 加一支檢查器：函式若有工作區識別碼參數，必須排在其他 `pgtype.UUID` 之前；把某一支調回去 → 檢查器指名該支 → 還原 → `git diff` 空。
+
+---
+
+## 7 驗證指令
 
 ```
 # 建置與靜態檢查（在 apps/platform）
@@ -216,7 +302,7 @@ task gen:check
 
 ---
 
-## 7 突變協定
+## 8 突變協定
 
 每一條你宣稱修好的東西，逐條做：
 
@@ -240,7 +326,7 @@ task gen:check
 
 ---
 
-## 8 停止與升級條件
+## 9 停止與升級條件
 
 遇到以下情形**停下並回報**，不要自行決定。
 
@@ -257,11 +343,11 @@ task gen:check
 
 ---
 
-## 9 回報格式
+## 10 回報格式
 
 每個任務結束回報四段，不要長篇。
 
 1. **做了什麼** — 檔案清單 ＋ 一句話說明改動的形狀。
-2. **驗證** — §6 各指令的結果；整合測試要寫出實際跑了幾支、跳過幾支。
-3. **突變證明** — §7 格式，一行一條。
-4. **停下來的地方** — §8 命中哪一條，需要誰裁定什麼。
+2. **驗證** — §7 各指令的結果；整合測試要寫出實際跑了幾支、跳過幾支。
+3. **突變證明** — §8 格式，一行一條。
+4. **停下來的地方** — §9 命中哪一條，需要誰裁定什麼。
