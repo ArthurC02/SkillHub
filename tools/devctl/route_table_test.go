@@ -43,8 +43,8 @@ func writeRouteFixture(t *testing.T, extraRoute, extraOperation string) string {
 	var ops strings.Builder
 	ops.WriteString("openapi: 3.1.0\npaths:\n")
 	for i := 0; i < routeTableFloor+1; i++ {
-		mounts.WriteString(fmt.Sprintf("\tmux.HandleFunc(\"GET /r%d\", h.x)\n", i))
-		ops.WriteString(fmt.Sprintf("  /r%d:\n    get:\n      summary: r%d\n", i, i))
+		fmt.Fprintf(&mounts, "\tmux.HandleFunc(\"GET /r%d\", h.x)\n", i)
+		fmt.Fprintf(&ops, "  /r%d:\n    get:\n      summary: r%d\n", i, i)
 	}
 	mounts.WriteString("\tmux.HandleFunc(\"POST \"+trace.IngestPath+\"{token}\", h.ingest)\n")
 	ops.WriteString("  /internal/trace/{token}:\n    post:\n      summary: ingest\n")

@@ -264,7 +264,7 @@ func verifyEnrichmentReached(client *http.Client, api, name, skillID string, out
 			"  catalog would stay empty however many packages followed; nothing after this one was uploaded.\n"+
 			"  Start apps/llm and the model gateway it calls, check that the API's LLM_SERVICE_URL points at it, then seed again.\n"+
 			"  What is already uploaded is not lost while clean mode keeps running: the worker's hourly enrichment backfill\n"+
-			"  indexes pending packages once apps/llm answers. A restart does lose it, because the PGlite carrier is in memory.",
+			"  indexes pending packages once apps/llm answers. A restart does lose it, because the PGlite carrier is in memory",
 		name)
 }
 

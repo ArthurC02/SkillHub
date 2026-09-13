@@ -251,15 +251,6 @@ func frozenTables(dir string) (map[string]bool, error) {
 	return tables, nil
 }
 
-func callsFrom(sites []callSite, context string) bool {
-	for _, site := range sites {
-		if site.boundary == context {
-			return true
-		}
-	}
-	return false
-}
-
 func splitList(value string) []string {
 	var out []string
 	for _, part := range strings.Split(value, ",") {

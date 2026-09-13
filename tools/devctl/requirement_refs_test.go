@@ -51,7 +51,7 @@ func writeRefFixture(t *testing.T, extraHeadings, citer string) string {
 	var spec strings.Builder
 	spec.WriteString("# 規格\n\n")
 	for i := 1; i <= 41; i++ {
-		spec.WriteString(fmt.Sprintf("### DISC-%03d：標題\n\n允收準則：無。\n\n", i))
+		fmt.Fprintf(&spec, "### DISC-%03d：標題\n\n允收準則：無。\n\n", i)
 	}
 	spec.WriteString(extraHeadings)
 	writeAt(t, root, requirementSpec, spec.String())

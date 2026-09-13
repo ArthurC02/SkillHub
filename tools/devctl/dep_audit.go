@@ -369,7 +369,8 @@ func zizmorFindings(data []byte) ([]vulnFinding, error) {
 	var findings []vulnFinding
 	for _, finding := range report {
 		severity := finding.Determinations.Severity
-		if finding.Ignored || !(strings.EqualFold(severity, "Medium") || strings.EqualFold(severity, "High")) {
+		reportable := strings.EqualFold(severity, "Medium") || strings.EqualFold(severity, "High")
+		if finding.Ignored || !reportable {
 			continue
 		}
 		where := "(no location)"

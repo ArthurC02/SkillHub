@@ -338,10 +338,10 @@ func TestSeedCleanFailsOnUploadError(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/auth/dev/login":
+		switch r.URL.Path {
+		case "/auth/dev/login":
 			w.WriteHeader(http.StatusNoContent)
-		case r.URL.Path == "/skills/import/upload":
+		case "/skills/import/upload":
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_, _ = w.Write([]byte(`{"errors":[{"code":"bad"}]}`))
 		default:

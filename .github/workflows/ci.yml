@@ -376,6 +376,11 @@ jobs:
           cache-dependency-path: |
             tools/devctl/go.mod
             apps/platform/go.sum
+      - uses: ./.github/actions/golangci-lint
+      - run: golangci-lint run
+        working-directory: tools/devctl
+      - run: golangci-lint fmt --diff
+        working-directory: tools/devctl
       - run: go -C tools/devctl vet ./...
       - run: go -C tools/devctl test -race -count=1 ./...
       - name: Agent automation contract
