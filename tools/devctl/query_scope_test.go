@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+func TestTheRealRepositoryDeclaresEveryUnscopedQuery(t *testing.T) {
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if problems := queryScopeProblems(root); len(problems) > 0 {
+		t.Fatalf("queries without a workspace condition are undeclared or stale:\n%s", strings.Join(problems, "\n"))
+	}
+}
+
 func TestLacksWorkspaceCondition(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {

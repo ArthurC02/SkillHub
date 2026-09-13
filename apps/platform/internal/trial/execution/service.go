@@ -78,12 +78,12 @@ type Service struct {
 
 	TestLab *testlab.Service
 
-	ReadSkill   func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
-	ReadVersion func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+	ReadSkill   func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
+	ReadVersion func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
 
 	ReadVersionSummaries func(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error)
 
-	ReadContentSource func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
+	ReadContentSource func(ctx context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error)
 
 	Credits func(usd float64) (credits int64, ok bool)
 

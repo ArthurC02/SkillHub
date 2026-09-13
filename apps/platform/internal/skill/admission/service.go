@@ -347,7 +347,7 @@ func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillI
 		return Result{}, err
 	}
 	if !res.Duplicate {
-		if err := registry.UpdateSummaryFromPackage(ctx, tx, skill.ID, ws.ID, p.report); err != nil {
+		if err := registry.UpdateSummaryFromPackage(ctx, tx, ws.ID, skill.ID, p.report); err != nil {
 			return Result{}, err
 		}
 	}
@@ -405,13 +405,13 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		return registry.Version{}, false, err
 	}
 
-	if err := s.upsertProjection(ctx, tx, skill.ID, ws.ID, skill.Name, e); err != nil {
+	if err := s.upsertProjection(ctx, tx, ws.ID, skill.ID, skill.Name, e); err != nil {
 		return registry.Version{}, false, err
 	}
 	return version, false, nil
 }
 
-func (s *Service) upsertProjection(ctx context.Context, tx pgx.Tx, skillID, workspaceID pgtype.UUID, name string, e enrichment) error {
+func (s *Service) upsertProjection(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID, name string, e enrichment) error {
 	return s.IndexSkill(ctx, tx, SkillProjection{
 		SkillID:                 skillID,
 		WorkspaceID:             workspaceID,
@@ -466,7 +466,7 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 		if err != nil {
 			return done, failed, err
 		}
-		if err := s.upsertProjection(ctx, tx, row.SkillID, row.WorkspaceID, row.Name, e); err != nil {
+		if err := s.upsertProjection(ctx, tx, row.WorkspaceID, row.SkillID, row.Name, e); err != nil {
 			_ = tx.Rollback(ctx)
 			return done, failed, err
 		}

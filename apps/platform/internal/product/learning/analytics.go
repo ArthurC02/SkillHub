@@ -33,7 +33,7 @@ const (
 type Service struct {
 	Pool *pgxpool.Pool
 
-	RunBelongsToWorkspace func(context.Context, pgtype.UUID, pgtype.UUID) (bool, error)
+	RunBelongsToWorkspace func(ctx context.Context, workspaceID, runID pgtype.UUID) (bool, error)
 
 	Retention time.Duration
 

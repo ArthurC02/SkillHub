@@ -24,9 +24,9 @@ var ErrNotFound = errors.New("run not found")
 type Service struct {
 	Pool               *pgxpool.Pool
 	Signer             *Signer
-	ReadRunState       func(context.Context, pgtype.UUID, pgtype.UUID) (RunState, bool, error)
+	ReadRunState       func(ctx context.Context, workspaceID, runID pgtype.UUID) (RunState, bool, error)
 	ReadIngestRunState func(context.Context, pgtype.UUID) (IngestRunState, bool, error)
-	ReadRunTransitions func(context.Context, pgtype.UUID, pgtype.UUID) ([]RunTransition, error)
+	ReadRunTransitions func(ctx context.Context, workspaceID, runID pgtype.UUID) ([]RunTransition, error)
 
 	Credits func(usd float64) (credits int64, ok bool)
 }

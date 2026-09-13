@@ -137,12 +137,12 @@ type Service struct {
 
 	Versions *ingest.Service
 
-	ReadRunFacts        func(context.Context, pgtype.UUID, pgtype.UUID) (RunFacts, bool, error)
-	ReadEvaluationInput func(context.Context, pgtype.UUID, pgtype.UUID) (EvaluationInput, bool, error)
+	ReadRunFacts        func(ctx context.Context, workspaceID, runID pgtype.UUID) (RunFacts, bool, error)
+	ReadEvaluationInput func(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, bool, error)
 
-	ReadVersion              func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
-	ReadLatestVersion        func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
-	ReadSkill                func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
+	ReadVersion              func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
+	ReadLatestVersion        func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)
+	ReadSkill                func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
 	ReadRuntimeCompatibility func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error)
 
 	JudgeModel         string
@@ -230,7 +230,7 @@ func (s *Service) HasCurrentEvaluation(ctx context.Context, workspaceID, runID p
 }
 
 func (s *Service) recordModelUsage(
-	ctx context.Context, q *gen.Queries, evaluationID, workspaceID pgtype.UUID, operation string,
+	ctx context.Context, q *gen.Queries, workspaceID, evaluationID pgtype.UUID, operation string,
 	model, promptVersion string, usage *llmclient.GatewayUsage,
 ) error {
 	if usage == nil {
@@ -355,11 +355,11 @@ func (s *Service) recoverAttempt(ctx context.Context, workspaceID, runID pgtype.
 	if !Status(current.Status).AwaitsTheJudge() {
 		return nil
 	}
-	return s.recoverEvaluation(ctx, current.ID, workspaceID, runID)
+	return s.recoverEvaluation(ctx, workspaceID, current.ID, runID)
 }
 
 func (s *Service) recoverEvaluation(
-	ctx context.Context, evaluationID, workspaceID, runID pgtype.UUID,
+	ctx context.Context, workspaceID, evaluationID, runID pgtype.UUID,
 ) error {
 	current, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
 		RunID: runID, WorkspaceID: workspaceID,
@@ -563,12 +563,12 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 		return err
 	}
 
-	if err := s.recordModelUsage(ctx, q, ev.ID, ev.WorkspaceID, "judge",
+	if err := s.recordModelUsage(ctx, q, ev.WorkspaceID, ev.ID, "judge",
 		v.model, v.promptVersion, v.usage); err != nil {
 		return err
 	}
 
-	s.recordEvalCost(ctx, tx, credit.KindReview, ev.ID, ev.WorkspaceID, m.run.ID,
+	s.recordEvalCost(ctx, tx, credit.KindReview, ev.WorkspaceID, ev.ID, m.run.ID,
 		v.model, v.promptVersion, v.usage)
 
 	passed, failed, undetermined := tally(v.results)

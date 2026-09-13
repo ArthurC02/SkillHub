@@ -13,7 +13,7 @@ import (
 )
 
 type RunEventConsumer struct {
-	HasCurrentEvaluation func(context.Context, pgtype.UUID, pgtype.UUID) (bool, error)
+	HasCurrentEvaluation func(ctx context.Context, workspaceID, runID pgtype.UUID) (bool, error)
 
 	Insert func(context.Context, river.JobArgs, *river.InsertOpts) (*rivertype.JobInsertResult, error)
 }

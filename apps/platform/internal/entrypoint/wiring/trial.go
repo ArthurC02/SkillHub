@@ -41,7 +41,9 @@ func WireRunRegistryReaders(runs *run.Service, registryService *registry.Service
 	runs.ReadContentSource = readContentSource(registryService)
 }
 
-func readContentSource(registryService *registry.Service) func(context.Context, pgtype.UUID, pgtype.UUID) (run.ContentSource, bool, error) {
+func readContentSource(
+	registryService *registry.Service,
+) func(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.ContentSource, bool, error) {
 	return func(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.ContentSource, bool, error) {
 		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
 		if err != nil || !found {

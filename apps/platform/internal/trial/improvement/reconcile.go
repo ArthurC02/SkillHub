@@ -33,7 +33,7 @@ func (w *RecoveryWorker) Work(ctx context.Context, _ *river.Job[RecoveryArgs]) e
 		return err
 	}
 	for _, row := range rows {
-		if err := w.Svc.recoverEvaluation(ctx, row.ID, row.WorkspaceID, row.RunID); err != nil {
+		if err := w.Svc.recoverEvaluation(ctx, row.WorkspaceID, row.ID, row.RunID); err != nil {
 			return err
 		}
 	}

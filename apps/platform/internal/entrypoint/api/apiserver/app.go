@@ -200,8 +200,8 @@ func NewApp(cfg Config) (*App, error) {
 		MayStoreObjects:  identitySvc.MayStoreObjects,
 		ReadDisplayNames: identitySvc.DisplayNames,
 		Retention:        policy.DownloadRetention(cfg.DownloadRetention),
-		AppliedSuggestions: func(ctx context.Context, versionID, workspaceID pgtype.UUID) ([]packaging.AppliedSuggestion, error) {
-			return packagingSuggestions(ctx, evalSvc, versionID, workspaceID)
+		AppliedSuggestions: func(ctx context.Context, workspaceID, versionID pgtype.UUID) ([]packaging.AppliedSuggestion, error) {
+			return packagingSuggestions(ctx, evalSvc, workspaceID, versionID)
 		},
 		SourceLineage: func(ctx context.Context, sourceID pgtype.UUID) (packaging.LineageSource, error) {
 			source, err := versions.SourceLineage(ctx, sourceID)
@@ -420,8 +420,8 @@ func wirePackagingRegistryReaders(service *packaging.Service, registryService *r
 	}
 }
 
-func packagingSuggestions(ctx context.Context, svc *eval.Service, versionID, workspaceID pgtype.UUID) ([]packaging.AppliedSuggestion, error) {
-	rows, err := svc.AppliedSuggestions(ctx, versionID, workspaceID)
+func packagingSuggestions(ctx context.Context, svc *eval.Service, workspaceID, versionID pgtype.UUID) ([]packaging.AppliedSuggestion, error) {
+	rows, err := svc.AppliedSuggestions(ctx, workspaceID, versionID)
 	if err != nil {
 		return nil, err
 	}

@@ -22,11 +22,11 @@ type Service struct {
 	Pool *pgxpool.Pool
 
 	ReadCatalogSkill         func(context.Context, pgtype.UUID) (SkillFacts, bool, error)
-	ReadWorkspaceSkill       func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
-	ReadLatestVersion        func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+	ReadWorkspaceSkill       func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
+	ReadLatestVersion        func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)
 	ReadRuntimeCompatibility func(context.Context, pgtype.UUID) (RuntimeCompatibilityFacts, bool, error)
 
-	SourceByID func(context.Context, pgtype.UUID, pgtype.UUID) (SourceFacts, bool, error)
+	SourceByID func(ctx context.Context, workspaceID, sourceID pgtype.UUID) (SourceFacts, bool, error)
 
 	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
 

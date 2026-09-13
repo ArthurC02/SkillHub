@@ -102,6 +102,7 @@ func documentCheckers() []namedChecker {
 		{"drift-marker", driftMarkerProblems},
 		{"depguard-deny", depguardDenyProblems},
 		{"service-construction", serviceConstructionProblems},
+		{"identifier-order", identifierOrderProblems},
 		{"one-number", sharedNumberProblems},
 		{"query-owner", queryOwnerProblems},
 		{"query-scope", queryScopeProblems},

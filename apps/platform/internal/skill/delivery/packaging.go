@@ -75,14 +75,14 @@ type Service struct {
 
 	Retention policy.DownloadRetention
 
-	AppliedSuggestions func(ctx context.Context, versionID, workspaceID pgtype.UUID) ([]AppliedSuggestion, error)
+	AppliedSuggestions func(ctx context.Context, workspaceID, versionID pgtype.UUID) ([]AppliedSuggestion, error)
 	SourceLineage      func(ctx context.Context, sourceID pgtype.UUID) (LineageSource, error)
 
 	CuratedSource     func(ctx context.Context, skillID pgtype.UUID) (CuratedSource, bool, error)
-	ReadSkill         func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
-	ReadVersion       func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+	ReadSkill         func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
+	ReadVersion       func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
 	ReadCompatibility func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error)
-	ReadPrevious      func(context.Context, pgtype.UUID, pgtype.UUID, int32) (PreviousVersion, bool, error)
+	ReadPrevious      func(ctx context.Context, workspaceID, skillID pgtype.UUID, versionNumber int32) (PreviousVersion, bool, error)
 	ReadLineage       func(context.Context, pgtype.UUID) (LineageStep, bool, error)
 	ReadOldest        func(context.Context, pgtype.UUID) (OldestVersion, bool, error)
 

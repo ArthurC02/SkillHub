@@ -215,7 +215,7 @@ func (s *Service) checkArtifacts(ctx context.Context) error {
 		if !confirmed {
 			continue
 		}
-		if err := s.markLost(ctx, kindArtifact, row.ID, row.WorkspaceID, row.ObjectKey,
+		if err := s.markLost(ctx, kindArtifact, row.WorkspaceID, row.ID, row.ObjectKey,
 			s.RecordArtifactPurged,
 			audit.ResourceArtifact); err != nil {
 			return err
@@ -239,7 +239,7 @@ func (s *Service) checkDatasets(ctx context.Context) error {
 		if !confirmed {
 			continue
 		}
-		if err := s.markLost(ctx, kindDataset, row.ID, row.WorkspaceID, row.ObjectKey,
+		if err := s.markLost(ctx, kindDataset, row.WorkspaceID, row.ID, row.ObjectKey,
 			s.RecordDatasetLost,
 			audit.ResourceDataset); err != nil {
 			return err
@@ -289,7 +289,7 @@ func (s *Service) sight(
 }
 
 func (s *Service) markLost(
-	ctx context.Context, kind string, id, workspaceID pgtype.UUID, key string,
+	ctx context.Context, kind string, workspaceID, id pgtype.UUID, key string,
 	mark MarkFunc, resourceType string,
 ) error {
 	tx, err := s.Pool.Begin(ctx)

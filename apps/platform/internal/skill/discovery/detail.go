@@ -518,7 +518,7 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFac
 		httpx.WriteError(w, http.StatusInternalServerError, "工作區讀取失敗，稍後再試一次")
 		return SkillFacts{}, "", false
 	}
-	skill, found, err = h.Svc.WorkspaceSkill(ctx, id, ws.ID)
+	skill, found, err = h.Svc.WorkspaceSkill(ctx, ws.ID, id)
 	if !found && err == nil {
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
 		return SkillFacts{}, "", false
@@ -537,7 +537,7 @@ func (s *Service) CatalogSkill(ctx context.Context, id pgtype.UUID) (SkillFacts,
 	return s.ReadCatalogSkill(ctx, id)
 }
 
-func (s *Service) WorkspaceSkill(ctx context.Context, id, workspaceID pgtype.UUID) (SkillFacts, bool, error) {
+func (s *Service) WorkspaceSkill(ctx context.Context, workspaceID, id pgtype.UUID) (SkillFacts, bool, error) {
 	if s.ReadWorkspaceSkill == nil {
 		return SkillFacts{}, false, errOwnerReadNotConfigured
 	}

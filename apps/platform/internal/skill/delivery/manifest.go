@@ -208,7 +208,7 @@ func (s *Service) originOf(
 		s.ReadLineage == nil || s.ReadOldest == nil {
 		return nil, errOwnerReadNotConfigured
 	}
-	sugs, err := s.AppliedSuggestions(ctx, version.ID, ws.ID)
+	sugs, err := s.AppliedSuggestions(ctx, ws.ID, version.ID)
 	if err != nil {
 		return nil, err
 	}

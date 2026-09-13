@@ -83,7 +83,7 @@ func CreateVersionFromPackage(ctx context.Context, tx pgx.Tx, v NewVersion) (Ver
 	return versionDTO(row), nil
 }
 
-func UpdateSummaryFromPackage(ctx context.Context, tx pgx.Tx, skillID, workspaceID pgtype.UUID, report skillpkg.Report) error {
+func UpdateSummaryFromPackage(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID, report skillpkg.Report) error {
 	manifest, err := validatedManifest(report)
 	if err != nil {
 		return err

@@ -22,7 +22,7 @@ type AppliedSuggestion struct {
 	TargetPath   string
 }
 
-func (s *Service) AppliedSuggestions(ctx context.Context, versionID, workspaceID pgtype.UUID) ([]AppliedSuggestion, error) {
+func (s *Service) AppliedSuggestions(ctx context.Context, workspaceID, versionID pgtype.UUID) ([]AppliedSuggestion, error) {
 	rows, err := gen.New(s.Pool).ListSuggestionsAppliedToVersion(ctx, gen.ListSuggestionsAppliedToVersionParams{
 		AppliedSkillVersionID: versionID,
 		WorkspaceID:           workspaceID,
