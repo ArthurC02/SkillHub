@@ -66,6 +66,15 @@ func goListedConstEnum(listPath, listName, constPath, constType string) vocabula
 	}
 }
 
+func sqlCheckIn(path, column string) vocabularySource {
+	return vocabularySource{
+		label: fmt.Sprintf("%s (CHECK on %s)", path, column),
+		read: func(root string) (map[string]bool, error) {
+			return sqlCheckValues(filepath.Join(root, filepath.FromSlash(path)), column)
+		},
+	}
+}
+
 func postgresEnum(path, typeName string) vocabularySource {
 	return vocabularySource{
 		label: fmt.Sprintf("%s (enum %s)", path, typeName),
@@ -96,6 +105,16 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "CreationSessionState"),
 		},
 		absent: "creation_sessions.state carries no CHECK; state.go is the only guard",
+	},
+	{
+		name: "run attempt object grant state",
+		sources: []vocabularySource{
+			sqlCheckIn("db/migrations/0050_run_attempt_object_grant_expiry.sql", "object_grants_state"),
+			goConstEnum("apps/platform/internal/trial/execution/grantstate.go", "ObjectGrantState"),
+			goListedConstEnum(
+				"apps/platform/internal/trial/execution/grantstate.go", "AllObjectGrantStates",
+				"apps/platform/internal/trial/execution/grantstate.go", "ObjectGrantState"),
+		},
 	},
 }
 
@@ -245,6 +264,30 @@ func compositeIdentifiers(path, listName string, expression ast.Expr) ([]string,
 	return names, nil
 }
 
+func sqlCheckValues(path, column string) (map[string]bool, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	pattern := regexp.MustCompile(fmt.Sprintf(`(?s)CHECK\s*\(\s*%s\s+IN\s*\((.*?)\)`, regexp.QuoteMeta(column)))
+	match := pattern.FindStringSubmatch(string(raw))
+	if match == nil {
+		return nil, fmt.Errorf("%s has no CHECK listing the values of %s; the constraint moved and this comparison has lost its subject", path, column)
+	}
+	return quotedSQLValues(match[1]), nil
+}
+
+func quotedSQLValues(list string) map[string]bool {
+	values := map[string]bool{}
+	for _, entry := range strings.Split(list, ",") {
+		trimmed := strings.Trim(strings.TrimSpace(entry), "'")
+		if trimmed != "" {
+			values[trimmed] = true
+		}
+	}
+	return values
+}
+
 func postgresEnumValues(path, typeName string) (map[string]bool, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -255,13 +298,5 @@ func postgresEnumValues(path, typeName string) (map[string]bool, error) {
 	if match == nil {
 		return nil, fmt.Errorf("%s declares no enum %s; the type moved and this comparison has lost its subject", path, typeName)
 	}
-	values := map[string]bool{}
-	for _, entry := range strings.Split(match[1], ",") {
-		trimmed := strings.TrimSpace(entry)
-		trimmed = strings.Trim(trimmed, "'")
-		if trimmed != "" {
-			values[trimmed] = true
-		}
-	}
-	return values, nil
+	return quotedSQLValues(match[1]), nil
 }

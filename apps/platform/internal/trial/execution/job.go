@@ -210,9 +210,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 		request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, profile, policy)
 		if err != nil {
 
-			if _, expiryErr := d.svc.queries().SetRunAttemptObjectGrantsExpiry(ctx, gen.SetRunAttemptObjectGrantsExpiryParams{
-				ExpiresAt: pgtype.Timestamptz{Time: time.Now().UTC().Add(-2 * time.Minute), Valid: true}, ID: attempt.ID, WorkspaceID: d.cur.WorkspaceID,
-			}); expiryErr != nil {
+			if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, d.cur.WorkspaceID, objectGrantsExpiredOnArrival()); expiryErr != nil {
 				slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
 			}
 			d.failAttempt(ctx, attempt, errClassProvision, err.Error())

@@ -2,7 +2,6 @@ package run
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -32,14 +31,8 @@ func (s *Service) grantsFor(
 		if version.PackageObjectKey != "" || len(refs) > 0 {
 			return nil, nil, fmt.Errorf("no object store is configured; this run's inputs cannot be granted")
 		}
-		updated, err := s.queries().SetRunAttemptObjectGrantsExpiry(ctx, gen.SetRunAttemptObjectGrantsExpiryParams{
-			ExpiresAt: pgtype.Timestamptz{Time: time.Now().UTC().Add(-2 * time.Minute), Valid: true}, ID: attempt.ID, WorkspaceID: run.WorkspaceID,
-		})
-		if err != nil {
+		if err := s.recordObjectGrantExpiry(ctx, attempt, run.WorkspaceID, objectGrantsExpiredOnArrival()); err != nil {
 			return nil, nil, fmt.Errorf("record empty object grant expiry: %w", err)
-		}
-		if updated != 1 {
-			return nil, nil, errors.New("record empty object grant expiry: attempt not found in workspace")
 		}
 		return nil, datasetKeys, nil
 	}
@@ -92,14 +85,8 @@ func (s *Service) grantsFor(
 	for i := range grants {
 		grants[i].ExpiresAt = expires
 	}
-	updated, err := s.queries().SetRunAttemptObjectGrantsExpiry(ctx, gen.SetRunAttemptObjectGrantsExpiryParams{
-		ExpiresAt: pgtype.Timestamptz{Time: expires, Valid: true}, ID: attempt.ID, WorkspaceID: run.WorkspaceID,
-	})
-	if err != nil {
+	if err := s.recordObjectGrantExpiry(ctx, attempt, run.WorkspaceID, expires); err != nil {
 		return nil, nil, fmt.Errorf("record object grant expiry: %w", err)
-	}
-	if updated != 1 {
-		return nil, nil, errors.New("record object grant expiry: attempt not found in workspace")
 	}
 	return grants, datasetKeys, nil
 }
