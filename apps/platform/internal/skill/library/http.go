@@ -268,7 +268,7 @@ func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	diffs, err := h.Svc.DiffVersions(r.Context(), ws, skillID, fromID, toID)
+	diffs, err := h.Svc.DiffVersions(r.Context(), ws, skillID, VersionRange{From: fromID, To: toID})
 	if errors.Is(err, ErrNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
 		return

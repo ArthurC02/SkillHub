@@ -26,7 +26,12 @@ type FileDiff struct {
 
 const maxDiffFileBytes = 1 << 20
 
-func (s *Service) DiffVersions(ctx context.Context, ws identity.Workspace, skillID, fromID, toID pgtype.UUID) ([]FileDiff, error) {
+type VersionRange struct {
+	From pgtype.UUID
+	To   pgtype.UUID
+}
+
+func (s *Service) DiffVersions(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, versions VersionRange) ([]FileDiff, error) {
 	q := gen.New(s.Pool)
 	load := func(versionID pgtype.UUID) (fs.FS, error) {
 		v, err := q.GetSkillVersion(ctx, gen.GetSkillVersionParams{ID: versionID, WorkspaceID: ws.ID})
@@ -47,11 +52,11 @@ func (s *Service) DiffVersions(ctx context.Context, ws identity.Workspace, skill
 		return zr, nil
 	}
 
-	fromFS, err := load(fromID)
+	fromFS, err := load(versions.From)
 	if err != nil {
 		return nil, err
 	}
-	toFS, err := load(toID)
+	toFS, err := load(versions.To)
 	if err != nil {
 		return nil, err
 	}

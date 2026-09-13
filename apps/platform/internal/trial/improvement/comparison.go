@@ -89,7 +89,7 @@ func (h *Handler) Comparison(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	view, err := h.Svc.Comparison(r.Context(), ws.ID, runID, againstID)
+	view, err := h.Svc.Comparison(r.Context(), ws.ID, RunPair{Run: runID, Against: againstID})
 	if errors.Is(err, ErrNotFound) {
 
 		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
@@ -109,14 +109,19 @@ type sideDetail struct {
 	results  map[string]CriterionResult
 }
 
+type RunPair struct {
+	Run     pgtype.UUID
+	Against pgtype.UUID
+}
+
 func (s *Service) Comparison(
-	ctx context.Context, workspaceID, runID, againstID pgtype.UUID,
+	ctx context.Context, workspaceID pgtype.UUID, runs RunPair,
 ) (comparisonView, error) {
-	left, leftDetail, err := s.comparisonSide(ctx, workspaceID, runID)
+	left, leftDetail, err := s.comparisonSide(ctx, workspaceID, runs.Run)
 	if err != nil {
 		return comparisonView{}, err
 	}
-	right, rightDetail, err := s.comparisonSide(ctx, workspaceID, againstID)
+	right, rightDetail, err := s.comparisonSide(ctx, workspaceID, runs.Against)
 	if err != nil {
 		return comparisonView{}, err
 	}

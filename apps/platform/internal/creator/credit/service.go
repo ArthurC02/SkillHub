@@ -396,21 +396,27 @@ type Ledger struct {
 
 const ledgerEntryLimit = 50
 
-func (s *Service) Ledger(ctx context.Context, tx DBTX, userID, workspaceID, operatorID pgtype.UUID) (Ledger, error) {
+type LedgerQuery struct {
+	Account   pgtype.UUID
+	Workspace pgtype.UUID
+	Operator  pgtype.UUID
+}
+
+func (s *Service) Ledger(ctx context.Context, tx DBTX, query LedgerQuery) (Ledger, error) {
 	if s.Store == nil {
 		return Ledger{}, ErrUnavailable
 	}
-	balance, err := s.Store.Balance(ctx, tx, userID)
+	balance, err := s.Store.Balance(ctx, tx, query.Account)
 	if err != nil {
 		return Ledger{}, err
 	}
-	entries, err := s.Store.RecentEntries(ctx, tx, userID, ledgerEntryLimit)
+	entries, err := s.Store.RecentEntries(ctx, tx, query.Account, ledgerEntryLimit)
 	if err != nil {
 		return Ledger{}, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
-		Actor: operatorID, Workspace: workspaceID, Action: audit.ActionCreditLookup,
-		ResourceType: audit.ResourceCreditAccount, ResourceID: userID,
+		Actor: query.Operator, Workspace: query.Workspace, Action: audit.ActionCreditLookup,
+		ResourceType: audit.ResourceCreditAccount, ResourceID: query.Account,
 	}); err != nil {
 		return Ledger{}, err
 	}

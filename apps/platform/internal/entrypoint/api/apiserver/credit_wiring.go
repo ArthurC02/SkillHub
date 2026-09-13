@@ -109,7 +109,9 @@ func (l *creditLedger) Ledger(ctx context.Context, workspaceID, operatorID pgtyp
 	var ledger credit.Ledger
 	err = pgx.BeginFunc(ctx, l.pool, func(tx pgx.Tx) error {
 		var err error
-		ledger, err = l.svc.Ledger(ctx, tx, userID, workspaceID, operatorID)
+		ledger, err = l.svc.Ledger(ctx, tx, credit.LedgerQuery{
+			Account: userID, Workspace: workspaceID, Operator: operatorID,
+		})
 		return err
 	})
 	return ledger, err
