@@ -5,7 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/fs"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -150,35 +150,52 @@ func TestEveryDeclaredReasonIsInTheRoster(t *testing.T) {
 	}
 }
 
-func TestNoGateInventsAReasonInline(t *testing.T) {
-	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", func(info fs.FileInfo) bool {
-		return !strings.HasSuffix(info.Name(), "_test.go")
-	}, 0)
+func packageSourceFiles(t *testing.T) (*token.FileSet, []*ast.File) {
+	t.Helper()
+	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls := 0
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Files {
-			ast.Inspect(file, func(n ast.Node) bool {
-				call, ok := n.(*ast.CallExpr)
-				if !ok {
-					return true
-				}
-				name, ok := call.Fun.(*ast.Ident)
-				if !ok || name.Name != "refused" || len(call.Args) == 0 {
-					return true
-				}
-				calls++
-				if literal, ok := call.Args[0].(*ast.BasicLit); ok {
-					t.Errorf("%s: refused(%s, ...) spells its reason inline; "+
-						"declare it beside the others so the roster stays the whole vocabulary",
-						fset.Position(call.Pos()), literal.Value)
-				}
-				return true
-			})
+	fset := token.NewFileSet()
+	var files []*ast.File
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
 		}
+		file, err := parser.ParseFile(fset, name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, file)
+	}
+	if len(files) == 0 {
+		t.Fatal("read no source file in this package")
+	}
+	return fset, files
+}
+
+func TestNoGateInventsAReasonInline(t *testing.T) {
+	fset, files := packageSourceFiles(t)
+	calls := 0
+	for _, file := range files {
+		ast.Inspect(file, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			name, ok := call.Fun.(*ast.Ident)
+			if !ok || name.Name != "refused" || len(call.Args) == 0 {
+				return true
+			}
+			calls++
+			if literal, ok := call.Args[0].(*ast.BasicLit); ok {
+				t.Errorf("%s: refused(%s, ...) spells its reason inline; "+
+					"declare it beside the others so the roster stays the whole vocabulary",
+					fset.Position(call.Pos()), literal.Value)
+			}
+			return true
+		})
 	}
 	if calls == 0 {
 		t.Fatal("found no refused() call at all; this test read nothing")
