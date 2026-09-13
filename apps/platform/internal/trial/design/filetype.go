@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var ErrUnsupportedType = errors.New("不支援這種檔案類型")
+var ErrUnsupportedType = errors.New("testlab: the file is not one of the types a dataset accepts")
 
 const sniffLen = 512
 

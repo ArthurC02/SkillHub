@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -34,6 +35,10 @@ func TestARunIsRefusedWhenTheBalanceCannotCoverItsCeiling(t *testing.T) {
 	}
 	if got := refusalReasons(t, pool, f.workspaceID); len(got) != 1 || got[0] != "credit_balance" {
 		t.Errorf("refusal reasons = %v, want exactly [credit_balance]", got)
+	}
+	msg := body.Error
+	if !strings.Contains(msg, "點數不足") || !strings.Contains(msg, "已經開始的試跑不受影響") {
+		t.Errorf("the refusal reads %q; it has to say what ran out and what is unaffected", msg)
 	}
 }
 

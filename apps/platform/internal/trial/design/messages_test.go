@@ -70,7 +70,7 @@ func TestWireMessagesAreTraditionalChinese(t *testing.T) {
 		{"ErrNotFound", ErrNotFound.Error()},
 		{"ErrInvalid", ErrInvalid.Error()},
 		{"ErrLimitExceeded", ErrLimitExceeded.Error()},
-		{"ErrUnsupportedType", ErrUnsupportedType.Error()},
+		{"messageUnsupportedType", messageUnsupportedType},
 		{"deleteTestCaseNote", deleteTestCaseNote},
 		{"deleteDatasetNote", deleteDatasetNote},
 		{"limitsNote", limitsNote},

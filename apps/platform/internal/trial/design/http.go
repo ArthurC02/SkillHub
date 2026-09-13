@@ -49,6 +49,8 @@ func pathUUID(w http.ResponseWriter, r *http.Request, name string) (pgtype.UUID,
 	return id, true
 }
 
+const messageUnsupportedType = "不支援這種檔案類型"
+
 func stripSentinelPrefix(err, sentinel error) string {
 	return strings.TrimPrefix(err.Error(), sentinel.Error()+": ")
 }
@@ -60,7 +62,7 @@ func fail(w http.ResponseWriter, err error, generic string) {
 	case errors.Is(err, ErrInvalid):
 		httpx.WriteError(w, http.StatusBadRequest, stripSentinelPrefix(err, ErrInvalid))
 	case errors.Is(err, ErrUnsupportedType):
-		httpx.WriteError(w, http.StatusUnsupportedMediaType, err.Error())
+		httpx.WriteError(w, http.StatusUnsupportedMediaType, messageUnsupportedType)
 	case errors.Is(err, ErrLimitExceeded):
 		httpx.WriteError(w, http.StatusRequestEntityTooLarge, stripSentinelPrefix(err, ErrLimitExceeded))
 

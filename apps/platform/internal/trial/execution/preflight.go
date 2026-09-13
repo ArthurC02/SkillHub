@@ -399,7 +399,7 @@ func (h *Handler) Preflight(w http.ResponseWriter, r *http.Request) {
 	}
 	summary, err := h.Svc.PermissionSummaryFor(r.Context(), ws.ID, skillID, versionID, testCaseID)
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound) {
-		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		httpx.WriteError(w, http.StatusNotFound, notFoundMessage(err))
 		return
 	}
 	if err != nil {
@@ -431,7 +431,7 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 	row, err := h.Svc.ConfirmPermissions(r.Context(), ws.ID, user.ID, skillID, versionID, testCaseID, body.SummaryHash)
 	switch {
 	case errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound):
-		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		httpx.WriteError(w, http.StatusNotFound, notFoundMessage(err))
 		return
 
 	case errors.Is(err, ErrPermissionsNotConfirmed):

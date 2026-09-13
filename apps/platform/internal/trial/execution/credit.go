@@ -14,7 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
-var ErrCreditBalance = errors.New("點數不足，無法開始這次試跑。請聯絡管理者為這個帳號加點；已經開始的試跑不受影響。")
+var ErrCreditBalance = errors.New("run: the workspace has too few credits to start a run")
 
 func usdMicros(usd float64) int64 {
 	micros := usd * 1_000_000

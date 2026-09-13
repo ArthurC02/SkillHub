@@ -134,6 +134,19 @@ type attemptView struct {
 	FinishedAt    string `json:"finished_at,omitempty"`
 }
 
+const (
+	messageCreditBalance = "點數不足，無法開始這次試跑。請聯絡管理者為這個帳號加點；已經開始的試跑不受影響。"
+
+	messagePreflightTargetNotFound = "找不到這個 Skill 版本或 Test Case"
+)
+
+func notFoundMessage(err error) string {
+	if errors.Is(err, ErrPreflightTargetNotFound) {
+		return messagePreflightTargetNotFound
+	}
+	return err.Error()
+}
+
 func toRunResponse(run gen.Run) runResponse {
 	return runResponse{
 		RunID:             pgconv.UUIDString(run.ID),
@@ -201,7 +214,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound) {
-		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		httpx.WriteError(w, http.StatusNotFound, notFoundMessage(err))
 		return
 	}
 
@@ -215,7 +228,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if errors.Is(err, ErrCreditBalance) || errors.Is(err, ErrScanBlocked) || errors.Is(err, ErrRunLimitReached) ||
+	if errors.Is(err, ErrCreditBalance) {
+		httpx.WriteError(w, http.StatusUnprocessableEntity, messageCreditBalance)
+		return
+	}
+	if errors.Is(err, ErrScanBlocked) || errors.Is(err, ErrRunLimitReached) ||
 		errors.Is(err, ErrAccessRestricted) || errors.Is(err, policy.ErrQuotaExceeded) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 		return

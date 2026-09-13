@@ -26,7 +26,7 @@ import (
 var (
 	ErrNotFound = errors.New("run not found")
 
-	ErrPreflightTargetNotFound = errors.New("找不到這個 Skill 版本或 Test Case")
+	ErrPreflightTargetNotFound = errors.New("run: no such skill version or test case")
 
 	ErrRunFinished               = errors.New("run has already finished")
 	errRegistryReadNotConfigured = errors.New("run: registry owner read is not configured")

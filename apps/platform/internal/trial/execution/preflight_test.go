@@ -3,7 +3,9 @@ package run
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -79,8 +81,10 @@ func TestPreflightMissingVersionIsPreflightTargetNotFound(t *testing.T) {
 	if !errors.Is(err, ErrPreflightTargetNotFound) {
 		t.Fatalf("err = %v, want ErrPreflightTargetNotFound", err)
 	}
-	const want = "找不到這個 Skill 版本或 Test Case"
-	if err.Error() != want {
-		t.Errorf("404 body = %q, want %q", err.Error(), want)
+	if strings.ContainsFunc(err.Error(), func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+		t.Errorf("a domain sentinel is carrying interface copy: %q", err)
+	}
+	if got := notFoundMessage(err); got != "找不到這個 Skill 版本或 Test Case" {
+		t.Errorf("404 body = %q; the handler owns the sentence a reader sees", got)
 	}
 }
