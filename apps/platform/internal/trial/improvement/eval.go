@@ -39,12 +39,6 @@ const (
 
 const SourceModel = "model"
 
-const (
-	StatusPending   = "pending"
-	StatusCompleted = "completed"
-	StatusFailed    = "failed"
-)
-
 type Range struct {
 	Start int `json:"start"`
 	End   int `json:"end"`
@@ -308,7 +302,7 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 
 	if current, currentErr := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
 		RunID: runID, WorkspaceID: workspaceID,
-	}); currentErr == nil && current.Status == StatusPending {
+	}); currentErr == nil && Status(current.Status).AwaitsTheJudge() {
 		return nil
 	} else if currentErr != nil && !errors.Is(currentErr, pgx.ErrNoRows) {
 		return currentErr
@@ -358,7 +352,7 @@ func (s *Service) recoverAttempt(ctx context.Context, workspaceID, runID pgtype.
 	if err != nil {
 		return err
 	}
-	if current.Status != StatusPending {
+	if !Status(current.Status).AwaitsTheJudge() {
 		return nil
 	}
 	return s.recoverEvaluation(ctx, current.ID, workspaceID, runID)
@@ -376,7 +370,7 @@ func (s *Service) recoverEvaluation(
 	if err != nil {
 		return err
 	}
-	if current.ID != evaluationID || current.Status != StatusPending {
+	if current.ID != evaluationID || !Status(current.Status).AwaitsTheJudge() {
 		return nil
 	}
 	m, err := s.gather(ctx, workspaceID, runID)
@@ -498,7 +492,7 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 	}
 	if current, err := q.GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
 		RunID: m.run.ID, WorkspaceID: m.run.WorkspaceID,
-	}); err == nil && current.Status == StatusPending {
+	}); err == nil && Status(current.Status).AwaitsTheJudge() {
 		return gen.Evaluation{}, errEvaluationInProgress
 	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return gen.Evaluation{}, err

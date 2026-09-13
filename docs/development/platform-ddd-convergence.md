@@ -194,9 +194,15 @@ Go 定義已存在（`apps/platform/internal/trial/execution/statemachine.go`）
 
 **不要改 SQL。** 改法是讓 T1 的檢查器把「Go 的終態集合」與「SQL 每一處 `IN ('succeeded', …)` 的值集」對帳，不一致就紅。新增終態時一次改齊。
 
-#### T2c artifact `kind`
+#### T2c artifact `kind`（已判定不做）
 
-`run_output`、`download_package` 在 Go 只以生成碼裡的字串存在。新增具名型別與常數，讓「這個 artifact 是 run 產出嗎」不必靠呼叫一支名字已寫死答案的 query 來回答。
+`run_output`、`download_package` 在 Go 只以生成碼裡的字串存在，看起來像 J1 的目標。但**生產程式碼從來沒有讀過這個欄位**：每一支 query 都把 kind 寫死在 WHERE 裡，Go 沒有任何分支。DISCOVER 確認：
+
+```
+git grep -n "run_output\|download_package" -- apps/platform/internal/ | awk '!/_test|\/gen\//'
+```
+
+輸出為空。加型別會得到一個零呼叫者的抽象，J2 四問全否。**這一項關閉。** 若日後 Go 真的需要問「這個 artifact 是 run 產出嗎」，屆時再依 §3 形狀補，並同時加進 T1 的對帳表。
 
 **VERIFY** 該 context 測試綠；`go test ./internal/...` 零失敗；整合測試（§6）綠。
 **PROVE** 每個新轉移表各弄壞一列，對應測試必須紅。

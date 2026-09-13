@@ -90,7 +90,7 @@ func TestMarshalCreationFeedbackBoundsLargeReportAndMarksOmissions(t *testing.T)
 	if err := json.Unmarshal(got, &payload); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	if payload.Status != StatusFailed || payload.Overall != OverallUndetermined {
+	if payload.Status != string(StatusFailed) || payload.Overall != OverallUndetermined {
 		t.Fatalf("verdict changed: %+v", payload)
 	}
 	if len([]rune(payload.Summary)) > creationFeedbackMaxSummary {

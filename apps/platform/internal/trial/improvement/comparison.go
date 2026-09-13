@@ -40,7 +40,7 @@ type comparisonSide struct {
 
 type comparisonVerdict struct {
 	EvaluationID string   `json:"evaluation_id"`
-	Status       string   `json:"status"`
+	Status       Status   `json:"status"`
 	Overall      string   `json:"overall"`
 	Cost         costView `json:"cost"`
 }
@@ -207,7 +207,7 @@ func (s *Service) comparisonSide(
 	}
 	side.Evaluation = &comparisonVerdict{
 		EvaluationID: pgconv.UUIDString(ev.ID),
-		Status:       ev.Status,
+		Status:       Status(ev.Status),
 		Overall:      ev.Overall,
 		Cost:         costViewOf(ev, s.Credits),
 	}

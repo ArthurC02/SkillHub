@@ -38,7 +38,7 @@ func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Wo
 type evaluationView struct {
 	EvaluationID          string            `json:"evaluation_id"`
 	RunID                 string            `json:"run_id"`
-	Status                string            `json:"status"`
+	Status                Status            `json:"status"`
 	Overall               string            `json:"overall"`
 	Summary               string            `json:"summary,omitempty"`
 	CriterionResults      []CriterionResult `json:"criterion_results"`
@@ -273,7 +273,7 @@ func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Eval
 	view := evaluationView{
 		EvaluationID:          pgconv.UUIDString(ev.ID),
 		RunID:                 pgconv.UUIDString(ev.RunID),
-		Status:                ev.Status,
+		Status:                Status(ev.Status),
 		Overall:               ev.Overall,
 		Summary:               derefString(ev.Summary),
 		CriterionResults:      orEmptyResults(results),

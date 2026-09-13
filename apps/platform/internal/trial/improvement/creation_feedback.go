@@ -28,7 +28,7 @@ func withoutLinks(s string) string {
 type creationFeedbackPayload struct {
 	EvaluationAvailable   bool              `json:"evaluation_available"`
 	EvaluationID          string            `json:"evaluation_id"`
-	Status                string            `json:"status"`
+	Status                Status            `json:"status"`
 	Overall               string            `json:"overall"`
 	Summary               string            `json:"summary"`
 	CriterionResults      []CriterionResult `json:"criterion_results"`

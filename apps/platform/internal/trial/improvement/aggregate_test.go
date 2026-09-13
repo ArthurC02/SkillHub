@@ -325,7 +325,7 @@ func TestARevisionSettlesOnce(t *testing.T) {
 		if err := s.complete(ctx, m, ev, aVerdict("late arrival", OverallMet)); !errors.Is(err, errEvaluationSettled) {
 			t.Fatalf("completing a failed revision: want errEvaluationSettled, got %v", err)
 		}
-		if got := reload(t, s, m, ev.ID); got.Status != StatusFailed {
+		if got := reload(t, s, m, ev.ID); got.Status != string(StatusFailed) {
 			t.Fatalf("a failed revision became %q", got.Status)
 		}
 	})
@@ -467,7 +467,7 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 			t.Fatalf("fail: %v", err)
 		}
 		got := reload(t, s, m, ev.ID)
-		if got.Status != StatusFailed {
+		if got.Status != string(StatusFailed) {
 			t.Fatalf("status = %q, want failed", got.Status)
 		}
 		return got

@@ -107,6 +107,16 @@ var domainVocabularies = []domainVocabulary{
 		absent: "creation_sessions.state carries no CHECK; state.go is the only guard",
 	},
 	{
+		name: "evaluation status",
+		sources: []vocabularySource{
+			sqlCheckIn("db/migrations/0024_evaluation.sql", "status"),
+			goConstEnum("apps/platform/internal/trial/improvement/status.go", "Status"),
+			goListedConstEnum(
+				"apps/platform/internal/trial/improvement/status.go", "AllStatuses",
+				"apps/platform/internal/trial/improvement/status.go", "Status"),
+		},
+	},
+	{
 		name: "run attempt object grant state",
 		sources: []vocabularySource{
 			sqlCheckIn("db/migrations/0050_run_attempt_object_grant_expiry.sql", "object_grants_state"),
