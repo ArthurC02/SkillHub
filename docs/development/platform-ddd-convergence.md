@@ -2,7 +2,7 @@
 
 本檔給要動 `apps/platform/internal/` 領域程式碼的 Coding Agent，講的是**領域規則該住在哪裡**：規則的定義在 Go，原子性機制留在 SQL，使用者看得到的句子在 handler。日常的跨 context 判斷看 [platform-ddd-practices.md](platform-ddd-practices.md)。
 
-四段各自回答一個問題：**§4** 現在住在哪裡、**§5** 哪些看起來該做而量測說不做、**§6** 還缺什麼（同步登記在 [`04`](../plans/04-backlog-and-handoffs.md) 丙-237～丙-239）、**§7～§10** 怎麼驗與什麼時候停。§1～§3 是動手前要先過的約束、判準與形狀。
+四段各自回答一個問題：**§4** 現在住在哪裡、**§5** 哪些看起來該做而量測說不做、**§6** 還缺什麼（目前沒有）、**§7～§10** 怎麼驗與什麼時候停。§1～§3 是動手前要先過的約束、判準與形狀。
 
 動手前先讀根目錄 [`AGENTS.md`](../../AGENTS.md) 與 [`apps/platform/internal/AGENTS.md`](../../apps/platform/internal/AGENTS.md)，以及目標套件的 `doc.go`。
 
@@ -123,11 +123,32 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 
 C1 至今成立：SQL 側沒有任何 constraint、trigger、unique 或外鍵被刪除或放寬。
 
+### 4.1 識別碼的三道守衛
+
+| 守什麼 | 怎麼守 | 誰會紅 |
+| --- | --- | --- |
+| 鐵律 3：查詢預設帶工作區條件 | 吃參數、碰得到資料表、卻完全沒提 `workspace_id` 的查詢，必須在 `db/query-owners.yaml` 的 `scope:` 寫下理由 | `automation-check` 的 `query-scope` |
+| 同種類識別碼不可換位 | 兩個同種類的值以角色名傳遞：`credit.LedgerQuery{Account, Workspace, Operator}`、`registry.VersionRange{From, To}`、`eval.RunPair{Run, Against}` | 三支整合測試（需要資料庫）：`TestCreditLedgerShowsTheGrantAndAuditsEveryRead`、`TestSkillDiffReportsAddedRemovedAndModifiedFilesInDirection`、`TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink` |
+| 工作區識別碼排第一 | 函式參數裡的工作區 `pgtype.UUID` 排在其他 `pgtype.UUID` 之前；函式型別只要有兩個以上 `pgtype.UUID` 參數就必須寫出參數名字 | `automation-check` 的 `identifier-order` |
+
+**`scope:` 的六種理由**——新增一支沒有工作區條件的查詢時，挑得出其中一種才可以宣告；挑不出來就是缺陷，停（§9）：
+
+| 值 | 意思 |
+| --- | --- |
+| `user` | 按使用者本人算；識別碼來自 session，或由 session 推導 |
+| `operator` | 只有 `RequireOperator` 路由或營運治理流程會呼叫，本來就跨租戶 |
+| `worker` | 只有 Worker、maintenance、reconcile、purge 等系統行程會呼叫，沒有使用者請求路徑 |
+| `content-addressed` | 以內容雜湊或 object key 定址，鍵本身不屬於任何工作區 |
+| `scoped-upstream` | 識別碼只取自同一流程裡、已經帶工作區條件查出來的那一列（或寫入當下已授權的關聯，例如 fork 的來源版本）；**最弱的一種**，宣告前要指得出上游那一行 |
+| `platform-wide` | 那張表沒有租戶欄位，參數是詞彙值不是實體識別碼 |
+
+只呼叫 `pg_advisory_*`、不讀寫任何資料表的查詢由規則自動豁免，不必宣告。宣告過的查詢後來加上了工作區條件，檢查器會要求刪掉那筆宣告——宣告清單因此同時是檢查器的校準：偵測失明，每一筆都會變成過期；偵測過敏，每一支有條件的查詢都會變成未宣告。
+
 ---
 
 ## 5 已判定不做
 
-每一條都附量測，因為判準是輸出不是偏好。要重開其中任何一條，先重跑它的 DISCOVER。**要找工作做的看 §6**，這一節是裁決紀錄。
+每一條都附量測，因為判準是輸出不是偏好。要重開其中任何一條，先重跑它的 DISCOVER。這一節是裁決紀錄，不是待做清單。
 
 ### 5.1 artifact `kind` 型別化
 
@@ -178,17 +199,17 @@ func WorkspaceSkill(ctx context.Context, workspaceID WorkspaceID, skillID SkillI
 | --- | --- | --- | --- | --- |
 | 跨種類寫入 | 全部寫入路徑 | 交易回滾 | 外鍵：27 處 `REFERENCES workspaces (id)`；`creation_session_events`／`creation_receipts` 用複合外鍵 `(session_id, workspace_id)` | 是，但已有人擋 |
 | 跨種類讀取（有 scope） | 絕大多數 | 查無資料 | `WHERE id = … AND workspace_id = …` | 是，但已有人擋 |
-| 跨種類讀取（無 scope） | 約 5 支 skill／version 讀取 | **讀到別的工作區的列** | **沒有人** | **是** |
+| 跨種類讀取（無 scope） | 111 支吃參數卻沒提 `workspace_id` 的查詢（98 支宣告理由、13 支只取 advisory lock 而豁免） | 識別碼若直接來自請求，會讀到別的工作區的列 | `query-scope`：每支都得寫下理由；逐支追過，沒有一支的識別碼直接來自請求（§4.1） | 是，但已有人擋 |
 | 同種類 workspace↔workspace | `skill/library/registry.go` 的 `Fork`（`ws.ID` 對 `src.WorkspaceID`） | 查無資料 | `skill_id`＋`workspace_id` 聯合條件 | 否 |
-| 同種類 user↔user | `creator/credit/service.go` 的 `Ledger(userID, workspaceID, operatorID)` | **回傳錯的人的餘額，稽核列的 Actor 與 ResourceID 對調** | **沒有人** | 否 |
-| 同種類 version↔version | `skill/library/diff.go` 的 `DiffVersions(skillID, fromID, toID)` | diff 方向顛倒 | 沒有人 | 否 |
-| 同種類 run↔run | `trial/improvement/comparison.go` 的 `Comparison(workspaceID, runID, againstID)` | 比較兩側對調，`VersionDiffURL` 的 from／to 一起反向 | 沒有人 | 否 |
+| 同種類 user↔user | `creator/credit/service.go` 的 `Ledger`（被查的帳戶與查帳的操作員都是使用者） | 回傳錯的人的餘額，稽核列的 Actor 與 ResourceID 對調 | `LedgerQuery` 具名欄位＋整合測試（§4.1） | 否 |
+| 同種類 version↔version | `skill/library/diff.go` 的 `DiffVersions`（from／to 都是版本） | diff 方向顛倒 | `VersionRange` 具名欄位＋整合測試（§4.1） | 否 |
+| 同種類 run↔run | `trial/improvement/comparison.go` 的 `Comparison`（兩側都是 Run） | 比較兩側對調，`VersionDiffURL` 的 from／to 一起反向 | `RunPair` 具名欄位＋整合測試（§4.1） | 否 |
 
-會產生「查得到、但答案是錯的」的有三處，型別化一處都擋不住。它唯一獨到的價值落在無 scope 的那一列，而那一列更好的修法是補 scope（§6.2），不是換型別。
+會產生「查得到、但答案是錯的」的有三處，型別化一處都擋不住，擋住它們的是具名欄位。型別化唯一獨到的價值落在無 scope 的那一列，而那一列已由 `query-scope` 逐支宣告理由擋住（§4.1）。
 
-額度帳戶是 `credit_accounts.user_id PRIMARY KEY`，**按使用者算不是按工作區算**，所以 `Balance` 不比對工作區是設計正確。`Ledger` 的問題純粹是三個裸 `pgtype.UUID` 連排、其中兩個都是 user。
+額度帳戶是 `credit_accounts.user_id PRIMARY KEY`，**按使用者算不是按工作區算**，所以 `Balance` 不比對工作區是設計正確。`Ledger` 要防的只是兩個使用者角色（被查的帳戶、查帳的操作員）互換。
 
-**擋同種類換位的是具名欄位，不是具名型別。** 把並排的裸參數換成一個有欄位名字的結構，同種類與跨種類一起擋掉，成本是三支函式而不是 236 個轉換站點（§6.1）。
+**擋同種類換位的是具名欄位，不是具名型別。** 把並排的裸參數換成一個有欄位名字的結構，同種類與跨種類一起擋掉，成本是三支函式而不是 236 個轉換站點（§4.1）。
 
 規模，供重開時參考：
 
@@ -225,75 +246,9 @@ gen.GetSkillParams{ID: skillID.value(), WorkspaceID: workspaceID.value()}
 
 ## 6 待做
 
-§5.4 的量測換出三件事。**6.1 與 6.3 是換位防護**，兩者合計的覆蓋率比全面型別化高而成本是它的零頭；**6.2 是補上鐵律 3 從來沒有過的機器檢查**，它順帶關掉 §5.4 表格裡型別化唯一獨到的那一列。建議順序 6.1 → 6.3 → 6.2：6.1 風險最高，6.2 要碰高衝突區放最後。
+目前沒有。丙-237～丙-239 已在 [`04`](../plans/04-backlog-and-handoffs.md) 結案，留下的守衛見 §4.1。
 
-殘項編號在 [`04`](../plans/04-backlog-and-handoffs.md)：**丙-237**（§6.1）、**丙-238**（§6.2）、**丙-239**（§6.3）。殘項總數以那份文件為準，本檔不複製數字；做完要回去結案。
-
-### 6.1 並排的裸識別碼換成具名欄位
-
-**GOAL** 讓同種類換位在呼叫端不可能寫錯。這是 §5.4 那三處「查得到但答案是錯的」唯一有效的修法。
-
-**DISCOVER**
-
-```
-git grep -n "userID, workspaceID, operatorID\|skillID, fromID, toID\|runID, againstID" -- apps/platform/internal/ | awk '!/_test/'
-```
-
-**目標三支**
-
-| 函式 | 現行簽名的危險 | 換位後果 |
-| --- | --- | --- |
-| `creator/credit/service.go` 的 `Ledger` | 三個裸 UUID，其中 `userID` 與 `operatorID` 同為使用者 | 回傳操作員自己的餘額；稽核列的 `Actor` 與 `ResourceID` 對調 |
-| `skill/library/diff.go` 的 `DiffVersions` | `fromID`／`toID` 同為版本，驗證規則對稱 | 新增與刪除整個顛倒，不會落到查無資料 |
-| `trial/improvement/comparison.go` 的 `Comparison` | `runID`／`againstID` 同為 Run，同一 workspace 都驗得過 | 比較兩側對調，`VersionDiffURL` 的 from／to 一起反向 |
-
-**EDIT** 每支收一個具名結構（例如 `LedgerQuery{Subject, Workspace, Operator}`），欄位名說出角色。**不要**改成領域 ID 型別——同種類換位型別擋不住，欄位名才擋得住。
-
-**PROVE** 把呼叫端兩個欄位對調 → 對應測試必須紅。`Ledger` 目前沒有測試看它回的是誰的餘額，先補那一支，再做突變。
-
-**STOP-IF** 任何一支的對外 JSON 欄位名要跟著改 → 停，那是契約。
-
-### 6.2 鐵律 3 的機器檢查
-
-**GOAL** 「所有使用者資料查詢預設要求 Workspace Scope」（根 `AGENTS.md` 鐵律 3）目前**沒有任何機器在檢查**。`db/query-owners.yaml` 管的是擁有權，不是 scope。
-
-**DISCOVER**
-
-```
-git grep -c "^-- name:" -- db/queries/ | awk -F: '{s+=$2} END{print s}'
-awk '/^-- name:/{if (n && !ws && p) print FILENAME": "n; n=$3; ws=0; p=0; next}
-     /workspace_id/{ws=1}
-     /\$[0-9]/{p=1}
-     END{if (n && !ws && p) print FILENAME": "n}' db/queries/*.sql
-```
-
-第一行給總數，第二行列出沒有工作區條件的那些。
-
-302 支查詢裡有 58 支吃參數卻沒有任何 `workspace_id` 條件。多數是對的——auth 與 credit 按使用者算（`credit_accounts.user_id` 是主鍵）、operator 治理與 worker 掃描本來就跨租戶。但其中約 5 支是 skill／version 的讀取（`VersionLineage`、`OldestVersion`、`GetLineageSource`、`GetLatestVersionLicense`、`CountSkillVersions`），傳錯識別碼讀到的是別的工作區的列，不是查無資料。
-
-**EDIT** 在 `db/query-owners.yaml` 加 scope 宣告，讓每一支無工作區條件的查詢逐支表態（`user`／`operator`／`worker`／`content-addressed`），檢查器比對宣告與 SQL 實況；未宣告即 FAIL。範本照 `tools/devctl/query_owners.go`。
-
-**PROVE** 拿掉某一支的宣告 → 檢查器指名該支 → 還原 → `git diff` 空。另加自我校驗：斷言掃到的查詢數量下限，**防止檢查器空轉卻回報通過**。
-
-**STOP-IF** `db/query-owners.yaml` 與 `db/queries/` 同批維護（根 `AGENTS.md` 第 8 條），而 `db/queries/` 是 C5 高衝突區——**這一項只由主 Agent 序列化**。若發現某支查詢**應該**有工作區條件卻沒有，那是行為缺陷不是宣告問題——停，回報，進 [`05`](../plans/05-pending-rulings.md)。
-
-### 6.3 識別碼參數順序統一
-
-**GOAL** 消掉「同一個名字、相反的參數順序」這個陷阱。
-
-**DISCOVER**
-
-```
-git grep -n "func (s \*Service) WorkspaceSkill" -- apps/platform/internal/
-```
-
-`skill/library/read.go` 是 `(workspaceID, skillID)`，8 個呼叫點；`skill/discovery/detail.go` 是 `(id, workspaceID)`，靠同檔下一行再翻一次才接得上 `apiserver/app.go` 的轉接器。而那個轉接器欄位的型別是 `func(context.Context, pgtype.UUID, pgtype.UUID)`——**連參數名字都沒有，契約是隱形的**。
-
-另有 10 支函式帶工作區識別碼但沒放在其他 UUID 之前。
-
-**EDIT** 統一成工作區在先；函式型別欄位一律寫出參數名字。
-
-**PROVE** 加一支檢查器：函式若有工作區識別碼參數，必須排在其他 `pgtype.UUID` 之前；把某一支調回去 → 檢查器指名該支 → 還原 → `git diff` 空。
+新的待做先在 `04` 登記，再寫進這一節，每一項用同一個形狀：**GOAL**（要擋住什麼）、**DISCOVER**（能重跑的指令）、**EDIT**（改動的形狀）、**PROVE**（弄壞哪一行、哪條測試會紅）、**STOP-IF**（什麼情況停下回報）。
 
 ---
 
@@ -367,6 +322,7 @@ task gen:check
 | 合併閘門會改變對外的 reason 碼 | 對外契約 |
 | 需要改 [ADR-032](../adr/ADR-032-ddd-bounded-context-governance-for-platform.md)、[ADR-033](../adr/ADR-033-sqlc-query-ownership-and-cross-context-write-enforcement.md)、[ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 的既有決策 | 結構性偏離先更新 ADR，且 ADR 不原地改寫，要開新的 |
 | DISCOVER 的輸出與本檔描述不符 | 本檔過期，先對齊事實再動手 |
+| 新增的查詢沒有工作區條件，也挑不出 §4.1 六種理由之一 | 那是鐵律 3 的缺陷，不是宣告問題；進 [`05`](../plans/05-pending-rulings.md) |
 
 待裁定事項一律進 [`05`](../plans/05-pending-rulings.md)，不要在程式碼裡自行決定。creation 的終態只認 `saved` 與 `cancelled`，不含 `failed`，因此 `failed` 的會話能接受的指令遠多於直覺——`raise_budget` 把失敗會話帶回 `waiting_input` 是 [ADR-068](../adr/ADR-068-credit-is-the-only-unit-of-account.md) 的明文設計，其餘是這個定義的連帶結果。轉移表照現況記錄，**不得自行收緊**。
 
