@@ -170,18 +170,6 @@ func (q *Queries) SumCreditBalances(ctx context.Context) (int64, error) {
 	return balance_total, err
 }
 
-const sumCreditEntries = `-- name: SumCreditEntries :one
-SELECT coalesce(sum(delta_credits), 0)::bigint AS total_delta_credits
-FROM credit_entries WHERE user_id = $1
-`
-
-func (q *Queries) SumCreditEntries(ctx context.Context, userID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, sumCreditEntries, userID)
-	var total_delta_credits int64
-	err := row.Scan(&total_delta_credits)
-	return total_delta_credits, err
-}
-
 const sumCreditEntriesByDay = `-- name: SumCreditEntriesByDay :many
 SELECT (created_at AT TIME ZONE 'UTC')::date AS day, kind,
        count(*)::bigint AS entries, sum(delta_credits)::bigint AS delta_credits

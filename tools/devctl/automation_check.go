@@ -104,6 +104,7 @@ func documentCheckers() []namedChecker {
 		{"service-construction", serviceConstructionProblems},
 		{"one-number", sharedNumberProblems},
 		{"query-owner", queryOwnerProblems},
+		{"query-scope", queryScopeProblems},
 		{"context-map", contextMapProblems},
 		{"doc-identifier", docIdentifierProblems},
 		{"milestone-tally", milestoneTallyProblems},

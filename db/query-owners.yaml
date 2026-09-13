@@ -176,6 +176,111 @@ queries:
   NextTraceSeq: trace
   CountTraceMaskingInWindow: trace
 
+scope:
+  AdjustCreditBalance: user
+  CancelAccountDeletion: user
+  CreateIdentity: user
+  CreateSession: user
+  CreateUser: user
+  CreateWorkspace: user
+  DeleteSession: user
+  EnsureCreditAccount: user
+  GetCreditBalance: user
+  GetIdentityProviderIDs: user
+  GetSessionUser: user
+  GetUserAccountState: user
+  GetUserByIdentity: user
+  GetWorkspace: user
+  GetWorkspaceCreatedAt: user
+  InsertCreditEntry: user
+  ListWorkspacesByOwner: user
+  RequestAccountDeletion: user
+  UpsertSessionCostSummary: user
+
+  CountPlatformAuditEventsByDay: user
+  CountRunsByDay: user
+  DeclareDispatchHalt: user
+  GetLatestVersionLicense: user
+  LiftDispatchHalt: user
+  ListPlatformAuditEvents: user
+  ListRecentCreditEntries: user
+  SetDispatchHaltClearRounds: user
+  SetSkillAccessRestriction: user
+  SetSkillRedistribution: user
+  SetSkillTakedown: user
+  SumCostEventsByDay: user
+  SumCreditEntriesByDay: user
+
+  AggregateCostEventsWindow: user
+  AggregateSessionSummariesWindow: user
+  AnonymizeUser: user
+  AnonymizeWorkspacesByOwner: user
+  ClearObjectSighting: user
+  ClearObjectSightings: user
+  CountLiveDatasetsSharingObject: user
+  CountLiveRunArtifactsSharingObject: user
+  CountPersistentObjectSightings: user
+  CountPersistentOrphans: user
+  CountSkillsWaitingForDeletionGrace: user
+  CountTraceMaskingInWindow: user
+  DeleteExpiredAuditEvents: user
+  DeleteExpiredFeedbackReports: user
+  DeleteOutboxEventsPublishedBefore: user
+  DeleteRunArtifactUploadIntentByObjectKey: user
+  DeleteUserIdentities: user
+  DeleteUserSessions: user
+  ForgetClearedOrphans: user
+  InsertCostStatistics: user
+  ListAccountsPastGrace: user
+  ListActiveRuns: user
+  ListCollectableObjects: user
+  ListLiveSkillIDs: user
+  ListOutboxEventsByAggregate: user
+  ListRunsNeedingCleanup: user
+  ListSearchDocumentsMissingBigram: user
+  ListSkillSourcesInVersions: user
+  ListSkillVersionsInDownloads: user
+  ListSkillVersionsInRuns: user
+  ListSkillsPastDeletionGrace: user
+  ListSkillsWithTestCases: user
+  ListStalledCreationSessions: user
+  ListUnpublishedOutboxEvents: user
+  MarkAccountPurgeStarted: user
+  MarkDatasetCleanupIntentPurged: user
+  MarkDatasetObjectLost: user
+  MarkDownloadCleanupIntentPurged: user
+  MarkOutboxEventsPublished: user
+  MarkRunArtifactUploadIntentPurged: user
+  MarkSourceChecked: user
+  NextTraceSeq: user
+  PruneDeletedSearchDocuments: user
+  PurgeSkillsByID: user
+  RecordObjectSighting: user
+  RecordOrphanSighting: user
+  RecordOutboxDeliveryFailure: user
+  SetSearchDocumentBigram: user
+  SweepSessionCostSummaries: user
+
+  CountArtifactsSharingObject: user
+  DeleteObjectCollectionEntry: user
+  GetCostEventByIdempotencyKey: user
+  PackageObjectCollectable: user
+  RememberPackageObject: user
+
+  CountSkillVersions: user
+  GetLineageSource: user
+  GetLiveSkillListingFacts: user
+  GetOldestSkillVersion: user
+  GetSkillRuntimeCompatibility: user
+  GetVersionLineage: user
+  ListUserDisplayNames: user
+  MarkArtifactPurged: user
+  MarkDatasetPurged: user
+  MarkRunOutputPurged: user
+  SetSearchDocumentListing: user
+
+  GetLatestCostStatistics: user
+
 allow:
 
 read_allow:

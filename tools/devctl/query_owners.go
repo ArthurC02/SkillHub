@@ -25,6 +25,8 @@ type sqlQuery struct {
 	write   bool
 	mutates []string
 	tables  []string
+
+	unscoped bool
 }
 
 type callSite struct {
@@ -360,6 +362,8 @@ func loadSQLQueries(dir string) (map[string]sqlQuery, error) {
 				write:   isWriteStatement(body),
 				mutates: mutatedTables(body),
 				tables:  referencedTables(body),
+
+				unscoped: lacksWorkspaceCondition(body),
 			}
 		}
 	}
