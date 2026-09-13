@@ -121,6 +121,7 @@ func documentCheckers() []namedChecker {
 		}},
 		{"require-objstore-guard", requireObjstoreGuardProblems},
 		{"isolation-level", isolationLevelProblems},
+		{"domain-vocabulary", domainVocabularyProblems},
 		{"route-table", routeTableProblems},
 		{"requirement-refs", requirementRefProblems},
 		{"purge-schedule", purgeScheduleProblems},

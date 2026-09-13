@@ -19,6 +19,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 
 		"require-objstore-guard",
 		"isolation-level",
+		"domain-vocabulary",
 		"route-table", "requirement-refs", "purge-schedule", "timeout-budget",
 		"image-version", "embedding-dims", "goldenset-mirror",
 
