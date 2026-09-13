@@ -1,6 +1,8 @@
 # DDD／Clean Code 收斂：Coding Agent 執行規格
 
-本檔給要動 `apps/platform/internal/` 領域程式碼的 Coding Agent。日常的跨 context 判斷看 [platform-ddd-practices.md](platform-ddd-practices.md)；本檔是把領域規則從資料庫收回程式碼的執行規格。
+本檔給要動 `apps/platform/internal/` 領域程式碼的 Coding Agent，講的是**領域規則該住在哪裡**：規則的定義在 Go，原子性機制留在 SQL，使用者看得到的句子在 handler。日常的跨 context 判斷看 [platform-ddd-practices.md](platform-ddd-practices.md)。
+
+四段各自回答一個問題：**§4** 現在住在哪裡、**§5** 哪些看起來該做而量測說不做、**§6** 還缺什麼（同步登記在 [`04`](../plans/04-backlog-and-handoffs.md) 丙-237～丙-239）、**§7～§10** 怎麼驗與什麼時候停。§1～§3 是動手前要先過的約束、判準與形狀。
 
 動手前先讀根目錄 [`AGENTS.md`](../../AGENTS.md) 與 [`apps/platform/internal/AGENTS.md`](../../apps/platform/internal/AGENTS.md)，以及目標套件的 `doc.go`。
 
@@ -30,9 +32,8 @@
 | C6 | codegen（`task gen:sql`／`task gen:openapi`）只由主 Agent 跑；提交前 `task gen:check`。generated 檔禁止手改。 |
 | C7 | **不寫註解。** 唯一例外：艱難演算法，一個區塊最多 3 行，說明它怎麼運作。施工日誌、決策說明、需求編號、日期一律禁止。 |
 | C8 | 每個宣稱修好的東西都要有一次紅（§8；[automation.md](automation.md) 開發自動化第 9 條）。 |
-| C9 | 禁止 `git stash`。對不屬於自己的修改禁止 `git reset`／`git clean`／`git checkout -- <path>`。還原自己的檔案用 `git show HEAD:<path> > <path>`。 |
-| C10 | 只以明確 pathspec stage，永不 `git add .`。 |
-| C11 | 子代理預設唯讀，派工必須指定 model，禁用旗艦級；子代理不做 git 寫入。 |
+
+Git 紀律（禁止 `git stash`、不對他人修改用 `git reset`／`git clean`／`git checkout -- <path>`、只以明確 pathspec stage）與子代理紀律（預設唯讀、每次派工指定 model、禁用旗艦級、不做 git 寫入）是 repo 級規則，正文在根 [`AGENTS.md`](../../AGENTS.md)〈開發自動化〉第 3 條，本檔不複製。
 
 ---
 
@@ -49,6 +50,8 @@
 **J2 值物件四問**（要不要把一個裸型別包起來）
 
 有規則？會跟同型別的別的值搞混？有運算？會跨邊界？**四問全否 → 不要包。**
+
+> 第二問要問得比字面更細：**型別只分辨種類，不分辨角色。** 兩個同種類的值（兩個使用者、兩個版本、兩次 Run）包成同一個新型別之後照樣可以互換，編譯器不會出聲。**同種類的混淆要用具名欄位擋，不是具名型別**——實證與逐類後果見 §5.4。
 
 **J3 `require*` 分類**（可機器判別）
 
@@ -107,9 +110,9 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 | evaluation 狀態（3 值） | `trial/improvement/status.go` | `status_test.go` | `domain-vocabulary` |
 | run 狀態機 | `trial/execution/statemachine.go` | `statemachine_test.go` | `run-status-sql` |
 | run 被拒絕的理由詞彙 | `trial/execution/specification.go` 的 `RefusalReasons()` | `specification_test.go` | 同套件的 AST 測試 |
-| 額度拒絕理由詞彙 | `product/entitlements` 的 `AllowanceRefusalReasons` | `quota_test.go` | 同上 |
+| 額度拒絕理由詞彙 | `product/entitlements` 的 `AllowanceRefusalReasons` | `quota_test.go` | 測試獨立重述三個字面值 |
 | outbox 事件 payload 的形狀 | `foundation/messaging/outbox/events.go` | `payload_test.go` | — |
-| 使用者看得到的句子 | 寫出它的 handler，不是領域 sentinel | `messages_test.go`（`trial/design`、`trial/execution`） | 同上 |
+| 使用者看得到的句子 | 寫出它的 handler，不是領域 sentinel | `messages_test.go`（`trial/design`、`trial/execution`） | 同套件的 AST 測試：`errors.New` 不得帶漢字 |
 
 `devctl automation-check` 有兩個檢查器守這張表：
 
@@ -124,7 +127,7 @@ C1 成立：SQL 側沒有任何 constraint、trigger、unique 或外鍵被刪除
 
 ## 5 已判定不做
 
-每一條都附量測，因為判準是輸出不是偏好。要重開其中任何一條，先重跑它的 DISCOVER。
+每一條都附量測，因為判準是輸出不是偏好。要重開其中任何一條，先重跑它的 DISCOVER。**要找工作做的看 §6**，這一節是裁決紀錄。
 
 ### 5.1 artifact `kind` 型別化
 
@@ -172,7 +175,7 @@ worker 那個 `packaging.Service` 不是地雷：從它取得的每一個方法�
 
 額度帳戶是 `credit_accounts.user_id PRIMARY KEY`，**按使用者算不是按工作區算**，所以 `Balance` 不比對工作區是設計正確。`Ledger` 的問題純粹是三個裸 `pgtype.UUID` 連排、其中兩個都是 user。
 
-**擋同種類換位的是具名欄位，不是具名型別。** 把並排的裸參數換成一個有欄位名字的結構，同種類與跨種類一起擋掉，成本是三支函式而不是 162 個轉換站點（§6.1）。
+**擋同種類換位的是具名欄位，不是具名型別。** 把並排的裸參數換成一個有欄位名字的結構，同種類與跨種類一起擋掉，成本是三支函式而不是 236 個轉換站點（§6.1）。
 
 `gen.DBTX` 那一半是空的：以它為參數的函式 29 個，13 個真的收過交易，16 個收的是連線——advisory lock（`LockObjectWrite`、`LockPackageObject`）與帳號清除迴圈必須在交易之外持有同一條連線，那是呼叫端在宣告自己控制著哪一條連線，看得見的邊界要留下。**沒有一個是純粹為了轉手而存在。**
 
@@ -183,7 +186,7 @@ git grep -oh "pgtype\.[A-Z][A-Za-z]*" -- apps/platform/internal/ | sort | uniq -
 git grep -n "gen\.[A-Za-z]*Params{" -- apps/platform/internal/ | awk '!/_test|\/gen\//' | wc -l
 ```
 
-1630 處 `pgtype.UUID`、263 處 `pgtype.Timestamptz`，20 個套件；轉換面是 162 個 `gen.*Params{` 字面值站點。便宜的別名接縫（`type ID = pgtype.UUID`）不成立——`Timestamptz` 會把 `pgtype` 的 import 留在原地，depguard 擋不掉。`pgtype.UUID` 也不擁有任何領域概念（C4／J1 問的是那個），它是 UUID 的容器。要做就是一次 ADR 加一次全 repo 遷移。
+1630 處 `pgtype.UUID`、263 處 `pgtype.Timestamptz`，20 個套件；轉換面是 236 個 `gen.*Params{` 字面值站點。便宜的別名接縫（`type ID = pgtype.UUID`）不成立——`Timestamptz` 會把 `pgtype` 的 import 留在原地，depguard 擋不掉。`pgtype.UUID` 也不擁有任何領域概念（C4／J1 問的是那個），它是 UUID 的容器。要做就是一次 ADR 加一次全 repo 遷移。
 
 ### 5.5 其餘九條中文領域 sentinel
 
@@ -202,6 +205,8 @@ git grep -n "gen\.[A-Za-z]*Params{" -- apps/platform/internal/ | awk '!/_test|\/
 ## 6 待做
 
 §5.4 的量測換出三件事。三件都是換位防護，覆蓋率比全面型別化高，成本是它的零頭。建議順序 6.1 → 6.3 → 6.2。
+
+殘項編號在 [`04`](../plans/04-backlog-and-handoffs.md)：**丙-237**（§6.1）、**丙-238**（§6.2）、**丙-239**（§6.3）。殘項總數以那份文件為準，本檔不複製數字；做完要回去結案。
 
 ### 6.1 並排的裸識別碼換成具名欄位
 
@@ -296,7 +301,7 @@ task gen:check
 
 - `SKILLHUB_TEST_DATABASE_URL` 的**資料庫名必須以 `_test` 結尾**，否則測試直接 panic。那是破壞性 migration 的守衛，不要指向開發資料庫。
 - **不要自行釘住舊的 `GOTOOLCHAIN`**：`go.mod` 的下限高於它時會直接失敗。用預設工具鏈，版本來源見 `tools/toolchain.yaml`。
-- 沒有設 `SKILLHUB_TEST_DATABASE_URL` 時整合測試會**跳過而不是失敗**，那是假綠。宣稱整合通過前先用 `-v` 數 `=== RUN` 的筆數。
+- 沒有設 `SKILLHUB_TEST_DATABASE_URL` 時整合測試會**跳過而不是失敗**，那是假綠。宣稱整合通過前先確認那個套件回報的通過筆數不是零。**不要靠數 `-v` 的 `=== RUN` 行數**——那個輸出在部分開發機被外掛改寫（§0.3），會數到零而測試其實跑了；用 `-run` 指名單一測試看它自己的結果比較可靠。
 - `task dev` 只起 Postgres 與 SeaweedFS，不花錢；`task dev:model` 會產生費用，唯讀子代理不得自行啟動。
 - 本機可能有其他專案的容器在跑，名稱不以 `skillhub-` 開頭的一律不得使用。
 
