@@ -34,7 +34,7 @@ func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgty
 		return err
 	}
 	if !ok {
-		return refused("credit_balance", ErrCreditBalance)
+		return refused(ReasonCreditBalance, ErrCreditBalance)
 	}
 	return nil
 }

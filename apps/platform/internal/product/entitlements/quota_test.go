@@ -2,6 +2,8 @@ package policy
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -86,5 +88,62 @@ func TestUsageCombinesOwnerFactsWithoutPersistenceTypes(t *testing.T) {
 	wantReset := oldest.Add(30 * 24 * time.Hour)
 	if !state.WindowResetsAt.Equal(wantReset) {
 		t.Errorf("window resets at %s, want %s", state.WindowResetsAt, wantReset)
+	}
+}
+
+func splitReader(window, today int64, created time.Time) UsageReader {
+	dayStart := time.Now().Add(-25 * time.Hour)
+	return UsageReader{
+		WorkspaceCreatedAt: func(context.Context, pgtype.UUID) (time.Time, error) { return created, nil },
+		CountRuns: func(_ context.Context, _ pgtype.UUID, since time.Time) (RunUsage, error) {
+			if since.Before(dayStart) {
+				return RunUsage{Used: window}, nil
+			}
+			return RunUsage{Used: today}, nil
+		},
+	}
+}
+
+func TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes(t *testing.T) {
+	ctx := context.Background()
+	old := time.Now().Add(-365 * 24 * time.Hour)
+	limits := DefaultQuotaLimits()
+
+	published := []string{"quota_unavailable", "quota_daily", "quota_window"}
+	if got := AllowanceRefusalReasons(RunQuotaPrefix); !slices.Equal(got, published) {
+		t.Fatalf("AllowanceRefusalReasons = %v, want %v; these strings are a label on a "+
+			"published counter and in the audit log, so renaming one is renaming a series", got, published)
+	}
+	emitted := map[string]bool{}
+	for _, tc := range []struct {
+		name   string
+		reader UsageReader
+	}{
+		{"uncountable", UsageReader{
+			WorkspaceCreatedAt: func(context.Context, pgtype.UUID) (time.Time, error) {
+				return time.Time{}, errors.New("the counter is unreachable")
+			},
+			CountRuns: func(context.Context, pgtype.UUID, time.Time) (RunUsage, error) {
+				return RunUsage{}, nil
+			},
+		}},
+		{"daily spent", generateReader(int64(limits.Daily), old)},
+		{"window spent", splitReader(int64(limits.Window), 0, old)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reason, err := EnforceQuota(ctx, tc.reader, limits, pgtype.UUID{})
+			if err == nil {
+				t.Fatalf("%s was allowed through", tc.name)
+			}
+			if !slices.Contains(published, reason) {
+				t.Fatalf("reason = %q, which AllowanceRefusalReasons does not publish: %v", reason, published)
+			}
+			emitted[reason] = true
+		})
+	}
+	for _, reason := range published {
+		if !emitted[reason] {
+			t.Errorf("%q is published as a refusal reason but no path produces it", reason)
+		}
 	}
 }

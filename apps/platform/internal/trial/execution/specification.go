@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -24,6 +26,29 @@ var (
 
 	ErrAccessRestricted = errors.New("this skill cannot be run while its source license is under review")
 )
+
+const (
+	ReasonAccessRestricted       = "access_restricted"
+	ReasonScanUnavailable        = "scan_unavailable"
+	ReasonScanBlocked            = "scan_blocked"
+	ReasonWorkspaceConcurrency   = "workspace_concurrency"
+	ReasonCreditBalance          = "credit_balance"
+	ReasonPermissionsUnconfirmed = "permissions_unconfirmed"
+	ReasonCapabilityMismatch     = "capability_mismatch"
+)
+
+func RefusalReasons() []string {
+	reasons := []string{
+		ReasonAccessRestricted,
+		ReasonScanUnavailable,
+		ReasonScanBlocked,
+		ReasonWorkspaceConcurrency,
+		ReasonCreditBalance,
+		ReasonPermissionsUnconfirmed,
+		ReasonCapabilityMismatch,
+	}
+	return append(reasons, policy.AllowanceRefusalReasons(policy.RunQuotaPrefix)...)
+}
 
 type refusal struct {
 	reason string
@@ -42,7 +67,8 @@ func (s *Service) requireNotAccessRestricted(skill SkillFacts) error {
 	if skill.AccessRestriction == nil || strings.TrimSpace(*skill.AccessRestriction) == "" {
 		return nil
 	}
-	return refused("access_restricted", fmt.Errorf("%w (%s)", ErrAccessRestricted, *skill.AccessRestriction))
+	return refused(ReasonAccessRestricted,
+		fmt.Errorf("%w (%s)", ErrAccessRestricted, *skill.AccessRestriction))
 }
 
 func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg.Report, bool) {
@@ -60,28 +86,41 @@ func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg
 	return skillpkg.Validate(fsys), true
 }
 
-func (s *Service) requireScanNotBlocking(ctx context.Context, objectKey string) error {
-	report, ok := s.packageReport(ctx, objectKey)
-	if !ok {
-		return refused("scan_unavailable", fmt.Errorf("%w: the package could not be scanned, "+
+func scanVerdict(report skillpkg.Report, scanned bool) error {
+	if !scanned {
+		return refused(ReasonScanUnavailable, fmt.Errorf("%w: the package could not be scanned, "+
 			"and an unscanned package is not treated as a clean one", ErrScanBlocked))
 	}
 	if !report.Blocked {
 		return nil
 	}
+	return refused(ReasonScanBlocked, fmt.Errorf("%w: %s", ErrScanBlocked,
+		strings.Join(blockingCodes(report), ", ")))
+}
 
-	codes := map[string]struct{}{}
+func blockingCodes(report skillpkg.Report) []string {
+	var codes []string
 	for _, f := range report.Findings {
-		if f.Severity == skillpkg.SeverityError {
-			codes[f.Code] = struct{}{}
+		if f.Severity == skillpkg.SeverityError && !slices.Contains(codes, f.Code) {
+			codes = append(codes, f.Code)
 		}
 	}
-	list := make([]string, 0, len(codes))
-	for c := range codes {
-		list = append(list, c)
+	sort.Strings(codes)
+	return codes
+}
+
+func (s *Service) requireScanNotBlocking(ctx context.Context, objectKey string) error {
+	report, scanned := s.packageReport(ctx, objectKey)
+	return scanVerdict(report, scanned)
+}
+
+func runSlotVerdict(active int64) error {
+	if active < MaxConcurrentRunsPerWorkspace {
+		return nil
 	}
-	sort.Strings(list)
-	return refused("scan_blocked", fmt.Errorf("%w: %s", ErrScanBlocked, strings.Join(list, ", ")))
+	return refused(ReasonWorkspaceConcurrency,
+		fmt.Errorf("%w: %d of %d in progress; wait for one to finish or cancel it",
+			ErrRunLimitReached, active, MaxConcurrentRunsPerWorkspace))
 }
 
 func (s *Service) requireRunSlot(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID) error {
@@ -92,10 +131,5 @@ func (s *Service) requireRunSlot(ctx context.Context, q *gen.Queries, workspaceI
 	if err != nil {
 		return err
 	}
-	if active >= MaxConcurrentRunsPerWorkspace {
-		return refused("workspace_concurrency",
-			fmt.Errorf("%w: %d of %d in progress; wait for one to finish or cancel it",
-				ErrRunLimitReached, active, MaxConcurrentRunsPerWorkspace))
-	}
-	return nil
+	return runSlotVerdict(active)
 }

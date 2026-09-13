@@ -375,14 +375,15 @@ func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Quer
 		return err
 	}
 	if p.ConfirmedSummaryHash != summary.Hash {
-		return fmt.Errorf("%w: the permissions changed since it was confirmed", ErrPermissionsNotConfirmed)
+		return refused(ReasonPermissionsUnconfirmed,
+			fmt.Errorf("%w: the permissions changed since it was confirmed", ErrPermissionsNotConfirmed))
 	}
 	_, err = q.GetRunPermissionConfirmation(ctx, gen.GetRunPermissionConfirmationParams{
 		WorkspaceID: p.WorkspaceID, SkillVersionID: p.VersionID, TestCaseID: p.TestCaseID,
 		SummaryHash: summary.Hash,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ErrPermissionsNotConfirmed
+		return refused(ReasonPermissionsUnconfirmed, ErrPermissionsNotConfirmed)
 	}
 	return err
 }

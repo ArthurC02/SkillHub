@@ -1,0 +1,186 @@
+package run
+
+import (
+	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/fs"
+	"slices"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+)
+
+func reasonOf(t *testing.T, err error) string {
+	t.Helper()
+	var r refusal
+	if !errors.As(err, &r) {
+		t.Fatalf("%v is not a refusal, so nothing counts it or records why", err)
+	}
+	return r.reason
+}
+
+func blockedReport(codes ...string) skillpkg.Report {
+	report := skillpkg.Report{Blocked: true}
+	for _, code := range codes {
+		report.Findings = append(report.Findings,
+			skillpkg.Finding{Severity: skillpkg.SeverityError, Code: code})
+	}
+	return report
+}
+
+func TestAPackageThatCouldNotBeScannedIsNotTreatedAsACleanOne(t *testing.T) {
+	err := scanVerdict(skillpkg.Report{}, false)
+	if got := reasonOf(t, err); got != ReasonScanUnavailable {
+		t.Errorf("reason = %q, want %q", got, ReasonScanUnavailable)
+	}
+	if !errors.Is(err, ErrScanBlocked) {
+		t.Errorf("an unscanned package must refuse through the scan sentinel: %v", err)
+	}
+}
+
+func TestAScannedPackageWithNothingBlockingRuns(t *testing.T) {
+	clean := skillpkg.Report{Findings: []skillpkg.Finding{
+		{Severity: skillpkg.SeverityWarning, Code: "PKG-W01"},
+	}}
+	if err := scanVerdict(clean, true); err != nil {
+		t.Errorf("a scanned package the scanner did not block was refused: %v", err)
+	}
+}
+
+func TestABlockedPackageIsRefusedAndNamesWhatBlockedIt(t *testing.T) {
+	err := scanVerdict(blockedReport("PKG-E02", "PKG-E01"), true)
+	if got := reasonOf(t, err); got != ReasonScanBlocked {
+		t.Errorf("reason = %q, want %q", got, ReasonScanBlocked)
+	}
+	if !strings.Contains(err.Error(), "PKG-E01, PKG-E02") {
+		t.Errorf("the refusal does not name the blocking codes in a stable order: %v", err)
+	}
+}
+
+func TestABlockingCodeIsNamedOnceHoweverManyFilesCarryIt(t *testing.T) {
+	report := blockedReport("PKG-E01", "PKG-E01", "PKG-E01")
+	report.Findings = append(report.Findings,
+		skillpkg.Finding{Severity: skillpkg.SeverityWarning, Code: "PKG-W09"})
+
+	err := scanVerdict(report, true)
+	if got := strings.Count(err.Error(), "PKG-E01"); got != 1 {
+		t.Errorf("PKG-E01 is named %d times, want 1: %v", got, err)
+	}
+	if strings.Contains(err.Error(), "PKG-W09") {
+		t.Errorf("a warning was reported as a reason the run is blocked: %v", err)
+	}
+}
+
+func TestAWorkspaceMayFillEverySlotButNotOneMore(t *testing.T) {
+	for _, active := range []int64{0, MaxConcurrentRunsPerWorkspace - 1} {
+		if err := runSlotVerdict(active); err != nil {
+			t.Errorf("%d of %d runs in progress left no slot free: %v",
+				active, MaxConcurrentRunsPerWorkspace, err)
+		}
+	}
+	for _, active := range []int64{MaxConcurrentRunsPerWorkspace, MaxConcurrentRunsPerWorkspace + 1} {
+		err := runSlotVerdict(active)
+		if got := reasonOf(t, err); got != ReasonWorkspaceConcurrency {
+			t.Errorf("%d runs in progress: reason = %q, want %q",
+				active, got, ReasonWorkspaceConcurrency)
+		}
+		if !strings.Contains(err.Error(), strconv.FormatInt(active, 10)) {
+			t.Errorf("the refusal does not say how many are already running: %v", err)
+		}
+	}
+}
+
+func TestAnAccessRestrictedSkillIsRefusedAndSaysWhichRestriction(t *testing.T) {
+	hold := "a licence review is open"
+	err := (&Service{}).requireNotAccessRestricted(SkillFacts{AccessRestriction: &hold})
+	if got := reasonOf(t, err); got != ReasonAccessRestricted {
+		t.Errorf("reason = %q, want %q", got, ReasonAccessRestricted)
+	}
+	if !strings.Contains(err.Error(), hold) {
+		t.Errorf("the refusal does not name the restriction: %v", err)
+	}
+	for _, absent := range []*string{nil, ptr(""), ptr("   ")} {
+		if err := (&Service{}).requireNotAccessRestricted(SkillFacts{AccessRestriction: absent}); err != nil {
+			t.Errorf("a skill under no restriction was refused: %v", err)
+		}
+	}
+}
+
+func ptr(s string) *string { return &s }
+
+func TestEveryDeclaredReasonIsInTheRoster(t *testing.T) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "specification.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roster := RefusalReasons()
+	declared := 0
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gen.Specs {
+			value, ok := spec.(*ast.ValueSpec)
+			if !ok || len(value.Names) != 1 || !strings.HasPrefix(value.Names[0].Name, "Reason") {
+				continue
+			}
+			literal, ok := value.Values[0].(*ast.BasicLit)
+			if !ok {
+				t.Fatalf("%s is not a plain string constant", value.Names[0].Name)
+			}
+			reason, err := strconv.Unquote(literal.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			declared++
+			if !slices.Contains(roster, reason) {
+				t.Errorf("%s refuses with %q, which RefusalReasons does not list; "+
+					"a reason nobody lists is one nobody can chart", value.Names[0].Name, reason)
+			}
+		}
+	}
+	if declared == 0 {
+		t.Fatal("specification.go declares no Reason constants; this test read nothing")
+	}
+}
+
+func TestNoGateInventsAReasonInline(t *testing.T) {
+	fset := token.NewFileSet()
+	pkgs, err := parser.ParseDir(fset, ".", func(info fs.FileInfo) bool {
+		return !strings.HasSuffix(info.Name(), "_test.go")
+	}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Files {
+			ast.Inspect(file, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				name, ok := call.Fun.(*ast.Ident)
+				if !ok || name.Name != "refused" || len(call.Args) == 0 {
+					return true
+				}
+				calls++
+				if literal, ok := call.Args[0].(*ast.BasicLit); ok {
+					t.Errorf("%s: refused(%s, ...) spells its reason inline; "+
+						"declare it beside the others so the roster stays the whole vocabulary",
+						fset.Position(call.Pos()), literal.Value)
+				}
+				return true
+			})
+		}
+	}
+	if calls == 0 {
+		t.Fatal("found no refused() call at all; this test read nothing")
+	}
+}

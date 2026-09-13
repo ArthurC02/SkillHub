@@ -231,17 +231,8 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 }
 
 func (s *Service) auditRefusal(ctx context.Context, p CreateParams, err error) {
-	var reason string
 	r, isRefusal := errors.AsType[refusal](err)
-	switch {
-	case isRefusal:
-		reason = r.reason
-
-	case errors.Is(err, ErrPermissionsNotConfirmed):
-		reason = "permissions_unconfirmed"
-	case errors.Is(err, ErrNoCompatibleProvider):
-		reason = "capability_mismatch"
-	default:
+	if !isRefusal {
 		return
 	}
 
@@ -251,9 +242,9 @@ func (s *Service) auditRefusal(ctx context.Context, p CreateParams, err error) {
 		Action:       audit.ActionRunRefused,
 		ResourceType: audit.ResourceVersion,
 		ResourceID:   p.VersionID,
-		Metadata:     map[string]any{"reason": reason},
+		Metadata:     map[string]any{"reason": r.reason},
 	}); logErr != nil {
-		slog.Error("recording a refused run failed", "reason", reason, "error", logErr)
+		slog.Error("recording a refused run failed", "reason", r.reason, "error", logErr)
 	}
 }
 

@@ -140,11 +140,23 @@ func remaining(limit int, used int64) int {
 	return left
 }
 
+const (
+	RunQuotaPrefix = "quota"
+
+	suffixUnavailable = "_unavailable"
+	suffixDaily       = "_daily"
+	suffixWindow      = "_window"
+)
+
+func AllowanceRefusalReasons(prefix string) []string {
+	return []string{prefix + suffixUnavailable, prefix + suffixDaily, prefix + suffixWindow}
+}
+
 func EnforceQuota(
 	ctx context.Context, reader UsageReader, l QuotaLimits, workspaceID pgtype.UUID,
 ) (string, error) {
 	return enforce(ctx, reader, l, workspaceID, allowance{
-		sentinel: ErrQuotaExceeded, noun: "runs", prefix: "quota",
+		sentinel: ErrQuotaExceeded, noun: "runs", prefix: RunQuotaPrefix,
 	})
 }
 
@@ -163,17 +175,17 @@ func enforce(
 	state, err := Usage(ctx, reader, l, workspaceID, time.Now())
 	if err != nil {
 
-		return a.prefix + "_unavailable", fmt.Errorf(
+		return a.prefix + suffixUnavailable, fmt.Errorf(
 			"%w: an uncounted allowance is not treated as an unused one: %w",
 			ErrAllowanceUnavailable, err)
 	}
 	if state.RemainingToday <= 0 {
-		return a.prefix + "_daily",
+		return a.prefix + suffixDaily,
 			fmt.Errorf("%w: %d %s a day is the limit; it resets 24 hours after your earliest %s today",
 				a.sentinel, l.Daily, a.noun, strings.TrimSuffix(a.noun, "s"))
 	}
 	if state.RemainingWindow <= 0 {
-		return a.prefix + "_window",
+		return a.prefix + suffixWindow,
 			fmt.Errorf("%w: %d %s per %d days is the limit; the next one frees up at %s",
 				a.sentinel, state.Limits.Window, a.noun, l.WindowDays,
 				state.WindowResetsAt.UTC().Format(time.RFC3339))

@@ -175,7 +175,7 @@ func (s *Service) checkSchedulable(ctx context.Context, policy policySnapshot) e
 	}
 	_, _, _, err := registry.Select(ctx, requirementsFromPolicy(policy))
 	if errors.Is(err, ErrNoCompatibleProvider) {
-		return err
+		return refused(ReasonCapabilityMismatch, err)
 	}
 
 	return nil
