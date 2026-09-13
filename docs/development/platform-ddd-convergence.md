@@ -8,7 +8,7 @@
 
 ## 0 執行協定
 
-1. **一次認領一個任務 ID**，做完 VERIFY 才能認領下一個。
+1. **一次做一件事**，§6 的驗證全綠才開始下一件。
 2. **本檔不放靜態清單，只放 DISCOVER 指令。** 指令輸出與本檔描述不符時，**以輸出為準**，停下並回報差異，不要照記憶動手。
 3. **裸 `grep` 在部分開發機會被外掛改寫。** 一律用 `git grep` 或 `awk`。用裸 `grep` 得到的數字不可採信。
 4. **PROVE 沒有紅過就不算修好。** 沒有紅，回報裡就不要出現「修好了」。
@@ -52,8 +52,8 @@
 
 **J3 `require*` 分類**（可機器判別）
 
-- 無參數（`func (s *Service) requireX() error`）＝ **接線檢查**，屬於 T5。
-- 吃事實（`func (s *Service) requireX(facts …) error`）＝ **規格**，屬於 T3。
+- 無參數（`func (s *Service) requireX() error`）＝ **接線檢查**，守的是這個 Service 被組裝好了沒有。
+- 吃事實（`func (s *Service) requireX(facts …) error`）＝ **規格**，守的是領域規則，要能不連資料庫測試。
 
 **J4 詞彙要不要型別化**
 
@@ -98,249 +98,87 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 
 ---
 
-## 4 任務圖
+## 4 現況：領域規則現在住在哪裡
 
-```
-參考實作：creation 狀態機
- ├─→ T1 詞彙對帳檢查器        ← 先做，是其餘任務的機器保證
- ├─→ T2 SQL 獨佔概念收回 Go
- ├─→ T4 evaluation 狀態機
- └─→ T3 Specification 統一
-T5 建構安全（獨立）
-T6 outbox payload（獨立）
-T7 身分型別（大，排在 T1 之後，逐 context）
-T8 領域錯誤的使用者文案（獨立，先量測）
-```
+| 領域概念 | 定義在 | 不連資料庫的測試 | 機器對帳 |
+| --- | --- | --- | --- |
+| creation 會話狀態（10 值） | `creator/creation/state.go` | `state_test.go` | `domain-vocabulary` |
+| run attempt 的物件授權狀態（4 值） | `trial/execution/grantstate.go` | `grantstate_test.go` | `domain-vocabulary` |
+| evaluation 狀態（3 值） | `trial/improvement/status.go` | `status_test.go` | `domain-vocabulary` |
+| run 狀態機 | `trial/execution/statemachine.go` | `statemachine_test.go` | `run-status-sql` |
+| run 被拒絕的理由詞彙 | `trial/execution/specification.go` 的 `RefusalReasons()` | `specification_test.go` | 同套件的 AST 測試 |
+| 額度拒絕理由詞彙 | `product/entitlements` 的 `AllowanceRefusalReasons` | `quota_test.go` | 同上 |
+| outbox 事件 payload 的形狀 | `foundation/messaging/outbox/events.go` | `payload_test.go` | — |
+| 使用者看得到的句子 | 寫出它的 handler，不是領域 sentinel | `messages_test.go`（`trial/design`、`trial/execution`） | 同上 |
 
-順序規則：**T1 先做。** 沒有對帳機器，其餘任務補的 Go 定義會再次與 SQL 分岔。
+`devctl automation-check` 有兩個檢查器守這張表：
 
----
+- `domain-vocabulary` — Go 常數 ↔ DB `CHECK (… IN (…))` ↔ Postgres enum 三處對帳，缺一側時列為待補而不是錯誤。
+- `run-status-sql` — Go 的 `successors` ↔ migration 0032 的 trigger 轉移列 ↔ 每一處終態 `IN` 清單。
 
-## 5 任務規格
+閘門的順序仍然寫在 `create()` 的呼叫序，那是刻意的：順序決定哪個 reason 先浮出來，而 reason 直接餵 `metrics.RunRefused` 與 `audit.ActionRunRefused`。要改順序就是改對外行為，先看 §8。
 
-### T1 詞彙對帳檢查器
-
-**GOAL** 同一組封閉詞彙在 Go 常數、DB `CHECK (… IN (…))`、OpenAPI `enum` 三處不一致時，CI 紅。
-
-**DISCOVER**
-
-```
-awk '/\{"/{print NR": "$0}' tools/devctl/automation_check.go
-git grep -h "CHECK" -- db/migrations/ | awk '/IN \(/' | wc -l
-git grep -n "enum:" -- contracts/openapi/public.yaml | wc -l
-```
-
-**範本**（照抄結構，不要自創）
-
-- `tools/devctl/isolation_levels.go` — AST 抓常數（`parser.ParseFile` → `*ast.GenDecl`／`token.CONST` → `*ast.ValueSpec` → `*ast.BasicLit` → `strconv.Unquote`），regexp 讀 YAML `enum:`。
-- `tools/devctl/route_table.go` — 同一種寫法，另一個對帳對象。
-- `tools/devctl/query_owners.go` 的 `frozenTables()` — 掃全部 `db/migrations/*.sql` 的既有寫法。
-
-**EDIT**
-
-1. 新檔 `tools/devctl/domain_vocabulary.go`，簽名 `func domainVocabularyProblems(root string) []string`。
-2. 詞彙以宣告表驅動，每組一列：Go 檔路徑、常數前綴、DB 欄位名、契約 schema key。第一列用 creation 的 `State`。
-3. 註冊到 `documentCheckers()`：`{"domain-vocabulary", domainVocabularyProblems}`。
-4. **不要引入 YAML 套件**，沿用 regexp。這個 repo 至今零 `packages.Load`，不要引入。
-
-**VERIFY**
-
-```
-go -C tools/devctl run . automation-check
-cd tools/devctl && go test ./...
-```
-
-**PROVE** 在 `state.go` 刪掉一個常數 → 檢查器必須指名該值缺席 → 還原 → `git diff` 空。
-另加自我校驗測試（抄 `isolation_levels_test.go` 的 `TestTheRealRepositoryHasNoIsolationDrift`）：斷言常數數量下限與契約值存在，**防止檢查器空轉卻回報通過**。
-
-**STOP-IF** 某組詞彙 DB 側沒有 CHECK（`creation_sessions.state` 就沒有）。**不要為了讓檢查器通過而新增 migration**，那是 C5 的高衝突區。檢查器要能容忍「DB 側不存在」並把它列為待補，不是列為錯誤。
+C1 成立：SQL 側沒有任何 constraint、trigger、unique 或外鍵被刪除或放寬。
 
 ---
 
-### T2 SQL 獨佔的領域概念收回 Go
+## 5 已判定不做
 
-**GOAL** 讓 J1 對這三組概念答「能」。**SQL 側一條都不刪**（C1）。
+每一條都附量測，因為判準是輸出不是偏好。要重開其中任何一條，先重跑它的 DISCOVER。
 
-**DISCOVER**
+### 5.1 artifact `kind` 型別化
 
-```
-git grep -n "object_grants_state" -- db/ apps/platform
-git grep -c "'succeeded', 'failed', 'cancelled', 'timed_out'" -- db/
-git grep -n "'run_output'\|'download_package'" -- db/queries db/migrations
-```
-
-#### T2a `object_grants_state`
-
-四個值 `legacy_unknown`／`unissued`／`recorded`／`closed`，定義在 `db/migrations/0050_run_attempt_object_grant_expiry.sql`。Go 端零具名、零判斷、零單元測試，唯一引用是 sqlc 生成的 `ObjectGrantsState string`。
-
-真實轉移由四支 query 決定：
-
-| query | 轉移 |
-| --- | --- |
-| `CreateRunAttempt` | `(新列) → unissued` |
-| `FinishRunAttempt` | `unissued → closed`，其餘原樣 |
-| `CloseUnissuedRunAttemptGrants` | `unissued → closed` |
-| `SetRunAttemptObjectGrantsExpiry` | `(任意) → recorded`，**SQL 無 state 前置條件** |
-
-`legacy_unknown` 在現行呼叫圖中沒有離開路徑（`TestLegacyAttemptGrantStateRemainsFailClosed` 斷言它 fail closed）。`recorded` 無法回到 `unissued`。
-
-**EDIT** 在 `apps/platform/internal/trial/execution/` 新增 `grantstate.go`，照 §3 形狀。呼叫端在呼叫 `SetRunAttemptObjectGrantsExpiry` 前先問轉移表——那支 query 沒有 state 前置條件，Go 這一側就是它唯一的守門。
-
-**注意** `object_grants_expire_at` 與狀態是一組：`unissued` 配 `infinity`；轉 `closed` 時回填 `now()-2min`；`recorded` 的有效性完全由 `expire_at` 決定。過 J2 後把兩者包成一個值物件。
-
-#### T2b `IsTerminal` 的 SQL 展開
-
-Go 定義已存在（`apps/platform/internal/trial/execution/statemachine.go`）。SQL 裡另有十餘處字面列舉，分佈在 migration 與 query 兩側，實際數量以 DISCOVER 輸出為準。
-
-**不要改 SQL。** 改法是讓 T1 的檢查器把「Go 的終態集合」與「SQL 每一處 `IN ('succeeded', …)` 的值集」對帳，不一致就紅。新增終態時一次改齊。
-
-#### T2c artifact `kind`（已判定不做）
-
-`run_output`、`download_package` 在 Go 只以生成碼裡的字串存在，看起來像 J1 的目標。但**生產程式碼從來沒有讀過這個欄位**：每一支 query 都把 kind 寫死在 WHERE 裡，Go 沒有任何分支。DISCOVER 確認：
+`run_output`、`download_package` 在 Go 只以生成碼裡的字串存在，看起來像 J1 的目標。但**生產程式碼從來沒有讀過這個欄位**：每一支 query 都把 kind 寫死在 WHERE 裡，Go 沒有任何分支。
 
 ```
 git grep -n "run_output\|download_package" -- apps/platform/internal/ | awk '!/_test|\/gen\//'
 ```
 
-輸出為空。加型別會得到一個零呼叫者的抽象，J2 四問全否。**這一項關閉。** 若日後 Go 真的需要問「這個 artifact 是 run 產出嗎」，屆時再依 §3 形狀補，並同時加進 T1 的對帳表。
+輸出為空。加型別會得到一個零呼叫者的抽象，J2 四問全否。若日後 Go 真的需要問「這個 artifact 是 run 產出嗎」，屆時依 §3 形狀補，並同時加進 `domain-vocabulary` 的對帳表。
 
-**VERIFY** 該 context 測試綠；`go test ./internal/...` 零失敗；整合測試（§6）綠。
-**PROVE** 每個新轉移表各弄壞一列，對應測試必須紅。
+### 5.2 Specification 的組合子與 `Rule[T]` 鏈
 
----
+`create()` 的每個閘門在不同時點才拿得到自己要的事實：授權限制要先讀 skill，掃描結果要讀物件儲存，名額與額度要在交易裡。**沒有任何一段是兩條以上的規則吃同一組事實**，所以 `firstRefusal` 會是一個零呼叫者的泛型。
 
-### T3 Specification 統一
+真正的缺陷不是形狀而是入口：曾經有兩個理由（`permissions_unconfirmed`、`capability_mismatch`）靠 `auditRefusal` 裡的 `errors.Is` 階梯補回名字，因此進得了稽核卻進不了指標。現在所有拒絕都經 `refused()`，`RefusalReasons()` 是完整詞彙，兩支測試守著：每個 `Reason*` 常數都要在名冊裡、任何 `refused()` 都不得把理由寫成字面值。
 
-**GOAL** 把散在四種慣例裡的守門判斷收成一種可組合、可單元測試的形狀。
+### 5.3 每個 Service 一個回傳 `(*Service, error)` 的建構子
 
-**DISCOVER**
+部分組裝是刻意的，不是疏漏。purge 路徑只給 `Pool` 與 `ClearSightings`，因為它的工作只讀這兩個欄位；要求 `packaging.Service` 十八個欄位全給的建構子，不是擋掉這些呼叫端，就是得為每種形狀再開一個建構子。
 
-```
-git grep -n "^func (s \*Service) require" -- apps/platform/internal/ | sed 's/(ctx.*//'
-git grep -n "(reason, message string)" -- apps/platform/internal/
-git grep -n "type refusal struct" -- apps/platform/internal/
-```
+worker 那個 `packaging.Service` 不是地雷：從它取得的每一個方法都追過，只讀 `Pool` 與 `ClearSightings`，兩個都已指派，沒有零值 `Retention` 的路徑。
 
-**分類（用 J3）**
+守著接線的是反射測試——`apiserver/app_test.go` 與 `cmd/maintenance/main_test.go` 逐欄位斷言 `identity.Service` 沒有 nil 步驟。少接一條就紅。
 
-- **吃事實的＝規格**：`requireNotAccessRestricted`、`requireScanNotBlocking`、`requireRunSlot`、`requireDispatchable`、`requireQuota`、`requireCredit`、`requirePermissionConfirmation`、`requireCuratedContent`、`requireGenerateAllowance`。
-- **無參數的＝接線檢查**，不屬於本任務，移交 T5：`requireProjection`、`requireTestLab`、`requireRunLinks`、`requirePurgeSteps`、`requirePurgeReads`、`requireOwnerReads`。
+同一批把十二個空接收器方法（`func (*Service) …`，完全不讀欄位）改成套件函式，`(&run.Service{}).SkillVersionsInRuns` 這種為了取用方法而憑空生出的空聚合根因此消失。
 
-**既有資產，不要重造** `apps/platform/internal/trial/execution/gateb.go` 的 `refusal{reason, err}`；`refused()` 會遞增 `metrics.RunRefused.WithLabelValues(reason)`；reason 在 `service.go` 被取出寫進 `audit.ActionRunRefused`。這已經是 Specification 的八成。
+### 5.4 把 `pgtype` 趕出領域簽名
 
-**目標形狀**
+原本設想「逐 context 一個 commit」。量測之後兩半都不成立。
+
+**`gen.DBTX` 那一半是空的。** 以它為參數的函式有 29 個，逐一追呼叫端：13 個真的收過交易，16 個收的是連線。收連線的那些也不是轉手——advisory lock（`LockObjectWrite`、`LockPackageObject`）與帳號清除迴圈必須在交易之外持有同一條連線，那是呼叫端在宣告自己控制著哪一條連線，看得見的邊界要留下。**沒有一個是純粹為了轉手而存在。**
+
+**`pgtype.UUID` 那一半太大且接縫不成立。**
 
 ```
-type Refusal struct { Reason string; Err error }
-type Rule[T any] func(T) *Refusal
-func firstRefusal[T any](subject T, rules ...Rule[T]) *Refusal
+git grep -oh "pgtype\.[A-Z][A-Za-z]*" -- apps/platform/internal/ | sort | uniq -c | sort -rn
 ```
 
-- **純規格**（事實進、拒絕出）與 **I/O 閘門**（要查 DB 或外部）分開放。純規格必須能不連資料庫測試。
-- 鏈的順序寫成一份**可斷言的清單**，不要藏在 `create()` 的呼叫順序裡。
+1630 處 `pgtype.UUID`、263 處 `pgtype.Timestamptz`，橫跨 20 個套件；非測試非生成的部分就有 160 個結構欄位與 178 個回傳簽名。唯一便宜的做法是在自家套件宣告 `type ID = pgtype.UUID` 這種別名接縫，但 `Timestamptz` 會跟著留下，套件仍得 import `pgtype`，depguard 擋不掉，接縫的好處歸零。改成真正的領域 ID 值物件則要在每個生成列的邊界寫轉換——**那次遷移的成本，等於它要預防的那次更換驅動的成本。**
 
-**這是行為改變，不是重構。** 閘門順序決定哪個拒絕理由先浮出來，而 reason 碼直接餵指標與稽核紀錄。
-**必做前置**：先寫一支測試把現行順序釘死（每一對閘門同時觸發時誰先贏），這支先綠，才可以動結構。
+`pgtype.UUID` 也不擁有任何領域概念（C4／J1 問的是那個），它是 UUID 的容器。要做就是一次 ADR 加一次全 repo 遷移，不是這份規格的任務。
 
-**不做** And／Or／Not 組合子樹。線性鏈涵蓋全部現存用法，組合子是為了還不存在的需求。
+### 5.5 其餘九條中文領域 sentinel
 
-**推進順序** `trial/execution` → `skill/delivery`（把 `gate`／`gateFlags` 的 `(reason, message string)` 併過來）→ `creator/creation` → `skill/admission`、`skill/library`。一個 context 一批。
+`errors.New` 裡的中文共十三條，逐條追到寫入點再追到讀它的前端頁面。四條是活文案（前端真的印後端那句），已搬到寫它的 handler。其餘九條不搬：
 
-**STOP-IF** 合併兩個閘門會改變對外的 reason 碼字面值 → 停，回報，那是對外契約。
+- `ErrNameTaken`、`errNoSavedVersion`、`errPackageUnreadable`、`ErrSuggestUnavailable` — 前端在那個狀態碼上寫死自己的句子，其中兩支前端測試明白斷言畫面**不**含後端原句。
+- `ErrInvalid`、`ErrLimitExceeded` — handler 用 `stripSentinelPrefix` 把 sentinel 前綴剝掉，這兩句話本身永遠到不了 response body。
+- `trial/design/http.go` 的 limit 訊息 — 前端恆送合法值，沒有呼叫端能觸發。
+- `errSkillNotFound` — 它所在的 `detail.go` 本身就是該 context 的 handler 層，搬了只是換個常數名。
+- `ErrPreflightTargetNotFound` 的 POST `/runs` 路徑 — 前端寫死自己的句子；同一個 sentinel 的 GET 路徑是活的，已搬。
 
----
-
-### T4 evaluation 狀態機
-
-**GOAL** 照 §3 形狀補 `pending`／`completed`／`failed`。
-
-**DISCOVER**
-
-```
-git grep -n "StatusPending\|StatusCompleted\|StatusFailed" -- apps/platform/internal/trial/improvement/
-git grep -n "CHECK (status IN" -- db/migrations/0024_evaluation.sql
-```
-
-DB 有 `CHECK (status IN ('pending','completed','failed'))`，Go 有三個**未定型**常數，狀態判斷散在數處 `current.Status == StatusPending`。
-
-**EDIT** 型別化三個常數、加轉移表、把散落的比較收成一個具名謂詞、註冊進 T1 的對帳表。規模遠小於 creation，照抄即可。
-
----
-
-### T5 建構安全
-
-**GOAL** 用編譯期保證換掉執行期 nil 檢查。
-
-**DISCOVER**
-
-```
-git grep -c "^type Service struct" -- apps/platform/internal/ | wc -l
-git grep -n "^func NewService\|^func New(" -- apps/platform/internal/ | awk '!/_test/'
-git grep -n "not configured" -- apps/platform/internal/ | awk '!/_test/' | wc -l
-git grep -n "packaging.Service{" -- apps/platform/
-```
-
-`Service` 型別遠多於建構子。既有的 `service-construction` 檢查器管的是 [ADR-032](../adr/ADR-032-ddd-bounded-context-governance-for-platform.md) 的跨 context 現場建構，**不管自家建構子**，所以這一項沒有機器守著。
-
-**先修真實地雷**：worker 裡有一個半組裝的 `packaging.Service`，必填欄位多數從未指派。這不是理論風險。
-
-**EDIT** 一個 context 一個 commit。建構子收必填欄位、回傳 `(*Service, error)`，刪掉該 context 因此變成不可能的 nil 檢查與「未配置」sentinel。注入點只在 `entrypoint/api/apiserver.NewApp`。
-
-**PROVE** 拿掉建構子裡某個必填欄位的檢查 → 對應測試紅。
-
----
-
-### T6 outbox payload
-
-**GOAL** `NewEvent.Payload []byte` 換成具名 struct，並加 `schema_version`（[ADR-008](../adr/ADR-008-asynchronous-workflows-and-domain-events.md)）。
-
-**DISCOVER**
-
-```
-git grep -n "outbox.Insert\|NewEvent{" -- apps/platform/internal/ | awk '!/_test/'
-```
-
-現在加是一行；有第三個消費者之後再加是一次遷移。
-
----
-
-### T7 身分型別
-
-**GOAL** 把 `pgtype.UUID`／`pgx.Tx` 趕出**領域**簽名。
-
-**DISCOVER**
-
-```
-git grep -c "pgtype.UUID" -- apps/platform/internal/ | awk -F: '!/_test|\/gen\//{s+=$2} END {print s}'
-git grep -n "pgx.Tx\|gen.DBTX" -- apps/platform/internal/ | awk '!/_test|\/gen\//' | wc -l
-```
-
-兩個 `awk` 都必須排除 `/gen/`。生成的持久層本來就該講 `pgtype`，把它算進來會讓數字膨脹一倍並指向錯的檔案。
-
-**邊界，不要做過頭**
-
-- **要趕走**：領域型別欄位與回傳值裡的 `pgtype.UUID`；純粹為了轉手而出現的 `gen.DBTX`。
-- **要留下**：`Act(ctx, tx, …)` 這種**明示交易邊界**的參數。呼叫端必須看得見自己在一個交易裡，那是守鐵律 9 的手段。
-
-逐 context 進行，一個 context 一個 commit。排在 T1 之後。
-
----
-
-### T8 領域錯誤的使用者文案
-
-**GOAL** 先量測，再決定搬不搬。**不要一次搬。**
-
-**DISCOVER**
-
-```
-git grep -n "errors.New(\"" -- apps/platform/internal/ | awk '!/_test/ && /[一-龥]/'
-```
-
-這支指令指的是**領域 sentinel 裡的中文**，那是本任務的目標。不要用更寬的「掃所有中文字串」去量——那會撈到 API 層的 `httpx.WriteError` 文案，那些本來就該是中文，不是缺陷。
-
-中文使用者文案寫在領域 sentinel 裡，會原樣進 HTTP body；其中有些是死文字，因為前端在對應狀態碼上用自己的文案。
-
-**EDIT 前先做**：對每一條查前端是否真的顯示它——拿那句中文去 `git grep -- apps/web/src`，找不到就是死文字。只搬前端真的會顯示的那些。
+要重開任一條，先確認前端那一側改成印 `error.message` 了。
 
 ---
 
