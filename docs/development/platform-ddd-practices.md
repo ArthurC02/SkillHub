@@ -2,6 +2,8 @@
 
 本指南把 Platform 在 MVP 期間收斂 Bounded Context 的實作經驗，轉成後續開發時可執行的判斷與檢查。它不是新的架構決策，也不取代任何 ADR。
 
+要把領域規則從資料庫收回程式碼、補戰術 Pattern 的執行規格，見 [DDD／Clean Code 收斂](platform-ddd-convergence.md)。
+
 ## 定位與事實來源
 
 遇到衝突時，依下列優先序判斷：
