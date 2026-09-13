@@ -157,6 +157,15 @@ worker 那個 `packaging.Service` 不是地雷：從它取得的每一個方法�
 
 ### 5.4 把 `pgtype` 趕出領域簽名
 
+**先講清楚這是什麼。** 是**識別碼在 Go 裡的型別**：今天工作區、Skill、版本、Run、使用者在 Go 全都是同一個 `pgtype.UUID`，也就是 pgx 驅動的型別。遷移是給每種實體一個自己的型別。
+
+```go
+func WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtype.UUID) (Skill, bool, error)   // 今天
+func WorkspaceSkill(ctx context.Context, workspaceID WorkspaceID, skillID SkillID) (Skill, bool, error)   // 遷移後
+```
+
+**不是 UUID 產生器，產生器不在範圍內。** 識別碼由 Postgres 自己產（27 處 `DEFAULT gen_random_uuid()`）；Go 只有三處 `uuid.NewString()`，產的是冪等鍵字串（`"grant:" + …`）不是實體識別碼。**也不動**資料庫欄位型別、欄位的值、migration 與 API 的 JSON——純粹是 Go 型別系統裡的事。
+
 不做的理由不是「太大」，是**它擋不住危害最大的那一類換位，而它擋得住的那一類已經有人擋了**。
 
 型別化只能分辨**不同種類**的識別碼（workspace 對 skill）。同一種類的兩個值（兩個使用者、兩個版本、兩次 Run）在型別系統裡完全相同，換位照樣編譯。把每一種換位逐一追到後果：
@@ -183,10 +192,20 @@ worker 那個 `packaging.Service` 不是地雷：從它取得的每一個方法�
 
 ```
 git grep -oh "pgtype\.[A-Z][A-Za-z]*" -- apps/platform/internal/ | sort | uniq -c | sort -rn
-git grep -n "gen\.[A-Za-z]*Params{" -- apps/platform/internal/ | awk '!/_test|\/gen\//' | wc -l
+git grep -n "gen\.[A-Za-z]*Params{" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//' | wc -l
 ```
 
-1630 處 `pgtype.UUID`、263 處 `pgtype.Timestamptz`，20 個套件；轉換面是 236 個 `gen.*Params{` 字面值站點。便宜的別名接縫（`type ID = pgtype.UUID`）不成立——`Timestamptz` 會把 `pgtype` 的 import 留在原地，depguard 擋不掉。`pgtype.UUID` 也不擁有任何領域概念（C4／J1 問的是那個），它是 UUID 的容器。要做就是一次 ADR 加一次全 repo 遷移。
+1630 處 `pgtype.UUID`、263 處 `pgtype.Timestamptz`，20 個套件。
+
+**大在哪**：sqlc 生出來的參數結構永遠講 `pgtype.UUID`（那是它的工作，不該改），所以領域型別一換，**與生成碼交界的每一處都要轉一次**——遞進去要拆封，從生成的資料列讀出來要包回去。
+
+```go
+gen.GetSkillParams{ID: skillID.value(), WorkspaceID: workspaceID.value()}
+```
+
+這種 `gen.*Params{` 字面值站點，非測試非生成的有 **236 個**，反方向的讀取還不算。
+
+便宜的別名接縫（`type ID = pgtype.UUID`）不成立——`Timestamptz` 會把 `pgtype` 的 import 留在原地，depguard 擋不掉。`pgtype.UUID` 也不擁有任何領域概念（C4／J1 問的是那個），它是 UUID 的容器。要做就是一次 ADR 加一次全 repo 遷移。
 
 ### 5.5 其餘九條中文領域 sentinel
 
