@@ -34,6 +34,8 @@ var (
 	ErrCreditThreshold = errors.New("creation: credit balance below the started threshold")
 
 	ErrCreditFloor = errors.New("creation: credit balance at the debt floor")
+
+	ErrIllegalTransition = errors.New("creation: the session cannot move that way")
 )
 
 const (
@@ -286,7 +288,6 @@ func view(row gen.CreationSession) (View, error) {
 	return View{UUID(row.ID), row.Revision, row.State, e.Snapshot, row.CreatedAt.Time, row.UpdatedAt.Time, row.ExpiresAt.Time, e.Deadline}, err
 }
 func live(row gen.CreationSession) bool { return row.ExpiresAt.Time.After(time.Now()) }
-func terminal(state string) bool        { return state == "saved" || state == "cancelled" }
 func (s *Service) Get(ctx context.Context, ws identity.Workspace, id pgtype.UUID) (View, error) {
 	row, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: id, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !live(row)) {
@@ -312,13 +313,17 @@ func (s *Service) List(ctx context.Context, ws identity.Workspace) ([]View, erro
 	}
 	return out, nil
 }
-func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSession, state, event string, e envelope) (gen.CreationSession, error) {
+func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSession, state State, event string, e envelope) (gen.CreationSession, error) {
+	from := State(row.State)
+	if !CanTransition(from, state) {
+		return row, fmt.Errorf("%w: %s to %s", ErrIllegalTransition, from, state)
+	}
 	b, err := json.Marshal(e)
 	if err != nil {
 		return row, err
 	}
 	q := gen.New(tx)
-	r, err := q.AdvanceCreationSession(ctx, gen.AdvanceCreationSessionParams{ID: row.ID, WorkspaceID: row.WorkspaceID, ExpectedRevision: row.Revision, State: state, Snapshot: b})
+	r, err := q.AdvanceCreationSession(ctx, gen.AdvanceCreationSessionParams{ID: row.ID, WorkspaceID: row.WorkspaceID, ExpectedRevision: row.Revision, State: string(state), Snapshot: b})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return r, ErrConflict
 	}
@@ -326,7 +331,7 @@ func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 		return r, err
 	}
 	err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: r.ID, WorkspaceID: r.WorkspaceID, Revision: r.Revision, EventType: event, Snapshot: b})
-	if err == nil && s.CreditSessionEnded != nil && terminal(state) && !terminal(row.State) {
+	if err == nil && s.CreditSessionEnded != nil && state.HasEnded() && !from.HasEnded() {
 		if endErr := s.CreditSessionEnded(ctx, tx, r.ID); endErr != nil {
 			slog.Warn("creation: session cost summary not written", "error", endErr)
 		}
@@ -355,5 +360,6 @@ func (s *Service) Changed(ctx context.Context, ws identity.Workspace, id pgtype.
 }
 
 func StreamDone(v View) bool {
-	return terminal(v.State) || v.State == "failed" || !v.Deadline.After(time.Now())
+	current := State(v.State)
+	return current.HasEnded() || current == StateFailed || !v.Deadline.After(time.Now())
 }

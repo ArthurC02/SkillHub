@@ -97,13 +97,13 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 	}
 	zero := 0.0
 	e := envelope{Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, References: []Reference{}, BudgetUSD: budget, SpentUSD: &zero}, Limits: s.Limits, StartHash: key, Deadline: time.Now().Add(s.Limits.SessionTimeout)}
-	state := "waiting_input"
+	state := StateWaitingInput
 	if strings.TrimSpace(message) != "" {
 		e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(message)})
-		state = "queued"
+		state = StateQueued
 	}
 
-	if state == "queued" && s.CatalogCheck != nil {
+	if state == StateQueued && s.CatalogCheck != nil {
 
 		refs, cost, err := s.CatalogCheck(ctx, ws, message)
 		if err != nil {
@@ -123,7 +123,7 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 			}
 			e.Snapshot.References = refs
 			e.Snapshot.PendingAction = "confirm_references"
-			state = "waiting_confirmation"
+			state = StateWaitingConfirmation
 		}
 	}
 	b, _ := json.Marshal(e)
@@ -134,7 +134,7 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
-	row, err := q.CreateCreationSession(ctx, gen.CreateCreationSessionParams{ID: id, WorkspaceID: ws.ID, State: state, Snapshot: b, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(s.Limits.Retention), Valid: true}})
+	row, err := q.CreateCreationSession(ctx, gen.CreateCreationSessionParams{ID: id, WorkspaceID: ws.ID, State: string(state), Snapshot: b, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(s.Limits.Retention), Valid: true}})
 	if err != nil {
 
 		_ = tx.Rollback(ctx)
@@ -151,7 +151,7 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 	if err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: id, WorkspaceID: ws.ID, Revision: 1, EventType: "created", Snapshot: b}); err != nil {
 		return View{}, err
 	}
-	if state == "queued" {
+	if state == StateQueued {
 
 		_, err = s.enqueue(ctx, tx, row, &e, false)
 		if err != nil {
@@ -283,7 +283,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 	if row.Revision != c.ExpectedRevision {
 		return View{}, nil, ErrConflict
 	}
-	if terminal(row.State) {
+	if State(row.State).HasEnded() {
 		return View{}, nil, ErrInvalidCommand
 	}
 	e, err := decode(row)
@@ -293,7 +293,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 	if c.Kind != "cancel" && !e.Deadline.After(time.Now()) {
 		return View{}, nil, ErrDeadline
 	}
-	if row.State == "working" || row.State == "queued" {
+	if State(row.State).AwaitsTheModel() {
 
 		if c.Kind != "cancel" && c.Kind != "stop_step" {
 			return View{}, nil, ErrConflict
@@ -304,12 +304,12 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		old := *p.Draft
 		e.PreviousDraft = &old
 	}
-	state := "waiting_input"
+	state := StateWaitingInput
 	queueStep := false
 	transient := false
 	switch c.Kind {
 	case "cancel":
-		state = "cancelled"
+		state = StateCancelled
 		p.PendingAction = ""
 		if e.ActiveReceipt.Valid {
 			q := gen.New(tx)
@@ -345,7 +345,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		e.ActiveReceipt = pgtype.UUID{}
 		p.PendingAction = ""
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: said})
-		state = "waiting_input"
+		state = StateWaitingInput
 	case "message":
 		if strings.TrimSpace(c.Message) == "" || utf8.RuneCountInString(c.Message) > 4000 || len(p.Messages) >= MaxMessages {
 			return View{}, nil, ErrInvalidCommand
@@ -395,7 +395,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		invalidate(p)
 		p.BriefConfirmed = false
 		p.PendingAction = "confirm_references"
-		state = "waiting_confirmation"
+		state = StateWaitingConfirmation
 	case "adopt_reference":
 
 		if s.Adopt == nil || len(c.ReferenceSkillIDs) != 1 || (p.PendingAction != "confirm_references" && p.PendingAction != "confirm_duplicate") || !listedReference(p, c.ReferenceSkillIDs[0]) {
@@ -410,7 +410,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		p.PendingAction = ""
 		p.PendingMaterialize = ""
 		e.ExistingSkillID = candidate.SkillID
-		state = "saved"
+		state = StateSaved
 	case "decline_references":
 		if p.PendingAction != "confirm_references" || len(p.Messages) >= MaxMessages {
 			return View{}, nil, ErrInvalidCommand
@@ -483,13 +483,13 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		observation = s.masked(observation)
 		p.EvaluationText = evaluationFreeText(observation)
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: observation})
-		state = "candidate_ready"
+		state = StateCandidateReady
 		queueStep = true
 
 		if questions := trialQuestions(observation); p.RunUnmet && questions != "" {
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: questions})
 			p.PendingAction = ""
-			state = "waiting_input"
+			state = StateWaitingInput
 			queueStep = false
 		}
 	case "confirm_fetch":
@@ -514,10 +514,10 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			return View{}, nil, ErrBudgetOutOfBand
 		}
 		p.BudgetUSD = c.BudgetUSD
-		if row.State == "failed" {
-			state = "waiting_input"
+		if State(row.State) == StateFailed {
+			state = StateWaitingInput
 		} else {
-			state = row.State
+			state = State(row.State)
 		}
 	case "materialize", "finalize", "confirm_duplicate":
 
@@ -572,7 +572,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 					p.Duplicates = dups
 					p.PendingMaterialize = kind
 					p.PendingAction = "confirm_duplicate"
-					state = "waiting_confirmation"
+					state = StateWaitingConfirmation
 					break
 				}
 				p.DuplicateAcknowledged = err == nil
@@ -580,9 +580,9 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 			_ = tx.Rollback(ctx)
 			return s.materialize(ctx, ws, row, c, kind, e)
 		}
-		state = "candidate_ready"
+		state = StateCandidateReady
 		if kind == "finalize" {
-			state = "saved"
+			state = StateSaved
 		}
 	default:
 		return View{}, nil, ErrInvalidCommand
@@ -592,7 +592,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		if !canSpend(*p, e.Limits) {
 			return View{}, nil, ErrLimit
 		}
-		state = "queued"
+		state = StateQueued
 		a, err := s.enqueue(ctx, tx, row, &e, transient)
 		if err != nil {
 			return View{}, nil, err
@@ -645,7 +645,7 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 		if err != nil {
 			return err
 		}
-		if row.Revision != c.ExpectedRevision || !live(row) || terminal(row.State) {
+		if row.Revision != c.ExpectedRevision || !live(row) || State(row.State).HasEnded() {
 			return ErrConflict
 		}
 		current, err := decode(row)
@@ -678,9 +678,9 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 		current.Snapshot.PendingAction = ""
 		current.Snapshot.PendingMaterialize = ""
 		current.ExistingSkillID = candidate.SkillID
-		state := "candidate_ready"
+		state := StateCandidateReady
 		if kind == "finalize" {
-			state = "saved"
+			state = StateSaved
 		}
 		row, err = s.advance(ctx, tx, row, state, c.Kind, current)
 		if err != nil {

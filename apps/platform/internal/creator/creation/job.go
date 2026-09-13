@@ -131,7 +131,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 	if err != nil {
 		return err
 	}
-	if row.State != "queued" || e.ActiveReceipt != a.ReceiptID || !live(row) {
+	if State(row.State) != StateQueued || e.ActiveReceipt != a.ReceiptID || !live(row) {
 		if diagram != nil {
 			return ErrConflict
 		}
@@ -173,7 +173,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 	e.Snapshot.Steps++
 	e.Snapshot.ReservedUSD += e.Limits.MaxCallCostUSD
 	e.ActiveDeadline = time.Now().Add(e.Limits.CallTimeout + 10*time.Second)
-	row, err = s.advance(ctx, tx, row, "working", "attempt_started", e)
+	row, err = s.advance(ctx, tx, row, StateWorking, "attempt_started", e)
 	if err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 				return
 			case <-tick.C:
 				current, getErr := gen.New(s.Pool).GetCreationSession(callCtx, gen.GetCreationSessionParams{ID: a.SessionID, WorkspaceID: a.WorkspaceID})
-				if getErr != nil || current.State != "working" || !live(current) {
+				if getErr != nil || State(current.State) != StateWorking || !live(current) {
 					cancel()
 					return
 				}
@@ -286,9 +286,9 @@ func stepFailureMessage(err, callErr error) string {
 }
 
 func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs, message string) error {
-	state := "failed"
+	state := StateFailed
 	if e.Snapshot.DiagramFingerprint != "" && e.Snapshot.DiagramUnderstanding == "" {
-		state = "needs_reupload"
+		state = StateNeedsReupload
 	}
 	e.ActiveReceipt = pgtype.UUID{}
 	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: message})
@@ -357,9 +357,9 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 			return err
 		}
 	}
-	state := row.State
+	state := State(row.State)
 	next := false
-	if state == "working" && e.ActiveReceipt == a.ReceiptID && receipt.Status == "running" {
+	if state == StateWorking && e.ActiveReceipt == a.ReceiptID && receipt.Status == "running" {
 		e.ActiveReceipt = pgtype.UUID{}
 		if callErr == nil && response != nil && live(row) && e.Deadline.After(time.Now()) {
 			if hadDiagram && response.DiagramUnderstanding == "" {
@@ -371,9 +371,9 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 			err = ErrUnavailable
 		}
 		if err != nil {
-			state = "failed"
+			state = StateFailed
 			if hadDiagram && e.Snapshot.DiagramUnderstanding == "" {
-				state = "needs_reupload"
+				state = StateNeedsReupload
 			}
 			e.Snapshot.PendingAction = ""
 
@@ -387,7 +387,7 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 			failed := stepFailureMessage(err, callErr)
 			e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: failed})
 			if errors.Is(callErr, ErrNotFound) {
-				state = "waiting_confirmation"
+				state = StateWaitingConfirmation
 				e.Snapshot.PendingAction = "confirm_references"
 				for i := range e.Snapshot.References {
 					e.Snapshot.References[i].Available = false
@@ -396,7 +396,7 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 				e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: "參考內容目前不可用，請換選後再確認。"})
 			}
 			if errors.Is(callErr, ErrCreditFloor) {
-				state = "waiting_input"
+				state = StateWaitingInput
 				e.Snapshot.PendingAction = ""
 				e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。"})
 			}
@@ -405,12 +405,12 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 	}
 	if next {
 		if canSpend(e.Snapshot, e.Limits) {
-			state = "queued"
+			state = StateQueued
 			if _, err = s.enqueue(ctx, tx, row, &e, false); err != nil {
 				return err
 			}
 		} else {
-			state = "waiting_input"
+			state = StateWaitingInput
 			e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: limitSentence(e.Snapshot, e.Limits)})
 		}
 	}
@@ -468,7 +468,7 @@ func equalStrings(a, b []string) bool {
 	}
 	return true
 }
-func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *llmclient.CreationStepResponse) (string, bool, error) {
+func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *llmclient.CreationStepResponse) (State, bool, error) {
 	p := &e.Snapshot
 	if r.Reason != "" {
 		sentence, err := reasonSentence(r.Reason)
@@ -481,7 +481,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			p.DraftRetries++
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "模型這一步沒有交出草稿，已自動再試一次。"})
 			p.PendingAction = ""
-			return "queued", true, nil
+			return StateQueued, true, nil
 		}
 	}
 
@@ -513,7 +513,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		p.DiagramConfirmed = false
 		invalidate(p)
 		p.PendingAction = "confirm_diagram"
-		return "waiting_confirmation", false, nil
+		return StateWaitingConfirmation, false, nil
 	}
 	briefChanged := r.Brief != "" && r.Brief != p.Brief
 	criteriaChanged := len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)
@@ -545,12 +545,12 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		p.BriefConfirmed = false
 		invalidate(p)
 		p.PendingAction = "confirm_brief"
-		return "waiting_confirmation", false, nil
+		return StateWaitingConfirmation, false, nil
 	}
 	switch r.Outcome {
 	case "clarification":
 		p.PendingAction = ""
-		return "waiting_input", false, nil
+		return StateWaitingInput, false, nil
 	case "confirm_brief":
 		if strings.TrimSpace(p.Brief) == "" {
 			return "", false, ErrInvalidCommand
@@ -558,18 +558,18 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		if p.BriefConfirmed {
 
 			p.PendingAction = ""
-			return "waiting_input", false, nil
+			return StateWaitingInput, false, nil
 		}
 		p.BriefConfirmed = false
 		p.PendingAction = "confirm_brief"
-		return "waiting_confirmation", false, nil
+		return StateWaitingConfirmation, false, nil
 	case "confirm_diagram":
 		if p.DiagramUnderstanding == "" {
 			return "", false, ErrInvalidCommand
 		}
 		p.DiagramConfirmed = false
 		p.PendingAction = "confirm_diagram"
-		return "waiting_confirmation", false, nil
+		return StateWaitingConfirmation, false, nil
 	case "draft":
 		if !confirmed(*p) || r.Brief != p.Brief || (len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) || (r.SampleInput != "" && r.SampleInput != p.SampleInput) || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
 			return "", false, ErrInvalidCommand
@@ -611,7 +611,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			}
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: why})
 			p.PendingAction = ""
-			return "queued", true, nil
+			return StateQueued, true, nil
 		}
 		if unchanged {
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "模型兩次都交回與試跑相同的草稿，沒有處理評估指出的問題；請告訴它要改哪裡。"})
@@ -642,9 +642,9 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		if p.BlockedRepeats >= MaxBlockedRepeats {
 
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "同一個結構問題連續三次沒有修好；請看驗證報告，告訴模型要改哪裡。"})
-			return "waiting_input", false, nil
+			return StateWaitingInput, false, nil
 		}
-		return "draft_ready", false, nil
+		return StateDraftReady, false, nil
 	case "tool_intent":
 		if r.ToolIntent == nil || p.ToolCalls >= e.Limits.MaxToolCalls {
 			return "", false, ErrLimit
@@ -658,11 +658,11 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			}
 			if strings.TrimSpace(r.ToolIntent.Query) == "" {
 				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄搜尋需要關鍵字；這次沒有搜尋。"})
-				return "queued", true, nil
+				return StateQueued, true, nil
 			}
 			if p.SearchRounds >= MaxSearchRounds {
 				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄已搜過兩回都沒有相近的 Skill；請直接依需求起草。"})
-				return "queued", true, nil
+				return StateQueued, true, nil
 			}
 
 			queries := []string{strings.TrimSpace(r.ToolIntent.Query)}
@@ -697,7 +697,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 				} else {
 					p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("目錄裡沒有符合的 Skill（第 %d／%d 回）；換個說法、加一個關鍵詞或另一種語言再搜一次，或直接起草。", p.SearchRounds, MaxSearchRounds)})
 				}
-				return "queued", true, nil
+				return StateQueued, true, nil
 			}
 			for i := range refs {
 				refs[i].Confirmed = false
@@ -706,7 +706,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			invalidate(p)
 			p.BriefConfirmed = false
 			p.PendingAction = "confirm_references"
-			return "waiting_confirmation", false, nil
+			return StateWaitingConfirmation, false, nil
 		case "fetch_url":
 			if s.Fetch == nil {
 				return "", false, ErrUnavailable
@@ -715,11 +715,11 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			clean, err := validateFetchURL(r.ToolIntent.Query)
 			if err != nil {
 				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "這個網址不符合規則（只接受公開的 http／https 網址，不含帳號密碼）；這次沒有連網。"})
-				return "queued", true, nil
+				return StateQueued, true, nil
 			}
 			p.PendingFetchURL = clean
 			p.PendingAction = "confirm_fetch"
-			return "waiting_confirmation", false, nil
+			return StateWaitingConfirmation, false, nil
 		case "validate_draft":
 			if !confirmed(*p) || r.Brief != p.Brief || (len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) || (r.SampleInput != "" && r.SampleInput != p.SampleInput) || (p.DiagramFingerprint != "" && r.DiagramUnderstanding != p.DiagramUnderstanding) || r.Draft == nil || s.ValidateDraft == nil {
 				return "", false, ErrInvalidCommand
@@ -738,7 +738,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			if p.Draft != nil && p.Draft.ContentHash == hash && !p.Draft.Blocked && !blocked {
 				p.PendingAction = ""
 				p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "這份草稿已通過同一次驗證；試跑由人從候選啟動，模型不能自己跑。草稿就緒。"})
-				return "draft_ready", false, nil
+				return StateDraftReady, false, nil
 			}
 			p.PreviousDraft = e.PreviousDraft
 			prev := p.Draft
@@ -748,7 +748,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			}
 			p.PendingAction = ""
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("Go 靜態驗證完成，blocked=%t；完整 finding 隨 draft_validation 提供，不代表試跑成功。", blocked)})
-			return "queued", true, nil
+			return StateQueued, true, nil
 		}
 	}
 	return "", false, ErrInvalidCommand

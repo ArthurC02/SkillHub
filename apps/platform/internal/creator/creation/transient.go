@@ -153,10 +153,10 @@ func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, force bool) err
 	if err != nil {
 		return err
 	}
-	if e.ActiveReceipt != a.ReceiptID || (row.State != "queued" && row.State != "working") {
+	if e.ActiveReceipt != a.ReceiptID || !State(row.State).AwaitsTheModel() {
 		return nil
 	}
-	if !force && row.State == "working" && e.ActiveDeadline.After(time.Now()) {
+	if !force && State(row.State) == StateWorking && e.ActiveDeadline.After(time.Now()) {
 		return nil
 	}
 	receipt, err := q.GetCreationReceipt(ctx, gen.GetCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID})
@@ -168,9 +168,9 @@ func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, force bool) err
 		e.Snapshot.UsageUnknown = true
 		status = "unknown"
 	}
-	state := "failed"
+	state := StateFailed
 	if e.Snapshot.DiagramFingerprint != "" && e.Snapshot.DiagramUnderstanding == "" {
-		state = "needs_reupload"
+		state = StateNeedsReupload
 	}
 	e.ActiveReceipt = pgtype.UUID{}
 	e.Snapshot.PendingAction = ""
@@ -199,7 +199,7 @@ func (s *Service) Recover(ctx context.Context) error {
 		}
 		// A queued row can just be a healthy backlog, not a stalled attempt;
 		// only fail it once its own deadline has passed.
-		if row.State == "queued" && e.Deadline.After(time.Now()) {
+		if State(row.State) == StateQueued && e.Deadline.After(time.Now()) {
 			continue
 		}
 		if err = s.recoverAttempt(ctx, JobArgs{row.ID, row.WorkspaceID, row.Revision, e.ActiveReceipt}, false); err != nil {
