@@ -90,7 +90,7 @@ func (s *Service) unreferenced(ctx context.Context, db gen.DBTX, candidates []pu
 	return purgeable, kept, nil
 }
 
-func (*Service) SourcesInVersions(ctx context.Context, db gen.DBTX, sourceIDs []pgtype.UUID) ([]pgtype.UUID, error) {
+func SourcesInVersions(ctx context.Context, db gen.DBTX, sourceIDs []pgtype.UUID) ([]pgtype.UUID, error) {
 	return gen.New(db).ListSkillSourcesInVersions(ctx, sourceIDs)
 }
 

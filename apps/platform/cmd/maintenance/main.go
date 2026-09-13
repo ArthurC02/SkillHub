@@ -241,32 +241,31 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 func registryPurger(pool *pgxpool.Pool) *registry.Service {
 	return &registry.Service{
 		Pool:                pool,
-		VersionsInRuns:      (&run.Service{}).SkillVersionsInRuns,
-		VersionsInDownloads: (&packaging.Service{}).SkillVersionsInDownloads,
-		SkillsWithTestCases: (&testlab.Service{}).SkillsWithTestCases,
+		VersionsInRuns:      run.SkillVersionsInRuns,
+		VersionsInDownloads: packaging.SkillVersionsInDownloads,
+		SkillsWithTestCases: testlab.SkillsWithTestCases,
 	}
 }
 
 func purgeService(pool *pgxpool.Pool) *identity.Service {
-	analyticsSvc := &analytics.Service{Pool: pool}
 	testlabSvc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	runSvc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	packagingSvc := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	registrySvc := registryPurger(pool)
-	ingestSvc := &ingest.Service{Pool: pool, SourcesInVersions: registrySvc.SourcesInVersions}
+	ingestSvc := &ingest.Service{Pool: pool, SourcesInVersions: registry.SourcesInVersions}
 	return &identity.Service{
 		Pool:                       pool,
-		PurgeAnalytics:             analyticsSvc.PurgeWorkspace,
+		PurgeAnalytics:             analytics.PurgeWorkspace,
 		PurgeTestData:              testlabSvc.PurgeWorkspace,
 		PurgeRunArtifacts:          runSvc.PurgeWorkspace,
 		PurgeDownloads:             packagingSvc.PurgeWorkspace,
 		PurgeSkills:                registrySvc.PurgeWorkspace,
 		PurgeImportSources:         ingestSvc.PurgeWorkspace,
-		PurgeCreation:              (&creation.Service{Pool: pool}).PurgeWorkspace,
-		DatasetObjectKeys:          testlabSvc.WorkspaceObjectKeys,
-		RunArtifactObjectKeys:      runSvc.WorkspaceObjectKeys,
-		DownloadArtifactObjectKeys: packagingSvc.WorkspaceObjectKeys,
-		WorkspaceQuiescent:         runSvc.PurgeQuiescent,
+		PurgeCreation:              creation.PurgeWorkspace,
+		DatasetObjectKeys:          testlab.WorkspaceObjectKeys,
+		RunArtifactObjectKeys:      run.WorkspaceObjectKeys,
+		DownloadArtifactObjectKeys: packaging.WorkspaceObjectKeys,
+		WorkspaceQuiescent:         run.PurgeQuiescent,
 	}
 }
 

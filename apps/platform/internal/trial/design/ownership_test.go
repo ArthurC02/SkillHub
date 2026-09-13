@@ -27,7 +27,7 @@ func TestPublishedFaceRefusesWithoutPersistence(t *testing.T) {
 		{"ReadDataset", func() error { _, err := svc.ReadDataset(t.Context(), id, id); return err }},
 		{"CasesForSkill", func() error { _, err := svc.CasesForSkill(t.Context(), id, id); return err }},
 		{"CaseDatasets", func() error { _, err := svc.CaseDatasets(t.Context(), id, id); return err }},
-		{"LockDraft", func() error { _, err := svc.LockDraft(t.Context(), nil, id, id); return err }},
+		{"LockDraft", func() error { _, err := LockDraft(t.Context(), nil, id, id); return err }},
 		{"CreateSnapshot", func() error { _, err := svc.CreateSnapshot(t.Context(), nil, id, id); return err }},
 		{"SnapshotIDsForTestCase", func() error { _, err := svc.SnapshotIDsForTestCase(t.Context(), id, id); return err }},
 		{"SnapshotTestCases", func() error { _, err := svc.SnapshotTestCases(t.Context(), id, []pgtype.UUID{id}); return err }},

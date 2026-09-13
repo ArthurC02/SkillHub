@@ -52,8 +52,8 @@ func TestCreateSnapshotBlocksOnAConcurrentTestCaseEdit(t *testing.T) {
 		snapshot testlab.Snapshot
 		err      error
 	}
-	testlabSvc := &testlab.Service{Pool: pool}
 	out := make(chan outcome, 1)
+	testlabSvc := &testlab.Service{Pool: pool}
 	go func() {
 		snapshot, err := testlabSvc.CreateSnapshot(ctx, freeze, ws, tc)
 		out <- outcome{snapshot, err}
@@ -93,14 +93,13 @@ func TestLockDraftIsScopedToItsWorkspace(t *testing.T) {
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // read-only
 
-	testlabSvc := &testlab.Service{Pool: pool}
-	if _, err := testlabSvc.LockDraft(ctx, tx, mustUUID(t, stranger.workspaceID), mustUUID(t, testCaseID)); err != testlab.ErrNotFound {
+	if _, err := testlab.LockDraft(ctx, tx, mustUUID(t, stranger.workspaceID), mustUUID(t, testCaseID)); err != testlab.ErrNotFound {
 		t.Errorf("cross-workspace lock err = %v, want ErrNotFound", err)
 	}
 	if _, err := tx.Exec(ctx, `UPDATE test_cases SET deleted_at = now() WHERE id = $1`, mustUUID(t, testCaseID)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := testlabSvc.LockDraft(ctx, tx, mustUUID(t, owner.workspaceID), mustUUID(t, testCaseID)); err != testlab.ErrNotFound {
+	if _, err := testlab.LockDraft(ctx, tx, mustUUID(t, owner.workspaceID), mustUUID(t, testCaseID)); err != testlab.ErrNotFound {
 		t.Errorf("soft-deleted lock err = %v, want ErrNotFound", err)
 	}
 }

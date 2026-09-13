@@ -20,14 +20,14 @@ func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgt
 	return s.ClearSightings(ctx, tx, ids)
 }
 
-func (*Service) WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error) {
+func WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error) {
 	return gen.New(db).ListWorkspaceRunArtifactObjectKeys(ctx, workspaceID)
 }
 
-func (*Service) PurgeQuiescent(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {
+func PurgeQuiescent(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {
 	return gen.New(db).AccountPurgeReady(ctx, workspaceID)
 }
 
-func (*Service) SkillVersionsInRuns(ctx context.Context, db gen.DBTX, versionIDs []pgtype.UUID) ([]pgtype.UUID, error) {
+func SkillVersionsInRuns(ctx context.Context, db gen.DBTX, versionIDs []pgtype.UUID) ([]pgtype.UUID, error) {
 	return gen.New(db).ListSkillVersionsInRuns(ctx, versionIDs)
 }

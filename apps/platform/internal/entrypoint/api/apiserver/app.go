@@ -94,7 +94,6 @@ type App struct {
 }
 
 func NewApp(cfg Config) (*App, error) {
-	analyticsPurgeSvc := &analytics.Service{Pool: cfg.Pool}
 	identitySvc := &identity.Service{Pool: cfg.Pool, OAuth: cfg.OAuth}
 	testlabSvc := &testlab.Service{
 		Pool: cfg.Pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
@@ -103,24 +102,23 @@ func NewApp(cfg Config) (*App, error) {
 	packagingPurgeSvc := &packaging.Service{Pool: cfg.Pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	registryPurgeSvc := &registry.Service{
 		Pool:                cfg.Pool,
-		VersionsInRuns:      runPurgeSvc.SkillVersionsInRuns,
-		VersionsInDownloads: packagingPurgeSvc.SkillVersionsInDownloads,
-		SkillsWithTestCases: testlabSvc.SkillsWithTestCases,
+		VersionsInRuns:      run.SkillVersionsInRuns,
+		VersionsInDownloads: packaging.SkillVersionsInDownloads,
+		SkillsWithTestCases: testlab.SkillsWithTestCases,
 	}
-	ingestPurgeSvc := &ingest.Service{Pool: cfg.Pool, SourcesInVersions: registryPurgeSvc.SourcesInVersions}
-	creationPurgeSvc := &creation.Service{Pool: cfg.Pool}
+	ingestPurgeSvc := &ingest.Service{Pool: cfg.Pool, SourcesInVersions: registry.SourcesInVersions}
 
-	identitySvc.PurgeAnalytics = analyticsPurgeSvc.PurgeWorkspace
+	identitySvc.PurgeAnalytics = analytics.PurgeWorkspace
 	identitySvc.PurgeTestData = testlabSvc.PurgeWorkspace
 	identitySvc.PurgeRunArtifacts = runPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeDownloads = packagingPurgeSvc.PurgeWorkspace
-	identitySvc.PurgeCreation = creationPurgeSvc.PurgeWorkspace
+	identitySvc.PurgeCreation = creation.PurgeWorkspace
 	identitySvc.PurgeSkills = registryPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeImportSources = ingestPurgeSvc.PurgeWorkspace
-	identitySvc.DatasetObjectKeys = testlabSvc.WorkspaceObjectKeys
-	identitySvc.RunArtifactObjectKeys = runPurgeSvc.WorkspaceObjectKeys
-	identitySvc.DownloadArtifactObjectKeys = packagingPurgeSvc.WorkspaceObjectKeys
-	identitySvc.WorkspaceQuiescent = runPurgeSvc.PurgeQuiescent
+	identitySvc.DatasetObjectKeys = testlab.WorkspaceObjectKeys
+	identitySvc.RunArtifactObjectKeys = run.WorkspaceObjectKeys
+	identitySvc.DownloadArtifactObjectKeys = packaging.WorkspaceObjectKeys
+	identitySvc.WorkspaceQuiescent = run.PurgeQuiescent
 	auth := &identity.Handler{
 		Service:     identitySvc,
 		Secure:      cfg.Secure,
@@ -214,7 +212,7 @@ func NewApp(cfg Config) (*App, error) {
 		},
 	}
 	wirePackagingRegistryReaders(packagingSvc, registrySvc)
-	runSvc.ActiveArtifactReferences = packagingSvc.ActiveArtifactReferences
+	runSvc.ActiveArtifactReferences = packaging.ActiveArtifactReferences
 	catalogSvc := &catalog.Service{
 		CatalogWorkspaces: identitySvc.CatalogWorkspaceIDs,
 		Pool:              cfg.Pool, LLM: cfg.LLM, Store: cfg.Store, Analytics: funnel,

@@ -316,7 +316,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, err
 	}
 
-	testCase, err := s.TestLab.LockDraft(ctx, tx, p.WorkspaceID, p.TestCaseID)
+	testCase, err := testlab.LockDraft(ctx, tx, p.WorkspaceID, p.TestCaseID)
 	if errors.Is(err, testlab.ErrNotFound) {
 		return gen.Run{}, ErrNotFound
 	}

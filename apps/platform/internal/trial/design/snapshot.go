@@ -51,7 +51,7 @@ type snapshotContent struct {
 	Rubric *Rubric `json:"rubric,omitempty"`
 }
 
-func (*Service) LockDraft(ctx context.Context, tx pgx.Tx, workspaceID, testCaseID pgtype.UUID) (Draft, error) {
+func LockDraft(ctx context.Context, tx pgx.Tx, workspaceID, testCaseID pgtype.UUID) (Draft, error) {
 	if tx == nil {
 		return Draft{}, errPersistenceNotConfigured
 	}

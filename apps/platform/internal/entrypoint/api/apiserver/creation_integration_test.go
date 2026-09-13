@@ -355,7 +355,7 @@ func TestCreationPurgeFencesLateModelResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = s.PurgeWorkspace(context.Background(), tx, job.WorkspaceID); err != nil {
+	if err = creation.PurgeWorkspace(context.Background(), tx, job.WorkspaceID); err != nil {
 		t.Fatal(err)
 	}
 	if err = tx.Commit(context.Background()); err != nil {

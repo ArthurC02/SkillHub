@@ -9,7 +9,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
-func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
+func PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
 	q := gen.New(tx)
 	if _, err := q.DetachWorkspaceAnalytics(ctx, workspaceID); err != nil {
 		return err

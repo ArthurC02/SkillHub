@@ -28,10 +28,10 @@ func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgt
 	return s.ClearSightings(ctx, tx, ids)
 }
 
-func (*Service) WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error) {
+func WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error) {
 	return gen.New(db).ListWorkspaceDownloadArtifactObjectKeys(ctx, workspaceID)
 }
 
-func (*Service) SkillVersionsInDownloads(ctx context.Context, db gen.DBTX, versionIDs []pgtype.UUID) ([]pgtype.UUID, error) {
+func SkillVersionsInDownloads(ctx context.Context, db gen.DBTX, versionIDs []pgtype.UUID) ([]pgtype.UUID, error) {
 	return gen.New(db).ListSkillVersionsInDownloads(ctx, versionIDs)
 }

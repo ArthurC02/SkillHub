@@ -101,7 +101,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		ClearSightings: objreconcile.ClearArtifactSightings,
 		TestLab:        testlabSvc,
 		TraceSigner:    deps.TraceSigner, TraceIngestBaseURL: deps.TraceIngestBaseURL,
-		ActiveArtifactReferences: downloads.ActiveArtifactReferences,
+		ActiveArtifactReferences: packaging.ActiveArtifactReferences,
 	}
 	wiring.WireRunRegistryReaders(set.Runs, registrySvc)
 	traceSvc := wiring.NewTraceService(pool, deps.TraceSigner, set.Runs)

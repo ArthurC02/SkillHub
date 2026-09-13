@@ -206,17 +206,14 @@ func TestTestLabReadFaceIsWorkspaceScoped(t *testing.T) {
 	})
 
 	t.Run("WorkspaceObjectKeys", func(t *testing.T) {
-		testlabSvc := &testlab.Service{Pool: pool}
-		runSvc := &run.Service{Pool: pool}
-		packagingSvc := &packaging.Service{Pool: pool}
 		for _, tc := range []struct {
 			name string
 			list identity.WorkspaceObjectKeys
 			want string
 		}{
-			{"testlab", testlabSvc.WorkspaceObjectKeys, datasetKey},
-			{"run", runSvc.WorkspaceObjectKeys, runArtifactKey},
-			{"packaging", packagingSvc.WorkspaceObjectKeys, artifactKey},
+			{"testlab", testlab.WorkspaceObjectKeys, datasetKey},
+			{"run", run.WorkspaceObjectKeys, runArtifactKey},
+			{"packaging", packaging.WorkspaceObjectKeys, artifactKey},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				keys, err := tc.list(ctx, pool, ws)

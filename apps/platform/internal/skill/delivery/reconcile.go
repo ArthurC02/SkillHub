@@ -23,7 +23,7 @@ type ReconcileCandidate struct {
 	ObjectKey   string
 }
 
-func (*Service) ActiveArtifactReferences(ctx context.Context, db gen.DBTX, objectKey string) (int64, error) {
+func ActiveArtifactReferences(ctx context.Context, db gen.DBTX, objectKey string) (int64, error) {
 	return gen.New(db).CountArtifactsSharingObject(ctx, objectKey)
 }
 

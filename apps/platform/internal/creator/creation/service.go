@@ -338,7 +338,7 @@ func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 	}
 	return r, err
 }
-func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, ws pgtype.UUID) error {
+func PurgeWorkspace(ctx context.Context, tx pgx.Tx, ws pgtype.UUID) error {
 	return gen.New(tx).PurgeCreationWorkspace(ctx, ws)
 }
 

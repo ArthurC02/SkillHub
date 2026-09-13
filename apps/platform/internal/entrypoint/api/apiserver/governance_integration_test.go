@@ -876,7 +876,7 @@ func TestAccountPurgeRollsBackEveryContextWhenOneStepFails(t *testing.T) {
 		t.Fatalf("the user row was de-identified even though the purge failed: %s", email)
 	}
 
-	svc.PurgeImportSources = (&ingest.Service{Pool: pool, SourcesInVersions: (&registry.Service{}).SourcesInVersions}).PurgeWorkspace
+	svc.PurgeImportSources = (&ingest.Service{Pool: pool, SourcesInVersions: registry.SourcesInVersions}).PurgeWorkspace
 	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = now() - interval '16 minutes' WHERE id = $1`, mustUUID(t, alice.userID)); err != nil {
 		t.Fatal(err)
 	}
@@ -1438,9 +1438,9 @@ func assertPurgedWorkspaceIsGone(t *testing.T, pool *pgxpool.Pool, workspaceID p
 func registryPurger(pool *pgxpool.Pool) *registry.Service {
 	return &registry.Service{
 		Pool:                pool,
-		VersionsInRuns:      (&run.Service{}).SkillVersionsInRuns,
-		VersionsInDownloads: (&packaging.Service{}).SkillVersionsInDownloads,
-		SkillsWithTestCases: (&testlab.Service{}).SkillsWithTestCases,
+		VersionsInRuns:      run.SkillVersionsInRuns,
+		VersionsInDownloads: packaging.SkillVersionsInDownloads,
+		SkillsWithTestCases: testlab.SkillsWithTestCases,
 	}
 }
 
