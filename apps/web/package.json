@@ -17,7 +17,7 @@
   "dependencies": {
     "@skillhub/api-client-ts": "file:../../packages/api-client-ts",
     "@tanstack/react-query": "^5.102.8",
-    "@tanstack/react-router": "^1.170.32",
+    "@tanstack/react-router": "^1.170.33",
     "chart.js": "^4.5.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
