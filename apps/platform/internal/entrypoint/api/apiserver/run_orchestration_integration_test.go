@@ -2,6 +2,7 @@ package apiserver_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -180,6 +181,14 @@ func TestAFinishedRunIsEvaluatedThroughItsDomainEventExactlyOnce(t *testing.T) {
 		&event.CorrelationID, &event.CausationID, &event.WorkspaceID, &event.AggregateType,
 		&event.AggregateID, &event.Payload, &event.PublishedAt); err != nil {
 		t.Fatal(err)
+	}
+	var changed outbox.RunStatusChanged
+	if err := json.Unmarshal(event.Payload, &changed); err != nil {
+		t.Fatalf("the published payload is not a run status change: %v", err)
+	}
+	if changed.ToStatus != string(gen.RunStatusSucceeded) || changed.FromStatus != string(gen.RunStatusEvaluating) {
+		t.Errorf("the published event says %q arriving from %q, want succeeded from evaluating",
+			changed.ToStatus, changed.FromStatus)
 	}
 	consumer := &eval.RunEventConsumer{
 		HasCurrentEvaluation: a.evaluations.HasCurrentEvaluation,

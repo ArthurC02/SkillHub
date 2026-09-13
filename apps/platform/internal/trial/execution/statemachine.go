@@ -2,7 +2,6 @@ package run
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -274,20 +273,14 @@ func (s *Service) record(
 	if err != nil {
 		return err
 	}
-	payload, err := json.Marshal(meta)
-	if err != nil {
-		return err
+	changed := outbox.RunStatusChanged{ToStatus: string(run.Status), Reason: reason}
+	if from != nil {
+		changed.FromStatus = string(*from)
 	}
 	return outbox.Insert(ctx, tx, outbox.NewEvent{
-		EventType:    eventType,
-		EventVersion: outbox.EventVersion1,
-
-		CorrelationID: run.ID,
-
-		CausationID:   attemptID,
-		WorkspaceID:   run.WorkspaceID,
-		AggregateType: outbox.AggregateRun,
-		AggregateID:   run.ID,
-		Payload:       payload,
+		EventType: eventType, EventVersion: outbox.EventVersion1,
+		CorrelationID: run.ID, CausationID: attemptID,
+		WorkspaceID: run.WorkspaceID, AggregateType: outbox.AggregateRun,
+		AggregateID: run.ID, Payload: changed,
 	})
 }

@@ -2,7 +2,6 @@ package run
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -171,10 +170,7 @@ func (s *Service) recordCleanup(ctx context.Context, run gen.Run, status gen.Run
 	if len(failures) > 0 {
 		meta["failure_count"] = len(failures)
 	}
-	payload, err := json.Marshal(meta)
-	if err != nil {
-		return err
-	}
+	changed := outbox.RunCleanupChanged{CleanupStatus: string(status), FailureCount: len(failures)}
 
 	eventType, err := outbox.CleanupEvent(string(status))
 	if err != nil {
@@ -183,7 +179,7 @@ func (s *Service) recordCleanup(ctx context.Context, run gen.Run, status gen.Run
 	if err := outbox.Insert(ctx, tx, outbox.NewEvent{
 		EventType: eventType, EventVersion: outbox.EventVersion1,
 		CorrelationID: updated.ID, WorkspaceID: updated.WorkspaceID,
-		AggregateType: outbox.AggregateRun, AggregateID: updated.ID, Payload: payload,
+		AggregateType: outbox.AggregateRun, AggregateID: updated.ID, Payload: changed,
 	}); err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -34,7 +35,18 @@ type NewEvent struct {
 	WorkspaceID   pgtype.UUID
 	AggregateType string
 	AggregateID   pgtype.UUID
-	Payload       []byte
+	Payload       any
+}
+
+type RunStatusChanged struct {
+	ToStatus   string `json:"to_status"`
+	FromStatus string `json:"from_status,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+}
+
+type RunCleanupChanged struct {
+	CleanupStatus string `json:"cleanup_status"`
+	FailureCount  int    `json:"failure_count,omitempty"`
 }
 
 func eventFromRow(row gen.OutboxEvent) Event {
@@ -122,11 +134,15 @@ func Insert(ctx context.Context, tx pgx.Tx, event NewEvent) error {
 	if tx == nil {
 		return fmt.Errorf("outbox: transaction is not configured")
 	}
-	_, err := gen.New(tx).InsertOutboxEvent(ctx, gen.InsertOutboxEventParams{
+	payload, err := json.Marshal(event.Payload)
+	if err != nil {
+		return err
+	}
+	_, err = gen.New(tx).InsertOutboxEvent(ctx, gen.InsertOutboxEventParams{
 		EventType: event.EventType, EventVersion: event.EventVersion,
 		CorrelationID: event.CorrelationID, CausationID: event.CausationID,
 		WorkspaceID: event.WorkspaceID, AggregateType: event.AggregateType,
-		AggregateID: event.AggregateID, Payload: event.Payload,
+		AggregateID: event.AggregateID, Payload: payload,
 	})
 	return err
 }
