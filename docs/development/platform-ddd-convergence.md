@@ -276,7 +276,52 @@ git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStar
 
 ## 6 待做
 
-目前沒有待做項目。
+[ADR-083](../adr/ADR-083-aggregates-own-their-rules-in-go-types.md) 的四件，依序做。三個 aggregate 共用一個形狀：狀態不匯出、方法是純的並回報拒絕理由、載入是吃呼叫端交易的套件函式並以列鎖讀出、存回只有一處呼叫 sqlc；SQL 的原子性守衛（C2）全部保留；aggregate 不跨 context。
+
+### 6.1 丙-244 Evaluation
+
+- **GOAL**：結算、失敗、取代、回饋與建議決定的規則在 Go 有唯一的定義與不連資料庫的測試，寫入路徑不再各自判斷。
+- **DISCOVER**：
+  ```
+  git grep -nE "CompleteEvaluation|FailEvaluation|SupersedeCurrentEvaluation|CreateEvaluation\(|SetEvaluationFeedback|DecideSuggestion|MarkSuggestionsApplied|CreateEvaluationSuggestion" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
+  ```
+- **EDIT**：`trial/improvement` 內一個 aggregate 型別包住評估列；方法決定能否結算、失敗、收回饋，建議能否改決定（比照 `status.go` 補建議決定的轉移函式）。`begin`、`complete`、`fail`、回饋與決定的 handler 只載入、呼叫方法、寫入。
+- **PROVE**：每條規則弄壞一次，不連資料庫的測試紅；寫入路徑改回不經過方法，`aggregate_test.go` 或整合測試紅。
+- **STOP-IF**：failed 的評估要不要跟 completed 一樣凍結（`evaluations_immutable` 只凍結 completed）——照現況釘住，送 `05`。
+
+### 6.2 丙-245 Skill
+
+- **GOAL**：治理寫入與版本建立的規則屬於一個型別；兩條版本建立路徑經過同一個方法；「generated 不能改寫」在寫入前決定。
+- **DISCOVER**：
+  ```
+  git grep -nE "CreateSkill\(|CreateSkillVersion\(|SoftDeleteSkill|UpdateSkillSummary|SetSkillCategory|TakedownSkill|SetSkillRedistribution|SetSkillAccessRestriction|SetSkillTakedown|PurgeSkillsByID" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
+  ```
+- **EDIT**：先補 `skill/discovery/redistribution.go` 寫入規則的特徵化測試（允許值、授權佐證、原值 generated 時的回滾）。再在 `skill/library` 加 aggregate：以列鎖載入、方法決定、一處存回；匯入與 Fork 共用建立版本的方法（Fork 不重跑 manifest 驗證，但走同一個寫入點）。
+- **PROVE**：特徵化測試改寫前後一字不改全綠；每條治理規則弄壞一次紅；把 Fork 改回直接呼叫 sqlc，守寫入點的測試紅。
+- **STOP-IF**：把 generated 的檢查提前會改變回應碼或鎖的時點。存取限制的原因碼詞彙不在本項，留在 `skill/discovery`。
+
+### 6.3 丙-246 Run
+
+- **GOAL**：取消、attempt 的開始與結束、物件授權、狀態轉移的決定屬於一個型別，driver 只執行。
+- **DISCOVER**：
+  ```
+  git grep -nE "CreateRun\(|TransitionRun|RequestRunCancel|SetRunProvider|SetRunCleanupStatus|MarkRunArtifactsTruncated|InsertRunStatusTransition|CreateRunAttempt|SetAttemptProviderRunID|FinishRunAttempt|SetRunAttemptObjectGrantsExpiry|CloseUnissuedRunAttemptGrants" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
+  ```
+- **EDIT**：先補三條特徵化測試：派送前就失敗時未發的物件授權也會關掉、同一個 attempt 結束兩次的現況、取消已結束的 Run。再加 aggregate（含 attempt 與物件授權）；`statemachine.go` 的 `successors` 保留原名與原檔，`run-status-sql` 以 AST 讀它。
+- **PROVE**：`statemachine_test.go`、`grantstate_test.go` 與 `run-status-sql` 照舊綠；每個新方法的規則弄壞一次紅。
+- **STOP-IF**：Go 補上的判斷會擋掉今天走得通的流程。
+
+### 6.4 丙-247 creation 的兩個具名概念
+
+- **GOAL**：「還能不能再加一則訊息」只有一個定義；`PendingAction` 的值是具名常數。
+- **DISCOVER**：
+  ```
+  git grep -nE "len\((p|e\.Snapshot)\.Messages\)" -- apps/platform/internal/creator/creation/ | awk '!/_test/'
+  git grep -nE "PendingAction (==|!=|=) \"" -- apps/platform/internal/creator/creation/ | awk '!/_test/'
+  ```
+- **EDIT**：一個具名謂詞取代訊息數的比較；`PendingAction` 改成具名常數型別，不加拒絕未知值的 Parse（J5）。
+- **PROVE**：謂詞弄壞一次紅；任一常數的值改一個字，對應測試紅。
+- **不做**：Session aggregate（唯一寫入點 `advance()` 已存在）、金額的 value type（運算已集中在 `money.go`，理由同 §5.4）。
 
 每一項都已在 [`04`](../plans/04-backlog-and-handoffs.md) 登記，照 §0 一次做一件，順序就是編號。新的待做先在 `04` 登記，再寫進這一節，每一項用同一個形狀：**GOAL**（要擋住什麼）、**DISCOVER**（能重跑的指令）、**EDIT**（改動的形狀）、**PROVE**（弄壞哪一行、哪條測試會紅）、**STOP-IF**（什麼情況停下回報）。
 
