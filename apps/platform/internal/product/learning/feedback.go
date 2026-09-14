@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -16,6 +17,17 @@ import (
 )
 
 const maxFeedbackMessage = 2000
+
+type FeedbackKind string
+
+const (
+	FeedbackBlockingIssue FeedbackKind = "blocking_issue"
+	FeedbackNeedSignal    FeedbackKind = "need_signal"
+)
+
+func AllFeedbackKinds() []FeedbackKind {
+	return []FeedbackKind{FeedbackBlockingIssue, FeedbackNeedSignal}
+}
 
 type Handler struct {
 	Svc      *Service
@@ -56,17 +68,17 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Kind     string `json:"kind"`
-		Message  string `json:"message"`
-		PagePath string `json:"page_path"`
-		RunID    string `json:"run_id"`
-		BuildID  string `json:"build_id"`
+		Kind     FeedbackKind `json:"kind"`
+		Message  string       `json:"message"`
+		PagePath string       `json:"page_path"`
+		RunID    string       `json:"run_id"`
+		BuildID  string       `json:"build_id"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "內容必須是 JSON，且包含 kind 與 message")
 		return
 	}
-	if body.Kind != "blocking_issue" && body.Kind != "need_signal" {
+	if !slices.Contains(AllFeedbackKinds(), body.Kind) {
 		httpx.WriteError(w, http.StatusBadRequest, "kind 必須是 blocking_issue 或 need_signal")
 		return
 	}
@@ -79,7 +91,7 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 	p := gen.InsertFeedbackReportParams{
 		WorkspaceID: ws.ID,
 		UserID:      user.ID,
-		Kind:        body.Kind,
+		Kind:        string(body.Kind),
 		Message:     message,
 	}
 

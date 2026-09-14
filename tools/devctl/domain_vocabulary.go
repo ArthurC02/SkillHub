@@ -323,6 +323,18 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "DeclareDispatchHaltOKSource"),
 		},
 	},
+	{
+		name: "feedback report kind",
+		sources: []vocabularySource{
+			sqlColumnCheck("feedback_reports", "kind"),
+			goConstEnum("apps/platform/internal/product/learning/feedback.go", "FeedbackKind"),
+			goListedConstEnum(
+				"apps/platform/internal/product/learning/feedback.go", "AllFeedbackKinds",
+				"apps/platform/internal/product/learning/feedback.go", "FeedbackKind"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SubmitFeedbackReqKind"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "DataRetentionPolicyFeedbackKindItem"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {
