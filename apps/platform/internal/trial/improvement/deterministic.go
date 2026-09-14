@@ -197,6 +197,10 @@ func absenceReasons(a ArtifactAbsence) string {
 	return strings.Join(reasons, ", ")
 }
 
+type capability string
+
+const capabilityActivated capability = "activated"
+
 func compatibilityFindings(m material) []Finding {
 	if m.compat == nil {
 		return []Finding{{
@@ -206,25 +210,14 @@ func compatibilityFindings(m material) []Finding {
 			Evidence: []EvidenceRef{},
 		}}
 	}
-	var snapshot struct {
-		Runtime struct {
-			Runtime        string `json:"runtime"`
-			RuntimeVersion string `json:"runtime_version"`
-		} `json:"runtime"`
-	}
-	_ = json.Unmarshal(m.run.RuntimeSnapshot, &snapshot)
-
-	message := fmt.Sprintf("compatibility measured as %q on runtime image %s (%s)",
-		m.compat.Capability, m.compat.RuntimeImage, m.compat.Runtime)
 	severity := SeverityInfo
-	if m.compat.Capability != "activated" {
+	if capability(m.compat.Capability) != capabilityActivated {
 		severity = SeverityWarning
 	}
-	if ran := snapshot.Runtime.Runtime; ran != "" && ran != m.compat.Runtime {
-		severity = SeverityWarning
-		message += fmt.Sprintf("; this run used runtime %s %s, so the measurement does not cover it",
-			ran, snapshot.Runtime.RuntimeVersion)
-	}
+	message := fmt.Sprintf(
+		"compatibility measured as %q on runtime image %s (%s); this run records no runtime image, "+
+			"so whether the measurement covers it is not claimed",
+		m.compat.Capability, m.compat.RuntimeImage, m.compat.Runtime)
 	return []Finding{{
 		Category: CategoryCompatibility, Severity: severity,
 		Message: message, Evidence: []EvidenceRef{},

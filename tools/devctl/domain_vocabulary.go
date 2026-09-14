@@ -375,6 +375,19 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/skill/discovery/category.go", "categorySource"),
 		},
 	},
+	{
+		name: "skill runtime compatibility capability",
+		sources: []vocabularySource{
+			sqlColumnCheck("skill_runtime_compatibility", "capability"),
+			goConstEnum("apps/platform/internal/skill/library/compatibility.go", "Capability"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/library/compatibility.go", "AllCapabilities",
+				"apps/platform/internal/skill/library/compatibility.go", "Capability"),
+		},
+		readers: []vocabularySource{
+			goConstEnum("apps/platform/internal/trial/improvement/deterministic.go", "capability"),
+		},
+	},
 }
 
 var unreconciledVocabularies = map[string]string{
@@ -386,8 +399,7 @@ var unreconciledVocabularies = map[string]string{
 	"evaluation_model_usage.operation":         "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
 	"object_reconcile_sightings.resource_kind": "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
 	"outbox_events.event_type":                 "the outbox package's own tests reconcile it against the migration and the event catalogue",
-	"skill_runtime_compatibility.capability":   "its one reader compares the runtime column against another concept, so the pair waits on a ruling (04 丙-243)",
-	"skill_runtime_compatibility.runtime":      "its one reader compares it against a runtime name, not a compatibility outcome (04 丙-243)",
+	"skill_runtime_compatibility.runtime":      "Go only displays it; nothing branches on its value (platform-ddd-convergence.md §5.6)",
 }
 
 func domainVocabularyProblems(root string) []string {
