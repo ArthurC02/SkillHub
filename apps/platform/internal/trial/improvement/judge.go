@@ -40,11 +40,6 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 	if err != nil {
 		return verdict{}, err
 	}
-	if resp.Usage != nil && resp.Usage.CostUSD != nil && resp.Usage.CostSource != "gateway" {
-
-		resp.Usage.CostUSD = nil
-		resp.Usage.CostSource = ""
-	}
 	results := s.merge(m, resp.Verdict, digest, evidenceCuts{
 		batch:         batchWideCut(truncation),
 		trimmedEvents: trimmedEvents,
@@ -61,10 +56,7 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 	if req.Rubric != nil && m.rubric != nil {
 		v.rubricVersion = m.rubric.Version
 	}
-	if resp.Usage != nil {
-		v.costUSD, v.costSource = resp.Usage.CostUSD, resp.Usage.CostSource
-	}
-
+	v.costUSD = resp.Usage.ReportedCostUSD()
 	v.usage = resp.Usage
 
 	if len(dropped) > 0 {

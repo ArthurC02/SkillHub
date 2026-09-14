@@ -231,6 +231,7 @@ func (s *Service) recordModelUsage(
 	if usage == nil {
 		return nil
 	}
+	cost := usage.ReportedCostUSD()
 	return q.RecordEvaluationModelUsage(ctx, gen.RecordEvaluationModelUsageParams{
 		EvaluationID:     evaluationID,
 		WorkspaceID:      workspaceID,
@@ -239,8 +240,8 @@ func (s *Service) recordModelUsage(
 		PromptVersion:    orUnknown(promptVersion),
 		PromptTokens:     usage.PromptTokens,
 		CompletionTokens: usage.CompletionTokens,
-		CostUsd:          numeric(usage.CostUSD),
-		CostSource:       costSource(usage.CostUSD, usage.CostSource),
+		CostUsd:          numeric(cost),
+		CostSource:       costSource(cost),
 	})
 }
 
@@ -403,7 +404,6 @@ type verdict struct {
 	promptVersion    string
 	rubricVersion    string
 	costUSD          *float64
-	costSource       string
 
 	usage *llmclient.GatewayUsage
 }
@@ -551,7 +551,7 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 		RubricVersion:         strPtr(v.rubricVersion),
 		EvidenceComplete:      v.evidenceComplete,
 		CostUsd:               numeric(v.costUSD),
-		CostSource:            costSource(v.costUSD, v.costSource),
+		CostSource:            costSource(v.costUSD),
 	}); errors.Is(err, pgx.ErrNoRows) {
 		return errEvaluationSettled
 	} else if err != nil {
@@ -733,9 +733,10 @@ func numeric(v *float64) pgtype.Numeric {
 	return n
 }
 
-func costSource(v *float64, source string) *string {
-	if v == nil || source != "gateway" {
+func costSource(cost *float64) *string {
+	if cost == nil {
 		return nil
 	}
+	source := string(credit.CostSourceGateway)
 	return &source
 }

@@ -246,3 +246,24 @@ func TestEnrichSkillWithoutFindingsIsNotAnError(t *testing.T) {
 		t.Errorf("Checks = %+v, want none", resp.Checks)
 	}
 }
+
+func TestOnlyACostTheGatewayReportedIsAReportedCost(t *testing.T) {
+	cost := 0.0123
+	for _, tc := range []struct {
+		name  string
+		usage *GatewayUsage
+		want  *float64
+	}{
+		{"priced by the gateway", &GatewayUsage{CostUSD: &cost, CostSource: CostSourceGateway}, &cost},
+		{"priced by something other than the gateway", &GatewayUsage{CostUSD: &cost, CostSource: "estimated"}, nil},
+		{"priced with no source named", &GatewayUsage{CostUSD: &cost}, nil},
+		{"the gateway named but no figure given", &GatewayUsage{CostSource: CostSourceGateway}, nil},
+		{"no usage at all", nil, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.usage.ReportedCostUSD(); got != tc.want {
+				t.Errorf("ReportedCostUSD() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

@@ -273,11 +273,22 @@ type JudgeVerdict struct {
 	Summary          string             `json:"summary"`
 }
 
+type CostSource string
+
+const CostSourceGateway CostSource = "gateway"
+
 type GatewayUsage struct {
-	PromptTokens     int64    `json:"prompt_tokens"`
-	CompletionTokens int64    `json:"completion_tokens"`
-	CostUSD          *float64 `json:"cost_usd"`
-	CostSource       string   `json:"cost_source"`
+	PromptTokens     int64      `json:"prompt_tokens"`
+	CompletionTokens int64      `json:"completion_tokens"`
+	CostUSD          *float64   `json:"cost_usd"`
+	CostSource       CostSource `json:"cost_source"`
+}
+
+func (u *GatewayUsage) ReportedCostUSD() *float64 {
+	if u == nil || u.CostSource != CostSourceGateway {
+		return nil
+	}
+	return u.CostUSD
 }
 
 type JudgeUsage = GatewayUsage

@@ -70,10 +70,6 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 			"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
 		return
 	}
-	if resp.Usage != nil && resp.Usage.CostUSD != nil && resp.Usage.CostSource != "gateway" {
-		resp.Usage.CostUSD = nil
-		resp.Usage.CostSource = ""
-	}
 	if err := s.recordModelUsage(ctx, s.queries(), ev.WorkspaceID, ev.ID, "suggest",
 		resp.Model, resp.PromptVersion, resp.Usage); err != nil {
 		slog.Warn("evaluation suggestion usage not stored",

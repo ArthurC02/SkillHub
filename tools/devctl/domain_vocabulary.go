@@ -184,6 +184,22 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "CreditLedgerEntryKind"),
 		},
 	},
+	{
+		name: "model call cost source",
+		sources: []vocabularySource{
+			sqlColumnCheck("cost_events", "cost_source"),
+			sqlColumnCheck("evaluations", "cost_source"),
+			sqlColumnCheck("evaluation_model_usage", "cost_source"),
+			goConstEnum("apps/platform/internal/creator/credit/store.go", "CostSource"),
+			goListedConstEnum(
+				"apps/platform/internal/creator/credit/store.go", "AllCostSources",
+				"apps/platform/internal/creator/credit/store.go", "CostSource"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "TraceSummaryUsageCostSource"),
+		},
+		readers: []vocabularySource{
+			goConstEnum("apps/platform/internal/foundation/integration/llmclient/client.go", "CostSource"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {

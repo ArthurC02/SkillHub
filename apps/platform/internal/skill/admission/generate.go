@@ -136,10 +136,11 @@ func (r *GenerateResult) addUsage(u *llmclient.GatewayUsage) {
 	}
 	r.PromptTokens += u.PromptTokens
 	r.CompletionTokens += u.CompletionTokens
-	if u.CostUSD == nil || u.CostSource != "gateway" {
+	cost := u.ReportedCostUSD()
+	if cost == nil {
 		return
 	}
-	total := *u.CostUSD
+	total := *cost
 	if r.CostUSD != nil {
 		total += *r.CostUSD
 	}

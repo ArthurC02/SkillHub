@@ -2,6 +2,7 @@ package credit
 
 import (
 	"errors"
+	"math"
 	"testing"
 )
 
@@ -63,5 +64,32 @@ func TestAnAmountTooLargeToPriceIsAnErrorNotZero(t *testing.T) {
 	got, err := BilledMicros(MaxBillableMicros, 13000)
 	if err != nil || got <= 0 {
 		t.Fatalf("the largest billable amount must still price: %d %v", got, err)
+	}
+}
+
+func TestUsageCostBillsOnlyAPositiveFiniteFigure(t *testing.T) {
+	usd := func(f float64) *float64 { return &f }
+	for _, tc := range []struct {
+		name          string
+		cost          *float64
+		wantMicros    int64
+		wantEstimated bool
+	}{
+		{"no figure", nil, 0, true},
+		{"zero", usd(0), 0, true},
+		{"negative", usd(-0.01), 0, true},
+		{"not a number", usd(math.NaN()), 0, true},
+		{"infinite", usd(math.Inf(1)), 0, true},
+		{"a fraction of a micro rounds up", usd(0.0000001), 1, false},
+		{"an ordinary figure", usd(0.0031), 3100, false},
+		{"exactly the billable ceiling", usd(1000), MaxBillableMicros, false},
+		{"just past the billable ceiling", usd(1000.001), MaxBillableMicros, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			micros, estimated := UsageCost(tc.cost)
+			if micros != tc.wantMicros || estimated != tc.wantEstimated {
+				t.Errorf("UsageCost = %d / %v, want %d / %v", micros, estimated, tc.wantMicros, tc.wantEstimated)
+			}
+		})
 	}
 }

@@ -36,8 +36,8 @@ func CreditsForMicros(billedMicros, microsPerCredit int64) int64 {
 	return ceilDiv(billedMicros, microsPerCredit)
 }
 
-func UsageCost(costUSD *float64, costSource string) (usdMicros int64, estimated bool) {
-	if costUSD == nil || costSource != "gateway" {
+func UsageCost(costUSD *float64) (usdMicros int64, estimated bool) {
+	if costUSD == nil {
 		return 0, true
 	}
 	v := *costUSD

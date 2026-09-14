@@ -715,6 +715,37 @@ func TestAJudgeFailureIsAnErrorAndNotALenientVerdict(t *testing.T) {
 	}
 }
 
+func TestAJudgeCallCostsOnlyWhatTheGatewayReported(t *testing.T) {
+	cost := 0.0042
+	for _, tc := range []struct {
+		name   string
+		source llmclient.CostSource
+		want   *float64
+	}{
+		{"priced by the gateway", llmclient.CostSourceGateway, &cost},
+		{"priced by something other than the gateway", "estimated", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := fakeJudge(t, http.StatusOK, llmclient.JudgeRunResponse{
+				Verdict: llmclient.JudgeVerdict{
+					CriterionResults: []llmclient.CriterionVerdict{{CriterionID: "c1", Result: ResultPassed, Reason: "done"}},
+					Overall:          string(OverallMet),
+				},
+				Usage: &llmclient.GatewayUsage{PromptTokens: 10, CostUSD: &cost, CostSource: tc.source},
+			}, nil)
+			v, err := (&Service{Judge: client}).judge(context.Background(), material{
+				criteria: []testlab.Criterion{{ID: "c1", Text: "x"}},
+			}, gen.Evaluation{})
+			if err != nil {
+				t.Fatalf("judge: %v", err)
+			}
+			if (v.costUSD == nil) != (tc.want == nil) || (v.costUSD != nil && *v.costUSD != *tc.want) {
+				t.Errorf("cost = %v, want %v", v.costUSD, tc.want)
+			}
+		})
+	}
+}
+
 func TestNoJudgeConfiguredIsAFailureAndNotASilentPass(t *testing.T) {
 	svc := &Service{}
 	if _, err := svc.judge(context.Background(), material{}, gen.Evaluation{}); err == nil {

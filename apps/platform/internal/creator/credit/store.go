@@ -61,6 +61,17 @@ func AllEntryKinds() []EntryKind {
 	return []EntryKind{EntryDebit, EntryGrant, EntryTopup, EntryAdjustment}
 }
 
+type CostSource string
+
+const (
+	CostSourceGateway   CostSource = "gateway"
+	CostSourceEstimated CostSource = "estimated"
+)
+
+func AllCostSources() []CostSource {
+	return []CostSource{CostSourceGateway, CostSourceEstimated}
+}
+
 const (
 	RefCreationSession = "creation_session"
 	RefRun             = "run"

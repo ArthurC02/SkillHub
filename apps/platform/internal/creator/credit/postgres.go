@@ -55,9 +55,9 @@ func (s *PostgresStore) Balance(ctx context.Context, tx DBTX, userID pgtype.UUID
 
 func (s *PostgresStore) RecordCostEvent(ctx context.Context, tx DBTX, e CostEvent) (string, bool, error) {
 	q := s.q(tx)
-	source := "gateway"
+	source := CostSourceGateway
 	if e.Estimated {
-		source = "estimated"
+		source = CostSourceEstimated
 	}
 	row, err := q.InsertCostEvent(ctx, gen.InsertCostEventParams{
 		Kind:             string(e.Kind),
@@ -66,7 +66,7 @@ func (s *PostgresStore) RecordCostEvent(ctx context.Context, tx DBTX, e CostEven
 		PromptTokens:     e.PromptTokens,
 		CompletionTokens: e.CompletionTokens,
 		UsdMicros:        e.UsdMicros,
-		CostSource:       source,
+		CostSource:       string(source),
 		WorkspaceID:      e.WorkspaceID,
 		UserID:           e.UserID,
 		RefType:          nullString(e.RefType),

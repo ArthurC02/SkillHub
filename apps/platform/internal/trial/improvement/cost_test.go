@@ -108,14 +108,15 @@ func TestSuggestingRecordsExactlyOneSuggestionCostEvent(t *testing.T) {
 	}
 }
 
-func TestAnUnpricedCallIsRecordedAsEstimatedRatherThanFree(t *testing.T) {
+func TestACallTheGatewayDidNotPriceIsRecordedAsEstimatedRatherThanFree(t *testing.T) {
+	cost := 0.0019
 	ledger := &fakeLedger{}
 	s := &Service{
 		Pool:   requireEvalDB(t),
 		Credit: ledger,
 		Suggester: stubSuggester{resp: llmclient.SuggestImprovementsResponse{
 			Model: "m", PromptVersion: "v",
-			Usage: &llmclient.GatewayUsage{PromptTokens: 10, CostSource: "estimated"},
+			Usage: &llmclient.GatewayUsage{PromptTokens: 10, CostUSD: &cost, CostSource: "estimated"},
 		}},
 	}
 	m := seedRun(t, s.Pool)
@@ -130,6 +131,16 @@ func TestAnUnpricedCallIsRecordedAsEstimatedRatherThanFree(t *testing.T) {
 	if e := ledger.events[0]; !e.Estimated || e.UsdMicros != 0 || e.PromptTokens != 10 {
 		t.Errorf("estimated = %v usd_micros = %d prompt tokens = %d, want true / 0 / 10",
 			e.Estimated, e.UsdMicros, e.PromptTokens)
+	}
+
+	var stored *string
+	if err := s.Pool.QueryRow(context.Background(),
+		`SELECT cost_source FROM evaluation_model_usage WHERE evaluation_id = $1 AND operation = 'suggest'`,
+		ev.ID).Scan(&stored); err != nil {
+		t.Fatalf("the suggestion's model usage was not stored: %v", err)
+	}
+	if stored != nil {
+		t.Errorf("cost_source = %q, want none; a figure the gateway did not report is not a cost", *stored)
 	}
 }
 

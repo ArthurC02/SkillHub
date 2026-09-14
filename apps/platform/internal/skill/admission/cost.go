@@ -29,7 +29,7 @@ func (s *Service) recordCost(ctx context.Context, kind credit.CostKind, workspac
 	}
 	if u != nil {
 		e.PromptTokens, e.CompletionTokens = u.PromptTokens, u.CompletionTokens
-		e.UsdMicros, e.Estimated = credit.UsageCost(u.CostUSD, u.CostSource)
+		e.UsdMicros, e.Estimated = credit.UsageCost(u.ReportedCostUSD())
 	} else {
 		e.Estimated = true
 	}
