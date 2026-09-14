@@ -302,7 +302,7 @@ func (s *Service) USDForCredits(credits int64) (usd float64, ok bool) {
 	return float64(micros) / 1_000_000, true
 }
 
-func OperatorEntryKind(credits int64) string {
+func OperatorEntryKind(credits int64) EntryKind {
 	if credits < 0 {
 		return EntryAdjustment
 	}
@@ -312,7 +312,7 @@ func OperatorEntryKind(credits int64) string {
 type GrantInput struct {
 	UserID         pgtype.UUID
 	WorkspaceID    pgtype.UUID
-	EntryKind      string
+	EntryKind      EntryKind
 	Credits        int64
 	Reason         string
 	OperatorID     pgtype.UUID

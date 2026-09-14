@@ -356,7 +356,7 @@ func TestOnlyAnAdjustmentMayLowerABalance(t *testing.T) {
 func TestAnOperatorEntryIsAnAdjustmentExactlyWhenItLowersTheBalance(t *testing.T) {
 	for _, tc := range []struct {
 		credits int64
-		want    string
+		want    EntryKind
 	}{{-1, EntryAdjustment}, {1, EntryGrant}} {
 		if got := OperatorEntryKind(tc.credits); got != tc.want {
 			t.Errorf("OperatorEntryKind(%d) = %q, want %q", tc.credits, got, tc.want)
@@ -394,14 +394,27 @@ func TestFactsBlockPurgedAccount(t *testing.T) {
 	}
 }
 
-func TestGrantRejectsUnrecognizedEntryKind(t *testing.T) {
-	store := newFakeStore()
-	s := &Service{Store: store, Config: testConfig()}
-	if _, err := s.Grant(context.Background(), nil, GrantInput{
-		UserID: testUser(13), EntryKind: "bogus", Credits: 50, Reason: "beta reward",
-		OperatorID: testUser(99), IdempotencyKey: "g6",
-	}); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("Grant with an unrecognized EntryKind must be refused with ErrInvalid, got %v", err)
+func TestGrantAcceptsOnlyTheKindsAnOperatorMayWrite(t *testing.T) {
+	for _, c := range []struct {
+		kind EntryKind
+		want error
+	}{
+		{EntryGrant, nil},
+		{EntryTopup, nil},
+		{EntryAdjustment, nil},
+		{EntryDebit, ErrInvalid},
+		{"bogus", ErrInvalid},
+	} {
+		t.Run(string(c.kind), func(t *testing.T) {
+			s := &Service{Store: newFakeStore(), Config: testConfig()}
+			_, err := s.Grant(context.Background(), fakeTx{}, GrantInput{
+				UserID: testUser(13), EntryKind: c.kind, Credits: 50, Reason: "beta reward",
+				OperatorID: testUser(99), IdempotencyKey: "g6-" + string(c.kind),
+			})
+			if !errors.Is(err, c.want) {
+				t.Fatalf("Grant(%s) = %v, want %v", c.kind, err, c.want)
+			}
+		})
 	}
 }
 

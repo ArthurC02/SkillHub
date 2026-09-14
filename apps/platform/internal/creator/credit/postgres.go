@@ -95,7 +95,7 @@ func (s *PostgresStore) ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (
 	usd := d.UsdMicros
 	_, err := q.InsertCreditEntry(ctx, gen.InsertCreditEntryParams{
 		UserID:         d.UserID,
-		Kind:           EntryDebit,
+		Kind:           string(EntryDebit),
 		DeltaCredits:   -d.Credits,
 		UsdMicros:      &usd,
 		MarkupBps:      &markup,
@@ -132,7 +132,7 @@ func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (
 	}
 	_, err := q.InsertCreditEntry(ctx, gen.InsertCreditEntryParams{
 		UserID:         g.UserID,
-		Kind:           g.EntryKind,
+		Kind:           string(g.EntryKind),
 		DeltaCredits:   g.Credits,
 		Estimated:      false,
 		IdempotencyKey: g.IdempotencyKey,
@@ -269,7 +269,7 @@ func (s *PostgresStore) RecentEntries(ctx context.Context, tx DBTX, userID pgtyp
 	out := make([]LedgerEntry, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, LedgerEntry{
-			Kind: r.Kind, DeltaCredits: r.DeltaCredits, RefType: r.RefType,
+			Kind: EntryKind(r.Kind), DeltaCredits: r.DeltaCredits, RefType: r.RefType,
 			Estimated: r.Estimated, CreatedAt: r.CreatedAt.Time,
 		})
 	}

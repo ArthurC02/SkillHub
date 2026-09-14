@@ -154,6 +154,17 @@ var domainVocabularies = []domainVocabulary{
 				"apps/platform/internal/creator/credit/store.go", "CostKind"),
 		},
 	},
+	{
+		name: "credit entry kind",
+		sources: []vocabularySource{
+			sqlColumnCheck("credit_entries", "kind"),
+			goConstEnum("apps/platform/internal/creator/credit/store.go", "EntryKind"),
+			goListedConstEnum(
+				"apps/platform/internal/creator/credit/store.go", "AllEntryKinds",
+				"apps/platform/internal/creator/credit/store.go", "EntryKind"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "CreditLedgerEntryKind"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {

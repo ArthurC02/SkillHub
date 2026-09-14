@@ -186,7 +186,7 @@ func (h *creditsHandler) Account(w http.ResponseWriter, r *http.Request) {
 	entries := make([]creditEntryView, 0, len(ledger.Entries))
 	for _, e := range ledger.Entries {
 		entries = append(entries, creditEntryView{
-			Kind: e.Kind, DeltaCredits: e.DeltaCredits, RefType: e.RefType,
+			Kind: string(e.Kind), DeltaCredits: e.DeltaCredits, RefType: e.RefType,
 			Estimated: e.Estimated, CreatedAt: e.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}

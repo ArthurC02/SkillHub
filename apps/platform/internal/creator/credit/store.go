@@ -48,12 +48,18 @@ func AllStatisticKinds() []CostKind {
 	}
 }
 
+type EntryKind string
+
 const (
-	EntryDebit      = "debit"
-	EntryGrant      = "grant"
-	EntryTopup      = "topup"
-	EntryAdjustment = "adjustment"
+	EntryDebit      EntryKind = "debit"
+	EntryGrant      EntryKind = "grant"
+	EntryTopup      EntryKind = "topup"
+	EntryAdjustment EntryKind = "adjustment"
 )
+
+func AllEntryKinds() []EntryKind {
+	return []EntryKind{EntryDebit, EntryGrant, EntryTopup, EntryAdjustment}
+}
 
 const (
 	RefCreationSession = "creation_session"
@@ -94,7 +100,7 @@ type DebitEntry struct {
 
 type GrantEntry struct {
 	UserID         pgtype.UUID
-	EntryKind      string
+	EntryKind      EntryKind
 	Credits        int64
 	Reason         string
 	OperatorID     pgtype.UUID
@@ -130,7 +136,7 @@ type Store interface {
 }
 
 type LedgerEntry struct {
-	Kind         string
+	Kind         EntryKind
 	DeltaCredits int64
 	RefType      *string
 	Estimated    bool
