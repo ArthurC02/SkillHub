@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { RUN, SKILL, platformResponse } from "../src/fixtures/platform";
+import { RUN, SKILL, platformResponse } from "../src/testing/fixtures/platform";
 import { PHONE_ROUTES, ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
 

@@ -1,6 +1,6 @@
 # 資訊架構
 
-本文件是 `apps/web` 的**資訊架構**：有哪些位址、它們屬於哪一段價值流、彼此怎麼到達、叫什麼名字、以及哪些狀態進得了網址。**活文件**，隨 [`apps/web/src/router.tsx`](../../apps/web/src/router.tsx) 一起改。
+本文件是 `apps/web` 的**資訊架構**：有哪些位址、它們屬於哪一段價值流、彼此怎麼到達、叫什麼名字、以及哪些狀態進得了網址。**活文件**，隨 [`apps/web/src/app/router.tsx`](../../apps/web/src/app/router.tsx) 一起改。
 
 **與 [設計系統](./system.md) 的分工**：那份管**一頁之內**長什麼樣（字級、間距、狀態語彙、停用要說原因）；這份管**一頁與一頁之間**。兩份都遵守 system.md §0 的優先序——牴觸時安全與不誤導在前，一致與美觀在後。
 
@@ -11,7 +11,7 @@
 | **§0 規則** | **本檔** | **改程式。** 一條新路由要先過 §0，過不了就先改 §0.2 的偏離帳並寫下理由——比照 `db/query-owners.yaml` 的 `allow:` 與 system.md §5 |
 | §1～§4 的表（清單、導覽、連結、網址狀態） | `router.tsx` 與各頁 | 改本檔。它們是**盤點**，不是政策 |
 
-**§1、§2.1、§2.3、§2.4、§4 與 §0.1 R2／R3 由 [`ia.test.ts`](../../apps/web/src/ia.test.ts) 比對**（§4 的網址狀態表是**雙向**比對）——比照 `design-system.test.ts`：文件持有政策，程式持有事實，測試比對兩者。其餘章節沒有機器（見 §6），所以每一列都註明從哪裡讀來的，讓下一個人有辦法自己重數一次。
+**§1、§2.1、§2.3、§2.4、§4 與 §0.1 R2／R3 由 [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) 比對**（§4 的網址狀態表是**雙向**比對）——比照 `design-system.test.ts`：文件持有政策，程式持有事實，測試比對兩者。其餘章節沒有機器（見 §6），所以每一列都註明從哪裡讀來的，讓下一個人有辦法自己重數一次。
 
 > **沒有機器守的章節會安靜地過期。** 本檔曾經在寫完二十幾分鐘內就失準——另一批把生成入口掛上了兩個畫面，而 §7 還在說它不存在，當時沒有任何東西會 FAIL。§2.4 與上面那幾項比對就是為了這件事加的。
 
@@ -121,7 +121,7 @@
 >
 > **這一欄沒有機器**（§6：`ia.test.ts` 只比對位址那一欄）。
 
-**沒有位址的區塊一個**：[`EvaluationPanel.tsx`](../../apps/web/src/components/EvaluationPanel.tsx)（全 app 最大的幾個檔案之一）。它長在 `/runs/$runId` 裡；沒有位址就不是頁面，所以住在 `components/` 而不在 `pages/`（[ADR-081](../adr/ADR-081-frontend-components-in-three-layers-and-server-state-lives-in-api.md) 決策 1）。它原本兼供的 `RUN_STATUS_LABEL` 搬到了 `components/runStatus.ts`。詳見 §5 IA-3。
+**沒有位址的區塊一個**：[`EvaluationPanel.tsx`](../../apps/web/src/features/runs/components/EvaluationPanel.tsx)（全 app 最大的幾個檔案之一）。它長在 `/runs/$runId` 裡；沒有位址就不是頁面，所以住在 `components/` 而不在 `pages/`（[ADR-081](../adr/ADR-081-frontend-components-in-three-layers-and-server-state-lives-in-api.md) 決策 1）。它原本兼供的 `RUN_STATUS_LABEL` 搬到了 `features/runs/runs.model.ts`。詳見 §5 IA-3。
 
 **深度最多三層**（`/skills/$id/package`），沒有一條路由需要記住兩個以上的 id。
 
@@ -171,11 +171,11 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
                                               （渲染在 /workspace/creations 之內）
 ```
 
-> **`/workspace/skills` 的建立中心（`components/CreateHub.tsx`）。** 它把三條建立路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從目錄挑一個來改** → `/`（Fork 需要封測邀請，卡片上直接說）、**依任務描述生成一個** → 旗標後面的那個掛載點（§2.4），不新增邊。首頁的 hero 指著 `/workspace/skills#create`。
+> **`/workspace/skills` 的建立中心（`features/creation/components/CreateHub.tsx`）。** 它把三條建立路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從目錄挑一個來改** → `/`（Fork 需要封測邀請，卡片上直接說）、**依任務描述生成一個** → 旗標後面的那個掛載點（§2.4），不新增邊。首頁的 hero 指著 `/workspace/skills#create`。
 >
 > **掛載位置由清單空不空決定**：清單空的時候它排在最前面——那時它就是這一頁的答案；清單有東西的時候排在清單**之後**，因為 [system.md](system.md) §3 checklist 第 1 條不准「一整排控制項排在答案前面」。用兩個掛載點而不是 CSS `order`，因為 `order` 只改視覺順序、不改 DOM 順序。空狀態只留 §2.9 的缺席型別詞，不再用另一種措辭把同樣兩條路再講一次。
 >
-> **旗標讀在 `pages/WorkspaceSkills.tsx`、以 prop 傳進元件**：`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊以呼叫 `useGenerateEntryPoint` 的檔案為鍵，且只能變短。
+> **旗標讀在 `features/workspace/skills/WorkspaceSkills.page.tsx`、以 prop 傳進元件**：`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊以呼叫 `useGenerateEntryPoint` 的檔案為鍵，且只能變短。
 
 > **這張圖是本節唯一沒有機器守的一格**（§6 上它一列都沒有，而 §2.1、§2.3、§2.4 都有），所以它會無聲過期。它要連 `components/` 的元件一起畫——§2.3 的反向連結數就是這樣數的（`ia.test.ts` 掃 `pages/` 與 `components/` 兩個目錄），只畫 `pages/` 會重現不出那些數字。
 
@@ -185,9 +185,9 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 | 旗標 | 來源 | 出現在 | 不出現在 |
 | --- | --- | --- | --- |
-| `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/api/generate.ts)） | 搜尋的 `no_results` 空狀態、`/workspace/skills` 清單 | **搜尋框旁邊**——ADR-046 決策 7 把「先搜尋、搜不到再生成」定為產品主張，一個等重的入口說的是相反的話 |
+| `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/features/creation/generate.service.ts)） | 搜尋的 `no_results` 空狀態、`/workspace/skills` 清單 | **搜尋框旁邊**——ADR-046 決策 7 把「先搜尋、搜不到再生成」定為產品主張，一個等重的入口說的是相反的話 |
 | `creation_skill` | `GET /me` 的 `features`；`WorkspaceSkills` 讀取 | `/workspace/skills#create` 內的互動創作，仍須 `generate_skill` 同時開啟；三種素材共用會話 | 首頁、未啟用部署與封測曝光限制中的使用者；預設關閉 |
-| `clean_mode` | `GET /me` 的 `features`（[`useCleanMode`](../../apps/web/src/api/me.ts)） | 每一頁 `<main>` 的第一個元素（[`CleanModeNotice`](../../apps/web/src/components/CleanModeNotice.tsx)，掛在 `router.tsx` 的 `RootLayout`） | 匿名訪客的畫面——`GET /me` 要求 session，`/` 與 `/skills/$id` 未登入可見，PORT-003 今天只對已登入者成立（ADR-060 待決策 1 待敲定） |
+| `clean_mode` | `GET /me` 的 `features`（[`useCleanMode`](../../apps/web/src/core/session/me.service.ts)） | 每一頁 `<main>` 的第一個元素（[`CleanModeNotice`](../../apps/web/src/app/shell/CleanModeNotice.tsx)，掛在 `router.tsx` 的 `RootLayout`） | 匿名訪客的畫面——`GET /me` 要求 session，`/` 與 `/skills/$id` 未登入可見，PORT-003 今天只對已登入者成立（ADR-060 待決策 1 待敲定） |
 
 **`clean_mode` 這一列是揭露不是入口**：它不帶使用者去任何新地方，只是在已經看得到的畫面上多說一句「這個部署沒有什麼」——上面 `generate_skill` 那一列的「出現在／不出現在」欄位問的是「使用者能不能從這裡走到一個新功能」，這一列的欄位問的是「使用者能不能看到這句話」，兩者是不同的問題，讀這張表時不要用入口的規矩讀這一列。
 
@@ -205,13 +205,13 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
 | **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare`、`/workspace/creations` | ✅ 四項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/admin` 與 `/admin/*` 八頁、`/lab/test-cases/$testCaseId`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/workspace/account`、`/workspace/import`、`/workspace/runs` | ✅ 後台每一頁的兩條來自 `components/AdminNav.tsx` 與 `pages/Admin.tsx`（`/admin` 本身是 `AdminNav.tsx` 與 `components/AuthControls.tsx`） |
+| 2 | `/admin` 與 `/admin/*` 八頁、`/lab/test-cases/$testCaseId`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/workspace/account`、`/workspace/import`、`/workspace/runs` | ✅ 後台每一頁的兩條來自 `features/admin/components/AdminNav.tsx` 與 `features/admin/Admin.page.tsx`（`/admin` 本身是 `AdminNav.tsx` 與 `app/shell/AuthControls.tsx`） |
 | 3 | `/workspace/downloads` | ✅ |
 | 5 | `/`、`/lab/run`、`/runs/$runId`、`/workspace/skills` | ✅ |
 | 6 | `/lab/test-cases` | ✅ |
 | 13 | `/skills/$skillId` | ✅ 全 app 的匯流點 |
 
-> **「導覽列不算一條入邊」不是計數細節，是這張表的用途。** 外部審查要求刪掉 `pages/WorkspaceSkills.tsx` 頁尾的「這個工作區的其他清單」，理由是那四條連結與導覽列 100% 重複——**那是事實**。擋下它的正是這條計數規則：整塊刪掉會讓 `/workspace/runs`、`/workspace/account`、`/policy` 各從 2 掉到 1 條頁內入邊，一次生出三個只從導覽列進得去的頁。
+> **「導覽列不算一條入邊」不是計數細節，是這張表的用途。** 外部審查要求刪掉 `features/workspace/skills/WorkspaceSkills.page.tsx` 頁尾的「這個工作區的其他清單」，理由是那四條連結與導覽列 100% 重複——**那是事實**。擋下它的正是這條計數規則：整塊刪掉會讓 `/workspace/runs`、`/workspace/account`、`/policy` 各從 2 掉到 1 條頁內入邊，一次生出三個只從導覽列進得去的頁。
 >
 > **其餘各列會無聲過期。** 機器只雙向比對 0 與 1；`/workspace/downloads` 與 `/workspace/runs` 都曾經在這張表上多掛一條，過期了好一陣子沒有人發現。改了連結就要回來重數這張表。
 
@@ -232,7 +232,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | 試跑情境 | 試跑情境設計 | `Test Case` | ✅ 保留術語 |
 | 資料集 | — | `Dataset`（`/lab/datasets` 的 h1） | ✅ **IA-8 已修正**（原為動詞「上傳 Dataset」） |
 
-~~**真正的 R5 違規只有一個**（`/lab/datasets`），而它的問題不是用語是**詞性**。~~ **那一個修掉了**（`上傳 Dataset` → `Dataset`）。原本被記成違規的 `Run 詳情` 已改為 `Run 結果`。<br>**R5 的現行違規清單不是空的**，而且本檔自己在另一節寫著它不是。 `/workspace/import` 的 `<h1>` 是 **`匯入 Skill`**（`pages/ImportSkill.tsx`），與 `上傳 Dataset` 完全同型——動詞當標題。§5 IA-8 一直寫著這一項「**留著**……記在這裡不排工」，是本節在 08-24 那一批把「一個修掉了」寫成了「清單空了」。**現行違規清單有一項：`/workspace/import`，狀態是已知、已裁定不排工，不是不存在。**<br>**R5 沒有機器**（見 §0.1），所以這張盤點表與程式的一致性靠人；本節這一格在 08-24 那一批就漏更新過一次，是同一輪對抗審查抓到的。
+~~**真正的 R5 違規只有一個**（`/lab/datasets`），而它的問題不是用語是**詞性**。~~ **那一個修掉了**（`上傳 Dataset` → `Dataset`）。原本被記成違規的 `Run 詳情` 已改為 `Run 結果`。<br>**R5 的現行違規清單不是空的**，而且本檔自己在另一節寫著它不是。 `/workspace/import` 的 `<h1>` 是 **`匯入 Skill`**（`features/creation/import/ImportSkill.page.tsx`），與 `上傳 Dataset` 完全同型——動詞當標題。§5 IA-8 一直寫著這一項「**留著**……記在這裡不排工」，是本節在 08-24 那一批把「一個修掉了」寫成了「清單空了」。**現行違規清單有一項：`/workspace/import`，狀態是已知、已裁定不排工，不是不存在。**<br>**R5 沒有機器**（見 §0.1），所以這張盤點表與程式的一致性靠人；本節這一格在 08-24 那一批就漏更新過一次，是同一輪對抗審查抓到的。
 
 ---
 
@@ -240,7 +240,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 **判準（現行實作實際遵守的）**：一個狀態值得進網址，當它是**「你在看哪一份東西」**；不進網址，當它是**「你偏好怎麼看」**。
 
-**這張表由 [`ia.test.ts`](../../apps/web/src/ia.test.ts) 雙向比對 `router.tsx` 的 `validateSearch`**，所以第二欄要逐個列全、不能用刪節號。多一個參數沒補列會 FAIL，刪了參數沒改表也會。
+**這張表由 [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) 雙向比對 `router.tsx` 的 `validateSearch`**，所以第二欄要逐個列全、不能用刪節號。多一個參數沒補列會 FAIL，刪了參數沒改表也會。
 
 | 位址 | search param | 進網址的理由（取自 `router.tsx`） |
 | --- | --- | --- |
@@ -291,11 +291,11 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 > **訂正。** 本項初版寫「一個位址回答兩個問題」，違反 R1。**查下去不是這樣**：那一頁的標題階層本來就是一個答案——`h2 任務判定`（成果判定，排最前）→ `h2 執行紀錄`（它的證據）→ `h2 這次 Run 的產出`。**判定在前、證據在後，正是 `01` §11.3「所有結論都能展開查看依據」要的形狀。R1 一直是滿足的。**
 >
-> 我還把元件檔名當成了位址。位址是 `/runs/$runId`，它命名的是那次 Run；叫 `RunTrace.tsx` 的是檔案。**「貼出去的位址叫 Trace」這句話是錯的**，訂正。
+> 我還把元件檔名當成了位址。位址是 `/runs/$runId`，它命名的是那次 Run；叫 `RunTrace.page.tsx` 的是檔案。**「貼出去的位址叫 Trace」這句話是錯的**，訂正。
 
 **真正的缺陷只剩一個，而且是 R5 不是 R1**：`<h1>` 是「Run 詳情」——一個容器詞。它說「這一頁有一些關於 X 的東西」，而不是說這一頁回答什麼。
 
-**已修**：`Run 詳情` → **`Run 結果`**（`RunTrace.tsx`，兩份 `__outlines__/` 快照同批更新）。`RunEvaluation.tsx` 沒有自己的位址**是對的**——它是那一頁的一個區塊，不是一個頁面。
+**已修**：`Run 詳情` → **`Run 結果`**（`RunTrace.page.tsx`，兩份 `__outlines__/` 快照同批更新）。`RunEvaluation.tsx` 沒有自己的位址**是對的**——它是那一頁的一個區塊，不是一個頁面。
 
 ### IA-4 ✅ 已裁定：維持現狀，system.md 改
 
@@ -342,7 +342,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 - **三處把完整可操作的表單畫給訪客，等他做完事才拒絕**：`/workspace/import` 給出 radio、網址欄、檔案選擇器與可按的「開始匯入」；`/runs/$runId/compare` 在 `against` 為空時不發任何請求；**以及上面那個頁尾回報表單，它比前兩者都廣**。這是本項裡最壞的一格——**它違反的不是資訊架構，是 [設計系統](system.md) §2.2「顯示與強制成對」與 §2.4**：會被拒絕的控制項要在被使用**之前**說，不是之後。
 - **一頁誤導**：`/lab/run` 沒有 `?skill=&test_case=` 時說「這個頁面需要兩個 ID」——它把一個未登入的訪客送去找查詢參數。
 - **沒有任何一頁 `reads as empty`**，而且那不是運氣：每一句空狀態文案都掛在 `xxx.data &&` 之後，而讀取 401 時它不可能為真。所以 **§2.9 的 `無權檢視` 那一格在全 app 沒有發生**——這一項不是缺席呈現的問題，別把已經對的東西「修」壞。
-- **沒有任何一頁會崩**（全 app 沒有 ErrorBoundary，也不需要為這件事加一個），`apiFetch` 對 401 **沒有任何全域行為**（沒有轉址、沒有 toast、沒有清快取），而 `AuthControls.tsx:15` 是**全 app 唯一一處** `error.status === 401` 的判斷（落地後那一行搬進 `components/LoginRequired.tsx` 的 `unauthenticated()`，`AuthControls` 成為它的呼叫者之一）。
+- **沒有任何一頁會崩**（全 app 沒有 ErrorBoundary，也不需要為這件事加一個），`apiFetch` 對 401 **沒有任何全域行為**（沒有轉址、沒有 toast、沒有清快取），而 `AuthControls.tsx:15` 是**全 app 唯一一處** `error.status === 401` 的判斷（落地後那一行搬進 `shared/ui/LoginRequired.tsx` 的 `unauthenticated()`，`AuthControls` 成為它的呼叫者之一）。
 
 #### 裁定
 
@@ -350,20 +350,20 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 四個理由，每一個都指向既有的東西而不是我的偏好：
 
-1. **這個產品已經回答過三次，三次都選「由頁面自己說」**：`Home.tsx:207`、`SkillDetail.tsx:531` 的 `ForkAction`、`WorkspaceAccount.tsx:61`。第四種答案就是第二套慣例。
+1. **這個產品已經回答過三次，三次都選「由頁面自己說」**：`Home.page.tsx:207`、`SkillDetail.page.tsx:531` 的 `ForkAction`、`WorkspaceAccount.page.tsx:61`。第四種答案就是第二套慣例。
 2. **`/policy` 明文決定不放在 session 後面**，所以一道全面守衛會牴觸一個已經寫下來的決定。
 3. **轉址會弄丟訪客被寄來的那個位址。** 有人把 `/lab/test-cases` 的連結傳給他，他登入之後應該還在看那一頁。
 4. **IA-1 已經裁定導覽列的五項是「你自己的東西」。** 對訪客那是邀請而不是謊言——**前提是抵達時誠實**，而那正是這次要修的。把導覽列藏起來，等於拿掉訪客得知這個產品有 Test Lab 與打包的唯一管道。
 
-**這一項因此從「要畫出登出狀態的資訊架構」收斂成「把一個匯流點修對」。** 落地後的實際規模：**21 處讀取失敗改用 `ReadFailure`、四處改成事前說、一頁修掉誤導**，外加**七個**缺 `retry: false` 的 hook（`api/skills.ts` 5＋`api/trace.ts` 1＋`api/generate.ts` 1）——`useSkillVersions` 與 `useTrace` 會先轉七秒的「載入中」才讓 401 浮出來，那是七秒沒有東西在後面的進度宣稱，而當時 `Compare.tsx` 有**兩段重複註解**都寫著「Same as every hook in api/」，那句話是假的。**`api/packaging.ts` 不在缺的那一組**：我原本寫「4 of 5」，那個 5 把 `import { useQuery }` 那一行算了進去，它只有四個 hook 而四個都有。
+**這一項因此從「要畫出登出狀態的資訊架構」收斂成「把一個匯流點修對」。** 落地後的實際規模：**21 處讀取失敗改用 `ReadFailure`、四處改成事前說、一頁修掉誤導**，外加**七個**缺 `retry: false` 的 hook（`features/skill/skills.service.ts` 5＋`features/runs/trace.service.ts` 1＋`features/creation/generate.service.ts` 1）——`useSkillVersions` 與 `useTrace` 會先轉七秒的「載入中」才讓 401 浮出來，那是七秒沒有東西在後面的進度宣稱，而當時 `Compare.page.tsx` 有**兩段重複註解**都寫著「Same as every hook in api/」，那句話是假的。**`features/packaging/packaging.service.ts` 不在缺的那一組**：我原本寫「4 of 5」，那個 5 把 `import { useQuery }` 那一行算了進去，它只有四個 hook 而四個都有。
 
-實作形狀是一個判斷加兩個元件（`components/LoginRequired.tsx`）：`unauthenticated(error)` 是那一行 401 判斷；`ReadFailure` 給讀取之後（401 → 說登入，其餘一字不改，**非 401 不得被吞掉**）；`LoginRequired` 給事前說。**兩個而不是一個**，因為事前說的四處手上沒有「讀取的 error」——它們讀的是 `me.error`，而且 `/me` 若是非 401 的錯誤，表單**應該照畫**：不知道對方沒登入，就不能把表單收走。
+實作形狀是一個判斷加兩個元件（`shared/ui/LoginRequired.tsx`）：`unauthenticated(error)` 是那一行 401 判斷；`ReadFailure` 給讀取之後（401 → 說登入，其餘一字不改，**非 401 不得被吞掉**）；`LoginRequired` 給事前說。**兩個而不是一個**，因為事前說的四處手上沒有「讀取的 error」——它們讀的是 `me.error`，而且 `/me` 若是非 401 的錯誤，表單**應該照畫**：不知道對方沒登入，就不能把表單收走。
 
 **誰能決定**：這一項需要產品負責人，**已授權並裁定**。原文的「未查核」保留在上方，因為那半年的懸置理由本身值得留著——**一個被歸類成「要設計決策」的項目，實際上有一半是還沒有人去看**。
 
 #### 刻意留在外面的
 
-- ~~**那兩句既有前例（`SkillDetail` 與 `WorkspaceAccount`）此前一支測試都沒有。**~~ **同批補上，落點 [`session.test.tsx`](../../apps/web/src/session.test.tsx)**（14 支：元件本身、七個抵達點、兩句前例、一支 `retry` 探針），每個抵達點結尾都跑一次「`not authenticated` 不得抵達畫面**且**畫面上要有登入入口」。<br>**落地過程本身記一筆**：那批測試的第一版沒有牙齒，而且失效方式與本專案前三次同型——它等的 settle 條件就是「需要登入」，所以還原呼叫點只會得到 `waitFor timed out`，紅的是逾時不是斷言。改成等一個「修好與壞掉都成立」的條件之後才真的在測東西。八次突變裡**第六次第一輪是綠的**（`retry: false` 原本一支測試都不擋），補了探針才紅。
+- ~~**那兩句既有前例（`SkillDetail` 與 `WorkspaceAccount`）此前一支測試都沒有。**~~ **同批補上，落點 [`session.test.tsx`](../../apps/web/src/guards/session.test.tsx)**（14 支：元件本身、七個抵達點、兩句前例、一支 `retry` 探針），每個抵達點結尾都跑一次「`not authenticated` 不得抵達畫面**且**畫面上要有登入入口」。<br>**落地過程本身記一筆**：那批測試的第一版沒有牙齒，而且失效方式與本專案前三次同型——它等的 settle 條件就是「需要登入」，所以還原呼叫點只會得到 `waitFor timed out`，紅的是逾時不是斷言。改成等一個「修好與壞掉都成立」的條件之後才真的在測東西。八次突變裡**第六次第一輪是綠的**（`retry: false` 原本一支測試都不擋），補了探針才紅。
 - 登入之後要不要回到原本那一頁（deep-link 還原）**不在本裁定內**：本裁定只要求抵達誠實，不要求記住去向。要做的話它是一項新工作，不是這一項的殘留。
 - **寫入路徑不在那 21 處裡**（沿試跑主線量到，[`04` 丙-143](../plans/04-backlog-and-handoffs.md)）：裁定與 `session.test.tsx` 守的都是**讀取**的匯流點與抵達那一刻。Run 頁的取消、刪除產出與評估回饋三個 mutation 的 `onError` 直印 `err.message`，抵達之後才過期的 session 在按下取消時又把 `not authenticated` 印回畫面，`assertHonestArrival` 跑在抵達時所以看不到。**修法照 `ReadFailure` 的形狀給寫入一個匯流點，不另開裁定**——裁定本身沒有錯，是它的「21 處」數的只有一半。**同日落地**：Run 頁的取消／刪除產出、評估頁的回饋／決定／套用、Preflight 的開始 Run，六個 mutation 改存 error 物件、經 `ReadFailure` 渲染；`a11y.test.tsx` 另守一條「live region 裡沒有任何中文字即 FAIL」，這一條不分讀取與寫入，是 `assertHonestArrival` 只守一個字串的那個缺口的通用版。**同日深夜，其餘六條線的全部 mutation 也走了匯流**（`04` 丙-150）：探索、詳情、匯入、Test Lab、打包、帳號——寫入路徑現在與讀取同一個形狀。
 
@@ -375,7 +375,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 - **`/compare`**：要一組**已選取的 ≥2 個 Skill**。選取只在搜尋結果上發生，所以第二條入邊得先發明第二個「使用者已經選好了幾個」的地方。**沒有選取的 `/compare` 是空的**，畫一條通往空畫面的路不是可達性。
 - **`/runs/$runId/compare`**：要一個**基準 Run**。同型——`$runId` 就是那個脈絡，而拿得到它的地方就是那個 Run 自己的頁。
-- **`/lab/datasets`**：要一個 **Test Case**，而且這是**資料模型的形狀不是 UI 的選擇**——API 是 `/test-cases/{id}/datasets`（`api/lab.ts`、`api/testcases.ts`），**平台沒有工作區層級的 dataset 清單**。所以這一頁在概念上是某個 Test Case 的一個分頁，它的位址長得像清單只是因為 R2 把清單放在 `/lab/` 底下。
+- **`/lab/datasets`**：要一個 **Test Case**，而且這是**資料模型的形狀不是 UI 的選擇**——API 是 `/test-cases/{id}/datasets`（`features/lab/lab.service.ts`、`features/lab/testcases.service.ts`），**平台沒有工作區層級的 dataset 清單**。所以這一頁在概念上是某個 Test Case 的一個分頁，它的位址長得像清單只是因為 R2 把清單放在 `/lab/` 底下。
 
 **這條裁定不會讓下一個孤兒混進來**：`ia.test.ts` 仍然雙向比對 §2.3 的 0 與 1 兩列，新的單入口頁一樣 FAIL，差別只在「修好」現在有兩種合法答案，而兩種都要在這張表上留字。
 
@@ -383,17 +383,17 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 ### IA-8 ✅ 已解決：一個地方，兩個心智模型
 
-~~`/lab/datasets` 的 `<h1>` 是「上傳 Dataset」~~ **08-24 改為「Dataset」**——網址是名詞複數（一個地方），標題現在也是；那一頁本來就同時列出既有的與收上傳，名詞蓋得住兩者（`__outlines__/lab-datasets.txt` 同批更新）。`/workspace/import` 的同型問題**留著**：網址與導覽標籤都是動作，但它在 IA 上是 ADR-038「Skill 接納與信任」這一整段的入口——改它的網址是路由遷移不是改標題，收益配不上成本，記在這裡不排工。
+~~`/lab/datasets` 的 `<h1>` 是「上傳 Dataset」~~ **08-24 改為「Dataset」**——網址是名詞複數（一個地方），標題現在也是；那一頁本來就同時列出既有的與收上傳，名詞蓋得住兩者（`guards/__outlines__/lab-datasets.txt` 同批更新）。`/workspace/import` 的同型問題**留著**：網址與導覽標籤都是動作，但它在 IA 上是 ADR-038「Skill 接納與信任」這一整段的入口——改它的網址是路由遷移不是改標題，收益配不上成本，記在這裡不排工。
 
 ### IA-9 ✅ 已解決（補號當日結案）：`/workspace/import` 的第二條頁內入邊
 
-> **結案落點**：[`pages/WorkspaceSkills.tsx`](../../apps/web/src/pages/WorkspaceSkills.tsx) 的空狀態。那句話原本就已經在講匯入——「還沒有任何 Skill。到首頁搜尋一個再 Fork，**或匯入自己的套件**——這裡是空的代表你還沒有建立過，不是清單讀取失敗。」——**它說出了下一步，然後叫你自己去導覽列找**，正是 R3 要抓的形狀。修法是把既有詞組變成連結，**文案一字未改**。<br>**選這一頁而不是別處**：空的個人清單就是「我想加一個 Skill」那個時刻本身（沒東西可 Fork、沒東西可試跑）。同頁的簡介句在描述清單內容不是動作；底部的「這個工作區的其他清單」不能放，匯入不是清單，放進去會同時踩 R2 與 R5。<br>**訪客不會拿到打不開的連結，而且這裡不需要 `useMe()` 分支**：`GET /skills` 走 `RequireSession`，所以這個空狀態對訪客結構上不可達（訪客走的是錯誤分支）。這比 `Home.tsx` 乾淨——那一頁必須分支，是因為 DISC-001 讓它服務所有人。
+> **結案落點**：[`features/workspace/skills/WorkspaceSkills.page.tsx`](../../apps/web/src/features/workspace/skills/WorkspaceSkills.page.tsx) 的空狀態。那句話原本就已經在講匯入——「還沒有任何 Skill。到首頁搜尋一個再 Fork，**或匯入自己的套件**——這裡是空的代表你還沒有建立過，不是清單讀取失敗。」——**它說出了下一步，然後叫你自己去導覽列找**，正是 R3 要抓的形狀。修法是把既有詞組變成連結，**文案一字未改**。<br>**選這一頁而不是別處**：空的個人清單就是「我想加一個 Skill」那個時刻本身（沒東西可 Fork、沒東西可試跑）。同頁的簡介句在描述清單內容不是動作；底部的「這個工作區的其他清單」不能放，匯入不是清單，放進去會同時踩 R2 與 R5。<br>**訪客不會拿到打不開的連結，而且這裡不需要 `useMe()` 分支**：`GET /skills` 走 `RequireSession`，所以這個空狀態對訪客結構上不可達（訪客走的是錯誤分支）。這比 `Home.page.tsx` 乾淨——那一頁必須分支，是因為 DISC-001 讓它服務所有人。
 
 > **本項是補號的，不是新發現的。** 事實一直寫在 §2.3 的 1 入邊那一列（「❌ 不適用……第二條頁內入邊仍欠」）與 §5 IA-7 的結尾，但它沒有編號——於是本節的「只剩 IA-6」、§8 的表與 `04` 的殘項清單三處都數不到它。**一個記在散文裡而沒有編號的缺陷，等於沒有記。**
 
-**事實**：`/workspace/import` 的唯一一條頁內入邊是 `pages/Home.tsx` 的 `no_results` 那一格（08-24 由 IA-5 補上）。導覽列不計（§2.3 的計數規則：只從導覽列進得去的頁正是那張表要找的東西）。
+**事實**：`/workspace/import` 的唯一一條頁內入邊是 `features/catalog/home/Home.page.tsx` 的 `no_results` 那一格（08-24 由 IA-5 補上）。導覽列不計（§2.3 的計數規則：只從導覽列進得去的頁正是那張表要找的東西）。
 
-> **結案落點換檔：仍然結著，承載它的檔案變了。** 上面那個落點在 09-03 之後多了一份逐字同義的鄰居——`components/CreateHub.tsx` 的「匯入 Skill」卡，而它與空狀態那一句**在同一個條件下（`!hasSkills`）渲染、上下相鄰**，於是同一屏裡同樣的兩條路講了兩次。空狀態那一句已收成只講 §2.9 的缺席型別，連結留在卡片上。**IA-9 的性質不變**：`/workspace/import` 仍有兩條來源檔不同的頁內入邊（`Home.tsx` 的 `no_results`、`CreateHub.tsx`），R3 要的「不只有導覽列一條路」仍成立，`ia.test.ts` 以來源檔計數且只斷言 0 與 1 那兩列。詳見 §2.3 邊圖下方的補記。
+> **結案落點換檔：仍然結著，承載它的檔案變了。** 上面那個落點在 09-03 之後多了一份逐字同義的鄰居——`features/creation/components/CreateHub.tsx` 的「匯入 Skill」卡，而它與空狀態那一句**在同一個條件下（`!hasSkills`）渲染、上下相鄰**，於是同一屏裡同樣的兩條路講了兩次。空狀態那一句已收成只講 §2.9 的缺席型別，連結留在卡片上。**IA-9 的性質不變**：`/workspace/import` 仍有兩條來源檔不同的頁內入邊（`Home.page.tsx` 的 `no_results`、`CreateHub.tsx`），R3 要的「不只有導覽列一條路」仍成立，`ia.test.ts` 以來源檔計數且只斷言 0 與 1 那兩列。詳見 §2.3 邊圖下方的補記。
 
 ### IA-10 ✅ 已解決（入列即結案）：一個位址參數與一個選單，對「這個 Skill」的定義不一樣
 
@@ -405,7 +405,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 **沒有升成 R8**，理由是 §0 自己定的入場規則：規則要能從已定案的東西推出來，而這一條今天只有一個實例。**記在這裡，等第二個實例**；真的出現第二個，它就該是一條規則而不是兩列缺陷。
 
-**修法與突變見 [`04` 丙-116](../plans/04-backlog-and-handoffs.md)**（本檔不複述——複述一份修法就是製造第二份會過期的定義）。落在本檔身上的只有兩處：§2.2 多一條邊 `TestCases ► /skills/$id`，以及 `__outlines__/skills-skillId.txt` 多一個 `h2`「Fork 到你的工作區」——**那個動作以前是 12 個 `h2` 的頁面上唯一沒有標題的區塊，而對非擁有者它是唯一能往前的東西**。<br>**註記（原句不改，它記的是當時為真的事）**：那一段的重排把「Fork 到你的工作區」降成右欄 `aside.detail-rail` 裡的 **h3**，整頁 h2 由 12 減為 7，所以「12 個 h2 的頁面上唯一沒有標題的區塊」這句話今天已經沒有對應的畫面。**它被修好的方式不是加標題，是把整頁的標題樹重排**。
+**修法與突變見 [`04` 丙-116](../plans/04-backlog-and-handoffs.md)**（本檔不複述——複述一份修法就是製造第二份會過期的定義）。落在本檔身上的只有兩處：§2.2 多一條邊 `TestCases ► /skills/$id`，以及 `guards/__outlines__/skills-skillId.txt` 多一個 `h2`「Fork 到你的工作區」——**那個動作以前是 12 個 `h2` 的頁面上唯一沒有標題的區塊，而對非擁有者它是唯一能往前的東西**。<br>**註記（原句不改，它記的是當時為真的事）**：那一段的重排把「Fork 到你的工作區」降成右欄 `aside.detail-rail` 裡的 **h3**，整頁 h2 由 12 減為 7，所以「12 個 h2 的頁面上唯一沒有標題的區塊」這句話今天已經沒有對應的畫面。**它被修好的方式不是加標題，是把整頁的標題樹重排**。
 
 > **順帶記一件 §2.2 自己的事**：這條新邊是那次訂正之後**第一次**有人在改程式的同一批裡改這張圖。那次訂正的成因寫在 §6——**§2.1、§2.3、§2.4 都有機器，夾在中間的 §2.2 沒有**，所以它是這一節唯一會無聲過期的一格。這一次沒有過期，是因為有人記得，不是因為有東西會紅。
 
@@ -419,9 +419,9 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 **指示**：「最右邊的卡片應該要像另外兩張一樣，有著獨立的頁面，直接呈現 Chat UI」。
 
-**落地**：`/workspace/creations`（`pages/CreateSkill.tsx`）。「建立一個 Skill」第三張卡不再就地展開工作台，而是與左邊兩張同型的一扇門。
+**落地**：`/workspace/creations`（`features/creation/create/CreateSkill.page.tsx`）。「建立一個 Skill」第三張卡不再就地展開工作台，而是與左邊兩張同型的一扇門。
 
-**位址的形狀是查出來的不是選出來的**：§0.1 R2 要清單位址掛在提問者的位置、而且是名詞的複數。`/workspace/creations` 兩條都合——它就是「我的創作會話」那份清單（元件自己的「對話紀錄」選單就是那份清單），所以 `ia.test.ts` 的 R2 檢查判它合規，**§0.2 那份只能縮短的偏離帳一列都沒有多**。`components/CreateHub.tsx` 的檔案註解曾經寫著「新增 `/create` 會是清單位置上的一個動詞」——**那句話是對的，而它擋的是另一個位址**：動詞當清單位址正是 §0.2 裡 `/lab/run` 那一列記著「待修」的同一個毛病。換成名詞之後那個理由不成立。
+**位址的形狀是查出來的不是選出來的**：§0.1 R2 要清單位址掛在提問者的位置、而且是名詞的複數。`/workspace/creations` 兩條都合——它就是「我的創作會話」那份清單（元件自己的「對話紀錄」選單就是那份清單），所以 `ia.test.ts` 的 R2 檢查判它合規，**§0.2 那份只能縮短的偏離帳一列都沒有多**。`features/creation/components/CreateHub.tsx` 的檔案註解曾經寫著「新增 `/create` 會是清單位置上的一個動詞」——**那句話是對的，而它擋的是另一個位址**：動詞當清單位址正是 §0.2 裡 `/lab/run` 那一列記著「待修」的同一個毛病。換成名詞之後那個理由不成立。
 
 **為什麼它只有一條入邊，而這一次不是欠**：R3 的兩支是「補第二條」與「具名」。這一頁走第二支，理由比前三個（IA-7 的那三頁）更硬——**第二條入邊不是還沒畫，是畫了就違反一條更高順位的規則**：⛔ [`01` §10](../plans/01-goals-and-plan.md) 邊界 1 逐字要求 M5 的生成入口「不得對封測使用者出現，也不得變得更顯眼」，而多一條頁內入邊的定義就是讓它更顯眼。
 
@@ -429,7 +429,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 **這一列到期就要重看**：邊界 1 解除之後，第二條入邊（例如生成出來的 Skill 頁指回產生它的那一場創作）才是該畫的。現在畫它等於用版面繞過一條凍結中的裁定。
 
-**訂正（落地當天，負責人回報「並沒有取消回到上一頁的按鈕」）**：上一段那句「R3 要防的危險在這一頁不成立」**只講對了一半**。它對按瀏覽器上一頁的人成立，對**從書籤或別人給的連結進來的人不成立**——那些人沒有上一頁可按，而這一頁又不在導覽列上（R7：產品能力不進導覽列），於是它一度真的是一間沒有門的房間。同一個判斷 `pages/RunTrace.tsx` 的檔頭早就寫過：「從別人那裡收到 Run 連結的人沒有『上一頁』可以按」。
+**訂正（落地當天，負責人回報「並沒有取消回到上一頁的按鈕」）**：上一段那句「R3 要防的危險在這一頁不成立」**只講對了一半**。它對按瀏覽器上一頁的人成立，對**從書籤或別人給的連結進來的人不成立**——那些人沒有上一頁可按，而這一頁又不在導覽列上（R7：產品能力不進導覽列），於是它一度真的是一間沒有門的房間。同一個判斷 `features/runs/trace/RunTrace.page.tsx` 的檔頭早就寫過：「從別人那裡收到 Run 連結的人沒有『上一頁』可以按」。
 
 **處置**：頁面自己出一條出口（`<nav>` ＋「← 回到我的 Skill」，`SkillFiles`／`RunCompare`／`TestCases` 的既有配方），`create-skill.test.tsx` 兩個旗標狀態各斷言一次、且只准出現一次。**入邊的數字沒有變**（出口是這一頁指出去的邊，不是指進來的），所以這一列仍然是 1，「具名」那一支的理由也仍然成立——但它成立的理由現在只剩⛔ 邊界 1 那一條，不再包含「危險不成立」。
 
@@ -459,14 +459,14 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 | 規則 | 把關者 | 覆蓋範圍 |
 | --- | --- | --- |
-| 每條路由的標題階層不跳級 | [`a11y.test.tsx`](../../apps/web/src/a11y.test.tsx)（axe `heading-order`） | 全部路由；新路由沒加案例會 FAIL |
-| 標題階層變了要被看到 | [`__outlines__/`](../../apps/web/src/__outlines__/) 快照 | **33** 個檔（後台七頁各一份）。**不判斷對錯，只讓變更變成必須核可的 diff** |
+| 每條路由的標題階層不跳級 | [`a11y.test.tsx`](../../apps/web/src/guards/a11y.test.tsx)（axe `heading-order`） | 全部路由；新路由沒加案例會 FAIL |
+| 標題階層變了要被看到 | [`__outlines__/`](../../apps/web/src/guards/__outlines__/) 快照 | **33** 個檔（後台七頁各一份）。**不判斷對錯，只讓變更變成必須核可的 diff** |
 | 導覽 landmark 唯一且具名 | `a11y.test.tsx`（axe `landmark-unique`） | 全部路由。`SkillDetail` 與 `SkillFiles` 各自帶一個未命名的 `<nav>`，主導覽因此必須具名 |
 | 「你在哪裡」有語意 | TanStack Router 自動加的 `aria-current="page"` | 主要導覽五項 |
-| 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/ia.test.ts) 的棘輪 | **全部路由**，三引擎（27 個位址，後台七頁各一）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
+| 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) 的棘輪 | **全部路由**，三引擎（27 個位址，後台七頁各一）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
 | 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **10** 條 |
-| §4 的網址狀態表與程式一致 | [`ia.test.ts`](../../apps/web/src/ia.test.ts) | **雙向**：逐路由比對 `validateSearch` 的 key 與表格第二欄，兩邊都不得多也不得少 |
-| **§1 的路由表與 `router.tsx` 一致** | [`ia.test.ts`](../../apps/web/src/ia.test.ts) | 全部路由，**雙向**：新路由沒補列會 FAIL，刪了路由沒刪列也會 |
+| §4 的網址狀態表與程式一致 | [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) | **雙向**：逐路由比對 `validateSearch` 的 key 與表格第二欄，兩邊都不得多也不得少 |
+| **§1 的路由表與 `router.tsx` 一致** | [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) | 全部路由，**雙向**：新路由沒補列會 FAIL，刪了路由沒刪列也會 |
 | **§2.1 的主要導覽與 `RootLayout` 一致** | 同上 | 導覽列全部項目 |
 | **§2.3 的「只有導覽列」清單** | 同上 | 全部路由，**雙向**：多一個孤兒會 FAIL，修好了沒改文件也會 |
 | **§2.4 的旗標入口** | 同上 | 全部 `features?.<name>` 的使用點。**這是唯一抓得到「不新增路由的入口」的一條** |
@@ -477,7 +477,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | **R1（一個位址一個答案）／R4（狀態該不該進網址）／R5（受控用語）** | **沒有** | 三條都是判斷題。R1 與 R5 的現行違規是 IA-3、IA-8；R4 的爭議是 IA-4 |
 | **命名與 ADR-038 受控用語一致** | **沒有** | §3 是手比的 |
 | **一個位址只回答一個問題** | **沒有** | IA-3 就是這樣長出來的 |
-| **登出狀態可達性** | **部分**：[`session.test.tsx`](../../apps/web/src/session.test.tsx) | **IA-6 已裁定並落地**：不由 router 守衛，由 401 這個具名狀態自己說。守著的是共用元件本身、七個抵達點，以及一條「`not authenticated` 不得抵達畫面」的斷言。**新頁面仍然沒有棘輪**——沒有任何東西阻止下一個人在新頁面直接印 `error.message`；要那個得再加一條像 `design-system.test.ts` 第 16 條那樣掃 markup 的守衛 |
+| **登出狀態可達性** | **部分**：[`session.test.tsx`](../../apps/web/src/guards/session.test.tsx) | **IA-6 已裁定並落地**：不由 router 守衛，由 401 這個具名狀態自己說。守著的是共用元件本身、七個抵達點，以及一條「`not authenticated` 不得抵達畫面」的斷言。**新頁面仍然沒有棘輪**——沒有任何東西阻止下一個人在新頁面直接印 `error.message`；要那個得再加一條像 `design-system.test.ts` 第 16 條那樣掃 markup 的守衛 |
 | **新頁面該放哪個前綴** | **沒有** | IA-2 |
 
 ---

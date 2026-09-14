@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { platformResponse } from "../src/fixtures/platform";
+import { platformResponse } from "../src/testing/fixtures/platform";
 
 export async function stubPlatform(page: Page) {
   await page.route("**/*", (route, request) => {

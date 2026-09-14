@@ -68,7 +68,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 1. 先改 OpenAPI schema／operation；若需要資料，再改 migration/query。
 2. 由主 Agent（單一 Writer）執行 `task gen`；SubAgent 不自行生成。
 3. 實作 Go domain policy／service／adapter。Workspace 取自 session，不接受 UI 傳入 scope。
-4. Web 保留 `apps/web/src/api/types.ts` 的 UI view model，逐 endpoint 寫 generated DTO adapter，不整檔替換。
+4. Web 保留 `apps/web/src/core/api/types.ts` 的 UI view model，逐 endpoint 寫 generated DTO adapter，不整檔替換。
 5. Go 的 ogen server目前只在 `router.go` 精確 `GET /healthz` pattern後使用。新增 endpoint 仍必須在 `router.go` 明確保留原本 `RequireSession`／`RequireOperator`／`OptionalSession` 語意，不 mount整個 generated server。
 6. 跑 scoped tests、`task gen:check`，最後跑 `task ci`。
 

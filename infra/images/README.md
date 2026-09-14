@@ -558,14 +558,14 @@ GHCR push 仍是協調者的工作**（本批範圍只到映像與本機驗證�
 
 ### `web` 的反向代理：為什麼不是 `location /api/`
 
-`api/client.ts` 的 `API_BASE_URL` 預設空字串（同源），這在 clean test mode（`cmd/api`
+`core/api/client.ts` 的 `API_BASE_URL` 預設空字串（同源），這在 clean test mode（`cmd/api`
 自己端出 `apps/web/dist`）與 `vite preview` 下成立，但**一般容器化部署（這個 `app`
 profile）沒有任何東西讓它成立，除非有東西幫忙**——`web` 這個 nginx 容器就是那個東西。
 
 原本設想是單一 `/api/` 前綴代理，但 `contracts/openapi/public.yaml` 沒有這個前綴：
 路徑是扁平的（`/skills`、`/runs/{id}`、`/auth/...`、`/me`……），只有四條真的在 `/api/`
 下面。更根本的問題是**同一個路徑同時是頁面與 API**：`GET /skills/{id}` 是 JSON，也是
-Skill 詳情頁 `/skills/$skillId`（`apps/web/src/router.tsx`）的網址；`GET /runs/{id}`
+Skill 詳情頁 `/skills/$skillId`（`apps/web/src/app/router.tsx`）的網址；`GET /runs/{id}`
 同理是 Trace 頁。`apps/web/vite.config.ts` 的註解原文就寫著這件事——「the obvious dev
 setup — proxy a list of path prefixes — cannot work with these routes」，該檔用兩個
 origin＋CORS 迴避；`cmd/api` 的 clean mode（`SKILLHUB_CLEAN_MODE=1`）用

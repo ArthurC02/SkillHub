@@ -18,15 +18,15 @@ const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ??
 // M5 entry is behind a flag closed-beta users must not see (01 §10 ⛔ 1), and an
 // audit that lists its text invites someone to "improve" it.
 const DEFAULT_GROUPS = [
-  { key: 'home', files: ['src/pages/Home.tsx'] },
-  { key: 'detail', files: ['src/pages/SkillDetail.tsx', 'src/components/LabelledBadge.tsx', 'src/components/LicenseBadge.tsx', 'src/components/RiskIndicator.tsx'] },
-  { key: 'packaging', files: ['src/pages/Packaging.tsx', 'src/components/DownloadArtifactFacts.tsx'] },
-  { key: 'evaluation', files: ['src/pages/RunEvaluation.tsx', 'src/components/RunVerdict.tsx', 'src/components/Findings.tsx', 'src/components/FeedbackEntry.tsx'] },
-  { key: 'trace', files: ['src/pages/RunTrace.tsx', 'src/components/InFlight.tsx', 'src/pages/RunCompare.tsx'] },
-  { key: 'testcases', files: ['src/pages/TestCases.tsx', 'src/pages/DatasetUpload.tsx'] },
-  { key: 'preflight', files: ['src/pages/RunPreflight.tsx', 'src/components/CleanModeNotice.tsx', 'src/components/CompatibilityStatus.tsx'] },
-  { key: 'compare-files-policy', files: ['src/pages/Compare.tsx', 'src/pages/SkillFiles.tsx', 'src/pages/DataPolicy.tsx', 'src/pages/Downloads.tsx'] },
-  { key: 'workspace', files: ['src/pages/WorkspaceAccount.tsx', 'src/pages/WorkspaceRuns.tsx', 'src/pages/WorkspaceSkills.tsx', 'src/pages/ImportSkill.tsx', 'src/components/VersionUpload.tsx', 'src/components/ConfirmDelete.tsx', 'src/components/CreateHub.tsx', 'src/components/LoginRequired.tsx', 'src/components/SignIn.tsx', 'src/components/GeneratedNotice.tsx', 'src/components/Timestamp.tsx', 'src/components/Loading.tsx'] },
+  { key: 'home', files: ['src/features/catalog/home/Home.page.tsx'] },
+  { key: 'detail', files: ['src/features/skill/detail/SkillDetail.page.tsx', 'src/shared/ui/LabelledBadge.tsx', 'src/shared/ui/LicenseBadge.tsx', 'src/shared/ui/RiskIndicator.tsx'] },
+  { key: 'packaging', files: ['src/features/packaging/build/Packaging.page.tsx', 'src/features/packaging/components/DownloadArtifactFacts.tsx'] },
+  { key: 'evaluation', files: ['src/features/runs/components/EvaluationPanel.tsx', 'src/features/runs/components/RunVerdict.tsx', 'src/shared/ui/Findings.tsx', 'src/app/shell/FeedbackEntry.tsx'] },
+  { key: 'trace', files: ['src/features/runs/trace/RunTrace.page.tsx', 'src/features/runs/trace/components/InFlight.tsx', 'src/features/runs/compare/RunCompare.page.tsx'] },
+  { key: 'testcases', files: ['src/features/lab/test-cases/TestCases.page.tsx', 'src/features/lab/dataset-upload/DatasetUpload.page.tsx'] },
+  { key: 'preflight', files: ['src/features/lab/preflight/RunPreflight.page.tsx', 'src/app/shell/CleanModeNotice.tsx', 'src/shared/ui/CompatibilityStatus.tsx'] },
+  { key: 'compare-files-policy', files: ['src/features/catalog/compare/Compare.page.tsx', 'src/features/skill/files/SkillFiles.page.tsx', 'src/features/workspace/policy/DataPolicy.page.tsx', 'src/features/packaging/downloads/Downloads.page.tsx'] },
+  { key: 'workspace', files: ['src/features/workspace/account/WorkspaceAccount.page.tsx', 'src/features/runs/list/WorkspaceRuns.page.tsx', 'src/features/workspace/skills/WorkspaceSkills.page.tsx', 'src/features/creation/import/ImportSkill.page.tsx', 'src/features/skill/detail/components/VersionUpload.tsx', 'src/shared/ui/ConfirmDelete.tsx', 'src/features/creation/components/CreateHub.tsx', 'src/shared/ui/LoginRequired.tsx', 'src/shared/ui/SignIn.tsx', 'src/features/creation/components/GeneratedNotice.tsx', 'src/shared/ui/Timestamp.tsx', 'src/shared/ui/Loading.tsx'] },
 ]
 const groups = (args && args.groups) || DEFAULT_GROUPS
 const WEB = 'apps/web/'
@@ -171,7 +171,7 @@ const critic = await run(
     'Files each reader says it read:',
     JSON.stringify(readOk.map((r) => ({ group: r.group, files_read: r.files_read }))),
     '',
-    'Do three things with Glob/Read (no grep for text): (1) list every .tsx under apps/web/src/pages and apps/web/src/components that is in no group at all (GenerateSkill.tsx is excluded on purpose — say so, do not list it as missing); (2) for each group, name any file listed but not in files_read; (3) name text that no reader can classify from source alone — strings the server sends (e.g. rank_note, notes[], tier.note) — and where the fixture for them lives (apps/web/src/fixtures/platform.ts) so the sums can be completed from real strings.',
+    'Do three things with Glob/Read (no grep for text): (1) list every .tsx under apps/web/src/pages and apps/web/src/components that is in no group at all (GenerateSkill.tsx is excluded on purpose — say so, do not list it as missing); (2) for each group, name any file listed but not in files_read; (3) name text that no reader can classify from source alone — strings the server sends (e.g. rank_note, notes[], tier.note) — and where the fixture for them lives (apps/web/src/testing/fixtures/platform.ts) so the sums can be completed from real strings.',
     'Return a short plain-text list, nothing else.',
   ].join('\n'),
   { label: 'critic', phase: 'Critic', effort: 'medium' },

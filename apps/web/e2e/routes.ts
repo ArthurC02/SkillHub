@@ -1,4 +1,11 @@
-import { OTHER_RUN, RUN, SKILL, SKILL_B, TEST_CASE, VERSION } from "../src/fixtures/platform";
+import {
+  OTHER_RUN,
+  RUN,
+  SKILL,
+  SKILL_B,
+  TEST_CASE,
+  VERSION,
+} from "../src/testing/fixtures/platform";
 
 export const ROUTES: [name: string, url: string][] = [
   ["home-empty", "/"],

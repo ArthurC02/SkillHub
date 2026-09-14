@@ -12,7 +12,7 @@ const repo = process.env.REPO || "/work";
 const fixtures = Object.fromEntries(
   [
     ...readFileSync(
-      `${repo}/apps/web/src/fixtures/platform.ts`,
+      `${repo}/apps/web/src/testing/fixtures/platform.ts`,
       "utf8",
     ).matchAll(/export const (\w+)\s*=\s*"([^"]+)"/g),
   ].map((m) => [m[1], m[2]]),

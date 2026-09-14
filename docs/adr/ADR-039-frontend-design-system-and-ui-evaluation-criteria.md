@@ -40,7 +40,7 @@
 - 缺點（否決理由，三條都具體）：
   1. **`apps/web` 目前是純 CSS、零 UI 依賴。** 775 行 `index.css`，沒有 CSS-in-JS、沒有 utility framework、沒有元件庫。引入一套會把前端的依賴面與建置面從零抬到一個新的量級，而 ADR-016 選 SPA 的理由裡沒有一條需要它。
   2. **這個 app 的元件語彙承載的是產品特有的信任語意，不是通用元件。** `badge`／`criterion`／`notice`／`RiskIndicator`／`LicenseBadge`／`CompatibilityStatus` 回答的是「這個判定是誰下的」「這件事未知還是未通過」「平台自己降級了這個判定」。通用元件庫沒有這些概念，套上去之後每一個都要 unstyled + 自訂，等於付了依賴的代價卻沒拿到它的好處。
-  3. **換一套會把已經寫在 `index.css` 註解裡的推理全部丟掉重來。** 那些註解不是裝飾：`--danger` 為什麼從 `#d33` 改成 `#b91c1c`（4.11:1 / 3.55:1 → 5.82:1 / 5.86:1）、`--link` 為什麼不能直接用 `--accent`（4.39:1 低於 AA）、停用態為什麼用 `border-style: dashed` 而不是 `opacity: .5`、`.filter-bar` 的 track 為什麼是 320px（1126px 要落三軌不是四軌）。這些是 QA-009 與 NFR-007 的實際推導過程，而且 [`contrast.test.ts`](../../apps/web/src/contrast.test.ts) 直接讀 `index.css` 的 token 來反覆驗證它們。換掉底層等於同時作廢那個測試與它守的東西。
+  3. **換一套會把已經寫在 `index.css` 註解裡的推理全部丟掉重來。** 那些註解不是裝飾：`--danger` 為什麼從 `#d33` 改成 `#b91c1c`（4.11:1 / 3.55:1 → 5.82:1 / 5.86:1）、`--link` 為什麼不能直接用 `--accent`（4.39:1 低於 AA）、停用態為什麼用 `border-style: dashed` 而不是 `opacity: .5`、`.filter-bar` 的 track 為什麼是 320px（1126px 要落三軌不是四軌）。這些是 QA-009 與 NFR-007 的實際推導過程，而且 [`contrast.test.ts`](../../apps/web/src/guards/contrast.test.ts) 直接讀 `index.css` 的 token 來反覆驗證它們。換掉底層等於同時作廢那個測試與它守的東西。
 
 ### 選項 B：把既有隱性決策成文化＋補缺口（採用）
 

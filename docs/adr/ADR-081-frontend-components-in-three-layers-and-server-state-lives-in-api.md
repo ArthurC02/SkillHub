@@ -1,6 +1,6 @@
 # ADR-081：前端分三層組件，伺服器狀態只住在 `api/`
 
-- 狀態：**Accepted**（2026-09-14，負責人指示：「希望能夠真正落實 Component-Based 的概念。讓 Component 得以提高複用性，頁面的 Component 之間的狀態管理是有效率並且具備可解釋性，讓 Coding Agent 方便追蹤」）
+- 狀態：**Superseded**（決策 1 與決策 6 的路徑由 [ADR-082](./ADR-082-frontend-features-own-their-pages-sub-components-and-services.md) 取代；決策 2–5 延續，只換位置。原：Accepted，2026-09-14，負責人指示：「希望能夠真正落實 Component-Based 的概念。讓 Component 得以提高複用性，頁面的 Component 之間的狀態管理是有效率並且具備可解釋性，讓 Coding Agent 方便追蹤」）
 - 日期：2026-09-14
 - 相關：[ADR-031](./ADR-031-artifact-role-repository-layout.md)（收納語意）、[ADR-039](./ADR-039-frontend-design-system-and-ui-evaluation-criteria.md)（前端設計系統）、[information-architecture.md](../design/information-architecture.md) §5 IA-6（401 由 `ReadFailure` 說一次）
 
