@@ -97,16 +97,14 @@ func redistributionFor(ws identity.Workspace, src sourceMeta) string {
 		return ""
 	}
 
-	if src.Type == sourceGenerated {
+	if src.Type == SourceGenerated {
 		return registry.RedistributionGenerated
 	}
 	return registry.RedistributionSelfSupplied
 }
 
-const sourceGenerated = "generated"
-
 type sourceMeta struct {
-	Type string
+	Type SourceType
 	URL  *string
 	Ref  *string
 
@@ -122,7 +120,7 @@ type sourceMeta struct {
 }
 
 func (s *Service) UploadZip(ctx context.Context, ws identity.Workspace, data []byte) (Result, error) {
-	return s.importZip(ctx, ws, data, sourceMeta{Type: "upload"})
+	return s.importZip(ctx, ws, data, sourceMeta{Type: SourceUpload})
 }
 
 func (s *Service) ImportURL(ctx context.Context, ws identity.Workspace, rawURL string) (Result, error) {
@@ -137,7 +135,7 @@ func (s *Service) ImportURL(ctx context.Context, ws identity.Workspace, rawURL s
 	if err != nil {
 		return Result{}, err
 	}
-	meta := sourceMeta{Type: "git", URL: &sourceURL}
+	meta := sourceMeta{Type: SourceGit, URL: &sourceURL}
 	if ref != "" {
 		meta.Ref = &ref
 	}
@@ -279,7 +277,7 @@ func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace
 		return Result{}, err
 	}
 
-	if found && src.Type == sourceGenerated {
+	if found && src.Type == SourceGenerated {
 		return Result{}, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
 	}
 	res.Skill = skill
@@ -288,7 +286,7 @@ func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace
 	if err != nil {
 		return Result{}, err
 	}
-	importMeta := map[string]any{"source_type": src.Type}
+	importMeta := map[string]any{"source_type": string(src.Type)}
 
 	usageMeta(importMeta, src.CostUSD, src.PromptTokens, src.CompletionTokens)
 	if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, importMeta); err != nil {
@@ -342,7 +340,7 @@ func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillI
 	skill := readSkill
 	res.Skill = skill
 
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, skill, p, sourceMeta{Type: "upload"}, e)
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, skill, p, sourceMeta{Type: SourceUpload}, e)
 	if err != nil {
 		return Result{}, err
 	}
@@ -365,7 +363,7 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		return registry.Version{}, false, err
 	}
 
-	if skill.Redistribution == registry.RedistributionGenerated && src.Type != sourceGenerated {
+	if skill.Redistribution == registry.RedistributionGenerated && src.Type != SourceGenerated {
 		return registry.Version{}, false, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
 	}
 	q := gen.New(tx)
@@ -378,7 +376,7 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 
 	source, err := q.CreateSkillSource(ctx, gen.CreateSkillSourceParams{
 		WorkspaceID: ws.ID,
-		SourceType:  src.Type,
+		SourceType:  string(src.Type),
 		SourceUrl:   src.URL,
 		SourceRef:   src.Ref,
 		ContentHash: p.contentHash,

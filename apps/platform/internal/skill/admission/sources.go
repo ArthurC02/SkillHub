@@ -17,6 +17,18 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
+type SourceType string
+
+const (
+	SourceGit       SourceType = "git"
+	SourceUpload    SourceType = "upload"
+	SourceGenerated SourceType = "generated"
+)
+
+func AllSourceTypes() []SourceType {
+	return []SourceType{SourceGit, SourceUpload, SourceGenerated}
+}
+
 type Source struct {
 	SourceType       string
 	SourceURL        *string

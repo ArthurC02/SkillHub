@@ -702,9 +702,9 @@ func sourceFrom(s SourceFacts) *sourceInfo {
 	}
 	trust := SourceTrustUnknown
 	switch {
-	case s.SourceType == "git" && out.URL != "":
+	case sourceType(s.SourceType) == sourceGit && out.URL != "":
 		trust = SourceTrustTraceable
-	case s.SourceType == "generated":
+	case sourceType(s.SourceType) == sourceGenerated:
 
 		trust = SourceTrustGenerated
 	}

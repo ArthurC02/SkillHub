@@ -144,13 +144,13 @@ func TestBlankTaskDescriptionNeverReachesTheGateway(t *testing.T) {
 
 func TestGeneratedTakesItsOwnRedistributionValue(t *testing.T) {
 	ws := identity.Workspace{}
-	if got := redistributionFor(ws, sourceMeta{Type: sourceGenerated}); got != "generated" {
+	if got := redistributionFor(ws, sourceMeta{Type: SourceGenerated}); got != "generated" {
 		t.Errorf("generated -> %q", got)
 	}
 	if got := redistributionFor(ws, sourceMeta{Type: "upload"}); got == "generated" {
 		t.Error("an upload took the generated value")
 	}
-	if got := redistributionFor(identity.Workspace{IsCatalog: true}, sourceMeta{Type: sourceGenerated}); got != "" {
+	if got := redistributionFor(identity.Workspace{IsCatalog: true}, sourceMeta{Type: SourceGenerated}); got != "" {
 		t.Errorf("the catalogue took %q", got)
 	}
 }

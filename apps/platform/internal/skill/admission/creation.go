@@ -30,7 +30,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 		return Result{}, err
 	}
 	desc, model, prompt := p.TaskDescription, p.Model, p.PromptVersion
-	src := sourceMeta{Type: sourceGenerated, TaskDescription: &desc, GeneratorModel: &model, GeneratorPromptVersion: &prompt, GenerationInputs: p.GenerationInputs}
+	src := sourceMeta{Type: SourceGenerated, TaskDescription: &desc, GeneratorModel: &model, GeneratorPromptVersion: &prompt, GenerationInputs: p.GenerationInputs}
 	if p.ExistingSkillID == nil {
 		return s.importZipWithCommit(ctx, ws, data, src, after)
 	}
@@ -58,7 +58,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 
 	res := Result{Report: prepared.report, Skill: existing, Version: version, Duplicate: duplicate}
 	if !duplicate {
-		if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, map[string]any{"source_type": sourceGenerated}); err != nil {
+		if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, map[string]any{"source_type": string(SourceGenerated)}); err != nil {
 			return Result{}, err
 		}
 	}

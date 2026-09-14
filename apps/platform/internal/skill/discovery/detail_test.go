@@ -116,6 +116,26 @@ func TestLicenseKeepsProvenanceTierAndNeverConfirms(t *testing.T) {
 	}
 }
 
+func TestOnlyAGitSourceWithAURLIsTraceable(t *testing.T) {
+	url := "https://github.com/example/skills"
+	for _, tc := range []struct {
+		name  string
+		facts SourceFacts
+		want  SourceTrust
+	}{
+		{"git with a url", SourceFacts{SourceType: "git", SourceURL: &url}, SourceTrustTraceable},
+		{"git without a url", SourceFacts{SourceType: "git"}, SourceTrustUnknown},
+		{"upload with a url", SourceFacts{SourceType: "upload", SourceURL: &url}, SourceTrustUnknown},
+		{"generated", SourceFacts{SourceType: "generated"}, SourceTrustGenerated},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := sourceFrom(tc.facts).Trust.Value; got != string(tc.want) {
+				t.Errorf("trust = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestSourceSurfacesAvailabilityProbe(t *testing.T) {
 	url := "https://github.com/example/skills"
 	checked := time.Date(2026, 8, 14, 9, 30, 0, 0, time.UTC)

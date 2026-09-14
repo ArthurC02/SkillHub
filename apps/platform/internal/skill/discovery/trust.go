@@ -12,6 +12,13 @@ const (
 	SourceTrustGenerated SourceTrust = "generated"
 )
 
+type sourceType string
+
+const (
+	sourceGit       sourceType = "git"
+	sourceGenerated sourceType = "generated"
+)
+
 type LicenseStatus string
 
 const (

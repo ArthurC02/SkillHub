@@ -264,7 +264,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 
 		desc, model, promptVersion := task, gen.Model, gen.PromptVersion
 		res, err := s.importZip(ctx, ws, data, sourceMeta{
-			Type:                   sourceGenerated,
+			Type:                   SourceGenerated,
 			TaskDescription:        &desc,
 			GeneratorModel:         &model,
 			GeneratorPromptVersion: &promptVersion,

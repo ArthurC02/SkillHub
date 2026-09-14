@@ -225,6 +225,20 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "DecideSuggestionReqDecision"),
 		},
 	},
+	{
+		name: "skill source type",
+		sources: []vocabularySource{
+			sqlColumnCheck("skill_sources", "source_type"),
+			goConstEnum("apps/platform/internal/skill/admission/sources.go", "SourceType"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/admission/sources.go", "AllSourceTypes",
+				"apps/platform/internal/skill/admission/sources.go", "SourceType"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SkillSourceType"),
+		},
+		readers: []vocabularySource{
+			goConstEnum("apps/platform/internal/skill/discovery/trust.go", "sourceType"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {
