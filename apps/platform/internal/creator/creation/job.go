@@ -85,7 +85,7 @@ func allowedTools(toolCalls, maxToolCalls int, fetch, knowledge, searchLeft bool
 }
 
 func callTimeoutSeconds(deadline time.Time) (int, error) {
-	remaining := int(time.Until(deadline).Seconds()) - 5
+	remaining := int(math.Ceil(time.Until(deadline).Seconds())) - 5
 	if remaining < 1 {
 		return 0, ErrUnavailable
 	}
@@ -248,7 +248,7 @@ func (s *Service) cancelWhenSessionMoves(ctx context.Context, cancel context.Can
 				return
 			case <-tick.C:
 				current, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: a.SessionID, WorkspaceID: a.WorkspaceID})
-				if err != nil || State(current.State) != StateWorking || !live(current) {
+				if sessionMoved(current, err) {
 					cancel()
 					return
 				}
@@ -256,6 +256,13 @@ func (s *Service) cancelWhenSessionMoves(ctx context.Context, cancel context.Can
 		}
 	}()
 	return stopped
+}
+
+func sessionMoved(current gen.CreationSession, err error) bool {
+	if err != nil {
+		return errors.Is(err, pgx.ErrNoRows)
+	}
+	return State(current.State) != StateWorking || !live(current)
 }
 
 func (s *Service) stepRequest(a JobArgs, revision int64, e envelope, diagram *llmclient.GenerateDiagram) llmclient.CreationStepRequest {
@@ -550,8 +557,8 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			return "", false, err
 		}
 		r.Message = sentence
-		if retriesMissingOutput(*p, e.Limits, r.Reason) {
-			p.DraftRetries++
+		if retries := missingOutputRetries(e, r.Reason); retriesMissingOutput(retries, *p, e.Limits) {
+			*retries++
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "模型這一步沒有交出草稿，已自動再試一次。"})
 			p.PendingAction = ""
 			return StateQueued, true, nil
@@ -584,8 +591,18 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	return "", false, ErrInvalidCommand
 }
 
-func retriesMissingOutput(p Snapshot, l Limits, reason string) bool {
-	return (reason == "draft_missing" || reason == "brief_missing") && p.DraftRetries < 1 && canSpend(p, l)
+func missingOutputRetries(e *envelope, reason string) *int {
+	switch reason {
+	case "draft_missing":
+		return &e.Snapshot.DraftRetries
+	case "brief_missing":
+		return &e.BriefRetries
+	}
+	return nil
+}
+
+func retriesMissingOutput(retries *int, p Snapshot, l Limits) bool {
+	return retries != nil && *retries < 1 && canSpend(p, l)
 }
 
 func normalizeReply(r *llmclient.CreationStepResponse, diagramUploaded bool) {
@@ -808,19 +825,28 @@ func (o draftObjection) toPerson() string {
 
 func (s *Service) useTool(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *llmclient.CreationStepResponse) (State, bool, error) {
 	p := &e.Snapshot
-	if r.ToolIntent == nil || p.ToolCalls >= e.Limits.MaxToolCalls {
+	if r.ToolIntent == nil || !knownTool(r.ToolIntent.Kind) {
+		return "", false, ErrInvalidCommand
+	}
+	if p.ToolCalls >= e.Limits.MaxToolCalls {
 		return "", false, ErrLimit
 	}
 	p.ToolCalls++
 	switch r.ToolIntent.Kind {
-	case "search_catalog", "search_knowledge":
-		return s.searchCatalog(ctx, ws, p, r.ToolIntent)
 	case "fetch_url":
 		return s.holdFetch(p, r.ToolIntent.Query)
 	case "validate_draft":
 		return s.validateRequestedDraft(ctx, revision, e, r)
 	}
-	return "", false, ErrInvalidCommand
+	return s.searchCatalog(ctx, ws, p, r.ToolIntent)
+}
+
+func knownTool(kind string) bool {
+	switch kind {
+	case "search_catalog", "search_knowledge", "fetch_url", "validate_draft":
+		return true
+	}
+	return false
 }
 
 func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *Snapshot, intent *llmclient.CreationToolIntent) (State, bool, error) {

@@ -3,7 +3,6 @@ package creation
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"math"
@@ -159,9 +158,12 @@ func TestCallTimeoutSecondsFailsClosedWhenDeadlineNearlyPassed(t *testing.T) {
 	}
 }
 
-func TestAOneSecondCallTimeoutLeavesNoTimeOnceAnyTimeHasPassed(t *testing.T) {
-	if _, err := callTimeoutSeconds(time.Now().Add(time.Second + 5*time.Second - time.Nanosecond)); !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("err = %v, want ErrUnavailable", err)
+func TestTheModelIsGivenTheWholeConfiguredCallTimeout(t *testing.T) {
+	for _, configured := range []int{1, 90} {
+		got, err := callTimeoutSeconds(time.Now().Add(time.Duration(configured)*time.Second + 5*time.Second - time.Nanosecond))
+		if err != nil || got != configured {
+			t.Errorf("configured %ds: sent %d, err = %v", configured, got, err)
+		}
 	}
 }
 
@@ -514,8 +516,8 @@ func TestProposalRetriesOnceWhenTheModelSentNoBrief(t *testing.T) {
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &llmclient.CreationStepResponse{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
-	if err != nil || !next || state != "queued" || e.Snapshot.DraftRetries != 1 {
-		t.Fatalf("first empty brief must be retried: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
+	if err != nil || !next || state != "queued" || e.BriefRetries != 1 {
+		t.Fatalf("first empty brief must be retried: state=%q next=%v retries=%d err=%v", state, next, e.BriefRetries, err)
 	}
 	r = &llmclient.CreationStepResponse{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
 	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)

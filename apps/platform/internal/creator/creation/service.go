@@ -205,6 +205,7 @@ type envelope struct {
 	ActiveDeadline  time.Time   `json:"active_deadline"`
 	ExistingSkillID string      `json:"existing_skill_id,omitempty"`
 	PreviousDraft   *Draft      `json:"previous_draft,omitempty"`
+	BriefRetries    int         `json:"brief_retries,omitempty"`
 }
 type View struct {
 	ID        string    `json:"id"`

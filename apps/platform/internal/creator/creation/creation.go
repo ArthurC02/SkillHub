@@ -170,11 +170,7 @@ func (s *Service) startedConcurrently(ctx context.Context, ws identity.Workspace
 	if err != nil {
 		return View{}, ErrConflict
 	}
-	old, _ := decode(r)
-	if old.StartHash != key {
-		return View{}, ErrReplayMismatch
-	}
-	return view(r)
+	return resumeStart(r, key)
 }
 
 func addSpend(p *Snapshot, cost float64) {
@@ -646,7 +642,7 @@ func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, 
 		p.DuplicateAcknowledged = true
 		p.PendingAction = ""
 		p.PendingMaterialize = ""
-		if taken, collides := nameCollides(p.Draft.Skill.Name, p.Duplicates); collides && p.Draft != nil && p.Draft.ContentHash == c.ContentHash && len(p.Messages) < MaxMessages {
+		if taken, collides := draftNameTaken(*p, c.ContentHash); collides {
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("使用者仍要建立自己的版本，但草稿名稱「%s」與目錄裡那份相同，保存會被拒絕；請只改名稱（描述其差異），其餘內容不變，重新交出草稿。", taken)})
 			return stepQueued(), nil
 		}
@@ -667,6 +663,13 @@ func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, 
 		return settledIn(StateWaitingConfirmation), nil
 	}
 	return commandOutcome{materialize: kind}, nil
+}
+
+func draftNameTaken(p Snapshot, contentHash string) (string, bool) {
+	if p.Draft == nil || p.Draft.ContentHash != contentHash || len(p.Messages) >= MaxMessages {
+		return "", false
+	}
+	return nameCollides(p.Draft.Skill.Name, p.Duplicates)
 }
 
 func saveable(p Snapshot, contentHash string) bool {

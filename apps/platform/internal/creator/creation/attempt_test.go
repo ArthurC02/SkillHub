@@ -12,6 +12,7 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -320,5 +321,27 @@ func TestAnAttemptThatCannotBeJudgedFailsAndHandsTheTurnBack(t *testing.T) {
 	state, next := (&Service{}).concludeAttempt(context.Background(), JobArgs{}, liveRow(2), e, nil, ErrCreditFloor, false)
 	if state != StateWaitingInput || next || e.Snapshot.PendingAction != "" {
 		t.Fatalf("state = %s, next = %v, snapshot = %+v", state, next, e.Snapshot)
+	}
+}
+
+func TestOnlyASessionThatReallyMovedStopsTheModelCall(t *testing.T) {
+	session := func(state State, expires time.Duration) gen.CreationSession {
+		return gen.CreationSession{State: string(state), ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(expires), Valid: true}}
+	}
+	for _, c := range []struct {
+		name    string
+		current gen.CreationSession
+		err     error
+		want    bool
+	}{
+		{"still working", session(StateWorking, time.Hour), nil, false},
+		{"a read that failed", gen.CreationSession{}, errors.New("connection reset"), false},
+		{"the session is gone", gen.CreationSession{}, pgx.ErrNoRows, true},
+		{"cancelled", session(StateCancelled, time.Hour), nil, true},
+		{"expired", session(StateWorking, -time.Second), nil, true},
+	} {
+		if got := sessionMoved(c.current, c.err); got != c.want {
+			t.Errorf("%s: moved = %v, want %v", c.name, got, c.want)
+		}
 	}
 }

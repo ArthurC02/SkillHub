@@ -611,13 +611,13 @@ func TestDraftOutcomeClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 	}
 }
 
-func TestProposalToolIntentRequiresAToolIntent(t *testing.T) {
+func TestProposalToolIntentWithoutAToolBreaksTheSessionRules(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &llmclient.CreationStepResponse{Message: "go", Outcome: "tool_intent", Brief: "b"}
 	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
-	if !errors.Is(err, ErrLimit) || e.Snapshot.ToolCalls != 0 {
-		t.Fatalf("tool_intent without a payload should refuse before charging a call: toolCalls=%d err=%v", e.Snapshot.ToolCalls, err)
+	if !errors.Is(err, ErrInvalidCommand) || e.Snapshot.ToolCalls != 0 {
+		t.Fatalf("tool_intent without a payload breaks the session rules and charges nothing: toolCalls=%d err=%v", e.Snapshot.ToolCalls, err)
 	}
 }
 
@@ -632,13 +632,13 @@ func TestProposalToolIntentRefusesAtTheToolCallCeiling(t *testing.T) {
 	}
 }
 
-func TestProposalToolIntentRejectsAnUnknownKind(t *testing.T) {
+func TestProposalToolIntentRejectsAnUnknownKindBeforeChargingIt(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &llmclient.CreationStepResponse{Message: "go", Outcome: "tool_intent", Brief: "b", ToolIntent: &llmclient.CreationToolIntent{Kind: "bogus"}}
 	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
-	if !errors.Is(err, ErrInvalidCommand) || e.Snapshot.ToolCalls != 1 {
-		t.Fatalf("an unknown kind must still charge the call: toolCalls=%d err=%v", e.Snapshot.ToolCalls, err)
+	if !errors.Is(err, ErrInvalidCommand) || e.Snapshot.ToolCalls != 0 {
+		t.Fatalf("an unknown kind is refused before it is charged: toolCalls=%d err=%v", e.Snapshot.ToolCalls, err)
 	}
 }
 
@@ -881,7 +881,7 @@ func TestProposalRejectsAnUnknownOutcomeButKeepsTheRecordedReply(t *testing.T) {
 	}
 }
 
-func TestDraftRetryCounterIsSharedAcrossReasons(t *testing.T) {
+func TestEachMissingOutputReasonGetsItsOwnRetry(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{BudgetUSD: 1, SpentUSD: &zero}}
@@ -892,7 +892,11 @@ func TestDraftRetryCounterIsSharedAcrossReasons(t *testing.T) {
 	}
 	r2 := &llmclient.CreationStepResponse{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
 	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r2)
+	if err != nil || !next || state != StateQueued || e.BriefRetries != 1 || e.Snapshot.DraftRetries != 1 {
+		t.Fatalf("brief_missing gets its own retry: state=%q next=%v retries=%d/%d err=%v", state, next, e.Snapshot.DraftRetries, e.BriefRetries, err)
+	}
+	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 4, &e, r1)
 	if err != nil || next || state != StateWaitingInput || e.Snapshot.DraftRetries != 1 {
-		t.Fatalf("a different reason must not get its own retry: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
+		t.Fatalf("a reason already retried goes to the person: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
 	}
 }

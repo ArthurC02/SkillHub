@@ -630,3 +630,10 @@ func TestConfirmingADuplicateNeedsTheQuestion(t *testing.T) {
 		}
 	}
 }
+
+func TestConfirmingADuplicateWithNoDraftIsRefused(t *testing.T) {
+	p := Snapshot{PendingAction: "confirm_duplicate", PendingMaterialize: "finalize", Duplicates: []Reference{{SkillID: "dup"}}}
+	if _, err := (&Service{Materialize: materializer()}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: "confirm_duplicate", ContentHash: "h"}); !errors.Is(err, ErrInvalidCommand) {
+		t.Fatalf("err = %v, want ErrInvalidCommand", err)
+	}
+}
