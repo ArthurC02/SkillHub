@@ -31,7 +31,9 @@ func devDeployment() bool { return os.Getenv("DEV_LOGIN") == "1" }
 
 func cleanTestMode() bool { return os.Getenv("SKILLHUB_CLEAN_MODE") == "1" }
 
-const curatedTier = "curated"
+type curationTier string
+
+const curatedTier curationTier = "curated"
 
 var ErrContentNotCurated = errors.New("the clean test mode only runs curated material")
 
@@ -50,7 +52,7 @@ func (s *Service) requireCuratedContent(ctx context.Context, run gen.Run) error 
 	if !found {
 		return fmt.Errorf("%w, and this version's skill could not be found to check", ErrContentNotCurated)
 	}
-	if source.WorkspaceIsCatalog || (source.CurationTier == curatedTier && source.CuratedVersionIsThisOne) {
+	if source.WorkspaceIsCatalog || (curationTier(source.CurationTier) == curatedTier && source.CuratedVersionIsThisOne) {
 		return nil
 	}
 	versionID := pgconv.UUIDString(run.SkillVersionID)
@@ -131,7 +133,7 @@ func howToRelease(versionID string) string {
 }
 
 func describeContentSource(source ContentSource) string {
-	if source.CurationTier == curatedTier {
+	if curationTier(source.CurationTier) == curatedTier {
 		return "curated at a different version than the one being run"
 	}
 	return fmt.Sprintf("outside the public catalogue with curation_tier %q", source.CurationTier)

@@ -247,6 +247,20 @@ func TestParseFiltersAgentRuntime(t *testing.T) {
 	}
 }
 
+func TestParseFiltersTierAcceptsOnlyATierASkillCanBeStoredWith(t *testing.T) {
+	for _, v := range []string{"curated", "indexed"} {
+		f, err := parseFilters(httptest.NewRequest(http.MethodGet, "/?q=x&tier="+v, nil))
+		if err != nil || f.CurationTier == nil || *f.CurationTier != v || !f.active() {
+			t.Fatalf("tier=%s: %+v (%v), want it in the filter set", v, f, err)
+		}
+	}
+	for _, v := range []string{"external", "bogus"} {
+		if _, err := parseFilters(httptest.NewRequest(http.MethodGet, "/?q=x&tier="+v, nil)); err == nil {
+			t.Errorf("tier=%s accepted; no skill is stored with it, so the filter could only ever match nothing", v)
+		}
+	}
+}
+
 func TestParseFiltersRejectsExplicitEmptyValues(t *testing.T) {
 	for _, name := range []string{"script", "validation", "agent", "tier"} {
 		if _, err := parseFilters(httptest.NewRequest(http.MethodGet, "/?"+name+"=", nil)); err == nil {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -159,10 +160,6 @@ func (f searchFilters) active() bool {
 		f.CurationTier != nil || f.Category != nil
 }
 
-var curationTierValues = map[string]bool{
-	string(TierCurated): true, string(TierIndexed): true,
-}
-
 var agentRuntimeValues = map[string]bool{
 	"native": true, "transpiled": true, "failed": true, "unverified": true,
 }
@@ -214,7 +211,7 @@ func parseFilters(r *http.Request) (searchFilters, error) {
 		out.AgentRuntime = &v
 	}
 	if v := q.Get("tier"); v != "" {
-		if !curationTierValues[v] {
+		if !slices.Contains(AllCurationTiers(), Tier(v)) {
 			return searchFilters{}, errors.New(`tier must be "curated" or "indexed"`)
 		}
 		out.CurationTier = &v

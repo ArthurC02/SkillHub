@@ -271,6 +271,20 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SetSkillRedistributionReqValue"),
 		},
 	},
+	{
+		name: "skill curation tier",
+		sources: []vocabularySource{
+			sqlColumnCheck("skills", "curation_tier"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/discovery/tier.go", "AllCurationTiers",
+				"apps/platform/internal/skill/discovery/tier.go", "Tier"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "BrowseCatalogTier"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "PublicSearchSkillsTier"),
+		},
+		readers: []vocabularySource{
+			goConstEnum("apps/platform/internal/trial/execution/schedule.go", "curationTier"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {

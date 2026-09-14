@@ -433,7 +433,7 @@ func mustTestUUID(s string) pgtype.UUID {
 }
 
 func curatedSource() ContentSource {
-	return ContentSource{CurationTier: curatedTier, CuratedVersionIsThisOne: true}
+	return ContentSource{CurationTier: string(curatedTier), CuratedVersionIsThisOne: true}
 }
 
 func TestTheContentSourceGateDoesNothingOutsideTheCleanTestMode(t *testing.T) {
@@ -476,14 +476,14 @@ func TestTheCleanTestModeOnlyRunsCuratedMaterial(t *testing.T) {
 		},
 		{
 			what: "a curated verdict on some other version",
-			read: stubContentSource(ContentSource{CurationTier: curatedTier}, true, nil),
+			read: stubContentSource(ContentSource{CurationTier: string(curatedTier)}, true, nil),
 
 			wantSaid: []string{"different version"},
 		},
 		{
 			what:     "an ordinary imported skill",
 			read:     stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil),
-			wantSaid: []string{"indexed", "catalogue", curatedTier, "sandbox"},
+			wantSaid: []string{"indexed", "catalogue", string(curatedTier), "sandbox"},
 		},
 		{
 			what:     "a version whose skill is gone",

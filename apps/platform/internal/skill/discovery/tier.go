@@ -10,6 +10,10 @@ const (
 	TierExternal Tier = "external"
 )
 
+func AllCurationTiers() []Tier {
+	return []Tier{TierCurated, TierIndexed}
+}
+
 type TierDisplay struct {
 	Badge          string
 	TrustIndicator string
