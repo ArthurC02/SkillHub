@@ -110,6 +110,18 @@ func TestOnlyProposalsThePlatformCanActOnAreStored(t *testing.T) {
 	}
 }
 
+func TestEveryCategoryButMCPIsOneThePlatformCanActOn(t *testing.T) {
+	categories := AllSuggestionCategories()
+	if len(categories) != 5 {
+		t.Fatalf("categories = %d, want the 5 evaluation_suggestions.category allows", len(categories))
+	}
+	for _, c := range categories {
+		if got, want := c.actionable(), c != SuggestionMCP; got != want {
+			t.Errorf("%q actionable = %v, want %v", c, got, want)
+		}
+	}
+}
+
 func TestSuggestionEvidenceIsAlwaysMintedByThePlatform(t *testing.T) {
 	refs := []EvidenceRef{
 		{Kind: KindTraceEvent, TraceEventID: eventID, Excerpt: "tool_call bash exited 1", Available: true},

@@ -23,10 +23,6 @@ const (
 	DecisionRejected = "rejected"
 )
 
-var suggestionCategories = map[string]bool{
-	"skill": true, "runtime": true, "tool": true, "dataset": true,
-}
-
 const (
 	suggestTimeout      = 135 * time.Second // budget-over: evaluate.LLM_TIMEOUT_SECONDS
 	maxDigestChars      = 20000             // one-number: suggestMaxDigestChars
@@ -149,7 +145,7 @@ func worthSuggesting(v verdict) bool {
 }
 
 func storable(p llmclient.ImprovementProposal) bool {
-	if !suggestionCategories[p.Category] {
+	if !SuggestionCategory(p.Category).actionable() {
 		return false
 	}
 	if strings.TrimSpace(p.Problem) == "" || strings.TrimSpace(p.ExpectedImpact) == "" {

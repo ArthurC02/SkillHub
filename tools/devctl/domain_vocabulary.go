@@ -200,6 +200,17 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/foundation/integration/llmclient/client.go", "CostSource"),
 		},
 	},
+	{
+		name: "evaluation suggestion category",
+		sources: []vocabularySource{
+			sqlColumnCheck("evaluation_suggestions", "category"),
+			goConstEnum("apps/platform/internal/trial/improvement/suggestion.go", "SuggestionCategory"),
+			goListedConstEnum(
+				"apps/platform/internal/trial/improvement/suggestion.go", "AllSuggestionCategories",
+				"apps/platform/internal/trial/improvement/suggestion.go", "SuggestionCategory"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "ImprovementSuggestionCategory"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {

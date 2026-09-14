@@ -1,0 +1,23 @@
+package eval
+
+type SuggestionCategory string
+
+const (
+	SuggestionSkill   SuggestionCategory = "skill"
+	SuggestionRuntime SuggestionCategory = "runtime"
+	SuggestionMCP     SuggestionCategory = "mcp"
+	SuggestionTool    SuggestionCategory = "tool"
+	SuggestionDataset SuggestionCategory = "dataset"
+)
+
+func AllSuggestionCategories() []SuggestionCategory {
+	return []SuggestionCategory{SuggestionSkill, SuggestionRuntime, SuggestionMCP, SuggestionTool, SuggestionDataset}
+}
+
+func (c SuggestionCategory) actionable() bool {
+	switch c {
+	case SuggestionSkill, SuggestionRuntime, SuggestionTool, SuggestionDataset:
+		return true
+	}
+	return false
+}
