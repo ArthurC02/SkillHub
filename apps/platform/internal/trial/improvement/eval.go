@@ -2,7 +2,6 @@ package eval
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -485,31 +484,20 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 	); err != nil {
 		return gen.Evaluation{}, err
 	}
-	if current, err := q.GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
-		RunID: m.run.ID, WorkspaceID: m.run.WorkspaceID,
-	}); err == nil && Status(current.Status).AwaitsTheJudge() {
-		return gen.Evaluation{}, errEvaluationInProgress
-	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return gen.Evaluation{}, err
-	}
-
-	if _, err := q.SupersedeCurrentEvaluation(ctx, gen.SupersedeCurrentEvaluationParams{
-		RunID: m.run.ID, WorkspaceID: m.run.WorkspaceID,
-	}); err != nil {
+	if err := supersedeCurrent(ctx, tx, q, m.run.WorkspaceID, m.run.ID); err != nil {
 		return gen.Evaluation{}, err
 	}
 
 	declaredModel, declaredPromptVersion := s.declaredJudge()
-	ev, err := q.CreateEvaluation(ctx, gen.CreateEvaluationParams{
-		WorkspaceID:        m.run.WorkspaceID,
-		RunID:              m.run.ID,
+	next := startEvaluation(m.run.WorkspaceID, m.run.ID, EvaluationStarted{
 		JudgeModel:         strPtr(declaredModel),
 		JudgePromptVersion: strPtr(declaredPromptVersion),
 		RubricVersion:      strPtr(rubricVersionOf(m.rubric)),
 	})
-	if err != nil {
+	if err := saveEvaluation(ctx, tx, next); err != nil {
 		return gen.Evaluation{}, err
 	}
+	ev := next.row
 	if err := trace.RecordOrchestratorEvent(ctx, tx, m.run.WorkspaceID, m.run.ID, m.attempt,
 		trace.TypeEvaluationStarted, "ok", map[string]any{
 			"evaluation_id":        pgconv.UUIDString(ev.ID),
@@ -524,15 +512,6 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 }
 
 func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v verdict) error {
-	results, err := json.Marshal(v.results)
-	if err != nil {
-		return err
-	}
-	findings, err := json.Marshal(nonNilFindings(v.findings))
-	if err != nil {
-		return err
-	}
-
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -540,21 +519,7 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
 
-	if _, err := q.CompleteEvaluation(ctx, gen.CompleteEvaluationParams{
-		ID: ev.ID, WorkspaceID: ev.WorkspaceID,
-		Overall:               string(v.overall),
-		Summary:               strPtr(v.summary),
-		CriterionResults:      results,
-		DeterministicFindings: findings,
-		JudgeModel:            strPtr(v.model),
-		JudgePromptVersion:    strPtr(v.promptVersion),
-		RubricVersion:         strPtr(v.rubricVersion),
-		EvidenceComplete:      v.evidenceComplete,
-		CostUsd:               numeric(v.costUSD),
-		CostSource:            costSource(v.costUSD),
-	}); errors.Is(err, pgx.ErrNoRows) {
-		return errEvaluationSettled
-	} else if err != nil {
+	if err := settleEvaluation(ctx, tx, q, ev, func(e *Evaluation) { e.Complete(v) }); err != nil {
 		return err
 	}
 
@@ -591,10 +556,6 @@ func (s *Service) fail(
 
 	const summary = "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。"
 	reason := fmt.Sprintf("the task-effect judgement could not be produced: %v", cause)
-	encoded, err := json.Marshal(nonNilFindings(findings))
-	if err != nil {
-		return err
-	}
 
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -603,12 +564,9 @@ func (s *Service) fail(
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
 
-	if _, err := q.FailEvaluation(ctx, gen.FailEvaluationParams{
-		ID: ev.ID, WorkspaceID: ev.WorkspaceID,
-		Summary:               strPtr(summary),
-		DeterministicFindings: encoded,
-		EvidenceComplete:      evidenceComplete,
-	}); errors.Is(err, pgx.ErrNoRows) {
+	if err := settleEvaluation(ctx, tx, q, ev, func(e *Evaluation) {
+		e.Fail(failure{summary: summary, findings: findings, evidenceComplete: evidenceComplete})
+	}); errors.Is(err, errEvaluationSettled) {
 		return nil
 	} else if err != nil {
 		return err

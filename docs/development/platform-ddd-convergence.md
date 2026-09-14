@@ -115,11 +115,12 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 | 使用者看得到的句子 | 寫出它的 handler，不是領域 sentinel | `messages_test.go`（`trial/design`、`trial/execution`） | 同套件的 AST 測試：`errors.New` 不得帶漢字 |
 | Skill 的存取限制是否生效 | `skill/library/access.go` 的 `AccessRestriction`；不能 import owner 的 context 從組裝層收到 `AccessRestricted` 判定，不自己判斷 | `access_test.go` | — |
 | 一個 Skill 能不能當參考 | `skill/admission/generate.go` 的 `referenceable` | `generate_test.go` | — |
+| 評估的開始與取代、結算、回饋、建議決定 | `trial/improvement/evaluation.go` 的 `Evaluation` aggregate：命令記下事件或拒絕事件，存回只在 `evaluation_store.go` | `evaluation_test.go` | 事件名稱：`outbox` 套件的 conformance test 對帳 Go 常數 ↔ 最新換上 CHECK 的 migration ↔ 事件目錄 §3 |
 
 **「機器對帳」欄有兩種東西，不要混為一談：**
 
 - 前四列是 `devctl automation-check` 的檢查器，**Go 與 SQL 分岔時 CI 紅**。`domain-vocabulary` 對帳 Go 常數 ↔ DB `CHECK (… IN (…))` ↔ Postgres enum ↔ 契約 enum，清單是 `tools/devctl/domain_vocabulary.go` 的 `domainVocabularies`，上表只列範本（SQL 沒有 CHECK 的詞彙以 `absent` 寫明）。它同時守覆蓋面：migration 裡每一個 `CHECK (… IN (…))` 詞彙要嘛接進對帳，要嘛在 `unreconciledVocabularies` 寫下為什麼不接（§5.1、§5.6），兩者皆無或理由已經過期都紅；`run-status-sql` 對帳 Go 的 `successors` ↔ migration 0032 的 trigger 轉移列 ↔ 每一處終態 `IN` 清單。
-- 其餘各列只有**同套件的測試**，沒有跨 Go／SQL 的對帳——SQL 側要嘛沒有第二份，要嘛只有擋空白字串的 `CHECK`（存取限制，migration 0023）。
+- 其餘各列只有**同套件的測試**，沒有跨 Go／SQL 的對帳——SQL 側要嘛沒有第二份，要嘛只有擋空白字串的 `CHECK`（存取限制，migration 0023）。評估那一列的規則同樣只有同套件的測試；它的事件名稱另由 `outbox` 套件自己的測試對帳。
 
 **閘門順序不在這張表裡，它刻意留在 `create()` 的呼叫序。** 順序決定哪個 reason 先浮出來，而 reason 直接餵 `metrics.RunRefused` 與 `audit.ActionRunRefused`，所以改順序就是改對外行為（§9）。
 
@@ -276,42 +277,37 @@ git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStar
 
 ## 6 待做
 
-[ADR-083](../adr/ADR-083-aggregates-own-their-rules-in-go-types.md) 的四件，依序做。三個 aggregate 共用一個形狀：狀態不匯出、方法是純的並回報拒絕理由、載入是吃呼叫端交易的套件函式並以列鎖讀出、存回只有一處呼叫 sqlc；SQL 的原子性守衛（C2）全部保留；aggregate 不跨 context。
+[ADR-084](../adr/ADR-084-aggregates-speak-in-domain-events.md) 的其餘三件，依序做。Evaluation 已經照這個形狀改完，照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）：
 
-### 6.1 丙-244 Evaluation
+- 狀態不匯出，只有唯讀存取。命令不回傳值、不帶 `context`、不做 I/O：成立就改狀態並記下領域事件，不成立就只記一則帶理由的拒絕事件。
+- 載入是吃呼叫端交易的套件函式並以列鎖讀出；存回只有一處，同交易寫狀態並把事件寫進 outbox；拒絕不存回。
+- Aggregate 之間只用事件：outbox → Dispatcher 的訂閱 → 訂閱者的 Mailbox（River 佇列）→ 消化方法。
+- 測試不連資料庫，只斷言唯讀狀態與事件。SQL 的原子性守衛（C2）全部保留。
+- 新事件照[事件目錄](../../contracts/events/domain-events.md) §4 規則 4：目錄、outbox 常數、新 migration 的值域檢查、producer 同一個 commit。
 
-- **GOAL**：結算、失敗、取代、回饋與建議決定的規則在 Go 有唯一的定義與不連資料庫的測試，寫入路徑不再各自判斷。
-- **DISCOVER**：
-  ```
-  git grep -nE "CompleteEvaluation|FailEvaluation|SupersedeCurrentEvaluation|CreateEvaluation\(|SetEvaluationFeedback|DecideSuggestion|MarkSuggestionsApplied|CreateEvaluationSuggestion" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
-  ```
-- **EDIT**：`trial/improvement` 內一個 aggregate 型別包住評估列；方法決定能否結算、失敗、收回饋，建議能否改決定（比照 `status.go` 補建議決定的轉移函式）。`begin`、`complete`、`fail`、回饋與決定的 handler 只載入、呼叫方法、寫入。
-- **PROVE**：每條規則弄壞一次，不連資料庫的測試紅；寫入路徑改回不經過方法，`aggregate_test.go` 或整合測試紅。
-- **STOP-IF**：failed 的評估要不要跟 completed 一樣凍結（`evaluations_immutable` 只凍結 completed）——照現況釘住，送 `05`。
-
-### 6.2 丙-245 Skill
+### 6.1 丙-245 Skill
 
 - **GOAL**：治理寫入與版本建立的規則屬於一個型別；兩條版本建立路徑經過同一個方法；「generated 不能改寫」在寫入前決定。
 - **DISCOVER**：
   ```
   git grep -nE "CreateSkill\(|CreateSkillVersion\(|SoftDeleteSkill|UpdateSkillSummary|SetSkillCategory|TakedownSkill|SetSkillRedistribution|SetSkillAccessRestriction|SetSkillTakedown|PurgeSkillsByID" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
   ```
-- **EDIT**：先補 `skill/discovery/redistribution.go` 寫入規則的特徵化測試（允許值、授權佐證、原值 generated 時的回滾）。再在 `skill/library` 加 aggregate：以列鎖載入、方法決定、一處存回；匯入與 Fork 共用建立版本的方法（Fork 不重跑 manifest 驗證，但走同一個寫入點）。
-- **PROVE**：特徵化測試改寫前後一字不改全綠；每條治理規則弄壞一次紅；把 Fork 改回直接呼叫 sqlc，守寫入點的測試紅。
+- **EDIT**：先補 `skill/discovery/redistribution.go` 寫入規則的特徵化測試（允許值、授權佐證、原值 generated 時的回滾）。再在 `skill/library` 加 aggregate：以列鎖載入、命令決定並記下事件、一處存回；匯入與 Fork 共用建立版本的命令（Fork 不重跑 manifest 驗證，但走同一個寫入點）。「版本由這些建議建成」是 Skill 的事件，Evaluation 的 Mailbox 消化它、標記建議已套用，取代 eval 在另一個交易直接寫。
+- **PROVE**：特徵化測試改寫前後一字不改全綠；每條治理規則弄壞一次紅；把 Fork 改回直接呼叫 sqlc，守寫入點的測試紅；Mailbox 不消化事件，套用建議的整合測試紅。
 - **STOP-IF**：把 generated 的檢查提前會改變回應碼或鎖的時點。存取限制的原因碼詞彙不在本項，留在 `skill/discovery`。
 
-### 6.3 丙-246 Run
+### 6.2 丙-246 Run
 
 - **GOAL**：取消、attempt 的開始與結束、物件授權、狀態轉移的決定屬於一個型別，driver 只執行。
 - **DISCOVER**：
   ```
   git grep -nE "CreateRun\(|TransitionRun|RequestRunCancel|SetRunProvider|SetRunCleanupStatus|MarkRunArtifactsTruncated|InsertRunStatusTransition|CreateRunAttempt|SetAttemptProviderRunID|FinishRunAttempt|SetRunAttemptObjectGrantsExpiry|CloseUnissuedRunAttemptGrants" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
   ```
-- **EDIT**：先補三條特徵化測試：派送前就失敗時未發的物件授權也會關掉、同一個 attempt 結束兩次的現況、取消已結束的 Run。再加 aggregate（含 attempt 與物件授權）；`statemachine.go` 的 `successors` 保留原名與原檔，`run-status-sql` 以 AST 讀它。
+- **EDIT**：先補三條特徵化測試：派送前就失敗時未發的物件授權也會關掉、同一個 attempt 結束兩次的現況、取消已結束的 Run。再加 aggregate（含 attempt 與物件授權），命令記下事件，既有的 run 事件改由 aggregate 記下、wire 名稱不變；`statemachine.go` 的 `successors` 保留原名與原檔，`run-status-sql` 以 AST 讀它。
 - **PROVE**：`statemachine_test.go`、`grantstate_test.go` 與 `run-status-sql` 照舊綠；每個新方法的規則弄壞一次紅。
 - **STOP-IF**：Go 補上的判斷會擋掉今天走得通的流程。
 
-### 6.4 丙-247 creation 的兩個具名概念
+### 6.3 丙-247 creation 的兩個具名概念
 
 - **GOAL**：「還能不能再加一則訊息」只有一個定義；`PendingAction` 的值是具名常數。
 - **DISCOVER**：

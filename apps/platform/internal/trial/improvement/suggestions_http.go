@@ -144,44 +144,45 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.Decision != DecisionAccepted && body.Decision != DecisionRejected {
-		httpx.WriteError(w, http.StatusBadRequest,
-			"`decision` must be \"accepted\" or \"rejected\"")
+	if !body.Decision.chosen() {
+		httpx.WriteError(w, http.StatusBadRequest, errNotAChoice.Error())
 		return
 	}
 
-	q := h.Svc.queries()
-	current, err := q.GetEvaluationSuggestion(r.Context(), gen.GetEvaluationSuggestionParams{
-		ID: id, WorkspaceID: ws.ID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
+	row, err := h.Svc.Decide(r.Context(), ws.ID, id, body.Decision)
+	switch {
+	case errors.Is(err, ErrNotFound):
 		httpx.WriteError(w, http.StatusNotFound, "suggestion not found")
-		return
-	}
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "suggestion lookup failed")
-		return
-	}
-
-	if current.AppliedSkillVersionID.Valid && body.Decision != DecisionAccepted {
-		httpx.WriteError(w, http.StatusConflict,
-			"this suggestion has already been built into a skill version, so its acceptance "+
-				"cannot be withdrawn; create a further version to change the package again")
-		return
-	}
-
-	row, err := q.DecideSuggestion(r.Context(), gen.DecideSuggestionParams{
-		Decision: string(body.Decision), ID: id, WorkspaceID: ws.ID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		httpx.WriteError(w, http.StatusNotFound, "suggestion not found")
-		return
-	}
-	if err != nil {
+	case errors.Is(err, errAcceptanceIsFinal):
+		httpx.WriteError(w, http.StatusConflict, err.Error())
+	case err != nil:
 		httpx.WriteError(w, http.StatusInternalServerError, "decision could not be recorded")
-		return
+	default:
+		httpx.WriteJSON(w, http.StatusOK, toSuggestionView(row))
 	}
-	httpx.WriteJSON(w, http.StatusOK, toSuggestionView(row))
+}
+
+func (s *Service) Decide(
+	ctx context.Context, workspaceID, suggestionID pgtype.UUID, to Decision,
+) (gen.EvaluationSuggestion, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return gen.EvaluationSuggestion{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	e, err := loadEvaluationOfSuggestion(ctx, s.queries().WithTx(tx), workspaceID, suggestionID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.EvaluationSuggestion{}, ErrNotFound
+	}
+	if err != nil {
+		return gen.EvaluationSuggestion{}, err
+	}
+	e.Decide(suggestionID, to)
+	if err := saveUnlessRefused(ctx, tx, e); err != nil {
+		return gen.EvaluationSuggestion{}, err
+	}
+	return e.suggestions[suggestionID], tx.Commit(ctx)
 }
 
 func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {

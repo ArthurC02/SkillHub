@@ -48,6 +48,16 @@ RETURNING *;
 SELECT * FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL;
 
+-- name: LockCurrentEvaluation :one
+SELECT * FROM evaluations
+WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL
+FOR UPDATE;
+
+-- name: LockEvaluation :one
+SELECT * FROM evaluations
+WHERE id = $1 AND workspace_id = $2
+FOR UPDATE;
+
 -- name: RecordEvaluationModelUsage :exec
 INSERT INTO evaluation_model_usage (
     evaluation_id, workspace_id, operation, model, prompt_version,
@@ -95,6 +105,11 @@ ORDER BY created_at, id;
 -- name: GetEvaluationSuggestion :one
 SELECT * FROM evaluation_suggestions
 WHERE id = $1 AND workspace_id = $2;
+
+-- name: LockEvaluationSuggestion :one
+SELECT * FROM evaluation_suggestions
+WHERE id = $1 AND workspace_id = $2
+FOR UPDATE;
 
 -- name: DecideSuggestion :one
 UPDATE evaluation_suggestions SET

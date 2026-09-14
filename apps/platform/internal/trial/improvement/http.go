@@ -226,19 +226,24 @@ func (s *Service) Revisions(ctx context.Context, workspaceID, runID pgtype.UUID)
 func (s *Service) SetFeedback(
 	ctx context.Context, workspaceID, runID pgtype.UUID, helpful bool, comment string,
 ) (gen.Evaluation, error) {
-	current, err := s.Current(ctx, workspaceID, runID)
+	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return gen.Evaluation{}, err
 	}
+	defer func() { _ = tx.Rollback(ctx) }()
 
-	var commentPtr *string
-	if comment != "" {
-		commentPtr = &comment
+	current, err := loadCurrentEvaluation(ctx, s.queries().WithTx(tx), workspaceID, runID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.Evaluation{}, ErrNotFound
 	}
-	return s.queries().SetEvaluationFeedback(ctx, gen.SetEvaluationFeedbackParams{
-		ID: current.ID, WorkspaceID: workspaceID,
-		FeedbackHelpful: &helpful, FeedbackComment: commentPtr,
-	})
+	if err != nil {
+		return gen.Evaluation{}, err
+	}
+	current.RecordFeedback(helpful, comment)
+	if err := saveUnlessRefused(ctx, tx, current); err != nil {
+		return gen.Evaluation{}, err
+	}
+	return current.row, tx.Commit(ctx)
 }
 
 func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Evaluation) (evaluationView, error) {

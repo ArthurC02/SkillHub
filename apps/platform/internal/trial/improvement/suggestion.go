@@ -33,3 +33,5 @@ const (
 func AllDecisions() []Decision {
 	return []Decision{DecisionPending, DecisionAccepted, DecisionRejected}
 }
+
+func (d Decision) chosen() bool { return d == DecisionAccepted || d == DecisionRejected }

@@ -19,7 +19,9 @@ func fullyWired(t *testing.T) *Dispatcher {
 		On("evaluation", noopHandler, RunSucceeded, RunFailed).
 		Ignore("no consumer in this process", RunQueued, RunProvisioning, RunPreparing,
 			RunRunning, RunEvaluating, RunCancelled, RunTimedOut,
-			RunCleanupCleaned, RunCleanupFailed)
+			RunCleanupCleaned, RunCleanupFailed,
+			EvaluationStarted, EvaluationSuperseded, EvaluationCompleted,
+			EvaluationFailed, EvaluationFeedbackRecorded, EvaluationSuggestionDecided)
 	if err := d.Validate(); err != nil {
 		t.Fatalf("a fully wired dispatcher must validate: %v", err)
 	}

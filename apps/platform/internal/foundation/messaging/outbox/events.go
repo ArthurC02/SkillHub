@@ -77,7 +77,17 @@ const (
 )
 
 const (
-	AggregateRun = "run"
+	EvaluationStarted           = "evaluation.started"
+	EvaluationSuperseded        = "evaluation.superseded"
+	EvaluationCompleted         = "evaluation.completed"
+	EvaluationFailed            = "evaluation.failed"
+	EvaluationFeedbackRecorded  = "evaluation.feedback_recorded"
+	EvaluationSuggestionDecided = "evaluation.suggestion_decided"
+)
+
+const (
+	AggregateRun        = "run"
+	AggregateEvaluation = "evaluation"
 
 	EventVersion1 = int32(1)
 )
@@ -94,6 +104,12 @@ var EventTypes = []string{
 	RunTimedOut,
 	RunCleanupCleaned,
 	RunCleanupFailed,
+	EvaluationStarted,
+	EvaluationSuperseded,
+	EvaluationCompleted,
+	EvaluationFailed,
+	EvaluationFeedbackRecorded,
+	EvaluationSuggestionDecided,
 }
 
 func StatusEvent(status string) (string, error) {

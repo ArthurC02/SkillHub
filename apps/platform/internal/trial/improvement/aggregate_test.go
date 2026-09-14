@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -540,4 +541,63 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 				derefString(got.RubricVersion))
 		}
 	})
+}
+
+func TestEveryEvaluationCommandLeavesItsEventInTheOutbox(t *testing.T) {
+	s := &Service{Pool: requireEvalDB(t)}
+	m := seedRun(t, s.Pool)
+	ctx := context.Background()
+
+	first := beginAndComplete(t, s, m, aVerdict("first", OverallMet))
+	second := beginAndComplete(t, s, m, aVerdict("second", OverallNotMet))
+	if _, err := s.SetFeedback(ctx, m.run.WorkspaceID, m.run.ID, true, "useful"); err != nil {
+		t.Fatalf("set feedback: %v", err)
+	}
+	suggestion, err := s.queries().CreateEvaluationSuggestion(ctx, gen.CreateEvaluationSuggestionParams{
+		WorkspaceID: m.run.WorkspaceID, EvaluationID: second.ID, Category: string(SuggestionSkill),
+		Problem: "the steps are vague", Evidence: []byte(`[]`), TargetPath: "SKILL.md",
+		ProposedContent: "clearer steps", ExpectedImpact: "fewer retries",
+	})
+	if err != nil {
+		t.Fatalf("seed suggestion: %v", err)
+	}
+	if _, err := s.Decide(ctx, m.run.WorkspaceID, suggestion.ID, DecisionAccepted); err != nil {
+		t.Fatalf("decide: %v", err)
+	}
+	if err := s.complete(ctx, m, second, aVerdict("a refused second opinion", OverallMet)); !errors.Is(err, errEvaluationSettled) {
+		t.Fatalf("re-completing: want errEvaluationSettled, got %v", err)
+	}
+
+	rows, err := s.Pool.Query(ctx, `
+		SELECT event_type, aggregate_id FROM outbox_events
+		WHERE correlation_id = $1 AND aggregate_type = 'evaluation'`, m.run.ID)
+	if err != nil {
+		t.Fatalf("read outbox: %v", err)
+	}
+	defer rows.Close()
+	revision := map[pgtype.UUID]string{first.ID: "first", second.ID: "second"}
+	got := map[string]int{}
+	for rows.Next() {
+		var eventType string
+		var aggregateID pgtype.UUID
+		if err := rows.Scan(&eventType, &aggregateID); err != nil {
+			t.Fatalf("scan outbox: %v", err)
+		}
+		got[eventType+" of the "+revision[aggregateID]]++
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read outbox: %v", err)
+	}
+	want := map[string]int{
+		"evaluation.started of the first":             1,
+		"evaluation.completed of the first":           1,
+		"evaluation.superseded of the first":          1,
+		"evaluation.started of the second":            1,
+		"evaluation.completed of the second":          1,
+		"evaluation.feedback_recorded of the second":  1,
+		"evaluation.suggestion_decided of the second": 1,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("outbox events:\n got  %v\n want %v", got, want)
+	}
 }

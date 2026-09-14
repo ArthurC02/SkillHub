@@ -129,7 +129,10 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		Ignore("terminal with nothing to judge: the run was stopped before it could produce what the criteria are about, so evaluation skips it by design",
 			outbox.RunCancelled, outbox.RunTimedOut).
 		Ignore("cleanup outcome is already recorded on the run row and alerted on through metrics; nothing in this process reacts to it",
-			outbox.RunCleanupCleaned, outbox.RunCleanupFailed)
+			outbox.RunCleanupCleaned, outbox.RunCleanupFailed).
+		Ignore("evaluation facts: no aggregate reacts to them yet, and every reader answers from the evaluation's own rows",
+			outbox.EvaluationStarted, outbox.EvaluationSuperseded, outbox.EvaluationCompleted,
+			outbox.EvaluationFailed, outbox.EvaluationFeedbackRecorded, outbox.EvaluationSuggestionDecided)
 	if err := set.Events.Validate(); err != nil {
 		return nil, fmt.Errorf("outbox dispatch wiring: %w", err)
 	}
