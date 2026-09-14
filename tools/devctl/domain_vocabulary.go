@@ -66,11 +66,20 @@ func goListedConstEnum(listPath, listName, constPath, constType string) vocabula
 	}
 }
 
-func sqlCheckIn(path, column string) vocabularySource {
+func sqlColumnCheck(table, column string) vocabularySource {
+	key := table + "." + column
 	return vocabularySource{
-		label: fmt.Sprintf("%s (CHECK on %s)", path, column),
+		label: fmt.Sprintf("db/migrations (CHECK on %s)", key),
 		read: func(root string) (map[string]bool, error) {
-			return sqlCheckValues(filepath.Join(root, filepath.FromSlash(path)), column)
+			vocabularies, err := migrationVocabularies(root)
+			if err != nil {
+				return nil, err
+			}
+			values, declared := vocabularies[key]
+			if !declared {
+				return nil, fmt.Errorf("no migration leaves a CHECK listing the values of %s; the constraint moved or the column was dropped", key)
+			}
+			return values, nil
 		},
 	}
 }
@@ -109,7 +118,7 @@ var domainVocabularies = []domainVocabulary{
 	{
 		name: "evaluation status",
 		sources: []vocabularySource{
-			sqlCheckIn("db/migrations/0024_evaluation.sql", "status"),
+			sqlColumnCheck("evaluations", "status"),
 			goConstEnum("apps/platform/internal/trial/improvement/status.go", "Status"),
 			goListedConstEnum(
 				"apps/platform/internal/trial/improvement/status.go", "AllStatuses",
@@ -119,7 +128,7 @@ var domainVocabularies = []domainVocabulary{
 	{
 		name: "run attempt object grant state",
 		sources: []vocabularySource{
-			sqlCheckIn("db/migrations/0050_run_attempt_object_grant_expiry.sql", "object_grants_state"),
+			sqlColumnCheck("run_attempts", "object_grants_state"),
 			goConstEnum("apps/platform/internal/trial/execution/grantstate.go", "ObjectGrantState"),
 			goListedConstEnum(
 				"apps/platform/internal/trial/execution/grantstate.go", "AllObjectGrantStates",
@@ -274,17 +283,97 @@ func compositeIdentifiers(path, listName string, expression ast.Expr) ([]string,
 	return names, nil
 }
 
-func sqlCheckValues(path, column string) (map[string]bool, error) {
-	raw, err := os.ReadFile(path)
+var (
+	migrationTablePattern  = regexp.MustCompile(`(?i)\b(?:CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?|ALTER\s+TABLE(?:\s+IF\s+EXISTS)?(?:\s+ONLY)?)\s+(\w+)`)
+	migrationCheckPattern  = regexp.MustCompile(`(?i)\bCHECK\s*\(\s*(?:(\w+)\s+IS\s+NULL\s+OR\s+)?(\w+)\s+IN\s*\(([^)]*)\)`)
+	migrationDropPattern   = regexp.MustCompile(`(?i)\bDROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?(\w+)`)
+	migrationRenamePattern = regexp.MustCompile(`(?i)\bRENAME\s+COLUMN\s+(\w+)\s+TO\s+(\w+)`)
+)
+
+type migrationStatement struct {
+	at   int
+	kind string
+	args []string
+}
+
+func migrationVocabularies(root string) (map[string]map[string]bool, error) {
+	paths, err := filepath.Glob(filepath.Join(root, "db", "migrations", "*.sql"))
 	if err != nil {
 		return nil, err
 	}
-	pattern := regexp.MustCompile(fmt.Sprintf(`(?s)CHECK\s*\(\s*%s\s+IN\s*\((.*?)\)`, regexp.QuoteMeta(column)))
-	match := pattern.FindStringSubmatch(string(raw))
-	if match == nil {
-		return nil, fmt.Errorf("%s has no CHECK listing the values of %s; the constraint moved and this comparison has lost its subject", path, column)
+	vocabularies := map[string]map[string]bool{}
+	for _, path := range paths {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		table := ""
+		for _, statement := range migrationStatements(withoutSQLComments(string(raw))) {
+			switch statement.kind {
+			case "table":
+				table = statement.args[0]
+			case "check":
+				nullableColumn, column, list := statement.args[0], statement.args[1], statement.args[2]
+				if nullableColumn == "" || nullableColumn == column {
+					vocabularies[table+"."+column] = quotedSQLValues(list)
+				}
+			case "drop":
+				delete(vocabularies, table+"."+statement.args[0])
+			case "rename":
+				from, to := table+"."+statement.args[0], table+"."+statement.args[1]
+				if values, declared := vocabularies[from]; declared {
+					vocabularies[to] = values
+					delete(vocabularies, from)
+				}
+			}
+		}
 	}
-	return quotedSQLValues(match[1]), nil
+	return vocabularies, nil
+}
+
+func migrationStatements(sql string) []migrationStatement {
+	var statements []migrationStatement
+	for kind, pattern := range map[string]*regexp.Regexp{
+		"table":  migrationTablePattern,
+		"check":  migrationCheckPattern,
+		"drop":   migrationDropPattern,
+		"rename": migrationRenamePattern,
+	} {
+		for _, match := range pattern.FindAllStringSubmatchIndex(sql, -1) {
+			var args []string
+			for group := 2; group < len(match); group += 2 {
+				if match[group] < 0 {
+					args = append(args, "")
+					continue
+				}
+				args = append(args, strings.ToLower(sql[match[group]:match[group+1]]))
+			}
+			statements = append(statements, migrationStatement{at: match[0], kind: kind, args: args})
+		}
+	}
+	sort.Slice(statements, func(i, j int) bool { return statements[i].at < statements[j].at })
+	return statements
+}
+
+func withoutSQLComments(sql string) string {
+	var kept strings.Builder
+	inString := false
+	for i := 0; i < len(sql); i++ {
+		if sql[i] == '\'' {
+			inString = !inString
+		}
+		if !inString && strings.HasPrefix(sql[i:], "--") {
+			for i < len(sql) && sql[i] != '\n' {
+				i++
+			}
+			if i < len(sql) {
+				kept.WriteByte('\n')
+			}
+			continue
+		}
+		kept.WriteByte(sql[i])
+	}
+	return kept.String()
 }
 
 func quotedSQLValues(list string) map[string]bool {

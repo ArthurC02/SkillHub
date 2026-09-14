@@ -265,10 +265,10 @@ git grep -nE "^func \([a-z]+ \*?[A-Za-z]+\) require[A-Z][A-Za-z]*\(" -- apps/pla
 **DISCOVER**（在 repo 根）
 
 ```
-# SQL 宣告了哪些封閉詞彙
-git grep -noE "CHECK \(\s*[a-z_]+\s+IN\s*\(" -- db/migrations/
+# SQL 宣告了哪些封閉詞彙（同一欄位後面的 migration 取代前面的定義）
+git grep -noE "CHECK \(\s*([a-z_]+\s+IS\s+NULL\s+OR\s+)?[a-z_]+\s+IN\s*\(" -- db/migrations/
 # 其中哪些已經接進對帳
-awk -F'"' '/sqlCheckIn\("/{print $2, $4}' tools/devctl/domain_vocabulary.go
+awk -F'"' '/sqlColumnCheck\("/{print $2 "." $4}' tools/devctl/domain_vocabulary.go
 # Go 在哪裡用字面值碰這些值
 git grep -hoE "CHECK \(\s*[a-z_]+\s+IN\s*\([^)]*\)" -- db/migrations/ \
   | awk -F"'" '{for (i = 2; i <= NF; i += 2) print $i}' | sort -u \
@@ -281,7 +281,7 @@ git grep -hoE "CHECK \(\s*[a-z_]+\s+IN\s*\([^)]*\)" -- db/migrations/ \
 
 1. 在擁有那張表的 context（`db/query-owners.yaml`）把常數收成具名字串型別加封閉集合，形狀照 §3。值還在增刪的詞彙只做常數與對帳，不加拒絕未知值的 `Parse`（J5）。
 2. 分支裡的字面值改用常數。另一個 context 也讀同一個詞彙時（例如 creation 解析評估結果的 JSON），**不要為了共用常數跨 context import**（ADR-032）：消費端宣告自己的一份，兩份一起接進同一筆對帳——`domain-vocabulary` 本來就是為「同一個概念宣告在多處」而存在。
-3. 在 `domainVocabularies` 加一筆：`sqlCheckIn` ＋ 每一份 Go 定義。
+3. 在 `domainVocabularies` 加一筆：`sqlColumnCheck(表, 欄位)` ＋ 每一份 Go 定義。它依檔名順序重播每一支 migration，取那個欄位最後一次的定義，也認得 `DROP COLUMN` 與 `RENAME COLUMN`。
 4. Go 從來沒有分支讀的詞彙不型別化，照 §5.1 的格式在 §5 補一條附 DISCOVER 的裁決。
 
 **PROVE**：每個詞彙兩次突變（§8 守衛類）。把 Go 常數的一個值改掉 → `domain-vocabulary` 紅，訊息是 `… is missing from …`。把一處改用常數的分支換成另一個常數 → 那個分支不連資料庫的測試紅；沒有這條測試就先補（C3）。
