@@ -176,7 +176,11 @@ git grep -n "run_output\|download_package" -- apps/platform/internal/ | awk '!/_
 
 守著接線的是反射測試——`apiserver/app_test.go` 與 `cmd/maintenance/main_test.go` 逐欄位斷言 `identity.Service` 沒有 nil 步驟。少接一條就紅。
 
-同一批把十二個空接收器方法（`func (*Service) …`，完全不讀欄位）改成套件函式，`(&run.Service{}).SkillVersionsInRuns` 這種為了取用方法而憑空生出的空聚合根因此消失。
+**不讀任何欄位的方法寫成套件函式，不掛在 `*Service` 上**：空接收器（`func (*Service) …`）會逼呼叫端為了取用一個方法憑空生出空聚合根（`(&run.Service{}).X`）。這支指令應該沒有輸出：
+
+```
+git grep -nE "^func \(\*[A-Za-z]+\) " -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
+```
 
 ### 5.4 把 `pgtype` 趕出領域簽名
 
@@ -268,19 +272,25 @@ go test ./internal/...
 # 整合測試（需要資料庫）
 task dev
 export SKILLHUB_TEST_DATABASE_URL="postgresql://skillhub:skillhub@127.0.0.1:5432/skillhub_test"
+export SKILLHUB_REQUIRE_DB=1
 go test -count=1 -run '<Pattern>' ./internal/entrypoint/api/apiserver/
 
 # 治理檢查
 go -C tools/devctl run . comment-lint <你改的路徑>
 go -C tools/devctl run . automation-check
 task gen:check
+
+# 改到 tools/devctl（例如 §4.1 的檢查器）時，在 tools/devctl
+golangci-lint run
+golangci-lint fmt --diff
+go test -count=1 ./...
 ```
 
 **已知陷阱**
 
 - `SKILLHUB_TEST_DATABASE_URL` 的**資料庫名必須以 `_test` 結尾**，否則測試直接 panic。那是破壞性 migration 的守衛，不要指向開發資料庫。
 - **不要自行釘住舊的 `GOTOOLCHAIN`**：`go.mod` 的下限高於它時會直接失敗。用預設工具鏈，版本來源見 `tools/toolchain.yaml`。
-- 沒有設 `SKILLHUB_TEST_DATABASE_URL` 時整合測試會**跳過而不是失敗**，那是假綠。宣稱整合通過前先確認那個套件回報的通過筆數不是零。**不要靠數 `-v` 的 `=== RUN` 行數**——那個輸出在部分開發機被外掛改寫（§0.3），會數到零而測試其實跑了；用 `-run` 指名單一測試看它自己的結果比較可靠。
+- 沒有設 `SKILLHUB_TEST_DATABASE_URL` 時整合測試會**跳過而不是失敗**，那是假綠。上面的 `SKILLHUB_REQUIRE_DB=1` 就是為此：缺資料庫的那一次跑會直接失敗，而不是全數跳過還回報 ok。宣稱整合通過前先確認那個套件回報的通過筆數不是零。**不要靠數 `-v` 的 `=== RUN` 行數**——那個輸出在部分開發機被外掛改寫（§0.3），會數到零而測試其實跑了；用 `-run` 指名單一測試看它自己的結果比較可靠。
 - `task dev` 只起 Postgres 與 SeaweedFS，不花錢；`task dev:model` 會產生費用，唯讀子代理不得自行啟動。
 - 本機可能有其他專案的容器在跑，名稱不以 `skillhub-` 開頭的一律不得使用。
 
