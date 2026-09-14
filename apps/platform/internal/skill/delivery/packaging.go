@@ -595,10 +595,10 @@ func (a Artifact) withServeState(expiresAt, purgedAt time.Time) Artifact {
 
 	lost := purged && !expiresAt.IsZero() && purgedAt.Before(expiresAt)
 	switch {
-	case a.Status == "quarantined":
+	case ScanStatus(a.Status) == ScanQuarantined:
 		a.ServeState = labelled{"quarantined", "檢查中(尚未可下載)",
 			"打包完成,驗證還沒結束。這是暫時狀態(ADR-003 隔離)。"}
-	case a.Status == "rejected":
+	case ScanStatus(a.Status) == ScanRejected:
 		a.ServeState = labelled{"rejected", "已拒絕(打包後未通過驗證)",
 			"這一份不會被提供。要再拿到同樣的內容,回到該版本重新打包一次。"}
 
@@ -817,7 +817,7 @@ func (s *Service) persist(
 		SizeBytes:           int64(len(p.Zip)),
 		ContentHash:         p.ContentHash,
 		ManifestHash:        p.ManifestHash,
-		Status:              "available",
+		Status:              string(ScanAvailable),
 		ExpiresAt:           rfc3339(row.ExpiresAt),
 		CreatedAt:           rfc3339(row.CreatedAt),
 		DownloadCount:       0,

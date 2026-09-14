@@ -409,6 +409,9 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	if single.DownloadCount != 2 {
 		t.Errorf("download_count: got %d, want 2", single.DownloadCount)
 	}
+	if art.Status != "available" || single.Status != art.Status {
+		t.Errorf("status: packaging answered %q, the stored row says %q, want both available", art.Status, single.Status)
+	}
 	if list := c.listDownloads(t); len(list) != 1 || list[0].ArtifactID != art.ArtifactID {
 		t.Errorf("GET /downloads: got %+v", list)
 	}

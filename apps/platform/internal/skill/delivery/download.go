@@ -156,7 +156,7 @@ func (s *Service) Download(
 	if err != nil {
 		return none, nil, err
 	}
-	if row.ScanStatus != "available" || row.PurgedAt.Valid || !row.ExpiresAt.Time.After(time.Now()) {
+	if ScanStatus(row.ScanStatus) != ScanAvailable || row.PurgedAt.Valid || !row.ExpiresAt.Time.After(time.Now()) {
 		return none, nil, ErrGone
 	}
 	if reason, _ := gateFlags(row.AccessRestriction, Redistribution(row.Redistribution)); reason != "" {

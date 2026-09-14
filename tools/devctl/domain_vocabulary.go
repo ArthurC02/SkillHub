@@ -297,6 +297,18 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SkillEnrichmentStatus"),
 		},
 	},
+	{
+		name: "artifact scan status",
+		sources: []vocabularySource{
+			sqlColumnCheck("artifacts", "scan_status"),
+			goConstEnum("apps/platform/internal/skill/delivery/scan.go", "ScanStatus"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/delivery/scan.go", "AllScanStatuses",
+				"apps/platform/internal/skill/delivery/scan.go", "ScanStatus"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "DownloadArtifactStatus"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "CreateDownloadArtifactCreatedStatus"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {
