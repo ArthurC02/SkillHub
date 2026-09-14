@@ -116,7 +116,7 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 
 **「機器對帳」欄有兩種東西，不要混為一談：**
 
-- 前四列是 `devctl automation-check` 的檢查器，**Go 與 SQL 分岔時 CI 紅**。`domain-vocabulary` 對帳 Go 常數 ↔ DB `CHECK (… IN (…))` ↔ Postgres enum ↔ 契約 enum，清單是 `tools/devctl/domain_vocabulary.go` 的 `domainVocabularies`，上表只列範本（SQL 沒有 CHECK 的詞彙以 `absent` 寫明）。它同時守覆蓋面：migration 裡每一個 `CHECK (… IN (…))` 詞彙要嘛接進對帳，要嘛在 `unreconciledVocabularies` 寫下為什麼不接（§5.1、§5.6、§6.1），兩者皆無或理由已經過期都紅；`run-status-sql` 對帳 Go 的 `successors` ↔ migration 0032 的 trigger 轉移列 ↔ 每一處終態 `IN` 清單。
+- 前四列是 `devctl automation-check` 的檢查器，**Go 與 SQL 分岔時 CI 紅**。`domain-vocabulary` 對帳 Go 常數 ↔ DB `CHECK (… IN (…))` ↔ Postgres enum ↔ 契約 enum，清單是 `tools/devctl/domain_vocabulary.go` 的 `domainVocabularies`，上表只列範本（SQL 沒有 CHECK 的詞彙以 `absent` 寫明）。它同時守覆蓋面：migration 裡每一個 `CHECK (… IN (…))` 詞彙要嘛接進對帳，要嘛在 `unreconciledVocabularies` 寫下為什麼不接（§5.1、§5.6），兩者皆無或理由已經過期都紅；`run-status-sql` 對帳 Go 的 `successors` ↔ migration 0032 的 trigger 轉移列 ↔ 每一處終態 `IN` 清單。
 - 後四列只有**同套件的測試**，沒有跨 Go／SQL 的對帳——因為那四樣東西 SQL 側沒有第二份。
 
 **閘門順序不在這張表裡，它刻意留在 `create()` 的呼叫序。** 順序決定哪個 reason 先浮出來，而 reason 直接餵 `metrics.RunRefused` 與 `audit.ActionRunRefused`，所以改順序就是改對外行為（§9）。
@@ -268,11 +268,13 @@ git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStar
 
 寫入端寫了 CHECK 不收的值時，交易會失敗；唯一例外是 `analytics_events`，寫入失敗只記一行 log（`analytics event not recorded`）不回報，所以新增事件卻忘了 migration 時只有 log 看得到。
 
-`domain-vocabulary` 的 `unreconciledVocabularies` 逐筆列出這六個欄位。**重開條件**：Go 開始依其中任何一個值分支——屆時照 §3 形狀在擁有者型別化、接進對帳，並刪掉那一筆（不刪，檢查器會說它過期）。
+`domain-vocabulary` 的 `unreconciledVocabularies` 逐筆列出這六個欄位，以及同一個形狀的 `skill_runtime_compatibility.runtime`：Go 只把它讀出來顯示量測結果，不依它分支，寫入端只有操作員手跑的 SQL。**重開條件**：Go 開始依其中任何一個值分支——屆時照 §3 形狀在擁有者型別化、接進對帳，並刪掉那一筆（不刪，檢查器會說它過期）。
 
 ---
 
 ## 6 待做
+
+目前沒有待做項目。
 
 每一項都已在 [`04`](../plans/04-backlog-and-handoffs.md) 登記，照 §0 一次做一件，順序就是編號。新的待做先在 `04` 登記，再寫進這一節，每一項用同一個形狀：**GOAL**（要擋住什麼）、**DISCOVER**（能重跑的指令）、**EDIT**（改動的形狀）、**PROVE**（弄壞哪一行、哪條測試會紅）、**STOP-IF**（什麼情況停下回報）。
 
@@ -281,26 +283,6 @@ J3 已經量過，不在這裡：吃事實的 `require*` 都只負責取事實�
 ```
 git grep -nE "^func \([a-z]+ \*?[A-Za-z]+\) require[A-Z][A-Za-z]*\(" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
 ```
-
-### 6.1 相容性量測拿兩種東西互比（丙-243）
-
-**GOAL**：`skill_runtime_compatibility` 的 `capability`（`activated`／`not_activated`／`unverified`）與 `runtime`（`native`／`transpiled`／`failed`／`unverified`）是封閉詞彙，Go 唯一依它們分支的地方是 `trial/improvement/deterministic.go` 的 `compatibilityFindings`。它把 Run 快照的 `RuntimeProfile.Runtime`（執行環境的名字，例如 `claude_agent_sdk`）拿去和 `runtime` 欄位比——兩邊不是同一個詞彙，只要有量測，這個比較就永遠不相等，finding 永遠降成 warning。今天沒有任何查詢寫這張表，所以它是休眠的，而 `compatibilityFindings` 沒有測試。兩個欄位因此暫不型別化，列在 `unreconciledVocabularies`。
-
-**DISCOVER**（在 repo 根）
-
-```
-git grep -nE "m\.compat\.(Runtime|Capability)" -- apps/platform/internal/trial/improvement/
-git grep -n "skill_runtime_compatibility" -- db/queries/
-git grep -n "compatibilityFindings" -- 'apps/platform/internal/*_test.go'
-```
-
-第一支是那幾處讀取；第二支只有讀取、沒有寫入；第三支沒有輸出。
-
-**EDIT**：先等 [`05` R-80](../plans/05-pending-rulings.md) 裁定「量測涵不涵蓋這次 Run」該比哪一個欄位。裁定後：`compatibilityFindings` 先補不連資料庫的測試（C3），比較改成裁定的那一個；兩個詞彙在擁有者（registry）型別化、接進 `domain-vocabulary`，從 `unreconciledVocabularies` 刪掉兩筆。
-
-**PROVE**：比較換回另一側 → 新測試紅；兩個詞彙各改一個值 → `domain-vocabulary` 紅。
-
-**STOP-IF**：裁定需要 migration 或契約改動（C5）；有生產路徑開始寫這張表而裁定還沒下（休眠的比較會開始產生錯的 warning，先回報）。
 
 ---
 

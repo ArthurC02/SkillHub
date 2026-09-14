@@ -2244,7 +2244,7 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 
 ---
 
-## R-80｜相容性量測涵不涵蓋這次 Run，該拿哪一個欄位比（`04` 丙-243、[platform-ddd-convergence.md §6.1](../development/platform-ddd-convergence.md)）
+## R-80｜相容性量測涵不涵蓋這次 Run，該拿哪一個欄位比（`04` 丙-243） — ✅ **已裁定並落地（2026-09-14）：比映像；Run 記下映像之前不宣稱涵蓋與否**
 
 - 日期：2026-09-14
 
@@ -2257,21 +2257,38 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 - **不決定的代價**：量測一旦開始寫入，每一個有量測的 Skill 的評估都會多一條錯的 warning。
 - **決定之後誰動**：Agent（補測試、改比較、兩個詞彙型別化並接進對帳；若要多記欄位，另有一支 migration）。
 
+**2026-09-14 裁定（負責人授權代理依最佳實務裁定）：比映像，不比名字；Run 記下映像之前，評估不宣稱量測涵不涵蓋它。**
+
+- **為什麼不照原建議多記 runtime 名字與版本**：量測的身分是映像——表以（Skill Version × Runtime Image）為鍵，[`contracts/packaging/README.md`](../../contracts/packaging/README.md) 禁止把量測外推到別的映像。名字與版本相同而映像不同（換了底層系統或 Python），量測一樣不成立；拿名字比，會把一次外推說成涵蓋。
+- **今天的形狀**：Run 快照的 `RuntimeProfile` 不記映像，所以 `compatibilityFindings` 刪掉那個永遠不相等的比較。finding 只說量到什麼、在哪一顆映像上，並寫明這次 Run 沒有記下映像、涵不涵蓋不宣稱；`capability` 不是 `activated` 時仍是 warning。不需要 migration。
+- **詞彙**：Go 依 `capability` 分支，它在擁有者（registry）型別化並接進 `domain-vocabulary`；`runtime` 只拿來顯示，留在 `unreconciledVocabularies`。
+- **重開條件**：Run 開始記下自己跑在哪一顆映像時，改成映像對映像比。
+
 ---
 
-## R-81｜creation 拆解時照現況釘住的七個行為，哪些是規則、哪些要改（`04` 丙-242）
+## R-81｜creation 拆解時照現況釘住的七個行為，哪些是規則、哪些要改（`04` 丙-242） — ✅ **已裁定並落地（2026-09-14）：七項都改**
 
 - 日期：2026-09-14
 
 - **要決定的是什麼**：拆 creation 之前先把每條分支照現況寫成測試，下面七個行為看起來不像刻意的規則。依 [platform-ddd-convergence.md §9](../development/platform-ddd-convergence.md) 第二列，它們照現況釘住、沒有順手修；每一個要定下是規則（留著、測試改名成規則）還是要改。
 - **已經查到的事實**：
-  1. **兩種「沒交出來」共用一次重試**：模型說沒交草稿（`draft_missing`）或沒整理出需求（`brief_missing`），Go 都自動再試一次，但兩者共用 `DraftRetries` 一個計數（`job.go` 的 `retriesMissingOutput`）。同一場先遇到一種、再遇到另一種，第二種不會重試。測試：`TestDraftRetryCounterIsSharedAcrossReasons`。
+  1. **兩種「沒交出來」共用一次重試**：模型說沒交草稿（`draft_missing`）或沒整理出需求（`brief_missing`），Go 都自動再試一次，但兩者共用 `DraftRetries` 一個計數（`job.go` 的 `retriesMissingOutput`）。同一場先遇到一種、再遇到另一種，第二種不會重試。
   2. **模型要用工具卻沒說是哪個工具，被當成「額度用完」**：`useTool` 對缺少的工具意圖回 `ErrLimit`，於是這一步失敗時人看到的是泛用的「這一步未完成」，不是「模型的回覆不符合會話規則」（`stepFailureMessage`）。
   3. **不認得的工具種類也扣一次工具額度**：`useTool` 先加 `ToolCalls` 再分派，種類不認得時回 `ErrInvalidCommand`，但那一次已經算掉。
-  4. **送給模型的逾時少一秒**：`callTimeoutSeconds` 把剩餘時間取整數再減五秒的緩衝，設定 90 秒時送出 89 秒；設定成 `Limits.Valid` 允許的下限 1 秒時，排定呼叫到送出之間只要經過任何時間就算出 0，這一步直接失敗、模型不會被呼叫。測試：`TestAOneSecondCallTimeoutLeavesNoTimeOnceAnyTimeHasPassed`。
+  4. **送給模型的逾時少一秒**：`callTimeoutSeconds` 把剩餘時間取整數再減五秒的緩衝，設定 90 秒時送出 89 秒；設定成 `Limits.Valid` 允許的下限 1 秒時，排定呼叫到送出之間只要經過任何時間就算出 0，這一步直接失敗、模型不會被呼叫。
   5. **建立會話撞上同一個 id 的補救分支比正常分支寬鬆**：`startedConcurrently` 不檢查那場會話是否已過期，快照解不開時回「指令被重用」而不是實際的錯誤；正常的重播分支（`resumeStart`）兩者都會擋。這條路要真正的並發才走得到，沒有測試。
   6. **一次資料庫讀取失敗就取消已經付費的模型呼叫**：`Step` 呼叫模型期間每 250 毫秒讀一次會話，看到狀態變了就取消呼叫，讀取本身出錯也同樣取消（`cancelWhenSessionMoves`）；費用照計，那一步的結果丟掉。
   7. **確認重複時先讀草稿名字、後檢查草稿存在**：`save` 的 `confirm_duplicate` 在同一行先用 `p.Draft.Skill.Name`、之後才判斷 `p.Draft != nil`。今天安全，靠的是「清掉草稿的指令同時清掉待確認的重複」這個跨指令的不變式。
 - **建議**：1 分成兩個計數（兩種原因各一次）；2 改回 `ErrInvalidCommand`；3 先認種類再扣額度；4 取整改成無條件進位，並讓 `Limits.Valid` 要求逾時至少多於緩衝；5 補上過期檢查、解碼錯誤照實回；6 讀取失敗不取消，只有看到狀態真的變了才取消；7 把順序換成先檢查再讀。七項都是 Go 內的小改動，不動契約、不動 migration。
 - **不決定的代價**：都不影響今天的主流程；1、2、3、6 會讓少數場次多失敗一步或多花一次呼叫，4 只在有人把逾時設到下限時全面失效。
 - **決定之後誰動**：Agent（每項改動時把釘住它的那條測試改成新規則，並照開發自動化第 9 條證明會紅）。
+
+**2026-09-14 裁定（負責人授權代理依最佳實務裁定）：七項都是缺陷，照建議改；4 與 6 收得比建議更精確。**
+
+1. 兩種原因各有一次重試。`draft_missing` 仍記在 `DraftRetries`（公開快照的欄位，意思不變），`brief_missing` 記在會話內部，不動契約。測試：`TestEachMissingOutputReasonGetsItsOwnRetry`。
+2. 沒說是哪個工具，是回覆違反會話規則（`ErrInvalidCommand`），人看到的是「模型的回覆不符合會話規則」。測試：`TestProposalToolIntentWithoutAToolBreaksTheSessionRules`。
+3. 先認工具種類再扣額度，不認得的種類不扣。測試：`TestProposalToolIntentRejectsAnUnknownKindBeforeChargingIt`。
+4. 剩餘秒數無條件進位：設定 90 秒就送 90 秒，下限 1 秒也送得出去。`Limits.Valid` 不用改，進位之後下限本身就可用。測試：`TestTheModelIsGivenTheWholeConfiguredCallTimeout`。
+5. 並發補救分支直接走正常重播的判斷（`resumeStart`），過期與解碼錯誤兩條路一致。這條路要真正的並發才走得到，規則由 `resumeStart` 的測試守。
+6. 讀取失敗不取消模型呼叫；會話狀態變了、過期了、或那一列已經不存在（`pgx.ErrNoRows`）才取消——最後一種不是讀取失敗，是會話沒了。判斷在 `sessionMoved`，測試：`TestOnlyASessionThatReallyMovedStopsTheModelCall`。
+7. 先確認有草稿、內容雜湊相符、訊息沒到上限，才讀草稿名字（`draftNameTaken`），不再靠跨指令的不變式。測試：`TestConfirmingADuplicateWithNoDraftIsRefused`。
