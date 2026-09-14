@@ -359,7 +359,8 @@ func (s *Service) resolveReference(
 			return llmclient.GenerateReference{}, referenceProvenance{}, err
 		}
 	}
-	if !found || skill.TakedownAt.Valid || skill.AccessRestriction != nil || skill.Redistribution == "blocked" {
+	if !found || skill.TakedownAt.Valid || skill.AccessRestriction != nil ||
+		registry.Redistribution(skill.Redistribution) == registry.RedistributionBlocked {
 		return llmclient.GenerateReference{}, referenceProvenance{}, ErrReferenceUnavailable
 	}
 

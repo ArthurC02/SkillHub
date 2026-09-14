@@ -92,7 +92,7 @@ type Result struct {
 	Duplicate bool
 }
 
-func redistributionFor(ws identity.Workspace, src sourceMeta) string {
+func redistributionFor(ws identity.Workspace, src sourceMeta) registry.Redistribution {
 	if ws.IsCatalog {
 		return ""
 	}
@@ -363,7 +363,7 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		return registry.Version{}, false, err
 	}
 
-	if skill.Redistribution == registry.RedistributionGenerated && src.Type != SourceGenerated {
+	if registry.Redistribution(skill.Redistribution) == registry.RedistributionGenerated && src.Type != SourceGenerated {
 		return registry.Version{}, false, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
 	}
 	q := gen.New(tx)

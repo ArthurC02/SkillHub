@@ -34,11 +34,13 @@ const (
 	BlockedFileRemoved = "file_removed_by_packager"
 )
 
+type Redistribution string
+
 const (
-	RedistributionAllowed      = "allowed"
-	RedistributionBlocked      = "blocked"
-	RedistributionSelfSupplied = "self_supplied"
-	RedistributionGenerated    = "generated"
+	RedistributionAllowed      Redistribution = "allowed"
+	RedistributionBlocked      Redistribution = "blocked"
+	RedistributionSelfSupplied Redistribution = "self_supplied"
+	RedistributionGenerated    Redistribution = "generated"
 )
 
 var (
@@ -287,10 +289,10 @@ func (s *Service) Plan(
 }
 
 func gate(skill SkillFacts) (reason, message string) {
-	return gateFlags(skill.AccessRestriction, skill.Redistribution)
+	return gateFlags(skill.AccessRestriction, Redistribution(skill.Redistribution))
 }
 
-func gateFlags(accessRestriction *string, redistribution string) (reason, message string) {
+func gateFlags(accessRestriction *string, redistribution Redistribution) (reason, message string) {
 	if accessRestriction != nil && *accessRestriction != "" {
 		return BlockedLicenseHold,
 			"這個 Skill 的內容因授權問題尚未釐清而被保留，所以無法從中產出套件"

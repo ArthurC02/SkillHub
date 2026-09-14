@@ -626,6 +626,46 @@ func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
 	}
 }
 
+func TestACreationReferenceIsRefusedOnlyWhenItsRedistributionIsBlocked(t *testing.T) {
+	const objectKey = "packages/creation-reference.zip"
+	ws := identity.Workspace{ID: mustUUIDForTest(t, "10000000-0000-0000-0000-000000000021")}
+	skillID := mustUUIDForTest(t, "20000000-0000-0000-0000-000000000022")
+	versionID := mustUUIDForTest(t, "30000000-0000-0000-0000-000000000023")
+	skillMD := "---\nname: reference-skill\ndescription: A worked example.\n---\n\nDo the thing.\n"
+
+	for _, tc := range []struct {
+		redistribution registry.Redistribution
+		wantRefused    bool
+	}{
+		{registry.RedistributionSelfSupplied, false},
+		{registry.RedistributionBlocked, true},
+	} {
+		t.Run(string(tc.redistribution), func(t *testing.T) {
+			svc := &Service{
+				Store: fakeObjectStore{objectKey: zipBytes(t, map[string]string{"SKILL.md": skillMD})},
+				References: fakeReferenceReader{
+					workspace: map[string]registry.Skill{pgconv.UUIDString(skillID): {
+						ID: skillID, WorkspaceID: ws.ID, Name: "reference-skill", Redistribution: string(tc.redistribution),
+					}},
+					versions: map[string]registry.Version{pgconv.UUIDString(skillID): {
+						ID: versionID, SkillID: skillID, WorkspaceID: ws.ID, PackageObjectKey: objectKey,
+					}},
+				},
+			}
+			fixed, _, err := svc.ReadCreationReference(context.Background(), ws, skillID, pgtype.UUID{})
+			if tc.wantRefused {
+				if !errors.Is(err, ErrReferenceUnavailable) {
+					t.Errorf("err = %v, want ErrReferenceUnavailable", err)
+				}
+				return
+			}
+			if err != nil || fixed.VersionID != versionID {
+				t.Errorf("ReadCreationReference = %+v, %v; want the skill's latest version", fixed, err)
+			}
+		})
+	}
+}
+
 func TestALongReferenceIsCutToLeaveRoomForTheMarker(t *testing.T) {
 	ws := identity.Workspace{ID: mustUUIDForTest(t, "10000000-0000-0000-0000-000000000011")}
 	skillID := mustUUIDForTest(t, "20000000-0000-0000-0000-000000000012")

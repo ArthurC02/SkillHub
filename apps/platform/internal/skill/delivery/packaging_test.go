@@ -564,7 +564,7 @@ func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
 	hold := "license-review"
 	for _, tc := range []struct {
 		name           string
-		redistribution string
+		redistribution Redistribution
 		wantReason     string
 	}{
 		{"allowed releases", RedistributionAllowed, ""},

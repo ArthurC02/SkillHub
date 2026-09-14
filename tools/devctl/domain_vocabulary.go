@@ -251,6 +251,26 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SetSkillRedistributionReqLicenseSource"),
 		},
 	},
+	{
+		name: "skill redistribution",
+		sources: []vocabularySource{
+			sqlColumnCheck("skills", "redistribution"),
+			goConstEnum("apps/platform/internal/skill/library/write.go", "Redistribution"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/library/write.go", "AllRedistributions",
+				"apps/platform/internal/skill/library/write.go", "Redistribution"),
+			goConstEnum("apps/platform/internal/skill/discovery/trust.go", "Redistribution"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SkillRedistribution"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "OwnSkillRedistribution"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "ForkSkillCreatedRedistribution"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SetSkillRedistributionOKPreviousValue"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SetSkillRedistributionOKRedistributionValue"),
+		},
+		readers: []vocabularySource{
+			goConstEnum("apps/platform/internal/skill/delivery/packaging.go", "Redistribution"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SetSkillRedistributionReqValue"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {

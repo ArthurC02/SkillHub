@@ -48,7 +48,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 	if err != nil {
 		return Result{}, err
 	}
-	if !found || existing.Redistribution != registry.RedistributionGenerated {
+	if !found || registry.Redistribution(existing.Redistribution) != registry.RedistributionGenerated {
 		return Result{}, ErrGeneratedNameCollision
 	}
 	version, duplicate, err := s.persistVersion(ctx, tx, ws, existing, prepared, src, s.enrichPackage(ctx, prepared, ws.ID))
@@ -90,7 +90,8 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 	if !found {
 		skill, found, err = s.References.CatalogSkill(ctx, skillID)
 	}
-	if err != nil || !found || skill.TakedownAt.Valid || skill.AccessRestriction != nil || skill.Redistribution == "blocked" {
+	if err != nil || !found || skill.TakedownAt.Valid || skill.AccessRestriction != nil ||
+		registry.Redistribution(skill.Redistribution) == registry.RedistributionBlocked {
 		return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
 	}
 	var version registry.Version

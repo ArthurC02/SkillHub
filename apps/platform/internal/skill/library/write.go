@@ -30,18 +30,32 @@ type NewVersion struct {
 	Report           skillpkg.Report
 }
 
-const RedistributionSelfSupplied = "self_supplied"
+type Redistribution string
 
-const RedistributionGenerated = "generated"
+const (
+	RedistributionAllowed      Redistribution = "allowed"
+	RedistributionBlocked      Redistribution = "blocked"
+	RedistributionUnknown      Redistribution = "unknown"
+	RedistributionSelfSupplied Redistribution = "self_supplied"
+	RedistributionGenerated    Redistribution = "generated"
+)
 
-func CreateSkillFromPackage(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, report skillpkg.Report, redistribution string) (Skill, error) {
+func AllRedistributions() []Redistribution {
+	return []Redistribution{
+		RedistributionAllowed, RedistributionBlocked, RedistributionUnknown,
+		RedistributionSelfSupplied, RedistributionGenerated,
+	}
+}
+
+func CreateSkillFromPackage(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, report skillpkg.Report, redistribution Redistribution) (Skill, error) {
 	manifest, err := validatedManifest(report)
 	if err != nil {
 		return Skill{}, err
 	}
 	var verdict *string
 	if redistribution != "" {
-		verdict = &redistribution
+		value := string(redistribution)
+		verdict = &value
 	}
 
 	row, err := gen.New(tx).CreateSkill(ctx, gen.CreateSkillParams{
