@@ -23,7 +23,7 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
 }));
-vi.mock("./components/GenerateSkill", () => ({
+vi.mock("./generate/GenerateSkill", () => ({
   GenerateSkill: () => <div>舊生成入口</div>,
   ReferencePicker: ({ onToggle }: { onToggle: (id: string, name: string) => void }) => (
     <>

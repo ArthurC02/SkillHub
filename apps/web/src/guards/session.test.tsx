@@ -10,7 +10,7 @@ import { ImportSkill } from "../features/creation/import/ImportSkill.page";
 import { RunCompare } from "../features/runs/compare/RunCompare.page";
 import { RunPreflight } from "../features/lab/preflight/RunPreflight.page";
 import { SkillDetail } from "../features/skill/detail/SkillDetail.page";
-import { TestCaseList } from "../features/lab/test-cases/TestCases.page";
+import { TestCaseList } from "../features/lab/test-cases/TestCaseList.page";
 import { WorkspaceAccount } from "../features/workspace/account/WorkspaceAccount.page";
 import { WorkspaceSkills } from "../features/workspace/skills/WorkspaceSkills.page";
 import { useSkillVersions } from "../features/skill/skills.service";

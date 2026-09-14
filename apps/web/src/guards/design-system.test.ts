@@ -189,19 +189,19 @@ function componentFiles(): Array<[string, string]> {
 }
 
 const TOOLTIP_ONLY: Record<string, string> = {
-  "features/catalog/home/Home.page.tsx: title={reason}":
+  "features/catalog/home/components/FilterControls.tsx: title={reason}":
     "the disabled filter's own reason, rendered as visible .note text by the same map " +
     "(UNAVAILABLE_FILTERS) two lines below — the scan cannot follow one identifier to two uses",
 
-  'features/catalog/home/Home.page.tsx: title="這段摘要由模型改寫，不是套件作者寫的；你的 Agent 讀的是套件自己的 description"':
-    "explained in the 標記說明 line above the results list (pages/Home.tsx)",
-  'features/catalog/home/Home.page.tsx: title="套件自己的 frontmatter description"':
+  'features/catalog/home/components/SearchResultRow.tsx: title="這段摘要由模型改寫，不是套件作者寫的；你的 Agent 讀的是套件自己的 description"':
+    "explained in the 標記說明 line above the results list (home/components/MarkerLegend.tsx)",
+  'features/catalog/home/components/SearchResultRow.tsx: title="套件自己的 frontmatter description"':
     "explained in the 標記說明 line above the results list",
-  'features/catalog/home/Home.page.tsx: title="伺服器沒有回報這段摘要的來源"':
+  'features/catalog/home/components/SearchResultRow.tsx: title="伺服器沒有回報這段摘要的來源"':
     "explained in the 標記說明 line above the results list",
-  'features/catalog/home/Home.page.tsx: title="這段說明由模型產生，未經人工核對"':
+  'features/catalog/home/components/SearchResultRow.tsx: title="這段說明由模型產生，未經人工核對"':
     "explained in the 標記說明 line above the results list",
-  'features/catalog/home/Home.page.tsx: title="依查詢與文件的關鍵字重疊組出"':
+  'features/catalog/home/components/SearchResultRow.tsx: title="依查詢與文件的關鍵字重疊組出"':
     "explained in the 標記說明 line above the results list",
 
   'features/skill/files/SkillFiles.page.tsx: title="此檔案為可執行 Script"':
@@ -287,9 +287,9 @@ test("ADR-039 §2.12: no page prints a raw server timestamp", () => {
 const OWN_FAILURE_COPY: Record<string, string> = {
   "app/shell/AuthControls.tsx":
     "a sign-out mutation, not a read — a 401 here means it already worked",
-  "features/creation/components/GenerateSkill.tsx":
+  "features/creation/generate/":
     "POST /skills/generate: a mutation the user just pressed, and its refusals are the " +
-    "contract's own GenerationFailure values (generateFailureSentence.ts), not read failures",
+    "contract's own GenerationFailure values (generate.model.ts), not read failures",
   "features/creation/import/ImportSkill.page.tsx":
     "POST /skills/import/*: a mutation, and the rejection body is the acceptance criterion " +
     "(CategorizedFindings). LoginRequired covers this page's signed-out arrival before the form",
@@ -310,7 +310,10 @@ test("IA-6: a page that writes its own read-failure sentence has to be listed", 
       if (!text.includes("失敗")) continue;
       scanned++;
       if (body.slice(Math.max(0, at.index - 300), at.index + 700).includes("ReadFailure")) continue;
-      if (file in OWN_FAILURE_COPY) continue;
+      const listed = Object.keys(OWN_FAILURE_COPY).some((entry) =>
+        entry.endsWith("/") ? file.startsWith(entry) : file === entry,
+      );
+      if (listed) continue;
       offenders.push(file);
     }
   }

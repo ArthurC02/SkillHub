@@ -24,7 +24,8 @@ import { RunPreflight } from "../features/lab/preflight/RunPreflight.page";
 import { RunTrace } from "../features/runs/trace/RunTrace.page";
 import { SkillDetail } from "../features/skill/detail/SkillDetail.page";
 import { SkillFiles } from "../features/skill/files/SkillFiles.page";
-import { TestCaseDetail, TestCaseList } from "../features/lab/test-cases/TestCases.page";
+import { TestCaseDetail } from "../features/lab/test-cases/TestCaseDetail.page";
+import { TestCaseList } from "../features/lab/test-cases/TestCaseList.page";
 import { WorkspaceAccount } from "../features/workspace/account/WorkspaceAccount.page";
 import { WorkspaceRuns } from "../features/runs/list/WorkspaceRuns.page";
 import { WorkspaceSkills } from "../features/workspace/skills/WorkspaceSkills.page";
@@ -242,19 +243,25 @@ const testCaseDetailRoute = createRoute({
 const adminHomeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
-  component: lazyRouteComponent(() => import("../features/admin/Admin.page"), "AdminHome"),
+  component: lazyRouteComponent(() => import("../features/admin/home/AdminHome.page"), "AdminHome"),
 });
 
 const adminAccountsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/accounts",
-  component: lazyRouteComponent(() => import("../features/admin/Admin.page"), "AdminAccounts"),
+  component: lazyRouteComponent(
+    () => import("../features/admin/accounts/AdminAccounts.page"),
+    "AdminAccounts",
+  ),
 });
 
 const adminSkillsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/skills",
-  component: lazyRouteComponent(() => import("../features/admin/Admin.page"), "AdminSkills"),
+  component: lazyRouteComponent(
+    () => import("../features/admin/skills/AdminSkills.page"),
+    "AdminSkills",
+  ),
   validateSearch: (search: Record<string, unknown>): { q?: string } => ({
     q: typeof search.q === "string" && search.q.trim() ? search.q.trim() : undefined,
   }),
@@ -263,26 +270,35 @@ const adminSkillsRoute = createRoute({
 const adminDispatchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/dispatch",
-  component: lazyRouteComponent(() => import("../features/admin/Admin.page"), "AdminDispatch"),
+  component: lazyRouteComponent(
+    () => import("../features/admin/dispatch/AdminDispatch.page"),
+    "AdminDispatch",
+  ),
 });
 
 const adminRostersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/rosters",
-  component: lazyRouteComponent(() => import("../features/admin/Admin.page"), "AdminRosters"),
+  component: lazyRouteComponent(
+    () => import("../features/admin/rosters/AdminRosters.page"),
+    "AdminRosters",
+  ),
 });
 
 const adminAuditLogRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/audit-log",
-  component: lazyRouteComponent(() => import("../features/admin/Admin.page"), "AdminAuditLog"),
+  component: lazyRouteComponent(
+    () => import("../features/admin/audit-log/AdminAuditLog.page"),
+    "AdminAuditLog",
+  ),
 });
 
 const adminCostStatisticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/cost-statistics",
   component: lazyRouteComponent(
-    () => import("../features/admin/Admin.page"),
+    () => import("../features/admin/cost-statistics/AdminCostStatistics.page"),
     "AdminCostStatistics",
   ),
 });
@@ -290,7 +306,10 @@ const adminCostStatisticsRoute = createRoute({
 const adminTrendsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/trends",
-  component: lazyRouteComponent(() => import("../features/admin/Admin.page"), "AdminTrends"),
+  component: lazyRouteComponent(
+    () => import("../features/admin/trends/AdminTrends.page"),
+    "AdminTrends",
+  ),
   validateSearch: (search: Record<string, unknown>): { days?: 7 | 30 | 90 } => ({
     days: ([7, 30, 90] as const).find((days) => days === Number(search.days)),
   }),

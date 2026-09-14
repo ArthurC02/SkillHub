@@ -9,23 +9,36 @@ import {
   useCreationSessions,
   useLiveCreationSession,
   type CreationAction,
-  type CreationAttachment,
-  type CreationReference,
   type CreationSession as Session,
-  type CreationSnapshot,
   type CreationState,
 } from "../../creation.service";
 import { useCredits } from "../../../../core/session/credits.service";
-import type { CategorizedFindings, ImportFinding } from "../../../../core/api/types";
 import { useRuns } from "../../../runs";
 import { TERMINAL_RUN_STATUSES } from "../../../runs";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { ReferencePicker } from "../../components/GenerateSkill";
-import { Findings } from "../../../../shared/ui/Findings";
+import { ReferencePicker } from "../../generate/GenerateSkill";
 import { ModelMarkdown } from "./ModelMarkdown";
 import { Reveal } from "../../../../shared/ui/Reveal";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { runStatusLabel } from "../../../runs";
+import {
+  diagramProblem,
+  readImage,
+  findRunObservation,
+  parseDiagramUnderstanding,
+  stepDescription,
+  FETCH_STATUS_LABEL,
+  buildRoundTimeline,
+  budgetChoices,
+  newestMessageIn,
+  isBelow,
+} from "../create.model";
+import { DraftFindings } from "./DraftFindings";
+import { DiagramUnderstandingView } from "./DiagramUnderstandingView";
+import { Attachments } from "./Attachments";
+import { ToolObservation } from "./ToolObservation";
+import { ReferenceList } from "./ReferenceList";
+
 const labels: Record<CreationState, string> = {
   queued: "等待處理",
   working: "正在創作",
@@ -38,329 +51,13 @@ const labels: Record<CreationState, string> = {
   failed: "這一步未完成",
   needs_reupload: "請重新上傳流程圖",
 };
+
 type Extra = Omit<CreationAction, "command_id" | "expected_revision" | "kind">;
+
 const MAX_MESSAGE_RUNES = 4000;
-function diagramProblem(file: File): string | undefined {
-  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))
-    return "流程圖只收 PNG、JPEG 或 WebP。";
-  const maxBytes = 4_000_000; // one-number: creationMaxDiagramBytes
-  if (file.size === 0 || file.size > maxBytes)
-    return "請選擇最多 4,000,000 位元組（約 3.8 MB）以內的流程圖。";
-  return undefined;
-}
-function readImage(file: File): Promise<{ media_type: string; data: string }> {
-  const problem = diagramProblem(file);
-  if (problem) return Promise.reject(new Error(problem));
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("流程圖無法讀取，請重新選擇。"));
-    reader.onload = () =>
-      resolve({ media_type: file.type, data: String(reader.result).split(",")[1] });
-    reader.readAsDataURL(file);
-  });
-}
-function groupDraftFindings(raw: string): CategorizedFindings | undefined {
-  try {
-    const parsed = JSON.parse(raw) as { findings?: unknown };
-    if (!Array.isArray(parsed.findings)) return undefined;
-    const groups: CategorizedFindings = { errors: [], warnings: [], infos: [] };
-    for (const item of parsed.findings as ImportFinding[]) {
-      if (item.severity === "error") groups.errors.push(item);
-      else if (item.severity === "warning") groups.warnings.push(item);
-      else if (item.severity === "info") groups.infos.push(item);
-    }
-    return groups;
-  } catch {
-    return undefined;
-  }
-}
-function DraftFindings({ raw }: { raw: string }) {
-  const grouped = groupDraftFindings(raw);
-  return grouped ? <Findings findings={grouped} level={4} /> : <p>{raw}</p>;
-}
-type RunObservation = {
-  execution_status: string;
-  evaluation?: {
-    evaluation_available: boolean;
-    overall?: string;
-    criterion_results?: { result?: string }[];
-  };
-};
-function findRunObservation(
-  messages: CreationSnapshot["messages"],
-  runID: string,
-): RunObservation | undefined {
-  let found: RunObservation | undefined;
-  for (const m of messages) {
-    if (m.role !== "tool") continue;
-    try {
-      const parsed = JSON.parse(m.content) as RunObservation & { run_id?: string };
-      if (parsed.run_id === runID) found = parsed;
-    } catch {}
-  }
-  return found;
-}
-type DiagramUnderstanding = {
-  nodes: string[];
-  conditions: string[];
-  branches: string[];
-  uncertainties: string[];
-};
-const diagramSections: (keyof DiagramUnderstanding)[] = [
-  "nodes",
-  "conditions",
-  "branches",
-  "uncertainties",
-];
-const diagramLabels: Record<keyof DiagramUnderstanding, string> = {
-  nodes: "節點",
-  conditions: "條件",
-  branches: "分支",
-  uncertainties: "不確定處",
-};
-function parseDiagramUnderstanding(raw: string): DiagramUnderstanding | undefined {
-  try {
-    const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
-    const record = value as Record<string, unknown>;
-    if (Object.keys(record).length !== diagramSections.length) return undefined;
-    if (!diagramSections.every((key) => Array.isArray(record[key]))) return undefined;
-    const sections = Object.fromEntries(
-      diagramSections.map((key) => [key, record[key] as unknown[]]),
-    ) as Record<keyof DiagramUnderstanding, unknown[]>;
-    if (sections.nodes.length === 0) return undefined;
-    if (!diagramSections.every((key) => sections[key].every((item) => typeof item === "string")))
-      return undefined;
-    return Object.fromEntries(
-      diagramSections.map((key) => [key, sections[key] as string[]]),
-    ) as DiagramUnderstanding;
-  } catch {
-    return undefined;
-  }
-}
-function DiagramUnderstandingView({ raw }: { raw: string }) {
-  const structured = parseDiagramUnderstanding(raw);
-  if (!structured)
-    return (
-      <>
-        <p>{raw}</p>
-        <p className="note">請在對話要求重新整理，或重新上傳後確認。</p>
-      </>
-    );
-  return (
-    <div>
-      {diagramSections.map((key) => (
-        <section key={key}>
-          <h5>{diagramLabels[key]}</h5>
-          {structured[key].length > 0 ? (
-            <ul>
-              {structured[key].map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>未列出</p>
-          )}
-        </section>
-      ))}
-    </div>
-  );
-}
-function Attachments({
-  list,
-  thumbs,
-}: {
-  list: CreationAttachment[];
-  thumbs: Map<string, string>;
-}) {
-  return (
-    <ul className="creation-attachments">
-      {list.map((a) => {
-        const url = thumbs.get(a.sha256);
-        return (
-          <li key={a.sha256} className="creation-attachment">
-            {url ? (
-              <img src={url} alt={"你在這一輪附上的流程圖（" + a.media_type + "）"} />
-            ) : (
-              <p className="note">平台不保存原圖，所以重新整理之後這裡只剩它的說明。</p>
-            )}
-            <span className="note">
-              流程圖 · {a.media_type} · {a.bytes} 位元組
-            </span>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-const CRITERION_RESULT_LABEL: Record<string, string> = {
-  passed: "通過",
-  failed: "不通過",
-  undetermined: "無法判定",
-};
-type FetchObservation = {
-  fetch: { url: string; status: string; bytes?: number; text?: string };
-};
-type RunToolObservation = {
-  run_id: string;
-  execution_status: string;
-  evaluation?: {
-    overall?: string;
-    summary?: string;
-    criterion_results?: { text?: string; result?: string; reason?: string }[];
-  };
-};
-function parseObservation(raw: string): unknown {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return undefined;
-  }
-}
-function ToolObservation({ raw }: { raw: string }) {
-  const parsed = parseObservation(raw);
-  if (parsed && typeof parsed === "object") {
-    const asFetch = parsed as Partial<FetchObservation>;
-    if (asFetch.fetch && typeof asFetch.fetch.url === "string") {
-      const f = asFetch.fetch;
-      return (
-        <>
-          <span className="creation-text">
-            讀取網頁 {f.url}：{FETCH_STATUS_LABEL[f.status] ?? f.status}
-            {f.bytes !== undefined && `（${f.bytes} 位元組）`}
-          </span>
-          {!!f.text && (
-            <details>
-              <summary>讀到的網頁內容（{[...f.text].length} 字）</summary>
-              <pre className="skill-md">
-                <Reveal text={f.text} />
-              </pre>
-            </details>
-          )}
-        </>
-      );
-    }
-    const asRun = parsed as Partial<RunToolObservation>;
-    if (typeof asRun.run_id === "string" && typeof asRun.execution_status === "string") {
-      const results = asRun.evaluation?.criterion_results ?? [];
-      const count = (r: string) => results.filter((x) => x.result === r).length;
-      const overall = asRun.evaluation?.overall ?? "";
-      return (
-        <>
-          <span className="creation-text">
-            試跑結果：{runStatusLabel(asRun.execution_status)}；評估：
-            {ROUND_OVERALL_LABEL[overall] ?? "無評估"}
-            {results.length > 0 &&
-              `（通過 ${count("passed")}／不通過 ${count("failed")}／無法判定 ${count("undetermined")}）`}
-          </span>
-          {!!asRun.evaluation?.summary && (
-            <span className="creation-text">{asRun.evaluation.summary}</span>
-          )}
-          {results.length > 0 && (
-            <ul>
-              {results.map((c, i) => (
-                <li key={i}>
-                  {CRITERION_RESULT_LABEL[c.result ?? ""] ?? c.result ?? "無結果"}：{c.text}
-                  {!!c.reason && `——${c.reason}`}
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      );
-    }
-  }
-  return <span className="creation-text">{raw}</span>;
-}
-function stepDescription(p: CreationSnapshot): string {
-  if (p.pending_fetch_url) return "正在讀你同意的那個網頁，讀完再繼續。";
-  if (p.diagram_fingerprint && !p.diagram_understanding) return "正在讀你附上的流程圖。";
-  if (!p.brief_confirmed) return "正在整理需求與驗收條件。";
-  if (!p.draft) return "正在寫第一份草稿。";
-  if (p.run_unmet) return "正在依試跑結果修訂草稿。";
-  return "正在修訂草稿。";
-}
-function declaredReferenceField(value?: string) {
-  return value?.trim() ? value : "未宣告";
-}
-const TIER_LABEL: Record<string, string> = { curated: "精選", indexed: "已索引" };
-function referenceTierLabel(tier?: string): string {
-  return TIER_LABEL[tier ?? ""] ?? "不在目錄";
-}
-function referenceScanLabel(scanStatus?: string, warnings?: number): string {
-  if (scanStatus === "scanned")
-    return (warnings ?? 0) > 0 ? `已掃描，${warnings} 個警告` : "已掃描，無警告";
-  if (scanStatus === "unavailable") return "沒有掃描紀錄";
-  return "未知";
-}
-const FETCH_STATUS_LABEL: Record<string, string> = {
-  ok: "已讀取",
-  blocked: "被拒絕或被網路環境擋住（不重試）",
-  not_found: "頁面不存在",
-  unsupported: "不是文字頁面",
-  network_error: "網路錯誤（重試一次仍失敗）",
-  declined: "使用者不同意",
-};
-const ROUND_OVERALL_LABEL: Record<string, string> = {
-  met: "達成",
-  partially_met: "部分達成",
-  not_met: "未達成",
-};
-function truncateForTimeline(s: string, n = 120): string {
-  return s.length > n ? s.slice(0, n) + "…" : s;
-}
-type TimelineItem = { key: string; text: string };
-function buildRoundTimeline(messages: CreationSnapshot["messages"]): TimelineItem[] {
-  const items: TimelineItem[] = [];
-  let round = 0;
-  let afterQuestion = false;
-  let afterTrialAnchor = false;
-  messages.forEach((m, i) => {
-    let setQuestion = false;
-    let setTrialAnchor = false;
-    if (m.role === "tool" && m.content.startsWith('{"evaluation"')) {
-      try {
-        const parsed = JSON.parse(m.content) as RunObservation;
-        if (parsed.evaluation) {
-          round += 1;
-          const overall = parsed.evaluation.overall ?? "";
-          const results = parsed.evaluation.criterion_results ?? [];
-          const count = (r: string) => results.filter((x) => x.result === r).length;
-          items.push({
-            key: `t-${i}`,
-            text: `第 ${round} 次試跑：${ROUND_OVERALL_LABEL[overall] ?? overall}（通過 ${count("passed")}／不通過 ${count("failed")}／無法判定 ${count("undetermined")}）`,
-          });
-          setTrialAnchor = true;
-        }
-      } catch {}
-    } else if (m.role === "tool" && m.content.startsWith('{"fetch"')) {
-      try {
-        const parsed = JSON.parse(m.content) as { fetch: { url: string; status: string } };
-        items.push({
-          key: `t-${i}`,
-          text: `讀取網頁：${parsed.fetch.url}（${FETCH_STATUS_LABEL[parsed.fetch.status] ?? parsed.fetch.status}）`,
-        });
-      } catch {}
-    } else if (m.role === "assistant" && m.content.startsWith("這次試跑有條件沒過")) {
-      items.push({ key: `t-${i}`, text: `系統問你：${m.content.split("\n")[0]}` });
-      setQuestion = true;
-    } else if (m.role === "user" && afterQuestion) {
-      items.push({ key: `t-${i}`, text: `你回答：${truncateForTimeline(m.content)}` });
-      setTrialAnchor = true;
-    } else if (m.role === "assistant" && afterTrialAnchor) {
-      items.push({ key: `t-${i}`, text: `模型建議：${m.content.slice(0, 120)}` });
-    }
-    afterQuestion = setQuestion;
-    afterTrialAnchor = setTrialAnchor;
-  });
-  return items;
-}
-function budgetChoices(min: number, max: number) {
-  return [...new Set([min, 200, 500, 1000, 2000, 5000, max])]
-    .filter((v) => v >= min && v <= max)
-    .sort((a, b) => a - b);
-}
+
 const points = (v: number) => v + " 點";
+
 const STARTERS = [
   {
     title: "會議記錄 → 待辦清單",
@@ -383,64 +80,7 @@ const STARTERS = [
     prompt: "把這週合併的 PR 描述整理成給使用者看的版本更新說明，依功能分組。",
   },
 ];
-function ReferenceList({
-  items,
-  adoptable,
-  showStatus,
-  locked,
-  onAdopt,
-}: {
-  items: CreationReference[];
-  adoptable: boolean;
-  showStatus: boolean;
-  locked: boolean;
-  onAdopt: (skillID: string) => void;
-}) {
-  return (
-    <ul className="ref-list">
-      {items.map((r) => (
-        <li key={r.skill_id}>
-          <div className="ref-head">
-            <strong>{r.name}</strong>
-            {showStatus && (
-              <span className="card-tag" data-tone={r.confirmed ? "done" : undefined}>
-                {!r.available ? "目前不可用" : r.confirmed ? "已確認" : "尚未確認"}
-              </span>
-            )}
-          </div>
-          <p>{declaredReferenceField(r.description)}</p>
-          <ul className="ref-facts">
-            <li>相容：{declaredReferenceField(r.compatibility)}</li>
-            <li>工具：{declaredReferenceField(r.allowed_tools)}</li>
-            <li>{referenceTierLabel(r.tier)}</li>
-            <li>{referenceScanLabel(r.scan_status, r.warnings)}</li>
-          </ul>
-          <details>
-            <summary>固定版本</summary>
-            {r.version_id}
-          </details>
-          {adoptable && (
-            <div className="ref-adopt">
-              <button disabled={locked || !r.available} onClick={() => onAdopt(r.skill_id)}>
-                直接採用
-              </button>
-              {r.scan_status !== "scanned" && (
-                <span className="note">沒有掃描紀錄，不建議直接採用</span>
-              )}
-            </div>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-function newestMessageIn(pane: HTMLElement) {
-  const messages = pane.querySelectorAll<HTMLElement>(".creation-log > li[data-index]");
-  return messages[messages.length - 1] as HTMLElement | undefined;
-}
-function isBelow(el: HTMLElement | undefined, pane: HTMLElement) {
-  return !!el && el.getBoundingClientRect().top > pane.getBoundingClientRect().bottom;
-}
+
 export function CreationSession() {
   const cache = useCreationSessionCache();
   const [id, setID] = useState(""),

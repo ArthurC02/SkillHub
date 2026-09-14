@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useGenerateEntryPoint } from "../generate.service";
 import { useCreationEntryPoint } from "../creation.service";
-import { GenerateSkill } from "../components/GenerateSkill";
+import { GenerateSkill } from "../generate/GenerateSkill";
 import { CreationSession } from "./components/CreationSession";
 
 export function CreateSkill() {

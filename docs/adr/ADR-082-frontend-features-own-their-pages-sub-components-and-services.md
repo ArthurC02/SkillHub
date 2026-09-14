@@ -59,7 +59,11 @@ Coding Agent 要回答「這個子元件還有誰在用」「這一頁的資料�
 | `index.ts` | 這個 feature 對外提供什麼 | 只有 export 清單 |
 
 - **子元件可以直接呼叫自己 feature 的 service**（負責人裁定）。寫入的「處理中」與錯誤狀態，只有顯示它的那個元件用得到，一路用 props 往下傳只會讓大頁面更難讀。TanStack Query 以快取鍵去重，所以子元件自己讀同一份資料不會多發請求。
-- **本批只搬家，不拆檔。** 把頁面檔裡的區塊拆進各自的 `components/` 是下一批（見後續工作），拆的時候照這一節放。
+- **大檔照這一節拆開。**
+  - 頁面檔裡的區塊拆進該頁的 `components/`。
+  - Admin 的八個分頁本來就各有路由，所以各自成為一個 `*.page.tsx`；共用的外框與表單放在 `features/admin/components/`。
+  - Test Case 的列表與明細是兩條路由，拆成兩個 page。
+  - EvaluationPanel 與 GenerateSkill 不是頁面，但各自有一群只屬於它的子元件，所以各自成為一個元件資料夾：`features/runs/evaluation/` 與 `features/creation/generate/`。子元件放在該資料夾的 `components/` 下，評估的標籤表放在 `evaluation.model.ts`。
 
 ## 決策 3：伺服器狀態的規則不變，只換位置
 
@@ -113,28 +117,26 @@ ADR 與 `docs/plans/mvp/` 裡的舊路徑是當時的紀錄，照舊不改；要
 | `components/format.ts` | `shared/format.ts` |
 | `pages/Home`、`pages/Compare`，`components/FacetNotes` | `features/catalog/home/Home.page.tsx`（及其 `components/FacetNotes`）、`compare/Compare.page.tsx` |
 | `pages/SkillDetail`、`pages/SkillFiles`，`components/VersionUpload`、`SkillVersionPicker`，`api/skills`、`api/versions` | `features/skill/detail/`（及其 `components/VersionUpload`）、`files/`、`components/SkillVersionPicker`、`skills.service.ts`、`versions.service.ts` |
-| `pages/CreateSkill`、`pages/ImportSkill`，`components/CreationSession`、`ModelMarkdown`、`GenerateSkill`、`CreateHub`、`GeneratedNotice`、`generateFailureSentence`，`api/creation`、`generate`、`import` | `features/creation/create/`（及其 `components/CreationSession`、`ModelMarkdown`）、`import/`、`components/`、`generate.model.ts`、`creation.service.ts`、`generate.service.ts`、`import.service.ts` |
-| `pages/RunPreflight`、`TestCases`、`DatasetUpload`，`api/lab`、`api/testcases` | `features/lab/preflight/`、`test-cases/`、`dataset-upload/`、`lab.service.ts`、`testcases.service.ts` |
-| `pages/RunTrace`、`RunCompare`、`WorkspaceRuns`，`components/InFlight`、`EvaluationPanel`、`RunVerdict`、`VersionDiff`、`runStatus`，`api/runs`、`trace`、`evaluation` | `features/runs/trace/`（及其 `components/InFlight`）、`compare/`、`list/`、`components/`、`runs.model.ts`、`runs.service.ts`、`trace.service.ts`、`evaluation.service.ts` |
+| `pages/CreateSkill`、`pages/ImportSkill`，`components/CreationSession`、`ModelMarkdown`、`GenerateSkill`、`CreateHub`、`GeneratedNotice`、`generateFailureSentence`，`api/creation`、`generate`、`import` | `features/creation/create/`（及其 `components/CreationSession`、`ModelMarkdown` 與拆出的子元件，純邏輯在 `create.model.ts`）、`import/`、`generate/GenerateSkill.tsx`（及其 `components/`）、`components/`（`CreateHub`、`GeneratedNotice`）、`generate.model.ts`、`creation.service.ts`、`generate.service.ts`、`import.service.ts` |
+| `pages/RunPreflight`、`TestCases`、`DatasetUpload`，`api/lab`、`api/testcases` | `features/lab/preflight/`（純邏輯在 `preflight.model.ts`）、`test-cases/`（`TestCaseList.page.tsx`、`TestCaseDetail.page.tsx`、`components/`、`test-cases.model.ts`）、`dataset-upload/`、`lab.service.ts`、`testcases.service.ts` |
+| `pages/RunTrace`、`RunCompare`、`WorkspaceRuns`，`components/InFlight`、`EvaluationPanel`、`RunVerdict`、`VersionDiff`、`runStatus`，`api/runs`、`trace`、`evaluation` | `features/runs/trace/`（及其 `components/`，含 `InFlight`）、`compare/`、`list/`、`evaluation/EvaluationPanel.tsx`（及其 `components/`、`evaluation.model.ts`）、`components/`（`RunVerdict`、`VersionDiff`）、`runs.model.ts`、`runs.service.ts`、`trace.service.ts`、`evaluation.service.ts` |
 | `pages/Packaging`、`Downloads`，`components/DownloadArtifactFacts`、`packagingGate`，`api/packaging` | `features/packaging/build/`、`downloads/`、`components/`、`packaging.model.ts`、`packaging.service.ts` |
 | `pages/WorkspaceSkills`、`WorkspaceAccount`、`DataPolicy`，`api/policy` | `features/workspace/skills/`、`account/`、`policy/`、`policy.service.ts` |
-| `pages/Admin`，`components/AdminNav`、`BarChart`，`api/admin` | `features/admin/Admin.page.tsx`、`components/`、`admin.service.ts` |
+| `pages/Admin`，`components/AdminNav`、`BarChart`，`api/admin` | `features/admin/` 下八個分頁資料夾，各有一個 `Admin*.page.tsx`（有子元件的另有自己的 `components/`）；共用的 `components/`（含 `AdminPage` 外框）、`admin.model.ts`、`admin.service.ts` |
 | `fixtures/`、`__outlines__/` | `testing/fixtures/`、`guards/__outlines__/` |
 | `*.test.*` | 見決策 4 |
 
 ## 影響
 
-- **行為不變。** 本批只搬檔、改寫 import，並把三個型別換到另一個檔。全部測試通過；ADR-081 的 6 條架構測試換成本 ADR 的 9 條。
+- **行為不變。** 這一批做的事只有四種：搬檔、改寫 import、把三個型別換到另一個檔，以及把大檔裡的區塊原封不動拆成獨立檔案。沒有改到任何一行邏輯。全部測試通過；ADR-081 的 6 條架構測試換成本 ADR 的 9 條。
 - **路徑的改寫範圍。** 活文件（`docs/design/`、`docs/development/`、`docs/plans/` 的 01–05、`apps/web/AGENTS.md`、`.claude/`）裡的路徑已同步改寫。所有 markdown 連結都改指新位置，連結目標必須存在（`doc-links`）。
 
 ## 後續工作
 
-- **拆大檔。** 把以下各檔裡的區塊拆進各自的 `components/`：
-  - `Admin.page.tsx`（19 個元件）
-  - `EvaluationPanel.tsx`（13 個）
-  - `TestCases.page.tsx`、`Home.page.tsx`、`SkillDetail.page.tsx`、`Packaging.page.tsx`（各 11 個）
-  - `RunTrace.page.tsx`（10 個）
-  - `CreationSession.tsx`（1478 行）
+- **還太大的元件本體。** 以下元件的本體函式仍然太長：
+  - `CreationSession`：單一函式約 1000 行。
+  - `Preflight`：約 260 行。
+  - `Packaging` 與 `Home` 的頁面函式：各約 200 行。
 
-  頁面檔裡的純邏輯拆成 `*.model.ts`，例如 RunPreflight 的 `SCRIPT_LABEL`、`limit`、`startFailureSentence`。
+  它們都已經沒有可以原封不動搬走的區塊，要再拆就得改元件內部的狀態分工。這不是搬檔，每一個都要先有測試把行為釘住。
 - **沿用 ADR-081 的後續工作。** 送出按鈕與確認動作的收斂，以及 `Findings` 與 `DownloadArtifactFacts` 的合併，仍要先決定文案。

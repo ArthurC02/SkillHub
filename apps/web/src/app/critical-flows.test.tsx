@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../core/api/queryClient";
 import { AuthControls } from "./shell/AuthControls";
 import { ImportSkill } from "../features/creation/import/ImportSkill.page";
-import { CancelRunControl } from "../features/runs/trace/RunTrace.page";
+import { CancelRunControl } from "../features/runs/trace/components/CancelRunControl";
 
 let container: HTMLDivElement;
 let root: Root;

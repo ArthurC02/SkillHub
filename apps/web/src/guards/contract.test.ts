@@ -148,50 +148,51 @@ const LABEL_TABLES: Array<{
   {
     what: "Evaluation.overall → 任務判定",
     values: generated.EvaluationOverallEnum,
-    table: async () => (await import("../features/runs/components/EvaluationPanel")).OVERALL_LABEL,
+    table: async () => (await import("../features/runs/evaluation/evaluation.model")).OVERALL_LABEL,
   },
   {
     what: "CriterionResult.result → 逐條判定",
     values: generated.CriterionResultResultEnum,
     table: async () =>
-      (await import("../features/runs/components/EvaluationPanel")).CRITERION_LABEL,
+      (await import("../features/runs/evaluation/evaluation.model")).CRITERION_LABEL,
   },
   {
     what: "CriterionResult.source → 判定來源",
     values: generated.CriterionResultSourceEnum,
-    table: async () => (await import("../features/runs/components/EvaluationPanel")).SOURCE_LABEL,
+    table: async () => (await import("../features/runs/evaluation/evaluation.model")).SOURCE_LABEL,
   },
   {
     what: "DeterministicFinding.category → 發現分類",
     values: generated.DeterministicFindingCategoryEnum,
     table: async () =>
-      (await import("../features/runs/components/EvaluationPanel")).FINDING_CATEGORY_LABEL,
+      (await import("../features/runs/evaluation/evaluation.model")).FINDING_CATEGORY_LABEL,
   },
   {
     what: "DeterministicFinding.severity → 嚴重度",
     values: generated.DeterministicFindingSeverityEnum,
-    table: async () => (await import("../features/runs/components/EvaluationPanel")).SEVERITY_LABEL,
+    table: async () =>
+      (await import("../features/runs/evaluation/evaluation.model")).SEVERITY_LABEL,
   },
   {
     what: "ImprovementSuggestion.category → 建議分類",
     values: generated.ImprovementSuggestionCategoryEnum,
     table: async () =>
-      (await import("../features/runs/components/EvaluationPanel")).SUGGESTION_CATEGORY_LABEL,
+      (await import("../features/runs/evaluation/evaluation.model")).SUGGESTION_CATEGORY_LABEL,
   },
   {
     what: "EvidenceRef.match → 引文回驗說明 (ADR-043)",
     values: generated.EvidenceRefMatchEnum,
-    table: async () => (await import("../features/runs/components/EvaluationPanel")).MATCH_NOTE,
+    table: async () => (await import("../features/runs/evaluation/evaluation.model")).MATCH_NOTE,
   },
   {
     what: "EvidenceRef.kind → 證據種類",
     values: generated.EvidenceRefKindEnum,
-    table: async () => (await import("../features/runs/components/EvaluationPanel")).KIND_WORD,
+    table: async () => (await import("../features/runs/evaluation/evaluation.model")).KIND_WORD,
   },
   {
     what: "RunPermissionSummary.content.scripts.status → Script 揭露",
     values: generated.RunPermissionSummaryContentScriptsStatusEnum,
-    table: async () => (await import("../features/lab/preflight/RunPreflight.page")).SCRIPT_LABEL,
+    table: async () => (await import("../features/lab/preflight/preflight.model")).SCRIPT_LABEL,
   },
   {
     what: "SkillLicense.source → License 出處",

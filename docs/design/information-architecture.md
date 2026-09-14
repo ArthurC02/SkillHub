@@ -121,7 +121,7 @@
 >
 > **這一欄沒有機器**（§6：`ia.test.ts` 只比對位址那一欄）。
 
-**沒有位址的區塊一個**：[`EvaluationPanel.tsx`](../../apps/web/src/features/runs/components/EvaluationPanel.tsx)（全 app 最大的幾個檔案之一）。它長在 `/runs/$runId` 裡；沒有位址就不是頁面，所以住在 `components/` 而不在 `pages/`（[ADR-081](../adr/ADR-081-frontend-components-in-three-layers-and-server-state-lives-in-api.md) 決策 1）。它原本兼供的 `RUN_STATUS_LABEL` 搬到了 `features/runs/runs.model.ts`。詳見 §5 IA-3。
+**沒有位址的區塊一個**：[`EvaluationPanel.tsx`](../../apps/web/src/features/runs/evaluation/EvaluationPanel.tsx)（全 app 最大的幾個檔案之一）。它長在 `/runs/$runId` 裡；沒有位址就不是頁面，所以住在 `components/` 而不在 `pages/`（[ADR-081](../adr/ADR-081-frontend-components-in-three-layers-and-server-state-lives-in-api.md) 決策 1）。它原本兼供的 `RUN_STATUS_LABEL` 搬到了 `features/runs/runs.model.ts`。詳見 §5 IA-3。
 
 **深度最多三層**（`/skills/$id/package`），沒有一條路由需要記住兩個以上的 id。
 
@@ -205,7 +205,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
 | **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare`、`/workspace/creations` | ✅ 四項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/admin` 與 `/admin/*` 八頁、`/lab/test-cases/$testCaseId`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/workspace/account`、`/workspace/import`、`/workspace/runs` | ✅ 後台每一頁的兩條來自 `features/admin/components/AdminNav.tsx` 與 `features/admin/Admin.page.tsx`（`/admin` 本身是 `AdminNav.tsx` 與 `app/shell/AuthControls.tsx`） |
+| 2 | `/admin` 與 `/admin/*` 八頁、`/lab/test-cases/$testCaseId`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/workspace/account`、`/workspace/import`、`/workspace/runs` | ✅ 後台每一頁的兩條來自 `features/admin/components/AdminNav.tsx` 與 `features/admin/home/AdminHome.page.tsx`（`/admin` 本身是 `AdminNav.tsx` 與 `app/shell/AuthControls.tsx`） |
 | 3 | `/workspace/downloads` | ✅ |
 | 5 | `/`、`/lab/run`、`/runs/$runId`、`/workspace/skills` | ✅ |
 | 6 | `/lab/test-cases` | ✅ |

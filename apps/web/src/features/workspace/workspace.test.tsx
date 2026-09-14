@@ -10,7 +10,7 @@ import { WorkspaceRuns } from "../runs/list/WorkspaceRuns.page";
 import { WorkspaceSkills } from "./skills/WorkspaceSkills.page";
 import { SkillDetail } from "../skill/detail/SkillDetail.page";
 import { ImportSkill } from "../creation/import/ImportSkill.page";
-import { CancelRunControl } from "../runs/trace/RunTrace.page";
+import { CancelRunControl } from "../runs/trace/components/CancelRunControl";
 import { SKILL_VERSIONS, VERSION_DIFF, skillDetail } from "../../testing/fixtures/platform";
 import { useForkSkill } from "../skill/skills.service";
 

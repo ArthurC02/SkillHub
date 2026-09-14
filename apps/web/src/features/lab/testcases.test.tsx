@@ -3,7 +3,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
-import { TestCaseDetail, TestCaseList } from "./test-cases/TestCases.page";
+import { TestCaseDetail } from "./test-cases/TestCaseDetail.page";
+import { TestCaseList } from "./test-cases/TestCaseList.page";
 import type { TestCase } from "./testcases.service";
 
 let container: HTMLDivElement;

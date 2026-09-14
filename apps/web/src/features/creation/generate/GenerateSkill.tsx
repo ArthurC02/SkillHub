@@ -1,25 +1,28 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Link } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";
-import { useGenerateFailures, useGenerateSkill } from "../generate.service";
+import { useGenerateSkill } from "../generate.service";
 import { isCategorizedFindings } from "../import.service";
 import { useOwnSkills, useSkillSearch } from "../../skill";
 import type { GenerateDiagram, GenerateRejected } from "../../../core/api/types";
-import { Findings } from "../../../shared/ui/Findings";
-import { GeneratedNotice } from "./GeneratedNotice";
-import { failureSentence } from "../generate.model";
-import { Timestamp } from "../../../shared/ui/Timestamp";
+import { GenerateHistory } from "./components/GenerateHistory";
+import { GenerateInFlight } from "./components/GenerateInFlight";
+import { GenerateFailed } from "./components/GenerateFailed";
+import { GenerateSucceeded } from "./components/GenerateSucceeded";
 
 const GENERATE_MAX_TASK_RUNES = 4000; // one-number: generateMaxTaskRunes
+
 const GENERATE_MAX_OUTPUT_TOKENS = 16000; // one-number: generateMaxOutputTokens
+
 const GENERATE_MAX_ATTEMPTS = 2; // one-number: generateMaxAttempts
 
 const GENERATE_COST_LOW_USD = 0.003;
+
 const GENERATE_COST_TYPICAL_USD = 0.006;
+
 const GENERATE_COST_HIGH_USD = 0.03;
-const GENERATE_FAILURE_LIMIT = 20; // one-number: generateFailureLimit
 
 const GENERATE_MAX_DIAGRAM_BYTES = 4000000; // one-number: generateMaxDiagramBytes
+
 const GENERATE_DIAGRAM_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 
 const GENERATE_MAX_REFERENCES = 3; // one-number: generateMaxReferences
@@ -346,103 +349,5 @@ function ReferenceRow({
       </label>
       <p className="note">{summary}</p>
     </li>
-  );
-}
-
-function GenerateHistory() {
-  const history = useGenerateFailures();
-
-  if (history.isError) {
-    return (
-      <p className="note" role="status">
-        過去的生成紀錄讀取失敗。這不影響你現在能不能生成。
-      </p>
-    );
-  }
-  const failures = history.data?.failures ?? [];
-  if (failures.length === 0) return null;
-
-  return (
-    <details>
-      <summary>最近沒有成功的生成（{failures.length} 次）</summary>
-      <ul>
-        {failures.map((f) => (
-          <li key={f.occurred_at}>
-            <Timestamp at={f.occurred_at} />
-            {" — "}
-            {failureSentence(f)}
-          </li>
-        ))}
-      </ul>
-      <p className="note">
-        這些是沒有建立任何版本的那幾次，最多列最近 {GENERATE_FAILURE_LIMIT} 次。
-        <strong>這裡沒有記下你當時輸入的任務描述</strong>
-        ——那份文字跟著它產生的 Skill 走，刪掉 Skill 就跟著刪掉；這份紀錄保存得更久，
-        兩邊各留一份等於一個沒有人做過的保存承諾。
-      </p>
-    </details>
-  );
-}
-
-function GenerateInFlight() {
-  return (
-    <div role="status" className="notice">
-      <p>正在請模型寫這個 Skill，然後用與匯入完全相同的那道驗證檢查它。</p>
-      <p>這一步會自己結束，通常十幾秒到一分鐘。</p>
-      <p className="note">
-        這一段沒有進度可以報——生成是一次呼叫，它要嘛回一個套件要嘛失敗， 沒有中間的量可以顯示。
-      </p>
-      <p>
-        <strong>請不要關掉這個分頁</strong>
-        ——這一次生成沒有背景工作可以接手，關掉就等於取消，而且不會留下任何半成品版本。
-      </p>
-    </div>
-  );
-}
-
-function GenerateFailed({
-  rejected,
-  onRetry,
-}: {
-  rejected: GenerateRejected;
-  onRetry: () => void;
-}) {
-  return (
-    <section role="alert">
-      <h3>生成失敗：套件被擋下，沒有建立任何版本</h3>
-      <p className="note">
-        {rejected.attempts > 1
-          ? "平台已經自動用同一段描述再試過一次，第二次仍然沒有通過。下面是檢查逐字回報的內容，沒有經過改寫。"
-          : "這一次沒有自動重試——被擋下的原因不是排版手滑，同一段描述再送一次會得到同樣的結果。下面是檢查逐字回報的內容，沒有經過改寫。"}
-      </p>
-      <Findings findings={rejected} level={4} />
-      <p>
-        <button type="button" onClick={onRetry}>
-          再試一次
-        </button>{" "}
-        或者改寫上面的任務描述再送出——把要做什麼、輸入是什麼、預期產出是什麼寫得更具體，通常比重試有用。
-      </p>
-    </section>
-  );
-}
-
-function GenerateSucceeded({
-  result,
-}: {
-  result: { skill_id: string; version_number: number; attempts: number };
-}) {
-  return (
-    <section role="status">
-      <h3>已經產生一個 Skill，放在你的工作區</h3>
-      <GeneratedNotice skillId={result.skill_id} />
-      {result.attempts > 1 && (
-        <p className="note">這一次生成試了 {result.attempts} 趟才通過驗證。</p>
-      )}
-      <p>
-        <Link to="/skills/$skillId" params={{ skillId: result.skill_id }}>
-          打開這個 Skill
-        </Link>
-      </p>
-    </section>
   );
 }
