@@ -15,10 +15,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-const (
-	enrichmentPending = "pending"
+type enrichmentStatus string
 
-	enrichmentEnriched = "enriched"
+const (
+	enrichmentPending enrichmentStatus = "pending"
+
+	enrichmentEnriched enrichmentStatus = "enriched"
 )
 
 const (
@@ -39,7 +41,7 @@ type enrichment struct {
 	limitations     string
 	scan            []byte
 	embedding       *pgvector.Vector
-	status          string
+	status          enrichmentStatus
 	model           *string
 	promptVersion   *string
 }

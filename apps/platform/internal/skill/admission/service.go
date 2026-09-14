@@ -421,7 +421,7 @@ func (s *Service) upsertProjection(ctx context.Context, tx pgx.Tx, workspaceID, 
 		Limitations:             e.limitations,
 		Scan:                    e.scan,
 		Embedding:               e.embedding,
-		EnrichmentStatus:        e.status,
+		EnrichmentStatus:        string(e.status),
 		EnrichmentModel:         e.model,
 		EnrichmentPromptVersion: e.promptVersion,
 	})

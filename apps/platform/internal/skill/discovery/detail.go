@@ -609,7 +609,7 @@ func derivation(s SkillFacts) derivationInfo {
 
 func enrichmentFrom(e gen.GetSkillEnrichmentRow) enrichmentInfo {
 	out := enrichmentInfo{Status: e.EnrichmentStatus, Note: enrichPendingNote}
-	if e.EnrichmentStatus == "enriched" {
+	if EnrichmentStatus(e.EnrichmentStatus) == EnrichmentEnriched {
 		out.Note = enrichedNote
 	}
 	out.Summary = e.EnrichedSummary

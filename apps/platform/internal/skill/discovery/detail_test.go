@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -94,6 +95,20 @@ func TestFileTreeMarksScriptsAndOmitsDirectories(t *testing.T) {
 	}
 	if byPath["scripts/run.py"].Size == 0 {
 		t.Error("file size is missing from the tree")
+	}
+}
+
+func TestOnlyAnEnrichedDocumentCarriesTheModelSummaryNote(t *testing.T) {
+	statuses := AllEnrichmentStatuses()
+	if len(statuses) != 2 {
+		t.Fatalf("statuses = %d, want the 2 search_documents.enrichment_status allows", len(statuses))
+	}
+	want := map[EnrichmentStatus]string{EnrichmentPending: enrichPendingNote, EnrichmentEnriched: enrichedNote}
+	for _, status := range statuses {
+		got := enrichmentFrom(gen.GetSkillEnrichmentRow{EnrichmentStatus: string(status)})
+		if got.Status != string(status) || got.Note != want[status] {
+			t.Errorf("%s: status = %q note = %q, want %q", status, got.Status, got.Note, want[status])
+		}
 	}
 }
 

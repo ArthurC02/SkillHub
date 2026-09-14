@@ -285,6 +285,18 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/trial/execution/schedule.go", "curationTier"),
 		},
 	},
+	{
+		name: "search document enrichment status",
+		sources: []vocabularySource{
+			sqlColumnCheck("search_documents", "enrichment_status"),
+			goConstEnum("apps/platform/internal/skill/discovery/enrichment.go", "EnrichmentStatus"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/discovery/enrichment.go", "AllEnrichmentStatuses",
+				"apps/platform/internal/skill/discovery/enrichment.go", "EnrichmentStatus"),
+			goConstEnum("apps/platform/internal/skill/admission/enrich.go", "enrichmentStatus"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SkillEnrichmentStatus"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {
