@@ -263,10 +263,6 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if errors.Is(err, errProvenanceNotRecorded) {
-		httpx.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "the new version could not be created")
 		return

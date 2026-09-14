@@ -171,6 +171,52 @@ func TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal
 	}
 }
 
+func TestASuggestionThatWentIntoAVersionIsAppliedAndItsAcceptanceIsFinal(t *testing.T) {
+	held := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	stranger := pgtype.UUID{Bytes: [16]byte{4}, Valid: true}
+	version := pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
+	earlier := pgtype.UUID{Bytes: [16]byte{8}, Valid: true}
+	cases := []struct {
+		name      string
+		decision  Decision
+		alreadyOn pgtype.UUID
+		named     []pgtype.UUID
+		want      Event
+		appliedTo pgtype.UUID
+	}{
+		{"an accepted suggestion goes into the version", DecisionAccepted, pgtype.UUID{}, []pgtype.UUID{held},
+			SuggestionsApplied{version, []pgtype.UUID{held}}, version},
+		{"a rejection sent before the version was recorded does not stand", DecisionRejected, pgtype.UUID{},
+			[]pgtype.UUID{held}, SuggestionsApplied{version, []pgtype.UUID{held}}, version},
+		{"a suggestion already in an earlier version goes into this one too", DecisionAccepted, earlier,
+			[]pgtype.UUID{held}, SuggestionsApplied{version, []pgtype.UUID{held}}, version},
+		{"a suggestion this evaluation does not hold is left out", DecisionAccepted, pgtype.UUID{},
+			[]pgtype.UUID{stranger, held}, SuggestionsApplied{version, []pgtype.UUID{held}}, version},
+		{"a letter naming only suggestions this evaluation does not hold", DecisionAccepted, pgtype.UUID{},
+			[]pgtype.UUID{stranger}, Refused{RefusedNothingToApply}, pgtype.UUID{}},
+		{"the same version delivered again records nothing new", DecisionAccepted, version,
+			[]pgtype.UUID{held}, Refused{RefusedNothingToApply}, version},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := revisionIn(StatusCompleted, false)
+			e.suggestions = map[pgtype.UUID]gen.EvaluationSuggestion{
+				held: {ID: held, Decision: string(tc.decision), AppliedSkillVersionID: tc.alreadyOn},
+			}
+
+			e.RecordApplied(version, tc.named)
+
+			assertEvents(t, e, tc.want)
+			if got := e.AppliedVersion(held); got != tc.appliedTo {
+				t.Fatalf("the suggestion is applied to %v, want %v", got, tc.appliedTo)
+			}
+			if _, refused := tc.want.(Refused); !refused && e.Decision(held) != DecisionAccepted {
+				t.Fatalf("a suggestion inside a version is %q, want accepted", e.Decision(held))
+			}
+		})
+	}
+}
+
 func TestEachRefusalAnswersWithItsOwnError(t *testing.T) {
 	cases := map[Refusal]error{
 		RefusedAwaitingJudge:     errEvaluationInProgress,
@@ -208,6 +254,7 @@ func TestEveryEvaluationEventHasACatalogueNameAndAFixedPayloadShape(t *testing.T
 		{EvaluationFailed{}, outbox.EvaluationFailed, []string{"evidence_complete"}},
 		{FeedbackRecorded{}, outbox.EvaluationFeedbackRecorded, []string{"has_comment", "helpful"}},
 		{SuggestionDecided{}, outbox.EvaluationSuggestionDecided, []string{"decision", "suggestion_id"}},
+		{SuggestionsApplied{}, outbox.EvaluationSuggestionsApplied, []string{"skill_version_id", "suggestion_ids"}},
 	}
 	for _, tc := range cases {
 		if got := tc.event.eventType(); got != tc.name || !slices.Contains(outbox.EventTypes, got) {

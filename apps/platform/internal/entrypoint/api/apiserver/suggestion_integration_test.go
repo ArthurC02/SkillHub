@@ -12,9 +12,13 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 func packagedSkillMD(name string) string {
@@ -238,6 +242,39 @@ func (c *client) applySuggestions(t *testing.T, skillID, evaluationID string, id
 	return resp.StatusCode, out
 }
 
+func deliverImprovedVersion(t *testing.T, a *api, pool *pgxpool.Pool, versionID string, finalAttempt bool) error {
+	t.Helper()
+	ctx := context.Background()
+	var event outbox.Event
+	if err := pool.QueryRow(ctx, `
+		SELECT event_type, workspace_id, aggregate_id, payload FROM outbox_events
+		WHERE event_type = 'skill.version_added' AND payload->>'version_id' = $1`, versionID,
+	).Scan(&event.EventType, &event.WorkspaceID, &event.AggregateID, &event.Payload); err != nil {
+		t.Fatalf("the version's skill.version_added event: %v", err)
+	}
+	var letter *river.Job[eval.SuggestionsAppliedArgs]
+	mailbox := &eval.SkillVersionConsumer{Insert: func(
+		_ context.Context, args river.JobArgs, opts *river.InsertOpts,
+	) (*rivertype.JobInsertResult, error) {
+		attempt := 1
+		if finalAttempt {
+			attempt = opts.MaxAttempts
+		}
+		letter = &river.Job[eval.SuggestionsAppliedArgs]{
+			JobRow: &rivertype.JobRow{Attempt: attempt, MaxAttempts: opts.MaxAttempts},
+			Args:   args.(eval.SuggestionsAppliedArgs),
+		}
+		return nil, nil
+	}}
+	if err := mailbox.Deliver(ctx, event); err != nil {
+		t.Fatalf("deliver: %v", err)
+	}
+	if letter == nil {
+		t.Fatal("a version built from suggestions posted nothing to the evaluation's mailbox")
+	}
+	return (&eval.SuggestionsAppliedWorker{Svc: a.evaluations}).Work(ctx, letter)
+}
+
 func storedFile(t *testing.T, a *api, key, path string) string {
 	t.Helper()
 	data, err := a.packages.Get(context.Background(), key)
@@ -364,6 +401,14 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 	}
 
 	_, suggestions, _ = c.listSuggestions(t, seed.runID)
+	if suggestions[0].AppliedSkillVersionID != "" {
+		t.Errorf("applied_skill_version_id = %q before the evaluation read the version's event",
+			suggestions[0].AppliedSkillVersionID)
+	}
+	if err := deliverImprovedVersion(t, a, pool, applied.VersionID, false); err != nil {
+		t.Fatalf("the evaluation's mailbox: %v", err)
+	}
+	_, suggestions, _ = c.listSuggestions(t, seed.runID)
 	if suggestions[0].AppliedSkillVersionID != applied.VersionID {
 		t.Errorf("applied_skill_version_id = %q, want the new version %q",
 			suggestions[0].AppliedSkillVersionID, applied.VersionID)
@@ -381,6 +426,43 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 	code, diff = c.suggestionDiff(t, s.SuggestionID)
 	if code != http.StatusOK || diff.Applicable || diff.BlockedReason != "target_changed" {
 		t.Errorf("after applying, the same suggestion is target_changed: got %d %+v", code, diff)
+	}
+}
+
+func TestARejectionSentBeforeTheEvaluationRecordsTheVersionDoesNotStand(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "sugg-late-reject")
+	const name = "sugg-late-reject-skill"
+	seed := evaluateWithSuggestions(t, a, pool, c, name, []llmclient.ImprovementProposal{{
+		Category: "skill", Problem: "no mention of deduplication", Evidence: suggestionQuote,
+		TargetPath: "SKILL.md", ProposedContent: packagedSkillMD(name) + "\nIt deduplicates rows.\n",
+		ExpectedImpact: "better activation",
+	}})
+	_, suggestions, evaluationID := c.listSuggestions(t, seed.runID)
+	id := suggestions[0].SuggestionID
+	if code, _ := c.decide(t, id, "accepted"); code != http.StatusOK {
+		t.Fatalf("accepting got %d", code)
+	}
+	code, applied := c.applySuggestions(t, seed.skillID, evaluationID, id)
+	if code != http.StatusCreated {
+		t.Fatalf("apply got %d (%s)", code, applied.Error)
+	}
+	if code, _ := c.decide(t, id, "rejected"); code != http.StatusOK {
+		t.Fatalf("a rejection before the evaluation heard of the version got %d, want 200", code)
+	}
+
+	if err := deliverImprovedVersion(t, a, pool, applied.VersionID, false); err != nil {
+		t.Fatalf("the evaluation's mailbox: %v", err)
+	}
+
+	_, suggestions, _ = c.listSuggestions(t, seed.runID)
+	if suggestions[0].Decision != "accepted" || suggestions[0].AppliedSkillVersionID != applied.VersionID {
+		t.Errorf("after the version was recorded the suggestion is %q applied to %q, want accepted and applied to %q",
+			suggestions[0].Decision, suggestions[0].AppliedSkillVersionID, applied.VersionID)
+	}
+	if code, _ := c.decide(t, id, "rejected"); code != http.StatusConflict {
+		t.Errorf("rejecting it once recorded got %d, want 409", code)
 	}
 }
 

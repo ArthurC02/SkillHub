@@ -37,7 +37,7 @@
 1. **genesis 事件**（aggregate 的首個事件）——`run.queued`。它之前沒有任何事件，也還沒有 attempt。
 2. **成因識別不是 UUID 者**——`run.cleanup_cleaned`／`run.cleanup_failed`。一次 cleanup pass 釋放該 Run 的**全部** attempt，沒有單一 attempt 是它的成因；真正的成因是 `run_cleanup` job，而 River 的 job id 是 bigint。把終態轉移的 attempt id 塞進去既是假資料，也會改變 `CleanupArgs` 的 `ByArgs` 唯一鍵，讓 supervisor 的補派送不再與終態轉移合流，變成兩個 worker 同時拆同一個 sandbox。要真正填上它，需要一個 UUID 型別的 job 識別，那是本目錄之外的變更。`evaluation` 與 `skill` aggregate 的事件同屬此類：成因是 `evaluate_run` job、使用者或營運者的一次請求，都沒有 UUID 識別。
 
-## 3. 事件目錄（現行 26 型，v1＝忠實記錄現況）
+## 3. 事件目錄（現行 27 型，v1＝忠實記錄現況）
 
 ### `run` aggregate — 狀態轉移族（producer：Run Orchestration，`internal/run/service.go` `record()`）
 
@@ -68,10 +68,11 @@
 | `evaluation.failed` | 判定沒跑完（`FailEvaluation`） | `evidence_complete` | |
 | `evaluation.feedback_recorded` | 使用者對目前這一版留下回饋（`SetEvaluationFeedback`） | `helpful`、`has_comment` | 意見文字是使用者內容，不進 payload |
 | `evaluation.suggestion_decided` | 使用者接受或拒絕一則建議（`DecideSuggestion`） | `suggestion_id`、`decision` | 已套用的建議只能維持接受 |
+| `evaluation.suggestions_applied` | 評估的 Mailbox（`record_suggestions_applied` job）收到帶 `improved_by` 的 `skill.version_added`，記下哪些建議進了這一版（`MarkSuggestionsApplied`） | `skill_version_id`、`suggestion_ids`（實際記下的那幾則） | 進了版本的建議一律標成接受（建版之後、記下之前送來的拒絕不成立），只記還沒記在這一版的，重送不重記；job 最後一次重試仍失敗時寫一筆「來源沒記下」的稽核 |
 
 ### `skill` aggregate（producer：`skill/library` 的 Skill aggregate，存回在 `skill_store.go` 的 `saveSkill`）
 
-`aggregate_id`＝`correlation_id`＝Skill 的 id；`causation_id` NULL（§2 例外 2）。命令被拒絕時不發事件。目前沒有訂閱者，Dispatcher 以具名理由忽略。
+`aggregate_id`＝`correlation_id`＝Skill 的 id；`causation_id` NULL（§2 例外 2）。命令被拒絕時不發事件。`skill.version_added` 由評估的 Mailbox 訂閱（見 `evaluation.suggestions_applied`），其餘沒有訂閱者，Dispatcher 以具名理由忽略。
 
 | `event_type` | 觸發（同交易的狀態變更） | payload | 備註 |
 | --- | --- | --- | --- |
@@ -82,7 +83,7 @@
 | `skill.categorized` | 擁有者指定或清除分類（`SetSkillCategory`） | `category`、`category_source`（皆可為 null） | |
 | `skill.deleted` | 擁有者刪除（`SoftDeleteSkill`） | 空物件 | 版本快照照舊凍結 |
 | `skill.created` | 匯入、生成或 Fork 建立一個 Skill（`CreateSkill`） | `redistribution`、`forked_from_skill_id`、`forked_from_version_id`（不是 Fork 時為 null） | 同一工作區內名稱唯一由 unique index 守 |
-| `skill.version_added` | 匯入、存新版本、生成或 Fork 加上一個版本（`CreateSkillVersion`） | `version_id`、`version_number`、`content_hash` | 版本號由 query 配發；相同內容不成為第二版（unique index）；generated 的 Skill 只收生成的內容 |
+| `skill.version_added` | 匯入、存新版本、生成或 Fork 加上一個版本（`CreateSkillVersion`） | `version_id`、`version_number`、`content_hash`、`improved_by`（套用改善建議建成時為 `evaluation_id`、`suggestion_ids`，否則 null） | 版本號由 query 配發；相同內容不成為第二版（unique index）；generated 的 Skill 只收生成的內容 |
 | `skill.described` | 存新版本時，Skill 的說明換成新版本宣告的那一句（`UpdateSkillSummary`） | 空物件 | 說明是人寫的文字，不進 payload |
 
 ### 概念名對照（ADR-008）
@@ -92,7 +93,7 @@ ADR-008 以 PascalCase 過去式描述工作流事件（`RunRequested`、`RunExe
 ## 4. 規範（新增或修改事件時強制）
 
 1. **命名**：`<aggregate>.<小寫snake過去式事實>`。狀態機鏡像型（`run.<status>`）是既有例外，不再擴散——新事件描述「發生了什麼」，不是「進入了什麼狀態」。
-2. **值域封閉**：`event_type` 不得由字串拼接產生；目錄未列的 type 不得發出。**已落地（2026-08-20，DDD-012）**：值域宣告在三處——`outbox.EventTypes`、最新一支換上 `CHECK` 的 migration（現為 `db/migrations/0068`）、本目錄 §3——`internal/outbox` 的 conformance test 比對三方，任一處漏改即紅。producer 用 `outbox.StatusEvent`／`outbox.CleanupEvent` 映射，未知 status 回 error 讓交易回滾，不會靜默生出新 type。
+2. **值域封閉**：`event_type` 不得由字串拼接產生；目錄未列的 type 不得發出。**已落地（2026-08-20，DDD-012）**：值域宣告在三處——`outbox.EventTypes`、最新一支換上 `CHECK` 的 migration（現為 `db/migrations/0069`）、本目錄 §3——`internal/outbox` 的 conformance test 比對三方，任一處漏改即紅。producer 用 `outbox.StatusEvent`／`outbox.CleanupEvent` 映射，未知 status 回 error 讓交易回滾，不會靜默生出新 type。
 3. **payload 為 consumer 設計**：欄位存在性必須固定——可缺的欄位明示 nullable，不得「空字串就不放 key」；不得直接重用 audit metadata bag（現況待收斂）。
 4. **同 commit 四件事**：新事件＝目錄 §3 加列＋`outbox` 常數與映射＋新 migration 換上新的 `CHECK` 清單＋producer 實作。目錄與程式分岔視同 contract drift，conformance test 就是抓這件事。
 5. **觸發源唯一**：跨 context 的「後續反應」以事件 consumer 為唯一觸發源；同 context 的內部工序才可直接入隊 River。2026-08-20（DDD-005）起，`run.succeeded`／`run.failed` 的 consumer（`internal/eval` 的 `RunEventConsumer`）是 `evaluate_run` 入隊的唯一觸發源；終態轉移交易只入隊 `run_cleanup`，那是 Run 自己的內部工序。

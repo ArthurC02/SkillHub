@@ -112,6 +112,9 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 	if set.RunEvents.HasCurrentEvaluation == nil || set.RunEvents.Insert == nil {
 		t.Error("run event consumer is missing HasCurrentEvaluation or Insert")
 	}
+	if set.SkillVersions == nil || set.SkillVersions.Insert == nil {
+		t.Error("the evaluation's mailbox for skill versions is not wired to the queue")
+	}
 }
 
 func TestBuildWorkersLeavesTheJudgeUnsetWithoutAnLLM(t *testing.T) {

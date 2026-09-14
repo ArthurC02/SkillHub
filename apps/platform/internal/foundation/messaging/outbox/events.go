@@ -77,12 +77,13 @@ const (
 )
 
 const (
-	EvaluationStarted           = "evaluation.started"
-	EvaluationSuperseded        = "evaluation.superseded"
-	EvaluationCompleted         = "evaluation.completed"
-	EvaluationFailed            = "evaluation.failed"
-	EvaluationFeedbackRecorded  = "evaluation.feedback_recorded"
-	EvaluationSuggestionDecided = "evaluation.suggestion_decided"
+	EvaluationStarted            = "evaluation.started"
+	EvaluationSuperseded         = "evaluation.superseded"
+	EvaluationCompleted          = "evaluation.completed"
+	EvaluationFailed             = "evaluation.failed"
+	EvaluationFeedbackRecorded   = "evaluation.feedback_recorded"
+	EvaluationSuggestionDecided  = "evaluation.suggestion_decided"
+	EvaluationSuggestionsApplied = "evaluation.suggestions_applied"
 )
 
 const (
@@ -123,6 +124,7 @@ var EventTypes = []string{
 	EvaluationFailed,
 	EvaluationFeedbackRecorded,
 	EvaluationSuggestionDecided,
+	EvaluationSuggestionsApplied,
 	SkillTakenDown,
 	SkillAccessRestricted,
 	SkillAccessRestrictionLifted,

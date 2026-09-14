@@ -117,6 +117,8 @@ type sourceMeta struct {
 	CompletionTokens int64
 
 	GenerationInputs []byte
+
+	ImprovedBy *registry.Improvement
 }
 
 func (s *Service) UploadZip(ctx context.Context, ws identity.Workspace, data []byte) (Result, error) {
@@ -318,6 +320,19 @@ func auditVersion(ctx context.Context, tx pgx.Tx, ws identity.Workspace, action 
 var ErrSkillNotFound = errors.New("skill not found")
 
 func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, data []byte) (Result, error) {
+	return s.saveVersion(ctx, ws, skillID, data, sourceMeta{Type: SourceUpload})
+}
+
+func (s *Service) SaveImprovedVersion(
+	ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, data []byte,
+	evaluationID pgtype.UUID, suggestionIDs []pgtype.UUID,
+) (Result, error) {
+	return s.saveVersion(ctx, ws, skillID, data, sourceMeta{
+		Type: SourceUpload, ImprovedBy: &registry.Improvement{EvaluationID: evaluationID, SuggestionIDs: suggestionIDs},
+	})
+}
+
+func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, data []byte, src sourceMeta) (Result, error) {
 	p, err := s.prepare(ctx, data)
 	if err != nil || p.report.Blocked {
 		return Result{Report: p.report}, err
@@ -340,7 +355,7 @@ func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillI
 	}
 	res.Skill = root.Skill()
 
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, p, sourceMeta{Type: SourceUpload}, e)
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, p, src, e)
 	if err != nil {
 		return Result{}, err
 	}
@@ -401,6 +416,9 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 	}, generated)
 	if err != nil {
 		return registry.Version{}, false, err
+	}
+	if src.ImprovedBy != nil {
+		content = content.ImprovedBy(*src.ImprovedBy)
 	}
 	root.AddVersion(content)
 	if err := registry.SaveSkill(ctx, tx, root); err != nil {

@@ -19,6 +19,7 @@ const (
 	RefusedNotAChoice        Refusal = "not_a_choice"
 	RefusedUnknownSuggestion Refusal = "unknown_suggestion"
 	RefusedAcceptanceIsFinal Refusal = "acceptance_is_final"
+	RefusedNothingToApply    Refusal = "nothing_to_apply"
 )
 
 var (
@@ -71,6 +72,13 @@ type SuggestionDecided struct {
 	SuggestionID pgtype.UUID `json:"suggestion_id"`
 	Decision     Decision    `json:"decision"`
 }
+
+type SuggestionsApplied struct {
+	SkillVersionID pgtype.UUID   `json:"skill_version_id"`
+	SuggestionIDs  []pgtype.UUID `json:"suggestion_ids"`
+}
+
+func (SuggestionsApplied) eventType() string { return outbox.EvaluationSuggestionsApplied }
 
 func (Refused) eventType() string              { return "" }
 func (EvaluationStarted) eventType() string    { return outbox.EvaluationStarted }
@@ -179,6 +187,28 @@ func (e *Evaluation) Decide(suggestionID pgtype.UUID, to Decision) {
 		e.suggestions[suggestionID] = suggestion
 		e.record(SuggestionDecided{SuggestionID: suggestionID, Decision: to})
 	}
+}
+
+func (e *Evaluation) AppliedVersion(suggestionID pgtype.UUID) pgtype.UUID {
+	return e.suggestions[suggestionID].AppliedSkillVersionID
+}
+
+func (e *Evaluation) RecordApplied(versionID pgtype.UUID, suggestionIDs []pgtype.UUID) {
+	var applied []pgtype.UUID
+	for _, id := range suggestionIDs {
+		suggestion, known := e.suggestions[id]
+		if !known || suggestion.AppliedSkillVersionID == versionID {
+			continue
+		}
+		suggestion.Decision, suggestion.AppliedSkillVersionID = string(DecisionAccepted), versionID
+		e.suggestions[id] = suggestion
+		applied = append(applied, id)
+	}
+	if len(applied) == 0 {
+		e.refuse(RefusedNothingToApply)
+		return
+	}
+	e.record(SuggestionsApplied{SkillVersionID: versionID, SuggestionIDs: applied})
 }
 
 func (e *Evaluation) refuse(reason Refusal) { e.record(Refused{Reason: reason}) }

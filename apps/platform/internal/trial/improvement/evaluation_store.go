@@ -52,6 +52,31 @@ func loadEvaluationOfSuggestion(
 	return e, nil
 }
 
+func loadEvaluationWithSuggestions(
+	ctx context.Context, q *gen.Queries, workspaceID, evaluationID pgtype.UUID, suggestionIDs []pgtype.UUID,
+) (*Evaluation, error) {
+	e, err := loadEvaluation(ctx, q, workspaceID, evaluationID)
+	if err != nil {
+		return nil, err
+	}
+	e.suggestions = map[pgtype.UUID]gen.EvaluationSuggestion{}
+	for _, id := range suggestionIDs {
+		suggestion, err := q.LockEvaluationSuggestion(ctx, gen.LockEvaluationSuggestionParams{
+			ID: id, WorkspaceID: workspaceID,
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		if suggestion.EvaluationID == e.row.ID {
+			e.suggestions[id] = suggestion
+		}
+	}
+	return e, nil
+}
+
 func saveUnlessRefused(ctx context.Context, tx pgx.Tx, e *Evaluation) error {
 	if reason, refused := e.Refusal(); refused {
 		return reason.err()
@@ -105,6 +130,10 @@ func writeEvaluationEvent(ctx context.Context, q *gen.Queries, e *Evaluation, ev
 		}); err == nil {
 			e.suggestions[event.SuggestionID] = decided
 		}
+	case SuggestionsApplied:
+		_, err = q.MarkSuggestionsApplied(ctx, gen.MarkSuggestionsAppliedParams{
+			SkillVersionID: event.SkillVersionID, Ids: event.SuggestionIDs, WorkspaceID: e.row.WorkspaceID,
+		})
 	default:
 		err = fmt.Errorf("evaluation event %T has nothing to write", event)
 	}

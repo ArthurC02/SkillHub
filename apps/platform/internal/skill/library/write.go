@@ -52,6 +52,12 @@ type VersionContent struct {
 	licenseSource    *string
 	summary          string
 	generated        bool
+	improvedBy       *Improvement
+}
+
+func (c VersionContent) ImprovedBy(by Improvement) VersionContent {
+	c.improvedBy = &by
+	return c
 }
 
 func SkillFromPackage(workspaceID pgtype.UUID, report skillpkg.Report, redistribution Redistribution) (*SkillRoot, error) {

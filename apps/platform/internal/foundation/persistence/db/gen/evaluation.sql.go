@@ -753,10 +753,11 @@ func (q *Queries) LockEvaluationSuggestion(ctx context.Context, arg LockEvaluati
 
 const markSuggestionsApplied = `-- name: MarkSuggestionsApplied :execrows
 UPDATE evaluation_suggestions SET
-    applied_skill_version_id = $1
+    applied_skill_version_id = $1,
+    decided_at = CASE WHEN decision = 'accepted' THEN decided_at ELSE now() END,
+    decision = 'accepted'
 WHERE id = ANY($2::uuid[])
   AND workspace_id = $3
-  AND decision = 'accepted'
 `
 
 type MarkSuggestionsAppliedParams struct {

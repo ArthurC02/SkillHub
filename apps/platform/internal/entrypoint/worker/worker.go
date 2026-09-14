@@ -51,6 +51,7 @@ type Set struct {
 	Registry       *registry.Service
 	CreationSearch *catalog.Service
 	RunEvents      *eval.RunEventConsumer
+	SkillVersions  *eval.SkillVersionConsumer
 	Events         *outbox.Dispatcher
 	Objects        *objreconcile.Service
 	Queue          *river.Client[pgx.Tx]
@@ -120,9 +121,11 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	}
 
 	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
+	set.SkillVersions = &eval.SkillVersionConsumer{}
 
 	set.Events = outbox.NewDispatcher().
 		On("evaluation", set.RunEvents.Deliver, outbox.RunSucceeded, outbox.RunFailed).
+		On("suggestions applied", set.SkillVersions.Deliver, outbox.SkillVersionAdded).
 		Ignore("progress announcements: a run that is still moving is read from its own row by the UI, and no worker-side reaction is owed",
 			outbox.RunQueued, outbox.RunProvisioning, outbox.RunPreparing,
 			outbox.RunRunning, outbox.RunEvaluating).
@@ -132,11 +135,12 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 			outbox.RunCleanupCleaned, outbox.RunCleanupFailed).
 		Ignore("evaluation facts: no aggregate reacts to them yet, and every reader answers from the evaluation's own rows",
 			outbox.EvaluationStarted, outbox.EvaluationSuperseded, outbox.EvaluationCompleted,
-			outbox.EvaluationFailed, outbox.EvaluationFeedbackRecorded, outbox.EvaluationSuggestionDecided).
+			outbox.EvaluationFailed, outbox.EvaluationFeedbackRecorded, outbox.EvaluationSuggestionDecided,
+			outbox.EvaluationSuggestionsApplied).
 		Ignore("skill facts: no aggregate reacts to them yet, and every reader answers from the skill's own rows",
 			outbox.SkillTakenDown, outbox.SkillAccessRestricted, outbox.SkillAccessRestrictionLifted,
 			outbox.SkillRedistributionSet, outbox.SkillCategorized, outbox.SkillDeleted,
-			outbox.SkillCreated, outbox.SkillVersionAdded, outbox.SkillDescribed)
+			outbox.SkillCreated, outbox.SkillDescribed)
 	if err := set.Events.Validate(); err != nil {
 		return nil, fmt.Errorf("outbox dispatch wiring: %w", err)
 	}
@@ -170,6 +174,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	addWorker(set, workers, &run.SuperviseWorker{Svc: set.Runs})
 	addWorker(set, workers, &eval.Worker{Svc: set.Evaluations})
 	addWorker(set, workers, &eval.RecoveryWorker{Svc: set.Evaluations})
+	addWorker(set, workers, &eval.SuggestionsAppliedWorker{Svc: set.Evaluations})
 	addWorker(set, workers, outboxWorker)
 
 	set.Objects = &objreconcile.Service{
@@ -231,6 +236,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 
 	set.Runs.Queue = client
 	set.RunEvents.Insert = client.Insert
+	set.SkillVersions.Insert = client.Insert
 	return set, nil
 }
 

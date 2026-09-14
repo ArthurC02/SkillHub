@@ -97,9 +97,15 @@ type SkillCreated struct {
 }
 
 type SkillVersionAdded struct {
-	VersionID     pgtype.UUID `json:"version_id"`
-	VersionNumber int32       `json:"version_number"`
-	ContentHash   string      `json:"content_hash"`
+	VersionID     pgtype.UUID  `json:"version_id"`
+	VersionNumber int32        `json:"version_number"`
+	ContentHash   string       `json:"content_hash"`
+	ImprovedBy    *Improvement `json:"improved_by"`
+}
+
+type Improvement struct {
+	EvaluationID  pgtype.UUID   `json:"evaluation_id"`
+	SuggestionIDs []pgtype.UUID `json:"suggestion_ids"`
 }
 
 type SkillDescribed struct{}
@@ -257,7 +263,7 @@ func (s *SkillRoot) AddVersion(content VersionContent) {
 		return
 	}
 	s.pending = content
-	s.record(SkillVersionAdded{ContentHash: content.contentHash})
+	s.record(SkillVersionAdded{ContentHash: content.contentHash, ImprovedBy: content.improvedBy})
 }
 
 func (s *SkillRoot) AdoptNewestSummary() {

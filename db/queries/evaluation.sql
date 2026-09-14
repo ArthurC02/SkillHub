@@ -120,10 +120,11 @@ RETURNING *;
 
 -- name: MarkSuggestionsApplied :execrows
 UPDATE evaluation_suggestions SET
-    applied_skill_version_id = @skill_version_id
+    applied_skill_version_id = @skill_version_id,
+    decided_at = CASE WHEN decision = 'accepted' THEN decided_at ELSE now() END,
+    decision = 'accepted'
 WHERE id = ANY(@ids::uuid[])
-  AND workspace_id = @workspace_id
-  AND decision = 'accepted';
+  AND workspace_id = @workspace_id;
 
 -- name: FindLiveTraceEvents :many
 SELECT event_id FROM trace_events

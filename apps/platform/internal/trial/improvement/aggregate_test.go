@@ -564,6 +564,16 @@ func TestEveryEvaluationCommandLeavesItsEventInTheOutbox(t *testing.T) {
 	if _, err := s.Decide(ctx, m.run.WorkspaceID, suggestion.ID, DecisionAccepted); err != nil {
 		t.Fatalf("decide: %v", err)
 	}
+	var version pgtype.UUID
+	if err := s.Pool.QueryRow(ctx, `SELECT skill_version_id FROM runs WHERE id = $1`, m.run.ID).Scan(&version); err != nil {
+		t.Fatalf("read the run's version: %v", err)
+	}
+	for range 2 {
+		if err := s.RecordSuggestionsApplied(ctx, m.run.WorkspaceID, second.ID, version,
+			[]pgtype.UUID{suggestion.ID}); err != nil {
+			t.Fatalf("record applied: %v", err)
+		}
+	}
 	if err := s.complete(ctx, m, second, aVerdict("a refused second opinion", OverallMet)); !errors.Is(err, errEvaluationSettled) {
 		t.Fatalf("re-completing: want errEvaluationSettled, got %v", err)
 	}
@@ -589,15 +599,58 @@ func TestEveryEvaluationCommandLeavesItsEventInTheOutbox(t *testing.T) {
 		t.Fatalf("read outbox: %v", err)
 	}
 	want := map[string]int{
-		"evaluation.started of the first":             1,
-		"evaluation.completed of the first":           1,
-		"evaluation.superseded of the first":          1,
-		"evaluation.started of the second":            1,
-		"evaluation.completed of the second":          1,
-		"evaluation.feedback_recorded of the second":  1,
-		"evaluation.suggestion_decided of the second": 1,
+		"evaluation.started of the first":              1,
+		"evaluation.completed of the first":            1,
+		"evaluation.superseded of the first":           1,
+		"evaluation.started of the second":             1,
+		"evaluation.completed of the second":           1,
+		"evaluation.feedback_recorded of the second":   1,
+		"evaluation.suggestion_decided of the second":  1,
+		"evaluation.suggestions_applied of the second": 1,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("outbox events:\n got  %v\n want %v", got, want)
+	}
+}
+
+func TestTheMailboxRecordsOnlySuggestionsItsOwnEvaluationHolds(t *testing.T) {
+	s := &Service{Pool: requireEvalDB(t)}
+	m := seedRun(t, s.Pool)
+	ctx := context.Background()
+
+	first := beginAndComplete(t, s, m, aVerdict("first", OverallMet))
+	second := beginAndComplete(t, s, m, aVerdict("second", OverallMet))
+	earlier, err := s.queries().CreateEvaluationSuggestion(ctx, gen.CreateEvaluationSuggestionParams{
+		WorkspaceID: m.run.WorkspaceID, EvaluationID: first.ID, Category: string(SuggestionSkill),
+		Problem: "the steps are vague", Evidence: []byte(`[]`), TargetPath: "SKILL.md",
+		ProposedContent: "clearer steps", ExpectedImpact: "fewer retries",
+	})
+	if err != nil {
+		t.Fatalf("seed suggestion: %v", err)
+	}
+	if _, err := s.Decide(ctx, m.run.WorkspaceID, earlier.ID, DecisionAccepted); err != nil {
+		t.Fatalf("decide: %v", err)
+	}
+	var version pgtype.UUID
+	if err := s.Pool.QueryRow(ctx, `SELECT skill_version_id FROM runs WHERE id = $1`, m.run.ID).Scan(&version); err != nil {
+		t.Fatalf("read the run's version: %v", err)
+	}
+	nowhere := pgtype.UUID{Bytes: [16]byte{0xde, 0xad}, Valid: true}
+
+	if err := s.RecordSuggestionsApplied(ctx, m.run.WorkspaceID, second.ID, version,
+		[]pgtype.UUID{earlier.ID, nowhere}); err != nil {
+		t.Fatalf("a letter naming suggestions the evaluation does not hold: %v", err)
+	}
+
+	var applied pgtype.UUID
+	var recorded int
+	if err := s.Pool.QueryRow(ctx, `
+		SELECT (SELECT applied_skill_version_id FROM evaluation_suggestions WHERE id = $1),
+		       (SELECT count(*) FROM outbox_events WHERE event_type = 'evaluation.suggestions_applied'
+		        AND correlation_id = $2)`, earlier.ID, m.run.ID).Scan(&applied, &recorded); err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if applied.Valid || recorded != 0 {
+		t.Errorf("the second revision recorded the first one's suggestion: applied %v, %d events", applied, recorded)
 	}
 }
