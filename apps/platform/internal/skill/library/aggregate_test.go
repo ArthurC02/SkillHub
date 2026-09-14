@@ -41,7 +41,7 @@ func TestNewVersionCarriesNoMutableState(t *testing.T) {
 	for i := range typ.NumField() {
 		if name := typ.Field(i).Name; !want[name] {
 			t.Errorf("NewVersion.%s is new; a version row is a snapshot of the Report, "+
-				"so check it cannot be set independently of validation (doc.go invariant 3)", name)
+				"so check it cannot be set independently of validation", name)
 		}
 		delete(want, typ.Field(i).Name)
 	}

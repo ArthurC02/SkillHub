@@ -96,7 +96,7 @@ type VersionSummary struct {
 	SkillID             pgtype.UUID
 	VersionNumber       int32
 	LatestVersionNumber int32
-	AccessRestriction   *string
+	AccessRestricted    bool
 	Redistribution      string
 }
 
@@ -105,7 +105,7 @@ type SkillFacts struct {
 	Name                string
 	ForkedFromSkillID   pgtype.UUID
 	ForkedFromVersionID pgtype.UUID
-	AccessRestriction   *string
+	AccessRestricted    bool
 	Redistribution      string
 }
 
@@ -289,11 +289,11 @@ func (s *Service) Plan(
 }
 
 func gate(skill SkillFacts) (reason, message string) {
-	return gateFlags(skill.AccessRestriction, Redistribution(skill.Redistribution))
+	return gateFlags(skill.AccessRestricted, Redistribution(skill.Redistribution))
 }
 
-func gateFlags(accessRestriction *string, redistribution Redistribution) (reason, message string) {
-	if accessRestriction != nil && *accessRestriction != "" {
+func gateFlags(accessRestricted bool, redistribution Redistribution) (reason, message string) {
+	if accessRestricted {
 		return BlockedLicenseHold,
 			"這個 Skill 的內容因授權問題尚未釐清而被保留，所以無法從中產出套件"
 	}

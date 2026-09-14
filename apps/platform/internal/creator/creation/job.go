@@ -187,7 +187,7 @@ func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *llmclien
 	if diagram != nil && !diagramMatches(e.Snapshot, diagram) {
 		return nil, ErrInvalidCommand
 	}
-	if refusal := attemptRefusal(e, diagram != nil); refusal != "" {
+	if refusal := refuseAttempt(e, diagram != nil); refusal != "" {
 		return nil, s.failQueued(ctx, tx, row, e, a, refusal)
 	}
 	if _, err = q.ClaimCreationReceipt(ctx, gen.ClaimCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID}); err != nil {
@@ -213,16 +213,47 @@ func staleAttempt(transient bool) error {
 	return nil
 }
 
-func attemptRefusal(e envelope, hasDiagram bool) string {
+type attemptRefusal string
+
+const (
+	refusedPastDeadline  attemptRefusal = "past_deadline"
+	refusedOverLimit     attemptRefusal = "over_limit"
+	refusedDiagramUnread attemptRefusal = "diagram_unread"
+)
+
+func refuseAttempt(e envelope, hasDiagram bool) attemptRefusal {
 	switch {
 	case !e.Deadline.After(time.Now()):
-		return "創作已達這次核准的限制，請開始新的創作。"
+		return refusedPastDeadline
 	case !canSpend(e.Snapshot, e.Limits):
-		return limitSentence(e.Snapshot, e.Limits)
-	case !hasDiagram && e.Snapshot.DiagramFingerprint != "" && e.Snapshot.DiagramUnderstanding == "":
+		return refusedOverLimit
+	case !hasDiagram && diagramUnread(e.Snapshot):
+		return refusedDiagramUnread
+	}
+	return ""
+}
+
+func (r attemptRefusal) sentence(p Snapshot, l Limits) string {
+	switch r {
+	case refusedPastDeadline:
+		return "創作已達這次核准的限制，請開始新的創作。"
+	case refusedOverLimit:
+		return limitSentence(p, l)
+	case refusedDiagramUnread:
 		return "流程圖需要重新上傳。"
 	}
 	return ""
+}
+
+func diagramUnread(p Snapshot) bool {
+	return p.DiagramFingerprint != "" && p.DiagramUnderstanding == ""
+}
+
+func abandonedState(p Snapshot) State {
+	if diagramUnread(p) {
+		return StateNeedsReupload
+	}
+	return StateFailed
 }
 
 func (s *Service) fetchPending(ctx context.Context, p *Snapshot) {
@@ -356,14 +387,10 @@ func stepFailureMessage(err, callErr error) string {
 	return "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
 }
 
-func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs, message string) error {
-	state := StateFailed
-	if e.Snapshot.DiagramFingerprint != "" && e.Snapshot.DiagramUnderstanding == "" {
-		state = StateNeedsReupload
-	}
+func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs, refusal attemptRefusal) error {
 	e.ActiveReceipt = pgtype.UUID{}
-	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: message})
-	if _, err := s.advance(ctx, tx, row, state, "attempt_refused", e); err != nil {
+	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: refusal.sentence(e.Snapshot, e.Limits)})
+	if _, err := s.advance(ctx, tx, row, abandonedState(e.Snapshot), "attempt_refused", e); err != nil {
 		return err
 	}
 	_, err := gen.New(tx).FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: "failed", Result: []byte("{}"), Usage: []byte("{}")})

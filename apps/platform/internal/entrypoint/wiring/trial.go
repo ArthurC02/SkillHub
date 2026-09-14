@@ -16,7 +16,7 @@ import (
 func WireRunRegistryReaders(runs *run.Service, registryService *registry.Service) {
 	runs.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (run.SkillFacts, bool, error) {
 		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, skillID)
-		return run.SkillFacts{AccessRestriction: skill.AccessRestriction}, found, err
+		return runSkillFacts(skill), found, err
 	}
 	runs.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.VersionFacts, bool, error) {
 		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
@@ -39,6 +39,11 @@ func WireRunRegistryReaders(runs *run.Service, registryService *registry.Service
 		return out, nil
 	}
 	runs.ReadContentSource = readContentSource(registryService)
+}
+
+func runSkillFacts(skill registry.Skill) run.SkillFacts {
+	restriction := skill.Restriction()
+	return run.SkillFacts{AccessRestricted: restriction.InEffect(), AccessRestrictionReason: restriction.Reason()}
 }
 
 func readContentSource(
@@ -127,15 +132,19 @@ func WireEvaluationRegistryReaders(service *eval.Service, registryService *regis
 	}
 	service.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (eval.SkillFacts, bool, error) {
 		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, skillID)
-		return eval.SkillFacts{
-			ID: skill.ID, Name: skill.Name, Summary: skill.Summary, AccessRestriction: skill.AccessRestriction,
-		}, found, err
+		return evalSkillFacts(skill), found, err
 	}
 	service.ReadRuntimeCompatibility = func(ctx context.Context, versionID pgtype.UUID) (eval.RuntimeCompatibility, bool, error) {
 		compat, found, err := registryService.RuntimeCompatibility(ctx, versionID)
 		return eval.RuntimeCompatibility{
 			Capability: compat.Capability, Runtime: compat.Runtime, RuntimeImage: compat.RuntimeImage,
 		}, found, err
+	}
+}
+
+func evalSkillFacts(skill registry.Skill) eval.SkillFacts {
+	return eval.SkillFacts{
+		ID: skill.ID, Name: skill.Name, Summary: skill.Summary, AccessRestricted: skill.Restriction().InEffect(),
 	}
 }
 

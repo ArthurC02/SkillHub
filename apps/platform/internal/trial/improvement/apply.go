@@ -157,7 +157,7 @@ func check(sc suggestionCtx) (string, *Blocked) {
 		return "", &Blocked{SuggestionID: id, Reason: reason, Message: msg}
 	}
 
-	if sc.skill.AccessRestriction != nil && strings.TrimSpace(*sc.skill.AccessRestriction) != "" {
+	if sc.skill.AccessRestricted {
 		return block(BlockedAccessRestricted,
 			"this skill's materials are held back while a licensing question about them is "+
 				"open, so its contents are not reproduced and no version can be built from them")

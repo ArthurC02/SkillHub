@@ -166,10 +166,10 @@ type RunFacts struct {
 }
 
 type SkillFacts struct {
-	ID                pgtype.UUID
-	Name              string
-	Summary           *string
-	AccessRestriction *string
+	ID               pgtype.UUID
+	Name             string
+	Summary          *string
+	AccessRestricted bool
 }
 
 type VersionFacts struct {

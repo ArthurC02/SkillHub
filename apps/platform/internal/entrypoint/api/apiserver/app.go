@@ -356,11 +356,7 @@ func catalogRuntimeCompatibilityFacts(compat registry.RuntimeCompatibility) cata
 func wirePackagingRegistryReaders(service *packaging.Service, registryService *registry.Service) {
 	service.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (packaging.SkillFacts, bool, error) {
 		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, skillID)
-		return packaging.SkillFacts{
-			ID: skill.ID, Name: skill.Name, ForkedFromSkillID: skill.ForkedFromSkillID,
-			ForkedFromVersionID: skill.ForkedFromVersionID,
-			AccessRestriction:   skill.AccessRestriction, Redistribution: skill.Redistribution,
-		}, found, err
+		return packagingSkillFacts(skill), found, err
 	}
 	versionFacts := func(version registry.Version) packaging.VersionFacts {
 		return packaging.VersionFacts{
@@ -406,17 +402,29 @@ func wirePackagingRegistryReaders(service *packaging.Service, registryService *r
 		}
 		out := make(map[pgtype.UUID]packaging.VersionSummary, len(summaries))
 		for id, summary := range summaries {
-			out[id] = packaging.VersionSummary{
-				SkillID: summary.SkillID, VersionNumber: summary.VersionNumber,
-				LatestVersionNumber: summary.LatestVersionNumber,
-				AccessRestriction:   summary.AccessRestriction, Redistribution: summary.Redistribution,
-			}
+			out[id] = packagingVersionSummary(summary)
 		}
 		return out, nil
 	}
 	service.ReadOldest = func(ctx context.Context, skillID pgtype.UUID) (packaging.OldestVersion, bool, error) {
 		version, found, err := registryService.OldestVersion(ctx, skillID)
 		return packaging.OldestVersion{SourceID: version.SourceID}, found, err
+	}
+}
+
+func packagingSkillFacts(skill registry.Skill) packaging.SkillFacts {
+	return packaging.SkillFacts{
+		ID: skill.ID, Name: skill.Name, ForkedFromSkillID: skill.ForkedFromSkillID,
+		ForkedFromVersionID: skill.ForkedFromVersionID,
+		AccessRestricted:    skill.Restriction().InEffect(), Redistribution: skill.Redistribution,
+	}
+}
+
+func packagingVersionSummary(summary registry.VersionSummary) packaging.VersionSummary {
+	return packaging.VersionSummary{
+		SkillID: summary.SkillID, VersionNumber: summary.VersionNumber,
+		LatestVersionNumber: summary.LatestVersionNumber,
+		AccessRestricted:    summary.Restriction().InEffect(), Redistribution: summary.Redistribution,
 	}
 }
 

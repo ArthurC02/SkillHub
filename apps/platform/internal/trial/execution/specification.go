@@ -64,11 +64,11 @@ func refused(reason string, err error) error {
 }
 
 func (s *Service) requireNotAccessRestricted(skill SkillFacts) error {
-	if skill.AccessRestriction == nil || strings.TrimSpace(*skill.AccessRestriction) == "" {
+	if !skill.AccessRestricted {
 		return nil
 	}
 	return refused(ReasonAccessRestricted,
-		fmt.Errorf("%w (%s)", ErrAccessRestricted, *skill.AccessRestriction))
+		fmt.Errorf("%w (%s)", ErrAccessRestricted, skill.AccessRestrictionReason))
 }
 
 func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg.Report, bool) {

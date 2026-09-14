@@ -3,7 +3,6 @@ package registry
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,7 +18,7 @@ type RestrictionBefore struct {
 }
 
 func SetAccessRestriction(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, reason *string) (RestrictionBefore, error) {
-	if reason != nil && strings.TrimSpace(*reason) == "" {
+	if reason != nil && !RestrictionFrom(reason).InEffect() {
 		return RestrictionBefore{}, ErrEmptyRestriction
 	}
 	q := gen.New(tx)

@@ -455,6 +455,29 @@ func TestCreationRestartRecoversUnknownAttemptWithoutReplay(t *testing.T) {
 	}
 }
 
+func TestAnInterruptedAttemptWithAnUnreadDiagramAsksForItAgain(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	c := a.login(t, "creation-interrupted-diagram")
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_credits": 650}, 200)
+	job := creationJob(t, v.ID)
+	ctx := context.Background()
+
+	if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '1 minute',
+	 snapshot=jsonb_set(jsonb_set(snapshot, '{snapshot,diagram_fingerprint}', '"fp"'), '{active_deadline}', to_jsonb(now()-interval '1 minute')) WHERE id=$1`, job.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Recover(ctx); err != nil {
+		t.Fatal(err)
+	}
+	final, err := s.Get(ctx, identity.Workspace{ID: job.WorkspaceID}, job.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if final.State != "needs_reupload" {
+		t.Fatalf("state = %q, want needs_reupload", final.State)
+	}
+}
+
 func TestCreationSecondSessionWithACollidingNameIsRefusedActionably(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-collision")

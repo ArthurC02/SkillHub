@@ -90,8 +90,7 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 	if !found {
 		skill, found, err = s.References.CatalogSkill(ctx, skillID)
 	}
-	if err != nil || !found || skill.TakedownAt.Valid || skill.AccessRestriction != nil ||
-		registry.Redistribution(skill.Redistribution) == registry.RedistributionBlocked {
+	if err != nil || !found || !referenceable(skill) {
 		return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
 	}
 	var version registry.Version

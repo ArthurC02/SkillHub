@@ -15,6 +15,15 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
+func TestAHeldSkillBlocksASuggestionBeforeAnyFileIsRead(t *testing.T) {
+	if _, blocked := check(suggestionCtx{skill: SkillFacts{AccessRestricted: true}}); blocked == nil || blocked.Reason != BlockedAccessRestricted {
+		t.Errorf("a held skill: blocked = %+v, want %s", blocked, BlockedAccessRestricted)
+	}
+	if _, blocked := check(suggestionCtx{}); blocked == nil || blocked.Reason != BlockedPathOutOfBounds {
+		t.Errorf("a skill under no hold reaches the next gate: blocked = %+v, want %s", blocked, BlockedPathOutOfBounds)
+	}
+}
+
 func TestSuggestionDigestNeverShowsEvidenceOutsideItsAllowlist(t *testing.T) {
 	v := verdict{overall: OverallNotMet, findings: []Finding{{
 		Category: CategoryEffect, Severity: SeverityWarning, Message: "needs work",

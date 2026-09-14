@@ -346,6 +346,11 @@ type referenceProvenance struct {
 	Name      string
 }
 
+func referenceable(skill registry.Skill) bool {
+	return !skill.TakenDown() && !skill.Restriction().InEffect() &&
+		registry.Redistribution(skill.Redistribution) != registry.RedistributionBlocked
+}
+
 func (s *Service) resolveReference(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
 ) (llmclient.GenerateReference, referenceProvenance, error) {
@@ -359,8 +364,7 @@ func (s *Service) resolveReference(
 			return llmclient.GenerateReference{}, referenceProvenance{}, err
 		}
 	}
-	if !found || skill.TakedownAt.Valid || skill.AccessRestriction != nil ||
-		registry.Redistribution(skill.Redistribution) == registry.RedistributionBlocked {
+	if !found || !referenceable(skill) {
 		return llmclient.GenerateReference{}, referenceProvenance{}, ErrReferenceUnavailable
 	}
 

@@ -36,7 +36,8 @@ var (
 const artifactCleanupTimeout = 5 * time.Second
 
 type SkillFacts struct {
-	AccessRestriction *string
+	AccessRestricted        bool
+	AccessRestrictionReason string
 }
 
 type VersionFacts struct {

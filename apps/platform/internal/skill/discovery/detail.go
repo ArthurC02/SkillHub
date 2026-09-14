@@ -18,6 +18,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 type ObjectStore interface {
@@ -447,15 +448,15 @@ func (s *Service) SkillFiles(ctx context.Context, skill SkillFacts) (skillFiles,
 }
 
 func restrictionOf(s SkillFacts) *accessRestriction {
-	if s.AccessRestriction == nil || strings.TrimSpace(*s.AccessRestriction) == "" {
+	restriction := registry.RestrictionFrom(s.AccessRestriction)
+	if !restriction.InEffect() {
 		return nil
 	}
-	note, ok := restrictionNotes[*s.AccessRestriction]
+	note, ok := restrictionNotes[restriction.Reason()]
 	if !ok {
-
 		note = restrictionNoteDefault
 	}
-	return &accessRestriction{Reason: *s.AccessRestriction, Note: note}
+	return &accessRestriction{Reason: restriction.Reason(), Note: note}
 }
 
 var restrictionNotes = map[string]string{

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
@@ -57,6 +58,34 @@ func TestCatalogRegistryFactsPreserveEveryConsumedField(t *testing.T) {
 	wantCompat := catalog.RuntimeCompatibilityFacts{Capability: "activated", Runtime: "native", RuntimeImage: "sha256:image", MeasuredAt: ts}
 	if got := catalogRuntimeCompatibilityFacts(compat); !reflect.DeepEqual(got, wantCompat) {
 		t.Fatalf("catalog compatibility facts lost a Registry field: got %+v want %+v", got, wantCompat)
+	}
+}
+
+func TestPackagingSeesTheOwnersRestrictionVerdict(t *testing.T) {
+	uuid := func(marker byte) pgtype.UUID { return pgtype.UUID{Bytes: [16]byte{marker}, Valid: true} }
+	hold := "license-review"
+	skill := registry.Skill{
+		ID: uuid(1), Name: "name", ForkedFromSkillID: uuid(2), ForkedFromVersionID: uuid(3),
+		AccessRestriction: &hold, Redistribution: "allowed",
+	}
+	wantSkill := packaging.SkillFacts{
+		ID: uuid(1), Name: "name", ForkedFromSkillID: uuid(2), ForkedFromVersionID: uuid(3),
+		AccessRestricted: true, Redistribution: "allowed",
+	}
+	if got := packagingSkillFacts(skill); got != wantSkill {
+		t.Errorf("packaging skill facts = %+v, want %+v", got, wantSkill)
+	}
+	summary := registry.VersionSummary{
+		SkillID: uuid(1), VersionNumber: 2, LatestVersionNumber: 3, AccessRestriction: &hold, Redistribution: "blocked",
+	}
+	wantSummary := packaging.VersionSummary{
+		SkillID: uuid(1), VersionNumber: 2, LatestVersionNumber: 3, AccessRestricted: true, Redistribution: "blocked",
+	}
+	if got := packagingVersionSummary(summary); got != wantSummary {
+		t.Errorf("packaging version summary = %+v, want %+v", got, wantSummary)
+	}
+	if packagingSkillFacts(registry.Skill{}).AccessRestricted || packagingVersionSummary(registry.VersionSummary{}).AccessRestricted {
+		t.Error("a skill under no hold reached packaging as held")
 	}
 }
 

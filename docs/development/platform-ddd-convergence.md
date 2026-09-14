@@ -113,11 +113,13 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 | 額度拒絕理由詞彙 | `product/entitlements` 的 `AllowanceRefusalReasons` | `quota_test.go` | 測試獨立重述三個字面值 |
 | outbox 事件 payload 的形狀 | `foundation/messaging/outbox/events.go` | `payload_test.go` | — |
 | 使用者看得到的句子 | 寫出它的 handler，不是領域 sentinel | `messages_test.go`（`trial/design`、`trial/execution`） | 同套件的 AST 測試：`errors.New` 不得帶漢字 |
+| Skill 的存取限制是否生效 | `skill/library/access.go` 的 `AccessRestriction`；不能 import owner 的 context 從組裝層收到 `AccessRestricted` 判定，不自己判斷 | `access_test.go` | — |
+| 一個 Skill 能不能當參考 | `skill/admission/generate.go` 的 `referenceable` | `generate_test.go` | — |
 
 **「機器對帳」欄有兩種東西，不要混為一談：**
 
 - 前四列是 `devctl automation-check` 的檢查器，**Go 與 SQL 分岔時 CI 紅**。`domain-vocabulary` 對帳 Go 常數 ↔ DB `CHECK (… IN (…))` ↔ Postgres enum ↔ 契約 enum，清單是 `tools/devctl/domain_vocabulary.go` 的 `domainVocabularies`，上表只列範本（SQL 沒有 CHECK 的詞彙以 `absent` 寫明）。它同時守覆蓋面：migration 裡每一個 `CHECK (… IN (…))` 詞彙要嘛接進對帳，要嘛在 `unreconciledVocabularies` 寫下為什麼不接（§5.1、§5.6），兩者皆無或理由已經過期都紅；`run-status-sql` 對帳 Go 的 `successors` ↔ migration 0032 的 trigger 轉移列 ↔ 每一處終態 `IN` 清單。
-- 後四列只有**同套件的測試**，沒有跨 Go／SQL 的對帳——因為那四樣東西 SQL 側沒有第二份。
+- 其餘各列只有**同套件的測試**，沒有跨 Go／SQL 的對帳——SQL 側要嘛沒有第二份，要嘛只有擋空白字串的 `CHECK`（存取限制，migration 0023）。
 
 **閘門順序不在這張表裡，它刻意留在 `create()` 的呼叫序。** 順序決定哪個 reason 先浮出來，而 reason 直接餵 `metrics.RunRefused` 與 `audit.ActionRunRefused`，所以改順序就是改對外行為（§9）。
 
