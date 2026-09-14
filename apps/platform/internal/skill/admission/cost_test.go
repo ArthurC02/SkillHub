@@ -22,8 +22,8 @@ func (f *fakeLedger) RecordCost(_ context.Context, _ credit.DBTX, e credit.CostE
 	return "id", false, f.err
 }
 
-func (f *fakeLedger) kinds() []string {
-	out := make([]string, len(f.events))
+func (f *fakeLedger) kinds() []credit.CostKind {
+	out := make([]credit.CostKind, len(f.events))
 	for i, e := range f.events {
 		out[i] = e.Kind
 	}

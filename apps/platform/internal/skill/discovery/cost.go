@@ -21,14 +21,14 @@ func (s *Service) recordSearchCost(ctx context.Context, resp *llmclient.EmbedRes
 	s.recordCallCost(ctx, credit.KindSearchEmbedding, resp.Model, resp.Usage)
 }
 
-func (s *Service) recordCallCost(ctx context.Context, kind, model string, u *llmclient.GatewayUsage) {
+func (s *Service) recordCallCost(ctx context.Context, kind credit.CostKind, model string, u *llmclient.GatewayUsage) {
 	if s.Credit == nil {
 		return
 	}
 	e := credit.CostEvent{
 		Kind:           kind,
 		Model:          model,
-		IdempotencyKey: kind + ":" + uuid.NewString(),
+		IdempotencyKey: string(kind) + ":" + uuid.NewString(),
 	}
 	if u != nil {
 		e.PromptTokens, e.CompletionTokens = u.PromptTokens, u.CompletionTokens

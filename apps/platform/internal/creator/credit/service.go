@@ -63,7 +63,7 @@ func (s *Service) RecordCost(ctx context.Context, tx DBTX, e CostEvent) (id stri
 }
 
 type ChargeInput struct {
-	Kind             string
+	Kind             CostKind
 	Model            string
 	PromptVersion    string
 	PromptTokens     int64
@@ -180,7 +180,7 @@ type StartCheck struct {
 	Estimated bool
 }
 
-func (s *Service) CanStart(ctx context.Context, userID pgtype.UUID, statKind string) (StartCheck, error) {
+func (s *Service) CanStart(ctx context.Context, userID pgtype.UUID, statKind CostKind) (StartCheck, error) {
 	if s.Store == nil {
 		return StartCheck{}, ErrUnavailable
 	}
@@ -198,7 +198,7 @@ func (s *Service) CanStart(ctx context.Context, userID pgtype.UUID, statKind str
 	return StartCheck{OK: balance >= threshold, Balance: balance, Threshold: threshold, Estimated: estimated}, nil
 }
 
-func (s *Service) startThreshold(ctx context.Context, kind string) (threshold int64, estimated bool, err error) {
+func (s *Service) startThreshold(ctx context.Context, kind CostKind) (threshold int64, estimated bool, err error) {
 	stats, err := s.Store.RecentStatistics(ctx, kind)
 	if errors.Is(err, ErrNoStatistics) {
 		return s.Config.StartFallbackCredits, true, nil
@@ -233,7 +233,7 @@ type Estimate struct {
 	Estimated bool
 }
 
-func (s *Service) Estimate(ctx context.Context, statKind string) (Estimate, error) {
+func (s *Service) Estimate(ctx context.Context, statKind CostKind) (Estimate, error) {
 	if s.Store == nil {
 		return Estimate{}, ErrUnavailable
 	}
@@ -360,7 +360,7 @@ func (s *Service) Grant(ctx context.Context, tx DBTX, in GrantInput) (int64, err
 	return balance, nil
 }
 
-func (s *Service) RecomputeStatistics(ctx context.Context, statKind string, window time.Duration) (Statistics, error) {
+func (s *Service) RecomputeStatistics(ctx context.Context, statKind CostKind, window time.Duration) (Statistics, error) {
 	if s.Store == nil {
 		return Statistics{}, ErrUnavailable
 	}

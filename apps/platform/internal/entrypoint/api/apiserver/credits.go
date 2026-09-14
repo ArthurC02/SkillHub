@@ -217,7 +217,7 @@ func (h *creditsHandler) CostStatistics(w http.ResponseWriter, r *http.Request) 
 	views := make([]costStatisticsView, 0, len(stats))
 	for _, s := range stats {
 		views = append(views, costStatisticsView{
-			Kind: s.Kind, WindowStart: s.WindowStart.UTC().Format(time.RFC3339),
+			Kind: string(s.Kind), WindowStart: s.WindowStart.UTC().Format(time.RFC3339),
 			WindowEnd: s.WindowEnd.UTC().Format(time.RFC3339), SampleCount: s.SampleCount,
 			P50UsdMicros: s.P50UsdMicros, P90UsdMicros: s.P90UsdMicros,
 			P95UsdMicros: s.P95UsdMicros, MaxUsdMicros: s.MaxUsdMicros,

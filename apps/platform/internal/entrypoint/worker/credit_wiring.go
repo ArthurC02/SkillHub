@@ -9,18 +9,6 @@ import (
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
-var creditStatKinds = []string{
-	credit.KindCreationStep,
-	credit.KindSearchEmbedding,
-	credit.KindIndexEnrich,
-	credit.KindReview,
-	credit.KindSuggestion,
-	credit.KindGenerate,
-	credit.KindMatchReasons,
-	credit.KindRun,
-	credit.KindCreationSession,
-}
-
 const creditStatWindow = 7 * 24 * time.Hour
 
 func wireCostRecording(svc *credit.Service, search *catalog.Service, versions, backfill *ingest.Service, evaluations *eval.Service) {

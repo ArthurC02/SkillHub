@@ -178,12 +178,12 @@ func forgetStatistics(t *testing.T, windowEnd time.Time) {
 	})
 }
 
-func seedCostEvent(t *testing.T, kind string, usdMicros int64, source string, at time.Time) {
+func seedCostEvent(t *testing.T, kind credit.CostKind, usdMicros int64, source string, at time.Time) {
 	t.Helper()
 	key := "statistics-fixture:" + uuid.NewString()
 	if _, err := testPool.Exec(context.Background(), `
 		INSERT INTO cost_events (kind, model, usd_micros, cost_source, idempotency_key, created_at)
-		VALUES ($1, 'fixture-model', $2, $3, $4, $5)`, kind, usdMicros, source, key, at); err != nil {
+		VALUES ($1, 'fixture-model', $2, $3, $4, $5)`, string(kind), usdMicros, source, key, at); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -214,7 +214,7 @@ func TestTheDailyStatisticsSurviveAWindowWithNoEvents(t *testing.T) {
 	end := start.Add(time.Second)
 	forgetStatistics(t, end)
 
-	for _, kind := range []string{credit.KindSuggestion, credit.KindCreationSession} {
+	for _, kind := range []credit.CostKind{credit.KindSuggestion, credit.KindCreationSession} {
 		stats, err := store.RecomputeStatistics(context.Background(), kind, start, end)
 		if err != nil {
 			t.Fatalf("%s over a window with no events: %v", kind, err)

@@ -18,19 +18,35 @@ type DBTX interface {
 
 var ErrNoStatistics = errors.New("credit: no statistics recorded yet")
 
+type CostKind string
+
 const (
-	KindCreationStep    = "creation_step"
-	KindSearchEmbedding = "search_embedding"
-	KindIndexEnrich     = "index_enrich"
-	KindReview          = "review"
-	KindSuggestion      = "suggestion"
-	KindGenerate        = "generate"
-	KindMatchReasons    = "match_reasons"
+	KindCreationStep    CostKind = "creation_step"
+	KindSearchEmbedding CostKind = "search_embedding"
+	KindIndexEnrich     CostKind = "index_enrich"
+	KindReview          CostKind = "review"
+	KindSuggestion      CostKind = "suggestion"
+	KindGenerate        CostKind = "generate"
+	KindMatchReasons    CostKind = "match_reasons"
 
-	KindRun = "run"
+	KindRun CostKind = "run"
 
-	KindCreationSession = "creation_session"
+	KindCreationSession CostKind = "creation_session"
 )
+
+func AllCostEventKinds() []CostKind {
+	return []CostKind{
+		KindCreationStep, KindSearchEmbedding, KindIndexEnrich, KindReview,
+		KindSuggestion, KindGenerate, KindMatchReasons, KindRun,
+	}
+}
+
+func AllStatisticKinds() []CostKind {
+	return []CostKind{
+		KindCreationStep, KindSearchEmbedding, KindIndexEnrich, KindReview,
+		KindSuggestion, KindGenerate, KindMatchReasons, KindRun, KindCreationSession,
+	}
+}
 
 const (
 	EntryDebit      = "debit"
@@ -47,7 +63,7 @@ const (
 )
 
 type CostEvent struct {
-	Kind             string
+	Kind             CostKind
 	Model            string
 	PromptVersion    string
 	PromptTokens     int64
@@ -94,9 +110,9 @@ type Store interface {
 
 	ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (balanceAfter int64, err error)
 
-	RecentStatistics(ctx context.Context, kind string) (Statistics, error)
+	RecentStatistics(ctx context.Context, kind CostKind) (Statistics, error)
 
-	RecomputeStatistics(ctx context.Context, kind string, windowStart, windowEnd time.Time) (Statistics, error)
+	RecomputeStatistics(ctx context.Context, kind CostKind, windowStart, windowEnd time.Time) (Statistics, error)
 
 	SummarizeSession(ctx context.Context, tx DBTX, sessionID pgtype.UUID) error
 
@@ -122,7 +138,7 @@ type LedgerEntry struct {
 }
 
 type KindStatistics struct {
-	Kind         string
+	Kind         CostKind
 	WindowStart  time.Time
 	WindowEnd    time.Time
 	SampleCount  int64

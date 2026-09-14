@@ -8,8 +8,8 @@ import (
 )
 
 type RecomputeArgs struct {
-	StatKind      string `json:"stat_kind"`
-	WindowSeconds int64  `json:"window_seconds"`
+	StatKind      CostKind `json:"stat_kind"`
+	WindowSeconds int64    `json:"window_seconds"`
 }
 
 func (RecomputeArgs) Kind() string                 { return "credit_recompute_statistics" }

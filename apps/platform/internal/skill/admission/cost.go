@@ -15,7 +15,7 @@ type CostRecorder interface {
 	RecordCost(ctx context.Context, tx credit.DBTX, e credit.CostEvent) (id string, existed bool, err error)
 }
 
-func (s *Service) recordCost(ctx context.Context, kind string, workspaceID pgtype.UUID,
+func (s *Service) recordCost(ctx context.Context, kind credit.CostKind, workspaceID pgtype.UUID,
 	model, promptVersion string, u *llmclient.GatewayUsage) {
 	if s.Credit == nil {
 		return
@@ -25,7 +25,7 @@ func (s *Service) recordCost(ctx context.Context, kind string, workspaceID pgtyp
 		Model:          model,
 		PromptVersion:  promptVersion,
 		WorkspaceID:    workspaceID,
-		IdempotencyKey: kind + ":" + uuid.NewString(),
+		IdempotencyKey: string(kind) + ":" + uuid.NewString(),
 	}
 	if u != nil {
 		e.PromptTokens, e.CompletionTokens = u.PromptTokens, u.CompletionTokens

@@ -17,7 +17,7 @@ type CostRecorder interface {
 
 type CreditsForUSD = func(usd float64) (credits int64, ok bool)
 
-func (s *Service) recordEvalCost(ctx context.Context, tx credit.DBTX, kind string,
+func (s *Service) recordEvalCost(ctx context.Context, tx credit.DBTX, kind credit.CostKind,
 	workspaceID, evaluationID, runID pgtype.UUID, model, promptVersion string, u *llmclient.GatewayUsage) {
 	if s.Credit == nil {
 		return
@@ -29,7 +29,7 @@ func (s *Service) recordEvalCost(ctx context.Context, tx credit.DBTX, kind strin
 		WorkspaceID:    workspaceID,
 		RefType:        credit.RefRun,
 		RefID:          runID,
-		IdempotencyKey: kind + ":" + pgconv.UUIDString(evaluationID),
+		IdempotencyKey: string(kind) + ":" + pgconv.UUIDString(evaluationID),
 	}
 	if u != nil {
 		e.PromptTokens, e.CompletionTokens = u.PromptTokens, u.CompletionTokens

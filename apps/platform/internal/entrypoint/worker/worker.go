@@ -204,7 +204,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 
 	schedule(objreconcile.Args{}, objreconcile.Interval, false)
 
-	for _, kind := range creditStatKinds {
+	for _, kind := range credit.AllStatisticKinds() {
 		schedule(credit.RecomputeArgs{StatKind: kind, WindowSeconds: int64(creditStatWindow / time.Second)}, 24*time.Hour, false)
 	}
 

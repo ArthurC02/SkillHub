@@ -26,9 +26,10 @@ type fakeStore struct {
 	balances map[string]int64
 	events   map[string]string
 	applied  map[string]bool
-	stats    map[string]Statistics
-	windows  map[string][]int64
+	stats    map[CostKind]Statistics
+	windows  map[CostKind][]int64
 	nextID   int
+	swept    int
 }
 
 func newFakeStore() *fakeStore {
@@ -36,8 +37,8 @@ func newFakeStore() *fakeStore {
 		balances: map[string]int64{},
 		events:   map[string]string{},
 		applied:  map[string]bool{},
-		stats:    map[string]Statistics{},
-		windows:  map[string][]int64{},
+		stats:    map[CostKind]Statistics{},
+		windows:  map[CostKind][]int64{},
 	}
 }
 
@@ -73,7 +74,7 @@ func (f *fakeStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (int6
 	return f.balances[key], nil
 }
 
-func (f *fakeStore) RecentStatistics(ctx context.Context, kind string) (Statistics, error) {
+func (f *fakeStore) RecentStatistics(ctx context.Context, kind CostKind) (Statistics, error) {
 	s, ok := f.stats[kind]
 	if !ok {
 		return Statistics{}, ErrNoStatistics
@@ -81,7 +82,7 @@ func (f *fakeStore) RecentStatistics(ctx context.Context, kind string) (Statisti
 	return s, nil
 }
 
-func (f *fakeStore) RecomputeStatistics(ctx context.Context, kind string, windowStart, windowEnd time.Time) (Statistics, error) {
+func (f *fakeStore) RecomputeStatistics(ctx context.Context, kind CostKind, windowStart, windowEnd time.Time) (Statistics, error) {
 	samples := f.windows[kind]
 	var max int64
 	for _, v := range samples {
@@ -440,6 +441,32 @@ func TestRecomputeStatisticsWritesAndReturnsTheResult(t *testing.T) {
 	}
 }
 
+func TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		kind CostKind
+		idle time.Duration
+		want int
+	}{
+		{"a session statistic sweeps idle sessions first", KindCreationSession, time.Hour, 1},
+		{"a session statistic without an idle window does not sweep", KindCreationSession, 0, 0},
+		{"a cost-event statistic leaves the sessions alone", KindCreationStep, time.Hour, 0},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			store := newFakeStore()
+			config := testConfig()
+			config.SessionIdle = c.idle
+			s := &Service{Store: store, Config: config}
+			if _, err := s.RecomputeStatistics(context.Background(), c.kind, 24*time.Hour); err != nil {
+				t.Fatal(err)
+			}
+			if store.swept != c.want {
+				t.Fatalf("swept the session summaries %d time(s), want %d", store.swept, c.want)
+			}
+		})
+	}
+}
+
 func TestServiceMethodsFailClosedWithoutAStore(t *testing.T) {
 	s := &Service{}
 	if _, err := s.Charge(context.Background(), nil, ChargeInput{}); !errors.Is(err, ErrUnavailable) {
@@ -462,6 +489,7 @@ func TestServiceMethodsFailClosedWithoutAStore(t *testing.T) {
 func (f *fakeStore) SummarizeSession(context.Context, DBTX, pgtype.UUID) error { return nil }
 
 func (f *fakeStore) SweepSessionSummaries(context.Context, time.Time, time.Time) (int64, error) {
+	f.swept++
 	return 0, nil
 }
 

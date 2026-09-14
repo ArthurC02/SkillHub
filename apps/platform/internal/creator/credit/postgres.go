@@ -60,7 +60,7 @@ func (s *PostgresStore) RecordCostEvent(ctx context.Context, tx DBTX, e CostEven
 		source = "estimated"
 	}
 	row, err := q.InsertCostEvent(ctx, gen.InsertCostEventParams{
-		Kind:             e.Kind,
+		Kind:             string(e.Kind),
 		Model:            e.Model,
 		PromptVersion:    nullString(e.PromptVersion),
 		PromptTokens:     e.PromptTokens,
@@ -164,8 +164,8 @@ func (s *PostgresStore) balanceIn(ctx context.Context, q *gen.Queries, userID pg
 	return acct.BalanceCredits, nil
 }
 
-func (s *PostgresStore) RecentStatistics(ctx context.Context, kind string) (Statistics, error) {
-	row, err := s.q(nil).GetLatestCostStatistics(ctx, kind)
+func (s *PostgresStore) RecentStatistics(ctx context.Context, kind CostKind) (Statistics, error) {
+	row, err := s.q(nil).GetLatestCostStatistics(ctx, string(kind))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Statistics{}, ErrNoStatistics
 	}
@@ -182,7 +182,7 @@ func (s *PostgresStore) RecentStatistics(ctx context.Context, kind string) (Stat
 	}, nil
 }
 
-func (s *PostgresStore) RecomputeStatistics(ctx context.Context, kind string, windowStart, windowEnd time.Time) (Statistics, error) {
+func (s *PostgresStore) RecomputeStatistics(ctx context.Context, kind CostKind, windowStart, windowEnd time.Time) (Statistics, error) {
 	q := s.q(nil)
 	var agg gen.AggregateCostEventsWindowRow
 	var err error
@@ -195,7 +195,7 @@ func (s *PostgresStore) RecomputeStatistics(ctx context.Context, kind string, wi
 		agg = gen.AggregateCostEventsWindowRow(row)
 	} else {
 		agg, err = q.AggregateCostEventsWindow(ctx, gen.AggregateCostEventsWindowParams{
-			Kind:        kind,
+			Kind:        string(kind),
 			WindowStart: pgconv.Timestamptz(windowStart),
 			WindowEnd:   pgconv.Timestamptz(windowEnd),
 		})
@@ -204,7 +204,7 @@ func (s *PostgresStore) RecomputeStatistics(ctx context.Context, kind string, wi
 		return Statistics{}, fmt.Errorf("credit: aggregate window: %w", err)
 	}
 	if _, err := q.InsertCostStatistics(ctx, gen.InsertCostStatisticsParams{
-		Kind:         kind,
+		Kind:         string(kind),
 		WindowStart:  pgconv.Timestamptz(windowStart),
 		WindowEnd:    pgconv.Timestamptz(windowEnd),
 		SampleCount:  agg.SampleCount,
@@ -284,7 +284,7 @@ func (s *PostgresStore) LatestStatistics(ctx context.Context) ([]KindStatistics,
 	out := make([]KindStatistics, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, KindStatistics{
-			Kind: r.Kind, WindowStart: r.WindowStart.Time, WindowEnd: r.WindowEnd.Time,
+			Kind: CostKind(r.Kind), WindowStart: r.WindowStart.Time, WindowEnd: r.WindowEnd.Time,
 			SampleCount:  r.SampleCount,
 			P50UsdMicros: r.P50UsdMicros, P90UsdMicros: r.P90UsdMicros,
 			P95UsdMicros: r.P95UsdMicros, MaxUsdMicros: r.MaxUsdMicros,

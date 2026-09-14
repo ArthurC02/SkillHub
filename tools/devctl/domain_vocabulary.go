@@ -135,6 +135,25 @@ var domainVocabularies = []domainVocabulary{
 				"apps/platform/internal/trial/execution/grantstate.go", "ObjectGrantState"),
 		},
 	},
+	{
+		name: "cost event kind",
+		sources: []vocabularySource{
+			sqlColumnCheck("cost_events", "kind"),
+			goListedConstEnum(
+				"apps/platform/internal/creator/credit/store.go", "AllCostEventKinds",
+				"apps/platform/internal/creator/credit/store.go", "CostKind"),
+		},
+	},
+	{
+		name: "cost statistic kind",
+		sources: []vocabularySource{
+			sqlColumnCheck("cost_statistics", "kind"),
+			goConstEnum("apps/platform/internal/creator/credit/store.go", "CostKind"),
+			goListedConstEnum(
+				"apps/platform/internal/creator/credit/store.go", "AllStatisticKinds",
+				"apps/platform/internal/creator/credit/store.go", "CostKind"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {
