@@ -419,7 +419,7 @@ func (s *Service) ApplySuggestions(
 		if err != nil {
 			return out, err
 		}
-		if sug.Decision != DecisionAccepted {
+		if Decision(sug.Decision) != DecisionAccepted {
 			out.NotAccepted = append(out.NotAccepted, pgconv.UUIDString(sug.ID))
 		}
 		suggestions = append(suggestions, sug)

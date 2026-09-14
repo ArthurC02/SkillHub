@@ -137,7 +137,7 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Decision string `json:"decision"`
+		Decision Decision `json:"decision"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a `decision`")
@@ -171,7 +171,7 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	}
 
 	row, err := q.DecideSuggestion(r.Context(), gen.DecideSuggestionParams{
-		Decision: body.Decision, ID: id, WorkspaceID: ws.ID,
+		Decision: string(body.Decision), ID: id, WorkspaceID: ws.ID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "suggestion not found")

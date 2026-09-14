@@ -18,12 +18,6 @@ import (
 )
 
 const (
-	DecisionPending  = "pending"
-	DecisionAccepted = "accepted"
-	DecisionRejected = "rejected"
-)
-
-const (
 	suggestTimeout      = 135 * time.Second // budget-over: evaluate.LLM_TIMEOUT_SECONDS
 	maxDigestChars      = 20000             // one-number: suggestMaxDigestChars
 	maxFileTreeEntries  = 500               // one-number: suggestMaxFileTreeEntries

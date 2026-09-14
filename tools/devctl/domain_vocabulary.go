@@ -211,6 +211,20 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "ImprovementSuggestionCategory"),
 		},
 	},
+	{
+		name: "evaluation suggestion decision",
+		sources: []vocabularySource{
+			sqlColumnCheck("evaluation_suggestions", "decision"),
+			goConstEnum("apps/platform/internal/trial/improvement/suggestion.go", "Decision"),
+			goListedConstEnum(
+				"apps/platform/internal/trial/improvement/suggestion.go", "AllDecisions",
+				"apps/platform/internal/trial/improvement/suggestion.go", "Decision"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "ImprovementSuggestionDecision"),
+		},
+		readers: []vocabularySource{
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "DecideSuggestionReqDecision"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {

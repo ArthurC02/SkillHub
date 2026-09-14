@@ -21,3 +21,15 @@ func (c SuggestionCategory) actionable() bool {
 	}
 	return false
 }
+
+type Decision string
+
+const (
+	DecisionPending  Decision = "pending"
+	DecisionAccepted Decision = "accepted"
+	DecisionRejected Decision = "rejected"
+)
+
+func AllDecisions() []Decision {
+	return []Decision{DecisionPending, DecisionAccepted, DecisionRejected}
+}
