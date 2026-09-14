@@ -21,8 +21,12 @@ type CategoryDisplay struct {
 	Note  string
 }
 
+type categorySource string
+
+const categorySourceOwner categorySource = "owner"
+
 func categorySourceClause(source *string) string {
-	if source != nil && *source == "owner" {
+	if source != nil && categorySource(*source) == categorySourceOwner {
 		return "由擁有者標示"
 	}
 	return "由平台策展時分類"

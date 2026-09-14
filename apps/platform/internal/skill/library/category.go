@@ -23,7 +23,16 @@ func AllCategories() []Category {
 	return []Category{CategoryDocuments, CategoryWriting, CategoryData}
 }
 
-const categorySourceOwner = "owner"
+type CategorySource string
+
+const (
+	CategorySourceCurated CategorySource = "curated"
+	CategorySourceOwner   CategorySource = "owner"
+)
+
+func AllCategorySources() []CategorySource {
+	return []CategorySource{CategorySourceCurated, CategorySourceOwner}
+}
 
 func (s *Service) SetCategory(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, category *Category) (gen.Skill, error) {
 	if s.RefreshListing == nil {
@@ -31,7 +40,7 @@ func (s *Service) SetCategory(ctx context.Context, ws identity.Workspace, skillI
 	}
 	var stored, source *string
 	if category != nil {
-		value, owner := string(*category), categorySourceOwner
+		value, owner := string(*category), string(CategorySourceOwner)
 		stored, source = &value, &owner
 	}
 	tx, err := s.Pool.Begin(ctx)

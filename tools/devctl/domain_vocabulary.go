@@ -360,6 +360,19 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "PublicSearchSkillsCategory"),
 		},
 	},
+	{
+		name: "skill category source",
+		sources: []vocabularySource{
+			sqlColumnCheck("skills", "category_source"),
+			goConstEnum("apps/platform/internal/skill/library/category.go", "CategorySource"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/library/category.go", "AllCategorySources",
+				"apps/platform/internal/skill/library/category.go", "CategorySource"),
+		},
+		readers: []vocabularySource{
+			goConstEnum("apps/platform/internal/skill/discovery/category.go", "categorySource"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {
