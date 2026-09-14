@@ -49,10 +49,10 @@ var SpecFields = []string{"name", "description", "license", "compatibility", "me
 type Report struct {
 	Manifest *Manifest `json:"manifest"`
 
-	LicenseExpression string    `json:"license_expression,omitempty"`
-	LicenseSource     string    `json:"license_source,omitempty"`
-	Findings          []Finding `json:"findings"`
-	Blocked           bool      `json:"blocked"`
+	LicenseExpression string        `json:"license_expression,omitempty"`
+	LicenseSource     LicenseSource `json:"license_source,omitempty"`
+	Findings          []Finding     `json:"findings"`
+	Blocked           bool          `json:"blocked"`
 }
 
 func (r *Report) add(sev Severity, code, path, msg string) {
@@ -347,12 +347,20 @@ const (
 	CarriedProvenanceFile = "LICENSE.repo.provenance.json"
 )
 
+type LicenseSource string
+
 const (
-	licenseSourceManifest    = "manifest"
-	licenseSourceManifestRef = "manifest-referenced-file"
-	licenseSourcePackageFile = "package-license-file"
-	licenseSourceRepoFile    = "repo-license-file"
+	LicenseSourceManifest    LicenseSource = "manifest"
+	LicenseSourceManifestRef LicenseSource = "manifest-referenced-file"
+	LicenseSourcePackageFile LicenseSource = "package-license-file"
+	LicenseSourceRepoFile    LicenseSource = "repo-license-file"
 )
+
+func AllLicenseSources() []LicenseSource {
+	return []LicenseSource{
+		LicenseSourceManifest, LicenseSourceManifestRef, LicenseSourcePackageFile, LicenseSourceRepoFile,
+	}
+}
 
 var licensePointer = regexp.MustCompile(
 	`(?i)^(?:see|complete|full)\s+(?:the\s+)?(?:licen[sc]e|terms)(?:\s+text)?\s+in\s+(\S+?)[.,]?$`)
@@ -387,7 +395,7 @@ func (r *Report) resolveLicense(fsys fs.FS) {
 		if name, ok := licensePointerTarget(r.Manifest.License); ok {
 			if data, err := fs.ReadFile(fsys, name); err == nil {
 				if spdx := detectLicense(data); spdx != "" {
-					r.LicenseExpression, r.LicenseSource = spdx, licenseSourceManifestRef
+					r.LicenseExpression, r.LicenseSource = spdx, LicenseSourceManifestRef
 					r.add(SeverityInfo, "license-from-manifest-reference", name, fmt.Sprintf(
 						"frontmatter 的 license 欄位指向 %s 而非直接宣告授權；該檔案標明的授權是 %s",
 						name, spdx))
@@ -395,7 +403,7 @@ func (r *Report) resolveLicense(fsys fs.FS) {
 				}
 			}
 		}
-		r.LicenseExpression, r.LicenseSource = normalizeSPDX(r.Manifest.License), licenseSourceManifest
+		r.LicenseExpression, r.LicenseSource = normalizeSPDX(r.Manifest.License), LicenseSourceManifest
 		return
 	}
 
@@ -412,7 +420,7 @@ func (r *Report) resolveLicense(fsys fs.FS) {
 			return
 		}
 		r.LicenseExpression, r.LicenseSource = spdx, c.source
-		if c.source == licenseSourceRepoFile {
+		if c.source == LicenseSourceRepoFile {
 			r.add(SeverityInfo, "license-from-repo-file", c.name, fmt.Sprintf(
 				"此套件本身沒有授權宣告；隨附的 repository 層級授權檔 %s 標明的授權是 %s。"+
 					"它涵蓋的是整個 repository，不必然涵蓋這個套件的內容。", c.name, spdx))
@@ -425,16 +433,21 @@ func (r *Report) resolveLicense(fsys fs.FS) {
 	r.add(SeverityWarning, "license-unknown", "SKILL.md", "未宣告授權；視為未知授權")
 }
 
-func licenseCandidates(fsys fs.FS) []struct{ name, source string } {
-	var out []struct{ name, source string }
+type licenseCandidate struct {
+	name   string
+	source LicenseSource
+}
+
+func licenseCandidates(fsys fs.FS) []licenseCandidate {
+	var out []licenseCandidate
 	entries, _ := fs.ReadDir(fsys, ".")
 	for _, e := range entries {
 		if !e.IsDir() && licenseFileNames[strings.ToLower(e.Name())] {
-			out = append(out, struct{ name, source string }{e.Name(), licenseSourcePackageFile})
+			out = append(out, licenseCandidate{e.Name(), LicenseSourcePackageFile})
 		}
 	}
 	if info, err := fs.Stat(fsys, CarriedLicenseFile); err == nil && !info.IsDir() {
-		out = append(out, struct{ name, source string }{CarriedLicenseFile, licenseSourceRepoFile})
+		out = append(out, licenseCandidate{CarriedLicenseFile, LicenseSourceRepoFile})
 	}
 	return out
 }

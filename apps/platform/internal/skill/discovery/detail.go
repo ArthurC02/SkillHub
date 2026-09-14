@@ -62,11 +62,11 @@ type licenseInfo struct {
 	Status     labelled `json:"status"`
 }
 
-var licenseSourceNotes = map[string]string{
-	"manifest":                 "作者在 SKILL.md frontmatter 自行宣告。",
-	"manifest-referenced-file": "frontmatter 未直接宣告授權,而是指向套件內的檔案(如 `SEE LICENSE IN LICENSE.txt`);此結果讀自該檔案的文字。",
-	"package-license-file":     "套件內附 LICENSE 檔案,涵蓋此套件本身。",
-	"repo-license-file":        "來自 repo 根目錄的 LICENSE,涵蓋整個 repo,不必然涵蓋此子目錄的內容。",
+var licenseSourceNotes = map[skillpkg.LicenseSource]string{
+	skillpkg.LicenseSourceManifest:    "作者在 SKILL.md frontmatter 自行宣告。",
+	skillpkg.LicenseSourceManifestRef: "frontmatter 未直接宣告授權,而是指向套件內的檔案(如 `SEE LICENSE IN LICENSE.txt`);此結果讀自該檔案的文字。",
+	skillpkg.LicenseSourcePackageFile: "套件內附 LICENSE 檔案,涵蓋此套件本身。",
+	skillpkg.LicenseSourceRepoFile:    "來自 repo 根目錄的 LICENSE,涵蓋整個 repo,不必然涵蓋此子目錄的內容。",
 }
 
 type severityCounts struct {
@@ -669,7 +669,7 @@ func licenseFrom(v VersionFacts) licenseInfo {
 	out := licenseInfo{Expression: *v.LicenseExpression, Status: statusLabel(LicenseStatusDeclared)}
 	if v.LicenseSource != nil {
 		out.Source = *v.LicenseSource
-		out.SourceNote = licenseSourceNotes[*v.LicenseSource]
+		out.SourceNote = licenseSourceNotes[skillpkg.LicenseSource(*v.LicenseSource)]
 	}
 	return out
 }

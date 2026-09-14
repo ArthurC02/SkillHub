@@ -40,13 +40,13 @@ func TestVersionLicenseKeepsProvenanceTier(t *testing.T) {
 	}
 	expression, source := versionLicense(skillpkg.Report{
 		LicenseExpression: "MIT",
-		LicenseSource:     "repo-file",
+		LicenseSource:     skillpkg.LicenseSourceRepoFile,
 	})
 	if expression == nil || *expression != "MIT" {
 		t.Errorf("expression = %v", expression)
 	}
 
-	if source == nil || *source != "repo-file" {
+	if source == nil || *source != string(skillpkg.LicenseSourceRepoFile) {
 		t.Errorf("source = %v", source)
 	}
 }

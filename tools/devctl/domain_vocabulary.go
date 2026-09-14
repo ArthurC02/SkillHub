@@ -239,6 +239,18 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/skill/discovery/trust.go", "sourceType"),
 		},
 	},
+	{
+		name: "skill version license source",
+		sources: []vocabularySource{
+			sqlColumnCheck("skill_versions", "license_source"),
+			goConstEnum("apps/platform/internal/shared/skillpkg/skillpkg.go", "LicenseSource"),
+			goListedConstEnum(
+				"apps/platform/internal/shared/skillpkg/skillpkg.go", "AllLicenseSources",
+				"apps/platform/internal/shared/skillpkg/skillpkg.go", "LicenseSource"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SkillLicenseSource"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SetSkillRedistributionReqLicenseSource"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {

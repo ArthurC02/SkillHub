@@ -97,6 +97,26 @@ func TestFileTreeMarksScriptsAndOmitsDirectories(t *testing.T) {
 	}
 }
 
+func TestEveryLicenseTierCarriesItsOwnNote(t *testing.T) {
+	tiers := skillpkg.AllLicenseSources()
+	if len(tiers) != 4 {
+		t.Fatalf("tiers = %d, want the 4 skill_versions.license_source allows", len(tiers))
+	}
+	expr := "MIT"
+	seen := map[string]skillpkg.LicenseSource{}
+	for _, tier := range tiers {
+		src := string(tier)
+		note := licenseFrom(VersionFacts{LicenseExpression: &expr, LicenseSource: &src}).SourceNote
+		if note == "" {
+			t.Errorf("%s carries no note", tier)
+		}
+		if other, dup := seen[note]; dup {
+			t.Errorf("%s and %s share a note", tier, other)
+		}
+		seen[note] = tier
+	}
+}
+
 func TestLicenseKeepsProvenanceTierAndNeverConfirms(t *testing.T) {
 	expr, src := "MIT", "repo-license-file"
 	got := licenseFrom(VersionFacts{LicenseExpression: &expr, LicenseSource: &src})

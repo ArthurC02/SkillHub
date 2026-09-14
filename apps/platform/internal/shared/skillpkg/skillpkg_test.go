@@ -227,7 +227,7 @@ func TestLicenseFallsBackToPackageLicenseFile(t *testing.T) {
 	noLicenseMD := "---\nname: x\ndescription: d\n---\n"
 
 	r := Validate(pkg(noLicenseMD, map[string]string{"LICENSE": mit}))
-	if r.LicenseExpression != "MIT" || r.LicenseSource != licenseSourcePackageFile {
+	if r.LicenseExpression != "MIT" || r.LicenseSource != LicenseSourcePackageFile {
 		t.Fatalf("want MIT from the package file, got %q/%q", r.LicenseExpression, r.LicenseSource)
 	}
 	c := codes(r)
@@ -239,7 +239,7 @@ func TestLicenseFallsBackToPackageLicenseFile(t *testing.T) {
 	}
 
 	r = Validate(pkg(goodMD, map[string]string{"LICENSE": "Apache License\nVersion 2.0\n"}))
-	if r.LicenseExpression != "MIT" || r.LicenseSource != licenseSourceManifest {
+	if r.LicenseExpression != "MIT" || r.LicenseSource != LicenseSourceManifest {
 		t.Fatalf("manifest declaration must win, got %q/%q", r.LicenseExpression, r.LicenseSource)
 	}
 
@@ -268,7 +268,7 @@ func TestLicenseProvenancePrecedence(t *testing.T) {
 		skillMD    string
 		files      map[string]string
 		wantSPDX   string
-		wantSource string
+		wantSource LicenseSource
 	}{{
 		name:    "manifest beats both files",
 		skillMD: goodMD,
@@ -276,7 +276,7 @@ func TestLicenseProvenancePrecedence(t *testing.T) {
 			"LICENSE":          apacheText,
 			CarriedLicenseFile: iscText,
 		},
-		wantSPDX: "MIT", wantSource: licenseSourceManifest,
+		wantSPDX: "MIT", wantSource: LicenseSourceManifest,
 	}, {
 		name:    "package file beats the carried repo file",
 		skillMD: noLicenseMD,
@@ -284,18 +284,18 @@ func TestLicenseProvenancePrecedence(t *testing.T) {
 			"LICENSE":          apacheText,
 			CarriedLicenseFile: mitText,
 		},
-		wantSPDX: "Apache-2.0", wantSource: licenseSourcePackageFile,
+		wantSPDX: "Apache-2.0", wantSource: LicenseSourcePackageFile,
 	}, {
 		name:     "carried repo file is used when the package states nothing",
 		skillMD:  noLicenseMD,
 		files:    map[string]string{CarriedLicenseFile: mitText},
-		wantSPDX: "MIT", wantSource: licenseSourceRepoFile,
+		wantSPDX: "MIT", wantSource: LicenseSourceRepoFile,
 	}, {
 
 		name:     "license filename matching is case-insensitive",
 		skillMD:  noLicenseMD,
 		files:    map[string]string{"license": mitText},
-		wantSPDX: "MIT", wantSource: licenseSourcePackageFile,
+		wantSPDX: "MIT", wantSource: LicenseSourcePackageFile,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Validate(pkg(tc.skillMD, tc.files))
@@ -334,9 +334,9 @@ func TestLicenseManifestPointerResolvesReferencedFile(t *testing.T) {
 				"---\nname: "+name+"\ndescription: d\nlicense: "+seedPointer+"\n---\n",
 				map[string]string{"LICENSE.txt": apacheText},
 			))
-			if r.LicenseExpression != "Apache-2.0" || r.LicenseSource != licenseSourceManifestRef {
+			if r.LicenseExpression != "Apache-2.0" || r.LicenseSource != LicenseSourceManifestRef {
 				t.Fatalf("got %q/%q, want Apache-2.0/%s",
-					r.LicenseExpression, r.LicenseSource, licenseSourceManifestRef)
+					r.LicenseExpression, r.LicenseSource, LicenseSourceManifestRef)
 			}
 			if codes(r)["license-from-manifest-reference"] != SeverityInfo {
 				t.Fatalf("resolving a pointer must be disclosed: %+v", r.Findings)
@@ -348,7 +348,7 @@ func TestLicenseManifestPointerResolvesReferencedFile(t *testing.T) {
 		"---\nname: x\ndescription: d\nlicense: SEE LICENSE IN LICENSE.txt\n---\n",
 		map[string]string{"LICENSE.txt": apacheText},
 	))
-	if r.LicenseExpression != "Apache-2.0" || r.LicenseSource != licenseSourceManifestRef {
+	if r.LicenseExpression != "Apache-2.0" || r.LicenseSource != LicenseSourceManifestRef {
 		t.Fatalf("npm spelling: got %q/%q", r.LicenseExpression, r.LicenseSource)
 	}
 
@@ -362,9 +362,9 @@ func TestLicenseManifestPointerResolvesReferencedFile(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Validate(pkg("---\nname: x\ndescription: d\nlicense: "+seedPointer+"\n---\n", tc.files))
-			if r.LicenseExpression != seedPointer || r.LicenseSource != licenseSourceManifest {
+			if r.LicenseExpression != seedPointer || r.LicenseSource != LicenseSourceManifest {
 				t.Fatalf("got %q/%q, want the string verbatim under %s",
-					r.LicenseExpression, r.LicenseSource, licenseSourceManifest)
+					r.LicenseExpression, r.LicenseSource, LicenseSourceManifest)
 			}
 		})
 	}
@@ -414,7 +414,7 @@ func TestNormalizeSPDX(t *testing.T) {
 	}
 
 	r := Validate(pkg("---\nname: x\ndescription: d\nlicense: apache 2.0\n---\n", nil))
-	if r.LicenseExpression != "Apache-2.0" || r.LicenseSource != licenseSourceManifest {
+	if r.LicenseExpression != "Apache-2.0" || r.LicenseSource != LicenseSourceManifest {
 		t.Fatalf("got %q/%q", r.LicenseExpression, r.LicenseSource)
 	}
 }

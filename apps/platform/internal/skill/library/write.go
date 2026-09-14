@@ -97,5 +97,6 @@ func versionLicense(report skillpkg.Report) (expression, source *string) {
 	if report.LicenseExpression == "" {
 		return nil, nil
 	}
-	return &report.LicenseExpression, &report.LicenseSource
+	tier := string(report.LicenseSource)
+	return &report.LicenseExpression, &tier
 }
