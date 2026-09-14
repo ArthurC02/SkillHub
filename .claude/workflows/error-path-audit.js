@@ -12,7 +12,7 @@ export const meta = {
 // dispatcher's flagship model, which 根 AGENTS.md〈開發自動化〉第 3 條 forbids.
 const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet' })
 
-// Feature lines. GenerateSkill.tsx is absent on purpose (01 §10 ⛔ 1). The run
+// Feature lines. src/features/creation/generate/ is absent on purpose (01 §10 ⛔ 1). The run
 // line (RunPreflight/RunTrace/RunEvaluation/RunCompare) was walked by hand on
 // 2026-09-04 and its six gaps are 04 丙-143～148; pass it in args.lines to redo it.
 const WEB = 'apps/web/'
@@ -102,7 +102,7 @@ const CONTEXT = [
 ].join('\n')
 
 phase('Read')
-log(`${lines.length} lines; GenerateSkill.tsx excluded (01 §10 ⛔ 1); run line excluded (already 04 丙-143～148)`)
+log(`${lines.length} lines; creation/generate/ excluded (01 §10 ⛔ 1); run line excluded (already 04 丙-143～148)`)
 
 const results = await pipeline(
   lines,
@@ -145,7 +145,7 @@ const critic = await run(
     'Files each reader says it read:',
     JSON.stringify(ok.map((x) => ({ line: x.read.line, files_read: x.read.files_read }))),
     '',
-    'With Glob/Read only (no grep for text): (1) list every route in docs/design/information-architecture.md §2.1 that no line covers (the run line /lab/run, /runs/$runId, /runs/$runId/compare is covered by 04 丙-143～148 — say so, do not list it); (2) list every .tsx under apps/web/src/pages and apps/web/src/components in no line (GenerateSkill.tsx is excluded on purpose — say so); (3) list every Go http.go/*_http.go under apps/platform/internal in no line; (4) name any finding that appears in two lines for the same shared component so the ledger records it once.',
+    'With Glob/Read only (no grep for text): (1) list every route in docs/design/information-architecture.md §2.1 that no line covers (the run line /lab/run, /runs/$runId, /runs/$runId/compare is covered by 04 丙-143～148 — say so, do not list it); (2) list every .tsx (not *.test.tsx) under apps/web/src/features, apps/web/src/shared and apps/web/src/app in no line — a folder entry covers every file under it, and src/features/creation/generate/ is excluded on purpose (say so); (3) list every Go http.go/*_http.go under apps/platform/internal in no line; (4) name any finding that appears in two lines for the same shared component so the ledger records it once.',
     'Return a short plain-text list, nothing else.',
   ].join('\n'),
   { label: 'critic', phase: 'Critic', effort: 'medium' },

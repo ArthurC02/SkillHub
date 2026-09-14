@@ -14,7 +14,7 @@ export const meta = {
 // on a line that also names `model:`.
 const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet' })
 
-// Page groups: one reader each. GenerateSkill.tsx is deliberately absent — the
+// Page groups: one reader each. src/features/creation/generate/ is deliberately absent — the
 // M5 entry is behind a flag closed-beta users must not see (01 §10 ⛔ 1), and an
 // audit that lists its text invites someone to "improve" it.
 const DEFAULT_GROUPS = [
@@ -102,7 +102,7 @@ const READ_SCHEMA = {
 }
 
 phase('Read')
-log(`${groups.length} page groups; GenerateSkill.tsx excluded on purpose (01 §10 ⛔ 1)`)
+log(`${groups.length} page groups; creation/generate/ excluded on purpose (01 §10 ⛔ 1)`)
 
 const reads = await pipeline(
   groups,
@@ -171,7 +171,7 @@ const critic = await run(
     'Files each reader says it read:',
     JSON.stringify(readOk.map((r) => ({ group: r.group, files_read: r.files_read }))),
     '',
-    'Do three things with Glob/Read (no grep for text): (1) list every .tsx under apps/web/src/pages and apps/web/src/components that is in no group at all (GenerateSkill.tsx is excluded on purpose — say so, do not list it as missing); (2) for each group, name any file listed but not in files_read; (3) name text that no reader can classify from source alone — strings the server sends (e.g. rank_note, notes[], tier.note) — and where the fixture for them lives (apps/web/src/testing/fixtures/platform.ts) so the sums can be completed from real strings.',
+    'Do three things with Glob/Read (no grep for text): (1) list every .tsx (not *.test.tsx) under apps/web/src/features, apps/web/src/shared and apps/web/src/app that is in no group at all — a folder entry covers every file under it, and src/features/creation/generate/ is excluded on purpose (say so, do not list its files as missing); (2) for each group, name any file listed but not in files_read; (3) name text that no reader can classify from source alone — strings the server sends (e.g. rank_note, notes[], tier.note) — and where the fixture for them lives (apps/web/src/testing/fixtures/platform.ts) so the sums can be completed from real strings.',
     'Return a short plain-text list, nothing else.',
   ].join('\n'),
   { label: 'critic', phase: 'Critic', effort: 'medium' },
