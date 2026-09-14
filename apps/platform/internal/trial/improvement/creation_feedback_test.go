@@ -10,7 +10,7 @@ func TestMarshalCreationFeedbackKeepsFailedCriterionReasonAndEvidence(t *testing
 	view := evaluationView{
 		EvaluationID:     "evaluation-1",
 		Status:           StatusCompleted,
-		Overall:          OverallNotMet,
+		Overall:          string(OverallNotMet),
 		Summary:          "The file was not produced.",
 		EvidenceComplete: true,
 		CriterionResults: []CriterionResult{{
@@ -64,7 +64,7 @@ func TestMarshalCreationFeedbackBoundsLargeReportAndMarksOmissions(t *testing.T)
 	view := evaluationView{
 		EvaluationID:          "evaluation-2",
 		Status:                StatusFailed,
-		Overall:               OverallUndetermined,
+		Overall:               string(OverallUndetermined),
 		Summary:               strings.Repeat("摘要", 1500),
 		EvidenceComplete:      true,
 		CriterionResults:      criteria,
@@ -90,7 +90,7 @@ func TestMarshalCreationFeedbackBoundsLargeReportAndMarksOmissions(t *testing.T)
 	if err := json.Unmarshal(got, &payload); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	if payload.Status != string(StatusFailed) || payload.Overall != OverallUndetermined {
+	if payload.Status != string(StatusFailed) || payload.Overall != string(OverallUndetermined) {
 		t.Fatalf("verdict changed: %+v", payload)
 	}
 	if len([]rune(payload.Summary)) > creationFeedbackMaxSummary {
@@ -121,7 +121,7 @@ func TestMarshalCreationFeedbackPerItemCutProtectsFailedCriterionAndWarning(t *t
 	view := evaluationView{
 		EvaluationID:     "evaluation-3",
 		Status:           StatusCompleted,
-		Overall:          OverallNotMet,
+		Overall:          string(OverallNotMet),
 		Summary:          "short summary",
 		EvidenceComplete: true,
 		CriterionResults: criteria,

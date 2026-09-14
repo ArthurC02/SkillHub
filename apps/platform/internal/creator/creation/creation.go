@@ -698,8 +698,8 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 func trialQuestions(observation string) string {
 	var o struct {
 		Evaluation struct {
-			Available bool   `json:"evaluation_available"`
-			Status    string `json:"status"`
+			Available bool             `json:"evaluation_available"`
+			Status    evaluationStatus `json:"status"`
 			Results   []struct {
 				Text   string `json:"text"`
 				Result string `json:"result"`
@@ -707,7 +707,7 @@ func trialQuestions(observation string) string {
 			} `json:"criterion_results"`
 		} `json:"evaluation"`
 	}
-	if json.Unmarshal([]byte(observation), &o) != nil || !o.Evaluation.Available || o.Evaluation.Status != "completed" {
+	if json.Unmarshal([]byte(observation), &o) != nil || !o.Evaluation.Available || o.Evaluation.Status != evaluationCompleted {
 		return ""
 	}
 	var lines []string
@@ -990,15 +990,15 @@ func personText(messages []llmclient.CreationMessage) string {
 func runUnmet(observation string) bool {
 	var o struct {
 		Evaluation struct {
-			Available bool   `json:"evaluation_available"`
-			Status    string `json:"status"`
-			Overall   string `json:"overall"`
+			Available bool              `json:"evaluation_available"`
+			Status    evaluationStatus  `json:"status"`
+			Overall   evaluationOverall `json:"overall"`
 		} `json:"evaluation"`
 	}
 	if json.Unmarshal([]byte(observation), &o) != nil || !o.Evaluation.Available {
 		return false
 	}
-	return o.Evaluation.Status == "completed" && o.Evaluation.Overall != "" && o.Evaluation.Overall != "met"
+	return o.Evaluation.Status == evaluationCompleted && o.Evaluation.Overall != "" && o.Evaluation.Overall != overallMet
 }
 
 func missingDiagramNodes(understanding, body string) []string {

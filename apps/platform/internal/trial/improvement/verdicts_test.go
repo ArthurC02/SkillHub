@@ -10,7 +10,7 @@ import (
 )
 
 func TestAnEvaluationThatDidNotFinishIsNotAVerdictAboutTheTask(t *testing.T) {
-	for _, status := range []string{"pending", "failed"} {
+	for _, status := range []Status{StatusPending, StatusFailed} {
 
 		got := verdictOf(status, "undetermined")
 		if got.Value == "not_met" || got.Value == "undetermined" {
@@ -68,7 +68,7 @@ func TestEveryVerdictTheDatabaseAllowsHasItsOwnSentence(t *testing.T) {
 	seen := map[string]string{}
 	for _, m := range found {
 		overall := m[1]
-		got := verdictOf("completed", overall)
+		got := verdictOf(StatusCompleted, Overall(overall))
 		if got.Value != overall {
 			t.Errorf("verdictOf(\"completed\", %q).Value = %q; a completed evaluation must "+
 				"carry the verdict the database stored, not a fallback", overall, got.Value)

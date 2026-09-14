@@ -33,6 +33,11 @@ func TestTheRealRepositoryHasNoDomainVocabularyDrift(t *testing.T) {
 				t.Errorf("%s: %s yielded nothing, so the comparison above compared nothing", vocabulary.name, source.label)
 			}
 		}
+		for _, reader := range vocabulary.readers {
+			if values, err := reader.read(root); err != nil || len(values) == 0 {
+				t.Errorf("%s: reader %s yielded %v (%v), so it was checked against nothing", vocabulary.name, reader.label, values, err)
+			}
+		}
 	}
 
 	statuses, err := postgresEnumValues(
@@ -298,6 +303,53 @@ func TestSQLColumnCheckNamesTheColumnItCannotFind(t *testing.T) {
 	_, err := sqlColumnCheck("events", "origin").read(root)
 	if err == nil || !strings.Contains(err.Error(), "events.origin") {
 		t.Fatalf("a missing column must be reported by name, got %v", err)
+	}
+}
+
+func readerFixture(t *testing.T, readerConstants string) []string {
+	t.Helper()
+	root := t.TempDir()
+	writeAt(t, root, "db/migrations/0001_evaluations.sql", `CREATE TABLE evaluations (
+    overall text CHECK (overall IN ('met', 'not_met'))
+);
+`)
+	writeAt(t, root, "domain/overall.go", `package domain
+
+type Overall string
+
+const (
+	OverallMet    Overall = "met"
+	OverallNotMet Overall = "not_met"
+)
+`)
+	writeAt(t, root, "consumer/overall.go", "package consumer\n\ntype overall string\n\n"+readerConstants)
+	return reconcileVocabularies(root, []domainVocabulary{{
+		name:    "evaluation overall",
+		sources: []vocabularySource{sqlColumnCheck("evaluations", "overall"), goConstEnum("domain/overall.go", "Overall")},
+		readers: []vocabularySource{goConstEnum("consumer/overall.go", "overall")},
+	}})
+}
+
+func TestDomainVocabularyLetsAReaderNameOnlyTheValuesItReads(t *testing.T) {
+	t.Parallel()
+	if problems := readerFixture(t, "const overallMet overall = \"met\"\n"); len(problems) != 0 {
+		t.Fatalf("a reader naming one value of the vocabulary was refused:\n%s", strings.Join(problems, "\n"))
+	}
+}
+
+func TestDomainVocabularyRefusesAReaderNamingAValueNoSourceDeclares(t *testing.T) {
+	t.Parallel()
+	problems := readerFixture(t, "const (\n\toverallMet overall = \"met\"\n\toverallPassed overall = \"passed\"\n)\n")
+	if len(problems) != 1 || !strings.Contains(problems[0], `"passed"`) || !strings.Contains(problems[0], "consumer/overall.go") {
+		t.Fatalf("the report must name the value and the reader that spells it:\n%s", strings.Join(problems, "\n"))
+	}
+}
+
+func TestDomainVocabularyRefusesAReaderThatNamesNothing(t *testing.T) {
+	t.Parallel()
+	problems := readerFixture(t, "")
+	if len(problems) != 1 || !strings.Contains(problems[0], "declares no value") {
+		t.Fatalf("a reader that reads as empty must be reported, not silently agreed with:\n%s", strings.Join(problems, "\n"))
 	}
 }
 

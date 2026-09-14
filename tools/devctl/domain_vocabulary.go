@@ -21,6 +21,7 @@ type vocabularySource struct {
 type domainVocabulary struct {
 	name    string
 	sources []vocabularySource
+	readers []vocabularySource
 	absent  string
 }
 
@@ -124,6 +125,24 @@ var domainVocabularies = []domainVocabulary{
 				"apps/platform/internal/trial/improvement/status.go", "AllStatuses",
 				"apps/platform/internal/trial/improvement/status.go", "Status"),
 		},
+		readers: []vocabularySource{
+			goConstEnum("apps/platform/internal/creator/creation/evaluation.go", "evaluationStatus"),
+		},
+	},
+	{
+		name: "evaluation overall",
+		sources: []vocabularySource{
+			sqlColumnCheck("evaluations", "overall"),
+			goConstEnum("apps/platform/internal/trial/improvement/overall.go", "Overall"),
+			goListedConstEnum(
+				"apps/platform/internal/trial/improvement/overall.go", "AllOveralls",
+				"apps/platform/internal/trial/improvement/overall.go", "Overall"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "EvaluationOverall"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "RunComparisonRunsItemEvaluationOverall"),
+		},
+		readers: []vocabularySource{
+			goConstEnum("apps/platform/internal/creator/creation/evaluation.go", "evaluationOverall"),
+		},
 	},
 	{
 		name: "run attempt object grant state",
@@ -217,6 +236,37 @@ func reconcileVocabularies(root string, vocabularies []domainVocabulary) []strin
 				problems = append(problems, fmt.Sprintf(
 					"domain-vocabulary: %s %q is missing from %s; a closed vocabulary declared in more than one place and reconciled in none is how the same concept ends up meaning two things",
 					vocabulary.name, value, label))
+			}
+		}
+		problems = append(problems, readerProblems(root, vocabulary, union)...)
+	}
+	return problems
+}
+
+func readerProblems(root string, vocabulary domainVocabulary, union map[string]bool) []string {
+	var problems []string
+	for _, reader := range vocabulary.readers {
+		values, err := reader.read(root)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("domain-vocabulary: %s: %v", vocabulary.name, err))
+			continue
+		}
+		if len(values) == 0 {
+			problems = append(problems, fmt.Sprintf(
+				"domain-vocabulary: %s: %s declares no value; either the vocabulary moved or this check is now looking at the wrong place",
+				vocabulary.name, reader.label))
+			continue
+		}
+		var named []string
+		for value := range values {
+			named = append(named, value)
+		}
+		sort.Strings(named)
+		for _, value := range named {
+			if !union[value] {
+				problems = append(problems, fmt.Sprintf(
+					"domain-vocabulary: %s: %s reads %q, which no source declares; a reader spelling a value nobody writes reads nothing",
+					vocabulary.name, reader.label, value))
 			}
 		}
 	}

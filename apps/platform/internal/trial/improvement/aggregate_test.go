@@ -161,7 +161,7 @@ func seedRun(t *testing.T, pool *pgxpool.Pool) material {
 	return material{run: run, attempt: 1}
 }
 
-func aVerdict(summary, overall string) verdict {
+func aVerdict(summary string, overall Overall) verdict {
 	return verdict{
 		overall: overall,
 		summary: summary,

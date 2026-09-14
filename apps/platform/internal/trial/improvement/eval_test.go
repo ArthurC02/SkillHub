@@ -116,7 +116,7 @@ func TestOverallIsRecomputedFromTheStoredCriteria(t *testing.T) {
 	cases := []struct {
 		name string
 		in   []CriterionResult
-		want string
+		want Overall
 	}{
 		{"no criteria at all", nil, OverallUndetermined},
 		{"all passed", res(ResultPassed, ResultPassed), OverallMet},
@@ -674,7 +674,7 @@ func TestJudgeRunSendsTheContractShapeAndReturnsTheVerdict(t *testing.T) {
 			CriterionResults: []llmclient.CriterionVerdict{
 				{CriterionID: "c1", Result: ResultPassed, Reason: "done", EvidenceRefs: nil},
 			},
-			Overall: OverallMet, Summary: "the task was completed",
+			Overall: string(OverallMet), Summary: "the task was completed",
 		},
 		Model: "gpt-5.6-terra", PromptVersion: "judge-run@2026-08-17",
 	}, &got)

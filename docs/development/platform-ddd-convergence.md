@@ -280,7 +280,7 @@ git grep -hoE "CHECK \(\s*[a-z_]+\s+IN\s*\([^)]*\)" -- db/migrations/ \
 **EDIT**（一個詞彙一個 commit）
 
 1. 在擁有那張表的 context（`db/query-owners.yaml`）把常數收成具名字串型別加封閉集合，形狀照 §3。值還在增刪的詞彙只做常數與對帳，不加拒絕未知值的 `Parse`（J5）。
-2. 分支裡的字面值改用常數。另一個 context 也讀同一個詞彙時（例如 creation 解析評估結果的 JSON），**不要為了共用常數跨 context import**（ADR-032）：消費端宣告自己的一份，兩份一起接進同一筆對帳——`domain-vocabulary` 本來就是為「同一個概念宣告在多處」而存在。
+2. 分支裡的字面值改用常數。另一個 context 也讀同一個詞彙時（例如 creation 解析評估結果的 JSON），**不要為了共用常數跨 context import**（ADR-032）：消費端只宣告它讀的那幾個值，接成同一筆對帳的 `readers`——`readers` 只要求讀的值都在詞彙裡，不要求全集，所以消費端不必為了對帳而宣告自己用不到的常數。
 3. 在 `domainVocabularies` 加一筆：`sqlColumnCheck(表, 欄位)` ＋ 每一份 Go 定義。它依檔名順序重播每一支 migration，取那個欄位最後一次的定義，也認得 `DROP COLUMN` 與 `RENAME COLUMN`。
 4. Go 從來沒有分支讀的詞彙不型別化，照 §5.1 的格式在 §5 補一條附 DISCOVER 的裁決。
 

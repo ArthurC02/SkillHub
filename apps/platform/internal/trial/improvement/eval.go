@@ -27,11 +27,6 @@ var errEvaluationInProgress = errors.New("evaluation already in progress")
 var errEvaluationSettled = errors.New("evaluation already settled")
 
 const (
-	OverallMet          = "met"
-	OverallPartiallyMet = "partially_met"
-	OverallNotMet       = "not_met"
-	OverallUndetermined = "undetermined"
-
 	ResultPassed       = "passed"
 	ResultFailed       = "failed"
 	ResultUndetermined = "undetermined"
@@ -399,7 +394,7 @@ func (s *Service) completeAndSuggest(
 }
 
 type verdict struct {
-	overall          string
+	overall          Overall
 	summary          string
 	results          []CriterionResult
 	findings         []Finding
@@ -547,7 +542,7 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 
 	if _, err := q.CompleteEvaluation(ctx, gen.CompleteEvaluationParams{
 		ID: ev.ID, WorkspaceID: ev.WorkspaceID,
-		Overall:               v.overall,
+		Overall:               string(v.overall),
 		Summary:               strPtr(v.summary),
 		CriterionResults:      results,
 		DeterministicFindings: findings,
@@ -651,7 +646,7 @@ func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg
 	return skillpkg.Validate(fsys), true
 }
 
-func overallFrom(results []CriterionResult) string {
+func overallFrom(results []CriterionResult) Overall {
 	if len(results) == 0 {
 		return OverallUndetermined
 	}
