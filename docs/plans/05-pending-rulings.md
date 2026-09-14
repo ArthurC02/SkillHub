@@ -2241,3 +2241,18 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
   - socket 斷線的繞道在 pglite-socket 0.2.11 **仍然必要**（`verify.mjs --mutate=no-prune` 仍然紅）。
   - PostgreSQL 18 的官方映像把資料目錄換成 `/var/lib/postgresql/18/docker`，所以 compose 的資料卷掛在 `/var/lib/postgresql`。**掛回舊的 `/var/lib/postgresql/data` 不會報錯，只是資料寫在 volume 之外、容器一重建就消失**；而上一個主版本留下的資料卷會讓 pg18 直接拒絕啟動（處置見 [automation.md〈常見失敗〉](../development/automation.md)）。
 - **仍然成立的那個缺口**：65 支 migration 與 `PORT-001` 的行為檢查在 17 與 18 上都通過，**沒有任何自動化檢查看得出兩邊主版本不一致**。守住它的只有 `02` PORT-001 那條準則，升級沒有改善這一點。
+
+---
+
+## R-80｜相容性量測涵不涵蓋這次 Run，該拿哪一個欄位比（`04` 丙-243、[platform-ddd-convergence.md §6.3](../development/platform-ddd-convergence.md)）
+
+- 日期：2026-09-14
+
+- **要決定的是什麼**：評估的相容性 finding 要回答「這份量測涵不涵蓋這次 Run 用的執行環境」。今天拿去比的兩邊不是同一種東西，要定下該比哪一個欄位。
+- **已經查到的事實**：
+  - `trial/improvement/deterministic.go` 的 `compatibilityFindings` 把 Run 快照的 `RuntimeProfile.Runtime`（執行環境的名字，例如 `claude_agent_sdk`）和 `skill_runtime_compatibility.runtime`（量測結果：`native`／`transpiled`／`failed`／`unverified`）比，兩者永遠不相等。
+  - 同一張表還記了 `runtime_image`（量測時用的映像）；Run 快照的 `RuntimeProfile` 只有 `runtime`、`runtime_version`、`model`、`agent_integration`，沒有映像。
+  - `db/queries/` 裡沒有任何一支寫這張表，只有兩支讀取，所以這段比較從來沒有產生過 finding；`compatibilityFindings` 沒有測試。
+- **建議**：比「量測時的執行環境」與「這次 Run 的執行環境」的同一種東西。Run 快照今天沒有映像，最小的做法是量測多記 runtime 名字與版本、拿它們和 `RuntimeProfile` 比；`runtime` 欄位只留在訊息裡顯示量測結果。
+- **不決定的代價**：量測一旦開始寫入，每一個有量測的 Skill 的評估都會多一條錯的 warning。
+- **決定之後誰動**：Agent（補測試、改比較、兩個詞彙型別化並接進對帳；若要多記欄位，另有一支 migration）。

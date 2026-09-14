@@ -14,8 +14,9 @@ import (
 )
 
 type vocabularySource struct {
-	label string
-	read  func(root string) (map[string]bool, error)
+	label    string
+	checkKey string
+	read     func(root string) (map[string]bool, error)
 }
 
 type domainVocabulary struct {
@@ -70,7 +71,8 @@ func goListedConstEnum(listPath, listName, constPath, constType string) vocabula
 func sqlColumnCheck(table, column string) vocabularySource {
 	key := table + "." + column
 	return vocabularySource{
-		label: fmt.Sprintf("db/migrations (CHECK on %s)", key),
+		label:    fmt.Sprintf("db/migrations (CHECK on %s)", key),
+		checkKey: key,
 		read: func(root string) (map[string]bool, error) {
 			vocabularies, err := migrationVocabularies(root)
 			if err != nil {
@@ -375,8 +377,59 @@ var domainVocabularies = []domainVocabulary{
 	},
 }
 
+var unreconciledVocabularies = map[string]string{
+	"artifacts.kind":                           "Go never reads or writes it; every query spells the kind itself (platform-ddd-convergence.md §5.1)",
+	"analytics_events.event_name":              "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
+	"cost_events.ref_type":                     "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
+	"credit_entries.ref_type":                  "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
+	"creation_receipts.kind":                   "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
+	"evaluation_model_usage.operation":         "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
+	"object_reconcile_sightings.resource_kind": "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
+	"outbox_events.event_type":                 "the outbox package's own tests reconcile it against the migration and the event catalogue",
+	"skill_runtime_compatibility.capability":   "its one reader compares the runtime column against another concept, so the pair waits on a ruling (platform-ddd-convergence.md §6.3)",
+	"skill_runtime_compatibility.runtime":      "its one reader compares it against a runtime name, not a compatibility outcome (platform-ddd-convergence.md §6.3)",
+}
+
 func domainVocabularyProblems(root string) []string {
-	return reconcileVocabularies(root, domainVocabularies)
+	problems := reconcileVocabularies(root, domainVocabularies)
+	return append(problems, coverageProblems(root, domainVocabularies, unreconciledVocabularies)...)
+}
+
+func coverageProblems(root string, reconciled []domainVocabulary, unreconciled map[string]string) []string {
+	vocabularies, err := migrationVocabularies(root)
+	if err != nil {
+		return []string{fmt.Sprintf("domain-vocabulary: %v", err)}
+	}
+	covered := map[string]bool{}
+	for _, vocabulary := range reconciled {
+		for _, source := range vocabulary.sources {
+			if source.checkKey != "" {
+				covered[source.checkKey] = true
+			}
+		}
+	}
+	var problems []string
+	for _, key := range sortedKeys(vocabularies) {
+		reason, declared := unreconciled[key]
+		switch {
+		case covered[key] && declared:
+			problems = append(problems, fmt.Sprintf(
+				"domain-vocabulary: %s is reconciled, so its entry in unreconciledVocabularies (%s) is stale",
+				key, reason))
+		case !covered[key] && !declared:
+			problems = append(problems, fmt.Sprintf(
+				"domain-vocabulary: %s is a closed vocabulary in db/migrations that nothing reconciles; reconcile it with its Go definition or say in unreconciledVocabularies why not",
+				key))
+		}
+	}
+	for _, key := range sortedKeys(unreconciled) {
+		if _, stillClosed := vocabularies[key]; !stillClosed {
+			problems = append(problems, fmt.Sprintf(
+				"domain-vocabulary: unreconciledVocabularies names %s (%s), which no migration leaves as a closed vocabulary",
+				key, unreconciled[key]))
+		}
+	}
+	return problems
 }
 
 func reconcileVocabularies(root string, vocabularies []domainVocabulary) []string {

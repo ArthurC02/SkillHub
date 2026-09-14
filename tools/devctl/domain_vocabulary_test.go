@@ -353,6 +353,59 @@ func TestDomainVocabularyRefusesAReaderThatNamesNothing(t *testing.T) {
 	}
 }
 
+func coverageFixture(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	writeAt(t, root, "db/migrations/0001_events.sql", `CREATE TABLE events (
+    kind text CHECK (kind IN ('step', 'review'))
+);
+`)
+	return root
+}
+
+var eventKindReconciled = []domainVocabulary{{
+	name:    "event kind",
+	sources: []vocabularySource{sqlColumnCheck("events", "kind")},
+}}
+
+func TestAClosedVocabularyNothingReconcilesIsReported(t *testing.T) {
+	t.Parallel()
+	problems := coverageProblems(coverageFixture(t), nil, nil)
+	if len(problems) != 1 || !strings.Contains(problems[0], "events.kind") || !strings.Contains(problems[0], "nothing reconciles") {
+		t.Fatalf("a CHECK vocabulary with no reconciliation and no stated reason must be reported by name:\n%s", strings.Join(problems, "\n"))
+	}
+}
+
+func TestAClosedVocabularyWithAStatedReasonIsAccepted(t *testing.T) {
+	t.Parallel()
+	if problems := coverageProblems(coverageFixture(t), nil, map[string]string{"events.kind": "Go only writes it"}); len(problems) != 0 {
+		t.Fatalf("a vocabulary whose exemption says why was refused:\n%s", strings.Join(problems, "\n"))
+	}
+}
+
+func TestAReconciledVocabularyNeedsNoReason(t *testing.T) {
+	t.Parallel()
+	if problems := coverageProblems(coverageFixture(t), eventKindReconciled, nil); len(problems) != 0 {
+		t.Fatalf("a reconciled vocabulary was reported as unreconciled:\n%s", strings.Join(problems, "\n"))
+	}
+}
+
+func TestAnExemptionForAReconciledVocabularyIsStale(t *testing.T) {
+	t.Parallel()
+	problems := coverageProblems(coverageFixture(t), eventKindReconciled, map[string]string{"events.kind": "Go only writes it"})
+	if len(problems) != 1 || !strings.Contains(problems[0], "events.kind") || !strings.Contains(problems[0], "stale") {
+		t.Fatalf("an exemption that no longer exempts anything must be reported:\n%s", strings.Join(problems, "\n"))
+	}
+}
+
+func TestAnExemptionForAColumnWithNoVocabularyIsStale(t *testing.T) {
+	t.Parallel()
+	problems := coverageProblems(coverageFixture(t), eventKindReconciled, map[string]string{"events.origin": "Go only writes it"})
+	if len(problems) != 1 || !strings.Contains(problems[0], "events.origin") {
+		t.Fatalf("an exemption naming a column no migration constrains must be reported:\n%s", strings.Join(problems, "\n"))
+	}
+}
+
 func TestDomainVocabularyReadsAListDeclaredAsAFunction(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
