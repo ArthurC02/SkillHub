@@ -393,7 +393,7 @@ func successReason(to gen.RunStatus) string {
 	}
 }
 
-func classifyResult(pr ProviderRun) (status gen.RunStatus, failureClass, errClass, message string) {
+func classifyResult(pr ProviderRun) (status gen.RunStatus, failureClass FailureClass, errClass, message string) {
 	if pr.Result == nil {
 		return gen.RunStatusFailed, failureProvider, errClassProvision,
 			"provider reported a terminal state with no result"
@@ -437,7 +437,9 @@ func (d *driver) advance(ctx context.Context, attemptID pgtype.UUID, to gen.RunS
 	return d.transition(ctx, attemptID, to, "", reason)
 }
 
-func (d *driver) finish(ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass, reason string) error {
+func (d *driver) finish(
+	ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass FailureClass, reason string,
+) error {
 	if _, err := d.svc.queries().CloseUnissuedRunAttemptGrants(ctx, gen.CloseUnissuedRunAttemptGrantsParams{
 		RunID: d.cur.ID, WorkspaceID: d.cur.WorkspaceID,
 	}); err != nil {
@@ -446,7 +448,9 @@ func (d *driver) finish(ctx context.Context, attemptID pgtype.UUID, to gen.RunSt
 	return d.transition(ctx, attemptID, to, failureClass, reason)
 }
 
-func (d *driver) transition(ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass, reason string) error {
+func (d *driver) transition(
+	ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass FailureClass, reason string,
+) error {
 	run, err := d.svc.Transition(ctx, TransitionParams{
 		WorkspaceID:  d.cur.WorkspaceID,
 		RunID:        d.cur.ID,

@@ -335,6 +335,16 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "DataRetentionPolicyFeedbackKindItem"),
 		},
 	},
+	{
+		name: "run failure class",
+		sources: []vocabularySource{
+			sqlColumnCheck("runs", "failure_class"),
+			goConstEnum("apps/platform/internal/trial/execution/statemachine.go", "FailureClass"),
+			goListedConstEnum(
+				"apps/platform/internal/trial/execution/statemachine.go", "AllFailureClasses",
+				"apps/platform/internal/trial/execution/statemachine.go", "FailureClass"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {

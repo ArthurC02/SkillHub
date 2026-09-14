@@ -25,14 +25,23 @@ var (
 	ErrNoHappyPath = errors.New("no successes-only path to succeeded")
 )
 
+type FailureClass string
+
 const (
-	failureProvider   = "provider_error"
-	failureWorkload   = "workload_error"
-	failureTimeout    = "timeout"
-	failureCancelled  = "cancelled"
-	failureNoProvider = "capability_mismatch"
-	failurePlatform   = "platform_error"
+	failureProvider   FailureClass = "provider_error"
+	failureWorkload   FailureClass = "workload_error"
+	failureTimeout    FailureClass = "timeout"
+	failureCancelled  FailureClass = "cancelled"
+	failureNoProvider FailureClass = "capability_mismatch"
+	failurePlatform   FailureClass = "platform_error"
 )
+
+func AllFailureClasses() []FailureClass {
+	return []FailureClass{
+		failureProvider, failureWorkload, failureTimeout,
+		failureCancelled, failureNoProvider, failurePlatform,
+	}
+}
 
 var successors = map[gen.RunStatus][]gen.RunStatus{
 	gen.RunStatusQueued: {
@@ -124,7 +133,7 @@ type TransitionParams struct {
 	From, To  gen.RunStatus
 	Reason    string
 
-	FailureClass string
+	FailureClass FailureClass
 
 	Actor pgtype.UUID
 }
@@ -145,9 +154,10 @@ func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, 
 	if p.Reason == "" {
 		reason = nil
 	}
-	failureClass := &p.FailureClass
-	if p.FailureClass == "" {
-		failureClass = nil
+	var failureClass *string
+	if p.FailureClass != "" {
+		value := string(p.FailureClass)
+		failureClass = &value
 	}
 	run, err := q.TransitionRun(ctx, gen.TransitionRunParams{
 		RunID: p.RunID, WorkspaceID: p.WorkspaceID,
@@ -188,28 +198,32 @@ func (s *Service) recordFailureEvent(ctx context.Context, tx pgx.Tx, q *gen.Quer
 	if p.To != gen.RunStatusFailed && p.To != gen.RunStatusTimedOut {
 		return nil
 	}
-	code := p.FailureClass
+	code := string(p.FailureClass)
 	if code == "" {
 		code = "unclassified"
 	}
 	return trace.RecordOrchestratorEvent(ctx, tx, run.WorkspaceID, run.ID,
 		attemptNumber(ctx, q, run), trace.TypeError, "error", map[string]any{
 
-			"category": failureCategory(p.FailureClass),
+			"category": p.FailureClass.category(),
 			"code":     code,
 			"message":  p.Reason,
 
-			"retryable": p.FailureClass == failureProvider,
+			"retryable": p.FailureClass.retryable(),
 		})
 }
 
-func failureCategory(failureClass string) string {
-	switch failureClass {
+func (c FailureClass) category() string {
+	switch c {
 	case failureProvider, failureNoProvider:
 		return "provision"
 	default:
 		return "execution"
 	}
+}
+
+func (c FailureClass) retryable() bool {
+	return c == failureProvider
 }
 
 func attemptNumber(ctx context.Context, q *gen.Queries, run gen.Run) int {
@@ -229,7 +243,7 @@ func observeTransition(run gen.Run, p TransitionParams) {
 	if !IsTerminal(p.To) {
 		return
 	}
-	failureClass := p.FailureClass
+	failureClass := string(p.FailureClass)
 	if failureClass == "" {
 		failureClass = "none"
 	}

@@ -212,7 +212,7 @@ func TestClassifyResultSeparatesWorkloadFailureFromProviderFailure(t *testing.T)
 		name             string
 		in               ProviderRun
 		wantStatus       gen.RunStatus
-		wantFailureClass string
+		wantFailureClass FailureClass
 	}{
 		{
 			"workload succeeded",

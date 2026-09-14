@@ -88,18 +88,18 @@ func cleanupWord(v string) labelled {
 	}
 }
 
-var failureClassWords = map[string][2]string{
-	"provider_error": {"Provider 錯誤",
+var failureClassWords = map[FailureClass][2]string{
+	failureProvider: {"Provider 錯誤",
 		"執行沙箱的那一側沒能承載這次嘗試。這不是 Skill 的問題,也是唯一一類平台會自己重試的失敗。"},
-	"workload_error": {"工作負載失敗",
+	failureWorkload: {"工作負載失敗",
 		"工作負載跑起來了,而且自己回報失敗。這是 Skill 在它自己的工作上失敗,不是平台故障;重試只會再花一次錢得到同一個答案。"},
-	"timeout": {"逾時",
+	failureTimeout: {"逾時",
 		"Provider 回報的軟性上限,或平台看門狗的硬性上限。工作到哪裡為止見執行紀錄。"},
-	"cancelled": {"已取消",
+	failureCancelled: {"已取消",
 		"是使用者要求停止的,不是失敗。"},
-	"capability_mismatch": {"沒有能跑這個請求的環境",
+	failureNoProvider: {"沒有能跑這個請求的環境",
 		"在任何東西被執行之前就被拒絕了——沒有一個已設定的 Provider 能承接這個請求。這不是崩潰,沙箱從來沒有被建立。"},
-	"platform_error": {"平台自己的錯誤",
+	failurePlatform: {"平台自己的錯誤",
 		"控制平面這一側的問題,不是 Skill 也不是 Provider 的問題。"},
 }
 
@@ -107,7 +107,7 @@ func failureClassWord(v string) *labelled {
 	if v == "" {
 		return nil
 	}
-	if w, ok := failureClassWords[v]; ok {
+	if w, ok := failureClassWords[FailureClass(v)]; ok {
 		return &labelled{Value: v, Label: w[0], Note: w[1]}
 	}
 	return &labelled{
