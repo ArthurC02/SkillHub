@@ -14,5 +14,5 @@ paths:
 
 這一區會擋你的檢查：
 
-- 需要資料庫的 Go 測試在沒有 `SKILLHUB_TEST_DATABASE_URL` 時跳過——那個 ok 不算跑過；跑的時候加 `-count=1`，不然會重播沒接資料庫時的快取結果。會因缺環境停用的套件必須認 `SKILLHUB_REQUIRE_DB`／`SKILLHUB_REQUIRE_OBJSTORE`（`automation-check` 的 `require-db-guard`／`require-objstore-guard`）。
+- 需要資料庫的 Go 測試在沒有 `SKILLHUB_TEST_DATABASE_URL` 時跳過——那個 ok 不算跑過；直接跑 `go test` 時加 `-count=1`，不然會重播沒接資料庫時的快取結果（`task test:*` 的 `test-report` 已經一律不用快取）。會因缺環境停用的套件必須認 `SKILLHUB_REQUIRE_DB`／`SKILLHUB_REQUIRE_OBJSTORE`（`automation-check` 的 `require-db-guard`／`require-objstore-guard`）。
 - `infra/images/runtime-agent-sdk/` 底下的 Dockerfile，以及它 `COPY` 進映像的檔一改，`Runtime Image` 的 I-05 就要求同一次推送升 `ARG IMAGE_VERSION` 並補 `UPGRADES.md` 一節；那次推送會發佈新的映像標籤，先問負責人。`run.test.mjs` 沒被複製進映像，改它不觸發。pre-push hook（`devctl preflight --hook`）推送前就會用同一段判斷先擋一次。
