@@ -64,7 +64,7 @@ func canSpend(p Snapshot, l Limits) bool {
 	if p.SpentUSD != nil {
 		spent = *p.SpentUSD
 	}
-	return l.Valid() && p.Steps < l.MaxSteps && len(p.Messages)+2 <= MaxMessages && spent+p.ReservedUSD+l.MaxCallCostUSD <= math.Min(p.BudgetUSD, l.MaxCostUSD)+1e-10
+	return l.Valid() && p.Steps < l.MaxSteps && p.hasRoomFor(2) && spent+p.ReservedUSD+l.MaxCallCostUSD <= math.Min(p.BudgetUSD, l.MaxCostUSD)+1e-10
 }
 
 func allowedTools(toolCalls, maxToolCalls int, fetch, knowledge, searchLeft bool) []string {
@@ -497,11 +497,11 @@ func failedAttempt(p *Snapshot, err, callErr error, hadDiagram bool) State {
 	if hadDiagram && p.DiagramUnderstanding == "" {
 		state = StateNeedsReupload
 	}
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: stepFailureMessage(err, callErr)})
 	if errors.Is(callErr, ErrNotFound) {
 		state = StateWaitingConfirmation
-		p.PendingAction = "confirm_references"
+		p.PendingAction = PendingReferenceChoice
 		for i := range p.References {
 			p.References[i].Available = false
 			p.References[i].Confirmed = false
@@ -510,7 +510,7 @@ func failedAttempt(p *Snapshot, err, callErr error, hadDiagram bool) State {
 	}
 	if errors.Is(callErr, ErrCreditFloor) {
 		state = StateWaitingInput
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。"})
 	}
 	return state
@@ -587,12 +587,12 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		if retries := missingOutputRetries(e, r.Reason); retriesMissingOutput(retries, *p, e.Limits) {
 			*retries++
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "模型這一步沒有交出草稿，已自動再試一次。"})
-			p.PendingAction = ""
+			p.PendingAction = NothingPending
 			return StateQueued, true, nil
 		}
 	}
 	normalizeReply(r, p.DiagramFingerprint != "")
-	if err := admitReply(r, len(p.Messages)); err != nil {
+	if err := admitReply(r, *p); err != nil {
 		return "", false, err
 	}
 	recordReply(p, r)
@@ -604,7 +604,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	}
 	switch r.Outcome {
 	case "clarification":
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		return StateWaitingInput, false, nil
 	case "confirm_brief":
 		return askToConfirmBrief(p)
@@ -641,11 +641,11 @@ func normalizeReply(r *llmclient.CreationStepResponse, diagramUploaded bool) {
 	}
 }
 
-func admitReply(r *llmclient.CreationStepResponse, messages int) error {
+func admitReply(r *llmclient.CreationStepResponse, p Snapshot) error {
 	if r.DiagramUnderstanding != "" && !validDiagramInterpretation(r.DiagramUnderstanding) {
 		return ErrInvalidCommand
 	}
-	if r.Message == "" || utf8.RuneCountInString(r.Message) > MaxTextRunes || utf8.RuneCountInString(r.Brief) > MaxTextRunes || utf8.RuneCountInString(r.DiagramUnderstanding) > MaxTextRunes || messages >= MaxMessages {
+	if r.Message == "" || utf8.RuneCountInString(r.Message) > MaxTextRunes || utf8.RuneCountInString(r.Brief) > MaxTextRunes || utf8.RuneCountInString(r.DiagramUnderstanding) > MaxTextRunes || !p.hasRoomFor(1) {
 		return ErrInvalidCommand
 	}
 	if err := validateCriteria(r.AcceptanceCriteria); err != nil {
@@ -667,7 +667,7 @@ func reinterpretDiagram(p *Snapshot, understanding string) State {
 	p.DiagramUnderstanding = understanding
 	p.DiagramConfirmed = false
 	invalidate(p)
-	p.PendingAction = "confirm_diagram"
+	p.PendingAction = PendingDiagramConfirmation
 	return StateWaitingConfirmation
 }
 
@@ -712,7 +712,7 @@ func reviseBrief(p *Snapshot, r *llmclient.CreationStepResponse, c briefChange) 
 	}
 	p.BriefConfirmed = false
 	invalidate(p)
-	p.PendingAction = "confirm_brief"
+	p.PendingAction = PendingBriefConfirmation
 	return StateWaitingConfirmation
 }
 
@@ -721,10 +721,10 @@ func askToConfirmBrief(p *Snapshot) (State, bool, error) {
 		return "", false, ErrInvalidCommand
 	}
 	if p.BriefConfirmed {
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		return StateWaitingInput, false, nil
 	}
-	p.PendingAction = "confirm_brief"
+	p.PendingAction = PendingBriefConfirmation
 	return StateWaitingConfirmation, false, nil
 }
 
@@ -733,7 +733,7 @@ func askToConfirmDiagram(p *Snapshot) (State, bool, error) {
 		return "", false, ErrInvalidCommand
 	}
 	p.DiagramConfirmed = false
-	p.PendingAction = "confirm_diagram"
+	p.PendingAction = PendingDiagramConfirmation
 	return StateWaitingConfirmation, false, nil
 }
 
@@ -758,7 +758,7 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 	if objection.raised() && p.Nudges < MaxNudges && canSpend(*p, e.Limits) {
 		p.Nudges++
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: objection.toModel(p.EvaluationText)})
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		return StateQueued, true, nil
 	}
 	if note := objection.toPerson(); note != "" {
@@ -789,7 +789,7 @@ func storeDraft(p *Snapshot, d *Draft) {
 	if !renamedOnly(prev, d) {
 		clearDuplicateCheck(p)
 	}
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 }
 
 type draftObjection struct {
@@ -902,7 +902,7 @@ func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *S
 	p.References = shortlist(refs)
 	invalidate(p)
 	p.BriefConfirmed = false
-	p.PendingAction = "confirm_references"
+	p.PendingAction = PendingReferenceChoice
 	return StateWaitingConfirmation, false, nil
 }
 
@@ -944,7 +944,7 @@ func (s *Service) holdFetch(p *Snapshot, query string) (State, bool, error) {
 		return StateQueued, true, nil
 	}
 	p.PendingFetchURL = clean
-	p.PendingAction = "confirm_fetch"
+	p.PendingAction = PendingFetchPermission
 	return StateWaitingConfirmation, false, nil
 }
 
@@ -964,7 +964,7 @@ func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e 
 		p.Candidate = nil
 	}
 	if p.Draft != nil && p.Draft.ContentHash == hash && !p.Draft.Blocked && !blocked {
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "這份草稿已通過同一次驗證；試跑由人從候選啟動，模型不能自己跑。草稿就緒。"})
 		return StateDraftReady, false, nil
 	}

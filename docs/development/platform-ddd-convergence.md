@@ -118,6 +118,7 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 | 評估的開始與取代、結算、回饋、建議決定、建議已套用 | `trial/improvement/evaluation.go` 的 `Evaluation` aggregate：命令記下事件或拒絕事件，存回只在 `evaluation_store.go`；建議已套用由 `mailbox.go` 消化 Skill 的 `skill.version_added` 後記下 | `evaluation_test.go` | 事件名稱：`outbox` 套件的 conformance test 對帳 Go 常數 ↔ 最新換上 CHECK 的 migration ↔ 事件目錄 §3 |
 | Skill 的建立、加版本、換說明、下架、存取限制、再散布、分類、刪除 | `skill/library/skill_root.go` 的 `SkillRoot` aggregate：命令記下事件或拒絕事件，存回只在 `skill_store.go`；匯入、存新版本、生成、Fork 與套用建議都經過 `AddVersion`，套用建議建成的版本在事件上帶著建成它的評估與建議；`skill/discovery` 只把拒絕理由翻成營運者看得懂的句子 | `skill_root_test.go` | 同上 |
 | Run 的轉移、取消、指定 Provider、attempt 的開始／派送／結束、物件授權到期 | `trial/execution/run_root.go` 的 `Run` aggregate：命令記下事件或拒絕事件，存回只在 `run_store.go`；轉移表仍是 `statemachine.go` 的 `successors`，授權狀態仍是 `grantstate.go`；driver 與授權只呼叫命令（排程只組出要釘住的 runtime 快照），清理狀態由 `cleanup.go` 記下 | `run_root_test.go` | 轉移表：`run-status-sql`；事件名稱：同上 |
+| creation 還能不能再加訊息、正在等人確認什麼 | `creator/creation/service.go` 的 `Snapshot.hasRoomFor` 與 `PendingAction` 常數（不拒絕未知值，J5） | `snapshot_test.go` | — |
 
 **「機器對帳」欄有兩種東西，不要混為一談：**
 
@@ -275,11 +276,15 @@ git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStar
 
 `domain-vocabulary` 的 `unreconciledVocabularies` 逐筆列出這六個欄位，以及同一個形狀的 `skill_runtime_compatibility.runtime`：Go 只把它讀出來顯示量測結果，不依它分支，寫入端只有操作員手跑的 SQL。**重開條件**：Go 開始依其中任何一個值分支——屆時照 §3 形狀在擁有者型別化、接進對帳，並刪掉那一筆（不刪，檢查器會說它過期）。
 
+### 5.7 creation 的 Session aggregate 與金額的 value type
+
+creation 會話不包成 aggregate：唯一的寫入點 `advance()` 已經存在，改寫只換呼叫語法。金額不做 value type：運算已集中在 `money.go`，沒有混用過的事故，理由同 §5.4。**重開條件**：出現第二個寫入會話快照的地方，或金額在 `money.go` 之外被運算。
+
 ---
 
 ## 6 待做
 
-[ADR-084](../adr/ADR-084-aggregates-speak-in-domain-events.md) 的其餘一件。Evaluation、Skill 與 Run 已經照這個形狀改完，照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
+目前沒有待做。[ADR-084](../adr/ADR-084-aggregates-speak-in-domain-events.md) 的 Evaluation、Skill、Run aggregate 與 creation 的兩個具名概念都已改完；新的 aggregate 照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
 
 - 狀態不匯出，只有唯讀存取。命令不回傳值、不帶 `context`、不做 I/O：成立就改狀態並記下領域事件，不成立就只記一則帶理由的拒絕事件。
 - 載入是吃呼叫端交易的套件函式並以列鎖讀出；存回只有一處，同交易寫狀態並把事件寫進 outbox；拒絕不存回。
@@ -287,19 +292,7 @@ git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStar
 - 測試不連資料庫，只斷言唯讀狀態與事件。SQL 的原子性守衛（C2）全部保留。
 - 新事件照[事件目錄](../../contracts/events/domain-events.md) §4 規則 4：目錄、outbox 常數、新 migration 的值域檢查、producer 同一個 commit。
 
-### 6.1 丙-247 creation 的兩個具名概念
-
-- **GOAL**：「還能不能再加一則訊息」只有一個定義；`PendingAction` 的值是具名常數。
-- **DISCOVER**：
-  ```
-  git grep -nE "len\((p|e\.Snapshot)\.Messages\)" -- apps/platform/internal/creator/creation/ | awk '!/_test/'
-  git grep -nE "PendingAction (==|!=|=) \"" -- apps/platform/internal/creator/creation/ | awk '!/_test/'
-  ```
-- **EDIT**：一個具名謂詞取代訊息數的比較；`PendingAction` 改成具名常數型別，不加拒絕未知值的 Parse（J5）。
-- **PROVE**：謂詞弄壞一次紅；任一常數的值改一個字，對應測試紅。
-- **不做**：Session aggregate（唯一寫入點 `advance()` 已存在）、金額的 value type（運算已集中在 `money.go`，理由同 §5.4）。
-
-每一項都已在 [`04`](../plans/04-backlog-and-handoffs.md) 登記，照 §0 一次做一件，順序就是編號。新的待做先在 `04` 登記，再寫進這一節，每一項用同一個形狀：**GOAL**（要擋住什麼）、**DISCOVER**（能重跑的指令）、**EDIT**（改動的形狀）、**PROVE**（弄壞哪一行、哪條測試會紅）、**STOP-IF**（什麼情況停下回報）。
+新的待做先在 `04` 登記，再寫進這一節，每一項用同一個形狀：**GOAL**（要擋住什麼）、**DISCOVER**（能重跑的指令）、**EDIT**（改動的形狀）、**PROVE**（弄壞哪一行、哪條測試會紅）、**STOP-IF**（什麼情況停下回報）。
 
 J3 已經量過，不在這裡：吃事實的 `require*` 都只負責取事實，判斷交給純函式（`scanVerdict`、`runSlotVerdict`、`policy.EnforceQuota`）或注入的讀取者；額度扣抵留在 SQL 是 C2。重開前先重跑 J3 的 DISCOVER：
 

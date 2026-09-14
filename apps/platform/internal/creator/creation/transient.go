@@ -170,7 +170,7 @@ func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, force bool) err
 	}
 	state := abandonedState(e.Snapshot)
 	e.ActiveReceipt = pgtype.UUID{}
-	e.Snapshot.PendingAction = ""
+	e.Snapshot.PendingAction = NothingPending
 	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: "工作已中斷，已保留進度。費用無法確認時仍占用預算；流程圖請重新上傳。"})
 	if _, err = s.advance(ctx, tx, row, state, "attempt_interrupted", e); err != nil {
 		return err

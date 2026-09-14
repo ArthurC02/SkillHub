@@ -84,7 +84,7 @@ func TestAFailedAttemptLandsWhereThePersonCanActOnIt(t *testing.T) {
 		hadDiagram    bool
 		err, callErr  error
 		want          State
-		pending       string
+		pending       PendingAction
 		last          string
 	}{
 		{"the reply broke the rules", "", false, ErrInvalidCommand, nil, StateFailed, "", "模型的回覆不符合會話規則"},
