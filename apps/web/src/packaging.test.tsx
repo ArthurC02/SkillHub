@@ -382,7 +382,7 @@ test("PACK-002 an unverified target says so and does not promise the package ins
 
 test("PACK-001 a blocked preview names which lock closed and refuses to offer the build", async () => {
   stubPlatform({ blocked: true });
-  await render(<Packaging />, () => text().includes("不能打包"));
+  await render(<Packaging />, () => text().includes("不能打包："));
 
   expect(text()).toContain("license_unknown");
   expect(text()).toContain("沒有人確認過這個 Skill 可不可以再散布，未確認的授權視同不允許");
@@ -404,7 +404,7 @@ test("丙-154① 不會進包的 Test Case 印 label/note，不印機器碼 reas
       },
     ],
   });
-  await render(<Packaging />, () => text().includes("不能打包"));
+  await render(<Packaging />, () => text().includes("不能打包："));
 
   expect(text()).toContain("未經策展");
   expect(text()).not.toContain("not_curated");

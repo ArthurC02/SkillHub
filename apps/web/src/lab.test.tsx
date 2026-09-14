@@ -347,12 +347,12 @@ test("02:TEST-005 confirming sends the hash that was shown, then starts the run"
   await renderLab();
 
   await clickConfirm();
+  await waitFor(() => text().includes("run-1"));
 
   const confirm = platform.calls.find((c) => c.url.includes("/preflight/confirm"));
   expect(confirm?.body).toContain("hash-one");
   const started = platform.calls.find((c) => c.url.endsWith("/runs"));
   expect(started?.body).toContain("hash-one");
-  expect(container.textContent).toContain("run-1");
 });
 
 test("02:TEST-005 a permission change forces a fresh confirmation instead of reusing the old one", async () => {
@@ -362,16 +362,16 @@ test("02:TEST-005 a permission change forces a fresh confirmation instead of reu
   platform.changePermissions();
 
   await clickConfirm();
-  expect(container.textContent).toContain("這次 Run 沒有開始");
+  await waitFor(() => text().includes("這次 Run 沒有開始"));
   expect(container.textContent).toContain("summary_hash does not match");
   expect(platform.calls.some((c) => c.url.endsWith("/runs"))).toBe(false);
   expect(container.textContent).toContain("extra.csv");
 
   await clickConfirm();
+  await waitFor(() => text().includes("run-1"));
   const sent = platform.calls.filter((c) => c.url.endsWith("/runs")).map((c) => c.body ?? "");
   expect(sent).toHaveLength(1);
   expect(sent[0]).toContain("hash-two");
-  expect(container.textContent).toContain("run-1");
 });
 
 test("04 丙-14 the version comes from a picker, and a ?version= link is what it opens on", async () => {
@@ -412,7 +412,7 @@ test("SEC-002 gate B: an exhausted allowance is not reported as a permission cha
 
   await clickConfirm();
 
-  expect(container.textContent).toContain("這次 Run 沒有開始");
+  await waitFor(() => text().includes("這次 Run 沒有開始"));
   expect(container.textContent).toContain("resets 24 hours after");
   expect(container.textContent).not.toContain("權限內容已變更");
 });
@@ -471,7 +471,7 @@ test("04 丙-144 a 403 on run-start says no invite, not the raw server message",
 
   await clickConfirm();
 
-  expect(text()).toContain("這個帳號還沒有封測邀請");
+  await waitFor(() => text().includes("這個帳號還沒有封測邀請"));
   expect(text()).not.toContain("closed beta");
 });
 
@@ -482,7 +482,7 @@ test("04 丙-143 a 503 on run-start says try again, not the raw server message",
 
   await clickConfirm();
 
-  expect(text()).toContain("再按一次");
+  await waitFor(() => text().includes("再按一次"));
   expect(text()).not.toContain("temporarily unavailable");
 });
 
@@ -493,6 +493,6 @@ test("04 丙-143 a 404 on run-start says the skill version or test case is gone"
 
   await clickConfirm();
 
-  expect(text()).toContain("找不到");
+  await waitFor(() => text().includes("找不到"));
   expect(text()).not.toContain("run not found");
 });

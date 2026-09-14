@@ -89,12 +89,6 @@ function Preflight({
   const start = useConfirmAndStartRun(skill, version, testCase);
   const runId = start.data?.run_id ?? "";
   const message = startFailureSentence(start.error);
-  const confirmAndStart = (hash: string) =>
-    start.mutate(hash, {
-      onError: (err) => {
-        if (err instanceof ApiError && err.status === 422) void preflight.refetch();
-      },
-    });
 
   if (unauthenticated(me.error)) {
     return (
@@ -328,7 +322,7 @@ function Preflight({
             type="button"
             className="action"
             disabled={start.isPending}
-            onClick={() => confirmAndStart(hash)}
+            onClick={() => start.mutate(hash)}
           >
             {start.isPending ? "開始中…" : "我確認以上權限,開始 Run"}
           </button>

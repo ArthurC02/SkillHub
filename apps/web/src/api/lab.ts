@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "./client";
+import { ApiError, apiFetch } from "./client";
 import { queryKeys } from "./queryKeys";
 
 export interface PreflightDataset {
@@ -183,5 +183,11 @@ export function useConfirmAndStartRun(skillId: string, versionId: string, testCa
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.runs.lists });
     },
+    onError: (err) =>
+      err instanceof ApiError && err.status === 422
+        ? client.invalidateQueries({
+            queryKey: queryKeys.lab.preflight(skillId, versionId, testCaseId),
+          })
+        : undefined,
   });
 }
