@@ -141,3 +141,92 @@ func TestDeletingASkillMarksItDeleted(t *testing.T) {
 	}
 	assertSkillEvents(t, s, SkillDeleted{})
 }
+
+func packageContent(t *testing.T, hash string, generated bool) VersionContent {
+	t.Helper()
+	content, err := ContentFromPackage(NewVersion{
+		ContentHash: hash, Report: passingReport("a new summary"),
+	}, generated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return content
+}
+
+func TestANewSkillStartsWithAKnownRedistribution(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		given Redistribution
+		want  Redistribution
+	}{
+		{"an unstated verdict is unknown", "", RedistributionUnknown},
+		{"a stated verdict is kept", RedistributionGenerated, RedistributionGenerated},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := SkillFromPackage(pgtype.UUID{}, passingReport("fresh"), tc.given)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if s.Redistribution() != tc.want || s.Skill().Name != "fresh" {
+				t.Fatalf("new skill = %q named %q, want %q named fresh", s.Redistribution(), s.Skill().Name, tc.want)
+			}
+			assertSkillEvents(t, s, SkillCreated{Redistribution: tc.want})
+		})
+	}
+}
+
+func TestAGeneratedSkillTakesOnlyGeneratedContent(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		skill     Redistribution
+		generated bool
+		want      Event
+	}{
+		{"uploaded content on an uploaded skill", RedistributionUnknown, false, SkillVersionAdded{ContentHash: "h"}},
+		{"generated content on a generated skill", RedistributionGenerated, true, SkillVersionAdded{ContentHash: "h"}},
+		{"generated content on a skill of unknown provenance", RedistributionUnknown, true, SkillVersionAdded{ContentHash: "h"}},
+		{"uploaded content on a generated skill", RedistributionGenerated, false, Refused{Reason: RefusedGeneratedNameCollision}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := skillMarked(tc.skill, newestVersion{})
+
+			s.AddVersion(packageContent(t, "h", tc.generated))
+
+			assertSkillEvents(t, s, tc.want)
+		})
+	}
+}
+
+func TestAForkCarriesItsSourceAndItsFirstVersion(t *testing.T) {
+	held, documents, curated := "license-review", string(CategoryDocuments), string(CategorySourceCurated)
+	source := gen.Skill{
+		ID: pgtype.UUID{Bytes: [16]byte{15: 1}, Valid: true}, Redistribution: string(RedistributionGenerated),
+		AccessRestriction: &held, Category: &documents, CategorySource: &curated,
+	}
+	from := gen.SkillVersion{ID: pgtype.UUID{Bytes: [16]byte{15: 2}, Valid: true}, ContentHash: "source-bytes"}
+
+	fork := forkOf(pgtype.UUID{}, "tidy-csv-fork", source, from)
+
+	got := fork.Skill()
+	if got.ForkedFromSkillID != source.ID || got.ForkedFromVersionID != from.ID ||
+		!fork.Restriction().InEffect() || got.Category == nil || *got.Category != documents {
+		t.Fatalf("fork = %+v, want the source's lineage, hold and category", got)
+	}
+	assertSkillEvents(t, fork,
+		SkillCreated{Redistribution: RedistributionGenerated, ForkedFromSkillID: source.ID, ForkedFromVersionID: from.ID},
+		SkillVersionAdded{ContentHash: "source-bytes"})
+}
+
+func TestASavedVersionLendsTheSkillItsSummary(t *testing.T) {
+	s := skillMarked(RedistributionUnknown, newestVersion{})
+	content := packageContent(t, "h", false)
+
+	s.AddVersion(content)
+	s.AdoptNewestSummary()
+
+	if got := s.Skill().Summary; got == nil || *got != "fixture" {
+		t.Fatalf("summary = %v, want the new version's", got)
+	}
+	assertSkillEvents(t, s, SkillVersionAdded{ContentHash: "h"}, SkillDescribed{})
+}

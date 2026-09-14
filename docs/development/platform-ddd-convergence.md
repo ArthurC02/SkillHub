@@ -116,7 +116,7 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 | Skill 的存取限制是否生效 | `skill/library/access.go` 的 `AccessRestriction`；不能 import owner 的 context 從組裝層收到 `AccessRestricted` 判定，不自己判斷 | `access_test.go` | — |
 | 一個 Skill 能不能當參考 | `skill/admission/generate.go` 的 `referenceable` | `generate_test.go` | — |
 | 評估的開始與取代、結算、回饋、建議決定 | `trial/improvement/evaluation.go` 的 `Evaluation` aggregate：命令記下事件或拒絕事件，存回只在 `evaluation_store.go` | `evaluation_test.go` | 事件名稱：`outbox` 套件的 conformance test 對帳 Go 常數 ↔ 最新換上 CHECK 的 migration ↔ 事件目錄 §3 |
-| Skill 的下架、存取限制、再散布、分類、刪除 | `skill/library/skill_root.go` 的 `SkillRoot` aggregate：命令記下事件或拒絕事件，存回只在 `skill_store.go`；`skill/discovery` 只把拒絕理由翻成營運者看得懂的句子 | `skill_root_test.go` | 同上 |
+| Skill 的建立、加版本、換說明、下架、存取限制、再散布、分類、刪除 | `skill/library/skill_root.go` 的 `SkillRoot` aggregate：命令記下事件或拒絕事件，存回只在 `skill_store.go`；匯入、存新版本、生成與 Fork 都經過 `AddVersion`；`skill/discovery` 只把拒絕理由翻成營運者看得懂的句子 | `skill_root_test.go` | 同上 |
 
 **「機器對帳」欄有兩種東西，不要混為一談：**
 
@@ -288,15 +288,15 @@ git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStar
 
 ### 6.1 丙-245 Skill
 
-治理寫入已經是 `skill/library/skill_root.go` 的 Skill aggregate。剩下版本建立與建議套用，命令加在同一個型別上。
+治理寫入與版本建立已經是 `skill/library/skill_root.go` 的 Skill aggregate。剩下建議套用。
 
-- **GOAL**：兩條版本建立路徑經過同一個方法；「建議已套用」由 Evaluation 消化 Skill 的事件後自己寫下。
+- **GOAL**：「建議已套用」由 Evaluation 消化 Skill 的事件後自己寫下。
 - **DISCOVER**：
   ```
-  git grep -nE "CreateSkill\(|CreateSkillVersion\(|UpdateSkillSummary|MarkSuggestionsApplied" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
+  git grep -nE "MarkSuggestionsApplied|Versions\.SaveVersion" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
   ```
-- **EDIT**：Skill aggregate 加建立 Skill 與加版本的命令並記下事件；匯入與 Fork 共用（Fork 不重跑 manifest 驗證，但走同一個寫入點）。「版本由這些建議建成」寫進加版本事件的 payload，Evaluation 的 Mailbox（River 佇列）消化它、標記建議已套用，取代 `trial/improvement/apply.go` 在另一個交易直接寫。
-- **PROVE**：把 Fork 改回直接呼叫 sqlc，守寫入點的測試紅；Mailbox 不消化事件，套用建議的整合測試紅。
+- **EDIT**：「版本由這些建議建成」寫進 `skill.version_added` 的 payload，Evaluation 的 Mailbox（River 佇列）消化它、標記建議已套用，取代 `trial/improvement/apply.go` 在另一個交易直接寫。
+- **PROVE**：Mailbox 不消化事件，套用建議的整合測試紅。
 - **STOP-IF**：改成最終一致後，今天在同一個回應裡看得到的「已套用」會暫時看不到，前端若依賴它就停下回報。
 
 ### 6.2 丙-246 Run

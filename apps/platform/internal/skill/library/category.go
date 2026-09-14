@@ -47,7 +47,7 @@ func (s *Service) SetCategory(ctx context.Context, ws identity.Workspace, skillI
 		return gen.Skill{}, err
 	}
 	root.Categorize(category)
-	if err := saveUnlessRefused(ctx, tx, root); err != nil {
+	if err := SaveSkill(ctx, tx, root); err != nil {
 		return gen.Skill{}, err
 	}
 	if err := s.RefreshListing(ctx, tx, skillID); err != nil {

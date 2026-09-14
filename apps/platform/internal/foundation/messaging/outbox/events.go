@@ -92,6 +92,9 @@ const (
 	SkillRedistributionSet       = "skill.redistribution_set"
 	SkillCategorized             = "skill.categorized"
 	SkillDeleted                 = "skill.deleted"
+	SkillCreated                 = "skill.created"
+	SkillVersionAdded            = "skill.version_added"
+	SkillDescribed               = "skill.described"
 )
 
 const (
@@ -126,6 +129,9 @@ var EventTypes = []string{
 	SkillRedistributionSet,
 	SkillCategorized,
 	SkillDeleted,
+	SkillCreated,
+	SkillVersionAdded,
+	SkillDescribed,
 }
 
 func StatusEvent(status string) (string, error) {

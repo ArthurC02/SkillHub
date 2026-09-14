@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -11,7 +10,6 @@ import (
 )
 
 func TestImportWritesRejectUnvalidatedReports(t *testing.T) {
-	ctx := context.Background()
 	cases := map[string]skillpkg.Report{
 		"zero report has no manifest": {},
 		"blocked report": {
@@ -21,14 +19,11 @@ func TestImportWritesRejectUnvalidatedReports(t *testing.T) {
 	}
 	for name, report := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := CreateSkillFromPackage(ctx, nil, pgtype.UUID{}, report, ""); !errors.Is(err, ErrUnvalidatedPackage) {
-				t.Errorf("CreateSkillFromPackage err = %v", err)
+			if _, err := SkillFromPackage(pgtype.UUID{}, report, ""); !errors.Is(err, ErrUnvalidatedPackage) {
+				t.Errorf("SkillFromPackage err = %v", err)
 			}
-			if _, err := CreateVersionFromPackage(ctx, nil, NewVersion{Report: report}); !errors.Is(err, ErrUnvalidatedPackage) {
-				t.Errorf("CreateVersionFromPackage err = %v", err)
-			}
-			if err := UpdateSummaryFromPackage(ctx, nil, pgtype.UUID{}, pgtype.UUID{}, report); !errors.Is(err, ErrUnvalidatedPackage) {
-				t.Errorf("UpdateSummaryFromPackage err = %v", err)
+			if _, err := ContentFromPackage(NewVersion{Report: report}, false); !errors.Is(err, ErrUnvalidatedPackage) {
+				t.Errorf("ContentFromPackage err = %v", err)
 			}
 		})
 	}

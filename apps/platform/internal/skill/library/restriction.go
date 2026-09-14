@@ -27,7 +27,7 @@ func SetAccessRestriction(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, r
 	}
 	before := RestrictionBefore{WorkspaceID: root.row.WorkspaceID, AccessRestriction: root.row.AccessRestriction}
 	root.Restrict(reason)
-	if err := saveUnlessRefused(ctx, tx, root); err != nil {
+	if err := SaveSkill(ctx, tx, root); err != nil {
 		return RestrictionBefore{}, err
 	}
 	return before, nil

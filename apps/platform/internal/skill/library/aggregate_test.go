@@ -36,7 +36,7 @@ func TestVersionNumberIsNotCallerSupplied(t *testing.T) {
 
 func TestNewVersionCarriesNoMutableState(t *testing.T) {
 	want := map[string]bool{
-		"WorkspaceID": true, "SkillID": true, "SourceID": true,
+		"SourceID":    true,
 		"ContentHash": true, "PackageObjectKey": true, "Report": true,
 	}
 	typ := reflect.TypeOf(NewVersion{})
@@ -181,7 +181,7 @@ func passingReport(name string) skillpkg.Report {
 	return skillpkg.Report{Manifest: &skillpkg.Manifest{Name: name, Description: "fixture"}}
 }
 
-func commitVersion(t *testing.T, pool *pgxpool.Pool, v NewVersion) (Version, error) {
+func commitVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID pgtype.UUID, v NewVersion) (Version, error) {
 	t.Helper()
 	ctx := context.Background()
 	tx, err := pool.Begin(ctx)
@@ -189,11 +189,19 @@ func commitVersion(t *testing.T, pool *pgxpool.Pool, v NewVersion) (Version, err
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	version, err := CreateVersionFromPackage(ctx, tx, v)
+	root, err := LoadSkill(ctx, tx, workspaceID, skillID)
 	if err != nil {
 		return Version{}, err
 	}
-	return version, tx.Commit(ctx)
+	content, err := ContentFromPackage(v, false)
+	if err != nil {
+		return Version{}, err
+	}
+	root.AddVersion(content)
+	if err := SaveSkill(ctx, tx, root); err != nil {
+		return Version{}, err
+	}
+	return root.AddedVersion(), tx.Commit(ctx)
 }
 
 func TestVersionNumberIsAllocatedByTheQuery(t *testing.T) {
@@ -201,9 +209,7 @@ func TestVersionNumberIsAllocatedByTheQuery(t *testing.T) {
 	ws, skillID := seedSkill(t, pool, "numbering")
 
 	for i, hash := range []string{"hash-a", "hash-b", "hash-c"} {
-		version, err := commitVersion(t, pool, NewVersion{
-			WorkspaceID:      ws.ID,
-			SkillID:          skillID,
+		version, err := commitVersion(t, pool, ws.ID, skillID, NewVersion{
 			ContentHash:      hash,
 			PackageObjectKey: "packages/" + hash,
 			Report:           passingReport("numbering"),
@@ -221,16 +227,14 @@ func TestIdenticalContentDoesNotBecomeASecondVersion(t *testing.T) {
 	pool := requireRegistryDB(t)
 	ws, skillID := seedSkill(t, pool, "duplicate")
 	v := NewVersion{
-		WorkspaceID:      ws.ID,
-		SkillID:          skillID,
 		ContentHash:      "same-bytes",
 		PackageObjectKey: "packages/same-bytes",
 		Report:           passingReport("duplicate"),
 	}
-	if _, err := commitVersion(t, pool, v); err != nil {
+	if _, err := commitVersion(t, pool, ws.ID, skillID, v); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := commitVersion(t, pool, v); !isUniqueViolation(err) {
+	if _, err := commitVersion(t, pool, ws.ID, skillID, v); !isUniqueViolation(err) {
 		t.Fatalf("second insert of identical content: err = %v, want a unique violation", err)
 	}
 }
@@ -238,9 +242,7 @@ func TestIdenticalContentDoesNotBecomeASecondVersion(t *testing.T) {
 func TestWrittenVersionRowIsFrozen(t *testing.T) {
 	pool := requireRegistryDB(t)
 	ws, skillID := seedSkill(t, pool, "frozen")
-	version, err := commitVersion(t, pool, NewVersion{
-		WorkspaceID:      ws.ID,
-		SkillID:          skillID,
+	version, err := commitVersion(t, pool, ws.ID, skillID, NewVersion{
 		ContentHash:      "frozen-bytes",
 		PackageObjectKey: "packages/frozen-bytes",
 		Report:           passingReport("frozen"),
@@ -265,9 +267,7 @@ func TestForkSharesThePackageObject(t *testing.T) {
 	pool := requireRegistryDB(t)
 
 	ws, sourceSkill := seedSkill(t, pool, "fork-source")
-	origin, err := commitVersion(t, pool, NewVersion{
-		WorkspaceID:      ws.ID,
-		SkillID:          sourceSkill,
+	origin, err := commitVersion(t, pool, ws.ID, sourceSkill, NewVersion{
 		ContentHash:      "shared-bytes",
 		PackageObjectKey: "packages/shared-bytes",
 		Report:           passingReport("fork-source"),
@@ -432,5 +432,87 @@ func TestGovernanceCommandsOnASkillTheyCannotSeeAnswerNotFound(t *testing.T) {
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("%s: want ErrNotFound, got %v", name, err)
 		}
+	}
+}
+
+func TestEveryVersionPathLeavesItsEventsInTheOutbox(t *testing.T) {
+	pool := requireRegistryDB(t)
+	row, _ := seedSkill(t, pool, "lifecycle-events")
+	ws := identity.Workspace{ID: row.ID, OwnerUserID: row.OwnerUserID}
+	ctx := context.Background()
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	imported, err := SkillFromPackage(ws.ID, passingReport("lifecycle-imported"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := SaveSkill(ctx, tx, imported); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	var sourceID pgtype.UUID
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO skill_sources (workspace_id, source_type, content_hash, fetched_at)
+		VALUES ($1, 'upload', 'lifecycle-bytes', now()) RETURNING id`, ws.ID).Scan(&sourceID); err != nil {
+		t.Fatal(err)
+	}
+	newer := passingReport("lifecycle-imported")
+	newer.Manifest.Description = "a newer summary"
+	content, err := ContentFromPackage(NewVersion{
+		SourceID: sourceID, ContentHash: "lifecycle-bytes", PackageObjectKey: "packages/lifecycle-bytes",
+		Report: newer,
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imported.AddVersion(content)
+	imported.AdoptNewestSummary()
+	if err := SaveSkill(ctx, tx, imported); err != nil {
+		t.Fatalf("add version: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	fork, _, err := testProjection(&Service{Pool: pool}).Fork(ctx, ws, imported.ID())
+	if err != nil {
+		t.Fatalf("fork: %v", err)
+	}
+
+	for skill, want := range map[pgtype.UUID][]string{
+		imported.ID(): {"skill.created", "skill.described", "skill.version_added"},
+		fork.ID:       {"skill.created", "skill.version_added"},
+	} {
+		rows, err := pool.Query(ctx, `
+			SELECT event_type FROM outbox_events
+			WHERE aggregate_type = 'skill' AND aggregate_id = $1 AND correlation_id = $1
+			ORDER BY event_type`, skill)
+		if err != nil {
+			t.Fatalf("read outbox: %v", err)
+		}
+		got, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			t.Fatalf("read outbox: %v", err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("outbox events of %v:\n got  %v\n want %v", skill, got, want)
+		}
+	}
+
+	var summary, versionID, announced string
+	var versionSource pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		SELECT s.summary, v.id::text, v.source_id, o.payload->>'version_id'
+		FROM skills s
+		JOIN skill_versions v ON v.skill_id = s.id
+		JOIN outbox_events o ON o.aggregate_id = s.id AND o.event_type = 'skill.version_added'
+		WHERE s.id = $1`, imported.ID()).Scan(&summary, &versionID, &versionSource, &announced); err != nil {
+		t.Fatal(err)
+	}
+	if summary != "a newer summary" || versionSource != sourceID || announced != versionID {
+		t.Errorf("summary %q, version source %v, announced version %q; want the newer summary, source %v and version %q",
+			summary, versionSource, announced, sourceID, versionID)
 	}
 }

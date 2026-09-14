@@ -29,7 +29,7 @@ func SetRedistribution(
 	before := RedistributionBefore{WorkspaceID: root.row.WorkspaceID, Redistribution: root.row.Redistribution}
 	to := Redistribution(value)
 	root.SetRedistribution(to, claim)
-	if err := saveUnlessRefused(ctx, tx, root); err != nil {
+	if err := SaveSkill(ctx, tx, root); err != nil {
 		return RedistributionBefore{}, err
 	}
 	if to == RedistributionAllowed {

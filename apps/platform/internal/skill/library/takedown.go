@@ -19,7 +19,7 @@ func SetTakedown(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, reason str
 		return TakedownBefore{}, err
 	}
 	root.TakeDown(reason)
-	if err := saveUnlessRefused(ctx, tx, root); err != nil {
+	if err := SaveSkill(ctx, tx, root); err != nil {
 		return TakedownBefore{}, err
 	}
 	return TakedownBefore{WorkspaceID: root.row.WorkspaceID}, nil
