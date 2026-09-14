@@ -22,11 +22,17 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
-const (
-	HaltSourceIncident = "p1_incident"
+type HaltSource string
 
-	HaltSourceOrphanThreshold = "orphan_threshold"
+const (
+	HaltSourceIncident HaltSource = "p1_incident"
+
+	HaltSourceOrphanThreshold HaltSource = "orphan_threshold"
 )
+
+func AllHaltSources() []HaltSource {
+	return []HaltSource{HaltSourceIncident, HaltSourceOrphanThreshold}
+}
 
 const haltPool = ""
 
@@ -44,14 +50,14 @@ func (h haltState) active(target string) (gen.DispatchHalt, bool) {
 }
 
 func (h haltState) incidentHeld(provider string) bool {
-	if halt, ok := h.active(haltPool); ok && halt.Source == HaltSourceIncident {
+	if halt, ok := h.active(haltPool); ok && HaltSource(halt.Source) == HaltSourceIncident {
 		return true
 	}
 	if provider == haltPool {
 		return false
 	}
 	halt, ok := h.active(provider)
-	return ok && halt.Source == HaltSourceIncident
+	return ok && HaltSource(halt.Source) == HaltSourceIncident
 }
 
 func (h haltState) dispatchPaused(registry *Registry) bool {
@@ -103,7 +109,7 @@ func (s *Service) haltsFailClosed(ctx context.Context) haltState {
 	}
 	slog.Error("dispatch halt state unreadable; failing closed as if a P1 were declared", "error", err)
 	return haltState{byTarget: map[string]gen.DispatchHalt{
-		haltPool: {Provider: haltPool, Source: HaltSourceIncident, Reason: "halt state unreadable"},
+		haltPool: {Provider: haltPool, Source: string(HaltSourceIncident), Reason: "halt state unreadable"},
 	}}
 }
 
@@ -119,7 +125,9 @@ func (s *Service) requireDispatchable(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) DeclareHalt(ctx context.Context, provider, source, reason string, actor pgtype.UUID) (gen.DispatchHalt, error) {
+func (s *Service) DeclareHalt(
+	ctx context.Context, provider string, source HaltSource, reason string, actor pgtype.UUID,
+) (gen.DispatchHalt, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return gen.DispatchHalt{}, err
@@ -128,7 +136,7 @@ func (s *Service) DeclareHalt(ctx context.Context, provider, source, reason stri
 	q := s.queries().WithTx(tx)
 
 	halt, err := q.DeclareDispatchHalt(ctx, gen.DeclareDispatchHaltParams{
-		Provider: provider, Source: source, Reason: reason, DeclaredBy: actor,
+		Provider: provider, Source: string(source), Reason: reason, DeclaredBy: actor,
 	})
 	if err != nil {
 		return gen.DispatchHalt{}, err
@@ -152,7 +160,7 @@ func (s *Service) DeclareHalt(ctx context.Context, provider, source, reason stri
 }
 
 func (s *Service) LiftHalt(
-	ctx context.Context, provider, reason string, actor pgtype.UUID, sources []string,
+	ctx context.Context, provider, reason string, actor pgtype.UUID, sources []HaltSource,
 ) (gen.DispatchHalt, bool, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -162,7 +170,7 @@ func (s *Service) LiftHalt(
 	q := s.queries().WithTx(tx)
 
 	halt, err := q.LiftDispatchHalt(ctx, gen.LiftDispatchHaltParams{
-		Provider: provider, LiftReason: &reason, LiftedBy: actor, Sources: sources,
+		Provider: provider, LiftReason: &reason, LiftedBy: actor, Sources: sourceValues(sources),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return gen.DispatchHalt{}, false, nil
@@ -186,6 +194,14 @@ func (s *Service) LiftHalt(
 		return gen.DispatchHalt{}, false, err
 	}
 	return halt, true, tx.Commit(ctx)
+}
+
+func sourceValues(sources []HaltSource) []string {
+	values := make([]string, len(sources))
+	for i, source := range sources {
+		values[i] = string(source)
+	}
+	return values
 }
 
 func haltTarget(provider string) string {
@@ -265,7 +281,7 @@ func (s *Service) reconcileThresholdHalt(ctx context.Context, provider string, b
 
 	if _, lifted, err := s.LiftHalt(ctx, provider, fmt.Sprintf(
 		"ADR-022 X-04: below the threshold for %d consecutive reconciler rounds", rounds),
-		pgtype.UUID{}, []string{HaltSourceOrphanThreshold}); err != nil {
+		pgtype.UUID{}, []HaltSource{HaltSourceOrphanThreshold}); err != nil {
 		slog.Error("could not lift the X-04 halt", "target", haltTarget(provider), "error", err)
 	} else if lifted {
 		slog.Info("dispatch resumed: X-04 threshold clear", "target", haltTarget(provider), "rounds", rounds)
@@ -319,7 +335,7 @@ func (h *Handler) Halts(w http.ResponseWriter, r *http.Request) {
 			"declared_at":  pgconv.RFC3339(halt.DeclaredAt),
 			"clear_rounds": halt.ClearRounds,
 
-			"automatic_recovery": halt.Source == HaltSourceOrphanThreshold,
+			"automatic_recovery": HaltSource(halt.Source) == HaltSourceOrphanThreshold,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
@@ -362,8 +378,7 @@ func (h *Handler) LiftHalt(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if _, _, err := h.Svc.LiftHalt(r.Context(), body.Provider, body.Note, user.ID,
-		[]string{HaltSourceIncident, HaltSourceOrphanThreshold}); err != nil {
+	if _, _, err := h.Svc.LiftHalt(r.Context(), body.Provider, body.Note, user.ID, AllHaltSources()); err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "dispatch resume failed")
 		return
 	}

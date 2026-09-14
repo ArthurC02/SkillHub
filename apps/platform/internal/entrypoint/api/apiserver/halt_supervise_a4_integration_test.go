@@ -84,7 +84,7 @@ func TestAFailingSuperviseRunDoesNotSwitchOffTheP1Detectors(t *testing.T) {
 	if err := pool.QueryRow(ctx,
 
 		`SELECT reason FROM dispatch_halts WHERE provider = '' AND source = $1 AND lifted_at IS NULL`,
-		run.HaltSourceIncident,
+		string(run.HaltSourceIncident),
 	).Scan(&reason); err != nil {
 		t.Fatalf("no fleet-wide P1 was declared: the masking detector never ran, because one run failed to supervise (%v)", err)
 	}

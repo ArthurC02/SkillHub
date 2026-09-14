@@ -49,11 +49,11 @@ func haltsOf(entries ...gen.DispatchHalt) haltState {
 }
 
 func incident(provider string) gen.DispatchHalt {
-	return gen.DispatchHalt{Provider: provider, Source: HaltSourceIncident}
+	return gen.DispatchHalt{Provider: provider, Source: string(HaltSourceIncident)}
 }
 
 func threshold(provider string) gen.DispatchHalt {
-	return gen.DispatchHalt{Provider: provider, Source: HaltSourceOrphanThreshold}
+	return gen.DispatchHalt{Provider: provider, Source: string(HaltSourceOrphanThreshold)}
 }
 
 func TestIncidentHeldCoversTheRightNodes(t *testing.T) {

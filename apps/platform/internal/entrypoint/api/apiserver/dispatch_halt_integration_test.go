@@ -114,7 +114,7 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	}
 	if dispatching, halts := dispatchStatus(t, operator); dispatching || len(halts) != 1 {
 		t.Fatalf("status after the halt: dispatching=%v, halts=%v", dispatching, halts)
-	} else if halts[0]["source"] != run.HaltSourceIncident || halts[0]["automatic_recovery"] != false {
+	} else if halts[0]["source"] != string(run.HaltSourceIncident) || halts[0]["automatic_recovery"] != false {
 		t.Errorf("halt reported as %v; a P1 is never lifted automatically", halts[0])
 	}
 
@@ -243,7 +243,7 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 	}
 	var sawPool bool
 	for _, h := range halts {
-		if h["source"] != run.HaltSourceOrphanThreshold {
+		if h["source"] != string(run.HaltSourceOrphanThreshold) {
 			t.Errorf("halt %v was not attributed to the X-04 threshold", h)
 		}
 		if h["automatic_recovery"] != true {
@@ -314,24 +314,24 @@ func TestAnIncidentTakesOverACapacityPauseAndIsNeverDowngraded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if halt.Source != run.HaltSourceIncident || halt.Reason != "escape suspicion" {
+	if halt.Source != string(run.HaltSourceIncident) || halt.Reason != "escape suspicion" {
 		t.Fatalf("halt after the P1 = %s/%q, want the incident to have taken over", halt.Source, halt.Reason)
 	}
 
 	if _, lifted, err := svc.LiftHalt(ctx, "", "clear", nil2uuid(),
-		[]string{run.HaltSourceOrphanThreshold}); err != nil || lifted {
+		[]run.HaltSource{run.HaltSourceOrphanThreshold}); err != nil || lifted {
 		t.Fatalf("the reconciler released a P1: lifted=%v err=%v", lifted, err)
 	}
 	again, err := svc.DeclareHalt(ctx, "", run.HaltSourceOrphanThreshold, "leaks again", nil2uuid())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if again.Source != run.HaltSourceIncident || again.Reason != "escape suspicion" {
+	if again.Source != string(run.HaltSourceIncident) || again.Reason != "escape suspicion" {
 		t.Errorf("a threshold breach downgraded the P1 to %s/%q", again.Source, again.Reason)
 	}
 
 	if _, lifted, err := svc.LiftHalt(ctx, "", "investigation closed", operator,
-		[]string{run.HaltSourceIncident, run.HaltSourceOrphanThreshold}); err != nil || !lifted {
+		[]run.HaltSource{run.HaltSourceIncident, run.HaltSourceOrphanThreshold}); err != nil || !lifted {
 		t.Fatalf("the operator could not release the P1: lifted=%v err=%v", lifted, err)
 	}
 }

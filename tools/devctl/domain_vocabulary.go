@@ -309,6 +309,20 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "CreateDownloadArtifactCreatedStatus"),
 		},
 	},
+	{
+		name: "dispatch halt source",
+		sources: []vocabularySource{
+			sqlColumnCheck("dispatch_halts", "source"),
+			goConstEnum("apps/platform/internal/trial/execution/halt.go", "HaltSource"),
+			goListedConstEnum(
+				"apps/platform/internal/trial/execution/halt.go", "AllHaltSources",
+				"apps/platform/internal/trial/execution/halt.go", "HaltSource"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "GetDispatchStatusOKHaltsItemSource"),
+		},
+		readers: []vocabularySource{
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "DeclareDispatchHaltOKSource"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {
