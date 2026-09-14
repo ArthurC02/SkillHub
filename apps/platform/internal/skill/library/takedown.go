@@ -2,7 +2,6 @@ package registry
 
 import (
 	"context"
-	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -15,21 +14,13 @@ type TakedownBefore struct {
 }
 
 func SetTakedown(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, reason string) (TakedownBefore, error) {
-	q := gen.New(tx)
-	before, err := q.LockSkillForOperatorWrite(ctx, skillID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return TakedownBefore{}, ErrNotFound
-	}
+	root, err := loadSkillForOperator(ctx, gen.New(tx), skillID)
 	if err != nil {
 		return TakedownBefore{}, err
 	}
-	if before.TakedownAt.Valid {
-		return TakedownBefore{}, ErrAlreadyTakenDown
-	}
-	if err := q.SetSkillTakedown(ctx, gen.SetSkillTakedownParams{
-		ID: skillID, TakedownReason: &reason,
-	}); err != nil {
+	root.TakeDown(reason)
+	if err := saveUnlessRefused(ctx, tx, root); err != nil {
 		return TakedownBefore{}, err
 	}
-	return TakedownBefore{WorkspaceID: before.WorkspaceID}, nil
+	return TakedownBefore{WorkspaceID: root.row.WorkspaceID}, nil
 }

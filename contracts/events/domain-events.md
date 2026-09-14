@@ -1,7 +1,7 @@
 # Platform 領域事件目錄（ADR-008／ADR-032）
 
 - 狀態：目錄首版 2026-08-19；**2026-08-20（DDD-012）§5 七項缺口關閉六項**，值域封閉、同交易型別保證、retention 與 poison 隔離皆已落地。**Go 型別是實作的事實來源**（`apps/platform/internal/foundation/persistence/db/gen` 的 `OutboxEvent` 信封＋各 producer 的 payload 組裝）；本目錄是**規範與盤點**——列出全部合法 `event_type`、payload 形狀與新增規則。
-- 形式：文件目錄，暫無 JSON Schema 與 validator。**第一個非 Go consumer 出現時**，依 [Run Trace 契約](README.md) 的前例補 schema＋validator；在那之前加 schema 是投機成本（目前唯一 consumer 是 process log）。§3 的 `run.*` 與 `evaluation.*` token 現在**是被機器讀的**：`internal/outbox` 的 conformance test 抓它們，與 Go 常數和 DB `CHECK` 三方比對，所以那些反引號不是排版而是契約。
+- 形式：文件目錄，暫無 JSON Schema 與 validator。**第一個非 Go consumer 出現時**，依 [Run Trace 契約](README.md) 的前例補 schema＋validator；在那之前加 schema 是投機成本（目前唯一 consumer 是 process log）。§3 的 `run.*`、`evaluation.*` 與 `skill.*` token 現在**是被機器讀的**：`internal/outbox` 的 conformance test 抓它們，與 Go 常數和 DB `CHECK` 三方比對，所以那些反引號不是排版而是契約。
 - 位置理由：`contracts/` 是跨程序介面的唯一來源；領域事件今天雖只在 Go 程序內流動，`internal/run/service.go` 的既有註解早已預告 schema 落點是 `contracts/events/`，本目錄兌現該預告。
 
 ## 1. 與其他事件平面的分野
@@ -26,7 +26,7 @@
 | `correlation_id` | 業務關聯根 | Run 事件＝平台 `run_id`（鐵律 10：不用 Provider 臨時 ID） |
 | `causation_id` | 直接成因 | 觸發本事件的 attempt／job／command 識別；填寫規則見下 |
 | `workspace_id` | 租戶邊界 | 鐵律 3 |
-| `aggregate_type`／`aggregate_id` | 事件所屬 aggregate | 現況 `outbox.AggregateRun`（`"run"`）與 `outbox.AggregateEvaluation`（`"evaluation"`）；詞彙表由本目錄擁有，與 audit 的 resource 詞彙是兩套（§1） |
+| `aggregate_type`／`aggregate_id` | 事件所屬 aggregate | 現況 `outbox.AggregateRun`（`"run"`）、`outbox.AggregateEvaluation`（`"evaluation"`）與 `outbox.AggregateSkill`（`"skill"`）；詞彙表由本目錄擁有，與 audit 的 resource 詞彙是兩套（§1） |
 | `payload` | jsonb | 形狀由 §3 各列定義 |
 | `delivery_attempts`／`dead_lettered_at` | 傳輸元資料 | **不是領域資料**：publisher 私有，consumer 不得讀（見 §6） |
 
@@ -35,9 +35,9 @@
 **`causation_id` 填寫規則**：有 UUID 型別直接成因者一律填，NULL 只允許兩種情形，兩種都由本節列舉、不得擴充：
 
 1. **genesis 事件**（aggregate 的首個事件）——`run.queued`。它之前沒有任何事件，也還沒有 attempt。
-2. **成因識別不是 UUID 者**——`run.cleanup_cleaned`／`run.cleanup_failed`。一次 cleanup pass 釋放該 Run 的**全部** attempt，沒有單一 attempt 是它的成因；真正的成因是 `run_cleanup` job，而 River 的 job id 是 bigint。把終態轉移的 attempt id 塞進去既是假資料，也會改變 `CleanupArgs` 的 `ByArgs` 唯一鍵，讓 supervisor 的補派送不再與終態轉移合流，變成兩個 worker 同時拆同一個 sandbox。要真正填上它，需要一個 UUID 型別的 job 識別，那是本目錄之外的變更。`evaluation` aggregate 的事件同屬此類：成因是 `evaluate_run` job 或使用者的一次請求，兩者都沒有 UUID 識別。
+2. **成因識別不是 UUID 者**——`run.cleanup_cleaned`／`run.cleanup_failed`。一次 cleanup pass 釋放該 Run 的**全部** attempt，沒有單一 attempt 是它的成因；真正的成因是 `run_cleanup` job，而 River 的 job id 是 bigint。把終態轉移的 attempt id 塞進去既是假資料，也會改變 `CleanupArgs` 的 `ByArgs` 唯一鍵，讓 supervisor 的補派送不再與終態轉移合流，變成兩個 worker 同時拆同一個 sandbox。要真正填上它，需要一個 UUID 型別的 job 識別，那是本目錄之外的變更。`evaluation` 與 `skill` aggregate 的事件同屬此類：成因是 `evaluate_run` job、使用者或營運者的一次請求，都沒有 UUID 識別。
 
-## 3. 事件目錄（現行 17 型，v1＝忠實記錄現況）
+## 3. 事件目錄（現行 23 型，v1＝忠實記錄現況）
 
 ### `run` aggregate — 狀態轉移族（producer：Run Orchestration，`internal/run/service.go` `record()`）
 
@@ -69,6 +69,19 @@
 | `evaluation.feedback_recorded` | 使用者對目前這一版留下回饋（`SetEvaluationFeedback`） | `helpful`、`has_comment` | 意見文字是使用者內容，不進 payload |
 | `evaluation.suggestion_decided` | 使用者接受或拒絕一則建議（`DecideSuggestion`） | `suggestion_id`、`decision` | 已套用的建議只能維持接受 |
 
+### `skill` aggregate — 治理族（producer：`skill/library` 的 Skill aggregate，存回在 `skill_store.go` 的 `saveSkill`）
+
+`aggregate_id`＝`correlation_id`＝Skill 的 id；`causation_id` NULL（§2 例外 2）。命令被拒絕時不發事件。目前沒有訂閱者，Dispatcher 以具名理由忽略。
+
+| `event_type` | 觸發（同交易的狀態變更） | payload | 備註 |
+| --- | --- | --- | --- |
+| `skill.taken_down` | 擁有者或營運者下架（`SetSkillTakedown`） | 空物件 | 下架理由是人寫的文字，不進 payload；已下架時命令被拒 |
+| `skill.access_restricted` | 營運者設下存取限制（`SetSkillAccessRestriction`） | `reason`（原因碼） | 空白原因被拒 |
+| `skill.access_restriction_lifted` | 營運者解除存取限制（同上，寫 NULL） | 空物件 | |
+| `skill.redistribution_set` | 營運者改再散布判定（`SetSkillRedistribution`） | `before`、`after` | 放行需要與最新版本記錄相符的授權佐證；`generated` 不能被改寫 |
+| `skill.categorized` | 擁有者指定或清除分類（`SetSkillCategory`） | `category`、`category_source`（皆可為 null） | |
+| `skill.deleted` | 擁有者刪除（`SoftDeleteSkill`） | 空物件 | 版本快照照舊凍結 |
+
 ### 概念名對照（ADR-008）
 
 ADR-008 以 PascalCase 過去式描述工作流事件（`RunRequested`、`RunExecutionCompleted`、`CleanupCompleted`…）——那是**概念名**；wire format（`event_type` 字串）以本目錄為準。對照：`RunRequested`≈`run.queued`、`RunExecutionCompleted`≈`run.succeeded|failed|timed_out`、`CleanupCompleted`≈`run.cleanup_cleaned`、`EvaluationCompleted`≈`evaluation.completed`。ADR-008 的 Skill Ingestion／Packaging／Deletion 工作流**尚未有任何事件**——新增時依 §4 規則進目錄。
@@ -76,7 +89,7 @@ ADR-008 以 PascalCase 過去式描述工作流事件（`RunRequested`、`RunExe
 ## 4. 規範（新增或修改事件時強制）
 
 1. **命名**：`<aggregate>.<小寫snake過去式事實>`。狀態機鏡像型（`run.<status>`）是既有例外，不再擴散——新事件描述「發生了什麼」，不是「進入了什麼狀態」。
-2. **值域封閉**：`event_type` 不得由字串拼接產生；目錄未列的 type 不得發出。**已落地（2026-08-20，DDD-012）**：值域宣告在三處——`outbox.EventTypes`、最新一支換上 `CHECK` 的 migration（現為 `db/migrations/0066`）、本目錄 §3——`internal/outbox` 的 conformance test 比對三方，任一處漏改即紅。producer 用 `outbox.StatusEvent`／`outbox.CleanupEvent` 映射，未知 status 回 error 讓交易回滾，不會靜默生出新 type。
+2. **值域封閉**：`event_type` 不得由字串拼接產生；目錄未列的 type 不得發出。**已落地（2026-08-20，DDD-012）**：值域宣告在三處——`outbox.EventTypes`、最新一支換上 `CHECK` 的 migration（現為 `db/migrations/0067`）、本目錄 §3——`internal/outbox` 的 conformance test 比對三方，任一處漏改即紅。producer 用 `outbox.StatusEvent`／`outbox.CleanupEvent` 映射，未知 status 回 error 讓交易回滾，不會靜默生出新 type。
 3. **payload 為 consumer 設計**：欄位存在性必須固定——可缺的欄位明示 nullable，不得「空字串就不放 key」；不得直接重用 audit metadata bag（現況待收斂）。
 4. **同 commit 四件事**：新事件＝目錄 §3 加列＋`outbox` 常數與映射＋新 migration 換上新的 `CHECK` 清單＋producer 實作。目錄與程式分岔視同 contract drift，conformance test 就是抓這件事。
 5. **觸發源唯一**：跨 context 的「後續反應」以事件 consumer 為唯一觸發源；同 context 的內部工序才可直接入隊 River。2026-08-20（DDD-005）起，`run.succeeded`／`run.failed` 的 consumer（`internal/eval` 的 `RunEventConsumer`）是 `evaluate_run` 入隊的唯一觸發源；終態轉移交易只入隊 `run_cleanup`，那是 Run 自己的內部工序。

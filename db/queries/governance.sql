@@ -211,14 +211,8 @@ SET email = 'deleted-' || id::text || '@deleted.invalid',
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
--- name: TakedownSkill :one
-UPDATE skills
-SET takedown_at = now(), takedown_reason = sqlc.arg(reason), updated_at = now()
-WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL AND takedown_at IS NULL
-RETURNING *;
-
 -- name: LockSkillForOperatorWrite :one
-SELECT id, workspace_id, access_restriction, redistribution, takedown_at FROM skills
+SELECT * FROM skills
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE;
 
@@ -230,9 +224,10 @@ WHERE id = $1 AND deleted_at IS NULL;
 UPDATE skills SET access_restriction = $2, updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL;
 
--- name: SetSkillTakedown :exec
+-- name: SetSkillTakedown :one
 UPDATE skills SET takedown_at = now(), takedown_reason = $2, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND takedown_at IS NULL;
+WHERE id = $1 AND deleted_at IS NULL AND takedown_at IS NULL
+RETURNING *;
 
 -- name: ListSourcesToCheck :many
 SELECT id, workspace_id, source_url, unavailable_since, content_hash, content_changed_at

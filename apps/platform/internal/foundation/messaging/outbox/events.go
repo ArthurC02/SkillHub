@@ -86,8 +86,18 @@ const (
 )
 
 const (
+	SkillTakenDown               = "skill.taken_down"
+	SkillAccessRestricted        = "skill.access_restricted"
+	SkillAccessRestrictionLifted = "skill.access_restriction_lifted"
+	SkillRedistributionSet       = "skill.redistribution_set"
+	SkillCategorized             = "skill.categorized"
+	SkillDeleted                 = "skill.deleted"
+)
+
+const (
 	AggregateRun        = "run"
 	AggregateEvaluation = "evaluation"
+	AggregateSkill      = "skill"
 
 	EventVersion1 = int32(1)
 )
@@ -110,6 +120,12 @@ var EventTypes = []string{
 	EvaluationFailed,
 	EvaluationFeedbackRecorded,
 	EvaluationSuggestionDecided,
+	SkillTakenDown,
+	SkillAccessRestricted,
+	SkillAccessRestrictionLifted,
+	SkillRedistributionSet,
+	SkillCategorized,
+	SkillDeleted,
 }
 
 func StatusEvent(status string) (string, error) {

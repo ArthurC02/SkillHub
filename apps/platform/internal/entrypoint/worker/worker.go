@@ -132,7 +132,10 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 			outbox.RunCleanupCleaned, outbox.RunCleanupFailed).
 		Ignore("evaluation facts: no aggregate reacts to them yet, and every reader answers from the evaluation's own rows",
 			outbox.EvaluationStarted, outbox.EvaluationSuperseded, outbox.EvaluationCompleted,
-			outbox.EvaluationFailed, outbox.EvaluationFeedbackRecorded, outbox.EvaluationSuggestionDecided)
+			outbox.EvaluationFailed, outbox.EvaluationFeedbackRecorded, outbox.EvaluationSuggestionDecided).
+		Ignore("skill governance facts: no aggregate reacts to them yet, and every reader answers from the skill's own row",
+			outbox.SkillTakenDown, outbox.SkillAccessRestricted, outbox.SkillAccessRestrictionLifted,
+			outbox.SkillRedistributionSet, outbox.SkillCategorized, outbox.SkillDeleted)
 	if err := set.Events.Validate(); err != nil {
 		return nil, fmt.Errorf("outbox dispatch wiring: %w", err)
 	}

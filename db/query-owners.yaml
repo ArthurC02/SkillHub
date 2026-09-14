@@ -52,7 +52,6 @@ queries:
   CountSkillsWaitingForDeletionGrace: registry
   ListWorkspaceSkillSourceIDs: ingest
   DeleteSkillSources: ingest
-  TakedownSkill: registry
   LockSkillForOperatorWrite: registry
   SetSkillAccessRestriction: registry
   SetSkillRedistribution: registry
@@ -203,6 +202,7 @@ scope:
   GetLatestVersionLicense: user
   LiftDispatchHalt: user
   ListPlatformAuditEvents: user
+  LockSkillForOperatorWrite: user
   ListRecentCreditEntries: user
   SetDispatchHaltClearRounds: user
   SetSkillAccessRestriction: user

@@ -21,7 +21,9 @@ func fullyWired(t *testing.T) *Dispatcher {
 			RunRunning, RunEvaluating, RunCancelled, RunTimedOut,
 			RunCleanupCleaned, RunCleanupFailed,
 			EvaluationStarted, EvaluationSuperseded, EvaluationCompleted,
-			EvaluationFailed, EvaluationFeedbackRecorded, EvaluationSuggestionDecided)
+			EvaluationFailed, EvaluationFeedbackRecorded, EvaluationSuggestionDecided,
+			SkillTakenDown, SkillAccessRestricted, SkillAccessRestrictionLifted,
+			SkillRedistributionSet, SkillCategorized, SkillDeleted)
 	if err := d.Validate(); err != nil {
 		t.Fatalf("a fully wired dispatcher must validate: %v", err)
 	}

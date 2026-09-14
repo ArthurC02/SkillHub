@@ -21,20 +21,14 @@ func SetAccessRestriction(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, r
 	if reason != nil && !RestrictionFrom(reason).InEffect() {
 		return RestrictionBefore{}, ErrEmptyRestriction
 	}
-	q := gen.New(tx)
-	before, err := q.LockSkillForOperatorWrite(ctx, skillID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return RestrictionBefore{}, ErrNotFound
-	}
+	root, err := loadSkillForOperator(ctx, gen.New(tx), skillID)
 	if err != nil {
 		return RestrictionBefore{}, err
 	}
-	if err := q.SetSkillAccessRestriction(ctx, gen.SetSkillAccessRestrictionParams{
-		ID: skillID, AccessRestriction: reason,
-	}); err != nil {
+	before := RestrictionBefore{WorkspaceID: root.row.WorkspaceID, AccessRestriction: root.row.AccessRestriction}
+	root.Restrict(reason)
+	if err := saveUnlessRefused(ctx, tx, root); err != nil {
 		return RestrictionBefore{}, err
 	}
-	return RestrictionBefore{
-		WorkspaceID: before.WorkspaceID, AccessRestriction: before.AccessRestriction,
-	}, nil
+	return before, nil
 }

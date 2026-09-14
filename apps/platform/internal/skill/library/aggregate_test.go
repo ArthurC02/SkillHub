@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -324,5 +326,111 @@ func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
 		_, _ = conn.Exec(ctx,
 			"SELECT pg_advisory_unlock(hashtextextended('skillhub:test-schema', 0))")
 		conn.Release()
+	}
+}
+
+func TestEverySkillGovernanceCommandLeavesItsEventInTheOutbox(t *testing.T) {
+	pool := requireRegistryDB(t)
+	row, skillID := seedSkill(t, pool, "governance-events")
+	ws := identity.Workspace{ID: row.ID, OwnerUserID: row.OwnerUserID}
+	ctx := context.Background()
+	s := testProjection(&Service{Pool: pool})
+	s.RefreshListing = func(context.Context, gen.DBTX, pgtype.UUID) error { return nil }
+	inTx := func(write func(tx pgx.Tx) error) {
+		t.Helper()
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		if err := write(tx); err != nil {
+			t.Fatal(err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	documents := CategoryDocuments
+	if _, err := s.SetCategory(ctx, ws, skillID, &documents); err != nil {
+		t.Fatalf("categorize: %v", err)
+	}
+	held := "license-review"
+	inTx(func(tx pgx.Tx) error { _, err := SetAccessRestriction(ctx, tx, skillID, &held); return err })
+	inTx(func(tx pgx.Tx) error { _, err := SetAccessRestriction(ctx, tx, skillID, nil); return err })
+	inTx(func(tx pgx.Tx) error {
+		_, err := SetRedistribution(ctx, tx, skillID, string(RedistributionBlocked), LicenseClaim{})
+		return err
+	})
+	if _, err := s.Takedown(ctx, ws, skillID, "the licence was withdrawn"); err != nil {
+		t.Fatalf("take down: %v", err)
+	}
+	if _, err := s.Takedown(ctx, ws, skillID, "a second report"); !errors.Is(err, ErrAlreadyTakenDown) {
+		t.Fatalf("second takedown: want ErrAlreadyTakenDown, got %v", err)
+	}
+	if _, err := s.Delete(ctx, ws, skillID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+
+	rows, err := pool.Query(ctx, `
+		SELECT event_type FROM outbox_events
+		WHERE aggregate_type = 'skill' AND aggregate_id = $1 AND correlation_id = $1`, skillID)
+	if err != nil {
+		t.Fatalf("read outbox: %v", err)
+	}
+	got, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		t.Fatalf("read outbox: %v", err)
+	}
+	want := []string{
+		"skill.categorized", "skill.access_restricted", "skill.access_restriction_lifted",
+		"skill.redistribution_set", "skill.taken_down", "skill.deleted",
+	}
+	sort.Strings(got)
+	sort.Strings(want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("outbox events:\n got  %v\n want %v", got, want)
+	}
+}
+
+func TestGovernanceCommandsOnASkillTheyCannotSeeAnswerNotFound(t *testing.T) {
+	pool := requireRegistryDB(t)
+	row, _ := seedSkill(t, pool, "governance-scope-a")
+	_, elsewhere := seedSkill(t, pool, "governance-scope-b")
+	ws := identity.Workspace{ID: row.ID, OwnerUserID: row.OwnerUserID}
+	missing := pgtype.UUID{Bytes: [16]byte{15: 1}, Valid: true}
+	ctx := context.Background()
+	s := testProjection(&Service{Pool: pool})
+	s.RefreshListing = func(context.Context, gen.DBTX, pgtype.UUID) error { return nil }
+	inTx := func(write func(tx pgx.Tx) error) error {
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		return write(tx)
+	}
+	documents := CategoryDocuments
+	held := "license-review"
+
+	for name, err := range map[string]error{
+		"take down another workspace's skill": func() error { _, err := s.Takedown(ctx, ws, elsewhere, "reason"); return err }(),
+		"delete another workspace's skill":    func() error { _, err := s.Delete(ctx, ws, elsewhere); return err }(),
+		"categorize another workspace's skill": func() error {
+			_, err := s.SetCategory(ctx, ws, elsewhere, &documents)
+			return err
+		}(),
+		"restrict a skill that does not exist": inTx(func(tx pgx.Tx) error {
+			_, err := SetAccessRestriction(ctx, tx, missing, &held)
+			return err
+		}),
+		"set the redistribution of a skill that does not exist": inTx(func(tx pgx.Tx) error {
+			_, err := SetRedistribution(ctx, tx, missing, string(RedistributionBlocked), LicenseClaim{})
+			return err
+		}),
+	} {
+		if !errors.Is(err, ErrNotFound) {
+			t.Errorf("%s: want ErrNotFound, got %v", name, err)
+		}
 	}
 }

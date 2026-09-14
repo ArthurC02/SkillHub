@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
@@ -38,23 +37,17 @@ func (s *Service) SetCategory(ctx context.Context, ws identity.Workspace, skillI
 	if s.RefreshListing == nil {
 		return gen.Skill{}, errors.New("registry: catalog listing refresh not injected; refusing to write")
 	}
-	var stored, source *string
-	if category != nil {
-		value, owner := string(*category), string(CategorySourceOwner)
-		stored, source = &value, &owner
-	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return gen.Skill{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	row, err := gen.New(tx).SetSkillCategory(ctx, gen.SetSkillCategoryParams{
-		ID: skillID, WorkspaceID: ws.ID, Category: stored, CategorySource: source,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.Skill{}, ErrNotFound
-	}
+	root, err := loadSkill(ctx, gen.New(tx), ws.ID, skillID)
 	if err != nil {
+		return gen.Skill{}, err
+	}
+	root.Categorize(category)
+	if err := saveUnlessRefused(ctx, tx, root); err != nil {
 		return gen.Skill{}, err
 	}
 	if err := s.RefreshListing(ctx, tx, skillID); err != nil {
@@ -63,5 +56,5 @@ func (s *Service) SetCategory(ctx context.Context, ws identity.Workspace, skillI
 	if err := tx.Commit(ctx); err != nil {
 		return gen.Skill{}, err
 	}
-	return row, nil
+	return root.row, nil
 }

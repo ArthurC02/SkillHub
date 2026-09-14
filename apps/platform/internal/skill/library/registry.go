@@ -192,13 +192,15 @@ func (s *Service) Delete(ctx context.Context, ws identity.Workspace, skillID pgt
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
-	skill, err := q.SoftDeleteSkill(ctx, gen.SoftDeleteSkillParams{ID: skillID, WorkspaceID: ws.ID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return DeleteResult{}, ErrNotFound
-	}
+	root, err := loadSkill(ctx, q, ws.ID, skillID)
 	if err != nil {
 		return DeleteResult{}, err
 	}
+	root.Delete()
+	if err := saveUnlessRefused(ctx, tx, root); err != nil {
+		return DeleteResult{}, err
+	}
+	skill := root.row
 	if err := s.RemoveFromIndex(ctx, tx, skill.WorkspaceID, skill.ID); err != nil {
 		return DeleteResult{}, err
 	}
@@ -230,21 +232,15 @@ func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID p
 		return gen.Skill{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	q := gen.New(tx)
-
-	skill, err := q.TakedownSkill(ctx, gen.TakedownSkillParams{
-		ID: skillID, WorkspaceID: ws.ID, Reason: &reason,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-
-		if _, getErr := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID}); getErr == nil {
-			return gen.Skill{}, ErrAlreadyTakenDown
-		}
-		return gen.Skill{}, ErrNotFound
-	}
+	root, err := loadSkill(ctx, gen.New(tx), ws.ID, skillID)
 	if err != nil {
 		return gen.Skill{}, err
 	}
+	root.TakeDown(reason)
+	if err := saveUnlessRefused(ctx, tx, root); err != nil {
+		return gen.Skill{}, err
+	}
+	skill := root.row
 
 	if err := s.RemoveFromIndex(ctx, tx, skill.WorkspaceID, skill.ID); err != nil {
 		return gen.Skill{}, err
