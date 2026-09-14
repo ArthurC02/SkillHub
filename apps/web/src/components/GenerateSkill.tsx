@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import { useGenerateFailures, useGenerateSkill } from "../api/generate";
 import { isCategorizedFindings } from "../api/import";
-import { useSkillSearch } from "../api/skills";
-import { useOwnSkills } from "../api/testcases";
+import { useOwnSkills, useSkillSearch } from "../api/skills";
 import type { GenerateDiagram, GenerateRejected } from "../api/types";
 import { Findings } from "./Findings";
 import { GeneratedNotice } from "./GeneratedNotice";
@@ -34,9 +32,11 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
   const [reading, setReading] = useState(false);
   const diagramFileRef = useRef<HTMLInputElement>(null);
   const [references, setReferences] = useState<{ id: string; name: string }[]>([]);
-  const [rejected, setRejected] = useState<GenerateRejected>();
-  const queryClient = useQueryClient();
   const mutation = useGenerateSkill();
+  const rejected =
+    mutation.error instanceof ApiError && isCategorizedFindings(mutation.error.body)
+      ? (mutation.error.body as GenerateRejected)
+      : undefined;
 
   function handleDiagramChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -88,31 +88,12 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
   const nothingToSend = task.trim() === "" && !diagram;
   const taskRunes = [...task].length;
 
-  const submit = () => {
-    setRejected(undefined);
-    mutation.mutate(
-      {
-        task_description: task.trim() ? task : undefined,
-        diagram,
-        reference_skill_ids: references.length ? references.map((r) => r.id) : undefined,
-      },
-      {
-        onSuccess: async () => {
-          await queryClient.invalidateQueries({ queryKey: ["own-skills"] });
-        },
-        onSettled: async () => {
-          await queryClient.invalidateQueries({ queryKey: ["generate", "failures"] });
-        },
-        onError: (error) => {
-          setRejected(
-            error instanceof ApiError && isCategorizedFindings(error.body)
-              ? (error.body as GenerateRejected)
-              : undefined,
-          );
-        },
-      },
-    );
-  };
+  const submit = () =>
+    mutation.mutate({
+      task_description: task.trim() ? task : undefined,
+      diagram,
+      reference_skill_ids: references.length ? references.map((r) => r.id) : undefined,
+    });
 
   return (
     <section>

@@ -1,5 +1,7 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiFetch } from "./client";
+import { queryKeys } from "./queryKeys";
 
 export type EvaluationVerdict = "met" | "partially_met" | "not_met" | "undetermined";
 export type CriterionVerdict = "passed" | "failed" | "undetermined";
@@ -160,17 +162,13 @@ export const EVALUATION_POLL_MAX_404 = 20;
 
 export const EVALUATION_POLL_MAX_PENDING = 100;
 
-function evaluationKey(runId: string, revision?: string) {
-  return ["evaluation", runId, revision ?? "current"];
-}
-
 export function useEvaluation(runId: string, revision?: string, awaitCurrent = false) {
   const client = useQueryClient();
+  const key = queryKeys.evaluation.revision(runId, revision);
   const query = useQuery({
-    queryKey: evaluationKey(runId, revision),
+    queryKey: key,
     queryFn: () => getEvaluation(runId, revision),
     enabled: runId.length > 0,
-    retry: false,
     refetchInterval: (query) => {
       if (revision || !awaitCurrent) return false;
       if (query.state.data?.status === "pending") {
@@ -181,22 +179,36 @@ export function useEvaluation(runId: string, revision?: string, awaitCurrent = f
       return query.state.errorUpdateCount < EVALUATION_POLL_MAX_404 ? 3000 : false;
     },
   });
+  useRevisionsFollowCurrent(runId, revision ? undefined : query.data?.evaluation_id);
   const pendingPollStopped =
     !revision &&
     awaitCurrent &&
     query.data?.status === "pending" &&
-    (client.getQueryState(evaluationKey(runId, revision))?.dataUpdateCount ?? 0) >=
-      EVALUATION_POLL_MAX_PENDING;
+    (client.getQueryState(key)?.dataUpdateCount ?? 0) >= EVALUATION_POLL_MAX_PENDING;
   return { ...query, pendingPollStopped };
+}
+
+function useRevisionsFollowCurrent(runId: string, currentId: string | undefined) {
+  const client = useQueryClient();
+  const seen = useRef<{ runId: string; evaluationId: string } | undefined>(undefined);
+  // Only a changed id for the same run invalidates, so StrictMode's second
+  // effect run (same id) and a switch to another run are both no-ops.
+  useEffect(() => {
+    if (!currentId) return;
+    const last = seen.current;
+    if (last && last.runId === runId && last.evaluationId !== currentId) {
+      void client.invalidateQueries({ queryKey: queryKeys.evaluation.revisions(runId) });
+    }
+    seen.current = { runId, evaluationId: currentId };
+  }, [client, runId, currentId]);
 }
 
 export function useEvaluationRevisions(runId: string) {
   return useQuery({
-    queryKey: ["evaluation", runId, "revisions"],
+    queryKey: queryKeys.evaluation.revisions(runId),
     queryFn: () =>
       apiFetch<{ revisions: EvaluationRevision[] }>(`/runs/${runId}/evaluation/revisions`),
     enabled: runId.length > 0,
-    retry: false,
   });
 }
 
@@ -208,24 +220,31 @@ export function setEvaluationFeedback(runId: string, helpful: boolean, comment: 
   });
 }
 
+export function useEvaluationFeedback(runId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ helpful, comment }: { helpful: boolean; comment: string }) =>
+      setEvaluationFeedback(runId, helpful, comment),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.evaluation.run(runId) }),
+  });
+}
+
 export function useRunSuggestions(runId: string) {
   return useQuery({
-    queryKey: ["suggestions", runId],
+    queryKey: queryKeys.evaluation.suggestions(runId),
     queryFn: () =>
       apiFetch<{ evaluation_id: string; suggestions: ImprovementSuggestion[] }>(
         `/runs/${runId}/suggestions`,
       ),
     enabled: runId.length > 0,
-    retry: false,
   });
 }
 
 export function useSuggestionDiff(suggestionId: string, enabled: boolean) {
   return useQuery({
-    queryKey: ["suggestion-diff", suggestionId],
+    queryKey: queryKeys.evaluation.suggestionDiff(suggestionId),
     queryFn: () => apiFetch<SuggestionDiff>(`/suggestions/${suggestionId}/diff`),
     enabled,
-    retry: false,
     staleTime: 0,
     gcTime: 0,
   });
@@ -236,6 +255,21 @@ export function decideSuggestion(suggestionId: string, decision: "accepted" | "r
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ decision }),
+  });
+}
+
+export function useDecideSuggestion(runId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      suggestionId,
+      decision,
+    }: {
+      suggestionId: string;
+      decision: "accepted" | "rejected";
+    }) => decideSuggestion(suggestionId, decision),
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: queryKeys.evaluation.suggestions(runId) }),
   });
 }
 
@@ -251,22 +285,40 @@ export function createVersionFromSuggestions(
   });
 }
 
+export function useApplySuggestions(runId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      skillId,
+      evaluationId,
+      suggestionIds,
+    }: {
+      skillId: string;
+      evaluationId: string;
+      suggestionIds: string[];
+    }) => createVersionFromSuggestions(skillId, evaluationId, suggestionIds),
+    onSuccess: (created) =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.evaluation.suggestions(runId) }),
+        client.invalidateQueries({ queryKey: queryKeys.skills.versions(created.skill_id) }),
+      ]),
+  });
+}
+
 export function useRunComparison(runId: string, against: string) {
   return useQuery({
-    queryKey: ["comparison", runId, against],
+    queryKey: queryKeys.evaluation.comparison(runId, against),
     queryFn: () =>
       apiFetch<RunComparison>(`/runs/${runId}/comparison?against=${encodeURIComponent(against)}`),
     enabled: runId.length > 0 && against.length > 0,
-    retry: false,
   });
 }
 
 export function useVersionDiff(url: string | undefined) {
   return useQuery({
-    queryKey: ["version-diff", url ?? ""],
+    queryKey: queryKeys.evaluation.versionDiff(url ?? ""),
     queryFn: () =>
       apiFetch<{ files: { path: string; status: string; diff?: string }[] }>(url as string),
     enabled: Boolean(url),
-    retry: false,
   });
 }

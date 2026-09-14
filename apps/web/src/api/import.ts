@@ -1,4 +1,6 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { queryKeys } from "./queryKeys";
 
 export type ImportFinding = {
   severity: "error" | "warning" | "info";
@@ -36,6 +38,20 @@ export function uploadSkillPackage(file: File) {
     method: "POST",
     headers: { "Content-Type": "application/zip" },
     body: file,
+  });
+}
+
+export type ImportSource = { url: string } | { file: File | undefined };
+
+export function useImportSkill() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (source: ImportSource) => {
+      if ("url" in source) return importSkillFromURL(source.url);
+      if (!source.file) return Promise.reject(new Error("請選擇 zip 套件。"));
+      return uploadSkillPackage(source.file);
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.own }),
   });
 }
 

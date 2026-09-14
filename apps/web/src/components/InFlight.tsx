@@ -1,7 +1,7 @@
 import { TERMINAL_RUN_STATUSES } from "../api/trace";
 import { Timestamp } from "./Timestamp";
 import type { TraceSummary } from "../api/trace";
-import { runStatusLabel } from "../pages/RunEvaluation";
+import { runStatusLabel } from "./runStatus";
 import { Tip } from "./Tip";
 
 export function InFlight({ summary }: { summary: TraceSummary }) {

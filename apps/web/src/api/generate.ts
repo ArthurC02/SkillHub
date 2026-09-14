@@ -1,6 +1,7 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import { useMe } from "./me";
+import { queryKeys } from "./queryKeys";
 import type { GenerateSkillRequest, GenerateSkillResult, GenerationFailure } from "./types";
 
 export function generateSkill(request: GenerateSkillRequest) {
@@ -16,7 +17,12 @@ export function generateSkill(request: GenerateSkillRequest) {
 }
 
 export function useGenerateSkill() {
-  return useMutation({ mutationFn: generateSkill });
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: generateSkill,
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.own }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.generate.failures }),
+  });
 }
 
 export function useGenerateEntryPoint(): boolean {
@@ -26,8 +32,7 @@ export function useGenerateEntryPoint(): boolean {
 
 export function useGenerateFailures() {
   return useQuery({
-    queryKey: ["generate", "failures"],
+    queryKey: queryKeys.generate.failures,
     queryFn: () => apiFetch<{ failures: GenerationFailure[] }>("/skills/generate/failures"),
-    retry: false,
   });
 }

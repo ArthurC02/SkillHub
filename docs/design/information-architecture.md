@@ -121,7 +121,7 @@
 >
 > **這一欄沒有機器**（§6：`ia.test.ts` 只比對位址那一欄）。
 
-**沒有位址的頁面一個**：[`RunEvaluation.tsx`](../../apps/web/src/pages/RunEvaluation.tsx)（全 app 最大的幾個檔案之一）。它以 `EvaluationPanel` 的形式長在 `/runs/$runId` 裡，並且把 `RUN_STATUS_LABEL` 供給另外四個檔。詳見 §5 IA-3。
+**沒有位址的區塊一個**：[`EvaluationPanel.tsx`](../../apps/web/src/components/EvaluationPanel.tsx)（全 app 最大的幾個檔案之一）。它長在 `/runs/$runId` 裡；沒有位址就不是頁面，所以住在 `components/` 而不在 `pages/`（[ADR-081](../adr/ADR-081-frontend-components-in-three-layers-and-server-state-lives-in-api.md) 決策 1）。它原本兼供的 `RUN_STATUS_LABEL` 搬到了 `components/runStatus.ts`。詳見 §5 IA-3。
 
 **深度最多三層**（`/skills/$id/package`），沒有一條路由需要記住兩個以上的 id。
 
@@ -161,7 +161,7 @@ DatasetUpload ──► /lab/test-cases, /lab/test-cases/$id
 RunPreflight ───► /lab/test-cases, /runs/$id
 RunTrace ───────► /runs/$id/compare
 RunCompare ─────► /lab/run, /runs/$id
-RunEvaluation ──► /lab/run, /skills/$id       （渲染在 /runs/$id 之內）
+EvaluationPanel ► /lab/run, /skills/$id       （渲染在 /runs/$id 之內）
 WorkspaceAccount► /policy, /workspace/{skills,runs,downloads}
 DataPolicy ─────► /workspace/{skills,runs,downloads,account}
 GenerateSkill ──► /skills/$id                 （旗標後面的元件，§2.4）

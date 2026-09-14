@@ -1,11 +1,6 @@
 import type { DownloadArtifact } from "../api/packaging";
+import { bytes } from "./format";
 import { Timestamp } from "./Timestamp";
-
-function bytes(n: number): string {
-  if (n >= 1 << 20) return `${(n / (1 << 20)).toFixed(1)} MB`;
-  if (n >= 1 << 10) return `${(n / (1 << 10)).toFixed(1)} KB`;
-  return `${n} B`;
-}
 
 export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact }) {
   const expired = artifact.serve_state.value === "expired";

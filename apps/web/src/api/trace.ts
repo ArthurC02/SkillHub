@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { queryKeys } from "./queryKeys";
 
 export type TraceMode = "general" | "advanced";
 
@@ -93,9 +94,8 @@ export const TERMINAL_RUN_STATUSES = new Set<string>(
 );
 
 export function useTrace<M extends TraceMode>(runId: string, mode: M, active?: boolean, after = 0) {
-  const queryKey = ["trace", runId, mode, mode === "advanced" ? after : 0] as const;
   return useQuery({
-    queryKey,
+    queryKey: queryKeys.trace.page(runId, mode, mode === "advanced" ? after : 0),
     queryFn: async () => {
       if (mode === "general") {
         return apiFetch<TraceSummary>(`/runs/${runId}/trace`) as Promise<
@@ -106,7 +106,6 @@ export function useTrace<M extends TraceMode>(runId: string, mode: M, active?: b
         `/runs/${runId}/trace?mode=advanced&after=${after}`,
       ) as Promise<M extends "advanced" ? TraceAdvanced : TraceSummary>;
     },
-    retry: false,
     refetchInterval: (query) => {
       if (active === false) return false;
       if (mode === "general") {

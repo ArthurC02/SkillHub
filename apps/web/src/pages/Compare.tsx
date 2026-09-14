@@ -1,7 +1,6 @@
 import { Link, useSearch } from "@tanstack/react-router";
-import { useQueries } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { embeddedSkillKey, getEmbeddedSkillDetail } from "../api/skills";
+import { MAX_COMPARE, useEmbeddedSkillDetails } from "../api/skills";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
@@ -9,8 +8,6 @@ import { ReadFailure } from "../components/LoginRequired";
 import { RiskIndicator } from "../components/RiskIndicator";
 import { Timestamp } from "../components/Timestamp";
 import type { SkillDetail, SkillTags } from "../api/types";
-
-export const MAX_COMPARE = 3;
 
 type TagBucket = keyof SkillTags;
 
@@ -260,15 +257,7 @@ export function Compare() {
     ),
   ].slice(0, MAX_COMPARE);
 
-  // useQueries, not a loop of useQuery: the id list length varies with the URL,
-  // and hook count must stay fixed across renders.
-  const results = useQueries({
-    queries: skillIds.map((id) => ({
-      queryKey: embeddedSkillKey(id),
-      queryFn: () => getEmbeddedSkillDetail(id),
-      retry: false,
-    })),
-  });
+  const results = useEmbeddedSkillDetails(skillIds);
 
   const skills = results.flatMap((result) => (result.data ? [result.data] : []));
   const failed = results.filter((result) => result.isError).length;

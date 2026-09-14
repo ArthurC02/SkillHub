@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
-import { EvaluationPanel, MATCH_NOTE } from "./pages/RunEvaluation";
+import { EvaluationPanel, MATCH_NOTE } from "./components/EvaluationPanel";
 import { RunVerdict } from "./components/RunVerdict";
 import { EVALUATION_POLL_MAX_404, EVALUATION_POLL_MAX_PENDING } from "./api/evaluation";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./api/evaluation";

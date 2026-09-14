@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import { useMe } from "./me";
+import { queryKeys } from "./queryKeys";
 
 export type AccountLookup = {
   user_id: string;
@@ -80,19 +81,17 @@ function send(method: string, body: unknown): RequestInit {
 
 export function useAccountLookup(email: string) {
   return useQuery({
-    queryKey: ["admin", "account", email],
+    queryKey: queryKeys.admin.account(email),
     queryFn: () => apiFetch<AccountLookup>(`/admin/accounts?email=${encodeURIComponent(email)}`),
     enabled: useOperator() && email !== "",
-    retry: false,
   });
 }
 
 export function useCreditLedger(workspaceId: string) {
   return useQuery({
-    queryKey: ["admin", "ledger", workspaceId],
+    queryKey: queryKeys.admin.ledger(workspaceId),
     queryFn: () => apiFetch<CreditLedger>(`/admin/credits/${workspaceId}`),
     enabled: useOperator(),
-    retry: false,
   });
 }
 
@@ -104,17 +103,17 @@ export function useGrantCredits(workspaceId: string) {
         `/admin/credits/${workspaceId}/grants`,
         send("POST", body),
       ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "ledger", workspaceId] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger(workspaceId) }),
   });
 }
 
 export function useGovernance(q: string) {
   return useQuery({
-    queryKey: ["admin", "skills", q],
+    queryKey: queryKeys.admin.skillSearch(q),
     queryFn: () =>
       apiFetch<{ skills: SkillGovernance[] }>(`/admin/skills?q=${encodeURIComponent(q)}`),
     enabled: useOperator() && q !== "",
-    retry: false,
   });
 }
 
@@ -126,16 +125,15 @@ export function useGovernanceAction(
   return useMutation({
     mutationFn: ({ method, body }: { method: "PUT" | "DELETE"; body: Record<string, unknown> }) =>
       apiFetch<unknown>(`/admin/skills/${skillId}/${action}`, send(method, body)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "skills"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.skills }),
   });
 }
 
 export function useDispatchStatus() {
   return useQuery({
-    queryKey: ["admin", "dispatch"],
+    queryKey: queryKeys.admin.dispatch,
     queryFn: () => apiFetch<DispatchStatus>("/admin/dispatch"),
     enabled: useOperator(),
-    retry: false,
   });
 }
 
@@ -144,16 +142,15 @@ export function useDispatchHalt(method: "PUT" | "DELETE") {
   return useMutation({
     mutationFn: (body: { note: string; provider?: string }) =>
       apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", send(method, body)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "dispatch"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch }),
   });
 }
 
 export function useRosters() {
   return useQuery({
-    queryKey: ["admin", "rosters"],
+    queryKey: queryKeys.admin.rosters,
     queryFn: () => apiFetch<Rosters>("/admin/rosters"),
     enabled: useOperator(),
-    retry: false,
   });
 }
 
@@ -161,7 +158,7 @@ const AUDIT_PAGE = 50;
 
 export function useOperatorAuditLog() {
   return useInfiniteQuery({
-    queryKey: ["admin", "audit-log"],
+    queryKey: queryKeys.admin.auditLog,
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
       apiFetch<{ events: OperatorAuditEvent[] }>(
@@ -172,16 +169,14 @@ export function useOperatorAuditLog() {
       })),
     getNextPageParam: (last) => last.nextOffset,
     enabled: useOperator(),
-    retry: false,
   });
 }
 
 export function useCostStatistics() {
   return useQuery({
-    queryKey: ["admin", "cost-statistics"],
+    queryKey: queryKeys.admin.costStatistics,
     queryFn: () => apiFetch<{ statistics: CostStatisticsWindow[] }>("/admin/cost-statistics"),
     enabled: useOperator(),
-    retry: false,
   });
 }
 
@@ -201,10 +196,9 @@ export function useTrend<T extends Trend<DailyCount>>(
   days: TrendDays,
 ) {
   return useQuery({
-    queryKey: ["admin", "trends", path, days],
+    queryKey: queryKeys.admin.trend(path, days),
     queryFn: () => apiFetch<T>(`/admin/trends/${path}?days=${days}`),
     enabled: useOperator(),
-    retry: false,
   });
 }
 

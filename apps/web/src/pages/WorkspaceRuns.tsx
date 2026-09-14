@@ -3,7 +3,7 @@ import { Timestamp } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
 import { Link } from "@tanstack/react-router";
 import { useRuns, type RunListItem } from "../api/runs";
-import { runStatusLabel } from "./RunEvaluation";
+import { CLEANUP_BADGE, runStatusLabel } from "../components/runStatus";
 import { RunVerdict } from "../components/RunVerdict";
 import { ListFreshness } from "../components/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../api/trace";
@@ -55,13 +55,6 @@ export function WorkspaceRuns() {
     </section>
   );
 }
-
-export const CLEANUP_BADGE: Record<string, string> = {
-  pending: "badge badge-unverified",
-  cleaning_up: "badge badge-unverified",
-  cleaned: "badge",
-  failed: "badge badge-danger",
-};
 
 const REASON_EXPECTED = new Set(["failed", "cancelled", "timed_out"]);
 

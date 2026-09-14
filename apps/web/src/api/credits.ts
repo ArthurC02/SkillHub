@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { queryKeys } from "./queryKeys";
 
 export interface CreditEstimate {
   low_credits: number;
@@ -20,8 +21,7 @@ export const getCredits = () => apiFetch<CreditBalance>("/me/credits");
 
 export function useCredits() {
   return useQuery({
-    queryKey: ["credits"],
+    queryKey: queryKeys.credits,
     queryFn: getCredits,
-    retry: false,
   });
 }

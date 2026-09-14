@@ -1,14 +1,13 @@
 import { Loading } from "../components/Loading";
 import { ReadFailure } from "../components/LoginRequired";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ApiError } from "../api/client";
-import { getDatasetLimits, uploadDataset, type Dataset } from "../api/lab";
+import { useDatasetLimits, useUploadDataset, type Dataset } from "../api/lab";
 
 type UploadSearch = { test_case?: string };
 
-function bytes(n: number): string {
+function roundedBytes(n: number): string {
   if (n >= 1 << 20) return `${Math.round(n / (1 << 20))} MB`;
   if (n >= 1 << 10) return `${Math.round(n / (1 << 10))} KB`;
   return `${n} B`;
@@ -16,33 +15,17 @@ function bytes(n: number): string {
 
 export function DatasetUpload() {
   const { test_case: testCase = "" } = useSearch({ strict: false }) as UploadSearch;
+  // `test_case` is a search param, so the route does not remount; the key does.
+  return <DatasetUploadForm key={testCase} testCase={testCase} />;
+}
+
+function DatasetUploadForm({ testCase }: { testCase: string }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
-  const [uploadError, setUploadError] = useState<unknown>(null);
   const [uploaded, setUploaded] = useState<Dataset[]>([]);
-  // `test_case` is a search param on this route, so it changes without remounting.
-  useEffect(() => {
-    setMessage("");
-    setUploadError(null);
-    setUploaded([]);
-  }, [testCase]);
-
-  const limits = useQuery({
-    queryKey: ["dataset-limits"],
-    queryFn: getDatasetLimits,
-    retry: false,
-  });
-
-  const upload = useMutation({
-    mutationFn: (file: File) => uploadDataset(testCase, file),
-    onSuccess: (d) => {
-      setUploaded((prev) => [...prev, d]);
-      setMessage("");
-      setUploadError(null);
-      if (fileInput.current) fileInput.current.value = "";
-    },
-    onError: (err) => setUploadError(err),
-  });
+  const limits = useDatasetLimits();
+  const upload = useUploadDataset(testCase);
+  const uploadError = upload.error;
 
   return (
     <section>
@@ -59,9 +42,9 @@ export function DatasetUpload() {
           <dl>
             <dt>大小限制</dt>
             <dd>
-              單一檔案最大 {bytes(limits.data.max_file_bytes)};同一個 Test Case 合計最大{" "}
-              {bytes(limits.data.max_test_case_bytes)}、最多 {limits.data.max_files_per_test_case}{" "}
-              個檔案。
+              單一檔案最大 {roundedBytes(limits.data.max_file_bytes)};同一個 Test Case 合計最大{" "}
+              {roundedBytes(limits.data.max_test_case_bytes)}、最多{" "}
+              {limits.data.max_files_per_test_case} 個檔案。
               <p className="note">
                 這一頁不知道這個 Test Case 已經用掉多少：已上傳的檔案、每個檔案的大小與合計,在{" "}
                 {testCase === "" ? (
@@ -113,7 +96,13 @@ export function DatasetUpload() {
                     setMessage("請先選擇一個檔案。");
                     return;
                   }
-                  upload.mutate(file);
+                  upload.mutate(file, {
+                    onSuccess: (d) => {
+                      setUploaded((prev) => [...prev, d]);
+                      setMessage("");
+                      if (fileInput.current) fileInput.current.value = "";
+                    },
+                  });
                 }}
               >
                 {upload.isPending ? "上傳中…" : "上傳"}
@@ -136,7 +125,7 @@ export function DatasetUpload() {
         <ul>
           {uploaded.map((d) => (
             <li key={d.dataset_id}>
-              已上傳 {d.file_name}（{bytes(d.size_bytes)}）
+              已上傳 {d.file_name}（{roundedBytes(d.size_bytes)}）
             </li>
           ))}
         </ul>

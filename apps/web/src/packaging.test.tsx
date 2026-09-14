@@ -5,7 +5,8 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { Downloads } from "./pages/Downloads";
 import { PackagingBlockedReason as PackagingBlockedReasonEnum } from "@skillhub/api-client-ts";
-import { PACKAGING_BLOCKED_LABEL, Packaging, packagingGate } from "./pages/Packaging";
+import { PACKAGING_BLOCKED_LABEL, packagingGate } from "./components/packagingGate";
+import { Packaging } from "./pages/Packaging";
 import type { DownloadArtifact, PackagingBlockedReason } from "./api/packaging";
 import type { SkillDetail } from "./api/types";
 

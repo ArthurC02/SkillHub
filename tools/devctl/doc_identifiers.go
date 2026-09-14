@@ -41,6 +41,7 @@ var allowedDocWords = map[string]string{
 	"test_cases_skill_id_fkey":  "constraint name Postgres generates for the test_cases foreign key",
 	"Querier":                   "sqlc interface that db/sqlc.yaml deliberately does not emit",
 	"MARKER":                    "shell variable in tools/sec009 (.sh is outside codeExtensions)",
+	"RunEvaluation":             "renamed to components/EvaluationPanel.tsx (ADR-081); 04 records past work under the old name",
 }
 
 var codeExtensions = map[string]bool{

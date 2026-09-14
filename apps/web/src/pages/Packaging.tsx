@@ -1,15 +1,14 @@
 import { ApiError } from "../api/client";
 import { Loading } from "../components/Loading";
 import { ReadFailure } from "../components/LoginRequired";
-import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
-  createDownloadArtifact,
   downloadHref,
+  useCreateDownload,
   usePackagingPreview,
   usePackagingTargets,
-  type CreatedDownloadArtifact,
+  useRefreshDownloads,
   type PackageValidation,
   type PackagingBlockedReason,
   type PackagingPreview,
@@ -17,7 +16,8 @@ import {
   type PackagingTargetId,
 } from "../api/packaging";
 import { useEmbeddedSkillDetail } from "../api/skills";
-import { SkillVersionPicker } from "./RunPreflight";
+import { SkillVersionPicker } from "../components/SkillVersionPicker";
+import { PACKAGING_BLOCKED_LABEL, packagingGate } from "../components/packagingGate";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
@@ -26,44 +26,12 @@ import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
 import type {
   Finding,
   FindingSeverity,
-  Redistribution,
   SeverityCounts,
   SkillCompatibility,
-  SkillDetail,
   SkillRisk,
 } from "../api/types";
 
 type PackagingSearch = { version?: string };
-
-export const PACKAGING_BLOCKED_LABEL: Record<PackagingBlockedReason, string> = {
-  license_hold:
-    "這個 Skill 正在授權審查中（人工暫時保留）。審查期間平台不產出任何套件，標準套件也不例外。",
-  not_redistributable:
-    "這個 Skill 的授權不允許再散布，平台不會把它交出去。授權已人工確認，不等於可以再散布。沒有讓你自己解除這道鎖的路徑——它擋的是授權本身說的話。",
-  license_unknown:
-    "沒有人確認過這個 Skill 可不可以再散布。授權未知一律當成不可散布處理——這不是等待中的暫時狀態，是預設就擋。目前沒有讓你自己解除它的路徑：放行需要具名的授權來源證據，只有平台管理者改得動（ADR-057）。",
-  validation_blocked:
-    "用這些設定打出來的套件，過不了平台自己匯入時要過的驗證，因此不能標示為有效套件。下面的錯誤清單就是要修的東西。",
-  file_removed_by_packager:
-    "SKILL.md 指向的檔案被打包器排除了，所以這一份下載回去會缺少它自己說明要用的東西——平台不交出一個自己弄殘的套件。下面「平台的說法」會指名是哪個檔；把它移出被排除的目錄、或用實體檔案取代連結，就可以再打包一次。",
-};
-
-export const REDISTRIBUTION_GATE: Record<Redistribution, PackagingBlockedReason | null> = {
-  allowed: null,
-  self_supplied: null,
-  generated: null,
-  blocked: "not_redistributable",
-  unknown: "license_unknown",
-};
-
-export function packagingGate(skill: SkillDetail): PackagingBlockedReason | null {
-  if (skill.access_restriction) return "license_hold";
-  const value = skill.redistribution?.value;
-  if (value === undefined || !Object.prototype.hasOwnProperty.call(REDISTRIBUTION_GATE, value)) {
-    return "license_unknown";
-  }
-  return REDISTRIBUTION_GATE[value as Redistribution];
-}
 
 const DEAD_REASON_ID = "packaging-build-disabled-reason";
 
@@ -134,33 +102,28 @@ function buildButtonReason({
 export function Packaging() {
   const { skillId } = useParams({ from: "/skills/$skillId/package" });
   const { version } = useSearch({ strict: false }) as PackagingSearch;
-  const client = useQueryClient();
   const skill = useEmbeddedSkillDetail(skillId);
   const targets = usePackagingTargets();
+  const refreshDownloads = useRefreshDownloads();
 
   const [chosen, setChosen] = useState<PackagingTargetId | "">("");
   const [includeTestCases, setIncludeTestCases] = useState(false);
-  const [built, setBuilt] = useState<CreatedDownloadArtifact | null>(null);
   const navigate = useNavigate();
-  useEffect(() => {
-    setBuilt(null);
-  }, [skillId, version]);
 
   const versionId = version || skill.data?.version?.version_id || "";
   const target = chosen || (targets.data?.targets[0]?.id ?? "");
   const preview = usePackagingPreview(skillId, versionId, target, includeTestCases);
 
-  const build = useMutation({
-    mutationFn: () =>
-      createDownloadArtifact(skillId, versionId, target as PackagingTargetId, includeTestCases),
-    onSuccess: async (artifact) => {
-      setBuilt(artifact);
-      await client.invalidateQueries({ queryKey: ["downloads"] });
-    },
-    onError: async () => {
-      await preview.refetch();
-    },
-  });
+  const build = useCreateDownload(skillId);
+  const built =
+    build.data?.skill_id === skillId && build.variables?.versionId === versionId
+      ? build.data
+      : null;
+  const buildPackage = () =>
+    build.mutate(
+      { versionId, target: target as PackagingTargetId, includeTestCases },
+      { onError: () => void preview.refetch() },
+    );
 
   if (skill.isLoading) return <Loading what="這個 Skill" />;
   if (skill.error instanceof ApiError && skill.error.status === 410)
@@ -306,7 +269,7 @@ export function Packaging() {
               type="button"
               className="action"
               disabled={!preview.data?.allowed || build.isPending}
-              onClick={() => build.mutate()}
+              onClick={buildPackage}
               aria-describedby={deadReason ? DEAD_REASON_ID : undefined}
             >
               {build.isPending ? "打包中…" : "建立下載套件"}
@@ -333,10 +296,7 @@ export function Packaging() {
                 證明不了「這份東西是誰做的」。
               </p>
               <p>
-                <a
-                  href={downloadHref(built.artifact_id)}
-                  onClick={() => void client.invalidateQueries({ queryKey: ["downloads"] })}
-                >
+                <a href={downloadHref(built.artifact_id)} onClick={refreshDownloads}>
                   下載 {built.file_name}
                 </a>
                 {" ｜ "}

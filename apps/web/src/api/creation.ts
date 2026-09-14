@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE_URL, apiFetch } from "./client";
 import { useMe } from "./me";
+import { queryKeys } from "./queryKeys";
 export type CreationState =
   | "queued"
   | "working"
@@ -156,6 +159,48 @@ export const actOnCreationSession = (id: string, body: CreationAction) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+export function useCreationSessions() {
+  return useQuery({ queryKey: queryKeys.creation.sessions, queryFn: listCreationSessions });
+}
+
+export function useCreationLimits() {
+  return useQuery({ queryKey: queryKeys.creation.limits, queryFn: getCreationLimits });
+}
+
+export function useLiveCreationSession(id: string) {
+  const client = useQueryClient();
+  const [streaming, setStreaming] = useState(false);
+  const query = useQuery({
+    queryKey: queryKeys.creation.session(id),
+    queryFn: () => getCreationSession(id),
+    enabled: !!id,
+    refetchInterval: (q) =>
+      !streaming && ["queued", "working"].includes(q.state.data?.state ?? "") ? 1000 : false,
+  });
+  useEffect(() => {
+    if (!id) return;
+    return streamCreationSession(
+      id,
+      (s) => client.setQueryData(queryKeys.creation.session(id), s),
+      setStreaming,
+    );
+  }, [id, client]);
+  return query;
+}
+
+export function useCreationSessionCache() {
+  const client = useQueryClient();
+  return {
+    remember(value: CreationSession) {
+      client.setQueryData<CreationSession>(queryKeys.creation.session(value.id), (old) =>
+        old && old.revision > value.revision ? old : value,
+      );
+      void client.invalidateQueries({ queryKey: queryKeys.creation.sessions });
+    },
+    reload: (id: string) => client.invalidateQueries({ queryKey: queryKeys.creation.session(id) }),
+  };
+}
 
 export function useCreationEntryPoint(): boolean {
   const me = useMe();

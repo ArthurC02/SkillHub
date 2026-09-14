@@ -1,6 +1,6 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { BarChart } from "../components/BarChart";
-import { RUN_STATUS_LABEL } from "./RunEvaluation";
+import { RUN_STATUS_LABEL } from "../components/runStatus";
 import { Fragment, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMe } from "../api/me";

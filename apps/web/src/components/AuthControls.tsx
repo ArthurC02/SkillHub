@@ -1,18 +1,11 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { unauthenticated } from "./LoginRequired";
 import { SignInAction } from "./SignIn";
-import { logout, useMe } from "../api/me";
+import { useMe, useSignOut } from "../api/me";
 
 export function AuthControls() {
   const me = useMe();
-  const queryClient = useQueryClient();
-  const signOut = useMutation({
-    mutationFn: logout,
-    onSuccess: () => {
-      queryClient.clear();
-    },
-  });
+  const signOut = useSignOut();
 
   if (unauthenticated(me.error)) {
     return <SignInAction />;

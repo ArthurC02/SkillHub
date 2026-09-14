@@ -2,10 +2,8 @@ import { Loading } from "../components/Loading";
 import { ReadFailure } from "../components/LoginRequired";
 import { ApiError } from "../api/client";
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { deleteSkill } from "../api/skills";
-import { useOwnSkills } from "../api/testcases";
+import { useDeleteSkill, useOwnSkills } from "../api/skills";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { useGenerateEntryPoint } from "../api/generate";
 import { useCreationEntryPoint } from "../api/creation";
@@ -114,7 +112,7 @@ function SkillFlags({ skill }: { skill: OwnSkill }) {
 
 export function WorkspaceSkills() {
   const skills = useOwnSkills();
-  const client = useQueryClient();
+  const remove = useDeleteSkill();
   const [message, setMessage] = useState("");
   const generateExposed = useGenerateEntryPoint();
   const creationExposed = useCreationEntryPoint();
@@ -122,15 +120,6 @@ export function WorkspaceSkills() {
   const hasSkills = rows.length > 0;
   const isEmpty = Boolean(skills.data) && !hasSkills;
   useMenuDismiss();
-
-  const remove = useMutation({
-    mutationFn: deleteSkill,
-    onSuccess: async (result) => {
-      setMessage(`已刪除。${result.note}`);
-      await client.invalidateQueries({ queryKey: ["own-skills"] });
-    },
-    onError: () => {},
-  });
 
   return (
     <section>
@@ -243,7 +232,11 @@ export function WorkspaceSkills() {
                         setMessage("");
                         remove.reset();
                       }}
-                      onConfirm={() => remove.mutate(s.skill_id)}
+                      onConfirm={() =>
+                        remove.mutate(s.skill_id, {
+                          onSuccess: (result) => setMessage(`已刪除。${result.note}`),
+                        })
+                      }
                       scope={
                         <>
                           刪除的是這個 Skill

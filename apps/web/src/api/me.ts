@@ -1,12 +1,12 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { queryKeys } from "./queryKeys";
 import type { AccountDeletion, Me } from "./types";
 
 export function useMe() {
   return useQuery({
-    queryKey: ["me"],
+    queryKey: queryKeys.me,
     queryFn: () => apiFetch<Me>("/me"),
-    retry: false,
   });
 }
 
@@ -37,6 +37,11 @@ export function devLogin(user: string) {
   });
 }
 
+export function useDevSignIn() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: devLogin, onSuccess: () => client.clear() });
+}
+
 export function requestAccountDeletion() {
   return apiFetch<AccountDeletion>("/me", { method: "DELETE" });
 }
@@ -46,13 +51,26 @@ export function cancelAccountDeletion() {
 }
 
 export function useRequestAccountDeletion() {
-  return useMutation({ mutationFn: requestAccountDeletion });
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requestAccountDeletion,
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.me }),
+  });
 }
 
 export function useCancelAccountDeletion() {
-  return useMutation({ mutationFn: cancelAccountDeletion });
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: cancelAccountDeletion,
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.me }),
+  });
 }
 
 export function logout() {
   return apiFetch<void>("/auth/logout", { method: "POST" });
+}
+
+export function useSignOut() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: logout, onSuccess: () => client.clear() });
 }

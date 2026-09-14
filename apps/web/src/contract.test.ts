@@ -131,7 +131,7 @@ const LABEL_TABLES: Array<{
   {
     what: "Skill.redistribution → 打包閘門 (Packaging)",
     values: generated.SkillRedistributionEnum,
-    table: async () => (await import("./pages/Packaging")).REDISTRIBUTION_GATE,
+    table: async () => (await import("./components/packagingGate")).REDISTRIBUTION_GATE,
   },
   {
     what: "OwnSkill.redistribution → 我的 Skill 的徽章",
@@ -141,47 +141,47 @@ const LABEL_TABLES: Array<{
   {
     what: "Run.status → 執行狀態措辭 (ADR-025)",
     values: generated.RunStatusEnum,
-    table: async () => (await import("./pages/RunEvaluation")).RUN_STATUS_LABEL,
+    table: async () => (await import("./components/runStatus")).RUN_STATUS_LABEL,
   },
   {
     what: "Evaluation.overall → 任務判定",
     values: generated.EvaluationOverallEnum,
-    table: async () => (await import("./pages/RunEvaluation")).OVERALL_LABEL,
+    table: async () => (await import("./components/EvaluationPanel")).OVERALL_LABEL,
   },
   {
     what: "CriterionResult.result → 逐條判定",
     values: generated.CriterionResultResultEnum,
-    table: async () => (await import("./pages/RunEvaluation")).CRITERION_LABEL,
+    table: async () => (await import("./components/EvaluationPanel")).CRITERION_LABEL,
   },
   {
     what: "CriterionResult.source → 判定來源",
     values: generated.CriterionResultSourceEnum,
-    table: async () => (await import("./pages/RunEvaluation")).SOURCE_LABEL,
+    table: async () => (await import("./components/EvaluationPanel")).SOURCE_LABEL,
   },
   {
     what: "DeterministicFinding.category → 發現分類",
     values: generated.DeterministicFindingCategoryEnum,
-    table: async () => (await import("./pages/RunEvaluation")).FINDING_CATEGORY_LABEL,
+    table: async () => (await import("./components/EvaluationPanel")).FINDING_CATEGORY_LABEL,
   },
   {
     what: "DeterministicFinding.severity → 嚴重度",
     values: generated.DeterministicFindingSeverityEnum,
-    table: async () => (await import("./pages/RunEvaluation")).SEVERITY_LABEL,
+    table: async () => (await import("./components/EvaluationPanel")).SEVERITY_LABEL,
   },
   {
     what: "ImprovementSuggestion.category → 建議分類",
     values: generated.ImprovementSuggestionCategoryEnum,
-    table: async () => (await import("./pages/RunEvaluation")).SUGGESTION_CATEGORY_LABEL,
+    table: async () => (await import("./components/EvaluationPanel")).SUGGESTION_CATEGORY_LABEL,
   },
   {
     what: "EvidenceRef.match → 引文回驗說明 (ADR-043)",
     values: generated.EvidenceRefMatchEnum,
-    table: async () => (await import("./pages/RunEvaluation")).MATCH_NOTE,
+    table: async () => (await import("./components/EvaluationPanel")).MATCH_NOTE,
   },
   {
     what: "EvidenceRef.kind → 證據種類",
     values: generated.EvidenceRefKindEnum,
-    table: async () => (await import("./pages/RunEvaluation")).KIND_WORD,
+    table: async () => (await import("./components/EvaluationPanel")).KIND_WORD,
   },
   {
     what: "RunPermissionSummary.content.scripts.status → Script 揭露",
@@ -238,9 +238,9 @@ const FALLBACK_TABLES: Array<{
     table: async () => (await import("./components/CompatibilityStatus")).BADGE_TINT,
   },
   {
-    what: "Run.cleanup_status → 清理狀態的色調 (WorkspaceRuns)",
+    what: "Run.cleanup_status → 清理狀態的色調 (runStatus)",
     values: ["pending", "cleaning_up", "cleaned", "failed"],
-    table: async () => (await import("./pages/WorkspaceRuns")).CLEANUP_BADGE,
+    table: async () => (await import("./components/runStatus")).CLEANUP_BADGE,
   },
 ];
 

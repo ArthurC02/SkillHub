@@ -1,7 +1,6 @@
 import { useId, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_BASE_URL, ApiError } from "../api/client";
-import { devLogin, useDevLogin } from "../api/me";
+import { useDevLogin, useDevSignIn } from "../api/me";
 
 function signInFailureSentence(error: unknown): string {
   if (error instanceof ApiError && error.status === 400) return "使用者名稱最多 64 個字元。";
@@ -19,17 +18,13 @@ export function SignInAction() {
 function OfflineSignIn() {
   const [user, setUser] = useState("seed-importer");
   const inputId = useId();
-  const queryClient = useQueryClient();
-  const signIn = useMutation({
-    mutationFn: () => devLogin(user.trim()),
-    onSuccess: () => queryClient.clear(),
-  });
+  const signIn = useDevSignIn();
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        signIn.mutate();
+        signIn.mutate(user.trim());
       }}
     >
       <label htmlFor={inputId}>離線登入（這台機器沒有 GitHub 可以連）</label>{" "}

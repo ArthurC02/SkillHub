@@ -1,25 +1,24 @@
-import { Loading } from "../components/Loading";
-import { StateIcon, type IconState } from "../components/StateIcon";
-import { Timestamp, formatAt } from "../components/Timestamp";
-import { ReadFailure } from "../components/LoginRequired";
-import { useEffect, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loading } from "./Loading";
+import { StateIcon, type IconState } from "./StateIcon";
+import { Timestamp, formatAt } from "./Timestamp";
+import { ReadFailure } from "./LoginRequired";
+import { useState } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import {
   EVALUATION_POLL_MAX_404,
   EVALUATION_POLL_MAX_PENDING,
-  createVersionFromSuggestions,
-  decideSuggestion,
-  setEvaluationFeedback,
+  useApplySuggestions,
+  useDecideSuggestion,
   useEvaluation,
+  useEvaluationFeedback,
   useEvaluationRevisions,
   useRunSuggestions,
   useSuggestionDiff,
 } from "../api/evaluation";
 import { useRun } from "../api/runs";
-import type { RunStatus } from "../api/trace";
-import { Reveal } from "../components/Reveal";
+import { Reveal } from "./Reveal";
+import { runStatusLabel } from "./runStatus";
 import type {
   CriterionResult,
   DeterministicFinding,
@@ -31,22 +30,6 @@ import type {
   SuggestionBlockedReason,
   VersionFromSuggestions,
 } from "../api/evaluation";
-
-export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
-  queued: "排隊中",
-  provisioning: "環境準備中",
-  preparing: "準備中",
-  running: "執行中",
-  evaluating: "評估中",
-  succeeded: "執行完成",
-  failed: "執行失敗",
-  cancelled: "已取消",
-  timed_out: "執行逾時",
-};
-
-export function runStatusLabel(status: string): string {
-  return RUN_STATUS_LABEL[status as RunStatus] ?? status;
-}
 
 export const OVERALL_LABEL: Record<Evaluation["overall"], string> = {
   met: "符合",
@@ -111,27 +94,11 @@ function credits(value: number | null): string {
 export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus?: string }) {
   const { evaluation: revision } = useSearch({ strict: false }) as { evaluation?: string };
   const navigate = useNavigate();
-  const seenEvaluationId = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    seenEvaluationId.current = undefined;
-  }, [runId]);
   const awaiting = runStatus === "succeeded" || runStatus === "failed";
   const evaluation = useEvaluation(runId, revision, awaiting);
   const revisions = useEvaluationRevisions(runId);
   const notEvaluated = evaluation.error instanceof ApiError && evaluation.error.status === 404;
   const stoppedAsking = notEvaluated && evaluation.errorUpdateCount >= EVALUATION_POLL_MAX_404;
-
-  const client = useQueryClient();
-  const currentEvaluationId = revision ? undefined : evaluation.data?.evaluation_id;
-  // Only invalidates on a changed id, not on every mount — StrictMode's double
-  // effect run sees the same id the second time, so this stays a no-op then.
-  useEffect(() => {
-    if (!currentEvaluationId) return;
-    if (seenEvaluationId.current && seenEvaluationId.current !== currentEvaluationId) {
-      void client.invalidateQueries({ queryKey: ["evaluation", runId, "revisions"] });
-    }
-    seenEvaluationId.current = currentEvaluationId;
-  }, [client, runId, currentEvaluationId]);
   const evaluating = !revision && evaluation.data?.status === "pending";
 
   return (
@@ -546,20 +513,9 @@ function FeedbackForm({
   evaluation: Evaluation;
   disabled: boolean;
 }) {
-  const client = useQueryClient();
   const [comment, setComment] = useState(evaluation.feedback?.comment ?? "");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState<unknown>(null);
-
-  const submit = useMutation({
-    mutationFn: (helpful: boolean) => setEvaluationFeedback(runId, helpful, comment),
-    onSuccess: async () => {
-      setMessage("已送出回饋。");
-      setError(null);
-      await client.invalidateQueries({ queryKey: ["evaluation", runId] });
-    },
-    onError: (err) => setError(err),
-  });
+  const submit = useEvaluationFeedback(runId);
+  const error = submit.error;
 
   if (disabled) {
     return <p className="note">回饋只能對目前的判定填寫。</p>;
@@ -584,14 +540,22 @@ function FeedbackForm({
         onChange={(e) => setComment(e.target.value)}
       />
       <p>
-        <button type="button" disabled={submit.isPending} onClick={() => submit.mutate(true)}>
+        <button
+          type="button"
+          disabled={submit.isPending}
+          onClick={() => submit.mutate({ helpful: true, comment })}
+        >
           有幫助
         </button>{" "}
-        <button type="button" disabled={submit.isPending} onClick={() => submit.mutate(false)}>
+        <button
+          type="button"
+          disabled={submit.isPending}
+          onClick={() => submit.mutate({ helpful: false, comment })}
+        >
           沒幫助
         </button>
       </p>
-      {message && <p role="status">{message}</p>}
+      {submit.isSuccess && <p role="status">已送出回饋。</p>}
       <ReadFailure error={error} what="回饋">
         <p role="alert">
           {error instanceof ApiError && error.status === 404
@@ -604,23 +568,12 @@ function FeedbackForm({
 }
 
 function SuggestionsPanel({ runId }: { runId: string }) {
-  const client = useQueryClient();
   const suggestions = useRunSuggestions(runId);
   const run = useRun(runId).data;
   const skillId = run?.skill_id;
-  const [applied, setApplied] = useState<VersionFromSuggestions | null>(null);
-  const [error, setError] = useState<unknown>(null);
-
-  const apply = useMutation({
-    mutationFn: (ids: string[]) =>
-      createVersionFromSuggestions(skillId as string, suggestions.data?.evaluation_id ?? "", ids),
-    onSuccess: async (result) => {
-      setApplied(result);
-      setError(null);
-      await client.invalidateQueries({ queryKey: ["suggestions", runId] });
-    },
-    onError: (err) => setError(err),
-  });
+  const apply = useApplySuggestions(runId);
+  const applied = apply.data;
+  const error = apply.error;
 
   const notFound = suggestions.error instanceof ApiError && suggestions.error.status === 404;
   if (suggestions.isPending) return <Loading what="改善建議" />;
@@ -657,7 +610,13 @@ function SuggestionsPanel({ runId }: { runId: string }) {
           <button
             type="button"
             disabled={!skillId || accepted.length === 0 || apply.isPending}
-            onClick={() => apply.mutate(accepted.map((s) => s.suggestion_id))}
+            onClick={() =>
+              apply.mutate({
+                skillId: skillId as string,
+                evaluationId: suggestions.data.evaluation_id,
+                suggestionIds: accepted.map((s) => s.suggestion_id),
+              })
+            }
           >
             以已接受的 {accepted.length} 項建議建立新版本
           </button>
@@ -710,19 +669,11 @@ function SuggestionItem({
   suggestion: ImprovementSuggestion;
   runId: string;
 }) {
-  const client = useQueryClient();
   const [showDiff, setShowDiff] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
-  const decide = useMutation({
-    mutationFn: (decision: "accepted" | "rejected") =>
-      decideSuggestion(suggestion.suggestion_id, decision),
-    onSuccess: async () => {
-      setError(null);
-      await client.invalidateQueries({ queryKey: ["suggestions", runId] });
-    },
-    onError: (err) => setError(err),
-  });
+  const decide = useDecideSuggestion(runId);
+  const error = decide.error;
+  const choose = (decision: "accepted" | "rejected") =>
+    decide.mutate({ suggestionId: suggestion.suggestion_id, decision });
 
   return (
     <li className="suggestion">
@@ -742,7 +693,7 @@ function SuggestionItem({
           type="button"
           aria-pressed={suggestion.decision === "accepted"}
           disabled={decide.isPending}
-          onClick={() => decide.mutate("accepted")}
+          onClick={() => choose("accepted")}
         >
           接受
         </button>{" "}
@@ -755,7 +706,7 @@ function SuggestionItem({
               ? `reject-note-${suggestion.suggestion_id}`
               : undefined
           }
-          onClick={() => decide.mutate("rejected")}
+          onClick={() => choose("rejected")}
         >
           拒絕
         </button>{" "}

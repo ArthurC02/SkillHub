@@ -1,6 +1,7 @@
 import type { Labelled } from "./types";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { queryKeys } from "./queryKeys";
 
 export type Run = {
   run_id: string;
@@ -24,15 +25,28 @@ export type Run = {
 
 export function useRun(runId: string) {
   return useQuery({
-    queryKey: ["run", runId],
+    queryKey: queryKeys.runs.detail(runId),
     queryFn: () => apiFetch<Run>(`/runs/${runId}`),
     enabled: runId.length > 0,
-    retry: false,
   });
 }
 
 export function cancelRun(runId: string) {
   return apiFetch<Run & { note?: string }>(`/runs/${runId}/cancel`, { method: "POST" });
+}
+
+export function useCancelRun(runId: string) {
+  const client = useQueryClient();
+  const refreshTrace = () => client.invalidateQueries({ queryKey: queryKeys.trace.run(runId) });
+  return useMutation({
+    mutationFn: () => cancelRun(runId),
+    onSuccess: () =>
+      Promise.all([
+        refreshTrace(),
+        client.invalidateQueries({ queryKey: queryKeys.runs.detail(runId) }),
+      ]),
+    onError: refreshTrace,
+  });
 }
 
 export type RunListItem = {
@@ -54,7 +68,7 @@ export type RunListItem = {
 
 export function useRuns(testCaseId?: string, enabled = true) {
   return useInfiniteQuery({
-    queryKey: ["runs", testCaseId ?? ""],
+    queryKey: queryKeys.runs.list(testCaseId),
     initialPageParam: 0,
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams({ limit: "51", offset: String(pageParam) });
@@ -66,7 +80,6 @@ export function useRuns(testCaseId?: string, enabled = true) {
     },
     getNextPageParam: (last) => last.nextOffset,
     enabled,
-    retry: false,
   });
 }
 
@@ -85,13 +98,20 @@ export type RunArtifacts = { artifacts: RunArtifact[]; truncated: boolean };
 
 export function useRunArtifacts(runId: string) {
   return useQuery({
-    queryKey: ["run", runId, "artifacts"],
+    queryKey: queryKeys.runs.artifacts(runId),
     queryFn: () => apiFetch<RunArtifacts>(`/runs/${runId}/artifacts`),
     enabled: runId.length > 0,
-    retry: false,
   });
 }
 
 export function deleteRunArtifact(runId: string, artifactId: string) {
   return apiFetch<void>(`/runs/${runId}/artifacts/${artifactId}`, { method: "DELETE" });
+}
+
+export function useDeleteRunArtifact(runId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (artifactId: string) => deleteRunArtifact(runId, artifactId),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.runs.artifacts(runId) }),
+  });
 }

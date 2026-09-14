@@ -16,7 +16,7 @@ import {
 } from "../components/FacetNotes";
 import { SignInAction } from "../components/SignIn";
 import { Timestamp } from "../components/Timestamp";
-import { MAX_COMPARE } from "./Compare";
+import { MAX_COMPARE } from "../api/skills";
 import type { HomeSearch } from "../router";
 import type { PublicSearchResult, SearchFilters, SkillCategory } from "../api/types";
 

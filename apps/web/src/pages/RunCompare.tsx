@@ -4,12 +4,13 @@ import { LoginRequired, ReadFailure, unauthenticated } from "../components/Login
 import { useMe } from "../api/me";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useRunComparison, useVersionDiff } from "../api/evaluation";
+import { useRunComparison } from "../api/evaluation";
 import type { ComparisonSide, RunComparison } from "../api/evaluation";
 import { useRun, useRuns } from "../api/runs";
 import { RunVerdict } from "../components/RunVerdict";
-import { Reveal } from "../components/Reveal";
-import { CRITERION_LABEL, OVERALL_LABEL, runStatusLabel } from "./RunEvaluation";
+import { VersionDiff } from "../components/VersionDiff";
+import { CRITERION_LABEL, OVERALL_LABEL } from "../components/EvaluationPanel";
+import { runStatusLabel } from "../components/runStatus";
 
 function verdictCell(side: ComparisonSide) {
   if (!side.evaluation) return "未評估（不是通過）";
@@ -346,29 +347,5 @@ function RerunCell({ side }: { side: ComparisonSide }) {
       </Link>
       （會先經過權限確認）
     </>
-  );
-}
-
-export function VersionDiff({ url }: { url: string }) {
-  const diff = useVersionDiff(url);
-  if (diff.isPending) return <Loading what="版本差異" />;
-  if (diff.error) return <ReadFailure error={diff.error} what="版本差異" />;
-  if (diff.data.files.length === 0) return <p>兩個版本的檔案內容相同。</p>;
-
-  return (
-    <ul className="file-tree">
-      {diff.data.files.map((f) => (
-        <li key={f.path}>
-          <code>{f.path}</code> · {f.status}
-          {f.diff ? (
-            <pre className="diff">
-              <Reveal text={f.diff} />
-            </pre>
-          ) : (
-            <p className="note">（二進位或過大，不顯示差異）</p>
-          )}
-        </li>
-      ))}
-    </ul>
   );
 }

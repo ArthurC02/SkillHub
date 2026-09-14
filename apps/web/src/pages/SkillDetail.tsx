@@ -2,11 +2,16 @@ import { useState } from "react";
 import { Loading } from "../components/Loading";
 import { ReadFailure } from "../components/LoginRequired";
 import { Timestamp } from "../components/Timestamp";
-import { VersionDiff } from "./RunCompare";
+import { VersionDiff } from "../components/VersionDiff";
 import { Link, useParams } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ApiError, apiFetch } from "../api/client";
-import { useForkSkill, useSkillDetail, useSkillVersions, skillDiffUrl } from "../api/skills";
+import { ApiError } from "../api/client";
+import {
+  useForkSkill,
+  useSetSkillCategory,
+  useSkillDetail,
+  useSkillVersions,
+  skillDiffUrl,
+} from "../api/skills";
 import { useMe } from "../api/me";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { GeneratedNotice } from "../components/GeneratedNotice";
@@ -15,7 +20,7 @@ import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
 import { RiskIndicator } from "../components/RiskIndicator";
 import { SignInAction } from "../components/SignIn";
 import { VersionUpload } from "../components/VersionUpload";
-import { PACKAGING_BLOCKED_LABEL, packagingGate } from "./Packaging";
+import { PACKAGING_BLOCKED_LABEL, packagingGate } from "../components/packagingGate";
 import type { SetSkillCategoryRequest } from "@skillhub/api-client-ts";
 import type {
   Labelled,
@@ -259,20 +264,10 @@ const CATEGORY_CHOICES: { value: SetSkillCategoryRequest["category"]; label: str
 
 function CategoryEditor({ skillId, category }: { skillId: string; category: Labelled }) {
   const versions = useSkillVersions(skillId);
-  const client = useQueryClient();
   const [choice, setChoice] = useState<SetSkillCategoryRequest["category"]>(
     category.value as SetSkillCategoryRequest["category"],
   );
-
-  const save = useMutation({
-    mutationFn: () =>
-      apiFetch(`/skills/${skillId}/category`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category: choice }),
-      }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["skills", skillId] }),
-  });
+  const save = useSetSkillCategory(skillId);
 
   if ((versions.data?.versions.length ?? 0) === 0) return null;
 
@@ -293,7 +288,7 @@ function CategoryEditor({ skillId, category }: { skillId: string; category: Labe
           ))}
         </select>
       </p>
-      <button type="button" onClick={() => save.mutate()} disabled={save.isPending}>
+      <button type="button" onClick={() => save.mutate(choice)} disabled={save.isPending}>
         {save.isPending ? "儲存中…" : "儲存"}
       </button>
       {save.isError && (

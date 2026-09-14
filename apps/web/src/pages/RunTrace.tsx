@@ -3,11 +3,10 @@ import { Timestamp } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
 import { ApiError } from "../api/client";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
-  cancelRun,
-  deleteRunArtifact,
+  useCancelRun,
+  useDeleteRunArtifact,
   useRun,
   useRunArtifacts,
   type RunArtifact,
@@ -16,8 +15,8 @@ import { ConfirmDelete } from "../components/ConfirmDelete";
 import { InFlight } from "../components/InFlight";
 import { useTrace, IN_FLIGHT_RUN_STATUSES } from "../api/trace";
 import type { TraceAdvanced, TraceEvent, TraceSummary } from "../api/trace";
-import { EvaluationPanel, runStatusLabel } from "./RunEvaluation";
-import { CLEANUP_BADGE } from "./WorkspaceRuns";
+import { EvaluationPanel } from "../components/EvaluationPanel";
+import { CLEANUP_BADGE, runStatusLabel } from "../components/runStatus";
 
 export function RunTrace() {
   const { runId } = useParams({ from: "/runs/$runId" });
@@ -92,24 +91,14 @@ function cancelFailureSentence(error: unknown): string {
 }
 
 export function CancelRunControl({ runId, status }: { runId: string; status?: string }) {
-  const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState("");
-  const cancel = useMutation({
-    mutationFn: () => cancelRun(runId),
-    onSuccess: async (result) => {
-      setConfirming(false);
-      setMessage(result.note ?? "已送出取消要求。");
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["trace", runId] }),
-        queryClient.invalidateQueries({ queryKey: ["run", runId] }),
-      ]);
-    },
-    onError: async () => {
-      setConfirming(false);
-      await queryClient.invalidateQueries({ queryKey: ["trace", runId] });
-    },
-  });
+  const cancel = useCancelRun(runId);
+  const confirmCancel = () =>
+    cancel.mutate(undefined, {
+      onSuccess: (result) => setMessage(result.note ?? "已送出取消要求。"),
+      onSettled: () => setConfirming(false),
+    });
   const failure = cancel.error ? (
     <ReadFailure error={cancel.error} what="取消這個 Run">
       <p role="alert">{cancelFailureSentence(cancel.error)}</p>
@@ -137,7 +126,7 @@ export function CancelRunControl({ runId, status }: { runId: string; status?: st
   return (
     <div>
       <p className="note">確定要取消？已開始的 Sandbox 仍要等平台完成停止與清理。</p>
-      <button type="button" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
+      <button type="button" disabled={cancel.isPending} onClick={confirmCancel}>
         確認取消
       </button>{" "}
       <button type="button" disabled={cancel.isPending} onClick={() => setConfirming(false)}>
@@ -150,17 +139,8 @@ export function CancelRunControl({ runId, status }: { runId: string; status?: st
 
 function RunArtifacts({ runId }: { runId: string }) {
   const artifacts = useRunArtifacts(runId);
-  const client = useQueryClient();
   const [message, setMessage] = useState("");
-
-  const remove = useMutation({
-    mutationFn: (artifactId: string) => deleteRunArtifact(runId, artifactId),
-    onSuccess: async () => {
-      setMessage("已刪除。檔案不再存在，引用過它的評估會顯示證據已不存在。");
-      await client.invalidateQueries({ queryKey: ["run", runId, "artifacts"] });
-    },
-    onError: () => {},
-  });
+  const remove = useDeleteRunArtifact(runId);
 
   return (
     <>
@@ -200,7 +180,12 @@ function RunArtifacts({ runId }: { runId: string }) {
                       scopeId={`run-artifact-scope-${artifact.artifact_id}`}
                       pending={remove.isPending}
                       onAsk={() => setMessage("")}
-                      onConfirm={() => remove.mutate(artifact.artifact_id)}
+                      onConfirm={() =>
+                        remove.mutate(artifact.artifact_id, {
+                          onSuccess: () =>
+                            setMessage("已刪除。檔案不再存在，引用過它的評估會顯示證據已不存在。"),
+                        })
+                      }
                       scope={
                         <>
                           刪除的是這個檔案本身，這個 Run

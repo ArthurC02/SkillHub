@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { LoginRequired, ReadFailure, unauthenticated } from "./LoginRequired";
 import { useMe } from "../api/me";
 import {
@@ -7,7 +6,7 @@ import {
   FEEDBACK_MAX_MESSAGE,
   feedbackPagePath,
   feedbackRunID,
-  submitFeedback,
+  useSubmitFeedback,
   type FeedbackKind,
 } from "../api/feedback";
 
@@ -28,28 +27,13 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
   const [kind, setKind] = useState<FeedbackKind>("blocking_issue");
   const [message, setMessage] = useState("");
   const [invalid, setInvalid] = useState("");
-  const [sent, setSent] = useState(false);
 
   const pagePath = feedbackPagePath(pathname);
   const runID = feedbackRunID(pathname);
-
-  const send = useMutation({
-    mutationFn: () =>
-      submitFeedback({
-        kind,
-        message: message.trim(),
-        page_path: pagePath,
-        run_id: runID,
-        build_id: BUILD_ID,
-      }),
-    onSuccess: () => {
-      setSent(true);
-      setMessage("");
-    },
-  });
+  const send = useSubmitFeedback();
 
   function submit() {
-    setSent(false);
+    send.reset();
     const trimmed = message.trim();
     if (trimmed === "") {
       setInvalid("請先寫下發生了什麼事。內容不能空白——只有這一段是你的話，其餘欄位都只是位置。");
@@ -63,7 +47,10 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
       return;
     }
     setInvalid("");
-    send.mutate();
+    send.mutate(
+      { kind, message: trimmed, page_path: pagePath, run_id: runID, build_id: BUILD_ID },
+      { onSuccess: () => setMessage("") },
+    );
   }
 
   return (
@@ -152,7 +139,7 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
           </p>
         </ReadFailure>
       )}
-      {sent && (
+      {send.isSuccess && (
         <p role="status">
           已收到，謝謝。這裡沒有回覆機制，也沒有查詢頁面——需要回覆的話，請在內容裡留下聯絡方式。
         </p>

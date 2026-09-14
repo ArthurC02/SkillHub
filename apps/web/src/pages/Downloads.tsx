@@ -2,13 +2,13 @@ import { Loading } from "../components/Loading";
 import { ReadFailure } from "../components/LoginRequired";
 import { Timestamp } from "../components/Timestamp";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
-  deleteDownload,
   downloadHref,
+  useDeleteDownload,
   useDownloadRecords,
   useDownloads,
+  useRefreshDownloads,
   type DownloadArtifact,
 } from "../api/packaging";
 import { ConfirmDelete } from "../components/ConfirmDelete";
@@ -16,16 +16,8 @@ import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
 
 export function Downloads() {
   const downloads = useDownloads();
-  const client = useQueryClient();
   const [message, setMessage] = useState("");
-
-  const remove = useMutation({
-    mutationFn: (artifactId: string) => deleteDownload(artifactId),
-    onSuccess: async () => {
-      setMessage("已刪除。檔案不再提供下載，下載紀錄本身保留。");
-      await client.invalidateQueries({ queryKey: ["downloads"] });
-    },
-  });
+  const remove = useDeleteDownload();
 
   return (
     <section>
@@ -58,7 +50,11 @@ export function Downloads() {
                     artifact={artifact}
                     pending={remove.isPending}
                     onAskDelete={() => setMessage("")}
-                    onConfirmDelete={() => remove.mutate(artifact.artifact_id)}
+                    onConfirmDelete={() =>
+                      remove.mutate(artifact.artifact_id, {
+                        onSuccess: () => setMessage("已刪除。檔案不再提供下載，下載紀錄本身保留。"),
+                      })
+                    }
                   />
                 </li>
               ))}
@@ -127,7 +123,7 @@ function DownloadActions({
   onAskDelete: () => void;
   onConfirmDelete: () => void;
 }) {
-  const client = useQueryClient();
+  const refreshDownloads = useRefreshDownloads();
   return (
     <p>
       {artifact.servable ? (
@@ -135,7 +131,7 @@ function DownloadActions({
           href={downloadHref(artifact.artifact_id)}
           // Races the browser's own download request; the invalidated count can
           // still read one behind until the next visit.
-          onClick={() => void client.invalidateQueries({ queryKey: ["downloads"] })}
+          onClick={refreshDownloads}
         >
           下載
         </a>

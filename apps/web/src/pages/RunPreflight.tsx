@@ -1,67 +1,17 @@
 import { Loading } from "../components/Loading";
-import { formatAt, Timestamp } from "../components/Timestamp";
+import { Timestamp } from "../components/Timestamp";
 import { LoginRequired, ReadFailure, unauthenticated } from "../components/LoginRequired";
+import { SkillVersionPicker } from "../components/SkillVersionPicker";
+import { bytes } from "../components/format";
 import { useMe } from "../api/me";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ApiError } from "../api/client";
-import { confirmPreflight, getPreflight, startRun, type PreflightSummary } from "../api/lab";
-import { useSkillVersions } from "../api/skills";
-import { useOwnSkills, useTestCase } from "../api/testcases";
+import { useConfirmAndStartRun, usePreflight, type PreflightSummary } from "../api/lab";
+import { useOwnSkills } from "../api/skills";
+import { useTestCase } from "../api/testcases";
 
 type LabSearch = { skill?: string; version?: string; test_case?: string };
-
-export function SkillVersionPicker({
-  skillId,
-  value,
-  onPick,
-}: {
-  skillId: string;
-  value: string;
-  onPick: (versionId: string) => void;
-}) {
-  const versions = useSkillVersions(skillId);
-  const list = versions.data?.versions ?? [];
-  const unknown = value !== "" && !list.some((v) => v.version_id === value);
-  const id = `skill-version-${skillId}`;
-
-  return (
-    // div, not p: Loading/ReadFailure below can render block elements, which <p> can't contain.
-    <div>
-      <label htmlFor={id}>Skill Version</label>{" "}
-      <select id={id} value={value} onChange={(e) => onPick(e.target.value)}>
-        {value === "" && <option value="">請選擇版本…</option>}
-        {unknown && <option value={value}>{value}（不在下面的清單裡）</option>}
-        {list.map((v, i) => (
-          <option key={v.version_id} value={v.version_id}>
-            v{v.version_number}
-            {i === 0 ? "（最新）" : ""}・{formatAt(v.created_at)}
-          </option>
-        ))}
-      </select>{" "}
-      {versions.isPending && <Loading what="版本清單" className="note" />}
-      <ReadFailure error={versions.error} what="版本清單">
-        <span className="note" role="alert">
-          無法讀取版本清單：{versions.error?.message}
-        </span>
-      </ReadFailure>
-      {!versions.isPending && !versions.error && list.length === 0 && (
-        <span className="note">
-          這個工作區沒有這個 Skill 的任何版本可選——不代表這個 Skill 沒有版本，Fork
-          之後才會有屬於你的版本。
-        </span>
-      )}
-    </div>
-  );
-}
-
-export function bytes(n: number): string {
-  if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1)} GB`;
-  if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(1)} MB`;
-  if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${n} B`;
-}
 
 function ceiling(n: number | undefined): string {
   return limit(n, bytes);
@@ -83,77 +33,68 @@ export const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string>
   unavailable: "未知(套件無法讀取,未完成掃描)",
 };
 
+function startFailureSentence(err: unknown): string {
+  if (!err) return "";
+  if (err instanceof ApiError && err.status === 422) {
+    return err.message
+      ? `這次 Run 沒有開始：${err.message}`
+      : "這次 Run 沒有開始。下方摘要已重新讀取,請確認之後再試。";
+  }
+  if (err instanceof ApiError && err.status === 403) {
+    return "這個帳號還沒有封測邀請，所以 Run 沒有開始。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。";
+  }
+  if (err instanceof ApiError && err.status === 503) {
+    return "執行環境暫時無法使用，這次 Run 沒有開始。可以直接再按一次，不需要重新確認權限。";
+  }
+  if (err instanceof ApiError && err.status === 404) {
+    return "找不到這個 Skill 版本或 Test Case，可能已被刪除。";
+  }
+  if (unauthenticated(err)) return "";
+  return "無法開始 Run，可以再按一次。";
+}
+
 export function RunPreflight() {
   const {
     skill = "",
     version: linkedVersion = "",
     test_case: testCase = "",
   } = useSearch({ strict: false }) as LabSearch;
+  // Search params change without remounting the route; the key starts a fresh form.
+  return (
+    <Preflight
+      key={`${skill}|${linkedVersion}|${testCase}`}
+      skill={skill}
+      linkedVersion={linkedVersion}
+      testCase={testCase}
+    />
+  );
+}
+
+function Preflight({
+  skill,
+  linkedVersion,
+  testCase,
+}: {
+  skill: string;
+  linkedVersion: string;
+  testCase: string;
+}) {
   const [picked, setPicked] = useState("");
   const version = picked || linkedVersion;
   const ready = skill !== "" && testCase !== "";
   const me = useMe();
   const testCaseInfo = useTestCase(testCase);
   const ownSkills = useOwnSkills();
-  const [message, setMessage] = useState("");
-  const [runId, setRunId] = useState("");
-  useEffect(() => {
-    setPicked("");
-    setMessage("");
-    setRunId("");
-  }, [skill, linkedVersion, testCase]);
-
-  const preflight = useQuery({
-    queryKey: ["preflight", skill, version, testCase],
-    queryFn: () => getPreflight(skill, version, testCase),
-    enabled: ready && version !== "",
-    retry: false,
-    staleTime: 0,
-    gcTime: 0,
-  });
-
-  const confirmAndRun = useMutation({
-    mutationFn: async (hash: string) => {
-      await confirmPreflight(skill, version, testCase, hash);
-      return startRun(skill, version, testCase, hash);
-    },
-    onSuccess: (created) => {
-      setRunId(created.run_id);
-      setMessage("");
-    },
-    onError: async (err) => {
-      if (err instanceof ApiError && err.status === 422) {
-        setMessage(
-          err.message
-            ? `這次 Run 沒有開始：${err.message}`
-            : "這次 Run 沒有開始。下方摘要已重新讀取,請確認之後再試。",
-        );
-        await preflight.refetch();
-        return;
-      }
-      if (err instanceof ApiError && err.status === 403) {
-        setMessage(
-          "這個帳號還沒有封測邀請，所以 Run 沒有開始。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。",
-        );
-        return;
-      }
-      if (err instanceof ApiError && err.status === 503) {
-        setMessage(
-          "執行環境暫時無法使用，這次 Run 沒有開始。可以直接再按一次，不需要重新確認權限。",
-        );
-        return;
-      }
-      if (err instanceof ApiError && err.status === 404) {
-        setMessage("找不到這個 Skill 版本或 Test Case，可能已被刪除。");
-        return;
-      }
-      if (unauthenticated(err)) {
-        setMessage("");
-        return;
-      }
-      setMessage("無法開始 Run，可以再按一次。");
-    },
-  });
+  const preflight = usePreflight(skill, version, testCase, ready && version !== "");
+  const start = useConfirmAndStartRun(skill, version, testCase);
+  const runId = start.data?.run_id ?? "";
+  const message = startFailureSentence(start.error);
+  const confirmAndStart = (hash: string) =>
+    start.mutate(hash, {
+      onError: (err) => {
+        if (err instanceof ApiError && err.status === 422) void preflight.refetch();
+      },
+    });
 
   if (unauthenticated(me.error)) {
     return (
@@ -213,8 +154,7 @@ export function RunPreflight() {
         value={version}
         onPick={(id) => {
           setPicked(id);
-          setRunId("");
-          setMessage("");
+          start.reset();
         }}
       />
       {children}
@@ -368,9 +308,7 @@ export function RunPreflight() {
         </p>
       ))}
 
-      {unauthenticated(confirmAndRun.error) && (
-        <ReadFailure error={confirmAndRun.error} what="Run" />
-      )}
+      {unauthenticated(start.error) && <ReadFailure error={start.error} what="Run" />}
       {message && <p role="alert">{message}</p>}
 
       {runId ? (
@@ -389,10 +327,10 @@ export function RunPreflight() {
           <button
             type="button"
             className="action"
-            disabled={confirmAndRun.isPending}
-            onClick={() => confirmAndRun.mutate(hash)}
+            disabled={start.isPending}
+            onClick={() => confirmAndStart(hash)}
           >
-            {confirmAndRun.isPending ? "開始中…" : "我確認以上權限,開始 Run"}
+            {start.isPending ? "開始中…" : "我確認以上權限,開始 Run"}
           </button>
         </>
       )}

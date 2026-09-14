@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type { ImportResult } from "./import";
+import { queryKeys } from "./queryKeys";
 
 export function saveSkillVersion(skillId: string, file: File) {
   return apiFetch<ImportResult>(`/skills/${skillId}/versions`, {
@@ -14,6 +15,6 @@ export function useSaveSkillVersion(skillId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => saveSkillVersion(skillId, file),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["skills", skillId] }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.detail(skillId) }),
   });
 }

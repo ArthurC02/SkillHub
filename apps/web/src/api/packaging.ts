@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE_URL, apiFetch } from "./client";
+import { queryKeys } from "./queryKeys";
 import type { Finding, Labelled } from "./types";
 
 export type PackagingTargetId = "standard" | "claude-code" | "claude-agent-sdk";
@@ -102,9 +103,8 @@ export interface CreatedDownloadArtifact extends DownloadArtifact {
 
 export function usePackagingTargets() {
   return useQuery({
-    queryKey: ["packaging", "targets"],
+    queryKey: queryKeys.packaging.targets,
     queryFn: () => apiFetch<{ targets: PackagingTarget[] }>("/packaging/targets"),
-    retry: false,
   });
 }
 
@@ -115,7 +115,7 @@ export function usePackagingPreview(
   includeTestCases: boolean,
 ) {
   return useQuery({
-    queryKey: ["packaging", "preview", skillId, versionId, target, includeTestCases],
+    queryKey: queryKeys.packaging.preview(skillId, versionId, target, includeTestCases),
     queryFn: () => {
       const params = new URLSearchParams({
         target,
@@ -126,7 +126,6 @@ export function usePackagingPreview(
       );
     },
     enabled: skillId !== "" && versionId !== "" && target !== "",
-    retry: false,
     staleTime: 0,
     gcTime: 0,
   });
@@ -145,12 +144,31 @@ export function createDownloadArtifact(
   });
 }
 
+export type DownloadRequest = {
+  versionId: string;
+  target: PackagingTargetId;
+  includeTestCases: boolean;
+};
+
+export function useCreateDownload(skillId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ versionId, target, includeTestCases }: DownloadRequest) =>
+      createDownloadArtifact(skillId, versionId, target, includeTestCases),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packaging.downloads }),
+  });
+}
+
 export function useDownloads() {
   return useQuery({
-    queryKey: ["downloads"],
+    queryKey: queryKeys.packaging.downloads,
     queryFn: () => apiFetch<{ downloads: DownloadArtifact[] }>("/downloads"),
-    retry: false,
   });
+}
+
+export function useRefreshDownloads() {
+  const client = useQueryClient();
+  return () => void client.invalidateQueries({ queryKey: queryKeys.packaging.downloads });
 }
 
 export interface DownloadRecord {
@@ -160,15 +178,22 @@ export interface DownloadRecord {
 
 export function useDownloadRecords(artifactId: string, enabled: boolean) {
   return useQuery({
-    queryKey: ["downloads", artifactId, "records"],
+    queryKey: queryKeys.packaging.downloadRecords(artifactId),
     queryFn: () => apiFetch<{ records: DownloadRecord[] }>(`/downloads/${artifactId}/records`),
     enabled,
-    retry: false,
   });
 }
 
 export function deleteDownload(artifactId: string) {
   return apiFetch<void>(`/downloads/${artifactId}`, { method: "DELETE" });
+}
+
+export function useDeleteDownload() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: deleteDownload,
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packaging.downloads }),
+  });
 }
 
 export function downloadHref(artifactId: string): string {

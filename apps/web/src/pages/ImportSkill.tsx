@@ -1,49 +1,25 @@
 import { useState, type FormEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Findings } from "../components/Findings";
 import { LoginRequired, ReadFailure, unauthenticated } from "../components/LoginRequired";
 import { useMe } from "../api/me";
 import { ApiError } from "../api/client";
-import {
-  importSkillFromURL,
-  isCategorizedFindings,
-  uploadSkillPackage,
-  type CategorizedFindings,
-  type ImportResult,
-} from "../api/import";
+import { isCategorizedFindings, useImportSkill } from "../api/import";
 
 export function ImportSkill() {
-  const queryClient = useQueryClient();
   const me = useMe();
   const [source, setSource] = useState<"url" | "upload">("url");
   const [url, setURL] = useState("");
   const [file, setFile] = useState<File>();
-  const [result, setResult] = useState<ImportResult>();
-  const [rejected, setRejected] = useState<CategorizedFindings>();
-
-  const mutation = useMutation({
-    mutationFn: () => {
-      if (source === "url") return importSkillFromURL(url.trim());
-      if (!file) return Promise.reject(new Error("請選擇 zip 套件。"));
-      return uploadSkillPackage(file);
-    },
-    onSuccess: async (data) => {
-      setRejected(undefined);
-      setResult(data);
-      await queryClient.invalidateQueries({ queryKey: ["own-skills"] });
-    },
-    onError: (error) => {
-      setResult(undefined);
-      setRejected(
-        error instanceof ApiError && isCategorizedFindings(error.body) ? error.body : undefined,
-      );
-    },
-  });
+  const mutation = useImportSkill();
+  const result = mutation.data;
+  const failure = mutation.error;
+  const rejected =
+    failure instanceof ApiError && isCategorizedFindings(failure.body) ? failure.body : undefined;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    mutation.mutate();
+    mutation.mutate(source === "url" ? { url: url.trim() } : { file });
   };
 
   return (

@@ -2,30 +2,28 @@ import { Loading } from "../components/Loading";
 import { Timestamp, formatAt } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import {
-  addCriterion,
-  createTestCase,
-  deleteCriterion,
-  deleteDataset,
-  deleteTestCase,
-  suggestCriteria,
-  updateCriterion,
-  updateTestCase,
-  useOwnSkills,
+  useAddCriterion,
+  useCreateTestCase,
+  useCriterionAction,
+  useDeleteDataset,
+  useDeleteTestCase,
+  useSuggestCriteria,
   useTestCase,
   useTestCaseDatasets,
   useTestCases,
+  useUpdateTestCase,
 } from "../api/testcases";
+import { useOwnSkills } from "../api/skills";
 import { useRuns, type RunListItem } from "../api/runs";
 import { RunVerdict } from "../components/RunVerdict";
 import { ListFreshness } from "../components/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../api/trace";
 import { ConfirmDelete } from "../components/ConfirmDelete";
-import { runStatusLabel } from "./RunEvaluation";
-import { bytes } from "./RunPreflight";
+import { runStatusLabel } from "../components/runStatus";
+import { bytes } from "../components/format";
 import type { AcceptanceCriterion, RubricItem, TestCase } from "../api/testcases";
 
 function CreateValidation({
@@ -103,21 +101,13 @@ export function TestCaseList() {
   const [skillId, setSkillId] = useState("");
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [createError, setCreateError] = useState<unknown>(null);
   const sizeReason = oversizeReason(name, prompt);
   const rows = testCases.data?.pages.flatMap((page) => page.test_cases) ?? [];
   const ownedSkill = skills.data?.skills.find((s) => s.skill_id === filter);
   const notMine = Boolean(filter) && Boolean(skills.data) && !ownedSkill;
   const chosenSkill = skillId || ownedSkill?.skill_id || "";
 
-  const create = useMutation({
-    mutationFn: () => createTestCase(chosenSkill, name, prompt),
-    onSuccess: (tc) => {
-      setCreateError(null);
-      navigate({ to: "/lab/test-cases/$testCaseId", params: { testCaseId: tc.test_case_id } });
-    },
-    onError: (err) => setCreateError(err),
-  });
+  const create = useCreateTestCase();
 
   return (
     <section>
@@ -190,7 +180,16 @@ export function TestCaseList() {
         onSubmit={(e) => {
           e.preventDefault();
           if (oversizeReason(name, prompt)) return;
-          create.mutate();
+          create.mutate(
+            { skillId: chosenSkill, name, prompt },
+            {
+              onSuccess: (tc) =>
+                navigate({
+                  to: "/lab/test-cases/$testCaseId",
+                  params: { testCaseId: tc.test_case_id },
+                }),
+            },
+          );
         }}
       >
         <p className="field">
@@ -254,7 +253,7 @@ export function TestCaseList() {
         </button>
       </form>
       <MutationError
-        error={createError}
+        error={create.error}
         what="Test Case"
         fallback="建立沒有成功，可以再按一次。"
         serverSaysStatuses={[400]}
@@ -416,18 +415,7 @@ function DeleteTestCase({
   testCaseId: string;
   onDeleted: (result: { datasets_deleted: number }) => void;
 }) {
-  const client = useQueryClient();
-  const [error, setError] = useState<unknown>(null);
-
-  const remove = useMutation({
-    mutationFn: () => deleteTestCase(testCaseId),
-    onSuccess: async (result) => {
-      setError(null);
-      await client.invalidateQueries({ queryKey: ["test-cases"] });
-      onDeleted(result);
-    },
-    onError: (err) => setError(err),
-  });
+  const remove = useDeleteTestCase(testCaseId);
 
   return (
     <>
@@ -437,34 +425,26 @@ function DeleteTestCase({
           scopeId={`delete-scope-${testCaseId}`}
           scope="會刪掉這個草稿與它已上傳的檔案。沒有回收桶也沒有保留期，這一頁沒有還原的地方，按下去就沒有了。已經跑過的 Run 及其快照不受影響——那是那些 Run 執行內容的紀錄。"
           pending={remove.isPending}
-          onAsk={() => setError(null)}
-          onConfirm={() => remove.mutate()}
+          onAsk={() => remove.reset()}
+          onConfirm={() => remove.mutate(undefined, { onSuccess: onDeleted })}
           label="刪除整個 Test Case"
           confirmLabel="確認刪除整個 Test Case"
         />
       </p>
-      <MutationError error={error} what="這個 Test Case" fallback="刪除沒有成功，可以再試一次。" />
+      <MutationError
+        error={remove.error}
+        what="這個 Test Case"
+        fallback="刪除沒有成功，可以再試一次。"
+      />
     </>
   );
 }
 
 function PromptForm({ testCase }: { testCase: TestCase }) {
-  const client = useQueryClient();
   const [name, setName] = useState(testCase.name);
   const [prompt, setPrompt] = useState(testCase.user_prompt);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState<unknown>(null);
   const sizeReason = oversizeReason(name, prompt);
-
-  const save = useMutation({
-    mutationFn: () => updateTestCase(testCase.test_case_id, { name, user_prompt: prompt }),
-    onSuccess: async () => {
-      setMessage("已儲存。");
-      setError(null);
-      await client.invalidateQueries({ queryKey: ["test-cases"] });
-    },
-    onError: (err) => setError(err),
-  });
+  const save = useUpdateTestCase(testCase.test_case_id);
 
   return (
     <>
@@ -505,7 +485,7 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
         }
         onClick={() => {
           if (sizeReason) return;
-          save.mutate();
+          save.mutate({ name, user_prompt: prompt });
         }}
       >
         {save.isPending ? "儲存中…" : "儲存"}
@@ -527,9 +507,9 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
           {sizeReason}
         </span>
       )}
-      {message && <p role="status">{message}</p>}
+      {save.isSuccess && <p role="status">已儲存。</p>}
       <MutationError
-        error={error}
+        error={save.error}
         what="名稱與 User Prompt"
         fallback="儲存沒有成功，可以再試一次。"
         serverSaysStatuses={[400]}
@@ -539,45 +519,26 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
 }
 
 function CriteriaSection({ testCase }: { testCase: TestCase }) {
-  const client = useQueryClient();
   const [text, setText] = useState("");
   const [message, setMessage] = useState("");
-  const [addError, setAddError] = useState<unknown>(null);
-  const [suggestError, setSuggestError] = useState<unknown>(null);
-  const [adoptError, setAdoptError] = useState<unknown>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const refresh = () => client.invalidateQueries({ queryKey: ["test-cases"] });
+  const add = useAddCriterion(testCase.test_case_id);
+  const suggest = useSuggestCriteria(testCase.test_case_id);
+  const adopt = useAddCriterion(testCase.test_case_id);
+  const suggestError = suggest.error;
 
-  const add = useMutation({
-    mutationFn: () => addCriterion(testCase.test_case_id, text),
-    onSuccess: async () => {
-      setText("");
-      setAddError(null);
-      await refresh();
-    },
-    onError: (err) => setAddError(err),
-  });
-
-  const suggest = useMutation({
-    mutationFn: () => suggestCriteria(testCase.test_case_id),
-    onSuccess: (res) => {
-      setSuggestions(res.suggestions.map((s) => s.text));
-      setSuggestError(null);
-      setMessage(res.suggestions.length === 0 ? "這次沒有可用的建議，請自己手動輸入。" : "");
-    },
-    onError: (err) => setSuggestError(err),
-  });
-
-  const adopt = useMutation({
-    mutationFn: (proposal: string) =>
-      addCriterion(testCase.test_case_id, proposal, "suggested").then(() => proposal),
-    onSuccess: async (proposal) => {
-      setSuggestions((prev) => prev.filter((s) => s !== proposal));
-      setAdoptError(null);
-      await refresh();
-    },
-    onError: (err) => setAdoptError(err),
-  });
+  const requestSuggestions = () =>
+    suggest.mutate(undefined, {
+      onSuccess: (res) => {
+        setSuggestions(res.suggestions.map((s) => s.text));
+        setMessage(res.suggestions.length === 0 ? "這次沒有可用的建議，請自己手動輸入。" : "");
+      },
+    });
+  const adoptSuggestion = (proposal: string) =>
+    adopt.mutate(
+      { text: proposal, source: "suggested" },
+      { onSuccess: () => setSuggestions((prev) => prev.filter((s) => s !== proposal)) },
+    );
 
   return (
     <>
@@ -612,11 +573,11 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
           type="button"
           disabled={add.isPending || text.trim() === ""}
           aria-describedby={text.trim() === "" ? "criterion-add-why" : undefined}
-          onClick={() => add.mutate()}
+          onClick={() => add.mutate({ text }, { onSuccess: () => setText("") })}
         >
           {add.isPending ? "新增中…" : "新增"}
         </button>{" "}
-        <button type="button" disabled={suggest.isPending} onClick={() => suggest.mutate()}>
+        <button type="button" disabled={suggest.isPending} onClick={requestSuggestions}>
           {suggest.isPending ? "建議中…" : "請系統建議（選用）"}
         </button>{" "}
         {text.trim() === "" && (
@@ -626,7 +587,7 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
         )}
       </p>
       <MutationError
-        error={addError}
+        error={add.error}
         what="這一條驗收條件"
         fallback="無法新增，可以再試一次。"
         serverSaysStatuses={[413]}
@@ -652,9 +613,13 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
               <li key={s} className="criterion">
                 <p>{s}</p>
                 <p>
-                  <button type="button" disabled={adopt.isPending} onClick={() => adopt.mutate(s)}>
+                  <button
+                    type="button"
+                    disabled={adopt.isPending}
+                    onClick={() => adoptSuggestion(s)}
+                  >
                     {adopt.isPending
-                      ? adopt.variables === s
+                      ? adopt.variables?.text === s
                         ? "採納中…"
                         : "採納（另一項處理中…）"
                       : "採納"}
@@ -670,7 +635,7 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
             ))}
           </ul>
           <MutationError
-            error={adoptError}
+            error={adopt.error}
             what="這條建議"
             fallback="無法採納，可以再試一次。"
             serverSaysStatuses={[413]}
@@ -688,23 +653,9 @@ function CriterionRow({
   testCaseId: string;
   criterion: AcceptanceCriterion;
 }) {
-  const client = useQueryClient();
   const [draft, setDraft] = useState(criterion.text);
-  const [error, setError] = useState<unknown>(null);
-  const refresh = () => client.invalidateQueries({ queryKey: ["test-cases"] });
-
-  const mutate = useMutation({
-    mutationFn: (action: "save" | "confirm" | "unconfirm" | "delete") => {
-      if (action === "delete") return deleteCriterion(testCaseId, criterion.id);
-      if (action === "save") return updateCriterion(testCaseId, criterion.id, { text: draft });
-      return updateCriterion(testCaseId, criterion.id, { confirmed: action === "confirm" });
-    },
-    onSuccess: async () => {
-      setError(null);
-      await refresh();
-    },
-    onError: (err) => setError(err),
-  });
+  const action = useCriterionAction(testCaseId, criterion.id);
+  const running = action.isPending ? action.variables?.kind : undefined;
 
   const edited = draft !== criterion.text;
   const saveReason = !edited ? "沒有變更要存" : draft.trim() === "" ? "驗收條件不能是空白" : null;
@@ -732,24 +683,20 @@ function CriterionRow({
       <p>
         <button
           type="button"
-          disabled={mutate.isPending || !edited || draft.trim() === ""}
+          disabled={action.isPending || !edited || draft.trim() === ""}
           aria-describedby={saveReason ? `criterion-save-${criterion.id}` : undefined}
-          onClick={() => mutate.mutate("save")}
+          onClick={() => action.mutate({ kind: "save", text: draft })}
         >
-          {mutate.isPending
-            ? mutate.variables === "save"
-              ? "儲存中…"
-              : "儲存文字（另一項處理中…）"
-            : "儲存文字"}
+          {running ? (running === "save" ? "儲存中…" : "儲存文字（另一項處理中…）") : "儲存文字"}
         </button>{" "}
         {criterion.confirmed_at ? (
           <button
             type="button"
-            disabled={mutate.isPending}
-            onClick={() => mutate.mutate("unconfirm")}
+            disabled={action.isPending}
+            onClick={() => action.mutate({ kind: "unconfirm" })}
           >
-            {mutate.isPending
-              ? mutate.variables === "unconfirm"
+            {running
+              ? running === "unconfirm"
                 ? "取消確認中…"
                 : "取消確認（另一項處理中…）"
               : "取消確認"}
@@ -757,15 +704,11 @@ function CriterionRow({
         ) : (
           <button
             type="button"
-            disabled={mutate.isPending || edited}
+            disabled={action.isPending || edited}
             aria-describedby={edited ? `criterion-edited-${criterion.id}` : undefined}
-            onClick={() => mutate.mutate("confirm")}
+            onClick={() => action.mutate({ kind: "confirm" })}
           >
-            {mutate.isPending
-              ? mutate.variables === "confirm"
-                ? "確認中…"
-                : "確認（另一項處理中…）"
-              : "確認"}
+            {running ? (running === "confirm" ? "確認中…" : "確認（另一項處理中…）") : "確認"}
           </button>
         )}{" "}
         <ConfirmDelete
@@ -778,9 +721,9 @@ function CriterionRow({
               掛在這一條上的 rubric 說明要另外處理，在下面的「Rubric（選用）」那一節。
             </>
           }
-          pending={mutate.isPending}
-          onAsk={() => setError(null)}
-          onConfirm={() => mutate.mutate("delete")}
+          pending={action.isPending}
+          onAsk={() => action.reset()}
+          onConfirm={() => action.mutate({ kind: "delete" })}
           label="刪除這一條"
           confirmLabel="確認刪除這一條"
         />
@@ -790,38 +733,29 @@ function CriterionRow({
           {saveReason}
         </p>
       )}
-      <MutationError error={error} what="這一條驗收條件" fallback="操作沒有成功，可以再試一次。" />
+      <MutationError
+        error={action.error}
+        what="這一條驗收條件"
+        fallback="操作沒有成功，可以再試一次。"
+      />
     </li>
   );
 }
 
 function RubricSection({ testCase }: { testCase: TestCase }) {
-  const client = useQueryClient();
   const stored = testCase.rubric;
   const [version, setVersion] = useState(stored?.version ?? "");
   const [items, setItems] = useState<Record<string, RubricItem>>(
     Object.fromEntries((stored?.items ?? []).map((i) => [i.id, i])),
   );
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState<unknown>(null);
-
-  const save = useMutation({
-    mutationFn: () => {
-      const list = testCase.acceptance_criteria
-        .map((c) => items[c.id])
-        .filter((i): i is RubricItem => i !== undefined && i.text.trim() !== "");
-      // null means no rubric; {items: []} would mean a rubric with nothing in it.
-      return updateTestCase(testCase.test_case_id, {
-        rubric: list.length === 0 ? null : { version: version.trim(), items: list },
-      });
-    },
-    onSuccess: async () => {
-      setMessage("已儲存。");
-      setError(null);
-      await client.invalidateQueries({ queryKey: ["test-cases"] });
-    },
-    onError: (err) => setError(err),
-  });
+  const save = useUpdateTestCase(testCase.test_case_id);
+  const saveRubric = () => {
+    const list = testCase.acceptance_criteria
+      .map((c) => items[c.id])
+      .filter((i): i is RubricItem => i !== undefined && i.text.trim() !== "");
+    // null means no rubric; {items: []} would mean a rubric with nothing in it.
+    save.mutate({ rubric: list.length === 0 ? null : { version: version.trim(), items: list } });
+  };
 
   const update = (id: string, patch: Partial<RubricItem>) =>
     setItems((prev) => ({
@@ -911,7 +845,7 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
             aria-describedby={
               used > 0 && version.trim() === "" ? "rubric-version-reason" : undefined
             }
-            onClick={() => save.mutate()}
+            onClick={saveRubric}
           >
             {save.isPending ? "儲存中…" : "儲存 Rubric"}
           </button>{" "}
@@ -926,9 +860,9 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
               一定要有版本——評估報告要記下這次判定是在哪個版本下做的。
             </span>
           )}
-          {message && <p role="status">{message}</p>}
+          {save.isSuccess && <p role="status">已儲存。</p>}
           <MutationError
-            error={error}
+            error={save.error}
             what="Rubric"
             fallback="儲存沒有成功，可以再試一次。"
             serverSaysStatuses={[413]}
@@ -940,20 +874,9 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
 }
 
 function DatasetSection({ testCaseId }: { testCaseId: string }) {
-  const client = useQueryClient();
   const datasets = useTestCaseDatasets(testCaseId);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState<unknown>(null);
-
-  const remove = useMutation({
-    mutationFn: (datasetId: string) => deleteDataset(testCaseId, datasetId),
-    onSuccess: async (result) => {
-      setMessage(result.note);
-      setError(null);
-      await client.invalidateQueries({ queryKey: ["test-cases", testCaseId, "datasets"] });
-    },
-    onError: (err) => setError(err),
-  });
+  const remove = useDeleteDataset(testCaseId);
 
   return (
     <>
@@ -997,8 +920,12 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
                       </>
                     }
                     pending={remove.isPending}
-                    onAsk={() => setError(null)}
-                    onConfirm={() => remove.mutate(d.dataset_id)}
+                    onAsk={() => remove.reset()}
+                    onConfirm={() =>
+                      remove.mutate(d.dataset_id, {
+                        onSuccess: (result) => setMessage(result.note),
+                      })
+                    }
                     label="刪除這個檔案"
                     confirmLabel="確認刪除這個檔案"
                   />
@@ -1011,7 +938,7 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
           </>
         ))}
       {message && <p role="status">{message}</p>}
-      <MutationError error={error} what="這個檔案" fallback="刪除沒有成功，可以再試一次。" />
+      <MutationError error={remove.error} what="這個檔案" fallback="刪除沒有成功，可以再試一次。" />
     </>
   );
 }

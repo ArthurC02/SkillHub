@@ -1,7 +1,7 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type { Dataset } from "./lab";
-import type { OwnSkills } from "./types";
+import { queryKeys } from "./queryKeys";
 
 export type AcceptanceCriterion = {
   id: string;
@@ -39,7 +39,7 @@ export type TestCaseListItem = TestCase & {
 
 export function useTestCases(skillId?: string) {
   return useInfiniteQuery({
-    queryKey: ["test-cases", "list", skillId ?? ""],
+    queryKey: queryKeys.testCases.list(skillId),
     initialPageParam: 0,
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams({ limit: "51", offset: String(pageParam) });
@@ -50,24 +50,14 @@ export function useTestCases(skillId?: string) {
       }));
     },
     getNextPageParam: (last) => last.nextOffset,
-    retry: false,
   });
 }
 
 export function useTestCase(testCaseId: string) {
   return useQuery({
-    queryKey: ["test-cases", testCaseId],
+    queryKey: queryKeys.testCases.detail(testCaseId),
     queryFn: () => apiFetch<TestCase>(`/test-cases/${testCaseId}`),
     enabled: testCaseId.length > 0,
-    retry: false,
-  });
-}
-
-export function useOwnSkills() {
-  return useQuery({
-    queryKey: ["own-skills"],
-    queryFn: () => apiFetch<OwnSkills>("/skills"),
-    retry: false,
   });
 }
 
@@ -79,14 +69,32 @@ export function createTestCase(skillId: string, name: string, userPrompt: string
   });
 }
 
-export function updateTestCase(
-  testCaseId: string,
-  patch: { name?: string; user_prompt?: string; rubric?: Rubric | null },
-) {
+export function useCreateTestCase() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ skillId, name, prompt }: { skillId: string; name: string; prompt: string }) =>
+      createTestCase(skillId, name, prompt),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.testCases.all });
+    },
+  });
+}
+
+export type TestCasePatch = { name?: string; user_prompt?: string; rubric?: Rubric | null };
+
+export function updateTestCase(testCaseId: string, patch: TestCasePatch) {
   return apiFetch<TestCase>(`/test-cases/${testCaseId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
+  });
+}
+
+export function useUpdateTestCase(testCaseId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: TestCasePatch) => updateTestCase(testCaseId, patch),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
   });
 }
 
@@ -99,6 +107,15 @@ export function addCriterion(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text, source }),
+  });
+}
+
+export function useAddCriterion(testCaseId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ text, source }: { text: string; source?: "user" | "suggested" }) =>
+      addCriterion(testCaseId, text, source),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
   });
 }
 
@@ -120,11 +137,32 @@ export function deleteCriterion(testCaseId: string, criterionId: string) {
   });
 }
 
+export type CriterionAction =
+  { kind: "save"; text: string } | { kind: "confirm" } | { kind: "unconfirm" } | { kind: "delete" };
+
+export function useCriterionAction(testCaseId: string, criterionId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (action: CriterionAction) => {
+      if (action.kind === "delete") return deleteCriterion(testCaseId, criterionId);
+      if (action.kind === "save") {
+        return updateCriterion(testCaseId, criterionId, { text: action.text });
+      }
+      return updateCriterion(testCaseId, criterionId, { confirmed: action.kind === "confirm" });
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
+  });
+}
+
 export function suggestCriteria(testCaseId: string) {
   return apiFetch<{ suggestions: { text: string }[] }>(
     `/test-cases/${testCaseId}/criteria/suggest`,
     { method: "POST" },
   );
+}
+
+export function useSuggestCriteria(testCaseId: string) {
+  return useMutation({ mutationFn: () => suggestCriteria(testCaseId) });
 }
 
 export function deleteTestCase(testCaseId: string) {
@@ -134,13 +172,20 @@ export function deleteTestCase(testCaseId: string) {
   );
 }
 
+export function useDeleteTestCase(testCaseId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => deleteTestCase(testCaseId),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
+  });
+}
+
 export function useTestCaseDatasets(testCaseId: string) {
   return useQuery({
-    queryKey: ["test-cases", testCaseId, "datasets"],
+    queryKey: queryKeys.testCases.datasets(testCaseId),
     queryFn: () =>
       apiFetch<{ datasets: Dataset[]; total_bytes: number }>(`/test-cases/${testCaseId}/datasets`),
     enabled: testCaseId.length > 0,
-    retry: false,
   });
 }
 
@@ -149,4 +194,13 @@ export function deleteDataset(testCaseId: string, datasetId: string) {
     `/test-cases/${testCaseId}/datasets/${datasetId}`,
     { method: "DELETE" },
   );
+}
+
+export function useDeleteDataset(testCaseId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (datasetId: string) => deleteDataset(testCaseId, datasetId),
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: queryKeys.testCases.datasets(testCaseId) }),
+  });
 }

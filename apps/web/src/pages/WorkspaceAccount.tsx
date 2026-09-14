@@ -2,7 +2,6 @@ import { Loading } from "../components/Loading";
 import { Timestamp } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import { useCancelAccountDeletion, useMe, useRequestAccountDeletion } from "../api/me";
@@ -15,13 +14,9 @@ function deletionFailureSentence(error: unknown): string {
 
 export function WorkspaceAccount() {
   const me = useMe();
-  const client = useQueryClient();
   const [message, setMessage] = useState("");
-
   const request = useRequestAccountDeletion();
   const cancel = useCancelAccountDeletion();
-
-  const refresh = () => client.invalidateQueries({ queryKey: ["me"] });
 
   return (
     <section>
@@ -60,10 +55,7 @@ export function WorkspaceAccount() {
               pending={cancel.isPending}
               onCancel={() =>
                 cancel.mutate(undefined, {
-                  onSuccess: async () => {
-                    setMessage("已取消。帳號不會被刪除，資料照舊。");
-                    await refresh();
-                  },
+                  onSuccess: () => setMessage("已取消。帳號不會被刪除，資料照舊。"),
                 })
               }
             />
@@ -77,10 +69,7 @@ export function WorkspaceAccount() {
                 onAsk={() => setMessage("")}
                 onConfirm={() =>
                   request.mutate(undefined, {
-                    onSuccess: async (result) => {
-                      setMessage(result.scope);
-                      await refresh();
-                    },
+                    onSuccess: (result) => setMessage(result.scope),
                   })
                 }
                 scope={

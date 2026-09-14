@@ -1,4 +1,6 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { queryKeys } from "./queryKeys";
 
 export interface PreflightDataset {
   dataset_id: string;
@@ -78,6 +80,10 @@ export function getDatasetLimits() {
   return apiFetch<DatasetLimits>("/test-cases/limits");
 }
 
+export function useDatasetLimits() {
+  return useQuery({ queryKey: queryKeys.lab.datasetLimits, queryFn: getDatasetLimits });
+}
+
 export interface Dataset {
   dataset_id: string;
   file_name: string;
@@ -94,6 +100,16 @@ export function uploadDataset(testCaseId: string, file: File) {
   return apiFetch<Dataset>(`/test-cases/${testCaseId}/datasets`, { method: "POST", body: form });
 }
 
+export function useUploadDataset(testCaseId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => uploadDataset(testCaseId, file),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.testCases.datasets(testCaseId) });
+    },
+  });
+}
+
 export interface RunCreated {
   run_id: string;
   status: string;
@@ -103,6 +119,21 @@ export interface RunCreated {
 export function getPreflight(skillId: string, versionId: string, testCaseId: string) {
   const params = new URLSearchParams({ version_id: versionId, test_case_id: testCaseId });
   return apiFetch<PreflightResponse>(`/skills/${skillId}/runs/preflight?${params.toString()}`);
+}
+
+export function usePreflight(
+  skillId: string,
+  versionId: string,
+  testCaseId: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: queryKeys.lab.preflight(skillId, versionId, testCaseId),
+    queryFn: () => getPreflight(skillId, versionId, testCaseId),
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+  });
 }
 
 export function confirmPreflight(
@@ -139,5 +170,18 @@ export function startRun(
       test_case_id: testCaseId,
       confirmed_summary_hash: confirmedSummaryHash,
     }),
+  });
+}
+
+export function useConfirmAndStartRun(skillId: string, versionId: string, testCaseId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (summaryHash: string) => {
+      await confirmPreflight(skillId, versionId, testCaseId, summaryHash);
+      return startRun(skillId, versionId, testCaseId, summaryHash);
+    },
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.runs.lists });
+    },
   });
 }

@@ -1,8 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { SetSkillCategoryRequest } from "@skillhub/api-client-ts";
 import { apiFetch } from "./client";
+import { queryKeys } from "./queryKeys";
 import type {
   CatalogResponse,
   ForkedSkill,
+  OwnSkills,
   PublicSearchResponse,
   SearchFilters,
   SkillDeletion,
@@ -10,6 +13,8 @@ import type {
   SkillFiles,
   SkillVersions,
 } from "./types";
+
+export const MAX_COMPARE = 3;
 
 export function searchSkills(
   query: string,
@@ -34,20 +39,9 @@ export function useSkillSearch(
   purpose?: "reference",
 ) {
   return useQuery({
-    queryKey: [
-      "skills",
-      "search",
-      query,
-      filters.script ?? "",
-      filters.validation ?? "",
-      filters.agent ?? "",
-      filters.tier ?? "",
-      filters.category ?? "",
-      purpose ?? "",
-    ],
+    queryKey: queryKeys.skills.search(query, filters, purpose),
     queryFn: () => searchSkills(query, filters, 20, purpose),
     enabled,
-    retry: false,
   });
 }
 
@@ -63,28 +57,16 @@ export function browseCatalog(filters: SearchFilters = {}, limit = 100) {
 
 export function useCatalog(filters: SearchFilters, enabled: boolean) {
   return useQuery({
-    queryKey: ["skills", "catalog", ...filterKey(filters)],
+    queryKey: queryKeys.skills.catalog(filters),
     queryFn: () => browseCatalog(filters),
     enabled,
-    retry: false,
   });
-}
-
-function filterKey(filters: SearchFilters) {
-  return [
-    filters.script ?? "",
-    filters.validation ?? "",
-    filters.agent ?? "",
-    filters.tier ?? "",
-    filters.category ?? "",
-  ];
 }
 
 export function useCatalogTotal(filters: SearchFilters) {
   return useQuery({
-    queryKey: ["skills", "catalog", "total", ...filterKey(filters)],
+    queryKey: queryKeys.skills.catalogTotal(filters),
     queryFn: () => browseCatalog(filters, 1),
-    retry: false,
   });
 }
 
@@ -96,23 +78,30 @@ export function getEmbeddedSkillDetail(skillId: string) {
   return apiFetch<SkillDetail>(`/api/skills/${skillId}?view=embedded`);
 }
 
-export const embeddedSkillKey = (skillId: string) => ["skills", skillId, "embedded"];
-
 export function useSkillDetail(skillId: string) {
   return useQuery({
-    queryKey: ["skills", skillId],
+    queryKey: queryKeys.skills.detail(skillId),
     queryFn: () => getSkillDetail(skillId),
     enabled: skillId.length > 0,
-    retry: false,
   });
 }
 
 export function useEmbeddedSkillDetail(skillId: string) {
   return useQuery({
-    queryKey: embeddedSkillKey(skillId),
+    queryKey: queryKeys.skills.embedded(skillId),
     queryFn: () => getEmbeddedSkillDetail(skillId),
     enabled: skillId.length > 0,
-    retry: false,
+  });
+}
+
+// useQueries, not a loop of useQuery: the id list length varies with the URL,
+// and hook count must stay fixed across renders.
+export function useEmbeddedSkillDetails(skillIds: string[]) {
+  return useQueries({
+    queries: skillIds.map((id) => ({
+      queryKey: queryKeys.skills.embedded(id),
+      queryFn: () => getEmbeddedSkillDetail(id),
+    })),
   });
 }
 
@@ -122,10 +111,9 @@ export function getSkillFiles(skillId: string) {
 
 export function useSkillFiles(skillId: string) {
   return useQuery({
-    queryKey: ["skills", skillId, "files"],
+    queryKey: queryKeys.skills.files(skillId),
     queryFn: () => getSkillFiles(skillId),
     enabled: skillId.length > 0,
-    retry: false,
   });
 }
 
@@ -135,10 +123,16 @@ export function getSkillVersions(skillId: string) {
 
 export function useSkillVersions(skillId: string) {
   return useQuery({
-    queryKey: ["skills", skillId, "versions"],
+    queryKey: queryKeys.skills.versions(skillId),
     queryFn: () => getSkillVersions(skillId),
     enabled: skillId.length > 0,
-    retry: false,
+  });
+}
+
+export function useOwnSkills() {
+  return useQuery({
+    queryKey: queryKeys.skills.own,
+    queryFn: () => apiFetch<OwnSkills>("/skills"),
   });
 }
 
@@ -151,6 +145,14 @@ export function deleteSkill(skillId: string) {
   return apiFetch<SkillDeletion>(`/skills/${skillId}`, { method: "DELETE" });
 }
 
+export function useDeleteSkill() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: deleteSkill,
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.own }),
+  });
+}
+
 export function forkSkill(skillId: string) {
   return apiFetch<ForkedSkill>(`/skills/${skillId}/fork`, { method: "POST" });
 }
@@ -159,6 +161,24 @@ export function useForkSkill() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: forkSkill,
-    onSuccess: () => client.invalidateQueries({ queryKey: ["own-skills"] }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.own }),
+  });
+}
+
+export type SkillCategoryChoice = SetSkillCategoryRequest["category"];
+
+export function setSkillCategory(skillId: string, category: SkillCategoryChoice) {
+  return apiFetch<unknown>(`/skills/${skillId}/category`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ category }),
+  });
+}
+
+export function useSetSkillCategory(skillId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (category: SkillCategoryChoice) => setSkillCategory(skillId, category),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.detail(skillId) }),
   });
 }

@@ -1,3 +1,4 @@
+import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 
 export type FeedbackKind = "blocking_issue" | "need_signal";
@@ -20,6 +21,10 @@ export function submitFeedback(report: FeedbackReport) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(report),
   });
+}
+
+export function useSubmitFeedback() {
+  return useMutation({ mutationFn: submitFeedback });
 }
 
 export function feedbackPagePath(pathname: string): string {

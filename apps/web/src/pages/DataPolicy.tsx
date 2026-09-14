@@ -1,15 +1,9 @@
 import { Loading } from "../components/Loading";
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { apiFetch } from "../api/client";
-import type { DataRetentionPolicy } from "../api/types";
+import { useDataRetentionPolicy } from "../api/policy";
 
 export function DataPolicy() {
-  const policy = useQuery({
-    queryKey: ["policy", "data-retention"],
-    queryFn: () => apiFetch<DataRetentionPolicy>("/policy/data-retention"),
-    retry: false,
-  });
+  const policy = useDataRetentionPolicy();
 
   return (
     <section>

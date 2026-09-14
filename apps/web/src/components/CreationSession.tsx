@@ -1,14 +1,13 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import {
   actOnCreationSession,
   createCreationSession,
-  getCreationLimits,
-  getCreationSession,
-  listCreationSessions,
-  streamCreationSession,
+  useCreationLimits,
+  useCreationSessionCache,
+  useCreationSessions,
+  useLiveCreationSession,
   type CreationAction,
   type CreationAttachment,
   type CreationReference,
@@ -26,7 +25,7 @@ import { Findings } from "./Findings";
 import { ModelMarkdown } from "./ModelMarkdown";
 import { Reveal } from "./Reveal";
 import { Timestamp } from "./Timestamp";
-import { runStatusLabel } from "../pages/RunEvaluation";
+import { runStatusLabel } from "./runStatus";
 const labels: Record<CreationState, string> = {
   queued: "等待處理",
   working: "正在創作",
@@ -443,7 +442,7 @@ function isBelow(el: HTMLElement | undefined, pane: HTMLElement) {
   return !!el && el.getBoundingClientRect().top > pane.getBoundingClientRect().bottom;
 }
 export function CreationSession() {
-  const client = useQueryClient();
+  const cache = useCreationSessionCache();
   const [id, setID] = useState(""),
     [picking, setPicking] = useState(false),
     [dragging, setDragging] = useState(false),
@@ -489,33 +488,9 @@ export function CreationSession() {
   const startPending = useRef<
     { key: string; body: { id: string; message: string; budget_credits: number } } | undefined
   >(undefined);
-  const sessions = useQuery({
-    queryKey: ["creation-sessions"],
-    queryFn: listCreationSessions,
-    retry: false,
-  });
-  const limits = useQuery({
-    queryKey: ["creation-limits"],
-    queryFn: getCreationLimits,
-    retry: false,
-  });
-  const [streaming, setStreaming] = useState(false);
-  const current = useQuery({
-    queryKey: ["creation-session", id],
-    queryFn: () => getCreationSession(id),
-    enabled: !!id,
-    retry: false,
-    refetchInterval: (q) =>
-      !streaming && ["queued", "working"].includes(q.state.data?.state ?? "") ? 1000 : false,
-  });
-  useEffect(() => {
-    if (!id) return;
-    return streamCreationSession(
-      id,
-      (s) => client.setQueryData(["creation-session", id], s),
-      setStreaming,
-    );
-  }, [id, client]);
+  const sessions = useCreationSessions();
+  const limits = useCreationLimits();
+  const current = useLiveCreationSession(id);
   const session = current.data,
     p = session?.snapshot;
   const credits = useCredits();
@@ -537,10 +512,7 @@ export function CreationSession() {
   const frozen = !session && (budgetCredits === undefined || creditsBlocked);
   const save = (value: Session) => {
     setID(value.id);
-    client.setQueryData<Session>(["creation-session", value.id], (old) =>
-      old && old.revision > value.revision ? old : value,
-    );
-    void client.invalidateQueries({ queryKey: ["creation-sessions"] });
+    cache.remember(value);
   };
   const send = async (value: Session, kind: CreationAction["kind"], extra: Extra = {}) => {
     const key = JSON.stringify([value.id, kind, extra]);
@@ -562,7 +534,7 @@ export function CreationSession() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         pending.current = undefined;
-        await client.invalidateQueries({ queryKey: ["creation-session", value.id] });
+        await cache.reload(value.id);
       }
       throw err;
     }
