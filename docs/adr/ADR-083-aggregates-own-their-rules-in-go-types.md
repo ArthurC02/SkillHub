@@ -1,6 +1,6 @@
 # ADR-083：Aggregate 用一個 Go 型別擁有它的規則
 
-- 狀態：**Accepted**（2026-09-15 負責人裁定「進行 Aggregate Root、Entity／Value Object 的改寫」）
+- 狀態：**Superseded** by [ADR-084](./ADR-084-aggregates-speak-in-domain-events.md)（2026-09-15 同日；原裁定：負責人「進行 Aggregate Root、Entity／Value Object 的改寫」）
 - 日期：2026-09-15
 - 相關：[ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md) §4（本份**只取代**第一條末句「這三處現有實作已是實質 aggregate，補文件與測試即可，不重寫」；§4 其餘三條——不引入 repository interface、不採 event sourcing／CQRS 框架、transaction script 是合法模式——不變，ADR-032 不 Superseded）、[ADR-003](./ADR-003-data-ownership-and-storage.md)、[ADR-008](./ADR-008-asynchronous-workflows-and-domain-events.md)、[ADR-026](./ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md)、[ADR-034](./ADR-034-cross-context-writes-close-by-inversion-not-by-events.md)、[platform-ddd-convergence.md](../development/platform-ddd-convergence.md)
 
