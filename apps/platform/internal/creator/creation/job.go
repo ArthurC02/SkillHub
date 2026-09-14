@@ -84,8 +84,8 @@ func allowedTools(toolCalls, maxToolCalls int, fetch, knowledge, searchLeft bool
 	return tools
 }
 
-func callTimeoutSeconds(deadline time.Time) (int, error) {
-	remaining := int(math.Ceil(time.Until(deadline).Seconds())) - 5
+func callTimeoutSeconds(left time.Duration) (int, error) {
+	remaining := int(math.Ceil(left.Seconds())) - 5
 	if remaining < 1 {
 		return 0, ErrUnavailable
 	}
@@ -305,7 +305,7 @@ func (s *Service) callModel(ctx context.Context, a JobArgs, e envelope, req llmc
 	if req.GatewayKey, err = s.IssueKey(ctx, UUID(a.SessionID), UUID(a.ReceiptID), e.Limits.MaxCallCostUSD, e.Limits.CallTimeout+10*time.Second); err != nil {
 		return nil, knownZero, err
 	}
-	if req.TimeoutSeconds, err = callTimeoutSeconds(deadline); err != nil {
+	if req.TimeoutSeconds, err = callTimeoutSeconds(time.Until(deadline)); err != nil {
 		return nil, knownZero, err
 	}
 	response, err := s.LLM.CreationStep(ctx, req)
@@ -824,29 +824,31 @@ func (o draftObjection) toPerson() string {
 }
 
 func (s *Service) useTool(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *llmclient.CreationStepResponse) (State, bool, error) {
-	p := &e.Snapshot
-	if r.ToolIntent == nil || !knownTool(r.ToolIntent.Kind) {
+	run := s.toolFor(ctx, ws, revision, e, r)
+	if run == nil {
 		return "", false, ErrInvalidCommand
 	}
-	if p.ToolCalls >= e.Limits.MaxToolCalls {
+	if e.Snapshot.ToolCalls >= e.Limits.MaxToolCalls {
 		return "", false, ErrLimit
 	}
-	p.ToolCalls++
-	switch r.ToolIntent.Kind {
-	case "fetch_url":
-		return s.holdFetch(p, r.ToolIntent.Query)
-	case "validate_draft":
-		return s.validateRequestedDraft(ctx, revision, e, r)
-	}
-	return s.searchCatalog(ctx, ws, p, r.ToolIntent)
+	e.Snapshot.ToolCalls++
+	return run()
 }
 
-func knownTool(kind string) bool {
-	switch kind {
-	case "search_catalog", "search_knowledge", "fetch_url", "validate_draft":
-		return true
+func (s *Service) toolFor(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *llmclient.CreationStepResponse) func() (State, bool, error) {
+	if r.ToolIntent == nil {
+		return nil
 	}
-	return false
+	p := &e.Snapshot
+	switch r.ToolIntent.Kind {
+	case "search_catalog", "search_knowledge":
+		return func() (State, bool, error) { return s.searchCatalog(ctx, ws, p, r.ToolIntent) }
+	case "fetch_url":
+		return func() (State, bool, error) { return s.holdFetch(p, r.ToolIntent.Query) }
+	case "validate_draft":
+		return func() (State, bool, error) { return s.validateRequestedDraft(ctx, revision, e, r) }
+	}
+	return nil
 }
 
 func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *Snapshot, intent *llmclient.CreationToolIntent) (State, bool, error) {

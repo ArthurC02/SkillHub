@@ -3,6 +3,7 @@ package creation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"math"
@@ -139,30 +140,27 @@ func TestAllowedToolsEmptyAtToolCallCeiling(t *testing.T) {
 	}
 }
 
-func TestCallTimeoutSecondsAccountsForElapsedTime(t *testing.T) {
-	callTimeout := 5 * time.Second
-	callDeadline := time.Now().Add(callTimeout + 5*time.Second)
-	time.Sleep(2 * time.Second)
-	remaining, err := callTimeoutSeconds(callDeadline)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if remaining >= int(callTimeout.Seconds()) {
-		t.Fatalf("elapsed time before the call was not deducted: remaining=%d callTimeout=%d", remaining, int(callTimeout.Seconds()))
-	}
-}
-
-func TestCallTimeoutSecondsFailsClosedWhenDeadlineNearlyPassed(t *testing.T) {
-	if _, err := callTimeoutSeconds(time.Now().Add(3 * time.Second)); err == nil {
-		t.Fatal("expected an error when too little time remains for headroom plus a call")
-	}
-}
-
 func TestTheModelIsGivenTheWholeConfiguredCallTimeout(t *testing.T) {
-	for _, configured := range []int{1, 90} {
-		got, err := callTimeoutSeconds(time.Now().Add(time.Duration(configured)*time.Second + 5*time.Second - time.Nanosecond))
-		if err != nil || got != configured {
-			t.Errorf("configured %ds: sent %d, err = %v", configured, got, err)
+	for _, c := range []struct {
+		name string
+		left time.Duration
+		want int
+	}{
+		{"a one-second timeout just started", 6*time.Second - time.Nanosecond, 1},
+		{"a ninety-second timeout just started", 95*time.Second - time.Nanosecond, 90},
+		{"two seconds already spent", 8 * time.Second, 3},
+		{"just past the buffer", 5*time.Second + time.Nanosecond, 1},
+	} {
+		if got, err := callTimeoutSeconds(c.left); err != nil || got != c.want {
+			t.Errorf("%s: sent %d, err = %v, want %d", c.name, got, err, c.want)
+		}
+	}
+}
+
+func TestNoCallIsMadeWhenOnlyTheBufferIsLeft(t *testing.T) {
+	for _, left := range []time.Duration{5 * time.Second, 3 * time.Second, 0} {
+		if _, err := callTimeoutSeconds(left); !errors.Is(err, ErrUnavailable) {
+			t.Errorf("%v left: err = %v, want ErrUnavailable", left, err)
 		}
 	}
 }
