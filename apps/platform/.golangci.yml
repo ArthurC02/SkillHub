@@ -15,21 +15,6 @@ linters:
       - path: cmd/api/main\.go
         linters: [gocognit]
         text: 'func `main`'
-      - path: internal/creator/creation/creation\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.Create`'
-      - path: internal/creator/creation/creation\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.Act`'
-      - path: internal/creator/creation/job\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.Step`'
-      - path: internal/creator/creation/job\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.finish`'
-      - path: internal/creator/creation/job\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.proposal`'
       - path: internal/creator/workspace/purge\.go
         linters: [gocognit]
         text: 'func `\(\*Service\)\.purgeAccount`'

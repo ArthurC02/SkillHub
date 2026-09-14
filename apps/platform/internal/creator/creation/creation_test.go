@@ -3,6 +3,7 @@ package creation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"math"
@@ -130,20 +131,6 @@ func TestCanSpendRefusesNearMessageCeiling(t *testing.T) {
 	}
 }
 
-func TestDraftValidationReportTruncatedWithinLimit(t *testing.T) {
-	report := []rune(strings.Repeat("x", MaxTextRunes+5000))
-	marker := []rune("\n[findings truncated]")
-	if len(report) > MaxTextRunes {
-		report = append(report[:MaxTextRunes-len(marker)], marker...)
-	}
-	if len(report) > MaxTextRunes {
-		t.Fatalf("truncated report still exceeds MaxTextRunes: %d", len(report))
-	}
-	if !strings.HasSuffix(string(report), "[findings truncated]") {
-		t.Fatal("truncated report lost its marker")
-	}
-}
-
 func TestAllowedToolsEmptyAtToolCallCeiling(t *testing.T) {
 	if got := allowedTools(3, 3, false, false, true); len(got) != 0 {
 		t.Fatalf("expected no tools once the budget is spent, got %v", got)
@@ -169,6 +156,12 @@ func TestCallTimeoutSecondsAccountsForElapsedTime(t *testing.T) {
 func TestCallTimeoutSecondsFailsClosedWhenDeadlineNearlyPassed(t *testing.T) {
 	if _, err := callTimeoutSeconds(time.Now().Add(3 * time.Second)); err == nil {
 		t.Fatal("expected an error when too little time remains for headroom plus a call")
+	}
+}
+
+func TestAOneSecondCallTimeoutLeavesNoTimeOnceAnyTimeHasPassed(t *testing.T) {
+	if _, err := callTimeoutSeconds(time.Now().Add(time.Second + 5*time.Second - time.Nanosecond)); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("err = %v, want ErrUnavailable", err)
 	}
 }
 
