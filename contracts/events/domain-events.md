@@ -35,19 +35,36 @@
 **`causation_id` 填寫規則**：有 UUID 型別直接成因者一律填，NULL 只允許兩種情形，兩種都由本節列舉、不得擴充：
 
 1. **genesis 事件**（aggregate 的首個事件）——`run.queued`。它之前沒有任何事件，也還沒有 attempt。
-2. **成因識別不是 UUID 者**——`run.cleanup_cleaned`／`run.cleanup_failed`。一次 cleanup pass 釋放該 Run 的**全部** attempt，沒有單一 attempt 是它的成因；真正的成因是 `run_cleanup` job，而 River 的 job id 是 bigint。把終態轉移的 attempt id 塞進去既是假資料，也會改變 `CleanupArgs` 的 `ByArgs` 唯一鍵，讓 supervisor 的補派送不再與終態轉移合流，變成兩個 worker 同時拆同一個 sandbox。要真正填上它，需要一個 UUID 型別的 job 識別，那是本目錄之外的變更。`evaluation` 與 `skill` aggregate 的事件同屬此類：成因是 `evaluate_run` job、使用者或營運者的一次請求，都沒有 UUID 識別。
+2. **成因識別不是 UUID 者**——`run.cleanup_cleaned`／`run.cleanup_failed`。一次 cleanup pass 釋放該 Run 的**全部** attempt，沒有單一 attempt 是它的成因；真正的成因是 `run_cleanup` job，而 River 的 job id 是 bigint。把終態轉移的 attempt id 塞進去既是假資料，也會改變 `CleanupArgs` 的 `ByArgs` 唯一鍵，讓 supervisor 的補派送不再與終態轉移合流，變成兩個 worker 同時拆同一個 sandbox。要真正填上它，需要一個 UUID 型別的 job 識別，那是本目錄之外的變更。`run.cancel_requested`、`run.provider_assigned`，以及 `evaluation` 與 `skill` aggregate 的事件同屬此類：成因是使用者的一次取消請求、`run_execute` job、`evaluate_run` job、使用者或營運者的一次請求，都沒有 UUID 識別。
 
-## 3. 事件目錄（現行 27 型，v1＝忠實記錄現況）
+## 3. 事件目錄（現行 33 型，v1＝忠實記錄現況）
 
-### `run` aggregate — 狀態轉移族（producer：Run Orchestration，`internal/run/service.go` `record()`）
+### `run` aggregate — 狀態轉移族（producer：`trial/execution` 的 Run aggregate `run_root.go`，存回在 `run_store.go` 的 `saveRun`）
+
+`aggregate_id`＝`correlation_id`＝Run 的 id。Run aggregate 擁有轉移、取消、指定 Provider、attempt 的開始、派送與結束，以及 attempt 物件授權的到期；命令被拒絕時不發事件（ADR-084 決策 2）。
 
 | `event_type` | 觸發（同交易的狀態變更） | payload | 備註 |
 | --- | --- | --- | --- |
-| `run.queued` | `CreateRun`＋Test Case 快照＋`run_execute` 入隊 | `to_status`、`reason:"run requested"` | `from_status` 缺席；`causation_id` NULL（genesis，§2 例外 1） |
+| `run.queued` | `CreateRun`＋Test Case 快照＋`run_execute` 入隊 | `to_status`、`reason:"已收到這次 Run 的請求"` | `from_status` 缺席；`causation_id` NULL（genesis，§2 例外 1） |
 | `run.provisioning` `run.preparing` `run.running` `run.evaluating` | `TransitionRun`（非終態） | `to_status`、`from_status`、`reason?`（空值時缺席） | `causation_id`＝attempt ID |
-| `run.succeeded` `run.failed` `run.cancelled` `run.timed_out` | `TransitionRun`（終態）＋`run_cleanup` 入隊 | 同上 | 終態另寫 `error` trace 事件（不同平面）；`succeeded`／`failed` 的 consumer 另行入隊 `evaluate_run`（見 §4 規則 5） |
+| `run.succeeded` `run.failed` `run.cancelled` `run.timed_out` | `TransitionRun`（終態）＋`run_cleanup` 入隊 | 同上 | 終態同時關上還沒發出的物件授權；`failed`／`timed_out` 另寫 `error` trace 事件（不同平面）；`succeeded`／`failed` 的 consumer 另行入隊 `evaluate_run`（見 §4 規則 5） |
 
-### `run` aggregate — 清理族（producer：`internal/run/cleanup.go` `recordCleanup()`）
+### `run` aggregate — 執行記帳族（producer：同上）
+
+目前沒有訂閱者，Dispatcher 以具名理由忽略：這些事實都讀得到 Run 自己的列。
+
+| `event_type` | 觸發（同交易的狀態變更） | payload | 備註 |
+| --- | --- | --- | --- |
+| `run.cancel_requested` | 使用者要求取消一個還沒結束的 Run（`RequestRunCancel`） | 空物件 | 已要求過時不再發；已結束的 Run 拒絕；`causation_id` NULL（§2 例外 2） |
+| `run.provider_assigned` | Run 第一次選定 Provider 並釘住 runtime 快照（`SetRunProvider`） | `provider` | 已釘住的快照不重寫；`causation_id` NULL（§2 例外 2） |
+| `run.attempt_started` | 一次新的 attempt 建立（`CreateRunAttempt`） | `attempt_id`、`attempt_number`、`provider` | 已結束的 Run 拒絕；物件授權從「未發出」開始 |
+| `run.attempt_dispatched` | Provider 回報這次 attempt 的沙箱識別（`SetAttemptProviderRunID`） | `attempt_id` | Provider 臨時識別不進 payload（鐵律 10） |
+| `run.attempt_finished` | attempt 結束（`FinishRunAttempt`） | `attempt_id`、`error_class`（成功時為 null） | 同一次 attempt 只結束一次；還沒發出的物件授權同時關上 |
+| `run.object_grants_recorded` | 記下這次 attempt 的物件授權到期時間（`SetRunAttemptObjectGrantsExpiry`） | `attempt_id` | 只從「未發出」或「已記下」走到「已記下」；已關上與舊資料的授權拒絕 |
+
+以上四個 attempt 事件的 `causation_id`＝那次 attempt 的 id。
+
+### `run` aggregate — 清理族（producer：`trial/execution/cleanup.go` `recordCleanup()`）
 
 | `event_type` | 觸發 | payload | 備註 |
 | --- | --- | --- | --- |
@@ -93,7 +110,7 @@ ADR-008 以 PascalCase 過去式描述工作流事件（`RunRequested`、`RunExe
 ## 4. 規範（新增或修改事件時強制）
 
 1. **命名**：`<aggregate>.<小寫snake過去式事實>`。狀態機鏡像型（`run.<status>`）是既有例外，不再擴散——新事件描述「發生了什麼」，不是「進入了什麼狀態」。
-2. **值域封閉**：`event_type` 不得由字串拼接產生；目錄未列的 type 不得發出。**已落地（2026-08-20，DDD-012）**：值域宣告在三處——`outbox.EventTypes`、最新一支換上 `CHECK` 的 migration（現為 `db/migrations/0069`）、本目錄 §3——`internal/outbox` 的 conformance test 比對三方，任一處漏改即紅。producer 用 `outbox.StatusEvent`／`outbox.CleanupEvent` 映射，未知 status 回 error 讓交易回滾，不會靜默生出新 type。
+2. **值域封閉**：`event_type` 不得由字串拼接產生；目錄未列的 type 不得發出。**已落地（2026-08-20，DDD-012）**：值域宣告在三處——`outbox.EventTypes`、最新一支換上 `CHECK` 的 migration（現為 `db/migrations/0070`）、本目錄 §3——`internal/outbox` 的 conformance test 比對三方，任一處漏改即紅。producer 用 `outbox.StatusEvent`／`outbox.CleanupEvent` 映射，未知 status 回 error 讓交易回滾，不會靜默生出新 type。
 3. **payload 為 consumer 設計**：欄位存在性必須固定——可缺的欄位明示 nullable，不得「空字串就不放 key」；不得直接重用 audit metadata bag（現況待收斂）。
 4. **同 commit 四件事**：新事件＝目錄 §3 加列＋`outbox` 常數與映射＋新 migration 換上新的 `CHECK` 清單＋producer 實作。目錄與程式分岔視同 contract drift，conformance test 就是抓這件事。
 5. **觸發源唯一**：跨 context 的「後續反應」以事件 consumer 為唯一觸發源；同 context 的內部工序才可直接入隊 River。2026-08-20（DDD-005）起，`run.succeeded`／`run.failed` 的 consumer（`internal/eval` 的 `RunEventConsumer`）是 `evaluate_run` 入隊的唯一觸發源；終態轉移交易只入隊 `run_cleanup`，那是 Run 自己的內部工序。

@@ -134,6 +134,7 @@ queries:
   LockRunArtifactObjectSession: run
   UnlockRunArtifactObjectSession: run
   GetRunLinkage: run
+  LockRun: run
   TransitionRun: run
   RequestRunCancel: run
   SetRunProvider: run

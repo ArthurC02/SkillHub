@@ -173,11 +173,15 @@ func (d *driver) dispatch(ctx context.Context) error {
 	}
 	d.provider = provider
 
-	pinned, err := d.svc.pinProvider(ctx, d.cur, provider, capability, profile)
+	snapshot, err := pinnedRuntime(provider, capability, profile)
 	if err != nil {
 		return err
 	}
-	d.cur = pinned
+	pinned, err := d.command(ctx, func(r *Run) { r.AssignProvider(provider.Name, snapshot) })
+	if err != nil {
+		return err
+	}
+	d.cur = pinned.Row()
 
 	if d.cur.Status == gen.RunStatusQueued {
 		if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+provider.Name); err != nil {
@@ -199,27 +203,26 @@ func (d *driver) dispatch(ctx context.Context) error {
 			return d.finish(ctx, lastAttemptID, gen.RunStatusCancelled, failureCancelled, "派送進行中被取消")
 		}
 
-		attempt, err := d.svc.queries().CreateRunAttempt(ctx, gen.CreateRunAttemptParams{
-			ID: d.cur.ID, WorkspaceID: d.cur.WorkspaceID, Provider: provider.Name,
-		})
+		started, err := d.command(ctx, func(r *Run) { r.StartAttempt(provider.Name) })
 		if err != nil {
 			return err
 		}
+		attempt := started.LatestAttempt()
 		lastAttemptID = attempt.ID
 
 		request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, profile, policy)
 		if err != nil {
 
-			if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, d.cur.WorkspaceID, objectGrantsExpiredOnArrival()); expiryErr != nil {
+			if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); expiryErr != nil {
 				slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
 			}
-			d.failAttempt(ctx, attempt, errClassProvision, err.Error())
+			d.finishAttempt(ctx, attempt, errClassProvision, err.Error())
 			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failurePlatform, err.Error())
 		}
 		pr, err := provider.CreateRun(ctx, request)
 		if err != nil {
 			lastErr = err
-			d.failAttempt(ctx, attempt, dispatchErrorClass(err), err.Error())
+			d.finishAttempt(ctx, attempt, dispatchErrorClass(err), err.Error())
 			if !retryable(err) {
 				break
 			}
@@ -228,9 +231,10 @@ func (d *driver) dispatch(ctx context.Context) error {
 			continue
 		}
 
-		attempt, err = d.svc.queries().SetAttemptProviderRunID(ctx, gen.SetAttemptProviderRunIDParams{
-			ID: attempt.ID, WorkspaceID: d.cur.WorkspaceID, ProviderRunID: &pr.ProviderRunID,
-		})
+		dispatched, err := d.command(ctx, func(r *Run) { r.RecordDispatch(attempt.ID, pr.ProviderRunID) })
+		if err == nil {
+			attempt = dispatched.Attempt(attempt.ID)
+		}
 		if err != nil {
 
 			if destroyErr := provider.Destroy(ctx, pr.ProviderRunID); destroyErr != nil {
@@ -243,7 +247,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 
 		if pr.State == ProviderStateFailed {
 			lastErr = fmt.Errorf("provider failed during provisioning: %s", truncate(pr.StateReason))
-			d.failAttempt(ctx, attempt, errClassProvision, lastErr.Error())
+			d.finishAttempt(ctx, attempt, errClassProvision, lastErr.Error())
 			continue
 		}
 		return d.follow(ctx, attempt)
@@ -283,7 +287,7 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 				return d.settle(ctx, attempt, pr)
 			}
 		case !retryable(err):
-			d.failAttempt(ctx, attempt, errClassExecution, err.Error())
+			d.finishAttempt(ctx, attempt, errClassExecution, err.Error())
 			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, err.Error())
 		default:
 
@@ -310,7 +314,7 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 			if _, err := provider.Cancel(ctx, handle); err != nil {
 				slog.Warn("provider cancel on timeout failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 			}
-			d.failAttempt(ctx, attempt, errClassTimeout, d.timeoutReason())
+			d.finishAttempt(ctx, attempt, errClassTimeout, d.timeoutReason())
 			return d.finish(ctx, attempt.ID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 		}
 
@@ -318,7 +322,7 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 			if _, err := provider.Cancel(ctx, handle); err != nil {
 				slog.Warn("provider cancel on token ceiling failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 			}
-			d.failAttempt(ctx, attempt, errClassBudgetExhausted, reason)
+			d.finishAttempt(ctx, attempt, errClassBudgetExhausted, reason)
 			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureWorkload, reason)
 		}
 
@@ -355,10 +359,10 @@ func (d *driver) settle(ctx context.Context, attempt gen.RunAttempt, pr Provider
 	status, failureClass, errClass, message := classifyResult(pr)
 	if err := d.recordArtifacts(ctx, attempt, pr); err != nil {
 		message = err.Error()
-		d.failAttempt(ctx, attempt, errClassProvision, message)
+		d.finishAttempt(ctx, attempt, errClassProvision, message)
 		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, message)
 	}
-	d.failAttempt(ctx, attempt, errClass, message)
+	d.finishAttempt(ctx, attempt, errClass, message)
 
 	if status != gen.RunStatusSucceeded {
 		return d.finish(ctx, attempt.ID, status, failureClass, message)
@@ -440,12 +444,14 @@ func (d *driver) advance(ctx context.Context, attemptID pgtype.UUID, to gen.RunS
 func (d *driver) finish(
 	ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass FailureClass, reason string,
 ) error {
-	if _, err := d.svc.queries().CloseUnissuedRunAttemptGrants(ctx, gen.CloseUnissuedRunAttemptGrantsParams{
-		RunID: d.cur.ID, WorkspaceID: d.cur.WorkspaceID,
-	}); err != nil {
-		return err
-	}
 	return d.transition(ctx, attemptID, to, failureClass, reason)
+}
+
+func (d *driver) command(ctx context.Context, command func(*Run)) (*Run, error) {
+	return d.svc.commandRun(ctx, d.cur.WorkspaceID, d.cur.ID, pgtype.UUID{}, func(r *Run) error {
+		command(r)
+		return nil
+	})
 }
 
 func (d *driver) transition(
@@ -624,18 +630,10 @@ func validArtifactFileName(name string) bool {
 	return true
 }
 
-func (d *driver) failAttempt(ctx context.Context, attempt gen.RunAttempt, errClass, message string) {
-	var classPtr, messagePtr *string
-	if errClass != "" {
-		classPtr = &errClass
-	}
-	if message != "" {
-		truncated := truncate(message)
-		messagePtr = &truncated
-	}
-	if _, err := d.svc.queries().FinishRunAttempt(ctx, gen.FinishRunAttemptParams{
-		ID: attempt.ID, WorkspaceID: attempt.WorkspaceID,
-		ErrorClass: classPtr, ErrorMessage: messagePtr,
+func (d *driver) finishAttempt(ctx context.Context, attempt gen.RunAttempt, errClass, message string) {
+	if _, err := d.svc.commandRun(ctx, attempt.WorkspaceID, attempt.RunID, pgtype.UUID{}, func(r *Run) error {
+		r.FinishAttempt(attempt.ID, errClass, truncate(message))
+		return nil
 	}); err != nil {
 		slog.Warn("could not record attempt outcome", "run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
 	}

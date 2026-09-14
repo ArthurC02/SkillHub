@@ -398,30 +398,14 @@ func (s *Service) buildRunRequest(
 	}, nil
 }
 
-func (s *Service) pinProvider(
-	ctx context.Context, run gen.Run, p *Provider, c ProviderCapability, profile RuntimeProfile,
-) (gen.Run, error) {
-	if alreadyPinned(run) {
-		return run, nil
-	}
-	snapshot, err := json.Marshal(runtimeSnapshot{
+func pinnedRuntime(p *Provider, c ProviderCapability, profile RuntimeProfile) ([]byte, error) {
+	return json.Marshal(runtimeSnapshot{
 		Provider:       p.Name,
 		Runtime:        profile,
 		IsolationLevel: c.Isolation.Level,
 		Rootless:       c.Isolation.Rootless,
 		SelectedAt:     nowUTC(),
 	})
-	if err != nil {
-		return run, err
-	}
-	updated, err := s.queries().SetRunProvider(ctx, gen.SetRunProviderParams{
-		ID: run.ID, WorkspaceID: run.WorkspaceID, Provider: p.Name, RuntimeSnapshot: snapshot,
-	})
-	if err != nil {
-
-		return run, err
-	}
-	return updated, nil
 }
 
 func alreadyPinned(run gen.Run) bool {

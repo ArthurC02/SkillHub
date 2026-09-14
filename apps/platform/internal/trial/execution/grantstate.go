@@ -3,7 +3,6 @@ package run
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 	"time"
 
@@ -62,19 +61,10 @@ func objectGrantsExpiredOnArrival() time.Time {
 	return time.Now().UTC().Add(-2 * purgeClockTolerance)
 }
 
-func (s *Service) recordObjectGrantExpiry(ctx context.Context, attempt gen.RunAttempt, workspaceID pgtype.UUID, expires time.Time) error {
-	from := ObjectGrantState(attempt.ObjectGrantsState)
-	if !CanTransitionObjectGrant(from, ObjectGrantStateRecorded) {
-		return fmt.Errorf("%w: %s to %s", ErrObjectGrantTransition, from, ObjectGrantStateRecorded)
-	}
-	updated, err := s.queries().SetRunAttemptObjectGrantsExpiry(ctx, gen.SetRunAttemptObjectGrantsExpiryParams{
-		ExpiresAt: pgtype.Timestamptz{Time: expires, Valid: true}, ID: attempt.ID, WorkspaceID: workspaceID,
+func (s *Service) recordObjectGrantExpiry(ctx context.Context, attempt gen.RunAttempt, expires time.Time) error {
+	_, err := s.commandRun(ctx, attempt.WorkspaceID, attempt.RunID, pgtype.UUID{}, func(r *Run) error {
+		r.RecordGrantExpiry(attempt.ID, expires)
+		return nil
 	})
-	if err != nil {
-		return err
-	}
-	if updated != 1 {
-		return errors.New("run: the attempt whose object grant expiry was being recorded is not in this workspace")
-	}
-	return nil
+	return err
 }

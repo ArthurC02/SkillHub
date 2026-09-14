@@ -117,6 +117,7 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 | 一個 Skill 能不能當參考 | `skill/admission/generate.go` 的 `referenceable` | `generate_test.go` | — |
 | 評估的開始與取代、結算、回饋、建議決定、建議已套用 | `trial/improvement/evaluation.go` 的 `Evaluation` aggregate：命令記下事件或拒絕事件，存回只在 `evaluation_store.go`；建議已套用由 `mailbox.go` 消化 Skill 的 `skill.version_added` 後記下 | `evaluation_test.go` | 事件名稱：`outbox` 套件的 conformance test 對帳 Go 常數 ↔ 最新換上 CHECK 的 migration ↔ 事件目錄 §3 |
 | Skill 的建立、加版本、換說明、下架、存取限制、再散布、分類、刪除 | `skill/library/skill_root.go` 的 `SkillRoot` aggregate：命令記下事件或拒絕事件，存回只在 `skill_store.go`；匯入、存新版本、生成、Fork 與套用建議都經過 `AddVersion`，套用建議建成的版本在事件上帶著建成它的評估與建議；`skill/discovery` 只把拒絕理由翻成營運者看得懂的句子 | `skill_root_test.go` | 同上 |
+| Run 的轉移、取消、指定 Provider、attempt 的開始／派送／結束、物件授權到期 | `trial/execution/run_root.go` 的 `Run` aggregate：命令記下事件或拒絕事件，存回只在 `run_store.go`；轉移表仍是 `statemachine.go` 的 `successors`，授權狀態仍是 `grantstate.go`；driver 與授權只呼叫命令（排程只組出要釘住的 runtime 快照），清理狀態由 `cleanup.go` 記下 | `run_root_test.go` | 轉移表：`run-status-sql`；事件名稱：同上 |
 
 **「機器對帳」欄有兩種東西，不要混為一談：**
 
@@ -278,7 +279,7 @@ git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStar
 
 ## 6 待做
 
-[ADR-084](../adr/ADR-084-aggregates-speak-in-domain-events.md) 的其餘兩件，依序做。Evaluation 與 Skill 已經照這個形狀改完，照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
+[ADR-084](../adr/ADR-084-aggregates-speak-in-domain-events.md) 的其餘一件。Evaluation、Skill 與 Run 已經照這個形狀改完，照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
 
 - 狀態不匯出，只有唯讀存取。命令不回傳值、不帶 `context`、不做 I/O：成立就改狀態並記下領域事件，不成立就只記一則帶理由的拒絕事件。
 - 載入是吃呼叫端交易的套件函式並以列鎖讀出；存回只有一處，同交易寫狀態並把事件寫進 outbox；拒絕不存回。
@@ -286,18 +287,7 @@ git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStar
 - 測試不連資料庫，只斷言唯讀狀態與事件。SQL 的原子性守衛（C2）全部保留。
 - 新事件照[事件目錄](../../contracts/events/domain-events.md) §4 規則 4：目錄、outbox 常數、新 migration 的值域檢查、producer 同一個 commit。
 
-### 6.1 丙-246 Run
-
-- **GOAL**：取消、attempt 的開始與結束、物件授權、狀態轉移的決定屬於一個型別，driver 只執行。
-- **DISCOVER**：
-  ```
-  git grep -nE "CreateRun\(|TransitionRun|RequestRunCancel|SetRunProvider|SetRunCleanupStatus|MarkRunArtifactsTruncated|InsertRunStatusTransition|CreateRunAttempt|SetAttemptProviderRunID|FinishRunAttempt|SetRunAttemptObjectGrantsExpiry|CloseUnissuedRunAttemptGrants" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
-  ```
-- **EDIT**：先補三條特徵化測試：派送前就失敗時未發的物件授權也會關掉、同一個 attempt 結束兩次的現況、取消已結束的 Run。再加 aggregate（含 attempt 與物件授權），命令記下事件，既有的 run 事件改由 aggregate 記下、wire 名稱不變；`statemachine.go` 的 `successors` 保留原名與原檔，`run-status-sql` 以 AST 讀它。
-- **PROVE**：`statemachine_test.go`、`grantstate_test.go` 與 `run-status-sql` 照舊綠；每個新方法的規則弄壞一次紅。
-- **STOP-IF**：Go 補上的判斷會擋掉今天走得通的流程。
-
-### 6.2 丙-247 creation 的兩個具名概念
+### 6.1 丙-247 creation 的兩個具名概念
 
 - **GOAL**：「還能不能再加一則訊息」只有一個定義；`PendingAction` 的值是具名常數。
 - **DISCOVER**：

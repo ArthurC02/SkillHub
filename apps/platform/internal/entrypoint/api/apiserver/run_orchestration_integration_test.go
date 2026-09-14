@@ -243,6 +243,101 @@ func TestCancelReachesTheProviderAndStopsTheRun(t *testing.T) {
 	}
 }
 
+type runEvent struct {
+	eventType string
+	payload   map[string]any
+}
+
+func runEvents(t *testing.T, pool *pgxpool.Pool, runID string) []runEvent {
+	t.Helper()
+	rows, err := pool.Query(context.Background(), `
+		SELECT event_type, payload FROM outbox_events
+		WHERE aggregate_id = $1 AND event_type NOT LIKE 'run.cleanup_%'
+		ORDER BY event_type`, mustUUID(t, runID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var events []runEvent
+	for rows.Next() {
+		var e runEvent
+		var raw []byte
+		if err := rows.Scan(&e.eventType, &raw); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(raw, &e.payload); err != nil {
+			t.Fatal(err)
+		}
+		events = append(events, e)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return events
+}
+
+func TestEveryDecisionOnARunIsPublishedAsItsOwnEvent(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-run-events")
+	withProvider(t, a, pool, providertest.Plan{CreatingPolls: 1, RunningPolls: 1})
+
+	created := f.start(t)
+	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
+
+	var attemptID pgtype.UUID
+	if err := pool.QueryRow(context.Background(),
+		`SELECT id FROM run_attempts WHERE run_id = $1`, mustUUID(t, created.RunID)).Scan(&attemptID); err != nil {
+		t.Fatal(err)
+	}
+	events := runEvents(t, pool, created.RunID)
+	var types []string
+	for _, e := range events {
+		types = append(types, e.eventType)
+		if id, carries := e.payload["attempt_id"]; carries && id != attemptID.String() {
+			t.Errorf("%s names attempt %v, want the run's only attempt %s", e.eventType, id, attemptID)
+		}
+		if class, carries := e.payload["error_class"]; e.eventType == outbox.RunAttemptFinished && (!carries || class != nil) {
+			t.Errorf("the successful attempt finished with error_class %v (present %v), want a present null", class, carries)
+		}
+	}
+	want := []string{
+		outbox.RunAttemptDispatched, outbox.RunAttemptFinished, outbox.RunAttemptStarted, outbox.RunEvaluating,
+		outbox.RunObjectGrantsRecorded, outbox.RunPreparing, outbox.RunProviderAssigned,
+		outbox.RunProvisioning, outbox.RunQueued, outbox.RunRunning, outbox.RunSucceeded,
+	}
+	if strings.Join(types, ",") != strings.Join(want, ",") {
+		t.Errorf("a successful run published %v, want %v", types, want)
+	}
+}
+
+func TestAskingTwiceToCancelARunPublishesOneRequest(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-cancel-twice")
+	withProvider(t, a, pool, providertest.Plan{StuckRunning: true})
+
+	created := f.start(t)
+	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusRunning))
+	if code, _ := f.postJSON(t, "/runs/"+created.RunID+"/cancel", ""); code != http.StatusAccepted {
+		t.Fatalf("first cancel: got %d, want 202", code)
+	}
+	if code, _ := f.postJSON(t, "/runs/"+created.RunID+"/cancel", ""); code != http.StatusAccepted && code != http.StatusConflict {
+		t.Fatalf("second cancel: got %d, want 202 while running or 409 once cancelled", code)
+	}
+	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusCancelled))
+
+	requests := 0
+	for _, e := range runEvents(t, pool, created.RunID) {
+		if e.eventType == outbox.RunCancelRequested {
+			requests++
+		}
+	}
+	if requests != 1 {
+		t.Errorf("two cancel requests published %d run.cancel_requested events, want 1", requests)
+	}
+}
+
 func TestDispatchFailuresAreRetriedWithNewAttempts(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -301,6 +396,45 @@ func TestCancelBetweenDispatchAttemptsStopsTheRetryLoop(t *testing.T) {
 	}
 	if fake.Dispatches() != 0 {
 		t.Errorf("dispatches = %d, want 0: the only attempt was refused", fake.Dispatches())
+	}
+}
+
+func TestARunEndedElsewhereMidDispatchGetsNoNewAttemptAndTheDriverStepsAside(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-ended-mid-dispatch")
+	ctx := context.Background()
+	created := f.start(t)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	fake.DispatchStatuses = []int{http.StatusServiceUnavailable}
+	fake.OnDispatch = func(runID string, attempt int) {
+		if _, err := pool.Exec(ctx, `UPDATE runs SET status = 'failed', finished_at = now(),
+			status_reason = 'ended by the supervisor' WHERE id = $1`, mustUUID(t, runID)); err != nil {
+			t.Error(err)
+		}
+	}
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+
+	if err := svc.Drive(ctx, ws, runID); err != nil {
+		t.Fatalf("the driver of a run ended elsewhere returned %v, want it to step aside", err)
+	}
+
+	var attempts int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM run_attempts WHERE run_id = $1`, runID).Scan(&attempts); err != nil {
+		t.Fatal(err)
+	}
+	started := 0
+	for _, e := range runEvents(t, pool, created.RunID) {
+		if e.eventType == outbox.RunAttemptStarted {
+			started++
+		}
+	}
+	if attempts != 1 || started != 1 {
+		t.Fatalf("attempts = %d, run.attempt_started = %d; want 1 and 1: a finished run takes no new attempt", attempts, started)
 	}
 }
 
@@ -555,6 +689,118 @@ func TestLegacyAttemptGrantStateRemainsFailClosed(t *testing.T) {
 	}
 	if state != "legacy_unknown" || !stillInfinite {
 		t.Fatalf("legacy grant marker became state=%q infinity=%v; it must remain fail-closed", state, stillInfinite)
+	}
+}
+
+func TestAnAttemptWhoseRequestCannotBeBuiltClosesItsGrantsAndFailsTheRun(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-unbuildable-request")
+	ctx := context.Background()
+	created := f.start(t)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	svc.ReadVersion = nil
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+
+	if err := svc.Drive(ctx, ws, runID); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, view := f.getRun(t, created.RunID); view.Status != string(gen.RunStatusFailed) ||
+		view.FailureClass.Value != "platform_error" {
+		t.Fatalf("run = %q/%q, want failed with platform_error", view.Status, view.FailureClass.Value)
+	}
+	var attempts int
+	var state string
+	var fenced, finished bool
+	var errorClass *string
+	if err := pool.QueryRow(ctx, `SELECT count(*) OVER (), object_grants_state,
+		object_grants_expire_at < now(), finished_at IS NOT NULL, error_class
+		FROM run_attempts WHERE run_id = $1`, runID).Scan(&attempts, &state, &fenced, &finished, &errorClass); err != nil {
+		t.Fatal(err)
+	}
+	if attempts != 1 || state != "recorded" || !fenced || !finished || errorClass == nil || *errorClass != "provision" {
+		t.Fatalf("the undispatched attempt: %d attempts, grants %q fenced %v, finished %v, class %v; "+
+			"want one finished provision attempt whose grants are recorded as already expired",
+			attempts, state, fenced, finished, errorClass)
+	}
+}
+
+func TestFinishingAnAttemptTwiceKeepsTheSecondOutcome(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-finish-twice")
+	ctx := context.Background()
+	created := f.start(t)
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+	q := gen.New(pool)
+	attempt, err := q.CreateRunAttempt(ctx, gen.CreateRunAttemptParams{ID: runID, WorkspaceID: ws, Provider: "sandbox"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := q.FinishRunAttempt(ctx, gen.FinishRunAttemptParams{
+		ID: attempt.ID, WorkspaceID: ws, ErrorClass: strptr("execution"), ErrorMessage: strptr("first outcome"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := q.FinishRunAttempt(ctx, gen.FinishRunAttemptParams{
+		ID: attempt.ID, WorkspaceID: ws, ErrorClass: strptr("timeout"), ErrorMessage: strptr("second outcome"),
+	})
+	if err != nil {
+		t.Fatalf("a second finish of the same attempt was refused: %v", err)
+	}
+
+	if *second.ErrorClass != "timeout" || *second.ErrorMessage != "second outcome" ||
+		second.FinishedAt.Time.Before(first.FinishedAt.Time) || second.ObjectGrantsState != "closed" {
+		t.Errorf("after two finishes: class %q, message %q, finished %v (first %v), grants %q; "+
+			"today the second outcome overwrites the first", *second.ErrorClass, *second.ErrorMessage,
+			second.FinishedAt.Time, first.FinishedAt.Time, second.ObjectGrantsState)
+	}
+}
+
+func TestEndingARunClosesOnlyTheGrantsItsAttemptsNeverIssued(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-terminal-closes-grants")
+	ctx := context.Background()
+	created := f.start(t)
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+	q := gen.New(pool)
+	unissued, err := q.CreateRunAttempt(ctx, gen.CreateRunAttemptParams{ID: runID, WorkspaceID: ws, Provider: "sandbox"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	issued, err := q.CreateRunAttempt(ctx, gen.CreateRunAttemptParams{ID: runID, WorkspaceID: ws, Provider: "sandbox"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET object_grants_state = 'recorded',
+		object_grants_expire_at = now() + interval '1 hour' WHERE id = $1`, issued.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := a.runs.Transition(ctx, run.TransitionParams{
+		WorkspaceID: ws, RunID: runID, From: gen.RunStatusQueued, To: gen.RunStatusCancelled, Reason: "stopped before dispatch",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	states := map[pgtype.UUID]string{}
+	for _, attempt := range []gen.RunAttempt{unissued, issued} {
+		var state string
+		if err := pool.QueryRow(ctx, `SELECT object_grants_state FROM run_attempts WHERE id = $1`, attempt.ID).Scan(&state); err != nil {
+			t.Fatal(err)
+		}
+		states[attempt.ID] = state
+	}
+	if states[unissued.ID] != "closed" || states[issued.ID] != "recorded" {
+		t.Fatalf("after the run ended: never issued %q, issued %q; want closed and recorded", states[unissued.ID], states[issued.ID])
 	}
 }
 

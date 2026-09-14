@@ -133,6 +133,9 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 			outbox.RunCancelled, outbox.RunTimedOut).
 		Ignore("cleanup outcome is already recorded on the run row and alerted on through metrics; nothing in this process reacts to it",
 			outbox.RunCleanupCleaned, outbox.RunCleanupFailed).
+		Ignore("run bookkeeping: provider, attempts, object grants and cancel requests are read from the run's own rows, and nothing reacts to them yet",
+			outbox.RunCancelRequested, outbox.RunProviderAssigned, outbox.RunAttemptStarted,
+			outbox.RunAttemptDispatched, outbox.RunAttemptFinished, outbox.RunObjectGrantsRecorded).
 		Ignore("evaluation facts: no aggregate reacts to them yet, and every reader answers from the evaluation's own rows",
 			outbox.EvaluationStarted, outbox.EvaluationSuperseded, outbox.EvaluationCompleted,
 			outbox.EvaluationFailed, outbox.EvaluationFeedbackRecorded, outbox.EvaluationSuggestionDecided,

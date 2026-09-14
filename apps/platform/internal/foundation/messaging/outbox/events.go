@@ -77,6 +77,15 @@ const (
 )
 
 const (
+	RunCancelRequested      = "run.cancel_requested"
+	RunProviderAssigned     = "run.provider_assigned"
+	RunAttemptStarted       = "run.attempt_started"
+	RunAttemptDispatched    = "run.attempt_dispatched"
+	RunAttemptFinished      = "run.attempt_finished"
+	RunObjectGrantsRecorded = "run.object_grants_recorded"
+)
+
+const (
 	EvaluationStarted            = "evaluation.started"
 	EvaluationSuperseded         = "evaluation.superseded"
 	EvaluationCompleted          = "evaluation.completed"
@@ -118,6 +127,12 @@ var EventTypes = []string{
 	RunTimedOut,
 	RunCleanupCleaned,
 	RunCleanupFailed,
+	RunCancelRequested,
+	RunProviderAssigned,
+	RunAttemptStarted,
+	RunAttemptDispatched,
+	RunAttemptFinished,
+	RunObjectGrantsRecorded,
 	EvaluationStarted,
 	EvaluationSuperseded,
 	EvaluationCompleted,

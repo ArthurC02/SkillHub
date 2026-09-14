@@ -20,6 +20,8 @@ func fullyWired(t *testing.T) *Dispatcher {
 		Ignore("no consumer in this process", RunQueued, RunProvisioning, RunPreparing,
 			RunRunning, RunEvaluating, RunCancelled, RunTimedOut,
 			RunCleanupCleaned, RunCleanupFailed,
+			RunCancelRequested, RunProviderAssigned, RunAttemptStarted,
+			RunAttemptDispatched, RunAttemptFinished, RunObjectGrantsRecorded,
 			EvaluationStarted, EvaluationSuperseded, EvaluationCompleted,
 			EvaluationFailed, EvaluationFeedbackRecorded, EvaluationSuggestionDecided,
 			SkillTakenDown, SkillAccessRestricted, SkillAccessRestrictionLifted,

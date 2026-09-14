@@ -339,7 +339,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, err
 	}
 
-	run, err := q.CreateRun(ctx, gen.CreateRunParams{
+	requested := startRun(gen.Run{
 		WorkspaceID:        p.WorkspaceID,
 		SkillVersionID:     version.ID,
 		TestCaseSnapshotID: snapshot.ID,
@@ -348,13 +348,10 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		RuntimeSnapshot: []byte("{}"),
 		PolicySnapshot:  policy,
 	})
-	if err != nil {
+	if err := s.saveRun(ctx, tx, requested, p.Actor); err != nil {
 		return gen.Run{}, err
 	}
-
-	if err := s.record(ctx, q, tx, run, nil, pgtype.UUID{}, "已收到這次 Run 的請求", p.Actor, audit.ActionRunCreate); err != nil {
-		return gen.Run{}, err
-	}
+	run := requested.Row()
 
 	if s.Queue != nil {
 
@@ -600,19 +597,18 @@ func (s *Service) RequestCancel(ctx context.Context, workspaceID, runID, actor p
 		return gen.Run{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	q := s.queries().WithTx(tx)
-
-	run, err := q.RequestRunCancel(ctx, gen.RequestRunCancelParams{ID: runID, WorkspaceID: workspaceID})
+	r, err := loadRun(ctx, s.queries().WithTx(tx), workspaceID, runID)
 	if errors.Is(err, pgx.ErrNoRows) {
-
-		if _, err := s.Get(ctx, workspaceID, runID); err != nil {
-			return gen.Run{}, err
-		}
-		return gen.Run{}, ErrRunFinished
+		return gen.Run{}, ErrNotFound
 	}
 	if err != nil {
 		return gen.Run{}, err
 	}
+	r.RequestCancel()
+	if err := s.saveRun(ctx, tx, r, actor); err != nil {
+		return gen.Run{}, err
+	}
+	run := r.Row()
 
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor: actor, Workspace: run.WorkspaceID, Action: audit.ActionRunCancelAsk,
