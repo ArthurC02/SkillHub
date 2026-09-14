@@ -386,8 +386,8 @@ var unreconciledVocabularies = map[string]string{
 	"evaluation_model_usage.operation":         "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
 	"object_reconcile_sightings.resource_kind": "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
 	"outbox_events.event_type":                 "the outbox package's own tests reconcile it against the migration and the event catalogue",
-	"skill_runtime_compatibility.capability":   "its one reader compares the runtime column against another concept, so the pair waits on a ruling (platform-ddd-convergence.md §6.3)",
-	"skill_runtime_compatibility.runtime":      "its one reader compares it against a runtime name, not a compatibility outcome (platform-ddd-convergence.md §6.3)",
+	"skill_runtime_compatibility.capability":   "its one reader compares the runtime column against another concept, so the pair waits on a ruling (04 丙-243)",
+	"skill_runtime_compatibility.runtime":      "its one reader compares it against a runtime name, not a compatibility outcome (04 丙-243)",
 }
 
 func domainVocabularyProblems(root string) []string {

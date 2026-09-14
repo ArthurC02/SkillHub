@@ -235,7 +235,13 @@ jobs:
         working-directory: apps/llm
         run: uv sync --frozen
       - uses: ./.github/actions/golangci-lint
-      - run: golangci-lint run
+      - name: golangci-lint (an exclusion that matches nothing fails)
+        run: |
+          golangci-lint run 2>&1 | tee "$RUNNER_TEMP/golangci-lint.log"
+          if grep -F "Skipped 0 issues by rules" "$RUNNER_TEMP/golangci-lint.log"; then
+            echo "::error file=apps/platform/.golangci.yml::an exclusion rule matches nothing; delete it"
+            exit 1
+          fi
       - run: golangci-lint fmt --diff
       - run: go vet ./...
       - name: Check database-only immutability constraints

@@ -2244,7 +2244,7 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 
 ---
 
-## R-80｜相容性量測涵不涵蓋這次 Run，該拿哪一個欄位比（`04` 丙-243、[platform-ddd-convergence.md §6.3](../development/platform-ddd-convergence.md)）
+## R-80｜相容性量測涵不涵蓋這次 Run，該拿哪一個欄位比（`04` 丙-243、[platform-ddd-convergence.md §6.2](../development/platform-ddd-convergence.md)）
 
 - 日期：2026-09-14
 

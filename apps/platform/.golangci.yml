@@ -3,12 +3,82 @@ version: "2"
 linters:
   enable:
     - depguard
+    - gocognit
 
   exclusions:
     presets:
       - std-error-handling
+    warn-unused: true
+    rules:
+      - path: _test\.go
+        linters: [gocognit]
+      - path: cmd/api/main\.go
+        linters: [gocognit]
+        text: 'func `main`'
+      - path: internal/creator/creation/creation\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.Create`'
+      - path: internal/creator/creation/creation\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.Act`'
+      - path: internal/creator/creation/job\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.Step`'
+      - path: internal/creator/creation/job\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.finish`'
+      - path: internal/creator/creation/job\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.proposal`'
+      - path: internal/creator/workspace/purge\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.purgeAccount`'
+      - path: internal/entrypoint/api/apiserver/creation_stream\.go
+        linters: [gocognit]
+        text: 'func `\(\*creationHandler\)\.Stream`'
+      - path: internal/entrypoint/api/apiserver/creation_wiring\.go
+        linters: [gocognit]
+        text: 'func `wireCreationReads`'
+      - path: internal/entrypoint/worker/creation_wiring\.go
+        linters: [gocognit]
+        text: 'func `wireCreationReads`'
+      - path: internal/foundation/storage/objreconcile/objreconcile\.go
+        linters: [gocognit]
+        text: 'func `PurgeExpired`'
+      - path: internal/shared/skillpkg/archive\.go
+        linters: [gocognit]
+        text: 'func `PackageFS`'
+      - path: internal/shared/skillpkg/skillpkg\.go
+        linters: [gocognit]
+        text: 'func `\(\*Report\)\.parseFrontmatter`'
+      - path: internal/skill/admission/generate\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.GenerateSkill`'
+      - path: internal/skill/delivery/packaging\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.persist`'
+      - path: internal/skill/discovery/creation\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.CreationKnowledgeIDs`'
+      - path: internal/trial/design/dataset\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.UploadDataset`'
+      - path: internal/trial/execution/job\.go
+        linters: [gocognit]
+        text: 'func `\(\*driver\)\.dispatch`'
+      - path: internal/trial/execution/job\.go
+        linters: [gocognit]
+        text: 'func `\(\*driver\)\.follow`'
+      - path: internal/trial/execution/service\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.create`'
+      - path: internal/trial/improvement/apply\.go
+        linters: [gocognit]
+        text: 'func `\(\*Service\)\.ApplySuggestions`'
 
   settings:
+    gocognit:
+      min-complexity: 30
     depguard:
       rules:
         creation:
