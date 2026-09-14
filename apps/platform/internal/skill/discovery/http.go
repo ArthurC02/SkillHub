@@ -164,10 +164,6 @@ var agentRuntimeValues = map[string]bool{
 	"native": true, "transpiled": true, "failed": true, "unverified": true,
 }
 
-var categoryValues = map[string]bool{
-	string(CategoryDocuments): true, string(CategoryWriting): true, string(CategoryData): true,
-}
-
 var unavailableFilters = map[string]string{
 	"mcp": "是否需要 MCP 沒有任何來源資料:靜態掃描與 manifest 都沒有這項訊號,遠端 MCP 也不在 MVP 首發。",
 }
@@ -217,7 +213,7 @@ func parseFilters(r *http.Request) (searchFilters, error) {
 		out.CurationTier = &v
 	}
 	if v := q.Get("category"); v != "" {
-		if !categoryValues[v] {
+		if !slices.Contains(AllStoredCategories(), Category(v)) {
 			return searchFilters{}, errors.New(`category must be "documents", "writing" or "data"`)
 		}
 		out.Category = &v

@@ -12,6 +12,10 @@ const (
 	CategoryUnassigned Category = "unassigned"
 )
 
+func AllStoredCategories() []Category {
+	return []Category{CategoryDocuments, CategoryWriting, CategoryData}
+}
+
 type CategoryDisplay struct {
 	Label string
 	Note  string

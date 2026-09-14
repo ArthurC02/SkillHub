@@ -11,16 +11,28 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
+type Category string
+
+const (
+	CategoryDocuments Category = "documents"
+	CategoryWriting   Category = "writing"
+	CategoryData      Category = "data"
+)
+
+func AllCategories() []Category {
+	return []Category{CategoryDocuments, CategoryWriting, CategoryData}
+}
+
 const categorySourceOwner = "owner"
 
-func (s *Service) SetCategory(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, category *string) (gen.Skill, error) {
+func (s *Service) SetCategory(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, category *Category) (gen.Skill, error) {
 	if s.RefreshListing == nil {
 		return gen.Skill{}, errors.New("registry: catalog listing refresh not injected; refusing to write")
 	}
-	var source *string
+	var stored, source *string
 	if category != nil {
-		v := categorySourceOwner
-		source = &v
+		value, owner := string(*category), categorySourceOwner
+		stored, source = &value, &owner
 	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -28,7 +40,7 @@ func (s *Service) SetCategory(ctx context.Context, ws identity.Workspace, skillI
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	row, err := gen.New(tx).SetSkillCategory(ctx, gen.SetSkillCategoryParams{
-		ID: skillID, WorkspaceID: ws.ID, Category: category, CategorySource: source,
+		ID: skillID, WorkspaceID: ws.ID, Category: stored, CategorySource: source,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return gen.Skill{}, ErrNotFound

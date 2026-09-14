@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -174,9 +175,7 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-var categoryValues = map[string]bool{
-	"documents": true, "writing": true, "data": true, "unassigned": true,
-}
+const clearCategory = "unassigned"
 
 func (h *Handler) SetCategory(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
@@ -195,15 +194,16 @@ func (h *Handler) SetCategory(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a category")
 		return
 	}
-	if !categoryValues[body.Category] {
+	if body.Category != clearCategory && !slices.Contains(AllCategories(), Category(body.Category)) {
 		httpx.WriteError(w, http.StatusBadRequest,
 			`category must be "documents", "writing", "data" or "unassigned"`)
 		return
 	}
 
-	var category *string
-	if body.Category != "unassigned" {
-		category = &body.Category
+	var category *Category
+	if body.Category != clearCategory {
+		chosen := Category(body.Category)
+		category = &chosen
 	}
 
 	skill, err := h.Svc.SetCategory(r.Context(), ws, skillID, category)

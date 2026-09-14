@@ -345,6 +345,21 @@ var domainVocabularies = []domainVocabulary{
 				"apps/platform/internal/trial/execution/statemachine.go", "FailureClass"),
 		},
 	},
+	{
+		name: "skill category",
+		sources: []vocabularySource{
+			sqlColumnCheck("skills", "category"),
+			goConstEnum("apps/platform/internal/skill/library/category.go", "Category"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/library/category.go", "AllCategories",
+				"apps/platform/internal/skill/library/category.go", "Category"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/discovery/category.go", "AllStoredCategories",
+				"apps/platform/internal/skill/discovery/category.go", "Category"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "BrowseCatalogCategory"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "PublicSearchSkillsCategory"),
+		},
+	},
 }
 
 func domainVocabularyProblems(root string) []string {
