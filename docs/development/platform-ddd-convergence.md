@@ -116,7 +116,7 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 
 **「機器對帳」欄有兩種東西，不要混為一談：**
 
-- 前四列是 `devctl automation-check` 的檢查器，**Go 與 SQL 分岔時 CI 紅**。`domain-vocabulary` 對帳 Go 常數 ↔ DB `CHECK (… IN (…))` ↔ Postgres enum ↔ 契約 enum，清單是 `tools/devctl/domain_vocabulary.go` 的 `domainVocabularies`，上表只列範本（SQL 沒有 CHECK 的詞彙以 `absent` 寫明）。它同時守覆蓋面：migration 裡每一個 `CHECK (… IN (…))` 詞彙要嘛接進對帳，要嘛在 `unreconciledVocabularies` 寫下為什麼不接（§5.1、§5.6、§6.2），兩者皆無或理由已經過期都紅；`run-status-sql` 對帳 Go 的 `successors` ↔ migration 0032 的 trigger 轉移列 ↔ 每一處終態 `IN` 清單。
+- 前四列是 `devctl automation-check` 的檢查器，**Go 與 SQL 分岔時 CI 紅**。`domain-vocabulary` 對帳 Go 常數 ↔ DB `CHECK (… IN (…))` ↔ Postgres enum ↔ 契約 enum，清單是 `tools/devctl/domain_vocabulary.go` 的 `domainVocabularies`，上表只列範本（SQL 沒有 CHECK 的詞彙以 `absent` 寫明）。它同時守覆蓋面：migration 裡每一個 `CHECK (… IN (…))` 詞彙要嘛接進對帳，要嘛在 `unreconciledVocabularies` 寫下為什麼不接（§5.1、§5.6、§6.1），兩者皆無或理由已經過期都紅；`run-status-sql` 對帳 Go 的 `successors` ↔ migration 0032 的 trigger 轉移列 ↔ 每一處終態 `IN` 清單。
 - 後四列只有**同套件的測試**，沒有跨 Go／SQL 的對帳——因為那四樣東西 SQL 側沒有第二份。
 
 **閘門順序不在這張表裡，它刻意留在 `create()` 的呼叫序。** 順序決定哪個 reason 先浮出來，而 reason 直接餵 `metrics.RunRefused` 與 `audit.ActionRunRefused`，所以改順序就是改對外行為（§9）。
@@ -282,32 +282,7 @@ J3 已經量過，不在這裡：吃事實的 `require*` 都只負責取事實�
 git grep -nE "^func \([a-z]+ \*?[A-Za-z]+\) require[A-Z][A-Za-z]*\(" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
 ```
 
-### 6.1 creation 的編排拆成有名字的步驟（丙-242）
-
-**GOAL**：`creator/creation` 的 `proposal`、`Act`、`finish`、`Step`、`Create` 是平台認知複雜度最高的一群。判斷被夾在讀寫與模型呼叫之間，其中沒有不連資料庫的測試直接呼叫的那幾支，C3 要的「規則有不連資料庫的測試」做不到。拆成有名字的步驟，每一步的判斷能單獨測，並從 `apps/platform/.golangci.yml` 的 `gocognit` 排除清單刪掉。
-
-**DISCOVER**（在 repo 根）
-
-```
-golangci-lint run --enable-only=gocognit --max-same-issues 0 --max-issues-per-linter 0 ./apps/platform/internal/creator/creation/... \
-  | awk '/\(gocognit\)$/ && !/_test\.go/'
-git grep -nE "\.(proposal|Act|finish|Step|Create)\(" -- \
-  'apps/platform/internal/creator/creation/*_test.go' 'apps/platform/internal/entrypoint/api/apiserver/creation*_test.go'
-```
-
-第二支列出直接呼叫它們的測試。已經被不連資料庫的測試大量直接呼叫的，可以先拆；只被 `apiserver` 的整合測試呼叫、或完全沒有被直接呼叫的，先做特徵化。
-
-**EDIT**：照 §3〈特徵化先於強制〉。
-
-1. **特徵化**：每支函式的每條分支追到結果（回傳值、寫入的狀態、事件、呼叫了哪個注入依賴），寫測試釘住現況。注入依賴是函式欄位，能用假的就不連資料庫；追路徑派唯讀子代理，一支函式一個，逐行附 `檔案:行`。
-2. **拆**：一個分支一個有名字的函式；判斷（吃事實、回決定）與做事（讀寫、呼叫模型）分開，判斷那一半照 J3 寫成吃事實的函式。**不改行為**：第 1 步的測試一條都不改。
-3. 降到 30 以下的那幾支，從 `apps/platform/.golangci.yml` 的 `gocognit` 排除清單刪掉（不刪，CI 會說它過期）。
-
-**PROVE**：第 1 步每條測試，弄壞它釘住的那一行產品程式 → 紅。第 2 步完成後同一批測試不改一字全綠，再對每個拆出來的判斷函式各做一次突變。
-
-**STOP-IF**：特徵化時某條路徑看起來是 bug（§9 第二列：照現況釘住並回報，不要順手修）；拆解需要改轉移表、`advance()` 這個唯一寫入點或會話事件的順序（行為改變）；拆出來的步驟需要新的跨 context 取用（照 ADR-067 走注入的擁有者 API，要新的注入點就停）。
-
-### 6.2 相容性量測拿兩種東西互比（丙-243）
+### 6.1 相容性量測拿兩種東西互比（丙-243）
 
 **GOAL**：`skill_runtime_compatibility` 的 `capability`（`activated`／`not_activated`／`unverified`）與 `runtime`（`native`／`transpiled`／`failed`／`unverified`）是封閉詞彙，Go 唯一依它們分支的地方是 `trial/improvement/deterministic.go` 的 `compatibilityFindings`。它把 Run 快照的 `RuntimeProfile.Runtime`（執行環境的名字，例如 `claude_agent_sdk`）拿去和 `runtime` 欄位比——兩邊不是同一個詞彙，只要有量測，這個比較就永遠不相等，finding 永遠降成 warning。今天沒有任何查詢寫這張表，所以它是休眠的，而 `compatibilityFindings` 沒有測試。兩個欄位因此暫不型別化，列在 `unreconciledVocabularies`。
 

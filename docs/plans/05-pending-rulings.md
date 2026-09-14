@@ -2244,7 +2244,7 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 
 ---
 
-## R-80｜相容性量測涵不涵蓋這次 Run，該拿哪一個欄位比（`04` 丙-243、[platform-ddd-convergence.md §6.2](../development/platform-ddd-convergence.md)）
+## R-80｜相容性量測涵不涵蓋這次 Run，該拿哪一個欄位比（`04` 丙-243、[platform-ddd-convergence.md §6.1](../development/platform-ddd-convergence.md)）
 
 - 日期：2026-09-14
 
@@ -2256,3 +2256,22 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 - **建議**：比「量測時的執行環境」與「這次 Run 的執行環境」的同一種東西。Run 快照今天沒有映像，最小的做法是量測多記 runtime 名字與版本、拿它們和 `RuntimeProfile` 比；`runtime` 欄位只留在訊息裡顯示量測結果。
 - **不決定的代價**：量測一旦開始寫入，每一個有量測的 Skill 的評估都會多一條錯的 warning。
 - **決定之後誰動**：Agent（補測試、改比較、兩個詞彙型別化並接進對帳；若要多記欄位，另有一支 migration）。
+
+---
+
+## R-81｜creation 拆解時照現況釘住的七個行為，哪些是規則、哪些要改（`04` 丙-242）
+
+- 日期：2026-09-14
+
+- **要決定的是什麼**：拆 creation 之前先把每條分支照現況寫成測試，下面七個行為看起來不像刻意的規則。依 [platform-ddd-convergence.md §9](../development/platform-ddd-convergence.md) 第二列，它們照現況釘住、沒有順手修；每一個要定下是規則（留著、測試改名成規則）還是要改。
+- **已經查到的事實**：
+  1. **兩種「沒交出來」共用一次重試**：模型說沒交草稿（`draft_missing`）或沒整理出需求（`brief_missing`），Go 都自動再試一次，但兩者共用 `DraftRetries` 一個計數（`job.go` 的 `retriesMissingOutput`）。同一場先遇到一種、再遇到另一種，第二種不會重試。測試：`TestDraftRetryCounterIsSharedAcrossReasons`。
+  2. **模型要用工具卻沒說是哪個工具，被當成「額度用完」**：`useTool` 對缺少的工具意圖回 `ErrLimit`，於是這一步失敗時人看到的是泛用的「這一步未完成」，不是「模型的回覆不符合會話規則」（`stepFailureMessage`）。
+  3. **不認得的工具種類也扣一次工具額度**：`useTool` 先加 `ToolCalls` 再分派，種類不認得時回 `ErrInvalidCommand`，但那一次已經算掉。
+  4. **送給模型的逾時少一秒**：`callTimeoutSeconds` 把剩餘時間取整數再減五秒的緩衝，設定 90 秒時送出 89 秒；設定成 `Limits.Valid` 允許的下限 1 秒時，排定呼叫到送出之間只要經過任何時間就算出 0，這一步直接失敗、模型不會被呼叫。測試：`TestAOneSecondCallTimeoutLeavesNoTimeOnceAnyTimeHasPassed`。
+  5. **建立會話撞上同一個 id 的補救分支比正常分支寬鬆**：`startedConcurrently` 不檢查那場會話是否已過期，快照解不開時回「指令被重用」而不是實際的錯誤；正常的重播分支（`resumeStart`）兩者都會擋。這條路要真正的並發才走得到，沒有測試。
+  6. **一次資料庫讀取失敗就取消已經付費的模型呼叫**：`Step` 呼叫模型期間每 250 毫秒讀一次會話，看到狀態變了就取消呼叫，讀取本身出錯也同樣取消（`cancelWhenSessionMoves`）；費用照計，那一步的結果丟掉。
+  7. **確認重複時先讀草稿名字、後檢查草稿存在**：`save` 的 `confirm_duplicate` 在同一行先用 `p.Draft.Skill.Name`、之後才判斷 `p.Draft != nil`。今天安全，靠的是「清掉草稿的指令同時清掉待確認的重複」這個跨指令的不變式。
+- **建議**：1 分成兩個計數（兩種原因各一次）；2 改回 `ErrInvalidCommand`；3 先認種類再扣額度；4 取整改成無條件進位，並讓 `Limits.Valid` 要求逾時至少多於緩衝；5 補上過期檢查、解碼錯誤照實回；6 讀取失敗不取消，只有看到狀態真的變了才取消；7 把順序換成先檢查再讀。七項都是 Go 內的小改動，不動契約、不動 migration。
+- **不決定的代價**：都不影響今天的主流程；1、2、3、6 會讓少數場次多失敗一步或多花一次呼叫，4 只在有人把逾時設到下限時全面失效。
+- **決定之後誰動**：Agent（每項改動時把釘住它的那條測試改成新規則，並照開發自動化第 9 條證明會紅）。
