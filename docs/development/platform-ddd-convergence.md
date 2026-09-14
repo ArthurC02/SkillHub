@@ -2,7 +2,7 @@
 
 本檔給要動 `apps/platform/internal/` 領域程式碼的 Coding Agent，講的是**領域規則該住在哪裡**：規則的定義在 Go，原子性機制留在 SQL，使用者看得到的句子在 handler。日常的跨 context 判斷看 [platform-ddd-practices.md](platform-ddd-practices.md)。
 
-四段各自回答一個問題：**§4** 現在住在哪裡、**§5** 哪些看起來該做而量測說不做、**§6** 還缺什麼（目前沒有）、**§7～§10** 怎麼驗與什麼時候停。§1～§3 是動手前要先過的約束、判準與形狀。
+四段各自回答一個問題：**§4** 現在住在哪裡、**§5** 哪些看起來該做而量測說不做、**§6** 還缺什麼、**§7～§10** 怎麼驗與什麼時候停。§1～§3 是動手前要先過的約束、判準與形狀。
 
 動手前先讀根目錄 [`AGENTS.md`](../../AGENTS.md) 與 [`apps/platform/internal/AGENTS.md`](../../apps/platform/internal/AGENTS.md)，以及目標套件的 `doc.go`。
 
@@ -250,9 +250,87 @@ gen.GetSkillParams{ID: skillID.value(), WorkspaceID: workspaceID.value()}
 
 ## 6 待做
 
-目前沒有。丙-237～丙-239 已在 [`04`](../plans/04-backlog-and-handoffs.md) 結案，留下的守衛見 §4.1。
+每一項都已在 [`04`](../plans/04-backlog-and-handoffs.md) 登記，照 §0 一次做一件，順序就是編號。新的待做先在 `04` 登記，再寫進這一節，每一項用同一個形狀：**GOAL**（要擋住什麼）、**DISCOVER**（能重跑的指令）、**EDIT**（改動的形狀）、**PROVE**（弄壞哪一行、哪條測試會紅）、**STOP-IF**（什麼情況停下回報）。
 
-新的待做先在 `04` 登記，再寫進這一節，每一項用同一個形狀：**GOAL**（要擋住什麼）、**DISCOVER**（能重跑的指令）、**EDIT**（改動的形狀）、**PROVE**（弄壞哪一行、哪條測試會紅）、**STOP-IF**（什麼情況停下回報）。
+J3 已經量過，不在這裡：吃事實的 `require*` 都只負責取事實，判斷交給純函式（`scanVerdict`、`runSlotVerdict`、`policy.EnforceQuota`）或注入的讀取者；額度扣抵留在 SQL 是 C2。重開前先重跑 J3 的 DISCOVER：
+
+```
+git grep -nE "^func \([a-z]+ \*?[A-Za-z]+\) require[A-Z][A-Za-z]*\(" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//'
+```
+
+### 6.1 封閉詞彙只有 SQL 在守（丙-240）
+
+**GOAL**：migration 裡每一個 `CHECK (… IN (…))` 都是一個封閉詞彙。Go 只要有分支讀它，就要有一份型別化的定義並接進 `domain-vocabulary`，讓 Go 與 SQL 分岔時 CI 紅（J1、J4）。沒接上的詞彙，SQL 改了值，Go 的分支會安靜地走進 default，沒有任何測試會紅——那就是 SQL 擁有領域概念。
+
+**DISCOVER**（在 repo 根）
+
+```
+# SQL 宣告了哪些封閉詞彙
+git grep -noE "CHECK \(\s*[a-z_]+\s+IN\s*\(" -- db/migrations/
+# 其中哪些已經接進對帳
+awk -F'"' '/sqlCheckIn\("/{print $2, $4}' tools/devctl/domain_vocabulary.go
+# Go 在哪裡用字面值碰這些值
+git grep -hoE "CHECK \(\s*[a-z_]+\s+IN\s*\([^)]*\)" -- db/migrations/ \
+  | awk -F"'" '{for (i = 2; i <= NF; i += 2) print $i}' | sort -u \
+  | while read -r v; do git grep -nF "\"$v\"" -- 'apps/platform/internal/*.go' | awk '!/_test\.go/ && !/\/gen\//'; done
+```
+
+第三支的輸出逐筆分成三種：型別化常數（只缺對帳）、無型別常數（缺型別也缺對帳）、散落在分支裡的字面值（連常數都沒有）。`pending`、`failed`、`unknown` 這類通用字會撈到無關的字面值，逐筆看，不要只數行數。
+
+**EDIT**（一個詞彙一個 commit）
+
+1. 在擁有那張表的 context（`db/query-owners.yaml`）把常數收成具名字串型別加封閉集合，形狀照 §3。值還在增刪的詞彙只做常數與對帳，不加拒絕未知值的 `Parse`（J5）。
+2. 分支裡的字面值改用常數。另一個 context 也讀同一個詞彙時（例如 creation 解析評估結果的 JSON），**不要為了共用常數跨 context import**（ADR-032）：消費端宣告自己的一份，兩份一起接進同一筆對帳——`domain-vocabulary` 本來就是為「同一個概念宣告在多處」而存在。
+3. 在 `domainVocabularies` 加一筆：`sqlCheckIn` ＋ 每一份 Go 定義。
+4. Go 從來沒有分支讀的詞彙不型別化，照 §5.1 的格式在 §5 補一條附 DISCOVER 的裁決。
+
+**PROVE**：每個詞彙兩次突變（§8 守衛類）。把 Go 常數的一個值改掉 → `domain-vocabulary` 紅，訊息是 `… is missing from …`。把一處改用常數的分支換成另一個常數 → 那個分支不連資料庫的測試紅；沒有這條測試就先補（C3）。
+
+**STOP-IF**：值需要新增、刪除或改名（那是 migration，C5）；Go 與 SQL 的值今天就已經對不上（那是現行缺陷，不是重構）；型別化會改到契約 enum 或 API 回應的 JSON 形狀（對外契約）。
+
+### 6.2 認知複雜度只准降不准升（丙-241）
+
+**GOAL**：新寫的生產函式認知複雜度不得超過 30；今天超標的每一支逐一列名，清單只准刪不准加。先擋新增，拆解在 6.3。
+
+**DISCOVER**（在 `apps/platform`）
+
+```
+golangci-lint run --enable-only=gocognit --max-same-issues 0 --max-issues-per-linter 0 ./... \
+  | awk '/\(gocognit\)$/ && !/_test\.go/'
+```
+
+少了 `--max-same-issues 0 --max-issues-per-linter 0`，筆數會被截斷。
+
+**EDIT**：`apps/platform/.golangci.yml` 啟用 `gocognit`（`min-complexity: 30`），`_test.go` 以 `path` 排除；DISCOVER 列出的每一支寫成一條 `exclusions.rules`，`path` 指到那個檔、`text` 寫 `` 'func `名稱`' ``，只命中那一支。`text` 用單引號：雙引號會把 `\` 當跳脫字元，設定直接載入失敗。開 `exclusions.warn-unused: true`——**它只印警告、不會紅**，所以 CI 的 lint 步驟要把 `Skipped 0 issues by rules` 那一行變成失敗；那是 `.github/workflows/`，由主 Agent 做（C5）。
+
+**PROVE**：刪掉一條排除 → lint 紅，訊息點名那一支函式。把一條排除的函式名改成不存在的 → CI 那一步紅。兩次都還原，`git diff` 為空。
+
+**STOP-IF**：某一支的排除寫不成只命中它自己（例如同一個檔裡有同名方法）；門檻要改成 30 以外的值（需要人裁定）。
+
+### 6.3 creation 的編排拆成有名字的步驟（丙-242）
+
+**GOAL**：`creator/creation` 的 `proposal`、`Act`、`finish`、`Step`、`Create` 是平台認知複雜度最高的一群。判斷被夾在讀寫與模型呼叫之間，其中沒有不連資料庫的測試直接呼叫的那幾支，C3 要的「規則有不連資料庫的測試」做不到。拆成有名字的步驟，每一步的判斷能單獨測，並從 6.2 的排除清單刪掉。
+
+**DISCOVER**（在 repo 根）
+
+```
+golangci-lint run --enable-only=gocognit --max-same-issues 0 --max-issues-per-linter 0 ./apps/platform/internal/creator/creation/... \
+  | awk '/\(gocognit\)$/ && !/_test\.go/'
+git grep -nE "\.(proposal|Act|finish|Step|Create)\(" -- \
+  'apps/platform/internal/creator/creation/*_test.go' 'apps/platform/internal/entrypoint/api/apiserver/creation*_test.go'
+```
+
+第二支列出直接呼叫它們的測試。已經被不連資料庫的測試大量直接呼叫的，可以先拆；只被 `apiserver` 的整合測試呼叫、或完全沒有被直接呼叫的，先做特徵化。
+
+**EDIT**：照 §3〈特徵化先於強制〉。
+
+1. **特徵化**：每支函式的每條分支追到結果（回傳值、寫入的狀態、事件、呼叫了哪個注入依賴），寫測試釘住現況。注入依賴是函式欄位，能用假的就不連資料庫；追路徑派唯讀子代理，一支函式一個，逐行附 `檔案:行`。
+2. **拆**：一個分支一個有名字的函式；判斷（吃事實、回決定）與做事（讀寫、呼叫模型）分開，判斷那一半照 J3 寫成吃事實的函式。**不改行為**：第 1 步的測試一條都不改。
+3. 降到 30 以下的那幾支，從 6.2 的排除清單刪掉。
+
+**PROVE**：第 1 步每條測試，弄壞它釘住的那一行產品程式 → 紅。第 2 步完成後同一批測試不改一字全綠，再對每個拆出來的判斷函式各做一次突變。
+
+**STOP-IF**：特徵化時某條路徑看起來是 bug（§9 第二列：照現況釘住並回報，不要順手修）；拆解需要改轉移表、`advance()` 這個唯一寫入點或會話事件的順序（行為改變）；拆出來的步驟需要新的跨 context 取用（照 ADR-067 走注入的擁有者 API，要新的注入點就停）。
 
 ---
 
