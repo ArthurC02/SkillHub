@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
@@ -97,12 +98,14 @@ type failure struct {
 type Evaluation struct {
 	row         gen.Evaluation
 	suggestions map[pgtype.UUID]gen.EvaluationSuggestion
+	applied     map[pgtype.UUID]map[pgtype.UUID]struct{}
 	verdict     verdict
 	failure     failure
 	events      []Event
 }
 
 func startEvaluation(workspaceID, runID pgtype.UUID, declared EvaluationStarted) *Evaluation {
+	declared = cloneEvaluationStarted(declared)
 	e := &Evaluation{row: gen.Evaluation{
 		WorkspaceID: workspaceID, RunID: runID, Status: string(StatusPending),
 		JudgeModel: declared.JudgeModel, JudgePromptVersion: declared.JudgePromptVersion,
@@ -120,7 +123,16 @@ func (e *Evaluation) Decision(suggestionID pgtype.UUID) Decision {
 	return Decision(e.suggestions[suggestionID].Decision)
 }
 
-func (e *Evaluation) Events() []Event { return slices.Clone(e.events) }
+func (e *Evaluation) Events() []Event {
+	if e.events == nil {
+		return nil
+	}
+	events := make([]Event, len(e.events))
+	for i, event := range e.events {
+		events[i] = cloneEvent(event)
+	}
+	return events
+}
 
 func (e *Evaluation) Refusal() (Refusal, bool) {
 	for _, event := range e.events {
@@ -148,7 +160,7 @@ func (e *Evaluation) Complete(v verdict) {
 		e.refuse(RefusedSettled)
 		return
 	}
-	e.row.Status, e.verdict = string(StatusCompleted), v
+	e.row.Status, e.verdict = string(StatusCompleted), cloneVerdict(v)
 	e.record(EvaluationCompleted{Overall: v.overall, EvidenceComplete: v.evidenceComplete})
 }
 
@@ -157,7 +169,7 @@ func (e *Evaluation) Fail(f failure) {
 		e.refuse(RefusedSettled)
 		return
 	}
-	e.row.Status, e.failure = string(StatusFailed), f
+	e.row.Status, e.failure = string(StatusFailed), cloneFailure(f)
 	e.record(EvaluationFailed{EvidenceComplete: f.evidenceComplete})
 }
 
@@ -197,10 +209,21 @@ func (e *Evaluation) RecordApplied(versionID pgtype.UUID, suggestionIDs []pgtype
 	var applied []pgtype.UUID
 	for _, id := range suggestionIDs {
 		suggestion, known := e.suggestions[id]
-		if !known || suggestion.AppliedSkillVersionID == versionID {
+		_, recorded := e.applied[id][versionID]
+		if !known || recorded {
 			continue
 		}
-		suggestion.Decision, suggestion.AppliedSkillVersionID = string(DecisionAccepted), versionID
+		if e.applied == nil {
+			e.applied = map[pgtype.UUID]map[pgtype.UUID]struct{}{}
+		}
+		if e.applied[id] == nil {
+			e.applied[id] = map[pgtype.UUID]struct{}{}
+		}
+		e.applied[id][versionID] = struct{}{}
+		suggestion.Decision = string(DecisionAccepted)
+		if !suggestion.AppliedSkillVersionID.Valid {
+			suggestion.AppliedSkillVersionID = versionID
+		}
 		e.suggestions[id] = suggestion
 		applied = append(applied, id)
 	}
@@ -213,4 +236,96 @@ func (e *Evaluation) RecordApplied(versionID pgtype.UUID, suggestionIDs []pgtype
 
 func (e *Evaluation) refuse(reason Refusal) { e.record(Refused{Reason: reason}) }
 
-func (e *Evaluation) record(event Event) { e.events = append(e.events, event) }
+func (e *Evaluation) record(event Event) { e.events = append(e.events, cloneEvent(event)) }
+
+func cloneEvaluationStarted(started EvaluationStarted) EvaluationStarted {
+	started.JudgeModel = cloneString(started.JudgeModel)
+	started.JudgePromptVersion = cloneString(started.JudgePromptVersion)
+	started.RubricVersion = cloneString(started.RubricVersion)
+	return started
+}
+
+func cloneEvent(event Event) Event {
+	switch event := event.(type) {
+	case EvaluationStarted:
+		return cloneEvaluationStarted(event)
+	case SuggestionsApplied:
+		event.SuggestionIDs = slices.Clone(event.SuggestionIDs)
+		return event
+	}
+	return event
+}
+
+func cloneVerdict(v verdict) verdict {
+	v.results = cloneCriterionResults(v.results)
+	v.findings = cloneFindings(v.findings)
+	v.costUSD = cloneFloat64(v.costUSD)
+	v.usage = cloneUsage(v.usage)
+	return v
+}
+
+func cloneFailure(f failure) failure {
+	f.findings = cloneFindings(f.findings)
+	return f
+}
+
+func cloneCriterionResults(results []CriterionResult) []CriterionResult {
+	cloned := slices.Clone(results)
+	for i, result := range results {
+		result.Evidence = cloneEvidenceRefs(result.Evidence)
+		cloned[i] = result
+	}
+	return cloned
+}
+
+func cloneFindings(findings []Finding) []Finding {
+	cloned := slices.Clone(findings)
+	for i, finding := range findings {
+		finding.Evidence = cloneEvidenceRefs(finding.Evidence)
+		cloned[i] = finding
+	}
+	return cloned
+}
+
+func cloneEvidenceRefs(refs []EvidenceRef) []EvidenceRef {
+	cloned := slices.Clone(refs)
+	for i, ref := range refs {
+		ref.ByteRange = cloneRange(ref.ByteRange)
+		ref.CharRange = cloneRange(ref.CharRange)
+		cloned[i] = ref
+	}
+	return cloned
+}
+
+func cloneRange(value *Range) *Range {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}
+
+func cloneFloat64(value *float64) *float64 {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}
+
+func cloneUsage(usage *llmclient.GatewayUsage) *llmclient.GatewayUsage {
+	if usage == nil {
+		return nil
+	}
+	copy := *usage
+	copy.CostUSD = cloneFloat64(usage.CostUSD)
+	return &copy
+}
+
+func cloneString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}

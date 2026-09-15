@@ -119,12 +119,38 @@ WHERE id = @id AND workspace_id = @workspace_id
 RETURNING *;
 
 -- name: MarkSuggestionsApplied :execrows
-UPDATE evaluation_suggestions SET
-    applied_skill_version_id = @skill_version_id,
-    decided_at = CASE WHEN decision = 'accepted' THEN decided_at ELSE now() END,
+WITH recorded AS (
+    INSERT INTO evaluation_suggestion_applications (workspace_id, suggestion_id, skill_version_id)
+    SELECT @workspace_id, s.id, @skill_version_id
+    FROM evaluation_suggestions s
+    WHERE s.workspace_id = @workspace_id
+      AND s.evaluation_id = @evaluation_id
+      AND s.id = ANY(@ids::uuid[])
+    ON CONFLICT (suggestion_id, skill_version_id) DO NOTHING
+    RETURNING suggestion_id
+)
+UPDATE evaluation_suggestions s SET
+    applied_skill_version_id = coalesce(s.applied_skill_version_id, @skill_version_id),
+    decided_at = CASE WHEN s.decision = 'accepted' THEN s.decided_at ELSE now() END,
     decision = 'accepted'
-WHERE id = ANY(@ids::uuid[])
-  AND workspace_id = @workspace_id;
+FROM recorded r
+WHERE s.id = r.suggestion_id
+  AND s.workspace_id = @workspace_id
+  AND s.evaluation_id = @evaluation_id;
+
+-- name: ListEvaluationSuggestionApplications :many
+SELECT a.suggestion_id, a.skill_version_id
+FROM evaluation_suggestion_applications a
+JOIN evaluation_suggestions s ON s.id = a.suggestion_id AND s.workspace_id = a.workspace_id
+WHERE s.evaluation_id = @evaluation_id AND a.workspace_id = @workspace_id
+ORDER BY a.suggestion_id, a.skill_version_id;
+
+-- name: ListSuggestionsAppliedToVersion :many
+SELECT s.evaluation_id, s.category, s.target_path
+FROM evaluation_suggestion_applications a
+JOIN evaluation_suggestions s ON s.id = a.suggestion_id AND s.workspace_id = a.workspace_id
+WHERE a.skill_version_id = sqlc.arg(applied_skill_version_id) AND a.workspace_id = @workspace_id
+ORDER BY s.created_at, s.id;
 
 -- name: FindLiveTraceEvents :many
 SELECT event_id FROM trace_events

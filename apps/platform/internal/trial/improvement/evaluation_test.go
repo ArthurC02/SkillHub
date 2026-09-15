@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
@@ -37,6 +38,80 @@ func TestAStartedEvaluationAwaitsTheJudgeAndDeclaresWhatItWillBeJudgedWith(t *te
 		t.Fatalf("a new revision is %q (superseded %v), want pending and current", e.Status(), e.Superseded())
 	}
 	assertEvents(t, e, declared)
+}
+
+func TestEvaluationSnapshotsDoNotAliasInputsOrOutputs(t *testing.T) {
+	t.Run("declared judge data and events keep independent pointers", func(t *testing.T) {
+		model, prompt, rubric := "model", "prompt", "rubric"
+		declared := EvaluationStarted{JudgeModel: &model, JudgePromptVersion: &prompt, RubricVersion: &rubric}
+		e := startEvaluation(pgtype.UUID{}, pgtype.UUID{}, declared)
+
+		model, prompt, rubric = "changed", "changed", "changed"
+		if *e.row.JudgeModel != "model" || *e.row.JudgePromptVersion != "prompt" || *e.row.RubricVersion != "rubric" {
+			t.Fatalf("evaluation after input mutation = %+v, want original judge declaration", e.row)
+		}
+		first := e.Events()[0].(EvaluationStarted)
+		*first.JudgeModel, *first.JudgePromptVersion, *first.RubricVersion = "output", "output", "output"
+		second := e.Events()[0].(EvaluationStarted)
+		if *second.JudgeModel != "model" || *second.JudgePromptVersion != "prompt" || *second.RubricVersion != "rubric" {
+			t.Fatalf("started event after output mutation = %+v, want original judge declaration", second)
+		}
+	})
+
+	t.Run("completed and failed results keep nested evidence and cost copies", func(t *testing.T) {
+		byteRange, charRange := &Range{Start: 1, End: 2}, &Range{Start: 3, End: 4}
+		cost, usageCost := 1.5, 2.5
+		v := verdict{
+			results:  []CriterionResult{{CriterionID: "criterion-original", Evidence: []EvidenceRef{{Kind: "result-evidence", ByteRange: byteRange, CharRange: charRange}}}},
+			findings: []Finding{{Message: "finding-original", Evidence: []EvidenceRef{{Kind: "finding-evidence", ByteRange: byteRange}}}},
+			costUSD:  &cost, usage: &llmclient.GatewayUsage{CostUSD: &usageCost},
+		}
+		e := revisionIn(StatusPending, false)
+		e.Complete(v)
+		v.results[0].Evidence[0] = EvidenceRef{Kind: "result-evidence-changed"}
+		v.results[0] = CriterionResult{CriterionID: "criterion-changed"}
+		v.findings[0].Evidence[0] = EvidenceRef{Kind: "finding-evidence-changed"}
+		v.findings[0] = Finding{Message: "finding-changed"}
+		byteRange.Start, charRange.End, cost, usageCost = 9, 9, 9.5, 9.5
+		if e.verdict.results[0].CriterionID != "criterion-original" || e.verdict.results[0].Evidence[0].Kind != "result-evidence" ||
+			e.verdict.results[0].Evidence[0].ByteRange.Start != 1 || e.verdict.results[0].Evidence[0].CharRange.End != 4 ||
+			e.verdict.findings[0].Message != "finding-original" || e.verdict.findings[0].Evidence[0].Kind != "finding-evidence" ||
+			e.verdict.findings[0].Evidence[0].ByteRange.Start != 1 || *e.verdict.costUSD != 1.5 || *e.verdict.usage.CostUSD != 2.5 {
+			t.Fatalf("completed verdict after input mutation = %+v, want original nested data", e.verdict)
+		}
+
+		failureRange := &Range{Start: 5, End: 6}
+		f := failure{findings: []Finding{{Category: CategoryExecution, Message: "failure-finding-original", Evidence: []EvidenceRef{{Kind: "failure-evidence", ByteRange: failureRange}}}}}
+		failed := revisionIn(StatusPending, false)
+		failed.Fail(f)
+		f.findings[0].Evidence[0] = EvidenceRef{Kind: "failure-evidence-changed"}
+		f.findings[0] = Finding{Message: "failure-finding-changed"}
+		failureRange.Start = 9
+		if failed.failure.findings[0].Category != CategoryExecution || failed.failure.findings[0].Message != "failure-finding-original" ||
+			failed.failure.findings[0].Evidence[0].Kind != "failure-evidence" || failed.failure.findings[0].Evidence[0].ByteRange.Start != 5 {
+			t.Fatalf("failure after input mutation = %+v, want original nested evidence", failed.failure)
+		}
+	})
+
+	t.Run("applied suggestion events keep independent ID slices and nil slices", func(t *testing.T) {
+		firstID := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+		secondID := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
+		versionID := pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
+		e := revisionIn(StatusCompleted, false)
+		e.suggestions = map[pgtype.UUID]gen.EvaluationSuggestion{firstID: {ID: firstID}}
+		e.RecordApplied(versionID, []pgtype.UUID{firstID})
+
+		first := e.Events()[0].(SuggestionsApplied)
+		first.SuggestionIDs[0] = secondID
+		second := e.Events()[0].(SuggestionsApplied)
+		if len(second.SuggestionIDs) != 1 || second.SuggestionIDs[0] != firstID {
+			t.Fatalf("applied event after output mutation = %+v, want first suggestion", second)
+		}
+
+		if got := cloneEvidenceRefs(nil); got != nil {
+			t.Fatalf("nil evidence refs = %#v, want nil", got)
+		}
+	})
 }
 
 func TestOnlyASettledCurrentRevisionCanBeSuperseded(t *testing.T) {
@@ -189,7 +264,7 @@ func TestASuggestionThatWentIntoAVersionIsAppliedAndItsAcceptanceIsFinal(t *test
 		{"a rejection sent before the version was recorded does not stand", DecisionRejected, pgtype.UUID{},
 			[]pgtype.UUID{held}, SuggestionsApplied{version, []pgtype.UUID{held}}, version},
 		{"a suggestion already in an earlier version goes into this one too", DecisionAccepted, earlier,
-			[]pgtype.UUID{held}, SuggestionsApplied{version, []pgtype.UUID{held}}, version},
+			[]pgtype.UUID{held}, SuggestionsApplied{version, []pgtype.UUID{held}}, earlier},
 		{"a suggestion this evaluation does not hold is left out", DecisionAccepted, pgtype.UUID{},
 			[]pgtype.UUID{stranger, held}, SuggestionsApplied{version, []pgtype.UUID{held}}, version},
 		{"a letter naming only suggestions this evaluation does not hold", DecisionAccepted, pgtype.UUID{},
@@ -202,6 +277,9 @@ func TestASuggestionThatWentIntoAVersionIsAppliedAndItsAcceptanceIsFinal(t *test
 			e := revisionIn(StatusCompleted, false)
 			e.suggestions = map[pgtype.UUID]gen.EvaluationSuggestion{
 				held: {ID: held, Decision: string(tc.decision), AppliedSkillVersionID: tc.alreadyOn},
+			}
+			if tc.alreadyOn.Valid {
+				e.applied = map[pgtype.UUID]map[pgtype.UUID]struct{}{held: {tc.alreadyOn: {}}}
 			}
 
 			e.RecordApplied(version, tc.named)

@@ -97,11 +97,6 @@ SELECT * FROM test_cases
 WHERE skill_id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 ORDER BY created_at, id;
 
--- name: ListSuggestionsAppliedToVersion :many
-SELECT evaluation_id, category, target_path
-FROM evaluation_suggestions
-WHERE applied_skill_version_id = $1 AND workspace_id = $2
-ORDER BY created_at, id;
 
 -- name: GetPreviousSkillVersion :one
 SELECT id, skill_id, version_number FROM skill_versions

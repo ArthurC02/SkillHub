@@ -407,6 +407,13 @@ type EvaluationSuggestion struct {
 	CreatedAt             pgtype.Timestamptz
 }
 
+type EvaluationSuggestionApplication struct {
+	WorkspaceID    pgtype.UUID
+	SuggestionID   pgtype.UUID
+	SkillVersionID pgtype.UUID
+	AppliedAt      pgtype.Timestamptz
+}
+
 type FeedbackReport struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID

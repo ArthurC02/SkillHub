@@ -74,6 +74,19 @@ func loadEvaluationWithSuggestions(
 			e.suggestions[id] = suggestion
 		}
 	}
+	applications, err := q.ListEvaluationSuggestionApplications(ctx, gen.ListEvaluationSuggestionApplicationsParams{
+		EvaluationID: evaluationID, WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	e.applied = map[pgtype.UUID]map[pgtype.UUID]struct{}{}
+	for _, application := range applications {
+		if e.applied[application.SuggestionID] == nil {
+			e.applied[application.SuggestionID] = map[pgtype.UUID]struct{}{}
+		}
+		e.applied[application.SuggestionID][application.SkillVersionID] = struct{}{}
+	}
 	return e, nil
 }
 
@@ -133,6 +146,7 @@ func writeEvaluationEvent(ctx context.Context, q *gen.Queries, e *Evaluation, ev
 	case SuggestionsApplied:
 		_, err = q.MarkSuggestionsApplied(ctx, gen.MarkSuggestionsAppliedParams{
 			SkillVersionID: event.SkillVersionID, Ids: event.SuggestionIDs, WorkspaceID: e.row.WorkspaceID,
+			EvaluationID: e.row.ID,
 		})
 	default:
 		err = fmt.Errorf("evaluation event %T has nothing to write", event)

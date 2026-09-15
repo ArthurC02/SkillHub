@@ -1619,10 +1619,12 @@ paths:
             `rejected_suggestions` with its reason, so a partial application is
             never reported as a complete one.
 
-            The evaluation records `applied_skill_version_id` on those
-            suggestions from the version's own event, shortly after this
-            answer rather than in the same transaction; until then
-            `applied_suggestion_ids` here is the record of what went in.
+            The evaluation records each suggestion's association with this
+            version from the version's own event, shortly after this answer.
+            Its `applied_skill_version_id` keeps the first recorded version;
+            later applications preserve every association without replacing
+            that value. `applied_suggestion_ids` here records what went into
+            this response's version before the event is processed.
           content:
             application/json:
               schema:
@@ -3634,7 +3636,8 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: |
-            `rejected` on a suggestion whose `applied_skill_version_id` is set.
+            `rejected` on a suggestion whose `applied_skill_version_id` is set,
+            meaning at least one version association has been recorded.
             The version exists and cannot be unbuilt, so the decision behind it
             is not rewritable; the way to change the package again is another
             version (iron rule 4). Re-sending `accepted` on the same suggestion
@@ -8055,11 +8058,13 @@ components:
           type: string
           format: uuid
           description: |
-            The **new** version this suggestion went into. The evaluation
-            records it from the version's event, so it can trail the 201 of
+            The first version recorded as containing this suggestion. It is
+            a witness that the suggestion was applied, not a complete list
+            of versions: later applications retain their own provenance
+            without replacing this value. Recording can trail the 201 of
             POST /skills/{id}/versions/from-suggestions by a moment. Absent
-            means it has not been applied yet. The version it was written
-            against is untouched either way (iron rule 4).
+            means no application has been recorded yet. The source version
+            remains unchanged (iron rule 4).
     SuggestionBlockedReason:
       description: |
         Why a suggestion cannot be applied. One vocabulary, served from one

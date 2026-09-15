@@ -591,44 +591,6 @@ func (q *Queries) ListSkillVersionsInDownloads(ctx context.Context, versionIds [
 	return items, nil
 }
 
-const listSuggestionsAppliedToVersion = `-- name: ListSuggestionsAppliedToVersion :many
-SELECT evaluation_id, category, target_path
-FROM evaluation_suggestions
-WHERE applied_skill_version_id = $1 AND workspace_id = $2
-ORDER BY created_at, id
-`
-
-type ListSuggestionsAppliedToVersionParams struct {
-	AppliedSkillVersionID pgtype.UUID
-	WorkspaceID           pgtype.UUID
-}
-
-type ListSuggestionsAppliedToVersionRow struct {
-	EvaluationID pgtype.UUID
-	Category     string
-	TargetPath   string
-}
-
-func (q *Queries) ListSuggestionsAppliedToVersion(ctx context.Context, arg ListSuggestionsAppliedToVersionParams) ([]ListSuggestionsAppliedToVersionRow, error) {
-	rows, err := q.db.Query(ctx, listSuggestionsAppliedToVersion, arg.AppliedSkillVersionID, arg.WorkspaceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListSuggestionsAppliedToVersionRow
-	for rows.Next() {
-		var i ListSuggestionsAppliedToVersionRow
-		if err := rows.Scan(&i.EvaluationID, &i.Category, &i.TargetPath); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listTestCasesForSkill = `-- name: ListTestCasesForSkill :many
 SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric FROM test_cases
 WHERE skill_id = $1 AND workspace_id = $2 AND deleted_at IS NULL

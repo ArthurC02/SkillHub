@@ -287,6 +287,7 @@ allow:
 read_allow:
 
 immutable:
+  evaluation_suggestion_applications: 建議與版本的套用關係只追加，後續套用不得覆寫既有來源
   skill_versions: ADR-003 版本快照；採納建議＝新版本，不原地覆寫（鐵律 4）
   test_case_snapshots: ADR-003 Run 引用的測試資料快照，改了會讓歷史 Run 的輸入說謊
   run_status_transitions: ADR-008 狀態機的歷史；重寫轉移紀錄等於重寫 Run 發生過的事
@@ -344,6 +345,7 @@ tables:
   download_object_cleanup_intents: packaging
   evaluations: eval
   evaluation_suggestions: eval
+  evaluation_suggestion_applications: eval
   evaluation_model_usage: eval
   trace_events: trace
   object_reconcile_sightings: objreconcile

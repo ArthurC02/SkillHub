@@ -553,6 +553,44 @@ func (q *Queries) ListEvaluationRevisions(ctx context.Context, arg ListEvaluatio
 	return items, nil
 }
 
+const listEvaluationSuggestionApplications = `-- name: ListEvaluationSuggestionApplications :many
+SELECT a.suggestion_id, a.skill_version_id
+FROM evaluation_suggestion_applications a
+JOIN evaluation_suggestions s ON s.id = a.suggestion_id AND s.workspace_id = a.workspace_id
+WHERE s.evaluation_id = $1 AND a.workspace_id = $2
+ORDER BY a.suggestion_id, a.skill_version_id
+`
+
+type ListEvaluationSuggestionApplicationsParams struct {
+	EvaluationID pgtype.UUID
+	WorkspaceID  pgtype.UUID
+}
+
+type ListEvaluationSuggestionApplicationsRow struct {
+	SuggestionID   pgtype.UUID
+	SkillVersionID pgtype.UUID
+}
+
+func (q *Queries) ListEvaluationSuggestionApplications(ctx context.Context, arg ListEvaluationSuggestionApplicationsParams) ([]ListEvaluationSuggestionApplicationsRow, error) {
+	rows, err := q.db.Query(ctx, listEvaluationSuggestionApplications, arg.EvaluationID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEvaluationSuggestionApplicationsRow
+	for rows.Next() {
+		var i ListEvaluationSuggestionApplicationsRow
+		if err := rows.Scan(&i.SuggestionID, &i.SkillVersionID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEvaluationSuggestions = `-- name: ListEvaluationSuggestions :many
 SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at FROM evaluation_suggestions
 WHERE evaluation_id = $1 AND workspace_id = $2
@@ -629,6 +667,45 @@ func (q *Queries) ListStalePendingEvaluations(ctx context.Context, arg ListStale
 	for rows.Next() {
 		var i ListStalePendingEvaluationsRow
 		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.RunID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSuggestionsAppliedToVersion = `-- name: ListSuggestionsAppliedToVersion :many
+SELECT s.evaluation_id, s.category, s.target_path
+FROM evaluation_suggestion_applications a
+JOIN evaluation_suggestions s ON s.id = a.suggestion_id AND s.workspace_id = a.workspace_id
+WHERE a.skill_version_id = $1 AND a.workspace_id = $2
+ORDER BY s.created_at, s.id
+`
+
+type ListSuggestionsAppliedToVersionParams struct {
+	AppliedSkillVersionID pgtype.UUID
+	WorkspaceID           pgtype.UUID
+}
+
+type ListSuggestionsAppliedToVersionRow struct {
+	EvaluationID pgtype.UUID
+	Category     string
+	TargetPath   string
+}
+
+func (q *Queries) ListSuggestionsAppliedToVersion(ctx context.Context, arg ListSuggestionsAppliedToVersionParams) ([]ListSuggestionsAppliedToVersionRow, error) {
+	rows, err := q.db.Query(ctx, listSuggestionsAppliedToVersion, arg.AppliedSkillVersionID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSuggestionsAppliedToVersionRow
+	for rows.Next() {
+		var i ListSuggestionsAppliedToVersionRow
+		if err := rows.Scan(&i.EvaluationID, &i.Category, &i.TargetPath); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -752,22 +829,40 @@ func (q *Queries) LockEvaluationSuggestion(ctx context.Context, arg LockEvaluati
 }
 
 const markSuggestionsApplied = `-- name: MarkSuggestionsApplied :execrows
-UPDATE evaluation_suggestions SET
-    applied_skill_version_id = $1,
-    decided_at = CASE WHEN decision = 'accepted' THEN decided_at ELSE now() END,
+WITH recorded AS (
+    INSERT INTO evaluation_suggestion_applications (workspace_id, suggestion_id, skill_version_id)
+    SELECT $2, s.id, $1
+    FROM evaluation_suggestions s
+    WHERE s.workspace_id = $2
+      AND s.evaluation_id = $3
+      AND s.id = ANY($4::uuid[])
+    ON CONFLICT (suggestion_id, skill_version_id) DO NOTHING
+    RETURNING suggestion_id
+)
+UPDATE evaluation_suggestions s SET
+    applied_skill_version_id = coalesce(s.applied_skill_version_id, $1),
+    decided_at = CASE WHEN s.decision = 'accepted' THEN s.decided_at ELSE now() END,
     decision = 'accepted'
-WHERE id = ANY($2::uuid[])
-  AND workspace_id = $3
+FROM recorded r
+WHERE s.id = r.suggestion_id
+  AND s.workspace_id = $2
+  AND s.evaluation_id = $3
 `
 
 type MarkSuggestionsAppliedParams struct {
 	SkillVersionID pgtype.UUID
-	Ids            []pgtype.UUID
 	WorkspaceID    pgtype.UUID
+	EvaluationID   pgtype.UUID
+	Ids            []pgtype.UUID
 }
 
 func (q *Queries) MarkSuggestionsApplied(ctx context.Context, arg MarkSuggestionsAppliedParams) (int64, error) {
-	result, err := q.db.Exec(ctx, markSuggestionsApplied, arg.SkillVersionID, arg.Ids, arg.WorkspaceID)
+	result, err := q.db.Exec(ctx, markSuggestionsApplied,
+		arg.SkillVersionID,
+		arg.WorkspaceID,
+		arg.EvaluationID,
+		arg.Ids,
+	)
 	if err != nil {
 		return 0, err
 	}
