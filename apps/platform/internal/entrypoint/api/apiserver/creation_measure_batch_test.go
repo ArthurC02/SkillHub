@@ -296,7 +296,7 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 				if v.Snapshot.PendingAction == "" {
 					break
 				}
-				v = creationAct(t, c, v, v.Snapshot.PendingAction)
+				v = creationAct(t, c, v, string(v.Snapshot.PendingAction))
 				row.AutoConfirms++
 				continue
 			case "waiting_input":

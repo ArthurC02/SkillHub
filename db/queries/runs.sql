@@ -1,12 +1,15 @@
 -- name: CreateRun :one
 INSERT INTO runs (
     workspace_id, skill_version_id, test_case_snapshot_id, provider,
-    runtime_snapshot, policy_snapshot
-) VALUES ($1, $2, $3, $4, $5, $6)
+    runtime_snapshot, policy_snapshot, status
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetRun :one
 SELECT * FROM runs WHERE id = $1 AND workspace_id = $2;
+
+-- name: LockRun :one
+SELECT * FROM runs WHERE id = $1 AND workspace_id = $2 FOR UPDATE;
 
 -- name: ListWorkspaceRuns :many
 SELECT r.id, r.status, r.status_reason, r.provider, r.failure_class,

@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -199,7 +200,7 @@ func TestAJudgementThatDoesNotCommitLeavesNoBillBehind(t *testing.T) {
 	}
 }
 
-func TestALostProvenanceWriteIsAnnouncedAndAudited(t *testing.T) {
+func TestALostProvenanceWriteIsRetriedAndAuditedOnTheLastAttempt(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	c := a.login(t, "provenance-loss")
@@ -236,21 +237,33 @@ func TestALostProvenanceWriteIsAnnouncedAndAudited(t *testing.T) {
 			 DROP FUNCTION IF EXISTS a4_break_provenance();`)
 	})
 
-	status, body := c.applySuggestions(t, ev.skillID, evaluationID, suggestions[0].SuggestionID)
-	if status < 500 {
-		t.Fatalf("apply returned %d; a provenance write that failed must not be reported as success", status)
-	}
-	if !strings.Contains(body.Error, "version") || !strings.Contains(body.Error, "provenance") {
-		t.Errorf("error = %q; the caller has to be told the version exists AND its provenance is missing", body.Error)
+	status, applied := c.applySuggestions(t, ev.skillID, evaluationID, suggestions[0].SuggestionID)
+	if status != http.StatusCreated {
+		t.Fatalf("apply returned %d (%s); the version exists, so the answer is the version", status, applied.Error)
 	}
 
-	var audited int
-	if err := pool.QueryRow(ctx,
-		`SELECT count(*) FROM audit_events WHERE action = 'evaluation.provenance_not_recorded'`,
-	).Scan(&audited); err != nil {
-		t.Fatal(err)
+	provenanceAudits := func() int {
+		var n int
+		if err := pool.QueryRow(ctx,
+			`SELECT count(*) FROM audit_events WHERE action = 'evaluation.provenance_not_recorded'`,
+		).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
 	}
-	if audited != 1 {
-		t.Errorf("%d audit rows for the lost provenance, want 1: a silent loss is the whole defect", audited)
+	if err := deliverImprovedVersion(t, a, pool, applied.VersionID, false); err == nil {
+		t.Fatal("the mailbox reported the provenance recorded while its write raised")
+	}
+	if n := provenanceAudits(); n != 0 {
+		t.Errorf("%d audit rows after an attempt that will be retried, want 0", n)
+	}
+	if err := deliverImprovedVersion(t, a, pool, applied.VersionID, true); err == nil {
+		t.Fatal("the mailbox reported the provenance recorded on its last attempt while its write raised")
+	}
+	if n := provenanceAudits(); n != 1 {
+		t.Errorf("%d audit rows once the last attempt failed, want 1: a silent loss is the whole defect", n)
+	}
+	if _, after, _ := c.listSuggestions(t, ev.runID); after[0].AppliedSkillVersionID != "" {
+		t.Errorf("applied_skill_version_id = %q although every write of it raised", after[0].AppliedSkillVersionID)
 	}
 }

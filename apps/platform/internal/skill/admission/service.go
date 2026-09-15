@@ -117,6 +117,8 @@ type sourceMeta struct {
 	CompletionTokens int64
 
 	GenerationInputs []byte
+
+	ImprovedBy *registry.Improvement
 }
 
 func (s *Service) UploadZip(ctx context.Context, ws identity.Workspace, data []byte) (Result, error) {
@@ -266,23 +268,24 @@ func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace
 		return Result{}, err
 	}
 	defer release()
-	readSkill, found, err := registry.SkillByName(ctx, tx, ws.ID, p.report.Manifest.Name)
-	var skill registry.Skill
-	if !found && err == nil {
-		skill, err = registry.CreateSkillFromPackage(ctx, tx, ws.ID, p.report, redistributionFor(ws, src))
-	} else {
-		skill = readSkill
-	}
+	root, found, err := registry.LoadSkillNamed(ctx, tx, ws.ID, p.report.Manifest.Name)
 	if err != nil {
 		return Result{}, err
 	}
-
 	if found && src.Type == SourceGenerated {
-		return Result{}, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
+		return Result{}, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, root.Skill().Name)
 	}
-	res.Skill = skill
+	if !found {
+		if root, err = registry.SkillFromPackage(ws.ID, p.report, redistributionFor(ws, src)); err != nil {
+			return Result{}, err
+		}
+		if err := registry.SaveSkill(ctx, tx, root); err != nil {
+			return Result{}, err
+		}
+	}
+	res.Skill = root.Skill()
 
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, skill, p, src, e)
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, p, src, e)
 	if err != nil {
 		return Result{}, err
 	}
@@ -317,6 +320,19 @@ func auditVersion(ctx context.Context, tx pgx.Tx, ws identity.Workspace, action 
 var ErrSkillNotFound = errors.New("skill not found")
 
 func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, data []byte) (Result, error) {
+	return s.saveVersion(ctx, ws, skillID, data, sourceMeta{Type: SourceUpload})
+}
+
+func (s *Service) SaveImprovedVersion(
+	ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, data []byte,
+	evaluationID pgtype.UUID, suggestionIDs []pgtype.UUID,
+) (Result, error) {
+	return s.saveVersion(ctx, ws, skillID, data, sourceMeta{
+		Type: SourceUpload, ImprovedBy: &registry.Improvement{EvaluationID: evaluationID, SuggestionIDs: suggestionIDs},
+	})
+}
+
+func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, data []byte, src sourceMeta) (Result, error) {
 	p, err := s.prepare(ctx, data)
 	if err != nil || p.report.Blocked {
 		return Result{Report: p.report}, err
@@ -330,22 +346,22 @@ func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillI
 		return Result{}, err
 	}
 	defer release()
-	readSkill, found, err := registry.SkillByID(ctx, tx, ws.ID, skillID)
-	if !found && err == nil {
+	root, err := registry.LoadSkill(ctx, tx, ws.ID, skillID)
+	if errors.Is(err, registry.ErrNotFound) {
 		return Result{}, ErrSkillNotFound
 	}
 	if err != nil {
 		return Result{}, err
 	}
-	skill := readSkill
-	res.Skill = skill
+	res.Skill = root.Skill()
 
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, skill, p, sourceMeta{Type: SourceUpload}, e)
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, p, src, e)
 	if err != nil {
 		return Result{}, err
 	}
 	if !res.Duplicate {
-		if err := registry.UpdateSummaryFromPackage(ctx, tx, ws.ID, skill.ID, p.report); err != nil {
+		root.AdoptNewestSummary()
+		if err := registry.SaveSkill(ctx, tx, root); err != nil {
 			return Result{}, err
 		}
 	}
@@ -357,13 +373,14 @@ func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillI
 	return res, tx.Commit(ctx)
 }
 
-func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skill registry.Skill, p preparedPackage, src sourceMeta, e enrichment) (registry.Version, bool, error) {
+func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Workspace, root *registry.SkillRoot, p preparedPackage, src sourceMeta, e enrichment) (registry.Version, bool, error) {
 
 	if err := s.requireProjection(); err != nil {
 		return registry.Version{}, false, err
 	}
 
-	if registry.Redistribution(skill.Redistribution) == registry.RedistributionGenerated && src.Type != SourceGenerated {
+	skill, generated := root.Skill(), src.Type == SourceGenerated
+	if !root.AcceptsContent(generated) {
 		return registry.Version{}, false, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
 	}
 	q := gen.New(tx)
@@ -391,22 +408,27 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		return registry.Version{}, false, err
 	}
 
-	version, err := registry.CreateVersionFromPackage(ctx, tx, registry.NewVersion{
-		WorkspaceID:      ws.ID,
-		SkillID:          skill.ID,
+	content, err := registry.ContentFromPackage(registry.NewVersion{
 		SourceID:         source.ID,
 		ContentHash:      p.contentHash,
 		PackageObjectKey: p.objectKey,
 		Report:           p.report,
-	})
+	}, generated)
 	if err != nil {
+		return registry.Version{}, false, err
+	}
+	if src.ImprovedBy != nil {
+		content = content.ImprovedBy(*src.ImprovedBy)
+	}
+	root.AddVersion(content)
+	if err := registry.SaveSkill(ctx, tx, root); err != nil {
 		return registry.Version{}, false, err
 	}
 
 	if err := s.upsertProjection(ctx, tx, ws.ID, skill.ID, skill.Name, e); err != nil {
 		return registry.Version{}, false, err
 	}
-	return version, false, nil
+	return root.AddedVersion(), false, nil
 }
 
 func (s *Service) upsertProjection(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID, name string, e enrichment) error {

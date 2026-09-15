@@ -251,7 +251,7 @@ func TestAdoptingNeedsOneListedSkillAndAnAdopter(t *testing.T) {
 	for _, c := range []struct {
 		name    string
 		adopt   func(context.Context, identity.Workspace, string) (Candidate, error)
-		pending string
+		pending PendingAction
 		ids     []string
 		want    error
 	}{
@@ -313,7 +313,7 @@ func TestConfirmingReferencesRefusesWithoutTheQuestionAResolverOrAResolvableSkil
 	for _, c := range []struct {
 		name    string
 		s       *Service
-		pending string
+		pending PendingAction
 		want    error
 	}{
 		{"nobody asked", &Service{ResolveReference: failing}, "", ErrInvalidCommand},
@@ -624,7 +624,7 @@ func TestConfirmingADuplicateWithTheSameNameAsksTheModelToRename(t *testing.T) {
 func TestConfirmingADuplicateNeedsTheQuestion(t *testing.T) {
 	for name, pending := range map[string][2]string{"nobody asked": {"", "materialize"}, "nothing to save": {"confirm_duplicate", ""}} {
 		p := saveableSnapshot()
-		p.PendingAction, p.PendingMaterialize = pending[0], pending[1]
+		p.PendingAction, p.PendingMaterialize = PendingAction(pending[0]), pending[1]
 		if _, err := (&Service{Materialize: materializer()}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: "confirm_duplicate", ContentHash: "h"}); !errors.Is(err, ErrInvalidCommand) {
 			t.Errorf("%s: err = %v", name, err)
 		}

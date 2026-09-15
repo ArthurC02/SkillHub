@@ -62,7 +62,7 @@
 2. **`m5/ask-5.md` 的五個人**（R-39 (b)）——負責人自己去問，材料 2026-09-03 已備。
 3. **一台節點真的被開出來**（R-43 之後的甲-5）——本頁 §0.1 從 2026-08-18 起就寫著它排在所有簽名之前，本日之後那句話終於只剩它自己。
 
-**這一頁存在的理由是回答「我現在要簽什麼」。本日之後的答案是：沒有。**
+**這一頁存在的理由是回答「我現在要簽什麼」。現在的答案：R-82、R-83**——2026-09-15 aggregate 改寫（ADR-084）照現況釘住、等人決定要不要收緊的兩條。
 
 ### 0.3 這次重排推翻了什麼
 
@@ -2292,3 +2292,29 @@ ADR-068 決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜
 5. 並發補救分支直接走正常重播的判斷（`resumeStart`），過期與解碼錯誤兩條路一致。這條路要真正的並發才走得到，規則由 `resumeStart` 的測試守。
 6. 讀取失敗不取消模型呼叫；會話狀態變了、過期了、或那一列已經不存在（`pgx.ErrNoRows`）才取消——最後一種不是讀取失敗，是會話沒了。判斷在 `sessionMoved`，測試：`TestOnlyASessionThatReallyMovedStopsTheModelCall`。
 7. 先確認有草稿、內容雜湊相符、訊息沒到上限，才讀草稿名字（`draftNameTaken`），不再靠跨指令的不變式。測試：`TestConfirmingADuplicateWithNoDraftIsRefused`。
+
+## R-82｜判定失敗的評估要不要跟判定完成的一樣凍結（`04` 丙-244） — ⬜ 待裁定
+
+- 日期：2026-09-15
+- **要決定的是什麼**：一版評估有兩個結局，completed（判定完成）與 failed（判定沒跑完）。改寫成 aggregate 時照現況釘住的是：兩者都不能再結算。要決定的是 failed 的列要不要跟 completed 一樣整列凍結。
+- **已經查到的事實**：
+  1. `db/migrations/0024_evaluation.sql` 的 `evaluations_immutable` 只在舊值是 completed 時作用：completed 的列只剩回饋兩欄、`superseded_at`、`updated_at` 可以改，也不能刪除。
+  2. failed 的列沒有這道 trigger：任何欄位都能被 UPDATE，也能被刪除。今天 Go 沒有這樣的寫入路徑——結算與失敗的 WHERE 只接 pending，回饋只寫回饋欄——所以這是資料庫層少了一道保證，不是已經發生的改寫。
+  3. failed 的評估會被下一版取代（重新評估），它的內容是「那次為什麼沒有結論」的紀錄，ADR-026 把評估當成可重新判定、但每一版不可改寫的歷史。
+- **建議**：凍結。新 migration 把 trigger 的條件改成 `OLD.status IN ('completed', 'failed')`，放行的欄位不變；Go 的 aggregate 同時拒絕在已結算的評估上做回饋以外的任何命令（今天已經如此）。
+- **不決定的代價**：沒有使用者看得到的差別；少的是資料庫層的第二道保證，未來某條直接寫入 failed 列的程式不會被擋。
+- **決定之後誰動**：Agent（一支 migration，加一條 `aggregate_test.go` 的特徵化測試改成規則，並證明會紅）。
+
+## R-83｜帳號刪除要不要改成領域事件（ADR-084 決策 6） — ⬜ 待裁定
+
+- 日期：2026-09-15
+- **要決定的是什麼**：ADR-084 規定 aggregate 之間只用領域事件、各自的 Mailbox 最終一致。帳號刪除今天不是這個形狀：identity 在一個交易裡依序呼叫各 context 的 `PurgeWorkspace`（ADR-034），全有全無。要決定它維持同交易，還是改成 identity 發一則「帳號到期刪除」、各 context 的 Mailbox 各自清。
+- **已經查到的事實**：
+  1. 同交易是被測試守住的產品承諾：`TestAccountPurgeRollsBackEveryContextWhenOneStepFails` 讓最後一步失敗，斷言前面每一步都回滾、身分去識別化也沒生效。
+  2. 順序是 load-bearing 的：registry 必須先刪版本，ingest 才刪得掉沒有版本引用的匯入來源。事件化之後這個順序要改由事件鏈表達。
+  3. 刪除 skill_versions 靠交易級的 `SET LOCAL skillhub.purge` 放行不可變 trigger；各 context 各自開交易時，這個放行機制要重新設計。
+  4. 事件化會把「一個交易清完」換成「陸續清完」，CORE-007 的硬刪除承諾要重新定義「清完了」的判準與負責對帳的人（ADR-034 第 1 條理由）。
+- **選項**：(a) 維持同交易：帳號刪除是作用在整個 workspace 的合規流程，不是 aggregate 之間的溝通，ADR-084 決策 6 照現況成立；(b) 改成事件：定義「清完了」的判準、補對帳與逾時告警、重做不可變 trigger 的放行。
+- **建議**：(a)。事件化在同一個資料庫裡買到的是未來拆分時比較好搬，付出的是今天就成立的全有全無；ADR-010 的拆分條件沒有觸發。
+- **不決定的代價**：沒有；照現況運作。
+- **決定之後誰動**：選 (a) 沒有工作；選 (b) 由 Agent 依 ADR-008 開事件與 Mailbox，並改寫 CORE-007 的允收準則。

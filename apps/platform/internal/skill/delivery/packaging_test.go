@@ -554,14 +554,13 @@ func namedQuery(sql, name string) (string, bool) {
 }
 
 func TestGeneratedReleasesThePackagingGate(t *testing.T) {
-	reason, message := gateFlags(nil, RedistributionGenerated)
+	reason, message := gateFlags(false, RedistributionGenerated)
 	if reason != "" || message != "" {
 		t.Fatalf("generated must release the gate, got reason=%q message=%q", reason, message)
 	}
 }
 
 func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
-	hold := "license-review"
 	for _, tc := range []struct {
 		name           string
 		redistribution Redistribution
@@ -576,17 +575,17 @@ func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
 		{"a value nobody has written yet refuses", "value-added-next-year", BlockedLicenseUnknown},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			reason, message := gateFlags(nil, tc.redistribution)
+			reason, message := gateFlags(false, tc.redistribution)
 			if reason != tc.wantReason {
-				t.Errorf("gateFlags(nil, %q) reason = %q, want %q", tc.redistribution, reason, tc.wantReason)
+				t.Errorf("gateFlags(false, %q) reason = %q, want %q", tc.redistribution, reason, tc.wantReason)
 			}
 
 			if (message == "") != (tc.wantReason == "") {
-				t.Errorf("gateFlags(nil, %q) = (%q, %q): a reason needs a message and a release needs none",
+				t.Errorf("gateFlags(false, %q) = (%q, %q): a reason needs a message and a release needs none",
 					tc.redistribution, reason, message)
 			}
 
-			if reason, _ := gateFlags(&hold, tc.redistribution); reason != BlockedLicenseHold {
+			if reason, _ := gateFlags(true, tc.redistribution); reason != BlockedLicenseHold {
 				t.Errorf("a hold over %q gave %q, want %q", tc.redistribution, reason, BlockedLicenseHold)
 			}
 		})
@@ -594,8 +593,7 @@ func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
 }
 
 func TestAccessRestrictionStillOutranksGenerated(t *testing.T) {
-	hold := "license-review"
-	reason, _ := gateFlags(&hold, RedistributionGenerated)
+	reason, _ := gateFlags(true, RedistributionGenerated)
 	if reason != BlockedLicenseHold {
 		t.Fatalf("a hold must outrank generated, got %q", reason)
 	}

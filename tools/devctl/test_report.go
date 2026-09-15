@@ -127,8 +127,17 @@ func withPackagePattern(args []string) []string {
 	return append(append([]string{}, args...), "./...")
 }
 
+func uncached(args []string) []string {
+	for _, a := range args {
+		if a == "-count" || strings.HasPrefix(a, "-count=") {
+			return args
+		}
+	}
+	return append([]string{"-count=1"}, args...)
+}
+
 func testReport(root, dir string, args []string, out io.Writer) (int, error) {
-	cmd := exec.Command("go", append([]string{"test", "-json"}, withPackagePattern(args)...)...)
+	cmd := exec.Command("go", append([]string{"test", "-json"}, uncached(withPackagePattern(args))...)...)
 	cmd.Dir = dir
 	cmd.Stderr = os.Stderr
 	pipe, err := cmd.StdoutPipe()

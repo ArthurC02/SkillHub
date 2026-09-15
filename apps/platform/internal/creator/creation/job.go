@@ -64,7 +64,7 @@ func canSpend(p Snapshot, l Limits) bool {
 	if p.SpentUSD != nil {
 		spent = *p.SpentUSD
 	}
-	return l.Valid() && p.Steps < l.MaxSteps && len(p.Messages)+2 <= MaxMessages && spent+p.ReservedUSD+l.MaxCallCostUSD <= math.Min(p.BudgetUSD, l.MaxCostUSD)+1e-10
+	return l.Valid() && p.Steps < l.MaxSteps && p.hasRoomFor(2) && spent+p.ReservedUSD+l.MaxCallCostUSD <= math.Min(p.BudgetUSD, l.MaxCostUSD)+1e-10
 }
 
 func allowedTools(toolCalls, maxToolCalls int, fetch, knowledge, searchLeft bool) []string {
@@ -187,7 +187,7 @@ func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *llmclien
 	if diagram != nil && !diagramMatches(e.Snapshot, diagram) {
 		return nil, ErrInvalidCommand
 	}
-	if refusal := attemptRefusal(e, diagram != nil); refusal != "" {
+	if refusal := refuseAttempt(e, diagram != nil); refusal != "" {
 		return nil, s.failQueued(ctx, tx, row, e, a, refusal)
 	}
 	if _, err = q.ClaimCreationReceipt(ctx, gen.ClaimCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID}); err != nil {
@@ -213,16 +213,47 @@ func staleAttempt(transient bool) error {
 	return nil
 }
 
-func attemptRefusal(e envelope, hasDiagram bool) string {
+type attemptRefusal string
+
+const (
+	refusedPastDeadline  attemptRefusal = "past_deadline"
+	refusedOverLimit     attemptRefusal = "over_limit"
+	refusedDiagramUnread attemptRefusal = "diagram_unread"
+)
+
+func refuseAttempt(e envelope, hasDiagram bool) attemptRefusal {
 	switch {
 	case !e.Deadline.After(time.Now()):
-		return "創作已達這次核准的限制，請開始新的創作。"
+		return refusedPastDeadline
 	case !canSpend(e.Snapshot, e.Limits):
-		return limitSentence(e.Snapshot, e.Limits)
-	case !hasDiagram && e.Snapshot.DiagramFingerprint != "" && e.Snapshot.DiagramUnderstanding == "":
+		return refusedOverLimit
+	case !hasDiagram && diagramUnread(e.Snapshot):
+		return refusedDiagramUnread
+	}
+	return ""
+}
+
+func (r attemptRefusal) sentence(p Snapshot, l Limits) string {
+	switch r {
+	case refusedPastDeadline:
+		return "創作已達這次核准的限制，請開始新的創作。"
+	case refusedOverLimit:
+		return limitSentence(p, l)
+	case refusedDiagramUnread:
 		return "流程圖需要重新上傳。"
 	}
 	return ""
+}
+
+func diagramUnread(p Snapshot) bool {
+	return p.DiagramFingerprint != "" && p.DiagramUnderstanding == ""
+}
+
+func abandonedState(p Snapshot) State {
+	if diagramUnread(p) {
+		return StateNeedsReupload
+	}
+	return StateFailed
 }
 
 func (s *Service) fetchPending(ctx context.Context, p *Snapshot) {
@@ -356,14 +387,10 @@ func stepFailureMessage(err, callErr error) string {
 	return "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
 }
 
-func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs, message string) error {
-	state := StateFailed
-	if e.Snapshot.DiagramFingerprint != "" && e.Snapshot.DiagramUnderstanding == "" {
-		state = StateNeedsReupload
-	}
+func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs, refusal attemptRefusal) error {
 	e.ActiveReceipt = pgtype.UUID{}
-	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: message})
-	if _, err := s.advance(ctx, tx, row, state, "attempt_refused", e); err != nil {
+	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: refusal.sentence(e.Snapshot, e.Limits)})
+	if _, err := s.advance(ctx, tx, row, abandonedState(e.Snapshot), "attempt_refused", e); err != nil {
 		return err
 	}
 	_, err := gen.New(tx).FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: "failed", Result: []byte("{}"), Usage: []byte("{}")})
@@ -470,11 +497,11 @@ func failedAttempt(p *Snapshot, err, callErr error, hadDiagram bool) State {
 	if hadDiagram && p.DiagramUnderstanding == "" {
 		state = StateNeedsReupload
 	}
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: stepFailureMessage(err, callErr)})
 	if errors.Is(callErr, ErrNotFound) {
 		state = StateWaitingConfirmation
-		p.PendingAction = "confirm_references"
+		p.PendingAction = PendingReferenceChoice
 		for i := range p.References {
 			p.References[i].Available = false
 			p.References[i].Confirmed = false
@@ -483,7 +510,7 @@ func failedAttempt(p *Snapshot, err, callErr error, hadDiagram bool) State {
 	}
 	if errors.Is(callErr, ErrCreditFloor) {
 		state = StateWaitingInput
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。"})
 	}
 	return state
@@ -560,12 +587,12 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		if retries := missingOutputRetries(e, r.Reason); retriesMissingOutput(retries, *p, e.Limits) {
 			*retries++
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "模型這一步沒有交出草稿，已自動再試一次。"})
-			p.PendingAction = ""
+			p.PendingAction = NothingPending
 			return StateQueued, true, nil
 		}
 	}
 	normalizeReply(r, p.DiagramFingerprint != "")
-	if err := admitReply(r, len(p.Messages)); err != nil {
+	if err := admitReply(r, *p); err != nil {
 		return "", false, err
 	}
 	recordReply(p, r)
@@ -577,7 +604,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	}
 	switch r.Outcome {
 	case "clarification":
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		return StateWaitingInput, false, nil
 	case "confirm_brief":
 		return askToConfirmBrief(p)
@@ -614,11 +641,11 @@ func normalizeReply(r *llmclient.CreationStepResponse, diagramUploaded bool) {
 	}
 }
 
-func admitReply(r *llmclient.CreationStepResponse, messages int) error {
+func admitReply(r *llmclient.CreationStepResponse, p Snapshot) error {
 	if r.DiagramUnderstanding != "" && !validDiagramInterpretation(r.DiagramUnderstanding) {
 		return ErrInvalidCommand
 	}
-	if r.Message == "" || utf8.RuneCountInString(r.Message) > MaxTextRunes || utf8.RuneCountInString(r.Brief) > MaxTextRunes || utf8.RuneCountInString(r.DiagramUnderstanding) > MaxTextRunes || messages >= MaxMessages {
+	if r.Message == "" || utf8.RuneCountInString(r.Message) > MaxTextRunes || utf8.RuneCountInString(r.Brief) > MaxTextRunes || utf8.RuneCountInString(r.DiagramUnderstanding) > MaxTextRunes || !p.hasRoomFor(1) {
 		return ErrInvalidCommand
 	}
 	if err := validateCriteria(r.AcceptanceCriteria); err != nil {
@@ -640,7 +667,7 @@ func reinterpretDiagram(p *Snapshot, understanding string) State {
 	p.DiagramUnderstanding = understanding
 	p.DiagramConfirmed = false
 	invalidate(p)
-	p.PendingAction = "confirm_diagram"
+	p.PendingAction = PendingDiagramConfirmation
 	return StateWaitingConfirmation
 }
 
@@ -685,7 +712,7 @@ func reviseBrief(p *Snapshot, r *llmclient.CreationStepResponse, c briefChange) 
 	}
 	p.BriefConfirmed = false
 	invalidate(p)
-	p.PendingAction = "confirm_brief"
+	p.PendingAction = PendingBriefConfirmation
 	return StateWaitingConfirmation
 }
 
@@ -694,10 +721,10 @@ func askToConfirmBrief(p *Snapshot) (State, bool, error) {
 		return "", false, ErrInvalidCommand
 	}
 	if p.BriefConfirmed {
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		return StateWaitingInput, false, nil
 	}
-	p.PendingAction = "confirm_brief"
+	p.PendingAction = PendingBriefConfirmation
 	return StateWaitingConfirmation, false, nil
 }
 
@@ -706,7 +733,7 @@ func askToConfirmDiagram(p *Snapshot) (State, bool, error) {
 		return "", false, ErrInvalidCommand
 	}
 	p.DiagramConfirmed = false
-	p.PendingAction = "confirm_diagram"
+	p.PendingAction = PendingDiagramConfirmation
 	return StateWaitingConfirmation, false, nil
 }
 
@@ -731,7 +758,7 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 	if objection.raised() && p.Nudges < MaxNudges && canSpend(*p, e.Limits) {
 		p.Nudges++
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: objection.toModel(p.EvaluationText)})
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		return StateQueued, true, nil
 	}
 	if note := objection.toPerson(); note != "" {
@@ -762,7 +789,7 @@ func storeDraft(p *Snapshot, d *Draft) {
 	if !renamedOnly(prev, d) {
 		clearDuplicateCheck(p)
 	}
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 }
 
 type draftObjection struct {
@@ -875,7 +902,7 @@ func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *S
 	p.References = shortlist(refs)
 	invalidate(p)
 	p.BriefConfirmed = false
-	p.PendingAction = "confirm_references"
+	p.PendingAction = PendingReferenceChoice
 	return StateWaitingConfirmation, false, nil
 }
 
@@ -917,7 +944,7 @@ func (s *Service) holdFetch(p *Snapshot, query string) (State, bool, error) {
 		return StateQueued, true, nil
 	}
 	p.PendingFetchURL = clean
-	p.PendingAction = "confirm_fetch"
+	p.PendingAction = PendingFetchPermission
 	return StateWaitingConfirmation, false, nil
 }
 
@@ -937,7 +964,7 @@ func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e 
 		p.Candidate = nil
 	}
 	if p.Draft != nil && p.Draft.ContentHash == hash && !p.Draft.Blocked && !blocked {
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "這份草稿已通過同一次驗證；試跑由人從候選啟動，模型不能自己跑。草稿就緒。"})
 		return StateDraftReady, false, nil
 	}

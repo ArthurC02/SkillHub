@@ -97,3 +97,14 @@ func TestPackagePatternDefaultsSoTheModuleRootIsNotTested(t *testing.T) {
 		t.Errorf("got %v, want the caller's packages untouched", got)
 	}
 }
+
+func TestAReportNeverReplaysCachedResults(t *testing.T) {
+	if got := uncached([]string{"./..."}); len(got) != 2 || got[0] != "-count=1" {
+		t.Errorf("got %v, want -count=1 added", got)
+	}
+	for _, own := range [][]string{{"-count=3", "./..."}, {"-count", "3", "./..."}} {
+		if got := uncached(own); len(got) != len(own) {
+			t.Errorf("got %v, want the caller's own -count kept", got)
+		}
+	}
+}

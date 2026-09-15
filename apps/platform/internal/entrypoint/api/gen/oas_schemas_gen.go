@@ -9319,8 +9319,9 @@ type ImprovementSuggestion struct {
 	// /skills/{id}/versions/from-suggestions is called.
 	Decision  ImprovementSuggestionDecision `json:"decision"`
 	DecidedAt OptDateTime                   `json:"decided_at"`
-	// The new version this suggestion went into, once one was built. Absent means it has not been applied.
-	// The version it was written against is untouched either way (iron rule 4).
+	// The new version this suggestion went into. The evaluation records it from the version's event, so it
+	// can trail the 201 of POST /skills/{id}/versions/from-suggestions by a moment. Absent means it has
+	// not been applied yet. The version it was written against is untouched either way (iron rule 4).
 	AppliedSkillVersionID OptUUID `json:"applied_skill_version_id"`
 }
 

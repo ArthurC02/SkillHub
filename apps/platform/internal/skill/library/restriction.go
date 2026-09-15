@@ -3,7 +3,6 @@ package registry
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,23 +18,14 @@ type RestrictionBefore struct {
 }
 
 func SetAccessRestriction(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, reason *string) (RestrictionBefore, error) {
-	if reason != nil && strings.TrimSpace(*reason) == "" {
-		return RestrictionBefore{}, ErrEmptyRestriction
-	}
-	q := gen.New(tx)
-	before, err := q.LockSkillForOperatorWrite(ctx, skillID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return RestrictionBefore{}, ErrNotFound
-	}
+	root, err := loadSkillForOperator(ctx, gen.New(tx), skillID)
 	if err != nil {
 		return RestrictionBefore{}, err
 	}
-	if err := q.SetSkillAccessRestriction(ctx, gen.SetSkillAccessRestrictionParams{
-		ID: skillID, AccessRestriction: reason,
-	}); err != nil {
+	before := RestrictionBefore{WorkspaceID: root.row.WorkspaceID, AccessRestriction: root.row.AccessRestriction}
+	root.Restrict(reason)
+	if err := SaveSkill(ctx, tx, root); err != nil {
 		return RestrictionBefore{}, err
 	}
-	return RestrictionBefore{
-		WorkspaceID: before.WorkspaceID, AccessRestriction: before.AccessRestriction,
-	}, nil
+	return before, nil
 }

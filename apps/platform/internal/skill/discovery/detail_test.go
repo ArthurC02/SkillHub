@@ -71,6 +71,22 @@ func TestDefaultRiskIsUnavailableNotClean(t *testing.T) {
 	}
 }
 
+func TestADetailShowsARestrictionOnlyWhileOneIsInEffect(t *testing.T) {
+	known, unknown, blank := "license-review", "a-code-added-later", "   "
+	if got := restrictionOf(SkillFacts{}); got != nil {
+		t.Errorf("no hold recorded: %+v", got)
+	}
+	if got := restrictionOf(SkillFacts{AccessRestriction: &blank}); got != nil {
+		t.Errorf("a blank hold: %+v", got)
+	}
+	if got := restrictionOf(SkillFacts{AccessRestriction: &known}); got == nil || got.Reason != known || got.Note != restrictionNotes[known] {
+		t.Errorf("a known hold: %+v", got)
+	}
+	if got := restrictionOf(SkillFacts{AccessRestriction: &unknown}); got == nil || got.Reason != unknown || got.Note != restrictionNoteDefault {
+		t.Errorf("a hold with no note of its own: %+v", got)
+	}
+}
+
 func TestOwnerReadsFailClosedWhenCallbacksAreMissing(t *testing.T) {
 	if _, _, err := (&Service{}).CatalogSkill(t.Context(), pgtype.UUID{}); err == nil {
 		t.Fatal("CatalogSkill succeeded without Registry's owner read")

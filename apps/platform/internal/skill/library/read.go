@@ -29,6 +29,8 @@ type Skill struct {
 	CategorySource *string
 }
 
+func (s Skill) TakenDown() bool { return s.TakedownAt.Valid }
+
 type Version struct {
 	ID                pgtype.UUID
 	WorkspaceID       pgtype.UUID

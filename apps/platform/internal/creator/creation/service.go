@@ -141,24 +141,37 @@ type Attachment struct {
 	SHA256       string `json:"sha256"`
 }
 
+type PendingAction string
+
+const (
+	NothingPending                  PendingAction = ""
+	PendingBriefConfirmation        PendingAction = "confirm_brief"
+	PendingDiagramConfirmation      PendingAction = "confirm_diagram"
+	PendingReferenceChoice          PendingAction = "confirm_references"
+	PendingDuplicateAcknowledgement PendingAction = "confirm_duplicate"
+	PendingFetchPermission          PendingAction = "confirm_fetch"
+)
+
+func (p Snapshot) hasRoomFor(messages int) bool { return len(p.Messages)+messages <= MaxMessages }
+
 type Snapshot struct {
 	Messages []llmclient.CreationMessage `json:"messages"`
 	Brief    string                      `json:"brief"`
 
 	AcceptanceCriteria []string `json:"acceptance_criteria"`
 
-	SampleInput          string      `json:"sample_input"`
-	BriefConfirmed       bool        `json:"brief_confirmed"`
-	DiagramUnderstanding string      `json:"diagram_understanding"`
-	DiagramConfirmed     bool        `json:"diagram_confirmed"`
-	References           []Reference `json:"references"`
-	PendingAction        string      `json:"pending_action"`
-	BudgetUSD            float64     `json:"budget_usd"`
-	ReservedUSD          float64     `json:"reserved_usd"`
-	SpentUSD             *float64    `json:"spent_usd,omitempty"`
-	UsageUnknown         bool        `json:"usage_unknown"`
-	Steps                int         `json:"steps"`
-	ToolCalls            int         `json:"tool_calls"`
+	SampleInput          string        `json:"sample_input"`
+	BriefConfirmed       bool          `json:"brief_confirmed"`
+	DiagramUnderstanding string        `json:"diagram_understanding"`
+	DiagramConfirmed     bool          `json:"diagram_confirmed"`
+	References           []Reference   `json:"references"`
+	PendingAction        PendingAction `json:"pending_action"`
+	BudgetUSD            float64       `json:"budget_usd"`
+	ReservedUSD          float64       `json:"reserved_usd"`
+	SpentUSD             *float64      `json:"spent_usd,omitempty"`
+	UsageUnknown         bool          `json:"usage_unknown"`
+	Steps                int           `json:"steps"`
+	ToolCalls            int           `json:"tool_calls"`
 
 	DraftRetries int `json:"draft_retries,omitempty"`
 

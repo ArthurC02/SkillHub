@@ -48,6 +48,16 @@ RETURNING *;
 SELECT * FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL;
 
+-- name: LockCurrentEvaluation :one
+SELECT * FROM evaluations
+WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL
+FOR UPDATE;
+
+-- name: LockEvaluation :one
+SELECT * FROM evaluations
+WHERE id = $1 AND workspace_id = $2
+FOR UPDATE;
+
 -- name: RecordEvaluationModelUsage :exec
 INSERT INTO evaluation_model_usage (
     evaluation_id, workspace_id, operation, model, prompt_version,
@@ -96,6 +106,11 @@ ORDER BY created_at, id;
 SELECT * FROM evaluation_suggestions
 WHERE id = $1 AND workspace_id = $2;
 
+-- name: LockEvaluationSuggestion :one
+SELECT * FROM evaluation_suggestions
+WHERE id = $1 AND workspace_id = $2
+FOR UPDATE;
+
 -- name: DecideSuggestion :one
 UPDATE evaluation_suggestions SET
     decision = @decision,
@@ -105,10 +120,11 @@ RETURNING *;
 
 -- name: MarkSuggestionsApplied :execrows
 UPDATE evaluation_suggestions SET
-    applied_skill_version_id = @skill_version_id
+    applied_skill_version_id = @skill_version_id,
+    decided_at = CASE WHEN decision = 'accepted' THEN decided_at ELSE now() END,
+    decision = 'accepted'
 WHERE id = ANY(@ids::uuid[])
-  AND workspace_id = @workspace_id
-  AND decision = 'accepted';
+  AND workspace_id = @workspace_id;
 
 -- name: FindLiveTraceEvents :many
 SELECT event_id FROM trace_events

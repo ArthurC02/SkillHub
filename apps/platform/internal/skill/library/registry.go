@@ -115,39 +115,13 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 	if err != nil {
 		return gen.Skill{}, gen.SkillVersion{}, err
 	}
-	fork, err := q.CreateSkill(ctx, gen.CreateSkillParams{
-		WorkspaceID:         ws.ID,
-		Name:                name,
-		Summary:             src.Summary,
-		ForkedFromSkillID:   src.ID,
-		ForkedFromVersionID: srcVer.ID,
-
-		AccessRestriction: src.AccessRestriction,
-
-		Redistribution: &src.Redistribution,
-
-		Category: src.Category, CategorySource: src.CategorySource,
-	})
-	if isUniqueViolation(err) {
+	root := forkOf(ws.ID, name, src, srcVer)
+	if err := SaveSkill(ctx, tx, root); isUniqueViolation(err) {
 		return gen.Skill{}, gen.SkillVersion{}, ErrNameTaken
-	}
-	if err != nil {
+	} else if err != nil {
 		return gen.Skill{}, gen.SkillVersion{}, err
 	}
-
-	ver, err := q.CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
-		WorkspaceID:       ws.ID,
-		SkillID:           fork.ID,
-		ContentHash:       srcVer.ContentHash,
-		PackageObjectKey:  srcVer.PackageObjectKey,
-		Manifest:          srcVer.Manifest,
-		LicenseExpression: srcVer.LicenseExpression,
-
-		LicenseSource: srcVer.LicenseSource,
-	})
-	if err != nil {
-		return gen.Skill{}, gen.SkillVersion{}, err
-	}
+	fork, ver := root.row, root.added
 
 	summary := ""
 	if fork.Summary != nil {
@@ -192,13 +166,15 @@ func (s *Service) Delete(ctx context.Context, ws identity.Workspace, skillID pgt
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
-	skill, err := q.SoftDeleteSkill(ctx, gen.SoftDeleteSkillParams{ID: skillID, WorkspaceID: ws.ID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return DeleteResult{}, ErrNotFound
-	}
+	root, err := loadSkill(ctx, q, ws.ID, skillID)
 	if err != nil {
 		return DeleteResult{}, err
 	}
+	root.Delete()
+	if err := SaveSkill(ctx, tx, root); err != nil {
+		return DeleteResult{}, err
+	}
+	skill := root.row
 	if err := s.RemoveFromIndex(ctx, tx, skill.WorkspaceID, skill.ID); err != nil {
 		return DeleteResult{}, err
 	}
@@ -230,21 +206,15 @@ func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID p
 		return gen.Skill{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	q := gen.New(tx)
-
-	skill, err := q.TakedownSkill(ctx, gen.TakedownSkillParams{
-		ID: skillID, WorkspaceID: ws.ID, Reason: &reason,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-
-		if _, getErr := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID}); getErr == nil {
-			return gen.Skill{}, ErrAlreadyTakenDown
-		}
-		return gen.Skill{}, ErrNotFound
-	}
+	root, err := loadSkill(ctx, gen.New(tx), ws.ID, skillID)
 	if err != nil {
 		return gen.Skill{}, err
 	}
+	root.TakeDown(reason)
+	if err := SaveSkill(ctx, tx, root); err != nil {
+		return gen.Skill{}, err
+	}
+	skill := root.row
 
 	if err := s.RemoveFromIndex(ctx, tx, skill.WorkspaceID, skill.ID); err != nil {
 		return gen.Skill{}, err

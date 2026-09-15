@@ -548,6 +548,17 @@ test("EVAL-011 a run whose test case no longer resolves says so instead of inven
   expect(container.textContent).toContain("已建立新版本");
 });
 
+test("an applied suggestion is marked from the apply answer before the evaluation records it", async () => {
+  stubPlatform({ evaluated: true, accepted: true });
+  await applyAccepted();
+
+  const reject = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "拒絕",
+  );
+  expect(reject?.disabled).toBe(true);
+  expect(container.textContent).toContain("（已套用於新版本）");
+});
+
 test("丙-10 a verdict downgraded for unverifiable evidence is not shown as a judge who does not know", async () => {
   stubPlatform({ evaluated: true });
   await render("succeeded");

@@ -9,11 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
@@ -142,74 +140,39 @@ func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, 
 	if !CanTransition(p.From, p.To) {
 		return gen.Run{}, fmt.Errorf("%w: %s -> %s", ErrIllegalTransition, p.From, p.To)
 	}
-
-	tx, err := s.Pool.Begin(ctx)
-	if err != nil {
-		return gen.Run{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	q := s.queries().WithTx(tx)
-
-	reason := &p.Reason
-	if p.Reason == "" {
-		reason = nil
-	}
-	var failureClass *string
-	if p.FailureClass != "" {
-		value := string(p.FailureClass)
-		failureClass = &value
-	}
-	run, err := q.TransitionRun(ctx, gen.TransitionRunParams{
-		RunID: p.RunID, WorkspaceID: p.WorkspaceID,
-		FromStatus: p.From, ToStatus: p.To, Reason: reason, FailureClass: failureClass,
+	r, err := s.commandRun(ctx, p.WorkspaceID, p.RunID, p.Actor, func(r *Run) error {
+		if r.Status() != p.From {
+			return ErrConflict
+		}
+		r.Transition(p.To, p.Reason, p.FailureClass, p.AttemptID)
+		return nil
 	})
-
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, ErrNotFound) {
 		return gen.Run{}, ErrConflict
 	}
 	if err != nil {
 		return gen.Run{}, err
 	}
-
-	from := p.From
-	if err := s.record(ctx, q, tx, run, &from, p.AttemptID, p.Reason, p.Actor, audit.ActionRunTransition); err != nil {
-		return gen.Run{}, err
-	}
-
-	if err := s.recordFailureEvent(ctx, tx, q, run, p); err != nil {
-		return gen.Run{}, err
-	}
-
-	if IsTerminal(p.To) && s.Queue != nil {
-		if _, err := s.Queue.InsertTx(ctx, tx, CleanupArgs{
-			RunID: pgconv.UUIDString(run.ID), WorkspaceID: pgconv.UUIDString(run.WorkspaceID),
-		}, cleanupInsertOpts()); err != nil {
-			return gen.Run{}, err
-		}
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return gen.Run{}, err
-	}
-	observeTransition(run, p)
-	return run, nil
+	observeTransition(r.Row(), p)
+	return r.Row(), nil
 }
 
-func (s *Service) recordFailureEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, run gen.Run, p TransitionParams) error {
-	if p.To != gen.RunStatusFailed && p.To != gen.RunStatusTimedOut {
+func (s *Service) recordFailureEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, run gen.Run, failure FailureClass, reason string) error {
+	if run.Status != gen.RunStatusFailed && run.Status != gen.RunStatusTimedOut {
 		return nil
 	}
-	code := string(p.FailureClass)
+	code := string(failure)
 	if code == "" {
 		code = "unclassified"
 	}
 	return trace.RecordOrchestratorEvent(ctx, tx, run.WorkspaceID, run.ID,
 		attemptNumber(ctx, q, run), trace.TypeError, "error", map[string]any{
 
-			"category": p.FailureClass.category(),
+			"category": failure.category(),
 			"code":     code,
-			"message":  p.Reason,
+			"message":  reason,
 
-			"retryable": p.FailureClass.retryable(),
+			"retryable": failure.retryable(),
 		})
 }
 
@@ -254,7 +217,7 @@ func observeTransition(run gen.Run, p TransitionParams) {
 	}
 }
 
-func (s *Service) record(
+func (s *Service) recordTransition(
 	ctx context.Context, q *gen.Queries, tx pgx.Tx, run gen.Run,
 	from *gen.RunStatus, attemptID pgtype.UUID, reason string, actor pgtype.UUID, action string,
 ) error {
@@ -276,25 +239,8 @@ func (s *Service) record(
 	if reason != "" {
 		meta["reason"] = reason
 	}
-	if err := audit.Log(ctx, tx, audit.Event{
+	return audit.Log(ctx, tx, audit.Event{
 		Actor: actor, Workspace: run.WorkspaceID, Action: action,
 		ResourceType: audit.ResourceRun, ResourceID: run.ID, Metadata: meta,
-	}); err != nil {
-		return err
-	}
-
-	eventType, err := outbox.StatusEvent(string(run.Status))
-	if err != nil {
-		return err
-	}
-	changed := outbox.RunStatusChanged{ToStatus: string(run.Status), Reason: reason}
-	if from != nil {
-		changed.FromStatus = string(*from)
-	}
-	return outbox.Insert(ctx, tx, outbox.NewEvent{
-		EventType: eventType, EventVersion: outbox.EventVersion1,
-		CorrelationID: run.ID, CausationID: attemptID,
-		WorkspaceID: run.WorkspaceID, AggregateType: outbox.AggregateRun,
-		AggregateID: run.ID, Payload: changed,
 	})
 }

@@ -167,8 +167,8 @@ func (q *Queries) CountUnreadableRunArtifacts(ctx context.Context, arg CountUnre
 const createRun = `-- name: CreateRun :one
 INSERT INTO runs (
     workspace_id, skill_version_id, test_case_snapshot_id, provider,
-    runtime_snapshot, policy_snapshot
-) VALUES ($1, $2, $3, $4, $5, $6)
+    runtime_snapshot, policy_snapshot, status
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
 `
 
@@ -179,6 +179,7 @@ type CreateRunParams struct {
 	Provider           string
 	RuntimeSnapshot    []byte
 	PolicySnapshot     []byte
+	Status             RunStatus
 }
 
 func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) (Run, error) {
@@ -189,6 +190,7 @@ func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) (Run, erro
 		arg.Provider,
 		arg.RuntimeSnapshot,
 		arg.PolicySnapshot,
+		arg.Status,
 	)
 	var i Run
 	err := row.Scan(
@@ -1085,6 +1087,42 @@ func (q *Queries) ListWorkspaceRuns(ctx context.Context, arg ListWorkspaceRunsPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockRun = `-- name: LockRun :one
+SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated FROM runs WHERE id = $1 AND workspace_id = $2 FOR UPDATE
+`
+
+type LockRunParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) LockRun(ctx context.Context, arg LockRunParams) (Run, error) {
+	row := q.db.QueryRow(ctx, lockRun, arg.ID, arg.WorkspaceID)
+	var i Run
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.SkillVersionID,
+		&i.TestCaseSnapshotID,
+		&i.Status,
+		&i.StatusReason,
+		&i.Provider,
+		&i.RuntimeSnapshot,
+		&i.PolicySnapshot,
+		&i.CleanupStatus,
+		&i.CleanupAt,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.CancelRequestedAt,
+		&i.FailureClass,
+		&i.SupervisionCheckedAt,
+		&i.CleanupAttemptedAt,
+		&i.ArtifactsTruncated,
+	)
+	return i, err
 }
 
 const lockRunArtifactManifest = `-- name: LockRunArtifactManifest :exec

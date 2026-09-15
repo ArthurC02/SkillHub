@@ -96,21 +96,17 @@ func TestAWorkspaceMayFillEverySlotButNotOneMore(t *testing.T) {
 
 func TestAnAccessRestrictedSkillIsRefusedAndSaysWhichRestriction(t *testing.T) {
 	hold := "a licence review is open"
-	err := (&Service{}).requireNotAccessRestricted(SkillFacts{AccessRestriction: &hold})
+	err := (&Service{}).requireNotAccessRestricted(SkillFacts{AccessRestricted: true, AccessRestrictionReason: hold})
 	if got := reasonOf(t, err); got != ReasonAccessRestricted {
 		t.Errorf("reason = %q, want %q", got, ReasonAccessRestricted)
 	}
 	if !strings.Contains(err.Error(), hold) {
 		t.Errorf("the refusal does not name the restriction: %v", err)
 	}
-	for _, absent := range []*string{nil, ptr(""), ptr("   ")} {
-		if err := (&Service{}).requireNotAccessRestricted(SkillFacts{AccessRestriction: absent}); err != nil {
-			t.Errorf("a skill under no restriction was refused: %v", err)
-		}
+	if err := (&Service{}).requireNotAccessRestricted(SkillFacts{}); err != nil {
+		t.Errorf("a skill under no restriction was refused: %v", err)
 	}
 }
-
-func ptr(s string) *string { return &s }
 
 func TestEveryDeclaredReasonIsInTheRoster(t *testing.T) {
 	fset := token.NewFileSet()

@@ -20,6 +20,7 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	apigen "github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -1059,5 +1060,67 @@ func TestAGenerationTheBalanceCannotStartIsRefusedBeforeTheGateway(t *testing.T)
 	}
 	if got, _ := failures[0].(map[string]any)["failure"].(string); got != ingest.FailureCredit {
 		t.Errorf("failure = %q, want %q", got, ingest.FailureCredit)
+	}
+}
+
+func TestSavingAVersionGivesTheSkillTheNewVersionsSummary(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "save-version-summary")
+	ws := workspaceOf(t, pool, c)
+	ctx := context.Background()
+	first, err := a.versions.UploadZip(ctx, ws, zipOf(t, map[string]string{
+		"SKILL.md": "---\nname: tidy-notes\ndescription: The first summary.\n---\n\nDo it.\n",
+	}))
+	if err != nil {
+		t.Fatalf("UploadZip: %v", err)
+	}
+
+	if _, err := a.versions.SaveVersion(ctx, ws, first.Skill.ID, zipOf(t, map[string]string{
+		"SKILL.md": "---\nname: tidy-notes\ndescription: The second summary.\n---\n\nDo it better.\n",
+	})); err != nil {
+		t.Fatalf("SaveVersion: %v", err)
+	}
+
+	var summary string
+	if err := pool.QueryRow(ctx, `SELECT summary FROM skills WHERE id = $1`, first.Skill.ID).Scan(&summary); err != nil {
+		t.Fatal(err)
+	}
+	if summary != "The second summary." {
+		t.Errorf("summary = %q, want the saved version's", summary)
+	}
+}
+
+func TestAGeneratedCandidateRevisesOnlyAGeneratedSkill(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "candidate-revises-uploaded")
+	ws := workspaceOf(t, pool, c)
+	ctx := context.Background()
+	uploaded, err := a.versions.UploadZip(ctx, ws, zipOf(t, map[string]string{
+		"SKILL.md": "---\nname: pdf-extract\ndescription: An uploaded one.\n---\n\nDo it.\n",
+	}))
+	if err != nil {
+		t.Fatalf("UploadZip: %v", err)
+	}
+	target := uploaded.Skill.ID
+
+	_, err = a.versions.MaterializeGeneratedCandidate(ctx, ws, llmclient.GeneratedSkill{
+		Name:        "pdf-extract",
+		Description: "把掃描的單據影像抽成表格。當使用者手上是掃描件、需要彙整成一份時使用。",
+		Body:        "# 內容\n\n1. 做這件事。\n",
+	}, ingest.GeneratedCandidateProvenance{
+		TaskDescription: "抽出 PDF 文字。", Model: "fixture-model", PromptVersion: "fixture-prompt", ExistingSkillID: &target,
+	}, nil)
+
+	if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
+		t.Fatalf("revising an uploaded skill with a generated candidate: err = %v, want ErrGeneratedNameCollision", err)
+	}
+	var versions int64
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM skill_versions WHERE skill_id = $1`, target).Scan(&versions); err != nil {
+		t.Fatal(err)
+	}
+	if versions != 1 {
+		t.Errorf("the uploaded skill has %d versions, want its one upload", versions)
 	}
 }

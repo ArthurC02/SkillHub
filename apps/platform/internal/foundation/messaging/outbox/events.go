@@ -77,7 +77,40 @@ const (
 )
 
 const (
-	AggregateRun = "run"
+	RunCancelRequested      = "run.cancel_requested"
+	RunProviderAssigned     = "run.provider_assigned"
+	RunAttemptStarted       = "run.attempt_started"
+	RunAttemptDispatched    = "run.attempt_dispatched"
+	RunAttemptFinished      = "run.attempt_finished"
+	RunObjectGrantsRecorded = "run.object_grants_recorded"
+)
+
+const (
+	EvaluationStarted            = "evaluation.started"
+	EvaluationSuperseded         = "evaluation.superseded"
+	EvaluationCompleted          = "evaluation.completed"
+	EvaluationFailed             = "evaluation.failed"
+	EvaluationFeedbackRecorded   = "evaluation.feedback_recorded"
+	EvaluationSuggestionDecided  = "evaluation.suggestion_decided"
+	EvaluationSuggestionsApplied = "evaluation.suggestions_applied"
+)
+
+const (
+	SkillTakenDown               = "skill.taken_down"
+	SkillAccessRestricted        = "skill.access_restricted"
+	SkillAccessRestrictionLifted = "skill.access_restriction_lifted"
+	SkillRedistributionSet       = "skill.redistribution_set"
+	SkillCategorized             = "skill.categorized"
+	SkillDeleted                 = "skill.deleted"
+	SkillCreated                 = "skill.created"
+	SkillVersionAdded            = "skill.version_added"
+	SkillDescribed               = "skill.described"
+)
+
+const (
+	AggregateRun        = "run"
+	AggregateEvaluation = "evaluation"
+	AggregateSkill      = "skill"
 
 	EventVersion1 = int32(1)
 )
@@ -94,6 +127,28 @@ var EventTypes = []string{
 	RunTimedOut,
 	RunCleanupCleaned,
 	RunCleanupFailed,
+	RunCancelRequested,
+	RunProviderAssigned,
+	RunAttemptStarted,
+	RunAttemptDispatched,
+	RunAttemptFinished,
+	RunObjectGrantsRecorded,
+	EvaluationStarted,
+	EvaluationSuperseded,
+	EvaluationCompleted,
+	EvaluationFailed,
+	EvaluationFeedbackRecorded,
+	EvaluationSuggestionDecided,
+	EvaluationSuggestionsApplied,
+	SkillTakenDown,
+	SkillAccessRestricted,
+	SkillAccessRestrictionLifted,
+	SkillRedistributionSet,
+	SkillCategorized,
+	SkillDeleted,
+	SkillCreated,
+	SkillVersionAdded,
+	SkillDescribed,
 }
 
 func StatusEvent(status string) (string, error) {

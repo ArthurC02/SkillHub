@@ -666,6 +666,26 @@ func TestACreationReferenceIsRefusedOnlyWhenItsRedistributionIsBlocked(t *testin
 	}
 }
 
+func TestAReferenceMustBeLiveUnheldAndRedistributable(t *testing.T) {
+	hold := "license-review"
+	allowed, unknown, blocked := string(registry.RedistributionAllowed), string(registry.RedistributionUnknown), string(registry.RedistributionBlocked)
+	for _, tc := range []struct {
+		name  string
+		skill registry.Skill
+		want  bool
+	}{
+		{"a live skill under no hold", registry.Skill{Redistribution: allowed}, true},
+		{"one whose licence nobody has confirmed", registry.Skill{Redistribution: unknown}, true},
+		{"one taken down", registry.Skill{TakedownAt: pgtype.Timestamptz{Valid: true}, Redistribution: allowed}, false},
+		{"one under an access hold", registry.Skill{AccessRestriction: &hold, Redistribution: allowed}, false},
+		{"one whose redistribution is blocked", registry.Skill{Redistribution: blocked}, false},
+	} {
+		if got := referenceable(tc.skill); got != tc.want {
+			t.Errorf("%s: referenceable = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
 func TestALongReferenceIsCutToLeaveRoomForTheMarker(t *testing.T) {
 	ws := identity.Workspace{ID: mustUUIDForTest(t, "10000000-0000-0000-0000-000000000011")}
 	skillID := mustUUIDForTest(t, "20000000-0000-0000-0000-000000000012")

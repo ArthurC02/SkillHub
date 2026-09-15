@@ -639,12 +639,125 @@ func (q *Queries) ListStalePendingEvaluations(ctx context.Context, arg ListStale
 	return items, nil
 }
 
+const lockCurrentEvaluation = `-- name: LockCurrentEvaluation :one
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
+WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL
+FOR UPDATE
+`
+
+type LockCurrentEvaluationParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) LockCurrentEvaluation(ctx context.Context, arg LockCurrentEvaluationParams) (Evaluation, error) {
+	row := q.db.QueryRow(ctx, lockCurrentEvaluation, arg.RunID, arg.WorkspaceID)
+	var i Evaluation
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.RunID,
+		&i.Overall,
+		&i.Summary,
+		&i.CriterionResults,
+		&i.JudgeModel,
+		&i.FeedbackHelpful,
+		&i.FeedbackComment,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Status,
+		&i.JudgePromptVersion,
+		&i.RubricVersion,
+		&i.EvidenceComplete,
+		&i.DeterministicFindings,
+		&i.CostUsd,
+		&i.CostSource,
+		&i.CostIsLowerBound,
+		&i.EvaluatedAt,
+		&i.SupersededAt,
+	)
+	return i, err
+}
+
+const lockEvaluation = `-- name: LockEvaluation :one
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
+WHERE id = $1 AND workspace_id = $2
+FOR UPDATE
+`
+
+type LockEvaluationParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) LockEvaluation(ctx context.Context, arg LockEvaluationParams) (Evaluation, error) {
+	row := q.db.QueryRow(ctx, lockEvaluation, arg.ID, arg.WorkspaceID)
+	var i Evaluation
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.RunID,
+		&i.Overall,
+		&i.Summary,
+		&i.CriterionResults,
+		&i.JudgeModel,
+		&i.FeedbackHelpful,
+		&i.FeedbackComment,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Status,
+		&i.JudgePromptVersion,
+		&i.RubricVersion,
+		&i.EvidenceComplete,
+		&i.DeterministicFindings,
+		&i.CostUsd,
+		&i.CostSource,
+		&i.CostIsLowerBound,
+		&i.EvaluatedAt,
+		&i.SupersededAt,
+	)
+	return i, err
+}
+
+const lockEvaluationSuggestion = `-- name: LockEvaluationSuggestion :one
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at FROM evaluation_suggestions
+WHERE id = $1 AND workspace_id = $2
+FOR UPDATE
+`
+
+type LockEvaluationSuggestionParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) LockEvaluationSuggestion(ctx context.Context, arg LockEvaluationSuggestionParams) (EvaluationSuggestion, error) {
+	row := q.db.QueryRow(ctx, lockEvaluationSuggestion, arg.ID, arg.WorkspaceID)
+	var i EvaluationSuggestion
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.EvaluationID,
+		&i.Category,
+		&i.Problem,
+		&i.Evidence,
+		&i.TargetPath,
+		&i.ProposedContent,
+		&i.ExpectedImpact,
+		&i.Decision,
+		&i.DecidedAt,
+		&i.AppliedSkillVersionID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const markSuggestionsApplied = `-- name: MarkSuggestionsApplied :execrows
 UPDATE evaluation_suggestions SET
-    applied_skill_version_id = $1
+    applied_skill_version_id = $1,
+    decided_at = CASE WHEN decision = 'accepted' THEN decided_at ELSE now() END,
+    decision = 'accepted'
 WHERE id = ANY($2::uuid[])
   AND workspace_id = $3
-  AND decision = 'accepted'
 `
 
 type MarkSuggestionsAppliedParams struct {

@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"strings"
@@ -44,11 +45,14 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 		return Result{}, err
 	}
 	defer release()
-	existing, found, err := registry.SkillByID(ctx, tx, ws.ID, *p.ExistingSkillID)
+	existing, err := registry.LoadSkill(ctx, tx, ws.ID, *p.ExistingSkillID)
+	if errors.Is(err, registry.ErrNotFound) {
+		return Result{}, ErrGeneratedNameCollision
+	}
 	if err != nil {
 		return Result{}, err
 	}
-	if !found || registry.Redistribution(existing.Redistribution) != registry.RedistributionGenerated {
+	if !existing.Generated() {
 		return Result{}, ErrGeneratedNameCollision
 	}
 	version, duplicate, err := s.persistVersion(ctx, tx, ws, existing, prepared, src, s.enrichPackage(ctx, prepared, ws.ID))
@@ -56,7 +60,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 		return Result{}, err
 	}
 
-	res := Result{Report: prepared.report, Skill: existing, Version: version, Duplicate: duplicate}
+	res := Result{Report: prepared.report, Skill: existing.Skill(), Version: version, Duplicate: duplicate}
 	if !duplicate {
 		if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, map[string]any{"source_type": string(SourceGenerated)}); err != nil {
 			return Result{}, err
@@ -90,8 +94,7 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 	if !found {
 		skill, found, err = s.References.CatalogSkill(ctx, skillID)
 	}
-	if err != nil || !found || skill.TakedownAt.Valid || skill.AccessRestriction != nil ||
-		registry.Redistribution(skill.Redistribution) == registry.RedistributionBlocked {
+	if err != nil || !found || !referenceable(skill) {
 		return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
 	}
 	var version registry.Version

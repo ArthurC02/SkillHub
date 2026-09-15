@@ -31,19 +31,40 @@ func TestAnAttemptIsRefusedForTheFirstLimitItHits(t *testing.T) {
 		name       string
 		e          envelope
 		hasDiagram bool
-		want       string
+		want       attemptRefusal
+		sentence   string
 	}{
-		{"deadline passed", envelope{Deadline: past, Limits: testLimits(), Snapshot: spent}, false, "創作已達這次核准的限制，請開始新的創作。"},
-		{"no steps left", envelope{Deadline: future, Limits: testLimits(), Snapshot: spent}, false, "已達這次核准的步數上限，請開始新的創作。"},
-		{"diagram never read", envelope{Deadline: future, Limits: testLimits(), Snapshot: unread}, false, "流程圖需要重新上傳。"},
-		{"diagram arriving with the attempt", envelope{Deadline: future, Limits: testLimits(), Snapshot: unread}, true, ""},
-		{"nothing in the way", envelope{Deadline: future, Limits: testLimits(), Snapshot: room}, false, ""},
+		{"deadline passed", envelope{Deadline: past, Limits: testLimits(), Snapshot: spent}, false, refusedPastDeadline, "創作已達這次核准的限制，請開始新的創作。"},
+		{"no steps left", envelope{Deadline: future, Limits: testLimits(), Snapshot: spent}, false, refusedOverLimit, "已達這次核准的步數上限，請開始新的創作。"},
+		{"diagram never read", envelope{Deadline: future, Limits: testLimits(), Snapshot: unread}, false, refusedDiagramUnread, "流程圖需要重新上傳。"},
+		{"diagram arriving with the attempt", envelope{Deadline: future, Limits: testLimits(), Snapshot: unread}, true, "", ""},
+		{"nothing in the way", envelope{Deadline: future, Limits: testLimits(), Snapshot: room}, false, "", ""},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			if got := attemptRefusal(c.e, c.hasDiagram); got != c.want {
+			got := refuseAttempt(c.e, c.hasDiagram)
+			if got != c.want {
 				t.Fatalf("refusal = %q, want %q", got, c.want)
 			}
+			if sentence := got.sentence(c.e.Snapshot, c.e.Limits); sentence != c.sentence {
+				t.Fatalf("sentence = %q, want %q", sentence, c.sentence)
+			}
 		})
+	}
+}
+
+func TestAnAbandonedAttemptAsksForTheDiagramOnlyWhenItWasNeverRead(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		p    Snapshot
+		want State
+	}{
+		{"no diagram", Snapshot{}, StateFailed},
+		{"a diagram never read", Snapshot{DiagramFingerprint: "fp"}, StateNeedsReupload},
+		{"a diagram already read", Snapshot{DiagramFingerprint: "fp", DiagramUnderstanding: understoodDiagram}, StateFailed},
+	} {
+		if got := abandonedState(c.p); got != c.want {
+			t.Errorf("%s: state = %s, want %s", c.name, got, c.want)
+		}
 	}
 }
 
@@ -63,7 +84,7 @@ func TestAFailedAttemptLandsWhereThePersonCanActOnIt(t *testing.T) {
 		hadDiagram    bool
 		err, callErr  error
 		want          State
-		pending       string
+		pending       PendingAction
 		last          string
 	}{
 		{"the reply broke the rules", "", false, ErrInvalidCommand, nil, StateFailed, "", "模型的回覆不符合會話規則"},

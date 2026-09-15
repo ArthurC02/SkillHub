@@ -113,11 +113,17 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一�
 | 額度拒絕理由詞彙 | `product/entitlements` 的 `AllowanceRefusalReasons` | `quota_test.go` | 測試獨立重述三個字面值 |
 | outbox 事件 payload 的形狀 | `foundation/messaging/outbox/events.go` | `payload_test.go` | — |
 | 使用者看得到的句子 | 寫出它的 handler，不是領域 sentinel | `messages_test.go`（`trial/design`、`trial/execution`） | 同套件的 AST 測試：`errors.New` 不得帶漢字 |
+| Skill 的存取限制是否生效 | `skill/library/access.go` 的 `AccessRestriction`；不能 import owner 的 context 從組裝層收到 `AccessRestricted` 判定，不自己判斷 | `access_test.go` | — |
+| 一個 Skill 能不能當參考 | `skill/admission/generate.go` 的 `referenceable` | `generate_test.go` | — |
+| 評估的開始與取代、結算、回饋、建議決定、建議已套用 | `trial/improvement/evaluation.go` 的 `Evaluation` aggregate：命令記下事件或拒絕事件，存回只在 `evaluation_store.go`；建議已套用由 `mailbox.go` 消化 Skill 的 `skill.version_added` 後記下（套用結果與既有版本相同時 Skill 沒有變，由 `apply.go` 當下記到那個版本） | `evaluation_test.go` | 事件名稱：`outbox` 套件的 conformance test 對帳 Go 常數 ↔ 最新換上 CHECK 的 migration ↔ 事件目錄 §3 |
+| Skill 的建立、加版本、換說明、下架、存取限制、再散布、分類、刪除 | `skill/library/skill_root.go` 的 `SkillRoot` aggregate：命令記下事件或拒絕事件，存回只在 `skill_store.go`；匯入、存新版本、生成、Fork 與套用建議都經過 `AddVersion`，套用建議建成的版本在事件上帶著建成它的評估與建議；`skill/discovery` 只把拒絕理由翻成營運者看得懂的句子 | `skill_root_test.go` | 同上 |
+| Run 的轉移、取消、指定 Provider、attempt 的開始／派送／結束、物件授權到期 | `trial/execution/run_root.go` 的 `Run` aggregate：命令記下事件或拒絕事件，存回只在 `run_store.go`；轉移表仍是 `statemachine.go` 的 `successors`，授權狀態仍是 `grantstate.go`；driver 與授權只呼叫命令（排程只組出要釘住的 runtime 快照），清理狀態由 `cleanup.go` 記下 | `run_root_test.go` | 轉移表：`run-status-sql`；事件名稱：同上 |
+| creation 還能不能再加訊息、正在等人確認什麼 | `creator/creation/service.go` 的 `Snapshot.hasRoomFor` 與 `PendingAction` 常數（不拒絕未知值，J5） | `snapshot_test.go` | — |
 
 **「機器對帳」欄有兩種東西，不要混為一談：**
 
 - 前四列是 `devctl automation-check` 的檢查器，**Go 與 SQL 分岔時 CI 紅**。`domain-vocabulary` 對帳 Go 常數 ↔ DB `CHECK (… IN (…))` ↔ Postgres enum ↔ 契約 enum，清單是 `tools/devctl/domain_vocabulary.go` 的 `domainVocabularies`，上表只列範本（SQL 沒有 CHECK 的詞彙以 `absent` 寫明）。它同時守覆蓋面：migration 裡每一個 `CHECK (… IN (…))` 詞彙要嘛接進對帳，要嘛在 `unreconciledVocabularies` 寫下為什麼不接（§5.1、§5.6），兩者皆無或理由已經過期都紅；`run-status-sql` 對帳 Go 的 `successors` ↔ migration 0032 的 trigger 轉移列 ↔ 每一處終態 `IN` 清單。
-- 後四列只有**同套件的測試**，沒有跨 Go／SQL 的對帳——因為那四樣東西 SQL 側沒有第二份。
+- 其餘各列只有**同套件的測試**，沒有跨 Go／SQL 的對帳——SQL 側要嘛沒有第二份，要嘛只有擋空白字串的 `CHECK`（存取限制，migration 0023）。評估那一列的規則同樣只有同套件的測試；它的事件名稱另由 `outbox` 套件自己的測試對帳。
 
 **閘門順序不在這張表裡，它刻意留在 `create()` 的呼叫序。** 順序決定哪個 reason 先浮出來，而 reason 直接餵 `metrics.RunRefused` 與 `audit.ActionRunRefused`，所以改順序就是改對外行為（§9）。
 
@@ -270,13 +276,23 @@ git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStar
 
 `domain-vocabulary` 的 `unreconciledVocabularies` 逐筆列出這六個欄位，以及同一個形狀的 `skill_runtime_compatibility.runtime`：Go 只把它讀出來顯示量測結果，不依它分支，寫入端只有操作員手跑的 SQL。**重開條件**：Go 開始依其中任何一個值分支——屆時照 §3 形狀在擁有者型別化、接進對帳，並刪掉那一筆（不刪，檢查器會說它過期）。
 
+### 5.7 creation 的 Session aggregate 與金額的 value type
+
+creation 會話不包成 aggregate：唯一的寫入點 `advance()` 已經存在，改寫只換呼叫語法。金額不做 value type：運算已集中在 `money.go`，沒有混用過的事故，理由同 §5.4。**重開條件**：出現第二個寫入會話快照的地方，或金額在 `money.go` 之外被運算。
+
 ---
 
 ## 6 待做
 
-目前沒有待做項目。
+目前沒有待做。[ADR-084](../adr/ADR-084-aggregates-speak-in-domain-events.md) 的 Evaluation、Skill、Run aggregate 與 creation 的兩個具名概念都已改完；新的 aggregate 照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
 
-每一項都已在 [`04`](../plans/04-backlog-and-handoffs.md) 登記，照 §0 一次做一件，順序就是編號。新的待做先在 `04` 登記，再寫進這一節，每一項用同一個形狀：**GOAL**（要擋住什麼）、**DISCOVER**（能重跑的指令）、**EDIT**（改動的形狀）、**PROVE**（弄壞哪一行、哪條測試會紅）、**STOP-IF**（什麼情況停下回報）。
+- 狀態不匯出，只有唯讀存取。命令不回傳值、不帶 `context`、不做 I/O：成立就改狀態並記下領域事件，不成立就只記一則帶理由的拒絕事件。
+- 載入是吃呼叫端交易的套件函式並以列鎖讀出；存回只有一處，同交易寫狀態並把事件寫進 outbox；拒絕不存回。
+- Aggregate 之間只用事件：outbox → Dispatcher 的訂閱 → 訂閱者的 Mailbox（River 佇列）→ 消化方法。
+- 測試不連資料庫，只斷言唯讀狀態與事件。SQL 的原子性守衛（C2）全部保留。
+- 新事件照[事件目錄](../../contracts/events/domain-events.md) §4 規則 4：目錄、outbox 常數、新 migration 的值域檢查、producer 同一個 commit。
+
+新的待做先在 `04` 登記，再寫進這一節，每一項用同一個形狀：**GOAL**（要擋住什麼）、**DISCOVER**（能重跑的指令）、**EDIT**（改動的形狀）、**PROVE**（弄壞哪一行、哪條測試會紅）、**STOP-IF**（什麼情況停下回報）。
 
 J3 已經量過，不在這裡：吃事實的 `require*` 都只負責取事實，判斷交給純函式（`scanVerdict`、`runSlotVerdict`、`policy.EnforceQuota`）或注入的讀取者；額度扣抵留在 SQL 是 C2。重開前先重跑 J3 的 DISCOVER：
 

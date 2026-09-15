@@ -1,11 +1,9 @@
 package registry
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -22,8 +20,6 @@ func validatedManifest(report skillpkg.Report) (*skillpkg.Manifest, error) {
 }
 
 type NewVersion struct {
-	WorkspaceID      pgtype.UUID
-	SkillID          pgtype.UUID
 	SourceID         pgtype.UUID
 	ContentHash      string
 	PackageObjectKey string
@@ -47,64 +43,53 @@ func AllRedistributions() []Redistribution {
 	}
 }
 
-func CreateSkillFromPackage(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, report skillpkg.Report, redistribution Redistribution) (Skill, error) {
-	manifest, err := validatedManifest(report)
-	if err != nil {
-		return Skill{}, err
-	}
-	var verdict *string
-	if redistribution != "" {
-		value := string(redistribution)
-		verdict = &value
-	}
-
-	row, err := gen.New(tx).CreateSkill(ctx, gen.CreateSkillParams{
-		WorkspaceID:    workspaceID,
-		Name:           manifest.Name,
-		Summary:        &manifest.Description,
-		Redistribution: verdict,
-	})
-	if err != nil {
-		return Skill{}, err
-	}
-	return skillDTO(row), nil
+type VersionContent struct {
+	sourceID         pgtype.UUID
+	contentHash      string
+	packageObjectKey string
+	manifest         []byte
+	license          *string
+	licenseSource    *string
+	summary          string
+	generated        bool
+	improvedBy       *Improvement
 }
 
-func CreateVersionFromPackage(ctx context.Context, tx pgx.Tx, v NewVersion) (Version, error) {
+func (c VersionContent) ImprovedBy(by Improvement) VersionContent {
+	c.improvedBy = &by
+	return c
+}
+
+func SkillFromPackage(workspaceID pgtype.UUID, report skillpkg.Report, redistribution Redistribution) (*SkillRoot, error) {
+	manifest, err := validatedManifest(report)
+	if err != nil {
+		return nil, err
+	}
+	return startSkill(gen.Skill{WorkspaceID: workspaceID, Name: manifest.Name, Summary: &manifest.Description}, redistribution), nil
+}
+
+func ContentFromPackage(v NewVersion, generated bool) (VersionContent, error) {
 	manifest, err := validatedManifest(v.Report)
 	if err != nil {
-		return Version{}, err
+		return VersionContent{}, err
 	}
-
 	encoded, err := json.Marshal(manifest)
 	if err != nil {
-		return Version{}, err
+		return VersionContent{}, err
 	}
 	license, licenseSource := versionLicense(v.Report)
-	row, err := gen.New(tx).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
-		WorkspaceID:       v.WorkspaceID,
-		SkillID:           v.SkillID,
-		SourceID:          v.SourceID,
-		ContentHash:       v.ContentHash,
-		PackageObjectKey:  v.PackageObjectKey,
-		Manifest:          encoded,
-		LicenseExpression: license,
-		LicenseSource:     licenseSource,
-	})
-	if err != nil {
-		return Version{}, err
-	}
-	return versionDTO(row), nil
+	return VersionContent{
+		sourceID: v.SourceID, contentHash: v.ContentHash, packageObjectKey: v.PackageObjectKey,
+		manifest: encoded, license: license, licenseSource: licenseSource,
+		summary: manifest.Description, generated: generated,
+	}, nil
 }
 
-func UpdateSummaryFromPackage(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID, report skillpkg.Report) error {
-	manifest, err := validatedManifest(report)
-	if err != nil {
-		return err
+func copiedContent(from gen.SkillVersion, generated bool) VersionContent {
+	return VersionContent{
+		contentHash: from.ContentHash, packageObjectKey: from.PackageObjectKey, manifest: from.Manifest,
+		license: from.LicenseExpression, licenseSource: from.LicenseSource, generated: generated,
 	}
-	return gen.New(tx).UpdateSkillSummary(ctx, gen.UpdateSkillSummaryParams{
-		ID: skillID, WorkspaceID: workspaceID, Summary: &manifest.Description,
-	})
 }
 
 func versionLicense(report skillpkg.Report) (expression, source *string) {

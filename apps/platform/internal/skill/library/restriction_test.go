@@ -10,16 +10,38 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func TestSetAccessRestrictionRejectsABlankReason(t *testing.T) {
-	for name, reason := range map[string]string{
-		"empty":      "",
-		"whitespace": "  ",
+func TestABlankRestrictionReasonIsRefusedByTheSkillAndLeavesItAsItWas(t *testing.T) {
+	pool := requireRegistryDB(t)
+	_, skillID := seedSkill(t, pool, "restriction-blank")
+	ctx := context.Background()
+	missing := pgtype.UUID{Bytes: [16]byte{0xde, 0xad}, Valid: true}
+	for _, tc := range []struct {
+		name   string
+		skill  pgtype.UUID
+		reason string
+		want   error
+	}{
+		{"an empty reason", skillID, "", ErrEmptyRestriction},
+		{"a whitespace reason", skillID, "  ", ErrEmptyRestriction},
+		{"a blank reason for a skill that does not exist", missing, "", ErrNotFound},
 	} {
-		t.Run(name, func(t *testing.T) {
-			if _, err := SetAccessRestriction(context.Background(), nil, pgtype.UUID{}, &reason); !errors.Is(err, ErrEmptyRestriction) {
-				t.Errorf("SetAccessRestriction err = %v", err)
+		t.Run(tc.name, func(t *testing.T) {
+			tx, err := pool.Begin(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = tx.Rollback(ctx) }()
+			if _, err := SetAccessRestriction(ctx, tx, tc.skill, &tc.reason); !errors.Is(err, tc.want) {
+				t.Fatalf("err = %v, want %v", err, tc.want)
 			}
 		})
+	}
+	var stored *string
+	if err := pool.QueryRow(ctx, `SELECT access_restriction FROM skills WHERE id = $1`, skillID).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored != nil {
+		t.Fatalf("a refused blank reason left the restriction %q", *stored)
 	}
 }
 

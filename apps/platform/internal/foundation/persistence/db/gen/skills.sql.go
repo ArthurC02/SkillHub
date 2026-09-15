@@ -496,6 +496,42 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 	return items, nil
 }
 
+const lockSkill = `-- name: LockSkill :one
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+FOR UPDATE
+`
+
+type LockSkillParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) LockSkill(ctx context.Context, arg LockSkillParams) (Skill, error) {
+	row := q.db.QueryRow(ctx, lockSkill, arg.ID, arg.WorkspaceID)
+	var i Skill
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Summary,
+		&i.ForkedFromSkillID,
+		&i.ForkedFromVersionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.TakedownAt,
+		&i.TakedownReason,
+		&i.AccessRestriction,
+		&i.Redistribution,
+		&i.CurationTier,
+		&i.CuratedVersionID,
+		&i.Category,
+		&i.CategorySource,
+	)
+	return i, err
+}
+
 const setSkillCategory = `-- name: SetSkillCategory :one
 UPDATE skills
 SET category = $3, category_source = $4, updated_at = now()

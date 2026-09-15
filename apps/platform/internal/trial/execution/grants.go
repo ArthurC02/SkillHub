@@ -31,7 +31,7 @@ func (s *Service) grantsFor(
 		if version.PackageObjectKey != "" || len(refs) > 0 {
 			return nil, nil, fmt.Errorf("no object store is configured; this run's inputs cannot be granted")
 		}
-		if err := s.recordObjectGrantExpiry(ctx, attempt, run.WorkspaceID, objectGrantsExpiredOnArrival()); err != nil {
+		if err := s.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); err != nil {
 			return nil, nil, fmt.Errorf("record empty object grant expiry: %w", err)
 		}
 		return nil, datasetKeys, nil
@@ -85,7 +85,7 @@ func (s *Service) grantsFor(
 	for i := range grants {
 		grants[i].ExpiresAt = expires
 	}
-	if err := s.recordObjectGrantExpiry(ctx, attempt, run.WorkspaceID, expires); err != nil {
+	if err := s.recordObjectGrantExpiry(ctx, attempt, expires); err != nil {
 		return nil, nil, fmt.Errorf("record object grant expiry: %w", err)
 	}
 	return grants, datasetKeys, nil

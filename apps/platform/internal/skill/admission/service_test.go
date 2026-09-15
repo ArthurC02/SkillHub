@@ -36,7 +36,7 @@ const skillMD = "---\nname: pdf-tools\ndescription: Work with PDFs.\nlicense: MI
 
 func TestImportPathsRefuseWithoutProjectionDependencies(t *testing.T) {
 	ctx := context.Background()
-	if _, _, err := (&Service{}).persistVersion(ctx, nil, identity.Workspace{}, registry.Skill{},
+	if _, _, err := (&Service{}).persistVersion(ctx, nil, identity.Workspace{}, &registry.SkillRoot{},
 		preparedPackage{}, sourceMeta{Type: "upload"}, enrichment{}); err == nil {
 		t.Error("persistVersion succeeded without the search projection write injected")
 	}

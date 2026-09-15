@@ -17,18 +17,11 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
-
-var errProvenanceNotRecorded = errors.New(
-	"the new skill version was created, but the record of which improvement suggestions produced it was not written; " +
-		"the version is usable and its provenance is missing")
-
-const actionSuggestionProvenanceLost = "evaluation.provenance_not_recorded"
 
 const (
 	BlockedPathOutOfBounds  = "path_out_of_bounds"
@@ -157,7 +150,7 @@ func check(sc suggestionCtx) (string, *Blocked) {
 		return "", &Blocked{SuggestionID: id, Reason: reason, Message: msg}
 	}
 
-	if sc.skill.AccessRestriction != nil && strings.TrimSpace(*sc.skill.AccessRestriction) != "" {
+	if sc.skill.AccessRestricted {
 		return block(BlockedAccessRestricted,
 			"this skill's materials are held back while a licensing question about them is "+
 				"open, so its contents are not reproduced and no version can be built from them")
@@ -490,7 +483,7 @@ func (s *Service) ApplySuggestions(
 	if err != nil {
 		return out, err
 	}
-	res, err := s.Versions.SaveVersion(ctx, ws, skillID, patched)
+	res, err := s.Versions.SaveImprovedVersion(ctx, ws, skillID, patched, evaluationID, applied)
 	if err != nil {
 		return out, err
 	}
@@ -503,28 +496,12 @@ func (s *Service) ApplySuggestions(
 		out.Applied = nil
 		return out, nil
 	}
-
-	if _, err := s.queries().MarkSuggestionsApplied(ctx, gen.MarkSuggestionsAppliedParams{
-		SkillVersionID: res.Version.ID, Ids: applied, WorkspaceID: ws.ID,
-	}); err != nil {
-		if auditErr := audit.Log(ctx, s.Pool, audit.Event{
-			Actor:        ws.OwnerUserID,
-			Workspace:    ws.ID,
-			Action:       actionSuggestionProvenanceLost,
-			ResourceType: audit.ResourceVersion,
-			ResourceID:   res.Version.ID,
-			Metadata: map[string]any{
-				"evaluation_id":  pgconv.UUIDString(evaluationID),
-				"skill_id":       pgconv.UUIDString(skillID),
-				"suggestions":    len(applied),
-				"version_exists": true,
-			},
-		}); auditErr != nil {
-
-			return out, fmt.Errorf("%w: the audit record of it also failed: %w", errProvenanceNotRecorded, auditErr)
+	if res.Duplicate {
+		if err := s.RecordSuggestionsApplied(ctx, ws.ID, evaluationID, res.Version.ID, applied); err != nil {
+			return out, err
 		}
-		return out, fmt.Errorf("%w: %w", errProvenanceNotRecorded, err)
 	}
+
 	out.Created, out.Version = true, ingest.NewUploadResult(res)
 	return out, nil
 }

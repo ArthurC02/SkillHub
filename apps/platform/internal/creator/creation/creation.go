@@ -131,7 +131,7 @@ func (s *Service) openingEnvelope(ctx context.Context, ws identity.Workspace, me
 		return e, StateQueued
 	}
 	e.Snapshot.References = shortlist(refs)
-	e.Snapshot.PendingAction = "confirm_references"
+	e.Snapshot.PendingAction = PendingReferenceChoice
 	return e, StateWaitingConfirmation
 }
 
@@ -229,7 +229,7 @@ func confirmed(p Snapshot) bool {
 func invalidate(p *Snapshot) {
 	p.Draft = nil
 	p.Candidate = nil
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	clearDuplicateCheck(p)
 }
 
@@ -264,7 +264,7 @@ func (s *Service) attachNote(p *Snapshot, note string) error {
 	if strings.TrimSpace(note) == "" {
 		return nil
 	}
-	if utf8.RuneCountInString(note) > maxPersonMessageRunes || len(p.Messages) >= MaxMessages {
+	if utf8.RuneCountInString(note) > maxPersonMessageRunes || !p.hasRoomFor(1) {
 		return ErrInvalidCommand
 	}
 	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(note)})
@@ -392,7 +392,7 @@ func (s *Service) apply(ctx context.Context, tx pgx.Tx, ws identity.Workspace, r
 }
 
 func cancelSession(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelope) (commandOutcome, error) {
-	e.Snapshot.PendingAction = ""
+	e.Snapshot.PendingAction = NothingPending
 	if e.ActiveReceipt.Valid {
 		if _, err := withdrawAttempt(ctx, tx, row, e.ActiveReceipt); err != nil {
 			return commandOutcome{}, err
@@ -404,7 +404,7 @@ func cancelSession(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *e
 
 func stopStep(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelope) (commandOutcome, error) {
 	p := &e.Snapshot
-	if !e.ActiveReceipt.Valid || len(p.Messages) >= MaxMessages {
+	if !e.ActiveReceipt.Valid || !p.hasRoomFor(1) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	beforeSending, err := withdrawAttempt(ctx, tx, row, e.ActiveReceipt)
@@ -412,7 +412,7 @@ func stopStep(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelo
 		return commandOutcome{}, err
 	}
 	e.ActiveReceipt = pgtype.UUID{}
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: stopStepNote(beforeSending)})
 	return settledIn(StateWaitingInput), nil
 }
@@ -438,30 +438,30 @@ func stopStepNote(beforeSending bool) string {
 }
 
 func (s *Service) acceptMessage(p *Snapshot, message string) (commandOutcome, error) {
-	if strings.TrimSpace(message) == "" || utf8.RuneCountInString(message) > maxPersonMessageRunes || len(p.Messages) >= MaxMessages {
+	if strings.TrimSpace(message) == "" || utf8.RuneCountInString(message) > maxPersonMessageRunes || !p.hasRoomFor(1) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(message)})
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	return stepQueued(), nil
 }
 
 func confirmBrief(p *Snapshot) (commandOutcome, error) {
-	if p.PendingAction != "confirm_brief" || strings.TrimSpace(p.Brief) == "" {
+	if p.PendingAction != PendingBriefConfirmation || strings.TrimSpace(p.Brief) == "" {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	p.BriefConfirmed = true
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	p.ModelChanged = nil
 	return stepQueued(), nil
 }
 
 func confirmDiagram(p *Snapshot) (commandOutcome, error) {
-	if p.PendingAction != "confirm_diagram" || !validDiagramInterpretation(p.DiagramUnderstanding) {
+	if p.PendingAction != PendingDiagramConfirmation || !validDiagramInterpretation(p.DiagramUnderstanding) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	p.DiagramConfirmed = true
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	return stepQueued(), nil
 }
 
@@ -489,13 +489,13 @@ func (s *Service) selectReferences(ctx context.Context, ws identity.Workspace, p
 	p.References = refs
 	invalidate(p)
 	p.BriefConfirmed = false
-	p.PendingAction = "confirm_references"
+	p.PendingAction = PendingReferenceChoice
 	return settledIn(StateWaitingConfirmation), nil
 }
 
 func (s *Service) adoptReference(ctx context.Context, ws identity.Workspace, e *envelope, skillIDs []string) (commandOutcome, error) {
 	p := &e.Snapshot
-	if s.Adopt == nil || len(skillIDs) != 1 || (p.PendingAction != "confirm_references" && p.PendingAction != "confirm_duplicate") || !listedReference(p, skillIDs[0]) {
+	if s.Adopt == nil || len(skillIDs) != 1 || (p.PendingAction != PendingReferenceChoice && p.PendingAction != PendingDuplicateAcknowledgement) || !listedReference(p, skillIDs[0]) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	candidate, err := s.Adopt(ctx, ws, skillIDs[0])
@@ -504,24 +504,24 @@ func (s *Service) adoptReference(ctx context.Context, ws identity.Workspace, e *
 	}
 	p.Candidate = &candidate
 	p.Adopted = true
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	p.PendingMaterialize = ""
 	e.ExistingSkillID = candidate.SkillID
 	return settledIn(StateSaved), nil
 }
 
 func declineReferences(p *Snapshot) (commandOutcome, error) {
-	if p.PendingAction != "confirm_references" || len(p.Messages) >= MaxMessages {
+	if p.PendingAction != PendingReferenceChoice || !p.hasRoomFor(1) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	p.References = []Reference{}
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "使用者不採用目錄裡的 Skill；請依需求撰寫。"})
 	return stepQueued(), nil
 }
 
 func (s *Service) confirmReferences(ctx context.Context, ws identity.Workspace, p *Snapshot) (commandOutcome, error) {
-	if p.PendingAction != "confirm_references" || s.ResolveReference == nil {
+	if p.PendingAction != PendingReferenceChoice || s.ResolveReference == nil {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	for i, r := range p.References {
@@ -531,7 +531,7 @@ func (s *Service) confirmReferences(ctx context.Context, ws identity.Workspace, 
 		p.References[i].Confirmed = true
 		p.References[i].Available = true
 	}
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	return stepQueued(), nil
 }
 
@@ -577,7 +577,7 @@ func diagramImage(d *llmclient.GenerateDiagram) ([]byte, error) {
 }
 
 func (s *Service) attachRun(ctx context.Context, ws identity.Workspace, p *Snapshot, runID string) (commandOutcome, error) {
-	if p.Candidate == nil || s.ReadRun == nil || runID == "" || len(p.Messages) >= MaxMessages {
+	if p.Candidate == nil || s.ReadRun == nil || runID == "" || !p.hasRoomFor(1) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	observation, err := s.ReadRun(ctx, ws, runID, *p.Candidate)
@@ -591,21 +591,21 @@ func (s *Service) attachRun(ctx context.Context, ws identity.Workspace, p *Snaps
 	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: observation})
 	if questions := trialQuestions(observation); p.RunUnmet && questions != "" {
 		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: questions})
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		return settledIn(StateWaitingInput), nil
 	}
 	return stepQueued(), nil
 }
 
 func awaitsFetchConfirmation(p *Snapshot) bool {
-	return p.PendingAction == "confirm_fetch" && p.PendingFetchURL != ""
+	return p.PendingAction == PendingFetchPermission && p.PendingFetchURL != ""
 }
 
 func confirmFetch(p *Snapshot) (commandOutcome, error) {
 	if !awaitsFetchConfirmation(p) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	return stepQueued(), nil
 }
 
@@ -617,7 +617,7 @@ func declineFetch(p *Snapshot) (commandOutcome, error) {
 	p.Fetches = append(p.Fetches, rec)
 	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fetchObservation(rec, "")})
 	p.PendingFetchURL = ""
-	p.PendingAction = ""
+	p.PendingAction = NothingPending
 	return stepQueued(), nil
 }
 
@@ -635,12 +635,12 @@ func raiseBudget(p *Snapshot, l Limits, current State, budget float64) (commandO
 func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, c Command) (commandOutcome, error) {
 	kind := c.Kind
 	if c.Kind == "confirm_duplicate" {
-		if p.PendingAction != "confirm_duplicate" || p.PendingMaterialize == "" {
+		if p.PendingAction != PendingDuplicateAcknowledgement || p.PendingMaterialize == "" {
 			return commandOutcome{}, ErrInvalidCommand
 		}
 		kind = p.PendingMaterialize
 		p.DuplicateAcknowledged = true
-		p.PendingAction = ""
+		p.PendingAction = NothingPending
 		p.PendingMaterialize = ""
 		if taken, collides := draftNameTaken(*p, c.ContentHash); collides {
 			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("使用者仍要建立自己的版本，但草稿名稱「%s」與目錄裡那份相同，保存會被拒絕；請只改名稱（描述其差異），其餘內容不變，重新交出草稿。", taken)})
@@ -666,7 +666,7 @@ func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, 
 }
 
 func draftNameTaken(p Snapshot, contentHash string) (string, bool) {
-	if p.Draft == nil || p.Draft.ContentHash != contentHash || len(p.Messages) >= MaxMessages {
+	if p.Draft == nil || p.Draft.ContentHash != contentHash || !p.hasRoomFor(1) {
 		return "", false
 	}
 	return nameCollides(p.Draft.Skill.Name, p.Duplicates)
@@ -707,7 +707,7 @@ func (s *Service) holdForDuplicates(ctx context.Context, ws identity.Workspace, 
 	}
 	p.Duplicates = shortlist(dups)
 	p.PendingMaterialize = kind
-	p.PendingAction = "confirm_duplicate"
+	p.PendingAction = PendingDuplicateAcknowledgement
 	return true
 }
 
@@ -800,7 +800,7 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 		current.Snapshot.SpentUSD = p.SpentUSD
 		current.Snapshot.Duplicates = p.Duplicates
 		current.Snapshot.DuplicateAcknowledged = p.DuplicateAcknowledged
-		current.Snapshot.PendingAction = ""
+		current.Snapshot.PendingAction = NothingPending
 		current.Snapshot.PendingMaterialize = ""
 		current.ExistingSkillID = candidate.SkillID
 		state := savedState(kind)

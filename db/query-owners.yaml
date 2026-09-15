@@ -52,7 +52,6 @@ queries:
   CountSkillsWaitingForDeletionGrace: registry
   ListWorkspaceSkillSourceIDs: ingest
   DeleteSkillSources: ingest
-  TakedownSkill: registry
   LockSkillForOperatorWrite: registry
   SetSkillAccessRestriction: registry
   SetSkillRedistribution: registry
@@ -135,6 +134,7 @@ queries:
   LockRunArtifactObjectSession: run
   UnlockRunArtifactObjectSession: run
   GetRunLinkage: run
+  LockRun: run
   TransitionRun: run
   RequestRunCancel: run
   SetRunProvider: run
@@ -203,6 +203,7 @@ scope:
   GetLatestVersionLicense: user
   LiftDispatchHalt: user
   ListPlatformAuditEvents: user
+  LockSkillForOperatorWrite: user
   ListRecentCreditEntries: user
   SetDispatchHaltClearRounds: user
   SetSkillAccessRestriction: user

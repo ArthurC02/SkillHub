@@ -54,9 +54,6 @@ linters:
       - path: internal/trial/execution/job\.go
         linters: [gocognit]
         text: 'func `\(\*driver\)\.follow`'
-      - path: internal/trial/execution/service\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.create`'
       - path: internal/trial/improvement/apply\.go
         linters: [gocognit]
         text: 'func `\(\*Service\)\.ApplySuggestions`'

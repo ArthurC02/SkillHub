@@ -93,6 +93,11 @@ export type ImprovementSuggestion = {
   applied_skill_version_id?: string;
 };
 
+export type RunSuggestions = {
+  evaluation_id: string;
+  suggestions: ImprovementSuggestion[];
+};
+
 export type SuggestionDiff = {
   target_path: string;
   unified_diff?: string;
@@ -232,10 +237,7 @@ export function useEvaluationFeedback(runId: string) {
 export function useRunSuggestions(runId: string) {
   return useQuery({
     queryKey: queryKeys.evaluation.suggestions(runId),
-    queryFn: () =>
-      apiFetch<{ evaluation_id: string; suggestions: ImprovementSuggestion[] }>(
-        `/runs/${runId}/suggestions`,
-      ),
+    queryFn: () => apiFetch<RunSuggestions>(`/runs/${runId}/suggestions`),
     enabled: runId.length > 0,
   });
 }
@@ -297,11 +299,21 @@ export function useApplySuggestions(runId: string) {
       evaluationId: string;
       suggestionIds: string[];
     }) => createVersionFromSuggestions(skillId, evaluationId, suggestionIds),
-    onSuccess: (created) =>
-      Promise.all([
-        client.invalidateQueries({ queryKey: queryKeys.evaluation.suggestions(runId) }),
-        client.invalidateQueries({ queryKey: queryKeys.skills.versions(created.skill_id) }),
-      ]),
+    onSuccess: (created) => {
+      client.setQueryData<RunSuggestions>(
+        queryKeys.evaluation.suggestions(runId),
+        (held) =>
+          held && {
+            ...held,
+            suggestions: held.suggestions.map((s) =>
+              created.applied_suggestion_ids.includes(s.suggestion_id)
+                ? { ...s, applied_skill_version_id: created.version_id }
+                : s,
+            ),
+          },
+      );
+      return client.invalidateQueries({ queryKey: queryKeys.skills.versions(created.skill_id) });
+    },
   });
 }
 
