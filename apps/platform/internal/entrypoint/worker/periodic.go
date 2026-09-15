@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -79,11 +80,11 @@ func newBackfillService(pool *pgxpool.Pool, deps Deps) *ingest.Service {
 	if deps.LLM == nil || deps.Store == nil {
 		return nil
 	}
-	catalogSvc := &catalog.Service{Pool: pool}
+	catalogSvc := wiring.NewCatalogService(pool)
 	return &ingest.Service{
 		Pool: pool, Store: deps.Store, LLM: deps.LLM,
 		IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-			return catalog.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
+			return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
 				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
 				EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
 				Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,

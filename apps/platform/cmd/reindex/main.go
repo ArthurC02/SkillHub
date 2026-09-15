@@ -11,6 +11,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
@@ -28,7 +29,8 @@ func main() {
 	defer pool.Close()
 
 	q := gen.New(pool)
-	n, pruned, err := catalog.RebuildIndex(ctx, pool)
+	catalogSvc := wiring.NewCatalogService(pool)
+	n, pruned, err := catalogSvc.RebuildIndex(ctx)
 	if err != nil {
 		slog.Error("reindex", "error", err)
 		os.Exit(1)
@@ -58,12 +60,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	catalogSvc := &catalog.Service{Pool: pool}
 	svc := &ingest.Service{
 		Pool: pool, Store: store,
 		LLM: &llmclient.Client{BaseURL: llmURL, Token: llmToken},
 		IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-			return catalog.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
+			return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
 				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
 				EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
 				Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,

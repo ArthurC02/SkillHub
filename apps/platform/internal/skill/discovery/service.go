@@ -21,6 +21,10 @@ import (
 type Service struct {
 	Pool *pgxpool.Pool
 
+	ReadLiveListingFacts func(context.Context, gen.DBTX, pgtype.UUID) (ListingFacts, bool, error)
+	ReadLiveSkills       func(context.Context, gen.DBTX) ([]IndexSkillFacts, error)
+	ReadLiveSkillIDs     func(context.Context, gen.DBTX, []pgtype.UUID) ([]pgtype.UUID, error)
+
 	ReadCatalogSkill         func(context.Context, pgtype.UUID) (SkillFacts, bool, error)
 	ReadWorkspaceSkill       func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
 	ReadLatestVersion        func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)
@@ -37,6 +41,29 @@ type Service struct {
 	Store ObjectStore
 
 	Analytics *analytics.Service
+}
+
+type ListingFacts struct {
+	Redistribution         string
+	Category               *string
+	CategorySource         *string
+	CurationTier           string
+	CuratedVersionID       pgtype.UUID
+	LatestVersionID        pgtype.UUID
+	VerifiedAt             pgtype.Timestamptz
+	LatestPackageObjectKey string
+	AgentCapability        string
+	AgentRuntime           string
+	AgentRuntimeImage      string
+	AgentMeasuredAt        pgtype.Timestamptz
+}
+
+type IndexSkillFacts struct {
+	ID             pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	Name           string
+	Summary        string
+	Redistribution string
 }
 
 type SkillFacts struct {

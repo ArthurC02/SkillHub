@@ -3,16 +3,15 @@ package catalog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 type PendingEnrichment struct {
@@ -65,8 +64,8 @@ type EnrichedSkillProjection struct {
 	EnrichmentPromptVersion *string
 }
 
-func IndexSkill(ctx context.Context, tx pgx.Tx, projection SkillProjection) error {
-	return indexLive(ctx, tx, projection.SkillID, func(q *gen.Queries) error {
+func (s *Service) IndexSkill(ctx context.Context, tx pgx.Tx, projection SkillProjection) error {
+	return s.indexLive(ctx, tx, projection.SkillID, func(q *gen.Queries) error {
 		return q.UpsertSearchDocument(ctx, gen.UpsertSearchDocumentParams{
 			SkillID: projection.SkillID, WorkspaceID: projection.WorkspaceID,
 			Name: projection.Name, Summary: projection.Summary,
@@ -75,8 +74,8 @@ func IndexSkill(ctx context.Context, tx pgx.Tx, projection SkillProjection) erro
 	})
 }
 
-func IndexSkillEnriched(ctx context.Context, tx pgx.Tx, projection EnrichedSkillProjection) error {
-	return indexLive(ctx, tx, projection.SkillID, func(q *gen.Queries) error {
+func (s *Service) IndexSkillEnriched(ctx context.Context, tx pgx.Tx, projection EnrichedSkillProjection) error {
+	return s.indexLive(ctx, tx, projection.SkillID, func(q *gen.Queries) error {
 		return q.UpsertSearchDocumentEnriched(ctx, gen.UpsertSearchDocumentEnrichedParams{
 			SkillID: projection.SkillID, WorkspaceID: projection.WorkspaceID,
 			Name: projection.Name, Summary: projection.Summary,
@@ -90,12 +89,15 @@ func IndexSkillEnriched(ctx context.Context, tx pgx.Tx, projection EnrichedSkill
 	})
 }
 
-func RefreshListing(ctx context.Context, db gen.DBTX, skillID pgtype.UUID) error {
-	return indexLive(ctx, db, skillID, func(*gen.Queries) error { return nil })
+func (s *Service) RefreshListing(ctx context.Context, db gen.DBTX, skillID pgtype.UUID) error {
+	return s.indexLive(ctx, db, skillID, func(*gen.Queries) error { return nil })
 }
 
-func indexLive(ctx context.Context, db gen.DBTX, skillID pgtype.UUID, upsert func(*gen.Queries) error) error {
-	facts, live, err := registry.LiveListingFacts(ctx, db, skillID)
+func (s *Service) indexLive(ctx context.Context, db gen.DBTX, skillID pgtype.UUID, upsert func(*gen.Queries) error) error {
+	if s.ReadLiveListingFacts == nil {
+		return errors.New("catalog live listing facts reader is not configured")
+	}
+	facts, live, err := s.ReadLiveListingFacts(ctx, db, skillID)
 	if err != nil || !live {
 		return err
 	}
@@ -106,7 +108,7 @@ func indexLive(ctx context.Context, db gen.DBTX, skillID pgtype.UUID, upsert fun
 	return q.SetSearchDocumentListing(ctx, listingOf(skillID, facts))
 }
 
-func listingOf(skillID pgtype.UUID, facts gen.GetLiveSkillListingFactsRow) gen.SetSearchDocumentListingParams {
+func listingOf(skillID pgtype.UUID, facts ListingFacts) gen.SetSearchDocumentListingParams {
 	listing := gen.SetSearchDocumentListingParams{
 		SkillID:         skillID,
 		Generated:       facts.Redistribution == string(RedistributionGenerated),
@@ -130,8 +132,17 @@ func listingOf(skillID pgtype.UUID, facts gen.GetLiveSkillListingFactsRow) gen.S
 	return listing
 }
 
-func RebuildIndex(ctx context.Context, pool *pgxpool.Pool) (indexed, pruned int64, err error) {
-	skills, err := registry.LiveSkills(ctx, pool)
+func (s *Service) RebuildIndex(ctx context.Context) (indexed, pruned int64, err error) {
+	if s.ReadLiveListingFacts == nil {
+		return 0, 0, errors.New("catalog live listing facts reader is not configured")
+	}
+	if s.ReadLiveSkills == nil {
+		return 0, 0, errors.New("catalog live skills reader is not configured")
+	}
+	if s.ReadLiveSkillIDs == nil {
+		return 0, 0, errors.New("catalog live skill IDs reader is not configured")
+	}
+	skills, err := s.ReadLiveSkills(ctx, s.Pool)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -143,27 +154,27 @@ func RebuildIndex(ctx context.Context, pool *pgxpool.Pool) (indexed, pruned int6
 		all.Summaries = append(all.Summaries, sk.Summary)
 		all.Generated = append(all.Generated, sk.Redistribution == string(RedistributionGenerated))
 	}
-	q := gen.New(pool)
+	q := gen.New(s.Pool)
 	if indexed, err = q.ReindexAll(ctx, all); err != nil {
 		return 0, 0, err
 	}
-	if pruned, err = pruneRetired(ctx, q, pool); err != nil {
+	if pruned, err = s.pruneRetired(ctx, q, s.Pool); err != nil {
 		return indexed, 0, err
 	}
 	for _, sk := range skills {
-		if err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error { return RefreshListing(ctx, tx, sk.ID) }); err != nil {
+		if err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error { return s.RefreshListing(ctx, tx, sk.ID) }); err != nil {
 			return indexed, pruned, err
 		}
 	}
 	return indexed, pruned, nil
 }
 
-func pruneRetired(ctx context.Context, q *gen.Queries, db gen.DBTX) (int64, error) {
+func (s *Service) pruneRetired(ctx context.Context, q *gen.Queries, db gen.DBTX) (int64, error) {
 	indexed, err := q.ListSearchDocumentSkillIDs(ctx)
 	if err != nil {
 		return 0, err
 	}
-	live, err := registry.LiveSkillIDs(ctx, db, indexed)
+	live, err := s.ReadLiveSkillIDs(ctx, db, indexed)
 	if err != nil {
 		return 0, err
 	}

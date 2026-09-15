@@ -147,25 +147,9 @@ func NewApp(cfg Config) (*App, error) {
 		Fetcher:       cfg.Fetcher,
 		LLM:           cfg.LLM,
 		GenerateQuota: cfg.GenerateQuota,
-		IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-			return catalog.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
-				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
-				EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
-				Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
-				EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
-				EnrichmentPromptVersion: p.EnrichmentPromptVersion,
-			})
-		},
 	}
 	registrySvc := &registry.Service{
 		Pool: cfg.Pool, Store: cfg.Store,
-		IndexSkill: func(ctx context.Context, tx pgx.Tx, p registry.SkillProjection) error {
-			return catalog.IndexSkill(ctx, tx, catalog.SkillProjection{
-				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
-			})
-		},
-		RemoveFromIndex:   catalog.RemoveSkillFromIndex,
-		RefreshListing:    catalog.RefreshListing,
 		CatalogWorkspaces: identitySvc.CatalogWorkspaceIDs,
 	}
 
@@ -213,21 +197,38 @@ func NewApp(cfg Config) (*App, error) {
 	}
 	wirePackagingRegistryReaders(packagingSvc, registrySvc)
 	runSvc.ActiveArtifactReferences = packaging.ActiveArtifactReferences
-	catalogSvc := &catalog.Service{
-		CatalogWorkspaces: identitySvc.CatalogWorkspaceIDs,
-		Pool:              cfg.Pool, LLM: cfg.LLM, Store: cfg.Store, Analytics: funnel,
-		SourceByID: func(ctx context.Context, workspaceID, sourceID pgtype.UUID) (catalog.SourceFacts, bool, error) {
-			source, found, err := versions.ReadSource(ctx, workspaceID, sourceID)
-			return catalog.SourceFacts{
-				SourceType: source.SourceType, SourceURL: source.SourceURL, SourceRef: source.SourceRef,
-				ContentHash: source.ContentHash, FetchedAt: source.FetchedAt,
-				LastCheckedAt: source.LastCheckedAt, UnavailableSince: source.UnavailableSince,
-				TaskDescription: source.TaskDescription, GeneratorModel: source.GeneratorModel,
-				GeneratorPromptVersion: source.GeneratorPromptVersion,
-				GenerationInputs:       source.GenerationInputs,
-			}, found, err
-		},
+	catalogSvc := wiring.NewCatalogService(cfg.Pool)
+	catalogSvc.CatalogWorkspaces = identitySvc.CatalogWorkspaceIDs
+	catalogSvc.LLM = cfg.LLM
+	catalogSvc.Store = cfg.Store
+	catalogSvc.Analytics = funnel
+	catalogSvc.SourceByID = func(ctx context.Context, workspaceID, sourceID pgtype.UUID) (catalog.SourceFacts, bool, error) {
+		source, found, err := versions.ReadSource(ctx, workspaceID, sourceID)
+		return catalog.SourceFacts{
+			SourceType: source.SourceType, SourceURL: source.SourceURL, SourceRef: source.SourceRef,
+			ContentHash: source.ContentHash, FetchedAt: source.FetchedAt,
+			LastCheckedAt: source.LastCheckedAt, UnavailableSince: source.UnavailableSince,
+			TaskDescription: source.TaskDescription, GeneratorModel: source.GeneratorModel,
+			GeneratorPromptVersion: source.GeneratorPromptVersion,
+			GenerationInputs:       source.GenerationInputs,
+		}, found, err
 	}
+	versions.IndexSkill = func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
+		return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
+			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
+			EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
+			Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
+			EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
+			EnrichmentPromptVersion: p.EnrichmentPromptVersion,
+		})
+	}
+	registrySvc.IndexSkill = func(ctx context.Context, tx pgx.Tx, p registry.SkillProjection) error {
+		return catalogSvc.IndexSkill(ctx, tx, catalog.SkillProjection{
+			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
+		})
+	}
+	registrySvc.RemoveFromIndex = catalog.RemoveSkillFromIndex
+	registrySvc.RefreshListing = catalogSvc.RefreshListing
 	wireCatalogRegistryReaders(catalogSvc, registrySvc)
 
 	registrySvc.SkillRisks = catalogSvc.SkillRisks

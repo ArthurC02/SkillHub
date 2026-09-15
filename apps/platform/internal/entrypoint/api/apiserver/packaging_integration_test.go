@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
@@ -178,7 +179,7 @@ func importFilesEnriched(
 		t.Fatal(err)
 	}
 	svc := &ingest.Service{Pool: pool, Store: a.packages, IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-		return catalog.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
+		return wiring.NewCatalogService(pool).IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
 			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
 			EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
 			Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,

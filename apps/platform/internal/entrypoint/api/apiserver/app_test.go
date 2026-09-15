@@ -169,7 +169,8 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 		t.Error("the registry service is missing catalog's projected scan read")
 	}
 	if search := app.Deps.Search.Svc; search.ReadCatalogSkill == nil || search.ReadWorkspaceSkill == nil ||
-		search.ReadLatestVersion == nil || search.ReadRuntimeCompatibility == nil || search.SourceByID == nil {
+		search.ReadLatestVersion == nil || search.ReadRuntimeCompatibility == nil || search.SourceByID == nil ||
+		search.ReadLiveListingFacts == nil || search.ReadLiveSkills == nil || search.ReadLiveSkillIDs == nil {
 		t.Error("the catalog service is missing owner-scoped Registry or source reads")
 	}
 	if app.PackagingSvc.AppliedSuggestions == nil || app.PackagingSvc.SourceLineage == nil {

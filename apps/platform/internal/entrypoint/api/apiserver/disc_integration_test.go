@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -76,7 +77,7 @@ func seedSkillVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID str
 
 func refreshListing(t *testing.T, pool *pgxpool.Pool, skillID string) {
 	t.Helper()
-	if err := catalog.RefreshListing(context.Background(), pool, mustUUID(t, skillID)); err != nil {
+	if err := wiring.NewCatalogService(pool).RefreshListing(context.Background(), pool, mustUUID(t, skillID)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -284,7 +285,7 @@ func importPackage(t *testing.T, pool *pgxpool.Pool, store packageStore, owner *
 		t.Fatal(err)
 	}
 	svc := &ingest.Service{Pool: pool, Store: store, IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-		return catalog.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
+		return wiring.NewCatalogService(pool).IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
 			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
 			EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
 			Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,

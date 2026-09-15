@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -236,7 +237,7 @@ func TestIndexWritesSkipSkillsThatAreNoLongerLive(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer func() { _ = tx.Rollback(ctx) }()
-		if err := catalog.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
+		if err := wiring.NewCatalogService(pool).IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
 			SkillID: mustUUID(t, skill), WorkspaceID: mustUUID(t, owner.workspaceID), Name: "late write", Summary: "late write",
 			TaskExamples: "[]", Tags: []byte(`[]`), Limitations: "[]", Scan: []byte(`{}`), EnrichmentStatus: "enriched",
 		}); err != nil {
@@ -295,7 +296,7 @@ func TestRebuildIndexDropsRetiredSkillsAndCarriesHandWrittenFacts(t *testing.T) 
 		}
 	}
 
-	if _, _, err := catalog.RebuildIndex(ctx, pool); err != nil {
+	if _, _, err := wiring.NewCatalogService(pool).RebuildIndex(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if n := countRow(t, pool, "SELECT count(*) FROM search_documents WHERE skill_id = $1", mustUUID(t, retired)); n != 0 {
