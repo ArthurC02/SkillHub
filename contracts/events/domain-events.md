@@ -85,7 +85,7 @@
 | `evaluation.failed` | 判定沒跑完（`FailEvaluation`） | `evidence_complete` | |
 | `evaluation.feedback_recorded` | 使用者對目前這一版留下回饋（`SetEvaluationFeedback`） | `helpful`、`has_comment` | 意見文字是使用者內容，不進 payload |
 | `evaluation.suggestion_decided` | 使用者接受或拒絕一則建議（`DecideSuggestion`） | `suggestion_id`、`decision` | 已套用的建議只能維持接受 |
-| `evaluation.suggestions_applied` | 評估的 Mailbox（`record_suggestions_applied` job，以事件識別去重）收到帶 `improved_by` 的 `skill.version_added`，記下哪些建議進了這一版（`MarkSuggestionsApplied`）；套用的結果與某個既有版本內容相同時 Skill 沒有新版本、也沒有事件，由套用當下直接記到那個既有版本 | `skill_version_id`、`suggestion_ids`（實際記下的那幾則） | 進了版本的建議一律標成接受（建版之後、記下之前送來的拒絕不成立），只記還沒記在這一版的，重送不重記；job 最後一次重試仍失敗時寫一筆「來源沒記下」的稽核 |
+| `evaluation.suggestions_applied` | 評估的 Mailbox（`record_suggestions_applied` job，以事件識別去重）收到帶 `improved_by` 的 `skill.version_added`，記下哪些建議進了這一版（`RecordSuggestionApplications`）；套用的結果與某個既有版本內容相同時 Skill 沒有新版本、也沒有事件，由套用當下直接記到那個既有版本 | `skill_version_id`、`suggestion_ids`（實際記下的那幾則） | 進了版本的建議一律標成接受（建版之後、記下之前送來的拒絕不成立；原本就接受的保留當初的決定時間）；每一對建議與版本各記一筆，`applied_skill_version_id` 保留第一個記下的版本；只記還沒記在這一版的，重送不重記；這些判斷全在評估聚合根，資料表只照寫；job 最後一次重試仍失敗時寫一筆「來源沒記下」的稽核 |
 
 ### `skill` aggregate（producer：`skill/library` 的 Skill aggregate，存回在 `skill_store.go` 的 `saveSkill`）
 

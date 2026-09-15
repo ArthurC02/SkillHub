@@ -144,14 +144,29 @@ func writeEvaluationEvent(ctx context.Context, q *gen.Queries, e *Evaluation, ev
 			e.suggestions[event.SuggestionID] = decided
 		}
 	case SuggestionsApplied:
-		_, err = q.MarkSuggestionsApplied(ctx, gen.MarkSuggestionsAppliedParams{
-			SkillVersionID: event.SkillVersionID, Ids: event.SuggestionIDs, WorkspaceID: e.row.WorkspaceID,
-			EvaluationID: e.row.ID,
-		})
+		err = writeSuggestionsApplied(ctx, q, e.row.WorkspaceID, event)
 	default:
 		err = fmt.Errorf("evaluation event %T has nothing to write", event)
 	}
 	return err
+}
+
+func writeSuggestionsApplied(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID, event SuggestionsApplied) error {
+	if err := q.RecordSuggestionApplications(ctx, gen.RecordSuggestionApplicationsParams{
+		WorkspaceID: workspaceID, SkillVersionID: event.SkillVersionID, SuggestionIds: event.SuggestionIDs,
+	}); err != nil {
+		return err
+	}
+	for _, id := range event.newlyAccepted {
+		if _, err := q.DecideSuggestion(ctx, gen.DecideSuggestionParams{
+			Decision: string(DecisionAccepted), ID: id, WorkspaceID: workspaceID,
+		}); err != nil {
+			return err
+		}
+	}
+	return q.SetSuggestionsAppliedVersion(ctx, gen.SetSuggestionsAppliedVersionParams{
+		SkillVersionID: event.SkillVersionID, Ids: event.witnessed, WorkspaceID: workspaceID,
+	})
 }
 
 func writeCompletion(ctx context.Context, q *gen.Queries, e *Evaluation) (gen.Evaluation, error) {

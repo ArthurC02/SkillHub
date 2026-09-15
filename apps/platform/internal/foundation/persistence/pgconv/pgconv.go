@@ -22,3 +22,11 @@ func RFC3339(ts pgtype.Timestamptz) string {
 func Timestamptz(t time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: t, Valid: true}
 }
+
+func Clone[T any](value *T) *T {
+	if value == nil {
+		return nil
+	}
+	cloned := *value
+	return &cloned
+}

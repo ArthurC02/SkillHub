@@ -9,6 +9,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 type Refusal string
@@ -266,33 +267,25 @@ func (r *Run) refuse(reason Refusal) { r.record(Refused{Reason: reason}) }
 func (r *Run) record(event Event) { r.events = append(r.events, cloneEvent(event)) }
 
 func cloneRun(row gen.Run) gen.Run {
-	row.StatusReason = cloneString(row.StatusReason)
+	row.StatusReason = pgconv.Clone(row.StatusReason)
 	row.RuntimeSnapshot = slices.Clone(row.RuntimeSnapshot)
 	row.PolicySnapshot = slices.Clone(row.PolicySnapshot)
-	row.FailureClass = cloneString(row.FailureClass)
+	row.FailureClass = pgconv.Clone(row.FailureClass)
 	return row
 }
 
 func cloneAttempt(attempt gen.RunAttempt) gen.RunAttempt {
-	attempt.ProviderRunID = cloneString(attempt.ProviderRunID)
-	attempt.ErrorClass = cloneString(attempt.ErrorClass)
-	attempt.ErrorMessage = cloneString(attempt.ErrorMessage)
+	attempt.ProviderRunID = pgconv.Clone(attempt.ProviderRunID)
+	attempt.ErrorClass = pgconv.Clone(attempt.ErrorClass)
+	attempt.ErrorMessage = pgconv.Clone(attempt.ErrorMessage)
 	return attempt
 }
 
 func cloneEvent(event Event) Event {
 	switch event := event.(type) {
 	case AttemptFinished:
-		event.ErrorClass = cloneString(event.ErrorClass)
+		event.ErrorClass = pgconv.Clone(event.ErrorClass)
 		return event
 	}
 	return event
-}
-
-func cloneString(value *string) *string {
-	if value == nil {
-		return nil
-	}
-	copy := *value
-	return &copy
 }

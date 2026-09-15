@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -90,7 +91,7 @@ func ContentFromPackage(v NewVersion, generated bool) (VersionContent, error) {
 func copiedContent(from gen.SkillVersion, generated bool) VersionContent {
 	return VersionContent{
 		contentHash: from.ContentHash, packageObjectKey: from.PackageObjectKey, manifest: slices.Clone(from.Manifest),
-		license: cloneString(from.LicenseExpression), licenseSource: cloneString(from.LicenseSource), generated: generated,
+		license: pgconv.Clone(from.LicenseExpression), licenseSource: pgconv.Clone(from.LicenseSource), generated: generated,
 	}
 }
 

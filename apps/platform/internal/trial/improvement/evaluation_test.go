@@ -260,13 +260,18 @@ func TestASuggestionThatWentIntoAVersionIsAppliedAndItsAcceptanceIsFinal(t *test
 		appliedTo pgtype.UUID
 	}{
 		{"an accepted suggestion goes into the version", DecisionAccepted, pgtype.UUID{}, []pgtype.UUID{held},
-			SuggestionsApplied{version, []pgtype.UUID{held}}, version},
+			SuggestionsApplied{SkillVersionID: version, SuggestionIDs: []pgtype.UUID{held}, witnessed: []pgtype.UUID{held}}, version},
 		{"a rejection sent before the version was recorded does not stand", DecisionRejected, pgtype.UUID{},
-			[]pgtype.UUID{held}, SuggestionsApplied{version, []pgtype.UUID{held}}, version},
+			[]pgtype.UUID{held}, SuggestionsApplied{
+				SkillVersionID: version, SuggestionIDs: []pgtype.UUID{held},
+				newlyAccepted: []pgtype.UUID{held}, witnessed: []pgtype.UUID{held},
+			}, version},
 		{"a suggestion already in an earlier version goes into this one too", DecisionAccepted, earlier,
-			[]pgtype.UUID{held}, SuggestionsApplied{version, []pgtype.UUID{held}}, earlier},
+			[]pgtype.UUID{held}, SuggestionsApplied{SkillVersionID: version, SuggestionIDs: []pgtype.UUID{held}}, earlier},
 		{"a suggestion this evaluation does not hold is left out", DecisionAccepted, pgtype.UUID{},
-			[]pgtype.UUID{stranger, held}, SuggestionsApplied{version, []pgtype.UUID{held}}, version},
+			[]pgtype.UUID{stranger, held}, SuggestionsApplied{
+				SkillVersionID: version, SuggestionIDs: []pgtype.UUID{held}, witnessed: []pgtype.UUID{held},
+			}, version},
 		{"a letter naming only suggestions this evaluation does not hold", DecisionAccepted, pgtype.UUID{},
 			[]pgtype.UUID{stranger}, Refused{RefusedNothingToApply}, pgtype.UUID{}},
 		{"the same version delivered again records nothing new", DecisionAccepted, version,
@@ -307,7 +312,10 @@ func TestEverySuggestionAVersionCarriesIsRecordedInOneEvent(t *testing.T) {
 
 	e.RecordApplied(version, []pgtype.UUID{first, second})
 
-	assertEvents(t, e, SuggestionsApplied{version, []pgtype.UUID{first, second}})
+	assertEvents(t, e, SuggestionsApplied{
+		SkillVersionID: version, SuggestionIDs: []pgtype.UUID{first, second},
+		newlyAccepted: []pgtype.UUID{second}, witnessed: []pgtype.UUID{first, second},
+	})
 	for _, id := range []pgtype.UUID{first, second} {
 		if e.AppliedVersion(id) != version || e.Decision(id) != DecisionAccepted {
 			t.Fatalf("suggestion %v: applied to %v as %q, want the version and accepted", id, e.AppliedVersion(id), e.Decision(id))

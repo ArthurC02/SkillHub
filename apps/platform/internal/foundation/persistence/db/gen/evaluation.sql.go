@@ -828,47 +828,6 @@ func (q *Queries) LockEvaluationSuggestion(ctx context.Context, arg LockEvaluati
 	return i, err
 }
 
-const markSuggestionsApplied = `-- name: MarkSuggestionsApplied :execrows
-WITH recorded AS (
-    INSERT INTO evaluation_suggestion_applications (workspace_id, suggestion_id, skill_version_id)
-    SELECT $2, s.id, $1
-    FROM evaluation_suggestions s
-    WHERE s.workspace_id = $2
-      AND s.evaluation_id = $3
-      AND s.id = ANY($4::uuid[])
-    ON CONFLICT (suggestion_id, skill_version_id) DO NOTHING
-    RETURNING suggestion_id
-)
-UPDATE evaluation_suggestions s SET
-    applied_skill_version_id = coalesce(s.applied_skill_version_id, $1),
-    decided_at = CASE WHEN s.decision = 'accepted' THEN s.decided_at ELSE now() END,
-    decision = 'accepted'
-FROM recorded r
-WHERE s.id = r.suggestion_id
-  AND s.workspace_id = $2
-  AND s.evaluation_id = $3
-`
-
-type MarkSuggestionsAppliedParams struct {
-	SkillVersionID pgtype.UUID
-	WorkspaceID    pgtype.UUID
-	EvaluationID   pgtype.UUID
-	Ids            []pgtype.UUID
-}
-
-func (q *Queries) MarkSuggestionsApplied(ctx context.Context, arg MarkSuggestionsAppliedParams) (int64, error) {
-	result, err := q.db.Exec(ctx, markSuggestionsApplied,
-		arg.SkillVersionID,
-		arg.WorkspaceID,
-		arg.EvaluationID,
-		arg.Ids,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const recordEvaluationModelUsage = `-- name: RecordEvaluationModelUsage :exec
 INSERT INTO evaluation_model_usage (
     evaluation_id, workspace_id, operation, model, prompt_version,
@@ -905,6 +864,23 @@ func (q *Queries) RecordEvaluationModelUsage(ctx context.Context, arg RecordEval
 		arg.CostUsd,
 		arg.CostSource,
 	)
+	return err
+}
+
+const recordSuggestionApplications = `-- name: RecordSuggestionApplications :exec
+INSERT INTO evaluation_suggestion_applications (workspace_id, suggestion_id, skill_version_id)
+SELECT $1::uuid, suggestion_id, $2::uuid
+FROM unnest($3::uuid[]) AS suggestion_id
+`
+
+type RecordSuggestionApplicationsParams struct {
+	WorkspaceID    pgtype.UUID
+	SkillVersionID pgtype.UUID
+	SuggestionIds  []pgtype.UUID
+}
+
+func (q *Queries) RecordSuggestionApplications(ctx context.Context, arg RecordSuggestionApplicationsParams) error {
+	_, err := q.db.Exec(ctx, recordSuggestionApplications, arg.WorkspaceID, arg.SkillVersionID, arg.SuggestionIds)
 	return err
 }
 
@@ -956,6 +932,22 @@ func (q *Queries) SetEvaluationFeedback(ctx context.Context, arg SetEvaluationFe
 		&i.SupersededAt,
 	)
 	return i, err
+}
+
+const setSuggestionsAppliedVersion = `-- name: SetSuggestionsAppliedVersion :exec
+UPDATE evaluation_suggestions SET applied_skill_version_id = $1
+WHERE id = ANY($2::uuid[]) AND workspace_id = $3
+`
+
+type SetSuggestionsAppliedVersionParams struct {
+	SkillVersionID pgtype.UUID
+	Ids            []pgtype.UUID
+	WorkspaceID    pgtype.UUID
+}
+
+func (q *Queries) SetSuggestionsAppliedVersion(ctx context.Context, arg SetSuggestionsAppliedVersionParams) error {
+	_, err := q.db.Exec(ctx, setSuggestionsAppliedVersion, arg.SkillVersionID, arg.Ids, arg.WorkspaceID)
+	return err
 }
 
 const supersedeCurrentEvaluation = `-- name: SupersedeCurrentEvaluation :execrows

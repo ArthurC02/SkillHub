@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 type Skill struct {
@@ -244,12 +245,12 @@ func (s *Service) OldestVersion(ctx context.Context, skillID pgtype.UUID) (Oldes
 
 func skillDTO(row gen.Skill) Skill {
 	return Skill{
-		ID: row.ID, WorkspaceID: row.WorkspaceID, Name: row.Name, Summary: cloneString(row.Summary),
+		ID: row.ID, WorkspaceID: row.WorkspaceID, Name: row.Name, Summary: pgconv.Clone(row.Summary),
 		ForkedFromSkillID: row.ForkedFromSkillID, ForkedFromVersionID: row.ForkedFromVersionID,
-		TakedownAt: row.TakedownAt, AccessRestriction: cloneString(row.AccessRestriction),
+		TakedownAt: row.TakedownAt, AccessRestriction: pgconv.Clone(row.AccessRestriction),
 		Redistribution: row.Redistribution,
 		CurationTier:   row.CurationTier, CuratedVersionID: row.CuratedVersionID,
-		Category: cloneString(row.Category), CategorySource: cloneString(row.CategorySource),
+		Category: pgconv.Clone(row.Category), CategorySource: pgconv.Clone(row.CategorySource),
 	}
 }
 
@@ -257,17 +258,9 @@ func versionDTO(row gen.SkillVersion) Version {
 	return Version{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, SkillID: row.SkillID, SourceID: row.SourceID,
 		VersionNumber: row.VersionNumber, ContentHash: row.ContentHash,
-		PackageObjectKey: row.PackageObjectKey, LicenseExpression: cloneString(row.LicenseExpression),
-		CreatedAt: row.CreatedAt, LicenseSource: cloneString(row.LicenseSource),
+		PackageObjectKey: row.PackageObjectKey, LicenseExpression: pgconv.Clone(row.LicenseExpression),
+		CreatedAt: row.CreatedAt, LicenseSource: pgconv.Clone(row.LicenseSource),
 	}
-}
-
-func cloneString(value *string) *string {
-	if value == nil {
-		return nil
-	}
-	copy := *value
-	return &copy
 }
 
 type Governance struct {

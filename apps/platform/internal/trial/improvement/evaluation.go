@@ -9,6 +9,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 type Refusal string
@@ -77,6 +78,8 @@ type SuggestionDecided struct {
 type SuggestionsApplied struct {
 	SkillVersionID pgtype.UUID   `json:"skill_version_id"`
 	SuggestionIDs  []pgtype.UUID `json:"suggestion_ids"`
+	newlyAccepted  []pgtype.UUID
+	witnessed      []pgtype.UUID
 }
 
 func (SuggestionsApplied) eventType() string { return outbox.EvaluationSuggestionsApplied }
@@ -206,32 +209,44 @@ func (e *Evaluation) AppliedVersion(suggestionID pgtype.UUID) pgtype.UUID {
 }
 
 func (e *Evaluation) RecordApplied(versionID pgtype.UUID, suggestionIDs []pgtype.UUID) {
-	var applied []pgtype.UUID
+	applied := SuggestionsApplied{SkillVersionID: versionID}
 	for _, id := range suggestionIDs {
 		suggestion, known := e.suggestions[id]
-		_, recorded := e.applied[id][versionID]
-		if !known || recorded {
+		if !known || e.appliedTo(id, versionID) {
 			continue
 		}
-		if e.applied == nil {
-			e.applied = map[pgtype.UUID]map[pgtype.UUID]struct{}{}
+		e.markApplied(id, versionID)
+		if Decision(suggestion.Decision) != DecisionAccepted {
+			suggestion.Decision = string(DecisionAccepted)
+			applied.newlyAccepted = append(applied.newlyAccepted, id)
 		}
-		if e.applied[id] == nil {
-			e.applied[id] = map[pgtype.UUID]struct{}{}
-		}
-		e.applied[id][versionID] = struct{}{}
-		suggestion.Decision = string(DecisionAccepted)
 		if !suggestion.AppliedSkillVersionID.Valid {
 			suggestion.AppliedSkillVersionID = versionID
+			applied.witnessed = append(applied.witnessed, id)
 		}
 		e.suggestions[id] = suggestion
-		applied = append(applied, id)
+		applied.SuggestionIDs = append(applied.SuggestionIDs, id)
 	}
-	if len(applied) == 0 {
+	if len(applied.SuggestionIDs) == 0 {
 		e.refuse(RefusedNothingToApply)
 		return
 	}
-	e.record(SuggestionsApplied{SkillVersionID: versionID, SuggestionIDs: applied})
+	e.record(applied)
+}
+
+func (e *Evaluation) appliedTo(suggestionID, versionID pgtype.UUID) bool {
+	_, recorded := e.applied[suggestionID][versionID]
+	return recorded
+}
+
+func (e *Evaluation) markApplied(suggestionID, versionID pgtype.UUID) {
+	if e.applied == nil {
+		e.applied = map[pgtype.UUID]map[pgtype.UUID]struct{}{}
+	}
+	if e.applied[suggestionID] == nil {
+		e.applied[suggestionID] = map[pgtype.UUID]struct{}{}
+	}
+	e.applied[suggestionID][versionID] = struct{}{}
 }
 
 func (e *Evaluation) refuse(reason Refusal) { e.record(Refused{Reason: reason}) }
@@ -239,9 +254,9 @@ func (e *Evaluation) refuse(reason Refusal) { e.record(Refused{Reason: reason}) 
 func (e *Evaluation) record(event Event) { e.events = append(e.events, cloneEvent(event)) }
 
 func cloneEvaluationStarted(started EvaluationStarted) EvaluationStarted {
-	started.JudgeModel = cloneString(started.JudgeModel)
-	started.JudgePromptVersion = cloneString(started.JudgePromptVersion)
-	started.RubricVersion = cloneString(started.RubricVersion)
+	started.JudgeModel = pgconv.Clone(started.JudgeModel)
+	started.JudgePromptVersion = pgconv.Clone(started.JudgePromptVersion)
+	started.RubricVersion = pgconv.Clone(started.RubricVersion)
 	return started
 }
 
@@ -251,6 +266,8 @@ func cloneEvent(event Event) Event {
 		return cloneEvaluationStarted(event)
 	case SuggestionsApplied:
 		event.SuggestionIDs = slices.Clone(event.SuggestionIDs)
+		event.newlyAccepted = slices.Clone(event.newlyAccepted)
+		event.witnessed = slices.Clone(event.witnessed)
 		return event
 	}
 	return event
@@ -259,7 +276,7 @@ func cloneEvent(event Event) Event {
 func cloneVerdict(v verdict) verdict {
 	v.results = cloneCriterionResults(v.results)
 	v.findings = cloneFindings(v.findings)
-	v.costUSD = cloneFloat64(v.costUSD)
+	v.costUSD = pgconv.Clone(v.costUSD)
 	v.usage = cloneUsage(v.usage)
 	return v
 }
@@ -290,42 +307,17 @@ func cloneFindings(findings []Finding) []Finding {
 func cloneEvidenceRefs(refs []EvidenceRef) []EvidenceRef {
 	cloned := slices.Clone(refs)
 	for i, ref := range refs {
-		ref.ByteRange = cloneRange(ref.ByteRange)
-		ref.CharRange = cloneRange(ref.CharRange)
+		ref.ByteRange = pgconv.Clone(ref.ByteRange)
+		ref.CharRange = pgconv.Clone(ref.CharRange)
 		cloned[i] = ref
 	}
 	return cloned
 }
 
-func cloneRange(value *Range) *Range {
-	if value == nil {
-		return nil
-	}
-	copy := *value
-	return &copy
-}
-
-func cloneFloat64(value *float64) *float64 {
-	if value == nil {
-		return nil
-	}
-	copy := *value
-	return &copy
-}
-
 func cloneUsage(usage *llmclient.GatewayUsage) *llmclient.GatewayUsage {
-	if usage == nil {
-		return nil
+	cloned := pgconv.Clone(usage)
+	if cloned != nil {
+		cloned.CostUSD = pgconv.Clone(usage.CostUSD)
 	}
-	copy := *usage
-	copy.CostUSD = cloneFloat64(usage.CostUSD)
-	return &copy
-}
-
-func cloneString(value *string) *string {
-	if value == nil {
-		return nil
-	}
-	copy := *value
-	return &copy
+	return cloned
 }

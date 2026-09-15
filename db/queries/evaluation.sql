@@ -118,25 +118,14 @@ UPDATE evaluation_suggestions SET
 WHERE id = @id AND workspace_id = @workspace_id
 RETURNING *;
 
--- name: MarkSuggestionsApplied :execrows
-WITH recorded AS (
-    INSERT INTO evaluation_suggestion_applications (workspace_id, suggestion_id, skill_version_id)
-    SELECT @workspace_id, s.id, @skill_version_id
-    FROM evaluation_suggestions s
-    WHERE s.workspace_id = @workspace_id
-      AND s.evaluation_id = @evaluation_id
-      AND s.id = ANY(@ids::uuid[])
-    ON CONFLICT (suggestion_id, skill_version_id) DO NOTHING
-    RETURNING suggestion_id
-)
-UPDATE evaluation_suggestions s SET
-    applied_skill_version_id = coalesce(s.applied_skill_version_id, @skill_version_id),
-    decided_at = CASE WHEN s.decision = 'accepted' THEN s.decided_at ELSE now() END,
-    decision = 'accepted'
-FROM recorded r
-WHERE s.id = r.suggestion_id
-  AND s.workspace_id = @workspace_id
-  AND s.evaluation_id = @evaluation_id;
+-- name: RecordSuggestionApplications :exec
+INSERT INTO evaluation_suggestion_applications (workspace_id, suggestion_id, skill_version_id)
+SELECT @workspace_id::uuid, suggestion_id, @skill_version_id::uuid
+FROM unnest(@suggestion_ids::uuid[]) AS suggestion_id;
+
+-- name: SetSuggestionsAppliedVersion :exec
+UPDATE evaluation_suggestions SET applied_skill_version_id = @skill_version_id
+WHERE id = ANY(@ids::uuid[]) AND workspace_id = @workspace_id;
 
 -- name: ListEvaluationSuggestionApplications :many
 SELECT a.suggestion_id, a.skill_version_id

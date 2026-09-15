@@ -341,6 +341,38 @@ func TestSuggestionApplicationsRetainEveryVersionAndRejectReplays(t *testing.T) 
 	}
 }
 
+func TestApplyingSuggestionsAcceptsThePendingOneAndKeepsAnEarlierAcceptanceTime(t *testing.T) {
+	s := &Service{Pool: requireEvalDB(t)}
+	m := seedRun(t, s.Pool)
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	accepted := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
+	pending := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "Y")
+	ctx := context.Background()
+	decided, err := s.Decide(ctx, m.run.WorkspaceID, accepted.ID, DecisionAccepted)
+	if err != nil {
+		t.Fatalf("accept X: %v", err)
+	}
+	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
+	if err := s.RecordSuggestionsApplied(ctx, m.run.WorkspaceID, evaluation.ID, version, []pgtype.UUID{accepted.ID, pending.ID}); err != nil {
+		t.Fatalf("record suggestions applied: %v", err)
+	}
+	decision := func(id pgtype.UUID) (string, pgtype.Timestamptz) {
+		t.Helper()
+		var d string
+		var at pgtype.Timestamptz
+		if err := s.Pool.QueryRow(ctx, "SELECT decision, decided_at FROM evaluation_suggestions WHERE id = $1", id).Scan(&d, &at); err != nil {
+			t.Fatalf("read decision: %v", err)
+		}
+		return d, at
+	}
+	if d, at := decision(accepted.ID); d != string(DecisionAccepted) || !at.Time.Equal(decided.DecidedAt.Time) {
+		t.Fatalf("X = %q decided at %v, want accepted at its first acceptance %v", d, at.Time, decided.DecidedAt.Time)
+	}
+	if d, at := decision(pending.ID); d != string(DecisionAccepted) || !at.Valid {
+		t.Fatalf("Y = %q, decision time set %v; want accepted with a decision time", d, at.Valid)
+	}
+}
+
 func TestSuggestionApplicationRejectsAVersionFromAnotherWorkspace(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	first := seedRun(t, s.Pool)

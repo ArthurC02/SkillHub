@@ -8,6 +8,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 type Refusal string
@@ -216,7 +217,7 @@ func (s *SkillRoot) Restrict(reason *string) {
 		s.record(Refused{Reason: RefusedEmptyRestriction})
 		return
 	}
-	s.row.AccessRestriction = cloneString(reason)
+	s.row.AccessRestriction = pgconv.Clone(reason)
 	if reason == nil {
 		s.record(AccessRestrictionLifted{})
 		return
@@ -291,56 +292,37 @@ func (s *SkillRoot) Delete() {
 func (s *SkillRoot) record(event Event) { s.events = append(s.events, cloneEvent(event)) }
 
 func cloneSkillRow(row gen.Skill) gen.Skill {
-	row.Summary = cloneString(row.Summary)
-	row.TakedownReason = cloneString(row.TakedownReason)
-	row.AccessRestriction = cloneString(row.AccessRestriction)
-	row.Category = cloneString(row.Category)
-	row.CategorySource = cloneString(row.CategorySource)
+	row.Summary = pgconv.Clone(row.Summary)
+	row.TakedownReason = pgconv.Clone(row.TakedownReason)
+	row.AccessRestriction = pgconv.Clone(row.AccessRestriction)
+	row.Category = pgconv.Clone(row.Category)
+	row.CategorySource = pgconv.Clone(row.CategorySource)
 	return row
 }
 
 func cloneVersionContent(content VersionContent) VersionContent {
 	content.manifest = slices.Clone(content.manifest)
-	content.license = cloneString(content.license)
-	content.licenseSource = cloneString(content.licenseSource)
+	content.license = pgconv.Clone(content.license)
+	content.licenseSource = pgconv.Clone(content.licenseSource)
 	content.improvedBy = cloneImprovement(content.improvedBy)
 	return content
 }
 
 func cloneImprovement(improvement *Improvement) *Improvement {
-	if improvement == nil {
-		return nil
+	cloned := pgconv.Clone(improvement)
+	if cloned != nil {
+		cloned.SuggestionIDs = slices.Clone(improvement.SuggestionIDs)
 	}
-	copy := *improvement
-	copy.SuggestionIDs = slices.Clone(improvement.SuggestionIDs)
-	return &copy
+	return cloned
 }
 
 func cloneEvent(event Event) Event {
 	switch event := event.(type) {
 	case SkillCategorized:
-		category := cloneCategory(event.Category)
-		source := cloneCategorySource(event.Source)
-		return SkillCategorized{Category: category, Source: source}
+		return SkillCategorized{Category: pgconv.Clone(event.Category), Source: pgconv.Clone(event.Source)}
 	case SkillVersionAdded:
 		event.ImprovedBy = cloneImprovement(event.ImprovedBy)
 		return event
 	}
 	return event
-}
-
-func cloneCategory(category *Category) *Category {
-	if category == nil {
-		return nil
-	}
-	copy := *category
-	return &copy
-}
-
-func cloneCategorySource(source *CategorySource) *CategorySource {
-	if source == nil {
-		return nil
-	}
-	copy := *source
-	return &copy
 }
