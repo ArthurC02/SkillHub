@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -218,7 +217,7 @@ func observeTransition(run gen.Run, p TransitionParams) {
 	}
 }
 
-func (s *Service) record(
+func (s *Service) recordTransition(
 	ctx context.Context, q *gen.Queries, tx pgx.Tx, run gen.Run,
 	from *gen.RunStatus, attemptID pgtype.UUID, reason string, actor pgtype.UUID, action string,
 ) error {
@@ -240,25 +239,8 @@ func (s *Service) record(
 	if reason != "" {
 		meta["reason"] = reason
 	}
-	if err := audit.Log(ctx, tx, audit.Event{
+	return audit.Log(ctx, tx, audit.Event{
 		Actor: actor, Workspace: run.WorkspaceID, Action: action,
 		ResourceType: audit.ResourceRun, ResourceID: run.ID, Metadata: meta,
-	}); err != nil {
-		return err
-	}
-
-	eventType, err := outbox.StatusEvent(string(run.Status))
-	if err != nil {
-		return err
-	}
-	changed := outbox.RunStatusChanged{ToStatus: string(run.Status), Reason: reason}
-	if from != nil {
-		changed.FromStatus = string(*from)
-	}
-	return outbox.Insert(ctx, tx, outbox.NewEvent{
-		EventType: eventType, EventVersion: outbox.EventVersion1,
-		CorrelationID: run.ID, CausationID: attemptID,
-		WorkspaceID: run.WorkspaceID, AggregateType: outbox.AggregateRun,
-		AggregateID: run.ID, Payload: changed,
 	})
 }

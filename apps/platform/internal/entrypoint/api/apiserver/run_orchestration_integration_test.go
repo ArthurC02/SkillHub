@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -245,13 +246,14 @@ func TestCancelReachesTheProviderAndStopsTheRun(t *testing.T) {
 
 type runEvent struct {
 	eventType string
+	causation pgtype.UUID
 	payload   map[string]any
 }
 
 func runEvents(t *testing.T, pool *pgxpool.Pool, runID string) []runEvent {
 	t.Helper()
 	rows, err := pool.Query(context.Background(), `
-		SELECT event_type, payload FROM outbox_events
+		SELECT event_type, causation_id, payload FROM outbox_events
 		WHERE aggregate_id = $1 AND event_type NOT LIKE 'run.cleanup_%'
 		ORDER BY event_type`, mustUUID(t, runID))
 	if err != nil {
@@ -262,7 +264,7 @@ func runEvents(t *testing.T, pool *pgxpool.Pool, runID string) []runEvent {
 	for rows.Next() {
 		var e runEvent
 		var raw []byte
-		if err := rows.Scan(&e.eventType, &raw); err != nil {
+		if err := rows.Scan(&e.eventType, &e.causation, &raw); err != nil {
 			t.Fatal(err)
 		}
 		if err := json.Unmarshal(raw, &e.payload); err != nil {
@@ -299,6 +301,13 @@ func TestEveryDecisionOnARunIsPublishedAsItsOwnEvent(t *testing.T) {
 		}
 		if class, carries := e.payload["error_class"]; e.eventType == outbox.RunAttemptFinished && (!carries || class != nil) {
 			t.Errorf("the successful attempt finished with error_class %v (present %v), want a present null", class, carries)
+		}
+		wantCause := attemptID
+		if slices.Contains([]string{outbox.RunQueued, outbox.RunProviderAssigned, outbox.RunProvisioning}, e.eventType) {
+			wantCause = pgtype.UUID{}
+		}
+		if e.causation != wantCause {
+			t.Errorf("%s names cause %v, want %v", e.eventType, e.causation, wantCause)
 		}
 	}
 	want := []string{
@@ -869,14 +878,28 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-cleanup-retry")
-	fake, svc := withProvider(t, a, pool, providertest.Plan{})
-
-	fake.DestroyStatus = http.StatusInternalServerError
+	clearRunBacklog(t, pool)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	svc.PollInterval = 20 * time.Millisecond
+	ctx := context.Background()
 
 	created := f.start(t)
-	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
+	if err := svc.Drive(ctx, mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)); err != nil {
+		t.Fatal(err)
+	}
+	if got := readRun(t, pool, f.workspaceID, created.RunID).Status; got != gen.RunStatusSucceeded {
+		t.Fatalf("run = %q, want succeeded before its teardown", got)
+	}
 
-	if got := waitForCleanupOutcome(t, f.client, created.RunID); got != "failed" {
+	fake.DestroyStatus = http.StatusInternalServerError
+	if err := svc.Cleanup(ctx, readRun(t, pool, f.workspaceID, created.RunID)); err == nil {
+		t.Fatal("a teardown the provider refused was reported as done")
+	}
+	if got := runCleanupStatus(t, pool, created.RunID); got != string(gen.RunCleanupStatusFailed) {
 		t.Fatalf("cleanup_status = %q after the provider refused the teardown, want failed", got)
 	}
 	before := fake.Destroys()
@@ -897,7 +920,7 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 	job := &river.Job[run.CleanupArgs]{
 		Args: run.CleanupArgs{RunID: created.RunID, WorkspaceID: f.workspaceID},
 	}
-	if err := (&run.CleanupWorker{Svc: svc}).Work(context.Background(), job); err != nil {
+	if err := (&run.CleanupWorker{Svc: &svc}).Work(context.Background(), job); err != nil {
 		t.Fatalf("a cleanup job for an already-cleaned run: %v", err)
 	}
 	if got := fake.Destroys(); got != settled {

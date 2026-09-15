@@ -429,6 +429,64 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 	}
 }
 
+func TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "sugg-rebuild")
+	const name = "sugg-rebuild"
+	original := packagedSkillMD(name)
+	proposal := func(content string) []llmclient.ImprovementProposal {
+		return []llmclient.ImprovementProposal{{
+			Category: "skill", Problem: "the description says the wrong thing", Evidence: suggestionQuote,
+			TargetPath: "SKILL.md", ProposedContent: content, ExpectedImpact: "the skill is activated for this task",
+		}}
+	}
+	var seed evaluatedSkill
+	applyTo := func(runID string) (string, applyBody) {
+		t.Helper()
+		_, suggestions, evaluationID := c.listSuggestions(t, runID)
+		if code, _ := c.decide(t, suggestions[0].SuggestionID, "accepted"); code != http.StatusOK {
+			t.Fatalf("accepting: got %d", code)
+		}
+		code, applied := c.applySuggestions(t, seed.skillID, evaluationID, suggestions[0].SuggestionID)
+		if code != http.StatusCreated {
+			t.Fatalf("applying: got %d (%s)", code, applied.Error)
+		}
+		return suggestions[0].SuggestionID, applied
+	}
+	evaluate := func(versionID, content string) string {
+		t.Helper()
+		runID := seedRunForVersion(t, pool, c.workspaceID, seed.skillID, versionID)
+		seedFinalOutput(t, pool, c.workspaceID, runID, suggestionFinalOutput)
+		llm := llmServer(t, failedBoth, proposal(content))
+		a.evaluations.Judge, a.evaluations.Suggester = llm, llm
+		if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+			t.Fatalf("evaluating version %s: %v", versionID, err)
+		}
+		return runID
+	}
+	deduplicates := original + "\nIt deduplicates rows.\n"
+	seed = evaluateWithSuggestions(t, a, pool, c, name, proposal(deduplicates))
+
+	_, second := applyTo(seed.runID)
+	_, third := applyTo(evaluate(second.VersionID, original+"\nIt writes an xlsx file.\n"))
+	if second.Duplicate || third.Duplicate {
+		t.Fatalf("the first two changes should each build a new version: %+v then %+v", second, third)
+	}
+	restoringRun := evaluate(third.VersionID, deduplicates)
+	restoring, rebuilt := applyTo(restoringRun)
+
+	if !rebuilt.Duplicate || rebuilt.VersionID != second.VersionID {
+		t.Fatalf("restoring the second version's text: got %+v, want version %s back as a duplicate",
+			rebuilt, second.VersionID)
+	}
+	_, suggestions, _ := c.listSuggestions(t, restoringRun)
+	if suggestions[0].SuggestionID != restoring || suggestions[0].AppliedSkillVersionID != second.VersionID {
+		t.Errorf("suggestion %s applied_skill_version_id = %q, want the version it rebuilt, %q",
+			suggestions[0].SuggestionID, suggestions[0].AppliedSkillVersionID, second.VersionID)
+	}
+}
+
 func TestARejectionSentBeforeTheEvaluationRecordsTheVersionDoesNotStand(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

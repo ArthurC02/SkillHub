@@ -496,6 +496,11 @@ func (s *Service) ApplySuggestions(
 		out.Applied = nil
 		return out, nil
 	}
+	if res.Duplicate {
+		if err := s.RecordSuggestionsApplied(ctx, ws.ID, evaluationID, res.Version.ID, applied); err != nil {
+			return out, err
+		}
+	}
 
 	out.Created, out.Version = true, ingest.NewUploadResult(res)
 	return out, nil

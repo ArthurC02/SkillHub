@@ -217,6 +217,26 @@ func TestASuggestionThatWentIntoAVersionIsAppliedAndItsAcceptanceIsFinal(t *test
 	}
 }
 
+func TestEverySuggestionAVersionCarriesIsRecordedInOneEvent(t *testing.T) {
+	first := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	second := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
+	version := pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
+	e := revisionIn(StatusCompleted, false)
+	e.suggestions = map[pgtype.UUID]gen.EvaluationSuggestion{
+		first:  {ID: first, Decision: string(DecisionAccepted)},
+		second: {ID: second, Decision: string(DecisionRejected)},
+	}
+
+	e.RecordApplied(version, []pgtype.UUID{first, second})
+
+	assertEvents(t, e, SuggestionsApplied{version, []pgtype.UUID{first, second}})
+	for _, id := range []pgtype.UUID{first, second} {
+		if e.AppliedVersion(id) != version || e.Decision(id) != DecisionAccepted {
+			t.Fatalf("suggestion %v: applied to %v as %q, want the version and accepted", id, e.AppliedVersion(id), e.Decision(id))
+		}
+	}
+}
+
 func TestEachRefusalAnswersWithItsOwnError(t *testing.T) {
 	cases := map[Refusal]error{
 		RefusedAwaitingJudge:     errEvaluationInProgress,

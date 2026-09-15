@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
@@ -47,6 +48,7 @@ func (c *SkillVersionConsumer) Deliver(ctx context.Context, event outbox.Event) 
 		return nil
 	}
 	_, err := c.Insert(ctx, SuggestionsAppliedArgs{
+		EventID:     event.EventID,
 		WorkspaceID: event.WorkspaceID, SkillID: event.AggregateID, SkillVersionID: added.VersionID,
 		EvaluationID: added.ImprovedBy.EvaluationID, SuggestionIDs: added.ImprovedBy.SuggestionIDs,
 	}, &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true}, MaxAttempts: suggestionsAppliedAttempts})
@@ -54,6 +56,7 @@ func (c *SkillVersionConsumer) Deliver(ctx context.Context, event outbox.Event) 
 }
 
 type SuggestionsAppliedArgs struct {
+	EventID        pgtype.UUID   `json:"event_id"`
 	WorkspaceID    pgtype.UUID   `json:"workspace_id"`
 	SkillID        pgtype.UUID   `json:"skill_id"`
 	SkillVersionID pgtype.UUID   `json:"skill_version_id"`
@@ -71,8 +74,13 @@ type SuggestionsAppliedWorker struct {
 func (w *SuggestionsAppliedWorker) Work(ctx context.Context, job *river.Job[SuggestionsAppliedArgs]) error {
 	a := job.Args
 	err := w.Svc.RecordSuggestionsApplied(ctx, a.WorkspaceID, a.EvaluationID, a.SkillVersionID, a.SuggestionIDs)
-	if err != nil && job.Attempt >= job.MaxAttempts {
-		return errors.Join(err, w.Svc.auditLostProvenance(ctx, a))
+	if err == nil || job.Attempt < job.MaxAttempts {
+		return err
+	}
+	if auditErr := w.Svc.auditLostProvenance(ctx, a); auditErr != nil {
+		slog.Error("lost suggestion provenance could not be audited",
+			"skill_version_id", pgconv.UUIDString(a.SkillVersionID), "evaluation_id", pgconv.UUIDString(a.EvaluationID), "error", auditErr)
+		return errors.Join(err, auditErr)
 	}
 	return err
 }

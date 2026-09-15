@@ -149,7 +149,10 @@ func (s *Service) writeCreated(ctx context.Context, tx pgx.Tx, q *gen.Queries, r
 		return err
 	}
 	r.row = row
-	return s.record(ctx, q, tx, row, nil, pgtype.UUID{}, event.Reason, actor, audit.ActionRunCreate)
+	if err := s.recordTransition(ctx, q, tx, row, nil, pgtype.UUID{}, event.Reason, actor, audit.ActionRunCreate); err != nil {
+		return err
+	}
+	return publishRunEvent(ctx, tx, r, event, pgtype.UUID{})
 }
 
 func (s *Service) writeTransition(ctx context.Context, tx pgx.Tx, q *gen.Queries, r *Run, event StatusChanged, actor pgtype.UUID) error {
@@ -166,7 +169,10 @@ func (s *Service) writeTransition(ctx context.Context, tx pgx.Tx, q *gen.Queries
 		return err
 	}
 	r.row = row
-	if err := s.record(ctx, q, tx, row, &from, event.attemptID, event.Reason, actor, audit.ActionRunTransition); err != nil {
+	if err := s.recordTransition(ctx, q, tx, row, &from, event.attemptID, event.Reason, actor, audit.ActionRunTransition); err != nil {
+		return err
+	}
+	if err := publishRunEvent(ctx, tx, r, event, event.attemptID); err != nil {
 		return err
 	}
 	if err := s.recordFailureEvent(ctx, tx, q, row, event.failure, event.Reason); err != nil {

@@ -3,6 +3,7 @@ package eval
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -154,6 +155,35 @@ func TestAVersionBuiltFromSuggestionsIsPostedToTheEvaluationsMailbox(t *testing.
 	}
 	if m.opts[0] == nil || !m.opts[0].UniqueOpts.ByArgs || m.opts[0].MaxAttempts != suggestionsAppliedAttempts {
 		t.Errorf("posted with %+v, want one letter per version and %d attempts", m.opts[0], suggestionsAppliedAttempts)
+	}
+}
+
+func TestTheMailboxKeepsOneLetterPerEvent(t *testing.T) {
+	first, redelivered, another := versionAddedEvent(improvedVersion), versionAddedEvent(improvedVersion), versionAddedEvent(improvedVersion)
+	_ = first.EventID.Scan("88888888-8888-4888-8888-888888888888")
+	redelivered.EventID = first.EventID
+	_ = another.EventID.Scan("99999999-9999-4999-8999-999999999999")
+	m := &mailbox{}
+
+	for _, event := range []outbox.Event{first, redelivered, another} {
+		if err := m.consumer().Deliver(t.Context(), event); err != nil {
+			t.Fatalf("deliver: %v", err)
+		}
+	}
+
+	if len(m.posted) != 3 {
+		t.Fatalf("posted %d letters, want one per delivery", len(m.posted))
+	}
+	if !reflect.DeepEqual(m.posted[0], m.posted[1]) {
+		t.Errorf("a redelivered event posted %+v then %+v; the letters must match so the queue keeps one", m.posted[0], m.posted[1])
+	}
+	if reflect.DeepEqual(m.posted[0], m.posted[2]) {
+		t.Error("two different events with the same content posted identical letters; the second would be dropped as a redelivery")
+	}
+	for i, opts := range m.opts {
+		if opts == nil || !opts.UniqueOpts.ByArgs {
+			t.Errorf("letter %d was posted without the one-per-event key", i)
+		}
 	}
 }
 
