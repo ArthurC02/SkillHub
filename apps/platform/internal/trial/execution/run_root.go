@@ -99,6 +99,7 @@ type Run struct {
 }
 
 func startRun(row gen.Run) *Run {
+	row = cloneRun(row)
 	row.Status = gen.RunStatusQueued
 	r := &Run{row: row}
 	r.record(StatusChanged{RunStatusChanged: outbox.RunStatusChanged{
@@ -107,13 +108,13 @@ func startRun(row gen.Run) *Run {
 	return r
 }
 
-func (r *Run) Row() gen.Run { return r.row }
+func (r *Run) Row() gen.Run { return cloneRun(r.row) }
 
 func (r *Run) Status() gen.RunStatus { return r.row.Status }
 
 func (r *Run) Attempt(id pgtype.UUID) gen.RunAttempt {
 	if a := r.attempt(id); a != nil {
-		return *a
+		return cloneAttempt(*a)
 	}
 	return gen.RunAttempt{}
 }
@@ -122,10 +123,19 @@ func (r *Run) LatestAttempt() gen.RunAttempt {
 	if len(r.attempts) == 0 {
 		return gen.RunAttempt{}
 	}
-	return r.attempts[len(r.attempts)-1]
+	return cloneAttempt(r.attempts[len(r.attempts)-1])
 }
 
-func (r *Run) Events() []Event { return slices.Clone(r.events) }
+func (r *Run) Events() []Event {
+	if r.events == nil {
+		return nil
+	}
+	events := make([]Event, len(r.events))
+	for i, event := range r.events {
+		events[i] = cloneEvent(event)
+	}
+	return events
+}
 
 func (r *Run) Refusal() (Refused, bool) {
 	for _, event := range r.events {
@@ -173,7 +183,7 @@ func (r *Run) AssignProvider(provider string, runtimeSnapshot []byte) {
 	case IsTerminal(r.row.Status):
 		r.refuse(RefusedFinished)
 	case !alreadyPinned(r.row):
-		r.row.Provider, r.row.RuntimeSnapshot = provider, runtimeSnapshot
+		r.row.Provider, r.row.RuntimeSnapshot = provider, slices.Clone(runtimeSnapshot)
 		r.record(ProviderAssigned{Provider: provider})
 	}
 }
@@ -253,4 +263,36 @@ func nonEmpty(s string) *string {
 
 func (r *Run) refuse(reason Refusal) { r.record(Refused{Reason: reason}) }
 
-func (r *Run) record(event Event) { r.events = append(r.events, event) }
+func (r *Run) record(event Event) { r.events = append(r.events, cloneEvent(event)) }
+
+func cloneRun(row gen.Run) gen.Run {
+	row.StatusReason = cloneString(row.StatusReason)
+	row.RuntimeSnapshot = slices.Clone(row.RuntimeSnapshot)
+	row.PolicySnapshot = slices.Clone(row.PolicySnapshot)
+	row.FailureClass = cloneString(row.FailureClass)
+	return row
+}
+
+func cloneAttempt(attempt gen.RunAttempt) gen.RunAttempt {
+	attempt.ProviderRunID = cloneString(attempt.ProviderRunID)
+	attempt.ErrorClass = cloneString(attempt.ErrorClass)
+	attempt.ErrorMessage = cloneString(attempt.ErrorMessage)
+	return attempt
+}
+
+func cloneEvent(event Event) Event {
+	switch event := event.(type) {
+	case AttemptFinished:
+		event.ErrorClass = cloneString(event.ErrorClass)
+		return event
+	}
+	return event
+}
+
+func cloneString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}

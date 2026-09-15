@@ -138,6 +138,7 @@ type SkillRoot struct {
 }
 
 func startSkill(row gen.Skill, redistribution Redistribution) *SkillRoot {
+	row = cloneSkillRow(row)
 	if redistribution == "" {
 		redistribution = RedistributionUnknown
 	}
@@ -181,7 +182,16 @@ func (s *SkillRoot) Redistribution() Redistribution { return Redistribution(s.ro
 
 func (s *SkillRoot) NewestLicense() LicenseClaim { return s.newest.license }
 
-func (s *SkillRoot) Events() []Event { return slices.Clone(s.events) }
+func (s *SkillRoot) Events() []Event {
+	if s.events == nil {
+		return nil
+	}
+	events := make([]Event, len(s.events))
+	for i, event := range s.events {
+		events[i] = cloneEvent(event)
+	}
+	return events
+}
 
 func (s *SkillRoot) Refusal() (Refused, bool) {
 	for _, event := range s.events {
@@ -206,7 +216,7 @@ func (s *SkillRoot) Restrict(reason *string) {
 		s.record(Refused{Reason: RefusedEmptyRestriction})
 		return
 	}
-	s.row.AccessRestriction = reason
+	s.row.AccessRestriction = cloneString(reason)
 	if reason == nil {
 		s.record(AccessRestrictionLifted{})
 		return
@@ -262,6 +272,7 @@ func (s *SkillRoot) AddVersion(content VersionContent) {
 		s.record(Refused{Reason: RefusedGeneratedNameCollision})
 		return
 	}
+	content = cloneVersionContent(content)
 	s.pending = content
 	s.record(SkillVersionAdded{ContentHash: content.contentHash, ImprovedBy: content.improvedBy})
 }
@@ -277,4 +288,59 @@ func (s *SkillRoot) Delete() {
 	s.record(SkillDeleted{})
 }
 
-func (s *SkillRoot) record(event Event) { s.events = append(s.events, event) }
+func (s *SkillRoot) record(event Event) { s.events = append(s.events, cloneEvent(event)) }
+
+func cloneSkillRow(row gen.Skill) gen.Skill {
+	row.Summary = cloneString(row.Summary)
+	row.TakedownReason = cloneString(row.TakedownReason)
+	row.AccessRestriction = cloneString(row.AccessRestriction)
+	row.Category = cloneString(row.Category)
+	row.CategorySource = cloneString(row.CategorySource)
+	return row
+}
+
+func cloneVersionContent(content VersionContent) VersionContent {
+	content.manifest = slices.Clone(content.manifest)
+	content.license = cloneString(content.license)
+	content.licenseSource = cloneString(content.licenseSource)
+	content.improvedBy = cloneImprovement(content.improvedBy)
+	return content
+}
+
+func cloneImprovement(improvement *Improvement) *Improvement {
+	if improvement == nil {
+		return nil
+	}
+	copy := *improvement
+	copy.SuggestionIDs = slices.Clone(improvement.SuggestionIDs)
+	return &copy
+}
+
+func cloneEvent(event Event) Event {
+	switch event := event.(type) {
+	case SkillCategorized:
+		category := cloneCategory(event.Category)
+		source := cloneCategorySource(event.Source)
+		return SkillCategorized{Category: category, Source: source}
+	case SkillVersionAdded:
+		event.ImprovedBy = cloneImprovement(event.ImprovedBy)
+		return event
+	}
+	return event
+}
+
+func cloneCategory(category *Category) *Category {
+	if category == nil {
+		return nil
+	}
+	copy := *category
+	return &copy
+}
+
+func cloneCategorySource(source *CategorySource) *CategorySource {
+	if source == nil {
+		return nil
+	}
+	copy := *source
+	return &copy
+}

@@ -244,12 +244,12 @@ func (s *Service) OldestVersion(ctx context.Context, skillID pgtype.UUID) (Oldes
 
 func skillDTO(row gen.Skill) Skill {
 	return Skill{
-		ID: row.ID, WorkspaceID: row.WorkspaceID, Name: row.Name, Summary: row.Summary,
+		ID: row.ID, WorkspaceID: row.WorkspaceID, Name: row.Name, Summary: cloneString(row.Summary),
 		ForkedFromSkillID: row.ForkedFromSkillID, ForkedFromVersionID: row.ForkedFromVersionID,
-		TakedownAt: row.TakedownAt, AccessRestriction: row.AccessRestriction,
+		TakedownAt: row.TakedownAt, AccessRestriction: cloneString(row.AccessRestriction),
 		Redistribution: row.Redistribution,
 		CurationTier:   row.CurationTier, CuratedVersionID: row.CuratedVersionID,
-		Category: row.Category, CategorySource: row.CategorySource,
+		Category: cloneString(row.Category), CategorySource: cloneString(row.CategorySource),
 	}
 }
 
@@ -257,9 +257,17 @@ func versionDTO(row gen.SkillVersion) Version {
 	return Version{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, SkillID: row.SkillID, SourceID: row.SourceID,
 		VersionNumber: row.VersionNumber, ContentHash: row.ContentHash,
-		PackageObjectKey: row.PackageObjectKey, LicenseExpression: row.LicenseExpression,
-		CreatedAt: row.CreatedAt, LicenseSource: row.LicenseSource,
+		PackageObjectKey: row.PackageObjectKey, LicenseExpression: cloneString(row.LicenseExpression),
+		CreatedAt: row.CreatedAt, LicenseSource: cloneString(row.LicenseSource),
 	}
+}
+
+func cloneString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
 }
 
 type Governance struct {

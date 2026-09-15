@@ -3,6 +3,7 @@ package registry
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -56,7 +57,7 @@ type VersionContent struct {
 }
 
 func (c VersionContent) ImprovedBy(by Improvement) VersionContent {
-	c.improvedBy = &by
+	c.improvedBy = cloneImprovement(&by)
 	return c
 }
 
@@ -65,7 +66,8 @@ func SkillFromPackage(workspaceID pgtype.UUID, report skillpkg.Report, redistrib
 	if err != nil {
 		return nil, err
 	}
-	return startSkill(gen.Skill{WorkspaceID: workspaceID, Name: manifest.Name, Summary: &manifest.Description}, redistribution), nil
+	summary := manifest.Description
+	return startSkill(gen.Skill{WorkspaceID: workspaceID, Name: manifest.Name, Summary: &summary}, redistribution), nil
 }
 
 func ContentFromPackage(v NewVersion, generated bool) (VersionContent, error) {
@@ -87,8 +89,8 @@ func ContentFromPackage(v NewVersion, generated bool) (VersionContent, error) {
 
 func copiedContent(from gen.SkillVersion, generated bool) VersionContent {
 	return VersionContent{
-		contentHash: from.ContentHash, packageObjectKey: from.PackageObjectKey, manifest: from.Manifest,
-		license: from.LicenseExpression, licenseSource: from.LicenseSource, generated: generated,
+		contentHash: from.ContentHash, packageObjectKey: from.PackageObjectKey, manifest: slices.Clone(from.Manifest),
+		license: cloneString(from.LicenseExpression), licenseSource: cloneString(from.LicenseSource), generated: generated,
 	}
 }
 

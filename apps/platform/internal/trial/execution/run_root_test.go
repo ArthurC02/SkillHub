@@ -51,6 +51,88 @@ func TestANewRunStartsQueuedAndSaysItWasRequested(t *testing.T) {
 	}})
 }
 
+func TestRunSnapshotsDoNotAliasInputsOrOutputs(t *testing.T) {
+	t.Run("a new run keeps copies of its input and row snapshots", func(t *testing.T) {
+		statusReason, failureClass := "waiting", "initial"
+		runtime, policy := []byte("runtime"), []byte("policy")
+		input := gen.Run{
+			StatusReason:    &statusReason,
+			FailureClass:    &failureClass,
+			RuntimeSnapshot: runtime,
+			PolicySnapshot:  policy,
+		}
+		r := startRun(input)
+
+		statusReason, failureClass = "changed", "changed"
+		runtime[0], policy[0] = 'R', 'P'
+		first := r.Row()
+		if *first.StatusReason != "waiting" || *first.FailureClass != "initial" || string(first.RuntimeSnapshot) != "runtime" || string(first.PolicySnapshot) != "policy" {
+			t.Fatalf("row after input mutation = %+v, want the original snapshots", first)
+		}
+
+		*first.StatusReason, *first.FailureClass = "output", "output"
+		first.RuntimeSnapshot[0], first.PolicySnapshot[0] = 'O', 'O'
+		second := r.Row()
+		if *second.StatusReason != "waiting" || *second.FailureClass != "initial" || string(second.RuntimeSnapshot) != "runtime" || string(second.PolicySnapshot) != "policy" {
+			t.Fatalf("row after output mutation = %+v, want the original snapshots", second)
+		}
+	})
+
+	t.Run("assigned runtime snapshots are copied on input and output", func(t *testing.T) {
+		runtime := []byte("runtime")
+		r := runIn(gen.RunStatusQueued)
+		r.AssignProvider("fake_sandbox", runtime)
+
+		runtime[0] = 'R'
+		first := r.Row()
+		if string(first.RuntimeSnapshot) != "runtime" {
+			t.Fatalf("runtime after input mutation = %q, want runtime", first.RuntimeSnapshot)
+		}
+
+		first.RuntimeSnapshot[0] = 'O'
+		if got := string(r.Row().RuntimeSnapshot); got != "runtime" {
+			t.Fatalf("runtime after output mutation = %q, want runtime", got)
+		}
+	})
+
+	t.Run("attempt snapshots copy pointer fields", func(t *testing.T) {
+		providerRunID, errorClass, errorMessage := "provider-1", "execution", "failed"
+		r := runIn(gen.RunStatusRunning, gen.RunAttempt{
+			ID: firstAttempt, ProviderRunID: &providerRunID, ErrorClass: &errorClass, ErrorMessage: &errorMessage,
+		})
+
+		attempt := r.Attempt(firstAttempt)
+		*attempt.ProviderRunID, *attempt.ErrorClass, *attempt.ErrorMessage = "output", "output", "output"
+		latest := r.LatestAttempt()
+		if *latest.ProviderRunID != "provider-1" || *latest.ErrorClass != "execution" || *latest.ErrorMessage != "failed" {
+			t.Fatalf("latest attempt after output mutation = %+v, want the original pointer values", latest)
+		}
+
+		*latest.ProviderRunID, *latest.ErrorClass, *latest.ErrorMessage = "latest", "latest", "latest"
+		again := r.Attempt(firstAttempt)
+		if *again.ProviderRunID != "provider-1" || *again.ErrorClass != "execution" || *again.ErrorMessage != "failed" {
+			t.Fatalf("attempt after latest output mutation = %+v, want the original pointer values", again)
+		}
+	})
+
+	t.Run("finished events do not alias the attempt or returned events", func(t *testing.T) {
+		r := runIn(gen.RunStatusRunning, attemptWith(firstAttempt, ObjectGrantStateRecorded, false))
+		r.FinishAttempt(firstAttempt, errClassExecution, "failed")
+
+		*r.attempts[0].ErrorClass = "changed"
+		first := r.Events()[0].(AttemptFinished)
+		if first.ErrorClass == nil || *first.ErrorClass != errClassExecution {
+			t.Fatalf("event error class after attempt mutation = %q, want %q", *first.ErrorClass, errClassExecution)
+		}
+
+		*first.ErrorClass = "output"
+		second := r.Events()[0].(AttemptFinished)
+		if second.ErrorClass == nil || *second.ErrorClass != errClassExecution {
+			t.Fatalf("event after output mutation = %+v, want error class %q", second, errClassExecution)
+		}
+	})
+}
+
 func TestARunMovesOnlyAlongTheTransitionTable(t *testing.T) {
 	cases := []struct {
 		name     string

@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
 func assertSkillEvents(t *testing.T, s *SkillRoot, want ...Event) {
@@ -174,6 +175,106 @@ func TestANewSkillStartsWithAKnownRedistribution(t *testing.T) {
 			assertSkillEvents(t, s, SkillCreated{Redistribution: tc.want})
 		})
 	}
+}
+
+func TestSkillSnapshotsDoNotAliasInputsOrOutputs(t *testing.T) {
+	t.Run("skill rows and DTOs keep independent strings", func(t *testing.T) {
+		summary, restriction, category, source := "summary", "hold", "documents", "owner"
+		s := startSkill(gen.Skill{
+			Summary: &summary, AccessRestriction: &restriction, Category: &category, CategorySource: &source,
+		}, RedistributionUnknown)
+
+		summary, restriction, category, source = "changed", "changed", "changed", "changed"
+		first := s.Skill()
+		if *first.Summary != "summary" || *first.AccessRestriction != "hold" || *first.Category != "documents" || *first.CategorySource != "owner" {
+			t.Fatalf("skill after input mutation = %+v, want original strings", first)
+		}
+
+		*first.Summary, *first.AccessRestriction, *first.Category, *first.CategorySource = "output", "output", "output", "output"
+		second := s.Skill()
+		if *second.Summary != "summary" || *second.AccessRestriction != "hold" || *second.Category != "documents" || *second.CategorySource != "owner" {
+			t.Fatalf("skill after output mutation = %+v, want original strings", second)
+		}
+	})
+
+	t.Run("restriction and category events keep independent pointers", func(t *testing.T) {
+		reason := "hold"
+		category := CategoryDocuments
+		s := &SkillRoot{}
+		s.Restrict(&reason)
+		s.Categorize(&category)
+
+		reason, category = "changed", CategoryWriting
+		if got := s.Skill().AccessRestriction; got == nil || *got != "hold" {
+			t.Fatalf("restriction after input mutation = %v, want hold", got)
+		}
+		first := s.Events()[1].(SkillCategorized)
+		if first.Category == nil || *first.Category != CategoryDocuments || first.Source == nil || *first.Source != CategorySourceOwner {
+			t.Fatalf("category event after input mutation = %+v, want owner documents", first)
+		}
+
+		*first.Category, *first.Source = CategoryWriting, CategorySourceCurated
+		second := s.Events()[1].(SkillCategorized)
+		if second.Category == nil || *second.Category != CategoryDocuments || second.Source == nil || *second.Source != CategorySourceOwner {
+			t.Fatalf("category event after output mutation = %+v, want owner documents", second)
+		}
+	})
+
+	t.Run("improvements and version DTOs keep independent pointers and IDs", func(t *testing.T) {
+		firstID := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+		secondID := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
+		improvement := Improvement{SuggestionIDs: []pgtype.UUID{firstID}}
+		content := packageContent(t, "hash", false).ImprovedBy(improvement)
+		content.manifest = []byte("manifest")
+		license, licenseSource := "MIT", "LICENSE"
+		content.license, content.licenseSource = &license, &licenseSource
+		improvement.SuggestionIDs[0] = secondID
+		s := &SkillRoot{}
+		s.AddVersion(content)
+		content.manifest[0] = 'x'
+		*content.license, *content.licenseSource = "changed", "changed"
+		content.improvedBy.SuggestionIDs[0] = secondID
+		if string(s.pending.manifest) != "manifest" {
+			t.Fatalf("pending manifest after input mutation = %q, want manifest", s.pending.manifest)
+		}
+		if s.pending.license == nil || *s.pending.license != "MIT" {
+			t.Fatalf("pending license after input mutation = %v, want MIT", s.pending.license)
+		}
+		if s.pending.licenseSource == nil || *s.pending.licenseSource != "LICENSE" {
+			t.Fatalf("pending license source after input mutation = %v, want LICENSE", s.pending.licenseSource)
+		}
+		first := s.Events()[0].(SkillVersionAdded)
+		if first.ImprovedBy == nil || len(first.ImprovedBy.SuggestionIDs) != 1 || first.ImprovedBy.SuggestionIDs[0] != firstID {
+			t.Fatalf("version event after input mutation = %+v, want first suggestion", first)
+		}
+
+		first.ImprovedBy.SuggestionIDs[0] = secondID
+		second := s.Events()[0].(SkillVersionAdded)
+		if second.ImprovedBy == nil || len(second.ImprovedBy.SuggestionIDs) != 1 || second.ImprovedBy.SuggestionIDs[0] != firstID {
+			t.Fatalf("version event after output mutation = %+v, want first suggestion", second)
+		}
+
+		license, licenseSource = "MIT", "manifest"
+		s.added = gen.SkillVersion{LicenseExpression: &license, LicenseSource: &licenseSource}
+		version := s.AddedVersion()
+		*version.LicenseExpression, *version.LicenseSource = "output", "output"
+		again := s.AddedVersion()
+		if *again.LicenseExpression != "MIT" || *again.LicenseSource != "manifest" {
+			t.Fatalf("version after output mutation = %+v, want original licenses", again)
+		}
+	})
+
+	t.Run("package manifests do not retain the report pointer", func(t *testing.T) {
+		report := skillpkg.Report{Manifest: &skillpkg.Manifest{Name: "fresh", Description: "summary"}}
+		s, err := SkillFromPackage(pgtype.UUID{}, report, RedistributionUnknown)
+		if err != nil {
+			t.Fatal(err)
+		}
+		report.Manifest.Description = "changed"
+		if got := s.Skill().Summary; got == nil || *got != "summary" {
+			t.Fatalf("package summary after report mutation = %v, want summary", got)
+		}
+	})
 }
 
 func TestAGeneratedSkillTakesOnlyGeneratedContent(t *testing.T) {
