@@ -861,7 +861,7 @@ Run 至少支援：
 允收準則：
 
 - **不得**為本模式手寫任何替代資料層——具體形式是：不得出現第二個實作 `db/gen` 那批查詢方法的型別，也不得引入第二套 schema 定義。<br>（**2026-08-28 措辭訂正**：本條初稿點名了一個 sqlc 在開啟 `emit_interface` 時才會生成的介面型別，而**這個 repo 沒有開那個選項，那個型別不存在**。`devctl automation-check` 的 `doc-identifier` 在提交前抓到了它——一份規格點名一個不存在的識別字，正是本專案反覆記載的那種缺陷。）
-- 依據：[ADR-058](../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 選項 A／B 的評估——`coder/coder` 走完這條路並於 2024-11 移除（PR #15291），理由是假實作與真 Postgres 行為分歧、部分測試只在假實作上驗證過。**本專案已三度被同一形狀的缺陷咬過，不再造第四個。**
+- 依據：[ADR-058](../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 選項 A／B 的評估（該份已由 [ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 取代，量測與決策 1 由它延續）——`coder/coder` 走完這條路並於 2024-11 移除（PR #15291），理由是假實作與真 Postgres 行為分歧、部分測試只在假實作上驗證過。**本專案已三度被同一形狀的缺陷咬過，不再造第四個。**
 
 #### PORT-009：物件儲存的替身，以及它不涵蓋什麼
 

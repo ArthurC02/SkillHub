@@ -27,6 +27,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"capability-table",
 
 		"doc-links",
+		"adr-citations",
 
 		"dependency-policy",
 		"harness",

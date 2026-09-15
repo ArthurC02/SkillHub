@@ -136,6 +136,7 @@ func documentCheckers() []namedChecker {
 		{"capability-table", capabilityTableProblems},
 
 		{"doc-links", docLinkProblems},
+		{"adr-citations", adrCitationProblems},
 
 		{"dependency-policy", dependencyPolicyProblems},
 		{"harness", harnessProblems},

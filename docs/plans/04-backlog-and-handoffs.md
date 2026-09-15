@@ -22,7 +22,7 @@
 
 | # | 項目 | 內容 | 觸發條件 |
 | --- | --- | --- | --- |
-| ~~檔-1~~ | ~~**m1 的策展資料與閘門治理文件歸位**~~ | **已解決（2026-08-16，本次搬移 commit，依 [ADR-024](../adr/ADR-024-top-level-repository-layout.md) §4）。** ①策展資料 → [`content/`](mvp/content/)（[`curated-skill-list.md`](mvp/content/curated-skill-list.md)、[`content-summaries.md`](mvp/content/content-summaries.md)、[`content-candidates.md`](mvp/content/content-candidates.md)）；②閘門治理文件 → [`gate-test/`](mvp/gate-test/)；同批另有 `m2` 的授權備忘 → [`governance/`](mvp/governance/)。**只搬路徑，六份閘門材料與三份策展資料內容一字未動，D 日仍未宣告**——原本「D 日之後才能搬」的顧慮是怕動到凍結標的，路徑遷移不是凍結標的的變更，已依慣例記於 [`gate-test/README.md` §3.1](mvp/gate-test/README.md)。`m1`／`m2` 的檔案地圖已標「已移至」，`01`／`02`／`03`／`AGENTS.md` 與本文件的引用同批重指。 | ~~閘門測試結束後~~ **已完成** |
+| ~~檔-1~~ | ~~**m1 的策展資料與閘門治理文件歸位**~~ | **已解決（2026-08-16，本次搬移 commit，依 [ADR-024](../adr/ADR-024-top-level-repository-layout.md) §4，該份後由 [ADR-031](../adr/ADR-031-artifact-role-repository-layout.md) 取代）。** ①策展資料 → [`content/`](mvp/content/)（[`curated-skill-list.md`](mvp/content/curated-skill-list.md)、[`content-summaries.md`](mvp/content/content-summaries.md)、[`content-candidates.md`](mvp/content/content-candidates.md)）；②閘門治理文件 → [`gate-test/`](mvp/gate-test/)；同批另有 `m2` 的授權備忘 → [`governance/`](mvp/governance/)。**只搬路徑，六份閘門材料與三份策展資料內容一字未動，D 日仍未宣告**——原本「D 日之後才能搬」的顧慮是怕動到凍結標的，路徑遷移不是凍結標的的變更，已依慣例記於 [`gate-test/README.md` §3.1](mvp/gate-test/README.md)。`m1`／`m2` 的檔案地圖已標「已移至」，`01`／`02`／`03`／`AGENTS.md` 與本文件的引用同批重指。 | ~~閘門測試結束後~~ **已完成** |
 
 # 殘項清單(三類)
 

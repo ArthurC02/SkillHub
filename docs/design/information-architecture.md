@@ -121,7 +121,7 @@
 >
 > **這一欄沒有機器**（§6：`ia.test.ts` 只比對位址那一欄）。
 
-**沒有位址的區塊一個**：[`EvaluationPanel.tsx`](../../apps/web/src/features/runs/evaluation/EvaluationPanel.tsx)（全 app 最大的幾個檔案之一）。它長在 `/runs/$runId` 裡；沒有位址就不是頁面，所以住在 `components/` 而不在 `pages/`（[ADR-081](../adr/ADR-081-frontend-components-in-three-layers-and-server-state-lives-in-api.md) 決策 1）。它原本兼供的 `RUN_STATUS_LABEL` 搬到了 `features/runs/runs.model.ts`。詳見 §5 IA-3。
+**沒有位址的區塊一個**：[`EvaluationPanel.tsx`](../../apps/web/src/features/runs/evaluation/EvaluationPanel.tsx)（全 app 最大的幾個檔案之一）。它長在 `/runs/$runId` 裡；沒有位址就不是頁面，所以它不是 `*.page.tsx`，而是 runs 這個 feature 裡的元件（[ADR-082](../adr/ADR-082-frontend-features-own-their-pages-sub-components-and-services.md)）。它原本兼供的 `RUN_STATUS_LABEL` 搬到了 `features/runs/runs.model.ts`。詳見 §5 IA-3。
 
 **深度最多三層**（`/skills/$id/package`），沒有一條路由需要記住兩個以上的 id。
 
