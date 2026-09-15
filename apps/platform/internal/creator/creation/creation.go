@@ -181,8 +181,8 @@ func addSpend(p *Snapshot, cost float64) {
 }
 
 func shortlist(refs []Reference) []Reference {
-	if len(refs) > 3 {
-		refs = refs[:3]
+	if len(refs) > MaxReferences {
+		refs = refs[:MaxReferences]
 	}
 	for i := range refs {
 		refs[i].Confirmed = false
@@ -466,7 +466,7 @@ func confirmDiagram(p *Snapshot) (commandOutcome, error) {
 }
 
 func (s *Service) selectReferences(ctx context.Context, ws identity.Workspace, p *Snapshot, c Command) (commandOutcome, error) {
-	if len(c.ReferenceSkillIDs) > 3 || s.ResolveReference == nil {
+	if len(c.ReferenceSkillIDs) > MaxReferences || s.ResolveReference == nil {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	if err := s.attachNote(p, c.Message); err != nil {

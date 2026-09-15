@@ -6,7 +6,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	trace "github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -154,6 +153,6 @@ func evalRunFacts(facts run.EvaluationRun) eval.RunFacts {
 		SkillVersionID: facts.SkillVersionID, TestCaseSnapshotID: facts.TestCaseSnapshotID,
 		Status: facts.Status, StatusReason: facts.StatusReason, RuntimeSnapshot: facts.RuntimeSnapshot,
 		StartedAt: facts.StartedAt, FinishedAt: facts.FinishedAt, FailureClass: facts.FailureClass,
-		Terminal: run.IsTerminal(gen.RunStatus(facts.Status)),
+		Terminal: facts.Terminal,
 	}
 }

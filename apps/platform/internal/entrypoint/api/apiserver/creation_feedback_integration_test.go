@@ -51,6 +51,14 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 	}
 	creationPost(t, c, path, action(wrongVersionRun), 404)
 	creationPost(t, other, path, action(runID), 404)
+	var runningID string
+	if err := testPool.QueryRow(ctx, `INSERT INTO runs
+		(workspace_id, skill_version_id, test_case_snapshot_id, provider, runtime_snapshot, policy_snapshot, status)
+		SELECT workspace_id, skill_version_id, test_case_snapshot_id, provider, runtime_snapshot, policy_snapshot, 'running'
+		FROM runs WHERE id=$1 RETURNING id::text`, mustUUID(t, runID)).Scan(&runningID); err != nil {
+		t.Fatal(err)
+	}
+	creationPost(t, c, path, action(runningID), 404)
 	var seen atomic.Bool
 	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req llmclient.CreationStepRequest

@@ -40,6 +40,7 @@ type EvaluationRun struct {
 	SkillVersionID     pgtype.UUID
 	TestCaseSnapshotID pgtype.UUID
 	Status             string
+	Terminal           bool
 	StatusReason       *string
 	RuntimeSnapshot    []byte
 	StartedAt          *time.Time
@@ -172,6 +173,7 @@ func evaluationRun(row gen.Run) EvaluationRun {
 		ID: row.ID, WorkspaceID: row.WorkspaceID,
 		SkillVersionID: row.SkillVersionID, TestCaseSnapshotID: row.TestCaseSnapshotID,
 		Status: string(row.Status), StatusReason: row.StatusReason, RuntimeSnapshot: row.RuntimeSnapshot,
+		Terminal:  IsTerminal(row.Status),
 		StartedAt: timePtr(row.StartedAt), FinishedAt: timePtr(row.FinishedAt), FailureClass: row.FailureClass,
 	}
 }

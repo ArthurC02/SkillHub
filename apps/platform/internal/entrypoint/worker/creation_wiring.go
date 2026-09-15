@@ -33,7 +33,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 			if err == nil {
 				refs = append(refs, r)
 			}
-			if len(refs) == 3 {
+			if len(refs) == creation.MaxReferences {
 				break
 			}
 		}
@@ -76,7 +76,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 			if err == nil {
 				refs = append(refs, r)
 			}
-			if len(refs) == 3 {
+			if len(refs) == creation.MaxReferences {
 				break
 			}
 		}

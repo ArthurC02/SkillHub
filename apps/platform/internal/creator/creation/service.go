@@ -39,6 +39,8 @@ var (
 )
 
 const (
+	MaxReferences = 3
+
 	MaxMessages = 98
 
 	MaxTextRunes = 20000

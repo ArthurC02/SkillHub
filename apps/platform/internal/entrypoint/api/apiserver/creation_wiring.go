@@ -33,7 +33,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 				if err == nil {
 					refs = append(refs, r)
 				}
-				if len(refs) == 3 {
+				if len(refs) == creation.MaxReferences {
 					break
 				}
 			}
@@ -78,7 +78,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 			if err == nil {
 				refs = append(refs, r)
 			}
-			if len(refs) == 3 {
+			if len(refs) == creation.MaxReferences {
 				break
 			}
 		}
@@ -113,9 +113,7 @@ func wireCreationWrites(s *creation.Service, versions *ingest.Service, runs *run
 		if err != nil || !found || creation.UUID(r.SkillVersionID) != candidate.VersionID {
 			return "", creation.ErrNotFound
 		}
-		switch r.Status {
-		case "succeeded", "failed", "cancelled", "timed_out":
-		default:
+		if !r.Terminal {
 			return "", creation.ErrInvalidCommand
 		}
 		feedback, err := evaluations.CreationFeedback(ctx, ws.ID, id)

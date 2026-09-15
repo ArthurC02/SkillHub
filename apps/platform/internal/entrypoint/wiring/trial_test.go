@@ -6,29 +6,21 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
-func TestEvaluationTreatsARunAsFinishedExactlyInItsFourEndStates(t *testing.T) {
+func TestEvaluationReceivesTheOwnersTerminalVerdict(t *testing.T) {
 	for _, tc := range []struct {
-		status   gen.RunStatus
+		status   string
 		finished bool
 	}{
-		{gen.RunStatusQueued, false},
-		{gen.RunStatusProvisioning, false},
-		{gen.RunStatusPreparing, false},
-		{gen.RunStatusRunning, false},
-		{gen.RunStatusEvaluating, false},
-		{gen.RunStatusSucceeded, true},
-		{gen.RunStatusFailed, true},
-		{gen.RunStatusCancelled, true},
-		{gen.RunStatusTimedOut, true},
+		{"succeeded", false},
+		{"running", true},
 	} {
-		t.Run(string(tc.status), func(t *testing.T) {
-			if got := evalRunFacts(run.EvaluationRun{Status: string(tc.status)}).Terminal; got != tc.finished {
+		t.Run(tc.status, func(t *testing.T) {
+			if got := evalRunFacts(run.EvaluationRun{Status: tc.status, Terminal: tc.finished}).Terminal; got != tc.finished {
 				t.Errorf("evaluation sees %s as finished = %v, want %v", tc.status, got, tc.finished)
 			}
 		})

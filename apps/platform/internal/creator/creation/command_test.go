@@ -186,11 +186,11 @@ func TestSelectingReferencesResolvesEachAndAsksForConfirmation(t *testing.T) {
 		return Reference{SkillID: id, Confirmed: true}, llmclient.GenerateReference{}, nil
 	}}
 	p := &Snapshot{BriefConfirmed: true, Draft: &Draft{}, PendingAction: "confirm_brief"}
-	got, err := s.selectReferences(context.Background(), identity.Workspace{}, p, Command{ReferenceSkillIDs: []string{"a", "b"}, Message: "use these"})
+	got, err := s.selectReferences(context.Background(), identity.Workspace{}, p, Command{ReferenceSkillIDs: []string{"a", "b", "c"}, Message: "use these"})
 	if err != nil || got.state != StateWaitingConfirmation || got.queueStep {
 		t.Fatalf("outcome = %+v, err = %v", got, err)
 	}
-	if strings.Join(asked, ",") != "a@,b@" || len(p.References) != 2 || p.References[0].Confirmed || p.References[1].Confirmed {
+	if strings.Join(asked, ",") != "a@,b@,c@" || len(p.References) != 3 || p.References[0].Confirmed || p.References[1].Confirmed || p.References[2].Confirmed {
 		t.Fatalf("asked = %v, references = %+v", asked, p.References)
 	}
 	if p.PendingAction != "confirm_references" || p.BriefConfirmed || p.Draft != nil || p.Messages[len(p.Messages)-1].Content != "use these" {
