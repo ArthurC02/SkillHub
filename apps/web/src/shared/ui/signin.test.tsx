@@ -36,6 +36,24 @@ async function mount(forms = 1) {
 const offlineBox = () => container.querySelector<HTMLInputElement>("form input");
 const githubLink = () =>
   [...container.querySelectorAll("a")].find((a) => a.textContent?.includes("GitHub"));
+const alertText = () => container.querySelector('[role="alert"]')?.textContent ?? "";
+
+async function submit() {
+  await act(async () => {
+    container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true }));
+  });
+}
+
+async function waitFor(done: () => boolean, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (done()) return;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    });
+  }
+  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+}
 
 test("without the injected flag it offers GitHub and no offline form", async () => {
   await mount();
@@ -102,13 +120,10 @@ test("a refused sign-in says so instead of looking like nothing happened", async
   vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("nope", { status: 500 }));
   await mount();
 
-  await act(async () => {
-    container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true }));
-  });
+  await submit();
+  await waitFor(() => alertText() !== "");
 
-  expect(container.querySelector('[role="alert"]')?.textContent ?? "").toContain(
-    "登入沒有成功，可以再試一次。",
-  );
+  expect(alertText()).toContain("登入沒有成功，可以再試一次。");
 });
 
 test("丙-150 a 64-char name refused by the server says the number, not the raw body", async () => {
@@ -121,17 +136,10 @@ test("丙-150 a 64-char name refused by the server says the number, not the raw 
   );
   await mount();
 
-  const deadline = Date.now() + 2000;
-  let alertText = "";
-  while (Date.now() < deadline && !alertText) {
-    await act(async () => {
-      container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true }));
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-    alertText = container.querySelector('[role="alert"]')?.textContent ?? "";
-  }
+  await submit();
+  await waitFor(() => alertText() !== "");
 
-  expect(alertText).toContain("使用者名稱最多 64 個字元。");
+  expect(alertText()).toContain("使用者名稱最多 64 個字元。");
 });
 
 test("丙-155⑥ the offline name field caps input at 64 characters", async () => {
