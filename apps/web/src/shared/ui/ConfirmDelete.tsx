@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import "./ConfirmDelete.css";
 
 export function ConfirmDelete({
   scopeId,

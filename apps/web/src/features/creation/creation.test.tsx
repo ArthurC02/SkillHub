@@ -550,7 +550,9 @@ test("the line breaks the model wrote survive into the conversation", async () =
   expect(text.textContent).toContain("1. 抓規格");
   const para = box.querySelector('li[data-role="assistant"] p')!;
   expect(para.textContent, "模型那一段裡的換行不見了").toBe("好。\n這一行還在同一段。");
-  const css = readFileSync(join(import.meta.dirname, "..", "..", "index.css"), "utf8");
+  const css = ["CreationSession.css", "ModelMarkdown.css"]
+    .map((f) => readFileSync(join(import.meta.dirname, "create", "components", f), "utf8"))
+    .join("\n");
   expect(
     /\.creation-text\s*\{[^}]*white-space:\s*pre-wrap/.test(css),
     "`.creation-text` 沒有 pre-wrap，換行還是會被壓掉",

@@ -1,0 +1,166 @@
+:root {
+  --text: #565f6e;
+  --text-h: #101623;
+  /* ADR-064 §4.6.1/§4.6.2: depth is three flat surfaces, not shadow — ground
+     (--bg), surface (--surface), recess (--code-bg). The surface is lighter than
+     the ground in BOTH themes, which is the only direction that works in dark
+     mode, where a shadow has nothing to fall on. The three greys are tinted
+     near-neutral with a slight cool bias, NOT tinted toward the accent.
+
+     ── 2026-09-08：三階灰從藕紫改成中性冷灰，accent 從螢光洋紅改成深紫 ──────────
+     2026-09-03 這三階是「朝 --accent 染色」的（#f7f6fa／#f1eef6／#6b6375 都帶紫），
+     配上 #aa3bff 那個螢光洋紅。負責人第三次回報同一件事：「這個顏色就是最大的問題，
+     整個看起來超級復古風」。飽和洋紅加藕紫灰是 2000 年代的配方，而**這件事沒有任何
+     規則擋**——`contrast.test.ts` 量的是達不達標不是釘住色相，`design-system.test.ts`
+     解析的是字級與間距，ADR-064 定的是三層平面的**結構**不是色相，§2.7 禁的是散落的
+     色彩字面值不是改 token 的值。擋住它的一直只是沒有人去算那 50 個數字。
+
+     ── 同日第二輪：三層平面在亮色模式下量不出來 ──────────────────────────────
+     結構是對的（ground／surface／recess 三階，surface 比 ground 亮，兩個主題同向），
+     但亮色那一階的**幅度**一直是 1.07:1，而卡片邊 `--border` 對白色只有 1.27:1。
+     兩個通道都在，兩個都低於看得見的門檻，於是外部審查讀到的是「純白畫布上的白色
+     線框」——那個描述在色碼上不成立，在眼睛裡成立。ground 走到 1.13:1、`--border`
+     走到 1.46:1。**暗色量出來有同一個毛病**：地與面只差 1.085:1，是新加的那條棘輪
+     測試自己抓到的，不是眼睛——地走到 `#0a0c10`（1.12:1），`--border` 從 1.32:1 走到
+     1.50:1，兩個主題等強。
+     `--border` 不在 `contrast.test.ts` 的 PAIRS 裡，因為卡片的邊不承載資訊
+     （NFR-007 把那件事留給文字）；ground 在裡面，25 對重算過，最緊的一對仍是
+     `--text` 在 `--surface-active` 上的 5.25:1，沒有被這次挪動碰到。
+
+     Measured 2026-09-08, and every one of these is stated because a number in a
+     comment is the thing that rots: --text/--text-h/--danger/--link clear 4.5:1
+     on all five fills (ground, surface, recess, hover, active) in both themes —
+     the tightest light pair is --text on --surface-active at 5.25 (it was 4.62
+     before this retune, so the floor went up while the hue calmed down). */
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-hover: #eff1f5;
+  --surface-active: #e5e8ee;
+  --border: #d0d6e0;
+  /* WCAG 1.4.11 wants 3:1 for a control's boundary and --border never met it:
+     1.27:1 on the old white --bg. This is 3.58:1 light / 4.32:1 dark on
+     --surface, and it is for control edges only — a card keeps --border,
+     because a card's edge carries no information (NFR-007 keeps that in
+     words). */
+  --border-strong: #7e8899;
+  /* §4.6.3: fill belongs to ACTIONS, outline to CLAIMS. One filled action per
+     page — the one that finishes the page's work — so a badge never gets this
+     and a second button never gets it. --on-cta on --cta is 7.32:1 light /
+     8.52:1 dark. --cta is --link's value in both themes on purpose: the app
+     already decided what its own purple is, and a second one would be a hue to
+     keep in sync. */
+  --cta: #5b3bc4;
+  --on-cta: #ffffff;
+  /* §5.3 缺口 ①: blocking messages and non-blocking degradation notices shared
+     one surface, so 「不能打包」 looked like an explanation. This is the second
+     channel; the words stay the first one (§2.3). Not for degradation — that is
+     --accent-bg and stays --accent-bg. */
+  --danger-bg: #fdf1f0;
+  --tile-violet: #6d4aeb;
+  --tile-violet-deep: #4c2fb0;
+  --tile-blue: #2563eb;
+  --tile-blue-deep: #1d4ed8;
+  --tile-teal: #0f766e;
+  --tile-teal-deep: #0b5f63;
+  --tile-rose: #be185d;
+  --tile-rose-deep: #9e2a66;
+  --on-tile: #ffffff;
+  --shadow-rest: 0 1px 2px rgba(16, 22, 35, 0.06), 0 2px 6px rgba(16, 22, 35, 0.06);
+  --shadow-lift:
+    0 2px 4px rgba(16, 22, 35, 0.06), 0 8px 16px rgba(16, 22, 35, 0.08),
+    0 16px 32px rgba(16, 22, 35, 0.1);
+
+  /* 版面尺寸，不是顏色：`main`／`.app-footer` 的欄寬，以及頁首把自己的內距對回
+     那條左緣時要減掉的那一段。設計 §4.5 記的 1126px 從 2026-09-08 起住在這裡。 */
+  --measure: 1126px;
+  --code-bg: #f1f3f7;
+  --accent: #6d4aeb;
+  --accent-bg: rgba(109, 74, 235, 0.09);
+  --accent-border: rgba(109, 74, 235, 0.45);
+  /* QA-009: the old literal #d33 was 4.11:1 on --code-bg in light mode and
+     3.55:1 in dark, i.e. below AA in both — one hardcoded red cannot serve two
+     backgrounds. This one is 5.92:1 light / 5.72:1 dark on the badge fill. */
+  --danger: #b42318;
+  /* --link and --accent are two values of one hue, and **the reason they are
+     two changed on 2026-09-08 — so the reason is restated rather than left as a
+     sentence that used to be true.** Before the retune --accent was 4.39:1 on
+     --bg, i.e. under AA, and --link existed because the accent literally could
+     not be link text. Today --accent clears AA too (4.84:1 light / 7.19:1 dark),
+     so the split is no longer forced by arithmetic: it is kept because the two
+     jobs want different chroma — a focus ring and a .notice edge are read at a
+     glance and take the brighter value, running link text is read for minutes
+     and takes the calmer one. --link is 6.47:1 on --bg, 6.59:1 on --code-bg.
+     Both are still in contrast.test.ts's PAIRS, so neither can drift. */
+  --link: #5b3bc4;
+
+  /* §4.6.4: two durations and one curve (Material 3 standard easing), and the
+     reduce block below zeroes both in one place rather than per rule. Only
+     background-color/border-color/color are ever transitioned — never opacity
+     (§2.7 forbids it outright), never `all`. No @keyframes, no spinner: §2.12 is
+     explicit that a wheel that never stops cannot tell running from wedged. */
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
+  --heading: system-ui, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9aa4b4;
+    --text-h: #f1f3f7;
+    --bg: #0a0c10;
+    --surface: #171a21;
+    --surface-hover: #20242d;
+    --surface-active: #272c36;
+    --border: #333945;
+    --border-strong: #767f90;
+    --cta: #b3a0ff;
+    --on-cta: #120c22;
+    --danger-bg: #3a1a19;
+    --tile-violet: #6d4aeb;
+    --tile-violet-deep: #4c2fb0;
+    --tile-blue: #2563eb;
+    --tile-blue-deep: #1d4ed8;
+    --tile-teal: #0f766e;
+    --tile-teal-deep: #0b5f63;
+    --tile-rose: #be185d;
+    --tile-rose-deep: #9e2a66;
+    --on-tile: #ffffff;
+    --shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-lift:
+      0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(0, 0, 0, 0.4), 0 16px 32px rgba(0, 0, 0, 0.5);
+    --code-bg: #1e222a;
+    --accent: #a78bfa;
+    --accent-bg: rgba(167, 139, 250, 0.15);
+    --accent-border: rgba(167, 139, 250, 0.45);
+    --danger: #f97066;
+    --link: #b3a0ff;
+  }
+}
+
+/* One block turns all of it off, which is the point of putting the durations in
+   tokens: a rule that forgets to opt out cannot exist. The curve stays — a 0ms
+   transition never samples it. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+  }
+}

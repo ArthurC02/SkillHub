@@ -38,6 +38,7 @@ import { DiagramUnderstandingView } from "./DiagramUnderstandingView";
 import { Attachments } from "./Attachments";
 import { ToolObservation } from "./ToolObservation";
 import { ReferenceList } from "./ReferenceList";
+import "./CreationSession.css";
 
 const labels: Record<CreationState, string> = {
   queued: "等待處理",

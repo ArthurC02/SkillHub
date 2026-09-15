@@ -1,0 +1,49 @@
+/* DISC-003 filter bar. The unavailable dimensions keep their reason visible
+   rather than hiding it in a tooltip: a disabled control with no stated cause
+   reads as a bug, and the cause is the honest part of the feature. */
+/* Grid, not wrapping flex. Three of the six items are a label plus a select and
+   three carry two or three lines of reason text, so on a flex line box the tall
+   ones set the line height and the short ones left ~120px of dead space
+   underneath — 「需要 MCP」 wrapped alone onto a second line three quarters
+   empty, and the whole bar ran ~340px tall directly under the search box. Grid
+   tracks are equal width and each row is one height, so nothing is padded out
+   by a neighbour. 320px is chosen so a 1126px page gets three tracks, not four:
+   at four, 類別 lands beside the three short live controls and re-opens the same
+   void one row up. Three puts the live controls on one short row and the three
+   reasons on one tall row. min() keeps the track inside a narrow viewport. */
+.filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  align-items: start;
+  gap: 12px 20px;
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* 設計 §0 的裁定，落地: the bar is inside a <details> whose <summary> keeps the
+   two counts outside. Only the margins move here — the summary is a summary and
+   takes the shared rule; the bar keeps its own border, because when it is open
+   it is still the same object it was. */
+.filter-disclosure {
+  margin: 12px 0;
+}
+
+.filter-disclosure > .filter-bar {
+  margin: 8px 0 0;
+}
+
+/* No max-width: the grid track is the width now, and capping the label inside
+   it would put the dead space back one level down. */
+.filter-bar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.filter-bar > .note {
+  grid-column: 1 / -1;
+}

@@ -18,6 +18,7 @@ import { Enrichment } from "./components/Enrichment";
 import { SourceBlock } from "./components/SourceBlock";
 import { TrialEntry } from "./components/TrialEntry";
 import { ForkAction } from "./components/ForkAction";
+import "./SkillDetail.page.css";
 
 export function SkillDetail() {
   const { skillId } = useParams({ from: "/skills/$skillId" });

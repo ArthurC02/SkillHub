@@ -138,7 +138,7 @@
 | 頁尾 | 回報問題（面板，非路由）、資料保存政策、帳號與刪除、**Build 識別碼**（`<details>`，非路由；IA-11） | `/policy`、`/workspace/account` |
 | 右上 | `AuthControls`（未登入時是「使用 GitHub 登入」）；**`GET /me` 的 `operator` 為真時多一個「後台」**（`02:OPS-001`） | 外部 `/auth/github/login`；`/admin` |
 
-「你在哪裡」不靠 `activeProps`：router 自己在相符的連結上標 `data-status="active"` 與 `aria-current="page"`，視覺與語意各一半，樣式在 `index.css` 的 `.app-nav`。
+「你在哪裡」不靠 `activeProps`：router 自己在相符的連結上標 `data-status="active"` 與 `aria-current="page"`，視覺與語意各一半，樣式在 `styles/layout.css` 的 `.app-nav`。
 
 ### 2.2 頁內連結圖（誰指向誰）
 

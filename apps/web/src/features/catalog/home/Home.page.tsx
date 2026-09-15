@@ -17,6 +17,7 @@ import { CompareBar } from "./components/CompareBar";
 import { liftedNotes, SearchFacetNotes } from "./components/SearchFacetNotes";
 import { MarkerLegend } from "./components/MarkerLegend";
 import { SearchResultRow } from "./components/SearchResultRow";
+import "./Home.page.css";
 
 function parseSelection(value: string | undefined): string[] {
   return value ? value.split(",").filter(Boolean).slice(0, MAX_COMPARE) : [];

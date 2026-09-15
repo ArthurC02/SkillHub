@@ -1,0 +1,217 @@
+/* 欄寬的新家，而它現在是一個 token 而不是散在兩處的字面值——`--measure` 同時被
+   這裡的 `width` 與頁首那條 `max()` 內距讀，兩邊不可能各改各的。`box-sizing` 是
+   必須的而不是保險：`main` 自帶左右各 24px 的內距，內容盒下欄寬加上那兩份會在
+   1126px 寬的視窗上生出橫向捲動，而 `rendered.spec.ts` 有一條測試就是在守那件事。 */
+main,
+.app-footer {
+  width: var(--measure);
+  max-width: 100%;
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+/* 頁尾那一列是**純連結**（「資料保存政策 ｜ 帳號與刪除」），不是夾在句子裡的連結，
+   所以 1.4.1 的「不得只靠顏色」在這裡沒有可混淆的對象：整行就只有連結。底線改成
+   hover 才出現，那一列因此從「兩條紫色底線」變回一列文字。 */
+.app-footer .note a {
+  text-decoration: none;
+}
+
+.app-footer .note a:hover {
+  text-decoration: underline;
+}
+
+/* §4.6.2: the header is a surface, not a strip of the page. It is the only
+   thing that is on every route, so it is also where the ground/surface split is
+   readable at a glance — which is what replaced #root's two hairlines. */
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  /* 滿版的底，對齊 `main` 的左緣。`max()` 的兩半各管一段視窗：比 `--measure` 窄時
+     退回 `main` 的那一份 24px，寬時把多出來的均分到兩側再加回那 24px，於是
+     「Skill Hub」在任何視窗上都與底下的 `h1` 同一條左緣（1440／1280／1126／900／375
+     五個寬度實測皆同）。 */
+  padding: 16px max(24px, calc((100% - var(--measure)) / 2 + 24px));
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+/* 離線登入（`components/SignIn`，只在 DEV_LOGIN 開著時）在頁首是一個 `<form>`，
+   而頁首自己是 flex，所以標籤、輸入框與按鈕過去是三個各自落在列上的兄弟，中間只有
+   頁首那組較寬的間距。外部審查讀成「工程師為了本機測試硬插在版面上的除錯工具」。
+   收成一組，三件東西同一條基線、同一個間距。文案一個字沒改：那句括號說的是這台
+   機器為什麼沒有 GitHub 登入，而它在全 app 只有這一份。 */
+.app-header form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* margin-right on the nav, not margin-left on the last child: AuthControls
+   renders `null` while the session is still unknown, and an `auto` hung off
+   :last-child would then land on the nav itself and shove the whole menu to the
+   far edge for as long as the request is in flight. */
+.app-header > .app-nav {
+  margin-right: auto;
+}
+
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  font-size: 15px;
+}
+
+/* ── 2026-09-08：非當前頁不是紫色 ────────────────────────────────────────────
+   這一列本來每一項都是 `--link`，因為它們是 `<a>` 而下面那條元素選擇器把全 app 的
+   連結都染成 accent。結果是導覽列上五個紫字並排，當前頁那一項只多一條底線——外部
+   審查逐字讀成「全列飄著紫色超連結」，而它是對的：**當「哪一個是我現在在的」是這
+   一列唯一要回答的問題時，五個一樣響的字就是沒有回答。**
+
+   `--text` 而不是 `--text-h`：留一階給當前頁。`--text` 在 `--surface` 上是 AA（見
+   `:root` 的量測註解，`contrast.test.ts` 的 PAIRS 已經含這一對），所以這不是把它們
+   弱化，是把強調挪給該強調的那一個。
+
+   **當前頁仍然有三個訊號**（NFR-007 不以顏色單獨承載意義）：`--text-h` 的顏色、
+   2px 底線、以及 router 自己加的 `aria-current="page"`。這次只動了非當前頁那一半。 */
+.app-nav a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* TanStack Router puts data-status="active" and aria-current="page" on the
+   matching Link by itself, so "where am I" needs no prop and no component
+   change. The underline is the visible half; aria-current is the half a screen
+   reader gets, and neither is colour alone (NFR-007).
+
+   Scoped to .app-nav and not .app-header: "/" matches on every route, so the
+   home link — which is the .app-title — would otherwise wear the active
+   underline permanently. It is not in the nav, so nothing needs activeOptions. */
+.app-nav a[data-status="active"] {
+  color: var(--text-h);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+}
+
+.app-title {
+  color: var(--text-h);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+/* THE APP'S FIRST PSEUDO-ELEMENT, and §4.6.6 says it is the only one: a 10px
+   --accent square before the product name. It exists because the header had no
+   mark at all — the wordmark was a link in the same weight as the nav beside it
+   — and because an inline SVG mark costs no request, no font and no asset
+   directory (ADR-064 決策 7 rules out all three). It carries no meaning, so it
+   is `content: ""` and stays out of the accessibility tree; the name is still
+   the whole of the link's text. --accent is 4.08:1 on the ground, over the 3:1
+   §4.4 rule 2 asks of a non-text mark. */
+.app-title::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 2px;
+  margin-right: 8px;
+  vertical-align: baseline;
+}
+
+/* BETA-003/004: the site-wide feedback entry. Last in reading order and last in
+   the tab sequence — it is a closed disclosure holding a whole form, and above
+   the page it would stand between every reader and the page's own controls. */
+.app-footer {
+  text-align: left;
+  padding: 16px 24px;
+  margin-top: 32px;
+  border-top: 1px solid var(--border);
+}
+
+/* The file had three breakpoints before this and all three were 1024px, i.e.
+   the app had no phone layout at all. */
+@media (max-width: 640px) {
+  main,
+  .app-header,
+  .app-footer {
+    padding-inline: 12px;
+  }
+
+  /* ── 2026-09-08：手機頁首從三列收成兩列，而且一項都沒有藏起來 ────────────────
+     375×900 實測（設計 §1.2 指定的手機視窗）：頁首 155px＝標題一列、導覽兩列、
+     身分一列。標題與身分各自只佔半列寬，卻各佔一整列，因為頁首的 flex 讓導覽用一個
+     `auto` 的右緣留白把它們推到兩端。讓那兩個共用第一列、導覽自己整列
+     （`flex-basis: 100%`），實測 **155 → 123px**。
+
+     **導覽在 375 仍然是兩列，這裡不假裝它不是。** 五項的文字總寬量出來 316.6px，
+     375 扣掉左右內距只剩 351，四個 16px 的間距就超了 29.6px。間距收到 12 讓
+     **390 以上（iPhone 12 起的預設寬）變成一列**（364.6 ≤ 366），375 仍然兩列——
+     要它在 375 也是一列，只能把導覽從 §4.1 的 ui 階（15px）降到 meta 階，而那張
+     表逐字把 `.app-nav` 指給 ui。§0 的順位裡版面（4）確實壓過尺度（5），但這裡
+     買到的是 27px，不值得為它動一條全站的字級指派。
+
+     **為什麼不做漢堡選單**：資訊架構 §5 IA-6 的第 4 條裁定逐字寫著「把導覽列藏
+     起來，等於拿掉訪客得知這個產品有 Test Lab 與打包的唯一管道」，而 §2.10 引的
+     NN/g 結論是折疊內容無法被掃視。一個抽屜要付這兩筆帳，換到的是這裡不折疊就
+     已經拿到的那 32px 再加 27px。 */
+  /* 控制項在 2026-09-08 稍晚從 32px 走到 40px，於是頁首的第一列跟著長高 8px，
+     實測 123 → 131，而這一頁的棘輪上限是 130——**那條測試抓到了它，不是我**。
+     把上下內距從 16 收到 12 換回那 8px：手機上的頁首本來就不需要桌機那一份呼吸，
+     而按鈕變大這件事要留著（它才是這次視覺修正的主體）。 */
+  .app-header {
+    padding-block: 12px;
+  }
+
+  .app-title {
+    margin-right: auto;
+  }
+
+  .app-header > .app-nav {
+    order: 1;
+    flex-basis: 100%;
+    margin-right: 0;
+    gap: 4px 12px;
+  }
+}
+
+.app-shell[data-chat] {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-shell[data-chat] > main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell[data-chat] > .app-footer {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0 16px;
+  padding: 4px 24px 8px;
+  margin: 0;
+  border-top: 0;
+}
+
+.app-shell[data-chat] > .app-footer > * {
+  margin: 0;
+}
+
+/* 頁尾收斂：字級降一階、顏色回到次要文字，不再與正文同重量。 */
+.app-footer {
+  font-size: 15px;
+  line-height: 20px;
+}

@@ -1,0 +1,46 @@
+/* A shelf is a grouping, not a surface: no border, no fill, nothing filled
+   inside it (§4.6.3). Its `h3` keeps the §4.1 scale — a shelf title is a
+   subsection of the page, not a second page title. */
+.curated-shelf {
+  margin: 24px 0;
+}
+
+/* 空目錄：一句例外處理換成一個看得懂下一步的區塊。 */
+.empty-catalog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 12px 0;
+}
+
+.empty-catalog-lede {
+  font-family: var(--heading);
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  color: var(--text-h);
+  margin: 0 0 8px;
+}
+
+/* 描邊不填色：§4.6.3 全站一頁至多一個填色主要動作，首頁那一個是「搜尋」。
+   與 `.hero-create` 同一份配方，因為它們是同一種東西——這一頁的第二個動作。 */
+.empty-catalog-cta {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 8px 16px;
+  text-decoration: none;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.empty-catalog-cta:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-border);
+}

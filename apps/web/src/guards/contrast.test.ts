@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 
-const css = readFileSync(join(import.meta.dirname, "..", "index.css"), "utf8");
+const css = readFileSync(join(import.meta.dirname, "..", "styles", "tokens.css"), "utf8");
 
 const declarations = [...css.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{3,8})\s*;/g)];
 

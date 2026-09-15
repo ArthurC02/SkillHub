@@ -5,6 +5,7 @@ import { Findings } from "../../../../shared/ui/Findings";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useSkillVersions } from "../../skills.service";
 import { useSaveSkillVersion } from "../../versions.service";
+import "./VersionUpload.css";
 
 function versionUploadErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {

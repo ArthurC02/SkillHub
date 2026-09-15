@@ -1,4 +1,5 @@
 import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
+import "./Tip.css";
 
 export function Tip({ anchor, children }: { anchor: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);

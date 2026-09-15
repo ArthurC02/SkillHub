@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SearchFilters } from "../../../../core/api/types";
 import { UNAVAILABLE_FILTERS, FilterControls } from "./FilterControls";
+import "./FilterBar.css";
 
 export function FilterBar({
   filters,

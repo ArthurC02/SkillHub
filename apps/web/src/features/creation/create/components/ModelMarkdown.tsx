@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 import { Reveal } from "../../../../shared/ui/Reveal";
+import "./ModelMarkdown.css";
 
 // Alternation order matters: `**bold**` must be tried before `*em*`, or the
 // regex engine matches the shorter `*` pattern first and never sees the bold run.

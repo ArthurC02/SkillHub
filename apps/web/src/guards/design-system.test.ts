@@ -1,9 +1,14 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { expect, test } from "vitest";
 
 const src = join(import.meta.dirname, "..");
-const css = readFileSync(join(src, "index.css"), "utf8");
+const stylesheets = readdirSync(src, { recursive: true })
+  .map((f) => String(f).replaceAll("\\", "/"))
+  .filter((f) => f.endsWith(".css"))
+  .sort();
+const sheets = new Map(stylesheets.map((f) => [f, readFileSync(join(src, f), "utf8")]));
+const css = [...sheets.values()].join("\n");
 
 const doc = readFileSync(join(src, "..", "..", "..", "docs", "design", "system.md"), "utf8");
 
@@ -82,19 +87,228 @@ test("ADR-039 §2.7: colour lives in tokens, and nothing multiplies it", () => {
   ).toEqual([]);
 });
 
-test("ADR-039 §4: index.css is still the only stylesheet", () => {
+const GLOBAL_LAYERS = [
+  "styles/tokens.css",
+  "styles/base.css",
+  "styles/layout.css",
+  "styles/patterns.css",
+];
+
+const withoutComments = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, "");
+
+function splitSelectorList(prelude: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of prelude) {
+    if (ch === "(") depth++;
+    if (ch === ")") depth--;
+    if (ch === "," && depth === 0) {
+      parts.push(current.trim());
+      current = "";
+    } else current += ch;
+  }
+  return [...parts, current.trim()].filter(Boolean);
+}
+
+function selectorsIn(text: string): string[] {
+  const found: string[] = [];
+  let depth = 0;
+  let start = 0;
+  let open = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === ";" && depth === 0) start = i + 1;
+    if (text[i] === "{" && depth++ === 0) open = i;
+    if (text[i] === "}" && --depth === 0) {
+      const prelude = text.slice(start, open).trim();
+      if (/^@(media|supports|starting-style)\b/.test(prelude)) {
+        found.push(...selectorsIn(text.slice(open + 1, i)));
+      } else if (!prelude.startsWith("@")) found.push(...splitSelectorList(prelude));
+      start = i + 1;
+    }
+  }
+  return found;
+}
+
+const namesIn = (selector: string) =>
+  [...selector.replace(/"[^"]*"|'[^']*'/g, '""').matchAll(/[.#]([a-zA-Z_][\w-]*)/g)].map(
+    ([whole]) => whole,
+  );
+
+function classUsers(): (name: string) => Set<string> {
+  const byToken = new Map<string, Set<string>>();
+  const prefixes: Array<[string, string]> = [];
+  for (const entry of readdirSync(src, { recursive: true })) {
+    const file = String(entry).replaceAll("\\", "/");
+    if (!/\.tsx?$/.test(file) || /\.(test|spec)\./.test(file) || /^(guards|testing)\//.test(file)) {
+      continue;
+    }
+    const body = readFileSync(join(src, file), "utf8");
+    for (const [, prefix] of body.matchAll(/([a-zA-Z][\w-]*-)\$\{/g)) prefixes.push([prefix, file]);
+    for (const [, a, b, c] of body.matchAll(/"([^"\\\n]*)"|'([^'\\\n]*)'|`([^`]*)`/g)) {
+      for (const token of (a ?? b ?? c).replace(/\$\{[^}]*\}/g, " ").split(/\s+/)) {
+        if (!token) continue;
+        if (!byToken.has(token)) byToken.set(token, new Set());
+        byToken.get(token)!.add(file);
+      }
+    }
+  }
+  return (name) =>
+    new Set([
+      ...(byToken.get(name.slice(1)) ?? []),
+      ...prefixes.filter(([p]) => name.slice(1).startsWith(p)).map(([, f]) => f),
+    ]);
+}
+
+const usersOf = classUsers();
+const selectorsBySheet = new Map(
+  stylesheets.map((f) => [f, selectorsIn(withoutComments(sheets.get(f)!))]),
+);
+const sheetsNaming = (name: string) =>
+  stylesheets.filter((f) => selectorsBySheet.get(f)!.some((s) => namesIn(s).includes(name)));
+
+test("ADR-085 決策 1: a stylesheet is one of the four global layers, or sits beside the component that imports it", () => {
   expect(
-    readdirSync(src, { recursive: true })
-      .map((f) => String(f).replaceAll("\\", "/"))
-      .filter((f) => f.endsWith(".css"))
+    stylesheets.filter((f) => f.startsWith("styles/")),
+    "a global layer appeared or went missing — name it in GLOBAL_LAYERS and in ADR-085",
+  ).toEqual([...GLOBAL_LAYERS].sort());
+
+  const importers = new Map<string, string[]>();
+  for (const entry of readdirSync(src, { recursive: true })) {
+    const file = String(entry).replaceAll("\\", "/");
+    if (!/\.tsx?$/.test(file)) continue;
+    for (const [, spec] of readFileSync(join(src, file), "utf8").matchAll(
+      /^import\s+"(\.[^"]+\.css)";/gm,
+    )) {
+      const target = posix.join(posix.dirname(file), spec);
+      importers.set(target, [...(importers.get(target) ?? []), file]);
+    }
+  }
+
+  expect(
+    [...importers.keys()].filter((t) => !sheets.has(t)),
+    "an import of a stylesheet that does not exist",
+  ).toEqual([]);
+  expect(importers.get(GLOBAL_LAYERS[0]), "main.tsx no longer loads the global layers").toEqual([
+    "main.tsx",
+  ]);
+  expect(
+    [
+      ...readFileSync(join(src, "main.tsx"), "utf8").matchAll(/^import\s+"\.\/(styles\/[^"]+)";/gm),
+    ].map(([, f]) => f),
+    "main.tsx loads the four layers in cascade order: tokens, base, layout, patterns",
+  ).toEqual(GLOBAL_LAYERS);
+  expect(
+    stylesheets.flatMap((sheet) => {
+      const expected = GLOBAL_LAYERS.includes(sheet) ? "main.tsx" : sheet.replace(/\.css$/, ".tsx");
+      const actual = importers.get(sheet) ?? [];
+      return actual.length === 1 && actual[0] === expected
+        ? []
+        : [`${sheet} is imported by [${actual.join(", ")}], not by ${expected} alone`];
+    }),
+    "a component stylesheet belongs to the .tsx beside it with the same name, and only that file imports it",
+  ).toEqual([]);
+});
+
+test("ADR-085 決策 2: :root and every colour literal live in tokens.css and nowhere else", () => {
+  const offenders = stylesheets
+    .filter((f) => f !== GLOBAL_LAYERS[0])
+    .flatMap((f) => {
+      const body = withoutComments(sheets.get(f)!);
+      return [
+        ...(/(^|[\s,{}]):root\b/m.test(body) ? [`${f}: :root`] : []),
+        ...(body.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g) ?? []).map((c) => `${f}: ${c}`),
+      ];
+    });
+  expect(
+    offenders,
+    "a :root block or a colour literal outside tokens.css, custom-property values included — " +
+      "contrast.test.ts reads only tokens.css, and the §2.7 check skips custom-property values",
+  ).toEqual([]);
+});
+
+test("ADR-085 決策 3: every selector in a component stylesheet is scoped by a class only its folder uses", () => {
+  const leaks: string[] = [];
+  for (const sheet of stylesheets) {
+    if (GLOBAL_LAYERS.includes(sheet)) continue;
+    const folder = posix.dirname(sheet) + "/";
+    const own = (name: string) =>
+      sheetsNaming(name).length === 1 && [...usersOf(name)].every((u) => u.startsWith(folder));
+    for (const selector of selectorsBySheet.get(sheet)!) {
+      if (!namesIn(selector).some(own)) leaks.push(`${sheet}: ${selector.replace(/\s+/g, " ")}`);
+    }
+  }
+  expect(
+    leaks,
+    "a component stylesheet reaching outside its component: once its page loads, this rule " +
+      "styles every page. Scope it with a class only this folder uses, or move it to styles/",
+  ).toEqual([]);
+});
+
+const APP_FRAME =
+  "the frame every page sits in: router.tsx draws it once, so its look is the project's";
+const CONTROL_LAYER =
+  "wears the base control rule beside `button`, so it has the same box as the button next to it";
+const EVALUATION_LIST = "shares the evaluation list recipe with .criterion-list and .finding-list";
+const DOOR_CARD =
+  "the door-card recipe .skill-card (/workspace/skills) and .create-cards (the create hub) share";
+
+const GLOBAL_BY_RECIPE: Record<string, string> = {
+  "app-header": APP_FRAME,
+  "app-nav": APP_FRAME,
+  "app-title": APP_FRAME,
+  "app-footer": APP_FRAME,
+  "app-shell": APP_FRAME,
+  "action-secondary": CONTROL_LAYER,
+  "composer-attach": CONTROL_LAYER,
+  "license-badge":
+    "one rule with .match-reason, and the badge-then-note spacing rule excludes both beside .badge-row",
+  "match-reason": "the other half of the .license-badge rule",
+  "suggestion-list": EVALUATION_LIST,
+  "evidence-list": EVALUATION_LIST,
+  "trace-events": EVALUATION_LIST,
+  suggestion: "shares the evaluation item frame with .criterion",
+  rank: "shares the 14px secondary-text size with .note and .risk-counts",
+  "file-size": "shares the 14px secondary-text size with .note and .risk-counts",
+  "evaluation-feedback": "its textarea shares the full-width rule with .diff",
+  "packaging-targets": "the target list reuses the download list recipe (.download-list)",
+  "packaging-target": "each target reuses the download row recipe (.download-item)",
+  "create-cards": DOOR_CARD,
+  "door-mono": DOOR_CARD,
+  "skill-card": DOOR_CARD,
+  "skill-mono": DOOR_CARD,
+};
+
+test("ADR-085 決策 4: a class only one folder uses lives beside that folder's component, unless it shares a global recipe", () => {
+  const single = new Set<string>();
+  for (const sheet of GLOBAL_LAYERS) {
+    for (const selector of selectorsBySheet.get(sheet)!) {
+      for (const name of namesIn(selector).filter((n) => n.startsWith("."))) {
+        const folders = new Set([...usersOf(name)].map((u) => posix.dirname(u)));
+        if (folders.size === 1) single.add(name.slice(1));
+      }
+    }
+  }
+  expect(
+    [...single].filter((c) => !(c in GLOBAL_BY_RECIPE)).sort(),
+    "a global stylesheet holding a class that only one folder uses — move its rules to the " +
+      "stylesheet beside that component, or say in GLOBAL_BY_RECIPE which global rule it shares",
+  ).toEqual([]);
+  expect(
+    Object.keys(GLOBAL_BY_RECIPE)
+      .filter((c) => !single.has(c))
       .sort(),
-    "a second stylesheet — the scale guards above only read index.css",
-  ).toEqual(["index.css"]);
+    "an entry that another folder now uses, or that left the global layers — delete the line",
+  ).toEqual([]);
+  expect(
+    Object.keys(GLOBAL_BY_RECIPE).length,
+    "the list may only get shorter; a class of one component belongs beside it",
+  ).toBeLessThanOrEqual(22);
 });
 
 const UNSTYLED: Record<string, string> = {
   "badge-source-package":
-    "settled decision: index.css says 作者原文 is a settled fact, so this badge " +
+    "settled decision: patterns.css says 作者原文 is a settled fact, so this badge " +
     "deliberately does not take --accent-border's 未知／未驗證 tint. Plain .badge is the visual.",
 
   "feedback-entry":
@@ -161,13 +375,13 @@ test("ADR-039 §3 第 16 條: every class in the markup has a rule, or a reason"
   const unexplained = [...used.keys()].filter((c) => !defined.has(c) && !(c in UNSTYLED)).sort();
   expect(
     unexplained.map((c) => `${c} (${used.get(c)!.join(", ")})`),
-    "a class with no rule in index.css and no line in UNSTYLED — either give it a " +
+    "a class no stylesheet has a rule for, and no line in UNSTYLED — either give it a " +
       "visual, or say there which of the two reasons it has for not having one",
   ).toEqual([]);
 
   expect(
     Object.keys(UNSTYLED).length,
-    "the unstyled list may only get shorter; a new class belongs in index.css",
+    "the unstyled list may only get shorter; a new class gets a rule in a stylesheet",
   ).toBeLessThanOrEqual(7);
 
   expect(

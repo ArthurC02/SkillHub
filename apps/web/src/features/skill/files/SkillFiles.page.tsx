@@ -5,6 +5,7 @@ import { ApiError } from "../../../core/api/client";
 import { useSkillFiles } from "../skills.service";
 import type { SkillFileEntry } from "../../../core/api/types";
 import { Reveal } from "../../../shared/ui/Reveal";
+import "./SkillFiles.page.css";
 
 export function SkillFiles() {
   const { skillId } = useParams({ from: "/skills/$skillId/files" });

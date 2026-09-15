@@ -1,5 +1,6 @@
 import { BarChart } from "../../components/BarChart";
 import { seriesOf, type DailyCount, type Trend } from "../../admin.service";
+import "./TrendCharts.css";
 
 const sum = (numbers: number[]) => numbers.reduce((total, n) => total + n, 0);
 

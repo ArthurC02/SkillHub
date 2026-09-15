@@ -1,0 +1,21 @@
+.creation-attachments {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.creation-attachment {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.creation-attachment img {
+  display: block;
+  max-width: 240px;
+  height: auto;
+  border-radius: 12px;
+}

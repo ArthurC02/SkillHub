@@ -1,3 +1,4 @@
+import "./RankingExplainer.css";
 export function RankingExplainer() {
   return (
     <details className="ranking-explainer">

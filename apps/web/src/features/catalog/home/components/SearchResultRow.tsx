@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { LiftedNotes } from "./FacetNotes";
 import type { PublicSearchResult } from "../../../../core/api/types";
 import { ResultFacets } from "./ResultFacets";
+import "./SearchResultRow.css";
 
 export function SearchResultRow({
   hit,

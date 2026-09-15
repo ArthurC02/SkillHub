@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { MAX_COMPARE } from "../../../skill";
+import "./CompareBar.css";
 
 export function CompareBar({ selected }: { selected: string[] }) {
   return (

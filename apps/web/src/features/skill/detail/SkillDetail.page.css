@@ -1,0 +1,70 @@
+/* r2 §5.1/B2. The rail is after the main column in the DOM — reading order and
+   tab order are the page's order, and the grid only moves it sideways — so
+   below 1024px there is nothing to undo: no grid, and it falls back into the
+   flow underneath. */
+.detail-main {
+  min-width: 0;
+}
+
+/* A surface holding controls, and the recipe is `.filter-bar`'s exactly:
+   `--surface` on a 1px `--border`, 8px radius, 12px padding. §4.3 是
+   「不發明第五種卡片樣式」 and this invents none — `.filter-bar` is the app's
+   existing panel-that-holds-controls, and this is a second one. */
+.detail-rail {
+  display: grid;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+@media (min-width: 1024px) {
+  .detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* THE APP'S FIRST `position` DECLARATION — the 2026-09-03 inventory counted
+     zero — and it is here for §1.2 (快到第一個判斷): this page is 2845px of
+     evidence and the action that finishes it (打包並下載這個版本) used to scroll
+     away with the paragraph it sat in. Sticky and not fixed: it belongs to this
+     column, stops at the column's end, and takes no space out of the viewport.
+     `align-items: start` above is the half that makes it work — a stretched
+     grid item is as tall as its row and never has anywhere to stick to. */
+  .detail-rail {
+    position: sticky;
+    top: 16px;
+  }
+
+  /* r2 §5.2 B1: the four verdicts (風險／可散布性／相容性／License) as 2×2
+     instead of four full-width blocks stacked — −410px, and the fourth one
+     stops being 926px down the page. Column gap 24px, row gap 16px: the rows
+     are one subject continued, the columns are two. */
+  .verdict-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 24px;
+  }
+
+  .verdict-grid > section {
+    min-width: 0;
+  }
+
+  /* `h2` carries `24px 0 8px`, so the top margin of a cell's first heading is
+     air INSIDE the grid — the four cells would start on two different
+     baselines. Only the first one in each cell; the ones further down are still
+     separating siblings. */
+  .verdict-grid > section > h2:first-child {
+    margin-top: 0;
+  }
+}
+
+/* The header block: name, summary, tier and category. No box — §4.3's card
+   criterion is 「自己的控制項或連結，或自己的巢狀子清單」 and a page's own
+   headline has neither; it is the page. */
+.detail-answer {
+  margin-bottom: 16px;
+}

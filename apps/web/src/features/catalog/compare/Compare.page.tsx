@@ -8,6 +8,7 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { RiskIndicator } from "../../../shared/ui/RiskIndicator";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import type { SkillDetail, SkillTags } from "../../../core/api/types";
+import "./Compare.page.css";
 
 type TagBucket = keyof SkillTags;
 

@@ -2,7 +2,7 @@
 
 本文件是 [ADR-039](../adr/ADR-039-frontend-design-system-and-ui-evaluation-criteria.md) 與 [ADR-041](../adr/ADR-041-trust-signal-vocabulary-typed-absence-and-rule-precedence.md) 的操作手冊，**活文件**。ADR 記的是「為什麼要有一把尺」與否決了哪些做法；本檔記的是**現在這把尺長什麼樣**，隨 `apps/web` 一起改。
 
-**允許值在本檔，實際值在 [`apps/web/src/index.css`](../../apps/web/src/index.css)，[`design-system.test.ts`](../../apps/web/src/guards/design-system.test.ts) 比對兩者。** §4.1／§4.2／§5 的粗體 px 儲存格是測試直接讀的政策來源——改 CSS 而沒改這裡，或改這裡而沒改 CSS，測試都會 FAIL。其餘章節不重抄 CSS 的值。
+**允許值在本檔，實際值在樣式表——全域四層在 [`apps/web/src/styles/`](../../apps/web/src/styles/)，元件自己的特化在元件旁同名的 `.css`（[ADR-085](../adr/ADR-085-styles-split-into-project-layers-and-component-sheets.md)），[`design-system.test.ts`](../../apps/web/src/guards/design-system.test.ts) 比對兩者。** §4.1／§4.2／§5 的粗體 px 儲存格是測試直接讀的政策來源——改 CSS 而沒改這裡，或改這裡而沒改 CSS，測試都會 FAIL。其餘章節不重抄 CSS 的值。
 
 **這份文件管一頁之內；一頁與一頁之間——有哪些位址、怎麼互相到達、叫什麼名字——見 [資訊架構](./information-architecture.md)。**
 
@@ -126,7 +126,7 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 
 停用而不說原因會被讀成 bug。**原因才是這個功能誠實的部分。**
 
-出處：[`index.css`](../../apps/web/src/index.css) `.filter-bar` 上方註解——「a disabled control with no stated cause reads as a bug, and the cause is the honest part of the feature」。
+出處：[`FilterBar.css`](../../apps/web/src/features/catalog/home/components/FilterBar.css) 開頭的註解——「a disabled control with no stated cause reads as a bug, and the cause is the honest part of the feature」。
 
 **這一條的範圍比原本寫的寬，因為同一個失效有四種形狀：**
 
@@ -157,7 +157,7 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 
 **次要文字只用字級降階，不用 `opacity`，也不另立一支更淡的灰。所有顏色都是 token。**
 
-出處：`index.css` 的 QA-009 註解與 [`contrast.test.ts`](../../apps/web/src/guards/contrast.test.ts)。舊值把 `--text` 壓到 **2.18:1 ~ 3.71:1**，全數低於 AA。理由是「whatever value `--text` holds, **a multiplier lands somewhere else**」——`opacity` 是**任何色彩 token 都攔不住**的破壞方式，而 `contrast.test.ts` 量的是靜態 hex，量不到乘數（alpha、`opacity` 乘數與它手寫清單以外的配對都不在它的範圍，合成像素交給 `e2e/rendered.spec.ts`）。
+出處：`styles/patterns.css` 在 `.note` 上方的 QA-009 註解與 [`contrast.test.ts`](../../apps/web/src/guards/contrast.test.ts)。舊值把 `--text` 壓到 **2.18:1 ~ 3.71:1**，全數低於 AA。理由是「whatever value `--text` holds, **a multiplier lands somewhere else**」——`opacity` 是**任何色彩 token 都攔不住**的破壞方式，而 `contrast.test.ts` 量的是靜態 hex，量不到乘數（alpha、`opacity` 乘數與它手寫清單以外的配對都不在它的範圍，合成像素交給 `e2e/rendered.spec.ts`）。
 
 **這條原本是全文件唯一沒有任何守門的原則。** `design-system.test.ts` 現在對 token 區塊以外的任何 `#hex`／`rgb(`／`opacity:` FAIL。
 
@@ -332,7 +332,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 
 ### 4.1 字級尺度
 
-`index.css` 宣告 **11** 個 `font-size` 值。其中 **3** 個只在 `@media (max-width: 1024px)` 出現（36、30、16），其餘 8 個是桌面實際使用的階。20px 與 18px 各自**同時**是某一階的桌面值與另一階的 ≤1024px 值，所以「12 減 5」那種算法是錯的（舊版本文如此，結論對而算式錯）。
+全部樣式表合計宣告 **11** 個 `font-size` 值。其中 **3** 個只在 `@media (max-width: 1024px)` 出現（36、30、16），其餘 8 個是桌面實際使用的階。20px 與 18px 各自**同時**是某一階的桌面值與另一階的 ≤1024px 值，所以「12 減 5」那種算法是錯的（舊版本文如此，結論對而算式錯）。
 
 | 階 | 桌面 | ≤1024px | 工作 | 不要用在 |
 | --- | --- | --- | --- | --- |
@@ -353,7 +353,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 
 4px 網格，七階：**4px** ／ **8px** ／ **12px** ／ **16px** ／ **20px** ／ **24px** ／ **32px**。
 
-`index.css` 的 `padding`／`margin`／`gap` 目前出現 **9** 個值，上面 7 個在網格上，另外 **`5px` 與 `10px`** 是 §5 登記的兩條偏離，兩條都有推導。
+全部樣式表的 `padding`／`margin`／`gap` 目前出現 **9** 個值，上面 7 個在網格上，另外 **`5px` 與 `10px`** 是 §5 登記的兩條偏離，兩條都有推導。
 
 原本的 `2px`（三處視覺微調）與 `6px`（八處「緊密清單間距」）已全數收掉——**8px 這一階涵蓋得了它們，所以它們沒有資格成階**（§5 的入場規則）。
 
@@ -401,7 +401,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 | --- | --- | --- |
 | **badge（永遠帶文字）** | 一個事實的標籤 | `LabelledBadge` 的文案由伺服器給——**但這條規則只對 `LabelledBadge` 的三種 kind 成立**，見下方 |
 | **`--danger` 邊框＋文字** | 這件事不通過／會擋住你 | `.badge-danger`、`.badge-expired`、`.badge-compat-failed`、`.badge-risk`、`.badge-risk-flag`、`.badge-criterion-failed`、`.badge-severity-error`、`.script-tag`；`.criterion-failed` **只有邊框沒有文字色** |
-| **`--accent-border`（僅邊框）** | 這件事未知、未驗證或**未檢查** | `.badge-license-unknown`、`.badge-trust-unknown`、`.badge-compat-unverified`、`.badge-source-model`、`.badge-untested`、`.badge-unverified`、`.badge-criterion-undetermined`、`.badge-severity-warning`、`.criterion-undetermined`、**`.badge-source-unknown`**；`button:hover` 也用它。〔`.badge-source-unknown`（`index.css` 與 `.badge-license-unknown` 同一條規則），並移走 `.badge-criterion-unverifiable`——它在 CSS 裡**只有 `border-style: dashed`、沒有 `--accent-border`**，屬於下一列的虛線邊框。這一格的標題自稱「完整」，所以錯一個就是錯的〕 |
+| **`--accent-border`（僅邊框）** | 這件事未知、未驗證或**未檢查** | `.badge-license-unknown`、`.badge-trust-unknown`、`.badge-compat-unverified`、`.badge-source-model`、`.badge-untested`、`.badge-unverified`、`.badge-criterion-undetermined`、`.badge-severity-warning`、`.criterion-undetermined`、**`.badge-source-unknown`**；`button:hover` 也用它。〔`.badge-source-unknown`（`styles/patterns.css` 與 `.badge-license-unknown` 同一條規則），並移走 `.badge-criterion-unverifiable`——它在 CSS 裡**只有 `border-style: dashed`、沒有 `--accent-border`**，屬於下一列的虛線邊框。這一格的標題自稱「完整」，所以錯一個就是錯的〕 |
 | **虛線邊框** | 這個東西**不是完整有效的**：平台自己降級了判定，或控制項現在不能用 | `.criterion-unverifiable`、`button:disabled` 等 |
 | **無修飾的 badge** | 通過／正常。**這是合法的**——§2.3 只要求詞在前面，沒要求每個狀態都有顏色 | `.badge` 本身 |
 
@@ -443,7 +443,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 
 ### 4.6 視覺層：層級由 token 承載（[ADR-064](../adr/ADR-064-the-visual-layer-is-hierarchy-carried-by-tokens.md)）
 
-**本節與 `index.css` 同步，是事實不是政策。** 把關：§4.6.1 的每一對由 `contrast.test.ts` 的 `PAIRS`（33 對）守；§4.6.3 的「一頁一個」由 `rendered.spec.ts` 在三引擎守（§6）。落地時與本節不同的三件小事記在 ADR-064「落地紀錄」：行內 `<span role="alert">` 三處不套框（版面）、`--dur` 宣告未用、`/skills/$id` 在版本清單讀取中是零個主要動作。
+**本節與樣式表（token 在 `styles/tokens.css`）同步，是事實不是政策。** 把關：§4.6.1 的每一對由 `contrast.test.ts` 的 `PAIRS`（33 對）守；§4.6.3 的「一頁一個」由 `rendered.spec.ts` 在三引擎守（§6）。落地時與本節不同的三件小事記在 ADR-064「落地紀錄」：行內 `<span role="alert">` 三處不套框（版面）、`--dur` 宣告未用、`/skills/$id` 在版本清單讀取中是零個主要動作。
 
 **為什麼有這一節。** 落地前的盤點：全 app `box-shadow`／`transition`／`:active`／`position` 各 **0** 條、`:hover` **2** 條、四個卡片族三族逐位元相同、**沒有按鈕階級**（`建立下載套件` 與同頁另外 8 顆按鈕是同一個灰框）、`role="alert"` 沒有任何規則、輸入框邊框在白底上 **1.27:1**（WCAG 1.4.11 要 3:1）。線框感的來源是「**畫面上沒有任何東西比別的東西重要**」——那是 §1.2 與順位 3 的問題，不是順位 5 的問題；裝飾是修它的副產品。**每一項視覺變更要答得出「它讓哪個東西比別的重要、為什麼該」，答不出的是裝飾，裝飾要單獨放行。**
 
@@ -464,7 +464,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 
 〔**色相重調時全部改值、一個都沒有改名**：`--accent`（`#aa3bff`→`#6d4aeb`／`#c084fc`→`#a78bfa`）、`--accent-bg`、`--accent-border`、`--danger`（`#b91c1c`→`#b42318`／`#f87171`→`#f97066`）、`--link`（`#9b2ae6`→`#5b3bc4`／`#c084fc`→`#b3a0ff`）、`--text`（`#6b6375`→`#565f6e`／`#9ca3af`→`#9aa4b4`）、`--text-h`（`#08060d`→`#101623`／`#f3f4f6`→`#f1f3f7`）。〕
 
-> **色相重調：改的是色相，不是結構。** 三層平面、填色屬動作、描邊屬主張、一頁一個主要動作、不用陰影、不用漸層——ADR-064 的每一條都一個字沒動。改的是①三階灰從**朝 `--accent` 染色的藕紫**改成**近中性的冷灰**，②accent 從螢光洋紅 `#aa3bff` 改成深紫 `#6d4aeb`，`--link` 從 `#9b2ae6` 改成更沉的 `#5b3bc4`。<br>**這件事沒有任何規則擋**，而那正是它拖到第六輪外部審查才發生的原因：`contrast.test.ts` 量的是達不達標、不是釘住色相；`design-system.test.ts` 解析的是字級與間距；§2.7 禁的是散落的色彩字面值、不是改 token 的值。唯一的成本是**每一對都要重算**，兩個主題各一份，全部先算過才落地，結果由 `contrast.test.ts` 驗證。<br>**亮色最緊的一對從 `--link` 在 active 上 4.62 變成 `--text` 在 active 上 5.25——地板升高了，同時色相變安靜。** `--link` 與 `--accent` 分成兩個值的**理由也跟著換了**：舊理由是「accent 4.39:1 在 `--bg` 上不到 AA，所以不能當連結文字」，而新的 accent 是 5.12:1、過得了 AA；今天分兩個值是因為**兩份工作要的彩度不同**（focus ring 與 notice 邊是一眼掃過的，連結文字是讀幾分鐘的），這一句逐字寫在 `index.css` 的 token 註解裡。
+> **色相重調：改的是色相，不是結構。** 三層平面、填色屬動作、描邊屬主張、一頁一個主要動作、不用陰影、不用漸層——ADR-064 的每一條都一個字沒動。改的是①三階灰從**朝 `--accent` 染色的藕紫**改成**近中性的冷灰**，②accent 從螢光洋紅 `#aa3bff` 改成深紫 `#6d4aeb`，`--link` 從 `#9b2ae6` 改成更沉的 `#5b3bc4`。<br>**這件事沒有任何規則擋**，而那正是它拖到第六輪外部審查才發生的原因：`contrast.test.ts` 量的是達不達標、不是釘住色相；`design-system.test.ts` 解析的是字級與間距；§2.7 禁的是散落的色彩字面值、不是改 token 的值。唯一的成本是**每一對都要重算**，兩個主題各一份，全部先算過才落地，結果由 `contrast.test.ts` 驗證。<br>**亮色最緊的一對從 `--link` 在 active 上 4.62 變成 `--text` 在 active 上 5.25——地板升高了，同時色相變安靜。** `--link` 與 `--accent` 分成兩個值的**理由也跟著換了**：舊理由是「accent 4.39:1 在 `--bg` 上不到 AA，所以不能當連結文字」，而新的 accent 是 5.12:1、過得了 AA；今天分兩個值是因為**兩份工作要的彩度不同**（focus ring 與 notice 邊是一眼掃過的，連結文字是讀幾分鐘的），這一句逐字寫在 `styles/tokens.css` 的 token 註解裡。
 
 > **三層平面在亮色模式下曾經量不出來。** 同一份外部審查在色相修好之後仍然讀到「純白畫布上的白色線框」。查證的結果是**結構在、幅度不在**：亮色的地與面差 **1.07:1**，卡片邊 `--border` 對面只有 **1.27:1**——兩個通道都存在，兩個都低於看得見的門檻，所以那句描述在色碼上不成立、在眼睛裡成立。地走到 **1.13:1**（`#f6f7f9`→`#eef1f6`），`--border` 走到 **1.46:1**（`#e1e4ea`→`#d0d6e0`）。**暗色量出來有同一個毛病**：地與面只差 **1.085:1**，而那不是誰用眼睛看出來的，是新加的棘輪測試自己抓到的——地走到 `#0a0c10`（**1.12:1**），`--border` 走到 1.50:1（`#2b303a`→`#333945`），兩個主題等強。<br>**`--border` 不在 `PAIRS` 裡是刻意的**：卡片的邊不承載資訊（NFR-007 把那件事留給文字），它要的是看得見不是 3:1；承載資訊的那條邊是 `--border-strong`，一個像素都沒動。地在 `PAIRS` 裡，25 對重算過，`--text` 在地上 5.69、`--link` 6.47、`--accent` 4.84，最緊的一對仍是 `--text` 在 active 上的 5.25，沒有被這次挪動碰到。
 
@@ -485,7 +485,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
   | `/lab/run` | 同意並開始試跑 | 授權確認**可以**是主要動作：§2.2 引用的 VS Code 實測正是「不顯眼的授權提示會失敗」 |
   | `/lab/test-cases`、`/workspace/import` | 建立、匯入 | — |
   | `/workspace/creations` | 確認保存到私人工作區 | 填色留給「儲存至工作區」。這一頁曾經是**零個**，而它同畫面上有十顆同框的按鈕：送出、取消這次創作、停止這一步、確認需求摘要、確認流程圖理解、同意連網、以這些為參考、直接採用、建立私人候選版本、保存。判準是「完成這一頁的工作的那一個」——這一頁的工作是把 Skill 做出來並收進工作區，所以是保存那一顆；送出是**推進一輪對話**，不是完成這一頁。草稿還沒生出來之前這一頁仍然是零個（與 `/skills/$id` 版本清單讀取中同一個形狀：不先給再收回）〔送出鍵是填色藥丸（聊天介面的送出鍵，§4.3 輸入區那一列），**不算這張表的主要動作**——它推進一輪對話；這一頁的 `.action` 仍然只有保存一顆，`creation.test.tsx` 仍然只數到它〕 |
-  | `/workspace/skills` 的「匯入 Skill」 | **不填色**（已移到「零個」那一列） | 本表的判準不是「這一頁有沒有空位」，是**「完成這一頁的工作的那一個」**，而這一頁的工作是**看自己的清單**，不是匯入。三張卡是三扇並列的門、三個同重量的導流；其中一個填色只是在說「平台希望你走這扇」，那不是這條規則要表達的事。外部審查連續四輪把這三張卡的三種外觀讀成「瀏覽器預設樣式」，成因是**次要按鈕的配方只有 `<button>` 拿得到**（見 `index.css` 的 `.action-secondary`）——修好那件事之後，這一顆填色就是三張卡裡唯一不同框的東西了 |
+  | `/workspace/skills` 的「匯入 Skill」 | **不填色**（已移到「零個」那一列） | 本表的判準不是「這一頁有沒有空位」，是**「完成這一頁的工作的那一個」**，而這一頁的工作是**看自己的清單**，不是匯入。三張卡是三扇並列的門、三個同重量的導流；其中一個填色只是在說「平台希望你走這扇」，那不是這條規則要表達的事。外部審查連續四輪把這三張卡的三種外觀讀成「瀏覽器預設樣式」，成因是**次要按鈕的配方只有 `<button>` 拿得到**（見 `styles/base.css` 的 `.action-secondary`）——修好那件事之後，這一顆填色就是三張卡裡唯一不同框的東西了 |
   | `/compare`、`/runs/$id`、`/policy`、**`/workspace/skills`** | **零個** | 沒有「完成這一頁的工作」的動作時，零個是合法的〔`/workspace/skills` 自上面移入，理由在該列〕 |
 
 - **毀滅性動作永遠不是主要動作**：`ConfirmDelete` 的確認鈕維持 `--danger` 描邊——§2.8 的兩段式靠的就是它不顯眼。
@@ -513,7 +513,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 #### 4.6.6 字體、記號與不做的事
 
 - **不引入 webfont**：外部請求要進同意書的第三方清單、字型載入會跳版、ADR-039 否決的是依賴面。槓桿是**字重**：`h1`／`h2` 600、`.app-title` 700（今天全部 500／600），GOV.UK 與 USWDS 的視覺品質就是這樣來的。
-- favicon 以 inline SVG data URI 寫在 `index.html`（不開 `public/`）；`.app-title` 前一個 `--accent` 方塊記號（`::before`，全 app 第一個 pseudo-element）。<br>今天 `index.css` 有**三個** pseudo-element 站點：`.app-title::before`（方塊記號）、`summary::before`（展開記號，展開時 `rotate(90deg)`）、`details[open] > summary::before`。**pseudo-element 是被配給的，不是自由的**：外部審查提議過在每一顆次要按鈕後面加一個 `›`，那會是第四個站點，而且會讓同一個字形在這個 app 裡同時表示「這裡可以展開」與「這裡會換頁」。不採用。
+- favicon 以 inline SVG data URI 寫在 `index.html`（不開 `public/`）；`.app-title` 前一個 `--accent` 方塊記號（`::before`，全 app 第一個 pseudo-element）。<br>今天全域樣式表（`styles/`）有**三個** pseudo-element 站點：`.app-title::before`（方塊記號）、`summary::before`（展開記號，展開時 `rotate(90deg)`）、`details[open] > summary::before`。**pseudo-element 是被配給的，不是自由的**：外部審查提議過在每一顆次要按鈕後面加一個 `›`，那會是第四個站點，而且會讓同一個字形在這個 app 裡同時表示「這裡可以展開」與「這裡會換頁」。不採用。
 - **不做**：漸層〔例外兩處，都記在 §4.3：互動創作頁的 Agent 頭像、`/workspace/skills` 的字首方塊與游標光〕、主題切換按鈕（`prefers-color-scheme` 就是偏好；IA R4）、圖示集〔已由 [ADR-065](../adr/ADR-065-hot-path-text-budget-and-the-fourth-disclosure-mechanism.md) 決策 5 回答：允許至多六個形狀的 inline SVG、一列一個、永遠伴隨文字，規則在 §4.7；「不做圖示**集**」仍成立〕、成功綠、任何「Verified」填色、視覺回歸截圖基準線（§6 已證偽兩次）。
 
 #### 4.6.7 視覺層的修改不需要任何放行
@@ -524,7 +524,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 
 ### 4.7 Tip、標籤與圖示的語彙（[ADR-065](../adr/ADR-065-hot-path-text-budget-and-the-fourth-disclosure-mechanism.md)）
 
-**下表每一列都有對應的檔案**：`shared/ui/Tip.tsx`（觸發鈕＋內容）、`shared/ui/StateIcon.tsx`（四個形狀）、`index.css` 的 `.tip`／`.tip-trigger`／`.tip-content`。落地的配方過了 §5.1 的入場關：**沒有新增任何字級或間距的階**（內容用 `.notice` 那組 `8px 12px` 與 14px；觸發鈕直接是基礎控制層的次要按鈕，32px 那一階），沒有新 token（內容底色是 `--surface`、邊是 `--border-strong`），唯一新的宣告是 `position: absolute`——它是規則本身（開合不推動鄰居），不是便利；`opacity`、`#hex`、第二份樣式表照舊禁止。
+**下表每一列都有對應的檔案**：`shared/ui/Tip.tsx`（觸發鈕＋內容）、`shared/ui/StateIcon.tsx`（四個形狀）、`shared/ui/Tip.css` 的 `.tip`／`.tip-trigger`／`.tip-content`。落地的配方過了 §5.1 的入場關：**沒有新增任何字級或間距的階**（內容用 `.notice` 那組 `8px 12px` 與 14px；觸發鈕直接是基礎控制層的次要按鈕，32px 那一階），沒有新 token（內容底色是 `--surface`、邊是 `--border-strong`），唯一新的宣告是 `position: absolute`——它是規則本身（開合不推動鄰居），不是便利；`opacity`、`#hex` 照舊禁止。
 
 | 語彙 | 是什麼 | 規則 | 不要用在 |
 | --- | --- | --- | --- |
@@ -581,7 +581,7 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 
 | 規則 | 把關者 | 覆蓋範圍 |
 | --- | --- | --- |
-| 色彩對比（token 層） | [`contrast.test.ts`](../../apps/web/src/guards/contrast.test.ts) | **`PAIRS` 手列的配對，不是全部 token 配對**；值直接讀 `index.css`，不留第二份副本。帶 alpha 的 token（`--accent-bg`、`--accent-border`）結構上量不到（下一列補）。~~§4.6 落地時要逐對擴充~~ **同日擴到 25 對**（§4.6.1 的每一個新底各與四種前景配對，另加 `--border-strong` 兩對 3:1）；**沒進 `PAIRS` 的 token 仍然等於沒有被守** |
+| 色彩對比（token 層） | [`contrast.test.ts`](../../apps/web/src/guards/contrast.test.ts) | **`PAIRS` 手列的配對，不是全部 token 配對**；值直接讀 `styles/tokens.css`，不留第二份副本。帶 alpha 的 token（`--accent-bg`、`--accent-border`）結構上量不到（下一列補）。~~§4.6 落地時要逐對擴充~~ **同日擴到 25 對**（§4.6.1 的每一個新底各與四種前景配對，另加 `--border-strong` 兩對 3:1）；**沒進 `PAIRS` 的 token 仍然等於沒有被守** |
 | 色彩對比（合成像素、alpha） | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)（[ADR-036](../adr/ADR-036-real-browser-verification-tier.md)） | **2 條路由**（`/?q=pdf`、`/policy`），三引擎。理由：`--accent-bg` 是唯一落在文字後面的 alpha token，兩頁都有它 |
 | 375px 不橫向溢出 | 同上 | **全部路由**（今天是 18 個位址／17 條路由，`/` 出現兩次）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對——兩邊都先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由對多個位址仍然合法，而少一條或多一條都會 FAIL。**守門放在 vitest 而不是 e2e**：Playwright 那層不是每次改動都跑，只在慢套件裡響的棘輪沒有人感覺得到 |
 | 焦點環真的被畫出來 | 同上 | **`/` 一條**，三引擎 |
@@ -597,8 +597,11 @@ ADR-025 把執行狀態與任務判定分成兩軸（§2.5）。**進行中再�
 | 停用控制項的原因不只在 `title` | `a11y.test.tsx` | 全部路由（`[disabled][title]` 必須有 `aria-describedby`） |
 | 徽章一定有詞 | 同上 | 全部路由（`.badge` 的 `textContent` 非空） |
 | 搜尋的 live region 是筆數不是整份清單 | 同上 | `/` |
-| 字級／間距在尺度上 | [`design-system.test.ts`](../../apps/web/src/guards/design-system.test.ts) | `index.css` **全部**；看不到 `style={{…}}` 與元件內樣式（目前全 app 皆無，且下一列讓這件事成為不變式） |
-| `index.css` 是唯一的樣式表 | 同上 | 一條 `readdirSync` 斷言，**遞迴**，所以它是全 `src/` 的不變式。**這一格曾經只是 `src/` 頂層的不變式**：`readdirSync(import.meta.dirname)` 原本不遞迴，`src/components/foo.css` 會無聲通過，而上面兩列的尺度守門只讀 `index.css`。**同日補上 `{ recursive: true }`**，缺口關閉，上面兩列的「目前全 app 皆無」自此才真的是全 app 的不變式 |
+| 字級／間距在尺度上 | [`design-system.test.ts`](../../apps/web/src/guards/design-system.test.ts) | **全部樣式表**（`styles/` 四層與元件旁的 `.css`）；看不到 `style={{…}}`（目前全 app 皆無） |
+| 樣式表只有兩種位置（[ADR-085](../adr/ADR-085-styles-split-into-project-layers-and-component-sheets.md) 決策 1） | [`design-system.test.ts`](../../apps/web/src/guards/design-system.test.ts) | 遞迴掃 `src/` 全部 `.css`：`styles/` 只能是 tokens／base／layout／patterns 四個，由 `main.tsx` 依這個順序載入；其餘每一份只能由旁邊同名的 `.tsx` import。**取代舊的一列「`index.css` 是唯一的樣式表」**：那一列存在，是因為上面的尺度守門只讀一個檔；守門改讀全部樣式表之後，第二份樣式表不再能逃過它們 |
+| `:root` 與色彩字面值只在 `styles/tokens.css`（決策 2） | 同上 | 全部樣式表，**自訂屬性的值也算**：上面 §2.7 那一列會略過自訂屬性的宣告，而 `contrast.test.ts` 只讀 `tokens.css`，所以寫在元件樣式表的 `--x: #f00` 原本兩道都看不到。配方自己的區域變數（`--tone`、`--avatar`）只要不帶顏色字面值，可以留在原處 |
+| 元件樣式表不外洩（決策 3） | 同上 | 元件旁每一份 `.css` 的每一個選擇器，都要含一個只有該資料夾在用、別的樣式表沒提到的 class 或 id。**看不到**：只經由變數組出、不在任何字串字面值裡的 class |
+| 只有一個資料夾在用的 class 不進全域層（決策 4） | 同上 | 全域四層的每一個 class；例外登記在 `GLOBAL_BY_RECIPE`（22 筆，各寫出共用哪條全域規則），**只能變短**，已不成立的一筆要刪 |
 | 色彩字面值與 `opacity`（§2.7） | 同上 | token 區塊以外一律 FAIL。**這條原本連一列都沒有** |
 | 偏離清單只能縮短 | 同上 | 長度斷言。**已知弱點**：它擋不住把值搬進 `TYPE_SCALE`／`SPACE_SCALE`，而 §5 明文說的退場路徑就是「改回尺度上」——修法見 §7 待辦 |
 | markup 裡的 class 在 CSS 裡有規則 | [`design-system.test.ts`](../../apps/web/src/guards/design-system.test.ts) | 掃 `src/` 下全部非測試 `.tsx` 的 `className=`（不掃整檔字串——原型版把 `=== "scanned"` 的比較字面值報成缺規則），**單向 used → defined**。<br>**它不是「每個 class 都要有規則」**，因為有七個 class 刻意沒有，而理由分兩種：**已定的決策**（`badge-source-package` 不吃 `--accent-border`——作者原文是既成事實，套上未知色會讓顏色與字面互相矛盾，純 `.badge` 就是它的視覺）與**測試 hook**（六個，各有測試真的選它）。所以名單裡每一筆都要寫出是哪一種，並附兩道棘輪：**長度只能變短**，以及**不得腐爛**——某一筆若後來有了規則、或已經不在 markup 裡，測試會要求刪掉那一行。<br>**它第一次跑就抓到一個真的**：`.page` 掛在 11 個頁面的 14 個 `<section>` 上，沒有規則、沒有測試選它、什麼都不畫——既不是決策也不是 hook，是殘留。同日移除，名單 8 → 7。<br>**看不到的範圍**：`` `badge-${kind}-${value}` `` 這類動態組出來的 class（`LabelledBadge` 一族） |

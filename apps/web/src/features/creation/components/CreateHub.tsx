@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { followPointer, releasePointer } from "../../../shared/ui/spotlight";
+import "./CreateHub.css";
 
 export function CreateHub({
   generateExposed,

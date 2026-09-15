@@ -1,0 +1,9 @@
+.file-script .script-tag {
+  margin-left: 8px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  padding: 0 4px;
+}

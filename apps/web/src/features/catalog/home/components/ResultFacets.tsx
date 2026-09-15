@@ -3,6 +3,7 @@ import { RiskSummary } from "../../../../shared/ui/RiskIndicator";
 import type { LiftedNotes } from "./FacetNotes";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import type { PublicSearchResult } from "../../../../core/api/types";
+import "./ResultFacets.css";
 
 export function ResultFacets({ hit, lifted }: { hit: PublicSearchResult; lifted: LiftedNotes }) {
   const untested =

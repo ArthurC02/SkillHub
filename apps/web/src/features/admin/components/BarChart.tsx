@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { BarController, BarElement, CategoryScale, Chart, LinearScale } from "chart.js";
+import "./BarChart.css";
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale);
 

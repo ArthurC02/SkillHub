@@ -1,4 +1,5 @@
 import { useCleanMode } from "../../core/session/me.service";
+import "./CleanModeNotice.css";
 
 export function CleanModeNotice({ admin = false }: { admin?: boolean }) {
   const cleanMode = useCleanMode();

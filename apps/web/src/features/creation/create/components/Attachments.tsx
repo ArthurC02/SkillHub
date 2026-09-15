@@ -1,4 +1,5 @@
 import type { CreationAttachment } from "../../creation.service";
+import "./Attachments.css";
 
 export function Attachments({
   list,

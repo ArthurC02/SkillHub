@@ -11,6 +11,7 @@ import { CreateHub } from "../../creation";
 import { StateIcon } from "../../../shared/ui/StateIcon";
 import { followPointer, releasePointer } from "../../../shared/ui/spotlight";
 import type { OwnSkill, Redistribution } from "../../../core/api/types";
+import "./WorkspaceSkills.page.css";
 
 export const REDISTRIBUTION_BADGE: Record<Redistribution, { text: string; danger?: true }> = {
   allowed: { text: "可打包下載" },

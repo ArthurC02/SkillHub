@@ -1,0 +1,12 @@
+/* 淨測試模式的揭露：預設一個標籤，點開才是五句。五句一字未改、全部仍在 DOM 裡。
+   理由與它為什麼不違反 §2.10 寫在 `components/CleanModeNotice.tsx` 的檔頭。 */
+.clean-mode-notice {
+  margin: 12px 0 0;
+}
+
+/* 錨點自己就是那個橫幅，所以這一層不再另外畫東西。2026-09-08 稍晚由 `.badge`
+   改為 `.notice`：藥丸是給兩到四個字用的形狀，這裡是一句 30 個字的話。
+   `display` 回到塊級——`.notice` 的左側導軌要貫穿整條，不是包住一段文字。 */
+.clean-mode-notice > summary {
+  display: block;
+}

@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import "./Reveal.css";
 
 const FORMAT = /\p{Cf}/u;
 

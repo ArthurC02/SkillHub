@@ -1,4 +1,5 @@
 import type { CreationReference } from "../../creation.service";
+import "./ReferenceList.css";
 
 function declaredReferenceField(value?: string) {
   return value?.trim() ? value : "未宣告";

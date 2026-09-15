@@ -1,0 +1,876 @@
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+/* --- A link that IS the page's action -------------------------------------
+   設計 §1.2 / §4.3. Measured 2026-09-03 across the 18 routes, the affordances in
+   this app are inverted: 儲存／新增／刪除／確認 — the incidental operations — are
+   buttons with a box, while the thing each page exists for is a bare text link
+   in a paragraph. 「開始試跑」 on a Test Case, 「打包並下載這個版本」 on a skill,
+   「與另一個 Run 比較」 on a run. **The most important control on the page looks
+   the least pressable**, which is the mechanism behind 「無法聚焦操作區塊」: there
+   is nothing for the eye to land on, so every page reads as one continuous
+   column of prose.
+
+   ADR-064 §4.6.3 took the second half of that argument: a box was enough to
+   make it pressable, and not enough to make it the ONE thing on the page —
+   「建立下載套件」 was the same grey box as the eight buttons beside it. **Fill
+   is the channel that separates an action from everything else**, and it is
+   spent here and nowhere else: never on a badge (a claim that is filled reads as
+   an endorsement, §2.3/§2.11(c)), never on a second button, never on a
+   destructive one — §2.8's two-step confirmation works precisely BECAUSE the
+   confirm button is inconspicuous (`.destructive` below).
+
+   **At most one per page**, the one that finishes the page's work; §4.6.3 lists
+   them route by route, and three routes legitimately have none.
+
+   No longer `a.action`: `<button class="action">` is the same role reached by a
+   different element (搜尋 submits a form, 建立下載套件 posts), and the box has to
+   look identical either way. Size and padding stay bit-for-bit the base control
+   layer's, so an action beside a plain button still sits on the same baseline.
+
+   **Where it goes, and where it must not.** A link earns this when it is what
+   this page is FOR — the next step in 找到 → 驗證 → 下載. It does not get it for
+   being a reference（來源 Skill、查看 SKILL.md 與檔案樹、資料保存政策）or a way
+   back; if everything is emphasised nothing is, and the app already ran that
+   experiment in the other direction.
+
+   Still an `<a>`: it navigates, so it must keep a link's keyboard and
+   right-click behaviour. The box is what carries the affordance now, which is
+   why the underline can go — a bare `.action` inside running text would be a
+   different question, and there are none. */
+.action {
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--on-cta);
+  background: var(--cta);
+  border: 1px solid var(--cta);
+  border-radius: 6px;
+  padding: 5px 10px;
+  min-height: 32px;
+  box-sizing: border-box;
+  text-decoration: none;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+/* The fill cannot change on hover without either dropping --on-cta under 4.5:1
+   or inventing a second CTA tone, so the edge moves instead: --text-h against
+   the ground is 16.9:1 light / 17.0:1 dark, which is the loudest outline the
+   palette already owns. */
+.action:hover {
+  border-color: var(--text-h);
+}
+
+/* 一頁至多一個（§4.6.3），所以它可以是整頁最重的東西——而在 2026-09-08 之前它與
+   旁邊的次要按鈕除了底色以外一模一樣。 */
+.action {
+  font-weight: 600;
+}
+
+/* §4.6.3 / §2.8: destructive is deliberately NOT the primary action. Outline in
+   --danger on the ordinary surface, and the danger tint only appears once the
+   pointer is on it — 5.95:1 for the label there. ConfirmDelete's two-step
+   disclosure depends on this button being quiet. */
+.destructive {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--surface);
+}
+
+.destructive:hover:not(:disabled) {
+  background: var(--danger-bg);
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+/* A badge that FOLLOWS text inside a flow element has nothing between it and
+   the last word: `.risk-list` is a column, so its rows inherit no gap, and a
+   limitation rendered as 「只處理文字型 PDFAI 產生」 — §3 item 15's 「兩段文字
+   之間有間距嗎」, which that checklist notes happened at 1280px and not only on
+   a phone. `.badge-differs` carried its own `margin-left: 8px` for exactly
+   this; stating it once for every caller is the same rule with one copy.
+
+   `.badge-row` and `.tag-list` are untouched: they are flex containers with
+   their own `gap`, and neither is in the selector below. */
+:is(li, p, h2, h3, h4, td, th):not(.badge-row, .tag-list) > .badge:not(:first-child) {
+  margin-left: 8px;
+}
+
+/* The other half of the same rule, and it was missing for a year: a note that
+   FOLLOWS a badge had nothing between it and the pill's border. Measured
+   2026-09-03 at 0.0px on four routes at both widths — 「已收錄收錄不等於精選。」,
+   「含可執行 Script 檔案平台不曾執行它們——」, 「可再散布MIT，可再散布。」 — and
+   every one of those sentences is a §2.11(c) disclaimer, i.e. the one thing on
+   the row whose whole job is to stop the badge being read as an endorsement.
+   Fused to the pill it reads as part of the badge instead of as a limit on it.
+
+   `span` is in the list because RiskSummary wraps each flag in one to key it;
+   the four flex containers are excluded because they already state a `gap` and
+   a margin would add to it. */
+:is(li, p, h2, h3, h4, td, th, span):not(.badge-row, .tag-list, .license-badge, .match-reason)
+  > .badge
+  + .note {
+  margin-left: 8px;
+}
+
+/* §4.6.3: a badge is a CLAIM, so it is outlined and its fill stays the recess —
+   for good. A filled badge reads as an endorsement, and the first thing that
+   will ask for one is a paid or 「Verified」 marker. Fill now belongs to actions
+   (`.action`), and this rule is the boundary that keeps it there. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  /* The pill is a flex container holding up to four children — a <strong>, a
+     mono code, a file chip and a sentence — and it declared no gap, so at the
+     default 1280px width /compare rendered `警告embedded-script` with the
+     SKILL.md chip overlapping the message. `flex-wrap` is the other half: at
+     375px the same pill broke `警告` across two lines rather than wrapping
+     between its children. Both are the container's job, not the caller's. */
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 12px;
+  font-size: 14px;
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
+/* --accent-border is §4.4's 未知／未驗證 tint. `badge-source-unknown` joins it
+   because that is exactly what it says: the server did not state who wrote the
+   summary. `badge-source-package` deliberately does not — 作者原文 is a settled
+   fact, and tinting it as uncertain would make the colour contradict the word. */
+.badge-license-unknown,
+.badge-trust-unknown,
+.badge-compat-unverified,
+.badge-source-model,
+.badge-source-unknown {
+  border-color: var(--accent-border);
+}
+
+.badge-compat-failed,
+.badge-risk,
+.badge-risk-flag {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* `margin: 0` finishes the reset that `padding: 0` started. Without it the UA's
+   margin-block survived, and in a /policy table cell — where the list IS the
+   cell — it dropped every badge a full line below the text in the neighbouring
+   cells, on all four rows. */
+.risk-list,
+.compat-list,
+.file-tree,
+.search-results,
+.tag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* `p` is `margin: 0` app-wide, so with the reset above a list in running text
+   welded itself to the text on either side (RiskIndicator, CompatibilityStatus,
+   the result count on Home). Put back as an explicit sibling gap rather than by
+   restoring the margin: a list that is the whole of a table cell has no element
+   sibling and so still sits flush, which is the case being fixed. */
+:is(
+    p,
+    details,
+    .risk-list,
+    .compat-list,
+    .file-tree,
+    .search-results,
+    .tag-list,
+    .criterion-list,
+    .finding-list,
+    .suggestion-list,
+    .evidence-list
+  )
+  + :is(
+    .risk-list,
+    .compat-list,
+    .file-tree,
+    .search-results,
+    .tag-list,
+    .criterion-list,
+    .finding-list,
+    .suggestion-list,
+    .evidence-list
+  ),
+:is(
+    .risk-list,
+    .compat-list,
+    .file-tree,
+    .search-results,
+    .tag-list,
+    .criterion-list,
+    .finding-list,
+    .suggestion-list,
+    .evidence-list
+  )
+  + p {
+  margin-top: 8px;
+}
+
+.tag-list {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+/* Some of these rows ARE the badge — a pill carrying the whole item. As a flex
+   item in a column container it gets the default `stretch`, so each one ran the
+   full width of its container (1075px on the packaging page, the whole cell on
+   /compare, the whole page under 風險揭露). Matched on `.badge` and not on the
+   list: the same two classes also hold rows of prose and code, and those do want
+   the container's width. */
+:is(.compat-list, .risk-list) > .badge {
+  align-self: flex-start;
+}
+
+.search-results {
+  gap: 12px;
+}
+
+/* QA-009 removed an `opacity: 0.65` here, which multiplied with the 0.8 on
+   `.note` and left this text at 2.18:1 — the one sentence explaining why the
+   control is dead was the least readable thing in the bar. ADR-039 §5 found the
+   second half of the same mistake: the rule that replaced the opacity dropped
+   the sentence to 12px, and §4.1 gives 12px to monospace only, because mono
+   runs optically larger. So it was demoted twice by two different mechanisms,
+   and the sentence 原則 2.4 exists to protect was the smallest text in the app.
+   It takes `.note`'s 14px now; the native `disabled` select is the affordance
+   and nothing needs shrinking on top of it. */
+
+/* One stacked form field: the label on its own line above its control, which is
+   the layout `.filter-bar label` already uses — the difference is only that here
+   the control is the label's sibling, not its child, so the wrapper carries it.
+   Opt-in by class rather than by `form p`: the Home search box is a deliberate
+   one-row flex and must not be stacked. The cap makes the three controls of one
+   form the same width instead of three intrinsic widths (~155/330/480px). */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0;
+  max-width: 480px;
+}
+
+.field label {
+  font-size: 14px;
+}
+
+.field :is(input, select, textarea) {
+  width: 100%;
+}
+
+/* --- 從來沒有被樣式化的那些元素（2026-09-08，第一階段）---------------------
+   這一批不是風格選擇，是**補漏**。數過：`<fieldset>` 3 處、`<legend>` 3 處、
+   `<input type=radio|checkbox>` 14 處、`<dl>` 8 處、`<ul>/<ol>` 大量——在這之前
+   `index.css` 對它們的規則數是 **0**。畫面上因此有一個瀏覽器預設的缺口方框、兩個
+   與標籤黏在一起的圓鈕、40px 的預設定義清單縮排，以及與內文同字重的表頭。
+
+   外部審查連續三輪說「像線框圖」，而查證的結果是：**畫面上七成的元素真的就是未經
+   樣式化的 HTML**。有配方的只有卡片、按鈕、輸入框、徽章與 notice。
+
+   下面每一條都只用既有的 token、既有的字級階（§4.1）與 4px 間距網格（§4.2），
+   一個新值都沒有。 */
+
+/* 欄位標籤與勾選列是兩種東西，過去共用同一條「什麼都沒有」。
+   `label[for]`／`.field label` 是**欄位的名字**（控制項在它下面）；包住 radio 或
+   checkbox 的 `<label>` 是**一整列可點的選項**。 */
+label[for],
+.field label:not(.note) {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+/* 內文清單：UA 的 40px 縮排與純黑圓點。標記降到 `--border-strong`（它是記號不是
+   字，同 `summary::before` 那條的理由），縮排收到 20px，列距上 4px 網格。
+   **只挑沒有 class 的清單與 `.note` 清單**：`.chip-row`／`.create-cards`／
+   `.search-results` 那些是版面容器，它們自己說了 `list-style: none`。 */
+main :is(ul, ol):not([class]),
+main :is(ul, ol).note {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+main :is(ul, ol):not([class]) > li,
+main :is(ul, ol).note > li {
+  margin: 4px 0;
+}
+
+main :is(ul, ol):not([class]) > li::marker,
+main :is(ul, ol).note > li::marker {
+  color: var(--border-strong);
+}
+
+main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
+  margin-top: 0;
+}
+
+/* 表格是一個資料表面，所以它坐在 `--surface` 上。
+   **這一條同時修掉一個量出來的錯**：表頭原本要用 `--code-bg` 當凹面，而
+   `--code-bg`（#f1f3f7）在**頁面底色** `--bg`（#eef1f6）上量起來是 1.01:1——
+   看不見。三層平面的「凹」是相對於 `--surface` 成立的，不是相對於地。政策頁那張
+   表因此完全沒有反應，而 2026-09-08 早些時候把「這個工作區的其他頁」改成
+   `--code-bg` 面板也踩了同一個坑（外部審查讀成「沒做完的灰板」，那是對的）。 */
+.table-scroll {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* A character counter under its own control. `align-self` rather than
+   `text-align`: the `.field` column is `max-width: 480px` and the note is a
+   block, so `text-align: right` would push the text to the column's edge while
+   leaving an invisible full-width box behind it — the same shape §4.6.1's
+   「量到的空白描邊框」 note is about, one order of magnitude smaller. No new
+   size, colour or spacing value: it is a `.note` that sits at the other end. */
+.field-count {
+  align-self: flex-end;
+}
+
+.badge-untested {
+  border-color: var(--accent-border);
+}
+
+/* .file-tree is a column, so its rows inherited nothing: SkillFiles put a path
+   and a size in two adjacent <span>s and the browser rendered `SKILL.md42
+   bytes`. Three pages use this list and all three have a row of two or more
+   parts, so the gap belongs to the row and not to any one caller. */
+.file-tree > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+}
+
+/* The app's primary content had less visual structure than the panels around
+   it: .criterion, .packaging-target and .download-item are all bordered cards
+   and the search hit — the thing the product is for — was a bare stack of
+   paragraphs separated by a gap. Same border/radius/padding as those three.
+
+   ADR-064 §4.6.2: and now the same surface. A card is 「這是一個東西」, and while
+   the ground was white the border was the only thing that said so. The recess
+   (--code-bg) is deliberately NOT a whole card's fill — that channel is reserved
+   for the ownership axis (「別人的」／唯讀), §4.6.5. */
+.search-result {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.search-result p {
+  margin: 4px 0;
+}
+
+.license-badge,
+.match-reason {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* QA-009: secondary text is demoted by size only. The `opacity: 0.7`–`0.8` this
+   replaced put --text at 3.03:1–3.71:1 on white, under the 4.5:1 AA floor, and
+   opacity is the one way to break contrast that no colour token can catch —
+   whatever value --text holds, a multiplier lands somewhere else. --text is
+   5.69:1 on --bg and 5.80:1 on --code-bg; keep the greys in the tokens. */
+.note,
+.rank,
+.risk-counts,
+.file-size {
+  font-size: 14px;
+}
+
+.notice {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-bg);
+  padding: 8px 12px;
+  margin: 8px 0;
+}
+
+/* §5.3 缺口 ①, closed. A notice is 「平台對這一頁講的話」 and until now every one
+   of them looked identical, so 「不能打包」 — a sentence that stops you — wore the
+   same tint as 「這段摘要由模型改寫」, which merely qualifies. The words were the
+   only difference, and §2.3 allows that but §3 第 2 條 asks whether the answer is
+   MARKED as the answer. This is the second channel. A modifier and not a
+   separate surface: the shape, the padding and the rail are the same object, and
+   only the hue says which kind. */
+.notice-danger {
+  border-left-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+/* The other half: `role="alert"` had no rule at all, in any of its ~30 places —
+   the app's loudest ARIA role was visually identical to a paragraph. Same
+   treatment as a danger notice, so the two are one vocabulary rather than two.
+
+   Scoped three ways, and each exclusion is a real case in this app:
+     - `.notice` — Packaging's blocking message is both, and would otherwise get
+       two rails and two paddings.
+     - `.notice *` — an alert nested inside a notice is already inside a marked
+       block; marking it again says the same thing twice (§3 第 14 條).
+     - `span` — AuthControls, SignIn and RunPreflight put an alert in an INLINE
+       span inside a sentence, and block padding on an inline box overlaps the
+       lines above and below it instead of growing the row. Those three keep the
+       words only; giving them the box is a layout change, and 第一階段不動版面. */
+[role="alert"]:not(.notice, .notice *, span) {
+  border-left: 3px solid var(--danger);
+  background: var(--danger-bg);
+  padding: 8px 12px;
+}
+
+.risk-code {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.skill-md {
+  white-space: pre-wrap;
+  background: var(--code-bg);
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+/* Five tables in the app, none of which had anywhere to overflow to. With
+   `table-layout: fixed` plus `width: 100%` a narrow viewport does not overflow —
+   it squeezes, so a 3-skill comparison at 375px turned every data column into a
+   ~50px shred of wrapped text. min-width makes it overflow honestly and
+   .table-scroll gives the overflow somewhere to go. tabindex="0" on the wrapper
+   is in the markup because a scroll region no key can reach fails WCAG 2.1.1. */
+.table-scroll {
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.compare-table {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.compare-table th,
+.compare-table td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.compare-table th[scope="row"] {
+  width: 220px;
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.badge-differs {
+  border-color: var(--accent-border);
+}
+
+.compare-unknown {
+  font-style: italic;
+}
+
+/* EVAL-001. The verdict states are told apart by their words first — the label
+   is always on screen — and the tint is only a second channel (NFR-007 風險、
+   相容與評估狀態必須同時提供文字,不只依賴顏色). */
+/* .trace-events is an <ol> and kept the UA decimal marker, so every event was
+   numbered twice — and the two numbers disagreed: the UA counter is gapless and
+   per-page, `seq` is neither, and a gap in `seq` is the one thing that view
+   exists to surface (ADR-009). */
+.criterion-list,
+.finding-list,
+.suggestion-list,
+.evidence-list,
+.trace-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.evidence-list {
+  gap: 8px;
+}
+
+.criterion,
+.suggestion {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.criterion-failed {
+  border-color: var(--danger);
+}
+
+.criterion-undetermined {
+  border-color: var(--accent-border);
+}
+
+.badge-criterion-failed,
+.badge-severity-error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* 04 丙-10. A verdict the platform downgraded because the citations did not
+   re-verify is not the same state as a judge saying it does not know, and the
+   two are told apart by their words first — the badge reads 證據無法回驗 and a
+   sentence names who decided. The dashed edge is a third channel, never the
+   only one (NFR-007). */
+.criterion-unverifiable,
+.badge-criterion-unverifiable {
+  border-style: dashed;
+}
+
+.badge-criterion-undetermined,
+.badge-severity-warning {
+  border-color: var(--accent-border);
+}
+
+.verdict {
+  font-size: 20px;
+  color: var(--text-h);
+  margin: 8px 0;
+}
+
+.evaluation-feedback textarea,
+.diff {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.diff {
+  background: var(--code-bg);
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+/* PACK-001/002 packaging page and the WS-004 download history. */
+.packaging-targets,
+.download-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.packaging-target,
+.download-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+/* Both states carry their own word (已驗證/未驗證, 已過期), so the tint is the
+   second channel and not the fact (NFR-007). */
+.badge-unverified {
+  border-color: var(--accent-border);
+}
+
+.badge-danger,
+.badge-expired {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* --- Chips: navigation that is not a claim --------------------------------
+   §4.6.3 splits the vocabulary in two — fill belongs to ACTIONS, outline to
+   CLAIMS — and a category chip is neither: it navigates. So it borrows the
+   secondary button's box (`--surface` on `--border-strong`, the same 15/20px
+   text and 32px target the base control layer derives) and NOT `.badge`'s pill,
+   because a badge you can press reads as a claim inviting agreement. It never
+   takes `--cta`: `/` already spends its one filled action on 搜尋 (§4.6.3's
+   route table), and `rendered.spec.ts` fails a second one. */
+.category-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 5px 12px;
+  min-height: 32px;
+  box-sizing: border-box;
+  text-decoration: none;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.chip:hover {
+  background: var(--surface-hover);
+}
+
+.chip:active {
+  background: var(--surface-active);
+}
+
+/* Selected, in four channels and not one: the recess fill, the `--text-h` edge,
+   the weight, and `aria-current` itself — which is the half a screen reader
+   gets (NFR-007, and the same shape as `.app-nav a[data-status="active"]`).
+   The recess is what a chip presses INTO; §4.6.5 reserves `--code-bg` as a
+   whole CARD's fill, and a chip is not a card. */
+.chip[aria-current="true"] {
+  background: var(--code-bg);
+  border-color: var(--text-h);
+  font-weight: 600;
+}
+
+/* r3 提案 B: weight only. Still outlined, still `--code-bg` — 精選 is a claim,
+   and §4.6.3 keeps fill away from claims permanently (the first thing that will
+   ask for a filled badge is a paid marker). Weight is the one lever available
+   without a webfont (§4.6.6), and the word 精選 is still doing the talking; this
+   only makes it the word the eye reaches first. */
+.badge-tier-curated {
+  font-weight: 600;
+}
+
+/* A 14px label above an `h1`. `letter-spacing` rather than uppercase: the copy
+   is Chinese, and `text-transform` does nothing to it. */
+.page-eyebrow {
+  font-size: 14px;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+@media (min-width: 1024px) {
+  /* 風險提示 is the tall row (114px of a 442px card, measured), and a row that
+     needs the full width says so itself rather than depending on where the
+     flow happens to drop it. */
+  .facet-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.chip-row {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skill-actions {
+  margin-top: 8px;
+  align-items: center;
+  column-gap: 24px;
+}
+
+.skill-actions > :last-child {
+  margin-left: auto;
+}
+
+/* auto-fit rather than a fixed count: two entries and four entries are both
+   real, and `minmax(240px, 1fr)` gives one column on a phone without a second
+   breakpoint. The cards inside are `.download-item` — §4.3 名之為全 app 的通用
+   卡片, and the rule there is 「修法一律是套用既有的卡片族，不是發明第五種樣式」,
+   so nothing here paints a card. */
+.create-cards {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  /* ── 2026-09-08：`align-items: start` 撤掉，格軌回到預設的等高 ────────────────
+     它 2026-09-07 補上時擋的是一個真的缺陷：第三張卡展開成約 1000px 的表單，前兩
+     張卡各自被撐出一個 880px 的空白描邊框。**那個危險現在由別的東西擋著**——
+     `.create-workspace` 的 `grid-column: 1 / -1` 讓展開的工作台自己佔一整列，
+     結構上不可能與兩扇門同軌，而那條規則同一批就在下面。
+
+     撤掉它換到的是：三張卡等高，於是三顆按鈕落在同一條基線上（下面那條把最後一段推到底的 auto）。留著它換到的是同一個危險擋兩次，代價是三張卡三個高度、
+     三顆按鈕三個位置——外部審查連續讀成「網格沒有秩序」，而那是對的。 */
+}
+
+/* 展開的創作工作台佔滿整列，不擠在一個 `minmax(240px, 1fr)` 的欄裡。
+   `1 / -1` 而不是固定欄數：`auto-fit` 在 375px 是一欄、1280px 是三欄，兩邊都要對。
+   卡片樣式仍然是 `.download-item`——§4.3「修法一律是套用既有的卡片族」，這裡加的是
+   它在網格裡佔多寬，不是第五種卡片。 */
+.create-workspace {
+  grid-column: 1 / -1;
+}
+
+/* 卡片自己是欄，內容照寫的順序疊，**最後那一段（動作）被推到底**。三張卡的說明
+   文字是兩行、四行、兩行，格軌等高之後如果內容也照樣頂著上緣長，三顆按鈕就停在
+   三個高度上。把上緣留白設成 `auto` 是 flex 對這件事的既有寫法，不必新增任何 class：
+   每一張卡的動作本來就是它的最後一個 `<p>`。 */
+/* ── 2026-09-08：卡片的內部留白第一次是設計出來的 ─────────────────────────────
+   在這之前 `.download-item` 給的是 `padding: 10px 12px`，而畫面上看到的那一圈寬留白
+   **不是它**——是 `h3` 的瀏覽器預設 `margin`。也就是說這三張卡的內部節奏一直由 UA
+   樣式表決定：標題上緣一個 em、下緣一個 em、段落各自再一份，於是同一張卡裡有三種
+   不同的間距，而沒有一種是這份設計選的。那正是「像未經排版的文件」最直接的來源。
+   卡自己出 20px 的內距，標題與段落的預設 margin 歸零，剩下的間距由 `gap` 一個值管。 */
+.create-cards > li {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.create-cards > li > :is(h3, p) {
+  margin: 0;
+}
+
+/* 卡片標題是這張卡的入口，字重與內文分家（§4.6.6 的字重槓桿，同一條）。 */
+.create-cards > li > h3 {
+  font-weight: 600;
+}
+
+.create-cards > li > p:last-child {
+  margin-top: auto;
+}
+
+/* The edge light is a conic sweep of the four tones centred on the pointer
+   (--x/--y from spotlight.ts), covered by a --border fade everywhere except
+   near it; the face gets a tint of the card's own --tone. */
+.skill-card,
+.create-cards > li {
+  --x: -999px;
+  --y: -999px;
+  --tone: var(--tile-violet);
+  --tone-deep: var(--tile-violet-deep);
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background:
+    radial-gradient(
+        420px circle at var(--x) var(--y),
+        color-mix(in srgb, var(--tone) 12%, transparent),
+        transparent 60%
+      )
+      padding-box,
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    radial-gradient(220px circle at var(--x) var(--y), transparent, var(--border) 70%) border-box,
+    conic-gradient(
+        from 0deg at var(--x) var(--y),
+        var(--tile-violet),
+        var(--tile-blue),
+        var(--tile-teal),
+        var(--tile-rose),
+        var(--tile-violet)
+      )
+      border-box;
+  box-shadow: var(--shadow-rest);
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+:is(.skill-card, .create-cards > li)[data-tone="1"] {
+  --tone: var(--tile-blue);
+  --tone-deep: var(--tile-blue-deep);
+}
+
+:is(.skill-card, .create-cards > li)[data-tone="2"] {
+  --tone: var(--tile-teal);
+  --tone-deep: var(--tile-teal-deep);
+}
+
+:is(.skill-card, .create-cards > li)[data-tone="3"] {
+  --tone: var(--tile-rose);
+  --tone-deep: var(--tile-rose-deep);
+}
+
+@media (hover: hover) {
+  .skill-card:hover,
+  .create-cards > li:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+
+.skill-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+.skill-mono,
+.door-mono {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--tone), var(--tone-deep));
+  color: var(--on-tile);
+}
+
+.skill-mono {
+  width: 56px;
+  height: 56px;
+  border: 3px solid var(--surface);
+  border-radius: 16px;
+  font-size: 24px;
+}
+
+@media (max-width: 640px) {
+  /* 220px of a 351px viewport is not a row header, it is the whole table. */
+  .compare-table th[scope="row"] {
+    width: 140px;
+  }
+}

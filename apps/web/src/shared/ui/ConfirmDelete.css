@@ -1,0 +1,13 @@
+/* One declaration, three domain names. `.badge-expired` encoded a reason — an
+   artifact past its date — and then 清理失敗 needed the same visual without
+   being expired at all. `.badge-danger` is the name of the claim §4.4 assigns
+   to this token（這件事不通過／會擋住你）; the two older names stay because the
+   pages that use them are naming a real thing, not a colour. */
+/* §2.8: the scope sentence IS the disclosure, so it gets its own line above the
+   two buttons rather than running inline into them. It stays a <span> because
+   ConfirmDelete returns a fragment that has to be valid inside a <p> at all
+   seven call sites. */
+.confirm-scope {
+  display: block;
+  margin-bottom: 8px;
+}

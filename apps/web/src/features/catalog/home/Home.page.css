@@ -1,0 +1,98 @@
+/* The one hero in the app: `Home` is the entry point and its h1 is the prompt,
+   not a label for content below it. */
+.home h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  @media (max-width: 1024px) {
+    font-size: 36px;
+  }
+}
+
+/* The product's primary control was a browser-default text input: ~180px wide,
+   too narrow to show its own placeholder, sitting under a 56px heading. The
+   input takes the row and the button keeps its intrinsic width; the cap stops a
+   1126px viewport from stretching one field across the whole page. */
+/* `flex-wrap` is for the third item on this row (`.hero-create`, below): three
+   controls do not fit a 351px viewport, and a non-wrapping flex row answers that
+   by overflowing the page — the one failure `e2e/rendered.spec.ts` checks on
+   every route. Wrapping puts the secondary link on its own line instead. */
+.home form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.home form input {
+  flex: 1;
+  max-width: 560px;
+}
+
+.home form button {
+  flex-shrink: 0;
+}
+
+/* The second control on the search row. Bit-for-bit the secondary button of
+   §4.6.3 (`--surface`/`--border-strong`/6px/5px 10px/32px) because that is what
+   it is; the only additions are the ones an `<a>` needs and a `<button>` does
+   not. `white-space: nowrap` so it wraps as a whole rather than breaking its
+   own label in two. */
+.hero-create {
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  /* ── 2026-09-08：控制項從 32px 走到 40px，而這是第一次真的看畫面之後改的 ──────
+     32px＋`5px 10px` 是「比瀏覽器預設好，但仍然是最小可用」的尺寸，它 2026-08 落地
+     時解決的問題是「按鈕看起來像壞掉的 chrome」。截圖來看，它現在製造的問題是**按鈕
+     是整個畫面上最弱的元素**——比它上面那段說明文字還小、還淡，而那段文字只是說明，
+     按鈕才是這張卡要人做的事。
+     40px 是 `.home` 的 hero 2026-09-08 早些時候已經量過一次的那一階（當時只在首頁
+     開了特例）；把它變成全站的一階，那個特例就不必存在。內距同批回到 4px 網格
+     （`8px 16px`），字重 500 讓標籤與內文分家——這個 app 不載 webfont，字重是僅有的
+     兩個層級頻道之一（§4.6.6）。 */
+  padding: 8px 16px;
+  min-height: 40px;
+  font-weight: 500;
+  box-sizing: border-box;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.hero-create:hover {
+  background: var(--surface-hover);
+}
+
+/* ── 2026-09-07：非技術讀者那一批 ─────────────────────────────────────────────
+   觸發它的是一份外部審查：目標受眾包含一般行政、行銷、營運同仁，而這個 app 的每一
+   個畫面都預設讀者會自己判斷風險。下面四條處理的是**形狀**，不是內容——設計 §0 的
+   優先序裡，讓步的一律是形式。 */
+
+/* 首頁的標題與搜尋列從「直接落在底色上的三個兄弟」收進一個容器。配方與卡片同一份
+   （`--surface` + `--border` + 圓角），只有內距與圓角更大，因為它裝的是這一頁唯一
+   的主要控制項。**沒有陰影**：ADR-064 §4.6.1 把深度定義成三層平面，理由是暗色模式
+   下投影沒有東西可以落；深度由 `--surface` 比 `--bg` 亮承擔，兩個主題都成立。 */
+.hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  margin: 24px 0 32px;
+  @media (max-width: 640px) {
+    padding: 20px 16px;
+    border-radius: 12px;
+  }
+}
+
+/* 標題在容器裡不需要再自帶上緣留白，那是它落在底色上時的間距。 */
+.hero h1 {
+  margin-top: 0;
+}

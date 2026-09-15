@@ -1,0 +1,573 @@
+/* The two 1px rules down either side are gone (ADR-064 決策 3): the page frame
+   is now the ground/surface difference — the header and every card sit on
+   --surface against --bg — and a hairline on top of that is a second frame
+   saying the same thing.
+
+   ── 2026-09-08：1126px 這個欄從 `#root` 搬到 `main` 與 `.app-footer` ────────────
+   搬的理由是量出來的，不是品味：`#root` 是 1126px 而頁首住在它裡面，所以在任何比
+   1126 寬的視窗上，**頁首也是 1126px**——它有白底、有一條 `--border` 底線，但兩端
+   各差 77px（1280 實測）碰不到螢幕邊。外部審查連兩輪讀成「導覽列漂浮在畫布上、
+   沒有結構錨定」，而查證的結果是**它說的現象在，說的成因不在**：底色與底線都已經
+   在了（`--surface` 對 `--bg` 1.13:1，底線 `--border`），缺的是它沒有橫貫。
+
+   `#root` 因此變成滿版，欄寬移到 `main` 與 `.app-footer` 身上；頁首自己用一條
+   `max()` 的內距把文字對回同一條左緣（1126 − 24×2 ＝ 1078 的內容寬一格未變），
+   所以這不是新的版面尺寸，是同一個尺寸換一個東西承載。 */
+#root {
+  width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+/* ── 2026-09-08：§4.6.6 那條槓桿，寫好五天沒有人實作 ──────────────────────────
+   §4.6.6 逐字寫著「不引入 webfont…**槓桿是字重**：`h1`／`h2` 600、`.app-title` 700
+   （今天全部 500／600），GOV.UK 與 USWDS 的視覺品質就是這樣來的」。`.app-title` 的
+   700 落地了，`h1`／`h2` 的 600 沒有——**一條已經裁定的決策躺在文件裡當現況描述**。
+
+   為什麼它重要而不是品味：這個 app 不載入 webfont，所以能拉開層級的只有字級與字重
+   兩個頻道，而字級已經用滿（§4.1 八階）。字重全部停在 500 的結果是**四十級字級落在
+   同一個重量上**，標題與內文只差大小不差份量——第一次真的看畫面時，那正是「像未經
+   排版的文字草稿」的來源之一。 */
+h1,
+h2 {
+  font-weight: 600;
+}
+
+/* 40px is a page title. 56px was a landing hero applied to every route, so
+   「資料保存政策」 — a document heading above a table of prose — was set at the
+   same size as the search page's one-line invitation. Those are two different
+   jobs; only the search page does the second one, and it opts in below. */
+/* §4.6.6: weight is the only lever available without a webfont, and it is the
+   one GOV.UK and USWDS actually use. h1/h2 go 500 → 600; h3/h4 stay 500, so the
+   step between a section and its subsection is still visible. */
+h1 {
+  font-weight: 600;
+  font-size: 40px;
+  letter-spacing: -1.2px;
+  margin: 32px 0;
+  @media (max-width: 1024px) {
+    font-size: 30px;
+    margin: 20px 0;
+  }
+}
+
+/* 這三個是全 app 的控制項尺寸，而那個尺寸是為「清單裡一則的操作」定的。放在一個
+   內距 32 的容器正中央，同一組尺寸讀成的是密集後台表單的一列——外部審查說的
+   「擠壓、手作感」。三個一起長高，所以它們仍然是同一條線上、同一組東西；只有這一
+   頁的主要控制項換尺寸，別的地方一個像素都沒動。 */
+/* 這條規則在 2026-09-08 早些時候把首頁三個控制項從 32px 抬到 40px，當時是特例。
+   同日稍晚 40px 成為全站控制項的一階，所以這裡只剩「它們要一樣寬鬆」這件事，而那
+   已經由基礎控制項層說了——留一個空規則沒有意義，整條走。 */
+h2 {
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  /* 0 on top meant every section title welded to whatever preceded it, while h3
+     below carries 16px — a subheading with more air than its own parent. */
+  margin: 24px 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 20px;
+  }
+}
+
+/* QA-010: there were 11 <h3> in the app and no rule for any of them, so every
+   one rendered at the UA's bold 1.17em in --text — a *secondary* grey, smaller
+   than the body it introduced. RunEvaluation's levels were right and looked
+   wrong. One step under h2 (24/20), one step over the 18/16 body. */
+h3 {
+  font-size: 20px;
+  line-height: 125%;
+  letter-spacing: -0.2px;
+  margin: 16px 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 18px;
+  }
+}
+
+/* Packaging renders three finding groups inside a section that is already an h3,
+   and they were <p> — real subsections carried as body text, which is checklist
+   item 6's defect in the direction axe never looks. 18px is the body step, not a
+   tenth type size; the heading font and weight are what mark it (§4.1). */
+h4 {
+  font-size: 18px;
+  margin: 12px 0 4px;
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
+p {
+  margin: 0;
+}
+
+/* The UA centres a caption. Every other block on these pages is left-aligned
+   flush with the table below it, so a centred, indented sentence read as a
+   floating remark rather than as the table's own title. Demoted by size only —
+   never `opacity` (see the QA-009 note on `.note` further down). */
+caption {
+  text-align: left;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
+
+/* --- Base control layer ----------------------------------------------------
+   DESIGN-012 / 02:NFR-007. Every control in the app was browser-default until
+   here: 44 buttons, none with a class. The root font is 18px and a default
+   control renders at ~13.3px, so a button beside its own label read as broken
+   chrome rather than as part of the page. One element-level layer instead of a
+   class per control — nothing in the markup has to opt in, and there is no way
+   for a new button to be forgotten.
+
+   Checkboxes and radios are excluded on purpose: they are the one native
+   control whose box IS the affordance, and padding plus a border around it
+   makes it worse, not more consistent.
+
+   min-height 32px is WCAG 2.2 2.5.8 (24px floor) with room to spare. */
+button,
+.action-secondary,
+.composer-attach,
+select,
+textarea,
+input:not([type="checkbox"], [type="radio"]) {
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--text-h);
+  background: var(--surface);
+  /* --border was 1.27:1 on the old white background. A control's edge is the
+     one border in this file that IS information — it says "you can type here" —
+     so it takes --border-strong and WCAG 1.4.11's 3:1 (see the token). */
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  /* ── 2026-09-08：控制項從 32px 走到 40px，而這是第一次真的看畫面之後改的 ──────
+     32px＋`5px 10px` 是「比瀏覽器預設好，但仍然是最小可用」的尺寸，它 2026-08 落地
+     時解決的問題是「按鈕看起來像壞掉的 chrome」。截圖來看，它現在製造的問題是**按鈕
+     是整個畫面上最弱的元素**——比它上面那段說明文字還小、還淡，而那段文字只是說明，
+     按鈕才是這張卡要人做的事。
+     40px 是 `.home` 的 hero 2026-09-08 早些時候已經量過一次的那一階（當時只在首頁
+     開了特例）；把它變成全站的一階，那個特例就不必存在。內距同批回到 4px 網格
+     （`8px 16px`），字重 500 讓標籤與內文分家——這個 app 不載 webfont，字重是僅有的
+     兩個層級頻道之一（§4.6.6）。 */
+  padding: 8px 16px;
+  min-height: 40px;
+  font-weight: 500;
+  box-sizing: border-box;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+  /* `cols` and `size` are intrinsic widths from a time before phones: a
+     `<textarea cols={60}>` asks for 478px and gets it, and four of the app's
+     eighteen screens pushed the whole document past a 375px viewport because of
+     it. The attributes stay — they are a reasonable desktop default — and this
+     stops them being wider than what holds them. */
+  max-width: 100%;
+}
+
+/* A button used to be the only thing wearing --code-bg, which meant the recess
+   fill served code, badges, buttons and the disabled state at once — four jobs,
+   one colour, no hierarchy. It takes the surface from the layer above now
+   (§4.6.3: every secondary button is --surface on --border-strong), and
+   --code-bg goes back to being the recess. */
+button {
+  cursor: pointer;
+}
+
+/* --- A link that is a DOOR, not the page's one action ----------------------
+   §4.6.3 已經定義了次要按鈕的配方（`--surface` 底、`--border-strong` 邊、hover 換
+   `--surface-hover`、`:active` 換 `--surface-active`），但那套配方**只有 `<button>`
+   拿得到**——它掛在上面那條 `button, select, textarea, input` 的基礎控制項規則上。
+   於是「建立一個 Skill」那三張卡長成三種樣子：填色的 `.action`（匯入）、一條純文字
+   底線連結（到目錄挑一個）、一顆原生按鈕（開始描述）。三個同重量的入口、三種外觀，
+   而外部審查連續四輪把它讀成「瀏覽器預設樣式」。
+
+   這裡**沒有第五種樣式，也沒有一個新數值**：`.action-secondary` 只是被加進那條基礎
+   控制項規則與它的 hover／active 選擇器，所以一個戴著它的 `<a>` 與旁邊的 `<button>`
+   逐位元組同框——同一組內距、同一個最小高度、同一個圓角，因為那就是同一條規則。
+   本區塊自己只補連結缺的三件事：inline-flex 對齊、去底線、手指游標。
+
+   **它不碰 §4.6.3 的「一頁至多一個填色動作」**：填色仍然只有 `.action`，
+   `rendered.spec.ts` 數的是底色不是框。也不碰 ⛔ 邊界 1——生成那一卡本來就已經是一顆
+   按鈕，這次是**旁邊那張卡升上來跟它齊平**，生成入口沒有變得更顯眼。 */
+.action-secondary {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* The two controls the layer above excludes still need their selected state to
+   be visible: left to the UA, dark mode renders a checked box in a grey that
+   sits a hair off the unchecked one. --accent is 4.84:1 on --bg, well over the
+   3:1 WCAG 1.4.11 floor for a control, which is what this is. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+/* Secondary buttons. `.action` and `.destructive` are excluded rather than
+   re-stated afterwards: `button:hover:not(:disabled)` outranks a bare
+   `.action:hover`, so without the exclusion the primary action would lose its
+   own hover to this rule. --link on --surface-hover is 6.48:1, still AA. */
+button:hover:not(:disabled, .action, .destructive),
+.action-secondary:hover,
+.composer-attach:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-border);
+  color: var(--link);
+}
+
+/* The app had no pressed state at all, on any of its 44 buttons: a click gave
+   back nothing until the request answered. */
+button:active:not(:disabled, .action, .destructive),
+.action-secondary:active,
+.composer-attach:active {
+  background: var(--surface-active);
+}
+
+/* QA-009 again: the obvious way to say "disabled" is `opacity: .5`, and that is
+   exactly the move this file removed twice already — a multiplier lands
+   wherever it lands and no colour token can catch it. --text on --code-bg is
+   5.80:1 and stays AA; the dashed edge is a second, non-colour channel so the
+   state does not depend on noticing a grey (NFR-007).
+
+   The border colour is now stated rather than inherited: a disabled control sits
+   on a card that is itself --surface, and `.destructive` would otherwise keep
+   its red edge while being unpressable. --border-strong is the same 3:1 edge the
+   live control has, dashed. */
+button:disabled,
+select:disabled,
+textarea:disabled,
+input:disabled,
+/* 附件鈕是一個包著檔案輸入的 `<label>`：輸入停用時，看得見的那一格要跟著停用
+   （2026-09-10 截圖：凍結時旁邊的鈕都是虛線，只有它看起來還能按）。 */
+.composer-attach:has(> input:disabled) {
+  color: var(--text);
+  background: var(--code-bg);
+  border-color: var(--border-strong);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+/* The default UA blue/purple fights the accent hue and, worse, :visited turns
+   half the links a different colour for no reason the page ever states.
+   `.app-title` keeps --text-h: its class beats this element selector. */
+/* ── 2026-09-08：連結不再是預設的「緊貼底線」 ─────────────────────────────────
+   底線留著（NFR-007：意義不得只由顏色承載，而正文裡的連結正是那條規則的主場），
+   換掉的是它的位置與粗細——瀏覽器預設的底線壓在字的基線上、與文字同粗，那是 1996
+   年的連結長相，不是一條規則要求的東西。 */
+a {
+  color: var(--link);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+/* :focus-visible, never :focus — a mouse click on a button should not leave a
+   ring behind. Once a control has a background of its own the UA ring is
+   painted over, so this has to be re-stated rather than inherited. outline
+   rather than box-shadow for the same reason: an outline is drawn outside the
+   border box and cannot be clipped by the element's own background.
+   --accent is 4.84:1 light / 7.19:1 dark, both clear of the 3:1 that WCAG 2.1
+   1.4.11 asks of a non-text indicator. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+main {
+  text-align: left;
+  padding: 0 24px;
+}
+
+/* --- Measure ---------------------------------------------------------------
+   #root is 1126px wide and, until here, so was every paragraph in the app.
+
+   Measured 2026-09-03 across all 18 routes: the longest line on a page ran
+   between 60 and 104 CJK characters (packaging's 104), against a comfortable
+   25–40. Eight of the 18 routes are also 65–83% `.note` by character count, so
+   most of what a reader crosses at that line length is the secondary layer.
+   That combination is what 「整頁文字非常滿，無法聚焦操作區塊」 describes: the
+   complaint is about the SHAPE of the text, not its amount, and 設計 §0 is
+   explicit that a lower-priority rule gives way in form while the content of a
+   higher one keeps every word. Nothing here removes or hides a sentence.
+
+   `em`, not px, so the cap follows the element's own step of the §4.1 scale:
+   40em is 40 CJK characters at any size — and ~80 Latin ones, which is the same
+   comfortable line for both scripts, from one value.
+
+   Tables are excluded on purpose (`td`/`th` are not in the list): a comparison
+   table's column widths are the table's decision, and capping a cell would move
+   the dead space one level in rather than remove it. */
+main :is(p, li, dd, dt, summary) {
+  max-width: 40em;
+}
+
+/* ── 2026-09-08：包住自己控制項的 `<label>`，過去一條規則都沒有 ────────────────
+   上面那條只認得 `label[for]`（標籤與控制項是兄弟）與 `.field label`（有包裝 div）。
+   但這個 app 有第三種寫法——`<label>想完成的任務<textarea/></label>`，標籤把控制項
+   包在自己裡面，而它兩條都不符合。結果是標籤與輸入框並排在同一行文字流裡：互動創作
+   那一頁的「想完成的任務」「這次預算上限」「恢復創作」全長成那樣，實測像沒寫完的表單。
+
+   **這裡沒有新值**：四個宣告逐字抄自上面的 `.field`（欄向、4px、12px 上下、480px），
+   因為這種 `<label>` 就是一個沒有包裝 div 的 `.field`。 */
+label:has(> textarea),
+label:has(> select),
+label:has(> input:not([type="checkbox"], [type="radio"])) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0;
+  max-width: 480px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+/* 控制項自己不繼承標籤的字重，並填滿那 480px。 */
+label > :is(textarea, select, input:not([type="checkbox"], [type="radio"])) {
+  width: 100%;
+  font-weight: 400;
+}
+
+/* 命中區是整列而不是那顆 16px 的圓鈕（WCAG 2.2 2.5.8），標記與文字之間有間距——
+   在這之前它們是 `◉GitHub 或允許的 URL` 這樣黏著的。 */
+label:has(> input[type="radio"]),
+label:has(> input[type="checkbox"]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+/* 基礎控制項規則刻意排除這兩種（它們的方框本身就是可及性提示，加內距與邊框只會更
+   糟），但「排除」被讀成了「不管」：它們連尺寸與選取色都沒有。`accent-color` 是
+   唯一一個不重畫控制項就能讓它屬於這個產品的宣告。 */
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--cta);
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+/* UA 的 `fieldset` 是一個有缺口的凹框，那是 1996 年的樣子，而且它與這個 app 的
+   任何一種容器都不像。分群由留白承擔，legend 降成一個欄位標籤。 */
+fieldset {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  display: block;
+  padding: 0;
+  margin-bottom: 4px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+fieldset label + label {
+  margin-left: 16px;
+}
+
+/* 定義清單：UA 給 `<dd>` 40px 的縮排，於是每一組都長得像一份沒排版的字典。
+   標籤與值改成兩欄——標籤 `--text`、值 `--text-h`，那正是這個 app 對「但書」與
+   「事實」既有的分工（§4.6.1）。窄螢幕回到上下堆疊。 */
+dl {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: 4px 16px;
+  margin: 12px 0;
+}
+
+dt {
+  font-size: 15px;
+  color: var(--text);
+}
+
+dd {
+  margin: 0;
+  color: var(--text-h);
+}
+
+@media (max-width: 640px) {
+  dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  dt {
+    margin-top: 8px;
+  }
+}
+
+/* 表格：表頭與內文過去同字重、同底色，於是政策頁那張表讀起來是一片文字。
+   表頭進第三層平面（`--code-bg`，同 `<code>`），儲存格內距上網格。
+   元素選擇器，所以 `.compare-table` 自己那幾條照舊蓋過它。 */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+:is(th, td) {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  background: var(--code-bg);
+}
+
+/* --- 版面節奏（2026-09-08，第二階段）---------------------------------------
+   第一階段補的是「元素有沒有樣式」，這一段補的是「元素之間的距離由誰決定」。
+   在這之前答案是：**瀏覽器的 UA 樣式表**。`h1` 上下各 0.67em、`h2` 各 0.83em、
+   `p` 各 1em——於是同一頁上有五種不同的間距，沒有一種是這份設計選的，而它們全部
+   隨字級變動（一個 40px 的 `h1` 自帶 27px 的下緣，一個 24px 的 `h2` 自帶 20px）。
+
+   三階，全部在 §4.2 的 4px 網格上：**區塊之間 32、群組之間 12、群組內 8**。 */
+
+/* 標題與它底下那一句是一個單位，不是兩個各自帶著預設 margin 的區塊。 */
+main :is(h1, h2, h3) {
+  margin-bottom: 8px;
+}
+
+/* `h2` 開一個新區塊，`h3` 開一個群組——距離說出層級，這是不載 webfont 的第三個
+   頻道（前兩個是字級與字重，§4.6.6）。 */
+main h2 {
+  margin-top: 32px;
+}
+
+main h3 {
+  margin-top: 24px;
+}
+
+/* `<input type="file">` gets the control recipe above, but the button INSIDE it
+   is browser chrome and inherited none of it — so a form whose every other
+   control was `--surface` on `--border-strong` carried one grey-on-grey slab
+   the UA had drawn, and an external review read it (with the app's own dashed
+   disabled edge on the submit button beside it) as evidence the whole form was
+   half-finished. This is the same secondary-button vocabulary as everywhere
+   else (§4.6.3: outline, not fill), not a new one.
+
+   The button's LABEL stays the browser's — 「Choose File」 in an English UA, and
+   there is no way to set it without replacing the control with a `<label>` and
+   a hidden input. That trade is not taken here: the visible Chinese label above
+   it and the 「已選擇 <name>」 line after a pick both come from this app, and a
+   hand-rolled file control is a new component to keep accessible for one word. */
+input[type="file"]::file-selector-button {
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-right: 8px;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+input[type="file"]:not(:disabled)::file-selector-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-border);
+  color: var(--link);
+}
+
+input[type="file"]:disabled::file-selector-button {
+  color: var(--text);
+  background: var(--code-bg);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+details {
+  margin: 8px 0;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--text-h);
+}
+
+.composer-attach:has(> input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 原生的 ▶ 換成一個會轉的字元。用字元不用 `<svg>` 是刻意的：ADR-065 §4.7 的機器
+   把全 app 的 `<svg` 站點上限釘在 6，而 `StateIcon` 的四個形狀加 `Tip` 的一個已經
+   用掉 5——一個純裝飾的摺疊指示，不值得那最後一格。
+   這是全域唯一一條 summary 標記規則，所以全 app 約 35 個 `<details>` 一起改。 */
+summary {
+  list-style: none;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+/* ── 2026-09-08：這個記號一直被外部審查讀成終端機提示字元，而他們是對的 ────────
+   我連兩輪回答「它已經是 `›` 不是 `>`，2026-09-03 就換掉了」——**實作對，畫面錯**。
+   第一次真的截圖來看：它在 18px 的內文字級、`--text` 的顏色、離字 8px，於是它在
+   一行文字的最左邊看起來就是一個獨立的字，也就是 shell 的提示字元。
+
+   字級降到 ui 階、顏色降到 `--border-strong`（它是記號不是字）、間距收到 4px，
+   它才變回一個附在標題上的標記。
+
+   ── 同日第二次：字形也得換 ────────────────────────────────────────────────
+   降響度之後再截一次圖，第三輪審查仍然把頁尾那兩列讀成 shell 提示字元——而截圖
+   上確實還是那樣。`›` 這個字形本身就是提示字元的形狀，怎麼調它多小多淡都還是。
+   `▸` 是實心三角，它在每一個作業系統上都只有一個意思：**這裡可以展開**。
+   旋轉那條規則不動，尺寸顏色不動，換的是那一個字。 */
+summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 15px;
+  color: var(--border-strong);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg);
+}

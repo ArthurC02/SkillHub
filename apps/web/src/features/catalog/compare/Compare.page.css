@@ -1,0 +1,6 @@
+/* The difference highlight: a tinted row plus the 有差異 badge, so it does not
+   rely on colour alone. */
+.compare-differs td,
+.compare-differs th {
+  background: var(--accent-bg);
+}

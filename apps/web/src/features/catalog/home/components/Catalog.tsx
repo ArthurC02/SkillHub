@@ -8,6 +8,7 @@ import { CompareBar } from "./CompareBar";
 import { liftedNotes, SearchFacetNotes } from "./SearchFacetNotes";
 import { MarkerLegend } from "./MarkerLegend";
 import { SearchResultRow } from "./SearchResultRow";
+import "./Catalog.css";
 
 export function Catalog({
   query,
