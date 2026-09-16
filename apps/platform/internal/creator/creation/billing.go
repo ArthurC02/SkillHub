@@ -8,17 +8,17 @@ import (
 )
 
 type CreationBilling interface {
-	CanStart(context.Context, pgtype.UUID) (bool, error)
-	Reserve(context.Context, pgtype.UUID, int64) (bool, error)
-	Settle(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *int64, int64) error
-	SessionEnded(context.Context, pgx.Tx, pgtype.UUID) error
+	CanStart(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
+	Reserve(ctx context.Context, workspaceID pgtype.UUID, reservedUSDMicros int64) (bool, error)
+	Settle(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error
+	SessionEnded(ctx context.Context, tx pgx.Tx, sessionID pgtype.UUID) error
 }
 
 type BillingHooks struct {
-	CanStartFunc     func(context.Context, pgtype.UUID) (bool, error)
-	ReserveFunc      func(context.Context, pgtype.UUID, int64) (bool, error)
-	SettleFunc       func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *int64, int64) error
-	SessionEndedFunc func(context.Context, pgx.Tx, pgtype.UUID) error
+	CanStartFunc     func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
+	ReserveFunc      func(ctx context.Context, workspaceID pgtype.UUID, reservedUSDMicros int64) (bool, error)
+	SettleFunc       func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error
+	SessionEndedFunc func(ctx context.Context, tx pgx.Tx, sessionID pgtype.UUID) error
 }
 
 func (h BillingHooks) CanStart(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
