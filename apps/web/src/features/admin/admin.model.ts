@@ -9,6 +9,7 @@ export const ACTION_LABEL: Record<string, string> = {
   "skill.access_restrict": "設定受限展示",
   "skill.access_unrestrict": "解除受限展示",
   "skill.redistribution_set": "再散布判定",
+  "skill.curation_set": "精選層級",
   "skill.takedown": "下架",
   "credit.grant": "授予點數",
   "dispatch.halted": "停止派送",

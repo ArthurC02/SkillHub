@@ -42,7 +42,7 @@ ORDER BY measured_at DESC
 LIMIT 1;
 
 -- name: GetNewestSkillVersion :one
-SELECT version_number, license_expression, license_source
+SELECT id, version_number, license_expression, license_source
 FROM skill_versions
 WHERE skill_id = $1
 ORDER BY version_number DESC

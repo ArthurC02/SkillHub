@@ -86,6 +86,7 @@ const (
 	SearchSkillsOperation                      OperationName = "SearchSkills"
 	SetEvaluationFeedbackOperation             OperationName = "SetEvaluationFeedback"
 	SetSkillCategoryOperation                  OperationName = "SetSkillCategory"
+	SetSkillCurationTierOperation              OperationName = "SetSkillCurationTier"
 	SetSkillRedistributionOperation            OperationName = "SetSkillRedistribution"
 	SetSkillRestrictionOperation               OperationName = "SetSkillRestriction"
 	StartGithubLoginOperation                  OperationName = "StartGithubLogin"

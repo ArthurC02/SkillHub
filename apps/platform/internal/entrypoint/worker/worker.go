@@ -143,7 +143,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		Ignore("skill facts: no aggregate reacts to them yet, and every reader answers from the skill's own rows",
 			outbox.SkillTakenDown, outbox.SkillAccessRestricted, outbox.SkillAccessRestrictionLifted,
 			outbox.SkillRedistributionSet, outbox.SkillCategorized, outbox.SkillDeleted,
-			outbox.SkillCreated, outbox.SkillDescribed)
+			outbox.SkillCreated, outbox.SkillDescribed, outbox.SkillCurationSet)
 	if err := set.Events.Validate(); err != nil {
 		return nil, fmt.Errorf("outbox dispatch wiring: %w", err)
 	}

@@ -305,6 +305,10 @@ type SetSkillCategoryRes interface {
 	setSkillCategoryRes()
 }
 
+type SetSkillCurationTierRes interface {
+	setSkillCurationTierRes()
+}
+
 type SetSkillRedistributionRes interface {
 	setSkillRedistributionRes()
 }

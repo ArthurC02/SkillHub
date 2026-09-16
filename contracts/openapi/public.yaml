@@ -2256,6 +2256,85 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+
+  /admin/skills/{id}/tier:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      operationId: setSkillCurationTier
+      summary: Record or withdraw a curation review of a catalogue skill (CONTENT-001)
+      description: |
+        Operator only. `curated` records that the skill's newest version passed
+        the human curation review; `indexed` withdraws it, which is how a skill
+        whose source changed in place is demoted.
+
+        The review is bound to the version it read: curating stores the newest
+        version, and the tier reads `indexed` again as soon as a newer version
+        arrives, without anyone calling this again.
+
+        Only skills in a catalogue workspace can be curated. A review is of the
+        catalogue's copy and does not travel to forks or to skills users
+        imported themselves. Withdrawing works on any skill.
+
+        The column write, the audit event and the catalogue listing refresh
+        share one transaction. Idempotent: writing the tier a skill already has
+        is a second audit event and no change to what readers see.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value, note]
+              properties:
+                value:
+                  type: string
+                  enum: [curated, indexed]
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: |
+                    Why, in the operator's own words. Required and not
+                    satisfiable with whitespace, same rule as `restriction`.
+      responses:
+        "200":
+          description: The tier is in force and the catalogue listing already shows it.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [skill_id, tier, curated_version_id, previous_tier]
+                properties:
+                  skill_id: { type: string, format: uuid }
+                  tier:
+                    type: string
+                    enum: [curated, indexed]
+                  curated_version_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+                    description: The reviewed version; null when the tier is `indexed`.
+                  previous_tier:
+                    type: string
+                    enum: [curated, indexed]
+        "400":
+          description: |
+            Body is not JSON, `value` is not a tier, `note` is blank or over
+            1000 bytes, or `curated` was asked of a skill outside a catalogue
+            workspace.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            The caller is not an operator, **or** no such live skill — one answer,
+            for the reason spelled out under `restriction`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/dispatch:
     get:
       operationId: getDispatchStatus

@@ -196,14 +196,14 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 
 ```bash
 psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistribution.sql
-psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-curation-tier.sql
 psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-category.sql
+python tools/content/curate_seed.py --user <目錄擁有者> --operator <OPERATOR_USER_IDS 裡的帳號>
 ```
 
 | 腳本 | 需先套用 | 驗什麼（數字對不上就停下） | 不跑會怎樣 |
 | --- | --- | --- | --- |
 | `backfill-redistribution.sql` | `0027` | **`UPDATE 90`**，分佈 **41 `allowed`／4 `blocked`／0 `unknown`**（4 筆 blocked ＝ `anthropics/skills` 的 `docx`／`pdf`／`pptx`／`xlsx`）。該分佈已在一個乾淨的拋棄式部署上獨立複現過（[README.md §14.2](README.md)） | 全部停留在 `unknown` ⇒ fail-closed，**每一筆都打不出包**（打包的授權閘門看的就是這個欄位） |
-| `backfill-curation-tier.sql` | `0042` | **15 筆目錄列、0 筆 Fork**；腳本末尾的驗證查詢同時印出「被審的那一版是不是仍是最新版」 | 目錄全是 `已索引`，**首頁的「精選（N）」書架與 `?tier=curated` 都是空的**，`01` §8 的三層策略在畫面上不成立 |
+| `curate_seed.py` | `0076` | **15 筆全部回 `curated`**，每筆印出被審的版本；有 `skill_absent` 就是種入沒完成（只看目錄擁有者自己的 Skill，Fork 不在其中） | 目錄全是 `已索引`，**首頁的「精選（N）」書架與 `?tier=curated` 都是空的**，`01` §8 的三層策略在畫面上不成立 |
 | `backfill-category.sql` | `0053` | 目錄列 **文件 10／寫作 10／資料 25**（腳本末尾附驗證查詢；Fork 一併回填，總數因此 ≥ 45） | **首頁四個分類 chip 全是 `0`、`?category=` 篩不出任何東西**，而它們不會報錯——空目錄與沒回填長得一模一樣 |
 
 **兩支刻意不在這一批**：

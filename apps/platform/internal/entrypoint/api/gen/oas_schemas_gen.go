@@ -18954,6 +18954,214 @@ type SetSkillCategoryUnauthorized Error
 
 func (*SetSkillCategoryUnauthorized) setSkillCategoryRes() {}
 
+type SetSkillCurationTierBadRequest Error
+
+func (*SetSkillCurationTierBadRequest) setSkillCurationTierRes() {}
+
+type SetSkillCurationTierNotFound Error
+
+func (*SetSkillCurationTierNotFound) setSkillCurationTierRes() {}
+
+type SetSkillCurationTierOK struct {
+	SkillID uuid.UUID                  `json:"skill_id"`
+	Tier    SetSkillCurationTierOKTier `json:"tier"`
+	// The reviewed version; null when the tier is `indexed`.
+	CuratedVersionID NilUUID                            `json:"curated_version_id"`
+	PreviousTier     SetSkillCurationTierOKPreviousTier `json:"previous_tier"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *SetSkillCurationTierOK) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetTier returns the value of Tier.
+func (s *SetSkillCurationTierOK) GetTier() SetSkillCurationTierOKTier {
+	return s.Tier
+}
+
+// GetCuratedVersionID returns the value of CuratedVersionID.
+func (s *SetSkillCurationTierOK) GetCuratedVersionID() NilUUID {
+	return s.CuratedVersionID
+}
+
+// GetPreviousTier returns the value of PreviousTier.
+func (s *SetSkillCurationTierOK) GetPreviousTier() SetSkillCurationTierOKPreviousTier {
+	return s.PreviousTier
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *SetSkillCurationTierOK) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetTier sets the value of Tier.
+func (s *SetSkillCurationTierOK) SetTier(val SetSkillCurationTierOKTier) {
+	s.Tier = val
+}
+
+// SetCuratedVersionID sets the value of CuratedVersionID.
+func (s *SetSkillCurationTierOK) SetCuratedVersionID(val NilUUID) {
+	s.CuratedVersionID = val
+}
+
+// SetPreviousTier sets the value of PreviousTier.
+func (s *SetSkillCurationTierOK) SetPreviousTier(val SetSkillCurationTierOKPreviousTier) {
+	s.PreviousTier = val
+}
+
+func (*SetSkillCurationTierOK) setSkillCurationTierRes() {}
+
+type SetSkillCurationTierOKPreviousTier string
+
+const (
+	SetSkillCurationTierOKPreviousTierCurated SetSkillCurationTierOKPreviousTier = "curated"
+	SetSkillCurationTierOKPreviousTierIndexed SetSkillCurationTierOKPreviousTier = "indexed"
+)
+
+// AllValues returns all SetSkillCurationTierOKPreviousTier values.
+func (SetSkillCurationTierOKPreviousTier) AllValues() []SetSkillCurationTierOKPreviousTier {
+	return []SetSkillCurationTierOKPreviousTier{
+		SetSkillCurationTierOKPreviousTierCurated,
+		SetSkillCurationTierOKPreviousTierIndexed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SetSkillCurationTierOKPreviousTier) MarshalText() ([]byte, error) {
+	switch s {
+	case SetSkillCurationTierOKPreviousTierCurated:
+		return []byte(s), nil
+	case SetSkillCurationTierOKPreviousTierIndexed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetSkillCurationTierOKPreviousTier) UnmarshalText(data []byte) error {
+	switch SetSkillCurationTierOKPreviousTier(data) {
+	case SetSkillCurationTierOKPreviousTierCurated:
+		*s = SetSkillCurationTierOKPreviousTierCurated
+		return nil
+	case SetSkillCurationTierOKPreviousTierIndexed:
+		*s = SetSkillCurationTierOKPreviousTierIndexed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SetSkillCurationTierOKTier string
+
+const (
+	SetSkillCurationTierOKTierCurated SetSkillCurationTierOKTier = "curated"
+	SetSkillCurationTierOKTierIndexed SetSkillCurationTierOKTier = "indexed"
+)
+
+// AllValues returns all SetSkillCurationTierOKTier values.
+func (SetSkillCurationTierOKTier) AllValues() []SetSkillCurationTierOKTier {
+	return []SetSkillCurationTierOKTier{
+		SetSkillCurationTierOKTierCurated,
+		SetSkillCurationTierOKTierIndexed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SetSkillCurationTierOKTier) MarshalText() ([]byte, error) {
+	switch s {
+	case SetSkillCurationTierOKTierCurated:
+		return []byte(s), nil
+	case SetSkillCurationTierOKTierIndexed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetSkillCurationTierOKTier) UnmarshalText(data []byte) error {
+	switch SetSkillCurationTierOKTier(data) {
+	case SetSkillCurationTierOKTierCurated:
+		*s = SetSkillCurationTierOKTierCurated
+		return nil
+	case SetSkillCurationTierOKTierIndexed:
+		*s = SetSkillCurationTierOKTierIndexed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SetSkillCurationTierReq struct {
+	Value SetSkillCurationTierReqValue `json:"value"`
+	// Why, in the operator's own words. Required and not satisfiable with whitespace, same rule as
+	// `restriction`.
+	Note string `json:"note"`
+}
+
+// GetValue returns the value of Value.
+func (s *SetSkillCurationTierReq) GetValue() SetSkillCurationTierReqValue {
+	return s.Value
+}
+
+// GetNote returns the value of Note.
+func (s *SetSkillCurationTierReq) GetNote() string {
+	return s.Note
+}
+
+// SetValue sets the value of Value.
+func (s *SetSkillCurationTierReq) SetValue(val SetSkillCurationTierReqValue) {
+	s.Value = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetSkillCurationTierReq) SetNote(val string) {
+	s.Note = val
+}
+
+type SetSkillCurationTierReqValue string
+
+const (
+	SetSkillCurationTierReqValueCurated SetSkillCurationTierReqValue = "curated"
+	SetSkillCurationTierReqValueIndexed SetSkillCurationTierReqValue = "indexed"
+)
+
+// AllValues returns all SetSkillCurationTierReqValue values.
+func (SetSkillCurationTierReqValue) AllValues() []SetSkillCurationTierReqValue {
+	return []SetSkillCurationTierReqValue{
+		SetSkillCurationTierReqValueCurated,
+		SetSkillCurationTierReqValueIndexed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SetSkillCurationTierReqValue) MarshalText() ([]byte, error) {
+	switch s {
+	case SetSkillCurationTierReqValueCurated:
+		return []byte(s), nil
+	case SetSkillCurationTierReqValueIndexed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetSkillCurationTierReqValue) UnmarshalText(data []byte) error {
+	switch SetSkillCurationTierReqValue(data) {
+	case SetSkillCurationTierReqValueCurated:
+		*s = SetSkillCurationTierReqValueCurated
+		return nil
+	case SetSkillCurationTierReqValueIndexed:
+		*s = SetSkillCurationTierReqValueIndexed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type SetSkillRedistributionBadRequest Error
 
 func (*SetSkillRedistributionBadRequest) setSkillRedistributionRes() {}

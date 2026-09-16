@@ -157,6 +157,8 @@ export * from './SearchResultRisk';
 export * from './SearchSkills200Response';
 export * from './SetEvaluationFeedbackRequest';
 export * from './SetSkillCategoryRequest';
+export * from './SetSkillCurationTier200Response';
+export * from './SetSkillCurationTierRequest';
 export * from './SetSkillRedistribution200Response';
 export * from './SetSkillRedistribution200ResponseRedistribution';
 export * from './SetSkillRedistributionRequest';

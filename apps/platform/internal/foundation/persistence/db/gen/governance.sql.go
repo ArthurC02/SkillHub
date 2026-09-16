@@ -926,6 +926,22 @@ func (q *Queries) SetSkillAccessRestriction(ctx context.Context, arg SetSkillAcc
 	return err
 }
 
+const setSkillCuration = `-- name: SetSkillCuration :exec
+UPDATE skills SET curation_tier = $2, curated_version_id = $3, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+type SetSkillCurationParams struct {
+	ID               pgtype.UUID
+	CurationTier     string
+	CuratedVersionID pgtype.UUID
+}
+
+func (q *Queries) SetSkillCuration(ctx context.Context, arg SetSkillCurationParams) error {
+	_, err := q.db.Exec(ctx, setSkillCuration, arg.ID, arg.CurationTier, arg.CuratedVersionID)
+	return err
+}
+
 const setSkillRedistribution = `-- name: SetSkillRedistribution :exec
 UPDATE skills SET redistribution = $2, updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL

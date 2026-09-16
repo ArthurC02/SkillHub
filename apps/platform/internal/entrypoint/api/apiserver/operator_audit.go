@@ -19,6 +19,7 @@ var operatorActions = audit.PlatformFilter{
 		audit.ActionSkillRestrict,
 		audit.ActionSkillUnrestrict,
 		audit.ActionSkillRedistribution,
+		audit.ActionSkillCuration,
 		audit.ActionCreditGrant,
 		audit.ActionDispatchHalt,
 		audit.ActionDispatchResume,

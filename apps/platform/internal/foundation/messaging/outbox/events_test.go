@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	migrationPath = "../../../../../../db/migrations/0070_run_aggregate_events.sql"
+	migrationPath = "../../../../../../db/migrations/0076_skill_curation_events.sql"
 	cataloguePath = "../../../../../../contracts/events/domain-events.md"
 )
 

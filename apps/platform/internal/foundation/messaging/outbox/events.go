@@ -107,6 +107,7 @@ const (
 	SkillCreated                 = "skill.created"
 	SkillVersionAdded            = "skill.version_added"
 	SkillDescribed               = "skill.described"
+	SkillCurationSet             = "skill.curation_set"
 )
 
 const (
@@ -151,6 +152,7 @@ var EventTypes = []string{
 	SkillCreated,
 	SkillVersionAdded,
 	SkillDescribed,
+	SkillCurationSet,
 }
 
 func StatusEvent(status string) (string, error) {

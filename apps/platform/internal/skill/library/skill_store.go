@@ -58,7 +58,7 @@ func loadNewestVersion(ctx context.Context, q *gen.Queries, root *SkillRoot) err
 	if err != nil {
 		return err
 	}
-	root.newest.exists, root.newest.number = true, row.VersionNumber
+	root.newest.id, root.newest.exists, root.newest.number = row.ID, true, row.VersionNumber
 	if row.LicenseExpression != nil {
 		root.newest.license.Expression = *row.LicenseExpression
 	}
@@ -129,6 +129,10 @@ func writeSkillEvent(ctx context.Context, q *gen.Queries, root *SkillRoot, event
 	case RedistributionSet:
 		err = q.SetSkillRedistribution(ctx, gen.SetSkillRedistributionParams{
 			ID: root.row.ID, Redistribution: root.row.Redistribution,
+		})
+	case CurationSet:
+		err = q.SetSkillCuration(ctx, gen.SetSkillCurationParams{
+			ID: root.row.ID, CurationTier: root.row.CurationTier, CuratedVersionID: root.row.CuratedVersionID,
 		})
 	case SkillCategorized:
 		root.row, err = q.SetSkillCategory(ctx, gen.SetSkillCategoryParams{

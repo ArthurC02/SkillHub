@@ -55,6 +55,7 @@ queries:
   DeleteSkillSources: ingest
   LockSkillForOperatorWrite: registry
   SetSkillAccessRestriction: registry
+  SetSkillCuration: registry
   SetSkillRedistribution: registry
   SetSkillTakedown: registry
   ListSourcesToCheck: ingest
@@ -211,6 +212,7 @@ scope:
   ListRecentCreditEntries: user
   SetDispatchHaltClearRounds: user
   SetSkillAccessRestriction: user
+  SetSkillCuration: user
   SetSkillRedistribution: user
   SetSkillTakedown: user
   SumCostEventsByDay: user

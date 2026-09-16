@@ -97,6 +97,7 @@
 | `skill.access_restricted` | 營運者設下存取限制（`SetSkillAccessRestriction`） | `reason`（原因碼） | 空白原因被拒 |
 | `skill.access_restriction_lifted` | 營運者解除存取限制（同上，寫 NULL） | 空物件 | |
 | `skill.redistribution_set` | 營運者改再散布判定（`SetSkillRedistribution`） | `before`、`after` | 放行需要與最新版本記錄相符的授權佐證；`generated` 不能被改寫 |
+| `skill.curation_set` | 營運者設定精選層級（`SetSkillCuration`） | `before`、`after`、`version_id`（`indexed` 時為 null） | 精選綁定最新版本；只有目錄工作區的 Skill 能被精選；沒有版本時命令被拒 |
 | `skill.categorized` | 擁有者指定或清除分類（`SetSkillCategory`） | `category`、`category_source`（皆可為 null） | |
 | `skill.deleted` | 擁有者刪除（`SoftDeleteSkill`） | 空物件 | 版本快照照舊凍結 |
 | `skill.created` | 匯入、生成或 Fork 建立一個 Skill（`CreateSkill`） | `redistribution`、`forked_from_skill_id`、`forked_from_version_id`（不是 Fork 時為 null） | 同一工作區內名稱唯一由 unique index 守 |

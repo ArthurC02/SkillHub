@@ -25,6 +25,8 @@ const (
 	RefusedLicenseMismatch         Refusal = "license_mismatch"
 	RefusedGeneratedIsPermanent    Refusal = "generated_is_permanent"
 	RefusedGeneratedNameCollision  Refusal = "generated_name_collision"
+	RefusedUnknownCurationTier     Refusal = "unknown_curation_tier"
+	RefusedCurationOutsideCatalog  Refusal = "curation_outside_catalogue"
 )
 
 type LicenseClaim struct {
@@ -87,6 +89,12 @@ type RedistributionSet struct {
 	After  Redistribution `json:"after"`
 }
 
+type CurationSet struct {
+	Before    CurationTier `json:"before"`
+	After     CurationTier `json:"after"`
+	VersionID pgtype.UUID  `json:"version_id"`
+}
+
 type SkillCategorized struct {
 	Category *Category       `json:"category"`
 	Source   *CategorySource `json:"category_source"`
@@ -123,10 +131,12 @@ func (SkillTakenDown) eventType() string          { return outbox.SkillTakenDown
 func (AccessRestricted) eventType() string        { return outbox.SkillAccessRestricted }
 func (AccessRestrictionLifted) eventType() string { return outbox.SkillAccessRestrictionLifted }
 func (RedistributionSet) eventType() string       { return outbox.SkillRedistributionSet }
+func (CurationSet) eventType() string             { return outbox.SkillCurationSet }
 func (SkillCategorized) eventType() string        { return outbox.SkillCategorized }
 func (SkillDeleted) eventType() string            { return outbox.SkillDeleted }
 
 type newestVersion struct {
+	id      pgtype.UUID
 	exists  bool
 	number  int32
 	license LicenseClaim
@@ -261,6 +271,33 @@ func (s *SkillRoot) redistributionRefusal(to Redistribution, claim LicenseClaim)
 	}
 	if s.Redistribution() == RedistributionGenerated {
 		return Refused{Reason: RefusedGeneratedIsPermanent}, true
+	}
+	return Refused{}, false
+}
+
+func (s *SkillRoot) SetCuration(to CurationTier, inCatalogue bool) {
+	if refused, ok := s.curationRefusal(to, inCatalogue); ok {
+		s.record(refused)
+		return
+	}
+	before := CurationTier(s.row.CurationTier)
+	s.row.CurationTier, s.row.CuratedVersionID = string(to), pgtype.UUID{}
+	if to == CurationCurated {
+		s.row.CuratedVersionID = s.newest.id
+	}
+	s.record(CurationSet{Before: before, After: to, VersionID: s.row.CuratedVersionID})
+}
+
+func (s *SkillRoot) curationRefusal(to CurationTier, inCatalogue bool) (Refused, bool) {
+	switch {
+	case !slices.Contains(AllCurationTiers(), to):
+		return Refused{Reason: RefusedUnknownCurationTier}, true
+	case to == CurationIndexed:
+		return Refused{}, false
+	case !inCatalogue:
+		return Refused{Reason: RefusedCurationOutsideCatalog}, true
+	case !s.newest.exists:
+		return Refused{Reason: RefusedNoVersion}, true
 	}
 	return Refused{}, false
 }

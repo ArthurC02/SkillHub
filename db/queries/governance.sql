@@ -204,6 +204,10 @@ FOR UPDATE;
 UPDATE skills SET redistribution = $2, updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL;
 
+-- name: SetSkillCuration :exec
+UPDATE skills SET curation_tier = $2, curated_version_id = $3, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL;
+
 -- name: SetSkillAccessRestriction :exec
 UPDATE skills SET access_restriction = $2, updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL;

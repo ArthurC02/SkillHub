@@ -112,6 +112,7 @@ var operationRolesSessionCookie = map[string][]string{
 	SearchSkillsOperation:                      []string{},
 	SetEvaluationFeedbackOperation:             []string{},
 	SetSkillCategoryOperation:                  []string{},
+	SetSkillCurationTierOperation:              []string{},
 	SetSkillRedistributionOperation:            []string{},
 	SetSkillRestrictionOperation:               []string{},
 	StartRunOperation:                          []string{},

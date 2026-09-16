@@ -64,7 +64,7 @@ func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersion
 }
 
 const getNewestSkillVersion = `-- name: GetNewestSkillVersion :one
-SELECT version_number, license_expression, license_source
+SELECT id, version_number, license_expression, license_source
 FROM skill_versions
 WHERE skill_id = $1
 ORDER BY version_number DESC
@@ -72,6 +72,7 @@ LIMIT 1
 `
 
 type GetNewestSkillVersionRow struct {
+	ID                pgtype.UUID
 	VersionNumber     int32
 	LicenseExpression *string
 	LicenseSource     *string
@@ -80,7 +81,12 @@ type GetNewestSkillVersionRow struct {
 func (q *Queries) GetNewestSkillVersion(ctx context.Context, skillID pgtype.UUID) (GetNewestSkillVersionRow, error) {
 	row := q.db.QueryRow(ctx, getNewestSkillVersion, skillID)
 	var i GetNewestSkillVersionRow
-	err := row.Scan(&i.VersionNumber, &i.LicenseExpression, &i.LicenseSource)
+	err := row.Scan(
+		&i.ID,
+		&i.VersionNumber,
+		&i.LicenseExpression,
+		&i.LicenseSource,
+	)
 	return i, err
 }
 

@@ -280,6 +280,11 @@ var domainVocabularies = []domainVocabulary{
 			goListedConstEnum(
 				"apps/platform/internal/skill/discovery/tier.go", "AllCurationTiers",
 				"apps/platform/internal/skill/discovery/tier.go", "Tier"),
+			goConstEnum("apps/platform/internal/skill/library/curation.go", "CurationTier"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/library/curation.go", "AllCurationTiers",
+				"apps/platform/internal/skill/library/curation.go", "CurationTier"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SetSkillCurationTierReqValue"),
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "BrowseCatalogTier"),
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "PublicSearchSkillsTier"),
 		},

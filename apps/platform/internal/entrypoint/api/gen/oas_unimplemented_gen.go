@@ -1212,6 +1212,26 @@ func (UnimplementedHandler) SetSkillCategory(ctx context.Context, req *SetSkillC
 	return r, ht.ErrNotImplemented
 }
 
+// SetSkillCurationTier implements setSkillCurationTier operation.
+//
+// Operator only. `curated` records that the skill's newest version passed the human curation review;
+// `indexed` withdraws it, which is how a skill whose source changed in place is demoted.
+//
+// The review is bound to the version it read: curating stores the newest version, and the tier reads
+// `indexed` again as soon as a newer version arrives, without anyone calling this again.
+//
+// Only skills in a catalogue workspace can be curated. A review is of the catalogue's copy and does
+// not travel to forks or to skills users imported themselves. Withdrawing works on any skill.
+//
+// The column write, the audit event and the catalogue listing refresh share one transaction.
+// Idempotent: writing the tier a skill already has is a second audit event and no change to what
+// readers see.
+//
+// PUT /admin/skills/{id}/tier
+func (UnimplementedHandler) SetSkillCurationTier(ctx context.Context, req *SetSkillCurationTierReq, params SetSkillCurationTierParams) (r SetSkillCurationTierRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // SetSkillRedistribution implements setSkillRedistribution operation.
 //
 // Operator only. Sets the redistribution verdict on one skill and records who changed it and why.

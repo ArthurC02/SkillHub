@@ -107,6 +107,7 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("DELETE /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.ClearRestriction))
 
 	mux.HandleFunc("PUT /admin/skills/{id}/redistribution", auth.RequireOperator(d.Search.SetRedistribution))
+	mux.HandleFunc("PUT /admin/skills/{id}/tier", auth.RequireOperator(d.Search.SetCurationTier))
 
 	mux.HandleFunc("PUT /admin/skills/{id}/takedown", auth.RequireOperator(d.Search.Takedown))
 

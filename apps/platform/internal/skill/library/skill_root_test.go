@@ -139,6 +139,53 @@ func TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords(t *testing.T) 
 	}
 }
 
+func TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill(t *testing.T) {
+	newest := pgtype.UUID{Bytes: [16]byte{15: 7}, Valid: true}
+	versioned := newestVersion{id: newest, exists: true, number: 3}
+	for _, tc := range []struct {
+		name        string
+		from        gen.Skill
+		newest      newestVersion
+		to          CurationTier
+		inCatalogue bool
+		want        Event
+		wantRow     gen.Skill
+	}{
+		{"curating a catalogue skill binds its newest version",
+			gen.Skill{CurationTier: "indexed"}, versioned, CurationCurated, true,
+			CurationSet{Before: CurationIndexed, After: CurationCurated, VersionID: newest},
+			gen.Skill{CurationTier: "curated", CuratedVersionID: newest}},
+		{"a skill outside the catalogue cannot be curated",
+			gen.Skill{CurationTier: "indexed"}, versioned, CurationCurated, false,
+			Refused{Reason: RefusedCurationOutsideCatalog},
+			gen.Skill{CurationTier: "indexed"}},
+		{"a catalogue skill without a version has nothing to review",
+			gen.Skill{CurationTier: "indexed"}, newestVersion{}, CurationCurated, true,
+			Refused{Reason: RefusedNoVersion},
+			gen.Skill{CurationTier: "indexed"}},
+		{"withdrawing clears the reviewed version even outside the catalogue",
+			gen.Skill{CurationTier: "curated", CuratedVersionID: newest}, versioned, CurationIndexed, false,
+			CurationSet{Before: CurationCurated, After: CurationIndexed},
+			gen.Skill{CurationTier: "indexed"}},
+		{"a tier the column does not hold is refused",
+			gen.Skill{CurationTier: "indexed"}, versioned, CurationTier("external"), true,
+			Refused{Reason: RefusedUnknownCurationTier},
+			gen.Skill{CurationTier: "indexed"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &SkillRoot{row: tc.from, newest: tc.newest}
+
+			s.SetCuration(tc.to, tc.inCatalogue)
+
+			assertSkillEvents(t, s, tc.want)
+			if s.row.CurationTier != tc.wantRow.CurationTier || s.row.CuratedVersionID != tc.wantRow.CuratedVersionID {
+				t.Fatalf("row = %q/%v, want %q/%v", s.row.CurationTier, s.row.CuratedVersionID,
+					tc.wantRow.CurationTier, tc.wantRow.CuratedVersionID)
+			}
+		})
+	}
+}
+
 func TestTheOwnerCategorizesOrClearsTheCategory(t *testing.T) {
 	documents, owner := CategoryDocuments, CategorySourceOwner
 	s := &SkillRoot{}

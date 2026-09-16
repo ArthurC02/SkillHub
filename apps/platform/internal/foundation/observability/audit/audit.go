@@ -34,6 +34,7 @@ const (
 	ActionSkillUnrestrict = "skill.access_unrestrict"
 
 	ActionSkillRedistribution = "skill.redistribution_set"
+	ActionSkillCuration       = "skill.curation_set"
 
 	ActionOperatorRoster = "operator.roster"
 

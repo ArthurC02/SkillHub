@@ -419,6 +419,16 @@ import {
     SetSkillCategoryRequestToJSON,
 } from '../models/SetSkillCategoryRequest';
 import {
+    type SetSkillCurationTier200Response,
+    SetSkillCurationTier200ResponseFromJSON,
+    SetSkillCurationTier200ResponseToJSON,
+} from '../models/SetSkillCurationTier200Response';
+import {
+    type SetSkillCurationTierRequest,
+    SetSkillCurationTierRequestFromJSON,
+    SetSkillCurationTierRequestToJSON,
+} from '../models/SetSkillCurationTierRequest';
+import {
     type SetSkillRedistribution200Response,
     SetSkillRedistribution200ResponseFromJSON,
     SetSkillRedistribution200ResponseToJSON,
@@ -1208,6 +1218,17 @@ export interface SetSkillCategoryOperationRequest {
      * 
      */
     setSkillCategoryRequest: SetSkillCategoryRequest;
+}
+
+export interface SetSkillCurationTierOperationRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    setSkillCurationTierRequest: SetSkillCurationTierRequest;
 }
 
 export interface SetSkillRedistributionOperationRequest {
@@ -3303,6 +3324,32 @@ export interface DefaultApiInterface {
      * The owner says what their own skill is for (DISC-002 類別, 05 R-19)
      */
     setSkillCategory(requestParameters: SetSkillCategoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Skill>;
+
+    /**
+     * Creates request options for setSkillCurationTier without sending the request
+     * @param {string} id 
+     * @param {SetSkillCurationTierRequest} setSkillCurationTierRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setSkillCurationTierRequestOpts(requestParameters: SetSkillCurationTierOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. `curated` records that the skill\'s newest version passed the human curation review; `indexed` withdraws it, which is how a skill whose source changed in place is demoted.  The review is bound to the version it read: curating stores the newest version, and the tier reads `indexed` again as soon as a newer version arrives, without anyone calling this again.  Only skills in a catalogue workspace can be curated. A review is of the catalogue\'s copy and does not travel to forks or to skills users imported themselves. Withdrawing works on any skill.  The column write, the audit event and the catalogue listing refresh share one transaction. Idempotent: writing the tier a skill already has is a second audit event and no change to what readers see. 
+     * @summary Record or withdraw a curation review of a catalogue skill (CONTENT-001)
+     * @param {string} id 
+     * @param {SetSkillCurationTierRequest} setSkillCurationTierRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setSkillCurationTierRaw(requestParameters: SetSkillCurationTierOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetSkillCurationTier200Response>>;
+
+    /**
+     * Operator only. `curated` records that the skill\'s newest version passed the human curation review; `indexed` withdraws it, which is how a skill whose source changed in place is demoted.  The review is bound to the version it read: curating stores the newest version, and the tier reads `indexed` again as soon as a newer version arrives, without anyone calling this again.  Only skills in a catalogue workspace can be curated. A review is of the catalogue\'s copy and does not travel to forks or to skills users imported themselves. Withdrawing works on any skill.  The column write, the audit event and the catalogue listing refresh share one transaction. Idempotent: writing the tier a skill already has is a second audit event and no change to what readers see. 
+     * Record or withdraw a curation review of a catalogue skill (CONTENT-001)
+     */
+    setSkillCurationTier(requestParameters: SetSkillCurationTierOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetSkillCurationTier200Response>;
 
     /**
      * Creates request options for setSkillRedistribution without sending the request
@@ -7531,6 +7578,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setSkillCategory(requestParameters: SetSkillCategoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Skill> {
         const response = await this.setSkillCategoryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setSkillCurationTier without sending the request
+     */
+    async setSkillCurationTierRequestOpts(requestParameters: SetSkillCurationTierOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setSkillCurationTier().'
+            );
+        }
+
+        if (requestParameters['setSkillCurationTierRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setSkillCurationTierRequest',
+                'Required parameter "setSkillCurationTierRequest" was null or undefined when calling setSkillCurationTier().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/skills/{id}/tier`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetSkillCurationTierRequestToJSON(requestParameters['setSkillCurationTierRequest']),
+        };
+    }
+
+    /**
+     * Operator only. `curated` records that the skill\'s newest version passed the human curation review; `indexed` withdraws it, which is how a skill whose source changed in place is demoted.  The review is bound to the version it read: curating stores the newest version, and the tier reads `indexed` again as soon as a newer version arrives, without anyone calling this again.  Only skills in a catalogue workspace can be curated. A review is of the catalogue\'s copy and does not travel to forks or to skills users imported themselves. Withdrawing works on any skill.  The column write, the audit event and the catalogue listing refresh share one transaction. Idempotent: writing the tier a skill already has is a second audit event and no change to what readers see. 
+     * Record or withdraw a curation review of a catalogue skill (CONTENT-001)
+     */
+    async setSkillCurationTierRaw(requestParameters: SetSkillCurationTierOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetSkillCurationTier200Response>> {
+        const requestOptions = await this.setSkillCurationTierRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SetSkillCurationTier200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. `curated` records that the skill\'s newest version passed the human curation review; `indexed` withdraws it, which is how a skill whose source changed in place is demoted.  The review is bound to the version it read: curating stores the newest version, and the tier reads `indexed` again as soon as a newer version arrives, without anyone calling this again.  Only skills in a catalogue workspace can be curated. A review is of the catalogue\'s copy and does not travel to forks or to skills users imported themselves. Withdrawing works on any skill.  The column write, the audit event and the catalogue listing refresh share one transaction. Idempotent: writing the tier a skill already has is a second audit event and no change to what readers see. 
+     * Record or withdraw a curation review of a catalogue skill (CONTENT-001)
+     */
+    async setSkillCurationTier(requestParameters: SetSkillCurationTierOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetSkillCurationTier200Response> {
+        const response = await this.setSkillCurationTierRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
