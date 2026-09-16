@@ -30,7 +30,7 @@ export interface SetSkillCurationTier200Response {
     /**
      * The reviewed version; null when the tier is `indexed`.
      */
-    curatedVersionId: string;
+    curatedVersionId: string | null;
     /**
      * 
      */

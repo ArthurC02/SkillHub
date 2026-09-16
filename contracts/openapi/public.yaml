@@ -2313,9 +2313,8 @@ paths:
                     type: string
                     enum: [curated, indexed]
                   curated_version_id:
-                    type: string
+                    type: [string, "null"]
                     format: uuid
-                    nullable: true
                     description: The reviewed version; null when the tier is `indexed`.
                   previous_tier:
                     type: string
