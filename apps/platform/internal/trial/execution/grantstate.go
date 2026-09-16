@@ -57,6 +57,8 @@ func CanTransitionObjectGrant(from, to ObjectGrantState) bool {
 
 const purgeClockTolerance = time.Minute
 
+var unissuedGrantsFence = pgtype.Timestamptz{InfinityModifier: pgtype.Infinity, Valid: true}
+
 func objectGrantsExpiredOnArrival() time.Time {
 	return time.Now().UTC().Add(-2 * purgeClockTolerance)
 }

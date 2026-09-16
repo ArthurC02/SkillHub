@@ -71,7 +71,9 @@ func (s *Service) writeRunEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, 
 		}
 		return s.writeTransition(ctx, tx, q, r, event, actor)
 	case CancelRequested:
-		row, err := q.RequestRunCancel(ctx, gen.RequestRunCancelParams{ID: r.row.ID, WorkspaceID: r.row.WorkspaceID})
+		row, err := q.RequestRunCancel(ctx, gen.RequestRunCancelParams{
+			CancelRequestedAt: r.row.CancelRequestedAt, ID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Status: r.row.Status,
+		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrRunFinished
 		}
@@ -82,7 +84,8 @@ func (s *Service) writeRunEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, 
 		return publishRunEvent(ctx, tx, r, event, pgtype.UUID{})
 	case ProviderAssigned:
 		row, err := q.SetRunProvider(ctx, gen.SetRunProviderParams{
-			ID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Provider: r.row.Provider, RuntimeSnapshot: r.row.RuntimeSnapshot,
+			Provider: r.row.Provider, RuntimeSnapshot: r.row.RuntimeSnapshot,
+			ID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Status: r.row.Status,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrRunFinished
@@ -93,20 +96,23 @@ func (s *Service) writeRunEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, 
 		r.row = row
 		return publishRunEvent(ctx, tx, r, event, pgtype.UUID{})
 	case AttemptStarted:
+		started := r.attempts[len(r.attempts)-1]
 		attempt, err := q.CreateRunAttempt(ctx, gen.CreateRunAttemptParams{
-			ID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Provider: event.Provider,
+			RunID: started.RunID, WorkspaceID: started.WorkspaceID, AttemptNumber: started.AttemptNumber,
+			Provider: started.Provider, ObjectGrantsState: started.ObjectGrantsState,
+			ObjectGrantsExpireAt: started.ObjectGrantsExpireAt,
 		})
 		if err != nil {
 			return err
 		}
 		r.attempts[len(r.attempts)-1] = attempt
-		event.AttemptID, event.AttemptNumber = attempt.ID, attempt.AttemptNumber
+		event.AttemptID = attempt.ID
 		r.events[i] = event
 		return publishRunEvent(ctx, tx, r, event, attempt.ID)
 	case AttemptDispatched:
 		a := r.attempt(event.AttemptID)
 		updated, err := q.SetAttemptProviderRunID(ctx, gen.SetAttemptProviderRunIDParams{
-			ID: a.ID, WorkspaceID: a.WorkspaceID, ProviderRunID: a.ProviderRunID,
+			ProviderRunID: a.ProviderRunID, StartedAt: a.StartedAt, ID: a.ID, WorkspaceID: a.WorkspaceID,
 		})
 		if err != nil {
 			return err
@@ -116,7 +122,9 @@ func (s *Service) writeRunEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, 
 	case AttemptFinished:
 		a := r.attempt(event.AttemptID)
 		updated, err := q.FinishRunAttempt(ctx, gen.FinishRunAttemptParams{
-			ID: a.ID, WorkspaceID: a.WorkspaceID, ErrorClass: a.ErrorClass, ErrorMessage: a.ErrorMessage,
+			FinishedAt: a.FinishedAt, ErrorClass: a.ErrorClass, ErrorMessage: a.ErrorMessage,
+			ObjectGrantsState: a.ObjectGrantsState, ObjectGrantsExpireAt: a.ObjectGrantsExpireAt,
+			ID: a.ID, WorkspaceID: a.WorkspaceID,
 		})
 		if err != nil {
 			return err
@@ -125,14 +133,8 @@ func (s *Service) writeRunEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, 
 		return publishRunEvent(ctx, tx, r, event, a.ID)
 	case ObjectGrantsRecorded:
 		a := r.attempt(event.AttemptID)
-		updated, err := q.SetRunAttemptObjectGrantsExpiry(ctx, gen.SetRunAttemptObjectGrantsExpiryParams{
-			ExpiresAt: a.ObjectGrantsExpireAt, ID: a.ID, WorkspaceID: a.WorkspaceID,
-		})
-		if err != nil {
+		if err := writeObjectGrants(ctx, q, *a); err != nil {
 			return err
-		}
-		if updated != 1 {
-			return errors.New("run: the attempt whose object grant expiry was being recorded is not in this workspace")
 		}
 		return publishRunEvent(ctx, tx, r, event, a.ID)
 	}
@@ -158,9 +160,9 @@ func (s *Service) writeCreated(ctx context.Context, tx pgx.Tx, q *gen.Queries, r
 func (s *Service) writeTransition(ctx context.Context, tx pgx.Tx, q *gen.Queries, r *Run, event StatusChanged, actor pgtype.UUID) error {
 	from := gen.RunStatus(event.FromStatus)
 	row, err := q.TransitionRun(ctx, gen.TransitionRunParams{
-		RunID: r.row.ID, WorkspaceID: r.row.WorkspaceID,
-		FromStatus: from, ToStatus: gen.RunStatus(event.ToStatus),
-		Reason: nonEmpty(event.Reason), FailureClass: nonEmpty(string(event.failure)),
+		ToStatus: r.row.Status, Reason: nonEmpty(event.Reason), FailureClass: r.row.FailureClass,
+		StartedAt: r.row.StartedAt, FinishedAt: r.row.FinishedAt,
+		RunID: r.row.ID, WorkspaceID: r.row.WorkspaceID, FromStatus: from,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrConflict
@@ -181,10 +183,10 @@ func (s *Service) writeTransition(ctx context.Context, tx pgx.Tx, q *gen.Queries
 	if !IsTerminal(row.Status) {
 		return nil
 	}
-	if _, err := q.CloseUnissuedRunAttemptGrants(ctx, gen.CloseUnissuedRunAttemptGrantsParams{
-		RunID: row.ID, WorkspaceID: row.WorkspaceID,
-	}); err != nil {
-		return err
+	for _, id := range event.closedGrants {
+		if err := writeObjectGrants(ctx, q, *r.attempt(id)); err != nil {
+			return err
+		}
 	}
 	if s.Queue == nil {
 		return nil
@@ -193,6 +195,20 @@ func (s *Service) writeTransition(ctx context.Context, tx pgx.Tx, q *gen.Queries
 		RunID: pgconv.UUIDString(row.ID), WorkspaceID: pgconv.UUIDString(row.WorkspaceID),
 	}, cleanupInsertOpts())
 	return err
+}
+
+func writeObjectGrants(ctx context.Context, q *gen.Queries, a gen.RunAttempt) error {
+	updated, err := q.SetRunAttemptObjectGrants(ctx, gen.SetRunAttemptObjectGrantsParams{
+		ObjectGrantsState: a.ObjectGrantsState, ObjectGrantsExpireAt: a.ObjectGrantsExpireAt,
+		ID: a.ID, WorkspaceID: a.WorkspaceID,
+	})
+	if err != nil {
+		return err
+	}
+	if updated != 1 {
+		return errors.New("run: the attempt whose object grants were being written is not in this workspace")
+	}
+	return nil
 }
 
 func publishRunEvent(ctx context.Context, tx pgx.Tx, r *Run, event Event, causation pgtype.UUID) error {

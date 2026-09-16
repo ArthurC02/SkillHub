@@ -144,8 +144,7 @@ queries:
   InsertRunStatusTransition: run
   ListRunStatusTransitions: run
   CreateRunAttempt: run
-  SetRunAttemptObjectGrantsExpiry: run
-  CloseUnissuedRunAttemptGrants: run
+  SetRunAttemptObjectGrants: run
   ListRunArtifactUploadIntents: run
   MarkRunArtifactUploadIntentPurged: run
   DeleteRunArtifactUploadIntentByObjectKey: run

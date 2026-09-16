@@ -51,8 +51,9 @@ func (r Refused) err() error {
 
 type StatusChanged struct {
 	outbox.RunStatusChanged
-	attemptID pgtype.UUID
-	failure   FailureClass
+	attemptID    pgtype.UUID
+	failure      FailureClass
+	closedGrants []pgtype.UUID
 }
 
 func (e StatusChanged) eventType() string {
@@ -158,15 +159,22 @@ func (r *Run) Transition(to gen.RunStatus, reason string, failure FailureClass, 
 		class := string(failure)
 		r.row.FailureClass = &class
 	}
-	if IsTerminal(to) {
-		for i := range r.attempts {
-			closeUnissuedGrants(&r.attempts[i])
-		}
-	}
-	r.record(StatusChanged{
+	changed := StatusChanged{
 		RunStatusChanged: outbox.RunStatusChanged{ToStatus: string(to), FromStatus: string(from), Reason: reason},
 		attemptID:        attemptID, failure: failure,
-	})
+	}
+	if to == gen.RunStatusRunning && !r.row.StartedAt.Valid {
+		r.row.StartedAt = stampNow()
+	}
+	if IsTerminal(to) {
+		r.row.FinishedAt = stampNow()
+		for i := range r.attempts {
+			if closeUnissuedGrants(&r.attempts[i]) {
+				changed.closedGrants = append(changed.closedGrants, r.attempts[i].ID)
+			}
+		}
+	}
+	r.record(changed)
 }
 
 func (r *Run) RequestCancel() {
@@ -174,7 +182,7 @@ func (r *Run) RequestCancel() {
 	case IsTerminal(r.row.Status):
 		r.refuse(RefusedFinished)
 	case !r.row.CancelRequestedAt.Valid:
-		r.row.CancelRequestedAt = pgtype.Timestamptz{Valid: true}
+		r.row.CancelRequestedAt = stampNow()
 		r.record(CancelRequested{})
 	}
 }
@@ -194,11 +202,12 @@ func (r *Run) StartAttempt(provider string) {
 		r.refuse(RefusedFinished)
 		return
 	}
-	r.attempts = append(r.attempts, gen.RunAttempt{
-		RunID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Provider: provider,
-		ObjectGrantsState: string(ObjectGrantStateUnissued),
-	})
-	r.record(AttemptStarted{Provider: provider})
+	attempt := gen.RunAttempt{
+		RunID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Provider: provider, AttemptNumber: r.nextAttemptNumber(),
+		ObjectGrantsState: string(ObjectGrantStateUnissued), ObjectGrantsExpireAt: unissuedGrantsFence,
+	}
+	r.attempts = append(r.attempts, attempt)
+	r.record(AttemptStarted{AttemptNumber: attempt.AttemptNumber, Provider: provider})
 }
 
 func (r *Run) RecordDispatch(attemptID pgtype.UUID, providerRunID string) {
@@ -208,6 +217,9 @@ func (r *Run) RecordDispatch(attemptID pgtype.UUID, providerRunID string) {
 		return
 	}
 	a.ProviderRunID = &providerRunID
+	if !a.StartedAt.Valid {
+		a.StartedAt = stampNow()
+	}
 	r.record(AttemptDispatched{AttemptID: attemptID})
 }
 
@@ -219,7 +231,7 @@ func (r *Run) FinishAttempt(attemptID pgtype.UUID, errorClass, message string) {
 	case a.FinishedAt.Valid:
 		r.refuse(RefusedAttemptFinished)
 	default:
-		a.FinishedAt = pgtype.Timestamptz{Valid: true}
+		a.FinishedAt = stampNow()
 		a.ErrorClass, a.ErrorMessage = nonEmpty(errorClass), nonEmpty(message)
 		closeUnissuedGrants(a)
 		r.record(AttemptFinished{AttemptID: attemptID, ErrorClass: a.ErrorClass})
@@ -249,11 +261,24 @@ func (r *Run) attempt(id pgtype.UUID) *gen.RunAttempt {
 	return nil
 }
 
-func closeUnissuedGrants(a *gen.RunAttempt) {
-	if ObjectGrantState(a.ObjectGrantsState) == ObjectGrantStateUnissued {
-		a.ObjectGrantsState = string(ObjectGrantStateClosed)
+func (r *Run) nextAttemptNumber() int32 {
+	var latest int32
+	for _, a := range r.attempts {
+		latest = max(latest, a.AttemptNumber)
 	}
+	return latest + 1
 }
+
+func closeUnissuedGrants(a *gen.RunAttempt) bool {
+	if ObjectGrantState(a.ObjectGrantsState) != ObjectGrantStateUnissued {
+		return false
+	}
+	a.ObjectGrantsState = string(ObjectGrantStateClosed)
+	a.ObjectGrantsExpireAt = pgtype.Timestamptz{Time: objectGrantsExpiredOnArrival(), Valid: true}
+	return true
+}
+
+func stampNow() pgtype.Timestamptz { return pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true} }
 
 func nonEmpty(s string) *string {
 	if s == "" {
@@ -283,6 +308,9 @@ func cloneAttempt(attempt gen.RunAttempt) gen.RunAttempt {
 
 func cloneEvent(event Event) Event {
 	switch event := event.(type) {
+	case StatusChanged:
+		event.closedGrants = slices.Clone(event.closedGrants)
+		return event
 	case AttemptFinished:
 		event.ErrorClass = pgconv.Clone(event.ErrorClass)
 		return event

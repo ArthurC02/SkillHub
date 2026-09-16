@@ -47,27 +47,21 @@ WHERE id = @run_id AND workspace_id = @workspace_id;
 UPDATE runs SET
     status = @to_status,
     status_reason = @reason,
-    failure_class = coalesce(sqlc.narg(failure_class), failure_class),
-    started_at = CASE
-        WHEN @to_status::run_status = 'running' AND started_at IS NULL THEN now()
-        ELSE started_at END,
-    finished_at = CASE
-        WHEN @to_status::run_status IN ('succeeded', 'failed', 'cancelled', 'timed_out') THEN now()
-        ELSE finished_at END
+    failure_class = @failure_class,
+    started_at = @started_at,
+    finished_at = @finished_at
 WHERE id = @run_id AND workspace_id = @workspace_id AND status = @from_status
 RETURNING *;
 
 -- name: RequestRunCancel :one
 UPDATE runs
-SET cancel_requested_at = coalesce(cancel_requested_at, now())
-WHERE id = $1 AND workspace_id = $2
-  AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+SET cancel_requested_at = @cancel_requested_at
+WHERE id = @id AND workspace_id = @workspace_id AND status = @status
 RETURNING *;
 
 -- name: SetRunProvider :one
-UPDATE runs SET provider = $3, runtime_snapshot = $4
-WHERE id = $1 AND workspace_id = $2
-  AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+UPDATE runs SET provider = @provider, runtime_snapshot = @runtime_snapshot
+WHERE id = @id AND workspace_id = @workspace_id AND status = @status
 RETURNING *;
 
 -- name: ListActiveRuns :many
@@ -117,32 +111,23 @@ WHERE t.run_id = $1 AND r.workspace_id = $2
 ORDER BY t.occurred_at, t.id;
 
 -- name: CreateRunAttempt :one
-INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider, object_grants_state)
-SELECT r.id, r.workspace_id,
-       (SELECT coalesce(max(attempt_number), 0) + 1 FROM run_attempts WHERE run_id = r.id),
-       $3, 'unissued'
-FROM runs r
-WHERE r.id = $1 AND r.workspace_id = $2
+INSERT INTO run_attempts (
+    run_id, workspace_id, attempt_number, provider, object_grants_state, object_grants_expire_at
+) VALUES (
+    @run_id, @workspace_id, @attempt_number, @provider, @object_grants_state, @object_grants_expire_at
+)
 RETURNING *;
 
 -- name: SetAttemptProviderRunID :one
-UPDATE run_attempts SET provider_run_id = $3, started_at = coalesce(started_at, now())
-WHERE id = $1 AND workspace_id = $2
+UPDATE run_attempts SET provider_run_id = @provider_run_id, started_at = @started_at
+WHERE id = @id AND workspace_id = @workspace_id
 RETURNING *;
 
 -- name: FinishRunAttempt :one
 UPDATE run_attempts
-SET finished_at = now(), error_class = $3, error_message = $4,
-    object_grants_expire_at = CASE
-        WHEN object_grants_state = 'unissued'
-            THEN now() - interval '2 minutes'
-        ELSE object_grants_expire_at
-    END,
-    object_grants_state = CASE
-        WHEN object_grants_state = 'unissued' THEN 'closed'
-        ELSE object_grants_state
-    END
-WHERE id = $1 AND workspace_id = $2
+SET finished_at = @finished_at, error_class = @error_class, error_message = @error_message,
+    object_grants_state = @object_grants_state, object_grants_expire_at = @object_grants_expire_at
+WHERE id = @id AND workspace_id = @workspace_id
 RETURNING *;
 
 -- name: GetRunAttemptForReconcile :one
@@ -277,18 +262,10 @@ SELECT NOT EXISTS (
            ))
 );
 
--- name: SetRunAttemptObjectGrantsExpiry :execrows
+-- name: SetRunAttemptObjectGrants :execrows
 UPDATE run_attempts
-SET object_grants_expire_at = @expires_at::timestamptz,
-    object_grants_state = 'recorded'
+SET object_grants_state = @object_grants_state, object_grants_expire_at = @object_grants_expire_at
 WHERE id = @id AND workspace_id = @workspace_id;
-
--- name: CloseUnissuedRunAttemptGrants :execrows
-UPDATE run_attempts
-SET object_grants_expire_at = now() - interval '2 minutes',
-    object_grants_state = 'closed'
-WHERE run_id = @run_id AND workspace_id = @workspace_id
-  AND object_grants_state = 'unissued';
 
 -- name: ListRunArtifactUploadIntents :many
 WITH candidates AS (

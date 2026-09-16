@@ -199,6 +199,13 @@ func TestEndingARunClosesOnlyGrantsThatWereNeverIssued(t *testing.T) {
 			if !slices.Equal(got, want) {
 				t.Fatalf("grant states after %s = %v, want %v", to, got, want)
 			}
+			assertExpiredBeyondClockTolerance(t, r.Attempt(firstAttempt))
+			if expiry := r.Attempt(secondAttempt).ObjectGrantsExpireAt; expiry.Valid {
+				t.Fatalf("issued grants expiry = %v, want it untouched", expiry.Time)
+			}
+			if closed := r.Events()[0].(StatusChanged).closedGrants; !slices.Equal(closed, []pgtype.UUID{firstAttempt}) {
+				t.Fatalf("closed grants = %v, want only the attempt that never issued them", closed)
+			}
 		})
 	}
 	t.Run("a run still in progress keeps its unissued grants", func(t *testing.T) {
@@ -210,6 +217,52 @@ func TestEndingARunClosesOnlyGrantsThatWereNeverIssued(t *testing.T) {
 			t.Fatalf("grant state = %q, want unissued", got)
 		}
 	})
+}
+
+func assertExpiredBeyondClockTolerance(t *testing.T, a gen.RunAttempt) {
+	t.Helper()
+	if expiry := a.ObjectGrantsExpireAt; !expiry.Valid || !expiry.Time.Before(time.Now().Add(-purgeClockTolerance)) {
+		t.Fatalf("closed grants expire at %v, want already past the purge clock tolerance", expiry.Time)
+	}
+}
+
+func TestARunClockStartsWhenItFirstRunsAndStopsWhenItEnds(t *testing.T) {
+	earlier := pgtype.Timestamptz{Time: time.Unix(100, 0), Valid: true}
+	cases := []struct {
+		name                     string
+		from, to                 gen.RunStatus
+		startedBefore            pgtype.Timestamptz
+		wantStarted, wantStopped bool
+	}{
+		{"a run that begins running", gen.RunStatusPreparing, gen.RunStatusRunning, pgtype.Timestamptz{}, true, false},
+		{"a run that already had a start", gen.RunStatusPreparing, gen.RunStatusRunning, earlier, true, false},
+		{"a run moving before it runs", gen.RunStatusQueued, gen.RunStatusProvisioning, pgtype.Timestamptz{}, false, false},
+		{"a run that ends", gen.RunStatusRunning, gen.RunStatusFailed, earlier, true, true},
+		{"a run that ends before it ran", gen.RunStatusQueued, gen.RunStatusCancelled, pgtype.Timestamptz{}, false, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := runIn(tc.from)
+			r.row.StartedAt = tc.startedBefore
+			before := time.Now()
+
+			r.Transition(tc.to, "why", "", pgtype.UUID{})
+
+			row := r.Row()
+			if row.StartedAt.Valid != tc.wantStarted || row.FinishedAt.Valid != tc.wantStopped {
+				t.Fatalf("started %v finished %v, want %v %v", row.StartedAt.Valid, row.FinishedAt.Valid, tc.wantStarted, tc.wantStopped)
+			}
+			if tc.startedBefore.Valid && row.StartedAt != tc.startedBefore {
+				t.Fatalf("start = %v, want the first start %v kept", row.StartedAt.Time, tc.startedBefore.Time)
+			}
+			if !tc.startedBefore.Valid && tc.wantStarted && row.StartedAt.Time.Before(before) {
+				t.Fatalf("start = %v, want the moment it began running", row.StartedAt.Time)
+			}
+			if tc.wantStopped && row.FinishedAt.Time.Before(before) {
+				t.Fatalf("finish = %v, want the moment it ended", row.FinishedAt.Time)
+			}
+		})
+	}
 }
 
 func TestCancelIsRecordedOnceAndNeverOnAFinishedRun(t *testing.T) {
@@ -268,9 +321,10 @@ func TestAProviderIsAssignedOnceAndNeverToAFinishedRun(t *testing.T) {
 func TestAnAttemptStartsOnlyOnARunStillInProgress(t *testing.T) {
 	r := runIn(gen.RunStatusProvisioning)
 	r.StartAttempt("fake_sandbox")
-	assertRunEvents(t, r, AttemptStarted{Provider: "fake_sandbox"})
-	if a := r.LatestAttempt(); a.Provider != "fake_sandbox" || a.ObjectGrantsState != string(ObjectGrantStateUnissued) {
-		t.Fatalf("the new attempt = %+v, want the provider with unissued grants", a)
+	assertRunEvents(t, r, AttemptStarted{AttemptNumber: 1, Provider: "fake_sandbox"})
+	if a := r.LatestAttempt(); a.Provider != "fake_sandbox" || a.ObjectGrantsState != string(ObjectGrantStateUnissued) ||
+		a.ObjectGrantsExpireAt.InfinityModifier != pgtype.Infinity || !a.ObjectGrantsExpireAt.Valid {
+		t.Fatalf("the new attempt = %+v, want the provider with unissued grants that fence purge indefinitely", a)
 	}
 
 	finished := runIn(gen.RunStatusTimedOut)
@@ -281,12 +335,33 @@ func TestAnAttemptStartsOnlyOnARunStillInProgress(t *testing.T) {
 	}
 }
 
+func TestARetryTakesTheNumberAfterTheHighestAttempt(t *testing.T) {
+	first, third := attemptWith(firstAttempt, ObjectGrantStateClosed, true), attemptWith(thirdAttempt, ObjectGrantStateClosed, true)
+	first.AttemptNumber, third.AttemptNumber = 1, 3
+	r := runIn(gen.RunStatusProvisioning, third, first)
+
+	r.StartAttempt("fake_sandbox")
+
+	assertRunEvents(t, r, AttemptStarted{AttemptNumber: 4, Provider: "fake_sandbox"})
+}
+
 func TestADispatchIsRecordedOnlyOnItsOwnAttempt(t *testing.T) {
 	r := runIn(gen.RunStatusProvisioning, attemptWith(firstAttempt, ObjectGrantStateRecorded, false))
 	r.RecordDispatch(firstAttempt, "sandbox-1")
 	assertRunEvents(t, r, AttemptDispatched{AttemptID: firstAttempt})
 	if handle := r.Attempt(firstAttempt).ProviderRunID; handle == nil || *handle != "sandbox-1" {
 		t.Fatalf("provider handle = %v, want sandbox-1", handle)
+	}
+	if !r.Attempt(firstAttempt).StartedAt.Valid {
+		t.Fatal("the first dispatch did not start the attempt's clock")
+	}
+
+	earlier := pgtype.Timestamptz{Time: time.Unix(100, 0), Valid: true}
+	redispatched := runIn(gen.RunStatusProvisioning, attemptWith(firstAttempt, ObjectGrantStateRecorded, false))
+	redispatched.attempts[0].StartedAt = earlier
+	redispatched.RecordDispatch(firstAttempt, "sandbox-2")
+	if got := redispatched.Attempt(firstAttempt).StartedAt; got != earlier {
+		t.Fatalf("attempt start after a second dispatch = %v, want the first start kept", got.Time)
 	}
 
 	stranger := runIn(gen.RunStatusProvisioning, attemptWith(firstAttempt, ObjectGrantStateRecorded, false))
@@ -329,6 +404,9 @@ func TestAnAttemptFinishesOnceAndClosesGrantsItNeverIssued(t *testing.T) {
 			if ObjectGrantState(a.ObjectGrantsState) != tc.grantsAfter || a.FinishedAt.Valid != tc.finishedAfter {
 				t.Fatalf("attempt = grants %q finished %v, want %q %v",
 					a.ObjectGrantsState, a.FinishedAt.Valid, tc.grantsAfter, tc.finishedAfter)
+			}
+			if tc.held.ObjectGrantsState == string(ObjectGrantStateUnissued) && tc.grantsAfter == ObjectGrantStateClosed {
+				assertExpiredBeyondClockTolerance(t, a)
 			}
 		})
 	}

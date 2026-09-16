@@ -34,27 +34,6 @@ func (q *Queries) AccountPurgeReady(ctx context.Context, workspaceID pgtype.UUID
 	return not_exists, err
 }
 
-const closeUnissuedRunAttemptGrants = `-- name: CloseUnissuedRunAttemptGrants :execrows
-UPDATE run_attempts
-SET object_grants_expire_at = now() - interval '2 minutes',
-    object_grants_state = 'closed'
-WHERE run_id = $1 AND workspace_id = $2
-  AND object_grants_state = 'unissued'
-`
-
-type CloseUnissuedRunAttemptGrantsParams struct {
-	RunID       pgtype.UUID
-	WorkspaceID pgtype.UUID
-}
-
-func (q *Queries) CloseUnissuedRunAttemptGrants(ctx context.Context, arg CloseUnissuedRunAttemptGrantsParams) (int64, error) {
-	result, err := q.db.Exec(ctx, closeUnissuedRunAttemptGrants, arg.RunID, arg.WorkspaceID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const countActiveRuns = `-- name: CountActiveRuns :one
 SELECT count(*) FROM runs
 WHERE workspace_id = $1
@@ -218,23 +197,32 @@ func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) (Run, erro
 }
 
 const createRunAttempt = `-- name: CreateRunAttempt :one
-INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider, object_grants_state)
-SELECT r.id, r.workspace_id,
-       (SELECT coalesce(max(attempt_number), 0) + 1 FROM run_attempts WHERE run_id = r.id),
-       $3, 'unissued'
-FROM runs r
-WHERE r.id = $1 AND r.workspace_id = $2
+INSERT INTO run_attempts (
+    run_id, workspace_id, attempt_number, provider, object_grants_state, object_grants_expire_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6
+)
 RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state
 `
 
 type CreateRunAttemptParams struct {
-	ID          pgtype.UUID
-	WorkspaceID pgtype.UUID
-	Provider    string
+	RunID                pgtype.UUID
+	WorkspaceID          pgtype.UUID
+	AttemptNumber        int32
+	Provider             string
+	ObjectGrantsState    string
+	ObjectGrantsExpireAt pgtype.Timestamptz
 }
 
 func (q *Queries) CreateRunAttempt(ctx context.Context, arg CreateRunAttemptParams) (RunAttempt, error) {
-	row := q.db.QueryRow(ctx, createRunAttempt, arg.ID, arg.WorkspaceID, arg.Provider)
+	row := q.db.QueryRow(ctx, createRunAttempt,
+		arg.RunID,
+		arg.WorkspaceID,
+		arg.AttemptNumber,
+		arg.Provider,
+		arg.ObjectGrantsState,
+		arg.ObjectGrantsExpireAt,
+	)
 	var i RunAttempt
 	err := row.Scan(
 		&i.ID,
@@ -280,33 +268,31 @@ func (q *Queries) DeleteRunArtifactUploadIntentByObjectKey(ctx context.Context, 
 
 const finishRunAttempt = `-- name: FinishRunAttempt :one
 UPDATE run_attempts
-SET finished_at = now(), error_class = $3, error_message = $4,
-    object_grants_expire_at = CASE
-        WHEN object_grants_state = 'unissued'
-            THEN now() - interval '2 minutes'
-        ELSE object_grants_expire_at
-    END,
-    object_grants_state = CASE
-        WHEN object_grants_state = 'unissued' THEN 'closed'
-        ELSE object_grants_state
-    END
-WHERE id = $1 AND workspace_id = $2
+SET finished_at = $1, error_class = $2, error_message = $3,
+    object_grants_state = $4, object_grants_expire_at = $5
+WHERE id = $6 AND workspace_id = $7
 RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state
 `
 
 type FinishRunAttemptParams struct {
-	ID           pgtype.UUID
-	WorkspaceID  pgtype.UUID
-	ErrorClass   *string
-	ErrorMessage *string
+	FinishedAt           pgtype.Timestamptz
+	ErrorClass           *string
+	ErrorMessage         *string
+	ObjectGrantsState    string
+	ObjectGrantsExpireAt pgtype.Timestamptz
+	ID                   pgtype.UUID
+	WorkspaceID          pgtype.UUID
 }
 
 func (q *Queries) FinishRunAttempt(ctx context.Context, arg FinishRunAttemptParams) (RunAttempt, error) {
 	row := q.db.QueryRow(ctx, finishRunAttempt,
-		arg.ID,
-		arg.WorkspaceID,
+		arg.FinishedAt,
 		arg.ErrorClass,
 		arg.ErrorMessage,
+		arg.ObjectGrantsState,
+		arg.ObjectGrantsExpireAt,
+		arg.ID,
+		arg.WorkspaceID,
 	)
 	var i RunAttempt
 	err := row.Scan(
@@ -1253,19 +1239,25 @@ func (q *Queries) RecordOutboxDeliveryFailure(ctx context.Context, arg RecordOut
 
 const requestRunCancel = `-- name: RequestRunCancel :one
 UPDATE runs
-SET cancel_requested_at = coalesce(cancel_requested_at, now())
-WHERE id = $1 AND workspace_id = $2
-  AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+SET cancel_requested_at = $1
+WHERE id = $2 AND workspace_id = $3 AND status = $4
 RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
 `
 
 type RequestRunCancelParams struct {
-	ID          pgtype.UUID
-	WorkspaceID pgtype.UUID
+	CancelRequestedAt pgtype.Timestamptz
+	ID                pgtype.UUID
+	WorkspaceID       pgtype.UUID
+	Status            RunStatus
 }
 
 func (q *Queries) RequestRunCancel(ctx context.Context, arg RequestRunCancelParams) (Run, error) {
-	row := q.db.QueryRow(ctx, requestRunCancel, arg.ID, arg.WorkspaceID)
+	row := q.db.QueryRow(ctx, requestRunCancel,
+		arg.CancelRequestedAt,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.Status,
+	)
 	var i Run
 	err := row.Scan(
 		&i.ID,
@@ -1292,19 +1284,25 @@ func (q *Queries) RequestRunCancel(ctx context.Context, arg RequestRunCancelPara
 }
 
 const setAttemptProviderRunID = `-- name: SetAttemptProviderRunID :one
-UPDATE run_attempts SET provider_run_id = $3, started_at = coalesce(started_at, now())
-WHERE id = $1 AND workspace_id = $2
+UPDATE run_attempts SET provider_run_id = $1, started_at = $2
+WHERE id = $3 AND workspace_id = $4
 RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state
 `
 
 type SetAttemptProviderRunIDParams struct {
+	ProviderRunID *string
+	StartedAt     pgtype.Timestamptz
 	ID            pgtype.UUID
 	WorkspaceID   pgtype.UUID
-	ProviderRunID *string
 }
 
 func (q *Queries) SetAttemptProviderRunID(ctx context.Context, arg SetAttemptProviderRunIDParams) (RunAttempt, error) {
-	row := q.db.QueryRow(ctx, setAttemptProviderRunID, arg.ID, arg.WorkspaceID, arg.ProviderRunID)
+	row := q.db.QueryRow(ctx, setAttemptProviderRunID,
+		arg.ProviderRunID,
+		arg.StartedAt,
+		arg.ID,
+		arg.WorkspaceID,
+	)
 	var i RunAttempt
 	err := row.Scan(
 		&i.ID,
@@ -1324,21 +1322,26 @@ func (q *Queries) SetAttemptProviderRunID(ctx context.Context, arg SetAttemptPro
 	return i, err
 }
 
-const setRunAttemptObjectGrantsExpiry = `-- name: SetRunAttemptObjectGrantsExpiry :execrows
+const setRunAttemptObjectGrants = `-- name: SetRunAttemptObjectGrants :execrows
 UPDATE run_attempts
-SET object_grants_expire_at = $1::timestamptz,
-    object_grants_state = 'recorded'
-WHERE id = $2 AND workspace_id = $3
+SET object_grants_state = $1, object_grants_expire_at = $2
+WHERE id = $3 AND workspace_id = $4
 `
 
-type SetRunAttemptObjectGrantsExpiryParams struct {
-	ExpiresAt   pgtype.Timestamptz
-	ID          pgtype.UUID
-	WorkspaceID pgtype.UUID
+type SetRunAttemptObjectGrantsParams struct {
+	ObjectGrantsState    string
+	ObjectGrantsExpireAt pgtype.Timestamptz
+	ID                   pgtype.UUID
+	WorkspaceID          pgtype.UUID
 }
 
-func (q *Queries) SetRunAttemptObjectGrantsExpiry(ctx context.Context, arg SetRunAttemptObjectGrantsExpiryParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setRunAttemptObjectGrantsExpiry, arg.ExpiresAt, arg.ID, arg.WorkspaceID)
+func (q *Queries) SetRunAttemptObjectGrants(ctx context.Context, arg SetRunAttemptObjectGrantsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setRunAttemptObjectGrants,
+		arg.ObjectGrantsState,
+		arg.ObjectGrantsExpireAt,
+		arg.ID,
+		arg.WorkspaceID,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -1389,25 +1392,26 @@ func (q *Queries) SetRunCleanupStatus(ctx context.Context, arg SetRunCleanupStat
 }
 
 const setRunProvider = `-- name: SetRunProvider :one
-UPDATE runs SET provider = $3, runtime_snapshot = $4
-WHERE id = $1 AND workspace_id = $2
-  AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+UPDATE runs SET provider = $1, runtime_snapshot = $2
+WHERE id = $3 AND workspace_id = $4 AND status = $5
 RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
 `
 
 type SetRunProviderParams struct {
-	ID              pgtype.UUID
-	WorkspaceID     pgtype.UUID
 	Provider        string
 	RuntimeSnapshot []byte
+	ID              pgtype.UUID
+	WorkspaceID     pgtype.UUID
+	Status          RunStatus
 }
 
 func (q *Queries) SetRunProvider(ctx context.Context, arg SetRunProviderParams) (Run, error) {
 	row := q.db.QueryRow(ctx, setRunProvider,
-		arg.ID,
-		arg.WorkspaceID,
 		arg.Provider,
 		arg.RuntimeSnapshot,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.Status,
 	)
 	var i Run
 	err := row.Scan(
@@ -1464,14 +1468,10 @@ const transitionRun = `-- name: TransitionRun :one
 UPDATE runs SET
     status = $1,
     status_reason = $2,
-    failure_class = coalesce($3, failure_class),
-    started_at = CASE
-        WHEN $1::run_status = 'running' AND started_at IS NULL THEN now()
-        ELSE started_at END,
-    finished_at = CASE
-        WHEN $1::run_status IN ('succeeded', 'failed', 'cancelled', 'timed_out') THEN now()
-        ELSE finished_at END
-WHERE id = $4 AND workspace_id = $5 AND status = $6
+    failure_class = $3,
+    started_at = $4,
+    finished_at = $5
+WHERE id = $6 AND workspace_id = $7 AND status = $8
 RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
 `
 
@@ -1479,6 +1479,8 @@ type TransitionRunParams struct {
 	ToStatus     RunStatus
 	Reason       *string
 	FailureClass *string
+	StartedAt    pgtype.Timestamptz
+	FinishedAt   pgtype.Timestamptz
 	RunID        pgtype.UUID
 	WorkspaceID  pgtype.UUID
 	FromStatus   RunStatus
@@ -1489,6 +1491,8 @@ func (q *Queries) TransitionRun(ctx context.Context, arg TransitionRunParams) (R
 		arg.ToStatus,
 		arg.Reason,
 		arg.FailureClass,
+		arg.StartedAt,
+		arg.FinishedAt,
 		arg.RunID,
 		arg.WorkspaceID,
 		arg.FromStatus,

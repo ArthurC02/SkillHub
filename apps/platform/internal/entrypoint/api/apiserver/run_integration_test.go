@@ -511,15 +511,7 @@ func TestRetryAddsAttemptWithoutOverwritingTheProviderMapping(t *testing.T) {
 
 	var ids []string
 	for i, providerRunID := range []string{"provider-sandbox-1", "provider-sandbox-2"} {
-		attempt, err := q.CreateRunAttempt(ctx, gen.CreateRunAttemptParams{
-			ID: runID, WorkspaceID: ws, Provider: "fake",
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if want := int32(i + 1); attempt.AttemptNumber != want {
-			t.Errorf("attempt number = %d, want %d", attempt.AttemptNumber, want)
-		}
+		attempt := insertUnissuedAttempt(t, q, ws, runID, int32(i+1))
 		if _, err := q.SetAttemptProviderRunID(ctx, gen.SetAttemptProviderRunIDParams{
 			ID: attempt.ID, WorkspaceID: ws, ProviderRunID: &providerRunID,
 		}); err != nil {

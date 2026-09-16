@@ -625,12 +625,7 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	abandoned, err := gen.New(pool).CreateRunAttempt(ctx, gen.CreateRunAttemptParams{
-		ID: runID, WorkspaceID: ws, Provider: "sandbox",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	abandoned := insertUnissuedAttempt(t, gen.New(pool), ws, runID, 1)
 
 	if err := svc.Drive(ctx, ws, runID); err != nil {
 		t.Fatal(err)
@@ -674,12 +669,7 @@ func TestLegacyAttemptGrantStateRemainsFailClosed(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	attempt, err := gen.New(pool).CreateRunAttempt(ctx, gen.CreateRunAttemptParams{
-		ID: runID, WorkspaceID: ws, Provider: "sandbox",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	attempt := insertUnissuedAttempt(t, gen.New(pool), ws, runID, 1)
 
 	if _, err := pool.Exec(ctx, `UPDATE run_attempts
 		SET object_grants_state = 'legacy_unknown', object_grants_expire_at = 'infinity'
@@ -739,40 +729,6 @@ func TestAnAttemptWhoseRequestCannotBeBuiltClosesItsGrantsAndFailsTheRun(t *test
 	}
 }
 
-func TestFinishingAnAttemptTwiceKeepsTheSecondOutcome(t *testing.T) {
-	pool := requireDB(t)
-	a := newAPI(t, pool)
-	f := newFixture(t, a, pool, "alice-finish-twice")
-	ctx := context.Background()
-	created := f.start(t)
-	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
-	q := gen.New(pool)
-	attempt, err := q.CreateRunAttempt(ctx, gen.CreateRunAttemptParams{ID: runID, WorkspaceID: ws, Provider: "sandbox"})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	first, err := q.FinishRunAttempt(ctx, gen.FinishRunAttemptParams{
-		ID: attempt.ID, WorkspaceID: ws, ErrorClass: strptr("execution"), ErrorMessage: strptr("first outcome"),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := q.FinishRunAttempt(ctx, gen.FinishRunAttemptParams{
-		ID: attempt.ID, WorkspaceID: ws, ErrorClass: strptr("timeout"), ErrorMessage: strptr("second outcome"),
-	})
-	if err != nil {
-		t.Fatalf("a second finish of the same attempt was refused: %v", err)
-	}
-
-	if *second.ErrorClass != "timeout" || *second.ErrorMessage != "second outcome" ||
-		second.FinishedAt.Time.Before(first.FinishedAt.Time) || second.ObjectGrantsState != "closed" {
-		t.Errorf("after two finishes: class %q, message %q, finished %v (first %v), grants %q; "+
-			"today the second outcome overwrites the first", *second.ErrorClass, *second.ErrorMessage,
-			second.FinishedAt.Time, first.FinishedAt.Time, second.ObjectGrantsState)
-	}
-}
-
 func TestEndingARunClosesOnlyTheGrantsItsAttemptsNeverIssued(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -781,14 +737,8 @@ func TestEndingARunClosesOnlyTheGrantsItsAttemptsNeverIssued(t *testing.T) {
 	created := f.start(t)
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 	q := gen.New(pool)
-	unissued, err := q.CreateRunAttempt(ctx, gen.CreateRunAttemptParams{ID: runID, WorkspaceID: ws, Provider: "sandbox"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	issued, err := q.CreateRunAttempt(ctx, gen.CreateRunAttemptParams{ID: runID, WorkspaceID: ws, Provider: "sandbox"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	unissued := insertUnissuedAttempt(t, q, ws, runID, 1)
+	issued := insertUnissuedAttempt(t, q, ws, runID, 2)
 	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET object_grants_state = 'recorded',
 		object_grants_expire_at = now() + interval '1 hour' WHERE id = $1`, issued.ID); err != nil {
 		t.Fatal(err)
@@ -873,6 +823,19 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 }
 
 func strptr(s string) *string { return &s }
+
+func insertUnissuedAttempt(t *testing.T, q *gen.Queries, ws, runID pgtype.UUID, number int32) gen.RunAttempt {
+	t.Helper()
+	attempt, err := q.CreateRunAttempt(context.Background(), gen.CreateRunAttemptParams{
+		RunID: runID, WorkspaceID: ws, AttemptNumber: number, Provider: "sandbox",
+		ObjectGrantsState:    string(run.ObjectGrantStateUnissued),
+		ObjectGrantsExpireAt: pgtype.Timestamptz{InfinityModifier: pgtype.Infinity, Valid: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return attempt
+}
 
 func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T) {
 	pool := requireDB(t)
