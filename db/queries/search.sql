@@ -140,9 +140,10 @@ ORDER BY s.curated DESC,
 LIMIT sqlc.arg(result_limit);
 
 
--- name: PublicHybridSearchSkills :many
+-- name: ListHybridSearchCandidates :many
 WITH vec AS (
-    SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
+    SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
+           COALESCE(s.embedding <=> sqlc.arg(query_embedding)::vector, 0)::float8 AS distance
     FROM search_documents s
     WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
       AND s.embedding IS NOT NULL
@@ -150,7 +151,8 @@ WITH vec AS (
     LIMIT sqlc.arg(vector_candidates)::int
 ),
 fts AS (
-    SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
+    SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
+           COALESCE(s.embedding <=> sqlc.arg(query_embedding)::vector, 0)::float8 AS distance
     FROM search_documents s
     WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
       AND s.listable
@@ -159,7 +161,8 @@ fts AS (
     LIMIT sqlc.arg(fulltext_candidates)::int
 ),
 lex AS (
-    SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
+    SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
+           COALESCE(s.embedding <=> sqlc.arg(query_embedding)::vector, 0)::float8 AS distance
     FROM search_documents s
     WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
       AND s.listable
@@ -167,32 +170,24 @@ lex AS (
       AND s.bigram @@ to_tsquery('simple', sqlc.arg(bigram_query)::text)
     ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(bigram_query)::text)) DESC
     LIMIT sqlc.arg(lexical_candidates)::int
-),
-candidates AS (
-    SELECT skill_id, min(distance) AS distance, bool_or(covered) AS covered
-    FROM (
-        SELECT skill_id, distance, false AS covered FROM vec
-        UNION ALL
-        SELECT skill_id, distance, false AS covered FROM fts
-        UNION ALL
-        SELECT skill_id, distance, true AS covered FROM lex
-    ) legs
-    GROUP BY skill_id
 )
-SELECT c.skill_id, s.name,
+SELECT skill_id, unembedded, distance, false AS lexical FROM vec
+UNION ALL
+SELECT skill_id, unembedded, distance, false AS lexical FROM fts
+UNION ALL
+SELECT skill_id, unembedded, distance, true AS lexical FROM lex;
+
+-- name: ListHybridSearchDocuments :many
+SELECT s.skill_id, s.name,
        s.summary, s.enriched_summary,
        s.tags, s.scan, s.verified_at,
        s.agent_capability, s.agent_runtime, s.agent_runtime_image, s.agent_measured_at,
        s.curated,
        s.category,
-       s.category_source,
-       (1 - COALESCE(c.distance, 1))::float8 AS rank,
-       (c.distance IS NULL)::bool AS unranked,
-       c.covered AS lexical_covered,
-       count(*) OVER ()::bigint AS total_matches
-FROM candidates c
-JOIN search_documents s ON s.skill_id = c.skill_id
-WHERE (c.covered OR c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::float8)
+       s.category_source
+FROM search_documents s
+WHERE s.skill_id = ANY(sqlc.arg(skill_ids)::uuid[])
+  AND s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   AND (
     sqlc.narg(has_script)::bool IS NULL
     OR (s.scan IS NOT NULL
@@ -214,11 +209,7 @@ WHERE (c.covered OR c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::
   AND (
     sqlc.narg(category)::text IS NULL
     OR s.category = sqlc.narg(category)::text
-  )
-ORDER BY (lower(s.name) = lower(btrim(sqlc.arg(query)::text))) DESC,
-         c.covered DESC,
-         c.distance ASC NULLS LAST
-LIMIT sqlc.arg(result_limit);
+  );
 
 -- name: ReindexAll :execrows
 INSERT INTO search_documents (skill_id, workspace_id, name, summary, generated, updated_at)

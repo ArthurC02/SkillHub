@@ -77,7 +77,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 
 **`fetch_url`（[`05` R-47](../plans/05-pending-rulings.md)）連網前一定問人**：`proposal` 的 `fetch_url` 分支只設 `PendingFetchURL` 並回 `confirm_fetch`，抓取發生在 Worker 的 job 裡、在呼叫模型之前，結果以 JSON 觀察追加。`fetch.go` 的 `NewFetcher` 在 dial 時擋私有／loopback／link-local，redirect ≤ 3、15 秒、256 KB、只收 `text/*`、去標籤後 8000 字；4xx 與被拒連線是 blocked **不重試**，DNS／逾時／5xx 重試一次。`allowedTools` 只在 Worker（`s.Fetch != nil`）給這個工具。
 
-**檢索一律走 `discovery.CreationKnowledgeIDs`**，它就是公開的 `PublicHybridSearchSkills` 去掉沒有向量的列：向量命中依距離排序，加上一筆全覆蓋的詞彙命中；沒有 embedding 時詞彙獨答並標記 degraded。詞彙腿是 `search_documents.bigram`（拉丁字詞＋中文字元 bigram），**覆蓋列不受截斷、排在向量命中之前**。意圖與改寫過的 `queries` 各自排名後以 RRF（`FuseRanked`）合併。兩個距離常數不同用途：`CreationMaxDistance`（＝ `MaxCosineDistance` 0.75）給創作搜尋與首則訊息的目錄查詢，`CreationDuplicateDistance`（0.55）給保存前的查重守門。`MaxSearchRounds` ＝ 2，空手兩回就撤掉搜尋工具。費用計入會話的 `SpentUSD`。
+**檢索一律走 `discovery.CreationKnowledgeIDs`**，它就是公開的 hybrid 搜尋（SQL `ListHybridSearchCandidates` 取三條候選腿，Go `fuseHybridCandidates`／`rankHybridDocuments` 融合、截斷與排序）去掉沒有向量的列：向量命中依距離排序，加上一筆全覆蓋的詞彙命中；沒有 embedding 時詞彙獨答並標記 degraded。詞彙腿是 `search_documents.bigram`（拉丁字詞＋中文字元 bigram），**覆蓋列不受截斷、排在向量命中之前**。意圖與改寫過的 `queries` 各自排名後以 RRF（`FuseRanked`）合併。兩個距離常數不同用途：`CreationMaxDistance`（＝ `MaxCosineDistance` 0.75）給創作搜尋與首則訊息的目錄查詢，`CreationDuplicateDistance`（0.55）給保存前的查重守門。`MaxSearchRounds` ＝ 2，空手兩回就撤掉搜尋工具。費用計入會話的 `SpentUSD`。
 
 **Re-Use 三個關卡**（`05` R-48／R-49／R-50）：第一則訊息就查目錄（`CatalogCheck`），命中時使用者選 `adopt_reference` 或 `decline_references`；覆蓋規則的詞彙命中排在向量之前；`materialize`／`finalize` 之前查重，命中走 `confirm_duplicate`，同名而內容不同時走 `renamedOnly`（只改名、不重跑查重）。
 

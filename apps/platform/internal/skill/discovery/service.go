@@ -246,18 +246,11 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := queries.PublicHybridSearchSkills(ctx, gen.PublicHybridSearchSkillsParams{
+	candidates, err := queries.ListHybridSearchCandidates(ctx, gen.ListHybridSearchCandidatesParams{
 		CatalogWorkspaceIds: catalogs,
 		Query:               query,
 		BigramQuery:         lexicalQuery(query, "&"),
 		QueryEmbedding:      embedding,
-		MaxDistance:         maxDistance,
-		ResultLimit:         limit,
-		HasScript:           filters.HasScript,
-		SpecValidated:       filters.SpecValidated,
-		AgentRuntime:        filters.AgentRuntime,
-		Curated:             curatedFilter(filters.CurationTier),
-		Category:            filters.Category,
 		VectorCandidates:    vectorCandidates,
 		FulltextCandidates:  fulltextCandidates,
 		LexicalCandidates:   lexicalCandidates,
@@ -265,24 +258,39 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 	if err != nil {
 		return nil, 0, err
 	}
-
-	var total int64
-	if len(rows) > 0 {
-		total = rows[0].TotalMatches
+	fused, order := fuseHybridCandidates(candidates)
+	admitted := admittedCandidates(fused, order, maxDistance)
+	if len(admitted) == 0 {
+		return []searchResult{}, 0, nil
 	}
+	rows, err := queries.ListHybridSearchDocuments(ctx, gen.ListHybridSearchDocumentsParams{
+		SkillIds:            admitted,
+		CatalogWorkspaceIds: catalogs,
+		HasScript:           filters.HasScript,
+		SpecValidated:       filters.SpecValidated,
+		AgentRuntime:        filters.AgentRuntime,
+		Curated:             curatedFilter(filters.CurationTier),
+		Category:            filters.Category,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	rankHybridDocuments(rows, fused, query)
+	rows, total := firstPage(rows, limit)
 
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
+		candidate := fused[row.SkillID]
 		hit := searchResult{
 			SkillID:       pgconv.UUIDString(row.SkillID),
 			Name:          row.Name,
 			Summary:       summaryText(row.Summary, row.EnrichedSummary),
 			SummarySource: summarySource(row.EnrichedSummary),
-			unranked:      row.Unranked,
+			unranked:      !candidate.ranked,
 		}
 
-		if !row.Unranked {
-			rank := row.Rank
+		if candidate.ranked {
+			rank := 1 - candidate.distance
 			hit.Rank = &rank
 		} else {
 			hit.RankNote = rankNotePendingItem

@@ -281,6 +281,199 @@ func (q *Queries) ListCatalogueDocumentsEnrichedBefore(ctx context.Context, arg 
 	return items, nil
 }
 
+const listHybridSearchCandidates = `-- name: ListHybridSearchCandidates :many
+WITH vec AS (
+    SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
+           COALESCE(s.embedding <=> $1::vector, 0)::float8 AS distance
+    FROM search_documents s
+    WHERE s.workspace_id = ANY($2::uuid[])
+      AND s.embedding IS NOT NULL
+    ORDER BY s.embedding <=> $1::vector ASC
+    LIMIT $3::int
+),
+fts AS (
+    SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
+           COALESCE(s.embedding <=> $1::vector, 0)::float8 AS distance
+    FROM search_documents s
+    WHERE s.workspace_id = ANY($2::uuid[])
+      AND s.listable
+      AND s.tsv @@ websearch_to_tsquery('english', $4::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $4::text)) DESC
+    LIMIT $5::int
+),
+lex AS (
+    SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
+           COALESCE(s.embedding <=> $1::vector, 0)::float8 AS distance
+    FROM search_documents s
+    WHERE s.workspace_id = ANY($2::uuid[])
+      AND s.listable
+      AND $6::text <> ''
+      AND s.bigram @@ to_tsquery('simple', $6::text)
+    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $6::text)) DESC
+    LIMIT $7::int
+)
+SELECT skill_id, unembedded, distance, false AS lexical FROM vec
+UNION ALL
+SELECT skill_id, unembedded, distance, false AS lexical FROM fts
+UNION ALL
+SELECT skill_id, unembedded, distance, true AS lexical FROM lex
+`
+
+type ListHybridSearchCandidatesParams struct {
+	QueryEmbedding      *pgvector.Vector
+	CatalogWorkspaceIds []pgtype.UUID
+	VectorCandidates    int32
+	Query               string
+	FulltextCandidates  int32
+	BigramQuery         string
+	LexicalCandidates   int32
+}
+
+type ListHybridSearchCandidatesRow struct {
+	SkillID    pgtype.UUID
+	Unembedded bool
+	Distance   float64
+	Lexical    bool
+}
+
+func (q *Queries) ListHybridSearchCandidates(ctx context.Context, arg ListHybridSearchCandidatesParams) ([]ListHybridSearchCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listHybridSearchCandidates,
+		arg.QueryEmbedding,
+		arg.CatalogWorkspaceIds,
+		arg.VectorCandidates,
+		arg.Query,
+		arg.FulltextCandidates,
+		arg.BigramQuery,
+		arg.LexicalCandidates,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListHybridSearchCandidatesRow
+	for rows.Next() {
+		var i ListHybridSearchCandidatesRow
+		if err := rows.Scan(
+			&i.SkillID,
+			&i.Unembedded,
+			&i.Distance,
+			&i.Lexical,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listHybridSearchDocuments = `-- name: ListHybridSearchDocuments :many
+SELECT s.skill_id, s.name,
+       s.summary, s.enriched_summary,
+       s.tags, s.scan, s.verified_at,
+       s.agent_capability, s.agent_runtime, s.agent_runtime_image, s.agent_measured_at,
+       s.curated,
+       s.category,
+       s.category_source
+FROM search_documents s
+WHERE s.skill_id = ANY($1::uuid[])
+  AND s.workspace_id = ANY($2::uuid[])
+  AND (
+    $3::bool IS NULL
+    OR (s.scan IS NOT NULL
+        AND (s.scan->'codes' @> '["script-file"]'::jsonb
+             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $3::bool)
+  )
+  AND (
+    $4::bool IS NULL
+    OR (s.verified_at IS NOT NULL) = $4::bool
+  )
+  AND (
+    $5::text IS NULL
+    OR s.agent_runtime = $5::text
+  )
+  AND (
+    $6::bool IS NULL
+    OR s.curated = $6::bool
+  )
+  AND (
+    $7::text IS NULL
+    OR s.category = $7::text
+  )
+`
+
+type ListHybridSearchDocumentsParams struct {
+	SkillIds            []pgtype.UUID
+	CatalogWorkspaceIds []pgtype.UUID
+	HasScript           *bool
+	SpecValidated       *bool
+	AgentRuntime        *string
+	Curated             *bool
+	Category            *string
+}
+
+type ListHybridSearchDocumentsRow struct {
+	SkillID           pgtype.UUID
+	Name              string
+	Summary           string
+	EnrichedSummary   string
+	Tags              []byte
+	Scan              []byte
+	VerifiedAt        pgtype.Timestamptz
+	AgentCapability   *string
+	AgentRuntime      *string
+	AgentRuntimeImage *string
+	AgentMeasuredAt   pgtype.Timestamptz
+	Curated           bool
+	Category          *string
+	CategorySource    *string
+}
+
+func (q *Queries) ListHybridSearchDocuments(ctx context.Context, arg ListHybridSearchDocumentsParams) ([]ListHybridSearchDocumentsRow, error) {
+	rows, err := q.db.Query(ctx, listHybridSearchDocuments,
+		arg.SkillIds,
+		arg.CatalogWorkspaceIds,
+		arg.HasScript,
+		arg.SpecValidated,
+		arg.AgentRuntime,
+		arg.Curated,
+		arg.Category,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListHybridSearchDocumentsRow
+	for rows.Next() {
+		var i ListHybridSearchDocumentsRow
+		if err := rows.Scan(
+			&i.SkillID,
+			&i.Name,
+			&i.Summary,
+			&i.EnrichedSummary,
+			&i.Tags,
+			&i.Scan,
+			&i.VerifiedAt,
+			&i.AgentCapability,
+			&i.AgentRuntime,
+			&i.AgentRuntimeImage,
+			&i.AgentMeasuredAt,
+			&i.Curated,
+			&i.Category,
+			&i.CategorySource,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingEnrichment = `-- name: ListPendingEnrichment :many
 WITH candidates AS (
 SELECT sd.skill_id, sd.latest_package_object_key AS package_object_key
@@ -450,179 +643,6 @@ func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context, skillIds []pg
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const publicHybridSearchSkills = `-- name: PublicHybridSearchSkills :many
-WITH vec AS (
-    SELECT s.skill_id, s.embedding <=> $9::vector AS distance
-    FROM search_documents s
-    WHERE s.workspace_id = ANY($10::uuid[])
-      AND s.embedding IS NOT NULL
-    ORDER BY s.embedding <=> $9::vector ASC
-    LIMIT $11::int
-),
-fts AS (
-    SELECT s.skill_id, s.embedding <=> $9::vector AS distance
-    FROM search_documents s
-    WHERE s.workspace_id = ANY($10::uuid[])
-      AND s.listable
-      AND s.tsv @@ websearch_to_tsquery('english', $7::text)
-    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $7::text)) DESC
-    LIMIT $12::int
-),
-lex AS (
-    SELECT s.skill_id, s.embedding <=> $9::vector AS distance
-    FROM search_documents s
-    WHERE s.workspace_id = ANY($10::uuid[])
-      AND s.listable
-      AND $13::text <> ''
-      AND s.bigram @@ to_tsquery('simple', $13::text)
-    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $13::text)) DESC
-    LIMIT $14::int
-),
-candidates AS (
-    SELECT skill_id, min(distance) AS distance, bool_or(covered) AS covered
-    FROM (
-        SELECT skill_id, distance, false AS covered FROM vec
-        UNION ALL
-        SELECT skill_id, distance, false AS covered FROM fts
-        UNION ALL
-        SELECT skill_id, distance, true AS covered FROM lex
-    ) legs
-    GROUP BY skill_id
-)
-SELECT c.skill_id, s.name,
-       s.summary, s.enriched_summary,
-       s.tags, s.scan, s.verified_at,
-       s.agent_capability, s.agent_runtime, s.agent_runtime_image, s.agent_measured_at,
-       s.curated,
-       s.category,
-       s.category_source,
-       (1 - COALESCE(c.distance, 1))::float8 AS rank,
-       (c.distance IS NULL)::bool AS unranked,
-       c.covered AS lexical_covered,
-       count(*) OVER ()::bigint AS total_matches
-FROM candidates c
-JOIN search_documents s ON s.skill_id = c.skill_id
-WHERE (c.covered OR c.distance IS NULL OR c.distance <= $1::float8)
-  AND (
-    $2::bool IS NULL
-    OR (s.scan IS NOT NULL
-        AND (s.scan->'codes' @> '["script-file"]'::jsonb
-             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $2::bool)
-  )
-  AND (
-    $3::bool IS NULL
-    OR (s.verified_at IS NOT NULL) = $3::bool
-  )
-  AND (
-    $4::text IS NULL
-    OR s.agent_runtime = $4::text
-  )
-  AND (
-    $5::bool IS NULL
-    OR s.curated = $5::bool
-  )
-  AND (
-    $6::text IS NULL
-    OR s.category = $6::text
-  )
-ORDER BY (lower(s.name) = lower(btrim($7::text))) DESC,
-         c.covered DESC,
-         c.distance ASC NULLS LAST
-LIMIT $8
-`
-
-type PublicHybridSearchSkillsParams struct {
-	MaxDistance         float64
-	HasScript           *bool
-	SpecValidated       *bool
-	AgentRuntime        *string
-	Curated             *bool
-	Category            *string
-	Query               string
-	ResultLimit         int32
-	QueryEmbedding      *pgvector.Vector
-	CatalogWorkspaceIds []pgtype.UUID
-	VectorCandidates    int32
-	FulltextCandidates  int32
-	BigramQuery         string
-	LexicalCandidates   int32
-}
-
-type PublicHybridSearchSkillsRow struct {
-	SkillID           pgtype.UUID
-	Name              string
-	Summary           string
-	EnrichedSummary   string
-	Tags              []byte
-	Scan              []byte
-	VerifiedAt        pgtype.Timestamptz
-	AgentCapability   *string
-	AgentRuntime      *string
-	AgentRuntimeImage *string
-	AgentMeasuredAt   pgtype.Timestamptz
-	Curated           bool
-	Category          *string
-	CategorySource    *string
-	Rank              float64
-	Unranked          bool
-	LexicalCovered    bool
-	TotalMatches      int64
-}
-
-func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybridSearchSkillsParams) ([]PublicHybridSearchSkillsRow, error) {
-	rows, err := q.db.Query(ctx, publicHybridSearchSkills,
-		arg.MaxDistance,
-		arg.HasScript,
-		arg.SpecValidated,
-		arg.AgentRuntime,
-		arg.Curated,
-		arg.Category,
-		arg.Query,
-		arg.ResultLimit,
-		arg.QueryEmbedding,
-		arg.CatalogWorkspaceIds,
-		arg.VectorCandidates,
-		arg.FulltextCandidates,
-		arg.BigramQuery,
-		arg.LexicalCandidates,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []PublicHybridSearchSkillsRow
-	for rows.Next() {
-		var i PublicHybridSearchSkillsRow
-		if err := rows.Scan(
-			&i.SkillID,
-			&i.Name,
-			&i.Summary,
-			&i.EnrichedSummary,
-			&i.Tags,
-			&i.Scan,
-			&i.VerifiedAt,
-			&i.AgentCapability,
-			&i.AgentRuntime,
-			&i.AgentRuntimeImage,
-			&i.AgentMeasuredAt,
-			&i.Curated,
-			&i.Category,
-			&i.CategorySource,
-			&i.Rank,
-			&i.Unranked,
-			&i.LexicalCovered,
-			&i.TotalMatches,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const publicSearchSkills = `-- name: PublicSearchSkills :many
