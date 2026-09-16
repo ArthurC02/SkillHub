@@ -13,7 +13,19 @@ import (
 const (
 	RecoveryInterval   = 5 * time.Minute
 	RecoveryStaleAfter = 10 * time.Minute
+
+	recoveryBatch = 100
 )
+
+func statusesAwaitingTheJudge() []string {
+	var awaiting []string
+	for _, status := range AllStatuses() {
+		if status.AwaitsTheJudge() {
+			awaiting = append(awaiting, string(status))
+		}
+	}
+	return awaiting
+}
 
 type RecoveryArgs struct{}
 
@@ -26,8 +38,9 @@ type RecoveryWorker struct {
 
 func (w *RecoveryWorker) Work(ctx context.Context, _ *river.Job[RecoveryArgs]) error {
 	rows, err := w.Svc.queries().ListStalePendingEvaluations(ctx, gen.ListStalePendingEvaluationsParams{
-		StaleBefore: pgtype.Timestamptz{Time: time.Now().Add(-RecoveryStaleAfter), Valid: true},
-		ResultLimit: 100,
+		AwaitingStatuses: statusesAwaitingTheJudge(),
+		StaleBefore:      pgtype.Timestamptz{Time: time.Now().Add(-RecoveryStaleAfter), Valid: true},
+		ResultLimit:      recoveryBatch,
 	})
 	if err != nil {
 		return err

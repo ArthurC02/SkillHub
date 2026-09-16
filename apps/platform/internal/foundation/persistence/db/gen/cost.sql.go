@@ -19,14 +19,15 @@ SELECT
     coalesce(percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p95_usd_micros,
     coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
 FROM cost_events
-WHERE kind = $1 AND cost_source = 'gateway'
-  AND created_at >= $2 AND created_at < $3
+WHERE kind = $1 AND cost_source = $2
+  AND created_at >= $3 AND created_at < $4
 `
 
 type AggregateCostEventsWindowParams struct {
-	Kind        string
-	WindowStart pgtype.Timestamptz
-	WindowEnd   pgtype.Timestamptz
+	Kind           string
+	MeasuredSource string
+	WindowStart    pgtype.Timestamptz
+	WindowEnd      pgtype.Timestamptz
 }
 
 type AggregateCostEventsWindowRow struct {
@@ -38,7 +39,12 @@ type AggregateCostEventsWindowRow struct {
 }
 
 func (q *Queries) AggregateCostEventsWindow(ctx context.Context, arg AggregateCostEventsWindowParams) (AggregateCostEventsWindowRow, error) {
-	row := q.db.QueryRow(ctx, aggregateCostEventsWindow, arg.Kind, arg.WindowStart, arg.WindowEnd)
+	row := q.db.QueryRow(ctx, aggregateCostEventsWindow,
+		arg.Kind,
+		arg.MeasuredSource,
+		arg.WindowStart,
+		arg.WindowEnd,
+	)
 	var i AggregateCostEventsWindowRow
 	err := row.Scan(
 		&i.SampleCount,
@@ -270,6 +276,94 @@ func (q *Queries) ListLatestCostStatistics(ctx context.Context) ([]CostStatistic
 	return items, nil
 }
 
+const listSessionStepCosts = `-- name: ListSessionStepCosts :many
+SELECT ref_id::uuid AS session_id, user_id, usd_micros, cost_source, created_at
+FROM cost_events
+WHERE kind = $1 AND ref_type = $2::text
+  AND ref_id = ANY($3::uuid[])
+ORDER BY ref_id, created_at, id
+`
+
+type ListSessionStepCostsParams struct {
+	StepKind       string
+	SessionRefType string
+	SessionIds     []pgtype.UUID
+}
+
+type ListSessionStepCostsRow struct {
+	SessionID  pgtype.UUID
+	UserID     pgtype.UUID
+	UsdMicros  int64
+	CostSource string
+	CreatedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) ListSessionStepCosts(ctx context.Context, arg ListSessionStepCostsParams) ([]ListSessionStepCostsRow, error) {
+	rows, err := q.db.Query(ctx, listSessionStepCosts, arg.StepKind, arg.SessionRefType, arg.SessionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSessionStepCostsRow
+	for rows.Next() {
+		var i ListSessionStepCostsRow
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.UserID,
+			&i.UsdMicros,
+			&i.CostSource,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSessionsLastSteppedBetween = `-- name: ListSessionsLastSteppedBetween :many
+SELECT ref_id::uuid AS session_id
+FROM cost_events
+WHERE kind = $1 AND ref_type = $2::text AND ref_id IS NOT NULL
+GROUP BY ref_id
+HAVING max(created_at) >= $3 AND max(created_at) < $4
+`
+
+type ListSessionsLastSteppedBetweenParams struct {
+	StepKind       string
+	SessionRefType string
+	WindowStart    pgtype.Timestamptz
+	IdleBefore     pgtype.Timestamptz
+}
+
+func (q *Queries) ListSessionsLastSteppedBetween(ctx context.Context, arg ListSessionsLastSteppedBetweenParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSessionsLastSteppedBetween,
+		arg.StepKind,
+		arg.SessionRefType,
+		arg.WindowStart,
+		arg.IdleBefore,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var session_id pgtype.UUID
+		if err := rows.Scan(&session_id); err != nil {
+			return nil, err
+		}
+		items = append(items, session_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sumCostEventsByDay = `-- name: SumCostEventsByDay :many
 SELECT (created_at AT TIME ZONE 'UTC')::date AS day, kind,
        count(*)::bigint AS events, sum(usd_micros)::bigint AS usd_micros
@@ -311,46 +405,31 @@ func (q *Queries) SumCostEventsByDay(ctx context.Context, since pgtype.Timestamp
 	return items, nil
 }
 
-const sweepSessionCostSummaries = `-- name: SweepSessionCostSummaries :execrows
-INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
-SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,
-       count(*)::integer, bool_or(cost_source = 'estimated'), max(created_at)
-FROM cost_events
-WHERE kind = 'creation_step' AND ref_type = 'creation_session' AND ref_id IS NOT NULL
-GROUP BY ref_id
-HAVING max(created_at) >= $1 AND max(created_at) < $2
-ON CONFLICT (session_id) DO UPDATE SET
-    user_id = EXCLUDED.user_id, usd_micros = EXCLUDED.usd_micros, steps = EXCLUDED.steps,
-    estimated = EXCLUDED.estimated, last_step_at = EXCLUDED.last_step_at
-`
-
-type SweepSessionCostSummariesParams struct {
-	WindowStart pgtype.Timestamptz
-	IdleBefore  pgtype.Timestamptz
-}
-
-func (q *Queries) SweepSessionCostSummaries(ctx context.Context, arg SweepSessionCostSummariesParams) (int64, error) {
-	result, err := q.db.Exec(ctx, sweepSessionCostSummaries, arg.WindowStart, arg.IdleBefore)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const upsertSessionCostSummary = `-- name: UpsertSessionCostSummary :exec
 INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
-SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,
-       count(*)::integer, bool_or(cost_source = 'estimated'), max(created_at)
-FROM cost_events
-WHERE kind = 'creation_step' AND ref_type = 'creation_session' AND ref_id IS NOT NULL
-  AND ref_id = $1
-GROUP BY ref_id
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (session_id) DO UPDATE SET
     user_id = EXCLUDED.user_id, usd_micros = EXCLUDED.usd_micros, steps = EXCLUDED.steps,
     estimated = EXCLUDED.estimated, last_step_at = EXCLUDED.last_step_at
 `
 
-func (q *Queries) UpsertSessionCostSummary(ctx context.Context, sessionID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, upsertSessionCostSummary, sessionID)
+type UpsertSessionCostSummaryParams struct {
+	SessionID  pgtype.UUID
+	UserID     pgtype.UUID
+	UsdMicros  int64
+	Steps      int32
+	Estimated  bool
+	LastStepAt pgtype.Timestamptz
+}
+
+func (q *Queries) UpsertSessionCostSummary(ctx context.Context, arg UpsertSessionCostSummaryParams) error {
+	_, err := q.db.Exec(ctx, upsertSessionCostSummary,
+		arg.SessionID,
+		arg.UserID,
+		arg.UsdMicros,
+		arg.Steps,
+		arg.Estimated,
+		arg.LastStepAt,
+	)
 	return err
 }

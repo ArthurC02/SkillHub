@@ -264,7 +264,8 @@ scope:
   RecordOrphanSighting: user
   RecordOutboxDeliveryFailure: user
   SetSearchDocumentBigram: user
-  SweepSessionCostSummaries: user
+  ListSessionStepCosts: user
+  ListSessionsLastSteppedBetween: user
 
   CountArtifactsSharingObject: user
   DeleteObjectCollectionEntry: user

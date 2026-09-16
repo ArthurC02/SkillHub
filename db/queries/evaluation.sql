@@ -149,7 +149,7 @@ WHERE workspace_id = @workspace_id AND run_id = @run_id
 -- name: ListStalePendingEvaluations :many
 SELECT id, workspace_id, run_id
 FROM evaluations
-WHERE status = 'pending'
+WHERE status = ANY(@awaiting_statuses::text[])
   AND superseded_at IS NULL
   AND created_at < @stale_before
 ORDER BY created_at

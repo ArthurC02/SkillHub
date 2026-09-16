@@ -16,16 +16,17 @@ SELECT
     count(DISTINCT r.id)::bigint AS used,
     min(t.occurred_at)::timestamptz AS oldest
 FROM runs r
-JOIN run_status_transitions t ON t.run_id = r.id AND t.to_status = 'preparing'
-WHERE r.workspace_id = $1
-  AND t.occurred_at > $2
-  AND (r.failure_class IS NULL OR r.failure_class NOT IN (
-          'provider_error', 'platform_error', 'capability_mismatch'))
+JOIN run_status_transitions t ON t.run_id = r.id AND t.to_status = $1
+WHERE r.workspace_id = $2
+  AND t.occurred_at > $3
+  AND (r.failure_class IS NULL OR r.failure_class <> ALL($4::text[]))
 `
 
 type CountQuotaRunsParams struct {
-	WorkspaceID pgtype.UUID
-	Since       pgtype.Timestamptz
+	CountedFromStatus    RunStatus
+	WorkspaceID          pgtype.UUID
+	Since                pgtype.Timestamptz
+	ExemptFailureClasses []string
 }
 
 type CountQuotaRunsRow struct {
@@ -34,7 +35,12 @@ type CountQuotaRunsRow struct {
 }
 
 func (q *Queries) CountQuotaRuns(ctx context.Context, arg CountQuotaRunsParams) (CountQuotaRunsRow, error) {
-	row := q.db.QueryRow(ctx, countQuotaRuns, arg.WorkspaceID, arg.Since)
+	row := q.db.QueryRow(ctx, countQuotaRuns,
+		arg.CountedFromStatus,
+		arg.WorkspaceID,
+		arg.Since,
+		arg.ExemptFailureClasses,
+	)
 	var i CountQuotaRunsRow
 	err := row.Scan(&i.Used, &i.Oldest)
 	return i, err

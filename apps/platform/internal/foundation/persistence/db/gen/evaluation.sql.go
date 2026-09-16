@@ -645,16 +645,17 @@ func (q *Queries) ListEvaluationSuggestions(ctx context.Context, arg ListEvaluat
 const listStalePendingEvaluations = `-- name: ListStalePendingEvaluations :many
 SELECT id, workspace_id, run_id
 FROM evaluations
-WHERE status = 'pending'
+WHERE status = ANY($1::text[])
   AND superseded_at IS NULL
-  AND created_at < $1
+  AND created_at < $2
 ORDER BY created_at
-LIMIT $2
+LIMIT $3
 `
 
 type ListStalePendingEvaluationsParams struct {
-	StaleBefore pgtype.Timestamptz
-	ResultLimit int32
+	AwaitingStatuses []string
+	StaleBefore      pgtype.Timestamptz
+	ResultLimit      int32
 }
 
 type ListStalePendingEvaluationsRow struct {
@@ -664,7 +665,7 @@ type ListStalePendingEvaluationsRow struct {
 }
 
 func (q *Queries) ListStalePendingEvaluations(ctx context.Context, arg ListStalePendingEvaluationsParams) ([]ListStalePendingEvaluationsRow, error) {
-	rows, err := q.db.Query(ctx, listStalePendingEvaluations, arg.StaleBefore, arg.ResultLimit)
+	rows, err := q.db.Query(ctx, listStalePendingEvaluations, arg.AwaitingStatuses, arg.StaleBefore, arg.ResultLimit)
 	if err != nil {
 		return nil, err
 	}

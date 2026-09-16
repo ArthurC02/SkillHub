@@ -195,9 +195,10 @@ func (s *PostgresStore) RecomputeStatistics(ctx context.Context, kind CostKind, 
 		agg = gen.AggregateCostEventsWindowRow(row)
 	} else {
 		agg, err = q.AggregateCostEventsWindow(ctx, gen.AggregateCostEventsWindowParams{
-			Kind:        string(kind),
-			WindowStart: pgconv.Timestamptz(windowStart),
-			WindowEnd:   pgconv.Timestamptz(windowEnd),
+			Kind:           string(kind),
+			MeasuredSource: string(statisticsCostSource),
+			WindowStart:    pgconv.Timestamptz(windowStart),
+			WindowEnd:      pgconv.Timestamptz(windowEnd),
 		})
 	}
 	if err != nil {
@@ -226,14 +227,37 @@ func (s *PostgresStore) RecomputeStatistics(ctx context.Context, kind CostKind, 
 }
 
 func (s *PostgresStore) SummarizeSession(ctx context.Context, tx DBTX, sessionID pgtype.UUID) error {
-	return s.q(tx).UpsertSessionCostSummary(ctx, sessionID)
+	_, err := s.summarizeSessions(ctx, s.q(tx), []pgtype.UUID{sessionID})
+	return err
 }
 
 func (s *PostgresStore) SweepSessionSummaries(ctx context.Context, windowStart, idleBefore time.Time) (int64, error) {
-	return s.q(nil).SweepSessionCostSummaries(ctx, gen.SweepSessionCostSummariesParams{
-		WindowStart: pgconv.Timestamptz(windowStart),
-		IdleBefore:  pgconv.Timestamptz(idleBefore),
+	q := s.q(nil)
+	idle, err := q.ListSessionsLastSteppedBetween(ctx, gen.ListSessionsLastSteppedBetweenParams{
+		StepKind: string(KindCreationStep), SessionRefType: RefCreationSession,
+		WindowStart: pgconv.Timestamptz(windowStart), IdleBefore: pgconv.Timestamptz(idleBefore),
 	})
+	if err != nil || len(idle) == 0 {
+		return 0, err
+	}
+	return s.summarizeSessions(ctx, q, idle)
+}
+
+func (s *PostgresStore) summarizeSessions(ctx context.Context, q *gen.Queries, sessionIDs []pgtype.UUID) (int64, error) {
+	rows, err := q.ListSessionStepCosts(ctx, gen.ListSessionStepCostsParams{
+		StepKind: string(KindCreationStep), SessionRefType: RefCreationSession, SessionIds: sessionIDs,
+	})
+	if err != nil {
+		return 0, err
+	}
+	var written int64
+	for sessionID, steps := range sessionStepsByID(rows) {
+		if err := q.UpsertSessionCostSummary(ctx, summarizeSession(sessionID, steps).upsert()); err != nil {
+			return written, err
+		}
+		written++
+	}
+	return written, nil
 }
 
 func nullString(s string) *string {

@@ -8,12 +8,32 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	policy "github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 )
 
 var errQuotaTransactionRequired = errors.New("run: quota transaction is required")
+
+const quotaCountsFromStatus = gen.RunStatusPreparing
+
+func (c FailureClass) CountsAgainstQuota() bool {
+	switch c {
+	case failureProvider, failurePlatform, failureNoProvider:
+		return false
+	}
+	return true
+}
+
+func quotaExemptFailureClasses() []string {
+	var exempt []string
+	for _, class := range AllFailureClasses() {
+		if !class.CountsAgainstQuota() {
+			exempt = append(exempt, string(class))
+		}
+	}
+	return exempt
+}
 
 func (s *Service) requireQuota(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
 	if tx == nil {
@@ -53,8 +73,10 @@ func (s *Service) QuotaFor(ctx context.Context, workspaceID pgtype.UUID) (policy
 func quotaRunCounter(q *gen.Queries) func(context.Context, pgtype.UUID, time.Time) (policy.RunUsage, error) {
 	return func(ctx context.Context, workspaceID pgtype.UUID, since time.Time) (policy.RunUsage, error) {
 		row, err := q.CountQuotaRuns(ctx, gen.CountQuotaRunsParams{
-			WorkspaceID: workspaceID,
-			Since:       pgtype.Timestamptz{Time: since, Valid: true},
+			WorkspaceID:          workspaceID,
+			Since:                pgtype.Timestamptz{Time: since, Valid: true},
+			CountedFromStatus:    quotaCountsFromStatus,
+			ExemptFailureClasses: quotaExemptFailureClasses(),
 		})
 		if err != nil {
 			return policy.RunUsage{}, err

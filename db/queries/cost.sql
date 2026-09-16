@@ -17,7 +17,7 @@ SELECT
     coalesce(percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p95_usd_micros,
     coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
 FROM cost_events
-WHERE kind = sqlc.arg(kind) AND cost_source = 'gateway'
+WHERE kind = sqlc.arg(kind) AND cost_source = sqlc.arg(measured_source)
   AND created_at >= sqlc.arg(window_start) AND created_at < sqlc.arg(window_end);
 
 -- name: InsertCostStatistics :one
@@ -47,26 +47,23 @@ ORDER BY 1, 2;
 -- name: GetCostEventByIdempotencyKey :one
 SELECT id FROM cost_events WHERE idempotency_key = $1;
 
+-- name: ListSessionStepCosts :many
+SELECT ref_id::uuid AS session_id, user_id, usd_micros, cost_source, created_at
+FROM cost_events
+WHERE kind = sqlc.arg(step_kind) AND ref_type = sqlc.arg(session_ref_type)::text
+  AND ref_id = ANY(sqlc.arg(session_ids)::uuid[])
+ORDER BY ref_id, created_at, id;
+
+-- name: ListSessionsLastSteppedBetween :many
+SELECT ref_id::uuid AS session_id
+FROM cost_events
+WHERE kind = sqlc.arg(step_kind) AND ref_type = sqlc.arg(session_ref_type)::text AND ref_id IS NOT NULL
+GROUP BY ref_id
+HAVING max(created_at) >= sqlc.arg(window_start) AND max(created_at) < sqlc.arg(idle_before);
+
 -- name: UpsertSessionCostSummary :exec
 INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
-SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,
-       count(*)::integer, bool_or(cost_source = 'estimated'), max(created_at)
-FROM cost_events
-WHERE kind = 'creation_step' AND ref_type = 'creation_session' AND ref_id IS NOT NULL
-  AND ref_id = sqlc.arg(session_id)
-GROUP BY ref_id
-ON CONFLICT (session_id) DO UPDATE SET
-    user_id = EXCLUDED.user_id, usd_micros = EXCLUDED.usd_micros, steps = EXCLUDED.steps,
-    estimated = EXCLUDED.estimated, last_step_at = EXCLUDED.last_step_at;
-
--- name: SweepSessionCostSummaries :execrows
-INSERT INTO cost_session_summaries (session_id, user_id, usd_micros, steps, estimated, last_step_at)
-SELECT ref_id, (array_agg(user_id ORDER BY created_at DESC))[1], sum(usd_micros)::bigint,
-       count(*)::integer, bool_or(cost_source = 'estimated'), max(created_at)
-FROM cost_events
-WHERE kind = 'creation_step' AND ref_type = 'creation_session' AND ref_id IS NOT NULL
-GROUP BY ref_id
-HAVING max(created_at) >= sqlc.arg(window_start) AND max(created_at) < sqlc.arg(idle_before)
+VALUES (sqlc.arg(session_id), sqlc.narg(user_id), sqlc.arg(usd_micros), sqlc.arg(steps), sqlc.arg(estimated), sqlc.arg(last_step_at))
 ON CONFLICT (session_id) DO UPDATE SET
     user_id = EXCLUDED.user_id, usd_micros = EXCLUDED.usd_micros, steps = EXCLUDED.steps,
     estimated = EXCLUDED.estimated, last_step_at = EXCLUDED.last_step_at;
