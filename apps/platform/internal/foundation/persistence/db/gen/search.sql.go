@@ -924,26 +924,27 @@ SET workspace_id = EXCLUDED.workspace_id,
     enrichment_model = EXCLUDED.enrichment_model,
     enrichment_prompt_version = EXCLUDED.enrichment_prompt_version,
     enrichment_attempted_at = CASE
-        WHEN EXCLUDED.enrichment_status = 'pending' THEN NULL
+        WHEN $15::bool THEN NULL
         ELSE search_documents.enrichment_attempted_at END,
     updated_at = now()
 `
 
 type UpsertSearchDocumentEnrichedParams struct {
-	SkillID                 pgtype.UUID
-	WorkspaceID             pgtype.UUID
-	Name                    string
-	Summary                 string
-	EnrichedSummary         string
-	TaskExamples            string
-	Tags                    []byte
-	Limitations             string
-	Scan                    []byte
-	Embedding               *pgvector.Vector
-	EnrichmentStatus        string
-	EnrichmentModel         *string
-	EnrichmentPromptVersion *string
-	BigramText              string
+	SkillID                   pgtype.UUID
+	WorkspaceID               pgtype.UUID
+	Name                      string
+	Summary                   string
+	EnrichedSummary           string
+	TaskExamples              string
+	Tags                      []byte
+	Limitations               string
+	Scan                      []byte
+	Embedding                 *pgvector.Vector
+	EnrichmentStatus          string
+	EnrichmentModel           *string
+	EnrichmentPromptVersion   *string
+	BigramText                string
+	RestartEnrichmentAttempts bool
 }
 
 func (q *Queries) UpsertSearchDocumentEnriched(ctx context.Context, arg UpsertSearchDocumentEnrichedParams) error {
@@ -962,6 +963,7 @@ func (q *Queries) UpsertSearchDocumentEnriched(ctx context.Context, arg UpsertSe
 		arg.EnrichmentModel,
 		arg.EnrichmentPromptVersion,
 		arg.BigramText,
+		arg.RestartEnrichmentAttempts,
 	)
 	return err
 }

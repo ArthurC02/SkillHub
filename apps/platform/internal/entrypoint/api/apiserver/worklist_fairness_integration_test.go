@@ -426,7 +426,7 @@ func TestWorklistAttemptsResetOnlyWhenWorkBecomesFreshAgain(t *testing.T) {
 	if err := q.UpsertSearchDocumentEnriched(ctx, gen.UpsertSearchDocumentEnrichedParams{
 		SkillID: mustUUID(t, f.skillID), WorkspaceID: mustUUID(t, f.workspaceID),
 		Name: "reset", Summary: "reset", TaskExamples: "[]", Tags: []byte(`[]`),
-		Limitations: "[]", Scan: []byte(`{}`), EnrichmentStatus: "pending",
+		Limitations: "[]", Scan: []byte(`{}`), EnrichmentStatus: "pending", RestartEnrichmentAttempts: true,
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -10,6 +10,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+func TestOnlyAPendingEnrichmentStartsItsAttemptsOver(t *testing.T) {
+	for status, restarts := range map[EnrichmentStatus]bool{EnrichmentPending: true, EnrichmentEnriched: false} {
+		got := enrichedDocumentOf(EnrichedSkillProjection{EnrichmentStatus: string(status)})
+		if got.RestartEnrichmentAttempts != restarts {
+			t.Errorf("a %s projection restarts attempts = %v, want %v", status, got.RestartEnrichmentAttempts, restarts)
+		}
+	}
+	if len(AllEnrichmentStatuses()) != 2 {
+		t.Fatalf("enrichment statuses = %v; decide whether each new one starts its attempts over", AllEnrichmentStatuses())
+	}
+}
+
 func TestListingOfCarriesLiveListingFacts(t *testing.T) {
 	skillID := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
 	latestVersionID := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}

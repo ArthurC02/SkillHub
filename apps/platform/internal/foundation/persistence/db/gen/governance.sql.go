@@ -803,25 +803,19 @@ func (q *Queries) MarkAccountPurgeStarted(ctx context.Context, id pgtype.UUID) (
 const markSourceChecked = `-- name: MarkSourceChecked :exec
 UPDATE skill_sources
 SET last_checked_at = now(),
-    unavailable_since = CASE
-        WHEN $2::bool THEN NULL
-        ELSE coalesce(unavailable_since, now())
-    END,
-    content_changed_at = CASE
-        WHEN $3::bool THEN coalesce(content_changed_at, now())
-        ELSE content_changed_at
-    END
-WHERE id = $1
+    unavailable_since = $1,
+    content_changed_at = $2
+WHERE id = $3
 `
 
 type MarkSourceCheckedParams struct {
-	ID             pgtype.UUID
-	Available      bool
-	ContentChanged bool
+	UnavailableSince pgtype.Timestamptz
+	ContentChangedAt pgtype.Timestamptz
+	ID               pgtype.UUID
 }
 
 func (q *Queries) MarkSourceChecked(ctx context.Context, arg MarkSourceCheckedParams) error {
-	_, err := q.db.Exec(ctx, markSourceChecked, arg.ID, arg.Available, arg.ContentChanged)
+	_, err := q.db.Exec(ctx, markSourceChecked, arg.UnavailableSince, arg.ContentChangedAt, arg.ID)
 	return err
 }
 

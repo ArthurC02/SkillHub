@@ -93,8 +93,8 @@ INSERT INTO evaluations (
     judge_model, judge_prompt_version, rubric_version
 )
 VALUES (
-    $1, $2, 'pending', 'undetermined', false,
-    $3, $4, $5
+    $1, $2, $3, $4, $5,
+    $6, $7, $8
 )
 RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at
 `
@@ -102,6 +102,9 @@ RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_m
 type CreateEvaluationParams struct {
 	WorkspaceID        pgtype.UUID
 	RunID              pgtype.UUID
+	Status             string
+	Overall            string
+	EvidenceComplete   bool
 	JudgeModel         *string
 	JudgePromptVersion *string
 	RubricVersion      *string
@@ -111,6 +114,9 @@ func (q *Queries) CreateEvaluation(ctx context.Context, arg CreateEvaluationPara
 	row := q.db.QueryRow(ctx, createEvaluation,
 		arg.WorkspaceID,
 		arg.RunID,
+		arg.Status,
+		arg.Overall,
+		arg.EvidenceComplete,
 		arg.JudgeModel,
 		arg.JudgePromptVersion,
 		arg.RubricVersion,

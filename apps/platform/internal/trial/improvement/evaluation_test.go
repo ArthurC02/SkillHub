@@ -37,6 +37,9 @@ func TestAStartedEvaluationAwaitsTheJudgeAndDeclaresWhatItWillBeJudgedWith(t *te
 	if e.Status() != StatusPending || e.Superseded() {
 		t.Fatalf("a new revision is %q (superseded %v), want pending and current", e.Status(), e.Superseded())
 	}
+	if e.row.Overall != string(OverallUndetermined) || e.row.EvidenceComplete {
+		t.Fatalf("a new revision reads %q with complete evidence %v, want undetermined without it", e.row.Overall, e.row.EvidenceComplete)
+	}
 	assertEvents(t, e, declared)
 }
 

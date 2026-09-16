@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -134,15 +135,29 @@ func (s *Service) contentDiffers(ctx context.Context, row gen.ListSourcesToCheck
 	return hex.EncodeToString(sum[:]) != row.ContentHash
 }
 
+func checkedSource(row gen.ListSourcesToCheckRow, available, contentChanged bool, now time.Time) gen.MarkSourceCheckedParams {
+	checked := gen.MarkSourceCheckedParams{
+		ID: row.ID, UnavailableSince: row.UnavailableSince, ContentChangedAt: row.ContentChangedAt,
+	}
+	switch {
+	case available:
+		checked.UnavailableSince = pgtype.Timestamptz{}
+	case !row.UnavailableSince.Valid:
+		checked.UnavailableSince = pgtype.Timestamptz{Time: now, Valid: true}
+	}
+	if contentChanged && !row.ContentChangedAt.Valid {
+		checked.ContentChangedAt = pgtype.Timestamptz{Time: now, Valid: true}
+	}
+	return checked
+}
+
 func (s *Service) markChecked(
 	ctx context.Context, q *gen.Queries, row gen.ListSourcesToCheckRow, available, contentChanged bool,
 ) error {
 	wasUnavailable := row.UnavailableSince.Valid
 	if wasUnavailable == !available && !contentChanged {
 
-		return q.MarkSourceChecked(ctx, gen.MarkSourceCheckedParams{
-			ID: row.ID, Available: available, ContentChanged: false,
-		})
+		return q.MarkSourceChecked(ctx, checkedSource(row, available, false, time.Now()))
 	}
 
 	tx, err := s.Pool.Begin(ctx)
@@ -151,9 +166,7 @@ func (s *Service) markChecked(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := q.WithTx(tx)
-	if err := qtx.MarkSourceChecked(ctx, gen.MarkSourceCheckedParams{
-		ID: row.ID, Available: available, ContentChanged: contentChanged,
-	}); err != nil {
+	if err := qtx.MarkSourceChecked(ctx, checkedSource(row, available, contentChanged, time.Now())); err != nil {
 		return err
 	}
 

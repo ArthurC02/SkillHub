@@ -25,7 +25,7 @@ SET workspace_id = EXCLUDED.workspace_id,
     enrichment_model = EXCLUDED.enrichment_model,
     enrichment_prompt_version = EXCLUDED.enrichment_prompt_version,
     enrichment_attempted_at = CASE
-        WHEN EXCLUDED.enrichment_status = 'pending' THEN NULL
+        WHEN sqlc.arg(restart_enrichment_attempts)::bool THEN NULL
         ELSE search_documents.enrichment_attempted_at END,
     updated_at = now();
 

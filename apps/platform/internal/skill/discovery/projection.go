@@ -76,17 +76,22 @@ func (s *Service) IndexSkill(ctx context.Context, tx pgx.Tx, projection SkillPro
 
 func (s *Service) IndexSkillEnriched(ctx context.Context, tx pgx.Tx, projection EnrichedSkillProjection) error {
 	return s.indexLive(ctx, tx, projection.SkillID, func(q *gen.Queries) error {
-		return q.UpsertSearchDocumentEnriched(ctx, gen.UpsertSearchDocumentEnrichedParams{
-			SkillID: projection.SkillID, WorkspaceID: projection.WorkspaceID,
-			Name: projection.Name, Summary: projection.Summary,
-			EnrichedSummary: projection.EnrichedSummary, TaskExamples: projection.TaskExamples,
-			Tags: projection.Tags, Limitations: projection.Limitations, Scan: projection.Scan,
-			Embedding: projection.Embedding, EnrichmentStatus: projection.EnrichmentStatus,
-			EnrichmentModel:         projection.EnrichmentModel,
-			EnrichmentPromptVersion: projection.EnrichmentPromptVersion,
-			BigramText:              LexicalIndexText(projection.Name, projection.Summary, projection.EnrichedSummary, projection.TaskExamples, jsonStrings(projection.Tags)),
-		})
+		return q.UpsertSearchDocumentEnriched(ctx, enrichedDocumentOf(projection))
 	})
+}
+
+func enrichedDocumentOf(projection EnrichedSkillProjection) gen.UpsertSearchDocumentEnrichedParams {
+	return gen.UpsertSearchDocumentEnrichedParams{
+		SkillID: projection.SkillID, WorkspaceID: projection.WorkspaceID,
+		Name: projection.Name, Summary: projection.Summary,
+		EnrichedSummary: projection.EnrichedSummary, TaskExamples: projection.TaskExamples,
+		Tags: projection.Tags, Limitations: projection.Limitations, Scan: projection.Scan,
+		Embedding: projection.Embedding, EnrichmentStatus: projection.EnrichmentStatus,
+		EnrichmentModel:           projection.EnrichmentModel,
+		EnrichmentPromptVersion:   projection.EnrichmentPromptVersion,
+		BigramText:                LexicalIndexText(projection.Name, projection.Summary, projection.EnrichedSummary, projection.TaskExamples, jsonStrings(projection.Tags)),
+		RestartEnrichmentAttempts: EnrichmentStatus(projection.EnrichmentStatus).restartsAttempts(),
+	}
 }
 
 func (s *Service) RefreshListing(ctx context.Context, db gen.DBTX, skillID pgtype.UUID) error {

@@ -4,7 +4,7 @@ INSERT INTO evaluations (
     judge_model, judge_prompt_version, rubric_version
 )
 VALUES (
-    @workspace_id, @run_id, 'pending', 'undetermined', false,
+    @workspace_id, @run_id, @status, @overall, @evidence_complete,
     @judge_model, @judge_prompt_version, @rubric_version
 )
 RETURNING *;

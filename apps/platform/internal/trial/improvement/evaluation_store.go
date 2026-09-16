@@ -120,6 +120,7 @@ func writeEvaluationEvent(ctx context.Context, q *gen.Queries, e *Evaluation, ev
 	case EvaluationStarted:
 		e.row, err = q.CreateEvaluation(ctx, gen.CreateEvaluationParams{
 			WorkspaceID: e.row.WorkspaceID, RunID: e.row.RunID,
+			Status: e.row.Status, Overall: e.row.Overall, EvidenceComplete: e.row.EvidenceComplete,
 			JudgeModel: event.JudgeModel, JudgePromptVersion: event.JudgePromptVersion,
 			RubricVersion: event.RubricVersion,
 		})

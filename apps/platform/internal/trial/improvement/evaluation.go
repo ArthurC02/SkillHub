@@ -110,7 +110,7 @@ type Evaluation struct {
 func startEvaluation(workspaceID, runID pgtype.UUID, declared EvaluationStarted) *Evaluation {
 	declared = cloneEvaluationStarted(declared)
 	e := &Evaluation{row: gen.Evaluation{
-		WorkspaceID: workspaceID, RunID: runID, Status: string(StatusPending),
+		WorkspaceID: workspaceID, RunID: runID, Status: string(StatusPending), Overall: string(OverallUndetermined),
 		JudgeModel: declared.JudgeModel, JudgePromptVersion: declared.JudgePromptVersion,
 		RubricVersion: declared.RubricVersion,
 	}}

@@ -239,15 +239,9 @@ LIMIT $1;
 -- name: MarkSourceChecked :exec
 UPDATE skill_sources
 SET last_checked_at = now(),
-    unavailable_since = CASE
-        WHEN sqlc.arg(available)::bool THEN NULL
-        ELSE coalesce(unavailable_since, now())
-    END,
-    content_changed_at = CASE
-        WHEN sqlc.arg(content_changed)::bool THEN coalesce(content_changed_at, now())
-        ELSE content_changed_at
-    END
-WHERE id = $1;
+    unavailable_since = @unavailable_since,
+    content_changed_at = @content_changed_at
+WHERE id = @id;
 
 -- name: CountPlatformAuditEventsByDay :many
 SELECT (created_at AT TIME ZONE 'UTC')::date AS day, action, count(*)::bigint AS events
