@@ -94,6 +94,7 @@ func enrichedDocumentOf(projection EnrichedSkillProjection) gen.UpsertSearchDocu
 		BigramText:                LexicalIndexText(projection.Name, projection.Summary, projection.EnrichedSummary, projection.TaskExamples, jsonStrings(projection.Tags)),
 		RestartEnrichmentAttempts: EnrichmentStatus(projection.EnrichmentStatus).restartsAttempts(),
 		Listable:                  EnrichmentStatus(projection.EnrichmentStatus).listable(projection.Embedding != nil),
+		HasScript:                 scriptPresence(projection.Scan),
 	}
 }
 

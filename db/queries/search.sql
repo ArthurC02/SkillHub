@@ -8,8 +8,8 @@ SET name = EXCLUDED.name, summary = EXCLUDED.summary, bigram = EXCLUDED.bigram, 
 INSERT INTO search_documents (
     skill_id, workspace_id, name, summary,
     enriched_summary, task_examples, tags, limitations, scan, embedding,
-    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, listable, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', sqlc.arg(bigram_text)::text), sqlc.arg(listable), now())
+    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, listable, has_script, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', sqlc.arg(bigram_text)::text), sqlc.arg(listable), sqlc.narg(has_script), now())
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id,
     name = EXCLUDED.name,
@@ -25,6 +25,7 @@ SET workspace_id = EXCLUDED.workspace_id,
     enrichment_model = EXCLUDED.enrichment_model,
     enrichment_prompt_version = EXCLUDED.enrichment_prompt_version,
     listable = EXCLUDED.listable,
+    has_script = EXCLUDED.has_script,
     enrichment_attempted_at = CASE
         WHEN sqlc.arg(restart_enrichment_attempts)::bool THEN NULL
         ELSE search_documents.enrichment_attempted_at END,
@@ -73,9 +74,7 @@ WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   AND s.listable
   AND (
     sqlc.narg(has_script)::bool IS NULL
-    OR (s.scan IS NOT NULL
-        AND (s.scan->'codes' @> '["script-file"]'::jsonb
-             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = sqlc.narg(has_script)::bool)
+    OR s.has_script = sqlc.narg(has_script)::bool
   )
   AND (
     sqlc.narg(spec_validated)::bool IS NULL
@@ -114,9 +113,7 @@ WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   AND s.listable
   AND (
     sqlc.narg(has_script)::bool IS NULL
-    OR (s.scan IS NOT NULL
-        AND (s.scan->'codes' @> '["script-file"]'::jsonb
-             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = sqlc.narg(has_script)::bool)
+    OR s.has_script = sqlc.narg(has_script)::bool
   )
   AND (
     sqlc.narg(spec_validated)::bool IS NULL
@@ -190,9 +187,7 @@ WHERE s.skill_id = ANY(sqlc.arg(skill_ids)::uuid[])
   AND s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   AND (
     sqlc.narg(has_script)::bool IS NULL
-    OR (s.scan IS NOT NULL
-        AND (s.scan->'codes' @> '["script-file"]'::jsonb
-             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = sqlc.narg(has_script)::bool)
+    OR s.has_script = sqlc.narg(has_script)::bool
   )
   AND (
     sqlc.narg(spec_validated)::bool IS NULL

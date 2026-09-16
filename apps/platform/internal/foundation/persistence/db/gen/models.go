@@ -565,6 +565,7 @@ type SearchDocument struct {
 	AgentMeasuredAt         pgtype.Timestamptz
 	Curated                 bool
 	Listable                bool
+	HasScript               *bool
 }
 
 type Session struct {

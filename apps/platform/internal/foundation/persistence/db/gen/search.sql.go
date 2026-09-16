@@ -26,9 +26,7 @@ WHERE s.workspace_id = ANY($1::uuid[])
   AND s.listable
   AND (
     $2::bool IS NULL
-    OR (s.scan IS NOT NULL
-        AND (s.scan->'codes' @> '["script-file"]'::jsonb
-             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $2::bool)
+    OR s.has_script = $2::bool
   )
   AND (
     $3::bool IS NULL
@@ -382,9 +380,7 @@ WHERE s.skill_id = ANY($1::uuid[])
   AND s.workspace_id = ANY($2::uuid[])
   AND (
     $3::bool IS NULL
-    OR (s.scan IS NOT NULL
-        AND (s.scan->'codes' @> '["script-file"]'::jsonb
-             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $3::bool)
+    OR s.has_script = $3::bool
   )
   AND (
     $4::bool IS NULL
@@ -662,9 +658,7 @@ WHERE s.workspace_id = ANY($1::uuid[])
   AND s.listable
   AND (
     $4::bool IS NULL
-    OR (s.scan IS NOT NULL
-        AND (s.scan->'codes' @> '["script-file"]'::jsonb
-             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $4::bool)
+    OR s.has_script = $4::bool
   )
   AND (
     $5::bool IS NULL
@@ -965,8 +959,8 @@ const upsertSearchDocumentEnriched = `-- name: UpsertSearchDocumentEnriched :exe
 INSERT INTO search_documents (
     skill_id, workspace_id, name, summary,
     enriched_summary, task_examples, tags, limitations, scan, embedding,
-    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, listable, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', $14::text), $15, now())
+    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, listable, has_script, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', $14::text), $15, $16, now())
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id,
     name = EXCLUDED.name,
@@ -982,8 +976,9 @@ SET workspace_id = EXCLUDED.workspace_id,
     enrichment_model = EXCLUDED.enrichment_model,
     enrichment_prompt_version = EXCLUDED.enrichment_prompt_version,
     listable = EXCLUDED.listable,
+    has_script = EXCLUDED.has_script,
     enrichment_attempted_at = CASE
-        WHEN $16::bool THEN NULL
+        WHEN $17::bool THEN NULL
         ELSE search_documents.enrichment_attempted_at END,
     updated_at = now()
 `
@@ -1004,6 +999,7 @@ type UpsertSearchDocumentEnrichedParams struct {
 	EnrichmentPromptVersion   *string
 	BigramText                string
 	Listable                  bool
+	HasScript                 *bool
 	RestartEnrichmentAttempts bool
 }
 
@@ -1024,6 +1020,7 @@ func (q *Queries) UpsertSearchDocumentEnriched(ctx context.Context, arg UpsertSe
 		arg.EnrichmentPromptVersion,
 		arg.BigramText,
 		arg.Listable,
+		arg.HasScript,
 		arg.RestartEnrichmentAttempts,
 	)
 	return err
