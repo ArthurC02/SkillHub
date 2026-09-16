@@ -1,0 +1,5 @@
+{
+  "format": "domain-registry/v1",
+  "status": "candidate",
+  "artifacts": ["contexts.json", "vocabulary.json", "aggregates.json", "rules.json", "contracts.json", "interactions.json", "decisions.json", "events.json", "capabilities.json", "value-objects.json", "dependency-policies.json"]
+}

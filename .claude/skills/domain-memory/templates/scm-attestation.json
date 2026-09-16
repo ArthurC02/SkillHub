@@ -1,0 +1,9 @@
+{
+  "provider": "<github|gitlab|other>",
+  "pull_request": "<external-pr-id-or-url>",
+  "commit": "<reviewed-commit-sha>",
+  "status": "approved",
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "verified_at": "<ISO-8601-timestamp>"
+}

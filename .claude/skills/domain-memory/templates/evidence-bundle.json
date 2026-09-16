@@ -1,0 +1,23 @@
+{
+  "requirement_id": "<requirement-id>",
+  "proposal_id": "<proposal-id>",
+  "registry_revision": null,
+  "approvals": [],
+  "scm_attestation": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "<test-obligation-id>",
+      "status": "passed",
+      "evidence": "<command-or-ci-url>",
+      "command_profile": "<policy-command-profile>",
+      "exit_code": 0,
+      "output_sha256": "sha256:<output-digest>",
+      "finished_at": "<ISO-8601>"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -1,0 +1,19 @@
+{
+  "format": "domain-memory-policy/v1",
+  "storage_mode": "<tracked|ignored|external>",
+  "data_classification": "<public|internal|confidential|restricted>",
+  "review_mode": "<local-draft-only|scm-verified>",
+  "source_policy": {
+    "selected_paths": [],
+    "include": ["**"],
+    "exclude": [],
+    "authority": "<developer-confirmed-authority>"
+  },
+  "limits": {
+    "max_file_count": 10000,
+    "max_file_bytes": 10485760,
+    "max_total_bytes": 104857600,
+    "max_query_results": 100
+  },
+  "approved_command_profiles": []
+}

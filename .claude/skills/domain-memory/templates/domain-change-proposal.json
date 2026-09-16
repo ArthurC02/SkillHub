@@ -1,0 +1,42 @@
+{
+  "proposal_id": "<stable-id>",
+  "proposer": "<agent-or-human-identity>",
+  "requirement_id": "<requirement-id>",
+  "status": "draft",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "affected_contexts": [],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "<required-role>",
+      "reviewer": "<reviewer-identity>",
+      "decision": "approved",
+      "approved_at": "<ISO-8601-timestamp>",
+      "scope": "<approved-scope>",
+      "proposal_revision": 1,
+      "base_registry_revision": null
+    }
+  ]
+}

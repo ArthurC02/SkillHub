@@ -1,0 +1,18 @@
+{
+  "requirement_id": "<stable-id>",
+  "status": "draft",
+  "intent": "<business outcome>",
+  "actor": "<actor>",
+  "observable_outcome": "<observable result>",
+  "acceptance_criteria": [
+    {
+      "id": "<stable-id>",
+      "statement": "<observable-result>"
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": []
+}

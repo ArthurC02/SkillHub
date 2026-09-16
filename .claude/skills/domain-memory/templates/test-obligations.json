@@ -1,0 +1,15 @@
+{
+  "requirement_id": "<requirement-id>",
+  "proposal_id": "<proposal-id>",
+  "obligations": [
+    {
+      "id": "<stable-id>",
+      "source_type": "acceptance-criterion",
+      "source_id": "<requirement-or-rule-id>",
+      "expected_outcome": "<observable-result>",
+      "level": "unit",
+      "status": "planned",
+      "check": "<test-command-or-check-id>"
+    }
+  ]
+}
