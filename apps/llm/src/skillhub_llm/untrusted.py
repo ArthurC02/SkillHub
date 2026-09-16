@@ -1,4 +1,4 @@
-"""Fencing untrusted content off from the instructions (TM-SCN-02, defence 4 of the judge trust boundary).
+"""Fencing untrusted content off from the instructions (TM-SCN-02, judge trust defence 4).
 
 Content the model is shown - a package's SKILL.md, a judged run's own output, a
 Skill summary written by whoever uploaded the package - is data being described,
