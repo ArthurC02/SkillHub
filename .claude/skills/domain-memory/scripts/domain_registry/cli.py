@@ -10,6 +10,7 @@ from .contracts import validate_schema
 from .attestations import verify_scm
 from .audit import verify as verify_audit
 from .updates import apply_approved_updates, upsert_candidate
+from .evidence import citation, classified, source_map_for
 
 import argparse
 import json
@@ -61,6 +62,12 @@ def main() -> int:
     boundary_parser.add_argument("--registry-root", required=True, type=Path)
     boundary_parser.add_argument("--source-context", required=True)
     boundary_parser.add_argument("--target-context", required=True)
+    cite_parser = commands.add_parser("cite")
+    cite_parser.add_argument("--repo-root", required=True, type=Path)
+    cite_parser.add_argument("--path", required=True)
+    cite_parser.add_argument("--start", required=True, type=int)
+    cite_parser.add_argument("--end", required=True, type=int)
+    cite_parser.add_argument("--registry-root", type=Path)
     candidate_update_parser = commands.add_parser("upsert-candidate")
     candidate_update_parser.add_argument("--registry-root", required=True, type=Path)
     candidate_update_parser.add_argument("--repo-root", required=True, type=Path)
@@ -182,13 +189,28 @@ def main() -> int:
     if args.command == "analyze-boundary":
         print(json.dumps(boundary_analysis(args.registry_root.resolve(), args.source_context, args.target_context), indent=2, ensure_ascii=False))
         return 0
+    if args.command == "cite":
+        try:
+            reference = citation(args.repo_root.resolve(), args.path, args.start, args.end)
+        except ValueError as error:
+            print(f"ERROR: {error}")
+            return 1
+        if args.registry_root:
+            reference = classified(reference, source_map_for(args.registry_root.resolve()))
+        print(json.dumps(reference, indent=2, ensure_ascii=False))
+        return 0
     if args.command == "upsert-candidate":
         try:
-            upsert_candidate(args.registry_root.resolve(), args.repo_root.resolve(), args.asset, args.record_file.resolve())
+            outside = upsert_candidate(args.registry_root.resolve(), args.repo_root.resolve(), args.asset, args.record_file.resolve())
         except ValueError as error:
             print(f"ERROR: {error}")
             return 1
         print("Candidate record updated.")
+        if outside:
+            print("NOTE: this record rests on files the confirmed source map does not cover: " + ", ".join(outside) +
+                  ". That is reach, not an error. A Domain Memory that comes to depend on an unconfirmed file loses its "
+                  "evidence when that file moves; either have the developer confirm the source, or cite something the "
+                  "corpus already covers.")
         return 0
     if args.command == "apply-approved-updates":
         try:

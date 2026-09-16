@@ -40,6 +40,38 @@ def classify_all(value: Any, source_map: dict[str, Any]) -> Any:
     return value
 
 
+def citation(repo_root: Path, relative: str, start: int, end: int) -> dict[str, Any]:
+    root = repo_root.resolve()
+    path = (root / relative).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError as error:
+        raise ValueError(f"evidence path escapes the repository: {relative}") from error
+    if not path.is_file():
+        raise ValueError(f"no such file to cite: {relative}")
+    if not isinstance(start, int) or not isinstance(end, int) or start < 1 or end < start:
+        raise ValueError(f"a citation needs 1 <= start <= end, got start={start} end={end}")
+    content = path.read_bytes()
+    rows = content.decode("utf-8", errors="replace").splitlines(keepends=True)
+    if end > len(rows):
+        raise ValueError(f"{relative} has {len(rows)} lines; the citation asks for line {end}")
+    excerpt = "".join(rows[start - 1:end]).encode("utf-8")
+    return {
+        "path": path.relative_to(root).as_posix(),
+        "lines": {"start": start, "end": end},
+        "content_sha256": digest(content),
+        "excerpt_sha256": digest(excerpt),
+    }
+
+
+def unclassified_paths(value: Any) -> list[str]:
+    return sorted({
+        reference["path"]
+        for reference in all_references(value)
+        if isinstance(reference, dict) and reference.get("source_kind") == "unclassified"
+    })
+
+
 def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
     if isinstance(reference, str):
         return {"status": "legacy-unverified", "reference": reference}

@@ -4,7 +4,7 @@ from .revision import current_registry_revision, require_current_registry_revisi
 from .policy import review_mode
 from .audit import append as append_audit
 from .registry import asset_records
-from .evidence import classify_all, source_map_for
+from .evidence import classify_all, source_map_for, unclassified_paths
 from .transaction import mutate_registry
 
 from pathlib import Path
@@ -26,12 +26,13 @@ def read_update(path: Path) -> dict[str, Any]:
     return value
 
 
-def upsert_candidate(root: Path, repo_root: Path | None, asset: str, record_path: Path) -> None:
+def upsert_candidate(root: Path, repo_root: Path | None, asset: str, record_path: Path) -> list[str]:
     name = f"{asset}.json"
     if name not in ASSET_KEYS:
         raise ValueError(f"unknown asset: {asset}")
     record = read_update(record_path)
     source_map = source_map_for(root)
+    outside: list[str] = []
     def mutate(staging: Path) -> None:
         path = registry_dir(staging) / name
         document = load_json(path)
@@ -40,6 +41,7 @@ def upsert_candidate(root: Path, repo_root: Path | None, asset: str, record_path
         if existing is not None and review_status(asset, existing, document.get("status", "candidate")) == "reviewed":
             raise ValueError(f"cannot overwrite reviewed record: {record['id']}")
         candidate = classify_all(dict(record), source_map)
+        outside.extend(unclassified_paths(candidate))
         if asset == "decisions":
             candidate["review_status"] = "candidate"
         else:
@@ -52,6 +54,7 @@ def upsert_candidate(root: Path, repo_root: Path | None, asset: str, record_path
         write_json(path, document)
     mutate_registry(root, repo_root, mutate)
     append_audit(root, {"operation": "upsert-candidate", "asset": asset, "record_id": record["id"]})
+    return sorted(set(outside))
 
 
 def apply_approved_updates(package_root: Path, registry_root: Path, repo_root: Path) -> None:

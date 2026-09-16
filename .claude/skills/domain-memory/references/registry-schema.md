@@ -4,7 +4,7 @@ The Registry is a file-backed, reviewable projection of domain knowledge. It is 
 
 | Asset | Required domain meaning | Key fields beyond `id` and `status` |
 | --- | --- | --- |
-| Context | A business boundary and its responsibility | `name`, `subdomain`, `responsibility`, `capabilities`, `business_owner`, `version`, `effective_from` |
+| Context | A business boundary and its responsibility | `name`, `subdomain`, `responsibility`, `business_owner`, `version`, `effective_from` |
 | Vocabulary | One Context-specific meaning | `name`, `definition`, `contexts`, `synonyms`, `not_same_as`, `required_qualifiers`, `owner` |
 | Aggregate | An invariant boundary | `context`, `root`, `entities`, `value_objects`, `domain_services`, `policies`, `invariants`, `commands`, `allowed_dependencies`, `prohibited_dependencies` |
 | Rule | A falsifiable business constraint | `contexts`, `statement`, `owner`, `version`, `effective_from`, `effective_until`, `examples` |
@@ -17,6 +17,10 @@ The Registry is a file-backed, reviewable projection of domain knowledge. It is 
 | Dependency policy | An allowed or prohibited Context collaboration | `from_context`, `to_context`, `mode`, `policy` |
 
 A Context may record `confirmed_absences`: a list of `{asset, reason, evidence}` saying that the domain was examined and genuinely holds no vocabulary, aggregate, rule or contract for it. `coverage` then reports that Context under `confirmed_absent` instead of `gaps`, so an answered question stops looking like an open one. Declare an absence only when a source supports it; an unexamined Context belongs in `gaps`, and the validator refuses an absence that records contradict or that carries no reason.
+
+A Context's abilities live in the Capability asset, one record each, and not in a field on the Context: one fact with two homes drifts, and only the asset can carry its own evidence and status.
+
+`upsert-candidate` writes every record as a candidate whatever the submitted file says, because the command exists for machine-written records and a machine does not decide that a record has been reviewed. A record becomes reviewed only through an approved Change Package applied by `apply-approved-updates`.
 
 The supplied validator checks file shape, asset formats, status values, IDs, Context references, contract references, and optional structured evidence. Reviewed records must contain their type-specific fields, evidence, and `review` metadata. `apply-approved-updates` writes that metadata from the approved Change Package. Use `validate --require-reviewed` before a change may rely only on reviewed records. It cannot confirm that a definition, owner, rule, or approval is true; review those claims against their authority.
 

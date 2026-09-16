@@ -31,7 +31,7 @@ from domain_registry.sources import test_locations as discovered_test_locations
 from domain_registry.updates import apply_approved_updates, upsert_candidate
 from domain_registry.attestations import verify_scm
 from domain_registry.audit import append as append_audit, verify as verify_audit
-from domain_registry.evidence import digest, verify
+from domain_registry.evidence import citation, digest, verify
 
 
 class DomainRegistryTest(unittest.TestCase):
@@ -762,6 +762,85 @@ class DomainRegistryTest(unittest.TestCase):
         path.write_text(json.dumps(value), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "stale"):
             require_current_registry_revision(captured, self.repo / "memory", self.repo)
+
+
+    def cited_file(self) -> Path:
+        path = self.repo / "docs" / "adr" / "boundaries.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        rows = ["# Boundaries", "Orders owns pricing.", "Billing owns invoices.", "No trailing newline"]
+        path.write_text(chr(10).join(rows), encoding="utf-8")
+        return path
+
+    def test_a_built_citation_verifies_as_current(self) -> None:
+        self.cited_file()
+        reference = citation(self.repo, "docs/adr/boundaries.md", 2, 3)
+        self.assertEqual(verify(reference, self.repo)["status"], "current")
+
+    def test_a_citation_covers_only_the_lines_it_names(self) -> None:
+        path = self.cited_file()
+        reference = citation(self.repo, "docs/adr/boundaries.md", 2, 3)
+        whole_file = digest(path.read_bytes())
+        self.assertEqual(reference["content_sha256"], whole_file)
+        self.assertNotEqual(reference["excerpt_sha256"], whole_file)
+        hand_written = reference | {"excerpt_sha256": whole_file}
+        self.assertEqual(verify(hand_written, self.repo)["status"], "stale")
+
+    def test_the_last_line_can_be_cited_but_the_one_after_it_cannot(self) -> None:
+        self.cited_file()
+        self.assertEqual(citation(self.repo, "docs/adr/boundaries.md", 4, 4)["lines"]["end"], 4)
+        with self.assertRaisesRegex(ValueError, "has 4 lines"):
+            citation(self.repo, "docs/adr/boundaries.md", 4, 5)
+
+    def test_a_citation_starting_before_the_first_line_is_refused(self) -> None:
+        self.cited_file()
+        self.assertEqual(citation(self.repo, "docs/adr/boundaries.md", 1, 1)["lines"]["start"], 1)
+        with self.assertRaisesRegex(ValueError, "1 <= start <= end"):
+            citation(self.repo, "docs/adr/boundaries.md", 0, 1)
+
+    def test_a_citation_ending_before_it_starts_is_refused(self) -> None:
+        self.cited_file()
+        with self.assertRaisesRegex(ValueError, "1 <= start <= end"):
+            citation(self.repo, "docs/adr/boundaries.md", 3, 2)
+
+    def test_a_citation_reaching_outside_the_repository_is_refused(self) -> None:
+        (self.repo.parent / "outside.md").write_text("elsewhere", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "escapes the repository"):
+            citation(self.repo, "../outside.md", 1, 1)
+
+    def test_citing_a_file_that_is_not_there_is_refused(self) -> None:
+        with self.assertRaisesRegex(ValueError, "no such file to cite"):
+            citation(self.repo, "docs/adr/missing.md", 1, 1)
+
+    def test_the_cite_command_reports_the_kind_of_source_the_lines_came_from(self) -> None:
+        self.cited_file()
+        write_source_map(self.repo / "memory" / "source-map.json",
+                         confirmed_source_map(self.repo, [self.repo / "docs" / "adr"]))
+        result = self.run_cli("cite", "--repo-root", str(self.repo), "--path", "docs/adr/boundaries.md",
+                              "--start", "2", "--end", "2", "--registry-root", str(self.repo / "memory"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["source_kind"], "decisions")
+
+    def confirmed_corpus(self) -> None:
+        self.cited_file()
+        write_source_map(self.repo / "memory" / "source-map.json",
+                         confirmed_source_map(self.repo, [self.repo / "docs" / "adr"]))
+
+    def test_a_candidate_resting_on_an_unconfirmed_file_names_that_file(self) -> None:
+        self.confirmed_corpus()
+        (self.repo / "notes.md").write_text("Orders owns pricing.", encoding="utf-8")
+        record = self.write_record("context.json", {
+            "id": "orders", "name": "Orders", "responsibility": "Own orders.",
+            "evidence": [citation(self.repo, "notes.md", 1, 1)],
+        })
+        self.assertEqual(upsert_candidate(self.repo / "memory", self.repo, "contexts", record), ["notes.md"])
+
+    def test_a_candidate_inside_the_confirmed_corpus_raises_no_reach_warning(self) -> None:
+        self.confirmed_corpus()
+        record = self.write_record("context.json", {
+            "id": "orders", "name": "Orders", "responsibility": "Own orders.",
+            "evidence": [citation(self.repo, "docs/adr/boundaries.md", 2, 2)],
+        })
+        self.assertEqual(upsert_candidate(self.repo / "memory", self.repo, "contexts", record), [])
 
 
 if __name__ == "__main__":
