@@ -42,6 +42,28 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     write_document(evidence_path, evidence)
 
 
+SUPERSEDABLE_STATUSES = {"draft", "submitted", "verified", "approved", "applied"}
+
+
+def supersede_proposal(root: Path, reason: str, superseded_by: str | None) -> None:
+    path = proposal_path(root)
+    proposal = load_json(path)
+    status = proposal.get("status")
+    if status not in SUPERSEDABLE_STATUSES:
+        raise ValueError(f"a {status} proposal cannot be superseded; create a new draft instead")
+    if not completed_identifier(reason):
+        raise ValueError("superseding a proposal requires a reason: what its conclusion got wrong, or what replaced it")
+    if superseded_by is not None and not completed_identifier(superseded_by):
+        raise ValueError("superseded_by must name the proposal that replaces this one")
+    proposal["superseded_from_status"] = status
+    proposal["status"] = "superseded"
+    proposal["superseded_at"] = now()
+    proposal["superseded_reason"] = reason
+    if superseded_by is not None:
+        proposal["superseded_by"] = superseded_by
+    write_document(path, proposal)
+
+
 def record_approval(root: Path, role: str, reviewer: str, scope: str, approved_at: str | None) -> None:
     proposal = load_json(proposal_path(root))
     if proposal.get("status") != "submitted":

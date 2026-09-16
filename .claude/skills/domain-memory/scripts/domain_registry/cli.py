@@ -1,6 +1,6 @@
 from .changes import init_change_package, validate_change_package
 from .common import ASSET_KEYS, load_json
-from .hitl import finalize_proposal, record_approval, submit_proposal, verify_proposal
+from .hitl import finalize_proposal, record_approval, submit_proposal, supersede_proposal, verify_proposal
 from .policy import policy_path, validate_policy, write_policy
 from .registry import boundary_analysis, context_model, coverage, init_registry, lookup, migrate_evidence, migrate_registry, record_by_id, resolve_terms, validate, verify_evidence
 from .sources import confirmed_source_map, discover_sources, probe_sources, verify_source_map, write_source_map
@@ -122,6 +122,10 @@ def main() -> int:
     approval_parser.add_argument("--reviewer", required=True)
     approval_parser.add_argument("--scope", required=True)
     approval_parser.add_argument("--approved-at")
+    supersede_parser = commands.add_parser("supersede-proposal")
+    supersede_parser.add_argument("--package-root", required=True, type=Path)
+    supersede_parser.add_argument("--reason", required=True)
+    supersede_parser.add_argument("--superseded-by")
     verify_parser = commands.add_parser("verify-proposal")
     verify_parser.add_argument("--package-root", required=True, type=Path)
     verify_parser.add_argument("--registry-root", required=True, type=Path)
@@ -304,6 +308,10 @@ def main() -> int:
             print(f"ERROR: {error}")
             return 1
         print("Human approval recorded.")
+        return 0
+    if args.command == "supersede-proposal":
+        supersede_proposal(args.package_root.resolve(), args.reason, args.superseded_by)
+        print("Proposal superseded. Its record stays; create a new draft for the replacement.")
         return 0
     if args.command == "verify-proposal":
         try:

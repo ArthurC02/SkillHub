@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.changes import init_change_package
 from domain_registry.changes import validate_change_package
-from domain_registry.hitl import finalize_proposal, record_approval, submit_proposal, verify_proposal
+from domain_registry.hitl import finalize_proposal, record_approval, submit_proposal, supersede_proposal, verify_proposal
 from domain_registry.registry import init_registry
 from domain_registry.registry import migrate_registry
 from domain_registry.policy import validate_policy
@@ -674,6 +674,47 @@ class DomainRegistryTest(unittest.TestCase):
         named = next(error for error in errors if "unknown asset" in error)
         for allowed in ("aggregates", "contracts", "rules", "vocabulary"):
             self.assertIn(allowed, named)
+
+
+    def submitted_package(self) -> Path:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        submit_proposal(package, self.repo / "memory", self.repo)
+        return package
+
+    def proposal_in(self, package: Path) -> dict:
+        return json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+
+    def test_superseding_keeps_the_status_the_proposal_died_in(self) -> None:
+        package = self.submitted_package()
+        supersede_proposal(package, "The event catalogue shows the collaboration runs the other way.", None)
+        proposal = self.proposal_in(package)
+        self.assertEqual(proposal["status"], "superseded")
+        self.assertEqual(proposal["superseded_from_status"], "submitted")
+        self.assertIn("other way", proposal["superseded_reason"])
+
+    def test_a_superseded_proposal_can_name_what_replaced_it(self) -> None:
+        package = self.submitted_package()
+        supersede_proposal(package, "Replaced by a proposal with the corrected direction.", "PRO-2")
+        self.assertEqual(self.proposal_in(package)["superseded_by"], "PRO-2")
+
+    def test_superseding_without_a_reason_is_refused(self) -> None:
+        package = self.submitted_package()
+        with self.assertRaisesRegex(ValueError, "requires a reason"):
+            supersede_proposal(package, "   ", None)
+        self.assertEqual(self.proposal_in(package)["status"], "submitted")
+
+    def test_a_superseded_proposal_cannot_be_superseded_again(self) -> None:
+        package = self.submitted_package()
+        supersede_proposal(package, "Overtaken by the event catalogue.", None)
+        with self.assertRaisesRegex(ValueError, "create a new draft instead"):
+            supersede_proposal(package, "Overtaken twice.", None)
+
+    def test_a_superseded_proposal_no_longer_accepts_approval(self) -> None:
+        package = self.submitted_package()
+        supersede_proposal(package, "Overtaken by the event catalogue.", None)
+        with self.assertRaisesRegex(ValueError, "only for a submitted proposal"):
+            record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
 
 
 if __name__ == "__main__":
