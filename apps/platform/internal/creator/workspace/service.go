@@ -170,7 +170,7 @@ func (s *Service) signup(ctx context.Context, id ExternalIdentity) (gen.User, er
 		return gen.User{}, err
 	}
 	user, err := q.CreateUser(ctx, gen.CreateUserParams{
-		Email:       id.Email,
+		Email:       normalizedEmail(id.Email),
 		DisplayName: id.Name,
 	})
 	if err != nil {
@@ -423,7 +423,7 @@ func (s *Service) LookupAccount(ctx context.Context, email string, operatorID pg
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
 
-	row, err := q.FindLiveUserByEmail(ctx, email)
+	row, err := q.FindLiveUserByEmail(ctx, normalizedEmail(email))
 	if err == nil && (accountLifecycle{deletedAt: row.DeletedAt}).gone() {
 		err = pgx.ErrNoRows
 	}

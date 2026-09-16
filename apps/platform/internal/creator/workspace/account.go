@@ -2,6 +2,7 @@ package identity
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -33,6 +34,10 @@ func (a accountLifecycle) standing() error {
 		return ErrAccountPurging
 	}
 	return nil
+}
+
+func normalizedEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 func sessionValidity(expiresAt pgtype.Timestamptz, account accountLifecycle, now time.Time) error {

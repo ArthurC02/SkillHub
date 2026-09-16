@@ -114,6 +114,9 @@ func TestAccountLookupAuditsAHitAndNothingElse(t *testing.T) {
 	}
 	email := emailOf(member)
 	departedEmail := emailOf(departed)
+	if stored := emailOf(a.login(t, "BO-Lookup-Mixed-Case")); stored != "bo-lookup-mixed-case@dev.local" {
+		t.Errorf("a mixed-case sign-up email was stored as %q, want its lower-case form", stored)
+	}
 	lookups := func() int {
 		return countRow(t, pool, `SELECT count(*) FROM audit_events
 			WHERE action = 'account.lookup' AND actor_user_id = $1`, mustUUID(t, operator.userID))

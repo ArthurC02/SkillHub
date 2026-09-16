@@ -10,4 +10,4 @@ SELECT id, display_name FROM users WHERE id = ANY(@user_ids::uuid[]);
 SELECT u.id, u.email, u.display_name, u.created_at, u.deletion_requested_at, u.deleted_at, w.id AS workspace_id
 FROM users u
 JOIN workspaces w ON w.owner_user_id = u.id
-WHERE lower(u.email) = lower(@email::text);
+WHERE u.email = @email::text;

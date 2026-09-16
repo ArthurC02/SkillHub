@@ -30,3 +30,15 @@ func TestASessionCountsOnlyBeforeItExpiresAndWhileItsAccountStands(t *testing.T)
 		}
 	}
 }
+
+func TestAnEmailIsStoredAndLookedUpInOneCanonicalForm(t *testing.T) {
+	for given, want := range map[string]string{
+		"alice@example.com":       "alice@example.com",
+		"Alice@Example.COM":       "alice@example.com",
+		" \talice@example.com \n": "alice@example.com",
+	} {
+		if got := normalizedEmail(given); got != want {
+			t.Errorf("normalizedEmail(%q) = %q, want %q", given, got, want)
+		}
+	}
+}
