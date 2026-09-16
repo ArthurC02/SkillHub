@@ -118,8 +118,13 @@ type sourceMeta struct {
 	CompletionTokens int64
 
 	GenerationInputs []byte
+	Interactive      bool
 
 	ImprovedBy *registry.Improvement
+}
+
+func (m sourceMeta) countsTowardGenerateQuota() bool {
+	return m.Type == SourceGenerated && !m.Interactive
 }
 
 var ErrIncompleteProvenance = errors.New("ingest: the source does not record where its content came from")
@@ -434,6 +439,8 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		GeneratorModel:         src.GeneratorModel,
 		GeneratorPromptVersion: src.GeneratorPromptVersion,
 		GenerationInputs:       src.GenerationInputs,
+
+		CountsTowardGenerateQuota: src.countsTowardGenerateQuota(),
 	})
 	if err != nil {
 		return registry.Version{}, false, err

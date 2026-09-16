@@ -106,3 +106,20 @@ func TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires(t *testing.T) {
 		})
 	}
 }
+
+func TestOnlyASingleShotGenerationCountsTowardTheGenerateQuota(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		src    sourceMeta
+		counts bool
+	}{
+		{"a single-shot generation", sourceMeta{Type: SourceGenerated}, true},
+		{"an interactive creation candidate", sourceMeta{Type: SourceGenerated, Interactive: true}, false},
+		{"an upload", sourceMeta{Type: SourceUpload}, false},
+		{"a git import", sourceMeta{Type: SourceGit}, false},
+	} {
+		if got := tc.src.countsTowardGenerateQuota(); got != tc.counts {
+			t.Errorf("%s: counts toward the generate quota = %v, want %v", tc.name, got, tc.counts)
+		}
+	}
+}

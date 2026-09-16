@@ -17,8 +17,7 @@ SELECT
     min(fetched_at)::timestamptz AS oldest
 FROM skill_sources
 WHERE workspace_id = $1
-  AND source_type = 'generated'
-  AND NOT COALESCE(generation_inputs @> '{"interactive": true}', false)
+  AND counts_toward_generate_quota
   AND fetched_at > $2
 `
 
@@ -42,23 +41,25 @@ func (q *Queries) CountGeneratedSkills(ctx context.Context, arg CountGeneratedSk
 const createSkillSource = `-- name: CreateSkillSource :one
 INSERT INTO skill_sources (
     workspace_id, source_type, source_url, source_ref, content_hash, fetched_at,
-    task_description, generator_model, generator_prompt_version, generation_inputs
+    task_description, generator_model, generator_prompt_version, generation_inputs,
+    counts_toward_generate_quota
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version, content_changed_at, generation_inputs
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version, content_changed_at, generation_inputs, counts_toward_generate_quota
 `
 
 type CreateSkillSourceParams struct {
-	WorkspaceID            pgtype.UUID
-	SourceType             string
-	SourceUrl              *string
-	SourceRef              *string
-	ContentHash            string
-	FetchedAt              pgtype.Timestamptz
-	TaskDescription        *string
-	GeneratorModel         *string
-	GeneratorPromptVersion *string
-	GenerationInputs       []byte
+	WorkspaceID               pgtype.UUID
+	SourceType                string
+	SourceUrl                 *string
+	SourceRef                 *string
+	ContentHash               string
+	FetchedAt                 pgtype.Timestamptz
+	TaskDescription           *string
+	GeneratorModel            *string
+	GeneratorPromptVersion    *string
+	GenerationInputs          []byte
+	CountsTowardGenerateQuota bool
 }
 
 func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourceParams) (SkillSource, error) {
@@ -73,6 +74,7 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 		arg.GeneratorModel,
 		arg.GeneratorPromptVersion,
 		arg.GenerationInputs,
+		arg.CountsTowardGenerateQuota,
 	)
 	var i SkillSource
 	err := row.Scan(
@@ -91,6 +93,7 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 		&i.GeneratorPromptVersion,
 		&i.ContentChangedAt,
 		&i.GenerationInputs,
+		&i.CountsTowardGenerateQuota,
 	)
 	return i, err
 }

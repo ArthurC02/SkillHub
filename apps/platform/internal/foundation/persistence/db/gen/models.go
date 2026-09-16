@@ -628,7 +628,8 @@ type SkillSource struct {
 	// First sweep on which a re-fetch hashed differently from content_hash. NULL means every check so far matched, or no check has compared content yet. Never cleared: the snapshot we hold does not become current again.
 	ContentChangedAt pgtype.Timestamptz
 	// Inputs beyond task_description that produced a generated package: the diagram's digest, media type and byte count, and the reference skills' ids and names. NULL for git, upload and text-only generations. Never the image bytes.
-	GenerationInputs []byte
+	GenerationInputs          []byte
+	CountsTowardGenerateQuota bool
 }
 
 type SkillVersion struct {

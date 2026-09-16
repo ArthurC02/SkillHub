@@ -1,9 +1,10 @@
 -- name: CreateSkillSource :one
 INSERT INTO skill_sources (
     workspace_id, source_type, source_url, source_ref, content_hash, fetched_at,
-    task_description, generator_model, generator_prompt_version, generation_inputs
+    task_description, generator_model, generator_prompt_version, generation_inputs,
+    counts_toward_generate_quota
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: GetSkillByName :one
@@ -20,6 +21,5 @@ SELECT
     min(fetched_at)::timestamptz AS oldest
 FROM skill_sources
 WHERE workspace_id = @workspace_id
-  AND source_type = 'generated'
-  AND NOT COALESCE(generation_inputs @> '{"interactive": true}', false)
+  AND counts_toward_generate_quota
   AND fetched_at > @since;

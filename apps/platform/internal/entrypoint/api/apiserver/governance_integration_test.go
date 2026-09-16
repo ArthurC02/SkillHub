@@ -629,8 +629,8 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 
 	var sourceID pgtype.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at)
-		VALUES ($1, 'git', 'https://example.invalid/alice.git', 'hash-private', now()) RETURNING id`,
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'git', 'https://example.invalid/alice.git', 'hash-private', now(), false) RETURNING id`,
 		mustUUID(t, alice.workspaceID)).Scan(&sourceID); err != nil {
 		t.Fatal(err)
 	}
@@ -659,8 +659,8 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	}
 	var keptSourceID pgtype.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at)
-		VALUES ($1, 'git', 'https://example.invalid/alice-shared.git', 'hash-shared-v2', now()) RETURNING id`,
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'git', 'https://example.invalid/alice-shared.git', 'hash-shared-v2', now(), false) RETURNING id`,
 		mustUUID(t, alice.workspaceID)).Scan(&keptSourceID); err != nil {
 		t.Fatal(err)
 	}

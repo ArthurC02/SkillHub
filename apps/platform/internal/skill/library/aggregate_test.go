@@ -454,8 +454,8 @@ func TestEveryVersionPathLeavesItsEventsInTheOutbox(t *testing.T) {
 	}
 	var sourceID pgtype.UUID
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO skill_sources (workspace_id, source_type, content_hash, fetched_at)
-		VALUES ($1, 'upload', 'lifecycle-bytes', now()) RETURNING id`, ws.ID).Scan(&sourceID); err != nil {
+		INSERT INTO skill_sources (workspace_id, source_type, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'upload', 'lifecycle-bytes', now(), false) RETURNING id`, ws.ID).Scan(&sourceID); err != nil {
 		t.Fatal(err)
 	}
 	newer := passingReport("lifecycle-imported")

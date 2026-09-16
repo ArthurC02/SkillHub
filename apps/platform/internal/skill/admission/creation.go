@@ -31,7 +31,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 		return Result{}, err
 	}
 	desc, model, prompt := p.TaskDescription, p.Model, p.PromptVersion
-	src := sourceMeta{Type: SourceGenerated, TaskDescription: &desc, GeneratorModel: &model, GeneratorPromptVersion: &prompt, GenerationInputs: p.GenerationInputs}
+	src := sourceMeta{Type: SourceGenerated, TaskDescription: &desc, GeneratorModel: &model, GeneratorPromptVersion: &prompt, GenerationInputs: p.GenerationInputs, Interactive: true}
 	if p.ExistingSkillID == nil {
 		return s.importZipWithCommit(ctx, ws, data, src, after)
 	}

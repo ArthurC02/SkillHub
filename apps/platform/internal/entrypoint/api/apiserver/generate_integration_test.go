@@ -13,19 +13,20 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	apigen "github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
-	policy "github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
 
 type generateStub struct {
@@ -715,6 +716,12 @@ func TestADiagramOnlyGenerationIsCreated(t *testing.T) {
 	code, resp := postJSON(t, c, "/skills/generate", body)
 	if code != http.StatusCreated {
 		t.Fatalf("got %d %v, want 201", code, resp)
+	}
+	usage, err := gen.New(pool).CountGeneratedSkills(context.Background(), gen.CountGeneratedSkillsParams{
+		WorkspaceID: workspaceOf(t, pool, c).ID, Since: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+	})
+	if err != nil || usage.Used != 1 {
+		t.Fatalf("single-shot generations counted = %d, %v; want this one counted", usage.Used, err)
 	}
 	if stub.calls != 1 {
 		t.Errorf("model called %d times, want 1", stub.calls)

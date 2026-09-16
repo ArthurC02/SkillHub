@@ -81,7 +81,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 
 **Re-Use 三個關卡**（`05` R-48／R-49／R-50）：第一則訊息就查目錄（`CatalogCheck`），命中時使用者選 `adopt_reference` 或 `decline_references`；覆蓋規則的詞彙命中排在向量之前；`materialize`／`finalize` 之前查重，命中走 `confirm_duplicate`，同名而內容不同時走 `renamedOnly`（只改名、不重跑查重）。
 
-**互動創作不吃單次生成額度**：候選的 `generation_inputs` 帶 `interactive: true`，`CountGeneratedSkills` 排除它。
+**互動創作不吃單次生成額度**：admission 寫入來源時決定 `counts_toward_generate_quota`，互動創作的候選寫 false，`CountGeneratedSkills` 只數 true 的列。
 
 ## 提示注入：守得住什麼、守不住什麼
 

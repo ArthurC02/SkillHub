@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
-	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
@@ -109,7 +109,6 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 		m["diagram"] = map[string]any{"sha256": p.DiagramFingerprint, "media_type": p.DiagramMediaType, "bytes": p.DiagramBytes}
 	}
 
-	m["interactive"] = true
 	inputs, _ := json.Marshal(m)
 	provenance := Provenance{p.Brief, p.Model, p.PromptVersion, e.ExistingSkillID, inputs}
 	var result View

@@ -269,8 +269,8 @@ func TestSourceAvailabilityIsAuditedOnlyWhenItChanges(t *testing.T) {
 
 	var sourceID pgtype.UUID
 	if err := pool.QueryRow(context.Background(), `
-		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at)
-		VALUES ($1, 'git', $2, $3, now()) RETURNING id`,
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'git', $2, $3, now(), false) RETURNING id`,
 		mustUUID(t, c.workspaceID), upstream.URL, unchangedUpstreamHash).Scan(&sourceID); err != nil {
 		t.Fatal(err)
 	}
@@ -366,8 +366,8 @@ func TestSourceContentChangeIsAuditedOnceAndOnlyOnAChange(t *testing.T) {
 
 	var sourceID pgtype.UUID
 	if err := pool.QueryRow(context.Background(), `
-		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at)
-		VALUES ($1, 'git', $2, $3, now()) RETURNING id`,
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'git', $2, $3, now(), false) RETURNING id`,
 		mustUUID(t, c.workspaceID), upstream.URL, unchangedUpstreamHash).Scan(&sourceID); err != nil {
 		t.Fatal(err)
 	}
@@ -457,8 +457,8 @@ func TestASourceThatCannotBeRefetchedIsNotRecordedAsChanged(t *testing.T) {
 
 	var sourceID pgtype.UUID
 	if err := pool.QueryRow(context.Background(), `
-		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at)
-		VALUES ($1, 'git', $2, $3, now()) RETURNING id`,
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'git', $2, $3, now(), false) RETURNING id`,
 		mustUUID(t, c.workspaceID), upstream.URL, unchangedUpstreamHash).Scan(&sourceID); err != nil {
 		t.Fatal(err)
 	}
