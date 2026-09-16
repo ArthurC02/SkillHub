@@ -75,6 +75,28 @@ func TestAPageKeepsAtMostTheLimitAndCountsEveryMatch(t *testing.T) {
 	}
 }
 
+func TestHybridHitsTiedOnEveryRankingKeyKeepOneOrderWhateverTheyArriveIn(t *testing.T) {
+	fused := map[pgtype.UUID]hybridCandidate{
+		skill(1): {ranked: true, distance: 0.4}, skill(2): {ranked: true, distance: 0.4},
+		skill(3): {}, skill(4): {},
+	}
+	want := []pgtype.UUID{skill(1), skill(2), skill(3), skill(4)}
+	for _, arrival := range [][]pgtype.UUID{want, {skill(4), skill(2), skill(3), skill(1)}} {
+		docs := make([]gen.ListHybridSearchDocumentsRow, len(arrival))
+		for i, id := range arrival {
+			docs[i] = gen.ListHybridSearchDocumentsRow{SkillID: id}
+		}
+		rankHybridDocuments(docs, fused, "query")
+		var got []pgtype.UUID
+		for _, d := range docs {
+			got = append(got, d.SkillID)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("arrival %v ranked as %v, want %v", arrival, got, want)
+		}
+	}
+}
+
 func TestHybridHitsPinTheExactNameThenCoveredThenNearestAndUnrankedLast(t *testing.T) {
 	fused := map[pgtype.UUID]hybridCandidate{
 		skill(1): {ranked: true, distance: 0.1},

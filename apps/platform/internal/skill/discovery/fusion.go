@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"bytes"
 	"sort"
 	"strings"
 
@@ -62,7 +63,9 @@ func rankHybridDocuments(docs []gen.ListHybridSearchDocumentsRow, fused map[pgty
 			return a.covered
 		case a.ranked != b.ranked:
 			return a.ranked
+		case a.distance != b.distance:
+			return a.distance < b.distance
 		}
-		return a.ranked && a.distance < b.distance
+		return bytes.Compare(docs[i].SkillID.Bytes[:], docs[j].SkillID.Bytes[:]) < 0
 	})
 }
