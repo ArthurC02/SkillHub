@@ -154,6 +154,7 @@ type generalView struct {
 	ErrorsTotal int    `json:"errors_total"`
 	Truncated   bool   `json:"summary_truncated"`
 	FinalOutput string `json:"final_output"`
+	LastEventAt string `json:"last_event_at"`
 	Usage       *struct {
 		InputTokens int64  `json:"input_tokens"`
 		CostCredits *int64 `json:"cost_credits"`
@@ -782,6 +783,9 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	for seq := 8; seq <= 18; seq++ {
 		events = append(events, event(runID, 1, seq, "tool_call", `{"tool_name":"large","outcome":"succeeded","duration_ms":900000000000000000}`))
 	}
+	events = append(events,
+		event(runID, 1, 19, "agent_output", `{"kind":"intermediate","text":"Checking the sheet again.","truncated":false}`),
+		event(runID, 1, 20, "script_log", `{"stream":"stdout","text":"done"}`))
 	if code, report := a.ingest(t, runID, 1, events...); code != http.StatusAccepted || report.Stored != len(events) {
 		t.Fatalf("push: got %d %+v", code, report)
 	}
@@ -813,6 +817,14 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	}
 	if view.FinalOutput != "Removed 17 duplicate rows." {
 		t.Errorf("final output = %q", view.FinalOutput)
+	}
+	var lastEventAt time.Time
+	if err := pool.QueryRow(context.Background(),
+		"SELECT max(occurred_at) FROM trace_events WHERE run_id = $1", mustUUID(t, runID)).Scan(&lastEventAt); err != nil {
+		t.Fatal(err)
+	}
+	if want := lastEventAt.UTC().Format("2006-01-02T15:04:05Z"); view.LastEventAt != want {
+		t.Errorf("last_event_at = %q, want the latest event of any type %q", view.LastEventAt, want)
 	}
 	if view.Usage == nil || view.Usage.InputTokens != 27042 {
 		t.Fatalf("usage = %+v", view.Usage)

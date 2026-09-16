@@ -80,113 +80,28 @@ SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_e
 FROM streams s
 ORDER BY s.attempt, s.source;
 
--- name: GetTraceGeneralFold :one
--- Folds the general view in the database so polling transfers one aggregate row.
-WITH events AS (
-    SELECT event_type, occurred_at
-    FROM trace_events
-    WHERE trace_events.run_id = @fold_run_id AND trace_events.workspace_id = @fold_workspace_id
-),
-skill_rows AS (
-    SELECT payload, occurred_at, source, attempt, seq FROM trace_events
-    WHERE trace_events.run_id = @fold_run_id AND trace_events.workspace_id = @fold_workspace_id AND event_type = 'skill_activation'
-    ORDER BY occurred_at, source, attempt, seq LIMIT 100
-),
-error_rows AS (
-    SELECT payload, occurred_at, source, attempt, seq FROM trace_events
-    WHERE trace_events.run_id = @fold_run_id AND trace_events.workspace_id = @fold_workspace_id AND event_type = 'error'
-    ORDER BY occurred_at, source, attempt, seq LIMIT 100
-),
-tool_rows AS (
-    SELECT payload->>'tool_name' AS tool_name,
-           payload->>'outcome' AS outcome,
-           occurred_at, source, attempt, seq,
-           CASE WHEN (payload->>'duration_ms') ~ '^[0-9]{1,18}$'
-                THEN (payload->>'duration_ms')::bigint ELSE 0 END AS duration_ms
-    FROM trace_events
-    WHERE trace_events.run_id = @fold_run_id AND trace_events.workspace_id = @fold_workspace_id AND event_type = 'tool_call'
-),
-last_output AS (
-    SELECT payload->>'text' AS text FROM trace_events
-    WHERE trace_events.run_id = @fold_run_id AND trace_events.workspace_id = @fold_workspace_id
-      AND event_type = 'agent_output' AND payload->>'kind' = 'final'
-    ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC LIMIT 1
-),
-usage_rows AS (
-    SELECT payload->>'scope' AS scope,
-           payload->>'model' AS model,
-           payload->>'input_tokens' AS input_tokens,
-           payload->>'output_tokens' AS output_tokens,
-           payload->>'cost_usd' AS cost_usd,
-           payload->>'cost_source' AS cost_source,
-           occurred_at, source, attempt, seq
-    FROM trace_events
-    WHERE trace_events.run_id = @fold_run_id AND trace_events.workspace_id = @fold_workspace_id AND event_type = 'usage'
-),
-last_usage AS (
-    SELECT model, cost_source FROM usage_rows
-    ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC LIMIT 1
-),
-run_total AS (
-    SELECT input_tokens, output_tokens, cost_usd FROM usage_rows WHERE scope = 'run_total'
-    ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC LIMIT 1
-),
-usage_sum AS (
-    SELECT
-      least(coalesce(sum(CASE WHEN input_tokens ~ '^[0-9]{1,18}$'
-                              THEN input_tokens::bigint ELSE 0 END), 0),
-            9223372036854775807)::bigint AS input_tokens,
-      least(coalesce(sum(CASE WHEN output_tokens ~ '^[0-9]{1,18}$'
-                              THEN output_tokens::bigint ELSE 0 END), 0),
-            9223372036854775807)::bigint AS output_tokens,
-      sum(CASE WHEN cost_usd ~ '^[0-9]{1,12}(\.[0-9]{1,12})?$'
-               THEN cost_usd::numeric ELSE NULL END) AS cost_usd
-    FROM usage_rows WHERE scope IS DISTINCT FROM 'run_total'
-)
-SELECT jsonb_build_object(
-  'skills', (SELECT coalesce(jsonb_agg(jsonb_build_object(
-      'name', coalesce(payload->>'skill_name', ''),
-      'decision', coalesce(payload->>'decision', ''),
-      'reason', coalesce(payload->>'reason', '')
-  ) ORDER BY occurred_at, source, attempt, seq), '[]'::jsonb) FROM skill_rows),
-  'skills_total', (SELECT count(*) FROM events WHERE event_type = 'skill_activation'),
-  'resources_read', (SELECT count(*) FROM events WHERE event_type = 'resource_read'),
-  'tool_calls', jsonb_build_object(
-      'total', (SELECT count(*) FROM tool_rows),
-      'succeeded', (SELECT count(*) FROM tool_rows WHERE outcome = 'succeeded'),
-      'failed', (SELECT count(*) FROM tool_rows WHERE outcome IS DISTINCT FROM 'succeeded'),
-      'total_duration_ms', (SELECT least(coalesce(sum(duration_ms), 0), 9223372036854775807) FROM tool_rows),
-      'slowest_duration_ms', (SELECT coalesce(max(duration_ms), 0) FROM tool_rows),
-      'slowest_tool', coalesce((SELECT tool_name FROM tool_rows
-                               WHERE duration_ms > 0
-                               ORDER BY duration_ms DESC, occurred_at, source, attempt, seq LIMIT 1), '')
-  ),
-  'errors', (SELECT coalesce(jsonb_agg(jsonb_build_object(
-      'category', coalesce(payload->>'category', ''),
-      'code', coalesce(payload->>'code', ''),
-      'message', coalesce(payload->>'message', '')
-  ) ORDER BY occurred_at, source, attempt, seq), '[]'::jsonb) FROM error_rows),
-  'errors_total', (SELECT count(*) FROM events WHERE event_type = 'error'),
-  'last_event_at', (SELECT to_char(max(occurred_at) AT TIME ZONE 'UTC',
-                                   'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM events),
-  'final_output', coalesce((SELECT text FROM last_output), ''),
-  'usage', CASE WHEN EXISTS (SELECT 1 FROM usage_rows) THEN jsonb_build_object(
-      'model', coalesce((SELECT model FROM last_usage), ''),
-      'input_tokens', coalesce(
-          (SELECT CASE WHEN input_tokens ~ '^[0-9]{1,18}$'
-                       THEN input_tokens::bigint END FROM run_total),
-          (SELECT input_tokens FROM usage_sum)),
-      'output_tokens', coalesce(
-          (SELECT CASE WHEN output_tokens ~ '^[0-9]{1,18}$'
-                       THEN output_tokens::bigint END FROM run_total),
-          (SELECT output_tokens FROM usage_sum)),
-      'cost_usd', coalesce(
-          (SELECT CASE WHEN cost_usd ~ '^[0-9]{1,12}(\.[0-9]{1,12})?$'
-                       THEN cost_usd::numeric END FROM run_total),
-          (SELECT cost_usd FROM usage_sum)),
-      'cost_source', coalesce((SELECT cost_source FROM last_usage), '')
-  ) ELSE NULL END
-) AS folded;
+-- name: ListTraceGeneralFacts :many
+SELECT event_type, source, attempt, seq,
+       COALESCE(payload->>'skill_name', '')::text AS skill_name, COALESCE(payload->>'decision', '')::text AS decision, COALESCE(payload->>'reason', '')::text AS reason,
+       COALESCE(payload->>'category', '')::text AS category, COALESCE(payload->>'code', '')::text AS code, COALESCE(payload->>'message', '')::text AS message,
+       COALESCE(payload->>'tool_name', '')::text AS tool_name, COALESCE(payload->>'outcome', '')::text AS outcome, COALESCE(payload->>'duration_ms', '')::text AS duration_ms,
+       COALESCE(payload->>'kind', '')::text AS kind, COALESCE(payload->>'scope', '')::text AS scope, COALESCE(payload->>'model', '')::text AS model,
+       COALESCE(payload->>'input_tokens', '')::text AS input_tokens, COALESCE(payload->>'output_tokens', '')::text AS output_tokens,
+       COALESCE(payload->>'cost_usd', '')::text AS cost_usd, COALESCE(payload->>'cost_source', '')::text AS cost_source
+FROM trace_events
+WHERE run_id = @run_id AND workspace_id = @workspace_id AND event_type = ANY(@event_types::text[])
+ORDER BY occurred_at, source, attempt, seq;
+
+-- name: GetTraceEventText :one
+SELECT COALESCE(payload->>'text', '')::text AS text
+FROM trace_events
+WHERE run_id = @run_id AND workspace_id = @workspace_id
+  AND source = @source AND attempt = @attempt AND seq = @seq;
+
+-- name: GetTraceLastEventAt :one
+SELECT max(occurred_at)::timestamptz AS last_event_at
+FROM trace_events
+WHERE run_id = @run_id AND workspace_id = @workspace_id;
 
 -- name: LockTraceIngestRun :exec
 -- Takes the global trace-writer lock before any per-stream lock; the insert trigger

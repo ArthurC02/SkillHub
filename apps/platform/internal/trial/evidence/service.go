@@ -486,38 +486,18 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	if err != nil {
 		return Summary{}, err
 	}
-	folded, err := s.queries().GetTraceGeneralFold(ctx, gen.GetTraceGeneralFoldParams{
-		FoldRunID: runID, FoldWorkspaceID: workspaceID,
-	})
+	fold, err := s.readGeneralFold(ctx, workspaceID, runID)
 	if err != nil {
 		return Summary{}, err
 	}
 
-	summary := Summary{
-		RunID:    pgconv.UUIDString(runID),
-		Status:   run.Status,
-		Complete: true,
-		Skills:   []SkillUse{},
-		Errors:   []ErrorSummary{},
-		Steps:    []ProgressStep{},
-	}
+	summary := fold.summary
+	summary.RunID, summary.Status, summary.Complete, summary.Steps = pgconv.UUIDString(runID), run.Status, true, []ProgressStep{}
 	if run.StatusReason != nil {
 		summary.StatusReason = *run.StatusReason
 	}
-	if err := json.Unmarshal(folded, &summary); err != nil {
-		return Summary{}, err
-	}
-
-	var foldCost struct {
-		Usage *struct {
-			CostUSD *float64 `json:"cost_usd"`
-		} `json:"usage"`
-	}
-	if err := json.Unmarshal(folded, &foldCost); err != nil {
-		return Summary{}, err
-	}
-	if summary.Usage != nil && foldCost.Usage != nil {
-		summary.Usage.CostUSD = foldCost.Usage.CostUSD
+	if summary.Usage != nil {
+		summary.Usage.CostUSD = fold.costUSD
 		if c := summary.Usage.CostUSD; c != nil && s.Credits != nil {
 			if credits, ok := s.Credits(*c); ok {
 				summary.Usage.CostCredits = &credits
@@ -548,6 +528,33 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	}
 
 	return summary, nil
+}
+
+func (s *Service) readGeneralFold(ctx context.Context, workspaceID, runID pgtype.UUID) (generalFold, error) {
+	q := s.queries()
+	rows, err := q.ListTraceGeneralFacts(ctx, gen.ListTraceGeneralFactsParams{
+		RunID: runID, WorkspaceID: workspaceID, EventTypes: generalEventTypes(),
+	})
+	if err != nil {
+		return generalFold{}, err
+	}
+	fold := foldGeneral(rows)
+	if final := fold.finalOutput; final != nil {
+		fold.summary.FinalOutput, err = q.GetTraceEventText(ctx, gen.GetTraceEventTextParams{
+			RunID: runID, WorkspaceID: workspaceID, Source: final.Source, Attempt: final.Attempt, Seq: final.Seq,
+		})
+		if err != nil {
+			return generalFold{}, err
+		}
+	}
+	last, err := q.GetTraceLastEventAt(ctx, gen.GetTraceLastEventAtParams{RunID: runID, WorkspaceID: workspaceID})
+	if err != nil {
+		return generalFold{}, err
+	}
+	if last.Valid {
+		fold.summary.LastEventAt = last.Time.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	return fold, nil
 }
 
 func (s *Service) runState(ctx context.Context, workspaceID, runID pgtype.UUID) (RunState, error) {
