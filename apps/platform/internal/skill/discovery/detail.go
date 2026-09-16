@@ -570,16 +570,7 @@ func tierLabel(t Tier) labelled {
 }
 
 func curationTier(skill SkillFacts, latestVersionID pgtype.UUID) Tier {
-	if skill.CurationTier != string(TierCurated) {
-		return TierIndexed
-	}
-	if !skill.CuratedVersionID.Valid || !latestVersionID.Valid {
-		return TierIndexed
-	}
-	if skill.CuratedVersionID.Bytes != latestVersionID.Bytes {
-		return TierIndexed
-	}
-	return TierCurated
+	return tierOf(curatedAt(skill.CurationTier, skill.CuratedVersionID, latestVersionID))
 }
 
 func statusLabel(s LicenseStatus) labelled {

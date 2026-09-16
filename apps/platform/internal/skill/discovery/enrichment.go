@@ -9,6 +9,10 @@ const (
 
 func (s EnrichmentStatus) restartsAttempts() bool { return s == EnrichmentPending }
 
+func (s EnrichmentStatus) listable(hasEmbedding bool) bool {
+	return s == EnrichmentEnriched || hasEmbedding
+}
+
 func AllEnrichmentStatuses() []EnrichmentStatus {
 	return []EnrichmentStatus{EnrichmentPending, EnrichmentEnriched}
 }

@@ -47,7 +47,7 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 		if err := q.UpsertSearchDocumentEnriched(ctx, gen.UpsertSearchDocumentEnrichedParams{
 			SkillID: mustUUID(t, doc.f.skillID), WorkspaceID: mustUUID(t, doc.f.workspaceID),
 			Name: doc.name, Summary: doc.name, EnrichedSummary: doc.name, TaskExamples: "[]", Tags: []byte(`[]`),
-			Limitations: "[]", Scan: []byte(`{}`), Embedding: &emb, EnrichmentStatus: "enriched", BigramText: doc.bigram,
+			Limitations: "[]", Scan: []byte(`{}`), Embedding: &emb, EnrichmentStatus: "enriched", BigramText: doc.bigram, Listable: true,
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -155,7 +155,7 @@ func TestCatalogReferenceFactsReadTheTierAndTheScan(t *testing.T) {
 	}
 }
 
-func TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions(t *testing.T) {
+func TestRequeueingCatalogueEnrichmentQueuesOnlyOlderPromptVersions(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
 	curator := newAPI(t, pool).login(t, "curator-reenrich")
@@ -163,9 +163,8 @@ func TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions(t *testing.
 	old := seedSkill(t, pool, curator.workspaceID, "reenrich-old")
 	current := seedSkill(t, pool, curator.workspaceID, "reenrich-current")
 	private := newFixture(t, newAPI(t, pool), pool, uniqueWorklistLabel("reenrich-private"))
-	q := gen.New(pool)
 	set := func(skill, version string) {
-		if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched', enrichment_prompt_version = $2 WHERE skill_id = $1", mustUUID(t, skill), version); err != nil {
+		if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched', listable = true, enrichment_prompt_version = $2 WHERE skill_id = $1", mustUUID(t, skill), version); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -177,10 +176,13 @@ func TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	n, err := q.ResetCatalogueEnrichmentBefore(ctx, gen.ResetCatalogueEnrichmentBeforeParams{
-		PromptVersion: "enrich-skill/v7", CatalogWorkspaceIds: catalogs,
-	})
-	if err != nil || n < 1 {
+	seedEmbedding(t, pool, current, 3)
+	oldWithEmbedding := seedSkill(t, pool, curator.workspaceID, "reenrich-old-embedded")
+	set(oldWithEmbedding, "enrich-skill/v2")
+	seedEmbedding(t, pool, oldWithEmbedding, 4)
+
+	n, err := catalog.RequeueCatalogueEnrichment(ctx, pool, catalogs, "enrich-skill/v7")
+	if err != nil || n < 2 {
 		t.Fatalf("reset %d err=%v, want at least the old catalogue document", n, err)
 	}
 	status := func(skill string) string {
@@ -192,6 +194,17 @@ func TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions(t *testing.
 	}
 	if status(old) != "pending" || status(current) != "enriched" || status(private.skillID) != "enriched" {
 		t.Fatalf("old=%s current=%s private=%s", status(old), status(current), status(private.skillID))
+	}
+	listable := func(skill string) bool {
+		var l bool
+		if err := pool.QueryRow(ctx, "SELECT listable FROM search_documents WHERE skill_id = $1", mustUUID(t, skill)).Scan(&l); err != nil {
+			t.Fatal(err)
+		}
+		return l
+	}
+	if listable(old) || !listable(oldWithEmbedding) || !listable(current) {
+		t.Fatalf("listable after requeue: old=%v old with embedding=%v current=%v; want only the documents a vector still finds",
+			listable(old), listable(oldWithEmbedding), listable(current))
 	}
 }
 

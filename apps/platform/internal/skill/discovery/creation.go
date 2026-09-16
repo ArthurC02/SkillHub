@@ -105,13 +105,13 @@ func (s *Service) CatalogReferenceFacts(ctx context.Context, skillID, versionID 
 		return "unknown", "unknown", 0, err
 	}
 	row, err := gen.New(s.Pool).GetCatalogReferenceFacts(ctx, gen.GetCatalogReferenceFactsParams{
-		SkillID: sid, VersionID: vid, CatalogWorkspaceIds: catalogs,
+		SkillID: sid, CatalogWorkspaceIds: catalogs,
 	})
 	if err != nil {
 		return "unknown", "unknown", 0, err
 	}
 	tier = "indexed"
-	if row.Curated {
+	if row.CuratedVersionID.Valid && row.CuratedVersionID.Bytes == vid.Bytes {
 		tier = "curated"
 	}
 	risk := riskHint(row.Scan)

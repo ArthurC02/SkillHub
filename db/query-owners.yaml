@@ -196,6 +196,7 @@ scope:
   InsertCreditEntry: user
   ListWorkspacesByOwner: user
   RequestAccountDeletion: user
+  RequeueSearchDocumentEnrichment: user
   UpsertSessionCostSummary: user
 
   CountPlatformAuditEventsByDay: user

@@ -8,8 +8,8 @@ SET name = EXCLUDED.name, summary = EXCLUDED.summary, bigram = EXCLUDED.bigram, 
 INSERT INTO search_documents (
     skill_id, workspace_id, name, summary,
     enriched_summary, task_examples, tags, limitations, scan, embedding,
-    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', sqlc.arg(bigram_text)::text), now())
+    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, listable, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', sqlc.arg(bigram_text)::text), sqlc.arg(listable), now())
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id,
     name = EXCLUDED.name,
@@ -24,6 +24,7 @@ SET workspace_id = EXCLUDED.workspace_id,
     enrichment_status = EXCLUDED.enrichment_status,
     enrichment_model = EXCLUDED.enrichment_model,
     enrichment_prompt_version = EXCLUDED.enrichment_prompt_version,
+    listable = EXCLUDED.listable,
     enrichment_attempted_at = CASE
         WHEN sqlc.arg(restart_enrichment_attempts)::bool THEN NULL
         ELSE search_documents.enrichment_attempted_at END,
@@ -57,15 +58,10 @@ LIMIT $2;
 
 -- name: PublicSearchSkills :many
 SELECT s.skill_id, s.name,
-       COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-       CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
-           AS summary_source,
+       s.summary, s.enriched_summary,
        s.tags, s.scan, s.verified_at,
-       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
-       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
-       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
-       s.agent_measured_at,
-       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.agent_capability, s.agent_runtime, s.agent_runtime_image, s.agent_measured_at,
+       s.curated,
        s.category,
        s.category_source,
        count(*) OVER ()::bigint AS total_matches
@@ -74,7 +70,7 @@ WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   AND (s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
        OR (sqlc.arg(bigram_query)::text <> ''
            AND s.bigram @@ to_tsquery('simple', sqlc.arg(bigram_query)::text)))
-  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND s.listable
   AND (
     sqlc.narg(has_script)::bool IS NULL
     OR (s.scan IS NOT NULL
@@ -87,11 +83,11 @@ WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   )
   AND (
     sqlc.narg(agent_runtime)::text IS NULL
-    OR COALESCE(s.agent_runtime, 'unverified') = sqlc.narg(agent_runtime)::text
+    OR s.agent_runtime = sqlc.narg(agent_runtime)::text
   )
   AND (
-    sqlc.narg(curation_tier)::text IS NULL
-    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = sqlc.narg(curation_tier)::text
+    sqlc.narg(curated)::bool IS NULL
+    OR s.curated = sqlc.narg(curated)::bool
   )
   AND (
     sqlc.narg(category)::text IS NULL
@@ -106,21 +102,16 @@ LIMIT sqlc.arg(result_limit);
 
 -- name: BrowseCatalogSkills :many
 SELECT s.skill_id, s.name,
-       COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-       CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
-           AS summary_source,
+       s.summary, s.enriched_summary,
        s.tags, s.scan, s.verified_at,
-       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
-       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
-       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
-       s.agent_measured_at,
-       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.agent_capability, s.agent_runtime, s.agent_runtime_image, s.agent_measured_at,
+       s.curated,
        s.category,
        s.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
 WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND s.listable
   AND (
     sqlc.narg(has_script)::bool IS NULL
     OR (s.scan IS NOT NULL
@@ -133,17 +124,17 @@ WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   )
   AND (
     sqlc.narg(agent_runtime)::text IS NULL
-    OR COALESCE(s.agent_runtime, 'unverified') = sqlc.narg(agent_runtime)::text
+    OR s.agent_runtime = sqlc.narg(agent_runtime)::text
   )
   AND (
-    sqlc.narg(curation_tier)::text IS NULL
-    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = sqlc.narg(curation_tier)::text
+    sqlc.narg(curated)::bool IS NULL
+    OR s.curated = sqlc.narg(curated)::bool
   )
   AND (
     sqlc.narg(category)::text IS NULL
     OR s.category = sqlc.narg(category)::text
   )
-ORDER BY (COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = 'curated') DESC,
+ORDER BY s.curated DESC,
          s.verified_at DESC NULLS LAST,
          s.skill_id
 LIMIT sqlc.arg(result_limit);
@@ -162,7 +153,7 @@ fts AS (
     SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
     FROM search_documents s
     WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-      AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+      AND s.listable
       AND s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
     ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
     LIMIT sqlc.arg(fulltext_candidates)::int
@@ -171,7 +162,7 @@ lex AS (
     SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
     FROM search_documents s
     WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-      AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+      AND s.listable
       AND sqlc.arg(bigram_query)::text <> ''
       AND s.bigram @@ to_tsquery('simple', sqlc.arg(bigram_query)::text)
     ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(bigram_query)::text)) DESC
@@ -189,15 +180,10 @@ candidates AS (
     GROUP BY skill_id
 )
 SELECT c.skill_id, s.name,
-       COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-       CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
-           AS summary_source,
+       s.summary, s.enriched_summary,
        s.tags, s.scan, s.verified_at,
-       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
-       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
-       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
-       s.agent_measured_at,
-       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.agent_capability, s.agent_runtime, s.agent_runtime_image, s.agent_measured_at,
+       s.curated,
        s.category,
        s.category_source,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
@@ -219,11 +205,11 @@ WHERE (c.covered OR c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::
   )
   AND (
     sqlc.narg(agent_runtime)::text IS NULL
-    OR COALESCE(s.agent_runtime, 'unverified') = sqlc.narg(agent_runtime)::text
+    OR s.agent_runtime = sqlc.narg(agent_runtime)::text
   )
   AND (
-    sqlc.narg(curation_tier)::text IS NULL
-    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = sqlc.narg(curation_tier)::text
+    sqlc.narg(curated)::bool IS NULL
+    OR s.curated = sqlc.narg(curated)::bool
   )
   AND (
     sqlc.narg(category)::text IS NULL
@@ -261,6 +247,7 @@ SET generated = sqlc.arg(generated),
     verified_at = sqlc.narg(verified_at),
     latest_package_object_key = sqlc.narg(latest_package_object_key),
     curated_version_id = sqlc.narg(curated_version_id),
+    curated = sqlc.arg(curated),
     agent_capability = sqlc.narg(agent_capability),
     agent_runtime = sqlc.narg(agent_runtime),
     agent_runtime_image = sqlc.narg(agent_runtime_image),
@@ -290,16 +277,23 @@ UPDATE search_documents
 SET bigram = to_tsvector('simple', sqlc.arg(bigram_text)::text)
 WHERE skill_id = $1;
 
--- name: ResetCatalogueEnrichmentBefore :execrows
-UPDATE search_documents sd
-SET enrichment_status = 'pending', enrichment_attempted_at = NULL
+-- name: ListCatalogueDocumentsEnrichedBefore :many
+SELECT sd.skill_id, (sd.embedding IS NOT NULL)::bool AS has_embedding
+FROM search_documents sd
 WHERE sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-  AND sd.enrichment_status = 'enriched'
-  AND COALESCE(sd.enrichment_prompt_version, '') <> sqlc.arg(prompt_version)::text;
+  AND sd.enrichment_status = sqlc.arg(enriched_status)::text
+  AND (sd.enrichment_prompt_version IS NULL OR sd.enrichment_prompt_version <> sqlc.arg(prompt_version)::text)
+ORDER BY sd.skill_id
+FOR UPDATE;
+
+-- name: RequeueSearchDocumentEnrichment :execrows
+UPDATE search_documents sd
+SET enrichment_status = sqlc.arg(pending_status)::text, enrichment_attempted_at = NULL, listable = u.listable
+FROM (SELECT unnest(sqlc.arg(skill_ids)::uuid[]) AS skill_id, unnest(sqlc.arg(listable)::bool[]) AS listable) u
+WHERE sd.skill_id = u.skill_id;
 
 -- name: GetCatalogReferenceFacts :one
-SELECT sd.scan,
-       COALESCE(sd.curated_version_id = sqlc.arg(version_id)::uuid, false)::bool AS curated
+SELECT sd.scan, sd.curated_version_id
 FROM search_documents sd
 WHERE sd.skill_id = sqlc.arg(skill_id)
   AND sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[]);
@@ -308,7 +302,7 @@ WHERE sd.skill_id = sqlc.arg(skill_id)
 SELECT s.skill_id, s.name
 FROM search_documents s
 WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND s.listable
   AND s.bigram @@ to_tsquery('simple', sqlc.arg(query)::text)
 ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(query)::text)) DESC
 LIMIT sqlc.arg(result_limit)::int;

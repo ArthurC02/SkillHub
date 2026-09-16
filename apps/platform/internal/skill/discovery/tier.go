@@ -1,5 +1,7 @@
 package catalog
 
+import "github.com/jackc/pgx/v5/pgtype"
+
 type Tier string
 
 const (
@@ -9,6 +11,26 @@ const (
 
 	TierExternal Tier = "external"
 )
+
+func curatedAt(tier string, curatedVersionID, latestVersionID pgtype.UUID) bool {
+	return tier == string(TierCurated) && curatedVersionID.Valid && latestVersionID.Valid &&
+		curatedVersionID.Bytes == latestVersionID.Bytes
+}
+
+func tierOf(curated bool) Tier {
+	if curated {
+		return TierCurated
+	}
+	return TierIndexed
+}
+
+func curatedFilter(tier *string) *bool {
+	if tier == nil {
+		return nil
+	}
+	curated := Tier(*tier) == TierCurated
+	return &curated
+}
 
 func AllCurationTiers() []Tier {
 	return []Tier{TierCurated, TierIndexed}

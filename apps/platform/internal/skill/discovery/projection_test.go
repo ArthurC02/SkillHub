@@ -8,6 +8,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 func TestOnlyAPendingEnrichmentStartsItsAttemptsOver(t *testing.T) {
@@ -19,6 +20,42 @@ func TestOnlyAPendingEnrichmentStartsItsAttemptsOver(t *testing.T) {
 	}
 	if len(AllEnrichmentStatuses()) != 2 {
 		t.Fatalf("enrichment statuses = %v; decide whether each new one starts its attempts over", AllEnrichmentStatuses())
+	}
+}
+
+func TestADocumentIsListedOnceEnrichedOrOnceAVectorCanFindIt(t *testing.T) {
+	emb := pgvector.NewVector([]float32{1})
+	for _, tc := range []struct {
+		name      string
+		status    EnrichmentStatus
+		embedding *pgvector.Vector
+		listable  bool
+	}{
+		{"pending without a vector", EnrichmentPending, nil, false},
+		{"pending with a vector", EnrichmentPending, &emb, true},
+		{"enriched without a vector", EnrichmentEnriched, nil, true},
+		{"enriched with a vector", EnrichmentEnriched, &emb, true},
+	} {
+		got := enrichedDocumentOf(EnrichedSkillProjection{EnrichmentStatus: string(tc.status), Embedding: tc.embedding})
+		if got.Listable != tc.listable {
+			t.Errorf("%s: listable = %v, want %v", tc.name, got.Listable, tc.listable)
+		}
+	}
+}
+
+func TestAnUnmeasuredListingIsWrittenUnverifiedAndOnlyTheReviewedNewestVersionIsCurated(t *testing.T) {
+	reviewed := pgtype.UUID{Bytes: [16]byte{7}, Valid: true}
+	newer := pgtype.UUID{Bytes: [16]byte{8}, Valid: true}
+
+	current := listingOf(pgtype.UUID{}, ListingFacts{CurationTier: string(TierCurated), CuratedVersionID: reviewed, LatestVersionID: reviewed})
+	movedOn := listingOf(pgtype.UUID{}, ListingFacts{CurationTier: string(TierCurated), CuratedVersionID: reviewed, LatestVersionID: newer})
+
+	if !current.Curated || movedOn.Curated {
+		t.Fatalf("curated: reviewed newest = %v, newer version = %v; want true then false", current.Curated, movedOn.Curated)
+	}
+	if *current.AgentCapability != "unverified" || *current.AgentRuntime != "unverified" || *current.AgentRuntimeImage != "" {
+		t.Fatalf("unmeasured compatibility = %q/%q/%q, want unverified/unverified and no image",
+			*current.AgentCapability, *current.AgentRuntime, *current.AgentRuntimeImage)
 	}
 }
 

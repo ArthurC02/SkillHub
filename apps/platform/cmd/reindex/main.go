@@ -13,7 +13,6 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -28,7 +27,6 @@ func main() {
 	}
 	defer pool.Close()
 
-	q := gen.New(pool)
 	catalogSvc := wiring.NewCatalogService(pool)
 	n, pruned, err := catalogSvc.RebuildIndex(ctx)
 	if err != nil {
@@ -90,9 +88,7 @@ func main() {
 			slog.Error("catalog workspaces", "error", err)
 			os.Exit(1)
 		}
-		reset, err := q.ResetCatalogueEnrichmentBefore(ctx, gen.ResetCatalogueEnrichmentBeforeParams{
-			PromptVersion: keep, CatalogWorkspaceIds: catalogs,
-		})
+		reset, err := catalog.RequeueCatalogueEnrichment(ctx, pool, catalogs, keep)
 		if err != nil {
 			slog.Error("re-enrichment reset", "error", err)
 			os.Exit(1)

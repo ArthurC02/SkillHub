@@ -256,7 +256,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		HasScript:           filters.HasScript,
 		SpecValidated:       filters.SpecValidated,
 		AgentRuntime:        filters.AgentRuntime,
-		CurationTier:        filters.CurationTier,
+		Curated:             curatedFilter(filters.CurationTier),
 		Category:            filters.Category,
 		VectorCandidates:    vectorCandidates,
 		FulltextCandidates:  fulltextCandidates,
@@ -276,8 +276,8 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		hit := searchResult{
 			SkillID:       pgconv.UUIDString(row.SkillID),
 			Name:          row.Name,
-			Summary:       row.Summary,
-			SummarySource: row.SummarySource,
+			Summary:       summaryText(row.Summary, row.EnrichedSummary),
+			SummarySource: summarySource(row.EnrichedSummary),
 			unranked:      row.Unranked,
 		}
 
@@ -287,7 +287,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		} else {
 			hit.RankNote = rankNotePendingItem
 		}
-		resultFacets(&hit, row.CurationTier, row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
+		resultFacets(&hit, tierOf(row.Curated), row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}
@@ -306,7 +306,7 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 		HasScript:           filters.HasScript,
 		SpecValidated:       filters.SpecValidated,
 		AgentRuntime:        filters.AgentRuntime,
-		CurationTier:        filters.CurationTier,
+		Curated:             curatedFilter(filters.CurationTier),
 		Category:            filters.Category,
 	})
 	if err != nil {
@@ -323,12 +323,12 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 		hit := searchResult{
 			SkillID:       pgconv.UUIDString(row.SkillID),
 			Name:          row.Name,
-			Summary:       row.Summary,
-			SummarySource: row.SummarySource,
+			Summary:       summaryText(row.Summary, row.EnrichedSummary),
+			SummarySource: summarySource(row.EnrichedSummary),
 
 			RankNote: rankNoteCatalog,
 		}
-		resultFacets(&hit, row.CurationTier, row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
+		resultFacets(&hit, tierOf(row.Curated), row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}
@@ -348,7 +348,7 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 		HasScript:           filters.HasScript,
 		SpecValidated:       filters.SpecValidated,
 		AgentRuntime:        filters.AgentRuntime,
-		CurationTier:        filters.CurationTier,
+		Curated:             curatedFilter(filters.CurationTier),
 		Category:            filters.Category,
 	})
 	if err != nil {
@@ -365,11 +365,11 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 		hit := searchResult{
 			SkillID:       pgconv.UUIDString(row.SkillID),
 			Name:          row.Name,
-			Summary:       row.Summary,
-			SummarySource: row.SummarySource,
+			Summary:       summaryText(row.Summary, row.EnrichedSummary),
+			SummarySource: summarySource(row.EnrichedSummary),
 			RankNote:      rankNoteDegraded,
 		}
-		resultFacets(&hit, row.CurationTier, row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
+		resultFacets(&hit, tierOf(row.Curated), row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}

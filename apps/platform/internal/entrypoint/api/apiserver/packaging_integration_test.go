@@ -199,7 +199,7 @@ func importFilesEnriched(
 	}
 	if llm == nil {
 
-		if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched' WHERE skill_id = $1", res.Skill.ID); err != nil {
+		if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched', listable = true WHERE skill_id = $1", res.Skill.ID); err != nil {
 			t.Fatal(err)
 		}
 	}

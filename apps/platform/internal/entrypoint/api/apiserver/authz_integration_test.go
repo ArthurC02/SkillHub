@@ -391,7 +391,7 @@ func seedSkill(t *testing.T, pool *pgxpool.Pool, workspaceID, name string) strin
 		t.Fatal(err)
 	}
 
-	if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched' WHERE skill_id = $1", skill.ID); err != nil {
+	if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched', listable = true WHERE skill_id = $1", skill.ID); err != nil {
 		t.Fatal(err)
 	}
 	id, _ := skill.ID.Value()

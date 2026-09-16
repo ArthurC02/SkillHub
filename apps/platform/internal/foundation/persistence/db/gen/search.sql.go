@@ -14,21 +14,16 @@ import (
 
 const browseCatalogSkills = `-- name: BrowseCatalogSkills :many
 SELECT s.skill_id, s.name,
-       COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-       CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
-           AS summary_source,
+       s.summary, s.enriched_summary,
        s.tags, s.scan, s.verified_at,
-       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
-       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
-       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
-       s.agent_measured_at,
-       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.agent_capability, s.agent_runtime, s.agent_runtime_image, s.agent_measured_at,
+       s.curated,
        s.category,
        s.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
 WHERE s.workspace_id = ANY($1::uuid[])
-  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND s.listable
   AND (
     $2::bool IS NULL
     OR (s.scan IS NOT NULL
@@ -41,17 +36,17 @@ WHERE s.workspace_id = ANY($1::uuid[])
   )
   AND (
     $4::text IS NULL
-    OR COALESCE(s.agent_runtime, 'unverified') = $4::text
+    OR s.agent_runtime = $4::text
   )
   AND (
-    $5::text IS NULL
-    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = $5::text
+    $5::bool IS NULL
+    OR s.curated = $5::bool
   )
   AND (
     $6::text IS NULL
     OR s.category = $6::text
   )
-ORDER BY (COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = 'curated') DESC,
+ORDER BY s.curated DESC,
          s.verified_at DESC NULLS LAST,
          s.skill_id
 LIMIT $7
@@ -62,7 +57,7 @@ type BrowseCatalogSkillsParams struct {
 	HasScript           *bool
 	SpecValidated       *bool
 	AgentRuntime        *string
-	CurationTier        *string
+	Curated             *bool
 	Category            *string
 	ResultLimit         int32
 }
@@ -71,15 +66,15 @@ type BrowseCatalogSkillsRow struct {
 	SkillID           pgtype.UUID
 	Name              string
 	Summary           string
-	SummarySource     string
+	EnrichedSummary   string
 	Tags              []byte
 	Scan              []byte
 	VerifiedAt        pgtype.Timestamptz
-	AgentCapability   string
-	AgentRuntime      string
-	AgentRuntimeImage string
+	AgentCapability   *string
+	AgentRuntime      *string
+	AgentRuntimeImage *string
 	AgentMeasuredAt   pgtype.Timestamptz
-	CurationTier      string
+	Curated           bool
 	Category          *string
 	CategorySource    *string
 	TotalMatches      int64
@@ -91,7 +86,7 @@ func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkil
 		arg.HasScript,
 		arg.SpecValidated,
 		arg.AgentRuntime,
-		arg.CurationTier,
+		arg.Curated,
 		arg.Category,
 		arg.ResultLimit,
 	)
@@ -106,7 +101,7 @@ func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkil
 			&i.SkillID,
 			&i.Name,
 			&i.Summary,
-			&i.SummarySource,
+			&i.EnrichedSummary,
 			&i.Tags,
 			&i.Scan,
 			&i.VerifiedAt,
@@ -114,7 +109,7 @@ func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkil
 			&i.AgentRuntime,
 			&i.AgentRuntimeImage,
 			&i.AgentMeasuredAt,
-			&i.CurationTier,
+			&i.Curated,
 			&i.Category,
 			&i.CategorySource,
 			&i.TotalMatches,
@@ -133,7 +128,7 @@ const creationLexicalSearchSkills = `-- name: CreationLexicalSearchSkills :many
 SELECT s.skill_id, s.name
 FROM search_documents s
 WHERE s.workspace_id = ANY($1::uuid[])
-  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND s.listable
   AND s.bigram @@ to_tsquery('simple', $2::text)
 ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $2::text)) DESC
 LIMIT $3::int
@@ -185,28 +180,26 @@ func (q *Queries) DeleteSearchDocument(ctx context.Context, arg DeleteSearchDocu
 }
 
 const getCatalogReferenceFacts = `-- name: GetCatalogReferenceFacts :one
-SELECT sd.scan,
-       COALESCE(sd.curated_version_id = $1::uuid, false)::bool AS curated
+SELECT sd.scan, sd.curated_version_id
 FROM search_documents sd
-WHERE sd.skill_id = $2
-  AND sd.workspace_id = ANY($3::uuid[])
+WHERE sd.skill_id = $1
+  AND sd.workspace_id = ANY($2::uuid[])
 `
 
 type GetCatalogReferenceFactsParams struct {
-	VersionID           pgtype.UUID
 	SkillID             pgtype.UUID
 	CatalogWorkspaceIds []pgtype.UUID
 }
 
 type GetCatalogReferenceFactsRow struct {
-	Scan    []byte
-	Curated bool
+	Scan             []byte
+	CuratedVersionID pgtype.UUID
 }
 
 func (q *Queries) GetCatalogReferenceFacts(ctx context.Context, arg GetCatalogReferenceFactsParams) (GetCatalogReferenceFactsRow, error) {
-	row := q.db.QueryRow(ctx, getCatalogReferenceFacts, arg.VersionID, arg.SkillID, arg.CatalogWorkspaceIds)
+	row := q.db.QueryRow(ctx, getCatalogReferenceFacts, arg.SkillID, arg.CatalogWorkspaceIds)
 	var i GetCatalogReferenceFactsRow
-	err := row.Scan(&i.Scan, &i.Curated)
+	err := row.Scan(&i.Scan, &i.CuratedVersionID)
 	return i, err
 }
 
@@ -237,6 +230,47 @@ func (q *Queries) ListCatalogSkillScans(ctx context.Context, arg ListCatalogSkil
 	for rows.Next() {
 		var i ListCatalogSkillScansRow
 		if err := rows.Scan(&i.SkillID, &i.Scan); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCatalogueDocumentsEnrichedBefore = `-- name: ListCatalogueDocumentsEnrichedBefore :many
+SELECT sd.skill_id, (sd.embedding IS NOT NULL)::bool AS has_embedding
+FROM search_documents sd
+WHERE sd.workspace_id = ANY($1::uuid[])
+  AND sd.enrichment_status = $2::text
+  AND (sd.enrichment_prompt_version IS NULL OR sd.enrichment_prompt_version <> $3::text)
+ORDER BY sd.skill_id
+FOR UPDATE
+`
+
+type ListCatalogueDocumentsEnrichedBeforeParams struct {
+	CatalogWorkspaceIds []pgtype.UUID
+	EnrichedStatus      string
+	PromptVersion       string
+}
+
+type ListCatalogueDocumentsEnrichedBeforeRow struct {
+	SkillID      pgtype.UUID
+	HasEmbedding bool
+}
+
+func (q *Queries) ListCatalogueDocumentsEnrichedBefore(ctx context.Context, arg ListCatalogueDocumentsEnrichedBeforeParams) ([]ListCatalogueDocumentsEnrichedBeforeRow, error) {
+	rows, err := q.db.Query(ctx, listCatalogueDocumentsEnrichedBefore, arg.CatalogWorkspaceIds, arg.EnrichedStatus, arg.PromptVersion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCatalogueDocumentsEnrichedBeforeRow
+	for rows.Next() {
+		var i ListCatalogueDocumentsEnrichedBeforeRow
+		if err := rows.Scan(&i.SkillID, &i.HasEmbedding); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -431,7 +465,7 @@ fts AS (
     SELECT s.skill_id, s.embedding <=> $9::vector AS distance
     FROM search_documents s
     WHERE s.workspace_id = ANY($10::uuid[])
-      AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+      AND s.listable
       AND s.tsv @@ websearch_to_tsquery('english', $7::text)
     ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $7::text)) DESC
     LIMIT $12::int
@@ -440,7 +474,7 @@ lex AS (
     SELECT s.skill_id, s.embedding <=> $9::vector AS distance
     FROM search_documents s
     WHERE s.workspace_id = ANY($10::uuid[])
-      AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+      AND s.listable
       AND $13::text <> ''
       AND s.bigram @@ to_tsquery('simple', $13::text)
     ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $13::text)) DESC
@@ -458,15 +492,10 @@ candidates AS (
     GROUP BY skill_id
 )
 SELECT c.skill_id, s.name,
-       COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-       CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
-           AS summary_source,
+       s.summary, s.enriched_summary,
        s.tags, s.scan, s.verified_at,
-       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
-       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
-       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
-       s.agent_measured_at,
-       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.agent_capability, s.agent_runtime, s.agent_runtime_image, s.agent_measured_at,
+       s.curated,
        s.category,
        s.category_source,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
@@ -488,11 +517,11 @@ WHERE (c.covered OR c.distance IS NULL OR c.distance <= $1::float8)
   )
   AND (
     $4::text IS NULL
-    OR COALESCE(s.agent_runtime, 'unverified') = $4::text
+    OR s.agent_runtime = $4::text
   )
   AND (
-    $5::text IS NULL
-    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = $5::text
+    $5::bool IS NULL
+    OR s.curated = $5::bool
   )
   AND (
     $6::text IS NULL
@@ -509,7 +538,7 @@ type PublicHybridSearchSkillsParams struct {
 	HasScript           *bool
 	SpecValidated       *bool
 	AgentRuntime        *string
-	CurationTier        *string
+	Curated             *bool
 	Category            *string
 	Query               string
 	ResultLimit         int32
@@ -525,15 +554,15 @@ type PublicHybridSearchSkillsRow struct {
 	SkillID           pgtype.UUID
 	Name              string
 	Summary           string
-	SummarySource     string
+	EnrichedSummary   string
 	Tags              []byte
 	Scan              []byte
 	VerifiedAt        pgtype.Timestamptz
-	AgentCapability   string
-	AgentRuntime      string
-	AgentRuntimeImage string
+	AgentCapability   *string
+	AgentRuntime      *string
+	AgentRuntimeImage *string
 	AgentMeasuredAt   pgtype.Timestamptz
-	CurationTier      string
+	Curated           bool
 	Category          *string
 	CategorySource    *string
 	Rank              float64
@@ -548,7 +577,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 		arg.HasScript,
 		arg.SpecValidated,
 		arg.AgentRuntime,
-		arg.CurationTier,
+		arg.Curated,
 		arg.Category,
 		arg.Query,
 		arg.ResultLimit,
@@ -570,7 +599,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 			&i.SkillID,
 			&i.Name,
 			&i.Summary,
-			&i.SummarySource,
+			&i.EnrichedSummary,
 			&i.Tags,
 			&i.Scan,
 			&i.VerifiedAt,
@@ -578,7 +607,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 			&i.AgentRuntime,
 			&i.AgentRuntimeImage,
 			&i.AgentMeasuredAt,
-			&i.CurationTier,
+			&i.Curated,
 			&i.Category,
 			&i.CategorySource,
 			&i.Rank,
@@ -598,15 +627,10 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 
 const publicSearchSkills = `-- name: PublicSearchSkills :many
 SELECT s.skill_id, s.name,
-       COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-       CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
-           AS summary_source,
+       s.summary, s.enriched_summary,
        s.tags, s.scan, s.verified_at,
-       COALESCE(s.agent_capability, 'unverified') AS agent_capability,
-       COALESCE(s.agent_runtime, 'unverified') AS agent_runtime,
-       COALESCE(s.agent_runtime_image, '') AS agent_runtime_image,
-       s.agent_measured_at,
-       COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed')::text AS curation_tier,
+       s.agent_capability, s.agent_runtime, s.agent_runtime_image, s.agent_measured_at,
+       s.curated,
        s.category,
        s.category_source,
        count(*) OVER ()::bigint AS total_matches
@@ -615,7 +639,7 @@ WHERE s.workspace_id = ANY($1::uuid[])
   AND (s.tsv @@ websearch_to_tsquery('english', $2::text)
        OR ($3::text <> ''
            AND s.bigram @@ to_tsquery('simple', $3::text)))
-  AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
+  AND s.listable
   AND (
     $4::bool IS NULL
     OR (s.scan IS NOT NULL
@@ -628,11 +652,11 @@ WHERE s.workspace_id = ANY($1::uuid[])
   )
   AND (
     $6::text IS NULL
-    OR COALESCE(s.agent_runtime, 'unverified') = $6::text
+    OR s.agent_runtime = $6::text
   )
   AND (
-    $7::text IS NULL
-    OR COALESCE(CASE WHEN s.curated_version_id = s.latest_version_id THEN 'curated' END, 'indexed') = $7::text
+    $7::bool IS NULL
+    OR s.curated = $7::bool
   )
   AND (
     $8::text IS NULL
@@ -653,7 +677,7 @@ type PublicSearchSkillsParams struct {
 	HasScript           *bool
 	SpecValidated       *bool
 	AgentRuntime        *string
-	CurationTier        *string
+	Curated             *bool
 	Category            *string
 	ResultLimit         int32
 }
@@ -662,15 +686,15 @@ type PublicSearchSkillsRow struct {
 	SkillID           pgtype.UUID
 	Name              string
 	Summary           string
-	SummarySource     string
+	EnrichedSummary   string
 	Tags              []byte
 	Scan              []byte
 	VerifiedAt        pgtype.Timestamptz
-	AgentCapability   string
-	AgentRuntime      string
-	AgentRuntimeImage string
+	AgentCapability   *string
+	AgentRuntime      *string
+	AgentRuntimeImage *string
 	AgentMeasuredAt   pgtype.Timestamptz
-	CurationTier      string
+	Curated           bool
 	Category          *string
 	CategorySource    *string
 	TotalMatches      int64
@@ -684,7 +708,7 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 		arg.HasScript,
 		arg.SpecValidated,
 		arg.AgentRuntime,
-		arg.CurationTier,
+		arg.Curated,
 		arg.Category,
 		arg.ResultLimit,
 	)
@@ -699,7 +723,7 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 			&i.SkillID,
 			&i.Name,
 			&i.Summary,
-			&i.SummarySource,
+			&i.EnrichedSummary,
 			&i.Tags,
 			&i.Scan,
 			&i.VerifiedAt,
@@ -707,7 +731,7 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 			&i.AgentRuntime,
 			&i.AgentRuntimeImage,
 			&i.AgentMeasuredAt,
-			&i.CurationTier,
+			&i.Curated,
 			&i.Category,
 			&i.CategorySource,
 			&i.TotalMatches,
@@ -754,21 +778,21 @@ func (q *Queries) ReindexAll(ctx context.Context, arg ReindexAllParams) (int64, 
 	return result.RowsAffected(), nil
 }
 
-const resetCatalogueEnrichmentBefore = `-- name: ResetCatalogueEnrichmentBefore :execrows
+const requeueSearchDocumentEnrichment = `-- name: RequeueSearchDocumentEnrichment :execrows
 UPDATE search_documents sd
-SET enrichment_status = 'pending', enrichment_attempted_at = NULL
-WHERE sd.workspace_id = ANY($1::uuid[])
-  AND sd.enrichment_status = 'enriched'
-  AND COALESCE(sd.enrichment_prompt_version, '') <> $2::text
+SET enrichment_status = $1::text, enrichment_attempted_at = NULL, listable = u.listable
+FROM (SELECT unnest($2::uuid[]) AS skill_id, unnest($3::bool[]) AS listable) u
+WHERE sd.skill_id = u.skill_id
 `
 
-type ResetCatalogueEnrichmentBeforeParams struct {
-	CatalogWorkspaceIds []pgtype.UUID
-	PromptVersion       string
+type RequeueSearchDocumentEnrichmentParams struct {
+	PendingStatus string
+	SkillIds      []pgtype.UUID
+	Listable      []bool
 }
 
-func (q *Queries) ResetCatalogueEnrichmentBefore(ctx context.Context, arg ResetCatalogueEnrichmentBeforeParams) (int64, error) {
-	result, err := q.db.Exec(ctx, resetCatalogueEnrichmentBefore, arg.CatalogWorkspaceIds, arg.PromptVersion)
+func (q *Queries) RequeueSearchDocumentEnrichment(ctx context.Context, arg RequeueSearchDocumentEnrichmentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, requeueSearchDocumentEnrichment, arg.PendingStatus, arg.SkillIds, arg.Listable)
 	if err != nil {
 		return 0, err
 	}
@@ -848,11 +872,12 @@ SET generated = $1,
     verified_at = $5,
     latest_package_object_key = $6,
     curated_version_id = $7,
-    agent_capability = $8,
-    agent_runtime = $9,
-    agent_runtime_image = $10,
-    agent_measured_at = $11
-WHERE skill_id = $12
+    curated = $8,
+    agent_capability = $9,
+    agent_runtime = $10,
+    agent_runtime_image = $11,
+    agent_measured_at = $12
+WHERE skill_id = $13
 `
 
 type SetSearchDocumentListingParams struct {
@@ -863,6 +888,7 @@ type SetSearchDocumentListingParams struct {
 	VerifiedAt             pgtype.Timestamptz
 	LatestPackageObjectKey *string
 	CuratedVersionID       pgtype.UUID
+	Curated                bool
 	AgentCapability        *string
 	AgentRuntime           *string
 	AgentRuntimeImage      *string
@@ -879,6 +905,7 @@ func (q *Queries) SetSearchDocumentListing(ctx context.Context, arg SetSearchDoc
 		arg.VerifiedAt,
 		arg.LatestPackageObjectKey,
 		arg.CuratedVersionID,
+		arg.Curated,
 		arg.AgentCapability,
 		arg.AgentRuntime,
 		arg.AgentRuntimeImage,
@@ -918,8 +945,8 @@ const upsertSearchDocumentEnriched = `-- name: UpsertSearchDocumentEnriched :exe
 INSERT INTO search_documents (
     skill_id, workspace_id, name, summary,
     enriched_summary, task_examples, tags, limitations, scan, embedding,
-    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', $14::text), now())
+    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, listable, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', $14::text), $15, now())
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id,
     name = EXCLUDED.name,
@@ -934,8 +961,9 @@ SET workspace_id = EXCLUDED.workspace_id,
     enrichment_status = EXCLUDED.enrichment_status,
     enrichment_model = EXCLUDED.enrichment_model,
     enrichment_prompt_version = EXCLUDED.enrichment_prompt_version,
+    listable = EXCLUDED.listable,
     enrichment_attempted_at = CASE
-        WHEN $15::bool THEN NULL
+        WHEN $16::bool THEN NULL
         ELSE search_documents.enrichment_attempted_at END,
     updated_at = now()
 `
@@ -955,6 +983,7 @@ type UpsertSearchDocumentEnrichedParams struct {
 	EnrichmentModel           *string
 	EnrichmentPromptVersion   *string
 	BigramText                string
+	Listable                  bool
 	RestartEnrichmentAttempts bool
 }
 
@@ -974,6 +1003,7 @@ func (q *Queries) UpsertSearchDocumentEnriched(ctx context.Context, arg UpsertSe
 		arg.EnrichmentModel,
 		arg.EnrichmentPromptVersion,
 		arg.BigramText,
+		arg.Listable,
 		arg.RestartEnrichmentAttempts,
 	)
 	return err

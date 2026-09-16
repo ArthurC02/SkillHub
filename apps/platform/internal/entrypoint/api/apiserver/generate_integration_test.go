@@ -18,15 +18,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	apigen "github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	policy "github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
 
 type generateStub struct {

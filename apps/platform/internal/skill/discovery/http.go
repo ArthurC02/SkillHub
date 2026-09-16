@@ -28,6 +28,27 @@ const (
 	reasonSourceTemplate = "template"
 )
 
+const (
+	summarySourcePackage = "package"
+	summarySourceModel   = "model"
+)
+
+const compatUnverified = "unverified"
+
+func summaryText(summary, enrichedSummary string) string {
+	if enrichedSummary == "" {
+		return summary
+	}
+	return enrichedSummary
+}
+
+func summarySource(enrichedSummary string) string {
+	if enrichedSummary == "" {
+		return summarySourcePackage
+	}
+	return summarySourceModel
+}
+
 const MaxCosineDistance = 0.75
 
 const noResultsSuggestion = "試著補充三件事:你想完成的任務、你手上已經有的輸入," +
@@ -79,8 +100,8 @@ const (
 	rankNoteCatalog     = "這是目錄本身,不是某一句話的搜尋結果,所以沒有相似度可以顯示;排序是精選在前、其餘依版本建立時間由新到舊。"
 )
 
-func resultFacets(r *searchResult, tier string, category, categorySource *string, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz, compat compatibility) {
-	r.Tier = tierLabel(Tier(tier))
+func resultFacets(r *searchResult, tier Tier, category, categorySource *string, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz, compat compatibility) {
+	r.Tier = tierLabel(tier)
 	r.Category = categoryLabel(category, categorySource)
 	r.Dependencies = dependencyTags(tagsJSON)
 	r.Risk = riskHint(scanJSON)
@@ -96,13 +117,20 @@ func resultFacets(r *searchResult, tier string, category, categorySource *string
 	}
 }
 
-func measuredCompat(capability, runtime, image string, measuredAt pgtype.Timestamptz) compatibility {
+func measuredCompat(capability, runtime, image *string, measuredAt pgtype.Timestamptz) compatibility {
 	return compatibility{
-		Capability:   axis(capabilityWords, capability),
-		Runtime:      axis(runtimeWords, runtime),
-		RuntimeImage: image,
+		Capability:   axis(capabilityWords, stringOrEmpty(capability)),
+		Runtime:      axis(runtimeWords, stringOrEmpty(runtime)),
+		RuntimeImage: stringOrEmpty(image),
 		MeasuredAt:   timeString(measuredAt),
 	}
+}
+
+func stringOrEmpty(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 func dependencyTags(tagsJSON []byte) []string {

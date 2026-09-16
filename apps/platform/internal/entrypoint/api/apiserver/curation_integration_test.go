@@ -109,3 +109,22 @@ func TestTheTierFilterSeparatesTheReviewedFromTheRest(t *testing.T) {
 		t.Fatalf("tier=external got %d, want 400", resp.StatusCode)
 	}
 }
+
+func TestAHybridSearchRowCarriesTheCuratedTier(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPIWithLLM(t, pool, stubLLM(t, 23, "it fits"))
+	curator := a.login(t, uniqueWorklistLabel("curator-hybrid-tier"))
+	markCatalog(t, pool, curator.workspaceID)
+	skillID := importPackage(t, pool, a.packages, curator, "vorpal-hybrid-tier", false)
+	seedEmbedding(t, pool, skillID, 23)
+	curate(t, pool, skillID, newestVersion(t, pool, skillID))
+
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+	body := anon.search(t, "/api/skills/search?q=vorpal")
+	if body.Degraded || len(body.Results) == 0 || body.Results[0].SkillID != skillID {
+		t.Fatalf("hybrid search did not rank the curated skill first: degraded=%v %v", body.Degraded, body.ids())
+	}
+	if got := body.Results[0].Tier.Value; got != "curated" {
+		t.Fatalf("hybrid row tier = %q, want curated", got)
+	}
+}

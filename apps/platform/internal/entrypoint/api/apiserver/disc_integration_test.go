@@ -91,7 +91,7 @@ func seedEmbedding(t *testing.T, pool *pgxpool.Pool, skillID string, axis int) {
 	}
 	v := unitVector(axis)
 	if _, err := pool.Exec(context.Background(),
-		"UPDATE search_documents SET embedding = $2 WHERE skill_id = $1", sk, pgvector.NewVector(v),
+		"UPDATE search_documents SET embedding = $2, listable = true WHERE skill_id = $1", sk, pgvector.NewVector(v),
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func seedBlendedEmbedding(t *testing.T, pool *pgxpool.Pool, skillID string, axis
 	v[axis] = float32(cos)
 	v[other] = float32(math.Sqrt(1 - cos*cos))
 	if _, err := pool.Exec(context.Background(),
-		"UPDATE search_documents SET embedding = $2 WHERE skill_id = $1", sk, pgvector.NewVector(v),
+		"UPDATE search_documents SET embedding = $2, listable = true WHERE skill_id = $1", sk, pgvector.NewVector(v),
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -231,6 +231,9 @@ func TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall(t *testing.T) {
 		t.Fatalf("curated row was not ahead of this test's indexed rows: positions=%v", positions)
 	}
 	curatedRow := page.Results[curatedPos]
+	if curatedRow.Tier.Value != "curated" || page.Results[positions[plainID]].Tier.Value != "indexed" {
+		t.Fatalf("catalog tiers: curated row %q, plain row %q", curatedRow.Tier.Value, page.Results[positions[plainID]].Tier.Value)
+	}
 	if curatedRow.Rank != nil || curatedRow.RankNote == "" {
 		t.Fatalf("catalog rank shape = %+v", curatedRow)
 	}
@@ -304,7 +307,7 @@ func importPackage(t *testing.T, pool *pgxpool.Pool, store packageStore, owner *
 	id, _ := res.Skill.ID.Value()
 	skillID, _ := id.(string)
 
-	if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched' WHERE skill_id = $1", res.Skill.ID); err != nil {
+	if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched', listable = true WHERE skill_id = $1", res.Skill.ID); err != nil {
 		t.Fatal(err)
 	}
 	return skillID
@@ -790,7 +793,7 @@ func TestPartialIndexIsReportedSeparatelyFromDegradation(t *testing.T) {
 	seedEmbedding(t, pool, enriched, 55)
 
 	pending := seedSkill(t, pool, curator.workspaceID, "mimsy invoice matcher")
-	if _, err := pool.Exec(context.Background(), "UPDATE search_documents SET enrichment_status = 'pending' WHERE skill_id = $1", mustUUID(t, pending)); err != nil {
+	if _, err := pool.Exec(context.Background(), "UPDATE search_documents SET enrichment_status = 'pending', listable = false WHERE skill_id = $1", mustUUID(t, pending)); err != nil {
 		t.Fatal(err)
 	}
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
@@ -92,6 +93,7 @@ func enrichedDocumentOf(projection EnrichedSkillProjection) gen.UpsertSearchDocu
 		EnrichmentPromptVersion:   projection.EnrichmentPromptVersion,
 		BigramText:                LexicalIndexText(projection.Name, projection.Summary, projection.EnrichedSummary, projection.TaskExamples, jsonStrings(projection.Tags)),
 		RestartEnrichmentAttempts: EnrichmentStatus(projection.EnrichmentStatus).restartsAttempts(),
+		Listable:                  EnrichmentStatus(projection.EnrichmentStatus).listable(projection.Embedding != nil),
 	}
 }
 
@@ -130,12 +132,34 @@ func listingOf(skillID pgtype.UUID, facts ListingFacts) gen.SetSearchDocumentLis
 	if facts.CurationTier == string(TierCurated) {
 		listing.CuratedVersionID = facts.CuratedVersionID
 	}
+	listing.Curated = curatedAt(facts.CurationTier, facts.CuratedVersionID, facts.LatestVersionID)
+	capability, runtime, image := compatUnverified, compatUnverified, ""
 	if facts.AgentMeasuredAt.Valid {
-		listing.AgentCapability = &facts.AgentCapability
-		listing.AgentRuntime = &facts.AgentRuntime
-		listing.AgentRuntimeImage = &facts.AgentRuntimeImage
+		capability, runtime, image = facts.AgentCapability, facts.AgentRuntime, facts.AgentRuntimeImage
 	}
+	listing.AgentCapability, listing.AgentRuntime, listing.AgentRuntimeImage = &capability, &runtime, &image
 	return listing
+}
+
+func RequeueCatalogueEnrichment(ctx context.Context, pool *pgxpool.Pool, catalogs []pgtype.UUID, keepPromptVersion string) (int64, error) {
+	var requeued int64
+	err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+		q := gen.New(tx)
+		stale, err := q.ListCatalogueDocumentsEnrichedBefore(ctx, gen.ListCatalogueDocumentsEnrichedBeforeParams{
+			CatalogWorkspaceIds: catalogs, EnrichedStatus: string(EnrichmentEnriched), PromptVersion: keepPromptVersion,
+		})
+		if err != nil || len(stale) == 0 {
+			return err
+		}
+		requeue := gen.RequeueSearchDocumentEnrichmentParams{PendingStatus: string(EnrichmentPending)}
+		for _, doc := range stale {
+			requeue.SkillIds = append(requeue.SkillIds, doc.SkillID)
+			requeue.Listable = append(requeue.Listable, EnrichmentPending.listable(doc.HasEmbedding))
+		}
+		requeued, err = q.RequeueSearchDocumentEnrichment(ctx, requeue)
+		return err
+	})
+	return requeued, err
 }
 
 func (s *Service) RebuildIndex(ctx context.Context) (indexed, pruned int64, err error) {

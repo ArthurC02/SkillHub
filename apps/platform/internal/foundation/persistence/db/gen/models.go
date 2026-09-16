@@ -563,6 +563,8 @@ type SearchDocument struct {
 	AgentRuntime            *string
 	AgentRuntimeImage       *string
 	AgentMeasuredAt         pgtype.Timestamptz
+	Curated                 bool
+	Listable                bool
 }
 
 type Session struct {
