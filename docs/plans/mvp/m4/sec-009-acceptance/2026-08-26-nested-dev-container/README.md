@@ -2,11 +2,11 @@
 
 ## ⛔ 這份文件不是 SEC-009 的驗收，而且不可能是
 
-`02:SEC-009` 的判準是[基線全數 `pass`、0 項 `unknown`](../../../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md)（ADR-022 §3），且明文「部分通過**不得**以其餘項目風險低為由放行」。
+`02:SEC-009` 的判準是[基線全數 `pass`、0 項 `unknown`](../../../../../adr/README.md#sandbox-隔離與執行安全)，且明文「部分通過**不得**以其餘項目風險低為由放行」。
 
-**本次 46 項裡有 17 項有機器證據、4 項部分、25 項沒有任何證據。** 這份目錄記錄的是「哪幾項第一次有了可查的東西」，不是驗收表。ADR-022 §5 要求的正式證據目錄命名為 `YYYY-MM-DD-<node-id>/`；這裡的名字刻意不是 node-id，因為**沒有節點**。
+**本次 46 項裡有 17 項有機器證據、4 項部分、25 項沒有任何證據。** 這份目錄記錄的是「哪幾項第一次有了可查的東西」，不是驗收表。[Sandbox 隔離與執行安全](../../../../../adr/README.md#sandbox-隔離與執行安全) 要求的正式證據目錄命名為 `YYYY-MM-DD-<node-id>/`；這裡的名字刻意不是 node-id，因為**沒有節點**。
 
-而且受測物不對。ADR-022 把 Suite 2 的受測物定義成**即將加入池的那台節點**，本機是 Windows → Docker Desktop 的 WSL2 VM → privileged 容器 → gVisor 沙箱。在裡面跑逃逸測試，量的是「沙箱」與「一個被刻意賦予全部 capability 的容器」之間的邊界，核心也不是生產那個。
+而且受測物不對。Sandbox 隔離與執行安全把 Suite 2 的受測物定義成**即將加入池的那台節點**，本機是 Windows → Docker Desktop 的 WSL2 VM → privileged 容器 → gVisor 沙箱。在裡面跑逃逸測試，量的是「沙箱」與「一個被刻意賦予全部 capability 的容器」之間的邊界，核心也不是生產那個。
 
 ## 執行環境
 
@@ -16,7 +16,7 @@
 
 | 來源 | 是什麼 | 強度 |
 | --- | --- | --- |
-| **CI 的 gVisor leg** | `.github/workflows/ci.yml` 的 `sandbox` job：ubuntu-latest 上 `sudo runsc install`，然後以 `SKILLHUB_SANDBOX_TEST_RUNTIME=runsc` 跑 `apps/sandbox/internal/dockerdrv` 全套 | **較強**。真 Linux、真 runsc、真 Docker runtime，而且測的是 `dockerdrv` 生產那份 `HostConfig`，不是手抄的一份。每次 `apps/sandbox/**` 變更都跑（ADR-022 §4 就是這樣指派 Suite 1 的） |
+| **CI 的 gVisor leg** | `.github/workflows/ci.yml` 的 `sandbox` job：ubuntu-latest 上 `sudo runsc install`，然後以 `SKILLHUB_SANDBOX_TEST_RUNTIME=runsc` 跑 `apps/sandbox/internal/dockerdrv` 全套 | **較強**。真 Linux、真 runsc、真 Docker runtime，而且測的是 `dockerdrv` 生產那份 `HostConfig`，不是手抄的一份。每次 `apps/sandbox/**` 變更都跑（Sandbox 隔離與執行安全就是這樣指派 Suite 1 的） |
 | **本機巢狀容器** | `tools/sec009/` 的 T1／T2 | **較弱**。上面那三段巢狀。它證明的是「腳本跑得完、而且會紅」，不是「邊界守得住」 |
 | **GHCR 稽核** | `tools/sec009/t8-image-audit.py` | 查的是 registry 上此刻還成不成立，不需要節點 |
 
@@ -25,7 +25,7 @@
 | 測項 | 跑了嗎 | 結果 |
 | --- | --- | --- |
 | **T1** 逃逸（通用嘗試八項＋節點側兩項觀察） | ✅ 兩臂都跑 | 沙箱臂全部 REFUSED；負對照臂三項 ESCAPED（`core_pattern` 可寫、`/dev/mem` 可讀、掛上來的 proc 報宿主核心 `6.6.87.2`），節點側植檔如期 FAIL。[sandboxed.txt](T1/sandboxed.txt)、[negative-control.txt](T1/negative-control.txt) |
-| **T2** syscall fuzz 4 × 1800s | ✅ 跑完全程 | **ADR-022 的三條判準全 PASS，腳本自己更嚴的一條 FAIL**。見下節與 [fuzz-4x1800s.txt](T2/fuzz-4x1800s.txt)；第一次嘗試卡死於 48 分鐘，記錄於 [hung-run-aborted.txt](T2/hung-run-aborted.txt) |
+| **T2** syscall fuzz 4 × 1800s | ✅ 跑完全程 | **Sandbox 隔離與執行安全的三條判準全 PASS，腳本自己更嚴的一條 FAIL**。見下節與 [fuzz-4x1800s.txt](T2/fuzz-4x1800s.txt)；第一次嘗試卡死於 48 分鐘，記錄於 [hung-run-aborted.txt](T2/hung-run-aborted.txt) |
 | **T3** 資源耗盡 | ✅ 但在 CI 上，不在這裡 | C-11／C-12／C-14 的行為測試本次新增至 `docker_test.go`，隨 CI 的 gVisor leg 在真 runsc 上通過；C-13／C-15 早已在 |
 | **T4** Runtime 相容性（45 個精選 Skill 重跑） | ❌ | 見下節 |
 | **T5～T7、T9、T10** | ❌ | Suite 2，或被測物尚未實作 |
@@ -42,7 +42,7 @@
 
 最終一次 4 × 1800s([fuzz-4x1800s.txt](T2/fuzz-4x1800s.txt)):
 
-| ADR-022 給 T2 的判準 | 結果 |
+| Sandbox 隔離與執行安全給 T2 的判準 | 結果 |
 | --- | --- |
 | Sentry 不 crash | **PASS**——沙箱撐完 1801s |
 | 主機核心無 oops | **PASS**——節點側 `dmesg` 前後比對無新增 |
@@ -53,7 +53,7 @@
 | 真的 fuzz 了 | **PASS**——**6,115,799 次 syscall**(下限 720,000)、31 個相異 errno、6,714 個切片 |
 | 每個 worker 都活到留下最終紀錄 | **FAIL**——**3／4**。worker 2 最後出現在 1,517,014 calls／1,680 slices |
 
-**所以 T2 不記為通過。** ADR-022 §3 把 `unknown` 當 fail，而「第四個 worker 怎麼了」目前正是 unknown。
+**所以 T2 不記為通過。** Sandbox 隔離與執行安全把 `unknown` 當 fail，而「第四個 worker 怎麼了」目前正是 unknown。
 
 #### 為什麼不能就說「worker 2 死了」
 
@@ -83,7 +83,7 @@ worker 2 三次都是同一個編號,曾經看起來像種子問題(種子是 `1
 
 判定欄的語意是**「本次是否產生了機器可查的證據」**，不是 SEC-009 的 pass／fail。檢查內容不在此複製——唯一來源是[威脅模型 §4](../../../m0/threat-model-and-sandbox-baseline.md)。
 
-| 檢查 | ADR-022 測項 | 本次證據 | 判定 |
+| 檢查 | 對應測項 | 本次證據 | 判定 |
 | --- | --- | --- | --- |
 | `C-01` | T8 節點半 | — | — 無證據 |
 | `C-02` | T1 | 本機 T1：`no-new-privileges` 下 `core_pattern` 寫入 REFUSED；CI runsc leg：`User=65532:65532`、`SecurityOpt` 含 `no-new-privileges:true` | ✅ 有證據 |
@@ -138,9 +138,9 @@ worker 2 三次都是同一個編號,曾經看起來像種子問題(種子是 `1
 
 T4 的判準是「終態與 runc 基準**逐筆一致**」，基準是 M2 那 45 個 Run（[content-baseline-report.md](../../../m2/content-baseline-report.md)），實測成本約 $3.4。
 
-要在這台機器上跑，得先讓 `sandboxd` 連到一個註冊了 `runsc` 的 Docker daemon——本機 Docker Desktop 沒有，得起 DinD。那會**同時換掉 runtime 與 daemon 環境**，而 ADR-022 明文「任何不一致必須逐筆歸因，且**不得**歸因於 gVisor syscall 不相容」。一次乾淨的全過仍會是證據；但一旦不一致，在巢狀環境裡多半歸因不到，正是那條判準禁止的結局。
+要在這台機器上跑，得先讓 `sandboxd` 連到一個註冊了 `runsc` 的 Docker daemon——本機 Docker Desktop 沒有，得起 DinD。那會**同時換掉 runtime 與 daemon 環境**，而 Sandbox 隔離與執行安全明文「任何不一致必須逐筆歸因，且**不得**歸因於 gVisor syscall 不相容」。一次乾淨的全過仍會是證據；但一旦不一致，在巢狀環境裡多半歸因不到，正是那條判準禁止的結局。
 
-而 ADR-022 §4 本來就把 T4 指派給 **CI ＋ 人工確認**，觸發條件是「Runtime Image 或 gVisor 版本變更」，不是隨時跑。**它的落點是 CI 那條已經裝好 runsc 的 leg，缺的是模型憑證，不是一台 Linux。**
+而 Sandbox 隔離與執行安全本來就把 T4 指派給 **CI ＋ 人工確認**，觸發條件是「Runtime Image 或 gVisor 版本變更」，不是隨時跑。**它的落點是 CI 那條已經裝好 runsc 的 leg，缺的是模型憑證，不是一台 Linux。**
 
 ## 剩下的 25 項為什麼不是「還沒排時間」
 
@@ -149,13 +149,13 @@ T4 的判準是「終態與 runc 基準**逐筆一致**」，基準是 M2 那 45
 1. **要真實節點**（T8 節點半的 C-01／P-01／P-03～P-05、T6 的 D-01～D-06、T7 的 D-07／X-01～X-04、T9 的 I-05）——受測物就是那台機器，換一台就換了受測物。
 2. **被測的東西還沒有被實作**：
    - **N-01～N-08**：沙箱層 nftables default-deny ＋固定 DNS 的**生產強制層不存在**（`04` 甲-3／SBX-007）。dev 現有的是「那張 Docker 網路上只有閘道」這個結構事實，不是強制層。
-   - **P-02（T10）**：ADR-022 要求的**常駐**探針不存在（`04` 丙-26 已查證 `tools/sec009/` 只有 T1／T2／T8）。
+   - **P-02（T10）**：Sandbox 隔離與執行安全要求的**常駐**探針不存在（`04` 丙-26 已查證 `tools/sec009/` 只有 T1／T2／T8）。
 
 第 2 類跑不了不是因為沒安排，是因為要驗的控制還沒寫出來。
 
 ## 三個批次前置條件，兩個仍然 FAIL
 
-ADR-022 把三個前置寫成「缺一即 T8 判 `unknown` ＝ fail」，也就是**缺一即整批 fail**：
+Sandbox 隔離與執行安全把三個前置寫成「缺一即 T8 判 `unknown` ＝ fail」，也就是**缺一即整批 fail**：
 
 | # | 現況 |
 | --- | --- |

@@ -70,11 +70,11 @@ var (
 
 	GatewayRevokeFailed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "skillhub_gateway_revoke_failed_total",
-		Help: "Virtual Key revocations that failed during cleanup (SBX-012, ADR-022 X-03/X-04 6b).",
+		Help: "Virtual Key revocations that failed during cleanup (SBX-012).",
 	})
 	SandboxDestroyFailed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_sandbox_destroy_failed_total",
-		Help: "Sandbox teardowns that failed during cleanup (SBX-012, ADR-022 X-03/X-04).",
+		Help: "Sandbox teardowns that failed during cleanup (SBX-012).",
 	}, []string{"provider"})
 
 	RunTokenCeilingBreached = promauto.NewCounter(prometheus.CounterOpts{
@@ -118,12 +118,12 @@ var RateLimited = promauto.NewCounterVec(prometheus.CounterOpts{
 
 var OutboxDeadLettered = promauto.NewCounterVec(prometheus.CounterOpts{
 	Name: "skillhub_outbox_dead_lettered_total",
-	Help: "Domain events isolated after repeated delivery failure (ADR-008 Poison Message).",
+	Help: "Domain events isolated after repeated delivery failure (Poison Message).",
 }, []string{"event_type"})
 
 var OutboxDeadLetteredCurrent = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "skillhub_outbox_dead_lettered",
-	Help: "Domain events currently sitting isolated in the outbox, awaiting a human (ADR-008).",
+	Help: "Domain events currently sitting isolated in the outbox, awaiting a human.",
 })
 
 var (
@@ -156,7 +156,7 @@ var (
 
 	OrphanPersistent = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "skillhub_orphan_sandbox_persistent",
-		Help: "Leaked sandboxes present for two or more consecutive reconciler rounds (SBX-012, ADR-022 X-03).",
+		Help: "Leaked sandboxes present for two or more consecutive reconciler rounds (SBX-012).",
 	}, []string{"provider"})
 
 	ObjectsMissing = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -166,7 +166,7 @@ var (
 
 	DispatchHalted = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "skillhub_dispatch_halted",
-		Help: "1 while new Runs are not dispatched to this target (03:SEC-012, ADR-022 X-04).",
+		Help: "1 while new Runs are not dispatched to this target (03:SEC-012).",
 	}, []string{"target", "source"})
 )
 

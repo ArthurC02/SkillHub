@@ -33,7 +33,7 @@ M2 範圍 **41 個工作項**,**33 項維持勾選、1 項對帳退回、7 項�
 | Trace 收集與 O11y | TRACE-002~008、O11Y-001~003 | 第三批 **✅ 2026-08-16 完成**（TRACE-001 一併勾選；TRACE-004 的成本欄位由第四批補上並勾選） |
 | 模型閘道出口與短效授權 | SBX-007（dev 網路面）、SBX-008、TRACE-004 成本 | 第四批 **2026-08-16**（SBX-008 完成、TRACE-004 勾選；SBX-007 仍不勾——Proxy 本體屬部署期） |
 | 內容基準試跑 | CONTENT-007/008(自 M1 移入) | 第五批 **✅ 2026-08-16**(CONTENT-008 完成、精選 15/15 符合;CONTENT-007 部分完成不勾——writing rubric 缺消費端。**同日補跑＋全量重測**:預算保留根因修復後 9 筆於 `2026.08-2` 重測(§12),負責人裁定後其餘 36 筆亦重測(§13)——33 筆 `transpiled` 全數轉 `native`、成本 −28%、輸入 token −50%,全 45 筆最新量測符合 42/45,相容軸 45 列入庫;**CONTENT-010**(§14)於 deps 修正後的 `2026.08-3` 再全量重測,41 筆完成、4 筆授權受限如實跳過,`ModuleNotFoundError` 歸零、判定零變動,回填 41 列。見 [content-baseline-report.md](content-baseline-report.md)) |
-| 安全驗收 | SEC-002 六項門檻定值(Q18)、SEC-009 逃逸測試——ADR-015 的實作期驗收關卡 | 部署驗證批。**門檻定值與 Q1～Q3 已於 2026-08-16 由 [ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 定案**;SEC-002／SEC-009 仍不勾——**閘門 B 的四項阻擋已於 2026-08-16 全數落地(乙-8)**,剩下的唯一原因是 45 項基線未經 SEC-009 驗證 |
+| 安全驗收 | SEC-002 六項門檻定值(Q18)、SEC-009 逃逸測試——[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的實作期驗收關卡 | 部署驗證批。**門檻定值與 Q1～Q3 已於 2026-08-16 由[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)定案**;SEC-002／SEC-009 仍不勾——**閘門 B 的四項阻擋已於 2026-08-16 全數落地(乙-8)**,剩下的唯一原因是 45 項基線未經 SEC-009 驗證 |
 
 ## 檔案地圖
 
@@ -42,8 +42,8 @@ M2 範圍 **41 個工作項**,**33 項維持勾選、1 項對帳退回、7 項�
 | [`README.md`](README.md)(本檔) | 計畫 | M2 的計畫、五批交付摘要、契約缺口與本目錄導覽 | **活文件**——殘項解除或補件批仍會回填(追加不改寫) |
 | [`m2-work-items-audit.md`](m2-work-items-audit.md) | 審計 | M2 全 41 個工作項的逐項對帳與退回理由,是某一時點的帳 | 凍結 |
 | [`content-baseline-report.md`](content-baseline-report.md) | 報告 | CONTENT-007／008 基準試跑:45 個真實 Skill 的端到端 Run、成本、Agent 相容軸量測與三輪重測 | 凍結 |
-| [`../governance/anthropic-sa-license-memo.md`](../governance/anthropic-sa-license-memo.md) | 治理 | `anthropics/skills` source-available 條款的平台行為風險分析與方案 A/B/C(**非法律意見**,終判在負責人與法務) | **已移至 `../governance/`**(2026-08-16,ADR-024);凍結 |
-| [`../governance/anthropic-sa-inquiry-draft.md`](../governance/anthropic-sa-inquiry-draft.md) | 治理 | 上述備忘的並行建議:上游詢問信草稿,由負責人親自審閱後以自己身分寄出 | **已移至 `../governance/`**(2026-08-16,ADR-024);凍結 |
+| [`../governance/anthropic-sa-license-memo.md`](../governance/anthropic-sa-license-memo.md) | 治理 | `anthropics/skills` source-available 條款的平台行為風險分析與方案 A/B/C(**非法律意見**,終判在負責人與法務) | **已移至 `../governance/`**(2026-08-16,[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層));凍結 |
+| [`../governance/anthropic-sa-inquiry-draft.md`](../governance/anthropic-sa-inquiry-draft.md) | 治理 | 上述備忘的並行建議:上游詢問信草稿,由負責人親自審閱後以自己身分寄出 | **已移至 `../governance/`**(2026-08-16,[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層));凍結 |
 
 殘項三類清單不在本目錄,見 [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md)(活文件)。
 
@@ -51,7 +51,7 @@ M2 範圍 **41 個工作項**,**33 項維持勾選、1 項對帳退回、7 項�
 
 1. Run 狀態唯一事實來源=Go 擁有的 Postgres 狀態機(鐵律 5);LangGraph 只是 Job 內編排。
 2. 佇列消費者只有 Go Worker(River);Python 由 Go 以內部 HTTP 呼叫,含逾時與取消傳遞(鐵律 7)。
-3. 執行平面不碰核心 DB(鐵律 2)——`services/sandbox` 為獨立 Go module(ADR-019 預留),只透過任務契約、短效物件授權與事件互動。
+3. 執行平面不碰核心 DB(鐵律 2)——`services/sandbox` 為獨立 Go module(依[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)預留),只透過任務契約、短效物件授權與事件互動。
 4. 領域狀態變更與對外事件同交易(Transactional Outbox,鐵律 9);清理冪等。
 5. `run_id` 平台永久、`provider_run_id` 臨時(鐵律 10;runs 表 0004 已落)。
 6. 每 Run 短效 LiteLLM Virtual Key,`max_budget`+`tpm_limit` 雙限(PDM-003 v5)。
@@ -59,7 +59,7 @@ M2 範圍 **41 個工作項**,**33 項維持勾選、1 項對帳退回、7 項�
 
 ## 開發環境限制(誠實記錄)
 
-- 本機 Windows 無法跑 gVisor(runsc 需 Linux)。開發採 SandboxProvider 介面 + DockerProvider(dev 實作);gVisor 配置為生產 provider,其隔離驗證(SEC-009、SBX-010)屬部署期驗收,ADR-015 定案紀錄已明載「未通過不得開放外部使用者」。
+- 本機 Windows 無法跑 gVisor(runsc 需 Linux)。開發採 SandboxProvider 介面 + DockerProvider(dev 實作);gVisor 配置為生產 provider,其隔離驗證(SEC-009、SBX-010)屬部署期驗收,[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的定案紀錄已明載「未通過不得開放外部使用者」。
 
 ## 第二批交付摘要(2026-08-16)
 
@@ -140,7 +140,7 @@ Prometheus 文字格式,platform(獨立 listener `METRICS_ADDR`,不掛對外 por
 - `skillhub_egress` 是 `internal: true` 的 Docker network:上面的容器**沒有對外路由**,而網路上只有 LiteLLM 閘道。沙箱被放進去,閘道就是它唯一到得了的位址——「允許清單只有一項」在開發機上能真正被強制的形式。
 - 沙箱**只在 `RunRequest.egress.allow` 含 `model_gateway` 時**才接上該網路;`allow` 為空就維持 `--network none`。方向只有一個:沒有出口路由的節點只宣告 `egress_modes: ["none"]`,排程器不會派需要出口的工作給它(RUN-005),也永遠不會用較弱的模式頂替較強的。
 - **物件儲存不在這張網路上**,這是刻意的:dev 的 SeaweedFS 若讓沙箱直接連得到,預簽 URL 就形同虛設(沙箱能讀整個 bucket)。因此物件位元組由 sandboxd 代搬(見下)。
-- **仍未完成(SBX-007 不勾)**:生產級 Egress Proxy 本體、域名允許清單、DNS 固定解析、目的地記錄(N-01~N-07)全屬部署期;允許清單管理流程仍是 ADR-015 待決策。本批做的是 dev 節點上的網路面隔離,不是 Proxy。
+- **仍未完成(SBX-007 不勾)**:生產級 Egress Proxy 本體、域名允許清單、DNS 固定解析、目的地記錄(N-01~N-07)全屬部署期;允許清單管理流程仍是[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的待決策。本批做的是 dev 節點上的網路面隔離,不是 Proxy。
 
 ### Grant 流向(SBX-008)
 
@@ -169,7 +169,7 @@ harness 用**自己的 Virtual Key 讀閘道的 `/key/info`** 取本 Run 的 spe
 | Trace `usage.cost_usd` | `0.00571125` |
 | 閘道 `LiteLLM_SpendLogs` 四次呼叫合計 | `0.00036975 + 0.00211590 + 0.00181905 + 0.00140655 = 0.00571125` |
 
-一致。**仍是讀數不是帳本**:最後一次 flush 若落在最後一次輪詢之後就會少算,權威對帳來源是閘道的 per-key spend(ADR-017)。
+一致。**仍是讀數不是帳本**:最後一次 flush 若落在最後一次輪詢之後就會少算,權威對帳來源是閘道的 per-key spend(依[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性))。
 
 ### 端到端證據(本批驗收核心)
 
@@ -287,7 +287,7 @@ sighting 記在 destroy **之前**,而且 destroy 成功不會抹掉它:X-03 問
 
 三個新指標(`skillhub_orphan_sandbox_persistent{provider}` gauge、`skillhub_gateway_revoke_failed_total`、`skillhub_sandbox_destroy_failed_total{provider}`)。金鑰與沙箱分開計,因為**正確動作相反**:沙箱殺不掉要 drain 節點,金鑰撤不掉 drain 一點用都沒有。`alerts.yml` 的兩條過渡規則已升為正式形式並移除過渡註解,`promtool check rules` 通過(18 條)。
 
-`CleanupBacklogGrowing` 順帶校準:`> 5` → `> 2`。舊值大於封測整池的 4 個 slot,意思是整池沙箱全部洩漏都還低於門檻——一條在容量耗盡前不可能響的告警等於沒有。新值取 4 slot 的 50%,與 ADR-022 X-04 單節點 drain 同一個比例;`for: 15m` 不變,所以正常清理的暫態積壓仍不觸發。**校準義務不變**:池容量改變時要重推。
+`CleanupBacklogGrowing` 順帶校準:`> 5` → `> 2`。舊值大於封測整池的 4 個 slot,意思是整池沙箱全部洩漏都還低於門檻——一條在容量耗盡前不可能響的告警等於沒有。新值取 4 slot 的 50%,與[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全) X-04 單節點 drain 同一個比例;`for: 15m` 不變,所以正常清理的暫態積壓仍不觸發。**校準義務不變**:池容量改變時要重推。
 
 ### 契約缺口(記錄,未改 spec)
 

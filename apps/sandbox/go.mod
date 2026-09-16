@@ -1,4 +1,4 @@
-// apps/sandbox is a separate Go module on purpose (ADR-019, iron rule 2):
+// apps/sandbox is a separate Go module on purpose (iron rule 2):
 // the execution plane must not be able to import the control plane's data
 // access packages, and a module boundary enforces that at compile time rather
 // than by review. Nothing here depends on apps/platform.

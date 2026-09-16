@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | 索引增強（`/v1/enrich-skill`） | 匯入／GitHub 抓來的 `SKILL.md`（不受信任） | `search_documents`：白話摘要、任務例句、tags、向量——**決定搜尋排序與 Re-Use 三關卡會端出誰** |
 | 搜尋說明（`/match-reasons`）、條件建議 | 目錄文件摘要（不受信任）＋使用者查詢 | 畫面上標記為 `model` 的一句話 |
-| 評估 Judge（`/judge-run`） | Run 的輸出（不受信任、可能被 Skill 操縱） | `met`／建議；ADR-026 定的信任邊界 |
+| 評估 Judge（`/judge-run`） | Run 的輸出（不受信任、可能被 Skill 操縱） | `met`／建議；[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界) |
 | 互動創作（`/v1/creation/step`） | 使用者對話、參考 Skill 內容、工具觀察（目錄搜尋結果、**同意後抓回的網頁**、試跑評估） | 草稿（經 Go 靜態驗證、人確認後才成版本）、工具意圖（**只由 Go 執行**） |
 
 ## 1. 逐項對照
@@ -27,16 +27,16 @@
 ### LLM02 Sensitive Information Disclosure — 高
 
 - **對應威脅**：TM-SEC-01、TM-TRC-02、TM-MDL-03。
-- **現有**：Secrets 短效注入與遮罩（SEC-005、TRACE-001、鐵律 11）；`model`／`prompt_version` 不出現在 Web（`creation.test.tsx` 斷言）；分析事件不存查詢字（ADR-029）；匿名搜尋不帶 workspace。
+- **現有**：Secrets 短效注入與遮罩（SEC-005、TRACE-001、鐵律 11）；`model`／`prompt_version` 不出現在 Web（`creation.test.tsx` 斷言）；分析事件不存查詢字（[產品分析與稽核邊界](../../../adr/README.md#產品分析與稽核邊界)）；匿名搜尋不帶 workspace。
 - **缺口**：①創作會話的快照存了使用者訊息、brief、`sample_input`、抓回網頁的觀察——遮罩規則只保證 Trace 與 Log，**沒有證據說會話訊息在顯示與匯出前過了同一套遮罩**；②搜尋查詢與創作內容會離開平台到 embedding／模型供應商，同意書（gate-test/consent-and-data-policy §3）的互動創作那一列還沒被法務看過（`04` 丙-177 已記）。
 - **SEC-013 要做**：會話訊息與工具觀察在寫入快照前跑遮罩（同 TRACE-001 的規則），加一條「貼進對話的 `sk-…`／`AKIA…` 不會原樣回到畫面」的測試；同意書那一列進法務清單（真人）。**（2026-09-07 進度：遮罩與反證測試已落地；同意書仍等真人。）**
 
 ### LLM03 Supply Chain — 中
 
 - **對應威脅**：TM-IMP-03、TM-IMP-04、TM-EXE-01（映像）。
-- **現有**：ADR-007（套件不可信、匯入不執行 Script）、ADR-023（runtime image 釘 digest＋行為重驗）、SEC-003 靜態掃描、SEC-007 License 溯源、lockfile（`go.sum`／`package-lock.json`／`uv.lock`）、gVisor。
+- **現有**：[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)（套件不可信、匯入不執行 Script；runtime image 釘 digest＋行為重驗）、SEC-003 靜態掃描、SEC-007 License 溯源、lockfile（`go.sum`／`package-lock.json`／`uv.lock`）、gVisor。
 - **缺口**：**模型本身沒有釘版本**——閘道的模型別名（`gpt-5.4-mini`、Judge 的 `gpt-5.6-terra`）指到供應商當下的權重；供應商換權重時，m3 的 Judge 回歸集與 m5 的 `met` 數字都會安靜地失效，沒有任何觸發器。
-- **SEC-013 要做**：閘道模型別名指向**帶日期的模型 ID**，並在 `tools/toolchain.yaml` 或 LiteLLM 設定裡登記；換 ID 必須重跑 Judge 回歸（m3）與 creation-measure 一輪，寫進 ADR-023 的追記（決策要負責人簽：`05`）。
+- **SEC-013 要做**：閘道模型別名指向**帶日期的模型 ID**，並在 `tools/toolchain.yaml` 或 LiteLLM 設定裡登記；換 ID 必須重跑 Judge 回歸（m3）與 creation-measure 一輪，寫進[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的追記（決策要負責人簽：`05`）。
 
 ### LLM04 Data and Model Poisoning — 高（Re-Use 之後升高）
 
@@ -44,7 +44,7 @@
 - **現有**：目錄只含 `is_catalog` 工作區（人策展），精選層級與下架（CONTENT-001、SEC-011），揭露不縮水（GEN-003），干擾題拒答 12／12（goldenset）。
 - **缺口**：索引文本是由不受信任的 `SKILL.md` 推出來的——一份塞滿任務例句與關鍵詞的套件可以讓自己在無關查詢裡排前面；**Re-Use 三關卡讓這件事更值錢**：被端到「直接採用」按鈕前面的 Skill，一鍵就 fork 進使用者工作區。而 `confirm_references` 畫面只列描述、相容與工具，**沒有精選層級與風險揭露**。goldenset 沒有「投毒文件」這種題。
 - **SEC-013 要做**：①首則訊息與查重端出的 Skill 一併顯示精選層級、掃描揭露與來源（同 DISC-002 的欄位）；②goldenset 加一組「投毒文件」（關鍵詞堆疊、假任務例句），紅線：它不得進任何 golden 題的 Top-3，且不得在名稱／特定詞查詢裡取代正解；③`enrich` 提示明定「只能重述內容裡有的事」已在 v6（R-34 自檢），把自檢的「誇大」結果納入投毒訊號。**（2026-09-07 進度：①已落地；②量了兩種情境，紅線均未達（golden Top-3 最壞 32/60、公平 37/60），且 tags 格式詞數與例句離散度兩個候選訊號都分不開投毒與合法內容——結論轉為結構性緩解，見 `05` R-53；③試過的 overreach 自檢規則數字不成立已撤回。）**
-**2026-09-07 裁定（`05` R-53）**：三條裁定已簽——①採納，目錄維持策展（僅人工審核可讓內容進入 `is_catalog` 工作區）是 OWASP LLM04 唯一夠格的結構性緩解，放寬准入的提案動工前必須重跑投毒量測，畫面揭露不算緩解（定案見 ADR-013 定案調整 8）；②採納，投毒量測列為常設紅線，往後改索引文本生成規則或檢索規則，連同 F1 一起重跑並把兩組數字寫進同一份報告，紅線維持嚴格版不放寬；③不採納（現在不做），對僅 `indexed` 層級加 Top-3 曝光上限或延遲策展信號，重啟條件是出現放寬准入提案且重量後紅線仍未過。SEC-013 投毒那一條的成立條件重新界定為「量測存在且結果入報告＋策展在 ADR-013 寫成唯一結構性緩解＋放寬准入提案前重量」；紅線本身不放寬，SEC-013 仍不勾（注入攻擊集紅線 0/N 未達，殘留 1/12）。
+**2026-09-07 裁定（`05` R-53）**：三條裁定已簽——①採納，目錄維持策展（僅人工審核可讓內容進入 `is_catalog` 工作區）是 OWASP LLM04 唯一夠格的結構性緩解，放寬准入的提案動工前必須重跑投毒量測，畫面揭露不算緩解（定案見[意圖搜尋](../../../adr/README.md#意圖搜尋)的定案紀錄）；②採納，投毒量測列為常設紅線，往後改索引文本生成規則或檢索規則，連同 F1 一起重跑並把兩組數字寫進同一份報告，紅線維持嚴格版不放寬；③不採納（現在不做），對僅 `indexed` 層級加 Top-3 曝光上限或延遲策展信號，重啟條件是出現放寬准入提案且重量後紅線仍未過。SEC-013 投毒那一條的成立條件重新界定為「量測存在且結果入報告＋策展在[意圖搜尋](../../../adr/README.md#意圖搜尋)寫成唯一結構性緩解＋放寬准入提案前重量」；紅線本身不放寬，SEC-013 仍不勾（注入攻擊集紅線 0/N 未達，殘留 1/12）。
 
 ### LLM05 Improper Output Handling — 中
 
@@ -68,14 +68,14 @@
 ### LLM08 Vector and Embedding Weaknesses — 中
 
 - **對應威脅**：TM-DAT-01、TM-TRC-03（跨租戶）；投毒歸 LLM04。
-- **現有**：所有查詢帶 Workspace scope、公開查詢綁 `is_catalog`（鐵律 3、`TestClientSuppliedWorkspaceIDIsIgnored`）；創作的目錄查詢與查重都只看目錄，看不到別人的私有工作區；embedding 模型換了就全量重建（ADR-013）。
+- **現有**：所有查詢帶 Workspace scope、公開查詢綁 `is_catalog`（鐵律 3、`TestClientSuppliedWorkspaceIDIsIgnored`）；創作的目錄查詢與查重都只看目錄，看不到別人的私有工作區；embedding 模型換了就全量重建（[意圖搜尋](../../../adr/README.md#意圖搜尋)）。
 - **缺口**：使用者的查詢句與草稿描述會送到 embedding 供應商（見 LLM02 的同意書）；沒有其他。
 - **SEC-013 要做**：併入 LLM02 的同意書項目。
 
 ### LLM09 Misinformation — 中
 
 - **對應威脅**：TM-SCN-01。
-- **現有**：模型文字一律標記來源（`summary_source`、`match_reason_source`）；「靜態檢查不代表試跑成功」；Judge 的信任邊界與再評估（ADR-026）；生成品不進搜尋（GEN-007）；參考的相容與工具標為「宣告」。
+- **現有**：模型文字一律標記來源（`summary_source`、`match_reason_source`）；「靜態檢查不代表試跑成功」；Judge 的信任邊界與再評估（[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)）；生成品不進搜尋（GEN-007）；參考的相容與工具標為「宣告」。
 - **缺口**：無新缺口。
 
 ### LLM10 Unbounded Consumption — 中

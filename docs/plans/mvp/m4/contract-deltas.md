@@ -23,7 +23,7 @@
 | --- | --- | --- |
 | **`artifacts` 表已經預留了下載套件** | `0004_test_lab_and_runs.sql`：`kind IN ('run_output','download_package')`、`run_id` **可為 NULL**（註解逐字寫「NULL for packaging downloads (PACK-001)」）、`scan_status` 三態、`expires_at` 註解已寫「Run output 30 days, download package 90 days (PDM-006 6)」 | **不要新建一張 `download_artifacts` 表。** `0027` 只補這張表答不出來的東西（§4） |
 | **License 溯源四層已在 `skill_versions`** | `0012` ＋ `0014`：`license_expression`／`license_source ∈ {manifest, manifest-referenced-file, package-license-file, repo-license-file}`，配對 CHECK | manifest 的 `license` 區塊直接映射這兩欄，**不重新定義層級** |
-| **打包目標檔名常數已匯出** | `skillpkg.CarriedLicenseFile = "LICENSE.repo"`、`CarriedProvenanceFile` | 匯出器引用常數，不寫字面字串（ADR-021 已為打包器↔掃描器的名單漂移付過一次代價） |
+| **打包目標檔名常數已匯出** | `skillpkg.CarriedLicenseFile = "LICENSE.repo"`、`CarriedProvenanceFile` | 匯出器引用常數，不寫字面字串（[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)已為打包器↔掃描器的名單漂移付過一次代價） |
 
 ---
 
@@ -40,7 +40,7 @@
 | `/skills/{id}/versions/{versionId}/packaging` | POST | body `{target, include_test_cases: boolean}` → 建立一筆 Download Artifact。回 `DownloadArtifact`。**冪等**：同一 (version, target, include_test_cases, packager_version) 已有未過期且 `available` 的 artifact 時回既有那一筆並標 `duplicate: true`（同 `EVAL-010` 的 `duplicate` 前例）——打包是冪等的，重按一次不該產生第二份位元組 | `02:PACK-001` |
 | `/downloads` | GET | 回 `DownloadArtifact[]`，本 workspace 的全部。這是 `02:WS-002` 第 1 條「使用者可查看……下載紀錄」的列表面 | `02:WS-002`、`03` WS-004 |
 | `/downloads/{artifactId}` | GET | 回單筆 `DownloadArtifact`（含到期日與 `download_count`） | 同上 |
-| `/downloads/{artifactId}/content` | GET | **平台代傳位元組**（`Content-Disposition: attachment`），不回預簽 URL——理由見 [packaging-design.md](packaging-design.md) §7.1。`scan_status != 'available'`、已過期、或 `access_restriction` 非 NULL 一律 **404**（不是 403：存在性本身是私有的，沿用既有慣例） | `02:PACK-001`、ADR-003 |
+| `/downloads/{artifactId}/content` | GET | **平台代傳位元組**（`Content-Disposition: attachment`），不回預簽 URL——理由見 [packaging-design.md](packaging-design.md) §7.1。`scan_status != 'available'`、已過期、或 `access_restriction` 非 NULL 一律 **404**（不是 403：存在性本身是私有的，沿用既有慣例） | `02:PACK-001`、[資料所有權與核心基礎設施](../../../adr/README.md#資料所有權與核心基礎設施) |
 | `/downloads/{artifactId}` | DELETE | 使用者主動刪除自己的 Download Artifact（`02:WS-002` 第 3 條、`NFR-002`）。冪等：不存在也回 204 | `02:SEC-006` |
 
 **刻意不新增的端點**：
@@ -67,7 +67,7 @@
 | `PackagingPreview` | `allowed`、`blocked_reason?`、`validation: PackageValidation`、`included_test_cases[]`、`excluded_test_cases[{name, reason}]` | `blocked_reason` 的值域是四道鎖：`license_hold`（`access_restriction`）／`not_redistributable`／`license_unknown`／`validation_blocked`。**四個分開而不是一個 `blocked: true`**——使用者能不能自己解決取決於是哪一個 |
 | `PackageValidation` | `blocked: boolean`、`errors[]`、`warnings[]`、`infos[]`（每筆 `{code, path, message}`） | 直接映射 `skillpkg.Report` 的既有三級，**不重新定義 severity**（`02:SKILL-002`「分開呈現阻擋錯誤與可接受警告」） |
 | `DownloadArtifact` | `artifact_id`、`skill_id`、`skill_version_id`、`target`、`file_name`、`size_bytes`、`content_hash`、`manifest_hash`、`status`(`quarantined`\|`available`\|`rejected`)、`expires_at`、`created_at`、`download_count`、`includes_test_cases` | **兩個雜湊都在**（[packaging-design.md](packaging-design.md) §2.4）：`content_hash` 答「是不是這個檔」，`manifest_hash` 答「內容是不是一樣」。`status` 直接是 `artifacts.scan_status`，**不映射成 `ready: boolean`**——`rejected` 與 `quarantined` 對使用者是兩件事 |
-| `SkillCompatibility` | `format`(`valid`\|`invalid`)、`capability`(`activated`\|`not_activated`\|`unverified`)、`behaviour`(`native`\|`transpiled`\|`failed`\|`unverified`) ＋ `runtime_image?`／`measured_at?` | ADR-012 的三層相容性。**後兩軸的值域與 `0022` 的 `skill_runtime_compatibility` 逐字相同**，不另造一套；`behaviour` 沒有實測列就是 `unverified`，**不得外推**（乙-4 的既有裁定） |
+| `SkillCompatibility` | `format`(`valid`\|`invalid`)、`capability`(`activated`\|`not_activated`\|`unverified`)、`behaviour`(`native`\|`transpiled`\|`failed`\|`unverified`) ＋ `runtime_image?`／`measured_at?` | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的三層相容性。**後兩軸的值域與 `0022` 的 `skill_runtime_compatibility` 逐字相同**，不另造一套；`behaviour` 沒有實測列就是 `unverified`，**不得外推**（乙-4 的既有裁定） |
 | `RunQuota` | `remaining_today`、`remaining_window`、`window_resets_at`、`limits: {daily, window, window_days, concurrent}` | 值來自 PDM-010；`concurrent` 是**既有**的強制（`gateb.go`），列在這裡是為了讓四個限制在同一個地方被看到 |
 
 ---
@@ -81,13 +81,13 @@
 | 檔案 | 內容 | 消費者 |
 | --- | --- | --- |
 | `download-manifest.schema.json` | `skillhub-manifest.json` 的形狀，欄位逐項見 [packaging-design.md](packaging-design.md) §4.1 | Go（產生）、`apps/web`（顯示）、**使用者與其工具**（驗證） |
-| `packaging-profile.schema.json` | Agent Packaging Profile 的版本化設定：安裝位置、frontmatter additive 欄位、環境變數範本、驗證 Prompt、已知限制。**只描述設定，不描述 Adapter 程式**（ADR-012「Profile 應為版本化設定與程式 Adapter 的組合」） | Go（讀設定）；三個內建 Profile 各一份實體 |
+| `packaging-profile.schema.json` | Agent Packaging Profile 的版本化設定：安裝位置、frontmatter additive 欄位、環境變數範本、驗證 Prompt、已知限制。**只描述設定，不描述 Adapter 程式**（[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的「Profile 應為版本化設定與程式 Adapter 的組合」既有裁定） | Go（讀設定）；三個內建 Profile 各一份實體 |
 | `portable-test-case.schema.json` | `test-cases/<slug>/case.json` 的形狀（[packaging-design.md](packaging-design.md) §5.2） | **兩個方向**：打包器匯出、`tools/content/` 的種入腳本匯入（丙-12） |
 
 **`download-manifest` 有三條必須寫進 schema description 的界線**（是契約文字，不是註解）：
 
 1. **`compatibility.behaviour` 的值只能來自該 (Skill Version × Runtime Image) 的實測列**；沒有列就是 `unverified`。schema 要說明「本欄不是承諾，是一次量測的紀錄」。
-2. **`license.expression` 與 `license.source_tier` 同生同滅**（ADR-021 決策 1 的 CHECK 在 DB，這裡是它的對外形式）。`expression` 為 null 時 `source_tier` 必須為 null，且**不得填 `NOASSERTION` 字串**（ADR-021 決策 7）。
+2. **`license.expression` 與 `license.source_tier` 同生同滅**（[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的 CHECK 在 DB，這裡是它的對外形式）。`expression` 為 null 時 `source_tier` 必須為 null，且**不得填 `NOASSERTION` 字串**（同一項既有裁定）。
 3. **`manifest_hash` 不含 manifest 自身**，且不含任何 zip metadata——否則它答不了「兩次打包的內容一不一樣」（[packaging-design.md](packaging-design.md) §2.4）。
 
 ---
@@ -112,13 +112,13 @@
 
 **建議形狀**：`skills.redistribution text CHECK (redistribution IN ('allowed','blocked','unknown')) NOT NULL DEFAULT 'unknown'`，與 `access_restriction` 同層、隨 Fork 複製、**只有 `allowed` 放行**。
 
-**為什麼是 `skills` 不是 `skill_versions`**：同 `0023` 的既有裁定（授權事實屬於來源，且 `skill_versions` 不可變、放不進一個可撤銷的判定）。**為什麼預設 `unknown` 而不是 `allowed`**：`02:DISC-003` 的「授權未知不得暗示可自由修改或再發佈」在放行方向上錯不起——ADR-021 §5.3 記錄的那個誤判（「repo 根有 MIT ⇒ 子目錄是 MIT」）錯的正是這個方向。
+**為什麼是 `skills` 不是 `skill_versions`**：同 `0023` 的既有裁定（授權事實屬於來源，且 `skill_versions` 不可變、放不進一個可撤銷的判定）。**為什麼預設 `unknown` 而不是 `allowed`**：`02:DISC-003` 的「授權未知不得暗示可自由修改或再發佈」在放行方向上錯不起——[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)已記錄的那個誤判（「repo 根有 MIT ⇒ 子目錄是 MIT」）錯的正是這個方向。
 
 **兩道鎖都要**（[packaging-design.md](packaging-design.md) §4.5）：`access_restriction`（人工 hold，涵蓋今天已知的四筆）與 `redistribution`（內容屬性，對每一個 Skill 都要有答案）。拿 hold 當可散布性判準，等於宣稱「沒有人特別擋它就是可以散布」。
 
 **回填**：45 個種子 Skill 的事實已在 `seed-skills.json`，腳本比照 `tools/content/backfill-agent-compatibility.sql` 的既有形式（可重跑、逐列可追溯）。
 
-> **這一列的欄位歸屬與預設值需要拍板**（`README` §8），因為它同時是一個資料模型決策與一個法遵預設。建議併入 **ADR-027**。
+> **這一列的欄位歸屬與預設值需要拍板**（`README` §8），因為它同時是一個資料模型決策與一個法遵預設。建議併入[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)。
 
 ### 4.2 `artifacts` 上要動的一件小事
 
@@ -132,8 +132,8 @@
 | --- | --- |
 | `contracts/openapi/sandbox-provider.yaml` | 打包**不進執行平面**（[packaging-design.md](packaging-design.md) §8）。M4 對 provider 契約一個位元組不改 |
 | `contracts/openapi/llm-internal.yaml` | 打包不呼叫模型。安裝說明由 Profile 設定 ＋ 既有欄位組出來，**不生成散文**——讓模型寫安裝路徑會產生一段沒有人驗過的指示 |
-| `contracts/events/trace-event.schema.json` | 打包不是 Run，不產生 trace 事件。**下載的紀錄走 audit 與 `download_records`，不走 trace**（ADR-009 的既有邊界） |
-| `skill_versions` 的既有 license 欄位 | ADR-021 的四層已經正確；manifest 是它的對外映射，不是第二份定義 |
+| `contracts/events/trace-event.schema.json` | 打包不是 Run，不產生 trace 事件。**下載的紀錄走 audit 與 `download_records`，不走 trace**（[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)的既有邊界） |
+| `skill_versions` 的既有 license 欄位 | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的四層已經正確；manifest 是它的對外映射，不是第二份定義 |
 | `run_status` enum、`0005` 的 immutability trigger | 打包不建立也不修改 Skill Version（鐵律 4） |
 
 ## 6. 順手要補的既有欠帳（若第 1 批動到 `public.yaml`）

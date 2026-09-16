@@ -138,7 +138,7 @@ def repack_skill(repo_zip: pathlib.Path, skill_md_path: str, source: dict | None
                             "note": (
                                 "Repository-level license carried in because this skill "
                                 "directory states none of its own. It covers the repository, "
-                                "not necessarily this directory's content (ADR-021)."
+                                "not necessarily this directory's content."
                             ),
                         },
                         ensure_ascii=False,

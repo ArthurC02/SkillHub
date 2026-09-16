@@ -8,7 +8,7 @@ ALTER TABLE skill_versions
     ));
 
 COMMENT ON COLUMN skill_versions.license_source IS
-    'ADR-021 provenance tier of license_expression, strongest first: manifest (author '
+    'Provenance tier of license_expression, strongest first: manifest (author '
     'declared it in SKILL.md frontmatter), manifest-referenced-file (frontmatter pointed '
     'at a package file, e.g. "SEE LICENSE IN LICENSE.txt", and that file''s text was '
     'recognised), package-license-file (a LICENSE file in the package itself), '

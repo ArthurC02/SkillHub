@@ -1,6 +1,6 @@
 # apps/llm
 
-Internal Python LLM service (FastAPI + uv), per ADR-016. Called by the Go platform
+Internal Python LLM service (FastAPI + uv). Called by the Go platform
 over internal HTTP only — it never consumes the queue and holds no business rules.
 
 ```bash
@@ -10,7 +10,7 @@ uv run ruff check .
 uv run uvicorn skillhub_llm.app:app --reload
 ```
 
-互動式 Skill 創作已依 [ADR-067](../../docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md)
+互動式 Skill 創作已依[互動創作](../../docs/adr/README.md#互動創作)
 接上 LangGraph。`POST /v1/creation/step` 從 Go 快照重建單次工作，回傳澄清、
 確認、草稿或有界工具意圖；工具執行、持久化、成本與重試政策由 Go 決定。
 服務不保存跨工作 checkpoint，LangSmith tracing 在此路徑強制關閉。

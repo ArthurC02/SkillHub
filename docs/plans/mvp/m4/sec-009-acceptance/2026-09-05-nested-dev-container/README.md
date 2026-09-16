@@ -2,7 +2,7 @@
 
 ## ⛔ Same caveat as 2026-08-26, unchanged
 
-This is not the SEC-009 acceptance and cannot be. ADR-022 defines Suite 2's
+This is not the SEC-009 acceptance and cannot be. [Sandbox 隔離與執行安全](../../../../../adr/README.md#sandbox-隔離與執行安全) defines Suite 2's
 subject as *the node about to join the pool*; this is Windows → Docker
 Desktop's WSL2 VM → a privileged container → a gVisor sandbox. What is
 measured is the boundary between a sandbox and a container deliberately
@@ -74,19 +74,19 @@ touches the taint line, and that line still reads PASS unsandboxed too
 (taint is a property of the host kernel, not of whether this particular
 process was sandboxed).
 
-## T2: full ADR-022 spec (4×1800s), and the three official criteria all pass
+## T2: full [Sandbox 隔離與執行安全](../../../../../adr/README.md#sandbox-隔離與執行安全) spec (4×1800s), and the three official criteria all pass
 
 [`fuzz-4x1800s.txt`](T2/fuzz-4x1800s.txt) — **6.7 million syscalls is wrong,
 it's 4,924,693 calls** (floor 720,000), 31 distinct errnos, sandbox exited 0
 after exactly 1800s.
 
-| ADR-022's three T2 criteria | Result |
+| [Sandbox 隔離與執行安全](../../../../../adr/README.md#sandbox-隔離與執行安全)'s three T2 criteria | Result |
 | --- | --- |
 | Sentry does not crash | **PASS** — survived the full 1800s |
 | Host kernel shows no oops | **PASS** — 0 new entries vs the pre-run baseline |
 | No unexpected privileges gained | **PASS** — uid/gid unchanged in every worker that reported, and the three re-checked T1 invariants (`core_pattern`, `/dev/mem`, `docker.sock`) still held after 30 minutes of pressure |
 
-**But the script's own stricter bookkeeping check failed**, and per ADR-022
+**But the script's own stricter bookkeeping check failed**, and per [Sandbox 隔離與執行安全](../../../../../adr/README.md#sandbox-隔離與執行安全)
 §3 ("`unknown` counts as fail, no partial credit for the rest looking fine")
 the run's overall exit code is 2, not 0:
 
@@ -137,7 +137,7 @@ keep running), not a boundary failure: the "sentry did not crash" and "no
 privileges gained" criteria both independently held for the *whole* 1800s,
 including the window worker 4 died in.
 
-**Recorded as `unknown` per ADR-022's own vocabulary, not waved through and
+**Recorded as `unknown` per [Sandbox 隔離與執行安全](../../../../../adr/README.md#sandbox-隔離與執行安全)'s own vocabulary, not waved through and
 not asserted as a security finding.** The three official T2 criteria pass
 on their own evidence; the fourth, stricter bookkeeping check is the reason
 this run's script-level verdict stays FAIL.

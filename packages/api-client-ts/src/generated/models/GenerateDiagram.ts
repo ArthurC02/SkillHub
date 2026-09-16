@@ -18,10 +18,10 @@ import { mapValues } from '../runtime';
  * inline as base64 rather than through a separate upload endpoint: the
  * image is an INPUT to one synchronous call, not an object the platform
  * keeps — only its digest, media type and byte count land in the
- * provenance row (ADR-066), so nothing in object storage needs a
+ * provenance row, so nothing in object storage needs a
  * retention rule for it. The decoded bytes are capped; over the cap is a
  * 400, never a resize (the platform does not edit inputs any more than it
- * edits outputs, ADR-047 決策 1).
+ * edits outputs).
  * 
  * @export
  * @interface GenerateDiagram

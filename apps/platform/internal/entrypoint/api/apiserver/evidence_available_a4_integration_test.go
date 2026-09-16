@@ -54,7 +54,7 @@ func TestSuggestionEvidenceIsReAnsweredAtReadTime(t *testing.T) {
 			t.Errorf("evidence %q still claims to be available after the trace event was removed", e.Excerpt)
 		}
 		if e.Excerpt == "" {
-			t.Error("a stale citation lost its excerpt; it must be labelled, not blanked (ADR-009)")
+			t.Error("a stale citation lost its excerpt; it must be labelled, not blanked")
 		}
 	}
 }

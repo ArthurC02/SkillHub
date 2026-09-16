@@ -57,7 +57,7 @@
 **已成立的部分，先說完整**：
 
 1. **刻意不新增重跑端點**，這是對的且要記下來為什麼對。重跑就是既有的 `POST /skills/{id}/runs` 帶新 `skill_version_id` 與同一個 `test_case_id`，所以 preflight 與 `confirmed_summary_hash` 一定在路徑上。多開一個「一鍵重跑」端點，它與既有那條唯一可能的差別就是**繞過權限確認畫面**——`TEST-009` 存在的全部理由。整合測試 `TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight` 直接反證繞不過去：新版本內容雜湊不同 → 摘要 hash 變 → 舊確認自然失效 → 422。
-2. **比較畫面已經給了一條合格的路**：`RunCompare.tsx` 的 `RerunCell` 把 `skill`／`version`／`test_case` 三個 id 都填好連到 preflight，且 `inputs_available: false` 時**整條連結拿掉**而不是給一個壞掉的（ADR-003：已刪除的輸入不得暗示仍可重跑）。
+2. **比較畫面已經給了一條合格的路**：`RunCompare.tsx` 的 `RerunCell` 把 `skill`／`version`／`test_case` 三個 id 都填好連到 preflight，且 `inputs_available: false` 時**整條連結拿掉**而不是給一個壞掉的（已刪除的輸入不得暗示仍可重跑）。
 3. **Test Case 詳情頁也連得過去**，帶 `skill` 與 `test_case`。
 
 **缺的那一步，也說清楚**：
@@ -75,7 +75,7 @@
 **這段是對帳之後補記的，上面的退回理由一個字不動。** 對帳文件記的是判定當下的事實，而解除條件在同一天被滿足了——記下它比讓這一頁停在一個已經不成立的狀態誠實。
 
 - **接上的地方**：`apps/web/src/pages/RunEvaluation.tsx` 的 `AppliedResult`。版本建出後直接連 `/lab/run?skill=&version=&test_case=`，`skill_id`／`version_id` 取自套用端點的回應（兩者皆為契約 required），`test_case_id` 取自 `GET /runs/{id}`。上面第 2 點說比較畫面那條路「合格」的理由——三個 id 都填好、連的是 preflight 而不是開始 Run——在這裡逐項成立，文案也沿用同一句。
-- **退回情境也接上了**：`test_case_id` 缺席時**不給連結**而改為一句說明，與 `RerunCell` 在 `inputs_available: false` 時的處置同一條規則（ADR-003）。`duplicate: true` 仍給連結，因為那個 id 指向內容相同的既有版本，一樣跑得動。
+- **退回情境也接上了**：`test_case_id` 缺席時**不給連結**而改為一句說明，與 `RerunCell` 在 `inputs_available: false` 時的處置同一條規則。`duplicate: true` 仍給連結，因為那個 id 指向內容相同的既有版本，一樣跑得動。
 - **仍然沒有做的**：preflight 頁的版本選單。本節列的兩個補法只取了較小的那一個，理由寫在 `03` 的行內：M3 主路徑要的是「把剛建出來的那個版本交過去」，挑版本是 `DESIGN-007` 的事。
 - **測試**：`apps/web/src/eval.test.tsx` 兩筆具名案例，一筆驗三個 id 確實出現在連結的 href 上（不是只驗文字出現），一筆驗草稿不存在時連結消失。
 - **commit**：`7c31da0`（一個 commit 寫不進自己的 hash，所以本行由隨後那個只改這一行的 commit 指名，同 `f5d8501` 的前例）。
@@ -93,7 +93,7 @@
 - 報告 §1 的一句話結論之後緊接著寫「**但這個 100% 要照它的範圍讀，不能當成『Judge 準』的通稿**」，§2 用一張「測到了／沒測到」的對照表把三個空格攤開（主觀判定、注入抵抗、證據殘缺下的保守性），§9 的勾選建議後面直接寫「**勾選同時要講清楚它不代表什麼**」。
 - 更關鍵的一句在 §2 末：那兩條可計分驗收條件的**正確答案平台自己用規則就算得出來**，所以這是一個**下界檢查**——能證偽「Judge 連讀得到的事實都會讀錯」，不能證實「Judge 判得動它真正存在的那一類問題」。這句話比任何一個百分比都重要，而它已經在文件裡。
 - §6 的差異歸因沒有硬套 `02:EVAL-013` 給的兩個類別（「Judge 判錯」／「標註可議」）。兩類實測都是 0，作者**另立第三類「平台缺陷」並具名根因**，而不是把 45 筆塞進其中一格。這是對的處置：準則給的分類不夠用時，誠實的做法是加一類並說明，不是選一個比較像的。
-- v1 → v2 的處置也對：prompt **升版不就地改寫**，兩輪同存於 `results.jsonl` 並以 `regression_id` 區分，舊列一個位元組未改（ADR-026 決策 1 的實作演練）。
+- v1 → v2 的處置也對：prompt **升版不就地改寫**，兩輪同存於 `results.jsonl` 並以 `regression_id` 區分，舊列一個位元組未改（append-only 決策的實作演練，見[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)）。
 
 **`03` 行內的範圍註記**（「勾選的範圍是『回歸集與驗證流程建立且跑過』，不含主觀判定、注入抵抗與證據殘缺三類的覆蓋」）與報告一致，**不退回**。
 
@@ -114,7 +114,7 @@
 
 **保留意見一（策展 rubric 沒有種進任何一筆平台 Test Case）**：同意，且同意它**不構成本項缺口**。理由如 `03` 行內所寫——`CONTENT-007` 允收第 1、5 條的範例 Dataset／Prompt／驗收條件當初也是在 M2 的臨時 Workspace 裡現做的，平台從來沒有「把策展 Test Case 種進部署」的路徑。**要求 rubric 必須可種進全新部署，就等於回頭要求那三項也必須可以**，那是一個跨 `CONTENT`／`PACK` 的新工作項，不是本項的洞。已入 `04` 丙-12。
 
-**保留意見二（A 輪查出的 G7）**：同意記在 `04` 乙-13 而不是留著擋本項。判準是「這個缺口與 rubric 內容有沒有關係」——沒有：`verify()` 對 `kind = artifact` 只檢查路徑在 manifest 上、**引文不比對**，這對任何帶 `evidence_required` 的 rubric 一視同仁，屬 `EVAL-001`／ADR-026 defence 3 的判準而非內容供應。**它需要拍板**（兩個選項動的是防線 3 本身），所以歸乙不歸丙。
+**保留意見二（A 輪查出的 G7）**：同意記在 `04` 乙-13 而不是留著擋本項。判準是「這個缺口與 rubric 內容有沒有關係」——沒有：`verify()` 對 `kind = artifact` 只檢查路徑在 manifest 上、**引文不比對**，這對任何帶 `evidence_required` 的 rubric 一視同仁，屬 `EVAL-001`／[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)第三道防線的判準而非內容供應。**它需要拍板**（兩個選項動的是防線 3 本身），所以歸乙不歸丙。
 
 **另外覆核一件原文件自己更正的事，值得記**：`writing-rubrics.md` §5.1 預測 A 輪「絕大多數條目應為 `undetermined`」，實測是 `failed` 10／`passed` 9／`undetermined` 3。**預測錯得有內容**——§2.2 把 Judge 看得到的東西列為「最終回覆」與「artifact manifest 列」兩者，漏了第三條：trace 的 `tool_call` payload 帶著寫檔當下的正文，而 `trace_event` 型證據是逐字回驗的。更正已寫回該文件而不是把預測刪掉。這正是本專案要的處置方式。
 
@@ -137,11 +137,11 @@
 
 | # | 出入 | 裁定 |
 | --- | --- | --- |
-| 2-a | `internal/run/job.go` 的 `TODO(EVAL-001)` 改寫 | **已執行**，且改寫成 ADR-025 要求的執行語意。ADR 明文推翻的實作意圖已從程式碼裡消失，不是留著加註解 |
-| 2-b | 只有 `succeeded`／`failed` 的 Run 會被排入評估 | **接受並記錄**。`cancelled`／`timed_out` 的 Run 在它能產出驗收條件所問的東西之前就被停掉了，付錢請 Judge 說這件事不告訴任何人任何事。代價要說出來：這些 Run 在 UI 上永遠是「未評估」——而 ADR-025 已經把「未評估」定義成一個狀態而不是通過，所以代價是有界的 |
+| 2-a | `internal/run/job.go` 的 `TODO(EVAL-001)` 改寫 | **已執行**，且改寫成[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)要求的執行語意。ADR 明文推翻的實作意圖已從程式碼裡消失，不是留著加註解 |
+| 2-b | 只有 `succeeded`／`failed` 的 Run 會被排入評估 | **接受並記錄**。`cancelled`／`timed_out` 的 Run 在它能產出驗收條件所問的東西之前就被停掉了，付錢請 Judge 說這件事不告訴任何人任何事。代價要說出來：這些 Run 在 UI 上永遠是「未評估」——而[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)已經把「未評估」定義成一個狀態而不是通過，所以代價是有界的 |
 | 2-c | 沒有 `Judge` 的部署（`LLM_SERVICE_URL` 未設）會把有驗收條件的 Run 記成 `evaluations.status = failed` | **接受**。這是對的：一列說「判定不出來」的評估，比一列不存在的評估誠實。確定性檢查仍然寫入 |
-| 2-d | v1 → v2 的 prompt 缺陷（§3.1） | **已修並升版**，不就地改寫。**這一項的處置本身是 ADR-026 決策 1 的第一次實地演練** |
-| 2-e | `JudgeRunResponse.usage` 在契約與 Python 端原本不存在，而 Go 呼叫端早就在讀它 | **已補**（回歸報告 §7）。這是一個「讀一個不存在的欄位、永遠拿到零值、不報錯」的靜默失效，與 ADR-023 記錄的 SDK 那類同型。補上之後成本歸因才可查（服務層與閘道差 $0.0001） |
+| 2-d | v1 → v2 的 prompt 缺陷（§3.1） | **已修並升版**，不就地改寫。**這一項的處置本身是[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)append-only 決策的第一次實地演練** |
+| 2-e | `JudgeRunResponse.usage` 在契約與 Python 端原本不存在，而 Go 呼叫端早就在讀它 | **已補**（回歸報告 §7）。這是一個「讀一個不存在的欄位、永遠拿到零值、不報錯」的靜默失效，與[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)記錄的 SDK 那類同型。補上之後成本歸因才可查（服務層與閘道差 $0.0001） |
 
 ### 4.3 批 4（建議與新版本）
 
@@ -156,7 +156,7 @@
 
 | # | 出入 | 裁定 |
 | --- | --- | --- |
-| 5-a | 新增契約沒寫的 `inputs_available` | **接受**，並補進 `public.yaml`。它承接的是設計 §5.4 的「輸入已刪除時比較畫面不得暗示仍可重跑」（ADR-003），原本那一條在契約上沒有落點 |
+| 5-a | 新增契約沒寫的 `inputs_available` | **接受**，並補進 `public.yaml`。它承接的是設計 §5.4 的「輸入已刪除時比較畫面不得暗示仍可重跑」，原本那一條在契約上沒有落點 |
 | 5-b | `inputs_available` **不探測物件儲存** | **接受為已知限制，並入殘項。** 它只讀平台自己的刪除與到期欄位，所以是**樂觀上界**：欄位還在而物件已被清掉時仍回 true。接受的理由是那些欄位正是清理流程動作的依據，而每次比較每個 dataset 打一次 HEAD 是為一個已經在手邊的答案買來回。**但「通常一致」不等於「一致」**，需要一個對帳器，入 `04` 丙-9 |
 | 5-c | 比較矩陣的列取自兩邊**快照**而非判定 | **接受**。取自判定的話，未評估的一邊會看起來像「這個 Run 沒有驗收條件」——那是把兩個不同的事實畫成同一個 |
 | 5-d | 沒有重跑端點 | **維持**，見 §2 第 1 點 |
@@ -166,7 +166,7 @@
 | # | 出入 | 裁定 |
 | --- | --- | --- |
 | 6-a | `TEST-012` 的「順帶收掉既有權宜」只收了一半 | **記錄**：`skill` 與 `test_case` 兩個 id 已由 Test Case 頁連過去，`version` 仍要使用者自己給。**這一項不擋 `TEST-012`**（`02:TEST-001` 沒有一條準則講版本選擇），但它**擋住 `EVAL-011`**，見 §2 |
-| 6-b | `DESIGN-010`／`DESIGN-011` 未勾 | **維持未勾，且不視為 M3 的缺口**。§3「資訊架構與體驗設計」全 13 項自 M0 起就沒有一項勾選，本專案至今沒有產出過設計交付物；UI 是直接依允收準則實作的。ADR-025 的待決策也明文把「兩列狀態的實際文案與版面」留給這兩項。要改變這個狀態需要的是一個關於「這個專案要不要有設計交付物」的決定，不是 M3 的收尾動作 |
+| 6-b | `DESIGN-010`／`DESIGN-011` 未勾 | **維持未勾，且不視為 M3 的缺口**。§3「資訊架構與體驗設計」全 13 項自 M0 起就沒有一項勾選，本專案至今沒有產出過設計交付物；UI 是直接依允收準則實作的。[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)的待決策也明文把「兩列狀態的實際文案與版面」留給這兩項。要改變這個狀態需要的是一個關於「這個專案要不要有設計交付物」的決定，不是 M3 的收尾動作 |
 | 6-c | UI 沒有為「`evidence_unverifiable` 降級」與「模型自己說 undetermined」提供可區分的呈現 | **記錄為殘項**（回歸報告 §8.2 建議 4）。兩者在畫面上都是「無法判斷」，而 §3.1 那個 v1 缺陷正是靠這個區分才會被看見。入 `04` 丙-10 |
 
 ### 4.6 批 7（收斂）
@@ -189,7 +189,7 @@
 
 **裁定：記為已知限制，不在 M3 修。** 三個理由：
 
-1. **它今天不會發生。** 評估只由終態轉移排入，M2 的 73 筆 Run 早已終態，沒有任何路徑會自動評估它們。ADR-025 已明文把它們定為「永久停在未評估，除非有人另行決定補評」。
+1. **它今天不會發生。** 評估只由終態轉移排入，M2 的 73 筆 Run 早已終態，沒有任何路徑會自動評估它們。[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)已明文把它們定為「永久停在未評估，除非有人另行決定補評」。
 2. **它一旦發生就是靜默的錯**，所以不能只留在程式碼註解裡——要補評 M2 歷史 Run 的人必須先看到這一條。已入 `04` 丙-13 並寫明前置動作。
 3. **修法是資料回填不是程式修改**：從封存的 tar 索引回填 `artifacts` 列，`EVAL-013` 的 harness 已經證明讀得到（不解壓、不依副檔名解析，設計 §2.2 允許的那條路）。
 
@@ -204,7 +204,7 @@
 | 1／2 | 評估在控制平面且不執行任何東西 | 全 package 無執行路徑；套件只以位元組交 `skillpkg.Validate`；artifact 只讀 manifest（`buildRequest` 從不設 `text_excerpt`）；`internal/eval` 不引用 `internal/run` 的 provider client |
 | 3 | Workspace scope | 每一支端點的 scope 取自 session；`evaluations`／`evaluation_suggestions` 皆帶 `workspace_id`；非擁有者一律 404（存在性本身是私有的）。測試 `TestEvaluationsAreInvisibleAcrossWorkspacesAndAbsenceIsA404`／`TestSuggestionsAreInvisibleAcrossWorkspaces` |
 | 4 | 不可變 | 驗收條件與 rubric 取自**快照**不取自草稿；採納建議＝建新版本，舊版本不動；`0024` 的 trigger 只留三個可寫欄位 |
-| 5 | Run 狀態的事實來源 | 評估**不 UPDATE `runs` 任何欄位**（ADR-025）；`successReason` 的 TODO 已改寫；測試 `TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun` |
+| 5 | Run 狀態的事實來源 | 評估**不 UPDATE `runs` 任何欄位**；`successReason` 的 TODO 已改寫；測試 `TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun` |
 | 6 | Python 是能力提供者 | Python 不知道 workspace、不知道狀態機、不寫任何東西；值域、證據可驗證性、能不能建版本全在 Go |
 | 7 | 佇列只有 Go 消費 | `eval.Worker` 是 River job，Python 由內部 HTTP 呼叫且帶呼叫端的 deadline 與取消。測試 `TestJudgeCallHonoursTheCallersCancellation` |
 | 8 | 走 LiteLLM | Judge 以平台側金鑰經閘道，帶 `run_id`／`evaluation_id` metadata；閘道故障＝評估失敗，不猜 |

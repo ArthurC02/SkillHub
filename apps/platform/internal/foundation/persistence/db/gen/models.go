@@ -310,7 +310,7 @@ type DatasetObjectCleanupIntent struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
-// Active rows stop new Runs being dispatched (03:SEC-012 P1 first action, ADR-022 X-04 drain/suspend). provider = ” is the whole pool. Shared by both triggers on purpose: one state, one release path. See 0030.
+// Active rows stop new Runs being dispatched (03:SEC-012 P1 first action, X-04 drain/suspend). provider = ” is the whole pool. Shared by both triggers on purpose: one state, one release path. See 0030.
 type DispatchHalt struct {
 	ID          pgtype.UUID
 	Provider    string
@@ -587,7 +587,7 @@ type Skill struct {
 	TakedownReason      *string
 	// Reason code for a licensing hold on the package materials; NULL = none. Set by review, copied onto forks at fork time. See 0023.
 	AccessRestriction *string
-	// May a Download Artifact be produced from this skill? 'allowed' (a verdict about the licence), 'self_supplied' (this workspace brought the bytes) and 'generated' (the platform wrote them for this workspace) release; 'unknown' and 'blocked' refuse. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction — a fork of a generated skill stays 'generated' (ADR-047 決策 4). See 0027, 0036 and 0037.
+	// May a Download Artifact be produced from this skill? 'allowed' (a verdict about the licence), 'self_supplied' (this workspace brought the bytes) and 'generated' (the platform wrote them for this workspace) release; 'unknown' and 'blocked' refuse. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction — a fork of a generated skill stays 'generated'. See 0027, 0036 and 0037.
 	Redistribution string
 	// PDM-002 curation verdict for this skill: curated | indexed. Default indexed. Not copied onto forks. See 0042.
 	CurationTier string
@@ -623,11 +623,11 @@ type SkillSource struct {
 	TaskDescription *string
 	// Model id that wrote a generated package, as apps/llm reported it. NULL for git and upload.
 	GeneratorModel *string
-	// Generator prompt revision, e.g. generate-skill/v1. NULL for git and upload. Together with task_description and generator_model this is what lets someone re-derive the package (ADR-047 決策 1).
+	// Generator prompt revision, e.g. generate-skill/v1. NULL for git and upload. Together with task_description and generator_model this is what lets someone re-derive the package.
 	GeneratorPromptVersion *string
 	// First sweep on which a re-fetch hashed differently from content_hash. NULL means every check so far matched, or no check has compared content yet. Never cleared: the snapshot we hold does not become current again.
 	ContentChangedAt pgtype.Timestamptz
-	// Inputs beyond task_description that produced a generated package (ADR-066): the diagram's digest, media type and byte count, and the reference skills' ids and names. NULL for git, upload and text-only generations. Never the image bytes.
+	// Inputs beyond task_description that produced a generated package: the diagram's digest, media type and byte count, and the reference skills' ids and names. NULL for git, upload and text-only generations. Never the image bytes.
 	GenerationInputs []byte
 }
 
@@ -642,7 +642,7 @@ type SkillVersion struct {
 	Manifest          []byte
 	LicenseExpression *string
 	CreatedAt         pgtype.Timestamptz
-	// ADR-021 provenance tier of license_expression, strongest first: manifest (author declared it in SKILL.md frontmatter), manifest-referenced-file (frontmatter pointed at a package file, e.g. "SEE LICENSE IN LICENSE.txt", and that file's text was recognised), package-license-file (a LICENSE file in the package itself), repo-license-file (repository-level LICENSE carried into a package cut from a monorepo subdirectory). NULL whenever license_expression is NULL.
+	// Provenance tier of license_expression, strongest first: manifest (author declared it in SKILL.md frontmatter), manifest-referenced-file (frontmatter pointed at a package file, e.g. "SEE LICENSE IN LICENSE.txt", and that file's text was recognised), package-license-file (a LICENSE file in the package itself), repo-license-file (repository-level LICENSE carried into a package cut from a monorepo subdirectory). NULL whenever license_expression is NULL.
 	LicenseSource *string
 }
 

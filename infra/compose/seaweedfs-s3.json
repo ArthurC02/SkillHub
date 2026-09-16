@@ -6,7 +6,7 @@
     "sandbox could then read every workspace's datasets instead of the one file",
     "it was granted. These credentials are local placeholders in the same class",
     "as the committed postgres skillhub/skillhub pair; production uses a managed",
-    "S3 service with real ones (ADR-018)."
+    "S3 service with real ones instead of these local placeholders."
   ],
   "identities": [
     {

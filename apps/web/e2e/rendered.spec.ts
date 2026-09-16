@@ -434,7 +434,7 @@ test.describe("QA-008 the real Tab key", () => {
   });
 });
 
-test.describe("ADR-065 the text budget and the fourth disclosure, in a real engine", () => {
+test.describe("the text budget and the fourth disclosure, in a real engine", () => {
   const TEACHING_FLAT: Record<string, number> = {
     policy: 95,
     "skill-detail": 78,

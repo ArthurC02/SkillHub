@@ -327,7 +327,7 @@ func TestTheLauncherGrantsTheSeedImporterACatalogWorkspace(t *testing.T) {
 		t.Fatal(`tools/cleanmode/start.mjs no longer starts the API with start("api"; this check can no longer tell whether the grant happens first`)
 	}
 	if grant > api {
-		t.Fatal("tools/cleanmode/start.mjs grants the catalog workspace after starting the API; by then the API holds the carrier's only connection (ADR-060 決策 2) and the statement cannot run")
+		t.Fatal("tools/cleanmode/start.mjs grants the catalog workspace after starting the API; by then the API holds the carrier's only connection and the statement cannot run")
 	}
 }
 
@@ -475,7 +475,7 @@ func TestTheLauncherRefusesToStartWithoutTheHarnessRuntime(t *testing.T) {
 	}
 
 	if !strings.Contains(launcher, "CLAUDE_AGENT_SDK_VERSION") {
-		t.Fatal("tools/cleanmode/start.mjs no longer reads CLAUDE_AGENT_SDK_VERSION from the Dockerfile; a second copy of that version is how clean mode stops rehearsing the image (ADR-023 決策 1)")
+		t.Fatal("tools/cleanmode/start.mjs no longer reads CLAUDE_AGENT_SDK_VERSION from the Dockerfile; a second copy of that version is how clean mode stops rehearsing the image")
 	}
 	if !strings.Contains(preflight, "agentSdkVersion(") {
 		t.Fatal("preflight() no longer builds its hint from the Dockerfile's pinned version, so the fix it prints can name a runtime the image does not have")

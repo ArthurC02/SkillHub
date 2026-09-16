@@ -14,7 +14,7 @@ BEGIN
         IF coalesce(current_setting('skillhub.purge', true), '') = 'on' THEN
             RETURN OLD; -- retention purge (PDM-006 6.1), never application code
         END IF;
-        RAISE EXCEPTION 'row in %.% is immutable and cannot be deleted (ADR-003)',
+        RAISE EXCEPTION 'row in %.% is immutable and cannot be deleted',
             TG_TABLE_SCHEMA, TG_TABLE_NAME
             USING ERRCODE = 'restrict_violation';
     END IF;
@@ -30,7 +30,7 @@ BEGIN
     END IF;
 
     IF old_row IS DISTINCT FROM new_row THEN
-        RAISE EXCEPTION 'row in %.% is immutable and cannot be updated (ADR-003)',
+        RAISE EXCEPTION 'row in %.% is immutable and cannot be updated',
             TG_TABLE_SCHEMA, TG_TABLE_NAME
             USING ERRCODE = 'restrict_violation';
     END IF;

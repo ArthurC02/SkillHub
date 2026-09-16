@@ -20,7 +20,7 @@ import { mapValues } from '../runtime';
  */
 export interface RunPermissionSummaryContentNetwork {
     /**
-     * Egress policy the sandbox is held to (ADR-005). `default_deny`
+     * Egress policy the sandbox is held to. `default_deny`
      * with an empty `allow` means it can reach nothing at all.
      * 
      */

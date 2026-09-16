@@ -36,7 +36,7 @@ import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime }
  * the same claim with different provenance rather than different claims.
  * Either this version was imported here and the scan ran on import, or it is
  * a fork whose bytes are identical to a public-catalogue ancestor's and the
- * ancestor's scan is being attributed to it (ADR-042 決策 6 — in-toto binds
+ * ancestor's scan is being attributed to it (in-toto binds
  * an attestation to the subject's digest, not to where it sits, and the scan
  * is a deterministic function of the bytes). In the inherited case
  * `scanned_at` is the **ancestor's** import time, so it is older than the
@@ -46,7 +46,7 @@ import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime }
  * 
  * `not_measured`: a fork whose ancestor cannot answer — taken down, deleted,
  * outside the public catalogue (無權檢視, and a lineage column existing does
- * not widen ADR-011), or no longer the same bytes. **Not a claim that the
+ * not widen visibility scope), or no longer the same bytes. **Not a claim that the
  * content is unsafe**, and not a claim that it is fine either.
  * 
  * `not_applicable`: no version exists yet, so there is nothing to scan.

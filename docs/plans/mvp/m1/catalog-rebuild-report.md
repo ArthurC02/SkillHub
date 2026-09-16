@@ -43,13 +43,13 @@ DEV_LOGIN=1                             COOKIE_INSECURE=1
 API_ADDR=:8080                          LLM_SERVICE_URL=http://host.docker.internal:8000
 ```
 
-匯入身分為 `seed-importer`（ADR-020 dev provider），其個人 Workspace 即匯入目的地，事後以 `is_catalog = true` 明確授予公開性（0010 遷移要求公開必須明確授予）。
+匯入身分為 `seed-importer`（依[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度)定義的 dev provider），其個人 Workspace 即匯入目的地，事後以 `is_catalog = true` 明確授予公開性（0010 遷移要求公開必須明確授予）。
 
 ### 2.1 模型出口：沿用前次的本機例外，僅限本機
 
 `LITELLM_BASE_URL` 直接指向 `https://api.openai.com/v1`、`LITELLM_API_KEY` 由 repo 根 `.env` 的 `OPENAI_API_KEY` 匯出進 uvicorn 行程環境，**未經 LiteLLM 閘道**。
 
-> **這不是可接受的部署形態。** 鐵律 8（ADR-017）要求所有模型呼叫走 LiteLLM 閘道、供應商金鑰只存在閘道。本次與 [`import-report.md` §1.1](import-report.md)、[`content-summaries.md` §2.3](../content/content-summaries.md) 同性質，是離線／本機工序的既有例外：金鑰只以環境變數進入行程、未寫入任何檔案，驗證結束即隨行程消滅。**產品實作不得比照。**
+> **這不是可接受的部署形態。** 鐵律 8 要求所有模型呼叫走 LiteLLM 閘道、供應商金鑰只存在閘道。本次與 [`import-report.md` §1.1](import-report.md)、[`content-summaries.md` §2.3](../content/content-summaries.md) 同性質，是離線／本機工序的既有例外：金鑰只以環境變數進入行程、未寫入任何檔案，驗證結束即隨行程消滅。**產品實作不得比照。**
 
 ---
 
@@ -70,7 +70,7 @@ DB 落地：`skills = 45`、`skill_versions = 45`、`search_documents = 45`。
 
 依來源：`anthropic` 2、`anthropic-sa` 4、`handoff` 1、`humanizer` 1、`kagura-docfmt` 1、`neon-jetpack` 5、`nqumich` 1、`quiz-builder` 1、`sokrati` **2**、`wrangler` 12、`yuyy-excel` 15 —— 全部成功。
 
-套件體積：最小 2.4 KB、中位數 5.3 KB、最大 160 KB（`anthropic-sa/docx`），離 `MaxZipBytes` 32 MiB 極遠。體積較前次略增，因為 ADR-021 的 `LICENSE.repo` 與 provenance 檔會一併打包。
+套件體積：最小 2.4 KB、中位數 5.3 KB、最大 160 KB（`anthropic-sa/docx`），離 `MaxZipBytes` 32 MiB 極遠。體積較前次略增，因為[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的 `LICENSE.repo` 與 provenance 檔會一併打包。
 
 > **`anthropic-sa` 的 4 筆（docx／pdf／pptx／xlsx）在種子檔標記 `redistributable: false`，法務判定未完成。** 與前次相同，本次為驗證仍予匯入，資料只存在於本機 dev DB。**正式目錄在 CONTENT-004 §5.2 結案前不得保存這 4 筆的內容快照，也不得產生 Download Artifact。** 閘門測試同樣不得引導受測者往下載走（`gate-test/README.md` §5 限制 4）。
 
@@ -80,8 +80,8 @@ DB 落地：`skills = 45`、`skill_versions = 45`、`search_documents = 45`。
 | --- | --- | --- | --- |
 | 匯入成功 | 44／45 | **45／45** | `sokrati/sokrati` 的長度計算修復（§4.1） |
 | 阻擋錯誤 | 1（`description-too-long`） | **0** | 同上 |
-| `license-unknown` 警告 | **37** | **0** | ADR-021 分層授權：打包時帶入 repo 根 LICENSE（§4.2） |
-| 授權來源揭露 | 無此分類 | `repo-file` 34、`package-file` 3、`manifest-reference` 2 | ADR-021 新增 |
+| `license-unknown` 警告 | **37** | **0** | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)分層授權：打包時帶入 repo 根 LICENSE（§4.2） |
+| 授權來源揭露 | 無此分類 | `repo-file` 34、`package-file` 3、`manifest-reference` 2 | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)新增 |
 | `embedded-script` 警告 | **0（掃不到）** | **15** | CONTENT-006 掃描面擴大（§4.3） |
 | `external-url` 揭露總數 | **816** | **87** | 依 host 聚合去重（§4.4） |
 | 揭露總筆數 | 816+ | 210 | 同上 |
@@ -109,9 +109,9 @@ DB 落地：`skills = 45`、`skill_versions = 45`、`search_documents = 45`。
 | 授權來源層級 | 筆數 | 意義 |
 | --- | --- | --- |
 | `manifest`（frontmatter 直接宣告） | 6 | 最強 |
-| `manifest-reference`（frontmatter 指向套件內檔案） | 2 | ADR-021 新增 |
+| `manifest-reference`（frontmatter 指向套件內檔案） | 2 | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)新增 |
 | `package-file`（套件根自帶 LICENSE） | 3 | — |
-| `repo-file`（打包時帶入的 `LICENSE.repo`） | **34** | ADR-021 tier 3 |
+| `repo-file`（打包時帶入的 `LICENSE.repo`） | **34** | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布) tier 3 |
 
 實查 `excel-deduplicate` 詳情頁：`expression: MIT`、`source: repo-license-file`、`status: declared`，並附說明「來自 repo 根目錄的 LICENSE，涵蓋整個 repo，不必然涵蓋此子目錄的內容」。**前次報告指出的「套件內宣告與 repo 層授權事實脫節」不再成立**，且沒有把 repo 授權偽裝成套件自身的授權。
 

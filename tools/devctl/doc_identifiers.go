@@ -26,7 +26,7 @@ var docIdentifierPattern = regexp.MustCompile("`(Test[A-Za-z0-9_]{3,}|test_[a-z0
 var allowedDocWords = map[string]string{
 	"PurgeExpiredCostEvents":    "removed with the credit retention sweep (05 R-76); 03 CRED-006 records it as it was",
 	"PurgeExpiredCreditEntries": "removed with the same sweep",
-	"PurgeUser":                 "removed with the account-deletion credit step (ADR-073); 03 CRED-006 and 04 record it as it was",
+	"PurgeUser":                 "removed with the account-deletion credit step; 03 CRED-006 and 04 record it as it was",
 	"Superseded":                "ADR status vocabulary (AGENTS.md), not a symbol",
 	"Proposed":                  "ADR status vocabulary",
 	"Accepted":                  "ADR status vocabulary",
@@ -41,7 +41,7 @@ var allowedDocWords = map[string]string{
 	"test_cases_skill_id_fkey":  "constraint name Postgres generates for the test_cases foreign key",
 	"Querier":                   "sqlc interface that db/sqlc.yaml deliberately does not emit",
 	"MARKER":                    "shell variable in tools/sec009 (.sh is outside codeExtensions)",
-	"RunEvaluation":             "renamed to features/runs/evaluation/EvaluationPanel.tsx (ADR-081, ADR-082); 04 records past work under the old name",
+	"RunEvaluation":             "renamed to features/runs/evaluation/EvaluationPanel.tsx; 04 records past work under the old name",
 }
 
 var codeExtensions = map[string]bool{

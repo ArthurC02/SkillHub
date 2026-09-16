@@ -16,4 +16,4 @@ CREATE UNIQUE INDEX dispatch_halts_active_target_idx
     ON dispatch_halts (provider) WHERE lifted_at IS NULL;
 
 COMMENT ON TABLE dispatch_halts IS
-    'Active rows stop new Runs being dispatched (03:SEC-012 P1 first action, ADR-022 X-04 drain/suspend). provider = '''' is the whole pool. Shared by both triggers on purpose: one state, one release path. See 0030.';
+    'Active rows stop new Runs being dispatched (03:SEC-012 P1 first action, X-04 drain/suspend). provider = '''' is the whole pool. Shared by both triggers on purpose: one state, one release path. See 0030.';

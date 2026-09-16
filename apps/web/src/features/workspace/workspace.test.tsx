@@ -141,7 +141,7 @@ test("WS-004 an unevaluated run says 未評估, which is not a blank and not a p
           evaluation: {
             value: "not_evaluated",
             label: "未評估",
-            note: "這個 Run 還沒有任務判定。執行狀態說的是工作負載跑完了沒有,不是任務有沒有做到(ADR-025)。",
+            note: "這個 Run 還沒有任務判定。執行狀態說的是工作負載跑完了沒有,不是任務有沒有做到。",
           },
         },
         {

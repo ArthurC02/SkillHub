@@ -18,7 +18,7 @@ function report(name, required, pass, detail) {
 
 const maxConnections = mutate === "multiplexer" ? DISALLOWED_MULTIPLEXER_MAX_CONNECTIONS : 1;
 if (mutate === "multiplexer") {
-  console.log(`>>> MUTATION multiplexer: maxConnections forced to ${maxConnections} (disallowed by ADR-060 decision 2)`);
+  console.log(`>>> MUTATION multiplexer: maxConnections forced to ${maxConnections} (disallowed: it fakes mutual exclusion)`);
 }
 
 if (mutate === "no-prune") {
@@ -78,8 +78,8 @@ async function checkImmutability() {
   console.log(`    target row count for skill_versions immutability check = ${rowCount}`);
 
   for (const [label, sql] of [
-    ["UPDATE skill_versions is rejected with ADR-003", `UPDATE skill_versions SET content_hash = 'x' WHERE id = $1`],
-    ["DELETE skill_versions is rejected with ADR-003", `DELETE FROM skill_versions WHERE id = $1`],
+    ["UPDATE skill_versions is rejected as immutable", `UPDATE skill_versions SET content_hash = 'x' WHERE id = $1`],
+    ["DELETE skill_versions is rejected as immutable", `DELETE FROM skill_versions WHERE id = $1`],
   ]) {
     if (rowCount === 0) {
       report(label, true, false, `target row count is 0 -- this run cannot prove anything (mutate=${mutate})`);
@@ -90,7 +90,7 @@ async function checkImmutability() {
       report(label, true, false, "statement succeeded; the immutability trigger did not fire");
     } catch (err) {
       const msg = String(err.message ?? err);
-      report(label, true, msg.includes("ADR-003"), msg);
+      report(label, true, msg.includes("is immutable"), msg);
     }
   }
 }

@@ -151,7 +151,7 @@ var driftMarkerPattern = regexp.MustCompile(`drift: DDD-\d+\b`)
 func driftMarkerProblems(root string) []string {
 	sources := map[string]string{
 		"lint": filepath.Join("apps", "platform", ".golangci.yml"),
-		"adr":  filepath.Join("docs", "adr", "ADR-032-ddd-bounded-context-governance-for-platform.md"),
+		"map":  filepath.FromSlash(contextMapDoc),
 	}
 	counts := map[string]map[string]int{}
 	var problems []string
@@ -180,15 +180,15 @@ func driftMarkerProblems(root string) []string {
 
 	var differences []string
 	for _, marker := range sorted {
-		lint, adr := counts["lint"][marker], counts["adr"][marker]
-		if lint != adr {
-			differences = append(differences, fmt.Sprintf("%q lint=%d adr=%d", marker, lint, adr))
+		lint, contextMap := counts["lint"][marker], counts["map"][marker]
+		if lint != contextMap {
+			differences = append(differences, fmt.Sprintf("%q lint=%d map=%d", marker, lint, contextMap))
 		}
 	}
 	if len(differences) > 0 {
 		problems = append(problems, fmt.Sprintf(
 			"%s and %s disagree on drift markers: %s",
-			sources["lint"], sources["adr"], strings.Join(differences, "; ")))
+			sources["lint"], sources["map"], strings.Join(differences, "; ")))
 	}
 	return problems
 }

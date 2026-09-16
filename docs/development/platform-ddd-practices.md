@@ -8,7 +8,7 @@
 
 遇到衝突時，依下列優先序判斷：
 
-1. Accepted ADR 是已定案的架構事實；Boundary 對照與依賴規則以 [ADR-032](../adr/ADR-032-ddd-bounded-context-governance-for-platform.md) 為準，query 規則以 [ADR-033](../adr/ADR-033-sqlc-query-ownership-and-cross-context-write-enforcement.md) 與 [ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 為準。
+1. Accepted ADR 是已定案的架構事實；Boundary 對照見 [platform-context-map.md](platform-context-map.md)，依賴規則以 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map) 為準，query 規則以 [Query 與寫入所有權](../adr/README.md#query-與寫入所有權) 為準。
 2. [產品目標](../plans/01-goals-and-plan.md)、[規格](../plans/02-specifications-and-acceptance-criteria.md)、[工作項目](../plans/03-work-items.md) 與 [待辦](../plans/04-backlog-and-handoffs.md) 說明產品範圍、允收與尚未完成的事。
 3. [Platform internal 導覽](../../apps/platform/internal/README.md) 說明目前可走讀的程式位置；[M4 邊界收斂報告](../plans/mvp/m4/report-platform-ddd-boundary-convergence-2026-08-19.md) 是搬遷時點的證據，不是新的規則來源。
 4. 本文件與 [開發自動化手冊](./automation.md) 是操作說明；發現其與 ADR 不一致時，先依 ADR 行動，再修正文檔。
@@ -19,11 +19,11 @@
 
 DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每個資料夾套成 `domain/application/infrastructure`，也不是把技術共用碼統稱為 Shared Kernel。每個 Bounded Context 對其事實、不變量與公開協作面負責；package 是 Go 中可被檢查的模組邊界。
 
-產品文件應優先使用創作者能理解的領域語言，例如「Skill 接納與信任」或「試跑執行」。這套受控語言與價值流由 [ADR-038](../adr/ADR-038-platform-product-domain-language-and-value-stream-navigation.md) 定義。架構治理則使用 stable Boundary ID、package identity、dependency rule 與 query owner；兩者互相對照，但不能互相取代。`Core`、`Supporting`、`Generic` 是治理 metadata，不是產品領域名稱（[ADR-037](../adr/ADR-037-product-analytics-and-package-architecture-identities.md)）。
+產品文件應優先使用創作者能理解的領域語言，例如「Skill 接納與信任」或「試跑執行」。這套受控語言與價值流由 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map) 定義。架構治理則使用 stable Boundary ID、package identity、dependency rule 與 query owner；兩者互相對照，但不能互相取代。`Core`、`Supporting`、`Generic` 是治理 metadata，不是產品領域名稱（見 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)）。
 
 ## 從產品語言走到程式碼
 
-先從使用者成果與被改變的事實找 owner，再查 ADR-032 的對照表取得 stable Boundary ID 與當前 Go path。路徑可因收納改善而改變，stable ID、資料 owner、需求 ID 與 Go package clause 不會因搬遷自動改名（[ADR-040](../adr/ADR-040-platform-foundation-shared-kernel-and-entrypoint-topology.md)）。
+先從使用者成果與被改變的事實找 owner，再查 [platform-context-map.md](platform-context-map.md) 取得 stable Boundary ID 與當前 Go path。路徑可因收納改善而改變，stable ID、資料 owner、需求 ID 與 Go package clause 不會因搬遷自動改名（見 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)）。
 
 實作前至少回答：
 
@@ -42,14 +42,14 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 | 多個 context 真的共享無狀態的套件語言 | `shared/skillpkg` | 只放套件格式、讀取與純驗證；變更視為多方協議 | 把 Service、資料存取、政策或 Generic 工具塞進去 |
 | 需要避免反向依賴或 cycle，且由程序負責組裝 | composition injection | 在 `entrypoint`／process root 注入 owner API 或 callback | 在 consumer 方法中現場建構另一個 context 的 Service |
 
-前兩種關係的理由與強制規則見 ADR-032；Shared Kernel 的單一範圍與組裝位置見 ADR-040。若需要新增跨界 import，必須同批更新 ADR-032 附錄 A 與 `apps/platform/.golangci.yml`，讓 depguard 反映新關係。
+前兩種關係的理由與強制規則見 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)；Shared Kernel 的單一範圍與組裝位置亦同。若需要新增跨界 import，必須同批更新 [platform-context-map.md](platform-context-map.md) 的白名單與 `apps/platform/.golangci.yml`，讓 depguard 反映新關係。
 
 ### 同步 owner 讀取的兩種形狀
 
 上表第一列在程式裡有兩種寫法，**判準是對方回給你的是不是 generated row，或建立在 generated row 之上的型別**：
 
 - **owner 的公開面本身就是領域語言** → consumer 直接持有 `*owner.Service` 欄位，呼叫那個窄方法（例如 Evaluation 持有 `TestLab` 取不可變快照）。
-- **owner 的回傳是 sqlc row 或以它為基礎的型別，或直接 import 會成環** → consumer **自己宣告 `XxxFacts` 與 `Read*` 函式欄位**，由 `apiserver.NewApp` 裡的 `wireXxxReaders(...)` 翻譯後注入；領域檔因此完全不 import 對方。Catalog、Packaging、Evaluation 的 Registry 讀取都是這一種。這是 [ADR-034](../adr/ADR-034-cross-context-writes-close-by-inversion-not-by-events.md) 的**讀取側鏡像**——寫入側用同一手法拆掉 `registry -> catalog` 的編譯期環。
+- **owner 的回傳是 sqlc row 或以它為基礎的型別，或直接 import 會成環** → consumer **自己宣告 `XxxFacts` 與 `Read*` 函式欄位**，由 `apiserver.NewApp` 裡的 `wireXxxReaders(...)` 翻譯後注入；領域檔因此完全不 import 對方。Catalog、Packaging、Evaluation 的 Registry 讀取都是這一種。這是 [Query 與寫入所有權](../adr/README.md#query-與寫入所有權) 裡跨 context 寫入以反轉關係收斂的**讀取側鏡像**——寫入側用同一手法拆掉 `registry -> catalog` 的編譯期環。
 
 兩件容易做錯的事：
 
@@ -60,7 +60,7 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 
 ## Query ownership 不等於資料庫方便性
 
-`db/query-owners.yaml` 宣告每條 query 的 owner；直接透過另一個 context 的 query 讀寫都是架構邊界問題。新的跨 context write 與 read 都會被強制拒絕，不能靠擴增 allowlist 過關。應改為 owner Service 的公開操作、自己的投影，或在確有理由時先提出 ADR。[ADR-033](../adr/ADR-033-sqlc-query-ownership-and-cross-context-write-enforcement.md) 解釋 write，[ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 解釋 read 與完整性對帳。
+`db/query-owners.yaml` 宣告每條 query 的 owner；直接透過另一個 context 的 query 讀寫都是架構邊界問題。新的跨 context write 與 read 都會被強制拒絕，不能靠擴增 allowlist 過關。應改為 owner Service 的公開操作、自己的投影，或在確有理由時先提出 ADR。[Query 與寫入所有權](../adr/README.md#query-與寫入所有權) 解釋 write、read 與完整性對帳的規則。
 
 修改或新增 `db/queries/*.sql` 時，同批更新 owner 宣告；generated persistence 仍是產物，依 [自動化手冊](./automation.md) 的單一 Writer 流程生成，不手改。
 
@@ -73,7 +73,7 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 - `foundation/`：持久化、訊息、儲存、觀測、整合與 runtime 等 Generic 機制；不得承載領域政策或反向 import domain。
 - `entrypoint/api/`：HTTP composition 與 generated transport；`cmd/` 則是可執行程序入口。兩者負責組裝，不擁有產品規則。
 
-完整拓撲理由、禁止把所有共用碼塞入 Shared Kernel 的原因，見 ADR-040。不要為了外觀再建立技術三層目錄；這不會強化 owner boundary，反而擴大 Go export surface 與 cycle 風險。
+完整拓撲理由、禁止把所有共用碼塞入 Shared Kernel 的原因，見 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)。不要為了外觀再建立技術三層目錄；這不會強化 owner boundary，反而擴大 Go export surface 與 cycle 風險。
 
 ### 第一層目錄 → 底下有哪些 package → 它們是什麼邊界
 
@@ -85,22 +85,22 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 | `skill/` | `admission`、`discovery`、`library`、`delivery` | **Core Context**（四個，各自是 owner 邊界） | Skill 這個資產的一生：**進來**（接納與信任）、**被找到**（探索）、**被保存**（版本歷史，不可變）、**被帶走**（打包與安裝）。**四者不共用 owner**——`skill/` 只是路徑前綴，不是一個邊界 |
 | `trial/` | `design`、`execution`、`improvement`、`evidence` | **Core Context** ×3 ＋ **Supporting** ×1（`evidence`） | 「跑一次」的一生：**設計情境**、**執行與狀態機**（唯一事實來源，鐵律 5）、**判定與改善**、**留下證據**。`evidence` 是 Supporting——它服務前三個，不定義它們 |
 | `product/` | `entitlements`、`learning` | **Supporting Context** | 使用者的權益與資料生命週期、以及產品自己的學習（分析與漏斗）。**Supporting 的意思是它們可以晚一步、也可以被換掉**，Core 不可以 |
-| `shared/` | `skillpkg` | **Shared Kernel（唯一一個）** | 共同領域語言的**純函式**。**新增第二個 Shared Kernel 要先改 ADR-032／040**——把共用碼往這裡塞是這份文件明文禁止的那條路 |
+| `shared/` | `skillpkg` | **Shared Kernel（唯一一個）** | 共同領域語言的**純函式**。**新增第二個 Shared Kernel 要先改動 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map) 的決策**——把共用碼往這裡塞是這份文件明文禁止的那條路 |
 | `foundation/` | `persistence`、`messaging`、`observability`、`storage`、`integration`、`runtime` | **Generic** | 機制不是政策。**不得承載領域規則，不得反向 import domain**——這一條由 depguard ＋ `devctl automation-check` 兩道守著 |
 | `entrypoint/` | `api`、`worker`、`wiring` | **組裝，不是邊界** | 只做 composition：`api` 是 HTTP 與 generated transport，`worker` 是佇列消費者（鐵律 7）。**兩者不擁有任何產品規則**；領域 Service 一律由 `apiserver.NewApp` 注入，**禁止在方法內現場建構其他 context 的 Service**。`wiring` 是兩個組裝根共用的接線，**任何 context 都不得 import 它** |
 
 **這張表怎麼用，以及它怎麼會過期**
 
-- **它是導覽，不是事實來源。** 逐 package 的 Boundary ID、需求 ID 前綴與跨 context 例外清單以 **[ADR-032](../adr/ADR-032-ddd-bounded-context-governance-for-platform.md) §1 為準**，那一份受 `devctl automation-check` 機械對帳；**這一張表沒有機器在守**。兩者不一致時，以 ADR-032 為準並回來修這一張。
-- **新增一個 package 的順序是硬的**：先在 ADR-032 §1 登記 → 再建目錄。反過來做的話 CI 會在你寫第一行程式之前就紅。
-- **跨 context 的新 import 要同一個 commit 改兩處**：ADR-032 附錄 A 與 `apps/platform/.golangci.yml` 的 depguard 規則。
+- **它是導覽，不是事實來源。** 逐 package 的 Boundary ID、需求 ID 前綴與跨 context 例外清單以 **[platform-context-map.md](platform-context-map.md) 為準**，那一份受 `devctl automation-check` 機械對帳；**這一張表沒有機器在守**。兩者不一致時，以 [platform-context-map.md](platform-context-map.md) 為準並回來修這一張。
+- **新增一個 package 的順序是硬的**：先在 [platform-context-map.md](platform-context-map.md) 登記 → 再建目錄。反過來做的話 CI 會在你寫第一行程式之前就紅。
+- **跨 context 的新 import 要同一個 commit 改兩處**：[platform-context-map.md](platform-context-map.md) 的白名單與 `apps/platform/.golangci.yml` 的 depguard 規則。
 - **一個好用的自我檢查**：如果你正在想「這支檔案放 `foundation/` 比較方便」，先問它有沒有一個**領域**的理由會讓它變。**會變的東西不屬於 Generic**——那正是這一層與 Supporting 的分界。
 
 ## 新增、搬遷或改變 Context 的 checklist
 
 1. 以產品語言寫出使用者成果、owner facts、不變量與不擁有的事；確認需求 ID 與計畫文件的允收準則。
-2. 查 ADR-032 對照表：既有 context 就留在其 owner；新 package 或新 boundary 先更新該表，並符合 ADR-037 的單一 architecture identity。
-3. 選定跨界關係：同步 owner DTO、outbox event、`skillpkg` 或 composition injection。若是 import，同批調整 ADR-032 附錄 A 與 depguard。
+2. 查 [platform-context-map.md](platform-context-map.md)：既有 context 就留在其 owner；新 package 或新 boundary 先更新該表，並符合 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map) 的單一 architecture identity。
+3. 選定跨界關係：同步 owner DTO、outbox event、`skillpkg` 或 composition injection。若是 import，同批調整 [platform-context-map.md](platform-context-map.md) 的白名單與 depguard。
 4. 為新增／刪除 query 更新 `db/query-owners.yaml`；不要新增例外清單來掩蓋跨 owner 存取。
 5. 依目錄角色放置程式；generated source 與 output 依 automation 規範由主 Writer 串行處理。
 6. 更新受影響的 `doc.go`、internal 導覽與計畫／ADR 引用，使產品語言、stable ID、路徑三者可追溯。

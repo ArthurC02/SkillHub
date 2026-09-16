@@ -69,33 +69,33 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "creation uses injected owner APIs (ADR-067)"
+              desc: "creation uses injected owner APIs"
 
         credit:
           files:
@@ -103,76 +103,76 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "credit records what a call cost; it never reaches into the context that made the call (ADR-068)"
+              desc: "credit records what a call cost; it never reaches into the context that made the call"
         identity:
           files:
             - "**/internal/creator/workspace/**"
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         analytics:
           files:
@@ -180,35 +180,35 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         catalog:
           files:
@@ -216,29 +216,29 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         eval:
           files:
@@ -246,27 +246,27 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         ingest:
           files:
@@ -274,29 +274,29 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         packaging:
           files:
@@ -304,31 +304,31 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         policy:
           files:
@@ -336,37 +336,37 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         registry:
           files:
@@ -374,35 +374,35 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         run:
           files:
@@ -410,29 +410,29 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         testlab:
           files:
@@ -440,35 +440,35 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         trace:
           files:
@@ -476,35 +476,35 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+              desc: "generic subdomain; contexts must not import it"
 
         objreconcile:
           files:
@@ -512,37 +512,37 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+              desc: "cross-context import forbidden; see docs/development/platform-context-map.md"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; contexts must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; contexts must not import it"
 
         shared-kernel:
           files:
@@ -550,39 +550,39 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "shared kernel must not import a bounded context (ADR-037)"
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "shared kernel must not import a process composition root (ADR-032 §5)"
+              desc: "shared kernel must not import a process composition root"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "shared kernel must not import a process composition root (ADR-032 §5)"
+              desc: "shared kernel must not import a process composition root"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "shared kernel must not import a process composition root (ADR-032 §5)"
+              desc: "shared kernel must not import a process composition root"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "shared kernel must not import a generic worker (ADR-037)"
+              desc: "shared kernel must not import a generic worker"
 
         generic:
           files:
@@ -600,36 +600,36 @@ linters:
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
-              desc: "cross-context import forbidden by ADR-032; credit is reached through the hooks the composition root assigns"
+              desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
-              desc: "creation owns its session; integrate through callbacks (ADR-067)"
+              desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
-              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
-              desc: "presentation layer / composition root; generic subdomains must not import it (ADR-032 §5)"
+              desc: "presentation layer / composition root; generic subdomains must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
-              desc: "composition root; generic subdomains must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; generic subdomains must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
-              desc: "composition root; generic subdomains must not import it (ADR-032 §5, ADR-060 decision 6)"
+              desc: "composition root; generic subdomains must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
-              desc: "generic subdomain must not import another generic worker (ADR-032 appendix A)"
+              desc: "generic subdomain must not import another generic worker"

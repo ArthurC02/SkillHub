@@ -41,14 +41,14 @@ def gateway() -> tuple[str, str]:
     if api_key == os.getenv("LITELLM_MASTER_KEY"):
         logger.error(
             "LITELLM_API_KEY is the gateway master key. It must be a Virtual Key "
-            "with its own budget and model allowlist (ADR-017); the master key "
+            "with its own budget and model allowlist; the master key "
             "is the gateway's admin credential and this process must not hold it."
         )
         raise HTTPException(
             status_code=503,
             detail=(
                 "LITELLM_API_KEY 是閘道的 master key；"
-                "這個服務只能拿有預算與模型白名單的 Virtual Key（ADR-017）"
+                "這個服務只能拿有預算與模型白名單的 Virtual Key"
             ),
         )
     return base_url, api_key

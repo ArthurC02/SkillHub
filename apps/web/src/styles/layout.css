@@ -109,7 +109,7 @@ main,
    --accent square before the product name. It exists because the header had no
    mark at all — the wordmark was a link in the same weight as the nav beside it
    — and because an inline SVG mark costs no request, no font and no asset
-   directory (ADR-064 決策 7 rules out all three). It carries no meaning, so it
+   directory (all three ruled out here). It carries no meaning, so it
    is `content: ""` and stays out of the accessibility tree; the name is still
    the whole of the link's text. --accent is 4.08:1 on the ground, over the 3:1
    §4.4 rule 2 asks of a non-text mark. */

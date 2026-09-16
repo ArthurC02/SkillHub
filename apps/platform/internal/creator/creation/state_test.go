@@ -75,7 +75,7 @@ func TestASessionThatHasEndedHasNowhereToGo(t *testing.T) {
 
 func TestFailedIsRecoverableAndThereforeNotAnEnding(t *testing.T) {
 	if StateFailed.HasEnded() {
-		t.Fatal("a failed session can be revived by raising the budget (ADR-068), so it has not ended")
+		t.Fatal("a failed session can be revived by raising the budget, so it has not ended")
 	}
 	for _, to := range []State{StateWaitingInput, StateQueued, StateCancelled} {
 		if !CanTransition(StateFailed, to) {

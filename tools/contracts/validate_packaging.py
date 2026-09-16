@@ -103,7 +103,7 @@ def _test_case(**overrides: object) -> dict:
 NEGATIVE_CASES: list[tuple[str, str, dict]] = [
     (
         MANIFEST,
-        "a licence expression with no provenance tier (ADR-021 decision 1)",
+        "a licence expression with no provenance tier",
         _manifest(license={"expression": "MIT", "source_tier": None, "disclosures": []}),
     ),
     (
@@ -113,7 +113,7 @@ NEGATIVE_CASES: list[tuple[str, str, dict]] = [
     ),
     (
         MANIFEST,
-        "NOASSERTION written into license.expression (ADR-021 decision 7)",
+        "NOASSERTION written into license.expression",
         _manifest(
             license={"expression": "NOASSERTION", "source_tier": "manifest", "disclosures": []}
         ),
@@ -206,12 +206,12 @@ NEGATIVE_CASES: list[tuple[str, str, dict]] = [
     ),
     (
         PROFILE,
-        "a profile overwriting an existing frontmatter field (ADR-012)",
+        "a profile overwriting an existing frontmatter field",
         _profile(frontmatter_additions={"description": "rewritten by the adapter"}),
     ),
     (
         PROFILE,
-        "an Agent SDK snippet that never mentions setting_sources at all (ADR-023)",
+        "an Agent SDK snippet that never mentions setting_sources at all",
         _profile(
             id="claude-agent-sdk",
             install={

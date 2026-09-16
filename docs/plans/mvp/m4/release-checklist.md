@@ -91,26 +91,26 @@
 
 ## 2. 部署期（真機）
 
-> **2026-08-23 更正：本節標題原為「`SEC-009` 未過即不得開放外部使用者提交 Skill 執行」，而 [ADR-050](../../../adr/ADR-050-beta-runs-in-parallel-with-the-sandbox-acceptance.md) 已由負責人裁定**封測與甲類驗收並行**（`04` 乙-14）。**
+> **2026-08-23 更正：本節標題原為「`SEC-009` 未過即不得開放外部使用者提交 Skill 執行」，而依[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的決策，負責人裁定**封測與甲類驗收並行**（`04` 乙-14）。**
 >
 > **甲類四項因此不再是封測 D 日的阻擋項**，下面 §2.1 的標題與 §5 的 H-2 一併更正。**但它們的內容一個字都沒改**：`02:SEC-009` 的門檻仍是 45 項全數 pass、0 項 unknown，`infra/nodes/gvisor-baseline.txt` 仍必須填實際版本才算數。改的是**這個門檻在什麼時點之前必須達成**，不是門檻本身。
 >
-> **ADR-050 明示接受的風險**：甲類通過前，不受信任程式碼會在**逃逸邊界尚未被驗證**的節點上執行。該 ADR 同時寫下一件本節該知道的事——**Suite 1（T1／T2／T3／T4／T8 映像半）只要 Linux ＋ Docker ＋ runsc**，在那台節點跑一次是一天的事；「全部到期」與「什麼都不做」之間不是只有兩個選項。**要不要把它訂為第一位外部使用者之前的下限，是 ADR-050 的待決策 1，目前沒有答案。**
+> **[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)明示接受的風險**：甲類通過前，不受信任程式碼會在**逃逸邊界尚未被驗證**的節點上執行。同一份決策同時寫下一件本節該知道的事——**Suite 1（T1／T2／T3／T4／T8 映像半）只要 Linux ＋ Docker ＋ runsc**，在那台節點跑一次是一天的事；「全部到期」與「什麼都不做」之間不是只有兩個選項。**要不要把它訂為第一位外部使用者之前的下限，是那份決策的待決策 1，目前沒有答案。**
 
-**依據不是新的**：ADR-015 定案紀錄。M0～M3 能把甲類當平行工作是因為**沒有任何外部使用者**；封測第一次讓外部人員在真實部署上建立 Run。裁定見 [README.md §4](README.md)，拍板見 [`04` 乙-14](../../04-backlog-and-handoffs.md)。
+**依據不是新的**：[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的既有決策。M0～M3 能把甲類當平行工作是因為**沒有任何外部使用者**；封測第一次讓外部人員在真實部署上建立 Run。裁定見 [README.md §4](README.md)，拍板見 [`04` 乙-14](../../04-backlog-and-handoffs.md)。
 
-### 2.1 甲類四項（~~封測阻擋項~~ **與封測並行，ADR-050**）
+### 2.1 甲類四項（~~封測阻擋項~~ **與封測並行**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)））
 
 | # | 誰 | 做什麼 | 驗什麼 |
 | --- | --- | --- | --- |
 | 甲-1 | 負責人＋真機 | `SEC-009` 十個測項全跑 | **45 項基線全數 pass、0 項 unknown**。任一 fail 或 unknown 即不得開放，**無例外流程**。證據落 `m4/sec-009-acceptance/<日期>-<節點>/`（判定表 ＋ `versions.txt` 進 repo，原始輸出留 CI artifact 並附連結），保存 ≥ 1 年 |
 | 甲-2 | 同上 | `SBX-010` 的工作項側 | 同甲-1。**現有的真實容器驗證（非 root、唯讀 rootfs、無主機掛載、pids 上限、逾時強停、清理冪等）不等於逃逸測試通過** |
-| 甲-3 | 同上 | `SBX-005`／`007` 的生產網路面 | 每 Run netns ＋ `--icc=false`（關掉 dev 現存的**不需逃逸**的跨 Run 橫向路徑）；nftables default-deny ＋固定 DNS；`infra/egress/allowlist.yaml` 的 `pinned_ip` 已填實際值且**不是控制平面節點**（ADR-022 Q2 強制條件 6，由測項 T5-7 抓）。**LiteLLM 必須移到沙箱面專屬節點**——現行 compose 的 `127.0.0.1:4000` 是 dev 形態，生產不可複製 |
+| 甲-3 | 同上 | `SBX-005`／`007` 的生產網路面 | 每 Run netns ＋ `--icc=false`（關掉 dev 現存的**不需逃逸**的跨 Run 橫向路徑）；nftables default-deny ＋固定 DNS；`infra/egress/allowlist.yaml` 的 `pinned_ip` 已填實際值且**不是控制平面節點**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的強制條件，由測項 T5-7 抓）。**LiteLLM 必須移到沙箱面專屬節點**——現行 compose 的 `127.0.0.1:4000` 是 dev 形態，生產不可複製 |
 | 甲-4 | 同上 | `SBX-002` 的閘門 A 節點准入探針 | 探針在**真實節點上**查得到已發佈映像的 SBOM 與掃描 attestation；到期前 7 天告警的**發送端**已接 |
 
 **兩個要在第一台節點上先確認的未知數**（[README.md §10 R1](README.md)）：
 
-1. **gVisor 的 `systrap` 平台是否真的不需巢狀虛擬化**（ADR-022 只說「待部署批第一台節點實測確認」）。**把「一台節點、跑通一個 Run」獨立成最小驗證，不要等其餘做完才發現節點跑不起來。**
+1. **gVisor 的 `systrap` 平台是否真的不需巢狀虛擬化**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)只說「待部署批第一台節點實測確認」）。**把「一台節點、跑通一個 Run」獨立成最小驗證，不要等其餘做完才發現節點跑不起來。**
 2. `infra/nodes/gvisor-baseline.txt` 必須填實際版本（**非 `unset`**），否則 `SEC-009` 的前置條件②不成立、整批判 unknown ＝ fail。
 
 - **`unset` 在兩個檔案裡都會安靜地通過**（2026-08-25 補記）：`infra/egress/allowlist.yaml` 的 `pinned_ip: unset` 與 `infra/nodes/gvisor-baseline.txt` 的 `unset` 都代表「還沒有節點」，兩者都 fail-closed（前者 render 不出任何 accept 規則，後者沒有可比對的基準），所以**節點會正常起來、Run 會安靜地到不了閘道**。`.github/workflows/egress-allowlist.yml` 只檢查 YAML 的不變式，**沒有任何檢查會說「這台活著的節點是用 `unset` 建的」**。因此：**節點建置後、跑第一個 Run 之前，在真機上確認 `nft list ruleset` 有指向閘道 IP:port 的 accept 規則、且 `runsc --version` 對得上 `gvisor-baseline.txt` 的實際版本；任一處仍是 `unset` 就停止建置**——不要用「Run 失敗」去發現它，那是部署日最難診斷的一種失敗。
@@ -165,14 +165,14 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 | --- | --- | --- |
 | `PACKAGING_PROFILES_DIR` | 零個打包目標，**每條打包路由 503** | 預設 `contracts/packaging/profiles` |
 | `DOWNLOAD_ARTIFACT_RETENTION` | **未設或非法即 fail-closed：打包建立回 503，不得產生下載 Artifact** | **PDM-006 追認後才設定正值**（§3） |
-| `ANALYTICS_RETENTION` | **不設 cookie、不寫任何一列** ⇒ `BETA-002` 的漏斗量不到任何東西；**且 `maintenance rotate-partitions` 整個 job 拒絕執行**（§2.6） | **PDM-006 追認**（ADR-029 提案 180 天） |
+| `ANALYTICS_RETENTION` | **不設 cookie、不寫任何一列** ⇒ `BETA-002` 的漏斗量不到任何東西；**且 `maintenance rotate-partitions` 整個 job 拒絕執行**（§2.6） | **PDM-006 追認**（[產品分析與稽核邊界](../../../adr/README.md#產品分析與稽核邊界)提案 180 天） |
 | `TRACE_RETENTION` | **`maintenance rotate-partitions` 整個 job 拒絕執行**（兩個保存期在任何語句之前一起讀）⇒ **`trace_events` 與 `analytics_events` 的月分割既不會被預先建立，也不會被丟棄**。Trace 寫入本身不受影響，事件照收，只是全部落進 `trace_events_default`（§2.6） | **PDM-006 追認**（`0004` 註解寫的 90 天是提案，至今沒有任何東西在執行它） |
 | `BETA_ALLOWLIST` | 閘門關閉，**任何有 GitHub 帳號的人都能用** | PDM-009 追認後的 12 個 GitHub 帳號 |
 | `RUN_QUOTA` | 額度不強制，`GET /me/quota` **不掛載**，preflight 不帶配額區塊 | PDM-010 擇一後開啟 |
 | `RATE_LIMIT`（2026-08-24 新增） | **只有 `off` 會關掉它**；未設或填任何其他值（含填一個數字）都是啟用預設 60/min、burst 30。方向與上面幾列**相反**：未設＝有保護 | 保持未設 |
 | `FEEDBACK_RETENTION`（2026-08-29 新增） | **fail-closed，比照 `AUDIT_RETENTION`**：未設或非法時 `maintenance purge-feedback` 拒絕啟動 ⇒ `feedback_reports` 的自由文字**沒有保存期、沒有清除**。這是本 repo 唯一一個「在收、卻沒有期限也沒有 sweep」的資料類別，而它收的是受測者用自己的話寫的東西 | **PDM-006 追認**（與其餘保存期同一批） |
 | `OPERATOR_USER_IDS` | 沒有人能操作 `/admin/dispatch*`（P1 停派送只能改 DB） | 負責人自己 |
-| `LITELLM_API_KEY` | **這裡放的必須是一把由 master key 簽發的 Virtual Key，帶 `max_budget` 與模型白名單；放 master key 是部署缺陷。** master key 不只是「一把預算很大的 key」，它是閘道**管理 API 的管理員憑證**——可以簽發 Virtual Key、讀取全部 key 的 spend、（`STORE_MODEL_IN_DB` 開啟時）改動模型路由。把它交給 `apps/llm`，等於讓一個處理**不受信任套件內容與使用者 prompt** 的行程持有整個模型出口的管理權，而 ADR-017 決策段逐字寫著「Python 服務與 Sandbox 只持有 Virtual Key」。**repo 裡每一份記錄過實跑的文件都是直接把 master key 填進來的**（m3 的兩份報告、`generate_integration_test.go` 的重現指令、`04` 丙-56），所以這一列是**部署期一定要撞到的一件事**，不是提醒 | 部署時由 master key 簽發；`LITELLM_MASTER_KEY` 只留在閘道那一側 |
+| `LITELLM_API_KEY` | **這裡放的必須是一把由 master key 簽發的 Virtual Key，帶 `max_budget` 與模型白名單；放 master key 是部署缺陷。** master key 不只是「一把預算很大的 key」，它是閘道**管理 API 的管理員憑證**——可以簽發 Virtual Key、讀取全部 key 的 spend、（`STORE_MODEL_IN_DB` 開啟時）改動模型路由。把它交給 `apps/llm`，等於讓一個處理**不受信任套件內容與使用者 prompt** 的行程持有整個模型出口的管理權，而[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)的決策段逐字寫著「Python 服務與 Sandbox 只持有 Virtual Key」。**repo 裡每一份記錄過實跑的文件都是直接把 master key 填進來的**（m3 的兩份報告、`generate_integration_test.go` 的重現指令、`04` 丙-56），所以這一列是**部署期一定要撞到的一件事**，不是提醒 | 部署時由 master key 簽發；`LITELLM_MASTER_KEY` 只留在閘道那一側 |
 | `SKILLHUB_MODEL_GATEWAY_*` | 沙箱被派到 `--network none`，Run 全部失敗 | 既有 |
 | 物件儲存設定 | `ErrNoStore` ⇒ 打包 503 | 既有 |
 
@@ -227,7 +227,7 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-category.
 - [ ] `cmd/maintenance purge-datasets` 接上**每日** cron。承諾對象：同意書 §3「上傳的 Dataset 90 天」。逐列 `expires_at`，**刻意沒有單一環境變數**（理由在 `cmd/maintenance/main.go`）。**同樣要驗位元組**
 - [ ] `cmd/maintenance purge-audit` 接上**每週** cron；`AUDIT_RETENTION` fail-closed（未設即拒絕啟動）。承諾對象：同意書 §3「稽核 400 天」。**這一類是 2026-08-25 才補上 job 的**——在那之前同意書從第一版就宣告了 400 天而那個 job 不存在
 - [ ] `cmd/maintenance purge-feedback` 接上**每週** cron；`FEEDBACK_RETENTION` fail-closed（比照 `AUDIT_RETENTION`，見 §2.3）。承諾對象：`feedback_reports` 的自由文字——**受測者用自己的話描述他們卡在哪**，是三類裡最敏感的一種。**同批要驗 `GET /policy/data-retention` 真的把 feedback 列出來**：那個端點今天只列四個 analytics 事件，並逐字宣告「表裡沒有任何自由文字欄位」，那句話對 `analytics_events` 為真、對這個部署為假
-- [x] ~~`cmd/maintenance purge-credit` 接上**每週** cron；`CREDIT_RETENTION` fail-closed（比照 `AUDIT_RETENTION`，未設即拒絕啟動）。承諾對象：同意書 §3 與 [ADR-068](../../../adr/ADR-068-credit-is-the-only-unit-of-account.md) 決策 11 的兩本帳——`cost_events`（平台真實支出）與 `credit_entries`（使用者餘額異動）。**這一列 2026-09-10 隨 Credit 接線一起加**，而它與帳號刪除是**兩件事**：帳號刪除按使用者刪掉那個人的全部，這一個按時間刪掉所有人的舊列；`store.go` 的註解記著這個區分曾經被寫錯過一次（宣稱保存期查詢也涵蓋帳號刪除），**那會讓一個已刪帳號的支出留在檔案裡直到自然過期**。<br>**兩個 DELETE 在同一個交易裡，順序是硬的**：`credit_entries.cost_event_id` 是指向 `cost_events` 的外鍵，分錄先刪。**這件事是同日被帳號刪除的整合測試逼出來的**——兩行呼叫看起來沒有順序。~~ **2026-09-12 不再需要：這個子命令已移除**（[`05` R-76](../../05-pending-rulings.md)：Credit 紀錄永遠不清，沒有保存期限可以執行）。
+- [x] ~~`cmd/maintenance purge-credit` 接上**每週** cron；`CREDIT_RETENTION` fail-closed（比照 `AUDIT_RETENTION`，未設即拒絕啟動）。承諾對象：同意書 §3 與[帳號清除與 Credit](../../../adr/README.md#帳號清除與-credit)決策 11 的兩本帳——`cost_events`（平台真實支出）與 `credit_entries`（使用者餘額異動）。**這一列 2026-09-10 隨 Credit 接線一起加**，而它與帳號刪除是**兩件事**：帳號刪除按使用者刪掉那個人的全部，這一個按時間刪掉所有人的舊列；`store.go` 的註解記著這個區分曾經被寫錯過一次（宣稱保存期查詢也涵蓋帳號刪除），**那會讓一個已刪帳號的支出留在檔案裡直到自然過期**。<br>**兩個 DELETE 在同一個交易裡，順序是硬的**：`credit_entries.cost_event_id` 是指向 `cost_events` 的外鍵，分錄先刪。**這件事是同日被帳號刪除的整合測試逼出來的**——兩行呼叫看起來沒有順序。~~ **2026-09-12 不再需要：這個子命令已移除**（[`05` R-76](../../05-pending-rulings.md)：Credit 紀錄永遠不清，沒有保存期限可以執行）。
 - [ ] `cmd/maintenance purge-deleted-skills` 接上**每日** cron。**⚠️ 紅字：模板留空 ⇒ 承諾未執行。** `.env.example` 的 `SKILL_DELETION_GRACE=` 是**刻意的空值**（fail-closed，理由硬：那個 job 刪的是使用者自己的內容），後果是**照著模板部署的環境從來沒有執行過它**，而刪除畫面上逐字寫著「30 天寬限期後清除」。**這一列不是待辦，是一個正在對使用者說謊的狀態**：值由負責人簽 PDM-006 §6.1 的 30 天（§3），簽之前這句承諾在畫面上要能被關掉或改寫
 - [x] ~~**⏱ `cmd/maintenance rotate-partitions` 要在 2026-09-01 之前手動先跑一次**~~ **✅ 2026-08-30：不再需要人手，因為建立那一半已經不在這個子命令裡了。** 2026-08-29 的夯實批把建立與刪除拆開（`partition.CreateUpcoming`），建立的那一半成為 worker 的週期性工作 `PartitionCreateArgs`，**且以 `RunOnStart: true` 註冊**——`entrypoint/worker/worker.go` 的註解逐字寫著理由：「月底才上線的部署必須在月份翻過去之前就有下個月的分區，不是一個間隔之後」。刪除那一半仍留在本子命令，在它 fail-closed 的保存期變數後面（見下一行的 cron）。<br>**實測 2026-08-30**：淨測試模式一次冷啟動即印出 `partitions created table=analytics_events partitions="[analytics_events_2026_09 analytics_events_2026_10]"` 與 `trace_events` 的同一行——**在 9 月到來之前就有了 9 月與 10 月**。<br>**因此本項的殘餘義務只剩一句**：任何部署都必須真的有 worker 在跑（`cmd/worker`，或淨測試模式那種 in-process 的形態）。**只起 API 而不起 worker 的部署仍然會掉進 default 分割**，而那時的補救成本仍是一次抽乾。原文保留在刪除線裡，因為它記的是一個當時為真的期限。
 - [ ] `cmd/maintenance rotate-partitions` **接上每月 cron**（DDD-032 新增；需要 `DATABASE_URL`）：一次執行同時處理 `trace_events` 與 `analytics_events`——建立**當月與其後兩個月**的分割，並丟棄超過保存期的月份。**`TRACE_RETENTION` 與 `ANALYTICS_RETENTION` 皆無預設，兩者在任何語句之前一起讀，任一未設即整個 job 拒絕執行**（H-5 的 PDM-006 追認之前設不了值 ⇒ **分割不會被丟棄，也不會被預先建立**）。**排程至少每月一次**：預建兩個月是給「連續漏跑一次」的餘裕，連漏兩次就會開始寫進 default，而 default 是分割丟棄永遠碰不到的地方
@@ -247,11 +247,11 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-category.
 
 ### 2.8 仍待定值或部署驗證的技術債
 
-- [ ] **`DEPLOY-IAC-001`**：部署負責人建立 ADR-022 的 sandbox node IaC／cloud-init/render；pinned IP 未填時不得產生放行規則，並以 SEC-009 真機證據驗收。**✅ 2026-09-10 目標已定值（`05` R-43）**：Hetzner Cloud／Falkenstein、第一批 1 台 CPX31（4 vCPU／8 GB／160 GB NVMe）、每月預算上限 US$60。cloud-init 從此有目標。同批定案 `/etc/skillhub/node.json` 的五個必填欄位（`05` R-17c）：`node_id`、`role`（字面值 `sandbox-exec`）、`node_created_at`、`iac_commit`、**`build_phase`**——最後一欄是新的，cloud-init 在建置階段寫 `provision`、服役後由開機腳本改寫為 `serving`，用來取代閘門 A 探針目前那個 2 秒容差的啟發式（啟發式會在一台慢節點上誤判，而沒有人會知道）。
-- [ ] **Suite 1 在該節點上跑過一次，結果存檔**（**2026-09-10 新增，`05` R-6 第 1 條裁定「是」**）。Suite 1 只要 Linux ＋ Docker ＋ runsc（ADR-022 §0 已推翻巢狀虛擬化的前提），在節點上跑一次是一天的事。**這一格擋的是「第一位外部使用者的第一個 Run」**——在它之前沒有跑過，等於第一個外部使用者在一台從來沒有被驗過的節點上跑他自己的程式碼，而那正是 ADR-050 說「沒有答案等於否」時所指的那個預設。與閘門 A 節點准入探針同一次執行
+- [ ] **`DEPLOY-IAC-001`**：部署負責人依[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)建立 sandbox node IaC／cloud-init/render；pinned IP 未填時不得產生放行規則，並以 SEC-009 真機證據驗收。**✅ 2026-09-10 目標已定值（`05` R-43）**：Hetzner Cloud／Falkenstein、第一批 1 台 CPX31（4 vCPU／8 GB／160 GB NVMe）、每月預算上限 US$60。cloud-init 從此有目標。同批定案 `/etc/skillhub/node.json` 的五個必填欄位（`05` R-17c）：`node_id`、`role`（字面值 `sandbox-exec`）、`node_created_at`、`iac_commit`、**`build_phase`**——最後一欄是新的，cloud-init 在建置階段寫 `provision`、服役後由開機腳本改寫為 `serving`，用來取代閘門 A 探針目前那個 2 秒容差的啟發式（啟發式會在一台慢節點上誤判，而沒有人會知道）。
+- [ ] **Suite 1 在該節點上跑過一次，結果存檔**（**2026-09-10 新增，`05` R-6 第 1 條裁定「是」**）。Suite 1 只要 Linux ＋ Docker ＋ runsc（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)已推翻巢狀虛擬化的前提），在節點上跑一次是一天的事。**這一格擋的是「第一位外部使用者的第一個 Run」**——在它之前沒有跑過，等於第一個外部使用者在一台從來沒有被驗過的節點上跑他自己的程式碼，而那正是[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)說「沒有答案等於否」時所指的那個預設。與閘門 A 節點准入探針同一次執行
 - [ ] **`RUNTIME-PYTHON-001`**：負責人先定值 Python runtime 版本；部署負責人令 runtime image、文件與真實 gVisor 證據一致。不得把目前 image 的版本視為追認。**✅ 2026-09-05 定值：3.13**（[`05` R-44](../../05-pending-rulings.md)）。落地路徑已本機驗證（`node:22-trixie-slim` 讓 apt 原生 `python3` 就是 3.13.5，`constraints.txt` 的鎖版不變），**但未推上 main**：`infra/images/README.md`（2026-08-29 夯實稽核）已把「換 base 發行版需要重跑 SEC-009」列為前提，而 SEC-009 需要的 gVisor 節點就是甲-5／R-43 還沒有的那台。這一格因此仍未勾，理由從「沒有值」變成「有值但沒有 gVisor 證據」。
 - [ ] **`LLM-RES-001`（partial）**：既有 query 長度三層上限保留；部署負責人補 anonymous search 的分散式 rate limit／成本保護，並證明拒絕請求不會呼叫 embedding 或 match-reason LLM。
-- [x] **`SUPPLY-RUNTIME-LOCK-001`**：runtime image owner 將 Python／Node transitive dependency 改為 repo-owned lock 或 constraints；以乾淨 cache 的兩次 build 證明 dependency tree 一致。**✅ 2026-09-05**：`constraints.txt`＋`package-lock.json`，兩次 `--no-cache --pull` build 的 29 個 Python distribution 與 106 個 Node 套件逐行相同；映像升 `2026.08-8`，ADR-023 四項在 CI 發佈的 digest 上全過，預設映像同批移到 `-8`（`UPGRADES.md`）。
+- [x] **`SUPPLY-RUNTIME-LOCK-001`**：runtime image owner 將 Python／Node transitive dependency 改為 repo-owned lock 或 constraints；以乾淨 cache 的兩次 build 證明 dependency tree 一致。**✅ 2026-09-05**：`constraints.txt`＋`package-lock.json`，兩次 `--no-cache --pull` build 的 29 個 Python distribution 與 106 個 Node 套件逐行相同；映像升 `2026.08-8`，[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的四項在 CI 發佈的 digest 上全過，預設映像同批移到 `-8`（`UPGRADES.md`）。
 
 `LLM-EVAL-007` 是產品／帳務決策，不在部署清單中；其 owner、決策與 contract evidence 見 [`04` N-8](../../04-backlog-and-handoffs.md)。
 
@@ -261,14 +261,14 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-category.
 
 | # | 誰 | 做什麼 | 驗什麼（什麼算完成） | 擋住什麼 |
 | --- | --- | --- | --- | --- |
-| H-1 | 負責人 | **乙-13 拍板**：G7／G8 二選一——(a) `artifact` 型引用不得滿足 `evidence_required`；(b) 保留但標示「此引文未經回驗」。**G7 與 G8 一起裁**（同一把 defence 3 的尺），並同時回答「引文比對要不要正規化」 | 裁定寫進 `04` 乙-13 並回填 ADR-026 | `QA-006`、`RELEASE-007`；**封測**（封測者是第一批讀評估報告的非團隊成員） |
-| ~~H-2~~ **已拍板 2026-08-23** | 負責人 | ~~**乙-14 拍板**：甲類四項是否在封測前到期。建議「到期」~~ **裁定為「並行」，與原建議相反**（[ADR-050](../../../adr/ADR-050-beta-runs-in-parallel-with-the-sandbox-acceptance.md)）。甲類四項不是封測 D 日的阻擋項；`02:SEC-009` 的 45 項門檻本身不變。**ADR-050 產生一件新工作**：同意書必須據實說明執行環境尚未完成逃逸驗收（併入乙-16 的法務清單），**並留下三條待決策**，其中第一條（第一位外部使用者的 Run 之前要不要求 Suite 1 在該節點跑過一次）**沒有答案就等於「否」** | 裁定已寫進 `04` 乙-14 與 ADR-050 | ~~封測 D 日取決於誰~~ **已解除**；改為 ADR-050 待決策 2（甲類的目標完成日仍無人寫下） |
+| H-1 | 負責人 | **乙-13 拍板**：G7／G8 二選一——(a) `artifact` 型引用不得滿足 `evidence_required`；(b) 保留但標示「此引文未經回驗」。**G7 與 G8 一起裁**（同一把 defence 3 的尺），並同時回答「引文比對要不要正規化」 | 裁定寫進 `04` 乙-13 並回填[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界) | `QA-006`、`RELEASE-007`；**封測**（封測者是第一批讀評估報告的非團隊成員） |
+| ~~H-2~~ **已拍板 2026-08-23** | 負責人 | ~~**乙-14 拍板**：甲類四項是否在封測前到期。建議「到期」~~ **裁定為「並行」，與原建議相反**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)）。甲類四項不是封測 D 日的阻擋項；`02:SEC-009` 的 45 項門檻本身不變。**這項裁定產生一件新工作**：同意書必須據實說明執行環境尚未完成逃逸驗收（併入乙-16 的法務清單），**並留下三條待決策**，其中第一條（第一位外部使用者的 Run 之前要不要求 Suite 1 在該節點跑過一次）**沒有答案就等於「否」** | 裁定已寫進 `04` 乙-14 與[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全) | ~~封測 D 日取決於誰~~ **已解除**；改為該決策的待決策 2（甲類的目標完成日仍無人寫下） |
 | H-3 | 負責人 | **PDM-009 追認**：[pdm-009-beta-proposal.md §8](pdm-009-beta-proposal.md) 的十項檢查清單全部 `- [x]`。**追認時一併過報酬預算**（最大單項支出，`cost-estimation.md` 沒有任何一行涵蓋它） | 該清單十項全勾 ＋ 回寫 `03` §1 與 `04` 乙-15 | `BETA-001`／`005`、`RELEASE-009` |
 | H-4 | 負責人 | **PDM-010 擇一**：首月 `min(20,30)=20` 或 20+30=50。提案自己要求「明確擇一，不要留給實作推斷」 | `internal/run/quota.go` 的四個常數拿掉「待追認」 ＋ `RUN_QUOTA` 開啟 | 配額**顯示**（強制可先做，顯示必須等值定案——乙-2 的教訓） |
 | H-5 | 負責人 | **PDM-006 追認**：保存期限分級表 ＋ §6.1 的帳號刪除分類 | `DOWNLOAD_ARTIFACT_RETENTION`、`ANALYTICS_RETENTION` 與 `TRACE_RETENTION` 三者都有值（第三個是 DDD-032 新增，未設時分割輪替整個停擺，見 §2.3／§2.6）＋ 同意書 §3 的 ⬜ 填完 | `SEC-006`、`RELEASE-005`、**整個 `BETA-002`**（未定值前一列都不收） |
 | H-6 | 負責人 | **PDM-008 追認**：打包目標清單與對外措辭。~~**「2 個已驗證 Profile」目前只成立 1 個**，追認時要決定改口徑還是等 H-9~~ **2026-08-23：H-9 已完成，這個數字現在是真的，追認時不必再處理它**；追認本身仍缺 | `m0/pdm-proposals.md` §9.1 該列打勾 | `PACK-006` 的決策依據 |
 | H-7 | 負責人 | **PDM-004／005 的定案紀錄**（值實質已定，缺追認；PDM-005 另有「兩份文件對是否已定案說法不一致」要裁一個，乙-9） | 同上 | `03` §1、乙-9 |
-| H-8 | 負責人 | **✅ 2026-08-29 已宣告：D 日 ＝ 2026-09-11。** 本列從「要一個日期」變成「要照那個日期做完」——**10 天的排程、9 位受測者的行事曆、以及在那之前必須簽完的同意書（H-11 ＋ [`05` R-11](../../05-pending-rulings.md) 的保存期改動要重走法務確認）**。⚠️ **這是本次唯一一個新的關鍵路徑風險**：R-11 把同意書 §3 的一列從 30 天改成 90 天，而那份文件自己立的規則是保存期限再變動就要重新確認一次。<br>~~**M1 閘門 D 日宣告**~~與其後 10 天（1 場 pilot ＋ 9 場正式 ＋ 分析）。**先閘門、再封測**，三個理由見 [README.md §5.3](README.md)<br>**⏳ 2026-08-23：有一個 PDM 暫時放行，本列不在它的範圍內。** 那個放行只解除 [`m5/README.md` §啟動條件](../m5/README.md) 的第 2 列，讓 M5 的**規劃**不必等閘門讀數。**本列一個字都沒被放行**——D 日仍要宣告、10 天仍要跑、`gate-test/analysis.md` 仍是本列的證據。範圍見 [`04` 乙-10](../../04-backlog-and-handoffs.md)。**若有人拿那個放行來主張封測可以開始，那是誤讀**：M5 是 MVP 之外的里程碑，封測是 MVP 之內的閘門，兩者共用「D 日」這三個字而已。<br>**同日稍晚放行擴大到 M5 的三個啟動條件全部**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**其中一項逐字就是「MVP 封測結束」**——但它被放行的是「阻擋 M5 開工」這個效力，**不是封測本身**。封測仍未開始，本列仍是它的前置。**這一條現在比擴大放行前更容易被誤讀，所以講第三次**：放行讓 M5 動得了，不讓封測動得了 | `gate-test/analysis.md` 的閘門結論 | **封測不能與閘門並行**；`CONTENT-011` 的解凍也等它 |
+| H-8 | 負責人 | **✅ 2026-08-29 已宣告：D 日 ＝ 2026-09-11。** 本列從「要一個日期」變成「要照那個日期做完」——**10 天的排程、9 位受測者的行事曆、以及在那之前必須簽完的同意書（H-11 ＋ [`05` R-11](../../05-pending-rulings.md) 的保存期改動要重走法務確認）**。⚠️ **這是本次唯一一個新的關鍵路徑風險**：R-11 把同意書 §3 的一列從 30 天改成 90 天，而那份文件自己立的規則是保存期限再變動就要重新確認一次。<br>~~**M1 閘門 D 日宣告**~~與其後 10 天（1 場 pilot ＋ 9 場正式 ＋ 分析）。**先閘門、再封測**，三個理由見 [README.md §5.3](README.md)<br>**⏳ 2026-08-23：有一個 PDM 暫時放行，本列不在它的範圍內。** 那個放行只解除 [`m5/README.md` §啟動條件](../m5/README.md) 的第 2 列，讓 M5 的**規劃**不必等閘門讀數。**本列一個字都沒被放行**——D 日仍要宣告、10 天仍要跑、`gate-test/analysis.md` 仍是本列的證據。範圍見 [`04` 乙-10](../../04-backlog-and-handoffs.md)。**若有人拿那個放行來主張封測可以開始，那是誤讀**：M5 是 MVP 之外的里程碑，封測是 MVP 之內的閘門，兩者共用「D 日」這三個字而已。<br>**同日稍晚放行擴大到 M5 的三個啟動條件全部**（[從描述生成 Skill](../../../adr/README.md#從描述生成-skill)），**其中一項逐字就是「MVP 封測結束」**——但它被放行的是「阻擋 M5 開工」這個效力，**不是封測本身**。封測仍未開始，本列仍是它的前置。**這一條現在比擴大放行前更容易被誤讀，所以講第三次**：放行讓 M5 動得了，不讓封測動得了 | `gate-test/analysis.md` 的閘門結論 | **封測不能與閘門並行**；`CONTENT-011` 的解凍也等它 |
 | ~~H-9~~ **✅ 2026-08-23 完成** | 負責人 | ~~**一次本機安裝**：套件放進 `~/.claude/skills/`、`/skills` 看得到、跑一次驗證 Prompt；落檔後把 `claude-code.json` 的 `support_status` 改 `verified` 並進 `version` 版號~~ **三步全部走完**：平台經真實 HTTP 路徑產出的 `claude-code` 套件（`content_hash 6be1065…`）→ 解進 `~/.claude/skills/` → `/skills` **同一個 session** 就列出（使用者與 agent 兩邊各自確認）→ 以 profile 的 `verification_prompt` 叫用，載入成功、回出約定 marker、讀到 SKILL.md 旁的 `reference.md` | `claude-code.json` `support_status=verified`、`version` 1.1.0，落點與**不成立的部分**同寫在 `known_limitations[0]`（一個套件／一個 OS／純提示型／未裝依賴未執行腳本） | `PACK-009` **已勾**、PDM-008 的「2 個已驗證」**現在是真的** |
 | H-10 | 負責人＋法務 | **`anthropics/skills` 法務終判**（乙-10）；並在寄詢問信前**擇一 4A／4B** 且**實測那四筆真的打不出包**（不得以政策文件代替實際試過） | 終判紀錄 ＋ 寄出的信 | `CONTENT-003`／`004`、`RELEASE-003` |
 | H-11 | 負責人＋法務 | **同意書定稿**：[`../gate-test/consent-and-data-policy.md` §9](../gate-test/consent-and-data-policy.md) 的待填清單全部有值 ＋ 法務確認用語與法域 ＋ 未成年受測者的處理（草稿未涵蓋） | §9 十一項全勾 | **招募寄確認信時沒有東西可簽**；`BETA-001`；乙-16 |
@@ -322,6 +322,6 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-category.
 
 **補記，不改寫上面任何一行。**
 
-- **§1.9 末尾與 §3 的「`QA-008` 的路線」不再是待決事項。** 負責人裁定採**引入瀏覽器驅動**，**否決人工在三個瀏覽器各走一次並落檔**（[ADR-036](../../../adr/ADR-036-real-browser-verification-tier.md)，實作 commit `fe7aa13`）。
+- **§1.9 末尾與 §3 的「`QA-008` 的路線」不再是待決事項。** 負責人裁定採**引入瀏覽器驅動**，**否決人工在三個瀏覽器各走一次並落檔**（[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)，實作 commit `fe7aa13`）。
 - **因此 §1.9「另有兩項要先有 §3 的決策才能動」現在只剩一項**（`SEC-012` 的自動觸發）：**無障礙的對比守門（丙-21）已不再等任何決策**，該殘項**整列結案**，`QA-009`／`DESIGN-013` 同批改判勾選。
 - **`QA-008` 本身仍不勾**，因此 §5 對 `RELEASE-001` 的回答不變——它的字面判準含「與目標作業系統測試」，而 CI 仍只有 `ubuntu-latest`。**剩下的是一個尚未做的取捨（OS 矩陣要做哪幾格），不是一個沒有工具的缺口**：工具已經在了。

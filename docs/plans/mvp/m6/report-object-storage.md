@@ -1,7 +1,7 @@
 # M6 前期量測：物件儲存的替身，以及它證明不了的那一半
 
 - 日期：2026-08-28
-- 決策落點：[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)、允收見 [`02` §4.10](../../02-specifications-and-acceptance-criteria.md) `PORT-009`
+- 決策落點：[淨測試模式](../../../adr/README.md#淨測試模式)、允收見 [`02` §4.10](../../02-specifications-and-acceptance-criteria.md) `PORT-009`
 - 姊妹報告：[report-inmemory-postgres.md](report-inmemory-postgres.md)（資料庫那一半）
 
 ## 0. 這份報告最重要的一句話

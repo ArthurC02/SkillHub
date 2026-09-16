@@ -148,7 +148,7 @@ func TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey(t *testing.T) {
 	}
 
 	if !strings.Contains(string(archive), "SKILLHUB-SCRIPT-RAN py3.") {
-		t.Error("the archive carries no output from the package's own script: the skill's files were not executed (ADR-023 §2)")
+		t.Error("the archive carries no output from the package's own script: the skill's files were not executed")
 	}
 
 	cleaned := waitForCleanupOutcome(t, f.client, view.RunID)

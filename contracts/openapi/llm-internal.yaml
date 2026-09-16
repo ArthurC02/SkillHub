@@ -3,7 +3,7 @@ info:
   title: Skill Hub LLM Internal API
   version: 0.1.0
   description: |
-    Go control plane to Python LLM service (ADR-016 rule 3). Internal only, never
+    Go control plane to Python LLM service. Internal only, never
     exposed publicly. The Python server stub under packages/ is generated from
     this file and must never be hand-edited.
 servers:
@@ -28,7 +28,7 @@ paths:
   /embed:
     post:
       operationId: embed
-      summary: Generate embeddings for texts (ADR-013, PDM-003)
+      summary: Generate embeddings for texts (PDM-003)
       description: |
         Generates text-embedding-3-small embeddings (1536 dims) via LiteLLM
         gateway (Iron Rule 8). Used by Go to build query embeddings for hybrid
@@ -39,7 +39,7 @@ paths:
         Until that was added the whole service billed into one bucket under one
         static key, and the two costs that scale - one per search, one per
         indexed Skill Version - could not be told apart from each other or from
-        a judgement (ADR-017 Run 成本歸因).
+        a judgement.
       requestBody:
         required: true
         content:
@@ -78,18 +78,18 @@ paths:
   /v1/enrich-skill:
     post:
       operationId: enrichSkill
-      summary: Index-time LLM enrichment of a Skill Version (ADR-013 section 1)
+      summary: Index-time LLM enrichment of a Skill Version
       description: |
         Runs once per Skill Version. Reads SKILL.md plus a package file-tree
-        summary and returns the ADR-013 enrichment whitelist: a plain-language
+        summary and returns the intent-search enrichment whitelist: a plain-language
         summary, example task sentences, and input/output/tool/dependency tags.
         Feeds INGEST-009 / DISC-001 search documents.
 
         The response carries `model` and `prompt_version` so the caller can mark
         the fields as model-generated. It deliberately contains no trust, risk,
-        safety or quality judgement - those are never model-derived (ADR-013).
+        safety or quality judgement - those are never model-derived.
 
-        No retry here: retry and timeout policy belong to Go (ADR-016 rule 6).
+        No retry here: retry and timeout policy belong to Go.
       requestBody:
         required: true
         content:
@@ -122,7 +122,7 @@ paths:
   /match-reasons:
     post:
       operationId: matchReasons
-      summary: Generate match reasons for search results (ADR-013 section 3)
+      summary: Generate match reasons for search results
       description: |
         Given a user query and candidate skills, produces human-readable match
         reasons. Called by Go for the top-N search results; timeout/failure
@@ -169,14 +169,14 @@ paths:
       description: |
         A proposal, never a decision. Go stores whatever comes back with
         `source: suggested` and the user edits, confirms or deletes it; nothing
-        here confirms a criterion on the user's behalf (ADR-016 rule 6). An
+        here confirms a criterion on the user's behalf. An
         answer the service cannot use comes back as an empty `criteria` list
         rather than as invented text - the user then writes their own, which is
         the documented manual path.
 
         What may travel here is bounded by the schema, not only by the caller:
         see DatasetField. No retry and no timeout policy - both are Go's
-        (ADR-016 rule 6), and Go degrades a failure here to its own 503.
+        and Go degrades a failure here to its own 503.
       requestBody:
         required: true
         content:
@@ -222,7 +222,7 @@ paths:
         (evaluation-design §2.5). Five sixths of the evaluation never reaches a
         model, which is what keeps both its cost and its untrustworthiness bounded.
 
-        A verdict, never a decision (ADR-016 rule 6). Go merges what comes back
+        A verdict, never a decision. Go merges what comes back
         with its own deterministic findings, labels every criterion originating
         here as `source: model` - there is no field through which the model could
         claim to be a rule - re-verifies each evidence reference, and downgrades
@@ -282,12 +282,12 @@ paths:
       operationId: generateSkill
       summary: Generate a Skill package from a task description and/or a diagram, optionally with reference Skills (GEN-001, GEN-005, GEN-006)
       description: |
-        A task description and/or a diagram in, a package out. Since ADR-066 the
+        A task description and/or a diagram in, a package out. The
         request may also carry up to three existing Skills' SKILL.md as
         REFERENCES: worked examples the model reads for shape and level of
         detail, fenced as untrusted data like the task itself. This is still
-        not /suggest-improvements' territory (ADR-046 決策 3, narrowed by
-        ADR-066 rather than reversed): that endpoint edits ONE version against
+        not /suggest-improvements' territory, narrowed but not reversed by
+        adding references: that endpoint edits ONE version against
         an evaluation digest and verifies every citation against an excerpt; this
         one writes a NEW skill from nothing but the inputs here, cites nothing,
         and the references are never the thing being changed. Go decides which
@@ -320,11 +320,11 @@ paths:
         (the `minLength: 1` that once closed it is not legal under strict
         `json_schema`), and skillpkg reports it as a blocking finding, which
         is where 02:GEN-003 wants it. `license` is absent from GeneratedSkill for the
-        same reason: ADR-046 決策 5 forbids the generator from emitting one, and
+        same reason: the rule against a model-declared licence forbids the generator from emitting one, and
         a prohibition that lives only in a prompt is a prohibition that holds
         until the next prompt revision (03:GEN-001 asks for it on the schema).
 
-        Model defaults to the mini tier (ADR-051): measured 19/20 against
+        Model defaults to the mini tier: measured 19/20 against
         flagship's 16/20 and 21x cheaper, because failures land on frontmatter
         keys and mini writes 3.5x fewer tokens, so it has less surface to
         damage. It also wrote no scripts at all in twenty attempts - whether
@@ -362,7 +362,7 @@ paths:
             Gateway error, or the model returned unusable output. Truncation
             (`finish_reason: length`) arrives here and is NOT retried: the cap
             covers reasoning plus output and a second call at the same cap buys
-            the same answer (ADR-047 決策 2, corrected by the B round - the round
+            the same answer (corrected by the B round - the round
             A failure spent all 8000 tokens on reasoning and emitted an empty
             string).
           content:
@@ -431,7 +431,7 @@ paths:
           schema: {type: string, minLength: 1}
       summary: One bounded LangGraph creation step reconstructed from a Go snapshot
       description: |
-        ADR-067. Returns proposals or tool intentions only. Go owns confirmation,
+        Returns proposals or tool intentions only. Go owns confirmation,
         budgets, persistence and tool execution. No Python checkpoint or queue.
         Diagram bytes are transient and must never enter a durable job payload.
       requestBody:
@@ -635,7 +635,7 @@ components:
     EnrichSkillResponse:
       type: object
       description: |
-        ADR-013 enrichment whitelist only. No trust, risk, safety or quality
+        The intent-search enrichment whitelist only. No trust, risk, safety or quality
         field may be added here.
 
         `checks` is not an exception to that sentence and is worth saying why.
@@ -652,7 +652,7 @@ components:
 
             Advisory. This service reports; whether a finding blocks an index,
             downgrades a field or merely annotates it is the control plane's
-            decision (ADR-016 rule 2). An empty array means every rule that can
+            decision. An empty array means every rule that can
             be checked without a model passed - NOT that the enrichment is
             right, because the rules that need one (restated modality,
             neighbouring capabilities, composing two stated facts, the locale
@@ -711,7 +711,7 @@ components:
           description: |
             What the document itself states the Skill does not do, or requires
             in order to work (DISC-003 一般模式「限制」). Restatement only: it
-            stays inside the ADR-013 whitelist because it reports what the
+            stays inside the intent-search enrichment whitelist because it reports what the
             content says, exactly like `summary` does. A limitation the model
             infers, and any judgement of risk, safety or quality, is out of
             scope and belongs to the static scan or to a human reviewer. Empty
@@ -734,7 +734,7 @@ components:
             Recorded for the reason `model` and `prompt_version` are recorded.
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
-            explained it: ADR-026 makes a verdict name its own ruler, and
+            explained it: the rule that a verdict must name its own ruler, and
             sampling was the part of the ruler nobody wrote down. Optional
             because it is additive - absent means a build that predates the
             pinning, not a call that was unpinned by choice.
@@ -748,7 +748,7 @@ components:
             Sampling is pinned on the mini tier and nowhere else. Which tiers
             drop it is the gateway's answer, not this service's guess -
             `GET /model/info` returns each model's `additional_drop_params` to
-            any Virtual Key. See ADR-026's 2026-08-30 addendum and 05 R-31.
+            any Virtual Key. See 05 R-31.
         seed:
           type: ["integer", "null"]
           description: |
@@ -1016,7 +1016,7 @@ components:
       description: |
         An aggregate, not the event stream. Go selects and truncates before
         sending; this service never receives a Run's full trace and has no way to
-        ask for one (ADR-009: Evaluation reads through a low-privilege interface).
+        ask for one: evaluation reads through a low-privilege interface.
         The bound is structural - `entries` is capped - rather than a promise the
         caller is trusted to keep.
 
@@ -1104,9 +1104,9 @@ components:
         run_id:
           type: string
           description: |
-            The platform Run id (ADR-004: permanent identity, never a provider's
+            The platform Run id (permanent identity, never a provider's
             temporary one). Forwarded to the gateway as metadata so the spend
-            lands on the right Run (ADR-017), and used in no other way - this
+            lands on the right Run, and used in no other way - this
             service has no database to look it up in and no workspace to scope it
             to. It carries correlation, never authority.
         evaluation_id:
@@ -1298,7 +1298,7 @@ components:
         a consumer must render that as unreported rather than as zero (the same
         rule the trace usage event's `cost_usd` carries). The authoritative ledger
         is still the gateway's own per-key spend; this is the per-call reading of
-        it (ADR-017).
+        it.
       additionalProperties: false
       required: [prompt_tokens, completion_tokens]
       properties:
@@ -1357,7 +1357,7 @@ components:
             Recorded for the reason `model` and `prompt_version` are recorded.
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
-            explained it: ADR-026 makes a verdict name its own ruler, and
+            explained it: the rule that a verdict must name its own ruler, and
             sampling was the part of the ruler nobody wrote down. Optional
             because it is additive - absent means a build that predates the
             pinning, not a call that was unpinned by choice.
@@ -1371,7 +1371,7 @@ components:
             Sampling is pinned on the mini tier and nowhere else. Which tiers
             drop it is the gateway's answer, not this service's guess -
             `GET /model/info` returns each model's `additional_drop_params` to
-            any Virtual Key. See ADR-026's 2026-08-30 addendum and 05 R-31.
+            any Virtual Key. See 05 R-31.
         seed:
           type: ["integer", "null"]
           description: |
@@ -1480,7 +1480,7 @@ components:
         damaged.
 
         `license` is deliberately absent and `additionalProperties: false`
-        keeps it that way: ADR-046 決策 5 rules that a model-written licence
+        keeps it that way: the rule is that a model-written licence
         string must not occupy the "已宣告" state, which means someone declared
         it. The user declares it afterwards or it stays unknown.
 
@@ -1492,7 +1492,7 @@ components:
         contract's statement of the cap; the Pydantic class the model's schema is derived
         from carries none of them, and apps/llm checks the answer against them
         instead (`_over_cap`, and the empty-body refusal) - checks, not clips:
-        an answer over a cap is refused as malformed, never edited (ADR-047
+        an answer over a cap is refused as malformed, never edited (
         決策 1). `metadata` was dropped rather than relaxed: an open-ended
         string map is `additionalProperties: {"type": "string"}`, which strict
         cannot express at all, and no prompt ever asked the model to fill it.
@@ -1552,7 +1552,7 @@ components:
             produced none in twenty attempts. Scripts here get the same
             treatment as an imported package's: static scan, SKILL-003
             disclosure, sandbox-only execution. No leniency for being
-            platform-generated (ADR-046 決策 6).
+            platform-generated.
 
     GeneratedFile:
       type: object
@@ -1585,7 +1585,7 @@ components:
         service's own. All three are stored as the generated version's
         provenance (02:GEN-002), and that record has to reproduce the package
         sitting in the workspace - which is why Go does not edit these bytes
-        before packaging (ADR-047 決策 1).
+        before packaging.
       properties:
         skill:
           $ref: "#/components/schemas/GeneratedSkill"
@@ -1603,7 +1603,7 @@ components:
             Recorded for the reason `model` and `prompt_version` are recorded.
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
-            explained it: ADR-026 makes a verdict name its own ruler, and
+            explained it: the evaluation-verdict trust boundary makes a verdict name its own ruler, and
             sampling was the part of the ruler nobody wrote down. Optional
             because it is additive - absent means a build that predates the
             pinning, not a call that was unpinned by choice.
@@ -1617,7 +1617,7 @@ components:
             Sampling is pinned on the mini tier and nowhere else. Which tiers
             drop it is the gateway's answer, not this service's guess -
             `GET /model/info` returns each model's `additional_drop_params` to
-            any Virtual Key. See ADR-026's 2026-08-30 addendum and 05 R-31.
+            any Virtual Key. See the evaluation-verdict trust boundary's 2026-08-30 addendum and 05 R-31.
         seed:
           type: ["integer", "null"]
           description: |
@@ -1630,7 +1630,7 @@ components:
             What the generation cost at the gateway. Measured median for a mini
             generation is about $0.0055; the quota is charged per generation and
             not per call, so a retry does not double it and a failure costs the
-            user nothing (ADR-047 決策 2).
+            user nothing.
 
     SuggestImprovementsRequest:
       type: object
@@ -1642,7 +1642,7 @@ components:
       properties:
         evaluation_id:
           type: string
-          description: Gateway metadata for cost attribution (ADR-017). Carries no authority.
+          description: Gateway metadata for cost attribution. Carries no authority.
         evaluation_digest:
           type: string
           minLength: 1
@@ -1751,7 +1751,7 @@ components:
             Recorded for the reason `model` and `prompt_version` are recorded.
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
-            explained it: ADR-026 makes a verdict name its own ruler, and
+            explained it: the evaluation-verdict trust boundary makes a verdict name its own ruler, and
             sampling was the part of the ruler nobody wrote down. Optional
             because it is additive - absent means a build that predates the
             pinning, not a call that was unpinned by choice.
@@ -1765,7 +1765,7 @@ components:
             Sampling is pinned on the mini tier and nowhere else. Which tiers
             drop it is the gateway's answer, not this service's guess -
             `GET /model/info` returns each model's `additional_drop_params` to
-            any Virtual Key. See ADR-026's 2026-08-30 addendum and 05 R-31.
+            any Virtual Key. See the evaluation-verdict trust boundary's 2026-08-30 addendum and 05 R-31.
         seed:
           type: ["integer", "null"]
           description: |

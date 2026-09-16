@@ -251,7 +251,7 @@ class Skill(BaseModel):
 class JudgeRunRequest(BaseModel):
     run_id: str = Field(
         ...,
-        description="The platform Run id (ADR-004: permanent identity, never a provider's\ntemporary one). Forwarded to the gateway as metadata so the spend\nlands on the right Run (ADR-017), and used in no other way - this\nservice has no database to look it up in and no workspace to scope it\nto. It carries correlation, never authority.\n",
+        description="The platform Run id (permanent identity, never a provider's\ntemporary one). Forwarded to the gateway as metadata so the spend\nlands on the right Run, and used in no other way - this\nservice has no database to look it up in and no workspace to scope it\nto. It carries correlation, never authority.\n",
     )
     evaluation_id: str = Field(
         ...,
@@ -393,7 +393,7 @@ class JudgeRunResponse(BaseModel):
     )
     temperature: float | None = Field(
         None,
-        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: ADR-026 makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See ADR-026\'s 2026-08-30 addendum and 05 R-31.\n',
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the rule that a verdict must name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See 05 R-31.\n',
     )
     seed: int | None = Field(
         None,
@@ -452,8 +452,7 @@ class GeneratedFile(BaseModel):
 
 class SuggestImprovementsRequest(BaseModel):
     evaluation_id: str = Field(
-        ...,
-        description='Gateway metadata for cost attribution (ADR-017). Carries no authority.',
+        ..., description='Gateway metadata for cost attribution. Carries no authority.'
     )
     evaluation_digest: constr(min_length=1, max_length=20000) = Field(
         ...,
@@ -506,7 +505,7 @@ class SuggestImprovementsResponse(BaseModel):
     prompt_version: str
     temperature: float | None = Field(
         None,
-        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: ADR-026 makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See ADR-026\'s 2026-08-30 addendum and 05 R-31.\n',
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the evaluation-verdict trust boundary makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See the evaluation-verdict trust boundary\'s 2026-08-30 addendum and 05 R-31.\n',
     )
     seed: int | None = Field(
         None,
@@ -610,7 +609,7 @@ class EmbedResponse(BaseModel):
 class EnrichSkillResponse(BaseModel):
     checks: list[Check] | None = Field(
         None,
-        description="Deterministic findings on this enrichment, checked against the\nsource document without a model call (05 R-34).\n\nAdvisory. This service reports; whether a finding blocks an index,\ndowngrades a field or merely annotates it is the control plane's\ndecision (ADR-016 rule 2). An empty array means every rule that can\nbe checked without a model passed - NOT that the enrichment is\nright, because the rules that need one (restated modality,\nneighbouring capabilities, composing two stated facts, the locale\ngloss) are not attempted here and are still carried by the prompt\nalone.\n\nAdditive: absent means a build that predates these checks, not an\nenrichment that passed them.\n",
+        description="Deterministic findings on this enrichment, checked against the\nsource document without a model call (05 R-34).\n\nAdvisory. This service reports; whether a finding blocks an index,\ndowngrades a field or merely annotates it is the control plane's\ndecision. An empty array means every rule that can\nbe checked without a model passed - NOT that the enrichment is\nright, because the rules that need one (restated modality,\nneighbouring capabilities, composing two stated facts, the locale\ngloss) are not attempted here and are still carried by the prompt\nalone.\n\nAdditive: absent means a build that predates these checks, not an\nenrichment that passed them.\n",
     )
     summary: str = Field(
         ...,
@@ -620,7 +619,7 @@ class EnrichSkillResponse(BaseModel):
     tags: SkillTags
     limitations: list[str] = Field(
         ...,
-        description='What the document itself states the Skill does not do, or requires\nin order to work (DISC-003 一般模式「限制」). Restatement only: it\nstays inside the ADR-013 whitelist because it reports what the\ncontent says, exactly like `summary` does. A limitation the model\ninfers, and any judgement of risk, safety or quality, is out of\nscope and belongs to the static scan or to a human reviewer. Empty\nwhen the document states none.\n',
+        description='What the document itself states the Skill does not do, or requires\nin order to work (DISC-003 一般模式「限制」). Restatement only: it\nstays inside the intent-search enrichment whitelist because it reports what the\ncontent says, exactly like `summary` does. A limitation the model\ninfers, and any judgement of risk, safety or quality, is out of\nscope and belongs to the static scan or to a human reviewer. Empty\nwhen the document states none.\n',
     )
     model: str = Field(..., description='Model that generated the fields above.')
     prompt_version: str = Field(
@@ -628,7 +627,7 @@ class EnrichSkillResponse(BaseModel):
     )
     temperature: float | None = Field(
         None,
-        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: ADR-026 makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See ADR-026\'s 2026-08-30 addendum and 05 R-31.\n',
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the rule that a verdict must name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See 05 R-31.\n',
     )
     seed: int | None = Field(
         None,
@@ -706,7 +705,7 @@ class GeneratedSkill(BaseModel):
     )
     files: list[GeneratedFile] = Field(
         ...,
-        description="Additional package files. Optional and often absent - the mini tier\nproduced none in twenty attempts. Scripts here get the same\ntreatment as an imported package's: static scan, SKILL-003\ndisclosure, sandbox-only execution. No leniency for being\nplatform-generated (ADR-046 決策 6).\n",
+        description="Additional package files. Optional and often absent - the mini tier\nproduced none in twenty attempts. Scripts here get the same\ntreatment as an imported package's: static scan, SKILL-003\ndisclosure, sandbox-only execution. No leniency for being\nplatform-generated.\n",
         max_length=10,
     )
 
@@ -717,7 +716,7 @@ class GenerateSkillResponse(BaseModel):
     prompt_version: str
     temperature: float | None = Field(
         None,
-        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: ADR-026 makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See ADR-026\'s 2026-08-30 addendum and 05 R-31.\n',
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the evaluation-verdict trust boundary makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See the evaluation-verdict trust boundary\'s 2026-08-30 addendum and 05 R-31.\n',
     )
     seed: int | None = Field(
         None,
@@ -725,7 +724,7 @@ class GenerateSkillResponse(BaseModel):
     )
     usage: GatewayUsage | None = Field(
         None,
-        description='What the generation cost at the gateway. Measured median for a mini\ngeneration is about $0.0055; the quota is charged per generation and\nnot per call, so a retry does not double it and a failure costs the\nuser nothing (ADR-047 決策 2).\n',
+        description='What the generation cost at the gateway. Measured median for a mini\ngeneration is about $0.0055; the quota is charged per generation and\nnot per call, so a retry does not double it and a failure costs the\nuser nothing.\n',
     )
 
 

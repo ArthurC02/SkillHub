@@ -15,7 +15,7 @@
 
 > **沒有機器守的章節會安靜地過期。** 本檔曾經在寫完二十幾分鐘內就失準——另一批把生成入口掛上了兩個畫面，而 §7 還在說它不存在，當時沒有任何東西會 FAIL。§2.4 與上面那幾項比對就是為了這件事加的。
 
-產品領域語言與價值流的定義在 [ADR-038](../adr/ADR-038-platform-product-domain-language-and-value-stream-navigation.md) §2；本檔用它的價值流當第一層分組，而不是用 `/workspace` 與 `/lab` 這兩個現行網址前綴——**那兩個前綴本身就是本檔第一個要記的問題**（§5 IA-2）。
+產品領域語言與價值流的定義在 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)；本檔用它的價值流當第一層分組，而不是用 `/workspace` 與 `/lab` 這兩個現行網址前綴——**那兩個前綴本身就是本檔第一個要記的問題**（§5 IA-2）。
 
 ---
 
@@ -28,14 +28,14 @@
 ### 0.1 七條
 
 **R1. 一個位址回答一個問題。**
-出處：[ADR-025](../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)（Run 終態與 Evaluation 判定是兩件事）＋ ADR-038 §3 規則 2（兩者各有產品名）。
+出處：[評估判定與 Judge 信任邊界](../adr/README.md#評估判定與-judge-信任邊界)（Run 終態與 Evaluation 判定是兩件事）＋ 命名規則（兩者各有產品名）。
 一個畫面可以顯示很多東西，但**它的位址只能是一個答案的位址**。判準是使用者把網址貼給別人時，對方以為會看到什麼。
 機器：**沒有**（判斷題）。現行違規：IA-3。
 
 **R2. 單筆位址由「它是什麼」決定，清單位址由「誰在問」決定。**
 出處：WS-006（存在是私密的）＋鐵律 3（Workspace Scope 由伺服器決定，不信任 UI）。
 - **單筆**：`/<複數名詞>/<id>`，**不掛在 `/workspace` 底下**。同一個 id 對擁有者與對訪客是同一份東西，差別在可見的欄位，不在位址。
-- **清單**：掛在提問者的位置——`/workspace/*` 是「我的東西」，`/lab/*` 是「我要跑一次試跑時需要的東西」，`/admin/*` 是「我是 operator 時要處理的事」（[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 6）。**這是「誰在問」第一次由角色決定、不是由帳號決定**：同一個帳號，`GET /me` 的 `operator` 翻了值，眼前就多一組位址。`/admin/*` 底下沒有單筆位址——找帳號、找 Skill 都是清單頁上的查詢，不是 `$id` 路徑段，所以單筆那一條不受影響。
+- **清單**：掛在提問者的位置——`/workspace/*` 是「我的東西」，`/lab/*` 是「我要跑一次試跑時需要的東西」，`/admin/*` 是「我是 operator 時要處理的事」（[營運後台](../adr/README.md#營運後台)）。**這是「誰在問」第一次由角色決定、不是由帳號決定**：同一個帳號，`GET /me` 的 `operator` 翻了值，眼前就多一組位址。`/admin/*` 底下沒有單筆位址——找帳號、找 Skill 都是清單頁上的查詢，不是 `$id` 路徑段，所以單筆那一條不受影響。
 - **根層**只留不屬於任何人的東西（`/`、`/policy`）與跨物件的操作（`/compare`）。
 
 機器：**有**（`ia.test.ts`）。偏離見 §0.2。
@@ -47,23 +47,23 @@
 
 **R4. 「你在看哪一份東西」進網址，「你偏好怎麼看」不進。**
 出處：現行 `router.tsx` 的 `validateSearch` 實際遵守的判準，見 §4。
-機器：**沒有**。現行爭議：IA-4（閱讀模式該歸哪一邊，`05` 待裁定）。<br>（[ADR-065](../adr/ADR-065-hot-path-text-budget-and-the-fourth-disclosure-mechanism.md) 決策 3、6）：Tip 的開合與 `<details>` 的開合同屬「你偏好怎麼看」，**不進網址**；「記住已讀」若被裁定要做（`05` R-42 (a)），它的狀態也只能住在瀏覽器裡，不能住在網址裡——一個貼出去的連結對收件人不得少一段文字。
+機器：**沒有**。現行爭議：IA-4（閱讀模式該歸哪一邊，`05` 待裁定）。<br>（[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)）：Tip 的開合與 `<details>` 的開合同屬「你偏好怎麼看」，**不進網址**；「記住已讀」若被裁定要做（`05` R-42 (a)），它的狀態也只能住在瀏覽器裡，不能住在網址裡——一個貼出去的連結對收件人不得少一段文字。
 
 **R5. 標題要說出這一頁回答什麼，不用容器詞。**
-出處：ADR-038 §3 規則 2、規則 5。
+出處：[Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map) 的命名規則。
 **「詳情」「管理」「中心」這類容器詞不是名字**——它們是「我還沒決定這一頁在回答什麼」的另一種寫法，所以 R5 與 R1 總是一起被違反。
 
-> **R5 不是要求把 `Run` 翻成「試跑」。** ADR-038 §3 規則 2 定的是**概念的中文名**，沒有禁止英文術語，而 AGENTS.md 的慣例本來就保留 `Run`。**「Run 歷史」沒有問題，「Run 詳情」有問題**，而有問題的是後半不是前半。
+> **R5 不是要求把 `Run` 翻成「試跑」。** 命名規則定的是**概念的中文名**，沒有禁止英文術語，而 AGENTS.md 的慣例本來就保留 `Run`。**「Run 歷史」沒有問題，「Run 詳情」有問題**，而有問題的是後半不是前半。
 
 機器：**沒有**。IA-8（`/lab/datasets` 的 `上傳 Dataset`）與 IA-3（`Run 詳情`）都已修正。
 
 **R6. 一個入口是否出現，可以是旗標；但旗標本身必須寫在 §2.4。**
-出處：[ADR-052](../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)（開工不等於曝光）。
+出處：[從描述生成 Skill](../adr/README.md#從描述生成-skill)（開工不等於曝光）。
 **旗標後面的入口不新增路由、也可能不新增任何連結**，所以純看網址的檢查抓不到它——這是本檔學費最貴的一課（§7）。
 機器：**有**（每一個 `features?.<name>` 的使用點都要在 §2.4 出現）。
 
 **R7. 導覽列只放「我的東西」，產品能力不進導覽列。**
-出處：**產品負責人裁定「探索不進導覽列」**（IA-1）＋ [ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md) 決策 7（生成入口不與搜尋等重）。兩個各自獨立的決定指向同一個判準，所以它是規則不是個案。
+出處：**產品負責人裁定「探索不進導覽列」**（IA-1）＋ [從描述生成 Skill](../adr/README.md#從描述生成-skill)（生成入口不與搜尋等重）。兩個各自獨立的決定指向同一個判準，所以它是規則不是個案。
 判準：**導覽列的每一項都必須是 R2 意義下的清單位址**（`/workspace/` 或 `/lab/` 底下）。探索與生成不是「一個你去的地方」，是**產品本身在做的事**——把它們放成六選一，等於說它們是六個並列的選項。
 推論（不是新提案，是這條規則的直接結果）：**`/` 的入口就是產品標題**，而那一頁本來就只有搜尋（`h1 用一句話描述你的任務` ＋ 表單 ＋ 結果）。點產品名回到產品的核心動作，是這個形狀該有的樣子。
 機器：**有**（`ia.test.ts` 比對導覽列每一項的前綴）。
@@ -86,7 +86,7 @@
 
 `__outlines__/` 的快照份數多於位址數，而這不是矛盾（份數以 §6 為準）：`/` 有帶查詢與不帶查詢兩種、`/runs/$runId` 的兩種閱讀模式各存一份快照、還有一個不是路由的回報問題面板，**以及非成功態與目錄態各自存一份**（例如 `workspace-skills-401`、`lab-run-loading`、`workspace-runs-empty`、`回報問題-驗證訊息`）。**快照認得的狀態比網址多**，這件事本身是 §5 IA-4。
 
-| 位址 | 頁面元件 | 需求 ID（見表下訂正） | ADR-038 價值流／產品領域 |
+| 位址 | 頁面元件 | 需求 ID（見表下訂正） | 價值流／產品領域 |
 | --- | --- | --- | --- |
 | `/` | `Home` | DISC | Skill 生命週期／**Skill 探索** |
 | `/compare` | `Compare` | DISC-009 | Skill 生命週期／Skill 探索 |
@@ -95,7 +95,7 @@
 | `/skills/$skillId/package` | `Packaging` | 02:PACK-001／002 | Skill 生命週期／**Skill 交付與安裝** |
 | `/workspace/import` | `ImportSkill` | SKILL、SEC | Skill 生命週期／**Skill 接納與信任** |
 | `/workspace/skills` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | 創作者空間／創作者帳戶與工作區 |
-| `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[ADR-067](../adr/ADR-067-interactive-skill-creation-with-langgraph.md)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |
+| `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[互動創作](../adr/README.md#互動創作)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |
 | `/workspace/runs` | `WorkspaceRuns` | 02:WS-002 第 1 條／WS-004 | 試跑與改善／Skill 試跑執行 |
 | `/workspace/downloads` | `Downloads` | 02:WS-002／WS-004 | Skill 生命週期／Skill 交付與安裝 |
 | `/workspace/account` | `WorkspaceAccount` | CORE-007／02:SEC-006 | 創作者空間／創作者帳戶與工作區 |
@@ -113,15 +113,15 @@
 | `/admin/rosters` | `AdminRosters` | 02:OPS-005 | 產品營運／**營運後台** |
 | `/admin/audit-log` | `AdminAuditLog` | 02:OPS-006 | 產品營運／**營運後台** |
 | `/admin/cost-statistics` | `AdminCostStatistics` | 02:OPS-007 | 產品營運／**營運後台** |
-| `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔圖表見 [ADR-076](../adr/ADR-076-backoffice-charts-use-chartjs-and-show-only-aggregates.md) 決策 4〕 |
+| `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔圖表見 [營運後台](../adr/README.md#營運後台)〕 |
 
-> **營運後台是組裝層，不是 Bounded Context**（[ADR-074](../adr/ADR-074-the-backoffice-is-an-operator-only-section-of-the-same-app.md) 決策 7）——上表 `/admin/*` 那幾列的「價值流／Bounded Context」欄寫的是它服務的價值流。
+> **營運後台是組裝層，不是 Bounded Context**（[營運後台](../adr/README.md#營運後台)）——上表 `/admin/*` 那幾列的「價值流／Bounded Context」欄寫的是它服務的價值流。
 >
 > **這一欄只記在本表。** 全 repo 註解清理拿掉了 `router.tsx` 逐路由的需求 ID 註解，路由與需求 ID 的對照今天只剩這裡，**沒有第二個作者，也沒有機器**——改路由時要自己回來改這一格。
 >
 > **這一欄沒有機器**（§6：`ia.test.ts` 只比對位址那一欄）。
 
-**沒有位址的區塊一個**：[`EvaluationPanel.tsx`](../../apps/web/src/features/runs/evaluation/EvaluationPanel.tsx)（全 app 最大的幾個檔案之一）。它長在 `/runs/$runId` 裡；沒有位址就不是頁面，所以它不是 `*.page.tsx`，而是 runs 這個 feature 裡的元件（[ADR-082](../adr/ADR-082-frontend-features-own-their-pages-sub-components-and-services.md)）。它原本兼供的 `RUN_STATUS_LABEL` 搬到了 `features/runs/runs.model.ts`。詳見 §5 IA-3。
+**沒有位址的區塊一個**：[`EvaluationPanel.tsx`](../../apps/web/src/features/runs/evaluation/EvaluationPanel.tsx)（全 app 最大的幾個檔案之一）。它長在 `/runs/$runId` 裡；沒有位址就不是頁面，所以它不是 `*.page.tsx`，而是 runs 這個 feature 裡的元件（[前端架構與樣式分層](../adr/README.md#前端架構與樣式分層)）。它原本兼供的 `RUN_STATUS_LABEL` 搬到了 `features/runs/runs.model.ts`。詳見 §5 IA-3。
 
 **深度最多三層**（`/skills/$id/package`），沒有一條路由需要記住兩個以上的 id。
 
@@ -185,15 +185,15 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 | 旗標 | 來源 | 出現在 | 不出現在 |
 | --- | --- | --- | --- |
-| `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/features/creation/generate.service.ts)） | 搜尋的 `no_results` 空狀態、`/workspace/skills` 清單 | **搜尋框旁邊**——ADR-046 決策 7 把「先搜尋、搜不到再生成」定為產品主張，一個等重的入口說的是相反的話 |
+| `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/features/creation/generate.service.ts)） | 搜尋的 `no_results` 空狀態、`/workspace/skills` 清單 | **搜尋框旁邊**——[從描述生成 Skill](../adr/README.md#從描述生成-skill) 把「先搜尋、搜不到再生成」定為產品主張，一個等重的入口說的是相反的話 |
 | `creation_skill` | `GET /me` 的 `features`；`WorkspaceSkills` 讀取 | `/workspace/skills#create` 內的互動創作，仍須 `generate_skill` 同時開啟；三種素材共用會話 | 首頁、未啟用部署與封測曝光限制中的使用者；預設關閉 |
-| `clean_mode` | `GET /me` 的 `features`（[`useCleanMode`](../../apps/web/src/core/session/me.service.ts)） | 每一頁 `<main>` 的第一個元素（[`CleanModeNotice`](../../apps/web/src/app/shell/CleanModeNotice.tsx)，掛在 `router.tsx` 的 `RootLayout`） | 匿名訪客的畫面——`GET /me` 要求 session，`/` 與 `/skills/$id` 未登入可見，PORT-003 今天只對已登入者成立（ADR-060 待決策 1 待敲定） |
+| `clean_mode` | `GET /me` 的 `features`（[`useCleanMode`](../../apps/web/src/core/session/me.service.ts)） | 每一頁 `<main>` 的第一個元素（[`CleanModeNotice`](../../apps/web/src/app/shell/CleanModeNotice.tsx)，掛在 `router.tsx` 的 `RootLayout`） | 匿名訪客的畫面——`GET /me` 要求 session，`/` 與 `/skills/$id` 未登入可見，PORT-003 今天只對已登入者成立（[淨測試模式](../adr/README.md#淨測試模式) 待決策 1 待敲定） |
 
 **`clean_mode` 這一列是揭露不是入口**：它不帶使用者去任何新地方，只是在已經看得到的畫面上多說一句「這個部署沒有什麼」——上面 `generate_skill` 那一列的「出現在／不出現在」欄位問的是「使用者能不能從這裡走到一個新功能」，這一列的欄位問的是「使用者能不能看到這句話」，兩者是不同的問題，讀這張表時不要用入口的規矩讀這一列。
 
 **`operator` 不是一個旗標**。`/admin/*` 的入口以 `GET /me` 的**頂層** `operator` 欄位分岔，不經過 `features`：它回答的是「你是誰」，不是「這個部署開了什麼」，所以它不在上面那張表，也不在 `ia.test.ts` 掃 `features?.` 的範圍裡；它的規則在 §0.1 R2。前端的判斷只決定畫不畫，**擋人的是每一條 `/admin/...` 端點各自的 `RequireOperator`**——member 直接打網址，看到的是與不存在的網址同一頁（`RouteNotFound`）。
 
-**旗標從 `GET /me` 讀，不是 build 時的常數**，而這是 ADR-052 那條邊界唯一守得住的形狀：同一份 build 要同時服務看得到與看不到的兩群人。理由：**封測受測者一旦遇到「搜不到 → 生成一個」，`01` §11.2 漏斗第一段量到的就是另一件事，而那個數字只有一次機會、十二個人。**
+**旗標從 `GET /me` 讀，不是 build 時的常數**，而這是[從描述生成 Skill](../adr/README.md#從描述生成-skill) 那條邊界唯一守得住的形狀：同一份 build 要同時服務看得到與看不到的兩群人。理由：**封測受測者一旦遇到「搜不到 → 生成一個」，`01` §11.2 漏斗第一段量到的就是另一件事，而那個數字只有一次機會、十二個人。**
 
 ---
 
@@ -221,9 +221,9 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 ## 3. 命名
 
-> **訂正：本節初版標題是「三套用語同時在跑」，那是一個誤會。** 沒有第三套。ADR-038 §3 規則 2 定的是**概念的中文名**（「試跑」是一次 Run），它沒有禁止在畫面上用 `Run` 這個字，而 AGENTS.md 的慣例本來就保留它。把「UI 用 Run、文件用試跑」寫成用語衝突，是把**翻譯**當成了**分類**。
+> **訂正：本節初版標題是「三套用語同時在跑」，那是一個誤會。** 沒有第三套。命名規則定的是**概念的中文名**（「試跑」是一次 Run），它沒有禁止在畫面上用 `Run` 這個字，而 AGENTS.md 的慣例本來就保留它。把「UI 用 Run、文件用試跑」寫成用語衝突，是把**翻譯**當成了**分類**。
 
-| 概念 | ADR-038 §3 的中文名 | UI 用什麼 | 合規 |
+| 概念 | 受控中文名 | UI 用什麼 | 合規 |
 | --- | --- | --- | --- |
 | 一次 Run | 試跑 | `Run 歷史`／`Run 結果`／`Run 比較` | ✅ `Run` 是保留術語，三個標題都說出了自己回答什麼 |
 | Trace | 執行證據 | `執行紀錄`（`/runs/$id` 的 h2） | ✅ 是那一頁的一個區塊，不是一個位址 |
@@ -251,7 +251,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | `/lab/datasets` | `test_case` | 同上；目前沒有選單（DESIGN-007） |
 | `/lab/test-cases` | `skill`（須為 UUID） | 「此 Skill 的 Test Case」那條連結要的東西 |
 | `/runs/$id/compare` | `against` | EVAL-003：對照的另一次 Run 在網址裡，比較才能被連結 |
-| `/runs/$id` | `evaluation`、`events` | **這一格曾經寫「無」而且從來沒有更新過。** 一般／進階模式確實不在網址上（IA-4 的裁定，R4），但那不代表這一條路由沒有 search param——它有兩個，而且兩個都是 R4 的另一半「你在看哪一份東西」：`evaluation` 指名這次 Run 的某一份不可變判定（ADR-003／026；沒有它，被取代的舊判定連不出去，而重新評估過的 Run 的「目前判定」是另一個判定），`events` 是進階 Trace 的游標堆疊，讓事件流的第 7 頁貼得出去也撐得過重新整理。<br>**這一格是本節補上機器的直接原因**：文件說「無」，程式說「兩個」，而在那之前沒有任何東西會 FAIL |
+| `/runs/$id` | `evaluation`、`events` | **這一格曾經寫「無」而且從來沒有更新過。** 一般／進階模式確實不在網址上（IA-4 的裁定，R4），但那不代表這一條路由沒有 search param——它有兩個，而且兩個都是 R4 的另一半「你在看哪一份東西」：`evaluation` 指名這次 Run 的某一份不可變判定（[資料所有權與核心基礎設施](../adr/README.md#資料所有權與核心基礎設施)／[評估判定與 Judge 信任邊界](../adr/README.md#評估判定與-judge-信任邊界)；沒有它，被取代的舊判定連不出去，而重新評估過的 Run 的「目前判定」是另一個判定），`events` 是進階 Trace 的游標堆疊，讓事件流的第 7 頁貼得出去也撐得過重新整理。<br>**這一格是本節補上機器的直接原因**：文件說「無」，程式說「兩個」，而在那之前沒有任何東西會 FAIL |
 | `/admin/skills` | `q` | 你在治理哪一個 Skill（`02:OPS-004`）：一個 UUID 就是那一個，其他字串是名稱片段；清單上「處理這一個」把 `q` 換成那個 UUID，所以處理中的那一個可以連結、撐得過重新整理 |
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
 
@@ -275,7 +275,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 **這不是「維持現狀」，是一個定位**：探索不是一個你去的地方，是產品本身在做的事。導覽列上現有的五項全部是**你自己的東西**（我的 Skill、Run 歷史、匯入、Test Case、下載紀錄），把探索放進去等於把它降成六選一。
 
-**同一個判準此前已經被用過一次**：[ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md) 決策 7 拒絕把生成入口放在搜尋框旁邊，理由是「一個等重的入口說的是相反的話」。兩個獨立的決定指向同一件事，所以它升成 **§0.1 R7**。
+**同一個判準此前已經被用過一次**：[從描述生成 Skill](../adr/README.md#從描述生成-skill) 拒絕把生成入口放在搜尋框旁邊，理由是「一個等重的入口說的是相反的話」。兩個獨立的決定指向同一件事，所以它升成 **§0.1 R7**。
 
 **本項提出的第二半（未登入的訪客在導覽列上看不到任何對他有意義的東西）不由這條裁定回答**——那是 IA-6 的範圍（登出狀態的資訊架構）。**已查核、裁定並落地：導覽列不變。** 對訪客而言那五項是邀請而不是謊言，**前提是抵達時誠實**——而在裁定之前抵達並不誠實（五個目的地全部把 `not authenticated` 印在畫面上）。**修的是抵達，不是導覽列**，而抵達現在有測試擋著。逐項見 IA-6。
 
@@ -316,7 +316,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 `no_results` 與 `filtered_out` 兩個空狀態的文案分別要求使用者「換個說法」與「放寬篩選」——**兩條都是要他再試一次搜尋**。
 
-- **`generate_skill` 開著時**：`no_results` 多一個生成入口，這一格有出口了，而且是 ADR-046 決策 7 指定的那個出口。
+- **`generate_skill` 開著時**：`no_results` 多一個生成入口，這一格有出口了，而且是[從描述生成 Skill](../adr/README.md#從描述生成-skill) 指定的那個出口。
 - **旗標關著時（今天封測的預設）**：仍然沒有出口。通往「自己匯入一個」的路只有導覽列——`/workspace/import` 的頁內入邊是 **0**（§2.3），而 `filtered_out` 那一格**兩種情況下都沒有出口**，因為生成入口只掛在 `no_results`。
 
 ~~也就是說這一項沒有被關掉，只是縮小到旗標關著的那一半，外加 `filtered_out` 那一格。~~
@@ -383,7 +383,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 ### IA-8 ✅ 已解決：一個地方，兩個心智模型
 
-~~`/lab/datasets` 的 `<h1>` 是「上傳 Dataset」~~ **08-24 改為「Dataset」**——網址是名詞複數（一個地方），標題現在也是；那一頁本來就同時列出既有的與收上傳，名詞蓋得住兩者（`guards/__outlines__/lab-datasets.txt` 同批更新）。`/workspace/import` 的同型問題**留著**：網址與導覽標籤都是動作，但它在 IA 上是 ADR-038「Skill 接納與信任」這一整段的入口——改它的網址是路由遷移不是改標題，收益配不上成本，記在這裡不排工。
+~~`/lab/datasets` 的 `<h1>` 是「上傳 Dataset」~~ **08-24 改為「Dataset」**——網址是名詞複數（一個地方），標題現在也是；那一頁本來就同時列出既有的與收上傳，名詞蓋得住兩者（`guards/__outlines__/lab-datasets.txt` 同批更新）。`/workspace/import` 的同型問題**留著**：網址與導覽標籤都是動作，但它在 IA 上是「Skill 接納與信任」這一整段的入口——改它的網址是路由遷移不是改標題，收益配不上成本，記在這裡不排工。
 
 ### IA-9 ✅ 已解決（補號當日結案）：`/workspace/import` 的第二條頁內入邊
 
@@ -475,7 +475,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | **§2.2 的頁內連結圖** | **沒有** | 一列都沒有，而 §2.1、§2.3、§2.4 各有機器——這是那一節唯一會無聲過期的一格，補記時它正好過期了三條邊（見 §2.2 的訂正） |
 | **反向連結的完整直方圖** | **沒有** | §2.3 的 0 與 1 兩列是機器守的；2 以上是同一次計算的輸出，但沒有斷言 |
 | **R1（一個位址一個答案）／R4（狀態該不該進網址）／R5（受控用語）** | **沒有** | 三條都是判斷題。R1 與 R5 的現行違規是 IA-3、IA-8；R4 的爭議是 IA-4 |
-| **命名與 ADR-038 受控用語一致** | **沒有** | §3 是手比的 |
+| **命名與受控用語一致** | **沒有** | §3 是手比的 |
 | **一個位址只回答一個問題** | **沒有** | IA-3 就是這樣長出來的 |
 | **登出狀態可達性** | **部分**：[`session.test.tsx`](../../apps/web/src/guards/session.test.tsx) | **IA-6 已裁定並落地**：不由 router 守衛，由 401 這個具名狀態自己說。守著的是共用元件本身、七個抵達點，以及一條「`not authenticated` 不得抵達畫面」的斷言。**新頁面仍然沒有棘輪**——沒有任何東西阻止下一個人在新頁面直接印 `error.message`；要那個得再加一條像 `design-system.test.ts` 第 16 條那樣掃 markup 的守衛 |
 | **新頁面該放哪個前綴** | **沒有** | IA-2 |
@@ -484,15 +484,15 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 ## 7. M5（GEN）：已經在畫面上，在一個旗標後面
 
-> **訂正：本節初版寫「在 IA 上目前不存在」，並把落點列為待裁定。兩件都已經不成立。** 初版寫於 21:02；`c387cad`（GEN-008 UI）在 21:24 把入口掛上去，而落點早在 [ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md) 決策 7 就裁定了。本檔沒查到那條決策，是本檔的漏，不是它沒被決定。
+> **訂正：本節初版寫「在 IA 上目前不存在」，並把落點列為待裁定。兩件都已經不成立。** 初版寫於 21:02；`c387cad`（GEN-008 UI）在 21:24 把入口掛上去，而落點早在 [從描述生成 Skill](../adr/README.md#從描述生成-skill) 就裁定了。本檔沒查到那條決策，是本檔的漏，不是它沒被決定。
 
 **現況**：兩個入口，都在 `generate_skill` 旗標後面（§2.4）——搜尋的 `no_results` 空狀態，以及 `/workspace/skills` 清單。**沒有新路由**，所以 §1 那張表一列都沒動。
 
 **已經定的三件事**：
 
-1. **落點是「搜不到再生成」，不是導覽列第六項。** ADR-046 決策 7 把「先搜尋、搜不到再生成」定為產品主張；元件刻意不放在搜尋框旁邊，因為**一個等重的入口說的是相反的話**。初版在這裡提的待裁定因此關閉。
+1. **落點是「搜不到再生成」，不是導覽列第六項。** [從描述生成 Skill](../adr/README.md#從描述生成-skill) 把「先搜尋、搜不到再生成」定為產品主張；元件刻意不放在搜尋框旁邊，因為**一個等重的入口說的是相反的話**。初版在這裡提的待裁定因此關閉。
 2. **產出物是一次匯入**（GEN-003），落在 Skill 生命週期的接納與信任 → Skill 資產與版本歷史，和 `/workspace/import` 同一段；`redistribution` 的第五個值 `generated` 是這件事在資料上的形狀。
-3. **曝光由 `GET /me` 的旗標控制，不是 build 常數。** 這是 [ADR-052](../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)「開工不等於曝光」唯一守得住的形狀，理由見 §2.4。
+3. **曝光由 `GET /me` 的旗標控制，不是 build 常數。** 這是[從描述生成 Skill](../adr/README.md#從描述生成-skill)「開工不等於曝光」唯一守得住的形狀，理由見 §2.4。
 
 ~~**IA 上還沒答案的一件**：`filtered_out` 那一格沒有生成入口，也沒有匯入入口（IA-5）。它和 `no_results` 是兩種不同的失敗，但**只有一種有出口**。~~ **（這一件有答案，而且答案在同一份文件上。）** §5 IA-5 於 08-24 **裁定為不加**：`filtered_out` 的定義是「符合的 Skill 存在、被篩選擋住」，清除篩選的按鈕**就是**那一格的出口；把人送去生成或匯入一個目錄裡已經有的東西，比沒有出口更壞。兩種失敗只有一種有**這種**出口是對的，不是缺口。
 
@@ -510,4 +510,4 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 互動創作不新增現況路由或旗標盤點。實作前需先依 §0 登記入口與連結；旅程應在私人 Workspace 內依序呈現澄清、流程圖理解／參考確認、brief、草稿、驗證或經授權試跑、最後保存。離開後恢復的是確認過的解析與草稿，不是原圖；公開散布須另行確認，不能成為保存的預設結果。
 
-依據：[ADR-067](../adr/ADR-067-interactive-skill-creation-with-langgraph.md)、[GEN-007～012](../plans/02-specifications-and-acceptance-criteria.md)。本節是互動創作允收；目前接線與證據見 [開發手冊](../development/interactive-creation.md)，不變更現有曝光限制。
+依據：[互動創作](../adr/README.md#互動創作)、[GEN-007～012](../plans/02-specifications-and-acceptance-criteria.md)。本節是互動創作允收；目前接線與證據見 [開發手冊](../development/interactive-creation.md)，不變更現有曝光限制。

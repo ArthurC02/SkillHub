@@ -123,7 +123,7 @@ test("the walk sees every zone and every role, so an empty scan cannot pass", ()
   ]);
 });
 
-test("ADR-082 決策 1: core, shared, features and app import only in the directions allowed", () => {
+test("決策 1: core, shared, features and app import only in the directions allowed", () => {
   const violations = edges()
     .filter(({ source, target, typeOnly }) => !mayImport(source, target, typeOnly))
     .map(({ source, from }) => `${source.path} → ${from}`);
@@ -136,7 +136,7 @@ test("ADR-082 決策 1: core, shared, features and app import only in the direct
   ).toEqual([]);
 });
 
-test("ADR-082 決策 2: a sub-component in components/ is used only by the folder that owns it", () => {
+test("決策 2: a sub-component in components/ is used only by the folder that owns it", () => {
   const violations = edges()
     .filter(({ target }) => target.includes("/components/"))
     .filter(({ source, target }) => {
@@ -151,7 +151,7 @@ test("ADR-082 決策 2: a sub-component in components/ is used only by the folde
   ).toEqual([]);
 });
 
-test("ADR-082 決策 2: a page is a route — only app/ imports a *.page.tsx, and it imports every one", () => {
+test("決策 2: a page is a route — only app/ imports a *.page.tsx, and it imports every one", () => {
   const pages = sources.filter((s) => isPage(s.path)).map((s) => s.path);
   expect(
     pages.filter((p) => !p.startsWith("features/")),
@@ -171,7 +171,7 @@ test("ADR-082 決策 2: a page is a route — only app/ imports a *.page.tsx, an
   ).toEqual([]);
 });
 
-test("ADR-082 決策 2: index.ts is only a list of what the feature offers", () => {
+test("決策 2: index.ts is only a list of what the feature offers", () => {
   const indexes = sources.filter((s) => isFeatureIndex(s.path));
   expect(indexes.length, "no feature index.ts found").toBeGreaterThan(2);
   const stray = indexes.flatMap((s) =>
@@ -185,7 +185,7 @@ test("ADR-082 決策 2: index.ts is only a list of what the feature offers", () 
   expect(stray, 'index.ts holds only `export { … } from "./…";` statements').toEqual([]);
 });
 
-test("ADR-082 決策 3: react-query lives in *.service.ts; outside them only the provider and types", () => {
+test("決策 3: react-query lives in *.service.ts; outside them only the provider and types", () => {
   const serviceImports = sources
     .filter((s) => isService(s.path))
     .flatMap((s) => importsOf(s.body))
@@ -209,7 +209,7 @@ test("ADR-082 決策 3: react-query lives in *.service.ts; outside them only the
   ).toEqual([]);
 });
 
-test("ADR-082 決策 3: a service draws nothing — no JSX file, no component import", () => {
+test("決策 3: a service draws nothing — no JSX file, no component import", () => {
   expect(
     sources.filter((s) => /\.service\.tsx$/.test(s.path)).map((s) => s.path),
     "a *.service.tsx",
@@ -224,7 +224,7 @@ test("ADR-082 決策 3: a service draws nothing — no JSX file, no component im
 
 const LITERAL_KEY = /queryKey:\s*\[|(?:set|get)QueryData(?:<[^>]*>)?\(\s*\[|getQueryState\(\s*\[/g;
 
-test("ADR-082 決策 3: every cache key is built by core/api/queryKeys.ts", () => {
+test("決策 3: every cache key is built by core/api/queryKeys.ts", () => {
   expect('invalidateQueries({ queryKey: ["x"] })').toMatch(LITERAL_KEY);
   expect('setQueryData<Session>(["x"], s)').toMatch(LITERAL_KEY);
   expect(
@@ -238,7 +238,7 @@ test("ADR-082 決策 3: every cache key is built by core/api/queryKeys.ts", () =
   expect(violations, "a hand-written cache key — add it to core/api/queryKeys.ts").toEqual([]);
 });
 
-test("ADR-082 決策 3: retry is decided once, in core/api/queryClient.ts", () => {
+test("決策 3: retry is decided once, in core/api/queryClient.ts", () => {
   const client = sources.find((s) => s.path === "core/api/queryClient.ts");
   expect(client?.body, "core/api/queryClient.ts moved").toMatch(/retry:\s*false/);
   expect(

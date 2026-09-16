@@ -63,8 +63,8 @@ export interface CatalogResponse {
      */
     total: number;
     /**
-     * True when the catalogue holds more than this page shows. ADR-042
-     * 決策 3: a truncated list must say so, or it reads as the whole answer.
+     * True when the catalogue holds more than this page shows.
+     * A truncated list must say so, or it reads as the whole answer.
      * 
      */
     truncated: boolean;

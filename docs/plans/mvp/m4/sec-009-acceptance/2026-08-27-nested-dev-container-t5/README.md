@@ -2,9 +2,9 @@
 
 ## ⛔ 這不是驗收，而且比 08-26 那一份離驗收更遠
 
-[ADR-022 §2](../../../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 把 **T5 歸在 Suite 2**，而 Suite 2 的受測物有一個定義：**即將加入池的那一台節點**，由生產同一份 IaC 建置、已套用生產的 nftables 與 dnsmasq。本次的「節點」是 Windows → Docker Desktop 的 WSL2 VM → 一個 privileged 容器，「沙箱」是三個 network namespace，「目的地」是一條假上行後面的第四個 namespace。
+[Sandbox 隔離與執行安全](../../../../../adr/README.md#sandbox-隔離與執行安全) 把 **T5 歸在 Suite 2**，而 Suite 2 的受測物有一個定義：**即將加入池的那一台節點**，由生產同一份 IaC 建置、已套用生產的 nftables 與 dnsmasq。本次的「節點」是 Windows → Docker Desktop 的 WSL2 VM → 一個 privileged 容器，「沙箱」是三個 network namespace，「目的地」是一條假上行後面的第四個 namespace。
 
-**所以本目錄不是 `YYYY-MM-DD-<node-id>/`**（ADR-022 §5 給正式證據的命名），名字裡刻意寫著 `nested-dev-container`：沒有節點。
+**所以本目錄不是 `YYYY-MM-DD-<node-id>/`**（Sandbox 隔離與執行安全給正式證據的命名），名字裡刻意寫著 `nested-dev-container`：沒有節點。
 
 **T5 的 46 項覆蓋一格都不能改。** N-01～N-08 的判定仍然是 `unknown`，理由不是「沒跑」，是**跑的不是那個東西**。
 
@@ -47,7 +47,7 @@ iifname $SANDBOX_IFACE oifname $SANDBOX_IFACE counter log prefix "skillhub-drop-
 
 ### ③ T5-5 的三個半邊，是被三個不同的地方擋下來的
 
-ADR-022 的 T5-5 寫「`sandboxd:9000`、bridge gateway、節點 loopback」。實測：
+Sandbox 隔離與執行安全的 T5-5 寫「`sandboxd:9000`、bridge gateway、節點 loopback」。實測：
 
 | 目標 | 實際擋它的是 | nftables 有沒有留下紀錄 |
 | --- | --- | --- |
@@ -77,9 +77,9 @@ forward 鏈裡那條 `ip daddr 127.0.0.0/8 drop` **對這個方向永遠不會�
   bridge-nf-call-iptables:  absent
 ```
 
-**一個沙箱連到了同一台節點上的另一個沙箱。** 那正是 ADR-022 Q2 條件 2 要關掉的、**不需要任何逃逸**的跨 Run 路徑。stock 的 Ubuntu 節點**預設不載 `br_netfilter`**，所以那條 `iifname X oifname X drop` 從來沒有看到過那些 frame，計數器停在零，而規則讀起來完全正常。
+**一個沙箱連到了同一台節點上的另一個沙箱。** 那正是 Sandbox 隔離與執行安全 Q2 條件 2 要關掉的、**不需要任何逃逸**的跨 Run 路徑。stock 的 Ubuntu 節點**預設不載 `br_netfilter`**，所以那條 `iifname X oifname X drop` 從來沒有看到過那些 frame，計數器停在零，而規則讀起來完全正常。
 
-**而且同一個機制擋不住的不只這條規則**：ADR-022 Q2 條件 2 指定的另一個手段 `--icc=false`，是 Docker 在 FORWARD 鏈插的 DROP，**依賴的是同一個模組**。兩個手段一起失效，失效的方式是安靜的。
+**而且同一個機制擋不住的不只這條規則**：Sandbox 隔離與執行安全 Q2 條件 2 指定的另一個手段 `--icc=false`，是 Docker 在 FORWARD 鏈插的 DROP，**依賴的是同一個模組**。兩個手段一起失效，失效的方式是安靜的。
 
 **要記的是這一段的順序，而不只是結論。** 這支腳本的第一版在 setup 階段就把那個 sysctl 寫成 `1`，而且沒有印出來：
 
@@ -98,7 +98,7 @@ forward 鏈裡那條 `ip daddr 127.0.0.0/8 drop` **對這個方向永遠不會�
 
 ## 仍然做不到、也沒有假裝做到的
 
-- **T5 的節點版**：真節點、生產 IaC、真閘道位址、`pinned_ip` 不是 `unset`（ADR-022 §2 的三個前置條件）。
+- **T5 的節點版**：真節點、生產 IaC、真閘道位址、`pinned_ip` 不是 `unset`（Sandbox 隔離與執行安全所定的三個前置條件）。
 - **N-06 的另一半**：規則有 `log prefix` 與 counter，**但沒有任何東西把它們收去保存 90 天**。本次量的是「有沒有留下計數」，不是「紀錄有沒有被保存」。
 - **每 Run 一個 netns**：`dockerdrv` 今天不指定 namespace（`HostConfig` 的欄位刻意留零值），dev 仍是共用一張 Docker network。本次的 netns 是實驗室自己建的，**不是產品程式建的**。
 - **T5-2 的 1000 個 port**：本次一個 port。每個 port 都要吃滿 drop 的逾時，而這一項問的是那個網段可不可達。節點版要跑完整掃描。

@@ -23,7 +23,7 @@ COMMENT ON COLUMN skill_sources.task_description IS
 COMMENT ON COLUMN skill_sources.generator_model IS
     'Model id that wrote a generated package, as apps/llm reported it. NULL for git and upload.';
 COMMENT ON COLUMN skill_sources.generator_prompt_version IS
-    'Generator prompt revision, e.g. generate-skill/v1. NULL for git and upload. Together with task_description and generator_model this is what lets someone re-derive the package (ADR-047 決策 1).';
+    'Generator prompt revision, e.g. generate-skill/v1. NULL for git and upload. Together with task_description and generator_model this is what lets someone re-derive the package.';
 
 ALTER TABLE skills DROP CONSTRAINT skills_redistribution_check;
 ALTER TABLE skills
@@ -31,5 +31,5 @@ ALTER TABLE skills
         CHECK (redistribution IN ('allowed', 'blocked', 'unknown', 'self_supplied', 'generated'));
 
 COMMENT ON COLUMN skills.redistribution IS
-    'May a Download Artifact be produced from this skill? ''allowed'' (a verdict about the licence), ''self_supplied'' (this workspace brought the bytes) and ''generated'' (the platform wrote them for this workspace) release; ''unknown'' and ''blocked'' refuse. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction — a fork of a generated skill stays ''generated'' (ADR-047 決策 4). See 0027, 0036 and 0037.';
+    'May a Download Artifact be produced from this skill? ''allowed'' (a verdict about the licence), ''self_supplied'' (this workspace brought the bytes) and ''generated'' (the platform wrote them for this workspace) release; ''unknown'' and ''blocked'' refuse. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction — a fork of a generated skill stays ''generated''. See 0027, 0036 and 0037.';
 

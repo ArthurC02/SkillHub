@@ -284,7 +284,7 @@ creation 會話不包成 aggregate：唯一的寫入點 `advance()` 已經存在
 
 ## 6 待做
 
-目前沒有待做。[ADR-084](../adr/ADR-084-aggregates-speak-in-domain-events.md) 的 Evaluation、Skill、Run aggregate 與 creation 的兩個具名概念都已改完；新的 aggregate 照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
+目前沒有待做。[Aggregate 與領域事件](../adr/README.md#aggregate-與領域事件)的 Evaluation、Skill、Run aggregate 與 creation 的兩個具名概念都已改完；新的 aggregate 照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
 
 - 狀態不匯出，只有唯讀存取。命令不回傳值、不帶 `context`、不做 I/O：成立就改狀態並記下領域事件，不成立就只記一則帶理由的拒絕事件。
 - 載入是吃呼叫端交易的套件函式並以列鎖讀出；存回只有一處，同交易寫狀態並把事件寫進 outbox；拒絕不存回。
@@ -376,11 +376,11 @@ go test -count=1 ./...
 | 某條現行轉移看起來像 bug 而不是規則 | 把 bug 寫成規格與把規則寫成規格是兩件事，需要人裁定 |
 | 收緊某個守衛會讓現行流程被擋 | 那是行為改變，不是重構 |
 | 合併閘門會改變對外的 reason 碼 | 對外契約 |
-| 需要改 [ADR-032](../adr/ADR-032-ddd-bounded-context-governance-for-platform.md)、[ADR-033](../adr/ADR-033-sqlc-query-ownership-and-cross-context-write-enforcement.md)、[ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 的既有決策 | 結構性偏離先更新 ADR，且 ADR 不原地改寫，要開新的 |
+| 需要改[Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)或[Query 與寫入所有權](../adr/README.md#query-與寫入所有權)的既有決策 | 結構性偏離先更新 ADR，且 ADR 不原地改寫，要開新的 |
 | DISCOVER 的輸出與本檔描述不符 | 本檔過期，先對齊事實再動手 |
 | 新增的查詢沒有工作區條件，也挑不出 §4.1 六種理由之一 | 那是鐵律 3 的缺陷，不是宣告問題；進 [`05`](../plans/05-pending-rulings.md) |
 
-待裁定事項一律進 [`05`](../plans/05-pending-rulings.md)，不要在程式碼裡自行決定。creation 的終態只認 `saved` 與 `cancelled`，不含 `failed`，因此 `failed` 的會話能接受的指令遠多於直覺——`raise_budget` 把失敗會話帶回 `waiting_input` 是 [ADR-068](../adr/ADR-068-credit-is-the-only-unit-of-account.md) 的明文設計，其餘是這個定義的連帶結果。轉移表照現況記錄，**不得自行收緊**。
+待裁定事項一律進 [`05`](../plans/05-pending-rulings.md)，不要在程式碼裡自行決定。creation 的終態只認 `saved` 與 `cancelled`，不含 `failed`，因此 `failed` 的會話能接受的指令遠多於直覺——`raise_budget` 把失敗會話帶回 `waiting_input` 是[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)的明文設計，其餘是這個定義的連帶結果。轉移表照現況記錄，**不得自行收緊**。
 
 ---
 

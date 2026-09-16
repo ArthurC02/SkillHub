@@ -27,7 +27,7 @@ func imageVersionProblems(root string) []string {
 	case 0:
 		return []string{fmt.Sprintf(
 			"image-version: %s no longer declares `ARG IMAGE_VERSION=`; runtime-image.yml's I-05 gate and "+
-				"ADR-023 §4's upgrade record are both keyed on it, so this check has lost its subject",
+				"the UPGRADES.md upgrade record are both keyed on it, so this check has lost its subject",
 			runtimeDockerfile)}
 	default:
 		return []string{fmt.Sprintf(
@@ -46,7 +46,7 @@ func imageVersionProblems(root string) []string {
 		}
 	}
 	return []string{fmt.Sprintf(
-		"image-version: %s pins IMAGE_VERSION=%s and no heading in %s mentions it. ADR-023 §4 requires the "+
+		"image-version: %s pins IMAGE_VERSION=%s and no heading in %s mentions it. Every bump requires the "+
 			"four measurements to be re-run and written down on every bump, and this image's failure mode "+
 			"is silent — an SDK that stops emitting tool events yields a thinner trace, not a crash. Add "+
 			"the section, or say in it which measurements were carried over and why",

@@ -20,15 +20,15 @@ func TestDocLinkProblems(t *testing.T) {
 		}
 	}
 
-	write("docs/adr/ADR-011-workspace-tenancy-policy-and-usage.md", "# ADR-011\n")
+	write("docs/design/tenancy.md", "# 租戶\n")
 	write("docs/plans/01.md", strings.Join([]string{
 
-		"見 [ADR-011](../adr/ADR-011-workspace-tenancy-policy-and-usage.md)。",
+		"見 [租戶](../design/tenancy.md)。",
 
-		"見 [ADR-011](../adr/ADR-011-workspace-scope-and-tenancy.md)。",
+		"見 [租戶](../design/tenancy-scope.md)。",
 
 		"[跳到](#§10) [外部](https://example.com/x.md) [信](mailto:a@b.c)",
-		"[有錨點](../adr/ADR-011-workspace-tenancy-policy-and-usage.md#決策)",
+		"[有錨點](../design/tenancy.md#決策)",
 
 		"[空格](./有 空格.md)",
 
@@ -49,7 +49,7 @@ func TestDocLinkProblems(t *testing.T) {
 	if !strings.Contains(problems[0], want) {
 		t.Fatalf("problem does not point at %s: %s", want, problems[0])
 	}
-	if !strings.Contains(problems[0], "ADR-011-workspace-scope-and-tenancy.md") {
+	if !strings.Contains(problems[0], "tenancy-scope.md") {
 		t.Fatalf("problem does not name the target: %s", problems[0])
 	}
 }

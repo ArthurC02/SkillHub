@@ -20,8 +20,8 @@ M1 交付兩件互相依賴的東西：
 | --- | --- | --- | --- |
 | [`README.md`](README.md)（本檔） | 計畫 | M1 的計畫、狀態與本目錄導覽 | 活文件 |
 | [`m1-work-items-audit.md`](m1-work-items-audit.md) | 審計 | M1 工作項逐項對帳，是某一時點的帳 | 凍結 |
-| [`content-candidates.md`](../content/content-candidates.md) | 策展資料 | CONTENT-003 的候選盤點與類別邊界原始論證；已由 `curated-skill-list.md` 升級為正式清單，保留為推導過程 | **已移至 `../content/`**（2026-08-16，ADR-024）；凍結 |
-| [`curated-skill-list.md`](../content/curated-skill-list.md) | 策展資料 | CONTENT-003 的 45 筆正式精選清單（來源、pin commit、授權、依賴欄位） | **已移至 `../content/`**（2026-08-16，ADR-024，[`04` 檔-1](../../04-backlog-and-handoffs.md) 已結）；**活文件** |
+| [`content-candidates.md`](../content/content-candidates.md) | 策展資料 | CONTENT-003 的候選盤點與類別邊界原始論證；已由 `curated-skill-list.md` 升級為正式清單，保留為推導過程 | **已移至 `../content/`**（2026-08-16，見[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)）；凍結 |
+| [`curated-skill-list.md`](../content/curated-skill-list.md) | 策展資料 | CONTENT-003 的 45 筆正式精選清單（來源、pin commit、授權、依賴欄位） | **已移至 `../content/`**（2026-08-16，見[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)，[`04` 檔-1](../../04-backlog-and-handoffs.md) 已結）；**活文件** |
 | [`content-summaries.md`](../content/content-summaries.md) | 策展資料 | CONTENT-005 白話摘要的審核紀錄本體（逐筆增強產出與審核判定） | **已移至 `../content/`**（同上）；**活文件** |
 | [`import-report.md`](import-report.md) | 報告 | 種子清單首次本機端到端匯入的實作紀錄（INGEST-001～009）；線上基線已由 `catalog-rebuild-report.md` 取代 | 凍結 |
 | [`catalog-rebuild-report.md`](catalog-rebuild-report.md) | 報告 | 為閘門重建**可凍結的線上目錄基線**（實際 45 筆，非本檔前身所寫的 44 筆）的實作與實查紀錄 | 凍結 |
@@ -34,6 +34,6 @@ M1 交付兩件互相依賴的東西：
 | [`../gate-test/recording-sheet.md`](../gate-test/recording-sheet.md) | 測試材料 | 逐場記錄表與匯總表，欄位與分析模板對應 | **閘門凍結標的**，變更需依 [§3.1](../gate-test/README.md) 紀錄 |
 | [`../gate-test/analysis.md`](../gate-test/analysis.md) | 測試材料 | 判準計算、質性主題歸類、不通過的決策樹 | **閘門凍結標的**，變更需依 [§3.1](../gate-test/README.md) 紀錄 |
 
-> **`gate-test/` 已移至 [`../gate-test/`](../gate-test/)**（2026-08-16，ADR-024）：它治理的是一道跨里程碑的閘門，不屬於 M1 的凍結產出。**只搬路徑，內容未動，D 日仍未宣告**；紀錄見 gate-test/README §3.1。
+> **`gate-test/` 已移至 [`../gate-test/`](../gate-test/)**（2026-08-16，見[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)）：它治理的是一道跨里程碑的閘門，不屬於 M1 的凍結產出。**只搬路徑，內容未動，D 日仍未宣告**；紀錄見 gate-test/README §3.1。
 >
 > **「閘門凍結標的」是什麼意思**：`gate-test/README.md` §3.2 規定測試期間不得變更目錄內容、增強產出、排序管線與判準文案——任何變更都會讓前後場次不可比。D 日宣告之前的變更必須記在 §3.1 的前置表，D 日之後不得已而改（例如線上事故）則變更前後的場次分開統計，並在分析報告中明列。

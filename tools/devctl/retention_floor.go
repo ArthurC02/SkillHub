@@ -71,8 +71,8 @@ func retentionFloorProblems(root string) []string {
 	if len(analyticsProblems) == 0 && analytics < analyticsFunnelFloor {
 		problems = append(problems, fmt.Sprintf(
 			"retention-floor: 02:NFR-002a rule 3 requires analytics retention >= one complete funnel, "+
-				"and the floor pinned in tools/devctl/retention_floor.go is %s (ADR-029 決策 5's own "+
-				"proposal). %s states ANALYTICS_RETENTION=%s. The funnel's last segment is "+
+				"and the floor pinned in tools/devctl/retention_floor.go is %s. "+
+				"%s states ANALYTICS_RETENTION=%s. The funnel's last segment is "+
 				"「首次使用後再回來」 and it crosses months, so a shorter window collects events that "+
 				"can never be joined into an answer",
 			analyticsFunnelFloor, envExampleDoc, analytics))

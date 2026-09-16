@@ -7,8 +7,8 @@
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 改 `04` 的殘項數字時，同一格末尾的 `<!-- open: … -->` 要一起改（`backlog-tally` 會對帳）。
 - `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
-- ADR 是決策歷史：推翻＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫；下一號＝[索引](adr/README.md)最大號 + 1，新增後更新索引。
-- 引用 ADR（[ADR-086](adr/ADR-086-a-citation-names-the-adr-that-stands-now.md)）：新 ADR 的 `- 取代：`／`- 修訂：` 點名了哪一份，那一份的索引狀態就寫上新編號；`docs/adr/`、`docs/plans/mvp/` 以外引用已 `Superseded` 的 ADR，同一行要寫出取代它的那一份；程式、設定、契約與測試寫規則本身，不寫 ADR 編號。`adr-citations` 會擋。
+- ADR 一個主題一份，內容永遠是現行版本（[ADR 管理](adr/README.md#adr-管理)）：決策變了就直接改寫那一段，理由與經過寫進 commit message，歷史由 git 保存；不留補記、日期與刪除線。出現新主題才新增 ADR，編號＝[索引](adr/README.md)最大號 + 1，刪除過的編號不再用；新增、改名、拆分或合併都同批更新索引。
+- 只有 ADR 與索引寫 ADR 編號或檔名。其他文件、程式、測試、設定、契約寫規則本身；需要理由時連索引的主題段落（`adr/README.md#<主題>`）。里程碑的機器輸出（transcript、probe、log）、量測結果與第三方語料照原樣保存。`adr-citations` 會擋。
 - 活文件放 `docs/plans/` 根層；里程碑產出放 `docs/plans/mvp/mX/`，完結後是當時的紀錄，不回溯修正（含 `03` 的歷史 flat path）。
 - 里程碑目錄固定骨架：`README.md`（計畫＋狀態＋檔案地圖）、`audit.md`、報告用 `report-*` 前綴；目錄內檔名不重複 `mX` 前綴（M3 起適用，既有檔名不回溯改）。
 

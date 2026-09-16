@@ -22,7 +22,7 @@ import {
 } from './SkillEnrichmentTags';
 
 /**
- * Index-time model output (ADR-013 §1), labelled as model-written so a
+ * Index-time model output, labelled as model-written so a
  * reader can always tell it from the author's own text.
  * 
  * @export

@@ -2,7 +2,7 @@
 
 - 日期：**2026-08-23**
 - 對應殘項：[`04` 丙-38](../../04-backlog-and-handoffs.md)（`EVAL-002` 的提案品質沒有基線）
-- 對應需求：[`02:EVAL-002`](../../02-specifications-and-acceptance-criteria.md)；相關 [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md)、[evaluation-design.md §5.2](evaluation-design.md)
+- 對應需求：[`02:EVAL-002`](../../02-specifications-and-acceptance-criteria.md)；相關 [評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)、[evaluation-design.md §5.2](evaluation-design.md)
 - 語料：M2 的 **123 筆 succeeded Run**（[m2/content-baseline-report.md](../m2/content-baseline-report.md)），工作區 `content-baseline`
 - 對照前例：[report-judge-regression.md](report-judge-regression.md)（`EVAL-013`）——格式照它
 
@@ -12,7 +12,7 @@
 
 **基線跑出來是 0：26 筆提案，26 筆全被丟掉，`stored=0`。** 原因不是模型亂提，是**平台在強制一條沒有任何文件寫過的規則**——`suggestionEvidence` 要求 `evidence` 欄位**整個字串**是某段 excerpt 的子字串，而契約與 prompt 都只說「引自 digest」，於是模型寫的是「兩三段真引文 ＋ 自己的推理」，200～300 個字元，**永遠不可能整段命中**。
 
-修掉之後（`suggest-improvements/v2` ＋ 逐段引文比對）同一批重跑：**53 次評估、37 筆提案、24 筆存下（65%）**。存下來的裡面**每一筆 `ApplyPreview` 都是 `applicable: true`，`blocked_reason` 分布為空**（n=16）。<br>**2026-08-24 補記（不改本報告的數字與結論，只補一個對照）**：`ApplyPreview` 是本報告當時的稱呼，**程式與契約都沒有這個識別字**——對應的是 `improvement.Diff`（`apply.go`）與契約 schema `SuggestionDiff`。此名後來被 `04` 丙-38 與 ADR-046 各抄了一次，三處都已就地註明。
+修掉之後（`suggest-improvements/v2` ＋ 逐段引文比對）同一批重跑：**53 次評估、37 筆提案、24 筆存下（65%）**。存下來的裡面**每一筆 `ApplyPreview` 都是 `applicable: true`，`blocked_reason` 分布為空**（n=16）。<br>**2026-08-24 補記（不改本報告的數字與結論，只補一個對照）**：`ApplyPreview` 是本報告當時的稱呼，**程式與契約都沒有這個識別字**——對應的是 `improvement.Diff`（`apply.go`）與契約 schema `SuggestionDiff`。此名後來被 `04` 丙-38 與 [從描述生成 Skill](../../../adr/README.md#從描述生成-skill) 各抄了一次，三處都已就地註明。
 
 閘道實付 **$3.4859**（84 次 judge ＋ 67 次 suggest）。
 
@@ -230,7 +230,7 @@ criteria depending on it are undetermined rather than passed
 
 丙-13 的順序規則（**先回填 `artifacts`，再評估**）現在多了一個具體理由：**要拿到一份主題不被空 artifact 綁架的提案基線，必須先回填再重評**。本報告的數字是「在已知輸入缺陷下量到的」，重評後應該回來覆核第 4 節與 5.1 節。
 
-**本報告的 53 筆評估不刪除**（評估是 append-only，ADR-026），重評會成為新的 revision，兩份並存可比——這與 `EVAL-013` 的 v1／v2 兩輪同一個處理方式。
+**本報告的 53 筆評估不刪除**（評估是 append-only），重評會成為新的 revision，兩份並存可比——這與 `EVAL-013` 的 v1／v2 兩輪同一個處理方式。
 
 ---
 

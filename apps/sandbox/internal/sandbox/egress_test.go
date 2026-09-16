@@ -55,7 +55,7 @@ func TestAcceptRefusesADestinationThisNodeRendersNoRuleFor(t *testing.T) {
 			if !tc.want {
 				if re == nil {
 					t.Fatalf("%s was accepted, and this node has no accept rule for it: "+
-						"the run would be dispatched and time out instead of being refused (ADR-022 A1-e)", tc.url)
+						"the run would be dispatched and time out instead of being refused", tc.url)
 				}
 				if re.Class != ClassCapabilityMismatch {
 					t.Fatalf("%s was refused as %q, want %q", tc.url, re.Class, ClassCapabilityMismatch)

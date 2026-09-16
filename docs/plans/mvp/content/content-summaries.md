@@ -8,8 +8,8 @@
 - 產生工具：[`tools/content/generate_summaries.py`](../../../../tools/content/generate_summaries.py)（`--selftest` 為離線自我檢查）
 - 承接工作項：[`03-work-items.md` CONTENT-005](../../03-work-items.md)；[`curated-skill-list.md` §3 檢查 ⑦](curated-skill-list.md)
 - 依據：
-  - [ADR-013 §1](../../../adr/ADR-013-intent-search-architecture.md)（索引時增強每個 Skill Version 執行一次；**生成內容標示為模型產出，錯誤可由人工修正並觸發重建**）
-  - ADR-013「成本與限制」第 1 條（**索引時增強的品質決定搜尋上限，需要人工抽查機制**）——本文件即該機制的落地
+  - [意圖搜尋](../../../adr/README.md#意圖搜尋)（索引時增強每個 Skill Version 執行一次；**生成內容標示為模型產出，錯誤可由人工修正並觸發重建**）
+  - [意圖搜尋](../../../adr/README.md#意圖搜尋)「成本與限制」第 1 條（**索引時增強的品質決定搜尋上限，需要人工抽查機制**）——本文件即該機制的落地
   - [PDM-002 精選檢查 ⑦](../m0/pdm-proposals.md)（有可理解的白話摘要：非技術使用者讀得懂它做什麼、需要什麼輸入）
   - [02 §DISC-003](../../02-specifications-and-acceptance-criteria.md)（一般模式顯示功能、限制、輸入、輸出、依賴……）
 
@@ -21,9 +21,9 @@
 
 **是**：對 45 筆種子 Skill 的模型生成摘要，建立一份可審核、可追溯、有判定欄位的紀錄。
 
-**不是**：摘要的產生器。摘要不是在這份文件裡「手寫」出來的——平台的匯入管線（[`apps/platform/internal/skill/admission/enrich.go`](../../../../apps/platform/internal/skill/admission/enrich.go)）在每次匯入時自動呼叫 `POST /v1/enrich-skill` 產生，並由詳情頁的 `enrichment` 區塊呈現（見 §3）。本工序補的是**精選內容的人工審核紀錄**，也就是 ADR-013 明列、但在此之前不存在的「人工抽查機制」。
+**不是**：摘要的產生器。摘要不是在這份文件裡「手寫」出來的——平台的匯入管線（[`apps/platform/internal/skill/admission/enrich.go`](../../../../apps/platform/internal/skill/admission/enrich.go)）在每次匯入時自動呼叫 `POST /v1/enrich-skill` 產生，並由詳情頁的 `enrichment` 區塊呈現（見 §3）。本工序補的是**精選內容的人工審核紀錄**，也就是[意圖搜尋](../../../adr/README.md#意圖搜尋)明列、但在此之前不存在的「人工抽查機制」。
 
-> **摘要不在本文件就地改寫。** 判定「需修改」的處置是調整 prompt 或把該筆標為人工覆寫，再重跑增強與 reindex（ADR-013 §1「錯誤可由人工修正並觸發重建」）。直接在這裡改字，改到的只是紀錄，不是使用者看到的東西。
+> **摘要不在本文件就地改寫。** 判定「需修改」的處置是調整 prompt 或把該筆標為人工覆寫，再重跑增強與 reindex（[意圖搜尋](../../../adr/README.md#意圖搜尋)「錯誤可由人工修正並觸發重建」）。直接在這裡改字，改到的只是紀錄，不是使用者看到的東西。
 
 ### 1.2 誰審、判準、狀態值
 
@@ -33,7 +33,7 @@
 | --- | --- |
 | **審核人** | ~~內容負責人，且**不得是本工序的產生者**。精選（curated）15 筆**必審**；已索引（indexed）30 筆抽審不低於 1/3，且必須涵蓋三個類別~~ → **`automated-review v1`**：Judge 模型 `gpt-5.6-terra`，與生成模型 `gpt-5.6-sol` 分離以滿足「非產生者」；45 筆全量，不抽審 |
 | **唯一主判準** | 讀完該筆的摘要與範例句，**一個不懂技術的人能否說出「這個 Skill 能為我做什麼、我要給它什麼」**。答得出＝通過 |
-| **否決條件（任一成立即不得記通過）** | (a) **幻覺**：宣稱套件文件沒有寫的能力；(b) **未繁中化**：直接沿用簡體中文原文或簡中在地慣例；(c) **超出 ADR-013 白名單**：出現信任、風險、安全、品質的判斷——這四類永遠不是模型可以產出的 |
+| **否決條件（任一成立即不得記通過）** | (a) **幻覺**：宣稱套件文件沒有寫的能力；(b) **未繁中化**：直接沿用簡體中文原文或簡中在地慣例；(c) **超出[意圖搜尋](../../../adr/README.md#意圖搜尋)白名單**：出現信任、風險、安全、品質的判斷——這四類永遠不是模型可以產出的 |
 | **狀態值** | `待審`／`通過`／`需修改`。**`需修改` 必須寫原因**；沒有原因的 `需修改` 視同 `待審`。本次填入的兩種寫法都落在這三個值內：**「通過（原判需修改，已處理）」**＝初判 `需修改`、重跑生成後重審為 `通過`；**「建議下架」**＝ `需修改` 且重跑 3 次未自癒，附下架建議（**建議而已，本工序不執行下架**） |
 | **記錄方式** | 直接編輯本文件每筆下方的審核表格（狀態、審核人、日期、備註）。這份文件就是審核紀錄本身，不另設表單 |
 
@@ -41,7 +41,7 @@
 
 45 筆中有 **16 筆**的 `SKILL.md` 原文為簡體中文（`YuYY2004/excel-skills` 15 筆、`nqumich/data-analyst-skill` 1 筆），其中 **6 筆屬精選**。這 16 筆在下方各節以 ⚠️ 標註。
 
-**處理方式：摘要即繁中化呈現層。** 平台**不改寫上游套件內容**（Skill Version 不可變，ADR-003／鐵律 4），也不維護一份翻譯後的 `SKILL.md`。使用者在搜尋結果與詳情頁讀到的繁體中文，是增強管線以 `language: zh-Hant` 產生的摘要與任務範例句；原始簡體 `SKILL.md` 只在進階模式的原文檢視中出現。**因此「改寫為繁中」在本專案的實作意義就是「產出繁中摘要」**，而不是翻譯原始檔。
+**處理方式：摘要即繁中化呈現層。** 平台**不改寫上游套件內容**（Skill Version 不可變，[資料所有權與核心基礎設施](../../../adr/README.md#資料所有權與核心基礎設施)／鐵律 4），也不維護一份翻譯後的 `SKILL.md`。使用者在搜尋結果與詳情頁讀到的繁體中文，是增強管線以 `language: zh-Hant` 產生的摘要與任務範例句；原始簡體 `SKILL.md` 只在進階模式的原文檢視中出現。**因此「改寫為繁中」在本專案的實作意義就是「產出繁中摘要」**，而不是翻譯原始檔。
 
 **閘門測試會直接檢驗這批的三筆。** [`gate-test/task-cards.md` §3](../gate-test/task-cards.md) 的三張卡以簡中來源的 Skill 為 gold：
 
@@ -84,7 +84,7 @@
 
 `LITELLM_API_KEY` 只進 `apps/llm` 的**行程環境變數**，由 repo 根 `.env` 的 `OPENAI_API_KEY` 匯出，不落任何檔案，也不在 `summaries.json` 或本文件中。
 
-本次為離線內容工序，`LITELLM_BASE_URL` 直接指向 OpenAI，**未經 LiteLLM 閘道**——與 [`golden-query-set.md` §10 附註 1](../m1/golden-query-set.md) 及 [`import-report.md` §1.1](../m1/import-report.md) 同性質：**離線工具的既有例外，產品實作不得比照**（鐵律 8、ADR-017）。
+本次為離線內容工序，`LITELLM_BASE_URL` 直接指向 OpenAI，**未經 LiteLLM 閘道**——與 [`golden-query-set.md` §10 附註 1](../m1/golden-query-set.md) 及 [`import-report.md` §1.1](../m1/import-report.md) 同性質：**離線工具的既有例外，產品實作不得比照**（鐵律 8、[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)）。
 
 ### 2.4 ⚠️ 本次生成的文字不等於線上索引的文字
 
@@ -116,7 +116,7 @@
 | `tags` 粒度漂移 | C-6 的 `dependencies` 由四個檔名縮為一句概括 |
 | 體例小幅不一致 | C-12 用「此 Skill」，其餘用「此技能」 |
 
-**沒有出現的**：幻覺、簡體殘留、超出 ADR-013 白名單的判斷（§4.1 已就 45 筆重掃）。
+**沒有出現的**：幻覺、簡體殘留、超出[意圖搜尋](../../../adr/README.md#意圖搜尋)白名單的判斷（§4.1 已就 45 筆重掃）。
 
 ---
 
@@ -134,11 +134,11 @@
 | **`02` §4.7 CONTENT-005**（2026-08-16 修訂版） | 見上（生產路徑產生、白名單、限制有值、審核人分離、主判準、否決條件、可追溯、非決定性上限） | 全部欄位與工序均已備齊；審核已由自動化審校完成（45/45 通過） | ✅ **允收達成**（逐條對照見 [審校報告 §8](../m1/content-review-report.md)） |
 | `03-work-items.md` CONTENT-005 | 對首批 Skill 產生一般使用者可理解的摘要 | 45/45 筆皆有繁中白話摘要與 3–5 則雙語任務範例句 | ✅ 已產生；**可理解性主判準 45/45 通過**（審校 KPI2） |
 | PDM-002 檢查 ⑦ | 非技術使用者讀得懂它做什麼、需要什麼輸入 | 已審校：主判準 45/45、精選 15/15 通過 | ✅ **⑦ 改記 `pass`** |
-| ADR-013「需要人工抽查機制」 | 建立抽查機制 | 本文件即該機制：判定欄位、判準、否決條件、改法（重跑增強而非就地改字） | ✅ 已建立 |
+| [意圖搜尋](../../../adr/README.md#意圖搜尋)「需要人工抽查機制」 | 建立抽查機制 | 本文件即該機制：判定欄位、判準、否決條件、改法（重跑增強而非就地改字） | ✅ 已建立 |
 | 02 §DISC-003 | 一般模式顯示功能、限制、輸入、輸出、依賴、權限、來源、License、相容性 | 「功能」＝`summary`；「輸入／輸出／依賴」＝`tags`；「限制」＝`limitations` | ✅ **精選 15/15 已有 `limitations`**（第二輪重跑補齊，§2.5）。線上目錄 45/45 為 v2，同樣全數有 `limitations` |
 | 「呈現於平台」 | — | 已由 `skill/admission/enrich.go` 於匯入時自動產生（commit `b144bea`），由 `skill/discovery/detail.go` 的 `enrichmentFrom` 供給 `enrichment` 區塊（commit `ebc4036`），契約見 `contracts/openapi/public.yaml`（`summary` 恆為套件自身 frontmatter，模型產出一律落在 `enrichment` 之下並標示）。測試：`apps/platform/internal/skill/admission/enrich_test.go`、`apps/llm/tests/test_enrich.py` | ✅ 已呈現；本工序補的是**人工審核紀錄** |
 
-> **`anthropics/skills` 的免責條款怎麼處理。** `curated-skill-list.md` §3 腳註 3 要求把 README 的 "provided for demonstration and educational purposes only" 納入摘要措辭考量。**本工序的判定是：不納入摘要。** 該句是使用免責，屬於信任／品質陳述，而 ADR-013 白名單明令模型產出不得包含這一類判斷（`enrich.py` 的 system prompt 亦明文禁止）。它應由詳情頁的 License／來源區塊承接（ADR-021 的兩軸答案，`license.status` 目前最高只到 `declared`）。**此解讀需負責人確認**；若負責人要求摘要承載免責，則需改的是 ADR-013 白名單，不是這批摘要。涉及 6 筆（`brand-guidelines`、`internal-comms`、`docx`、`pdf`、`pptx`、`xlsx`）。
+> **`anthropics/skills` 的免責條款怎麼處理。** `curated-skill-list.md` §3 腳註 3 要求把 README 的 "provided for demonstration and educational purposes only" 納入摘要措辭考量。**本工序的判定是：不納入摘要。** 該句是使用免責，屬於信任／品質陳述，而[意圖搜尋](../../../adr/README.md#意圖搜尋)白名單明令模型產出不得包含這一類判斷（`enrich.py` 的 system prompt 亦明文禁止）。它應由詳情頁的 License／來源區塊承接（[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的兩軸答案，`license.status` 目前最高只到 `declared`）。**此解讀需負責人確認**；若負責人要求摘要承載免責，則需改的是[意圖搜尋](../../../adr/README.md#意圖搜尋)白名單，不是這批摘要。涉及 6 筆（`brand-guidelines`、`internal-comms`、`docx`、`pdf`、`pptx`、`xlsx`）。
 
 ---
 
@@ -157,7 +157,7 @@
 | 項目 | 結果 |
 | --- | --- |
 | 簡體字殘留（掃 45 筆的 `summary` ＋ `task_examples.zh_hant` ＋ `limitations`） | **0 筆**。無任何簡體字元（含重跑的 8 筆） |
-| 超出 ADR-013 白名單的宣稱（信任／風險／安全／品質） | **0 筆**。關鍵詞掃描命中 3 筆（`course-quiz-builder`「不具安全性」、`standardise-country-names`「低可信度」、`pii-flag`「高風險資訊」），逐筆回查後**皆為原文自述的轉述**（答案金鑰只做混淆、模糊比對的信心分數、個資類別分級），不是對 Skill 本身的信任／品質判斷，因此不計為違反。三筆均為第一輪產出，本輪未動 |
+| 超出[意圖搜尋](../../../adr/README.md#意圖搜尋)白名單的宣稱（信任／風險／安全／品質） | **0 筆**。關鍵詞掃描命中 3 筆（`course-quiz-builder`「不具安全性」、`standardise-country-names`「低可信度」、`pii-flag`「高風險資訊」），逐筆回查後**皆為原文自述的轉述**（答案金鑰只做混淆、模糊比對的信心分數、個資類別分級），不是對 Skill 本身的信任／品質判斷，因此不計為違反。三筆均為第一輪產出，本輪未動 |
 | 幻覺抽驗（對可疑數據回查 pin commit 的 `SKILL.md` 原文） | **0 筆**。`excel-find-duplicates` 的「168MB／33 萬列約 150 秒」實查原文第 3 條為 "pandas reading 168MB/330K rows takes ~150s"；第二輪 `excel-deduplicate` 新增的「前 49 列、前 9 欄」實查原文為 `range(1, min(50, ...))` × `range(1, min(10, ...))`。兩者皆屬轉述 |
 
 ### 4.2 目檢預判
@@ -373,7 +373,7 @@
 
 | 審核狀態 | 審核人 | 審核日期 | 備註 |
 | --- | --- | --- | --- |
-| **通過**（原判需修改，已處理） | automated-review v1（gpt-5.6-terra judge；負責人 2026-08-16 授權） | 2026-08-16 | 初判需修改（為輸出加「清楚／精簡」等品質形容詞，屬 ADR-013 白名單外）。**`enrich-skill/v4` 重跑後通過**：形容詞全數消失，改為轉述範例指南的格式與語氣指示。**線上文字已更新，本節引文為 2026-08-15 版**；判定對線上文字生效（KPI6 餘弦 0.9521） |
+| **通過**（原判需修改，已處理） | automated-review v1（gpt-5.6-terra judge；負責人 2026-08-16 授權） | 2026-08-16 | 初判需修改（為輸出加「清楚／精簡」等品質形容詞，屬[意圖搜尋](../../../adr/README.md#意圖搜尋)白名單外）。**`enrich-skill/v4` 重跑後通過**：形容詞全數消失，改為轉述範例指南的格式與語氣指示。**線上文字已更新，本節引文為 2026-08-15 版**；判定對線上文字生效（KPI6 餘弦 0.9521） |
 
 ### C-7. `humanizer`（writing／精選）
 

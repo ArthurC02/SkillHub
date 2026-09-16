@@ -42,7 +42,7 @@ func sdkVersionProblems(root string) []string {
 	if strings.ContainsAny(pinned, "^~*>=<") || strings.Contains(pinned, "latest") {
 		return []string{fmt.Sprintf(
 			"sdk-version: %s:%d pins CLAUDE_AGENT_SDK_VERSION=%s, which is a range rather than an exact "+
-				"version; ADR-023 決策 1 bars ^, ~ and latest from the image build path, and a range cannot "+
+				"version; ^, ~ and latest are barred from the image build path, and a range cannot "+
 				"be what the copies of it say",
 			sdkVersionDockerfile, pinnedLine, pinned)}
 	}
@@ -57,9 +57,9 @@ func sdkVersionProblems(root string) []string {
 			continue
 		}
 		problems = append(problems, fmt.Sprintf(
-			"sdk-version: %s:%d pins the Agent SDK at %s but %s:%d says %s (%s). ADR-023 決策 1 makes the "+
-				"image the source of truth and the copies follow it, so bump them in the same commit — and "+
-				"if this is an upgrade, ADR-023 §2's four measurements and the %s row are due with it",
+			"sdk-version: %s:%d pins the Agent SDK at %s but %s:%d says %s (%s). The "+
+				"image is the source of truth and the copies follow it, so bump them in the same commit — and "+
+				"if this is an upgrade, the four upgrade measurements and the %s row are due with it",
 			sdkVersionDockerfile, pinnedLine, pinned, site.file, line, value, site.what,
 			"infra/images/runtime-agent-sdk/UPGRADES.md"))
 	}

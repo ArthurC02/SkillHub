@@ -174,7 +174,7 @@ func TestPossibleSecretIsNotRetriedEndToEnd(t *testing.T) {
 		t.Fatal("a package with a credential-shaped line was accepted")
 	}
 	if stub.calls != 1 {
-		t.Errorf("model called %d times; ADR-048 says once", stub.calls)
+		t.Errorf("model called %d times; only one call is allowed", stub.calls)
 	}
 
 	var found bool

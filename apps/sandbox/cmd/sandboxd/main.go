@@ -214,7 +214,7 @@ func refuseUnprobedProduction(runtime string, probe *sandbox.P02Probe) error {
 		return nil
 	}
 	return errors.New("SKILLHUB_SANDBOX_P02_TARGETS must name the addresses a sandbox must not reach " +
-		"(host:port, comma separated) when running under runsc: ADR-022 T10 requires the P-02 block to be " +
+		"(host:port, comma separated) when running under runsc: the P-02 block must be " +
 		"verified by a resident probe, and a node with no targets reports not_configured forever")
 }
 

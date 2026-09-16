@@ -42,7 +42,7 @@ docker compose --env-file ../../.env -f docker-compose.yml up -d seaweedfs   # �
 
 `postgres`／`api`／`litellm` 三個容器全程未動。
 
-> **重建的副作用，必須交接**：既有的 `skillhub-api` 容器啟動時**沒有** `OBJSTORE_ACCESS_KEY`／`OBJSTORE_SECRET_KEY`（匿名存取），bucket 關閉匿名後它**已無法讀寫物件儲存**——詳情頁檔案樹（`GET /api/skills/{id}/files`）、匯入、Preflight 的套件掃描都會失效。搜尋與 `/healthz` 不碰物件儲存所以仍正常，上表的驗證也因此全綠。**本報告不動 api 容器**（依交辦範圍），但下一位接手者必須帶著這兩個環境變數重建它；正確的作法是把 api／worker 一併寫進 `infra/compose/docker-compose.yml`（ADR-019 的 CORE-001 已列此項）。
+> **重建的副作用，必須交接**：既有的 `skillhub-api` 容器啟動時**沒有** `OBJSTORE_ACCESS_KEY`／`OBJSTORE_SECRET_KEY`（匿名存取），bucket 關閉匿名後它**已無法讀寫物件儲存**——詳情頁檔案樹（`GET /api/skills/{id}/files`）、匯入、Preflight 的套件掃描都會失效。搜尋與 `/healthz` 不碰物件儲存所以仍正常，上表的驗證也因此全綠。**本報告不動 api 容器**（依交辦範圍），但下一位接手者必須帶著這兩個環境變數重建它；正確的作法是把 api／worker 一併寫進 `infra/compose/docker-compose.yml`（[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)的 CORE-001 已列此項）。
 
 ### 2.2 開發資料庫落後 migration 集（試跑的真正阻塞點）
 
@@ -178,7 +178,7 @@ Trace 事件數欄位的 `⚠` 表示 `complete=false`（有斷號）；**45 個
 | 單次 Run 中位數／平均／最大 | $0.0566／$0.0702／$0.2367 |
 | 硬上限 | $5（未觸及；$2.5 中止規則亦未觸發——到達 $2.5 時已完成 43/45） |
 
-差額的組成，逐項說明而不含糊：7 個精選重跑時，**第一次（被中止那次）的 $0.2527 仍計入閘道帳**但已不在 Trace 合計裡；兩把診斷用探針金鑰 $0.00006；其餘約 **$0.05** 是 ADR-017 早已寫明的「讀數不是帳本」——`usage.cost_usd` 是工作負載結束前對 `/key/info` 的一次讀取，最後一次 flush 若落在讀取之後就少算。**權威來源是閘道 per-key spend，不是 Trace。**
+差額的組成，逐項說明而不含糊：7 個精選重跑時，**第一次（被中止那次）的 $0.2527 仍計入閘道帳**但已不在 Trace 合計裡；兩把診斷用探針金鑰 $0.00006；其餘約 **$0.05** 是 [模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)早已寫明的「讀數不是帳本」——`usage.cost_usd` 是工作負載結束前對 `/key/info` 的一次讀取，最後一次 flush 若落在讀取之後就少算。**權威來源是閘道 per-key spend，不是 Trace。**
 
 實際單價比第四批的參考值（$0.006–0.017）高一個量級，原因是真實 Skill 的 `SKILL.md` 遠大於 e2e 的示範套件：輸入 token 中位數 16.6 萬（最大 33.4 萬）。**45 個 Skill 一輪基準試跑的可預期成本是 $3–4，不是 $1。**
 
@@ -317,7 +317,7 @@ Key=skillhub-attempt-03d6493d-… Current cost: 0.50056965, Max budget: 0.5
 
 範例（前兩筆）：`add-data-dictionary` → run `f40ab760…`／version `8d660a32…`；`add-iso3166` → run `cbbe6606…`／version `f078b1d3…`。完整對照在 `results.json`。
 
-**source-available 內容**：本批全部照常試跑，未產出任何 Download Artifact（Run 產物不是 Download Artifact，`PACK-001` 尚未實作），符合 CONTENT-004／ADR-012。
+**source-available 內容**：本批全部照常試跑，未產出任何 Download Artifact（Run 產物不是 Download Artifact，`PACK-001` 尚未實作），符合 CONTENT-004／[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)。
 
 ---
 
@@ -352,7 +352,7 @@ Key=skillhub-attempt-03d6493d-… Current cost: 0.50056965, Max budget: 0.5
 ## 11. 留給後續的事
 
 1. **閘道預算計數（§6.2）**——定位 LiteLLM 的預算計數為何與 spend log 差 50 倍；在此之前 per-Run `max_budget` 不可信，PDM-003 v5 的 $0.50 預設需重新檢視。
-2. **`skillhub-api` 容器需帶 `OBJSTORE_*` 金鑰重建**（§2.1），並把 api／worker 寫進 compose（ADR-019 CORE-001）。
+2. **`skillhub-api` 容器需帶 `OBJSTORE_*` 金鑰重建**（§2.1），並把 api／worker 寫進 compose（[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層) CORE-001）。
 3. **m2/README 環境變數表補兩列**：api 也需要 `SKILLHUB_MODEL_GATEWAY_URL`／`_KEY`（否則 egress 允許清單是空的）與 `SKILLHUB_SANDBOX_PROVIDERS`／token（否則 Preflight 的 Provider 摘要是 `unassigned`）。
 4. **11 個 Skill 的「限制」欄缺 Python 揭露**（§7.2 #1）——走 CONTENT-005 的 `需修改` 流程重跑增強。
 5. **`run.mjs` 的 usage 事件只掛在 `result` 分支**（§7.2 #4）——沒有 result 訊息時成本無聲缺席，TRACE-004 有洞。

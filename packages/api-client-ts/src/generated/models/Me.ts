@@ -39,7 +39,7 @@ export interface Me {
      * Whether the caller is on this deployment's OPERATOR_USER_IDS. It only
      * tells the client whether to draw the entry to /admin; it grants
      * nothing. Every /admin route checks the roster itself and answers a
-     * member 404 whatever this field says (ADR-074 decision 1).
+     * member 404 whatever this field says.
      * 
      */
     operator: boolean;
@@ -52,8 +52,8 @@ export interface Me {
      * discovered without a request that fails, and a feature discovered by
      * a failed request has already been drawn on somebody's screen.
      * 
-     * Two keys today. `generate_skill` (ADR-052) is an entry point: it
-     * says a route exists. `clean_mode` (ADR-060) is not — it says this
+     * Two keys today. `generate_skill` is an entry point: it
+     * says a route exists. `clean_mode` is not — it says this
      * deployment swapped its sandbox, object store and database for
      * substitutes that do not isolate, do not verify signatures and hold
      * one connection, and the screen must say so. A client that treats

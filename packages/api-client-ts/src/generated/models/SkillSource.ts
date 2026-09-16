@@ -60,13 +60,13 @@ export interface SkillSource {
     /**
      * Generator prompt revision, e.g. `generate-skill/v1`. Present only for
      * `generated`. Together with task_description and generator_model this
-     * is what lets someone re-derive the package (ADR-047 決策 1).
+     * is what lets someone re-derive the package.
      * 
      */
     generatorPromptVersion?: string;
     /**
      * What besides the task description was behind a generated package
-     * (ADR-066, GEN-005/GEN-006). Present only for `generated`, and only
+     * (GEN-005/GEN-006). Present only for `generated`, and only
      * when a diagram or reference Skills were given; a text-only
      * generation has no such record and the field is absent. Absent is
      * "nothing else was used", not "unknown" — the platform wrote every

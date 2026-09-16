@@ -144,7 +144,7 @@ groups:
         annotations:
           summary: "{{ $labels.provider }} 上有遺留 Sandbox 連續兩輪掃描仍未清除（X-03）"
           description: >-
-            ADR-022 X-04 的下一級是節點 drain（遺留 ≥ 該節點 slot 的 50%，封測規模下
+            X-04 的下一級是節點 drain（遺留 ≥ 該節點 slot 的 50%，封測規模下
             即 1 筆）與全池暫停派送（≥ 總 slot 的 25%，下限 2 筆）。**那兩個動作是
             平台實作，不是本告警的職責**；本條只負責讓人知道它正在往那裡走。
 
@@ -164,7 +164,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "短效憑證撤銷連續失敗（ADR-022 X-03/X-04 6b）"
+          summary: "短效憑證撤銷連續失敗（X-03/X-04 6b）"
           description: >-
             物件短效授權**不在**本條範圍：預簽 URL 沒有撤銷手段，其窗口上界就是簽發
             時的 TTL（SBX-008：硬牆鐘 + 5 分鐘），那是明示的殘餘風險而非可監控門檻。
@@ -178,7 +178,7 @@ groups:
           summary: "孤兒掃描超過 10 分鐘（2 個掃描週期）沒有執行"
           description: >-
             掃描是 River 的 leader-only periodic job（5 分鐘一次），先查 worker 的
-            leader 選舉。**沒有 Reconciler 在跑，就沒有人知道洩漏了多少**——ADR-022
+            leader 選舉。**沒有 Reconciler 在跑，就沒有人知道洩漏了多少**——
             把這一項列為阻擋級，不是 warning。
             **本條的「暫停派送」已經是自動的**：`cmd/api` 每 5 分鐘讀一次
             `river_job(kind='run_orphan_scan')` 的最後執行時間，超過 10 分鐘即自行
@@ -196,7 +196,7 @@ groups:
         annotations:
           summary: "{{ $labels.target }} 已停止派送新 Run（source={{ $labels.source }}）"
           description: >-
-            `source=orphan_threshold` 是 ADR-022 X-04 的容量暫停，清理跟上就會自己
+            `source=orphan_threshold` 是 X-04 的容量暫停，清理跟上就會自己
             恢復；`source=p1_incident` 是 02:SEC-010 的 P1，**現場正被保留（清理與
             孤兒回收都已停手）**，要人走完 runbook 後以
             `DELETE /admin/dispatch/halt` 解除。

@@ -140,7 +140,7 @@ SELECT * FROM (
 
     (3, '建立 Run 後成功完成',
      (SELECT n FROM runs_succeeded), (SELECT n FROM runs_created),
-     'domain only. `succeeded` is EXECUTION, never a task verdict (ADR-025): a run ' ||
+     'domain only. `succeeded` is EXECUTION, never a task verdict: a run ' ||
      'that finished and produced nothing useful is counted here as a success.'),
 
     (4, '完成 Run 後認為結果有幫助',

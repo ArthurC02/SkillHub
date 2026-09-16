@@ -86,7 +86,7 @@ export interface PackagingTarget {
      * It is a property of the *target*, not of a skill. Whether a
      * particular version was ever measured is the `compatibility` axes on
      * the skill, and passing format validation is never permission to say
-     * it installs (ADR-012).
+     * it installs.
      * 
      */
     supportStatus: PackagingTargetSupportStatusEnum;
@@ -129,7 +129,7 @@ export interface PackagingTarget {
     /**
      * Known limitations and the steps a path alone does not cover — for
      * the SDK target, that `cwd` and `setting_sources` are part of
-     * installing and a skill silently never loads without them (ADR-023).
+     * installing and a skill silently never loads without them.
      * Server-side so every surface states them identically (NFR-001).
      * 
      */

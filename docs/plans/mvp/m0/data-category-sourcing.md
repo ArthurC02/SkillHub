@@ -91,7 +91,7 @@ README 中 **582 個連結指向 `officialskills.sh`(市集／目錄站)**,631 �
 | Kaelio `ktx`(17 個,含 `analytics`、`live_database_ingest`、`looker_ingest`) | [Kaelio/ktx](https://github.com/Kaelio/ktx)(1,540★) | Apache-2.0 ✅ | **live database ingest／Looker／GDrive,全需外連** | **第 6 項不過** |
 | Altimate `data-engineering-skills`(11 個,dbt 為主) | [AltimateAI/data-engineering-skills](https://github.com/AltimateAI/data-engineering-skills)(118★) | MIT ✅ | **需 dbt ＋ warehouse 連線** | **第 6 項不過** |
 
-**PDM-002 對這個方向的假設「官方團隊發布者的 License 與作者可辨識性最容易確認,優先評估」在事實上成立(License 確實乾淨),但選錯了篩選維度。** 真正的淘汰條件不是 License 而是**依賴**:資料類廠商的商業模式就是託管服務,其官方 Skill 必然要連回自家服務,**與 ADR-005 egress default-deny ＋ PDM-004「明確不含資料庫 client」正面衝突,無一例外**。PDM-002 自己在該列的「待查核項目」已預示了這點(「需外連者直接淘汰」),查核結果是**全數淘汰**。
+**PDM-002 對這個方向的假設「官方團隊發布者的 License 與作者可辨識性最容易確認,優先評估」在事實上成立(License 確實乾淨),但選錯了篩選維度。** 真正的淘汰條件不是 License 而是**依賴**:資料類廠商的商業模式就是託管服務,其官方 Skill 必然要連回自家服務,**與[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的 egress default-deny 規則 ＋ PDM-004「明確不含資料庫 client」正面衝突,無一例外**。PDM-002 自己在該列的「待查核項目」已預示了這點(「需外連者直接淘汰」),查核結果是**全數淘汰**。
 
 清單回溯**在窮盡所有資料性質廠商分節後停止,合格候選數 0**。Community Skills 的七個子分類中亦無資料處理分類,其 Specialized Domains 下唯一相關者 `takechanman1228/claude-ecom` 另見 §4 淘汰表。
 

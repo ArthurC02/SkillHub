@@ -26,7 +26,7 @@ const SPACE_SCALE = [0, ...boldPx("4.2")];
 
 const DEVIATIONS = boldPx("5.2");
 
-test("ADR-039: the document's tables are still machine-readable", () => {
+test("the document's tables are still machine-readable", () => {
   expect(TYPE_SCALE.length, "§4.1 parsed no type steps").toBeGreaterThan(6);
   expect(SPACE_SCALE.length, "§4.2 parsed no spacing steps").toBeGreaterThan(6);
   expect(TYPE_SCALE, "§4.1 lost its body step").toContain(18);
@@ -39,7 +39,7 @@ function allowed(kind: "type" | "space") {
   return new Set([...scale, ...DEVIATIONS]);
 }
 
-test("ADR-039 §4.1: every font-size is on the type scale or named in §5", () => {
+test("§4.1: every font-size is on the type scale or named in §5", () => {
   const sizes = [...css.matchAll(/font-size:\s*(\d+)px/g)].map(([, n]) => Number(n));
   expect(sizes.length, "no font-size found — the regex or the file moved").toBeGreaterThan(5);
   const ok = allowed("type");
@@ -49,7 +49,7 @@ test("ADR-039 §4.1: every font-size is on the type scale or named in §5", () =
   ).toEqual([]);
 });
 
-test("ADR-039 §4.2: every padding/margin/gap length is on the 4px grid or named in §5", () => {
+test("§4.2: every padding/margin/gap length is on the 4px grid or named in §5", () => {
   const decls = [...css.matchAll(/(?:padding|margin|gap)(?:-\w+)?:\s*([^;]+);/g)];
   expect(decls.length, "no spacing declaration found").toBeGreaterThan(20);
   const values = decls.flatMap(([, v]) => [...v.matchAll(/(\d+)px/g)].map(([, n]) => Number(n)));
@@ -60,7 +60,7 @@ test("ADR-039 §4.2: every padding/margin/gap length is on the 4px grid or named
   ).toEqual([]);
 });
 
-test("ADR-039 §5: the vocabulary may shrink, not grow", () => {
+test("§5: the vocabulary may shrink, not grow", () => {
   expect(
     TYPE_SCALE.length,
     "a tenth type step — merge it into an existing one or argue for it in §4.1",
@@ -75,7 +75,7 @@ test("ADR-039 §5: the vocabulary may shrink, not grow", () => {
   ).toBeLessThanOrEqual(2);
 });
 
-test("ADR-039 §2.7: colour lives in tokens, and nothing multiplies it", () => {
+test("§2.7: colour lives in tokens, and nothing multiplies it", () => {
   const body = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--[\w-]+:[^;]+;/g, "");
   expect(
     body.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g) ?? [],
@@ -167,10 +167,10 @@ const selectorsBySheet = new Map(
 const sheetsNaming = (name: string) =>
   stylesheets.filter((f) => selectorsBySheet.get(f)!.some((s) => namesIn(s).includes(name)));
 
-test("ADR-085 決策 1: a stylesheet is one of the four global layers, or sits beside the component that imports it", () => {
+test("a stylesheet is one of the four global layers, or sits beside the component that imports it", () => {
   expect(
     stylesheets.filter((f) => f.startsWith("styles/")),
-    "a global layer appeared or went missing — name it in GLOBAL_LAYERS and in ADR-085",
+    "a global layer appeared or went missing — name it in GLOBAL_LAYERS and in the stylesheet-layering decision",
   ).toEqual([...GLOBAL_LAYERS].sort());
 
   const importers = new Map<string, string[]>();
@@ -210,7 +210,7 @@ test("ADR-085 決策 1: a stylesheet is one of the four global layers, or sits b
   ).toEqual([]);
 });
 
-test("ADR-085 決策 2: :root and every colour literal live in tokens.css and nowhere else", () => {
+test(":root and every colour literal live in tokens.css and nowhere else", () => {
   const offenders = stylesheets
     .filter((f) => f !== GLOBAL_LAYERS[0])
     .flatMap((f) => {
@@ -227,7 +227,7 @@ test("ADR-085 決策 2: :root and every colour literal live in tokens.css and no
   ).toEqual([]);
 });
 
-test("ADR-085 決策 3: every selector in a component stylesheet is scoped by a class only its folder uses", () => {
+test("every selector in a component stylesheet is scoped by a class only its folder uses", () => {
   const leaks: string[] = [];
   for (const sheet of stylesheets) {
     if (GLOBAL_LAYERS.includes(sheet)) continue;
@@ -279,7 +279,7 @@ const GLOBAL_BY_RECIPE: Record<string, string> = {
   "skill-mono": DOOR_CARD,
 };
 
-test("ADR-085 決策 4: a class only one folder uses lives beside that folder's component, unless it shares a global recipe", () => {
+test("a class only one folder uses lives beside that folder's component, unless it shares a global recipe", () => {
   const single = new Set<string>();
   for (const sheet of GLOBAL_LAYERS) {
     for (const selector of selectorsBySheet.get(sheet)!) {
@@ -364,7 +364,7 @@ function classesInMarkup(): Map<string, string[]> {
   return used;
 }
 
-test("ADR-039 §3 第 16 條: every class in the markup has a rule, or a reason", () => {
+test("§3 第 16 條: every class in the markup has a rule, or a reason", () => {
   const used = classesInMarkup();
   expect(used.size, "no class found in any .tsx — the className scan broke").toBeGreaterThan(40);
 
@@ -423,7 +423,7 @@ const TOOLTIP_ONLY: Record<string, string> = {
     "and says the platform never runs them — the visible text 設計 §3 第 4 條 asks for",
 };
 
-test("ADR-039 §2.4/§2.11(c): a title is never the only place a qualification exists", () => {
+test("§2.4/§2.11(c): a title is never the only place a qualification exists", () => {
   const offenders: string[] = [];
   const seen = new Set<string>();
   let scanned = 0;
@@ -473,7 +473,7 @@ const RAW_TIMESTAMP: Record<string, string> = {
     "a React `key`, not a child. The same row renders the instant with <Timestamp>",
 };
 
-test("ADR-039 §2.12: no page prints a raw server timestamp", () => {
+test("§2.12: no page prints a raw server timestamp", () => {
   const bare = /(?<![=$])\{\s*[A-Za-z0-9_.?[\]]*[A-Za-z0-9_]+_(at|since)\s*\}/g;
   const interpolated = /\$\{[A-Za-z0-9_.?[\]]*[A-Za-z0-9_]+_(at|since)\}/g;
   const sliced = /[A-Za-z0-9_]+_(at|since)\s*\.\s*(slice|substring|substr|split)\s*\(/g;
@@ -544,7 +544,7 @@ test("IA-6: a page that writes its own read-failure sentence has to be listed", 
   );
 });
 
-test("ADR-065 §4.7: at most six icon shapes, every one inline and aria-hidden", () => {
+test("§4.7: at most six icon shapes, every one inline and aria-hidden", () => {
   const sites: string[] = [];
   const meaningful: string[] = [];
   for (const [file, body] of componentFiles()) {

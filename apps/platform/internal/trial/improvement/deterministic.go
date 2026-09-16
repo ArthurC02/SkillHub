@@ -103,7 +103,7 @@ func executionFindings(m material) []Finding {
 	out := []Finding{}
 	severity := SeverityInfo
 	message := "the workload ran to its own end and reported success. That is an " +
-		"execution outcome and not a task verdict (ADR-025)"
+		"execution outcome and not a task verdict"
 	if m.run.Status != "succeeded" {
 		severity = SeverityError
 		message = fmt.Sprintf("the run ended as %s", m.run.Status)
@@ -142,7 +142,7 @@ func executionFindings(m material) []Finding {
 		out = append(out, Finding{
 			Category: CategoryExecution, Severity: SeverityWarning,
 			Message: "the run trace has gaps, so the evidence behind every judgement below " +
-				"may be incomplete; no criterion may be recorded as passed on it (ADR-009)",
+				"may be incomplete; no criterion may be recorded as passed on it",
 			Evidence: []EvidenceRef{},
 		})
 	}
@@ -229,7 +229,7 @@ func costFindings(m material) []Finding {
 		return []Finding{{
 			Category: CategoryCost, Severity: SeverityWarning,
 			Message: "this run reported no usage at all, so its cost is unknown rather than zero. " +
-				"The authoritative figure is the gateway's per-key spend (ADR-017)",
+				"The authoritative figure is the gateway's per-key spend",
 			Evidence: []EvidenceRef{},
 		}}
 	}
@@ -243,7 +243,7 @@ func costFindings(m material) []Finding {
 	}
 	message += ". This total is a lower bound: a response still in flight when the " +
 		"stream ended is not in it, and the authoritative figure is the gateway's " +
-		"per-key spend (ADR-017)"
+		"per-key spend"
 	return []Finding{{
 		Category: CategoryCost, Severity: SeverityInfo,
 		Message: message, Evidence: []EvidenceRef{},

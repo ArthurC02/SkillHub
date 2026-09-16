@@ -20,7 +20,7 @@ import { mapValues } from '../runtime';
  */
 export interface DeclareDispatchHaltRequest {
     /**
-     * Drain one node (ADR-022 X-04 ①「其他節點不受影響」). Omit for
+     * Drain one node (「其他節點不受影響」). Omit for
      * the whole fleet. A name that is not in the deployment's
      * provider list is refused rather than stored: a halt on a
      * misspelled node protects nothing and reads, on GET

@@ -28,7 +28,7 @@ func TestCleanModeRefusal(t *testing.T) {
 			if (reason != "") != tc.refuses {
 				t.Fatalf("SKILLHUB_CLEAN_MODE=%q -> refusal %q, want refusal=%v", tc.value, reason, tc.refuses)
 			}
-			if tc.refuses && !strings.Contains(reason, "ADR-060") {
+			if tc.refuses && !strings.Contains(reason, "single process") {
 				t.Errorf("the refusal does not say which decision it enforces: %q", reason)
 			}
 		})

@@ -35,7 +35,7 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 		"kind":                AllFeedbackKinds(),
 		"page_path":           "他當時所在的路由，從不是完整網址：查詢字串可能帶個資，這個管道不收",
 		"run_id":              "他當時看的 Run（若有），而且只在確認是他自己的 Run 之後",
-		"on_account_deletion": "去識別而不是刪除：workspace_id 與 user_id 設為 NULL，文字保留（ADR-029 決策 5 的範圍複審建立在人們說了什麼之上，帳號刪除不能悄悄撤回已被計入的回報）",
+		"on_account_deletion": "去識別而不是刪除：workspace_id 與 user_id 設為 NULL，文字保留（範圍複審建立在人們說了什麼之上，帳號刪除不能悄悄撤回已被計入的回報）",
 	}
 	if fd := feedbackDays(h.FeedbackRetention); fd >= 0 {
 		feedback["retention_days"] = fd
@@ -79,7 +79,7 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 		},
 
 		"note": "這四個事件就是分析資料類別的全部——上面的 `feedback` 區塊是這個部署收集的另一個類別。" +
-			"每一列另外都帶著 ADR-029 決策 2 為四個事件共同固定的五個欄位：event_id、" +
+			"每一列另外都帶著四個事件共同固定的五個欄位：event_id、" +
 			"event_name、occurred_at、session_id 與 workspace_id，加在上面列出的屬性之外。" +
 			"session_id 就是 sh_analytics 這個 cookie 的值：它把同一個訪客的搜尋與頁面瀏覽" +
 			"串成一趟旅程，保存期限同上。workspace_id 在那個訪客登入之前是 null，而且兩者" +

@@ -167,7 +167,7 @@ func renderInstall(p Profile, skillName string, deps []string) string {
 		"most 1024 characters; `compatibility`, where present, at most 500 characters; every file "+
 		"`SKILL.md` points at is in this package.\n\n"+
 		"**Not checked and not claimed:** that your Agent loads this Skill, that its scripts run, or "+
-		"that it does what it says. Those are the other two layers of ADR-012, and the "+
+		"that it does what it says. Those are the other two layers of package compatibility (see [打包、授權溯源與散布](../../../../../docs/adr/README.md#打包授權溯源與散布)), and the "+
 		"`compatibility` block of `skillhub-manifest.json` records what was actually measured for "+
 		"this version - which for most versions is nothing.\n\n"+
 		"The specification defines exactly six frontmatter fields (`name`, `description`, `license`, "+

@@ -1,7 +1,7 @@
 # 生成品質基線 B 輪：第二次觀察與 mini 對照
 
 - 日期：2026-08-23
-- 依據：[ADR-047](../../../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md)（決策 1 的前提、決策 5 的 mini 對照）、[ADR-048](../../../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md)（`possible-secret` 命中率）、[`03` GEN-009](../../03-work-items.md) 的 (甲)(乙)
+- 依據：[從描述生成 Skill](../../../adr/README.md#從描述生成-skill)（決策 1 的前提、決策 5 的 mini 對照、`possible-secret` 命中率）、[`03` GEN-009](../../03-work-items.md) 的 (甲)(乙)
 - 前一輪：[report-generate-spike.md](report-generate-spike.md)（A 輪）
 - Harness：同 A 輪，[`generate_spike_test.go`](../../../../apps/platform/internal/shared/skillpkg/generate_spike_test.go)
 - 閘道實付：**flagship B 輪 $2.3715／20 次**（$0.1186 每次）、**mini $0.1105／20 次**（$0.00553 每次）
@@ -10,9 +10,9 @@
 
 | # | 問題 | 答案 |
 | --- | --- | --- |
-| 1 | A 輪那三次失敗是隨機的嗎？（ADR-047 決策 1 的前提） | **部分是，部分不是** → §2 |
-| 2 | `possible-secret` 會不會實際發生？（ADR-048 的適用性） | **40 個新樣本仍是 0** → §4 |
-| 3 | mini 級夠不夠用？（ADR-047 決策 5 的解鎖條件） | **mini 通過率更高、便宜 21 倍** → §3 |
+| 1 | A 輪那三次失敗是隨機的嗎？（[從描述生成 Skill](../../../adr/README.md#從描述生成-skill)決策 1 的前提） | **部分是，部分不是** → §2 |
+| 2 | `possible-secret` 會不會實際發生？（[從描述生成 Skill](../../../adr/README.md#從描述生成-skill)的適用性） | **40 個新樣本仍是 0** → §4 |
+| 3 | mini 級夠不夠用？（[從描述生成 Skill](../../../adr/README.md#從描述生成-skill)決策 5 的解鎖條件） | **mini 通過率更高、便宜 21 倍** → §3 |
 | 4 | `max_tokens` 16000 解得了 A 輪那次截斷嗎？ | **解得了，但機制與裁定當時的理解不同** → §5 |
 
 ## 1. 三組語料
@@ -46,7 +46,7 @@
 - **兩輪都失敗：2／20**（DAT-1、DAT-4）
 - **一次重試後成功：18／20 ＝ 90%**
 
-### 2.1 對 ADR-047 決策 1 的判定：**結論成立，理由不成立**
+### 2.1 對[從描述生成 Skill](../../../adr/README.md#從描述生成-skill)決策 1 的判定：**結論成立，理由不成立**
 
 決策 1 說「重試恰好一次」，理由逐字是「缺陷是隨機的排版手滑不是系統性的能力缺陷」。
 
@@ -58,7 +58,7 @@
 
 ### 2.2 A 輪「三次失敗全是同一個 code」是小樣本假象
 
-A 輪三次全是 `frontmatter-invalid-yaml`，我在 ADR-046 的補記裡把它寫成一個發現。**B 輪三個不同的 code**（`invalid-yaml` ×2、`unknown-field` ×2、`description-missing` ×2），mini 又是第四種組合。
+A 輪三次全是 `frontmatter-invalid-yaml`，我在[從描述生成 Skill](../../../adr/README.md#從描述生成-skill)的補記裡把它寫成一個發現。**B 輪三個不同的 code**（`invalid-yaml` ×2、`unknown-field` ×2、`description-missing` ×2），mini 又是第四種組合。
 
 ### 2.3 真正的共同點是**模型會弄壞 frontmatter 的鍵名**——三種形狀都很難看
 
@@ -94,17 +94,17 @@ mini 的唯一失敗是 DAT-2 的 `frontmatter-unknown-field`，與 flagship 的
 
 三輪合計 **0／59 個套件**（A 19 ＋ B 20 ＋ mini 20）。
 
-[ADR-048](../../../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md) 的「成本與限制」已經預先寫了這件事：**若它其實從不發生，那條不重試規則就是一段沒有人走過的分支**。三輪之後這句話仍然成立，而且證據更強了。
+[從描述生成 Skill](../../../adr/README.md#從描述生成-skill) 的「成本與限制」已經預先寫了這件事：**若它其實從不發生，那條不重試規則就是一段沒有人走過的分支**。三輪之後這句話仍然成立，而且證據更強了。
 
 **這不是撤回那條規則的理由**——它守的是 fail-closed 的方向，成本是一個 `if`。但它應該被誠實地標成「未觀測」，而不是被說成一條在保護什麼的規則。
 
-## 5. `max_tokens` 16000：解得了，但機制與 ADR-047 決策 2 的理解不同
+## 5. `max_tokens` 16000：解得了，但機制與[從描述生成 Skill](../../../adr/README.md#從描述生成-skill)決策 2 的理解不同
 
 DOC-1 在 B 輪**通過**（3 個檔案）。但它的 completion token 是 **7552——低於 A 輪的 8000 上限**。
 
 所以 A 輪那次失敗**不是「內容太長裝不下」**。查 A 輪的 usage：**8000 個 completion token 全部是 `reasoning_tokens`，`content` 是空字串**。`max_tokens` 同時涵蓋推理與輸出，一次推理花掉整個預算的呼叫，**在寫出第一個字之前就到頂了**。
 
-ADR-047 決策 2 的理由寫「成功案例的最大輸出是 7506 tokens，上限就卡在觀測分布的頂端」——**那個推論的方向對，機制講錯了**。正確的說法是：**上限要蓋得住「推理 ＋ 輸出」的總和，而推理的變異數比輸出大得多**。同一段描述兩輪的推理花費可以差好幾倍。
+[從描述生成 Skill](../../../adr/README.md#從描述生成-skill)決策 2 的理由寫「成功案例的最大輸出是 7506 tokens，上限就卡在觀測分布的頂端」——**那個推論的方向對，機制講錯了**。正確的說法是：**上限要蓋得住「推理 ＋ 輸出」的總和，而推理的變異數比輸出大得多**。同一段描述兩輪的推理花費可以差好幾倍。
 
 ## 6. 這批仍然答不了的
 
@@ -248,7 +248,7 @@ missing event is a judgement about 丙-1's rule and is not decided by renaming i
 ### 9.4 兩個順手量到的
 
 - **`license-unknown` 20／20**：生成器產出的 `SKILL.md` **一次都沒有宣告授權**。今天不擋任何事
-  （`skills.redistribution` 預設就不是 `allowed`），但依 [ADR-057](../../../adr/ADR-057-releasing-content-takes-named-evidence-not-a-button.md)，
+  （`skills.redistribution` 預設就不是 `allowed`），但依 [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)，
   **一個沒有授權欄位的生成物永遠拿不到 `manifest` 這一級的證據**。要不要讓生成器寫入授權，是 M5 自己的題目。
 - **20／20 的套件裡只有一個檔案，就是 `SKILL.md`**：生成器**從來沒有產出過 script 或 reference**。
   這一輪沒有量它好不好，只記下形狀——**這是 ④ 那個人要看的東西的全部**，二十份都在 `gen009-round-d/skills/`。
@@ -261,7 +261,7 @@ missing event is a judgement about 丙-1's rule and is not decided by renaming i
   代價逐字寫在 harness 的檔頭。**沒有任何一段的判定代表那個 Skill 好用。**
 - **那六段非本類描述不是 A／B 輪用的原文**。A／B 輪的六段從未進 repo（spike 的生成腳本是一次性的），
   這裡是**同樣六個題材、重寫的文字**。十四段情境卡則與 A／B 輪逐字相同。
-- **每段只跑一次。** ADR-047 的 (甲)「每段至少兩次」是對 ①② 的要求，這一輪沒有對 ③ 重複——
+- **每段只跑一次。** [從描述生成 Skill](../../../adr/README.md#從描述生成-skill)的 (甲)「每段至少兩次」是對 ①② 的要求，這一輪沒有對 ③ 重複——
   判定的變異數因此未知。
 - **runtime 是 `runc` 不是 `runsc`**，這一輪不構成 `SEC-009` 的任何一項。
 - **④ 仍然沒有數字。** 「人看了會不會留著」要人，`GEN-009` 整列因此維持不勾。

@@ -104,7 +104,7 @@ func TestIsolationLevelProblemsRefusesAProseListInsteadOfAnEnum(t *testing.T) {
 		"        isolation:\n          properties:\n            level:\n              enum: [clean]\n")
 	writeAt(t, root, "contracts/openapi/public.yaml",
 		"            isolation_level:\n              type: string\n"+
-			"              description: 'gvisor | container | vm | process (ADR-015).'\n")
+			"              description: 'gvisor | container | vm | process.'\n")
 	problems := isolationLevelProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "no enum found under `isolation_level:`") {
 		t.Fatalf("a prose list was accepted as a set: %v", problems)

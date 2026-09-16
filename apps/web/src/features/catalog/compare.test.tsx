@@ -272,7 +272,7 @@ test("EVAL-003 候選歷史讀取失敗不會冒充空歷史", async () => {
 
 const occurrences = (needle: string) => text().split(needle).length - 1;
 
-const RUN_COST_AUTHORITY = "模型閘道對這個 Run 的 per-key 實付（ADR-017）";
+const RUN_COST_AUTHORITY = "模型閘道對這個 Run 的 per-key 實付";
 const COST_NOTE = `這是下界，不是總額。權威來源：${RUN_COST_AUTHORITY}`;
 
 test("§2.13 去重 1：兩側相同的成本但書印在列首，一次", async () => {

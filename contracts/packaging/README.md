@@ -41,17 +41,17 @@
 
 可判定形式：`capability` 與 `behaviour` 只要有一軸不是 `unverified`，`runtime_image` 與 `measured_at` 就是必填。一個沒有映像的判定，就是它禁止的那種外推。
 
-值域逐字取自 `0022`，**不另造一套**。命名有一處差異：ADR-012 的第三層叫 `behaviour`，DB 欄位叫 `runtime`——這裡跟 ADR-012 與 `public.yaml` 的 `SkillCompatibility` 一致用 `behaviour`，值域相同。
+值域逐字取自 `0022`，**不另造一套**。命名有一處差異：[打包、授權溯源與散布](../../docs/adr/README.md#打包授權溯源與散布)裡第三層叫 `behaviour`，DB 欄位叫 `runtime`——這裡跟該決策與 `public.yaml` 的 `SkillCompatibility` 一致用 `behaviour`，值域相同。
 
 ### 3.2 `license.expression` 與 `license.source_tier` 同生同滅
 
-ADR-021 決策 1 的對外形式，`0012` 的 CHECK 是它在 DB 的那一半。`oneOf` 兩支：兩者皆 null，或兩者皆非 null；一支有值一支沒有一律不合法。
+[打包、授權溯源與散布](../../docs/adr/README.md#打包授權溯源與散布)裡「License 運算式與來源層級同生同滅」決策的對外形式，`0012` 的 CHECK 是它在 DB 的那一半。`oneOf` 兩支：兩者皆 null，或兩者皆非 null；一支有值一支沒有一律不合法。
 
-`expression` 另外拒收 `NOASSERTION`／`NONE`（ADR-021 決策 7）：這個欄位只承載運算式，不承載狀態，未知就是 NULL。輸出 SPDX／SBOM 時再映射。
+`expression` 另外拒收 `NOASSERTION`／`NONE`：這個欄位只承載運算式，不承載狀態，未知就是 NULL。輸出 SPDX／SBOM 時再映射。
 
-`source_tier` 的值域逐字取自 `skill_versions.license_source`（`0012` ＋ `0014`）。ADR-021 的第 4 層 `curated-declared` 已定義但不實作，**這裡也不收**。
+`source_tier` 的值域逐字取自 `skill_versions.license_source`（`0012` ＋ `0014`）。[打包、授權溯源與散布](../../docs/adr/README.md#打包授權溯源與散布)定義的第 4 層 `curated-declared` 已定義但不實作，**這裡也不收**。
 
-**這份 schema 不決定哪些 License 可以打包。** 可散布性是 Skill 上的另一道鎖（`skills.redistribution`，三態、預設 `unknown`，見 ADR-027 決策 4 與 [packaging-design.md](../../docs/plans/mvp/m4/packaging-design.md) §4.5），且 `license_status = Confirmed` **明文不得成為放行條件**（`02:CONTENT-002`）。manifest 報告授權證據，閘門拒絕套件——兩件事。
+**這份 schema 不決定哪些 License 可以打包。** 可散布性是 Skill 上的另一道鎖（`skills.redistribution`，三態、預設 `unknown`，見[打包、授權溯源與散布](../../docs/adr/README.md#打包授權溯源與散布)與 [packaging-design.md](../../docs/plans/mvp/m4/packaging-design.md) §4.5），且 `license_status = Confirmed` **明文不得成為放行條件**（`02:CONTENT-002`）。manifest 報告授權證據，閘門拒絕套件——兩件事。
 
 ### 3.3 `manifest_hash` 不含 manifest 自身，也不含任何 zip metadata
 
@@ -59,17 +59,17 @@ ADR-021 決策 1 的對外形式，`0012` 的 CHECK 是它在 DB 的那一半。
 
 排除 zip metadata（entry 順序、mtime、外部屬性、壓縮方式、extra field）是因為它們會在內容沒動的情況下讓位元組改變；排除 `skillhub-manifest.json` 自身是因為 manifest 帶著這個 hash，而且帶著 `packaged_at`——把它算進去會讓兩次位元組相同的打包得出不同的雜湊，正好抹掉這個欄位存在的理由。
 
-兩個雜湊各答一個問題（[packaging-design.md](../../docs/plans/mvp/m4/packaging-design.md) §2.4、ADR-027 決策 1）：`artifacts.content_hash` 答「這個檔案是不是那個檔案」，`manifest_hash` 答「兩次打包的**內容**是不是一樣」。可重現性的範圍是**同一個打包器版本內**（ADR-027 決策 2），這正是 manifest 要記 `packager_version` 的理由。
+兩個雜湊各答一個問題（[packaging-design.md](../../docs/plans/mvp/m4/packaging-design.md) §2.4、[打包、授權溯源與散布](../../docs/adr/README.md#打包授權溯源與散布)）：`artifacts.content_hash` 答「這個檔案是不是那個檔案」，`manifest_hash` 答「兩次打包的**內容**是不是一樣」。可重現性的範圍是**同一個打包器版本內**，這正是 manifest 要記 `packager_version` 的理由。
 
-**manifest 不是簽章，也不是背書**（ADR-027 決策 3）：MVP 不簽章，雜湊是使用者可自行重算的事實，不是平台對內容安全或未被竄改的保證；撤銷只到「停止再發」，已下載的副本無法作廢。schema 的根層 description 逐字寫了這一條。
+**manifest 不是簽章，也不是背書**：MVP 不簽章，雜湊是使用者可自行重算的事實，不是平台對內容安全或未被竄改的保證；撤銷只到「停止再發」，已下載的副本無法作廢。schema 的根層 description 逐字寫了這一條。
 
 `manifestHashInput` 的 path key 另外套用與 zip entry 相同的逃逸規則（無開頭斜線、無 `..` 區段、無磁碟機代號、無反斜線）。這層檢查在匯入端不存在，因為平台從不解壓到磁碟；**使用者會解壓**，所以它在匯出端第一次成為必要。
 
 ## 4. `packaging-profile` 的兩條可判定規則
 
 - **`standard` 目標不得改 `SKILL.md` 一個位元組**：`id = standard` 時 `kind` 必為 `standard_package`、`frontmatter_additions` 必為空、`install.locations` 必為空、`top_level_dir` 必為 null。它是「Skill Hub 不綁定單一 Agent」這個承諾的可驗證證據（PDM-008）。
-- **Profile 只能 additive**：`frontmatter_additions` 的 key 不得是 `name`／`description`／`license`／`allowed-tools`／`allowed_tools`。這是 ADR-012「Adapter 不得靜默改變 Skill 的任務意圖或移除必要安全限制」的可判定形式。
-- **`claude-agent-sdk` 的 `snippet` 必須同時出現 `cwd` 與 `setting_sources` 兩個字**——**要求的是「講到」，不是「照傳」**。[ADR-023](../../docs/adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md) §2 測項 1 在釘定的 SDK 0.3.233 上量到的載入條件有四項：`cwd` 指向放 `.claude/skills/` 的目錄、**`settingSources`／`setting_sources` 省略**（傳 `["project"]` 發現到零個 skill，與 0.2.137 及官方文件的讀法相反）、`skills: "all"`、以及工具清單；**四者缺一即零個 skill，且不報錯**。因此正確的 snippet 是**設 `cwd`、不傳 `setting_sources`，並在註解裡寫明為什麼不傳**——那句註解同時滿足 schema 的 pattern。<br>**schema 的 pattern 擋得住的只有「整份 snippet 從沒提過 `setting_sources`」**（讀的人分不出是刻意省略還是漏寫）；它**擋不住「真的傳了 `setting_sources`」**，那一層由覆核與 `profiles/` 的實體負責。收緊 pattern 是收緊值域＝major bump（§5），為一個內建目標不值得，**這個限制寫在這裡而不是留給下一個人自己發現**。
+- **Profile 只能 additive**：`frontmatter_additions` 的 key 不得是 `name`／`description`／`license`／`allowed-tools`／`allowed_tools`。這是[打包、授權溯源與散布](../../docs/adr/README.md#打包授權溯源與散布)「Adapter 不得靜默改變 Skill 的任務意圖或移除必要安全限制」規則的可判定形式。
+- **`claude-agent-sdk` 的 `snippet` 必須同時出現 `cwd` 與 `setting_sources` 兩個字**——**要求的是「講到」，不是「照傳」**。釘選 SDK 版本並依實測結果重新驗證行為的那項決策（見[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)）在釘定的 SDK 0.3.233 上量到的載入條件有四項：`cwd` 指向放 `.claude/skills/` 的目錄、**`settingSources`／`setting_sources` 省略**（傳 `["project"]` 發現到零個 skill，與 0.2.137 及官方文件的讀法相反）、`skills: "all"`、以及工具清單；**四者缺一即零個 skill，且不報錯**。因此正確的 snippet 是**設 `cwd`、不傳 `setting_sources`，並在註解裡寫明為什麼不傳**——那句註解同時滿足 schema 的 pattern。<br>**schema 的 pattern 擋得住的只有「整份 snippet 從沒提過 `setting_sources`」**（讀的人分不出是刻意省略還是漏寫）；它**擋不住「真的傳了 `setting_sources`」**，那一層由覆核與 `profiles/` 的實體負責。收緊 pattern 是收緊值域＝major bump（§5），為一個內建目標不值得，**這個限制寫在這裡而不是留給下一個人自己發現**。
 - `verification_prompt` 與 `verification_steps` 至少要有一個（`PACK-007`）。`standard` 走 steps（重新匯入得同一個雜湊），兩個 Profile 走 prompt。
 
 兩個 Profile 的安裝路徑實際相同，差別在**使用者層 vs 工作目錄層**與驗證方式（PDM-008 v4 依實測釐清），`known_limitations` 必須把這件事講清楚，否則使用者會以為是重複選項。
@@ -104,16 +104,16 @@ ADR-021 決策 1 的對外形式，`0012` 的 CHECK 是它在 DB 的那一半。
 
 | schema | 反例 | 擋的是什麼 |
 | --- | --- | --- |
-| manifest | 有 expression 沒有 source_tier／有 tier 沒有 expression | ADR-021 決策 1 |
-| manifest | `expression: "NOASSERTION"` | ADR-021 決策 7 |
+| manifest | 有 expression 沒有 source_tier／有 tier 沒有 expression | License 運算式與來源層級同生同滅 |
+| manifest | `expression: "NOASSERTION"` | License 運算式不承載狀態值 |
 | manifest | `behaviour: native` 但沒有 `runtime_image` | 外推一次沒發生過的量測（`04` 乙-4） |
 | manifest | improvement 溯源夾帶 `problem`／`expected_impact` | 鐵律 11 |
 | manifest | `validation.blocked: true` | 被拒的套件不會有 manifest（`PACK-002`） |
 | manifest | fork 只記一跳、沒有原始來源 | `02:DISC-003` 第 5 條 |
 | manifest hash 輸入 | 含 `skillhub-manifest.json`／含 `../` 路徑／值不是 sha256 | §3.3 |
 | profile | `standard` 加 frontmatter | PDM-008 |
-| profile | `frontmatter_additions` 覆寫 `description` | ADR-012 |
-| profile | snippet 從頭到尾沒提過 `setting_sources` | ADR-023 的靜默失效（**不是**「沒傳」，見 §4） |
+| profile | `frontmatter_additions` 覆寫 `description` | Adapter 不得靜默改變 Skill 任務意圖 |
+| profile | snippet 從頭到尾沒提過 `setting_sources` | SDK 釘選版本的靜默失效（**不是**「沒傳」，見 §4） |
 | profile | `claude-agent-sdk` 完全沒有 snippet | 只給路徑講不出載入條件 |
 | profile | `standard` 寫了安裝位置 | PDM-008：標準套件不猜使用者的 Agent 把 Skill 放哪 |
 | profile | Profile 自稱 `standard_package` | PDM-008 對外的「1 標準套件 ＋ 2 Profile」計數 |
@@ -132,7 +132,7 @@ ADR-021 決策 1 的對外形式，`0012` 的 CHECK 是它在 DB 的那一半。
 | [`profiles/claude-code.json`](profiles/claude-code.json) | `claude-code` | `profile` | `unverified` | 使用者層 `~/.claude/skills/<name>/`；專案層 `.claude/skills/<name>/` |
 | [`profiles/claude-agent-sdk.json`](profiles/claude-agent-sdk.json) | `claude-agent-sdk` | `profile` | `verified` | 工作目錄層 `.claude/skills/<name>/`（相對於傳給 `query()` 的 `cwd`） |
 
-**這三份就是 schema 的 examples。** `packaging-profile.schema.json` 因此**不再帶 inline `examples`**——同一份文件放兩份會漂移，而被移除的那份已經漂了：它的 SDK snippet 傳 `setting_sources=["project"]`，正是 ADR-023 在釘定版本上量到「載入零個 skill」的那個寫法。validator 改讀 `profiles/*.json`，並斷言目錄裡恰好是 PDM-008 的三個 id。
+**這三份就是 schema 的 examples。** `packaging-profile.schema.json` 因此**不再帶 inline `examples`**——同一份文件放兩份會漂移，而被移除的那份已經漂了：它的 SDK snippet 傳 `setting_sources=["project"]`，正是在釘定版本上量到「載入零個 skill」的那個寫法。validator 改讀 `profiles/*.json`，並斷言目錄裡恰好是 PDM-008 的三個 id。
 
 ### 7.1 `support_status` 判的是**目標 Agent**，不是打包器的產出
 
@@ -140,7 +140,7 @@ ADR-021 決策 1 的對外形式，`0012` 的 CHECK 是它在 DB 的那一半。
 
 - **`claude-agent-sdk` ＝ `verified`**：有實測。`infra/images/runtime-agent-sdk/UPGRADES.md` 的 `2026.08-3` 一節（單一真實 Run，套件掛在 `<cwd>/.claude/skills/`，`skill_activation` 事件 ＋套件內腳本真的執行），加上 M2 基準的 45/45（[`m2/content-baseline-report.md`](../../docs/plans/mvp/m2/content-baseline-report.md) §12／§13）。
 - **`claude-code` ＝ `unverified`**：**沒有人把一個 Skill Hub 套件放進 `~/.claude/skills/` 跑過**。路徑取自 Claude Code 官方文件、底層發現機制與上面那次實測同源，但兩者都不等於做過——`PACK-009`「依說明安裝」的最後一哩本來就記為人的動作（[m4/README](../../docs/plans/mvp/m4/README.md) §9）。做完並落檔即改為 `verified`，**在那之前不改**（`PACK-008`）。
-- **`standard` ＝ `unverified`**：它不指名任何 Agent，格式有效不等於裝得起來（ADR-012「不得因格式驗證通過而暗示裝得起來」）。它的驗證走 `verification_steps`（重新匯入得同一個 `content_hash`），不走 Prompt。
+- **`standard` ＝ `unverified`**：它不指名任何 Agent，格式有效不等於裝得起來（[打包、授權溯源與散布](../../docs/adr/README.md#打包授權溯源與散布)「不得因格式驗證通過而暗示裝得起來」的規則）。它的驗證走 `verification_steps`（重新匯入得同一個 `content_hash`），不走 Prompt。
 
 **因此 PDM-008 對外的「2 個已驗證安裝 Profile」目前只成立 1 個**，差的那一項是一次本機安裝，不是程式。這一列記在 [m4/README §13](../../docs/plans/mvp/m4/README.md#13-第-3-批前半的交付紀錄profile-內容與可散布性回填)。
 

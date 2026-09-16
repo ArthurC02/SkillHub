@@ -3,7 +3,7 @@
 - 日期：2026-08-17
 - 狀態：**設計，未實作。** 本文件只寫形狀與理由；契約實體由第 1 批依 [contract-deltas.md](contract-deltas.md) 產出。
 - 範圍：`02:PACK-001`（標準套件）、`02:PACK-002`（安裝說明）、`02:SEC-007`（不可散布者不得進入打包）、`02:WS-002` 的下載紀錄、`02:NFR-001` 的下載稽核。
-- 前提閱讀：[ADR-012](../../../adr/ADR-012-packaging-portability-and-agent-adapters.md)（打包可攜性與三層相容性）、[ADR-021](../../../adr/ADR-021-skill-license-provenance.md)（License 溯源）、[ADR-003](../../../adr/ADR-003-data-ownership-and-storage.md)（物件存取與刪除可追溯性）、[ADR-007](../../../adr/ADR-007-trust-security-and-supply-chain.md)（Artifact 與下載、稽核事件）。
+- 前提閱讀：[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)（打包可攜性與三層相容性、License 溯源）、[資料所有權與核心基礎設施](../../../adr/README.md#資料所有權與核心基礎設施)（物件存取與刪除可追溯性）、[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)（Artifact 與下載、稽核事件）。
 
 ## 0. 一句話
 
@@ -51,8 +51,8 @@
 
 **三個刻意的決定**：
 
-1. **平台新增的檔案只有三樣**（manifest、`INSTALL.md`、選用的 `test-cases/`），而且**檔名前綴或位置都可辨識**。多加一個檔案就多一次「這是作者寫的還是平台寫的」的混淆，而 ADR-021 已經為 `LICENSE.repo` 付過一次這個代價（它之所以要精確大小寫比對，正是因為要和作者的檔案分得開）。
-2. **`SKILL.md` 的 frontmatter 在 `standard` 目標下一個位元組不改。** `standard` 是「Skill Hub 不綁定單一 Agent」這個承諾的可驗證證據（PDM-008），任何改寫都會讓它不再等於來源。Profile 的欄位差異只在 `claude-code`／`claude-agent-sdk` 兩個目標上發生，且必須是 **additive frontmatter 欄位**，不得移除或改寫既有欄位（ADR-012「Adapter 不得靜默改變 Skill 的任務意圖或移除必要安全限制」）。
+1. **平台新增的檔案只有三樣**（manifest、`INSTALL.md`、選用的 `test-cases/`），而且**檔名前綴或位置都可辨識**。多加一個檔案就多一次「這是作者寫的還是平台寫的」的混淆，而 [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)已經為 `LICENSE.repo` 付過一次這個代價（它之所以要精確大小寫比對，正是因為要和作者的檔案分得開）。
+2. **`SKILL.md` 的 frontmatter 在 `standard` 目標下一個位元組不改。** `standard` 是「Skill Hub 不綁定單一 Agent」這個承諾的可驗證證據（PDM-008），任何改寫都會讓它不再等於來源。Profile 的欄位差異只在 `claude-code`／`claude-agent-sdk` 兩個目標上發生，且必須是 **additive frontmatter 欄位**，不得移除或改寫既有欄位（[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的「Adapter 不得靜默改變 Skill 的任務意圖或移除必要安全限制」規則）。
 3. **不重排、不重壓、不「整理」。** 來源檔案逐位元組複製，順序由排序後的路徑決定（§2.4）。看起來多餘的檔案（例如作者的 `.editorconfig`）留著——刪它是替作者做決定，而它不在任何一條排除規則裡。
 
 ### 2.3 「匯出必過自家匯入驗證」的可機械判定形式
@@ -69,7 +69,7 @@
 
 ### 2.4 規範化與可重現性
 
-ADR-012 §「可重現性」要求「相同輸入與版本應能產生語意等價的套件；若內容雜湊因壓縮時間等非語意 metadata 不同，需另有**規範化 Manifest Hash**」。**這是一個真實的問題**：zip 的 entry mtime、外部屬性、壓縮器版本與 entry 順序都會讓位元組不同，而「打兩次得到兩個不同的雜湊」會讓 `artifacts.content_hash` 的去重與「這是不是我上次拿到的那個檔」都失去意義。
+[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的「可重現性」原則要求「相同輸入與版本應能產生語意等價的套件；若內容雜湊因壓縮時間等非語意 metadata 不同，需另有**規範化 Manifest Hash**」。**這是一個真實的問題**：zip 的 entry mtime、外部屬性、壓縮器版本與 entry 順序都會讓位元組不同，而「打兩次得到兩個不同的雜湊」會讓 `artifacts.content_hash` 的去重與「這是不是我上次拿到的那個檔」都失去意義。
 
 **設計取兩個雜湊，各自回答一個問題**：
 
@@ -80,7 +80,7 @@ ADR-012 §「可重現性」要求「相同輸入與版本應能產生語意等�
 
 **同時把 zip 寫入規範化**（讓 `content_hash` 在同一台機器上也穩定）：entry 依 path 排序、mtime 一律寫 `1980-01-01T00:00:00Z`（zip 的最小合法值）、外部屬性固定、不寫 extra field、壓縮等級固定。做到這一步之後 `content_hash` 在**同一個打包器版本**上是可重現的；跨版本不保證，這正是 manifest 要記 `packager_version` 的理由。
 
-> **這個決策需要一份 ADR（建議 ADR-027）**，因為它同時回答 ADR-012 的兩個待決策（規範化 Manifest Hash、簽章與完整性驗證），而且一旦有第一個 Download Artifact 存在，雜湊語意就不能再改。
+> **這個決策需要在[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)裡回答**，因為它同時涉及規範化 Manifest Hash、簽章與完整性驗證兩個待決策，而且一旦有第一個 Download Artifact 存在，雜湊語意就不能再改。
 
 ## 3. 打包前的規格重驗（`PACK-002`）
 
@@ -107,20 +107,20 @@ ADR-012 §「可重現性」要求「相同輸入與版本應能產生語意等�
 
 ### 4.1 `skillhub-manifest.json`：平台對這個檔案的自述
 
-ADR-012 §「可重現性」列了 Download Artifact 必須記錄的六項，本設計逐項落地並補上溯源：
+[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的「可重現性」列了 Download Artifact 必須記錄的六項，本設計逐項落地並補上溯源：
 
 | 欄位 | 內容 | 出處 |
 | --- | --- | --- |
 | `schema_version` | manifest 自身的版本 | 比照 `contracts/events/` 的版本演進慣例 |
-| `packaged_at`、`packager_version`、`profile_id`、`profile_version` | 來源 Skill Version 建立時間（固定的打包 timestamp）、打包器版本、目標與其版本 | ADR-012 |
-| `source.skill_id`／`skill_version_id`／`version_number`／`content_hash` | 來源不可變版本 | ADR-012、`02:DISC-003` |
+| `packaged_at`、`packager_version`、`profile_id`、`profile_version` | 來源 Skill Version 建立時間（固定的打包 timestamp）、打包器版本、目標與其版本 | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布) |
+| `source.skill_id`／`skill_version_id`／`version_number`／`content_hash` | 來源不可變版本 | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)、`02:DISC-003` |
 | `source.origin` | **三條溯源路徑之一**（§4.2） | `PACK-003` |
-| `license.expression`／`license.source_tier` | **成對，永不壓成單一字串** | ADR-021 決策 1；`02:CONTENT-002` |
-| `license.disclosures[]` | `license-from-package-file`／`license-from-repo-file` 等資訊級揭露的原文 | ADR-021 決策 5；`02:SKILL-004` |
+| `license.expression`／`license.source_tier` | **成對，永不壓成單一字串** | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布) 決策 1；`02:CONTENT-002` |
+| `license.disclosures[]` | `license-from-package-file`／`license-from-repo-file` 等資訊級揭露的原文 | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布) 決策 5；`02:SKILL-004` |
 | `validation` | 重驗結果：`blocked: false`、warning 與 info 的完整 findings | `PACK-002`、`02:SKILL-002` |
-| `compatibility` | **三層分開**：`format`（規格驗證）／`capability`（Profile 能力比對）／`behaviour`（該 Skill Version 在平台上的 Run 證據，含 `runtime_image` 與 `measured_at`） | ADR-012 三層相容性；`0022` 的 `skill_runtime_compatibility` |
-| `included_test_cases[]`／`excluded_reason` | 含／不含的 Test Case 與範例資料清單 | ADR-012；`PACK-005` |
-| `manifest_hash` | §2.4 的規範化雜湊（**不含自身**） | ADR-012 |
+| `compatibility` | **三層分開**：`format`（規格驗證）／`capability`（Profile 能力比對）／`behaviour`（該 Skill Version 在平台上的 Run 證據，含 `runtime_image` 與 `measured_at`） | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布) 三層相容性；`0022` 的 `skill_runtime_compatibility` |
+| `included_test_cases[]`／`excluded_reason` | 含／不含的 Test Case 與範例資料清單 | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)；`PACK-005` |
+| `manifest_hash` | §2.4 的規範化雜湊（**不含自身**） | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布) |
 
 **`compatibility.behaviour` 有一條硬規則**：它的值只能來自 `skill_runtime_compatibility` 裡**該 Skill Version × 該 Runtime Image** 的實測列。沒有列就是 `unverified`，**不得從「同一個 Skill 的別的版本」或「別的映像」外推**——`04` 乙-4 已經為這個鍵付過一次代價（換映像即回到未驗證直到重測），打包不得把那個誠實抹掉。
 
@@ -175,7 +175,7 @@ ADR-012 §「可重現性」列了 Download Artifact 必須記錄的六項，本
 
 ### 4.5 授權閘門：可散布性目前**資料庫回答不了**
 
-盤點的結論很直接：`skills`／`skill_versions` **沒有** `redistributable`／`source_available`／`license_status` 欄位。「source-available 一律不產出任何 Download Artifact」（PDM-008、PDM-002、ADR-012）目前只活在 `tools/content/seed-skills.json` 的策展欄位與文件裡，而 `0023_access_restriction.sql` 的註解**明說它不管打包**（「Download packaging is unaffected here because it is already blocked for this content by CONTENT-004/ADR-012」——那句話在 M4 之前為真是因為沒有打包功能）。
+盤點的結論很直接：`skills`／`skill_versions` **沒有** `redistributable`／`source_available`／`license_status` 欄位。「source-available 一律不產出任何 Download Artifact」（PDM-008、PDM-002、[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)）目前只活在 `tools/content/seed-skills.json` 的策展欄位與文件裡，而 `0023_access_restriction.sql` 的註解**明說它不管打包**（「Download packaging is unaffected here because it is already blocked for this content by CONTENT-004 與打包、授權溯源與散布主題的既有規則」——那句話在 M4 之前為真是因為沒有打包功能）。
 
 **設計取兩道鎖，方向相反，都要有**：
 
@@ -184,7 +184,7 @@ ADR-012 §「可重現性」列了 Download Artifact 必須記錄的六項，本
 | **鎖 A（既有旗標）** | `skills.access_restriction IS NOT NULL` → 拒絕。未知原因碼**仍然拒絕**（fail-closed，與 `restrictionOf` 讀取端同向） | 422 ＋ 可讀理由；不產生任何 artifact |
 | **鎖 B（新欄位）** | 新增 `skill_versions.redistribution`（或 `skills` 層，見下）三態：`allowed`／`blocked`／`unknown`。**只有 `allowed` 放行**——`unknown` 視同 `blocked` | 同上 |
 
-**為什麼一定要鎖 B**：鎖 A 是一個**人工按下的暫時性 hold**（`license-review`），它涵蓋的是今天已知的四筆。可散布性是一個**內容屬性**，它對每一個匯入的 Skill 都要有答案，包括明天使用者自己上傳的那一個。拿 hold 當可散布性判準，等於宣稱「沒有人特別擋它就是可以散布」——那正是 ADR-021 §5.3 記錄的那個錯誤方向（「repo 根有 MIT ⇒ 子目錄是 MIT」錯在放行方向）。
+**為什麼一定要鎖 B**：鎖 A 是一個**人工按下的暫時性 hold**（`license-review`），它涵蓋的是今天已知的四筆。可散布性是一個**內容屬性**，它對每一個匯入的 Skill 都要有答案，包括明天使用者自己上傳的那一個。拿 hold 當可散布性判準，等於宣稱「沒有人特別擋它就是可以散布」——那正是 [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)記錄的那個錯誤方向（「repo 根有 MIT ⇒ 子目錄是 MIT」錯在放行方向）。
 
 **欄位放哪一層需要拍板**（列入 `README` §8）：放 `skills` 與 `access_restriction` 同層、隨 Fork 複製、可撤銷；放 `skill_versions` 則不可變、精確對應那一份位元組但不可修正。**建議放 `skills`**，理由同 `0023` 的既有裁定（授權事實屬於來源；`skill_versions` 不可變，放不進一個可撤銷的判定）。
 
@@ -200,7 +200,7 @@ ADR-012 §「可重現性」列了 Download Artifact 必須記錄的六項，本
 
 ### 4.6 Artifact 的 quarantine 狀態要不要走
 
-`artifacts` 表從 `0004` 就有 `scan_status ∈ {quarantined, available, rejected}`，而**目前沒有任何程式碼會把它推進到 `available`**。ADR-003 的規則是「Artifact 上傳先進入隔離區，通過大小、類型與安全檢查後才可供下載」。
+`artifacts` 表從 `0004` 就有 `scan_status ∈ {quarantined, available, rejected}`，而**目前沒有任何程式碼會把它推進到 `available`**。[資料所有權與核心基礎設施](../../../adr/README.md#資料所有權與核心基礎設施)的規則是「Artifact 上傳先進入隔離區，通過大小、類型與安全檢查後才可供下載」。
 
 **設計：走，但檢查就是 §3 的重驗。** Download Artifact 的「安全檢查」不需要一套新的掃描器——它的內容全部來自一個已經通過匯入驗證的套件，再加上平台自己產生的三個檔案。因此狀態轉移是：
 
@@ -243,9 +243,9 @@ ADR-012 §「可重現性」列了 Download Artifact 必須記錄的六項，本
 | `claude-code` | Profile | 使用者層 `~/.claude/skills/<name>/` 或專案層 `.claude/skills/<name>/` | 格式 ＋ 能力 ＋ 行為（若該版本在平台試跑過） | 一句驗證 Prompt（取自 `CONTENT-007` 的範例 Prompt） |
 | `claude-agent-sdk` | Profile | Agent 工作目錄 `.claude/skills/<name>/` | 同上 | 最小可執行 `query()` 片段，**必須示範 `cwd` 與 `setting_sources`** |
 
-**兩個 Profile 的安裝路徑實際相同**（PDM-008 v4 依實測釐清），差別在「使用者層 vs 工作目錄層」與驗證方式。**文案必須把這個差異講清楚**，否則使用者會以為是重複選項。`claude-agent-sdk` 的安裝說明**只給路徑是不夠的**——載入條件是安裝步驟的一部分，缺任一項 Skill 就不會被載入（ADR-023 記錄的那次靜默失效）。
+**兩個 Profile 的安裝路徑實際相同**（PDM-008 v4 依實測釐清），差別在「使用者層 vs 工作目錄層」與驗證方式。**文案必須把這個差異講清楚**，否則使用者會以為是重複選項。`claude-agent-sdk` 的安裝說明**只給路徑是不夠的**——載入條件是安裝步驟的一部分，缺任一項 Skill 就不會被載入（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)記錄的那次靜默失效）。
 
-> **2026-08-17 更正（第 3 批前半）**：上表與本段原寫「必須示範 `cwd` 與 `setting_sources`」，那句話把 [ADR-023](../../../adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md) §2 測項 1 讀反了。實測在 SDK 0.3.233 上量到的四個條件是：`cwd` 指向放 `.claude/skills/` 的目錄、**`settingSources`／`setting_sources` 省略**（傳 `["project"]` 發現到**零個** skill，與 0.2.137 及官方文件的讀法相反）、`skills: "all"`、工具清單——**四者缺一即零個 skill**。因此 snippet 的正確形狀是**設 `cwd`、不傳 `setting_sources`，並在註解裡寫明為什麼不傳**（那句註解同時滿足 schema 的 lookahead）。落地實體見 [`contracts/packaging/profiles/claude-agent-sdk.json`](../../../../contracts/packaging/profiles/claude-agent-sdk.json)，判準與更正紀錄見 [README §13.3](README.md#133-adr-023-的更正本批發現契約寫反了一次)。
+> **2026-08-17 更正（第 3 批前半）**：上表與本段原寫「必須示範 `cwd` 與 `setting_sources`」，那句話把 [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全) §2 測項 1 讀反了。實測在 SDK 0.3.233 上量到的四個條件是：`cwd` 指向放 `.claude/skills/` 的目錄、**`settingSources`／`setting_sources` 省略**（傳 `["project"]` 發現到**零個** skill，與 0.2.137 及官方文件的讀法相反）、`skills: "all"`、工具清單——**四者缺一即零個 skill**。因此 snippet 的正確形狀是**設 `cwd`、不傳 `setting_sources`，並在註解裡寫明為什麼不傳**（那句註解同時滿足 schema 的 lookahead）。落地實體見 [`contracts/packaging/profiles/claude-agent-sdk.json`](../../../../contracts/packaging/profiles/claude-agent-sdk.json)，判準與更正紀錄見 [README §13.3](README.md#133-adr-023-的更正本批發現契約寫反了一次)。
 
 ### 6.1 Profile 能改什麼、不能改什麼
 
@@ -256,7 +256,7 @@ ADR-012 §「可重現性」列了 Download Artifact 必須記錄的六項，本
 | 決定 zip 內的頂層目錄名（例如 `<name>/`） | 改變檔案內容 |
 | 在 manifest 記錄自己的 `profile_version` | 移除任何 License 或 provenance 檔案 |
 
-最後一列是 ADR-012 的「Adapter 不得靜默改變 Skill 的任務意圖或移除必要安全限制」的可判定形式。
+最後一列是 [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的「Adapter 不得靜默改變 Skill 的任務意圖或移除必要安全限制」的可判定形式。
 
 ### 6.2 `INSTALL.md` 的必要欄位（`02:PACK-002` 逐條）
 
@@ -269,7 +269,7 @@ ADR-012 §「可重現性」列了 Download Artifact 必須記錄的六項，本
 1. **`standard` 的相容性只有格式一層**，下載頁必須寫「任何支援 Agent Skills 規格的 Agent 都可以試，但 Skill Hub 沒有在你的 Agent 上驗證過」，並連到規格說明（PDM-008 風險表已要求）。
 2. **`behaviour` 層為 `unverified` 的 Skill Version**（沒有實測列的、或量測是在另一個 Runtime Image 上的）必須顯示為未驗證並附映像標籤，**不得因為 `format` 與 `capability` 都通過就寫成「可用」**。這是 `01` §12 風險表「Skill 符合規格但無法執行」的對策落點。
 
-## 7. 下載授權（`ADR-003`：短效授權，不公開永久物件 URL）
+## 7. 下載授權（短效授權，不公開永久物件 URL）
 
 ### 7.1 兩個選項與取捨
 
@@ -278,13 +278,13 @@ ADR-012 §「可重現性」列了 Download Artifact 必須記錄的六項，本
 | **A（建議）：平台代傳** | `GET /skills/{id}/downloads/{artifact_id}/content` 由 API 讀物件後串流回應，`Content-Disposition: attachment` | Workspace scope 就是既有的 session middleware，不需要第二套授權；URL 不是機密材料，可以進 log 與稽核；`access_restriction` 與 `scan_status` 在同一個 handler 裡檢查。代價是位元組經過 API 程序（**但那只是搬位元組，不是執行**，鐵律 1 不受影響），且大檔佔用連線 |
 | B：預簽 URL 交給瀏覽器 | 用既有的 `objstore.PresignGet` | 省 API 頻寬。但**預簽 URL 是機密材料**：現有規則（`run/grants.go` 的註解）是「從不記錄、不進 trace、不進權限摘要」，而下載紀錄與稽核事件正好要記下這次下載——兩者直接衝突，得為它另立一套「記事件但不記 URL」的規則。另外它繞過 API，`scan_status`／`access_restriction` 的檢查只發生在簽發那一刻，TTL 內旗標改變也擋不住 |
 
-**取 A。** 套件的量級（來源套件上限 32 MiB 壓縮後）與封測規模（PDM-010 提案 900 Run／月）下，B 省的東西不值得它帶進來的那條規則衝突。**若日後檔案變大或流量上來，換成 B 是一個 handler 的替換**，屆時 ADR-028 或後續 ADR 再議。
+**取 A。** 套件的量級（來源套件上限 32 MiB 壓縮後）與封測規模（PDM-010 提案 900 Run／月）下，B 省的東西不值得它帶進來的那條規則衝突。**若日後檔案變大或流量上來，換成 B 是一個 handler 的替換**，屆時再另立 ADR 裁定。
 
 > 順帶關掉一個既有待辦：`services/sandbox/README.md` 記著「逐檔物件需 POST policy 前綴授權，留給 `PACK-001`」。取 A 之後**這一項不再是 PACK-001 的前置**——平台代傳不需要前綴授權。該註記應在 M4 收斂批就地更正。
 
 ### 7.2 授權、紀錄與稽核（同交易，鐵律 9）
 
-一次成功的下載寫三件事：`artifacts` 的存取時間、`download_records`（`WS-004` 要列的東西：誰、何時、哪個 artifact、哪個 profile）、以及 `audit` 事件（`CORE-008`／ADR-007「Artifact 下載」）。
+一次成功的下載寫三件事：`artifacts` 的存取時間、`download_records`（`WS-004` 要列的東西：誰、何時、哪個 artifact、哪個 profile）、以及 `audit` 事件（`CORE-008`「Artifact 下載」）。
 
 **下載紀錄與 audit event 是兩件事，不要合併**：前者是使用者自己看的產品功能（`02:WS-002` 第 1 條），後者是合規紀錄（PDM-006 提案給 audit 400 天、只存 actor／動作／資源 ID／時間戳、**不含內容**）。保存期限與可見性都不同，合併會讓兩邊都被較嚴的那一個綁住。
 

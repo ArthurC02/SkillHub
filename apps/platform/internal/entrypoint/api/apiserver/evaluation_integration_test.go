@@ -293,7 +293,7 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 	if body.Cost.EvaluationCredits != nil {
 		t.Error("this judge reported no spend, and an unreported cost is not a number")
 	}
-	if !strings.Contains(body.Cost.Note, "ADR-017") {
+	if !strings.Contains(body.Cost.Note, "per-key 實付") {
 		t.Errorf("the cost note has to name the authoritative source, got %q", body.Cost.Note)
 	}
 
@@ -574,7 +574,7 @@ func TestCitedTraceEvidenceStopsClaimingToResolveOnceItsEventIsGone(t *testing.T
 				t.Errorf("criterion %s still claims its citation resolves after the event was dropped", r.CriterionID)
 			}
 			if e.Excerpt != excerpts[r.CriterionID] {
-				t.Errorf("criterion %s lost its excerpt when the event went; a stale citation keeps it, labelled (ADR-009): %q",
+				t.Errorf("criterion %s lost its excerpt when the event went; a stale citation keeps it, labelled: %q",
 					r.CriterionID, e.Excerpt)
 			}
 		}

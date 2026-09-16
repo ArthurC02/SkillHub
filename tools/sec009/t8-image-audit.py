@@ -162,7 +162,7 @@ def grade_scan_age(finished: str | None, now: datetime) -> tuple[str, str]:
     if age > timedelta(days=SCAN_VALIDITY_DAYS):
         return FAIL, detail + " -- EXPIRED"
     if age > timedelta(days=SCAN_VALIDITY_DAYS - SCAN_WARN_DAYS):
-        detail += "  [ADR-022: within the 7-day expiry warning window]"
+        detail += "  [within the 7-day expiry warning window]"
     return PASS, detail
 
 
@@ -287,7 +287,7 @@ def audit() -> Report:
 
 
 def preconditions() -> Report:
-    """ADR-022's three batch preconditions. Any one missing => T8 unknown => fail."""
+    """The three batch preconditions for SEC-009. Any one missing => T8 unknown => fail."""
     rep = Report()
 
     baseline = first_value(BASELINE_FILE)
@@ -343,7 +343,7 @@ def main() -> int:
         print("T8 image half (Suite 1 -- no node needed):")
         image.render()
         print()
-        print("SEC-009 batch preconditions (ADR-022; any FAIL => the whole batch is unknown):")
+        print("SEC-009 batch preconditions (any FAIL => the whole batch is unknown):")
         pre.render()
         print()
 

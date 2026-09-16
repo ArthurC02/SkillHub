@@ -22,7 +22,7 @@ import {
 } from './CreditEstimate';
 
 /**
- * One account's Credit standing (CRED-001, ADR-068). No field here is
+ * One account's Credit standing (CRED-001). No field here is
  * denominated in money: Credit is the currency this system shows, US
  * dollars are what the platform itself pays, and the two ledgers behind
  * this response are deliberately separate tables.

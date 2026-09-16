@@ -112,7 +112,7 @@ func TestSDKVersionRefusesToCompareNothing(t *testing.T) {
 			name:       "the pin became a range",
 			dockerfile: sdkDockerfile("^0.3.233"),
 			mainGo:     sdkMainGo("^0.3.233"), readme: sdkReadme("^0.3.233"),
-			wantProblems: 1, needle: "ADR-023 決策 1 bars",
+			wantProblems: 1, needle: "are barred from the image build path",
 		},
 		{
 			name:         "the Go default was reworded",

@@ -1,7 +1,7 @@
 :root {
   --text: #565f6e;
   --text-h: #101623;
-  /* ADR-064 §4.6.1/§4.6.2: depth is three flat surfaces, not shadow — ground
+  /* system.md §4.6.1/§4.6.2: depth is three flat surfaces, not shadow — ground
      (--bg), surface (--surface), recess (--code-bg). The surface is lighter than
      the ground in BOTH themes, which is the only direction that works in dark
      mode, where a shadow has nothing to fall on. The three greys are tinted
@@ -12,7 +12,7 @@
      配上 #aa3bff 那個螢光洋紅。負責人第三次回報同一件事：「這個顏色就是最大的問題，
      整個看起來超級復古風」。飽和洋紅加藕紫灰是 2000 年代的配方，而**這件事沒有任何
      規則擋**——`contrast.test.ts` 量的是達不達標不是釘住色相，`design-system.test.ts`
-     解析的是字級與間距，ADR-064 定的是三層平面的**結構**不是色相，§2.7 禁的是散落的
+     解析的是字級與間距，設計 §4.6 定的是三層平面的**結構**不是色相，§2.7 禁的是散落的
      色彩字面值不是改 token 的值。擋住它的一直只是沒有人去算那 50 個數字。
 
      ── 同日第二輪：三層平面在亮色模式下量不出來 ──────────────────────────────

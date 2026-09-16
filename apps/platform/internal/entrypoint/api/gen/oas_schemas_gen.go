@@ -696,14 +696,14 @@ func (*CancelAccountDeletionUnauthorized) cancelAccountDeletionRes() {}
 type CancelRunAccepted struct {
 	// The permanent platform identifier (iron rule 10).
 	RunID uuid.UUID `json:"run_id"`
-	// The standard lifecycle of ADR-004 / RUN-002. `cleaning_up` is not in here: cleanup happens after a
-	// terminal state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox
-	// was torn down" stay two distinct facts.
+	// The standard lifecycle of RUN-002. `cleaning_up` is not in here: cleanup happens after a terminal
+	// state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox was torn
+	// down" stay two distinct facts.
 	//
 	// `succeeded` says the workload finished, not that the task was done. Whether it was is
 	// `Evaluation.overall` from GET /runs/{id}/evaluation, which is a separate resource an evaluation
-	// never writes back into (ADR-025). A surface showing this value alone must word it as execution
-	// (執行完成 / 執行失敗) and must not present it as a pass.
+	// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
+	// 執行失敗) and must not present it as a pass.
 	Status CancelRunAcceptedStatus `json:"status"`
 	// Why the run entered this status. Masked and safe to display.
 	//
@@ -741,8 +741,8 @@ type CancelRunAccepted struct {
 	//
 	// Declared here on 2026-09-01, having been served long before. `GET /runs/{id}` returned it while this
 	// schema did not mention it, so every generated client was missing the one field that says why a run
-	// failed — and nothing could notice: the Go side is models-only with hand-written handlers
-	// (ADR-030's 2026-08-29 note), so a handler can serve what the contract never declared.
+	// failed — and nothing could notice: the Go side is models-only with hand-written handlers, so a
+	// handler can serve what the contract never declared.
 	FailureClass OptLabelled `json:"failure_class"`
 	// Tracked apart from the run outcome, and still writable after a terminal state. Idempotent cleanup is
 	// RUN-007. `value` is the database enum; see RunListItem.cleanup_status for why it is served with its
@@ -1027,14 +1027,14 @@ func (s *CancelRunAcceptedAttemptsItem) SetFinishedAt(val OptDateTime) {
 	s.FinishedAt = val
 }
 
-// The standard lifecycle of ADR-004 / RUN-002. `cleaning_up` is not in here: cleanup happens after a
-// terminal state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox
-// was torn down" stay two distinct facts.
+// The standard lifecycle of RUN-002. `cleaning_up` is not in here: cleanup happens after a terminal
+// state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox was torn
+// down" stay two distinct facts.
 //
 // `succeeded` says the workload finished, not that the task was done. Whether it was is
 // `Evaluation.overall` from GET /runs/{id}/evaluation, which is a separate resource an evaluation
-// never writes back into (ADR-025). A surface showing this value alone must word it as execution
-// (執行完成 / 執行失敗) and must not present it as a pass.
+// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
+// 執行失敗) and must not present it as a pass.
 type CancelRunAcceptedStatus string
 
 const (
@@ -1208,8 +1208,8 @@ type CatalogResponse struct {
 	//
 	// `total == len(results)` whenever `truncated` is false.
 	Total int `json:"total"`
-	// True when the catalogue holds more than this page shows. ADR-042 決策 3: a truncated list must say
-	// so, or it reads as the whole answer.
+	// True when the catalogue holds more than this page shows. A truncated list must say so, or it reads
+	// as the whole answer.
 	Truncated bool `json:"truncated"`
 }
 
@@ -1664,9 +1664,9 @@ type CreateDownloadArtifactCreated struct {
 	SizeBytes    int64  `json:"size_bytes"`
 	ContentHash  string `json:"content_hash"`
 	ManifestHash string `json:"manifest_hash"`
-	// The artifact's own scan state (ADR-003: an upload is quarantined until it passes its checks), not a
-	// `ready` boolean. `rejected` and `quarantined` are two different things to the person waiting for a
-	// download — one is over and one is not — and one flag would say neither.
+	// The artifact's own scan state (an upload is quarantined until it passes its checks), not a `ready`
+	// boolean. `rejected` and `quarantined` are two different things to the person waiting for a download
+	// — one is over and one is not — and one flag would say neither.
 	//
 	// Only `available` is served by GET /downloads/{artifactId}/content. That is the point of keeping the
 	// state: the rule is a condition on one handler that a test can hold to, rather than a habit of not
@@ -1930,9 +1930,9 @@ func (s *CreateDownloadArtifactCreated) SetDuplicate(val bool) {
 
 func (*CreateDownloadArtifactCreated) createDownloadArtifactRes() {}
 
-// The artifact's own scan state (ADR-003: an upload is quarantined until it passes its checks), not a
-// `ready` boolean. `rejected` and `quarantined` are two different things to the person waiting for a
-// download — one is over and one is not — and one flag would say neither.
+// The artifact's own scan state (an upload is quarantined until it passes its checks), not a `ready`
+// boolean. `rejected` and `quarantined` are two different things to the person waiting for a download
+// — one is over and one is not — and one flag would say neither.
 //
 // Only `available` is served by GET /downloads/{artifactId}/content. That is the point of keeping the
 // state: the rule is a condition on one handler that a test can hold to, rather than a habit of not
@@ -3553,8 +3553,8 @@ type CreationSnapshot struct {
 	// conversation's own history; a second upload overwrites this field but adds to that list.
 	DiagramFingerprint OptString `json:"diagram_fingerprint"`
 	// Every picture the person put into this conversation, in order, each tied to the turn it arrived
-	// with. Metadata only: the platform keeps the digest and refuses the bytes (ADR-066 決策 4), so a
-	// client that did not itself send the picture has its description and not the picture.
+	// with. Metadata only: the platform keeps the digest and refuses the bytes, so a client that did not
+	// itself send the picture has its description and not the picture.
 	Attachments     []CreationAttachment `json:"attachments"`
 	References      []CreationReference  `json:"references"`
 	Draft           OptCreationDraft     `json:"draft"`
@@ -3980,9 +3980,9 @@ func (s *CreationSnapshot) SetPreviousDraft(val OptCreationDraft) {
 	s.PreviousDraft = val
 }
 
-// One account's Credit standing (CRED-001, ADR-068). No field here is denominated in money: Credit is
-// the currency this system shows, US dollars are what the platform itself pays, and the two ledgers
-// behind this response are deliberately separate tables.
+// One account's Credit standing (CRED-001). No field here is denominated in money: Credit is the
+// currency this system shows, US dollars are what the platform itself pays, and the two ledgers behind
+// this response are deliberately separate tables.
 // Ref: #/components/schemas/CreditBalance
 type CreditBalance struct {
 	// May be negative: a step already taken is always settled, so a balance can go under before the next
@@ -4590,8 +4590,9 @@ func (s *DailyCount) SetCount(val int64) {
 	s.Count = val
 }
 
-// ADR-029's four events and their attribute whitelist, plus the retention this deployment actually
-// applies. Served from the constants in internal/analytics, never from numbers typed into a document.
+// The analytics policy's four events and their attribute whitelist, plus the retention this deployment
+// actually applies. Served from the constants in internal/analytics, never from numbers typed into a
+// document.
 // Ref: #/components/schemas/DataRetentionPolicy
 type DataRetentionPolicy struct {
 	// False — the shipped default — means no row is written and no cookie is set. The four events
@@ -4601,7 +4602,7 @@ type DataRetentionPolicy struct {
 	// is false.
 	RetentionDays int `json:"retention_days"`
 	// The closed set of four (the CHECK in 0029). A fifth would have to explain first why no domain table
-	// answers it (ADR-029 決策 1).
+	// answers it.
 	Events []DataRetentionPolicyEventsItem `json:"events"`
 	Note   string                          `json:"note"`
 	// The one other collected class this deployment holds: reports submitted at POST /feedback
@@ -4925,8 +4926,7 @@ type Dataset struct {
 	// the uploaded extension.
 	ContentType string `json:"content_type"`
 	SizeBytes   int64  `json:"size_bytes"`
-	// SHA-256 of the stored bytes. Copied into the run snapshot, where it outlives the file itself
-	// (ADR-003).
+	// SHA-256 of the stored bytes. Copied into the run snapshot, where it outlives the file itself.
 	ContentHash string `json:"content_hash"`
 	// 90 days from upload; deleting earlier is always allowed.
 	ExpiresAt time.Time `json:"expires_at"`
@@ -5246,9 +5246,9 @@ func (s *DeclareDispatchHaltOKSource) UnmarshalText(data []byte) error {
 }
 
 type DeclareDispatchHaltReq struct {
-	// Drain one node (ADR-022 X-04 ①「其他節點不受影響」). Omit for the whole fleet. A name
-	// that is not in the deployment's provider list is refused rather than stored: a halt on a misspelled
-	// node protects nothing and reads, on GET /admin/dispatch, exactly like one that does.
+	// Drain one node (「其他節點不受影響」). Omit for the whole fleet. A name that is not in the
+	// deployment's provider list is refused rather than stored: a halt on a misspelled node protects
+	// nothing and reads, on GET /admin/dispatch, exactly like one that does.
 	//
 	// Draining is a control-plane action only. Cordoning the VM, stopping sandboxd and rebuilding the node
 	// are deployment-period actions and nothing here simulates them.
@@ -5760,9 +5760,9 @@ type DownloadArtifact struct {
 	SizeBytes    int64  `json:"size_bytes"`
 	ContentHash  string `json:"content_hash"`
 	ManifestHash string `json:"manifest_hash"`
-	// The artifact's own scan state (ADR-003: an upload is quarantined until it passes its checks), not a
-	// `ready` boolean. `rejected` and `quarantined` are two different things to the person waiting for a
-	// download — one is over and one is not — and one flag would say neither.
+	// The artifact's own scan state (an upload is quarantined until it passes its checks), not a `ready`
+	// boolean. `rejected` and `quarantined` are two different things to the person waiting for a download
+	// — one is over and one is not — and one flag would say neither.
 	//
 	// Only `available` is served by GET /downloads/{artifactId}/content. That is the point of keeping the
 	// state: the rule is a condition on one handler that a test can hold to, rather than a habit of not
@@ -6073,9 +6073,9 @@ type DownloadArtifactContentUnauthorized Error
 
 func (*DownloadArtifactContentUnauthorized) downloadArtifactContentRes() {}
 
-// The artifact's own scan state (ADR-003: an upload is quarantined until it passes its checks), not a
-// `ready` boolean. `rejected` and `quarantined` are two different things to the person waiting for a
-// download — one is over and one is not — and one flag would say neither.
+// The artifact's own scan state (an upload is quarantined until it passes its checks), not a `ready`
+// boolean. `rejected` and `quarantined` are two different things to the person waiting for a download
+// — one is over and one is not — and one flag would say neither.
 //
 // Only `available` is served by GET /downloads/{artifactId}/content. That is the point of keeping the
 // state: the rule is a condition on one handler that a test can hold to, rather than a habit of not
@@ -6195,7 +6195,7 @@ func (*ErrorHeaders) uploadSkillPackageRes() {}
 // does not. `Run.status` records what happened during execution; `Evaluation.overall` records whether
 // the task was achieved. `succeeded` is an execution outcome and never a task verdict, an evaluation
 // never writes back to the run, and the two are not to be merged into a single pass/fail on any screen
-// (ADR-025, NFR-001).
+// (NFR-001).
 //
 // `status` and `overall` are likewise two fields on purpose. `status` is about the judgement (did it
 // run at all), `overall` is about the task (what did it conclude). With only one of them, "the
@@ -6225,8 +6225,8 @@ type Evaluation struct {
 	// at all - a run with no acceptance criteria is settled without one - because naming a model here
 	// would describe a call that was never made.
 	JudgeModel string `json:"judge_model"`
-	// The judge prompt this verdict was reached under (ADR-017). Together with `rubric_version` it is what
-	// makes two revisions comparable.
+	// The judge prompt this verdict was reached under. Together with `rubric_version` it is what makes two
+	// revisions comparable.
 	JudgePromptVersion string `json:"judge_prompt_version"`
 	// The CONTENT-007 rubric in force. Absent when the skill's category has none — absent means "no
 	// rubric", not "the default rubric".
@@ -6234,7 +6234,7 @@ type Evaluation struct {
 	// False when the material judged was incomplete: the run trace has a hole (`complete: false` on GET
 	// /runs/{id}/trace), an artifact could not be read, or an input had to be truncated. A criterion
 	// judged on incomplete evidence must not come back `passed`; `undetermined` is the honest outcome and
-	// the UI has to keep saying so (ADR-009).
+	// the UI has to keep saying so.
 	EvidenceComplete bool           `json:"evidence_complete"`
 	Cost             EvaluationCost `json:"cost"`
 	// The user's own answer about this judgement (EVAL-001 第 4 條). Absent means nobody answered, which
@@ -6405,18 +6405,18 @@ func (*Evaluation) setEvaluationFeedbackRes() {}
 // guarantee without saying so.
 // Ref: #/components/schemas/EvaluationCost
 type EvaluationCost struct {
-	// In Credit (ADR-068 decision 1). NULL means the gateway reported no cost. Render that as "unreported"
-	// and never as 0 — 0 tells the user the judgement was free.
+	// In Credit. NULL means the gateway reported no cost. Render that as "unreported" and never as 0 — 0
+	// tells the user the judgement was free.
 	//
 	// NULL also covers a cost the platform could not convert. The two collapse on purpose: both mean
 	// "there is no number to show", and a screen that distinguished them would be explaining the ledger's
 	// internals to somebody reading a verdict.
 	EvaluationCredits NilInt64 `json:"evaluation_credits"`
-	// `gateway` is the LiteLLM per-key spend for this evaluation, which is the authoritative figure
-	// (ADR-017). `estimated` is a computed one and must be labelled as such wherever it is shown.
-	// `unreported` is what the server sends when the gateway reported nothing: it goes with a null
-	// `evaluation_usd`, and a page must not attach either of the other two labels to it (the value was on
-	// the wire before it was in this enum; 04 丙-147).
+	// `gateway` is the LiteLLM per-key spend for this evaluation, which is the authoritative figure.
+	// `estimated` is a computed one and must be labelled as such wherever it is shown. `unreported` is
+	// what the server sends when the gateway reported nothing: it goes with a null `evaluation_usd`, and a
+	// page must not attach either of the other two labels to it (the value was on the wire before it was
+	// in this enum; 04 丙-147).
 	Source EvaluationCostSource `json:"source"`
 	Note   string               `json:"note"`
 }
@@ -6451,11 +6451,11 @@ func (s *EvaluationCost) SetNote(val string) {
 	s.Note = val
 }
 
-// `gateway` is the LiteLLM per-key spend for this evaluation, which is the authoritative figure
-// (ADR-017). `estimated` is a computed one and must be labelled as such wherever it is shown.
-// `unreported` is what the server sends when the gateway reported nothing: it goes with a null
-// `evaluation_usd`, and a page must not attach either of the other two labels to it (the value was on
-// the wire before it was in this enum; 04 丙-147).
+// `gateway` is the LiteLLM per-key spend for this evaluation, which is the authoritative figure.
+// `estimated` is a computed one and must be labelled as such wherever it is shown. `unreported` is
+// what the server sends when the gateway reported nothing: it goes with a null `evaluation_usd`, and a
+// page must not attach either of the other two labels to it (the value was on the wire before it was
+// in this enum; 04 丙-147).
 type EvaluationCostSource string
 
 const (
@@ -6791,8 +6791,8 @@ func (s *EvaluationStatus) UnmarshalText(data []byte) error {
 // Ref: #/components/schemas/EvidenceRef
 type EvidenceRef struct {
 	Kind EvidenceRefKind `json:"kind"`
-	// How the excerpt was found in the source it names (ADR-043). This is the platform's own answer, never
-	// the judge's — a citation is verified by content, not by the source it was filed under.
+	// How the excerpt was found in the source it names. This is the platform's own answer, never the
+	// judge's — a citation is verified by content, not by the source it was filed under.
 	//
 	//  - `exact` — the quote occurs verbatim.
 	//  - `normalized` — it occurs after bounded normalisation (NFC, runs of whitespace collapsed,
@@ -6808,13 +6808,14 @@ type EvidenceRef struct {
 	//    `not_checked` and `not_found` were one value until 2026-08-22 and are not the same claim.
 	//    `not_found` says the platform searched and the quote is nowhere, which is close to an accusation;
 	//    this says the platform never looked. Filing the second under the first made the report sound
-	//    certain about something it had not examined. It is the independent field ADR-043 §影響 asked
-	//    for, rather than the statement being left implicit in `excerpt`.
+	//    certain about something it had not examined. It is the independent field that telling misfiled
+	//    citations from fabricated ones apart asked for, rather than the statement being left implicit in
+	//    `excerpt`.
 	//    Like `not_found` it never counts as verified evidence, so a rubric item with `evidence_required`
 	//    is not satisfied by it.
 	Match EvidenceRefMatch `json:"match"`
 	// Present when the quote was found, but not in the source the judge named — `kind` is corrected to
-	// where it actually is and this records where it was filed. ADR-043's核心: mis-filed and fabricated
+	// where it actually is and this records where it was filed. The core point: mis-filed and fabricated
 	// are different failures and one string search tells them apart, so the platform stopped treating them
 	// the same. Absent when `kind` was right, which is the ordinary case.
 	ReattributedFrom OptEvidenceRefReattributedFrom `json:"reattributed_from"`
@@ -6830,14 +6831,14 @@ type EvidenceRef struct {
 	// Half-open [start, end) character offsets into the agent output.
 	CharRange OptEvidenceRefCharRange `json:"char_range"`
 	// The cited material as it was when the judgement was made: masked before storage (iron rule 11) and
-	// length-capped. It is untrusted content that crossed the trust boundary (ADR-001) — render it as
-	// inert text, never interpreting HTML, ANSI or SVG.
+	// length-capped. It is untrusted content that crossed the trust boundary — render it as inert text,
+	// never interpreting HTML, ANSI or SVG.
 	Excerpt string `json:"excerpt"`
 	// True when the excerpt is a cut of a longer passage.
 	ExcerptTruncated bool `json:"excerpt_truncated"`
 	// Whether the original can still be read. False means the trace partition was dropped or the artifact
 	// is gone; the excerpt is still shown and must be labelled as the copy kept at evaluation time. Never
-	// presented as though the original were still there, and never blanked out either (ADR-009).
+	// presented as though the original were still there, and never blanked out either.
 	Available bool `json:"available"`
 }
 
@@ -7051,8 +7052,8 @@ func (s *EvidenceRefKind) UnmarshalText(data []byte) error {
 	}
 }
 
-// How the excerpt was found in the source it names (ADR-043). This is the platform's own answer, never
-// the judge's — a citation is verified by content, not by the source it was filed under.
+// How the excerpt was found in the source it names. This is the platform's own answer, never the
+// judge's — a citation is verified by content, not by the source it was filed under.
 //
 //   - `exact` — the quote occurs verbatim.
 //   - `normalized` — it occurs after bounded normalisation (NFC, runs of whitespace collapsed,
@@ -7068,8 +7069,9 @@ func (s *EvidenceRefKind) UnmarshalText(data []byte) error {
 //     `not_checked` and `not_found` were one value until 2026-08-22 and are not the same claim.
 //     `not_found` says the platform searched and the quote is nowhere, which is close to an accusation;
 //     this says the platform never looked. Filing the second under the first made the report sound
-//     certain about something it had not examined. It is the independent field ADR-043 §影響 asked
-//     for, rather than the statement being left implicit in `excerpt`.
+//     certain about something it had not examined. It is the independent field that telling misfiled
+//     citations from fabricated ones apart asked for, rather than the statement being left implicit in
+//     `excerpt`.
 //     Like `not_found` it never counts as verified evidence, so a rubric item with `evidence_required`
 //     is not satisfied by it.
 type EvidenceRefMatch string
@@ -7128,7 +7130,7 @@ func (s *EvidenceRefMatch) UnmarshalText(data []byte) error {
 }
 
 // Present when the quote was found, but not in the source the judge named — `kind` is corrected to
-// where it actually is and this records where it was filed. ADR-043's核心: mis-filed and fabricated
+// where it actually is and this records where it was filed. The core point: mis-filed and fabricated
 // are different failures and one string search tells them apart, so the platform stopped treating them
 // the same. Absent when `kind` was right, which is the ordinary case.
 type EvidenceRefReattributedFrom string
@@ -7429,7 +7431,7 @@ type ForkSkillCreated struct {
 	//
 	// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
 	// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
-	// licensing question nobody could resolve (ADR-045).
+	// licensing question nobody could resolve.
 	Redistribution ForkSkillCreatedRedistribution `json:"redistribution"`
 	// Reason code for a licensing hold on the package materials, null when there is none. Also copied onto
 	// forks at fork time, which is why it belongs on a list of skills the caller owns rather than only on
@@ -7541,7 +7543,7 @@ func (*ForkSkillCreated) forkSkillRes() {}
 //
 // `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
 // refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
-// licensing question nobody could resolve (ADR-045).
+// licensing question nobody could resolve.
 type ForkSkillCreatedRedistribution string
 
 const (
@@ -7618,10 +7620,9 @@ func (*ForkSkillUnauthorized) forkSkillRes() {}
 
 // A flowchart or diagram the model reads as the task (02:GEN-005). Sent inline as base64 rather than
 // through a separate upload endpoint: the image is an INPUT to one synchronous call, not an object the
-// platform keeps — only its digest, media type and byte count land in the provenance row (ADR-066),
-// so nothing in object storage needs a retention rule for it. The decoded bytes are capped; over the
-// cap is a 400, never a resize (the platform does not edit inputs any more than it edits outputs,
-// ADR-047 決策 1).
+// platform keeps — only its digest, media type and byte count land in the provenance row, so nothing
+// in object storage needs a retention rule for it. The decoded bytes are capped; over the cap is a
+// 400, never a resize (the platform does not edit inputs any more than it edits outputs).
 // Ref: #/components/schemas/GenerateDiagram
 type GenerateDiagram struct {
 	// What `data` decodes to. Three formats, all of which the mini tier reads natively; SVG is refused
@@ -7877,7 +7878,7 @@ type GenerateSkillReq struct {
 	// taken down, under a licensing hold (`access_restriction`), or `redistribution = blocked`; any other
 	// id is refused (422) and nothing is generated. The latest version's SKILL.md is what the model sees,
 	// fenced as untrusted data. The generated package still takes `redistribution = generated`: a
-	// reference is something the model read, not something the package contains (ADR-066).
+	// reference is something the model read, not something the package contains.
 	ReferenceSkillIds []uuid.UUID `json:"reference_skill_ids"`
 }
 
@@ -8227,11 +8228,11 @@ func (s *GenerationFailures) SetFailures(val []GenerationFailure) {
 
 func (*GenerationFailures) listGenerationFailuresRes() {}
 
-// The non-text inputs of one generation, exactly as `skill_sources.generation_inputs` stores them
-// (ADR-066 決策 4): a diagram is a digest, a media type and a byte count — the image bytes were
-// never kept, so nothing here lets anyone download or re-derive the picture; a reference is the
-// identifier of the Skill and the version the model was shown, never its content. Both keys are
-// optional, and at least one is present whenever this object is.
+// The non-text inputs of one generation, exactly as `skill_sources.generation_inputs` stores them: a
+// diagram is a digest, a media type and a byte count — the image bytes were never kept, so nothing
+// here lets anyone download or re-derive the picture; a reference is the identifier of the Skill and
+// the version the model was shown, never its content. Both keys are optional, and at least one is
+// present whenever this object is.
 // Ref: #/components/schemas/GenerationInputs
 type GenerationInputs struct {
 	Diagram OptGenerationInputsDiagram `json:"diagram"`
@@ -10109,7 +10110,7 @@ type Me struct {
 	WorkspaceID uuid.UUID `json:"workspace_id"`
 	// Whether the caller is on this deployment's OPERATOR_USER_IDS. It only tells the client whether to
 	// draw the entry to /admin; it grants nothing. Every /admin route checks the roster itself and answers
-	// a member 404 whatever this field says (ADR-074 decision 1).
+	// a member 404 whatever this field says.
 	Operator bool `json:"operator"`
 	// Optional entry points this deployment turns on. Absent when there are none — not an empty object,
 	// so a client never has to tell "off" apart from "this build predates the flag".
@@ -10117,10 +10118,10 @@ type Me struct {
 	// It exists because a route that is simply not mounted cannot be discovered without a request that
 	// fails, and a feature discovered by a failed request has already been drawn on somebody's screen.
 	//
-	// Two keys today. `generate_skill` (ADR-052) is an entry point: it says a route exists. `clean_mode`
-	// (ADR-060) is not — it says this deployment swapped its sandbox, object store and database for
-	// substitutes that do not isolate, do not verify signatures and hold one connection, and the screen
-	// must say so. A client that treats `clean_mode` as something to unlock has read it backwards.
+	// Two keys today. `generate_skill` is an entry point: it says a route exists. `clean_mode` is not —
+	// it says this deployment swapped its sandbox, object store and database for substitutes that do not
+	// isolate, do not verify signatures and hold one connection, and the screen must say so. A client that
+	// treats `clean_mode` as something to unlock has read it backwards.
 	Features OptMeFeatures `json:"features"`
 	// What the purge will and will not destroy, in the server's own words, or null when no deletion is
 	// pending. The same sentence DELETE /me returns — and it is required here because a client that only
@@ -10236,10 +10237,10 @@ func (*Me) getMeRes() {}
 // It exists because a route that is simply not mounted cannot be discovered without a request that
 // fails, and a feature discovered by a failed request has already been drawn on somebody's screen.
 //
-// Two keys today. `generate_skill` (ADR-052) is an entry point: it says a route exists. `clean_mode`
-// (ADR-060) is not — it says this deployment swapped its sandbox, object store and database for
-// substitutes that do not isolate, do not verify signatures and hold one connection, and the screen
-// must say so. A client that treats `clean_mode` as something to unlock has read it backwards.
+// Two keys today. `generate_skill` is an entry point: it says a route exists. `clean_mode` is not —
+// it says this deployment swapped its sandbox, object store and database for substitutes that do not
+// isolate, do not verify signatures and hold one connection, and the screen must say so. A client that
+// treats `clean_mode` as something to unlock has read it backwards.
 type MeFeatures map[string]bool
 
 func (s *MeFeatures) init() MeFeatures {
@@ -13726,7 +13727,7 @@ type OwnSkill struct {
 	//
 	// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
 	// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
-	// licensing question nobody could resolve (ADR-045).
+	// licensing question nobody could resolve.
 	Redistribution OwnSkillRedistribution `json:"redistribution"`
 	// Reason code for a licensing hold on the package materials, null when there is none. Also copied onto
 	// forks at fork time, which is why it belongs on a list of skills the caller owns rather than only on
@@ -13840,7 +13841,7 @@ func (s *OwnSkill) SetVerification(val SkillVerification) {
 //
 // `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
 // refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
-// licensing question nobody could resolve (ADR-045).
+// licensing question nobody could resolve.
 type OwnSkillRedistribution string
 
 const (
@@ -13966,16 +13967,16 @@ func (s *PackageValidation) SetBlocked(val bool) {
 // 已人工確認不等於可再散布, so `confirmed` is never a release condition. `license_unknown`
 // — `redistribution` is `unknown`, which is where a skill starts and where anything unclassifiable
 // stays. Treated as blocked, not as permitted: 02:DISC-003 forbids implying an unknown licence may be
-// redistributed, and the one real misreading on record (ADR-021 §5.3, a root MIT file taken to cover
-// a subdirectory) erred in exactly that direction. `validation_blocked` — the package that would be
-// produced carries an error-level finding, so it must not be presented as a valid package
-// (02:PACK-001). The severities are skillpkg's own; packaging does not define a second notion of
-// "blocking". `file_removed_by_packager` — `SKILL.md` points at a file that was in the version and
-// that the exporter removed (`excluded_files` names it). The fifth value exists because it is the one
-// failure on this list the platform caused: a dangling reference that arrived that way is the
-// author's, disclosed as a warning and shipped, but a package the packager itself broke must not go
-// out looking whole. It is also the one a user can act on without arguing with a licence — move the
-// file out of `.git/`, stop vendoring `node_modules/`, replace the symlink.
+// redistributed, and the one real misreading on record (a root MIT file taken to cover a subdirectory)
+// erred in exactly that direction. `validation_blocked` — the package that would be produced carries
+// an error-level finding, so it must not be presented as a valid package (02:PACK-001). The severities
+// are skillpkg's own; packaging does not define a second notion of "blocking".
+// `file_removed_by_packager` — `SKILL.md` points at a file that was in the version and that the
+// exporter removed (`excluded_files` names it). The fifth value exists because it is the one failure
+// on this list the platform caused: a dangling reference that arrived that way is the author's,
+// disclosed as a warning and shipped, but a package the packager itself broke must not go out looking
+// whole. It is also the one a user can act on without arguing with a licence — move the file out of
+// `.git/`, stop vendoring `node_modules/`, replace the symlink.
 // Ref: #/components/schemas/PackagingBlockedReason
 type PackagingBlockedReason string
 
@@ -14514,7 +14515,7 @@ type PackagingTarget struct {
 	//
 	// It is a property of the target, not of a skill. Whether a particular version was ever measured is
 	// the `compatibility` axes on the skill, and passing format validation is never permission to say it
-	// installs (ADR-012).
+	// installs.
 	SupportStatus PackagingTargetSupportStatus `json:"support_status"`
 	// A prompt to run against the target agent once the package is installed, to see whether the Skill was
 	// actually picked up (02:PACK-002 第 3 條). Absent for `standard_package`, which names no agent to
@@ -14538,8 +14539,8 @@ type PackagingTarget struct {
 	// names no agent and therefore no variable.
 	EnvVars []PackagingTargetEnvVarsItem `json:"env_vars"`
 	// Known limitations and the steps a path alone does not cover — for the SDK target, that `cwd` and
-	// `setting_sources` are part of installing and a skill silently never loads without them (ADR-023).
-	// Server-side so every surface states them identically (NFR-001).
+	// `setting_sources` are part of installing and a skill silently never loads without them. Server-side
+	// so every surface states them identically (NFR-001).
 	Notes []string `json:"notes"`
 }
 
@@ -14800,7 +14801,7 @@ func (s *PackagingTargetKind) UnmarshalText(data []byte) error {
 //
 // It is a property of the target, not of a skill. Whether a particular version was ever measured is
 // the `compatibility` axes on the skill, and passing format validation is never permission to say it
-// installs (ADR-012).
+// installs.
 type PackagingTargetSupportStatus string
 
 const (
@@ -14863,9 +14864,9 @@ type PublicSearchResponse struct {
 	// The original query, echoed back (DISC-001).
 	Query   string               `json:"query"`
 	Results []PublicSearchResult `json:"results"`
-	// True when the vector leg did not run and the answer came from lexical matching alone. ADR-013
-	// 定案調整 1/2: the vector leg is what carries cross-language recall, so a degraded answer has
-	// materially lower recall and must not be presented as "nothing matches".
+	// True when the vector leg did not run and the answer came from lexical matching alone. The vector leg
+	// is what carries cross-language recall, so a degraded answer has materially lower recall and must not
+	// be presented as "nothing matches".
 	Degraded bool `json:"degraded"`
 	// Why the vector leg was skipped. Absent when degraded is false. Every result on a degraded answer
 	// carries a null `rank`: the page is ordered by lexical score, which is not a similarity.
@@ -14897,10 +14898,10 @@ type PublicSearchResponse struct {
 	// `total == len(results)` whenever `truncated` is false.
 	Total int `json:"total"`
 	// True when the catalogue held more matches than this page shows. The cap has always been here and
-	// result 21 simply did not exist as far as a caller could tell; ADR-042 決策 3 makes that the defect
-	// it is — a truncated list must state that it was truncated, and "no limit at all" stopped being an
-	// available answer. Distinct from `degraded` and `partial_index`, which are statements about how well
-	// the search could look rather than about how much of what it found is here.
+	// result 21 simply did not exist as far as a caller could tell; that silence was always the defect —
+	// a truncated list must state that it was truncated, and "no limit at all" stopped being an available
+	// answer. Distinct from `degraded` and `partial_index`, which are statements about how well the search
+	// could look rather than about how much of what it found is here.
 	Truncated bool `json:"truncated"`
 	// True when at least one result on this page has no embedding yet (enrichment_status 'pending'): it
 	// reached the page through the lexical leg, the distance cut-off could not judge it, and it sits at
@@ -15049,14 +15050,14 @@ func (*PublicSearchResponse) publicSearchSkillsRes() {}
 type PublicSearchResult struct {
 	SkillID uuid.UUID `json:"skill_id"`
 	Name    string    `json:"name"`
-	// Plain summary (DISC-002). The index-time LLM summary when the skill has been enriched (ADR-013 §1,
-	// model-generated), otherwise the package's own frontmatter description. `summary_source` says which,
+	// Plain summary (DISC-002). The index-time LLM summary when the skill has been enriched
+	// (model-generated), otherwise the package's own frontmatter description. `summary_source` says which,
 	// because until it existed this sentence was documented as sometimes model-written and had no field a
 	// client could act on.
 	Summary string `json:"summary"`
-	// Who wrote `summary`. ADR-013 requires model-generated content to be labelled, and this row was
-	// already labelling `match_reason` while printing the model's rewrite of the summary unmarked — the
-	// footnote carried the badge and the sentence a reader decides on did not.
+	// Who wrote `summary`. Model-generated content must be labelled, and this row was already labelling
+	// `match_reason` while printing the model's rewrite of the summary unmarked — the footnote carried
+	// the badge and the sentence a reader decides on did not.
 	//
 	// `package` also carries a second fact worth knowing: it is the `description` an agent actually reads
 	// when it decides whether to load this Skill. A `model` summary is not that text, so a Skill can read
@@ -15104,9 +15105,9 @@ type PublicSearchResult struct {
 	// Human-readable explanation of why this skill matches the query (DISC-002). Template-based fallback
 	// when LLM polish times out.
 	MatchReason OptString `json:"match_reason"`
-	// Provenance of match_reason. ADR-013 requires model-generated content to be labelled, so the UI can
-	// mark it as such. `template` reasons are assembled from the query/document lexical overlap, or state
-	// plainly that the hit came from semantic similarity with no shared keywords.
+	// Provenance of match_reason. Model-generated content needs to be labelled, so the UI can mark it as
+	// such. `template` reasons are assembled from the query/document lexical overlap, or state plainly
+	// that the hit came from semantic similarity with no shared keywords.
 	MatchReasonSource OptPublicSearchResultMatchReasonSource `json:"match_reason_source"`
 }
 
@@ -15250,9 +15251,9 @@ func (s *PublicSearchResult) SetMatchReasonSource(val OptPublicSearchResultMatch
 	s.MatchReasonSource = val
 }
 
-// Provenance of match_reason. ADR-013 requires model-generated content to be labelled, so the UI can
-// mark it as such. `template` reasons are assembled from the query/document lexical overlap, or state
-// plainly that the hit came from semantic similarity with no shared keywords.
+// Provenance of match_reason. Model-generated content needs to be labelled, so the UI can mark it as
+// such. `template` reasons are assembled from the query/document lexical overlap, or state plainly
+// that the hit came from semantic similarity with no shared keywords.
 type PublicSearchResultMatchReasonSource string
 
 const (
@@ -15294,9 +15295,9 @@ func (s *PublicSearchResultMatchReasonSource) UnmarshalText(data []byte) error {
 	}
 }
 
-// Who wrote `summary`. ADR-013 requires model-generated content to be labelled, and this row was
-// already labelling `match_reason` while printing the model's rewrite of the summary unmarked — the
-// footnote carried the badge and the sentence a reader decides on did not.
+// Who wrote `summary`. Model-generated content must be labelled, and this row was already labelling
+// `match_reason` while printing the model's rewrite of the summary unmarked — the footnote carried
+// the badge and the sentence a reader decides on did not.
 //
 // `package` also carries a second fact worth knowing: it is the `description` an agent actually reads
 // when it decides whether to load this Skill. A `model` summary is not that text, so a Skill can read
@@ -15750,14 +15751,14 @@ func (s *RubricItem) SetEvidenceRequired(val bool) {
 type Run struct {
 	// The permanent platform identifier (iron rule 10).
 	RunID uuid.UUID `json:"run_id"`
-	// The standard lifecycle of ADR-004 / RUN-002. `cleaning_up` is not in here: cleanup happens after a
-	// terminal state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox
-	// was torn down" stay two distinct facts.
+	// The standard lifecycle of RUN-002. `cleaning_up` is not in here: cleanup happens after a terminal
+	// state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox was torn
+	// down" stay two distinct facts.
 	//
 	// `succeeded` says the workload finished, not that the task was done. Whether it was is
 	// `Evaluation.overall` from GET /runs/{id}/evaluation, which is a separate resource an evaluation
-	// never writes back into (ADR-025). A surface showing this value alone must word it as execution
-	// (執行完成 / 執行失敗) and must not present it as a pass.
+	// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
+	// 執行失敗) and must not present it as a pass.
 	Status RunStatus `json:"status"`
 	// Why the run entered this status. Masked and safe to display.
 	//
@@ -15795,8 +15796,8 @@ type Run struct {
 	//
 	// Declared here on 2026-09-01, having been served long before. `GET /runs/{id}` returned it while this
 	// schema did not mention it, so every generated client was missing the one field that says why a run
-	// failed — and nothing could notice: the Go side is models-only with hand-written handlers
-	// (ADR-030's 2026-08-29 note), so a handler can serve what the contract never declared.
+	// failed — and nothing could notice: the Go side is models-only with hand-written handlers, so a
+	// handler can serve what the contract never declared.
 	FailureClass OptLabelled `json:"failure_class"`
 	// Tracked apart from the run outcome, and still writable after a terminal state. Idempotent cleanup is
 	// RUN-007. `value` is the database enum; see RunListItem.cleanup_status for why it is served with its
@@ -16172,7 +16173,7 @@ func (s *RunAttemptsItem) SetFinishedAt(val OptDateTime) {
 // sides are immutable snapshots (iron rule 4).
 //
 // Each side reports execution and task judgement in separate fields, and an unevaluated side says so
-// rather than leaving the reader to infer a pass from `succeeded` (ADR-025).
+// rather than leaving the reader to infer a pass from `succeeded`.
 // Ref: #/components/schemas/RunComparison
 type RunComparison struct {
 	// The run named in the path first, the `against` run second.
@@ -16413,7 +16414,7 @@ type RunComparisonRunsItem struct {
 	// The task judgement for this run. Absent means the run was never evaluated — show 未評估, never
 	// a pass. An evaluation that broke is present with `status: failed`.
 	Evaluation OptRunComparisonRunsItemEvaluation `json:"evaluation"`
-	// The run's final answer, masked. Untrusted content — render as inert text (ADR-001).
+	// The run's final answer, masked. Untrusted content — render as inert text.
 	FinalOutput OptString                         `json:"final_output"`
 	Errors      []RunComparisonRunsItemErrorsItem `json:"errors"`
 	// Wall clock from start to terminal state. Absent for a run that never started.
@@ -16424,10 +16425,10 @@ type RunComparisonRunsItem struct {
 	// Whether this run's inputs could still be supplied again: the test case it was frozen from has not
 	// been deleted, and every dataset the snapshot referenced is still stored and unexpired.
 	//
-	// False means a re-run of these inputs is no longer possible, and the screen must not offer one
-	// (ADR-003 刪除與可追溯性). The comparison itself stays fully readable either way — the
-	// snapshot's hash and both verdicts are history and do not depend on the files still existing — so
-	// this disables a re-run affordance and nothing else.
+	// False means a re-run of these inputs is no longer possible, and the screen must not offer one. The
+	// comparison itself stays fully readable either way — the snapshot's hash and both verdicts are
+	// history and do not depend on the files still existing — so this disables a re-run affordance and
+	// nothing else.
 	//
 	// Answered from the platform's own deletion and expiry records, which is what the storage sweep acts
 	// on, rather than by probing object storage per dataset on every read.
@@ -16547,8 +16548,7 @@ func (s *RunComparisonRunsItem) SetInputsAvailable(val bool) {
 // What the run spent, kept in its own field beside the evaluation's own cost. Two columns, never one
 // total (design §5.4).
 type RunComparisonRunsItemCost struct {
-	// In Credit (ADR-068 decision 1). NULL means no usage event carried a cost. Render as "unreported",
-	// never as 0.
+	// In Credit. NULL means no usage event carried a cost. Render as "unreported", never as 0.
 	Credits NilInt64 `json:"credits"`
 	// Always true, and required so it cannot be dropped on the way to a screen. The figure is summed from
 	// trace `usage` events and that sum is structurally incomplete: a response still in flight when the
@@ -16556,8 +16556,8 @@ type RunComparisonRunsItemCost struct {
 	// not a total, and every surface showing the number shows that too. Making it a constant field puts
 	// the obligation in the contract instead of in everyone's memory.
 	IsLowerBound bool `json:"is_lower_bound"`
-	// Where the settling figure lives — the gateway's per-key spend for this run (ADR-017). Named rather
-	// than implied, so a reader knows what a disagreement would be resolved against.
+	// Where the settling figure lives — the gateway's per-key spend for this run. Named rather than
+	// implied, so a reader knows what a disagreement would be resolved against.
 	AuthoritativeSource string `json:"authoritative_source"`
 }
 
@@ -16882,7 +16882,7 @@ func (s *RunComparisonRunsItemStatus) UnmarshalText(data []byte) error {
 // the median is six cents.
 // Ref: #/components/schemas/RunCostEstimate
 type RunCostEstimate struct {
-	// In Credit, the platform's only unit of account (ADR-068 decision 1).
+	// In Credit, the platform's only unit of account.
 	//
 	// The field this replaced was `low` beside a `currency` fixed at USD, whose description argued that
 	// converting would "present an exchange rate the platform does not own". That is true of a foreign
@@ -16944,14 +16944,14 @@ func (s *RunCostEstimate) SetBasis(val string) {
 // opens.
 //
 // `status` carries the same warning it does on `Run`: `succeeded` says the workload finished, not that
-// the task was done (ADR-025). A history list showing this value must word it as execution and must
-// not present it as a pass.
+// the task was done. A history list showing this value must word it as execution and must not present
+// it as a pass.
 // Ref: #/components/schemas/RunListItem
 type RunListItem struct {
 	RunID uuid.UUID `json:"run_id"`
-	// The second axis (ADR-025, 04 丙-32). Required and never null: a run with no evaluation carries
+	// The second axis (04 丙-32). Required and never null: a run with no evaluation carries
 	// `not_evaluated` / 未評估, because an absent verdict beside a column of 「執行完成」 reads
-	// as a pass — which is the precise misreading ADR-025 separates the two axes to prevent. A list
+	// as a pass — which is the precise misreading the evaluation/status split exists to prevent. A list
 	// rendering these must put the verdict ahead of `status`.
 	//
 	// `value` folds the evaluation's own status into the verdict, and only the evaluation context may do
@@ -17539,8 +17539,8 @@ func (s *RunPermissionSummaryContentDatasetsItem) SetContentHash(val string) {
 }
 
 type RunPermissionSummaryContentNetwork struct {
-	// Egress policy the sandbox is held to (ADR-005). `default_deny` with an empty `allow` means it can
-	// reach nothing at all.
+	// Egress policy the sandbox is held to. `default_deny` with an empty `allow` means it can reach
+	// nothing at all.
 	Mode  string   `json:"mode"`
 	Allow []string `json:"allow"`
 }
@@ -17571,7 +17571,7 @@ func (s *RunPermissionSummaryContentNetwork) SetAllow(val []string) {
 type RunPermissionSummaryContentProvider struct {
 	// `unassigned` when no provider could be resolved right now.
 	Name string `json:"name"`
-	// The provider's declared isolation level (ADR-015; `clean` is ADR-059's "no boundary at all" level,
+	// The provider's declared isolation level (`clean` is clean test mode's "no boundary at all" level,
 	// admitted only under SKILLHUB_CLEAN_MODE). Absent when unassigned. Kept as an enum, not prose, so
 	// devctl's isolation-level check can reconcile it with the dispatch gate and sandbox-provider.yaml —
 	// the prose form let `clean` be emitted here for a day without anything noticing (2026-08-29).
@@ -17631,7 +17631,7 @@ func (s *RunPermissionSummaryContentProvider) SetRuntimeVersion(val OptString) {
 	s.RuntimeVersion = val
 }
 
-// The provider's declared isolation level (ADR-015; `clean` is ADR-059's "no boundary at all" level,
+// The provider's declared isolation level (`clean` is clean test mode's "no boundary at all" level,
 // admitted only under SKILLHUB_CLEAN_MODE). Absent when unassigned. Kept as an enum, not prose, so
 // devctl's isolation-level check can reconcile it with the dispatch gate and sandbox-provider.yaml —
 // the prose form let `clean` be emitted here for a day without anything noticing (2026-08-29).
@@ -18039,14 +18039,14 @@ func (s *RunResourceLimitsTokenBudget) SetMaxOutputTokens(val int) {
 	s.MaxOutputTokens = val
 }
 
-// The standard lifecycle of ADR-004 / RUN-002. `cleaning_up` is not in here: cleanup happens after a
-// terminal state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox
-// was torn down" stay two distinct facts.
+// The standard lifecycle of RUN-002. `cleaning_up` is not in here: cleanup happens after a terminal
+// state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox was torn
+// down" stay two distinct facts.
 //
 // `succeeded` says the workload finished, not that the task was done. Whether it was is
 // `Evaluation.overall` from GET /runs/{id}/evaluation, which is a separate resource an evaluation
-// never writes back into (ADR-025). A surface showing this value alone must word it as execution
-// (執行完成 / 執行失敗) and must not present it as a pass.
+// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
+// 執行失敗) and must not present it as a pass.
 type RunStatus string
 
 const (
@@ -19180,10 +19180,10 @@ type SetSkillRedistributionReq struct {
 	// validator as `restriction`: an operator action nobody can explain later is not a decision
 	// (02:SEC-011 理由必填).
 	Note string `json:"note"`
-	// Required when `value` is `allowed`, ignored otherwise, and that asymmetry is the ruling (`05` R-3b,
-	// ADR-057): `allowed` is the only value that releases anything, so it is the only one that has to
-	// carry the evidence it relied on. Asking for a licensing judgement in order to block would charge for
-	// refusing to make one.
+	// Required when `value` is `allowed`, ignored otherwise, and that asymmetry is the ruling (`05` R-3b):
+	// `allowed` is the only value that releases anything, so it is the only one that has to carry the
+	// evidence it relied on. Asking for a licensing judgement in order to block would charge for refusing
+	// to make one.
 	//
 	// The value must be the SPDX expression the importer froze onto the skill's newest version. A claim
 	// the snapshot does not record is refused, and the refusal says what is recorded — an operator who
@@ -19192,18 +19192,17 @@ type SetSkillRedistributionReq struct {
 	// Compared trimmed and case-insensitively: SPDX identifiers are defined case-insensitively, and
 	// refusing `mit` against `MIT` would teach operators to paste rather than read.
 	LicenseExpression OptString `json:"license_expression"`
-	// Required when `value` is `allowed`. The ADR-021 provenance tier the operator relied on, named
-	// separately from the expression because ADR-021 決策 1 is that the two are one claim: frontmatter
-	// `MIT` and a repo-root `MIT` are not the same assertion, and ADR-021 §5.3 records two repositories
-	// whose valid MIT `LICENSE` covered content that was not theirs — an error in the releasing
-	// direction.
+	// Required when `value` is `allowed`. The provenance tier the operator relied on, named separately
+	// from the expression because the two are one claim: frontmatter `MIT` and a repo-root `MIT` are not
+	// the same assertion, and this reflects two repositories whose valid MIT `LICENSE` covered content
+	// that was not theirs — an error in the releasing direction.
 	//
 	// It lands in the audit event alongside the verdict, which is what makes "every skill released on
 	// `repo-license-file` evidence" one SQL query instead of a manual trawl.
 	//
-	// `curated-declared` is absent because ADR-021 決策 2 does not implement it: it is the one tier
-	// whose evidence does not travel inside the package, so nobody holding the bytes could re-verify a
-	// release made on it.
+	// `curated-declared` is absent because it is defined but not implemented: it is the one tier whose
+	// evidence does not travel inside the package, so nobody holding the bytes could re-verify a release
+	// made on it.
 	LicenseSource OptSetSkillRedistributionReqLicenseSource `json:"license_source"`
 }
 
@@ -19247,18 +19246,17 @@ func (s *SetSkillRedistributionReq) SetLicenseSource(val OptSetSkillRedistributi
 	s.LicenseSource = val
 }
 
-// Required when `value` is `allowed`. The ADR-021 provenance tier the operator relied on, named
-// separately from the expression because ADR-021 決策 1 is that the two are one claim: frontmatter
-// `MIT` and a repo-root `MIT` are not the same assertion, and ADR-021 §5.3 records two repositories
-// whose valid MIT `LICENSE` covered content that was not theirs — an error in the releasing
-// direction.
+// Required when `value` is `allowed`. The provenance tier the operator relied on, named separately
+// from the expression because the two are one claim: frontmatter `MIT` and a repo-root `MIT` are not
+// the same assertion, and this reflects two repositories whose valid MIT `LICENSE` covered content
+// that was not theirs — an error in the releasing direction.
 //
 // It lands in the audit event alongside the verdict, which is what makes "every skill released on
 // `repo-license-file` evidence" one SQL query instead of a manual trawl.
 //
-// `curated-declared` is absent because ADR-021 決策 2 does not implement it: it is the one tier
-// whose evidence does not travel inside the package, so nobody holding the bytes could re-verify a
-// release made on it.
+// `curated-declared` is absent because it is defined but not implemented: it is the one tier whose
+// evidence does not travel inside the package, so nobody holding the bytes could re-verify a release
+// made on it.
 type SetSkillRedistributionReqLicenseSource string
 
 const (
@@ -19464,7 +19462,7 @@ type Skill struct {
 	//
 	// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
 	// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
-	// licensing question nobody could resolve (ADR-045).
+	// licensing question nobody could resolve.
 	Redistribution SkillRedistribution `json:"redistribution"`
 	// Reason code for a licensing hold on the package materials, null when there is none. Also copied onto
 	// forks at fork time, which is why it belongs on a list of skills the caller owns rather than only on
@@ -19729,20 +19727,20 @@ type SkillDetail struct {
 	Source  OptSkillSource        `json:"source"`
 	License SkillLicense          `json:"license"`
 	// Allowed | blocked | unknown | self_supplied | generated — whether this skill's content may be
-	// handed on, which is what decides whether a download package can be built from it at all (02:SEC-007,
-	// ADR-012).
+	// handed on, which is what decides whether a download package can be built from it at all
+	// (02:SEC-007).
 	//
 	// Required, and required for every skill, because the question has an answer for every skill:
 	// `unknown` is where a curated skill starts and where anything unclassifiable stays, and it is treated
 	// exactly like `blocked` at the packaging gate, since 02:DISC-003 forbids implying that an
 	// unestablished licence may be modified or redistributed.
 	//
-	// Two values release, for different reasons, and the difference matters (ADR-045). `allowed` is a
-	// verdict about the licence: somebody established that this content may be copied. `self_supplied` is
-	// a fact about the supplier: this workspace brought the bytes in, so the platform handing them back is
-	// retrieval and not redistribution — there is no second party for a licence to protect. A publish
-	// path that treated the two as one would hand out content nobody ever judged, which is the direction
-	// ADR-021 §5.3 forbids erring in.
+	// Two values release, for different reasons, and the difference matters. `allowed` is a verdict about
+	// the licence: somebody established that this content may be copied. `self_supplied` is a fact about
+	// the supplier: this workspace brought the bytes in, so the platform handing them back is retrieval
+	// and not redistribution — there is no second party for a licence to protect. A publish path that
+	// treated the two as one would hand out content nobody ever judged, which is the direction the
+	// redistribution-gate policy forbids erring in.
 	//
 	// A separate axis from `license.status` and never derivable from it: 02:CONTENT-002 states plainly
 	// that a manually confirmed licence is not thereby a redistributable one, so `confirmed` is not a
@@ -20099,8 +20097,8 @@ func (s *SkillDetailVersion) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
 }
 
-// Index-time model output (ADR-013 §1), labelled as model-written so a reader can always tell it from
-// the author's own text.
+// Index-time model output, labelled as model-written so a reader can always tell it from the author's
+// own text.
 // Ref: #/components/schemas/SkillEnrichment
 type SkillEnrichment struct {
 	Status SkillEnrichmentStatus `json:"status"`
@@ -20497,8 +20495,9 @@ func (s *SkillGovernance) SetTakedownReason(val NilString) {
 	s.TakedownReason = val
 }
 
-// ADR-021 two axes. The expression alone cannot distinguish "the author declared MIT in frontmatter"
-// from "the monorepo root had an MIT file", and DISC-003 forbids presenting the second as the first.
+// License provenance has two axes. The expression alone cannot distinguish "the author declared MIT in
+// frontmatter" from "the monorepo root had an MIT file", and DISC-003 forbids presenting the second as
+// the first.
 // Ref: #/components/schemas/SkillLicense
 type SkillLicense struct {
 	// SPDX id. Absent means unknown, which must never be shown as permissive.
@@ -20506,7 +20505,8 @@ type SkillLicense struct {
 	// Provenance tier, strongest first. `manifest-referenced-file` means the frontmatter named a file
 	// instead of declaring a license (npm's `SEE LICENSE IN <filename>` convention) and that file's text
 	// was recognised — the author chose the file, but the expression was read, not declared. Absent on
-	// versions imported before ADR-021, whose tier was never recorded and must not be invented.
+	// versions imported before license provenance tracking began, whose tier was never recorded and must
+	// not be invented.
 	Source OptSkillLicenseSource `json:"source"`
 	// What that tier does and does not claim about this package.
 	SourceNote OptString `json:"source_note"`
@@ -20558,7 +20558,8 @@ func (s *SkillLicense) SetStatus(val Labelled) {
 // Provenance tier, strongest first. `manifest-referenced-file` means the frontmatter named a file
 // instead of declaring a license (npm's `SEE LICENSE IN <filename>` convention) and that file's text
 // was recognised — the author chose the file, but the expression was read, not declared. Absent on
-// versions imported before ADR-021, whose tier was never recorded and must not be invented.
+// versions imported before license provenance tracking began, whose tier was never recorded and must
+// not be invented.
 type SkillLicenseSource string
 
 const (
@@ -20620,9 +20621,9 @@ func (s *SkillLicenseSource) UnmarshalText(data []byte) error {
 type SkillLimitation struct {
 	Text string `json:"text"`
 	// `model` — extracted by the index-time enrichment from what the package's own documentation states
-	// about its limits (ADR-013 §1 whitelist: a factual restatement, never a safety or quality
-	// judgement). `scan` — derived from the static package scan, e.g. the package cites external URLs so
-	// it needs network access. ADR-013 requires the model-written half to be labelled as such.
+	// about its limits (the whitelist: a factual restatement, never a safety or quality judgement). `scan`
+	// — derived from the static package scan, e.g. the package cites external URLs so it needs network
+	// access. Model-generated content requires the model-written half to be labelled as such.
 	Source SkillLimitationSource `json:"source"`
 }
 
@@ -20647,9 +20648,9 @@ func (s *SkillLimitation) SetSource(val SkillLimitationSource) {
 }
 
 // `model` — extracted by the index-time enrichment from what the package's own documentation states
-// about its limits (ADR-013 §1 whitelist: a factual restatement, never a safety or quality
-// judgement). `scan` — derived from the static package scan, e.g. the package cites external URLs so
-// it needs network access. ADR-013 requires the model-written half to be labelled as such.
+// about its limits (the whitelist: a factual restatement, never a safety or quality judgement). `scan`
+// — derived from the static package scan, e.g. the package cites external URLs so it needs network
+// access. Model-generated content requires the model-written half to be labelled as such.
 type SkillLimitationSource string
 
 const (
@@ -20699,7 +20700,7 @@ func (s *SkillLimitationSource) UnmarshalText(data []byte) error {
 //
 // `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
 // refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
-// licensing question nobody could resolve (ADR-045).
+// licensing question nobody could resolve.
 type SkillRedistribution string
 
 const (
@@ -20950,12 +20951,11 @@ type SkillSource struct {
 	// Model id that wrote a generated package. Present only for `generated`.
 	GeneratorModel OptString `json:"generator_model"`
 	// Generator prompt revision, e.g. `generate-skill/v1`. Present only for `generated`. Together with
-	// task_description and generator_model this is what lets someone re-derive the package (ADR-047 決策
-	// 1).
+	// task_description and generator_model this is what lets someone re-derive the package.
 	GeneratorPromptVersion OptString `json:"generator_prompt_version"`
-	// What besides the task description was behind a generated package (ADR-066, GEN-005/GEN-006). Present
-	// only for `generated`, and only when a diagram or reference Skills were given; a text-only generation
-	// has no such record and the field is absent. Absent is "nothing else was used", not "unknown" — the
+	// What besides the task description was behind a generated package (GEN-005/GEN-006). Present only for
+	// `generated`, and only when a diagram or reference Skills were given; a text-only generation has no
+	// such record and the field is absent. Absent is "nothing else was used", not "unknown" — the
 	// platform wrote every generated row and knows.
 	GenerationInputs OptGenerationInputs `json:"generation_inputs"`
 	// Commit SHA, tag, or branch, when the fetch resolved one.
@@ -22994,8 +22994,8 @@ type TraceSummaryUsage struct {
 	Model        OptString `json:"model"`
 	InputTokens  OptInt    `json:"input_tokens"`
 	OutputTokens OptInt    `json:"output_tokens"`
-	// In Credit (ADR-068 decision 1). NULL means the gateway did not report a cost. Consumers MUST render
-	// that as "unreported" and never as 0 - showing 0 tells the user the run was free.
+	// In Credit. NULL means the gateway did not report a cost. Consumers MUST render that as "unreported"
+	// and never as 0 - showing 0 tells the user the run was free.
 	CostCredits OptNilInt64                    `json:"cost_credits"`
 	CostSource  OptTraceSummaryUsageCostSource `json:"cost_source"`
 }

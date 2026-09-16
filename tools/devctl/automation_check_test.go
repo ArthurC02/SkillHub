@@ -60,10 +60,10 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 	write("Taskfile.yml", "version: \"3\"\ntasks:\n")
 
 	write("AGENTS.md", "AGENTS 導覽：`NoSuchSymbolAnywhere` 早就被刪掉了。\n"+
-		"見 [ADR-011](./docs/adr/ADR-011-workspace-scope-and-tenancy.md)。\n")
+		"見 [規則](./docs/rules/missing.md)。\n")
 
 	write("apps/platform/.golangci.yml", "# drift: DDD-005 (run -> eval)\n")
-	write("docs/adr/"+contextMapADR, "# ADR-032\n\n沒有 §1 表格，也沒有附錄 A。\n")
+	write(contextMapDoc, "# Context map\n\n沒有對照表，也沒有白名單。\n")
 
 	write(genDirRelative+"/fake.sql.go", `package gen
 
@@ -156,7 +156,7 @@ func TestDriftMarkerProblems(t *testing.T) {
 
 	write := func(root, lint, adr string) {
 		lintPath := filepath.Join(root, "apps", "platform", ".golangci.yml")
-		adrPath := filepath.Join(root, "docs", "adr", "ADR-032-ddd-bounded-context-governance-for-platform.md")
+		adrPath := filepath.Join(root, filepath.FromSlash(contextMapDoc))
 		for path, contents := range map[string]string{lintPath: lint, adrPath: adr} {
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				t.Fatal(err)
@@ -183,7 +183,7 @@ func TestDriftMarkerProblems(t *testing.T) {
 	if len(problems) != 1 {
 		t.Fatalf("expected one problem for a marker only present in the lint config, got %#v", problems)
 	}
-	if !strings.Contains(problems[0], "lint=2 adr=1") {
+	if !strings.Contains(problems[0], "lint=2 map=1") {
 		t.Fatalf("problem does not report the count difference: %q", problems[0])
 	}
 }

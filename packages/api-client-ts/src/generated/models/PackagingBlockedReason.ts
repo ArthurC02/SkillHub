@@ -30,7 +30,7 @@
  * `license_unknown` — `redistribution` is `unknown`, which is where a skill
  * starts and where anything unclassifiable stays. Treated as blocked, not
  * as permitted: 02:DISC-003 forbids implying an unknown licence may be
- * redistributed, and the one real misreading on record (ADR-021 §5.3, a
+ * redistributed, and the one real misreading on record (a
  * root MIT file taken to cover a subdirectory) erred in exactly that
  * direction.
  * `validation_blocked` — the package that would be produced carries an

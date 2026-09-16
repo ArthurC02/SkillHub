@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-const queryOwnerADRFixture = `### 1. Context 對照表
+const queryOwnerADRFixture = `## Context 對照表
 
 | 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
 | --- | --- | --- | --- | --- |
@@ -38,7 +38,7 @@ func writeQueryOwnerFixtureWithADR(t *testing.T, adr, declaration string, sql ma
 		t.Fatal(err)
 	}
 	write("db/"+queryOwnersFile, declaration)
-	write("docs/adr/"+contextMapADR, adr)
+	write(contextMapDoc, adr)
 	for name, contents := range sql {
 		write("db/queries/"+name, contents)
 	}
@@ -422,7 +422,7 @@ CREATE TRIGGER notes_immutable
     FOR EACH ROW WHEN (OLD.status = 'draft')
     EXECUTE FUNCTION enforce_immutable();
 `
-	const frozen = "immutable:\n  skill_versions: ADR-003\n"
+	const frozen = "immutable:\n  skill_versions: versions never change\n"
 
 	tests := []struct {
 		name    string

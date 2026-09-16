@@ -84,7 +84,7 @@
 
 1. `evidence_refs` 由 **Go 逐條回驗**；驗不過即降 `undetermined`（設計 §2.4 第 3 條）。契約要寫明 Python 側**無法**保證引用有效。
 2. `truncation` 非空時，受影響的條目**允許**回 `undetermined`；契約要說「看不到全文而判 `passed` 是不可接受的」。
-3. `trace_digest` 是聚合摘要不是事件流：**Python 服務不得取得完整 trace**（ADR-009「Evaluation 使用低權限讀取介面」）。
+3. `trace_digest` 是聚合摘要不是事件流：**Python 服務不得取得完整 trace**（[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)：Evaluation 使用低權限讀取介面）。
 
 ---
 

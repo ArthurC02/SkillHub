@@ -9,10 +9,10 @@ DDD-001～DDD-060 已完成。Platform 維持 modular monolith：11 個 Bounded 
 
 現行的權威來源是：
 
-- [ADR-032](../../../adr/ADR-032-ddd-bounded-context-governance-for-platform.md)：Context Map、依賴方向與 composition 規則。
-- [ADR-033](../../../adr/ADR-033-sqlc-query-ownership-and-cross-context-write-enforcement.md) 與 [ADR-035](../../../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md)：query ownership 與 read/write 強制。
-- [ADR-034](../../../adr/ADR-034-cross-context-writes-close-by-inversion-not-by-events.md)：跨 Context 寫入的依賴反轉。
-- [ADR-038](../../../adr/ADR-038-platform-product-domain-language-and-value-stream-navigation.md) 與 [ADR-040](../../../adr/ADR-040-platform-foundation-shared-kernel-and-entrypoint-topology.md)：產品價值流、Shared Kernel、Foundation 與 Entrypoint 拓撲。
+- [Platform Bounded Context 與 Context Map](../../../adr/README.md#platform-bounded-context-與-context-map)：依賴方向與 composition 規則；Context Map 見 [platform-context-map.md](../../../development/platform-context-map.md)。
+- [Query 與寫入所有權](../../../adr/README.md#query-與寫入所有權)：query ownership 與 read/write 強制。
+- [Query 與寫入所有權](../../../adr/README.md#query-與寫入所有權)：跨 Context 寫入的依賴反轉。
+- [Platform Bounded Context 與 Context Map](../../../adr/README.md#platform-bounded-context-與-context-map)：產品價值流、Shared Kernel、Foundation 與 Entrypoint 拓撲。
 
 ## 已收斂的範圍
 
@@ -32,7 +32,7 @@ DDD-001～DDD-060 已完成。Platform 維持 modular monolith：11 個 Bounded 
 
 ## 驗證紀錄
 
-收斂批次曾通過 Platform Go tests、`devctl automation-check`、OpenAPI/sqlc generated drift check、真實 PostgreSQL integration tests 與 `git diff --check`。日後變更須依 ADR-032／033／035 的現行規則重跑相應檢查，而非將本報告當作一次性通行證。
+收斂批次曾通過 Platform Go tests、`devctl automation-check`、OpenAPI/sqlc generated drift check、真實 PostgreSQL integration tests 與 `git diff --check`。日後變更須依[Platform Bounded Context 與 Context Map](../../../adr/README.md#platform-bounded-context-與-context-map)與[Query 與寫入所有權](../../../adr/README.md#query-與寫入所有權)的現行規則重跑相應檢查，而非將本報告當作一次性通行證。
 
 ## 尚未由本報告宣稱完成的事
 

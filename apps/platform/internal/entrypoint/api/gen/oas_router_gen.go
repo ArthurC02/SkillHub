@@ -3688,7 +3688,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							switch method {
 							case "POST":
 								r.name = DevLoginOperation
-								r.summary = "Offline dev-provider login (ADR-020)"
+								r.summary = "Offline dev-provider login"
 								r.operationID = "devLogin"
 								r.operationGroup = ""
 								r.pathPattern = "/auth/dev/login"
@@ -3750,7 +3750,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								switch method {
 								case "GET":
 									r.name = StartGithubLoginOperation
-									r.summary = "Begin GitHub OAuth login (ADR-020)"
+									r.summary = "Begin GitHub OAuth login"
 									r.operationID = "startGithubLogin"
 									r.operationGroup = ""
 									r.pathPattern = "/auth/github/login"

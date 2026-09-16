@@ -1,4 +1,4 @@
-# Platform 領域事件目錄（ADR-008／ADR-032）
+# Platform 領域事件目錄
 
 - 狀態：目錄首版 2026-08-19；**2026-08-20（DDD-012）§5 七項缺口關閉六項**，值域封閉、同交易型別保證、retention 與 poison 隔離皆已落地。**Go 型別是實作的事實來源**（`apps/platform/internal/foundation/persistence/db/gen` 的 `OutboxEvent` 信封＋各 producer 的 payload 組裝）；本目錄是**規範與盤點**——列出全部合法 `event_type`、payload 形狀與新增規則。
 - 形式：文件目錄，暫無 JSON Schema 與 validator。**第一個非 Go consumer 出現時**，依 [Run Trace 契約](README.md) 的前例補 schema＋validator；在那之前加 schema 是投機成本（目前唯一 consumer 是 process log）。§3 的 `run.*`、`evaluation.*` 與 `skill.*` token 現在**是被機器讀的**：`internal/outbox` 的 conformance test 抓它們，與 Go 常數和 DB `CHECK` 三方比對，所以那些反引號不是排版而是契約。
@@ -8,14 +8,14 @@
 
 | 平面 | 表 | 本目錄是否涵蓋 |
 | --- | --- | --- |
-| **領域事件**（Transactional Outbox，ADR-008） | `outbox_events` | ✅ **就是這份** |
+| **領域事件**（[Run 編排與非同步工作流程](../../docs/adr/README.md#run-編排與非同步工作流程)的 Transactional Outbox） | `outbox_events` | ✅ **就是這份** |
 | Run Trace（使用者可見時間軸，TRACE-001） | `trace_events` 分割表 | ❌ 見 [README.md](README.md) |
-| 產品分析事件（漏斗量測，ADR-029） | `analytics_events` 分割表 | ❌ 封閉四值集合，schema 即白名單，見 ADR-029 |
-| Audit（稽核，ADR-009） | `audit_events` | ❌ `run.create`／`run.transition` 等 action 詞彙與本目錄的 event_type **是兩個命名空間**，不得混用 |
+| 產品分析事件（漏斗量測） | `analytics_events` 分割表 | ❌ 封閉四值集合，schema 即白名單，見[產品分析與稽核邊界](../../docs/adr/README.md#產品分析與稽核邊界) |
+| Audit（稽核） | `audit_events` | ❌ `run.create`／`run.transition` 等 action 詞彙與本目錄的 event_type **是兩個命名空間**，不得混用 |
 
 ## 2. 信封（envelope）
 
-欄位對齊 ADR-008；transport 是 `outbox_events` 表（`db/migrations/0016`，無 immutability trigger——它是傳輸緩衝不是歷史）。
+欄位對齊[Run 編排與非同步工作流程](../../docs/adr/README.md#run-編排與非同步工作流程)；transport 是 `outbox_events` 表（`db/migrations/0016`，無 immutability trigger——它是傳輸緩衝不是歷史）。
 
 | 欄位 | 語意 | 規約 |
 | --- | --- | --- |
@@ -41,7 +41,7 @@
 
 ### `run` aggregate — 狀態轉移族（producer：`trial/execution` 的 Run aggregate `run_root.go`，存回在 `run_store.go` 的 `saveRun`）
 
-`aggregate_id`＝`correlation_id`＝Run 的 id。Run aggregate 擁有轉移、取消、指定 Provider、attempt 的開始、派送與結束，以及 attempt 物件授權的到期；命令被拒絕時不發事件（ADR-084 決策 2）。
+`aggregate_id`＝`correlation_id`＝Run 的 id。Run aggregate 擁有轉移、取消、指定 Provider、attempt 的開始、派送與結束，以及 attempt 物件授權的到期；命令被拒絕時不發事件（見[Aggregate 與領域事件](../../docs/adr/README.md#aggregate-與領域事件)）。
 
 | `event_type` | 觸發（同交易的狀態變更） | payload | 備註 |
 | --- | --- | --- | --- |
@@ -75,7 +75,7 @@
 
 ### `evaluation` aggregate（producer：`trial/improvement` 的 Evaluation aggregate，存回在 `evaluation_store.go` 的 `saveEvaluation`）
 
-`aggregate_id`＝那一版評估的 id；`correlation_id`＝Run 的 id；`causation_id` NULL（§2 例外 2）。命令被拒絕時不發事件（ADR-084 決策 2）。目前沒有訂閱者，Dispatcher 以具名理由忽略。
+`aggregate_id`＝那一版評估的 id；`correlation_id`＝Run 的 id；`causation_id` NULL（§2 例外 2）。命令被拒絕時不發事件（見[Aggregate 與領域事件](../../docs/adr/README.md#aggregate-與領域事件)）。目前沒有訂閱者，Dispatcher 以具名理由忽略。
 
 | `event_type` | 觸發（同交易的狀態變更） | payload | 備註 |
 | --- | --- | --- | --- |
@@ -103,9 +103,9 @@
 | `skill.version_added` | 匯入、存新版本、生成或 Fork 加上一個版本（`CreateSkillVersion`） | `version_id`、`version_number`、`content_hash`、`improved_by`（套用改善建議建成時為 `evaluation_id`、`suggestion_ids`，否則 null） | 版本號由 query 配發；相同內容不成為第二版（unique index）；generated 的 Skill 只收生成的內容 |
 | `skill.described` | 存新版本時，Skill 的說明換成新版本宣告的那一句（`UpdateSkillSummary`） | 空物件 | 說明是人寫的文字，不進 payload |
 
-### 概念名對照（ADR-008）
+### 概念名對照
 
-ADR-008 以 PascalCase 過去式描述工作流事件（`RunRequested`、`RunExecutionCompleted`、`CleanupCompleted`…）——那是**概念名**；wire format（`event_type` 字串）以本目錄為準。對照：`RunRequested`≈`run.queued`、`RunExecutionCompleted`≈`run.succeeded|failed|timed_out`、`CleanupCompleted`≈`run.cleanup_cleaned`、`EvaluationCompleted`≈`evaluation.completed`。ADR-008 的 Skill Ingestion／Packaging／Deletion 工作流**尚未有任何事件**——新增時依 §4 規則進目錄。
+[Run 編排與非同步工作流程](../../docs/adr/README.md#run-編排與非同步工作流程)以 PascalCase 過去式描述工作流事件（`RunRequested`、`RunExecutionCompleted`、`CleanupCompleted`…）——那是**概念名**；wire format（`event_type` 字串）以本目錄為準。對照：`RunRequested`≈`run.queued`、`RunExecutionCompleted`≈`run.succeeded|failed|timed_out`、`CleanupCompleted`≈`run.cleanup_cleaned`、`EvaluationCompleted`≈`evaluation.completed`。同一份決策裡的 Skill Ingestion／Packaging／Deletion 工作流**尚未有任何事件**——新增時依 §4 規則進目錄。
 
 ## 4. 規範（新增或修改事件時強制）
 
@@ -132,11 +132,11 @@ ADR-008 以 PascalCase 過去式描述工作流事件（`RunRequested`、`RunExe
 
 1. **無 retention → 已關閉。** publisher 每輪 pass 先刪 `published_at` 早於 `Worker.PublishedRetention`（預設 7 天）的列，`0035` 補了對應的 partial index。每輪都刪而不是「有成功批次才刪」——閒置系統一樣有上週的列要丟。dead-lettered 的列排除在外（見下一項）。這張表是傳輸緩衝，不是歷史；要留 400 天的是 `audit_events`。
 2. **無 poison／DLQ → 已關閉，但是最小版。** `0035` 加 `delivery_attempts`／`dead_lettered_at`；deliver 失敗時在 publisher 的交易之外遞增計數（跟著失敗一起 rollback 的計數永遠到不了門檻），達 `Worker.MaxDeliveryAttempts`（預設 10）即寫入 `dead_lettered_at`、`slog.Error` 並遞增 `skillhub_outbox_dead_lettered_total{event_type}`。被隔離的列從 `ListUnpublishedOutboxEvents` 排除，**head-of-line 阻塞就此解除**。
-   **殘餘限制（誠實記錄，不是待辦掩飾）**：(a) 隔離就是隔離——**沒有重放工具、沒有 DLQ 介面**，被隔離的事件由人處理，平台不會自行決定它不重要，所以列**不刪**（retention 也排除）；(b) ADR-008 說的「告警」在本批只到 metric 為止，watch 它的 Prometheus rule 屬 O11Y-PROMTOOL-001，不在本批。
+   **殘餘限制（誠實記錄，不是待辦掩飾）**：(a) 隔離就是隔離——**沒有重放工具、沒有 DLQ 介面**，被隔離的事件由人處理，平台不會自行決定它不重要，所以列**不刪**（retention 也排除）；(b) [Run 編排與非同步工作流程](../../docs/adr/README.md#run-編排與非同步工作流程)說的「告警」在本批只到 metric 為止，watch 它的 Prometheus rule 屬 O11Y-PROMTOOL-001，不在本批。
 3. **`causation_id` 只填一半 → 已關閉，用規則修正而不是補值。** 盤點結論是「一律填」本來就寫錯了：`run.queued` 是 genesis 事件、沒有先行成因，cleanup 的成因是 River job 而 job id 不是 UUID。硬造一個 attempt id 去填欄位是假資料，而且會連帶破壞 cleanup job 的合流（理由寫在 §2）。**規則改為：有 UUID 型別直接成因者一律填，NULL 只允許 §2 列舉的兩種情形。** 狀態轉移族有 attempt 時填 attempt id，還沒有 attempt 的轉移屬 §2 例外 1。
 4. **`aggregate_type` 借用 `audit.ResourceRun` → 已關閉。** 改用 `outbox.AggregateRun`。值仍是 `"run"`，但兩個命名空間不再共用一個常數，任一邊改名不會拖動另一邊。
 5. **同交易無型別保證 → 已關閉。** `outbox.Insert(ctx, tx pgx.Tx, params)` 以型別強制交易 handle；兩個 producer 都走它。用 pool handle 寫事件現在是編譯錯誤，不再是慣例。
-6. **無 aggregate version → 仍 open，刻意。** ADR-008 說「需要順序時用 Aggregate Version」，欄位仍不存在。目前沒有任何 consumer 依賴 aggregate 內順序（`internal/eval` 對單一事件反應且以 `runs` 表為準），第一個需要順序的 consumer 出現時再補欄位。預先加等於預先猜它需要什麼形狀。
+6. **無 aggregate version → 仍 open，刻意。** [Run 編排與非同步工作流程](../../docs/adr/README.md#run-編排與非同步工作流程)說「需要順序時用 Aggregate Version」，欄位仍不存在。目前沒有任何 consumer 依賴 aggregate 內順序（`internal/eval` 對單一事件反應且以 `runs` 表為準），第一個需要順序的 consumer 出現時再補欄位。預先加等於預先猜它需要什麼形狀。
 7. **`event_version` 硬編碼、`event_type` 值域未封閉 → 已關閉。** `outbox.EventVersion1` 取代兩處字面量 `1`；值域封閉見 §4 規則 2。
 
 ## 6. 傳輸層行為（publisher 私有）

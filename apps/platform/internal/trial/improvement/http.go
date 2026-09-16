@@ -399,9 +399,9 @@ func costViewOf(ev gen.Evaluation, credits func(float64) (int64, bool)) costView
 	switch {
 	case v.EvaluationCredits == nil:
 		v.Note = "Judge 這一次呼叫沒有回報花費：這裡是未測量，不是 0 點。" +
-			"權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）換算的點數。"
+			"權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
 	case ev.CostIsLowerBound:
-		v.Note = "權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）換算的點數。"
+		v.Note = "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
 	}
 	return v
 }

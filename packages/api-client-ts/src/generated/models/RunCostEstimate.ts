@@ -30,7 +30,7 @@ import { mapValues } from '../runtime';
  */
 export interface RunCostEstimate {
     /**
-     * In Credit, the platform's only unit of account (ADR-068 decision 1).
+     * In Credit, the platform's only unit of account.
      * 
      * The field this replaced was `low` beside a `currency` fixed at USD,
      * whose description argued that converting would "present an exchange

@@ -47,7 +47,7 @@ func TestVerificationDistinguishesForkFromImport(t *testing.T) {
 		t.Error("an inherited scan and a local one must not read as the same provenance")
 	}
 	if !strings.Contains(inh.Note, "PDF Summariser") {
-		t.Errorf("ADR-042 forbids inheriting silently; the ancestor is unnamed: %q", inh.Note)
+		t.Errorf("inheriting silently is forbidden; the ancestor is unnamed: %q", inh.Note)
 	}
 
 	empty := verificationOf(gen.ListSkillsRow{})

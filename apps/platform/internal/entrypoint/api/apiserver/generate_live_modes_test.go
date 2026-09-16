@@ -57,7 +57,7 @@ func TestARealGatewayGeneratesFromADiagramAndFromAReference(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(inputs) == 0 {
-			t.Errorf("%s: generation_inputs is NULL; ADR-066 says every non-text input leaves a record", label)
+			t.Errorf("%s: generation_inputs is NULL; every non-text input must leave a record", label)
 		}
 		cost := "unpriced"
 		if res.CostUSD != nil {

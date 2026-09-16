@@ -133,7 +133,7 @@ func TestCleanModeDropsOnlyTheWorkerInternalVars(t *testing.T) {
 	}
 	for v := range want {
 		if !dropped[v] {
-			t.Fatalf("clean mode kept %s; it is unreachable in that mode (ADR-060 決策 6)", v)
+			t.Fatalf("clean mode kept %s; it is unreachable in that mode", v)
 		}
 	}
 }

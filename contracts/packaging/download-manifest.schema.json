@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://skillhub.local/contracts/packaging/download-manifest.schema.json",
   "title": "Skill Hub Download Package Manifest",
-  "description": "The `skillhub-manifest.json` a Download Artifact carries at the root of its zip (PACK-001, PACK-003, ADR-012). It is the platform's account of how one package was produced: which immutable Skill Version it came from, how that version came to exist, what licence evidence travels with it, what the pre-packaging revalidation found, and which of the three compatibility layers were actually measured. Consumers are Go (writes it), apps/web (displays it) and the user's own tooling (verifies it) - the last of those is outside this repository, which is why this is a file format and not an OpenAPI schema.\n\nTHIS MANIFEST IS NOT A SIGNATURE AND NOT AN ENDORSEMENT. The MVP does not sign packages (ADR-027): the hashes here are facts you can recompute yourself to tell one package from another, not a platform guarantee that the contents are safe, effective, or unmodified since you received them. Revocation reaches only as far as refusing to hand out further copies; a copy already downloaded cannot be invalidated.\n\nNOTHING IN THIS FILE MAY CARRY A SECRET (iron rule 11, NFR-002). Every field is either a platform-generated structured value (id, enum, hash, timestamp) or text the platform itself wrote. Run data, evaluation prose, evidence excerpts, rubrics, dataset contents and user prompts are NOT part of a package (packaging-design.md §4.3) and have no field here to land in. `additionalProperties: false` is enforced at every level precisely so a future exporter cannot quietly add one.",
+  "description": "The `skillhub-manifest.json` a Download Artifact carries at the root of its zip (PACK-001, PACK-003). It is the platform's account of how one package was produced: which immutable Skill Version it came from, how that version came to exist, what licence evidence travels with it, what the pre-packaging revalidation found, and which of the three compatibility layers were actually measured. Consumers are Go (writes it), apps/web (displays it) and the user's own tooling (verifies it) - the last of those is outside this repository, which is why this is a file format and not an OpenAPI schema.\n\nTHIS MANIFEST IS NOT A SIGNATURE AND NOT AN ENDORSEMENT. The MVP does not sign packages: the hashes here are facts you can recompute yourself to tell one package from another, not a platform guarantee that the contents are safe, effective, or unmodified since you received them. Revocation reaches only as far as refusing to hand out further copies; a copy already downloaded cannot be invalidated.\n\nNOTHING IN THIS FILE MAY CARRY A SECRET (iron rule 11, NFR-002). Every field is either a platform-generated structured value (id, enum, hash, timestamp) or text the platform itself wrote. Run data, evaluation prose, evidence excerpts, rubrics, dataset contents and user prompts are NOT part of a package (packaging-design.md §4.3) and have no field here to land in. `additionalProperties: false` is enforced at every level precisely so a future exporter cannot quietly add one.",
   "type": "object",
   "additionalProperties": false,
   "$comment": "sensitivity: no_secrets - see the description; this marker is the inverse of the `sensitivity: secret_bearing` convention in contracts/events, and it applies to the whole document.",
@@ -39,7 +39,7 @@
     "source_version_created_at": {
       "type": "string",
       "format": "date-time",
-      "description": "When the source Skill Version was created, RFC 3339 with offset - the value `packaged_at` has always carried under a name that promised something else (05 R-30). Optional in 1.2 so a 1.1 manifest stays a valid 1.2 instance; every 1.2 producer writes it. Consumers that want the packaging moment do not have it in this manifest at all: packaging is deterministic and records no wall clock, by design (ADR-012)."
+      "description": "When the source Skill Version was created, RFC 3339 with offset - the value `packaged_at` has always carried under a name that promised something else (05 R-30). Optional in 1.2 so a 1.1 manifest stays a valid 1.2 instance; every 1.2 producer writes it. Consumers that want the packaging moment do not have it in this manifest at all: packaging is deterministic and records no wall clock, by design."
     },
     "packager_version": {
       "type": "string",
@@ -58,7 +58,7 @@
     "profile_version": {
       "type": "string",
       "minLength": 1,
-      "description": "Version of that target's versioned configuration, so a package can be told apart from the same source packaged under a later profile (ADR-012)."
+      "description": "Version of that target's versioned configuration, so a package can be told apart from the same source packaged under a later profile."
     },
     "source": {
       "$ref": "#/$defs/source"
@@ -127,7 +127,7 @@
     "manifest_hash": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
-      "description": "The canonical content hash of this package (ADR-012 reproducibility, packaging-design.md §2.4): lowercase hex SHA-256 over the canonical JSON serialisation of the object defined by `$defs/manifestHashInput`. It answers 'is the CONTENT of these two packages the same', which the zip's own byte hash cannot, because entry order, mtime, external attributes and compressor version all move the bytes without moving the content. It therefore excludes ALL zip metadata and excludes `skillhub-manifest.json` itself - a hash that covered the manifest would change whenever `packaged_at` changed, which is the exact question it exists to answer independently of."
+      "description": "The canonical content hash of this package (reproducibility, packaging-design.md §2.4): lowercase hex SHA-256 over the canonical JSON serialisation of the object defined by `$defs/manifestHashInput`. It answers 'is the CONTENT of these two packages the same', which the zip's own byte hash cannot, because entry order, mtime, external attributes and compressor version all move the bytes without moving the content. It therefore excludes ALL zip metadata and excludes `skillhub-manifest.json` itself - a hash that covered the manifest would change whenever `packaged_at` changed, which is the exact question it exists to answer independently of."
     },
     "excluded_files": {
       "type": "array",
@@ -430,7 +430,7 @@
         "source_tier",
         "disclosures"
       ],
-      "description": "The outward form of ADR-021's four-tier provenance. `expression` and `source_tier` are recorded as a PAIR and are never flattened into one string: `MIT` declared by the author in frontmatter and `MIT` picked up from a repository root LICENSE are not the same claim, and DISC-003 requires that difference to stay visible. The pair is all-or-nothing here for the same reason it is a CHECK constraint on `skill_versions` (0012).\n\nThis schema does NOT decide which licences may be packaged. Redistributability is a separate lock on the Skill (`skills.redistribution`, three-state and defaulting to `unknown`, ADR-027 decision 4) and `license_status = Confirmed` is explicitly not a release condition (CONTENT-002: manually confirmed does not mean redistributable). Both nullable and non-null forms therefore stay legal here - the manifest reports the licence evidence, the gate refuses the package.",
+      "description": "The outward form of the platform's four-tier license provenance. `expression` and `source_tier` are recorded as a PAIR and are never flattened into one string: `MIT` declared by the author in frontmatter and `MIT` picked up from a repository root LICENSE are not the same claim, and DISC-003 requires that difference to stay visible. The pair is all-or-nothing here for the same reason it is a CHECK constraint on `skill_versions` (0012).\n\nThis schema does NOT decide which licences may be packaged. Redistributability is a separate lock on the Skill (`skills.redistribution`, three-state and defaulting to `unknown`) and `license_status = Confirmed` is explicitly not a release condition (CONTENT-002: manually confirmed does not mean redistributable). Both nullable and non-null forms therefore stay legal here - the manifest reports the licence evidence, the gate refuses the package.",
       "properties": {
         "expression": {
           "type": [
@@ -446,7 +446,7 @@
               "none"
             ]
           },
-          "description": "SPDX expression in canonical form, or an author string that could not be mapped to one (ADR-021 decision 6: unmappable text is kept verbatim, never guessed at). NULL means unknown. The SPDX status words `NOASSERTION` / `NONE` are forbidden as values (ADR-021 decision 7): this field carries an expression, never a status, and unknown is expressed by NULL. Map to `NOASSERTION` only when emitting an SPDX/SBOM document."
+          "description": "SPDX expression in canonical form, or an author string that could not be mapped to one (unmappable text is kept verbatim, never guessed at). NULL means unknown. The SPDX status words `NOASSERTION` / `NONE` are forbidden as values: this field carries an expression, never a status, and unknown is expressed by NULL. Map to `NOASSERTION` only when emitting an SPDX/SBOM document."
         },
         "source_tier": {
           "enum": [
@@ -456,11 +456,11 @@
             "repo-license-file",
             null
           ],
-          "description": "ADR-021 tier, strongest first, verbatim the value domain of `skill_versions.license_source` (0012 + 0014). `manifest` - the author declared it in SKILL.md frontmatter. `manifest-referenced-file` - frontmatter pointed at a package file (`SEE LICENSE IN <file>`) and that file's text was recognised. `package-license-file` - a LICENSE file in the package itself. `repo-license-file` - a repository-level LICENSE carried in as `LICENSE.repo` for a package cut from a monorepo sub-directory; it covers the repository and not necessarily this content. The fourth ADR-021 tier `curated-declared` is defined but not implemented and is not accepted here."
+          "description": "License provenance tier, strongest first, verbatim the value domain of `skill_versions.license_source` (0012 + 0014). `manifest` - the author declared it in SKILL.md frontmatter. `manifest-referenced-file` - frontmatter pointed at a package file (`SEE LICENSE IN <file>`) and that file's text was recognised. `package-license-file` - a LICENSE file in the package itself. `repo-license-file` - a repository-level LICENSE carried in as `LICENSE.repo` for a package cut from a monorepo sub-directory; it covers the repository and not necessarily this content. The fourth license provenance tier `curated-declared` is defined but not implemented and is not accepted here."
         },
         "disclosures": {
           "type": "array",
-          "description": "The info-level findings raised while the licence was resolved (ADR-021 decision 5: every carry and every fallback is disclosed, never silent), e.g. `license-from-package-file`, `license-from-repo-file`. Platform-authored text.",
+          "description": "The info-level findings raised while the licence was resolved (every carry and every fallback is disclosed, never silent), e.g. `license-from-package-file`, `license-from-repo-file`. Platform-authored text.",
           "items": {
             "$ref": "#/$defs/finding"
           }
@@ -569,7 +569,7 @@
         "capability",
         "behaviour"
       ],
-      "description": "ADR-012's three compatibility layers, kept apart. Passing the format layer must never be presented as 'it will install and work' - that is what PACK-008 and the `01` §12 risk 'spec-valid but unrunnable' exist to prevent.",
+      "description": "The three compatibility layers, kept apart. Passing the format layer must never be presented as 'it will install and work' - that is what PACK-008 and the `01` §12 risk 'spec-valid but unrunnable' exist to prevent.",
       "properties": {
         "format": {
           "const": "valid",
@@ -592,7 +592,7 @@
             "failed",
             "unverified"
           ],
-          "description": "Can the package's own scripts execute on the measured pair. Value domain verbatim from `skill_runtime_compatibility.runtime` (0022; named `behaviour` here to match ADR-012's third layer). `transpiled` is a working Run whose work was not the Skill's own code.\n\nTHIS FIELD IS A RECORD OF ONE MEASUREMENT, NOT A PROMISE. Its value may come only from the measured row for THIS Skill Version and THIS Runtime Image. With no such row the value is `unverified`, and it must never be extrapolated from another version of the same Skill or from another image - changing the image drops every Skill back to unverified until re-measured, and packaging must not paint over that honesty (04 乙-4)."
+          "description": "Can the package's own scripts execute on the measured pair. Value domain verbatim from `skill_runtime_compatibility.runtime` (0022; named `behaviour` here to match the third compatibility layer). `transpiled` is a working Run whose work was not the Skill's own code.\n\nTHIS FIELD IS A RECORD OF ONE MEASUREMENT, NOT A PROMISE. Its value may come only from the measured row for THIS Skill Version and THIS Runtime Image. With no such row the value is `unverified`, and it must never be extrapolated from another version of the same Skill or from another image - changing the image drops every Skill back to unverified until re-measured, and packaging must not paint over that honesty (04 乙-4)."
         },
         "runtime_image": {
           "type": "string",

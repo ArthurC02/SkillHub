@@ -222,7 +222,7 @@ func devLoginRefusal(devLogin, secure bool) string {
 		return ""
 	}
 	return "DEV_LOGIN=1 with secure session cookies: the offline login provider " +
-		"lets anybody sign in as any name without a credential (ADR-020), and a " +
+		"lets anybody sign in as any name without a credential, and a " +
 		"deployment that terminates TLS is not a deployment that wants it. Unset " +
 		"DEV_LOGIN, or set COOKIE_INSECURE=1 if this really is plain-http local dev."
 }
@@ -320,7 +320,7 @@ func main() {
 	}
 	if devLogin {
 		slog.Warn("DEV_LOGIN=1; POST /auth/dev/login is mounted and anybody can sign in " +
-			"as any name without a credential (ADR-020). Never in production")
+			"as any name without a credential. Never in production")
 	}
 
 	capabilities := capabilityTable(pool, len(profiles), clean)
@@ -544,7 +544,7 @@ func generateExposedFromEnv() bool {
 	switch {
 	case strings.EqualFold(raw, "on"):
 		slog.Warn("GENERATE_SKILL_EXPOSED=on; the M5 generation entry point is visible. " +
-			"ADR-052 requires 01 §11.2's first funnel segment to have a reading first")
+			"01 §11.2's first funnel segment must have a reading first")
 		return true
 	case raw != "" && !strings.EqualFold(raw, "off"):
 

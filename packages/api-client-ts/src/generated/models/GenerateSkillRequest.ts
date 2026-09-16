@@ -55,7 +55,7 @@ export interface GenerateSkillRequest {
      * latest version's SKILL.md is what the model sees, fenced as
      * untrusted data. The generated package still takes
      * `redistribution = generated`: a reference is something the
-     * model read, not something the package contains (ADR-066).
+     * model read, not something the package contains.
      * 
      */
     referenceSkillIds?: Array<string>;

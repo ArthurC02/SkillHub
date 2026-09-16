@@ -28,10 +28,10 @@ export interface SkillLimitation {
     text: string;
     /**
      * `model` — extracted by the index-time enrichment from what the
-     * package's own documentation states about its limits (ADR-013 §1
+     * package's own documentation states about its limits (the
      * whitelist: a factual restatement, never a safety or quality
      * judgement). `scan` — derived from the static package scan, e.g. the
-     * package cites external URLs so it needs network access. ADR-013
+     * package cites external URLs so it needs network access. Model-generated content
      * requires the model-written half to be labelled as such.
      * 
      */

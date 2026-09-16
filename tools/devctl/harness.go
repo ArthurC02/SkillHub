@@ -18,7 +18,6 @@ const (
 )
 
 var harnessLocalReferences = []*regexp.Regexp{
-	regexp.MustCompile(`docs/`),
 	requirementID,
 }
 

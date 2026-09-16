@@ -30,12 +30,12 @@ func creationCapability(clean bool) envx.Capability {
 	}
 	return envx.Capability{
 		ID:      "interactive_creation",
-		Name:    "互動創作會話（ADR-067）",
+		Name:    "互動創作會話",
 		Needs:   needs,
 		Without: without,
 		Fix: "值照 05 R-45 的裁定表（.env.example 帶著同一行 JSON）；CREATION_EXPOSED 與 GENERATE_SKILL_EXPOSED 一樣，" +
 			"在 01 §10 的 M5 邊界解除前不要設成 on。淨測試模式不需要那三個 Worker 內部變數：" +
-			"創作 worker 就跑在同一個行程裡（ADR-060 決策 6）",
+			"創作 worker 就跑在同一個行程裡",
 	}
 }
 
@@ -112,13 +112,13 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 		},
 		{
 			ID:    "credit_pricing",
-			Name:  "Credit 計價與開始門檻（ADR-068）",
+			Name:  "Credit 計價與開始門檻",
 			Needs: []string{"CREDIT_USD_PER_CREDIT", "CREDIT_MARKUP_BPS", "CREDIT_DEBT_FLOOR", "CREDIT_MIN_START_FALLBACK"},
 
-			Without: "帳本照跑，但按 ADR-068 的預設值計價：1 credit = US$0.001、加成 1.3 倍、負債下限 −50 credit、" +
+			Without: "帳本照跑，但按預設值計價：1 credit = US$0.001、加成 1.3 倍、負債下限 −50 credit、" +
 				"樣本不足時的開始門檻 70 credit。" +
 				"CREDIT_MIN_START_FALLBACK 設得比封測發放額還高，拿到點數的人一樣開不了新創作；設成 0 則閘門①在量到 p95 之前形同不存在",
-			Fix: "只有在這個部署的真實成本或加成與 ADR-068 不同時才設；" +
+			Fix: "只有在這個部署的真實成本或加成與預設值不同時才設；" +
 				"改動只影響之後寫入的 credit_entries（每一筆都記下當時的 markup_bps，舊帳不回頭改寫）",
 		},
 		{
@@ -132,7 +132,7 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 			ID:    "dev_login",
 			Name:  "離線登入（開發／clean test mode）",
 			Needs: []string{"DEV_LOGIN"},
-			Without: "沒有離線登入（ADR-020）：只能用 GitHub OAuth 登入——GITHUB_CLIENT_ID 等三個變數沒填的話，" +
+			Without: "沒有離線登入：只能用 GitHub OAuth 登入——GITHUB_CLIENT_ID 等三個變數沒填的話，" +
 				"這個部署完全登不進去",
 			Fix: "設 DEV_LOGIN=1 供本機或 clean test mode 使用；同時要 COOKIE_INSECURE=1，" +
 				"否則行程會在啟動時拒絕（DEV_LOGIN=1 與安全 Cookie 互相矛盾，見 devLoginRefusal）——" +
@@ -156,7 +156,7 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 		},
 		{
 			ID:    "generation_entry",
-			Name:  "M5 生成入口（ADR-052）",
+			Name:  "M5 生成入口",
 			Needs: []string{"GENERATE_SKILL_EXPOSED"},
 
 			Without: "刻意的狀態：POST /skills/generate 不掛載、GET /me 不列 generate_skill，畫面不畫出生成入口",

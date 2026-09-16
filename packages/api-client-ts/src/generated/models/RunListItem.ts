@@ -27,7 +27,7 @@ import {
  * transitions and attempts belong to the one run a reader opens.
  * 
  * `status` carries the same warning it does on `Run`: `succeeded` says the
- * workload finished, not that the task was done (ADR-025). A history list
+ * workload finished, not that the task was done. A history list
  * showing this value must word it as execution and must not present it as a
  * pass.
  * 
@@ -40,10 +40,10 @@ export interface RunListItem {
      */
     runId: string;
     /**
-     * The second axis (ADR-025, 04 丙-32). Required and never null: a run
+     * The second axis (04 丙-32). Required and never null: a run
      * with no evaluation carries `not_evaluated` / 未評估, because an absent
      * verdict beside a column of 「執行完成」 reads as a pass — which is the
-     * precise misreading ADR-025 separates the two axes to prevent. A list
+     * precise misreading the evaluation/status split exists to prevent. A list
      * rendering these must put the verdict **ahead of** `status`.
      * 
      * `value` folds the evaluation's own status into the verdict, and only

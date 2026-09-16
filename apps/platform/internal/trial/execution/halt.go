@@ -239,14 +239,14 @@ func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 
 		threshold := haltThreshold(slots, 1, 2, 1)
 		s.reconcileThresholdHalt(ctx, provider.Name, persistent >= threshold, fmt.Sprintf(
-			"ADR-022 X-04: %d leaked sandboxes on %s have survived two reconciler rounds, at or above the %d that drains a node with %d declared slots",
+			"X-04: %d leaked sandboxes on %s have survived two reconciler rounds, at or above the %d that drains a node with %d declared slots",
 			persistent, provider.Name, threshold, slots))
 	}
 
 	if len(registry.Providers) > 0 {
 		threshold := haltThreshold(int(poolSlots), 1, 4, 2)
 		s.reconcileThresholdHalt(ctx, haltPool, poolOrphans >= threshold, fmt.Sprintf(
-			"ADR-022 X-04: %d leaked sandboxes fleet-wide have survived two reconciler rounds, at or above the %d that suspends dispatch across %d declared slots",
+			"X-04: %d leaked sandboxes fleet-wide have survived two reconciler rounds, at or above the %d that suspends dispatch across %d declared slots",
 			poolOrphans, threshold, poolSlots))
 	}
 	s.publishHaltMetrics(ctx)
@@ -280,7 +280,7 @@ func (s *Service) reconcileThresholdHalt(ctx context.Context, provider string, b
 	}
 
 	if _, lifted, err := s.LiftHalt(ctx, provider, fmt.Sprintf(
-		"ADR-022 X-04: below the threshold for %d consecutive reconciler rounds", rounds),
+		"X-04: below the threshold for %d consecutive reconciler rounds", rounds),
 		pgtype.UUID{}, []HaltSource{HaltSourceOrphanThreshold}); err != nil {
 		slog.Error("could not lift the X-04 halt", "target", haltTarget(provider), "error", err)
 	} else if lifted {
@@ -479,7 +479,7 @@ func (s *Service) detectP02Breach(ctx context.Context) {
 	}
 	s.declareDetectedIncident(ctx, fmt.Sprintf(
 		"02:SEC-010 P1 (P-02): a node's resident probe opened a connection from a sandbox's own network "+
-			"position to an address a sandbox must never reach — %s. ADR-022 T10 calls this an architecture "+
+			"position to an address a sandbox must never reach — %s. This is an architecture "+
 			"regression signal: the isolation the whole execution plane rests on (iron rule 2) is not holding "+
 			"on that node, and every run it carried could have done the same thing",
 		strings.Join(breached, "; ")))
@@ -517,7 +517,7 @@ func (s *Service) DetectReconcilerStall(ctx context.Context) {
 		return
 	}
 	s.declareDetectedIncident(ctx, fmt.Sprintf(
-		"02:SEC-010 P1: the orphan reconciler last ran %s ago, past the %s ADR-022 X-02 calls stalled (two missed five-minute rounds); "+
+		"02:SEC-010 P1: the orphan reconciler last ran %s ago, past the %s X-02 calls stalled (two missed five-minute rounds); "+
 			"nothing is counting what has leaked, so nothing may be dispatched",
 		idle.Round(time.Second), reconcilerStallWindow))
 }

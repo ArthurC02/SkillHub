@@ -3,7 +3,7 @@
 - 日期：2026-08-29
 - 為什麼存在：M6 的每一條路都掛在**同一個沒有人去問的事實**上——那台機器到底准跑什麼。[`m6/README`](README.md) 的啟動條件 2 從 2026-08-28 起就是「未取得」。
 - 誰跑：**任何一個能坐在那台機器前面的人。** 不需要開發環境、不需要管理員、全部唯讀，不安裝任何東西。
-- 結果回填到：[`m6/README`](README.md) 啟動條件 2 與 [ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 的待決策。
+- 結果回填到：[`m6/README`](README.md) 啟動條件 2 與 [淨測試模式](../../../adr/README.md#淨測試模式)的待決策。
 
 > **這份清單不做任何繞過。** 每一項都是「問系統它允不允許」，不是「試著讓它允許」。任何一項失敗都是有價值的答案，**不要想辦法讓它過**。
 
@@ -51,7 +51,7 @@ Get-WinEvent -LogName "Microsoft-Windows-AppLocker/EXE and DLL" -MaxEvents 20
 
 ## Q4：Edge 開得開本機 HTML 嗎
 
-**為什麼問**：`02:PORT-005` 要求前端在 Edge 上驗過。**實測過的界線是「不能 `import`」不是「不能用 module」**（[report-inmemory-postgres.md](report-inmemory-postgres.md) §9）。<br>**注意這一題的權重 2026-08-29 降了**：ADR-060 之後前端是由 localhost 上的服務供應，不是 `file://` 開的單檔，所以「否」不再讓交付形式重新設計——但它仍然是唯一能事先知道企業瀏覽器政策有多嚴的一題。
+**為什麼問**：`02:PORT-005` 要求前端在 Edge 上驗過。**實測過的界線是「不能 `import`」不是「不能用 module」**（[report-inmemory-postgres.md](report-inmemory-postgres.md) §9）。<br>**注意這一題的權重 2026-08-29 降了**：[淨測試模式](../../../adr/README.md#淨測試模式)之後前端是由 localhost 上的服務供應，不是 `file://` 開的單檔，所以「否」不再讓交付形式重新設計——但它仍然是唯一能事先知道企業瀏覽器政策有多嚴的一題。
 
 把下面存成 `probe.html` 放桌面，用 Edge 打開：
 

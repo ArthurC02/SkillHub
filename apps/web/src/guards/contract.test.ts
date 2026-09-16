@@ -141,7 +141,7 @@ const LABEL_TABLES: Array<{
       (await import("../features/workspace/skills/WorkspaceSkills.page")).REDISTRIBUTION_BADGE,
   },
   {
-    what: "Run.status → 執行狀態措辭 (ADR-025)",
+    what: "Run.status → 執行狀態措辭",
     values: generated.RunStatusEnum,
     table: async () => (await import("../features/runs/runs.model")).RUN_STATUS_LABEL,
   },
@@ -180,7 +180,7 @@ const LABEL_TABLES: Array<{
       (await import("../features/runs/evaluation/evaluation.model")).SUGGESTION_CATEGORY_LABEL,
   },
   {
-    what: "EvidenceRef.match → 引文回驗說明 (ADR-043)",
+    what: "EvidenceRef.match → 引文回驗說明",
     values: generated.EvidenceRefMatchEnum,
     table: async () => (await import("../features/runs/evaluation/evaluation.model")).MATCH_NOTE,
   },

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const serviceConstructionADR = `### 1. Context 對照表
+const serviceConstructionADR = `## Context 對照表
 
 | 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
 | --- | --- | --- | --- | --- |
@@ -22,7 +22,7 @@ func writeServiceConstructionFixture(t *testing.T, relative, source string) stri
 	t.Helper()
 	root := t.TempDir()
 	for name, contents := range map[string]string{
-		"docs/adr/" + contextMapADR:                    serviceConstructionADR,
+		contextMapDoc: serviceConstructionADR,
 		"apps/platform/internal/" + relative + "/x.go": source,
 	} {
 		path := filepath.Join(root, filepath.FromSlash(name))

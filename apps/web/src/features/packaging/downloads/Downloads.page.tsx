@@ -66,7 +66,7 @@ export function Downloads() {
             <p className="note">
               每一列折疊起來的那兩串是雜湊，不是簽章。
               <strong>MVP 的套件不帶數位簽章，平台也不驗簽</strong>
-              （ADR-027 決策 3 是明文的「不做」）——它們證明得了「位元組沒有被改過」，
+              （這是明文的「不做」）——它們證明得了「位元組沒有被改過」，
               證明不了「這份東西是誰做的」。
             </p>
             <p className="note">

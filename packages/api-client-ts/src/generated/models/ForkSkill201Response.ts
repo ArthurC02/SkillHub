@@ -43,7 +43,7 @@ export interface ForkSkill201Response {
      * `self_supplied` is what a user's own import carries since 0036. It
      * was `unknown` before that, which refused — so the answer to "may I
      * download the Skill I just wrote" was permanently no, over a licensing
-     * question nobody could resolve (ADR-045).
+     * question nobody could resolve.
      * 
      */
     redistribution: ForkSkill201ResponseRedistributionEnum;

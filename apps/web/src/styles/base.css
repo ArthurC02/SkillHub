@@ -1,4 +1,4 @@
-/* The two 1px rules down either side are gone (ADR-064 決策 3): the page frame
+/* The two 1px rules down either side are gone: the page frame
    is now the ground/surface difference — the header and every card sit on
    --surface against --bg — and a hairline on top of that is a second frame
    saying the same thing.
@@ -534,7 +534,7 @@ summary {
   outline-offset: 2px;
 }
 
-/* 原生的 ▶ 換成一個會轉的字元。用字元不用 `<svg>` 是刻意的：ADR-065 §4.7 的機器
+/* 原生的 ▶ 換成一個會轉的字元。用字元不用 `<svg>` 是刻意的：設計 §4.7 的機器
    把全 app 的 `<svg` 站點上限釘在 6，而 `StateIcon` 的四個形狀加 `Tip` 的一個已經
    用掉 5——一個純裝飾的摺疊指示，不值得那最後一格。
    這是全域唯一一條 summary 標記規則，所以全 app 約 35 個 `<details>` 一起改。 */

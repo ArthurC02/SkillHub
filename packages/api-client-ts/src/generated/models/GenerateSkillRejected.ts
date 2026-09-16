@@ -27,7 +27,7 @@ import {
  * 
  * `attempts` is here and not only on the 201 because the failure screen has
  * a sentence about the automatic retry, and that sentence is false for a
- * `possible-secret` finding — ADR-048 does not retry that one. Without the
+ * `possible-secret` finding — the automatic retry does not retry that finding. Without the
  * number the page cannot tell the two apart.
  * 
  * @export

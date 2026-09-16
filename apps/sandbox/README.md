@@ -2,7 +2,7 @@
 
 執行平面的 Provider 服務：實作 [`contracts/openapi/sandbox-provider.yaml`](../../contracts/openapi/sandbox-provider.yaml)（37f1918 凍結），為每個 Run attempt 建立一個隔離沙箱，並把生命週期回報給 Go 控制平面。
 
-> ⛔ **上線硬性關卡（ADR-015 定案紀錄）**：**SEC-009 逃逸測試與 SBX-010 隔離測試未通過前，不得開放外部使用者提交 Skill 執行。** 本目錄實作的是 ADR-005 基線與 gVisor 的**配置開關**，不代表隔離強度已被驗證——那需要在部署平台上實跑 `runsc` 與逃逸測試，屬部署期驗收。
+> ⛔ **上線硬性關卡**：**SEC-009 逃逸測試與 SBX-010 隔離測試未通過前，不得開放外部使用者提交 Skill 執行。** 本目錄實作的是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)基線與 gVisor 的**配置開關**，不代表隔離強度已被驗證——那需要在部署平台上實跑 `runsc` 與逃逸測試，屬部署期驗收。
 
 ## 邊界（為什麼是獨立 module）
 
@@ -32,7 +32,7 @@
 | `SKILLHUB_SANDBOX_TOKEN` | 無（**必填**） | Provider token；未設定則拒絕啟動（fail closed） |
 | `SKILLHUB_SANDBOX_ADDR` | `:9000` | 監聽位址 |
 | `SKILLHUB_SANDBOX_IMAGE` | `skillhub/runtime-agent-sdk:2026.08-3` | Runtime Image。**生產 `runsc` 強制填 digest**（I-02），tag 是移動標的。`2026.08-2` 起含 python3 與目錄宣告的 Python 依賴（[infra/images/README.md](../../infra/images/README.md)）——**目錄的 Agent 相容欄是在 `2026.08-1` 上實測的**，換版後那 45 筆結論不再適用，需重跑 CONTENT-008 基準才會有新的一組 |
-| `SKILLHUB_SANDBOX_RUNTIME` | 空（＝主機預設 runtime） | 生產填 `runsc`（gVisor，ADR-015） |
+| `SKILLHUB_SANDBOX_RUNTIME` | 空（＝主機預設 runtime） | 生產填 `runsc`（gVisor） |
 | `SKILLHUB_SANDBOX_NETWORK` | `none` | **出口網路**的名稱。`none`／空＝本節點無出口，所有沙箱一律 `--network none`。設了名字，沙箱**仍只在 `RunRequest.egress.allow` 含 `model_gateway` 時**才接上去；dev 填 `skillhub_egress`（`internal: true`，上面只有 LiteLLM 閘道），生產填 Egress Proxy 的網路名 |
 | `SKILLHUB_SANDBOX_SLOTS` | `2` | 併發上限；滿了回 429 |
 | `SKILLHUB_SANDBOX_UID`／`GID` | `65532` | 工作負載身分，不得為 0 |
@@ -50,7 +50,7 @@
 | Capability 宣告的隔離等級 | `container` | `gvisor` |
 | 網路 | 無出口需求＝`--network none`；有出口需求＝`internal: true` 的 Docker network，上面只有 LiteLLM 閘道 | Egress Proxy 專用網路，default-deny＋允許清單、DNS 固定解析、目的地記錄 |
 
-宣告等級跟著實際設定走：在跑 runc 的機器上宣告 `gvisor` 會讓 RUN-005 依錯誤的前提派工。ADR-005 的其餘基線（非 root、唯讀 rootfs、drop 全部 capability、無管理 Socket、無主機掛載、資源上限）**兩邊完全相同**——gVisor 是多加一層，不替代其中任何一項。
+宣告等級跟著實際設定走：在跑 runc 的機器上宣告 `gvisor` 會讓 RUN-005 依錯誤的前提派工。[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的其餘基線（非 root、唯讀 rootfs、drop 全部 capability、無管理 Socket、無主機掛載、資源上限）**兩邊完全相同**——gVisor 是多加一層，不替代其中任何一項。
 
 ### 每個沙箱的實際隔離參數
 
@@ -80,7 +80,7 @@
 
 dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒有對外路由，而網路上只有 LiteLLM 閘道。「允許清單只有一項」因此由**線路本身**強制，不需要 Proxy。**物件儲存刻意不在上面**——dev 的 SeaweedFS 若沙箱直接連得到，預簽 URL 就形同虛設（沙箱能讀整個 bucket）；位元組由本服務代搬（見下）。
 
-**未完成**：生產的 Egress Proxy 本體、域名允許清單、DNS 固定解析與目的地記錄（N-01～N-07）都屬部署期，允許清單管理流程仍是 ADR-015 待決策，所以 SBX-007 不勾。
+**未完成**：生產的 Egress Proxy 本體、域名允許清單、DNS 固定解析與目的地記錄（N-01～N-07）都屬部署期，允許清單管理流程仍是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)待決策的一項，所以 SBX-007 不勾。
 
 ### 短效授權與位元組搬運（SBX-008）
 

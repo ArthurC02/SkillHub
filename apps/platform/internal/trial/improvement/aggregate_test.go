@@ -794,7 +794,7 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 
 		got := failed(t, s, m)
 		if derefString(got.JudgeModel) != "gpt-5.6-terra" {
-			t.Errorf("the ADR-026 decision 4 tier is a real declaration even unconfigured, got %q",
+			t.Errorf("the judge tier is a real declaration even when unconfigured, got %q",
 				derefString(got.JudgeModel))
 		}
 		if got.JudgePromptVersion != nil {

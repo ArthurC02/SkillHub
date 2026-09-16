@@ -154,7 +154,7 @@ func TestChargeUnknownUsageFallsBackToReservedAndMarksEstimated(t *testing.T) {
 		t.Fatal("a charge with unknown actual usage must be marked Estimated")
 	}
 	if r.Credits == 0 {
-		t.Fatal("unknown usage must never charge zero credits (ADR-068 decision 5)")
+		t.Fatal("unknown usage must never charge zero credits")
 	}
 }
 

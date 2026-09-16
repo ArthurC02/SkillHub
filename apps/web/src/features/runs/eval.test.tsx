@@ -227,7 +227,7 @@ const evaluation: Evaluation = {
   cost: {
     evaluation_credits: 28,
     source: "gateway",
-    note: "權威數字是閘道對這個 evaluation_id 的 per-key 實付（ADR-017）。",
+    note: "權威數字是閘道對這個 evaluation_id 的 per-key 實付。",
   },
   evaluated_at: "2026-08-17T02:00:00Z",
   superseded_at: null,
@@ -361,7 +361,7 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
   throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
 }
 
-test("ADR-025 a succeeded run whose task failed reads as 執行完成 plus 未符合, never as a pass", async () => {
+test("a succeeded run whose task failed reads as 執行完成 plus 未符合, never as a pass", async () => {
   stubPlatform({ evaluated: true });
   await render("succeeded");
 
@@ -376,7 +376,7 @@ test("ADR-025 a succeeded run whose task failed reads as 執行完成 plus 未�
   expect(text).toContain("材料不完整");
 });
 
-test("ADR-025 a run with no evaluation says 未評估 and does not imply a pass", async () => {
+test("a run with no evaluation says 未評估 and does not imply a pass", async () => {
   stubPlatform({ evaluated: false });
   await render("succeeded");
 
@@ -410,7 +410,7 @@ test("§2.12 未評估 stays 未評估 — a 404 is not evidence that a judge is
   expect(text).toContain("每 3 秒再查一次");
 });
 
-test("ADR-026 expired evidence shows the excerpt kept at judgement time and says the original is gone", async () => {
+test("expired evidence shows the excerpt kept at judgement time and says the original is gone", async () => {
   stubPlatform({ evaluated: true });
   await render("succeeded");
 
@@ -420,7 +420,7 @@ test("ADR-026 expired evidence shows the excerpt kept at judgement time and says
   expect(text).toContain("摘要已截斷");
 });
 
-test("ADR-043 a citation says whether its quote was verified, and where it was filed", async () => {
+test("a citation says whether its quote was verified, and where it was filed", async () => {
   stubPlatform({ evaluated: true });
   await render("succeeded");
   const text = container.textContent ?? "";

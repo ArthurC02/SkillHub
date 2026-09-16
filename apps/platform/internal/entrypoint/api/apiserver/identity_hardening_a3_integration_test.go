@@ -138,7 +138,7 @@ func TestOneAccountCannotHaveTwoWorkspaces(t *testing.T) {
 		user.ID, "second").Scan(&extra)
 	if err == nil {
 		_, _ = pool.Exec(ctx, `DELETE FROM workspaces WHERE id = $1`, extra)
-		t.Fatal("a second workspace was accepted for one owner; ADR-011's 1:1 is held by " +
+		t.Fatal("a second workspace was accepted for one owner; the 1:1 workspace-per-owner rule is held by " +
 			"workspaces_owner_user_id_key (0002) and every workspace scope is derived from it")
 	}
 	if !strings.Contains(err.Error(), "workspaces_owner_user_id_key") {

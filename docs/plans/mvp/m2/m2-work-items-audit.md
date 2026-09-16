@@ -129,7 +129,7 @@ TEST-004 只是第一個撞到「顯示」這個動詞的項目。實際狀況�
 | RUN-001 Provider-neutral 契約 | ✅ 維持 | `contracts/openapi/sandbox-provider.yaml`（37f1918 凍結）。`02:RUN-001` 第 1、2、4 條成立；第 3 條（Provider 宣告能力、只派相容任務）由 RUN-005 落實 |
 | RUN-002 Capability 描述格式 | ✅ 維持 | 同檔 `ProviderCapability` |
 | RUN-003 `run_id` ↔ `provider_run_id` 映射 | ✅ 維持 | `0016_run_orchestration.sql` 的 `run_attempts`；解掉 `0004` 的「重試覆寫 `provider_run_id`」債（鐵律 10）。測試 `TestRetryAddsAttemptWithoutOverwritingTheProviderMapping` |
-| RUN-004 標準狀態機 | ✅ 維持 | `02:RUN-002` 四條。狀態轉移表 `run/state.go` `successors`；`run_status_transitions` 記時間與原因；`cleaning_up` 依 ADR-004 走 `run_cleanup_status` 欄位而非 enum。測試 `TestIllegalTransitionIsRefusedWithoutWriting`、`TestRunWalksTheStateMachineAndIsCleanedUp` |
+| RUN-004 標準狀態機 | ✅ 維持 | `02:RUN-002` 四條。狀態轉移表 `run/state.go` `successors`；`run_status_transitions` 記時間與原因；`cleaning_up` 依[Run 編排與非同步工作流程](../../../adr/README.md#run-編排與非同步工作流程)的規則走 `run_cleanup_status` 欄位而非 enum。測試 `TestIllegalTransitionIsRefusedWithoutWriting`、`TestRunWalksTheStateMachineAndIsCleanedUp` |
 | RUN-005 排程與能力相容檢查 | ✅ 維持 | `run/provider.go:437` 讀 `SKILLHUB_SANDBOX_PROVIDERS`；`:414 capabilityTTL = 30 * time.Second`。`schedule.go:99 Match` 涵蓋健康度、隔離等級、rootless、egress 模式、Runtime 家族與整合模式，**外加剛好六項資源上限**（`:145-160` vCPU／記憶體／磁碟／PID／FD／硬牆鐘）。`:170 Select` 逐 provider 累積 `reasons`，**在排入佇列前**回 422（`checkSchedulable:82`）。測試 `schedule_test.go`、`TestIncompatibleWorkIsRefusedBeforeItIsQueued` |
 | **RUN-006 取消、逾時、重試與失敗分類** | ✅ 維持，**限制註記已驗證為真** | `02:RUN-004` 四條。重試上限 `job.go:22 defaultMaxAttempts = 3`。**「重試窗只涵蓋 provisioning」有兩層硬證據**：(1) 重試迴圈整個位於 `(*driver).dispatch`（`job.go:187`），唯一入口是 `job.go:167` 的 `case d.cur.Status == queued \|\| provisioning`，其餘一律走 `default:`（`:170-176`）直接失敗，註解寫明「the state machine has no way back to provisioning」；(2) `state.go` 的 `successors` map **沒有任何一條邊指回 `provisioning`**。**這是狀態機的性質，不是實作偷懶**，`03` 的註記誠實。測試 `TestDispatchFailuresAreRetriedWithNewAttempts`、`TestRetriesAreBoundedAndClassifiedAsProviderFailure`、`TestWorkloadFailureIsRecordedOnceAndNotRetried`、`TestCancelReachesTheProviderAndStopsTheRun`、`TestCancelRecordsIntentAndStopsAQueuedRun` |
 | **RUN-007 冪等清理與遺留掃描** | ✅ 維持（**基準試跑批發現的洞已修並實證**） | `cleanup.go:35 orphanGrace = 5 * time.Minute`（`:292` 強制）、`:40 OrphanScanInterval`。**`cmd/worker/main.go:135` 現有 `runs.Queue = client`**，`:132-134` 的註解指名它修的是哪個 bug；位置在 `river.NewClient` 之後、`client.Start` 之前。實證：資料庫 73／73 `cleaned`（§2.3）。測試 `TestOrphanScanDestroysLeakedSandboxesButSparesFreshOnes`、`TestOutboxPublisherIsAtLeastOnceAndIdempotent` |
@@ -144,16 +144,16 @@ TEST-004 只是第一個撞到「顯示」這個動詞的項目。實際狀況�
 
 | 項目 | 判定 | 關鍵證據／缺口 |
 | --- | --- | --- |
-| SBX-001 隔離技術與拓撲決定 | ✅ 維持 | [ADR-015](../../../adr/ADR-015-sandbox-isolation-technology.md) Accepted；`SKILLHUB_SANDBOX_RUNTIME=runsc` 落實，宣告的 `isolation.level` 跟實際設定走。本項是「決定」性質，實跑 runsc 屬部署期 |
-| **SBX-002 經審核的 Runtime Image** | **維持不勾（部分完成）** | 流水線已接上：`.github/workflows/runtime-image.yml` 的 digest 斷言（grep `^FROM .+@sha256:[0-9a-f]{64}$`）→ build → syft SPDX → grype → 門檻閘門，`if: always()` 上傳在閘門**之前**故掃描失敗也留證據。**暫定狀態在三處明示**：workflow step 名稱即為 `Fail on fixable Critical/High (I-06, provisional threshold)`（註解 `PROVISIONAL — SEC-002 Q18 has no signed-off value yet`）、`infra/images/README.md` 的「門檻提案值（暫定，待負責人定案）」、`Dockerfile:18-20`。**不勾正確**：依 `02:SEC-002`「未定值前該項不可自動化判定，不得記為通過」。另 I-03 的 SBOM 保存落在 90 天 CI artifact，待 container registry（ADR-019 待決策 1）定案後搬家 |
+| SBX-001 隔離技術與拓撲決定 | ✅ 維持 | [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的決策已核定；`SKILLHUB_SANDBOX_RUNTIME=runsc` 落實，宣告的 `isolation.level` 跟實際設定走。本項是「決定」性質，實跑 runsc 屬部署期 |
+| **SBX-002 經審核的 Runtime Image** | **維持不勾（部分完成）** | 流水線已接上：`.github/workflows/runtime-image.yml` 的 digest 斷言（grep `^FROM .+@sha256:[0-9a-f]{64}$`）→ build → syft SPDX → grype → 門檻閘門，`if: always()` 上傳在閘門**之前**故掃描失敗也留證據。**暫定狀態在三處明示**：workflow step 名稱即為 `Fail on fixable Critical/High (I-06, provisional threshold)`（註解 `PROVISIONAL — SEC-002 Q18 has no signed-off value yet`）、`infra/images/README.md` 的「門檻提案值（暫定，待負責人定案）」、`Dockerfile:18-20`。**不勾正確**：依 `02:SEC-002`「未定值前該項不可自動化判定，不得記為通過」。另 I-03 的 SBOM 保存落在 90 天 CI artifact，待 container registry（依[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)的待決策）定案後搬家 |
 | SBX-003 獨立環境與暫存空間 | ✅ 維持 | `dockerdrv/docker.go:128` 每 attempt 一容器；`:170-175` `/work`／`/out`／`/tmp` 為該容器私有 tmpfs。基線 C-01 |
 | SBX-004 非 root、非特權、唯讀 rootfs | ✅ 維持 | `docker.go:151 User`、`:176-189` `CapDrop: ALL`／`no-new-privileges:true`／`Privileged: false`／`ReadonlyRootfs: true`。**驗證是雙層的**：`TestLiveSandboxMeetsTheIsolationBaseline`（`docker_test.go:141`）先在**真實容器內**跑探針並斷言其輸出（`uid=65532`、`rootfs=readonly`、`docker-socket=absent`、`net=isolated`，`:143-164`），再另做 `ContainerInspect` 設定斷言（`:171-237`）。C-02／03／06／08 |
 | **SBX-005 阻擋管理 Socket、主機路徑與內部服務** | **維持不勾（部分完成）** | 已擋的部分有硬證據：`Binds`／`Mounts` 恆空（`docker.go:180-186` 的註解說明零值是刻意的），斷言於 `docker_test.go:196`；namespace 全私有（`:202-209`，拒絕 `host` 與 `container:` 前綴）；`docker.sock` 不存在為容器內活體探測（`:148`）。**未成立的是「內部服務存取」**：dev 已由網路面隔離（SBX-007），但 P-02「Sandbox → 核心資料庫連線嘗試被實際阻擋」的**常駐探針**全 repo 無實作，屬部署期。C-04／05／07 |
 | SBX-006 CPU／記憶體／磁碟／程序數／時間限制 | ✅ 維持 | `docker.go:190-199` `NanoCPUs`／`Memory`＋`MemorySwap`（相等，不給 swap）／`PidsLimit`／`nofile` soft＋hard／`core` 0；tmpfs 3:1 切分於 `:139-140`（`workBytes := lim.DiskBytes * 3 / 4`）；硬牆鐘蓋在容器 label（`:399-401`）。**真實容器測試**：`TestPidsLimitStopsAForkBomb`（`docker_test.go:242`，實際 fork 200 個行程撞 16 上限）、`TestWallClockStopsALiveSandboxAndDestroyReleasesIt`（`:255`）。C-10～C-15。**注意：本項的字面清單不含 token，見 §9.1** |
-| **SBX-007 預設封鎖的網路出口政策與允許清單** | **維持不勾（部分完成）** | `dockerdrv/docker.go:236-246 networkFor`——**只有**當 allow 有 `Purpose == "model_gateway"` 才回 `d.cfg.Network`，否則 `"none"`；節點無網路設定時強制 `"none"`；`NetworkDisabled` 於 `:160`。反向保護有具名測試：`TestAcceptRefusesAnAllowListANodeCannotRoute`（`sandbox/artifacts_test.go:156`，宣告 `egress_modes: ["none"]` 的節點對帶 `model_gateway` 的請求回 `ClassCapabilityMismatch`，同一請求 `Allow = nil` 則接受）。**不勾正確**：生產級 Egress Proxy 本體、域名允許清單、DNS 固定解析、目的地記錄（N-01～N-07）全屬部署期，允許清單管理流程仍是 ADR-015／威脅模型 Q3 待決策 |
+| **SBX-007 預設封鎖的網路出口政策與允許清單** | **維持不勾（部分完成）** | `dockerdrv/docker.go:236-246 networkFor`——**只有**當 allow 有 `Purpose == "model_gateway"` 才回 `d.cfg.Network`，否則 `"none"`；節點無網路設定時強制 `"none"`；`NetworkDisabled` 於 `:160`。反向保護有具名測試：`TestAcceptRefusesAnAllowListANodeCannotRoute`（`sandbox/artifacts_test.go:156`，宣告 `egress_modes: ["none"]` 的節點對帶 `model_gateway` 的請求回 `ClassCapabilityMismatch`，同一請求 `Allow = nil` 則接受）。**不勾正確**：生產級 Egress Proxy 本體、域名允許清單、DNS 固定解析、目的地記錄（N-01～N-07）全屬部署期，允許清單管理流程仍是 [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)／威脅模型 Q3 待決策 |
 | **SBX-008 Dataset／Skill／Secrets／Artifact 短效傳遞** | ✅ 維持 | `02:RUN-003`、SEC-005。預簽：`run/grants.go:65/89` `PresignGet`、`:106-111` `PresignPut`；TTL `= WallClockHardSeconds + grantSlack(5m)`（`grants.go:31`、`schedule.go:233`）。Virtual Key：`run/gateway.go:130-147` `/key/generate` 帶 `max_budget`＋`tpm_limit`＋`"models": [g.Model]` 層級限制。**fail-closed**：`schedule.go:246-251`，簽發失敗即不進 `RunRequest`。撤銷：`gateway.go:166-175` `/key/delete` 以 alias（`:120 keyAlias`）定址，未知 alias 由 `gatewayError.notFound():188-195` 吸收為冪等。傳遞：`dockerdrv/transfer.go` `/bin/tee` 入、`/bin/tar` 出；交接常數 `.workload-done`／`.collected`，生產端 `run.mjs:119-130 waitToBeCollected()`，順序測試 `TestCollectionHappensBeforeTheWorkloadIsReleased`（`artifacts_test.go:95`）。**實證**：基準試跑 73 個 Run 全部撤銷成功 |
 | SBX-009 四條終態路徑的清理 | ✅ 維持 | `run/cleanup.go:139`／`:254` 皆 `provider.Destroy`。`TestDestroyIsIdempotentAndHasNo404`（`sandbox/http_test.go:317`：兩次 DELETE 皆 204、對不存在的 handle 也 204、driver 實際只移除 2 次）、`TestDestroyReports500WhenResourcesAreStillHeld`（`:340`）、真實容器 `TestWallClockStopsALiveSandboxAndDestroyReleasesIt`（`docker_test.go:294-302`）。X-01 |
-| **SBX-010 隔離／資源耗盡／網路／清理失敗測試** | **維持不勾（部署期）** | 逃逸測試與 gVisor 相容性需要 Linux 與巢狀虛擬化（ADR-019 待決策 3）。**現有的真實容器驗證不等於逃逸測試**，`03` 的註記誠實。ADR-015 定案紀錄：**SEC-009／SBX-010 未通過不得開放外部使用者提交 Skill 執行** |
+| **SBX-010 隔離／資源耗盡／網路／清理失敗測試** | **維持不勾（部署期）** | 逃逸測試與 gVisor 相容性需要 Linux 與巢狀虛擬化（依[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)的待決策）。**現有的真實容器驗證不等於逃逸測試**，`03` 的註記誠實。[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的定案紀錄：**SEC-009／SBX-010 未通過不得開放外部使用者提交 Skill 執行** |
 
 > **Runtime Image 的 Python 缺席已確認為事實**：`infra/images/runtime-agent-sdk/Dockerfile` 基底 `node:22-bookworm-slim@sha256:d649c27d…`，只 `apt-get install --no-install-recommends unzip`，且**額外移除了 npm／npx／corepack**（安全強化，`03` 的 SBX-002 註記已載）。無 python3、無 pip。這對應 [content-baseline-report.md §6.3](content-baseline-report.md) 的 33／45 Skill 依賴 Python，見 §9.5。
 
@@ -197,7 +197,7 @@ TEST-004 只是第一個撞到「顯示」這個動詞的項目。實際狀況�
 | 項目 | 判定 | 說明 |
 | --- | --- | --- |
 | **SEC-002** Sandbox 最低安全基線與阻擋條件 | **維持不勾** | `02:SEC-002` 的兩個勾選前提都未成立：(1) 六項無值門檻（Q18：P-03 節點重建週期、P-04 gVisor 安全基準版本與更新 SLA、I-04 掃描結果有效期、I-06 漏洞等級門檻、X-02 Reconciler 掃描頻率、X-03／X-04 遺留資源告警與暫停門檻）**仍全部無值**——SBX-002 已就 I-04／I-06 提出建議值（可修的 Critical／High 阻擋、有效期 30 天）並在程式與 CI 標為暫定，其餘四項連提案都還沒有；(2) Q1～Q3（節點編排方案、節點是否單租戶、Egress Proxy 實作與允許清單管理流程）仍未答。**另見 §9.4：閘門 B 的四項額外阻擋只落地兩項** |
-| **SEC-009** 逃逸、資源濫用與權限提升測試 | **維持不勾** | 需 Linux 與巢狀虛擬化（ADR-019 待決策 3）。`02:SEC-009` 明文「M2 的 SelfHostedProvider 驗收必須全數通過」——**這條在 M2 結束時未達成**，依 ADR-015 的定案語意界線，其後果是「不得開放外部使用者提交 Skill 執行」，見 §10 甲類 |
+| **SEC-009** 逃逸、資源濫用與權限提升測試 | **維持不勾** | 需 Linux 與巢狀虛擬化（依[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)的待決策）。`02:SEC-009` 明文「M2 的 SelfHostedProvider 驗收必須全數通過」——**這條在 M2 結束時未達成**，依[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的定案語意界線，其後果是「不得開放外部使用者提交 Skill 執行」，見 §10 甲類 |
 
 ---
 
@@ -259,7 +259,7 @@ TEST-004 只是第一個撞到「顯示」這個動詞的項目。實際狀況�
 **這件事的兩個後果，都要交接**：
 
 1. **`complete: true` 不代表 usage 存在。** 斷號偵測只看得到「發出後遺失」，看不到「從未發出」。UI 誠實（顯示「沒有記錄到用量事件。」），但 `complete` 旗標會讓自動化消費端誤判。
-2. **成本合計必然是下界。** 報告 §5.2：Trace 合計 $3.0879 vs 閘道實付 $3.3932。**EVAL-012（版本／成本比較，M3）若直接加總 Trace 的 `cost_usd`，會系統性低估**，且低估幅度隨失敗率上升。權威來源仍是閘道 per-key spend（ADR-017）。
+2. **成本合計必然是下界。** 報告 §5.2：Trace 合計 $3.0879 vs 閘道實付 $3.3932。**EVAL-012（版本／成本比較，M3）若直接加總 Trace 的 `cost_usd`，會系統性低估**，且低估幅度隨失敗率上升。權威來源仍是閘道 per-key spend（依[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)）。
 
 **洞二：閘道預算計數與其自身 spend log 差最多 50 倍。** [報告 §6.2](content-baseline-report.md) 有完整對照實驗（宣稱 `Current cost: 0.50057` 的金鑰，其 `LiteLLM_SpendLogs` 實際只有 `0.02717`；兩個新鑄金鑰的單次呼叫實測 spend 皆為 `$0.0000285`；把上限提到 $2.00 後 7 個受影響精選全數一次通過，實花 $0.054–$0.169）。**16 個 Run 被平台自己掐掉**，其中 9 個至今沒有有效基準。
 
@@ -327,7 +327,7 @@ PDM-005 §5.3 明文列出「`02:TEST-005` 權限摘要的具體欄位」，其�
 
 這是 0.2.137 時代的敘述，**在 0.3.233 上照做會得到零個 skill**，而且它把讀者指向 `run.mjs`——那裡寫的正好相反。`services/sandbox/README.md` 是沙箱服務的自然入口，先讀到它的人會拿到倒過來的指示。
 
-另外，**SDK 版本只釘在 `Dockerfile` 的 `ARG CLAUDE_AGENT_SDK_VERSION=0.3.233`**（`sandboxd/main.go:66` 有同值預設），沒有 ADR 記錄這個行為反轉。ADR-012／015 都沒提。
+另外，**SDK 版本只釘在 `Dockerfile` 的 `ARG CLAUDE_AGENT_SDK_VERSION=0.3.233`**（`sandboxd/main.go:66` 有同值預設），沒有 ADR 記錄這個行為反轉。[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)與[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)都沒提。
 
 **建議**：修 `services/sandbox/README.md:112`（一行，屬程式碼側檔案，本次對帳未動），並考慮把「SDK 行為只能實測不能推理」這件事留一個更持久的落點——它已經在一個里程碑內被推翻過一次。
 
@@ -397,7 +397,7 @@ SEC-009、SBX-010、SBX-005／007 的生產網路面、SBX-002 的門檻定值�
 | --- | --- |
 | `git grep --cached -E "sk-(proj\|ant)-"` | 無 match |
 | `git log --all --oneline -- .env` | 無 commit |
-| `git ls-files \| grep "^\.env"` | 未追蹤（`.gitignore` 已排除，ADR-019 §4 慣例） |
+| `git ls-files \| grep "^\.env"` | 未追蹤（`.gitignore` 已排除，[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)的慣例） |
 
 ---
 

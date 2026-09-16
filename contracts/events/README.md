@@ -5,9 +5,9 @@
 - 樣本：[samples/](samples/) 是管線兩端的真實輸出（生產端未遮罩、入庫端已遮罩），validator 一併逐行驗證
 - 狀態：契約為 M2 第一批產出；**收集管線於第三批（2026-08-16）落地**——事件產生見 `infra/images/runtime-agent-sdk/run.mjs`，收集與推送見 `apps/sandbox/internal/sandbox/trace.go`，遮罩、入庫與兩種讀取模式見 `apps/platform/internal/trial/evidence`。§8 的四個表欄位缺口已由 `db/migrations/0019_trace_ingestion.sql` 全數關閉。
 
-## 1. 這份 schema 的位置（ADR-009 邊界）
+## 1. 這份 schema 的位置（可觀測性邊界）
 
-ADR-009 把三種能力切開，共用 Correlation ID 但**資料模型與存取政策不同**：
+[模型閘道與可觀測性](../../docs/adr/README.md#模型閘道與可觀測性)的邊界把三種能力切開，共用 Correlation ID 但**資料模型與存取政策不同**：
 
 | 平面 | 內容 | 本 schema 是否涵蓋 |
 | --- | --- | --- |
@@ -18,9 +18,9 @@ ADR-009 把三種能力切開，共用 Correlation ID 但**資料模型與存取
 兩條由此而來的硬性規則：
 
 1. **不要把平台內部資訊塞進 Run Trace 事件**。使用者看得到這裡的每一個欄位；主機名稱、內部 IP、佇列深度、其他 Workspace 的任何線索都不屬於這裡。
-2. **維運告警不得讀這份資料**。Trace payload 大量來自 Sandbox，屬於使用者可操控的輸入；讓告警依賴它等於把告警交給不受信任的來源（ADR-009 背景段的原始理由）。
+2. **維運告警不得讀這份資料**。Trace payload 大量來自 Sandbox，屬於使用者可操控的輸入；讓告警依賴它等於把告警交給不受信任的來源。
 
-`emitted_by: sandbox` 的事件跨越信任邊界（ADR-001）：控制平面收到後視為**不受信任輸入**，先驗 schema、再遮罩、再落庫；UI 一律以 inert text 呈現，不解讀 ANSI／HTML／SVG（ADR-009）。
+`emitted_by: sandbox` 的事件跨越[系統情境、平面與部署路徑](../../docs/adr/README.md#系統情境平面與部署路徑)畫出的信任邊界：控制平面收到後視為**不受信任輸入**，先驗 schema、再遮罩、再落庫；UI 一律以 inert text 呈現，不解讀 ANSI／HTML／SVG。
 
 ## 2. 事件型別
 
@@ -32,13 +32,13 @@ ADR-009 把三種能力切開，共用 Correlation ID 但**資料模型與存取
 | `mcp_call` | MCP 呼叫 | TRACE-003 | **佔位**。遠端 MCP 已移出 MVP 首發，只保留型別讓 `event_type` 值域穩定；payload 形狀未定案，不得依賴 |
 | `script_log` | Sandbox 內腳本輸出 | TRACE-003 | `stream: stdout \| stderr`、`truncated`、`dropped_bytes` |
 | `agent_output` | Agent 產出的文字（`final` 為最終回答） | TRACE-004 | |
-| `error` | 值得對使用者顯示的失敗 | TRACE-004 | `category` 對齊 ADR-004 失敗分類 |
+| `error` | 值得對使用者顯示的失敗 | TRACE-004 | `category` 對齊[Run 編排與非同步工作流程](../../docs/adr/README.md#run-編排與非同步工作流程)的失敗分類 |
 | `usage` | Token 與成本計量 | TRACE-004 | cache 欄位可為 `null`，見 §5 |
 | `run_lifecycle` | Run 狀態轉移的**鏡像** | RUN-002 | **非事實來源**，見 §4 |
 | `evaluation_started` | 控制平面開始評估這個 Run | EVAL-001 | `emitted_by` 限 `orchestrator`，見 §4.1 |
 | `evaluation_completed` | 評估結束（有沒有判定都算） | EVAL-001 | 同上；envelope `status` 分「評完了」與「評不動」 |
 
-ADR-009 另有列 `Artifact Produced`、`Policy Decision`、`Security Event` 三類。本批**刻意未定義**：TRACE-002~004 的收集需求沒有用到，而新增事件型別在本契約下屬 additive（§7），要用時再加不必改版本主號。
+[模型閘道與可觀測性](../../docs/adr/README.md#模型閘道與可觀測性)另有列 `Artifact Produced`、`Policy Decision`、`Security Event` 三類。本批**刻意未定義**：TRACE-002~004 的收集需求沒有用到，而新增事件型別在本契約下屬 additive（§7），要用時再加不必改版本主號。
 
 每型都有一筆完整範例實例，放在 schema 頂層的 `examples` 陣列，validator 逐筆驗證。
 
@@ -56,7 +56,7 @@ Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機（`runs.statu
 
 ### 4.1 兩個 `evaluation_*` 事件同理，而且限定 producer
 
-`evaluation_started` / `evaluation_completed`（1.2）存在的理由與 `run_lifecycle` 一樣：**讓時間軸不要在 Run 結束的那一刻斷掉**。判定的事實來源是 `evaluations` 表（ADR-009 的 Evaluation 平面），不是這兩個事件；逐條判定、證據引用、改善建議都**不**放進 Trace。
+`evaluation_started` / `evaluation_completed`（1.2）存在的理由與 `run_lifecycle` 一樣：**讓時間軸不要在 Run 結束的那一刻斷掉**。判定的事實來源是 `evaluations` 表（[模型閘道與可觀測性](../../docs/adr/README.md#模型閘道與可觀測性)界定的 Evaluation 平面），不是這兩個事件；逐條判定、證據引用、改善建議都**不**放進 Trace。
 
 多一條 `run_lifecycle` 沒有的限制：schema 把這兩型的 `emitted_by` 釘死為 `orchestrator`。評估發生在控制平面、發生時沙箱早已銷毀，所以一筆 `emitted_by: sandbox` 的 `evaluation_completed` 只可能是不受信任平面偽造的判定（validator 有對應反例）。
 
@@ -66,7 +66,7 @@ envelope 的 `status` 承擔「評完了」與「評不動」的區別：`ok` �
 
 `pdm-003-litellm-spike-report.md` §11.5.2 實測：LiteLLM 1.96.2 在 `/v1/messages` 路由上**完全不輸出** `cache_read_input_tokens` 與 `cache_creation_input_tokens`（是缺欄，不是 0），`/v1/chat/completions` 則正常透傳。計費不受影響（LiteLLM 內部有正確套用快取折扣），**受損的是可觀測性**。
 
-**閘道換版之後這件事會變，而且不會有人通知**：現行閘道上 `cache_read_input_tokens` 已經量得到值（`infra/images/runtime-agent-sdk/UPGRADES.md` 的 `2026.08-12` 那節，ADR-023 §2 第 3 項），`cache_write_input_tokens` 仍是 `null`。**兩個欄位維持 nullable，下面的消費端規約一字不變**——它管的是「收到 `null` 時怎麼呈現」，與某一版閘道給不給值無關。
+**閘道換版之後這件事會變，而且不會有人通知**：現行閘道上 `cache_read_input_tokens` 已經量得到值（`infra/images/runtime-agent-sdk/UPGRADES.md` 的 `2026.08-12` 那節，[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)），`cache_write_input_tokens` 仍是 `null`。**兩個欄位維持 nullable，下面的消費端規約一字不變**——它管的是「收到 `null` 時怎麼呈現」，與某一版閘道給不給值無關。
 
 所以 schema 把 `cache_read_input_tokens` / `cache_write_input_tokens` / `cost_usd` 都設為 nullable，並在 `$comment` 註明成因與出處。消費端規約：
 
@@ -109,8 +109,8 @@ envelope 的 `status` 承擔「評完了」與「評不動」的區別：`ok` �
 - **`seq` 單調且無洞，範圍是 `(run_id, attempt, emitted_by)` 三元組**，從 1 起算。序號出現斷點＝有事件遺失，這是 TRACE-001「能識別缺失事件」的實作基礎。
 - **不用全 Run 單一計數器**。理由：跨 producer 的全域計數器需要一個序列化點；而若改由 ingest 端在寫入時發號，遺失就在定義上永遠偵測不到——等於把可觀測性換掉效能。
 - **跨 producer 排序用 `(occurred_at, emitted_by, seq)`**，不可只用 `seq`。不同 producer 的時鐘會漂移，`occurred_at` 只負責合併三條串流，串流內部的權威順序是 `seq`。
-- **傳遞語意 at-least-once**（ADR-008 Outbox）。消費者必須冪等，**冪等鍵是 `event_id`**（producer 產生的 UUID）；已存在的 `event_id` 再次到達時視為 no-op，不是更新。
-- **延遲事件不重排既有時間軸**：晚到的事件按其 `seq` 插入所屬串流；UI 在偵測到斷點或串流未收尾時必須明示「可能不完整」，不得假裝完整（ADR-009）。
+- **傳遞語意 at-least-once**（[Run 編排與非同步工作流程](../../docs/adr/README.md#run-編排與非同步工作流程)的 Outbox）。消費者必須冪等，**冪等鍵是 `event_id`**（producer 產生的 UUID）；已存在的 `event_id` 再次到達時視為 no-op，不是更新。
+- **延遲事件不重排既有時間軸**：晚到的事件按其 `seq` 插入所屬串流；UI 在偵測到斷點或串流未收尾時必須明示「可能不完整」，不得假裝完整。
 
 ## 8. 與 `trace_events` 表的映射
 

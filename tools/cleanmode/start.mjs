@@ -86,7 +86,7 @@ function seedReleaseFile() {
   writeFileSync(
     path,
     [
-      "# Clean test mode — versions released to run WITHOUT ANY ISOLATION (05 R-37, ADR-061).",
+      "# Clean test mode — versions released to run WITHOUT ANY ISOLATION (05 R-37).",
       "#",
       "# One release per line:   <skill_version_id> <why you are allowing it>",
       "#",

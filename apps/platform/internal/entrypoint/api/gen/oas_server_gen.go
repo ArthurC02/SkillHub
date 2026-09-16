@@ -36,15 +36,15 @@ type Handler interface {
 	// pretending to be a query-less search; rows still share the public Skill card shape, and `rank_note`
 	// explicitly explains this third kind of absent rank.
 	//
-	// Ordering: curated first, then newest version first, then by id. ADR-041 / 設計系統 §2.11(b)
-	// forbid popularity as a default order and this product has no popularity signal to misuse anyway;
+	// Ordering: curated first, then newest version first, then by id. 設計系統 §2.11(b) forbid
+	// popularity as a default order and this product has no popularity signal to misuse anyway;
 	// `curation_tier` is the one ordering input backed by a human review (PDM-002's nine items), and the
 	// id tiebreak keeps the order stable between two calls. Every row carries `rank: null` and a
 	// `rank_note` saying so, which is the same contract the degraded search path already uses — a client
 	// never has to guess why a page is not ranked by similarity.
 	//
 	// Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can
-	// widen it (CORE-006, ADR-011).
+	// widen it (CORE-006).
 	//
 	// The five live DISC-002 filters apply here for the reason they exist: they are the controls on the
 	// same screen, and a filter that only bites after a search would be a live control that narrows
@@ -95,7 +95,7 @@ type Handler interface {
 	// contents genuinely did change.
 	//
 	// Each side reports its execution status and its task judgement separately, and a side with no
-	// judgement says so rather than reading as a pass (ADR-025).
+	// judgement says so rather than reading as a pass.
 	//
 	// Any two runs in the caller's workspace may be compared. Two runs of different test cases, or of
 	// different skills, are not refused: the criterion matrix carries a null verdict where a criterion
@@ -225,7 +225,7 @@ type Handler interface {
 	// DeleteDataset implements deleteDataset operation.
 	//
 	// Usable before a run to withdraw a file and after a run to remove it. The stored object is deleted;
-	// snapshots keep the file's name and content hash so past runs stay traceable (ADR-003).
+	// snapshots keep the file's name and content hash so past runs stay traceable.
 	//
 	// DELETE /test-cases/{id}/datasets/{datasetId}
 	DeleteDataset(ctx context.Context, params DeleteDatasetParams) (DeleteDatasetRes, error)
@@ -271,7 +271,7 @@ type Handler interface {
 	//
 	// Soft delete. The draft and its live datasets leave every read now and the stored objects are
 	// removed. Snapshots of past runs are retained and keep the prompt, the criteria and each file's name
-	// and content hash, so those runs stay traceable although they are no longer reproducible (ADR-003).
+	// and content hash, so those runs stay traceable although they are no longer reproducible.
 	//
 	// DELETE /test-cases/{id}
 	DeleteTestCase(ctx context.Context, params DeleteTestCaseParams) (DeleteTestCaseRes, error)
@@ -331,18 +331,18 @@ type Handler interface {
 	ForkSkill(ctx context.Context, params ForkSkillParams) (ForkSkillRes, error)
 	// GenerateSkill implements generateSkill operation.
 	//
-	// Requires a session and an invite. Mounted only where the deployment turns the M5 exposure flag on
-	// (ADR-052); everywhere else this route does not exist — it answers whatever an unregistered path
-	// under /skills answers (405 today, because DELETE /skills/{id} matches the shape; the sameness is the
-	// point, not the number) — and `GET /me` does not list `generate_skill` among its features. A client
-	// must read that field rather than probing here — an entry point that has to be discovered by a
-	// failed request has already been drawn.
+	// Requires a session and an invite. Mounted only where the deployment turns the M5 exposure flag on;
+	// everywhere else this route does not exist — it answers whatever an unregistered path under /skills
+	// answers (405 today, because DELETE /skills/{id} matches the shape; the sameness is the point, not
+	// the number) — and `GET /me` does not list `generate_skill` among its features. A client must read
+	// that field rather than probing here — an entry point that has to be discovered by a failed request
+	// has already been drawn.
 	//
-	// Three ways in, one path out (ADR-066). The input is a task description in the user's own words
-	// (GEN-001), a flowchart or diagram image (GEN-005), or both together; and any of those may name up to
-	// three existing Skills the user found by searching, which the model reads as worked examples and not
-	// as bytes to copy (GEN-006). Whatever the input shape, the output is the same: one new Skill, version
-	// 1, `redistribution = generated`, and a provenance row that names every input. At least one of
+	// Three ways in, one path out. The input is a task description in the user's own words (GEN-001), a
+	// flowchart or diagram image (GEN-005), or both together; and any of those may name up to three
+	// existing Skills the user found by searching, which the model reads as worked examples and not as
+	// bytes to copy (GEN-006). Whatever the input shape, the output is the same: one new Skill, version 1,
+	// `redistribution = generated`, and a provenance row that names every input. At least one of
 	// `task_description` and `diagram` must be present; references alone are refused (422), because "make
 	// me one like this" with nothing said about the task is a fork, and Fork already exists.
 	//
@@ -383,8 +383,8 @@ type Handler interface {
 	GetCreationSession(ctx context.Context, params GetCreationSessionParams) (GetCreationSessionRes, error)
 	// GetCreditBalance implements getCreditBalance operation.
 	//
-	// Credit is this platform's only unit of account (ADR-068). Everything a user is shown about cost is
-	// denominated in it; US dollars are the platform's own ledger and never appear on this route.
+	// Credit is this platform's only unit of account. Everything a user is shown about cost is denominated
+	// in it; US dollars are the platform's own ledger and never appear on this route.
 	//
 	// Three numbers and a verdict: the balance, how far below zero it may go before the per-step gate
 	// stops a session, what one interactive-creation session is expected to cost, and whether a new one
@@ -431,8 +431,9 @@ type Handler interface {
 	// returned.
 	//
 	// `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing
-	// one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5's 180 days is
-	// still a proposal, and a deployment that has set nothing writes no row and sets no cookie.
+	// one: NFR-002 forbids collection before a retention value exists, the retention decision's proposed
+	// 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no
+	// cookie.
 	//
 	// GET /policy/data-retention
 	GetDataRetentionPolicy(ctx context.Context) (*DataRetentionPolicy, error)
@@ -447,11 +448,14 @@ type Handler interface {
 	// GetDispatchStatus implements getDispatchStatus operation.
 	//
 	// Operator only. The single answer to 「現在到底有沒有在派送」, which is the whole reason
-	// 03:SEC-012 requires the P1 halt and ADR-022 X-04's drain/suspend to be one switch rather than two.
+	// 03:SEC-012 requires the P1 halt and the [Sandbox 隔離與執行安全] X-04's drain/suspend to be
+	// one switch rather than two.
 	//
 	// Both triggers appear here in the same list and are told apart by `source`: `p1_incident` waits for a
 	// person, `orphan_threshold` clears itself after two consecutive reconciler rounds below the
 	// threshold.
+	//
+	// [Sandbox 隔離與執行安全]: ../../docs/adr/README.md#sandbox-隔離與執行安全
 	//
 	// GET /admin/dispatch
 	GetDispatchStatus(ctx context.Context) (GetDispatchStatusRes, error)
@@ -483,7 +487,7 @@ type Handler interface {
 	// GetOperatorRosters implements getOperatorRosters operation.
 	//
 	// Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment config; changing either is still
-	// an edit and a restart (ADR-074 decision 4). This only shows what is in force.
+	// an edit and a restart. This only shows what is in force.
 	//
 	// GET /admin/rosters
 	GetOperatorRosters(ctx context.Context) (GetOperatorRostersRes, error)
@@ -523,8 +527,7 @@ type Handler interface {
 	// Answers "was the task achieved". That is a different question from `Run.status`, which answers "what
 	// happened while this executed", and the two are separate resources because they are separate facts: a
 	// run at `succeeded` whose evaluation is `not_met` is an ordinary consistent state — the workload
-	// finished and did not do what was asked. No surface may collapse them into one verdict (ADR-025,
-	// NFR-001).
+	// finished and did not do what was asked. No surface may collapse them into one verdict (NFR-001).
 	//
 	// A run with no evaluation answers 404, not an empty evaluation. 「未評估」 is a state of its
 	// own, and a blank body is exactly what a UI would render as a pass. An evaluation that ran and broke
@@ -586,10 +589,10 @@ type Handler interface {
 	// an unmasked mode would show does not exist anywhere to be served.
 	//
 	// `complete: false` means a producer's gapless sequence has a hole, which means an event was lost. The
-	// UI must say so rather than present the remainder as the whole story (ADR-009).
+	// UI must say so rather than present the remainder as the whole story.
 	//
-	// Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be
-	// rendered as inert text: no HTML, ANSI or SVG interpretation.
+	// Every payload here is untrusted content that crossed the trust boundary and must be rendered as
+	// inert text: no HTML, ANSI or SVG interpretation.
 	//
 	// GET /runs/{id}/trace
 	GetRunTrace(ctx context.Context, params GetRunTraceParams) (GetRunTraceRes, error)
@@ -602,20 +605,20 @@ type Handler interface {
 	GetRunTrend(ctx context.Context, params GetRunTrendParams) (GetRunTrendRes, error)
 	// GetSkillDetail implements getSkillDetail operation.
 	//
-	// Does not require authentication. Scope is resolved by the server and never by the request (CORE-006,
-	// ADR-011): the public catalog answers for every caller, and a caller with a session additionally sees
-	// skills in their own workspace. Anything outside both scopes answers 404, identical to a skill that
-	// does not exist, so the status code is not an existence oracle for someone else's private content
-	// (WS-006).
+	// Does not require authentication. Scope is resolved by the server and never by the request
+	// (CORE-006): the public catalog answers for every caller, and a caller with a session additionally
+	// sees skills in their own workspace. Anything outside both scopes answers 404, identical to a skill
+	// that does not exist, so the status code is not an existence oracle for someone else's private
+	// content (WS-006).
 	//
 	// `summary` is always the package's own frontmatter description. Model-generated text lives under
-	// `enrichment` and is labelled there (ADR-013). `license` carries the ADR-021 two-axis answer — the
-	// expression and the provenance tier it was established at — and its status is `declared` at best:
-	// confirmation is a reviewer's act and nothing records one yet. `risk` reports a static scan of the
-	// stored package; the scan never executes anything (iron rule 1) and passing it is not a safety claim
-	// (NFR-001). `compatibility` keeps the three axes apart; the two that need a sandbox carry a measured
-	// verdict together with the `runtime_image` it holds for, and say `unverified` rather than being
-	// omitted when this (version, image) pair was never measured.
+	// `enrichment` and is labelled there. `license` carries the two-axis answer — the expression and the
+	// provenance tier it was established at — and its status is `declared` at best: confirmation is a
+	// reviewer's act and nothing records one yet. `risk` reports a static scan of the stored package; the
+	// scan never executes anything (iron rule 1) and passing it is not a safety claim (NFR-001).
+	// `compatibility` keeps the three axes apart; the two that need a sandbox carry a measured verdict
+	// together with the `runtime_image` it holds for, and say `unverified` rather than being omitted when
+	// this (version, image) pair was never measured.
 	//
 	// GET /api/skills/{id}
 	GetSkillDetail(ctx context.Context, params GetSkillDetailParams) (GetSkillDetailRes, error)
@@ -688,9 +691,9 @@ type Handler interface {
 	// travels inside `TracePolicy.ingestion_url` of the sandbox provider contract, which has no separate
 	// token field.
 	//
-	// Everything in the body is untrusted input (ADR-001). The order on this side is fixed: verify the
-	// token, resolve workspace_id from run_id under the platform's own authority (iron rule 3), validate
-	// each envelope, mask (TRACE-005), then store. Nothing reaches the database unmasked.
+	// Everything in the body is untrusted input. The order on this side is fixed: verify the token,
+	// resolve workspace_id from run_id under the platform's own authority (iron rule 3), validate each
+	// envelope, mask (TRACE-005), then store. Nothing reaches the database unmasked.
 	//
 	// Rejection is per event, not per batch: one malformed event must not discard the well-formed ones
 	// beside it. An event naming a different run or attempt than the token covers is rejected, never
@@ -764,16 +767,16 @@ type Handler interface {
 	// leaves an audit row; until this route existed, that row could only be seen by someone holding a
 	// database connection, which is not a record left in the workspace.
 	//
-	// Requires a session and an invite, and is mounted on the same flag as POST /skills/generate (ADR-052)
-	// — a failure list is a generation surface, and a route answering 200 with an empty array is still
-	// an answer about a feature that must not be discoverable. Where the flag is off this route does not
+	// Requires a session and an invite, and is mounted on the same flag as POST /skills/generate — a
+	// failure list is a generation surface, and a route answering 200 with an empty array is still an
+	// answer about a feature that must not be discoverable. Where the flag is off this route does not
 	// exist and answers 404.
 	//
 	// Workspace-scoped from the session; the caller never names a workspace (iron rule 3).
 	//
 	// The task description is not here and will not be added. It belongs to the skill_sources row, under
 	// NFR-002 deletion; these rows are kept 400 days under a different rule, and one copy under each is a
-	// retention promise nobody made (ADR-029 decision 3 draws the same line).
+	// retention promise nobody made (the audit/analytics boundary decision draws the same line).
 	//
 	// GET /skills/generate/failures
 	ListGenerationFailures(ctx context.Context) (ListGenerationFailuresRes, error)
@@ -839,8 +842,8 @@ type Handler interface {
 	ListRuns(ctx context.Context, params ListRunsParams) (ListRunsRes, error)
 	// ListSkillVersions implements listSkillVersions operation.
 	//
-	// Workspace scoped from the session like every other registry read (ADR-011): a skill in somebody
-	// else's workspace answers with an empty list rather than with their history.
+	// Workspace scoped from the session like every other registry read : a skill in somebody else's
+	// workspace answers with an empty list rather than with their history.
 	//
 	// This is the list the pre-run permission screen and the packaging screen pick a version from. Before
 	// it existed, both took the version id from the URL only, so the reader had to paste one by hand.
@@ -898,14 +901,14 @@ type Handler interface {
 	PreviewPackaging(ctx context.Context, params PreviewPackagingParams) (PreviewPackagingRes, error)
 	// PublicSearchSkills implements publicSearchSkills operation.
 	//
-	// Natural language search over the public skill catalog. Uses hybrid retrieval (ADR-013): pgvector
-	// embedding similarity ranks the results and Postgres FTS only widens the candidate set, so a lexical
-	// hit the vector leg missed is still ordered by its own vector distance. Does not require
-	// authentication. Scope is the public catalog only: private workspace content is never returned, and
-	// no request parameter can widen the scope (CORE-006, ADR-011). Use GET /skills/search for the
-	// caller's own workspace. Candidates further than the cosine distance cut-off are not returned at all;
-	// when nothing survives it, the response carries no_results and a query_suggestion rather than a page
-	// of weak matches. Blank or incomprehensible queries take the same no_results path.
+	// Natural language search over the public skill catalog. Uses hybrid retrieval: pgvector embedding
+	// similarity ranks the results and Postgres FTS only widens the candidate set, so a lexical hit the
+	// vector leg missed is still ordered by its own vector distance. Does not require authentication.
+	// Scope is the public catalog only: private workspace content is never returned, and no request
+	// parameter can widen the scope (CORE-006). Use GET /skills/search for the caller's own workspace.
+	// Candidates further than the cosine distance cut-off are not returned at all; when nothing survives
+	// it, the response carries no_results and a query_suggestion rather than a page of weak matches. Blank
+	// or incomprehensible queries take the same no_results path.
 	//
 	// GET /api/skills/search
 	PublicSearchSkills(ctx context.Context, params PublicSearchSkillsParams) (PublicSearchSkillsRes, error)
@@ -931,8 +934,8 @@ type Handler interface {
 	SaveSkillVersion(ctx context.Context, req SaveSkillVersionReq, params SaveSkillVersionParams) (SaveSkillVersionRes, error)
 	// SearchSkills implements searchSkills operation.
 	//
-	// FTS leg of hybrid retrieval (ADR-013); vector recall and match reasons arrive with the Explorer
-	// milestone. Scoped to the session workspace.
+	// FTS leg of hybrid retrieval; vector recall and match reasons arrive with the Explorer milestone.
+	// Scoped to the session workspace.
 	//
 	// GET /skills/search
 	SearchSkills(ctx context.Context, params SearchSkillsParams) (SearchSkillsRes, error)
@@ -983,10 +986,10 @@ type Handler interface {
 	// Cross-workspace like `restriction`, and for the same reason: the verdict is about a source, so it
 	// has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data.
 	//
-	// Operator-only is now a ruling rather than a holding position (2026-08-27, `05` R-3a, ADR-057). The
-	// route was written narrow while the question was open, on the grounds that widening later adds
-	// callers where narrowing later takes something away; the ruling kept it there, because ADR-021
-	// §5.3's false positive was made by people who audit licences for a living.
+	// Operator-only is now a ruling rather than a holding position (2026-08-27, `05` R-3a). The route was
+	// written narrow while the question was open, on the grounds that widening later adds callers where
+	// narrowing later takes something away; the ruling kept it there, because that repo-root-license false
+	// positive was made by people who audit licences for a living.
 	//
 	// Releasing a skill also has to carry evidence now — see `license_expression` and `license_source`
 	// (`05` R-3b).
@@ -1014,7 +1017,7 @@ type Handler interface {
 	SetSkillRestriction(ctx context.Context, req *SetSkillRestrictionReq, params SetSkillRestrictionParams) (SetSkillRestrictionRes, error)
 	// StartGithubLogin implements startGithubLogin operation.
 	//
-	// Begin GitHub OAuth login (ADR-020).
+	// Begin GitHub OAuth login.
 	//
 	// GET /auth/github/login
 	StartGithubLogin(ctx context.Context) error
@@ -1026,8 +1029,7 @@ type Handler interface {
 	// The test case is snapshotted here, not referenced: a run points at frozen content (iron rule 4), and
 	// later edits to the test case cannot rewrite what a past run was asked to do.
 	//
-	// The response is immediate — execution is asynchronous (ADR-008). Poll `GET /runs/{run_id}` for
-	// progress.
+	// The response is immediate — execution is asynchronous. Poll `GET /runs/{run_id}` for progress.
 	//
 	// Two things are checked before anything is written. Whether the configured fleet can carry the work
 	// at all (RUN-005), and whether the caller has agreed to the current permission summary (TEST-005);
@@ -1039,7 +1041,7 @@ type Handler interface {
 	StartRun(ctx context.Context, req *StartRunReq, params StartRunParams) (StartRunRes, error)
 	// StreamCreationSession implements streamCreationSession operation.
 	//
-	// The step events of one creation session, as they are written (ADR-069).
+	// The step events of one creation session, as they are written.
 	//
 	// THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the honest description rather than an
 	// omission. The body is an SSE stream (`text/event-stream`): a sequence of events whose `id:` is the
@@ -1053,8 +1055,7 @@ type Handler interface {
 	//
 	// What this stream does NOT carry is model tokens. A model reply is a proposal until Go accepts it —
 	// it can be rejected whole, or thrown away and asked for again — so what streams here is state Go
-	// has already committed, never text a model is still writing. ADR-069 決策 1 and 6 carry the
-	// reasoning and the conditions under which that could change.
+	// has already committed, never text a model is still writing.
 	//
 	// The stream ends when the session reaches a terminal state or its deadline passes. A client that
 	// cannot hold a stream keeps polling GET /creation-sessions/{session_id}; this endpoint adds nothing
@@ -1165,7 +1166,7 @@ type Handler interface {
 	// says nothing" would otherwise be the same bytes.
 	//
 	// Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the
-	// criteria, so an edit is the standard for the next run (iron rule 4, ADR-003).
+	// criteria, so an edit is the standard for the next run (iron rule 4).
 	//
 	// PATCH /test-cases/{id}
 	UpdateTestCase(ctx context.Context, req *UpdateTestCaseReq, params UpdateTestCaseParams) (UpdateTestCaseRes, error)

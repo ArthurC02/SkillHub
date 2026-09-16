@@ -3,7 +3,7 @@
 - 日期：2026-08-16（**2026-08-17 修訂**：§3.2d 欄位名更正、§5.3 溯源方向更正、§6.3 成本回填實測）
 - 狀態：**已實作**。設計與落地的差異全部就地標為「更正」而非改寫原文；逐工作項對帳見 [audit.md](audit.md)。
 - 對應需求：`02:EVAL-001`／`002`／`003`、`02:TRACE-001`（讀取面）、`02:CONTENT-007`（rubric）
-- 對應 ADR：ADR-009（O11y／Trace／Evaluation 三分）、ADR-003（不可變快照）、ADR-004（Run 生命週期）、ADR-008（狀態機與 Outbox）、ADR-016（語言分工）、ADR-017（模型閘道與成本）
+- 對應 ADR：[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)（O11y／Trace／Evaluation 三分、模型閘道與成本）、[資料所有權與核心基礎設施](../../../adr/README.md#資料所有權與核心基礎設施)（不可變快照）、[Run 編排與非同步工作流程](../../../adr/README.md#run-編排與非同步工作流程)（Run 生命週期、狀態機與 Outbox）、[系統情境、平面與部署路徑](../../../adr/README.md#系統情境平面與部署路徑)（語言分工）
 
 ---
 
@@ -66,17 +66,17 @@ Run 到達 provider 終態
 | 把上述內容放進 prompt 給模型 | 否 | 但這是**注入面**，見 §2.4 |
 | 執行使用者寫的檢查腳本 | **是** | **M3 不做**（README §2.2）。要做必須回 Sandbox，屬另一條需求 |
 
-鐵律 2 禁的是「執行平面直接存取核心資料庫」。評估器在**控制**平面，讀核心資料庫是它的本份；反過來說，**評估器不得取得 Sandbox 控制權、不得取得 Provider 憑證**（ADR-009「Evaluation 使用低權限讀取介面」）。實作上這表示 `internal/eval` 不引用 `internal/run` 的 provider client。
+鐵律 2 禁的是「執行平面直接存取核心資料庫」。評估器在**控制**平面，讀核心資料庫是它的本份；反過來說，**評估器不得取得 Sandbox 控制權、不得取得 Provider 憑證**（[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)「Evaluation 使用低權限讀取介面」）。實作上這表示 `internal/eval` 不引用 `internal/run` 的 provider client。
 
 ### 2.3 為什麼 Judge 在 Python 而不在 Go
 
-ADR-016 的分工表已經寫了：LLM Judge 與改善建議生成屬 Python。M3 不重新論證，只補一條**不做的事**：
+[系統情境、平面與部署路徑](../../../adr/README.md#系統情境平面與部署路徑)的分工表已經寫了：LLM Judge 與改善建議生成屬 Python。M3 不重新論證，只補一條**不做的事**：
 
-> **不引入 LangGraph。** 一次 Judge 呼叫是「組 prompt → 呼叫 → 驗 schema」，既有的 `services/llm/src/skillhub_llm/enrich.py` 就是這個形狀。ADR-016 提到 LangGraph 是選型層級的授權，不是每個端點都得用它的義務。改善建議生成若後來真的需要多步（先定位、再產 diff、再自檢），那時再引入，理由寫在該批的交付摘要。
+> **不引入 LangGraph。** 一次 Judge 呼叫是「組 prompt → 呼叫 → 驗 schema」，既有的 `services/llm/src/skillhub_llm/enrich.py` 就是這個形狀。[系統情境、平面與部署路徑](../../../adr/README.md#系統情境平面與部署路徑)提到 LangGraph 是選型層級的授權，不是每個端點都得用它的義務。改善建議生成若後來真的需要多步（先定位、再產 diff、再自檢），那時再引入，理由寫在該批的交付摘要。
 
 ### 2.4 Judge 的信任邊界（四條防線）
 
-被評估的內容——agent 最終輸出、tool 結果、artifact 文字——**全部是不受信任內容**，且它們有動機說服 Judge 給高分。ADR-009 只寫了「讀取的內容仍視為可能包含 Prompt Injection」，沒有給防線。本設計提四條，→ **已由 [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 3 追認為要求**（原規劃的 ADR-027 併入 026）：
+被評估的內容——agent 最終輸出、tool 結果、artifact 文字——**全部是不受信任內容**，且它們有動機說服 Judge 給高分。[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)只寫了「讀取的內容仍視為可能包含 Prompt Injection」，沒有給防線。本設計提四條，→ **已由 [評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界) 決策 3 追認為要求**（原規劃另立一份、後併入此決策）：
 
 1. **輸出結構固定**：`json_schema` strict（既有 `/suggest-criteria` 前例），模型只能填格子，不能改變流程或增加欄位。判定值域固定為 `passed`／`failed`／`undetermined`；**值域外一律降為 `undetermined`**。
 2. **Judge 沒有能力**：無工具、無網路（只經 LiteLLM）、無檔案系統、無寫入。就算注入成功，它能做的最壞的事是**對這一次判定說謊**——而那被第 3 條擋住一半。
@@ -123,7 +123,7 @@ ADR-016 的分工表已經寫了：LLM Judge 與改善建議生成屬 Python。M
 | 欄位 | 型別 | 為什麼 |
 | --- | --- | --- |
 | `status` | text CHECK `pending／completed／failed` | 評估本身會失敗（Judge 不可用、證據讀不到）。**失敗必須是一個看得見的狀態，不是一列不存在的評估**——否則 UI 分不出「還沒評」與「評不動」 |
-| `judge_prompt_version` | text | ADR-017「每次 Run 快照記錄實際使用的 Prompt 版本」；也讓 rubric 升版後的重評有得比 |
+| `judge_prompt_version` | text | [模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)「每次 Run 快照記錄實際使用的 Prompt 版本」；也讓 rubric 升版後的重評有得比 |
 | `rubric_version` | text NULL | `CONTENT-007` 的 rubric（有 rubric 的類別才有值） |
 | `evidence_complete` | boolean | trace `complete: false` 時為 false，逐條判定不得記 `passed`（丙-1） |
 | `deterministic_findings` | jsonb | §2.5 五類確定性檢查的結果，與 `criterion_results` 分開存——它們回答的是不同問題（「這個 Run 有什麼問題」vs「這條驗收條件過了沒」） |
@@ -184,9 +184,9 @@ CREATE TRIGGER evaluations_immutable
 Trace 的保存期限（PDM-006）尚未定值，但機制已經是 `DROP PARTITION`。評估報告的壽命比 trace 長，所以：
 
 - `criterion_results[].evidence` 除了引用之外，**同時存一份當下的可讀摘要**（已遮罩、有長度上限與截斷標記）。
-- 讀取時若引用的分割區已不存在，UI 顯示可讀摘要並標明「原始事件已超過保存期，以下為評估當時保存的摘要」。**不是空白，也不假裝原始事件還在**（ADR-009「Trace 缺失時明確標示，不假裝完整」）。
+- 讀取時若引用的分割區已不存在，UI 顯示可讀摘要並標明「原始事件已超過保存期，以下為評估當時保存的摘要」。**不是空白，也不假裝原始事件還在**（[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)「Trace 缺失時明確標示，不假裝完整」）。
 
-這條是 README U-2 ② 的具體形狀，→ **已由 [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 2 定案**（append-only 見決策 1）；PDM-006 定值後可能改變摘要長度，但不改變「兩份都存」的結構。
+這條是 README U-2 ② 的具體形狀，→ **已由 [評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界) 決策 2 定案**（append-only 見決策 1）；PDM-006 定值後可能改變摘要長度，但不改變「兩份都存」的結構。
 
 ---
 
@@ -209,13 +209,13 @@ Trace 的保存期限（PDM-006）尚未定值，但機制已經是 `DROP PARTIT
 
 1. **失敗分類會被汙染。** `runs.failure_class` 的語意是 `provider_error`（我們的問題，可重試）vs `workload_error`（Skill 的問題，不重試）——這是 RUN-006 的重試決策依據。讓「輸出不符驗收條件」也變成 `failed`，等於把一個**不該重試也不是故障**的結果塞進重試分類器。
 2. **歷史 Run 會失去意義。** M2 的 73 筆 Run 沒有評估。若終態由評估決定，它們的 `succeeded` 是什麼意思？append-only 的重評（§3.2b）更糟：同一個 Run 在 rubric 升版後終態會變——而 `0005` 的 `runs_terminal_immutable` trigger 本來就禁止這件事。**資料庫已經替我們回答了。**
-3. **ADR-009 的三分本來就是這樣畫的。** Run Trace 是執行事實，Evaluation 是判斷；把判斷寫回執行事實，等於把三分合回兩分。
+3. **[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)的三分本來就是這樣畫的。** Run Trace 是執行事實，Evaluation 是判斷；把判斷寫回執行事實，等於把三分合回兩分。
 
 ### 4.3 落地要求
 
 | 面向 | 要求 |
 | --- | --- |
-| 狀態機 | `evaluating → succeeded` 的路徑不變；`successReason` 的 TODO 與文字**改寫**為「執行完成，任務判定另見 evaluation」。這是推翻既有實作意圖，→ **已由 [ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md) 記錄**（2026-08-17 Accepted），程式碼改寫在第 2 批 |
+| 狀態機 | `evaluating → succeeded` 的路徑不變；`successReason` 的 TODO 與文字**改寫**為「執行完成，任務判定另見 evaluation」。這是推翻既有實作意圖，→ **已由 [評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界) 記錄**（2026-08-17 Accepted），程式碼改寫在第 2 批 |
 | 沒有評估的 Run | UI 顯示「**未評估**」，**不是**通過。M2 的 73 筆與所有未來的失敗 Run 都落在這裡 |
 | 評估失敗的 Run | `evaluations.status = failed` → UI 顯示「**評估未完成**」，與「未評估」分開（§3.2a 的 `status` 就是為此存在） |
 | UI 文案 | Run 終態改用執行語意（「執行完成」／「執行失敗」），任務判定**另起一列**顯示四態。判準是 NFR-001「UI 不得誤導」——與乙-2 的 `TokenBudget`「顯示但不強制」是同一種錯誤的兩個面向 |
@@ -265,7 +265,7 @@ Go      逐項驗證 → 使用者逐項決定 → 套用 → 建新 Skill Versi
 | 比較不得改變歷史 Run | 由不可變快照保證（鐵律 4／`0005` trigger）。比較是讀取操作，不寫任何歷史列 |
 | 比較顯示什麼 | 驗收結果（逐條 × 兩次）、最終輸出、錯誤、延遲、成本、Skill 版本差異（重用 `WS-003` 的 diff） |
 | 成本 | **兩欄且標明下界**：Run 成本（沙箱工作負載，來自 trace `usage`）與評估成本（平台判定）。丙-3 要求標明權威來源是閘道 per-key spend |
-| 輸入已刪除 | ADR-003「刪除與可追溯性」：Dataset 已刪除時比較畫面不得暗示仍可重跑 |
+| 輸入已刪除 | [資料所有權與核心基礎設施](../../../adr/README.md#資料所有權與核心基礎設施)「刪除與可追溯性」：Dataset 已刪除時比較畫面不得暗示仍可重跑 |
 
 ---
 
@@ -279,14 +279,14 @@ Go      逐項驗證 → 使用者逐項決定 → 套用 → 建新 Skill Versi
 | 試跑預設（沙箱工作負載） | `gpt-5.4-mini` | — |
 | 改善建議生成 | 沿用 Judge 層 `gpt-5.6-terra` | 同上 |
 
-**Judge 不是 mini 級，這是刻意的。** PDM-003 v5 的理由有兩條：①「Judge 品質直接決定 M3 可信度，不宜用最便宜的」；②**與試跑預設不同型號可降低自我偏袒**。若要改用 mini 級省成本，那是推翻 PDM-003 的一項定案。→ **已由 [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 4 追認**（README U-4 結案）。
+**Judge 不是 mini 級，這是刻意的。** PDM-003 v5 的理由有兩條：①「Judge 品質直接決定 M3 可信度，不宜用最便宜的」；②**與試跑預設不同型號可降低自我偏袒**。若要改用 mini 級省成本，那是推翻 PDM-003 的一項定案。→ **已由 [評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界) 決策 4 追認**（README U-4 結案）。
 
 **殘留限制照抄不淡化**：Judge 與試跑仍是同一供應商的同一模型家族，家族層級的共同偏誤無法由分層排除。PDM-003 風險表已記為已知限制，跨家族 A／B 不列入 MVP 必要範圍。
 
-### 6.2 走 LiteLLM 的方式（鐵律 8、ADR-017）
+### 6.2 走 LiteLLM 的方式（鐵律 8、[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)）
 
 - Judge 是**平台工作負載**，不是沙箱工作負載：**不用 Run 的短效 Virtual Key**（那把在 Run 終止時就撤銷了，而且它的預算是給工作負載的）。用平台側金鑰，比照既有的 `services/llm` 呼叫路徑。
-- 但**成本仍要歸因到 Run**：呼叫帶 `run_id`／`evaluation_id` metadata（ADR-017「一律附 `run_id` 關聯」）。`evaluations.cost_usd` 記本次評估的花費，`cost_source` 記 `gateway`。
+- 但**成本仍要歸因到 Run**：呼叫帶 `run_id`／`evaluation_id` metadata（[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)「一律附 `run_id` 關聯」）。`evaluations.cost_usd` 記本次評估的花費，`cost_source` 記 `gateway`。
 - 閘道故障＝評估失敗，`evaluations.status = failed`，**不猜、不降級為「大概通過」**。
 
 ### 6.3 輸入截斷政策（成本的真正控制點）
@@ -331,7 +331,7 @@ Judge 的成本幾乎全在 input。上界由截斷決定，不由祈禱決定�
 | A 輪 5 筆（帶 rubric） | **$0.14363** | 事前估 ~$0.07，**實付是估計的 2 倍** |
 | 輸入 token（v2 45 筆） | 中位數 **4,624**／筆（最大 15,563） | 低於「5–20K token」的中段——只有任務效果一類上模型，且 artifact 只送 manifest 不送內容 |
 
-**兩件要跟著讀的事**：①**加 rubric 的呼叫不能用不加 rubric 的中位數估**——A 輪的 2 倍差額全部來自多送的 5 條驗收條件與整份 rubric 文字，這是估法的錯不是異常；②實付與服務層回報差 $0.0001（浮點捨入），**權威來源仍是閘道 per-key spend**（ADR-017、丙-3）。
+**兩件要跟著讀的事**：①**加 rubric 的呼叫不能用不加 rubric 的中位數估**——A 輪的 2 倍差額全部來自多送的 5 條驗收條件與整份 rubric 文字，這是估法的錯不是異常；②實付與服務層回報差 $0.0001（浮點捨入），**權威來源仍是閘道 per-key spend**（[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)、丙-3）。
 
 ### 6.4 rubric（`CONTENT-007`／乙-5）
 

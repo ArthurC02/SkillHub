@@ -44,7 +44,7 @@ export interface EvidenceRef {
      */
     kind: EvidenceRefKindEnum;
     /**
-     * How the excerpt was found in the source it names (ADR-043). This is
+     * How the excerpt was found in the source it names. This is
      * the platform's own answer, never the judge's — a citation is verified
      * **by content**, not by the source it was filed under.
      * 
@@ -67,7 +67,7 @@ export interface EvidenceRef {
      *   the quote is nowhere, which is close to an accusation; this says
      *   the platform never looked. Filing the second under the first made
      *   the report sound certain about something it had not examined. It
-     *   is the independent field ADR-043 §影響 asked for, rather than the
+     *   is the independent field that telling misfiled citations from fabricated ones apart asked for, rather than the
      *   statement being left implicit in `excerpt`.
      * 
      *   Like `not_found` it never counts as verified evidence, so a rubric
@@ -78,7 +78,7 @@ export interface EvidenceRef {
     /**
      * Present when the quote was found, but **not in the source the judge
      * named** — `kind` is corrected to where it actually is and this
-     * records where it was filed. ADR-043's核心: mis-filed and fabricated
+     * records where it was filed. The core point: mis-filed and fabricated
      * are different failures and one string search tells them apart, so the
      * platform stopped treating them the same. Absent when `kind` was
      * right, which is the ordinary case.
@@ -113,7 +113,7 @@ export interface EvidenceRef {
     /**
      * The cited material as it was when the judgement was made: masked
      * before storage (iron rule 11) and length-capped. It is untrusted
-     * content that crossed the trust boundary (ADR-001) — render it as
+     * content that crossed the trust boundary — render it as
      * inert text, never interpreting HTML, ANSI or SVG.
      * 
      */
@@ -127,7 +127,7 @@ export interface EvidenceRef {
      * partition was dropped or the artifact is gone; the excerpt is still
      * shown and must be labelled as the copy kept at evaluation time.
      * Never presented as though the original were still there, and never
-     * blanked out either (ADR-009).
+     * blanked out either.
      * 
      */
     available: boolean;

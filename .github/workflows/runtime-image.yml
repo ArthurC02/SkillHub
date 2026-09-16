@@ -54,7 +54,7 @@ jobs:
           go-version-file: tools/devctl/go.mod
           cache: false
 
-      - name: Source gates (I-05 version bump, I-02 digest pin, ADR-023 §4 upgrade record)
+      - name: Source gates (I-05 version bump, I-02 digest pin, upgrade record)
         env:
           BEFORE: ${{ github.event.before }}
         run: |
@@ -100,7 +100,7 @@ jobs:
           retention-days: 90
 
       # --only-fixed skips CVEs that Debian marks won't-fix.
-      - name: Fail on fixable Critical/High (I-06, ADR-022)
+      - name: Fail on fixable Critical/High (I-06)
         run: |
           docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             --only-fixed --fail-on high -o table

@@ -3,7 +3,7 @@ info:
   title: Skill Hub Sandbox Provider Port
   version: 0.1.0
   description: |
-    The provider-neutral Run contract (ADR-004, RUN-001/002/003). Every sandbox
+    The provider-neutral Run contract (RUN-001/002/003). Every sandbox
     implementation - SelfHostedProvider, a dev DockerProvider, a future
     third-party one - speaks exactly these shapes. The orchestrator depends on
     this file and never on a provider's own API, so swapping providers leaves
@@ -11,7 +11,7 @@ info:
 
     Two boundaries make this a separate file rather than part of public.yaml:
 
-    - apps/sandbox is its own Go module (ADR-031, iron rule 2). It must be
+    - apps/sandbox is its own Go module (iron rule 2). It must be
       able to generate from this contract without reaching into the control
       plane's schemas.
     - Nothing here is reachable by a browser. public.yaml is the Web surface;
@@ -24,7 +24,7 @@ info:
     dispatches with POST /runs, follows the attempt with
     GET /runs/{provider_run_id}, and tears it down with DELETE.
 
-    ADR-004's lifecycle verbs are not one endpoint each. provision, prepare and
+    The Run's lifecycle verbs are not one endpoint each. provision, prepare and
     execute are the provider's own business once a run exists and are visible to
     the caller only as `state`; collectArtifacts happens before the attempt goes
     terminal and its output is the artifact manifest inside RunResult.
@@ -34,7 +34,7 @@ info:
     Idempotency: (run_id, attempt) from the request body is the key of a created
     run. Re-sending that pair returns the run that already exists and starts no
     second sandbox, which is what makes a dispatch safe to retry when the worker
-    cannot tell whether the first one arrived (ADR-004 "失敗與重試"). cancel and
+    cannot tell whether the first one arrived (the run-orchestration failure-and-retry design). cancel and
     destroy are idempotent for the same reason (iron rule 9).
 
     States: `state` is the *provider's* lifecycle, not a mirror of the platform's
@@ -59,7 +59,7 @@ paths:
       description: |
         Read before dispatch. RUN-005 matches a RunRequest against this answer
         and refuses incompatible work before queueing, with a reason a user can
-        read (ADR-004). `availability` is a current reading rather than a static
+        read. `availability` is a current reading rather than a static
         manifest, so a scheduler re-reads it instead of caching it forever.
       responses:
         "200":
@@ -137,7 +137,7 @@ paths:
             this provider does not have, or a limit it cannot enforce. Answered
             as a classified RunError so the platform can tell a capability
             mismatch from a transient failure without parsing message strings
-            (ADR-004). No sandbox exists, so there is nothing to destroy.
+            . No sandbox exists, so there is nothing to destroy.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RunError" }
@@ -227,7 +227,7 @@ paths:
       description: |
         Idempotent, and deliberately without a 404: a handle the provider has no
         record of is already in the state the caller asked for, so it answers 204
-        like any other successful destroy. ADR-004 requires destroy to be safely
+        like any other successful destroy. Destroy is required to be safely
         repeatable (iron rule 9), and a cleanup path that fails on the second
         call cannot be retried by a worker that crashed mid-cleanup.
 
@@ -297,7 +297,7 @@ components:
 
         Not to be confused with the per-run credentials inside a RunRequest.
         ModelGatewayGrant and ObjectGrant are short-lived and minted per run
-        (ADR-017, SBX-005/006); this one is long-lived infrastructure
+        (SBX-005/006); this one is long-lived infrastructure
         configuration and never travels into a sandbox.
   responses:
     Unauthorized:
@@ -335,7 +335,7 @@ components:
         the control plane after this contract is done.
 
         - `creating` - provisioning and preparing; the workload has not started.
-          Covers ADR-004's provision and prepare.
+          Covers the Run's provision and prepare phases.
         - `running` - the workload is executing.
         - `completed` - the workload ran to its own end. Terminal. `result` says
           whether that end was a success; a workload that ran correctly and
@@ -347,7 +347,7 @@ components:
 
         The last three are terminal and always carry a `result`. Cleanup is not a
         state: it is DELETE, tracked separately by the platform, because "the run
-        failed" and "its sandbox was torn down" are two different facts (ADR-004).
+        failed" and "its sandbox was torn down" are two different facts.
       $comment: |
         Provider lifecycle only. Do not add platform status values here, and do
         not assume a value maps 1:1 onto one platform status - the mapping is the
@@ -464,7 +464,7 @@ components:
           description: |
             Stable for one run_attempt_id. When the control plane cannot tell
             whether a dispatch was received, it re-sends with the same key
-            rather than creating a second sandbox (ADR-004 "失敗與重試").
+            rather than creating a second sandbox (the run-orchestration failure-and-retry design).
         skill_version:
           $ref: "#/components/schemas/PackageRef"
         test_case_snapshot:
@@ -587,7 +587,7 @@ components:
           type: string
           description: |
             Logical model name resolved by the gateway, not a provider SKU
-            (ADR-017). Default tier is the mini class (PDM-003).
+            . Default tier is the mini class (PDM-003).
         agent_integration:
           type: string
           enum: [in_sandbox_sdk, provider_hosted_agent]
@@ -678,7 +678,7 @@ components:
       type: object
       description: |
         Default-deny with exactly three permitted destinations (PDM-005 5.2,
-        ADR-005). All three go through the controlled proxy; there is no bypass
+        and the sandbox isolation design). All three go through the controlled proxy; there is no bypass
         route, and "general internet" is not a value this schema can express.
 
         How that is enforced today: a run whose `allow` names `model_gateway`
@@ -697,7 +697,7 @@ components:
           enum: [default_deny, none]
           description: |
             `default_deny` - nothing leaves except what `allow` names, through
-            the controlled proxy (PDM-005 5.2, ADR-005). `none` - no egress at
+            the controlled proxy (PDM-005 5.2, per the sandbox isolation design). `none` - no egress at
             all, and `allow` must be empty.
 
             The two are ordered, not alternatives: `none` is strictly stronger
@@ -749,7 +749,7 @@ components:
     ModelGatewayGrant:
       type: object
       description: |
-        A per-run LiteLLM Virtual Key (ADR-017, iron rule 8). Minted per attempt
+        A per-run LiteLLM Virtual Key (iron rule 8). Minted per attempt
         against the gateway's management API, scoped to the run's logical model
         so a workload cannot spend the budget on a bigger tier, and revoked at
         cleanup by an alias derived from the attempt id - nothing has to be
@@ -788,7 +788,7 @@ components:
       type: object
       description: |
         Terminal report for one attempt. Provider diagnostics may be attached,
-        but nothing in core evaluation may depend on them (ADR-004).
+        but nothing in core evaluation may depend on them.
       required: [run_id, run_attempt_id, status]
       properties:
         run_id:
@@ -838,7 +838,7 @@ components:
     RunUsage:
       type: object
       description: |
-        Metering, in units every provider can report (ADR-004 標準輸出).
+        Metering, in units every provider can report.
 
         Known gap, stated rather than hidden: the current provider populates
         only `wall_clock_seconds`. Token counts and cost travel the trace path
@@ -863,7 +863,7 @@ components:
       description: |
         Classified failure. The class decides whether a retry is even
         considerable; `retryable` is the provider's opinion and the control
-        plane's policy still decides (ADR-004 - no unbounded retries).
+        plane's policy still decides - retries stay capped, never unbounded.
       required: [class, message]
       properties:
         class:
@@ -880,7 +880,7 @@ components:
             - cancelled
             - timeout
           description: |
-            ADR-004's failure categories, plus three the platform must be able
+            the Run's core failure categories, plus three the platform must be able
             to tell apart without parsing message strings:
             capability_mismatch (rejected before dispatch),
             budget_exhausted (gateway 429, distinct from a model 403 - PDM-003
@@ -895,7 +895,7 @@ components:
       description: |
         What a provider declares it can do (RUN-002). The orchestrator matches
         RunRequest against this and refuses incompatible work *before* queueing,
-        with a reason a user can understand (ADR-004, threat model gate B).
+        with a reason a user can understand (threat model gate B).
         Matching itself lands with RUN-005.
       required: [provider, runtimes, max_resources, isolation]
       properties:
@@ -933,7 +933,7 @@ components:
             could only ever claim enforcement, so a provider that detected it
             had none could either lie in the field or refuse to run at all.
 
-            It is not a demo concession. The incident ADR-059 decision 3 records
+            It is not a demo concession. The incident the clean test mode's dispatch-gate fix records
             has this exact shape: a node whose declaration and reality diverged,
             where the only thing that knew was a line in a startup log.
 
@@ -948,16 +948,16 @@ components:
               type: string
               enum: [gvisor, container, vm, process, clean]
               description: |
-                gvisor is the production baseline (ADR-015). `container` exists
+                gvisor is the production baseline. `container` exists
                 for the local dev provider only - gVisor needs Linux, and this
                 is the honest name for what a developer machine actually runs.
                 `process` is not acceptable for untrusted skills (iron rule 1).
 
-                `clean` means **no boundary at all** - not a weaker one (ADR-059
+                `clean` means **no boundary at all** - not a weaker one (the clean test mode design's
                 decision 1). It exists for a machine that can install nothing,
                 carries only curated demo material, and needs its own opt-in at
                 the dispatch gate, which is an allow list: an unlisted level,
-                including a typo, is refused (ADR-059 decision 3).
+                including a typo, is refused (per the clean test mode design).
 
                 This value was added to the enum on 2026-08-29, after the code
                 had been emitting it since 2026-08-28. Nothing failed in the
@@ -1060,7 +1060,7 @@ components:
             p02_probe:
               type: object
               description: |
-                Threat model P-02, and ADR-022 promotes it to its own acceptance
+                Threat model P-02, and the sandbox isolation design promotes it to its own acceptance
                 item T10 for a reason worth restating: every other P-zone check
                 is a declarative audit that a single snapshot satisfies, while
                 P-02 says in so many words that the block must be verified **by
@@ -1084,7 +1084,7 @@ components:
                     halts dispatch on it without waiting for a human, and the
                     node terminates its own live runs before answering.
 
-                    `unknown` is a probe that could not complete. ADR-022 §3
+                    `unknown` is a probe that could not complete. the clean test mode design
                     counts unknown as fail for acceptance, but the two are not
                     the same operationally and are not merged here: `fail` is
                     evidence of a hole, `unknown` is the absence of evidence

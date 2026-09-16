@@ -34,7 +34,7 @@ CREATE TABLE skill_versions (
     source_id          uuid REFERENCES skill_sources (id),
     version_number     integer NOT NULL CHECK (version_number > 0),
     content_hash       text NOT NULL,
-    package_object_key text NOT NULL, -- object storage holds the package itself (ADR-003)
+    package_object_key text NOT NULL, -- object storage holds the package itself
     manifest           jsonb NOT NULL DEFAULT '{}'::jsonb, -- SKILL.md frontmatter as parsed
     license_expression text,          -- SPDX id as declared in the package; NULL = unknown
     created_at         timestamptz NOT NULL DEFAULT now()

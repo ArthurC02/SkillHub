@@ -30,7 +30,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Allow-list invariants (ADR-022 Q3)
+      - name: Allow-list invariants
         run: |
           python3 -m pip install --quiet PyYAML==6.0.2
           python3 tools/ci/check_egress_allowlist.py
@@ -42,7 +42,7 @@ jobs:
           python3 tools/egress/render.py --check
           python3 tools/egress/test_render.py
 
-      - name: T5 network egress against a real kernel (ADR-022, not Suite 2)
+      - name: T5 network egress against a real kernel (not Suite 2)
         run: |
           bash tools/sec009/t5-network-egress.sh
           SEC009_NO_NFT=1 bash tools/sec009/t5-network-egress.sh
@@ -63,4 +63,4 @@ jobs:
           CHANGED=$(git diff --name-only "$RANGE")
           echo "$CHANGED" | grep -q '^infra/egress/allowlist\.yaml$' || exit 0
           echo "$CHANGED" | grep -q '^docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md$' \
-            || { echo "::error::changing infra/egress/allowlist.yaml requires updating docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md in the same change (ADR-022 Q3 change process; threat model §3)"; exit 1; }
+            || { echo "::error::changing infra/egress/allowlist.yaml requires updating docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md in the same change (egress allow-list change process; threat model §3)"; exit 1; }

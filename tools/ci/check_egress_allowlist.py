@@ -28,7 +28,7 @@ def _port_error(e):
             f"{e.get('name')}: port must be an integer 1-65535, got {port!r}. The "
             f"sandbox rule accepts to pinned_ip:port — without a port there is no "
             f"rule to render, and T5-7 (probing other ports on the pinned IP) is "
-            f"testing nothing (ADR-022 Q3)"
+            f"testing nothing"
         )
     return None
 
@@ -44,7 +44,7 @@ def _pin_errors(e, pin):
             f"{name}: pinned_ip must be a single host address, got {pin!r}. A CIDR "
             f"or a hostname is not a pin — `pinned_ip: 10.0.0.0/8` renders an accept "
             f"rule the size of the network, and a name renders whatever the resolver "
-            f"says today (ADR-022 Q3: the sandbox tier pins IP:port precisely because "
+            f"says today (the sandbox tier pins IP:port precisely because "
             f"the destination is platform-owned)"
         ]
     if addr.version != 4:
@@ -54,13 +54,13 @@ def _pin_errors(e, pin):
             f"exceptions, so a v6 pin here renders nothing and reads as coverage that "
             f"does not exist. See this file's module docstring and allowlist.yaml's "
             f"address-family note before changing it; going dual-stack means growing "
-            f"ADR-022's T5 suite a v6 half too"
+            f"the T5 suite a v6 half too"
         ]
     if addr.is_loopback or addr.is_unspecified or addr.is_multicast:
         return [
             f"{name}: pinned_ip {pin} is not a reachable unicast destination "
             f"(loopback/unspecified/multicast). Q2 constraint 3 says the sandbox must "
-            f"not reach the node's loopback at all (ADR-022 Q2, T5-5)"
+            f"not reach the node's loopback at all (T5-5)"
         ]
     return []
 
@@ -75,7 +75,7 @@ def check(entries):
 
     for e in entries:
         if e.get("tier") not in ("sandbox", "node"):
-            errors.append(f"{e.get('name')}: tier must be 'sandbox' or 'node' (ADR-022 Q3)")
+            errors.append(f"{e.get('name')}: tier must be 'sandbox' or 'node'")
         fqdn = str(e.get("fqdn", "")).lower()
         for bad in PROVIDER_DOMAINS:
             if bad in fqdn:
@@ -88,7 +88,7 @@ def check(entries):
     if len(sandbox) != 1 or sandbox[0].get("name") != "model_gateway":
         errors.append(
             f"tier:sandbox must hold exactly one entry named model_gateway, found "
-            f"{[e.get('name') for e in sandbox]}. **ADR-022 Q3 的重評條件已觸發** — the "
+            f"{[e.get('name') for e in sandbox]}. **the sandbox egress reevaluation condition has been triggered** — the "
             f"allow-list is no longer 'one platform-owned destination', so the L7 proxy "
             f"decision (Squid) must be re-opened before this lands."
         )
@@ -96,11 +96,11 @@ def check(entries):
     for e in sandbox:
         pin = str(e.get("pinned_ip", "")).strip()
         if not pin:
-            errors.append(f"{e.get('name')}: tier:sandbox requires pinned_ip (ADR-022 Q3)")
+            errors.append(f"{e.get('name')}: tier:sandbox requires pinned_ip")
         elif pin == "unset":
             warnings.append(
                 f"{e.get('name')}: pinned_ip is 'unset' — fail-closed, no sandbox node "
-                f"built from this file can reach any destination (ADR-022 Q3)"
+                f"built from this file can reach any destination"
             )
         else:
             errors.extend(_pin_errors(e, pin))
@@ -112,7 +112,7 @@ def check(entries):
 
     for e in node:
         if e.get("pinned_ip"):
-            warnings.append(f"{e.get('name')}: tier:node must not pin an IP (ADR-022 A1-a)")
+            warnings.append(f"{e.get('name')}: tier:node must not pin an IP")
         if str(e.get("fqdn", "")).endswith(".internal"):
             warnings.append(f"{e.get('name')}: platform-owned host on tier:node — should it be tier:sandbox?")
         # Node entries match by FQDN, not IP:port, so a missing port is fine;

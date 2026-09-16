@@ -16,7 +16,7 @@ code,
    is nothing for the eye to land on, so every page reads as one continuous
    column of prose.
 
-   ADR-064 §4.6.3 took the second half of that argument: a box was enough to
+   system.md §4.6.3 took the second half of that argument: a box was enough to
    make it pressable, and not enough to make it the ONE thing on the page —
    「建立下載套件」 was the same grey box as the eight buttons beside it. **Fill
    is the channel that separates an action from everything else**, and it is
@@ -252,7 +252,7 @@ code,
 
 /* QA-009 removed an `opacity: 0.65` here, which multiplied with the 0.8 on
    `.note` and left this text at 2.18:1 — the one sentence explaining why the
-   control is dead was the least readable thing in the bar. ADR-039 §5 found the
+   control is dead was the least readable thing in the bar. The design-system rules found the
    second half of the same mistake: the rule that replaced the opacity dropped
    the sentence to 12px, and §4.1 gives 12px to monospace only, because mono
    runs optically larger. So it was demoted twice by two different mechanisms,
@@ -371,7 +371,7 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
    and the search hit — the thing the product is for — was a bare stack of
    paragraphs separated by a gap. Same border/radius/padding as those three.
 
-   ADR-064 §4.6.2: and now the same surface. A card is 「這是一個東西」, and while
+   system.md §4.6.2: and now the same surface. A card is 「這是一個東西」, and while
    the ground was white the border was the only thing that said so. The recess
    (--code-bg) is deliberately NOT a whole card's fill — that channel is reserved
    for the ownership axis (「別人的」／唯讀), §4.6.5. */
@@ -507,7 +507,7 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
 /* .trace-events is an <ol> and kept the UA decimal marker, so every event was
    numbered twice — and the two numbers disagreed: the UA counter is gapless and
    per-page, `seq` is neither, and a gap in `seq` is the one thing that view
-   exists to surface (ADR-009). */
+   exists to surface. */
 .criterion-list,
 .finding-list,
 .suggestion-list,

@@ -171,7 +171,7 @@ function flagHooks(): Set<string> {
   return hooks;
 }
 
-test("IA §2.4 / ADR-052: every flagged mount is on the roster of ones tested with the flag off", () => {
+test("IA §2.4: every flagged mount is on the roster of ones tested with the flag off", () => {
   const hooks = flagHooks();
   expect(
     hooks.size,
@@ -188,7 +188,7 @@ test("IA §2.4 / ADR-052: every flagged mount is on the roster of ones tested wi
     sites.filter((f) => !(f in FLAG_OFF_ASSERTED)).sort(),
     "a mount behind a /me feature flag with no line on the roster. Write the flag-off " +
       "assertion first, then name the test here — a mount nobody tests off is the ⛔ " +
-      "boundary failing with no symptom (ADR-052).",
+      "boundary failing with no symptom.",
   ).toEqual([]);
 
   expect(

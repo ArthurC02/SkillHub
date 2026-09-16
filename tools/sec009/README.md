@@ -2,7 +2,7 @@
 
 ## 這裡是什麼
 
-`02:SEC-009` 要求 SelfHostedProvider 驗收的 45 項全數通過，可執行的測項清單、通過判準與證據要求由 [ADR-022](../../docs/adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分給出（10 個測項、45 項覆蓋核對、全數 pass 且 0 unknown 才放行，證據存 `docs/plans/mvp/m4/sec-009-acceptance/`）。
+`02:SEC-009` 要求 SelfHostedProvider 驗收的 45 項全數通過，可執行的測項清單、通過判準與證據要求由[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)給出（10 個測項、45 項覆蓋核對、全數 pass 且 0 unknown 才放行，證據存 `docs/plans/mvp/m4/sec-009-acceptance/`）。
 
 在 2026-08-23 之前，那 10 個測項**一行可執行的東西都沒有**，而擋住它的一直被記成「要一台 Linux 機器」。
 
@@ -23,7 +23,7 @@
 
 **不是 SEC-009 的驗收，而且不可能是。** 兩個理由，第二個比第一個重要：
 
-1. ADR-022 要的是**獨立 VM 池**上的 10 個測項與 45 項覆蓋，證據落檔。這支腳本只跑一個 smoke test。
+1. [Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) 要的是**獨立 VM 池**上的 10 個測項與 45 項覆蓋，證據落檔。這支腳本只跑一個 smoke test。
 2. **它是巢狀的**：Windows 宿主 → Docker Desktop 的 WSL2 VM → privileged 容器 → gVisor 沙箱。在這裡跑逃逸測試，量的是「沙箱」與「一個被刻意賦予全部 capability 的容器」之間的邊界，而且核心不是生產跑的那個。**這裡過了只代表流程跑得完，不代表邊界守得住。**
 
 AGENTS.md 第 7 條同一件事的另一種說法：Dev Container 不取代真實 Linux／gVisor 部署驗收。
@@ -44,13 +44,13 @@ cannot set up cgroup for root: configuring cgroup: write /sys/fs/cgroup/cgroup.s
 
 ## 下一步
 
-把 ADR-022 第三部分的 10 個測項逐條寫成腳本，在這裡 dry run。**跑得過的記成「程序可執行」，不記成測項通過**；真的驗收要一台獨立 Linux 節點，而 `infra/nodes/gvisor-baseline.txt` 現在還是 `unset`（＝還沒有任何沙箱節點被開出來）。
+把[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的 10 個測項逐條寫成腳本，在這裡 dry run。**跑得過的記成「程序可執行」，不記成測項通過**；真的驗收要一台獨立 Linux 節點，而 `infra/nodes/gvisor-baseline.txt` 現在還是 `unset`（＝還沒有任何沙箱節點被開出來）。
 
 ---
 
 ## T1 的通用嘗試(2026-08-23 新增)
 
-`tools/sec009/t1-escape-attempts.sh`——ADR-022 第三部分 T1 裡**通用嘗試**那一半,八項:寫 `core_pattern`、`mount(2)`、載入核心模組、讀 `/dev/mem`、看見宿主程序、找 unix socket、碰 docker socket、在節點上放一個檔案;外加 T1 判準要求的兩項節點側觀察(沒有檔案被放上來、`dmesg` 沒有 taint)。
+`tools/sec009/t1-escape-attempts.sh`——[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) T1 裡**通用嘗試**那一半,八項:寫 `core_pattern`、`mount(2)`、載入核心模組、讀 `/dev/mem`、看見宿主程序、找 unix socket、碰 docker socket、在節點上放一個檔案;外加 T1 判準要求的兩項節點側觀察(沒有檔案被放上來、`dmesg` 沒有 taint)。
 
 **T1 點名的四個 CVE PoC 不在裡面**,而且刻意不放:它們需要真的 exploit 程式碼打真的宿主,在一個巢狀的開發機容器裡跑別人的 PoC,對一台它從沒碰過的節點證明不了任何事。那四項屬部署批。
 
@@ -75,13 +75,13 @@ SEC009_NO_SANDBOX=1 tools/sec009/t1-escape-attempts.sh  # 無沙箱,期望至少
 
 ### 它仍然不是 SEC-009 的驗收
 
-一格都不是。巢狀環境量的是「沙箱」與「一個被刻意給了全部 capability 的容器」之間的邊界,核心也不是生產那個。ADR-022 把 Suite 2 的受測物定義成**即將加入池的那台節點**——換一台機器就換了受測物。
+一格都不是。巢狀環境量的是「沙箱」與「一個被刻意給了全部 capability 的容器」之間的邊界,核心也不是生產那個。[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) 把 Suite 2 的受測物定義成**即將加入池的那台節點**——換一台機器就換了受測物。
 
 ~~**T3(資源耗盡)刻意沒有寫成腳本**:它要量的是「限制由 runtime 強制生效」與「同節點其他 Run 劣化 < 20%」,而限制是 `sandboxd` 經 Docker runtime 套上去的,不是 `runsc do` 套的。用 `ulimit` 在沙箱裡自己設一個上限再驗證它生效,測到的是 `ulimit`。**那一項要一台跑著 sandboxd 的節點,不是一支 shell 腳本。**~~
 
 **2026-08-26 更正:前半是對的,結論是錯的,而且錯得讓一個跑得動的測項被歸檔了三天。**
 
-「限制是 `sandboxd` 經 Docker runtime 套的」正是為什麼 T3 **不該**是這個目錄裡的一支 shell 腳本——但它也不需要一台節點。`apps/sandbox/internal/dockerdrv` 的 live 測試本來就開真的容器、套的就是 `dockerdrv` 生產那份 `HostConfig`，而 `SKILLHUB_SANDBOX_TEST_RUNTIME` 這個開關**在 SBX-001 就存在**。CI 的 `sandbox` job 會 `sudo runsc install` 之後把整包再跑一次——**那就是一台在跑 sandboxd 那份 HostConfig 的 Linux 機器**，而且每次 `apps/sandbox/**` 變更都跑，正是 ADR-022 §4 指派 Suite 1 的方式。
+「限制是 `sandboxd` 經 Docker runtime 套的」正是為什麼 T3 **不該**是這個目錄裡的一支 shell 腳本——但它也不需要一台節點。`apps/sandbox/internal/dockerdrv` 的 live 測試本來就開真的容器、套的就是 `dockerdrv` 生產那份 `HostConfig`，而 `SKILLHUB_SANDBOX_TEST_RUNTIME` 這個開關**在 SBX-001 就存在**。CI 的 `sandbox` job 會 `sudo runsc install` 之後把整包再跑一次——**那就是一台在跑 sandboxd 那份 HostConfig 的 Linux 機器**，而且每次 `apps/sandbox/**` 變更都跑，正是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)指派 Suite 1 的方式。
 
 缺的從來不是節點，是那個套件裡沒有 **C-11／C-12／C-14 的行為測試**:只有宣告面(讀回 driver 要求的欄位)。而在 runsc 上「要求」與「強制」會分家——`TestPidsLimitStopsAForkBomb` 的註解記的就是欄位設了、上限沒觸及 guest task 的那一次。三支已補進 `docker_test.go`:
 
@@ -99,7 +99,7 @@ SEC009_NO_SANDBOX=1 tools/sec009/t1-escape-attempts.sh  # 無沙箱,期望至少
 
 ## T8 的映像半（2026-08-23 新增）
 
-`tools/sec009/t8-image-audit.py`——ADR-022 第三部分 T8 裡**不需要節點**的那一半，外加整批的三個前置條件。
+`tools/sec009/t8-image-audit.py`——[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) T8 裡**不需要節點**的那一半，外加整批的三個前置條件。
 
 ```bash
 python tools/sec009/t8-image-audit.py               # 實測
@@ -125,7 +125,7 @@ python tools/sec009/t8-image-audit.py --self-check  # 離線，不碰網路
 
 ### 三個前置條件裡，只有第一個是成立的
 
-ADR-022 把三個前置寫成「缺一即 T8 判 `unknown` ＝ fail」，也就是**缺一即整批 45 項全部 fail**：
+[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) 把三個前置寫成「缺一即 T8 判 `unknown` ＝ fail」，也就是**缺一即整批 45 項全部 fail**：
 
 | # | 現況 |
 | --- | --- |
@@ -165,10 +165,10 @@ T8 的節點半（C-01、P-01、P-03～P-05）不在裡面，那要一台節點�
 
 ```bash
 tools/sec009/t2-syscall-fuzz.sh                            # 4 × 60s，程序試跑
-SEC009_FUZZ_SECONDS=1800 tools/sec009/t2-syscall-fuzz.sh   # ADR-022 的 4 × 30 分鐘
+SEC009_FUZZ_SECONDS=1800 tools/sec009/t2-syscall-fuzz.sh   # 通過判準的 4 × 30 分鐘
 ```
 
-**腳本自己會說它跑的是哪一種**：低於 4 × 1800s 就印「a procedure run, NOT T2」。ADR-022 在 T2 的通過判準裡自己寫了「**誠實標示：這是煙霧級，不是研究級**」——研究級的 Sentry fuzzing 是 gVisor 上游的責任。
+**腳本自己會說它跑的是哪一種**：低於 4 × 1800s 就印「a procedure run, NOT T2」。[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) 的 T2 通過判準裡寫了「**誠實標示：這是煙霧級，不是研究級**」——研究級的 Sentry fuzzing 是 gVisor 上游的責任。
 
 T2 的判準有三半，腳本三半都判：Sentry 沒掛（沙箱撐完全程）、宿主核心沒有 oops（節點側 `dmesg` 前後比對）、沒有取得非預期權限（uid／gid 前後比對，**外加把 T1 的三個不變量在壓力之後重驗一次**——只在 30 分鐘之後才出現的權限正是 T2 該抓的，只比 uid 的檢查看不到它）。
 
@@ -271,7 +271,7 @@ memcg OOM kill 的紀錄，但全部是三天前殺掉幾 KB 大小 `dd` 探針�
 
 ## T5 的網路外洩（2026-08-27 新增）
 
-[`t5-network-egress.sh`](t5-network-egress.sh) 在一個 privileged 容器裡把節點的網路形狀搭出來——一張 `skillhub-sbx` bridge、兩個當成 Run 的 netns、一條假上行後面放著 T5 點名的每一個目的地——然後**把 `tools/egress/render.py` 渲出來的 ruleset 真的 `nft -f` 進去**，跑 T5-1～T5-9 與 ADR-022 要求的兩個反向驗證。
+[`t5-network-egress.sh`](t5-network-egress.sh) 在一個 privileged 容器裡把節點的網路形狀搭出來——一張 `skillhub-sbx` bridge、兩個當成 Run 的 netns、一條假上行後面放著 T5 點名的每一個目的地——然後**把 `tools/egress/render.py` 渲出來的 ruleset 真的 `nft -f` 進去**，跑 T5-1～T5-9 與[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)要求的兩個反向驗證。
 
 證據：[`docs/plans/mvp/m4/sec-009-acceptance/2026-08-27-nested-dev-container-t5/`](../../docs/plans/mvp/m4/sec-009-acceptance/2026-08-27-nested-dev-container-t5/)。
 
@@ -281,7 +281,7 @@ memcg OOM kill 的紀錄，但全部是三天前殺掉幾 KB 大小 `dd` 探針�
 
 ### 每一個 drop 都由「本來該擋它的那條規則」的計數器判定
 
-不是由「連線失敗」判定。**沒有路由也會讓連線失敗**，而分不出這兩者的測試，在一台完全沒有網路的節點上一樣全綠。腳本因此在每次嘗試前後讀該規則的 counter，只有計數真的動了才算 PASS——這正是 ADR-022 T5 的判準（「沒有記錄 ＝ N-06 未成立，即使流量確實被擋」）。
+不是由「連線失敗」判定。**沒有路由也會讓連線失敗**，而分不出這兩者的測試，在一台完全沒有網路的節點上一樣全綠。腳本因此在每次嘗試前後讀該規則的 counter，只有計數真的動了才算 PASS——這正是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) T5 的判準（「沒有記錄 ＝ N-06 未成立，即使流量確實被擋」）。
 
 ### 它有一個負對照，而負對照當場抓到三個假綠
 
@@ -299,17 +299,17 @@ memcg OOM kill 的紀錄，但全部是三天前殺掉幾 KB 大小 `dd` 探針�
 
 ### 它仍然不是 SEC-009 的驗收
 
-ADR-022 把 T5 歸在 Suite 2，而 Suite 2 的受測物是**即將入池的那台節點**。這裡是 Windows → WSL2 VM → privileged 容器 → 三個 netns，目的地是假的、`pinned_ip` 是實驗室填的、閘道是一個 python listener。**N-01～N-08 的判定一格都沒有改。**
+[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) 把 T5 歸在 Suite 2，而 Suite 2 的受測物是**即將入池的那台節點**。這裡是 Windows → WSL2 VM → privileged 容器 → 三個 netns，目的地是假的、`pinned_ip` 是實驗室填的、閘道是一個 python listener。**N-01～N-08 的判定一格都沒有改。**
 
 ---
 
 ## T8 的節點半（2026-08-27 新增）
 
-[`t8-node-probe.py`](t8-node-probe.py)——ADR-022 第三部分 T8 裡**需要節點**的那一半，也就是 ADR-022 反覆提到但此前不存在的那支**「閘門 A 節點准入探針」**：C-01、P-01、P-03～P-05。
+[`t8-node-probe.py`](t8-node-probe.py)——[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) T8 裡**需要節點**的那一半，也就是該決策反覆提到但此前不存在的那支**「閘門 A 節點准入探針」**：C-01、P-01、P-03～P-05。
 
 ```bash
 python tools/sec009/t8-node-probe.py               # 實測
-python tools/sec009/t8-node-probe.py --json        # ADR-022 §5 的 probe.json
+python tools/sec009/t8-node-probe.py --json        # 節點准入探針規格定義的 probe.json
 python tools/sec009/t8-node-probe.py --self-check  # 離線，不碰節點也不碰 docker
 ```
 
@@ -325,7 +325,7 @@ python tools/sec009/t8-node-probe.py --self-check  # 離線，不碰節點也不
   "build_phase": "serving" }
 ```
 
-`node_created_at` 有兩個性質是它存在的全部理由，部署批兩個都要保住：**①由 cloud-init 在建置時寫入一次**（ADR-022 §1 明文「非節點自報的當下時間」），**②跨重開機不變**（那是建置時戳，不是開機時戳）。一台每次開機都幫自己蓋章的節點，年齡永遠是零，**7 天重建這條規則會安靜地停止存在**。
+`node_created_at` 有兩個性質是它存在的全部理由，部署批兩個都要保住：**①由 cloud-init 在建置時寫入一次**（明文要求「非節點自報的當下時間」），**②跨重開機不變**（那是建置時戳，不是開機時戳）。一台每次開機都幫自己蓋章的節點，年齡永遠是零，**7 天重建這條規則會安靜地停止存在**。
 
 **`build_phase` 是第五個必填欄位（2026-09-10，[`05` R-17c](../../docs/plans/05-pending-rulings.md)）**，取代原本用來判「時戳是不是節點自報的」那個 2 秒容差：cloud-init 在建置階段寫 `provision`，節點正式服役後由開機腳本改寫為 `serving`。**容差是啟發式，欄位是事實**——一個 2 秒的窗分不出「探針剛好在 cloud-init 之後 2 秒跑起來」與「有人在探針啟動時寫了 `now()`」，所以它會在一台慢節點上誤判，而沒有人會知道。同批把 `role` 的字面值定為 `sandbox-exec`（追認探針已經在用的字串）。
 
@@ -344,7 +344,7 @@ python tools/sec009/t8-node-probe.py --self-check  # 離線，不碰節點也不
 | **P-04** | `runsc --version` 對 `infra/nodes/gvisor-baseline.txt`，以 `(release 日期, patch)` tuple 比大小 |
 | **P-05** | 掃 `/proc/*/environ` 與 `/etc/skillhub`、`/etc/environment`、`/etc/default`、`/run/secrets`、`/opt/skillhub`，找 `SKILLHUB_DATABASE_URL`／`DATABASE_URL`／`PGPASSWORD`／`SKILLHUB_SECRETS_TOKEN` 這些名字與 `postgres://` 形態的值。**命中只印位置與樣式名，絕不印值** |
 
-**`unset` 的基線判 `fail` 而不是 `unknown`**，而且訊息說的是「基準本身沒有值，所以沒有東西可以比對，而 ADR-022 §2 把 P-04 列為阻擋級」。這兩者的差別在部署日很要緊：`unknown` 聽起來像「再查一下」，`fail` 說的是「這台機器不進池，去把那個檔填了」。
+**`unset` 的基線判 `fail` 而不是 `unknown`**，而且訊息說的是「基準本身沒有值，所以沒有東西可以比對，而[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)把 P-04 列為阻擋級」。這兩者的差別在部署日很要緊：`unknown` 聽起來像「再查一下」，`fail` 說的是「這台機器不進池，去把那個檔填了」。
 
 ### 第一次跑抓到什麼
 
@@ -368,8 +368,8 @@ python tools/sec009/t8-node-probe.py --self-check  # 離線，不碰節點也不
 
 而且這一支比 T1／T2／T5 離驗收更遠：那三支至少在真的核心上量真的邊界，**這一支在第二次執行裡連受測物都是我自己寫進 `/etc/skillhub/node.json` 的**。它證明的是「這支探針拿到事實時會怎麼判」，不是「有一台節點通過了」。
 
-~~**還有一件事需要 ADR-022 回答，不該由腳本自己決定**：C-01c 永遠是 `unknown`，所以這支探針**在一台完全正確的節點上也會 exit 2**。~~
+~~**還有一件事需要那份決策回答，不該由腳本自己決定**：C-01c 永遠是 `unknown`，所以這支探針**在一台完全正確的節點上也會 exit 2**。~~
 
 **✅ 2026-09-10 裁定（[`05` R-17a](../../docs/plans/05-pending-rulings.md)）：C-01 拆成兩半，兩邊都有承接者。** 閘門 A 判**宣告面**（C-01a、C-01b），`SBX-005` 的整合測試判**執行期**那半句（「不與其他 Run 共用可寫路徑」）——那裡真的有兩個 Run。**後半句不刪**：刪掉它是把一條真的允收準則換成一個比較好過的閘門。
 
-腳本因此多一個狀態 **`ELSEWHERE`**：**它不是 pass**（這裡什麼都沒量到），**也不再是 `unknown`**（ADR-022 §3 把 `unknown` 讀成 fail，而一個在正確節點上也紅的閘門，第一週就會被值班的人關掉——那比沒有閘門更糟，因為關掉之後沒有人記得它曾經該擋什麼）。**那一列照印，而且點名誰在判它**，所以「省略會讓綠燈看起來像 C-01 被整條檢查過了」這個顧慮並沒有被交換掉。ADR-022 §2 覆蓋表第 1 列同日補了對帳，`Report.ok` 的四種狀態各有一個 `--self-check` 案例，**其中「`unknown` 仍然算 fail」那一個是把這次放寬釘住的那一條**。
+腳本因此多一個狀態 **`ELSEWHERE`**：**它不是 pass**（這裡什麼都沒量到），**也不再是 `unknown`**（[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)把 `unknown` 讀成 fail，而一個在正確節點上也紅的閘門，第一週就會被值班的人關掉——那比沒有閘門更糟，因為關掉之後沒有人記得它曾經該擋什麼）。**那一列照印，而且點名誰在判它**，所以「省略會讓綠燈看起來像 C-01 被整條檢查過了」這個顧慮並沒有被交換掉。[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的覆蓋表第 1 列同日補了對帳，`Report.ok` 的四種狀態各有一個 `--self-check` 案例，**其中「`unknown` 仍然算 fail」那一個是把這次放寬釘住的那一條**。

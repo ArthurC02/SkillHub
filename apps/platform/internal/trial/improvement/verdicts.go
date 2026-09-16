@@ -19,7 +19,7 @@ type labelled struct {
 var notEvaluated = labelled{
 	Value: "not_evaluated",
 	Label: "未評估",
-	Note:  "這個 Run 還沒有任務判定。執行狀態說的是工作負載跑完了沒有,不是任務有沒有做到(ADR-025)。",
+	Note:  "這個 Run 還沒有任務判定。執行狀態說的是工作負載跑完了沒有,不是任務有沒有做到。",
 }
 
 func verdictOf(status Status, overall Overall) labelled {

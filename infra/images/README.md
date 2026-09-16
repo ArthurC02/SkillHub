@@ -4,8 +4,8 @@
 
 | 目錄 | 用途 | 可否執行不受信任內容 |
 | --- | --- | --- |
-| [`devtools/`](devtools/) | ADR-030 的跨電腦開發環境；供 Dev Container、codegen 與本機檢查使用 | **不可**；它有編譯器、套件管理器與 Docker CLI |
-| [`runtime-agent-sdk/`](runtime-agent-sdk/) | Sandbox 內真正執行 Skill 的受限 Runtime Image | 可以，但只能經 ADR-005／015 的隔離層 |
+| [`devtools/`](devtools/) | 跨電腦開發環境，見[開發自動化與依賴治理](../../docs/adr/README.md#開發自動化與依賴治理)；供 Dev Container、codegen 與本機檢查使用 | **不可**；它有編譯器、套件管理器與 Docker CLI |
+| [`runtime-agent-sdk/`](runtime-agent-sdk/) | Sandbox 內真正執行 Skill 的受限 Runtime Image | 可以，但只能經[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的隔離層 |
 
 `devtools` 的 base 使用不可變 digest，語言與工具版本來自 `.node-version`、各 `go.mod`／`.python-version` 與 `tools/toolchain.yaml`。它內含 Docker daemon／iptables，供 Dev Container以 privileged DinD建立跨平台一致的 nested-generation namespace；其安全邊界見 `.devcontainer/README.md`。它不是部署產物，也不得被 `SKILLHUB_SANDBOX_IMAGE` 引用。
 
@@ -20,7 +20,7 @@
 
 | 內容 | 為什麼在裡面 |
 | --- | --- |
-| `node:22-bookworm-slim`（digest pin） | PDM-003／ADR-015 選定的 Agent SDK 執行環境 |
+| `node:22-bookworm-slim`（digest pin） | PDM-003 與[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)選定的 Agent SDK 執行環境 |
 | `@anthropic-ai/claude-agent-sdk`（版本 pin） | 工作負載本體；版本即 `runtime_version`（I-05） |
 | ~~`unzip`~~ ——**現為：不在裡面**（`2026.08-4`，2026-08-29 移除） | 原本的理由是「Skill 套件是 zip，解壓縮只能發生在沙箱內（鐵律 1）」。**現在解壓由 `run.mjs` 自帶的 ZIP 解析器做**，絕對路徑／`..` 路徑段／非普通檔的拒絕規則一併移進該解析器（`2026.08-7` 起函式名為 `provisionPackage`），因此本映像的 `apt-get install` 只剩 `python3 python3-pip`。理由與逐條拒絕規則見 [`runtime-agent-sdk/Dockerfile`](runtime-agent-sdk/Dockerfile) 的註解與 [`UPGRADES.md`](runtime-agent-sdk/UPGRADES.md) 的 `-4`／`-5`／`-7` 三節 |
 | **`python3` ＋ 下表 17 個套件** | 見下節 |
@@ -42,7 +42,7 @@ Skill 在裝了 Python 的環境與這裡是兩種行為。
 `2026.08-3` 才補上的，而補上的原因是前半在 `2026.08-2` 就已經失效了。
 
 **版本 pin 的取法**：每個直接依賴釘在**通得過 I-06 閘門的最新版**。第一次嘗試釘了一組
-保守的舊版本，grype 在 `lxml`／`pypdf`／`pdfminer.six` 上抓到**可修的 High**——依 ADR-022
+保守的舊版本，grype 在 `lxml`／`pypdf`／`pdfminer.six` 上抓到**可修的 High**——依[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)
 那沒有豁免路徑，所以往上釘而不是往下豁免。**間接依賴不釘**：可重現性的錨是 image digest
 與隨它發佈的 SBOM（SBX-011），手寫 lock 檔會是第二份會漂移的答案。
 
@@ -152,7 +152,7 @@ Skill 的基準都判「符合」——因為 Agent 繞過了那條驗證路徑�
 >
 > 本次升版的**依賴集只增不減**（8 個新增、0 個移除、既有 9 個版本不變），所以 `2026.08-2`
 > 的 45 筆結論在 `2026.08-3` 上**幾乎確定仍成立**——但「幾乎確定」不是量測，0022 的鍵不
-> 接受推論。升版證據走的是 [ADR-023](../../docs/adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md)
+> 接受推論。升版證據走的是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)
 > 的四項重驗（見 [`runtime-agent-sdk/UPGRADES.md`](runtime-agent-sdk/UPGRADES.md)），
 > 那是**行為回歸**的關卡；相容軸回填是**目錄事實**，兩者不互相取代。全量重跑
 > 45 筆約 $2.2（§13.6 實測），列為 `03` 工作項而非本批動作。
@@ -164,8 +164,8 @@ Skill 的基準都判「符合」——因為 Agent 繞過了那條驗證路徑�
 | --- | --- | --- | --- |
 | I-02 | Image 以 digest pin，非 tag | 阻擋 | `runtime-image` CI job 的第一步 |
 | I-03 | 保存 SBOM／依賴清單與建置來源記錄 | 阻擋 | 同 job，syft 產 SPDX JSON，**以 attestation 隨 GHCR digest 保存**（SBX-011） |
-| I-04 | 漏洞掃描已執行且結果在有效期內 | 阻擋 | 同 job，grype；**有效期 30 天**（ADR-022）；**每週 cron 重掃已發佈的 digest** |
-| I-06 | 漏洞等級超過政策門檻 | 告警 | 同 job；**可修的 Critical／High 阻擋**（ADR-022） |
+| I-04 | 漏洞掃描已執行且結果在有效期內 | 阻擋 | 同 job，grype；**有效期 30 天**（見[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)）；**每週 cron 重掃已發佈的 digest** |
+| I-06 | 漏洞等級超過政策門檻 | 告警 | 同 job；**可修的 Critical／High 阻擋**（見[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)） |
 
 閘門 D 的「阻擋」不擋 Run 啟動，擋的是「這個 Image 可以發佈」。I-04 未通過 →
 該 Image 不得發佈、亦不得被新 Run 引用。
@@ -194,11 +194,11 @@ digest**、重掃、重新 attest `scanned_at`，並對可修的 Critical／High
 
 ### 為什麼是 GitHub artifact attestations，不是 cosign
 
-ADR-022 兩個都點名了，而在這裡它們產出的東西一樣：一份 Sigstore 簽章的 in-toto statement，
+[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)兩個都點名了，而在這裡它們產出的東西一樣：一份 Sigstore 簽章的 in-toto statement，
 以 OCI referrer 存在 image digest 旁，正是閘門 A 要查的形式。差別在要維護什麼——用 Actions
 的 OIDC token 做 keyless 簽章**沒有金鑰要保管、輪替或外洩**，驗證端跑
 `gh attestation verify` 也不必先裝東西。cosign 的價值在「簽章發生在 GitHub Actions 以外」或
-「registry 不是 GHCR」，而 ADR-022 選 GHCR 的理由正是 CI 本來就在這裡。哪天這兩件事變了，
+「registry 不是 GHCR」，而[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)選 GHCR 的理由正是 CI 本來就在這裡。哪天這兩件事變了，
 `cosign attach` 產出的 referrer 形狀相同，要搬的是驗證流程不是儲存格式。
 
 ### 為什麼是 syft ＋ grype，不是 trivy
@@ -212,10 +212,10 @@ image 裡有什麼」可以不一致——而 I-03 與 I-04 正是要求兩者�
 次要理由：SPDX JSON 是外部審閱者不裝 Anchore 工具也讀得懂的格式；I-03 要的是可交付
 的依賴清單，不是掃描器的內部表示。
 
-## 門檻值（**已定案：[ADR-022](../../docs/adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分，2026-08-16**）
+## 門檻值（**已定案：見[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)第二部分，2026-08-16**）
 
 SEC-002 的六項無值語句（威脅模型 Q18）已全部定值。屬本流水線的兩項是下面這兩個，
-ADR-022 **採納了本檔原本的提案值**並補上批准者與時效；程式無需改動。
+[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的決策**採納了本檔原本的提案值**並補上批准者與時效；程式無需改動。
 
 **SBX-002 的最後一個未勾原因已於 2026-08-16 由 SBX-011 解除**：I-03 的 SBOM 與 I-04 的
 `scanned_at` 現在是隨 GHCR digest 保存的 attestation，閘門 A 可用 digest 直接查詢，不再依賴
@@ -239,7 +239,7 @@ attestation（SEC-009 前置條件①）。
 不可修的發現不會消失：完整報告在 artifact 裡，且必須逐項出現在下方豁免清單。**沒有
 靜默放行的路徑**。
 
-例外流程（ADR-022 定案）：豁免一律寫進本檔的豁免清單，須有 CVE 編號、理由、緩解層與
+例外流程（見[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)）：豁免一律寫進本檔的豁免清單，須有 CVE 編號、理由、緩解層與
 複審日；**批准者是產品負責人**，批准的形式是獨立的豁免清單變更 commit。**可修的
 Critical／High 沒有豁免路徑**——一個跑不受信任程式碼的沙箱，對「上游已經給了修復而我們
 沒裝」沒有正當理由，留下 override 就會有人用。
@@ -253,7 +253,7 @@ Critical／High 沒有豁免路徑**——一個跑不受信任程式碼的沙�
 
 **30 天。** 依據：grype 的漏洞資料庫每日更新，Debian security 的修復節奏以週計；
 30 天是「不會每天吵人、又不至於讓一個已知可修的 High 在生產跑一整季」的折衷。
-ADR-022 另註明它**刻意不與 P-03 的 7 天節點重建同步**——兩者換的東西與變更成本都不同。
+[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)另註明它**刻意不與 P-03 的 7 天節點重建同步**——兩者換的東西與變更成本都不同。
 
 配套：
 
@@ -316,7 +316,7 @@ IMAGE_VERSION=$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk
 docker buildx imagetools inspect "ghcr.io/arthurc02/skillhub-runtime-agent-sdk:${IMAGE_VERSION}"
 
 > **建置指令請照同一個方式取 tag，不要手抄。** `Dockerfile` 檔頭那行 `docker build -t …:2026.08-6` 是**第二份**版本字串，而它已經漂過一次（ARG 是 `2026.08-7` 時它還寫 `-6`）。
-> **但那一行刻意不改**：`runtime-image.yml` 的 I-05 守門把 `infra/images/runtime-agent-sdk/` 底下**除 `*.md` 以外**的任何變更都當成映像內容變更，要求同批 diff 到 `ARG IMAGE_VERSION=`——**改一行註解也會觸發**。為了一行註解去 bump 版本，等於宣告一個需要重跑 ADR-023 四項實測的新映像，那比註解過期更糟。
+> **但那一行刻意不改**：`runtime-image.yml` 的 I-05 守門把 `infra/images/runtime-agent-sdk/` 底下**除 `*.md` 以外**的任何變更都當成映像內容變更，要求同批 diff 到 `ARG IMAGE_VERSION=`——**改一行註解也會觸發**。為了一行註解去 bump 版本，等於宣告一個需要重跑[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)四項實測的新映像，那比註解過期更糟。
 > 所以正確的用法寫在這裡（`.md` 是該守門唯一放行的路徑）：
 > ```bash
 > IMAGE_VERSION=$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk/Dockerfile)
@@ -328,7 +328,7 @@ docker buildx imagetools inspect "ghcr.io/arthurc02/skillhub-runtime-agent-sdk:$
 
 > **注意這裡有兩個不同的問題，答案也不同**：「registry 上最新的是哪一版」看 `ARG IMAGE_VERSION`；
 > 「部署實際會跑哪一版」看 `apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設。
-> **兩者刻意可以不同**——移動預設是 ADR-023 四項實測通過之後的動作。2026-09-03 當下前者是
+> **兩者刻意可以不同**——移動預設是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)四項實測通過之後的動作。2026-09-03 當下前者是
 > `2026.08-7`、後者是 `2026.08-5`（`-6` 與 `-7` 的四項實測未跑，見 `UPGRADES.md` 該兩節與 `04` 丙-125）。
 
 **升版不會製造孤兒，同版重建才會。** workflow 的發佈步驟從 Dockerfile 的 `ARG IMAGE_VERSION`
@@ -368,7 +368,7 @@ digest，舊 digest 失去指向），第三列是那個情況最早的實例，
 是同一個 exit 126 事故的前後兩半，與此無關）。但 `runtime-image.yml` **自己仍在自己的 path
 filter 裡**，所以連「只改 filter」這種編輯也會重建一次、把前一個 digest 孤立掉——第四列就是。
 
-這在 `8b16f56` 重新評估過，結論是維持現狀：拿掉它可以省下這種孤兒，但 ADR-019 允許
+這在 `8b16f56` 重新評估過，結論是維持現狀：拿掉它可以省下這種孤兒，但[Repo 結構、CI 與驗證層](../../docs/adr/README.md#repo-結構ci-與驗證層)允許
 單人直推 main 而本專案確實這樣用，拿掉之後**一個改動 build 或閘門的 commit 會沒有任何東西
 驗它**——正是那一行 filter 存在的理由。一個有清理路徑的孤兒比一個沒被驗過的閘門便宜。
 
@@ -381,7 +381,7 @@ tag，逐一 `docker buildx imagetools inspect` 之後，同一個版本底下�
 tag 指著，其餘就是孤兒。`8b16f56` 之後共 8 次同版重推：7 次在 `2026.08-3`，1 次在 `2026.08-7`。
 **`f3f8bb0` 不在其中**（09-11 的初稿誤列）：把版本升到 `-5` 的 `d4f3662` 那次沒有推上去（registry
 沒有它的 `sha-` tag），所以 `f3f8bb0` 是 `-5` 的第一次發佈，`-5` 至今仍解析到它的 `sha256:ba2bc95e…`
-——也就是 ADR-023 四項實測跑的那一個。
+——也就是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)四項實測跑的那一個。
 
 **`2026.08-3` 首次發佈後的實測複核（當時 3 筆）**：①發佈後 `2026.08-2` 仍解析到
 `sha256:61ef902f…`（tag 未被移走，故未成孤兒）；②同批的純 `.md` commit（`68abae5`）**沒有
@@ -441,7 +441,7 @@ High 歸零，`import` SDK 的煙霧測試通過。
 
 ### 豁免清單（無上游修復；`first_exempted_at` **2026-08-16**，複審日 **2026-11-14**）
 
-複審日 ＝ `first_exempted_at` ＋ 90 天（ADR-022 I-06）。**重掃不會推遲它**——重掃更新的是
+複審日 ＝ `first_exempted_at` ＋ 90 天（見[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) I-06）。**重掃不會推遲它**——重掃更新的是
 掃描結論，`first_exempted_at` 跟著 CVE 走，只在該 CVE 首次進入本清單時寫一次。
 
 以下全部標記 `won't fix` 或上游尚無修復版本，皆為 Debian bookworm base 套件。已確認
@@ -472,7 +472,7 @@ High 歸零，`import` SDK 的煙霧測試通過。
 它們會解析工作負載讀進來的資料，而下段那些多半不會。這是接受的風險而不是被解決的問題，
 複審日到期時要一併重看。
 
-豁免理由：無可用修復，且緩解層與 ADR-005／015 的基線重疊（非 root、`CapDrop=ALL`、
+豁免理由：無可用修復，且緩解層與[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的基線重疊（非 root、`CapDrop=ALL`、
 `no-new-privileges`、唯讀 rootfs、無主機掛載、`--network none`、gVisor）。**這是「無法
 處理」不是「不必處理」**——複審日到期須重掃，屆時已有修復者依 I-06 轉為阻擋。
 
@@ -482,7 +482,7 @@ digest 更新一併評估。
 
 ## 本機重跑
 
-升版時另見 [`runtime-agent-sdk/UPGRADES.md`](runtime-agent-sdk/UPGRADES.md)：ADR-023 要求
+升版時另見 [`runtime-agent-sdk/UPGRADES.md`](runtime-agent-sdk/UPGRADES.md)：[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)要求
 每次改變 digest 的變更都附四項行為重驗的實測輸出，而本節的掃描只回答供應鏈風險，
 兩者不覆蓋對方。
 
@@ -541,7 +541,7 @@ docker run --rm -v "$(pwd)/infra/images/runtime-agent-sdk:/work" -w /work \
 建置兩次，比對兩邊的 Python `dist-info` 清單與 Node `package.json` 清單（`find … -exec node -e`
 印 `name@version`），diff 必須是空的。
 
-## 服務映像（ADR-019 job 5）
+## 服務映像（見[Repo 結構、CI 與驗證層](../../docs/adr/README.md#repo-結構ci-與驗證層) job 5）
 
 `04` 丙-158：三個應用程式服務（`apps/platform`、`apps/llm`、`apps/web`）原本沒有映像，
 CI 的 `images` job 是空殼，平台自己「建得起來、部署得動」這件事從未被證明過。本節是三份
@@ -638,7 +638,7 @@ compose 檔案沒有「只在用到的 profile 才插值」這種機制，所以
 缺口（兩邊都不填時驗證形同虛設）就留在這裡誠實記著，不是用 compose 語法擋掉的。
 
 `SKILLHUB_CLEAN_MODE` 刻意在這四個服務裡完全沒出現——這個 profile 是多容器形狀，
-`cmd/worker` 自己會拒絕在該旗標開著時啟動（ADR-060 決策 6：clean mode 是單一行程），
+`cmd/worker` 自己會拒絕在該旗標開著時啟動（見[淨測試模式](../../docs/adr/README.md#淨測試模式)：clean mode 是單一行程），
 把它接進來只會讓 `platform-worker` 啟動就死。
 
 `platform-api` 對外開 `127.0.0.1:8080`（除錯直接打 API 用）；`web` 開
@@ -667,7 +667,7 @@ digest 由 `docker pull` 後 `docker inspect --format '{{index .RepoDigests 0}}'
 `skillhub/llm:local` 216 MB、`skillhub/web:local` 21.3 MB。
 
 **Tag 慣例：commit SHA，絕不用 `latest`**——理由與 `runtime-agent-sdk` 那條一致
-（ADR-019 job 5 原文、本檔「Digest 更新程序」一節）：部署與回滾都要能指向明確的
+（見[Repo 結構、CI 與驗證層](../../docs/adr/README.md#repo-結構ci-與驗證層) job 5 原文、本檔「Digest 更新程序」一節）：部署與回滾都要能指向明確的
 commit，`latest` 是會動的標的。`.github/workflows/ci.yml` 的 `images` job 以
 commit SHA 為 tag 建置這三個映像，先跑 `tools/ci/stack-smoke.sh`；`images-push`
 只在 main 的 push 且其餘閘門全綠時把同一組 tag 推上 GHCR。本機建置用 `:local`
@@ -676,5 +676,5 @@ tag 驗證。
 **掃描與 attestation 不比照 `runtime-agent-sdk`**：那一節的 syft／grype／GHCR
 attestation 流水線是 SEC-002 對「會執行不受信任內容」的 Sandbox Runtime Image 的
 要求（鐵律 1）；`platform`／`llm`／`web` 是控制平面／能力提供者／靜態前端，不執行
-不受信任內容，本 ADR-019 job 5 原文對它們也只要求 tag＋push，沒有 SBOM／掃描閘門的
+不受信任內容，本[Repo 結構、CI 與驗證層](../../docs/adr/README.md#repo-結構ci-與驗證層) job 5 原文對它們也只要求 tag＋push，沒有 SBOM／掃描閘門的
 字面要求。是否比照辦理是尚未裁定的政策問題。

@@ -1,7 +1,7 @@
 [project]
 name = "skillhub-llm"
 version = "0.1.0"
-description = "Skill Hub internal LLM service (FastAPI). See ADR-016."
+description = "Skill Hub internal LLM service (FastAPI)."
 readme = "README.md"
 authors = [
     { name = "ArthurC", email = "a802216@gmail.com" }

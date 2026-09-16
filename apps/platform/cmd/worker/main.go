@@ -27,7 +27,7 @@ func cleanModeRefusal() string {
 		return ""
 	}
 	return "SKILLHUB_CLEAN_MODE=1 in cmd/worker: clean mode is a single process " +
-		"(ADR-060 決策 6) and cmd/api runs the worker set itself, so a separate " +
+		"and cmd/api runs the worker set itself, so a separate " +
 		"worker carrying this flag is a copied configuration, not a clean-mode " +
 		"deployment. Unset it here, or run only cmd/api."
 }

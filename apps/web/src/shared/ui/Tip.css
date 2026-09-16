@@ -1,4 +1,4 @@
-/* --- Tip: 設計 §1.3 的第四種揭露機制（ADR-065 決策 3, §4.7）------------------
+/* --- Tip: 設計 §1.3 的第四種揭露機制（設計 §4.7）------------------
    A toggletip, and nothing about it is new vocabulary: the trigger is a plain
    secondary button (the base control layer above already gives it --surface on
    --border-strong and the 32px floor), the content is a paragraph on the

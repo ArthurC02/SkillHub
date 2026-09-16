@@ -1,7 +1,7 @@
 # M6 前期量測：沒有容器的機器上，能不能得到一個真的 PostgreSQL
 
 - 日期：2026-08-28
-- 決策落點：[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)
+- 決策落點：[淨測試模式](../../../adr/README.md#淨測試模式)
 - 執行環境：Windows 11、Docker Desktop 在跑（但**每一項實驗都刻意不使用它**）、Go 1.27.0、Node v25.0.0
 
 ## 0. 這份報告是什麼、不是什麼
@@ -10,7 +10,7 @@
 
 **不是**：M6 的允收。允收準則在 [`02` §4.10](../../02-specifications-and-acceptance-criteria.md)（`PORT-001`～），工作項在 [`03` §20](../../03-work-items.md)。本報告只提供那些準則所依據的數字。
 
-**為什麼先跑**：與 M5 的 `report-generate-spike.md` 同一個理由——ADR-058 要在兩個候選之間選，而在跑之前**兩邊都只有推理沒有數字**。其中一個候選（手寫 in-memory 資料層）如果選錯，代價是兩年後才會發現，而業界已經有人替我們付過那筆學費。
+**為什麼先跑**：與 M5 的 `report-generate-spike.md` 同一個理由——[淨測試模式](../../../adr/README.md#淨測試模式)的決策要在兩個候選之間選，而在跑之前**兩邊都只有推理沒有數字**。其中一個候選（手寫 in-memory 資料層）如果選錯，代價是兩年後才會發現，而業界已經有人替我們付過那筆學費。
 
 ## 1. 現況：今天少跑多少
 
@@ -85,8 +85,8 @@ applied cleanly: 42 / 42
 | `ivfflat` 索引 | ✅ `search_documents_embedding_idx` 存在於 `pg_indexes` |
 | `trace_events` 是 RANGE 分割表 | ✅ `relkind='p'`，2 個子分割 |
 | generated `tsvector` 欄位 | ✅ 欄位定義成立 |
-| **不可變性 trigger（鐵律 4）** | ✅ `UPDATE skill_versions` → **被擋**：`row in public.skill_versions is immutable and cannot be updated (ADR-003)` |
-| **同上，DELETE** | ✅ **被擋**：`row in public.skill_versions is immutable and cannot be deleted (ADR-003)` |
+| **不可變性 trigger（鐵律 4）** | ✅ `UPDATE skill_versions` → **被擋**：`row in public.skill_versions is immutable and cannot be updated` |
+| **同上，DELETE** | ✅ **被擋**：`row in public.skill_versions is immutable and cannot be deleted` |
 | advisory lock | ✅ `pg_try_advisory_lock` → true、`pg_advisory_unlock` → true、阻塞式 `pg_advisory_lock` → 取得、`pg_locks` 回報 1 筆 |
 
 **這一列是整份報告的重點**：鐵律 4 由資料庫強制的那個機制，**在 PGlite 上真的會擋人，而且錯誤訊息裡帶著當初寫下它的 ADR 編號**。這正是選項 A／B 會讓它人間蒸發的東西。
@@ -232,7 +232,7 @@ LISTENING on postgresql://…@localhost:54329 at 1.017s
 | 兩邊同時 `pg_try_advisory_lock(4242)` | **true / true——互斥失效** | **true / false——真的互斥** |
 | B 看得見 A 的 TEMP TABLE | **是**（隔離消失） | **否**（正確） |
 
-**這是真的 postmaster 在 fork**：v86 模擬一顆 x86 CPU，裡面跑一個未修改的 PostgreSQL。**兩個獨立的 OS 行程各自拿到自己的 backend**——`04`／ADR-058 記的「兩個行程對一條連線」那個限制，在它身上不存在。
+**這是真的 postmaster 在 fork**：v86 模擬一顆 x86 CPU，裡面跑一個未修改的 PostgreSQL。**兩個獨立的 OS 行程各自拿到自己的 backend**——`04`／[淨測試模式](../../../adr/README.md#淨測試模式)記的「兩個行程對一條連線」那個限制，在它身上不存在。
 
 ### 10.2 42 支 migration：37 過，5 敗，全部只敗在 pgvector
 
@@ -253,8 +253,8 @@ FAIL 0015_search_result_facets.sql  relation "search_documents" does not exist  
 
 ```
 rows in skill_versions = 1   (0 would make the test below prove nothing)
-UPDATE skill_versions   blocked: row in public.skill_versions is immutable and cannot be updated (ADR-003)
-DELETE skill_versions   blocked: row in public.skill_versions is immutable and cannot be deleted (ADR-003)
+UPDATE skill_versions   blocked: row in public.skill_versions is immutable and cannot be updated
+DELETE skill_versions   blocked: row in public.skill_versions is immutable and cannot be deleted
 ```
 
 **第一次跑這個測試又是我的種子資料寫錯**（少了 `package_object_key`，於是 UPDATE 打在空集合上「成功」）——**與第一次測 PGlite 時犯的錯完全相同**，所以這一版先印出列數，讓「證明不了任何事」的情況說得出口。

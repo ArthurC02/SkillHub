@@ -6,21 +6,21 @@
 
 | 層 | 選擇 | 依據 |
 | --- | --- | --- |
-| 前端 | React + TS（Vite、TanStack Router/Query） | ADR-016 |
-| 平台後端 | Go：薄 HTTP 層、pgx + sqlc、River | ADR-016、018 |
-| LLM 工作負載 | Python FastAPI（uv），內部服務 | ADR-016 |
-| 模型供應商 | OpenAI（試跑預設 mini 級；Embedding `text-embedding-3-small`），一律經 LiteLLM，每 Run 短效 Virtual Key | ADR-017 |
-| 資料 | PostgreSQL 中心 ＋ S3 相容物件儲存；核心元件容器化自架 | ADR-018 |
-| 搜尋 | 混合檢索（向量腿 ＋ FTS 腿 `UNION` 擴充候選，不做 RRF）＋ 索引時 LLM 增強 | ADR-013 |
-| Agent Runtime | Claude Agent SDK，事實來源是 image digest；版本字串釘在 `infra/images/runtime-agent-sdk/Dockerfile` 的 `ARG`，**不在 `tools/toolchain.yaml`**；升級必重跑四項實測 | ADR-023 |
-| 身分 | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | ADR-020 |
-| Sandbox | gVisor `systrap`，獨立 VM 池，nftables default-deny ＋固定 DNS，不部署 L7 Proxy | ADR-015、005、022 |
-| Runtime Image | 自建映像發佈至 GHCR，SBOM 與掃描以 attestation 隨 digest 保存 | ADR-022 |
-| LLM 觀測 | **不外接第三方服務**（2026-09-10 `05` R-24 裁定 (b)）：花多少看 `cost_events`、發生了什麼看 Trace 分割表、品質有沒有退步看 `tools/eval-regression`。**Langfuse 不做**——回呼那半邊要在閘道之外多存一把金鑰，撞鐵律 11 | [ADR-070](../adr/ADR-070-llm-observability-without-an-external-service.md)（縮限 ADR-017 的觀測半邊） |
-| 互動創作 | Python LangGraph 分階段編排、Go／Postgres 會話快照與事件；已接線，曝光與品質驗收仍待核准，見[開發與驗證](interactive-creation.md) | ADR-067 |
-| 契約 | OpenAPI-first；Go 側 models-only，handler 手寫並逐條對齊 | ADR-016、030 |
+| 前端 | React + TS（Vite、TanStack Router/Query） | [系統情境、平面與部署路徑](../adr/README.md#系統情境平面與部署路徑) |
+| 平台後端 | Go：薄 HTTP 層、pgx + sqlc、River | [系統情境、平面與部署路徑](../adr/README.md#系統情境平面與部署路徑)、[資料所有權與核心基礎設施](../adr/README.md#資料所有權與核心基礎設施) |
+| LLM 工作負載 | Python FastAPI（uv），內部服務 | [系統情境、平面與部署路徑](../adr/README.md#系統情境平面與部署路徑) |
+| 模型供應商 | OpenAI（試跑預設 mini 級；Embedding `text-embedding-3-small`），一律經 LiteLLM，每 Run 短效 Virtual Key | [模型閘道與可觀測性](../adr/README.md#模型閘道與可觀測性) |
+| 資料 | PostgreSQL 中心 ＋ S3 相容物件儲存；核心元件容器化自架 | [資料所有權與核心基礎設施](../adr/README.md#資料所有權與核心基礎設施) |
+| 搜尋 | 混合檢索（向量腿 ＋ FTS 腿 `UNION` 擴充候選，不做 RRF）＋ 索引時 LLM 增強 | [意圖搜尋](../adr/README.md#意圖搜尋) |
+| Agent Runtime | Claude Agent SDK，事實來源是 image digest；版本字串釘在 `infra/images/runtime-agent-sdk/Dockerfile` 的 `ARG`，**不在 `tools/toolchain.yaml`**；升級必重跑四項實測 | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) |
+| 身分 | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | [身分、Workspace、准入與額度](../adr/README.md#身分workspace准入與額度) |
+| Sandbox | gVisor `systrap`，獨立 VM 池，nftables default-deny ＋固定 DNS，不部署 L7 Proxy | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) |
+| Runtime Image | 自建映像發佈至 GHCR，SBOM 與掃描以 attestation 隨 digest 保存 | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) |
+| LLM 觀測 | **不外接第三方服務**（2026-09-10 `05` R-24 裁定 (b)）：花多少看 `cost_events`、發生了什麼看 Trace 分割表、品質有沒有退步看 `tools/eval-regression`。**Langfuse 不做**——回呼那半邊要在閘道之外多存一把金鑰，撞鐵律 11 | [模型閘道與可觀測性](../adr/README.md#模型閘道與可觀測性) |
+| 互動創作 | Python LangGraph 分階段編排、Go／Postgres 會話快照與事件；已接線，曝光與品質驗收仍待核准，見[開發與驗證](interactive-creation.md) | [互動創作](../adr/README.md#互動創作) |
+| 契約 | OpenAPI-first；Go 側 models-only，handler 手寫並逐條對齊 | [系統情境、平面與部署路徑](../adr/README.md#系統情境平面與部署路徑)、[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理) |
 
-**Local Runner 與遠端 MCP 已移出 MVP 首發**（Local Runner 的決策在 ADR-006；遠端 MCP 的範圍在 [`01` §8](../plans/01-goals-and-plan.md)）。
+**Local Runner 與遠端 MCP 已移出 MVP 首發**（Local Runner 的決策見[系統情境、平面與部署路徑](../adr/README.md#系統情境平面與部署路徑)；遠端 MCP 的範圍在 [`01` §8](../plans/01-goals-and-plan.md)）。
 
 ## 三層指示
 

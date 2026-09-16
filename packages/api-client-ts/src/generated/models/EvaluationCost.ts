@@ -25,7 +25,7 @@ import { mapValues } from '../runtime';
  */
 export interface EvaluationCost {
     /**
-     * In Credit (ADR-068 decision 1). NULL means the gateway reported no
+     * In Credit. NULL means the gateway reported no
      * cost. Render that as "unreported" and never as 0 — 0 tells the user
      * the judgement was free.
      * 
@@ -38,7 +38,7 @@ export interface EvaluationCost {
     evaluationCredits: number | null;
     /**
      * `gateway` is the LiteLLM per-key spend for this evaluation, which is
-     * the authoritative figure (ADR-017). `estimated` is a computed one
+     * the authoritative figure. `estimated` is a computed one
      * and must be labelled as such wherever it is shown. `unreported` is
      * what the server sends when the gateway reported nothing: it goes
      * with a null `evaluation_usd`, and a page must not attach either of

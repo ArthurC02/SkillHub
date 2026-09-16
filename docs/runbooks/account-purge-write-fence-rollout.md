@@ -6,7 +6,7 @@
 
 1. 停止 account purge 排程、所有舊版 `maintenance`、舊 Worker，以及所有可能產生物件的舊版 API request／instance，確認舊程序與進行中 request 都是零。舊 API 會先寫 Object Store 再寫資料庫，migration trigger 無法保護尚未留下資料庫列的 bytes，因此不可混部滾動更新。
 2. 執行資料庫 migration `0049`～`0051`。
-3. 部署包含 ADR-062 shared lock／intent 協定的新 API、新 Worker 與新 Maintenance；完成第 3 節修復前不得重新啟動 account purge。禁止回滾成舊版物件 writer 或 Maintenance；若必須回滾，先停止 account purge 排程。
+3. 部署包含 [帳號清除與 Credit](../adr/README.md#帳號清除與-credit) shared lock／intent 協定的新 API、新 Worker 與新 Maintenance；完成第 3 節修復前不得重新啟動 account purge。禁止回滾成舊版物件 writer 或 Maintenance；若必須回滾，先停止 account purge 排程。
 
 ## 2. Worker 排空
 

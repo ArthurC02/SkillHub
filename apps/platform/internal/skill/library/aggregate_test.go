@@ -27,7 +27,7 @@ func TestVersionNumberIsNotCallerSupplied(t *testing.T) {
 		for i := range typ.NumField() {
 			if name := typ.Field(i).Name; strings.Contains(strings.ToLower(name), "version") &&
 				strings.Contains(strings.ToLower(name), "number") {
-				t.Errorf("%s.%s: version_number is allocated by CreateSkillVersion, never by the caller (ADR-003)",
+				t.Errorf("%s.%s: version_number is allocated by CreateSkillVersion, never by the caller",
 					typ.Name(), name)
 			}
 		}

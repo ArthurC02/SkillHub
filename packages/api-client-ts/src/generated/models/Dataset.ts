@@ -39,7 +39,7 @@ export interface Dataset {
     sizeBytes: number;
     /**
      * SHA-256 of the stored bytes. Copied into the run snapshot, where it
-     * outlives the file itself (ADR-003).
+     * outlives the file itself.
      * 
      */
     contentHash: string;

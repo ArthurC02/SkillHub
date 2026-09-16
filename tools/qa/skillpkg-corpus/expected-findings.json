@@ -27,7 +27,7 @@
       "errors": [],
       "warnings": [],
       "info_includes": ["license-from-repo-file", "package-dependencies"],
-      "note": "Declares no license in frontmatter; the repacker carried the repo-level one in as LICENSE.repo (ADR-021 tier 3), so the license disclosure is expected rather than a defect."
+      "note": "Declares no license in frontmatter; the repacker carried the repo-level one in as LICENSE.repo, so the license disclosure is expected rather than a defect."
     },
     "base-excel-freeze": {
       "base": "excel-freeze",
@@ -139,7 +139,7 @@
       "errors": ["frontmatter-unknown-field"],
       "warnings": [],
       "info_includes": ["package-dependencies"],
-      "note": "Blocking since 2026-08-22 (ADR-044 decision 4, unlocked by the census in TestSpecFrontmatterCensus: 0 of 106 packages across the 11 pinned source repos carry a field outside the six). The reference validator and at least one major client hard-error here, so accepting it meant handing out a package that breaks where the author takes it. The key chosen (`auto_run`) is the shape an author would use to try to claim a behaviour the platform does not honour."
+      "note": "Blocking since 2026-08-22 (unlocked by the census in TestSpecFrontmatterCensus: 0 of 106 packages across the 11 pinned source repos carry a field outside the six). The reference validator and at least one major client hard-error here, so accepting it meant handing out a package that breaks where the author takes it. The key chosen (`auto_run`) is the shape an author would use to try to claim a behaviour the platform does not honour."
     },
 
     "file-ref-escapes": {

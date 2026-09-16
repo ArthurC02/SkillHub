@@ -22,7 +22,7 @@ import {
 } from './Labelled';
 
 /**
- * ADR-021 two axes. The expression alone cannot distinguish "the author
+ * License provenance has two axes. The expression alone cannot distinguish "the author
  * declared MIT in frontmatter" from "the monorepo root had an MIT file",
  * and DISC-003 forbids presenting the second as the first.
  * 
@@ -39,7 +39,7 @@ export interface SkillLicense {
      * frontmatter named a file instead of declaring a license (npm's
      * `SEE LICENSE IN <filename>` convention) and that file's text was
      * recognised — the author chose the file, but the expression was read,
-     * not declared. Absent on versions imported before ADR-021, whose tier
+     * not declared. Absent on versions imported before license provenance tracking began, whose tier
      * was never recorded and must not be invented.
      * 
      */

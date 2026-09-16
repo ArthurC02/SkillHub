@@ -103,7 +103,7 @@ paths:
   /auth/github/login:
     get:
       operationId: startGithubLogin
-      summary: Begin GitHub OAuth login (ADR-020)
+      summary: Begin GitHub OAuth login
       security: []
       responses:
         "302":
@@ -140,7 +140,7 @@ paths:
   /auth/dev/login:
     post:
       operationId: devLogin
-      summary: Offline dev-provider login (ADR-020)
+      summary: Offline dev-provider login
       description: |
         Exists only when the server runs with DEV_LOGIN=1 (local demo and E2E);
         in production the route is absent and returns 404.
@@ -313,7 +313,7 @@ paths:
       operationId: getCreditBalance
       summary: The account's Credit balance and what one creation session costs (CRED-001)
       description: |
-        Credit is this platform's only unit of account (ADR-068). Everything a
+        Credit is this platform's only unit of account. Everything a
         user is shown about cost is denominated in it; US dollars are the
         platform's own ledger and never appear on this route.
 
@@ -360,7 +360,7 @@ paths:
 
         `collecting: false` with `retention_days: 0` is the shipped default and a
         real answer, not a missing one: NFR-002 forbids collection before a
-        retention value exists, ADR-029 決策 5's 180 days is still a proposal, and
+        retention value exists, the retention decision's proposed 180 days is still a proposal, and
         a deployment that has set nothing writes no row and sets no cookie.
       responses:
         "200":
@@ -527,7 +527,7 @@ paths:
       summary: Generate a Skill from a task description, a diagram, or both, optionally guided by existing Skills (GEN-001, GEN-005, GEN-006)
       description: |
         Requires a session and an invite. **Mounted only where the deployment
-        turns the M5 exposure flag on** (ADR-052); everywhere else this route
+        turns the M5 exposure flag on**; everywhere else this route
         does not exist — it answers whatever an unregistered path under /skills
         answers (405 today, because DELETE /skills/{id} matches the shape; the
         sameness is the point, not the number) — and `GET /me` does not list
@@ -535,7 +535,7 @@ paths:
         than probing here — an entry point that has to be discovered by a failed
         request has already been drawn.
 
-        Three ways in, one path out (ADR-066). The input is a task description
+        Three ways in, one path out. The input is a task description
         in the user's own words (GEN-001), a flowchart or diagram image
         (GEN-005), or both together; and any of those may name up to three
         existing Skills the user found by searching, which the model reads as
@@ -593,7 +593,7 @@ paths:
                     latest version's SKILL.md is what the model sees, fenced as
                     untrusted data. The generated package still takes
                     `redistribution = generated`: a reference is something the
-                    model read, not something the package contains (ADR-066).
+                    model read, not something the package contains.
       responses:
         "201":
           description: A package was generated, validated and stored as version 1.
@@ -638,7 +638,7 @@ paths:
             the request was refused before the model was called (blank
             description, exhausted generation allowance) or after it produced
             something unusable (output truncated at the token ceiling, which is
-            **not** retried, ADR-047 決策 2). The two are told apart by shape:
+            **not** retried). The two are told apart by shape:
             findings for the first, a single error message for the rest.
 
             `task_description` is bounded on BOTH sides in Go and not only in the
@@ -706,7 +706,7 @@ paths:
         record left in the workspace.
 
         Requires a session and an invite, and is **mounted on the same flag as
-        POST /skills/generate** (ADR-052) — a failure list is a generation
+        POST /skills/generate** — a failure list is a generation
         surface, and a route answering 200 with an empty array is still an answer
         about a feature that must not be discoverable. Where the flag is off this
         route does not exist and answers 404.
@@ -717,7 +717,7 @@ paths:
         **The task description is not here and will not be added.** It belongs to
         the skill_sources row, under NFR-002 deletion; these rows are kept 400
         days under a different rule, and one copy under each is a retention
-        promise nobody made (ADR-029 decision 3 draws the same line).
+        promise nobody made (the audit/analytics boundary decision draws the same line).
       responses:
         "200":
           description: |
@@ -810,13 +810,13 @@ paths:
       summary: Public intent search for skills (DISC-001, DISC-002)
       description: |
         Natural language search over the public skill catalog. Uses hybrid
-        retrieval (ADR-013): pgvector embedding similarity ranks the results and
+        retrieval: pgvector embedding similarity ranks the results and
         Postgres FTS only widens the candidate set, so a lexical hit the vector
         leg missed is still ordered by its own vector distance. Does not require
         authentication.
         Scope is the public catalog only: private workspace content is never
-        returned, and no request parameter can widen the scope (CORE-006,
-        ADR-011). Use GET /skills/search for the caller's own workspace.
+        returned, and no request parameter can widen the scope (CORE-006).
+        Use GET /skills/search for the caller's own workspace.
         Candidates further than the cosine distance cut-off are not returned at
         all; when nothing survives it, the response carries no_results and a
         query_suggestion rather than a page of weak matches. Blank or
@@ -966,7 +966,7 @@ paths:
             refused rather than quietly replaced by the default 20. A caller who
             asked for 500 and got 20 rows with `truncated=true` would read that
             as the size of the catalogue, which is a ceiling they never asked for
-            declaring itself as a result count (ADR-042 決策 3). The error
+            declaring itself as a result count. The error
             message names the dimension and why it is
             unavailable, and the UI shows the same reason on a disabled control
             rather than offering a filter that does nothing.
@@ -994,7 +994,7 @@ paths:
         `rank_note` explicitly explains this third kind of absent rank.
 
         **Ordering: curated first, then newest version first, then by id.**
-        ADR-041 / 設計系統 §2.11(b) forbid popularity as a default order and this
+        設計系統 §2.11(b) forbid popularity as a default order and this
         product has no popularity signal to misuse anyway; `curation_tier` is the
         one ordering input backed by a human review (PDM-002's nine items), and
         the id tiebreak keeps the order stable between two calls. Every row
@@ -1003,7 +1003,7 @@ paths:
         guess why a page is not ranked by similarity.
 
         Scope is the public catalogue only, identical to search: catalogue
-        workspaces, and no parameter can widen it (CORE-006, ADR-011).
+        workspaces, and no parameter can widen it (CORE-006).
 
         The five live DISC-002 filters apply here for the reason they exist: they
         are the controls on the same screen, and a filter that only bites after a
@@ -1081,15 +1081,15 @@ paths:
       summary: Skill detail, source, license, risk and compatibility (DISC-006, DISC-008)
       description: |
         Does not require authentication. Scope is resolved by the server and never
-        by the request (CORE-006, ADR-011): the public catalog answers for every
+        by the request (CORE-006): the public catalog answers for every
         caller, and a caller with a session additionally sees skills in their own
         workspace. Anything outside both scopes answers 404, identical to a skill
         that does not exist, so the status code is not an existence oracle for
         someone else's private content (WS-006).
 
         `summary` is always the package's own frontmatter description.
-        Model-generated text lives under `enrichment` and is labelled there
-        (ADR-013). `license` carries the ADR-021 two-axis answer — the expression
+        Model-generated text lives under `enrichment` and is labelled there.
+        `license` carries the two-axis answer — the expression
         and the provenance tier it was established at — and its status is
         `declared` at best: confirmation is a reviewer's act and nothing records
         one yet. `risk` reports a static scan of the stored package; the scan
@@ -1217,7 +1217,7 @@ paths:
       operationId: searchSkills
       summary: Full-text search over the caller's skills (INGEST-009)
       description: |
-        FTS leg of hybrid retrieval (ADR-013); vector recall and match reasons
+        FTS leg of hybrid retrieval; vector recall and match reasons
         arrive with the Explorer milestone. Scoped to the session workspace.
       parameters:
         - name: q
@@ -1382,7 +1382,7 @@ paths:
         "403":
           description: |
             The closed beta is running and the caller is not on the invite list
-            (BETA-001, ADR-028 決策 1). Forking, starting a run and downloading are
+            (BETA-001). Forking, starting a run and downloading are
             the three actions the invite gate covers; search and skill detail stay
             open to everybody, which they already were (DISC-010). Absent from
             deployments with no invite list configured.
@@ -1463,7 +1463,7 @@ paths:
         "404":
           description: |
             The skill is not in the caller's workspace. Reading somebody else's
-            skill is allowed; saying what it is for is not (ADR-011).
+            skill is allowed; saying what it is for is not.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1473,7 +1473,7 @@ paths:
       summary: List a skill's immutable versions, newest first (WS-001)
       description: |
         Workspace scoped from the session like every other registry read
-        (ADR-011): a skill in somebody else's workspace answers with an empty
+        : a skill in somebody else's workspace answers with an empty
         list rather than with their history.
 
         This is the list the pre-run permission screen and the packaging screen
@@ -2128,10 +2128,10 @@ paths:
         fork alike. Nothing here reads workspace-private data.
 
         Operator-only is now a ruling rather than a holding position (2026-08-27,
-        `05` R-3a, ADR-057). The route was written narrow while the question was
+        `05` R-3a). The route was written narrow while the question was
         open, on the grounds that widening later adds callers where narrowing
-        later takes something away; the ruling kept it there, because ADR-021
-        §5.3's false positive was made by people who audit licences for a living.
+        later takes something away; the ruling kept it there, because that repo-root-license false positive
+        was made by people who audit licences for a living.
 
         Releasing a skill also has to carry evidence now — see
         `license_expression` and `license_source` (`05` R-3b).
@@ -2170,7 +2170,7 @@ paths:
                   type: string
                   description: |
                     Required when `value` is `allowed`, ignored otherwise, and
-                    that asymmetry is the ruling (`05` R-3b, ADR-057): `allowed`
+                    that asymmetry is the ruling (`05` R-3b): `allowed`
                     is the only value that releases anything, so it is the only
                     one that has to carry the evidence it relied on. Asking for a
                     licensing judgement in order to *block* would charge for
@@ -2190,11 +2190,11 @@ paths:
                   enum:
                     [manifest, manifest-referenced-file, package-license-file, repo-license-file]
                   description: |
-                    Required when `value` is `allowed`. The ADR-021 provenance
+                    Required when `value` is `allowed`. The provenance
                     tier the operator relied on, named separately from the
-                    expression because ADR-021 決策 1 is that the two are one
+                    expression because the two are one
                     claim: frontmatter `MIT` and a repo-root `MIT` are not the
-                    same assertion, and ADR-021 §5.3 records two repositories
+                    same assertion, and this reflects two repositories
                     whose valid MIT `LICENSE` covered content that was not theirs
                     — an error in the releasing direction.
 
@@ -2202,8 +2202,8 @@ paths:
                     what makes "every skill released on `repo-license-file`
                     evidence" one SQL query instead of a manual trawl.
 
-                    `curated-declared` is absent because ADR-021 決策 2 does not
-                    implement it: it is the one tier whose evidence does not
+                    `curated-declared` is absent because it is defined but not
+                    implemented: it is the one tier whose evidence does not
                     travel inside the package, so nobody holding the bytes could
                     re-verify a release made on it.
       responses:
@@ -2262,7 +2262,7 @@ paths:
       summary: Is the platform dispatching new Runs (SEC-012)
       description: |
         Operator only. The single answer to 「現在到底有沒有在派送」, which is the
-        whole reason 03:SEC-012 requires the P1 halt and ADR-022 X-04's
+        whole reason 03:SEC-012 requires the P1 halt and the [Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) X-04's
         drain/suspend to be one switch rather than two.
 
         Both triggers appear here in the same list and are told apart by
@@ -2352,7 +2352,7 @@ paths:
                 provider:
                   type: string
                   description: |
-                    Drain one node (ADR-022 X-04 ①「其他節點不受影響」). Omit for
+                    Drain one node (「其他節點不受影響」). Omit for
                     the whole fleet. A name that is not in the deployment's
                     provider list is refused rather than stored: a halt on a
                     misspelled node protects nothing and reads, on GET
@@ -2557,8 +2557,8 @@ paths:
       summary: The two rosters in force, read-only (02:OPS-005)
       description: |
         Operator only. OPERATOR_USER_IDS and BETA_ALLOWLIST stay deployment
-        config; changing either is still an edit and a restart (ADR-074
-        decision 4). This only shows what is in force.
+        config; changing either is still an edit and a restart.
+        This only shows what is in force.
       responses:
         "200":
           description: Both rosters, sorted.
@@ -2905,7 +2905,7 @@ paths:
         content (iron rule 4), and later edits to the test case cannot rewrite
         what a past run was asked to do.
 
-        The response is immediate — execution is asynchronous (ADR-008). Poll
+        The response is immediate — execution is asynchronous. Poll
         `GET /runs/{run_id}` for progress.
 
         Two things are checked before anything is written. Whether the configured
@@ -2969,7 +2969,7 @@ paths:
         "403":
           description: |
             The closed beta is running and the caller is not on the invite list
-            (BETA-001, ADR-028 決策 1). 403 rather than 404 because the beta is
+            (BETA-001). 403 rather than 404 because the beta is
             not a secret: the same API just served this person the catalogue, so
             denying the endpoint exists would be contradicted by their next
             request. The body explains, and points at POST /feedback.
@@ -3002,8 +3002,8 @@ paths:
               rolling-window ceilings both land here, and the message carries the
               reset time. Enforced in the same transaction that would have
               inserted the run and under the same advisory lock as the
-              concurrency limit, so a refusal leaves no run behind (ADR-028
-              決策 2). The counters are the same ones GET /me/quota reports.
+              concurrency limit, so a refusal leaves no run behind.
+              The counters are the same ones GET /me/quota reports.
             - The workspace already has as many runs in flight as it may have
               (SEC-002 gate B). Unlike the allowance above this one clears by
               itself, in about as long as a run takes, so the message says wait
@@ -3024,7 +3024,7 @@ paths:
             refusal on this route is: those say the request may not proceed while
             the platform is fine, this one says the platform is not.
 
-            Only an incident halt refuses creation. ADR-022 X-04's capacity pause
+            Only an incident halt refuses creation. X-04's capacity pause
             leaves runs `queued` instead, because its release is automatic — two
             clear reconciler rounds — so queueing is a wait with an end. An
             incident halt has no automatic release at all, and a queue that may
@@ -3093,7 +3093,7 @@ paths:
             rather than quietly replaced by the defaults. A caller who asked for
             500 and got 50 rows would read that as the size of their run history,
             which is a ceiling they never asked for presenting itself as a result
-            count (ADR-042 決策 3).
+            count.
 
             A negative `offset` is refused rather than floored to 0. It arrives
             from the same client-side page arithmetic a non-numeric one does, and
@@ -3284,10 +3284,10 @@ paths:
 
         `complete: false` means a producer's gapless sequence has a hole, which
         means an event was lost. The UI must say so rather than present the
-        remainder as the whole story (ADR-009).
+        remainder as the whole story.
 
         Every payload here is untrusted content that crossed the trust boundary
-        (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG
+        and must be rendered as inert text: no HTML, ANSI or SVG
         interpretation.
       parameters:
         - name: id
@@ -3351,7 +3351,7 @@ paths:
         two are separate resources because they are separate facts: a run at
         `succeeded` whose evaluation is `not_met` is an ordinary consistent
         state — the workload finished and did not do what was asked. No surface
-        may collapse them into one verdict (ADR-025, NFR-001).
+        may collapse them into one verdict (NFR-001).
 
         A run with no evaluation answers **404, not an empty evaluation**.
         「未評估」 is a state of its own, and a blank body is exactly what a UI
@@ -3538,7 +3538,7 @@ paths:
 
         Each side reports its execution status and its task judgement
         separately, and a side with no judgement says so rather than reading as
-        a pass (ADR-025).
+        a pass.
 
         Any two runs in the caller's workspace may be compared. Two runs of
         different test cases, or of different skills, are not refused: the
@@ -3701,7 +3701,7 @@ paths:
         `TracePolicy.ingestion_url` of the sandbox provider contract, which has
         no separate token field.
 
-        Everything in the body is untrusted input (ADR-001). The order on this
+        Everything in the body is untrusted input. The order on this
         side is fixed: verify the token, resolve workspace_id from run_id under
         the platform's own authority (iron rule 3), validate each envelope, mask
         (TRACE-005), then store. Nothing reaches the database unmasked.
@@ -3847,7 +3847,7 @@ paths:
             present-but-empty `limit=` are refused rather than quietly replaced by
             the default 51. A caller who asked for 500 and got 51 rows would read
             that as the size of their library, which is a ceiling they never asked
-            for presenting itself as a result count (ADR-042 決策 3).
+            for presenting itself as a result count.
 
             The 51 and the 101 are not off-by-ones. The client asks for one row
             more than it shows, so it can tell whether another page exists without
@@ -3932,7 +3932,7 @@ paths:
 
         Editing here never rewrites a past run: a run freezes the rubric along
         with the prompt and the criteria, so an edit is the standard for the
-        *next* run (iron rule 4, ADR-003).
+        *next* run (iron rule 4).
       requestBody:
         required: true
         content:
@@ -3974,7 +3974,7 @@ paths:
         Soft delete. The draft and its live datasets leave every read now and the
         stored objects are removed. Snapshots of past runs are retained and keep
         the prompt, the criteria and each file's name and content hash, so those
-        runs stay traceable although they are no longer reproducible (ADR-003).
+        runs stay traceable although they are no longer reproducible.
       responses:
         "200":
           description: Deleted, with the exact deletion scope.
@@ -4281,7 +4281,7 @@ paths:
       description: |
         Usable before a run to withdraw a file and after a run to remove it. The
         stored object is deleted; snapshots keep the file's name and content
-        hash so past runs stay traceable (ADR-003).
+        hash so past runs stay traceable.
       parameters:
         - name: id
           in: path
@@ -4521,7 +4521,7 @@ paths:
         "403":
           description: |
             The closed beta is running and the caller is not on the invite list
-            (BETA-001, ADR-028 決策 1). Producing a Download Artifact is the third
+            (BETA-001). Producing a Download Artifact is the third
             of the three gated actions. Distinct from the 422 below, which is
             about the *content* rather than the caller. Absent from deployments
             with no invite list configured.
@@ -4758,7 +4758,7 @@ paths:
         "403":
           description: |
             The closed beta is running and the caller is not on the invite list
-            (BETA-001, ADR-028 決策 1). Distinct from the 404 below on purpose: that
+            (BETA-001). Distinct from the 404 below on purpose: that
             one hides whether an artifact exists, this one is about the caller and
             says so. Absent from deployments with no invite list configured.
           content:
@@ -4999,7 +4999,7 @@ paths:
       operationId: "streamCreationSession"
       summary: "streamCreationSession"
       description: |
-        The step events of one creation session, as they are written (ADR-069).
+        The step events of one creation session, as they are written.
 
         THE 200 RESPONSE DELIBERATELY DECLARES NO SCHEMA, and that is the
         honest description rather than an omission. The body is an SSE stream
@@ -5017,8 +5017,7 @@ paths:
         What this stream does NOT carry is model tokens. A model reply is a
         proposal until Go accepts it — it can be rejected whole, or thrown away
         and asked for again — so what streams here is state Go has already
-        committed, never text a model is still writing. ADR-069 決策 1 and 6
-        carry the reasoning and the conditions under which that could change.
+        committed, never text a model is still writing.
 
         The stream ends when the session reaches a terminal state or its
         deadline passes. A client that cannot hold a stream keeps polling
@@ -5140,7 +5139,7 @@ components:
 
         It identifies the user and nothing more. The workspace scope every query
         runs under is resolved from it server-side and is never taken from a
-        request parameter (iron rule 3, ADR-011).
+        request parameter (iron rule 3).
   schemas:
     Health:
       type: object
@@ -5373,7 +5372,7 @@ components:
               type: [integer, "null"]
               format: int64
               description: |
-                In Credit (ADR-068 decision 1). NULL means the gateway did not
+                In Credit. NULL means the gateway did not
                 report a cost. Consumers MUST render that as "unreported" and
                 never as 0 - showing 0 tells the user the run was free.
             cost_source: { type: string, enum: [gateway, estimated] }
@@ -5437,7 +5436,7 @@ components:
             Whether the caller is on this deployment's OPERATOR_USER_IDS. It only
             tells the client whether to draw the entry to /admin; it grants
             nothing. Every /admin route checks the roster itself and answers a
-            member 404 whatever this field says (ADR-074 decision 1).
+            member 404 whatever this field says.
         features:
           type: object
           additionalProperties:
@@ -5451,8 +5450,8 @@ components:
             discovered without a request that fails, and a feature discovered by
             a failed request has already been drawn on somebody's screen.
 
-            Two keys today. `generate_skill` (ADR-052) is an entry point: it
-            says a route exists. `clean_mode` (ADR-060) is not — it says this
+            Two keys today. `generate_skill` is an entry point: it
+            says a route exists. `clean_mode` is not — it says this
             deployment swapped its sandbox, object store and database for
             substitutes that do not isolate, do not verify signatures and hold
             one connection, and the screen must say so. A client that treats
@@ -5696,7 +5695,7 @@ components:
             `self_supplied` is what a user's own import carries since 0036. It
             was `unknown` before that, which refused — so the answer to "may I
             download the Skill I just wrote" was permanently no, over a licensing
-            question nobody could resolve (ADR-045).
+            question nobody could resolve.
         access_restriction:
           type: [string, "null"]
           description: |
@@ -5763,7 +5762,7 @@ components:
         the same claim with different provenance rather than different claims.
         Either this version was imported here and the scan ran on import, or it is
         a fork whose bytes are identical to a public-catalogue ancestor's and the
-        ancestor's scan is being attributed to it (ADR-042 決策 6 — in-toto binds
+        ancestor's scan is being attributed to it (in-toto binds
         an attestation to the subject's digest, not to where it sits, and the scan
         is a deterministic function of the bytes). In the inherited case
         `scanned_at` is the **ancestor's** import time, so it is older than the
@@ -5773,7 +5772,7 @@ components:
 
         `not_measured`: a fork whose ancestor cannot answer — taken down, deleted,
         outside the public catalogue (無權檢視, and a lineage column existing does
-        not widen ADR-011), or no longer the same bytes. **Not a claim that the
+        not widen visibility scope), or no longer the same bytes. **Not a claim that the
         content is unsafe**, and not a claim that it is fine either.
 
         `not_applicable`: no version exists yet, so there is nothing to scan.
@@ -5828,8 +5827,8 @@ components:
         truncated:
           type: boolean
           description: |
-            True when the catalogue holds more than this page shows. ADR-042
-            決策 3: a truncated list must say so, or it reads as the whole answer.
+            True when the catalogue holds more than this page shows.
+            A truncated list must say so, or it reads as the whole answer.
     PublicSearchResponse:
       type: object
       required:
@@ -5847,7 +5846,7 @@ components:
           type: boolean
           description: |
             True when the vector leg did not run and the answer came from
-            lexical matching alone. ADR-013 定案調整 1/2: the vector leg is what
+            lexical matching alone. The vector leg is what
             carries cross-language recall, so a degraded answer has materially
             lower recall and must not be presented as "nothing matches".
         degraded_reason:
@@ -5898,7 +5897,7 @@ components:
           description: |
             True when the catalogue held more matches than this page shows. The
             cap has always been here and result 21 simply did not exist as far as
-            a caller could tell; ADR-042 決策 3 makes that the defect it is —
+            a caller could tell; that silence was always the defect —
             **a truncated list must state that it was truncated**, and "no limit
             at all" stopped being an available answer. Distinct from `degraded`
             and `partial_index`, which are statements about how well the search
@@ -6003,7 +6002,7 @@ components:
           type: string
           description: |
             Plain summary (DISC-002). The index-time LLM summary when the skill
-            has been enriched (ADR-013 §1, model-generated), otherwise the
+            has been enriched (model-generated), otherwise the
             package's own frontmatter description. `summary_source` says which,
             because until it existed this sentence was documented as sometimes
             model-written and had no field a client could act on.
@@ -6011,7 +6010,7 @@ components:
           type: string
           enum: [model, package]
           description: |
-            Who wrote `summary`. ADR-013 requires model-generated content to be
+            Who wrote `summary`. Model-generated content must be
             labelled, and this row was already labelling `match_reason` while
             printing the model's rewrite of the summary unmarked — the footnote
             carried the badge and the sentence a reader decides on did not.
@@ -6103,7 +6102,7 @@ components:
           type: string
           enum: [model, template]
           description: |
-            Provenance of match_reason. ADR-013 requires model-generated content
+            Provenance of match_reason. Model-generated content needs
             to be labelled, so the UI can mark it as such. `template` reasons are
             assembled from the query/document lexical overlap, or state plainly
             that the hit came from semantic similarity with no shared keywords.
@@ -6179,13 +6178,13 @@ components:
           description: |
             Generator prompt revision, e.g. `generate-skill/v1`. Present only for
             `generated`. Together with task_description and generator_model this
-            is what lets someone re-derive the package (ADR-047 決策 1).
+            is what lets someone re-derive the package.
         generation_inputs:
           allOf:
             - $ref: "#/components/schemas/GenerationInputs"
           description: |
             What besides the task description was behind a generated package
-            (ADR-066, GEN-005/GEN-006). Present only for `generated`, and only
+            (GEN-005/GEN-006). Present only for `generated`, and only
             when a diagram or reference Skills were given; a text-only
             generation has no such record and the field is absent. Absent is
             "nothing else was used", not "unknown" — the platform wrote every
@@ -6226,7 +6225,7 @@ components:
     GenerationInputs:
       description: |
         The non-text inputs of one generation, exactly as
-        `skill_sources.generation_inputs` stores them (ADR-066 決策 4): a
+        `skill_sources.generation_inputs` stores them: a
         diagram is a digest, a media type and a byte count — the image bytes
         were never kept, so nothing here lets anyone download or re-derive the
         picture; a reference is the identifier of the Skill and the version the
@@ -6269,7 +6268,7 @@ components:
                 description: The Skill's name at generation time.
     SkillLicense:
       description: |
-        ADR-021 two axes. The expression alone cannot distinguish "the author
+        License provenance has two axes. The expression alone cannot distinguish "the author
         declared MIT in frontmatter" from "the monorepo root had an MIT file",
         and DISC-003 forbids presenting the second as the first.
       type: object
@@ -6286,7 +6285,7 @@ components:
             frontmatter named a file instead of declaring a license (npm's
             `SEE LICENSE IN <filename>` convention) and that file's text was
             recognised — the author chose the file, but the expression was read,
-            not declared. Absent on versions imported before ADR-021, whose tier
+            not declared. Absent on versions imported before license provenance tracking began, whose tier
             was never recorded and must not be invented.
         source_note:
           type: string
@@ -6453,7 +6452,7 @@ components:
             `transpiled` meaning in words rather than leaving it as a value name.
     SkillEnrichment:
       description: |
-        Index-time model output (ADR-013 §1), labelled as model-written so a
+        Index-time model output, labelled as model-written so a
         reader can always tell it from the author's own text.
       type: object
       required: [status, note]
@@ -6504,10 +6503,10 @@ components:
           enum: [model, scan]
           description: |
             `model` — extracted by the index-time enrichment from what the
-            package's own documentation states about its limits (ADR-013 §1
+            package's own documentation states about its limits (the
             whitelist: a factual restatement, never a safety or quality
             judgement). `scan` — derived from the static package scan, e.g. the
-            package cites external URLs so it needs network access. ADR-013
+            package cites external URLs so it needs network access. Model-generated content
             requires the model-written half to be labelled as such.
     SkillDetail:
       type: object
@@ -6569,7 +6568,7 @@ components:
           description: |
             allowed | blocked | unknown | self_supplied | generated — whether this skill's
             content may be handed on, which is what decides whether a download
-            package can be built from it at all (02:SEC-007, ADR-012).
+            package can be built from it at all (02:SEC-007).
 
             Required, and required for every skill, because the question has an
             answer for every skill: `unknown` is where a curated skill starts and
@@ -6578,13 +6577,13 @@ components:
             that an unestablished licence may be modified or redistributed.
 
             **Two values release, for different reasons, and the difference
-            matters** (ADR-045). `allowed` is a verdict about the licence:
+            matters**. `allowed` is a verdict about the licence:
             somebody established that this content may be copied. `self_supplied`
             is a fact about the supplier: this workspace brought the bytes in, so
             the platform handing them back is retrieval and not redistribution —
             there is no second party for a licence to protect. A publish path
             that treated the two as one would hand out content nobody ever
-            judged, which is the direction ADR-021 §5.3 forbids erring in.
+            judged, which is the direction the redistribution-gate policy forbids erring in.
 
             A separate axis from `license.status` and never derivable from it:
             02:CONTENT-002 states plainly that a manually confirmed licence is
@@ -6737,10 +6736,10 @@ components:
         inline as base64 rather than through a separate upload endpoint: the
         image is an INPUT to one synchronous call, not an object the platform
         keeps — only its digest, media type and byte count land in the
-        provenance row (ADR-066), so nothing in object storage needs a
+        provenance row, so nothing in object storage needs a
         retention rule for it. The decoded bytes are capped; over the cap is a
         400, never a resize (the platform does not edit inputs any more than it
-        edits outputs, ADR-047 決策 1).
+        edits outputs).
       properties:
         media_type:
           type: string
@@ -6784,7 +6783,7 @@ components:
 
         `attempts` is here and not only on the 201 because the failure screen has
         a sentence about the automatic retry, and that sentence is false for a
-        `possible-secret` finding — ADR-048 does not retry that one. Without the
+        `possible-secret` finding — the automatic retry does not retry that finding. Without the
         number the page cannot tell the two apart.
       allOf:
         - $ref: "#/components/schemas/CategorizedFindings"
@@ -7045,7 +7044,7 @@ components:
           type: string
           description: |
             SHA-256 of the stored bytes. Copied into the run snapshot, where it
-            outlives the file itself (ADR-003).
+            outlives the file itself.
         expires_at:
           type: string
           format: date-time
@@ -7066,7 +7065,7 @@ components:
         note: { type: string }
     DataRetentionPolicy:
       description: |
-        ADR-029's four events and their attribute whitelist, plus the retention
+        The analytics policy's four events and their attribute whitelist, plus the retention
         this deployment actually applies. Served from the constants in
         internal/analytics, never from numbers typed into a document.
       type: object
@@ -7087,7 +7086,7 @@ components:
           type: array
           description: |
             The closed set of four (the CHECK in 0029). A fifth would have to
-            explain first why no domain table answers it (ADR-029 決策 1).
+            explain first why no domain table answers it.
           items:
             type: object
             required: [name, when, attributes, not_recorded]
@@ -7208,7 +7207,7 @@ components:
           type: integer
           format: int64
           description: |
-            In Credit, the platform's only unit of account (ADR-068 decision 1).
+            In Credit, the platform's only unit of account.
 
             The field this replaced was `low` beside a `currency` fixed at USD,
             whose description argued that converting would "present an exchange
@@ -7311,7 +7310,7 @@ components:
             mode:
               type: string
               description: |
-                Egress policy the sandbox is held to (ADR-005). `default_deny`
+                Egress policy the sandbox is held to. `default_deny`
                 with an empty `allow` means it can reach nothing at all.
             allow:
               type: array
@@ -7339,7 +7338,7 @@ components:
               type: string
               enum: [gvisor, container, vm, process, clean]
               description: |
-                The provider's declared isolation level (ADR-015; `clean` is ADR-059's
+                The provider's declared isolation level (`clean` is clean test mode's
                 "no boundary at all" level, admitted only under SKILLHUB_CLEAN_MODE).
                 Absent when unassigned. Kept as an enum, not prose, so devctl's
                 isolation-level check can reconcile it with the dispatch gate and
@@ -7398,7 +7397,7 @@ components:
         transitions and attempts belong to the one run a reader opens.
 
         `status` carries the same warning it does on `Run`: `succeeded` says the
-        workload finished, not that the task was done (ADR-025). A history list
+        workload finished, not that the task was done. A history list
         showing this value must word it as execution and must not present it as a
         pass.
       type: object
@@ -7411,10 +7410,10 @@ components:
           allOf:
             - $ref: "#/components/schemas/Labelled"
           description: |
-            The second axis (ADR-025, 04 丙-32). Required and never null: a run
+            The second axis (04 丙-32). Required and never null: a run
             with no evaluation carries `not_evaluated` / 未評估, because an absent
             verdict beside a column of 「執行完成」 reads as a pass — which is the
-            precise misreading ADR-025 separates the two axes to prevent. A list
+            precise misreading the evaluation/status split exists to prevent. A list
             rendering these must put the verdict **ahead of** `status`.
 
             `value` folds the evaluation's own status into the verdict, and only
@@ -7538,7 +7537,7 @@ components:
           enum:
             [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
           description: |
-            The standard lifecycle of ADR-004 / RUN-002. `cleaning_up` is not in
+            The standard lifecycle of RUN-002. `cleaning_up` is not in
             here: cleanup happens after a terminal state and is reported
             separately in `cleanup_status`, so "the run failed" and "its sandbox
             was torn down" stay two distinct facts.
@@ -7546,7 +7545,7 @@ components:
             `succeeded` says the workload finished, not that the task was done.
             Whether it was is `Evaluation.overall` from
             GET /runs/{id}/evaluation, which is a separate resource an
-            evaluation never writes back into (ADR-025). A surface showing this
+            evaluation never writes back into. A surface showing this
             value alone must word it as execution (執行完成 / 執行失敗) and must
             not present it as a pass.
         status_reason:
@@ -7609,7 +7608,7 @@ components:
             `GET /runs/{id}` returned it while this schema did not mention it, so
             every generated client was missing the one field that says why a run
             failed — and nothing could notice: the Go side is models-only with
-            hand-written handlers (ADR-030's 2026-08-29 note), so a handler can
+            hand-written handlers, so a handler can
             serve what the contract never declared.
         cleanup_status:
           $ref: "#/components/schemas/Labelled"
@@ -7668,7 +7667,7 @@ components:
         during execution; `Evaluation.overall` records whether the task was
         achieved. `succeeded` is an execution outcome and never a task verdict,
         an evaluation never writes back to the run, and the two are not to be
-        merged into a single pass/fail on any screen (ADR-025, NFR-001).
+        merged into a single pass/fail on any screen (NFR-001).
 
         `status` and `overall` are likewise two fields on purpose. `status` is
         about the judgement (did it run at all), `overall` is about the task
@@ -7727,7 +7726,7 @@ components:
         judge_prompt_version:
           type: string
           description: |
-            The judge prompt this verdict was reached under (ADR-017). Together
+            The judge prompt this verdict was reached under. Together
             with `rubric_version` it is what makes two revisions comparable.
         rubric_version:
           type: string
@@ -7741,7 +7740,7 @@ components:
             hole (`complete: false` on GET /runs/{id}/trace), an artifact could
             not be read, or an input had to be truncated. A criterion judged on
             incomplete evidence must not come back `passed`; `undetermined` is
-            the honest outcome and the UI has to keep saying so (ADR-009).
+            the honest outcome and the UI has to keep saying so.
         cost:
           $ref: "#/components/schemas/EvaluationCost"
         feedback:
@@ -7828,7 +7827,7 @@ components:
           type: string
           enum: [exact, normalized, not_found, not_checked]
           description: |
-            How the excerpt was found in the source it names (ADR-043). This is
+            How the excerpt was found in the source it names. This is
             the platform's own answer, never the judge's — a citation is verified
             **by content**, not by the source it was filed under.
 
@@ -7851,7 +7850,7 @@ components:
               the quote is nowhere, which is close to an accusation; this says
               the platform never looked. Filing the second under the first made
               the report sound certain about something it had not examined. It
-              is the independent field ADR-043 §影響 asked for, rather than the
+              is the independent field that telling misfiled citations from fabricated ones apart asked for, rather than the
               statement being left implicit in `excerpt`.
 
               Like `not_found` it never counts as verified evidence, so a rubric
@@ -7862,7 +7861,7 @@ components:
           description: |
             Present when the quote was found, but **not in the source the judge
             named** — `kind` is corrected to where it actually is and this
-            records where it was filed. ADR-043's核心: mis-filed and fabricated
+            records where it was filed. The core point: mis-filed and fabricated
             are different failures and one string search tells them apart, so the
             platform stopped treating them the same. Absent when `kind` was
             right, which is the ordinary case.
@@ -7901,7 +7900,7 @@ components:
           description: |
             The cited material as it was when the judgement was made: masked
             before storage (iron rule 11) and length-capped. It is untrusted
-            content that crossed the trust boundary (ADR-001) — render it as
+            content that crossed the trust boundary — render it as
             inert text, never interpreting HTML, ANSI or SVG.
         excerpt_truncated:
           type: boolean
@@ -7913,7 +7912,7 @@ components:
             partition was dropped or the artifact is gone; the excerpt is still
             shown and must be labelled as the copy kept at evaluation time.
             Never presented as though the original were still there, and never
-            blanked out either (ADR-009).
+            blanked out either.
     DeterministicFinding:
       description: |
         One problem found about the run itself — EVAL-001 第 1 條's six
@@ -7958,7 +7957,7 @@ components:
           type: [integer, "null"]
           format: int64
           description: |
-            In Credit (ADR-068 decision 1). NULL means the gateway reported no
+            In Credit. NULL means the gateway reported no
             cost. Render that as "unreported" and never as 0 — 0 tells the user
             the judgement was free.
 
@@ -7971,7 +7970,7 @@ components:
           enum: [gateway, estimated, unreported]
           description: |
             `gateway` is the LiteLLM per-key spend for this evaluation, which is
-            the authoritative figure (ADR-017). `estimated` is a computed one
+            the authoritative figure. `estimated` is a computed one
             and must be labelled as such wherever it is shown. `unreported` is
             what the server sends when the gateway reported nothing: it goes
             with a null `evaluation_usd`, and a page must not attach either of
@@ -8123,7 +8122,7 @@ components:
 
         Each side reports execution and task judgement in separate fields, and
         an unevaluated side says so rather than leaving the reader to infer a
-        pass from `succeeded` (ADR-025).
+        pass from `succeeded`.
       type: object
       required: [runs, criterion_matrix]
       properties:
@@ -8187,7 +8186,7 @@ components:
                 type: string
                 description: |
                   The run's final answer, masked. Untrusted content — render as
-                  inert text (ADR-001).
+                  inert text.
               errors:
                 type: array
                 items:
@@ -8211,7 +8210,7 @@ components:
                     type: [integer, "null"]
                     format: int64
                     description: |
-                      In Credit (ADR-068 decision 1). NULL means no usage event
+                      In Credit. NULL means no usage event
                       carried a cost. Render as "unreported", never as 0.
                   is_lower_bound:
                     type: boolean
@@ -8229,7 +8228,7 @@ components:
                     type: string
                     description: |
                       Where the settling figure lives — the gateway's per-key
-                      spend for this run (ADR-017). Named rather than implied,
+                      spend for this run. Named rather than implied,
                       so a reader knows what a disagreement would be resolved
                       against.
               inputs_available:
@@ -8240,7 +8239,7 @@ components:
                   dataset the snapshot referenced is still stored and unexpired.
 
                   False means a re-run of *these* inputs is no longer possible,
-                  and the screen must not offer one (ADR-003 刪除與可追溯性).
+                  and the screen must not offer one.
                   The comparison itself stays fully readable either way — the
                   snapshot's hash and both verdicts are history and do not
                   depend on the files still existing — so this disables a
@@ -8355,7 +8354,7 @@ components:
             It is a property of the *target*, not of a skill. Whether a
             particular version was ever measured is the `compatibility` axes on
             the skill, and passing format validation is never permission to say
-            it installs (ADR-012).
+            it installs.
         verification_prompt:
           type: string
           description: |
@@ -8413,7 +8412,7 @@ components:
           description: |
             Known limitations and the steps a path alone does not cover — for
             the SDK target, that `cwd` and `setting_sources` are part of
-            installing and a skill silently never loads without them (ADR-023).
+            installing and a skill silently never loads without them.
             Server-side so every surface states them identically (NFR-001).
     PackagingBlockedReason:
       description: |
@@ -8433,7 +8432,7 @@ components:
         `license_unknown` — `redistribution` is `unknown`, which is where a skill
         starts and where anything unclassifiable stays. Treated as blocked, not
         as permitted: 02:DISC-003 forbids implying an unknown licence may be
-        redistributed, and the one real misreading on record (ADR-021 §5.3, a
+        redistributed, and the one real misreading on record (a
         root MIT file taken to cover a subdirectory) erred in exactly that
         direction.
         `validation_blocked` — the package that would be produced carries an
@@ -8692,7 +8691,7 @@ components:
           type: string
           enum: [quarantined, available, rejected]
           description: |
-            The artifact's own scan state (ADR-003: an upload is quarantined
+            The artifact's own scan state (an upload is quarantined
             until it passes its checks), not a `ready` boolean. `rejected` and
             `quarantined` are two different things to the person waiting for a
             download — one is over and one is not — and one flag would say
@@ -8770,7 +8769,7 @@ components:
           description: The target profile's version. Absent for `standard`, which has no profile.
     CreditBalance:
       description: |
-        One account's Credit standing (CRED-001, ADR-068). No field here is
+        One account's Credit standing (CRED-001). No field here is
         denominated in money: Credit is the currency this system shows, US
         dollars are what the platform itself pays, and the two ledgers behind
         this response are deliberately separate tables.
@@ -9089,7 +9088,7 @@ components:
           description: "The NEWEST picture's digest - the one the model reads and materialize records. `attachments` is the conversation's own history; a second upload overwrites this field but adds to that list."
         attachments:
           type: "array"
-          description: "Every picture the person put into this conversation, in order, each tied to the turn it arrived with. Metadata only: the platform keeps the digest and refuses the bytes (ADR-066 決策 4), so a client that did not itself send the picture has its description and not the picture."
+          description: "Every picture the person put into this conversation, in order, each tied to the turn it arrived with. Metadata only: the platform keeps the digest and refuses the bytes, so a client that did not itself send the picture has its description and not the picture."
           items:
             $ref: "#/components/schemas/CreationAttachment"
         references:

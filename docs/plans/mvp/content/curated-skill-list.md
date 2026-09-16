@@ -108,7 +108,7 @@
    ⚠️ 一項判準範圍修正（KPI3 只掃 zh-Hant 欄位）影響 `excel-format` 的判定，**待負責人追認**；若不接受，該筆退回需修改、⑦ 一併退回 `pending`（報告 §9 第 2 條）。
    **2026-08-15 進度**：45 筆全部已有繁中白話摘要與雙語任務範例句（`gpt-5.6-sol`，全數走生產端點 `POST /v1/enrich-skill`；15 筆重用 golden set 既有產出、30 筆新呼叫）。產出見 [`tools/content/summaries.json`](../../../../tools/content/summaries.json)，**可審核紀錄與審核工序見 [content-summaries.md](content-summaries.md)**（誰審、判準、否決條件、狀態欄位；45 筆現皆為「待審」）。
    - ⚠️ 原註「`data-analyst` 與 YuYY2004 系列需重寫為繁體中文」的處置已定案：**平台不改寫上游套件，摘要即繁中化呈現層**（content-summaries.md §1.3）。16 筆簡中來源的摘要與範例句已全數為繁體中文，機械掃描無簡體字殘留。
-   - ⚠️ 原註「`anthropics/skills` 免責條款需納入措辭考量」的處置：**不納入摘要**，改由詳情頁 License／來源區塊承接——該句屬信任／品質陳述，ADR-013 白名單明令模型產出不得包含。**此解讀待負責人確認**（content-summaries.md §3）。
+   - ⚠️ 原註「`anthropics/skills` 免責條款需納入措辭考量」的處置：**不納入摘要**，改由詳情頁 License／來源區塊承接——該句屬信任／品質陳述，[意圖搜尋](../../../adr/README.md#意圖搜尋)白名單明令模型產出不得包含。**此解讀待負責人確認**（content-summaries.md §3）。
    - ⑦ 改記 `pass` 的條件：精選 15 筆全數審核為「通過」，且 content-summaries.md §7 的待辦 2（7 筆補 `limitations`）與待辦 3 結案。**現況：三項條件皆已滿足（2026-08-16）。**
 4. **⑧ 平台基準試跑需要平台存在。** 承接工作項：**CONTENT-007（範例資料／Prompt／驗收條件）→ CONTENT-008（基準試跑）**。此項在隔離 Sandbox 內執行，符合鐵律 1。
 5. **✅ 2026-08-27 已判定為可接受**（見腳註 8 與 [report-curated-checks-4-5.md §2.2](report-curated-checks-4-5.md)）——**判定的理由不是「依賴在白名單內」**（`02:499` 明文禁止那個理由），是①措辭宣告的是前置條件而非執行步驟，②平台在匯入時確實會標註，而這一筆走的是 `undeclared-dependency` 警告（該行是散文裡的行內程式碼，`deps.go` 的 `installRe` 只認獨立成行的安裝指令，所以 `lxml` 不會進 `declared` 集合，而內嵌程式碼確實 `from lxml import etree`）。**原文保留於下。**<br>**`excel-deduplicate` 的 SKILL.md 於依賴段落出現 `pip install` 字樣。** 三個套件（`pandas`／`lxml`／`openpyxl`）全部在 PDM-004 白名單內，該分支在 Runtime Image 中不會觸發；但**「SKILL.md 文字教模型執行被禁止的動作」與 M0 否決 `cabbage2000-lab/data-analysis-skills` 的理由同型**。CONTENT-006 需人工確認措辭是否可接受，或於匯入時標註。
@@ -325,7 +325,7 @@ PDM-002 風險表的統一政策為「**索引與平台內試跑照常（在平�
 | 異動 | 對象 | 提名人 | 日期（進入本文件） | 原因 | 涵蓋類別 | 明細 |
 | --- | --- | --- | --- | --- | --- | --- |
 | **新增（准入）** | 11 個來源 repo（`tools/content/seed-skills.json` 的 `sources`） | 負責人 | **2026-08-15**（`6690736`），`documents` 補足同日，依賴欄更正 2026-08-16 | 走完 PDM-002 的四步回溯准入：awesome 清單只作發現管道，逐條回溯原始 repo 並實查 LICENSE | `documents`／`writing`／`data` | §2、§4、§5 |
-| **否決** | 2 筆（授權衍生關係不成立） | 負責人 | **2026-08-15**（`6690736`） | 根目錄 License 涵蓋不到被列的內容——ADR-021 §5.3 的那種偽陽性 | 跨三類 | §6.1 |
+| **否決** | 2 筆（授權衍生關係不成立） | 負責人 | **2026-08-15**（`6690736`） | 根目錄 License 涵蓋不到被列的內容——[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的那種偽陽性 | 跨三類 | §6.1 |
 | **否決** | 5 筆（依賴或外網不過） | 負責人 | **2026-08-15**（`6690736`）；`course-quiz-builder` 的精選否決為 **2026-08-27**（`c67a711`，逐條 Script 審查） | 依賴不在 PDM-004 白名單內，或執行需要外網 | 跨三類 | §6.2 |
 | **否決** | 4 筆（License 缺失或不可判定） | 負責人 | **2026-08-15**（`6690736`） | `license: null`，或目錄內無 License 且 repo 根層無可繼承者 | 跨三類 | §6.3 |
 | **僅作發現，不直接匯入** | awesome 清單 | 負責人 | **2026-08-15**（`6690736`） | 清單本身的 License 不繼承給被列的 Skill（PDM-002） | — | §6.4 |
@@ -349,11 +349,11 @@ PDM-002 風險表的統一政策為「**索引與平台內試跑照常（在平�
 
 | 候選 | 星等 | License | 否決原因 | 不過的檢查項 |
 | --- | --- | --- | --- | --- |
-| [inhouseseo/superseo-skills](https://github.com/inhouseseo/superseo-skills)（11 個 skill） | 254★ | Apache-2.0 ✅ | 實查 `write-content` 與 `improve-content` 的 `SKILL.md`：兩者的工作流第一步即「Google 主關鍵字並讀取前 5 名 SERP 結果」、`improve-content` 另需抓取目標 URL。**11 個 skill 全部建立在即時 SERP 研究之上**，與 ADR-005 egress default-deny 正面衝突 | **⑥** |
+| [inhouseseo/superseo-skills](https://github.com/inhouseseo/superseo-skills)（11 個 skill） | 254★ | Apache-2.0 ✅ | 實查 `write-content` 與 `improve-content` 的 `SKILL.md`：兩者的工作流第一步即「Google 主關鍵字並讀取前 5 名 SERP 結果」、`improve-content` 另需抓取目標 URL。**11 個 skill 全部建立在即時 SERP 研究之上**，與[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的 egress default-deny 正面衝突 | **⑥** |
 | [umarmsharif/ai-presentation-builder](https://github.com/umarmsharif/ai-presentation-builder) | 1★ | MIT ✅ | 依賴 npm 套件 `pptxgenjs`；PDM-004 白名單只涵蓋 Python 套件，Runtime Image 未預裝任何第三方 npm 套件，且執行期禁止 `npm install`。選用依賴另含 LibreOffice 與 8 種商業字型 | **⑥**（若負責人決定為 Node 建立套件白名單，可回頭複審——**這是本清單唯一因「白名單語言缺口」而非品質問題出局的候選**） |
 | `data-to-document`（danielrosehill 同 repo，M0 未涵蓋） | — | MIT ✅ | 實查 `SKILL.md`：需 **Typst CLI** 在 PATH 上，另需 `pyyaml` ✅、選用 `babel` ✗ | **⑥** |
 | [nexu-io/html-anything](https://github.com/nexu-io/html-anything) | 8,291★ | Apache-2.0 ✅ | 實查根目錄：pnpm monorepo（`cli`／`next`／`e2e`），**無 `SKILL.md`、無 `skills/` 目錄**，不是 Agent Skills 套件而是一套本機應用程式 | **③**（非 Agent Skills 規格產物） |
-| `course-quiz-builder`（the3ma，**精選否決；indexed 維持**） | — | MIT ✅ | **⑥**：`publish-pages.mjs` 不是可選附件而是 SKILL.md「Pipeline」的**第 7 步**（"Skip only if the user asked for a local page"），需 GitHub API／Pages 外網（`fetch()`）＋ `execFileSync` 呼叫 `git`／`gh auth token` 與一枚 repo 寫入 Token，與 ADR-005 egress default-deny 正面衝突，**不可被排除**。（`browser-check.mjs` 反倒可排除——SKILL.md 標為 "Optionally"、無瀏覽器時 skips cleanly。）**④**：`publish-pages.mjs` **768 行**、`publish-selftest.mjs` 356 行、`selftest.mjs` **341 行**，三檔皆超 300 行上限；且 `selftest.mjs` 用 `new Function()` 動態求值從 HTML 模板切下的 CORE 區段，等同 `eval`，為 ④ 明文禁止項。**`selftest.mjs` 又是 SKILL.md 硬規則 2 的強制品質閘門**（"Never ship without selftest.mjs printing PASS"），同樣不可排除 | **④**、**⑥** |
+| `course-quiz-builder`（the3ma，**精選否決；indexed 維持**） | — | MIT ✅ | **⑥**：`publish-pages.mjs` 不是可選附件而是 SKILL.md「Pipeline」的**第 7 步**（"Skip only if the user asked for a local page"），需 GitHub API／Pages 外網（`fetch()`）＋ `execFileSync` 呼叫 `git`／`gh auth token` 與一枚 repo 寫入 Token，與[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的 egress default-deny 正面衝突，**不可被排除**。（`browser-check.mjs` 反倒可排除——SKILL.md 標為 "Optionally"、無瀏覽器時 skips cleanly。）**④**：`publish-pages.mjs` **768 行**、`publish-selftest.mjs` 356 行、`selftest.mjs` **341 行**，三檔皆超 300 行上限；且 `selftest.mjs` 用 `new Function()` 動態求值從 HTML 模板切下的 CORE 區段，等同 `eval`，為 ④ 明文禁止項。**`selftest.mjs` 又是 SKILL.md 硬規則 2 的強制品質閘門**（"Never ship without selftest.mjs printing PASS"），同樣不可排除 | **④**、**⑥** |
 
 ### 6.3 License 缺失
 

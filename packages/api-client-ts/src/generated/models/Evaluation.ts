@@ -48,7 +48,7 @@ import {
  * during execution; `Evaluation.overall` records whether the task was
  * achieved. `succeeded` is an execution outcome and never a task verdict,
  * an evaluation never writes back to the run, and the two are not to be
- * merged into a single pass/fail on any screen (ADR-025, NFR-001).
+ * merged into a single pass/fail on any screen (NFR-001).
  * 
  * `status` and `overall` are likewise two fields on purpose. `status` is
  * about the judgement (did it run at all), `overall` is about the task
@@ -112,7 +112,7 @@ export interface Evaluation {
      */
     judgeModel: string;
     /**
-     * The judge prompt this verdict was reached under (ADR-017). Together
+     * The judge prompt this verdict was reached under. Together
      * with `rubric_version` it is what makes two revisions comparable.
      * 
      */
@@ -128,7 +128,7 @@ export interface Evaluation {
      * hole (`complete: false` on GET /runs/{id}/trace), an artifact could
      * not be read, or an input had to be truncated. A criterion judged on
      * incomplete evidence must not come back `passed`; `undetermined` is
-     * the honest outcome and the UI has to keep saying so (ADR-009).
+     * the honest outcome and the UI has to keep saying so.
      * 
      */
     evidenceComplete: boolean;

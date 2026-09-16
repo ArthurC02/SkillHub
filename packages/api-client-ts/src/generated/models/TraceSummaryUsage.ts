@@ -32,7 +32,7 @@ export interface TraceSummaryUsage {
      */
     outputTokens?: number;
     /**
-     * In Credit (ADR-068 decision 1). NULL means the gateway did not
+     * In Credit. NULL means the gateway did not
      * report a cost. Consumers MUST render that as "unreported" and
      * never as 0 - showing 0 tells the user the run was free.
      * 

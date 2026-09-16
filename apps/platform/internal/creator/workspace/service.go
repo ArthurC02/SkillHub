@@ -311,7 +311,7 @@ func (s *Service) PersonalWorkspace(ctx context.Context, user User) (Workspace, 
 	}
 	if len(ws) > 1 {
 		return Workspace{}, fmt.Errorf(
-			"user has %d workspaces; ADR-011 gives each account exactly one and every workspace scope is derived from this answer, so there is no safe one to pick",
+			"user has %d workspaces; each account has exactly one and every workspace scope is derived from this answer, so there is no safe one to pick",
 			len(ws))
 	}
 	return workspaceDTO(ws[0]), nil

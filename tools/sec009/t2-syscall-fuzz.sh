@@ -21,7 +21,7 @@ FUZZER_B64="$(base64 -w0 < "$HERE/_syscall_fuzz.py" 2>/dev/null || base64 < "$HE
 
 echo "T2 syscall fuzz: ${WORKERS} worker(s) x ${SECS}s"
 if [ "$SECS" -lt "$ADR_SECONDS" ] || [ "$WORKERS" -lt "$ADR_WORKERS" ]; then
-  echo "  NOTE: below ADR-022's ${ADR_WORKERS} x ${ADR_SECONDS}s — a procedure run, NOT T2"
+  echo "  NOTE: below the T2 threshold's ${ADR_WORKERS} x ${ADR_SECONDS}s — a procedure run, NOT T2"
 fi
 echo
 
@@ -217,7 +217,7 @@ rc=$?
 echo
 case $rc in
   0) if [ "$SECS" -ge "$ADR_SECONDS" ] && [ "$WORKERS" -ge "$ADR_WORKERS" ]; then
-       echo "t2: passed at ADR-022's duration — still NOT the SEC-009 acceptance (nested, wrong kernel)"
+       echo "t2: passed at the T2 threshold's duration — still NOT the SEC-009 acceptance (nested, wrong kernel)"
      else
        echo "t2: procedure executed and passed at ${WORKERS}x${SECS}s — NOT T2, which is ${ADR_WORKERS}x${ADR_SECONDS}s"
      fi ;;

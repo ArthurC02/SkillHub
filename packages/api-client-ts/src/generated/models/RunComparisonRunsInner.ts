@@ -82,7 +82,7 @@ export interface RunComparisonRunsInner {
     evaluation?: RunComparisonRunsInnerEvaluation;
     /**
      * The run's final answer, masked. Untrusted content — render as
-     * inert text (ADR-001).
+     * inert text.
      * 
      */
     finalOutput?: string;
@@ -104,7 +104,7 @@ export interface RunComparisonRunsInner {
      * dataset the snapshot referenced is still stored and unexpired.
      * 
      * False means a re-run of *these* inputs is no longer possible,
-     * and the screen must not offer one (ADR-003 刪除與可追溯性).
+     * and the screen must not offer one.
      * The comparison itself stays fully readable either way — the
      * snapshot's hash and both verdicts are history and do not
      * depend on the files still existing — so this disables a

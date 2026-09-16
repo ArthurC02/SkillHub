@@ -288,14 +288,14 @@ read_allow:
 
 immutable:
   evaluation_suggestion_applications: 建議與版本的套用關係只追加，後續套用不得覆寫既有來源
-  skill_versions: ADR-003 版本快照；採納建議＝新版本，不原地覆寫（鐵律 4）
-  test_case_snapshots: ADR-003 Run 引用的測試資料快照，改了會讓歷史 Run 的輸入說謊
-  run_status_transitions: ADR-008 狀態機的歷史；重寫轉移紀錄等於重寫 Run 發生過的事
+  skill_versions: 版本快照；採納建議＝新版本，不原地覆寫（鐵律 4）
+  test_case_snapshots: Run 引用的測試資料快照，改了會讓歷史 Run 的輸入說謊
+  run_status_transitions: Run 編排與非同步工作流程狀態機的歷史；重寫轉移紀錄等於重寫 Run 發生過的事
   trace_events: TRACE-001 執行事實；保存期到期是 DROP PARTITION，不是 DELETE
   audit_events: NFR-001 稽核軌跡；可被改寫的軌跡不是軌跡
-  download_artifacts: ADR-027 產出的位元組與雙雜湊；重打包是新列
-  download_records: ADR-027「誰在何時下載了什麼」，不是可編輯的狀態
-  evaluation_model_usage: ADR-026 判定當下的模型用量；重評是 append 新列
+  download_artifacts: 產出的位元組與雙雜湊；重打包是新列
+  download_records: 「誰在何時下載了什麼」，不是可編輯的狀態
+  evaluation_model_usage: 評估判定與 Judge 信任邊界判定當下的模型用量；重評是 append 新列
   cost_events: 05（2026-09-08）平台真實支出的一次付費呼叫紀錄；重算統計是新視窗，不改舊事件
   credit_entries: 05（2026-09-08）使用者餘額異動的分錄；調整用新分錄，不原地改舊分錄（鏡射鐵律 4）
 

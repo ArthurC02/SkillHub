@@ -4,16 +4,16 @@
 > **三列未追認，各自在等不同的東西**：`PDM-007`（Local Runner OS，後 MVP，本文件不涵蓋）；`PDM-009`（產品面已於 2026-08-22 追認，**報酬金額與受測者簽署**仍等 [`05` R-2](../../05-pending-rulings.md)）；`SBX-002` 實測項（CLI 內建 Skill 與內建工具的裁減幅度**一次都沒有量過**，部分完成保持未勾）。
 > 本文件由架構／規劃側起草，目的是把 `plans/03-work-items.md` 第 1 節的待決策項目，從「開放式問題」收斂成「可被否決或核准的具體方案」。
 > **除下方已記錄的定案外，其餘仍只提案、不定案。** 定案後請由負責人：(1) 在本文件對應章節標註「已採納／已修改／已否決」與日期；(2) 依 §9 的回寫對照表，把數值寫進 `plans/mvp/02` 對應需求 ID 的允收準則；(3) 才把 `plans/mvp/03` 的 `- [ ]` 勾選為 `- [x]`。
-> **已完成的落地動作（2026-08-14）**：`03` 的 PDM-001／002／003／011 已勾選；ADR-013／015 轉 Accepted、新增 ADR-018、ADR-014 轉 Superseded。~~**§9 的數值回寫至 `02` 尚未執行**，仍是開工前的待辦。~~<br>**2026-08-27 訂正**：§9.2 的回寫**早已陸續完成**（`02:TEST-002`／`RUN-003`／`TEST-005`／`NFR-002` 等處都已帶著這些值的可判定形式），這句「尚未執行」從某個時點起就是假的，只是沒有人回來改它。**真正一直缺的是反方向的那一半**——`02` 以「值已定案」的敘述引用這些數字，而 §9.1 的方塊一個都沒打，於是兩份文件對「是否已定案」永久不一致（`04` 乙-9）。**那一半在 2026-08-27 補上。**
+> **已完成的落地動作（2026-08-14）**：`03` 的 PDM-001／002／003／011 已勾選；意圖搜尋與 Sandbox 隔離與執行安全兩項決策定案，核心基礎設施改採容器化自架。~~**§9 的數值回寫至 `02` 尚未執行**，仍是開工前的待辦。~~<br>**2026-08-27 訂正**：§9.2 的回寫**早已陸續完成**（`02:TEST-002`／`RUN-003`／`TEST-005`／`NFR-002` 等處都已帶著這些值的可判定形式），這句「尚未執行」從某個時點起就是假的，只是沒有人回來改它。**真正一直缺的是反方向的那一半**——`02` 以「值已定案」的敘述引用這些數字，而 §9.1 的方塊一個都沒打，於是兩份文件對「是否已定案」永久不一致（`04` 乙-9）。**那一半在 2026-08-27 補上。**
 
 > ## 負責人定案紀錄
 >
 > | 日期 | 決策 | 影響範圍 |
 > | --- | --- | --- |
-> | **2026-08-14** | **模型供應商採 OpenAI API**（經 LiteLLM 閘道）。ADR-017 架構與實作鐵律 8 不變——所有模型呼叫仍只走閘道、供應商金鑰只存在閘道，改變的只是閘道背後的後端。 | §3 PDM-003 模型分層改為 OpenAI 系列（型號與定價見該節）；§3 補測清單收斂；§5.2 Token 與預算編列；[cost-estimation.md](cost-estimation.md) §6.2；[pdm-003-litellm-spike-report.md](pdm-003-litellm-spike-report.md) §11 即為定案後在**正式後端**上完成的補測 |
+> | **2026-08-14** | **模型供應商採 OpenAI API**（經 LiteLLM 閘道）。模型閘道架構與實作鐵律 8 不變——所有模型呼叫仍只走閘道、供應商金鑰只存在閘道，改變的只是閘道背後的後端。 | §3 PDM-003 模型分層改為 OpenAI 系列（型號與定價見該節）；§3 補測清單收斂；§5.2 Token 與預算編列；[cost-estimation.md](cost-estimation.md) §6.2；[pdm-003-litellm-spike-report.md](pdm-003-litellm-spike-report.md) §11 即為定案後在**正式後端**上完成的補測 |
 > | **2026-08-14** | **PDM-001／002／003 三項全部依本文件 v5 提案定案**（首批三個 Skill 類別＝`documents`／`writing`／`data`；白名單來源與九項精選檢查表；Runtime＝Claude Agent SDK TS on Node.js 22 LTS ＋ OpenAI 模型分層）。負責人同時批准 M0 全部產出並指示開工。 | `plans/03-work-items.md` 的 PDM-001／002／003／011 已勾選；§4 的 `lxml`（必要）與 `matplotlib`（建議）白名單增補隨 PDM-002 一併採納；§9 回寫對照表的數值寫入 `02` 仍待執行 |
-> | **2026-08-14** | **ADR 定案**：[ADR-013](../../../adr/ADR-013-intent-search-architecture.md) → **Accepted**（依 PDM-011 Spike，含四項實證調整）；[ADR-015](../../../adr/ADR-015-sandbox-isolation-technology.md) → **Accepted**（gVisor 基線與獨立 VM 池不變）；新增 [ADR-018](../../../adr/ADR-018-containerized-core-infrastructure.md) 核心基礎設施容器化自架 → **Accepted**，[ADR-014](../../../adr/ADR-014-core-infrastructure-selection.md) 隨之標為 **Superseded**。 | 本文件 §3 的 Embedding 與模型分層已回填至 ADR-013 待決策；§5.2 的 Sandbox 資源上限已回填至 ADR-015 容量池；[cost-estimation.md](cost-estimation.md) §5／§7 的容器化例外與 E1→E2 觸發條件已成為 ADR-018 決策內容 |
-> | **2026-08-27** | **§9.1 的十一列整批追認，照提案值，行為零變動**（[`05` R-1b](../../05-pending-rulings.md)）：PDM-001／002／003／PDM-003 補測項／PDM-003×PDM-011／004／005／006／008（兩列）／010，外加「三份文件同步」與「是否構成新架構決策」兩列的核對。**這一批沒有改任何一個值**——追認補的是簽名不是行為，程式碼與測試一行未動。<br>**唯一一個真正被擇一的**：PDM-010 §8.1 自己點名不准實作推斷的那件事——**首月額度語意取 `min(20, 30) = 20`**，不是 20+30=50。也就是 `entitlements/quota.go` 現在就在強制的那一組：首窗 20／每窗 30／每日 5／窗長 30 天。<br>**追認之後解除的是一條禁令，不是一個開關**：ADR-028 決策 4 的「未追認的數字不得出現在畫面上」對這四個數不再成立；`RUN_QUOTA=off`（ADR-055）沒有變，所以本次封測畫面上仍然沒有額度可顯示。<br>**同批追認 M5 生成額度的四個數字**（每日 10／每窗 30／首窗 20／窗長 30 天，[`05` R-9](../../05-pending-rulings.md)），同樣是解除禁令而非打開 `GENERATE_QUOTA`（ADR-056）。<br>**未追認的三項，以及各自在等什麼**：**`PDM-007`**（Local Runner 首批 OS）等的是**需求訊號**——Local Runner 已移出 MVP 首發（`01` §7.3），本文件從一開始就不涵蓋它；**`PDM-009`**（封測人數與門檻）產品面已於 2026-08-22 追認（12 人、三層各 4、14 天、三條門檻），**等的是報酬金額與受測者簽署**（`04` 乙-15、[`05` R-2](../../05-pending-rulings.md)），而報酬是本次封測的最大單項支出且 [cost-estimation.md](cost-estimation.md) 沒有一行涵蓋它；**`SBX-002` 實測項**等的是**一次沒人做過的量測**——CLI 內建 Skill 與內建工具的裁減幅度與 Skill 相容性的權衡，那是 harness 19.4K 固定前綴的唯一槓桿。 | §9.1 全表；`03` §1 的 PDM-004／005／006／008／010 同批勾選；`01` §13 去向表三列訂正；[ADR-055](../../../adr/ADR-055-the-run-allowance-is-turned-off-and-that-took-an-action.md) 與 [ADR-056](../../../adr/ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md) 各加一節「後續」（**不改寫決策**）；`entitlements/quota.go`／`generate_quota.go` 與兩支測試的 `待追認` 註記改為已追認 |
+> | **2026-08-14** | **ADR 定案**：[意圖搜尋](../../../adr/README.md#意圖搜尋)決策定案（依 PDM-011 Spike，含四項實證調整）；[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)決策定案（gVisor 基線與獨立 VM 池不變）；[資料所有權與核心基礎設施](../../../adr/README.md#資料所有權與核心基礎設施)改為核心基礎設施容器化自架的決策。 | 本文件 §3 的 Embedding 與模型分層已回填至意圖搜尋的待決策；§5.2 的 Sandbox 資源上限已回填至 Sandbox 隔離與執行安全的容量池；[cost-estimation.md](cost-estimation.md) §5／§7 的容器化例外與 E1→E2 觸發條件已成為資料所有權與核心基礎設施的決策內容 |
+> | **2026-08-27** | **§9.1 的十一列整批追認，照提案值，行為零變動**（[`05` R-1b](../../05-pending-rulings.md)）：PDM-001／002／003／PDM-003 補測項／PDM-003×PDM-011／004／005／006／008（兩列）／010，外加「三份文件同步」與「是否構成新架構決策」兩列的核對。**這一批沒有改任何一個值**——追認補的是簽名不是行為，程式碼與測試一行未動。<br>**唯一一個真正被擇一的**：PDM-010 §8.1 自己點名不准實作推斷的那件事——**首月額度語意取 `min(20, 30) = 20`**，不是 20+30=50。也就是 `entitlements/quota.go` 現在就在強制的那一組：首窗 20／每窗 30／每日 5／窗長 30 天。<br>**追認之後解除的是一條禁令，不是一個開關**：[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度)決策的「未追認的數字不得出現在畫面上」規則對這四個數不再成立；`RUN_QUOTA=off`沒有變，所以本次封測畫面上仍然沒有額度可顯示。<br>**同批追認 M5 生成額度的四個數字**（每日 10／每窗 30／首窗 20／窗長 30 天，[`05` R-9](../../05-pending-rulings.md)），同樣是解除禁令而非打開 `GENERATE_QUOTA`。<br>**未追認的三項，以及各自在等什麼**：**`PDM-007`**（Local Runner 首批 OS）等的是**需求訊號**——Local Runner 已移出 MVP 首發（`01` §7.3），本文件從一開始就不涵蓋它；**`PDM-009`**（封測人數與門檻）產品面已於 2026-08-22 追認（12 人、三層各 4、14 天、三條門檻），**等的是報酬金額與受測者簽署**（`04` 乙-15、[`05` R-2](../../05-pending-rulings.md)），而報酬是本次封測的最大單項支出且 [cost-estimation.md](cost-estimation.md) 沒有一行涵蓋它；**`SBX-002` 實測項**等的是**一次沒人做過的量測**——CLI 內建 Skill 與內建工具的裁減幅度與 Skill 相容性的權衡，那是 harness 19.4K 固定前綴的唯一槓桿。 | §9.1 全表；`03` §1 的 PDM-004／005／006／008／010 同批勾選；`01` §13 去向表三列訂正；[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度)的 Run 與生成額度開關各加一節「後續」（**不改寫決策**）；`entitlements/quota.go`／`generate_quota.go` 與兩支測試的 `待追認` 註記改為已追認 |
 >
 > **此定案的一個直接紅利**：§11 的補測不再需要 Anthropic 憑證，且測到的就是生產模型本身，結論效力高於原先的「代打」設計。
 
@@ -32,12 +32,12 @@
 
 ```text
 PDM-001 (類別)  ──┬──► PDM-002 (來源與精選標準) ──► CONTENT-003/008
-                  │                               └─► PDM-011 完整 golden query set ──► ADR-013 定案
+                  │                               └─► PDM-011 完整 golden query set ──► 意圖搜尋定案
                   └──► PDM-004 (Runtime 語言) ──► SBX-002 Runtime Image
 PDM-003 (Runtime/模型) ──┬──► PDM-004、PDM-005（Token 上限）、PDM-008（打包 Profile）
-                         ├──► ADR-017 待決策「Virtual Key 注入機制」（＝威脅模型 Q11）
-                         └──► ADR-013 待決策「Embedding 與查詢改寫模型」
-PDM-005 (資源上限) ──► PDM-010 (免費額度成本) ──► 部署平台成本試算 ──► ADR-014/015 定案
+                         ├──► 模型閘道待決策「Virtual Key 注入機制」（＝威脅模型 Q11）
+                         └──► 意圖搜尋待決策「Embedding 與查詢改寫模型」
+PDM-005 (資源上限) ──► PDM-010 (免費額度成本) ──► 部署平台成本試算 ──► 資料所有權與核心基礎設施、Sandbox 隔離與執行安全定案
 PDM-006 (保存期限) ──► NFR-002 可測試時間要求、SEC-006、威脅模型 Q9
 ```
 
@@ -59,14 +59,14 @@ PDM-006 (保存期限) ──► NFR-002 可測試時間要求、SEC-006、威�
 
 1. **是個人創作者真的會做的任務**（否則 M1 驗證閘門的使用者測試沒有意義）。
 2. **公開生態已有可精選到高品質的 Skill**（否則 CONTENT-003 湊不出 golden query set 需要的量）。
-3. **能在 ADR-005／015 的 Sandbox 限制下驗證效果**——沒有 GPU、預設封鎖外網、非 root、限時、只能存取使用者上傳資料與預裝資源。這一條淘汰掉大量看起來很吸引人的類別。
+3. **能在 Sandbox 隔離與執行安全的限制下驗證效果**——沒有 GPU、預設封鎖外網、非 root、限時、只能存取使用者上傳資料與預裝資源。這一條淘汰掉大量看起來很吸引人的類別。
 
 ### 評估選項
 
 | 選項 | 類別組合 | 優點 | 缺點 |
 | --- | --- | --- | --- |
 | A：產出導向 | ①文件與試算表產出 ②內容寫作與品牌一致性 ③資料整理與分析 | 三類都有「可下載的產物」，Sandbox 內可用解析器做確定性驗收；供給充足 | 對「精深者」persona 稍偏基礎 |
-| B：開發者導向 | ①程式碼審查與測試 ②Web 應用自動化測試 ③MCP／Skill 建置 | 供給最大（VoltAgent 清單以開發類為主）；技術族群早期採用意願高 | Web 測試需要瀏覽器與網路，違反 ADR-005 egress 政策；程式碼審查需要 repo 上下文，Dataset 上傳難以模擬 |
+| B：開發者導向 | ①程式碼審查與測試 ②Web 應用自動化測試 ③MCP／Skill 建置 | 供給最大（VoltAgent 清單以開發類為主）；技術族群早期採用意願高 | Web 測試需要瀏覽器與網路，違反 Sandbox 隔離與執行安全的 egress 政策；程式碼審查需要 repo 上下文，Dataset 上傳難以模擬 |
 | C：創意導向 | ①視覺／前端設計 ②簡報與敘事 ③演算法藝術 | 展示效果最好、最容易做 demo | 驗收幾乎只能靠人眼；`02:EVAL-001` 要求「附證據」在此類別退化為 LLM Judge 單一來源，M3 評估可信度不足 |
 
 ### 建議
@@ -84,7 +84,7 @@ PDM-006 (保存期限) ──► NFR-002 可測試時間要求、SEC-006、威�
 - **驗收可解釋性排序**：`data` > `documents` > `writing`。三者形成一個梯度，正好讓 M3 的 `03:EVAL-005`「規則判斷／模型判斷／使用者判斷」三種來源都有真實案例，而不是三個類別都只能靠 LLM Judge（`02:EVAL-001` 要求「不得只提供無法解釋的分數」）。
 - **三類供給全部已查核落地（v5 依實查更新）**：`anthropics/skills` 提供 `docx`／`xlsx`／`pptx`／`pdf`（文件類）與 `internal-comms`／`brand-guidelines`（寫作類）；**`data` 類別的供給缺口已解除**——[data-category-sourcing.md](data-category-sourcing.md) 走完 PDM-002 的回溯准入流程後查得 **25 個合格候選、橫跨 7 個獨立來源 repo**，超過 PDM-002「每類別 8–12 個索引項目、4–6 個精選」的目標，且來源多樣性高於另兩類（各僅 1 個 repo）。
   **兩項連帶修正**：(i) `anthropics/skills` 的 skill 目錄**實數清點完成＝17 個**（Apache-2.0 12／source-available 4／無 License 檔 1），PDM-002 選項 A「官方唯一」維持否決——17 個中屬 `data` 者只有 `xlsx` 一個。(ii) **`doc-coauthoring` 不再計入 `writing` 供給**：該 skill 目錄無 `LICENSE.txt`，且 repo 根目錄亦無可繼承的 License 檔，依精選標準第 1 項與「License 狀態預設未知」規則，**暫不可標為精選、不可打包**。`writing` 的官方精選供給實為 `brand-guidelines` ＋ `internal-comms` 兩個。
-- **Sandbox 相容**：三類都只需要「上傳檔案進去、產出檔案出來」，不需要外網、不需要 MCP、不需要瀏覽器——完全落在 ADR-005 的 MVP 限制內，SBX-007 的 egress 允許清單可以維持 PDM-005 §5.2 列的三項（LiteLLM 閘道、物件儲存短效授權端點、Trace ingestion 端點），不需要為任何類別開放額外目的地。
+- **Sandbox 相容**：三類都只需要「上傳檔案進去、產出檔案出來」，不需要外網、不需要 MCP、不需要瀏覽器——完全落在 Sandbox 隔離與執行安全的 MVP 限制內，SBX-007 的 egress 允許清單可以維持 PDM-005 §5.2 列的三項（LiteLLM 閘道、物件儲存短效授權端點、Trace ingestion 端點），不需要為任何類別開放額外目的地。
 - **Persona 覆蓋**：`documents` 服務學習者（立即有產物）、`writing` 服務改善者（rubric 反覆調整）、`data` 服務精深者（可自行改腳本）。
 
 ### 風險
@@ -96,7 +96,7 @@ PDM-006 (保存期限) ──► NFR-002 可測試時間要求、SEC-006、威�
 | ~~**`data` 類別在白名單中無可直接匯入的來源**~~ **（v5 已解除）** | ~~三個類別中有一類湊不出 PDM-002 的 8–12 個索引目標~~ | **已由 [data-category-sourcing.md](data-category-sourcing.md) 解除：25 個合格候選 / 7 個 repo，換類別的觸發條件未成立。** 但查核附帶三項須併同定案的條件（`lxml` 必加、`matplotlib` 建議加、§2 候選方向表須重寫），全部已回填至 §2／§4 |
 | **`data` 的來源品質梯度顯著低於另兩類**（v5 新增，取代上一列） | 25 個候選中 24 個來自 1–5★ 的個人社群 repo（`documents`／`writing` 靠 168,872★ 的 `anthropics/skills`）；上游刪除或改寫的機率高得多，且精選標準第 4／5 項的人工審查成本集中於此 | 匯入時保存 commit SHA 與內容雜湊（INGEST-004 既有要求）；INGEST-010／CONTENT-009 的失效流程對 `data` 需實際演練一次；CONTENT-003／008 排程時把 `data` 的精選工時**單獨估算**，並優先選 prompt-only 候選 |
 | **`data` 候選的語意過度集中**（v5 新增） | 25 個中有 12 個是同一 repo 的 `excel-*`、另 12 個是同一作者的資料清洗系列，描述高度同質；PDM-011 的 recall@5 可能因語意叢集而失去鑑別力——成因由「數量不足」變成「語意過度集中」 | 出完整 golden query set 時**強制跨 repo 抽樣**，每個來源 repo 至多貢獻 20% 題目；必要時把條件候選納入 `indexed` 層（該層不需九項全過）以增加語意分散度 |
-| `documents` 的高品質 Skill 集中在 `anthropics/skills`，且其中 4 個是 source-available 非 OSS | License 風險（見 PDM-002） | 索引與平台內試跑可以，但**不產出任何 Download Artifact**（PDM-002 風險表、PDM-008 共通規則已統一為此保守政策）；依 ADR-012「無 License 或不允許再散布時阻擋或限制用途」處理 |
+| `documents` 的高品質 Skill 集中在 `anthropics/skills`，且其中 4 個是 source-available 非 OSS | License 風險（見 PDM-002） | 索引與平台內試跑可以，但**不產出任何 Download Artifact**（PDM-002 風險表、PDM-008 共通規則已統一為此保守政策）；依打包、授權溯源與散布政策「無 License 或不允許再散布時阻擋或限制用途」處理 |
 
 ---
 
@@ -106,7 +106,7 @@ PDM-006 (保存期限) ──► NFR-002 可測試時間要求、SEC-006、威�
 
 ### 背景
 
-`plans/mvp/01` 第 12 節把「初期內容品質不足」列為第二大產品風險，對策是「精選優先、來源分級、限制全網內容」。同時 ADR-007 與實作鐵律第 1 條要求匯入與掃描階段不得執行套件內 Script，所以精選標準必須全部是**靜態可判定**或**平台試跑可判定**的，不能依賴「跑跑看再說」。
+`plans/mvp/01` 第 12 節把「初期內容品質不足」列為第二大產品風險，對策是「精選優先、來源分級、限制全網內容」。同時 Sandbox 隔離與執行安全的信任邊界與實作鐵律第 1 條要求匯入與掃描階段不得執行套件內 Script，所以精選標準必須全部是**靜態可判定**或**平台試跑可判定**的，不能依賴「跑跑看再說」。
 
 ### 評估選項
 
@@ -164,7 +164,7 @@ v2 提名的三個方向已由 [data-category-sourcing.md](data-category-sourcin
 
 **精選標準（`curated` 層的允收檢查表，九項全過才可標為精選）：**
 
-1. **License 明確且允許再散布**（OSI 認可，或作者明確授權）。source-available 者可索引，但打包流程依 ADR-012 阻擋散布。
+1. **License 明確且允許再散布**（OSI 認可，或作者明確授權）。source-available 者可索引，但打包流程依打包、授權溯源與散布政策阻擋散布。
 2. **來源可追溯**：保存 repo URL、commit SHA、擷取時間、內容雜湊（INGEST-004）。
 3. **規格驗證無阻擋錯誤**：`SKILL.md` 存在、YAML frontmatter 合法、`name`／`description` 齊備、所有檔案引用可解析（`02:SKILL-002`）。
 4. **Script 可審閱**：無 Script，或全部 Script 合計 ≤ 300 行、由人工逐行審過，且不含 `eval`／動態下載／`subprocess` 呼叫外部網路。
@@ -181,7 +181,7 @@ v2 提名的三個方向已由 [data-category-sourcing.md](data-category-sourcin
 | 精選（curated） | 4–6 | 12–18 |
 | 已索引（indexed） | 8–12（含精選） | 24–36 |
 
-理由：ADR-013 的 PDM-011 Spike 要求每類別 20 條 golden query 量測 recall@5。若候選池只有 4–5 個 Skill，recall@5 幾乎必然為 1.0，Spike 失去鑑別力。每類別 8–12 個索引項目是能讓 recall@5 產生訊號的最小規模。
+理由：意圖搜尋的 PDM-011 Spike 要求每類別 20 條 golden query 量測 recall@5。若候選池只有 4–5 個 Skill，recall@5 幾乎必然為 1.0，Spike 失去鑑別力。每類別 8–12 個索引項目是能讓 recall@5 產生訊號的最小規模。
 
 ### 理由
 
@@ -209,17 +209,17 @@ v2 提名的三個方向已由 [data-category-sourcing.md](data-category-sourcin
 
 `plans/mvp/01` 第 7.2 節允許 MVP「只設定一個主要 Agent Runtime 作為平台驗證基準」。這個選擇決定 SBX-002 的 Runtime Image、`03:TRACE-002`／`03:TRACE-003` 能拿到什麼粒度的事件、以及 PDM-008 的第一個打包 Profile。
 
-硬性前提（ADR-017 與實作鐵律第 8 條）：**所有模型呼叫必須走 LiteLLM 閘道，不得直連供應商；供應商金鑰只存在閘道。** 因此 Runtime 必須支援「把 API base URL 與憑證換成閘道的」這件事，否則直接出局。
+硬性前提（模型閘道與可觀測性、實作鐵律第 8 條）：**所有模型呼叫必須走 LiteLLM 閘道，不得直連供應商；供應商金鑰只存在閘道。** 因此 Runtime 必須支援「把 API base URL 與憑證換成閘道的」這件事，否則直接出局。
 
 ### 評估選項
 
 | 選項 | 內容 | 優點 | 缺點 |
 | --- | --- | --- | --- |
 | A：Claude Code CLI（headless） | 在 Sandbox 內以 `claude -p` 非互動模式執行 | 與使用者本機體驗最接近；Skill 載入行為即 Claude Code 行為 | CLI 的結構化事件輸出契約較不穩定，`02:TRACE-001` 的 Schema 綁在 CLI 版本上；權限模型偏互動式，headless 下要靠旗標壓平 |
-| B：Claude Agent SDK（函式庫） | `@anthropic-ai/claude-agent-sdk`（TS）或 `claude-agent-sdk`（Python），以 `query(prompt, options)` 驅動 | 就是 Claude Code 的 harness 打包成函式庫：內建 Read／Write／Edit／Bash／Glob／Grep、context 管理、hooks、permissions、subagents；hooks 正好是 `03:TRACE-002`／`03:TRACE-003` 的天然掛載點；permissions 對應 `02:TEST-005` 執行前權限摘要 | 仍是自建部署（harness only，不含部署）——但這正是 ADR-005 要求的 |
+| B：Claude Agent SDK（函式庫） | `@anthropic-ai/claude-agent-sdk`（TS）或 `claude-agent-sdk`（Python），以 `query(prompt, options)` 驅動 | 就是 Claude Code 的 harness 打包成函式庫：內建 Read／Write／Edit／Bash／Glob／Grep、context 管理、hooks、permissions、subagents；hooks 正好是 `03:TRACE-002`／`03:TRACE-003` 的天然掛載點；permissions 對應 `02:TEST-005` 執行前權限摘要 | 仍是自建部署（harness only，不含部署）——但這正是 Sandbox 隔離與執行安全要求的 |
 | C：自建最小 agent loop | 直接用 Anthropic Messages API + 自寫 tool loop | 事件粒度完全自己掌握 | 要自己實作 Skill 載入、檔案工具、context 管理；等於重寫 Claude Code，與「驗證 Skill 生態」的產品目標無關，是純成本 |
 
-> 註：Anthropic Managed Agents（CMA）此處**不列入評估**——它同時提供 harness 與託管沙箱，與 ADR-005「自建 Sandbox、平台承擔隔離責任」的既定決策直接衝突，且會讓 ADR-004 的 Provider-neutral 邊界形同虛設。若未來要引入，應走「受管理第三方 Provider」路徑並另立 ADR。
+> 註：Anthropic Managed Agents（CMA）此處**不列入評估**——它同時提供 harness 與託管沙箱，與 Sandbox 隔離與執行安全「自建 Sandbox、平台承擔隔離責任」的既定決策直接衝突，且會讓 Run 編排與非同步工作流程的 Provider-neutral 邊界形同虛設。若未來要引入，應走「受管理第三方 Provider」路徑並另立 ADR。
 
 ### 建議
 
@@ -228,8 +228,8 @@ v2 提名的三個方向已由 [data-category-sourcing.md](data-category-sourcin
 > **供應商定案為 OpenAI 後，Runtime 選擇不變（v5）。** 「Claude Agent SDK → LiteLLM 閘道 → OpenAI 後端」**正是實測 7/7 通過的那條路徑**，不是推論：Spike §4 的閘道相容性與 §10／§11 的 Skill 載入與行為測試全部在此組態下完成，`/v1/messages` 路由由閘道轉譯到 OpenAI 的 Responses API。
 > **選 SDK 的核心理由在此定案後反而更強**：Agent Skills 的載入是 Claude Agent SDK 的**原生機制**（檔案系統發現 ＋ `Skill` 工具 ＋ harness 攔截），與後端模型無關——§11.4 已實測白名單過濾的攔截點在 harness 而非模型。因此「換後端供應商」不需要重做載入設計，這正是選項 C（自建 agent loop）買不到的東西。
 
-- Runtime Image 名稱：`skillhub/runtime-agent-sdk:2026.08-1`（digest 與 SBOM 依 ADR-005 保存）。
-- 選 TypeScript 而非 Python 版：TS 版是 Claude Code 的參考實作路線，工具行為與版本節奏最接近；且 ADR-016 守則 5 已明訂「Sandbox 內 Agent Runtime 的語言由 Runtime Image 決定，與平台語言選型無關」，因此不與「平台用 Go／Python」衝突。
+- Runtime Image 名稱：`skillhub/runtime-agent-sdk:2026.08-1`（digest 與 SBOM 依 Sandbox 隔離與執行安全保存）。
+- 選 TypeScript 而非 Python 版：TS 版是 Claude Code 的參考實作路線，工具行為與版本節奏最接近；且系統情境、平面與部署路徑守則 5 已明訂「Sandbox 內 Agent Runtime 的語言由 Runtime Image 決定，與平台語言選型無關」，因此不與「平台用 Go／Python」衝突。
 - **Skill 載入路徑（v4 依實測修正）：`<workdir>/.claude/skills/<skill-name>/SKILL.md`。** Run 開始前由 Sandbox Worker 以短效物件授權下載展開（SBX-008）。
   v1–v3 假設的 `<workdir>/skills/<skill-name>/` **已被證偽**——[pdm-003-litellm-spike-report.md](pdm-003-litellm-spike-report.md) §10 測項 2 實測該佈局在任何設定下都不被發現。
 
@@ -254,10 +254,10 @@ v2 提名的三個方向已由 [data-category-sourcing.md](data-category-sourcin
 | **Sandbox 試跑（預設）** | **`gpt-5.4-mini`** | **$0.75 / $4.50 / $0.075** | **依 §11.3／§11.6(2) 實測選定，不是成本偏好**：(1) 自主觸發率旗艦**沒有任何優勢**（Sol 與 Mini 同為 **0/9**），「用更強的模型換自主觸發」的假設被證偽；(2) 明確點名時兩者皆 PASS——試跑要驗的「Skill 內容能否正確驅動模型」在 mini 級完全成立；(3) **旗艦的失敗模式對 Sandbox 更不利**：Sol 三次中兩次改用 `Glob`／`Read` 去翻檔案系統找 `SKILL.md`（其中一次因此耗盡 turn 上限而中止），額外燒 turn 與 input token 並引入非預期路徑；(4) 成本差 **6.7 倍** |
 | Sandbox 試跑（進階，使用者可選） | `gpt-5.6-sol` | $5 / $30 / $0.50 | 給「精深者」驗證高難度 Skill；預設關閉，選用時 UI 顯示成本差異（`02:TEST-005` 成本摘要）。**UI 不得暗示旗艦會提高 Skill 觸發率**——實測為 0/9，該宣稱不成立 |
 | LLM Judge（`02:EVAL-001`） | `gpt-5.6-terra` | $2 / $12 / $0.20 | Judge 品質直接決定 M3 可信度，不宜用最便宜的；但 Judge 是純文字評分、**不呼叫工具**，旗艦的檔案系統探索失敗模式在此不會發生，因此中階足夠。**與試跑預設不同型號，順帶降低自我偏袒風險**（見風險表） |
-| 索引時增強（ADR-013 第 1 段） | `gpt-5.6-sol` | $5 / $30 / $0.50 | 每個 Skill Version 只跑一次、總量極小（24–36 個），**這是全表唯一「品質完全壓過成本」的用途**——其產出會成為主要檢索欄位（PDM-011 §6.2-2），錯一次會污染整條檢索鏈 |
-| 查詢改寫（ADR-013 第 2 段） | `gpt-5.6-luna` | $0.20 / $1.20 / $0.02 | 在 NFR-004 p95 < 2 秒的延遲預算內，選最快最便宜的一檔。**定位（v3 依真 Embedding 重測下修）：Top-1 精準度的增益步驟，不是召回的必要條件**——跨語言召回由向量腿承載。**降級路徑不變：改寫失敗或逾時 → 降級為向量檢索，不得降級為原句 FTS** |
-| 符合原因潤飾（ADR-013 第 3 段） | `gpt-5.6-luna` | 同上 | 可選強化，逾時降級為模板。**但模板路徑不足以覆蓋無詞彙交集的命中**（v3：Spike §9.4-4 已由 nice-to-have 升為必要項），需在索引時一併生成「適用任務範例句」供向量召回的結果引用 |
-| Embedding（回答 ADR-013 待決策） | `text-embedding-3-small`（1536 維），經 LiteLLM 路由 | 約 $0.02 / MTok | **維持不變**，且供應商定案後**變成同一家的原生模型**——原本「Anthropic 無 embedding 端點，需另接一家」的權宜安排消失，多供應商面縮減為零。1536 維在 pgvector HNSW 上參數成熟、索引體積小；語料僅數十筆，換模型全量重建成本可忽略。**首要驗收條件（跨語言召回）已實測通過，見下。** 備選 `voyage-3` 已由定案前置降為選項 |
+| 索引時增強 | `gpt-5.6-sol` | $5 / $30 / $0.50 | 每個 Skill Version 只跑一次、總量極小（24–36 個），**這是全表唯一「品質完全壓過成本」的用途**——其產出會成為主要檢索欄位（PDM-011 §6.2-2），錯一次會污染整條檢索鏈 |
+| 查詢改寫 | `gpt-5.6-luna` | $0.20 / $1.20 / $0.02 | 在 NFR-004 p95 < 2 秒的延遲預算內，選最快最便宜的一檔。**定位（v3 依真 Embedding 重測下修）：Top-1 精準度的增益步驟，不是召回的必要條件**——跨語言召回由向量腿承載。**降級路徑不變：改寫失敗或逾時 → 降級為向量檢索，不得降級為原句 FTS** |
+| 符合原因潤飾 | `gpt-5.6-luna` | 同上 | 可選強化，逾時降級為模板。**但模板路徑不足以覆蓋無詞彙交集的命中**（v3：Spike §9.4-4 已由 nice-to-have 升為必要項），需在索引時一併生成「適用任務範例句」供向量召回的結果引用 |
+| Embedding（回答意圖搜尋的待決策） | `text-embedding-3-small`（1536 維），經 LiteLLM 路由 | 約 $0.02 / MTok | **維持不變**，且供應商定案後**變成同一家的原生模型**——原本「Anthropic 無 embedding 端點，需另接一家」的權宜安排消失，多供應商面縮減為零。1536 維在 pgvector HNSW 上參數成熟、索引體積小；語料僅數十筆，換模型全量重建成本可忽略。**首要驗收條件（跨語言召回）已實測通過，見下。** 備選 `voyage-3` 已由定案前置降為選項 |
 
 > ⚠️ **試跑預設 Prompt 的強制要求（v5，由 §11.3 實測直接導出）：預設 Prompt 必須明確指示呼叫被測 Skill。**
 > 在 OpenAI 後端上，「Skill 被模型自主觸發」的基準率實測為 **0/9（旗艦與 mini 皆然）**，且對照組證明載入機制完好——這是**模型自主行為**，不是缺陷，換更強的模型也不會改善。三個直接後果：
@@ -268,11 +268,11 @@ v2 提名的三個方向已由 [data-category-sourcing.md](data-category-sourcin
 
 > **Embedding 選型的首要驗收條件：繁體中文查詢 → 英文 `SKILL.md` 語料的 recall@5 —— v3：已實測通過。**
 > [pdm-011-spike-report.md](pdm-011-spike-report.md) §9（v2 真 Embedding 重測，2026-08-13）以 `text-embedding-3-small` 對同一組 12 份樣本與 10 條查詢重跑：繁中原樣查詢對英文語料，**Top-3 召回 5/5（100%）、Top-1 4/5（80%）**（對照 BM25 的 Top-3 20%）。v1「唯一命中靠查詢夾帶英文詞」的假性命中不再是唯一來源——四條完全無詞彙交集的中文查詢全部被向量腿召回，其中三條直接是 Top-1。
-> **結論**：`text-embedding-3-small` 在跨語言這一項**過關**，ADR-013 的降級路徑成立、不需重新設計。
+> **結論**：`text-embedding-3-small` 在跨語言這一項**過關**，意圖搜尋的降級路徑成立、不需重新設計。
 > **`voyage-3` 對比降為選項**：Spike §9.6 認為 Top-3 已達 100%，沒有留下可供改進的空間；除非負責人判定原樣中文的 Top-1 80% 不足，否則不值得再引入一家供應商。**此項不再是定案前置。**
 > 仍未涵蓋：Spike v2 直接呼叫供應商 API 而**未經 LiteLLM 閘道**（Spike 可接受，產品實作不可——鐵律 8）；索引時摘要與查詢改寫仍為模擬，未呼叫真 LLM。
 
-**Virtual Key 注入機制（回答 ADR-017 待決策，＝威脅模型 Q11）：建議採環境變數。**
+**Virtual Key 注入機制（回答模型閘道與可觀測性的待決策，＝威脅模型 Q11）：建議採環境變數。**
 Go 控制平面在 `provisioning` 階段向 LiteLLM 管理 API 簽發帶預算與 TTL 的 Virtual Key，注入 Sandbox 為 `ANTHROPIC_BASE_URL`（指向閘道的 Anthropic 相容 `/v1/messages` 端點）與 `ANTHROPIC_AUTH_TOKEN`。Claude Agent SDK 原生讀取這兩個變數，因此不需要改寫 Skill、也不需要客製設定檔——這是選 B 而非 C 的一個實際好處。
 
 > ⚠️ **已知殘餘風險（v2 補，回應威脅模型 TM-SEC-02 與 Q11）**：威脅模型明確指出「**環境變數對 Script 而言最容易被讀走**」。本提案仍選環境變數，是因為設定檔對 Sandbox 內的 Script 同樣可讀（兩者都在同一個檔案系統與程序環境內），設定檔換來的是實作複雜度而非實質隔離；真正的緩解在於**限制爆炸半徑**，不在於藏得比較深。已生效的緩解，全部是基線既有機制：
@@ -308,7 +308,7 @@ Go 控制平面在 `provisioning` 階段向 LiteLLM 管理 API 簽發帶預算�
 > | --- | --- | --- |
 > | `thinking` 透傳 | **不再適用（緣由：供應商定案）** | 該項要驗的是「Anthropic 後端會不會原生透傳 `thinking`」。後端定為 OpenAI 後**沒有 Anthropic 路徑可測**，問題性質從「待驗證」變成「已知的固定組態」——見下方發現 (a) 的 v5 改寫：`MAX_THINKING_TOKENS=0` 由 Spike 變通升格為 **Runtime Image 的常設設定** |
 > | prompt caching 下的 `cache_read_input_tokens` | **已完成**（§11.5） | 實測 LiteLLM 1.96.2 在 `/v1/messages` 上**完全不輸出 cache 用量欄位**（缺欄，不是 0），但 **spend log 的計費金額有正確套用 9.4× 快取折扣**。→ **計費準確、可觀測性缺欄**。校正結果全部回填 §5.2 |
-> | 跨供應商 fallback 對 Agent SDK 路徑的可用性 | **不再適用（緣由：供應商定案）** | 單一供應商，MVP 無跨供應商 fallback 場景。**此限制仍需記入 ADR-017 的已知邊界**：日後若要新增第二家供應商作 fallback，這一項必須先實測，不可假設可用 |
+> | 跨供應商 fallback 對 Agent SDK 路徑的可用性 | **不再適用（緣由：供應商定案）** | 單一供應商，MVP 無跨供應商 fallback 場景。**此限制仍需記入模型閘道與可觀測性的已知邊界**：日後若要新增第二家供應商作 fallback，這一項必須先實測，不可假設可用 |
 > | 模型自主觸發 Skill 的能力 | **已完成**（§11.3） | **0/9，旗艦與 mini 皆然**，且對照組（明確點名）兩者都 PASS。答案是「**不能**」——自主觸發不可作為試跑判準。已回填至上方模型表的強制要求 |
 >
 > **連帶結案的 SBX-002 實測項**：`skills` 白名單的**行為性**過濾效果（§10.5 記錄項 a 的疑問）亦已由 **§11.4 實測回答＝有效**，見下方發現 (d) 的 v5 改寫。
@@ -316,7 +316,7 @@ Go 控制平面在 `provisioning` 階段向 LiteLLM 管理 API 簽發帶預算�
 > **第 1 項實測衍生的三項影響（全部需在定案時處理）：**
 >
 > **(a) `thinking` 參數在 `/v1/messages` 上不受 `drop_params` 管轄。（v5 由「待補測」改寫為「常設組態」）** 同一組設定下，`/v1/chat/completions` 送 `reasoning_effort` 會被正確丟棄（200 OK），但 `/v1/messages` 送 `thinking` 區塊會回 400——這不是模型能力問題，是 LiteLLM 1.96.2 的 Anthropic 相容路由未套用參數丟棄邏輯。**只在後端不是 Anthropic 模型時觸發。**
-> **v5：供應商定案為 OpenAI，代表這個條件永遠成立，不是偶發情境。** 兩個後果隨之改變：**(i)** 客戶端設 `MAX_THINKING_TOKENS=0` **由 Spike 變通升格為 Runtime Image 的常設設定**，SBX-002 須將其與「`ANTHROPIC_API_KEY` 未設」並列為映像建置的斷言項——漏設不是效能問題，是每個 Run 的第一個請求就 400。**(ii)** ADR-017「模型抽換與 fallback 設定在閘道層」的限制仍然存在，但在 MVP 不會被觸發（單一供應商）；記入 ADR-017 的已知邊界，日後新增第二家供應商前必須實測。（此為 ADR 既有決策，本提案僅記錄，不修改 ADR。）
+> **v5：供應商定案為 OpenAI，代表這個條件永遠成立，不是偶發情境。** 兩個後果隨之改變：**(i)** 客戶端設 `MAX_THINKING_TOKENS=0` **由 Spike 變通升格為 Runtime Image 的常設設定**，SBX-002 須將其與「`ANTHROPIC_API_KEY` 未設」並列為映像建置的斷言項——漏設不是效能問題，是每個 Run 的第一個請求就 400。**(ii)** 模型閘道與可觀測性「模型抽換與 fallback 設定在閘道層」的限制仍然存在，但在 MVP 不會被觸發（單一供應商）；記入模型閘道與可觀測性的已知邊界，日後新增第二家供應商前必須實測。（此為 ADR 既有決策，本提案僅記錄，不修改 ADR。）
 >
 > **(b) Virtual Key 預算是軟上限**——已回寫至上方殘餘風險段。
 >
@@ -330,14 +330,14 @@ Go 控制平面在 `provisioning` 階段向 LiteLLM 管理 API 簽發帶預算�
 >
 > **另：配套第 2 項（`ANTHROPIC_API_KEY` 須未設）的必要性已被實測證實**，Spike 觀測到 Claude Code 主動印出憑證來源優先順位的警告。該配套維持原樣。
 >
-> **部署註記**：Spike 記錄 `pip install` 的 proxy 在測試平台上只能跑無資料庫模式，任何需要 Virtual Key 的功能必須用官方 container image。這與 ADR-017「LiteLLM Proxy 作為獨立部署單元」一致，但應寫進未來的開發環境文件——開發者本機要跑帶 Virtual Key 的閘道，不能靠 `pip install`。
+> **部署註記**：Spike 記錄 `pip install` 的 proxy 在測試平台上只能跑無資料庫模式，任何需要 Virtual Key 的功能必須用官方 container image。這與模型閘道與可觀測性「LiteLLM Proxy 作為獨立部署單元」一致，但應寫進未來的開發環境文件——開發者本機要跑帶 Virtual Key 的閘道，不能靠 `pip install`。
 
 ### 理由
 
 - Agent Skills 的載入語意目前只有 Claude Code／Agent SDK 這條路徑是原生的；自己實作（選項 C）等於自訂一套「我們認為 Skill 該怎麼載入」，違反產品原則 5「可攜但不過度承諾」——我們會驗證出一個只在 Skill Hub 成立的結論。
 - SDK 的 hooks 機制讓 `03:TRACE-002`（Skill 啟用、資源載入）與 `03:TRACE-003`（Tool Call、Script Log）可以在不 patch Runtime 的前提下取得結構化事件，直接支撐 `02:TRACE-001`「事件順序可被重建」的允收準則。
 - permissions 機制對應 `02:TEST-005`「執行前權限摘要」與「權限有變更必須重新確認」，不必自己造一套。
-- 模型分層讓 ADR-017 的「Run 級成本歸因」有意義：搜尋路徑用 `gpt-5.6-luna`、試跑路徑用 `gpt-5.4-mini`、索引與 Judge 用旗艦／中階，成本結構在 Usage Record 上一眼可分。**分層的成本槓桿在 v5 反而更大**——同一組 300K／60K 上限在 mini 與旗艦之間差 6.7 倍，分層失效（全用旗艦）會讓模型帳單直接翻約 6.6 倍（見 [cost-estimation.md](cost-estimation.md) §6.2.3）。
+- 模型分層讓模型閘道與可觀測性的「Run 級成本歸因」有意義：搜尋路徑用 `gpt-5.6-luna`、試跑路徑用 `gpt-5.4-mini`、索引與 Judge 用旗艦／中階，成本結構在 Usage Record 上一眼可分。**分層的成本槓桿在 v5 反而更大**——同一組 300K／60K 上限在 mini 與旗艦之間差 6.7 倍，分層失效（全用旗艦）會讓模型帳單直接翻約 6.6 倍（見 [cost-estimation.md](cost-estimation.md) §6.2.3）。
 - **查詢改寫的定位與降級路徑（v3 依真 Embedding 重測定稿）**：[pdm-011-spike-report.md](pdm-011-spike-report.md) v1 §4.4(c) 量到繁中查詢對英文語料的純詞彙召回 Top-3 僅 20%，因而在 §6.2-1 建議把改寫升格為「召回的必要條件」。**v2 真 Embedding 重測推翻了這個升格**：向量腿在繁中原樣查詢下 Top-3 召回 100%、Top-1 80%，改寫只是把 Top-1 補到 100%。§9.4-1 因此下修為「**向量腿才是跨語言召回的承載者，改寫是 Top-1 精準度的增益步驟**」。
   兩個實務後果：**(i)** NFR-004 的延遲風險下降——改寫既非必要條件，逾時就砍掉是可接受的降級，不是品質懸崖；**(ii)** 但**降級目標仍必須是向量檢索**——降級後只走原句 FTS 才是真正的失效路徑（Top-3 20%），會直接摧毀繁中使用者的 `02:DISC-001` 體驗。這一條結論從 v2 到 v3 不變。
 - **不要把 RRF 當成品質來源（v3 新增）**：Spike 兩次量測都顯示等權 RRF 相對最佳單腿**沒有增益**，兩種設定下還倒退一名。v1 把零增益歸因於兩腿同質（top-3 重疊 73%），**v2 推翻此解釋**——重疊已降到 37%～63%，兩腿確實送不同訊號，RRF 依然無增益；真正原因是**兩腿品質不對稱**（中文原樣查詢下 FTS 腿幾乎全滅，等權融合只會稀釋強腿）。
@@ -348,8 +348,8 @@ Go 控制平面在 `provisioning` 階段向 LiteLLM 管理 API 簽發帶預算�
 | 風險 | 影響 | 緩解 |
 | --- | --- | --- |
 | ~~LiteLLM 的 Anthropic 相容端點與 Agent SDK 不完全相容~~ **（v3 降級）** | ~~PDM-003 整個方案失效~~ | **已由前置 Spike 第 1 項證偽，7/7 PASS，退路不需啟動。** 殘留的是範圍較窄的一項：`thinking` 透傳未驗證，且該路由的參數處理已知有缺陷（見上方發現 a）。補測未過則重新評估退路 |
-| 綁定單一 Agent 生態，違反「不綁定單一執行環境」的產品目標 | 相容性結論過窄 | ADR-012 的三層相容性（格式／能力／行為）已把這件事說清楚：MVP 只宣稱「在 Claude Agent SDK 上行為相容」，其他 Agent 一律標「未驗證」（`02:PACK-002` 允收準則） |
-| Agent SDK 版本升級改變工具行為，歷史 Run 不可重現 | 違反「所有執行可追溯到 Runtime」 | Runtime Image 版本化 + digest 記錄（基線 I-02 要求 pin by digest 而非 tag）；ADR-005 已要求「Image 更新不得改變歷史 Run 記錄中的 Runtime Version」 |
+| 綁定單一 Agent 生態，違反「不綁定單一執行環境」的產品目標 | 相容性結論過窄 | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的三層相容性（格式／能力／行為）已把這件事說清楚：MVP 只宣稱「在 Claude Agent SDK 上行為相容」，其他 Agent 一律標「未驗證」（`02:PACK-002` 允收準則） |
+| Agent SDK 版本升級改變工具行為，歷史 Run 不可重現 | 違反「所有執行可追溯到 Runtime」 | Runtime Image 版本化 + digest 記錄（基線 I-02 要求 pin by digest 而非 tag）；[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)已要求「Image 更新不得改變歷史 Run 記錄中的 Runtime Version」 |
 | ~~Judge 與試跑用同一模型，可能有自我偏袒~~ **（v5 已結構性緩解）** | `02:EVAL-001` 可信度 | v5 的分層讓試跑（`gpt-5.4-mini`）與 Judge（`gpt-5.6-terra`）**本來就不同型號**，最直接的自我偏袒路徑已消失。**殘留：兩者仍為同一供應商的同一模型家族**，家族層級的共同偏誤無法由分層排除——記錄為已知限制，M3 可加入跨家族 Judge 的 A/B，不列入 MVP 必要範圍 |
 | ~~Agent SDK 從工作目錄載入 Skill 的實際路徑慣例未經查證~~ **（v4 已實現並修正）** | 原假設 `<workdir>/skills/<skill-name>/` **確實不成立** | **風險已兌現但代價僅為文件修正**：前置 Spike 第 2 項證偽該路徑，正確路徑為 `<workdir>/.claude/skills/<skill-name>/`，已於上方建議段與 §7 PDM-008 同步修正。載入**機制**本身 6/6 通過，PDM-003 的載入設計與 PDM-008 Profile 都不需重做，只換路徑與補上三個啟用條件 |
 | 試跑時模型改用 CLI 內建 Skill 而非受測 Skill | `02:EVAL-001` 的驗收結論失真——Run 顯示成功，但使用者要下載的 Skill 其實沒被用到 | **v5：`skills` 白名單只放受測 Skill，過濾效果已行為性實測有效**（§11.4，對專案與內建 Skill 皆然）。Trace 仍需顯示「實際被啟用的是哪一個 Skill」（`03:TRACE-002`），並**把白名單拒絕（`tool_use_error`）獨立標示**，避免使用者誤判為 Skill 本身有問題 |
@@ -359,11 +359,11 @@ Go 控制平面在 `provisioning` 階段向 LiteLLM 管理 API 簽發帶預算�
 
 ## 4. PDM-004：SelfHostedProvider 首批 Runtime 語言與版本
 
-> **現況覆寫（2026-08-19；本節仍保留為歷史提案）**：目前 Runtime Image 固定使用 Python 3.11，Claude Agent SDK 0.3.233 的實作 Profile 會省略 `setting_sources`；顯式 `setting_sources=["project"]` 在目前版本會造成 project Skill 為零。權威現況見 ADR-023、`contracts/packaging/profiles/claude-agent-sdk.json`、`apps/sandbox/README.md` 與 `UPGRADES.md`。Python 3.12 是否升級仍屬 PDM-004 待追認與真實 runsc 驗證項，以下 Python 3.12／`setting_sources=["project"]` 敘述不得當成已部署事實。
+> **現況覆寫（2026-08-19；本節仍保留為歷史提案）**：目前 Runtime Image 固定使用 Python 3.11，Claude Agent SDK 0.3.233 的實作 Profile 會省略 `setting_sources`；顯式 `setting_sources=["project"]` 在目前版本會造成 project Skill 為零。權威現況見[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)、`contracts/packaging/profiles/claude-agent-sdk.json`、`apps/sandbox/README.md` 與 `UPGRADES.md`。Python 3.12 是否升級仍屬 PDM-004 待追認與真實 runsc 驗證項，以下 Python 3.12／`setting_sources=["project"]` 敘述不得當成已部署事實。
 
 ### 背景
 
-ADR-005 要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image」「不允許使用者直接指定任意基礎 Image」「限定少量 Runtime、檔案格式與最大資源」。PDM-001 的三個類別決定了 Skill 內 Script 實際會用到什麼。
+[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image」「不允許使用者直接指定任意基礎 Image」「限定少量 Runtime、檔案格式與最大資源」。PDM-001 的三個類別決定了 Skill 內 Script 實際會用到什麼。
 
 ### 評估選項
 
@@ -371,7 +371,7 @@ ADR-005 要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image
 | --- | --- | --- | --- |
 | A：只有 Node | 僅 Agent SDK 執行所需 | Image 最小、攻擊面最小 | `data` 與 `documents` 類別的 Skill 幾乎全用 Python 腳本（openpyxl、pandas、python-docx），直接淘汰兩個類別 |
 | B：Node + Python + POSIX 工具 | Agent SDK 跑在 Node，Skill Script 可用 Python 或 shell | 覆蓋 PDM-001 三類別的實際需求；套件白名單可控 | Image 較大（約 1.2–1.8 GB）；需要維護套件白名單 |
-| C：B ＋ 執行期套件安裝 | 允許 `pip install` / `npm install` | Skill 相容性最高 | 需要對外網路（違反 SBX-007 預設封鎖）或維護內部 mirror；供應鏈風險（ADR-007）；MVP 不值得 |
+| C：B ＋ 執行期套件安裝 | 允許 `pip install` / `npm install` | Skill 相容性最高 | 需要對外網路（違反 SBX-007 預設封鎖）或維護內部 mirror；供應鏈風險；MVP 不值得 |
 
 ### 建議
 
@@ -388,7 +388,7 @@ ADR-005 要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image
 | **常設環境變數斷言（v5）** | `ANTHROPIC_API_KEY` **未設定**（不是空字串）；`MAX_THINKING_TOKENS=0`。兩者都是漏設即在每個 Run 的第一個請求失敗的組態，須在映像建置與 provisioning 兩處斷言。理由見 §3 配套第 2 項與發現 (a) |
 | **明確不含** | 編譯器工具鏈（gcc/make）、GPU 驅動與 CUDA、瀏覽器與 headless Chrome、資料庫 client、`git`、任何雲端 SDK |
 | 套件安裝 | **執行期禁止**。`pip`／`npm` 的 registry 位址不在 egress 允許清單內（基線 N-01 default-deny、N-04 Proxy 固定 DNS），安裝必然失敗。**但失敗訊息不會是可理解的**——default-deny + 固定 DNS 下取得的是通用連線或 DNS 解析錯誤，因此可理解性必須由平台在**匯入階段**預先揭露（見下方風險表），不倚賴 Runtime 錯誤輸出（NFR-007「所有錯誤提供下一步行動」） |
-| Image 命名 | `skillhub/runtime-agent-sdk:2026.08-1`，保存 content digest、SBOM、漏洞掃描報告（ADR-005） |
+| Image 命名 | `skillhub/runtime-agent-sdk:2026.08-1`，保存 content digest、SBOM、漏洞掃描報告 |
 | 執行身分 | UID 10001 非 root、非特權、基礎檔案系統唯讀，可寫路徑僅 `/work`（暫存）與 `/out`（Artifact 輸出） |
 
 > ⚠️ **採用 `skills` 白名單時必須一併寫入的三點限制（v5，Spike §11.4）——三點都是「別對它期待錯的東西」：**
@@ -411,7 +411,7 @@ ADR-005 要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image
 
 | 風險 | 影響 | 緩解 |
 | --- | --- | --- |
-| **Node.js 22 / Python 3.12 在 gVisor（runsc）下的 syscall 相容性未驗證** | ADR-015 明列「少數 syscall 不相容需驗證目標 Runtime」，且其**定案條件之一就是「PDM-004 選定的 Runtime 在 gVisor 下通過完整 Run 生命週期」**（威脅模型 §5.6 已列為獨立測試類型，對應基線 C-09）。未驗證即定案，等於 PDM-004 與 ADR-015 互相等待 | **在選定平台上實跑 runsc，跑通一次完整 Run 生命週期**（provisioning → preparing → running → 產出 Artifact → cleanup），Node 與 Python 兩條路徑各一次。已知需重點觀察：Node/V8 的執行緒與記憶體管理、非同步 I/O 路徑、Python 子程序與檔案描述符行為。此驗證列入 §9 檢查清單；**每次擴充 Runtime 需重跑**（ADR-015 明文） |
+| **Node.js 22 / Python 3.12 在 gVisor（runsc）下的 syscall 相容性未驗證** | [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)明列「少數 syscall 不相容需驗證目標 Runtime」，且其**定案條件之一就是「PDM-004 選定的 Runtime 在 gVisor 下通過完整 Run 生命週期」**（威脅模型 §5.6 已列為獨立測試類型，對應基線 C-09）。未驗證即定案，等於 PDM-004 與該決策互相等待 | **在選定平台上實跑 runsc，跑通一次完整 Run 生命週期**（provisioning → preparing → running → 產出 Artifact → cleanup），Node 與 Python 兩條路徑各一次。已知需重點觀察：Node/V8 的執行緒與記憶體管理、非同步 I/O 路徑、Python 子程序與檔案描述符行為。此驗證列入 §9 檢查清單；**每次擴充 Runtime 需重跑**（該決策明文） |
 | 白名單太窄，好 Skill 被擋在門外 | 供給受限 | 白名單是**資料**不是程式碼；新增套件走 Image 版本升級流程（新 tag、新 digest），約定每兩週可增補一次 |
 | 使用者不理解「為什麼裝不了套件」 | 體驗挫折（NFR-007「所有錯誤提供下一步行動」） | 匯入階段就在詳情頁顯示「此 Skill 需要 X，目前 Runtime 未提供」，不要等到 Run 失敗才說——**這是唯一的可理解性來源**，Runtime 端只會產生通用網路錯誤 |
 | Image 體積導致 Sandbox 啟動時間過長 | NFR-004「Sandbox 建立時間需被量測」 | 節點預拉 Image；量測 provisioning p95 並列入 O11Y-001。**成本試算對此高度敏感**：[cost-estimation.md](cost-estimation.md) §6.1 把「單 Run 佔用時間」列為唯一應優先量測的變數，翻倍即 Sandbox 池 +60% |
@@ -422,11 +422,11 @@ ADR-005 要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image
 
 ### 背景
 
-`02:TEST-002` 要求「上傳前顯示大小限制」，`02:RUN-003` 要求「套用 CPU、記憶體、磁碟、程序數與執行時間限制」，但兩者都沒有數值。ADR-017 額外要求 Virtual Key 帶預算——這是 MVP 唯一能硬性止血模型成本的機制。
+`02:TEST-002` 要求「上傳前顯示大小限制」，`02:RUN-003` 要求「套用 CPU、記憶體、磁碟、程序數與執行時間限制」，但兩者都沒有數值。[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)額外要求 Virtual Key 帶預算——這是 MVP 唯一能硬性止血模型成本的機制。
 
 本節同時承接威脅模型的三個開放問題：**Q5**（資源上限具體數值，基線 C-10～C-15 有檢查但無值可驗）、**Q6**（Skill 套件解壓上限，見 §5.1b）、以及 TM-EXE-02 對「具體數值是 PDM-005 待決」的等待。
 
-> **注意 ADR-005 沒有數值。** 下表「依據」欄標 ADR-005 者，指的是「ADR-005 要求必須設定此項限制」，不是「ADR-005 規定了這個數字」——ADR-005 只寫「限制 CPU、記憶體、磁碟、程序數、檔案描述符與最大執行時間」。所有具體數值都是本提案首次提出，需要負責人定案。
+> **注意[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的相關決策沒有數值。** 下表「依據」欄標示同一項決策者，指的是「該決策要求必須設定此項限制」，不是「該決策規定了這個數字」——該決策只寫「限制 CPU、記憶體、磁碟、程序數、檔案描述符與最大執行時間」。所有具體數值都是本提案首次提出，需要負責人定案。
 
 ### 評估選項
 
@@ -464,7 +464,7 @@ ADR-005 要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image
 | 單一檔案大小 | ≤ 10 MB | 與壓縮檔上限一致 |
 | 目錄巢狀深度 | ≤ 10 層 | — |
 | **壓縮巢狀層數** | **1 層（不允許壓縮檔內含壓縮檔）** | 巢狀壓縮是繞過解壓上限的標準手法 |
-| **符號連結** | **一律拒絕**（不是解析後檢查，是直接拒絕含 symlink 的套件） | ADR-007 的「安全解壓」需求；解析後檢查有 TOCTOU 空間，直接拒絕沒有 |
+| **符號連結** | **一律拒絕**（不是解析後檢查，是直接拒絕含 symlink 的套件） | [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的「安全解壓」需求；解析後檢查有 TOCTOU 空間，直接拒絕沒有 |
 | 路徑項目 | 拒絕絕對路徑、含 `..` 的相對路徑、Windows 磁碟機代號與 UNC 路徑 | 路徑穿越（TM-IMP-02） |
 | 檔名 | 拒絕控制字元、NUL、保留裝置名（`CON`、`PRN`、`NUL` 等） | 跨平台解壓安全 |
 | 失敗行為 | 匯入工作轉失敗並列出**原因分類**（超過大小／檔數／含 symlink／路徑穿越），不列出實際路徑內容 | `02:SKILL-001`「匯入結果顯示成功、警告或失敗，並列出原因」＋ 不洩漏系統資訊 |
@@ -475,16 +475,16 @@ ADR-005 要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image
 
 | 項目 | 上限 | 依據 |
 | --- | --- | --- |
-| vCPU | 2 | ADR-005 要求設 CPU 上限（無數值）；本提案定值，基線 C-10 據此可驗 |
+| vCPU | 2 | [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)要求設 CPU 上限（無數值）；本提案定值，基線 C-10 據此可驗 |
 | 記憶體 | **4 GiB** | pandas 處理 100 MB CSV 的合理上限。**此值已被 [cost-estimation.md](cost-estimation.md) v2 §2.1 採為 Sandbox slot 規格**（v1 誤用 2 GiB），並連帶決定各平台機型系列（該文件 §2.3：4 GiB/vCPU 淘汰所有運算最佳化機型）。**調整此值必須同步重算成本試算** |
 | 暫存磁碟 | 8 GiB（`/work` 6 GiB + `/out` 2 GiB） | Dataset 100 MB + 解壓 + 產物。`/out` 2 GiB 相對 Artifact 100 MB 上限寬鬆，是為容納中間產物 |
-| 程序數（PID） | 256 | ADR-005 要求設 PID 上限（無數值）；本提案定值 |
-| 檔案描述符 | 1024 | ADR-005 要求設 FD 上限（無數值）；本提案定值 |
+| 程序數（PID） | 256 | [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)要求設 PID 上限（無數值）；本提案定值 |
+| 檔案描述符 | 1024 | [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)要求設 FD 上限（無數值）；本提案定值 |
 | Wall clock | **軟上限 10 分鐘**（達到即進入 `timed_out`）；**硬上限 15 分鐘**（強制銷毀） | `02:RUN-004`。成本試算 §2.1 以「中位 6 分鐘佔用」規劃容量，與此上限的關係見下方註記 |
-| **同一 Workspace 並行 Run 上限** | **2**（v2 新增） | ADR-011 Policy 明列「每 Workspace 的並行 Run 上限」為 MVP 必備；威脅模型閘門 B 把「Workspace 超出並行 Run 上限或額度」列為阻擋啟動條件，但此前無值可驗。取 2 而非 1，是為讓使用者能在等待一個長 Run 時另開一個快速試跑；取 2 而非更高，是因為封測規模的尖峰併發 slot 本來就只有 1–2（成本試算 §2.2） |
+| **同一 Workspace 並行 Run 上限** | **2**（v2 新增） | [身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度)Policy 明列「每 Workspace 的並行 Run 上限」為 MVP 必備；威脅模型閘門 B 把「Workspace 超出並行 Run 上限或額度」列為阻擋啟動條件，但此前無值可驗。取 2 而非 1，是為讓使用者能在等待一個長 Run 時另開一個快速試跑；取 2 而非更高，是因為封測規模的尖峰併發 slot 本來就只有 1–2（成本試算 §2.2） |
 | Artifact 輸出總量 | ≤ 100 MB，單檔 ≤ 25 MB | 超過即截斷並在 Trace 標記 |
 | 模型 Token（**v5：改由 Go Worker 依 `input_tokens` 累計強制**，Virtual Key 預算不再代理此上限） | 每 Run ≤ **300K input / 60K output**<br>✅ **「未經驗證」標記已解除（v5）** | 見下方 §5.2a 的完整校正 |
-| Egress | default-deny；允許清單僅三項：LiteLLM 閘道位址、物件儲存的短效授權端點、Trace ingestion 端點。三者皆須經受控 Egress Proxy，無旁路路徑 | ADR-005 執行節點拓撲（Egress Proxy／Scoped Object Transfer／Trace Ingestion 三條路徑）、基線 N-01／N-02／N-07 |
+| Egress | default-deny；允許清單僅三項：LiteLLM 閘道位址、物件儲存的短效授權端點、Trace ingestion 端點。三者皆須經受控 Egress Proxy，無旁路路徑 | [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的執行節點拓撲（Egress Proxy／Scoped Object Transfer／Trace Ingestion 三條路徑）、基線 N-01／N-02／N-07 |
 
 #### 5.2a Token 上限的校正與強制方式（v5 新增，依 [Spike §11.5／§11.6](pdm-003-litellm-spike-report.md)）
 
@@ -523,7 +523,7 @@ ADR-005 要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image
 - **`02:TEST-005` 的「預估成本區間」必須是區間不是單值**——首次與後續 Run 的單位成本差約 8 倍（快取保留 24 小時且 harness 前綴跨 Run 完全相同，第二次以後的 Run 直接命中前一次留下的快取）。
 - **60K output 上限的成本槓桿現在遠大於 300K input 上限**。若日後要收窄單 Run 成本，該動的是 output。
 
-**(7) 可觀測性缺口（已知，不阻擋定案）：** LiteLLM 1.96.2 在 `/v1/messages` 路由上**不輸出任何 cache 用量欄位**（`cache_read_input_tokens` 與 `cache_creation_input_tokens` 是**缺欄，不是 0**），spend log 該欄位亦為 `null`。**計費金額是準的**（實測冷／熱請求折扣 9.4×，與 `/v1/chat/completions` 一致），**受損的只有可觀測性**：Trace 無法呈現快取命中率、無法反推 input 中有多少是重複前綴；ADR-017 若讓 Langfuse 成本歸因依賴 cache 欄位，該欄位在此路由上不可用。**應在 O11Y-001 記為已知缺口，不要為它設計繞道實作。**
+**(7) 可觀測性缺口（已知，不阻擋定案）：** LiteLLM 1.96.2 在 `/v1/messages` 路由上**不輸出任何 cache 用量欄位**（`cache_read_input_tokens` 與 `cache_creation_input_tokens` 是**缺欄，不是 0**），spend log 該欄位亦為 `null`。**計費金額是準的**（實測冷／熱請求折扣 9.4×，與 `/v1/chat/completions` 一致），**受損的只有可觀測性**：Trace 無法呈現快取命中率、無法反推 input 中有多少是重複前綴；[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)若讓 Langfuse 成本歸因依賴 cache 欄位，該欄位在此路由上不可用。**應在 O11Y-001 記為已知缺口，不要為它設計繞道實作。**
 
 > **與成本試算的時間關係**：成本試算以「單 Run 佔用 6 分鐘（4 分執行 + 1 分 provisioning/gVisor 冷啟 + 1 分清理）」規劃容量，介於 PDM-010 觀測的中位 2 分鐘與本表的 10 分鐘軟上限之間。該文件 §6.1 明示：若實際佔用時間翻倍到 12 分鐘（等於「使用者普遍跑到軟上限」），Sandbox 節點需求增加約 60%。**這不是極端假設**——軟上限 10 分鐘加 provisioning 與清理正好約 12 分鐘。此為 NFR-004 首要量測項。
 
@@ -535,7 +535,7 @@ Dataset 清單與總大小、將掛載的路徑、預計使用的 Runtime 版本
 
 - 10 分鐘軟上限對齊 MVP 承諾「10 分鐘內完成第一次搜尋到下載」——單一 Run 不該吃掉整個承諾預算。
 - Token 上限而非只有時間上限，是因為時間上限擋不住「短時間內燒掉大量 token」的模式。**v5 修正一個 v3 的簡化**：Virtual Key 預算原本被當成現成的強制機制，但實測後它只能當花費煞車（軟上限、且與 token 數脫鉤 7–8 倍），token 上限需 Go Worker 自行累計——**這仍然不必另造機制**（`input_tokens` 由閘道回報、Go 本來就擁有 Run 狀態機），只是強制點從閘道移到 Worker。成本試算 §6.2 把 Token 預算列為「唯一能硬性止血的機制」的結論不變。
-- magic bytes 驗證而非副檔名，直接對應 ADR-007 供應鏈風險與 SEC-003 匯入前掃描政策。
+- magic bytes 驗證而非副檔名，直接對應[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的供應鏈風險與 SEC-003 匯入前掃描政策。
 - Skill 套件上限與 Dataset 上限分開（§5.1b），因為前者在控制平面側解壓，後者在 Sandbox 內——同一個數字套用到兩個信任區是錯的。
 
 ### 風險
@@ -554,7 +554,7 @@ Dataset 清單與總大小、將掛載的路徑、預計使用的 Runtime 版本
 
 ### 背景
 
-NFR-002 明確寫著「保存期限仍為待決策事項，確定後須轉換為可測試的時間要求」。ADR-014 把 Trace 設計為 Postgres 分割表——這意味著保存期限直接決定分割策略（按月分割 + `DROP PARTITION` 是最便宜的清理方式）。本節同時回答威脅模型 **Q9**（TM-DAT-03 無法轉成可測試要求）與部分 **Q10**（Langfuse 保存期限；遮罩範圍與使用者條款揭露仍待 SEC-006 與產品負責人處理）。
+NFR-002 明確寫著「保存期限仍為待決策事項，確定後須轉換為可測試的時間要求」。[資料所有權與核心基礎設施](../../../adr/README.md#資料所有權與核心基礎設施)把 Trace 設計為 Postgres 分割表——這意味著保存期限直接決定分割策略（按月分割 + `DROP PARTITION` 是最便宜的清理方式）。本節同時回答威脅模型 **Q9**（TM-DAT-03 無法轉成可測試要求）與部分 **Q10**（Langfuse 保存期限；遮罩範圍與使用者條款揭露仍待 SEC-006 與產品負責人處理）。
 
 ### 評估選項
 
@@ -578,7 +578,7 @@ NFR-002 明確寫著「保存期限仍為待決策事項，確定後須轉換為
 | Run Artifact | **30 天** | 物件儲存 lifecycle rule | 使用者若需保留應主動下載；上傳前明示（`02:TEST-002`） |
 | Download Artifact（打包產物） | **90 天** | 到期刪除，可依同一 Skill Version 重新打包 | 打包是冪等的，不必永久保存二進位 |
 | Audit Event（CORE-008） | **400 天**，僅保留 actor ID、動作、資源 ID、時間戳，**不含內容** | 到期刪除 | 安全事件回溯需要跨年；不含內容故隱私風險低 |
-| Langfuse LLM 明細（ADR-017） | **30 天** | Langfuse 保留設定 | 工程調優用途，非事實來源；含使用者 Prompt，故最短。**遮罩範圍仍待 SEC-006**（威脅模型 Q10 未被本節完全回答） |
+| Langfuse LLM 明細（[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)） | **30 天** | Langfuse 保留設定 | 工程調優用途，非事實來源；含使用者 Prompt，故最短。**遮罩範圍仍待 SEC-006**（威脅模型 Q10 未被本節完全回答） |
 
 #### 6.1 帳號刪除：兩類資料分開處理（v2 修正）
 
@@ -600,7 +600,7 @@ v1 寫「30 天寬限期後硬刪除所有上述使用者資料」，與同表�
 ### 理由
 
 - metadata 永久 / 內容短期，是唯一能同時滿足「所有 Run 都能追溯」（`01` 4.3 節平台成果）與「隱私暴露面最小化」（NFR-002）的組合。
-- 90 天 Trace 對齊 ADR-014 的月分割：三個活躍分割 + 清理，運維最單純。成本試算 §5.3 也把 `DROP PARTITION` 列為容器化 Postgres 下磁碟水位的主要控制手段。
+- 90 天 Trace 對齊[資料所有權與核心基礎設施](../../../adr/README.md#資料所有權與核心基礎設施)的月分割：三個活躍分割 + 清理，運維最單純。成本試算 §5.3 也把 `DROP PARTITION` 列為容器化 Postgres 下磁碟水位的主要控制手段。
 - Artifact 30 天短於 Trace 90 天是刻意的——Artifact 是 Run 產物中體積最大、隱私敏感度最高、且使用者最容易自行保存的一類。
 - 本表的分級已被 [cost-estimation.md](cost-estimation.md) v2 §2.1 採用（「物件保存期：90 天（Trace）／30 天（Artifact）」），v1 的單一 90 天假設已修正，此處無待回寫項。
 
@@ -618,7 +618,7 @@ v1 寫「30 天寬限期後硬刪除所有上述使用者資料」，與同表�
 
 ### 背景
 
-ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profile」。`plans/mvp/01` 第 7.2 節允許「先支援標準套件與少量安裝 Profile」。`02:PACK-002` 明確要求「尚未驗證的 Agent 必須顯示未驗證，不得保證可正常運行」——所以 Profile 數量少不是缺陷，宣稱過頭才是。
+[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)的待決策第一條就是「MVP 首批支援的 Agent Packaging Profile」。`plans/mvp/01` 第 7.2 節允許「先支援標準套件與少量安裝 Profile」。`02:PACK-002` 明確要求「尚未驗證的 Agent 必須顯示未驗證，不得保證可正常運行」——所以 Profile 數量少不是缺陷，宣稱過頭才是。
 
 ### 評估選項
 
@@ -626,7 +626,7 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 | --- | --- | --- | --- |
 | A：只有標準套件 | 一個符合 Agent Skills 規格的 zip + manifest | 實作最省；不會過度承諾 | `02:PACK-002`「提供至少一個安裝後驗證 Prompt 或檢查步驟」難以具體化；使用者仍要自己查「放哪裡」 |
 | B：標準 + 2 個 Profile | 標準 + Claude Code + Claude Agent SDK | 兩個 Profile 都對應 PDM-003 已驗證的 Runtime，「行為相容」有真實證據 | 只覆蓋 Claude 生態 |
-| C：標準 + 4 個以上 | 再加 Codex／Cursor／Gemini CLI | 覆蓋面最廣 | 這些 Agent 平台一次都沒在 Skill Hub 上跑過，全部只能標「未驗證」，Profile 淪為猜測性的路徑對照表，且每個都要維護（ADR-012 已列此成本） |
+| C：標準 + 4 個以上 | 再加 Codex／Cursor／Gemini CLI | 覆蓋面最廣 | 這些 Agent 平台一次都沒在 Skill Hub 上跑過，全部只能標「未驗證」，Profile 淪為猜測性的路徑對照表，且每個都要維護（[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)已列此成本） |
 
 ### 建議
 
@@ -634,7 +634,7 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 
 計數說明（v2 統一）：`standard` 是**標準套件**，不是安裝 Profile——它不含任何平台特定路徑或設定。因此對外一律表述為「1 個標準套件 + 2 個已驗證安裝 Profile」，UI 顯示的「已驗證安裝 Profile 數量」為 **2**。
 
-| # | 打包目標 ID | 類型 | 安裝位置 | 相容性層級（ADR-012） | 安裝後驗證 |
+| # | 打包目標 ID | 類型 | 安裝位置 | 相容性層級（[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)） | 安裝後驗證 |
 | --- | --- | --- | --- | --- | --- |
 | 1 | `standard` | **標準套件** | — （原樣目錄 zip + `manifest.json`：來源 Skill Version、Profile 版本、打包器版本、內容雜湊、驗證結果、含／不含的 Test Case 清單） | 格式相容 | 提供 `SKILL.md` 規格驗證報告 |
 | 2 | `claude-code` | 安裝 Profile | 使用者層 `~/.claude/skills/<name>/` 或專案層 `.claude/skills/<name>/` | 格式 + 能力 + **行為（若該 Skill 在平台試跑通過）** | 附一句驗證 Prompt（來自 CONTENT-007 的範例 Prompt） |
@@ -654,14 +654,14 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 
 ### 理由
 
-- 兩個 Profile 都指向 PDM-003 已選定的 Runtime，因此「行為相容」欄位有真實 Run 證據可填——這正是 ADR-012 三層相容性設計的目的。若加入從未驗證的 Agent，三層都只能填「未驗證」，Profile 就退化成一張猜測的路徑表，反而製造誤導（違反產品原則 5）。
+- 兩個 Profile 都指向 PDM-003 已選定的 Runtime，因此「行為相容」欄位有真實 Run 證據可填——這正是[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)裡三層相容性設計的目的。若加入從未驗證的 Agent，三層都只能填「未驗證」，Profile 就退化成一張猜測的路徑表，反而製造誤導（違反產品原則 5）。
 - `standard` 必須存在且獨立於其他 Profile：它是「Skill Hub 不綁定單一 Agent」這個承諾的可驗證證據。
 
 ### 風險
 
 | 風險 | 影響 | 緩解 |
 | --- | --- | --- |
-| 目標 Agent 的安裝路徑或 frontmatter 支援改變 | 既有 Profile 過期，使用者依說明安裝失敗 | ADR-012 已要求 Profile 版本化；Download Artifact 記錄 Profile 版本，可回溯是哪一版說明出錯 |
+| 目標 Agent 的安裝路徑或 frontmatter 支援改變 | 既有 Profile 過期，使用者依說明安裝失敗 | [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)已要求 Profile 版本化；Download Artifact 記錄 Profile 版本，可回溯是哪一版說明出錯 |
 | 只支援 Claude 生態，被視為「這不是通用平台」 | 產品定位受質疑 | UI 明確區分「標準套件（任何支援 Agent Skills 的 Agent）」與「已驗證安裝 Profile（目前 2 個）」；M4 封測蒐集目標 Agent 需求，歸 BETA-005（範圍與優先級複審） |
 | source-available 保守政策讓 `documents` 類最好的四個樣本完全不可下載 | 核心旅程最後一步（打包下載）在該類別走不完 | PDM-002 已要求「額外找 2–3 個 OSI 授權的替代品作為可下載精選」——**這是 `documents` 類別的必要條件，不是加分項**；MVP DoD 要求新使用者能完成「搜尋→…→打包下載」，至少一個 `documents` 精選 Skill 必須可下載 |
 | 使用者對 `standard` 套件不知如何安裝 | 漏斗最後一步流失 | `standard` 下載頁附「什麼是 Agent Skills 規格 / 一般安裝原則」說明，並連結 https://github.com/anthropics/skills 的 `spec/` |
@@ -672,7 +672,7 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 
 ### 背景
 
-`plans/mvp/01` 第 12 節把「Sandbox 成本不可持續」列為風險，對策包含「限制資源、顯示預估、保存用量並保留未來計費能力」。ADR-017 已明確寫下「未來使用者自備 API Key（PDM-010）以閘道的 BYO Key 機制實作，平台程式碼不變」——所以 BYO 不是架構問題，是產品時機問題。
+`plans/mvp/01` 第 12 節把「Sandbox 成本不可持續」列為風險，對策包含「限制資源、顯示預估、保存用量並保留未來計費能力」。[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)已明確寫下「未來使用者自備 API Key（PDM-010）以閘道的 BYO Key 機制實作，平台程式碼不變」——所以 BYO 不是架構問題，是產品時機問題。
 
 ### 評估選項
 
@@ -680,7 +680,7 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 | --- | --- | --- | --- |
 | A：無免費額度，全部 BYO Key | 使用者自帶 Anthropic key 才能試跑 | 平台模型成本為零 | 直接摧毀 MVP 承諾——「10 分鐘內完成搜尋到下載」變成「先去申請 API key」；封測漏斗（BETA-002）第一步就斷 |
 | B：免費額度，MVP 不做 BYO | 平台出錢，額度封頂 | 體驗最順；成本上限可由 Virtual Key 預算硬性保證 | 平台承擔全部模型成本 |
-| C：免費額度 + 同時支援 BYO | 兩者都有 | 覆蓋最廣 | BYO 引入額外的 Secrets 生命週期（SEC-005）、成本歸屬（ADR-011 Usage Record 語意變更）與 UI 複雜度，對 MVP 驗證目標無增益 |
+| C：免費額度 + 同時支援 BYO | 兩者都有 | 覆蓋最廣 | BYO 引入額外的 Secrets 生命週期（SEC-005）、成本歸屬（[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度)下 Usage Record 語意變更）與 UI 複雜度，對 MVP 驗證目標無增益 |
 
 ### 建議
 
@@ -721,7 +721,7 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 | **單 Run Sandbox 成本** | **≈ $0.22**（$200 ÷ 900） | 本次計算 |
 | 單 Run 平台總成本 | ≈ $0.31（$283 ÷ 900） | 本次計算 |
 
-> **v1 的 `$0.01–0.03` 已刪除，低估了約一個數量級。** 原因是 **N+1 冗餘的下限效應**：封測規模只需 1 個 slot，但 ADR-015 要求節點可滾動汰換，故最少 2 台節點——固定成本被少量 Run 攤提，單 Run 成本反而高。cost v2 §4.4 對此的結論是：**封測階段的 Sandbox 成本對 Run 量不敏感，想省錢只能省節點規格，不能靠減少 Run。** $0.01–0.03 要到 15,000 Run/月的規模才成立（cost v2 §4.2：$802 ÷ 15,000 = $0.053）。
+> **v1 的 `$0.01–0.03` 已刪除，低估了約一個數量級。** 原因是 **N+1 冗餘的下限效應**：封測規模只需 1 個 slot，但[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)要求節點可滾動汰換，故最少 2 台節點——固定成本被少量 Run 攤提，單 Run 成本反而高。cost v2 §4.4 對此的結論是：**封測階段的 Sandbox 成本對 Run 量不敏感，想省錢只能省節點規格，不能靠減少 Run。** $0.01–0.03 要到 15,000 Run/月的規模才成立（cost v2 §4.2：$802 ÷ 15,000 = $0.053）。
 
 **模型成本（v5 依 PDM-003 定案的 `gpt-5.4-mini` 與 §5.2a 的快取後實價重算）：**
 
@@ -755,14 +755,14 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 **MVP 不開放，架構保持就緒。** 具體立場：
 
 - 不在 MVP 實作 UI、不在 MVP 實作 Secrets 儲存流程。
-- ADR-017 已定的實作路徑保持有效：開放時以 LiteLLM 的 BYO Key 機制實作，平台程式碼不變。
+- [模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)已定的實作路徑保持有效：開放時以 LiteLLM 的 BYO Key 機制實作，平台程式碼不變。
 - **啟動條件**：M4 封測中出現任一訊號即評估開放——(a) 超過 30% 使用者觸及月額度上限；(b) 質性回饋明確要求；(c) 平台模型成本超出可承受區間。
 - 開放時的最低要求（提前記錄，避免屆時倉促）：只接受 Anthropic API Key；金鑰只存在 LiteLLM 閘道、平台資料庫不存明文或密文（SEC-005）；Trace 與 Usage Record 明確標示該 Run 成本歸屬為使用者自付；Key 可隨時撤銷且撤銷後既有 Run 不受影響；金鑰不得出現在套件、Log、Trace、分析事件（鐵律 11）。
 
 ### 理由
 
 - 免費額度是 MVP 承諾的前提條件，不是行銷手段——沒有它，核心旅程的第一次體驗就有一道外部依賴。
-- Virtual Key 預算（PDM-005）讓「免費」有硬性天花板，這是選項 B 可行的唯一原因；若沒有 ADR-017 的閘道，免費額度會是不可控的成本黑洞。cost v2 §6.2 同樣把它列為「唯一能硬性止血的機制」。
+- Virtual Key 預算（PDM-005）讓「免費」有硬性天花板，這是選項 B 可行的唯一原因；若沒有[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)那項決策，免費額度會是不可控的成本黑洞。cost v2 §6.2 同樣把它列為「唯一能硬性止血的機制」。
 - 不做 BYO 是為了保護 MVP 的驗證焦點：MVP 要驗證的是「試跑能否提高下載信心」，不是「計費模式」。BYO 會引入 Secrets 生命週期、成本歸屬語意、UI 分岔三個與驗證目標無關的複雜度。
 
 ### 風險
@@ -773,7 +773,7 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 | 額度太緊，使用者無法完成「改善 → 重新試跑 → 比較」循環 | 漏斗中段流失，`02:EVAL-003` 無法被驗證 | 一次完整循環約需 3–4 次 Run；每日 5 次剛好覆蓋一輪，首月 20 次可完成 5–6 輪。封測需監測「因額度耗盡而中斷的旅程」比例（BETA-004） |
 | 不支援 BYO 導致精深者流失 | 目標 persona 之一未被服務 | 額度耗盡頁面直接提供「我想自備 API Key」回報入口，把流失轉成需求訊號 |
 | **$0.05/Run 的 Token 中位數是假設值，不是量測值**（v5 更新數字，性質不變） | 最壞／中位仍差 6 倍，總成本估計在 $328 與 $553 之間擺盪；cost §8 已把此項列為「首次真實 Run 後應校準」的第二優先項。**換供應商只換掉單價，沒有換掉「用量為上限 1/6」這個假設** | **M1 期間用內部帳號跑 20–30 次真實 Run，量測實際 token 中位數**，把區間收窄後再定案免費額度。量測時**必須同時記錄每輪的工具呼叫次數**（§5.2a-2：input 用量幾乎完全由它決定），否則量到的中位數無法外推。在量測完成前，預算規劃應以**最壞值**而非中位值編列 |
-| 平台級模型預算煞車尚未設計 | 單一失控迴圈可在 TTL 內燒掉整個 Run 預算，多個並發則放大 | 威脅模型 TM-MDL-02 已列此缺口，Q13 建議歸 ADR-011 Policy 模組。每 Run Virtual Key 預算限制的是**單 Run 爆炸半徑**，不是平台總量；本提案不解決此項，僅記錄 |
+| 平台級模型預算煞車尚未設計 | 單一失控迴圈可在 TTL 內燒掉整個 Run 預算，多個並發則放大 | 威脅模型 TM-MDL-02 已列此缺口，Q13 建議歸[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度)的 Policy 模組。每 Run Virtual Key 預算限制的是**單 Run 爆炸半徑**，不是平台總量；本提案不解決此項，僅記錄 |
 
 ---
 
@@ -783,18 +783,18 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 
 - [x] **PDM-001**（v5：提案完整，可定案）：三個類別 ID 與顯示名稱確定；同步更新 `02:DISC-002` 篩選器的類別選項。**`data` 供給缺口已解除**（25 個候選 / 7 個 repo，換類別條件未成立）；**`excel-*` 歸 `data` 或 `documents` 的歸類原則已明確寫下**（影響精選池厚度）<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。類別 ID 與顯示名稱未動，`02:DISC-002` 的三個篩選值即本列。
 - [x] **PDM-002**（v5：提案完整，可定案）：白名單 repo 清單確定（**含 v5 新增的三個 `data` 來源**）；九項精選標準逐條確認可執行；回溯准入流程確認可執行（**並知悉其成本被低估：過半 awesome 條目需額外一次人工查找原 repo**）；`anthropics/skills` 實數已清點＝17；**`doc-coauthoring` 無 License、暫不可精選一事已確認**；數量目標（12–18 精選 / 24–36 索引）與 PDM-011 完整 golden query set 的需求一致<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。白名單、四步回溯准入與九項精選檢查表全數照提案。
-- [x] **PDM-003**（v5：提案完整，可定案。**技術前置與補測全部完結**）：定案時需確認：**模型供應商 OpenAI 已記錄於本文件標頭，模型分層六項型號確定**；**Skill 載入路徑 `.claude/skills/<skill-name>/` 與四個啟用條件已寫入 SBX-002／SBX-008**；**試跑預設 Prompt 必須點名被測 Skill，且「自主觸發」不作為成功判準**（基準率實測 0/9）；**Virtual Key 環境變數方案的殘餘風險已被明確接受，且定案文字含「`max_budget` ＋ `tpm_limit` ＋ Go Worker token 累計」三層**；回填 ADR-013 待決策「Embedding 與查詢改寫模型」與 ADR-017 待決策「Virtual Key 注入機制」（＝威脅模型 Q11）<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。模型分層六項型號、`.claude/skills/` 載入路徑與三層 token 煞車皆已在執行，追認補的是簽名。
-- [x] ~~**PDM-003 補測項**~~ —— **v5：四項全部結案，此列已無待辦，僅供定案時核對。** 兩項已實測（自主觸發 0/9、prompt caching 缺欄但計費準確），兩項因 OpenAI 定案不再適用（`thinking` 透傳、跨供應商 fallback）。**兩項殘留動作已改列他處**：`MAX_THINKING_TOKENS=0` 進 PDM-004 常設斷言；跨供應商 fallback 未驗證一事進 ADR-017 已知邊界<br>**✅ 2026-08-27 追認（`05` R-1b）**：本列本來就無待辦，勾選只是讓「已核對」這件事在文件上留下痕跡。
+- [x] **PDM-003**（v5：提案完整，可定案。**技術前置與補測全部完結**）：定案時需確認：**模型供應商 OpenAI 已記錄於本文件標頭，模型分層六項型號確定**；**Skill 載入路徑 `.claude/skills/<skill-name>/` 與四個啟用條件已寫入 SBX-002／SBX-008**；**試跑預設 Prompt 必須點名被測 Skill，且「自主觸發」不作為成功判準**（基準率實測 0/9）；**Virtual Key 環境變數方案的殘餘風險已被明確接受，且定案文字含「`max_budget` ＋ `tpm_limit` ＋ Go Worker token 累計」三層**；回填[意圖搜尋](../../../adr/README.md#意圖搜尋)待決策「Embedding 與查詢改寫模型」與[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)待決策「Virtual Key 注入機制」（＝威脅模型 Q11）<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。模型分層六項型號、`.claude/skills/` 載入路徑與三層 token 煞車皆已在執行，追認補的是簽名。
+- [x] ~~**PDM-003 補測項**~~ —— **v5：四項全部結案，此列已無待辦，僅供定案時核對。** 兩項已實測（自主觸發 0/9、prompt caching 缺欄但計費準確），兩項因 OpenAI 定案不再適用（`thinking` 透傳、跨供應商 fallback）。**兩項殘留動作已改列他處**：`MAX_THINKING_TOKENS=0` 進 PDM-004 常設斷言；跨供應商 fallback 未驗證一事進[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)已知邊界<br>**✅ 2026-08-27 追認（`05` R-1b）**：本列本來就無待辦，勾選只是讓「已核對」這件事在文件上留下痕跡。
 - [ ] **SBX-002 實測項（v5 收斂）**：~~`skills` 白名單的行為性過濾效果~~ **已由 Spike §11.4 回答＝有效，改為「採用並寫入三點限制」**；**仍待實測**：CLI 內建 Skill 與內建工具的裁減幅度與 Skill 相容性的權衡（唯一真正的 token 槓桿）<br>**⛔ 2026-08-27 刻意不勾。** 本列自己寫著「**仍待實測**：CLI 內建 Skill 與內建工具的裁減幅度」，而那件事到今天一次都沒有做過——沒有量過裁減之後的 token 差，也沒有量過裁減之後的 Skill 相容性。**AGENTS.md 的規則是「部分完成保持未勾」**，而本列的兩半只成立一半（白名單過濾已由 §11.4 實測回答＝有效）。**勾它的代價很具體**：那 19.4K／次 API 呼叫的 harness 固定前綴是全表唯一真正的成本槓桿（§11.5 發現 (c)），勾掉之後不會再有人回頭找它。
-- [x] **PDM-003 × PDM-011**：ADR-013 定案時一併補記 [pdm-011-spike-report.md](pdm-011-spike-report.md) §6.2 的三項調整——(1) 查詢改寫升格為召回必要條件、降級目標為向量檢索；(2) 索引時增強的產出應成為主要檢索欄位、原始 `SKILL.md` 內文降權；(3) 符合原因需涵蓋「無詞彙交集」情境（索引時一併生成適用任務範例句）<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。三項調整早已回寫 ADR-013 與 PDM-003，本列補的是核對紀錄。
-- [x] **PDM-004**：套件白名單與 PDM-001 類別需求對齊——**`lxml`（必要）與 `matplotlib`（建議）的增補已擇一裁示，`scipy`／`sklearn` 維持排除**（v5）；Image tag 與版本升級節奏確定；**Node.js 22 與 Python 3.12 已在 runsc（gVisor）下跑通完整 Run 生命週期**（ADR-015 定案條件、威脅模型 §5.6 Runtime 相容性測試、基線 C-09）；**內建工具與 15 個 CLI 內建 Skill 的裁減方案已評估**（唯一真正的 token 槓桿 ＋ 試跑干擾源）；**`skills` 白名單採為預設且三點限制已寫入**（v5）；**`ANTHROPIC_API_KEY` 未設 與 `MAX_THINKING_TOKENS=0` 兩項常設斷言已納入映像建置與 provisioning**（v5）<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。**但兩件「還缺」不因追認而消失**：①`runsc` 上跑通完整 Run 生命週期仍是部署期實測（`SEC-009` T4）；②**內建工具與 15 個 CLI 內建 Skill 的裁減幅度從未量過**——那正是下一列 `SBX-002` 勾不下去的同一件事。**追認的是語言與版本，不是那次沒做的實測。**
+- [x] **PDM-003 × PDM-011**：[意圖搜尋](../../../adr/README.md#意圖搜尋)定案時一併補記 [pdm-011-spike-report.md](pdm-011-spike-report.md) §6.2 的三項調整——(1) 查詢改寫升格為召回必要條件、降級目標為向量檢索；(2) 索引時增強的產出應成為主要檢索欄位、原始 `SKILL.md` 內文降權；(3) 符合原因需涵蓋「無詞彙交集」情境（索引時一併生成適用任務範例句）<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。三項調整早已回寫[意圖搜尋](../../../adr/README.md#意圖搜尋)的決策與 PDM-003，本列補的是核對紀錄。
+- [x] **PDM-004**：套件白名單與 PDM-001 類別需求對齊——**`lxml`（必要）與 `matplotlib`（建議）的增補已擇一裁示，`scipy`／`sklearn` 維持排除**（v5）；Image tag 與版本升級節奏確定；**Node.js 22 與 Python 3.12 已在 runsc（gVisor）下跑通完整 Run 生命週期**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)定案條件、威脅模型 §5.6 Runtime 相容性測試、基線 C-09）；**內建工具與 15 個 CLI 內建 Skill 的裁減方案已評估**（唯一真正的 token 槓桿 ＋ 試跑干擾源）；**`skills` 白名單採為預設且三點限制已寫入**（v5）；**`ANTHROPIC_API_KEY` 未設 與 `MAX_THINKING_TOKENS=0` 兩項常設斷言已納入映像建置與 provisioning**（v5）<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。**但兩件「還缺」不因追認而消失**：①`runsc` 上跑通完整 Run 生命週期仍是部署期實測（`SEC-009` T4）；②**內建工具與 15 個 CLI 內建 Skill 的裁減幅度從未量過**——那正是下一列 `SBX-002` 勾不下去的同一件事。**追認的是語言與版本，不是那次沒做的實測。**
 - [x] **PDM-008**：`claude-agent-sdk` Profile 的安裝位置已改為 `.claude/skills/<name>/`，且安裝說明含 `cwd` 與 `setting_sources` 示範；兩個 Profile 路徑相同一事的文案區分已確認（v4）<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。安裝位置與兩個 Profile 的文案區分已落地。
-- [x] **PDM-005**：所有數值轉為可測試允收準則；**§5.1b 的 Skill 套件解壓上限已納入**（回答威脅模型 Q6，該項列於「阻擋 SEC-002 定案的問題」）；並行 Run 上限已寫入 ADR-011 Policy 的首批配置值；**v5：300K input 已解除「未經驗證」可寫入 `02`，但必須連同 §5.2a 的輪數換算表一起寫（單一輪數無意義）；token 上限的強制點為 Go Worker 而非 Virtual Key 預算；`max_budget` 依冷快取實價編列（mini $0.50／旗艦 $3.30）**<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。§5.1b 的兩個較寬值已於 2026-08-27 另案追認為 10 MB／100 MB（`05` ~~R-13~~），**不是本列給的**。
-- [x] **PDM-006**：保存期限表轉為 NFR-002 的可測試時間要求；**§6.1 的帳號刪除分類（私有內容硬刪除 vs 已被引用版本去識別化保留）已確認不違反鐵律 4**；確認與 SEC-006 一致<br>**✅ 追認發生在 2026-08-23，不是本批（`05` R-1a）**，本列 2026-08-27 才跟上打勾。**追認值有兩處偏離提案，兩處都要各自被讀**：下載產物 `DOWNLOAD_ARTIFACT_RETENTION=720h`（30 天，提案給 90 天）、分析事件 `ANALYTICS_RETENTION=8760h`（365 天，ADR-029 決策 5 提案 180 天，**方向是增加暴露**）；Trace `TRACE_RETENTION=2160h` 與提案一致。**三者程式端仍無預設值、仍 fail-closed。**<br>**本列的勾不涵蓋一件仍然開著的事**：提案表給 Run Artifact **30 天**，而 `02:NFR-002a` 第 2 條要求它 ≥ 可重評窗（＝Trace 的 90 天）——**那條下界今天是被違反的**，要拉齊還是維持 30 天並補完過期分支，是 [`05` R-11](../../05-pending-rulings.md) 要裁的，**不在本次追認範圍內**。同理，`SEC-006` 不勾的理由也是那個下界，不是缺實作。
-- [x] **PDM-008**：計數統一為「1 標準套件 + 2 已驗證 Profile」；**source-available 打包政策已由負責人與法務確認**（目前為保守預設：一律不產出 Download Artifact）；回填 ADR-012 待決策「MVP 首批支援的 Agent Packaging Profile」<br>**✅ 2026-08-27 追認（`05` R-1b）**：「1 標準套件 + 2 已驗證 Profile」自 2026-08-23 `claude-code` 翻 `verified` 之後是真的。<br>**本列的措辭比它引用的來源鬆，追認時按來源讀**：§2 風險表逐字寫的是「這是法遵保守預設，**放寬**（例如允許 `standard` 下載）需負責人與法務明確確認後才可改」——**所以法務確認是「放寬」的前置，不是「維持保守預設」的前置。** 今天追認的是保守預設本身（一律不產出 Download Artifact），那只需要負責人。**anthropic-sa 的法務終判仍未回**（`04` 乙-10 仍開著），而它一旦回來且允許散布，動的是放寬那一側，不是本列。
-- [x] **PDM-010**：**首月額度語意已擇一**（`min(20,30)=20` 或 20+30=50）；成本模型與 PDM-009 封測人數、[cost-estimation.md](cost-estimation.md) 交叉驗算<br>**✅ 2026-08-27 追認（`05` R-1b／R-1a 把四個值交給這一批）：首月語意取 `min(20,30)=20`**，也就是 `entitlements/quota.go` 現在就在強制的那一個（首窗 20／每窗 30／每日 5／窗長 30 天）。**追認補的是簽名不是行為——程式碼一個值都沒有改。**<br>**追認之後解除的是一條禁令，不是一個開關**：ADR-028 決策 4 的「未追認的數字不得出現在畫面上」對這四個數不再成立；但 [ADR-055](../../../adr/ADR-055-the-run-allowance-is-turned-off-and-that-took-an-action.md) 的 `RUN_QUOTA=off` 沒有變，所以本次封測畫面上仍然沒有額度可顯示。<br>**本列的第二半「與 PDM-009 封測人數交叉驗算」在追認時查證為過期**：§8.2 整段的用量前提是 **30 人**，而 PDM-009 的產品面已於 2026-08-22 追認為 **12 人**。**這不改變四個額度值**（它們是每工作區的，與人數無關），但它讓 §8.2 的 $328／$553 變成**上界而不是現況**——真正的封測規模是它的 0.4 倍。§8.2 的數字刻意不改寫（那是當時的推導），要用時請按 12 人重算。
+- [x] **PDM-005**：所有數值轉為可測試允收準則；**§5.1b 的 Skill 套件解壓上限已納入**（回答威脅模型 Q6，該項列於「阻擋 SEC-002 定案的問題」）；並行 Run 上限已寫入[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度) Policy 的首批配置值；**v5：300K input 已解除「未經驗證」可寫入 `02`，但必須連同 §5.2a 的輪數換算表一起寫（單一輪數無意義）；token 上限的強制點為 Go Worker 而非 Virtual Key 預算；`max_budget` 依冷快取實價編列（mini $0.50／旗艦 $3.30）**<br>**✅ 2026-08-27 追認（`05` R-1b）**：照提案值，行為零變動。§5.1b 的兩個較寬值已於 2026-08-27 另案追認為 10 MB／100 MB（`05` ~~R-13~~），**不是本列給的**。
+- [x] **PDM-006**：保存期限表轉為 NFR-002 的可測試時間要求；**§6.1 的帳號刪除分類（私有內容硬刪除 vs 已被引用版本去識別化保留）已確認不違反鐵律 4**；確認與 SEC-006 一致<br>**✅ 追認發生在 2026-08-23，不是本批（`05` R-1a）**，本列 2026-08-27 才跟上打勾。**追認值有兩處偏離提案，兩處都要各自被讀**：下載產物 `DOWNLOAD_ARTIFACT_RETENTION=720h`（30 天，提案給 90 天）、分析事件 `ANALYTICS_RETENTION=8760h`（365 天，[產品分析與稽核邊界](../../../adr/README.md#產品分析與稽核邊界)決策提案 180 天，**方向是增加暴露**）；Trace `TRACE_RETENTION=2160h` 與提案一致。**三者程式端仍無預設值、仍 fail-closed。**<br>**本列的勾不涵蓋一件仍然開著的事**：提案表給 Run Artifact **30 天**，而 `02:NFR-002a` 第 2 條要求它 ≥ 可重評窗（＝Trace 的 90 天）——**那條下界今天是被違反的**，要拉齊還是維持 30 天並補完過期分支，是 [`05` R-11](../../05-pending-rulings.md) 要裁的，**不在本次追認範圍內**。同理，`SEC-006` 不勾的理由也是那個下界，不是缺實作。
+- [x] **PDM-008**：計數統一為「1 標準套件 + 2 已驗證 Profile」；**source-available 打包政策已由負責人與法務確認**（目前為保守預設：一律不產出 Download Artifact）；回填[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布)待決策「MVP 首批支援的 Agent Packaging Profile」<br>**✅ 2026-08-27 追認（`05` R-1b）**：「1 標準套件 + 2 已驗證 Profile」自 2026-08-23 `claude-code` 翻 `verified` 之後是真的。<br>**本列的措辭比它引用的來源鬆，追認時按來源讀**：§2 風險表逐字寫的是「這是法遵保守預設，**放寬**（例如允許 `standard` 下載）需負責人與法務明確確認後才可改」——**所以法務確認是「放寬」的前置，不是「維持保守預設」的前置。** 今天追認的是保守預設本身（一律不產出 Download Artifact），那只需要負責人。**anthropic-sa 的法務終判仍未回**（`04` 乙-10 仍開著），而它一旦回來且允許散布，動的是放寬那一側，不是本列。
+- [x] **PDM-010**：**首月額度語意已擇一**（`min(20,30)=20` 或 20+30=50）；成本模型與 PDM-009 封測人數、[cost-estimation.md](cost-estimation.md) 交叉驗算<br>**✅ 2026-08-27 追認（`05` R-1b／R-1a 把四個值交給這一批）：首月語意取 `min(20,30)=20`**，也就是 `entitlements/quota.go` 現在就在強制的那一個（首窗 20／每窗 30／每日 5／窗長 30 天）。**追認補的是簽名不是行為——程式碼一個值都沒有改。**<br>**追認之後解除的是一條禁令，不是一個開關**：[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度)決策中「未追認的數字不得出現在畫面上」的規則對這四個數不再成立；但[Run 額度開關維持關閉](../../../adr/README.md#身分workspace准入與額度)的 `RUN_QUOTA=off` 沒有變，所以本次封測畫面上仍然沒有額度可顯示。<br>**本列的第二半「與 PDM-009 封測人數交叉驗算」在追認時查證為過期**：§8.2 整段的用量前提是 **30 人**，而 PDM-009 的產品面已於 2026-08-22 追認為 **12 人**。**這不改變四個額度值**（它們是每工作區的，與人數無關），但它讓 §8.2 的 $328／$553 變成**上界而不是現況**——真正的封測規模是它的 0.4 倍。§8.2 的數字刻意不改寫（那是當時的推導），要用時請按 12 人重算。
 - [x] 三份 MVP 文件（01／02／03）同步更新；`03` 的對應 `- [ ]` 才勾選為 `- [x]`<br>**✅ 2026-08-27 完成，順序照本文件前言要求**：先追認 → 再同步 → 最後才勾 `03`。`03` §1 的 PDM-004／005／006／008／010 五列同批勾選（PDM-001／002／003／011 早在 2026-08-14 已勾）；`01` §13 的去向表同批訂正三列（PDM-004 不再是「仍未定」；PDM-009 與 PDM-010 兩列的 ID **原本是對調的**，追認時查出並改正）。`02` 逐句查過**不需要改**——它本來就以「值已定案」的敘述引用這些數字，那些句子在今天之前是提前，今天起是對的。
-- [x] 判斷是否有任一決策構成新的架構決策，需要從 **ADR-018** 起新增 ADR 並更新 `adr/README.md` 索引<br>**✅ 2026-08-27 判斷完成，結論是「本批不產生新的 ADR」**，理由是機械的：**這一批追認沒有改變任何行為**——十一列裡沒有一個值被改，程式碼與測試一行未動，所以沒有任何決策可以被推翻或取代。<br>**真正產生架構決策的是那些「改變了行為」的動作，而它們各自都已經有 ADR**：兩個額度開關是 [ADR-055](../../../adr/ADR-055-the-run-allowance-is-turned-off-and-that-took-an-action.md)（Run）與 [ADR-056](../../../adr/ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md)（生成），額度強制點的形狀是 [ADR-028](../../../adr/ADR-028-beta-admission-and-quota-enforcement-points.md)。**本批對這兩份 ADR 只各加一節「後續」，不改寫決策**（AGENTS.md：ADR 是決策歷史，不原地改寫）。
+- [x] 判斷是否有任一決策構成新的架構決策，需要新增 ADR 並更新 `adr/README.md` 索引<br>**✅ 2026-08-27 判斷完成，結論是「本批不產生新的 ADR」**，理由是機械的：**這一批追認沒有改變任何行為**——十一列裡沒有一個值被改，程式碼與測試一行未動，所以沒有任何決策可以被推翻或取代。<br>**真正產生架構決策的是那些「改變了行為」的動作，而它們都已經記在[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度)這份決策裡**：兩個額度開關（Run、生成）與額度強制點的形狀。**本批對這份決定只增添一段後續說明，不改寫決策**（AGENTS.md：ADR 是決策歷史，不原地改寫）。
 
 ### 9.2 回寫 `02` 的對照表（v2 新增）
 
@@ -865,7 +865,7 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 
 ### v5 定案回填（2026-08-14）
 
-**觸發**：(1) 負責人定案模型供應商採 **OpenAI API**（經 LiteLLM 閘道，ADR-017 架構與鐵律 8 不變）；(2) 三份查核完成——[pdm-003-litellm-spike-report.md](pdm-003-litellm-spike-report.md) **§11 補測**、[data-category-sourcing.md](data-category-sourcing.md) **`data` 供給查核**、[cost-estimation.md](cost-estimation.md) **§6.2 模型成本敏感度**。
+**觸發**：(1) 負責人定案模型供應商採 **OpenAI API**（經 LiteLLM 閘道，[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)架構與鐵律 8 不變）；(2) 三份查核完成——[pdm-003-litellm-spike-report.md](pdm-003-litellm-spike-report.md) **§11 補測**、[data-category-sourcing.md](data-category-sourcing.md) **`data` 供給查核**、[cost-estimation.md](cost-estimation.md) **§6.2 模型成本敏感度**。
 **未修改任何 ADR、`02`、`03`，未變更任何工作項目勾選狀態。**
 
 | # | 位置 | 修正內容 | 依據 |
@@ -916,7 +916,7 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 | v3-2 | §3 理由（新增一條） | **RRF 不得寫成品質來源。** 等權融合實測零增益，兩種設定下還倒退一名；v1「兩腿同質」的解釋已被推翻（重疊降到 37–63% 仍無增益），真因是兩腿品質不對稱。混合檢索的價值一律表述為**召回覆蓋**；並補上「零命中的腿不得參與融合」的實作要求 | PDM-011 §9.3-B、§9.4-3、§9.5 |
 | v3-3 | §3 模型表 Embedding 列與其下方 blockquote | 「繁中→英文 recall@5」首要驗收條件**已實測通過**（`text-embedding-3-small`，Top-3 5/5）。**`voyage-3` 對比由定案前置降為選項**（Top-3 已 100%，無改進空間）。補記兩項未涵蓋：v2 未經 LiteLLM 閘道、索引時摘要與改寫仍為模擬 | PDM-011 §9.3-A、§9.4-5、§9.6 |
 | v3-4 | §3 模型表「符合原因潤飾」列 | 「索引時生成適用任務範例句」由 nice-to-have **升為必要項**——四條中文查詢對正解的詞彙交集為零卻是向量腿的正常命中，模板路徑在這些案例完全產不出理由，而這在真實系統是主流情境 | PDM-011 §9.4-4 |
-| v3-5 | §3 前置 Spike 段（改寫為狀態表） | 前置項 1（閘道相容性）**已完成、7/7 PASS、退路不需啟動**；前置項 3 已通過；**前置項 2（Agent SDK Skill 載入路徑）仍未驗證，PDM-003 維持不可定案**。並補三項實測衍生影響：**(a)** `thinking` 於 `/v1/messages` 不受 `drop_params` 管轄（僅非 Anthropic 後端觸發，變通 `MAX_THINKING_TOKENS=0`；補測時列第一優先，且使 ADR-017 的跨供應商 fallback 出現未驗證限制）、**(b)** Virtual Key 預算為軟上限（詳見 v3-6）、**(c)** Agent SDK harness 固定開銷實測 50K input tokens／輪，Runtime Image 裁減工具集是可行的成本槓桿 | PDM-003 Spike §4、§6.1、§6.2、§6.3、§7.1、§7.3 |
+| v3-5 | §3 前置 Spike 段（改寫為狀態表） | 前置項 1（閘道相容性）**已完成、7/7 PASS、退路不需啟動**；前置項 3 已通過；**前置項 2（Agent SDK Skill 載入路徑）仍未驗證，PDM-003 維持不可定案**。並補三項實測衍生影響：**(a)** `thinking` 於 `/v1/messages` 不受 `drop_params` 管轄（僅非 Anthropic 後端觸發，變通 `MAX_THINKING_TOKENS=0`；補測時列第一優先，且使[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)的跨供應商 fallback 出現未驗證限制）、**(b)** Virtual Key 預算為軟上限（詳見 v3-6）、**(c)** Agent SDK harness 固定開銷實測 50K input tokens／輪，Runtime Image 裁減工具集是可行的成本槓桿 | PDM-003 Spike §4、§6.1、§6.2、§6.3、§7.1、§7.3 |
 | v3-6 | §3 Virtual Key 殘餘風險段 | 「爆炸半徑上限＝一次 Run 的預算，約 $1.80」**修正為「約 $1.80 加上 flush 間隔內可發出的請求量」**——LiteLLM 的 spend 記帳為非同步（先扣後檢），預算是軟上限不是硬性截斷。**緩解改為「必須同時帶預算上限與即時的 `tpm_limit`」**，並寫入 §9 定案檢查項 | PDM-003 Spike §4.2、§6.3、§7.2-1 |
 | v3-7 | §3 風險表第一列 | 「LiteLLM 相容端點與 Agent SDK 不完全相容 → 整個方案失效」**降級為已證偽**；殘留範圍窄化為 `thinking` 透傳待補測 | PDM-003 Spike §7.1 |
 | v3-8 | §5.2 Token 上限列 | 300K input **標註為未經驗證的數值**：無 prompt caching 下僅夠 5–6 個 agent turn（harness 固定開銷 50K／輪）。**待補測 `cache_read_input_tokens` 後校正**；補測完成前不寫入 `02` 允收準則（§9.2 對照表同步加註） | PDM-003 Spike §6.2、§7.2-2 |
@@ -949,9 +949,9 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 | # | 位置 | 修正 |
 | --- | --- | --- |
 | 8 | **新增 §5.1b** | **Skill 套件匯入上限**（壓縮檔 10 MB／解壓後 100 MB 且邊解壓邊中止／檔數 2,000／深度 10／禁巢狀壓縮／**直接拒絕 symlink**／路徑穿越與檔名規則／失敗原因分類）。承接威脅模型 TM-IMP-02 與 **Q6**（列於「阻擋 SEC-002 定案的問題」）。與 Dataset 分開規範，因為前者在控制平面側解壓 |
-| 9 | §5.2、§8.1 | 新增**同一 Workspace 並行 Run 上限 = 2**，標為 ADR-011 Policy 首批配置值。此前 ADR-011 要求、威脅模型閘門 B 阻擋條件、cost v2 併發推算三處都需要此值但無值可驗 |
+| 9 | §5.2、§8.1 | 新增**同一 Workspace 並行 Run 上限 = 2**，標為[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度) Policy 首批配置值。此前該決策要求、威脅模型閘門 B 阻擋條件、cost v2 併發推算三處都需要此值但無值可驗 |
 | 10 | §3 Virtual Key 段 | 補**已知殘餘風險**（威脅模型 TM-SEC-02／Q11 明指「環境變數最容易被讀走」）＋四項緩解（每 Run 一把帶預算 $1.80 上限、TTL 建議 20 分鐘、終止即撤銷涵蓋所有路徑、供應商金鑰永不進 Sandbox）＋**兩項必須併同執行的配套**：Virtual Key 樣式列入 TRACE-005 遮罩（防 Script `echo` 經 `03:TRACE-003` 流入 Trace，違反鐵律 11）、Runtime Image 須斷言 `ANTHROPIC_API_KEY` **未設定**（不是空字串） |
-| 11 | §4 風險表、§9 | 新增 **gVisor × Node 22 / Python 3.12 syscall 相容性**風險列與跑通 runsc 的檢查項。ADR-015 定案條件與威脅模型 §5.6 都明列此驗證，v1 完全未安排（PDM-003 有 Spike，PDM-004 沒有） |
+| 11 | §4 風險表、§9 | 新增 **gVisor × Node 22 / Python 3.12 syscall 相容性**風險列與跑通 runsc 的檢查項。[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)定案條件與威脅模型 §5.6 都明列此驗證，v1 完全未安排（PDM-003 有 Spike，PDM-004 沒有） |
 | 12 | **新增 §6.1** | **帳號刪除分兩類處理**：私有內容硬刪除 vs 已被 Fork／歷史 Run 引用的版本**去識別化保留**。v1 的「硬刪除所有上述使用者資料」與同表三個「永久」列衝突，且硬刪除 Skill Version 會斷裂下游 Fork 溯源鏈（違反鐵律 4、`02:DISC-003`） |
 | 13 | §2 白名單、附錄 | **obra/superpowers 降級為發現／參考**，不列入首批精選。查核後確認其為軟體開發方法論（TDD／debug／code review／git workflow），非 `writing` 素材，且 git 工作流依賴 `git`——PDM-004 明確不含，依精選標準第 6 項本就不通過。`writing` 供給敘述改為僅由 `anthropics/skills` 承擔 |
 | 14 | 全文 | 導入 **`02:` / `03:` ID 來源前綴**（前言新增引用慣例）。兩份文件對 TEST／RUN／EVAL／PACK／TRACE／DISC 使用相同前綴、不同編號。**並修正 §1 的 `EVAL-001` → `03:EVAL-005`**——「規則判斷／模型判斷／使用者判斷」在 `02:EVAL-001`（結果評估）與 `03:EVAL-001`（驗收條件轉換）皆不成立 |
@@ -964,7 +964,7 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 | # | 位置 | 修正 |
 | --- | --- | --- |
 | 18 | §6 理由 | cost v2 §2.1 已將物件保存期改為「90 天（Trace）／30 天（Artifact）」並註明依據 PDM-006，**此項無待回寫**，於理由段註明 |
-| 19 | §1 理由第三點 | egress 允許清單由「只有 LiteLLM 閘道與物件儲存」改為與 §5.2 一致的**三項**（含 Trace ingestion 端點），對齊 ADR-005 執行節點拓撲的三條路徑 |
+| 19 | §1 理由第三點 | egress 允許清單由「只有 LiteLLM 閘道與物件儲存」改為與 §5.2 一致的**三項**（含 Trace ingestion 端點），對齊[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)執行節點拓撲的三條路徑 |
 | 20 | §4 套件安裝列、風險表 | 刪除「失敗訊息明確」的宣稱——default-deny + Proxy 固定 DNS 下只會得到通用網路錯誤；可理解性改由匯入階段預先揭露承擔（NFR-007） |
 | 21 | §2 白名單、附錄 | VoltAgent 條目數由「1500+」改為「約 1,500（自述 1,400+，badge 1,497+）」；`anthropics/skills` 的「17 個 skill」改標**待清點**（該數字被用作否決「官方唯一」選項的依據） |
 | 22 | §1 風險表、§7 風險表 | 「你最想串接什麼」與「目標 Agent 需求」由 BETA-003 改引 **BETA-005**（範圍與優先級複審）；BETA-003 專指評估報告與改善建議的質性回饋 |
@@ -1003,7 +1003,7 @@ ADR-012 的待決策第一條就是「MVP 首批支援的 Agent Packaging Profil
 5. **source-available 打包政策**——目前為法遵保守預設，需法務確認。
 6. **首月額度語意**——`min(20,30)` 或相加，請明確擇一。**v5：兩者的成本差已由 $54 vs $90 降為 $9 vs $15**，決策重心從成本移向濫用防護。
 7. **Token 中位數 $0.05 未經量測**——M1 需以 20–30 次真實 Run 收窄，量測時須同時記錄每輪工具呼叫次數。**300K input 上限本身已於 v5 驗證，此項不再是未解事項。**
-8. **平台級模型預算煞車**（威脅模型 Q13）——不在本提案範圍，建議歸 ADR-011 Policy 模組。**v5 補充**：Virtual Key 預算為軟上限、且與 token 上限脫鉤 7–8 倍，使此項的必要性再度提高。
+8. **平台級模型預算煞車**（威脅模型 Q13）——不在本提案範圍，建議歸[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度) Policy 模組。**v5 補充**：Virtual Key 預算為軟上限、且與 token 上限脫鉤 7–8 倍，使此項的必要性再度提高。
 9. **匯入 SSRF 的 MVP 歸屬**（威脅模型 Q15）——MVP 期間無工作項目承接，需依該文件建議的兩條途徑擇一。
 10. **`excel-*` 的類別歸屬**（v5 新增）——12 個 `excel-*` 歸 `data` 或 `documents` 影響 `data` 精選池厚度（25 vs 13），定案時需明確寫下歸類原則。
 11. **CLI 內建工具與內建 Skill 的裁減幅度**（v5，唯一仍待實測的 SBX-002 項）——這是削減約 19.4K 固定前綴的唯一路徑，`skills` 白名單不是。

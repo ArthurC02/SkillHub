@@ -9,4 +9,4 @@ Pydantic v2 models generated from `contracts/openapi/llm-internal.yaml`.
   `task gen:check` before committing.
 
 The generated models describe transport data only. Policy, authorization,
-retry, state transitions and queue ownership remain in Go under ADR-016.
+retry, state transitions and queue ownership remain in Go.

@@ -320,7 +320,7 @@ def quantiles(values: list[float]) -> tuple[float, float, float, float, float]:
 
 
 def check_repo_share(docs: list[dict], queries: list[dict]) -> list[str]:
-    """ADR-013: one source repo may own at most 20% of a category's queries."""
+    """One source repo may own at most 20% of a category's queries."""
     repo_of = {d["id"]: d["repo"] for d in docs}
     per_cat: dict[str, Counter] = {}
     totals: Counter = Counter()
@@ -601,7 +601,7 @@ def main(allow_api: bool, index_mode: str) -> None:
             c = min(cand, key=lambda c: c["t"])
             print(f"  {name} 最低門檻：相似度 {c['t']:.3f}（距離 {1 - c['t']:.3f}），召回損失 {c['loss']:.0%}")
 
-    print("\n## 4. 跨 repo 抽樣（ADR-013：單一 repo 至多 20% 題目）\n")
+    print("\n## 4. 跨 repo 抽樣（單一 repo 至多 20% 題目）\n")
     print("| 類別 | 來源 repo | 題數 | 判定 |")
     print("| --- | --- | --- | --- |")
     for line in check_repo_share(docs, queries):

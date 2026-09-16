@@ -44,7 +44,7 @@ export interface SetSkillRedistributionRequest {
     note: string;
     /**
      * Required when `value` is `allowed`, ignored otherwise, and
-     * that asymmetry is the ruling (`05` R-3b, ADR-057): `allowed`
+     * that asymmetry is the ruling (`05` R-3b): `allowed`
      * is the only value that releases anything, so it is the only
      * one that has to carry the evidence it relied on. Asking for a
      * licensing judgement in order to *block* would charge for
@@ -63,11 +63,11 @@ export interface SetSkillRedistributionRequest {
      */
     licenseExpression?: string;
     /**
-     * Required when `value` is `allowed`. The ADR-021 provenance
+     * Required when `value` is `allowed`. The provenance
      * tier the operator relied on, named separately from the
-     * expression because ADR-021 決策 1 is that the two are one
+     * expression because the two are one
      * claim: frontmatter `MIT` and a repo-root `MIT` are not the
-     * same assertion, and ADR-021 §5.3 records two repositories
+     * same assertion, and this reflects two repositories
      * whose valid MIT `LICENSE` covered content that was not theirs
      * — an error in the releasing direction.
      * 
@@ -75,8 +75,8 @@ export interface SetSkillRedistributionRequest {
      * what makes "every skill released on `repo-license-file`
      * evidence" one SQL query instead of a manual trawl.
      * 
-     * `curated-declared` is absent because ADR-021 決策 2 does not
-     * implement it: it is the one tier whose evidence does not
+     * `curated-declared` is absent because it is defined but not
+     * implemented: it is the one tier whose evidence does not
      * travel inside the package, so nobody holding the bytes could
      * re-verify a release made on it.
      * 

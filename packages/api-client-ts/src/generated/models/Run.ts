@@ -49,7 +49,7 @@ export interface Run {
      */
     runId: string;
     /**
-     * The standard lifecycle of ADR-004 / RUN-002. `cleaning_up` is not in
+     * The standard lifecycle of RUN-002. `cleaning_up` is not in
      * here: cleanup happens after a terminal state and is reported
      * separately in `cleanup_status`, so "the run failed" and "its sandbox
      * was torn down" stay two distinct facts.
@@ -57,7 +57,7 @@ export interface Run {
      * `succeeded` says the workload finished, not that the task was done.
      * Whether it was is `Evaluation.overall` from
      * GET /runs/{id}/evaluation, which is a separate resource an
-     * evaluation never writes back into (ADR-025). A surface showing this
+     * evaluation never writes back into. A surface showing this
      * value alone must word it as execution (執行完成 / 執行失敗) and must
      * not present it as a pass.
      * 
@@ -126,7 +126,7 @@ export interface Run {
      * `GET /runs/{id}` returned it while this schema did not mention it, so
      * every generated client was missing the one field that says why a run
      * failed — and nothing could notice: the Go side is models-only with
-     * hand-written handlers (ADR-030's 2026-08-29 note), so a handler can
+     * hand-written handlers, so a handler can
      * serve what the contract never declared.
      * 
      */

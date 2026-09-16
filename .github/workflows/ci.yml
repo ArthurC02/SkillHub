@@ -445,7 +445,7 @@ jobs:
       - name: Packaging contracts (contracts/packaging)
         run: python tools/contracts/validate_packaging.py
 
-      - name: Judge evidence-citation regression (ADR-043)
+      - name: Judge evidence-citation regression
         run: python tools/eval-regression/test_judge_regression.py
 
   qa002:

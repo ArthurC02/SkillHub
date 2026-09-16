@@ -100,7 +100,7 @@ func TestAProfileMayNotRewriteAFieldTheSpecDefines(t *testing.T) {
 	  "env_vars": [], "known_limitations": []
 	}`)
 	if _, err := LoadProfiles(dir); err == nil {
-		t.Fatal("a profile overwriting `description` was accepted; ADR-012 forbids an Adapter rewriting a Skill's intent")
+		t.Fatal("a profile overwriting `description` was accepted; an Adapter must not rewrite a Skill's intent")
 	}
 }
 

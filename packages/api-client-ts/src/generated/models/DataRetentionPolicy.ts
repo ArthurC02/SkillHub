@@ -29,7 +29,7 @@ import {
 } from './DataRetentionPolicyEventsInner';
 
 /**
- * ADR-029's four events and their attribute whitelist, plus the retention
+ * The analytics policy's four events and their attribute whitelist, plus the retention
  * this deployment actually applies. Served from the constants in
  * internal/analytics, never from numbers typed into a document.
  * 
@@ -52,7 +52,7 @@ export interface DataRetentionPolicy {
     retentionDays: number;
     /**
      * The closed set of four (the CHECK in 0029). A fifth would have to
-     * explain first why no domain table answers it (ADR-029 決策 1).
+     * explain first why no domain table answers it.
      * 
      */
     events: Array<DataRetentionPolicyEventsInner>;

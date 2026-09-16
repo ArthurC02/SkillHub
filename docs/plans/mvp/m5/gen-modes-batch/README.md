@@ -7,7 +7,7 @@
 | `corpus.json` | `diagram`：20 張流程圖的節點（14 張中文、6 張英文；4～9 個節點；10 張直線、7 張一個判斷且「否」跳段、3 張兩個判斷），每個節點帶一個 `key`——照著圖寫出來的文件幾乎一定會逐字出現的詞（數字、專有名詞、具體物件，不放動詞）。`reference`：20 組「任務描述＋一個參考 Skill」，參考刻意選相鄰但不同的領域，每份參考帶 3 個 `markers`——只會出現在它本文裡的怪句（「每欄最多五條」那種）；16 份中文本文、4 份英文 |
 | `draw.ps1` | 用 System.Drawing 把 `corpus.json` 的 `diagram` 畫成 `<id>.png`／`<id>.jpg`（四種字型輪替、兩種底色、四張 JPEG）。圖不進 repo：腳本是決定性的，重畫即得 |
 
-**Harness**：[`generate_modes_batch_test.go`](../../../../../apps/platform/internal/entrypoint/api/apiserver/generate_modes_batch_test.go) 的 `TestTheTwoNewerModesTwentyTimesEach`。每段一列：驗證通過／被擋、嘗試次數、成本、`generation_inputs` 有沒有落地，加兩個機器檢查——流程圖那 20 段數 `key` 在產出裡出現幾個（模型有沒有讀到那個節點），參考那 20 段數 `markers` 被逐字抄了幾個、以及參考本文與產出最長的共同字串有幾個 rune（ADR-066 決策 2 說的「讀過不等於抄」量起來長什麼樣）。
+**Harness**：[`generate_modes_batch_test.go`](../../../../../apps/platform/internal/entrypoint/api/apiserver/generate_modes_batch_test.go) 的 `TestTheTwoNewerModesTwentyTimesEach`。每段一列：驗證通過／被擋、嘗試次數、成本、`generation_inputs` 有沒有落地，加兩個機器檢查——流程圖那 20 段數 `key` 在產出裡出現幾個（模型有沒有讀到那個節點），參考那 20 段數 `markers` 被逐字抄了幾個、以及參考本文與產出最長的共同字串有幾個 rune（[從描述生成 Skill](../../../../adr/README.md#從描述生成-skill)決策說的「讀過不等於抄」量起來長什麼樣）。
 
 **跑法**（約 US$0.16～0.3，40 段各一次）：
 

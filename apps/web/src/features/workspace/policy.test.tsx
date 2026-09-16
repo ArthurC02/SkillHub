@@ -70,7 +70,7 @@ const FEEDBACK = {
   page_path: "他當時所在的路由，從不是完整網址：查詢字串可能帶個資，這個管道不收",
   run_id: "他當時看的 Run（若有），而且只在確認是他自己的 Run 之後",
   on_account_deletion:
-    "去識別而不是刪除：workspace_id 與 user_id 設為 NULL，文字保留（ADR-029 決策 5 的範圍複審建立在人們說了什麼之上，帳號刪除不能悄悄撤回已被計入的回報）",
+    "去識別而不是刪除：workspace_id 與 user_id 設為 NULL，文字保留（產品分析與稽核邊界的範圍複審建立在人們說了什麼之上，帳號刪除不能悄悄撤回已被計入的回報）",
   retention_days: null,
   note: "這個部署沒有設定回報的保存期限（FEEDBACK_RETENTION 未設），所以這些回報會一直保留，直到設定期限並執行 maintenance purge-feedback",
 };

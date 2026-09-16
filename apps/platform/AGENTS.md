@@ -9,7 +9,7 @@
 
 ## 區域權限
 
-這是 Go 控制平面，包含 API、Worker、maintenance 與 reindex 進程；服務層入口由 `internal/entrypoint/api/apiserver.NewApp` 等 composition root 注入。Bounded Context、query ownership 與跨 context 協作只依 `internal/AGENTS.md`、各 `doc.go`、ADR-032～035；本卡不複製 DDD 細節。
+這是 Go 控制平面，包含 API、Worker、maintenance 與 reindex 進程；服務層入口由 `internal/entrypoint/api/apiserver.NewApp` 等 composition root 注入。Bounded Context、query ownership 與跨 context 協作只依 `internal/AGENTS.md`、各 `doc.go`、[context map](../../docs/development/platform-context-map.md) 與 [ADR 索引](../../docs/adr/README.md)；本卡不複製 DDD 細節。
 
 ## 安全限制
 

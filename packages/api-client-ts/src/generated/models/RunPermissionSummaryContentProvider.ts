@@ -28,7 +28,7 @@ export interface RunPermissionSummaryContentProvider {
      */
     name: string;
     /**
-     * The provider's declared isolation level (ADR-015; `clean` is ADR-059's
+     * The provider's declared isolation level (`clean` is clean test mode's
      * "no boundary at all" level, admitted only under SKILLHUB_CLEAN_MODE).
      * Absent when unassigned. Kept as an enum, not prose, so devctl's
      * isolation-level check can reconcile it with the dispatch gate and

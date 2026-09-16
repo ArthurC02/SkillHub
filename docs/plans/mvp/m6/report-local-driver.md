@@ -1,7 +1,7 @@
 # M6 前期量測：本機行程 Driver 有沒有現成的輪子
 
 - 日期：2026-08-28
-- 決策落點：[ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)
+- 決策落點：[淨測試模式](../../../adr/README.md#淨測試模式)
 - 姊妹報告：[report-sandbox-options.md](report-sandbox-options.md)（為什麼沒有沙箱）、[report-inmemory-postgres.md](report-inmemory-postgres.md)、[report-object-storage.md](report-object-storage.md)
 
 ## 0. 這份報告最重要的一句話
@@ -154,4 +154,4 @@ reported the sandbox stopped — only the direct child was reaped, not the whole
 
 **兩次突變都紅**：①把 `terminate()` 還原成只殺父行程 → `detached grandchild survived Stop… but this platform declares Reaping().Detached`；②把 Windows 的宣告改成 `Detached: false` → `detached grandchild was reaped … so fix Reaping() rather than this assertion`。
 
-**沒有去修 Linux，理由寫在 [ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md) 決策 5 第 3 項**：兩條無特權的繞法（`PR_SET_CHILD_SUBREAPER` 加 `/proc` 掃描、user namespace 裡的 PID namespace）都比這個 Driver 的用途貴，而 M6 的目標機器是 Windows。
+**沒有去修 Linux，理由寫在[淨測試模式](../../../adr/README.md#淨測試模式)裡**：兩條無特權的繞法（`PR_SET_CHILD_SUBREAPER` 加 `/proc` 掃描、user namespace 裡的 PID namespace）都比這個 Driver 的用途貴，而 M6 的目標機器是 Windows。

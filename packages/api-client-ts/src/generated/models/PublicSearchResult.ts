@@ -51,7 +51,7 @@ export interface PublicSearchResult {
     name: string;
     /**
      * Plain summary (DISC-002). The index-time LLM summary when the skill
-     * has been enriched (ADR-013 §1, model-generated), otherwise the
+     * has been enriched (model-generated), otherwise the
      * package's own frontmatter description. `summary_source` says which,
      * because until it existed this sentence was documented as sometimes
      * model-written and had no field a client could act on.
@@ -59,7 +59,7 @@ export interface PublicSearchResult {
      */
     summary: string;
     /**
-     * Who wrote `summary`. ADR-013 requires model-generated content to be
+     * Who wrote `summary`. Model-generated content must be
      * labelled, and this row was already labelling `match_reason` while
      * printing the model's rewrite of the summary unmarked — the footnote
      * carried the badge and the sentence a reader decides on did not.
@@ -154,7 +154,7 @@ export interface PublicSearchResult {
      */
     matchReason?: string;
     /**
-     * Provenance of match_reason. ADR-013 requires model-generated content
+     * Provenance of match_reason. Model-generated content needs
      * to be labelled, so the UI can mark it as such. `template` reasons are
      * assembled from the query/document lexical overlap, or state plainly
      * that the hit came from semantic similarity with no shared keywords.

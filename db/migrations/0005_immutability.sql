@@ -9,7 +9,7 @@ DECLARE
     mutable_col text;
 BEGIN
     IF TG_OP = 'DELETE' THEN
-        RAISE EXCEPTION 'row in %.% is immutable and cannot be deleted (ADR-003)',
+        RAISE EXCEPTION 'row in %.% is immutable and cannot be deleted',
             TG_TABLE_SCHEMA, TG_TABLE_NAME
             USING ERRCODE = 'restrict_violation';
     END IF;
@@ -25,7 +25,7 @@ BEGIN
     END IF;
 
     IF old_row IS DISTINCT FROM new_row THEN
-        RAISE EXCEPTION 'row in %.% is immutable and cannot be updated (ADR-003)',
+        RAISE EXCEPTION 'row in %.% is immutable and cannot be updated',
             TG_TABLE_SCHEMA, TG_TABLE_NAME
             USING ERRCODE = 'restrict_violation';
     END IF;

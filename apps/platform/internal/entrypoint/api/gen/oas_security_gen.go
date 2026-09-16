@@ -20,7 +20,7 @@ type SecurityHandler interface {
 	// generated TS client only has to send credentials with the request.
 	//
 	// It identifies the user and nothing more. The workspace scope every query runs under is resolved from
-	// it server-side and is never taken from a request parameter (iron rule 3, ADR-011).
+	// it server-side and is never taken from a request parameter (iron rule 3).
 	HandleSessionCookie(ctx context.Context, operationName OperationName, t SessionCookie) (context.Context, error)
 }
 

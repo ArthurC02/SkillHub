@@ -326,7 +326,7 @@ function occurrences(needle: string): number {
   return text().split(needle).length - 1;
 }
 
-test("ADR-027 only `allowed` opens the packaging entry, and unknown is refused like blocked", () => {
+test("only `allowed` opens the packaging entry, and unknown is refused like blocked", () => {
   const detail = (over: Partial<SkillDetail>) => ({
     ...(skill as unknown as SkillDetail),
     ...over,
@@ -747,7 +747,7 @@ test("§2.4 不能下載的那一列，在連結原本的位置說出是哪一�
           serve_state: {
             value: "quarantined",
             label: "檢查中(尚未可下載)",
-            note: "打包完成,驗證還沒結束。這是暫時狀態(ADR-003 隔離)。",
+            note: "打包完成,驗證還沒結束。這是暫時狀態。",
           },
         },
       ],

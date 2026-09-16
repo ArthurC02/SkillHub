@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://skillhub.local/contracts/events/trace-event.schema.json",
   "title": "Skill Hub Run Trace Event",
-  "description": "One user-visible Run Trace event (TRACE-001). This is the Run Trace plane of ADR-009 only: platform observability and evaluation results use different models and are NOT carried here. Every instance is one row of the `trace_events` partitioned table (db/migrations/0004).",
+  "description": "One user-visible Run Trace event (TRACE-001). This is the Run Trace plane only: platform observability and evaluation results use different models and are NOT carried here. Every instance is one row of the `trace_events` partitioned table (db/migrations/0004).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -32,13 +32,13 @@
     "run_id": {
       "type": "string",
       "format": "uuid",
-      "description": "Permanent platform run identifier (ADR-004, iron rule 10). Never a provider_run_id."
+      "description": "Permanent platform run identifier (iron rule 10). Never a provider_run_id."
     },
     "attempt": {
       "type": "integer",
       "minimum": 1,
       "maximum": 100000,
-      "description": "Platform run attempt this event belongs to (ADR-004 run_attempt). Mirrors runs.attempt."
+      "description": "Platform run attempt this event belongs to. Mirrors runs.attempt."
     },
     "seq": {
       "type": "integer",
@@ -55,7 +55,7 @@
     "emitted_by": {
       "type": "string",
       "enum": ["sandbox", "orchestrator", "llm_service"],
-      "description": "Producing plane. `sandbox` events cross the trust boundary (ADR-001) and are untrusted input to the control plane."
+      "description": "Producing plane. `sandbox` events cross the trust boundary and are untrusted input to the control plane."
     },
     "type": {
       "type": "string",
@@ -263,7 +263,7 @@
         "message": {
           "type": "string",
           "maxLength": 16000,
-          "description": "Text after masking. Consumers must render this as inert text: no ANSI, HTML, SVG or executable interpretation (ADR-009).",
+          "description": "Text after masking. Consumers must render this as inert text: no ANSI, HTML, SVG or executable interpretation.",
           "$comment": "sensitivity: secret_bearing - arbitrary workload output."
         },
         "truncated": {
@@ -299,7 +299,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["category", "code", "message", "retryable"],
-      "description": "TRACE-004. A failure worth showing the user. Category follows the ADR-004 failure taxonomy so retry policy and diagnostics line up with the orchestrator.",
+      "description": "TRACE-004. A failure worth showing the user. Category follows the run orchestration's failure taxonomy so retry policy and diagnostics line up with the orchestrator.",
       "properties": {
         "category": {
           "type": "string",
@@ -311,7 +311,7 @@
             "evaluation",
             "cleanup"
           ],
-          "$comment": "ADR-004 'failure and retry': provision / execution / event delivery / artifact upload / evaluation / cleanup are classified separately."
+          "$comment": "Failure and retry: provision / execution / event delivery / artifact upload / evaluation / cleanup are classified separately."
         },
         "code": {
           "type": "string",
@@ -325,11 +325,11 @@
         },
         "retryable": {
           "type": "boolean",
-          "description": "Whether the orchestrator considered this action safe to retry (ADR-004: only known-idempotent, policy-allowed actions). Recording the decision, not making it."
+          "description": "Whether the orchestrator considered this action safe to retry (only known-idempotent, policy-allowed actions). Recording the decision, not making it."
         },
         "provider_diagnostics": {
           "type": ["object", "null"],
-          "description": "Provider-specific extension fields (ADR-004). May be stored and shown, but evaluation must not depend on them.",
+          "description": "Provider-specific extension fields. May be stored and shown, but evaluation must not depend on them.",
           "$comment": "sensitivity: secret_bearing - provider payloads are not vetted field by field.",
           "default": null
         }
@@ -408,7 +408,7 @@
       "additionalProperties": false,
       "required": ["evaluation_id", "judge_model", "judge_prompt_version"],
       "description": "EVAL-001. The control plane began evaluating this run. Emitted by the orchestrator only - evaluation happens in the control plane after the sandbox is gone, so a sandbox-emitted evaluation event is a forgery and the enclosing `if` refuses it.",
-      "$comment": "NOT A SOURCE OF TRUTH for the verdict, the same way run_lifecycle is not one for run state (iron rule 5): the `evaluations` table is. These two types exist so the trace timeline does not stop mid-story at the moment the run ends. Evaluation results are the Evaluation plane of ADR-009 and are not carried here.",
+      "$comment": "NOT A SOURCE OF TRUTH for the verdict, the same way run_lifecycle is not one for run state (iron rule 5): the `evaluations` table is. These two types exist so the trace timeline does not stop mid-story at the moment the run ends. Evaluation results are a separate plane and are not carried here.",
       "properties": {
         "evaluation_id": { "type": "string", "format": "uuid" },
         "judge_model": {
@@ -419,7 +419,7 @@
         "judge_prompt_version": {
           "type": "string",
           "maxLength": 100,
-          "description": "Judge prompt version actually used (ADR-017 requires the used prompt version to be recorded), so a re-evaluation is comparable with the one it supersedes."
+          "description": "Judge prompt version actually used, recorded so a re-evaluation is comparable with the one it supersedes."
         },
         "rubric_version": {
           "type": ["string", "null"],
@@ -456,7 +456,7 @@
         "criteria_undetermined": { "type": "integer", "minimum": 0 },
         "evidence_complete": {
           "type": "boolean",
-          "description": "False when the trace this verdict was drawn from had holes (AdvancedView.complete) or evidence could not be re-verified. A criterion evaluated on incomplete evidence must not be recorded as passed, so consumers must show this rather than hide it (ADR-009: never pretend a trace is complete)."
+          "description": "False when the trace this verdict was drawn from had holes (AdvancedView.complete) or evidence could not be re-verified. A criterion evaluated on incomplete evidence must not be recorded as passed, so consumers must show this rather than hide it, never pretending a trace is complete."
         },
         "cost_usd": {
           "type": ["number", "null"],

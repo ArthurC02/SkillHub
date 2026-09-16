@@ -1,16 +1,16 @@
-# Runtime Image 升級紀錄（ADR-023 §4）
+# Runtime Image 升級紀錄
 
-本檔是 [ADR-023](../../../docs/adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md)
+本檔是 [Sandbox 隔離與執行安全](../../../docs/adr/README.md#sandbox-隔離與執行安全)
 要求的**行為重驗證據落點**，**append-only**：每次升級加一節，既有節不改寫。
 
-**「升級」的定義是任何會改變 image digest 的變更**（ADR-023 §1）：SDK 版本、基底映像、
+**「升級」的定義是任何會改變 image digest 的變更**：SDK 版本、基底映像、
 映像內任何套件。三者都要跑 §2 的四項清單，缺一項不得合併。
 
-**為什麼要有這個檔**：ADR-023 §3 的理由是 `0.3.233` 那次——`settingSources` 的語意反轉了，
+**為什麼要有這個檔**：理由是 `0.3.233` 那次——`settingSources` 的語意反轉了，
 而 changelog 讀起來完全合理。**上表每一項失敗時都不會拋錯**，只會讓某個行為消失而 Run 仍
 `succeeded`。所以這裡收的是**實測輸出**，不是推理、不是 release notes。
 
-四項測項（ADR-023 §2 原文，此處只記編號）：
+四項測項（見[Sandbox 隔離與執行安全](../../../docs/adr/README.md#sandbox-隔離與執行安全)，此處只記編號）：
 
 | # | 測項 |
 | --- | --- |
@@ -20,15 +20,15 @@
 | 4 | `usage` 事件的發出條件 |
 
 **與 SBX-002 掃描的分工**：`../README.md` 的掃描與豁免清單管**供應鏈風險**，本檔管
-**行為回歸**，兩者不覆蓋對方（ADR-023 §影響）。
+**行為回歸**，兩者不覆蓋對方。
 
 ---
 
 ## `2026.08-1` → `2026.08-2`（2026-08-16）— 補記
 
-> **補記說明**：本節記錄的升級發生在 ADR-023 訂立**之前**（ADR-023 日期同為 2026-08-16），
+> **補記說明**：本節記錄的升級發生在 行為重驗證規則訂立**之前**（該規則生效日同為 2026-08-16），
 > 當時證據落在 M2 基準報告而非本檔。這裡不重跑，而是把**當時實際跑過的量測**對應回四項
-> 清單並附引用——ADR-023 §3 禁止的是「以 changelog 代替實測」，不是禁止引用既有實測。
+> 清單並附引用——規則禁止的是「以 changelog 代替實測」，不是禁止引用既有實測。
 > 凡當時未涵蓋的項目，下方誠實記為未涵蓋。
 
 | 欄位 | 值 |
@@ -73,11 +73,11 @@ token −50%、成本 −28%（§13.3）；`pandas` 3.x 只觸發一則相容性
 
 ### 重驗策略：哪些沿用、哪些實跑
 
-ADR-023 §2 要求四項**在新 digest 上實跑**。本次變更的性質是**依賴集只增不減，SDK 與基底
+四項測項要求**在新 digest 上實跑**。本次變更的性質是**依賴集只增不減，SDK 與基底
 均未變**，因此：
 
 - 測項 1／3／4 的失效機制（SDK 選項語意、閘道欄位、`usage` 發出條件）**與依賴集無因果
-  關係**——但 ADR-023 §3 明文禁止用推理代替實測，所以**四項全部在新 digest 上實跑一次**，
+  關係**——但規則明文禁止用推理代替實測，所以**四項全部在新 digest 上實跑一次**，
   不採「沿用上一節結論」。跑的是**煙霧規模**而非 45 筆全量：全量是**目錄事實**
   （相容軸回填），與**行為回歸**是兩件事，後者一個 Run 就能觀察到全部四項。
 - 額外加測**依賴集本身**，因為那才是本次真正改的東西。
@@ -104,7 +104,7 @@ docker run --rm --network none --entrypoint python3 skillhub/runtime-agent-sdk:2
 - `chardet.detect("héllo".encode()) ` 回傳非空 encoding ✔
 - `phonenumbers.is_valid_number(parse("+886223456789"))` ✔（metadata 有隨 wheel 進來）
 
-### 實測：ADR-023 四項（單一真實 Run，`run_id=smoke-2026-08-3`）
+### 實測：四項測項（單一真實 Run，`run_id=smoke-2026-08-3`）
 
 以真映像跑一次完整的 `run.mjs` 迴圈：掛一個最小 Skill 套件（`dep-smoke`，SKILL.md ＋
 一支 `scripts/check.py`），經 LiteLLM 短效 Virtual Key（`max_budget=$0.10`、`duration=20m`）。
@@ -155,7 +155,7 @@ trace 完整性：7 個事件、`seq` 1..7 **無缺口**（`tool_call` ×2、`ag
 | 為什麼 `-5` 是升級而不是整理 | `unzip` 對壓縮比同樣沒有防護，所以這不是回歸；但 `-4` 把這道邊界搬到了**沒有 cgroup 接住的平台**（clean mode 是主機行程：Linux 無 root 時零資源強制，Windows 的 Job Object 會直接終結整個 job，Run 變成沒有 trace、沒有產出、沒有原因的失敗）。接手一道邊界的時機就是加上界的時機 |
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
-| 映像 digest | `sha256:ba2bc95e5ff65510369a7b366f96eed629a8128e1c585bd5d1db168eceb7d13e`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-5`，由 [runtime-image #33258533387](https://github.com/ArthurC02/SkillHub/actions/runs/33258533387) 於 2026-08-29 隨 `f3f8bb0` 發佈）。<br>**2026-08-30 訂正**：本節原記為「本機建置、尚未推上 GHCR」，`sha256:37c08f48…`。那句是錯的，而且錯得有代價——**registry 一直有這個 tag**，是 `-4`／`-5` 的 `run.mjs` 變更觸發了 `runtime-image.yml`。四項實測當天先跑在本機那份上，發現之後**整組重跑在上面這個 digest 上**，因為 ADR-023 決策 1 說事實來源是 digest，而沒有人會去 `docker run` 一台開發機上的建置產物。兩份不可能位元組相同（本專案的映像不是可重現建置），所以「本機跑過」不算數。 |
+| 映像 digest | `sha256:ba2bc95e5ff65510369a7b366f96eed629a8128e1c585bd5d1db168eceb7d13e`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-5`，由 [runtime-image #33258533387](https://github.com/ArthurC02/SkillHub/actions/runs/33258533387) 於 2026-08-29 隨 `f3f8bb0` 發佈）。<br>**2026-08-30 訂正**：本節原記為「本機建置、尚未推上 GHCR」，`sha256:37c08f48…`。那句是錯的，而且錯得有代價——**registry 一直有這個 tag**，是 `-4`／`-5` 的 `run.mjs` 變更觸發了 `runtime-image.yml`。四項實測當天先跑在本機那份上，發現之後**整組重跑在上面這個 digest 上**，因為事實來源是 digest，而沒有人會去 `docker run` 一台開發機上的建置產物。兩份不可能位元組相同（本專案的映像不是可重現建置），所以「本機跑過」不算數。 |
 | 依賴集 | **未變**（`-3` 的 17 個 Python 套件，0 增 0 減） |
 | commit | `-4`／`-5` 的 `run.mjs` 在 2026-08-29 之前的批次落地；本節的實測紀錄與 `main.go`／`ci.yml` 的預設值調整同批 |
 | CI | [runtime-image #33258533387](https://github.com/ArthurC02/SkillHub/actions/runs/33258533387)（`publish` **success**；`rescan`／`review` skipped） |
@@ -177,7 +177,7 @@ trace 完整性：7 個事件、`seq` 1..7 **無缺口**（`tool_call` ×2、`ag
 執行方式：`node --test infra/images/runtime-agent-sdk/run.test.mjs`（19/19 通過，不需要
 容器、不需要金鑰、不花錢）。
 
-### 2026-08-30：ADR-023 §2 四項，全部跑在 `sha256:ba2bc95e…` 上
+### 2026-08-30：四項測項，全部跑在 `sha256:ba2bc95e…` 上
 
 跑法與 `-3` 那一節同規模（單一 Run、`gpt-5.4-mini`、每次 $0.01～0.03）。**環境**：本機
 LiteLLM（`task dev:model`）＋ `skillhub_egress` ＋ 主機上的 `sandboxd`
@@ -207,7 +207,7 @@ marker 那一半仍綠，然後改回來。
 
 ### 同批修好的一件事：那兩支付費測試從 A1-e 落地之日起就跑不動
 
-`harness_token_e2e_test.go` 建 `sandbox.Manager` 時**沒有給 `EgressAllow`**。ADR-022 A1-e
+`harness_token_e2e_test.go` 建 `sandbox.Manager` 時**沒有給 `EgressAllow`**。egress 允許清單政策生效
 之後，沒有 rendered destination 的節點會在任何容器啟動之前就拒絕派送
 （`capability_mismatch: … it routes to nothing (no destination has a pinned address)`）。
 **而這件事一直沒有人看見，因為沒設那兩個 gateway 變數時這兩支會 skip，而 skip 長得像 pass。**
@@ -233,7 +233,7 @@ marker 那一半仍綠，然後改回來。
 ## `2026.08-5` → `2026.08-6`（2026-09-02）— **四項實測尚未跑;預設映像刻意留在 `-5`**
 
 > **這一節的狀態與上一節相反,而那正是要寫清楚的地方**:`-5` 是「實測全跑完才寫」,
-> 本節是「變更已合、實測還沒跑」。ADR-023 §3 明文禁止以推理或既有證據代替新 digest
+> 本節是「變更已合、實測還沒跑」。規則明文禁止以推理或既有證據代替新 digest
 > 上的實測,所以本節不主張任何一項通過,並在 [`04` 丙-125](../../../docs/plans/04-backlog-and-handoffs.md) 開一列等人做。
 >
 > **為什麼還是合了**:這次改的是 `run.mjs` 的 agent 選項,而**淨測試模式不經過映像**
@@ -280,7 +280,7 @@ marker 那一半仍綠，然後改回來。
 
 ## `2026.08-6` → `2026.08-7`（2026-09-03）— **四項實測尚未跑；預設映像仍留在 `-5`**
 
-> **與上一節同一種狀態**：變更已合、ADR-023 §2 的四項實測**一項都沒跑**。ADR-023 §3 禁止
+> **與上一節同一種狀態**：變更已合、四項實測**一項都沒跑**。規則禁止
 > 以推理或既有證據代替新 digest 上的實測，所以本節**不主張任何一項通過**，[`04` 丙-125](../../../docs/plans/04-backlog-and-handoffs.md)
 > 那一列繼續開著，只是標的從 `-6` 變成 `-7`。
 >
@@ -305,7 +305,7 @@ marker 那一半仍綠，然後改回來。
 
 ## `2026.08-7` → `2026.08-8`（2026-09-05）— 四項實測尚未跑；預設映像仍留在 `-5`
 
-> **與上兩節同一種狀態**：變更已合、ADR-023 §2 的四項實測**一項都沒跑**，本節不主張任何
+> **與上兩節同一種狀態**：變更已合、四項實測**一項都沒跑**，本節不主張任何
 > 一項通過。[`04` 丙-125](../../../docs/plans/04-backlog-and-handoffs.md) 那一列繼續開著，
 > 標的從 `-7` 變成 `-8`。
 >
@@ -318,7 +318,7 @@ marker 那一半仍綠，然後改回來。
 | 欄位 | 值 |
 | --- | --- |
 | 變更 | 新增 `constraints.txt`（Python transitive 版本鎖）、`package.json`＋`package-lock.json`（Node SDK 版本鎖）；`Dockerfile` 的 `pip3 install` 加 `-c constraints.txt`，`npm install` 改 `npm ci --omit=dev`，並加一支 build-time 檢查斷言 `package.json` 的 SDK 版本與 `ARG CLAUDE_AGENT_SDK_VERSION` 一致（不一致直接 fail build）。同批把 `pip3 install` 上方「手寫 lock 是第二份會漂移的答案」那段註解改寫——那個論點答錯了問題：SBOM 說的是這次建置裡有什麼，不是下次建置會不會一樣；lock 檔案回答的是後面那句 |
-| 為什麼是升級而不是整理 | 它不改變任何一次 Run 的行為（SDK 版本、Python 套件版本、基底 digest 全部照舊），但它改變**下一次 `--no-cache` 重建會不會是同一組位元組**——依 ADR-023 §1「任何會改變 digest 的變更都是升級」，加鎖檔案會改 digest（多兩個 `COPY` 層），所以照規矩走版本號 |
+| 為什麼是升級而不是整理 | 它不改變任何一次 Run 的行為（SDK 版本、Python 套件版本、基底 digest 全部照舊），但它改變**下一次 `--no-cache` 重建會不會是同一組位元組**——依「任何會改變 digest 的變更都是升級」這項判準，加鎖檔案會改 digest（多兩個 `COPY` 層），所以照規矩走版本號 |
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
 | 映像 digest（本機，非 GHCR） | 兩次獨立 `--no-cache --pull` 建置，見下方「兩次乾淨建置的一致性證據」。**不是**發佈用的 digest——本批未 push，見上方警語 |
@@ -435,7 +435,7 @@ skipped 1
 份稽核跑在 Windows host 上，該測項需要 Unix 檔案模式位元），與本批的 lock 檔案改動無關；
 `run.mjs`／`run.test.mjs` 本批完全未動（不在 path allowlist 內）。
 
-### 2026-09-05：ADR-023 §2 四項，全部跑在 CI 發佈的 digest 上
+### 2026-09-05：四項測項，全部跑在 CI 發佈的 digest 上
 
 | 欄位 | 值 |
 | --- | --- |
@@ -456,7 +456,7 @@ skipped 1
 
 > **這一節是被 CI 逼出來的，不是計畫內的升級。** `Runtime Image` workflow 在
 > [run #34422644109](https://github.com/ArthurC02/SkillHub/actions/runs/34422644109) 的
-> `publish` job、`Build and run publication gates` 這一步紅掉，I-06 閘門（ADR-022 §2：
+> `publish` job、`Build and run publication gates` 這一步紅掉，I-06 閘門（定義是
 > fixable Critical/High 無豁免路徑）擋下一筆：
 >
 > ```
@@ -486,12 +486,12 @@ README〈Digest 更新程序〉逐字寫著「**不要為了讓掃描變綠而�
 | 欄位 | 值 |
 | --- | --- |
 | 變更 | `Dockerfile` 既有的 apt 層加一句 `apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0`。**沒有其他改動** |
-| 為什麼是升級而不是整理 | 它改變 image digest（多裝了一個套件版本），依 ADR-023 §1 就是升級，所以走版本號 |
+| 為什麼是升級而不是整理 | 它改變 image digest（多裝了一個套件版本），依定義就是升級，所以走版本號 |
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**，理由見上表） |
 | 依賴集 | Python 與 Node 兩份**未變**（`pip3 install` 與 `npm ci` 兩段一字未動） |
 | 預設映像 | **仍是 `-8`**：`sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，四處都沒有動 |
-| ADR-023 §2 四項實測 | **一項都沒跑**，本節不主張任何一項通過 |
+| 四項實測 | **一項都沒跑**，本節不主張任何一項通過 |
 
 ### 本機驗證（閘門用的是同兩個釘住的 digest）
 
@@ -510,7 +510,7 @@ Dockerfile 少掉本節加的那一行，在同一道閘門上紅，逐字輸出
 
 ### 這個修補還沒有到達任何一個在跑的東西
 
-**`-9` 是修好的那一個，而部署預設是 `-8`。** 移動預設是 ADR-023 §2 四項實測通過之後的
+**`-9` 是修好的那一個，而部署預設是 `-8`。** 移動預設是 四項實測通過之後的
 動作（成本約 $0.06，且必須跑在 CI 發佈出來的 digest 上，不是本機這一個——`-5` 那節付過
 這個學費）。在那之前，這個 CVE 在**實際會被派送的映像裡仍然在**。這件事開在
 [`04` 丙-225](../../../docs/plans/04-backlog-and-handoffs.md)，不藏在這一節裡。
@@ -526,13 +526,13 @@ Dockerfile 少掉本節加的那一行，在同一道閘門上紅，逐字輸出
 | 欄位 | 值 |
 | --- | --- |
 | 變更 | 三個檔只刪註解。`Dockerfile` 對 `-9`（`4e389e75`）的非註解差異只有 `ARG IMAGE_VERSION` 這一行；`run.mjs`、`run.test.mjs` 以 TypeScript printer 去掉註解後與 `-9` 相同。**沒有其他改動** |
-| 為什麼仍是升級 | 映像裡的檔案位元組變了、digest 跟著變，依 ADR-023 §1 走版本號 |
+| 為什麼仍是升級 | 映像裡的檔案位元組變了、digest 跟著變，依定義走版本號 |
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
 | 依賴集 | Python 與 Node 兩份**未變**（`constraints.txt`、`package.json`、`package-lock.json` 一字未動） |
 | `-9` 的 CVE 修補 | **帶著**：`libpcre2-8-0` 的指名升級那一行還在 |
 | 預設映像 | **仍是 `-8`**：四處預設都沒有動（同上一節那張表） |
-| ADR-023 §2 四項實測 | **一項都沒跑**，本節不主張任何一項通過 |
+| 四項實測 | **一項都沒跑**，本節不主張任何一項通過 |
 
 **`04` 丙-225 講的「修好了但沒被派送的那一版」從這一版起是 `-10`**：它帶著同一個修補，`-9` 從此只是被取代的 tag。
 
@@ -551,7 +551,7 @@ docker run … anchore/grype:v0.117.0@sha256:ddf9e9f2… sbom:/scan/sbom.spdx.js
 
 I-05、`UPGRADES.md` 標題與 I-02 三道靜態閘門以 `runtime-image.yml` 的原腳本在本機重播，全數通過。
 
-### 2026-09-11：ADR-023 §2 四項，全部跑在 CI 發佈的 digest 上
+### 2026-09-11：四項測項，全部跑在 CI 發佈的 digest 上
 
 | 欄位 | 值 |
 | --- | --- |
@@ -583,7 +583,7 @@ I-05、`UPGRADES.md` 標題與 I-02 三道靜態閘門以 `runtime-image.yml` �
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
 | 預設映像 | **仍是 `-10`**（`sha256:8f465e4f2522ae2b8a5b551c07010a48f11ffb407d25a70bbaacef3f49945cdb`）：四處預設都沒有動 |
-| ADR-023 §2 四項實測 | **一項都沒跑**，本節不主張任何一項通過；`-11` 在補跑之前不該成為預設 |
+| 四項實測 | **一項都沒跑**，本節不主張任何一項通過；`-11` 在補跑之前不該成為預設 |
 
 ---
 
@@ -591,7 +591,7 @@ I-05、`UPGRADES.md` 標題與 I-02 三道靜態閘門以 `runtime-image.yml` �
 
 > **這一節是基底映像的升級，不是被 CI 逼出來的版本號**。`node:22-bookworm-slim` 這條浮動
 > 標籤在 2026-08-25 被重新建置，而 Dockerfile 釘的 digest 還指著舊的那一次；上游比對查出
-> 這是本 repo 三十多個釘選裡唯一真正落後的一個。依 ADR-023 §1，基底 digest 變更就是升級，
+> 這是本 repo 三十多個釘選裡唯一真正落後的一個。依定義，基底 digest 變更就是升級，
 > 四項實測因此要重跑——結果見本節末的子節。
 
 | 欄位 | 值 |
@@ -619,7 +619,7 @@ docker run … anchore/grype:v0.117.0@sha256:ddf9e9f2… sbom:/scan/sbom.spdx.js
   → No vulnerabilities found        (exit 0)
 ```
 
-### 2026-09-12：ADR-023 §2 四項，全部跑在 CI 發佈的 digest 上
+### 2026-09-12：四項測項，全部跑在 CI 發佈的 digest 上
 
 | 欄位 | 值 |
 | --- | --- |

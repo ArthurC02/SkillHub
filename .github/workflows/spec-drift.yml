@@ -38,10 +38,10 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$DRIFT_CODE" = 3 ]; then
-            TITLE="Agent Skills spec pin does not reproduce (ADR-044)"
+            TITLE="Agent Skills spec pin does not reproduce"
             BODY=$(printf 'contracts/spec/SOURCE.json records a blob SHA the pinned commit does not serve. Until this is explained, every conformance statement in the repository names a revision we did not validate against.\n\n```\n%s\n```\n' "$(cat drift.txt)")
           else
-            TITLE="Agent Skills specification has drifted (ADR-044)"
+            TITLE="Agent Skills specification has drifted"
             BODY=$(printf 'Upstream main has moved away from the pinned revision. Read the diff, decide whether it changes what `skillpkg.Validate` checks, then re-pin `contracts/spec/SOURCE.json` and record the decision.\n\nDrift is not automatically a defect. It is automatically something a person has to read.\n\n```\n%s\n```\n' "$(cat drift.txt)")
           fi
           if gh issue list --state open --search "in:title \"$TITLE\"" --json title --jq '.[].title' | grep -qxF "$TITLE"; then

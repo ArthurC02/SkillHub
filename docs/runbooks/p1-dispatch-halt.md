@@ -1,7 +1,7 @@
 # Runbook：P1 停止派送（`SEC-010` / `SEC-012`）
 
 - 對應需求：[`02:SEC-010`](../plans/02-specifications-and-acceptance-criteria.md)（「流程以 runbook 形式產出，可被值班人員直接執行」）、`03:SEC-012`
-- 對應決策：[ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) X-02／X-04、`02:SEC-010` 的嚴重度分級表
+- 對應決策：[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) X-02／X-04、`02:SEC-010` 的嚴重度分級表
 - 歷史殘項（已結案）：[`04` 丙-26](../plans/04-backlog-and-handoffs.md)
 
 **這份文件的讀者是停派送當下的那個人。** 前三節照順序讀就能動作，背景在後面。
@@ -14,7 +14,7 @@
 
 - `provider = ''`（空字串）代表**整池**；填 provider 名字代表只停那一個節點池。
 - `source = 'p1_incident'`：人或偵測器宣告的 P1。**永遠不會自動解除。**
-- `source = 'orphan_threshold'`：ADR-022 X-04 的容量事件，Reconciler 連續 2 輪乾淨會**自己解除**。
+- `source = 'orphan_threshold'`：[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) X-04 的容量事件，Reconciler 連續 2 輪乾淨會**自己解除**。
 - **三個讀者都 fail-closed，但「有列在」對三者不是同一件事**（**2026-08-25 訂正**：原本這一行寫「有列在 → 建立 Run 直接回錯誤」，那句話只有在**停整池**時成立）：
   - **建立 Run**（`requireDispatchable` → `incidentPaused`）：**整池的 `p1_incident` 列，或「已設定的每一個 provider 各自都有 `p1_incident` 列」**，才會直接回 `the execution environment is temporarily unavailable`。門檻類（`orphan_threshold`）的列**不擋建立**，多 provider 部署下只停其中一個也不擋。
   - **派送已排入的 Run**（`dispatchPaused`）：整池的列（**不分 source**），或**所有已設定的 provider 各自都有列**時，Run 留在 `queued` 等；只要還有沒被停的 provider，就改派給它。
@@ -135,7 +135,7 @@ where lifted_at is null and source = 'p1_incident' order by declared_at desc;
 | 判準 | 為什麼是人工（2026-08-25 逐條查證，證據在右欄） |
 | --- | --- |
 | ① 逃逸疑慮 | 這是**判斷**，不是量測。沒有一個查詢能回答「這看起來像不像逃逸」。**「疑慮」不是一個訊號**——真的量得到的那些形態（連上核心資料庫、遺留超標、Reconciler 停擺）各自已經是另外幾條判準；這一條剩下的正是**還沒有形態的那部分**，所以它沒有可接的線，不是漏接 |
-| ~~② P-02 探針偵測到 Sandbox → 核心資料庫連線~~ **已自動（2026-08-26）** | ~~**那個探針今天不存在**（`03:SBX-005` 未勾、[ADR-050](../adr/ADR-050-beta-runs-in-parallel-with-the-sandbox-acceptance.md) 明寫「P-02 常駐探針不存在」；`tools/sec009/` 只有 T1／T2／T8 三支，沒有 T10）。**就算它存在，訊號也沒有路徑進來**：沙箱契約是**單向的**——控制平面呼叫節點（`apps/sandbox/internal/sandbox/http.go` 六條路由全是被呼叫端），節點沒有任何往控制平面推的通道，唯一的反向入口 `POST /internal/trace/{token}` 是**單一 Run 範圍且由不受信任的沙箱送出**。要接就得改 `contracts/` 的 capability 契約，那是決策不是接線~~<br>**上面那段的第一層是對的（探針當時確實不存在），第二層的結論錯了。** 「節點沒有往控制平面推的通道」是真的，**但不需要推**——控制平面本來就在輪詢 `GET /capability`。所以做法不是開一條反向通道（那會把 DoS 手把交給不受信任工作負載，該顧慮成立），而是讓節點在既有的被呼叫端多報一個欄位：`ProviderCapability.security.p02_probe` 帶它自己的最後一次讀數。**契約仍然單向，推的仍然是控制平面。**<br>**現在的行為**：節點自己起一個與 Run 同組態的一次性容器去撥號，讀到 `fail` 就地 `Destroy` 所有在跑的 Run 並拒新工作；平台端 `detectP02Breach` 掛在既有 sweep 的尾巴，冪等、不自動 lift。**三個邊界要記在值班的地方**：①**節點聯絡不上不等於 fail**（那是節點健康問題，翻成 P1 會讓一次網路抖動停掉整池）；②**`unknown` 不停整池**，只讓該節點退出輪替——剛開機還沒讀數的節點不該停掉全池；③**節點自己恢復不會自動解除**，解除仍只有 operator 一條路。<br>**⚠️ 值班時要知道的一件事**：這個探針量的是**那台節點的網路政策**，而它**從未在生產節點上跑過**（`03:SEC-008`／甲-3）。第一次在真節點上亮之前，它的讀數只證明程式會動 |
+| ~~② P-02 探針偵測到 Sandbox → 核心資料庫連線~~ **已自動（2026-08-26）** | ~~**那個探針今天不存在**（`03:SBX-005` 未勾、[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) 明寫「P-02 常駐探針不存在」；`tools/sec009/` 只有 T1／T2／T8 三支，沒有 T10）。**就算它存在，訊號也沒有路徑進來**：沙箱契約是**單向的**——控制平面呼叫節點（`apps/sandbox/internal/sandbox/http.go` 六條路由全是被呼叫端），節點沒有任何往控制平面推的通道，唯一的反向入口 `POST /internal/trace/{token}` 是**單一 Run 範圍且由不受信任的沙箱送出**。要接就得改 `contracts/` 的 capability 契約，那是決策不是接線~~<br>**上面那段的第一層是對的（探針當時確實不存在），第二層的結論錯了。** 「節點沒有往控制平面推的通道」是真的，**但不需要推**——控制平面本來就在輪詢 `GET /capability`。所以做法不是開一條反向通道（那會把 DoS 手把交給不受信任工作負載，該顧慮成立），而是讓節點在既有的被呼叫端多報一個欄位：`ProviderCapability.security.p02_probe` 帶它自己的最後一次讀數。**契約仍然單向，推的仍然是控制平面。**<br>**現在的行為**：節點自己起一個與 Run 同組態的一次性容器去撥號，讀到 `fail` 就地 `Destroy` 所有在跑的 Run 並拒新工作；平台端 `detectP02Breach` 掛在既有 sweep 的尾巴，冪等、不自動 lift。**三個邊界要記在值班的地方**：①**節點聯絡不上不等於 fail**（那是節點健康問題，翻成 P1 會讓一次網路抖動停掉整池）；②**`unknown` 不停整池**，只讓該節點退出輪替——剛開機還沒讀數的節點不該停掉全池；③**節點自己恢復不會自動解除**，解除仍只有 operator 一條路。<br>**⚠️ 值班時要知道的一件事**：這個探針量的是**那台節點的網路政策**，而它**從未在生產節點上跑過**（`03:SEC-008`／甲-3）。第一次在真節點上亮之前，它的讀數只證明程式會動 |
 | ④ 隔離技術逃逸類 CVE 揭露 | 訊號來自 `.github/workflows/gvisor-baseline.yml`，而 **CI 看得到的東西到不了生產 DB**。不自動翻開關的理由：要自己翻開關就得讓 CI 持有一把能停整池的平台憑證，**「a credential that can stop the fleet, held by CI, is a worse exposure than the minutes a person takes to paste one command」**。反方向（平台自己去拉 GitHub advisory feed）要為控制平面開對外網路出口，並讓派送能力取決於一個外部 feed 的可達性。兩者都是**部署期決策**。<br>順帶查證兩件事：`runsc` **不在任何 image 裡**（它是節點主機的執行檔，repo 內唯一的版本釘點是 `infra/nodes/gvisor-baseline.txt`，目前是 `release-20260817.0`），所以 `runtime-image.yml` 的 `rescan` 掃的是 Agent SDK image，**掃不到 gVisor**；`ProviderCapability` 也沒有回報 `runsc` 版本的欄位 |
 
 這三條**由人宣告**：
@@ -218,6 +218,6 @@ curl -s -b <cookie> -X DELETE http://<api>/admin/dispatch/halt \
 ## 6. 這份 runbook 不涵蓋的
 
 - **遮罩失敗的實際處置**（撤銷 Virtual Key、以外洩值重掃、輪替 ingest secret）在 [`02:SEC-010` §(3)](../plans/02-specifications-and-acceptance-criteria.md)。
-- **節點 drain 與重建**在 [ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) P-03／X-04。
+- **節點 drain 與重建**在 [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) P-03／X-04。
 - **`SEC-012` 仍未勾**：本需求的字面是「**偵測到** P1 判準即立即停止派送」，而五條裡只有兩條是自動的（③⑤）。這份 runbook 讓另外三條可被直接執行，**它不讓那三條變成自動的**。
 - **2026-08-25 補**：③ 多了一個 canary 偵測器（§2.1a），但那是**同一條判準的第二個讀法**，不是第三條判準變自動。①②④ 一格都沒動——理由見 §2.3，三者的訊號都在本 process 之外。

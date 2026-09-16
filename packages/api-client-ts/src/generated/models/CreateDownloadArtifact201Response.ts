@@ -103,7 +103,7 @@ export interface CreateDownloadArtifact201Response {
      */
     manifestHash: string;
     /**
-     * The artifact's own scan state (ADR-003: an upload is quarantined
+     * The artifact's own scan state (an upload is quarantined
      * until it passes its checks), not a `ready` boolean. `rejected` and
      * `quarantined` are two different things to the person waiting for a
      * download — one is over and one is not — and one flag would say

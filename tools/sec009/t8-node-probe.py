@@ -121,14 +121,14 @@ def parse_gvisor(text: str | None) -> tuple[int, int] | None:
 
 
 def grade_gvisor(node_version: str | None, baseline: str | None) -> tuple[str, str]:
-    """P-04. Node's runsc vs the IaC-rendered baseline. Blocking, per ADR-022."""
+    """P-04. Node's runsc vs the IaC-rendered baseline. Blocking."""
     if baseline is None:
         return UNKNOWN, ("cannot read %s -- IaC rendered no baseline onto this node, so "
                          "there is nothing to compare `runsc --version` against" % BASELINE_FILE)
     if baseline == "unset":
         return FAIL, (
             "baseline file says `unset`: the baseline itself has no value, so there is "
-            "nothing to compare against. ADR-022 §2 makes P-04 blocking -- an unset "
+            "nothing to compare against. P-04 is blocking -- an unset "
             "baseline admits no node, and that is fail-closed, not a probe defect")
     if not baseline:
         return UNKNOWN, "baseline file has no value line"
@@ -158,7 +158,7 @@ def grade_node_age(created_at: str | None, now: datetime,
     if not build_phase:
         return UNKNOWN, (
             "node facts carry no `build_phase`, so nothing says this timestamp came from the "
-            "build rather than from this boot. ADR-022 §1 measures the cloud-init BUILD "
+            "build rather than from this boot. This gate measures the cloud-init BUILD "
             "timestamp specifically to exclude that -- a node that stamps itself on every "
             "boot reports age zero forever and the 7-day rule stops existing. The node's IaC "
             "predates 05 R-17c; re-render it")
@@ -187,7 +187,7 @@ def grade_node_age(created_at: str | None, now: datetime,
         return FAIL, detail + " -- OVER %d DAYS: on-call must drain this node by hand per " \
                               "SEC-010 runbook, automatic drain is not the rule here" % DRAIN_DAYS
     if age > timedelta(days=REBUILD_DAYS):
-        return FAIL, detail + " -- past the rebuild cycle; ADR-022 grades P-03 as alert-level " \
+        return FAIL, detail + " -- past the rebuild cycle; P-03 is graded alert-level " \
                               "and queues a rebuild, but T8 reports pass/fail only"
     return PASS, detail
 
@@ -366,9 +366,9 @@ def check_c01(rep: Report) -> None:
             "photographs an idle node. 05 R-17a (2026-09-10) split C-01 accordingly -- gate A "
             "judges the declarative face (C-01a, C-01b) and SBX-005's integration tests judge "
             "this one, where two Runs actually exist. Until that ruling this row was `unknown`, "
-            "which ADR-022 §3 reads as fail: a correctly built node exited 2, and a gate that "
+            "which this gate treats as fail: a correctly built node exited 2, and a gate that "
             "is red on a correct node gets switched off in week one. The row still prints and "
-            "still names its judge, so nothing here is omitted -- see ADR-022 §2 row 1")
+            "still names its judge, so nothing here is omitted")
 
 
 
@@ -399,7 +399,7 @@ def self_check() -> int:
     print("Report.ok -- which statuses let a gate pass:")
     for label, status, expect in [
         ("a pass alone passes", PASS, True),
-        ("an unknown still fails (ADR-022 §3)", UNKNOWN, False),
+        ("an unknown still fails", UNKNOWN, False),
         ("a fail still fails", FAIL, False),
         ("judged elsewhere does not fail this gate", ELSEWHERE, True),
     ]:
@@ -462,7 +462,7 @@ def main() -> int:
     facts, facts_why = load_facts(NODE_FACTS)
     header = {
         "probe": "t8-node-probe",
-        "adr": "ADR-022 part three, T8 node half (gate A)",
+        "adr": "T8 node half (gate A admission probe)",
         "ran_at": datetime.now(timezone.utc).isoformat(),
         "node_facts_path": NODE_FACTS,
         "node_facts": facts if facts is not None else None,
@@ -485,7 +485,7 @@ def main() -> int:
         print("t8 node probe: PASS -- NOT the SEC-009 acceptance, five of 45 items only")
         return 0
     print("t8 node probe: at least one item failed or could not be measured; "
-          "`unknown` counts as fail (ADR-022 T8), so this node is not admitted", file=sys.stderr)
+          "`unknown` counts as fail, so this node is not admitted", file=sys.stderr)
     return 2
 
 

@@ -764,7 +764,7 @@ func (c Config) accept(req RunRequest) *RunError {
 					"so no accept rule could match it", want.URL, want.Purpose)
 			}
 			return mismatch("this node renders no egress rule for %s at %s:%d; "+
-				"it routes to %s (ADR-022 A1-e)", want.Purpose, host, port, c.renderedSummary())
+				"it routes to %s", want.Purpose, host, port, c.renderedSummary())
 		}
 	}
 	return nil

@@ -19,7 +19,7 @@ var alwaysDenied = append(slices.Clone(compositionRoots), "objreconcile")
 func isCompositionRoot(id string) bool { return slices.Contains(compositionRoots, id) }
 
 var (
-	appendixHeading = "## 附錄 A"
+	appendixHeading = "## 跨 context import 白名單"
 
 	// A backticked lowercase identifier; the appendix writes everything else
 	// (plain prose) unbacked.
@@ -32,15 +32,15 @@ var (
 )
 
 func depguardDenyProblems(root string) []string {
-	const adrPath, lintPath = "docs/adr/" + contextMapADR, "apps/platform/.golangci.yml"
+	const mapPath, lintPath = contextMapDoc, "apps/platform/.golangci.yml"
 
-	declared, problems := contextTablePackages(filepath.Join(root, filepath.FromSlash(adrPath)), adrPath)
+	declared, problems := contextTablePackages(filepath.Join(root, filepath.FromSlash(mapPath)), mapPath)
 	if len(declared) == 0 {
-		return append(problems, fmt.Sprintf("depguard-deny: %s §1 declares no contexts; this check has lost its subject", adrPath))
+		return append(problems, fmt.Sprintf("depguard-deny: %s declares no contexts; this check has lost its subject", mapPath))
 	}
-	adr, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(adrPath)))
+	adr, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(mapPath)))
 	if err != nil {
-		return append(problems, fmt.Sprintf("depguard-deny: %s: %v", adrPath, err))
+		return append(problems, fmt.Sprintf("depguard-deny: %s: %v", mapPath, err))
 	}
 	lint, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(lintPath)))
 	if err != nil {
@@ -50,7 +50,7 @@ func depguardDenyProblems(root string) []string {
 	permitted, wildcard, appendixRows := appendixPermissions(string(adr), declared)
 	if appendixRows == 0 {
 		return append(problems, fmt.Sprintf(
-			"depguard-deny: %s %s has no `A → B` rows; this check has lost its subject", adrPath, appendixHeading))
+			"depguard-deny: %s %s has no `A → B` rows; this check has lost its subject", mapPath, appendixHeading))
 	}
 
 	universe := map[string]bool{}
@@ -93,7 +93,7 @@ func depguardDenyProblems(root string) []string {
 			id, known := pathIDs[path]
 			if !known {
 				problems = append(problems, fmt.Sprintf(
-					"depguard-deny: %s rule %q denies internal/%s, which is not an exact %s §1 package path", lintPath, rule, path, contextMapADR))
+					"depguard-deny: %s rule %q denies internal/%s, which is not an exact %s package path", lintPath, rule, path, contextMapDoc))
 				continue
 			}
 			denied[id] = true
@@ -106,13 +106,13 @@ func depguardDenyProblems(root string) []string {
 				problems = append(problems, fmt.Sprintf(
 					"depguard-deny: %s rule %q denies %q, but %s appendix A keeps `%s` → `%s`; "+
 						"the two sides disagree about that collaboration",
-					lintPath, rule, target, contextMapADR, self, target))
+					lintPath, rule, target, contextMapDoc, self, target))
 			case !denied[target] && !permitted[self][target] && !wildcard[target]:
 				problems = append(problems, fmt.Sprintf(
 					"depguard-deny: %s rule %q does not deny %q and %s appendix A does not permit `%s` → `%s`; "+
 						"a deletion from a deny list IS a new permission (\"legal but unlisted = denied\"), so add the "+
 						"appendix row or restore the deny entry",
-					lintPath, rule, target, contextMapADR, self, target))
+					lintPath, rule, target, contextMapDoc, self, target))
 			}
 		}
 	}
@@ -166,7 +166,7 @@ func specialDepguardProblems(rules map[string]map[string][]string, declared map[
 			}
 			id, ok := pathIDs[path]
 			if !ok {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q denies internal/%s, which is not an exact ADR-032 §1 package path", lintPath, rule, path))
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q denies internal/%s, which is not an exact context-map package path", lintPath, rule, path))
 				continue
 			}
 			actual[id] = true
@@ -222,7 +222,7 @@ func depguardSelectorProblems(rules map[string]map[string][]string, declared map
 			}
 			id, known := pathIDs[match[1]]
 			if !known {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q selector internal/%s is not an exact ADR-032 §1 package path", lintPath, rule, match[1]))
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q selector internal/%s is not an exact context-map package path", lintPath, rule, match[1]))
 				continue
 			}
 			actual[id] = true

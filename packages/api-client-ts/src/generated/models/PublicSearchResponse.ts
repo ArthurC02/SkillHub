@@ -37,7 +37,7 @@ export interface PublicSearchResponse {
     results: Array<PublicSearchResult>;
     /**
      * True when the vector leg did not run and the answer came from
-     * lexical matching alone. ADR-013 定案調整 1/2: the vector leg is what
+     * lexical matching alone. The vector leg is what
      * carries cross-language recall, so a degraded answer has materially
      * lower recall and must not be presented as "nothing matches".
      * 
@@ -91,7 +91,7 @@ export interface PublicSearchResponse {
     /**
      * True when the catalogue held more matches than this page shows. The
      * cap has always been here and result 21 simply did not exist as far as
-     * a caller could tell; ADR-042 決策 3 makes that the defect it is —
+     * a caller could tell; that silence was always the defect —
      * **a truncated list must state that it was truncated**, and "no limit
      * at all" stopped being an available answer. Distinct from `degraded`
      * and `partial_index`, which are statements about how well the search

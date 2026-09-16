@@ -243,7 +243,7 @@ func TestApplyCleanModePoolLeavesProductionAlone(t *testing.T) {
 
 	applyCleanModePool(cfg, true)
 	if cfg.MaxConns != 1 {
-		t.Errorf("clean=true left MaxConns at %d, want 1 (a single PGlite-backed connection, ADR-060 決策 6)", cfg.MaxConns)
+		t.Errorf("clean=true left MaxConns at %d, want 1 (a single PGlite-backed connection)", cfg.MaxConns)
 	}
 }
 

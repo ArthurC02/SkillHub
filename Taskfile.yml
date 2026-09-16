@@ -10,7 +10,7 @@ tasks:
     cmd: docker compose -f infra/compose/docker-compose.yml up -d postgres seaweedfs
 
   dev:llm:
-    desc: Start apps/llm on a Virtual Key minted for it; never hands it the gateway master key (ADR-017)
+    desc: Start apps/llm on a Virtual Key minted for it; never hands it the gateway master key
     dir: apps/llm
     cmd: node ../../tools/cleanmode/with-service-key.mjs -- uv run uvicorn skillhub_llm.app:app
 
@@ -106,7 +106,7 @@ tasks:
     cmd: node --test infra/images/runtime-agent-sdk/run.test.mjs
 
   test:judge-rubric:
-    desc: Run ADR-043's evidence-citation regression; pure functions, no model, no database
+    desc: Run the Judge evidence-citation regression; pure functions, no model, no database
     cmd: python tools/eval-regression/test_judge_regression.py
 
   test:llm:

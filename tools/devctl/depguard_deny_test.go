@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const denyADRTable = `### 1. Context 對照表
+const denyADRTable = `## Context 對照表
 
 | 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
 | --- | --- | --- | --- | --- |
@@ -17,9 +17,9 @@ const denyADRTable = `### 1. Context 對照表
 | — | Generic | apiserver | entrypoint/api/apiserver | — |
 | — | Generic | objreconcile | foundation/storage/objreconcile | — |
 
-### 2. 其他
+## 其他
 
-## 附錄 A：跨 context import 白名單
+## 跨 context import 白名單
 
 | 依賴 | 判定 | 處置 |
 | --- | --- | --- |
@@ -35,7 +35,7 @@ func rule(name, selector string, deny ...string) string {
 		"            - \"!$test\"\n          deny:\n"
 	for _, pkg := range deny {
 		out += "            - pkg: " + denyPrefix + pkg + "\n" +
-			"              desc: \"cross-context import forbidden by ADR-032\"\n"
+			"              desc: \"cross-context import forbidden\"\n"
 	}
 	return out
 }
@@ -55,7 +55,7 @@ func writeDenyFixture(t *testing.T, adr, lint string) string {
 	t.Helper()
 	root := t.TempDir()
 	for relative, contents := range map[string]string{
-		"docs/adr/" + contextMapADR:   adr,
+		contextMapDoc:                 adr,
 		"apps/platform/.golangci.yml": lint,
 	} {
 		path := filepath.Join(root, filepath.FromSlash(relative))
@@ -89,7 +89,7 @@ func TestDepguardDenyRejectsAPermissionGrantedByDeletion(t *testing.T) {
 		adr:  denyADRTable,
 		lint: strings.Replace(denyConfig(),
 			"            - pkg: "+denyPrefix+"skill/discovery\n"+
-				"              desc: \"cross-context import forbidden by ADR-032\"\n", "", 1),
+				"              desc: \"cross-context import forbidden\"\n", "", 1),
 		want: `rule "identity" does not deny "catalog"`,
 	}, {
 
@@ -97,7 +97,7 @@ func TestDepguardDenyRejectsAPermissionGrantedByDeletion(t *testing.T) {
 		adr:  denyADRTable,
 		lint: strings.Replace(denyConfig(),
 			"            - pkg: "+denyPrefix+"entrypoint/api/apiserver\n"+
-				"              desc: \"cross-context import forbidden by ADR-032\"\n", "", 1),
+				"              desc: \"cross-context import forbidden\"\n", "", 1),
 		want: `rule "identity" does not deny "apiserver"`,
 	}, {
 
@@ -144,7 +144,7 @@ func TestDepguardDenyStillChecksARuleWithDuplicateSelectors(t *testing.T) {
 		"            - \"**/internal/creator/workspace/**\"\n            - \"**/internal/creator/workspace/**\"\n", 1)
 	lint = strings.Replace(lint,
 		"            - pkg: "+denyPrefix+"skill/discovery\n"+
-			"              desc: \"cross-context import forbidden by ADR-032\"\n", "", 1)
+			"              desc: \"cross-context import forbidden\"\n", "", 1)
 	problems := strings.Join(depguardDenyProblems(writeDenyFixture(t, denyADRTable, lint)), "\n")
 	if !strings.Contains(problems, `rule "identity" does not deny "catalog"`) {
 		t.Fatalf("a duplicate selector bypassed deny reconciliation: %s", problems)
@@ -250,7 +250,7 @@ func TestDepguardSelectorsRejectMalformedGlobs(t *testing.T) {
 func TestDepguardDenySaysSoWhenItHasLostItsSubject(t *testing.T) {
 	t.Parallel()
 	t.Run("no appendix rows", func(t *testing.T) {
-		adr := denyADRTable[:strings.Index(denyADRTable, "## 附錄 A")]
+		adr := denyADRTable[:strings.Index(denyADRTable, "## 跨 context import 白名單")]
 		problems := depguardDenyProblems(writeDenyFixture(t, adr, denyConfig()))
 		if len(problems) == 0 {
 			t.Fatal("an ADR with no appendix A rows was accepted")

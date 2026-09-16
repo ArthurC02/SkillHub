@@ -25,7 +25,7 @@ When a contract changes:
 
 Do not use `--skip-validate-spec`, maintain an OpenAPI 3.0 shadow copy, or edit a
 generated file to work around a generator failure. Resolve an equivalent 3.1
-schema expression or revise ADR-030 before changing the tool boundary.
+schema expression or revise the [開發自動化與依賴治理](../../docs/adr/README.md#開發自動化與依賴治理) decision before changing the tool boundary.
 
 ## Go transport pilot
 

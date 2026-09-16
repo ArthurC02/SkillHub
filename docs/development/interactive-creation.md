@@ -1,6 +1,6 @@
 # 互動式 Skill 創作：開發與驗證
 
-依據 [ADR-067](../adr/ADR-067-interactive-skill-creation-with-langgraph.md)。實作授權見 [01 §10](../plans/01-goals-and-plan.md)；啟用參數已由 [05 R-45](../plans/05-pending-rulings.md) 定值，值見〈設定與預設〉。
+依據[互動創作](../adr/README.md#互動創作)的決策。實作授權見 [01 §10](../plans/01-goals-and-plan.md)；啟用參數已由 [05 R-45](../plans/05-pending-rulings.md) 定值，值見〈設定與預設〉。
 
 ## 已接通的路徑
 
@@ -99,7 +99,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 
 ## Credit 計價
 
-依 [ADR-068](../adr/ADR-068-credit-is-the-only-unit-of-account.md)：創作會話扣點。`creation.Service` 的三個掛勾（`CreditCanStart`／`CreditReserve`／`CreditSettle`）由 `entrypoint/wiring` 的 `WireCreationCredit` 在 API 與 Worker 兩個組裝根接上。三道閘各自是什麼：
+依[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)的決策：創作會話扣點。`creation.Service` 的三個掛勾（`CreditCanStart`／`CreditReserve`／`CreditSettle`）由 `entrypoint/wiring` 的 `WireCreationCredit` 在 API 與 Worker 兩個組裝根接上。三道閘各自是什麼：
 
 - **① 開始前**：建立新會話之前，若 Workspace 的 Credit 餘額低於「最近滾動窗 p95 × 加成」推導出的門檻（樣本 < 20 時退回保守常數並標示估計值），拒絕建立，不消耗任何成本。對應 `creation.ErrCreditThreshold`。
 - **② 每步扣款前**：既有 `settleCost` 算出這一步的預留額之後、呼叫模型之前，若「目前餘額 − 這一步預留額」會低於 **−50**，停止該會話（狀態轉 `waiting_input`，訊息告知帳戶餘額已達可容忍的欠款上限），已發生的成本仍照常結算。對應 `creation.ErrCreditFloor`。
@@ -107,7 +107,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 
 扣點本身接在既有 `settleCost` 之後、與 `AdvanceCreationSession` 同一個交易，冪等鍵是 `(session_id, revision)`；讀不到實際成本時按預留額扣並標記 `estimated`，絕不因讀不到成本而扣 0（同既有 `UsageUnknown` 規則的貨幣版本）。Web `CreationSession.tsx` 以 `useCredits()` 讀 `GET /me/credits`：開始互動創作前顯示餘額與這一場的估計區間，`can_start` 為 false 時停用送出鍵並顯示 `block_reason`；`credits.data` 未定義時整段區塊不渲染。
 
-面額（1 credit = US$0.001）與加成（1.3，存 basis points）維持現值（`05` R-75）。帳號刪除保留 Credit 紀錄，不清除（[ADR-073](../adr/ADR-073-account-deletion-keeps-the-credit-ledger.md)）。**還開著的是金流**：入帳的唯一入口是 operator 授予，使用者沒有自行充值的路徑（[`04` 丙-185](../plans/04-backlog-and-handoffs.md)）。
+面額（1 credit = US$0.001）與加成（1.3，存 basis points）維持現值（`05` R-75）。帳號刪除保留 Credit 紀錄，不清除（見[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)）。**還開著的是金流**：入帳的唯一入口是 operator 授予，使用者沒有自行充值的路徑（[`04` 丙-185](../plans/04-backlog-and-handoffs.md)）。
 
 ## 尚待量測與核准
 

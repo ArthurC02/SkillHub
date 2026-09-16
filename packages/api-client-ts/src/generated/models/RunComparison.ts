@@ -34,7 +34,7 @@ import {
  * 
  * Each side reports execution and task judgement in separate fields, and
  * an unevaluated side says so rather than leaving the reader to infer a
- * pass from `succeeded` (ADR-025).
+ * pass from `succeeded`.
  * 
  * @export
  * @interface RunComparison

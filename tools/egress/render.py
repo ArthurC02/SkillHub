@@ -83,7 +83,7 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
     a("        # (tools/sec009/t5-network-egress.sh). The node's IaC owns the")
     a("        # precondition; gate A has to assert it, because nothing in this")
     a("        # file can. The same dependency applies to --icc=false, which is")
-    a("        # the other mechanism ADR-022 Q2 condition 2 names.")
+    a("        # the other mechanism the same-node east-west isolation rule names.")
     a('        iifname $SANDBOX_IFACE oifname $SANDBOX_IFACE counter log prefix "skillhub-drop-eastwest " drop')
     a("")
     a("        # T5-5 the node itself: loopback and the provider port. A sandbox")
@@ -196,7 +196,7 @@ def render_dnsmasq(entries, resolver):
     sandbox = [e for e in entries if e.get("tier") == "sandbox"]
     node = [e for e in entries if e.get("tier") == "node"]
     if sandbox:
-        a("# tier: sandbox - platform-owned, pinned to one address (ADR-022 Q3).")
+        a("# tier: sandbox - platform-owned, pinned to one address.")
     for e in sandbox:
         pin = str(e.get("pinned_ip", "")).strip()
         if pin and pin != "unset":
@@ -223,7 +223,7 @@ def render_admission(entries):
             "Destinations this node has an nftables accept rule for. An entry "
             "whose pinned_ip is unset is absent on purpose: sandboxd must refuse "
             "a run naming it (capability_mismatch) rather than dispatch it to a "
-            "node with no route for it (ADR-022 A1-e)."
+            "node with no route for it."
         ),
         "destinations": rendered_destinations(entries),
     }

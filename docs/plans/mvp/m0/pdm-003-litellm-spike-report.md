@@ -1,17 +1,17 @@
 # PDM-003：LiteLLM 閘道相容性 Spike 報告
 
 - 日期：2026-08-14
-- 對應：[pdm-proposals.md §3（PDM-003）](pdm-proposals.md)「必須先做的前置 Spike」第 1 項、[ADR-017 模型閘道與 LLM 可觀測性](../../../adr/ADR-017-model-gateway-and-llm-observability.md)
+- 對應：[pdm-proposals.md §3（PDM-003）](pdm-proposals.md)「必須先做的前置 Spike」第 1 項、[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)
 - Spike 程式碼：`docs/spikes/pdm-003-litellm-gateway/`（**已刪除，見[墓碑與還原指令](../../../spikes/README.md)**；本報告即其結論落點）
 - 狀態：**已執行，7/7 測項通過。結論為「協定層可行，PDM-003 的閘道假設成立」**，但範圍有明確界定（見第 3 節）與三個必須處理的相容性坑（見第 6 節）。
 - **2026-08-14 追加**：前置 Spike 第 2 項（Agent SDK 的 Skill 載入路徑）已補測，**6/6 PASS，見第 10 節**。載入機制成立，但**提案假設的 `<workdir>/skills/<name>/` 路徑被證偽**，正確路徑為 `<workdir>/.claude/skills/<name>/`。
-- **2026-08-14 再追加（第 11 節）**：模型供應商已定案為 **OpenAI API（經 LiteLLM 閘道，ADR-017 架構不變）**，原「需 Anthropic 憑證」的補測項改於正式後端完成。三項結果：(i) **Skill 自主觸發率 0/9**，旗艦與 mini 級同為 0，不可作為試跑成功判準；(ii) **`skills` 白名單的行為性過濾成立**，對 15 個內建 CLI Skill 同樣有效；(iii) **prompt caching 不會增加 300K token 上限能買的輪數**（省的是錢不是 token），300K 實測夠 **15 輪（無工具）／7.7 輪（每輪 1 次工具呼叫）**，且 `/v1/messages` 路由**不透傳 cache 用量欄位**（計費正確、可觀測性受損）。
+- **2026-08-14 再追加（第 11 節）**：模型供應商已定案為 **OpenAI API（經 LiteLLM 閘道，[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)架構不變）**，原「需 Anthropic 憑證」的補測項改於正式後端完成。三項結果：(i) **Skill 自主觸發率 0/9**，旗艦與 mini 級同為 0，不可作為試跑成功判準；(ii) **`skills` 白名單的行為性過濾成立**，對 15 個內建 CLI Skill 同樣有效；(iii) **prompt caching 不會增加 300K token 上限能買的輪數**（省的是錢不是 token），300K 實測夠 **15 輪（無工具）／7.7 輪（每輪 1 次工具呼叫）**，且 `/v1/messages` 路由**不透傳 cache 用量欄位**（計費正確、可觀測性受損）。
 
 ---
 
 ## 1. 目的與範圍
 
-PDM-003 §3 把「LiteLLM Proxy 的 Anthropic 相容端點在 Claude Agent SDK ＋ tool use ＋ streaming 路徑下行為正確」列為**定案前置**，並寫明「若不相容，退路是選項 A（Claude Code CLI）或在閘道前加一層薄轉譯」。同時 ADR-017 的待決策「Sandbox 內 Agent Runtime 注入 Virtual Key 的具體機制」也依賴同一組驗證。
+PDM-003 §3 把「LiteLLM Proxy 的 Anthropic 相容端點在 Claude Agent SDK ＋ tool use ＋ streaming 路徑下行為正確」列為**定案前置**，並寫明「若不相容，退路是選項 A（Claude Code CLI）或在閘道前加一層薄轉譯」。同時[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)的待決策「Sandbox 內 Agent Runtime 注入 Virtual Key 的具體機制」也依賴同一組驗證。
 
 本 Spike 驗證四件事：
 
@@ -79,13 +79,13 @@ PDM-003 §3 風險表把「LiteLLM 的 Anthropic 相容端點與 Agent SDK 不�
 
 ### 4.2 測項 E 的細節
 
-Virtual Key 以 LiteLLM 管理 API `/key/generate` 建立，帶三個 PDM-003 ／ ADR-017 要求的屬性：
+Virtual Key 以 LiteLLM 管理 API `/key/generate` 建立，帶三個 PDM-003 ／[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)要求的屬性：
 
 ```
 models:     ["sonnet-test"]        # 模型範圍限制
 max_budget: 0.000002               # 預算上限（刻意設極小以便觀測）
 duration:   "20m"                  # TTL，對齊 PDM-003 建議的 20 分鐘
-metadata:   {"run_id": "..."}      # Run 級成本歸因（ADR-017）
+metadata:   {"run_id": "..."}      # Run 級成本歸因
 ```
 
 三個行為都實測到：allow-list 外模型回 **403**、預算耗盡回 **429**。兩者是**不同狀態碼**，直接支撐 PDM-005 風險表「Token 預算耗盡的失敗與模型錯誤難以區分」的緩解措施——`budget_exhausted` 可映射為獨立診斷碼（NFR-003），不需要靠解析錯誤訊息字串。
@@ -104,9 +104,9 @@ PDM-003 §3 要求誠實記錄安裝相容性。`pip install "litellm[proxy]" op
 | `ImportError: cannot import name 'get_flat_dependant' from 'fastapi.dependencies.utils'` | **litellm 1.96.2 未對 FastAPI 設上界**，pip 解析到 0.141.1，該符號已被移除 | 釘 `fastapi<0.140`（實測 0.139.2 可用） |
 | `ModuleNotFoundError: No module named 'prisma'` → 再來 `Unable to find Prisma binaries` | `litellm[proxy]` extra **不含 `prisma`**；補裝後 `prisma generate` 又被 npx 拉到 Prisma CLI 7.9.1，該版本拒絕 litellm 的 schema（`datasource.url` 已不支援），且 `PRISMA_VERSION=5.17.0` 未被採納 | **放棄 pip 部署走資料庫路徑**，改用官方 image |
 
-**結論**：pip 安裝的 proxy 在本平台上**只能跑無資料庫模式**（測項 A–D 已用它跑過並全數通過）；任何需要 Virtual Key 的功能（測項 E，也就是 ADR-017 的核心機制）必須用官方 container image。
+**結論**：pip 安裝的 proxy 在本平台上**只能跑無資料庫模式**（測項 A–D 已用它跑過並全數通過）；任何需要 Virtual Key 的功能（測項 E，也就是[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)的核心機制）必須用官方 container image。
 
-> **對部署的影響**：這其實與 ADR-017「LiteLLM Proxy 作為獨立部署單元」的既定決策一致——正式環境本來就該用官方 image，不該 pip 安裝。此處記錄的價值在於：**任何開發者的本機環境若想跑帶 Virtual Key 的閘道，必須用 container，不能靠 `pip install`。** 這應寫進未來的開發環境文件。
+> **對部署的影響**：這其實與[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)裡「LiteLLM Proxy 作為獨立部署單元」的既定決策一致——正式環境本來就該用官方 image，不該 pip 安裝。此處記錄的價值在於：**任何開發者的本機環境若想跑帶 Virtual Key 的閘道，必須用 container，不能靠 `pip install`。** 這應寫進未來的開發環境文件。
 
 ---
 
@@ -135,7 +135,7 @@ Unsupported parameter: 'reasoning.effort' is not supported with this model.
 
 - **不阻擋定案**。此坑只在**後端不是 Anthropic 模型**時觸發。PDM-003 表定的試跑模型全是 Anthropic（`claude-sonnet-5` ／ `claude-opus-5`），`thinking` 會原生透傳，不需轉譯。
 - **但它直接命中 PDM-003 §3 點名的觀察項，而本 Spike 無法驗證**。「`thinking` 區塊透傳」屬第 3 節表格右欄的待補測項，且已知該路由的參數處理有缺陷——**補測時應把 `thinking` 列為第一優先驗證項，不能因為「Anthropic 後端是直通」就跳過**。
-- **它讓 ADR-017「模型抽換與容錯（fallback、重試、路由）設定在閘道層」出現一個限制**：若把非 Anthropic 模型設為 fallback，Agent SDK 的請求會在 fallback 觸發時 400。ADR-017 §邊界守則 4 說「閘道故障視為 Provider 級故障」，但這裡失敗的是**成功切換後的第一個請求**。跨供應商 fallback 需要實測，不可假設可用。
+- **它讓 [模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)「模型抽換與容錯（fallback、重試、路由）設定在閘道層」的決策出現一個限制**：若把非 Anthropic 模型設為 fallback，Agent SDK 的請求會在 fallback 觸發時 400。同一決策的邊界守則說「閘道故障視為 Provider 級故障」，但這裡失敗的是**成功切換後的第一個請求**。跨供應商 fallback 需要實測，不可假設可用。
 
 ### 6.2 Claude Agent SDK 的 harness 開銷極大（對 PDM-005 有直接影響）
 
@@ -177,7 +177,7 @@ PDM-003 §3 的原文條件是「驗證 LiteLLM Proxy 的 Anthropic 相容端點
 
 1. **Virtual Key 必須同時帶 `max_budget` 與 `tpm_limit`**（§6.3）。只有 `max_budget` 時預算是軟上限，與 PDM-003 §3 殘餘風險段落宣稱的「爆炸半徑上限」不符。
 2. **PDM-005 的 300K input 上限標記為「未經驗證」**（§6.2）。實測 harness 固定開銷約 50K input／turn，該上限只夠約 5–6 輪；是否足夠需在補測 prompt caching 後才能判定。
-3. **ADR-017「模型抽換與 fallback 設定在閘道層」加註限制**：跨供應商 fallback 對 Agent SDK 路徑未經驗證，且 §6.1 顯示 Anthropic→OpenAI 方向有已知缺陷。此為 ADR 的既有決策，**本報告不修改 ADR**，僅提出需要新增 ADR 或在補測後回填的事項供負責人裁量。
+3. **在[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)「模型抽換與 fallback 設定在閘道層」加註限制**：跨供應商 fallback 對 Agent SDK 路徑未經驗證，且 §6.1 顯示 Anthropic→OpenAI 方向有已知缺陷。此為 ADR 的既有決策，**本報告不修改 ADR**，僅提出需要新增 ADR 或在補測後回填的事項供負責人裁量。
 
 ### 7.3 尚未回答的前置項
 
@@ -187,7 +187,7 @@ PDM-003 §3 列的三個前置 Spike 中：
 | --- | --- |
 | 1. LiteLLM 相容性 | **本報告：協定層通過**（Anthropic 後端待補測） |
 | 2. Skill 載入路徑（`<workdir>/skills/<skill-name>/`） | **已於 2026-08-14 追加實測，6/6 PASS——但提案假設的路徑被證偽，見 §10** |
-| 3. 真 Embedding 跨語言召回 | 不在本報告範圍（屬 ADR-013／PDM-011） |
+| 3. 真 Embedding 跨語言召回 | 不在本報告範圍（屬[意圖搜尋](../../../adr/README.md#意圖搜尋)／PDM-011） |
 
 > **注意（2026-08-14 更新）**：PDM-003 §3 寫「前兩項未通過前，PDM-003 不應定案」。第 2 項已於 §10 補測完成，**三個前置項至此全部解除**。但第 2 項的結論**要求同時修正 PDM-003 與 PDM-008 的路徑寫法**（§10.6）——定案時必須連同修正一起採納，不能沿用提案原文的 `<workdir>/skills/<skill-name>/`。
 
@@ -201,7 +201,7 @@ LiteLLM Proxy 的 Anthropic 相容端點在 tool use ＋ streaming ＋ 每 Run �
 
 ## 9. 重現方式
 
-原記於 `docs/spikes/pdm-003-litellm-gateway/README.md`，**該目錄已刪除**——重跑步驟與程式碼可依[墓碑](../../../spikes/README.md)的還原指令自 Git 歷史取回。需要持續回歸的測項已升格為 [ADR-023](../../../adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md) §2 的四項清單，實測輸出見 [`infra/images/runtime-agent-sdk/UPGRADES.md`](../../../../infra/images/runtime-agent-sdk/UPGRADES.md)。
+原記於 `docs/spikes/pdm-003-litellm-gateway/README.md`，**該目錄已刪除**——重跑步驟與程式碼可依[墓碑](../../../spikes/README.md)的還原指令自 Git 歷史取回。需要持續回歸的測項已升格為[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的四項回歸清單，實測輸出見 [`infra/images/runtime-agent-sdk/UPGRADES.md`](../../../../infra/images/runtime-agent-sdk/UPGRADES.md)。
 
 ---
 
@@ -289,7 +289,7 @@ LiteLLM Proxy 的 Anthropic 相容端點在 tool use ＋ streaming ＋ 每 Run �
 
 ### 11.1 為何現在可以測
 
-§6.2、§7.3、§10.5 把三個項目標記為「待取得 Anthropic 憑證後補測」。**負責人已定案模型供應商採 OpenAI API（經 LiteLLM 閘道，ADR-017 架構不變）**，因此這些項目不再需要 Anthropic 憑證——直接在正式後端上測，結論比原先「用 `gpt-4o-mini` 代打」更有效力：**測的就是生產模型本身**。
+§6.2、§7.3、§10.5 把三個項目標記為「待取得 Anthropic 憑證後補測」。**負責人已定案模型供應商採 OpenAI API（經 LiteLLM 閘道，[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)架構不變）**，因此這些項目不再需要 Anthropic 憑證——直接在正式後端上測，結論比原先「用 `gpt-4o-mini` 代打」更有效力：**測的就是生產模型本身**。
 
 原本標註「Anthropic 後端會原生透傳／原生支援」的推論段落（§6.1、§10.5）在新前提下**不再適用**，因為後端就是 OpenAI。本節的實測值取代那些推論。
 
@@ -381,7 +381,7 @@ LiteLLM 1.96.2 的價目表已內建此兩型號，成本記帳正確；`/v1/mes
 
 **LiteLLM 內部的成本計算有正確套用快取折扣，兩個路由一致。** 壞掉的只有兩處：(i) 回給客戶端的 `usage` 缺欄位；(ii) spend log 的 `cache_read_input_tokens` 欄位為 `null`。
 
-> **對 Virtual Key 預算計費準確性的結論（修正原先的疑慮）**：**預算金額是準的**，`max_budget` 不會因為快取而錯扣。**受損的是可觀測性**：平台拿不到 cache 命中率，因此 (a) Trace 無法呈現快取效益、(b) 無法從 usage 欄位反推「這次 Run 的 input 有多少是重複的 harness 前綴」、(c) 若 ADR-017 的 Langfuse 成本歸因依賴 cache 欄位，該欄位在此路由上不可用。
+> **對 Virtual Key 預算計費準確性的結論（修正原先的疑慮）**：**預算金額是準的**，`max_budget` 不會因為快取而錯扣。**受損的是可觀測性**：平台拿不到 cache 命中率，因此 (a) Trace 無法呈現快取效益、(b) 無法從 usage 欄位反推「這次 Run 的 input 有多少是重複的 harness 前綴」、(c) 若[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)的 Langfuse 成本歸因依賴 cache 欄位，該欄位在此路由上不可用。
 
 #### 11.5.3 多輪對話的實際 input 消耗曲線
 

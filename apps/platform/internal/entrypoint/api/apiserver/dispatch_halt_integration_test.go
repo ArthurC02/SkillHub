@@ -262,7 +262,7 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 
 	created := f.start(t)
 	if created.Status != string(gen.RunStatusQueued) {
-		t.Fatalf("run status = %q; a capacity pause leaves runs queued (ADR-022 X-04)", created.Status)
+		t.Fatalf("run status = %q; a capacity pause leaves runs queued (X-04)", created.Status)
 	}
 	dispatchesBefore := fake.Dispatches()
 	if err := svc.Drive(ctx, ws, mustUUID(t, created.RunID)); err != nil {

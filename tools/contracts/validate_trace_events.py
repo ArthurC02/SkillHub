@@ -32,7 +32,7 @@ NEGATIVE_CASES: list[tuple[str, dict]] = [
         },
     ),
     (
-        "error category outside the ADR-004 taxonomy",
+        "error category outside the run orchestration failure taxonomy",
         {
             "schema_version": "1.0",
             "event_id": "00000000-0000-4000-8000-000000000003",

@@ -1,7 +1,7 @@
 # Platform internal：產品價值流與 Bounded Context 導覽
 
 先從創作者在 Skill Hub 能完成的事理解 Platform。下列名稱來自已接受的
-[ADR-038](../../../docs/adr/ADR-038-platform-product-domain-language-and-value-stream-navigation.md)：它們是產品領域導覽的候選語彙，不是已改名的 Go package，也不改變資料所有權。
+[Platform Bounded Context 與 Context Map](../../../docs/adr/README.md#platform-bounded-context-與-context-map)：它們是產品領域導覽的候選語彙，不是已改名的 Go package，也不改變資料所有權。
 
 ```text
 創作者空間
@@ -44,7 +44,7 @@ Skill 生命週期
 
 ## 架構治理位置
 
-產品價值流不是 import 規則。以下是目前 Go layout 的 machine-readable identity；`Core`／`Supporting` 是治理 metadata，不是產品領域名稱。完整事實來源是 [ADR-032](../../../docs/adr/ADR-032-ddd-bounded-context-governance-for-platform.md)。
+產品價值流不是 import 規則。以下是目前 Go layout 的 machine-readable identity；`Core`／`Supporting` 是治理 metadata，不是產品領域名稱。完整事實來源是 [context map](../../../docs/development/platform-context-map.md)。
 
 ```text
 internal/
@@ -57,11 +57,11 @@ internal/
 └── entrypoint/api/{apiserver,gen}                                  HTTP composition / generated transport
 ```
 
-`shared/skillpkg` 是共同語言的純函式庫；`foundation/*` 是機制、ACL 與技術基座；`foundation/persistence/db/gen` 與 `entrypoint/api/{apiserver,gen}` 分別是 generated persistence、composition root 與 generated transport，不是創作者直接選擇的產品領域。資料夾遷移已完成；現行拓撲、收斂範圍與驗證基準見 [DDD 邊界收斂報告](../../../docs/plans/mvp/m4/report-platform-ddd-boundary-convergence-2026-08-19.md) 與 ADR-032／038／040。
+`shared/skillpkg` 是共同語言的純函式庫；`foundation/*` 是機制、ACL 與技術基座；`foundation/persistence/db/gen` 與 `entrypoint/api/{apiserver,gen}` 分別是 generated persistence、composition root 與 generated transport，不是創作者直接選擇的產品領域。資料夾遷移已完成；現行拓撲、收斂範圍與驗證基準見 [DDD 邊界收斂報告](../../../docs/plans/mvp/m4/report-platform-ddd-boundary-convergence-2026-08-19.md) 與 [Platform Bounded Context 與 Context Map](../../../docs/adr/README.md#platform-bounded-context-與-context-map)。
 
 ## 現行拓撲（待最終驗收）
 
-產品領域、Shared Kernel、Foundation 與 Entrypoint 的路徑均已完成搬遷；下列即為目前 import path。詳細 gate 見已 Accepted 的 [ADR-040](../../../docs/adr/ADR-040-platform-foundation-shared-kernel-and-entrypoint-topology.md)：
+產品領域、Shared Kernel、Foundation 與 Entrypoint 的路徑均已完成搬遷；下列即為目前 import path。詳細 gate 見 [Platform Bounded Context 與 Context Map](../../../docs/adr/README.md#platform-bounded-context-與-context-map)：
 
 ```text
 internal/
@@ -86,12 +86,12 @@ internal/
 4. **Composition root 注入**：不能由 Generic package 反向 import domain，也不能形成
    cycle 時，在 process root 組裝 owner API／callback；這不是 consumer 自己建 Service。
 
-跨 Context import 必須同一批更新 ADR-032 附錄 A 與
+跨 Context import 必須同一批更新 [context map](../../../docs/development/platform-context-map.md) 的白名單與
 [`apps/platform/.golangci.yml`](../.golangci.yml)；資料 query 的 owner 由
 [`db/query-owners.yaml`](../../../db/query-owners.yaml) 宣告與檢查。Read ownership 的
-細節見 [ADR-035](../../../docs/adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md)，
+細節見 [Query 與寫入所有權](../../../docs/adr/README.md#query-與寫入所有權)，
 每個 package 只能有一種 architecture identity 的規則見
-[ADR-037](../../../docs/adr/ADR-037-product-analytics-and-package-architecture-identities.md)。
+[Platform Bounded Context 與 Context Map](../../../docs/adr/README.md#platform-bounded-context-與-context-map)。
 
 ## 為何不建 `domain/application/infrastructure` 子目錄
 
@@ -104,8 +104,8 @@ internal/
 另一個 context 的 `Service`。API process 的 wiring 在
 [`apiserver.NewApp`](entrypoint/api/apiserver/app.go)，worker process 的 wiring 在
 [`cmd/worker/main.go`](../cmd/worker/main.go)；maintenance 與 reindex 則各自於其 deployment
-unit 的 root 建構所需服務。詳見 ADR-032 §5。
+unit 的 root 建構所需服務。詳見 [Platform Bounded Context 與 Context Map](../../../docs/adr/README.md#platform-bounded-context-與-context-map)。
 
 ## 規劃中的互動創作（尚未實作）
 
-[ADR-067](../../../docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md) 規劃由 Python LangGraph 編排創作，Go 持有會話、授權、成本、版本與 Run 的事實。現有套件地圖不代表這些新能力已存在；實作前先定義契約，新增套件須依 ADR-032 登記 owner。[GEN-007～012](../../../docs/plans/02-specifications-and-acceptance-criteria.md) 是允收來源。
+[互動創作](../../../docs/adr/README.md#互動創作) 規劃由 Python LangGraph 編排創作，Go 持有會話、授權、成本、版本與 Run 的事實。現有套件地圖不代表這些新能力已存在；實作前先定義契約，新增套件須依 [context map](../../../docs/development/platform-context-map.md) 登記 owner。[GEN-007～012](../../../docs/plans/02-specifications-and-acceptance-criteria.md) 是允收來源。

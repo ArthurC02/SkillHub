@@ -14,7 +14,7 @@ import (
 
 func TestCreationStreamMeasureDeliveryLag(t *testing.T) {
 	if os.Getenv("CREATION_STREAM_MEASURE") == "" {
-		t.Skip("set CREATION_STREAM_MEASURE=1 to run the ADR-069 delivery-lag stopwatch")
+		t.Skip("set CREATION_STREAM_MEASURE=1 to run the interactive-creation delivery-lag stopwatch")
 	}
 	const rounds = 24
 	a, s, _ := creationFixture(t)
@@ -84,7 +84,7 @@ func TestCreationStreamMeasureDeliveryLag(t *testing.T) {
 
 	sort.Float64s(gains)
 	at := func(p float64) float64 { return gains[int(float64(len(gains)-1)*p)] }
-	t.Logf("ADR-069 delivery lag removed, %d rounds: p50 %.3fs  p90 %.3fs  min %.3fs  max %.3fs",
+	t.Logf("interactive creation delivery lag removed, %d rounds: p50 %.3fs  p90 %.3fs  min %.3fs  max %.3fs",
 		len(gains), at(0.5), at(0.9), gains[0], gains[len(gains)-1])
 
 	if at(0.5) <= 0 {

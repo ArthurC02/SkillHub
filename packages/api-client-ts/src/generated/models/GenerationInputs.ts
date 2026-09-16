@@ -30,7 +30,7 @@ import {
 
 /**
  * The non-text inputs of one generation, exactly as
- * `skill_sources.generation_inputs` stores them (ADR-066 決策 4): a
+ * `skill_sources.generation_inputs` stores them: a
  * diagram is a digest, a media type and a byte count — the image bytes
  * were never kept, so nothing here lets anyone download or re-derive the
  * picture; a reference is the identifier of the Skill and the version the

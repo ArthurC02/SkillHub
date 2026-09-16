@@ -179,7 +179,7 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 			t.Errorf("side %d must state that the run cost is a lower bound, got %+v", i, side.Cost)
 		}
 		if side.Cost.AuthoritativeSource == "" {
-			t.Errorf("side %d does not name the authoritative cost source (ADR-017)", i)
+			t.Errorf("side %d does not name the authoritative cost source", i)
 		}
 		if side.Evaluation != nil && side.Evaluation.Cost.EvaluationCredits != nil &&
 			side.Cost.Credits != nil && *side.Evaluation.Cost.EvaluationCredits == *side.Cost.Credits {
@@ -435,7 +435,7 @@ func TestComparisonReportsInputsThatCanNoLongerBeSupplied(t *testing.T) {
 		t.Fatalf("a deleted input must not break the comparison: got %d (%s)", status, body.Error)
 	}
 	if body.Runs[0].InputsAvailable == nil || *body.Runs[0].InputsAvailable {
-		t.Error("a run whose dataset was deleted cannot be re-run on the same inputs (ADR-003)")
+		t.Error("a run whose dataset was deleted cannot be re-run on the same inputs")
 	}
 	if body.Runs[1].InputsAvailable == nil || !*body.Runs[1].InputsAvailable {
 		t.Error("the other side's inputs were untouched")

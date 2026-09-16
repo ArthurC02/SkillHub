@@ -14,7 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
-const runCostAuthority = "模型閘道對這個 Run 的 per-key 實付（ADR-017）"
+const runCostAuthority = "模型閘道對這個 Run 的 per-key 實付"
 
 type comparisonView struct {
 	Runs            []comparisonSide `json:"runs"`

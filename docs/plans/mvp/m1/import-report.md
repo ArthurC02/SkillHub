@@ -1,7 +1,7 @@
 # CONTENT-003／004 種子清單本機端到端匯入報告（M1）
 
 - 日期：**2026-08-15**
-- 對應：CONTENT-003／004／006、INGEST-001～009、SKILL-001／002、DISC-001／002、[ADR-013](../../../adr/ADR-013-intent-search-architecture.md)、[ADR-020](../../../adr/ADR-020-authentication-and-session-model.md)
+- 對應：CONTENT-003／004／006、INGEST-001～009、SKILL-001／002、DISC-001／002、[意圖搜尋](../../../adr/README.md#意圖搜尋)、[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度)
 - 輸入：[`tools/content/seed-skills.json`](../../../../tools/content/seed-skills.json)（45 筆、11 個 pin commit 的來源 repo）
 - 工具：[`tools/content/import_seed.py`](../../../../tools/content/import_seed.py)（本次新增，驗證用）
 - 對照：[curated-skill-list.md](../content/curated-skill-list.md)、[golden-query-set.md](golden-query-set.md)
@@ -36,13 +36,13 @@ API_ADDR=:8080                          LLM_SERVICE_URL=http://host.docker.inter
 ```
 
 - 容器接 compose 網路 `skillhub_default`，`-p 8080:8080` 對外，`--add-host host.docker.internal:host-gateway` 讓 Go 打得到跑在 host 上的 llm 服務。
-- **GitHub OAuth 憑證未設定**，改走 ADR-020 的 dev provider：`DEV_LOGIN=1` 才會掛載 `POST /auth/dev/login`，`COOKIE_INSECURE=1` 讓 session cookie 在 plain-http 下可用。匯入身分為 `seed-importer`，其個人 Workspace 即匯入目的地。
+- **GitHub OAuth 憑證未設定**，改走[身分、Workspace、准入與額度](../../../adr/README.md#身分workspace准入與額度)的 dev provider：`DEV_LOGIN=1` 才會掛載 `POST /auth/dev/login`，`COOKIE_INSECURE=1` 讓 session cookie 在 plain-http 下可用。匯入身分為 `seed-importer`，其個人 Workspace 即匯入目的地。
 
 ### 1.1 模型出口：本次刻意違反鐵律 8，僅限本機
 
 llm 服務的 `/embed` 走 `litellm.aembedding(api_base=LITELLM_BASE_URL)`。本次**未**架設 LiteLLM 閘道（作法原見 `docs/spikes/pdm-003-litellm-gateway/`，該 spike 已刪除，結論見 [`m0/pdm-003-litellm-spike-report.md`](../m0/pdm-003-litellm-spike-report.md)），而是把 `LITELLM_BASE_URL` 指向 `https://api.openai.com/v1`、`LITELLM_API_KEY` 帶入 `.env` 的 `OPENAI_API_KEY`，直連供應商。
 
-> **這不是可接受的部署形態。** 鐵律 8（ADR-017）要求所有模型呼叫走 LiteLLM 閘道、供應商金鑰只存在閘道。本次是為了在單機取得真 Embedding 做的臨時取徑，金鑰只以環境變數進入 uvicorn 程序、未寫入任何檔案，驗證結束即隨程序消滅。正式環境必須以閘道 + 每 Run 短效 Virtual Key 取代。
+> **這不是可接受的部署形態。** 鐵律 8 要求所有模型呼叫走 LiteLLM 閘道、供應商金鑰只存在閘道。本次是為了在單機取得真 Embedding 做的臨時取徑，金鑰只以環境變數進入 uvicorn 程序、未寫入任何檔案，驗證結束即隨程序消滅。正式環境必須以閘道 + 每 Run 短效 Virtual Key 取代。
 
 `/v1/enrich-skill`（`ENRICH_MODEL` 預設 `gpt-5.6-sol`）在同一條臨時取徑下實測可回傳合格的 zh-Hant 摘要與雙語 task_examples，但**目前沒有任何 Go 端呼叫它**（見 §6.2）。
 
@@ -255,7 +255,7 @@ POST /skills/import/upload → 422
 兩個缺陷疊在一起：
 
 - `services/llm/src/skillhub_llm/app.py:135` 送出 `response_format={"type":"json_object"}`，強制模型回傳物件；但 prompt 要求的是「a JSON array」。實測 `gpt-4o-mini` 把陣列包在 `{"skills": [...]}` 底下，而第 149 行只認 `reasons` 與 `results` 兩個 key，於是 `items` 恆為空，第 163-172 行的樣板句 100% 接管。直接打 `/match-reasons` 可穩定重現。
-- `services/platform/internal/catalog/http.go:251-254` 把回傳清單裡任何非空字串一律標成 `reasonSourceModel`。Python 端的樣板句因此被當成模型生成內容回給使用者，違反 DISC-002／ADR-013「模型生成內容必須標示」。同時 Go 自己那套較好的 `templateMatchReason`（會列出實際詞彙重疊）永遠輪不到執行。
+- `services/platform/internal/catalog/http.go:251-254` 把回傳清單裡任何非空字串一律標成 `reasonSourceModel`。Python 端的樣板句因此被當成模型生成內容回給使用者，違反 DISC-002／[意圖搜尋](../../../adr/README.md#意圖搜尋)「模型生成內容必須標示」。同時 Go 自己那套較好的 `templateMatchReason`（會列出實際詞彙重疊）永遠輪不到執行。
 
 **Bug 4（低／設計取捨）— URL 匯入無法表達 commit pin**
 `services/platform/internal/ingest/fetch.go:89-109`：`github.com/owner/repo` 只展開成 `refs/heads/main`／`master`。CONTENT-003 的來源全部以 40 碼 SHA pin 住（種子檔 schema 明訂「import MUST fetch this SHA, not the branch head」），但 INGEST-001 沒有任何輸入形式能把 SHA 傳進去，`skill_sources.source_ref` 只會記到分支名。目前只能靠上傳路徑外部保證 pin，INGEST-004 的來源可追溯性因此有缺口。
@@ -265,7 +265,7 @@ POST /skills/import/upload → 422
 在 `6690736` 上量到、`b144bea` 已修復，記錄於此僅為留痕：
 
 - **索引時 embedding 沒有任何寫入者**：`UpsertSearchDocumentWithEmbedding` 由 sqlc 產生但全 repo 無呼叫端，`ReindexAll` 也只寫 name／summary，公開搜尋實質上是純 FTS。→ 現由 `ingest.enrich.go` 在匯入與 `SaveVersion` 時寫入，`cmd/reindex` 另有 backfill 階段。
-- **`/v1/enrich-skill` 沒有 Go 呼叫端**：ADR-013 §1 的索引時增強只有 Python 側。→ 現已接線，本次 44／44 全數 `enriched`。
+- **`/v1/enrich-skill` 沒有 Go 呼叫端**：[意圖搜尋](../../../adr/README.md#意圖搜尋)所定的索引時增強只有 Python 側。→ 現已接線，本次 44／44 全數 `enriched`。
 
 兩項均在 `b144bea` 的重跑中實測確認關閉，見 §3 與 §5.2。
 

@@ -144,7 +144,7 @@ func redistributionRefusal(refused registry.Refused, value string) error {
 	case registry.RefusedNoLicenseRecorded:
 		return restrictionInputError(
 			"this skill's newest version records no licence, so there is no evidence to rely on; " +
-				"re-import it if the package carries one (ADR-021 §5: writing a tier onto an existing " +
+				"re-import it if the package carries one (writing a tier onto an existing " +
 				"row would be inventing the evidence rather than reading it)")
 	case registry.RefusedLicenseMismatch:
 		return restrictionInputError(fmt.Sprintf(

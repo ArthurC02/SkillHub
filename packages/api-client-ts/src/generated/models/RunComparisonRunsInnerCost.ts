@@ -23,7 +23,7 @@ import { mapValues } from '../runtime';
  */
 export interface RunComparisonRunsInnerCost {
     /**
-     * In Credit (ADR-068 decision 1). NULL means no usage event
+     * In Credit. NULL means no usage event
      * carried a cost. Render as "unreported", never as 0.
      * 
      */
@@ -42,7 +42,7 @@ export interface RunComparisonRunsInnerCost {
     isLowerBound: RunComparisonRunsInnerCostIsLowerBoundEnum;
     /**
      * Where the settling figure lives — the gateway's per-key
-     * spend for this run (ADR-017). Named rather than implied,
+     * spend for this run. Named rather than implied,
      * so a reader knows what a disagreement would be resolved
      * against.
      * 

@@ -2,7 +2,7 @@
 
 ## 這是什麼專案
 
-Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私人訂製／公開散布；搜尋、隔離試跑、評估與可攜套件支援這段旅程。互動創作的設計見 [ADR-067](docs/adr/ADR-067-interactive-skill-creation-with-langgraph.md)，實作狀態以 [`01` §10](docs/plans/01-goals-and-plan.md) 為準。
+Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私人訂製／公開散布；搜尋、隔離試跑、評估與可攜套件支援這段旅程。互動創作的設計見 [互動創作](docs/adr/README.md#互動創作)，實作狀態以 [`01` §10](docs/plans/01-goals-and-plan.md) 為準。
 
 ## 系統怎麼跑
 
@@ -13,7 +13,7 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 3. **Go Worker** 是唯一的佇列消費者，以內部 HTTP 呼叫兩個能力提供者：**`apps/llm`**（Python FastAPI，所有模型呼叫經 LiteLLM 閘道）與 **`apps/sandbox`**（gVisor 隔離的 VM 池，跑釘選 digest 的 runtime image；契約 `contracts/openapi/sandbox-provider.yaml`）。
 4. 結果以結構化回應回到 Go；領域狀態變更與對外事件同一交易（outbox）。**執行平面永遠碰不到核心資料庫。**
 
-`apps/platform/internal/` 依 DDD 切成 creator／product／skill／trial 四群 Bounded Context，逐套件對照表在 ADR-032 §1（有機器對帳）。架構總圖見 [docs/adr/README.md](docs/adr/README.md)。
+`apps/platform/internal/` 依 DDD 切成 creator／product／skill／trial 四群 Bounded Context，逐套件對照表在 [platform-context-map.md](docs/development/platform-context-map.md)（有機器對帳）。架構總圖見 [docs/adr/README.md](docs/adr/README.md)。
 
 ## 現在在哪
 
@@ -30,35 +30,35 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 | `infra/` | 部署、runtime image、網路、節點與 observability |
 | `tools/` | 開發、CI、資料維護、維運命令；`tools/devctl` 是所有機器檢查的家 |
 | `docs/plans/` | 產品基準：`01` 目標與里程碑、`02` 規格允收（需求 ID）、`03` 工作清單、`04` 殘項與移交、`05` 待裁定；`mvp/mX/` 為里程碑當時的紀錄 |
-| `docs/adr/` | 架構決策；份數、狀態與取代關係見 [索引](docs/adr/README.md) |
+| `docs/adr/` | 架構決策，一個主題一份、內容永遠是現行版本；見 [索引](docs/adr/README.md) |
 | `docs/design/` | 前端兩把尺：[system.md](docs/design/system.md) 管一頁之內、[information-architecture.md](docs/design/information-architecture.md) 管頁與頁之間；**兩份都有機器測試直接解析** |
 | `docs/development/` | 開工前讀的手冊；[docs/runbooks/](docs/runbooks/) 是出事時讀的 |
 | `docs/` | 文件區共同規則見 [`docs/AGENTS.md`](docs/AGENTS.md)；動文件前先讀根規範與該區域指示 |
 
-收納語意由 ADR-031 定義，CI/CD 基線見 ADR-019；結構性偏離先更新 ADR。
+收納語意與 CI/CD 基線見 [ADR 索引](docs/adr/README.md#repo-結構ci-與驗證層)；結構性偏離先更新 ADR。
 
 ## 技術棧摘要
 
 技術棧的完整選擇、依據與 Local Runner／遠端 MCP 的 MVP 邊界見[開發者指示](docs/development/agent-instructions.md)。系統採 React／TypeScript 前端、Go 控制平面、Python 能力提供者、PostgreSQL＋S3 資料層、LiteLLM 模型閘道與 gVisor Sandbox；跨程序契約以 OpenAPI-first 管理。
 
-## 實作鐵律（違反任何一條 = 架構回歸）
+## 實作鐵律（違反任何一條 = 架構回歸；理由見 [ADR 索引](docs/adr/README.md)）
 
-1. 不受信任的 Skill、Script、資料不得在 Web/API 程序內執行；匯入與掃描階段不得執行套件內 Script。（ADR-001、007）
-2. 執行平面不得直接存取核心資料庫；只透過任務契約、短效物件授權與事件互動。（ADR-001）
-3. 所有使用者資料查詢預設要求 Workspace Scope；不信任 UI 傳入的 `workspace_id`。（ADR-011）
-4. Skill Version、Test Case 快照、歷史 Run 不可變；採用改善建議＝建立新版本，不原地覆寫。（ADR-003）
-5. Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機；Python 側的任何程序內狀態都是暫存草稿，不得回寫成狀態。（ADR-008、016）
-6. Python 是能力提供者：收結構化請求、回結構化結果；政策、授權、狀態轉移、重試決策全在 Go，業務規則不進 Python。（ADR-016）
-7. 佇列消費者只有 Go Worker；Python 不消費佇列，由 Go 以內部 HTTP 呼叫（含逾時與取消傳遞）。（ADR-016）
-8. 所有模型呼叫走 LiteLLM 閘道，不得直連供應商；供應商金鑰只存在閘道。（ADR-017）
-9. 領域狀態變更與對外事件同交易（Transactional Outbox）；Consumer 必須冪等；`destroy`/清理可安全重複。（ADR-008、004）
-10. 平台 `run_id` 是永久識別；Provider 臨時 ID 不得當主鍵或永久 URL。（ADR-004）
+1. 不受信任的 Skill、Script、資料不得在 Web/API 程序內執行；匯入與掃描階段不得執行套件內 Script。
+2. 執行平面不得直接存取核心資料庫；只透過任務契約、短效物件授權與事件互動。
+3. 所有使用者資料查詢預設要求 Workspace Scope；不信任 UI 傳入的 `workspace_id`。
+4. Skill Version、Test Case 快照、歷史 Run 不可變；採用改善建議＝建立新版本，不原地覆寫。
+5. Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機；Python 側的任何程序內狀態都是暫存草稿，不得回寫成狀態。
+6. Python 是能力提供者：收結構化請求、回結構化結果；政策、授權、狀態轉移、重試決策全在 Go，業務規則不進 Python。
+7. 佇列消費者只有 Go Worker；Python 不消費佇列，由 Go 以內部 HTTP 呼叫（含逾時與取消傳遞）。
+8. 所有模型呼叫走 LiteLLM 閘道，不得直連供應商；供應商金鑰只存在閘道。
+9. 領域狀態變更與對外事件同交易（Transactional Outbox）；Consumer 必須冪等；`destroy`/清理可安全重複。
+10. 平台 `run_id` 是永久識別；Provider 臨時 ID 不得當主鍵或永久 URL。
 11. Secrets 不得出現在套件、Log、Trace 明文或分析事件；顯示前完成遮罩。（NFR-002、TRACE-001）
-12. 跨語言介面先寫 OpenAPI schema 再實作；CI 以 codegen 檢查 drift。（ADR-016）
+12. 跨語言介面先寫 OpenAPI schema 再實作；CI 以 codegen 檢查 drift。
 
 ## 文件規則摘要
 
-ADR 是決策歷史，不原地改寫；里程碑當時的紀錄也不回溯修正（程式與新能力不受這條限制）；只有完全符合允收準則才勾選。完整六條文件維護規則與文件區路由見 [`docs/AGENTS.md`](docs/AGENTS.md)；動任何 `docs/` 文件前必須先讀它。
+ADR 一個主題一份、內容永遠是現行版本，歷史在 git；只有 ADR 與索引寫 ADR 編號，其他地方寫規則本身（`adr-citations` 會擋）；里程碑當時的紀錄不回溯修正（程式與新能力不受這條限制）；只有完全符合允收準則才勾選。完整六條文件維護規則與文件區路由見 [`docs/AGENTS.md`](docs/AGENTS.md)；動任何 `docs/` 文件前必須先讀它。
 
 ## 慣例
 
@@ -79,8 +79,8 @@ ADR 是決策歷史，不原地改寫；里程碑當時的紀錄也不回溯修�
 4. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/`。
 5. **generated files 禁止手改**：`task gen:sql`／`task gen:openapi` 由主 Agent 序列化執行；提交前一律 `task gen:check`；generated 目錄的衝突在來源解決後重生。
 6. **Go generated router 不擁有 AuthZ**：ogen server 只在 `router.go` 的精確 `GET /healthz` pattern 後；其他 route 逐條套 `RequireSession`／`RequireOperator`／`OptionalSession`，不得整批 mount，每移一條要加 route 測試。
-7. **Bounded Context 治理（ADR-032）**：每個套件屬於且僅屬於一個 context，新套件先在 ADR-032 §1 登記再建目錄；跨 context 的新 import **同一個 commit** 改附錄 A 與 `apps/platform/.golangci.yml` 的 depguard；領域 Service 只由 `entrypoint/api/apiserver.NewApp` 注入，禁止方法內現場建構。日常判斷見 [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)。
-8. **Query ownership（ADR-033、035）**：owner 宣告在 `db/query-owners.yaml`，跨 context 呼叫會 FAIL；新增或刪除 query 同一批改該檔；`allow:`／`read_allow:` 是存量漂移清單，**不是擴充點**。
+7. **Bounded Context 治理**：每個套件屬於且僅屬於一個 context，新套件先在 [context map](docs/development/platform-context-map.md) 登記再建目錄；跨 context 的新 import **同一個 commit** 改 context map 的白名單與 `apps/platform/.golangci.yml` 的 depguard；領域 Service 只由 `entrypoint/api/apiserver.NewApp` 注入，禁止方法內現場建構。日常判斷見 [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)。
+8. **Query ownership**：owner 宣告在 `db/query-owners.yaml`，跨 context 呼叫會 FAIL；新增或刪除 query 同一批改該檔；`allow:`／`read_allow:` 是存量漂移清單，**不是擴充點**。
 9. **修好一個東西之後，把修法弄壞一次**：綠燈只證明測試存在。把修正那一行還原、跑對應測試、確認變紅、再改回來（`git diff` 為空）。不適用純文案與純註解；適用任何你在 commit 訊息裡寫「修好了 X」的東西——那句話的證據就是那次紅。三次前例在 automation.md。
 
 ## 分區指標與攔阻
@@ -115,12 +115,12 @@ ADR 是決策歷史，不原地改寫；里程碑當時的紀錄也不回溯修�
 | 我現在要簽什麼 | [`05`](docs/plans/05-pending-rulings.md) |
 | 某功能的允收準則 | [`02`](docs/plans/02-specifications-and-acceptance-criteria.md)（按需求 ID） |
 | 下一個工作項目 | [`03`](docs/plans/03-work-items.md) |
-| 系統邊界與平面／資料模型／Run 生命週期／安全 | ADR-001、002／003、018／004、008／005、007、015、022 |
-| Query 屬於誰、跨 context 怎麼拿事實 | ADR-033、035、034 ＋ [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)；動手前讀目標套件的 `doc.go` |
+| 系統邊界與平面／資料模型／Run 生命週期／安全 | [ADR 索引](docs/adr/README.md)的同名主題 |
+| Query 屬於誰、跨 context 怎麼拿事實 | [Query 與寫入所有權](docs/adr/README.md#query-與寫入所有權) ＋ [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)；動手前讀目標套件的 `doc.go` |
 | 派送被停了怎麼判斷與解除 | [p1-dispatch-halt.md](docs/runbooks/p1-dispatch-halt.md) |
 | 畫面該長什麼樣、新畫面放哪個網址 | [system.md](docs/design/system.md) §3、[information-architecture.md](docs/design/information-architecture.md) §0（先過這關再寫） |
 | 封測上線前要做什麼 | [release-checklist](docs/plans/mvp/m4/release-checklist.md) |
 | 同意書與資料保存 | [consent-and-data-policy.md](docs/plans/mvp/gate-test/consent-and-data-policy.md) |
-| 評估判定與 Judge／打包簽章／封測准入／漏斗量測 | ADR-025、026／027／028／029 |
+| 評估判定與 Judge／打包簽章／封測准入／漏斗量測 | [ADR 索引](docs/adr/README.md)的同名主題 |
 | 新增、升級或移除一個依賴 | automation.md〈依賴的准入、更新與閘門〉 |
 | 所有未決議題 | 各 ADR 的「待決策」＋ `03` 第 1 節 |

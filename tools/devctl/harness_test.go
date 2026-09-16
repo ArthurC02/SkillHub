@@ -38,8 +38,7 @@ func TestHarnessAcceptsAGenericSkillAndANamedModel(t *testing.T) {
 func TestHarnessRejectsASkillBoundToThisRepo(t *testing.T) {
 	t.Parallel()
 	for name, line := range map[string]string{
-		"docs path":      "See docs/development/automation.md first.",
-		"ADR number":     "Decided in ADR-034.",
+		"ADR number":     "Decided in " + adrNumber(34) + ".",
 		"requirement id": "This satisfies PORT-004.",
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -50,6 +49,14 @@ func TestHarnessRejectsASkillBoundToThisRepo(t *testing.T) {
 				t.Fatalf("a skill citing a local document was accepted: %v", problems)
 			}
 		})
+	}
+}
+
+func TestHarnessAcceptsASkillThatNamesADocumentationFolder(t *testing.T) {
+	t.Parallel()
+	root := writeHarnessFixture(t, cleanSkill+"Do not default to `docs/` or any other location.\n", cleanAgent, "# 導覽\n")
+	if problems := harnessProblems(root); len(problems) != 0 {
+		t.Fatalf("a skill naming a documentation folder was rejected: %v", problems)
 	}
 }
 

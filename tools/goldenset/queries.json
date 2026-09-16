@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Golden query set for ADR-013 / DISC-001. gold_primary = the one skill a human would pick; gold_acceptable = also defensible. Distractor queries have both lists empty: the correct answer is 'no result', and they are what the vector-distance cutoff is tuned against. Per ADR-013 the repo that owns a query's gold_primary may supply at most 20% (=4) of a category's 20 queries; distractors belong to no repo.",
+  "note": "Golden query set for the intent search design / DISC-001. gold_primary = the one skill a human would pick; gold_acceptable = also defensible. Distractor queries have both lists empty: the correct answer is 'no result', and they are what the vector-distance cutoff is tuned against. Per the intent search design the repo that owns a query's gold_primary may supply at most 20% (=4) of a category's 20 queries; distractors belong to no repo.",
   "queries": [
     {"id": "D01", "category": "documents", "lang": "zh", "kind": "task",
      "query": "我要把一份會議記錄整理成有目錄和頁碼的 Word 文件",

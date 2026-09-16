@@ -9,9 +9,9 @@ import (
 	"testing"
 )
 
-const adrFixtureCitations = 3
+func adrNumber(n int) string { return fmt.Sprintf("ADR-%03d", n) }
 
-func adrCitationFixture(t *testing.T, rows int) string {
+func adrCitationFixture(t *testing.T) (string, func(relative, contents string)) {
 	t.Helper()
 	root := t.TempDir()
 	if out, err := exec.Command("git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
@@ -26,105 +26,130 @@ func adrCitationFixture(t *testing.T, rows int) string {
 			t.Fatal(err)
 		}
 	}
-
-	status := map[int]string{
-		1:  "Superseded（由 [ADR-002](./ADR-002-x.md)）",
-		3:  "Accepted（決策 1 經 ADR-004 修訂）",
-		50: "Superseded",
-	}
-	var index strings.Builder
-	index.WriteString("| ADR | 主題 | 狀態 |\n| --- | --- | --- |\n")
-	for n := 0; n < rows; n++ {
-		s := status[n]
-		if s == "" {
-			s = "Accepted"
-		}
-		fmt.Fprintf(&index, "| [ADR-%03d](./ADR-%03d-x.md) | 主題 | %s |\n", n, n, s)
-	}
-	write("docs/adr/README.md", index.String())
-
-	write("docs/adr/ADR-004-x.md", "# ADR-004\n\n- 狀態：Accepted\n- 修訂：[ADR-003](./ADR-003-x.md) 決策 1\n\n## 背景\n\n見 ADR-001。\n")
-	write("docs/adr/ADR-006-x.md", "# ADR-006\n\n- 修訂：[ADR-005](./ADR-005-x.md) 決策 2（與 ADR-003 相容）\n")
-	write("docs/adr/ADR-007-x.md", "# ADR-007\n\n- 修訂：由 [ADR-009](./ADR-009-x.md) 修訂\n")
-	write("docs/adr/ADR-008-x.md", "# ADR-008\n\n## 決策\n\n- 修訂：[ADR-005](./ADR-005-x.md)\n")
-
-	write("docs/plans/01.md", "見 ADR-001。\nADR-001 已由 ADR-002 取代。\n")
-	write("docs/plans/mvp/m1/report.md", "見 ADR-001。\n")
-
-	write("apps/x/a.go", "package x\n\nconst see = \"ADR-010\"\nconst path = \"docs/adr/ADR-011-workspace.md\"\n")
-	write("contracts/c.yaml", "summary: x (ADR-015, ADR-016)\n")
-	write("apps/x/gen/b.go", "package gen\n\nconst see = \"ADR-001 ADR-012\"\n")
-	write("tools/r.jsonl", "{\"note\": \"ADR-013\"}\n")
-	write(".gitignore", "ignored.go\n")
-	write("ignored.go", "package x\n\nconst see = \"ADR-020 ADR-001\"\n")
-	return root
+	one, two, nine := adrNumber(1), adrNumber(2), adrNumber(9)
+	write("docs/adr/README.md", "# 索引\n\n## 決策索引\n\n### 甲主題\n\n["+one+"](./"+one+"-alpha.md)：摘要。\n\n"+
+		"### 乙主題\n\n["+two+"](./"+two+"-beta.md)：摘要。\n")
+	write("docs/adr/"+one+"-alpha.md", "# "+one+"：甲主題\n\n見 ["+two+"](./"+two+"-beta.md)。\n")
+	write("docs/adr/"+two+"-beta.md", "# "+two+"：乙主題\n")
+	write("docs/plans/01.md", "規則本身。理由見 [甲主題](../adr/README.md#甲主題)。\n")
+	write("docs/plans/mvp/m1/probe.json", `{"adr": "`+nine+`"}`+"\n")
+	write("docs/plans/mvp/m1/R01.SKILL.md", nine+"\n")
+	write("tools/goldenset/corpus/x/SKILL.md", nine+"\n")
+	write("tools/eval-regression/results.jsonl", `{"note": "`+nine+`"}`+"\n")
+	write(".gitignore", "local.md\n")
+	write("local.md", nine+"\n")
+	return root, write
 }
 
-func adrProblemContaining(problems []string, want string) bool {
-	for _, problem := range problems {
-		if strings.Contains(problem, want) {
-			return true
-		}
-	}
-	return false
-}
-
-func TestADRCitationProblemsReportsEachBrokenLinkOnce(t *testing.T) {
+func TestADRCitationProblemsAcceptsACleanTree(t *testing.T) {
 	t.Parallel()
-	root := adrCitationFixture(t, adrIndexRowFloor)
-	want := []string{
-		"marks ADR-050 Superseded without naming the ADR that superseded it",
-		"ADR-006-x.md says 「修訂」 ADR-005, and the docs/adr/README.md row of ADR-005 does not name ADR-006",
-		"docs/plans/01.md:1 cites ADR-001, which docs/adr/README.md says is superseded, without naming ADR-002",
-	}
-	problems := adrCitationProblemsWithin(root, adrFixtureCitations)
-	if len(problems) != len(want) {
-		t.Fatalf("want %d problems, got %d:\n%s", len(want), len(problems), strings.Join(problems, "\n"))
-	}
-	for _, w := range want {
-		if !adrProblemContaining(problems, w) {
-			t.Fatalf("no problem contains %q:\n%s", w, strings.Join(problems, "\n"))
-		}
+	root, _ := adrCitationFixture(t)
+	if problems := adrCitationProblems(root); len(problems) != 0 {
+		t.Fatalf("a tree that follows every rule was rejected:\n%s", strings.Join(problems, "\n"))
 	}
 }
 
-func TestADRCitationCeilingIsExact(t *testing.T) {
+func TestADRCitationProblems(t *testing.T) {
 	t.Parallel()
-	root := adrCitationFixture(t, adrIndexRowFloor)
+	one, two, seven := adrNumber(1), adrNumber(2), adrNumber(7)
 	for _, c := range []struct {
-		name    string
-		ceiling int
-		want    string
+		name   string
+		change func(root string, write func(string, string))
+		want   string
+		count  int
 	}{
-		{"count equal to the ceiling passes", adrFixtureCitations, ""},
-		{"count one above the ceiling fails", adrFixtureCitations - 1, "3 times, above the ceiling of 2"},
-		{"count one below the ceiling asks to lower it", adrFixtureCitations + 1,
-			"below the ceiling of 4; lower adrCitationCeiling in tools/devctl/adr_citations.go to 3"},
+		{
+			name:   "a living document names an ADR",
+			change: func(_ string, write func(string, string)) { write("docs/plans/02.md", "見 "+one+"。\n") },
+			want:   "docs/plans/02.md:1 names " + one, count: 1,
+		},
+		{
+			name: "code names an ADR in a string",
+			change: func(_ string, write func(string, string)) {
+				write("apps/x/a.go", "package x\n\nconst s = \"("+one+")\"\n")
+			},
+			want: "apps/x/a.go:3 names " + one, count: 1,
+		},
+		{
+			name:   "a milestone record's prose is not exempt",
+			change: func(_ string, write func(string, string)) { write("docs/plans/mvp/m1/report.md", "依 "+one+"。\n") },
+			want:   "docs/plans/mvp/m1/report.md:1 names " + one, count: 1,
+		},
+		{
+			name: "an ADR cites a number that has no file",
+			change: func(_ string, write func(string, string)) {
+				write("docs/adr/"+two+"-beta.md", "# "+two+"：乙主題\n\n見 "+seven+"。\n")
+			},
+			want: "docs/adr/" + two + "-beta.md:3 cites " + seven + ", and no such ADR exists", count: 1,
+		},
+		{
+			name: "an ADR the index does not list",
+			change: func(_ string, write func(string, string)) {
+				write("docs/adr/"+adrNumber(3)+"-gamma.md", "# "+adrNumber(3)+"：丙主題\n")
+			},
+			want: "docs/adr/" + adrNumber(3) + "-gamma.md is not listed", count: 1,
+		},
+		{
+			name: "an index heading that is not the ADR's title",
+			change: func(_ string, write func(string, string)) {
+				write("docs/adr/"+one+"-alpha.md", "# "+one+"：甲主題改名\n")
+			},
+			want: "under 「甲主題」, but the ADR is titled 「甲主題改名」", count: 1,
+		},
+		{
+			name:   "a stray file directly in docs/adr",
+			change: func(_ string, write func(string, string)) { write("docs/adr/notes.md", "筆記\n") },
+			want:   "docs/adr/notes.md is in docs/adr but is not named", count: 1,
+		},
+		{
+			name:   "a subfolder of docs/adr",
+			change: func(_ string, write func(string, string)) { write("docs/adr/superseded/old.md", "舊\n") },
+			want:   "docs/adr/superseded/old.md is in docs/adr but is neither an ADR nor the index", count: 1,
+		},
+		{
+			name: "a link to an index heading that does not exist",
+			change: func(_ string, write func(string, string)) {
+				write("docs/plans/03.md", "[x](../adr/README.md#不存在)\n")
+			},
+			want: "docs/plans/03.md:1 links docs/adr/README.md#不存在", count: 1,
+		},
+		{
+			name: "a percent-encoded anchor to an existing heading",
+			change: func(_ string, write func(string, string)) {
+				write("docs/plans/04.md", "[x](../adr/README.md#%E7%94%B2%E4%B8%BB%E9%A1%8C)\n")
+			},
+			count: 0,
+		},
+		{
+			name: "an anchor into another README is not the index",
+			change: func(_ string, write func(string, string)) {
+				write("docs/plans/05.md", "[x](../design/README.md#不存在)\n")
+			},
+			count: 0,
+		},
+		{
+			name: "an index without ADRs is a broken scan",
+			change: func(root string, _ func(string, string)) {
+				for _, name := range []string{one + "-alpha.md", two + "-beta.md"} {
+					if err := os.Remove(filepath.Join(root, "docs", "adr", name)); err != nil {
+						panic(err)
+					}
+				}
+			},
+			want: "docs/adr holds no ADR", count: 1,
+		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			var ratchet []string
-			for _, problem := range adrCitationProblemsWithin(root, c.ceiling) {
-				if strings.Contains(problem, "ceiling of") {
-					ratchet = append(ratchet, problem)
-				}
+			t.Parallel()
+			root, write := adrCitationFixture(t)
+			c.change(root, write)
+			problems := adrCitationProblems(root)
+			if len(problems) != c.count {
+				t.Fatalf("want %d problems, got %d:\n%s", c.count, len(problems), strings.Join(problems, "\n"))
 			}
-			if c.want == "" {
-				if len(ratchet) != 0 {
-					t.Fatalf("want no ratchet problem, got %q", ratchet)
-				}
-				return
-			}
-			if len(ratchet) != 1 || !strings.Contains(ratchet[0], c.want) {
-				t.Fatalf("want one ratchet problem containing %q, got %q", c.want, ratchet)
+			if c.count > 0 && !strings.Contains(problems[0], c.want) {
+				t.Fatalf("problem does not contain %q:\n%s", c.want, problems[0])
 			}
 		})
-	}
-}
-
-func TestADRCitationIndexBelowTheFloorIsABrokenScan(t *testing.T) {
-	t.Parallel()
-	problems := adrCitationProblemsWithin(adrCitationFixture(t, adrIndexRowFloor-1), adrFixtureCitations)
-	if !adrProblemContaining(problems, "has 79 index rows") {
-		t.Fatalf("an index one row under the floor was accepted:\n%s", strings.Join(problems, "\n"))
 	}
 }

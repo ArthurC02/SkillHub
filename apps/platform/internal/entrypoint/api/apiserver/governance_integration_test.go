@@ -1385,9 +1385,9 @@ var purgeKeepsWorkspaceRows = map[string]string{
 	"skill_versions":         "same rule as skills: a version somebody forked or ran is a third party's provenance chain",
 	"skill_sources":          "a version retained above still points at its import source through skill_versions.source_id",
 	"test_cases":             "snapshots that retained runs point at resolve through these rows (0017)",
-	"test_case_snapshots":    "the frozen inputs of a retained run; deleting them makes that run's history lie (ADR-003)",
+	"test_case_snapshots":    "the frozen inputs of a retained run; deleting them makes that run's history lie",
 	"runs":                   "retained with the versions above, de-identified rather than deleted",
-	"run_status_transitions": "ADR-008 append-only history of a retained run",
+	"run_status_transitions": "append-only history of a retained run",
 	"audit_events":           "NFR-001: the trail records that the purge happened, and outlives it by 400 days",
 	"search_documents": "the search projection of a skill that was retained above; it cascades off the " +
 		"skills delete, so a row here means a skill row, and DISC-003 keeps that one for the fork's sake",

@@ -5,7 +5,7 @@
 - 審校對象：**線上目錄**（`GET /api/skills/{id}`，`localhost:8080`，閘門基線 stack），非 `tools/content/summaries.json`
 - 工具：[`tools/content/review_summaries.py`](../../../../tools/content/review_summaries.py)（`--selftest` 為離線自檢；閾值與設計理由寫死在 code 註解）
 - 機器可讀結果：[`tools/content/review-results.json`](../../../../tools/content/review-results.json)（逐筆 KPI 原始判定、證據引文、餘弦值）
-- 依據：`02` §4.7 CONTENT-005（2026-08-16 修訂版）、ADR-013 §1 白名單、PDM-003 模型分層
+- 依據：`02` §4.7 CONTENT-005（2026-08-16 修訂版）、[意圖搜尋](../../../adr/README.md#意圖搜尋) §1 白名單、PDM-003 模型分層
 - 相關：[`content-summaries.md`](../content/content-summaries.md)（審核紀錄本體）、[`catalog-rebuild-report.md`](catalog-rebuild-report.md)（線上基線）、[`gate-test/README.md`](../gate-test/README.md) §3.1
 
 > **2026-08-16 追記（§11，追加不改寫）**：CONTENT-007／008 基準試跑（[`m2/content-baseline-report.md` §7.2 #1](../m2/content-baseline-report.md)）查出 11 筆的「限制」欄漏掉套件宣告的 Python 執行依賴。已依 `02` §4.7 `需修改` 流程升 prompt 至 **`enrich-skill/v5`** 並重跑增強、重新索引與重審，結果、線上分布變化與 **1 筆未收斂（`docx`）** 記於 [§11](#11-2026-08-16-修正輪次content-007008-的揭露缺口)。**§1～§10 是當時的紀錄，一字未改；線上現況以 §11 為準。**
@@ -45,7 +45,7 @@
 | **2 可理解性**（唯一主判準） | Judge 以「不懂技術的個人創作者」persona **只讀摘要與繁中範例句**（看不到 `SKILL.md`、tags、限制），回答 Q1 這 Skill 幫我做什麼／Q2 什麼時候用它／Q3 我需要準備什麼；每題須引出摘要中的依據句 | **3/3 可回答才通過** | `02` 主判準是「能說出它能為我做什麼、我要給它什麼」——Q1＋Q3 就是這句話的兩半，Q2 是「什麼時候用」對應 DISC-003 的選用場景。三題缺一即代表主判準未達成，故無部分給分 |
 | **2b 術語密度**（輔助） | 未附中文註解的技術名詞數 ÷ 摘要字數 × 100 | **只記錄不判分** | 沒有可辯護的先驗切點：`data-analyst` 講 pandas 是它本來就該講的事。留值供日後與 Q1–Q3 失敗率做相關性分析 |
 | **3 語言慣例**（`02` 否決 (b)） | ①簡體殘留：簡體專用字元集掃描；②簡中在地專有名詞：45 筆全量詞表（字型名、CN 軟體名、CN-only IT 用語）；③保留術語（Run／Workspace 等）是否被硬翻 | **①②任一命中即否決**；③只記錄 | ①②是 `02` 明列的在地化否決；③是體例一致性，`02` 未列為否決條件，硬翻與否不影響非技術讀者能否讀懂，故不越權升格為否決 |
-| **4 白名單合規**（`02` 否決 (c)） | 機械＋Judge 雙路：關鍵詞掃描（安全／風險／可信／品質／推薦…）命中後，由 Judge 判定是「轉述原文對其處理對象的陳述」還是「對 Skill 本身的評價」 | **Judge 判為評價即否決**；純機械命中不否決 | ADR-013 禁止的是模型**對 Skill 下信任／風險／安全／品質判斷**，不是禁止字面出現這些字。`pii-flag` 轉述原文的「高風險個資類別」是資料分級，不是對 Skill 的背書——單靠關鍵詞會誤殺，單靠 Judge 會漏掉它沒注意的字，故雙路 |
+| **4 白名單合規**（`02` 否決 (c)） | 機械＋Judge 雙路：關鍵詞掃描（安全／風險／可信／品質／推薦…）命中後，由 Judge 判定是「轉述原文對其處理對象的陳述」還是「對 Skill 本身的評價」 | **Judge 判為評價即否決**；純機械命中不否決 | [意圖搜尋](../../../adr/README.md#意圖搜尋)的白名單原則禁止的是模型**對 Skill 下信任／風險／安全／品質判斷**，不是禁止字面出現這些字。`pii-flag` 轉述原文的「高風險個資類別」是資料分級，不是對 Skill 的背書——單靠關鍵詞會誤殺，單靠 Judge 會漏掉它沒注意的字，故雙路 |
 | **5 內部一致性** | Judge 檢查摘要 vs tags vs limitations 是否互相矛盾（例：tags 把選用依賴列成必要依賴） | **有矛盾即不通過** | 不是 `02` 的否決條件，但矛盾會直接破壞 KPI2 的 Q3（我到底要不要準備這個東西），所以與主判準同級處理 |
 | **6 線上一致性** | 線上 `enriched_summary` 與 `summaries.json` 該筆摘要的 embedding 餘弦（`text-embedding-3-small`） | **< 0.90 標記**，不否決 | 見下方推導。`02` 的非決定性上限要求判定只對線上文字生效——本 KPI 量的不是品質，是「審核紀錄與線上還有多接近」，因此是標記而非否決 |
 
@@ -205,7 +205,7 @@ v4 的措辭是**通用規則，不含這三筆的任何個案字眼**（審校�
 | 替輸出加品質形容詞 | clear／concise／polished／accurate 之類是評價，只有原文自述其產出具備該性質時才可寫，且須為轉述 |
 | 能力外推到相鄰動作 | 只描述文件記載的動作：建立≠讀取、寫入≠擷取、刪除≠去重、支援一種格式≠支援其近親 |
 
-**這三條是 ADR-013 白名單原則的延伸，不是新增欄位**：白名單管的是「模型能產出哪些種類的內容」，v4 管的是「轉述時不得加碼」。`enrich.py` 的欄位集合、schema、模型分層均未動。
+**這三條是 [意圖搜尋](../../../adr/README.md#意圖搜尋)白名單原則的延伸，不是新增欄位**：白名單管的是「模型能產出哪些種類的內容」，v4 管的是「轉述時不得加碼」。`enrich.py` 的欄位集合、schema、模型分層均未動。
 
 ### 7.2 下架路徑沒有被採用，代價因此沒有發生
 
@@ -218,7 +218,7 @@ v4 的措辭是**通用規則，不含這三筆的任何個案字眼**（審校�
 | 判準（`02` §4.7，2026-08-16 修訂版） | 狀態 |
 | --- | --- |
 | 摘要與範例句由生產路徑產生並標示為模型產出 | ✅ 45/45 由 `POST /v1/enrich-skill` 產生，重跑亦走同一路徑 |
-| 產出欄位限 ADR-013 白名單，不含信任／風險／安全／品質判斷 | ✅ KPI4：0 筆評價 |
+| 產出欄位限[意圖搜尋](../../../adr/README.md#意圖搜尋)白名單，不含信任／風險／安全／品質判斷 | ✅ KPI4：0 筆評價 |
 | 「限制」欄位須有值 | ✅ 45/45 有值 |
 | 審核人非產生者（修訂版：Judge 模型與生成模型分離，全量取代抽審） | ✅ `gpt-5.6-terra` vs `gpt-5.6-sol`，45/45 全量 |
 | 唯一主判準：非技術使用者說得出「能為我做什麼、我要給它什麼」 | ✅ KPI2：45/45 |
@@ -244,7 +244,7 @@ v4 的措辭是**通用規則，不含這三筆的任何個案字眼**（審校�
 5. **在地化詞表是人工整理的有限清單。** 只涵蓋字型名、CN 軟體名與明確的 CN-only IT 用語；`保存`、`程序`、`質量`、`數據`、`用戶` 這類在繁中也成立的詞刻意不列，寧可漏抓不誤殺。
 6. **KPI2 的 persona 不是真的使用者。** 它證明的是「摘要文字裡有答案可引」，不是「真人讀得懂」。這條只有閘門使用者測試能回答——本審校**不取代** `gate-test`，兩者測的不是同一件事。
 7. **KPI6 只比對摘要，未比對範例句與限制。** 摘要是詳情頁的主要文字，也是檢索的主要欄位；擴到全欄位會讓餘弦被 tags 粒度漂移主導，反而失去指示性。
-8. **模型出口沿用離線例外**：`LITELLM_BASE_URL` 直指 OpenAI，未經 LiteLLM 閘道，與 `content-summaries.md` §2.3、`catalog-rebuild-report.md` §2.1 同性質。**產品實作不得比照（鐵律 8、ADR-017）。** 金鑰只以環境變數進入行程，不落檔、不進輸出。
+8. **模型出口沿用離線例外**：`LITELLM_BASE_URL` 直指 OpenAI，未經 LiteLLM 閘道，與 `content-summaries.md` §2.3、`catalog-rebuild-report.md` §2.1 同性質。**產品實作不得比照（鐵律 8）。** 金鑰只以環境變數進入行程，不落檔、不進輸出。
 
 ---
 
@@ -288,7 +288,7 @@ v4 的措辭是**通用規則，不含這三筆的任何個案字眼**（審校�
 沿用 §4 的重跑機制：把該筆 `search_documents.enrichment_status` 置回 `pending`，再跑 `cmd/reindex` 的增強補跑（`POST /v1/enrich-skill` → 重新 embedding → upsert）。**未重新匯入、未 `compose down`、未動其餘 34 筆，Skill Version 與 `skill_id` 全部不變（鐵律 4）。** 兩點不同，都要記：
 
 1. **本次的模型出口走 LiteLLM 閘道**（`LITELLM_BASE_URL=http://localhost:4000`，模型 `gpt-5.6-sol`、embedding `text-embedding-3-small` 皆由 `infra/compose/litellm-config.yaml` 解析），**不是 §9 第 8 條的直連例外**。增強端因此已符合鐵律 8；仍走直連的只剩審校工具 `review_summaries.py`（M1 慣例，離線工序）。
-2. **必須先把 M2 基準試跑留下的 45 筆 fork 文件移出補跑工作清單。** `content-baseline` 臨時 Workspace（`91b951b3…`）的 45 個 fork 各有一筆 `enrichment_status='pending'` 的 `search_documents`，而 `ListPendingEnrichment` 是「全庫 pending、oldest first」，`cmd/reindex` 的第一階段 `ReindexAll` 又會把所有文件的 `updated_at` 一起推成 `now()`，**時間戳與 `REINDEX_BATCH` 都擋不住它們**——照跑會多花約 45 次旗艦增強呼叫（約 $2）。處置是把這 45 筆暫時標為 `enriched`，跑完立刻還原成 `pending`（`enriched_summary=''`、`embedding IS NULL` 為還原條件，實測還原 45/45 與原狀態逐欄相同）。**`search_documents` 是投影不是事實來源（ADR-010），此操作不觸及任何 Skill 或 Skill Version。**
+2. **必須先把 M2 基準試跑留下的 45 筆 fork 文件移出補跑工作清單。** `content-baseline` 臨時 Workspace（`91b951b3…`）的 45 個 fork 各有一筆 `enrichment_status='pending'` 的 `search_documents`，而 `ListPendingEnrichment` 是「全庫 pending、oldest first」，`cmd/reindex` 的第一階段 `ReindexAll` 又會把所有文件的 `updated_at` 一起推成 `now()`，**時間戳與 `REINDEX_BATCH` 都擋不住它們**——照跑會多花約 45 次旗艦增強呼叫（約 $2）。處置是把這 45 筆暫時標為 `enriched`，跑完立刻還原成 `pending`（`enriched_summary=''`、`embedding IS NULL` 為還原條件，實測還原 45/45 與原狀態逐欄相同）。**`search_documents` 是投影不是事實來源（見[系統情境、平面與部署路徑](../../../adr/README.md#系統情境平面與部署路徑)），此操作不觸及任何 Skill 或 Skill Version。**
 
 > **順帶記錄一個平台缺陷（不在本次修範圍）**：`llmclient` 的 `http.Client{Timeout: 30s}` 比 `ingest` 自己的 `enrichTimeout = 75s` 更早到期，因此增強實際只有 30 秒。本批 14 次成功增強中有 3 次因此逾時（`docx` 是 `/embed` 逾時、`excel-split`／`excel-delete` 是增強逾時），重跑即過，但**每次逾時都已在閘道產生費用**。建議把 HTTP client 的逾時交給 ctx 控制。
 

@@ -19,7 +19,7 @@ func writeContextMapFixture(t *testing.T, adr, lint string, packages []string) s
 			t.Fatal(err)
 		}
 	}
-	write("docs/adr/"+contextMapADR, adr)
+	write(contextMapDoc, adr)
 	write("apps/platform/.golangci.yml", lint)
 	for _, name := range packages {
 		write("apps/platform/internal/"+name+"/doc.go", "package "+filepath.Base(name)+"\n")
@@ -27,7 +27,7 @@ func writeContextMapFixture(t *testing.T, adr, lint string, packages []string) s
 	return root
 }
 
-const contextMapADRFixture = `### 1. Context 對照表
+const contextMapADRFixture = `## Context 對照表
 
 | 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
 | --- | --- | --- | --- | --- |
@@ -40,7 +40,7 @@ const contextMapADRFixture = `### 1. Context 對照表
 | — | Generic | apiserver | entrypoint/api/apiserver | — |
 | — | Generic | api | entrypoint/api/gen | — |
 
-### 2. Governance
+## Governance
 `
 
 const contextMapLintFixture = `      depguard:
@@ -101,21 +101,21 @@ func TestContextMapProblems(t *testing.T) {
 		},
 		{
 			name:     "overlapping selectors are rejected",
-			adr:      strings.Replace(nestedADR, "\n### 2.", "\n| 執行證據／Run Trace | Supporting | trace | trial/* | TRACE |\n\n### 2.", 1),
+			adr:      strings.Replace(nestedADR, "\n## Governance", "\n| 執行證據／Run Trace | Supporting | trace | trial/* | TRACE |\n\n## Governance", 1),
 			lint:     nestedLint,
 			packages: nestedPackages,
 			want:     `internal paths "trial/execution" (run) and "trial/*" (trace) overlap`,
 		},
 		{
 			name:     "duplicate Boundary ID is rejected",
-			adr:      strings.Replace(contextMapADRFixture, "\n### 2.", "\n| 重複 | Core | run | duplicate | RUN |\n\n### 2.", 1),
+			adr:      strings.Replace(contextMapADRFixture, "\n## Governance", "\n| 重複 | Core | run | duplicate | RUN |\n\n## Governance", 1),
 			lint:     contextMapLintFixture,
 			packages: flatPackages,
 			want:     `declares Boundary ID "run" twice`,
 		},
 		{
 			name:     "duplicate path is rejected",
-			adr:      strings.Replace(contextMapADRFixture, "\n### 2.", "\n| 重複 | Core | trace | run | TRACE |\n\n### 2.", 1),
+			adr:      strings.Replace(contextMapADRFixture, "\n## Governance", "\n| 重複 | Core | trace | run | TRACE |\n\n## Governance", 1),
 			lint:     contextMapLintFixture,
 			packages: flatPackages,
 			want:     `declares internal path "run" twice (run and trace)`,
@@ -145,7 +145,7 @@ func TestContextMapProblems(t *testing.T) {
 			adr:      nestedADR,
 			lint:     strings.Replace(nestedLint, "              - \"!$test\"", "              - \"**/internal/ghost/nested/**\"\n              - \"!$test\"", 1),
 			packages: nestedPackages,
-			want:     "guards apps/platform/internal/ghost/nested but no ADR-032 §1 Boundary ID declares that path",
+			want:     "guards apps/platform/internal/ghost/nested but no context-map Boundary ID declares that path",
 		},
 	}
 

@@ -106,7 +106,7 @@ export interface CreationSnapshot {
      */
     diagramFingerprint?: string;
     /**
-     * Every picture the person put into this conversation, in order, each tied to the turn it arrived with. Metadata only: the platform keeps the digest and refuses the bytes (ADR-066 決策 4), so a client that did not itself send the picture has its description and not the picture.
+     * Every picture the person put into this conversation, in order, each tied to the turn it arrived with. Metadata only: the platform keeps the digest and refuses the bytes, so a client that did not itself send the picture has its description and not the picture.
      */
     attachments?: Array<CreationAttachment>;
     /**

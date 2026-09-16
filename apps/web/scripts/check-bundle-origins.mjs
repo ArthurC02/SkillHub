@@ -41,7 +41,7 @@ if (unexpected.length > 0) {
       "畫面照常顯示，第一個症狀是搜尋回 Failed to fetch，中間沒有任何紅燈。",
       "",
       "api/client.ts 的 API_BASE_URL 預設是空字串（同源），因為那是 cmd/api",
-      "自己送出 SPA 時、以及 ADR-018 E1 的正式部署的形狀。開發伺服器的例外",
+      "自己送出 SPA 時、以及單節點容器化正式部署（E1）的形狀。開發伺服器的例外",
       "宣告在 apps/web/.env.development，Vite 只在 npm run dev 讀它。",
       "",
       "若它確實是函式庫發出的、與 API 無關，把它加進本檔的 STOCK 並寫明是誰發的。",
