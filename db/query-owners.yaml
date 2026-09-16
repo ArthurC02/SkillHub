@@ -199,7 +199,9 @@ scope:
 
   CountPlatformAuditEventsByDay: user
   CountRunsByDay: user
-  DeclareDispatchHalt: user
+  GetActiveDispatchHalt: user
+  InsertDispatchHalt: user
+  RedeclareDispatchHalt: user
   GetNewestSkillVersion: user
   LiftDispatchHalt: user
   ListPlatformAuditEvents: user

@@ -174,6 +174,9 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	if dispatching, _ := dispatchStatus(t, operator); dispatching {
 		t.Fatal("a P1 halt released itself; only a person may resume the fleet")
 	}
+	if rounds := countRow(t, pool, "SELECT coalesce(max(clear_rounds), 0) FROM dispatch_halts WHERE lifted_at IS NULL AND source = 'p1_incident'"); rounds != 0 {
+		t.Errorf("clear rounds under a P1 = %d; only a capacity pause counts its way to recovery", rounds)
+	}
 
 	resumesBefore := haltAuditCount(t, pool, "dispatch.resumed")
 	if code, body := operatorCall(t, operator, http.MethodDelete, "/admin/dispatch/halt",

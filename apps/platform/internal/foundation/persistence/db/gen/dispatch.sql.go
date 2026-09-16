@@ -11,28 +11,45 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const declareDispatchHalt = `-- name: DeclareDispatchHalt :one
+const getActiveDispatchHalt = `-- name: GetActiveDispatchHalt :one
+SELECT id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason FROM dispatch_halts
+WHERE provider = $1 AND lifted_at IS NULL
+FOR UPDATE
+`
+
+func (q *Queries) GetActiveDispatchHalt(ctx context.Context, provider string) (DispatchHalt, error) {
+	row := q.db.QueryRow(ctx, getActiveDispatchHalt, provider)
+	var i DispatchHalt
+	err := row.Scan(
+		&i.ID,
+		&i.Provider,
+		&i.Source,
+		&i.Reason,
+		&i.DeclaredBy,
+		&i.DeclaredAt,
+		&i.ClearRounds,
+		&i.LiftedAt,
+		&i.LiftedBy,
+		&i.LiftReason,
+	)
+	return i, err
+}
+
+const insertDispatchHalt = `-- name: InsertDispatchHalt :one
 INSERT INTO dispatch_halts (provider, source, reason, declared_by)
 VALUES ($1, $2, $3, $4)
-ON CONFLICT (provider) WHERE lifted_at IS NULL DO UPDATE
-SET source = CASE WHEN EXCLUDED.source = 'p1_incident' THEN EXCLUDED.source ELSE dispatch_halts.source END,
-    reason = CASE WHEN EXCLUDED.source = 'p1_incident' OR dispatch_halts.source <> 'p1_incident'
-                  THEN EXCLUDED.reason ELSE dispatch_halts.reason END,
-    declared_by = CASE WHEN EXCLUDED.source = 'p1_incident' THEN EXCLUDED.declared_by ELSE dispatch_halts.declared_by END,
-    -- Re-declaring resets the clock on any automatic recovery already in progress.
-    clear_rounds = 0
 RETURNING id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason
 `
 
-type DeclareDispatchHaltParams struct {
+type InsertDispatchHaltParams struct {
 	Provider   string
 	Source     string
 	Reason     string
 	DeclaredBy pgtype.UUID
 }
 
-func (q *Queries) DeclareDispatchHalt(ctx context.Context, arg DeclareDispatchHaltParams) (DispatchHalt, error) {
-	row := q.db.QueryRow(ctx, declareDispatchHalt,
+func (q *Queries) InsertDispatchHalt(ctx context.Context, arg InsertDispatchHaltParams) (DispatchHalt, error) {
+	row := q.db.QueryRow(ctx, insertDispatchHalt,
 		arg.Provider,
 		arg.Source,
 		arg.Reason,
@@ -130,20 +147,68 @@ func (q *Queries) ListActiveDispatchHalts(ctx context.Context) ([]DispatchHalt, 
 	return items, nil
 }
 
+const lockDispatchHaltTarget = `-- name: LockDispatchHaltTarget :exec
+SELECT pg_advisory_xact_lock(hashtextextended('dispatch-halt:' || $1::text, 0))
+`
+
+func (q *Queries) LockDispatchHaltTarget(ctx context.Context, provider string) error {
+	_, err := q.db.Exec(ctx, lockDispatchHaltTarget, provider)
+	return err
+}
+
+const redeclareDispatchHalt = `-- name: RedeclareDispatchHalt :one
+UPDATE dispatch_halts
+SET source = $1, reason = $2, declared_by = $3, clear_rounds = $4
+WHERE id = $5 AND lifted_at IS NULL
+RETURNING id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason
+`
+
+type RedeclareDispatchHaltParams struct {
+	Source      string
+	Reason      string
+	DeclaredBy  pgtype.UUID
+	ClearRounds int32
+	ID          pgtype.UUID
+}
+
+func (q *Queries) RedeclareDispatchHalt(ctx context.Context, arg RedeclareDispatchHaltParams) (DispatchHalt, error) {
+	row := q.db.QueryRow(ctx, redeclareDispatchHalt,
+		arg.Source,
+		arg.Reason,
+		arg.DeclaredBy,
+		arg.ClearRounds,
+		arg.ID,
+	)
+	var i DispatchHalt
+	err := row.Scan(
+		&i.ID,
+		&i.Provider,
+		&i.Source,
+		&i.Reason,
+		&i.DeclaredBy,
+		&i.DeclaredAt,
+		&i.ClearRounds,
+		&i.LiftedAt,
+		&i.LiftedBy,
+		&i.LiftReason,
+	)
+	return i, err
+}
+
 const setDispatchHaltClearRounds = `-- name: SetDispatchHaltClearRounds :one
 UPDATE dispatch_halts
-SET clear_rounds = CASE WHEN $1::boolean THEN clear_rounds + 1 ELSE 0 END
-WHERE provider = $2 AND lifted_at IS NULL AND source = 'orphan_threshold'
+SET clear_rounds = clear_rounds + 1
+WHERE provider = $1 AND lifted_at IS NULL AND source = ANY($2::text[])
 RETURNING clear_rounds
 `
 
 type SetDispatchHaltClearRoundsParams struct {
-	Clear    bool
 	Provider string
+	Sources  []string
 }
 
 func (q *Queries) SetDispatchHaltClearRounds(ctx context.Context, arg SetDispatchHaltClearRoundsParams) (int32, error) {
-	row := q.db.QueryRow(ctx, setDispatchHaltClearRounds, arg.Clear, arg.Provider)
+	row := q.db.QueryRow(ctx, setDispatchHaltClearRounds, arg.Provider, arg.Sources)
 	var clear_rounds int32
 	err := row.Scan(&clear_rounds)
 	return clear_rounds, err

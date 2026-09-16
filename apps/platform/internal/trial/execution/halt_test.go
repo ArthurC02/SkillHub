@@ -1,7 +1,10 @@
 package run
 
 import (
+	"errors"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
@@ -122,5 +125,76 @@ func TestDispatchPaused(t *testing.T) {
 		if got := tc.state.dispatchPaused(tc.registry); got != tc.want {
 			t.Errorf("%s: dispatchPaused = %v, want %v", tc.what, got, tc.want)
 		}
+	}
+}
+
+func TestAHaltDeclarationNeedsAKnownSourceAndAReason(t *testing.T) {
+	for _, tc := range []struct {
+		what   string
+		source HaltSource
+		reason string
+		want   error
+	}{
+		{"an incident with a reason", HaltSourceIncident, "masker stopped", nil},
+		{"a capacity pause with a reason", HaltSourceOrphanThreshold, "leaks at threshold", nil},
+		{"no reason", HaltSourceIncident, "", ErrHaltReasonRequired},
+		{"a reason of only whitespace", HaltSourceOrphanThreshold, " \t\n", ErrHaltReasonRequired},
+		{"a source nobody declared", HaltSource("maintenance"), "planned work", ErrUnknownHaltSource},
+	} {
+		if _, err := newHaltDeclaration(tc.source, tc.reason, pgtype.UUID{}); !errors.Is(err, tc.want) {
+			t.Errorf("%s: err = %v, want %v", tc.what, err, tc.want)
+		}
+	}
+}
+
+func TestARedeclarationNeverDowngradesAnIncident(t *testing.T) {
+	operator := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	responder := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
+	active := func(source HaltSource) gen.DispatchHalt {
+		return gen.DispatchHalt{Provider: "node_a", Source: string(source), Reason: "first", DeclaredBy: operator, ClearRounds: 1}
+	}
+	for _, tc := range []struct {
+		what        string
+		active      HaltSource
+		declared    HaltSource
+		wantSource  HaltSource
+		wantReason  string
+		wantDeclare pgtype.UUID
+	}{
+		{"an incident takes over a capacity pause", HaltSourceOrphanThreshold, HaltSourceIncident, HaltSourceIncident, "second", responder},
+		{"a second incident restates the reason and names its declarer", HaltSourceIncident, HaltSourceIncident, HaltSourceIncident, "second", responder},
+		{"a capacity pause cannot overwrite an incident", HaltSourceIncident, HaltSourceOrphanThreshold, HaltSourceIncident, "first", operator},
+		{"a capacity pause restates its own reason and keeps its declarer", HaltSourceOrphanThreshold, HaltSourceOrphanThreshold, HaltSourceOrphanThreshold, "second", operator},
+	} {
+		declaration, err := newHaltDeclaration(tc.declared, "second", responder)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := declaration.over(active(tc.active))
+		if HaltSource(got.Source) != tc.wantSource || got.Reason != tc.wantReason || got.DeclaredBy != tc.wantDeclare {
+			t.Errorf("%s: got source=%s reason=%q declared_by=%v", tc.what, got.Source, got.Reason, got.DeclaredBy)
+		}
+		if got.ClearRounds != 0 {
+			t.Errorf("%s: clear rounds = %d, want the recovery clock restarted", tc.what, got.ClearRounds)
+		}
+	}
+}
+
+func TestOnlyACapacityPauseRecoversAutomatically(t *testing.T) {
+	if got := automaticallyRecoveringSources(); len(got) != 1 || got[0] != HaltSourceOrphanThreshold {
+		t.Fatalf("automatically recovering sources = %v, want only the orphan threshold", got)
+	}
+	if HaltSourceIncident.RecoversAutomatically() {
+		t.Fatal("a P1 incident must never lift itself")
+	}
+}
+
+func TestHaltingOrResumingWithoutAReasonIsRefusedBeforeAnythingIsWritten(t *testing.T) {
+	var unwired Service
+	if _, err := unwired.DeclareHalt(t.Context(), haltPool, HaltSourceIncident, "  ", pgtype.UUID{}); !errors.Is(err, ErrHaltReasonRequired) {
+		t.Errorf("declaring without a reason: err = %v, want ErrHaltReasonRequired", err)
+	}
+	if _, lifted, err := unwired.LiftHalt(t.Context(), haltPool, "", pgtype.UUID{}, AllHaltSources()); lifted || !errors.Is(err, ErrHaltReasonRequired) {
+		t.Errorf("lifting without a reason: lifted=%v err=%v, want ErrHaltReasonRequired", lifted, err)
 	}
 }
