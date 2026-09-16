@@ -217,10 +217,10 @@ func TestAModelCallThatNeverStartsSettlesAsAKnownZero(t *testing.T) {
 		{"a reference that no longer resolves", []Reference{{SkillID: "gone", Confirmed: true}}, func(*Service) {}, time.Minute, ErrNotFound},
 		{"no resolver for a reference", []Reference{{SkillID: "a", Confirmed: true}}, func(s *Service) { s.ResolveReference = nil }, time.Minute, ErrNotFound},
 		{"the balance is at the floor", nil, func(s *Service) {
-			s.CreditReserve = func(context.Context, pgtype.UUID, int64) (bool, error) { return false, nil }
+			s.Billing = BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, int64) (bool, error) { return false, nil }}
 		}, time.Minute, ErrCreditFloor},
 		{"the reservation failed", nil, func(s *Service) {
-			s.CreditReserve = func(context.Context, pgtype.UUID, int64) (bool, error) { return false, errKeyRefused }
+			s.Billing = BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, int64) (bool, error) { return false, errKeyRefused }}
 		}, time.Minute, errKeyRefused},
 		{"the gateway key was refused", nil, func(s *Service) {
 			s.IssueKey = func(context.Context, string, string, float64, time.Duration) (string, error) {

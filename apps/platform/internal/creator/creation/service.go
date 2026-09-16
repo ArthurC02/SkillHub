@@ -266,13 +266,7 @@ type Service struct {
 	IssueKey                 func(context.Context, string, string, float64, time.Duration) (string, error)
 	RevokeKey                func(context.Context, string) error
 
-	CreditCanStart func(ctx context.Context, workspaceID pgtype.UUID) (ok bool, err error)
-
-	CreditReserve func(ctx context.Context, workspaceID pgtype.UUID, reservedUSDMicros int64) (ok bool, err error)
-
-	CreditSettle func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error
-
-	CreditSessionEnded func(ctx context.Context, tx pgx.Tx, sessionID pgtype.UUID) error
+	Billing CreationBilling
 }
 
 func digest(v any) string {
@@ -347,8 +341,8 @@ func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 		return r, err
 	}
 	err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: r.ID, WorkspaceID: r.WorkspaceID, Revision: r.Revision, EventType: event, Snapshot: b})
-	if err == nil && s.CreditSessionEnded != nil && state.HasEnded() && !from.HasEnded() {
-		if endErr := s.CreditSessionEnded(ctx, tx, r.ID); endErr != nil {
+	if err == nil && s.Billing != nil && state.HasEnded() && !from.HasEnded() {
+		if endErr := s.Billing.SessionEnded(ctx, tx, r.ID); endErr != nil {
 			slog.Warn("creation: session cost summary not written", "error", endErr)
 		}
 	}

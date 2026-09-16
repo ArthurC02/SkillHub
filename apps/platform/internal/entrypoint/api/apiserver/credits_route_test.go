@@ -401,7 +401,7 @@ func TestCreationSettlementCompletesOnOneConnection(t *testing.T) {
 			}
 			defer func() { _ = tx.Rollback(context.Background()) }()
 			spent := tc.usdMicros
-			if err := target.CreditSettle(ctx, tx, workspaceID, mustParseUUID(t, uuid.NewString()), 1, &spent, 100_000); err != nil {
+			if err := target.Billing.Settle(ctx, tx, workspaceID, mustParseUUID(t, uuid.NewString()), 1, &spent, 100_000); err != nil {
 				t.Fatalf("settling a creation step on one connection: %v", err)
 			}
 		})

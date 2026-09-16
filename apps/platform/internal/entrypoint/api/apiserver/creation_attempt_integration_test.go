@@ -272,7 +272,7 @@ func TestStepCreditReserveFailureSkipsTheModelCallAndFails(t *testing.T) {
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		LLM: failLLM(t), IssueKey: failIssueKey(t), RevokeKey: okRevokeKey,
-		CreditReserve: func(context.Context, pgtype.UUID, int64) (bool, error) { return false, reserveErr },
+		Billing: creation.BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, int64) (bool, error) { return false, reserveErr }},
 	}
 	id := creationID(t)
 	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
@@ -337,10 +337,10 @@ func TestFinishWhenTheReceiptWasAlreadyMarkedFailedIsANoop(t *testing.T) {
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
-		CreditSettle: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *int64, int64) error {
+		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *int64, int64) error {
 			settleCalls++
 			return nil
-		},
+		}},
 	}
 	id := creationID(t)
 	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
@@ -391,10 +391,10 @@ func TestFinishWhenTheReceiptWasRecoveredAsUnknownStillSettlesTheKnownCost(t *te
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
-		CreditSettle: func(_ context.Context, _ pgx.Tx, _, _ pgtype.UUID, _ int64, usdMicros *int64, reservedUSDMicros int64) error {
+		Billing: creation.BillingHooks{SettleFunc: func(_ context.Context, _ pgx.Tx, _, _ pgtype.UUID, _ int64, usdMicros *int64, reservedUSDMicros int64) error {
 			settles = append(settles, settleCall{usdMicros, reservedUSDMicros})
 			return nil
-		},
+		}},
 	}
 	id := creationID(t)
 	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
@@ -470,11 +470,11 @@ func TestFinishNormalPathRecordsCreditSettleCostFromUsage(t *testing.T) {
 			svc := &creation.Service{
 				Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 				IssueKey: okIssueKey, RevokeKey: okRevokeKey,
-				CreditSettle: func(_ context.Context, _ pgx.Tx, _, _ pgtype.UUID, _ int64, usdMicros *int64, _ int64) error {
+				Billing: creation.BillingHooks{SettleFunc: func(_ context.Context, _ pgx.Tx, _, _ pgtype.UUID, _ int64, usdMicros *int64, _ int64) error {
 					settleCalls++
 					got = usdMicros
 					return nil
-				},
+				}},
 			}
 			svc.LLM = creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
 				return &llmclient.CreationStepResponse{Outcome: "clarification", Message: "好的", Usage: tc.usage}, nil
@@ -508,9 +508,9 @@ func TestFinishWhenCreditSettleFailsStepReturnsItAndTheSessionStaysWorking(t *te
 		LLM: creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
 			return &llmclient.CreationStepResponse{Outcome: "clarification", Message: "好的"}, nil
 		}),
-		CreditSettle: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *int64, int64) error {
+		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *int64, int64) error {
 			return settleErr
-		},
+		}},
 	}
 	id := creationID(t)
 	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
@@ -587,7 +587,7 @@ func TestFinishCreditFloorRefusalShowsBothSentencesAndWaitsForInput(t *testing.T
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		LLM: failLLM(t), IssueKey: failIssueKey(t), RevokeKey: okRevokeKey,
-		CreditReserve: func(context.Context, pgtype.UUID, int64) (bool, error) { return false, nil },
+		Billing: creation.BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, int64) (bool, error) { return false, nil }},
 	}
 	id := creationID(t)
 	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {

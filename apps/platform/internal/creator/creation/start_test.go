@@ -52,7 +52,7 @@ func TestTheCreditGateComesFirst(t *testing.T) {
 		err  error
 		want error
 	}{{"below the threshold", false, nil, ErrCreditThreshold}, {"the gate failed", false, refused, refused}} {
-		s := &Service{CreditCanStart: func(context.Context, pgtype.UUID) (bool, error) { return c.ok, c.err }}
+		s := &Service{Billing: BillingHooks{CanStartFunc: func(context.Context, pgtype.UUID) (bool, error) { return c.ok, c.err }}}
 		if err := s.admitStart(context.Background(), identity.Workspace{}, pgtype.UUID{}, "hi", math.NaN()); !errors.Is(err, c.want) {
 			t.Errorf("%s: err = %v, want %v", c.name, err, c.want)
 		}

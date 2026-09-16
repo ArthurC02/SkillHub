@@ -43,42 +43,44 @@ func WireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgx
 	ids := &identity.Service{Pool: pool}
 	owner := ids.WorkspaceOwner
 
-	target.CreditCanStart = func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
-		userID, err := owner(ctx, workspaceID)
-		if err != nil {
-			return false, err
-		}
-		check, err := svc.CanStart(ctx, userID, credit.KindCreationSession)
-		if err != nil {
-			return false, err
-		}
-		return check.OK, nil
-	}
-	target.CreditSessionEnded = svc.SummarizeSession
-	target.CreditReserve = func(ctx context.Context, workspaceID pgtype.UUID, reservedUSDMicros int64) (bool, error) {
-		userID, err := owner(ctx, workspaceID)
-		if err != nil {
-			return false, err
-		}
-		return svc.CanAffordStep(ctx, userID, reservedUSDMicros)
-	}
-	target.CreditSettle = func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error {
-		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
-		if err != nil {
-			return err
-		}
+	target.Billing = creation.BillingHooks{
+		CanStartFunc: func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+			userID, err := owner(ctx, workspaceID)
+			if err != nil {
+				return false, err
+			}
+			check, err := svc.CanStart(ctx, userID, credit.KindCreationSession)
+			if err != nil {
+				return false, err
+			}
+			return check.OK, nil
+		},
+		SessionEndedFunc: svc.SummarizeSession,
+		ReserveFunc: func(ctx context.Context, workspaceID pgtype.UUID, reservedUSDMicros int64) (bool, error) {
+			userID, err := owner(ctx, workspaceID)
+			if err != nil {
+				return false, err
+			}
+			return svc.CanAffordStep(ctx, userID, reservedUSDMicros)
+		},
+		SettleFunc: func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error {
+			userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
+			if err != nil {
+				return err
+			}
 
-		_, err = svc.Charge(ctx, tx, credit.ChargeInput{
-			Kind:              credit.KindCreationStep,
-			UsdMicros:         usdMicros,
-			ReservedUsdMicros: reservedUSDMicros,
-			UserID:            userID,
-			WorkspaceID:       workspaceID,
-			RefType:           credit.RefCreationSession,
-			RefID:             sessionID,
-			IdempotencyKey:    fmt.Sprintf("creation:%s:%d", pgconv.UUIDString(sessionID), revision),
-		})
-		return err
+			_, err = svc.Charge(ctx, tx, credit.ChargeInput{
+				Kind:              credit.KindCreationStep,
+				UsdMicros:         usdMicros,
+				ReservedUsdMicros: reservedUSDMicros,
+				UserID:            userID,
+				WorkspaceID:       workspaceID,
+				RefType:           credit.RefCreationSession,
+				RefID:             sessionID,
+				IdempotencyKey:    fmt.Sprintf("creation:%s:%d", pgconv.UUIDString(sessionID), revision),
+			})
+			return err
+		},
 	}
 }
 

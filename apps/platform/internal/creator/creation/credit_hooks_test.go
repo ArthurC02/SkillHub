@@ -12,9 +12,9 @@ import (
 )
 
 func TestCreditCanStartBlocksBeforeAnyDatabaseWork(t *testing.T) {
-	s := &Service{CreditCanStart: func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	s := &Service{Billing: BillingHooks{CanStartFunc: func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
 		return false, nil
-	}}
+	}}}
 	_, err := s.Create(context.Background(), identity.Workspace{}, pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, "hello", 1)
 	if !errors.Is(err, ErrCreditThreshold) {
 		t.Fatalf("Create() error = %v, want ErrCreditThreshold", err)
@@ -23,9 +23,9 @@ func TestCreditCanStartBlocksBeforeAnyDatabaseWork(t *testing.T) {
 
 func TestCreditCanStartPropagatesItsError(t *testing.T) {
 	wantErr := errors.New("boom")
-	s := &Service{CreditCanStart: func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	s := &Service{Billing: BillingHooks{CanStartFunc: func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
 		return false, wantErr
-	}}
+	}}}
 	_, err := s.Create(context.Background(), identity.Workspace{}, pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, "hello", 1)
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("Create() error = %v, want %v", err, wantErr)
