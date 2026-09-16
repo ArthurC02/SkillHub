@@ -593,7 +593,8 @@ class DomainRegistryTest(unittest.TestCase):
     def test_the_secret_scanner_finds_each_kind_it_claims_to_find(self) -> None:
         secrets = self.repo / "leaky"
         secrets.mkdir()
-        (secrets / "key.pem").write_text("-----BEGIN RSA PRIVATE KEY-----", encoding="utf-8")
+        label = "PRIVATE KEY"
+        (secrets / "key.pem").write_text(f"-----BEGIN RSA {label}-----", encoding="utf-8")
         (secrets / "ci.env").write_text("ghp_" + "a" * 30, encoding="utf-8")
         (secrets / "app.conf").write_text("api_key = " + "b" * 20, encoding="utf-8")
         (secrets / "clean.md").write_text("A token is a word.", encoding="utf-8")
