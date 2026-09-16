@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pgvector/pgvector-go"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
@@ -22,7 +23,7 @@ type PendingEnrichment struct {
 }
 
 func (s *Service) PendingEnrichments(ctx context.Context, limit int32) ([]PendingEnrichment, error) {
-	rows, err := gen.New(s.Pool).ListPendingEnrichment(ctx, limit)
+	rows, err := gen.New(s.Pool).ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
 	if err != nil {
 		return nil, err
 	}

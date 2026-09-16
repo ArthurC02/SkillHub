@@ -253,9 +253,9 @@ SELECT sd.skill_id, sd.latest_package_object_key AS package_object_key
 FROM search_documents sd
 WHERE sd.enrichment_status = 'pending'
   AND sd.latest_package_object_key IS NOT NULL
-  AND (sd.enrichment_attempted_at IS NULL OR sd.enrichment_attempted_at < now() - interval '15 minutes')
+  AND (sd.enrichment_attempted_at IS NULL OR sd.enrichment_attempted_at < now() - $1::interval)
 ORDER BY sd.enrichment_attempted_at NULLS FIRST, sd.enrichment_attempted_at, sd.updated_at, sd.skill_id
-LIMIT $1 FOR UPDATE OF sd SKIP LOCKED
+LIMIT $2 FOR UPDATE OF sd SKIP LOCKED
 ), claimed AS (
     UPDATE search_documents sd SET enrichment_attempted_at = now()
     FROM candidates c WHERE sd.skill_id = c.skill_id
@@ -265,6 +265,11 @@ SELECT c.skill_id, c.workspace_id, c.name, candidates.package_object_key
 FROM claimed c JOIN candidates USING (skill_id)
 `
 
+type ListPendingEnrichmentParams struct {
+	ClaimLease pgtype.Interval
+	BatchSize  int32
+}
+
 type ListPendingEnrichmentRow struct {
 	SkillID          pgtype.UUID
 	WorkspaceID      pgtype.UUID
@@ -272,8 +277,8 @@ type ListPendingEnrichmentRow struct {
 	PackageObjectKey *string
 }
 
-func (q *Queries) ListPendingEnrichment(ctx context.Context, limit int32) ([]ListPendingEnrichmentRow, error) {
-	rows, err := q.db.Query(ctx, listPendingEnrichment, limit)
+func (q *Queries) ListPendingEnrichment(ctx context.Context, arg ListPendingEnrichmentParams) ([]ListPendingEnrichmentRow, error) {
+	rows, err := q.db.Query(ctx, listPendingEnrichment, arg.ClaimLease, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}

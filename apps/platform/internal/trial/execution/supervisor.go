@@ -17,8 +17,22 @@ import (
 const (
 	SuperviseInterval = 30 * time.Second
 
+	CleanupRescueAfter = time.Minute
+
+	OrphanPersistsAfterRounds = 2
+
 	superviseBatch = 200
 )
+
+func ActiveRunClaim(batch int32) gen.ListActiveRunsParams {
+	return gen.ListActiveRunsParams{RecheckAfter: pgconv.Interval(SuperviseInterval), BatchSize: batch}
+}
+
+func CleanupClaim(batch int32) gen.ListRunsNeedingCleanupParams {
+	return gen.ListRunsNeedingCleanupParams{
+		SettledFor: pgconv.Interval(CleanupRescueAfter), RecheckAfter: pgconv.Interval(SuperviseInterval), BatchSize: batch,
+	}
+}
 
 type SuperviseArgs struct{}
 
@@ -34,7 +48,7 @@ func (w *SuperviseWorker) Work(ctx context.Context, _ *river.Job[SuperviseArgs])
 }
 
 func (s *Service) Supervise(ctx context.Context) error {
-	active, err := s.queries().ListActiveRuns(ctx, superviseBatch)
+	active, err := s.queries().ListActiveRuns(ctx, ActiveRunClaim(superviseBatch))
 	if err != nil {
 		return err
 	}
@@ -50,7 +64,7 @@ func (s *Service) Supervise(ctx context.Context) error {
 		metrics.CleanupBacklog.Set(float64(backlog))
 	}
 
-	stale, err := s.queries().ListRunsNeedingCleanup(ctx, superviseBatch)
+	stale, err := s.queries().ListRunsNeedingCleanup(ctx, CleanupClaim(superviseBatch))
 	if err != nil {
 		errs = append(errs, err)
 	}

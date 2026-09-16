@@ -279,7 +279,9 @@ func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
 	}); err != nil {
 		slog.Error("pruning orphan sightings failed", "provider", provider.Name, "error", err)
 	}
-	persistent, err := s.queries().CountPersistentOrphans(ctx, provider.Name)
+	persistent, err := s.queries().CountPersistentOrphans(ctx, gen.CountPersistentOrphansParams{
+		Provider: provider.Name, PersistentAfterRounds: OrphanPersistsAfterRounds,
+	})
 	if err != nil {
 		slog.Error("counting persistent orphans failed", "provider", provider.Name, "error", err)
 	} else {

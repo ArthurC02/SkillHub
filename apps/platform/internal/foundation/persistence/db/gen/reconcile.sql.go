@@ -95,14 +95,19 @@ WITH candidates AS (
       AND deleted_at IS NULL
       AND purged_at IS NULL
 	  AND expires_at > now()
-	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - interval '15 minutes')
+	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - $1::interval)
 	ORDER BY reconcile_checked_at NULLS FIRST, reconcile_checked_at, created_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $2 FOR UPDATE SKIP LOCKED
 )
 UPDATE artifacts a SET reconcile_checked_at = now()
 FROM candidates c WHERE a.id = c.id
 RETURNING a.id, a.workspace_id, a.object_key
 `
+
+type ListArtifactsClaimingObjectParams struct {
+	ClaimLease pgtype.Interval
+	BatchSize  int32
+}
 
 type ListArtifactsClaimingObjectRow struct {
 	ID          pgtype.UUID
@@ -110,8 +115,8 @@ type ListArtifactsClaimingObjectRow struct {
 	ObjectKey   string
 }
 
-func (q *Queries) ListArtifactsClaimingObject(ctx context.Context, limit int32) ([]ListArtifactsClaimingObjectRow, error) {
-	rows, err := q.db.Query(ctx, listArtifactsClaimingObject, limit)
+func (q *Queries) ListArtifactsClaimingObject(ctx context.Context, arg ListArtifactsClaimingObjectParams) ([]ListArtifactsClaimingObjectRow, error) {
+	rows, err := q.db.Query(ctx, listArtifactsClaimingObject, arg.ClaimLease, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -136,14 +141,19 @@ WITH candidates AS (
     WHERE kind = 'download_package'
       AND purged_at IS NULL
 	  AND (deleted_at IS NOT NULL OR expires_at <= now())
-	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - $1::interval)
     ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $2 FOR UPDATE SKIP LOCKED
 )
 UPDATE artifacts a SET retention_attempted_at = now()
 FROM candidates c WHERE a.id = c.id
 RETURNING a.id, a.workspace_id, a.object_key
 `
+
+type ListArtifactsPastRetentionParams struct {
+	ClaimLease pgtype.Interval
+	BatchSize  int32
+}
 
 type ListArtifactsPastRetentionRow struct {
 	ID          pgtype.UUID
@@ -151,8 +161,8 @@ type ListArtifactsPastRetentionRow struct {
 	ObjectKey   string
 }
 
-func (q *Queries) ListArtifactsPastRetention(ctx context.Context, limit int32) ([]ListArtifactsPastRetentionRow, error) {
-	rows, err := q.db.Query(ctx, listArtifactsPastRetention, limit)
+func (q *Queries) ListArtifactsPastRetention(ctx context.Context, arg ListArtifactsPastRetentionParams) ([]ListArtifactsPastRetentionRow, error) {
+	rows, err := q.db.Query(ctx, listArtifactsPastRetention, arg.ClaimLease, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -175,14 +185,19 @@ const listDatasetCleanupIntents = `-- name: ListDatasetCleanupIntents :many
 WITH candidates AS (
     SELECT id FROM dataset_object_cleanup_intents
     WHERE not_before <= now()
-	  AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+	  AND (attempted_at IS NULL OR attempted_at < now() - $1::interval)
     ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $2 FOR UPDATE SKIP LOCKED
 )
 UPDATE dataset_object_cleanup_intents i SET attempted_at = now()
 FROM candidates c WHERE i.id = c.id
 RETURNING i.id, i.workspace_id, i.object_key
 `
+
+type ListDatasetCleanupIntentsParams struct {
+	ClaimLease pgtype.Interval
+	BatchSize  int32
+}
 
 type ListDatasetCleanupIntentsRow struct {
 	ID          pgtype.UUID
@@ -190,8 +205,8 @@ type ListDatasetCleanupIntentsRow struct {
 	ObjectKey   string
 }
 
-func (q *Queries) ListDatasetCleanupIntents(ctx context.Context, limit int32) ([]ListDatasetCleanupIntentsRow, error) {
-	rows, err := q.db.Query(ctx, listDatasetCleanupIntents, limit)
+func (q *Queries) ListDatasetCleanupIntents(ctx context.Context, arg ListDatasetCleanupIntentsParams) ([]ListDatasetCleanupIntentsRow, error) {
+	rows, err := q.db.Query(ctx, listDatasetCleanupIntents, arg.ClaimLease, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -216,14 +231,19 @@ WITH candidates AS (
     WHERE deleted_at IS NULL
       AND purged_at IS NULL
       AND expires_at > now()
-	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - interval '15 minutes')
+	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - $1::interval)
     ORDER BY reconcile_checked_at NULLS FIRST, reconcile_checked_at, created_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $2 FOR UPDATE SKIP LOCKED
 )
 UPDATE datasets d SET reconcile_checked_at = now()
 FROM candidates c WHERE d.id = c.id
 RETURNING d.id, d.workspace_id, d.object_key
 `
+
+type ListDatasetsClaimingObjectParams struct {
+	ClaimLease pgtype.Interval
+	BatchSize  int32
+}
 
 type ListDatasetsClaimingObjectRow struct {
 	ID          pgtype.UUID
@@ -231,8 +251,8 @@ type ListDatasetsClaimingObjectRow struct {
 	ObjectKey   string
 }
 
-func (q *Queries) ListDatasetsClaimingObject(ctx context.Context, limit int32) ([]ListDatasetsClaimingObjectRow, error) {
-	rows, err := q.db.Query(ctx, listDatasetsClaimingObject, limit)
+func (q *Queries) ListDatasetsClaimingObject(ctx context.Context, arg ListDatasetsClaimingObjectParams) ([]ListDatasetsClaimingObjectRow, error) {
+	rows, err := q.db.Query(ctx, listDatasetsClaimingObject, arg.ClaimLease, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -256,14 +276,19 @@ WITH candidates AS (
     SELECT id FROM datasets
     WHERE purged_at IS NULL
       AND (deleted_at IS NOT NULL OR expires_at <= now())
-	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - $1::interval)
     ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $2 FOR UPDATE SKIP LOCKED
 )
 UPDATE datasets d SET retention_attempted_at = now()
 FROM candidates c WHERE d.id = c.id
 RETURNING d.id, d.workspace_id, d.object_key
 `
+
+type ListDatasetsPastRetentionParams struct {
+	ClaimLease pgtype.Interval
+	BatchSize  int32
+}
 
 type ListDatasetsPastRetentionRow struct {
 	ID          pgtype.UUID
@@ -271,8 +296,8 @@ type ListDatasetsPastRetentionRow struct {
 	ObjectKey   string
 }
 
-func (q *Queries) ListDatasetsPastRetention(ctx context.Context, limit int32) ([]ListDatasetsPastRetentionRow, error) {
-	rows, err := q.db.Query(ctx, listDatasetsPastRetention, limit)
+func (q *Queries) ListDatasetsPastRetention(ctx context.Context, arg ListDatasetsPastRetentionParams) ([]ListDatasetsPastRetentionRow, error) {
+	rows, err := q.db.Query(ctx, listDatasetsPastRetention, arg.ClaimLease, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -295,14 +320,19 @@ const listDownloadCleanupIntents = `-- name: ListDownloadCleanupIntents :many
 WITH candidates AS (
     SELECT id FROM download_object_cleanup_intents
     WHERE not_before <= now()
-      AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+      AND (attempted_at IS NULL OR attempted_at < now() - $1::interval)
     ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $2 FOR UPDATE SKIP LOCKED
 )
 UPDATE download_object_cleanup_intents i SET attempted_at = now()
 FROM candidates c WHERE i.id = c.id
 RETURNING i.id, i.workspace_id, i.object_key
 `
+
+type ListDownloadCleanupIntentsParams struct {
+	ClaimLease pgtype.Interval
+	BatchSize  int32
+}
 
 type ListDownloadCleanupIntentsRow struct {
 	ID          pgtype.UUID
@@ -310,8 +340,8 @@ type ListDownloadCleanupIntentsRow struct {
 	ObjectKey   string
 }
 
-func (q *Queries) ListDownloadCleanupIntents(ctx context.Context, limit int32) ([]ListDownloadCleanupIntentsRow, error) {
-	rows, err := q.db.Query(ctx, listDownloadCleanupIntents, limit)
+func (q *Queries) ListDownloadCleanupIntents(ctx context.Context, arg ListDownloadCleanupIntentsParams) ([]ListDownloadCleanupIntentsRow, error) {
+	rows, err := q.db.Query(ctx, listDownloadCleanupIntents, arg.ClaimLease, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -336,14 +366,19 @@ WITH candidates AS (
     WHERE kind = 'run_output'
       AND purged_at IS NULL
 	  AND (deleted_at IS NOT NULL OR expires_at <= now())
-	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - $1::interval)
     ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $2 FOR UPDATE SKIP LOCKED
 )
 UPDATE artifacts a SET retention_attempted_at = now()
 FROM candidates c WHERE a.id = c.id
 RETURNING a.id, a.workspace_id, a.object_key
 `
+
+type ListRunOutputsPastRetentionParams struct {
+	ClaimLease pgtype.Interval
+	BatchSize  int32
+}
 
 type ListRunOutputsPastRetentionRow struct {
 	ID          pgtype.UUID
@@ -351,8 +386,8 @@ type ListRunOutputsPastRetentionRow struct {
 	ObjectKey   string
 }
 
-func (q *Queries) ListRunOutputsPastRetention(ctx context.Context, limit int32) ([]ListRunOutputsPastRetentionRow, error) {
-	rows, err := q.db.Query(ctx, listRunOutputsPastRetention, limit)
+func (q *Queries) ListRunOutputsPastRetention(ctx context.Context, arg ListRunOutputsPastRetentionParams) ([]ListRunOutputsPastRetentionRow, error) {
+	rows, err := q.db.Query(ctx, listRunOutputsPastRetention, arg.ClaimLease, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}

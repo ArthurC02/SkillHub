@@ -6,7 +6,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 type ReconcileCandidate struct {
@@ -19,7 +21,7 @@ func (s *Service) ClaimedReconcileCandidates(ctx context.Context, limit int32) (
 	if s == nil || s.Pool == nil {
 		return nil, errPersistenceNotConfigured
 	}
-	rows, err := gen.New(s.Pool).ListDatasetsClaimingObject(ctx, limit)
+	rows, err := gen.New(s.Pool).ListDatasetsClaimingObject(ctx, gen.ListDatasetsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +36,7 @@ func (s *Service) ExpiredDatasetCandidates(ctx context.Context, limit int32) ([]
 	if s == nil || s.Pool == nil {
 		return nil, errPersistenceNotConfigured
 	}
-	rows, err := gen.New(s.Pool).ListDatasetsPastRetention(ctx, limit)
+	rows, err := gen.New(s.Pool).ListDatasetsPastRetention(ctx, gen.ListDatasetsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +51,7 @@ func (s *Service) DatasetCleanupIntentCandidates(ctx context.Context, limit int3
 	if s == nil || s.Pool == nil {
 		return nil, errPersistenceNotConfigured
 	}
-	rows, err := gen.New(s.Pool).ListDatasetCleanupIntents(ctx, limit)
+	rows, err := gen.New(s.Pool).ListDatasetCleanupIntents(ctx, gen.ListDatasetCleanupIntentsParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
 	if err != nil {
 		return nil, err
 	}

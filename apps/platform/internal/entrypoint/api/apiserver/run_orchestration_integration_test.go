@@ -1078,13 +1078,13 @@ func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
 
 func persistentOrphans(t *testing.T, pool *pgxpool.Pool, provider string) int {
 	t.Helper()
-	var n int
-	if err := pool.QueryRow(context.Background(),
-		"SELECT count(*) FROM reconciler_orphan_sightings WHERE provider = $1 AND rounds >= 2",
-		provider).Scan(&n); err != nil {
+	n, err := gen.New(pool).CountPersistentOrphans(context.Background(), gen.CountPersistentOrphansParams{
+		Provider: provider, PersistentAfterRounds: run.OrphanPersistsAfterRounds,
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
-	return n
+	return int(n)
 }
 
 func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {

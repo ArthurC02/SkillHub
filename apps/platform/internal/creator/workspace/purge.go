@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -91,8 +92,9 @@ func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover,
 	}
 	q := s.queries()
 	ids, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{
-		Cutoff: pgconv.Timestamptz(time.Now().Add(-grace)),
-		Limit:  limit,
+		Cutoff:     pgconv.Timestamptz(time.Now().Add(-grace)),
+		ClaimLease: pgconv.Interval(queue.SweepClaimLease),
+		BatchSize:  limit,
 	})
 	if err != nil {
 		return 0, err

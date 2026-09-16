@@ -8,7 +8,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 var errReconcilePersistenceNotConfigured = errors.New("packaging: reconcile persistence is not configured")
@@ -56,7 +58,7 @@ func (s *Service) ExpiredReconcileCandidates(ctx context.Context, limit int32) (
 	if s == nil || s.Pool == nil {
 		return nil, errReconcilePersistenceNotConfigured
 	}
-	rows, err := gen.New(s.Pool).ListArtifactsPastRetention(ctx, limit)
+	rows, err := gen.New(s.Pool).ListArtifactsPastRetention(ctx, gen.ListArtifactsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +73,7 @@ func (s *Service) DownloadCleanupIntentCandidates(ctx context.Context, limit int
 	if s == nil || s.Pool == nil {
 		return nil, errReconcilePersistenceNotConfigured
 	}
-	rows, err := gen.New(s.Pool).ListDownloadCleanupIntents(ctx, limit)
+	rows, err := gen.New(s.Pool).ListDownloadCleanupIntents(ctx, gen.ListDownloadCleanupIntentsParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +95,7 @@ func (s *Service) ClaimedReconcileCandidates(ctx context.Context, limit int32) (
 	if s == nil || s.Pool == nil {
 		return nil, errReconcilePersistenceNotConfigured
 	}
-	rows, err := gen.New(s.Pool).ListArtifactsClaimingObject(ctx, limit)
+	rows, err := gen.New(s.Pool).ListArtifactsClaimingObject(ctx, gen.ListArtifactsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
 	if err != nil {
 		return nil, err
 	}

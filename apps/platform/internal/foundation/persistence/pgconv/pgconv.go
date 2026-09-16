@@ -23,6 +23,10 @@ func Timestamptz(t time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: t, Valid: true}
 }
 
+func Interval(d time.Duration) pgtype.Interval {
+	return pgtype.Interval{Microseconds: d.Microseconds(), Valid: true}
+}
+
 func Clone[T any](value *T) *T {
 	if value == nil {
 		return nil

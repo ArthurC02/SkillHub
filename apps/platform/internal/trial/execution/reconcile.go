@@ -7,7 +7,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 var errReconcilePersistenceNotConfigured = errors.New("run: reconcile persistence is not configured")
@@ -22,7 +24,7 @@ func (s *Service) ExpiredArtifactCandidates(ctx context.Context, limit int32) ([
 	if s == nil || s.Pool == nil {
 		return nil, errReconcilePersistenceNotConfigured
 	}
-	rows, err := gen.New(s.Pool).ListRunOutputsPastRetention(ctx, limit)
+	rows, err := gen.New(s.Pool).ListRunOutputsPastRetention(ctx, gen.ListRunOutputsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +49,7 @@ func (s *Service) ArtifactUploadIntentCandidates(ctx context.Context, limit int3
 	if s == nil || s.Pool == nil {
 		return nil, errReconcilePersistenceNotConfigured
 	}
-	rows, err := gen.New(s.Pool).ListRunArtifactUploadIntents(ctx, limit)
+	rows, err := gen.New(s.Pool).ListRunArtifactUploadIntents(ctx, gen.ListRunArtifactUploadIntentsParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
 	if err != nil {
 		return nil, err
 	}

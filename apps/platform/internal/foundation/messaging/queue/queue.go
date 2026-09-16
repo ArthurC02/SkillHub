@@ -12,6 +12,8 @@ import (
 	"github.com/riverqueue/river/rivermigrate"
 )
 
+const SweepClaimLease = 15 * time.Minute
+
 func New(pool *pgxpool.Pool, cfg *river.Config) (*river.Client[pgx.Tx], error) {
 	if cfg == nil {
 		cfg = &river.Config{}

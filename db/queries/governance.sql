@@ -39,10 +39,10 @@ WITH candidates AS (
     WHERE pending.deleted_at IS NULL
       AND pending.deletion_requested_at IS NOT NULL
       AND pending.deletion_requested_at <= sqlc.arg(cutoff)
-	  AND (pending.purge_attempted_at IS NULL OR pending.purge_attempted_at < now() - interval '15 minutes')
+	  AND (pending.purge_attempted_at IS NULL OR pending.purge_attempted_at < now() - @claim_lease::interval)
     ORDER BY pending.purge_attempted_at NULLS FIRST, pending.purge_attempted_at,
              pending.deletion_requested_at, pending.id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE users u SET purge_attempted_at = now()
 FROM candidates c WHERE u.id = c.id

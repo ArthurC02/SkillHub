@@ -73,11 +73,16 @@ func (q *Queries) CountLiveRunArtifactsSharingObject(ctx context.Context, object
 
 const countPersistentOrphans = `-- name: CountPersistentOrphans :one
 SELECT count(*) FROM reconciler_orphan_sightings
-WHERE provider = $1 AND rounds >= 2
+WHERE provider = $1 AND rounds >= $2::int
 `
 
-func (q *Queries) CountPersistentOrphans(ctx context.Context, provider string) (int64, error) {
-	row := q.db.QueryRow(ctx, countPersistentOrphans, provider)
+type CountPersistentOrphansParams struct {
+	Provider              string
+	PersistentAfterRounds int32
+}
+
+func (q *Queries) CountPersistentOrphans(ctx context.Context, arg CountPersistentOrphansParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPersistentOrphans, arg.Provider, arg.PersistentAfterRounds)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -562,18 +567,22 @@ const listActiveRuns = `-- name: ListActiveRuns :many
 WITH candidates AS (
     SELECT id FROM runs
     WHERE status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-	  -- 30 seconds is one supervisor interval.
-	  AND (supervision_checked_at IS NULL OR supervision_checked_at < now() - interval '30 seconds')
+	  AND (supervision_checked_at IS NULL OR supervision_checked_at < now() - $1::interval)
     ORDER BY supervision_checked_at NULLS FIRST, supervision_checked_at, created_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $2 FOR UPDATE SKIP LOCKED
 )
 UPDATE runs r SET supervision_checked_at = now()
 FROM candidates c WHERE r.id = c.id
 RETURNING r.id, r.workspace_id, r.skill_version_id, r.test_case_snapshot_id, r.status, r.status_reason, r.provider, r.runtime_snapshot, r.policy_snapshot, r.cleanup_status, r.cleanup_at, r.created_at, r.started_at, r.finished_at, r.cancel_requested_at, r.failure_class, r.supervision_checked_at, r.cleanup_attempted_at, r.artifacts_truncated
 `
 
-func (q *Queries) ListActiveRuns(ctx context.Context, limit int32) ([]Run, error) {
-	rows, err := q.db.Query(ctx, listActiveRuns, limit)
+type ListActiveRunsParams struct {
+	RecheckAfter pgtype.Interval
+	BatchSize    int32
+}
+
+func (q *Queries) ListActiveRuns(ctx context.Context, arg ListActiveRunsParams) ([]Run, error) {
+	rows, err := q.db.Query(ctx, listActiveRuns, arg.RecheckAfter, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -740,14 +749,19 @@ const listRunArtifactUploadIntents = `-- name: ListRunArtifactUploadIntents :man
 WITH candidates AS (
     SELECT id FROM run_artifact_upload_intents
     WHERE not_before <= now()
-      AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+      AND (attempted_at IS NULL OR attempted_at < now() - $1::interval)
     ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $2 FOR UPDATE SKIP LOCKED
 )
 UPDATE run_artifact_upload_intents i SET attempted_at = now()
 FROM candidates c WHERE i.id = c.id
 RETURNING i.id, i.workspace_id, i.object_key
 `
+
+type ListRunArtifactUploadIntentsParams struct {
+	ClaimLease pgtype.Interval
+	BatchSize  int32
+}
 
 type ListRunArtifactUploadIntentsRow struct {
 	ID          pgtype.UUID
@@ -755,8 +769,8 @@ type ListRunArtifactUploadIntentsRow struct {
 	ObjectKey   string
 }
 
-func (q *Queries) ListRunArtifactUploadIntents(ctx context.Context, limit int32) ([]ListRunArtifactUploadIntentsRow, error) {
-	rows, err := q.db.Query(ctx, listRunArtifactUploadIntents, limit)
+func (q *Queries) ListRunArtifactUploadIntents(ctx context.Context, arg ListRunArtifactUploadIntentsParams) ([]ListRunArtifactUploadIntentsRow, error) {
+	rows, err := q.db.Query(ctx, listRunArtifactUploadIntents, arg.ClaimLease, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -914,18 +928,24 @@ WITH candidates AS (
     SELECT id FROM runs
     WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
       AND cleanup_status <> 'cleaned'
-      AND finished_at < now() - interval '1 minute'
-	  AND (cleanup_attempted_at IS NULL OR cleanup_attempted_at < now() - interval '30 seconds')
+      AND finished_at < now() - $1::interval
+	  AND (cleanup_attempted_at IS NULL OR cleanup_attempted_at < now() - $2::interval)
     ORDER BY cleanup_attempted_at NULLS FIRST, cleanup_attempted_at, finished_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $3 FOR UPDATE SKIP LOCKED
 )
 UPDATE runs r SET cleanup_attempted_at = now()
 FROM candidates c WHERE r.id = c.id
 RETURNING r.id, r.workspace_id, r.skill_version_id, r.test_case_snapshot_id, r.status, r.status_reason, r.provider, r.runtime_snapshot, r.policy_snapshot, r.cleanup_status, r.cleanup_at, r.created_at, r.started_at, r.finished_at, r.cancel_requested_at, r.failure_class, r.supervision_checked_at, r.cleanup_attempted_at, r.artifacts_truncated
 `
 
-func (q *Queries) ListRunsNeedingCleanup(ctx context.Context, limit int32) ([]Run, error) {
-	rows, err := q.db.Query(ctx, listRunsNeedingCleanup, limit)
+type ListRunsNeedingCleanupParams struct {
+	SettledFor   pgtype.Interval
+	RecheckAfter pgtype.Interval
+	BatchSize    int32
+}
+
+func (q *Queries) ListRunsNeedingCleanup(ctx context.Context, arg ListRunsNeedingCleanupParams) ([]Run, error) {
+	rows, err := q.db.Query(ctx, listRunsNeedingCleanup, arg.SettledFor, arg.RecheckAfter, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}

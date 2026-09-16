@@ -68,10 +68,9 @@ RETURNING *;
 WITH candidates AS (
     SELECT id FROM runs
     WHERE status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-	  -- 30 seconds is one supervisor interval.
-	  AND (supervision_checked_at IS NULL OR supervision_checked_at < now() - interval '30 seconds')
+	  AND (supervision_checked_at IS NULL OR supervision_checked_at < now() - @recheck_after::interval)
     ORDER BY supervision_checked_at NULLS FIRST, supervision_checked_at, created_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE runs r SET supervision_checked_at = now()
 FROM candidates c WHERE r.id = c.id
@@ -82,10 +81,10 @@ WITH candidates AS (
     SELECT id FROM runs
     WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
       AND cleanup_status <> 'cleaned'
-      AND finished_at < now() - interval '1 minute'
-	  AND (cleanup_attempted_at IS NULL OR cleanup_attempted_at < now() - interval '30 seconds')
+      AND finished_at < now() - @settled_for::interval
+	  AND (cleanup_attempted_at IS NULL OR cleanup_attempted_at < now() - @recheck_after::interval)
     ORDER BY cleanup_attempted_at NULLS FIRST, cleanup_attempted_at, finished_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE runs r SET cleanup_attempted_at = now()
 FROM candidates c WHERE r.id = c.id
@@ -244,7 +243,7 @@ WHERE provider = @provider
 
 -- name: CountPersistentOrphans :one
 SELECT count(*) FROM reconciler_orphan_sightings
-WHERE provider = @provider AND rounds >= 2;
+WHERE provider = @provider AND rounds >= @persistent_after_rounds::int;
 -- name: AccountPurgeReady :one
 SELECT NOT EXISTS (
     SELECT 1 FROM runs r
@@ -269,9 +268,9 @@ WHERE id = @id AND workspace_id = @workspace_id;
 WITH candidates AS (
     SELECT id FROM run_artifact_upload_intents
     WHERE not_before <= now()
-      AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+      AND (attempted_at IS NULL OR attempted_at < now() - @claim_lease::interval)
     ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE run_artifact_upload_intents i SET attempted_at = now()
 FROM candidates c WHERE i.id = c.id

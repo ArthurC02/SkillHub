@@ -224,7 +224,9 @@ func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 	registry := s.providers()
 	var poolOrphans, poolSlots int64
 	for _, provider := range registry.Providers {
-		persistent, err := s.queries().CountPersistentOrphans(ctx, provider.Name)
+		persistent, err := s.queries().CountPersistentOrphans(ctx, gen.CountPersistentOrphansParams{
+			Provider: provider.Name, PersistentAfterRounds: OrphanPersistsAfterRounds,
+		})
 		if err != nil {
 			slog.Error("counting persistent orphans for the X-04 threshold failed",
 				"provider", provider.Name, "error", err)

@@ -35,9 +35,9 @@ SELECT sd.skill_id, sd.latest_package_object_key AS package_object_key
 FROM search_documents sd
 WHERE sd.enrichment_status = 'pending'
   AND sd.latest_package_object_key IS NOT NULL
-  AND (sd.enrichment_attempted_at IS NULL OR sd.enrichment_attempted_at < now() - interval '15 minutes')
+  AND (sd.enrichment_attempted_at IS NULL OR sd.enrichment_attempted_at < now() - @claim_lease::interval)
 ORDER BY sd.enrichment_attempted_at NULLS FIRST, sd.enrichment_attempted_at, sd.updated_at, sd.skill_id
-LIMIT $1 FOR UPDATE OF sd SKIP LOCKED
+LIMIT @batch_size FOR UPDATE OF sd SKIP LOCKED
 ), claimed AS (
     UPDATE search_documents sd SET enrichment_attempted_at = now()
     FROM candidates c WHERE sd.skill_id = c.skill_id

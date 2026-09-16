@@ -16,8 +16,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 )
 
@@ -323,7 +325,7 @@ func TestFailedDatasetObjectDeletionRemainsDurableRetryWork(t *testing.T) {
 	if !retryable {
 		t.Fatal("soft-deleted dataset disappeared from the durable cleanup predicate")
 	}
-	work, err := gen.New(pool).ListDatasetsPastRetention(t.Context(), 10000)
+	work, err := gen.New(pool).ListDatasetsPastRetention(t.Context(), gen.ListDatasetsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 10000})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,7 +386,7 @@ func TestUploadDatasetDoesNotHoldTheTestCaseLockDuringObjectPut(t *testing.T) {
 	if freshIntent != 1 {
 		t.Fatal("upload did not publish a cleanup intent with a safety floor before object I/O")
 	}
-	due, err := gen.New(pool).ListDatasetCleanupIntents(t.Context(), 10000)
+	due, err := gen.New(pool).ListDatasetCleanupIntents(t.Context(), gen.ListDatasetCleanupIntentsParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 10000})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -12,10 +12,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	packaging "github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 type countingObjectStore struct {
@@ -141,11 +143,11 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 	base := time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)
 	claimOld := insertArtifact(tag+"-claim-old", now.Add(time.Hour), base)
 	claimNew := insertArtifact(tag+"-claim-new", now.Add(time.Hour), base.Add(time.Minute))
-	firstArtifacts, err := q.ListArtifactsClaimingObject(ctx, 1)
+	firstArtifacts, err := q.ListArtifactsClaimingObject(ctx, gen.ListArtifactsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(firstArtifacts) != 1 {
 		t.Fatalf("first artifact claim: rows=%v err=%v", firstArtifacts, err)
 	}
-	secondArtifacts, err := q.ListArtifactsClaimingObject(ctx, 1)
+	secondArtifacts, err := q.ListArtifactsClaimingObject(ctx, gen.ListArtifactsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(secondArtifacts) != 1 {
 		t.Fatalf("second artifact claim: rows=%v err=%v", secondArtifacts, err)
 	}
@@ -156,11 +158,11 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 
 	expireOld := insertArtifact(tag+"-expire-old", base, base)
 	expireNew := insertArtifact(tag+"-expire-new", base.Add(time.Minute), base.Add(time.Minute))
-	firstExpired, err := q.ListArtifactsPastRetention(ctx, 1)
+	firstExpired, err := q.ListArtifactsPastRetention(ctx, gen.ListArtifactsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(firstExpired) != 1 {
 		t.Fatalf("first artifact retention claim: rows=%v err=%v", firstExpired, err)
 	}
-	secondExpired, err := q.ListArtifactsPastRetention(ctx, 1)
+	secondExpired, err := q.ListArtifactsPastRetention(ctx, gen.ListArtifactsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(secondExpired) != 1 {
 		t.Fatalf("second artifact retention claim: rows=%v err=%v", secondExpired, err)
 	}
@@ -194,14 +196,14 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 	recentSupervision := now.Add(-time.Hour)
 	oldCheckedRun := insertActiveRun(&recentSupervision, base)
 	untriedActiveRun := insertActiveRun(nil, base)
-	activeRows, err := q.ListActiveRuns(ctx, 1)
+	activeRows, err := q.ListActiveRuns(ctx, run.ActiveRunClaim(1))
 	if err != nil || len(activeRows) != 1 {
 		t.Fatalf("active-run worklist: rows=%v err=%v", activeRows, err)
 	}
 	if got := uuidText(activeRows[0].ID); got != untriedActiveRun || got == oldCheckedRun {
 		t.Fatalf("supervisor selected %s, want untried run %s before recently checked %s", got, untriedActiveRun, oldCheckedRun)
 	}
-	activeRows, err = q.ListActiveRuns(ctx, 1)
+	activeRows, err = q.ListActiveRuns(ctx, run.ActiveRunClaim(1))
 	if err != nil || len(activeRows) != 1 {
 		t.Fatalf("second active-run worklist claim: rows=%v err=%v", activeRows, err)
 	}
@@ -229,14 +231,14 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 		mustUUID(t, oldFailedRun), recentAttempt); err != nil {
 		t.Fatal(err)
 	}
-	cleanupRows, err := q.ListRunsNeedingCleanup(ctx, 1)
+	cleanupRows, err := q.ListRunsNeedingCleanup(ctx, run.CleanupClaim(1))
 	if err != nil || len(cleanupRows) != 1 {
 		t.Fatalf("cleanup worklist: rows=%v err=%v", cleanupRows, err)
 	}
 	if got := uuidText(cleanupRows[0].ID); got != untriedRun || got == oldFailedRun {
 		t.Fatalf("cleanup selected %s, want untried run %s before recently retried %s", got, untriedRun, oldFailedRun)
 	}
-	cleanupRows, err = q.ListRunsNeedingCleanup(ctx, 1)
+	cleanupRows, err = q.ListRunsNeedingCleanup(ctx, run.CleanupClaim(1))
 	if err != nil || len(cleanupRows) != 1 {
 		t.Fatalf("second cleanup worklist claim: rows=%v err=%v", cleanupRows, err)
 	}
@@ -258,11 +260,11 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 	}
 	insertRunOutput(oldFailedRun, tag+"-run-output-old", base)
 	insertRunOutput(untriedRun, tag+"-run-output-new", base.Add(time.Minute))
-	runOutput1, err := q.ListRunOutputsPastRetention(ctx, 1)
+	runOutput1, err := q.ListRunOutputsPastRetention(ctx, gen.ListRunOutputsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(runOutput1) != 1 {
 		t.Fatalf("first run-output retention claim: rows=%v err=%v", runOutput1, err)
 	}
-	runOutput2, err := q.ListRunOutputsPastRetention(ctx, 1)
+	runOutput2, err := q.ListRunOutputsPastRetention(ctx, gen.ListRunOutputsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(runOutput2) != 1 {
 		t.Fatalf("second run-output retention claim: rows=%v err=%v", runOutput2, err)
 	}
@@ -281,11 +283,11 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 	}
 	insertDataset(tag+"-dataset-claim-old", now.Add(time.Hour), base)
 	insertDataset(tag+"-dataset-claim-new", now.Add(time.Hour), base.Add(time.Minute))
-	datasetClaim1, err := q.ListDatasetsClaimingObject(ctx, 1)
+	datasetClaim1, err := q.ListDatasetsClaimingObject(ctx, gen.ListDatasetsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(datasetClaim1) != 1 {
 		t.Fatalf("first dataset claim: rows=%v err=%v", datasetClaim1, err)
 	}
-	datasetClaim2, err := q.ListDatasetsClaimingObject(ctx, 1)
+	datasetClaim2, err := q.ListDatasetsClaimingObject(ctx, gen.ListDatasetsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(datasetClaim2) != 1 {
 		t.Fatalf("second dataset claim: rows=%v err=%v", datasetClaim2, err)
 	}
@@ -293,11 +295,11 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 
 	insertDataset(tag+"-dataset-expire-old", base, base)
 	insertDataset(tag+"-dataset-expire-new", base.Add(time.Minute), base.Add(time.Minute))
-	datasetExpiry1, err := q.ListDatasetsPastRetention(ctx, 1)
+	datasetExpiry1, err := q.ListDatasetsPastRetention(ctx, gen.ListDatasetsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(datasetExpiry1) != 1 {
 		t.Fatalf("first dataset retention claim: rows=%v err=%v", datasetExpiry1, err)
 	}
-	datasetExpiry2, err := q.ListDatasetsPastRetention(ctx, 1)
+	datasetExpiry2, err := q.ListDatasetsPastRetention(ctx, gen.ListDatasetsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(datasetExpiry2) != 1 {
 		t.Fatalf("second dataset retention claim: rows=%v err=%v", datasetExpiry2, err)
 	}
@@ -314,11 +316,11 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 		mustUUID(t, f.workspaceID), tag+"-intent-new", base.Add(time.Minute)).Scan(&intentNew); err != nil {
 		t.Fatal(err)
 	}
-	intent1, err := q.ListDatasetCleanupIntents(ctx, 1)
+	intent1, err := q.ListDatasetCleanupIntents(ctx, gen.ListDatasetCleanupIntentsParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(intent1) != 1 {
 		t.Fatalf("first upload-cleanup claim: rows=%v err=%v", intent1, err)
 	}
-	intent2, err := q.ListDatasetCleanupIntents(ctx, 1)
+	intent2, err := q.ListDatasetCleanupIntents(ctx, gen.ListDatasetCleanupIntentsParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(intent2) != 1 {
 		t.Fatalf("second upload-cleanup claim: rows=%v err=%v", intent2, err)
 	}
@@ -334,13 +336,13 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	account1, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{
-		Limit: 1, Cutoff: pgconv.Timestamptz(now),
+		Cutoff: pgconv.Timestamptz(now), ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1,
 	})
 	if err != nil || len(account1) != 1 {
 		t.Fatalf("first account purge claim: rows=%v err=%v", account1, err)
 	}
 	account2, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{
-		Limit: 1, Cutoff: pgconv.Timestamptz(now),
+		Cutoff: pgconv.Timestamptz(now), ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1,
 	})
 	if err != nil || len(account2) != 1 {
 		t.Fatalf("second account purge claim: rows=%v err=%v", account2, err)
@@ -355,11 +357,11 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 		WHERE skill_id IN ($1, $2)`, mustUUID(t, f.skillID), mustUUID(t, secondSkill), base, base.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	enrichment1, err := q.ListPendingEnrichment(ctx, 1)
+	enrichment1, err := q.ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(enrichment1) != 1 {
 		t.Fatalf("first enrichment claim: rows=%v err=%v", enrichment1, err)
 	}
-	enrichment2, err := q.ListPendingEnrichment(ctx, 1)
+	enrichment2, err := q.ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(enrichment2) != 1 {
 		t.Fatalf("second enrichment claim: rows=%v err=%v", enrichment2, err)
 	}
@@ -411,7 +413,7 @@ func TestWorklistAttemptsResetOnlyWhenWorkBecomesFreshAgain(t *testing.T) {
 		    updated_at = '1700-01-01' WHERE skill_id = $1`, mustUUID(t, f.skillID)); err != nil {
 		t.Fatal(err)
 	}
-	claimed, err := q.ListPendingEnrichment(ctx, 1)
+	claimed, err := q.ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 	if err != nil || len(claimed) != 1 || uuidText(claimed[0].SkillID) != f.skillID {
 		t.Fatalf("enrichment claim = %+v, %v; want fixture %s", claimed, err, f.skillID)
 	}
@@ -503,7 +505,7 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		artifactRetention[id] = true
 	}
 	assertConcurrentClaims("artifact retention", artifactRetention, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListArtifactsPastRetention(ctx, 1)
+		rows, err := q.ListArtifactsPastRetention(ctx, gen.ListArtifactsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 		if err != nil || len(rows) != 1 {
 			return "", fmt.Errorf("rows=%v: %w", rows, err)
 		}
@@ -516,7 +518,7 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		runOutputRetention[id] = true
 	}
 	assertConcurrentClaims("run-output retention", runOutputRetention, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListRunOutputsPastRetention(ctx, 1)
+		rows, err := q.ListRunOutputsPastRetention(ctx, gen.ListRunOutputsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 		if err != nil || len(rows) != 1 {
 			return "", fmt.Errorf("rows=%v: %w", rows, err)
 		}
@@ -529,7 +531,7 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		artifactReconcile[id] = true
 	}
 	assertConcurrentClaims("artifact reconciliation", artifactReconcile, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListArtifactsClaimingObject(ctx, 1)
+		rows, err := q.ListArtifactsClaimingObject(ctx, gen.ListArtifactsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 		if err != nil || len(rows) != 1 {
 			return "", fmt.Errorf("rows=%v: %w", rows, err)
 		}
@@ -555,14 +557,14 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		datasetReconcile[insertDataset(fmt.Sprintf("%s-dataset-live-%d", tag, i), time.Now().Add(time.Hour))] = true
 	}
 	assertConcurrentClaims("dataset retention", datasetRetention, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListDatasetsPastRetention(ctx, 1)
+		rows, err := q.ListDatasetsPastRetention(ctx, gen.ListDatasetsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 		if err != nil || len(rows) != 1 {
 			return "", fmt.Errorf("rows=%v: %w", rows, err)
 		}
 		return uuidText(rows[0].ID), nil
 	})
 	assertConcurrentClaims("dataset reconciliation", datasetReconcile, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListDatasetsClaimingObject(ctx, 1)
+		rows, err := q.ListDatasetsClaimingObject(ctx, gen.ListDatasetsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 		if err != nil || len(rows) != 1 {
 			return "", fmt.Errorf("rows=%v: %w", rows, err)
 		}
@@ -580,7 +582,7 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		cleanupIntents[id] = true
 	}
 	assertConcurrentClaims("upload cleanup", cleanupIntents, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListDatasetCleanupIntents(ctx, 1)
+		rows, err := q.ListDatasetCleanupIntents(ctx, gen.ListDatasetCleanupIntentsParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 		if err != nil || len(rows) != 1 {
 			return "", fmt.Errorf("rows=%v: %w", rows, err)
 		}
@@ -598,7 +600,7 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		}
 	}
 	assertConcurrentClaims("account purge", accounts, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{Limit: 1, Cutoff: pgconv.Timestamptz(time.Now())})
+		rows, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1, Cutoff: pgconv.Timestamptz(time.Now())})
 		if err != nil || len(rows) != 1 {
 			return "", fmt.Errorf("rows=%v: %w", rows, err)
 		}
@@ -614,7 +616,7 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertConcurrentClaims("enrichment", enrichment, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListPendingEnrichment(ctx, 1)
+		rows, err := q.ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
 		if err != nil || len(rows) != 1 {
 			return "", fmt.Errorf("rows=%v: %w", rows, err)
 		}
@@ -641,7 +643,7 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertConcurrentClaims("active-run supervision", active, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListActiveRuns(ctx, 1)
+		rows, err := q.ListActiveRuns(ctx, run.ActiveRunClaim(1))
 		if err != nil || len(rows) != 1 {
 			return "", fmt.Errorf("rows=%v: %w", rows, err)
 		}
@@ -651,13 +653,13 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		WHERE id = $1`, mustUUID(t, activeFirst)); err != nil {
 		t.Fatal(err)
 	}
-	if rows, err := gen.New(pool).ListActiveRuns(ctx, 1); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != activeFirst {
+	if rows, err := gen.New(pool).ListActiveRuns(ctx, run.ActiveRunClaim(1)); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != activeFirst {
 		t.Fatalf("active-run lease did not reopen after one supervisor interval: rows=%v err=%v", rows, err)
 	}
 	finished := base
 	cleanup := map[string]bool{insertRun("failed", &finished): true, insertRun("failed", &finished): true}
 	assertConcurrentClaims("run cleanup", cleanup, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListRunsNeedingCleanup(ctx, 1)
+		rows, err := q.ListRunsNeedingCleanup(ctx, run.CleanupClaim(1))
 		if err != nil || len(rows) != 1 {
 			return "", fmt.Errorf("rows=%v: %w", rows, err)
 		}
@@ -672,8 +674,18 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		WHERE id = $1`, mustUUID(t, cleanupID)); err != nil {
 		t.Fatal(err)
 	}
-	if rows, err := gen.New(pool).ListRunsNeedingCleanup(ctx, 1); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != cleanupID {
+	if rows, err := gen.New(pool).ListRunsNeedingCleanup(ctx, run.CleanupClaim(1)); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != cleanupID {
 		t.Fatalf("cleanup lease did not reopen after one supervisor interval: rows=%v err=%v", rows, err)
+	}
+	justFinished := time.Now()
+	insertRun("failed", &justFinished)
+	if rows, err := gen.New(pool).ListRunsNeedingCleanup(ctx, run.CleanupClaim(1)); err != nil || len(rows) != 0 {
+		t.Fatalf("a run that finished a moment ago was rescued before its own cleanup could run: rows=%v err=%v", rows, err)
+	}
+	pastRescue := time.Now().Add(-65 * time.Second)
+	settled := insertRun("failed", &pastRescue)
+	if rows, err := gen.New(pool).ListRunsNeedingCleanup(ctx, run.CleanupClaim(1)); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != settled {
+		t.Fatalf("a run finished past the rescue window was not rescued: rows=%v err=%v", rows, err)
 	}
 }
 
@@ -855,7 +867,7 @@ func TestEnrichmentLeavesASkillWithNoVersionUnclaimed(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	claimed, err := gen.New(pool).ListPendingEnrichment(ctx, 10)
+	claimed, err := gen.New(pool).ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 10})
 	if err != nil {
 		t.Fatal(err)
 	}

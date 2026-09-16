@@ -4,9 +4,9 @@ WITH candidates AS (
     WHERE kind = 'download_package'
       AND purged_at IS NULL
 	  AND (deleted_at IS NOT NULL OR expires_at <= now())
-	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - @claim_lease::interval)
     ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE artifacts a SET retention_attempted_at = now()
 FROM candidates c WHERE a.id = c.id
@@ -22,9 +22,9 @@ WITH candidates AS (
     WHERE kind = 'run_output'
       AND purged_at IS NULL
 	  AND (deleted_at IS NOT NULL OR expires_at <= now())
-	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - @claim_lease::interval)
     ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE artifacts a SET retention_attempted_at = now()
 FROM candidates c WHERE a.id = c.id
@@ -42,9 +42,9 @@ WITH candidates AS (
       AND deleted_at IS NULL
       AND purged_at IS NULL
 	  AND expires_at > now()
-	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - interval '15 minutes')
+	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - @claim_lease::interval)
 	ORDER BY reconcile_checked_at NULLS FIRST, reconcile_checked_at, created_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE artifacts a SET reconcile_checked_at = now()
 FROM candidates c WHERE a.id = c.id
@@ -56,9 +56,9 @@ WITH candidates AS (
     WHERE deleted_at IS NULL
       AND purged_at IS NULL
       AND expires_at > now()
-	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - interval '15 minutes')
+	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - @claim_lease::interval)
     ORDER BY reconcile_checked_at NULLS FIRST, reconcile_checked_at, created_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE datasets d SET reconcile_checked_at = now()
 FROM candidates c WHERE d.id = c.id
@@ -69,9 +69,9 @@ WITH candidates AS (
     SELECT id FROM datasets
     WHERE purged_at IS NULL
       AND (deleted_at IS NOT NULL OR expires_at <= now())
-	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - @claim_lease::interval)
     ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE datasets d SET retention_attempted_at = now()
 FROM candidates c WHERE d.id = c.id
@@ -85,9 +85,9 @@ WHERE id = $1 AND purged_at IS NULL;
 WITH candidates AS (
     SELECT id FROM dataset_object_cleanup_intents
     WHERE not_before <= now()
-	  AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+	  AND (attempted_at IS NULL OR attempted_at < now() - @claim_lease::interval)
     ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE dataset_object_cleanup_intents i SET attempted_at = now()
 FROM candidates c WHERE i.id = c.id
@@ -100,9 +100,9 @@ DELETE FROM dataset_object_cleanup_intents WHERE id = $1;
 WITH candidates AS (
     SELECT id FROM download_object_cleanup_intents
     WHERE not_before <= now()
-      AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+      AND (attempted_at IS NULL OR attempted_at < now() - @claim_lease::interval)
     ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
 )
 UPDATE download_object_cleanup_intents i SET attempted_at = now()
 FROM candidates c WHERE i.id = c.id

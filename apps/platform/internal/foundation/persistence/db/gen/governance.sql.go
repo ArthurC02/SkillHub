@@ -357,11 +357,11 @@ WITH candidates AS (
     SELECT pending.id FROM users pending
     WHERE pending.deleted_at IS NULL
       AND pending.deletion_requested_at IS NOT NULL
-      AND pending.deletion_requested_at <= $2
-	  AND (pending.purge_attempted_at IS NULL OR pending.purge_attempted_at < now() - interval '15 minutes')
+      AND pending.deletion_requested_at <= $1
+	  AND (pending.purge_attempted_at IS NULL OR pending.purge_attempted_at < now() - $2::interval)
     ORDER BY pending.purge_attempted_at NULLS FIRST, pending.purge_attempted_at,
              pending.deletion_requested_at, pending.id
-    LIMIT $1 FOR UPDATE SKIP LOCKED
+    LIMIT $3 FOR UPDATE SKIP LOCKED
 )
 UPDATE users u SET purge_attempted_at = now()
 FROM candidates c WHERE u.id = c.id
@@ -369,12 +369,13 @@ RETURNING u.id
 `
 
 type ListAccountsPastGraceParams struct {
-	Limit  int32
-	Cutoff pgtype.Timestamptz
+	Cutoff     pgtype.Timestamptz
+	ClaimLease pgtype.Interval
+	BatchSize  int32
 }
 
 func (q *Queries) ListAccountsPastGrace(ctx context.Context, arg ListAccountsPastGraceParams) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listAccountsPastGrace, arg.Limit, arg.Cutoff)
+	rows, err := q.db.Query(ctx, listAccountsPastGrace, arg.Cutoff, arg.ClaimLease, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
