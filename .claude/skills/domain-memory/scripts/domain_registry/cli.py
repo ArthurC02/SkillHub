@@ -1,7 +1,7 @@
 from .changes import init_change_package, validate_change_package
 from .common import ASSET_KEYS, load_json
 from .hitl import finalize_proposal, record_approval, submit_proposal, supersede_proposal, verify_proposal
-from .policy import policy_path, validate_policy, write_policy
+from .policy import AMENDABLE_FIELDS, amend_policy, policy_path, validate_policy, write_policy
 from .registry import boundary_analysis, context_model, coverage, init_registry, lookup, migrate_evidence, migrate_registry, record_by_id, resolve_terms, validate, verify_evidence
 from .sources import confirmed_source_map, discover_sources, probe_sources, verify_source_map, write_source_map
 from .transaction import recover_interrupted_update
@@ -101,6 +101,11 @@ def main() -> int:
     memory_init_parser.add_argument("--confirmed-by")
     memory_init_parser.add_argument("--include", action="append")
     memory_init_parser.add_argument("--exclude", action="append")
+    amend_parser = commands.add_parser("amend-policy")
+    amend_parser.add_argument("--registry-root", required=True, type=Path)
+    amend_parser.add_argument("--field", required=True, choices=sorted(AMENDABLE_FIELDS))
+    amend_parser.add_argument("--value", required=True)
+    amend_parser.add_argument("--reason", required=True)
     policy_parser = commands.add_parser("validate-policy")
     policy_parser.add_argument("--policy", required=True, type=Path)
     secret_parser = commands.add_parser("scan-secrets")
@@ -265,6 +270,11 @@ def main() -> int:
             print("Domain Memory initialized. Sources are agent-asserted, not developer-confirmed: "
                   "re-run with --confirmed-by <identity> once a developer has chosen them, "
                   "or verify-sources will report the map as unverified.")
+        return 0
+    if args.command == "amend-policy":
+        change = amend_policy(args.registry_root.resolve(), args.field, args.value, args.reason)
+        print(f"{change['field']}: {change['from']} -> {change['to']}. The Registry revision moved, so every captured "
+              "base revision is now stale and needs fresh approval.")
         return 0
     if args.command == "validate-policy":
         errors = validate_policy(load_json(args.policy.resolve()))

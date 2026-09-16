@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .common import ASSET_KEYS, load_json, registry_dir
+from .policy import policy_path
 
 import hashlib
 import json
@@ -35,6 +36,15 @@ def registry_digest(root: Path) -> str:
         value = load_json(path)
         digest.update(json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8"))
         digest.update(b"\0")
+    policy = policy_path(root)
+    digest.update(policy.name.encode("utf-8"))
+    digest.update(b"\0")
+    digest.update(
+        json.dumps(load_json(policy), ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
+        if policy.is_file()
+        else b"absent"
+    )
+    digest.update(b"\0")
     return f"sha256:{digest.hexdigest()}"
 
 

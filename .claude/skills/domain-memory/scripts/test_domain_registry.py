@@ -16,7 +16,8 @@ from domain_registry.changes import validate_change_package
 from domain_registry.hitl import finalize_proposal, record_approval, submit_proposal, supersede_proposal, verify_proposal
 from domain_registry.registry import init_registry
 from domain_registry.registry import migrate_registry
-from domain_registry.policy import validate_policy
+from domain_registry.policy import amend_policy, validate_policy
+from domain_registry.revision import registry_digest
 from domain_registry.transaction import recover_interrupted_update, transaction_path
 from domain_registry.registry import lookup
 from domain_registry.registry import boundary_analysis, context_model, coverage, record_by_id, resolve_terms, validate
@@ -715,6 +716,52 @@ class DomainRegistryTest(unittest.TestCase):
         supersede_proposal(package, "Overtaken by the event catalogue.", None)
         with self.assertRaisesRegex(ValueError, "only for a submitted proposal"):
             record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+
+
+    def stored_policy(self) -> dict:
+        return json.loads((self.repo / "memory" / "domain-memory-policy.json").read_text(encoding="utf-8"))
+
+    def test_amending_a_governance_field_records_what_changed_and_why(self) -> None:
+        change = amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "Drafting alone until a reviewer exists.")
+        self.assertEqual(self.stored_policy()["review_mode"], "local-draft-only")
+        self.assertEqual((change["from"], change["to"]), ("scm-verified", "local-draft-only"))
+        recorded = json.loads((self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+        self.assertEqual(recorded["operation"], "amend-policy")
+        self.assertEqual(recorded["field"], "review_mode")
+        self.assertEqual(recorded["from"], "scm-verified")
+        self.assertIn("reviewer", recorded["reason"])
+        self.assertEqual("valid", verify_audit(self.repo / "memory")["status"])
+
+    def test_amending_without_a_reason_leaves_the_policy_alone(self) -> None:
+        with self.assertRaisesRegex(ValueError, "requires a reason"):
+            amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "   ")
+        self.assertEqual(self.stored_policy()["review_mode"], "scm-verified")
+
+    def test_an_unamendable_field_names_the_ones_that_are(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            amend_policy(self.repo / "memory", "limits", "0", "Loosen the limits.")
+        for amendable in ("review_mode", "storage_mode", "data_classification", "source_authority"):
+            self.assertIn(amendable, str(raised.exception))
+
+    def test_an_invalid_value_is_refused_before_anything_is_written(self) -> None:
+        with self.assertRaisesRegex(ValueError, "amended policy is invalid"):
+            amend_policy(self.repo / "memory", "review_mode", "whatever-i-like", "Try it.")
+        self.assertEqual(self.stored_policy()["review_mode"], "scm-verified")
+
+    def test_the_registry_revision_moves_when_the_policy_moves(self) -> None:
+        before = registry_digest(self.repo / "memory")
+        amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "Drafting alone for now.")
+        self.assertNotEqual(before, registry_digest(self.repo / "memory"))
+
+    def test_a_captured_revision_goes_stale_after_a_hand_edited_policy(self) -> None:
+        captured = {"base_registry_revision": current_registry_revision(self.repo / "memory", self.repo)}
+        require_current_registry_revision(captured, self.repo / "memory", self.repo)
+        path = self.repo / "memory" / "domain-memory-policy.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["source_policy"]["authority"] = "somebody else entirely"
+        path.write_text(json.dumps(value), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "stale"):
+            require_current_registry_revision(captured, self.repo / "memory", self.repo)
 
 
 if __name__ == "__main__":

@@ -56,6 +56,40 @@ def write_policy(root: Path, source_map: dict[str, Any], storage_mode: str, data
     policy_path(root).write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+AMENDABLE_FIELDS = {
+    "review_mode": ("review_mode",),
+    "storage_mode": ("storage_mode",),
+    "data_classification": ("data_classification",),
+    "source_authority": ("source_policy", "authority"),
+}
+
+
+def amend_policy(root: Path, field: str, value: str, reason: str) -> dict[str, Any]:
+    from .audit import append as append_audit
+
+    if field not in AMENDABLE_FIELDS:
+        raise ValueError(f"{field} is not an amendable policy field; amend one of {', '.join(sorted(AMENDABLE_FIELDS))}. "
+                         "Selected source paths and limits are settled when a Domain Memory is initialized.")
+    if not isinstance(reason, str) or not reason.strip():
+        raise ValueError("amending a Domain Memory policy requires a reason: the policy decides what the Registry may become")
+    path = policy_path(root)
+    if not path.is_file():
+        raise ValueError(f"no Domain Memory policy at {path}")
+    value_document = load_json(path)
+    keys = AMENDABLE_FIELDS[field]
+    target = value_document
+    for key in keys[:-1]:
+        target = target[key]
+    change = {"operation": "amend-policy", "field": field, "from": target.get(keys[-1]), "to": value, "reason": reason.strip()}
+    target[keys[-1]] = value
+    errors = validate_policy(value_document)
+    if errors:
+        raise ValueError("amended policy is invalid: " + "; ".join(errors))
+    path.write_text(json.dumps(value_document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    append_audit(root, change)
+    return change
+
+
 def review_mode(root: Path) -> str:
     path = policy_path(root)
     if not path.is_file():

@@ -102,3 +102,9 @@ The policy sets limits for file count, file size, total bytes, hash duration, qu
 3. Replace local claimed approvals and free-text test results with provider and CI attestations.
 4. Move reviewed-state updates to the compare-and-swap protocol and emit `applied` attestations.
 5. Add contract adapters, migration tooling, adversarial prompt-injection fixtures, and release compatibility tests.
+
+## Policy is part of the revision
+
+The Registry digest covers the policy as well as the assets, because the policy decides what the Registry may become: whether a record can ever be reviewed, who the sources answer to, and which command profiles a test attestation may cite. A captured base revision therefore goes stale when the policy changes, however it changed, and approvals taken against it must be sought again.
+
+`amend-policy` changes one governance field, refuses a policy the validator rejects before writing anything, and appends the old value, the new value and a required reason to the audit chain. Selected source paths and limits are not amendable: they are settled at initialization, where a developer confirms them.
