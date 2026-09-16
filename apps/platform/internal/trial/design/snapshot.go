@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -122,9 +123,42 @@ func (s *Service) SnapshotInputsAvailable(ctx context.Context, workspaceID, snap
 	if s == nil || s.Pool == nil {
 		return false, errPersistenceNotConfigured
 	}
-	return gen.New(s.Pool).SnapshotInputsStillAvailable(ctx, gen.SnapshotInputsStillAvailableParams{
-		SnapshotID: snapshotID, WorkspaceID: workspaceID,
-	})
+	q := gen.New(s.Pool)
+	inputs, err := q.GetSnapshotInputs(ctx, gen.GetSnapshotInputsParams{SnapshotID: snapshotID, WorkspaceID: workspaceID})
+	if err != nil {
+		return false, err
+	}
+	refs, err := DecodeDatasetRefs(inputs.DatasetRefs)
+	if err != nil {
+		return false, err
+	}
+	datasetIDs := make([]pgtype.UUID, len(refs))
+	for i, ref := range refs {
+		if err := datasetIDs[i].Scan(ref.DatasetID); err != nil {
+			return false, fmt.Errorf("snapshot dataset ref %q: %w", ref.DatasetID, err)
+		}
+	}
+	lifetimes, err := q.ListDatasetLifetimes(ctx, gen.ListDatasetLifetimesParams{WorkspaceID: workspaceID, DatasetIds: datasetIDs})
+	if err != nil {
+		return false, err
+	}
+	return snapshotInputsAvailable(inputs.TestCaseDeletedAt, datasetIDs, lifetimes, time.Now()), nil
+}
+
+func snapshotInputsAvailable(testCaseDeletedAt pgtype.Timestamptz, datasetIDs []pgtype.UUID, lifetimes []gen.ListDatasetLifetimesRow, now time.Time) bool {
+	if testCaseDeletedAt.Valid {
+		return false
+	}
+	usable := make(map[pgtype.UUID]bool, len(lifetimes))
+	for _, dataset := range lifetimes {
+		usable[dataset.ID] = !dataset.DeletedAt.Valid && dataset.ExpiresAt.Time.After(now)
+	}
+	for _, id := range datasetIDs {
+		if !usable[id] {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Service) CreateSnapshot(ctx context.Context, tx pgx.Tx, workspaceID, testCaseID pgtype.UUID) (Snapshot, error) {

@@ -103,23 +103,15 @@ WHERE workspace_id = @workspace_id AND test_case_id = @test_case_id;
 SELECT id, test_case_id FROM test_case_snapshots
 WHERE workspace_id = @workspace_id AND id = ANY(@snapshot_ids::uuid[]);
 
--- name: SnapshotInputsStillAvailable :one
-SELECT (
-    tc.deleted_at IS NULL
-    AND NOT EXISTS (
-        SELECT 1 FROM jsonb_array_elements(s.dataset_refs) AS ref
-        WHERE NOT EXISTS (
-            SELECT 1 FROM datasets d
-            WHERE d.id = (ref->>'dataset_id')::uuid
-              AND d.workspace_id = s.workspace_id
-              AND d.deleted_at IS NULL
-              AND d.expires_at > now()
-        )
-    )
-)::boolean AS available
+-- name: GetSnapshotInputs :one
+SELECT s.dataset_refs, tc.deleted_at AS test_case_deleted_at
 FROM test_case_snapshots s
 JOIN test_cases tc ON tc.id = s.test_case_id
 WHERE s.id = @snapshot_id AND s.workspace_id = @workspace_id;
+
+-- name: ListDatasetLifetimes :many
+SELECT id, deleted_at, expires_at FROM datasets
+WHERE workspace_id = @workspace_id AND id = ANY(@dataset_ids::uuid[]);
 
 -- name: LockDatasetWorkspaceObjects :exec
 SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));

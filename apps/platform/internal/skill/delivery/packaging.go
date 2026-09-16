@@ -718,14 +718,16 @@ func (s *Service) persist(
 		return Result{}, err
 	}
 	objectLocked = true
-	if existing, err := q.FindReusableDownloadArtifact(ctx, gen.FindReusableDownloadArtifactParams{
+	sameIdentity, err := q.ListDownloadArtifactsWithIdentity(ctx, gen.ListDownloadArtifactsWithIdentityParams{
 		WorkspaceID: ws.ID, SkillVersionID: p.Version.ID, Target: p.Profile.ID,
 		PackagerVersion: PackagerVersion, IncludesTestCases: p.IncludeTestCases,
 		ContentHash: p.ContentHash,
-	}); err == nil {
-		return Result{Artifact: reusedArtifact(p, existing), Duplicate: true}, nil
-	} else if !errors.Is(err, pgx.ErrNoRows) {
+	})
+	if err != nil {
 		return Result{}, err
+	}
+	if existing, ok := reusableArtifact(sameIdentity, time.Now()); ok {
+		return Result{Artifact: reusedArtifact(p, existing), Duplicate: true}, nil
 	}
 	exists, err := s.Store.Exists(ctx, objectKey)
 	if err != nil {
@@ -831,7 +833,16 @@ func (s *Service) persist(
 	}.withVersionState().withServeState(row.ExpiresAt.Time, time.Time{})}, nil
 }
 
-func reusedArtifact(p *Plan, row gen.FindReusableDownloadArtifactRow) Artifact {
+func reusableArtifact(newestFirst []gen.ListDownloadArtifactsWithIdentityRow, now time.Time) (gen.ListDownloadArtifactsWithIdentityRow, bool) {
+	for _, row := range newestFirst {
+		if servableAt(ScanStatus(row.ScanStatus), row.DeletedAt, row.PurgedAt, row.ExpiresAt, now) {
+			return row, true
+		}
+	}
+	return gen.ListDownloadArtifactsWithIdentityRow{}, false
+}
+
+func reusedArtifact(p *Plan, row gen.ListDownloadArtifactsWithIdentityRow) Artifact {
 	return Artifact{
 		ArtifactID:          pgconv.UUIDString(row.ArtifactID),
 		SkillID:             pgconv.UUIDString(p.Skill.ID),

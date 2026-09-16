@@ -214,6 +214,30 @@ func (q *Queries) GetDataset(ctx context.Context, arg GetDatasetParams) (Dataset
 	return i, err
 }
 
+const getSnapshotInputs = `-- name: GetSnapshotInputs :one
+SELECT s.dataset_refs, tc.deleted_at AS test_case_deleted_at
+FROM test_case_snapshots s
+JOIN test_cases tc ON tc.id = s.test_case_id
+WHERE s.id = $1 AND s.workspace_id = $2
+`
+
+type GetSnapshotInputsParams struct {
+	SnapshotID  pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type GetSnapshotInputsRow struct {
+	DatasetRefs       []byte
+	TestCaseDeletedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetSnapshotInputs(ctx context.Context, arg GetSnapshotInputsParams) (GetSnapshotInputsRow, error) {
+	row := q.db.QueryRow(ctx, getSnapshotInputs, arg.SnapshotID, arg.WorkspaceID)
+	var i GetSnapshotInputsRow
+	err := row.Scan(&i.DatasetRefs, &i.TestCaseDeletedAt)
+	return i, err
+}
+
 const getTestCase = `-- name: GetTestCase :one
 SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric FROM test_cases
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
@@ -267,6 +291,42 @@ func (q *Queries) GetTestCaseSnapshot(ctx context.Context, arg GetTestCaseSnapsh
 		&i.Rubric,
 	)
 	return i, err
+}
+
+const listDatasetLifetimes = `-- name: ListDatasetLifetimes :many
+SELECT id, deleted_at, expires_at FROM datasets
+WHERE workspace_id = $1 AND id = ANY($2::uuid[])
+`
+
+type ListDatasetLifetimesParams struct {
+	WorkspaceID pgtype.UUID
+	DatasetIds  []pgtype.UUID
+}
+
+type ListDatasetLifetimesRow struct {
+	ID        pgtype.UUID
+	DeletedAt pgtype.Timestamptz
+	ExpiresAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListDatasetLifetimes(ctx context.Context, arg ListDatasetLifetimesParams) ([]ListDatasetLifetimesRow, error) {
+	rows, err := q.db.Query(ctx, listDatasetLifetimes, arg.WorkspaceID, arg.DatasetIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDatasetLifetimesRow
+	for rows.Next() {
+		var i ListDatasetLifetimesRow
+		if err := rows.Scan(&i.ID, &i.DeletedAt, &i.ExpiresAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listDatasets = `-- name: ListDatasets :many
@@ -541,37 +601,6 @@ func (q *Queries) LockTestCase(ctx context.Context, arg LockTestCaseParams) (Tes
 		&i.Rubric,
 	)
 	return i, err
-}
-
-const snapshotInputsStillAvailable = `-- name: SnapshotInputsStillAvailable :one
-SELECT (
-    tc.deleted_at IS NULL
-    AND NOT EXISTS (
-        SELECT 1 FROM jsonb_array_elements(s.dataset_refs) AS ref
-        WHERE NOT EXISTS (
-            SELECT 1 FROM datasets d
-            WHERE d.id = (ref->>'dataset_id')::uuid
-              AND d.workspace_id = s.workspace_id
-              AND d.deleted_at IS NULL
-              AND d.expires_at > now()
-        )
-    )
-)::boolean AS available
-FROM test_case_snapshots s
-JOIN test_cases tc ON tc.id = s.test_case_id
-WHERE s.id = $1 AND s.workspace_id = $2
-`
-
-type SnapshotInputsStillAvailableParams struct {
-	SnapshotID  pgtype.UUID
-	WorkspaceID pgtype.UUID
-}
-
-func (q *Queries) SnapshotInputsStillAvailable(ctx context.Context, arg SnapshotInputsStillAvailableParams) (bool, error) {
-	row := q.db.QueryRow(ctx, snapshotInputsStillAvailable, arg.SnapshotID, arg.WorkspaceID)
-	var available bool
-	err := row.Scan(&available)
-	return available, err
 }
 
 const softDeleteDataset = `-- name: SoftDeleteDataset :one

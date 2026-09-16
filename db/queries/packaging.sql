@@ -1,8 +1,8 @@
--- name: FindReusableDownloadArtifact :one
+-- name: ListDownloadArtifactsWithIdentity :many
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
-       a.expires_at, a.created_at,
+       a.expires_at, a.created_at, a.deleted_at, a.purged_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
            AS download_count
 FROM download_artifacts da
@@ -13,12 +13,7 @@ WHERE da.workspace_id = $1
   AND da.packager_version = $4
   AND da.includes_test_cases = $5
   AND a.content_hash = $6
-  AND a.scan_status = 'available'
-  AND a.deleted_at IS NULL
-  AND a.purged_at IS NULL
-  AND a.expires_at > now()
-ORDER BY a.created_at DESC
-LIMIT 1;
+ORDER BY a.created_at DESC;
 
 -- name: CreateDownloadArtifactRow :one
 INSERT INTO artifacts (

@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -156,7 +156,7 @@ func (s *Service) Download(
 	if err != nil {
 		return none, nil, err
 	}
-	if ScanStatus(row.ScanStatus) != ScanAvailable || row.PurgedAt.Valid || !row.ExpiresAt.Time.After(time.Now()) {
+	if !servableAt(ScanStatus(row.ScanStatus), pgtype.Timestamptz{}, row.PurgedAt, row.ExpiresAt, time.Now()) {
 		return none, nil, ErrGone
 	}
 	if reason, _ := gateFlags(row.AccessRestricted, Redistribution(row.Redistribution)); reason != "" {

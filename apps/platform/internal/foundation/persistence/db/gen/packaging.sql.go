@@ -174,84 +174,6 @@ func (q *Queries) DeleteWorkspaceDownloadRecords(ctx context.Context, workspaceI
 	return result.RowsAffected(), nil
 }
 
-const findReusableDownloadArtifact = `-- name: FindReusableDownloadArtifact :one
-SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
-       da.packager_version, da.manifest_hash, da.includes_test_cases,
-       a.file_name, a.size_bytes, a.content_hash, a.scan_status,
-       a.expires_at, a.created_at,
-       (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
-           AS download_count
-FROM download_artifacts da
-JOIN artifacts a ON a.id = da.artifact_id
-WHERE da.workspace_id = $1
-  AND da.skill_version_id = $2
-  AND da.target = $3
-  AND da.packager_version = $4
-  AND da.includes_test_cases = $5
-  AND a.content_hash = $6
-  AND a.scan_status = 'available'
-  AND a.deleted_at IS NULL
-  AND a.purged_at IS NULL
-  AND a.expires_at > now()
-ORDER BY a.created_at DESC
-LIMIT 1
-`
-
-type FindReusableDownloadArtifactParams struct {
-	WorkspaceID       pgtype.UUID
-	SkillVersionID    pgtype.UUID
-	Target            string
-	PackagerVersion   string
-	IncludesTestCases bool
-	ContentHash       string
-}
-
-type FindReusableDownloadArtifactRow struct {
-	ArtifactID        pgtype.UUID
-	SkillVersionID    pgtype.UUID
-	Target            string
-	ProfileVersion    string
-	PackagerVersion   string
-	ManifestHash      string
-	IncludesTestCases bool
-	FileName          string
-	SizeBytes         int64
-	ContentHash       string
-	ScanStatus        string
-	ExpiresAt         pgtype.Timestamptz
-	CreatedAt         pgtype.Timestamptz
-	DownloadCount     int64
-}
-
-func (q *Queries) FindReusableDownloadArtifact(ctx context.Context, arg FindReusableDownloadArtifactParams) (FindReusableDownloadArtifactRow, error) {
-	row := q.db.QueryRow(ctx, findReusableDownloadArtifact,
-		arg.WorkspaceID,
-		arg.SkillVersionID,
-		arg.Target,
-		arg.PackagerVersion,
-		arg.IncludesTestCases,
-		arg.ContentHash,
-	)
-	var i FindReusableDownloadArtifactRow
-	err := row.Scan(
-		&i.ArtifactID,
-		&i.SkillVersionID,
-		&i.Target,
-		&i.ProfileVersion,
-		&i.PackagerVersion,
-		&i.ManifestHash,
-		&i.IncludesTestCases,
-		&i.FileName,
-		&i.SizeBytes,
-		&i.ContentHash,
-		&i.ScanStatus,
-		&i.ExpiresAt,
-		&i.CreatedAt,
-		&i.DownloadCount,
-	)
-	return i, err
-}
-
 const getDownloadArtifact = `-- name: GetDownloadArtifact :one
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
@@ -516,6 +438,96 @@ func (q *Queries) ListDownloadArtifacts(ctx context.Context, workspaceID pgtype.
 			&i.ScanStatus,
 			&i.ExpiresAt,
 			&i.CreatedAt,
+			&i.PurgedAt,
+			&i.DownloadCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDownloadArtifactsWithIdentity = `-- name: ListDownloadArtifactsWithIdentity :many
+SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
+       da.packager_version, da.manifest_hash, da.includes_test_cases,
+       a.file_name, a.size_bytes, a.content_hash, a.scan_status,
+       a.expires_at, a.created_at, a.deleted_at, a.purged_at,
+       (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
+           AS download_count
+FROM download_artifacts da
+JOIN artifacts a ON a.id = da.artifact_id
+WHERE da.workspace_id = $1
+  AND da.skill_version_id = $2
+  AND da.target = $3
+  AND da.packager_version = $4
+  AND da.includes_test_cases = $5
+  AND a.content_hash = $6
+ORDER BY a.created_at DESC
+`
+
+type ListDownloadArtifactsWithIdentityParams struct {
+	WorkspaceID       pgtype.UUID
+	SkillVersionID    pgtype.UUID
+	Target            string
+	PackagerVersion   string
+	IncludesTestCases bool
+	ContentHash       string
+}
+
+type ListDownloadArtifactsWithIdentityRow struct {
+	ArtifactID        pgtype.UUID
+	SkillVersionID    pgtype.UUID
+	Target            string
+	ProfileVersion    string
+	PackagerVersion   string
+	ManifestHash      string
+	IncludesTestCases bool
+	FileName          string
+	SizeBytes         int64
+	ContentHash       string
+	ScanStatus        string
+	ExpiresAt         pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	DeletedAt         pgtype.Timestamptz
+	PurgedAt          pgtype.Timestamptz
+	DownloadCount     int64
+}
+
+func (q *Queries) ListDownloadArtifactsWithIdentity(ctx context.Context, arg ListDownloadArtifactsWithIdentityParams) ([]ListDownloadArtifactsWithIdentityRow, error) {
+	rows, err := q.db.Query(ctx, listDownloadArtifactsWithIdentity,
+		arg.WorkspaceID,
+		arg.SkillVersionID,
+		arg.Target,
+		arg.PackagerVersion,
+		arg.IncludesTestCases,
+		arg.ContentHash,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDownloadArtifactsWithIdentityRow
+	for rows.Next() {
+		var i ListDownloadArtifactsWithIdentityRow
+		if err := rows.Scan(
+			&i.ArtifactID,
+			&i.SkillVersionID,
+			&i.Target,
+			&i.ProfileVersion,
+			&i.PackagerVersion,
+			&i.ManifestHash,
+			&i.IncludesTestCases,
+			&i.FileName,
+			&i.SizeBytes,
+			&i.ContentHash,
+			&i.ScanStatus,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.DeletedAt,
 			&i.PurgedAt,
 			&i.DownloadCount,
 		); err != nil {
