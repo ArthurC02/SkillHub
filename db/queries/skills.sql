@@ -35,9 +35,7 @@ RETURNING *;
 
 -- name: ListSkills :many
 SELECT sqlc.embed(sk), ver.created_at AS verified_at, ver.source_id AS verified_source_id,
-       inh.skill_id AS inherited_from_skill_id,
-       COALESCE(inh.name, '') AS inherited_from_name,
-       inh.created_at AS inherited_verified_at,
+       COALESCE(ver.content_hash, '')::text AS newest_content_hash,
        count(*) OVER ()::bigint AS total_matches
 FROM skills sk
 LEFT JOIN LATERAL (
@@ -47,19 +45,16 @@ LEFT JOIN LATERAL (
     ORDER BY v.version_number DESC
     LIMIT 1
 ) ver ON true
-LEFT JOIN LATERAL (
-    SELECT anc.id AS skill_id, anc.name, ancv.created_at
-    FROM skills anc
-    JOIN skill_versions ancv ON ancv.id = sk.forked_from_version_id AND ancv.skill_id = anc.id
-    WHERE ver.source_id IS NULL
-      AND anc.id = sk.forked_from_skill_id
-      AND anc.workspace_id = ANY(@catalog_workspace_ids::uuid[])
-      AND anc.deleted_at IS NULL AND anc.takedown_at IS NULL
-      AND ancv.content_hash = ver.content_hash
-) inh ON true
 WHERE sk.workspace_id = @workspace_id AND sk.deleted_at IS NULL
 ORDER BY sk.created_at DESC
 LIMIT @row_limit::int OFFSET @row_offset::int;
+
+-- name: ListForkedFromVersions :many
+SELECT v.id AS version_id, v.content_hash, v.created_at,
+       anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at
+FROM skill_versions v
+JOIN skills anc ON anc.id = v.skill_id
+WHERE v.id = ANY(@version_ids::uuid[]);
 
 -- name: CountSkillVersions :one
 SELECT count(*) FROM skill_versions

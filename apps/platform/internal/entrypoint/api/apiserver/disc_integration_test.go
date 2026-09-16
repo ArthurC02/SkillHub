@@ -1368,13 +1368,23 @@ func TestAForkInheritsTheScanOnlyWhileItsSourceIsInTheCatalog(t *testing.T) {
 	alice := a.login(t, "alice-inherit")
 	fork := postFork(t, alice, published, http.StatusCreated)
 
-	verification := func() string {
+	tag, err := pool.Exec(context.Background(),
+		`UPDATE search_documents SET scan = '{"warnings": 2, "codes": ["script-file"]}'::jsonb WHERE skill_id = $1`,
+		mustUUID(t, published))
+	if err != nil || tag.RowsAffected() != 1 {
+		t.Fatalf("recording the source's scan touched %d rows: %v", tag.RowsAffected(), err)
+	}
+
+	listed := func() (verification, riskLevel string) {
 		var out struct {
 			Skills []struct {
 				SkillID      string `json:"skill_id"`
 				Verification struct {
 					Value string `json:"value"`
 				} `json:"verification"`
+				Risk struct {
+					Level string `json:"level"`
+				} `json:"risk"`
 			} `json:"skills"`
 		}
 		if code := getJSON(t, alice.Client, alice.base+"/skills", &out); code != http.StatusOK {
@@ -1382,15 +1392,19 @@ func TestAForkInheritsTheScanOnlyWhileItsSourceIsInTheCatalog(t *testing.T) {
 		}
 		for _, s := range out.Skills {
 			if s.SkillID == fork.SkillID {
-				return s.Verification.Value
+				return s.Verification.Value, s.Risk.Level
 			}
 		}
 		t.Fatalf("fork %s missing from GET /skills", fork.SkillID)
-		return ""
+		return "", ""
+	}
+	verification := func() string {
+		v, _ := listed()
+		return v
 	}
 
-	if got := verification(); got != "scanned" {
-		t.Errorf("a fork of a catalog skill with the same bytes: verification %q, want scanned", got)
+	if got, risk := listed(); got != "scanned" || risk != "warning" {
+		t.Errorf("a fork of a catalog skill with the same bytes: verification %q risk %q, want scanned with the source's warning", got, risk)
 	}
 	if _, err := pool.Exec(context.Background(),
 		"UPDATE workspaces SET is_catalog = false WHERE id = $1", mustUUID(t, curator.workspaceID)); err != nil {

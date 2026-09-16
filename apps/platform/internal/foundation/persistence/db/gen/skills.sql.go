@@ -337,6 +337,54 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 	return i, err
 }
 
+const listForkedFromVersions = `-- name: ListForkedFromVersions :many
+SELECT v.id AS version_id, v.content_hash, v.created_at,
+       anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at
+FROM skill_versions v
+JOIN skills anc ON anc.id = v.skill_id
+WHERE v.id = ANY($1::uuid[])
+`
+
+type ListForkedFromVersionsRow struct {
+	VersionID   pgtype.UUID
+	ContentHash string
+	CreatedAt   pgtype.Timestamptz
+	SkillID     pgtype.UUID
+	WorkspaceID pgtype.UUID
+	Name        string
+	DeletedAt   pgtype.Timestamptz
+	TakedownAt  pgtype.Timestamptz
+}
+
+func (q *Queries) ListForkedFromVersions(ctx context.Context, versionIds []pgtype.UUID) ([]ListForkedFromVersionsRow, error) {
+	rows, err := q.db.Query(ctx, listForkedFromVersions, versionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListForkedFromVersionsRow
+	for rows.Next() {
+		var i ListForkedFromVersionsRow
+		if err := rows.Scan(
+			&i.VersionID,
+			&i.ContentHash,
+			&i.CreatedAt,
+			&i.SkillID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.DeletedAt,
+			&i.TakedownAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listForkedSkills = `-- name: ListForkedSkills :many
 SELECT f.forked_from_skill_id::uuid AS skill_id FROM skills f
 WHERE f.forked_from_skill_id = ANY($1::uuid[])
@@ -434,9 +482,7 @@ func (q *Queries) ListLiveSkillsForIndex(ctx context.Context) ([]ListLiveSkillsF
 
 const listSkills = `-- name: ListSkills :many
 SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, sk.curation_tier, sk.curated_version_id, sk.category, sk.category_source, ver.created_at AS verified_at, ver.source_id AS verified_source_id,
-       inh.skill_id AS inherited_from_skill_id,
-       COALESCE(inh.name, '') AS inherited_from_name,
-       inh.created_at AS inherited_verified_at,
+       COALESCE(ver.content_hash, '')::text AS newest_content_hash,
        count(*) OVER ()::bigint AS total_matches
 FROM skills sk
 LEFT JOIN LATERAL (
@@ -446,45 +492,27 @@ LEFT JOIN LATERAL (
     ORDER BY v.version_number DESC
     LIMIT 1
 ) ver ON true
-LEFT JOIN LATERAL (
-    SELECT anc.id AS skill_id, anc.name, ancv.created_at
-    FROM skills anc
-    JOIN skill_versions ancv ON ancv.id = sk.forked_from_version_id AND ancv.skill_id = anc.id
-    WHERE ver.source_id IS NULL
-      AND anc.id = sk.forked_from_skill_id
-      AND anc.workspace_id = ANY($1::uuid[])
-      AND anc.deleted_at IS NULL AND anc.takedown_at IS NULL
-      AND ancv.content_hash = ver.content_hash
-) inh ON true
-WHERE sk.workspace_id = $2 AND sk.deleted_at IS NULL
+WHERE sk.workspace_id = $1 AND sk.deleted_at IS NULL
 ORDER BY sk.created_at DESC
-LIMIT $4::int OFFSET $3::int
+LIMIT $3::int OFFSET $2::int
 `
 
 type ListSkillsParams struct {
-	CatalogWorkspaceIds []pgtype.UUID
-	WorkspaceID         pgtype.UUID
-	RowOffset           int32
-	RowLimit            int32
+	WorkspaceID pgtype.UUID
+	RowOffset   int32
+	RowLimit    int32
 }
 
 type ListSkillsRow struct {
-	Skill                Skill
-	VerifiedAt           pgtype.Timestamptz
-	VerifiedSourceID     pgtype.UUID
-	InheritedFromSkillID pgtype.UUID
-	InheritedFromName    string
-	InheritedVerifiedAt  pgtype.Timestamptz
-	TotalMatches         int64
+	Skill             Skill
+	VerifiedAt        pgtype.Timestamptz
+	VerifiedSourceID  pgtype.UUID
+	NewestContentHash string
+	TotalMatches      int64
 }
 
 func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListSkillsRow, error) {
-	rows, err := q.db.Query(ctx, listSkills,
-		arg.CatalogWorkspaceIds,
-		arg.WorkspaceID,
-		arg.RowOffset,
-		arg.RowLimit,
-	)
+	rows, err := q.db.Query(ctx, listSkills, arg.WorkspaceID, arg.RowOffset, arg.RowLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -512,9 +540,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 			&i.Skill.CategorySource,
 			&i.VerifiedAt,
 			&i.VerifiedSourceID,
-			&i.InheritedFromSkillID,
-			&i.InheritedFromName,
-			&i.InheritedVerifiedAt,
+			&i.NewestContentHash,
 			&i.TotalMatches,
 		); err != nil {
 			return nil, err
