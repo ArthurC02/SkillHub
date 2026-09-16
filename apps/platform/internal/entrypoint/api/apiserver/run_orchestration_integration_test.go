@@ -19,6 +19,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
@@ -726,6 +727,28 @@ func TestAnAttemptWhoseRequestCannotBeBuiltClosesItsGrantsAndFailsTheRun(t *test
 		t.Fatalf("the undispatched attempt: %d attempts, grants %q fenced %v, finished %v, class %v; "+
 			"want one finished provision attempt whose grants are recorded as already expired",
 			attempts, state, fenced, finished, errorClass)
+	}
+	var attemptID pgtype.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM run_attempts WHERE run_id = $1`, runID).Scan(&attemptID); err != nil {
+		t.Fatal(err)
+	}
+	assertArtifactUploadRemembered(t, pool, created.RunID, attemptID)
+}
+
+func assertArtifactUploadRemembered(t *testing.T, pool *pgxpool.Pool, runID string, attemptID pgtype.UUID) {
+	t.Helper()
+	var intentKey string
+	var dueWhenArtifactsExpire bool
+	if err := pool.QueryRow(context.Background(), `SELECT i.object_key,
+		i.not_before = a.object_grants_expire_at + interval '90 days'
+		FROM run_artifact_upload_intents i JOIN run_attempts a ON a.id = i.run_attempt_id
+		WHERE a.id = $1`, attemptID).Scan(&intentKey, &dueWhenArtifactsExpire); err != nil {
+		t.Fatalf("writing the attempt's grants did not remember its possible artifact upload: %v", err)
+	}
+	want := "run-artifacts/" + runID + "/" + pgconv.UUIDString(attemptID) + "/artifacts.tar"
+	if intentKey != want || !dueWhenArtifactsExpire {
+		t.Fatalf("upload intent = %q due with the artifacts %v; want %q due 90 days after the grants expire",
+			intentKey, dueWhenArtifactsExpire, want)
 	}
 }
 

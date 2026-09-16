@@ -453,15 +453,6 @@ func TestAccountPurgeWaitsForRunCleanupAndFindsUnreportedAttemptBytes(t *testing
 		WHERE id = $1`, mustUUID(t, attemptID)); err != nil {
 		t.Fatal(err)
 	}
-	var uploadIntentKey string
-	if err := pool.QueryRow(ctx, `SELECT object_key FROM run_artifact_upload_intents
-		WHERE run_attempt_id = $1`, mustUUID(t, attemptID)).Scan(&uploadIntentKey); err != nil {
-		t.Fatalf("grant expiry did not durably remember the possible artifact upload: %v", err)
-	}
-	wantIntentKey := "run-artifacts/" + runID + "/" + attemptID + "/artifacts.tar"
-	if uploadIntentKey != wantIntentKey {
-		t.Fatalf("artifact upload intent key = %q, want %q", uploadIntentKey, wantIntentKey)
-	}
 	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = NULL
 		WHERE id = $1`, mustUUID(t, f.userID)); err != nil {
 		t.Fatal(err)
@@ -700,8 +691,8 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO dataset_object_cleanup_intents (workspace_id, object_key)
-		VALUES ($1, 'datasets/alice-interrupted-upload')`, mustUUID(t, alice.workspaceID)); err != nil {
+		INSERT INTO dataset_object_cleanup_intents (workspace_id, object_key, not_before)
+		VALUES ($1, 'datasets/alice-interrupted-upload', now() + interval '1 hour')`, mustUUID(t, alice.workspaceID)); err != nil {
 		t.Fatal(err)
 	}
 

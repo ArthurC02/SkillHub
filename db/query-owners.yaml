@@ -36,6 +36,7 @@ queries:
   CountPlatformAuditEventsByDay: audit
   ListWorkspaceDatasetObjectKeys: testlab
   ListWorkspaceRunArtifactObjectKeys: run
+  ListWorkspaceRunAttemptIDs: run
   ListWorkspaceDownloadArtifactObjectKeys: packaging
   DeleteWorkspaceDatasets: testlab
   DeleteWorkspaceTestCases: testlab
@@ -145,6 +146,7 @@ queries:
   ListRunStatusTransitions: run
   CreateRunAttempt: run
   SetRunAttemptObjectGrants: run
+  RememberRunArtifactUploadIntent: run
   ListRunArtifactUploadIntents: run
   MarkRunArtifactUploadIntentPurged: run
   DeleteRunArtifactUploadIntentByObjectKey: run

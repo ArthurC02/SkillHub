@@ -18,6 +18,14 @@ func artifactObjectKey(runID, runAttemptID string) string {
 	return fmt.Sprintf("run-artifacts/%s/%s/artifacts.tar", runID, runAttemptID)
 }
 
+func artifactUploadIntent(a gen.RunAttempt) gen.RememberRunArtifactUploadIntentParams {
+	return gen.RememberRunArtifactUploadIntentParams{
+		RunAttemptID: a.ID, WorkspaceID: a.WorkspaceID,
+		NotBefore: pgtype.Timestamptz{Time: a.ObjectGrantsExpireAt.Time.Add(runArtifactRetention), Valid: true},
+		ObjectKey: artifactObjectKey(pgconv.UUIDString(a.RunID), pgconv.UUIDString(a.ID)),
+	}
+}
+
 func (s *Service) grantsFor(
 	ctx context.Context, run gen.Run, attempt gen.RunAttempt,
 	version VersionFacts, refs []testlab.DatasetRef, ttl time.Duration,

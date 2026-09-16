@@ -263,6 +263,12 @@ UPDATE run_attempts
 SET object_grants_state = @object_grants_state, object_grants_expire_at = @object_grants_expire_at
 WHERE id = @id AND workspace_id = @workspace_id;
 
+-- name: RememberRunArtifactUploadIntent :exec
+INSERT INTO run_artifact_upload_intents (run_attempt_id, workspace_id, object_key, not_before)
+VALUES (@run_attempt_id, @workspace_id, @object_key, @not_before)
+ON CONFLICT (run_attempt_id) DO UPDATE
+SET not_before = excluded.not_before, attempted_at = NULL;
+
 -- name: ListRunArtifactUploadIntents :many
 WITH candidates AS (
     SELECT id FROM run_artifact_upload_intents

@@ -698,11 +698,6 @@ const listWorkspaceRunArtifactObjectKeys = `-- name: ListWorkspaceRunArtifactObj
 SELECT object_key FROM artifacts
 WHERE artifacts.workspace_id = $1::uuid AND kind = 'run_output'
 UNION
-SELECT 'run-artifacts/' || r.id::text || '/' || a.id::text || '/artifacts.tar'
-FROM runs r
-JOIN run_attempts a ON a.run_id = r.id AND a.workspace_id = r.workspace_id
-WHERE r.workspace_id = $1::uuid
-UNION
 SELECT object_key FROM run_artifact_upload_intents
 WHERE workspace_id = $1::uuid
 `
@@ -720,6 +715,38 @@ func (q *Queries) ListWorkspaceRunArtifactObjectKeys(ctx context.Context, worksp
 			return nil, err
 		}
 		items = append(items, object_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkspaceRunAttemptIDs = `-- name: ListWorkspaceRunAttemptIDs :many
+SELECT a.run_id, a.id
+FROM runs r
+JOIN run_attempts a ON a.run_id = r.id AND a.workspace_id = r.workspace_id
+WHERE r.workspace_id = $1::uuid
+`
+
+type ListWorkspaceRunAttemptIDsRow struct {
+	RunID pgtype.UUID
+	ID    pgtype.UUID
+}
+
+func (q *Queries) ListWorkspaceRunAttemptIDs(ctx context.Context, workspaceID pgtype.UUID) ([]ListWorkspaceRunAttemptIDsRow, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceRunAttemptIDs, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWorkspaceRunAttemptIDsRow
+	for rows.Next() {
+		var i ListWorkspaceRunAttemptIDsRow
+		if err := rows.Scan(&i.RunID, &i.ID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

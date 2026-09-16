@@ -25,6 +25,13 @@ SELECT count(*) AS repair_candidates
 FROM run_attempts
 WHERE object_grants_state = 'legacy_unknown';
 
+UPDATE run_artifact_upload_intents
+SET not_before = now() - interval '2 minutes' + interval '90 days',
+    attempted_at = NULL
+WHERE run_attempt_id IN (
+    SELECT id FROM run_attempts WHERE object_grants_state = 'legacy_unknown'
+);
+
 UPDATE run_attempts
 SET object_grants_expire_at = now() - interval '2 minutes',
     object_grants_state = 'closed'
@@ -33,7 +40,7 @@ WHERE object_grants_state = 'legacy_unknown';
 COMMIT;
 ```
 
-更新 expiry 會由 `0051` 的 `run_attempt_artifact_upload_intent` trigger 在 `run_artifact_upload_intents` 建一列。修復後全域確認 `legacy_unknown` 為零；若仍有，停止 account purge 並調查。
+Attempt 可能上傳的產物由 Go 在寫入 grant 期限時記進 `run_artifact_upload_intents`，到期時間是期限加上 90 天的產物保留期。這段手動修復不經過 Go，所以同一 transaction 先把 `0051` 為這些 Attempt 回填的那一列改成新的到期時間。修復後全域確認 `legacy_unknown` 為零；若仍有，停止 account purge 並調查。
 
 ## 4. 歷史孤兒物件對帳
 

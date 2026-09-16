@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -22,7 +23,20 @@ func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgt
 }
 
 func WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error) {
-	return gen.New(db).ListWorkspaceRunArtifactObjectKeys(ctx, workspaceID)
+	q := gen.New(db)
+	keys, err := q.ListWorkspaceRunArtifactObjectKeys(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	attempts, err := q.ListWorkspaceRunAttemptIDs(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	for _, attempt := range attempts {
+		keys = append(keys, artifactObjectKey(pgconv.UUIDString(attempt.RunID), pgconv.UUIDString(attempt.ID)))
+	}
+	slices.Sort(keys)
+	return slices.Compact(keys), nil
 }
 
 func PurgeQuiescent(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {

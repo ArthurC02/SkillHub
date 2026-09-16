@@ -1295,6 +1295,30 @@ func (q *Queries) RecordOutboxDeliveryFailure(ctx context.Context, arg RecordOut
 	return i, err
 }
 
+const rememberRunArtifactUploadIntent = `-- name: RememberRunArtifactUploadIntent :exec
+INSERT INTO run_artifact_upload_intents (run_attempt_id, workspace_id, object_key, not_before)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (run_attempt_id) DO UPDATE
+SET not_before = excluded.not_before, attempted_at = NULL
+`
+
+type RememberRunArtifactUploadIntentParams struct {
+	RunAttemptID pgtype.UUID
+	WorkspaceID  pgtype.UUID
+	ObjectKey    string
+	NotBefore    pgtype.Timestamptz
+}
+
+func (q *Queries) RememberRunArtifactUploadIntent(ctx context.Context, arg RememberRunArtifactUploadIntentParams) error {
+	_, err := q.db.Exec(ctx, rememberRunArtifactUploadIntent,
+		arg.RunAttemptID,
+		arg.WorkspaceID,
+		arg.ObjectKey,
+		arg.NotBefore,
+	)
+	return err
+}
+
 const requestRunCancel = `-- name: RequestRunCancel :one
 UPDATE runs
 SET cancel_requested_at = $1

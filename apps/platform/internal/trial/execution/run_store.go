@@ -136,6 +136,9 @@ func (s *Service) writeRunEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, 
 		if err := writeObjectGrants(ctx, q, *a); err != nil {
 			return err
 		}
+		if err := q.RememberRunArtifactUploadIntent(ctx, artifactUploadIntent(*a)); err != nil {
+			return err
+		}
 		return publishRunEvent(ctx, tx, r, event, a.ID)
 	}
 	return fmt.Errorf("run event %T has nothing to write", r.events[i])

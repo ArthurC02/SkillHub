@@ -67,13 +67,14 @@ SELECT pg_advisory_unlock(hashtextextended('workspace-objects:' || (sqlc.arg(wor
 SELECT object_key FROM artifacts
 WHERE artifacts.workspace_id = sqlc.arg(workspace_id)::uuid AND kind = 'run_output'
 UNION
-SELECT 'run-artifacts/' || r.id::text || '/' || a.id::text || '/artifacts.tar'
-FROM runs r
-JOIN run_attempts a ON a.run_id = r.id AND a.workspace_id = r.workspace_id
-WHERE r.workspace_id = sqlc.arg(workspace_id)::uuid
-UNION
 SELECT object_key FROM run_artifact_upload_intents
 WHERE workspace_id = sqlc.arg(workspace_id)::uuid;
+
+-- name: ListWorkspaceRunAttemptIDs :many
+SELECT a.run_id, a.id
+FROM runs r
+JOIN run_attempts a ON a.run_id = r.id AND a.workspace_id = r.workspace_id
+WHERE r.workspace_id = sqlc.arg(workspace_id)::uuid;
 
 -- name: ListWorkspaceDownloadArtifactObjectKeys :many
 SELECT object_key FROM artifacts
