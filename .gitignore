@@ -6,6 +6,9 @@
 /.agents/
 /.codex/
 
+# Local, non-authoritative domain registry a skill regenerates; never committed.
+/domain-memory/
+
 # Python
 __pycache__/
 *.pyc
@@ -17,7 +20,7 @@ __pycache__/
 node_modules/
 dist/
 
-# Playwright (ADR-036). Reports and traces are per-run artefacts; the browser
+# Playwright. Reports and traces are per-run artefacts; the browser
 # binaries live outside the repo, installed by `npx playwright install`.
 /apps/web/test-results/
 /apps/web/playwright-report/
