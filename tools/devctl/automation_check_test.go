@@ -11,7 +11,7 @@ import (
 func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 	t.Parallel()
 	want := []string{
-		"drift-marker", "depguard-deny", "service-construction", "identifier-order", "one-number", "query-owner", "query-scope",
+		"drift-marker", "depguard-deny", "service-construction", "identifier-order", "one-number", "query-owner", "query-scope", "sql-logic",
 		"context-map", "doc-identifier", "milestone-tally", "backlog-tally",
 		"baseline-tally", "retention-floor", "sdk-version", "single-data-layer",
 

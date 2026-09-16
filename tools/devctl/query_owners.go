@@ -27,6 +27,7 @@ type sqlQuery struct {
 	tables  []string
 
 	unscoped bool
+	logic    sqlLogic
 }
 
 type callSite struct {
@@ -355,6 +356,7 @@ func loadSQLQueries(dir string) (map[string]sqlQuery, error) {
 				tables:  referencedTables(body),
 
 				unscoped: lacksWorkspaceCondition(body),
+				logic:    sqlLogicOf(body),
 			}
 		}
 	}

@@ -153,6 +153,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `service-construction` | 非 composition root 不得現場建構其他 Bounded Context 的 `Service`（見[Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)） | `tools/devctl/service_construction.go` |
 | `one-number` | 帶 `one-number:` 標記的各站點數值相同，且標記要在 `sharedNumberRoster` 名冊上（雙向） | `tools/devctl/shared_number.go` |
 | `query-owner` | 每條 sqlc query 的呼叫方是 `db/query-owners.yaml` 宣告的 owner context（見[Query 與寫入所有權](../adr/README.md#query-與寫入所有權)） | `tools/devctl/query_owners.go` |
+| `sql-logic` | 每支 sqlc query 的 `CASE`、`COALESCE`、字面值 `IN ('…')` 清單與 `interval` 字面值只能比基線少：新的判斷在 Go 決定、以參數傳進 SQL；少了就要同一批把基線調低，讓省下的額度不能再被花掉 | `tools/devctl/sql_logic.go` |
 | `context-map` | [Context 對照表](./platform-context-map.md)與 `.golangci.yml` 的 `files:` 清單逐套件對帳 | `tools/devctl/query_owners.go`（`contextMapProblems`） |
 | `doc-identifier` | 活文件散文裡的識別字必須真的存在於程式樹 | `tools/devctl/doc_identifiers.go` |
 | `milestone-tally` | M5 的勾選數只有 `03` §19 的 checkbox 能說，其餘四份文件不得出現這個數 | `tools/devctl/milestone_tally.go` |
